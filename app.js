@@ -3,6 +3,9 @@ let eventiCalcolati = [];
 let fullCalendarInstance = null;
 let contatoreId = 0; // per generare id univoci e "sicuri" (solo lettere+numeri)
 
+// Fino a quale anno (compreso) calcolare gli eventi astronomici
+const ANNO_LIMITE = 2030;
+
 // Chiave usata per salvare gli eventi manuali nel browser
 const CHIAVE_EVENTI_MANUALI = 'astrocalendario_eventi_manuali';
 
@@ -37,9 +40,8 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
 // =====================================================================
 function calcolaEventiAstronomi() {
   const oggi = new Date();
-  // Calcoliamo per i prossimi 12 mesi (calendario navigabile e ricco)
-  const limite = new Date();
-  limite.setMonth(limite.getMonth() + 12);
+  // Calcoliamo da oggi fino alla fine dell'anno ANNO_LIMITE (calendario ricco e a lungo termine)
+  const limite = new Date(ANNO_LIMITE, 11, 31, 23, 59, 59);
 
   if (typeof Astronomy === 'undefined') {
     console.error('Libreria Astronomy Engine non caricata.');
@@ -62,7 +64,7 @@ function calcolaEventiAstronomi() {
   const loading = document.getElementById('loading-msg');
   if (loading) {
     if (eventiCalcolati.length === 0) {
-      loading.textContent = 'Nessun evento trovato nei prossimi 12 mesi.';
+      loading.textContent = `Nessun evento trovato da oggi fino al ${ANNO_LIMITE}.`;
     } else {
       loading.style.display = 'none';
     }
@@ -116,7 +118,8 @@ function aggiungiFasiLunari(t0, limite) {
     };
 
     let mq = Astronomy.SearchMoonQuarter(t0);
-    for (let i = 0; i < 60; i++) {
+    // ~4 fasi per mese lunare: fino a ~4.5 anni servono circa 240 iterazioni
+    for (let i = 0; i < 300; i++) {
       const dataFase = mq.time.date;
       if (dataFase > limite) break;
       const dati = info[mq.quarter];
@@ -141,7 +144,7 @@ function aggiungiEclissiLunari(t0, limite) {
   try {
     const kindIt = { penumbral: 'Penombrale', partial: 'Parziale', total: 'Totale' };
     let ecl = Astronomy.SearchLunarEclipse(t0);
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 60; i++) {
       const dataPicco = ecl.peak.date; // BUGFIX: 'peak' è già un AstroTime
       if (dataPicco > limite) break;
       creaEvento({
@@ -167,7 +170,7 @@ function aggiungiEclissiSolari(t0, limite) {
   try {
     const kindIt = { partial: 'Parziale', annular: 'Anulare', total: 'Totale', hybrid: 'Ibrida' };
     let ecl = Astronomy.SearchGlobalSolarEclipse(t0);
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 60; i++) {
       const dataPicco = ecl.peak.date;
       if (dataPicco > limite) break;
       creaEvento({
@@ -192,7 +195,7 @@ function aggiungiEclissiSolari(t0, limite) {
 function aggiungiStagioni(oggi, limite) {
   try {
     const annoInizio = oggi.getFullYear();
-    for (let anno = annoInizio; anno <= annoInizio + 1; anno++) {
+    for (let anno = annoInizio; anno <= ANNO_LIMITE; anno++) {
       const s = Astronomy.Seasons(anno);
       const punti = [
         { at: s.mar_equinox, titolo: 'Equinozio di Primavera', spiegazione: 'Il Sole attraversa l’equatore celeste: giorno e notte hanno quasi la stessa durata. Inizia la primavera nell’emisfero nord.' },
@@ -246,7 +249,7 @@ function aggiungiSciamiMeteorici(oggi, limite) {
       { nome: 'Ursidi', mese: 12, giorno: 22, zhr: 'circa 10 meteore/ora' }
     ];
     const annoInizio = oggi.getFullYear();
-    for (let anno = annoInizio; anno <= annoInizio + 1; anno++) {
+    for (let anno = annoInizio; anno <= ANNO_LIMITE; anno++) {
       sciami.forEach(s => {
         // Picco tipico intorno alle 22:00 ora locale
         const d = new Date(anno, s.mese - 1, s.giorno, 22, 0, 0);
@@ -279,7 +282,8 @@ function aggiungiElongazioni(oggi, limite) {
     ];
     pianeti.forEach(p => {
       let start = new Date(oggi);
-      for (let i = 0; i < 8; i++) {
+      // Mercurio ~6 elongazioni/anno, Venere ~2: fino al 2030 servono decine di iterazioni
+      for (let i = 0; i < 50; i++) {
         let e;
         try {
           e = Astronomy.SearchMaxElongation(p.body, start);
