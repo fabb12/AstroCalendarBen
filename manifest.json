@@ -1,17 +1,33 @@
 {
-  "name": "AstroCalendario 2070",
+  "name": "AstroCalendario di Ben",
   "short_name": "AstroCal",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0F172A",
-  "theme_color": "#3B82F6",
-  "description": "App per eventi astronomici con guida e lettura vocale.",
+  "theme_color": "#0F172A",
+  "description": "App per eventi astronomici con guida, calendario e lettura vocale.",
+  "lang": "it",
+  "categories": ["education", "utilities", "lifestyle"],
   "icons": [
     {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/512px-NASA_logo.svg.png",
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

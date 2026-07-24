@@ -3,23 +3,30 @@ let eventiCalcolati = [];
 let fullCalendarInstance = null;
 let contatoreId = 0; // per generare id univoci e "sicuri" (solo lettere+numeri)
 
+// Chiave usata per salvare gli eventi manuali nel browser
+const CHIAVE_EVENTI_MANUALI = 'astrocalendario_eventi_manuali';
+
 // Avvio al caricamento della pagina
 window.addEventListener('DOMContentLoaded', () => {
   registraSW();
   calcolaEventiAstronomi();
+  caricaEventiManuali();
   inizializzaUI();
+  inizializzaFormAggiungi();
+  inizializzaInstallazione();
 });
 
 // Helper: crea un evento con id sicuro e testo data formattato
-function creaEvento({ titolo, dataObj, spiegazione, colore, programma }) {
+function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale }) {
   eventiCalcolati.push({
-    id: `ev${contatoreId++}`,
+    id: id || `ev${contatoreId++}`,
     titolo,
     dataObj,
     dataTesto: formattData(dataObj),
     spiegazione,
     colore,
-    programma
+    programma,
+    manuale: !!manuale
   });
 }
 
@@ -317,6 +324,183 @@ function formattData(data) {
 }
 
 // =====================================================================
+// 1-bis. Eventi Manuali (creati dall'utente e salvati nel browser)
+// =====================================================================
+
+// Legge gli eventi salvati in localStorage e li aggiunge alla lista
+function caricaEventiManuali() {
+  let salvati;
+  try {
+    salvati = JSON.parse(localStorage.getItem(CHIAVE_EVENTI_MANUALI) || '[]');
+  } catch (err) {
+    console.error('Errore lettura eventi manuali:', err);
+    salvati = [];
+  }
+  if (!Array.isArray(salvati)) salvati = [];
+
+  salvati.forEach(ev => {
+    const dataObj = new Date(ev.data);
+    if (isNaN(dataObj)) return; // ignora date non valide
+    creaEvento({
+      id: ev.id,
+      titolo: ev.titolo,
+      dataObj,
+      spiegazione: ev.spiegazione,
+      colore: ev.colore,
+      programma: ev.programma,
+      manuale: true
+    });
+  });
+
+  eventiCalcolati.sort((a, b) => a.dataObj - b.dataObj);
+}
+
+// Salva in localStorage solo gli eventi manuali presenti in memoria
+function salvaEventiManuali() {
+  const daSalvare = eventiCalcolati
+    .filter(e => e.manuale)
+    .map(e => ({
+      id: e.id,
+      titolo: e.titolo,
+      data: e.dataObj.toISOString(),
+      spiegazione: e.spiegazione,
+      colore: e.colore,
+      programma: e.programma
+    }));
+  try {
+    localStorage.setItem(CHIAVE_EVENTI_MANUALI, JSON.stringify(daSalvare));
+  } catch (err) {
+    console.error('Errore salvataggio eventi manuali:', err);
+  }
+}
+
+// Crea un nuovo evento manuale a partire dai dati del form
+function aggiungiEventoManuale(dati) {
+  const programma = {
+    cosaPortare: dati.cosaPortare || 'Nessuna indicazione particolare.',
+    doveVederlo: dati.doveVederlo || 'Nessuna indicazione particolare.',
+    comeVederlo: dati.comeVederlo || 'Nessuna indicazione particolare.'
+  };
+
+  creaEvento({
+    id: `man${Date.now()}${contatoreId++}`,
+    titolo: dati.titolo,
+    dataObj: dati.dataObj,
+    spiegazione: dati.spiegazione || 'Evento aggiunto manualmente.',
+    colore: dati.colore || '#3b82f6',
+    programma,
+    manuale: true
+  });
+
+  eventiCalcolati.sort((a, b) => a.dataObj - b.dataObj);
+  salvaEventiManuali();
+  aggiornaViste();
+}
+
+// Elimina un evento manuale (dalla memoria, dallo storage e dalle viste)
+window.eliminaEventoManuale = (id) => {
+  const evento = eventiCalcolati.find(e => e.id === id);
+  if (!evento || !evento.manuale) return;
+  if (!confirm(`Vuoi eliminare l'evento "${evento.titolo}"?`)) return;
+
+  eventiCalcolati = eventiCalcolati.filter(e => e.id !== id);
+  salvaEventiManuali();
+  aggiornaViste();
+};
+
+// Ricostruisce agenda e calendario dopo una modifica
+function aggiornaViste() {
+  costruisciAgenda();
+  if (fullCalendarInstance) {
+    fullCalendarInstance.removeAllEvents();
+    eventiCalcolati.forEach(e => {
+      fullCalendarInstance.addEvent({
+        id: e.id,
+        title: e.titolo,
+        start: e.dataObj,
+        backgroundColor: e.colore,
+        borderColor: e.colore,
+        allDay: true
+      });
+    });
+  }
+
+  // Aggiorna il messaggio "caricamento" dell'agenda
+  const loading = document.getElementById('loading-msg');
+  if (loading) {
+    if (eventiCalcolati.length === 0) {
+      loading.style.display = '';
+      loading.textContent = 'Nessun evento da mostrare.';
+    } else {
+      loading.style.display = 'none';
+    }
+  }
+}
+
+// Collega il form e il modale "Aggiungi Evento"
+function inizializzaFormAggiungi() {
+  const modale = document.getElementById('modale-aggiungi');
+  const btnApri = document.getElementById('btn-aggiungi');
+  const btnChiudi = document.getElementById('btn-chiudi-modale');
+  const btnAnnulla = document.getElementById('btn-annulla');
+  const form = document.getElementById('form-evento');
+  if (!modale || !btnApri || !form) return;
+
+  const apri = () => {
+    // Precompila con data/ora attuale (formato richiesto da datetime-local)
+    const ora = new Date();
+    ora.setMinutes(ora.getMinutes() - ora.getTimezoneOffset());
+    document.getElementById('ev-data').value = ora.toISOString().slice(0, 16);
+    modale.classList.remove('hidden');
+  };
+  const chiudi = () => {
+    modale.classList.add('hidden');
+    form.reset();
+    document.getElementById('ev-colore').value = '#3b82f6';
+  };
+
+  btnApri.addEventListener('click', apri);
+  if (btnChiudi) btnChiudi.addEventListener('click', chiudi);
+  if (btnAnnulla) btnAnnulla.addEventListener('click', chiudi);
+  // Chiudi cliccando sullo sfondo scuro
+  modale.addEventListener('click', (e) => {
+    if (e.target === modale) chiudi();
+  });
+  // Chiudi con il tasto Esc
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modale.classList.contains('hidden')) chiudi();
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const titolo = document.getElementById('ev-titolo').value.trim();
+    const dataRaw = document.getElementById('ev-data').value;
+    if (!titolo || !dataRaw) return;
+
+    const dataObj = new Date(dataRaw);
+    if (isNaN(dataObj)) {
+      alert('Data non valida.');
+      return;
+    }
+
+    aggiungiEventoManuale({
+      titolo,
+      dataObj,
+      colore: document.getElementById('ev-colore').value,
+      spiegazione: document.getElementById('ev-spiegazione').value.trim(),
+      cosaPortare: document.getElementById('ev-portare').value.trim(),
+      doveVederlo: document.getElementById('ev-dove').value.trim(),
+      comeVederlo: document.getElementById('ev-come').value.trim()
+    });
+
+    chiudi();
+    // Mostra l'agenda per far vedere subito l'evento appena creato
+    const btnAg = document.getElementById('btn-vista-agenda');
+    if (btnAg) btnAg.click();
+  });
+}
+
+// =====================================================================
 // 2. Inizializzazione Interfaccia (Griglia e Liste)
 // =====================================================================
 function inizializzaUI() {
@@ -339,16 +523,25 @@ function costruisciAgenda() {
     const card = document.createElement('article');
     card.className = "bg-slate-800 p-6 rounded-2xl border border-slate-700 card-hover relative overflow-hidden";
     // Una piccola linea colorata a sinistra per il tipo di evento
+    const badgeManuale = evento.manuale
+      ? '<span class="ml-2 align-middle text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">Manuale</span>'
+      : '';
+    const bottoneElimina = evento.manuale
+      ? `<button onclick="eliminaEventoManuale('${evento.id}')" class="p-3 bg-slate-700 hover:bg-red-600 rounded-full transition-colors flex-shrink-0" title="Elimina evento">🗑️</button>`
+      : '';
     card.innerHTML = `
       <div class="absolute left-0 top-0 bottom-0 w-2" style="background-color: ${evento.colore}"></div>
       <div class="flex justify-between items-start mb-4 pl-4">
         <div>
-          <h2 class="text-2xl font-bold text-white">${evento.titolo}</h2>
+          <h2 class="text-2xl font-bold text-white">${evento.titolo}${badgeManuale}</h2>
           <p class="text-blue-400 text-sm font-semibold mt-1">📅 ${evento.dataTesto}</p>
         </div>
-        <button onclick="leggiEvento('${evento.id}')" class="p-3 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors flex-shrink-0" title="Ascolta le info">
-          🔊
-        </button>
+        <div class="flex gap-2 flex-shrink-0">
+          <button onclick="leggiEvento('${evento.id}')" class="p-3 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors" title="Ascolta le info">
+            🔊
+          </button>
+          ${bottoneElimina}
+        </div>
       </div>
 
       <div class="space-y-3 text-slate-300 pl-4">
@@ -500,4 +693,54 @@ function registraSW() {
     navigator.serviceWorker.register('sw.js')
       .catch(err => console.error('Errore SW:', err));
   }
+}
+
+// =====================================================================
+// 6. Installazione PWA (Aggiungi a schermata Home)
+// =====================================================================
+let promptInstallazione = null;
+
+function inizializzaInstallazione() {
+  const btn = document.getElementById('btn-installa');
+  if (!btn) return;
+
+  // App già installata (avviata in modalità standalone): nascondi il pulsante
+  const giaInstallata = window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+  if (giaInstallata) {
+    btn.classList.add('hidden');
+    return;
+  }
+
+  // Chrome / Edge / Android: intercetta il prompt nativo di installazione
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    promptInstallazione = e;
+    btn.classList.remove('hidden');
+  });
+
+  // Quando l'utente installa, nascondi il pulsante
+  window.addEventListener('appinstalled', () => {
+    promptInstallazione = null;
+    btn.classList.add('hidden');
+  });
+
+  // iOS (Safari) non espone beforeinstallprompt: mostra le istruzioni manuali
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS && !giaInstallata) {
+    btn.classList.remove('hidden');
+  }
+
+  btn.addEventListener('click', async () => {
+    if (promptInstallazione) {
+      promptInstallazione.prompt();
+      await promptInstallazione.userChoice;
+      promptInstallazione = null;
+      btn.classList.add('hidden');
+    } else if (isIOS) {
+      alert('Per installare l\'app su iPhone/iPad:\n\n1. Tocca il pulsante Condividi ⬆️ in basso\n2. Scegli "Aggiungi a schermata Home"\n3. Conferma con "Aggiungi"');
+    } else {
+      alert('Per installare l\'app usa il menu del browser e scegli "Installa app" o "Aggiungi a schermata Home".');
+    }
+  });
 }
