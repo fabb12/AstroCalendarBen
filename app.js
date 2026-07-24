@@ -3,6 +3,20 @@ let eventiCalcolati = [];
 let fullCalendarInstance = null;
 let contatoreId = 0; // per generare id univoci e "sicuri" (solo lettere+numeri)
 
+// Categorie di eventi: usate dai filtri e dai badge nell'agenda
+const CATEGORIE = {
+  luna:      { nome: 'Fasi Lunari',      icona: '🌙' },
+  eclissi:   { nome: 'Eclissi',          icona: '🌑' },
+  stagioni:  { nome: 'Stagioni',         icona: '🍂' },
+  meteore:   { nome: 'Sciami Meteorici', icona: '☄️' },
+  pianeti:   { nome: 'Pianeti',          icona: '🪐' },
+  personali: { nome: 'Personali',        icona: '📌' }
+};
+
+// Stato corrente dei filtri di ricerca (testo libero + categoria selezionata)
+let filtroTesto = '';
+let filtroCategoria = 'tutti';
+
 // Fino a quale anno (compreso) calcolare gli eventi astronomici
 const ANNO_LIMITE = 2030;
 
@@ -23,7 +37,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Helper: crea un evento con id sicuro e testo data formattato
-function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa }) {
+function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria }) {
   eventiCalcolati.push({
     id: id || `ev${contatoreId++}`,
     titolo,
@@ -33,7 +47,8 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     colore,
     programma,
     manuale: !!manuale,
-    linkMappa: linkMappa || null
+    linkMappa: linkMappa || null,
+    categoria: categoria || 'altro'
   });
 }
 
@@ -135,7 +150,8 @@ function aggiungiFasiLunari(t0, limite) {
           dataObj: dataFase,
           spiegazione: dati.spiegazione,
           colore: dati.colore,
-          programma: dati.programma
+          programma: dati.programma,
+          categoria: 'luna'
         });
       }
       mq = Astronomy.NextMoonQuarter(mq);
@@ -159,6 +175,7 @@ function aggiungiEclissiLunari(t0, limite) {
         dataObj: dataPicco,
         spiegazione: 'La Terra proietta la sua ombra sulla Luna, oscurandola e, nelle eclissi totali, donandole un colore rossastro (“Luna di Sangue”).',
         colore: '#ef4444',
+        categoria: 'eclissi',
         programma: {
           cosaPortare: 'Occhi aperti e, se vuoi, una macchina fotografica con teleobiettivo.',
           doveVederlo: 'Ovunque la Luna sia visibile sopra l’orizzonte.',
@@ -229,6 +246,7 @@ function aggiungiEclissiSolari(t0, limite) {
         dataObj: dataPicco,
         spiegazione,
         colore: '#f97316',
+        categoria: 'eclissi',
         linkMappa,
         programma: {
           cosaPortare: 'OBBLIGATORI occhiali certificati per eclissi (ISO 12312-2) o un filtro solare: mai guardare il Sole a occhio nudo, nemmeno parzialmente eclissato.',
@@ -270,6 +288,7 @@ function aggiungiStagioni(oggi, limite) {
             dataObj: d,
             spiegazione: p.spiegazione,
             colore: '#22c55e',
+            categoria: 'stagioni',
             programma: {
               cosaPortare: 'Nulla di particolare: è un evento di calendario astronomico.',
               doveVederlo: 'Non si “vede” un punto preciso: segna il cambio di stagione.',
@@ -318,6 +337,7 @@ function aggiungiSciamiMeteorici(oggi, limite) {
             dataObj: d,
             spiegazione: s.spiegazione || `Pioggia di stelle cadenti (${s.zhr} nelle condizioni migliori). Le meteore sembrano irradiarsi da un punto della volta celeste.`,
             colore: '#06b6d4',
+            categoria: 'meteore',
             programma: s.programma || {
               cosaPortare: 'Sedia sdraio, coperta e bevande calde. Niente telescopio: serve un ampio campo visivo.',
               doveVederlo: 'Cielo buio e senza inquinamento luminoso; lascia gli occhi adattarsi al buio per 20 minuti.',
@@ -358,6 +378,7 @@ function aggiungiElongazioni(oggi, limite) {
           dataObj: d,
           spiegazione: `${p.nome} raggiunge la massima distanza apparente dal Sole (${e.elongation.toFixed(0)}°): è il momento migliore per osservarlo, visibile ${quando}.`,
           colore: '#a855f7',
+          categoria: 'pianeti',
           programma: {
             cosaPortare: 'Binocolo; un piccolo telescopio per apprezzarne la fase.',
             doveVederlo: `Verso l’orizzonte ${e.visibility === 'morning' ? 'a est' : 'a ovest'}, ${quando}.`,
@@ -411,7 +432,8 @@ function caricaEventiManuali() {
       spiegazione: ev.spiegazione,
       colore: ev.colore,
       programma: ev.programma,
-      manuale: true
+      manuale: true,
+      categoria: 'personali'
     });
   });
 
@@ -452,7 +474,8 @@ function aggiungiEventoManuale(dati) {
     spiegazione: dati.spiegazione || 'Evento aggiunto manualmente.',
     colore: dati.colore || '#3b82f6',
     programma,
-    manuale: true
+    manuale: true,
+    categoria: 'personali'
   });
 
   eventiCalcolati.sort((a, b) => a.dataObj - b.dataObj);
@@ -473,20 +496,7 @@ window.eliminaEventoManuale = (id) => {
 
 // Ricostruisce agenda e calendario dopo una modifica
 function aggiornaViste() {
-  costruisciAgenda();
-  if (fullCalendarInstance) {
-    fullCalendarInstance.removeAllEvents();
-    eventiCalcolati.forEach(e => {
-      fullCalendarInstance.addEvent({
-        id: e.id,
-        title: e.titolo,
-        start: e.dataObj,
-        backgroundColor: e.colore,
-        borderColor: e.colore,
-        allDay: true
-      });
-    });
-  }
+  applicaFiltri();
 
   // Aggiorna il messaggio "caricamento" dell'agenda
   const loading = document.getElementById('loading-msg');
@@ -567,9 +577,117 @@ function inizializzaFormAggiungi() {
 // 2. Inizializzazione Interfaccia (Griglia e Liste)
 // =====================================================================
 function inizializzaUI() {
+  inizializzaRicerca();
   costruisciAgenda();
   inizializzaCalendario();
   gestisciTab();
+}
+
+// =====================================================================
+// 1-ter. Ricerca intelligente e filtro per categoria
+// =====================================================================
+
+// Normalizza il testo per confronti "morbidi": minuscolo e senza accenti
+function normalizzaTesto(str) {
+  return (str || '')
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+}
+
+// Restituisce solo gli eventi che rispettano ricerca testuale e categoria attiva.
+// La ricerca testuale confronta titolo, spiegazione e nome della categoria, ed è
+// "intelligente": ogni parola digitata deve comparire (in qualsiasi ordine).
+function getEventiFiltrati() {
+  const query = normalizzaTesto(filtroTesto).trim();
+  const parole = query ? query.split(/\s+/) : [];
+
+  return eventiCalcolati.filter(ev => {
+    if (filtroCategoria !== 'tutti' && ev.categoria !== filtroCategoria) return false;
+    if (parole.length === 0) return true;
+    const nomeCategoria = CATEGORIE[ev.categoria] ? CATEGORIE[ev.categoria].nome : '';
+    const testo = normalizzaTesto(`${ev.titolo} ${ev.spiegazione} ${nomeCategoria}`);
+    return parole.every(p => testo.includes(p));
+  });
+}
+
+// Riapplica i filtri correnti sia all'agenda sia al calendario a griglia
+function applicaFiltri() {
+  costruisciAgenda();
+  sincronizzaCalendario();
+}
+
+// Trasforma la lista di eventi nel formato richiesto da FullCalendar
+function eventiPerGriglia(lista) {
+  return lista.map(e => ({
+    id: e.id,
+    title: e.titolo,
+    start: e.dataObj,
+    backgroundColor: e.colore,
+    borderColor: e.colore,
+    allDay: true
+  }));
+}
+
+// Ricarica nel calendario a griglia solo gli eventi che passano i filtri
+function sincronizzaCalendario() {
+  if (!fullCalendarInstance) return;
+  fullCalendarInstance.removeAllEvents();
+  eventiPerGriglia(getEventiFiltrati()).forEach(ev => fullCalendarInstance.addEvent(ev));
+}
+
+// Costruisce la barra di ricerca e i chip delle categorie e ne collega gli eventi
+function inizializzaRicerca() {
+  const input = document.getElementById('ricerca-eventi');
+  const btnPulisci = document.getElementById('btn-pulisci-ricerca');
+  const contenitoreChip = document.getElementById('filtri-categorie');
+
+  if (contenitoreChip) {
+    const chips = [{ id: 'tutti', nome: 'Tutti', icona: '✨' }]
+      .concat(Object.keys(CATEGORIE).map(id => ({ id, ...CATEGORIE[id] })));
+
+    contenitoreChip.innerHTML = chips.map(c =>
+      `<button type="button" data-cat="${c.id}" class="chip-categoria">${c.icona} ${c.nome}</button>`
+    ).join('');
+
+    contenitoreChip.querySelectorAll('.chip-categoria').forEach(btn => {
+      btn.addEventListener('click', () => {
+        filtroCategoria = btn.dataset.cat;
+        aggiornaStileChip();
+        applicaFiltri();
+      });
+    });
+    aggiornaStileChip();
+  }
+
+  if (input) {
+    input.addEventListener('input', () => {
+      filtroTesto = input.value;
+      if (btnPulisci) btnPulisci.classList.toggle('hidden', !input.value);
+      applicaFiltri();
+    });
+  }
+
+  if (btnPulisci && input) {
+    btnPulisci.addEventListener('click', () => {
+      input.value = '';
+      filtroTesto = '';
+      btnPulisci.classList.add('hidden');
+      input.focus();
+      applicaFiltri();
+    });
+  }
+}
+
+// Evidenzia il chip della categoria attiva
+function aggiornaStileChip() {
+  const base = 'chip-categoria px-3 py-1.5 rounded-full text-sm font-semibold transition-colors';
+  const attivo = ' bg-blue-600 text-white shadow';
+  const inattivo = ' bg-slate-700 text-slate-300 hover:bg-slate-600';
+  document.querySelectorAll('.chip-categoria').forEach(btn => {
+    btn.className = base + (btn.dataset.cat === filtroCategoria ? attivo : inattivo);
+  });
 }
 
 function costruisciAgenda() {
@@ -577,17 +695,27 @@ function costruisciAgenda() {
   if (!container) return;
   container.innerHTML = '';
 
-  if (eventiCalcolati.length === 0) {
-    container.innerHTML = '<p class="text-center text-slate-400">Nessun evento da mostrare.</p>';
+  const eventiDaMostrare = getEventiFiltrati();
+
+  if (eventiDaMostrare.length === 0) {
+    const messaggio = eventiCalcolati.length === 0
+      ? 'Nessun evento da mostrare.'
+      : 'Nessun evento corrisponde alla ricerca. Prova a cambiare i termini o la categoria.';
+    container.innerHTML = `<p class="text-center text-slate-400">${messaggio}</p>`;
     return;
   }
 
-  eventiCalcolati.forEach(evento => {
+  eventiDaMostrare.forEach(evento => {
     const card = document.createElement('article');
     card.className = "bg-slate-800 p-6 rounded-2xl border border-slate-700 card-hover relative overflow-hidden";
     // Una piccola linea colorata a sinistra per il tipo di evento
     const badgeManuale = evento.manuale
       ? '<span class="ml-2 align-middle text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">Manuale</span>'
+      : '';
+    // Badge con la categoria dell'evento (es. 🌙 Fasi Lunari)
+    const cat = CATEGORIE[evento.categoria];
+    const badgeCategoria = cat
+      ? `<span class="align-middle text-xs bg-slate-700 text-slate-200 px-2 py-0.5 rounded-full">${cat.icona} ${cat.nome}</span>`
       : '';
     const bottoneElimina = evento.manuale
       ? `<button onclick="eliminaEventoManuale('${evento.id}')" class="p-3 bg-slate-700 hover:bg-red-600 rounded-full transition-colors flex-shrink-0" title="Elimina evento">🗑️</button>`
@@ -602,6 +730,7 @@ function costruisciAgenda() {
         <div>
           <h2 class="text-2xl font-bold text-white">${evento.titolo}${badgeManuale}</h2>
           <p class="text-blue-400 text-sm font-semibold mt-1">📅 ${evento.dataTesto}</p>
+          <div class="mt-2">${badgeCategoria}</div>
         </div>
         <div class="flex gap-2 flex-shrink-0">
           <button onclick="leggiEvento('${evento.id}')" class="p-3 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors" title="Ascolta le info">
@@ -635,16 +764,6 @@ function inizializzaCalendario() {
     return;
   }
 
-  // Trasforma i nostri dati per FullCalendar
-  const eventiPerGriglia = eventiCalcolati.map(e => ({
-    id: e.id,
-    title: e.titolo,
-    start: e.dataObj,
-    backgroundColor: e.colore,
-    borderColor: e.colore,
-    allDay: true
-  }));
-
   fullCalendarInstance = new FullCalendar.Calendar(calendarEl, {
     initialView: 'dayGridMonth',
     locale: 'it',
@@ -656,7 +775,7 @@ function inizializzaCalendario() {
       right: ''
     },
     buttonText: { today: 'Oggi' },
-    events: eventiPerGriglia,
+    events: eventiPerGriglia(getEventiFiltrati()),
     eventClick: function(info) {
       // Se clicco su un evento nel calendario, apro l'agenda e leggo il testo
       document.getElementById('btn-vista-agenda').click();
