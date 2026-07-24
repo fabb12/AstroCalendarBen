@@ -33,11 +33,12 @@ window.addEventListener('DOMContentLoaded', () => {
   caricaEventiManuali();
   inizializzaUI();
   inizializzaFormAggiungi();
+  inizializzaMappaEclissiUI();
   inizializzaInstallazione();
 });
 
 // Helper: crea un evento con id sicuro e testo data formattato
-function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria }) {
+function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi }) {
   eventiCalcolati.push({
     id: id || `ev${contatoreId++}`,
     titolo,
@@ -48,7 +49,9 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     programma,
     manuale: !!manuale,
     linkMappa: linkMappa || null,
-    categoria: categoria || 'altro'
+    categoria: categoria || 'altro',
+    // Dati per la mappa di visibilità (solo eclissi solari con fascia centrale)
+    eclissi: eclissi || null
   });
 }
 
@@ -248,6 +251,15 @@ function aggiungiEclissiSolari(t0, limite) {
         colore: '#f97316',
         categoria: 'eclissi',
         linkMappa,
+        // Salviamo il tempo di picco (giorni UT rispetto a J2000) e i dati utili
+        // alla mappa: la fascia centrale viene ricalcolata solo quando serve.
+        eclissi: haCentro ? {
+          peakUt: ecl.peak.ut,
+          kind: ecl.kind,
+          tipo,
+          lat: ecl.latitude,
+          lon: ecl.longitude
+        } : null,
         programma: {
           cosaPortare: 'OBBLIGATORI occhiali certificati per eclissi (ISO 12312-2) o un filtro solare: mai guardare il Sole a occhio nudo, nemmeno parzialmente eclissato.',
           doveVederlo,
@@ -266,6 +278,171 @@ function formattaCoordinate(lat, lon) {
   const ns = lat >= 0 ? 'N' : 'S';
   const ew = lon >= 0 ? 'E' : 'O';
   return `${Math.abs(lat).toFixed(1)}° ${ns}, ${Math.abs(lon).toFixed(1)}° ${ew}`;
+}
+
+// =====================================================================
+// 1-bis. MAPPA DI VISIBILITÀ DELLE ECLISSI SOLARI
+//   La linea di massima visibilità (fascia centrale) viene ricostruita
+//   calcolando, istante per istante, dove l'asse dell'ombra della Luna
+//   colpisce la superficie terrestre. Attorno a questa linea disegniamo
+//   una fascia che stima l'area in cui l'eclissi è visibile in parte.
+// =====================================================================
+const UA_KM = 149597870.7;           // 1 unità astronomica in km
+const RAGGIO_TERRA_KM = 6378.137;    // raggio equatoriale terrestre
+const APPIATTIMENTO = 1 / 298.257223563;
+const RAGGIO_TERRA_UA = RAGGIO_TERRA_KM / UA_KM;
+
+// Calcola il punto della superficie terrestre attraversato dall'asse
+// dell'ombra lunare a un dato istante (centro dell'eclissi). Restituisce
+// [lat, lon] in gradi, oppure null se in quell'istante l'asse manca la Terra.
+function _eclissiPuntoOmbra(time) {
+  const luna = Astronomy.GeoMoon(time);
+  const sole = Astronomy.GeoVector(Astronomy.Body.Sun, time, false);
+  const rot = Astronomy.Rotation_EQJ_EQD(time); // dall'equatore J2000 a quello della data
+  const m = Astronomy.RotateVector(rot, luna);
+  const s = Astronomy.RotateVector(rot, sole);
+
+  // Direzione dell'asse dell'ombra: dal Sole verso la Luna (e oltre, sulla Terra)
+  let dx = m.x - s.x, dy = m.y - s.y, dz = m.z - s.z;
+  const dl = Math.hypot(dx, dy, dz);
+  dx /= dl; dy /= dl; dz /= dl;
+
+  // Intersezione della retta (Luna + t·d) con la sfera terrestre
+  const md = m.x * dx + m.y * dy + m.z * dz;
+  const m2 = m.x * m.x + m.y * m.y + m.z * m.z;
+  const disc = md * md - (m2 - RAGGIO_TERRA_UA * RAGGIO_TERRA_UA);
+  if (disc < 0) return null; // l'asse non tocca la Terra: nessun centro d'eclissi
+
+  const t = -md - Math.sqrt(disc); // intersezione più vicina (lato illuminato)
+  const px = m.x + t * dx, py = m.y + t * dy, pz = m.z + t * dz;
+  const r = Math.hypot(px, py, pz);
+
+  // Da vettore equatoriale-della-data a latitudine/longitudine geografiche
+  const declRad = Math.asin(pz / r);
+  const raDeg = Math.atan2(py, px) * 180 / Math.PI;
+  let lon = raDeg - Astronomy.SiderealTime(time) * 15; // GAST in gradi
+  lon = ((lon + 540) % 360) - 180; // normalizza in [-180, 180]
+  // Da latitudine geocentrica a geodetica
+  const lat = Math.atan(Math.tan(declRad) / ((1 - APPIATTIMENTO) * (1 - APPIATTIMENTO))) * 180 / Math.PI;
+  return [lat, lon];
+}
+
+// Ricostruisce la linea centrale dell'eclissi campionando le ore attorno al picco.
+function _eclissiTracciaPercorso(peakUt) {
+  const punti = [];
+  for (let dmin = -260; dmin <= 260; dmin += 3) {
+    const p = _eclissiPuntoOmbra(Astronomy.MakeTime(peakUt + dmin / 1440));
+    if (p) punti.push(p);
+  }
+  return punti;
+}
+
+// Spezza una spezzata quando la longitudine "salta" oltre 180° (antimeridiano),
+// così le linee e i poligoni non attraversano tutta la mappa.
+function _eclissiSpezza(punti) {
+  const segmenti = [];
+  let corrente = [];
+  for (let i = 0; i < punti.length; i++) {
+    if (i > 0 && Math.abs(punti[i][1] - punti[i - 1][1]) > 180) {
+      if (corrente.length) segmenti.push(corrente);
+      corrente = [];
+    }
+    corrente.push(punti[i]);
+  }
+  if (corrente.length) segmenti.push(corrente);
+  return segmenti;
+}
+
+// Stato della mappa Leaflet (creata una sola volta, poi riutilizzata)
+let _mappaEclissi = null;
+let _mappaStrati = [];
+
+// Apre il modale con la mappa di visibilità per l'eclissi indicata.
+function apriMappaEclissi(id) {
+  const evento = eventiCalcolati.find(e => e.id === id);
+  if (!evento || !evento.eclissi) return;
+  const modale = document.getElementById('modale-mappa');
+  const titoloEl = document.getElementById('mappa-titolo');
+  if (!modale || typeof L === 'undefined') {
+    // Leaflet non disponibile: apri il punto di massima eclissi su Google Maps
+    if (evento.linkMappa) window.open(evento.linkMappa.url, '_blank', 'noopener');
+    return;
+  }
+
+  if (titoloEl) titoloEl.textContent = `🗺️ Visibilità — ${evento.titolo} (${evento.dataTesto})`;
+  modale.classList.remove('hidden');
+
+  // Inizializza la mappa la prima volta
+  if (!_mappaEclissi) {
+    _mappaEclissi = L.map('mappa-eclissi', { worldCopyJump: true, minZoom: 1 }).setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 8,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(_mappaEclissi);
+  }
+
+  // Rimuove eventuali tracciati precedenti
+  _mappaStrati.forEach(s => _mappaEclissi.removeLayer(s));
+  _mappaStrati = [];
+
+  const percorso = _eclissiTracciaPercorso(evento.eclissi.peakUt);
+
+  // Area di visibilità parziale (stima): dischi sovrapposti lungo il percorso.
+  // La sovrapposizione crea una fascia sfumata, più intensa vicino alla linea
+  // centrale — robusta anche alle alte latitudini (niente artefatti ai poli).
+  [{ km: 3500, colore: '#60a5fa', opac: 0.035 },
+   { km: 1800, colore: '#3b82f6', opac: 0.045 }].forEach(f => {
+    percorso.forEach(([lat, lon]) => {
+      const disco = L.circle([lat, lon], {
+        radius: f.km * 1000, stroke: false, fillColor: f.colore, fillOpacity: f.opac, interactive: false
+      });
+      disco.addTo(_mappaEclissi);
+      _mappaStrati.push(disco);
+    });
+  });
+
+  // Linea di massima visibilità (fascia centrale)
+  _eclissiSpezza(percorso).forEach(seg => {
+    const linea = L.polyline(seg, { color: '#1e3a8a', weight: 4, opacity: 0.95 });
+    linea.addTo(_mappaEclissi);
+    _mappaStrati.push(linea);
+  });
+
+  // Punto di massima eclissi
+  if (typeof evento.eclissi.lat === 'number') {
+    const faseIt = evento.eclissi.kind === 'total' ? 'totalità'
+                 : evento.eclissi.kind === 'annular' ? 'anularità' : 'fase centrale';
+    const marker = L.circleMarker([evento.eclissi.lat, evento.eclissi.lon], {
+      radius: 6, color: '#f97316', fillColor: '#f97316', fillOpacity: 1, weight: 2
+    }).bindPopup(`<b>Massima ${faseIt}</b><br>${formattaCoordinate(evento.eclissi.lat, evento.eclissi.lon)}`);
+    marker.addTo(_mappaEclissi);
+    _mappaStrati.push(marker);
+  }
+
+  // Inquadra il percorso e ricalcola le dimensioni (il div era nascosto)
+  setTimeout(() => {
+    _mappaEclissi.invalidateSize();
+    if (percorso.length) {
+      _mappaEclissi.fitBounds(L.latLngBounds(percorso).pad(0.4));
+    }
+  }, 60);
+}
+
+function chiudiMappaEclissi() {
+  const modale = document.getElementById('modale-mappa');
+  if (modale) modale.classList.add('hidden');
+}
+
+// Collega i pulsanti di chiusura del modale mappa.
+function inizializzaMappaEclissiUI() {
+  const modale = document.getElementById('modale-mappa');
+  const btnChiudi = document.getElementById('btn-chiudi-mappa');
+  if (!modale) return;
+  if (btnChiudi) btnChiudi.addEventListener('click', chiudiMappaEclissi);
+  modale.addEventListener('click', (e) => { if (e.target === modale) chiudiMappaEclissi(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modale.classList.contains('hidden')) chiudiMappaEclissi();
+  });
 }
 
 // --- Equinozi e Solstizi ---
@@ -724,6 +901,10 @@ function costruisciAgenda() {
     const linkMappa = evento.linkMappa
       ? `<li><a href="${evento.linkMappa.url}" target="_blank" rel="noopener" class="text-blue-400 underline hover:text-blue-300">${evento.linkMappa.testo}</a></li>`
       : '';
+    // Pulsante mappa interattiva di visibilità (solo eclissi solari con fascia centrale)
+    const bottoneMappa = evento.eclissi
+      ? `<li><button onclick="apriMappaEclissi('${evento.id}')" class="inline-flex items-center gap-1 text-blue-400 underline hover:text-blue-300 bg-transparent border-0 p-0 cursor-pointer">🌍 Mostra mappa di visibilità (linea centrale e area parziale)</button></li>`
+      : '';
     card.innerHTML = `
       <div class="absolute left-0 top-0 bottom-0 w-2" style="background-color: ${evento.colore}"></div>
       <div class="flex justify-between items-start mb-4 pl-4">
@@ -749,6 +930,7 @@ function costruisciAgenda() {
             <li><span class="text-blue-400">Dove:</span> ${evento.programma.doveVederlo}</li>
             <li><span class="text-blue-400">Come:</span> ${evento.programma.comeVederlo}</li>
             ${linkMappa}
+            ${bottoneMappa}
           </ul>
         </div>
       </div>
