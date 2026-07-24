@@ -6,6 +6,9 @@ let contatoreId = 0; // per generare id univoci e "sicuri" (solo lettere+numeri)
 // Fino a quale anno (compreso) calcolare gli eventi astronomici
 const ANNO_LIMITE = 2030;
 
+// Le eclissi (solari e lunari) sono eventi rari e attesi: le calcoliamo più a lungo termine
+const ANNO_LIMITE_ECLISSI = 2070;
+
 // Chiave usata per salvare gli eventi manuali nel browser
 const CHIAVE_EVENTI_MANUALI = 'astrocalendario_eventi_manuali';
 
@@ -20,7 +23,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Helper: crea un evento con id sicuro e testo data formattato
-function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale }) {
+function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa }) {
   eventiCalcolati.push({
     id: id || `ev${contatoreId++}`,
     titolo,
@@ -29,7 +32,8 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     spiegazione,
     colore,
     programma,
-    manuale: !!manuale
+    manuale: !!manuale,
+    linkMappa: linkMappa || null
   });
 }
 
@@ -42,6 +46,8 @@ function calcolaEventiAstronomi() {
   const oggi = new Date();
   // Calcoliamo da oggi fino alla fine dell'anno ANNO_LIMITE (calendario ricco e a lungo termine)
   const limite = new Date(ANNO_LIMITE, 11, 31, 23, 59, 59);
+  // Le eclissi vengono calcolate fino a un orizzonte più lontano (ANNO_LIMITE_ECLISSI)
+  const limiteEclissi = new Date(ANNO_LIMITE_ECLISSI, 11, 31, 23, 59, 59);
 
   if (typeof Astronomy === 'undefined') {
     console.error('Libreria Astronomy Engine non caricata.');
@@ -52,8 +58,8 @@ function calcolaEventiAstronomi() {
   const t0 = new Astronomy.AstroTime(oggi);
 
   aggiungiFasiLunari(t0, limite);
-  aggiungiEclissiLunari(t0, limite);
-  aggiungiEclissiSolari(t0, limite);
+  aggiungiEclissiLunari(t0, limiteEclissi);
+  aggiungiEclissiSolari(t0, limiteEclissi);
   aggiungiStagioni(oggi, limite);
   aggiungiSciamiMeteorici(oggi, limite);
   aggiungiElongazioni(oggi, limite);
@@ -144,7 +150,8 @@ function aggiungiEclissiLunari(t0, limite) {
   try {
     const kindIt = { penumbral: 'Penombrale', partial: 'Parziale', total: 'Totale' };
     let ecl = Astronomy.SearchLunarEclipse(t0);
-    for (let i = 0; i < 60; i++) {
+    // ~2,4 eclissi lunari/anno: fino al 2070 servono oltre 100 iterazioni
+    for (let i = 0; i < 160; i++) {
       const dataPicco = ecl.peak.date; // BUGFIX: 'peak' è già un AstroTime
       if (dataPicco > limite) break;
       creaEvento({
@@ -158,7 +165,7 @@ function aggiungiEclissiLunari(t0, limite) {
           comeVederlo: 'Si guarda tranquillamente a occhio nudo, senza alcun filtro.'
         }
       });
-      ecl = Astronomy.NextLunarEclipse(ecl); // richiede l'intero oggetto eclissi
+      ecl = Astronomy.NextLunarEclipse(ecl.peak); // richiede il tempo di picco (AstroTime)
     }
   } catch (err) {
     console.error('Errore eclissi lunari:', err);
@@ -166,29 +173,81 @@ function aggiungiEclissiLunari(t0, limite) {
 }
 
 // --- Eclissi Solari (globali) ---
+// Per ogni eclissi indichiamo il punto di massima visibilità (dove l'eclissi è
+// massima, al centro della fascia) e la zona in cui è visibile la fase parziale.
 function aggiungiEclissiSolari(t0, limite) {
   try {
     const kindIt = { partial: 'Parziale', annular: 'Anulare', total: 'Totale', hybrid: 'Ibrida' };
     let ecl = Astronomy.SearchGlobalSolarEclipse(t0);
-    for (let i = 0; i < 60; i++) {
+    // ~2,4 eclissi solari/anno: fino al 2070 servono oltre 100 iterazioni
+    for (let i = 0; i < 160; i++) {
       const dataPicco = ecl.peak.date;
       if (dataPicco > limite) break;
+
+      const tipo = kindIt[ecl.kind] || ecl.kind;
+
+      // Il punto di massima eclissi (lat/lon) è definito solo quando l'asse
+      // dell'ombra tocca la Terra (eclissi totale, anulare o ibrida).
+      const haCentro = typeof ecl.latitude === 'number' && !isNaN(ecl.latitude) &&
+                       typeof ecl.longitude === 'number' && !isNaN(ecl.longitude);
+
+      // Percentuale di Sole oscurato al culmine, se disponibile
+      let percOsc = '';
+      if (typeof ecl.obscuration === 'number' && !isNaN(ecl.obscuration)) {
+        percOsc = ` Al culmine il Sole risulta oscurato per circa il ${Math.round(ecl.obscuration * 100)}%.`;
+      }
+
+      let spiegazione, doveVederlo, linkMappa = null;
+
+      if (haCentro) {
+        const coord = formattaCoordinate(ecl.latitude, ecl.longitude);
+        const faseCentrale = ecl.kind === 'total' ? 'totalità'
+                           : ecl.kind === 'annular' ? 'anularità'
+                           : 'fase centrale';
+        spiegazione = `La Luna passa davanti al Sole (eclissi ${tipo.toLowerCase()}). ` +
+          `Il punto di massima visibilità — dove l'eclissi è massima e la ${faseCentrale} dura più a lungo — ` +
+          `si trova a ${coord}, al centro della stretta fascia che attraversa la Terra.${percOsc} ` +
+          `Tutt'intorno, per alcune migliaia di chilometri, si osserva invece un'eclissi parziale.`;
+        doveVederlo = `Punto di massima eclissi: ${coord}. La fase ${faseCentrale === 'fase centrale' ? 'centrale' : faseCentrale} ` +
+          `è visibile solo lungo la stretta fascia che passa per quel punto; la fase parziale è visibile in una ` +
+          `vasta regione (fino a qualche migliaio di km) tutt'attorno alla fascia. Verifica se la tua zona vi rientra.`;
+        linkMappa = {
+          url: `https://www.google.com/maps?q=${ecl.latitude.toFixed(4)},${ecl.longitude.toFixed(4)}`,
+          testo: `🗺️ Punto di massima eclissi sulla mappa (${coord})`
+        };
+      } else {
+        // Eclissi parziale a livello globale: l'ombra centrale non tocca la Terra
+        spiegazione = `La Luna copre solo in parte il disco del Sole (eclissi parziale a livello globale): ` +
+          `l'asse dell'ombra non tocca la superficie terrestre, quindi non esiste un punto di totalità.${percOsc} ` +
+          `È osservabile come eclissi parziale, soprattutto dalle regioni polari o dalle zone sotto la penombra della Luna.`;
+        doveVederlo = `Nessuna fascia di totalità: l'eclissi è parziale ovunque sia visibile, ` +
+          `in genere verso le regioni polari. Verifica se la tua zona rientra nell'area di visibilità.`;
+      }
+
       creaEvento({
-        titolo: `Eclissi Solare ${kindIt[ecl.kind] || ecl.kind}`,
+        titolo: `Eclissi Solare ${tipo}`,
         dataObj: dataPicco,
-        spiegazione: 'La Luna passa davanti al Sole oscurandolo, del tutto o in parte. La fascia di visibilità cambia a seconda del punto della Terra.',
+        spiegazione,
         colore: '#f97316',
+        linkMappa,
         programma: {
-          cosaPortare: 'OBBLIGATORI occhiali certificati per eclissi o un filtro solare: mai guardare il Sole a occhio nudo.',
-          doveVederlo: 'Solo da alcune zone della Terra: verifica se la tua regione è nella fascia di visibilità.',
-          comeVederlo: 'Usa esclusivamente filtri solari certificati o la proiezione con un foro stenopeico.'
+          cosaPortare: 'OBBLIGATORI occhiali certificati per eclissi (ISO 12312-2) o un filtro solare: mai guardare il Sole a occhio nudo, nemmeno parzialmente eclissato.',
+          doveVederlo,
+          comeVederlo: 'Usa esclusivamente filtri solari certificati oppure la proiezione con un foro stenopeico. Mai binocolo o telescopio senza apposito filtro solare.'
         }
       });
-      ecl = Astronomy.NextGlobalSolarEclipse(ecl);
+      ecl = Astronomy.NextGlobalSolarEclipse(ecl.peak); // richiede il tempo di picco (AstroTime)
     }
   } catch (err) {
     console.error('Errore eclissi solari:', err);
   }
+}
+
+// Formatta una coppia lat/lon in testo leggibile (es. "41,9° N, 12,5° E")
+function formattaCoordinate(lat, lon) {
+  const ns = lat >= 0 ? 'N' : 'S';
+  const ew = lon >= 0 ? 'E' : 'O';
+  return `${Math.abs(lat).toFixed(1)}° ${ns}, ${Math.abs(lon).toFixed(1)}° ${ew}`;
 }
 
 // --- Equinozi e Solstizi ---
@@ -533,6 +592,10 @@ function costruisciAgenda() {
     const bottoneElimina = evento.manuale
       ? `<button onclick="eliminaEventoManuale('${evento.id}')" class="p-3 bg-slate-700 hover:bg-red-600 rounded-full transition-colors flex-shrink-0" title="Elimina evento">🗑️</button>`
       : '';
+    // Link alla mappa (es. punto di massima eclissi), se presente
+    const linkMappa = evento.linkMappa
+      ? `<li><a href="${evento.linkMappa.url}" target="_blank" rel="noopener" class="text-blue-400 underline hover:text-blue-300">${evento.linkMappa.testo}</a></li>`
+      : '';
     card.innerHTML = `
       <div class="absolute left-0 top-0 bottom-0 w-2" style="background-color: ${evento.colore}"></div>
       <div class="flex justify-between items-start mb-4 pl-4">
@@ -556,6 +619,7 @@ function costruisciAgenda() {
             <li><span class="text-blue-400">Portare:</span> ${evento.programma.cosaPortare}</li>
             <li><span class="text-blue-400">Dove:</span> ${evento.programma.doveVederlo}</li>
             <li><span class="text-blue-400">Come:</span> ${evento.programma.comeVederlo}</li>
+            ${linkMappa}
           </ul>
         </div>
       </div>
