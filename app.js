@@ -33,11 +33,12 @@ window.addEventListener('DOMContentLoaded', () => {
   caricaEventiManuali();
   inizializzaUI();
   inizializzaFormAggiungi();
+  inizializzaMappaEclissi();
   inizializzaInstallazione();
 });
 
 // Helper: crea un evento con id sicuro e testo data formattato
-function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria }) {
+function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, datiEclissi }) {
   eventiCalcolati.push({
     id: id || `ev${contatoreId++}`,
     titolo,
@@ -48,7 +49,9 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     programma,
     manuale: !!manuale,
     linkMappa: linkMappa || null,
-    categoria: categoria || 'altro'
+    categoria: categoria || 'altro',
+    // Dati per la mappa di visibilità (solo eclissi solari con fascia centrale)
+    datiEclissi: datiEclissi || null
   });
 }
 
@@ -214,7 +217,7 @@ function aggiungiEclissiSolari(t0, limite) {
         percOsc = ` Al culmine il Sole risulta oscurato per circa il ${Math.round(ecl.obscuration * 100)}%.`;
       }
 
-      let spiegazione, doveVederlo, linkMappa = null;
+      let spiegazione, doveVederlo, linkMappa = null, datiEclissi = null;
 
       if (haCentro) {
         const coord = formattaCoordinate(ecl.latitude, ecl.longitude);
@@ -230,7 +233,14 @@ function aggiungiEclissiSolari(t0, limite) {
           `vasta regione (fino a qualche migliaio di km) tutt'attorno alla fascia. Verifica se la tua zona vi rientra.`;
         linkMappa = {
           url: `https://www.google.com/maps?q=${ecl.latitude.toFixed(4)},${ecl.longitude.toFixed(4)}`,
-          testo: `🗺️ Punto di massima eclissi sulla mappa (${coord})`
+          testo: `📍 Apri il punto di massima eclissi su Google Maps (${coord})`
+        };
+        // Dati per la mappa interattiva: la fascia centrale viene tracciata su richiesta
+        datiEclissi = {
+          lat: ecl.latitude,
+          lon: ecl.longitude,
+          kind: ecl.kind,
+          tipo
         };
       } else {
         // Eclissi parziale a livello globale: l'ombra centrale non tocca la Terra
@@ -248,6 +258,7 @@ function aggiungiEclissiSolari(t0, limite) {
         colore: '#f97316',
         categoria: 'eclissi',
         linkMappa,
+        datiEclissi,
         programma: {
           cosaPortare: 'OBBLIGATORI occhiali certificati per eclissi (ISO 12312-2) o un filtro solare: mai guardare il Sole a occhio nudo, nemmeno parzialmente eclissato.',
           doveVederlo,
@@ -266,6 +277,127 @@ function formattaCoordinate(lat, lon) {
   const ns = lat >= 0 ? 'N' : 'S';
   const ew = lon >= 0 ? 'E' : 'O';
   return `${Math.abs(lat).toFixed(1)}° ${ns}, ${Math.abs(lon).toFixed(1)}° ${ew}`;
+}
+
+// =====================================================================
+// 1-quater. Percorso dell'ombra sulla Terra per un'eclissi solare
+//
+// Traccia la "fascia centrale" (linea di totalità/anularità) seguendo,
+// istante per istante, il punto in cui l'asse dell'ombra della Luna
+// interseca la superficie terrestre. La geometria usa le posizioni
+// geometriche (senza correzione di tempo-luce) di Luna e Sole:
+//   - Luna geocentrica:  Astronomy.GeoMoon(t)
+//   - Sole geocentrico:  -Astronomy.HelioVector(Terra, t)
+// entrambe in coordinate equatoriali J2000 (EQJ), poi ruotate all'equatore
+// della data (EQD) e convertite in lat/lon con Astronomy.VectorObserver.
+// =====================================================================
+const RAGGIO_TERRA_KM = 6378.137;      // raggio equatoriale
+const KM_PER_UA = 149597870.7;         // km per Unità Astronomica
+const RAGGIO_SOLE_KM = 696000;
+const RAGGIO_LUNA_KM = 1737.4;
+
+// Punto (lat/lon) in cui l'asse Sole→Luna tocca la Terra a un dato istante,
+// più il raggio approssimativo della penombra a terra (in km).
+// Restituisce null se in quell'istante l'asse non interseca la Terra.
+function puntoOmbraLunare(date) {
+  const t = new Astronomy.AstroTime(date);
+
+  // Posizioni geometriche geocentriche in EQJ (Unità Astronomiche)
+  const luna = Astronomy.GeoMoon(t);
+  const terraHelio = Astronomy.HelioVector(Astronomy.Body.Earth, t);
+  const sole = new Astronomy.Vector(-terraHelio.x, -terraHelio.y, -terraHelio.z, t);
+
+  // Passa all'equatore della data per ricavare lat/lon terrestri corrette
+  const rot = Astronomy.Rotation_EQJ_EQD(t);
+  const m = Astronomy.RotateVector(rot, luna);
+  const s = Astronomy.RotateVector(rot, sole);
+
+  // Direzione dell'asse dell'ombra: dal Sole verso la Luna (e oltre, verso la Terra)
+  let dx = m.x - s.x, dy = m.y - s.y, dz = m.z - s.z;
+  const dlen = Math.hypot(dx, dy, dz);
+  dx /= dlen; dy /= dlen; dz /= dlen;
+
+  // Intersezione retta/sfera: |m + k·d|² = R²  (Terra centrata nell'origine)
+  const R = RAGGIO_TERRA_KM / KM_PER_UA;
+  const mDotD = m.x * dx + m.y * dy + m.z * dz;
+  const mm = m.x * m.x + m.y * m.y + m.z * m.z;
+  const disc = mDotD * mDotD - (mm - R * R);
+  if (disc < 0) return null; // l'asse non tocca la Terra: nessun punto centrale
+
+  // Radice minore = lato illuminato (diurno), dove l'ombra cade davvero
+  const k = -mDotD - Math.sqrt(disc);
+  if (k <= 0) return null;
+
+  const px = m.x + k * dx, py = m.y + k * dy, pz = m.z + k * dz;
+  const vec = new Astronomy.Vector(px, py, pz, t);
+  const obs = Astronomy.VectorObserver(vec, true); // ofdate = true (equatore della data)
+
+  // Raggio della penombra a terra: cono tangente esterno Sole↔Luna proiettato
+  // fino al suolo. Dà l'estensione indicativa della zona di eclissi parziale.
+  const distSoleLuna = Math.hypot(s.x - m.x, s.y - m.y, s.z - m.z) * KM_PER_UA;
+  const distLunaSuolo = k * KM_PER_UA;
+  const raggioPenombraKm = RAGGIO_LUNA_KM +
+    distLunaSuolo * (RAGGIO_SOLE_KM + RAGGIO_LUNA_KM) / distSoleLuna;
+
+  return { lat: obs.latitude, lon: obs.longitude, raggioPenombraKm };
+}
+
+// Costruisce l'intero percorso della fascia centrale attorno all'istante di picco.
+// Restituisce { centro:[lat,lon], penombraKm, segmenti:[[[lat,lon],...],...] }
+// dove i segmenti sono spezzati in corrispondenza dell'antimeridiano (±180°).
+function calcolaPercorsoEclissiSolare(dataPicco) {
+  if (typeof Astronomy === 'undefined') return null;
+
+  const PASSO_MIN = 3;      // campionamento ogni 3 minuti
+  const DURATA_MAX_MIN = 300; // fino a ±5 ore dal picco
+
+  const picco = puntoOmbraLunare(dataPicco);
+
+  // Campiona all'indietro finché l'asse tocca la Terra
+  const indietro = [];
+  for (let dt = PASSO_MIN; dt <= DURATA_MAX_MIN; dt += PASSO_MIN) {
+    const p = puntoOmbraLunare(new Date(dataPicco.getTime() - dt * 60000));
+    if (!p) break;
+    indietro.push(p);
+  }
+  indietro.reverse();
+
+  // ...e in avanti
+  const avanti = [];
+  for (let dt = PASSO_MIN; dt <= DURATA_MAX_MIN; dt += PASSO_MIN) {
+    const p = puntoOmbraLunare(new Date(dataPicco.getTime() + dt * 60000));
+    if (!p) break;
+    avanti.push(p);
+  }
+
+  const punti = indietro.concat(picco ? [picco] : [], avanti);
+  if (punti.length === 0) return null;
+
+  // Spezza il tracciato quando attraversa l'antimeridiano, così Leaflet non
+  // disegna una riga orizzontale che taglia tutta la mappa.
+  const segmenti = [];
+  let segmento = [];
+  let lonPrec = null;
+  let penombraMax = 0;
+  punti.forEach(p => {
+    if (lonPrec !== null && Math.abs(p.lon - lonPrec) > 180) {
+      if (segmento.length) segmenti.push(segmento);
+      segmento = [];
+    }
+    segmento.push([p.lat, p.lon]);
+    lonPrec = p.lon;
+    if (p.raggioPenombraKm > penombraMax) penombraMax = p.raggioPenombraKm;
+  });
+  if (segmento.length) segmenti.push(segmento);
+
+  const centro = picco ? [picco.lat, picco.lon]
+                       : [punti[Math.floor(punti.length / 2)].lat, punti[Math.floor(punti.length / 2)].lon];
+
+  return {
+    centro,
+    penombraKm: penombraMax || (picco ? picco.raggioPenombraKm : 3500),
+    segmenti
+  };
 }
 
 // --- Equinozi e Solstizi ---
@@ -720,6 +852,10 @@ function costruisciAgenda() {
     const bottoneElimina = evento.manuale
       ? `<button onclick="eliminaEventoManuale('${evento.id}')" class="p-3 bg-slate-700 hover:bg-red-600 rounded-full transition-colors flex-shrink-0" title="Elimina evento">🗑️</button>`
       : '';
+    // Pulsante per la mappa interattiva di visibilità (eclissi con fascia centrale)
+    const bottoneMappa = evento.datiEclissi
+      ? `<li><button type="button" onclick="mostraMappaEclissi('${evento.id}')" class="mt-1 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors">🗺️ Mostra la mappa di visibilità</button></li>`
+      : '';
     // Link alla mappa (es. punto di massima eclissi), se presente
     const linkMappa = evento.linkMappa
       ? `<li><a href="${evento.linkMappa.url}" target="_blank" rel="noopener" class="text-blue-400 underline hover:text-blue-300">${evento.linkMappa.testo}</a></li>`
@@ -748,6 +884,7 @@ function costruisciAgenda() {
             <li><span class="text-blue-400">Portare:</span> ${evento.programma.cosaPortare}</li>
             <li><span class="text-blue-400">Dove:</span> ${evento.programma.doveVederlo}</li>
             <li><span class="text-blue-400">Come:</span> ${evento.programma.comeVederlo}</li>
+            ${bottoneMappa}
             ${linkMappa}
           </ul>
         </div>
@@ -855,6 +992,122 @@ window.leggiEvento = (id) => {
 
 // Carica le voci altrimenti a volte non vanno la prima volta
 speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+
+// =====================================================================
+// 4-bis. Mappa di visibilità delle eclissi solari (Leaflet)
+//   Disegna la linea di massima visibilità (fascia centrale) e l'area
+//   approssimativa in cui l'eclissi è visibile come parziale.
+// =====================================================================
+let mappaLeaflet = null;   // istanza Leaflet (creata al primo utilizzo)
+let mappaLayer = null;     // gruppo di layer ridisegnato a ogni apertura
+
+// Collega i pulsanti di chiusura del modale mappa
+function inizializzaMappaEclissi() {
+  const modale = document.getElementById('modale-mappa');
+  const btnChiudi = document.getElementById('btn-chiudi-mappa');
+  if (!modale) return;
+
+  const chiudi = () => modale.classList.add('hidden');
+  if (btnChiudi) btnChiudi.addEventListener('click', chiudi);
+  modale.addEventListener('click', (e) => {
+    if (e.target === modale) chiudi();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modale.classList.contains('hidden')) chiudi();
+  });
+}
+
+// Apre il modale e disegna il percorso dell'eclissi selezionata
+window.mostraMappaEclissi = (id) => {
+  const evento = eventiCalcolati.find(e => e.id === id);
+  if (!evento || !evento.datiEclissi) return;
+
+  const modale = document.getElementById('modale-mappa');
+  const titolo = document.getElementById('mappa-titolo');
+  const nota = document.getElementById('mappa-nota');
+  if (!modale) return;
+
+  if (titolo) titolo.textContent = `🗺️ ${evento.titolo} — ${evento.dataTesto}`;
+  modale.classList.remove('hidden');
+
+  if (typeof L === 'undefined') {
+    if (nota) nota.textContent = 'Mappa non disponibile: libreria Leaflet non caricata (serve una connessione a Internet).';
+    return;
+  }
+
+  // Crea la mappa alla prima apertura, poi riutilizzala
+  if (!mappaLeaflet) {
+    mappaLeaflet = L.map('mappa-eclissi', { worldCopyJump: true, minZoom: 1 });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 8,
+      attribution: '© OpenStreetMap'
+    }).addTo(mappaLeaflet);
+    mappaLayer = L.layerGroup().addTo(mappaLeaflet);
+  }
+  mappaLayer.clearLayers();
+  // Il contenitore era nascosto: Leaflet deve ricalcolare le dimensioni
+  setTimeout(() => mappaLeaflet.invalidateSize(), 60);
+
+  let dati = null;
+  try {
+    dati = calcolaPercorsoEclissiSolare(evento.dataObj);
+  } catch (err) {
+    console.error('Errore calcolo percorso eclissi:', err);
+  }
+
+  const bordi = [];
+
+  if (dati && dati.segmenti.length) {
+    // Area di visibilità parziale (approssimativa) attorno al punto di culmine
+    L.circle(dati.centro, {
+      radius: dati.penombraKm * 1000,
+      color: '#f97316',
+      weight: 1,
+      fillColor: '#f97316',
+      fillOpacity: 0.15
+    }).addTo(mappaLayer);
+
+    // Linea di massima visibilità (fascia centrale), eventualmente spezzata
+    dati.segmenti.forEach(seg => {
+      if (seg.length > 1) {
+        L.polyline(seg, { color: '#ef4444', weight: 3 }).addTo(mappaLayer);
+        seg.forEach(pt => bordi.push(pt));
+      }
+    });
+
+    // Punto di massima eclissi
+    L.circleMarker(dati.centro, {
+      radius: 6, color: '#ffffff', weight: 2,
+      fillColor: '#ef4444', fillOpacity: 1
+    }).addTo(mappaLayer)
+      .bindPopup(`<strong>Massima eclissi</strong><br>${formattaCoordinate(dati.centro[0], dati.centro[1])}`);
+    bordi.push(dati.centro);
+
+    if (bordi.length) {
+      mappaLeaflet.fitBounds(bordi, { padding: [30, 30], maxZoom: 6 });
+    }
+
+    if (nota) {
+      nota.textContent = 'La linea rossa segna la fascia centrale, dove l\'eclissi è totale o anulare e la sua durata è massima. ' +
+        'Il cerchio arancione indica in modo approssimativo l\'area in cui, al culmine, l\'eclissi è visibile come parziale: ' +
+        'l\'estensione reale della fase parziale è più ampia e cambia durante l\'evento. Verifica sempre gli orari locali.';
+    }
+  } else {
+    // Nessuna fascia centrale calcolabile: centra sul punto noto
+    const d = evento.datiEclissi;
+    if (typeof d.lat === 'number' && !isNaN(d.lat)) {
+      mappaLeaflet.setView([d.lat, d.lon], 3);
+      L.circleMarker([d.lat, d.lon], {
+        radius: 6, color: '#ffffff', weight: 2,
+        fillColor: '#ef4444', fillOpacity: 1
+      }).addTo(mappaLayer)
+        .bindPopup(`<strong>Massima eclissi</strong><br>${formattaCoordinate(d.lat, d.lon)}`);
+    } else {
+      mappaLeaflet.setView([20, 0], 1);
+    }
+    if (nota) nota.textContent = 'Non è stato possibile tracciare la fascia centrale per questa eclissi.';
+  }
+};
 
 // =====================================================================
 // 5. Notifiche (Base)

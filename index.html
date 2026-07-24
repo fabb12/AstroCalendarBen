@@ -24,6 +24,12 @@
   <!-- FullCalendar per il calendario a griglia -->
   <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
 
+  <!-- Leaflet per la mappa di visibilità delle eclissi -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
@@ -129,6 +135,32 @@
           <button type="button" id="btn-annulla" class="px-5 py-2 rounded-full font-semibold bg-slate-700 hover:bg-slate-600 text-white transition-colors">Annulla</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODALE: MAPPA DI VISIBILITÀ DELL'ECLISSI -->
+  <div id="modale-mappa" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-800 w-full max-w-3xl rounded-2xl border border-slate-700 shadow-2xl my-8">
+      <div class="flex justify-between items-center p-4 border-b border-slate-700">
+        <h2 id="mappa-titolo" class="text-lg md:text-xl font-bold text-white pr-4">🗺️ Mappa di visibilità</h2>
+        <button id="btn-chiudi-mappa" class="p-2 text-slate-400 hover:text-white text-2xl leading-none flex-shrink-0" title="Chiudi">✕</button>
+      </div>
+
+      <div id="mappa-eclissi" class="w-full bg-slate-900" style="height: 60vh; min-height: 320px;"></div>
+
+      <div class="p-4 border-t border-slate-700 text-sm text-slate-300 space-y-3">
+        <div class="flex flex-wrap gap-x-6 gap-y-2">
+          <span class="flex items-center gap-2">
+            <span class="inline-block w-8 h-1 rounded" style="background-color:#ef4444"></span>
+            Linea di massima visibilità (fascia centrale)
+          </span>
+          <span class="flex items-center gap-2">
+            <span class="inline-block w-4 h-4 rounded-full" style="background-color:rgba(249,115,22,0.25); border:1px solid #f97316"></span>
+            Area di visibilità parziale (approssimativa)
+          </span>
+        </div>
+        <p id="mappa-nota" class="text-xs text-slate-400"></p>
+      </div>
     </div>
   </div>
 
