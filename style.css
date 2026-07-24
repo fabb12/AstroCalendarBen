@@ -10,3 +10,16 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2);
 }
+
+/* Stili personalizzati per rendere FullCalendar stile Dark Mode */
+.fc-theme-standard .fc-scrollgrid { border-color: #334155; }
+.fc-theme-standard td, .fc-theme-standard th { border-color: #334155; }
+.fc-day-today { background-color: rgba(59, 130, 246, 0.2) !important; }
+.fc .fc-toolbar-title { color: #f1f5f9; font-weight: 700; }
+.fc .fc-button-primary {
+  background-color: #334155;
+  border-color: #475569;
+}
+.fc .fc-button-primary:hover { background-color: #475569; }
+.fc .fc-button-primary:disabled { background-color: #1e293b; border-color: #1e293b;}
+.fc-col-header-cell-cushion, .fc-daygrid-day-number { color: #cbd5e1; text-decoration: none;}
