@@ -13,6 +13,7 @@ window.addEventListener('DOMContentLoaded', () => {
   caricaEventiManuali();
   inizializzaUI();
   inizializzaFormAggiungi();
+  inizializzaInstallazione();
 });
 
 // Helper: crea un evento con id sicuro e testo data formattato
@@ -692,4 +693,54 @@ function registraSW() {
     navigator.serviceWorker.register('sw.js')
       .catch(err => console.error('Errore SW:', err));
   }
+}
+
+// =====================================================================
+// 6. Installazione PWA (Aggiungi a schermata Home)
+// =====================================================================
+let promptInstallazione = null;
+
+function inizializzaInstallazione() {
+  const btn = document.getElementById('btn-installa');
+  if (!btn) return;
+
+  // App già installata (avviata in modalità standalone): nascondi il pulsante
+  const giaInstallata = window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+  if (giaInstallata) {
+    btn.classList.add('hidden');
+    return;
+  }
+
+  // Chrome / Edge / Android: intercetta il prompt nativo di installazione
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    promptInstallazione = e;
+    btn.classList.remove('hidden');
+  });
+
+  // Quando l'utente installa, nascondi il pulsante
+  window.addEventListener('appinstalled', () => {
+    promptInstallazione = null;
+    btn.classList.add('hidden');
+  });
+
+  // iOS (Safari) non espone beforeinstallprompt: mostra le istruzioni manuali
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isIOS && !giaInstallata) {
+    btn.classList.remove('hidden');
+  }
+
+  btn.addEventListener('click', async () => {
+    if (promptInstallazione) {
+      promptInstallazione.prompt();
+      await promptInstallazione.userChoice;
+      promptInstallazione = null;
+      btn.classList.add('hidden');
+    } else if (isIOS) {
+      alert('Per installare l\'app su iPhone/iPad:\n\n1. Tocca il pulsante Condividi ⬆️ in basso\n2. Scegli "Aggiungi a schermata Home"\n3. Conferma con "Aggiungi"');
+    } else {
+      alert('Per installare l\'app usa il menu del browser e scegli "Installa app" o "Aggiungi a schermata Home".');
+    }
+  });
 }
