@@ -222,6 +222,16 @@ function aggiungiSciamiMeteorici(oggi, limite) {
       { nome: 'Quadrantidi', mese: 1, giorno: 3, zhr: 'fino a 120 meteore/ora' },
       { nome: 'Liridi', mese: 4, giorno: 22, zhr: 'circa 18 meteore/ora' },
       { nome: 'Eta Aquaridi', mese: 5, giorno: 6, zhr: 'circa 50 meteore/ora' },
+      {
+        nome: 'Delta Aquaridi meridionali e Alfa Capricornidi',
+        mese: 7, giorno: 30, zhr: 'fino a circa 25 meteore/ora',
+        spiegazione: 'Doppio sciame che raggiunge il picco nella notte tra il 30 e il 31 luglio. Le Delta Aquaridi meridionali offrono scie di media velocità (fino a circa 25 meteore/ora in condizioni perfette), mentre le Alfa Capricornidi regalano bolidi molto luminosi e lenti.',
+        programma: {
+          cosaPortare: 'Sedia sdraio, coperta e bevande. Niente telescopio: serve un ampio campo visivo.',
+          doveVederlo: 'Lontano dalle luci della città, in un luogo con orizzonte sgombro; lascia gli occhi adattarsi al buio per 20 minuti.',
+          comeVederlo: 'A occhio nudo verso l’alto, con orario migliore intorno alle 3:00 del mattino, quando il radiante è più alto nel cielo.'
+        }
+      },
       { nome: 'Perseidi', mese: 8, giorno: 12, zhr: 'fino a 100 meteore/ora' },
       { nome: 'Orionidi', mese: 10, giorno: 21, zhr: 'circa 20 meteore/ora' },
       { nome: 'Leonidi', mese: 11, giorno: 17, zhr: 'circa 15 meteore/ora' },
@@ -237,9 +247,9 @@ function aggiungiSciamiMeteorici(oggi, limite) {
           creaEvento({
             titolo: `Sciame Meteorico: ${s.nome}`,
             dataObj: d,
-            spiegazione: `Pioggia di stelle cadenti (${s.zhr} nelle condizioni migliori). Le meteore sembrano irradiarsi da un punto della volta celeste.`,
+            spiegazione: s.spiegazione || `Pioggia di stelle cadenti (${s.zhr} nelle condizioni migliori). Le meteore sembrano irradiarsi da un punto della volta celeste.`,
             colore: '#06b6d4',
-            programma: {
+            programma: s.programma || {
               cosaPortare: 'Sedia sdraio, coperta e bevande calde. Niente telescopio: serve un ampio campo visivo.',
               doveVederlo: 'Cielo buio e senza inquinamento luminoso; lascia gli occhi adattarsi al buio per 20 minuti.',
               comeVederlo: 'Guarda a occhio nudo verso l’alto, dopo mezzanotte quando il radiante è più alto.'
