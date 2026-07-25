@@ -221,6 +221,36 @@
     </div>
   </div>
 
+  <!-- MODALE: SIMULAZIONE DELL'EVENTO -->
+  <div id="modale-simulazione" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-800 w-full max-w-3xl rounded-2xl border border-slate-700 shadow-2xl my-8">
+      <div class="flex justify-between items-center p-5 border-b border-slate-700">
+        <h2 id="sim-titolo" class="text-xl md:text-2xl font-bold text-white">🎬 Simulazione</h2>
+        <button id="btn-chiudi-simulazione" class="p-2 text-slate-400 hover:text-white text-2xl leading-none" title="Chiudi">✕</button>
+      </div>
+
+      <div class="p-4 md:p-5 space-y-4">
+        <!-- Scena renderizzata -->
+        <div class="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950">
+          <canvas id="sim-canvas" class="block w-full" style="height: 55vh; min-height: 300px;"></canvas>
+          <div id="sim-ora" class="absolute top-3 left-3 bg-slate-900/70 backdrop-blur px-3 py-1.5 rounded-xl text-xs md:text-sm font-mono text-slate-100 border border-slate-700">—</div>
+        </div>
+
+        <!-- Comandi: riproduzione, linea del tempo, velocità -->
+        <div class="flex items-center gap-3">
+          <button id="sim-btn-play" class="px-4 py-2 rounded-full font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow" title="Avvia o metti in pausa">⏸ Pausa</button>
+          <input id="sim-slider" type="range" min="0" max="1000" value="0" step="1"
+            class="flex-1 accent-blue-500 cursor-pointer" title="Scorri il tempo">
+          <button id="sim-btn-velocita" class="px-3 py-2 rounded-full font-semibold bg-slate-700 hover:bg-slate-600 text-white w-16" title="Velocità della simulazione">1×</button>
+        </div>
+
+        <!-- Cosa sta succedendo in questo istante -->
+        <div id="sim-didascalia" class="bg-slate-900 p-4 rounded-xl border border-slate-700 text-sm text-slate-300 space-y-1"></div>
+        <p id="sim-nota" class="text-xs text-slate-500"></p>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

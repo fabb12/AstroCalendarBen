@@ -34,12 +34,13 @@ window.addEventListener('DOMContentLoaded', () => {
   inizializzaUI();
   inizializzaFormAggiungi();
   inizializzaMappaEclissiUI();
+  inizializzaSimulazione();
   inizializzaSkymap();
   inizializzaInstallazione();
 });
 
 // Helper: crea un evento con id sicuro e testo data formattato
-function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, corpoCielo }) {
+function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, corpoCielo, simul }) {
   eventiCalcolati.push({
     id: id || `ev${contatoreId++}`,
     titolo,
@@ -54,7 +55,9 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     // Dati per la mappa di visibilità (solo eclissi solari con fascia centrale)
     eclissi: eclissi || null,
     // Corpo celeste protagonista dell'evento: apre la vista Cielo puntata su di lui
-    corpoCielo: corpoCielo || null
+    corpoCielo: corpoCielo || null,
+    // Misure fisiche usate dalla simulazione per renderizzare l'evento
+    simul: simul || null
   });
 }
 
@@ -158,7 +161,8 @@ function aggiungiFasiLunari(t0, limite) {
           colore: dati.colore,
           programma: dati.programma,
           categoria: 'luna',
-          corpoCielo: 'Moon'
+          corpoCielo: 'Moon',
+          simul: { scena: 'faseLunare', fase: mq.quarter }
         });
       }
       mq = Astronomy.NextMoonQuarter(mq);
@@ -184,6 +188,16 @@ function aggiungiEclissiLunari(t0, limite) {
         colore: '#ef4444',
         categoria: 'eclissi',
         corpoCielo: 'Moon',
+        // Semidurate (in minuti) delle varie fasi: da queste la simulazione
+        // ricava il percorso della Luna dentro penombra e ombra terrestre.
+        simul: {
+          scena: 'eclissiLunare',
+          kind: ecl.kind,
+          sdPenum: ecl.sd_penum,
+          sdPartial: ecl.sd_partial,
+          sdTotal: ecl.sd_total,
+          oscuramento: ecl.obscuration
+        },
         programma: {
           cosaPortare: 'Occhi aperti e, se vuoi, una macchina fotografica con teleobiettivo.',
           doveVederlo: 'Ovunque la Luna sia visibile sopra l’orizzonte.',
@@ -266,6 +280,16 @@ function aggiungiEclissiSolari(t0, limite) {
           lat: ecl.latitude,
           lon: ecl.longitude
         } : null,
+        // Dati per la simulazione: quanto Sole viene coperto al culmine e di
+        // che tipo di eclissi si tratta (totale, anulare, parziale).
+        simul: {
+          scena: 'eclissiSolare',
+          kind: ecl.kind,
+          tipo,
+          oscuramento: typeof ecl.obscuration === 'number' && !isNaN(ecl.obscuration) ? ecl.obscuration : null,
+          lat: haCentro ? ecl.latitude : null,
+          lon: haCentro ? ecl.longitude : null
+        },
         programma: {
           cosaPortare: 'OBBLIGATORI occhiali certificati per eclissi (ISO 12312-2) o un filtro solare: mai guardare il Sole a occhio nudo, nemmeno parzialmente eclissato.',
           doveVederlo,
@@ -458,10 +482,10 @@ function aggiungiStagioni(oggi, limite) {
     for (let anno = annoInizio; anno <= ANNO_LIMITE; anno++) {
       const s = Astronomy.Seasons(anno);
       const punti = [
-        { at: s.mar_equinox, titolo: 'Equinozio di Primavera', spiegazione: 'Il Sole attraversa l’equatore celeste: giorno e notte hanno quasi la stessa durata. Inizia la primavera nell’emisfero nord.' },
-        { at: s.jun_solstice, titolo: 'Solstizio d’Estate', spiegazione: 'Il giorno più lungo dell’anno nell’emisfero nord: il Sole raggiunge la massima altezza a mezzogiorno.' },
-        { at: s.sep_equinox, titolo: 'Equinozio d’Autunno', spiegazione: 'Di nuovo giorno e notte quasi uguali: inizia l’autunno nell’emisfero nord.' },
-        { at: s.dec_solstice, titolo: 'Solstizio d’Inverno', spiegazione: 'La notte più lunga dell’anno nell’emisfero nord: il Sole è più basso sull’orizzonte.' }
+        { at: s.mar_equinox, titolo: 'Equinozio di Primavera', tipo: 'equinozio', spiegazione: 'Il Sole attraversa l’equatore celeste: giorno e notte hanno quasi la stessa durata. Inizia la primavera nell’emisfero nord.' },
+        { at: s.jun_solstice, titolo: 'Solstizio d’Estate', tipo: 'solstizio', spiegazione: 'Il giorno più lungo dell’anno nell’emisfero nord: il Sole raggiunge la massima altezza a mezzogiorno.' },
+        { at: s.sep_equinox, titolo: 'Equinozio d’Autunno', tipo: 'equinozio', spiegazione: 'Di nuovo giorno e notte quasi uguali: inizia l’autunno nell’emisfero nord.' },
+        { at: s.dec_solstice, titolo: 'Solstizio d’Inverno', tipo: 'solstizio', spiegazione: 'La notte più lunga dell’anno nell’emisfero nord: il Sole è più basso sull’orizzonte.' }
       ];
       punti.forEach(p => {
         const d = p.at.date;
@@ -472,6 +496,7 @@ function aggiungiStagioni(oggi, limite) {
             spiegazione: p.spiegazione,
             colore: '#22c55e',
             categoria: 'stagioni',
+            simul: { scena: 'stagione', tipo: p.tipo, nome: p.titolo },
             programma: {
               cosaPortare: 'Nulla di particolare: è un evento di calendario astronomico.',
               doveVederlo: 'Non si “vede” un punto preciso: segna il cambio di stagione.',
@@ -489,13 +514,16 @@ function aggiungiStagioni(oggi, limite) {
 // --- Sciami Meteorici (date di picco annuali note) ---
 function aggiungiSciamiMeteorici(oggi, limite) {
   try {
+    // ra = ascensione retta del radiante (ore), dec = declinazione (gradi),
+    // zhrNum = meteore/ora con radiante allo zenit e cielo perfetto: servono
+    // alla simulazione per disegnare il radiante e stimare la frequenza reale.
     const sciami = [
-      { nome: 'Quadrantidi', mese: 1, giorno: 3, zhr: 'fino a 120 meteore/ora' },
-      { nome: 'Liridi', mese: 4, giorno: 22, zhr: 'circa 18 meteore/ora' },
-      { nome: 'Eta Aquaridi', mese: 5, giorno: 6, zhr: 'circa 50 meteore/ora' },
+      { nome: 'Quadrantidi', mese: 1, giorno: 3, zhr: 'fino a 120 meteore/ora', ra: 15.33, dec: 49.5, zhrNum: 120 },
+      { nome: 'Liridi', mese: 4, giorno: 22, zhr: 'circa 18 meteore/ora', ra: 18.13, dec: 33.6, zhrNum: 18 },
+      { nome: 'Eta Aquaridi', mese: 5, giorno: 6, zhr: 'circa 50 meteore/ora', ra: 22.47, dec: -1.0, zhrNum: 50 },
       {
         nome: 'Delta Aquaridi meridionali e Alfa Capricornidi',
-        mese: 7, giorno: 30, zhr: 'fino a circa 25 meteore/ora',
+        mese: 7, giorno: 30, zhr: 'fino a circa 25 meteore/ora', ra: 22.67, dec: -16.4, zhrNum: 25,
         spiegazione: 'Doppio sciame che raggiunge il picco nella notte tra il 30 e il 31 luglio. Le Delta Aquaridi meridionali offrono scie di media velocità (fino a circa 25 meteore/ora in condizioni perfette), mentre le Alfa Capricornidi regalano bolidi molto luminosi e lenti.',
         programma: {
           cosaPortare: 'Sedia sdraio, coperta e bevande. Niente telescopio: serve un ampio campo visivo.',
@@ -503,11 +531,11 @@ function aggiungiSciamiMeteorici(oggi, limite) {
           comeVederlo: 'A occhio nudo verso l’alto, con orario migliore intorno alle 3:00 del mattino, quando il radiante è più alto nel cielo.'
         }
       },
-      { nome: 'Perseidi', mese: 8, giorno: 12, zhr: 'fino a 100 meteore/ora' },
-      { nome: 'Orionidi', mese: 10, giorno: 21, zhr: 'circa 20 meteore/ora' },
-      { nome: 'Leonidi', mese: 11, giorno: 17, zhr: 'circa 15 meteore/ora' },
-      { nome: 'Geminidi', mese: 12, giorno: 14, zhr: 'fino a 120 meteore/ora' },
-      { nome: 'Ursidi', mese: 12, giorno: 22, zhr: 'circa 10 meteore/ora' }
+      { nome: 'Perseidi', mese: 8, giorno: 12, zhr: 'fino a 100 meteore/ora', ra: 3.22, dec: 58.0, zhrNum: 100 },
+      { nome: 'Orionidi', mese: 10, giorno: 21, zhr: 'circa 20 meteore/ora', ra: 6.33, dec: 15.5, zhrNum: 20 },
+      { nome: 'Leonidi', mese: 11, giorno: 17, zhr: 'circa 15 meteore/ora', ra: 10.23, dec: 21.6, zhrNum: 15 },
+      { nome: 'Geminidi', mese: 12, giorno: 14, zhr: 'fino a 120 meteore/ora', ra: 7.50, dec: 32.5, zhrNum: 120 },
+      { nome: 'Ursidi', mese: 12, giorno: 22, zhr: 'circa 10 meteore/ora', ra: 14.47, dec: 75.3, zhrNum: 10 }
     ];
     const annoInizio = oggi.getFullYear();
     for (let anno = annoInizio; anno <= ANNO_LIMITE; anno++) {
@@ -521,6 +549,7 @@ function aggiungiSciamiMeteorici(oggi, limite) {
             spiegazione: s.spiegazione || `Pioggia di stelle cadenti (${s.zhr} nelle condizioni migliori). Le meteore sembrano irradiarsi da un punto della volta celeste.`,
             colore: '#06b6d4',
             categoria: 'meteore',
+            simul: { scena: 'sciame', nome: s.nome, ra: s.ra, dec: s.dec, zhr: s.zhrNum },
             programma: s.programma || {
               cosaPortare: 'Sedia sdraio, coperta e bevande calde. Niente telescopio: serve un ampio campo visivo.',
               doveVederlo: 'Cielo buio e senza inquinamento luminoso; lascia gli occhi adattarsi al buio per 20 minuti.',
@@ -564,6 +593,13 @@ function aggiungiElongazioni(oggi, limite) {
           colore: '#a855f7',
           categoria: 'pianeti',
           corpoCielo: p.body,
+          simul: {
+            scena: 'elongazione',
+            corpo: p.body,
+            nome: p.nome,
+            elongazione: e.elongation,
+            visibilita: e.visibility
+          },
           programma: {
             cosaPortare: 'Binocolo; un piccolo telescopio per apprezzarne la fase.',
             doveVederlo: `Verso l’orizzonte ${e.visibility === 'morning' ? 'a est' : 'a ovest'}, ${quando}.`,
@@ -926,6 +962,9 @@ function costruisciAgenda() {
           <div class="mt-2">${badgeCategoria}</div>
         </div>
         <div class="flex gap-2 flex-shrink-0">
+          <button onclick="apriSimulazione('${evento.id}')" class="p-3 bg-slate-700 hover:bg-purple-600 rounded-full transition-colors" title="Simula l'evento: guarda cosa succede">
+            🎬
+          </button>
           <button onclick="leggiEvento('${evento.id}')" class="p-3 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors" title="Ascolta le info">
             🔊
           </button>
@@ -2158,3 +2197,1280 @@ window.cercaNelCielo = (idCorpo) => {
   skyAggiornaStileElenco();
   skyAggiornaScheda();
 };
+
+// =====================================================================
+// 8. SIMULAZIONE DELL'EVENTO — "guarda cosa succede"
+//    Ogni evento del calendario si può riprodurre su un canvas: la scena
+//    viene ricostruita istante per istante con Astronomy Engine (fasi,
+//    ombre, declinazioni, posizioni reali) e animata lungo una linea del
+//    tempo che si può mettere in pausa e scorrere a mano.
+// =====================================================================
+
+const SIM_MIN = 60000, SIM_ORA = 3600000, SIM_GIORNO = 86400000;
+
+// Raggi tipici dell'ombra e della penombra terrestre alla distanza della
+// Luna, misurati in raggi lunari (ombra ≈ 0,70°, penombra ≈ 1,27°,
+// Luna ≈ 0,26°). Servono a ricostruire la geometria dell'eclissi lunare.
+const SIM_R_UMBRA = 2.65;
+const SIM_R_PENUMBRA = 4.85;
+// Velocità tipica della Luna rispetto all'ombra, in raggi lunari al minuto
+const SIM_V_LUNA_OMBRA = 0.0354;
+
+// Macchie scure usate per dare "faccia" alla Luna disegnata
+const SIM_CRATERI = [
+  [-0.30, -0.28, 0.20], [0.26, 0.08, 0.24], [0.04, -0.48, 0.12],
+  [-0.46, 0.32, 0.16], [0.42, -0.42, 0.11], [-0.08, 0.52, 0.14], [0.56, 0.34, 0.09]
+];
+
+const sim = {
+  aperto: false,
+  raf: null,
+  canvas: null,
+  ctx: null,
+  L: 0, H: 0,
+  evento: null,
+  scena: null,
+  t: 0,                 // posizione nella finestra temporale (0 = inizio, 1 = fine)
+  riproduce: true,
+  velocita: 1,
+  ultimoTs: 0,
+  osservatore: null,    // posizione usata per dire "da qui si vede?"
+  stelle: [],           // stelline di sfondo (fisse per tutta la simulazione)
+  meteore: [],          // scie attive nella simulazione degli sciami
+  giro: 0               // rotazione della Terra nella scena delle stagioni
+};
+
+// Le velocità selezionabili con il pulsante a destra della linea del tempo
+const SIM_VELOCITA = [0.5, 1, 2, 4];
+
+// =====================================================================
+// 8.1 Utilità comuni
+// =====================================================================
+
+// Posizione da cui "si guarda" l'evento: quella dell'utente se disponibile,
+// altrimenti il centro dell'Italia (dichiarato nella nota sotto la scena).
+function simOsservatore() {
+  if (sim.osservatore) return sim.osservatore;
+  let lat = 41.9, lon = 12.5, reale = false;
+  if (sky.posizione && typeof sky.posizione.lat === 'number') {
+    lat = sky.posizione.lat; lon = sky.posizione.lon; reale = true;
+  } else {
+    try {
+      const dati = JSON.parse(localStorage.getItem(CHIAVE_SKY_POSIZIONE) || 'null');
+      if (dati && typeof dati.lat === 'number' && typeof dati.lon === 'number') {
+        lat = dati.lat; lon = dati.lon; reale = true;
+      }
+    } catch (e) { /* nessuna posizione salvata */ }
+  }
+  const obs = typeof Astronomy !== 'undefined' ? new Astronomy.Observer(lat, lon, 0) : null;
+  sim.osservatore = { lat, lon, obs, reale };
+  return sim.osservatore;
+}
+
+function simOraTesto(data) {
+  return data.toLocaleString('it-IT', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+}
+
+// Durata in forma leggibile, a partire dai minuti
+function simDurataTesto(minuti) {
+  const m = Math.abs(Math.round(minuti));
+  if (m < 60) return `${m} min`;
+  const ore = Math.floor(m / 60);
+  if (ore < 48) return `${ore}h ${String(m % 60).padStart(2, '0')}m`;
+  return `${Math.round(ore / 24)} giorni`;
+}
+
+function simClamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+// Area di sovrapposizione fra due cerchi di raggio r1 e r2 a distanza d
+function simAreaIntersezione(r1, r2, d) {
+  if (d >= r1 + r2) return 0;
+  if (d <= Math.abs(r1 - r2)) return Math.PI * Math.pow(Math.min(r1, r2), 2);
+  const a1 = Math.acos(simClamp((d * d + r1 * r1 - r2 * r2) / (2 * d * r1), -1, 1));
+  const a2 = Math.acos(simClamp((d * d + r2 * r2 - r1 * r1) / (2 * d * r2), -1, 1));
+  return r1 * r1 * (a1 - Math.sin(a1) * Math.cos(a1)) +
+         r2 * r2 * (a2 - Math.sin(a2) * Math.cos(a2));
+}
+
+// Frazione di disco solare (raggio 1) coperta da un disco di raggio k a distanza d
+function simOscuramento(d, k) {
+  return simAreaIntersezione(1, k, d) / Math.PI;
+}
+
+// Distanza fra i centri che produce un dato oscuramento (ricerca per bisezione)
+function simSeparazioneDaOscuramento(obsc, k) {
+  const massimo = simOscuramento(0, k);
+  if (obsc >= massimo - 1e-9) return 0;   // copertura massima: dischi concentrici
+  const bersaglio = obsc;
+  let lo = 0, hi = 1 + k;
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (simOscuramento(mid, k) > bersaglio) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+// Stelline di sfondo: generate una volta sola per simulazione
+function simGeneraStelle(quante) {
+  sim.stelle = [];
+  for (let i = 0; i < quante; i++) {
+    sim.stelle.push({
+      x: Math.random(), y: Math.random(),
+      r: 0.4 + Math.random() * 1.3,
+      lum: 0.35 + Math.random() * 0.65
+    });
+  }
+}
+
+function simDisegnaStelleSfondo(ctx, alpha) {
+  if (alpha <= 0.01) return;
+  ctx.save();
+  sim.stelle.forEach(s => {
+    ctx.globalAlpha = alpha * s.lum;
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.arc(s.x * sim.L, s.y * sim.H, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+function simEtichetta(ctx, testo, x, y, colore, allineamento, grassetto) {
+  ctx.save();
+  ctx.font = `${grassetto ? 'bold ' : ''}13px system-ui, sans-serif`;
+  ctx.fillStyle = colore || '#e2e8f0';
+  ctx.textAlign = allineamento || 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(2,6,23,0.9)';
+  ctx.shadowBlur = 4;
+  ctx.fillText(testo, x, y);
+  ctx.restore();
+}
+
+// Disco lunare con la fase indicata (0 = nuova, 1 = piena).
+// versoDestra dice da che parte si trova il lato illuminato.
+function simDisegnaLuna(ctx, x, y, r, frazione, versoDestra, coloreDisco, coloreOmbra, senzaCrateri) {
+  const k = simClamp(typeof frazione === 'number' ? frazione : 1, 0, 1);
+  ctx.save();
+  ctx.translate(x, y);
+  if (!versoDestra) ctx.rotate(Math.PI);
+
+  // Superficie con i mari lunari
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = coloreDisco || '#e5e7eb';
+  ctx.fillRect(-r, -r, 2 * r, 2 * r);
+  if (!senzaCrateri) {
+    ctx.fillStyle = 'rgba(100,116,139,0.35)';
+    SIM_CRATERI.forEach(c => {
+      ctx.beginPath();
+      ctx.arc(c[0] * r, c[1] * r, c[2] * r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  ctx.restore();
+
+  // Parte in ombra: disco intero meno la zona illuminata (riempimento pari/dispari)
+  const a = Math.abs(r * (1 - 2 * k));
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.moveTo(0, -r);
+  ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);
+  ctx.ellipse(0, 0, a, r, 0, Math.PI / 2, -Math.PI / 2, k <= 0.5);
+  ctx.closePath();
+  ctx.fillStyle = coloreOmbra || 'rgba(2,6,23,0.9)';
+  ctx.fill('evenodd');
+
+  ctx.restore();
+}
+
+// Nome della fase lunare a partire dall'angolo di fase (0…360°)
+function simNomeFase(angolo) {
+  const a = ((angolo % 360) + 360) % 360;
+  if (a < 12 || a > 348) return 'Luna Nuova';
+  if (a < 78) return 'Luna crescente';
+  if (a < 102) return 'Primo Quarto';
+  if (a < 168) return 'Gibbosa crescente';
+  if (a < 192) return 'Luna Piena';
+  if (a < 258) return 'Gibbosa calante';
+  if (a < 282) return 'Ultimo Quarto';
+  return 'Luna calante';
+}
+
+// =====================================================================
+// 8.2 Costruzione della scena (che cosa simuliamo e su quale intervallo)
+// =====================================================================
+
+// Ricostruisce il passaggio della Luna nell'ombra: distanza minima dal centro
+// dell'ombra (d) e velocità (v, in raggi lunari al minuto). Ogni ramo parte da
+// una misura reale dell'eclissi, così le fasi cadono negli istanti giusti.
+function simGeometriaEclissiLunare(dati) {
+  const sdPenum = Math.max(5, dati.sdPenum || 60);
+  const sdPartial = dati.sdPartial || 0;
+  const sdTotal = dati.sdTotal || 0;
+  const RU = SIM_R_UMBRA;
+  const contattoOmbra = RU + 1;   // separazione al primo contatto con l'ombra
+  const uscitaOmbra = RU - 1;     // separazione all'inizio della totalità
+  let v, d;
+
+  if (sdTotal > 0 && sdPartial > sdTotal) {
+    // Totale: conosciamo l'istante del 1° contatto con l'ombra e quello
+    // d'ingresso nella totalità, cioè due punti della stessa traiettoria.
+    const v2 = (contattoOmbra * contattoOmbra - uscitaOmbra * uscitaOmbra) /
+               (sdPartial * sdPartial - sdTotal * sdTotal);
+    v = Math.sqrt(Math.max(v2, 1e-8));
+    d = Math.sqrt(Math.max(0, contattoOmbra * contattoOmbra - v2 * sdPartial * sdPartial));
+  } else if (sdPartial > 0) {
+    // Parziale: al massimo la frazione di Luna dentro l'ombra è nota
+    // (obscuration), e da lì si ricava la distanza minima.
+    const obsc = simClamp(typeof dati.oscuramento === 'number' ? dati.oscuramento : 0.5, 0.01, 0.99);
+    d = simSeparazioneDaOscuramento(obsc, RU);
+    v = Math.sqrt(Math.max(1e-8, contattoOmbra * contattoOmbra - d * d)) / sdPartial;
+  } else {
+    // Penombrale: la Luna sfiora soltanto la penombra
+    v = SIM_V_LUNA_OMBRA;
+    d = Math.sqrt(Math.max(0, Math.pow(SIM_R_PENUMBRA + 1, 2) - v * v * sdPenum * sdPenum));
+  }
+
+  // Raggio della penombra tarato su questa eclissi, così il primo contatto
+  // penombrale cade davvero all'inizio della finestra simulata.
+  const rPenum = simClamp(Math.sqrt(d * d + v * v * sdPenum * sdPenum) - 1, RU + 0.4, 9);
+  return { v, d, rPenum, sdPenum, sdPartial, sdTotal };
+}
+
+function simGeometriaEclissiSolare(dati) {
+  let obsc = typeof dati.oscuramento === 'number' && !isNaN(dati.oscuramento)
+    ? dati.oscuramento
+    : (dati.kind === 'partial' ? 0.55 : 1);
+  obsc = simClamp(obsc, 0.02, 1);
+
+  // k = quanto il disco lunare è grande rispetto a quello solare.
+  // Nelle eclissi centrali (totali, anulari, ibride) i due dischi si
+  // allineano: dall'oscuramento al culmine si ricava direttamente k.
+  let k, dmin;
+  if (dati.kind === 'annular') {
+    k = simClamp(Math.sqrt(obsc), 0.7, 0.995);
+    dmin = 0;
+  } else if (dati.kind === 'total' || dati.kind === 'hybrid') {
+    k = 1.03;
+    dmin = 0;
+  } else {
+    k = 1.0;
+    dmin = simSeparazioneDaOscuramento(obsc, k);
+  }
+  // La fase parziale, dal punto migliore, dura tipicamente circa tre ore
+  const semiDurata = 95; // minuti dal primo contatto al massimo
+  const v = Math.sqrt(Math.max(0.01, Math.pow(1 + k, 2) - dmin * dmin)) / semiDurata;
+  return { k, dmin, v, semiDurata, obsc };
+}
+
+// Descrive la scena da simulare: tipo, finestra temporale e durata visiva
+function simCostruisciScena(ev) {
+  const d = ev.dataObj.getTime();
+  const dati = (ev.simul && ev.simul.scena) ? ev.simul : { scena: 'cielo' };
+  const tipo = dati.scena;
+
+  if (tipo === 'eclissiLunare') {
+    const geo = simGeometriaEclissiLunare(dati);
+    const semi = geo.sdPenum * 1.15 * SIM_MIN;
+    return { tipo, dati, geo, inizio: d - semi, fine: d + semi, durata: 26,
+      nota: 'Ombra e penombra terrestri sono ricostruite dalle durate reali delle fasi calcolate per questa eclissi.' };
+  }
+  if (tipo === 'eclissiSolare') {
+    const geo = simGeometriaEclissiSolare(dati);
+    const semi = geo.semiDurata * 1.12 * SIM_MIN;
+    return { tipo, dati, geo, inizio: d - semi, fine: d + semi, durata: 26,
+      nota: 'La scena mostra l’eclissi come si vede dal punto migliore. ⚠️ Nella realtà il Sole va guardato solo con filtri certificati.' };
+  }
+  if (tipo === 'faseLunare') {
+    const semi = 3.5 * SIM_GIORNO;
+    return { tipo, dati, inizio: d - semi, fine: d + semi, durata: 24,
+      nota: 'Fase e illuminazione sono calcolate dalle posizioni reali di Sole, Terra e Luna.' };
+  }
+  if (tipo === 'stagione') {
+    const semi = 80 * SIM_GIORNO;
+    return { tipo, dati, inizio: d - semi, fine: d + semi, durata: 30,
+      nota: 'L’inclinazione dell’asse terrestre resta fissa: cambia la direzione del Sole, e con essa la durata del giorno.' };
+  }
+  if (tipo === 'sciame') {
+    const notte = new Date(d);
+    notte.setHours(18, 0, 0, 0);
+    return { tipo, dati, inizio: notte.getTime(), fine: notte.getTime() + 12 * SIM_ORA, durata: 32,
+      nota: 'Il numero di meteore dipende da quanto è alto il radiante e da quanta luce manda la Luna: qui sono calcolati entrambi.' };
+  }
+  if (tipo === 'elongazione') {
+    const semi = 45 * SIM_GIORNO;
+    return { tipo, dati, inizio: d - semi, fine: d + semi, durata: 28,
+      nota: 'Le posizioni di Terra e pianeta sono quelle vere: al massimo dell’elongazione il pianeta appare illuminato a metà.' };
+  }
+  // Evento generico (compresi quelli aggiunti a mano): si simula il cielo
+  const semi = 4 * SIM_ORA;
+  return { tipo: 'cielo', dati, inizio: d - semi, fine: d + semi, durata: 26,
+    nota: 'Vista del cielo dall’alto: al centro lo zenit, sul bordo l’orizzonte. Nord in alto, Est a sinistra (come guardando in su).' };
+}
+
+function simTempo() {
+  const s = sim.scena;
+  return new Date(s.inizio + sim.t * (s.fine - s.inizio));
+}
+
+// =====================================================================
+// 8.3 Scene: eclissi lunare
+// =====================================================================
+function simScenaEclissiLunare(ctx, tempo) {
+  const L = sim.L, H = sim.H, geo = sim.scena.geo;
+  const minuti = (tempo.getTime() - sim.evento.dataObj.getTime()) / SIM_MIN;
+  const x = geo.v * minuti;            // spostamento lungo il percorso, in raggi lunari
+  const sep = Math.sqrt(geo.d * geo.d + x * x);
+
+  // Scala: deve entrare tutto il percorso, penombra compresa
+  const mezzaLarghezza = Math.max(geo.rPenum, geo.v * geo.sdPenum * 1.2) + 1.5;
+  const mezzaAltezza = Math.max(geo.rPenum, geo.d + 1.5) + 0.5;
+  const scala = Math.min(L / (2 * mezzaLarghezza), H / (2 * mezzaAltezza));
+  const cx = L / 2, cy = H / 2;
+
+  // Cielo notturno
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(0, 0, L, H);
+  simDisegnaStelleSfondo(ctx, 0.8);
+
+  // Penombra: sfumatura ampia e tenue
+  const rPen = geo.rPenum * scala, rOmb = SIM_R_UMBRA * scala;
+  const grad = ctx.createRadialGradient(cx, cy, rOmb * 0.9, cx, cy, rPen);
+  grad.addColorStop(0, 'rgba(15,23,42,0.85)');
+  grad.addColorStop(1, 'rgba(15,23,42,0)');
+  ctx.beginPath(); ctx.arc(cx, cy, rPen, 0, Math.PI * 2);
+  ctx.fillStyle = grad; ctx.fill();
+  ctx.strokeStyle = 'rgba(148,163,184,0.35)';
+  ctx.setLineDash([6, 6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+
+  // Ombra piena
+  ctx.beginPath(); ctx.arc(cx, cy, rOmb, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(2,6,23,0.92)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(248,113,113,0.45)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  simEtichetta(ctx, 'ombra della Terra', cx, cy - rOmb - 12, '#fca5a5');
+  simEtichetta(ctx, 'penombra', cx, cy - rPen - 12, '#94a3b8');
+
+  // Percorso della Luna
+  const my = cy - geo.d * scala;
+  ctx.beginPath();
+  ctx.moveTo(cx - mezzaLarghezza * scala, my);
+  ctx.lineTo(cx + mezzaLarghezza * scala, my);
+  ctx.strokeStyle = 'rgba(148,163,184,0.25)';
+  ctx.setLineDash([4, 8]); ctx.stroke(); ctx.setLineDash([]);
+
+  // Luna
+  const mx = cx + x * scala, r = scala;
+  const inPenombra = simClamp((geo.rPenum + 1 - sep) / (geo.rPenum - SIM_R_UMBRA + 2), 0, 1);
+  simDisegnaLuna(ctx, mx, my, r, 1, true, '#e5e7eb', 'rgba(0,0,0,0)');
+
+  // Attenuazione penombrale (uniforme, appena percepibile)
+  ctx.save();
+  ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = `rgba(15,23,42,${0.45 * inPenombra})`;
+  ctx.fillRect(mx - r, my - r, 2 * r, 2 * r);
+  // Morso dell'ombra: rosso cupo, con la forma vera del cono d'ombra
+  ctx.beginPath(); ctx.arc(cx, cy, rOmb, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(120,26,18,0.93)'; ctx.fill();
+  ctx.restore();
+
+  // Bordo della Luna
+  ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(226,232,240,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+
+  // Che fase stiamo guardando
+  const magOmbra = (SIM_R_UMBRA + 1 - sep) / 2;
+  let fase;
+  if (magOmbra >= 1) fase = 'Totalità: la Luna è tutta dentro l’ombra e diventa rossa';
+  else if (magOmbra > 0) fase = 'Fase parziale: l’ombra della Terra morde il disco lunare';
+  else if (inPenombra > 0.02) fase = 'Fase penombrale: la Luna si scurisce appena';
+  else fase = 'Fuori dall’ombra: Luna piena normale';
+
+  // Da qui si vede? (la Luna deve essere sopra l'orizzonte)
+  const righe = [
+    `<p><strong>${fase}</strong></p>`,
+    `<p>Distanza dal centro dell’ombra: <strong>${sep.toFixed(2)}</strong> raggi lunari · ` +
+    `magnitudine ombrale: <strong>${Math.max(0, magOmbra).toFixed(2)}</strong></p>`,
+    `<p>${minuti < 0 ? 'Mancano' : 'Sono passati'} <strong>${simDurataTesto(minuti)}</strong> ` +
+    `${minuti < 0 ? 'al' : 'dal'} massimo dell’eclissi.</p>`
+  ];
+  righe.push(simVisibilitaCorpo('Moon', tempo, 'la Luna'));
+  return righe;
+}
+
+// Dice se un corpo è sopra l'orizzonte per l'osservatore, nell'istante dato
+function simVisibilitaCorpo(corpo, tempo, nome) {
+  const o = simOsservatore();
+  if (!o.obs || typeof Astronomy === 'undefined') return '';
+  try {
+    const equ = Astronomy.Equator(corpo, tempo, o.obs, true, true);
+    const hor = Astronomy.Horizon(tempo, o.obs, equ.ra, equ.dec, 'normal');
+    const dove = `${o.lat.toFixed(1)}°, ${o.lon.toFixed(1)}°`;
+    if (hor.altitude > 0) {
+      return `<p>📍 Dalla tua posizione (${dove}) ${nome} è <strong>sopra l’orizzonte</strong>, ` +
+             `a ${hor.altitude.toFixed(0)}° di altezza: l’evento è visibile.</p>`;
+    }
+    return `<p>📍 Dalla tua posizione (${dove}) ${nome} è <strong>sotto l’orizzonte</strong> ` +
+           `(${hor.altitude.toFixed(0)}°): da qui questa fase non si vede.</p>`;
+  } catch (e) {
+    return '';
+  }
+}
+
+// =====================================================================
+// 8.4 Scene: eclissi solare
+// =====================================================================
+function simScenaEclissiSolare(ctx, tempo) {
+  const L = sim.L, H = sim.H, geo = sim.scena.geo;
+  const minuti = (tempo.getTime() - sim.evento.dataObj.getTime()) / SIM_MIN;
+  const dx = geo.v * minuti;
+  const sep = Math.sqrt(geo.dmin * geo.dmin + dx * dx);
+  const obsc = simOscuramento(sep, geo.k);
+
+  // Quanta luce resta: cala in modo netto solo vicino alla totalità
+  const luce = Math.pow(1 - simClamp(obsc, 0, 1), 0.28);
+
+  // Cielo: dal celeste del giorno al blu profondo della totalità
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  const mix = (a, b) => [
+    Math.round(a[0] + (b[0] - a[0]) * luce),
+    Math.round(a[1] + (b[1] - a[1]) * luce),
+    Math.round(a[2] + (b[2] - a[2]) * luce)
+  ];
+  const alto = mix([5, 8, 22], [37, 99, 235]);
+  const basso = mix([15, 23, 42], [186, 230, 253]);
+  g.addColorStop(0, `rgb(${alto.join(',')})`);
+  g.addColorStop(1, `rgb(${basso.join(',')})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, L, H);
+
+  // Stelle: compaiono quando il cielo si fa scuro davvero
+  simDisegnaStelleSfondo(ctx, simClamp((0.45 - luce) * 2.2, 0, 0.9));
+
+  // Sole e Luna
+  const rSole = Math.min(L, H) * 0.16;
+  const cx = L / 2, cy = H * 0.42;
+
+  // Alone (si riduce con l'oscuramento)
+  const alone = ctx.createRadialGradient(cx, cy, rSole * 0.9, cx, cy, rSole * 3.4);
+  alone.addColorStop(0, `rgba(253,224,71,${0.55 * luce})`);
+  alone.addColorStop(1, 'rgba(253,224,71,0)');
+  ctx.fillStyle = alone;
+  ctx.beginPath(); ctx.arc(cx, cy, rSole * 3.4, 0, Math.PI * 2); ctx.fill();
+
+  // Corona: visibile solo quando il disco è coperto quasi del tutto
+  const forzaCorona = simClamp((obsc - 0.985) / 0.015, 0, 1);
+  if (forzaCorona > 0) {
+    ctx.save();
+    ctx.globalAlpha = forzaCorona;
+    const corona = ctx.createRadialGradient(cx, cy, rSole, cx, cy, rSole * 2.6);
+    corona.addColorStop(0, 'rgba(241,245,249,0.85)');
+    corona.addColorStop(0.35, 'rgba(226,232,240,0.35)');
+    corona.addColorStop(1, 'rgba(226,232,240,0)');
+    ctx.fillStyle = corona;
+    ctx.beginPath(); ctx.arc(cx, cy, rSole * 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Disco solare
+  ctx.beginPath(); ctx.arc(cx, cy, rSole, 0, Math.PI * 2);
+  ctx.fillStyle = '#fde047'; ctx.fill();
+
+  // Disco lunare (nero) che scorre davanti al Sole
+  const mx = cx + dx * rSole, my = cy - geo.dmin * rSole;
+  ctx.beginPath(); ctx.arc(mx, my, rSole * geo.k, 0, Math.PI * 2);
+  ctx.fillStyle = '#0b1120'; ctx.fill();
+
+  // Paesaggio in basso, che si scurisce con la luce
+  const buio = 1 - luce;
+  ctx.fillStyle = `rgb(${Math.round(30 - 22 * buio)},${Math.round(41 - 32 * buio)},${Math.round(59 - 45 * buio)})`;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  ctx.lineTo(0, H * 0.82);
+  ctx.quadraticCurveTo(L * 0.2, H * 0.74, L * 0.42, H * 0.83);
+  ctx.quadraticCurveTo(L * 0.65, H * 0.92, L * 0.78, H * 0.8);
+  ctx.quadraticCurveTo(L * 0.9, H * 0.72, L, H * 0.84);
+  ctx.lineTo(L, H);
+  ctx.closePath();
+  ctx.fill();
+
+  let fase;
+  if (obsc >= 0.999 && geo.k >= 1) fase = 'Totalità: il giorno diventa notte e appare la corona solare';
+  else if (sim.scena.dati.kind === 'annular' && sep <= 1 - geo.k) fase = 'Anularità: resta un anello di fuoco attorno alla Luna';
+  else if (obsc > 0.001) fase = 'Fase parziale: la Luna morde il disco del Sole';
+  else fase = 'Prima o dopo l’eclissi: il Sole è integro';
+
+  return [
+    `<p><strong>${fase}</strong></p>`,
+    `<p>Sole oscurato: <strong>${(obsc * 100).toFixed(1)}%</strong> · luce ambientale residua ≈ <strong>${(luce * 100).toFixed(0)}%</strong></p>`,
+    `<p>${minuti < 0 ? 'Mancano' : 'Sono passati'} <strong>${simDurataTesto(minuti)}</strong> ${minuti < 0 ? 'al' : 'dal'} massimo.</p>`,
+    sim.scena.dati.lat != null
+      ? `<p>🌍 Scena vista dal punto di massima eclissi (${formattaCoordinate(sim.scena.dati.lat, sim.scena.dati.lon)}). Altrove il Sole viene coperto meno.</p>`
+      : '<p>🌍 Eclissi parziale ovunque: non esiste un punto di totalità sulla Terra.</p>'
+  ];
+}
+
+// =====================================================================
+// 8.5 Scene: fase lunare
+// =====================================================================
+function simScenaFaseLunare(ctx, tempo) {
+  const L = sim.L, H = sim.H;
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(0, 0, L, H);
+  simDisegnaStelleSfondo(ctx, 0.7);
+
+  let frazione = 0.5, angoloFase = 90;
+  try {
+    frazione = Astronomy.Illumination('Moon', tempo).phase_fraction;
+    angoloFase = Astronomy.MoonPhase(tempo);
+  } catch (e) { /* libreria non disponibile */ }
+
+  // Due riquadri affiancati (o impilati sugli schermi stretti): a sinistra la
+  // Luna vista da qui, a destra lo schema Sole–Terra–Luna visto dall'alto.
+  const orizzontale = L > H * 1.15;
+  const aX = orizzontale ? L * 0.25 : L / 2;
+  const aY = orizzontale ? H / 2 : H * 0.27;
+  const bX = orizzontale ? L * 0.78 : L * 0.62;
+  const bY = orizzontale ? H / 2 : H * 0.74;
+  const rLuna = orizzontale ? Math.min(L * 0.17, H * 0.34) : Math.min(L * 0.24, H * 0.19);
+
+  // 1) La Luna come la vediamo dalla Terra
+  simDisegnaLuna(ctx, aX, aY, rLuna, frazione, angoloFase < 180, '#e5e7eb', 'rgba(2,6,23,0.92)');
+  simEtichetta(ctx, 'come la vedi dalla Terra', aX, aY + rLuna + 18, '#94a3b8');
+
+  // 2) Schema visto dall'alto: Sole a sinistra, Terra al centro, Luna in orbita.
+  //    Il Sole sta a 1,95 raggi d'orbita: il riquadro deve contenerli tutti.
+  const rOrbita = orizzontale
+    ? Math.min((L - bX) * 0.85, (bX - L * 0.5) / 2.2, H * 0.32)
+    : Math.min((L - bX) * 0.85, (bX - L * 0.06) / 2.2, H * 0.2);
+  ctx.beginPath();
+  ctx.arc(bX, bY, rOrbita, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(148,163,184,0.3)';
+  ctx.setLineDash([4, 6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+
+  // Raggi del Sole, che arrivano da sinistra
+  ctx.strokeStyle = 'rgba(250,204,21,0.45)';
+  ctx.lineWidth = 2;
+  for (let i = -2; i <= 2; i++) {
+    const y = bY + i * rOrbita * 0.45;
+    ctx.beginPath();
+    ctx.moveTo(bX - rOrbita * 1.75, y);
+    ctx.lineTo(bX - rOrbita * 1.15, y);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(bX - rOrbita * 1.95, bY, Math.max(10, rOrbita * 0.22), 0, Math.PI * 2);
+  ctx.fillStyle = '#facc15'; ctx.fill();
+  simEtichetta(ctx, 'Sole', bX - rOrbita * 1.95, bY + rOrbita * 0.45, '#facc15');
+
+  // Terra: metà illuminata verso il Sole
+  const rTerra = Math.max(8, rOrbita * 0.17);
+  ctx.beginPath(); ctx.arc(bX, bY, rTerra, 0, Math.PI * 2);
+  ctx.fillStyle = '#1d4ed8'; ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(bX, bY, rTerra, -Math.PI / 2, Math.PI / 2); ctx.clip();
+  ctx.fillStyle = 'rgba(2,6,23,0.75)';
+  ctx.fillRect(bX, bY - rTerra, rTerra, rTerra * 2);
+  ctx.restore();
+  simEtichetta(ctx, 'Terra', bX, bY + rTerra + 14, '#93c5fd');
+
+  // Luna in orbita: l'angolo rispetto al Sole è proprio l'angolo di fase
+  const theta = (180 + angoloFase) * Math.PI / 180;
+  const lx = bX + rOrbita * Math.cos(theta);
+  const ly = bY - rOrbita * Math.sin(theta);
+  const rMini = Math.max(6, rOrbita * 0.11);
+  ctx.beginPath(); ctx.arc(lx, ly, rMini, 0, Math.PI * 2);
+  ctx.fillStyle = '#0f172a'; ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(lx, ly, rMini, Math.PI / 2, -Math.PI / 2); ctx.clip();
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(lx - rMini, ly - rMini, rMini, rMini * 2);
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(lx, ly, rMini, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(226,232,240,0.6)'; ctx.lineWidth = 1; ctx.stroke();
+
+  // Linea di vista Terra → Luna
+  ctx.beginPath();
+  ctx.moveTo(bX, bY); ctx.lineTo(lx, ly);
+  ctx.strokeStyle = 'rgba(96,165,250,0.5)';
+  ctx.setLineDash([3, 5]); ctx.stroke(); ctx.setLineDash([]);
+  simEtichetta(ctx, 'vista dall’alto', bX, orizzontale ? bY - rOrbita - 18 : H - 12, '#94a3b8');
+
+  const minutiEvento = (tempo.getTime() - sim.evento.dataObj.getTime()) / SIM_MIN;
+  return [
+    `<p><strong>${simNomeFase(angoloFase)}</strong> · disco illuminato al <strong>${(frazione * 100).toFixed(0)}%</strong></p>`,
+    `<p>Angolo Sole–Terra–Luna: <strong>${angoloFase.toFixed(0)}°</strong>. La metà della Luna rivolta al Sole è sempre illuminata: cambia solo quanta ne vediamo da qui.</p>`,
+    `<p>${minutiEvento < 0 ? 'Mancano' : 'Sono passati'} <strong>${simDurataTesto(minutiEvento)}</strong> ${minutiEvento < 0 ? 'all’istante esatto di' : 'dall’istante esatto di'} «${sim.evento.titolo}».</p>`
+  ];
+}
+
+// =====================================================================
+// 8.6 Scene: equinozi e solstizi
+// =====================================================================
+
+// Proiezione ortografica del globo: asse inclinato di dec verso il Sole,
+// che illumina da sinistra. La camera guarda da davanti, un po' dall'alto.
+function simPuntoGlobo(lat, lon, dec) {
+  const d2r = Math.PI / 180;
+  const eps = 20 * d2r;                       // camera sollevata sull'equatore
+  const dd = dec * d2r, la = lat * d2r, lo = lon * d2r;
+  const n = [-Math.sin(dd), 0, Math.cos(dd)]; // asse di rotazione terrestre
+  const a1 = [Math.cos(dd), 0, Math.sin(dd)]; // versore equatoriale (verso il Sole a lon 0)
+  const a2 = [0, 1, 0];
+  const P = [
+    Math.cos(la) * Math.cos(lo) * a1[0] + Math.cos(la) * Math.sin(lo) * a2[0] + Math.sin(la) * n[0],
+    Math.cos(la) * Math.cos(lo) * a1[1] + Math.cos(la) * Math.sin(lo) * a2[1] + Math.sin(la) * n[1],
+    Math.cos(la) * Math.cos(lo) * a1[2] + Math.cos(la) * Math.sin(lo) * a2[2] + Math.sin(la) * n[2]
+  ];
+  const r = [1, 0, 0];                        // destra sullo schermo
+  const u = [0, Math.sin(eps), Math.cos(eps)];// alto sullo schermo
+  const c = [0, -Math.cos(eps), Math.sin(eps)];// verso la camera
+  return {
+    x: P[0] * r[0] + P[1] * r[1] + P[2] * r[2],
+    y: -(P[0] * u[0] + P[1] * u[1] + P[2] * u[2]),
+    visibile: (P[0] * c[0] + P[1] * c[1] + P[2] * c[2]) > 0,
+    illuminato: P[0] < 0 // il Sole sta in direzione −x
+  };
+}
+
+function simDisegnaParallelo(ctx, cx, cy, R, lat, dec, colore, tratteggio) {
+  ctx.save();
+  ctx.strokeStyle = colore;
+  ctx.lineWidth = 1;
+  if (tratteggio) ctx.setLineDash(tratteggio);
+  let disegnando = false;
+  ctx.beginPath();
+  for (let lon = -180; lon <= 180; lon += 4) {
+    const p = simPuntoGlobo(lat, lon, dec);
+    if (!p.visibile) { disegnando = false; continue; }
+    const x = cx + p.x * R, y = cy + p.y * R;
+    if (!disegnando) { ctx.moveTo(x, y); disegnando = true; } else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function simScenaStagione(ctx, tempo) {
+  const L = sim.L, H = sim.H;
+  const o = simOsservatore();
+
+  let dec = 0;
+  try {
+    const equ = Astronomy.Equator('Sun', tempo, o.obs, true, true);
+    dec = equ.dec;
+  } catch (e) { /* niente libreria */ }
+
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(0, 0, L, H);
+  simDisegnaStelleSfondo(ctx, 0.5);
+
+  const cx = L * 0.6, cy = H / 2;
+  const R = Math.min(L * 0.26, H * 0.38);
+
+  // Sole e raggi orizzontali da sinistra
+  const rSole = Math.max(16, R * 0.42);
+  const sx = Math.max(rSole + 8, L * 0.1);
+  const alone = ctx.createRadialGradient(sx, cy, rSole * 0.6, sx, cy, rSole * 2.4);
+  alone.addColorStop(0, 'rgba(250,204,21,0.55)');
+  alone.addColorStop(1, 'rgba(250,204,21,0)');
+  ctx.fillStyle = alone;
+  ctx.beginPath(); ctx.arc(sx, cy, rSole * 2.4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(sx, cy, rSole, 0, Math.PI * 2);
+  ctx.fillStyle = '#facc15'; ctx.fill();
+  simEtichetta(ctx, 'Sole', sx, cy + rSole + 16, '#facc15');
+
+  ctx.strokeStyle = 'rgba(250,204,21,0.35)';
+  ctx.lineWidth = 2;
+  for (let i = -3; i <= 3; i++) {
+    const y = cy + i * R * 0.42;
+    ctx.beginPath();
+    ctx.moveTo(sx + rSole + 10, y);
+    ctx.lineTo(cx - R - 14, y);
+    ctx.stroke();
+  }
+
+  // Globo: metà diurna a sinistra, metà notturna a destra
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = '#1d4ed8';
+  ctx.fillRect(cx - R, cy - R, 2 * R, 2 * R);
+  ctx.fillStyle = '#0b1220';
+  ctx.fillRect(cx, cy - R, R, 2 * R);
+  // Sfumatura del terminatore
+  const term = ctx.createLinearGradient(cx - R * 0.25, 0, cx + R * 0.25, 0);
+  term.addColorStop(0, 'rgba(11,18,32,0)');
+  term.addColorStop(1, 'rgba(11,18,32,0.95)');
+  ctx.fillStyle = term;
+  ctx.fillRect(cx - R * 0.25, cy - R, R * 0.5, 2 * R);
+  ctx.restore();
+
+  // Paralleli notevoli: tropici, circoli polari, equatore
+  simDisegnaParallelo(ctx, cx, cy, R, 0, dec, 'rgba(226,232,240,0.55)');
+  [23.44, -23.44].forEach(l => simDisegnaParallelo(ctx, cx, cy, R, l, dec, 'rgba(148,163,184,0.35)', [3, 4]));
+  [66.56, -66.56].forEach(l => simDisegnaParallelo(ctx, cx, cy, R, l, dec, 'rgba(96,165,250,0.45)', [2, 5]));
+
+  // Asse terrestre (inclinazione fissa: cambia la direzione da cui arriva la luce)
+  const pn = simPuntoGlobo(90, 0, dec), ps = simPuntoGlobo(-90, 0, dec);
+  ctx.beginPath();
+  ctx.moveTo(cx + ps.x * R * 1.18, cy + ps.y * R * 1.18);
+  ctx.lineTo(cx + pn.x * R * 1.18, cy + pn.y * R * 1.18);
+  ctx.strokeStyle = 'rgba(248,250,252,0.8)'; ctx.lineWidth = 2; ctx.stroke();
+  simEtichetta(ctx, 'N', cx + pn.x * R * 1.3, cy + pn.y * R * 1.3, '#f8fafc', 'center', true);
+
+  // Il parallelo dell'osservatore, con un puntino che gira: giorno e notte
+  simDisegnaParallelo(ctx, cx, cy, R, o.lat, dec, 'rgba(74,222,128,0.8)');
+  const lonPunto = ((sim.giro * 360) % 360) - 180;
+  const p = simPuntoGlobo(o.lat, lonPunto, dec);
+  if (p.visibile) {
+    ctx.beginPath();
+    ctx.arc(cx + p.x * R, cy + p.y * R, 5, 0, Math.PI * 2);
+    ctx.fillStyle = p.illuminato ? '#fde047' : '#22c55e';
+    ctx.fill();
+    ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1; ctx.stroke();
+    simEtichetta(ctx, p.illuminato ? 'qui è giorno' : 'qui è notte',
+      cx + p.x * R, cy + p.y * R - 14, p.illuminato ? '#fde047' : '#86efac');
+  }
+
+  simEtichetta(ctx, 'giorno', cx - R * 0.55, cy + R + 20, '#bae6fd');
+  simEtichetta(ctx, 'notte', cx + R * 0.55, cy + R + 20, '#94a3b8');
+
+  // Durata del giorno alla latitudine dell'osservatore
+  const d2r = Math.PI / 180;
+  const cosH = -Math.tan(o.lat * d2r) * Math.tan(dec * d2r);
+  let oreLuce;
+  if (cosH <= -1) oreLuce = 24;
+  else if (cosH >= 1) oreLuce = 0;
+  else oreLuce = 2 * Math.acos(cosH) / d2r / 15;
+  const altMezzogiorno = 90 - Math.abs(o.lat - dec);
+
+  const giorni = (tempo.getTime() - sim.evento.dataObj.getTime()) / SIM_GIORNO;
+  return [
+    `<p><strong>Declinazione del Sole: ${dec >= 0 ? '+' : ''}${dec.toFixed(2)}°</strong> — è la latitudine dove il Sole sta esattamente allo zenit a mezzogiorno.</p>`,
+    `<p>A ${o.lat.toFixed(1)}° di latitudine il Sole resta sopra l’orizzonte <strong>${Math.floor(Math.round(oreLuce * 60) / 60)}h ${String(Math.round(oreLuce * 60) % 60).padStart(2, '0')}m</strong> ` +
+    `e a mezzogiorno arriva a <strong>${altMezzogiorno.toFixed(0)}°</strong> di altezza.</p>`,
+    `<p>${Math.abs(giorni) < 0.5 ? '🎯 Siamo nell’istante dell’evento.' :
+      `${giorni < 0 ? 'Mancano' : 'Sono passati'} <strong>${Math.abs(giorni).toFixed(0)} giorni</strong> ${giorni < 0 ? 'all’' : 'dall’'}evento.`}</p>`
+  ];
+}
+
+// =====================================================================
+// 8.7 Vista del cielo a cupola (usata da sciami e eventi generici)
+// =====================================================================
+
+// Proiezione a tutto cielo: zenit al centro, orizzonte sul bordo.
+// Nord in alto ed Est a sinistra, come quando si guarda in su.
+function simProiettaCupola(az, alt, cx, cy, R) {
+  const r = (90 - alt) / 90 * R;
+  const a = az * Math.PI / 180;
+  return { x: cx - r * Math.sin(a), y: cy - r * Math.cos(a), fuori: alt < 0 };
+}
+
+function simCorpiCielo(tempo) {
+  const o = simOsservatore();
+  if (!o.obs || typeof Astronomy === 'undefined') return [];
+  skyDefinisciStelle();
+  const t = Astronomy.MakeTime(tempo);
+  const lista = [];
+  SKY_ASTRI.forEach(astro => {
+    try {
+      const equ = Astronomy.Equator(astro.id, t, o.obs, true, true);
+      const hor = Astronomy.Horizon(t, o.obs, equ.ra, equ.dec, 'normal');
+      const voce = Object.assign({}, astro, { az: hor.azimuth, alt: hor.altitude });
+      if (astro.tipo === 'luna' || astro.tipo === 'pianeta') {
+        try {
+          const ill = Astronomy.Illumination(astro.id, t);
+          voce.frazione = ill.phase_fraction;
+          voce.mag = ill.mag;
+        } catch (e) { /* magnitudine non disponibile */ }
+      }
+      lista.push(voce);
+    } catch (e) { /* corpo non calcolabile */ }
+  });
+  return lista;
+}
+
+// Colori del cielo in base a quanto è alto (o basso) il Sole
+function simColoriCielo(altSole) {
+  if (altSole > 5) return ['#0369a1', '#7dd3fc'];
+  if (altSole > -0.5) return ['#1e3a8a', '#f59e0b'];
+  if (altSole > -6) return ['#0f172a', '#6d28d9'];
+  if (altSole > -18) return ['#020617', '#1e293b'];
+  return ['#010409', '#0b1220'];
+}
+
+function simDisegnaCupola(ctx, cx, cy, R, corpi, altSole) {
+  const g = ctx.createRadialGradient(cx, cy, R * 0.05, cx, cy, R);
+  const c = simColoriCielo(altSole);
+  g.addColorStop(0, c[0]);
+  g.addColorStop(1, c[1]);
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = 'rgba(148,163,184,0.6)'; ctx.lineWidth = 2; ctx.stroke();
+
+  // Cerchi di altezza 30° e 60°
+  ctx.strokeStyle = 'rgba(148,163,184,0.22)'; ctx.lineWidth = 1;
+  [30, 60].forEach(a => {
+    ctx.beginPath(); ctx.arc(cx, cy, (90 - a) / 90 * R, 0, Math.PI * 2); ctx.stroke();
+  });
+
+  // Punti cardinali sul bordo
+  [['N', 0], ['E', 90], ['S', 180], ['O', 270]].forEach(([nome, az]) => {
+    const p = simProiettaCupola(az, -6, cx, cy, R);
+    simEtichetta(ctx, nome, p.x, p.y, nome === 'N' ? '#f87171' : '#cbd5e1', 'center', true);
+  });
+
+  // Astri sopra l'orizzonte. Grandezza e trasparenza seguono la magnitudine:
+  // Urano e Nettuno, invisibili a occhio nudo, restano puntini smorti.
+  corpi.filter(o => o.alt > -1).forEach(o => {
+    const p = simProiettaCupola(o.az, Math.max(o.alt, 0), cx, cy, R);
+    if (o.tipo === 'luna') {
+      simDisegnaLuna(ctx, p.x, p.y, 9, o.frazione, true, '#e5e7eb', 'rgba(2,6,23,0.85)');
+      simEtichetta(ctx, 'Luna', p.x, p.y + 20, '#e2e8f0');
+      return;
+    }
+    const mag = typeof o.mag === 'number' ? o.mag : 2;
+    const r = o.tipo === 'sole' ? 11 : simClamp(5.5 - mag * 0.9, 1.6, 7);
+    const aOcchioNudo = o.tipo === 'sole' || mag <= 5.5;
+
+    ctx.save();
+    ctx.globalAlpha = aOcchioNudo ? 1 : 0.4;
+    const alone = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3);
+    alone.addColorStop(0, o.colore + 'aa');
+    alone.addColorStop(1, o.colore + '00');
+    ctx.fillStyle = alone;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r * 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = o.colore; ctx.fill();
+    ctx.restore();
+
+    // Etichetta solo per il Sole e per i pianeti che si vedono davvero
+    if (o.tipo === 'sole' || (o.tipo === 'pianeta' && mag <= 4)) {
+      simEtichetta(ctx, o.nome, p.x, p.y + r + 12, '#cbd5e1');
+    }
+  });
+}
+
+// =====================================================================
+// 8.8 Scene: sciame meteorico
+// =====================================================================
+function simScenaSciame(ctx, tempo, dtReale) {
+  const L = sim.L, H = sim.H;
+  const dati = sim.scena.dati;
+  const o = simOsservatore();
+  const cx = L / 2, cy = H / 2;
+  const R = Math.min(L, H) * 0.45;
+
+  const corpi = simCorpiCielo(tempo);
+  const sole = corpi.find(c => c.id === 'Sun');
+  const luna = corpi.find(c => c.id === 'Moon');
+  const altSole = sole ? sole.alt : -30;
+
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(0, 0, L, H);
+
+  // Radiante dello sciame
+  let radiante = { az: 0, alt: -90 };
+  if (o.obs && typeof Astronomy !== 'undefined' && typeof dati.ra === 'number') {
+    try {
+      radiante = Astronomy.Horizon(tempo, o.obs, dati.ra, dati.dec, 'normal');
+      radiante = { az: radiante.azimuth, alt: radiante.altitude };
+    } catch (e) { /* niente radiante */ }
+  }
+
+  simDisegnaCupola(ctx, cx, cy, R, corpi, altSole);
+
+  const pr = simProiettaCupola(radiante.az, Math.max(radiante.alt, 0), cx, cy, R);
+
+  // Quante meteore all'ora: dipende dall'altezza del radiante, dal chiaro di
+  // Luna e dal crepuscolo. È la formula usata dagli osservatori (ZHR · sin h).
+  const senoAlt = Math.max(0, Math.sin(radiante.alt * Math.PI / 180));
+  const disturboLuna = (luna && luna.alt > 0) ? 0.55 * (luna.frazione || 0) : 0;
+  const disturboSole = altSole > -12 ? 0.9 : 0;
+  const tasso = (dati.zhr || 20) * senoAlt * (1 - disturboLuna) * (1 - disturboSole);
+
+  // Nuove scie, con frequenza proporzionale al tasso reale
+  if (radiante.alt > 0) {
+    const attese = simClamp(tasso / 14, 0.15, 7) * dtReale;
+    if (Math.random() < attese) {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = R * (0.06 + Math.random() * 0.62);
+      sim.meteore.push({
+        x: pr.x + Math.cos(ang) * dist,
+        y: pr.y + Math.sin(ang) * dist,
+        dx: Math.cos(ang), dy: Math.sin(ang),
+        lung: R * (0.08 + Math.random() * 0.22),
+        vita: 0,
+        durata: 0.45 + Math.random() * 0.5,
+        lum: 0.5 + Math.random() * 0.5
+      });
+    }
+  }
+
+  // Disegno delle scie (dentro la cupola)
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+  sim.meteore = sim.meteore.filter(m => {
+    m.vita += dtReale;
+    if (m.vita > m.durata) return false;
+    const avanzamento = m.vita / m.durata;
+    const x = m.x + m.dx * m.lung * avanzamento * 2.2;
+    const y = m.y + m.dy * m.lung * avanzamento * 2.2;
+    const scia = ctx.createLinearGradient(x - m.dx * m.lung, y - m.dy * m.lung, x, y);
+    const alpha = m.lum * Math.sin(Math.PI * avanzamento);
+    scia.addColorStop(0, 'rgba(226,232,240,0)');
+    scia.addColorStop(1, `rgba(255,255,255,${alpha})`);
+    ctx.strokeStyle = scia;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - m.dx * m.lung, y - m.dy * m.lung);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    return true;
+  });
+  ctx.restore();
+
+  // Segno del radiante
+  if (radiante.alt > -2) {
+    ctx.save();
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.arc(pr.x, pr.y, 16, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(pr.x, pr.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#22d3ee'; ctx.fill();
+    simEtichetta(ctx, 'radiante', pr.x, pr.y - 24, '#67e8f9', 'center', true);
+  }
+
+  const ora = tempo.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const righe = [
+    `<p><strong>Ore ${ora}</strong> · radiante ${radiante.alt > 0
+      ? `a <strong>${radiante.alt.toFixed(0)}°</strong> sopra l’orizzonte`
+      : '<strong>ancora sotto l’orizzonte</strong>'}</p>`,
+    `<p>Meteore attese: <strong>${Math.round(tasso)} all’ora</strong> ` +
+    `(su ${dati.zhr || 20}/ora teoriche con radiante allo zenit e cielo perfetto).</p>`
+  ];
+  if (disturboSole > 0) righe.push('<p>☀️ C’è ancora luce crepuscolare: le meteore deboli restano invisibili.</p>');
+  if (luna && luna.alt > 0 && (luna.frazione || 0) > 0.25) {
+    righe.push(`<p>🌙 La Luna è alta ${luna.alt.toFixed(0)}° e illuminata al ${((luna.frazione || 0) * 100).toFixed(0)}%: il suo chiarore riduce il conteggio.</p>`);
+  } else if (radiante.alt > 0) {
+    righe.push('<p>🌑 Niente disturbo lunare: condizioni buone, se il cielo è scuro.</p>');
+  }
+  return righe;
+}
+
+// =====================================================================
+// 8.9 Scene: massima elongazione di un pianeta
+// =====================================================================
+function simScenaElongazione(ctx, tempo) {
+  const L = sim.L, H = sim.H;
+  const dati = sim.scena.dati;
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(0, 0, L, H);
+  simDisegnaStelleSfondo(ctx, 0.55);
+
+  let vTerra = null, vPianeta = null, elong = null, frazione = 0.5, mag = null;
+  try {
+    vTerra = Astronomy.HelioVector('Earth', tempo);
+    vPianeta = Astronomy.HelioVector(dati.corpo, tempo);
+    const e = Astronomy.Elongation(dati.corpo, tempo);
+    elong = e.elongation;
+    const ill = Astronomy.Illumination(dati.corpo, tempo);
+    frazione = ill.phase_fraction;
+    mag = ill.mag;
+  } catch (e) { /* libreria non disponibile */ }
+
+  const cx = L * 0.5, cy = H * 0.52;
+  const R = Math.min(L, H) * 0.36;   // raggio dell'orbita terrestre sullo schermo
+
+  // Orbite
+  ctx.strokeStyle = 'rgba(148,163,184,0.25)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  const raggioPianeta = vPianeta ? Math.hypot(vPianeta.x, vPianeta.y) : 0.7;
+  ctx.beginPath(); ctx.arc(cx, cy, R * raggioPianeta, 0, Math.PI * 2); ctx.stroke();
+
+  // Sole al centro
+  const alone = ctx.createRadialGradient(cx, cy, 2, cx, cy, 34);
+  alone.addColorStop(0, 'rgba(250,204,21,0.7)');
+  alone.addColorStop(1, 'rgba(250,204,21,0)');
+  ctx.fillStyle = alone;
+  ctx.beginPath(); ctx.arc(cx, cy, 34, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+  ctx.fillStyle = '#facc15'; ctx.fill();
+  simEtichetta(ctx, 'Sole', cx, cy + 24, '#facc15');
+
+  if (vTerra && vPianeta) {
+    const tx = cx + vTerra.x * R, ty = cy - vTerra.y * R;
+    const px = cx + vPianeta.x * R, py = cy - vPianeta.y * R;
+
+    // Linee di vista dalla Terra
+    ctx.strokeStyle = 'rgba(250,204,21,0.55)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(cx, cy); ctx.stroke();
+    ctx.strokeStyle = 'rgba(168,85,247,0.85)';
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(px, py); ctx.stroke();
+
+    // Arco dell'angolo di elongazione, visto dalla Terra
+    const a1 = Math.atan2(cy - ty, cx - tx);
+    const a2 = Math.atan2(py - ty, px - tx);
+    ctx.beginPath();
+    ctx.arc(tx, ty, 42, a1, a2, ((a2 - a1 + Math.PI * 2) % (Math.PI * 2)) > Math.PI);
+    ctx.strokeStyle = 'rgba(226,232,240,0.75)'; ctx.lineWidth = 1.5;
+    ctx.stroke();
+    if (elong != null) {
+      const am = a1 + (((a2 - a1 + Math.PI * 3) % (Math.PI * 2)) - Math.PI) / 2;
+      simEtichetta(ctx, `${elong.toFixed(0)}°`, tx + Math.cos(am) * 58, ty + Math.sin(am) * 58, '#f8fafc', 'center', true);
+    }
+
+    // Terra
+    ctx.beginPath(); ctx.arc(tx, ty, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#3b82f6'; ctx.fill();
+    simEtichetta(ctx, 'Terra', tx, ty + 20, '#93c5fd');
+
+    // Pianeta
+    ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#e9d5ff'; ctx.fill();
+    simEtichetta(ctx, dati.nome, px, py + 20, '#d8b4fe');
+  }
+
+  // Riquadro: il pianeta al telescopio, con la sua fase
+  const rq = Math.min(L, H) * 0.13;
+  const qx = L - rq - 18, qy = rq + 18;
+  ctx.save();
+  ctx.fillStyle = 'rgba(2,6,23,0.75)';
+  ctx.strokeStyle = 'rgba(148,163,184,0.4)';
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(qx - rq - 8, qy - rq - 8, (rq + 8) * 2, (rq + 8) * 2 + 16, 12)
+                : ctx.rect(qx - rq - 8, qy - rq - 8, (rq + 8) * 2, (rq + 8) * 2 + 16);
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+  // Venere ha nubi uniformi, Mercurio è craterizzato come la Luna
+  simDisegnaLuna(ctx, qx, qy, rq * 0.75, frazione,
+    dati.visibilita === 'evening', '#fde68a', 'rgba(2,6,23,0.9)', dati.corpo !== 'Mercury');
+  simEtichetta(ctx, `al telescopio: ${(frazione * 100).toFixed(0)}%`, qx, qy + rq * 0.75 + 16, '#cbd5e1');
+
+  const giorni = (tempo.getTime() - sim.evento.dataObj.getTime()) / SIM_GIORNO;
+  const quando = dati.visibilita === 'morning' ? 'al mattino, prima dell’alba' : 'alla sera, dopo il tramonto';
+  return [
+    `<p><strong>Elongazione: ${elong != null ? elong.toFixed(1) + '°' : '—'}</strong> — è l’angolo fra ${dati.nome} e il Sole visto dalla Terra. Più è grande, più il pianeta si stacca dalla luce del Sole.</p>`,
+    `<p>Disco illuminato al <strong>${(frazione * 100).toFixed(0)}%</strong>${mag != null ? ` · magnitudine <strong>${mag.toFixed(1)}</strong>` : ''} · visibile ${quando}.</p>`,
+    `<p>${Math.abs(giorni) < 0.5 ? '🎯 Siamo nel giorno della massima elongazione.' :
+      `${giorni < 0 ? 'Mancano' : 'Sono passati'} <strong>${Math.abs(giorni).toFixed(0)} giorni</strong> ${giorni < 0 ? 'al' : 'dal'} massimo.`}</p>`
+  ];
+}
+
+// =====================================================================
+// 8.10 Scene: cielo generico (eventi personali e tutto il resto)
+// =====================================================================
+function simScenaCielo(ctx, tempo) {
+  const L = sim.L, H = sim.H;
+  const cx = L / 2, cy = H / 2;
+  const R = Math.min(L, H) * 0.45;
+
+  const corpi = simCorpiCielo(tempo);
+  const sole = corpi.find(c => c.id === 'Sun');
+  const luna = corpi.find(c => c.id === 'Moon');
+  const altSole = sole ? sole.alt : -30;
+
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(0, 0, L, H);
+  simDisegnaCupola(ctx, cx, cy, R, corpi, altSole);
+
+  const o = simOsservatore();
+  // Solo i pianeti che si vedono davvero a occhio nudo (Urano e Nettuno no)
+  const pianeti = corpi
+    .filter(c => c.tipo === 'pianeta' && c.alt > 0 && (typeof c.mag !== 'number' || c.mag <= 5.5))
+    .map(c => c.nome);
+
+  let condizione;
+  if (altSole > 0) condizione = `☀️ È giorno: il Sole è a ${altSole.toFixed(0)}° sull’orizzonte.`;
+  else if (altSole > -6) condizione = '🌆 Crepuscolo civile: si vedono solo gli astri più luminosi.';
+  else if (altSole > -18) condizione = '🌌 Crepuscolo astronomico: il cielo si sta facendo scuro.';
+  else condizione = '🌑 Notte piena: cielo completamente buio.';
+
+  return [
+    `<p><strong>${simOraTesto(tempo)}</strong> — vista da ${o.lat.toFixed(1)}°, ${o.lon.toFixed(1)}°${o.reale ? '' : ' (posizione predefinita)'}</p>`,
+    `<p>${condizione}</p>`,
+    luna && luna.alt > 0
+      ? `<p>🌙 La Luna è alta ${luna.alt.toFixed(0)}°, illuminata al ${((luna.frazione || 0) * 100).toFixed(0)}%.</p>`
+      : '<p>🌙 La Luna è sotto l’orizzonte.</p>',
+    pianeti.length
+      ? `<p>🪐 Pianeti visibili a occhio nudo: <strong>${pianeti.join(', ')}</strong>.</p>`
+      : '<p>🪐 Nessun pianeta visibile a occhio nudo in questo momento.</p>'
+  ];
+}
+
+// =====================================================================
+// 8.11 Ciclo di disegno e comandi
+// =====================================================================
+
+function simRidimensiona() {
+  if (!sim.canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const l = sim.canvas.clientWidth || 320;
+  const h = sim.canvas.clientHeight || 300;
+  sim.L = l; sim.H = h;
+  sim.canvas.width = Math.round(l * dpr);
+  sim.canvas.height = Math.round(h * dpr);
+  sim.ctx = sim.canvas.getContext('2d');
+  sim.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function simDisegna(dtReale) {
+  if (!sim.ctx || !sim.scena) return;
+  const ctx = sim.ctx;
+  const tempo = simTempo();
+  ctx.clearRect(0, 0, sim.L, sim.H);
+
+  let righe = [];
+  if (typeof Astronomy === 'undefined') {
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(0, 0, sim.L, sim.H);
+    simEtichetta(ctx, 'Libreria astronomica non disponibile', sim.L / 2, sim.H / 2, '#f87171');
+    righe = ['<p>Impossibile simulare l’evento senza la libreria astronomica: controlla la connessione.</p>'];
+  } else {
+    try {
+      switch (sim.scena.tipo) {
+        case 'eclissiLunare': righe = simScenaEclissiLunare(ctx, tempo); break;
+        case 'eclissiSolare': righe = simScenaEclissiSolare(ctx, tempo); break;
+        case 'faseLunare':    righe = simScenaFaseLunare(ctx, tempo); break;
+        case 'stagione':      righe = simScenaStagione(ctx, tempo); break;
+        case 'sciame':        righe = simScenaSciame(ctx, tempo, dtReale); break;
+        case 'elongazione':   righe = simScenaElongazione(ctx, tempo); break;
+        default:              righe = simScenaCielo(ctx, tempo); break;
+      }
+    } catch (err) {
+      console.error('Errore nella simulazione:', err);
+      righe = ['<p>Non è stato possibile calcolare questo istante della simulazione.</p>'];
+    }
+  }
+
+  const oraEl = document.getElementById('sim-ora');
+  if (oraEl) oraEl.textContent = simOraTesto(tempo);
+  const didasc = document.getElementById('sim-didascalia');
+  if (didasc) didasc.innerHTML = righe.filter(Boolean).join('');
+}
+
+function simCiclo(ts) {
+  if (!sim.aperto) return;
+  const dt = sim.ultimoTs ? Math.min((ts - sim.ultimoTs) / 1000, 0.1) : 0;
+  sim.ultimoTs = ts;
+
+  // La Terra gira sempre (serve alla scena delle stagioni)
+  sim.giro = (sim.giro + dt / 6) % 1;
+
+  if (sim.riproduce && sim.scena) {
+    sim.t += dt / sim.scena.durata * sim.velocita;
+    if (sim.t > 1) sim.t = 0;
+    const slider = document.getElementById('sim-slider');
+    if (slider) slider.value = String(Math.round(sim.t * 1000));
+  }
+
+  simDisegna(dt);
+  sim.raf = requestAnimationFrame(simCiclo);
+}
+
+function simAggiornaPulsantePlay() {
+  const btn = document.getElementById('sim-btn-play');
+  if (btn) btn.textContent = sim.riproduce ? '⏸ Pausa' : '▶ Riproduci';
+}
+
+// Apre la simulazione dell'evento indicato
+window.apriSimulazione = (id) => {
+  const evento = eventiCalcolati.find(e => e.id === id);
+  const modale = document.getElementById('modale-simulazione');
+  if (!evento || !modale) return;
+
+  sim.evento = evento;
+  sim.osservatore = null;           // rilegge la posizione a ogni apertura
+  sim.scena = simCostruisciScena(evento);
+  sim.t = 0;
+  sim.riproduce = true;
+  sim.velocita = 1;
+  sim.ultimoTs = 0;
+  sim.meteore = [];
+  simGeneraStelle(160);
+
+  const titolo = document.getElementById('sim-titolo');
+  if (titolo) titolo.textContent = `🎬 ${evento.titolo} — ${evento.dataTesto}`;
+  const nota = document.getElementById('sim-nota');
+  if (nota) {
+    const o = simOsservatore();
+    const dove = o.reale ? '' : ' Posizione non ancora rilevata: si usa il centro dell’Italia.';
+    nota.textContent = (sim.scena.nota || '') + dove;
+  }
+  const slider = document.getElementById('sim-slider');
+  if (slider) slider.value = '0';
+  const btnVel = document.getElementById('sim-btn-velocita');
+  if (btnVel) btnVel.textContent = '1×';
+  simAggiornaPulsantePlay();
+
+  modale.classList.remove('hidden');
+  sim.aperto = true;
+  // Il canvas ha dimensioni solo dopo che il modale è visibile
+  requestAnimationFrame(() => {
+    simRidimensiona();
+    if (!sim.raf) sim.raf = requestAnimationFrame(simCiclo);
+  });
+};
+
+function chiudiSimulazione() {
+  const modale = document.getElementById('modale-simulazione');
+  if (modale) modale.classList.add('hidden');
+  sim.aperto = false;
+  if (sim.raf) cancelAnimationFrame(sim.raf);
+  sim.raf = null;
+  sim.meteore = [];
+}
+
+function inizializzaSimulazione() {
+  sim.canvas = document.getElementById('sim-canvas');
+  const modale = document.getElementById('modale-simulazione');
+  if (!sim.canvas || !modale) return;
+
+  const btnChiudi = document.getElementById('btn-chiudi-simulazione');
+  if (btnChiudi) btnChiudi.addEventListener('click', chiudiSimulazione);
+  modale.addEventListener('click', (e) => { if (e.target === modale) chiudiSimulazione(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sim.aperto) chiudiSimulazione();
+  });
+
+  const btnPlay = document.getElementById('sim-btn-play');
+  if (btnPlay) btnPlay.addEventListener('click', () => {
+    sim.riproduce = !sim.riproduce;
+    simAggiornaPulsantePlay();
+  });
+
+  const slider = document.getElementById('sim-slider');
+  if (slider) slider.addEventListener('input', () => {
+    sim.t = simClamp(parseFloat(slider.value) / 1000, 0, 1);
+    sim.riproduce = false;          // scorrendo a mano la riproduzione si ferma
+    simAggiornaPulsantePlay();
+    simDisegna(0);
+  });
+
+  const btnVel = document.getElementById('sim-btn-velocita');
+  if (btnVel) btnVel.addEventListener('click', () => {
+    const i = SIM_VELOCITA.indexOf(sim.velocita);
+    sim.velocita = SIM_VELOCITA[(i + 1) % SIM_VELOCITA.length];
+    btnVel.textContent = `${sim.velocita}×`;
+  });
+
+  window.addEventListener('resize', () => { if (sim.aperto) simRidimensiona(); });
+
+  // Fuori schermo l'animazione si ferma, al ritorno riparte
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (sim.raf) cancelAnimationFrame(sim.raf);
+      sim.raf = null;
+    } else if (sim.aperto && !sim.raf) {
+      sim.ultimoTs = 0;
+      sim.raf = requestAnimationFrame(simCiclo);
+    }
+  });
+}
