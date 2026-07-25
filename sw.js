@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v7';
+const CACHE_NAME = 'astrocal-v8';
 const ASSETS = [
   './',
   './index.html',
