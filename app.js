@@ -390,8 +390,8 @@ function apriMappaEclissi(id) {
   // Area di visibilità parziale (stima): dischi sovrapposti lungo il percorso.
   // La sovrapposizione crea una fascia sfumata, più intensa vicino alla linea
   // centrale — robusta anche alle alte latitudini (niente artefatti ai poli).
-  [{ km: 3500, colore: '#60a5fa', opac: 0.040 },
-   { km: 1800, colore: '#3b82f6', opac: 0.100 }].forEach(f => {
+  [{ km: 3500, colore: '#60a5fa', opac: 0.018 },
+   { km: 1800, colore: '#3b82f6', opac: 0.045 }].forEach(f => {
     percorso.forEach(([lat, lon]) => {
       const disco = L.circle([lat, lon], {
         radius: f.km * 1000, stroke: false, fillColor: f.colore, fillOpacity: f.opac, interactive: false
