@@ -11,6 +11,24 @@ body {
   box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2);
 }
 
+/* --- Vista Cielo (SkyMap) --- */
+
+/* Il canvas del cielo: il dito serve a guardarsi intorno, non a scorrere */
+#skymap-canvas {
+  touch-action: none;
+  cursor: grab;
+}
+#skymap-canvas:active { cursor: grabbing; }
+
+/* A schermo intero il cielo occupa tutto lo spazio disponibile */
+#skymap-contenitore:fullscreen { border-radius: 0; }
+#skymap-contenitore:fullscreen #skymap-canvas { height: 100vh !important; }
+
+/* Modalità notte: filtro rosso, non "brucia" gli occhi adattati al buio */
+.modalita-notte {
+  filter: grayscale(1) sepia(1) saturate(6) hue-rotate(-38deg) brightness(0.85);
+}
+
 /* Stili personalizzati per rendere FullCalendar stile Dark Mode */
 .fc-theme-standard .fc-scrollgrid { border-color: #334155; }
 .fc-theme-standard td, .fc-theme-standard th { border-color: #334155; }

@@ -36,10 +36,11 @@
     <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-2">AstroCalendario di Ben</h1>
     <p class="text-slate-400">Calcolo eventi in tempo reale fino al 2030 · eclissi fino al 2070</p>
     
-    <div class="mt-6 flex justify-center gap-4">
+    <div class="mt-6 flex flex-wrap justify-center gap-3">
       <!-- Pulsanti per cambiare vista -->
       <button id="btn-vista-calendario" class="px-5 py-2 rounded-full font-semibold transition-colors bg-blue-600 hover:bg-blue-500 text-white shadow-lg">📅 Mese</button>
       <button id="btn-vista-agenda" class="px-5 py-2 rounded-full font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white">📜 Agenda</button>
+      <button id="btn-vista-skymap" class="px-5 py-2 rounded-full font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white" title="Punta il telefono verso il cielo">🔭 Cielo</button>
       <button id="btn-aggiungi" class="px-5 py-2 rounded-full font-semibold transition-colors bg-green-600 hover:bg-green-500 text-white shadow-lg" title="Aggiungi un evento manuale">➕ Aggiungi</button>
       <button id="btn-installa" class="hidden px-5 py-2 rounded-full font-semibold transition-colors bg-purple-600 hover:bg-purple-500 text-white shadow-lg" title="Installa l'app sul dispositivo">📲 Installa</button>
       <button id="btn-notifiche" class="px-5 py-2 rounded-full font-semibold transition-colors border border-blue-500 text-blue-400 hover:bg-blue-900" title="Attiva Notifiche">🔔</button>
@@ -49,7 +50,7 @@
   <main class="max-w-4xl mx-auto">
 
     <!-- BARRA DI RICERCA INTELLIGENTE E FILTRI PER CATEGORIA -->
-    <div class="mb-6 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
+    <div id="barra-ricerca" class="mb-6 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
       <div class="relative">
         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">🔍</span>
         <input id="ricerca-eventi" type="search" autocomplete="off"
@@ -70,6 +71,61 @@
     <div id="vista-agenda" class="hidden grid gap-6">
       <div class="text-center text-slate-400 italic mb-2" id="loading-msg">Calcolo orbite in corso...</div>
       <div id="eventi-container" class="grid gap-6"></div>
+    </div>
+
+    <!-- VISTA CIELO: punta il telefono e trova gli astri (bussola + giroscopio) -->
+    <div id="vista-skymap" class="hidden">
+
+      <div id="skymap-contenitore" class="relative bg-slate-950 rounded-2xl border border-slate-700 shadow-xl overflow-hidden">
+        <canvas id="skymap-canvas" class="block w-full" style="height: 70vh; min-height: 340px; touch-action: none;"></canvas>
+
+        <!-- Dati di puntamento e stato (sopra al canvas) -->
+        <div class="absolute top-3 left-3 right-3 flex justify-between items-start gap-2 pointer-events-none">
+          <div id="skymap-hud" class="bg-slate-900/70 backdrop-blur px-3 py-2 rounded-xl text-xs md:text-sm text-slate-100 border border-slate-700 font-mono">—</div>
+          <div id="skymap-stato" class="bg-slate-900/70 backdrop-blur px-3 py-2 rounded-xl text-xs text-slate-300 border border-slate-700 text-right max-w-[55%]">Posizione non ancora rilevata</div>
+        </div>
+
+        <!-- Zoom (campo visivo) -->
+        <div class="absolute bottom-3 right-3 flex flex-col gap-2">
+          <button id="skymap-zoom-in" class="w-10 h-10 rounded-full bg-slate-800/80 hover:bg-slate-700 text-white text-xl font-bold border border-slate-600" title="Ingrandisci">+</button>
+          <button id="skymap-zoom-out" class="w-10 h-10 rounded-full bg-slate-800/80 hover:bg-slate-700 text-white text-xl font-bold border border-slate-600" title="Riduci">−</button>
+        </div>
+
+        <!-- Schermata iniziale: richiesta dei permessi -->
+        <div id="skymap-overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center text-center gap-4 p-6">
+          <p class="text-2xl font-bold text-white">🔭 Punta il telefono verso il cielo</p>
+          <p class="text-sm text-slate-300 max-w-md">Bussola e giroscopio capiscono dove stai guardando, mentre le orbite dicono dove si trovano Sole, Luna, pianeti e stelle luminose <strong>in questo momento</strong>. Muovi il telefono per cercarli.</p>
+          <button id="skymap-btn-avvia" class="px-6 py-3 rounded-full font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg">🧭 Attiva bussola e posizione</button>
+          <button id="skymap-btn-manuale" class="text-sm text-slate-400 underline hover:text-slate-200">Continua senza sensori (trascina per guardarti intorno)</button>
+        </div>
+      </div>
+
+      <!-- Avvisi su permessi mancanti (posizione, bussola) -->
+      <p id="skymap-avviso" class="hidden mt-3 text-sm text-amber-400 bg-amber-950/40 border border-amber-800 rounded-xl p-3"></p>
+
+      <!-- Selettore dell'oggetto da cercare -->
+      <div class="mt-4">
+        <p class="text-xs text-slate-400 mb-2">Scegli cosa cercare: comparirà una freccia che ti guida verso l'astro.</p>
+        <div id="skymap-oggetti" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Scheda dell'oggetto selezionato -->
+      <div id="skymap-info" class="mt-4 bg-slate-800 p-4 rounded-2xl border border-slate-700 text-sm text-slate-300">
+        Seleziona un astro per vedere dove si trova, quando sorge e quando tramonta.
+      </div>
+
+      <!-- Strumenti da campo -->
+      <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <span class="text-slate-400">Bussola:</span>
+        <button id="skymap-cal-meno" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Ruota la bussola verso ovest">◀ −5°</button>
+        <span id="skymap-cal-valore" class="text-slate-300 font-mono w-14 text-center">0°</span>
+        <button id="skymap-cal-piu" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Ruota la bussola verso est">+5° ▶</button>
+        <button id="skymap-btn-notte" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Filtro rosso: protegge la vista notturna">🔴 Modalità notte</button>
+        <button id="skymap-btn-schermo" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Schermo intero">⛶ Schermo intero</button>
+        <button id="skymap-btn-posizione" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Rileva di nuovo la posizione">📍 Aggiorna posizione</button>
+      </div>
+      <p class="mt-2 text-xs text-slate-500">Se la bussola è imprecisa, trascina il dito in orizzontale sul cielo (o usa i tasti ±5°) finché il Sole o la Luna non coincidono con quelli veri. ⚠️ Non guardare mai il Sole direttamente.</p>
+
     </div>
 
   </main>
