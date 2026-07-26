@@ -36,6 +36,7 @@ window.addEventListener('DOMContentLoaded', () => {
   inizializzaMappaEclissiUI();
   inizializzaSimulazione();
   inizializzaSkymap();
+  inizializzaNotifiche();
   inizializzaInstallazione();
 });
 
@@ -654,7 +655,8 @@ function caricaEventiManuali() {
       colore: ev.colore,
       programma: ev.programma,
       manuale: true,
-      categoria: 'personali'
+      // Gli eventi salvati prima dell'introduzione della categoria restano "Personali"
+      categoria: CATEGORIE[ev.categoria] ? ev.categoria : 'personali'
     });
   });
 
@@ -671,7 +673,8 @@ function salvaEventiManuali() {
       data: e.dataObj.toISOString(),
       spiegazione: e.spiegazione,
       colore: e.colore,
-      programma: e.programma
+      programma: e.programma,
+      categoria: e.categoria
     }));
   try {
     localStorage.setItem(CHIAVE_EVENTI_MANUALI, JSON.stringify(daSalvare));
@@ -680,27 +683,56 @@ function salvaEventiManuali() {
   }
 }
 
-// Crea un nuovo evento manuale a partire dai dati del form
-function aggiungiEventoManuale(dati) {
-  const programma = {
+// Trasforma i campi del form nel "programma" dell'evento
+function programmaDaDati(dati) {
+  return {
     cosaPortare: dati.cosaPortare || 'Nessuna indicazione particolare.',
     doveVederlo: dati.doveVederlo || 'Nessuna indicazione particolare.',
     comeVederlo: dati.comeVederlo || 'Nessuna indicazione particolare.'
   };
+}
 
+// Categoria valida scelta nel form (con ripiego su "personali")
+function categoriaValida(id) {
+  return CATEGORIE[id] ? id : 'personali';
+}
+
+// Crea un nuovo evento manuale a partire dai dati del form
+function aggiungiEventoManuale(dati) {
   creaEvento({
     id: `man${Date.now()}${contatoreId++}`,
     titolo: dati.titolo,
     dataObj: dati.dataObj,
     spiegazione: dati.spiegazione || 'Evento aggiunto manualmente.',
     colore: dati.colore || '#3b82f6',
-    programma,
+    programma: programmaDaDati(dati),
     manuale: true,
-    categoria: 'personali'
+    categoria: categoriaValida(dati.categoria)
   });
 
   eventiCalcolati.sort((a, b) => a.dataObj - b.dataObj);
   salvaEventiManuali();
+  pianificaNotifiche();
+  aggiornaViste();
+}
+
+// Aggiorna un evento manuale esistente con i dati del form
+function modificaEventoManuale(id, dati) {
+  const evento = eventiCalcolati.find(e => e.id === id);
+  if (!evento || !evento.manuale) return;
+
+  evento.titolo = dati.titolo;
+  evento.dataObj = dati.dataObj;
+  evento.dataTesto = formattData(dati.dataObj);
+  evento.spiegazione = dati.spiegazione || 'Evento aggiunto manualmente.';
+  evento.colore = dati.colore || '#3b82f6';
+  evento.programma = programmaDaDati(dati);
+  evento.categoria = categoriaValida(dati.categoria);
+
+  eventiCalcolati.sort((a, b) => a.dataObj - b.dataObj);
+  salvaEventiManuali();
+  // Se la data è cambiata il promemoria viene ricalcolato sulla nuova ora
+  pianificaNotifiche();
   aggiornaViste();
 }
 
@@ -731,29 +763,84 @@ function aggiornaViste() {
   }
 }
 
-// Collega il form e il modale "Aggiungi Evento"
+// Id dell'evento in corso di modifica (null = stiamo creando un nuovo evento)
+let eventoInModifica = null;
+
+// Converte una data in stringa per l'input datetime-local (ora locale)
+function perInputDataOra(data) {
+  const copia = new Date(data.getTime());
+  copia.setMinutes(copia.getMinutes() - copia.getTimezoneOffset());
+  return copia.toISOString().slice(0, 16);
+}
+
+// Riempie il menu a tendina delle categorie con l'elenco CATEGORIE
+function popolaTendinaCategorie() {
+  const select = document.getElementById('ev-categoria');
+  if (!select) return;
+  select.innerHTML = Object.keys(CATEGORIE).map(id =>
+    `<option value="${id}">${CATEGORIE[id].icona} ${CATEGORIE[id].nome}</option>`
+  ).join('');
+  select.value = 'personali';
+}
+
+// Collega il form e il modale, usato sia per creare sia per modificare un evento
 function inizializzaFormAggiungi() {
   const modale = document.getElementById('modale-aggiungi');
   const btnApri = document.getElementById('btn-aggiungi');
   const btnChiudi = document.getElementById('btn-chiudi-modale');
   const btnAnnulla = document.getElementById('btn-annulla');
   const form = document.getElementById('form-evento');
+  const titoloModale = document.getElementById('modale-titolo');
+  const btnSalva = document.getElementById('btn-salva-evento');
   if (!modale || !btnApri || !form) return;
 
-  const apri = () => {
-    // Precompila con data/ora attuale (formato richiesto da datetime-local)
-    const ora = new Date();
-    ora.setMinutes(ora.getMinutes() - ora.getTimezoneOffset());
-    document.getElementById('ev-data').value = ora.toISOString().slice(0, 16);
+  popolaTendinaCategorie();
+
+  // Apre il modale vuoto: nuovo evento con data/ora di adesso
+  const apriNuovo = () => {
+    eventoInModifica = null;
+    form.reset();
+    if (titoloModale) titoloModale.textContent = '➕ Nuovo Evento';
+    if (btnSalva) btnSalva.textContent = 'Salva evento';
+    document.getElementById('ev-colore').value = '#3b82f6';
+    document.getElementById('ev-categoria').value = 'personali';
+    document.getElementById('ev-data').value = perInputDataOra(new Date());
     modale.classList.remove('hidden');
   };
+
+  // Apre il modale già compilato con i dati di un evento manuale esistente
+  const apriModifica = (id) => {
+    const evento = eventiCalcolati.find(e => e.id === id);
+    if (!evento || !evento.manuale) return;
+
+    eventoInModifica = id;
+    form.reset();
+    if (titoloModale) titoloModale.textContent = '✏️ Modifica Evento';
+    if (btnSalva) btnSalva.textContent = 'Salva modifiche';
+    document.getElementById('ev-titolo').value = evento.titolo;
+    document.getElementById('ev-data').value = perInputDataOra(evento.dataObj);
+    document.getElementById('ev-categoria').value = categoriaValida(evento.categoria);
+    document.getElementById('ev-colore').value = evento.colore || '#3b82f6';
+    document.getElementById('ev-spiegazione').value = evento.spiegazione || '';
+    const prog = evento.programma || {};
+    document.getElementById('ev-portare').value = prog.cosaPortare || '';
+    document.getElementById('ev-dove').value = prog.doveVederlo || '';
+    document.getElementById('ev-come').value = prog.comeVederlo || '';
+    modale.classList.remove('hidden');
+  };
+
   const chiudi = () => {
     modale.classList.add('hidden');
     form.reset();
+    eventoInModifica = null;
     document.getElementById('ev-colore').value = '#3b82f6';
+    document.getElementById('ev-categoria').value = 'personali';
   };
 
-  btnApri.addEventListener('click', apri);
+  // Il pulsante ✏️ delle schede dell'agenda apre il form in modifica
+  window.apriModificaEvento = apriModifica;
+
+  btnApri.addEventListener('click', apriNuovo);
   if (btnChiudi) btnChiudi.addEventListener('click', chiudi);
   if (btnAnnulla) btnAnnulla.addEventListener('click', chiudi);
   // Chiudi cliccando sullo sfondo scuro
@@ -777,18 +864,25 @@ function inizializzaFormAggiungi() {
       return;
     }
 
-    aggiungiEventoManuale({
+    const dati = {
       titolo,
       dataObj,
+      categoria: document.getElementById('ev-categoria').value,
       colore: document.getElementById('ev-colore').value,
       spiegazione: document.getElementById('ev-spiegazione').value.trim(),
       cosaPortare: document.getElementById('ev-portare').value.trim(),
       doveVederlo: document.getElementById('ev-dove').value.trim(),
       comeVederlo: document.getElementById('ev-come').value.trim()
-    });
+    };
+
+    if (eventoInModifica) {
+      modificaEventoManuale(eventoInModifica, dati);
+    } else {
+      aggiungiEventoManuale(dati);
+    }
 
     chiudi();
-    // Mostra l'agenda per far vedere subito l'evento appena creato
+    // Mostra l'agenda per far vedere subito l'evento appena salvato
     const btnAg = document.getElementById('btn-vista-agenda');
     if (btnAg) btnAg.click();
   });
@@ -929,6 +1023,7 @@ function costruisciAgenda() {
   eventiDaMostrare.forEach(evento => {
     const card = document.createElement('article');
     card.className = "bg-slate-800 p-6 rounded-2xl border border-slate-700 card-hover relative overflow-hidden";
+    card.dataset.eventoId = evento.id;
     // Una piccola linea colorata a sinistra per il tipo di evento
     const badgeManuale = evento.manuale
       ? '<span class="ml-2 align-middle text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">Manuale</span>'
@@ -937,6 +1032,10 @@ function costruisciAgenda() {
     const cat = CATEGORIE[evento.categoria];
     const badgeCategoria = cat
       ? `<span class="align-middle text-xs bg-slate-700 text-slate-200 px-2 py-0.5 rounded-full">${cat.icona} ${cat.nome}</span>`
+      : '';
+    // Gli eventi manuali si possono modificare ed eliminare
+    const bottoneModifica = evento.manuale
+      ? `<button onclick="apriModificaEvento('${evento.id}')" class="p-3 bg-slate-700 hover:bg-blue-600 rounded-full transition-colors flex-shrink-0" title="Modifica evento">✏️</button>`
       : '';
     const bottoneElimina = evento.manuale
       ? `<button onclick="eliminaEventoManuale('${evento.id}')" class="p-3 bg-slate-700 hover:bg-red-600 rounded-full transition-colors flex-shrink-0" title="Elimina evento">🗑️</button>`
@@ -965,9 +1064,10 @@ function costruisciAgenda() {
           <button onclick="apriSimulazione('${evento.id}')" class="p-3 bg-slate-700 hover:bg-purple-600 rounded-full transition-colors" title="Simula l'evento: guarda cosa succede">
             🎬
           </button>
-          <button onclick="leggiEvento('${evento.id}')" class="p-3 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors" title="Ascolta le info">
+          <button onclick="leggiEvento('${evento.id}', 'tasto')" class="p-3 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors" title="Ascolta le info">
             🔊
           </button>
+          ${bottoneModifica}
           ${bottoneElimina}
         </div>
       </div>
@@ -1011,15 +1111,12 @@ function inizializzaCalendario() {
     buttonText: { today: 'Oggi' },
     events: eventiPerGriglia(getEventiFiltrati()),
     eventClick: function(info) {
-      // Se clicco su un evento nel calendario, apro l'agenda e leggo il testo
+      // Se clicco su un evento nel calendario apro l'agenda sulla sua scheda.
+      // La voce NON parte da sola: si attiva solo col tasto 🔊 o con la notifica.
       document.getElementById('btn-vista-agenda').click();
       setTimeout(() => {
-        leggiEvento(info.event.id);
-        const btn = document.querySelector(`button[onclick="leggiEvento('${info.event.id}')"]`);
-        if (btn) {
-          const card = btn.closest('article');
-          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        const card = document.querySelector(`article[data-evento-id="${info.event.id}"]`);
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 300);
     }
   });
@@ -1070,8 +1167,16 @@ function gestisciTab() {
 
 // =====================================================================
 // 4. Lettura Vocale (TTS)
+//    La voce parte SOLO in due casi: quando si preme il tasto 🔊 di una
+//    scheda ("tasto") oppure quando scatta il promemoria ("notifica").
+//    Qualsiasi altra chiamata viene ignorata, così l'app non parla da sola.
 // =====================================================================
-window.leggiEvento = (id) => {
+const ORIGINI_VOCE_AMMESSE = ['tasto', 'notifica'];
+
+window.leggiEvento = (id, origine) => {
+  if (!ORIGINI_VOCE_AMMESSE.includes(origine)) return;
+  if (!('speechSynthesis' in window)) return;
+
   const evento = eventiCalcolati.find(e => e.id === id);
   if (!evento) return;
 
@@ -1101,26 +1206,151 @@ window.leggiEvento = (id) => {
 };
 
 // Carica le voci altrimenti a volte non vanno la prima volta
-speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+if ('speechSynthesis' in window) {
+  speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
 
 // =====================================================================
-// 5. Notifiche (Base)
+// 5. Notifiche e promemoria degli eventi
+//    Quando scatta il promemoria di un evento parte anche la lettura vocale.
 // =====================================================================
-document.getElementById('btn-notifiche').addEventListener('click', async () => {
-  if (!('Notification' in window)) {
-    alert('Questo browser non supporta le notifiche.');
-    return;
+
+// Quanto prima dell'evento arriva il promemoria
+const ANTICIPO_NOTIFICA_MIN = 30;
+// Oltre questo ritardo (app riaperta molto dopo) il promemoria non ha più senso
+const RITARDO_MASSIMO_MIN = 120;
+// Ogni quanto controlliamo se c'è un evento in arrivo
+const INTERVALLO_CONTROLLO_MS = 60 * 1000;
+
+const CHIAVE_NOTIFICHE_INVIATE = 'astrocalendario_notifiche_inviate';
+
+let timerNotifiche = null;
+// Promemoria già mostrati: evita di ripetere la stessa notifica a ogni controllo
+let notificheInviate = caricaNotificheInviate();
+
+// La chiave è titolo + istante: resta stabile anche se gli id vengono rigenerati
+function chiaveNotifica(evento) {
+  return `${evento.titolo}@${evento.dataObj.getTime()}`;
+}
+
+function caricaNotificheInviate() {
+  try {
+    const salvate = JSON.parse(localStorage.getItem(CHIAVE_NOTIFICHE_INVIATE) || '[]');
+    return Array.isArray(salvate) ? salvate : [];
+  } catch (err) {
+    console.error('Errore lettura promemoria inviati:', err);
+    return [];
   }
-  const permission = await Notification.requestPermission();
-  if (permission === 'granted') {
-    new Notification('Notifiche AstroCalendario Ben Attive!', {
-      body: 'Il cosmo ti avviserà.',
-      icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/512px-NASA_logo.svg.png'
+}
+
+function salvaNotificheInviate() {
+  // Tiene solo i promemoria recenti, così la lista non cresce all'infinito
+  const limite = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  notificheInviate = notificheInviate.filter(k => {
+    const istante = Number(k.split('@').pop());
+    return isNaN(istante) || istante > limite;
+  });
+  try {
+    localStorage.setItem(CHIAVE_NOTIFICHE_INVIATE, JSON.stringify(notificheInviate));
+  } catch (err) {
+    console.error('Errore salvataggio promemoria inviati:', err);
+  }
+}
+
+// Avvia (una sola volta) il controllo periodico dei promemoria
+function pianificaNotifiche() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  controllaNotifiche();
+  if (timerNotifiche) return;
+  timerNotifiche = setInterval(controllaNotifiche, INTERVALLO_CONTROLLO_MS);
+}
+
+// Cerca gli eventi imminenti e per ognuno mostra la notifica + legge la scheda
+function controllaNotifiche() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const adesso = Date.now();
+  const inizioFinestra = adesso - RITARDO_MASSIMO_MIN * 60 * 1000;
+  const fineFinestra = adesso + ANTICIPO_NOTIFICA_MIN * 60 * 1000;
+
+  eventiCalcolati.forEach(evento => {
+    const istante = evento.dataObj.getTime();
+    if (istante > fineFinestra || istante < inizioFinestra) return;
+
+    const chiave = chiaveNotifica(evento);
+    if (notificheInviate.includes(chiave)) return;
+
+    notificheInviate.push(chiave);
+    salvaNotificheInviate();
+    mostraNotificaEvento(evento);
+  });
+}
+
+function mostraNotificaEvento(evento) {
+  const cat = CATEGORIE[evento.categoria];
+  const icona = cat ? cat.icona : '🔭';
+  try {
+    const notifica = new Notification(`${icona} ${evento.titolo}`, {
+      body: `${evento.dataTesto}\n${evento.spiegazione || ''}`.trim(),
+      icon: 'icon-192.png',
+      badge: 'icon-192.png',
+      tag: evento.id
     });
-  } else {
-    alert("Permesso notifiche negato.");
+    // Cliccando la notifica si torna all'app sulla scheda dell'evento
+    notifica.onclick = () => {
+      window.focus();
+      mostraVista('agenda');
+      const card = document.querySelector(`article[data-evento-id="${evento.id}"]`);
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      notifica.close();
+    };
+  } catch (err) {
+    console.error('Errore invio notifica:', err);
   }
-});
+
+  // La voce parte insieme al promemoria: è uno dei due casi ammessi
+  leggiEvento(evento.id, 'notifica');
+}
+
+// Aggiorna l'aspetto del pulsante 🔔 in base al permesso concesso
+function aggiornaPulsanteNotifiche() {
+  const btn = document.getElementById('btn-notifiche');
+  if (!btn || !('Notification' in window)) return;
+  const attive = Notification.permission === 'granted';
+  btn.classList.toggle('bg-blue-600', attive);
+  btn.classList.toggle('text-white', attive);
+  btn.classList.toggle('text-blue-400', !attive);
+  btn.title = attive
+    ? `Promemoria attivi: avviso ${ANTICIPO_NOTIFICA_MIN} minuti prima, con lettura vocale`
+    : 'Attiva Notifiche';
+}
+
+function inizializzaNotifiche() {
+  const btn = document.getElementById('btn-notifiche');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      if (!('Notification' in window)) {
+        alert('Questo browser non supporta le notifiche.');
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      aggiornaPulsanteNotifiche();
+      if (permission === 'granted') {
+        new Notification('Notifiche AstroCalendario Ben Attive!', {
+          body: `Ti avviso ${ANTICIPO_NOTIFICA_MIN} minuti prima di ogni evento e ti leggo la scheda.`,
+          icon: 'icon-192.png'
+        });
+        pianificaNotifiche();
+      } else {
+        alert('Permesso notifiche negato.');
+      }
+    });
+  }
+
+  aggiornaPulsanteNotifiche();
+  // Se il permesso era già stato concesso, i promemoria ripartono da soli
+  pianificaNotifiche();
+}
 
 function registraSW() {
   if ('serviceWorker' in navigator) {
