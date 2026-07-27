@@ -5,14 +5,133 @@ let contatoreId = 0; // per generare id univoci e "sicuri" (solo lettere+numeri)
 
 // Categorie di eventi: usate dai filtri e dai badge nell'agenda
 const CATEGORIE = {
-  luna:      { nome: 'Fasi Lunari',      icona: '🌙' },
-  eclissi:   { nome: 'Eclissi',          icona: '🌑' },
-  stagioni:  { nome: 'Stagioni',         icona: '🍂' },
-  meteore:   { nome: 'Sciami Meteorici', icona: '☄️' },
-  pianeti:   { nome: 'Pianeti',          icona: '🪐' },
-  congiunzioni: { nome: 'Congiunzioni',  icona: '🤝' },
-  personali: { nome: 'Personali',        icona: '📌' }
+  luna:      { nome: 'Fasi Lunari',      disegno: 'luna' },
+  eclissi:   { nome: 'Eclissi',          disegno: 'eclissi' },
+  stagioni:  { nome: 'Stagioni',         disegno: 'foglia' },
+  meteore:   { nome: 'Sciami Meteorici', disegno: 'meteora' },
+  pianeti:   { nome: 'Pianeti',          disegno: 'saturno' },
+  congiunzioni: { nome: 'Congiunzioni',  disegno: 'congiunzione' },
+  personali: { nome: 'Personali',        disegno: 'segnalino' }
 };
+
+// ---------------------------------------------------------------------------
+// DISEGNI
+// Al posto delle emoji: piccoli SVG fatti "a mano", uno per ogni oggetto.
+// Il contorno prende il colore del testo (currentColor), così funziona sia
+// sulla carta chiara sia sul cartoncino scuro; i pieni sono pastelli fissi,
+// perché Giove deve restare color sabbia in tutti e due i temi.
+// ---------------------------------------------------------------------------
+const DISEGNI = {
+  sole: `<circle cx="12" cy="12" r="5" fill="#f2c14e"/>
+    <path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4M5.1 5.1l1.7 1.7M17.2 17.2l1.7 1.7M18.9 5.1l-1.7 1.7M6.8 17.2l-1.7 1.7"/>`,
+
+  luna: `<path d="M20.5 13.4A8.9 8.9 0 1 1 10.6 3.5a7 7 0 0 0 9.9 9.9z" fill="#ecdfae"/>
+    <circle cx="14.5" cy="15" r="1.5" fill="none"/>
+    <circle cx="17.4" cy="11.2" r="0.9" fill="none"/>`,
+
+  lunapiena: `<circle cx="12" cy="12" r="8.6" fill="#ecdfae"/>
+    <circle cx="9" cy="9.5" r="2" fill="none"/><circle cx="14.8" cy="14.4" r="1.5" fill="none"/>
+    <circle cx="15.2" cy="8.6" r="1" fill="none"/>`,
+
+  mercurio: `<circle cx="12" cy="12" r="6.6" fill="#c9c3b4"/>
+    <circle cx="10" cy="10.4" r="1.5" fill="none"/><circle cx="14.2" cy="14" r="1.1" fill="none"/>`,
+
+  venere: `<circle cx="12" cy="12" r="7.8" fill="#f0d59a"/>
+    <path d="M6 10.4q6-1.8 11.6-.4M5.4 13.6q6.4 1.8 12.6-.6" fill="none"/>`,
+
+  marte: `<circle cx="12" cy="12" r="7.4" fill="#e2725b"/>
+    <path d="M8.4 6.4q3.6-1.2 7.2 0" fill="none"/>
+    <circle cx="10" cy="12.6" r="1.6" fill="none"/><circle cx="14.6" cy="10.4" r="1" fill="none"/>`,
+
+  giove: `<circle cx="12" cy="12" r="8.4" fill="#dfb98a"/>
+    <path d="M5.2 9q6.8-1.4 13.6 0M3.8 12.2q8.2-1.4 16.4 0M5.2 15.4q6.8 1.4 13.6 0" fill="none"/>
+    <ellipse cx="14.6" cy="14.4" rx="2.1" ry="1.3" fill="#c9694f"/>`,
+
+  saturno: `<circle cx="12" cy="12" r="6" fill="#e8cf9a"/>
+    <ellipse cx="12" cy="12" rx="10.4" ry="3.4" fill="none" transform="rotate(-22 12 12)"/>`,
+
+  urano: `<circle cx="12" cy="12" r="6.4" fill="#a9d8dd"/>
+    <ellipse cx="12" cy="12" rx="9.6" ry="3" fill="none" transform="rotate(76 12 12)"/>`,
+
+  nettuno: `<circle cx="12" cy="12" r="7.6" fill="#8fb3e0"/>
+    <path d="M5.6 14.2q3.2-2 6.4 0t6-0.6" fill="none"/>
+    <ellipse cx="10" cy="9.6" rx="1.9" ry="1.2" fill="#5d84bd"/>`,
+
+  terra: `<circle cx="12" cy="12" r="8" fill="#7fb2e5"/>
+    <path d="M6.4 9.6q2.6-2.4 5-0.6t3.6-0.4M7.6 15.4q2.8 1.8 5.4 0.2t3.4 0.6" fill="#7fb069"/>`,
+
+  stella: `<path d="M12 2.8l2.5 6.1 6.6.5-5 4.3 1.6 6.4L12 16.6 6.3 20.1l1.6-6.4-5-4.3 6.6-.5z" fill="#f5e2a0"/>`,
+
+  meteora: `<path d="M16.6 3.4l1.5 3.6 3.9.3-3 2.6.9 3.8-3.3-2.1-3.4 2.1.9-3.8-2.9-2.6 3.9-.3z" fill="#f2c14e"/>
+    <path d="M10.4 12.8L3.2 20.4M13.6 15.2l-4.4 4.6M6.6 11.4l-3.2 3.4" fill="none"/>`,
+
+  eclissi: `<circle cx="10.4" cy="12" r="6.6" fill="#f2c14e"/>
+    <circle cx="14.6" cy="12" r="6.6" fill="#3d4a6b"/>`,
+
+  foglia: `<path d="M4.4 19.6c-1.6-7 3.4-13.4 15.2-15.2 1.4 11.6-6.2 16.8-15.2 15.2z" fill="#7fb069"/>
+    <path d="M4.8 19.2q6.4-5.2 12.8-11.4" fill="none"/>`,
+
+  congiunzione: `<circle cx="8.6" cy="13.4" r="5" fill="#f0d59a"/>
+    <circle cx="16.2" cy="10.2" r="3.4" fill="#dfb98a"/>`,
+
+  segnalino: `<path d="M12 21.2s6.2-6.8 6.2-10.8a6.2 6.2 0 1 0-12.4 0c0 4 6.2 10.8 6.2 10.8z" fill="#e2685c"/>
+    <circle cx="12" cy="10.2" r="2.2" fill="none"/>`,
+
+  satellite: `<rect x="9.4" y="9.4" width="5.2" height="5.2" rx="1" fill="#c9c3b4"/>
+    <rect x="1.8" y="10" width="6" height="4" rx="0.8" fill="#8fb3e0"/>
+    <rect x="16.2" y="10" width="6" height="4" rx="0.8" fill="#8fb3e0"/>
+    <path d="M12 9.4V6.2M12 6.2l-2 -2M12 6.2l2 -2" fill="none"/>`,
+
+  occhio: `<path d="M2.4 12S6.2 6.2 12 6.2 21.6 12 21.6 12 17.8 17.8 12 17.8 2.4 12 2.4 12z" fill="#f5efdd"/>
+    <circle cx="12" cy="12" r="2.8" fill="#3d4a6b"/>`,
+
+  binocolo: `<rect x="4.2" y="5.4" width="5.2" height="8.4" rx="1.4" fill="#c9c3b4"/>
+    <rect x="14.6" y="5.4" width="5.2" height="8.4" rx="1.4" fill="#c9c3b4"/>
+    <circle cx="6.8" cy="16.6" r="3.6" fill="#8fb3e0"/><circle cx="17.2" cy="16.6" r="3.6" fill="#8fb3e0"/>
+    <path d="M9.4 9h5.2" fill="none"/>`,
+
+  telescopio: `<rect x="3.4" y="8.6" width="14" height="4.6" rx="1.4" fill="#c9c3b4" transform="rotate(-24 10.4 10.9)"/>
+    <path d="M11.6 14.2L9.4 20.6M11.6 14.2l4.6 5.4M6.6 20.6h6" fill="none"/>
+    <circle cx="18.6" cy="6.6" r="1.6" fill="#f5e2a0"/>`,
+
+  fotocamera: `<rect x="2.6" y="7" width="18.8" height="12.4" rx="2" fill="#c9c3b4"/>
+    <path d="M8.6 7l1.6-2.4h3.6L15.4 7" fill="none"/>
+    <circle cx="12" cy="13.2" r="3.6" fill="#8fb3e0"/>`,
+
+  medaglia: `<path d="M8.4 2.8l3.6 6.4M15.6 2.8L12 9.2" fill="none"/>
+    <circle cx="12" cy="15.4" r="5.8" fill="#f2c14e"/>
+    <path d="M12 12.4l1 2.2 2.4.2-1.8 1.6.6 2.3-2.2-1.3-2.2 1.3.6-2.3-1.8-1.6 2.4-.2z" fill="none"/>`,
+
+  bersaglio: `<circle cx="12" cy="12" r="8.6" fill="#f5efdd"/>
+    <circle cx="12" cy="12" r="5.4" fill="none"/>
+    <circle cx="12" cy="12" r="2.2" fill="#e2685c"/>`,
+
+  nebulosa: `<path d="M4.6 13.6c-1.6-5.4 3.4-9.6 8.4-8.6 4.6 1 7 5.6 5.2 9-2 3.8-11.8 4.6-13.6-.4z" fill="#ab9fd8"/>
+    <circle cx="9.8" cy="11.4" r="1.4" fill="none"/><circle cx="14.6" cy="13.2" r="1" fill="none"/>`,
+
+  quaderno: `<rect x="4.4" y="3.4" width="15.2" height="17.2" rx="1.6" fill="#f5efdd"/>
+    <path d="M8 3.4v17.2M11 8h6M11 12h6M11 16h4" fill="none"/>`
+};
+
+// Restituisce il disegno richiesto, pronto da mettere dentro l'HTML
+function icona(id, dimensione = 22) {
+  const d = DISEGNI[id];
+  if (!d) return '';
+  return `<svg class="icona-disegnata" width="${dimensione}" height="${dimensione}" viewBox="0 0 24 24"` +
+    ` fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"` +
+    ` aria-hidden="true">${d}</svg>`;
+}
+
+// Pallino colorato: sostituisce il semaforo a emoji (verde/giallo/rosso)
+function pallino(colore, dimensione = 12) {
+  return `<span class="punto-categoria" style="background:${colore};width:${dimensione}px;height:${dimensione}px"></span>`;
+}
+
+// Il disegno della categoria di un evento (o una stellina, se non ce l'ha)
+function iconaCategoria(idCategoria, dimensione = 20) {
+  const cat = CATEGORIE[idCategoria];
+  return icona(cat ? cat.disegno : 'stella', dimensione);
+}
 
 // Stato corrente dei filtri di ricerca (testo libero + categoria selezionata)
 let filtroTesto = '';
@@ -267,7 +386,7 @@ function aggiungiEclissiSolari(t0, limite) {
           `vasta regione (fino a qualche migliaio di km) tutt'attorno alla fascia. Verifica se la tua zona vi rientra.`;
         linkMappa = {
           url: `https://www.google.com/maps?q=${ecl.latitude.toFixed(4)},${ecl.longitude.toFixed(4)}`,
-          testo: `🗺️ Punto di massima eclissi sulla mappa (${coord})`
+          testo: `Punto di massima eclissi sulla mappa (${coord})`
         };
       } else {
         // Eclissi parziale a livello globale: l'ombra centrale non tocca la Terra
@@ -414,7 +533,7 @@ function apriMappaEclissi(id) {
     return;
   }
 
-  if (titoloEl) titoloEl.textContent = `🗺️ Visibilità — ${evento.titolo} (${evento.dataTesto})`;
+  if (titoloEl) titoloEl.textContent = `Visibilità — ${evento.titolo} (${evento.dataTesto})`;
   modale.classList.remove('hidden');
 
   // Inizializza la mappa la prima volta
@@ -792,7 +911,7 @@ function popolaTendinaCategorie() {
   const select = document.getElementById('ev-categoria');
   if (!select) return;
   select.innerHTML = Object.keys(CATEGORIE).map(id =>
-    `<option value="${id}">${CATEGORIE[id].icona} ${CATEGORIE[id].nome}</option>`
+    `<option value="${id}">${CATEGORIE[id].nome}</option>`
   ).join('');
   select.value = 'personali';
 }
@@ -814,7 +933,7 @@ function inizializzaFormAggiungi() {
   const apriNuovo = () => {
     eventoInModifica = null;
     form.reset();
-    if (titoloModale) titoloModale.textContent = '➕ Nuovo Evento';
+    if (titoloModale) titoloModale.textContent = 'Nuovo evento';
     if (btnSalva) btnSalva.textContent = 'Salva evento';
     document.getElementById('ev-colore').value = '#3b82f6';
     document.getElementById('ev-categoria').value = 'personali';
@@ -829,7 +948,7 @@ function inizializzaFormAggiungi() {
 
     eventoInModifica = id;
     form.reset();
-    if (titoloModale) titoloModale.textContent = '✏️ Modifica Evento';
+    if (titoloModale) titoloModale.textContent = 'Modifica evento';
     if (btnSalva) btnSalva.textContent = 'Salva modifiche';
     document.getElementById('ev-titolo').value = evento.titolo;
     document.getElementById('ev-data').value = perInputDataOra(evento.dataObj);
@@ -851,7 +970,7 @@ function inizializzaFormAggiungi() {
     document.getElementById('ev-categoria').value = 'personali';
   };
 
-  // Il pulsante ✏️ delle schede dell'agenda apre il form in modifica
+  // Il pulsante “Modifica” delle schede dell'agenda apre il form in modifica
   window.apriModificaEvento = apriModifica;
 
   btnApri.addEventListener('click', apriNuovo);
@@ -982,11 +1101,11 @@ function inizializzaRicerca() {
   const contenitoreChip = document.getElementById('filtri-categorie');
 
   if (contenitoreChip) {
-    const chips = [{ id: 'tutti', nome: 'Tutti', icona: '✨' }]
+    const chips = [{ id: 'tutti', nome: 'Tutti', disegno: 'stella' }]
       .concat(Object.keys(CATEGORIE).map(id => ({ id, ...CATEGORIE[id] })));
 
     contenitoreChip.innerHTML = chips.map(c =>
-      `<button type="button" data-cat="${c.id}" class="chip-categoria">${c.icona} ${c.nome}</button>`
+      `<button type="button" data-cat="${c.id}" class="chip-categoria">${icona(c.disegno, 17)} ${c.nome}</button>`
     ).join('');
 
     contenitoreChip.querySelectorAll('.chip-categoria').forEach(btn => {
@@ -1020,7 +1139,7 @@ function inizializzaRicerca() {
 
 // Evidenzia il chip della categoria attiva
 function aggiornaStileChip() {
-  const base = 'chip-categoria px-3 py-1.5 rounded-full text-sm font-semibold transition-colors';
+  const base = 'chip-categoria inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border border-slate-600';
   const attivo = ' bg-blue-600 text-white shadow';
   const inattivo = ' bg-slate-700 text-slate-300 hover:bg-slate-600';
   document.querySelectorAll('.chip-categoria').forEach(btn => {
@@ -1051,17 +1170,17 @@ function costruisciAgenda() {
     const badgeManuale = evento.manuale
       ? '<span class="ml-2 align-middle text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">Manuale</span>'
       : '';
-    // Badge con la categoria dell'evento (es. 🌙 Fasi Lunari)
+    // Badge con la categoria dell'evento: disegno + nome (es. Fasi Lunari)
     const cat = CATEGORIE[evento.categoria];
     const badgeCategoria = cat
-      ? `<span class="align-middle text-xs bg-slate-700 text-slate-200 px-2 py-0.5 rounded-full">${cat.icona} ${cat.nome}</span>`
+      ? `<span class="inline-flex items-center gap-1.5 align-middle text-xs bg-slate-700 text-slate-200 px-2.5 py-1 rounded-full border border-slate-600">${icona(cat.disegno, 16)} ${cat.nome}</span>`
       : '';
     // Gli eventi manuali si possono modificare ed eliminare
     const bottoneModifica = evento.manuale
-      ? `<button onclick="apriModificaEvento('${evento.id}')" class="p-3 bg-slate-700 hover:bg-blue-600 rounded-full transition-colors flex-shrink-0" title="Modifica evento">✏️</button>`
+      ? `<button onclick="apriModificaEvento('${evento.id}')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-blue-600 rounded-full flex-shrink-0" title="Modifica evento">Modifica</button>`
       : '';
     const bottoneElimina = evento.manuale
-      ? `<button onclick="eliminaEventoManuale('${evento.id}')" class="p-3 bg-slate-700 hover:bg-red-600 rounded-full transition-colors flex-shrink-0" title="Elimina evento">🗑️</button>`
+      ? `<button onclick="eliminaEventoManuale('${evento.id}')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-red-600 rounded-full flex-shrink-0" title="Elimina evento">Elimina</button>`
       : '';
     // Link alla mappa (es. punto di massima eclissi), se presente
     const linkMappa = evento.linkMappa
@@ -1069,38 +1188,34 @@ function costruisciAgenda() {
       : '';
     // Pulsante mappa interattiva di visibilità (solo eclissi solari con fascia centrale)
     const bottoneMappa = evento.eclissi
-      ? `<li><button onclick="apriMappaEclissi('${evento.id}')" class="inline-flex items-center gap-1 text-blue-400 underline hover:text-blue-300 bg-transparent border-0 p-0 cursor-pointer">🌍 Mostra mappa di visibilità (linea centrale e area parziale)</button></li>`
+      ? `<li><button onclick="apriMappaEclissi('${evento.id}')" class="inline-flex items-center gap-1 text-blue-400 underline hover:text-blue-300 bg-transparent border-0 p-0 cursor-pointer">Mostra la mappa di visibilità (linea centrale e area parziale)</button></li>`
       : '';
     // Scorciatoia verso la vista Cielo, puntata sul protagonista dell'evento
     const bottoneCielo = evento.corpoCielo
-      ? `<li><button onclick="cercaNelCielo('${evento.corpoCielo}')" class="inline-flex items-center gap-1 text-blue-400 underline hover:text-blue-300 bg-transparent border-0 p-0 cursor-pointer">🔭 Trova ${skyNomeCorpo(evento.corpoCielo)} nel cielo adesso</button></li>`
+      ? `<li><button onclick="cercaNelCielo('${evento.corpoCielo}')" class="inline-flex items-center gap-1 text-blue-400 underline hover:text-blue-300 bg-transparent border-0 p-0 cursor-pointer">Trova ${skyNomeCorpo(evento.corpoCielo)} nel cielo adesso</button></li>`
       : '';
     card.innerHTML = `
-      <div class="absolute left-0 top-0 bottom-0 w-2" style="background-color: ${evento.colore}"></div>
+      <div class="barra-evento" style="background-color: ${evento.colore}"></div>
       <div class="flex justify-between items-start mb-4 pl-4">
         <div>
           <h2 class="text-2xl font-bold text-white">${evento.titolo}${badgeManuale}</h2>
-          <p class="text-blue-400 text-sm font-semibold mt-1">📅 ${evento.dataTesto}</p>
+          <p class="text-blue-400 text-sm font-semibold mt-1">${evento.dataTesto}</p>
           <div class="mt-2">${badgeCategoria}${badgeStrumentoHtml(evento)}</div>
         </div>
         <div class="flex gap-2 flex-shrink-0">
-          <button onclick="apriSimulazione('${evento.id}')" class="p-3 bg-slate-700 hover:bg-purple-600 rounded-full transition-colors" title="Simula l'evento: guarda cosa succede">
-            🎬
-          </button>
-          <button onclick="leggiEvento('${evento.id}', 'tasto')" class="p-3 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors" title="Ascolta le info">
-            🔊
-          </button>
+          <button onclick="apriSimulazione('${evento.id}')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-purple-600 rounded-full" title="Guarda cosa succede, passo per passo">Simula</button>
+          <button onclick="leggiEvento('${evento.id}', 'tasto')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-full" title="Leggi ad alta voce">Ascolta</button>
           ${bottoneModifica}
           ${bottoneElimina}
         </div>
       </div>
 
       <div class="space-y-3 text-slate-300 pl-4">
-        <p><strong>✨ Cosa succede:</strong> ${evento.spiegazione}</p>
+        <p><strong>Cosa succede:</strong> ${evento.spiegazione}</p>
         ${bloccoLocaleHtml(evento)}
         ${bloccoFotoHtml(evento)}
         <div class="bg-slate-900 p-4 rounded-xl mt-4 text-sm border border-slate-700">
-          <h3 class="font-bold text-white mb-2">🎒 Programma (Consigli)</h3>
+          <h3 class="font-bold text-white mb-2">Come prepararsi</h3>
           <ul class="space-y-2">
             <li><span class="text-blue-400">Portare:</span> ${evento.programma.cosaPortare}</li>
             <li><span class="text-blue-400">Dove:</span> ${evento.programma.doveVederlo}</li>
@@ -1135,10 +1250,13 @@ function inizializzaCalendario() {
       right: ''
     },
     buttonText: { today: 'Oggi' },
+    // Niente rettangoli pieni: un pallino colorato e il titolo, come su un'agenda di carta
+    eventDisplay: 'list-item',
+    displayEventTime: false,
     events: eventiPerGriglia(getEventiFiltrati()),
     eventClick: function(info) {
       // Se clicco su un evento nel calendario apro l'agenda sulla sua scheda.
-      // La voce NON parte da sola: si attiva solo col tasto 🔊 o con la notifica.
+      // La voce NON parte da sola: si attiva solo col tasto “Ascolta” o con la notifica.
       document.getElementById('btn-vista-agenda').click();
       setTimeout(() => {
         const card = document.querySelector(`article[data-evento-id="${info.event.id}"]`);
@@ -1164,8 +1282,8 @@ const VISTE = [
 
 // Mostra una sola vista alla volta e aggiorna lo stile dei pulsanti
 function mostraVista(nome) {
-  const attivo = "px-5 py-2 rounded-full font-semibold transition-colors bg-blue-600 hover:bg-blue-500 text-white shadow-lg";
-  const inattivo = "px-5 py-2 rounded-full font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white";
+  const attivo = "voce-menu attiva";
+  const inattivo = "voce-menu";
 
   VISTE.forEach(v => {
     const btn = document.getElementById(v.btn);
@@ -1210,7 +1328,7 @@ function gestisciTab() {
 
 // =====================================================================
 // 4. Lettura Vocale (TTS)
-//    La voce parte SOLO in due casi: quando si preme il tasto 🔊 di una
+//    La voce parte SOLO in due casi: quando si preme il tasto “Ascolta” di una
 //    scheda ("tasto") oppure quando scatta il promemoria ("notifica").
 //    Qualsiasi altra chiamata viene ignorata, così l'app non parla da sola.
 // =====================================================================
@@ -1330,10 +1448,8 @@ function controllaNotifiche() {
 }
 
 function mostraNotificaEvento(evento) {
-  const cat = CATEGORIE[evento.categoria];
-  const icona = cat ? cat.icona : '🔭';
   try {
-    const notifica = new Notification(`${icona} ${evento.titolo}`, {
+    const notifica = new Notification(evento.titolo, {
       body: `${evento.dataTesto}\n${evento.spiegazione || ''}`.trim(),
       icon: 'icon-192.png',
       badge: 'icon-192.png',
@@ -1355,7 +1471,7 @@ function mostraNotificaEvento(evento) {
   leggiEvento(evento.id, 'notifica');
 }
 
-// Aggiorna l'aspetto del pulsante 🔔 in base al permesso concesso
+// Aggiorna l'aspetto del pulsante “Avvisami” in base al permesso concesso
 function aggiornaPulsanteNotifiche() {
   const btn = document.getElementById('btn-notifiche');
   if (!btn || !('Notification' in window)) return;
@@ -1445,7 +1561,7 @@ function inizializzaInstallazione() {
       promptInstallazione = null;
       btn.classList.add('hidden');
     } else if (isIOS) {
-      alert('Per installare l\'app su iPhone/iPad:\n\n1. Tocca il pulsante Condividi ⬆️ in basso\n2. Scegli "Aggiungi a schermata Home"\n3. Conferma con "Aggiungi"');
+      alert('Per installare l\'app su iPhone/iPad:\n\n1. Tocca il pulsante Condividi in basso\n2. Scegli "Aggiungi a schermata Home"\n3. Conferma con "Aggiungi"');
     } else {
       alert('Per installare l\'app usa il menu del browser e scegli "Installa app" o "Aggiungi a schermata Home".');
     }
@@ -1473,15 +1589,15 @@ const CHIAVE_SKY_BUSSOLA = 'astrocalendario_bussola_offset';
 // Gli id sono i valori di Astronomy.Body (semplici stringhe): li scriviamo
 // direttamente così il file resta valido anche se la libreria non si carica.
 const SKY_CORPI = [
-  { id: 'Sun',     nome: 'Sole',     icona: '☀️', colore: '#fbbf24', tipo: 'sole' },
-  { id: 'Moon',    nome: 'Luna',     icona: '🌙', colore: '#e2e8f0', tipo: 'luna' },
-  { id: 'Mercury', nome: 'Mercurio', icona: '☿',  colore: '#cbd5e1', tipo: 'pianeta' },
-  { id: 'Venus',   nome: 'Venere',   icona: '♀',  colore: '#fde68a', tipo: 'pianeta' },
-  { id: 'Mars',    nome: 'Marte',    icona: '♂',  colore: '#f87171', tipo: 'pianeta' },
-  { id: 'Jupiter', nome: 'Giove',    icona: '♃',  colore: '#fcd34d', tipo: 'pianeta' },
-  { id: 'Saturn',  nome: 'Saturno',  icona: '♄',  colore: '#fcd34d', tipo: 'pianeta' },
-  { id: 'Uranus',  nome: 'Urano',    icona: '♅',  colore: '#67e8f9', tipo: 'pianeta' },
-  { id: 'Neptune', nome: 'Nettuno',  icona: '♆',  colore: '#93c5fd', tipo: 'pianeta' }
+  { id: 'Sun',     nome: 'Sole',     disegno: 'sole',     colore: '#fbbf24', tipo: 'sole' },
+  { id: 'Moon',    nome: 'Luna',     disegno: 'luna',     colore: '#e2e8f0', tipo: 'luna' },
+  { id: 'Mercury', nome: 'Mercurio', disegno: 'mercurio', colore: '#cbd5e1', tipo: 'pianeta' },
+  { id: 'Venus',   nome: 'Venere',   disegno: 'venere',   colore: '#fde68a', tipo: 'pianeta' },
+  { id: 'Mars',    nome: 'Marte',    disegno: 'marte',    colore: '#f87171', tipo: 'pianeta' },
+  { id: 'Jupiter', nome: 'Giove',    disegno: 'giove',    colore: '#fcd34d', tipo: 'pianeta' },
+  { id: 'Saturn',  nome: 'Saturno',  disegno: 'saturno',  colore: '#fcd34d', tipo: 'pianeta' },
+  { id: 'Uranus',  nome: 'Urano',    disegno: 'urano',    colore: '#67e8f9', tipo: 'pianeta' },
+  { id: 'Neptune', nome: 'Nettuno',  disegno: 'nettuno',  colore: '#93c5fd', tipo: 'pianeta' }
 ];
 
 // Otto stelle luminose usate come punti di riferimento per orientarsi.
@@ -1503,7 +1619,7 @@ const SKY_ASTRI = SKY_CORPI.concat(
   SKY_STELLE.map((s, i) => ({
     id: `Star${i + 1}`,
     nome: s.nome,
-    icona: '✦',
+    disegno: 'stella',
     colore: s.colore,
     tipo: 'stella',
     mag: s.mag
@@ -2277,14 +2393,14 @@ function skyAggiornaStato() {
   if (!el) return;
   const righe = [];
   if (sky.posizione) {
-    righe.push(`📍 ${formattaCoordinate(sky.posizione.lat, sky.posizione.lon)}`);
+    righe.push(`${formattaCoordinate(sky.posizione.lat, sky.posizione.lon)}`);
   } else {
-    righe.push('📍 posizione mancante');
+    righe.push('posizione mancante');
   }
   if (sky.sensori) {
-    righe.push(sky.assoluto ? '🧭 bussola attiva' : '🧭 bussola da calibrare');
+    righe.push(sky.assoluto ? 'bussola attiva' : 'bussola da calibrare');
   } else {
-    righe.push('✋ modalità manuale');
+    righe.push('modalità manuale');
   }
   el.innerHTML = righe.join('<br>');
 }
@@ -2298,7 +2414,7 @@ function skyCostruisciElenco() {
   const cont = document.getElementById('skymap-oggetti');
   if (!cont || cont.dataset.pronto === 'si') return;
   cont.innerHTML = SKY_ASTRI.map(a =>
-    `<button type="button" data-astro="${a.id}" class="chip-astro">${a.icona} ${a.nome} <span class="sky-alt text-slate-400"></span></button>`
+    `<button type="button" data-astro="${a.id}" class="chip-astro">${icona(a.disegno, 17)} ${a.nome} <span class="sky-alt text-slate-400"></span></button>`
   ).join('');
   cont.querySelectorAll('.chip-astro').forEach(btn => {
     btn.addEventListener('click', () => skyImpostaTarget(btn.dataset.astro));
@@ -2308,7 +2424,7 @@ function skyCostruisciElenco() {
 }
 
 function skyAggiornaStileElenco() {
-  const base = 'chip-astro px-3 py-1.5 rounded-full text-sm font-semibold transition-colors';
+  const base = 'chip-astro inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border border-slate-600';
   document.querySelectorAll('.chip-astro').forEach(btn => {
     const o = sky.oggetti.find(x => x.id === btn.dataset.astro);
     const visibile = o && o.alt > 0;
@@ -2375,11 +2491,11 @@ function skyAggiornaScheda() {
     ? 'È sopra l\'orizzonte: segui la freccia azzurra muovendo il telefono.'
     : 'In questo momento è sotto l\'orizzonte: guarda gli orari qui sopra per sapere quando torna visibile.';
   const avviso = o.id === 'Sun'
-    ? '<p class="mt-2 text-amber-400">⚠️ Non guardare mai il Sole direttamente, né a occhio nudo né con binocolo o telescopio.</p>'
+    ? '<p class="mt-2 text-amber-400">Attenzione: non guardare mai il Sole direttamente, né a occhio nudo né con binocolo o telescopio.</p>'
     : '';
 
   box.innerHTML = `
-    <h3 class="font-bold text-white text-base mb-2">${o.icona} ${o.nome}</h3>
+    <h3 class="font-bold text-white text-base mb-2 flex items-center gap-2">${icona(o.disegno, 22)} ${o.nome}</h3>
     <ul class="space-y-1">${dettagli.join('')}</ul>
     <p class="mt-2 text-slate-400">${consiglio}</p>${avviso}`;
 }
@@ -2399,7 +2515,7 @@ async function skyAvvia(conSensori) {
   }
 
   // La geolocalizzazione può metterci qualche secondo: intanto lo diciamo
-  if (!sky.observer) skyAvviso('posizione', '📍 Sto cercando la tua posizione…');
+  if (!sky.observer) skyAvviso('posizione', 'Sto cercando la tua posizione…');
   const avutaPosizione = await skyRichiediPosizione();
   if (avutaPosizione || sky.observer || skyCaricaPosizioneSalvata()) {
     skyAvviso('posizione', '');
@@ -2553,7 +2669,7 @@ function inizializzaSkymap() {
   collega('skymap-cal-meno', () => skyImpostaOffsetBussola(sky.offsetBussola - 5));
   collega('skymap-cal-piu', () => skyImpostaOffsetBussola(sky.offsetBussola + 5));
   collega('skymap-btn-posizione', async () => {
-    skyAvviso('posizione', '📍 Sto cercando la tua posizione…');
+    skyAvviso('posizione', 'Sto cercando la tua posizione…');
     const ok = await skyRichiediPosizione();
     skyAvviso('posizione', ok ? '' : 'Non riesco a leggere la posizione: controlla i permessi di localizzazione del browser.');
     skyAggiornaOggetti(true);
@@ -2564,7 +2680,7 @@ function inizializzaSkymap() {
     const btn = document.getElementById('skymap-btn-notte');
     if (!cont) return;
     const attiva = cont.classList.toggle('modalita-notte');
-    if (btn) btn.textContent = attiva ? '⚪ Colori normali' : '🔴 Modalità notte';
+    if (btn) btn.textContent = attiva ? 'Colori normali' : 'Modalità notte';
   });
 
   collega('skymap-btn-schermo', () => {
@@ -2888,7 +3004,7 @@ function simCostruisciScena(ev) {
     const geo = simGeometriaEclissiSolare(dati);
     const semi = geo.semiDurata * 1.12 * SIM_MIN;
     return { tipo, dati, geo, inizio: d - semi, fine: d + semi, durata: 26,
-      nota: 'La scena mostra l’eclissi come si vede dal punto migliore. ⚠️ Nella realtà il Sole va guardato solo con filtri certificati.' };
+      nota: 'La scena mostra l’eclissi come si vede dal punto migliore. Attenzione: nella realtà il Sole va guardato solo con filtri certificati.' };
   }
   if (tipo === 'faseLunare') {
     const semi = 3.5 * SIM_GIORNO;
@@ -3016,10 +3132,10 @@ function simVisibilitaCorpo(corpo, tempo, nome) {
     const hor = Astronomy.Horizon(tempo, o.obs, equ.ra, equ.dec, 'normal');
     const dove = `${o.lat.toFixed(1)}°, ${o.lon.toFixed(1)}°`;
     if (hor.altitude > 0) {
-      return `<p>📍 Dalla tua posizione (${dove}) ${nome} è <strong>sopra l’orizzonte</strong>, ` +
+      return `<p>Dalla tua posizione (${dove}) ${nome} è <strong>sopra l’orizzonte</strong>, ` +
              `a ${hor.altitude.toFixed(0)}° di altezza: l’evento è visibile.</p>`;
     }
-    return `<p>📍 Dalla tua posizione (${dove}) ${nome} è <strong>sotto l’orizzonte</strong> ` +
+    return `<p>Dalla tua posizione (${dove}) ${nome} è <strong>sotto l’orizzonte</strong> ` +
            `(${hor.altitude.toFixed(0)}°): da qui questa fase non si vede.</p>`;
   } catch (e) {
     return '';
@@ -3114,8 +3230,8 @@ function simScenaEclissiSolare(ctx, tempo) {
     `<p>Sole oscurato: <strong>${(obsc * 100).toFixed(1)}%</strong> · luce ambientale residua ≈ <strong>${(luce * 100).toFixed(0)}%</strong></p>`,
     `<p>${minuti < 0 ? 'Mancano' : 'Sono passati'} <strong>${simDurataTesto(minuti)}</strong> ${minuti < 0 ? 'al' : 'dal'} massimo.</p>`,
     sim.scena.dati.lat != null
-      ? `<p>🌍 Scena vista dal punto di massima eclissi (${formattaCoordinate(sim.scena.dati.lat, sim.scena.dati.lon)}). Altrove il Sole viene coperto meno.</p>`
-      : '<p>🌍 Eclissi parziale ovunque: non esiste un punto di totalità sulla Terra.</p>'
+      ? `<p>Scena vista dal punto di massima eclissi (${formattaCoordinate(sim.scena.dati.lat, sim.scena.dati.lon)}). Altrove il Sole viene coperto meno.</p>`
+      : '<p>Eclissi parziale ovunque: non esiste un punto di totalità sulla Terra.</p>'
   ];
 }
 
@@ -3357,7 +3473,7 @@ function simScenaStagione(ctx, tempo) {
     `<p><strong>Declinazione del Sole: ${dec >= 0 ? '+' : ''}${dec.toFixed(2)}°</strong> — è la latitudine dove il Sole sta esattamente allo zenit a mezzogiorno.</p>`,
     `<p>A ${o.lat.toFixed(1)}° di latitudine il Sole resta sopra l’orizzonte <strong>${Math.floor(Math.round(oreLuce * 60) / 60)}h ${String(Math.round(oreLuce * 60) % 60).padStart(2, '0')}m</strong> ` +
     `e a mezzogiorno arriva a <strong>${altMezzogiorno.toFixed(0)}°</strong> di altezza.</p>`,
-    `<p>${Math.abs(giorni) < 0.5 ? '🎯 Siamo nell’istante dell’evento.' :
+    `<p>${Math.abs(giorni) < 0.5 ? 'Siamo nell’istante dell’evento.' :
       `${giorni < 0 ? 'Mancano' : 'Sono passati'} <strong>${Math.abs(giorni).toFixed(0)} giorni</strong> ${giorni < 0 ? 'all’' : 'dall’'}evento.`}</p>`
   ];
 }
@@ -3559,11 +3675,11 @@ function simScenaSciame(ctx, tempo, dtReale) {
     `<p>Meteore attese: <strong>${Math.round(tasso)} all’ora</strong> ` +
     `(su ${dati.zhr || 20}/ora teoriche con radiante allo zenit e cielo perfetto).</p>`
   ];
-  if (disturboSole > 0) righe.push('<p>☀️ C’è ancora luce crepuscolare: le meteore deboli restano invisibili.</p>');
+  if (disturboSole > 0) righe.push('<p>C’è ancora luce crepuscolare: le meteore deboli restano invisibili.</p>');
   if (luna && luna.alt > 0 && (luna.frazione || 0) > 0.25) {
-    righe.push(`<p>🌙 La Luna è alta ${luna.alt.toFixed(0)}° e illuminata al ${((luna.frazione || 0) * 100).toFixed(0)}%: il suo chiarore riduce il conteggio.</p>`);
+    righe.push(`<p>${icona('luna', 16)} La Luna è alta ${luna.alt.toFixed(0)}° e illuminata al ${((luna.frazione || 0) * 100).toFixed(0)}%: il suo chiarore riduce il conteggio.</p>`);
   } else if (radiante.alt > 0) {
-    righe.push('<p>🌑 Niente disturbo lunare: condizioni buone, se il cielo è scuro.</p>');
+    righe.push('<p>Niente disturbo lunare: condizioni buone, se il cielo è scuro.</p>');
   }
   return righe;
 }
@@ -3663,7 +3779,7 @@ function simScenaElongazione(ctx, tempo) {
   return [
     `<p><strong>Elongazione: ${elong != null ? elong.toFixed(1) + '°' : '—'}</strong> — è l’angolo fra ${dati.nome} e il Sole visto dalla Terra. Più è grande, più il pianeta si stacca dalla luce del Sole.</p>`,
     `<p>Disco illuminato al <strong>${(frazione * 100).toFixed(0)}%</strong>${mag != null ? ` · magnitudine <strong>${mag.toFixed(1)}</strong>` : ''} · visibile ${quando}.</p>`,
-    `<p>${Math.abs(giorni) < 0.5 ? '🎯 Siamo nel giorno della massima elongazione.' :
+    `<p>${Math.abs(giorni) < 0.5 ? 'Siamo nel giorno della massima elongazione.' :
       `${giorni < 0 ? 'Mancano' : 'Sono passati'} <strong>${Math.abs(giorni).toFixed(0)} giorni</strong> ${giorni < 0 ? 'al' : 'dal'} massimo.`}</p>`
   ];
 }
@@ -3692,20 +3808,20 @@ function simScenaCielo(ctx, tempo) {
     .map(c => c.nome);
 
   let condizione;
-  if (altSole > 0) condizione = `☀️ È giorno: il Sole è a ${altSole.toFixed(0)}° sull’orizzonte.`;
-  else if (altSole > -6) condizione = '🌆 Crepuscolo civile: si vedono solo gli astri più luminosi.';
-  else if (altSole > -18) condizione = '🌌 Crepuscolo astronomico: il cielo si sta facendo scuro.';
-  else condizione = '🌑 Notte piena: cielo completamente buio.';
+  if (altSole > 0) condizione = `È giorno: il Sole è a ${altSole.toFixed(0)}° sull’orizzonte.`;
+  else if (altSole > -6) condizione = 'Crepuscolo civile: si vedono solo gli astri più luminosi.';
+  else if (altSole > -18) condizione = 'Crepuscolo astronomico: il cielo si sta facendo scuro.';
+  else condizione = 'Notte piena: cielo completamente buio.';
 
   return [
     `<p><strong>${simOraTesto(tempo)}</strong> — vista da ${o.lat.toFixed(1)}°, ${o.lon.toFixed(1)}°${o.reale ? '' : ' (posizione predefinita)'}</p>`,
     `<p>${condizione}</p>`,
     luna && luna.alt > 0
-      ? `<p>🌙 La Luna è alta ${luna.alt.toFixed(0)}°, illuminata al ${((luna.frazione || 0) * 100).toFixed(0)}%.</p>`
-      : '<p>🌙 La Luna è sotto l’orizzonte.</p>',
+      ? `<p>${icona('luna', 16)} La Luna è alta ${luna.alt.toFixed(0)}°, illuminata al ${((luna.frazione || 0) * 100).toFixed(0)}%.</p>`
+      : `<p>${icona('luna', 16)} La Luna è sotto l’orizzonte.</p>`,
     pianeti.length
-      ? `<p>🪐 Pianeti visibili a occhio nudo: <strong>${pianeti.join(', ')}</strong>.</p>`
-      : '<p>🪐 Nessun pianeta visibile a occhio nudo in questo momento.</p>'
+      ? `<p>${icona('saturno', 16)} Pianeti visibili a occhio nudo: <strong>${pianeti.join(', ')}</strong>.</p>`
+      : `<p>${icona('saturno', 16)} Nessun pianeta visibile a occhio nudo in questo momento.</p>`
   ];
 }
 
@@ -3781,7 +3897,7 @@ function simCiclo(ts) {
 
 function simAggiornaPulsantePlay() {
   const btn = document.getElementById('sim-btn-play');
-  if (btn) btn.textContent = sim.riproduce ? '⏸ Pausa' : '▶ Riproduci';
+  if (btn) btn.textContent = sim.riproduce ? 'Pausa' : 'Riproduci';
 }
 
 // Apre la simulazione dell'evento indicato
@@ -3801,7 +3917,7 @@ window.apriSimulazione = (id) => {
   simGeneraStelle(160);
 
   const titolo = document.getElementById('sim-titolo');
-  if (titolo) titolo.textContent = `🎬 ${evento.titolo} — ${evento.dataTesto}`;
+  if (titolo) titolo.textContent = `${evento.titolo} — ${evento.dataTesto}`;
   const nota = document.getElementById('sim-nota');
   if (nota) {
     const o = simOsservatore();
@@ -3889,12 +4005,12 @@ function inizializzaSimulazione() {
 
 // Corpi messi a confronto fra loro (la Luna è la protagonista più frequente)
 const CONG_CORPI = [
-  { id: 'Moon',    nome: 'Luna',     icona: '🌙' },
-  { id: 'Mercury', nome: 'Mercurio', icona: '☿' },
-  { id: 'Venus',   nome: 'Venere',   icona: '♀' },
-  { id: 'Mars',    nome: 'Marte',    icona: '♂' },
-  { id: 'Jupiter', nome: 'Giove',    icona: '♃' },
-  { id: 'Saturn',  nome: 'Saturno',  icona: '♄' }
+  { id: 'Moon',    nome: 'Luna',     disegno: 'luna' },
+  { id: 'Mercury', nome: 'Mercurio', disegno: 'mercurio' },
+  { id: 'Venus',   nome: 'Venere',   disegno: 'venere' },
+  { id: 'Mars',    nome: 'Marte',    disegno: 'marte' },
+  { id: 'Jupiter', nome: 'Giove',    disegno: 'giove' },
+  { id: 'Saturn',  nome: 'Saturno',  disegno: 'saturno' }
 ];
 
 // Quanto lontano nel tempo cercare le congiunzioni: la scansione è giornaliera
@@ -4436,7 +4552,7 @@ function indiceOsservabilita(evento) {
       punteggio -= 10;
       motivi.push(`non al momento del picco, ma verso le ${oraBreve(quando)}`);
     } else if (locale.alt < 0) {
-      return { punteggio: 0, semaforo: '🔴', motivi: ['non visibile da qui: sotto l\'orizzonte'], nuvole: null, quando: null };
+      return { punteggio: 0, semaforo: pallino('#e2685c'), motivi: ['non visibile da qui: sotto l\'orizzonte'], nuvole: null, quando: null };
     }
 
     if (altezza !== null && altezza < 15) {
@@ -4473,7 +4589,7 @@ function indiceOsservabilita(evento) {
   }
 
   punteggio = Math.max(0, Math.min(100, punteggio));
-  const semaforo = punteggio >= 70 ? '🟢' : punteggio >= 40 ? '🟡' : '🔴';
+  const semaforo = pallino(punteggio >= 70 ? '#7fb069' : punteggio >= 40 ? '#eab54a' : '#e2685c');
   return {
     punteggio, semaforo, motivi,
     nuvole: previsione ? previsione.nuvole : null,
@@ -4489,9 +4605,9 @@ function indiceOsservabilita(evento) {
 // =====================================================================
 
 const STRUMENTI = {
-  occhio:     { nome: 'A occhio nudo', icona: '👁️', livello: 0 },
-  binocolo:   { nome: 'Con binocolo',  icona: '🔭', livello: 1 },
-  telescopio: { nome: 'Con telescopio', icona: '🔬', livello: 2 }
+  occhio:     { nome: 'A occhio nudo',  disegno: 'occhio',     livello: 0 },
+  binocolo:   { nome: 'Con binocolo',   disegno: 'binocolo',   livello: 1 },
+  telescopio: { nome: 'Con telescopio', disegno: 'telescopio', livello: 2 }
 };
 
 let filtroStrumento = 'tutti';
@@ -4682,7 +4798,7 @@ async function aggiornaPassaggiIss(forza) {
   const luogo = luogoCorrente();
 
   if (!luogo) {
-    if (box) box.innerHTML = '<p class="text-slate-400">Serve la tua posizione: la ISS passa sopra un punto preciso della Terra. Premi 📍 Posizione qui sopra.</p>';
+    if (box) box.innerHTML = '<p class="text-slate-400">Serve la tua posizione: la ISS passa sopra un punto preciso della Terra. Premi “Dove sono” qui sopra.</p>';
     return;
   }
   if (typeof satellite === 'undefined') {
@@ -4732,7 +4848,7 @@ function mostraPassaggiIss(tle) {
     return `
       <div class="bg-slate-900 p-3 rounded-xl border border-slate-700">
         <div class="flex justify-between items-baseline gap-2 flex-wrap">
-          <span class="font-bold text-white">🛰️ ${dataOraBreve(p.inizio)}</span>
+          <span class="font-bold text-white inline-flex items-center gap-2">${icona('satellite', 18)} ${dataOraBreve(p.inizio)}</span>
           <span class="text-xs text-slate-400">${p.durataMin} min · fino a ${Math.round(p.elevazioneMax)}° · ${p.distanzaMin} km</span>
         </div>
         <p class="text-sm text-slate-300 mt-1">
@@ -4753,12 +4869,12 @@ function mostraPassaggiIss(tle) {
 // Pianeti che vale la pena cercare stanotte (Urano e Nettuno restano fuori:
 // senza telescopio non si distinguono da una stella qualsiasi)
 const STASERA_CORPI = [
-  { id: 'Moon',    nome: 'Luna',     icona: '🌙' },
-  { id: 'Mercury', nome: 'Mercurio', icona: '☿' },
-  { id: 'Venus',   nome: 'Venere',   icona: '♀' },
-  { id: 'Mars',    nome: 'Marte',    icona: '♂' },
-  { id: 'Jupiter', nome: 'Giove',    icona: '♃' },
-  { id: 'Saturn',  nome: 'Saturno',  icona: '♄' }
+  { id: 'Moon',    nome: 'Luna',     disegno: 'luna' },
+  { id: 'Mercury', nome: 'Mercurio', disegno: 'mercurio' },
+  { id: 'Venus',   nome: 'Venere',   disegno: 'venere' },
+  { id: 'Mars',    nome: 'Marte',    disegno: 'marte' },
+  { id: 'Jupiter', nome: 'Giove',    disegno: 'giove' },
+  { id: 'Saturn',  nome: 'Saturno',  disegno: 'saturno' }
 ];
 
 function schedaRiepilogo(titolo, valore, dettaglio) {
@@ -4790,8 +4906,8 @@ function costruisciStaseraRiepilogo() {
   if (!luogo) {
     box.innerHTML = `
       <div class="md:col-span-3 bg-slate-900 p-4 rounded-xl border border-amber-800">
-        <p class="text-amber-400 font-semibold">📍 Manca la tua posizione</p>
-        <p class="text-sm text-slate-300 mt-1">Senza coordinate non posso dirti a che ora fa buio, cosa sorge e cosa tramonta. Premi “📍 Posizione” qui sopra: resta salvata solo su questo dispositivo.</p>
+        <p class="text-amber-400 font-semibold">Manca la tua posizione</p>
+        <p class="text-sm text-slate-300 mt-1">Senza coordinate non posso dirti a che ora fa buio, cosa sorge e cosa tramonta. Premi “Dove sono” qui sopra: resta salvata solo su questo dispositivo.</p>
       </div>`;
     return;
   }
@@ -4808,9 +4924,9 @@ function costruisciStaseraRiepilogo() {
     const dettaglio = buio.buioInizio
       ? `Tramonto ${oraBreve(buio.tramonto)} · alba ${oraBreve(buio.alba)}`
       : `Il Sole non scende mai a −18°: crepuscolo per tutta la notte. Tramonto ${oraBreve(buio.tramonto)}.`;
-    schede.push(schedaRiepilogo('🌇 Buio astronomico', finestra, dettaglio));
+    schede.push(schedaRiepilogo('Buio astronomico', finestra, dettaglio));
   } else {
-    schede.push(schedaRiepilogo('🌇 Buio astronomico', 'non calcolabile', 'Alle tue latitudini il Sole potrebbe non tramontare affatto.'));
+    schede.push(schedaRiepilogo('Buio astronomico', 'non calcolabile', 'Alle tue latitudini il Sole potrebbe non tramontare affatto.'));
   }
 
   // 2. Luna: quanto disturba e quando
@@ -4829,7 +4945,7 @@ function costruisciStaseraRiepilogo() {
       `Sorge ${oraBreve(orari.sorge)} · tramonta ${oraBreve(orari.tramonta)}. ${disturbo}.`
     ));
   } catch (e) {
-    schede.push(schedaRiepilogo('🌙 Luna', 'dati non disponibili', ''));
+    schede.push(schedaRiepilogo('Luna', 'dati non disponibili', ''));
   }
 
   // 3. Prossimo evento del calendario
@@ -4838,7 +4954,7 @@ function costruisciStaseraRiepilogo() {
   if (prossimo) {
     const fra = Math.round((prossimo.dataObj - Date.now()) / 3600000);
     const quando = fra < 48 ? `fra ${fra} ore` : `fra ${Math.round(fra / 24)} giorni`;
-    schede.push(schedaRiepilogo('📆 Prossimo evento', prossimo.titolo, `${quando} · ${prossimo.dataTesto}`));
+    schede.push(schedaRiepilogo('Prossimo evento', prossimo.titolo, `${quando} · ${prossimo.dataTesto}`));
   }
 
   box.innerHTML = schede.join('');
@@ -4869,7 +4985,7 @@ async function costruisciStaseraMeteo() {
 
   const media = Math.round(ore.reduce((s, o) => s + (o.nuvole || 0), 0) / ore.length);
   const migliore = ore.reduce((a, b) => ((b.nuvole ?? 100) < (a.nuvole ?? 100) ? b : a), ore[0]);
-  const semaforo = media <= 25 ? '🟢' : media <= 60 ? '🟡' : '🔴';
+  const semaforo = pallino(media <= 25 ? '#7fb069' : media <= 60 ? '#eab54a' : '#e2685c');
   const vecchio = Math.round((Date.now() - meteo.quando) / 60000);
   const notaVecchio = vecchio > 90 ? ` · previsione di ${vecchio > 1440 ? Math.round(vecchio / 1440) + ' giorni' : Math.round(vecchio / 60) + ' ore'} fa` : '';
 
@@ -4928,7 +5044,7 @@ function costruisciStaseraPianeti() {
   const html = visibili.map(r => `
     <div class="flex items-center justify-between gap-3 bg-slate-900 p-3 rounded-xl border border-slate-700">
       <div class="min-w-0">
-        <p class="font-bold text-white">${r.c.icona} ${r.c.nome}
+        <p class="font-bold text-white flex items-center gap-2">${icona(r.c.disegno, 24)} ${r.c.nome}
           <span class="text-xs font-normal text-slate-400">${r.mag !== null ? `mag ${r.mag.toFixed(1)}` : ''}</span>
         </p>
         <p class="text-xs text-slate-400 mt-0.5">
@@ -4937,7 +5053,7 @@ function costruisciStaseraPianeti() {
           ${r.orari && r.orari.tramonta ? ` · tramonta ${oraBreve(r.orari.tramonta)}` : ''}
         </p>
       </div>
-      <button onclick="cercaNelCielo('${r.c.id}')" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-blue-600 text-white font-semibold flex-shrink-0" title="Trovalo nel cielo">🔭 Trova</button>
+      <button onclick="cercaNelCielo('${r.c.id}')" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-blue-600 text-white font-semibold flex-shrink-0" title="Trovalo nel cielo">Trova</button>
     </div>`).join('');
 
   const htmlNascosti = nascosti.length
@@ -4971,7 +5087,7 @@ function costruisciStaseraProssimi() {
     return `
       <button onclick="vaiAllEvento('${ev.id}')" class="text-left bg-slate-900 p-3 rounded-xl border border-slate-700 hover:border-blue-500 transition-colors w-full">
         <div class="flex justify-between items-baseline gap-2 flex-wrap">
-          <span class="font-bold text-white">${cat ? cat.icona : '✨'} ${ev.titolo}</span>
+          <span class="font-bold text-white inline-flex items-center gap-2">${iconaCategoria(ev.categoria, 18)} ${ev.titolo}</span>
           <span class="text-xs text-slate-400">${semaforo}</span>
         </div>
         <p class="text-xs text-slate-400 mt-1">${ev.dataTesto}${motivo ? ` · ${motivo}` : ''}</p>
@@ -4992,11 +5108,11 @@ function inizializzaStasera() {
   const btnPos = document.getElementById('btn-stasera-posizione');
   if (btnPos) {
     btnPos.addEventListener('click', async () => {
-      btnPos.textContent = '📍 Cerco…';
+      btnPos.textContent = 'Cerco…';
       const ok = await skyRichiediPosizione();
-      btnPos.textContent = '📍 Posizione';
+      btnPos.textContent = 'Dove sono';
       if (!ok && !luogoCorrente()) {
-        alert('Non riesco a leggere la posizione. Controlla i permessi del browser, oppure inseriscila a mano da ⚙️ Impostazioni.');
+        alert('Non riesco a leggere la posizione. Controlla i permessi del browser, oppure inseriscila a mano dalle Impostazioni.');
       }
       await caricaMeteo(true);
       costruisciStasera();
@@ -5046,26 +5162,26 @@ function vociDiario() {
 
 // Traguardi: si sbloccano da soli guardando il cielo, non premendo tasti
 const TRAGUARDI = [
-  { id: 'primo', nome: 'Prima luce', icona: '🌟', desc: 'La tua prima osservazione registrata',
+  { id: 'primo', nome: 'Prima luce', disegno: 'stella', desc: 'La tua prima osservazione registrata',
     ok: v => v.length >= 1 },
-  { id: 'cinque', nome: 'Osservatore assiduo', icona: '🔭', desc: 'Cinque osservazioni nel diario',
+  { id: 'cinque', nome: 'Osservatore assiduo', disegno: 'binocolo', desc: 'Cinque osservazioni nel diario',
     ok: v => v.length >= 5 },
-  { id: 'venti', nome: 'Veterano del cielo', icona: '🏅', desc: 'Venti osservazioni nel diario',
+  { id: 'venti', nome: 'Veterano del cielo', disegno: 'medaglia', desc: 'Venti osservazioni nel diario',
     ok: v => v.length >= 20 },
-  { id: 'eclissi', nome: 'Cacciatore di eclissi', icona: '🌑', desc: 'Hai visto un\'eclissi',
+  { id: 'eclissi', nome: 'Cacciatore di eclissi', disegno: 'eclissi', desc: 'Hai visto un\'eclissi',
     ok: v => v.some(x => x.categoria === 'eclissi') },
-  { id: 'meteore', nome: 'Desiderio espresso', icona: '☄️', desc: 'Hai visto uno sciame meteorico',
+  { id: 'meteore', nome: 'Desiderio espresso', disegno: 'meteora', desc: 'Hai visto uno sciame meteorico',
     ok: v => v.some(x => x.categoria === 'meteore') },
-  { id: 'fasi', nome: 'Ciclo completo', icona: '🌗', desc: 'Tutte e quattro le fasi lunari',
+  { id: 'fasi', nome: 'Ciclo completo', disegno: 'lunapiena', desc: 'Tutte e quattro le fasi lunari',
     ok: v => ['Luna Nuova', 'Primo Quarto', 'Luna Piena', 'Ultimo Quarto']
       .every(f => v.some(x => (x.titolo || '').includes(f))) },
-  { id: 'pianeti', nome: 'Giro dei pianeti', icona: '🪐', desc: 'Tre osservazioni di pianeti',
+  { id: 'pianeti', nome: 'Giro dei pianeti', disegno: 'saturno', desc: 'Tre osservazioni di pianeti',
     ok: v => v.filter(x => x.categoria === 'pianeti' || x.categoria === 'congiunzioni').length >= 3 },
-  { id: 'categorie', nome: 'Collezionista', icona: '🎯', desc: 'Almeno un evento per quattro categorie diverse',
+  { id: 'categorie', nome: 'Collezionista', disegno: 'bersaglio', desc: 'Almeno un evento per quattro categorie diverse',
     ok: v => new Set(v.map(x => x.categoria).filter(Boolean)).size >= 4 },
-  { id: 'telescopio', nome: 'Occhio potenziato', icona: '🔬', desc: 'Un\'osservazione fatta col telescopio',
+  { id: 'telescopio', nome: 'Occhio potenziato', disegno: 'telescopio', desc: 'Un\'osservazione fatta col telescopio',
     ok: v => v.some(x => x.strumento === 'telescopio') },
-  { id: 'notturno', nome: 'Nottambulo', icona: '🦉', desc: 'Un\'osservazione registrata fra l\'una e le cinque del mattino',
+  { id: 'notturno', nome: 'Nottambulo', disegno: 'luna', desc: 'Un\'osservazione registrata fra l\'una e le cinque del mattino',
     ok: v => v.some(x => { const d = new Date(x.dataEvento || x.quando); return d.getHours() >= 1 && d.getHours() < 5; }) }
 ];
 
@@ -5100,7 +5216,7 @@ function disegnaStelleDiario() {
   const box = document.getElementById('diario-stelle');
   if (!box) return;
   box.innerHTML = [1, 2, 3, 4, 5].map(n =>
-    `<button type="button" data-stella="${n}" class="leading-none transition-transform hover:scale-110" title="${n} su 5">${n <= diarioStelleScelte ? '★' : '☆'}</button>`
+    `<button type="button" data-stella="${n}" class="senza-cornice leading-none transition-transform hover:scale-110" title="${n} su 5">${n <= diarioStelleScelte ? '★' : '☆'}</button>`
   ).join('');
   box.querySelectorAll('button').forEach(b => {
     b.style.color = '#facc15';
@@ -5168,39 +5284,39 @@ function costruisciDiario() {
       ? (voci.reduce((s, v) => s + (v.stelle || 0), 0) / voci.filter(v => v.stelle).length).toFixed(1)
       : '—';
     statistiche.innerHTML = [
-      schedaRiepilogo('👁️ Osservazioni', String(voci.length), voci.length ? `L'ultima: ${dataOraBreve(new Date(voci[0].dataEvento || voci[0].quando))}` : 'Il diario è ancora vuoto'),
-      schedaRiepilogo('🗂️ Categorie esplorate', `${categorie} su ${Object.keys(CATEGORIE).length}`, 'Fasi lunari, eclissi, meteore, pianeti…'),
-      schedaRiepilogo('⭐ Voto medio', String(media), 'Quanto ti sono piaciute le serate')
+      schedaRiepilogo('Osservazioni', String(voci.length), voci.length ? `L'ultima: ${dataOraBreve(new Date(voci[0].dataEvento || voci[0].quando))}` : 'Il diario è ancora vuoto'),
+      schedaRiepilogo('Categorie esplorate', `${categorie} su ${Object.keys(CATEGORIE).length}`, 'Fasi lunari, eclissi, meteore, pianeti…'),
+      schedaRiepilogo('Voto medio', String(media), 'Quanto ti sono piaciute le serate')
     ].join('');
   }
 
   if (elencoBadge) {
     elencoBadge.innerHTML = traguardiRaggiunti().map(t => `
-      <span class="px-3 py-1.5 rounded-full text-sm font-semibold ${t.fatto ? 'bg-amber-500/20 text-amber-300 border border-amber-600' : 'bg-slate-900 text-slate-600 border border-slate-700'}" title="${t.desc}">
-        ${t.fatto ? t.icona : '🔒'} ${t.nome}
+      <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border border-slate-600 ${t.fatto ? 'bg-slate-700 text-white' : 'bg-slate-900 text-slate-500 opacity-60'}" title="${t.desc}">
+        ${icona(t.disegno, 18)} ${t.nome}
       </span>`).join('');
   }
 
   if (elenco) {
     if (!voci.length) {
-      elenco.innerHTML = '<p class="text-slate-400">Nessuna osservazione registrata. Nell\'agenda, sotto ogni evento, trovi il pulsante “✅ Visto!”.</p>';
+      elenco.innerHTML = '<p class="text-slate-400">Nessuna osservazione registrata. Nell\'agenda, sotto ogni evento, trovi il pulsante “Visto!”.</p>';
       return;
     }
     elenco.innerHTML = voci.map(v => {
       const cat = CATEGORIE[v.categoria];
       const stelle = v.stelle ? '★'.repeat(v.stelle) + '☆'.repeat(5 - v.stelle) : '';
-      const strumento = STRUMENTI[v.strumento] ? `${STRUMENTI[v.strumento].icona} ${STRUMENTI[v.strumento].nome}` :
-                        (v.strumento === 'foto' ? '📷 Fotocamera' : '');
+      const strumento = STRUMENTI[v.strumento] ? `${icona(STRUMENTI[v.strumento].disegno, 15)} ${STRUMENTI[v.strumento].nome}` :
+                        (v.strumento === 'foto' ? `${icona('fotocamera', 15)} Con la fotocamera` : '');
       return `
         <article class="bg-slate-900 p-4 rounded-xl border border-slate-700">
           <div class="flex justify-between items-start gap-3">
             <div class="min-w-0">
-              <h4 class="font-bold text-white">${cat ? cat.icona : '✨'} ${v.titolo || 'Osservazione'}</h4>
+              <h4 class="font-bold text-white flex items-center gap-2">${iconaCategoria(v.categoria, 18)} ${v.titolo || 'Osservazione'}</h4>
               <p class="text-xs text-blue-400 mt-0.5">${dataOraBreve(new Date(v.dataEvento || v.quando))}</p>
             </div>
             <div class="text-right flex-shrink-0">
               <p class="text-amber-400 text-sm">${stelle}</p>
-              <button onclick="apriDiarioEvento('${v.id}')" class="text-xs text-slate-400 underline hover:text-white mt-1">modifica</button>
+              <button onclick="apriDiarioEvento('${v.id}')" class="senza-cornice text-xs text-slate-400 underline hover:text-white mt-1">modifica</button>
             </div>
           </div>
           ${v.nota ? `<p class="text-sm text-slate-300 mt-2 whitespace-pre-line">${v.nota.replace(/</g, '&lt;')}</p>` : ''}
@@ -5247,8 +5363,8 @@ window.condividiEvento = async (id) => {
   if (!ev) return;
 
   const locale = circostanzeLocali(ev);
-  const testo = `${ev.titolo}\n📅 ${ev.dataTesto}\n\n${ev.spiegazione}` +
-    (locale ? `\n\n📍 Da qui: ${locale.giudizio}` : '');
+  const testo = `${ev.titolo}\n${ev.dataTesto}\n\n${ev.spiegazione}` +
+    (locale ? `\n\nDa qui: ${locale.giudizio}` : '');
 
   if (navigator.share) {
     try {
@@ -5299,7 +5415,7 @@ window.immagineEvento = async (id) => {
   const cat = CATEGORIE[ev.categoria];
   ctx.fillStyle = '#93c5fd';
   ctx.font = 'bold 34px system-ui, sans-serif';
-  ctx.fillText(`${cat ? cat.icona + ' ' + cat.nome : '✨ Evento'}`, 70, 130);
+  ctx.fillText(cat ? cat.nome : 'Evento', 70, 130);
 
   // Titolo su più righe
   ctx.fillStyle = '#ffffff';
@@ -5315,7 +5431,7 @@ window.immagineEvento = async (id) => {
 
   ctx.fillStyle = '#facc15';
   ctx.font = '40px system-ui, sans-serif';
-  ctx.fillText(`📅 ${ev.dataTesto}`, 70, y + 90);
+  ctx.fillText(ev.dataTesto, 70, y + 90);
 
   // Spiegazione, tagliata a quel che ci sta
   ctx.fillStyle = '#cbd5e1';
@@ -5536,9 +5652,9 @@ function inizializzaImpostazioni() {
 
   const btnGps = document.getElementById('imp-btn-gps');
   if (btnGps) btnGps.addEventListener('click', async () => {
-    btnGps.textContent = '📍 Cerco…';
+    btnGps.textContent = 'Cerco…';
     const ok = await skyRichiediPosizione();
-    btnGps.textContent = '📍 Rileva con il GPS';
+    btnGps.textContent = 'Rileva con il GPS';
     aggiornaSchedaImpostazioni();
     if (ok) { await caricaMeteo(true); costruisciStasera(); aggiornaViste(); }
   });
@@ -5609,7 +5725,7 @@ function consigliFoto(evento) {
         titolo: 'Fotografare l\'eclissi',
         obiettivo: 'Teleobiettivo 200 mm o più. Per quella solare serve un filtro solare certificato davanti all\'obiettivo.',
         esposizione: 'Eclissi lunare: ISO 800, f/5.6, 1/4 s durante la totalità (la Luna rossa è molto più scura). Eclissi solare parziale: come una foto diurna, ma solo con filtro.',
-        errore: '⚠️ Mai puntare il Sole senza filtro: bruci il sensore e, se guardi nel mirino, anche l\'occhio.'
+        errore: 'Mai puntare il Sole senza filtro: bruci il sensore e, se guardi nel mirino, anche l\'occhio.'
       });
     case 'meteore':
       return Object.assign({}, base, {
@@ -5977,7 +6093,7 @@ async function skyAttivaFotocamera() {
     sky.camera = null;
     video.srcObject = null;
     video.classList.add('hidden');
-    if (btn) { btn.textContent = '📷 Fotocamera'; btn.className = 'px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold'; }
+    if (btn) { btn.textContent = 'Fotocamera'; btn.className = 'px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold'; }
     return;
   }
 
@@ -5992,7 +6108,7 @@ async function skyAttivaFotocamera() {
     video.srcObject = sky.camera;
     video.classList.remove('hidden');
     await video.play().catch(() => {});
-    if (btn) { btn.textContent = '📷 Spegni fotocamera'; btn.className = 'px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold'; }
+    if (btn) { btn.textContent = 'Spegni fotocamera'; btn.className = 'px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold'; }
     skyAvviso('camera', '');
   } catch (e) {
     sky.camera = null;
@@ -6053,7 +6169,7 @@ function bloccoLocaleHtml(evento) {
     if (!luogoCorrente() && evento.dataObj.getTime() - Date.now() < 30 * 86400000) {
       return `<div class="bg-slate-900 p-3 rounded-xl mt-3 text-sm border border-slate-700">
         <button onclick="document.getElementById('btn-impostazioni').click()" class="text-blue-400 underline hover:text-blue-300">
-          📍 Imposta la tua posizione</button>
+          Imposta la tua posizione</button>
         <span class="text-slate-400"> per sapere se questo evento si vede da casa tua, a che ora e in che direzione.</span>
       </div>`;
     }
@@ -6063,10 +6179,10 @@ function bloccoLocaleHtml(evento) {
   const indice = indiceOsservabilita(evento);
   const colore = locale.livello === 'si' ? 'text-green-400'
                : locale.livello === 'parziale' ? 'text-amber-400' : 'text-red-400';
-  const icona = locale.livello === 'si' ? '✅' : locale.livello === 'parziale' ? '⚠️' : '🚫';
+  const segno = pallino(locale.livello === 'si' ? '#7fb069' : locale.livello === 'parziale' ? '#eab54a' : '#e2685c');
 
   const righe = [];
-  righe.push(`<p class="${colore} font-semibold">${icona} ${locale.giudizio}</p>`);
+  righe.push(`<p class="${colore} font-semibold">${segno} ${locale.giudizio}</p>`);
 
   if (locale.sorge || locale.tramonta) {
     righe.push(`<p class="text-slate-400 mt-1">Sorge ${oraBreve(locale.sorge)} · tramonta ${oraBreve(locale.tramonta)}</p>`);
@@ -6078,12 +6194,12 @@ function bloccoLocaleHtml(evento) {
     righe.push(`<p class="mt-2 text-slate-300"><strong>${indice.semaforo} Osservabilità ${indice.punteggio}/100</strong>
       <span class="text-slate-400">— ${indice.motivi.join('; ')}</span></p>`);
     if (indice.quando) {
-      righe.push(`<p class="text-blue-300">🕒 Momento consigliato: ${dataOraBreve(indice.quando)}</p>`);
+      righe.push(`<p class="text-blue-300">Momento consigliato: ${dataOraBreve(indice.quando)}</p>`);
     }
   }
 
   return `<div class="bg-slate-900 p-3 rounded-xl mt-3 text-sm border border-slate-700">
-    <h3 class="font-bold text-white mb-1 text-sm">📍 Da qui</h3>${righe.join('')}
+    <h3 class="font-bold text-white mb-1 text-sm">Da qui</h3>${righe.join('')}
   </div>`;
 }
 
@@ -6091,7 +6207,7 @@ function bloccoLocaleHtml(evento) {
 function bloccoFotoHtml(evento) {
   const f = consigliFoto(evento);
   return `<details class="bg-slate-900 rounded-xl mt-3 text-sm border border-slate-700">
-    <summary class="p-3 cursor-pointer font-bold text-white">📷 ${f.titolo}</summary>
+    <summary class="p-3 cursor-pointer font-bold text-white">${f.titolo}</summary>
     <div class="px-3 pb-3 space-y-1 text-slate-300">
       <p><span class="text-blue-400">Obiettivo:</span> ${f.obiettivo}</p>
       <p><span class="text-blue-400">Esposizione:</span> ${f.esposizione}</p>
@@ -6107,11 +6223,11 @@ function barraAzioniHtml(evento) {
   const stile = 'px-3 py-1.5 rounded-full text-xs font-semibold transition-colors';
   return `<div class="flex flex-wrap gap-2 mt-3 pl-4">
     <button onclick="apriDiarioEvento('${evento.id}')" class="${stile} ${visto ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-slate-700 hover:bg-green-600 text-slate-100'}" title="Registra l'osservazione nel diario">
-      ${visto ? '✅ Visto!' : '👁️ Segna come visto'}
+      ${visto ? 'Visto!' : 'Segna come visto'}
     </button>
-    <button onclick="condividiEvento('${evento.id}')" class="${stile} bg-slate-700 hover:bg-blue-600 text-slate-100" title="Condividi l'evento">📤 Condividi</button>
-    <button onclick="immagineEvento('${evento.id}')" class="${stile} bg-slate-700 hover:bg-purple-600 text-slate-100" title="Crea una cartolina da mandare in chat">🖼️ Cartolina</button>
-    <button onclick="scaricaIcsEvento('${evento.id}')" class="${stile} bg-slate-700 hover:bg-blue-600 text-slate-100" title="Aggiungi al calendario del telefono">📅 Al calendario</button>
+    <button onclick="condividiEvento('${evento.id}')" class="${stile} bg-slate-700 hover:bg-blue-600 text-slate-100" title="Condividi l'evento">Condividi</button>
+    <button onclick="immagineEvento('${evento.id}')" class="${stile} bg-slate-700 hover:bg-purple-600 text-slate-100" title="Crea una cartolina da mandare in chat">Cartolina</button>
+    <button onclick="scaricaIcsEvento('${evento.id}')" class="${stile} bg-slate-700 hover:bg-blue-600 text-slate-100" title="Aggiungi al calendario del telefono">Al calendario</button>
   </div>`;
 }
 
@@ -6119,7 +6235,7 @@ function barraAzioniHtml(evento) {
 function badgeStrumentoHtml(evento) {
   const s = STRUMENTI[strumentoEvento(evento)];
   if (!s) return '';
-  return `<span class="align-middle text-xs bg-slate-700 text-slate-200 px-2 py-0.5 rounded-full ml-1" title="Strumento consigliato">${s.icona} ${s.nome}</span>`;
+  return `<span class="inline-flex items-center gap-1.5 align-middle text-xs bg-slate-700 text-slate-200 px-2.5 py-1 rounded-full border border-slate-600 ml-1" title="Strumento consigliato">${icona(s.disegno, 15)} ${s.nome}</span>`;
 }
 
 // Quando arrivano le previsioni meteo i semafori cambiano: ricostruiamo
@@ -6134,11 +6250,11 @@ function inizializzaFiltroStrumento() {
   const cont = document.getElementById('filtri-strumento');
   if (!cont) return;
 
-  const chip = [{ id: 'tutti', icona: '✨', nome: 'Tutto' }]
-    .concat(Object.keys(STRUMENTI).map(id => ({ id, icona: STRUMENTI[id].icona, nome: STRUMENTI[id].nome })));
+  const chip = [{ id: 'tutti', disegno: 'stella', nome: 'Tutto' }]
+    .concat(Object.keys(STRUMENTI).map(id => ({ id, disegno: STRUMENTI[id].disegno, nome: STRUMENTI[id].nome })));
 
   cont.innerHTML = chip.map(c =>
-    `<button type="button" data-str="${c.id}" class="chip-strumento" title="Mostra ciò che si vede ${c.id === 'tutti' ? 'in ogni caso' : c.nome.toLowerCase()}">${c.icona} ${c.nome}</button>`
+    `<button type="button" data-str="${c.id}" class="chip-strumento" title="Mostra ciò che si vede ${c.id === 'tutti' ? 'in ogni caso' : c.nome.toLowerCase()}">${icona(c.disegno, 16)} ${c.nome}</button>`
   ).join('');
 
   cont.querySelectorAll('.chip-strumento').forEach(btn => {
@@ -6152,7 +6268,7 @@ function inizializzaFiltroStrumento() {
 }
 
 function aggiornaStileChipStrumento() {
-  const base = 'chip-strumento px-3 py-1.5 rounded-full text-xs font-semibold transition-colors';
+  const base = 'chip-strumento inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs border border-slate-600';
   const attivo = ' bg-blue-600 text-white shadow';
   const inattivo = ' bg-slate-700 text-slate-300 hover:bg-slate-600';
   document.querySelectorAll('.chip-strumento').forEach(btn => {

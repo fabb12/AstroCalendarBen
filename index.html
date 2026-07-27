@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AstroCalendario di Ben</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#f7f1e1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b2540" media="(prefers-color-scheme: dark)">
 
   <!-- Icone e supporto installazione PWA -->
   <link rel="icon" type="image/png" href="icon-192.png">
@@ -33,23 +34,36 @@
 
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
-  
-  <header class="max-w-4xl mx-auto mb-8 text-center">
-    <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-2">AstroCalendario di Ben</h1>
-    <p class="text-slate-400">Calcolo eventi in tempo reale fino al 2030 · eclissi fino al 2070</p>
-    
-    <div class="mt-6 flex flex-wrap justify-center gap-3">
-      <!-- Pulsanti per cambiare vista -->
-      <button id="btn-vista-stasera" class="px-5 py-2 rounded-full font-semibold transition-colors bg-blue-600 hover:bg-blue-500 text-white shadow-lg" title="Cosa si vede stanotte da casa tua">🌌 Stasera</button>
-      <button id="btn-vista-calendario" class="px-5 py-2 rounded-full font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white">📅 Mese</button>
-      <button id="btn-vista-agenda" class="px-5 py-2 rounded-full font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white">📜 Agenda</button>
-      <button id="btn-vista-skymap" class="px-5 py-2 rounded-full font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white" title="Punta il telefono verso il cielo">🔭 Cielo</button>
-      <button id="btn-vista-diario" class="px-5 py-2 rounded-full font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white" title="Le tue osservazioni e i traguardi raggiunti">📓 Diario</button>
-      <button id="btn-aggiungi" class="px-5 py-2 rounded-full font-semibold transition-colors bg-green-600 hover:bg-green-500 text-white shadow-lg" title="Aggiungi un evento manuale">➕ Aggiungi</button>
-      <button id="btn-installa" class="hidden px-5 py-2 rounded-full font-semibold transition-colors bg-purple-600 hover:bg-purple-500 text-white shadow-lg" title="Installa l'app sul dispositivo">📲 Installa</button>
-      <button id="btn-notifiche" class="px-5 py-2 rounded-full font-semibold transition-colors border border-blue-500 text-blue-400 hover:bg-blue-900" title="Attiva Notifiche">🔔</button>
-      <button id="btn-impostazioni" class="px-5 py-2 rounded-full font-semibold transition-colors border border-slate-500 text-slate-300 hover:bg-slate-700" title="Posizione, backup e calendario">⚙️</button>
+<body class="min-h-screen p-4 md:p-8">
+
+  <header class="max-w-4xl mx-auto mb-8 flex flex-col items-center gap-3 text-center">
+    <!-- Luna disegnata a mano libera: un cerchio con dentro un morso di buio -->
+    <svg width="62" height="62" viewBox="0 0 66 66" fill="none" aria-hidden="true" style="color: var(--testo)">
+      <path d="M33 5 C48 4 61 17 61 33 C61 49 48 61 33 61 C18 61 5 49 5 33 C5 17 18 6 33 5 Z"
+        stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M41 8 C31 14 26 23 26 33 C26 44 32 53 42 58"
+        stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="17" cy="26" r="3.2" stroke="currentColor" stroke-width="2"/>
+      <circle cx="15" cy="41" r="2" stroke="currentColor" stroke-width="2"/>
+    </svg>
+
+    <h1 class="titolo-app">AstroCalendario di Ben</h1>
+    <p class="text-slate-400">Cosa c'è da vedere in cielo, stanotte e nei prossimi anni</p>
+
+    <!-- Navigazione: parole, non icone. Quella attiva è cerchiata a penna. -->
+    <nav class="mt-3 flex flex-wrap justify-center gap-x-2 gap-y-1" aria-label="Sezioni">
+      <button id="btn-vista-stasera" class="voce-menu attiva" title="Cosa si vede stanotte da casa tua">Stasera</button>
+      <button id="btn-vista-calendario" class="voce-menu">Mese</button>
+      <button id="btn-vista-agenda" class="voce-menu">Agenda</button>
+      <button id="btn-vista-skymap" class="voce-menu" title="Punta il telefono verso il cielo">Cielo</button>
+      <button id="btn-vista-diario" class="voce-menu" title="Le tue osservazioni e i traguardi raggiunti">Diario</button>
+    </nav>
+
+    <div class="flex flex-wrap justify-center gap-3 mt-1">
+      <button id="btn-aggiungi" class="px-5 py-1.5 rounded-full bg-green-600 hover:bg-green-500 text-white" title="Aggiungi un evento tuo">Aggiungi evento</button>
+      <button id="btn-installa" class="hidden px-5 py-1.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white" title="Installa l'app sul dispositivo">Installa l'app</button>
+      <button id="btn-notifiche" class="px-5 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Avvisami prima di un evento">Avvisami</button>
+      <button id="btn-impostazioni" class="px-5 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Posizione, backup e calendario">Impostazioni</button>
     </div>
   </header>
 
@@ -58,12 +72,11 @@
     <!-- BARRA DI RICERCA INTELLIGENTE E FILTRI PER CATEGORIA -->
     <div id="barra-ricerca" class="mb-6 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
       <div class="relative">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">🔍</span>
         <input id="ricerca-eventi" type="search" autocomplete="off"
-          placeholder="Cerca un evento (es. eclissi, luna piena, perseidi, venere...)"
-          class="w-full bg-slate-900 border border-slate-600 rounded-lg pl-10 pr-10 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500">
+          placeholder="Cerca: eclissi, luna piena, perseidi, venere…"
+          class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 pr-20 py-2 focus:outline-none focus:border-blue-500">
         <button id="btn-pulisci-ricerca" type="button" title="Pulisci ricerca"
-          class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-lg leading-none">✕</button>
+          class="hidden senza-cornice absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-sm underline">pulisci</button>
       </div>
       <div id="filtri-categorie" class="flex flex-wrap gap-2 mt-3"></div>
       <!-- Filtro per strumento: mostra solo ciò che si vede con quello che hai -->
@@ -79,8 +92,8 @@
       <!-- Riepilogo della notte: buio astronomico, Luna, meteo -->
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
         <div class="flex justify-between items-start gap-3 mb-3">
-          <h2 class="text-2xl font-bold text-white">🌌 Stanotte</h2>
-          <button id="btn-stasera-posizione" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold flex-shrink-0" title="Rileva la posizione">📍 Posizione</button>
+          <h2 class="text-2xl font-bold text-white">Stanotte</h2>
+          <button id="btn-stasera-posizione" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0" title="Rileva la posizione">Dove sono</button>
         </div>
         <div id="stasera-riepilogo" class="grid gap-3 md:grid-cols-3"></div>
         <div id="stasera-meteo" class="mt-4"></div>
@@ -88,22 +101,22 @@
 
       <!-- Pianeti e Luna visibili stanotte -->
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
-        <h3 class="text-lg font-bold text-white mb-3">🪐 Visibili stanotte</h3>
+        <h3 class="text-lg font-bold text-white mb-3">Cosa si vede</h3>
         <div id="stasera-pianeti" class="grid gap-2"></div>
       </div>
 
       <!-- Passaggi della Stazione Spaziale Internazionale -->
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
         <div class="flex justify-between items-center gap-3 mb-3">
-          <h3 class="text-lg font-bold text-white">🛰️ Passaggi della ISS</h3>
-          <button id="btn-iss-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold flex-shrink-0">↻ Aggiorna</button>
+          <h3 class="text-lg font-bold text-white">Passaggi della Stazione Spaziale</h3>
+          <button id="btn-iss-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0">Aggiorna</button>
         </div>
         <div id="stasera-iss" class="grid gap-2 text-sm text-slate-300">Caricamento dei dati orbitali…</div>
       </div>
 
       <!-- Prossimi eventi del calendario, con indice di osservabilità -->
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
-        <h3 class="text-lg font-bold text-white mb-3">📆 Prossimi appuntamenti</h3>
+        <h3 class="text-lg font-bold text-white mb-3">Prossimi appuntamenti</h3>
         <div id="stasera-prossimi" class="grid gap-2"></div>
       </div>
     </div>
@@ -111,13 +124,13 @@
     <!-- VISTA DIARIO: osservazioni registrate e traguardi -->
     <div id="vista-diario" class="hidden grid gap-4">
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
-        <h2 class="text-2xl font-bold text-white mb-1">📓 Diario di osservazione</h2>
-        <p class="text-sm text-slate-400 mb-4">Segna “✅ Visto!” su un evento dell'agenda e finisce qui, con la tua nota.</p>
+        <h2 class="text-2xl font-bold text-white mb-1">Diario di osservazione</h2>
+        <p class="text-sm text-slate-400 mb-4">Segna “Visto!” su un evento dell'agenda e finisce qui, con la tua nota.</p>
         <div id="diario-statistiche" class="grid gap-3 md:grid-cols-3 mb-4"></div>
         <div id="diario-badge" class="flex flex-wrap gap-2"></div>
       </div>
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
-        <h3 class="text-lg font-bold text-white mb-3">🗒️ Le tue osservazioni</h3>
+        <h3 class="text-lg font-bold text-white mb-3">Le tue osservazioni</h3>
         <div id="diario-elenco" class="grid gap-3"></div>
       </div>
     </div>
@@ -155,10 +168,10 @@
 
         <!-- Schermata iniziale: richiesta dei permessi -->
         <div id="skymap-overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center text-center gap-4 p-6">
-          <p class="text-2xl font-bold text-white">🔭 Punta il telefono verso il cielo</p>
+          <p class="text-2xl font-bold text-white">Punta il telefono verso il cielo</p>
           <p class="text-sm text-slate-300 max-w-md">Bussola e giroscopio capiscono dove stai guardando, mentre le orbite dicono dove si trovano Sole, Luna, pianeti e stelle luminose <strong>in questo momento</strong>. Muovi il telefono per cercarli.</p>
-          <button id="skymap-btn-avvia" class="px-6 py-3 rounded-full font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg">🧭 Attiva bussola e posizione</button>
-          <button id="skymap-btn-manuale" class="text-sm text-slate-400 underline hover:text-slate-200">Continua senza sensori (trascina per guardarti intorno)</button>
+          <button id="skymap-btn-avvia" class="px-6 py-3 rounded-full font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-lg">Attiva bussola e posizione</button>
+          <button id="skymap-btn-manuale" class="senza-cornice text-sm text-slate-400 underline hover:text-slate-200">Continua senza sensori (trascina per guardarti intorno)</button>
         </div>
       </div>
 
@@ -168,7 +181,7 @@
       <!-- Macchina del tempo: com'era o come sarà il cielo -->
       <div class="mt-3 bg-slate-800 p-3 rounded-2xl border border-slate-700">
         <div class="flex items-center gap-3">
-          <span class="text-xs text-slate-400 flex-shrink-0">🕒 Ora mostrata</span>
+          <span class="text-xs text-slate-400 flex-shrink-0">Ora mostrata</span>
           <input id="skymap-tempo" type="range" min="-720" max="720" value="0" step="5"
             class="flex-1 accent-blue-500 cursor-pointer" title="Sposta l'orologio avanti o indietro">
           <button id="skymap-tempo-ora" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold flex-shrink-0">Adesso</button>
@@ -190,17 +203,17 @@
       <!-- Strumenti da campo -->
       <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
         <span class="text-slate-400">Bussola:</span>
-        <button id="skymap-cal-meno" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Ruota la bussola verso ovest">◀ −5°</button>
+        <button id="skymap-cal-meno" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Ruota la bussola verso ovest">−5°</button>
         <span id="skymap-cal-valore" class="text-slate-300 font-mono w-14 text-center">0°</span>
-        <button id="skymap-cal-piu" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Ruota la bussola verso est">+5° ▶</button>
-        <button id="skymap-btn-notte" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Filtro rosso: protegge la vista notturna">🔴 Modalità notte</button>
-        <button id="skymap-btn-costellazioni" class="px-3 py-1.5 rounded-full bg-blue-700 hover:bg-blue-600 text-white font-semibold" title="Mostra o nascondi le figure delle costellazioni">✨ Costellazioni</button>
-        <button id="skymap-btn-deepsky" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Galassie, nebulose e ammassi visibili con binocolo">🌌 Profondo cielo</button>
-        <button id="skymap-btn-camera" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Sovrapponi il cielo all'immagine della fotocamera">📷 Fotocamera</button>
-        <button id="skymap-btn-schermo" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Schermo intero">⛶ Schermo intero</button>
-        <button id="skymap-btn-posizione" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Rileva di nuovo la posizione">📍 Aggiorna posizione</button>
+        <button id="skymap-cal-piu" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Ruota la bussola verso est">+5°</button>
+        <button id="skymap-btn-notte" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Filtro rosso: protegge la vista notturna">Modalità notte</button>
+        <button id="skymap-btn-costellazioni" class="px-3 py-1.5 rounded-full bg-blue-700 hover:bg-blue-600 text-white" title="Mostra o nascondi le figure delle costellazioni">Costellazioni</button>
+        <button id="skymap-btn-deepsky" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Galassie, nebulose e ammassi visibili con binocolo">Profondo cielo</button>
+        <button id="skymap-btn-camera" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Sovrapponi il cielo all'immagine della fotocamera">Fotocamera</button>
+        <button id="skymap-btn-schermo" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Schermo intero">Schermo intero</button>
+        <button id="skymap-btn-posizione" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Rileva di nuovo la posizione">Aggiorna posizione</button>
       </div>
-      <p class="mt-2 text-xs text-slate-500">Se la bussola è imprecisa, trascina il dito in orizzontale sul cielo (o usa i tasti ±5°) finché il Sole o la Luna non coincidono con quelli veri. ⚠️ Non guardare mai il Sole direttamente.</p>
+      <p class="mt-2 text-xs text-slate-500">Se la bussola è imprecisa, trascina il dito in orizzontale sul cielo (o usa i tasti ±5°) finché il Sole o la Luna non coincidono con quelli veri. Non guardare mai il Sole direttamente.</p>
 
     </div>
 
@@ -210,8 +223,8 @@
   <div id="modale-aggiungi" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-800 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl my-8">
       <div class="flex justify-between items-center p-5 border-b border-slate-700">
-        <h2 id="modale-titolo" class="text-2xl font-bold text-white">➕ Nuovo Evento</h2>
-        <button id="btn-chiudi-modale" class="p-2 text-slate-400 hover:text-white text-2xl leading-none" title="Chiudi">✕</button>
+        <h2 id="modale-titolo" class="text-2xl font-bold text-white">Nuovo evento</h2>
+        <button id="btn-chiudi-modale" class="senza-cornice px-2 py-1 text-slate-400 hover:text-white text-sm underline" title="Chiudi la finestra">Chiudi</button>
       </div>
 
       <form id="form-evento" class="p-5 space-y-4">
@@ -249,7 +262,7 @@
         </div>
 
         <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-3">
-          <h3 class="font-bold text-white text-sm">🎒 Programma (facoltativo)</h3>
+          <h3 class="font-bold text-white text-sm">Programma (facoltativo)</h3>
           <div>
             <label for="ev-portare" class="block text-xs font-semibold text-slate-400 mb-1">Cosa portare</label>
             <input id="ev-portare" type="text" maxlength="200"
@@ -279,8 +292,8 @@
   <div id="modale-mappa" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-800 w-full max-w-3xl rounded-2xl border border-slate-700 shadow-2xl my-8">
       <div class="flex justify-between items-center p-5 border-b border-slate-700">
-        <h2 id="mappa-titolo" class="text-xl md:text-2xl font-bold text-white">🗺️ Mappa di visibilità</h2>
-        <button id="btn-chiudi-mappa" class="p-2 text-slate-400 hover:text-white text-2xl leading-none" title="Chiudi">✕</button>
+        <h2 id="mappa-titolo" class="text-xl md:text-2xl font-bold text-white">Mappa di visibilità</h2>
+        <button id="btn-chiudi-mappa" class="senza-cornice px-2 py-1 text-slate-400 hover:text-white text-sm underline" title="Chiudi la finestra">Chiudi</button>
       </div>
       <div class="p-4 md:p-5 space-y-4">
         <div id="mappa-eclissi" class="w-full rounded-xl overflow-hidden border border-slate-700" style="height: 60vh; min-height: 320px;"></div>
@@ -308,20 +321,20 @@
   <div id="modale-simulazione" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-800 w-full max-w-3xl rounded-2xl border border-slate-700 shadow-2xl my-8">
       <div class="flex justify-between items-center p-5 border-b border-slate-700">
-        <h2 id="sim-titolo" class="text-xl md:text-2xl font-bold text-white">🎬 Simulazione</h2>
-        <button id="btn-chiudi-simulazione" class="p-2 text-slate-400 hover:text-white text-2xl leading-none" title="Chiudi">✕</button>
+        <h2 id="sim-titolo" class="text-xl md:text-2xl font-bold text-white">Simulazione</h2>
+        <button id="btn-chiudi-simulazione" class="senza-cornice px-2 py-1 text-slate-400 hover:text-white text-sm underline" title="Chiudi la finestra">Chiudi</button>
       </div>
 
       <div class="p-4 md:p-5 space-y-4">
         <!-- Scena renderizzata -->
-        <div class="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950">
+        <div id="sim-scena" class="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950">
           <canvas id="sim-canvas" class="block w-full" style="height: 55vh; min-height: 300px;"></canvas>
           <div id="sim-ora" class="absolute top-3 left-3 bg-slate-900/70 backdrop-blur px-3 py-1.5 rounded-xl text-xs md:text-sm font-mono text-slate-100 border border-slate-700">—</div>
         </div>
 
         <!-- Comandi: riproduzione, linea del tempo, velocità -->
         <div class="flex items-center gap-3">
-          <button id="sim-btn-play" class="px-4 py-2 rounded-full font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow" title="Avvia o metti in pausa">⏸ Pausa</button>
+          <button id="sim-btn-play" class="px-4 py-2 rounded-full font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow" title="Avvia o metti in pausa">Pausa</button>
           <input id="sim-slider" type="range" min="0" max="1000" value="0" step="1"
             class="flex-1 accent-blue-500 cursor-pointer" title="Scorri il tempo">
           <button id="sim-btn-velocita" class="px-3 py-2 rounded-full font-semibold bg-slate-700 hover:bg-slate-600 text-white w-16" title="Velocità della simulazione">1×</button>
@@ -338,8 +351,8 @@
   <div id="modale-diario" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-800 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl my-8">
       <div class="flex justify-between items-center p-5 border-b border-slate-700">
-        <h2 class="text-2xl font-bold text-white">✅ Ho visto!</h2>
-        <button id="btn-chiudi-diario" class="p-2 text-slate-400 hover:text-white text-2xl leading-none" title="Chiudi">✕</button>
+        <h2 class="text-2xl font-bold text-white">Ho visto!</h2>
+        <button id="btn-chiudi-diario" class="senza-cornice px-2 py-1 text-slate-400 hover:text-white text-sm underline" title="Chiudi la finestra">Chiudi</button>
       </div>
       <form id="form-diario" class="p-5 space-y-4">
         <p id="diario-evento-titolo" class="text-blue-400 font-semibold"></p>
@@ -360,10 +373,10 @@
           <label for="diario-strumento-usato" class="block text-sm font-semibold text-slate-300 mb-1">Strumento usato</label>
           <select id="diario-strumento-usato"
             class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500">
-            <option value="occhio">👁️ Occhio nudo</option>
-            <option value="binocolo">🔭 Binocolo</option>
-            <option value="telescopio">🔬 Telescopio</option>
-            <option value="foto">📷 Fotocamera</option>
+            <option value="occhio">A occhio nudo</option>
+            <option value="binocolo">Con il binocolo</option>
+            <option value="telescopio">Con il telescopio</option>
+            <option value="foto">Con la fotocamera</option>
           </select>
         </div>
 
@@ -379,18 +392,18 @@
   <div id="modale-impostazioni" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-800 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl my-8">
       <div class="flex justify-between items-center p-5 border-b border-slate-700">
-        <h2 class="text-2xl font-bold text-white">⚙️ Impostazioni</h2>
-        <button id="btn-chiudi-impostazioni" class="p-2 text-slate-400 hover:text-white text-2xl leading-none" title="Chiudi">✕</button>
+        <h2 class="text-2xl font-bold text-white">Impostazioni</h2>
+        <button id="btn-chiudi-impostazioni" class="senza-cornice px-2 py-1 text-slate-400 hover:text-white text-sm underline" title="Chiudi la finestra">Chiudi</button>
       </div>
 
       <div class="p-5 space-y-5">
 
         <section class="space-y-2">
-          <h3 class="font-bold text-white">📍 La tua posizione</h3>
+          <h3 class="font-bold text-white">La tua posizione</h3>
           <p id="imp-posizione" class="text-sm text-slate-400">Non impostata.</p>
           <p class="text-xs text-slate-500">Serve per orari di sorgere e tramonto, buio astronomico, meteo e passaggi della ISS.</p>
           <div class="flex flex-wrap gap-2">
-            <button id="imp-btn-gps" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">📍 Rileva con il GPS</button>
+            <button id="imp-btn-gps" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Rileva con il GPS</button>
           </div>
           <div class="flex flex-wrap items-end gap-2 pt-1">
             <div>
@@ -408,17 +421,17 @@
         </section>
 
         <section class="space-y-2 border-t border-slate-700 pt-4">
-          <h3 class="font-bold text-white">📅 Porta gli eventi nel tuo calendario</h3>
+          <h3 class="font-bold text-white">Porta gli eventi nel tuo calendario</h3>
           <p class="text-xs text-slate-500">Scarica un file <code>.ics</code> con i prossimi eventi: il calendario del telefono penserà lui ai promemoria, anche ad app chiusa.</p>
-          <button id="imp-btn-ics" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">⬇️ Scarica i prossimi 12 mesi</button>
+          <button id="imp-btn-ics" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Scarica i prossimi 12 mesi</button>
         </section>
 
         <section class="space-y-2 border-t border-slate-700 pt-4">
-          <h3 class="font-bold text-white">💾 Backup e ripristino</h3>
+          <h3 class="font-bold text-white">Backup e ripristino</h3>
           <p class="text-xs text-slate-500">Eventi personali, diario di osservazione e preferenze vivono solo in questo browser: salvali per non perderli.</p>
           <div class="flex flex-wrap gap-2">
-            <button id="imp-btn-esporta" class="px-4 py-2 rounded-full text-sm font-semibold bg-green-600 hover:bg-green-500 text-white">⬇️ Esporta backup</button>
-            <button id="imp-btn-importa" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">⬆️ Ripristina backup</button>
+            <button id="imp-btn-esporta" class="px-4 py-2 rounded-full text-sm font-semibold bg-green-600 hover:bg-green-500 text-white">Esporta backup</button>
+            <button id="imp-btn-importa" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Ripristina backup</button>
             <input id="imp-file-importa" type="file" accept="application/json,.json" class="hidden">
           </div>
           <p id="imp-esito" class="text-xs text-slate-400"></p>
