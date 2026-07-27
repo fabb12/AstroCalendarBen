@@ -304,22 +304,62 @@
       </div>
       <div class="p-4 md:p-5 space-y-4">
         <div id="mappa-eclissi" class="w-full rounded-xl overflow-hidden border border-slate-700" style="height: 60vh; min-height: 320px;"></div>
+
+        <!-- CONTROLLO DEL TEMPO DINAMICO -->
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-3">
+          <div class="flex justify-between items-center">
+            <h3 class="font-bold text-white text-sm">Simulazione del percorso nel tempo</h3>
+            <span id="eclissi-tempo-valore" class="text-sm text-blue-400 font-mono font-semibold">Al picco (0 min)</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="eclissi-tempo-meno" type="button" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-full">-10m</button>
+            <input id="eclissi-tempo-slider" type="range" min="-180" max="180" value="0" step="2" class="flex-1 accent-blue-500 cursor-pointer">
+            <button id="eclissi-tempo-piu" type="button" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-full">+10m</button>
+            <button id="eclissi-tempo-reset" type="button" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-full">Reset</button>
+          </div>
+          <p id="eclissi-tempo-data" class="text-xs text-slate-400 font-mono text-center">Data e ora selezionate: —</p>
+        </div>
+
+        <!-- POSIZIONE E DATI SOLE/LUNA -->
+        <div class="grid gap-4 md:grid-cols-2 bg-slate-900 p-4 rounded-xl border border-slate-700">
+          <div>
+            <h4 class="font-bold text-white text-sm mb-2 flex items-center gap-1">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500"></span>
+              Luogo di Osservazione
+            </h4>
+            <p id="eclissi-luogo-testo" class="text-xs text-slate-300">Lat: —, Lon: — (Posizione temporanea)</p>
+            <p class="text-[11px] text-slate-500 mt-1">Clicca un punto qualsiasi sulla mappa per spostare l'osservatore e vedere i dati astronomici locali in quell'istante!</p>
+          </div>
+          <div class="space-y-1 text-xs text-slate-300 border-t md:border-t-0 md:border-l border-slate-700 pt-2 md:pt-0 md:pl-4">
+            <h4 class="font-bold text-white text-sm mb-1">Dati Astronomici Locali</h4>
+            <div id="eclissi-dati-locali" class="space-y-1 font-mono">
+              <p>Sole: —</p>
+              <p>Luna: —</p>
+              <p>Oscuramento Sole: —</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Legenda -->
-        <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300">
+        <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300 pt-2">
           <span class="flex items-center gap-2">
-            <span class="inline-block w-6 h-1.5 rounded-full" style="background:#1e3a8a"></span>
-            Linea di massima visibilità (fascia centrale)
+            <span class="inline-block w-6 h-1.5 rounded-full" style="background:#ef4444"></span>
+            Fascia di totalità/anularità (oscuramento 100%)
           </span>
           <span class="flex items-center gap-2">
-            <span class="inline-block w-4 h-4 rounded" style="background:rgba(59,130,246,0.22)"></span>
-            Zona di totalità/anularità più marcata
+            <span class="inline-block w-4 h-4 rounded-full bg-black border border-red-500"></span>
+            Ombra lunare mobile (totalità istantanea)
           </span>
           <span class="flex items-center gap-2">
-            <span class="inline-block w-4 h-4 rounded" style="background:rgba(96,165,250,0.12)"></span>
-            Area di visibilità parziale (approssimativa)
+            <span class="inline-block w-4 h-4 rounded-full bg-slate-600/30 border border-dashed border-blue-400"></span>
+            Penombra mobile (eclissi parziale istantanea)
+          </span>
+          <span class="flex items-center gap-2">
+            <span class="inline-block w-4 h-4 rounded-full bg-blue-500/10 border border-dashed border-blue-500/40"></span>
+            Fascia parziale massima (stima statica)
           </span>
         </div>
-        <p class="text-xs text-slate-500">La linea centrale è calcolata dall'asse dell'ombra lunare. L'area parziale è una stima indicativa della regione in cui il Sole appare eclissato in parte.</p>
+        <p class="text-xs text-slate-500">La linea rossa centrale è l'asse dell'ombra lunare. Puoi cliccare sulla mappa per definire la tua posizione geografica temporanea e usare il cursore del tempo per vedere lo spostamento dell'ombra e l'osservabilità locale di Sole e Luna in tempo reale.</p>
       </div>
     </div>
   </div>

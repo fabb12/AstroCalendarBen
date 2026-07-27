@@ -520,6 +520,178 @@ function _eclissiSpezza(punti) {
 // Stato della mappa Leaflet (creata una sola volta, poi riutilizzata)
 let _mappaEclissi = null;
 let _mappaStrati = [];
+let _eclissiEventoInCorso = null;
+let _eclissiOffsetTempoMin = 0;
+let _eclissiPosizioneTemporanea = null; // { lat, lon } se l'utente clicca sulla mappa
+let _eclissiMarkerPosizione = null;
+let _eclissiOmbraMobile = null;
+let _eclissiPenombraMobile = null;
+
+// Calcola l'istante di tempo selezionato sulla mappa
+function _eclissiTempoSelezionato() {
+  if (!_eclissiEventoInCorso) return new Date();
+  return new Date(_eclissiEventoInCorso.dataObj.getTime() + _eclissiOffsetTempoMin * 60000);
+}
+
+// Calcola i dati del Sole e della Luna in base alla posizione geografica e all'istante di tempo dell'eclissi
+function _eclissiAggiornaDatiLocali() {
+  const testoLuogo = document.getElementById('eclissi-luogo-testo');
+  const datiLocaliEl = document.getElementById('eclissi-dati-locali');
+  if (!testoLuogo || !datiLocaliEl || !_eclissiEventoInCorso) return;
+
+  // Determina la latitudine e la longitudine da utilizzare
+  let lat, lon, fonte;
+  if (_eclissiPosizioneTemporanea) {
+    lat = _eclissiPosizioneTemporanea.lat;
+    lon = _eclissiPosizioneTemporanea.lon;
+    fonte = 'Cliccata sulla mappa';
+  } else {
+    const locale = luogoCorrente();
+    if (locale) {
+      lat = locale.lat;
+      lon = locale.lon;
+      fonte = 'Tua posizione (GPS/Salvata)';
+    } else {
+      // Ripiego sul punto di massima eclissi
+      lat = _eclissiEventoInCorso.eclissi.lat;
+      lon = _eclissiEventoInCorso.eclissi.lon;
+      fonte = 'Massima eclissi (predefinito)';
+    }
+  }
+
+  testoLuogo.textContent = `Lat: ${lat.toFixed(4)}°, Lon: ${lon.toFixed(4)}° (${fonte})`;
+
+  // Posiziona o sposta il marker dell'osservatore sulla mappa
+  if (_mappaEclissi) {
+    if (_eclissiMarkerPosizione) {
+      _eclissiMarkerPosizione.setLatLng([lat, lon]);
+    } else {
+      _eclissiMarkerPosizione = L.circleMarker([lat, lon], {
+        radius: 8,
+        color: '#22c55e',
+        fillColor: '#22c55e',
+        fillOpacity: 0.9,
+        weight: 3,
+        zIndexOffset: 1000
+      }).addTo(_mappaEclissi).bindPopup('<b>Tua posizione di osservazione</b>');
+    }
+  }
+
+  if (typeof Astronomy === 'undefined') {
+    datiLocaliEl.innerHTML = '<p class="text-red-400">Astronomy Engine non disponibile</p>';
+    return;
+  }
+
+  const tempo = _eclissiTempoSelezionato();
+  const t = Astronomy.MakeTime(tempo);
+  const obs = new Astronomy.Observer(lat, lon, 0);
+
+  try {
+    // Calcolo coordinate Sole
+    const equSole = Astronomy.Equator('Sun', t, obs, true, true);
+    const horSole = Astronomy.Horizon(t, obs, equSole.ra, equSole.dec, 'normal');
+    // Calcolo coordinate Luna
+    const equLuna = Astronomy.Equator('Moon', t, obs, true, true);
+    const horLuna = Astronomy.Horizon(t, obs, equLuna.ra, equLuna.dec, 'normal');
+
+    // Calcolo dell'oscuramento locale approssimativo (separazione angolare tra i due dischi)
+    const vecSole = Astronomy.GeoVector('Sun', t, true);
+    const vecLuna = Astronomy.GeoVector('Moon', t, true);
+    const distAngolare = Astronomy.AngleBetween(vecSole, vecLuna);
+    // Supponiamo raggi apparenti standard: Sole ~0.267°, Luna ~0.272°
+    const rSoleDeg = 0.267;
+    const rLunaDeg = 0.272;
+    let oscuramentoTesto = '0%';
+    if (distAngolare >= rSoleDeg + rLunaDeg) {
+      oscuramentoTesto = 'Nessuno (0%)';
+    } else if (distAngolare <= Math.abs(rSoleDeg - rLunaDeg)) {
+      oscuramentoTesto = _eclissiEventoInCorso.eclissi.kind === 'total' ? 'Totale (100%)' : 'Anulare/Quasi totale (99%)';
+    } else {
+      const areaCoperta = simAreaIntersezione(rSoleDeg, rLunaDeg, distAngolare);
+      const areaSole = Math.PI * rSoleDeg * rSoleDeg;
+      const perc = Math.min(99, Math.round((areaCoperta / areaSole) * 100));
+      oscuramentoTesto = `Parziale (${perc}%)`;
+    }
+
+    const sorgeTramontaSole = orariSorgereTramonto('Sun', tempo, obs);
+
+    datiLocaliEl.innerHTML = `
+      <p><span class="text-blue-400">Sole:</span> Alt ${horSole.altitude.toFixed(1)}° · Az ${Math.round(horSole.azimuth)}° (${skyNomeDirezione(horSole.azimuth)})</p>
+      <p><span class="text-blue-400">Luna:</span> Alt ${horLuna.altitude.toFixed(1)}° · Az ${Math.round(horLuna.azimuth)}° (${skyNomeDirezione(horLuna.azimuth)})</p>
+      <p><span class="text-blue-400">Visibilità Sole:</span> ${horSole.altitude > 0 ? 'Sopra l\'orizzonte' : 'Sotto l\'orizzonte (notte)'}</p>
+      <p><span class="text-amber-400 font-semibold">Copertura Sole:</span> ${oscuramentoTesto}</p>
+      <p class="text-[11px] text-slate-400">Sorge Sole: ${skyOra(sorgeTramontaSole.sorge)} · Tramonta Sole: ${skyOra(sorgeTramontaSole.tramonta)}</p>
+    `;
+  } catch (e) {
+    console.error(e);
+    datiLocaliEl.innerHTML = '<p class="text-red-400">Errore nel calcolo dei dati locali.</p>';
+  }
+}
+
+// Disegna l'ombra e la penombra mobili sulla mappa
+function _eclissiAggiornaOmbreMobili() {
+  if (!_mappaEclissi || !_eclissiEventoInCorso) return;
+
+  const tempo = _eclissiTempoSelezionato();
+  const t = Astronomy.MakeTime(tempo);
+
+  // Calcola il punto in cui l'asse dell'ombra tocca la Terra
+  const pOmbra = _eclissiPuntoOmbra(t);
+
+  if (_eclissiOmbraMobile) {
+    _mappaEclissi.removeLayer(_eclissiOmbraMobile);
+    _eclissiOmbraMobile = null;
+  }
+  if (_eclissiPenombraMobile) {
+    _mappaEclissi.removeLayer(_eclissiPenombraMobile);
+    _eclissiPenombraMobile = null;
+  }
+
+  if (pOmbra) {
+    const [lat, lon] = pOmbra;
+
+    // Disegna l'ombra (umbra): cerchio scuro e netto (circa 150 km di raggio)
+    _eclissiOmbraMobile = L.circle([lat, lon], {
+      radius: 120 * 1000, // 120 km
+      color: '#ef4444',
+      fillColor: '#000000',
+      fillOpacity: 0.8,
+      weight: 2,
+      interactive: false
+    }).addTo(_mappaEclissi);
+
+    // Disegna la penombra: area molto più ampia (circa 3000 km di raggio)
+    _eclissiPenombraMobile = L.circle([lat, lon], {
+      radius: 2800 * 1000, // 2800 km
+      color: '#3b82f6',
+      dashArray: '5, 5',
+      fillColor: '#64748b',
+      fillOpacity: 0.12,
+      weight: 1.5,
+      interactive: false
+    }).addTo(_mappaEclissi);
+  }
+}
+
+function _eclissiAggiornaTutto() {
+  const valoreTempo = document.getElementById('eclissi-tempo-valore');
+  const tempoData = document.getElementById('eclissi-tempo-data');
+  const slider = document.getElementById('eclissi-tempo-slider');
+
+  if (valoreTempo) {
+    const segno = _eclissiOffsetTempoMin > 0 ? '+' : '';
+    valoreTempo.textContent = _eclissiOffsetTempoMin === 0 ? 'Al picco (0 min)' : `${segno}${_eclissiOffsetTempoMin} min dal picco`;
+  }
+  if (tempoData) {
+    tempoData.textContent = `Ora mostrata: ${_eclissiTempoSelezionato().toLocaleString('it-IT')}`;
+  }
+  if (slider) {
+    slider.value = _eclissiOffsetTempoMin;
+  }
+
+  _eclissiAggiornaOmbreMobili();
+  _eclissiAggiornaDatiLocali();
+}
 
 // Apre il modale con la mappa di visibilità per l'eclissi indicata.
 function apriMappaEclissi(id) {
@@ -536,6 +708,10 @@ function apriMappaEclissi(id) {
   if (titoloEl) titoloEl.textContent = `Visibilità — ${evento.titolo} (${evento.dataTesto})`;
   modale.classList.remove('hidden');
 
+  _eclissiEventoInCorso = evento;
+  _eclissiOffsetTempoMin = 0;
+  _eclissiPosizioneTemporanea = null;
+
   // Inizializza la mappa la prima volta
   if (!_mappaEclissi) {
     _mappaEclissi = L.map('mappa-eclissi', { worldCopyJump: true, minZoom: 1 }).setView([20, 0], 2);
@@ -543,19 +719,38 @@ function apriMappaEclissi(id) {
       maxZoom: 8,
       attribution: '&copy; OpenStreetMap'
     }).addTo(_mappaEclissi);
+
+    // Permetti all'utente di cliccare sulla mappa per definire una posizione temporanea
+    _mappaEclissi.on('click', (e) => {
+      _eclissiPosizioneTemporanea = {
+        lat: e.latlng.lat,
+        lon: e.latlng.lng
+      };
+      _eclissiAggiornaDatiLocali();
+    });
   }
 
   // Rimuove eventuali tracciati precedenti
   _mappaStrati.forEach(s => _mappaEclissi.removeLayer(s));
   _mappaStrati = [];
+  if (_eclissiMarkerPosizione) {
+    _mappaEclissi.removeLayer(_eclissiMarkerPosizione);
+    _eclissiMarkerPosizione = null;
+  }
+  if (_eclissiOmbraMobile) {
+    _mappaEclissi.removeLayer(_eclissiOmbraMobile);
+    _eclissiOmbraMobile = null;
+  }
+  if (_eclissiPenombraMobile) {
+    _mappaEclissi.removeLayer(_eclissiPenombraMobile);
+    _eclissiPenombraMobile = null;
+  }
 
   const percorso = _eclissiTracciaPercorso(evento.eclissi.peakUt);
 
-  // Area di visibilità parziale (stima): dischi sovrapposti lungo il percorso.
-  // La sovrapposizione crea una fascia sfumata, più intensa vicino alla linea
-  // centrale — robusta anche alle alte latitudini (niente artefatti ai poli).
-  [{ km: 3500, colore: '#60a5fa', opac: 0.018 },
-   { km: 1800, colore: '#3b82f6', opac: 0.045 }].forEach(f => {
+  // Area di visibilità parziale massima (stima statica di fondo): dischi di contorno
+  [{ km: 3200, colore: '#3b82f6', opac: 0.015 },
+   { km: 1500, colore: '#2563eb', opac: 0.03 }].forEach(f => {
     percorso.forEach(([lat, lon]) => {
       const disco = L.circle([lat, lon], {
         radius: f.km * 1000, stroke: false, fillColor: f.colore, fillOpacity: f.opac, interactive: false
@@ -565,9 +760,9 @@ function apriMappaEclissi(id) {
     });
   });
 
-  // Linea di massima visibilità (fascia centrale)
+  // Fascia di totalità/anularità (totality path): colorata di rosso vivido e definita meglio
   _eclissiSpezza(percorso).forEach(seg => {
-    const linea = L.polyline(seg, { color: '#1e3a8a', weight: 4, opacity: 0.95 });
+    const linea = L.polyline(seg, { color: '#ef4444', weight: 6, opacity: 0.85 });
     linea.addTo(_mappaEclissi);
     _mappaStrati.push(linea);
   });
@@ -577,7 +772,7 @@ function apriMappaEclissi(id) {
     const faseIt = evento.eclissi.kind === 'total' ? 'totalità'
                  : evento.eclissi.kind === 'annular' ? 'anularità' : 'fase centrale';
     const marker = L.circleMarker([evento.eclissi.lat, evento.eclissi.lon], {
-      radius: 6, color: '#f97316', fillColor: '#f97316', fillOpacity: 1, weight: 2
+      radius: 6, color: '#f97316', fillColor: '#ef4444', fillOpacity: 1, weight: 2
     }).bindPopup(`<b>Massima ${faseIt}</b><br>${formattaCoordinate(evento.eclissi.lat, evento.eclissi.lon)}`);
     marker.addTo(_mappaEclissi);
     _mappaStrati.push(marker);
@@ -589,15 +784,17 @@ function apriMappaEclissi(id) {
     if (percorso.length) {
       _mappaEclissi.fitBounds(L.latLngBounds(percorso).pad(0.4));
     }
+    _eclissiAggiornaTutto();
   }, 60);
 }
 
 function chiudiMappaEclissi() {
   const modale = document.getElementById('modale-mappa');
   if (modale) modale.classList.add('hidden');
+  _eclissiEventoInCorso = null;
 }
 
-// Collega i pulsanti di chiusura del modale mappa.
+// Collega i pulsanti di chiusura del modale mappa e gli slider temporali.
 function inizializzaMappaEclissiUI() {
   const modale = document.getElementById('modale-mappa');
   const btnChiudi = document.getElementById('btn-chiudi-mappa');
@@ -607,6 +804,40 @@ function inizializzaMappaEclissiUI() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !modale.classList.contains('hidden')) chiudiMappaEclissi();
   });
+
+  // Gestione Slider del Tempo
+  const slider = document.getElementById('eclissi-tempo-slider');
+  if (slider) {
+    slider.addEventListener('input', () => {
+      _eclissiOffsetTempoMin = parseInt(slider.value, 10);
+      _eclissiAggiornaTutto();
+    });
+  }
+
+  // Pulsanti temporali
+  const btnMeno = document.getElementById('eclissi-tempo-meno');
+  if (btnMeno) {
+    btnMeno.addEventListener('click', () => {
+      _eclissiOffsetTempoMin = Math.max(-180, _eclissiOffsetTempoMin - 10);
+      _eclissiAggiornaTutto();
+    });
+  }
+
+  const btnPiu = document.getElementById('eclissi-tempo-piu');
+  if (btnPiu) {
+    btnPiu.addEventListener('click', () => {
+      _eclissiOffsetTempoMin = Math.min(180, _eclissiOffsetTempoMin + 10);
+      _eclissiAggiornaTutto();
+    });
+  }
+
+  const btnReset = document.getElementById('eclissi-tempo-reset');
+  if (btnReset) {
+    btnReset.addEventListener('click', () => {
+      _eclissiOffsetTempoMin = 0;
+      _eclissiAggiornaTutto();
+    });
+  }
 }
 
 // --- Equinozi e Solstizi ---
