@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- satellite.js: propagazione orbitale (SGP4) per i passaggi della ISS -->
+  <!-- satellite.js: propagazione orbitale (SGP4) per ISS e Tiangong -->
   <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
 
   <link rel="stylesheet" href="style.css">
@@ -105,13 +105,14 @@
         <div id="stasera-pianeti" class="grid gap-2"></div>
       </div>
 
-      <!-- Passaggi della Stazione Spaziale Internazionale -->
+      <!-- Passaggi delle stazioni spaziali: ISS e Tiangong -->
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
-        <div class="flex justify-between items-center gap-3 mb-3">
-          <h3 class="text-lg font-bold text-white">Passaggi della Stazione Spaziale</h3>
-          <button id="btn-iss-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0">Aggiorna</button>
+        <div class="flex justify-between items-center gap-3 mb-1">
+          <h3 class="text-lg font-bold text-white">Stazioni spaziali sopra di te</h3>
+          <button id="btn-satelliti-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0">Aggiorna</button>
         </div>
-        <div id="stasera-iss" class="grid gap-2 text-sm text-slate-300">Caricamento dei dati orbitali…</div>
+        <p class="text-xs text-slate-400 mb-3">ISS e Tiangong, con orari e direzioni calcolati per il punto esatto in cui ti trovi.</p>
+        <div id="stasera-satelliti" class="grid gap-2 text-sm text-slate-300">Caricamento dei dati orbitali…</div>
       </div>
 
       <!-- Prossimi eventi del calendario, con indice di osservabilità -->
@@ -401,7 +402,7 @@
         <section class="space-y-2">
           <h3 class="font-bold text-white">La tua posizione</h3>
           <p id="imp-posizione" class="text-sm text-slate-400">Non impostata.</p>
-          <p class="text-xs text-slate-500">Serve per orari di sorgere e tramonto, buio astronomico, meteo e passaggi della ISS.</p>
+          <p class="text-xs text-slate-500">Serve per orari di sorgere e tramonto, buio astronomico, meteo e passaggi delle stazioni spaziali.</p>
           <div class="flex flex-wrap gap-2">
             <button id="imp-btn-gps" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Rileva con il GPS</button>
           </div>

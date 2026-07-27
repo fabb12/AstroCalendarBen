@@ -1626,6 +1626,24 @@ const SKY_ASTRI = SKY_CORPI.concat(
   }))
 );
 
+// Alle stazioni spaziali (ISS e Tiangong) serve una voce come agli astri,
+// così si possono cercare e disegnare allo stesso modo. L'elenco si compone
+// al primo uso: SATELLITI è definito più avanti nel file.
+let skyElencoCache = null;
+function skyElenco() {
+  if (!skyElencoCache) {
+    skyElencoCache = SKY_ASTRI.concat(SATELLITI.map(s => ({
+      id: 'sat-' + s.id,
+      satId: s.id,
+      nome: s.nome,
+      disegno: 'satellite',
+      colore: s.colore,
+      tipo: 'satellite'
+    })));
+  }
+  return skyElencoCache;
+}
+
 // Stato della vista Cielo
 const sky = {
   aperto: false,
@@ -1758,7 +1776,7 @@ function skyNomeDirezione(az) {
 }
 
 function skyNomeCorpo(id) {
-  const a = SKY_ASTRI.find(x => x.id === id);
+  const a = skyElenco().find(x => x.id === id);
   return a ? a.nome : id;
 }
 
@@ -2010,14 +2028,79 @@ function skyAggiornaOggetti(forza) {
       lista.push(voce);
     } catch (e) { /* corpo non calcolabile: lo saltiamo senza fermare gli altri */ }
   });
+  skyAggiungiSatelliti(lista, quando);
   sky.oggetti = lista;
   skyAggiornaCatalogo(quando);
   skyAggiornaEtichette();
 }
 
+// Aggiunge ISS e Tiangong agli oggetti del cielo. A differenza dei pianeti
+// si spostano di un grado ogni pochi secondi: oltre al punto calcoliamo la
+// scia, cioè da dove arrivano e dove stanno andando nei minuti vicini.
+function skyAggiungiSatelliti(lista, quando) {
+  if (typeof satellite === 'undefined') return;
+  const luogo = luogoCorrente();
+  if (!luogo) return;
+  const gd = satOsservatoreGd(luogo);
+
+  SATELLITI.forEach(sat => {
+    const rec = satRecDi(sat);
+    if (!rec) { satPrecaricaTle(); return; }
+    const p = satAltAz(rec, quando, gd);
+    if (!p) return;
+
+    const traccia = [];
+    for (let m = -4; m <= 4; m += 0.5) {
+      const q = satAltAz(rec, new Date(quando.getTime() + m * 60000), gd);
+      if (q) traccia.push({ az: q.az, alt: q.alt, futuro: m > 0 });
+    }
+
+    lista.push({
+      id: 'sat-' + sat.id,
+      satId: sat.id,
+      nome: sat.nome,
+      disegno: 'satellite',
+      colore: sat.colore,
+      tipo: 'satellite',
+      az: p.az,
+      alt: p.alt,
+      distanzaKm: p.distanza,
+      illuminato: satelliteIlluminato(p.posizione, quando),
+      traccia
+    });
+  });
+}
+
+// Gli astri si ricalcolano una volta al secondo, e va benissimo: si spostano
+// di un grado ogni quattro minuti. Una stazione spaziale fa un grado in un
+// secondo, quindi la sua posizione la riprendiamo a ogni fotogramma (due
+// propagazioni per volta: costano poco e il puntino non salta più).
+function skyMuoviSatelliti() {
+  if (typeof satellite === 'undefined' || !sky.oggetti.length) return;
+  const luogo = luogoCorrente();
+  if (!luogo) return;
+  const gd = satOsservatoreGd(luogo);
+  const quando = skyAdesso();
+
+  sky.oggetti.forEach(o => {
+    if (o.tipo !== 'satellite') return;
+    const sat = satelliteDaId(o.satId);
+    const rec = sat && satRecDi(sat);
+    if (!rec) return;
+    const p = satAltAz(rec, quando, gd);
+    if (!p) return;
+    o.az = p.az;
+    o.alt = p.alt;
+    o.distanzaKm = p.distanza;
+  });
+}
+
 // Orari di sorgere e tramonto dell'astro selezionato (ricalcolati ogni mezz'ora)
 function skyOrari(id) {
   if (!sky.observer || typeof Astronomy === 'undefined') return null;
+  // Le stazioni spaziali non "sorgono" una volta al giorno: fanno un giro
+  // ogni 90 minuti. Per loro contano i passaggi, non gli orari di sorgere.
+  if (typeof id === 'string' && id.startsWith('sat-')) return null;
   const chiave = `${id}|${Math.floor(skyAdesso().getTime() / 1800000)}`;
   if (sky.cacheOrari.chiave === chiave) return sky.cacheOrari.valore;
   let valore = null;
@@ -2176,8 +2259,35 @@ function skyDisegnaLuna(ctx, x, y, r, frazione, angoloLuce) {
 function skyRaggio(o) {
   if (o.tipo === 'sole') return 15;
   if (o.tipo === 'luna') return 14;
+  if (o.tipo === 'satellite') return 5;
   const mag = typeof o.mag === 'number' ? o.mag : 3;
   return Math.max(2.5, Math.min(11, 6 - mag * 0.9));
+}
+
+// Percorso della stazione spaziale nei minuti attorno all'istante mostrato:
+// il tratteggio è la strada già fatta, la linea piena è dove sta andando.
+function skyDisegnaScia(ctx, base, focale, o) {
+  const punti = o.traccia.map(t => {
+    const p = skyProietta(skyVettore(t.az, t.alt), base, focale);
+    return { px: p.px, py: p.py, davanti: p.davanti, futuro: t.futuro };
+  });
+
+  ctx.save();
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  for (let i = 1; i < punti.length; i++) {
+    const a = punti[i - 1], b = punti[i];
+    if (!a.davanti || !b.davanti) continue;
+    ctx.beginPath();
+    ctx.setLineDash(b.futuro ? [] : [3, 4]);
+    ctx.globalAlpha = b.futuro ? 0.75 : 0.35;
+    ctx.strokeStyle = o.colore;
+    ctx.moveTo(a.px, a.py);
+    ctx.lineTo(b.px, b.py);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
 }
 
 function skyDisegnaAstro(ctx, base, focale, o) {
@@ -2190,6 +2300,10 @@ function skyDisegnaAstro(ctx, base, focale, o) {
 
   const sottoOrizzonte = o.alt < 0;
   const r = skyRaggio(o);
+
+  // La scia della stazione spaziale: tratteggiata dove è già passata,
+  // continua dove sta andando nei prossimi minuti.
+  if (o.tipo === 'satellite' && o.traccia) skyDisegnaScia(ctx, base, focale, o);
 
   ctx.save();
   ctx.globalAlpha = sottoOrizzonte ? 0.3 : 1;
@@ -2205,7 +2319,20 @@ function skyDisegnaAstro(ctx, base, focale, o) {
     ctx.fill();
   }
 
-  if (o.tipo === 'luna') {
+  if (o.tipo === 'satellite') {
+    // Un rombo, per non confonderla con una stella: le stazioni si muovono
+    ctx.beginPath();
+    ctx.moveTo(p.px, p.py - r);
+    ctx.lineTo(p.px + r, p.py);
+    ctx.lineTo(p.px, p.py + r);
+    ctx.lineTo(p.px - r, p.py);
+    ctx.closePath();
+    ctx.fillStyle = o.illuminato === false ? '#64748b' : o.colore;
+    ctx.fill();
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  } else if (o.tipo === 'luna') {
     // Direzione del Sole vista dalla Luna, proiettata sullo schermo:
     // il lembo illuminato punta sempre da quella parte.
     const sole = sky.oggetti.find(x => x.id === 'Sun');
@@ -2246,7 +2373,10 @@ function skyDisegnaAstro(ctx, base, focale, o) {
   ctx.fillStyle = o.id === sky.target ? '#93c5fd' : '#e2e8f0';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.fillText(o.nome, p.px + r + 6, p.py);
+  const etichettaAstro = o.tipo === 'satellite' && o.illuminato === false
+    ? `${o.nome} (nell'ombra)`
+    : o.nome;
+  ctx.fillText(etichettaAstro, p.px + r + 6, p.py);
 
   // Cerchio di conferma sull'astro cercato
   if (o.id === sky.target) {
@@ -2342,8 +2472,9 @@ function skyDisegna() {
   skyDisegnaCostellazioni(ctx, base, focale);
   skyDisegnaProfondo(ctx, base, focale);
 
-  // Prima le stelle, poi i pianeti, infine Luna e Sole (restano sopra)
-  const ordine = { stella: 0, pianeta: 1, luna: 2, sole: 3 };
+  // Prima le stelle, poi i pianeti, infine Luna, Sole e le stazioni spaziali
+  // (che si muovono e devono restare sempre riconoscibili sopra il resto)
+  const ordine = { stella: 0, pianeta: 1, luna: 2, sole: 3, satellite: 4 };
   sky.oggetti
     .slice()
     .sort((a, b) => (ordine[a.tipo] || 0) - (ordine[b.tipo] || 0))
@@ -2413,7 +2544,7 @@ function skyAggiornaStato() {
 function skyCostruisciElenco() {
   const cont = document.getElementById('skymap-oggetti');
   if (!cont || cont.dataset.pronto === 'si') return;
-  cont.innerHTML = SKY_ASTRI.map(a =>
+  cont.innerHTML = skyElenco().map(a =>
     `<button type="button" data-astro="${a.id}" class="chip-astro">${icona(a.disegno, 17)} ${a.nome} <span class="sky-alt text-slate-400"></span></button>`
   ).join('');
   cont.querySelectorAll('.chip-astro').forEach(btn => {
@@ -2441,7 +2572,7 @@ function skyAggiornaEtichette() {
   document.querySelectorAll('.chip-astro').forEach(btn => {
     const span = btn.querySelector('.sky-alt');
     const o = sky.oggetti.find(x => x.id === btn.dataset.astro);
-    if (span) span.textContent = o ? `${o.alt >= 0 ? '↑' : '↓'}${Math.round(o.alt)}°` : '';
+    if (span) span.textContent = o ? `${o.alt >= 0 ? '↑' : '↓'}${Math.abs(Math.round(o.alt))}°` : '';
   });
   skyAggiornaStileElenco();
   skyAggiornaScheda();
@@ -2463,9 +2594,18 @@ function skyAggiornaScheda() {
   }
   const o = sky.oggetti.find(x => x.id === sky.target);
   if (!o) {
+    if (typeof sky.target === 'string' && sky.target.startsWith('sat-')) {
+      satPrecaricaTle();
+      box.innerHTML = luogoCorrente()
+        ? `Scarico i dati orbitali di <strong>${skyNomeCorpo(sky.target)}</strong>…`
+        : `Per sapere dov'è <strong>${skyNomeCorpo(sky.target)}</strong> mi serve la tua posizione: attivala qui sopra.`;
+      return;
+    }
     box.innerHTML = `Calcolo della posizione di <strong>${skyNomeCorpo(sky.target)}</strong> in corso…`;
     return;
   }
+
+  if (o.tipo === 'satellite') { skyAggiornaSchedaSatellite(box, o); return; }
 
   const orari = skyOrari(o.id);
   const dettagli = [];
@@ -2500,6 +2640,54 @@ function skyAggiornaScheda() {
     <p class="mt-2 text-slate-400">${consiglio}</p>${avviso}`;
 }
 
+// Scheda della stazione spaziale: dove sta adesso e quando tornerà a
+// passare in modo visibile sopra il punto in cui ci si trova.
+function skyAggiornaSchedaSatellite(box, o) {
+  const sat = satelliteDaId(o.satId);
+  const dettagli = [];
+  dettagli.push(`<li><span class="text-blue-400">Direzione:</span> ${skyNomeDirezione(o.az)} (azimut ${Math.round(o.az) % 360}°)</li>`);
+  dettagli.push(`<li><span class="text-blue-400">Altezza:</span> ${o.alt.toFixed(1)}° ${o.alt >= 0 ? 'sopra' : 'sotto'} l'orizzonte</li>`);
+  if (typeof o.distanzaKm === 'number') {
+    dettagli.push(`<li><span class="text-blue-400">Distanza:</span> ${Math.round(o.distanzaKm).toLocaleString('it-IT')} km</li>`);
+  }
+  dettagli.push(`<li><span class="text-blue-400">Illuminazione:</span> ${o.illuminato ? 'al Sole, quindi può brillare' : 'dentro l\'ombra della Terra, invisibile'}</li>`);
+
+  // Il prossimo passaggio visibile: se non è ancora stato calcolato, lo chiediamo
+  const elenco = satPassaggi[o.satId];
+  let prossimo;
+  if (!elenco) {
+    prossimo = 'Calcolo dei prossimi passaggi in corso…';
+    if (!satInCorso) aggiornaPassaggiSatelliti(false);
+  } else {
+    const p = prossimoPassaggioVisibile(o.satId);
+    if (!p) {
+      prossimo = `Nessun passaggio visibile a occhio nudo nei prossimi ${SAT_GIORNI} giorni da qui.`;
+    } else if (p.inizio <= new Date()) {
+      prossimo = `<span class="text-green-400 font-bold">Sta passando adesso</span>: guarda verso ${skyNomeDirezione(o.az)}, fino alle ${oraBreve(p.fine)}.`;
+    } else {
+      prossimo = `Prossimo passaggio visibile: <strong class="text-white">${dataOraBreve(p.inizio)}</strong> (${fraQuanto(p.inizio)}), da ${skyNomeDirezione(p.azInizio)} verso ${skyNomeDirezione(p.azFine)}, fino a ${Math.round(p.elevazioneMax)}° di altezza.`;
+    }
+  }
+
+  const consiglio = o.alt > 0
+    ? (o.illuminato
+        ? 'È sopra il tuo orizzonte e illuminata dal Sole: se il cielo è già scuro la vedi a occhio nudo, come una stella che scivola.'
+        : 'È sopra il tuo orizzonte ma dentro l\'ombra della Terra: c\'è, però non riflette luce e non si vede.')
+    : 'In questo momento è sotto il tuo orizzonte: te la nasconde la curvatura della Terra. La linea colorata mostra da dove arriverà.';
+
+  box.innerHTML = `
+    <h3 class="font-bold text-white text-base mb-2 flex items-center gap-2">${icona('satellite', 22)} ${sat ? sat.nomeLungo : o.nome}</h3>
+    <ul class="space-y-1">${dettagli.join('')}</ul>
+    <p class="mt-2 text-slate-300">${prossimo}</p>
+    <p class="mt-2 text-slate-400">${consiglio}${sat ? ' ' + sat.nota : ''}</p>`;
+}
+
+// Apre il cielo in diretta puntato su una stazione spaziale
+window.cercaSatelliteNelCielo = (satId) => {
+  cercaNelCielo('sat-' + satId);
+  satPrecaricaTle();
+};
+
 // Avvio: permessi, posizione e sensori (parte da un gesto dell'utente).
 // Il permesso dei sensori va chiesto subito, prima di qualsiasi attesa,
 // altrimenti iOS non lo collega più al tocco e lo rifiuta.
@@ -2531,6 +2719,7 @@ async function skyAvvia(conSensori) {
 function skyCiclo() {
   if (!sky.aperto) return;
   skyAggiornaOggetti(false);
+  skyMuoviSatelliti();
   skyDisegna();
   sky.raf = requestAnimationFrame(skyCiclo);
 }
@@ -2541,6 +2730,7 @@ function apriSkymap() {
   skyCostruisciElenco();
   skyRidimensiona();
   if (!sky.observer) skyCaricaPosizioneSalvata();
+  satPrecaricaTle();
   skyAggiornaStato();
   skyAggiornaOggetti(true);
   skyTieniSchermoAcceso();
@@ -4648,40 +4838,75 @@ function strumentoEvento(evento) {
 }
 
 // =====================================================================
-// 13. PASSAGGI DELLA STAZIONE SPAZIALE INTERNAZIONALE
-//     È l'evento più frequente e più facile: si vede a occhio nudo, anche
-//     dal centro città. I dati orbitali (TLE) arrivano da Celestrak e la
-//     propagazione SGP4 la fa satellite.js, tutto dentro al browser.
-//     Un passaggio si vede solo se: la ISS è alta sull'orizzonte, è
-//     illuminata dal Sole e chi guarda è già al buio.
+// 13. PASSAGGI DELLE STAZIONI SPAZIALI (ISS e Tiangong)
+//     Sono gli oggetti costruiti dall'uomo più facili da vedere: passano
+//     alti, sembrano una stella luminosa che scivola in silenzio e non
+//     lampeggiano come gli aerei. I dati orbitali (TLE) arrivano da
+//     Celestrak e la propagazione SGP4 la fa satellite.js, tutto dentro
+//     al browser. Un passaggio si vede solo se: la stazione è alta
+//     sull'orizzonte, è illuminata dal Sole e chi guarda è già al buio.
+//     Tutto è calcolato per il punto esatto in cui ci si trova: gli orari
+//     e le direzioni cambiano anche fra due paesi vicini.
 // =====================================================================
 
-const CHIAVE_TLE = 'astrocalendario_tle_iss';
+const SATELLITI = [
+  {
+    id: 'iss',
+    nome: 'ISS',
+    nomeLungo: 'Stazione Spaziale Internazionale',
+    catnr: 25544,
+    colore: '#93c5fd',
+    chiaveTle: 'astrocalendario_tle_iss',
+    nota: 'Grande come un campo da calcio: è l\'oggetto artificiale più luminoso del cielo.'
+  },
+  {
+    id: 'css',
+    nome: 'Tiangong',
+    nomeLungo: 'Tiangong, la stazione spaziale cinese',
+    catnr: 48274,
+    colore: '#fca5a5',
+    chiaveTle: 'astrocalendario_tle_css',
+    nota: 'Più piccola della ISS: brilla circa come una stella luminosa, e passa più bassa.'
+  }
+];
+
 const TLE_VALIDITA_MS = 12 * 60 * 60 * 1000;
-const URL_TLE_ISS = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE';
+const URL_TLE = catnr => `https://celestrak.org/NORAD/elements/gp.php?CATNR=${catnr}&FORMAT=TLE`;
 
 // Quanti giorni avanti cercare i passaggi e con che passo temporale
-const ISS_GIORNI = 5;
-const ISS_PASSO_S = 30;
-const ISS_ELEVAZIONE_MINIMA = 10;   // gradi: sotto è nascosta da case e alberi
+const SAT_GIORNI = 5;
+const SAT_PASSO_S = 30;
+const SAT_ELEVAZIONE_MINIMA = 10;   // gradi: sotto è nascosta da case e alberi
+const SAT_R2D = 180 / Math.PI;
 
-let issPassaggi = null;
-let issInCorso = null;
+// Passaggi calcolati e dati orbitali, per stazione
+const satPassaggi = {};    // id stazione -> elenco dei passaggi
+const satTle = {};         // id stazione -> { riga1, riga2, quando }
+const satRecCache = {};    // id stazione -> satrec già costruito
+let satInCorso = null;
+let satPrecaricaAvviata = false;
 
-function tleDaCache() {
+function satelliteDaId(id) {
+  return SATELLITI.find(s => s.id === id) || null;
+}
+
+function tleDaCache(sat) {
   try {
-    const dati = JSON.parse(localStorage.getItem(CHIAVE_TLE) || 'null');
+    const dati = JSON.parse(localStorage.getItem(sat.chiaveTle) || 'null');
     if (dati && dati.riga1 && dati.riga2) return dati;
   } catch (e) { /* dato corrotto */ }
   return null;
 }
 
-async function caricaTleIss(forza) {
-  const salvato = tleDaCache();
-  if (!forza && salvato && Date.now() - salvato.quando < TLE_VALIDITA_MS) return salvato;
+async function caricaTle(sat, forza) {
+  const salvato = satTle[sat.id] || tleDaCache(sat);
+  if (!forza && salvato && Date.now() - salvato.quando < TLE_VALIDITA_MS) {
+    satTle[sat.id] = salvato;
+    return salvato;
+  }
 
   try {
-    const risposta = await fetch(URL_TLE_ISS);
+    const risposta = await fetch(URL_TLE(sat.catnr));
     if (!risposta.ok) throw new Error('risposta non valida');
     const testo = await risposta.text();
     const righe = testo.trim().split('\n').map(r => r.trim()).filter(Boolean);
@@ -4689,12 +4914,70 @@ async function caricaTleIss(forza) {
     const riga2 = righe.find(r => r.startsWith('2 '));
     if (!riga1 || !riga2) throw new Error('formato TLE inatteso');
     const dati = { riga1, riga2, quando: Date.now() };
-    try { localStorage.setItem(CHIAVE_TLE, JSON.stringify(dati)); } catch (e) { /* storage pieno */ }
+    try { localStorage.setItem(sat.chiaveTle, JSON.stringify(dati)); } catch (e) { /* storage pieno */ }
+    satTle[sat.id] = dati;
     return dati;
   } catch (e) {
     // Un TLE vecchio di qualche giorno sbaglia di poco: meglio di niente,
     // e lo diciamo nell'interfaccia.
+    if (salvato) satTle[sat.id] = salvato;
     return salvato;
+  }
+}
+
+// Scarica una volta sola i dati orbitali di tutte le stazioni: serve alla
+// vista Cielo, che li vuole appena si apre per disegnarle in diretta.
+function satPrecaricaTle() {
+  if (satPrecaricaAvviata) return;
+  satPrecaricaAvviata = true;
+  Promise.all(SATELLITI.map(s => caricaTle(s, false)))
+    .then(() => { if (sky.aperto) skyAggiornaOggetti(true); })
+    .catch(() => { /* senza rete restano i dati salvati, se ci sono */ });
+}
+
+// Il satrec (i parametri orbitali digeriti da satellite.js) si ricostruisce
+// solo quando arriva un TLE nuovo: farlo a ogni fotogramma sarebbe sprecato.
+function satRecDi(sat) {
+  const tle = satTle[sat.id] || tleDaCache(sat);
+  if (!tle || typeof satellite === 'undefined') return null;
+  satTle[sat.id] = tle;
+  const memoria = satRecCache[sat.id];
+  if (memoria && memoria.quando === tle.quando) return memoria.rec;
+  try {
+    const rec = satellite.twoline2satrec(tle.riga1, tle.riga2);
+    satRecCache[sat.id] = { quando: tle.quando, rec };
+    return rec;
+  } catch (e) {
+    return null;
+  }
+}
+
+// L'osservatore nel formato che vuole satellite.js (radianti e chilometri)
+function satOsservatoreGd(luogo) {
+  return {
+    longitude: luogo.lon * Math.PI / 180,
+    latitude: luogo.lat * Math.PI / 180,
+    height: 0.1
+  };
+}
+
+// Dove sta la stazione, vista da qui, in un dato istante
+function satAltAz(rec, data, gd) {
+  let pv;
+  try { pv = satellite.propagate(rec, data); } catch (e) { return null; }
+  if (!pv || !pv.position) return null;
+  try {
+    const gmst = satellite.gstime(data);
+    const ecf = satellite.eciToEcf(pv.position, gmst);
+    const look = satellite.ecfToLookAngles(gd, ecf);
+    return {
+      az: ((look.azimuth * SAT_R2D) % 360 + 360) % 360,
+      alt: look.elevation * SAT_R2D,
+      distanza: look.rangeSat,
+      posizione: pv.position
+    };
+  } catch (e) {
+    return null;
   }
 }
 
@@ -4721,42 +5004,33 @@ function satelliteIlluminato(posKm, data) {
   }
 }
 
-// Cerca i passaggi visibili nei prossimi giorni. Restituisce una lista di
-// oggetti con inizio, culmine, fine, altezza massima e direzioni.
-function calcolaPassaggiIss(tle, luogo) {
-  if (typeof satellite === 'undefined' || !tle || !luogo) return [];
+// Cerca i passaggi nei prossimi giorni sopra il punto in cui ci si trova.
+// Restituisce una lista di oggetti con inizio, culmine, fine, altezza
+// massima e direzioni in cui guardare.
+function calcolaPassaggiSatellite(sat, luogo) {
+  const rec = satRecDi(sat);
+  if (typeof satellite === 'undefined' || !rec || !luogo) return [];
 
-  const rec = satellite.twoline2satrec(tle.riga1, tle.riga2);
-  const osservatoreGd = {
-    longitude: luogo.lon * Math.PI / 180,
-    latitude: luogo.lat * Math.PI / 180,
-    height: 0.1
-  };
+  const osservatoreGd = satOsservatoreGd(luogo);
   const obs = osservatoreCorrente();
 
   const passaggi = [];
   let corrente = null;
   const inizio = Date.now();
-  const passi = Math.floor(ISS_GIORNI * 86400 / ISS_PASSO_S);
+  const passi = Math.floor(SAT_GIORNI * 86400 / SAT_PASSO_S);
 
   for (let i = 0; i < passi; i++) {
-    const data = new Date(inizio + i * ISS_PASSO_S * 1000);
-    let pv;
-    try { pv = satellite.propagate(rec, data); } catch (e) { continue; }
-    if (!pv || !pv.position) continue;
+    const data = new Date(inizio + i * SAT_PASSO_S * 1000);
+    const p = satAltAz(rec, data, osservatoreGd);
+    if (!p) continue;
 
-    const gmst = satellite.gstime(data);
-    const ecf = satellite.eciToEcf(pv.position, gmst);
-    const look = satellite.ecfToLookAngles(osservatoreGd, ecf);
-    const elevazione = look.elevation * 180 / Math.PI;
-
-    if (elevazione >= ISS_ELEVAZIONE_MINIMA) {
+    if (p.alt >= SAT_ELEVAZIONE_MINIMA) {
       const voce = {
         data,
-        elevazione,
-        azimut: ((look.azimuth * 180 / Math.PI) % 360 + 360) % 360,
-        distanza: look.rangeSat,
-        posizione: pv.position
+        elevazione: p.alt,
+        azimut: p.az,
+        distanza: p.distanza,
+        posizione: p.posizione
       };
       if (!corrente) corrente = { punti: [voce] };
       else corrente.punti.push(voce);
@@ -4772,92 +5046,183 @@ function calcolaPassaggiIss(tle, luogo) {
     const culmine = punti.reduce((a, b) => (b.elevazione > a.elevazione ? b : a), punti[0]);
     const primo = punti[0], ultimo = punti[punti.length - 1];
 
-    // Visibile a occhio nudo solo se la ISS è al sole e chi guarda è al buio
+    // Visibile a occhio nudo solo se la stazione è al sole e chi guarda è al buio
     const illuminata = satelliteIlluminato(culmine.posizione, culmine.data);
     const altSole = obs ? altezzaSole(culmine.data, obs) : null;
     const osservatoreAlBuio = altSole === null ? true : altSole < -6;
 
     return {
+      satId: sat.id,
       inizio: primo.data,
       fine: ultimo.data,
       culmine: culmine.data,
       elevazioneMax: culmine.elevazione,
       azInizio: primo.azimut,
+      azCulmine: culmine.azimut,
       azFine: ultimo.azimut,
       distanzaMin: Math.round(culmine.distanza),
       durataMin: Math.max(1, Math.round((ultimo.data - primo.data) / 60000)),
       visibile: illuminata && osservatoreAlBuio,
       illuminata,
-      alBuio: osservatoreAlBuio
+      alBuio: osservatoreAlBuio,
+      altezzaSole: altSole
     };
   });
 }
 
-async function aggiornaPassaggiIss(forza) {
-  const box = document.getElementById('stasera-iss');
+async function aggiornaPassaggiSatelliti(forza) {
+  const box = document.getElementById('stasera-satelliti');
   const luogo = luogoCorrente();
 
   if (!luogo) {
-    if (box) box.innerHTML = '<p class="text-slate-400">Serve la tua posizione: la ISS passa sopra un punto preciso della Terra. Premi “Dove sono” qui sopra.</p>';
+    if (box) box.innerHTML = '<p class="text-slate-400">Serve la tua posizione: le stazioni spaziali passano sopra un punto preciso della Terra, e da un paese all\'altro cambia tutto. Premi “Dove sono” qui sopra.</p>';
     return;
   }
   if (typeof satellite === 'undefined') {
     if (box) box.innerHTML = '<p class="text-amber-400">Libreria orbitale non caricata: riapri l\'app quando c\'è rete, poi funzionerà anche offline.</p>';
     return;
   }
-  if (issInCorso) return issInCorso;
+  if (satInCorso) return satInCorso;
   if (box) box.innerHTML = '<p class="text-slate-400">Calcolo dei passaggi in corso…</p>';
 
-  issInCorso = (async () => {
-    const tle = await caricaTleIss(forza);
-    if (!tle) {
-      if (box) box.innerHTML = '<p class="text-amber-400">Non riesco a scaricare i dati orbitali della ISS (serve la rete almeno una volta).</p>';
-      return;
-    }
-    try {
-      issPassaggi = calcolaPassaggiIss(tle, luogo);
-    } catch (e) {
-      console.error('Errore passaggi ISS:', e);
-      issPassaggi = [];
-    }
-    mostraPassaggiIss(tle);
-  })().finally(() => { issInCorso = null; });
+  satInCorso = (async () => {
+    await Promise.all(SATELLITI.map(async sat => {
+      const tle = await caricaTle(sat, forza);
+      if (!tle) { satPassaggi[sat.id] = null; return; }
+      try {
+        satPassaggi[sat.id] = calcolaPassaggiSatellite(sat, luogo);
+      } catch (e) {
+        console.error(`Errore passaggi ${sat.nome}:`, e);
+        satPassaggi[sat.id] = [];
+      }
+    }));
+    satPrecaricaAvviata = true;
+    mostraPassaggiSatelliti();
+    if (sky.aperto) skyAggiornaOggetti(true);
+    skyAggiornaScheda();
+  })().finally(() => { satInCorso = null; });
 
-  return issInCorso;
+  return satInCorso;
 }
 
-function mostraPassaggiIss(tle) {
-  const box = document.getElementById('stasera-iss');
+// "Fra quanto" in parole: è la risposta che si cerca davvero guardando fuori
+function fraQuanto(data) {
+  const ms = data - Date.now();
+  if (ms <= 0) return 'adesso';
+  const min = Math.round(ms / 60000);
+  if (min < 1) return 'fra pochi secondi';
+  if (min < 60) return `fra ${min} min`;
+  const ore = Math.floor(min / 60), resto = min % 60;
+  if (ore < 24) return `fra ${ore} h${resto ? ' ' + resto + ' min' : ''}`;
+  const giorni = Math.round(ore / 24);
+  return `fra ${giorni} giorn${giorni === 1 ? 'o' : 'i'}`;
+}
+
+// Il primo passaggio visibile di una stazione, o null se non ce n'è
+function prossimoPassaggioVisibile(satId) {
+  const elenco = satPassaggi[satId];
+  if (!elenco) return null;
+  return elenco.find(p => p.visibile && p.fine > new Date()) || null;
+}
+
+// Tutti i passaggi visibili delle due stazioni, in ordine di orario
+function passaggiVisibiliOrdinati() {
+  const adesso = new Date();
+  return SATELLITI
+    .flatMap(sat => (satPassaggi[sat.id] || []).filter(p => p.visibile && p.fine > adesso))
+    .sort((a, b) => a.inizio - b.inizio);
+}
+
+function satEtichetta(sat) {
+  return `<span class="inline-flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-full border"
+    style="color:${sat.colore};border-color:${sat.colore}66;background:${sat.colore}1a">${sat.nome}</span>`;
+}
+
+function mostraPassaggiSatelliti() {
+  const box = document.getElementById('stasera-satelliti');
   if (!box) return;
 
-  const visibili = (issPassaggi || []).filter(p => p.visibile).slice(0, 5);
-  const eta = tle ? Math.round((Date.now() - tle.quando) / 3600000) : null;
-  const notaEta = eta !== null && eta > 24
-    ? `<p class="text-xs text-amber-400 mt-2">Dati orbitali vecchi di ${Math.round(eta / 24)} giorni: gli orari possono spostarsi di qualche minuto.</p>`
+  const visibili = passaggiVisibiliOrdinati().slice(0, 6);
+
+  // Se i dati orbitali sono vecchi gli orari ballano: meglio dirlo
+  const etaMax = SATELLITI.reduce((max, sat) => {
+    const tle = satTle[sat.id];
+    if (!tle) return max;
+    return Math.max(max, Date.now() - tle.quando);
+  }, 0);
+  const giorniEta = Math.floor(etaMax / 86400000);
+  const notaEta = giorniEta >= 1
+    ? `<p class="text-xs text-amber-400 mt-1">Dati orbitali vecchi di ${giorniEta} giorn${giorniEta === 1 ? 'o' : 'i'}: gli orari possono spostarsi di qualche minuto. Premi “Aggiorna” con la rete accesa.</p>`
     : '';
 
+  // Riepilogo per stazione: quando tocca alla ISS e quando a Tiangong
+  const riepilogo = SATELLITI.map(sat => {
+    const elenco = satPassaggi[sat.id];
+    let testo;
+    if (!elenco) {
+      testo = '<span class="text-amber-400">dati orbitali non disponibili</span>';
+    } else {
+      const p = prossimoPassaggioVisibile(sat.id);
+      if (!p) {
+        const quanti = elenco.length;
+        testo = quanti
+          ? `<span class="text-slate-400">nessun passaggio visibile nei prossimi ${SAT_GIORNI} giorni (passa ${quanti} volte, ma di giorno o nell'ombra della Terra)</span>`
+          : `<span class="text-slate-400">non passa mai abbastanza alta da qui nei prossimi ${SAT_GIORNI} giorni</span>`;
+      } else if (p.inizio <= new Date()) {
+        testo = `<strong class="text-green-400">sta passando adesso</strong>, verso ${skyNomeDirezione(p.azCulmine)}`;
+      } else {
+        testo = `<strong class="text-white">${dataOraBreve(p.inizio)}</strong> <span class="text-slate-400">(${fraQuanto(p.inizio)}, verso ${skyNomeDirezione(p.azInizio)})</span>`;
+      }
+    }
+    return `
+      <div class="flex items-baseline gap-2 flex-wrap">
+        ${satEtichetta(sat)}
+        <span class="text-sm text-slate-300">${testo}</span>
+        <button onclick="cercaSatelliteNelCielo('${sat.id}')" class="text-xs px-2.5 py-1 rounded-full bg-slate-700 hover:bg-blue-600 text-white" title="Mostrala nel cielo, dove si trova adesso">Dov'è ora</button>
+      </div>`;
+  }).join('');
+
+  const intestazione = `<div class="grid gap-2 bg-slate-900 p-3 rounded-xl border border-slate-700">${riepilogo}</div>`;
+
   if (!visibili.length) {
-    box.innerHTML = '<p class="text-slate-400">Nessun passaggio visibile a occhio nudo nei prossimi giorni: capita, la ISS passa spesso di giorno o nell\'ombra della Terra.</p>' + notaEta;
+    box.innerHTML = intestazione +
+      `<p class="text-slate-400 mt-1">Nessun passaggio visibile a occhio nudo nei prossimi giorni: capita spesso, perché la stazione deve essere illuminata dal Sole mentre da qui è già buio.</p>` +
+      notaEta;
     return;
   }
 
-  box.innerHTML = visibili.map(p => {
+  const schede = visibili.map(p => {
+    const sat = satelliteDaId(p.satId);
+    const inCorso = p.inizio <= new Date();
     const qualita = p.elevazioneMax > 60 ? 'spettacolare, quasi allo zenit'
                   : p.elevazioneMax > 40 ? 'molto buono, alta nel cielo'
-                  : 'discreto, resta bassa';
+                  : 'discreto, resta bassa sull\'orizzonte';
     return `
-      <div class="bg-slate-900 p-3 rounded-xl border border-slate-700">
+      <div class="bg-slate-900 p-3 rounded-xl border ${inCorso ? 'border-green-600' : 'border-slate-700'}">
         <div class="flex justify-between items-baseline gap-2 flex-wrap">
-          <span class="font-bold text-white inline-flex items-center gap-2">${icona('satellite', 18)} ${dataOraBreve(p.inizio)}</span>
-          <span class="text-xs text-slate-400">${p.durataMin} min · fino a ${Math.round(p.elevazioneMax)}° · ${p.distanzaMin} km</span>
+          <span class="font-bold text-white inline-flex items-center gap-2">
+            ${icona('satellite', 18)} ${satEtichetta(sat)} ${dataOraBreve(p.inizio)}
+          </span>
+          <span class="text-xs ${inCorso ? 'text-green-400 font-bold' : 'text-slate-400'}">${inCorso ? 'in corso adesso' : fraQuanto(p.inizio)}</span>
         </div>
         <p class="text-sm text-slate-300 mt-1">
-          Compare verso <strong>${skyNomeDirezione(p.azInizio)}</strong>, culmina alle
-          <strong>${oraBreve(p.culmine)}</strong> e sparisce verso <strong>${skyNomeDirezione(p.azFine)}</strong>.
+          Compare verso <strong>${skyNomeDirezione(p.azInizio)}</strong>, passa più alta alle
+          <strong>${oraBreve(p.culmine)}</strong> a <strong>${Math.round(p.elevazioneMax)}°</strong>
+          verso <strong>${skyNomeDirezione(p.azCulmine)}</strong>, e sparisce verso
+          <strong>${skyNomeDirezione(p.azFine)}</strong> alle <strong>${oraBreve(p.fine)}</strong>.
         </p>
-        <p class="text-xs text-slate-500 mt-1">Passaggio ${qualita}. Sembra un aereo senza lampeggianti, silenzioso e velocissimo.</p>
+        <p class="text-xs text-slate-500 mt-1">
+          ${p.durataMin} min di passaggio · ${p.distanzaMin} km di distanza al culmine · passaggio ${qualita}.
+        </p>
+        <div class="mt-2">
+          <button onclick="cercaSatelliteNelCielo('${p.satId}')" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-blue-600 text-white font-semibold" title="Apri il cielo in diretta puntato sulla stazione">Trova nel cielo</button>
+        </div>
       </div>`;
-  }).join('') + notaEta;
+  }).join('');
+
+  box.innerHTML = intestazione + schede +
+    `<p class="text-xs text-slate-500">Sembra una stella luminosa che scivola senza fare rumore: non lampeggia come un aereo. Guarda qualche minuto prima dell'orario e tieni d'occhio la direzione indicata.</p>` +
+    notaEta;
 }
 
 // =====================================================================
@@ -5101,7 +5466,7 @@ function costruisciStasera() {
   costruisciStaseraPianeti();
   costruisciStaseraProssimi();
   costruisciStaseraMeteo();
-  aggiornaPassaggiIss(false);
+  aggiornaPassaggiSatelliti(false);
 }
 
 function inizializzaStasera() {
@@ -5120,8 +5485,8 @@ function inizializzaStasera() {
     });
   }
 
-  const btnIss = document.getElementById('btn-iss-aggiorna');
-  if (btnIss) btnIss.addEventListener('click', () => aggiornaPassaggiIss(true));
+  const btnSat = document.getElementById('btn-satelliti-aggiorna');
+  if (btnSat) btnSat.addEventListener('click', () => aggiornaPassaggiSatelliti(true));
 }
 
 // =====================================================================
