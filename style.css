@@ -1,328 +1,582 @@
 /* ============================================================================
-   AstroCalendario di Ben — foglio di stile "quaderno da disegno"
+   AstroCalendario di Ben — foglio di stile "Deep Space"
    ----------------------------------------------------------------------------
+   Un tema scuro premium, ispirato agli strumenti di un osservatorio moderno:
+   nero-blu profondo, accenti blu cosmico e viola nebulosa, molto spazio vuoto.
+
    L'app usa le classi di Tailwind per la struttura (spazi, griglie, dimensioni).
-   Qui sopra ci mettiamo la pelle: carta, contorni tracciati a mano, pastelli.
-   Per farlo ridefiniamo le poche utility di colore/forma che l'app adopera,
-   con un selettore un filo più specifico (body .classe) così vinciamo sempre
-   sul CSS che Tailwind genera a runtime, senza bisogno di !important.
+   Qui ci mettiamo la pelle: ridefiniamo le poche utility di colore che l'app
+   adopera, con un selettore un filo più specifico (body .classe) così vinciamo
+   sempre sul CSS che Tailwind genera a runtime, senza bisogno di !important.
    ========================================================================== */
 
 /* ---------------------------------------------------------------- PALETTE  */
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 
-  --carta:        #f7f1e1;  /* il foglio */
-  --carta-2:      #fffaf0;  /* le schede appoggiate sopra */
-  --carta-3:      #f0e7d2;  /* schede premute / hover */
-  --carta-incassata: #f2ebd8;
+  /* Fondali: dal nero dello spazio profondo al blu notte delle superfici */
+  --spazio:        #04060d;  /* il vuoto dietro a tutto */
+  --spazio-2:      #070a14;
+  --superficie:    rgba(19, 25, 43, 0.72);   /* le schede, vetro appena velato */
+  --superficie-piena: #131a2b;
+  --superficie-alta:  rgba(28, 36, 60, 0.86); /* hover, controlli secondari */
+  --incassato:     rgba(8, 11, 20, 0.72);     /* campi e riquadri interni */
 
-  --inchiostro:       #23304d;  /* la matita: tutti i contorni */
-  --inchiostro-tenue: rgba(35, 48, 77, 0.34);
-  --testo:            #26324c;
-  --testo-tenue:      #5d6a86;
+  /* Contorni: quasi invisibili, si accendono al passaggio del mouse */
+  --bordo:         rgba(148, 168, 214, 0.14);
+  --bordo-forte:   rgba(148, 168, 214, 0.26);
 
-  --giallo:  #eab54a;
-  --corallo: #e2685c;
-  --verde:   #6ea065;
-  --lilla:   #8f83bd;
-  --azzurro: #4a7fbd;
-  --su-pieno: #1b2540;      /* testo sopra i colori pieni */
+  /* Testi */
+  --testo:         #e9edf7;
+  --testo-2:       #a9b4cc;
+  --testo-3:       #74809a;
 
-  --avviso:  #b4762a;
+  /* Accenti */
+  --blu:           #4c8dff;  /* blu cosmico */
+  --blu-chiaro:    #8ab4ff;
+  --blu-scuro:     #2f6ae0;
+  --viola:         #8b5cf6;  /* viola nebulosa */
+  --viola-chiaro:  #b79cff;
+  --verde:         #34d399;
+  --ambra:         #f5b544;
+  --rosso:         #f87171;
 
-  /* Il cielo resta notte anche di giorno: canvas, mappe, visore */
-  --notte:      #101a33;
-  --notte-2:    #16223f;
-  --notte-testo:#f0ecdd;
-  --notte-bordo:#4c5c86;
+  /* Velature colorate per sfondi tenui */
+  --blu-velo:      rgba(76, 141, 255, 0.14);
+  --viola-velo:    rgba(139, 92, 246, 0.14);
+  --ambra-velo:    rgba(245, 181, 68, 0.12);
 
-  --tratto: 2.5px;
-  --ombra-corta: 2px 2px 0 var(--inchiostro);
-  --ombra: 3px 3px 0 var(--inchiostro);
+  /* Profondità: ombre lunghe e morbide, mai dure */
+  --ombra-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --ombra-2: 0 12px 28px -18px rgba(0, 0, 0, 0.9);
+  --ombra-3: 0 28px 60px -28px rgba(0, 0, 0, 0.95);
+  --luce-interna: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --alone-blu: 0 6px 24px -10px rgba(76, 141, 255, 0.55);
+  --alone-viola: 0 6px 24px -10px rgba(139, 92, 246, 0.5);
 
-  /* Contorni "tremolanti": quattro raggi diversi, come un tratto a mano */
-  --curva-grande: 210px 16px 190px 18px / 18px 190px 16px 210px;
-  --curva-media:  16px 150px 14px 140px / 140px 14px 150px 16px;
-  --curva-piccola: 14px 90px 12px 80px / 80px 12px 90px 14px;
-  --curva-pillola: 120px 10px 110px 12px / 12px 110px 10px 120px;
-  --curva-tonda:  60% 40% 55% 45% / 50% 60% 40% 50%;
+  --raggio-s: 10px;
+  --raggio-m: 14px;
+  --raggio-l: 20px;
+  --raggio-xl: 26px;
 
-  --scrittura: "Bradley Hand", "Segoe Print", "Chalkboard SE", "Comic Sans MS",
-               "Marker Felt", "Segoe UI", system-ui, cursive;
-}
+  --transizione: 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  --transizione-lenta: 240ms cubic-bezier(0.22, 0.61, 0.36, 1);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --carta:        #1b2540;  /* cartoncino blu */
-    --carta-2:      #223054;
-    --carta-3:      #2a3a63;
-    --carta-incassata: #1e294a;
-
-    --inchiostro:       #e8e2d0;  /* gessetto */
-    --inchiostro-tenue: rgba(232, 226, 208, 0.32);
-    --testo:            #f2ecdc;
-    --testo-tenue:      #a9b3cb;
-
-    --giallo:  #f3c968;
-    --corallo: #ef8478;
-    --verde:   #93c286;
-    --lilla:   #ab9fd8;
-    --azzurro: #8fb8ea;
-
-    --avviso:  #f0c674;
-
-    --ombra-corta: 2px 2px 0 #0d1424;
-    --ombra: 3px 3px 0 #0d1424;
-  }
+  --sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          "Segoe UI", system-ui, sans-serif;
+  --mono: "SF Mono", "JetBrains Mono", ui-monospace, "Menlo", "Consolas", monospace;
 }
 
 /* ------------------------------------------------------------------- BASE  */
+html { scroll-behavior: smooth; }
+
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: var(--carta);
+  font-family: var(--sans);
+  font-feature-settings: "cv05" 1, "ss01" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--spazio);
   color: var(--testo);
-  /* grana leggera della carta */
-  background-image:
-    radial-gradient(var(--inchiostro-tenue) 0.5px, transparent 0.6px),
-    radial-gradient(var(--inchiostro-tenue) 0.5px, transparent 0.6px);
-  background-size: 24px 24px, 24px 24px;
-  background-position: 0 0, 12px 12px;
+  letter-spacing: -0.011em;
+  position: relative;
+  overflow-x: hidden;
 }
 
-h1, h2, h3, h4 { font-family: var(--scrittura); letter-spacing: 0.2px; }
+/* Il cielo profondo dietro all'interfaccia: nebulose appena percettibili,
+   poi un pulviscolo di stelle. Due strati fissi, zero costo di layout. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+}
+
+body::before {
+  background:
+    radial-gradient(1100px 720px at 12% -8%, rgba(76, 141, 255, 0.16), transparent 62%),
+    radial-gradient(900px 640px at 88% 4%, rgba(139, 92, 246, 0.13), transparent 60%),
+    radial-gradient(1200px 900px at 50% 108%, rgba(46, 92, 190, 0.10), transparent 66%),
+    linear-gradient(180deg, #070b16 0%, #05070f 45%, #04060d 100%);
+}
+
+/* Le stelle: tre strati di puntini di dimensione e luminosità diverse */
+body::after {
+  z-index: -1;
+  background-image:
+    radial-gradient(1.4px 1.4px at 18% 22%, rgba(255, 255, 255, 0.55), transparent 100%),
+    radial-gradient(1.1px 1.1px at 72% 12%, rgba(214, 228, 255, 0.42), transparent 100%),
+    radial-gradient(1px 1px at 42% 68%, rgba(255, 255, 255, 0.35), transparent 100%),
+    radial-gradient(1.6px 1.6px at 88% 54%, rgba(190, 214, 255, 0.4), transparent 100%),
+    radial-gradient(1px 1px at 8% 82%, rgba(255, 255, 255, 0.3), transparent 100%),
+    radial-gradient(1.2px 1.2px at 58% 36%, rgba(255, 255, 255, 0.26), transparent 100%);
+  background-size: 340px 340px, 420px 420px, 260px 260px, 520px 520px, 300px 300px, 380px 380px;
+  animation: respiro-stelle 14s ease-in-out infinite alternate;
+}
+
+@keyframes respiro-stelle {
+  from { opacity: 0.72; }
+  to   { opacity: 1; }
+}
 
 /* Rete di sicurezza: se Tailwind non si carica (CDN irraggiungibile) tutte le
    viste e i modali resterebbero visibili insieme. Questa regola basta a tenere
    l'app usabile, sia pure senza grafica. */
 .hidden { display: none !important; }
 
-/* --------------------------------------------------------------- TESTATA   */
-.titolo-app {
-  font-family: var(--scrittura);
-  font-size: clamp(2rem, 7vw, 2.9rem);
-  line-height: 1.12;
+h1, h2, h3, h4 {
+  letter-spacing: -0.022em;
   text-wrap: balance;
-  color: var(--testo);
-  margin: 0;
 }
 
-/* La navigazione è fatta di parole: quella attiva viene cerchiata a penna */
+::selection { background: rgba(76, 141, 255, 0.32); color: #fff; }
+
+/* Barre di scorrimento discrete */
+* { scrollbar-color: rgba(148, 168, 214, 0.28) transparent; scrollbar-width: thin; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 168, 214, 0.2);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(148, 168, 214, 0.36); background-clip: content-box; }
+
+/* --------------------------------------------------------------- TESTATA   */
+.marchio {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 22px;
+  background: linear-gradient(150deg, rgba(76, 141, 255, 0.16), rgba(139, 92, 246, 0.14));
+  border: 1px solid var(--bordo-forte);
+  box-shadow: var(--ombra-2), var(--luce-interna);
+  color: var(--blu-chiaro);
+}
+
+.titolo-app {
+  font-size: clamp(1.9rem, 5.2vw, 2.6rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.034em;
+  color: var(--testo);
+  margin: 0;
+  background: linear-gradient(180deg, #ffffff 0%, #b9c6e6 130%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.sottotitolo-app {
+  color: var(--testo-2);
+  font-size: 0.95rem;
+  letter-spacing: -0.008em;
+}
+
+/* Navigazione: un segmented control essenziale, in vetro */
+.nav-principale {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(12, 17, 30, 0.66);
+  border: 1px solid var(--bordo);
+  box-shadow: var(--ombra-2), var(--luce-interna);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.nav-principale::-webkit-scrollbar { display: none; }
+
 .voce-menu {
-  font-family: var(--scrittura);
-  font-size: 1.08rem;
+  position: relative;
+  flex: 0 0 auto;
   background: none;
   border: none;
   box-shadow: none;
-  color: var(--testo);
-  padding: 6px 12px;
+  color: var(--testo-2);
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  padding: 8px 16px;
+  border-radius: 999px;
   cursor: pointer;
-  position: relative;
-  transition: color 0.15s ease;
+  white-space: nowrap;
+  transition: color var(--transizione), background-color var(--transizione);
 }
-.voce-menu:hover { color: var(--azzurro); }
-.voce-menu.attiva::after {
-  content: "";
-  position: absolute;
-  inset: -5px -10px;
-  border: var(--tratto) solid var(--corallo);
-  border-radius: var(--curva-tonda);
-  transform: rotate(-1.5deg);
-  pointer-events: none;
+.voce-menu:hover { color: var(--testo); background: rgba(148, 168, 214, 0.08); }
+.voce-menu.attiva {
+  color: #fff;
+  background: linear-gradient(180deg, rgba(76, 141, 255, 0.9), rgba(47, 106, 224, 0.9));
+  box-shadow: var(--alone-blu), var(--luce-interna);
 }
 
-/* ------------------------------------------------------- FORME DISEGNATE   */
-/* Contorno a mano su tutto ciò che Tailwind arrotonda */
-body .rounded-2xl { border-radius: var(--curva-grande); }
-body .rounded-xl  { border-radius: var(--curva-media); }
-body .rounded-lg,
-body .rounded     { border-radius: var(--curva-piccola); }
-body .rounded-sm  { border-radius: 8px 3px 7px 4px; }
-body .rounded-full { border-radius: var(--curva-pillola); }
-/* i pallini e le pastiglie piccole restano tondi, ma storti */
-body .w-4.rounded-full, body .w-5.rounded-full, body .w-6.rounded-full,
-body .w-10.rounded-full, body .h-10.rounded-full,
-body .punto-categoria { border-radius: var(--curva-tonda); }
-
-/* Ombre: un tratto pieno, non una sfumatura */
-body .shadow,
-body .shadow-lg  { box-shadow: var(--ombra-corta); }
-body .shadow-xl,
-body .shadow-2xl { box-shadow: var(--ombra); }
-
-/* --------------------------------------------------------------- COLORI    */
-body .bg-slate-800 { background-color: var(--carta-2); }
-body .bg-slate-700 { background-color: var(--carta-2); }
-body .bg-slate-900 { background-color: var(--carta-incassata); }
-body .bg-slate-950 { background-color: var(--notte); }
+/* --------------------------------------------------------------- SUPERFICI */
+/* Le schede: vetro molto discreto, bordo sottile, ombra lunga */
+body .bg-slate-800 {
+  background-color: var(--superficie);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+}
+body .bg-slate-900 { background-color: var(--incassato); }
+body .bg-slate-950 { background-color: #03050c; }
+body .bg-slate-700 { background-color: rgba(38, 48, 76, 0.72); }
+body .bg-slate-600 { background-color: rgba(52, 65, 100, 0.86); }
 
 body .border-slate-700,
 body .border-slate-600,
-body .border-slate-500 { border-color: var(--inchiostro); border-width: var(--tratto); }
+body .border-slate-500 { border-color: var(--bordo); }
 
+body .rounded-2xl { border-radius: var(--raggio-xl); }
+body .rounded-xl  { border-radius: var(--raggio-l); }
+body .rounded-lg  { border-radius: var(--raggio-m); }
+body .rounded     { border-radius: var(--raggio-s); }
+
+body .shadow,
+body .shadow-lg  { box-shadow: var(--ombra-2), var(--luce-interna); }
+body .shadow-xl,
+body .shadow-2xl { box-shadow: var(--ombra-3), var(--luce-interna); }
+
+/* Un filo di luce sul bordo superiore delle schede principali: profondità */
+main > div > .bg-slate-800,
+main > .bg-slate-800,
+#vista-stasera > .bg-slate-800,
+#vista-diario > .bg-slate-800 {
+  position: relative;
+}
+
+/* --------------------------------------------------------------- COLORI    */
 body .text-white,
 body .text-slate-100,
-body .text-slate-200,
-body .text-slate-300 { color: var(--testo); }
-body .text-slate-400,
-body .text-slate-500 { color: var(--testo-tenue); }
+body .text-slate-200 { color: var(--testo); }
+body .text-slate-300 { color: #c3ccdf; }
+body .text-slate-400 { color: var(--testo-2); }
+body .text-slate-500 { color: var(--testo-3); }
 body .text-blue-400,
-body .text-blue-300  { color: var(--azzurro); }
-body .text-amber-400 { color: var(--avviso); }
+body .text-blue-300  { color: var(--blu-chiaro); }
+body .text-amber-400 { color: var(--ambra); }
 body .text-green-400 { color: var(--verde); }
-body .text-red-400   { color: var(--corallo); }
+body .text-red-400   { color: var(--rosso); }
 
-body .hover\:text-white:hover      { color: var(--testo); }
-body .hover\:text-blue-300:hover   { color: var(--azzurro); }
+body .hover\:text-white:hover      { color: #fff; }
+body .hover\:text-blue-300:hover   { color: var(--blu-chiaro); }
 body .hover\:text-slate-200:hover  { color: var(--testo); }
 
-/* Pieni a pastello: uno per tipo di azione */
-body .bg-blue-600, body .bg-blue-700,
+/* Pieni: un gradiente appena accennato, niente colori piatti */
+body .bg-blue-600, body .bg-blue-700, body .bg-blue-500 {
+  background-image: linear-gradient(180deg, var(--blu) 0%, var(--blu-scuro) 100%);
+  background-color: var(--blu-scuro);
+  color: #fff;
+  border-color: rgba(120, 170, 255, 0.34);
+  box-shadow: var(--alone-blu), var(--luce-interna);
+}
 body .hover\:bg-blue-500:hover, body .hover\:bg-blue-600:hover {
-  background-color: var(--giallo); color: var(--su-pieno); border-color: var(--inchiostro);
+  background-image: linear-gradient(180deg, #6ba0ff 0%, #3a76ea 100%);
+  background-color: #3a76ea;
+  color: #fff;
+  border-color: rgba(140, 185, 255, 0.44);
 }
-body .bg-green-600, body .hover\:bg-green-500:hover {
-  background-color: var(--verde); color: var(--su-pieno);
+body .bg-green-600, body .bg-green-500,
+body .hover\:bg-green-500:hover {
+  background-image: linear-gradient(180deg, #2ec98f 0%, #12936d 100%);
+  background-color: #12936d;
+  color: #04221a;
+  border-color: rgba(46, 201, 143, 0.3);
+  box-shadow: 0 8px 20px -14px rgba(46, 201, 143, 0.7), var(--luce-interna);
 }
-body .bg-purple-600, body .hover\:bg-purple-500:hover, body .hover\:bg-purple-600:hover {
-  background-color: var(--lilla); color: var(--su-pieno);
+body .bg-purple-600,
+body .hover\:bg-purple-500:hover, body .hover\:bg-purple-600:hover {
+  background-image: linear-gradient(180deg, var(--viola) 0%, #6d3fe0 100%);
+  background-color: #6d3fe0;
+  color: #fff;
+  border-color: rgba(179, 148, 255, 0.36);
+  box-shadow: var(--alone-viola), var(--luce-interna);
 }
-body .hover\:bg-red-600:hover { background-color: var(--corallo); color: var(--su-pieno); }
-body .hover\:bg-slate-600:hover, body .hover\:bg-slate-700:hover { background-color: var(--carta-3); }
-body .hover\:bg-blue-900:hover { background-color: var(--carta-3); }
+body .bg-red-600, body .hover\:bg-red-600:hover {
+  background-image: linear-gradient(180deg, #f87171 0%, #dc4c4c 100%);
+  background-color: #dc4c4c;
+  color: #fff;
+}
+body .hover\:bg-slate-600:hover, body .hover\:bg-slate-700:hover {
+  background-color: var(--superficie-alta);
+}
+body .hover\:bg-blue-900:hover { background-color: rgba(76, 141, 255, 0.18); }
 
-body .bg-black\/60, body .bg-black\/70 { background-color: rgba(20, 26, 45, 0.62); }
+body .bg-black\/60, body .bg-black\/70 { background-color: rgba(3, 5, 12, 0.74); }
 
-/* Avvisi in ocra, su carta */
-body .bg-amber-950\/40 { background-color: rgba(234, 181, 74, 0.16); }
-body .border-amber-800 { border-color: var(--avviso); }
+/* Avvisi in ambra, su fondo velato */
+body .bg-amber-950\/40 { background-color: var(--ambra-velo); }
+body .border-amber-800 { border-color: rgba(245, 181, 68, 0.32); }
+body .border-green-600 { border-color: rgba(52, 211, 153, 0.4); }
+body .border-blue-500  { border-color: rgba(76, 141, 255, 0.45); }
 
-body .accent-blue-500 { accent-color: var(--azzurro); }
-body .placeholder-slate-500::placeholder { color: var(--testo-tenue); opacity: 0.8; }
+body .accent-blue-500 { accent-color: var(--blu); }
+::placeholder { color: var(--testo-3); opacity: 1; }
 
 /* --------------------------------------------------------------- BOTTONI   */
-button { background-color: var(--carta-2); color: var(--testo); }
+button {
+  font-family: inherit;
+  color: var(--testo);
+  letter-spacing: -0.008em;
+}
 
-body button:not(.border-0):not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.leaflet-control-zoom a) {
-  font-family: var(--scrittura);
-  border: var(--tratto) solid var(--inchiostro);
-  border-radius: var(--curva-pillola);
-  box-shadow: var(--ombra-corta);
+body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.leaflet-control-zoom a) {
+  font-weight: 500;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+  border-width: 1px;
+  border-style: solid;
+  border-color: transparent;
+  transition: transform var(--transizione), box-shadow var(--transizione),
+              background-color var(--transizione), border-color var(--transizione),
+              color var(--transizione), filter var(--transizione);
 }
-body button:not(.border-0):not(.senza-cornice):not(.fc-button):hover {
-  transform: translate(-1px, -1px);
-  box-shadow: var(--ombra);
+body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):hover {
+  transform: translateY(-1px);
 }
-body button:not(.border-0):not(.senza-cornice):not(.fc-button):active {
-  transform: translate(2px, 2px);
-  box-shadow: none;
+body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):active {
+  transform: translateY(0);
+  filter: brightness(0.94);
 }
+
+/* I bottoni secondari (grigi) prendono il bordo appena visibile del sistema */
+body button.bg-slate-700 { border-color: var(--bordo); }
+body button.bg-slate-700:hover { border-color: var(--bordo-forte); }
+
 /* I bottoni-testo (link dentro le liste) restano nudi */
-body button.border-0, body button.senza-cornice {
+body button.senza-cornice, body button.border-0 {
   background: none;
   border: none;
   box-shadow: none;
+  cursor: pointer;
+  transition: color var(--transizione);
 }
 
 :focus-visible {
-  outline: 2px dashed var(--azzurro);
-  outline-offset: 3px;
+  outline: 2px solid var(--blu-chiaro);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---------------------------------------------------------------- CHIP     */
+.chip-categoria, .chip-astro, .chip-strumento {
+  font-weight: 500;
+  letter-spacing: -0.004em;
+  transition: background-color var(--transizione), color var(--transizione),
+              border-color var(--transizione), transform var(--transizione);
+}
+.chip-categoria:hover, .chip-astro:hover, .chip-strumento:hover {
+  transform: translateY(-1px);
+  border-color: var(--bordo-forte);
 }
 
 /* --------------------------------------------------------------- CAMPI     */
 input, select, textarea {
   font-family: inherit;
   color: var(--testo);
+  letter-spacing: -0.008em;
 }
 body input[type="text"], body input[type="search"], body input[type="number"],
 body input[type="datetime-local"], body select, body textarea {
-  background-color: var(--carta-incassata);
-  border: 2px solid var(--inchiostro-tenue);
-  border-radius: var(--curva-piccola);
+  background-color: rgba(6, 9, 17, 0.7);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  transition: border-color var(--transizione), box-shadow var(--transizione),
+              background-color var(--transizione);
 }
-body input:focus, body select:focus, body textarea:focus {
-  border-color: var(--azzurro);
+body input:hover, body select:hover, body textarea:hover { border-color: var(--bordo-forte); }
+body input:focus, body select:focus, body textarea:focus,
+body .focus\:border-blue-500:focus {
+  border-color: rgba(76, 141, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.18);
   outline: none;
 }
-body .focus\:border-blue-500:focus { border-color: var(--azzurro); }
-label { color: var(--testo-tenue); }
+body input[type="color"] { padding: 4px; }
+label { color: var(--testo-2); }
 
-/* ------------------------------------------------------------- DISEGNI     */
-/* Le icone SVG generate da app.js: Giove, la Luna, il binocolo… */
+/* Il campo di ricerca: il posto da cui parte tutto, un po' più presente */
+#ricerca-eventi {
+  font-size: 0.98rem;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+/* Cursori a slitta in stile strumento di precisione */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  background: transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(148, 168, 214, 0.22);
+}
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(148, 168, 214, 0.22);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(76, 141, 255, 0.8);
+  box-shadow: var(--alone-blu);
+  transition: transform var(--transizione);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(76, 141, 255, 0.8);
+  box-shadow: var(--alone-blu);
+}
+input[type="range"]:hover::-webkit-slider-thumb { transform: scale(1.12); }
+
+/* ------------------------------------------------------------- ICONE       */
+/* Le icone SVG generate da app.js: contorni sottili, mai riempimenti pieni */
 .icona-disegnata {
   display: inline-block;
   vertical-align: -3px;
   flex: 0 0 auto;
+  opacity: 0.92;
 }
 
 /* ------------------------------------------------------- PALLINI CATEGORIA */
-/* Al posto delle emoji: un pallino disegnato storto, uno per famiglia di eventi */
 .punto-categoria {
   display: inline-block;
-  width: 13px;
-  height: 13px;
-  border: 2px solid var(--inchiostro);
-  border-radius: var(--curva-tonda);
-  vertical-align: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  vertical-align: 0;
   flex: 0 0 auto;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06), 0 0 10px currentColor;
 }
-.punto-categoria.piccolo { width: 10px; height: 10px; border-width: 1.5px; }
+.punto-categoria.piccolo { width: 8px; height: 8px; }
+
+/* ------------------------------------------------------- SCHEDE DI SINTESI */
+/* I riquadri con un numero grande: etichetta piccola, dato in evidenza */
+.scheda-riepilogo {
+  transition: border-color var(--transizione), background-color var(--transizione);
+}
+.scheda-riepilogo:hover { border-color: var(--bordo-forte); }
+.etichetta-riepilogo {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  color: var(--testo-3);
+}
+.valore-riepilogo {
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
 
 /* -------------------------------------------------------------- SCHEDE     */
-/* Il colore dell'evento: una pennellata verticale accanto al titolo */
+/* Il colore dell'evento: una barra sottile e luminosa sul fianco della scheda */
 .barra-evento {
   position: absolute;
-  left: 10px;
-  top: 22px;
-  bottom: 22px;
-  width: 7px;
-  border-radius: 40px 6px 40px 6px / 6px 40px 6px 40px;
-  border: 1.5px solid var(--inchiostro);
+  left: 0;
+  top: 18px;
+  bottom: 18px;
+  width: 3px;
+  border-radius: 999px;
+  filter: saturate(1.1);
+  box-shadow: 0 0 18px -2px currentColor;
 }
 
-.card-hover { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.card-hover {
+  transition: transform var(--transizione-lenta), box-shadow var(--transizione-lenta),
+              border-color var(--transizione-lenta);
+}
 .card-hover:hover {
-  transform: translate(-1px, -2px);
-  box-shadow: 5px 5px 0 var(--inchiostro-tenue);
+  transform: translateY(-3px);
+  border-color: var(--bordo-forte);
+  box-shadow: var(--ombra-3), 0 0 0 1px rgba(76, 141, 255, 0.12), var(--luce-interna);
 }
 
-/* Evento raggiunto da un link condiviso: lampeggia per farsi trovare */
+/* Evento raggiunto da un link condiviso: un anello che pulsa, poi svanisce */
 .evidenziato { animation: evidenzia 2.4s ease-out; }
 @keyframes evidenzia {
-  0%, 100% { box-shadow: var(--ombra); }
-  20%, 60% { box-shadow: 0 0 0 4px var(--corallo); }
+  0%, 100% { box-shadow: var(--ombra-2); }
+  20%, 60% { box-shadow: 0 0 0 2px rgba(76, 141, 255, 0.8), 0 0 40px -6px rgba(76, 141, 255, 0.7); }
 }
+
+/* Le viste entrano con una dissolvenza appena percettibile */
+main > div:not(.hidden) { animation: entra var(--transizione-lenta) ease-out; }
+@keyframes entra {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --------------------------------------------------------------- MODALI    */
+body > div[id^="modale-"]:not(.hidden) { animation: velo 160ms ease-out; }
+body > div[id^="modale-"]:not(.hidden) > div {
+  animation: modale-entra var(--transizione-lenta) cubic-bezier(0.22, 0.61, 0.36, 1);
+  background-color: rgba(17, 23, 39, 0.92);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+}
+@keyframes velo {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modale-entra {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Blocchi apribili ("Fotografare la Luna" e simili): freccia discreta */
+details > summary {
+  cursor: pointer;
+  transition: color var(--transizione), background-color var(--transizione);
+  border-radius: var(--raggio-m);
+}
+details > summary:hover { color: #fff; background-color: rgba(148, 168, 214, 0.06); }
+details > summary::marker { color: var(--testo-3); font-size: 0.8em; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  html { scroll-behavior: auto; }
 }
 
-/* ------------------------------------------------- IL CIELO RESTA NOTTE    */
-/* Visore del cielo, simulazione e mappa: sfondo scuro anche col tema chiaro,
-   così le stelle si vedono. Basta ridefinire i token: il resto li eredita. */
+/* ------------------------------------------------- IL CIELO E GLI STRUMENTI */
 #skymap-contenitore,
 #sim-scena,
 #mappa-eclissi {
-  --carta-2: var(--notte-2);
-  --carta-3: #263257;
-  --carta-incassata: var(--notte-2);
-  --inchiostro: var(--notte-bordo);
-  --inchiostro-tenue: rgba(232, 226, 208, 0.3);
-  --testo: var(--notte-testo);
-  --testo-tenue: #b3bdd6;
-  --ombra: none;
-  --ombra-corta: none;
+  background-color: #03050c;
+  box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.6), var(--ombra-3);
 }
+
 body .bg-slate-900\/70,
 body .bg-slate-800\/80,
 body .bg-slate-950\/90 {
-  background-color: rgba(16, 26, 51, 0.82);
-  color: var(--notte-testo);
-  border-color: var(--notte-bordo);
+  background-color: rgba(6, 10, 20, 0.78);
+  border-color: var(--bordo);
+  color: var(--testo);
 }
-#skymap-hud, #skymap-stato, #sim-ora { color: var(--notte-testo); }
+
+/* Le letture di puntamento: numeri da strumento, allineati e stabili */
+#skymap-hud, #skymap-stato, #sim-ora, #skymap-tempo-testo, #skymap-cal-valore {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+#skymap-hud { color: var(--testo); }
 
 /* Il canvas del cielo: il dito serve a guardarsi intorno, non a scorrere */
 #skymap-canvas {
@@ -341,78 +595,129 @@ body .bg-slate-950\/90 {
 }
 
 /* ------------------------------------------------------------ CALENDARIO   */
-/* FullCalendar ridisegnato: righe a matita, niente riquadri pieni */
+/* FullCalendar ridisegnato: griglia minima, niente riquadri pieni */
 .fc {
-  --fc-border-color: var(--inchiostro-tenue);
+  --fc-border-color: var(--bordo);
   --fc-page-bg-color: transparent;
   --fc-neutral-bg-color: transparent;
-  --fc-today-bg-color: transparent;
-  --fc-list-event-hover-bg-color: var(--carta-3);
+  --fc-today-bg-color: rgba(76, 141, 255, 0.07);
+  --fc-list-event-hover-bg-color: rgba(148, 168, 214, 0.08);
+  font-family: var(--sans);
 }
 .fc .fc-col-header-cell,
 .fc .fc-scrollgrid-section > * { background-color: transparent; }
 .fc-theme-standard .fc-scrollgrid,
 .fc-theme-standard td,
-.fc-theme-standard th { border-color: var(--inchiostro-tenue); }
-.fc-theme-standard .fc-scrollgrid { border-radius: var(--curva-media); overflow: hidden; }
+.fc-theme-standard th { border-color: var(--bordo); }
+.fc-theme-standard .fc-scrollgrid { border-radius: var(--raggio-l); overflow: hidden; }
 .fc .fc-toolbar-title {
-  font-family: var(--scrittura);
   color: var(--testo);
-  font-weight: 400;
-  font-size: 1.6rem;
+  font-weight: 600;
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
 }
 .fc .fc-button-primary {
-  font-family: var(--scrittura);
-  background-color: var(--carta-2);
-  border: var(--tratto) solid var(--inchiostro);
-  border-radius: var(--curva-pillola);
-  color: var(--testo);
-  box-shadow: var(--ombra-corta);
-  text-transform: lowercase;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background-color: rgba(38, 48, 76, 0.6);
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  color: var(--testo-2);
+  box-shadow: none;
+  text-transform: none;
+  transition: background-color var(--transizione), color var(--transizione),
+              border-color var(--transizione);
 }
-.fc .fc-button-primary:hover { background-color: var(--carta-3); color: var(--testo); }
+.fc .fc-button-primary:hover {
+  background-color: var(--superficie-alta);
+  border-color: var(--bordo-forte);
+  color: var(--testo);
+}
 .fc .fc-button-primary:not(:disabled):active,
 .fc .fc-button-primary:not(:disabled).fc-button-active {
-  background-color: var(--giallo);
-  color: var(--su-pieno);
-  border-color: var(--inchiostro);
-  box-shadow: none;
+  background-image: linear-gradient(180deg, var(--blu) 0%, var(--blu-scuro) 100%);
+  color: #fff;
+  border-color: rgba(120, 170, 255, 0.34);
+  box-shadow: var(--alone-blu);
 }
-.fc .fc-button-primary:disabled { background-color: var(--carta-3); color: var(--testo-tenue); opacity: 1; }
+.fc .fc-button-primary:disabled { background-color: rgba(38, 48, 76, 0.4); color: var(--testo-3); opacity: 1; }
 .fc .fc-button-primary:focus,
-.fc .fc-button:focus { box-shadow: none; outline: 2px dashed var(--azzurro); outline-offset: 2px; }
+.fc .fc-button:focus { box-shadow: none; outline: 2px solid var(--blu-chiaro); outline-offset: 2px; }
 .fc-col-header-cell-cushion {
-  font-family: var(--scrittura);
-  color: var(--testo-tenue);
-  font-weight: 400;
+  color: var(--testo-3);
+  font-weight: 500;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   text-decoration: none;
+  padding: 10px 4px;
 }
-.fc-daygrid-day-number { color: var(--testo); text-decoration: none; font-variant-numeric: tabular-nums; }
-/* L'oggi non è una casella colorata: è un cerchio fatto a penna sul numero */
-.fc-day-today { background-color: transparent !important; }
+.fc-daygrid-day-number {
+  color: var(--testo-2);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+}
+/* L'oggi: un pallino pieno di blu cosmico sul numero, niente casella colorata */
 .fc-day-today .fc-daygrid-day-number {
-  border: var(--tratto) solid var(--corallo);
-  border-radius: var(--curva-tonda);
-  padding: 0 7px;
-  font-weight: 700;
+  color: #fff;
+  font-weight: 600;
+  background: linear-gradient(180deg, var(--blu) 0%, var(--blu-scuro) 100%);
+  border-radius: 999px;
+  margin: 4px;
+  padding: 3px 8px;
+  box-shadow: var(--alone-blu);
 }
 .fc-daygrid-event {
   border: none;
   background: transparent;
   padding-left: 2px;
+  transition: background-color var(--transizione);
+  border-radius: 6px;
 }
-.fc-daygrid-event .fc-event-title { color: var(--testo); }
+.fc-daygrid-event:hover { background-color: rgba(148, 168, 214, 0.1); }
+.fc-daygrid-event .fc-event-title { color: var(--testo-2); font-weight: 450; }
 .fc-daygrid-dot-event .fc-event-title { font-weight: 500; }
-.fc-daygrid-event-dot { border-width: 5px; border-radius: var(--curva-tonda); }
+.fc-daygrid-event-dot { border-width: 4px; border-radius: 50%; }
 .fc-h-event { background: transparent; }
-.fc .fc-daygrid-day.fc-day-other { opacity: 0.45; }
-.fc-popover { background: var(--carta-2) !important; border: var(--tratto) solid var(--inchiostro) !important; border-radius: var(--curva-media); }
-.fc-popover-header { background: var(--carta-3) !important; color: var(--testo); }
+.fc .fc-daygrid-day.fc-day-other { opacity: 0.35; }
+.fc-popover {
+  background: var(--superficie-piena) !important;
+  border: 1px solid var(--bordo) !important;
+  border-radius: var(--raggio-l);
+  box-shadow: var(--ombra-3);
+  overflow: hidden;
+}
+.fc-popover-header { background: rgba(148, 168, 214, 0.08) !important; color: var(--testo); }
 
 /* ------------------------------------------------------------- LEAFLET     */
-.leaflet-container { background: var(--notte); }
+.leaflet-container { background: #03050c; font-family: var(--sans); }
 .leaflet-control-zoom a {
-  background: var(--carta-2);
+  background: var(--superficie-piena);
   color: var(--testo);
-  border-color: var(--inchiostro-tenue);
+  border-color: var(--bordo);
+}
+.leaflet-control-zoom a:hover { background: var(--superficie-alta); color: #fff; }
+/* Le mappe di base sono chiare: le portiamo nella notte */
+.leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(0.86) saturate(0.6) contrast(0.95); }
+.leaflet-control-attribution {
+  background: rgba(6, 10, 20, 0.7) !important;
+  color: var(--testo-3) !important;
+  border-radius: 6px 0 0 0;
+}
+.leaflet-control-attribution a { color: var(--testo-2) !important; }
+
+/* -------------------------------------------------------------- RESPONSIVE */
+@media (max-width: 640px) {
+  .nav-principale { width: 100%; justify-content: flex-start; }
+  .voce-menu { padding: 8px 13px; font-size: 0.86rem; }
+  body .rounded-2xl { border-radius: var(--raggio-l); }
+  /* Sul telefono la testata cede spazio ai contenuti */
+  .marchio { width: 54px; height: 54px; border-radius: 18px; }
+  .marchio svg { width: 27px; height: 27px; }
+  .sottotitolo-app { font-size: 0.88rem; }
+  .valore-riepilogo { font-size: 1.3rem; }
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v13';
+const CACHE_NAME = 'astrocal-v14';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -29,7 +29,9 @@ const HOST_DA_CONSERVARE = [
   'cdn.jsdelivr.net',
   'cdn.tailwindcss.com',
   'unpkg.com',
-  'tile.openstreetmap.org'
+  'tile.openstreetmap.org',
+  'fonts.googleapis.com',
+  'fonts.gstatic.com'
 ];
 
 self.addEventListener('install', (e) => {
