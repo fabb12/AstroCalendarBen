@@ -28,6 +28,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 
+  <!-- satellite.js: propagazione orbitale (SGP4) per i passaggi della ISS -->
+  <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
@@ -38,12 +41,15 @@
     
     <div class="mt-6 flex flex-wrap justify-center gap-3">
       <!-- Pulsanti per cambiare vista -->
-      <button id="btn-vista-calendario" class="px-5 py-2 rounded-full font-semibold transition-colors bg-blue-600 hover:bg-blue-500 text-white shadow-lg">📅 Mese</button>
+      <button id="btn-vista-stasera" class="px-5 py-2 rounded-full font-semibold transition-colors bg-blue-600 hover:bg-blue-500 text-white shadow-lg" title="Cosa si vede stanotte da casa tua">🌌 Stasera</button>
+      <button id="btn-vista-calendario" class="px-5 py-2 rounded-full font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white">📅 Mese</button>
       <button id="btn-vista-agenda" class="px-5 py-2 rounded-full font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white">📜 Agenda</button>
       <button id="btn-vista-skymap" class="px-5 py-2 rounded-full font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white" title="Punta il telefono verso il cielo">🔭 Cielo</button>
+      <button id="btn-vista-diario" class="px-5 py-2 rounded-full font-semibold transition-colors bg-slate-700 hover:bg-slate-600 text-white" title="Le tue osservazioni e i traguardi raggiunti">📓 Diario</button>
       <button id="btn-aggiungi" class="px-5 py-2 rounded-full font-semibold transition-colors bg-green-600 hover:bg-green-500 text-white shadow-lg" title="Aggiungi un evento manuale">➕ Aggiungi</button>
       <button id="btn-installa" class="hidden px-5 py-2 rounded-full font-semibold transition-colors bg-purple-600 hover:bg-purple-500 text-white shadow-lg" title="Installa l'app sul dispositivo">📲 Installa</button>
       <button id="btn-notifiche" class="px-5 py-2 rounded-full font-semibold transition-colors border border-blue-500 text-blue-400 hover:bg-blue-900" title="Attiva Notifiche">🔔</button>
+      <button id="btn-impostazioni" class="px-5 py-2 rounded-full font-semibold transition-colors border border-slate-500 text-slate-300 hover:bg-slate-700" title="Posizione, backup e calendario">⚙️</button>
     </div>
   </header>
 
@@ -60,6 +66,60 @@
           class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-lg leading-none">✕</button>
       </div>
       <div id="filtri-categorie" class="flex flex-wrap gap-2 mt-3"></div>
+      <!-- Filtro per strumento: mostra solo ciò che si vede con quello che hai -->
+      <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-700">
+        <span class="text-xs text-slate-400">Con cosa guardi:</span>
+        <div id="filtri-strumento" class="flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+
+    <!-- VISTA STASERA: cosa si vede stanotte, da qui, e se il cielo lo permette -->
+    <div id="vista-stasera" class="hidden grid gap-4">
+
+      <!-- Riepilogo della notte: buio astronomico, Luna, meteo -->
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+        <div class="flex justify-between items-start gap-3 mb-3">
+          <h2 class="text-2xl font-bold text-white">🌌 Stanotte</h2>
+          <button id="btn-stasera-posizione" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold flex-shrink-0" title="Rileva la posizione">📍 Posizione</button>
+        </div>
+        <div id="stasera-riepilogo" class="grid gap-3 md:grid-cols-3"></div>
+        <div id="stasera-meteo" class="mt-4"></div>
+      </div>
+
+      <!-- Pianeti e Luna visibili stanotte -->
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+        <h3 class="text-lg font-bold text-white mb-3">🪐 Visibili stanotte</h3>
+        <div id="stasera-pianeti" class="grid gap-2"></div>
+      </div>
+
+      <!-- Passaggi della Stazione Spaziale Internazionale -->
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+        <div class="flex justify-between items-center gap-3 mb-3">
+          <h3 class="text-lg font-bold text-white">🛰️ Passaggi della ISS</h3>
+          <button id="btn-iss-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold flex-shrink-0">↻ Aggiorna</button>
+        </div>
+        <div id="stasera-iss" class="grid gap-2 text-sm text-slate-300">Caricamento dei dati orbitali…</div>
+      </div>
+
+      <!-- Prossimi eventi del calendario, con indice di osservabilità -->
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+        <h3 class="text-lg font-bold text-white mb-3">📆 Prossimi appuntamenti</h3>
+        <div id="stasera-prossimi" class="grid gap-2"></div>
+      </div>
+    </div>
+
+    <!-- VISTA DIARIO: osservazioni registrate e traguardi -->
+    <div id="vista-diario" class="hidden grid gap-4">
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+        <h2 class="text-2xl font-bold text-white mb-1">📓 Diario di osservazione</h2>
+        <p class="text-sm text-slate-400 mb-4">Segna “✅ Visto!” su un evento dell'agenda e finisce qui, con la tua nota.</p>
+        <div id="diario-statistiche" class="grid gap-3 md:grid-cols-3 mb-4"></div>
+        <div id="diario-badge" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+        <h3 class="text-lg font-bold text-white mb-3">🗒️ Le tue osservazioni</h3>
+        <div id="diario-elenco" class="grid gap-3"></div>
+      </div>
     </div>
 
     <!-- VISTA CALENDARIO A GRIGLIA -->
@@ -77,7 +137,9 @@
     <div id="vista-skymap" class="hidden">
 
       <div id="skymap-contenitore" class="relative bg-slate-950 rounded-2xl border border-slate-700 shadow-xl overflow-hidden">
-        <canvas id="skymap-canvas" class="block w-full" style="height: 70vh; min-height: 340px; touch-action: none;"></canvas>
+        <!-- Realtà aumentata: l'immagine della fotocamera sta dietro al cielo disegnato -->
+        <video id="skymap-video" class="hidden absolute inset-0 w-full h-full object-cover" playsinline muted autoplay></video>
+        <canvas id="skymap-canvas" class="relative block w-full" style="height: 70vh; min-height: 340px; touch-action: none;"></canvas>
 
         <!-- Dati di puntamento e stato (sopra al canvas) -->
         <div class="absolute top-3 left-3 right-3 flex justify-between items-start gap-2 pointer-events-none">
@@ -103,6 +165,17 @@
       <!-- Avvisi su permessi mancanti (posizione, bussola) -->
       <p id="skymap-avviso" class="hidden mt-3 text-sm text-amber-400 bg-amber-950/40 border border-amber-800 rounded-xl p-3"></p>
 
+      <!-- Macchina del tempo: com'era o come sarà il cielo -->
+      <div class="mt-3 bg-slate-800 p-3 rounded-2xl border border-slate-700">
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-slate-400 flex-shrink-0">🕒 Ora mostrata</span>
+          <input id="skymap-tempo" type="range" min="-720" max="720" value="0" step="5"
+            class="flex-1 accent-blue-500 cursor-pointer" title="Sposta l'orologio avanti o indietro">
+          <button id="skymap-tempo-ora" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold flex-shrink-0">Adesso</button>
+        </div>
+        <p id="skymap-tempo-testo" class="mt-2 text-xs text-slate-300 font-mono">In tempo reale</p>
+      </div>
+
       <!-- Selettore dell'oggetto da cercare -->
       <div class="mt-4">
         <p class="text-xs text-slate-400 mb-2">Scegli cosa cercare: comparirà una freccia che ti guida verso l'astro.</p>
@@ -121,6 +194,9 @@
         <span id="skymap-cal-valore" class="text-slate-300 font-mono w-14 text-center">0°</span>
         <button id="skymap-cal-piu" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Ruota la bussola verso est">+5° ▶</button>
         <button id="skymap-btn-notte" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Filtro rosso: protegge la vista notturna">🔴 Modalità notte</button>
+        <button id="skymap-btn-costellazioni" class="px-3 py-1.5 rounded-full bg-blue-700 hover:bg-blue-600 text-white font-semibold" title="Mostra o nascondi le figure delle costellazioni">✨ Costellazioni</button>
+        <button id="skymap-btn-deepsky" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Galassie, nebulose e ammassi visibili con binocolo">🌌 Profondo cielo</button>
+        <button id="skymap-btn-camera" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Sovrapponi il cielo all'immagine della fotocamera">📷 Fotocamera</button>
         <button id="skymap-btn-schermo" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Schermo intero">⛶ Schermo intero</button>
         <button id="skymap-btn-posizione" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold" title="Rileva di nuovo la posizione">📍 Aggiorna posizione</button>
       </div>
@@ -254,6 +330,100 @@
         <!-- Cosa sta succedendo in questo istante -->
         <div id="sim-didascalia" class="bg-slate-900 p-4 rounded-xl border border-slate-700 text-sm text-slate-300 space-y-1"></div>
         <p id="sim-nota" class="text-xs text-slate-500"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE: REGISTRA UN'OSSERVAZIONE NEL DIARIO -->
+  <div id="modale-diario" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-800 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl my-8">
+      <div class="flex justify-between items-center p-5 border-b border-slate-700">
+        <h2 class="text-2xl font-bold text-white">✅ Ho visto!</h2>
+        <button id="btn-chiudi-diario" class="p-2 text-slate-400 hover:text-white text-2xl leading-none" title="Chiudi">✕</button>
+      </div>
+      <form id="form-diario" class="p-5 space-y-4">
+        <p id="diario-evento-titolo" class="text-blue-400 font-semibold"></p>
+
+        <div>
+          <label class="block text-sm font-semibold text-slate-300 mb-1">Com'è andata?</label>
+          <div id="diario-stelle" class="flex gap-1 text-3xl"></div>
+        </div>
+
+        <div>
+          <label for="diario-nota" class="block text-sm font-semibold text-slate-300 mb-1">La tua nota</label>
+          <textarea id="diario-nota" rows="4" maxlength="600"
+            class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+            placeholder="Cielo limpido, vista da... con il binocolo. Ho notato che..."></textarea>
+        </div>
+
+        <div>
+          <label for="diario-strumento-usato" class="block text-sm font-semibold text-slate-300 mb-1">Strumento usato</label>
+          <select id="diario-strumento-usato"
+            class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+            <option value="occhio">👁️ Occhio nudo</option>
+            <option value="binocolo">🔭 Binocolo</option>
+            <option value="telescopio">🔬 Telescopio</option>
+            <option value="foto">📷 Fotocamera</option>
+          </select>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="flex-1 px-5 py-2 rounded-full font-semibold bg-green-600 hover:bg-green-500 text-white shadow-lg transition-colors">Salva nel diario</button>
+          <button type="button" id="btn-diario-rimuovi" class="px-5 py-2 rounded-full font-semibold bg-slate-700 hover:bg-red-600 text-white transition-colors">Rimuovi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODALE: IMPOSTAZIONI, BACKUP E CALENDARIO -->
+  <div id="modale-impostazioni" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-800 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl my-8">
+      <div class="flex justify-between items-center p-5 border-b border-slate-700">
+        <h2 class="text-2xl font-bold text-white">⚙️ Impostazioni</h2>
+        <button id="btn-chiudi-impostazioni" class="p-2 text-slate-400 hover:text-white text-2xl leading-none" title="Chiudi">✕</button>
+      </div>
+
+      <div class="p-5 space-y-5">
+
+        <section class="space-y-2">
+          <h3 class="font-bold text-white">📍 La tua posizione</h3>
+          <p id="imp-posizione" class="text-sm text-slate-400">Non impostata.</p>
+          <p class="text-xs text-slate-500">Serve per orari di sorgere e tramonto, buio astronomico, meteo e passaggi della ISS.</p>
+          <div class="flex flex-wrap gap-2">
+            <button id="imp-btn-gps" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">📍 Rileva con il GPS</button>
+          </div>
+          <div class="flex flex-wrap items-end gap-2 pt-1">
+            <div>
+              <label for="imp-lat" class="block text-xs text-slate-400 mb-1">Latitudine</label>
+              <input id="imp-lat" type="number" step="0.0001" min="-90" max="90" placeholder="41.9"
+                class="w-28 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+              <label for="imp-lon" class="block text-xs text-slate-400 mb-1">Longitudine</label>
+              <input id="imp-lon" type="number" step="0.0001" min="-180" max="180" placeholder="12.5"
+                class="w-28 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <button id="imp-btn-manuale" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Imposta a mano</button>
+          </div>
+        </section>
+
+        <section class="space-y-2 border-t border-slate-700 pt-4">
+          <h3 class="font-bold text-white">📅 Porta gli eventi nel tuo calendario</h3>
+          <p class="text-xs text-slate-500">Scarica un file <code>.ics</code> con i prossimi eventi: il calendario del telefono penserà lui ai promemoria, anche ad app chiusa.</p>
+          <button id="imp-btn-ics" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">⬇️ Scarica i prossimi 12 mesi</button>
+        </section>
+
+        <section class="space-y-2 border-t border-slate-700 pt-4">
+          <h3 class="font-bold text-white">💾 Backup e ripristino</h3>
+          <p class="text-xs text-slate-500">Eventi personali, diario di osservazione e preferenze vivono solo in questo browser: salvali per non perderli.</p>
+          <div class="flex flex-wrap gap-2">
+            <button id="imp-btn-esporta" class="px-4 py-2 rounded-full text-sm font-semibold bg-green-600 hover:bg-green-500 text-white">⬇️ Esporta backup</button>
+            <button id="imp-btn-importa" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">⬆️ Ripristina backup</button>
+            <input id="imp-file-importa" type="file" accept="application/json,.json" class="hidden">
+          </div>
+          <p id="imp-esito" class="text-xs text-slate-400"></p>
+        </section>
+
       </div>
     </div>
   </div>
