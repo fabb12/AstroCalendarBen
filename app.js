@@ -1658,6 +1658,8 @@ const sky = {
   sensori: false,        // orientamento del dispositivo attivo
   assoluto: false,       // alpha riferito al Nord vero (bussola affidabile)
   orient: null,          // { alpha, beta, gamma } dall'ultimo evento
+  ultimoAssoluto: 0,     // quando è arrivata l'ultima lettura riferita al Nord
+  baseFiltrata: null,    // terna di sguardo levigata (filtro anti-tremolio)
   offsetBussola: 0,      // correzione manuale della bussola, in gradi
   salvaBussola: null,    // timer per salvare la calibrazione a fine trascinamento
   fov: 55,               // campo visivo verticale, in gradi
@@ -1722,6 +1724,103 @@ function skyAngoloSchermo() {
   return 0;
 }
 
+// --- Filtro anti-tremolio della bussola ---
+// I sensori non danno un angolo, danno una misura: fra una lettura e l'altra
+// ballano di qualche grado. Con un campo di 55° su trecento pixel un grado
+// vale quasi sei pixel, quindi quel ballo si vede tutto. E c'è un punto in
+// cui peggiora: con il telefono tenuto dritto davanti a sé (beta vicino a
+// 90°) la terna alpha/beta/gamma perde un grado di libertà — alpha e gamma
+// diventano intercambiabili — e il rumore su alpha esplode.
+// Per questo non si levigano gli angoli ma la terna di sguardo già costruita:
+// è continua, non ha il salto fra 359° e 0° e non soffre di quella
+// singolarità.
+const SKY_TAU_FERMO = 0.35;     // secondi di memoria quando il telefono è fermo
+const SKY_TAU_MOSSA = 0.035;    // secondi di memoria quando lo si muove davvero
+const SKY_TAU_SPIA_VELOCE = 0.1; // le due medie che riconoscono il movimento…
+const SKY_TAU_SPIA_LENTA = 0.5;  // …dal rumore: distanti solo se ci si muove
+const SKY_MOVIMENTO_GRADI = 3;   // oltre questo scarto fra le due è movimento
+const SKY_TAU_RUMORE = 1;        // con che calma si stima il rumore del sensore
+const SKY_PESO_RUMORE = 0.8;     // quanto il rumore stimato alza quella soglia
+
+function skyNormalizza(v) {
+  const n = Math.hypot(v[0], v[1], v[2]);
+  return n > 1e-9 ? [v[0] / n, v[1] / n, v[2] / n] : v;
+}
+
+function skyMescola(a, b, k) {
+  return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+}
+
+function skyAngoloFra(a, b) {
+  return Math.acos(Math.max(-1, Math.min(1, skyDot(a, b)))) * SKY_R2D;
+}
+
+// Media pesata fra la terna già levigata e quella appena letta. Il peso
+// dipende dal tempo passato (così il filtro si comporta uguale a venti o a
+// sessanta fotogrammi al secondo) e da quanto ci si sta muovendo davvero:
+// fermi conviene smorzare molto, muovendosi bisogna seguire subito, se no il
+// cielo arriva in ritardo sul braccio.
+//
+// Distinguere le due cose guardando quanto è saltata l'ultima lettura non
+// funziona: un singolo sobbalzo del sensore è grande quanto un movimento
+// vero. Servono due medie della stessa direzione, una pronta e una pigra: il
+// rumore le sposta tutte e due allo stesso modo e restano vicine, mentre un
+// movimento continuato le allontana, perché la pigra ci arriva dopo. È la
+// distanza fra loro a dire quanto fidarsi della lettura nuova.
+//
+// Quanto debba essere grande quella distanza per contare come movimento non
+// si può però fissare una volta per tutte: una bussola scadente, o il
+// telefono tenuto in una posizione dove gli angoli sono quasi degeneri, fa
+// ballare le due medie di parecchi gradi anche da fermo. La soglia si adatta
+// quindi al rumore che quel telefono sta mostrando davvero, misurato mentre
+// sta fermo (durante il movimento la stima resta congelata, altrimenti
+// scambierebbe il movimento stesso per rumore).
+function skyLevigaBase(nuova) {
+  const adesso = performance.now();
+  const prec = sky.baseFiltrata;
+  const schermo = skyAngoloSchermo();
+
+  // Prima lettura, ritorno da fuori schermo o telefono girato: non c'è nulla
+  // da levigare, si riparte da qui invece di scivolarci dentro.
+  if (!prec || prec.schermo !== schermo || adesso - prec.tempo > 500) {
+    sky.baseFiltrata = {
+      f: nuova.f, r: nuova.r, u: nuova.u,
+      veloce: nuova.f, lento: nuova.f, rumore: 0, tempo: adesso, schermo
+    };
+    return nuova;
+  }
+
+  const dt = Math.min(0.1, Math.max(0.001, (adesso - prec.tempo) / 1000));
+  const veloce = skyNormalizza(skyMescola(prec.veloce, nuova.f, 1 - Math.exp(-dt / SKY_TAU_SPIA_VELOCE)));
+  const lento = skyNormalizza(skyMescola(prec.lento, nuova.f, 1 - Math.exp(-dt / SKY_TAU_SPIA_LENTA)));
+
+  const soglia = SKY_MOVIMENTO_GRADI + SKY_PESO_RUMORE * prec.rumore;
+  const quota = Math.min(1, skyAngoloFra(veloce, lento) / soglia);
+  const tau = SKY_TAU_FERMO + (SKY_TAU_MOSSA - SKY_TAU_FERMO) * quota;
+  const k = 1 - Math.exp(-dt / tau);
+
+  // Di quanto sta ballando questo sensore: è la distanza fra la lettura grezza
+  // e la sua media pronta, e la si aggiorna solo da fermo.
+  const rumore = quota < 0.3
+    ? prec.rumore + (skyAngoloFra(nuova.f, veloce) - prec.rumore) * (1 - Math.exp(-dt / SKY_TAU_RUMORE))
+    : prec.rumore;
+
+  // Mescolando vettori si perde l'ortogonalità: la terna va raddrizzata,
+  // altrimenti il cielo si deforma a poco a poco.
+  const f = skyNormalizza(skyMescola(prec.f, nuova.f, k));
+  const rGrezzo = skyMescola(prec.r, nuova.r, k);
+  const proiezione = skyDot(rGrezzo, f);
+  const r = skyNormalizza([
+    rGrezzo[0] - f[0] * proiezione,
+    rGrezzo[1] - f[1] * proiezione,
+    rGrezzo[2] - f[2] * proiezione
+  ]);
+  const u = skyCross(r, f);
+
+  sky.baseFiltrata = { f, r, u, veloce, lento, rumore, tempo: adesso, schermo };
+  return { f, r, u };
+}
+
 // Terna di riferimento della "telecamera": f = dove punta il telefono,
 // r = destra dello schermo, u = alto dello schermo (tutti in Est/Nord/Alto).
 function skyBase() {
@@ -1734,14 +1833,15 @@ function skyBase() {
     // Assi dello schermo espressi negli assi del telefono (ruotati se è in orizzontale)
     const o = skyAngoloSchermo() * SKY_D2R;
     const co = Math.cos(o), so = Math.sin(o);
-    return {
+    return skyLevigaBase({
       // Si guarda attraverso il retro del telefono: asse -Z del dispositivo
       f: skyApplica(R, [0, 0, -1]),
       r: skyApplica(R, [co, -so, 0]),
       u: skyApplica(R, [so, co, 0])
-    };
+    });
   }
-  // Modalità manuale: la direzione di sguardo la decide il dito
+  // Modalità manuale: la direzione di sguardo la decide il dito, ed è esatta
+  sky.baseFiltrata = null;
   const f = skyVettore(sky.manuale.az, sky.manuale.alt);
   const az = sky.manuale.az * SKY_D2R;
   const r = [Math.cos(az), -Math.sin(az), 0]; // orizzontale, verso azimut crescenti
@@ -1945,19 +2045,51 @@ function skyRichiediPosizione() {
   return sky.attesaPosizione;
 }
 
+// Il telefono può mandare DUE flussi di orientamento, e sono flussi diversi:
+// "deviceorientationabsolute" è riferito al Nord vero (usa il magnetometro),
+// mentre "deviceorientation" su Android è relativo, cioè la sua alpha parte
+// da dove si trovava il telefono quando il sensore si è acceso. Ascoltandoli
+// tutti e due, sessanta volte al secondo ciascuno, si sovrascrivevano a
+// vicenda: le loro alpha differiscono di un angolo qualunque, e il cielo
+// rimbalzava di continuo fra due orientamenti. Comanda l'assoluto; il
+// relativo si usa solo finché l'assoluto non arriva, o se smette di arrivare.
+const SKY_ATTESA_ASSOLUTO_MS = 3000;
+
 // Riceve alpha/beta/gamma dal telefono. Su iOS webkitCompassHeading dà
 // direttamente la direzione rispetto al Nord vero: è la più affidabile.
 function skyEventoOrientamento(e) {
-  if (e.alpha === null && e.beta === null && e.gamma === null) return;
-  let alpha = e.alpha || 0;
-  if (typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) {
-    alpha = 360 - e.webkitCompassHeading; // bussola di iOS -> alpha assoluto
-    sky.assoluto = true;
-  } else if (e.absolute === true || e.type === 'deviceorientationabsolute') {
-    sky.assoluto = true;
+  const bussolaIOS = typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading);
+  const assoluto = bussolaIOS || e.absolute === true || e.type === 'deviceorientationabsolute';
+  const adesso = Date.now();
+
+  if (assoluto) {
+    sky.ultimoAssoluto = adesso;
+  } else if (adesso - sky.ultimoAssoluto < SKY_ATTESA_ASSOLUTO_MS) {
+    return; // c'è di meglio in arrivo: questa lettura non serve
   }
-  sky.orient = { alpha, beta: e.beta || 0, gamma: e.gamma || 0 };
+
+  // Un valore mancante non è "zero": prenderlo alla lettera faceva scattare
+  // il cielo verso Nord. Se manca, si tiene l'ultimo valore buono.
+  const prec = sky.orient;
+  const numero = (v, difetto) => (typeof v === 'number' && isFinite(v) ? v : difetto);
+  const alpha = bussolaIOS
+    ? 360 - e.webkitCompassHeading            // bussola di iOS -> alpha assoluto
+    : numero(e.alpha, prec ? prec.alpha : null);
+  const beta = numero(e.beta, prec ? prec.beta : null);
+  const gamma = numero(e.gamma, prec ? prec.gamma : null);
+  if (alpha === null || beta === null || gamma === null) return;
+
+  // Cambiando sorgente l'alpha cambia di scatto: il filtro riparte da capo,
+  // altrimenti il cielo ci arriverebbe scivolando per mezzo secondo.
+  const cambioSorgente = assoluto !== sky.assoluto;
+  if (cambioSorgente) sky.baseFiltrata = null;
+
+  sky.orient = { alpha, beta, gamma };
+  sky.assoluto = assoluto;
   sky.sensori = true;
+  // Cambia anche quel che possiamo promettere all'utente: con una bussola
+  // relativa il Nord va corretto a mano.
+  if (cambioSorgente) skyAggiornaStato();
 }
 
 async function skyRichiediSensori() {
@@ -1971,7 +2103,11 @@ async function skyRichiediSensori() {
   } catch (e) {
     return false;
   }
-  // Se disponibile preferiamo l'evento "assoluto": alpha è riferito al Nord vero
+  // Ci si iscrive a entrambi gli eventi, ma non per usarli entrambi: quello
+  // assoluto è il migliore e su certi dispositivi esiste senza mai arrivare,
+  // quindi il relativo resta lì come rete di sicurezza. A scegliere fra i due,
+  // lettura per lettura, è skyEventoOrientamento.
+  sky.baseFiltrata = null;
   if ('ondeviceorientationabsolute' in window) {
     window.addEventListener('deviceorientationabsolute', skyEventoOrientamento, true);
   }
@@ -2505,7 +2641,10 @@ function skyAggiornaHud(base) {
   const f = base.f;
   const alt = Math.asin(Math.max(-1, Math.min(1, f[2]))) * SKY_R2D;
   const az = ((Math.atan2(f[0], f[1]) * SKY_R2D) % 360 + 360) % 360;
-  hud.textContent = `${skyNomeDirezione(az)} ${Math.round(az) % 360}° · alt ${alt.toFixed(0)}° · campo ${Math.round(sky.fov)}°`;
+  const testo = `${skyNomeDirezione(az)} ${Math.round(az) % 360}° · alt ${alt.toFixed(0)}° · campo ${Math.round(sky.fov)}°`;
+  // Riscrivere il testo sessanta volte al secondo costa e non serve: quasi
+  // sempre è identico a quello di prima.
+  if (hud.textContent !== testo) hud.textContent = testo;
 }
 
 // Avvisi sotto al cielo, uno per argomento (posizione, sensori):
