@@ -1,31 +1,328 @@
+/* ============================================================================
+   AstroCalendario di Ben — foglio di stile "quaderno da disegno"
+   ----------------------------------------------------------------------------
+   L'app usa le classi di Tailwind per la struttura (spazi, griglie, dimensioni).
+   Qui sopra ci mettiamo la pelle: carta, contorni tracciati a mano, pastelli.
+   Per farlo ridefiniamo le poche utility di colore/forma che l'app adopera,
+   con un selettore un filo più specifico (body .classe) così vinciamo sempre
+   sul CSS che Tailwind genera a runtime, senza bisogno di !important.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------- PALETTE  */
+:root {
+  color-scheme: light dark;
+
+  --carta:        #f7f1e1;  /* il foglio */
+  --carta-2:      #fffaf0;  /* le schede appoggiate sopra */
+  --carta-3:      #f0e7d2;  /* schede premute / hover */
+  --carta-incassata: #f2ebd8;
+
+  --inchiostro:       #23304d;  /* la matita: tutti i contorni */
+  --inchiostro-tenue: rgba(35, 48, 77, 0.34);
+  --testo:            #26324c;
+  --testo-tenue:      #5d6a86;
+
+  --giallo:  #eab54a;
+  --corallo: #e2685c;
+  --verde:   #6ea065;
+  --lilla:   #8f83bd;
+  --azzurro: #4a7fbd;
+  --su-pieno: #1b2540;      /* testo sopra i colori pieni */
+
+  --avviso:  #b4762a;
+
+  /* Il cielo resta notte anche di giorno: canvas, mappe, visore */
+  --notte:      #101a33;
+  --notte-2:    #16223f;
+  --notte-testo:#f0ecdd;
+  --notte-bordo:#4c5c86;
+
+  --tratto: 2.5px;
+  --ombra-corta: 2px 2px 0 var(--inchiostro);
+  --ombra: 3px 3px 0 var(--inchiostro);
+
+  /* Contorni "tremolanti": quattro raggi diversi, come un tratto a mano */
+  --curva-grande: 210px 16px 190px 18px / 18px 190px 16px 210px;
+  --curva-media:  16px 150px 14px 140px / 140px 14px 150px 16px;
+  --curva-piccola: 14px 90px 12px 80px / 80px 12px 90px 14px;
+  --curva-pillola: 120px 10px 110px 12px / 12px 110px 10px 120px;
+  --curva-tonda:  60% 40% 55% 45% / 50% 60% 40% 50%;
+
+  --scrittura: "Bradley Hand", "Segoe Print", "Chalkboard SE", "Comic Sans MS",
+               "Marker Felt", "Segoe UI", system-ui, cursive;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --carta:        #1b2540;  /* cartoncino blu */
+    --carta-2:      #223054;
+    --carta-3:      #2a3a63;
+    --carta-incassata: #1e294a;
+
+    --inchiostro:       #e8e2d0;  /* gessetto */
+    --inchiostro-tenue: rgba(232, 226, 208, 0.32);
+    --testo:            #f2ecdc;
+    --testo-tenue:      #a9b3cb;
+
+    --giallo:  #f3c968;
+    --corallo: #ef8478;
+    --verde:   #93c286;
+    --lilla:   #ab9fd8;
+    --azzurro: #8fb8ea;
+
+    --avviso:  #f0c674;
+
+    --ombra-corta: 2px 2px 0 #0d1424;
+    --ombra: 3px 3px 0 #0d1424;
+  }
+}
+
+/* ------------------------------------------------------------------- BASE  */
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--carta);
+  color: var(--testo);
+  /* grana leggera della carta */
+  background-image:
+    radial-gradient(var(--inchiostro-tenue) 0.5px, transparent 0.6px),
+    radial-gradient(var(--inchiostro-tenue) 0.5px, transparent 0.6px);
+  background-size: 24px 24px, 24px 24px;
+  background-position: 0 0, 12px 12px;
 }
+
+h1, h2, h3, h4 { font-family: var(--scrittura); letter-spacing: 0.2px; }
 
 /* Rete di sicurezza: se Tailwind non si carica (CDN irraggiungibile) tutte le
    viste e i modali resterebbero visibili insieme. Questa regola basta a tenere
    l'app usabile, sia pure senza grafica. */
 .hidden { display: none !important; }
 
-.card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+/* --------------------------------------------------------------- TESTATA   */
+.titolo-app {
+  font-family: var(--scrittura);
+  font-size: clamp(2rem, 7vw, 2.9rem);
+  line-height: 1.12;
+  text-wrap: balance;
+  color: var(--testo);
+  margin: 0;
 }
 
+/* La navigazione è fatta di parole: quella attiva viene cerchiata a penna */
+.voce-menu {
+  font-family: var(--scrittura);
+  font-size: 1.08rem;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--testo);
+  padding: 6px 12px;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s ease;
+}
+.voce-menu:hover { color: var(--azzurro); }
+.voce-menu.attiva::after {
+  content: "";
+  position: absolute;
+  inset: -5px -10px;
+  border: var(--tratto) solid var(--corallo);
+  border-radius: var(--curva-tonda);
+  transform: rotate(-1.5deg);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------- FORME DISEGNATE   */
+/* Contorno a mano su tutto ciò che Tailwind arrotonda */
+body .rounded-2xl { border-radius: var(--curva-grande); }
+body .rounded-xl  { border-radius: var(--curva-media); }
+body .rounded-lg,
+body .rounded     { border-radius: var(--curva-piccola); }
+body .rounded-sm  { border-radius: 8px 3px 7px 4px; }
+body .rounded-full { border-radius: var(--curva-pillola); }
+/* i pallini e le pastiglie piccole restano tondi, ma storti */
+body .w-4.rounded-full, body .w-5.rounded-full, body .w-6.rounded-full,
+body .w-10.rounded-full, body .h-10.rounded-full,
+body .punto-categoria { border-radius: var(--curva-tonda); }
+
+/* Ombre: un tratto pieno, non una sfumatura */
+body .shadow,
+body .shadow-lg  { box-shadow: var(--ombra-corta); }
+body .shadow-xl,
+body .shadow-2xl { box-shadow: var(--ombra); }
+
+/* --------------------------------------------------------------- COLORI    */
+body .bg-slate-800 { background-color: var(--carta-2); }
+body .bg-slate-700 { background-color: var(--carta-2); }
+body .bg-slate-900 { background-color: var(--carta-incassata); }
+body .bg-slate-950 { background-color: var(--notte); }
+
+body .border-slate-700,
+body .border-slate-600,
+body .border-slate-500 { border-color: var(--inchiostro); border-width: var(--tratto); }
+
+body .text-white,
+body .text-slate-100,
+body .text-slate-200,
+body .text-slate-300 { color: var(--testo); }
+body .text-slate-400,
+body .text-slate-500 { color: var(--testo-tenue); }
+body .text-blue-400,
+body .text-blue-300  { color: var(--azzurro); }
+body .text-amber-400 { color: var(--avviso); }
+body .text-green-400 { color: var(--verde); }
+body .text-red-400   { color: var(--corallo); }
+
+body .hover\:text-white:hover      { color: var(--testo); }
+body .hover\:text-blue-300:hover   { color: var(--azzurro); }
+body .hover\:text-slate-200:hover  { color: var(--testo); }
+
+/* Pieni a pastello: uno per tipo di azione */
+body .bg-blue-600, body .bg-blue-700,
+body .hover\:bg-blue-500:hover, body .hover\:bg-blue-600:hover {
+  background-color: var(--giallo); color: var(--su-pieno); border-color: var(--inchiostro);
+}
+body .bg-green-600, body .hover\:bg-green-500:hover {
+  background-color: var(--verde); color: var(--su-pieno);
+}
+body .bg-purple-600, body .hover\:bg-purple-500:hover, body .hover\:bg-purple-600:hover {
+  background-color: var(--lilla); color: var(--su-pieno);
+}
+body .hover\:bg-red-600:hover { background-color: var(--corallo); color: var(--su-pieno); }
+body .hover\:bg-slate-600:hover, body .hover\:bg-slate-700:hover { background-color: var(--carta-3); }
+body .hover\:bg-blue-900:hover { background-color: var(--carta-3); }
+
+body .bg-black\/60, body .bg-black\/70 { background-color: rgba(20, 26, 45, 0.62); }
+
+/* Avvisi in ocra, su carta */
+body .bg-amber-950\/40 { background-color: rgba(234, 181, 74, 0.16); }
+body .border-amber-800 { border-color: var(--avviso); }
+
+body .accent-blue-500 { accent-color: var(--azzurro); }
+body .placeholder-slate-500::placeholder { color: var(--testo-tenue); opacity: 0.8; }
+
+/* --------------------------------------------------------------- BOTTONI   */
+button { background-color: var(--carta-2); color: var(--testo); }
+
+body button:not(.border-0):not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.leaflet-control-zoom a) {
+  font-family: var(--scrittura);
+  border: var(--tratto) solid var(--inchiostro);
+  border-radius: var(--curva-pillola);
+  box-shadow: var(--ombra-corta);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+body button:not(.border-0):not(.senza-cornice):not(.fc-button):hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--ombra);
+}
+body button:not(.border-0):not(.senza-cornice):not(.fc-button):active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+/* I bottoni-testo (link dentro le liste) restano nudi */
+body button.border-0, body button.senza-cornice {
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+:focus-visible {
+  outline: 2px dashed var(--azzurro);
+  outline-offset: 3px;
+}
+
+/* --------------------------------------------------------------- CAMPI     */
+input, select, textarea {
+  font-family: inherit;
+  color: var(--testo);
+}
+body input[type="text"], body input[type="search"], body input[type="number"],
+body input[type="datetime-local"], body select, body textarea {
+  background-color: var(--carta-incassata);
+  border: 2px solid var(--inchiostro-tenue);
+  border-radius: var(--curva-piccola);
+}
+body input:focus, body select:focus, body textarea:focus {
+  border-color: var(--azzurro);
+  outline: none;
+}
+body .focus\:border-blue-500:focus { border-color: var(--azzurro); }
+label { color: var(--testo-tenue); }
+
+/* ------------------------------------------------------------- DISEGNI     */
+/* Le icone SVG generate da app.js: Giove, la Luna, il binocolo… */
+.icona-disegnata {
+  display: inline-block;
+  vertical-align: -3px;
+  flex: 0 0 auto;
+}
+
+/* ------------------------------------------------------- PALLINI CATEGORIA */
+/* Al posto delle emoji: un pallino disegnato storto, uno per famiglia di eventi */
+.punto-categoria {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--inchiostro);
+  border-radius: var(--curva-tonda);
+  vertical-align: -1px;
+  flex: 0 0 auto;
+}
+.punto-categoria.piccolo { width: 10px; height: 10px; border-width: 1.5px; }
+
+/* -------------------------------------------------------------- SCHEDE     */
+/* Il colore dell'evento: una pennellata verticale accanto al titolo */
+.barra-evento {
+  position: absolute;
+  left: 10px;
+  top: 22px;
+  bottom: 22px;
+  width: 7px;
+  border-radius: 40px 6px 40px 6px / 6px 40px 6px 40px;
+  border: 1.5px solid var(--inchiostro);
+}
+
+.card-hover { transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2);
+  transform: translate(-1px, -2px);
+  box-shadow: 5px 5px 0 var(--inchiostro-tenue);
 }
 
 /* Evento raggiunto da un link condiviso: lampeggia per farsi trovare */
-.evidenziato {
-  animation: evidenzia 2.4s ease-out;
-}
+.evidenziato { animation: evidenzia 2.4s ease-out; }
 @keyframes evidenzia {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0); }
-  20%, 60% { box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.7); }
+  0%, 100% { box-shadow: var(--ombra); }
+  20%, 60% { box-shadow: 0 0 0 4px var(--corallo); }
 }
 
-/* --- Vista Cielo (SkyMap) --- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ------------------------------------------------- IL CIELO RESTA NOTTE    */
+/* Visore del cielo, simulazione e mappa: sfondo scuro anche col tema chiaro,
+   così le stelle si vedono. Basta ridefinire i token: il resto li eredita. */
+#skymap-contenitore,
+#sim-scena,
+#mappa-eclissi {
+  --carta-2: var(--notte-2);
+  --carta-3: #263257;
+  --carta-incassata: var(--notte-2);
+  --inchiostro: var(--notte-bordo);
+  --inchiostro-tenue: rgba(232, 226, 208, 0.3);
+  --testo: var(--notte-testo);
+  --testo-tenue: #b3bdd6;
+  --ombra: none;
+  --ombra-corta: none;
+}
+body .bg-slate-900\/70,
+body .bg-slate-800\/80,
+body .bg-slate-950\/90 {
+  background-color: rgba(16, 26, 51, 0.82);
+  color: var(--notte-testo);
+  border-color: var(--notte-bordo);
+}
+#skymap-hud, #skymap-stato, #sim-ora { color: var(--notte-testo); }
 
 /* Il canvas del cielo: il dito serve a guardarsi intorno, non a scorrere */
 #skymap-canvas {
@@ -43,15 +340,79 @@ body {
   filter: grayscale(1) sepia(1) saturate(6) hue-rotate(-38deg) brightness(0.85);
 }
 
-/* Stili personalizzati per rendere FullCalendar stile Dark Mode */
-.fc-theme-standard .fc-scrollgrid { border-color: #334155; }
-.fc-theme-standard td, .fc-theme-standard th { border-color: #334155; }
-.fc-day-today { background-color: rgba(59, 130, 246, 0.2) !important; }
-.fc .fc-toolbar-title { color: #f1f5f9; font-weight: 700; }
-.fc .fc-button-primary {
-  background-color: #334155;
-  border-color: #475569;
+/* ------------------------------------------------------------ CALENDARIO   */
+/* FullCalendar ridisegnato: righe a matita, niente riquadri pieni */
+.fc {
+  --fc-border-color: var(--inchiostro-tenue);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: transparent;
+  --fc-today-bg-color: transparent;
+  --fc-list-event-hover-bg-color: var(--carta-3);
 }
-.fc .fc-button-primary:hover { background-color: #475569; }
-.fc .fc-button-primary:disabled { background-color: #1e293b; border-color: #1e293b;}
-.fc-col-header-cell-cushion, .fc-daygrid-day-number { color: #cbd5e1; text-decoration: none;}
+.fc .fc-col-header-cell,
+.fc .fc-scrollgrid-section > * { background-color: transparent; }
+.fc-theme-standard .fc-scrollgrid,
+.fc-theme-standard td,
+.fc-theme-standard th { border-color: var(--inchiostro-tenue); }
+.fc-theme-standard .fc-scrollgrid { border-radius: var(--curva-media); overflow: hidden; }
+.fc .fc-toolbar-title {
+  font-family: var(--scrittura);
+  color: var(--testo);
+  font-weight: 400;
+  font-size: 1.6rem;
+}
+.fc .fc-button-primary {
+  font-family: var(--scrittura);
+  background-color: var(--carta-2);
+  border: var(--tratto) solid var(--inchiostro);
+  border-radius: var(--curva-pillola);
+  color: var(--testo);
+  box-shadow: var(--ombra-corta);
+  text-transform: lowercase;
+}
+.fc .fc-button-primary:hover { background-color: var(--carta-3); color: var(--testo); }
+.fc .fc-button-primary:not(:disabled):active,
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: var(--giallo);
+  color: var(--su-pieno);
+  border-color: var(--inchiostro);
+  box-shadow: none;
+}
+.fc .fc-button-primary:disabled { background-color: var(--carta-3); color: var(--testo-tenue); opacity: 1; }
+.fc .fc-button-primary:focus,
+.fc .fc-button:focus { box-shadow: none; outline: 2px dashed var(--azzurro); outline-offset: 2px; }
+.fc-col-header-cell-cushion {
+  font-family: var(--scrittura);
+  color: var(--testo-tenue);
+  font-weight: 400;
+  text-decoration: none;
+}
+.fc-daygrid-day-number { color: var(--testo); text-decoration: none; font-variant-numeric: tabular-nums; }
+/* L'oggi non è una casella colorata: è un cerchio fatto a penna sul numero */
+.fc-day-today { background-color: transparent !important; }
+.fc-day-today .fc-daygrid-day-number {
+  border: var(--tratto) solid var(--corallo);
+  border-radius: var(--curva-tonda);
+  padding: 0 7px;
+  font-weight: 700;
+}
+.fc-daygrid-event {
+  border: none;
+  background: transparent;
+  padding-left: 2px;
+}
+.fc-daygrid-event .fc-event-title { color: var(--testo); }
+.fc-daygrid-dot-event .fc-event-title { font-weight: 500; }
+.fc-daygrid-event-dot { border-width: 5px; border-radius: var(--curva-tonda); }
+.fc-h-event { background: transparent; }
+.fc .fc-daygrid-day.fc-day-other { opacity: 0.45; }
+.fc-popover { background: var(--carta-2) !important; border: var(--tratto) solid var(--inchiostro) !important; border-radius: var(--curva-media); }
+.fc-popover-header { background: var(--carta-3) !important; color: var(--testo); }
+
+/* ------------------------------------------------------------- LEAFLET     */
+.leaflet-container { background: var(--notte); }
+.leaflet-control-zoom a {
+  background: var(--carta-2);
+  color: var(--testo);
+  border-color: var(--inchiostro-tenue);
+}
