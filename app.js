@@ -1519,7 +1519,8 @@ const sky = {
   larghezza: 0,
   altezza: 0,
   observer: null,        // Astronomy.Observer con la posizione dell'utente
-  posizione: null,       // { lat, lon, fonte }
+  posizione: null,       // { lat, lon, fonte, precisione, tempo }
+  attesaPosizione: null, // richiesta di geolocalizzazione in corso (una sola per volta)
   sensori: false,        // orientamento del dispositivo attivo
   assoluto: false,       // alpha riferito al Nord vero (bussola affidabile)
   orient: null,          // { alpha, beta, gamma } dall'ultimo evento
@@ -1649,8 +1650,82 @@ function skyNomeCorpo(id) {
 // 7.1 Posizione dell'osservatore e sensori
 // =====================================================================
 
-function skyImpostaPosizione(lat, lon, fonte) {
-  sky.posizione = { lat, lon, fonte };
+// --- Normalizzazione delle letture di posizione ---
+// Il navigatore non restituisce un punto, restituisce una stima: ogni
+// lettura balla di qualche decina di metri e, quando il GPS vero non è
+// agganciato, il browser ripiega su wi-fi, celle telefoniche o indirizzo IP,
+// che possono sbagliare di chilometri. Accettando ogni lettura così com'è
+// il cielo si spostava di scatto e tornava indietro (il "tremolio" del GPS).
+// Qui le letture vengono filtrate: cambiamo posizione solo quando la nuova
+// lettura porta davvero un'informazione nuova.
+const SKY_SPOSTAMENTO_MIN_M = 150;   // sotto questa soglia è rumore, non movimento
+const SKY_PRECISIONE_PEGGIORE = 2;   // quanto può essere più larga una lettura per essere creduta
+const SKY_FONTI_RIPIEGO = ['salvata', 'backup'];
+
+// Distanza in metri fra due coordinate (emisenoverso: basta e avanza)
+function skyDistanzaMetri(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * SKY_D2R;
+  const dLon = (lon2 - lon1) * SKY_D2R;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1 * SKY_D2R) * Math.cos(lat2 * SKY_D2R) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+// Decide se una nuova lettura deve sostituire quella in uso.
+function skyLetturaAttendibile(lat, lon, fonte, precisione, tempo) {
+  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return false;
+  const attuale = sky.posizione;
+  if (!attuale) return true;                 // non avevamo niente: va bene tutto
+  if (fonte === 'manuale') return true;      // scelta esplicita dell'utente: comanda lei
+
+  // Una posizione di ripiego (ultima salvata, backup) non scalza mai una posizione vera
+  if (SKY_FONTI_RIPIEGO.includes(fonte) && !SKY_FONTI_RIPIEGO.includes(attuale.fonte)) return false;
+
+  // Mai tornare indietro nel tempo: le risposte del browser possono arrivare
+  // fuori ordine, e una lettura presa dalla cache è più vecchia di quella in uso.
+  if (tempo && attuale.tempo && tempo < attuale.tempo) return false;
+
+  const d = skyDistanzaMetri(attuale.lat, attuale.lon, lat, lon);
+
+  // Spostamento sotto la soglia: è il respiro del GPS, non un trasferimento.
+  // Ricalcolare tutto il cielo per venti metri non cambia nulla di visibile.
+  if (d < SKY_SPOSTAMENTO_MIN_M) return false;
+
+  // Lettura molto più grossolana di quella che abbiamo: la crediamo solo se
+  // dice qualcosa di incompatibile con la posizione attuale, cioè se lo
+  // spostamento esce dal suo stesso margine d'errore. È questo il caso del
+  // fix "di rete" largo chilometri che faceva saltare il cielo.
+  if (precisione && attuale.precisione &&
+      precisione > attuale.precisione * SKY_PRECISIONE_PEGGIORE && d < precisione) return false;
+
+  return true;
+}
+
+// Applica una posizione, se la lettura supera il filtro qui sopra.
+// Restituisce true quando la posizione è stata davvero cambiata.
+function skyImpostaPosizione(lat, lon, fonte, dettagli) {
+  const precisione = dettagli && isFinite(dettagli.precisione) ? dettagli.precisione : null;
+  const tempo = dettagli && dettagli.tempo ? dettagli.tempo : null;
+
+  if (!skyLetturaAttendibile(lat, lon, fonte, precisione, tempo)) {
+    // Lettura scartata: la posizione resta ferma, ma se è arrivata da un GPS
+    // valido teniamo buona la sua precisione e l'ora, così le letture
+    // successive vengono confrontate con l'informazione più aggiornata.
+    if (sky.posizione && fonte === 'gps') {
+      if (precisione && (!sky.posizione.precisione || precisione < sky.posizione.precisione)) {
+        sky.posizione.precisione = precisione;
+      }
+      if (tempo && (!sky.posizione.tempo || tempo > sky.posizione.tempo)) {
+        sky.posizione.tempo = tempo;
+      }
+    }
+    skyAvviso('posizione', '');
+    skyAggiornaStato();
+    return false;
+  }
+
+  sky.posizione = { lat, lon, fonte, precisione, tempo };
   if (typeof Astronomy !== 'undefined') {
     sky.observer = new Astronomy.Observer(lat, lon, 0);
   }
@@ -1659,10 +1734,11 @@ function skyImpostaPosizione(lat, lon, fonte) {
   // Cambiando luogo cambiano orari, altezze e giudizi: la memoria va svuotata
   svuotaCacheLocali();
   try {
-    localStorage.setItem(CHIAVE_SKY_POSIZIONE, JSON.stringify({ lat, lon }));
+    localStorage.setItem(CHIAVE_SKY_POSIZIONE, JSON.stringify({ lat, lon, precisione, tempo }));
   } catch (e) { /* storage pieno o non disponibile: pazienza */ }
   skyAvviso('posizione', ''); // la posizione c'è: via l'eventuale avviso
   skyAggiornaStato();
+  return true;
 }
 
 // Rilegge l'ultima posizione salvata (così l'app funziona subito, anche offline)
@@ -1670,15 +1746,25 @@ function skyCaricaPosizioneSalvata() {
   try {
     const dati = JSON.parse(localStorage.getItem(CHIAVE_SKY_POSIZIONE) || 'null');
     if (dati && typeof dati.lat === 'number' && typeof dati.lon === 'number') {
-      skyImpostaPosizione(dati.lat, dati.lon, 'salvata');
+      // Ci portiamo dietro anche quanto era precisa e quando è stata presa:
+      // servono a giudicare le letture nuove senza ripartire da zero.
+      skyImpostaPosizione(dati.lat, dati.lon, 'salvata', {
+        precisione: dati.precisione,
+        tempo: dati.tempo
+      });
       return true;
     }
   } catch (e) { /* dato corrotto: lo ignoriamo */ }
   return false;
 }
 
+// Una sola lettura per volta: Cielo, Stasera e Impostazioni possono chiedere
+// la posizione nello stesso momento, e due richieste in parallelo tornavano
+// con fix diversi che si sovrascrivevano a vicenda.
 function skyRichiediPosizione() {
-  return new Promise((risolvi) => {
+  if (sky.attesaPosizione) return sky.attesaPosizione;
+
+  sky.attesaPosizione = new Promise((risolvi) => {
     if (!navigator.geolocation) {
       risolvi(false);
       return;
@@ -1687,22 +1773,42 @@ function skyRichiediPosizione() {
     const concludi = (esito) => { if (!concluso) { concluso = true; risolvi(esito); } };
 
     // Finché l'utente non risponde alla richiesta di permesso il browser non
-    // richiama nulla (il "timeout" qui sotto parte solo dopo il consenso):
-    // dopo 15 secondi smettiamo di aspettare e lo diciamo.
-    const attesaMassima = setTimeout(() => concludi(false), 15000);
+    // richiama nulla (i "timeout" qui sotto partono solo dopo il consenso):
+    // dopo 16 secondi smettiamo di aspettare e lo diciamo.
+    const attesaMassima = setTimeout(() => concludi(false), 16000);
 
+    const usa = (pos) => {
+      clearTimeout(attesaMassima);
+      // La posizione viene comunque usata, anche se arriva in ritardo:
+      // il filtro qui sopra decide se è meglio di quella che abbiamo già.
+      skyImpostaPosizione(pos.coords.latitude, pos.coords.longitude, 'gps', {
+        precisione: pos.coords.accuracy,
+        tempo: pos.timestamp
+      });
+      skyAggiornaOggetti(true);
+      concludi(true);
+    };
+
+    // Prima si chiede il GPS vero e una lettura recente. Se non arriva
+    // (al chiuso, o senza antenna) si ripiega su wi-fi/rete, che è meglio
+    // di niente: la lettura grossolana passa comunque dal filtro.
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        clearTimeout(attesaMassima);
-        // La posizione viene comunque usata, anche se arriva in ritardo
-        skyImpostaPosizione(pos.coords.latitude, pos.coords.longitude, 'gps');
-        skyAggiornaOggetti(true);
-        concludi(true);
+      usa,
+      () => {
+        navigator.geolocation.getCurrentPosition(
+          usa,
+          () => { clearTimeout(attesaMassima); concludi(false); },
+          { enableHighAccuracy: false, timeout: 7000, maximumAge: 300000 }
+        );
       },
-      () => { clearTimeout(attesaMassima); concludi(false); },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
     );
+  }).then((esito) => {
+    sky.attesaPosizione = null;
+    return esito;
   });
+
+  return sky.attesaPosizione;
 }
 
 // Riceve alpha/beta/gamma dal telefono. Su iOS webkitCompassHeading dà
