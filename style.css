@@ -2,6 +2,11 @@ body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Rete di sicurezza: se Tailwind non si carica (CDN irraggiungibile) tutte le
+   viste e i modali resterebbero visibili insieme. Questa regola basta a tenere
+   l'app usabile, sia pure senza grafica. */
+.hidden { display: none !important; }
+
 .card-hover {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -9,6 +14,15 @@ body {
 .card-hover:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2);
+}
+
+/* Evento raggiunto da un link condiviso: lampeggia per farsi trovare */
+.evidenziato {
+  animation: evidenzia 2.4s ease-out;
+}
+@keyframes evidenzia {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0); }
+  20%, 60% { box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.7); }
 }
 
 /* --- Vista Cielo (SkyMap) --- */

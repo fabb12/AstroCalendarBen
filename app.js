@@ -10,6 +10,7 @@ const CATEGORIE = {
   stagioni:  { nome: 'Stagioni',         icona: '🍂' },
   meteore:   { nome: 'Sciami Meteorici', icona: '☄️' },
   pianeti:   { nome: 'Pianeti',          icona: '🪐' },
+  congiunzioni: { nome: 'Congiunzioni',  icona: '🤝' },
   personali: { nome: 'Personali',        icona: '📌' }
 };
 
@@ -31,6 +32,7 @@ window.addEventListener('DOMContentLoaded', () => {
   registraSW();
   calcolaEventiAstronomi();
   caricaEventiManuali();
+  caricaDiario();
   inizializzaUI();
   inizializzaFormAggiungi();
   inizializzaMappaEclissiUI();
@@ -38,10 +40,17 @@ window.addEventListener('DOMContentLoaded', () => {
   inizializzaSkymap();
   inizializzaNotifiche();
   inizializzaInstallazione();
+  inizializzaDiarioUI();
+  inizializzaImpostazioni();
+  inizializzaStasera();
+  // La vista d'apertura è "Stasera": è la domanda che ci si fa davvero
+  mostraVista('stasera');
+  // Un link condiviso (?evento=…) porta direttamente sulla scheda giusta
+  gestisciLinkCondiviso();
 });
 
 // Helper: crea un evento con id sicuro e testo data formattato
-function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, corpoCielo, simul }) {
+function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, corpoCielo, simul, strumento, congiunzione }) {
   eventiCalcolati.push({
     id: id || `ev${contatoreId++}`,
     titolo,
@@ -58,7 +67,11 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     // Corpo celeste protagonista dell'evento: apre la vista Cielo puntata su di lui
     corpoCielo: corpoCielo || null,
     // Misure fisiche usate dalla simulazione per renderizzare l'evento
-    simul: simul || null
+    simul: simul || null,
+    // Strumento minimo con cui l'evento ha senso (occhio, binocolo, telescopio)
+    strumento: strumento || null,
+    // Dati della congiunzione: quali corpi si incontrano e a che distanza
+    congiunzione: congiunzione || null
   });
 }
 
@@ -88,6 +101,7 @@ function calcolaEventiAstronomi() {
   aggiungiStagioni(oggi, limite);
   aggiungiSciamiMeteorici(oggi, limite);
   aggiungiElongazioni(oggi, limite);
+  aggiungiCongiunzioni(oggi, limite);
 
   // Ordina temporalmente
   eventiCalcolati.sort((a, b) => a.dataObj - b.dataObj);
@@ -893,8 +907,10 @@ function inizializzaFormAggiungi() {
 // =====================================================================
 function inizializzaUI() {
   inizializzaRicerca();
+  inizializzaFiltroStrumento();
   costruisciAgenda();
   inizializzaCalendario();
+  costruisciDiario();
   gestisciTab();
 }
 
@@ -920,6 +936,13 @@ function getEventiFiltrati() {
 
   return eventiCalcolati.filter(ev => {
     if (filtroCategoria !== 'tutti' && ev.categoria !== filtroCategoria) return false;
+    // Il filtro per strumento è cumulativo: chi ha il binocolo vede anche
+    // tutto ciò che si osserva a occhio nudo.
+    if (filtroStrumento !== 'tutti') {
+      const scelto = STRUMENTI[filtroStrumento];
+      const serve = STRUMENTI[strumentoEvento(ev)];
+      if (scelto && serve && serve.livello > scelto.livello) return false;
+    }
     if (parole.length === 0) return true;
     const nomeCategoria = CATEGORIE[ev.categoria] ? CATEGORIE[ev.categoria].nome : '';
     const testo = normalizzaTesto(`${ev.titolo} ${ev.spiegazione} ${nomeCategoria}`);
@@ -1058,7 +1081,7 @@ function costruisciAgenda() {
         <div>
           <h2 class="text-2xl font-bold text-white">${evento.titolo}${badgeManuale}</h2>
           <p class="text-blue-400 text-sm font-semibold mt-1">📅 ${evento.dataTesto}</p>
-          <div class="mt-2">${badgeCategoria}</div>
+          <div class="mt-2">${badgeCategoria}${badgeStrumentoHtml(evento)}</div>
         </div>
         <div class="flex gap-2 flex-shrink-0">
           <button onclick="apriSimulazione('${evento.id}')" class="p-3 bg-slate-700 hover:bg-purple-600 rounded-full transition-colors" title="Simula l'evento: guarda cosa succede">
@@ -1074,6 +1097,8 @@ function costruisciAgenda() {
 
       <div class="space-y-3 text-slate-300 pl-4">
         <p><strong>✨ Cosa succede:</strong> ${evento.spiegazione}</p>
+        ${bloccoLocaleHtml(evento)}
+        ${bloccoFotoHtml(evento)}
         <div class="bg-slate-900 p-4 rounded-xl mt-4 text-sm border border-slate-700">
           <h3 class="font-bold text-white mb-2">🎒 Programma (Consigli)</h3>
           <ul class="space-y-2">
@@ -1086,6 +1111,7 @@ function costruisciAgenda() {
           </ul>
         </div>
       </div>
+      ${barraAzioniHtml(evento)}
     `;
     container.appendChild(card);
   });
@@ -1129,9 +1155,11 @@ function inizializzaCalendario() {
 
 // Le tre viste dell'app: pulsante, contenitore e nome logico
 const VISTE = [
+  { nome: 'stasera',    btn: 'btn-vista-stasera',    vista: 'vista-stasera' },
   { nome: 'calendario', btn: 'btn-vista-calendario', vista: 'vista-calendario' },
   { nome: 'agenda',     btn: 'btn-vista-agenda',     vista: 'vista-agenda' },
-  { nome: 'cielo',      btn: 'btn-vista-skymap',     vista: 'vista-skymap' }
+  { nome: 'cielo',      btn: 'btn-vista-skymap',     vista: 'vista-skymap' },
+  { nome: 'diario',     btn: 'btn-vista-diario',     vista: 'vista-diario' }
 ];
 
 // Mostra una sola vista alla volta e aggiorna lo stile dei pulsanti
@@ -1147,15 +1175,30 @@ function mostraVista(nome) {
     if (btn) btn.className = selezionata ? attivo : inattivo;
   });
 
-  // La ricerca filtra calendario e agenda: nella vista Cielo non serve
+  // La ricerca filtra calendario e agenda: altrove non serve
   const ricerca = document.getElementById('barra-ricerca');
-  if (ricerca) ricerca.classList.toggle('hidden', nome === 'cielo');
+  if (ricerca) ricerca.classList.toggle('hidden', nome !== 'calendario' && nome !== 'agenda');
 
   // Resize necessario per FullCalendar quando torna visibile
   if (nome === 'calendario' && fullCalendarInstance) fullCalendarInstance.updateSize();
 
-  // Il disegno del cielo gira solo quando la sua vista è a schermo
-  if (nome === 'cielo') apriSkymap(); else chiudiSkymap();
+  // Il disegno del cielo gira solo quando la sua vista è a schermo;
+  // uscendo si spegne anche la fotocamera (batteria e privacy).
+  if (nome === 'cielo') {
+    apriSkymap();
+  } else {
+    chiudiSkymap();
+    skySpegniFotocamera();
+  }
+
+  // Stasera e Diario si ricostruiscono all'apertura: i dati cambiano di continuo
+  if (nome === 'stasera') costruisciStasera();
+  if (nome === 'diario') costruisciDiario();
+  // Se nel frattempo è cambiata la posizione, l'agenda va riscritta
+  if (nome === 'agenda' && agendaDaRicostruire) {
+    agendaDaRicostruire = false;
+    costruisciAgenda();
+  }
 }
 
 function gestisciTab() {
@@ -1492,7 +1535,16 @@ const sky = {
   cacheOrari: { chiave: null, valore: null },
   stelleDefinite: false,
   wakeLock: null,
-  avvisi: {}            // messaggi mostrati sotto al cielo, uno per argomento
+  avvisi: {},           // messaggi mostrati sotto al cielo, uno per argomento
+  // Macchina del tempo: minuti di scarto rispetto all'ora vera
+  offsetTempoMin: 0,
+  // Figure delle costellazioni e oggetti del profondo cielo
+  mostraCostellazioni: true,
+  mostraProfondo: false,
+  costellazioni: [],
+  profondo: [],
+  // Flusso video della fotocamera, quando la realtà aumentata è accesa
+  camera: null
 };
 
 // --- Piccola algebra vettoriale (terna Est / Nord / Alto) ---
@@ -1604,6 +1656,8 @@ function skyImpostaPosizione(lat, lon, fonte) {
   }
   sky.prossimoCalcolo = 0;
   sky.cacheOrari = { chiave: null, valore: null };
+  // Cambiando luogo cambiano orari, altezze e giudizi: la memoria va svuotata
+  svuotaCacheLocali();
   try {
     localStorage.setItem(CHIAVE_SKY_POSIZIONE, JSON.stringify({ lat, lon }));
   } catch (e) { /* storage pieno o non disponibile: pazienza */ }
@@ -1711,7 +1765,9 @@ function skyAggiornaOggetti(forza) {
   }
   skyDefinisciStelle();
 
-  const t = Astronomy.MakeTime(new Date());
+  // L'ora è quella scelta con il cursore del tempo (normalmente adesso)
+  const quando = skyAdesso();
+  const t = Astronomy.MakeTime(quando);
   const lista = [];
   SKY_ASTRI.forEach(astro => {
     try {
@@ -1733,17 +1789,18 @@ function skyAggiornaOggetti(forza) {
     } catch (e) { /* corpo non calcolabile: lo saltiamo senza fermare gli altri */ }
   });
   sky.oggetti = lista;
+  skyAggiornaCatalogo(quando);
   skyAggiornaEtichette();
 }
 
 // Orari di sorgere e tramonto dell'astro selezionato (ricalcolati ogni mezz'ora)
 function skyOrari(id) {
   if (!sky.observer || typeof Astronomy === 'undefined') return null;
-  const chiave = `${id}|${Math.floor(Date.now() / 1800000)}`;
+  const chiave = `${id}|${Math.floor(skyAdesso().getTime() / 1800000)}`;
   if (sky.cacheOrari.chiave === chiave) return sky.cacheOrari.valore;
   let valore = null;
   try {
-    const adesso = new Date();
+    const adesso = skyAdesso();
     const sorge = Astronomy.SearchRiseSet(id, sky.observer, 1, adesso, 1);
     const tramonta = Astronomy.SearchRiseSet(id, sky.observer, -1, adesso, 1);
     valore = { sorge: sorge ? sorge.date : null, tramonta: tramonta ? tramonta.date : null };
@@ -2041,19 +2098,27 @@ function skyDisegna() {
   const ctx = sky.ctx;
   const L = sky.larghezza, H = sky.altezza;
 
-  // Sfondo notturno
-  const sfondo = ctx.createLinearGradient(0, 0, 0, H);
-  sfondo.addColorStop(0, '#020617');
-  sfondo.addColorStop(1, '#0f172a');
-  ctx.fillStyle = sfondo;
-  ctx.fillRect(0, 0, L, H);
+  // Con la fotocamera accesa il canvas resta trasparente: sotto si vede
+  // il mondo vero e sopra ci finiscono solo gli astri calcolati.
+  const conCamera = !!sky.camera;
+  if (conCamera) {
+    ctx.clearRect(0, 0, L, H);
+  } else {
+    const sfondo = ctx.createLinearGradient(0, 0, 0, H);
+    sfondo.addColorStop(0, '#020617');
+    sfondo.addColorStop(1, '#0f172a');
+    ctx.fillStyle = sfondo;
+    ctx.fillRect(0, 0, L, H);
+  }
 
   const base = skyBase();
   const focale = skyFocale();
 
   skyDisegnaGriglia(ctx, base, focale);
-  skyDisegnaTerreno(ctx, base, focale);
+  if (!conCamera) skyDisegnaTerreno(ctx, base, focale);
   skyDisegnaCardinali(ctx, base, focale);
+  skyDisegnaCostellazioni(ctx, base, focale);
+  skyDisegnaProfondo(ctx, base, focale);
 
   // Prima le stelle, poi i pianeti, infine Luna e Sole (restano sopra)
   const ordine = { stella: 0, pianeta: 1, luna: 2, sole: 3 };
@@ -2366,6 +2431,9 @@ function inizializzaSkymap() {
   // Offset della bussola salvato dalla volta precedente
   const salvato = parseFloat(localStorage.getItem(CHIAVE_SKY_BUSSOLA));
   skyImpostaOffsetBussola(isNaN(salvato) ? 0 : salvato);
+
+  // Costellazioni, profondo cielo, macchina del tempo e fotocamera
+  inizializzaSkymapExtra();
 
   const collega = (id, azione) => {
     const el = document.getElementById(id);
@@ -3702,5 +3770,2286 @@ function inizializzaSimulazione() {
       sim.ultimoTs = 0;
       sim.raf = requestAnimationFrame(simCiclo);
     }
+  });
+}
+
+// =====================================================================
+// 9. CONGIUNZIONI E OCCULTAZIONI
+//    Gli eventi più belli da guardare a occhio nudo sono due astri che
+//    si sfiorano. Li troviamo scandendo giorno per giorno la distanza
+//    angolare fra ogni coppia e cercando i minimi: quando il minimo è
+//    stretto abbastanza, nasce un evento del calendario.
+// =====================================================================
+
+// Corpi messi a confronto fra loro (la Luna è la protagonista più frequente)
+const CONG_CORPI = [
+  { id: 'Moon',    nome: 'Luna',     icona: '🌙' },
+  { id: 'Mercury', nome: 'Mercurio', icona: '☿' },
+  { id: 'Venus',   nome: 'Venere',   icona: '♀' },
+  { id: 'Mars',    nome: 'Marte',    icona: '♂' },
+  { id: 'Jupiter', nome: 'Giove',    icona: '♃' },
+  { id: 'Saturn',  nome: 'Saturno',  icona: '♄' }
+];
+
+// Quanto lontano nel tempo cercare le congiunzioni: la scansione è giornaliera
+// e la libreria calcola tutto nel browser, quindi teniamo un orizzonte umano.
+const CONG_ANNI = 3;
+
+// Soglie di "vicinanza": la Luna si muove molto e passa spesso vicino ai
+// pianeti, quindi le chiediamo un incontro più stretto per fare notizia.
+const CONG_SOGLIA_LUNA = 4;      // gradi
+const CONG_SOGLIA_PIANETI = 3;   // gradi
+
+// Sotto questa elongazione dal Sole l'incontro è immerso nella luce del giorno
+const CONG_ELONGAZIONE_MINIMA = 15;
+
+// Setaccio largo della scansione giornaliera: ogni avvicinamento sotto questo
+// valore viene raffinato, e solo dopo si applica la soglia vera.
+const CONG_SETACCIO = 15;
+
+// Separazione angolare geocentrica (in gradi) fra due corpi a un dato istante
+function congSeparazione(idA, idB, t) {
+  const a = Astronomy.GeoVector(idA, t, true);
+  const b = Astronomy.GeoVector(idB, t, true);
+  return Astronomy.AngleBetween(a, b);
+}
+
+// Distanza angolare dal Sole: sotto una certa soglia l'evento non si vede
+function congElongazioneSolare(id, t) {
+  try {
+    const sole = Astronomy.GeoVector('Sun', t, true);
+    const corpo = Astronomy.GeoVector(id, t, true);
+    return Astronomy.AngleBetween(sole, corpo);
+  } catch (e) {
+    return 180;
+  }
+}
+
+function aggiungiCongiunzioni(oggi, limite) {
+  if (typeof Astronomy === 'undefined' || typeof Astronomy.AngleBetween !== 'function') return;
+  try {
+    const fine = new Date(Math.min(
+      limite.getTime(),
+      oggi.getTime() + CONG_ANNI * 365.25 * 86400000
+    ));
+    const giorni = Math.ceil((fine - oggi) / 86400000);
+    if (giorni < 3) return;
+
+    // Coppie da controllare: Luna con ogni pianeta, e i pianeti fra loro
+    const coppie = [];
+    for (let i = 0; i < CONG_CORPI.length; i++) {
+      for (let j = i + 1; j < CONG_CORPI.length; j++) {
+        coppie.push({
+          a: CONG_CORPI[i],
+          b: CONG_CORPI[j],
+          soglia: (CONG_CORPI[i].id === 'Moon' || CONG_CORPI[j].id === 'Moon')
+            ? CONG_SOGLIA_LUNA : CONG_SOGLIA_PIANETI
+        });
+      }
+    }
+
+    // Un solo passaggio giornaliero: calcoliamo i vettori una volta per giorno
+    // e da quelli tutte le separazioni, così il costo resta contenuto.
+    const serie = coppie.map(() => []);
+    const tempi = [];
+    for (let g = 0; g <= giorni; g++) {
+      const data = new Date(oggi.getTime() + g * 86400000);
+      const t = Astronomy.MakeTime(data);
+      tempi.push(t);
+      const vettori = {};
+      CONG_CORPI.forEach(c => {
+        try { vettori[c.id] = Astronomy.GeoVector(c.id, t, true); } catch (e) { vettori[c.id] = null; }
+      });
+      coppie.forEach((coppia, k) => {
+        const va = vettori[coppia.a.id], vb = vettori[coppia.b.id];
+        serie[k].push(va && vb ? Astronomy.AngleBetween(va, vb) : 999);
+      });
+    }
+
+    coppie.forEach((coppia, k) => {
+      const sep = serie[k];
+      for (let g = 1; g < sep.length - 1; g++) {
+        // Cerchiamo ogni avvicinamento, non solo quelli già stretti al momento
+        // del campione: la Luna percorre 13° al giorno, quindi fra un giorno e
+        // l'altro può entrare e uscire dalla congiunzione senza farsi vedere.
+        if (!(sep[g] < sep[g - 1] && sep[g] <= sep[g + 1] && sep[g] < CONG_SETACCIO)) continue;
+
+        // Raffinamento in due passate: prima ogni 2 ore nel giorno prima e
+        // dopo, poi ogni 5 minuti attorno al minimo trovato.
+        let centro = tempi[g].date.getTime();
+        let migliore = sep[g], miglioreMs = centro;
+        const scandisci = (raggioMin, passoMin, partenza) => {
+          for (let m = -raggioMin; m <= raggioMin; m += passoMin) {
+            const ms = partenza + m * 60000;
+            let s;
+            try { s = congSeparazione(coppia.a.id, coppia.b.id, Astronomy.MakeTime(new Date(ms))); } catch (e) { continue; }
+            if (s < migliore) { migliore = s; miglioreMs = ms; }
+          }
+        };
+        scandisci(1440, 120, centro);
+        scandisci(120, 5, miglioreMs);
+
+        // Solo adesso, conosciuta la distanza minima vera, decidiamo se è un evento
+        if (migliore >= coppia.soglia) continue;
+
+        const miglioreT = Astronomy.MakeTime(new Date(miglioreMs));
+        const quando = miglioreT.date;
+        if (quando < oggi || quando > fine) continue;
+
+        // Se la coppia è troppo vicina al Sole non c'è nulla da osservare
+        const elong = congElongazioneSolare(coppia.b.id === 'Moon' ? coppia.a.id : coppia.b.id, miglioreT);
+        if (elong < CONG_ELONGAZIONE_MINIMA) continue;
+
+        const conLuna = coppia.a.id === 'Moon' || coppia.b.id === 'Moon';
+        const gradi = migliore;
+        const testoDistanza = gradi < 1
+          ? `${Math.round(gradi * 60)} primi d'arco (meno di un grado: entrano insieme nel campo di un binocolo)`
+          : `${gradi.toFixed(1)}°`;
+
+        // Sotto il mezzo grado la Luna può addirittura coprire il pianeta:
+        // la copertura vera dipende dal luogo, quindi lo diciamo come possibilità.
+        const occultazione = conLuna && gradi < 0.5;
+        const titolo = occultazione
+          ? `Occultazione: ${coppia.a.nome} nasconde ${coppia.b.nome}`
+          : `Congiunzione ${coppia.a.nome}–${coppia.b.nome}`;
+
+        const spiegazione = occultazione
+          ? `${coppia.a.nome} e ${coppia.b.nome} arrivano a ${testoDistanza} l'uno dall'altro: da alcune zone della Terra ` +
+            `la Luna passa davanti al pianeta e lo nasconde per qualche decina di minuti. Da altre zone si vede comunque ` +
+            `un avvicinamento spettacolare. Controlla gli orari locali qui sotto.`
+          : `${coppia.a.nome} e ${coppia.b.nome} si avvicinano fino a ${testoDistanza}. ` +
+            `Non si toccano davvero — restano lontanissimi fra loro — ma dalla Terra appaiono quasi sovrapposti: ` +
+            `è uno degli spettacoli più facili da riconoscere anche in città.`;
+
+        creaEvento({
+          titolo,
+          dataObj: quando,
+          spiegazione,
+          colore: occultazione ? '#f472b6' : '#8b5cf6',
+          categoria: 'congiunzioni',
+          // Nel cielo si punta il corpo più facile da trovare
+          corpoCielo: conLuna ? 'Moon' : coppia.b.id,
+          strumento: 'occhio',
+          congiunzione: {
+            a: coppia.a.id, b: coppia.b.id,
+            nomeA: coppia.a.nome, nomeB: coppia.b.nome,
+            separazione: gradi
+          },
+          simul: { scena: 'cielo' },
+          programma: {
+            cosaPortare: 'Nulla di obbligatorio: si vede a occhio nudo. Un binocolo li mostra insieme nello stesso campo, e con il telefono si fanno belle foto.',
+            doveVederlo: `Serve un orizzonte libero nella direzione giusta: guarda la scheda “da qui” qui sotto per sapere dove e a che ora sono visibili dal tuo luogo.`,
+            comeVederlo: 'Cerca i due punti luminosi molto vicini: quello che non “tremola” è il pianeta, le stelle invece scintillano.'
+          }
+        });
+      }
+    });
+  } catch (err) {
+    console.error('Errore congiunzioni:', err);
+  }
+}
+
+// =====================================================================
+// 10. LA TUA POSIZIONE, USATA DA TUTTA L'APP
+//     Fino a ieri le coordinate servivano solo alla vista Cielo. Ora un
+//     evento senza contesto locale ("Luna Piena alle 04:12") diventa
+//     "sorge alle 21:03 a sud-est, alta 34° a mezzanotte".
+// =====================================================================
+
+const RAGGIO_TERRA_KM_LUOGO = 6378.137;
+
+// Restituisce { lat, lon } se conosciamo il luogo dell'utente, altrimenti null.
+// Non inventiamo mai una posizione di comodo senza dirlo.
+function luogoCorrente() {
+  if (typeof sky !== 'undefined' && sky.posizione && typeof sky.posizione.lat === 'number') {
+    return { lat: sky.posizione.lat, lon: sky.posizione.lon };
+  }
+  try {
+    const dati = JSON.parse(localStorage.getItem(CHIAVE_SKY_POSIZIONE) || 'null');
+    if (dati && typeof dati.lat === 'number' && typeof dati.lon === 'number') {
+      return { lat: dati.lat, lon: dati.lon };
+    }
+  } catch (e) { /* dato corrotto */ }
+  return null;
+}
+
+function osservatoreCorrente() {
+  const l = luogoCorrente();
+  if (!l || typeof Astronomy === 'undefined') return null;
+  try {
+    return new Astronomy.Observer(l.lat, l.lon, 0);
+  } catch (e) {
+    return null;
+  }
+}
+
+// Altezza e azimut di un corpo del Sistema Solare a un dato istante
+function altAzCorpo(id, data, obs) {
+  const t = Astronomy.MakeTime(data);
+  const equ = Astronomy.Equator(id, t, obs, true, true);
+  const hor = Astronomy.Horizon(t, obs, equ.ra, equ.dec, 'normal');
+  return { alt: hor.altitude, az: hor.azimuth };
+}
+
+// Altezza e azimut di un punto fisso del cielo (radianti degli sciami,
+// oggetti del profondo cielo). Le coordinate sono J2000: la differenza con
+// quelle di oggi è di frazioni di grado, invisibile a occhio nudo.
+function altAzCoordinate(raOre, decGradi, data, obs) {
+  const t = Astronomy.MakeTime(data);
+  const hor = Astronomy.Horizon(t, obs, raOre, decGradi, 'normal');
+  return { alt: hor.altitude, az: hor.azimuth };
+}
+
+function altezzaSole(data, obs) {
+  try { return altAzCorpo('Sun', data, obs).alt; } catch (e) { return null; }
+}
+
+// Ogni ricerca di alba, tramonto e crepuscolo è una ricerca numerica: senza
+// memoria l'agenda le rifarebbe a ogni ridisegno, per ogni scheda. Teniamo
+// quindi i risultati per notte e per luogo.
+const cacheBuio = new Map();
+
+function chiaveLuogo() {
+  const l = luogoCorrente();
+  return l ? `${l.lat.toFixed(2)},${l.lon.toFixed(2)}` : 'nessuno';
+}
+
+// Finestra di buio della notte che comincia nel giorno indicato:
+// tramonto, buio astronomico (Sole a −18°), fine del buio e alba.
+function finestraBuio(dataRiferimento) {
+  const obs = osservatoreCorrente();
+  if (!obs || typeof Astronomy === 'undefined') return null;
+
+  // "Stanotte" è la notte che sta per arrivare; ma se sono le tre del mattino
+  // la notte giusta è quella cominciata ieri sera, non la prossima.
+  const partenza = new Date(dataRiferimento);
+  if (partenza.getHours() < 6) partenza.setDate(partenza.getDate() - 1);
+  partenza.setHours(12, 0, 0, 0);
+
+  const chiave = `${chiaveLuogo()}|${partenza.toDateString()}`;
+  if (cacheBuio.has(chiave)) return cacheBuio.get(chiave);
+
+  try {
+    const tramonto = Astronomy.SearchRiseSet('Sun', obs, -1, partenza, 2);
+    const alba = tramonto ? Astronomy.SearchRiseSet('Sun', obs, 1, tramonto.date, 2) : null;
+    // Alle alte latitudini d'estate il Sole non scende mai a −18°: la ricerca
+    // restituisce null ed è un'informazione vera da mostrare, non un errore.
+    const buioInizio = Astronomy.SearchAltitude('Sun', obs, -1, partenza, 2, -18);
+    const buioFine = buioInizio ? Astronomy.SearchAltitude('Sun', obs, 1, buioInizio.date, 2, -18) : null;
+    const nauticoInizio = Astronomy.SearchAltitude('Sun', obs, -1, partenza, 2, -12);
+
+    const risultato = {
+      tramonto: tramonto ? tramonto.date : null,
+      alba: alba ? alba.date : null,
+      buioInizio: buioInizio ? buioInizio.date : null,
+      buioFine: buioFine ? buioFine.date : null,
+      nautico: nauticoInizio ? nauticoInizio.date : null
+    };
+    cacheBuio.set(chiave, risultato);
+    return risultato;
+  } catch (e) {
+    cacheBuio.set(chiave, null);
+    return null;
+  }
+}
+
+// Cerca il momento migliore della notte per un corpo: quando è più alto
+// mentre il Sole è già sotto l'orizzonte.
+function momentoMigliore(id, buio, obs, raDec) {
+  if (!buio || !buio.tramonto) return null;
+  const inizio = buio.tramonto.getTime();
+  const fine = (buio.alba || new Date(inizio + 10 * 3600000)).getTime();
+  if (fine <= inizio) return null;
+
+  // Cerchiamo due cose insieme: il momento più alto in assoluto e il momento
+  // più alto a cielo già scuro. Il secondo è quasi sempre quello giusto, ma
+  // per Mercurio e Venere — che tramontano nel crepuscolo — non esiste, e
+  // allora vale il primo.
+  let assoluto = null, alBuio = null;
+  const passo = Math.max(10 * 60000, (fine - inizio) / 48);
+  for (let ms = inizio; ms <= fine; ms += passo) {
+    const data = new Date(ms);
+    let pos;
+    try {
+      pos = raDec ? altAzCoordinate(raDec.ra, raDec.dec, data, obs) : altAzCorpo(id, data, obs);
+    } catch (e) { continue; }
+    const voce = { alt: pos.alt, az: pos.az, quando: data };
+    if (!assoluto || pos.alt > assoluto.alt) assoluto = voce;
+
+    const altSole = altezzaSole(data, obs);
+    if (altSole !== null && altSole < -6 && (!alBuio || pos.alt > alBuio.alt)) alBuio = voce;
+  }
+  return (alBuio && alBuio.alt > 5) ? alBuio : assoluto;
+}
+
+// Orari di sorgere e tramonto attorno a una data
+function orariSorgereTramonto(id, data, obs) {
+  try {
+    const partenza = new Date(data.getTime() - 12 * 3600000);
+    const sorge = Astronomy.SearchRiseSet(id, obs, 1, partenza, 2);
+    const tramonta = Astronomy.SearchRiseSet(id, obs, -1, partenza, 2);
+    return {
+      sorge: sorge ? sorge.date : null,
+      tramonta: tramonta ? tramonta.date : null
+    };
+  } catch (e) {
+    return { sorge: null, tramonta: null };
+  }
+}
+
+// Oltre questo orizzonte non calcoliamo le circostanze locali: in agenda ci
+// sono centinaia di eventi (le eclissi arrivano al 2070) e ognuno costerebbe
+// più ricerche numeriche. Per gli eventi lontani basta la data.
+const GIORNI_CIRCOSTANZE = 120;
+
+// Le circostanze cambiano lentamente: ricalcolarle più di una volta ogni
+// mezz'ora non aggiunge nulla e rallenta il ridisegno dell'agenda.
+const cacheCircostanze = new Map();
+
+// Cambiando luogo le schede dell'agenda dicono cose diverse: le ricostruiamo
+// alla prima occasione utile, non subito (l'agenda può avere centinaia di voci).
+let agendaDaRicostruire = false;
+
+function svuotaCacheLocali() {
+  cacheBuio.clear();
+  cacheCircostanze.clear();
+  agendaDaRicostruire = true;
+  eventiCalcolati.forEach(e => { delete e.localeCache; });
+}
+
+// "Da qui si vede?" — altezza, direzione, orari e giudizio per un evento.
+// Restituisce null se manca la posizione o se l'evento è troppo lontano.
+function circostanzeLocali(evento) {
+  const obs = osservatoreCorrente();
+  if (!obs || typeof Astronomy === 'undefined') return null;
+
+  const giorni = (evento.dataObj.getTime() - Date.now()) / 86400000;
+  if (giorni < -1 || giorni > GIORNI_CIRCOSTANZE) return null;
+
+  const chiave = `${evento.id}|${chiaveLuogo()}|${Math.floor(Date.now() / 1800000)}`;
+  if (cacheCircostanze.has(chiave)) return cacheCircostanze.get(chiave);
+
+  // Corpo protagonista, oppure radiante per gli sciami meteorici
+  const radiante = (evento.simul && evento.simul.scena === 'sciame' &&
+                    typeof evento.simul.ra === 'number')
+    ? { ra: evento.simul.ra, dec: evento.simul.dec } : null;
+  const corpo = evento.corpoCielo;
+  if (!corpo && !radiante) return null;
+
+  let pos;
+  try {
+    pos = radiante
+      ? altAzCoordinate(radiante.ra, radiante.dec, evento.dataObj, obs)
+      : altAzCorpo(corpo, evento.dataObj, obs);
+  } catch (e) {
+    return null;
+  }
+
+  const altSole = altezzaSole(evento.dataObj, obs);
+  const orari = corpo ? orariSorgereTramonto(corpo, evento.dataObj, obs) : { sorge: null, tramonta: null };
+
+  // Il momento migliore della notte conta soprattutto per gli sciami e per
+  // gli eventi il cui istante di picco cade quando l'astro è sotto l'orizzonte:
+  // negli altri casi è una scansione costosa e inutile.
+  const buio = finestraBuio(evento.dataObj);
+  const eventoDiGiorno = corpo !== 'Sun' && altSole !== null && altSole > -6;
+  const meglio = (pos.alt < 10 || radiante || eventoDiGiorno)
+    ? momentoMigliore(corpo, buio, obs, radiante) : null;
+
+  const eventoSolare = corpo === 'Sun';
+  let giudizio, livello;
+  if (pos.alt < 0) {
+    giudizio = meglio && meglio.alt > 5
+      ? `Al momento del picco è sotto l'orizzonte da qui, ma nella stessa notte arriva a ${Math.round(meglio.alt)}° verso le ${oraBreve(meglio.quando)}.`
+      : 'Non visibile da qui: nell\'istante dell\'evento l\'astro si trova sotto l\'orizzonte.';
+    livello = meglio && meglio.alt > 5 ? 'parziale' : 'no';
+  } else if (!eventoSolare && altSole !== null && altSole > -6) {
+    giudizio = `All'ora esatta dell'evento il cielo è ancora chiaro (Sole a ${Math.round(altSole)}°)` +
+      (meglio && meglio.alt > 5
+        ? `: guardalo verso le ${oraBreve(meglio.quando)}, quando è alto ${Math.round(meglio.alt)}° verso ${skyNomeDirezione(meglio.az)}.`
+        : '. Cerca l\'astro nelle ore di buio più vicine.');
+    livello = 'parziale';
+  } else if (pos.alt < 10) {
+    giudizio = `Visibile ma bassa sull'orizzonte (${Math.round(pos.alt)}°): serve una vista libera verso ${skyNomeDirezione(pos.az)}.`;
+    livello = 'parziale';
+  } else {
+    giudizio = `Ben visibile da qui: ${Math.round(pos.alt)}° sopra l'orizzonte, verso ${skyNomeDirezione(pos.az)}.`;
+    livello = 'si';
+  }
+
+  const risultato = {
+    alt: pos.alt,
+    az: pos.az,
+    direzione: skyNomeDirezione(pos.az),
+    altSole,
+    sorge: orari.sorge,
+    tramonta: orari.tramonta,
+    migliore: meglio,
+    buio,
+    livello,
+    giudizio
+  };
+  cacheCircostanze.set(chiave, risultato);
+  return risultato;
+}
+
+function oraBreve(data) {
+  return data ? data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '—';
+}
+
+function dataOraBreve(data) {
+  return data ? data.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+}
+
+// =====================================================================
+// 11. METEO E INDICE DI OSSERVABILITÀ
+//     Il motivo più comune per cui un'osservazione salta sono le nuvole.
+//     I dati vengono da Open-Meteo (gratuito, senza chiave): li teniamo
+//     un'ora in memoria e li salviamo, così valgono anche senza rete.
+// =====================================================================
+
+const CHIAVE_METEO = 'astrocalendario_meteo';
+const METEO_VALIDITA_MS = 60 * 60 * 1000;   // un'ora
+const METEO_GIORNI = 7;
+
+let meteo = null;          // { lat, lon, quando, ore: [{ ms, nuvole, temp, umidita, vento }] }
+let meteoInCorso = null;   // promessa condivisa: una sola richiesta alla volta
+
+function meteoDaCache() {
+  try {
+    const salvato = JSON.parse(localStorage.getItem(CHIAVE_METEO) || 'null');
+    if (salvato && Array.isArray(salvato.ore)) return salvato;
+  } catch (e) { /* dato corrotto */ }
+  return null;
+}
+
+function meteoAncoraValido(dati, luogo) {
+  if (!dati || !luogo) return false;
+  if (Date.now() - dati.quando > METEO_VALIDITA_MS) return false;
+  // Se ci si sposta di più di ~25 km le nuvole possono essere altre
+  return Math.abs(dati.lat - luogo.lat) < 0.25 && Math.abs(dati.lon - luogo.lon) < 0.25;
+}
+
+async function caricaMeteo(forza) {
+  const luogo = luogoCorrente();
+  if (!luogo) return null;
+
+  if (!forza) {
+    if (meteoAncoraValido(meteo, luogo)) return meteo;
+    const salvato = meteoDaCache();
+    if (meteoAncoraValido(salvato, luogo)) { meteo = salvato; return meteo; }
+  }
+  if (meteoInCorso) return meteoInCorso;
+
+  const url = 'https://api.open-meteo.com/v1/forecast' +
+    `?latitude=${luogo.lat.toFixed(4)}&longitude=${luogo.lon.toFixed(4)}` +
+    '&hourly=cloud_cover,temperature_2m,relative_humidity_2m,wind_speed_10m' +
+    `&forecast_days=${METEO_GIORNI}&timezone=auto`;
+
+  meteoInCorso = fetch(url)
+    .then(r => {
+      if (!r.ok) throw new Error('risposta non valida');
+      return r.json();
+    })
+    .then(dati => {
+      const h = dati.hourly || {};
+      const ore = (h.time || []).map((t, i) => ({
+        // Open-Meteo con timezone=auto restituisce l'ora locale senza fuso:
+        // interpretata dal browser come ora locale, che è esattamente ciò che serve.
+        ms: new Date(t).getTime(),
+        nuvole: h.cloud_cover ? h.cloud_cover[i] : null,
+        temp: h.temperature_2m ? h.temperature_2m[i] : null,
+        umidita: h.relative_humidity_2m ? h.relative_humidity_2m[i] : null,
+        vento: h.wind_speed_10m ? h.wind_speed_10m[i] : null
+      })).filter(o => !isNaN(o.ms));
+
+      meteo = { lat: luogo.lat, lon: luogo.lon, quando: Date.now(), ore };
+      try { localStorage.setItem(CHIAVE_METEO, JSON.stringify(meteo)); } catch (e) { /* storage pieno */ }
+      return meteo;
+    })
+    .catch(() => {
+      // Senza rete teniamo l'ultima previsione scaricata, dicendo quanto è vecchia
+      const salvato = meteoDaCache();
+      if (salvato) meteo = salvato;
+      return meteo;
+    })
+    .finally(() => { meteoInCorso = null; });
+
+  return meteoInCorso;
+}
+
+// Previsione per l'ora più vicina a una data (null se fuori dalle previsioni)
+function meteoPerData(data) {
+  if (!meteo || !meteo.ore.length || !data) return null;
+  const ms = data.getTime();
+  let migliore = null, distanza = Infinity;
+  meteo.ore.forEach(o => {
+    const d = Math.abs(o.ms - ms);
+    if (d < distanza) { distanza = d; migliore = o; }
+  });
+  // Oltre 90 minuti di scarto vuol dire che l'evento è fuori dalla previsione
+  return distanza <= 90 * 60000 ? migliore : null;
+}
+
+function descriviNuvole(perc) {
+  if (perc === null || perc === undefined) return 'previsione non disponibile';
+  if (perc <= 15) return 'cielo sereno';
+  if (perc <= 40) return 'poco nuvoloso';
+  if (perc <= 70) return 'nuvoloso a tratti';
+  if (perc <= 90) return 'molto nuvoloso';
+  return 'coperto';
+}
+
+// Punteggio 0–100 di quanto conviene uscire per un evento, con i motivi.
+// Mette insieme quello che conta davvero: nuvole, altezza sull'orizzonte,
+// luce del Sole e disturbo della Luna.
+function indiceOsservabilita(evento) {
+  const obs = osservatoreCorrente();
+  if (!obs) return null;
+  const giorni = (evento.dataObj.getTime() - Date.now()) / 86400000;
+  if (giorni < -0.5 || giorni > METEO_GIORNI) return null;
+
+  const motivi = [];
+  let punteggio = 100;
+
+  const locale = evento.localeCache !== undefined ? evento.localeCache : circostanzeLocali(evento);
+  const solare = evento.corpoCielo === 'Sun';
+
+  // Il giudizio si dà sul momento in cui conviene davvero guardare: se al
+  // picco l'astro è sotto l'orizzonte ma più tardi si alza, è quell'ora che
+  // conta — altrimenti puniremmo due volte lo stesso problema.
+  let quando = evento.dataObj;
+  let altezza = locale ? locale.alt : null;
+
+  if (locale) {
+    const diGiorno = !solare && locale.altSole !== null && locale.altSole > -6;
+    const spostabile = (locale.alt < 5 || diGiorno) && locale.migliore && locale.migliore.alt > 5;
+    if (spostabile) {
+      quando = locale.migliore.quando;
+      altezza = locale.migliore.alt;
+      punteggio -= 10;
+      motivi.push(`non al momento del picco, ma verso le ${oraBreve(quando)}`);
+    } else if (locale.alt < 0) {
+      return { punteggio: 0, semaforo: '🔴', motivi: ['non visibile da qui: sotto l\'orizzonte'], nuvole: null, quando: null };
+    }
+
+    if (altezza !== null && altezza < 15) {
+      punteggio -= 20;
+      motivi.push(`basso sull'orizzonte (${Math.round(altezza)}°)`);
+    }
+
+    const altSole = altezzaSole(quando, obs);
+    if (!solare && altSole !== null && altSole > -6) {
+      punteggio -= 40;
+      motivi.push('cielo ancora chiaro a quell\'ora');
+    }
+  }
+
+  const previsione = meteoPerData(quando);
+  if (previsione && previsione.nuvole !== null) {
+    punteggio -= Math.round(previsione.nuvole * 0.65);
+    motivi.push(`${descriviNuvole(previsione.nuvole)} (${Math.round(previsione.nuvole)}% di nuvole)`);
+  } else {
+    motivi.push('previsione meteo non disponibile');
+  }
+
+  // La Luna piena cancella meteore e oggetti deboli, ma per le eclissi
+  // lunari e le fasi è lei la protagonista: nessuna penalità.
+  if (evento.categoria === 'meteore') {
+    try {
+      const ill = Astronomy.Illumination('Moon', Astronomy.MakeTime(quando));
+      const posLuna = altAzCorpo('Moon', quando, obs);
+      if (posLuna.alt > 0 && ill.phase_fraction > 0.5) {
+        punteggio -= Math.round(ill.phase_fraction * 30);
+        motivi.push(`Luna illuminata al ${Math.round(ill.phase_fraction * 100)}% e alta nel cielo: schiarisce lo sfondo`);
+      }
+    } catch (e) { /* niente dati lunari */ }
+  }
+
+  punteggio = Math.max(0, Math.min(100, punteggio));
+  const semaforo = punteggio >= 70 ? '🟢' : punteggio >= 40 ? '🟡' : '🔴';
+  return {
+    punteggio, semaforo, motivi,
+    nuvole: previsione ? previsione.nuvole : null,
+    // Ora consigliata per uscire: la mostriamo nella scheda dell'evento
+    quando: quando === evento.dataObj ? null : quando
+  };
+}
+
+// =====================================================================
+// 12. STRUMENTO NECESSARIO
+//     Un filtro onesto: niente frustrazione per eventi che senza
+//     telescopio non si vedono comunque.
+// =====================================================================
+
+const STRUMENTI = {
+  occhio:     { nome: 'A occhio nudo', icona: '👁️', livello: 0 },
+  binocolo:   { nome: 'Con binocolo',  icona: '🔭', livello: 1 },
+  telescopio: { nome: 'Con telescopio', icona: '🔬', livello: 2 }
+};
+
+let filtroStrumento = 'tutti';
+
+// Strumento con cui l'evento dà il meglio di sé. Non è "il minimo per
+// accorgersene", ma quello che serve per vedere davvero la cosa interessante:
+// una Luna Piena si guarda a occhio nudo, i crateli del Primo Quarto no.
+function strumentoEvento(evento) {
+  if (evento.strumento && STRUMENTI[evento.strumento]) return evento.strumento;
+
+  switch (evento.categoria) {
+    case 'meteore':
+    case 'stagioni':
+    case 'eclissi':
+      return 'occhio';
+
+    case 'luna': {
+      // 0 = Nuova, 1 = Primo Quarto, 2 = Piena, 3 = Ultimo Quarto
+      const fase = evento.simul ? evento.simul.fase : null;
+      if (fase === 0) return 'telescopio';   // cielo buio: è la notte del profondo cielo
+      if (fase === 2) return 'occhio';       // la Luna Piena è lo spettacolo stesso
+      return 'binocolo';                     // quarti: crateri lungo il terminatore
+    }
+
+    case 'congiunzioni':
+      // Sotto il grado i due astri stanno nello stesso campo del binocolo,
+      // ed è lì che la scena diventa davvero bella.
+      return (evento.congiunzione && evento.congiunzione.separazione < 1) ? 'binocolo' : 'occhio';
+
+    case 'pianeti':
+      // Urano e Nettuno restano puntini anche col binocolo; per la fase di
+      // Mercurio e Venere all'elongazione serve almeno un binocolo saldo.
+      return (evento.corpoCielo === 'Uranus' || evento.corpoCielo === 'Neptune') ? 'telescopio' : 'binocolo';
+
+    default:
+      return 'occhio';
+  }
+}
+
+// =====================================================================
+// 13. PASSAGGI DELLA STAZIONE SPAZIALE INTERNAZIONALE
+//     È l'evento più frequente e più facile: si vede a occhio nudo, anche
+//     dal centro città. I dati orbitali (TLE) arrivano da Celestrak e la
+//     propagazione SGP4 la fa satellite.js, tutto dentro al browser.
+//     Un passaggio si vede solo se: la ISS è alta sull'orizzonte, è
+//     illuminata dal Sole e chi guarda è già al buio.
+// =====================================================================
+
+const CHIAVE_TLE = 'astrocalendario_tle_iss';
+const TLE_VALIDITA_MS = 12 * 60 * 60 * 1000;
+const URL_TLE_ISS = 'https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=TLE';
+
+// Quanti giorni avanti cercare i passaggi e con che passo temporale
+const ISS_GIORNI = 5;
+const ISS_PASSO_S = 30;
+const ISS_ELEVAZIONE_MINIMA = 10;   // gradi: sotto è nascosta da case e alberi
+
+let issPassaggi = null;
+let issInCorso = null;
+
+function tleDaCache() {
+  try {
+    const dati = JSON.parse(localStorage.getItem(CHIAVE_TLE) || 'null');
+    if (dati && dati.riga1 && dati.riga2) return dati;
+  } catch (e) { /* dato corrotto */ }
+  return null;
+}
+
+async function caricaTleIss(forza) {
+  const salvato = tleDaCache();
+  if (!forza && salvato && Date.now() - salvato.quando < TLE_VALIDITA_MS) return salvato;
+
+  try {
+    const risposta = await fetch(URL_TLE_ISS);
+    if (!risposta.ok) throw new Error('risposta non valida');
+    const testo = await risposta.text();
+    const righe = testo.trim().split('\n').map(r => r.trim()).filter(Boolean);
+    const riga1 = righe.find(r => r.startsWith('1 '));
+    const riga2 = righe.find(r => r.startsWith('2 '));
+    if (!riga1 || !riga2) throw new Error('formato TLE inatteso');
+    const dati = { riga1, riga2, quando: Date.now() };
+    try { localStorage.setItem(CHIAVE_TLE, JSON.stringify(dati)); } catch (e) { /* storage pieno */ }
+    return dati;
+  } catch (e) {
+    // Un TLE vecchio di qualche giorno sbaglia di poco: meglio di niente,
+    // e lo diciamo nell'interfaccia.
+    return salvato;
+  }
+}
+
+// Versore che punta al Sole, in coordinate equatoriali (usato per capire
+// se la ISS è illuminata o dentro il cono d'ombra della Terra)
+function versoreSole(data) {
+  const v = Astronomy.GeoVector('Sun', Astronomy.MakeTime(data), false);
+  const n = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  return [v.x / n, v.y / n, v.z / n];
+}
+
+// Il satellite è illuminato se sta dalla parte del Sole oppure se, pur
+// stando dietro alla Terra, passa fuori dal cilindro d'ombra.
+function satelliteIlluminato(posKm, data) {
+  try {
+    const s = versoreSole(data);
+    const proiezione = posKm.x * s[0] + posKm.y * s[1] + posKm.z * s[2];
+    if (proiezione > 0) return true;
+    const modulo2 = posKm.x * posKm.x + posKm.y * posKm.y + posKm.z * posKm.z;
+    const perpendicolare = Math.sqrt(Math.max(0, modulo2 - proiezione * proiezione));
+    return perpendicolare > 6378.137;
+  } catch (e) {
+    return true;
+  }
+}
+
+// Cerca i passaggi visibili nei prossimi giorni. Restituisce una lista di
+// oggetti con inizio, culmine, fine, altezza massima e direzioni.
+function calcolaPassaggiIss(tle, luogo) {
+  if (typeof satellite === 'undefined' || !tle || !luogo) return [];
+
+  const rec = satellite.twoline2satrec(tle.riga1, tle.riga2);
+  const osservatoreGd = {
+    longitude: luogo.lon * Math.PI / 180,
+    latitude: luogo.lat * Math.PI / 180,
+    height: 0.1
+  };
+  const obs = osservatoreCorrente();
+
+  const passaggi = [];
+  let corrente = null;
+  const inizio = Date.now();
+  const passi = Math.floor(ISS_GIORNI * 86400 / ISS_PASSO_S);
+
+  for (let i = 0; i < passi; i++) {
+    const data = new Date(inizio + i * ISS_PASSO_S * 1000);
+    let pv;
+    try { pv = satellite.propagate(rec, data); } catch (e) { continue; }
+    if (!pv || !pv.position) continue;
+
+    const gmst = satellite.gstime(data);
+    const ecf = satellite.eciToEcf(pv.position, gmst);
+    const look = satellite.ecfToLookAngles(osservatoreGd, ecf);
+    const elevazione = look.elevation * 180 / Math.PI;
+
+    if (elevazione >= ISS_ELEVAZIONE_MINIMA) {
+      const voce = {
+        data,
+        elevazione,
+        azimut: ((look.azimuth * 180 / Math.PI) % 360 + 360) % 360,
+        distanza: look.rangeSat,
+        posizione: pv.position
+      };
+      if (!corrente) corrente = { punti: [voce] };
+      else corrente.punti.push(voce);
+    } else if (corrente) {
+      passaggi.push(corrente);
+      corrente = null;
+    }
+  }
+  if (corrente) passaggi.push(corrente);
+
+  return passaggi.map(p => {
+    const punti = p.punti;
+    const culmine = punti.reduce((a, b) => (b.elevazione > a.elevazione ? b : a), punti[0]);
+    const primo = punti[0], ultimo = punti[punti.length - 1];
+
+    // Visibile a occhio nudo solo se la ISS è al sole e chi guarda è al buio
+    const illuminata = satelliteIlluminato(culmine.posizione, culmine.data);
+    const altSole = obs ? altezzaSole(culmine.data, obs) : null;
+    const osservatoreAlBuio = altSole === null ? true : altSole < -6;
+
+    return {
+      inizio: primo.data,
+      fine: ultimo.data,
+      culmine: culmine.data,
+      elevazioneMax: culmine.elevazione,
+      azInizio: primo.azimut,
+      azFine: ultimo.azimut,
+      distanzaMin: Math.round(culmine.distanza),
+      durataMin: Math.max(1, Math.round((ultimo.data - primo.data) / 60000)),
+      visibile: illuminata && osservatoreAlBuio,
+      illuminata,
+      alBuio: osservatoreAlBuio
+    };
+  });
+}
+
+async function aggiornaPassaggiIss(forza) {
+  const box = document.getElementById('stasera-iss');
+  const luogo = luogoCorrente();
+
+  if (!luogo) {
+    if (box) box.innerHTML = '<p class="text-slate-400">Serve la tua posizione: la ISS passa sopra un punto preciso della Terra. Premi 📍 Posizione qui sopra.</p>';
+    return;
+  }
+  if (typeof satellite === 'undefined') {
+    if (box) box.innerHTML = '<p class="text-amber-400">Libreria orbitale non caricata: riapri l\'app quando c\'è rete, poi funzionerà anche offline.</p>';
+    return;
+  }
+  if (issInCorso) return issInCorso;
+  if (box) box.innerHTML = '<p class="text-slate-400">Calcolo dei passaggi in corso…</p>';
+
+  issInCorso = (async () => {
+    const tle = await caricaTleIss(forza);
+    if (!tle) {
+      if (box) box.innerHTML = '<p class="text-amber-400">Non riesco a scaricare i dati orbitali della ISS (serve la rete almeno una volta).</p>';
+      return;
+    }
+    try {
+      issPassaggi = calcolaPassaggiIss(tle, luogo);
+    } catch (e) {
+      console.error('Errore passaggi ISS:', e);
+      issPassaggi = [];
+    }
+    mostraPassaggiIss(tle);
+  })().finally(() => { issInCorso = null; });
+
+  return issInCorso;
+}
+
+function mostraPassaggiIss(tle) {
+  const box = document.getElementById('stasera-iss');
+  if (!box) return;
+
+  const visibili = (issPassaggi || []).filter(p => p.visibile).slice(0, 5);
+  const eta = tle ? Math.round((Date.now() - tle.quando) / 3600000) : null;
+  const notaEta = eta !== null && eta > 24
+    ? `<p class="text-xs text-amber-400 mt-2">Dati orbitali vecchi di ${Math.round(eta / 24)} giorni: gli orari possono spostarsi di qualche minuto.</p>`
+    : '';
+
+  if (!visibili.length) {
+    box.innerHTML = '<p class="text-slate-400">Nessun passaggio visibile a occhio nudo nei prossimi giorni: capita, la ISS passa spesso di giorno o nell\'ombra della Terra.</p>' + notaEta;
+    return;
+  }
+
+  box.innerHTML = visibili.map(p => {
+    const qualita = p.elevazioneMax > 60 ? 'spettacolare, quasi allo zenit'
+                  : p.elevazioneMax > 40 ? 'molto buono, alta nel cielo'
+                  : 'discreto, resta bassa';
+    return `
+      <div class="bg-slate-900 p-3 rounded-xl border border-slate-700">
+        <div class="flex justify-between items-baseline gap-2 flex-wrap">
+          <span class="font-bold text-white">🛰️ ${dataOraBreve(p.inizio)}</span>
+          <span class="text-xs text-slate-400">${p.durataMin} min · fino a ${Math.round(p.elevazioneMax)}° · ${p.distanzaMin} km</span>
+        </div>
+        <p class="text-sm text-slate-300 mt-1">
+          Compare verso <strong>${skyNomeDirezione(p.azInizio)}</strong>, culmina alle
+          <strong>${oraBreve(p.culmine)}</strong> e sparisce verso <strong>${skyNomeDirezione(p.azFine)}</strong>.
+        </p>
+        <p class="text-xs text-slate-500 mt-1">Passaggio ${qualita}. Sembra un aereo senza lampeggianti, silenzioso e velocissimo.</p>
+      </div>`;
+  }).join('') + notaEta;
+}
+
+// =====================================================================
+// 14. VISTA "STASERA" — cosa vedo stanotte, da qui, e si vedrà?
+//     È la risposta alla domanda che ci si fa davvero guardando fuori
+//     dalla finestra: mette insieme buio, Luna, pianeti, meteo e ISS.
+// =====================================================================
+
+// Pianeti che vale la pena cercare stanotte (Urano e Nettuno restano fuori:
+// senza telescopio non si distinguono da una stella qualsiasi)
+const STASERA_CORPI = [
+  { id: 'Moon',    nome: 'Luna',     icona: '🌙' },
+  { id: 'Mercury', nome: 'Mercurio', icona: '☿' },
+  { id: 'Venus',   nome: 'Venere',   icona: '♀' },
+  { id: 'Mars',    nome: 'Marte',    icona: '♂' },
+  { id: 'Jupiter', nome: 'Giove',    icona: '♃' },
+  { id: 'Saturn',  nome: 'Saturno',  icona: '♄' }
+];
+
+function schedaRiepilogo(titolo, valore, dettaglio) {
+  return `
+    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+      <p class="text-xs text-slate-400 uppercase tracking-wide">${titolo}</p>
+      <p class="text-lg font-bold text-white mt-1">${valore}</p>
+      <p class="text-xs text-slate-400 mt-1">${dettaglio}</p>
+    </div>`;
+}
+
+// Nome della fase lunare a partire dalla longitudine eclittica relativa
+function nomeFaseLunare(angolo) {
+  if (angolo < 22.5 || angolo >= 337.5) return 'Luna Nuova';
+  if (angolo < 67.5) return 'Luna crescente';
+  if (angolo < 112.5) return 'Primo Quarto';
+  if (angolo < 157.5) return 'Gibbosa crescente';
+  if (angolo < 202.5) return 'Luna Piena';
+  if (angolo < 247.5) return 'Gibbosa calante';
+  if (angolo < 292.5) return 'Ultimo Quarto';
+  return 'Luna calante';
+}
+
+function costruisciStaseraRiepilogo() {
+  const box = document.getElementById('stasera-riepilogo');
+  if (!box) return;
+
+  const luogo = luogoCorrente();
+  if (!luogo) {
+    box.innerHTML = `
+      <div class="md:col-span-3 bg-slate-900 p-4 rounded-xl border border-amber-800">
+        <p class="text-amber-400 font-semibold">📍 Manca la tua posizione</p>
+        <p class="text-sm text-slate-300 mt-1">Senza coordinate non posso dirti a che ora fa buio, cosa sorge e cosa tramonta. Premi “📍 Posizione” qui sopra: resta salvata solo su questo dispositivo.</p>
+      </div>`;
+    return;
+  }
+
+  const obs = osservatoreCorrente();
+  const buio = finestraBuio(new Date());
+  const schede = [];
+
+  // 1. Buio astronomico
+  if (buio && buio.tramonto) {
+    const finestra = buio.buioInizio && buio.buioFine
+      ? `${oraBreve(buio.buioInizio)} → ${oraBreve(buio.buioFine)}`
+      : 'niente buio completo stanotte';
+    const dettaglio = buio.buioInizio
+      ? `Tramonto ${oraBreve(buio.tramonto)} · alba ${oraBreve(buio.alba)}`
+      : `Il Sole non scende mai a −18°: crepuscolo per tutta la notte. Tramonto ${oraBreve(buio.tramonto)}.`;
+    schede.push(schedaRiepilogo('🌇 Buio astronomico', finestra, dettaglio));
+  } else {
+    schede.push(schedaRiepilogo('🌇 Buio astronomico', 'non calcolabile', 'Alle tue latitudini il Sole potrebbe non tramontare affatto.'));
+  }
+
+  // 2. Luna: quanto disturba e quando
+  try {
+    const t = Astronomy.MakeTime(new Date());
+    const ill = Astronomy.Illumination('Moon', t);
+    const fase = Astronomy.MoonPhase(t);
+    const orari = orariSorgereTramonto('Moon', new Date(), obs);
+    const perc = Math.round(ill.phase_fraction * 100);
+    const disturbo = perc > 70 ? 'cielo molto schiarito: meglio Luna e pianeti che oggetti deboli'
+                   : perc > 30 ? 'disturbo moderato per gli oggetti deboli'
+                   : 'cielo scuro: ottimo per meteore e profondo cielo';
+    schede.push(schedaRiepilogo(
+      `${nomeFaseLunare(fase)}`,
+      `illuminata al ${perc}%`,
+      `Sorge ${oraBreve(orari.sorge)} · tramonta ${oraBreve(orari.tramonta)}. ${disturbo}.`
+    ));
+  } catch (e) {
+    schede.push(schedaRiepilogo('🌙 Luna', 'dati non disponibili', ''));
+  }
+
+  // 3. Prossimo evento del calendario
+  const prossimo = eventiCalcolati.filter(e => e.dataObj > new Date())
+    .sort((a, b) => a.dataObj - b.dataObj)[0];
+  if (prossimo) {
+    const fra = Math.round((prossimo.dataObj - Date.now()) / 3600000);
+    const quando = fra < 48 ? `fra ${fra} ore` : `fra ${Math.round(fra / 24)} giorni`;
+    schede.push(schedaRiepilogo('📆 Prossimo evento', prossimo.titolo, `${quando} · ${prossimo.dataTesto}`));
+  }
+
+  box.innerHTML = schede.join('');
+}
+
+async function costruisciStaseraMeteo() {
+  const box = document.getElementById('stasera-meteo');
+  if (!box) return;
+  if (!luogoCorrente()) { box.innerHTML = ''; return; }
+
+  box.innerHTML = '<p class="text-sm text-slate-400">Carico le previsioni…</p>';
+  await caricaMeteo(false);
+  if (!meteo || !meteo.ore.length) {
+    box.innerHTML = '<p class="text-sm text-amber-400">Previsioni non disponibili (serve la rete). Il resto dei dati è calcolato in locale e resta valido.</p>';
+    return;
+  }
+
+  // Nuvolosità ora per ora nella finestra utile della notte
+  const buio = finestraBuio(new Date());
+  const partenza = buio && buio.tramonto ? buio.tramonto.getTime() : Date.now();
+  const arrivo = buio && buio.alba ? buio.alba.getTime() : partenza + 10 * 3600000;
+
+  const ore = meteo.ore.filter(o => o.ms >= partenza - 3600000 && o.ms <= arrivo + 3600000);
+  if (!ore.length) {
+    box.innerHTML = '<p class="text-sm text-slate-400">Nessuna previsione per le ore di questa notte.</p>';
+    return;
+  }
+
+  const media = Math.round(ore.reduce((s, o) => s + (o.nuvole || 0), 0) / ore.length);
+  const migliore = ore.reduce((a, b) => ((b.nuvole ?? 100) < (a.nuvole ?? 100) ? b : a), ore[0]);
+  const semaforo = media <= 25 ? '🟢' : media <= 60 ? '🟡' : '🔴';
+  const vecchio = Math.round((Date.now() - meteo.quando) / 60000);
+  const notaVecchio = vecchio > 90 ? ` · previsione di ${vecchio > 1440 ? Math.round(vecchio / 1440) + ' giorni' : Math.round(vecchio / 60) + ' ore'} fa` : '';
+
+  const barre = ore.map(o => {
+    const n = o.nuvole ?? 0;
+    const colore = n <= 25 ? '#22c55e' : n <= 60 ? '#eab308' : '#64748b';
+    const ora = new Date(o.ms).getHours();
+    return `<div class="flex flex-col items-center gap-1" title="${ora}:00 · ${descriviNuvole(n)} (${Math.round(n)}%)">
+      <div class="w-3 rounded-sm" style="height:${Math.max(3, Math.round(n * 0.4))}px; background:${colore}"></div>
+      <span class="text-[10px] text-slate-500">${ora}</span>
+    </div>`;
+  }).join('');
+
+  box.innerHTML = `
+    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+      <div class="flex justify-between items-baseline flex-wrap gap-2">
+        <p class="font-bold text-white">${semaforo} Nuvole stanotte: ${descriviNuvole(media)} (${media}% in media)</p>
+        <p class="text-xs text-slate-400">Ora migliore: ${oraBreve(new Date(migliore.ms))} con ${Math.round(migliore.nuvole ?? 0)}%${notaVecchio}</p>
+      </div>
+      <div class="flex items-end gap-1 mt-3 overflow-x-auto pb-1">${barre}</div>
+      <p class="text-xs text-slate-500 mt-2">Altezza della barra = copertura nuvolosa prevista, ora per ora (dati Open-Meteo).</p>
+    </div>`;
+
+  // Le previsioni appena arrivate cambiano i semafori: vanno riscritti sia
+  // l'elenco dei prossimi eventi sia le schede dell'agenda.
+  costruisciStaseraProssimi();
+  aggiornaSemaforiAgenda();
+}
+
+function costruisciStaseraPianeti() {
+  const box = document.getElementById('stasera-pianeti');
+  if (!box) return;
+
+  const obs = osservatoreCorrente();
+  if (!obs) { box.innerHTML = '<p class="text-slate-400">Serve la posizione per sapere cosa hai sopra la testa.</p>'; return; }
+
+  const buio = finestraBuio(new Date());
+  const righe = STASERA_CORPI.map(c => {
+    let migliore = null, orari = null, mag = null, fase = null;
+    try {
+      migliore = momentoMigliore(c.id, buio, obs, null);
+      orari = orariSorgereTramonto(c.id, new Date(), obs);
+      const ill = Astronomy.Illumination(c.id, Astronomy.MakeTime(new Date()));
+      mag = ill.mag;
+      fase = ill.phase_fraction;
+    } catch (e) { /* corpo non calcolabile */ }
+
+    if (!migliore) return null;
+    const visibile = migliore.alt > 5;
+    return { c, migliore, orari, mag, fase, visibile };
+  }).filter(Boolean).sort((a, b) => b.migliore.alt - a.migliore.alt);
+
+  const visibili = righe.filter(r => r.visibile);
+  const nascosti = righe.filter(r => !r.visibile);
+
+  const html = visibili.map(r => `
+    <div class="flex items-center justify-between gap-3 bg-slate-900 p-3 rounded-xl border border-slate-700">
+      <div class="min-w-0">
+        <p class="font-bold text-white">${r.c.icona} ${r.c.nome}
+          <span class="text-xs font-normal text-slate-400">${r.mag !== null ? `mag ${r.mag.toFixed(1)}` : ''}</span>
+        </p>
+        <p class="text-xs text-slate-400 mt-0.5">
+          Più alto alle <strong class="text-slate-200">${oraBreve(r.migliore.quando)}</strong>
+          a ${Math.round(r.migliore.alt)}° verso ${skyNomeDirezione(r.migliore.az)}
+          ${r.orari && r.orari.tramonta ? ` · tramonta ${oraBreve(r.orari.tramonta)}` : ''}
+        </p>
+      </div>
+      <button onclick="cercaNelCielo('${r.c.id}')" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-blue-600 text-white font-semibold flex-shrink-0" title="Trovalo nel cielo">🔭 Trova</button>
+    </div>`).join('');
+
+  const htmlNascosti = nascosti.length
+    ? `<p class="text-xs text-slate-500 mt-1">Stanotte non si vedono (troppo bassi o dietro il Sole): ${nascosti.map(r => r.c.nome).join(', ')}.</p>`
+    : '';
+
+  box.innerHTML = (html || '<p class="text-slate-400">Nessun pianeta sopra l\'orizzonte durante le ore di buio.</p>') + htmlNascosti;
+}
+
+function costruisciStaseraProssimi() {
+  const box = document.getElementById('stasera-prossimi');
+  if (!box) return;
+
+  const adesso = Date.now();
+  const limite = adesso + 30 * 86400000;
+  const prossimi = eventiCalcolati
+    .filter(e => e.dataObj.getTime() >= adesso - 6 * 3600000 && e.dataObj.getTime() <= limite)
+    .sort((a, b) => a.dataObj - b.dataObj)
+    .slice(0, 8);
+
+  if (!prossimi.length) {
+    box.innerHTML = '<p class="text-slate-400">Nessun evento nei prossimi 30 giorni.</p>';
+    return;
+  }
+
+  box.innerHTML = prossimi.map(ev => {
+    const indice = indiceOsservabilita(ev);
+    const cat = CATEGORIE[ev.categoria];
+    const semaforo = indice ? `${indice.semaforo} ${indice.punteggio}/100` : '';
+    const motivo = indice && indice.motivi.length ? indice.motivi[0] : '';
+    return `
+      <button onclick="vaiAllEvento('${ev.id}')" class="text-left bg-slate-900 p-3 rounded-xl border border-slate-700 hover:border-blue-500 transition-colors w-full">
+        <div class="flex justify-between items-baseline gap-2 flex-wrap">
+          <span class="font-bold text-white">${cat ? cat.icona : '✨'} ${ev.titolo}</span>
+          <span class="text-xs text-slate-400">${semaforo}</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">${ev.dataTesto}${motivo ? ` · ${motivo}` : ''}</p>
+      </button>`;
+  }).join('');
+}
+
+// Ricostruisce tutta la vista Stasera (la parte meteo e ISS arriva dopo)
+function costruisciStasera() {
+  costruisciStaseraRiepilogo();
+  costruisciStaseraPianeti();
+  costruisciStaseraProssimi();
+  costruisciStaseraMeteo();
+  aggiornaPassaggiIss(false);
+}
+
+function inizializzaStasera() {
+  const btnPos = document.getElementById('btn-stasera-posizione');
+  if (btnPos) {
+    btnPos.addEventListener('click', async () => {
+      btnPos.textContent = '📍 Cerco…';
+      const ok = await skyRichiediPosizione();
+      btnPos.textContent = '📍 Posizione';
+      if (!ok && !luogoCorrente()) {
+        alert('Non riesco a leggere la posizione. Controlla i permessi del browser, oppure inseriscila a mano da ⚙️ Impostazioni.');
+      }
+      await caricaMeteo(true);
+      costruisciStasera();
+      aggiornaViste();
+    });
+  }
+
+  const btnIss = document.getElementById('btn-iss-aggiorna');
+  if (btnIss) btnIss.addEventListener('click', () => aggiornaPassaggiIss(true));
+}
+
+// =====================================================================
+// 15. DIARIO DI OSSERVAZIONE E TRAGUARDI
+//     Un calendario dice cosa succede; un diario dice cosa hai visto tu.
+//     Ogni voce salva anche titolo e data dell'evento, così resta leggibile
+//     anche quando quell'evento è ormai passato e non viene più calcolato.
+// =====================================================================
+
+const CHIAVE_DIARIO = 'astrocalendario_diario';
+
+let diario = {};
+let diarioEventoCorrente = null;
+let diarioStelleScelte = 0;
+
+function caricaDiario() {
+  try {
+    const dati = JSON.parse(localStorage.getItem(CHIAVE_DIARIO) || '{}');
+    diario = (dati && typeof dati === 'object') ? dati : {};
+  } catch (e) {
+    diario = {};
+  }
+}
+
+function salvaDiario() {
+  try {
+    localStorage.setItem(CHIAVE_DIARIO, JSON.stringify(diario));
+  } catch (e) {
+    console.error('Errore salvataggio diario:', e);
+  }
+}
+
+function vociDiario() {
+  return Object.keys(diario)
+    .map(id => Object.assign({ id }, diario[id]))
+    .sort((a, b) => new Date(b.dataEvento || b.quando) - new Date(a.dataEvento || a.quando));
+}
+
+// Traguardi: si sbloccano da soli guardando il cielo, non premendo tasti
+const TRAGUARDI = [
+  { id: 'primo', nome: 'Prima luce', icona: '🌟', desc: 'La tua prima osservazione registrata',
+    ok: v => v.length >= 1 },
+  { id: 'cinque', nome: 'Osservatore assiduo', icona: '🔭', desc: 'Cinque osservazioni nel diario',
+    ok: v => v.length >= 5 },
+  { id: 'venti', nome: 'Veterano del cielo', icona: '🏅', desc: 'Venti osservazioni nel diario',
+    ok: v => v.length >= 20 },
+  { id: 'eclissi', nome: 'Cacciatore di eclissi', icona: '🌑', desc: 'Hai visto un\'eclissi',
+    ok: v => v.some(x => x.categoria === 'eclissi') },
+  { id: 'meteore', nome: 'Desiderio espresso', icona: '☄️', desc: 'Hai visto uno sciame meteorico',
+    ok: v => v.some(x => x.categoria === 'meteore') },
+  { id: 'fasi', nome: 'Ciclo completo', icona: '🌗', desc: 'Tutte e quattro le fasi lunari',
+    ok: v => ['Luna Nuova', 'Primo Quarto', 'Luna Piena', 'Ultimo Quarto']
+      .every(f => v.some(x => (x.titolo || '').includes(f))) },
+  { id: 'pianeti', nome: 'Giro dei pianeti', icona: '🪐', desc: 'Tre osservazioni di pianeti',
+    ok: v => v.filter(x => x.categoria === 'pianeti' || x.categoria === 'congiunzioni').length >= 3 },
+  { id: 'categorie', nome: 'Collezionista', icona: '🎯', desc: 'Almeno un evento per quattro categorie diverse',
+    ok: v => new Set(v.map(x => x.categoria).filter(Boolean)).size >= 4 },
+  { id: 'telescopio', nome: 'Occhio potenziato', icona: '🔬', desc: 'Un\'osservazione fatta col telescopio',
+    ok: v => v.some(x => x.strumento === 'telescopio') },
+  { id: 'notturno', nome: 'Nottambulo', icona: '🦉', desc: 'Un\'osservazione registrata fra l\'una e le cinque del mattino',
+    ok: v => v.some(x => { const d = new Date(x.dataEvento || x.quando); return d.getHours() >= 1 && d.getHours() < 5; }) }
+];
+
+function traguardiRaggiunti() {
+  const voci = vociDiario();
+  return TRAGUARDI.map(t => Object.assign({}, t, { fatto: t.ok(voci) }));
+}
+
+// Apre il modale per registrare (o modificare) un'osservazione
+window.apriDiarioEvento = (id) => {
+  const evento = eventiCalcolati.find(e => e.id === id);
+  const modale = document.getElementById('modale-diario');
+  if (!modale) return;
+
+  diarioEventoCorrente = id;
+  const voce = diario[id] || {};
+  diarioStelleScelte = voce.stelle || 0;
+
+  const titolo = document.getElementById('diario-evento-titolo');
+  if (titolo) titolo.textContent = evento ? `${evento.titolo} · ${evento.dataTesto}` : (voce.titolo || 'Osservazione');
+
+  const nota = document.getElementById('diario-nota');
+  if (nota) nota.value = voce.nota || '';
+  const strumento = document.getElementById('diario-strumento-usato');
+  if (strumento) strumento.value = voce.strumento || 'occhio';
+
+  disegnaStelleDiario();
+  modale.classList.remove('hidden');
+};
+
+function disegnaStelleDiario() {
+  const box = document.getElementById('diario-stelle');
+  if (!box) return;
+  box.innerHTML = [1, 2, 3, 4, 5].map(n =>
+    `<button type="button" data-stella="${n}" class="leading-none transition-transform hover:scale-110" title="${n} su 5">${n <= diarioStelleScelte ? '★' : '☆'}</button>`
+  ).join('');
+  box.querySelectorAll('button').forEach(b => {
+    b.style.color = '#facc15';
+    b.addEventListener('click', () => {
+      diarioStelleScelte = parseInt(b.dataset.stella, 10);
+      disegnaStelleDiario();
+    });
+  });
+}
+
+function inizializzaDiarioUI() {
+  const modale = document.getElementById('modale-diario');
+  const form = document.getElementById('form-diario');
+  const chiudi = () => { if (modale) modale.classList.add('hidden'); diarioEventoCorrente = null; };
+
+  const btnChiudi = document.getElementById('btn-chiudi-diario');
+  if (btnChiudi) btnChiudi.addEventListener('click', chiudi);
+  if (modale) modale.addEventListener('click', (e) => { if (e.target === modale) chiudi(); });
+
+  const btnRimuovi = document.getElementById('btn-diario-rimuovi');
+  if (btnRimuovi) btnRimuovi.addEventListener('click', () => {
+    if (diarioEventoCorrente && diario[diarioEventoCorrente]) {
+      delete diario[diarioEventoCorrente];
+      salvaDiario();
+      costruisciAgenda();
+      costruisciDiario();
+    }
+    chiudi();
+  });
+
+  if (form) form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!diarioEventoCorrente) return chiudi();
+
+    const evento = eventiCalcolati.find(x => x.id === diarioEventoCorrente);
+    const precedente = diario[diarioEventoCorrente] || {};
+    diario[diarioEventoCorrente] = {
+      visto: true,
+      quando: precedente.quando || new Date().toISOString(),
+      // Titolo, data e categoria vengono congelati qui: il diario deve
+      // restare leggibile anche quando l'evento esce dal calendario.
+      titolo: evento ? evento.titolo : precedente.titolo,
+      dataEvento: evento ? evento.dataObj.toISOString() : precedente.dataEvento,
+      categoria: evento ? evento.categoria : precedente.categoria,
+      nota: document.getElementById('diario-nota').value.trim(),
+      stelle: diarioStelleScelte,
+      strumento: document.getElementById('diario-strumento-usato').value
+    };
+    salvaDiario();
+    costruisciAgenda();
+    costruisciDiario();
+    chiudi();
+  });
+}
+
+function costruisciDiario() {
+  const statistiche = document.getElementById('diario-statistiche');
+  const elencoBadge = document.getElementById('diario-badge');
+  const elenco = document.getElementById('diario-elenco');
+  const voci = vociDiario();
+
+  if (statistiche) {
+    const categorie = new Set(voci.map(v => v.categoria).filter(Boolean)).size;
+    const media = voci.filter(v => v.stelle).length
+      ? (voci.reduce((s, v) => s + (v.stelle || 0), 0) / voci.filter(v => v.stelle).length).toFixed(1)
+      : '—';
+    statistiche.innerHTML = [
+      schedaRiepilogo('👁️ Osservazioni', String(voci.length), voci.length ? `L'ultima: ${dataOraBreve(new Date(voci[0].dataEvento || voci[0].quando))}` : 'Il diario è ancora vuoto'),
+      schedaRiepilogo('🗂️ Categorie esplorate', `${categorie} su ${Object.keys(CATEGORIE).length}`, 'Fasi lunari, eclissi, meteore, pianeti…'),
+      schedaRiepilogo('⭐ Voto medio', String(media), 'Quanto ti sono piaciute le serate')
+    ].join('');
+  }
+
+  if (elencoBadge) {
+    elencoBadge.innerHTML = traguardiRaggiunti().map(t => `
+      <span class="px-3 py-1.5 rounded-full text-sm font-semibold ${t.fatto ? 'bg-amber-500/20 text-amber-300 border border-amber-600' : 'bg-slate-900 text-slate-600 border border-slate-700'}" title="${t.desc}">
+        ${t.fatto ? t.icona : '🔒'} ${t.nome}
+      </span>`).join('');
+  }
+
+  if (elenco) {
+    if (!voci.length) {
+      elenco.innerHTML = '<p class="text-slate-400">Nessuna osservazione registrata. Nell\'agenda, sotto ogni evento, trovi il pulsante “✅ Visto!”.</p>';
+      return;
+    }
+    elenco.innerHTML = voci.map(v => {
+      const cat = CATEGORIE[v.categoria];
+      const stelle = v.stelle ? '★'.repeat(v.stelle) + '☆'.repeat(5 - v.stelle) : '';
+      const strumento = STRUMENTI[v.strumento] ? `${STRUMENTI[v.strumento].icona} ${STRUMENTI[v.strumento].nome}` :
+                        (v.strumento === 'foto' ? '📷 Fotocamera' : '');
+      return `
+        <article class="bg-slate-900 p-4 rounded-xl border border-slate-700">
+          <div class="flex justify-between items-start gap-3">
+            <div class="min-w-0">
+              <h4 class="font-bold text-white">${cat ? cat.icona : '✨'} ${v.titolo || 'Osservazione'}</h4>
+              <p class="text-xs text-blue-400 mt-0.5">${dataOraBreve(new Date(v.dataEvento || v.quando))}</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <p class="text-amber-400 text-sm">${stelle}</p>
+              <button onclick="apriDiarioEvento('${v.id}')" class="text-xs text-slate-400 underline hover:text-white mt-1">modifica</button>
+            </div>
+          </div>
+          ${v.nota ? `<p class="text-sm text-slate-300 mt-2 whitespace-pre-line">${v.nota.replace(/</g, '&lt;')}</p>` : ''}
+          ${strumento ? `<p class="text-xs text-slate-500 mt-2">${strumento}</p>` : ''}
+        </article>`;
+    }).join('');
+  }
+}
+
+// =====================================================================
+// 16. CONDIVISIONE, CALENDARIO (.ics) E BACKUP
+// =====================================================================
+
+function urlEvento(id) {
+  const base = location.origin + location.pathname;
+  return `${base}?evento=${encodeURIComponent(id)}`;
+}
+
+// Porta l'utente sulla scheda di un evento, ovunque si trovi nell'app
+window.vaiAllEvento = (id) => {
+  mostraVista('agenda');
+  setTimeout(() => {
+    const card = document.querySelector(`article[data-evento-id="${id}"]`);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('evidenziato');
+      setTimeout(() => card.classList.remove('evidenziato'), 2600);
+    }
+  }, 250);
+};
+
+// Apertura da un link condiviso: ?evento=<id> oppure ?vista=<nome>
+function gestisciLinkCondiviso() {
+  const parametri = new URLSearchParams(location.search);
+  const vista = parametri.get('vista');
+  if (vista && VISTE.some(v => v.nome === vista)) mostraVista(vista);
+
+  const id = parametri.get('evento');
+  if (id && eventiCalcolati.some(e => e.id === id)) vaiAllEvento(id);
+}
+
+window.condividiEvento = async (id) => {
+  const ev = eventiCalcolati.find(e => e.id === id);
+  if (!ev) return;
+
+  const locale = circostanzeLocali(ev);
+  const testo = `${ev.titolo}\n📅 ${ev.dataTesto}\n\n${ev.spiegazione}` +
+    (locale ? `\n\n📍 Da qui: ${locale.giudizio}` : '');
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: ev.titolo, text: testo, url: urlEvento(id) });
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;  // condivisione annullata: nulla da fare
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(`${testo}\n${urlEvento(id)}`);
+    alert('Testo dell\'evento copiato: incollalo dove vuoi.');
+  } catch (e) {
+    prompt('Copia il link dell\'evento:', urlEvento(id));
+  }
+};
+
+// Cartolina quadrata dell'evento, pronta da mandare in chat
+window.immagineEvento = async (id) => {
+  const ev = eventiCalcolati.find(e => e.id === id);
+  if (!ev) return;
+
+  const lato = 1080;
+  const c = document.createElement('canvas');
+  c.width = lato; c.height = lato;
+  const ctx = c.getContext('2d');
+
+  const sfondo = ctx.createLinearGradient(0, 0, lato, lato);
+  sfondo.addColorStop(0, '#020617');
+  sfondo.addColorStop(1, '#1e1b4b');
+  ctx.fillStyle = sfondo;
+  ctx.fillRect(0, 0, lato, lato);
+
+  // Stelline di sfondo
+  for (let i = 0; i < 160; i++) {
+    const x = Math.random() * lato, y = Math.random() * lato * 0.75;
+    const r = Math.random() * 1.8 + 0.4;
+    ctx.globalAlpha = 0.3 + Math.random() * 0.7;
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Banda colorata dell'evento
+  ctx.fillStyle = ev.colore || '#3b82f6';
+  ctx.fillRect(0, 0, 18, lato);
+
+  const cat = CATEGORIE[ev.categoria];
+  ctx.fillStyle = '#93c5fd';
+  ctx.font = 'bold 34px system-ui, sans-serif';
+  ctx.fillText(`${cat ? cat.icona + ' ' + cat.nome : '✨ Evento'}`, 70, 130);
+
+  // Titolo su più righe
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 68px system-ui, sans-serif';
+  const parole = ev.titolo.split(' ');
+  let riga = '', y = 260;
+  parole.forEach(p => {
+    const prova = riga ? `${riga} ${p}` : p;
+    if (ctx.measureText(prova).width > lato - 140) { ctx.fillText(riga, 70, y); y += 82; riga = p; }
+    else riga = prova;
+  });
+  if (riga) ctx.fillText(riga, 70, y);
+
+  ctx.fillStyle = '#facc15';
+  ctx.font = '40px system-ui, sans-serif';
+  ctx.fillText(`📅 ${ev.dataTesto}`, 70, y + 90);
+
+  // Spiegazione, tagliata a quel che ci sta
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '32px system-ui, sans-serif';
+  let ry = y + 170, rriga = '';
+  ev.spiegazione.split(' ').forEach(p => {
+    if (ry > lato - 160) return;
+    const prova = rriga ? `${rriga} ${p}` : p;
+    if (ctx.measureText(prova).width > lato - 140) { ctx.fillText(rriga, 70, ry); ry += 46; rriga = p; }
+    else rriga = prova;
+  });
+  if (rriga && ry <= lato - 160) ctx.fillText(rriga, 70, ry);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = 'bold 30px system-ui, sans-serif';
+  ctx.fillText('AstroCalendario di Ben', 70, lato - 60);
+
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  if (!blob) return;
+  const file = new File([blob], `${ev.titolo.replace(/[^\w]+/g, '-').toLowerCase()}.png`, { type: 'image/png' });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: ev.titolo, text: `${ev.titolo} · ${ev.dataTesto}` });
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+  scaricaFile(blob, file.name);
+};
+
+function scaricaFile(blob, nome) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// --- File .ics: il calendario del telefono gestisce i promemoria anche
+//     ad app chiusa, cosa che una PWA da sola non può fare. ---
+
+function icsData(data) {
+  return data.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+function icsTesto(str) {
+  return (str || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+
+// Le righe di un file .ics non devono superare i 75 ottetti
+function icsPiega(riga) {
+  if (riga.length <= 74) return riga;
+  const pezzi = [riga.slice(0, 74)];
+  let resto = riga.slice(74);
+  while (resto.length > 73) {
+    pezzi.push(' ' + resto.slice(0, 73));
+    resto = resto.slice(73);
+  }
+  if (resto) pezzi.push(' ' + resto);
+  return pezzi.join('\r\n');
+}
+
+function generaIcs(eventi) {
+  const righe = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//AstroCalendario di Ben//IT',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:AstroCalendario di Ben'
+  ];
+
+  eventi.forEach(ev => {
+    const prog = ev.programma || {};
+    const descrizione = [
+      ev.spiegazione,
+      prog.cosaPortare ? `Portare: ${prog.cosaPortare}` : '',
+      prog.doveVederlo ? `Dove: ${prog.doveVederlo}` : '',
+      prog.comeVederlo ? `Come: ${prog.comeVederlo}` : '',
+      urlEvento(ev.id)
+    ].filter(Boolean).join('\n\n');
+
+    righe.push('BEGIN:VEVENT');
+    righe.push(`UID:${ev.id}@astrocalendario`);
+    righe.push(`DTSTAMP:${icsData(new Date())}`);
+    righe.push(`DTSTART:${icsData(ev.dataObj)}`);
+    righe.push(`DTEND:${icsData(new Date(ev.dataObj.getTime() + 60 * 60000))}`);
+    righe.push(icsPiega(`SUMMARY:${icsTesto(ev.titolo)}`));
+    righe.push(icsPiega(`DESCRIPTION:${icsTesto(descrizione)}`));
+    righe.push('BEGIN:VALARM');
+    righe.push('TRIGGER:-PT30M');
+    righe.push('ACTION:DISPLAY');
+    righe.push(icsPiega(`DESCRIPTION:${icsTesto(ev.titolo)} fra 30 minuti`));
+    righe.push('END:VALARM');
+    righe.push('END:VEVENT');
+  });
+
+  righe.push('END:VCALENDAR');
+  return righe.join('\r\n');
+}
+
+window.scaricaIcsEvento = (id) => {
+  const ev = eventiCalcolati.find(e => e.id === id);
+  if (!ev) return;
+  const blob = new Blob([generaIcs([ev])], { type: 'text/calendar;charset=utf-8' });
+  scaricaFile(blob, `${ev.titolo.replace(/[^\w]+/g, '-').toLowerCase()}.ics`);
+};
+
+function scaricaIcsProssimi(mesi) {
+  const limite = Date.now() + mesi * 30.5 * 86400000;
+  const eventi = eventiCalcolati
+    .filter(e => e.dataObj.getTime() >= Date.now() && e.dataObj.getTime() <= limite)
+    .sort((a, b) => a.dataObj - b.dataObj);
+  if (!eventi.length) return 0;
+  const blob = new Blob([generaIcs(eventi)], { type: 'text/calendar;charset=utf-8' });
+  scaricaFile(blob, 'astrocalendario-eventi.ics');
+  return eventi.length;
+}
+
+// --- Backup: tutto ciò che vive solo in questo browser ---
+
+function esportaBackup() {
+  const dati = {
+    app: 'AstroCalendario di Ben',
+    versione: 1,
+    esportato: new Date().toISOString(),
+    eventiManuali: JSON.parse(localStorage.getItem(CHIAVE_EVENTI_MANUALI) || '[]'),
+    diario,
+    posizione: luogoCorrente(),
+    bussola: localStorage.getItem(CHIAVE_SKY_BUSSOLA)
+  };
+  const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
+  const giorno = new Date().toISOString().slice(0, 10);
+  scaricaFile(blob, `astrocalendario-backup-${giorno}.json`);
+}
+
+async function importaBackup(file) {
+  const esito = document.getElementById('imp-esito');
+  const dillo = (msg, colore) => {
+    if (esito) { esito.textContent = msg; esito.className = `text-xs ${colore}`; }
+  };
+
+  try {
+    const testo = await file.text();
+    const dati = JSON.parse(testo);
+    if (!dati || typeof dati !== 'object') throw new Error('file non valido');
+
+    let eventiRipristinati = 0, noteRipristinate = 0;
+
+    if (Array.isArray(dati.eventiManuali)) {
+      localStorage.setItem(CHIAVE_EVENTI_MANUALI, JSON.stringify(dati.eventiManuali));
+      eventiRipristinati = dati.eventiManuali.length;
+      // Ricarichiamo in memoria: via i manuali attuali, dentro quelli del backup
+      eventiCalcolati = eventiCalcolati.filter(e => !e.manuale);
+      caricaEventiManuali();
+    }
+
+    if (dati.diario && typeof dati.diario === 'object') {
+      diario = dati.diario;
+      salvaDiario();
+      noteRipristinate = Object.keys(diario).length;
+    }
+
+    if (dati.posizione && typeof dati.posizione.lat === 'number') {
+      skyImpostaPosizione(dati.posizione.lat, dati.posizione.lon, 'backup');
+    }
+    if (dati.bussola) {
+      try { localStorage.setItem(CHIAVE_SKY_BUSSOLA, dati.bussola); } catch (e) { /* niente storage */ }
+    }
+
+    pianificaNotifiche();
+    aggiornaViste();
+    costruisciDiario();
+    costruisciStasera();
+    aggiornaSchedaImpostazioni();
+    dillo(`Ripristinati ${eventiRipristinati} eventi personali e ${noteRipristinate} note del diario.`, 'text-green-400');
+  } catch (e) {
+    dillo('File non leggibile: assicurati che sia un backup esportato da questa app.', 'text-red-400');
+  }
+}
+
+function aggiornaSchedaImpostazioni() {
+  const box = document.getElementById('imp-posizione');
+  const luogo = luogoCorrente();
+  if (box) {
+    box.textContent = luogo
+      ? `Impostata: ${formattaCoordinate(luogo.lat, luogo.lon)}`
+      : 'Non impostata: molte funzioni restano spente.';
+    box.className = luogo ? 'text-sm text-green-400' : 'text-sm text-amber-400';
+  }
+  const lat = document.getElementById('imp-lat');
+  const lon = document.getElementById('imp-lon');
+  if (lat && luogo) lat.value = luogo.lat.toFixed(4);
+  if (lon && luogo) lon.value = luogo.lon.toFixed(4);
+}
+
+function inizializzaImpostazioni() {
+  const modale = document.getElementById('modale-impostazioni');
+  const apri = document.getElementById('btn-impostazioni');
+  const chiudi = () => { if (modale) modale.classList.add('hidden'); };
+
+  if (apri) apri.addEventListener('click', () => {
+    aggiornaSchedaImpostazioni();
+    if (modale) modale.classList.remove('hidden');
+  });
+  const btnChiudi = document.getElementById('btn-chiudi-impostazioni');
+  if (btnChiudi) btnChiudi.addEventListener('click', chiudi);
+  if (modale) modale.addEventListener('click', (e) => { if (e.target === modale) chiudi(); });
+
+  const btnGps = document.getElementById('imp-btn-gps');
+  if (btnGps) btnGps.addEventListener('click', async () => {
+    btnGps.textContent = '📍 Cerco…';
+    const ok = await skyRichiediPosizione();
+    btnGps.textContent = '📍 Rileva con il GPS';
+    aggiornaSchedaImpostazioni();
+    if (ok) { await caricaMeteo(true); costruisciStasera(); aggiornaViste(); }
+  });
+
+  const btnManuale = document.getElementById('imp-btn-manuale');
+  if (btnManuale) btnManuale.addEventListener('click', async () => {
+    const lat = parseFloat(document.getElementById('imp-lat').value);
+    const lon = parseFloat(document.getElementById('imp-lon').value);
+    if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+      alert('Coordinate non valide: la latitudine va da −90 a 90, la longitudine da −180 a 180.');
+      return;
+    }
+    skyImpostaPosizione(lat, lon, 'manuale');
+    aggiornaSchedaImpostazioni();
+    await caricaMeteo(true);
+    costruisciStasera();
+    aggiornaViste();
+  });
+
+  const btnIcs = document.getElementById('imp-btn-ics');
+  if (btnIcs) btnIcs.addEventListener('click', () => {
+    const quanti = scaricaIcsProssimi(12);
+    const esito = document.getElementById('imp-esito');
+    if (esito) {
+      esito.textContent = quanti
+        ? `Scaricati ${quanti} eventi: aprili con il calendario del telefono per avere i promemoria.`
+        : 'Nessun evento nei prossimi 12 mesi.';
+      esito.className = 'text-xs text-green-400';
+    }
+  });
+
+  const btnEsporta = document.getElementById('imp-btn-esporta');
+  if (btnEsporta) btnEsporta.addEventListener('click', esportaBackup);
+
+  const btnImporta = document.getElementById('imp-btn-importa');
+  const fileImporta = document.getElementById('imp-file-importa');
+  if (btnImporta && fileImporta) {
+    btnImporta.addEventListener('click', () => fileImporta.click());
+    fileImporta.addEventListener('change', () => {
+      if (fileImporta.files && fileImporta.files[0]) importaBackup(fileImporta.files[0]);
+      fileImporta.value = '';
+    });
+  }
+}
+
+// =====================================================================
+// 17. CONSIGLI DI ASTROFOTOGRAFIA
+//     Quasi tutti provano a fotografare quello che vedono, e quasi
+//     sempre viene male: bastano tre numeri per cambiare il risultato.
+// =====================================================================
+
+function consigliFoto(evento) {
+  const base = {
+    treppiede: 'Un treppiede (anche piccolo) fa più differenza di qualsiasi obiettivo costoso.',
+    telefono: 'Col telefono: modalità Pro o Notte, autoscatto di 3 secondi per non muoverlo, messa a fuoco manuale su ∞.'
+  };
+
+  switch (evento.categoria) {
+    case 'luna':
+      return Object.assign({}, base, {
+        titolo: 'Fotografare la Luna',
+        obiettivo: 'Il più lungo che hai: 200–300 mm su reflex, zoom ottico sul telefono.',
+        esposizione: 'Regola “lunare”: 1/125 s, f/8, ISO 100. La Luna è illuminata dal Sole, quindi va trattata come un soggetto diurno.',
+        errore: 'L\'errore classico è sovraesporre: se viene un disco bianco senza crateri, riduci di 2–3 stop.'
+      });
+    case 'eclissi':
+      return Object.assign({}, base, {
+        titolo: 'Fotografare l\'eclissi',
+        obiettivo: 'Teleobiettivo 200 mm o più. Per quella solare serve un filtro solare certificato davanti all\'obiettivo.',
+        esposizione: 'Eclissi lunare: ISO 800, f/5.6, 1/4 s durante la totalità (la Luna rossa è molto più scura). Eclissi solare parziale: come una foto diurna, ma solo con filtro.',
+        errore: '⚠️ Mai puntare il Sole senza filtro: bruci il sensore e, se guardi nel mirino, anche l\'occhio.'
+      });
+    case 'meteore':
+      return Object.assign({}, base, {
+        titolo: 'Fotografare le stelle cadenti',
+        obiettivo: 'Grandangolo luminoso (14–24 mm, f/2.8 o più aperto): serve campo, non ingrandimento.',
+        esposizione: 'ISO 1600–3200, f/2.8, pose da 15–20 s a raffica per ore. Regola del 500: secondi massimi = 500 ÷ lunghezza focale, oltre le stelle diventano trattini.',
+        errore: 'Non si insegue la meteora: si punta la camera in una zona di cielo a ~40° dal radiante e si scatta in continuo.'
+      });
+    case 'pianeti':
+    case 'congiunzioni':
+      return Object.assign({}, base, {
+        titolo: 'Fotografare pianeti e congiunzioni',
+        obiettivo: 'Per la congiunzione basta un 50–100 mm: bello è il paesaggio con i due astri vicini.',
+        esposizione: 'ISO 400–800, f/4, 1–2 s se sono ancora nel crepuscolo. I pianeti sono luminosi: meglio esporre poco.',
+        errore: 'Includi un albero o un profilo di case: una foto di due puntini nel nero non racconta nulla.'
+      });
+    default:
+      return Object.assign({}, base, {
+        titolo: 'Fotografare il cielo',
+        obiettivo: 'Grandangolo luminoso e messa a fuoco manuale su una stella brillante.',
+        esposizione: 'ISO 1600, f/2.8, 10–20 s. Scatta in RAW se puoi: recuperi molto in post-produzione.',
+        errore: 'Evita lo zoom digitale: rovina i dettagli senza aggiungere nulla.'
+      });
+  }
+}
+
+// =====================================================================
+// 18. COSTELLAZIONI E PROFONDO CIELO NELLA VISTA CIELO
+//     Le figure delle costellazioni sono ciò che la gente cerca davvero
+//     di riconoscere. Le stelle sono elencate con coordinate J2000
+//     (ascensione retta in ore, declinazione in gradi): lo scarto con le
+//     coordinate di oggi è di frazioni di grado, invisibile a occhio nudo.
+// =====================================================================
+
+const SKY_COSTELLAZIONI = [
+  { nome: 'Orione', stelle: [
+      [5.919, 7.407, 0.5, 'Betelgeuse'], [5.242, -8.202, 0.13, 'Rigel'], [5.418, 6.350, 1.64, 'Bellatrix'],
+      [5.796, -9.670, 2.06, 'Saiph'], [5.679, -1.943, 1.77, 'Alnitak'], [5.604, -1.202, 1.69, 'Alnilam'],
+      [5.533, -0.299, 2.23, 'Mintaka'], [5.585, 9.934, 3.39, 'Meissa']
+    ], linee: [[0,2],[2,6],[6,5],[5,4],[4,3],[3,1],[1,6],[0,4],[0,7],[2,7]] },
+
+  { nome: 'Orsa Maggiore', stelle: [
+      [11.062, 61.751, 1.79, 'Dubhe'], [11.031, 56.383, 2.37, 'Merak'], [11.897, 53.695, 2.44, 'Phecda'],
+      [12.257, 57.033, 3.31, 'Megrez'], [12.900, 55.960, 1.77, 'Alioth'], [13.399, 54.925, 2.23, 'Mizar'],
+      [13.792, 49.313, 1.86, 'Alkaid']
+    ], linee: [[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]] },
+
+  { nome: 'Orsa Minore', stelle: [
+      [2.530, 89.264, 1.98, 'Stella Polare'], [17.537, 86.586, 4.36, 'Yildun'], [16.766, 82.037, 4.21, 'ε UMi'],
+      [15.734, 77.794, 4.29, 'ζ UMi'], [14.845, 74.155, 2.08, 'Kochab'], [15.345, 71.834, 3.05, 'Pherkad'],
+      [16.291, 75.755, 4.95, 'η UMi']
+    ], linee: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,3]] },
+
+  { nome: 'Cassiopea', stelle: [
+      [0.153, 59.150, 2.27, 'Caph'], [0.675, 56.537, 2.24, 'Schedar'], [0.945, 60.717, 2.15, 'γ Cas'],
+      [1.430, 60.235, 2.68, 'Ruchbah'], [1.906, 63.670, 3.35, 'Segin']
+    ], linee: [[0,1],[1,2],[2,3],[3,4]] },
+
+  { nome: 'Cigno', stelle: [
+      [20.690, 45.280, 1.25, 'Deneb'], [20.371, 40.257, 2.23, 'Sadr'], [19.512, 27.960, 3.05, 'Albireo'],
+      [20.770, 33.970, 2.48, 'Gienah'], [19.749, 45.131, 2.87, 'δ Cyg']
+    ], linee: [[0,1],[1,2],[1,3],[1,4]] },
+
+  { nome: 'Lira', stelle: [
+      [18.616, 38.784, 0.03, 'Vega'], [18.746, 37.605, 4.34, 'ζ Lyr'], [18.834, 33.363, 3.52, 'Sheliak'],
+      [18.982, 32.690, 3.24, 'Sulafat'], [18.908, 36.899, 4.30, 'δ Lyr']
+    ], linee: [[0,1],[1,2],[2,3],[3,4],[4,1]] },
+
+  { nome: 'Aquila', stelle: [
+      [19.846, 8.868, 0.77, 'Altair'], [19.771, 10.613, 2.72, 'Tarazed'], [19.921, 6.407, 3.71, 'Alshain'],
+      [19.425, 3.115, 3.36, 'δ Aql'], [19.090, 13.863, 2.99, 'ζ Aql'], [19.098, -4.882, 3.44, 'λ Aql']
+    ], linee: [[4,1],[1,0],[0,2],[0,3],[3,5]] },
+
+  { nome: 'Scorpione', stelle: [
+      [16.490, -26.432, 1.06, 'Antares'], [16.090, -19.805, 2.62, 'Graffias'], [16.005, -22.622, 2.29, 'Dschubba'],
+      [15.981, -26.114, 2.89, 'π Sco'], [16.353, -25.593, 2.90, 'σ Sco'], [16.598, -28.216, 2.82, 'τ Sco'],
+      [16.843, -34.293, 2.29, 'ε Sco'], [16.865, -38.048, 3.00, 'μ Sco'], [16.911, -42.361, 3.62, 'ζ Sco'],
+      [17.203, -43.239, 3.33, 'η Sco'], [17.622, -42.998, 1.86, 'Sargas'], [17.560, -37.104, 1.62, 'Shaula']
+    ], linee: [[1,2],[2,3],[2,4],[4,0],[0,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,11]] },
+
+  { nome: 'Leone', stelle: [
+      [10.139, 11.967, 1.36, 'Regolo'], [11.818, 14.572, 2.14, 'Denebola'], [10.333, 19.841, 2.08, 'Algieba'],
+      [11.235, 20.524, 2.56, 'Zosma'], [11.237, 15.430, 3.33, 'Chertan'], [10.122, 16.763, 3.48, 'η Leo'],
+      [9.764, 23.774, 2.98, 'ε Leo'], [9.880, 26.007, 3.88, 'μ Leo'], [10.278, 23.417, 3.44, 'Adhafera']
+    ], linee: [[6,7],[7,8],[8,2],[2,5],[5,0],[0,4],[4,3],[3,1],[1,4],[2,3]] },
+
+  { nome: 'Toro', stelle: [
+      [4.599, 16.509, 0.85, 'Aldebaran'], [5.438, 28.608, 1.65, 'Elnath'], [5.627, 21.143, 3.00, 'ζ Tau'],
+      [4.477, 15.871, 3.40, 'θ Tau'], [4.330, 15.628, 3.65, 'γ Tau'], [4.382, 17.543, 3.76, 'δ Tau'],
+      [4.478, 19.180, 3.53, 'ε Tau'], [4.011, 12.490, 3.41, 'λ Tau']
+    ], linee: [[7,4],[4,5],[5,6],[6,1],[4,3],[3,0],[0,2]] },
+
+  { nome: 'Gemelli', stelle: [
+      [7.577, 31.888, 1.58, 'Castore'], [7.755, 28.026, 1.16, 'Polluce'], [6.629, 16.399, 1.90, 'Alhena'],
+      [6.383, 22.514, 2.87, 'μ Gem'], [6.732, 25.131, 2.98, 'ε Gem'], [7.335, 21.982, 3.53, 'δ Gem'],
+      [7.068, 20.570, 3.79, 'ζ Gem'], [6.755, 12.896, 3.36, 'ξ Gem'], [6.248, 22.507, 3.28, 'η Gem']
+    ], linee: [[0,4],[4,3],[3,8],[1,5],[5,6],[6,2],[2,7],[0,1]] },
+
+  { nome: 'Cane Maggiore', stelle: [
+      [6.752, -16.716, -1.46, 'Sirio'], [6.378, -17.956, 1.98, 'Mirzam'], [7.140, -26.393, 1.83, 'Wezen'],
+      [6.977, -28.972, 1.50, 'Adhara'], [7.402, -29.303, 2.45, 'Aludra']
+    ], linee: [[1,0],[0,2],[2,3],[2,4]] },
+
+  { nome: 'Auriga', stelle: [
+      [5.278, 45.998, 0.08, 'Capella'], [5.992, 44.947, 1.90, 'Menkalinan'], [5.995, 37.213, 2.62, 'θ Aur'],
+      [5.438, 28.608, 1.65, 'Elnath'], [4.950, 33.166, 2.69, 'ι Aur'], [5.033, 43.823, 2.99, 'ε Aur']
+    ], linee: [[0,1],[1,2],[2,3],[3,4],[4,0],[0,5]] },
+
+  { nome: 'Perseo', stelle: [
+      [3.405, 49.861, 1.79, 'Mirfak'], [3.136, 40.956, 2.12, 'Algol'], [3.080, 53.507, 2.93, 'γ Per'],
+      [3.715, 47.788, 3.01, 'δ Per'], [3.964, 40.010, 2.89, 'ε Per'], [3.902, 31.884, 2.85, 'ζ Per']
+    ], linee: [[2,0],[0,3],[3,4],[4,5],[0,1]] },
+
+  { nome: 'Andromeda', stelle: [
+      [0.140, 29.091, 2.06, 'Alpheratz'], [1.162, 35.621, 2.06, 'Mirach'], [2.065, 42.330, 2.10, 'Almach'],
+      [0.656, 30.861, 3.27, 'δ And'], [0.947, 38.499, 3.86, 'μ And']
+    ], linee: [[0,3],[3,1],[1,2],[1,4]] },
+
+  { nome: 'Pegaso', stelle: [
+      [23.079, 15.205, 2.48, 'Markab'], [23.063, 28.083, 2.42, 'Scheat'], [0.221, 15.184, 2.83, 'Algenib'],
+      [0.140, 29.091, 2.06, 'Alpheratz'], [21.736, 9.875, 2.38, 'Enif']
+    ], linee: [[0,1],[1,3],[3,2],[2,0],[0,4]] },
+
+  { nome: 'Boote', stelle: [
+      [14.261, 19.182, -0.05, 'Arturo'], [14.750, 27.074, 2.35, 'Izar'], [14.535, 38.308, 3.03, 'γ Boo'],
+      [15.032, 40.390, 3.49, 'β Boo'], [15.258, 33.315, 3.47, 'δ Boo'], [13.911, 18.398, 2.68, 'Muphrid']
+    ], linee: [[5,0],[0,1],[1,4],[4,3],[3,2],[2,0]] },
+
+  { nome: 'Corona Boreale', stelle: [
+      [15.578, 26.715, 2.22, 'Alphecca'], [15.464, 29.106, 3.66, 'β CrB'], [15.712, 26.296, 3.84, 'γ CrB'],
+      [15.826, 26.068, 4.57, 'δ CrB'], [15.960, 26.878, 4.14, 'ε CrB'], [15.548, 31.359, 4.14, 'θ CrB']
+    ], linee: [[5,1],[1,0],[0,2],[2,3],[3,4]] },
+
+  { nome: 'Vergine', stelle: [
+      [13.420, -11.161, 0.98, 'Spica'], [12.694, -1.449, 2.74, 'Porrima'], [13.036, 10.959, 2.83, 'Vindemiatrix'],
+      [12.927, 3.397, 3.38, 'δ Vir'], [13.578, -0.596, 3.38, 'ζ Vir'], [12.333, -0.667, 3.89, 'η Vir'],
+      [11.845, 1.765, 3.60, 'β Vir']
+    ], linee: [[6,5],[5,1],[1,3],[3,2],[3,4],[4,0]] },
+
+  { nome: 'Sagittario', stelle: [
+      [18.403, -34.385, 1.85, 'Kaus Australis'], [18.921, -26.297, 2.05, 'Nunki'], [18.350, -29.828, 2.70, 'Kaus Media'],
+      [18.466, -25.422, 2.81, 'Kaus Borealis'], [18.741, -26.991, 3.17, 'φ Sgr'], [19.044, -29.880, 2.60, 'ζ Sgr'],
+      [19.115, -27.670, 3.32, 'τ Sgr'], [18.097, -30.424, 2.99, 'γ Sgr']
+    ], linee: [[7,2],[2,0],[2,3],[3,4],[4,1],[1,6],[6,5],[5,0],[4,5]] },
+
+  { nome: 'Ariete', stelle: [
+      [2.119, 23.462, 2.00, 'Hamal'], [1.911, 20.808, 2.64, 'Sheratan'], [1.892, 19.294, 3.86, 'Mesarthim']
+    ], linee: [[0,1],[1,2]] },
+
+  { nome: 'Croce del Sud', stelle: [
+      [12.443, -63.099, 0.77, 'Acrux'], [12.795, -59.689, 1.25, 'Mimosa'], [12.519, -57.113, 1.63, 'Gacrux'],
+      [12.253, -58.749, 2.79, 'δ Cru']
+    ], linee: [[0,2],[1,3]] },
+
+  { nome: 'Centauro', stelle: [
+      [14.660, -60.834, -0.27, 'Rigil Kentaurus'], [14.064, -60.373, 0.61, 'Hadar']
+    ], linee: [[0,1]] }
+];
+
+// Oggetti del profondo cielo alla portata di occhio nudo e binocolo
+const SKY_PROFONDO = [
+  { nome: 'M31 — Galassia di Andromeda', ra: 0.712, dec: 41.269, mag: 3.4, tipo: 'galassia', strumento: 'occhio',
+    nota: 'La cosa più lontana visibile a occhio nudo: 2,5 milioni di anni luce. Nel binocolo è una macchia ovale.' },
+  { nome: 'M42 — Nebulosa di Orione', ra: 5.588, dec: -5.391, mag: 4.0, tipo: 'nebulosa', strumento: 'occhio',
+    nota: 'La stella di mezzo della spada di Orione non è una stella: è una nursery di stelle appena nate.' },
+  { nome: 'M45 — Pleiadi', ra: 3.790, dec: 24.117, mag: 1.6, tipo: 'ammasso', strumento: 'occhio',
+    nota: 'Le “sette sorelle”. A occhio nudo se ne contano 6–7, col binocolo diventano decine.' },
+  { nome: 'M44 — Presepe', ra: 8.670, dec: 19.983, mag: 3.7, tipo: 'ammasso', strumento: 'binocolo',
+    nota: 'Una nuvoletta a occhio nudo, uno sciame di stelle nel binocolo.' },
+  { nome: 'M13 — Ammasso di Ercole', ra: 16.695, dec: 36.460, mag: 5.8, tipo: 'globulare', strumento: 'binocolo',
+    nota: 'Mezzo milione di stelle in una palla: il più bell\'ammasso globulare del cielo boreale.' },
+  { nome: 'M8 — Nebulosa Laguna', ra: 18.060, dec: -24.383, mag: 6.0, tipo: 'nebulosa', strumento: 'binocolo',
+    nota: 'Nel cuore della Via Lattea estiva, sopra il “becco” della teiera del Sagittario.' },
+  { nome: 'M22 — Globulare del Sagittario', ra: 18.606, dec: -23.904, mag: 5.1, tipo: 'globulare', strumento: 'binocolo',
+    nota: 'Più luminoso di M13 ma più basso: serve un orizzonte sud pulito.' },
+  { nome: 'Doppio Ammasso di Perseo', ra: 2.317, dec: 57.133, mag: 4.3, tipo: 'ammasso', strumento: 'binocolo',
+    nota: 'Due ammassi vicini nello stesso campo del binocolo: uno dei colpi d\'occhio più belli.' },
+  { nome: 'M57 — Nebulosa Anello', ra: 18.893, dec: 33.029, mag: 8.8, tipo: 'planetaria', strumento: 'telescopio',
+    nota: 'Un anello di fumo lasciato da una stella morente, fra le due stelle basse della Lira.' },
+  { nome: 'M27 — Nebulosa Manubrio', ra: 19.994, dec: 22.721, mag: 7.4, tipo: 'planetaria', strumento: 'telescopio',
+    nota: 'Grande e alla portata di un piccolo telescopio, sotto cieli scuri anche del binocolo.' },
+  { nome: 'M51 — Galassia Vortice', ra: 13.498, dec: 47.195, mag: 8.4, tipo: 'galassia', strumento: 'telescopio',
+    nota: 'Due galassie in collisione, sotto la coda del Grande Carro.' },
+  { nome: 'M81 — Galassia di Bode', ra: 9.926, dec: 69.066, mag: 6.9, tipo: 'galassia', strumento: 'telescopio',
+    nota: 'Insieme a M82 entra nello stesso campo: due galassie in un colpo solo.' },
+  { nome: 'M15 — Globulare di Pegaso', ra: 21.500, dec: 12.167, mag: 6.2, tipo: 'globulare', strumento: 'binocolo',
+    nota: 'Compatto e luminoso, facile da trovare partendo da Enif.' },
+  { nome: 'M3 — Globulare dei Cani da Caccia', ra: 13.703, dec: 28.377, mag: 6.2, tipo: 'globulare', strumento: 'binocolo',
+    nota: 'Primavera: a metà strada fra Arturo e Cor Caroli.' }
+];
+
+// Colori per tipo di oggetto profondo
+const SKY_COLORI_PROFONDO = {
+  galassia: '#c4b5fd', nebulosa: '#f9a8d4', ammasso: '#a5f3fc',
+  globulare: '#fde68a', planetaria: '#86efac'
+};
+
+// L'ora mostrata nella vista Cielo: normalmente adesso, ma la si può
+// spostare avanti e indietro per pianificare la serata.
+function skyAdesso() {
+  return new Date(Date.now() + (sky.offsetTempoMin || 0) * 60000);
+}
+
+// Posizioni delle stelle delle costellazioni e degli oggetti profondi
+function skyAggiornaCatalogo(data) {
+  if (!sky.observer || typeof Astronomy === 'undefined') {
+    sky.costellazioni = [];
+    sky.profondo = [];
+    return;
+  }
+  const t = Astronomy.MakeTime(data);
+
+  if (sky.mostraCostellazioni) {
+    sky.costellazioni = SKY_COSTELLAZIONI.map(c => ({
+      nome: c.nome,
+      linee: c.linee,
+      stelle: c.stelle.map(s => {
+        const hor = Astronomy.Horizon(t, sky.observer, s[0], s[1], 'normal');
+        return { az: hor.azimuth, alt: hor.altitude, mag: s[2], nome: s[3] };
+      })
+    }));
+  } else {
+    sky.costellazioni = [];
+  }
+
+  if (sky.mostraProfondo) {
+    sky.profondo = SKY_PROFONDO.map(o => {
+      const hor = Astronomy.Horizon(t, sky.observer, o.ra, o.dec, 'normal');
+      return Object.assign({}, o, { az: hor.azimuth, alt: hor.altitude });
+    });
+  } else {
+    sky.profondo = [];
+  }
+}
+
+// Figure delle costellazioni: linee sottili e stelle proporzionate alla luminosità
+function skyDisegnaCostellazioni(ctx, base, focale) {
+  if (!sky.costellazioni || !sky.costellazioni.length) return;
+
+  ctx.save();
+  sky.costellazioni.forEach(c => {
+    const punti = c.stelle.map(s => skyProietta(skyVettore(s.az, s.alt), base, focale));
+
+    // Linee della figura
+    ctx.strokeStyle = 'rgba(96, 165, 250, 0.45)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    c.linee.forEach(([i, j]) => {
+      const a = punti[i], b = punti[j];
+      if (!a || !b || !a.davanti || !b.davanti) return;
+      ctx.moveTo(a.px, a.py);
+      ctx.lineTo(b.px, b.py);
+    });
+    ctx.stroke();
+
+    // Stelle della costellazione
+    c.stelle.forEach((s, i) => {
+      const p = punti[i];
+      if (!p.davanti) return;
+      if (p.px < -20 || p.px > sky.larghezza + 20 || p.py < -20 || p.py > sky.altezza + 20) return;
+      const r = Math.max(1.2, Math.min(4.5, 3.6 - s.mag * 0.55));
+      ctx.globalAlpha = s.alt < 0 ? 0.25 : 0.95;
+      ctx.fillStyle = '#e2e8f0';
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Nome della costellazione al centro della figura, se è in vista
+    const visibili = punti.filter(p => p.davanti && p.px > 0 && p.px < sky.larghezza && p.py > 0 && p.py < sky.altezza);
+    if (visibili.length >= Math.max(2, Math.ceil(punti.length / 2))) {
+      const cx = visibili.reduce((s, p) => s + p.px, 0) / visibili.length;
+      const cy = visibili.reduce((s, p) => s + p.py, 0) / visibili.length;
+      ctx.globalAlpha = 0.75;
+      ctx.font = 'italic 13px system-ui, sans-serif';
+      ctx.fillStyle = '#93c5fd';
+      ctx.textAlign = 'center';
+      ctx.fillText(c.nome, cx, cy);
+    }
+  });
+  ctx.restore();
+}
+
+// Oggetti del profondo cielo: simboli discreti con etichetta
+function skyDisegnaProfondo(ctx, base, focale) {
+  if (!sky.profondo || !sky.profondo.length) return;
+
+  ctx.save();
+  sky.profondo.forEach(o => {
+    const p = skyProietta(skyVettore(o.az, o.alt), base, focale);
+    if (!p.davanti) return;
+    if (p.px < -40 || p.px > sky.larghezza + 40 || p.py < -40 || p.py > sky.altezza + 40) return;
+
+    const colore = SKY_COLORI_PROFONDO[o.tipo] || '#a5f3fc';
+    ctx.globalAlpha = o.alt < 0 ? 0.25 : 0.9;
+
+    ctx.strokeStyle = colore;
+    ctx.lineWidth = 1.4;
+    if (o.tipo === 'galassia') {
+      ctx.beginPath();
+      ctx.ellipse(p.px, p.py, 9, 4.5, -0.5, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (o.tipo === 'nebulosa' || o.tipo === 'planetaria') {
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, 7, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else {
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, 7, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = colore;
+      ctx.globalAlpha *= 0.35;
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = o.alt < 0 ? 0.3 : 0.85;
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.fillStyle = colore;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(o.nome.split(' — ')[0], p.px + 12, p.py);
+  });
+  ctx.restore();
+}
+
+// --- Macchina del tempo della vista Cielo ---
+
+function skyAggiornaTestoTempo() {
+  const el = document.getElementById('skymap-tempo-testo');
+  if (!el) return;
+  const min = sky.offsetTempoMin || 0;
+  if (!min) {
+    el.textContent = 'In tempo reale';
+    el.className = 'mt-2 text-xs text-slate-300 font-mono';
+    return;
+  }
+  const abs = Math.abs(min);
+  const durata = abs >= 60 ? `${Math.floor(abs / 60)}h ${String(abs % 60).padStart(2, '0')}m` : `${abs} min`;
+  const scarto = min > 0 ? `fra ${durata}` : `${durata} fa`;
+  el.textContent = `${skyAdesso().toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${scarto}`;
+  el.className = 'mt-2 text-xs text-amber-400 font-mono';
+}
+
+function skyImpostaOffsetTempo(minuti) {
+  sky.offsetTempoMin = minuti;
+  sky.prossimoCalcolo = 0;                       // ricalcolo immediato
+  sky.cacheOrari = { chiave: null, valore: null };
+  const slider = document.getElementById('skymap-tempo');
+  if (slider && parseInt(slider.value, 10) !== minuti) slider.value = String(minuti);
+  skyAggiornaTestoTempo();
+  skyAggiornaOggetti(true);
+}
+
+// --- Fotocamera: il cielo calcolato sopra l'immagine reale ---
+
+async function skyAttivaFotocamera() {
+  const video = document.getElementById('skymap-video');
+  const btn = document.getElementById('skymap-btn-camera');
+  if (!video) return;
+
+  if (sky.camera) {
+    sky.camera.getTracks().forEach(t => t.stop());
+    sky.camera = null;
+    video.srcObject = null;
+    video.classList.add('hidden');
+    if (btn) { btn.textContent = '📷 Fotocamera'; btn.className = 'px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white font-semibold'; }
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    skyAvviso('camera', 'Questo browser non dà accesso alla fotocamera.');
+    return;
+  }
+  try {
+    sky.camera = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } }, audio: false
+    });
+    video.srcObject = sky.camera;
+    video.classList.remove('hidden');
+    await video.play().catch(() => {});
+    if (btn) { btn.textContent = '📷 Spegni fotocamera'; btn.className = 'px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold'; }
+    skyAvviso('camera', '');
+  } catch (e) {
+    sky.camera = null;
+    skyAvviso('camera', 'Fotocamera non disponibile: serve il permesso del browser e una connessione sicura (https).');
+  }
+}
+
+function skySpegniFotocamera() {
+  if (sky.camera) skyAttivaFotocamera();
+}
+
+// Collega i comandi nuovi della vista Cielo (chiamata da inizializzaSkymap)
+function inizializzaSkymapExtra() {
+  const collega = (id, azione) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', azione);
+  };
+
+  const slider = document.getElementById('skymap-tempo');
+  if (slider) slider.addEventListener('input', () => skyImpostaOffsetTempo(parseInt(slider.value, 10) || 0));
+  collega('skymap-tempo-ora', () => skyImpostaOffsetTempo(0));
+
+  collega('skymap-btn-costellazioni', () => {
+    sky.mostraCostellazioni = !sky.mostraCostellazioni;
+    const btn = document.getElementById('skymap-btn-costellazioni');
+    if (btn) btn.className = `px-3 py-1.5 rounded-full ${sky.mostraCostellazioni ? 'bg-blue-700 hover:bg-blue-600' : 'bg-slate-700 hover:bg-slate-600'} text-white font-semibold`;
+    skyAggiornaOggetti(true);
+  });
+
+  collega('skymap-btn-deepsky', () => {
+    sky.mostraProfondo = !sky.mostraProfondo;
+    const btn = document.getElementById('skymap-btn-deepsky');
+    if (btn) btn.className = `px-3 py-1.5 rounded-full ${sky.mostraProfondo ? 'bg-blue-700 hover:bg-blue-600' : 'bg-slate-700 hover:bg-slate-600'} text-white font-semibold`;
+    skyAggiornaOggetti(true);
+  });
+
+  collega('skymap-btn-camera', skyAttivaFotocamera);
+
+  // Uscendo dalla vista Cielo la fotocamera si spegne: batteria e privacy
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) skySpegniFotocamera();
+  });
+
+  skyAggiornaTestoTempo();
+}
+
+// =====================================================================
+// 19. LE SCHEDE DELL'AGENDA, ARRICCHITE
+//     Ogni evento ora dice anche: da qui si vede? con che cielo? con
+//     quale strumento? e cosa ne pensi tu (diario).
+// =====================================================================
+
+// Riquadro "da qui": altezza, direzione, orari e semaforo di osservabilità
+function bloccoLocaleHtml(evento) {
+  const locale = circostanzeLocali(evento);
+  evento.localeCache = locale;   // riusato dall'indice di osservabilità
+  if (!locale) {
+    if (!luogoCorrente() && evento.dataObj.getTime() - Date.now() < 30 * 86400000) {
+      return `<div class="bg-slate-900 p-3 rounded-xl mt-3 text-sm border border-slate-700">
+        <button onclick="document.getElementById('btn-impostazioni').click()" class="text-blue-400 underline hover:text-blue-300">
+          📍 Imposta la tua posizione</button>
+        <span class="text-slate-400"> per sapere se questo evento si vede da casa tua, a che ora e in che direzione.</span>
+      </div>`;
+    }
+    return '';
+  }
+
+  const indice = indiceOsservabilita(evento);
+  const colore = locale.livello === 'si' ? 'text-green-400'
+               : locale.livello === 'parziale' ? 'text-amber-400' : 'text-red-400';
+  const icona = locale.livello === 'si' ? '✅' : locale.livello === 'parziale' ? '⚠️' : '🚫';
+
+  const righe = [];
+  righe.push(`<p class="${colore} font-semibold">${icona} ${locale.giudizio}</p>`);
+
+  if (locale.sorge || locale.tramonta) {
+    righe.push(`<p class="text-slate-400 mt-1">Sorge ${oraBreve(locale.sorge)} · tramonta ${oraBreve(locale.tramonta)}</p>`);
+  }
+  if (locale.buio && locale.buio.buioInizio) {
+    righe.push(`<p class="text-slate-400">Buio astronomico quella notte: ${oraBreve(locale.buio.buioInizio)} → ${oraBreve(locale.buio.buioFine)}</p>`);
+  }
+  if (indice) {
+    righe.push(`<p class="mt-2 text-slate-300"><strong>${indice.semaforo} Osservabilità ${indice.punteggio}/100</strong>
+      <span class="text-slate-400">— ${indice.motivi.join('; ')}</span></p>`);
+    if (indice.quando) {
+      righe.push(`<p class="text-blue-300">🕒 Momento consigliato: ${dataOraBreve(indice.quando)}</p>`);
+    }
+  }
+
+  return `<div class="bg-slate-900 p-3 rounded-xl mt-3 text-sm border border-slate-700">
+    <h3 class="font-bold text-white mb-1 text-sm">📍 Da qui</h3>${righe.join('')}
+  </div>`;
+}
+
+// Consigli di scatto, chiusi finché non servono
+function bloccoFotoHtml(evento) {
+  const f = consigliFoto(evento);
+  return `<details class="bg-slate-900 rounded-xl mt-3 text-sm border border-slate-700">
+    <summary class="p-3 cursor-pointer font-bold text-white">📷 ${f.titolo}</summary>
+    <div class="px-3 pb-3 space-y-1 text-slate-300">
+      <p><span class="text-blue-400">Obiettivo:</span> ${f.obiettivo}</p>
+      <p><span class="text-blue-400">Esposizione:</span> ${f.esposizione}</p>
+      <p><span class="text-blue-400">Errore da evitare:</span> ${f.errore}</p>
+      <p class="text-slate-400">${f.treppiede} ${f.telefono}</p>
+    </div>
+  </details>`;
+}
+
+// Riga di pulsanti sotto la scheda: diario, condivisione, calendario, cartolina
+function barraAzioniHtml(evento) {
+  const visto = !!diario[evento.id];
+  const stile = 'px-3 py-1.5 rounded-full text-xs font-semibold transition-colors';
+  return `<div class="flex flex-wrap gap-2 mt-3 pl-4">
+    <button onclick="apriDiarioEvento('${evento.id}')" class="${stile} ${visto ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-slate-700 hover:bg-green-600 text-slate-100'}" title="Registra l'osservazione nel diario">
+      ${visto ? '✅ Visto!' : '👁️ Segna come visto'}
+    </button>
+    <button onclick="condividiEvento('${evento.id}')" class="${stile} bg-slate-700 hover:bg-blue-600 text-slate-100" title="Condividi l'evento">📤 Condividi</button>
+    <button onclick="immagineEvento('${evento.id}')" class="${stile} bg-slate-700 hover:bg-purple-600 text-slate-100" title="Crea una cartolina da mandare in chat">🖼️ Cartolina</button>
+    <button onclick="scaricaIcsEvento('${evento.id}')" class="${stile} bg-slate-700 hover:bg-blue-600 text-slate-100" title="Aggiungi al calendario del telefono">📅 Al calendario</button>
+  </div>`;
+}
+
+// Badge con lo strumento minimo consigliato
+function badgeStrumentoHtml(evento) {
+  const s = STRUMENTI[strumentoEvento(evento)];
+  if (!s) return '';
+  return `<span class="align-middle text-xs bg-slate-700 text-slate-200 px-2 py-0.5 rounded-full ml-1" title="Strumento consigliato">${s.icona} ${s.nome}</span>`;
+}
+
+// Quando arrivano le previsioni meteo i semafori cambiano: ricostruiamo
+// l'agenda solo se è la vista che l'utente sta guardando.
+function aggiornaSemaforiAgenda() {
+  const vista = document.getElementById('vista-agenda');
+  if (vista && !vista.classList.contains('hidden')) costruisciAgenda();
+}
+
+// Chip del filtro per strumento
+function inizializzaFiltroStrumento() {
+  const cont = document.getElementById('filtri-strumento');
+  if (!cont) return;
+
+  const chip = [{ id: 'tutti', icona: '✨', nome: 'Tutto' }]
+    .concat(Object.keys(STRUMENTI).map(id => ({ id, icona: STRUMENTI[id].icona, nome: STRUMENTI[id].nome })));
+
+  cont.innerHTML = chip.map(c =>
+    `<button type="button" data-str="${c.id}" class="chip-strumento" title="Mostra ciò che si vede ${c.id === 'tutti' ? 'in ogni caso' : c.nome.toLowerCase()}">${c.icona} ${c.nome}</button>`
+  ).join('');
+
+  cont.querySelectorAll('.chip-strumento').forEach(btn => {
+    btn.addEventListener('click', () => {
+      filtroStrumento = btn.dataset.str;
+      aggiornaStileChipStrumento();
+      applicaFiltri();
+    });
+  });
+  aggiornaStileChipStrumento();
+}
+
+function aggiornaStileChipStrumento() {
+  const base = 'chip-strumento px-3 py-1.5 rounded-full text-xs font-semibold transition-colors';
+  const attivo = ' bg-blue-600 text-white shadow';
+  const inattivo = ' bg-slate-700 text-slate-300 hover:bg-slate-600';
+  document.querySelectorAll('.chip-strumento').forEach(btn => {
+    btn.className = base + (btn.dataset.str === filtroStrumento ? attivo : inattivo);
   });
 }
