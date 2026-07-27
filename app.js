@@ -16,101 +16,100 @@ const CATEGORIE = {
 
 // ---------------------------------------------------------------------------
 // DISEGNI
-// Al posto delle emoji: piccoli SVG fatti "a mano", uno per ogni oggetto.
-// Il contorno prende il colore del testo (currentColor), così funziona sia
-// sulla carta chiara sia sul cartoncino scuro; i pieni sono pastelli fissi,
-// perché Giove deve restare color sabbia in tutti e due i temi.
+// Al posto delle emoji: piccole icone a contorno (stile Lucide), una per ogni
+// oggetto. Nessun riempimento: il tratto prende il colore del testo
+// (currentColor), così l'icona resta leggibile ovunque venga usata e mantiene
+// lo stesso peso visivo del resto dell'interfaccia.
 // ---------------------------------------------------------------------------
 const DISEGNI = {
-  sole: `<circle cx="12" cy="12" r="5" fill="#f2c14e"/>
-    <path d="M12 2.2v2.4M12 19.4v2.4M2.2 12h2.4M19.4 12h2.4M5.1 5.1l1.7 1.7M17.2 17.2l1.7 1.7M18.9 5.1l-1.7 1.7M6.8 17.2l-1.7 1.7"/>`,
+  sole: `<circle cx="12" cy="12" r="4.2"/>
+    <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/>`,
 
-  luna: `<path d="M20.5 13.4A8.9 8.9 0 1 1 10.6 3.5a7 7 0 0 0 9.9 9.9z" fill="#ecdfae"/>
-    <circle cx="14.5" cy="15" r="1.5" fill="none"/>
-    <circle cx="17.4" cy="11.2" r="0.9" fill="none"/>`,
+  luna: `<path d="M20.4 13.6A8.7 8.7 0 1 1 10.4 3.6a6.8 6.8 0 0 0 10 10z"/>`,
 
-  lunapiena: `<circle cx="12" cy="12" r="8.6" fill="#ecdfae"/>
-    <circle cx="9" cy="9.5" r="2" fill="none"/><circle cx="14.8" cy="14.4" r="1.5" fill="none"/>
-    <circle cx="15.2" cy="8.6" r="1" fill="none"/>`,
+  lunapiena: `<circle cx="12" cy="12" r="8.4"/>
+    <circle cx="9.4" cy="9.8" r="1.7"/><circle cx="14.6" cy="14.4" r="1.2"/>
+    <circle cx="15.4" cy="9" r="0.8"/>`,
 
-  mercurio: `<circle cx="12" cy="12" r="6.6" fill="#c9c3b4"/>
-    <circle cx="10" cy="10.4" r="1.5" fill="none"/><circle cx="14.2" cy="14" r="1.1" fill="none"/>`,
+  mercurio: `<circle cx="12" cy="12" r="6.4"/>
+    <circle cx="10.2" cy="10.6" r="1.3"/><circle cx="14" cy="13.8" r="0.9"/>`,
 
-  venere: `<circle cx="12" cy="12" r="7.8" fill="#f0d59a"/>
-    <path d="M6 10.4q6-1.8 11.6-.4M5.4 13.6q6.4 1.8 12.6-.6" fill="none"/>`,
+  venere: `<circle cx="12" cy="12" r="7.6"/>
+    <path d="M7.2 9.8c3-0.9 5.8-0.9 8.6 0M6.4 13.8c3.4-1 6.8-1 10.2 0"/>`,
 
-  marte: `<circle cx="12" cy="12" r="7.4" fill="#e2725b"/>
-    <path d="M8.4 6.4q3.6-1.2 7.2 0" fill="none"/>
-    <circle cx="10" cy="12.6" r="1.6" fill="none"/><circle cx="14.6" cy="10.4" r="1" fill="none"/>`,
+  marte: `<circle cx="12" cy="12" r="7.2"/>
+    <path d="M6.6 8.8c3.4-1 6.8-1 10.2 0"/>
+    <circle cx="10.2" cy="13.2" r="1.5"/><circle cx="14.6" cy="10.8" r="0.9"/>`,
 
-  giove: `<circle cx="12" cy="12" r="8.4" fill="#dfb98a"/>
-    <path d="M5.2 9q6.8-1.4 13.6 0M3.8 12.2q8.2-1.4 16.4 0M5.2 15.4q6.8 1.4 13.6 0" fill="none"/>
-    <ellipse cx="14.6" cy="14.4" rx="2.1" ry="1.3" fill="#c9694f"/>`,
+  giove: `<circle cx="12" cy="12" r="8.2"/>
+    <path d="M4.8 9.2c4.8-1 9.6-1 14.4 0M3.9 12.4h16.2M4.8 15.6c4.8 1 9.6 1 14.4 0"/>
+    <ellipse cx="14.4" cy="15.4" rx="1.8" ry="1.1"/>`,
 
-  saturno: `<circle cx="12" cy="12" r="6" fill="#e8cf9a"/>
-    <ellipse cx="12" cy="12" rx="10.4" ry="3.4" fill="none" transform="rotate(-22 12 12)"/>`,
+  saturno: `<circle cx="12" cy="12" r="5.8"/>
+    <ellipse cx="12" cy="12" rx="10.2" ry="3.4" transform="rotate(-22 12 12)"/>`,
 
-  urano: `<circle cx="12" cy="12" r="6.4" fill="#a9d8dd"/>
-    <ellipse cx="12" cy="12" rx="9.6" ry="3" fill="none" transform="rotate(76 12 12)"/>`,
+  urano: `<circle cx="12" cy="12" r="6.2"/>
+    <ellipse cx="12" cy="12" rx="9.6" ry="3" transform="rotate(76 12 12)"/>`,
 
-  nettuno: `<circle cx="12" cy="12" r="7.6" fill="#8fb3e0"/>
-    <path d="M5.6 14.2q3.2-2 6.4 0t6-0.6" fill="none"/>
-    <ellipse cx="10" cy="9.6" rx="1.9" ry="1.2" fill="#5d84bd"/>`,
+  nettuno: `<circle cx="12" cy="12" r="7.6"/>
+    <path d="M5.4 14c2.2-1.8 4.4-1.8 6.6 0s4.4 1.8 6.6 0"/>
+    <ellipse cx="10" cy="9.4" rx="1.8" ry="1.1"/>`,
 
-  terra: `<circle cx="12" cy="12" r="8" fill="#7fb2e5"/>
-    <path d="M6.4 9.6q2.6-2.4 5-0.6t3.6-0.4M7.6 15.4q2.8 1.8 5.4 0.2t3.4 0.6" fill="#7fb069"/>`,
+  terra: `<circle cx="12" cy="12" r="8.2"/>
+    <ellipse cx="12" cy="12" rx="3.6" ry="8.2"/>
+    <path d="M3.9 12h16.2"/>`,
 
-  stella: `<path d="M12 2.8l2.5 6.1 6.6.5-5 4.3 1.6 6.4L12 16.6 6.3 20.1l1.6-6.4-5-4.3 6.6-.5z" fill="#f5e2a0"/>`,
+  stella: `<path d="M12 3.2l2.5 5.7 6.2.6-4.7 4.1 1.4 6.1L12 16.5l-5.4 3.2 1.4-6.1-4.7-4.1 6.2-.6z"/>`,
 
-  meteora: `<path d="M16.6 3.4l1.5 3.6 3.9.3-3 2.6.9 3.8-3.3-2.1-3.4 2.1.9-3.8-2.9-2.6 3.9-.3z" fill="#f2c14e"/>
-    <path d="M10.4 12.8L3.2 20.4M13.6 15.2l-4.4 4.6M6.6 11.4l-3.2 3.4" fill="none"/>`,
+  meteora: `<path d="M16.6 3.6l1.3 3.1 3.4.3-2.6 2.2.8 3.3-2.9-1.8-2.9 1.8.8-3.3-2.6-2.2 3.4-.3z"/>
+    <path d="M10.6 13.2L3.4 20.4M13.4 15.6l-4.2 4.4M6.8 11.8l-3.2 3.4"/>`,
 
-  eclissi: `<circle cx="10.4" cy="12" r="6.6" fill="#f2c14e"/>
-    <circle cx="14.6" cy="12" r="6.6" fill="#3d4a6b"/>`,
+  eclissi: `<circle cx="10.2" cy="12" r="6.4"/>
+    <circle cx="14.8" cy="12" r="6.4"/>`,
 
-  foglia: `<path d="M4.4 19.6c-1.6-7 3.4-13.4 15.2-15.2 1.4 11.6-6.2 16.8-15.2 15.2z" fill="#7fb069"/>
-    <path d="M4.8 19.2q6.4-5.2 12.8-11.4" fill="none"/>`,
+  foglia: `<path d="M4.6 19.4c-1.6-6.8 3.4-13.2 15-15 1.4 11.4-6 16.6-15 15z"/>
+    <path d="M5 19q6.2-5 12.4-11"/>`,
 
-  congiunzione: `<circle cx="8.6" cy="13.4" r="5" fill="#f0d59a"/>
-    <circle cx="16.2" cy="10.2" r="3.4" fill="#dfb98a"/>`,
+  congiunzione: `<circle cx="8.8" cy="13.4" r="4.6"/>
+    <circle cx="16.2" cy="10.2" r="3.2"/>`,
 
-  segnalino: `<path d="M12 21.2s6.2-6.8 6.2-10.8a6.2 6.2 0 1 0-12.4 0c0 4 6.2 10.8 6.2 10.8z" fill="#e2685c"/>
-    <circle cx="12" cy="10.2" r="2.2" fill="none"/>`,
+  segnalino: `<path d="M12 21c4-4.4 6-7.8 6-10.4a6 6 0 1 0-12 0C6 13.2 8 16.6 12 21z"/>
+    <circle cx="12" cy="10.4" r="2.2"/>`,
 
-  satellite: `<rect x="9.4" y="9.4" width="5.2" height="5.2" rx="1" fill="#c9c3b4"/>
-    <rect x="1.8" y="10" width="6" height="4" rx="0.8" fill="#8fb3e0"/>
-    <rect x="16.2" y="10" width="6" height="4" rx="0.8" fill="#8fb3e0"/>
-    <path d="M12 9.4V6.2M12 6.2l-2 -2M12 6.2l2 -2" fill="none"/>`,
+  satellite: `<rect x="9.4" y="9.4" width="5.2" height="5.2" rx="1.2"/>
+    <rect x="2" y="10.2" width="5.6" height="3.6" rx="1"/>
+    <rect x="16.4" y="10.2" width="5.6" height="3.6" rx="1"/>
+    <path d="M12 9.4V6.4M12 6.4l-2-2M12 6.4l2-2M12 14.6v3"/>`,
 
-  occhio: `<path d="M2.4 12S6.2 6.2 12 6.2 21.6 12 21.6 12 17.8 17.8 12 17.8 2.4 12 2.4 12z" fill="#f5efdd"/>
-    <circle cx="12" cy="12" r="2.8" fill="#3d4a6b"/>`,
+  occhio: `<path d="M2.6 12S6.4 6.4 12 6.4 21.4 12 21.4 12 17.6 17.6 12 17.6 2.6 12 2.6 12z"/>
+    <circle cx="12" cy="12" r="2.8"/>`,
 
-  binocolo: `<rect x="4.2" y="5.4" width="5.2" height="8.4" rx="1.4" fill="#c9c3b4"/>
-    <rect x="14.6" y="5.4" width="5.2" height="8.4" rx="1.4" fill="#c9c3b4"/>
-    <circle cx="6.8" cy="16.6" r="3.6" fill="#8fb3e0"/><circle cx="17.2" cy="16.6" r="3.6" fill="#8fb3e0"/>
-    <path d="M9.4 9h5.2" fill="none"/>`,
+  binocolo: `<rect x="4.4" y="5.6" width="4.8" height="7.6" rx="1.4"/>
+    <rect x="14.8" y="5.6" width="4.8" height="7.6" rx="1.4"/>
+    <circle cx="6.8" cy="16.6" r="3.4"/><circle cx="17.2" cy="16.6" r="3.4"/>
+    <path d="M9.2 9.2h5.6"/>`,
 
-  telescopio: `<rect x="3.4" y="8.6" width="14" height="4.6" rx="1.4" fill="#c9c3b4" transform="rotate(-24 10.4 10.9)"/>
-    <path d="M11.6 14.2L9.4 20.6M11.6 14.2l4.6 5.4M6.6 20.6h6" fill="none"/>
-    <circle cx="18.6" cy="6.6" r="1.6" fill="#f5e2a0"/>`,
+  telescopio: `<rect x="3.6" y="8.8" width="13.6" height="4.2" rx="1.4" transform="rotate(-24 10.4 10.9)"/>
+    <path d="M11.6 14.4L9.4 20.4M11.6 14.4l4.4 5.2M6.8 20.4h6"/>
+    <circle cx="18.8" cy="6.4" r="1.4"/>`,
 
-  fotocamera: `<rect x="2.6" y="7" width="18.8" height="12.4" rx="2" fill="#c9c3b4"/>
-    <path d="M8.6 7l1.6-2.4h3.6L15.4 7" fill="none"/>
-    <circle cx="12" cy="13.2" r="3.6" fill="#8fb3e0"/>`,
+  fotocamera: `<rect x="2.8" y="7.2" width="18.4" height="12" rx="2.4"/>
+    <path d="M8.6 7.2l1.6-2.4h3.6l1.6 2.4"/>
+    <circle cx="12" cy="13.4" r="3.4"/>`,
 
-  medaglia: `<path d="M8.4 2.8l3.6 6.4M15.6 2.8L12 9.2" fill="none"/>
-    <circle cx="12" cy="15.4" r="5.8" fill="#f2c14e"/>
-    <path d="M12 12.4l1 2.2 2.4.2-1.8 1.6.6 2.3-2.2-1.3-2.2 1.3.6-2.3-1.8-1.6 2.4-.2z" fill="none"/>`,
+  medaglia: `<path d="M8.4 2.8l3.2 5.8M15.6 2.8L12.4 8.6"/>
+    <circle cx="12" cy="15.2" r="5.6"/>
+    <path d="M12 12.4l1 2.1 2.3.2-1.7 1.5.5 2.2-2.1-1.2-2.1 1.2.5-2.2-1.7-1.5 2.3-.2z"/>`,
 
-  bersaglio: `<circle cx="12" cy="12" r="8.6" fill="#f5efdd"/>
-    <circle cx="12" cy="12" r="5.4" fill="none"/>
-    <circle cx="12" cy="12" r="2.2" fill="#e2685c"/>`,
+  bersaglio: `<circle cx="12" cy="12" r="8.4"/>
+    <circle cx="12" cy="12" r="5"/>
+    <circle cx="12" cy="12" r="1.8"/>`,
 
-  nebulosa: `<path d="M4.6 13.6c-1.6-5.4 3.4-9.6 8.4-8.6 4.6 1 7 5.6 5.2 9-2 3.8-11.8 4.6-13.6-.4z" fill="#ab9fd8"/>
-    <circle cx="9.8" cy="11.4" r="1.4" fill="none"/><circle cx="14.6" cy="13.2" r="1" fill="none"/>`,
+  nebulosa: `<path d="M4.8 13.8c-1.6-5.2 3.2-9.4 8.2-8.4 4.4 1 6.8 5.4 5 8.8-2 3.6-11.4 4.4-13.2-.4z"/>
+    <circle cx="9.8" cy="11.4" r="1.3"/><circle cx="14.4" cy="13.2" r="0.9"/>`,
 
-  quaderno: `<rect x="4.4" y="3.4" width="15.2" height="17.2" rx="1.6" fill="#f5efdd"/>
-    <path d="M8 3.4v17.2M11 8h6M11 12h6M11 16h4" fill="none"/>`
+  quaderno: `<rect x="4.4" y="3.6" width="15.2" height="16.8" rx="2"/>
+    <path d="M8.4 3.6v16.8M11.4 8.4h5.4M11.4 12h5.4M11.4 15.6h3.6"/>`
 };
 
 // Restituisce il disegno richiesto, pronto da mettere dentro l'HTML
@@ -124,7 +123,8 @@ function icona(id, dimensione = 22) {
 
 // Pallino colorato: sostituisce il semaforo a emoji (verde/giallo/rosso)
 function pallino(colore, dimensione = 12) {
-  return `<span class="punto-categoria" style="background:${colore};width:${dimensione}px;height:${dimensione}px"></span>`;
+  // `color` accompagna lo sfondo: serve all'alone luminoso definito nel CSS
+  return `<span class="punto-categoria" style="background:${colore};color:${colore};width:${dimensione}px;height:${dimensione}px"></span>`;
 }
 
 // Il disegno della categoria di un evento (o una stellina, se non ce l'ha)
@@ -1195,7 +1195,7 @@ function costruisciAgenda() {
       ? `<li><button onclick="cercaNelCielo('${evento.corpoCielo}')" class="inline-flex items-center gap-1 text-blue-400 underline hover:text-blue-300 bg-transparent border-0 p-0 cursor-pointer">Trova ${skyNomeCorpo(evento.corpoCielo)} nel cielo adesso</button></li>`
       : '';
     card.innerHTML = `
-      <div class="barra-evento" style="background-color: ${evento.colore}"></div>
+      <div class="barra-evento" style="background-color: ${evento.colore}; color: ${evento.colore}"></div>
       <div class="flex justify-between items-start mb-4 pl-4">
         <div>
           <h2 class="text-2xl font-bold text-white">${evento.titolo}${badgeManuale}</h2>
@@ -5244,9 +5244,9 @@ const STASERA_CORPI = [
 
 function schedaRiepilogo(titolo, valore, dettaglio) {
   return `
-    <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
-      <p class="text-xs text-slate-400 uppercase tracking-wide">${titolo}</p>
-      <p class="text-lg font-bold text-white mt-1">${valore}</p>
+    <div class="scheda-riepilogo bg-slate-900 p-4 rounded-xl border border-slate-700">
+      <p class="etichetta-riepilogo text-xs text-slate-400 uppercase tracking-wide">${titolo}</p>
+      <p class="valore-riepilogo text-lg font-bold text-white mt-1">${valore}</p>
       <p class="text-xs text-slate-400 mt-1">${dettaglio}</p>
     </div>`;
 }
