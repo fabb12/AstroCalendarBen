@@ -406,14 +406,16 @@ function aggiungiEclissiSolari(t0, limite) {
         corpoCielo: 'Sun',
         linkMappa,
         // Salviamo il tempo di picco (giorni UT rispetto a J2000) e i dati utili
-        // alla mappa: la fascia centrale viene ricalcolata solo quando serve.
-        eclissi: haCentro ? {
+        // alla mappa: percorso, fasce e città vengono ricalcolati solo quando
+        // serve. Anche le eclissi parziali hanno la loro mappa: non c'è una
+        // fascia di totalità, ma la penombra attraversa comunque il pianeta.
+        eclissi: {
           peakUt: ecl.peak.ut,
           kind: ecl.kind,
           tipo,
-          lat: ecl.latitude,
-          lon: ecl.longitude
-        } : null,
+          lat: haCentro ? ecl.latitude : null,
+          lon: haCentro ? ecl.longitude : null
+        },
         // Dati per la simulazione: quanto Sole viene coperto al culmine e di
         // che tipo di eclissi si tratta (totale, anulare, parziale).
         simul: {
@@ -446,135 +448,890 @@ function formattaCoordinate(lat, lon) {
 
 // =====================================================================
 // 1-bis. MAPPA DI VISIBILITÀ DELLE ECLISSI SOLARI
-//   La linea di massima visibilità (fascia centrale) viene ricostruita
-//   calcolando, istante per istante, dove l'asse dell'ombra della Luna
-//   colpisce la superficie terrestre. Attorno a questa linea disegniamo
-//   una fascia che stima l'area in cui l'eclissi è visibile in parte.
+//   Tutto quello che compare sulla mappa nasce da una sola domanda,
+//   ripetuta per tanti punti e tanti istanti: «da qui, adesso, quanta
+//   parte del Sole nasconde la Luna?». Da quella risposta ricaviamo il
+//   cono d'ombra (l'umbra, dove l'eclissi è totale o anulare), le fasce
+//   di oscuramento parziale, il percorso completo sulla Terra e l'elenco
+//   delle città che l'ombra sta attraversando in quel momento.
 // =====================================================================
 const UA_KM = 149597870.7;           // 1 unità astronomica in km
 const RAGGIO_TERRA_KM = 6378.137;    // raggio equatoriale terrestre
 const APPIATTIMENTO = 1 / 298.257223563;
 const RAGGIO_TERRA_UA = RAGGIO_TERRA_KM / UA_KM;
+const RAGGIO_SOLE_KM = 695700;
+const RAGGIO_LUNA_KM = 1737.4;
+const RAGGIO_SOLE_UA = RAGGIO_SOLE_KM / UA_KM;
+const RAGGIO_LUNA_UA = RAGGIO_LUNA_KM / UA_KM;
+const ECL_RAD = Math.PI / 180;
+const ECL_F2 = (1 - APPIATTIMENTO) * (1 - APPIATTIMENTO);
 
-// Calcola il punto della superficie terrestre attraversato dall'asse
-// dell'ombra lunare a un dato istante (centro dell'eclissi). Restituisce
-// [lat, lon] in gradi, oppure null se in quell'istante l'asse manca la Terra.
-function _eclissiPuntoOmbra(time) {
-  const luna = Astronomy.GeoMoon(time);
-  const sole = Astronomy.GeoVector(Astronomy.Body.Sun, time, false);
+// Le fasce di oscuramento disegnate attorno all'ombra: dal bordo esterno
+// della penombra (dove il Sole è appena intaccato) fino al cuore scuro.
+// Sono cerchi concentrici sovrapposti: più ci si avvicina all'asse, più
+// il velo si fa fitto, esattamente come accade nella realtà.
+const ECL_FASCE = [
+  { soglia: 0.0015, colore: '#7dd3fc', opacita: 0.09, bordo: 'rgba(125, 211, 252, 0.45)', etichetta: 'Sole appena intaccato' },
+  { soglia: 0.25,   colore: '#60a5fa', opacita: 0.11, bordo: 'rgba(96, 165, 250, 0.50)',  etichetta: 'almeno 1/4 coperto' },
+  { soglia: 0.50,   colore: '#6366f1', opacita: 0.15, bordo: 'rgba(129, 140, 248, 0.60)', etichetta: 'metà Sole coperto' },
+  { soglia: 0.75,   colore: '#4c1d95', opacita: 0.24, bordo: 'rgba(167, 139, 250, 0.75)', etichetta: 'quasi tutto coperto' }
+];
+
+// Città di riferimento sparse su tutti i continenti: servono a dare un
+// nome ai luoghi che il cono d'ombra attraversa, così il filmato non è
+// solo una macchia che scorre sopra il mare.
+// Formato compatto: [nome, paese, latitudine, longitudine].
+const ECL_CITTA = [
+  ['Roma', 'Italia', 41.90, 12.50], ['Milano', 'Italia', 45.46, 9.19],
+  ['Napoli', 'Italia', 40.85, 14.27], ['Torino', 'Italia', 45.07, 7.69],
+  ['Palermo', 'Italia', 38.12, 13.36], ['Genova', 'Italia', 44.41, 8.93],
+  ['Bologna', 'Italia', 44.49, 11.34], ['Firenze', 'Italia', 43.77, 11.26],
+  ['Bari', 'Italia', 41.12, 16.87], ['Catania', 'Italia', 37.50, 15.09],
+  ['Venezia', 'Italia', 45.44, 12.32], ['Verona', 'Italia', 45.44, 10.99],
+  ['Trieste', 'Italia', 45.65, 13.78], ['Cagliari', 'Italia', 39.22, 9.12],
+  ['Perugia', 'Italia', 43.11, 12.39], ['Ancona', 'Italia', 43.62, 13.51],
+  ['Pescara', 'Italia', 42.46, 14.21], ['Reggio Calabria', 'Italia', 38.11, 15.65],
+  ['Trento', 'Italia', 46.07, 11.12], ['Bolzano', 'Italia', 46.50, 11.35],
+  ['Aosta', 'Italia', 45.74, 7.32], ['Potenza', 'Italia', 40.64, 15.81],
+  ['Campobasso', 'Italia', 41.56, 14.66], ["L'Aquila", 'Italia', 42.35, 13.40],
+  ['Sassari', 'Italia', 40.73, 8.56], ['Messina', 'Italia', 38.19, 15.55],
+  ['Lecce', 'Italia', 40.35, 18.17], ['Brescia', 'Italia', 45.54, 10.22],
+  ['Padova', 'Italia', 45.41, 11.88], ['Salerno', 'Italia', 40.68, 14.77],
+
+  ['Londra', 'Regno Unito', 51.51, -0.13], ['Edimburgo', 'Regno Unito', 55.95, -3.19],
+  ['Dublino', 'Irlanda', 53.35, -6.26], ['Parigi', 'Francia', 48.86, 2.35],
+  ['Lione', 'Francia', 45.76, 4.84], ['Marsiglia', 'Francia', 43.30, 5.37],
+  ['Nizza', 'Francia', 43.70, 7.27], ['Madrid', 'Spagna', 40.42, -3.70],
+  ['Barcellona', 'Spagna', 41.39, 2.17], ['Siviglia', 'Spagna', 37.39, -5.99],
+  ['Lisbona', 'Portogallo', 38.72, -9.14], ['Porto', 'Portogallo', 41.15, -8.61],
+  ['Berlino', 'Germania', 52.52, 13.40], ['Monaco di Baviera', 'Germania', 48.14, 11.58],
+  ['Amburgo', 'Germania', 53.55, 9.99], ['Francoforte', 'Germania', 50.11, 8.68],
+  ['Vienna', 'Austria', 48.21, 16.37], ['Zurigo', 'Svizzera', 47.38, 8.54],
+  ['Ginevra', 'Svizzera', 46.20, 6.14], ['Amsterdam', 'Paesi Bassi', 52.37, 4.90],
+  ['Bruxelles', 'Belgio', 50.85, 4.35], ['Copenaghen', 'Danimarca', 55.68, 12.57],
+  ['Oslo', 'Norvegia', 59.91, 10.75], ['Tromsø', 'Norvegia', 69.65, 18.96],
+  ['Stoccolma', 'Svezia', 59.33, 18.07], ['Helsinki', 'Finlandia', 60.17, 24.94],
+  ['Reykjavík', 'Islanda', 64.15, -21.94], ['Longyearbyen', 'Svalbard', 78.22, 15.65],
+  ['Varsavia', 'Polonia', 52.23, 21.01], ['Praga', 'Cechia', 50.08, 14.44],
+  ['Budapest', 'Ungheria', 47.50, 19.04], ['Bucarest', 'Romania', 44.43, 26.10],
+  ['Sofia', 'Bulgaria', 42.70, 23.32], ['Atene', 'Grecia', 37.98, 23.73],
+  ['Istanbul', 'Turchia', 41.01, 28.98], ['Ankara', 'Turchia', 39.93, 32.86],
+  ['Kiev', 'Ucraina', 50.45, 30.52], ['Mosca', 'Russia', 55.76, 37.62],
+  ['San Pietroburgo', 'Russia', 59.94, 30.31], ['Murmansk', 'Russia', 68.97, 33.09],
+  ['Belgrado', 'Serbia', 44.79, 20.45], ['Zagabria', 'Croazia', 45.81, 15.98],
+  ['Lubiana', 'Slovenia', 46.06, 14.51], ['Sarajevo', 'Bosnia ed Erzegovina', 43.86, 18.41],
+  ['Tirana', 'Albania', 41.33, 19.82], ['Skopje', 'Macedonia del Nord', 41.99, 21.43],
+  ['Riga', 'Lettonia', 56.95, 24.11], ['Vilnius', 'Lituania', 54.69, 25.28],
+  ['Tallinn', 'Estonia', 59.44, 24.75], ['Minsk', 'Bielorussia', 53.90, 27.57],
+  ['La Valletta', 'Malta', 35.90, 14.51], ['Nicosia', 'Cipro', 35.17, 33.36],
+
+  ['Il Cairo', 'Egitto', 30.04, 31.24], ['Alessandria', 'Egitto', 31.20, 29.92],
+  ['Casablanca', 'Marocco', 33.57, -7.59], ['Rabat', 'Marocco', 34.02, -6.84],
+  ['Marrakech', 'Marocco', 31.63, -8.01], ['Algeri', 'Algeria', 36.75, 3.06],
+  ['Tunisi', 'Tunisia', 36.81, 10.18], ['Tripoli', 'Libia', 32.89, 13.19],
+  ['Khartoum', 'Sudan', 15.50, 32.56], ['Addis Abeba', 'Etiopia', 9.03, 38.74],
+  ['Nairobi', 'Kenya', -1.29, 36.82], ['Dar es Salaam', 'Tanzania', -6.79, 39.21],
+  ['Kampala', 'Uganda', 0.35, 32.58], ['Kinshasa', 'RD del Congo', -4.44, 15.27],
+  ['Lagos', 'Nigeria', 6.52, 3.38], ['Abuja', 'Nigeria', 9.06, 7.49],
+  ['Accra', 'Ghana', 5.60, -0.19], ['Abidjan', "Costa d'Avorio", 5.36, -4.01],
+  ['Dakar', 'Senegal', 14.72, -17.47], ['Bamako', 'Mali', 12.64, -8.00],
+  ['Niamey', 'Niger', 13.51, 2.11], ["N'Djamena", 'Ciad', 12.11, 15.04],
+  ['Nouakchott', 'Mauritania', 18.08, -15.98], ['Luanda', 'Angola', -8.84, 13.23],
+  ['Lusaka', 'Zambia', -15.42, 28.28], ['Harare', 'Zimbabwe', -17.83, 31.05],
+  ['Maputo', 'Mozambico', -25.97, 32.57], ['Johannesburg', 'Sudafrica', -26.20, 28.05],
+  ['Città del Capo', 'Sudafrica', -33.92, 18.42], ['Windhoek', 'Namibia', -22.56, 17.08],
+  ['Antananarivo', 'Madagascar', -18.88, 47.51], ['Mogadiscio', 'Somalia', 2.05, 45.34],
+
+  ['Gerusalemme', 'Israele', 31.78, 35.22], ['Tel Aviv', 'Israele', 32.08, 34.78],
+  ['Beirut', 'Libano', 33.89, 35.50], ['Damasco', 'Siria', 33.51, 36.29],
+  ['Amman', 'Giordania', 31.95, 35.93], ['Baghdad', 'Iraq', 33.31, 44.36],
+  ['Riad', 'Arabia Saudita', 24.71, 46.68], ['La Mecca', 'Arabia Saudita', 21.39, 39.86],
+  ['Dubai', 'Emirati Arabi Uniti', 25.20, 55.27], ['Doha', 'Qatar', 25.29, 51.53],
+  ['Kuwait City', 'Kuwait', 29.38, 47.99], ['Teheran', 'Iran', 35.69, 51.39],
+  ['Baku', 'Azerbaigian', 40.41, 49.87], ['Tbilisi', 'Georgia', 41.72, 44.79],
+  ['Yerevan', 'Armenia', 40.18, 44.51], ['Kabul', 'Afghanistan', 34.53, 69.17],
+  ['Karachi', 'Pakistan', 24.86, 67.01], ['Lahore', 'Pakistan', 31.55, 74.34],
+  ['Islamabad', 'Pakistan', 33.68, 73.05], ['Nuova Delhi', 'India', 28.61, 77.21],
+  ['Mumbai', 'India', 19.08, 72.88], ['Calcutta', 'India', 22.57, 88.36],
+  ['Chennai', 'India', 13.08, 80.27], ['Bangalore', 'India', 12.97, 77.59],
+  ['Hyderabad', 'India', 17.39, 78.49], ['Colombo', 'Sri Lanka', 6.93, 79.86],
+  ['Kathmandu', 'Nepal', 27.72, 85.32], ['Dhaka', 'Bangladesh', 23.81, 90.41],
+  ['Yangon', 'Myanmar', 16.87, 96.20], ['Bangkok', 'Thailandia', 13.76, 100.50],
+  ['Hanoi', 'Vietnam', 21.03, 105.85], ['Ho Chi Minh', 'Vietnam', 10.82, 106.63],
+  ['Phnom Penh', 'Cambogia', 11.56, 104.92], ['Kuala Lumpur', 'Malaysia', 3.14, 101.69],
+  ['Singapore', 'Singapore', 1.35, 103.82], ['Giacarta', 'Indonesia', -6.21, 106.85],
+  ['Manila', 'Filippine', 14.60, 120.98], ['Hong Kong', 'Cina', 22.32, 114.17],
+  ['Taipei', 'Taiwan', 25.03, 121.57], ['Shanghai', 'Cina', 31.23, 121.47],
+  ['Pechino', 'Cina', 39.90, 116.41], ['Guangzhou', 'Cina', 23.13, 113.26],
+  ['Chengdu', 'Cina', 30.57, 104.07], ["Xi'an", 'Cina', 34.34, 108.94],
+  ['Ulaanbaatar', 'Mongolia', 47.89, 106.91], ['Seul', 'Corea del Sud', 37.57, 126.98],
+  ['Tokyo', 'Giappone', 35.68, 139.69], ['Osaka', 'Giappone', 34.69, 135.50],
+  ['Sapporo', 'Giappone', 43.06, 141.35], ['Almaty', 'Kazakistan', 43.24, 76.89],
+  ['Tashkent', 'Uzbekistan', 41.30, 69.24], ['Novosibirsk', 'Russia', 55.03, 82.92],
+  ['Vladivostok', 'Russia', 43.12, 131.89], ['Jakutsk', 'Russia', 62.03, 129.73],
+
+  ['Anchorage', 'Stati Uniti', 61.22, -149.90], ['Vancouver', 'Canada', 49.28, -123.12],
+  ['Calgary', 'Canada', 51.05, -114.07], ['Winnipeg', 'Canada', 49.90, -97.14],
+  ['Toronto', 'Canada', 43.65, -79.38], ['Ottawa', 'Canada', 45.42, -75.70],
+  ['Montréal', 'Canada', 45.50, -73.57], ['Halifax', 'Canada', 44.65, -63.58],
+  ["St. John's", 'Canada', 47.56, -52.71], ['Iqaluit', 'Canada', 63.75, -68.52],
+  ['Nuuk', 'Groenlandia', 64.18, -51.72], ['Seattle', 'Stati Uniti', 47.61, -122.33],
+  ['Portland', 'Stati Uniti', 45.52, -122.68], ['San Francisco', 'Stati Uniti', 37.77, -122.42],
+  ['Los Angeles', 'Stati Uniti', 34.05, -118.24], ['San Diego', 'Stati Uniti', 32.72, -117.16],
+  ['Las Vegas', 'Stati Uniti', 36.17, -115.14], ['Phoenix', 'Stati Uniti', 33.45, -112.07],
+  ['Denver', 'Stati Uniti', 39.74, -104.99], ['Salt Lake City', 'Stati Uniti', 40.76, -111.89],
+  ['Dallas', 'Stati Uniti', 32.78, -96.80], ['Houston', 'Stati Uniti', 29.76, -95.37],
+  ['Austin', 'Stati Uniti', 30.27, -97.74], ['Kansas City', 'Stati Uniti', 39.10, -94.58],
+  ['Minneapolis', 'Stati Uniti', 44.98, -93.27], ['Chicago', 'Stati Uniti', 41.88, -87.63],
+  ['Detroit', 'Stati Uniti', 42.33, -83.05], ['Indianapolis', 'Stati Uniti', 39.77, -86.16],
+  ['St. Louis', 'Stati Uniti', 38.63, -90.20], ['Nashville', 'Stati Uniti', 36.16, -86.78],
+  ['Atlanta', 'Stati Uniti', 33.75, -84.39], ['Miami', 'Stati Uniti', 25.76, -80.19],
+  ['Orlando', 'Stati Uniti', 28.54, -81.38], ['Charlotte', 'Stati Uniti', 35.23, -80.84],
+  ['Washington', 'Stati Uniti', 38.91, -77.04], ['Filadelfia', 'Stati Uniti', 39.95, -75.17],
+  ['New York', 'Stati Uniti', 40.71, -74.01], ['Boston', 'Stati Uniti', 42.36, -71.06],
+  ['Honolulu', 'Stati Uniti', 21.31, -157.86], ['Città del Messico', 'Messico', 19.43, -99.13],
+  ['Guadalajara', 'Messico', 20.67, -103.35], ['Monterrey', 'Messico', 25.69, -100.32],
+  ['Cancún', 'Messico', 21.16, -86.85], ['Città del Guatemala', 'Guatemala', 14.63, -90.51],
+  ['San Salvador', 'El Salvador', 13.69, -89.22], ['Tegucigalpa', 'Honduras', 14.07, -87.19],
+  ['Managua', 'Nicaragua', 12.11, -86.24], ['San José', 'Costa Rica', 9.93, -84.08],
+  ['Panamá', 'Panamá', 8.98, -79.52], ["L'Avana", 'Cuba', 23.11, -82.37],
+  ['Kingston', 'Giamaica', 17.97, -76.79], ['Santo Domingo', 'Rep. Dominicana', 18.49, -69.93],
+  ['San Juan', 'Porto Rico', 18.47, -66.11], ['Bogotá', 'Colombia', 4.71, -74.07],
+  ['Medellín', 'Colombia', 6.24, -75.58], ['Caracas', 'Venezuela', 10.48, -66.90],
+  ['Quito', 'Ecuador', -0.18, -78.47], ['Guayaquil', 'Ecuador', -2.19, -79.89],
+  ['Lima', 'Perù', -12.05, -77.04], ['La Paz', 'Bolivia', -16.50, -68.15],
+  ['Santa Cruz', 'Bolivia', -17.78, -63.18], ['Asunción', 'Paraguay', -25.28, -57.63],
+  ['Santiago', 'Cile', -33.45, -70.67], ['Punta Arenas', 'Cile', -53.16, -70.91],
+  ['Buenos Aires', 'Argentina', -34.60, -58.38], ['Córdoba', 'Argentina', -31.42, -64.18],
+  ['Mendoza', 'Argentina', -32.89, -68.84], ['Bariloche', 'Argentina', -41.13, -71.31],
+  ['Ushuaia', 'Argentina', -54.80, -68.30], ['Montevideo', 'Uruguay', -34.90, -56.16],
+  ['San Paolo', 'Brasile', -23.55, -46.63], ['Rio de Janeiro', 'Brasile', -22.91, -43.17],
+  ['Brasília', 'Brasile', -15.79, -47.88], ['Salvador', 'Brasile', -12.97, -38.50],
+  ['Recife', 'Brasile', -8.05, -34.88], ['Fortaleza', 'Brasile', -3.73, -38.53],
+  ['Manaus', 'Brasile', -3.12, -60.02], ['Belém', 'Brasile', -1.46, -48.50],
+  ['Porto Alegre', 'Brasile', -30.03, -51.23],
+
+  ['Perth', 'Australia', -31.95, 115.86], ['Adelaide', 'Australia', -34.93, 138.60],
+  ['Melbourne', 'Australia', -37.81, 144.96], ['Sydney', 'Australia', -33.87, 151.21],
+  ['Brisbane', 'Australia', -27.47, 153.03], ['Cairns', 'Australia', -16.92, 145.77],
+  ['Darwin', 'Australia', -12.46, 130.84], ['Hobart', 'Australia', -42.88, 147.33],
+  ['Auckland', 'Nuova Zelanda', -36.85, 174.76], ['Wellington', 'Nuova Zelanda', -41.29, 174.78],
+  ['Christchurch', 'Nuova Zelanda', -43.53, 172.64], ['Port Moresby', 'Papua Nuova Guinea', -9.44, 147.18],
+  ['Suva', 'Figi', -18.14, 178.44], ['Nouméa', 'Nuova Caledonia', -22.28, 166.46],
+  ['Papeete', 'Polinesia francese', -17.54, -149.57], ['Apia', 'Samoa', -13.83, -171.77],
+  ['Hagåtña', 'Guam', 13.47, 144.75]
+];
+
+// --- Geometria di base ------------------------------------------------
+
+// Sole e Luna in coordinate equatoriali della data, più il tempo siderale:
+// sono gli unici ingredienti che servono a tutte le formule successive.
+// Un istante viene ricalcolato una volta sola: durante il filmato la stessa
+// posizione serve per centinaia di punti diversi.
+let _eclCacheIstante = { ut: null, dati: null };
+function _eclIstante(ut) {
+  if (_eclCacheIstante.ut === ut) return _eclCacheIstante.dati;
+  const time = Astronomy.MakeTime(ut);
   const rot = Astronomy.Rotation_EQJ_EQD(time); // dall'equatore J2000 a quello della data
-  const m = Astronomy.RotateVector(rot, luna);
-  const s = Astronomy.RotateVector(rot, sole);
+  const m = Astronomy.RotateVector(rot, Astronomy.GeoMoon(time));
+  // Il Sole va preso dove lo *vediamo*, con luce viaggiata e aberrazione:
+  // sono una ventina di secondi d'arco, ma sul terreno spostano l'ombra di
+  // una quarantina di chilometri.
+  const s = Astronomy.RotateVector(rot, Astronomy.GeoVector(Astronomy.Body.Sun, time, true));
+  const dati = {
+    ut, time,
+    m: [m.x, m.y, m.z],
+    s: [s.x, s.y, s.z],
+    gast: Astronomy.SiderealTime(time) * 15 // tempo siderale di Greenwich, in gradi
+  };
+  _eclCacheIstante = { ut, dati };
+  return dati;
+}
 
-  // Direzione dell'asse dell'ombra: dal Sole verso la Luna (e oltre, sulla Terra)
-  let dx = m.x - s.x, dy = m.y - s.y, dz = m.z - s.z;
-  const dl = Math.hypot(dx, dy, dz);
-  dx /= dl; dy /= dl; dz /= dl;
-
-  // Intersezione della retta (Luna + t·d) con la sfera terrestre
-  const md = m.x * dx + m.y * dy + m.z * dz;
-  const m2 = m.x * m.x + m.y * m.y + m.z * m.z;
-  const disc = md * md - (m2 - RAGGIO_TERRA_UA * RAGGIO_TERRA_UA);
-  if (disc < 0) return null; // l'asse non tocca la Terra: nessun centro d'eclissi
-
-  const t = -md - Math.sqrt(disc); // intersezione più vicina (lato illuminato)
-  const px = m.x + t * dx, py = m.y + t * dy, pz = m.z + t * dz;
-  const r = Math.hypot(px, py, pz);
-
-  // Da vettore equatoriale-della-data a latitudine/longitudine geografiche
-  const declRad = Math.asin(pz / r);
-  const raDeg = Math.atan2(py, px) * 180 / Math.PI;
-  let lon = raDeg - Astronomy.SiderealTime(time) * 15; // GAST in gradi
-  lon = ((lon + 540) % 360) - 180; // normalizza in [-180, 180]
-  // Da latitudine geocentrica a geodetica
-  const lat = Math.atan(Math.tan(declRad) / ((1 - APPIATTIMENTO) * (1 - APPIATTIMENTO))) * 180 / Math.PI;
+// Da vettore equatoriale-della-data a latitudine/longitudine geografiche.
+function _eclVettoreALatLon(v, gast) {
+  const r = Math.hypot(v[0], v[1], v[2]);
+  const decl = Math.asin(Math.max(-1, Math.min(1, v[2] / r)));
+  let lon = Math.atan2(v[1], v[0]) / ECL_RAD - gast;
+  lon = ((lon % 360) + 540) % 360 - 180; // normalizza in [-180, 180]
+  const lat = Math.atan(Math.tan(decl) / ECL_F2) / ECL_RAD; // geocentrica → geodetica
   return [lat, lon];
 }
 
-// Ricostruisce la linea centrale dell'eclissi campionando le ore attorno al picco.
-function _eclissiTracciaPercorso(peakUt) {
-  const punti = [];
-  for (let dmin = -260; dmin <= 260; dmin += 3) {
-    const p = _eclissiPuntoOmbra(Astronomy.MakeTime(peakUt + dmin / 1440));
-    if (p) punti.push(p);
+// Quanta parte del Sole è coperta, vista da un punto preciso della
+// superficie terrestre in un dato istante. È il cuore di tutta la mappa.
+function _eclCircostanze(lat, lon, d) {
+  const latR = lat * ECL_RAD;
+  const thetaR = (lon + d.gast) * ECL_RAD;
+  const cs = Math.cos(latR), sn = Math.sin(latR);
+  const ct = Math.cos(thetaR), st = Math.sin(thetaR);
+  // Posizione geocentrica del punto, tenendo conto dello schiacciamento
+  const c = 1 / Math.sqrt(cs * cs + ECL_F2 * sn * sn);
+  const rc = c * RAGGIO_TERRA_UA, rz = c * ECL_F2 * RAGGIO_TERRA_UA;
+  const px = rc * cs * ct, py = rc * cs * st, pz = rz * sn;
+  // Verticale locale (geodetica) e vettori topocentrici verso Sole e Luna
+  const ux = cs * ct, uy = cs * st, uz = sn;
+  const sx = d.s[0] - px, sy = d.s[1] - py, sz = d.s[2] - pz;
+  const mx = d.m[0] - px, my = d.m[1] - py, mz = d.m[2] - pz;
+  const ds = Math.hypot(sx, sy, sz);
+  const dm = Math.hypot(mx, my, mz);
+
+  const altSole = Math.asin(Math.max(-1, Math.min(1, (ux * sx + uy * sy + uz * sz) / ds))) / ECL_RAD;
+  const rSole = Math.asin(RAGGIO_SOLE_UA / ds) / ECL_RAD;   // raggio apparente, in gradi
+  const rLuna = Math.asin(RAGGIO_LUNA_UA / dm) / ECL_RAD;
+  const cosSep = Math.max(-1, Math.min(1, (sx * mx + sy * my + sz * mz) / (ds * dm)));
+  const sep = Math.acos(cosSep) / ECL_RAD;                  // distanza fra i due centri
+
+  let osc = 0, tipo = 'nessuna';
+  if (sep < rSole + rLuna) {
+    if (sep <= Math.abs(rSole - rLuna)) {
+      // Un disco è tutto dentro l'altro: totale se la Luna appare più grande
+      tipo = rLuna >= rSole ? 'totale' : 'anulare';
+      osc = rLuna >= rSole ? 1 : (rLuna * rLuna) / (rSole * rSole);
+    } else {
+      tipo = 'parziale';
+      osc = simAreaIntersezione(rSole, rLuna, sep) / (Math.PI * rSole * rSole);
+    }
   }
+  // Sotto l'orizzonte l'eclissi c'è, ma da lì non la vede nessuno.
+  const suOrizzonte = altSole > -0.6;
+  return {
+    osc: suOrizzonte ? osc : 0,
+    oscGeometrico: osc,
+    tipo: suOrizzonte ? tipo : 'nessuna',
+    altSole,
+    suOrizzonte
+  };
+}
+
+// La Terra è schiacciata ai poli: allungando l'asse z di 1/(1−f) diventa
+// una sfera, dove intersezioni e distanze si calcolano con due righe. Alla
+// fine si torna indietro e il punto è di nuovo sull'ellissoide vero.
+const ECL_SCHIACCIA = 1 / (1 - APPIATTIMENTO);
+
+// Punto in cui l'asse del cono d'ombra buca la superficie terrestre
+// (il centro dell'eclissi). null se in quell'istante l'asse manca la Terra.
+function _eclPuntoAsse(d) {
+  const mz = d.m[2] * ECL_SCHIACCIA, sz = d.s[2] * ECL_SCHIACCIA;
+  let dx = d.m[0] - d.s[0], dy = d.m[1] - d.s[1], dz = mz - sz;
+  const dl = Math.hypot(dx, dy, dz);
+  dx /= dl; dy /= dl; dz /= dl;
+  const md = d.m[0] * dx + d.m[1] * dy + mz * dz;
+  const m2 = d.m[0] * d.m[0] + d.m[1] * d.m[1] + mz * mz;
+  const disc = md * md - (m2 - RAGGIO_TERRA_UA * RAGGIO_TERRA_UA);
+  if (disc < 0) return null; // l'asse passa accanto alla Terra: nessun centro
+  const t = -md - Math.sqrt(disc); // intersezione più vicina (lato illuminato)
+  return _eclVettoreALatLon(
+    [d.m[0] + t * dx, d.m[1] + t * dy, (mz + t * dz) / ECL_SCHIACCIA], d.gast);
+}
+
+// Punto di massima eclissi: se l'asse tocca la Terra è quello; altrimenti
+// è il punto della superficie che passa più vicino all'asse — quello da cui
+// la Luna morde il Sole più profondamente (tipico delle eclissi parziali).
+function _eclPuntoMassimo(d) {
+  const asse = _eclPuntoAsse(d);
+  if (asse) return asse;
+  const mz = d.m[2] * ECL_SCHIACCIA, sz = d.s[2] * ECL_SCHIACCIA;
+  let dx = d.m[0] - d.s[0], dy = d.m[1] - d.s[1], dz = mz - sz;
+  const dl = Math.hypot(dx, dy, dz);
+  dx /= dl; dy /= dl; dz /= dl;
+  const t = -(d.m[0] * dx + d.m[1] * dy + mz * dz);
+  return _eclVettoreALatLon(
+    [d.m[0] + t * dx, d.m[1] + t * dy, (mz + t * dz) / ECL_SCHIACCIA], d.gast);
+}
+
+// Punto raggiunto partendo da (lat, lon) in una certa direzione e distanza.
+// La longitudine NON viene normalizzata: la continuità serve a disegnare
+// poligoni che scavalcano l'antimeridiano senza spezzarsi.
+function _eclDestinazione(lat, lon, azimut, km) {
+  const dist = km / RAGGIO_TERRA_KM;
+  const f1 = lat * ECL_RAD, th = azimut * ECL_RAD;
+  const sd = Math.sin(dist), cd = Math.cos(dist);
+  const sf = Math.sin(f1), cf = Math.cos(f1);
+  const sinF2 = Math.max(-1, Math.min(1, sf * cd + cf * sd * Math.cos(th)));
+  const f2 = Math.asin(sinF2);
+  const dLon = Math.atan2(Math.sin(th) * sd * cf, cd - sf * sinF2);
+  return [f2 / ECL_RAD, lon + dLon / ECL_RAD];
+}
+
+// Distanza (km) e direzione iniziale (gradi) fra due punti.
+function _eclDistanzaAzimut(a, b) {
+  const f1 = a[0] * ECL_RAD, f2 = b[0] * ECL_RAD, dl = (b[1] - a[1]) * ECL_RAD;
+  const sf1 = Math.sin(f1), cf1 = Math.cos(f1);
+  const sf2 = Math.sin(f2), cf2 = Math.cos(f2);
+  const cosD = Math.max(-1, Math.min(1, sf1 * sf2 + cf1 * cf2 * Math.cos(dl)));
+  return {
+    km: Math.acos(cosD) * RAGGIO_TERRA_KM,
+    az: Math.atan2(Math.sin(dl) * cf2, cf1 * sf2 - sf1 * cf2 * Math.cos(dl)) / ECL_RAD
+  };
+}
+
+const ECL_LAT_POLO = 89.9;
+
+// Su una mappa la Terra si ripete all'infinito verso est e verso ovest, e una
+// stessa longitudine si può scrivere in mille modi (10°, 370°, −350°…). Se due
+// figure che devono sovrapporsi finiscono in due copie diverse del mondo, si
+// staccano. Per evitarlo tutta la mappa di un'eclissi lavora attorno a un solo
+// meridiano di riferimento: quello del punto di massima eclissi.
+let _eclRifLon = 0;
+function _eclInquadra(lon) {
+  let l = lon;
+  while (l - _eclRifLon > 180) l -= 360;
+  while (l - _eclRifLon < -180) l += 360;
+  return l;
+}
+function _eclInquadraPunto(p) {
+  return p ? [p[0], _eclInquadra(p[1])] : p;
+}
+
+// Contorno chiuso della regione in cui vale una condizione: da ogni azimut
+// si "cammina" verso l'esterno finché la condizione smette di essere vera.
+// I punti tornano già srotolati e inquadrati, pronti da dare a Leaflet.
+function _eclContorno(centro, dentro, maxKm, nAzimut, nPassi) {
+  if (!dentro(centro[0], centro[1])) return null;
+  // La penombra è spesso così larga da inghiottire un polo. Lì il giro per
+  // azimut non funziona — i raggi scavalcano il polo e ricadono dall'altra
+  // parte del mondo — e la regione va descritta come calotta.
+  if (dentro(ECL_LAT_POLO, _eclRifLon)) return _eclCalotta(dentro, true, nAzimut * 2);
+  if (dentro(-ECL_LAT_POLO, _eclRifLon)) return _eclCalotta(dentro, false, nAzimut * 2);
+
+  const c = _eclInquadraPunto(centro);
+  const punti = [];
+  for (let i = 0; i < nAzimut; i++) {
+    const az = (i * 360) / nAzimut;
+    const estremo = _eclDestinazione(c[0], c[1], az, maxKm);
+    if (dentro(estremo[0], estremo[1])) { punti.push(estremo); continue; }
+    let basso = 0, alto = maxKm;
+    for (let k = 0; k < nPassi; k++) {
+      const mezzo = (basso + alto) / 2;
+      const q = _eclDestinazione(c[0], c[1], az, mezzo);
+      if (dentro(q[0], q[1])) basso = mezzo; else alto = mezzo;
+    }
+    punti.push(_eclDestinazione(c[0], c[1], az, basso));
+  }
+  return _eclSrotola(punti, c[1]);
+}
+
+// Regione che arriva fino a un polo: invece di girarle attorno, la si descrive
+// meridiano per meridiano — per ogni longitudine, fin dove scende il bordo — e
+// la si chiude lungo il bordo alto della carta. Il verso di percorrenza è lo
+// stesso dei contorni normali, così più anelli sovrapposti si sommano invece
+// di annullarsi.
+function _eclCalotta(dentro, nord, nMeridiani) {
+  const latPolo = nord ? ECL_LAT_POLO : -ECL_LAT_POLO;
+  const verso = nord ? 1 : -1;
+  // Si lavora in "distanza dal polo": theta = 0 al polo, 180 al polo opposto.
+  const latDi = (theta) => verso * (90 - theta);
+  const thetaPolo = 90 - ECL_LAT_POLO;
+
+  // Il bordo, un giro di mondo. Attenzione: NON si può cercare per bisezione
+  // fra il polo e l'altro emisfero. La penombra viene tagliata dalla linea del
+  // giorno e della notte, e su certi meridiani lascia un secondo lembo staccato
+  // più a sud: una bisezione ci cascherebbe dentro e il bordo salterebbe di
+  // migliaia di km. Bisogna scendere dal polo e fermarsi alla prima uscita.
+  const bordo = [];
+  for (let i = 0; i <= nMeridiani; i++) {
+    const lon = _eclRifLon - 180 + (360 * i) / nMeridiani;
+    // Si parte sempre dal polo e si scende a passi corti: saltare avanti
+    // "tanto il bordo cambia piano" farebbe finire dentro il lembo staccato e
+    // il contorno schizzerebbe dall'altra parte del mondo.
+    let dentroT = thetaPolo, fuoriT = thetaPolo + 2;
+    while (fuoriT < 180 && dentro(latDi(fuoriT), lon)) { dentroT = fuoriT; fuoriT += 2; }
+    for (let k = 0; k < 9; k++) {
+      const mezzo = (dentroT + fuoriT) / 2;
+      if (dentro(latDi(mezzo), lon)) dentroT = mezzo; else fuoriT = mezzo;
+    }
+    bordo.push([latDi(dentroT), lon]);
+  }
+  // La carta ripete il mondo a destra e a sinistra: la calotta viene ricopiata
+  // nelle due copie vicine, così non si interrompe di netto ai bordi.
+  // Il verso di percorrenza resta quello dei contorni normali (a nord da est a
+  // ovest), altrimenti gli anelli sovrapposti si annullerebbero a vicenda.
+  const punti = [];
+  for (const giro of [1, 0, -1]) {
+    const scarto = giro * 360;
+    for (let i = 0; i <= nMeridiani; i++) {
+      const b = bordo[nord ? nMeridiani - i : i];
+      punti.push([b[0], b[1] + (nord ? scarto : -scarto)]);
+    }
+  }
+  punti.push([latPolo, punti[punti.length - 1][1]], [latPolo, punti[0][1]]);
   return punti;
 }
 
-// Spezza una spezzata quando la longitudine "salta" oltre 180° (antimeridiano),
-// così le linee e i poligoni non attraversano tutta la mappa.
-function _eclissiSpezza(punti) {
-  const segmenti = [];
-  let corrente = [];
-  for (let i = 0; i < punti.length; i++) {
-    if (i > 0 && Math.abs(punti[i][1] - punti[i - 1][1]) > 180) {
-      if (corrente.length) segmenti.push(corrente);
-      corrente = [];
+// Rende continue le longitudini di una spezzata: senza questo passaggio i
+// poligoni che passano sopra l'antimeridiano attraversano tutta la mappa.
+function _eclSrotola(punti, lonSeme) {
+  const fuori = [];
+  let prec = typeof lonSeme === 'number' ? lonSeme : null;
+  for (const p of punti) {
+    let lon = p[1];
+    if (prec !== null) {
+      while (lon - prec > 180) lon -= 360;
+      while (lon - prec < -180) lon += 360;
     }
-    corrente.push(punti[i]);
+    fuori.push([p[0], lon]);
+    prec = lon;
   }
-  if (corrente.length) segmenti.push(corrente);
-  return segmenti;
+  return fuori;
 }
 
-// Stato della mappa Leaflet (creata una sola volta, poi riutilizzata)
+// Una calotta non si può disegnare come linea aperta: il tratto che risale al
+// polo e torna indietro taglierebbe la carta da parte a parte. Per le isocrone
+// si tolgono quei punti e si lascia il giro aperto.
+function _eclLineaContorno(anello) {
+  const conTappo = anello.some(p => Math.abs(p[0]) >= ECL_LAT_POLO - 0.05);
+  return conTappo
+    ? anello.filter(p => Math.abs(p[0]) < ECL_LAT_POLO - 0.05)
+    : anello.concat([anello[0]]);
+}
+
+// --- Ricostruzione dell'intera eclissi -------------------------------
+
+// Da quando a quando, rispetto al culmine, l'eclissi è visibile da
+// qualche parte sulla Terra. Serve a tarare il cursore del tempo.
+function _eclFinestraGlobale(peakUt) {
+  let inizio = null, fine = null;
+  for (let min = -340; min <= 340; min += 4) {
+    const d = _eclIstante(peakUt + min / 1440);
+    const p = _eclPuntoMassimo(d);
+    if (!p) continue;
+    if (_eclCircostanze(p[0], p[1], d).osc > 0.001) {
+      if (inizio === null) inizio = min;
+      fine = min;
+    }
+  }
+  if (inizio === null) return { inizio: -150, fine: 150 };
+  return { inizio: Math.floor(inizio) - 4, fine: Math.ceil(fine) + 4 };
+}
+
+// Campiona il percorso dell'ombra e ne ricava le due regioni disegnate sulla
+// mappa: la fascia di totalità e la zona di eclissi parziale.
+//
+// Il modo ingenuo — unire i bordi destro e sinistro dell'ombra lungo la rotta —
+// si rompe appena il percorso sfiora un polo, perché "destra" e "sinistra" si
+// scambiano di posto e la fascia si annoda. Qui invece si tengono i contorni
+// interi, uno per istante, e si consegnano a Leaflet come un unico poligono a
+// più anelli con riempimento "nonzero": sovrapponendosi si fondono nella
+// macchia percorsa, senza cuciture e senza nodi. Perché non restino smerlature
+// l'ombra viene campionata fitta, molto più stretta della propria larghezza.
+function _eclCampionaPercorso(peakUt, finestra) {
+  const durata = finestra.fine - finestra.inizio;
+  const passo = Math.max(2, Math.round(durata / 90));
+
+  // Tutto ruota attorno al meridiano del massimo: da qui in poi ogni punto
+  // della mappa viene riportato nella copia di mondo che gli sta più vicino.
+  const culmine = _eclPuntoMassimo(_eclIstante(peakUt));
+  _eclRifLon = culmine ? culmine[1] : 0;
+
+  const grezzi = [];
+  for (let min = finestra.inizio; min <= finestra.fine; min += passo) {
+    const d = _eclIstante(peakUt + min / 1440);
+    const massimo = _eclInquadraPunto(_eclPuntoMassimo(d));
+    if (!massimo) continue;
+    grezzi.push({ min, d, massimo, asse: _eclInquadraPunto(_eclPuntoAsse(d)) });
+  }
+
+  const regioneParziale = [], isocrone = [];
+  // Un'isocrona ogni tre quarti d'ora circa: abbastanza da leggere il verso
+  // della corsa, non tante da impastare la mappa.
+  const passoIsocrona = Math.max(1, Math.round(45 / passo));
+  grezzi.forEach((g, i) => {
+    const dentroParziale = (la, lo) => _eclCircostanze(la, lo, g.d).osc > 0.0015;
+    const anello = _eclContorno(g.massimo, dentroParziale, 9000, 44, 10);
+    if (anello) {
+      regioneParziale.push(anello);
+      // Quando la penombra ingoia un polo il suo bordo fa il giro del mondo:
+      // come isocrona sarebbe solo una riga da un capo all'altro della carta,
+      // quindi si tengono soltanto i cerchi veri e propri.
+      const calotta = anello.some(p => Math.abs(p[0]) >= ECL_LAT_POLO - 0.05);
+      if (!calotta && i % passoIsocrona === 0) isocrone.push({ min: g.min, anello });
+    }
+  });
+
+  // L'ombra vera corre a più di mezzo chilometro al secondo ed è larga poche
+  // centinaia di km: per una fascia dai bordi lisci serve un campione al minuto.
+  const regioneTotale = [];
+  const passoUmbra = Math.min(1, Math.max(0.4, durata / 320));
+  for (let min = finestra.inizio; min <= finestra.fine; min += passoUmbra) {
+    const d = _eclIstante(peakUt + min / 1440);
+    const asse = _eclInquadraPunto(_eclPuntoAsse(d));
+    if (!asse) continue;
+    const dentroTotale = (la, lo) => {
+      const c = _eclCircostanze(la, lo, d);
+      return c.tipo === 'totale' || c.tipo === 'anulare';
+    };
+    const anello = _eclContorno(asse, dentroTotale, 2500, 30, 11);
+    if (anello) regioneTotale.push(anello);
+  }
+
+  return {
+    campioni: grezzi,
+    // La rotta del punto di massima eclissi: c'è sempre, anche quando l'ombra
+    // non tocca la Terra, ed è ciò su cui si inquadra la mappa.
+    rottaMassimo: _eclSrotola(grezzi.map(g => g.massimo)),
+    lineaCentrale: _eclSrotola(grezzi.filter(g => g.asse).map(g => g.asse)),
+    regioneTotale,
+    regioneParziale,
+    isocrone
+  };
+}
+
+// =====================================================================
+// 1-ter. LA MAPPA: stato, disegno, filmato
+// =====================================================================
 let _mappaEclissi = null;
-let _mappaStrati = [];
+let _mappaStrati = [];                  // tracciati fissi (percorso, fasce)
 let _eclissiEventoInCorso = null;
 let _eclissiOffsetTempoMin = 0;
 let _eclissiPosizioneTemporanea = null; // { lat, lon } se l'utente clicca sulla mappa
 let _eclissiMarkerPosizione = null;
-let _eclissiOmbraMobile = null;
-let _eclissiPenombraMobile = null;
+let _eclFinestra = { inizio: -180, fine: 180 };
+let _eclPercorso = null;
+let _eclDinamici = null;                // livelli ridisegnati a ogni fotogramma
+let _eclCitta = [];                     // città che vedono questa eclissi
+let _eclCittaMarker = [];
+let _eclCittaEvidenziata = -1;
+let _eclFilmato = { attivo: false, timer: null, velocita: 8, segui: true };
+let _eclCacheOrari = { chiave: null, valore: null };
 
-// Calcola l'istante di tempo selezionato sulla mappa
+// Istante attualmente mostrato, nelle due forme che servono.
 function _eclissiTempoSelezionato() {
   if (!_eclissiEventoInCorso) return new Date();
   return new Date(_eclissiEventoInCorso.dataObj.getTime() + _eclissiOffsetTempoMin * 60000);
 }
+function _eclUtSelezionato() {
+  return _eclissiEventoInCorso.eclissi.peakUt + _eclissiOffsetTempoMin / 1440;
+}
+function _eclOra(data) {
+  return data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+function _eclOraUTC(data) {
+  return `${String(data.getUTCHours()).padStart(2, '0')}:${String(data.getUTCMinutes()).padStart(2, '0')}`;
+}
+// Percentuale di Sole coperto. Il 100% è riservato alla totalità vera:
+// un 99,7% arrotondato a "100%" farebbe credere che il Sole sparisca, e
+// nelle eclissi al limite della fascia è proprio la differenza che conta.
+function _eclPerc(v) {
+  if (v >= 0.9995) return '100%';
+  if (v >= 0.995) return `${(v * 100).toFixed(1).replace('.', ',')}%`;
+  return `${Math.round(v * 100)}%`;
+}
+// Come si chiama la fase centrale di questa eclissi
+function _eclNomeCentrale(kind) {
+  return kind === 'total' ? 'totalità' : kind === 'annular' ? 'anularità' : 'fase centrale';
+}
 
-// Calcola i dati del Sole e della Luna in base alla posizione geografica e all'istante di tempo dell'eclissi
-function _eclissiAggiornaDatiLocali() {
+// --- Disegno dei livelli mobili (il cono d'ombra vero e proprio) ------
+
+// Crea una volta sola i poligoni che poi vengono solo rimodellati: durante
+// il filmato aggiungere e togliere livelli a ogni fotogramma fa singhiozzare.
+function _eclCreaDinamici() {
+  if (_eclDinamici) return;
+  const fasce = ECL_FASCE.map(f => L.polygon([], {
+    color: f.bordo, weight: 1, fillColor: f.colore, fillOpacity: f.opacita,
+    interactive: false, smoothFactor: 1, className: 'ecl-fascia'
+  }).addTo(_mappaEclissi));
+
+  const alone = L.polygon([], {
+    stroke: false, fillColor: '#f87171', fillOpacity: 0.18,
+    interactive: false, smoothFactor: 1
+  }).addTo(_mappaEclissi);
+
+  const umbra = L.polygon([], {
+    color: '#ff5f5f', weight: 2.5, fillColor: '#05070f', fillOpacity: 0.92,
+    interactive: false, smoothFactor: 1, className: 'ecl-umbra'
+  }).addTo(_mappaEclissi);
+
+  const mirino = L.circleMarker([0, 0], {
+    radius: 3, color: '#fff8e7', fillColor: '#fff8e7', fillOpacity: 1,
+    weight: 1, interactive: false
+  }).addTo(_mappaEclissi);
+
+  _eclDinamici = { fasce, alone, umbra, mirino };
+}
+
+function _eclSvuotaDinamici() {
+  if (!_eclDinamici) return;
+  _eclDinamici.fasce.forEach(f => f.setLatLngs([]));
+  _eclDinamici.alone.setLatLngs([]);
+  _eclDinamici.umbra.setLatLngs([]);
+  _eclDinamici.mirino.setStyle({ opacity: 0, fillOpacity: 0 });
+}
+
+// Ridisegna ombra, penombra e fasce intermedie per l'istante selezionato.
+// Restituisce il quadro d'insieme: dove cade il massimo e quanto vale.
+function _eclDisegnaOmbra() {
+  if (!_mappaEclissi || !_eclissiEventoInCorso) return null;
+  _eclCreaDinamici();
+
+  const d = _eclIstante(_eclUtSelezionato());
+  const massimo = _eclInquadraPunto(_eclPuntoMassimo(d));
+  const asse = _eclInquadraPunto(_eclPuntoAsse(d));
+  const cMax = massimo ? _eclCircostanze(massimo[0], massimo[1], d) : null;
+
+  // Con il filmato in corso si alleggerisce il calcolo: meno raggi, più fluidità
+  const nAz = _eclFilmato.attivo ? 36 : 56;
+  const nPassi = _eclFilmato.attivo ? 10 : 12;
+
+  if (!massimo || !cMax || cMax.osc <= 0.0015) {
+    _eclDinamici.fasce.forEach(f => f.setLatLngs([]));
+    _eclDinamici.alone.setLatLngs([]);
+    _eclDinamici.umbra.setLatLngs([]);
+    _eclDinamici.mirino.setStyle({ opacity: 0, fillOpacity: 0 });
+    return { d, massimo, cMax, asse: null, fuoriTerra: true };
+  }
+
+  // Fasce di oscuramento, dalla più larga alla più stretta
+  ECL_FASCE.forEach((f, i) => {
+    if (cMax.osc < f.soglia) { _eclDinamici.fasce[i].setLatLngs([]); return; }
+    const dentro = (la, lo) => _eclCircostanze(la, lo, d).osc >= f.soglia;
+    _eclDinamici.fasce[i].setLatLngs(_eclContorno(massimo, dentro, 9000, nAz, nPassi) || []);
+  });
+
+  // Il cono d'ombra: solo dove l'asse colpisce davvero la Terra
+  if (asse) {
+    const dentro = (la, lo) => {
+      const c = _eclCircostanze(la, lo, d);
+      return c.tipo === 'totale' || c.tipo === 'anulare';
+    };
+    const contorno = _eclContorno(asse, dentro, 2500, nAz, nPassi + 2);
+    if (contorno) {
+      _eclDinamici.umbra.setLatLngs(contorno);
+      // Un alone morbido attorno all'ombra: la rende visibile anche quando la
+      // mappa è lontana e il cono varrebbe due pixel. Se l'ombra arriva a
+      // inglobare il polo il contorno è una calotta e gonfiarla non ha senso.
+      const calotta = contorno.some(p => Math.abs(p[0]) >= ECL_LAT_POLO - 0.05);
+      _eclDinamici.alone.setLatLngs(calotta ? [] : contorno.map(p => {
+        const { km, az } = _eclDistanzaAzimut(asse, p);
+        return _eclDestinazione(asse[0], asse[1], az, Math.max(km * 2.2, km + 90));
+      }));
+    } else {
+      _eclDinamici.umbra.setLatLngs([]);
+      _eclDinamici.alone.setLatLngs([]);
+    }
+    // L'ombra anulare non è nera: è un anello di luce, quindi cambia colore
+    const anulare = cMax.tipo === 'anulare';
+    _eclDinamici.umbra.setStyle({
+      color: anulare ? '#fbbf24' : '#ff5f5f',
+      fillColor: anulare ? '#2a1c05' : '#05070f',
+      fillOpacity: anulare ? 0.7 : 0.92
+    });
+    _eclDinamici.alone.setStyle({ fillColor: anulare ? '#fbbf24' : '#f87171' });
+  } else {
+    _eclDinamici.umbra.setLatLngs([]);
+    _eclDinamici.alone.setLatLngs([]);
+  }
+
+  _eclDinamici.mirino.setLatLng(massimo);
+  _eclDinamici.mirino.setStyle({ opacity: 1, fillOpacity: 1 });
+
+  return { d, massimo, cMax, asse, fuoriTerra: false };
+}
+
+// --- Le città toccate dall'ombra --------------------------------------
+
+// Prima di aprire la mappa si guarda, città per città, quanto Sole verrà
+// coperto e a che ora: è l'elenco che poi si anima durante il filmato.
+function _eclPreparaCitta(peakUt, finestra) {
+  const trovate = [];
+  const passo = Math.max(2, Math.round((finestra.fine - finestra.inizio) / 90));
+  const istanti = [];
+  for (let min = finestra.inizio; min <= finestra.fine; min += passo) {
+    istanti.push({ min, d: _eclIstante(peakUt + min / 1440) });
+  }
+  for (const [nome, paese, lat, lon] of ECL_CITTA) {
+    let migliore = 0, minMigliore = 0, tipoMigliore = 'nessuna';
+    for (const it of istanti) {
+      const c = _eclCircostanze(lat, lon, it.d);
+      if (c.osc > migliore) { migliore = c.osc; minMigliore = it.min; tipoMigliore = c.tipo; }
+    }
+    if (migliore <= 0.004) continue;
+    // Affina l'istante di massimo attorno al campione migliore
+    for (let dm = -passo; dm <= passo; dm += passo / 6) {
+      const min = minMigliore + dm;
+      if (min < finestra.inizio || min > finestra.fine) continue;
+      const c = _eclCircostanze(lat, lon, _eclIstante(peakUt + min / 1440));
+      if (c.osc > migliore) { migliore = c.osc; tipoMigliore = c.tipo; minMigliore = min; }
+    }
+    trovate.push({ nome, paese, lat, lon, oscMax: migliore, minMax: minMigliore, tipoMax: tipoMigliore });
+  }
+  trovate.sort((a, b) => b.oscMax - a.oscMax);
+  return trovate;
+}
+
+// Colore di una città in base a quanto Sole le verrà coperto
+function _eclColoreCitta(osc) {
+  if (osc >= 0.999) return '#ff5f5f';
+  if (osc >= 0.9) return '#fb923c';
+  if (osc >= 0.6) return '#fbbf24';
+  if (osc >= 0.3) return '#a78bfa';
+  return '#7dd3fc';
+}
+
+function _eclDisegnaCitta() {
+  _eclCittaMarker.forEach(m => _mappaEclissi.removeLayer(m));
+  _eclCittaMarker = [];
+  _eclCittaEvidenziata = -1;
+  _eclCitta.forEach((c, i) => {
+    const m = L.circleMarker([c.lat, _eclInquadra(c.lon)], {
+      radius: c.oscMax >= 0.98 ? 5 : 3.5,
+      color: 'rgba(255,255,255,0.55)',
+      weight: 1,
+      fillColor: _eclColoreCitta(c.oscMax),
+      fillOpacity: 0.9,
+      className: 'ecl-citta-punto'
+    }).addTo(_mappaEclissi);
+    m.bindTooltip(`${c.nome} — max ${_eclPerc(c.oscMax)}`, { direction: 'top', offset: [0, -4] });
+    m.on('click', () => {
+      _eclissiPosizioneTemporanea = { lat: c.lat, lon: c.lon };
+      _eclissiAggiornaTutto();
+    });
+    _eclCittaMarker.push(m);
+  });
+}
+
+// Aggiorna il pannello delle città per l'istante mostrato e mette in
+// evidenza, sulla mappa, quella che in questo momento è più in ombra.
+function _eclAggiornaPannelloCitta(quadro) {
+  const lista = document.getElementById('eclissi-citta-lista');
+  const testa = document.getElementById('eclissi-citta-ora');
+  const conteggio = document.getElementById('eclissi-citta-conteggio');
+  const hud = document.getElementById('eclissi-hud-citta');
+  if (!lista || !testa) return;
+
+  const d = quadro.d;
+  const attive = [];
+  _eclCitta.forEach((c, i) => {
+    const circ = _eclCircostanze(c.lat, c.lon, d);
+    if (circ.osc > 0.005) attive.push({ c, i, osc: circ.osc, tipo: circ.tipo, alt: circ.altSole });
+  });
+  attive.sort((a, b) => b.osc - a.osc);
+
+  // La città più in ombra viene segnata sulla mappa con una targhetta fissa:
+  // è il modo più diretto per dire «l'ombra è qui, adesso».
+  const nuovoIndice = attive.length ? attive[0].i : -1;
+  if (nuovoIndice !== _eclCittaEvidenziata) {
+    const vecchioMarker = _eclCittaMarker[_eclCittaEvidenziata];
+    if (vecchioMarker) {
+      const vecchia = _eclCitta[_eclCittaEvidenziata];
+      vecchioMarker.setStyle({
+        radius: vecchia.oscMax >= 0.98 ? 5 : 3.5,
+        color: 'rgba(255,255,255,0.55)', weight: 1, fillOpacity: 0.9
+      });
+      vecchioMarker.unbindTooltip().bindTooltip(
+        `${vecchia.nome} — max ${_eclPerc(vecchia.oscMax)}`, { direction: 'top', offset: [0, -4] });
+    }
+    const nuovoMarker = _eclCittaMarker[nuovoIndice];
+    if (nuovoMarker) {
+      nuovoMarker.setStyle({ radius: 8, color: '#ffffff', weight: 2.5, fillOpacity: 1 });
+      nuovoMarker.unbindTooltip().bindTooltip('', {
+        direction: 'top', offset: [0, -9], permanent: true, className: 'ecl-tooltip-attiva'
+      }).openTooltip();
+      nuovoMarker.bringToFront();
+    }
+    _eclCittaEvidenziata = nuovoIndice;
+  }
+  // Il valore cambia a ogni fotogramma: si riscrive solo il testo
+  if (nuovoIndice >= 0 && _eclCittaMarker[nuovoIndice]) {
+    const t = attive[0];
+    const marchio = t.tipo === 'totale' ? ' · TOTALE' : t.tipo === 'anulare' ? ' · ANULARE' : '';
+    _eclCittaMarker[nuovoIndice].setTooltipContent(`<b>${t.c.nome}</b> · ${_eclPerc(t.osc)}${marchio}`);
+  }
+
+  if (conteggio) {
+    conteggio.textContent = attive.length
+      ? `${attive.length} ${attive.length === 1 ? 'città raggiunta' : 'città raggiunte'} in questo istante`
+      : 'nessuna città raggiunta in questo istante';
+  }
+
+  if (!attive.length) {
+    // Nessuna città sotto l'ombra: si dice quale sarà la prossima
+    const prossima = _eclCitta
+      .filter(c => c.minMax > _eclissiOffsetTempoMin)
+      .sort((a, b) => a.minMax - b.minMax)[0];
+    if (prossima) {
+      const oraP = new Date(_eclissiEventoInCorso.dataObj.getTime() + prossima.minMax * 60000);
+      testa.innerHTML = `<span class="ecl-citta-vuoto">L'ombra non ha ancora raggiunto nessuna delle città in elenco.` +
+        ` La prossima sarà <b>${prossima.nome}</b> (${prossima.paese}) alle ${_eclOra(oraP)}, con ${_eclPerc(prossima.oscMax)} di Sole coperto.</span>`;
+    } else {
+      testa.innerHTML = `<span class="ecl-citta-vuoto">In questo istante l'eclissi non è visibile da nessuna delle città in elenco.</span>`;
+    }
+    lista.innerHTML = '';
+    if (hud) hud.classList.add('hidden');
+    return;
+  }
+
+  const p = attive[0];
+  const centrale = p.tipo === 'totale' || p.tipo === 'anulare';
+  testa.innerHTML = `
+    <div class="ecl-citta-primo ${centrale ? 'centrale' : ''}">
+      <div class="ecl-citta-primo-testa">
+        <span class="ecl-citta-primo-nome">${p.c.nome}</span>
+        <span class="ecl-citta-primo-paese">${p.c.paese}</span>
+        ${centrale ? `<span class="ecl-badge-totale">${p.tipo === 'anulare' ? 'ANULARE' : 'TOTALE'}</span>` : ''}
+      </div>
+      <div class="ecl-barra"><span style="width:${(p.osc * 100).toFixed(1)}%"></span></div>
+      <div class="ecl-citta-primo-dati">
+        <b>${_eclPerc(p.osc)}</b> di Sole coperto · Sole a ${p.alt.toFixed(0)}° sull'orizzonte
+      </div>
+    </div>`;
+
+  lista.innerHTML = attive.slice(1, 9).map(a => `
+    <li class="ecl-citta-riga" data-citta="${a.i}" title="Porta qui l'osservatore">
+      <span class="ecl-citta-nome">${a.c.nome}<span class="ecl-citta-paese">${a.c.paese}</span></span>
+      <span class="ecl-barra piccola"><span style="width:${(a.osc * 100).toFixed(1)}%"></span></span>
+      <span class="ecl-citta-perc${a.tipo === 'totale' || a.tipo === 'anulare' ? ' totale' : ''}">${_eclPerc(a.osc)}</span>
+    </li>`).join('');
+
+  if (hud) {
+    hud.classList.remove('hidden');
+    hud.innerHTML = `<span class="ecl-hud-pallino"></span>` +
+      `<span>L'ombra è su <b>${p.c.nome}</b> — ${_eclPerc(p.osc)}` +
+      `${centrale ? (p.tipo === 'anulare' ? ' · anulare' : ' · totale') : ''}</span>`;
+  }
+}
+
+// --- Dati per il luogo scelto -----------------------------------------
+
+function _eclissiAggiornaDatiLocali(quadro) {
   const testoLuogo = document.getElementById('eclissi-luogo-testo');
   const datiLocaliEl = document.getElementById('eclissi-dati-locali');
   if (!testoLuogo || !datiLocaliEl || !_eclissiEventoInCorso) return;
 
-  // Determina la latitudine e la longitudine da utilizzare
   let lat, lon, fonte;
   if (_eclissiPosizioneTemporanea) {
     lat = _eclissiPosizioneTemporanea.lat;
     lon = _eclissiPosizioneTemporanea.lon;
-    fonte = 'Cliccata sulla mappa';
+    fonte = 'punto scelto sulla mappa';
   } else {
     const locale = luogoCorrente();
     if (locale) {
-      lat = locale.lat;
-      lon = locale.lon;
-      fonte = 'Tua posizione (GPS/Salvata)';
+      lat = locale.lat; lon = locale.lon;
+      fonte = 'la tua posizione';
+    } else if (quadro && quadro.massimo) {
+      lat = quadro.massimo[0]; lon = quadro.massimo[1];
+      fonte = 'punto di massima eclissi';
     } else {
-      // Ripiego sul punto di massima eclissi
-      lat = _eclissiEventoInCorso.eclissi.lat;
-      lon = _eclissiEventoInCorso.eclissi.lon;
-      fonte = 'Massima eclissi (predefinito)';
+      return;
     }
   }
 
-  testoLuogo.textContent = `Lat: ${lat.toFixed(4)}°, Lon: ${lon.toFixed(4)}° (${fonte})`;
+  // La longitudine può arrivare da un clic su una copia lontana della mappa:
+  // per scriverla e per fare i conti la si riporta fra −180° e +180°.
+  lon = ((lon % 360) + 540) % 360 - 180;
+  testoLuogo.innerHTML = `${formattaCoordinate(lat, lon)} <span class="ecl-fonte">(${fonte})</span>`;
 
-  // Posiziona o sposta il marker dell'osservatore sulla mappa
   if (_mappaEclissi) {
     if (_eclissiMarkerPosizione) {
-      _eclissiMarkerPosizione.setLatLng([lat, lon]);
+      _eclissiMarkerPosizione.setLatLng([lat, _eclInquadra(lon)]);
     } else {
-      _eclissiMarkerPosizione = L.circleMarker([lat, lon], {
-        radius: 8,
-        color: '#22c55e',
-        fillColor: '#22c55e',
-        fillOpacity: 0.9,
-        weight: 3,
-        zIndexOffset: 1000
-      }).addTo(_mappaEclissi).bindPopup('<b>Tua posizione di osservazione</b>');
+      _eclissiMarkerPosizione = L.circleMarker([lat, _eclInquadra(lon)], {
+        radius: 7, color: '#ffffff', fillColor: '#34d399', fillOpacity: 1, weight: 2.5,
+        className: 'ecl-osservatore'
+      }).addTo(_mappaEclissi).bindTooltip('Il tuo punto di osservazione', { direction: 'top' });
     }
+    _eclissiMarkerPosizione.bringToFront();
   }
 
   if (typeof Astronomy === 'undefined') {
@@ -583,44 +1340,47 @@ function _eclissiAggiornaDatiLocali() {
   }
 
   const tempo = _eclissiTempoSelezionato();
-  const t = Astronomy.MakeTime(tempo);
-  const obs = new Astronomy.Observer(lat, lon, 0);
+  const d = quadro ? quadro.d : _eclIstante(_eclUtSelezionato());
 
   try {
-    // Calcolo coordinate Sole
+    const c = _eclCircostanze(lat, lon, d);
+    const t = Astronomy.MakeTime(tempo);
+    const obs = new Astronomy.Observer(lat, lon, 0);
     const equSole = Astronomy.Equator('Sun', t, obs, true, true);
     const horSole = Astronomy.Horizon(t, obs, equSole.ra, equSole.dec, 'normal');
-    // Calcolo coordinate Luna
-    const equLuna = Astronomy.Equator('Moon', t, obs, true, true);
-    const horLuna = Astronomy.Horizon(t, obs, equLuna.ra, equLuna.dec, 'normal');
 
-    // Calcolo dell'oscuramento locale approssimativo (separazione angolare tra i due dischi)
-    const vecSole = Astronomy.GeoVector('Sun', t, true);
-    const vecLuna = Astronomy.GeoVector('Moon', t, true);
-    const distAngolare = Astronomy.AngleBetween(vecSole, vecLuna);
-    // Supponiamo raggi apparenti standard: Sole ~0.267°, Luna ~0.272°
-    const rSoleDeg = 0.267;
-    const rLunaDeg = 0.272;
-    let oscuramentoTesto = '0%';
-    if (distAngolare >= rSoleDeg + rLunaDeg) {
-      oscuramentoTesto = 'Nessuno (0%)';
-    } else if (distAngolare <= Math.abs(rSoleDeg - rLunaDeg)) {
-      oscuramentoTesto = _eclissiEventoInCorso.eclissi.kind === 'total' ? 'Totale (100%)' : 'Anulare/Quasi totale (99%)';
+    // Alba e tramonto cambiano solo di giorno in giorno: si ricalcolano
+    // di rado, altrimenti il filmato rallenta a ogni fotogramma.
+    const chiave = `${lat.toFixed(2)}|${lon.toFixed(2)}|${tempo.toDateString()}`;
+    if (_eclCacheOrari.chiave !== chiave) {
+      _eclCacheOrari = { chiave, valore: orariSorgereTramonto('Sun', tempo, obs) };
+    }
+    const orari = _eclCacheOrari.valore || {};
+
+    let stato, classe;
+    if (!c.suOrizzonte) {
+      stato = 'Il Sole è sotto l\'orizzonte: da qui non si vede nulla';
+      classe = 'ecl-stato-no';
+    } else if (c.tipo === 'nessuna') {
+      stato = 'Sole intero: l\'eclissi non è (ancora) iniziata qui';
+      classe = 'ecl-stato-no';
+    } else if (c.tipo === 'totale') {
+      stato = 'ECLISSI TOTALE in corso';
+      classe = 'ecl-stato-totale';
+    } else if (c.tipo === 'anulare') {
+      stato = 'ECLISSI ANULARE in corso (anello di fuoco)';
+      classe = 'ecl-stato-totale';
     } else {
-      const areaCoperta = simAreaIntersezione(rSoleDeg, rLunaDeg, distAngolare);
-      const areaSole = Math.PI * rSoleDeg * rSoleDeg;
-      const perc = Math.min(99, Math.round((areaCoperta / areaSole) * 100));
-      oscuramentoTesto = `Parziale (${perc}%)`;
+      stato = 'Eclissi parziale in corso';
+      classe = 'ecl-stato-parziale';
     }
 
-    const sorgeTramontaSole = orariSorgereTramonto('Sun', tempo, obs);
-
     datiLocaliEl.innerHTML = `
-      <p><span class="text-blue-400">Sole:</span> Alt ${horSole.altitude.toFixed(1)}° · Az ${Math.round(horSole.azimuth)}° (${skyNomeDirezione(horSole.azimuth)})</p>
-      <p><span class="text-blue-400">Luna:</span> Alt ${horLuna.altitude.toFixed(1)}° · Az ${Math.round(horLuna.azimuth)}° (${skyNomeDirezione(horLuna.azimuth)})</p>
-      <p><span class="text-blue-400">Visibilità Sole:</span> ${horSole.altitude > 0 ? 'Sopra l\'orizzonte' : 'Sotto l\'orizzonte (notte)'}</p>
-      <p><span class="text-amber-400 font-semibold">Copertura Sole:</span> ${oscuramentoTesto}</p>
-      <p class="text-[11px] text-slate-400">Sorge Sole: ${skyOra(sorgeTramontaSole.sorge)} · Tramonta Sole: ${skyOra(sorgeTramontaSole.tramonta)}</p>
+      <p class="${classe} ecl-stato">${stato}</p>
+      <div class="ecl-barra grande"><span style="width:${(c.osc * 100).toFixed(1)}%"></span></div>
+      <p><span class="ecl-etichetta">Sole coperto</span> <b>${_eclPerc(c.osc)}</b></p>
+      <p><span class="ecl-etichetta">Sole</span> alt ${horSole.altitude.toFixed(1)}° · az ${Math.round(horSole.azimuth)}° (${skyNomeDirezione(horSole.azimuth)})</p>
+      <p class="ecl-nota-piccola">Alba ${skyOra(orari.sorge)} · Tramonto ${skyOra(orari.tramonta)}</p>
     `;
   } catch (e) {
     console.error(e);
@@ -628,72 +1388,239 @@ function _eclissiAggiornaDatiLocali() {
   }
 }
 
-// Disegna l'ombra e la penombra mobili sulla mappa
-function _eclissiAggiornaOmbreMobili() {
-  if (!_mappaEclissi || !_eclissiEventoInCorso) return;
+// --- Testata della mappa (ora e fase globale) -------------------------
 
+function _eclAggiornaHud(quadro) {
+  const oraEl = document.getElementById('eclissi-hud-ora');
+  const faseEl = document.getElementById('eclissi-hud-fase');
   const tempo = _eclissiTempoSelezionato();
-  const t = Astronomy.MakeTime(tempo);
-
-  // Calcola il punto in cui l'asse dell'ombra tocca la Terra
-  const pOmbra = _eclissiPuntoOmbra(t);
-
-  if (_eclissiOmbraMobile) {
-    _mappaEclissi.removeLayer(_eclissiOmbraMobile);
-    _eclissiOmbraMobile = null;
+  if (oraEl) {
+    oraEl.innerHTML = `<b>${_eclOra(tempo)}</b><span class="ecl-hud-utc">${_eclOraUTC(tempo)} UTC</span>`;
   }
-  if (_eclissiPenombraMobile) {
-    _mappaEclissi.removeLayer(_eclissiPenombraMobile);
-    _eclissiPenombraMobile = null;
-  }
-
-  if (pOmbra) {
-    const [lat, lon] = pOmbra;
-
-    // Disegna l'ombra (umbra): cerchio scuro e netto (circa 150 km di raggio)
-    _eclissiOmbraMobile = L.circle([lat, lon], {
-      radius: 120 * 1000, // 120 km
-      color: '#ef4444',
-      fillColor: '#000000',
-      fillOpacity: 0.8,
-      weight: 2,
-      interactive: false
-    }).addTo(_mappaEclissi);
-
-    // Disegna la penombra: area molto più ampia (circa 3000 km di raggio)
-    _eclissiPenombraMobile = L.circle([lat, lon], {
-      radius: 2800 * 1000, // 2800 km
-      color: '#3b82f6',
-      dashArray: '5, 5',
-      fillColor: '#64748b',
-      fillOpacity: 0.12,
-      weight: 1.5,
-      interactive: false
-    }).addTo(_mappaEclissi);
+  if (faseEl) {
+    let testo = 'Eclissi non ancora iniziata', classe = 'attesa';
+    if (quadro && !quadro.fuoriTerra && quadro.cMax) {
+      if (quadro.asse && (quadro.cMax.tipo === 'totale' || quadro.cMax.tipo === 'anulare')) {
+        testo = quadro.cMax.tipo === 'anulare' ? 'Anularità in corso' : 'Totalità in corso';
+        classe = 'centrale';
+      } else {
+        testo = `Solo fase parziale · max ${_eclPerc(quadro.cMax.osc)}`;
+        classe = 'parziale';
+      }
+    }
+    faseEl.textContent = testo;
+    faseEl.className = `ecl-hud-fase ${classe}`;
   }
 }
+
+// Oltre gli 84° la proiezione di Mercatore si stira all'infinito e la carta
+// finisce: se la vista sconfina lassù resta mezza finestra nera. Qui la si fa
+// scorrere quel tanto che basta per riempirla di mondo.
+function _eclEvitaIlVuoto() {
+  if (!_mappaEclissi) return;
+  const misura = _mappaEclissi.getSize();
+  const zoom = _mappaEclissi.getZoom();
+  const altezzaMondo = _mappaEclissi.project([-85.05, 0], zoom).y -
+                       _mappaEclissi.project([85.05, 0], zoom).y;
+  // Se la finestra è più alta di tutta la carta il vuoto è inevitabile:
+  // spostarsi non servirebbe a niente, se non a far ballare la mappa.
+  if (altezzaMondo <= misura.y) return;
+  const vista = _mappaEclissi.getBounds();
+  if (vista.getNorth() > 84) {
+    const y = _mappaEclissi.latLngToContainerPoint([84, vista.getCenter().lng]).y;
+    if (y > 0) _mappaEclissi.panBy([0, y], { animate: false });
+  } else if (vista.getSouth() < -84) {
+    const y = _mappaEclissi.latLngToContainerPoint([-84, vista.getCenter().lng]).y;
+    if (y < misura.y) _mappaEclissi.panBy([0, y - misura.y], { animate: false });
+  }
+}
+
+// --- Il ciclo di aggiornamento ----------------------------------------
 
 function _eclissiAggiornaTutto() {
-  const valoreTempo = document.getElementById('eclissi-tempo-valore');
-  const tempoData = document.getElementById('eclissi-tempo-data');
   const slider = document.getElementById('eclissi-tempo-slider');
-
-  if (valoreTempo) {
-    const segno = _eclissiOffsetTempoMin > 0 ? '+' : '';
-    valoreTempo.textContent = _eclissiOffsetTempoMin === 0 ? 'Al picco (0 min)' : `${segno}${_eclissiOffsetTempoMin} min dal picco`;
-  }
-  if (tempoData) {
-    tempoData.textContent = `Ora mostrata: ${_eclissiTempoSelezionato().toLocaleString('it-IT')}`;
-  }
-  if (slider) {
-    slider.value = _eclissiOffsetTempoMin;
+  const valore = document.getElementById('eclissi-tempo-valore');
+  if (slider) slider.value = _eclissiOffsetTempoMin;
+  if (valore) {
+    const m = Math.round(_eclissiOffsetTempoMin);
+    const segno = m > 0 ? '+' : '';
+    valore.innerHTML = `${_eclOra(_eclissiTempoSelezionato())} ` +
+      `<span class="ecl-scarto">${m === 0 ? 'culmine' : `${segno}${m} min`}</span>`;
   }
 
-  _eclissiAggiornaOmbreMobili();
-  _eclissiAggiornaDatiLocali();
+  const quadro = _eclDisegnaOmbra();
+  if (!quadro) return;
+  _eclAggiornaHud(quadro);
+  _eclAggiornaPannelloCitta(quadro);
+  _eclissiAggiornaDatiLocali(quadro);
+
+  // Con "segui l'ombra" la mappa insegue il cono, ma senza strattoni: si
+  // rimette al centro solo quando l'ombra sta per uscire dal riquadro
+  // centrale, come una telecamera che accompagna il soggetto.
+  if (_eclFilmato.segui && _eclFilmato.attivo && quadro.massimo) {
+    const centro = quadro.asse || quadro.massimo;
+    const punto = _mappaEclissi.latLngToContainerPoint(centro);
+    const misura = _mappaEclissi.getSize();
+    const fuori = punto.x < misura.x * 0.3 || punto.x > misura.x * 0.7 ||
+                  punto.y < misura.y * 0.3 || punto.y > misura.y * 0.7;
+    // L'animazione va evitata: a ogni fotogramma ripartirebbe da capo e la
+    // mappa resterebbe ferma.
+    if (fuori) { _mappaEclissi.panTo(centro, { animate: false }); _eclEvitaIlVuoto(); }
+  }
 }
 
-// Apre il modale con la mappa di visibilità per l'eclissi indicata.
+// --- Il filmato --------------------------------------------------------
+
+function _eclFilmatoAggiornaPulsante() {
+  const btn = document.getElementById('eclissi-play');
+  if (!btn) return;
+  btn.classList.toggle('in-corso', _eclFilmato.attivo);
+  btn.setAttribute('aria-label', _eclFilmato.attivo ? 'Metti in pausa' : 'Avvia il filmato');
+  btn.title = _eclFilmato.attivo ? 'Metti in pausa' : 'Avvia il filmato dell\'ombra';
+  btn.innerHTML = _eclFilmato.attivo
+    ? '<span class="ecl-icona-pausa"></span><span class="ecl-play-testo">Pausa</span>'
+    : '<span class="ecl-icona-play"></span><span class="ecl-play-testo">Riproduci</span>';
+}
+
+function _eclFilmatoAvvia() {
+  if (_eclFilmato.attivo || !_eclissiEventoInCorso) return;
+  // Ripartendo dalla fine si torna all'inizio, come un vero lettore
+  if (_eclissiOffsetTempoMin >= _eclFinestra.fine - 0.5) {
+    _eclissiOffsetTempoMin = _eclFinestra.inizio;
+  }
+  _eclFilmato.attivo = true;
+  _eclFilmatoAggiornaPulsante();
+  const intervallo = 90; // ms fra un fotogramma e l'altro
+  _eclFilmato.timer = setInterval(() => {
+    _eclissiOffsetTempoMin += _eclFilmato.velocita * (intervallo / 1000);
+    if (_eclissiOffsetTempoMin >= _eclFinestra.fine) {
+      _eclissiOffsetTempoMin = _eclFinestra.fine;
+      _eclissiAggiornaTutto();
+      _eclFilmatoFerma();
+      return;
+    }
+    _eclissiAggiornaTutto();
+  }, intervallo);
+}
+
+function _eclFilmatoFerma() {
+  if (_eclFilmato.timer) clearInterval(_eclFilmato.timer);
+  _eclFilmato.timer = null;
+  _eclFilmato.attivo = false;
+  _eclFilmatoAggiornaPulsante();
+  _eclissiAggiornaTutto(); // ridisegna con la risoluzione piena
+}
+
+function _eclFilmatoAlterna() {
+  if (_eclFilmato.attivo) _eclFilmatoFerma(); else _eclFilmatoAvvia();
+}
+
+// Sposta il tempo restando dentro la finestra dell'eclissi
+function _eclVaiA(minuti) {
+  _eclissiOffsetTempoMin = Math.max(_eclFinestra.inizio, Math.min(_eclFinestra.fine, minuti));
+  _eclissiAggiornaTutto();
+}
+
+// --- Legenda e riepilogo ----------------------------------------------
+
+function _eclAggiornaLegenda(evento, riepilogo) {
+  const legenda = document.getElementById('eclissi-legenda-griglia');
+  const sottotitolo = document.getElementById('mappa-sottotitolo');
+  const riep = document.getElementById('eclissi-riepilogo');
+  if (!legenda) return;
+
+  const kind = evento.eclissi.kind;
+  const centrale = kind === 'total' || kind === 'annular' || kind === 'hybrid';
+  const nomeCentrale = _eclNomeCentrale(kind);
+  const coloreOmbra = kind === 'annular' ? '#fbbf24' : '#ff5f5f';
+  const riempOmbra = kind === 'annular' ? '#2a1c05' : '#05070f';
+
+  const voci = [];
+  if (centrale) {
+    voci.push({
+      campione: `<span class="ecl-sw ecl-sw-fascia"></span>`,
+      titolo: `Fascia di ${nomeCentrale}`,
+      testo: 'La striscia di Terra da cui il Sole sparisce del tutto. È larga poche decine o centinaia di km: fuori di qui la totalità non si vede.'
+    });
+    voci.push({
+      campione: `<span class="ecl-sw ecl-sw-linea"></span>`,
+      titolo: 'Linea centrale',
+      testo: `Il cuore della fascia: qui la ${nomeCentrale} dura più a lungo.`
+    });
+    voci.push({
+      campione: `<span class="ecl-sw ecl-sw-ombra" style="background:${riempOmbra};border-color:${coloreOmbra}"></span>`,
+      titolo: 'Cono d\'ombra adesso',
+      testo: `Dove si trova l'ombra in questo istante. Corre sulla Terra a più di 1.500 km/h: è la macchia che si muove nel filmato.`
+    });
+  }
+  voci.push({
+    campione: `<span class="ecl-sw ecl-sw-parziale"></span>`,
+    titolo: 'Zona di eclissi parziale (tutta l\'eclissi)',
+    testo: 'Il velo azzurro copre tutti i luoghi che, prima o poi, vedranno il Sole intaccato dalla Luna. È molto più esteso della fascia centrale.'
+  });
+  voci.push({
+    campione: `<span class="ecl-sw ecl-sw-penombra"></span>`,
+    titolo: 'Penombra adesso',
+    testo: 'La regione che in questo istante vede un\'eclissi parziale. I gradini di colore, andando verso il centro, sono 25%, 50% e 75% di Sole coperto.'
+  });
+  voci.push({
+    campione: `<span class="ecl-sw ecl-sw-citta"></span>`,
+    titolo: 'Città toccate',
+    testo: 'Ogni pallino è una città che vede l\'eclissi; il colore dice quanto Sole le verrà coperto al massimo. Quella cerchiata di bianco è la più in ombra adesso.'
+  });
+  voci.push({
+    campione: `<span class="ecl-sw ecl-sw-osservatore"></span>`,
+    titolo: 'Il tuo punto di osservazione',
+    testo: 'Parte dalla tua posizione. Tocca un punto qualsiasi della mappa (o una città in elenco) per spostarlo.'
+  });
+
+  legenda.innerHTML = voci.map(v => `
+    <div class="ecl-voce">
+      <span class="ecl-voce-campione">${v.campione}</span>
+      <span class="ecl-voce-testo"><b>${v.titolo}</b><span>${v.testo}</span></span>
+    </div>`).join('');
+
+  if (sottotitolo) {
+    sottotitolo.textContent = centrale
+      ? `Il cono d'ombra della Luna attraversa la Terra: segui il suo percorso e le città che incontra.`
+      : `Nessuna fascia di totalità: l'ombra passa accanto alla Terra e resta solo la penombra, cioè un'eclissi parziale.`;
+  }
+
+  if (riep && riepilogo) riep.innerHTML = riepilogo;
+}
+
+// Riepilogo testuale sopra la mappa: durata, massimo, città migliori.
+function _eclCostruisciRiepilogo(evento) {
+  const kind = evento.eclissi.kind;
+  const centrale = kind === 'total' || kind === 'annular' || kind === 'hybrid';
+  const inizio = new Date(evento.dataObj.getTime() + _eclFinestra.inizio * 60000);
+  const fine = new Date(evento.dataObj.getTime() + _eclFinestra.fine * 60000);
+  const dMax = _eclIstante(evento.eclissi.peakUt);
+  const pMax = _eclPuntoMassimo(dMax);
+  const cMax = pMax ? _eclCircostanze(pMax[0], pMax[1], dMax) : null;
+
+  const totali = _eclCitta.filter(c => c.tipoMax === 'totale' || c.tipoMax === 'anulare');
+  const migliori = (totali.length ? totali : _eclCitta).slice(0, 4);
+
+  const schede = [
+    { etichetta: 'Sulla Terra dalle', valore: `${_eclOra(inizio)} alle ${_eclOra(fine)}`,
+      nota: `${Math.round(_eclFinestra.fine - _eclFinestra.inizio)} minuti in tutto (ora locale)` },
+    { etichetta: 'Massimo alle', valore: _eclOra(evento.dataObj),
+      nota: cMax ? `${_eclPerc(cMax.osc)} di Sole coperto, a ${formattaCoordinate(pMax[0], pMax[1])}` : '—' },
+    { etichetta: centrale ? 'Città nella fascia centrale' : 'Città che la vedono',
+      valore: centrale ? String(totali.length) : String(_eclCitta.length),
+      nota: migliori.length ? migliori.map(c => c.nome).join(', ') : 'nessuna fra quelle in elenco' }
+  ];
+  return schede.map(s => `
+    <div class="ecl-scheda">
+      <span class="ecl-scheda-etichetta">${s.etichetta}</span>
+      <span class="ecl-scheda-valore">${s.valore}</span>
+      <span class="ecl-scheda-nota">${s.nota}</span>
+    </div>`).join('');
+}
+
+// --- Apertura e chiusura ----------------------------------------------
+
 function apriMappaEclissi(id) {
   const evento = eventiCalcolati.find(e => e.id === id);
   if (!evento || !evento.eclissi) return;
@@ -705,96 +1632,170 @@ function apriMappaEclissi(id) {
     return;
   }
 
-  if (titoloEl) titoloEl.textContent = `Visibilità — ${evento.titolo} (${evento.dataTesto})`;
+  // Il filmato dell'eclissi precedente va fermato prima di cambiare evento,
+  // altrimenti un ultimo fotogramma disegnerebbe l'ombra nuova sui dati vecchi.
+  if (_eclFilmato.attivo) _eclFilmatoFerma();
+
+  if (titoloEl) titoloEl.textContent = `${evento.titolo} — ${evento.dataTesto}`;
   modale.classList.remove('hidden');
 
   _eclissiEventoInCorso = evento;
-  _eclissiOffsetTempoMin = 0;
   _eclissiPosizioneTemporanea = null;
+  _eclCittaEvidenziata = -1;
 
   // Inizializza la mappa la prima volta
   if (!_mappaEclissi) {
-    _mappaEclissi = L.map('mappa-eclissi', { worldCopyJump: true, minZoom: 1 }).setView([20, 0], 2);
+    _mappaEclissi = L.map('mappa-eclissi', {
+      worldCopyJump: true, minZoom: 1, zoomControl: false, attributionControl: true
+    }).setView([20, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 8,
-      attribution: '&copy; OpenStreetMap'
+      maxZoom: 8, attribution: '&copy; OpenStreetMap'
     }).addTo(_mappaEclissi);
+    // I comandi dello zoom vanno a destra: a sinistra c'è l'orologio
+    L.control.zoom({ position: 'topright' }).addTo(_mappaEclissi);
 
-    // Permetti all'utente di cliccare sulla mappa per definire una posizione temporanea
+    // Un tocco sulla mappa sposta l'osservatore
     _mappaEclissi.on('click', (e) => {
-      _eclissiPosizioneTemporanea = {
-        lat: e.latlng.lat,
-        lon: e.latlng.lng
-      };
-      _eclissiAggiornaDatiLocali();
+      _eclissiPosizioneTemporanea = { lat: e.latlng.lat, lon: e.latlng.lng };
+      _eclissiAggiornaTutto();
+    });
+    // Trascinando la mappa si smette di inseguire l'ombra
+    _mappaEclissi.on('dragstart', () => {
+      const casella = document.getElementById('eclissi-segui');
+      if (_eclFilmato.segui && casella) { _eclFilmato.segui = false; casella.checked = false; }
     });
   }
 
-  // Rimuove eventuali tracciati precedenti
+  // Ripulisce i tracciati dell'eclissi precedente
   _mappaStrati.forEach(s => _mappaEclissi.removeLayer(s));
   _mappaStrati = [];
+  _eclCittaMarker.forEach(m => _mappaEclissi.removeLayer(m));
+  _eclCittaMarker = [];
   if (_eclissiMarkerPosizione) {
     _mappaEclissi.removeLayer(_eclissiMarkerPosizione);
     _eclissiMarkerPosizione = null;
   }
-  if (_eclissiOmbraMobile) {
-    _mappaEclissi.removeLayer(_eclissiOmbraMobile);
-    _eclissiOmbraMobile = null;
-  }
-  if (_eclissiPenombraMobile) {
-    _mappaEclissi.removeLayer(_eclissiPenombraMobile);
-    _eclissiPenombraMobile = null;
+  _eclSvuotaDinamici();
+
+  // Ricostruisce l'eclissi: finestra temporale, percorso, città
+  const peakUt = evento.eclissi.peakUt;
+  _eclFinestra = _eclFinestraGlobale(peakUt);
+  _eclPercorso = _eclCampionaPercorso(peakUt, _eclFinestra);
+  _eclCitta = _eclPreparaCitta(peakUt, _eclFinestra);
+  _eclissiOffsetTempoMin = 0;
+
+  // Zona di eclissi parziale: la penombra di tutti gli istanti, tutta insieme.
+  // Con la regola di riempimento "nonzero" gli anelli sovrapposti si fondono
+  // in una macchia sola, senza cuciture e senza zone più scure.
+  if (_eclPercorso.regioneParziale.length) {
+    const p = L.polygon(_eclPercorso.regioneParziale, {
+      stroke: false, fillColor: '#38bdf8', fillOpacity: 0.10, fillRule: 'nonzero',
+      interactive: false, smoothFactor: 1.4
+    }).addTo(_mappaEclissi);
+    _mappaStrati.push(p);
   }
 
-  const percorso = _eclissiTracciaPercorso(evento.eclissi.peakUt);
-
-  // Area di visibilità parziale massima (stima statica di fondo): dischi di contorno
-  [{ km: 3200, colore: '#3b82f6', opac: 0.015 },
-   { km: 1500, colore: '#2563eb', opac: 0.03 }].forEach(f => {
-    percorso.forEach(([lat, lon]) => {
-      const disco = L.circle([lat, lon], {
-        radius: f.km * 1000, stroke: false, fillColor: f.colore, fillOpacity: f.opac, interactive: false
-      });
-      disco.addTo(_mappaEclissi);
-      _mappaStrati.push(disco);
-    });
+  // Isocrone: dov'era (o dove sarà) la penombra di ora in ora. Danno il verso
+  // della corsa senza bisogno di far partire il filmato.
+  _eclPercorso.isocrone.forEach(iso => {
+    const linea = _eclLineaContorno(iso.anello);
+    if (linea.length < 2) return;
+    const ora = _eclOra(new Date(evento.dataObj.getTime() + iso.min * 60000));
+    const l = L.polyline(linea, {
+      color: '#7dd3fc', weight: 1, opacity: 0.3, dashArray: '3 7', smoothFactor: 1.4
+    }).bindTooltip(`Penombra alle ${ora}: qui il Sole comincia a essere intaccato`,
+      { sticky: true }).addTo(_mappaEclissi);
+    _mappaStrati.push(l);
   });
 
-  // Fascia di totalità/anularità (totality path): colorata di rosso vivido e definita meglio
-  _eclissiSpezza(percorso).forEach(seg => {
-    const linea = L.polyline(seg, { color: '#ef4444', weight: 6, opacity: 0.85 });
-    linea.addTo(_mappaEclissi);
-    _mappaStrati.push(linea);
-  });
+  // Fascia di totalità/anularità: la striscia che conta davvero. Anche questa
+  // è l'unione di tante ombre istantanee, così resta pulita pure ai poli.
+  if (_eclPercorso.regioneTotale.length) {
+    const p = L.polygon(_eclPercorso.regioneTotale, {
+      stroke: false, fillColor: '#f59e0b', fillOpacity: 0.34, fillRule: 'nonzero',
+      smoothFactor: 1
+    }).addTo(_mappaEclissi);
+    p.bindTooltip(`Fascia di ${_eclNomeCentrale(evento.eclissi.kind)}: da qui il Sole sparisce del tutto`,
+      { sticky: true });
+    _mappaStrati.push(p);
+  }
+
+  // Linea centrale
+  if (_eclPercorso.lineaCentrale && _eclPercorso.lineaCentrale.length > 1) {
+    const l = L.polyline(_eclPercorso.lineaCentrale, {
+      color: '#fff3d6', weight: 2, opacity: 0.9, dashArray: '9 7', interactive: false
+    }).addTo(_mappaEclissi);
+    _mappaStrati.push(l);
+  }
 
   // Punto di massima eclissi
-  if (typeof evento.eclissi.lat === 'number') {
-    const faseIt = evento.eclissi.kind === 'total' ? 'totalità'
-                 : evento.eclissi.kind === 'annular' ? 'anularità' : 'fase centrale';
-    const marker = L.circleMarker([evento.eclissi.lat, evento.eclissi.lon], {
-      radius: 6, color: '#f97316', fillColor: '#ef4444', fillOpacity: 1, weight: 2
-    }).bindPopup(`<b>Massima ${faseIt}</b><br>${formattaCoordinate(evento.eclissi.lat, evento.eclissi.lon)}`);
-    marker.addTo(_mappaEclissi);
+  const dMax = _eclIstante(peakUt);
+  const pMax = _eclPuntoMassimo(dMax);
+  if (pMax) {
+    const cMax = _eclCircostanze(pMax[0], pMax[1], dMax);
+    const marker = L.circleMarker(pMax, {
+      radius: 6, color: '#fff3d6', fillColor: '#f97316', fillOpacity: 1, weight: 2
+    }).bindTooltip(
+      `<b>Massima eclissi</b><br>${_eclOra(evento.dataObj)} · ${_eclPerc(cMax.osc)} di Sole coperto`,
+      { direction: 'top' }
+    ).addTo(_mappaEclissi);
     _mappaStrati.push(marker);
   }
+
+  _eclDisegnaCitta();
+
+  // Cursore del tempo tarato sulla durata reale dell'eclissi
+  const slider = document.getElementById('eclissi-tempo-slider');
+  if (slider) {
+    slider.min = _eclFinestra.inizio;
+    slider.max = _eclFinestra.fine;
+    slider.step = 0.5;
+    slider.value = 0;
+  }
+  const etInizio = document.getElementById('eclissi-tempo-inizio');
+  const etFine = document.getElementById('eclissi-tempo-fine');
+  if (etInizio) etInizio.textContent = _eclOra(new Date(evento.dataObj.getTime() + _eclFinestra.inizio * 60000));
+  if (etFine) etFine.textContent = _eclOra(new Date(evento.dataObj.getTime() + _eclFinestra.fine * 60000));
+
+  const casellaSegui = document.getElementById('eclissi-segui');
+  if (casellaSegui) { _eclFilmato.segui = true; casellaSegui.checked = true; }
+  _eclFilmatoAggiornaPulsante();
+
+  _eclAggiornaLegenda(evento, _eclCostruisciRiepilogo(evento));
 
   // Inquadra il percorso e ricalcola le dimensioni (il div era nascosto)
   setTimeout(() => {
     _mappaEclissi.invalidateSize();
-    if (percorso.length) {
-      _mappaEclissi.fitBounds(L.latLngBounds(percorso).pad(0.4));
+    // Si inquadra la fascia centrale, che è ciò che si va a cercare; se non
+    // c'è (eclissi parziale) si allarga a tutta la zona di visibilità.
+    // Oltre gli 80° la proiezione di Mercatore si stira all'infinito: se il
+    // percorso arriva al polo si taglia lì, altrimenti resta mezza mappa nera.
+    // Si inquadra la fascia di totalità, che è ciò che si va a cercare. Quando
+    // non c'è (eclissi parziale) si segue la rotta del massimo, allargando di
+    // più: quel che conta è vedere la regione attorno.
+    const centrale = _eclPercorso.lineaCentrale && _eclPercorso.lineaCentrale.length > 1;
+    const inquadra = centrale ? _eclPercorso.lineaCentrale : _eclPercorso.rottaMassimo;
+    if (inquadra && inquadra.length > 1) {
+      const larghi = L.latLngBounds(inquadra.map(p => [Math.max(-80, Math.min(80, p[0])), p[1]])).pad(centrale ? 0.25 : 0.7);
+      _mappaEclissi.fitBounds(L.latLngBounds(
+        [Math.max(-82, larghi.getSouth()), larghi.getWest()],
+        [Math.min(82, larghi.getNorth()), larghi.getEast()]
+      ));
+      // Lo zoom va a scatti: la finestra può comunque sconfinare oltre il polo
+      _eclEvitaIlVuoto();
     }
     _eclissiAggiornaTutto();
   }, 60);
 }
 
 function chiudiMappaEclissi() {
+  if (_eclFilmato.attivo) _eclFilmatoFerma();
   const modale = document.getElementById('modale-mappa');
   if (modale) modale.classList.add('hidden');
   _eclissiEventoInCorso = null;
 }
 
-// Collega i pulsanti di chiusura del modale mappa e gli slider temporali.
+// Collega i comandi del modale: chiusura, cursore del tempo e filmato.
 function inizializzaMappaEclissiUI() {
   const modale = document.getElementById('modale-mappa');
   const btnChiudi = document.getElementById('btn-chiudi-mappa');
@@ -802,39 +1803,56 @@ function inizializzaMappaEclissiUI() {
   if (btnChiudi) btnChiudi.addEventListener('click', chiudiMappaEclissi);
   modale.addEventListener('click', (e) => { if (e.target === modale) chiudiMappaEclissi(); });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modale.classList.contains('hidden')) chiudiMappaEclissi();
+    if (modale.classList.contains('hidden')) return;
+    if (e.key === 'Escape') chiudiMappaEclissi();
+    // Barra spaziatrice: avvia e ferma il filmato, come in un lettore video
+    if (e.key === ' ' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+      e.preventDefault();
+      _eclFilmatoAlterna();
+    }
   });
 
-  // Gestione Slider del Tempo
   const slider = document.getElementById('eclissi-tempo-slider');
   if (slider) {
     slider.addEventListener('input', () => {
-      _eclissiOffsetTempoMin = parseInt(slider.value, 10);
+      if (_eclFilmato.attivo) _eclFilmatoFerma();
+      _eclissiOffsetTempoMin = parseFloat(slider.value);
       _eclissiAggiornaTutto();
     });
   }
 
-  // Pulsanti temporali
-  const btnMeno = document.getElementById('eclissi-tempo-meno');
-  if (btnMeno) {
-    btnMeno.addEventListener('click', () => {
-      _eclissiOffsetTempoMin = Math.max(-180, _eclissiOffsetTempoMin - 10);
-      _eclissiAggiornaTutto();
-    });
+  const play = document.getElementById('eclissi-play');
+  if (play) play.addEventListener('click', _eclFilmatoAlterna);
+
+  const comandi = [
+    ['eclissi-tempo-avvio', () => _eclVaiA(_eclFinestra.inizio)],
+    ['eclissi-tempo-meno', () => _eclVaiA(_eclissiOffsetTempoMin - 10)],
+    ['eclissi-tempo-reset', () => _eclVaiA(0)],
+    ['eclissi-tempo-piu', () => _eclVaiA(_eclissiOffsetTempoMin + 10)],
+    ['eclissi-tempo-termine', () => _eclVaiA(_eclFinestra.fine)]
+  ];
+  comandi.forEach(([id, azione]) => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', () => { if (_eclFilmato.attivo) _eclFilmatoFerma(); azione(); });
+  });
+
+  const velocita = document.getElementById('eclissi-velocita');
+  if (velocita) {
+    velocita.addEventListener('change', () => { _eclFilmato.velocita = parseFloat(velocita.value); });
   }
 
-  const btnPiu = document.getElementById('eclissi-tempo-piu');
-  if (btnPiu) {
-    btnPiu.addEventListener('click', () => {
-      _eclissiOffsetTempoMin = Math.min(180, _eclissiOffsetTempoMin + 10);
-      _eclissiAggiornaTutto();
-    });
-  }
+  const segui = document.getElementById('eclissi-segui');
+  if (segui) segui.addEventListener('change', () => { _eclFilmato.segui = segui.checked; });
 
-  const btnReset = document.getElementById('eclissi-tempo-reset');
-  if (btnReset) {
-    btnReset.addEventListener('click', () => {
-      _eclissiOffsetTempoMin = 0;
+  // Toccando una città dell'elenco l'osservatore si sposta lì
+  const lista = document.getElementById('eclissi-citta-lista');
+  if (lista) {
+    lista.addEventListener('click', (e) => {
+      const riga = e.target.closest('[data-citta]');
+      if (!riga) return;
+      const c = _eclCitta[parseInt(riga.dataset.citta, 10)];
+      if (!c) return;
+      _eclissiPosizioneTemporanea = { lat: c.lat, lon: c.lon };
       _eclissiAggiornaTutto();
     });
   }
@@ -1419,7 +2437,7 @@ function costruisciAgenda() {
       : '';
     // Pulsante mappa interattiva di visibilità (solo eclissi solari con fascia centrale)
     const bottoneMappa = evento.eclissi
-      ? `<li><button onclick="apriMappaEclissi('${evento.id}')" class="inline-flex items-center gap-1 text-blue-400 underline hover:text-blue-300 bg-transparent border-0 p-0 cursor-pointer">Mostra la mappa di visibilità (linea centrale e area parziale)</button></li>`
+      ? `<li><button onclick="apriMappaEclissi('${evento.id}')" class="inline-flex items-center gap-1 text-blue-400 underline hover:text-blue-300 bg-transparent border-0 p-0 cursor-pointer">Apri la mappa: il percorso dell'ombra, minuto per minuto</button></li>`
       : '';
     // Scorciatoia verso la vista Cielo, puntata sul protagonista dell'evento
     const bottoneCielo = evento.corpoCielo

@@ -297,69 +297,104 @@
 
   <!-- MODALE: MAPPA DI VISIBILITÀ DELL'ECLISSI -->
   <div id="modale-mappa" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start md:items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-800 w-full max-w-3xl rounded-2xl border border-slate-700 shadow-2xl my-8">
-      <div class="flex justify-between items-center p-5 border-b border-slate-700">
-        <h2 id="mappa-titolo" class="text-xl md:text-2xl font-bold text-white">Mappa di visibilità</h2>
-        <button id="btn-chiudi-mappa" class="senza-cornice px-2 py-1 text-slate-400 hover:text-white text-sm underline" title="Chiudi la finestra">Chiudi</button>
+    <div class="bg-slate-800 w-full max-w-4xl rounded-2xl border border-slate-700 shadow-2xl my-8">
+      <div class="flex justify-between items-start gap-4 p-5 border-b border-slate-700">
+        <div>
+          <h2 id="mappa-titolo" class="text-xl md:text-2xl font-bold text-white">Mappa di visibilità</h2>
+          <p id="mappa-sottotitolo" class="text-xs text-slate-400 mt-1">Il percorso del cono d'ombra sulla Terra</p>
+        </div>
+        <button id="btn-chiudi-mappa" class="senza-cornice px-2 py-1 text-slate-400 hover:text-white text-sm underline shrink-0" title="Chiudi la finestra">Chiudi</button>
       </div>
-      <div class="p-4 md:p-5 space-y-4">
-        <div id="mappa-eclissi" class="w-full rounded-xl overflow-hidden border border-slate-700" style="height: 60vh; min-height: 320px;"></div>
 
-        <!-- CONTROLLO DEL TEMPO DINAMICO -->
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-3">
-          <div class="flex justify-between items-center">
-            <h3 class="font-bold text-white text-sm">Simulazione del percorso nel tempo</h3>
-            <span id="eclissi-tempo-valore" class="text-sm text-blue-400 font-mono font-semibold">Al picco (0 min)</span>
+      <div class="p-4 md:p-5 space-y-4">
+
+        <!-- I numeri chiave dell'eclissi, prima ancora di guardare la mappa -->
+        <div id="eclissi-riepilogo" class="ecl-riepilogo"></div>
+
+        <!-- LA MAPPA, con le indicazioni sovrapposte -->
+        <div class="ecl-mappa-guscio">
+          <div id="mappa-eclissi"></div>
+          <div class="ecl-hud">
+            <div id="eclissi-hud-ora" class="ecl-hud-ora">—</div>
+            <div id="eclissi-hud-fase" class="ecl-hud-fase attesa">—</div>
           </div>
-          <div class="flex items-center gap-3">
-            <button id="eclissi-tempo-meno" type="button" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-full">-10m</button>
-            <input id="eclissi-tempo-slider" type="range" min="-180" max="180" value="0" step="2" class="flex-1 accent-blue-500 cursor-pointer">
-            <button id="eclissi-tempo-piu" type="button" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-full">+10m</button>
-            <button id="eclissi-tempo-reset" type="button" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-full">Reset</button>
-          </div>
-          <p id="eclissi-tempo-data" class="text-xs text-slate-400 font-mono text-center">Data e ora selezionate: —</p>
+          <div id="eclissi-hud-citta" class="ecl-hud-citta hidden"></div>
         </div>
 
-        <!-- POSIZIONE E DATI SOLE/LUNA -->
-        <div class="grid gap-4 md:grid-cols-2 bg-slate-900 p-4 rounded-xl border border-slate-700">
-          <div>
-            <h4 class="font-bold text-white text-sm mb-2 flex items-center gap-1">
-              <span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500"></span>
-              Luogo di Osservazione
-            </h4>
-            <p id="eclissi-luogo-testo" class="text-xs text-slate-300">Lat: —, Lon: — (Posizione temporanea)</p>
-            <p class="text-[11px] text-slate-500 mt-1">Clicca un punto qualsiasi sulla mappa per spostare l'osservatore e vedere i dati astronomici locali in quell'istante!</p>
+        <!-- IL FILMATO DELL'OMBRA -->
+        <div class="ecl-lettore">
+          <div class="ecl-lettore-riga">
+            <button id="eclissi-play" type="button" class="ecl-btn-play" title="Avvia il filmato dell'ombra">
+              <span class="ecl-icona-play"></span><span class="ecl-play-testo">Riproduci</span>
+            </button>
+            <div class="ecl-linea-tempo">
+              <input id="eclissi-tempo-slider" type="range" min="-180" max="180" value="0" step="0.5"
+                     aria-label="Momento dell'eclissi" title="Trascina per spostarti nel tempo">
+              <div class="ecl-linea-tempo-etichette">
+                <span id="eclissi-tempo-inizio">—</span>
+                <span id="eclissi-tempo-valore" class="ecl-tempo-valore">—</span>
+                <span id="eclissi-tempo-fine">—</span>
+              </div>
+            </div>
           </div>
-          <div class="space-y-1 text-xs text-slate-300 border-t md:border-t-0 md:border-l border-slate-700 pt-2 md:pt-0 md:pl-4">
-            <h4 class="font-bold text-white text-sm mb-1">Dati Astronomici Locali</h4>
-            <div id="eclissi-dati-locali" class="space-y-1 font-mono">
-              <p>Sole: —</p>
-              <p>Luna: —</p>
-              <p>Oscuramento Sole: —</p>
+          <div class="ecl-lettore-riga secondaria">
+            <div class="ecl-gruppo-tasti">
+              <button id="eclissi-tempo-avvio" type="button" class="ecl-tasto" title="Vai all'inizio dell'eclissi">Inizio</button>
+              <button id="eclissi-tempo-meno" type="button" class="ecl-tasto" title="Indietro di 10 minuti">−10 min</button>
+              <button id="eclissi-tempo-reset" type="button" class="ecl-tasto principale" title="Vai al momento di massima eclissi">Massimo</button>
+              <button id="eclissi-tempo-piu" type="button" class="ecl-tasto" title="Avanti di 10 minuti">+10 min</button>
+              <button id="eclissi-tempo-termine" type="button" class="ecl-tasto" title="Vai alla fine dell'eclissi">Fine</button>
+            </div>
+            <div class="ecl-gruppo-opzioni">
+              <label class="ecl-opzione" title="Quanti minuti di eclissi scorrono in un secondo di filmato">
+                Velocità
+                <select id="eclissi-velocita" class="ecl-select">
+                  <option value="3">lenta</option>
+                  <option value="8" selected>normale</option>
+                  <option value="18">veloce</option>
+                  <option value="35">rapidissima</option>
+                </select>
+              </label>
+              <label class="ecl-opzione" title="Tiene la mappa centrata sull'ombra mentre corre">
+                <input id="eclissi-segui" type="checkbox" checked> Segui l'ombra
+              </label>
             </div>
           </div>
         </div>
 
-        <!-- Legenda -->
-        <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300 pt-2">
-          <span class="flex items-center gap-2">
-            <span class="inline-block w-6 h-1.5 rounded-full" style="background:#ef4444"></span>
-            Fascia di totalità/anularità (oscuramento 100%)
-          </span>
-          <span class="flex items-center gap-2">
-            <span class="inline-block w-4 h-4 rounded-full bg-black border border-red-500"></span>
-            Ombra lunare mobile (totalità istantanea)
-          </span>
-          <span class="flex items-center gap-2">
-            <span class="inline-block w-4 h-4 rounded-full bg-slate-600/30 border border-dashed border-blue-400"></span>
-            Penombra mobile (eclissi parziale istantanea)
-          </span>
-          <span class="flex items-center gap-2">
-            <span class="inline-block w-4 h-4 rounded-full bg-blue-500/10 border border-dashed border-blue-500/40"></span>
-            Fascia parziale massima (stima statica)
-          </span>
+        <!-- LE CITTÀ CHE L'OMBRA STA ATTRAVERSANDO -->
+        <div class="ecl-pannello">
+          <div class="ecl-pannello-testa">
+            <h3>Dove sta passando l'ombra</h3>
+            <span id="eclissi-citta-conteggio" class="ecl-conteggio">—</span>
+          </div>
+          <div id="eclissi-citta-ora" class="ecl-citta-ora">—</div>
+          <ul id="eclissi-citta-lista" class="ecl-citta-lista"></ul>
+          <p class="ecl-nota-piccola">Tocca una città per portare lì il tuo punto di osservazione.</p>
         </div>
-        <p class="text-xs text-slate-500">La linea rossa centrale è l'asse dell'ombra lunare. Puoi cliccare sulla mappa per definire la tua posizione geografica temporanea e usare il cursore del tempo per vedere lo spostamento dell'ombra e l'osservabilità locale di Sole e Luna in tempo reale.</p>
+
+        <!-- IL LUOGO SCELTO -->
+        <div class="ecl-pannello">
+          <div class="ecl-pannello-testa">
+            <h3>Da dove guardi</h3>
+            <span id="eclissi-luogo-testo" class="ecl-luogo">—</span>
+          </div>
+          <div id="eclissi-dati-locali" class="ecl-dati-locali">
+            <p>Scegli un punto sulla mappa per vedere cosa succede lì.</p>
+          </div>
+        </div>
+
+        <!-- LEGENDA -->
+        <details class="ecl-legenda" open>
+          <summary>Come si legge la mappa</summary>
+          <div id="eclissi-legenda-griglia" class="ecl-legenda-griglia"></div>
+          <div class="ecl-scala">
+            <span class="ecl-scala-etichetta">Sole coperto</span>
+            <span class="ecl-scala-barra"></span>
+            <span class="ecl-scala-numeri"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></span>
+          </div>
+        </details>
+
       </div>
     </div>
   </div>
