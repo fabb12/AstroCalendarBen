@@ -3,6 +3,35 @@ let eventiCalcolati = [];
 let fullCalendarInstance = null;
 let contatoreId = 0; // per generare id univoci e "sicuri" (solo lettere+numeri)
 
+// Dove finiscono gli eventi appena creati. Normalmente è la lista principale,
+// ma durante il calcolo di un mese "a richiesta" si punta a una lista di
+// appoggio, così i doppioni si possono scartare prima di mescolarli agli altri.
+let destinazioneEventi = null;
+
+// Il mese che si sta guardando (calendario e agenda vanno d'accordo).
+// null = nessun mese scelto: l'agenda mostra tutti gli eventi in arrivo.
+let meseSelezionato = null;
+
+// I mesi già calcolati, per non rifare due volte lo stesso lavoro
+const mesiCalcolati = new Set();
+
+// Vero mentre siamo noi a spostare il calendario: evita che il suo evento
+// "ho cambiato mese" ci rimandi indietro da dove siamo appena partiti
+let calendarioInMovimento = false;
+
+// Le "impronte" degli eventi già in lista: servono a non duplicare un evento
+// che ricade in due finestre di calcolo diverse
+const impronteEventi = new Set();
+
+// Fin dove si può andare indietro e avanti nel tempo col selettore del mese
+const ANNO_MINIMO_NAVIGABILE = 1900;
+const ANNO_MASSIMO_NAVIGABILE = 2100;
+
+const NOMI_MESI = [
+  'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+];
+
 // Categorie di eventi: usate dai filtri e dai badge nell'agenda
 const CATEGORIE = {
   luna:      { nome: 'Fasi Lunari',      disegno: 'luna' },
@@ -170,7 +199,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // Helper: crea un evento con id sicuro e testo data formattato
 function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, corpoCielo, simul, strumento, congiunzione }) {
-  eventiCalcolati.push({
+  (destinazioneEventi || eventiCalcolati).push({
     id: id || `ev${contatoreId++}`,
     titolo,
     dataObj,
@@ -199,6 +228,97 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
 //    Ogni categoria è isolata in un try/catch: se una fallisce,
 //    le altre vengono comunque calcolate e la pagina non resta vuota.
 // =====================================================================
+// Calcola tutti gli eventi astronomici compresi fra due istanti qualsiasi —
+// anche nel passato — e li restituisce in una lista a parte, senza toccare
+// il calendario. È il motore usato sia all'avvio sia dal selettore del mese.
+function calcolaEventiIntervallo(inizio, fine, opzioni = {}) {
+  if (typeof Astronomy === 'undefined') return [];
+
+  const raccolta = [];
+  const precedente = destinazioneEventi;
+  destinazioneEventi = raccolta;
+  try {
+    const t0 = new Astronomy.AstroTime(inizio);
+    // Le eclissi possono avere un orizzonte più lontano di quello degli altri eventi
+    const limiteEclissi = opzioni.limiteEclissi || fine;
+
+    aggiungiFasiLunari(t0, fine);
+    aggiungiEclissiLunari(t0, limiteEclissi);
+    aggiungiEclissiSolari(t0, limiteEclissi);
+    aggiungiStagioni(inizio, fine);
+    aggiungiSciamiMeteorici(inizio, fine);
+    aggiungiElongazioni(inizio, fine);
+    aggiungiCongiunzioni(inizio, fine);
+  } finally {
+    destinazioneEventi = precedente;
+  }
+  return raccolta;
+}
+
+// L'impronta di un evento: stesso titolo nello stesso giorno = stesso evento.
+// Le finestre di calcolo si sovrappongono e i raffinamenti numerici possono
+// spostare un minimo di qualche minuto, quindi il giorno è la grana giusta.
+function improntaEvento(ev) {
+  const d = ev.dataObj;
+  return `${ev.titolo}|${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+// Aggiunge al calendario gli eventi non ancora presenti, e riordina se serve
+function inserisciEventi(lista) {
+  let aggiunti = 0;
+  lista.forEach(ev => {
+    const impronta = improntaEvento(ev);
+    if (impronteEventi.has(impronta)) return;
+    impronteEventi.add(impronta);
+    eventiCalcolati.push(ev);
+    aggiunti++;
+  });
+  if (aggiunti) eventiCalcolati.sort((a, b) => a.dataObj - b.dataObj);
+  return aggiunti;
+}
+
+// Chiave del mese nel formato "2027-03"
+function chiaveMese(anno, mese) {
+  return `${anno}-${String(mese + 1).padStart(2, '0')}`;
+}
+
+// Calcola (una volta sola) gli eventi di un mese preciso, passato o futuro.
+// Restituisce quanti eventi nuovi sono entrati nel calendario.
+function assicuraMese(anno, mese) {
+  const chiave = chiaveMese(anno, mese);
+  if (mesiCalcolati.has(chiave)) return 0;
+  mesiCalcolati.add(chiave);
+
+  // Un paio di giorni di margine ai bordi: le congiunzioni cercano un minimo
+  // fra un campione e l'altro, e senza margine quelle a cavallo del mese
+  // sfuggirebbero.
+  const inizio = new Date(anno, mese, 1, 0, 0, 0);
+  const fine = new Date(anno, mese + 1, 0, 23, 59, 59);
+  const inizioMargine = new Date(inizio.getTime() - 2 * 86400000);
+  const fineMargine = new Date(fine.getTime() + 2 * 86400000);
+
+  return inserisciEventi(calcolaEventiIntervallo(inizioMargine, fineMargine));
+}
+
+// Come sopra, ma per un intervallo qualsiasi: calcola tutti i mesi che tocca
+// (la griglia del calendario mostra anche code del mese prima e di quello dopo)
+function assicuraIntervallo(inizio, fine) {
+  let aggiunti = 0;
+  const cursore = new Date(inizio.getFullYear(), inizio.getMonth(), 1);
+  const ultimo = new Date(fine.getFullYear(), fine.getMonth(), 1);
+  // Un limite di sicurezza: non si calcolano secoli in un colpo solo
+  for (let i = 0; cursore <= ultimo && i < 36; i++) {
+    aggiunti += assicuraMese(cursore.getFullYear(), cursore.getMonth());
+    cursore.setMonth(cursore.getMonth() + 1);
+  }
+  return aggiunti;
+}
+
+// =====================================================================
+// 1. Calcolo di TUTTI gli eventi tramite Astronomy Engine
+//    Ogni categoria è isolata in un try/catch: se una fallisce,
+//    le altre vengono comunque calcolate e la pagina non resta vuota.
+// =====================================================================
 function calcolaEventiAstronomi() {
   const oggi = new Date();
   // Calcoliamo da oggi fino alla fine dell'anno ANNO_LIMITE (calendario ricco e a lungo termine)
@@ -212,18 +332,21 @@ function calcolaEventiAstronomi() {
     return;
   }
 
-  const t0 = new Astronomy.AstroTime(oggi);
+  inserisciEventi(calcolaEventiIntervallo(oggi, limite, { limiteEclissi }));
 
-  aggiungiFasiLunari(t0, limite);
-  aggiungiEclissiLunari(t0, limiteEclissi);
-  aggiungiEclissiSolari(t0, limiteEclissi);
-  aggiungiStagioni(oggi, limite);
-  aggiungiSciamiMeteorici(oggi, limite);
-  aggiungiElongazioni(oggi, limite);
-  aggiungiCongiunzioni(oggi, limite);
-
-  // Ordina temporalmente
-  eventiCalcolati.sort((a, b) => a.dataObj - b.dataObj);
+  // Segniamo come già fatti i mesi che questa passata copre per intero.
+  // Il mese in corso resta fuori: qui parte da oggi, e i giorni già passati
+  // vanno ricalcolati se qualcuno torna a guardarli. Anche le congiunzioni
+  // hanno un orizzonte più corto (CONG_ANNI), quindi ci fermiamo lì.
+  const fineCoperta = new Date(Math.min(
+    limite.getTime(),
+    oggi.getTime() + CONG_ANNI * 365.25 * 86400000
+  ));
+  const cursore = new Date(oggi.getFullYear(), oggi.getMonth() + 1, 1);
+  while (new Date(cursore.getFullYear(), cursore.getMonth() + 1, 0) <= fineCoperta) {
+    mesiCalcolati.add(chiaveMese(cursore.getFullYear(), cursore.getMonth()));
+    cursore.setMonth(cursore.getMonth() + 1);
+  }
 
   const loading = document.getElementById('loading-msg');
   if (loading) {
@@ -1868,7 +1991,7 @@ function inizializzaMappaEclissiUI() {
 function aggiungiStagioni(oggi, limite) {
   try {
     const annoInizio = oggi.getFullYear();
-    for (let anno = annoInizio; anno <= ANNO_LIMITE; anno++) {
+    for (let anno = annoInizio; anno <= limite.getFullYear(); anno++) {
       const s = Astronomy.Seasons(anno);
       const punti = [
         { at: s.mar_equinox, titolo: 'Equinozio di Primavera', tipo: 'equinozio', spiegazione: 'Il Sole attraversa l’equatore celeste: giorno e notte hanno quasi la stessa durata. Inizia la primavera nell’emisfero nord.' },
@@ -1927,7 +2050,7 @@ function aggiungiSciamiMeteorici(oggi, limite) {
       { nome: 'Ursidi', mese: 12, giorno: 22, zhr: 'circa 10 meteore/ora', ra: 14.47, dec: 75.3, zhrNum: 10 }
     ];
     const annoInizio = oggi.getFullYear();
-    for (let anno = annoInizio; anno <= ANNO_LIMITE; anno++) {
+    for (let anno = annoInizio; anno <= limite.getFullYear(); anno++) {
       sciami.forEach(s => {
         // Picco tipico intorno alle 22:00 ora locale
         const d = new Date(anno, s.mese - 1, s.giorno, 22, 0, 0);
@@ -2101,7 +2224,17 @@ function aggiungiEventoManuale(dati) {
   eventiCalcolati.sort((a, b) => a.dataObj - b.dataObj);
   salvaEventiManuali();
   pianificaNotifiche();
+  // Se l'agenda è ferma su un mese diverso, l'evento appena salvato non si
+  // vedrebbe: portiamola sul mese giusto invece di far sparire il lavoro fatto
+  portaAlMeseDellEvento(dati.dataObj);
   aggiornaViste();
+}
+
+// Se un mese è selezionato e la data non ci rientra, spostiamoci su quel mese
+function portaAlMeseDellEvento(data) {
+  if (!meseSelezionato || !(data instanceof Date) || isNaN(data)) return;
+  if (data.getFullYear() === meseSelezionato.anno && data.getMonth() === meseSelezionato.mese) return;
+  impostaMeseSelezionato(data.getFullYear(), data.getMonth());
 }
 
 // Aggiorna un evento manuale esistente con i dati del form
@@ -2282,10 +2415,156 @@ function inizializzaFormAggiungi() {
 function inizializzaUI() {
   inizializzaRicerca();
   inizializzaFiltroStrumento();
+  inizializzaSelettoriMese();
   costruisciAgenda();
   inizializzaCalendario();
   costruisciDiario();
   gestisciTab();
+}
+
+// =====================================================================
+// 1-quater. Scelta del mese (calendario e agenda vanno insieme)
+//    Si può scrivere un mese e un anno qualsiasi, anche molto indietro
+//    nel tempo: gli eventi di quel mese vengono calcolati sul momento.
+// =====================================================================
+
+// Riempie i due selettori (calendario e agenda) e ne collega i tasti
+function inizializzaSelettoriMese() {
+  const oggi = new Date();
+  document.querySelectorAll('[data-selettore-mese]').forEach(box => {
+    const selMese = box.querySelector('[data-campo-mese]');
+    const campoAnno = box.querySelector('[data-campo-anno]');
+
+    if (selMese) {
+      selMese.innerHTML = NOMI_MESI
+        .map((nome, i) => `<option value="${i}">${nome}</option>`)
+        .join('');
+      selMese.value = String(oggi.getMonth());
+    }
+    if (campoAnno) {
+      campoAnno.min = String(ANNO_MINIMO_NAVIGABILE);
+      campoAnno.max = String(ANNO_MASSIMO_NAVIGABILE);
+      campoAnno.value = String(oggi.getFullYear());
+      // Invio nel campo anno = "Mostra", senza dover cercare il tasto
+      campoAnno.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); vaiAlMeseDelSelettore(box); }
+      });
+    }
+
+    box.querySelectorAll('[data-azione-mese]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const azione = btn.dataset.azioneMese;
+        if (azione === 'vai') vaiAlMeseDelSelettore(box);
+        else if (azione === 'oggi') impostaMeseSelezionato(oggiAnno(), oggiMese());
+        else if (azione === 'prossimi') azzeraMeseSelezionato();
+      });
+    });
+  });
+  sincronizzaSelettoriMese();
+}
+
+function oggiAnno() { return new Date().getFullYear(); }
+function oggiMese() { return new Date().getMonth(); }
+
+// Il primo giorno del mese che la griglia sta disegnando (oggi, se non c'è)
+function meseMostratoDalCalendario() {
+  const inizio = fullCalendarInstance && fullCalendarInstance.view
+    ? fullCalendarInstance.view.currentStart
+    : null;
+  const oggi = new Date();
+  return inizio ? new Date(inizio.getFullYear(), inizio.getMonth(), 1)
+                : new Date(oggi.getFullYear(), oggi.getMonth(), 1);
+}
+
+// Legge mese e anno scritti in un selettore e ci porta il calendario
+function vaiAlMeseDelSelettore(box) {
+  const selMese = box.querySelector('[data-campo-mese]');
+  const campoAnno = box.querySelector('[data-campo-anno]');
+  const mese = selMese ? parseInt(selMese.value, 10) : NaN;
+  let anno = campoAnno ? parseInt(campoAnno.value, 10) : NaN;
+
+  if (!Number.isFinite(anno)) anno = oggiAnno();
+  // Fuori dai binari non si va: la libreria perde precisione e il calcolo
+  // diventa lunghissimo senza dare nulla in più
+  anno = Math.min(ANNO_MASSIMO_NAVIGABILE, Math.max(ANNO_MINIMO_NAVIGABILE, anno));
+  if (!Number.isFinite(mese) || mese < 0 || mese > 11) return;
+
+  impostaMeseSelezionato(anno, mese);
+}
+
+// Porta calendario e agenda su un mese preciso, calcolandone gli eventi
+function impostaMeseSelezionato(anno, mese, opzioni = {}) {
+  meseSelezionato = { anno, mese };
+  mostraCalcoloInCorso(anno, mese);
+
+  // Il calcolo vero è sincrono e blocca il disegno: gli lasciamo un giro di
+  // schermo per far comparire prima la scritta "sto calcolando".
+  const esegui = () => {
+    assicuraMese(anno, mese);
+    if (opzioni.intervallo) assicuraIntervallo(opzioni.intervallo.inizio, opzioni.intervallo.fine);
+    if (!opzioni.daCalendario && fullCalendarInstance) {
+      // gotoDate riaccende datesSet: gli diciamo di non rimbalzare indietro
+      calendarioInMovimento = true;
+      fullCalendarInstance.gotoDate(new Date(anno, mese, 1));
+      calendarioInMovimento = false;
+    }
+    sincronizzaSelettoriMese();
+    sincronizzaCalendario();
+    costruisciAgenda();
+  };
+  if (opzioni.subito) esegui(); else setTimeout(esegui, 0);
+}
+
+// Torna alla vista "tutti gli eventi in arrivo" (nessun mese scelto)
+function azzeraMeseSelezionato() {
+  meseSelezionato = null;
+  sincronizzaSelettoriMese();
+  costruisciAgenda();
+}
+
+// Allinea i campi dei due selettori e le righe di stato al mese scelto
+function sincronizzaSelettoriMese() {
+  // Senza un mese scelto i campi mostrano quello che si sta guardando nella
+  // griglia: premere "Mostra" senza toccare nulla deve essere una conferma,
+  // non un salto altrove.
+  const riferimento = meseSelezionato
+    ? new Date(meseSelezionato.anno, meseSelezionato.mese, 1)
+    : meseMostratoDalCalendario();
+  const anno = riferimento.getFullYear();
+  const mese = riferimento.getMonth();
+
+  document.querySelectorAll('[data-selettore-mese]').forEach(box => {
+    const selMese = box.querySelector('[data-campo-mese]');
+    const campoAnno = box.querySelector('[data-campo-anno]');
+    if (selMese) selMese.value = String(mese);
+    if (campoAnno && document.activeElement !== campoAnno) campoAnno.value = String(anno);
+  });
+
+  // La riga sotto la griglia segue il mese davvero disegnato: "Tutti i prossimi"
+  // cambia l'agenda, non il calendario, e le due scritte non devono litigare
+  const statoCal = document.getElementById('calendario-stato');
+  if (statoCal) {
+    const mostrata = meseMostratoDalCalendario();
+    statoCal.textContent = `Eventi di ${NOMI_MESI[mostrata.getMonth()]} ${mostrata.getFullYear()}, ` +
+      'calcolati per questo mese.';
+  }
+
+  const statoAgenda = document.getElementById('agenda-stato');
+  if (statoAgenda) {
+    statoAgenda.textContent = meseSelezionato
+      ? `Stai leggendo ${NOMI_MESI[mese]} ${anno}. Con “Tutti i prossimi” torni agli eventi in arrivo.`
+      : 'Stai leggendo tutti gli eventi in arrivo. Scegli un mese per vedere quello, anche nel passato.';
+  }
+}
+
+// Avvisa che il calcolo è in corso: un mese lontano richiede qualche istante
+function mostraCalcoloInCorso(anno, mese) {
+  if (mesiCalcolati.has(chiaveMese(anno, mese))) return;
+  const testo = `Calcolo gli eventi di ${NOMI_MESI[mese]} ${anno}…`;
+  const statoCal = document.getElementById('calendario-stato');
+  if (statoCal) statoCal.textContent = testo;
+  const statoAgenda = document.getElementById('agenda-stato');
+  if (statoAgenda) statoAgenda.textContent = testo;
 }
 
 // =====================================================================
@@ -2322,6 +2601,18 @@ function getEventiFiltrati() {
     const testo = normalizzaTesto(`${ev.titolo} ${ev.spiegazione} ${nomeCategoria}`);
     return parole.every(p => testo.includes(p));
   });
+}
+
+// Gli eventi che l'agenda deve mostrare: quelli del mese scelto se ce n'è uno
+// (compresi i giorni già passati, che è il senso di guardarsi indietro),
+// altrimenti tutti quelli che superano i filtri.
+function getEventiAgenda() {
+  const lista = getEventiFiltrati();
+  if (!meseSelezionato) return lista;
+  const { anno, mese } = meseSelezionato;
+  return lista.filter(ev =>
+    ev.dataObj.getFullYear() === anno && ev.dataObj.getMonth() === mese
+  );
 }
 
 // Riapplica i filtri correnti sia all'agenda sia al calendario a griglia
@@ -2407,12 +2698,18 @@ function costruisciAgenda() {
   if (!container) return;
   container.innerHTML = '';
 
-  const eventiDaMostrare = getEventiFiltrati();
+  const eventiDaMostrare = getEventiAgenda();
 
   if (eventiDaMostrare.length === 0) {
-    const messaggio = eventiCalcolati.length === 0
-      ? 'Nessun evento da mostrare.'
-      : 'Nessun evento corrisponde alla ricerca. Prova a cambiare i termini o la categoria.';
+    let messaggio;
+    if (eventiCalcolati.length === 0) {
+      messaggio = 'Nessun evento da mostrare.';
+    } else if (meseSelezionato) {
+      messaggio = `Nessun evento in ${NOMI_MESI[meseSelezionato.mese]} ${meseSelezionato.anno} ` +
+        'con i filtri attivi. Prova a cambiare mese, ricerca o categoria.';
+    } else {
+      messaggio = 'Nessun evento corrisponde alla ricerca. Prova a cambiare i termini o la categoria.';
+    }
     container.innerHTML = `<p class="text-center text-slate-400">${messaggio}</p>`;
     return;
   }
@@ -2515,7 +2812,28 @@ function inizializzaCalendario() {
     // Niente rettangoli pieni: un pallino colorato e il titolo, come su un'agenda di carta
     eventDisplay: 'list-item',
     displayEventTime: false,
+    // Non c'è un limite ai mesi navigabili: quelli fuori dal calcolo iniziale
+    // vengono calcolati appena si arriva a guardarli
+    validRange: {
+      start: new Date(ANNO_MINIMO_NAVIGABILE, 0, 1),
+      end: new Date(ANNO_MASSIMO_NAVIGABILE, 11, 31)
+    },
     events: eventiPerGriglia(getEventiFiltrati()),
+    // Ogni volta che cambia il mese mostrato — con le frecce, con "Oggi" o dal
+    // selettore — calcoliamo gli eventi di quel mese e ci allineiamo l'agenda.
+    datesSet: function(info) {
+      if (calendarioInMovimento) return;
+      const corrente = info.view.currentStart;
+      const anno = corrente.getFullYear();
+      const mese = corrente.getMonth();
+      if (meseSelezionato && meseSelezionato.anno === anno && meseSelezionato.mese === mese) return;
+      // La griglia mostra anche le code del mese prima e di quello dopo:
+      // le calcoliamo tutte, così non restano caselle vuote per finta.
+      impostaMeseSelezionato(anno, mese, {
+        daCalendario: true,
+        intervallo: { inizio: info.start, fine: new Date(info.end.getTime() - 1) }
+      });
+    },
     eventClick: function(info) {
       // Se clicco su un evento nel calendario apro l'agenda sulla sua scheda.
       // La voce NON parte da sola: si attiva solo col tasto “Ascolta” o con la notifica.
@@ -2526,7 +2844,11 @@ function inizializzaCalendario() {
       }, 300);
     }
   });
+  // Il primo disegno non conta come "l'utente ha scelto un mese": l'agenda
+  // deve aprirsi su tutti gli eventi in arrivo, non solo su questo mese.
+  calendarioInMovimento = true;
   fullCalendarInstance.render();
+  calendarioInMovimento = false;
 }
 
 // =====================================================================
@@ -7368,6 +7690,10 @@ function urlEvento(id) {
 
 // Porta l'utente sulla scheda di un evento, ovunque si trovi nell'app
 window.vaiAllEvento = (id) => {
+  // L'agenda potrebbe essere ferma su un altro mese: portiamola dove serve,
+  // altrimenti la scheda cercata non è nemmeno disegnata
+  const cercato = eventiCalcolati.find(e => e.id === id);
+  if (cercato) portaAlMeseDellEvento(cercato.dataObj);
   mostraVista('agenda');
   setTimeout(() => {
     const card = document.querySelector(`article[data-evento-id="${id}"]`);

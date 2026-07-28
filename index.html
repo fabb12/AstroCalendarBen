@@ -144,11 +144,34 @@
 
     <!-- VISTA CALENDARIO A GRIGLIA -->
     <div id="vista-calendario" class="bg-slate-800 p-4 md:p-6 rounded-2xl border border-slate-700 shadow-xl">
+      <!-- Scelta diretta del mese: anche molto indietro nel tempo -->
+      <div class="selettore-mese" data-selettore-mese>
+        <span class="selettore-mese-etichetta">Vai al mese</span>
+        <select data-campo-mese class="selettore-mese-campo" aria-label="Mese"></select>
+        <input type="number" data-campo-anno class="selettore-mese-campo selettore-mese-anno"
+          min="1900" max="2100" step="1" aria-label="Anno" inputmode="numeric">
+        <button type="button" data-azione-mese="vai" class="selettore-mese-btn selettore-mese-btn-primario">Mostra</button>
+        <button type="button" data-azione-mese="oggi" class="selettore-mese-btn">Mese corrente</button>
+      </div>
+      <p id="calendario-stato" class="text-xs text-slate-400 mb-3"></p>
       <div id="calendario-griglia"></div>
     </div>
 
     <!-- VISTA AGENDA A LISTA -->
     <div id="vista-agenda" class="hidden grid gap-6">
+      <!-- Stesso selettore del calendario: le due viste restano allineate -->
+      <div>
+        <div class="selettore-mese" data-selettore-mese>
+          <span class="selettore-mese-etichetta">Mese</span>
+          <select data-campo-mese class="selettore-mese-campo" aria-label="Mese"></select>
+          <input type="number" data-campo-anno class="selettore-mese-campo selettore-mese-anno"
+            min="1900" max="2100" step="1" aria-label="Anno" inputmode="numeric">
+          <button type="button" data-azione-mese="vai" class="selettore-mese-btn selettore-mese-btn-primario">Mostra</button>
+          <button type="button" data-azione-mese="oggi" class="selettore-mese-btn">Mese corrente</button>
+          <button type="button" data-azione-mese="prossimi" class="selettore-mese-btn">Tutti i prossimi</button>
+        </div>
+        <p id="agenda-stato" class="text-xs text-slate-400"></p>
+      </div>
       <div class="text-center text-slate-400 italic mb-2" id="loading-msg">Calcolo orbite in corso...</div>
       <div id="eventi-container" class="grid gap-6"></div>
     </div>

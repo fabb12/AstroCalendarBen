@@ -1265,8 +1265,69 @@ body .ecl-select {
   color: var(--testo-3);
 }
 
+/* ------------------------------------------------- SELETTORE DEL MESE
+   Un mese e un anno da scrivere a mano, per andare dove si vuole nel
+   tempo: gli eventi di quel mese vengono calcolati sul momento. */
+.selettore-mese {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.selettore-mese-etichetta {
+  font-size: 0.8rem;
+  color: var(--testo-3);
+}
+
+.selettore-mese-campo {
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-s);
+  color: var(--testo);
+  padding: 7px 10px;
+  font-size: 0.88rem;
+}
+
+.selettore-mese-campo:focus {
+  outline: none;
+  border-color: var(--blu);
+}
+
+.selettore-mese-anno { width: 6.5em; }
+
+.selettore-mese-btn {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo);
+  background: var(--superficie-alta);
+  color: var(--testo);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transizione), border-color var(--transizione);
+}
+
+.selettore-mese-btn:hover { border-color: var(--bordo-forte); }
+
+.selettore-mese-btn-primario {
+  background: var(--blu);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--alone-blu);
+}
+
+.selettore-mese-btn-primario:hover { background: var(--blu-scuro); }
+
 /* -------------------------------------------------------------- RESPONSIVE */
 @media (max-width: 640px) {
+  /* Sul telefono il selettore va a capo con ordine: campi affiancati,
+     tasti su una riga tutta loro */
+  .selettore-mese-campo { flex: 1 1 auto; min-width: 0; }
+  .selettore-mese-anno { flex: 0 0 5.5em; }
+  .selettore-mese-btn { flex: 1 1 auto; }
+
   .nav-principale { width: 100%; justify-content: flex-start; }
   .voce-menu { padding: 8px 13px; font-size: 0.86rem; }
   body .rounded-2xl { border-radius: var(--raggio-l); }
