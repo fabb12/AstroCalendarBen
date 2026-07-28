@@ -18,10 +18,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="AstroCal">
   
-  <!-- Tipografia: Inter (con SF Pro Display e i font di sistema come riserva) -->
+  <!-- Tipografia: Inter per leggere (numeri, tabelle, testi lunghi) e Space
+       Grotesk per il nome dell'app e i titoli — un carattere da strumento,
+       con le forme un po' tecniche che stanno bene addosso a un'app di
+       astronomia. Una richiesta sola per tutt'e due, con i font di sistema
+       come riserva se la rete non risponde. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
 
   <!-- Tailwind CSS per la grafica -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -43,23 +47,34 @@
 </head>
 <body class="min-h-screen">
 
-  <header class="contenitore testata-app flex flex-col items-center gap-4 text-center">
-    <!-- Marchio: un pianeta con il suo anello, tratto sottile come le altre icone -->
-    <span class="marchio">
-      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="6"/>
-        <ellipse cx="12" cy="12" rx="10.6" ry="3.6" transform="rotate(-24 12 12)"/>
-      </svg>
-    </span>
+  <!-- LA TESTATA
+       Una barra sola, uguale a se stessa su ogni schermo: marchio e nome a
+       sinistra, comandi a destra. Non cambia impaginazione da un dispositivo
+       all'altro — cambiano solo le misure, e con continuità (clamp). -->
+  <header class="contenitore testata-app">
 
-    <div class="flex flex-col items-center gap-2">
-      <h1 class="titolo-app">AstroCalendario di Ben</h1>
-      <p class="sottotitolo-app">Cosa c'è da vedere in cielo, stanotte e nei prossimi anni</p>
+    <div class="marchio-e-nome">
+      <!-- Marchio: un pianeta con il suo anello, tratto sottile come le altre icone -->
+      <span class="marchio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="6"/>
+          <ellipse cx="12" cy="12" rx="10.6" ry="3.6" transform="rotate(-24 12 12)"/>
+        </svg>
+      </span>
+
+      <div class="nomi-app">
+        <!-- Sui telefoni più stretti il nome per intero non ci sta accanto ai
+             comandi: lì compare la forma corta, che è già quella con cui
+             l'app si presenta sulla schermata iniziale (manifest.json) -->
+        <h1 class="titolo-app"><span class="nome-lungo">AstroCalendario di Ben</span><span class="nome-corto">AstroCal</span></h1>
+        <p class="sottotitolo-app">Cosa c'è da vedere in cielo, stanotte e nei prossimi anni</p>
+      </div>
     </div>
 
-    <!-- Navigazione: un segmented control essenziale, la voce attiva è piena -->
-    <nav class="nav-principale mt-2" aria-label="Sezioni">
+    <!-- Navigazione: sopra i 1180px è un segmented control qui in testata,
+         sotto diventa la barra in fondo allo schermo (vedi style.css) -->
+    <nav class="nav-principale" aria-label="Sezioni">
       <button id="btn-vista-stasera" class="voce-menu attiva" title="Cosa si vede stanotte da casa tua">Stasera</button>
       <button id="btn-vista-calendario" class="voce-menu">Mese</button>
       <button id="btn-vista-agenda" class="voce-menu">Agenda</button>
@@ -67,11 +82,11 @@
       <button id="btn-vista-diario" class="voce-menu" title="Le tue osservazioni e i traguardi raggiunti">Diario</button>
     </nav>
 
-    <div class="azioni-testata flex flex-wrap justify-center gap-2 mt-1">
-      <button id="btn-aggiungi" class="px-4 py-2 text-sm rounded-full bg-green-600 hover:bg-green-500 text-white" title="Aggiungi un evento tuo" data-etichetta-breve="Aggiungi">Aggiungi evento</button>
-      <button id="btn-installa" class="hidden px-4 py-2 text-sm rounded-full bg-purple-600 hover:bg-purple-500 text-white" title="Installa l'app sul dispositivo" data-etichetta-breve="Installa">Installa l'app</button>
-      <button id="btn-notifiche" class="px-4 py-2 text-sm rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Avvisami prima di un evento" data-etichetta-breve="Avvisami">Avvisami</button>
-      <button id="btn-impostazioni" class="px-4 py-2 text-sm rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Posizione, backup e calendario" data-etichetta-breve="Opzioni">Impostazioni</button>
+    <div class="azioni-testata">
+      <button id="btn-aggiungi" class="azione-testata azione-primaria" title="Aggiungi un evento tuo" data-icona="piu">Aggiungi evento</button>
+      <button id="btn-installa" class="azione-testata azione-viola hidden" title="Installa l'app sul dispositivo" data-icona="scarica">Installa l'app</button>
+      <button id="btn-notifiche" class="azione-testata" title="Avvisami prima di un evento" data-icona="campana">Avvisami</button>
+      <button id="btn-impostazioni" class="azione-testata" title="Posizione, backup e calendario" data-icona="ingranaggio">Impostazioni</button>
     </div>
   </header>
 
