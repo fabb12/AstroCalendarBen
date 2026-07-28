@@ -1712,6 +1712,266 @@ function _eclAggiornaLegenda(evento, riepilogo) {
   }
 
   if (riep && riepilogo) riep.innerHTML = riepilogo;
+
+  const schema = document.getElementById('eclissi-schema');
+  if (schema) schema.innerHTML = _eclSchemaGeometria(kind);
+}
+
+// --- Lo schema: la geometria vista dall'alto e la curva a S -------------
+//
+// Due disegni, uno sopra l'altro:
+//   1) come si dispongono Sole, Luna e Terra visti dal polo nord, con il
+//      cono d'ombra che sfiora la superficie;
+//   2) perché quella traccia, aperta su una mappa piatta, diventa una
+//      sinusoide: è un arco di cerchio massimo inclinato sull'equatore.
+// Gli SVG sono statici (nessun dato dell'eclissi in corso) tranne il colore
+// del cono e il caso anulare, in cui la punta dell'ombra non arriva a terra.
+
+// La latitudine di un cerchio massimo inclinato di `i` a una data longitudine:
+// è la funzione che, disegnata su una mappa lat/lon, dà la curva a S.
+function _eclSchemaLat(lon, i) {
+  return Math.atan(Math.tan(i) * Math.sin(lon));
+}
+
+// Il cerchio massimo inclinato visto sul globo (proiezione ortografica da un
+// punto dell'equatore): torna la parte davanti o quella dietro, a scelta.
+function _eclSchemaTracciaGlobo(cx, cy, R, incl, lon0, davanti, lonDa = -180, lonA = 180) {
+  const i = incl * Math.PI / 180, l0 = lon0 * Math.PI / 180;
+  const pezzi = [];
+  let corrente = [];
+  for (let g = -180; g <= 180; g += 2) {
+    const a = g * Math.PI / 180;
+    const lat = Math.asin(Math.sin(i) * Math.sin(a));
+    const lonGeo = Math.atan2(Math.cos(i) * Math.sin(a), Math.cos(a)) * 180 / Math.PI;
+    const lon = lonGeo * Math.PI / 180 - l0;
+    if (lonGeo < lonDa || lonGeo > lonA || (Math.cos(lat) * Math.cos(lon) > 0) !== davanti) {
+      if (corrente.length > 1) pezzi.push(corrente);
+      corrente = [];
+      continue;
+    }
+    corrente.push(`${(cx + R * Math.cos(lat) * Math.sin(lon)).toFixed(1)},${(cy - R * Math.sin(lat)).toFixed(1)}`);
+  }
+  if (corrente.length > 1) pezzi.push(corrente);
+  return pezzi.map(p => 'M' + p.join('L')).join(' ');
+}
+
+// La stessa traccia su una mappa rettangolare: longitudini da `da` a `a`.
+function _eclSchemaTracciaMappa(x0, x1, ymid, hMezza, incl, da, a) {
+  const i = incl * Math.PI / 180;
+  const punti = [];
+  for (let g = da; g <= a; g += 2) {
+    const x = x0 + (x1 - x0) * (g + 180) / 360;
+    const y = ymid - hMezza * (_eclSchemaLat(g * Math.PI / 180, i) / (Math.PI / 2));
+    punti.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  }
+  return 'M' + punti.join('L');
+}
+
+function _eclSchemaGeometria(kind) {
+  const anulare = kind === 'annular';
+  const coloreOmbra = anulare ? '#fbbf24' : '#ff5f5f';
+  const nomeCentrale = _eclNomeCentrale(kind);
+  const INCL = 40;      // inclinazione della traccia sull'equatore, nel disegno
+  const CX = 95, CY = 135, R = 72;                 // il globo
+  const X0 = 282, X1 = 600, YM = 135, HM = 70;      // la mappa piatta
+
+  // Il cono: nelle eclissi anulari la punta cade prima della Terra e a terra
+  // arriva l'antiumbra, che si riallarga (il Sole sporge tutt'intorno).
+  const puntaX = anulare ? 424 : 520;
+  const cono = `M252,112 L${puntaX},125 L252,138 Z`;
+  // L'antiumbra parte dalla punta del cono e si riallarga fino al suolo.
+  const antiumbra = anulare
+    ? `<path d="M424,125 L492,102 L492,148 Z" fill="rgba(245,181,68,0.22)" stroke="#fbbf24"
+             stroke-width="1" stroke-dasharray="3 3"/>`
+    : '';
+
+  const svgGeometria = `
+  <svg class="ecl-schema-svg" viewBox="0 0 620 250" role="img"
+       aria-label="Schema visto dall'alto: il Sole a sinistra, la Luna al centro con il suo cono d'ombra, la Terra a destra colpita dall'ombra.">
+    <defs>
+      <radialGradient id="eclSole" cx="30%" cy="50%" r="70%">
+        <stop offset="0%" stop-color="#fff6d8"/>
+        <stop offset="55%" stop-color="#fbbf24"/>
+        <stop offset="100%" stop-color="#f59e0b"/>
+      </radialGradient>
+      <linearGradient id="eclLuna" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#eef2fb"/>
+        <stop offset="50%" stop-color="#8f98ad"/>
+        <stop offset="100%" stop-color="#343b4c"/>
+      </linearGradient>
+      <linearGradient id="eclTerra" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#6fb2ff"/>
+        <stop offset="45%" stop-color="#2a6fd6"/>
+        <stop offset="100%" stop-color="#080e1c"/>
+      </linearGradient>
+      <clipPath id="eclClipTerra"><circle cx="530" cy="125" r="74"/></clipPath>
+      <!-- i coni si fermano dove incontrano la Terra: il resto è dietro il globo -->
+      <mask id="eclFuoriTerra">
+        <rect x="0" y="0" width="620" height="250" fill="#fff"/>
+        <circle cx="530" cy="125" r="75" fill="#000"/>
+      </mask>
+      <marker id="eclFrAmbra" viewBox="0 0 10 10" refX="8" refY="5"
+              markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M0,1 L9,5 L0,9 z" fill="#fbbf24"/>
+      </marker>
+      <marker id="eclFrChiara" viewBox="0 0 10 10" refX="8" refY="5"
+              markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M0,1 L9,5 L0,9 z" fill="#a9b4cc"/>
+      </marker>
+      <marker id="eclFrOmbra" viewBox="0 0 10 10" refX="8" refY="5"
+              markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M0,1 L9,5 L0,9 z" fill="${coloreOmbra}"/>
+      </marker>
+    </defs>
+
+    <g mask="url(#eclFuoriTerra)">
+      <!-- la penombra: il cono che si allarga, dove il Sole è coperto solo in parte -->
+      <path d="M252,106 L524,18 L524,232 L252,144 Z"
+            fill="rgba(99,102,241,0.16)" stroke="rgba(125,211,252,0.32)"
+            stroke-width="1" stroke-dasharray="4 4"/>
+      <!-- il cono d'ombra vero e proprio -->
+      <path d="${cono}" fill="rgba(5,7,15,0.92)" stroke="${coloreOmbra}" stroke-width="1.2"/>
+      ${antiumbra}
+    </g>
+
+    <!-- i raggi del Sole -->
+    <g stroke="#fbbf24" stroke-width="1.4" opacity="0.5" marker-end="url(#eclFrAmbra)">
+      <path d="M80,66 L236,108"/><path d="M80,125 L232,125"/><path d="M80,184 L236,142"/>
+    </g>
+
+    <!-- il Sole -->
+    <circle cx="2" cy="125" r="72" fill="url(#eclSole)"/>
+    <text x="16" y="131" class="sk-scura">Sole</text>
+
+    <!-- l'orbita della Luna attorno alla Terra e la Luna -->
+    <path d="M264,44 A278,278 0 0 0 264,206" fill="none" stroke="#a9b4cc"
+          stroke-width="1.2" stroke-dasharray="5 5" opacity="0.6" marker-end="url(#eclFrChiara)"/>
+    <text x="250" y="228" text-anchor="middle" class="sk-n">orbita della Luna</text>
+    <circle cx="252" cy="125" r="15" fill="url(#eclLuna)" stroke="rgba(233,237,247,0.45)" stroke-width="1"/>
+    <text x="234" y="103" text-anchor="end" class="sk-t">Luna</text>
+
+    <!-- la Terra vista dal polo nord: il giorno è la metà rivolta al Sole -->
+    <circle cx="530" cy="125" r="74" fill="url(#eclTerra)" stroke="rgba(148,168,214,0.35)" stroke-width="1"/>
+    <g clip-path="url(#eclClipTerra)">
+      <ellipse cx="452" cy="125" rx="46" ry="112" fill="rgba(99,102,241,0.45)"/>
+      <ellipse cx="459" cy="125" rx="8" ry="17" fill="#05070f"
+               stroke="${coloreOmbra}" stroke-width="2"/>
+    </g>
+    <path d="M552,99 A34,34 0 0 0 501,108" fill="none" stroke="#a9b4cc" stroke-width="1.4"
+          opacity="0.8" marker-end="url(#eclFrChiara)"/>
+    <circle cx="530" cy="125" r="3" fill="#e9edf7"/>
+    <text x="539" y="122" class="sk-n sk-chiara">polo N</text>
+    <text x="530" y="72" text-anchor="middle" class="sk-n sk-chiara">rotazione</text>
+    <text x="530" y="214" text-anchor="middle" class="sk-t">Terra</text>
+    <path d="M447,150 Q441,174 451,192" fill="none" stroke="${coloreOmbra}" stroke-width="1.8"
+          marker-end="url(#eclFrOmbra)"/>
+    <text x="418" y="212" text-anchor="end" class="sk-l">l'ombra corre<tspan x="418" dy="13">sulla superficie</tspan></text>
+
+    <!-- le etichette delle due zone -->
+    <text x="372" y="88" text-anchor="middle" class="sk-l">penombra → eclissi parziale</text>
+    <path d="M340,168 L344,132" stroke="rgba(148,168,214,0.5)" stroke-width="1"/>
+    <text x="338" y="182" text-anchor="middle" class="sk-l">cono d'ombra → ${nomeCentrale}</text>
+
+    <text x="612" y="244" text-anchor="end" class="sk-n">Distanze e dimensioni non sono in scala.</text>
+  </svg>`;
+
+  const svgSinusoide = `
+  <svg class="ecl-schema-svg" viewBox="0 0 620 260" role="img"
+       aria-label="A sinistra il globo con la traccia inclinata dell'ombra, a destra la stessa traccia su una mappa piatta, dove diventa una sinusoide.">
+    <defs>
+      <marker id="eclFrB" viewBox="0 0 10 10" refX="8" refY="5"
+              markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M0,1 L9,5 L0,9 z" fill="#a9b4cc"/>
+      </marker>
+      <marker id="eclFrB2" viewBox="0 0 10 10" refX="8" refY="5"
+              markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M0,1 L9,5 L0,9 z" fill="#fbbf24"/>
+      </marker>
+    </defs>
+
+    <!-- IL GLOBO: la traccia è un cerchio massimo inclinato sull'equatore -->
+    <circle cx="${CX}" cy="${CY}" r="${R}" fill="#0d1728" stroke="rgba(148,168,214,0.35)" stroke-width="1"/>
+    <g stroke="rgba(148,168,214,0.22)" stroke-width="1" fill="none">
+      ${[-60, -30, 30, 60].map(f => {
+        const r = f * Math.PI / 180;
+        return `<path d="M${(CX - R * Math.cos(r)).toFixed(1)},${(CY - R * Math.sin(r)).toFixed(1)} L${(CX + R * Math.cos(r)).toFixed(1)},${(CY - R * Math.sin(r)).toFixed(1)}"/>`;
+      }).join('')}
+      ${[30, 60].map(d => `<ellipse cx="${CX}" cy="${CY}" rx="${(R * Math.sin(d * Math.PI / 180)).toFixed(1)}" ry="${R}"/>`).join('')}
+      <path d="M${CX},${CY - R} L${CX},${CY + R}"/>
+    </g>
+    <path d="M${CX - R},${CY} L${CX + R},${CY}" stroke="rgba(125,211,252,0.7)" stroke-width="1.3"/>
+    <text x="${CX + R - 4}" y="${CY + 15}" text-anchor="end" class="sk-n">equatore</text>
+    <path d="${_eclSchemaTracciaGlobo(CX, CY, R, INCL, 20, false)}" fill="none"
+          stroke="#fbbf24" stroke-width="1.4" stroke-dasharray="4 4" opacity="0.4"/>
+    <path d="${_eclSchemaTracciaGlobo(CX, CY, R, INCL, 20, true)}" fill="none"
+          stroke="#fbbf24" stroke-width="1.4" stroke-dasharray="4 4" opacity="0.55"/>
+    <path d="${_eclSchemaTracciaGlobo(CX, CY, R, INCL, 20, true, -46, 64)}" fill="none"
+          stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+    ${(() => {
+      const lat = _eclSchemaLat(10 * Math.PI / 180, INCL * Math.PI / 180);
+      const dl = (10 - 20) * Math.PI / 180;
+      return `<circle cx="${(CX + R * Math.cos(lat) * Math.sin(dl)).toFixed(1)}" cy="${(CY - R * Math.sin(lat)).toFixed(1)}" r="5" fill="#05070f" stroke="${coloreOmbra}" stroke-width="2"/>`;
+    })()}
+    <text x="${CX}" y="${CY + R + 26}" text-anchor="middle" class="sk-t">La traccia sul globo</text>
+    <text x="${CX}" y="${CY + R + 41}" text-anchor="middle" class="sk-n">un arco di cerchio inclinato di ~${INCL}°</text>
+
+    <!-- il passaggio dalla sfera alla carta -->
+    <path d="M180,135 L242,135" stroke="#a9b4cc" stroke-width="1.6" marker-end="url(#eclFrB)"/>
+    <text x="209" y="124" text-anchor="middle" class="sk-n">srotola</text>
+
+    <!-- LA MAPPA PIATTA: la stessa traccia diventa una sinusoide -->
+    <rect x="${X0}" y="${YM - HM}" width="${X1 - X0}" height="${HM * 2}" rx="8"
+          fill="rgba(8,11,20,0.6)" stroke="rgba(148,168,214,0.26)" stroke-width="1"/>
+    <g stroke="rgba(148,168,214,0.16)" stroke-width="1">
+      ${[1, 2, 3, 4, 5].map(k => {
+        const x = (X0 + (X1 - X0) * k / 6).toFixed(1);
+        return `<path d="M${x},${YM - HM} L${x},${YM + HM}"/>`;
+      }).join('')}
+      ${[-60, 60].map(f => {
+        const y = (YM - HM * f / 90).toFixed(1);
+        return `<path d="M${X0},${y} L${X1},${y}"/>`;
+      }).join('')}
+    </g>
+    <path d="M${X0},${YM} L${X1},${YM}" stroke="rgba(125,211,252,0.7)" stroke-width="1.3"/>
+    <text x="${X0 - 6}" y="${YM - HM * 60 / 90 + 4}" text-anchor="end" class="sk-n">+60°</text>
+    <text x="${X0 - 6}" y="${YM + 4}" text-anchor="end" class="sk-n">0°</text>
+    <text x="${X0 - 6}" y="${YM + HM * 60 / 90 + 4}" text-anchor="end" class="sk-n">−60°</text>
+    <path d="${_eclSchemaTracciaMappa(X0, X1, YM, HM, INCL, -180, 180)}" fill="none"
+          stroke="#fbbf24" stroke-width="1.4" stroke-dasharray="4 4" opacity="0.4"/>
+    <path d="${_eclSchemaTracciaMappa(X0, X1, YM, HM, INCL, -46, 64)}" fill="none"
+          stroke="#fbbf24" stroke-width="3" stroke-linecap="round" marker-end="url(#eclFrB2)"/>
+    ${(() => {
+      const x = X0 + (X1 - X0) * (10 + 180) / 360;
+      const y = YM - HM * (_eclSchemaLat(10 * Math.PI / 180, INCL * Math.PI / 180) / (Math.PI / 2));
+      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="#05070f" stroke="${coloreOmbra}" stroke-width="2"/>`;
+    })()}
+    <text x="${(X0 + X1) / 2}" y="${YM + HM + 26}" text-anchor="middle" class="sk-t">La stessa traccia sulla mappa</text>
+    <text x="${(X0 + X1) / 2}" y="${YM + HM + 41}" text-anchor="middle" class="sk-n">la parte accesa è il tratto percorso dall'ombra</text>
+  </svg>`;
+
+  return `
+    <figure class="ecl-schema-fig">
+      ${svgGeometria}
+      <figcaption>Vista dall'alto, dal polo nord: Sole, Luna e Terra quasi in fila. La Luna proietta
+      un cono d'ombra lungo circa 370.000 km che arriva a malapena a toccare la Terra: sulla superficie
+      ne resta una macchia larga poche decine o centinaia di chilometri.</figcaption>
+    </figure>
+    <figure class="ecl-schema-fig">
+      ${svgSinusoide}
+      <figcaption>L'ombra viaggia quasi in linea retta nello spazio, ma il suolo che incontra è una
+      sfera: il punto di contatto descrive un arco inclinato rispetto all'equatore. Aperto su una mappa
+      piatta, quell'arco diventa una sinusoide — la curva a S che vedi qui sopra.</figcaption>
+    </figure>
+    <ul class="ecl-schema-note">
+      <li><b>Perché è inclinata.</b> L'ombra segue la Luna, che non corre sull'equatore: a seconda del
+      mese può trovarsi fino a ~28° a nord o a sud, e l'arco che disegna è inclinato di altrettanto.</li>
+      <li><b>Perché va verso Est.</b> La Luna avanza sulla sua orbita a circa 1 km/s, la superficie
+      terrestre ruota nello stesso verso ma solo a 0,46 km/s all'equatore: vince la Luna, così l'ombra
+      scivola da ovest verso est a oltre 1.500 km/h.</li>
+      <li><b>Perché la S non è perfetta.</b> La Terra ruota mentre l'ombra la attraversa e il cono
+      incontra la superficie di sbieco vicino ai poli: la curva si allunga e si incurva più del dovuto,
+      ma la forma a S resta riconoscibile.</li>
+    </ul>`;
 }
 
 // Riepilogo testuale sopra la mappa: durata, massimo, città migliori.
