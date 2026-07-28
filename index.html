@@ -2,7 +2,9 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- viewport-fit=cover: sui telefoni con il notch la pagina arriva ai bordi,
+       e le zone sicure le recuperiamo nel CSS con env(safe-area-inset-*) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>AstroCalendario di Ben</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#04060d">
@@ -39,9 +41,9 @@
 
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="min-h-screen p-4 md:p-8">
+<body class="min-h-screen">
 
-  <header class="max-w-4xl mx-auto mb-10 flex flex-col items-center gap-4 text-center">
+  <header class="contenitore testata-app flex flex-col items-center gap-4 text-center">
     <!-- Marchio: un pianeta con il suo anello, tratto sottile come le altre icone -->
     <span class="marchio">
       <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -65,15 +67,15 @@
       <button id="btn-vista-diario" class="voce-menu" title="Le tue osservazioni e i traguardi raggiunti">Diario</button>
     </nav>
 
-    <div class="flex flex-wrap justify-center gap-2 mt-1">
-      <button id="btn-aggiungi" class="px-4 py-2 text-sm rounded-full bg-green-600 hover:bg-green-500 text-white" title="Aggiungi un evento tuo">Aggiungi evento</button>
-      <button id="btn-installa" class="hidden px-4 py-2 text-sm rounded-full bg-purple-600 hover:bg-purple-500 text-white" title="Installa l'app sul dispositivo">Installa l'app</button>
-      <button id="btn-notifiche" class="px-4 py-2 text-sm rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Avvisami prima di un evento">Avvisami</button>
-      <button id="btn-impostazioni" class="px-4 py-2 text-sm rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Posizione, backup e calendario">Impostazioni</button>
+    <div class="azioni-testata flex flex-wrap justify-center gap-2 mt-1">
+      <button id="btn-aggiungi" class="px-4 py-2 text-sm rounded-full bg-green-600 hover:bg-green-500 text-white" title="Aggiungi un evento tuo" data-etichetta-breve="Aggiungi">Aggiungi evento</button>
+      <button id="btn-installa" class="hidden px-4 py-2 text-sm rounded-full bg-purple-600 hover:bg-purple-500 text-white" title="Installa l'app sul dispositivo" data-etichetta-breve="Installa">Installa l'app</button>
+      <button id="btn-notifiche" class="px-4 py-2 text-sm rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Avvisami prima di un evento" data-etichetta-breve="Avvisami">Avvisami</button>
+      <button id="btn-impostazioni" class="px-4 py-2 text-sm rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Posizione, backup e calendario" data-etichetta-breve="Opzioni">Impostazioni</button>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto">
+  <main class="contenitore">
 
     <!-- BARRA DI RICERCA INTELLIGENTE E FILTRI PER CATEGORIA -->
     <div id="barra-ricerca" class="mb-6 bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg">
@@ -84,61 +86,65 @@
         <button id="btn-pulisci-ricerca" type="button" title="Pulisci ricerca"
           class="hidden absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 rounded-full text-xs font-medium bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors">Pulisci</button>
       </div>
-      <div id="filtri-categorie" class="flex flex-wrap gap-2 mt-3"></div>
-      <!-- Filtro per strumento: mostra solo ciò che si vede con quello che hai -->
-      <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-700">
-        <span class="text-xs text-slate-400">Con cosa guardi:</span>
-        <div id="filtri-strumento" class="flex flex-wrap gap-2"></div>
+      <!-- Sul telefono i filtri stanno chiusi dietro al tasto “Filtri”: la
+           ricerca resta il gesto principale, il resto si apre solo se serve -->
+      <div id="filtri-avanzati" class="filtri-avanzati">
+        <div id="filtri-categorie" class="flex flex-wrap gap-2 mt-3"></div>
+        <!-- Filtro per strumento: mostra solo ciò che si vede con quello che hai -->
+        <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-700">
+          <span class="text-xs text-slate-400">Con cosa guardi:</span>
+          <div id="filtri-strumento" class="flex flex-wrap gap-2"></div>
+        </div>
       </div>
     </div>
 
     <!-- VISTA STASERA: cosa si vede stanotte, da qui, e se il cielo lo permette -->
-    <div id="vista-stasera" class="hidden grid gap-4">
+    <div id="vista-stasera" class="hidden griglia-vista griglia-stasera">
 
       <!-- Riepilogo della notte: buio astronomico, Luna, meteo -->
-      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="riepilogo">
         <div class="flex justify-between items-start gap-3 mb-3">
           <h2 class="text-2xl font-bold text-white">Stanotte</h2>
           <button id="btn-stasera-posizione" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0" title="Rileva la posizione">Dove sono</button>
         </div>
-        <div id="stasera-riepilogo" class="grid gap-3 md:grid-cols-3"></div>
+        <div id="stasera-riepilogo" class="griglia-sintesi"></div>
         <div id="stasera-meteo" class="mt-4"></div>
       </div>
 
       <!-- Pianeti e Luna visibili stanotte -->
-      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="pianeti">
         <h3 class="text-lg font-bold text-white mb-3">Cosa si vede</h3>
-        <div id="stasera-pianeti" class="grid gap-2"></div>
+        <div id="stasera-pianeti" class="griglia-elenco"></div>
       </div>
 
       <!-- Passaggi delle stazioni spaziali: ISS e Tiangong -->
-      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="satelliti">
         <div class="flex justify-between items-center gap-3 mb-1">
           <h3 class="text-lg font-bold text-white">Stazioni spaziali sopra di te</h3>
           <button id="btn-satelliti-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0">Aggiorna</button>
         </div>
         <p class="text-xs text-slate-400 mb-3">ISS e Tiangong, con orari e direzioni calcolati per il punto esatto in cui ti trovi.</p>
-        <div id="stasera-satelliti" class="grid gap-2 text-sm text-slate-300">Caricamento dei dati orbitali…</div>
+        <div id="stasera-satelliti" class="griglia-elenco text-sm text-slate-300">Caricamento dei dati orbitali…</div>
       </div>
 
       <!-- Prossimi eventi del calendario, con indice di osservabilità -->
-      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="prossimi">
         <h3 class="text-lg font-bold text-white mb-3">Prossimi appuntamenti</h3>
-        <div id="stasera-prossimi" class="grid gap-2"></div>
+        <div id="stasera-prossimi" class="griglia-elenco"></div>
       </div>
     </div>
 
     <!-- VISTA DIARIO: osservazioni registrate e traguardi -->
-    <div id="vista-diario" class="hidden grid gap-4">
-      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+    <div id="vista-diario" class="hidden griglia-vista griglia-diario">
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="statistiche">
         <h2 class="text-2xl font-bold text-white mb-1">Diario di osservazione</h2>
         <p class="text-sm text-slate-400 mb-4">Segna “Visto!” su un evento dell'agenda e finisce qui, con la tua nota.</p>
-        <div id="diario-statistiche" class="grid gap-3 md:grid-cols-3 mb-4"></div>
+        <div id="diario-statistiche" class="griglia-sintesi mb-4"></div>
         <div id="diario-badge" class="flex flex-wrap gap-2"></div>
       </div>
-      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl">
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="osservazioni">
         <h3 class="text-lg font-bold text-white mb-3">Le tue osservazioni</h3>
-        <div id="diario-elenco" class="grid gap-3"></div>
+        <div id="diario-elenco" class="griglia-schede-piccole"></div>
       </div>
     </div>
 
@@ -173,16 +179,21 @@
         <p id="agenda-stato" class="text-xs text-slate-400"></p>
       </div>
       <div class="text-center text-slate-400 italic mb-2" id="loading-msg">Calcolo orbite in corso...</div>
-      <div id="eventi-container" class="grid gap-6"></div>
+      <div id="eventi-container" class="griglia-schede"></div>
     </div>
 
     <!-- VISTA CIELO: punta il telefono e trova gli astri (bussola + giroscopio) -->
-    <div id="vista-skymap" class="hidden">
+    <!-- Su schermo grande la scena e i comandi stanno affiancati: il cielo si
+         prende tutta l'altezza e i pannelli non lo spingono fuori vista.
+         Sul telefono tornano uno sotto l'altro. -->
+    <div id="vista-skymap" class="hidden vista-cielo">
 
+     <div class="cielo-scena">
       <div id="skymap-contenitore" class="relative bg-slate-950 rounded-2xl border border-slate-700 shadow-xl overflow-hidden">
         <!-- Realtà aumentata: l'immagine della fotocamera sta dietro al cielo disegnato -->
         <video id="skymap-video" class="hidden absolute inset-0 w-full h-full object-cover" playsinline muted autoplay></video>
-        <canvas id="skymap-canvas" class="relative block w-full" style="height: 70vh; min-height: 340px; touch-action: none;"></canvas>
+        <!-- L'altezza arriva dal CSS (--altezza-cielo): cambia con il dispositivo -->
+        <canvas id="skymap-canvas" class="relative block w-full tela-cielo"></canvas>
 
         <!-- Dati di puntamento e stato (sopra al canvas) -->
         <div class="absolute top-3 left-3 right-3 flex justify-between items-start gap-2 pointer-events-none">
@@ -207,6 +218,9 @@
 
       <!-- Avvisi su permessi mancanti (posizione, bussola) -->
       <p id="skymap-avviso" class="hidden mt-3 text-sm text-amber-400 bg-amber-950/40 border border-amber-800 rounded-xl p-3"></p>
+     </div>
+
+     <div class="cielo-comandi">
 
       <!-- Macchina del tempo: com'era o come sarà il cielo -->
       <div class="mt-3 bg-slate-800 p-3 rounded-2xl border border-slate-700">
@@ -231,7 +245,7 @@
       </div>
 
       <!-- Strumenti da campo -->
-      <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+      <div class="mt-3 flex flex-wrap items-center gap-2 text-xs strumenti-cielo">
         <span class="text-slate-400">Bussola:</span>
         <button id="skymap-cal-meno" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Ruota la bussola verso ovest">−5°</button>
         <span id="skymap-cal-valore" class="text-slate-300 font-mono w-14 text-center">0°</span>
@@ -245,21 +259,28 @@
         <button id="skymap-btn-schermo" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Schermo intero">Schermo intero</button>
         <button id="skymap-btn-posizione" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Rileva di nuovo la posizione">Aggiorna posizione</button>
       </div>
-      <p class="mt-2 text-xs text-slate-500">Lo scarto fra il Nord magnetico del telefono e il Nord vero è già corretto in automatico per il luogo in cui ti trovi. Se resta un errore, tocca “Calibra trascinando” e sposta il dito in orizzontale sul cielo (o usa i tasti ±5°) finché il Sole o la Luna non coincidono con quelli veri; “Azzera” toglie ogni correzione a mano. Se la bussola sbanda, allontana il telefono da magneti, auto e ringhiere e disegna un otto in aria per ricalibrarla. Non guardare mai il Sole direttamente.</p>
+      <!-- Le istruzioni lunghe stanno ripiegate: sul telefono rubavano mezzo
+           schermo. Su desktop l'app le apre da sola, lì lo spazio c'è. -->
+      <details id="skymap-istruzioni" class="nota-ripiegata mt-2">
+        <summary>Se la bussola non punta dove dovrebbe</summary>
+        <p class="text-xs text-slate-500 mt-2">Lo scarto fra il Nord magnetico del telefono e il Nord vero è già corretto in automatico per il luogo in cui ti trovi. Se resta un errore, tocca “Calibra trascinando” e sposta il dito in orizzontale sul cielo (o usa i tasti ±5°) finché il Sole o la Luna non coincidono con quelli veri; “Azzera” toglie ogni correzione a mano. Se la bussola sbanda, allontana il telefono da magneti, auto e ringhiere e disegna un otto in aria per ricalibrarla. Non guardare mai il Sole direttamente.</p>
+      </details>
+
+     </div>
 
     </div>
 
   </main>
 
   <!-- MODALE: FORM AGGIUNGI EVENTO MANUALE -->
-  <div id="modale-aggiungi" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-800 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl my-8">
+  <div id="modale-aggiungi" class="velo-modale hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="media">
       <div class="flex justify-between items-center p-5 border-b border-slate-700">
         <h2 id="modale-titolo" class="text-2xl font-bold text-white">Nuovo evento</h2>
         <button id="btn-chiudi-modale" class="tasto-chiudi" title="Chiudi la finestra" aria-label="Chiudi la finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
 
-      <form id="form-evento" class="p-5 space-y-4">
+      <form id="form-evento" class="corpo-modale spazio-verticale">
         <div>
           <label for="ev-titolo" class="block text-sm font-semibold text-slate-300 mb-1">Titolo *</label>
           <input id="ev-titolo" type="text" required maxlength="120"
@@ -321,8 +342,8 @@
   </div>
 
   <!-- MODALE: MAPPA DI VISIBILITÀ DELL'ECLISSI -->
-  <div id="modale-mappa" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-800 w-full max-w-4xl rounded-2xl border border-slate-700 shadow-2xl my-8">
+  <div id="modale-mappa" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="larga">
       <div class="testata-modale flex justify-between items-start gap-4 p-5 border-b border-slate-700">
         <div>
           <h2 id="mappa-titolo" class="text-xl md:text-2xl font-bold text-white">Mappa di visibilità</h2>
@@ -331,10 +352,14 @@
         <button id="btn-chiudi-mappa" class="tasto-chiudi con-etichetta" title="Chiudi la finestra (o premi Esc)" aria-label="Chiudi la finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Chiudi</span></button>
       </div>
 
-      <div class="p-4 md:p-5 space-y-4">
+      <div class="corpo-modale ecl-corpo">
 
         <!-- I numeri chiave dell'eclissi, prima ancora di guardare la mappa -->
         <div id="eclissi-riepilogo" class="ecl-riepilogo"></div>
+
+        <!-- Su schermo largo: mappa e comandi a sinistra, pannelli di lettura a
+             destra. Sotto i 1100px le due colonne tornano una sola. -->
+        <div class="ecl-colonna-principale">
 
         <!-- LA MAPPA, con le indicazioni sovrapposte -->
         <div class="ecl-mappa-guscio">
@@ -387,6 +412,10 @@
           </div>
         </div>
 
+        </div><!-- /ecl-colonna-principale -->
+
+        <div class="ecl-colonna-lato">
+
         <!-- LE CITTÀ CHE L'OMBRA STA ATTRAVERSANDO -->
         <div class="ecl-pannello">
           <div class="ecl-pannello-testa">
@@ -426,6 +455,8 @@
           </div>
         </details>
 
+        </div><!-- /ecl-colonna-lato -->
+
         <div class="barra-chiudi">
           <button id="btn-chiudi-mappa-basso" type="button" class="tasto-chiudi-largo">Chiudi la mappa</button>
         </div>
@@ -435,17 +466,17 @@
   </div>
 
   <!-- MODALE: SIMULAZIONE DELL'EVENTO -->
-  <div id="modale-simulazione" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-800 w-full max-w-3xl rounded-2xl border border-slate-700 shadow-2xl my-8">
+  <div id="modale-simulazione" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="grande">
       <div class="testata-modale flex justify-between items-center p-5 border-b border-slate-700">
         <h2 id="sim-titolo" class="text-xl md:text-2xl font-bold text-white">Simulazione</h2>
         <button id="btn-chiudi-simulazione" class="tasto-chiudi con-etichetta" title="Chiudi la finestra (o premi Esc)" aria-label="Chiudi la finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Chiudi</span></button>
       </div>
 
-      <div class="p-4 md:p-5 space-y-4">
+      <div class="corpo-modale sim-corpo">
         <!-- Scena renderizzata -->
         <div id="sim-scena" class="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950">
-          <canvas id="sim-canvas" class="block w-full" style="height: 55vh; min-height: 300px;"></canvas>
+          <canvas id="sim-canvas" class="block w-full tela-simulazione"></canvas>
           <div id="sim-ora" class="absolute top-3 left-3 bg-slate-900/70 backdrop-blur px-3 py-1.5 rounded-xl text-xs md:text-sm font-mono text-slate-100 border border-slate-700">—</div>
         </div>
 
@@ -469,13 +500,13 @@
   </div>
 
   <!-- MODALE: REGISTRA UN'OSSERVAZIONE NEL DIARIO -->
-  <div id="modale-diario" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-800 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl my-8">
+  <div id="modale-diario" class="velo-modale hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="media">
       <div class="flex justify-between items-center p-5 border-b border-slate-700">
         <h2 class="text-2xl font-bold text-white">Ho visto!</h2>
         <button id="btn-chiudi-diario" class="tasto-chiudi" title="Chiudi la finestra" aria-label="Chiudi la finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
-      <form id="form-diario" class="p-5 space-y-4">
+      <form id="form-diario" class="corpo-modale spazio-verticale">
         <p id="diario-evento-titolo" class="text-blue-400 font-semibold"></p>
 
         <div>
@@ -510,14 +541,14 @@
   </div>
 
   <!-- MODALE: IMPOSTAZIONI, BACKUP E CALENDARIO -->
-  <div id="modale-impostazioni" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-800 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl my-8">
+  <div id="modale-impostazioni" class="velo-modale hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="media">
       <div class="flex justify-between items-center p-5 border-b border-slate-700">
         <h2 class="text-2xl font-bold text-white">Impostazioni</h2>
         <button id="btn-chiudi-impostazioni" class="tasto-chiudi" title="Chiudi la finestra" aria-label="Chiudi la finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
 
-      <div class="p-5 space-y-5">
+      <div class="corpo-modale spazio-verticale-largo">
 
         <section class="space-y-2">
           <h3 class="font-bold text-white">La tua posizione</h3>

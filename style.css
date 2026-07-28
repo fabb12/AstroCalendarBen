@@ -68,6 +68,14 @@
 }
 
 /* ------------------------------------------------------------------- BASE  */
+/* L'impianto adattivo (.contenitore e le griglie) dà per scontato che un
+   riquadro larga il 100% col suo padding non sfori il genitore: senza
+   border-box ogni colonna uscirebbe dallo schermo. Tailwind lo imposta già
+   nel suo azzeramento, ma se il CDN non risponde resterebbe scoperto — e la
+   pagina deve reggere lo stesso. Stesso motivo per il margine del body. */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+
 html { scroll-behavior: smooth; }
 
 body {
@@ -1391,8 +1399,6 @@ figure.ecl-schema-fig {
   .selettore-mese-anno { flex: 0 0 5.5em; }
   .selettore-mese-btn { flex: 1 1 auto; }
 
-  .nav-principale { width: 100%; justify-content: flex-start; }
-  .voce-menu { padding: 8px 13px; font-size: 0.86rem; }
   body .rounded-2xl { border-radius: var(--raggio-l); }
   /* Sul telefono la testata cede spazio ai contenuti */
   .marchio { width: 54px; height: 54px; border-radius: 18px; }
@@ -1431,4 +1437,527 @@ figure.ecl-schema-fig {
     overflow: hidden;
     text-overflow: ellipsis;
   }
+}
+
+/* ============================================================================
+   IL VESTITO SU MISURA DELLO SCHERMO
+   ----------------------------------------------------------------------------
+   Un'unica app, tre modi di stare al mondo:
+
+     • telefono  (< 768px)  una colonna, comandi grandi sotto il pollice,
+                            grafica alleggerita (niente vetri sfocati né
+                            stelle animate: sono i due effetti che costano
+                            di più su una GPU da telefono);
+     • tablet    (768-1179) due colonne dove i dati sono brevi, testata
+                            classica in alto, schede più larghe;
+     • computer  (>= 1180)  si occupa tutta la larghezza disponibile: le
+                            schede vanno a due o tre per riga, il cielo e la
+                            mappa delle eclissi lavorano affiancati ai loro
+                            pannelli, invece di stare in colonna dentro una
+                            striscia stretta al centro.
+
+   La misura decide anche QUANTO mostrare, non solo come: app.js legge lo
+   stesso confine (PUNTI_ROTTURA) e allunga o accorcia gli elenchi.
+   Le variabili qui sotto sono l'unico posto da toccare per cambiare le
+   proporzioni: tutto il resto le eredita.
+   ========================================================================== */
+
+:root {
+  /* Telefono: la base di partenza, poi si cresce (mobile first) */
+  --larghezza-max: 100%;
+  --margine-pagina: 14px;
+  --passo: 12px;               /* distanza fra le schede */
+  --altezza-cielo: 58vh;
+  --altezza-simulazione: 46vh;
+  --altezza-mappa-eclissi: 46vh;
+  --barra-inferiore: 0px;      /* spazio riservato alla navigazione in basso */
+}
+
+/* Tablet in verticale e telefoni girati */
+@media (min-width: 768px) {
+  :root {
+    --larghezza-max: 100%;
+    --margine-pagina: 22px;
+    --passo: 16px;
+    --altezza-cielo: 62vh;
+    --altezza-simulazione: 52vh;
+    --altezza-mappa-eclissi: 54vh;
+  }
+}
+
+/* Tablet in orizzontale e portatili piccoli */
+@media (min-width: 1180px) {
+  :root {
+    --larghezza-max: 1160px;
+    --margine-pagina: 28px;
+    --passo: 18px;
+    --altezza-cielo: 68vh;
+    --altezza-simulazione: 56vh;
+    --altezza-mappa-eclissi: 60vh;
+  }
+}
+
+/* Monitor da scrivania */
+@media (min-width: 1440px) {
+  :root { --larghezza-max: 1380px; --margine-pagina: 32px; --passo: 20px; }
+}
+
+/* Schermi larghi: si allarga ancora, ma non all'infinito — oltre una certa
+   misura una riga di testo diventa faticosa da leggere */
+@media (min-width: 1800px) {
+  :root { --larghezza-max: 1660px; --margine-pagina: 40px; --altezza-cielo: 74vh; }
+}
+
+/* ------------------------------------------------------- DUE ETICHETTE      */
+/* Certi tasti hanno un nome disteso ("Aggiungi evento") e uno da telefono
+   ("Aggiungi"): sono entrambi nel documento, il CSS sceglie quale mostrare.
+   Così non serve riscrivere il testo a ogni rotazione dello schermo. */
+.etichetta-breve  { display: none; }
+.etichetta-lunga  { display: inline; }
+.voce-menu-icona  { display: none; }
+#btn-filtri       { display: none; }
+
+/* ------------------------------------------------------------ IMPIANTO      */
+.contenitore {
+  width: 100%;
+  max-width: var(--larghezza-max);
+  margin-inline: auto;
+  /* Sui telefoni con gli angoli tondi il contenuto non tocca mai il bordo */
+  padding-inline: max(var(--margine-pagina), env(safe-area-inset-left), env(safe-area-inset-right));
+}
+
+.testata-app {
+  padding-top: clamp(14px, 2.4vw, 36px);
+  margin-bottom: clamp(18px, 2.6vw, 40px);
+}
+
+/* Su un monitor la testata in colonna e centrata mangiava un terzo dello
+   schermo prima ancora di far vedere un dato. Da qui in su si distende su
+   una riga sola: marchio e titolo a sinistra, sezioni e comandi a destra. */
+@media (min-width: 1180px) {
+  .testata-app {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    text-align: left;
+    gap: 14px 22px;
+    padding-top: 22px;
+    margin-bottom: 22px;
+  }
+  .testata-app > div:not(.azioni-testata) {
+    align-items: flex-start;
+    flex: 1 1 260px;
+    min-width: 0;
+    gap: 2px;
+  }
+  .testata-app .nav-principale { margin-top: 0; }
+  .testata-app .azioni-testata { margin-top: 0; justify-content: flex-end; }
+  .marchio { width: 52px; height: 52px; border-radius: 17px; }
+  .marchio svg { width: 27px; height: 27px; }
+  .titolo-app { font-size: 1.62rem; }
+  .sottotitolo-app { font-size: 0.86rem; }
+}
+
+main { padding-bottom: calc(clamp(24px, 3vw, 56px) + var(--barra-inferiore)); }
+
+/* ------------------------------------------------------------- GRIGLIE      */
+/* Una manciata di griglie riusabili: cambiano da sole con la larghezza,
+   senza bisogno di una regola diversa per ogni vista. */
+.griglia-vista   { display: grid; gap: var(--passo); align-content: start; }
+.griglia-elenco  { display: grid; gap: 8px; align-content: start; }
+
+/* Le schedine con un numero grande (buio, Luna, prossimo evento…) */
+.griglia-sintesi {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+
+/* Un avviso che prende tutta la riga, comunque sia divisa la griglia */
+.scheda-piena { grid-column: 1 / -1; }
+
+/* Le schede evento dell'agenda: una per riga sul telefono, due o tre su
+   schermo grande. `min(100%, …)` evita che una riga sfori il contenitore. */
+.griglia-schede {
+  display: grid;
+  gap: var(--passo);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
+  align-items: start;
+}
+
+/* Le voci del diario: più corte, quindi si stringono di più */
+.griglia-schede-piccole {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  align-items: start;
+}
+
+/* --- Stasera: il riepilogo in cima, poi le colonne --- */
+@media (min-width: 900px) {
+  .griglia-stasera { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .griglia-stasera > [data-blocco="riepilogo"],
+  .griglia-stasera > [data-blocco="prossimi"] { grid-column: 1 / -1; }
+  /* Quando un blocco è largo quanto la pagina, il suo elenco si sdoppia */
+  .griglia-stasera > [data-blocco="prossimi"] .griglia-elenco {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  }
+}
+
+@media (min-width: 1440px) {
+  .griglia-stasera { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* Con tre colonne "Prossimi appuntamenti" torna una colonna sua */
+  .griglia-stasera > [data-blocco="prossimi"] { grid-column: auto; }
+  .griglia-stasera > [data-blocco="prossimi"] .griglia-elenco { grid-template-columns: 1fr; }
+}
+
+/* --- Diario: statistiche di lato, osservazioni al centro --- */
+@media (min-width: 1180px) {
+  .griglia-diario { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); align-items: start; }
+  /* Il riquadro dei numeri segue lo scorrimento: i traguardi restano sott'occhio */
+  .griglia-diario > [data-blocco="statistiche"] { position: sticky; top: 16px; }
+  .griglia-diario > [data-blocco="statistiche"] .griglia-sintesi { grid-template-columns: 1fr; }
+}
+
+/* ------------------------------------------------------- RICERCA E FILTRI   */
+/* Su schermo largo la ricerca sta a sinistra e i filtri le si affiancano a
+   destra, invece di impilarsi in tre fasce sovrapposte: sono un'ottantina di
+   pixel d'altezza restituiti a ciò che conta, cioè il calendario e le schede. */
+@media (min-width: 1180px) {
+  #barra-ricerca {
+    display: grid;
+    grid-template-columns: minmax(240px, 330px) minmax(0, 1fr);
+    gap: 10px 20px;
+    align-items: center;
+  }
+  #barra-ricerca .riga-ricerca { grid-column: 1; }
+  #barra-ricerca .filtri-avanzati { grid-column: 2; }
+  #barra-ricerca .filtri-avanzati > div:first-child { margin-top: 0; }
+  #barra-ricerca .filtri-avanzati > div:last-child { margin-top: 10px; padding-top: 10px; }
+}
+
+/* ------------------------------------------------------- VISTA CIELO        */
+.tela-cielo {
+  display: block;
+  width: 100%;
+  height: var(--altezza-cielo);
+  min-height: 320px;
+  touch-action: none;
+}
+.tela-simulazione {
+  display: block;
+  width: 100%;
+  height: var(--altezza-simulazione);
+  min-height: 280px;
+}
+
+.vista-cielo { display: grid; gap: var(--passo); align-content: start; }
+.cielo-comandi > *:first-child { margin-top: 0; }
+
+@media (min-width: 1180px) {
+  /* Il cielo a sinistra, tutti i comandi in una colonna a destra: si smette
+     di scorrere su e giù fra la mappa stellare e i suoi tasti */
+  .vista-cielo { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); align-items: start; }
+  .cielo-comandi { display: grid; gap: 12px; align-content: start; position: sticky; top: 16px; }
+  .tela-cielo { min-height: 480px; }
+}
+
+@media (min-width: 1800px) {
+  .vista-cielo { grid-template-columns: minmax(0, 1fr) 400px; }
+}
+
+/* Gli strumenti da campo: sul telefono una striscia che scorre di lato,
+   invece di sei righe di tasti che spingono giù tutto il resto */
+@media (max-width: 767px) {
+  .strumenti-cielo {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .strumenti-cielo::-webkit-scrollbar { display: none; }
+  .strumenti-cielo > * { flex: 0 0 auto; }
+}
+
+/* Le note lunghe stanno ripiegate: il titolo si legge, il resto si apre */
+.nota-ripiegata > summary {
+  font-size: 0.76rem;
+  color: var(--testo-3);
+  padding: 6px 2px;
+  list-style-position: inside;
+}
+.nota-ripiegata[open] > summary { color: var(--testo-2); }
+
+/* ------------------------------------------------------------- FINESTRE     */
+.velo-modale { padding: 16px; }
+.pannello-modale { margin-block: 24px; max-width: 560px; }
+.pannello-modale[data-misura="grande"] { max-width: 880px; }
+.pannello-modale[data-misura="larga"]  { max-width: 1080px; }
+
+.corpo-modale { padding: 20px; }
+.spazio-verticale > * + *       { margin-top: 16px; }
+.spazio-verticale-largo > * + * { margin-top: 20px; }
+
+@media (min-width: 1440px) {
+  /* Sul monitor grande la mappa dell'eclissi merita tutta la larghezza */
+  .pannello-modale[data-misura="grande"] { max-width: 1020px; }
+  .pannello-modale[data-misura="larga"]  { max-width: 1400px; }
+  .corpo-modale { padding: 24px; }
+}
+
+/* Sul telefono le finestre diventano fogli che salgono dal basso: il pollice
+   arriva ai tasti, il titolo resta incollato in cima e scorre solo il corpo. */
+@media (max-width: 767px) {
+  .velo-modale { padding: 0; align-items: flex-end; overflow: hidden; }
+  .pannello-modale {
+    margin: 0;
+    max-width: 100%;
+    /* dvh tiene conto della barra del browser che compare e scompare;
+       vh resta per i browser che non lo conoscono ancora */
+    max-height: 92vh;
+    max-height: 92dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 24px 24px 0 0;
+    border-bottom: none;
+  }
+  /* La linguetta in cima dice "questo si trascina/si chiude" */
+  .pannello-modale::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 40px;
+    height: 4px;
+    margin: 8px auto 0;
+    border-radius: 999px;
+    background: var(--bordo-forte);
+  }
+  /* Testata ferma, corpo che scorre */
+  .pannello-modale > :not(:last-child) { flex: 0 0 auto; }
+  .pannello-modale > :last-child {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+  .corpo-modale { padding: 16px; }
+  .testata-modale { top: 0; }
+  body > div[id^="modale-"]:not(.hidden) > div { animation: foglio-entra 260ms cubic-bezier(0.22, 0.61, 0.36, 1); }
+}
+
+@keyframes foglio-entra {
+  from { transform: translateY(28px); opacity: 0.6; }
+  to   { transform: none; opacity: 1; }
+}
+
+/* --------------------------------------------------- FINESTRA SIMULAZIONE   */
+.sim-corpo { display: grid; gap: 16px; align-content: start; }
+
+/* ------------------------------------------- MAPPA ECLISSI SU DUE COLONNE   */
+.ecl-corpo { display: grid; gap: var(--passo); align-content: start; }
+.ecl-colonna-principale,
+.ecl-colonna-lato { display: grid; gap: 14px; align-content: start; min-width: 0; }
+
+#mappa-eclissi { height: var(--altezza-mappa-eclissi); }
+
+@media (min-width: 1180px) {
+  /* La mappa e il suo filmato a sinistra, le letture a destra: si guarda
+     l'ombra correre e nello stesso momento si legge dove sta passando */
+  .ecl-corpo { grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); align-items: start; }
+  .ecl-corpo > #eclissi-riepilogo,
+  .ecl-corpo > .barra-chiudi { grid-column: 1 / -1; }
+  .ecl-riepilogo { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  #mappa-eclissi { min-height: 460px; }
+}
+
+/* ---------------------------------------------------------- CALENDARIO      */
+/* Le caselle crescono con lo schermo. Sul tablet basta un minimo più alto;
+   sul computer l'altezza la calcola app.js (adattaAltezzaCalendario), che
+   misura lo spazio davvero rimasto sotto ai comandi e ci fa stare il mese
+   intero in una schermata sola. */
+@media (min-width: 900px) {
+  /* Il valore preciso lo scrive app.js quando c'è spazio da riempire */
+  .fc .fc-daygrid-day-frame { min-height: var(--altezza-riga-calendario, 96px); }
+}
+@media (min-width: 1440px) {
+  .fc .fc-toolbar-title { font-size: 1.5rem; }
+  .fc-daygrid-event .fc-event-title { font-size: 0.86rem; }
+}
+
+/* ============================================================================
+   TELEFONO — comandi sotto il pollice e grafica alleggerita
+   ========================================================================== */
+@media (max-width: 767px) {
+
+  /* --- La navigazione scende in fondo, dove arriva il pollice --- */
+  :root { --barra-inferiore: 64px; }
+
+  .nav-principale {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    width: 100%;
+    max-width: none;
+    gap: 0;
+    margin: 0;
+    padding: 5px 4px calc(5px + env(safe-area-inset-bottom));
+    border-radius: 0;
+    border: none;
+    border-top: 1px solid var(--bordo);
+    background: rgba(7, 11, 20, 0.94);
+    box-shadow: 0 -14px 34px -22px #000;
+    overflow: visible;
+  }
+
+  .voce-menu {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+    min-height: 50px;
+    padding: 6px 2px;
+    border-radius: 14px;
+    font-size: 0.66rem;
+    letter-spacing: 0;
+  }
+  .voce-menu.attiva {
+    background: var(--blu-velo);
+    color: var(--blu-chiaro);
+    box-shadow: none;
+  }
+  .voce-menu-icona { display: block; opacity: 0.95; }
+  .voce-menu-testo { display: block; line-height: 1.1; }
+
+  /* --- Testata compatta: marchio e titolo su una riga sola --- */
+  .testata-app {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 10px;
+    padding-top: max(10px, env(safe-area-inset-top));
+    margin-bottom: 14px;
+  }
+  .testata-app > div:not(.azioni-testata) { align-items: flex-start; flex: 1 1 0; min-width: 0; gap: 0; }
+  .marchio { width: 42px; height: 42px; border-radius: 14px; }
+  .marchio svg { width: 24px; height: 24px; }
+  .titolo-app { font-size: 1.22rem; letter-spacing: -0.02em; }
+  .sottotitolo-app { display: none; }
+
+  /* Le azioni: una riga che scorre, etichette corte, tasti alti da toccare */
+  .azioni-testata {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-top: 0;
+    padding-bottom: 2px;
+  }
+  .azioni-testata::-webkit-scrollbar { display: none; }
+  .azioni-testata > button { flex: 0 0 auto; min-height: 38px; }
+  .etichetta-lunga { display: none; }
+  .etichetta-breve { display: inline; }
+
+  /* --- Ricerca: i filtri stanno chiusi finché non servono --- */
+  .filtri-avanzati.filtri-chiusi { display: none; }
+  .riga-ricerca { display: flex; gap: 8px; align-items: stretch; }
+  .riga-ricerca > .relative { flex: 1 1 auto; min-width: 0; }
+  #btn-filtri { display: inline-flex; }
+  #barra-ricerca { padding: 12px; margin-bottom: 14px; }
+
+  /* --- Meno cornici e meno aria: ci sta più roba per schermata --- */
+  #vista-stasera > .bg-slate-800,
+  #vista-diario > .bg-slate-800,
+  #vista-calendario { padding: 14px; }
+  .griglia-schede > article { padding: 16px; }
+  .griglia-schede h2 { font-size: 1.15rem; }
+  /* Le targhette (categoria, strumento) vanno a capo intere, non a metà
+     parola: "A occhio nudo" spezzato su due righe non si legge */
+  .griglia-schede article span.inline-flex { white-space: nowrap; }
+  .valore-riepilogo { font-size: 1.22rem; }
+  .etichetta-riepilogo { font-size: 0.64rem; letter-spacing: 0.06em; }
+
+  /* --- Tasti comodi da toccare: mai sotto i 38px di altezza utile --- */
+  body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.leaflet-control-zoom a) {
+    min-height: 38px;
+  }
+  /* …ma i tasti di servizio dentro le schede restano piccoli e discreti */
+  .griglia-elenco button,
+  .griglia-schede-piccole button { min-height: 34px; }
+
+  /* --- Grafica alleggerita: via i vetri sfocati e le stelle animate ---
+     Il blur a schermo intero è la voce più cara del rendering su telefono:
+     lo togliamo e mettiamo un fondo pieno, che si legge anche meglio. */
+  body .bg-slate-800 {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: var(--superficie-piena);
+  }
+  body > div[id^="modale-"]:not(.hidden) > div {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background-color: #121829;
+  }
+  .nav-principale { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  body::after { animation: none; opacity: 0.8; }
+  body .shadow-xl, body .shadow-2xl { box-shadow: var(--ombra-2); }
+  .card-hover:hover { transform: none; }
+
+  /* --- Calendario compatto --- */
+  .fc .fc-toolbar { flex-wrap: wrap; gap: 6px; justify-content: space-between; }
+  .fc .fc-toolbar-title { font-size: 1.02rem; }
+  .fc .fc-button-primary { padding: 0.35rem 0.7rem; font-size: 0.78rem; }
+  .fc-col-header-cell-cushion { font-size: 0.6rem; padding: 6px 1px; letter-spacing: 0.04em; }
+  .fc-daygrid-day-number { font-size: 0.76rem; padding: 3px 5px; }
+  .fc .fc-daygrid-day-frame { min-height: 60px; }
+  .fc-daygrid-event .fc-event-title { font-size: 0.62rem; }
+  .fc .fc-daygrid-more-link { font-size: 0.62rem; }
+  .fc-daygrid-event-dot { border-width: 3px; }
+}
+
+/* Sotto i 380px (telefoni piccoli) si stringe ancora un filo */
+@media (max-width: 380px) {
+  .voce-menu { font-size: 0.6rem; }
+  .titolo-app { font-size: 1.1rem; }
+  .fc-col-header-cell-cushion { font-size: 0.55rem; }
+}
+
+/* Telefono girato di lato: di altezza ce n'è pochissima, e quella che c'è
+   deve andare al contenuto. La testata si schiaccia su una riga sola. */
+@media (max-width: 926px) and (orientation: landscape) and (pointer: coarse) {
+  :root { --altezza-cielo: 74vh; --altezza-mappa-eclissi: 70vh; --altezza-simulazione: 70vh; }
+  .marchio, .sottotitolo-app { display: none; }
+  .testata-app {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px 14px;
+    padding-top: 6px;
+    margin-bottom: 10px;
+  }
+  .testata-app > div:not(.azioni-testata) { flex: 0 0 auto; }
+  .titolo-app { font-size: 1.08rem; }
+  .testata-app .nav-principale,
+  .testata-app .azioni-testata { margin-top: 0; }
+}
+
+/* ------------------------------------------------------------ PUNTATORI     */
+/* Dito grosso, bersaglio grosso: vale su ogni schermo touch, tablet compresi */
+@media (pointer: coarse) {
+  .chip-categoria, .chip-astro, .chip-strumento { padding-block: 8px; }
+  .selettore-mese-btn { padding: 9px 16px; }
+  .selettore-mese-campo { padding: 9px 12px; font-size: 0.92rem; }
+  /* Il passaggio del mouse non esiste: niente effetti che restano appiccicati */
+  .card-hover:hover { transform: none; }
 }

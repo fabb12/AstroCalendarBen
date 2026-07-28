@@ -138,7 +138,13 @@ const DISEGNI = {
     <circle cx="9.8" cy="11.4" r="1.3"/><circle cx="14.4" cy="13.2" r="0.9"/>`,
 
   quaderno: `<rect x="4.4" y="3.6" width="15.2" height="16.8" rx="2"/>
-    <path d="M8.4 3.6v16.8M11.4 8.4h5.4M11.4 12h5.4M11.4 15.6h3.6"/>`
+    <path d="M8.4 3.6v16.8M11.4 8.4h5.4M11.4 12h5.4M11.4 15.6h3.6"/>`,
+
+  calendario: `<rect x="3.4" y="5.2" width="17.2" height="15.2" rx="2.4"/>
+    <path d="M3.4 10h17.2M8.2 3.4v3.4M15.8 3.4v3.4"/>`,
+
+  lista: `<path d="M9.2 6.8h11M9.2 12h11M9.2 17.2h11"/>
+    <circle cx="4.8" cy="6.8" r="1.1"/><circle cx="4.8" cy="12" r="1.1"/><circle cx="4.8" cy="17.2" r="1.1"/>`
 };
 
 // Restituisce il disegno richiesto, pronto da mettere dentro l'HTML
@@ -175,9 +181,288 @@ const ANNO_LIMITE_ECLISSI = 2070;
 // Chiave usata per salvare gli eventi manuali nel browser
 const CHIAVE_EVENTI_MANUALI = 'astrocalendario_eventi_manuali';
 
+// =====================================================================
+// 0. IL DISPOSITIVO
+//    Lo schermo non decide solo l'aspetto: decide anche quanti dati ha
+//    senso mettere davanti a chi guarda. Su un monitor da scrivania un
+//    elenco di dodici voci si legge in un colpo d'occhio; sullo stesso
+//    elenco, su un telefono, si scorre per mezzo minuto.
+//
+//    Qui teniamo un'unica verità — "telefono", "tablet" o "computer" —
+//    la scriviamo su <html data-dispositivo="…"> perché il CSS possa
+//    leggerla, e la usiamo per accorciare gli elenchi, cambiare le
+//    opzioni del calendario e ridisegnare le tele.
+//
+//    I confini sono gli stessi del foglio di stile (style.css): se si
+//    cambiano lì, vanno cambiati anche qui.
+// =====================================================================
+
+const PUNTI_ROTTURA = { tablet: 768, computer: 1180 };
+
+// Icona di ogni sezione: serve alla barra in fondo sul telefono, dove
+// un'etichetta da sola sarebbe troppo piccola per capirsi al volo
+const ICONE_VISTE = {
+  stasera:    'luna',
+  calendario: 'calendario',
+  agenda:     'lista',
+  cielo:      'telescopio',
+  diario:     'quaderno'
+};
+
+// La sezione mostrata in questo momento, per ridisegnarla se cambia lo schermo
+let dispositivoAttuale = null;
+let vistaAttuale = 'stasera';
+
+function larghezzaSchermo() {
+  return window.innerWidth || document.documentElement.clientWidth || 1024;
+}
+
+function profiloDispositivo() {
+  const l = larghezzaSchermo();
+  if (l < PUNTI_ROTTURA.tablet) return 'telefono';
+  if (l < PUNTI_ROTTURA.computer) return 'tablet';
+  return 'computer';
+}
+
+// Si comanda col dito? Allora i bersagli devono essere grandi e certi
+// effetti "al passaggio del mouse" non hanno senso
+function aTocco() {
+  return window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+}
+
+// Sceglie un valore diverso per ogni misura di schermo. Si legge come una
+// frase: quanto(3, 6, 10) → tre sul telefono, sei sul tablet, dieci sul computer
+function quanto(telefono, tablet, computer) {
+  const p = dispositivoAttuale || profiloDispositivo();
+  if (p === 'telefono') return telefono;
+  if (p === 'tablet') return tablet;
+  return computer;
+}
+
+// Le opzioni del calendario a griglia cambiano con lo spazio: sul telefono
+// due eventi per casella e il resto sotto "+altri", sul monitor tutti
+function opzioniCalendarioPerSchermo() {
+  const telefono = (dispositivoAttuale || profiloDispositivo()) === 'telefono';
+  return {
+    dayMaxEvents: quanto(2, 3, 6),
+    // Sul telefono la barra in cima si riduce all'osso: freccia, mese, freccia.
+    // Per tornare a oggi c'è già "Mese corrente" nel selettore qui sopra.
+    headerToolbar: telefono
+      ? { left: 'prev', center: 'title', right: 'next' }
+      : { left: 'prev,next today', center: 'title', right: '' },
+    titleFormat: telefono
+      ? { year: 'numeric', month: 'short' }
+      : { year: 'numeric', month: 'long' }
+  };
+}
+
+function adattaCalendario() {
+  if (!fullCalendarInstance) return;
+  const opzioni = opzioniCalendarioPerSchermo();
+  // batchRendering evita un ridisegno per ogni singola opzione cambiata
+  fullCalendarInstance.batchRendering(() => {
+    Object.entries(opzioni).forEach(([chiave, valore]) => {
+      fullCalendarInstance.setOption(chiave, valore);
+    });
+  });
+  adattaAltezzaCalendario();
+  fullCalendarInstance.updateSize();
+}
+
+// Sul computer il mese dovrebbe stare in una schermata sola. Il modo sbagliato
+// di ottenerlo è imporre un'altezza alla griglia: FullCalendar, se non ci
+// sta, nasconde le ultime settimane dentro a uno scorrimento suo, e un mese
+// tagliato è peggio di una pagina da scorrere.
+//
+// Il modo giusto è il contrario: la griglia resta ad altezza naturale (non
+// taglia mai niente) e sono le righe a crescere fin dove c'è spazio libero.
+// Qui misuriamo quanto ne resta sotto ai comandi e lo dividiamo per le
+// settimane da disegnare; il risultato va in una variabile CSS che il foglio
+// di stile usa come altezza minima delle caselle. Se lo spazio non basta la
+// variabile sparisce e ci si affida al valore del CSS: la pagina scorre,
+// come sul telefono e sul tablet.
+const ALTEZZA_RIGA_CALENDARIO_BASE = 96;   // il minimo previsto dal CSS
+
+function adattaAltezzaCalendario() {
+  if (!fullCalendarInstance) return;
+  const griglia = document.getElementById('calendario-griglia');
+  const vista = document.getElementById('vista-calendario');
+  if (!griglia || !vista) return;
+
+  const radice = document.documentElement;
+  const rinuncia = () => radice.style.removeProperty('--altezza-riga-calendario');
+
+  // A vista nascosta le misure valgono zero: si aspetta di essere a schermo
+  if ((dispositivoAttuale || profiloDispositivo()) !== 'computer' || vista.classList.contains('hidden')) {
+    rinuncia();
+    return;
+  }
+
+  const cima = griglia.getBoundingClientRect().top + window.scrollY;
+  // Sotto alla griglia restano i bordi interni di tutti i contenitori che la
+  // avvolgono (la scheda, poi il corpo pagina). Se non li si toglie dal conto
+  // avanza una striscia da scorrere fatta di solo vuoto.
+  let respiroSotto = 0;
+  for (let nodo = griglia.parentElement; nodo && nodo !== document.body; nodo = nodo.parentElement) {
+    const stile = getComputedStyle(nodo);
+    respiroSotto += (parseFloat(stile.paddingBottom) || 0) + (parseFloat(stile.marginBottom) || 0);
+  }
+
+  // Barra dei comandi e riga dei nomi dei giorni stanno dentro alla griglia:
+  // lo spazio per le settimane è quello che avanza dopo di loro
+  const misura = (sel, meno) => {
+    const el = griglia.querySelector(sel);
+    return el ? el.getBoundingClientRect().height : meno;
+  };
+  const righe = griglia.querySelectorAll('.fc-daygrid-body tr').length || 6;
+  const spazio = window.innerHeight - cima - respiroSotto - 10
+    - misura('.fc-toolbar', 52) - misura('.fc-col-header', 36);
+
+  // I quattro pixel tolti per riga sono i bordi delle caselle, che si
+  // sommano all'altezza minima: senza questo margine il mese sborda di poco
+  // e resta una barra di scorrimento buona a niente
+  const perRiga = Math.floor(spazio / righe) - 4;
+  if (perRiga > ALTEZZA_RIGA_CALENDARIO_BASE) {
+    radice.style.setProperty('--altezza-riga-calendario', `${perRiga}px`);
+  } else {
+    rinuncia();
+  }
+}
+
+// I filtri per categoria e strumento: sul telefono stanno chiusi dietro al
+// tasto "Filtri", altrove sono sempre in vista
+function adattaFiltri() {
+  const pannello = document.getElementById('filtri-avanzati');
+  const tasto = document.getElementById('btn-filtri');
+  if (!pannello) return;
+  if ((dispositivoAttuale || profiloDispositivo()) === 'telefono') {
+    // Se non li ha aperti nessuno, sul telefono partono chiusi
+    if (!pannello.dataset.apertoDaUtente) pannello.classList.add('filtri-chiusi');
+  } else {
+    pannello.classList.remove('filtri-chiusi');
+  }
+  if (tasto) aggiornaTastoFiltri();
+}
+
+function aggiornaTastoFiltri() {
+  const pannello = document.getElementById('filtri-avanzati');
+  const tasto = document.getElementById('btn-filtri');
+  if (!pannello || !tasto) return;
+  const chiuso = pannello.classList.contains('filtri-chiusi');
+  tasto.setAttribute('aria-expanded', chiuso ? 'false' : 'true');
+  tasto.title = chiuso ? 'Mostra i filtri per categoria e strumento' : 'Nascondi i filtri';
+}
+
+// Le istruzioni lunghe della bussola: aperte dove c'è spazio, ripiegate sul
+// telefono. Appena qualcuno le apre o le chiude di persona, l'app smette di
+// deciderlo al posto suo.
+let istruzioniCieloDecisoDaUtente = false;
+let istruzioniCieloInAggiornamento = false;
+
+function adattaIstruzioniCielo() {
+  const nota = document.getElementById('skymap-istruzioni');
+  if (!nota || istruzioniCieloDecisoDaUtente) return;
+  istruzioniCieloInAggiornamento = true;
+  nota.open = (dispositivoAttuale || profiloDispositivo()) === 'computer';
+  istruzioniCieloInAggiornamento = false;
+}
+
+function sorvegliaIstruzioniCielo() {
+  const nota = document.getElementById('skymap-istruzioni');
+  if (!nota) return;
+  nota.addEventListener('toggle', () => {
+    if (!istruzioniCieloInAggiornamento) istruzioniCieloDecisoDaUtente = true;
+  });
+}
+
+// Quello che va rifatto quando si passa, per esempio, da verticale a
+// orizzontale su un tablet: gli elenchi cambiano lunghezza e le tele misura
+function ridisegnaPerDispositivo() {
+  if (vistaAttuale === 'stasera') {
+    costruisciStaseraProssimi();
+    // I passaggi si riscrivono solo se i dati orbitali sono già arrivati:
+    // altrimenti cancelleremmo il "Caricamento…" con un "non disponibile"
+    if (Object.keys(satTle).length) mostraPassaggiSatelliti();
+  }
+  if (typeof sky === 'object' && sky.aperto) skyRidimensiona();
+  if (typeof sim === 'object' && sim.aperto) simRidimensiona();
+  // La mappa dell'eclissi cambia riquadro passando a due colonne: senza
+  // questo Leaflet continuerebbe a disegnare sulla misura vecchia
+  if (_mappaEclissi) _mappaEclissi.invalidateSize();
+}
+
+function applicaProfiloDispositivo(opzioni = {}) {
+  const radice = document.documentElement;
+  radice.dataset.tocco = aTocco() ? 'si' : 'no';
+
+  const profilo = profiloDispositivo();
+  if (!opzioni.forza && profilo === dispositivoAttuale) return;
+
+  const precedente = dispositivoAttuale;
+  dispositivoAttuale = profilo;
+  radice.dataset.dispositivo = profilo;
+
+  adattaFiltri();
+  adattaIstruzioniCielo();
+  adattaCalendario();
+  // Al primo giro le viste non sono ancora costruite: ci pensa l'avvio
+  if (precedente) ridisegnaPerDispositivo();
+}
+
+function inizializzaDispositivo() {
+  sorvegliaIstruzioniCielo();
+  applicaProfiloDispositivo({ forza: true });
+
+  // Un solo ridisegno per fotogramma, anche mentre si trascina il bordo
+  // della finestra: senza freno il ricalcolo partirebbe a ogni pixel
+  let attesa = null;
+  const suCambio = () => {
+    if (attesa) cancelAnimationFrame(attesa);
+    attesa = requestAnimationFrame(() => {
+      attesa = null;
+      applicaProfiloDispositivo();
+      // L'altezza del calendario segue la finestra anche quando la fascia di
+      // schermo non cambia: allargare o stringere di poco sposta comunque
+      // quanto spazio resta sotto ai comandi
+      adattaAltezzaCalendario();
+      if (fullCalendarInstance) fullCalendarInstance.updateSize();
+    });
+  };
+  window.addEventListener('resize', suCambio);
+  // Il giro di schermo cambia le proporzioni anche restando nella stessa
+  // fascia: qui si ridisegna comunque
+  window.addEventListener('orientationchange', () => {
+    setTimeout(() => applicaProfiloDispositivo({ forza: true }), 120);
+  });
+}
+
+// Barra di navigazione: sul telefono diventa la fila di icone in fondo allo
+// schermo, quindi ogni voce si porta dietro il suo disegno e la sua etichetta
+function inizializzaNavigazione() {
+  VISTE.forEach(v => {
+    const btn = document.getElementById(v.btn);
+    if (!btn) return;
+    const testo = btn.textContent.trim();
+    btn.innerHTML =
+      `<span class="voce-menu-icona">${icona(ICONE_VISTE[v.nome] || 'stella', 20)}</span>` +
+      `<span class="voce-menu-testo">${testo}</span>`;
+  });
+
+  // I tasti della testata hanno due nomi: quello disteso e quello da telefono
+  document.querySelectorAll('.azioni-testata button[data-etichetta-breve]').forEach(btn => {
+    const lungo = btn.textContent.trim();
+    const breve = btn.dataset.etichettaBreve;
+    btn.innerHTML =
+      `<span class="etichetta-lunga">${lungo}</span>` +
+      `<span class="etichetta-breve">${breve}</span>`;
+  });
+}
+
 // Avvio al caricamento della pagina
 window.addEventListener('DOMContentLoaded', () => {
   registraSW();
+  inizializzaDispositivo();
+  inizializzaNavigazione();
   calcolaEventiAstronomi();
   caricaEventiManuali();
   caricaDiario();
@@ -2900,11 +3185,49 @@ function sincronizzaCalendario() {
   eventiPerGriglia(getEventiFiltrati()).forEach(ev => fullCalendarInstance.addEvent(ev));
 }
 
+// Sul telefono i due blocchi di filtri (categoria e strumento) occupavano più
+// spazio della ricerca stessa. Qui accanto al campo compare un tasto "Filtri"
+// che li apre e li chiude; su schermi più grandi il tasto non esiste nemmeno,
+// perché i filtri restano sempre visibili.
+function costruisciTastoFiltri() {
+  const barra = document.getElementById('barra-ricerca');
+  const pannello = document.getElementById('filtri-avanzati');
+  if (!barra || !pannello || document.getElementById('btn-filtri')) return;
+
+  const campo = barra.querySelector('.relative');
+  if (!campo) return;
+
+  // Campo e tasto viaggiano affiancati sulla stessa riga
+  const riga = document.createElement('div');
+  riga.className = 'riga-ricerca';
+  campo.parentNode.insertBefore(riga, campo);
+  riga.appendChild(campo);
+
+  const tasto = document.createElement('button');
+  tasto.id = 'btn-filtri';
+  tasto.type = 'button';
+  tasto.className = 'px-3 py-2 rounded-lg text-sm font-semibold bg-slate-700 ' +
+    'hover:bg-slate-600 text-white flex-shrink-0 items-center gap-1.5';
+  tasto.setAttribute('aria-controls', 'filtri-avanzati');
+  tasto.innerHTML = `${icona('bersaglio', 16)} Filtri`;
+  tasto.addEventListener('click', () => {
+    pannello.classList.toggle('filtri-chiusi');
+    // Da qui in poi comanda la scelta di chi guarda, non più il tipo di schermo
+    pannello.dataset.apertoDaUtente = '1';
+    aggiornaTastoFiltri();
+  });
+  riga.appendChild(tasto);
+
+  aggiornaTastoFiltri();
+}
+
 // Costruisce la barra di ricerca e i chip delle categorie e ne collega gli eventi
 function inizializzaRicerca() {
   const input = document.getElementById('ricerca-eventi');
   const btnPulisci = document.getElementById('btn-pulisci-ricerca');
   const contenitoreChip = document.getElementById('filtri-categorie');
+
+  costruisciTastoFiltri();
 
   if (contenitoreChip) {
     const chips = [{ id: 'tutti', nome: 'Tutti', disegno: 'stella' }]
@@ -3058,17 +3381,18 @@ function inizializzaCalendario() {
     return;
   }
 
+  // Barra dei comandi, densità delle caselle e formato del titolo dipendono
+  // da quanto schermo c'è: le decide opzioniCalendarioPerSchermo()
+  const opzioniSchermo = opzioniCalendarioPerSchermo();
+
   fullCalendarInstance = new FullCalendar.Calendar(calendarEl, {
     initialView: 'dayGridMonth',
     locale: 'it',
     firstDay: 1, // Lunedì
     height: 'auto',
-    headerToolbar: {
-      left: 'prev,next today',
-      center: 'title',
-      right: ''
-    },
+    ...opzioniSchermo,
     buttonText: { today: 'Oggi' },
+    moreLinkContent: (arg) => `+${arg.num}`,
     // Niente rettangoli pieni: un pallino colorato e il titolo, come su un'agenda di carta
     eventDisplay: 'list-item',
     displayEventTime: false,
@@ -3128,6 +3452,8 @@ const VISTE = [
 function mostraVista(nome) {
   const attivo = "voce-menu attiva";
   const inattivo = "voce-menu";
+  // Serve a chi ridisegna dopo un cambio di schermo: sa cosa c'è davanti
+  vistaAttuale = nome;
 
   VISTE.forEach(v => {
     const btn = document.getElementById(v.btn);
@@ -3141,8 +3467,12 @@ function mostraVista(nome) {
   const ricerca = document.getElementById('barra-ricerca');
   if (ricerca) ricerca.classList.toggle('hidden', nome !== 'calendario' && nome !== 'agenda');
 
-  // Resize necessario per FullCalendar quando torna visibile
-  if (nome === 'calendario' && fullCalendarInstance) fullCalendarInstance.updateSize();
+  // Resize necessario per FullCalendar quando torna visibile: solo ora la
+  // griglia ha una misura vera, quindi è il momento di darle la sua altezza
+  if (nome === 'calendario' && fullCalendarInstance) {
+    adattaAltezzaCalendario();
+    fullCalendarInstance.updateSize();
+  }
 
   // Il disegno del cielo gira solo quando la sua vista è a schermo;
   // uscendo si spegne anche la fotocamera (batteria e privacy).
@@ -7390,7 +7720,7 @@ function mostraPassaggiSatelliti() {
   const box = document.getElementById('stasera-satelliti');
   if (!box) return;
 
-  const visibili = passaggiVisibiliOrdinati().slice(0, 6);
+  const visibili = passaggiVisibiliOrdinati().slice(0, quanto(3, 5, 8));
 
   // Se i dati orbitali sono vecchi gli orari ballano: meglio dirlo
   const etaMax = SATELLITI.reduce((max, sat) => {
@@ -7518,7 +7848,7 @@ function costruisciStaseraRiepilogo() {
   const luogo = luogoCorrente();
   if (!luogo) {
     box.innerHTML = `
-      <div class="md:col-span-3 bg-slate-900 p-4 rounded-xl border border-amber-800">
+      <div class="scheda-piena bg-slate-900 p-4 rounded-xl border border-amber-800">
         <p class="text-amber-400 font-semibold">Manca la tua posizione</p>
         <p class="text-sm text-slate-300 mt-1">Senza coordinate non posso dirti a che ora fa buio, cosa sorge e cosa tramonta. Premi “Dove sono” qui sopra: resta salvata solo su questo dispositivo.</p>
       </div>`;
@@ -7682,10 +8012,12 @@ function costruisciStaseraProssimi() {
 
   const adesso = Date.now();
   const limite = adesso + 30 * 86400000;
+  // Sul telefono un elenco corto si legge tutto senza scorrere; sul monitor
+  // lo spazio c'è e allungarlo evita di dover aprire l'agenda
   const prossimi = eventiCalcolati
     .filter(e => e.dataObj.getTime() >= adesso - 6 * 3600000 && e.dataObj.getTime() <= limite)
     .sort((a, b) => a.dataObj - b.dataObj)
-    .slice(0, 8);
+    .slice(0, quanto(5, 8, 12));
 
   if (!prossimi.length) {
     box.innerHTML = '<p class="text-slate-400">Nessun evento nei prossimi 30 giorni.</p>';
