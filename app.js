@@ -2845,7 +2845,11 @@ const SKY_R2D = 180 / Math.PI;
 
 // Preferenze salvate nel browser
 const CHIAVE_SKY_POSIZIONE = 'astrocalendario_posizione';
-const CHIAVE_SKY_BUSSOLA = 'astrocalendario_bussola_offset';
+// La chiave della calibrazione è alla versione 2: dalla versione in cui la
+// declinazione magnetica viene corretta da sola, le vecchie correzioni fatte
+// a mano (che quasi sempre servivano a rimediare proprio a quella) darebbero
+// una doppia correzione. Cambiando chiave ripartono tutti da zero.
+const CHIAVE_SKY_BUSSOLA = 'astrocalendario_bussola_offset_v2';
 
 // Corpi del Sistema Solare mostrati nel cielo.
 // Gli id sono i valori di Astronomy.Body (semplici stringhe): li scriviamo
@@ -2917,12 +2921,15 @@ const sky = {
   observer: null,        // Astronomy.Observer con la posizione dell'utente
   posizione: null,       // { lat, lon, fonte, precisione, tempo }
   attesaPosizione: null, // richiesta di geolocalizzazione in corso (una sola per volta)
+  sorveglianza: null,    // id di watchPosition mentre la vista Cielo è aperta
   sensori: false,        // orientamento del dispositivo attivo
-  assoluto: false,       // alpha riferito al Nord vero (bussola affidabile)
+  assoluto: false,       // alpha riferito al Nord magnetico (bussola affidabile)
   orient: null,          // { alpha, beta, gamma } dall'ultimo evento
   ultimoAssoluto: 0,     // quando è arrivata l'ultima lettura riferita al Nord
   baseFiltrata: null,    // terna di sguardo levigata (filtro anti-tremolio)
+  declinazione: 0,       // scarto Nord magnetico → Nord vero, in gradi (Est positivo)
   offsetBussola: 0,      // correzione manuale della bussola, in gradi
+  calibrazione: false,   // il trascinamento sta ritoccando la bussola
   salvaBussola: null,    // timer per salvare la calibrazione a fine trascinamento
   fov: 55,               // campo visivo verticale, in gradi
   manuale: { az: 180, alt: 25 },
@@ -3087,8 +3094,10 @@ function skyLevigaBase(nuova) {
 // r = destra dello schermo, u = alto dello schermo (tutti in Est/Nord/Alto).
 function skyBase() {
   if (sky.sensori && sky.orient) {
+    // alpha arriva riferito al Nord magnetico: skyCorrezioneNord lo porta al
+    // Nord vero, l'unico rispetto al quale sono calcolati gli astri.
     const R = skyMatriceDispositivo(
-      (sky.orient.alpha + sky.offsetBussola) * SKY_D2R,
+      (sky.orient.alpha + skyCorrezioneNord() + sky.offsetBussola) * SKY_D2R,
       sky.orient.beta * SKY_D2R,
       sky.orient.gamma * SKY_D2R
     );
@@ -3146,6 +3155,169 @@ function skyNomeCorpo(id) {
 // 7.1 Posizione dell'osservatore e sensori
 // =====================================================================
 
+// --- Dal Nord magnetico al Nord vero (declinazione) ---
+// La bussola del telefono non punta al Nord geografico: punta dove tira il
+// campo magnetico terrestre. Lo scarto fra i due — la declinazione — vale
+// circa 4° in Italia, ma arriva a 15° a Seattle e a oltre 20° in Patagonia,
+// e non è una costante: dipende da dove sei e cambia di anno in anno.
+//
+// Né Android né iOS la correggono: `deviceorientationabsolute` e
+// `webkitCompassHeading` danno tutti e due la direzione del Nord MAGNETICO
+// (WebKit legge `CLHeading.magneticHeading`). Gli astri invece si calcolano
+// rispetto al Nord vero: usare l'una per puntare gli altri sposta tutto il
+// cielo di quei gradi, sempre nello stesso verso. È la ragione per cui la
+// vista Cielo cadeva accanto agli astri mentre le altre app di planetario,
+// che questa correzione la fanno, sullo stesso telefono ci cascano sopra.
+//
+// La declinazione si ricava dal World Magnetic Model 2025 (NOAA/NGA, dato di
+// pubblico dominio, valido dal 2025 al 2030): uno sviluppo in armoniche
+// sferiche del campo terrestre fino al dodicesimo grado. I coefficienti sono
+// in nanotesla; g e h sono il campo all'epoca 2025.0, dg e dh la sua deriva
+// annua. L'indice della coppia (n, m) è n·(n+1)/2 + m.
+const SKY_WMM = {
+  epoca: 2025.0,
+  nMax: 12,
+  g: [0,-29351.8,-1410.8,-2556.6,2951.1,1649.3,1361,-2404.1,1243.8,453.6,895,799.5,55.7,-281.1,12.1,-233.2,368.9,187.2,-138.7,-142,20.9,64.4,63.8,76.9,-115.7,-40.9,14.9,-60.7,79.5,-77,-8.8,59.3,15.8,2.5,-11.1,14.2,23.2,10.8,-17.5,2,-21.7,16.9,15,-16.8,0.9,4.6,7.8,3,-0.2,-2.5,-13.1,2.4,8.6,-8.7,-12.9,-1.3,-6.4,0.2,2,-1,-0.6,-0.9,1.5,0.9,-2.7,-3.9,2.9,-1.5,-2.5,2.4,-0.6,-0.1,-0.6,-0.1,1.1,-1,-0.2,2.6,-2,-0.2,0.3,1.2,-1.3,0.6,0.6,0.5,-0.1,-0.4,-0.2,-1.3,-0.7],
+  h: [0,0,4545.4,0,-3133.6,-815.1,0,-56.6,237.5,-549.5,0,278.6,-133.9,212,-375.6,0,45.4,220.2,-122.9,43,106.1,0,-18.4,16.8,48.8,-59.8,10.9,72.7,0,-48.9,-14.4,-1,23.4,-7.4,-25.1,-2.3,0,7.1,-12.6,11.4,-9.7,12.7,0.7,-5.2,3.9,0,-24.8,12.2,8.3,-3.3,-5.2,7.2,-0.6,0.8,10,0,3.3,0,2.4,5.3,-9.1,0.4,-4.2,-3.8,0.9,-9.1,0,0,2.9,-0.6,0.2,0.5,-0.3,-1.2,-1.7,-2.9,-1.8,-2.3,0,-1.3,0.7,1,-1.4,0,0.6,-0.1,0.8,0.1,-1,0.1,0.2],
+  dg: [0,12,9.7,-11.6,-5.2,-8,-1.3,-4.2,0.4,-15.6,-1.6,-2.4,-6,5.6,-7,0.6,1.4,0,0.6,2.2,0.9,-0.2,-0.4,0.9,1.2,-0.9,0.3,0.9,0,-0.1,-0.1,0.5,-0.1,-0.8,-0.8,0.8,-0.1,0.2,0,0.5,-0.1,0.3,0.2,0,0.2,0,-0.1,0.1,0.3,-0.3,0,0.3,-0.1,0.1,-0.1,0.1,0,0.1,0.1,0,-0.3,0,-0.1,-0.1,0,0,0,0,0,0,0,-0.1,0,0,-0.1,-0.1,-0.1,-0.1,0,0,0,0,0,0,0.1,0,0,0,-0.1,0,-0.1],
+  dh: [0,0,-21.5,0,-27.7,-12.1,0,4,-0.3,-4.1,0,-1.1,4.1,1.6,-4.4,0,-0.5,2.2,0.4,1.7,1.9,0,0.3,-1.6,-0.4,0.9,0.7,0.9,0,0.6,0.5,-0.8,0,-1,0.6,-0.2,0,-0.2,0.5,-0.4,0.4,-0.5,-0.6,0.3,0.2,0,-0.3,0.3,-0.3,0.3,0.2,-0.1,-0.2,0.4,0.1,0,0,0,-0.2,0.1,-0.1,0.1,0,-0.1,0.2,0,0,0,0.1,0,0.1,0,0,0.1,0,0,0,0,0,0,0,-0.1,0.1,0,0,0,0,0,0,0,-0.1]
+};
+
+// Declinazione magnetica in gradi (positiva se il Nord magnetico sta a Est di
+// quello vero) al livello del mare, nel luogo e nell'istante dati.
+function skyDeclinazioneMagnetica(lat, lon, quando) {
+  const M = SKY_WMM, nMax = M.nMax;
+  const data = quando instanceof Date ? quando : new Date(quando || Date.now());
+  const anno = data.getUTCFullYear();
+  const annoDecimale = anno + (data.getTime() - Date.UTC(anno, 0, 1)) / (365 * 86400000);
+  // Fuori dalla finestra di validità il modello si estrapola: peggiora di
+  // qualche decimo di grado all'anno, sempre meglio che ignorare il problema.
+  const dt = Math.max(-5, Math.min(10, annoDecimale - M.epoca));
+
+  // Dalla latitudine geodetica (quella del GPS) a quella geocentrica, che è
+  // il sistema in cui il modello è scritto. Ellissoide WGS84, raggio di
+  // riferimento del modello 6371.2 km.
+  const a = 6378.137, b = 6356.7523142, re = 6371.2;
+  const e2 = 1 - (b * b) / (a * a);
+  const sinLat = Math.sin(lat * SKY_D2R), cosLat = Math.cos(lat * SKY_D2R);
+  const rc = a / Math.sqrt(1 - e2 * sinLat * sinLat);
+  const xp = rc * cosLat;
+  const zp = rc * (1 - e2) * sinLat;
+  const r = Math.sqrt(xp * xp + zp * zp);
+  const phi = Math.asin(zp / r);
+  const x = Math.sin(phi);
+  const z = Math.sqrt((1 - x) * (1 + x)); // = cos(phi), scritto così per non perdere cifre ai poli
+
+  // Polinomi associati di Legendre semi-normalizzati alla Schmidt, con la
+  // loro derivata rispetto alla latitudine (ricorsione standard del WMM).
+  const idx = (n, m) => n * (n + 1) / 2 + m;
+  const P = [1], dP = [0], norma = [1];
+  for (let n = 1; n <= nMax; n++) {
+    for (let m = 0; m <= n; m++) {
+      const i = idx(n, m);
+      if (n === m) {
+        const i1 = idx(n - 1, m - 1);
+        P[i] = z * P[i1];
+        dP[i] = z * dP[i1] + x * P[i1];
+      } else if (m > n - 2) {
+        const i2 = idx(n - 1, m);
+        P[i] = x * P[i2];
+        dP[i] = x * dP[i2] - z * P[i2];
+      } else {
+        const i1 = idx(n - 2, m), i2 = idx(n - 1, m);
+        const k = ((n - 1) * (n - 1) - m * m) / ((2 * n - 1) * (2 * n - 3));
+        P[i] = x * P[i2] - k * P[i1];
+        dP[i] = x * dP[i2] - z * P[i2] - k * dP[i1];
+      }
+    }
+  }
+  for (let n = 1; n <= nMax; n++) {
+    norma[idx(n, 0)] = norma[idx(n - 1, 0)] * (2 * n - 1) / n;
+    for (let m = 1; m <= n; m++) {
+      norma[idx(n, m)] = norma[idx(n, m - 1)] *
+        Math.sqrt(((n - m + 1) * (m === 1 ? 2 : 1)) / (n + m));
+    }
+  }
+  for (let n = 1; n <= nMax; n++) {
+    for (let m = 0; m <= n; m++) {
+      const i = idx(n, m);
+      P[i] *= norma[i];
+      dP[i] *= -norma[i];
+    }
+  }
+
+  // Seni e coseni dei multipli della longitudine, e potenze del raggio
+  const cosL = Math.cos(lon * SKY_D2R), sinL = Math.sin(lon * SKY_D2R);
+  const cosM = [1, cosL], sinM = [0, sinL];
+  for (let m = 2; m <= nMax; m++) {
+    cosM[m] = cosM[m - 1] * cosL - sinM[m - 1] * sinL;
+    sinM[m] = cosM[m - 1] * sinL + sinM[m - 1] * cosL;
+  }
+  const rp = [(re / r) * (re / r)];
+  for (let n = 1; n <= nMax; n++) rp[n] = rp[n - 1] * (re / r);
+
+  // Somma delle armoniche: bx verso Nord, by verso Est, bz verso il basso
+  let bx = 0, by = 0, bz = 0;
+  for (let n = 1; n <= nMax; n++) {
+    for (let m = 0; m <= n; m++) {
+      const i = idx(n, m);
+      const g = M.g[i] + dt * M.dg[i];
+      const h = M.h[i] + dt * M.dh[i];
+      bz -= rp[n] * (g * cosM[m] + h * sinM[m]) * (n + 1) * P[i];
+      by += rp[n] * (g * sinM[m] - h * cosM[m]) * m * P[i];
+      bx -= rp[n] * (g * cosM[m] + h * sinM[m]) * dP[i];
+    }
+  }
+  const cosPhi = Math.cos(phi);
+  if (Math.abs(cosPhi) > 1e-10) {
+    by /= cosPhi;
+  } else {
+    // Ai poli la divisione per il coseno esplode: la componente verso Est si
+    // ricava con la formula limite prevista dal modello.
+    by = 0;
+    let q1 = 1;
+    const Ps = [1];
+    for (let n = 1; n <= nMax; n++) {
+      const i = idx(n, 1);
+      const q2 = q1 * (2 * n - 1) / n;
+      const q3 = q2 * Math.sqrt(2 * n / (n + 1));
+      q1 = q2;
+      if (n === 1) {
+        Ps[n] = Ps[n - 1];
+      } else {
+        const k = ((n - 1) * (n - 1) - 1) / ((2 * n - 1) * (2 * n - 3));
+        Ps[n] = x * Ps[n - 1] - k * Ps[n - 2];
+      }
+      by += rp[n] * ((M.g[i] + dt * M.dg[i]) * sinM[1] - (M.h[i] + dt * M.dh[i]) * cosM[1]) * Ps[n] * q3;
+    }
+  }
+
+  // Il campo è nel sistema geocentrico: va riportato all'orizzonte locale
+  const psi = phi - lat * SKY_D2R;
+  const nord = bx * Math.cos(psi) - bz * Math.sin(psi);
+  return Math.atan2(by, nord) * SKY_R2D;
+}
+
+// Ricalcola la declinazione per la posizione corrente. Cambia di pochi primi
+// d'arco all'anno e di un grado ogni centinaio di chilometri: basta rifarla
+// quando cambia il luogo.
+function skyAggiornaDeclinazione() {
+  if (!sky.posizione) { sky.declinazione = 0; return; }
+  try {
+    const d = skyDeclinazioneMagnetica(sky.posizione.lat, sky.posizione.lon, new Date());
+    sky.declinazione = isFinite(d) ? d : 0;
+  } catch (e) {
+    sky.declinazione = 0;
+  }
+}
+
+// Correzione da sommare ad alpha per passare al Nord vero. Ha senso solo con
+// una bussola vera: quando l'orientamento è relativo, alpha parte da un punto
+// qualunque e il riferimento lo dà a mano l'utente.
+function skyCorrezioneNord() {
+  return sky.assoluto ? -sky.declinazione : 0;
+}
+
 // --- Normalizzazione delle letture di posizione ---
 // Il navigatore non restituisce un punto, restituisce una stima: ogni
 // lettura balla di qualche decina di metri e, quando il GPS vero non è
@@ -3156,6 +3328,7 @@ function skyNomeCorpo(id) {
 // lettura porta davvero un'informazione nuova.
 const SKY_SPOSTAMENTO_MIN_M = 150;   // sotto questa soglia è rumore, non movimento
 const SKY_PRECISIONE_PEGGIORE = 2;   // quanto può essere più larga una lettura per essere creduta
+const SKY_PRECISIONE_MIGLIORE = 2;   // quanto dev'essere più stretta per valere comunque
 const SKY_FONTI_RIPIEGO = ['salvata', 'backup'];
 
 // Distanza in metri fra due coordinate (emisenoverso: basta e avanza)
@@ -3181,6 +3354,13 @@ function skyLetturaAttendibile(lat, lon, fonte, precisione, tempo) {
   // Mai tornare indietro nel tempo: le risposte del browser possono arrivare
   // fuori ordine, e una lettura presa dalla cache è più vecchia di quella in uso.
   if (tempo && attuale.tempo && tempo < attuale.tempo) return false;
+
+  // Una lettura molto più stretta di quella in uso porta comunque qualcosa di
+  // nuovo, anche se il punto si sposta di poco: è il passaggio dal fix di rete
+  // largo chilometri al fix GPS largo venti metri. Rifiutarlo lasciava la
+  // vista a dichiarare una precisione che non aveva.
+  if (precisione && attuale.precisione &&
+      precisione * SKY_PRECISIONE_MIGLIORE < attuale.precisione) return true;
 
   const d = skyDistanzaMetri(attuale.lat, attuale.lon, lat, lon);
 
@@ -3225,6 +3405,9 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   if (typeof Astronomy !== 'undefined') {
     sky.observer = new Astronomy.Observer(lat, lon, 0);
   }
+  // Lo scarto fra Nord magnetico e Nord vero dipende dal luogo: cambiando
+  // posizione va rifatto, altrimenti la bussola resta puntata a quello vecchio.
+  skyAggiornaDeclinazione();
   sky.prossimoCalcolo = 0;
   sky.cacheOrari = { chiave: null, valore: null };
   // Cambiando luogo cambiano orari, altezze e giudizi: la memoria va svuotata
@@ -3305,6 +3488,50 @@ function skyRichiediPosizione() {
   });
 
   return sky.attesaPosizione;
+}
+
+// Una sola lettura non basta: il primo fix che il browser consegna è quasi
+// sempre quello di rete (wi-fi o cella), largo centinaia di metri o
+// chilometri, perché il GPS vero impiega decine di secondi ad agganciare i
+// satelliti. Chiedendo la posizione una volta sola all'apertura ci si teneva
+// quel primo fix per tutta la sessione. Finché la vista Cielo è aperta la
+// posizione resta invece sotto osservazione, così la lettura si stringe da
+// sola man mano che il GPS aggancia; il filtro qui sopra decide di volta in
+// volta se la nuova lettura è meglio di quella in uso.
+// `autorizzata` dice che il consenso c'è già (l'utente ha appena chiesto la
+// posizione): senza quella certezza la sorveglianza non parte da sola, se no
+// aprire la vista Cielo farebbe comparire subito la richiesta di permesso,
+// che invece deve restare legata al pulsante.
+function skySorvegliaPosizione(autorizzata) {
+  if (sky.sorveglianza !== null || !navigator.geolocation) return;
+  if (!autorizzata) {
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' })
+        .then(p => { if (p.state === 'granted' && sky.aperto) skySorvegliaPosizione(true); })
+        .catch(() => { /* alcuni browser non sanno interrogare questo permesso */ });
+    }
+    return;
+  }
+  try {
+    sky.sorveglianza = navigator.geolocation.watchPosition(
+      (pos) => {
+        const cambiata = skyImpostaPosizione(pos.coords.latitude, pos.coords.longitude, 'gps', {
+          precisione: pos.coords.accuracy,
+          tempo: pos.timestamp
+        });
+        if (cambiata) skyAggiornaOggetti(true);
+        else skyAggiornaStato();
+      },
+      () => { /* permesso negato o sensore assente: restano le letture a richiesta */ },
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+    );
+  } catch (e) { /* browser senza watchPosition: pazienza */ }
+}
+
+function skySmettiDiSorvegliare() {
+  if (sky.sorveglianza === null) return;
+  try { navigator.geolocation.clearWatch(sky.sorveglianza); } catch (e) { /* già chiuso */ }
+  sky.sorveglianza = null;
 }
 
 // Il telefono può mandare DUE flussi di orientamento, e sono flussi diversi:
@@ -3925,12 +4152,23 @@ function skyAggiornaStato() {
   if (!el) return;
   const righe = [];
   if (sky.posizione) {
-    righe.push(`${formattaCoordinate(sky.posizione.lat, sky.posizione.lon)}`);
+    // Dire quanto è larga la lettura evita di dare per buono un fix di rete
+    // scambiandolo per GPS: è la prima cosa da guardare se il cielo non torna.
+    const p = sky.posizione.precisione;
+    const quanto = p ? ` ±${p >= 1000 ? (p / 1000).toFixed(1) + ' km' : Math.round(p) + ' m'}` : '';
+    righe.push(`${formattaCoordinate(sky.posizione.lat, sky.posizione.lon)}${quanto}`);
   } else {
     righe.push('posizione mancante');
   }
   if (sky.sensori) {
-    righe.push(sky.assoluto ? 'bussola attiva' : 'bussola da calibrare');
+    if (sky.assoluto) {
+      const d = sky.declinazione;
+      righe.push(Math.abs(d) >= 0.05
+        ? `Nord vero (declinazione ${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(1)}°)`
+        : 'Nord vero');
+    } else {
+      righe.push('bussola relativa: da calibrare');
+    }
   } else {
     righe.push('modalità manuale');
   }
@@ -4112,6 +4350,8 @@ async function skyAvvia(conSensori) {
     skyAvviso('posizione', 'Posizione non disponibile: senza di essa non posso sapere cosa hai sopra la testa. Controlla i permessi del browser e riprova con “Aggiorna posizione”.');
   }
 
+  // Il permesso è appena stato chiesto: ora la sorveglianza può partire
+  if (avutaPosizione) skySorvegliaPosizione(true);
   skyAggiornaStato();
   skyAggiornaOggetti(true);
 }
@@ -4132,6 +4372,7 @@ function apriSkymap() {
   skyRidimensiona();
   if (!sky.observer) skyCaricaPosizioneSalvata();
   satPrecaricaTle();
+  skySorvegliaPosizione();
   skyAggiornaStato();
   skyAggiornaOggetti(true);
   skyTieniSchermoAcceso();
@@ -4143,6 +4384,7 @@ function chiudiSkymap() {
   sky.aperto = false;
   if (sky.raf) cancelAnimationFrame(sky.raf);
   sky.raf = null;
+  skySmettiDiSorvegliare();
   skyRilasciaSchermo();
 }
 
@@ -4198,8 +4440,13 @@ function skyInizializzaGesti() {
 
     const gradiPerPixel = sky.fov / Math.max(1, sky.altezza);
     if (sky.sensori) {
-      // Con i sensori attivi il trascinamento orizzontale corregge la bussola
-      skyImpostaOffsetBussola(sky.offsetBussola - dx * gradiPerPixel);
+      // Con i sensori attivi il cielo lo punta il telefono, non il dito: qui
+      // il trascinamento può solo correggere la bussola, e solo se la
+      // correzione è stata chiesta apposta. Prima bastava sfiorare il cielo —
+      // per esempio provando a scorrere la pagina — per ruotarlo di decine di
+      // gradi, e quella rotazione restava salvata anche alle aperture
+      // successive: il cielo risultava storto senza che si capisse perché.
+      if (sky.calibrazione) skyImpostaOffsetBussola(sky.offsetBussola - dx * gradiPerPixel);
     } else {
       sky.manuale.az = ((sky.manuale.az - dx * gradiPerPixel) % 360 + 360) % 360;
       sky.manuale.alt = Math.max(-89, Math.min(89, sky.manuale.alt + dy * gradiPerPixel));
@@ -4218,6 +4465,14 @@ function skyInizializzaGesti() {
     e.preventDefault();
     skyZoom(e.deltaY > 0 ? 1.1 : 1 / 1.1);
   }, { passive: false });
+}
+
+// Il tasto dice se il trascinamento sul cielo sta ritoccando la bussola
+function skyAggiornaTastoCalibrazione() {
+  const btn = document.getElementById('skymap-btn-calibra');
+  if (!btn) return;
+  btn.textContent = sky.calibrazione ? 'Fine calibrazione' : 'Calibra trascinando';
+  btn.className = `px-3 py-1.5 rounded-full ${sky.calibrazione ? 'bg-blue-600 hover:bg-blue-500' : 'bg-slate-700 hover:bg-slate-600'} text-white`;
 }
 
 function skyImpostaOffsetBussola(valore) {
@@ -4259,10 +4514,17 @@ function inizializzaSkymap() {
   collega('skymap-zoom-out', () => skyZoom(1.25));
   collega('skymap-cal-meno', () => skyImpostaOffsetBussola(sky.offsetBussola - 5));
   collega('skymap-cal-piu', () => skyImpostaOffsetBussola(sky.offsetBussola + 5));
+  collega('skymap-cal-zero', () => skyImpostaOffsetBussola(0));
+  collega('skymap-btn-calibra', () => {
+    sky.calibrazione = !sky.calibrazione;
+    skyAggiornaTastoCalibrazione();
+  });
+  skyAggiornaTastoCalibrazione();
   collega('skymap-btn-posizione', async () => {
     skyAvviso('posizione', 'Sto cercando la tua posizione…');
     const ok = await skyRichiediPosizione();
     skyAvviso('posizione', ok ? '' : 'Non riesco a leggere la posizione: controlla i permessi di localizzazione del browser.');
+    if (ok) skySorvegliaPosizione(true);
     skyAggiornaOggetti(true);
   });
 
