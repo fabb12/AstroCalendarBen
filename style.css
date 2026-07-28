@@ -1237,6 +1237,69 @@ body .ecl-select {
   margin-top: 2px;
 }
 
+/* --- Lo schema: la geometria dall'alto e la curva a S ---
+   Stessa scatola della legenda (.ecl-legenda), con dentro due disegni a tutta
+   larghezza e le note che li spiegano a parole. */
+.ecl-schema-corpo {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+figure.ecl-schema-fig {
+  margin: 0;
+  padding: 10px 12px 12px;
+  border-radius: var(--raggio-m);
+  background: rgba(6, 10, 20, 0.55);
+  border: 1px solid var(--bordo);
+}
+.ecl-schema-fig figcaption {
+  margin-top: 8px;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--testo-2);
+}
+.ecl-schema-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.ecl-schema-svg text {
+  font-family: var(--sans);
+  font-size: 12px;
+  fill: var(--testo-2);
+}
+.ecl-schema-svg .sk-t { font-size: 12.5px; font-weight: 600; fill: var(--testo); }
+.ecl-schema-svg .sk-l { font-size: 11.5px; fill: var(--testo-2); }
+.ecl-schema-svg .sk-n { font-size: 10.5px; fill: var(--testo-3); }
+.ecl-schema-svg .sk-chiara { fill: rgba(255, 255, 255, 0.86); }
+.ecl-schema-svg .sk-scura { font-size: 13px; font-weight: 700; fill: #2b1c04; }
+.ecl-schema-note {
+  display: grid;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ecl-schema-note li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--testo-2);
+}
+.ecl-schema-note li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ambra);
+}
+.ecl-schema-note b { color: var(--testo); font-weight: 600; }
+
 .ecl-scala {
   display: flex;
   flex-direction: column;
@@ -1340,6 +1403,10 @@ body .ecl-select {
   /* La mappa delle eclissi sul telefono: una colonna sola, comandi grandi */
   .ecl-riepilogo { grid-template-columns: 1fr; }
   .ecl-legenda-griglia { grid-template-columns: 1fr; }
+  /* Gli schemi non si rimpiccioliscono all'infinito: sotto una certa larghezza
+     le scritte diventerebbero illeggibili, meglio farli scorrere di lato. */
+  figure.ecl-schema-fig { overflow-x: auto; }
+  .ecl-schema-svg { min-width: 470px; }
   #mappa-eclissi { height: 46vh; min-height: 280px; }
   .ecl-lettore-riga { flex-wrap: wrap; }
   body .ecl-btn-play { width: 100%; justify-content: center; }
