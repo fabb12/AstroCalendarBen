@@ -1873,6 +1873,20 @@ main { padding-bottom: calc(clamp(24px, 3vw, 56px) + var(--barra-inferiore)); }
   #mappa-eclissi { min-height: 460px; }
 }
 
+/* Sul telefono le righe di queste due finestre non si schiacciano.
+   Il corpo che scorre prende l'altezza dal foglio (flex: 1 1 auto): una
+   griglia dentro un'altezza già decisa comprime le righe che possono cedere,
+   e la scena della simulazione e la mappa dell'eclissi possono cedere fino a
+   zero perché hanno l'overflow nascosto. Il riquadro si accorciava di un
+   quarto, il canvas restava alto quanto dice il CSS e il disegno finiva
+   tagliato sotto ai comandi: mezza cupola e i punti cardinali spariti.
+   In colonna flex, con flex-shrink a 0, ogni riga tiene la sua altezza e a
+   scorrere è il corpo — che è quello che doveva succedere fin dall'inizio. */
+@media (max-width: 767px) {
+  .sim-corpo, .ecl-corpo { display: flex; flex-direction: column; }
+  .sim-corpo > *, .ecl-corpo > * { flex: 0 0 auto; }
+}
+
 /* ---------------------------------------------------------- CALENDARIO      */
 /* Le caselle crescono con lo schermo. Sul tablet basta un minimo più alto;
    sul computer l'altezza la calcola app.js (adattaAltezzaCalendario), che

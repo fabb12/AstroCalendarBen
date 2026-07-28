@@ -5581,10 +5581,15 @@ function simOsservatore() {
   return sim.osservatore;
 }
 
-function simOraTesto(data) {
-  return data.toLocaleString('it-IT', {
-    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
+// Con l'anno, o senza. Il riquadro dell'ora sta appoggiato in alto a sinistra
+// sopra alla scena: su un canvas stretto la forma lunga arriva fino in mezzo e
+// copre quello che c'è sotto (la N della cupola, il bordo della Luna). L'anno
+// intanto è già scritto nel titolo della finestra.
+function simOraTesto(data, compatto) {
+  return data.toLocaleString('it-IT', Object.assign(
+    { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' },
+    compatto ? {} : { year: 'numeric' }
+  ));
 }
 
 // Durata in forma leggibile, a partire dai minuti
@@ -5651,11 +5656,26 @@ function simDisegnaStelleSfondo(ctx, alpha) {
   ctx.restore();
 }
 
+// Le scritte restano dentro il riquadro. Su uno schermo stretto le etichette
+// che stanno sul bordo — i punti cardinali della cupola, i nomi sotto agli
+// astri, la percentuale sotto al riquadro del telescopio — cadevano mezze
+// fuori dal canvas: si spostano del minimo che serve a leggerle per intero.
 function simEtichetta(ctx, testo, x, y, colore, allineamento, grassetto) {
   ctx.save();
   ctx.font = `${grassetto ? 'bold ' : ''}13px system-ui, sans-serif`;
+  const allinea = allineamento || 'center';
+  const larghezza = ctx.measureText(testo).width;
+  const aSinistra = allinea === 'center' ? larghezza / 2 : allinea === 'right' ? larghezza : 0;
+  const aDestra = allinea === 'center' ? larghezza / 2 : allinea === 'right' ? 0 : larghezza;
+  const margine = 5;
+  // Se la scritta è più larga del canvas non c'è niente da salvare: si lascia
+  // dov'è, centrata sul punto, invece di spingerla tutta da una parte.
+  if (aSinistra + aDestra + 2 * margine <= sim.L) {
+    x = simClamp(x, margine + aSinistra, sim.L - margine - aDestra);
+  }
+  y = simClamp(y, 9, sim.H - 9);
   ctx.fillStyle = colore || '#e2e8f0';
-  ctx.textAlign = allineamento || 'center';
+  ctx.textAlign = allinea;
   ctx.textBaseline = 'middle';
   ctx.shadowColor = 'rgba(2,6,23,0.9)';
   ctx.shadowBlur = 4;
@@ -6276,6 +6296,15 @@ function simScenaStagione(ctx, tempo) {
 // 8.7 Vista del cielo a cupola (usata da sciami e eventi generici)
 // =====================================================================
 
+// Quanto può essere larga la cupola. Il cerchio non è il limite del disegno:
+// i punti cardinali stanno fuori dal bordo (sono disegnati a −6° di altezza,
+// cioè al 6,7% oltre il raggio), e sotto agli astri bassi c'è il loro nome.
+// Prendendo mezza la misura più corta — com'era prima — su un telefono la N
+// e la S finivano oltre il canvas e la E e la O restavano tagliate a metà.
+function simRaggioCupola(L, H) {
+  return Math.max(60, (Math.min(L, H) / 2 - 16) / 1.07);
+}
+
 // Proiezione a tutto cielo: zenit al centro, orizzonte sul bordo.
 // Nord in alto ed Est a sinistra, come quando si guarda in su.
 function simProiettaCupola(az, alt, cx, cy, R) {
@@ -6377,7 +6406,7 @@ function simScenaSciame(ctx, tempo, dtReale) {
   const dati = sim.scena.dati;
   const o = simOsservatore();
   const cx = L / 2, cy = H / 2;
-  const R = Math.min(L, H) * 0.45;
+  const R = simRaggioCupola(L, H);
 
   const corpi = simCorpiCielo(tempo);
   const sole = corpi.find(c => c.id === 'Sun');
@@ -6584,7 +6613,7 @@ function simScenaElongazione(ctx, tempo) {
 function simScenaCielo(ctx, tempo) {
   const L = sim.L, H = sim.H;
   const cx = L / 2, cy = H / 2;
-  const R = Math.min(L, H) * 0.45;
+  const R = simRaggioCupola(L, H);
 
   const corpi = simCorpiCielo(tempo);
   const sole = corpi.find(c => c.id === 'Sun');
@@ -6665,7 +6694,7 @@ function simDisegna(dtReale) {
   }
 
   const oraEl = document.getElementById('sim-ora');
-  if (oraEl) oraEl.textContent = simOraTesto(tempo);
+  if (oraEl) oraEl.textContent = simOraTesto(tempo, sim.L < 420);
   const didasc = document.getElementById('sim-didascalia');
   if (didasc) didasc.innerHTML = righe.filter(Boolean).join('');
 }
