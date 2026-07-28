@@ -710,6 +710,472 @@ body .bg-slate-950\/90 {
 }
 .leaflet-control-attribution a { color: var(--testo-2) !important; }
 
+/* ============================================================================
+   MAPPA DELLE ECLISSI — il percorso del cono d'ombra
+   ----------------------------------------------------------------------------
+   La mappa è il pezzo forte: attorno le mettiamo una plancia da sala di
+   controllo, con i numeri chiave in alto, il lettore del filmato sotto e
+   l'elenco delle città che l'ombra sta attraversando.
+   ========================================================================== */
+
+/* --- I numeri chiave, tre schede in fila --- */
+.ecl-riepilogo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.ecl-scheda {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--raggio-m);
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+}
+.ecl-scheda-etichetta {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--testo-3);
+}
+.ecl-scheda-valore {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--testo);
+}
+.ecl-scheda-nota { font-size: 0.72rem; color: var(--testo-2); line-height: 1.35; }
+
+/* --- La mappa e le indicazioni sovrapposte --- */
+.ecl-mappa-guscio { position: relative; }
+#mappa-eclissi {
+  width: 100%;
+  height: 58vh;
+  min-height: 340px;
+  border-radius: var(--raggio-l);
+  overflow: hidden;
+  border: 1px solid var(--bordo-forte);
+}
+.ecl-hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  pointer-events: none;
+}
+.ecl-hud-ora {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.86);
+  border: 1px solid var(--bordo-forte);
+  box-shadow: var(--ombra-2);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--testo);
+}
+.ecl-hud-ora b { font-size: 1.06rem; font-weight: 600; letter-spacing: 0.02em; }
+.ecl-hud-utc { font-size: 0.68rem; color: var(--testo-3); }
+.ecl-hud-fase {
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: rgba(6, 10, 20, 0.86);
+  border: 1px solid var(--bordo-forte);
+  color: var(--testo-2);
+}
+.ecl-hud-fase.centrale {
+  color: #0b0b0b;
+  background: linear-gradient(180deg, #fcd34d, #f59e0b);
+  border-color: rgba(252, 211, 77, 0.7);
+  box-shadow: 0 0 18px -4px rgba(245, 158, 11, 0.7);
+}
+.ecl-hud-fase.parziale { color: var(--blu-chiaro); border-color: rgba(76, 141, 255, 0.45); }
+.ecl-hud-citta {
+  position: absolute;
+  left: 12px;
+  bottom: 26px;
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.88);
+  border: 1px solid var(--bordo-forte);
+  box-shadow: var(--ombra-2);
+  font-size: 0.8rem;
+  color: var(--testo-2);
+  pointer-events: none;
+}
+.ecl-hud-citta b { color: #fff; font-weight: 600; }
+.ecl-hud-citta.hidden { display: none; }
+.ecl-hud-pallino {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff5f5f;
+  box-shadow: 0 0 0 0 rgba(255, 95, 95, 0.75);
+  animation: ecl-pulsa 1.8s ease-out infinite;
+  flex: 0 0 auto;
+}
+@keyframes ecl-pulsa {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 95, 95, 0.65); }
+  70%  { box-shadow: 0 0 0 12px rgba(255, 95, 95, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 95, 95, 0); }
+}
+
+/* L'ombra e la sua targhetta devono staccarsi dallo sfondo della mappa */
+.ecl-umbra { filter: drop-shadow(0 0 10px rgba(255, 95, 95, 0.55)); }
+.ecl-citta-punto { transition: none; }
+.leaflet-tooltip.ecl-tooltip-attiva {
+  background: rgba(6, 10, 20, 0.92);
+  border: 1px solid rgba(255, 95, 95, 0.6);
+  color: var(--testo);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  box-shadow: var(--ombra-2);
+  white-space: nowrap;
+}
+.leaflet-tooltip.ecl-tooltip-attiva::before { border-top-color: rgba(255, 95, 95, 0.6); }
+.leaflet-tooltip {
+  background: rgba(6, 10, 20, 0.92);
+  border: 1px solid var(--bordo-forte);
+  color: var(--testo);
+  border-radius: var(--raggio-s);
+  box-shadow: var(--ombra-2);
+}
+.leaflet-tooltip-top::before { border-top-color: var(--bordo-forte); }
+
+/* --- Il lettore del filmato --- */
+.ecl-lettore {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--raggio-l);
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+}
+.ecl-lettore-riga { display: flex; align-items: center; gap: 14px; }
+.ecl-lettore-riga.secondaria { flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+
+body .ecl-btn-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(76, 141, 255, 0.45);
+  background: linear-gradient(180deg, var(--blu) 0%, var(--blu-scuro) 100%);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--alone-blu);
+  transition: transform var(--transizione), box-shadow var(--transizione);
+  flex: 0 0 auto;
+}
+body .ecl-btn-play:hover { transform: translateY(-1px); }
+body .ecl-btn-play.in-corso {
+  background: linear-gradient(180deg, #f59e0b 0%, #b45309 100%);
+  border-color: rgba(245, 181, 68, 0.5);
+  box-shadow: 0 6px 24px -10px rgba(245, 158, 11, 0.7);
+}
+.ecl-icona-play {
+  width: 0; height: 0;
+  border-left: 11px solid currentColor;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  margin-left: 2px;
+}
+.ecl-icona-pausa {
+  width: 11px; height: 13px;
+  border-left: 4px solid currentColor;
+  border-right: 4px solid currentColor;
+}
+
+.ecl-linea-tempo { flex: 1 1 auto; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ecl-linea-tempo input[type="range"] {
+  width: 100%;
+  accent-color: var(--blu);
+  cursor: pointer;
+}
+.ecl-linea-tempo-etichette {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.7rem;
+  color: var(--testo-3);
+}
+.ecl-tempo-valore { color: var(--testo); font-size: 0.86rem; font-weight: 600; }
+.ecl-scarto { color: var(--blu-chiaro); font-size: 0.7rem; font-weight: 400; margin-left: 4px; }
+
+.ecl-gruppo-tasti { display: flex; flex-wrap: wrap; gap: 6px; }
+body .ecl-tasto {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo);
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: color var(--transizione), border-color var(--transizione);
+}
+body .ecl-tasto:hover { color: #fff; border-color: var(--bordo-forte); }
+body .ecl-tasto.principale { color: var(--blu-chiaro); border-color: rgba(76, 141, 255, 0.4); }
+
+.ecl-gruppo-opzioni { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.ecl-opzione {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--testo-2);
+  cursor: pointer;
+}
+.ecl-opzione input[type="checkbox"] { accent-color: var(--blu); width: 15px; height: 15px; }
+body .ecl-select {
+  background: var(--superficie-piena);
+  color: var(--testo);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-s);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
+/* --- I pannelli sotto la mappa --- */
+.ecl-pannello {
+  padding: 14px;
+  border-radius: var(--raggio-l);
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+}
+.ecl-pannello-testa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.ecl-pannello-testa h3 { font-size: 0.92rem; font-weight: 600; color: var(--testo); }
+.ecl-conteggio, .ecl-luogo {
+  font-size: 0.72rem;
+  color: var(--testo-3);
+  /* Non in monospazio: la "O" di Ovest sarebbe indistinguibile da uno zero */
+  font-variant-numeric: tabular-nums;
+}
+.ecl-fonte { color: var(--testo-3); font-family: var(--sans); }
+
+/* La barra che dice quanto Sole è coperto: si legge in un colpo d'occhio */
+.ecl-barra {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(148, 168, 214, 0.14);
+  overflow: hidden;
+}
+.ecl-barra > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7dd3fc 0%, #a78bfa 45%, #fbbf24 78%, #ff5f5f 100%);
+  transition: width 120ms linear;
+}
+.ecl-barra.piccola { height: 5px; flex: 1 1 auto; min-width: 40px; }
+.ecl-barra.grande { height: 9px; margin: 8px 0 10px; }
+
+.ecl-citta-ora { margin-bottom: 10px; }
+.ecl-citta-vuoto { font-size: 0.8rem; color: var(--testo-2); line-height: 1.5; }
+.ecl-citta-vuoto b { color: var(--testo); }
+.ecl-citta-primo {
+  padding: 12px 14px;
+  border-radius: var(--raggio-m);
+  background: rgba(76, 141, 255, 0.09);
+  border: 1px solid rgba(76, 141, 255, 0.28);
+}
+.ecl-citta-primo.centrale {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(251, 191, 36, 0.45);
+  box-shadow: 0 0 26px -12px rgba(245, 158, 11, 0.8);
+}
+.ecl-citta-primo-testa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.ecl-citta-primo-nome { font-size: 1.15rem; font-weight: 600; color: #fff; }
+.ecl-citta-primo-paese { font-size: 0.74rem; color: var(--testo-3); }
+.ecl-citta-primo-dati { margin-top: 7px; font-size: 0.78rem; color: var(--testo-2); }
+.ecl-citta-primo-dati b { color: var(--testo); font-family: var(--mono); }
+.ecl-badge-totale {
+  margin-left: auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #0b0b0b;
+  background: linear-gradient(180deg, #fcd34d, #f59e0b);
+}
+
+.ecl-citta-lista { display: flex; flex-direction: column; gap: 2px; }
+.ecl-citta-riga {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--raggio-s);
+  cursor: pointer;
+  transition: background-color var(--transizione);
+}
+.ecl-citta-riga:hover { background: rgba(148, 168, 214, 0.08); }
+.ecl-citta-nome {
+  flex: 0 0 40%;
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--testo);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ecl-citta-paese { color: var(--testo-3); font-size: 0.68rem; margin-left: 6px; }
+.ecl-citta-perc {
+  flex: 0 0 46px;
+  text-align: right;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.76rem;
+  color: var(--testo-2);
+}
+.ecl-citta-perc.totale { color: var(--ambra); font-weight: 700; }
+
+.ecl-dati-locali p { font-size: 0.78rem; color: var(--testo-2); line-height: 1.55; }
+.ecl-etichetta { color: var(--testo-3); }
+.ecl-dati-locali b { color: var(--testo); font-family: var(--mono); }
+.ecl-stato { font-weight: 600; font-size: 0.85rem !important; }
+.ecl-stato-totale { color: var(--ambra); }
+.ecl-stato-parziale { color: var(--blu-chiaro); }
+.ecl-stato-no { color: var(--testo-3); }
+.ecl-nota-piccola { font-size: 0.7rem !important; color: var(--testo-3) !important; margin-top: 6px; }
+
+/* --- La legenda: ogni voce con il suo campione, come su una carta --- */
+.ecl-legenda {
+  padding: 12px 14px;
+  border-radius: var(--raggio-l);
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+}
+.ecl-legenda > summary {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--testo);
+  padding: 2px 0;
+}
+.ecl-legenda-griglia {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+  margin-top: 12px;
+}
+.ecl-voce { display: flex; gap: 10px; align-items: flex-start; }
+.ecl-voce-campione { flex: 0 0 30px; display: flex; justify-content: center; padding-top: 3px; }
+.ecl-voce-testo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ecl-voce-testo b { font-size: 0.78rem; color: var(--testo); font-weight: 600; }
+.ecl-voce-testo span { font-size: 0.72rem; color: var(--testo-3); line-height: 1.45; }
+
+/* I campioni ricalcano esattamente i colori usati sulla mappa */
+.ecl-sw { display: block; flex: 0 0 auto; }
+.ecl-sw-fascia {
+  width: 26px; height: 12px; border-radius: 3px;
+  background: rgba(245, 158, 11, 0.42);
+  border: 1px solid #fbbf24;
+}
+.ecl-sw-linea {
+  width: 26px; height: 0;
+  border-top: 2px dashed #fff3d6;
+  margin-top: 6px;
+}
+.ecl-sw-ombra {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #05070f;
+  border: 2px solid #ff5f5f;
+  box-shadow: 0 0 10px -1px rgba(255, 95, 95, 0.8);
+}
+.ecl-sw-parziale {
+  width: 26px; height: 12px; border-radius: 3px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px dashed rgba(125, 211, 252, 0.6);
+}
+.ecl-sw-penombra {
+  width: 22px; height: 22px; border-radius: 50%;
+  background:
+    radial-gradient(circle,
+      rgba(76, 29, 149, 0.85) 0%, rgba(76, 29, 149, 0.85) 28%,
+      rgba(99, 102, 241, 0.6) 28%, rgba(99, 102, 241, 0.6) 52%,
+      rgba(96, 165, 250, 0.4) 52%, rgba(96, 165, 250, 0.4) 76%,
+      rgba(125, 211, 252, 0.28) 76%);
+  border: 1px solid rgba(125, 211, 252, 0.5);
+}
+.ecl-sw-citta {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #fbbf24;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  margin-top: 3px;
+}
+.ecl-sw-osservatore {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--verde);
+  border: 2px solid #fff;
+  margin-top: 2px;
+}
+
+.ecl-scala {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bordo);
+}
+.ecl-scala-etichetta {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--testo-3);
+}
+.ecl-scala-barra {
+  display: block;
+  height: 9px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7dd3fc 0%, #a78bfa 45%, #fbbf24 78%, #ff5f5f 100%);
+}
+.ecl-scala-numeri {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--testo-3);
+}
+
 /* -------------------------------------------------------------- RESPONSIVE */
 @media (max-width: 640px) {
   .nav-principale { width: 100%; justify-content: flex-start; }
@@ -720,4 +1186,15 @@ body .bg-slate-950\/90 {
   .marchio svg { width: 27px; height: 27px; }
   .sottotitolo-app { font-size: 0.88rem; }
   .valore-riepilogo { font-size: 1.3rem; }
+
+  /* La mappa delle eclissi sul telefono: una colonna sola, comandi grandi */
+  .ecl-riepilogo { grid-template-columns: 1fr; }
+  .ecl-legenda-griglia { grid-template-columns: 1fr; }
+  #mappa-eclissi { height: 46vh; min-height: 280px; }
+  .ecl-lettore-riga { flex-wrap: wrap; }
+  body .ecl-btn-play { width: 100%; justify-content: center; }
+  .ecl-linea-tempo { flex: 1 1 100%; }
+  .ecl-gruppo-tasti { width: 100%; justify-content: space-between; }
+  .ecl-citta-nome { flex: 0 0 46%; }
+  .ecl-hud-citta { font-size: 0.72rem; bottom: 30px; }
 }
