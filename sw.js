@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v19';
+const CACHE_NAME = 'astrocal-v20';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -6,6 +6,7 @@ const ASSETS = [
   './index.html',
   './style.css',
   './app.js',
+  './telescopio.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',

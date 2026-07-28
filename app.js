@@ -216,7 +216,8 @@ const ICONE_VISTE = {
   stasera:    'luna',
   calendario: 'calendario',
   agenda:     'lista',
-  cielo:      'telescopio',
+  cielo:      'stella',
+  telescopio: 'telescopio',
   diario:     'quaderno'
 };
 
@@ -3459,6 +3460,7 @@ const VISTE = [
   { nome: 'calendario', btn: 'btn-vista-calendario', vista: 'vista-calendario' },
   { nome: 'agenda',     btn: 'btn-vista-agenda',     vista: 'vista-agenda' },
   { nome: 'cielo',      btn: 'btn-vista-skymap',     vista: 'vista-skymap' },
+  { nome: 'telescopio', btn: 'btn-vista-telescopio', vista: 'vista-telescopio' },
   { nome: 'diario',     btn: 'btn-vista-diario',     vista: 'vista-diario' }
 ];
 
@@ -3495,6 +3497,13 @@ function mostraVista(nome) {
   } else {
     chiudiSkymap();
     skySpegniFotocamera();
+  }
+
+  // La vista Telescopio ha cronometri e sensori che vanno spenti uscendo
+  if (nome === 'telescopio') {
+    if (typeof telCostruisciVista === 'function') telCostruisciVista();
+  } else if (typeof telChiudiVista === 'function') {
+    telChiudiVista();
   }
 
   // Stasera e Diario si ricostruiscono all'apertura: i dati cambiano di continuo
@@ -3873,6 +3882,8 @@ const sky = {
   // Figure delle costellazioni e oggetti del deep sky
   mostraCostellazioni: true,
   mostraProfondo: false,
+  // Mirino sul polo celeste, per allineare una montatura equatoriale
+  mostraPolo: false,
   costellazioni: [],
   profondo: [],
   // Flusso video della fotocamera, quando la realtà aumentata è accesa
@@ -5033,6 +5044,10 @@ function skyDisegna() {
 
   const bersaglio = sky.oggetti.find(o => o.id === sky.target);
   if (bersaglio) skyDisegnaGuida(ctx, base, focale, bersaglio);
+
+  // Il mirino del polo celeste, per chi deve allineare una montatura
+  // equatoriale: lo disegna il modulo Telescopio, se è acceso.
+  if (typeof telDisegnaPoloSuCielo === 'function') telDisegnaPoloSuCielo(ctx, base, focale);
 
   skyDisegnaMirino(ctx);
 
