@@ -742,6 +742,36 @@ body button.tasto-chiudi:hover {
 }
 body button.tasto-chiudi:active { transform: translateY(0); }
 
+/* Nelle finestre lunghe la croce da sola non basta: accanto ci va la parola,
+   così il tasto si legge come un comando e non come una decorazione. */
+body button.tasto-chiudi.con-etichetta {
+  width: auto;
+  gap: 8px;
+  padding: 0 15px 0 13px;
+  color: var(--testo);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* La testata resta incollata in cima mentre il contenuto scorre: la via
+   d'uscita è sempre lì, anche a metà della legenda. Sopra la mappa serve uno
+   sfondo pieno (le schede sono di vetro) e uno z-index più alto dei livelli
+   di Leaflet, che arrivano a 1000. */
+.testata-modale {
+  position: sticky;
+  /* Il riquadro di aggancio è già rientrato del padding della finestra (p-4):
+     con top: 0 resterebbe una fessura di 16px in cui si vede scorrere il
+     contenuto. Il -1rem la richiude e incolla la testata al bordo dello schermo. */
+  top: -1rem;
+  z-index: 1200;
+  background: var(--superficie-piena);
+  border-top-left-radius: var(--raggio-xl);
+  border-top-right-radius: var(--raggio-xl);
+}
+/* Il titolo cede: se cresce senza freni spinge il tasto di chiusura fuori
+   dallo schermo, ed è proprio il tasto che non deve mai mancare. */
+.testata-modale > * { min-width: 0; }
+
 .barra-chiudi {
   display: flex;
   justify-content: center;
@@ -1256,4 +1286,21 @@ body .ecl-select {
   .ecl-gruppo-tasti { width: 100%; justify-content: space-between; }
   .ecl-citta-nome { flex: 0 0 46%; }
   .ecl-hud-citta { font-size: 0.72rem; bottom: 30px; }
+
+  /* La testata resta in cima per tutto il tempo: sul telefono deve pesare
+     poco. Titolo su due righe al massimo, sottotitolo su una. */
+  .testata-modale { padding: 12px 14px; }
+  .testata-modale h2 {
+    font-size: 1.02rem;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .testata-modale #mappa-sottotitolo {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }

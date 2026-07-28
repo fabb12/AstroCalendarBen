@@ -384,6 +384,8 @@ function aggiungiEclissiSolari(t0, limite) {
         doveVederlo = `Punto di massima eclissi: ${coord}. La fase ${faseCentrale === 'fase centrale' ? 'centrale' : faseCentrale} ` +
           `è visibile solo lungo la stretta fascia che passa per quel punto; la fase parziale è visibile in una ` +
           `vasta regione (fino a qualche migliaio di km) tutt'attorno alla fascia. Verifica se la tua zona vi rientra.`;
+        // Non è più un collegamento nella scheda: resta solo come ripiego per
+        // quando Leaflet non si carica e la mappa dell'ombra non si può aprire.
         linkMappa = {
           url: `https://www.google.com/maps?q=${ecl.latitude.toFixed(4)},${ecl.longitude.toFixed(4)}`,
           testo: `Punto di massima eclissi sulla mappa (${coord})`
@@ -2435,10 +2437,11 @@ function costruisciAgenda() {
     const bottoneElimina = evento.manuale
       ? `<button onclick="eliminaEventoManuale('${evento.id}')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-red-600 rounded-full flex-shrink-0" title="Elimina evento">Elimina</button>`
       : '';
-    // Le scorciatoie del riquadro "Come prepararsi": tasti veri, non scritte
-    // sottolineate in mezzo al testo, che su un telefono nessuno prova a toccare.
-    // Il tema dà ai bottoni un peso 500 e un bordo trasparente: il collegamento
-    // esterno se li deve mettere anche lui, o si vedrebbe che non è un tasto.
+    // Le scorciatoie del riquadro "Come prepararsi": solo tasti, e solo tasti
+    // che restano dentro l'app. Niente scritte sottolineate in mezzo al testo,
+    // che su un telefono nessuno prova a toccare, e niente collegamenti che
+    // portano fuori: le coordinate del massimo si leggono già lì sotto, alla
+    // riga "Dove", e la mappa dell'ombra le mostra meglio di una mappa stradale.
     const stileScorciatoia = 'px-3 py-1.5 rounded-full text-xs font-medium bg-slate-700 ' +
       'hover:bg-blue-600 text-slate-100 transition-colors border border-transparent';
     const scorciatoie = [];
@@ -2446,14 +2449,11 @@ function costruisciAgenda() {
       scorciatoie.push(`<button onclick="apriMappaEclissi('${evento.id}')" class="${stileScorciatoia}" ` +
         `title="Il percorso del cono d'ombra, minuto per minuto">Mappa dell'ombra</button>`);
     }
-    if (evento.corpoCielo) {
+    // Il Sole resta fuori: puntarlo nel cielo di adesso non serve a nessuno e,
+    // per un'eclissi, è pure un cattivo consiglio. Per la Luna e i pianeti sì.
+    if (evento.corpoCielo && evento.corpoCielo !== 'Sun') {
       scorciatoie.push(`<button onclick="cercaNelCielo('${evento.corpoCielo}')" class="${stileScorciatoia}" ` +
         `title="Punta ${skyNomeCorpo(evento.corpoCielo)} nel cielo di adesso">Trova ${skyNomeCorpo(evento.corpoCielo)} nel cielo</button>`);
-    }
-    if (evento.linkMappa) {
-      // Porta fuori dall'app, quindi resta un collegamento: ma vestito da tasto
-      scorciatoie.push(`<a href="${evento.linkMappa.url}" target="_blank" rel="noopener" ` +
-        `class="${stileScorciatoia} inline-block no-underline" title="${evento.linkMappa.testo}">Apri in Google Maps</a>`);
     }
     const barraScorciatoie = scorciatoie.length
       ? `<div class="flex flex-wrap gap-2 mt-3">${scorciatoie.join('')}</div>`
