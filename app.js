@@ -1798,9 +1798,13 @@ function chiudiMappaEclissi() {
 // Collega i comandi del modale: chiusura, cursore del tempo e filmato.
 function inizializzaMappaEclissiUI() {
   const modale = document.getElementById('modale-mappa');
-  const btnChiudi = document.getElementById('btn-chiudi-mappa');
   if (!modale) return;
-  if (btnChiudi) btnChiudi.addEventListener('click', chiudiMappaEclissi);
+  // Due vie d'uscita: la croce in alto e, per chi ha scorrito fino in fondo,
+  // un tasto largo alla fine della pagina
+  ['btn-chiudi-mappa', 'btn-chiudi-mappa-basso'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', chiudiMappaEclissi);
+  });
   modale.addEventListener('click', (e) => { if (e.target === modale) chiudiMappaEclissi(); });
   document.addEventListener('keydown', (e) => {
     if (modale.classList.contains('hidden')) return;
@@ -2431,17 +2435,28 @@ function costruisciAgenda() {
     const bottoneElimina = evento.manuale
       ? `<button onclick="eliminaEventoManuale('${evento.id}')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-red-600 rounded-full flex-shrink-0" title="Elimina evento">Elimina</button>`
       : '';
-    // Link alla mappa (es. punto di massima eclissi), se presente
-    const linkMappa = evento.linkMappa
-      ? `<li><a href="${evento.linkMappa.url}" target="_blank" rel="noopener" class="text-blue-400 underline hover:text-blue-300">${evento.linkMappa.testo}</a></li>`
-      : '';
-    // Pulsante mappa interattiva di visibilità (solo eclissi solari con fascia centrale)
-    const bottoneMappa = evento.eclissi
-      ? `<li><button onclick="apriMappaEclissi('${evento.id}')" class="inline-flex items-center gap-1 text-blue-400 underline hover:text-blue-300 bg-transparent border-0 p-0 cursor-pointer">Apri la mappa: il percorso dell'ombra, minuto per minuto</button></li>`
-      : '';
-    // Scorciatoia verso la vista Cielo, puntata sul protagonista dell'evento
-    const bottoneCielo = evento.corpoCielo
-      ? `<li><button onclick="cercaNelCielo('${evento.corpoCielo}')" class="inline-flex items-center gap-1 text-blue-400 underline hover:text-blue-300 bg-transparent border-0 p-0 cursor-pointer">Trova ${skyNomeCorpo(evento.corpoCielo)} nel cielo adesso</button></li>`
+    // Le scorciatoie del riquadro "Come prepararsi": tasti veri, non scritte
+    // sottolineate in mezzo al testo, che su un telefono nessuno prova a toccare.
+    // Il tema dà ai bottoni un peso 500 e un bordo trasparente: il collegamento
+    // esterno se li deve mettere anche lui, o si vedrebbe che non è un tasto.
+    const stileScorciatoia = 'px-3 py-1.5 rounded-full text-xs font-medium bg-slate-700 ' +
+      'hover:bg-blue-600 text-slate-100 transition-colors border border-transparent';
+    const scorciatoie = [];
+    if (evento.eclissi) {
+      scorciatoie.push(`<button onclick="apriMappaEclissi('${evento.id}')" class="${stileScorciatoia}" ` +
+        `title="Il percorso del cono d'ombra, minuto per minuto">Mappa dell'ombra</button>`);
+    }
+    if (evento.corpoCielo) {
+      scorciatoie.push(`<button onclick="cercaNelCielo('${evento.corpoCielo}')" class="${stileScorciatoia}" ` +
+        `title="Punta ${skyNomeCorpo(evento.corpoCielo)} nel cielo di adesso">Trova ${skyNomeCorpo(evento.corpoCielo)} nel cielo</button>`);
+    }
+    if (evento.linkMappa) {
+      // Porta fuori dall'app, quindi resta un collegamento: ma vestito da tasto
+      scorciatoie.push(`<a href="${evento.linkMappa.url}" target="_blank" rel="noopener" ` +
+        `class="${stileScorciatoia} inline-block no-underline" title="${evento.linkMappa.testo}">Apri in Google Maps</a>`);
+    }
+    const barraScorciatoie = scorciatoie.length
+      ? `<div class="flex flex-wrap gap-2 mt-3">${scorciatoie.join('')}</div>`
       : '';
     card.innerHTML = `
       <div class="barra-evento" style="background-color: ${evento.colore}; color: ${evento.colore}"></div>
@@ -2469,10 +2484,8 @@ function costruisciAgenda() {
             <li><span class="text-blue-400">Portare:</span> ${evento.programma.cosaPortare}</li>
             <li><span class="text-blue-400">Dove:</span> ${evento.programma.doveVederlo}</li>
             <li><span class="text-blue-400">Come:</span> ${evento.programma.comeVederlo}</li>
-            ${linkMappa}
-            ${bottoneMappa}
-            ${bottoneCielo}
           </ul>
+          ${barraScorciatoie}
         </div>
       </div>
       ${barraAzioniHtml(evento)}
@@ -5531,8 +5544,11 @@ function inizializzaSimulazione() {
   const modale = document.getElementById('modale-simulazione');
   if (!sim.canvas || !modale) return;
 
-  const btnChiudi = document.getElementById('btn-chiudi-simulazione');
-  if (btnChiudi) btnChiudi.addEventListener('click', chiudiSimulazione);
+  // La croce in alto e il tasto in fondo chiudono entrambi la finestra
+  ['btn-chiudi-simulazione', 'btn-chiudi-simulazione-basso'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', chiudiSimulazione);
+  });
   modale.addEventListener('click', (e) => { if (e.target === modale) chiudiSimulazione(); });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && sim.aperto) chiudiSimulazione();
@@ -7069,7 +7085,7 @@ function costruisciDiario() {
             </div>
             <div class="text-right flex-shrink-0">
               <p class="text-amber-400 text-sm">${stelle}</p>
-              <button onclick="apriDiarioEvento('${v.id}')" class="senza-cornice text-xs text-slate-400 underline hover:text-white mt-1">modifica</button>
+              <button onclick="apriDiarioEvento('${v.id}')" class="px-2.5 py-1 mt-1 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors" title="Modifica questa osservazione">Modifica</button>
             </div>
           </div>
           ${v.nota ? `<p class="text-sm text-slate-300 mt-2 whitespace-pre-line">${v.nota.replace(/</g, '&lt;')}</p>` : ''}
@@ -7921,9 +7937,8 @@ function bloccoLocaleHtml(evento) {
   if (!locale) {
     if (!luogoCorrente() && evento.dataObj.getTime() - Date.now() < 30 * 86400000) {
       return `<div class="bg-slate-900 p-3 rounded-xl mt-3 text-sm border border-slate-700">
-        <button onclick="document.getElementById('btn-impostazioni').click()" class="text-blue-400 underline hover:text-blue-300">
-          Imposta la tua posizione</button>
-        <span class="text-slate-400"> per sapere se questo evento si vede da casa tua, a che ora e in che direzione.</span>
+        <p class="text-slate-400">Con la tua posizione posso dirti se questo evento si vede da casa tua, a che ora e in che direzione.</p>
+        <button onclick="document.getElementById('btn-impostazioni').click()" class="px-3 py-1.5 mt-2 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors">Imposta la tua posizione</button>
       </div>`;
     }
     return '';

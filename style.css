@@ -711,6 +711,65 @@ body .bg-slate-950\/90 {
 .leaflet-control-attribution a { color: var(--testo-2) !important; }
 
 /* ============================================================================
+   CHIUSURA DELLE FINESTRE
+   ----------------------------------------------------------------------------
+   Una scritta sottolineata in un angolo non si legge come un comando: chi apre
+   una finestra grande finisce per non trovare più la via d'uscita. Serve una
+   croce vera, con il suo contorno, e in fondo alle finestre lunghe un tasto
+   largo che si incontra scorrendo, senza dover risalire in cima.
+   ========================================================================== */
+body button.tasto-chiudi {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte);
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  cursor: pointer;
+  transition: color var(--transizione), background-color var(--transizione),
+              border-color var(--transizione), transform var(--transizione);
+}
+body button.tasto-chiudi:hover {
+  color: #fff;
+  background: var(--rosso);
+  border-color: var(--rosso);
+  transform: translateY(-1px);
+}
+body button.tasto-chiudi:active { transform: translateY(0); }
+
+.barra-chiudi {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+body button.tasto-chiudi-largo {
+  width: 100%;
+  max-width: 320px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte);
+  background: var(--superficie-alta);
+  color: var(--testo);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--transizione), background-color var(--transizione),
+              border-color var(--transizione), transform var(--transizione);
+}
+body button.tasto-chiudi-largo:hover {
+  color: #fff;
+  background: var(--rosso);
+  border-color: var(--rosso);
+  transform: translateY(-1px);
+}
+body button.tasto-chiudi-largo:active { transform: translateY(0); }
+
+/* ============================================================================
    MAPPA DELLE ECLISSI — il percorso del cono d'ombra
    ----------------------------------------------------------------------------
    La mappa è il pezzo forte: attorno le mettiamo una plancia da sala di
