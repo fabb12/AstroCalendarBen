@@ -144,7 +144,18 @@ const DISEGNI = {
     <path d="M3.4 10h17.2M8.2 3.4v3.4M15.8 3.4v3.4"/>`,
 
   lista: `<path d="M9.2 6.8h11M9.2 12h11M9.2 17.2h11"/>
-    <circle cx="4.8" cy="6.8" r="1.1"/><circle cx="4.8" cy="12" r="1.1"/><circle cx="4.8" cy="17.2" r="1.1"/>`
+    <circle cx="4.8" cy="6.8" r="1.1"/><circle cx="4.8" cy="12" r="1.1"/><circle cx="4.8" cy="17.2" r="1.1"/>`,
+
+  piu: `<path d="M12 5.4v13.2M5.4 12h13.2"/>`,
+
+  campana: `<path d="M18 10.4a6 6 0 1 0-12 0c0 4.2-1.6 5.6-1.6 5.6h15.2S18 14.6 18 10.4z"/>
+    <path d="M10.2 19.2a2.1 2.1 0 0 0 3.6 0"/>`,
+
+  ingranaggio: `<circle cx="12" cy="12" r="3.1"/>
+    <path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3L5.5 5.5"/>`,
+
+  scarica: `<path d="M12 3.6v11.2M7.8 10.6L12 14.8l4.2-4.2"/>
+    <path d="M4.6 17.4v1.6a1.4 1.4 0 0 0 1.4 1.4h12a1.4 1.4 0 0 0 1.4-1.4v-1.6"/>`
 };
 
 // Restituisce il disegno richiesto, pronto da mettere dentro l'HTML
@@ -318,10 +329,11 @@ function adattaAltezzaCalendario() {
   const spazio = window.innerHeight - cima - respiroSotto - 10
     - misura('.fc-toolbar', 52) - misura('.fc-col-header', 36);
 
-  // I quattro pixel tolti per riga sono i bordi delle caselle, che si
-  // sommano all'altezza minima: senza questo margine il mese sborda di poco
-  // e resta una barra di scorrimento buona a niente
-  const perRiga = Math.floor(spazio / righe) - 4;
+  // I sei pixel tolti per riga sono i bordi delle caselle e gli arrotondamenti,
+  // che si sommano all'altezza minima: senza questo margine il mese sborda di
+  // poco e resta una barra di scorrimento buona a niente. Sbagliare per
+  // difetto lascia un filo di vuoto in fondo, che non dà fastidio a nessuno.
+  const perRiga = Math.floor(spazio / righe) - 6;
   if (perRiga > ALTEZZA_RIGA_CALENDARIO_BASE) {
     radice.style.setProperty('--altezza-riga-calendario', `${perRiga}px`);
   } else {
@@ -448,13 +460,15 @@ function inizializzaNavigazione() {
       `<span class="voce-menu-testo">${testo}</span>`;
   });
 
-  // I tasti della testata hanno due nomi: quello disteso e quello da telefono
-  document.querySelectorAll('.azioni-testata button[data-etichetta-breve]').forEach(btn => {
-    const lungo = btn.textContent.trim();
-    const breve = btn.dataset.etichettaBreve;
+  // I tasti della testata: un disegno davanti al nome. Sotto i 1180px resta
+  // il solo disegno (lo dice il CSS), quindi il nome va messo anche in
+  // aria-label: altrimenti per un lettore di schermo il tasto sarebbe muto.
+  document.querySelectorAll('.azioni-testata .azione-testata').forEach(btn => {
+    const nome = btn.textContent.trim();
+    if (!btn.getAttribute('aria-label')) btn.setAttribute('aria-label', nome);
     btn.innerHTML =
-      `<span class="etichetta-lunga">${lungo}</span>` +
-      `<span class="etichetta-breve">${breve}</span>`;
+      `<span class="azione-icona">${icona(btn.dataset.icona || 'stella', 18)}</span>` +
+      `<span class="etichetta-lunga">${nome}</span>`;
   });
 }
 
