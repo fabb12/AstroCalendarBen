@@ -399,7 +399,7 @@ function aggiungiFasiLunari(t0, limite) {
         programma: {
           cosaPortare: 'Binocolo o telescopio; sveglia presto per l’alba.',
           doveVederlo: 'Nel cielo del mattino, prima dell’alba.',
-          comeVederlo: 'Approfitta del cielo scuro della seconda parte della notte per il profondo cielo.'
+          comeVederlo: 'Approfitta del cielo scuro della seconda parte della notte per il deep sky.'
         }
       }
     };
@@ -3266,7 +3266,7 @@ const sky = {
   avvisi: {},           // messaggi mostrati sotto al cielo, uno per argomento
   // Macchina del tempo: minuti di scarto rispetto all'ora vera
   offsetTempoMin: 0,
-  // Figure delle costellazioni e oggetti del profondo cielo
+  // Figure delle costellazioni e oggetti del deep sky
   mostraCostellazioni: true,
   mostraProfondo: false,
   costellazioni: [],
@@ -4822,7 +4822,7 @@ function inizializzaSkymap() {
   const salvato = parseFloat(localStorage.getItem(CHIAVE_SKY_BUSSOLA));
   skyImpostaOffsetBussola(isNaN(salvato) ? 0 : salvato);
 
-  // Costellazioni, profondo cielo, macchina del tempo e fotocamera
+  // Costellazioni, deep sky, macchina del tempo e fotocamera
   inizializzaSkymapExtra();
 
   const collega = (id, azione) => {
@@ -6392,7 +6392,7 @@ function altAzCorpo(id, data, obs) {
 }
 
 // Altezza e azimut di un punto fisso del cielo (radianti degli sciami,
-// oggetti del profondo cielo). Le coordinate sono J2000: la differenza con
+// oggetti del deep sky). Le coordinate sono J2000: la differenza con
 // quelle di oggi è di frazioni di grado, invisibile a occhio nudo.
 function altAzCoordinate(raOre, decGradi, data, obs) {
   const t = Astronomy.MakeTime(data);
@@ -6805,7 +6805,7 @@ function strumentoEvento(evento) {
     case 'luna': {
       // 0 = Nuova, 1 = Primo Quarto, 2 = Piena, 3 = Ultimo Quarto
       const fase = evento.simul ? evento.simul.fase : null;
-      if (fase === 0) return 'telescopio';   // cielo buio: è la notte del profondo cielo
+      if (fase === 0) return 'telescopio';   // cielo buio: è la notte del deep sky
       if (fase === 2) return 'occhio';       // la Luna Piena è lo spettacolo stesso
       return 'binocolo';                     // quarti: crateri lungo il terminatore
     }
@@ -7291,7 +7291,7 @@ function costruisciStaseraRiepilogo() {
     const perc = Math.round(ill.phase_fraction * 100);
     const disturbo = perc > 70 ? 'cielo molto schiarito: meglio Luna e pianeti che oggetti deboli'
                    : perc > 30 ? 'disturbo moderato per gli oggetti deboli'
-                   : 'cielo scuro: ottimo per meteore e profondo cielo';
+                   : 'cielo scuro: ottimo per meteore e deep sky';
     schede.push(schedaRiepilogo(
       `${nomeFaseLunare(fase)}`,
       `illuminata al ${perc}%`,
@@ -8110,7 +8110,7 @@ function consigliFoto(evento) {
 }
 
 // =====================================================================
-// 18. COSTELLAZIONI E PROFONDO CIELO NELLA VISTA CIELO
+// 18. COSTELLAZIONI E deep sky NELLA VISTA CIELO
 //     Le figure delle costellazioni sono ciò che la gente cerca davvero
 //     di riconoscere. Le stelle sono elencate con coordinate J2000
 //     (ascensione retta in ore, declinazione in gradi): lo scarto con le
@@ -8242,7 +8242,7 @@ const SKY_COSTELLAZIONI = [
     ], linee: [[0,1]] }
 ];
 
-// Oggetti del profondo cielo alla portata di occhio nudo e binocolo
+// Oggetti del deep sky alla portata di occhio nudo e binocolo
 const SKY_PROFONDO = [
   { nome: 'M31 — Galassia di Andromeda', ra: 0.712, dec: 41.269, mag: 3.4, tipo: 'galassia', strumento: 'occhio',
     nota: 'La cosa più lontana visibile a occhio nudo: 2,5 milioni di anni luce. Nel binocolo è una macchia ovale.' },
@@ -8366,7 +8366,7 @@ function skyDisegnaCostellazioni(ctx, base, focale) {
   ctx.restore();
 }
 
-// Oggetti del profondo cielo: simboli discreti con etichetta
+// Oggetti del deep sky: simboli discreti con etichetta
 function skyDisegnaProfondo(ctx, base, focale) {
   if (!sky.profondo || !sky.profondo.length) return;
 
