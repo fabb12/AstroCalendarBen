@@ -2647,7 +2647,8 @@ function telPannelloAllineamento() {
     return telHtmlScheda('Serve la posizione', `
       <p class="text-sm text-slate-300">L'allineamento polare è tutto un discorso di latitudine e di Nord vero:
       senza sapere dove sei, non c'è niente da calcolare.</p>
-      <button id="tel-chiedi-posizione" class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Rileva la posizione</button>`);
+      <button id="tel-chiedi-posizione" class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Dimmi dove sono</button>
+      <p class="text-xs text-slate-500 mt-2">Provo il GPS, poi la connessione; se non rispondono puoi scegliere la citt&agrave; in elenco.</p>`);
   }
 
   if (l.lat <= 0) {
@@ -2923,12 +2924,10 @@ function telDopoAllineamento() {
     }, 30000);
   }
 
+  // La posizione si chiede sempre allo stesso modo: GPS, poi rete, poi la
+  // scelta a mano. Ci pensa la finestra, che sa anche raccontarlo.
   const chiedi = document.getElementById('tel-chiedi-posizione');
-  if (chiedi) chiedi.addEventListener('click', async () => {
-    chiedi.textContent = 'Cerco…';
-    await skyRichiediPosizione();
-    telCostruisciPannello();
-  });
+  if (chiedi) chiedi.addEventListener('click', () => apriPosizione(true));
 
   const vaiCielo = document.getElementById('tel-vai-cielo');
   if (vaiCielo) vaiCielo.addEventListener('click', () => {
@@ -3062,7 +3061,8 @@ function telPannelloPunta() {
   if (!obs) {
     return telHtmlScheda('Serve la posizione', `
       <p class="text-sm text-slate-300">Senza sapere dove sei, non c'è modo di dire dove guardare.</p>
-      <button id="tel-chiedi-posizione" class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Rileva la posizione</button>`);
+      <button id="tel-chiedi-posizione" class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Dimmi dove sono</button>
+      <p class="text-xs text-slate-500 mt-2">Provo il GPS, poi la connessione; se non rispondono puoi scegliere la citt&agrave; in elenco.</p>`);
   }
 
   // Di giorno gli oggetti stanno dove dice il conto, ma non si vedono:
@@ -3397,13 +3397,10 @@ function telHtmlTubo(bersaglio) {
 }
 
 function telDopoPunta() {
+  // La posizione si chiede sempre allo stesso modo: GPS, poi rete, poi la
+  // scelta a mano. Ci pensa la finestra, che sa anche raccontarlo.
   const chiedi = document.getElementById('tel-chiedi-posizione');
-  if (chiedi) chiedi.addEventListener('click', async () => {
-    chiedi.textContent = 'Cerco…';
-    await skyRichiediPosizione();
-    telOggettiCache.quando = 0;
-    telCostruisciPannello();
-  });
+  if (chiedi) chiedi.addEventListener('click', () => apriPosizione(true));
 
   document.querySelectorAll('[data-tel-bersaglio]').forEach(b => {
     b.addEventListener('click', () => {
@@ -3604,7 +3601,8 @@ function telPannelloSerata() {
   if (!scaletta) {
     return telHtmlScheda('Serve la posizione', `
       <p class="text-sm text-slate-300">Senza posizione non si sa né quando fa buio né cosa passa in meridiano.</p>
-      <button id="tel-chiedi-posizione" class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Rileva la posizione</button>`);
+      <button id="tel-chiedi-posizione" class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Dimmi dove sono</button>
+      <p class="text-xs text-slate-500 mt-2">Provo il GPS, poi la connessione; se non rispondono puoi scegliere la citt&agrave; in elenco.</p>`);
   }
 
   const b = scaletta.buio;
@@ -3697,13 +3695,10 @@ function telPannelloSerata() {
 }
 
 function telDopoSerata() {
+  // La posizione si chiede sempre allo stesso modo: GPS, poi rete, poi la
+  // scelta a mano. Ci pensa la finestra, che sa anche raccontarlo.
   const chiedi = document.getElementById('tel-chiedi-posizione');
-  if (chiedi) chiedi.addEventListener('click', async () => {
-    chiedi.textContent = 'Cerco…';
-    await skyRichiediPosizione();
-    await caricaMeteo(true);
-    telCostruisciPannello();
-  });
+  if (chiedi) chiedi.addEventListener('click', () => apriPosizione(true));
 
   document.querySelectorAll('[data-tel-vai-oggetto]').forEach(b => {
     b.addEventListener('click', () => {

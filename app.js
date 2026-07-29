@@ -490,6 +490,7 @@ window.addEventListener('DOMContentLoaded', () => {
   inizializzaInstallazione();
   inizializzaDiarioUI();
   inizializzaImpostazioni();
+  inizializzaPosizioneUI();
   inizializzaStasera();
   // La vista d'apertura è "Stasera": è la domanda che ci si fa davvero
   mostraVista('stasera');
@@ -3854,8 +3855,9 @@ const sky = {
   larghezza: 0,
   altezza: 0,
   observer: null,        // Astronomy.Observer con la posizione dell'utente
-  posizione: null,       // { lat, lon, fonte, precisione, tempo }
+  posizione: null,       // { lat, lon, fonte, origine, nome, precisione, tempo }
   attesaPosizione: null, // richiesta di geolocalizzazione in corso (una sola per volta)
+  erroreGps: null,       // ultimo errore del navigatore: { codice, quando }
   sorveglianza: null,    // id di watchPosition mentre la vista Cielo è aperta
   sensori: false,        // orientamento del dispositivo attivo
   assoluto: false,       // alpha riferito al Nord magnetico (bussola affidabile)
@@ -4268,6 +4270,16 @@ const SKY_PRECISIONE_PEGGIORE = 2;   // quanto può essere più larga una lettur
 const SKY_PRECISIONE_MIGLIORE = 2;   // quanto dev'essere più stretta per valere comunque
 const SKY_FONTI_RIPIEGO = ['salvata', 'backup'];
 
+// Le sorgenti che l'utente ha scelto o che vengono da un vero satellite:
+// una lettura di rete non deve mai scavalcarle, se non per un trasloco vero.
+const POS_ORIGINI_PRECISE = ['gps', 'manuale', 'citta'];
+// Quanto deve dire "sei altrove" la rete perché le crediamo comunque: sotto i
+// 150 km è la solita imprecisione dell'indirizzo IP, sopra è un trasferimento.
+const POS_RETE_TRASLOCO_M = 150000;
+// Quanto è larga, in metri, una posizione dedotta dall'indirizzo IP: nel
+// migliore dei casi indovina la città, spesso solo la provincia.
+const POS_PRECISIONE_RETE_M = 25000;
+
 // Distanza in metri fra due coordinate (emisenoverso: basta e avanza)
 function skyDistanzaMetri(lat1, lon1, lat2, lon2) {
   const R = 6371000;
@@ -4283,10 +4295,23 @@ function skyLetturaAttendibile(lat, lon, fonte, precisione, tempo) {
   if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return false;
   const attuale = sky.posizione;
   if (!attuale) return true;                 // non avevamo niente: va bene tutto
-  if (fonte === 'manuale') return true;      // scelta esplicita dell'utente: comanda lei
+  // Scelta esplicita dell'utente (coordinate a mano o città scelta in elenco):
+  // comanda lei, sempre. È l'ultimo strato, quello che non può fallire.
+  if (fonte === 'manuale' || fonte === 'citta') return true;
 
   // Una posizione di ripiego (ultima salvata, backup) non scalza mai una posizione vera
   if (SKY_FONTI_RIPIEGO.includes(fonte) && !SKY_FONTI_RIPIEGO.includes(attuale.fonte)) return false;
+
+  // La rete (indirizzo IP) indovina la città, a volte solo la regione: serve
+  // a non lasciare l'app cieca quando il GPS non risponde, ma non deve
+  // sostituire un punto che l'utente ha scelto o che i satelliti hanno dato.
+  // L'unica eccezione è il trasloco: se dice un luogo lontanissimo, quella
+  // che abbiamo è semplicemente di un'altra vita.
+  if (fonte === 'rete' &&
+      POS_ORIGINI_PRECISE.includes(attuale.origine) &&
+      skyDistanzaMetri(attuale.lat, attuale.lon, lat, lon) < POS_RETE_TRASLOCO_M) {
+    return false;
+  }
 
   // Mai tornare indietro nel tempo: le risposte del browser possono arrivare
   // fuori ordine, e una lettura presa dalla cache è più vecchia di quella in uso.
@@ -4320,6 +4345,13 @@ function skyLetturaAttendibile(lat, lon, fonte, precisione, tempo) {
 function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   const precisione = dettagli && isFinite(dettagli.precisione) ? dettagli.precisione : null;
   const tempo = dettagli && dettagli.tempo ? dettagli.tempo : null;
+  // Da dove viene davvero il punto. `fonte` dice come è arrivato adesso
+  // ('salvata' quando lo rileggiamo dal browser), `origine` dice chi l'ha
+  // prodotto la prima volta: senza, dopo un riavvio non sapremmo più
+  // distinguere un fix GPS da una città scelta a mano.
+  const origine = (dettagli && dettagli.origine) ||
+    (SKY_FONTI_RIPIEGO.includes(fonte) ? null : fonte);
+  const nome = dettagli && dettagli.nome ? dettagli.nome : null;
 
   if (!skyLetturaAttendibile(lat, lon, fonte, precisione, tempo)) {
     // Lettura scartata: la posizione resta ferma, ma se è arrivata da un GPS
@@ -4338,7 +4370,13 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
     return false;
   }
 
-  sky.posizione = { lat, lon, fonte, precisione, tempo };
+  // Il nome del luogo: quello dichiarato da chi ha fornito il punto, oppure
+  // la città di riferimento più vicina. Serve a dire "Roma" invece di
+  // "41,9° N, 12,5° E", che a colpo d'occhio non dice niente a nessuno.
+  sky.posizione = {
+    lat, lon, fonte, origine, precisione, tempo,
+    nome: nome || nomeLuogoVicino(lat, lon)
+  };
   if (typeof Astronomy !== 'undefined') {
     sky.observer = new Astronomy.Observer(lat, lon, 0);
   }
@@ -4350,10 +4388,15 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   // Cambiando luogo cambiano orari, altezze e giudizi: la memoria va svuotata
   svuotaCacheLocali();
   try {
-    localStorage.setItem(CHIAVE_SKY_POSIZIONE, JSON.stringify({ lat, lon, precisione, tempo }));
+    localStorage.setItem(CHIAVE_SKY_POSIZIONE, JSON.stringify({
+      lat, lon, precisione, tempo,
+      origine: sky.posizione.origine,
+      nome: sky.posizione.nome
+    }));
   } catch (e) { /* storage pieno o non disponibile: pazienza */ }
   skyAvviso('posizione', ''); // la posizione c'è: via l'eventuale avviso
   skyAggiornaStato();
+  aggiornaTastiPosizione();
   return true;
 }
 
@@ -4362,11 +4405,14 @@ function skyCaricaPosizioneSalvata() {
   try {
     const dati = JSON.parse(localStorage.getItem(CHIAVE_SKY_POSIZIONE) || 'null');
     if (dati && typeof dati.lat === 'number' && typeof dati.lon === 'number') {
-      // Ci portiamo dietro anche quanto era precisa e quando è stata presa:
-      // servono a giudicare le letture nuove senza ripartire da zero.
+      // Ci portiamo dietro anche quanto era precisa, quando è stata presa e
+      // da quale strato veniva: servono a giudicare le letture nuove senza
+      // ripartire da zero, e a dire all'utente cosa sta usando l'app.
       skyImpostaPosizione(dati.lat, dati.lon, 'salvata', {
         precisione: dati.precisione,
-        tempo: dati.tempo
+        tempo: dati.tempo,
+        origine: dati.origine || null,
+        nome: dati.nome || null
       });
       return true;
     }
@@ -4382,6 +4428,9 @@ function skyRichiediPosizione() {
 
   sky.attesaPosizione = new Promise((risolvi) => {
     if (!navigator.geolocation) {
+      // Un browser senza geolocalizzazione non è un browser rotto: succede
+      // dietro certe policy aziendali, o su pagine servite senza HTTPS.
+      sky.erroreGps = { codice: 'assente', quando: Date.now() };
       risolvi(false);
       return;
     }
@@ -4391,10 +4440,14 @@ function skyRichiediPosizione() {
     // Finché l'utente non risponde alla richiesta di permesso il browser non
     // richiama nulla (i "timeout" qui sotto partono solo dopo il consenso):
     // dopo 16 secondi smettiamo di aspettare e lo diciamo.
-    const attesaMassima = setTimeout(() => concludi(false), 16000);
+    const attesaMassima = setTimeout(() => {
+      sky.erroreGps = { codice: 'attesa', quando: Date.now() };
+      concludi(false);
+    }, 16000);
 
     const usa = (pos) => {
       clearTimeout(attesaMassima);
+      sky.erroreGps = null;
       // La posizione viene comunque usata, anche se arriva in ritardo:
       // il filtro qui sopra decide se è meglio di quella che abbiamo già.
       skyImpostaPosizione(pos.coords.latitude, pos.coords.longitude, 'gps', {
@@ -4405,15 +4458,30 @@ function skyRichiediPosizione() {
       concludi(true);
     };
 
+    // Il motivo del rifiuto cambia tutto quello che ha senso dire dopo:
+    // un permesso negato si risolve nelle impostazioni del browser, un
+    // timeout riprovando, un dispositivo senza antenna mai.
+    const annota = (err) => {
+      const c = err && err.code;
+      sky.erroreGps = {
+        codice: c === 1 ? 'permesso' : c === 3 ? 'attesa' : 'indisponibile',
+        quando: Date.now()
+      };
+    };
+
     // Prima si chiede il GPS vero e una lettura recente. Se non arriva
     // (al chiuso, o senza antenna) si ripiega su wi-fi/rete, che è meglio
     // di niente: la lettura grossolana passa comunque dal filtro.
     navigator.geolocation.getCurrentPosition(
       usa,
-      () => {
+      (err1) => {
+        annota(err1);
+        // Permesso negato: insistere con una seconda richiesta non serve a
+        // nulla, il browser risponderebbe di nuovo di no senza chiedere.
+        if (err1 && err1.code === 1) { clearTimeout(attesaMassima); concludi(false); return; }
         navigator.geolocation.getCurrentPosition(
           usa,
-          () => { clearTimeout(attesaMassima); concludi(false); },
+          (err2) => { annota(err2); clearTimeout(attesaMassima); concludi(false); },
           { enableHighAccuracy: false, timeout: 7000, maximumAge: 300000 }
         );
       },
@@ -4469,6 +4537,183 @@ function skySmettiDiSorvegliare() {
   if (sky.sorveglianza === null) return;
   try { navigator.geolocation.clearWatch(sky.sorveglianza); } catch (e) { /* già chiuso */ }
   sky.sorveglianza = null;
+}
+
+// =====================================================================
+// 7.1-bis  LA POSIZIONE A STRATI
+//   Senza un punto sulla Terra metà dell'app resta spenta: niente orari
+//   di sorgere e tramonto, niente buio astronomico, niente meteo, niente
+//   passaggi della ISS. Ma il modo "giusto" di sapere dove sei fallisce
+//   più spesso di quanto sembri: il permesso negato per abitudine, il
+//   GPS che al chiuso non aggancia, il browser da scrivania che non ha
+//   proprio l'antenna.
+//
+//   Per questo la posizione non ha una strada sola, ne ha tre, provate
+//   in ordine e sempre dichiarate a chi guarda:
+//
+//     1. GPS      — il satellite: metri di errore. Chiede il permesso.
+//     2. Rete     — l'indirizzo IP: indovina la città, sbaglia di
+//                   chilometri, ma non chiede niente a nessuno.
+//     3. A mano   — l'utente sceglie la città in elenco o scrive le
+//                   coordinate. Funziona sempre, anche senza rete, e
+//                   per questo è l'ultimo strato: non può fallire.
+//
+//   Ogni strato è un ripiego di quello sopra, mai una sostituzione: una
+//   lettura di rete non scalza mai un fix GPS (lo dice il filtro in
+//   skyLetturaAttendibile), e l'app dice sempre con quale strato sta
+//   lavorando, perché "±25 km" e "±8 m" non sono la stessa cosa.
+// =====================================================================
+
+// Come si racconta ogni strato: `provenienza` è la frase intera ("rilevata
+// dal GPS"), `breve` è l'etichetta che sta in una riga stretta.
+const POS_ETICHETTE = {
+  gps:     { breve: 'GPS',           provenienza: 'rilevata dal GPS del dispositivo' },
+  rete:    { breve: 'rete',          provenienza: 'dedotta dalla connessione' },
+  citta:   { breve: 'città scelta',  provenienza: 'la città che hai scelto' },
+  manuale: { breve: 'a mano',        provenienza: 'le coordinate che hai scritto' },
+  salvata: { breve: 'salvata',       provenienza: 'l\'ultima posizione salvata' },
+  backup:  { breve: 'da backup',     provenienza: 'ripristinata da un backup' }
+};
+
+// Città di riferimento più vicina, se sta entro il raggio indicato: dà un
+// nome al punto ("vicino a Bologna") invece di due numeri.
+function nomeLuogoVicino(lat, lon, raggioKm = 60) {
+  if (typeof ECL_CITTA === 'undefined' || !isFinite(lat) || !isFinite(lon)) return null;
+  let migliore = null, distanza = Infinity;
+  for (const [nome, paese, cLat, cLon] of ECL_CITTA) {
+    const d = skyDistanzaMetri(lat, lon, cLat, cLon);
+    if (d < distanza) { distanza = d; migliore = nome; }
+  }
+  return distanza <= raggioKm * 1000 ? migliore : null;
+}
+
+// --- Strato 2: la posizione dedotta dall'indirizzo IP -----------------
+// Tre servizi diversi, provati in fila: sono gratuiti e senza chiave, ma
+// proprio per questo capita che uno sia irraggiungibile o abbia finito le
+// richieste del giorno. Basta che ne risponda uno.
+const POS_SERVIZI_RETE = [
+  {
+    url: 'https://ipapi.co/json/',
+    leggi: d => (d && !d.error ? { lat: +d.latitude, lon: +d.longitude, nome: d.city, paese: d.country_name } : null)
+  },
+  {
+    url: 'https://ipwho.is/',
+    leggi: d => (d && d.success !== false ? { lat: +d.latitude, lon: +d.longitude, nome: d.city, paese: d.country } : null)
+  },
+  {
+    url: 'https://get.geojs.io/v1/ip/geo.json',
+    leggi: d => (d ? { lat: +d.latitude, lon: +d.longitude, nome: d.city, paese: d.country } : null)
+  }
+];
+
+// Una fetch che non resta appesa: senza rete il browser può tenere aperta
+// la richiesta per minuti, e l'utente resterebbe a guardare "Cerco…".
+function fetchConScadenza(url, ms = 6000) {
+  if (typeof AbortController === 'undefined') return fetch(url);
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), ms);
+  return fetch(url, { signal: stop.signal }).finally(() => clearTimeout(timer));
+}
+
+async function posizioneDallaRete() {
+  for (const servizio of POS_SERVIZI_RETE) {
+    try {
+      const risposta = await fetchConScadenza(servizio.url);
+      if (!risposta.ok) continue;
+      const letto = servizio.leggi(await risposta.json());
+      if (letto && isFinite(letto.lat) && isFinite(letto.lon) &&
+          Math.abs(letto.lat) <= 90 && Math.abs(letto.lon) <= 180 &&
+          !(letto.lat === 0 && letto.lon === 0)) {
+        return letto;
+      }
+    } catch (e) { /* servizio muto o rete assente: si prova il prossimo */ }
+  }
+  return null;
+}
+
+// Perché il GPS non ha risposto, detto in modo che si capisca cosa fare.
+function posMotivoGps() {
+  const codice = sky.erroreGps ? sky.erroreGps.codice : null;
+  switch (codice) {
+    case 'permesso':
+      return 'Permesso negato. Puoi ridarlo dal lucchetto accanto all\'indirizzo del browser.';
+    case 'attesa':
+      return 'Il dispositivo non ha risposto in tempo: al chiuso il GPS spesso non aggancia.';
+    case 'indisponibile':
+      return 'Il dispositivo non è riuscito a calcolare la posizione.';
+    case 'assente':
+      return 'Questo browser non offre la geolocalizzazione.';
+    default:
+      return 'Nessuna risposta dal dispositivo.';
+  }
+}
+
+// La cascata vera e propria. `suPasso(strato, stato, testo)` viene chiamata
+// a ogni passaggio, così l'interfaccia può raccontare quello che sta
+// succedendo invece di mostrare una rotella muta.
+//   stato: 'corso' | 'fatto' | 'fallito' | 'ignorato' | 'serve'
+// Restituisce { esito, strato, messaggio }, dove esito vale:
+//   'gps' | 'rete'      → posizione nuova, dallo strato indicato
+//   'invariata'         → gli strati automatici non hanno migliorato quella che c'era
+//   'manuale'           → non c'è nessuna posizione: tocca all'utente
+async function trovaPosizioneAStrati(suPasso) {
+  const passo = (strato, stato, testo) => { if (suPasso) suPasso(strato, stato, testo); };
+  const avevaPosizione = !!luogoCorrente();
+
+  // --- Strato 1: il GPS del dispositivo ---
+  passo('gps', 'corso', 'Chiedo la posizione al dispositivo…');
+  const daGps = await skyRichiediPosizione();
+  if (daGps) {
+    passo('gps', 'fatto', 'Posizione rilevata dal dispositivo.');
+    passo('rete', 'ignorato', 'Non serve: il GPS ha risposto.');
+    passo('manuale', 'ignorato', 'Non serve.');
+    return { esito: 'gps', strato: 'gps', messaggio: 'Fatto: sto usando la posizione del dispositivo.' };
+  }
+  passo('gps', 'fallito', posMotivoGps());
+
+  // --- Strato 2: l'indirizzo IP ---
+  passo('rete', 'corso', 'Provo a capirlo dalla connessione…');
+  const daRete = await posizioneDallaRete();
+  if (daRete) {
+    const applicata = skyImpostaPosizione(daRete.lat, daRete.lon, 'rete', {
+      precisione: POS_PRECISIONE_RETE_M,
+      tempo: Date.now(),
+      nome: daRete.nome || null
+    });
+    if (applicata) {
+      const dove = sky.posizione && sky.posizione.nome ? ` (${sky.posizione.nome})` : '';
+      passo('rete', 'fatto', `Posizione approssimata dalla connessione${dove}.`);
+      passo('manuale', 'serve', 'Correggila qui sotto se non è il tuo paese.');
+      return {
+        esito: 'rete', strato: 'rete',
+        messaggio: `Posizione approssimata dalla rete${dove}: buona per gli orari, ` +
+          'può sbagliare di qualche decina di chilometri. Se non è il posto giusto, correggila qui sotto.'
+      };
+    }
+    // Rifiutata dal filtro: quella che abbiamo già è più precisa di così.
+    passo('rete', 'ignorato', 'La posizione che hai già è più precisa di questa.');
+    passo('manuale', 'serve', 'Cambiala qui sotto se ti sei spostato.');
+    return {
+      esito: 'invariata', strato: 'rete',
+      messaggio: 'Non sono riuscito ad aggiornarla, ma quella che hai già è più precisa: la tengo.'
+    };
+  }
+  passo('rete', 'fallito', 'Nessuna risposta: sembri offline.');
+
+  // --- Strato 3: a mano. Non fallisce, ma deve farlo l'utente ---
+  if (avevaPosizione) {
+    passo('manuale', 'serve', 'Puoi cambiarla qui sotto.');
+    return {
+      esito: 'invariata', strato: 'manuale',
+      messaggio: 'Non riesco a rilevarla adesso: resta quella di prima. Puoi sempre sceglierla a mano qui sotto.'
+    };
+  }
+  passo('manuale', 'serve', 'Scegli la città o scrivi le coordinate: funziona sempre.');
+  return {
+    esito: 'manuale', strato: 'manuale',
+    messaggio: 'Né GPS né rete hanno risposto. Nessun problema: scegli la tua città qui sotto, ' +
+      'oppure scrivi le coordinate. Funziona anche senza connessione.'
+  };
 }
 
 // Il telefono può mandare DUE flussi di orientamento, e sono flussi diversi:
@@ -5057,7 +5302,7 @@ function skyDisegna() {
     ctx.fillStyle = '#94a3b8';
     ctx.font = '13px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Serve la tua posizione per sapere cosa hai sopra la testa.', L / 2, H / 2 + 40);
+    ctx.fillText('Serve la tua posizione: “Aggiorna posizione” qui sotto, o scegli la città.', L / 2, H / 2 + 40);
     ctx.restore();
   }
 
@@ -5096,8 +5341,10 @@ function skyAggiornaStato() {
     // Dire quanto è larga la lettura evita di dare per buono un fix di rete
     // scambiandolo per GPS: è la prima cosa da guardare se il cielo non torna.
     const p = sky.posizione.precisione;
-    const quanto = p ? ` ±${p >= 1000 ? (p / 1000).toFixed(1) + ' km' : Math.round(p) + ' m'}` : '';
-    righe.push(`${formattaCoordinate(sky.posizione.lat, sky.posizione.lon)}${quanto}`);
+    const quanto = p ? ` ${precisioneTesto(p)}` : '';
+    const et = POS_ETICHETTE[sky.posizione.origine || sky.posizione.fonte];
+    righe.push(`${formattaCoordinate(sky.posizione.lat, sky.posizione.lon)}${quanto}` +
+      (et ? ` · ${et.breve}` : ''));
   } else {
     righe.push('posizione mancante');
   }
@@ -5178,7 +5425,8 @@ function skyAggiornaScheda() {
       satPrecaricaTle();
       box.innerHTML = luogoCorrente()
         ? `Scarico i dati orbitali di <strong>${skyNomeCorpo(sky.target)}</strong>…`
-        : `Per sapere dov'è <strong>${skyNomeCorpo(sky.target)}</strong> mi serve la tua posizione: attivala qui sopra.`;
+        : `Per sapere dov'è <strong>${skyNomeCorpo(sky.target)}</strong> mi serve la tua posizione: ` +
+          `<button type="button" onclick="apriPosizione(true)" class="senza-cornice underline text-blue-300 hover:text-blue-200">scegliamola insieme</button>.`;
       return;
     }
     box.innerHTML = `Calcolo della posizione di <strong>${skyNomeCorpo(sky.target)}</strong> in corso…`;
@@ -5282,19 +5530,29 @@ async function skyAvvia(conSensori) {
     skyAvviso('sensori', 'Bussola e giroscopio non disponibili: puoi comunque trascinare il dito sul cielo per guardarti intorno.');
   }
 
-  // La geolocalizzazione può metterci qualche secondo: intanto lo diciamo
+  // La geolocalizzazione può metterci qualche secondo: intanto lo diciamo.
+  // Se il GPS non risponde si scende di strato (rete, poi scelta a mano):
+  // meglio un cielo approssimato che una vista vuota.
   if (!sky.observer) skyAvviso('posizione', 'Sto cercando la tua posizione…');
-  const avutaPosizione = await skyRichiediPosizione();
-  if (avutaPosizione || sky.observer || skyCaricaPosizioneSalvata()) {
+  const esito = await trovaPosizioneAStrati();
+  if (esito.esito === 'gps') {
+    skyAvviso('posizione', '');
+  } else if (esito.esito === 'rete') {
+    skyAvviso('posizione', 'Posizione approssimata, dedotta dalla connessione: per il puntamento fine ' +
+      'conviene sceglierla a mano dal tasto della posizione, nella scheda Stasera.');
+  } else if (sky.observer || skyCaricaPosizioneSalvata()) {
     skyAvviso('posizione', '');
   } else {
-    skyAvviso('posizione', 'Posizione non disponibile: senza di essa non posso sapere cosa hai sopra la testa. Controlla i permessi del browser e riprova con “Aggiorna posizione”.');
+    skyAvviso('posizione', 'Posizione non disponibile: senza di essa non posso sapere cosa hai sopra la testa. ' +
+      'Scegli la tua città dal tasto della posizione, nella scheda Stasera: funziona anche senza permessi.');
   }
 
   // Il permesso è appena stato chiesto: ora la sorveglianza può partire
-  if (avutaPosizione) skySorvegliaPosizione(true);
+  if (esito.esito === 'gps') skySorvegliaPosizione(true);
   skyAggiornaStato();
   skyAggiornaOggetti(true);
+  if (esito.esito === 'gps' || esito.esito === 'rete') posDopoCambio();
+  else aggiornaTastiPosizione();
 }
 
 // Ciclo di disegno: gira solo quando la vista Cielo è a schermo
@@ -5461,12 +5719,32 @@ function inizializzaSkymap() {
     skyAggiornaTastoCalibrazione();
   });
   skyAggiornaTastoCalibrazione();
+  // Sotto il cielo il tasto deve fare qualcosa al primo tocco, non aprire
+  // una finestra: si prova la cascata sul posto. Solo se resta senza
+  // risposta si apre la finestra, dove la posizione si può scegliere a mano.
   collega('skymap-btn-posizione', async () => {
     skyAvviso('posizione', 'Sto cercando la tua posizione…');
-    const ok = await skyRichiediPosizione();
-    skyAvviso('posizione', ok ? '' : 'Non riesco a leggere la posizione: controlla i permessi di localizzazione del browser.');
-    if (ok) skySorvegliaPosizione(true);
+    const esito = await trovaPosizioneAStrati();
+    if (esito.esito === 'gps') {
+      skyAvviso('posizione', '');
+      skySorvegliaPosizione(true);
+    } else if (esito.esito === 'rete') {
+      skyAvviso('posizione', 'Posizione approssimata, dedotta dalla connessione: il cielo è quello giusto ' +
+        'a grandi linee, ma per i passaggi dei satelliti serve il punto esatto. Puoi sceglierlo a mano ' +
+        'dalla scheda Stasera, sul tasto della posizione.');
+    } else if (esito.esito === 'invariata') {
+      skyAvviso('posizione', 'Non sono riuscito ad aggiornarla: resta la posizione di prima.');
+    } else {
+      // Niente da nessuno dei due strati automatici: la finestra si apre da
+      // sé, perché lì c'è l'unica strada rimasta (e non fallisce).
+      skyAvviso('posizione', 'Né GPS né rete hanno risposto: scegli il luogo nella finestra che si è aperta.');
+      apriPosizione(false);
+    }
     skyAggiornaOggetti(true);
+    // Cambiata da qui o dalla finestra, la posizione nuova deve arrivare a
+    // tutte le viste: ci pensa sempre lo stesso punto di raccordo.
+    if (esito.esito === 'gps' || esito.esito === 'rete') await posDopoCambio();
+    else aggiornaTastiPosizione();
   });
 
   collega('skymap-btn-notte', () => {
@@ -7031,6 +7309,381 @@ function osservatoreCorrente() {
   }
 }
 
+// =====================================================================
+// 10-bis. LA FINESTRA DELLA POSIZIONE
+//   Un solo posto, raggiungibile da ovunque, che risponde a tre domande:
+//   che posizione sta usando l'app, quanto è precisa, e come cambiarla.
+//   Il tasto grande prova gli strati in ordine (GPS → rete) e, se
+//   entrambi tacciono, porta per mano all'unico che non fallisce mai:
+//   scegliere la città.
+// =====================================================================
+
+// Nome breve del luogo, buono per un tasto: la città se la conosciamo,
+// altrimenti le coordinate. Mai la parola "posizione" e basta: chi legge
+// deve poter riconoscere il posto, o accorgersi che è sbagliato.
+function etichettaLuogo() {
+  const p = (typeof sky !== 'undefined' && sky.posizione) ? sky.posizione : null;
+  if (p) return p.nome || formattaCoordinate(p.lat, p.lon);
+  const l = luogoCorrente();
+  return l ? formattaCoordinate(l.lat, l.lon) : null;
+}
+
+// Da metri a testo leggibile: "±12 m", "±25 km"
+function precisioneTesto(metri) {
+  if (!metri || !isFinite(metri)) return '';
+  return metri >= 1000 ? `±${(metri / 1000).toFixed(metri >= 10000 ? 0 : 1)} km` : `±${Math.round(metri)} m`;
+}
+
+// Quanto è vecchia una lettura, detto come lo direbbe una persona
+function quandoTesto(ms) {
+  if (!ms) return '';
+  const minuti = Math.round((Date.now() - ms) / 60000);
+  if (minuti < 2) return 'adesso';
+  if (minuti < 60) return `${minuti} minuti fa`;
+  const ore = Math.round(minuti / 60);
+  if (ore < 24) return ore === 1 ? 'un\'ora fa' : `${ore} ore fa`;
+  const giorni = Math.round(ore / 24);
+  return giorni === 1 ? 'ieri' : `${giorni} giorni fa`;
+}
+
+// Quanto ci si può fidare del punto che stiamo usando: decide il colore
+// della scheda e del pallino sul tasto.
+function qualitaPosizione() {
+  const p = (typeof sky !== 'undefined' && sky.posizione) ? sky.posizione : null;
+  if (!p) return 'assente';
+  const origine = p.origine || p.fonte;
+  if (origine === 'gps' || origine === 'manuale') return 'precisa';
+  if (origine === 'citta') return 'buona';
+  return 'approssimata'; // rete, o un backup di cui non sappiamo la provenienza
+}
+
+let posRicercaInCorso = false;
+let posTimerCitta = null;
+let posRichiestaCitta = 0;
+
+// Apre la finestra. Con `avviaSubito` la ricerca parte da sola: è quello
+// che serve quando si arriva qui da un "manca la posizione", perché in quel
+// caso l'utente ha già espresso l'intenzione premendo il tasto.
+window.apriPosizione = function apriPosizione(avviaSubito) {
+  const modale = document.getElementById('modale-posizione');
+  if (!modale) return;
+  modale.classList.remove('hidden');
+  posAzzeraStrati();
+  posAggiornaScheda();
+  posMostraEsito('', null);
+  posMostraRisultati([], null);
+  const campo = document.getElementById('pos-cerca-citta');
+  if (campo) campo.value = '';
+  const l = luogoCorrente();
+  const lat = document.getElementById('pos-lat');
+  const lon = document.getElementById('pos-lon');
+  if (lat) lat.value = l ? l.lat.toFixed(4) : '';
+  if (lon) lon.value = l ? l.lon.toFixed(4) : '';
+  const testoBtn = document.getElementById('pos-btn-cerca-testo');
+  if (testoBtn) testoBtn.textContent = l ? 'Rileva di nuovo' : 'Trova la mia posizione';
+  const manuale = document.getElementById('pos-manuale');
+  if (manuale) manuale.classList.toggle('in-evidenza', false);
+  // Se non c'è ancora niente, cercare è l'unica cosa sensata da fare:
+  // gliela risparmiamo.
+  if (avviaSubito || !l) posCerca();
+};
+
+function chiudiPosizione() {
+  const modale = document.getElementById('modale-posizione');
+  if (modale) modale.classList.add('hidden');
+}
+
+// La scheda in alto: cosa sta usando l'app, adesso.
+function posAggiornaScheda() {
+  const box = document.getElementById('pos-scheda-stato');
+  if (!box) return;
+  const p = (typeof sky !== 'undefined' && sky.posizione) ? sky.posizione : null;
+  const l = luogoCorrente();
+
+  if (!l) {
+    box.dataset.stato = 'assente';
+    box.innerHTML = `
+      <p class="pos-scheda-titolo">Nessuna posizione impostata</p>
+      <p class="pos-scheda-dettaglio">Senza un punto sulla Terra non posso dirti a che ora fa buio,
+        cosa sorge, cosa tramonta e che tempo farà. Bastano dieci secondi.</p>`;
+    return;
+  }
+
+  const qualita = qualitaPosizione();
+  box.dataset.stato = qualita;
+  const origine = (p && (p.origine || p.fonte)) || null;
+  const et = POS_ETICHETTE[origine] || null;
+  const nome = (p && p.nome) ? p.nome : null;
+  const coord = formattaCoordinate(l.lat, l.lon);
+  const prec = p ? precisioneTesto(p.precisione) : '';
+  const eta = p && p.tempo ? quandoTesto(p.tempo) : '';
+
+  const testo = et ? et.provenienza : 'l\'ultima posizione salvata';
+  const provenienza = testo.charAt(0).toUpperCase() + testo.slice(1);
+  const dettagli = [prec, eta].filter(Boolean).join(' · ');
+
+  box.innerHTML = `
+    <p class="pos-scheda-titolo">${nome ? nome : coord}</p>
+    <p class="pos-scheda-coordinate">${nome ? coord + ' · ' : ''}${provenienza}${dettagli ? ' · ' + dettagli : ''}</p>
+    ${qualita === 'approssimata'
+      ? '<p class="pos-scheda-dettaglio">È una posizione di ripiego: va bene per gli orari, ' +
+        'ma se il paese non è quello giusto scegli la città qui sotto.</p>'
+      : '<p class="pos-scheda-dettaglio">L\'app sta calcolando tutto da qui.</p>'}`;
+}
+
+// Riporta i tre strati allo stato "non ancora provato"
+function posAzzeraStrati() {
+  document.querySelectorAll('#pos-strati .pos-strato').forEach(li => {
+    li.dataset.stato = 'attesa';
+    const nota = li.querySelector('.pos-strato-nota');
+    if (nota) nota.remove();
+  });
+}
+
+// Accende (o spegne) uno strato e ci scrive sotto cosa è successo
+function posImpostaStrato(strato, stato, testo) {
+  const li = document.querySelector(`#pos-strati .pos-strato[data-strato="${strato}"]`);
+  if (!li) return;
+  li.dataset.stato = stato;
+  const testi = li.querySelector('.pos-strato-testo');
+  if (!testi) return;
+  let nota = li.querySelector('.pos-strato-nota');
+  if (!testo) { if (nota) nota.remove(); return; }
+  if (!nota) {
+    nota = document.createElement('p');
+    nota.className = 'pos-strato-nota';
+    testi.appendChild(nota);
+  }
+  nota.textContent = testo;
+}
+
+function posMostraEsito(testo, tono) {
+  const el = document.getElementById('pos-esito');
+  if (!el) return;
+  el.textContent = testo || '';
+  el.dataset.tono = tono || 'neutro';
+  el.classList.toggle('hidden', !testo);
+}
+
+// Il tasto grande: prova gli strati in ordine e racconta cosa sta facendo.
+async function posCerca() {
+  if (posRicercaInCorso) return;
+  posRicercaInCorso = true;
+  const btn = document.getElementById('pos-btn-cerca');
+  const testoBtn = document.getElementById('pos-btn-cerca-testo');
+  if (btn) btn.disabled = true;
+  if (testoBtn) testoBtn.textContent = 'Sto cercando…';
+  posAzzeraStrati();
+  posMostraEsito('', null);
+
+  let esito;
+  try {
+    esito = await trovaPosizioneAStrati(posImpostaStrato);
+  } catch (e) {
+    esito = { esito: 'manuale', messaggio: 'Qualcosa è andato storto durante la ricerca: scegli la città qui sotto.' };
+  }
+
+  if (btn) btn.disabled = false;
+  if (testoBtn) testoBtn.textContent = luogoCorrente() ? 'Rileva di nuovo' : 'Riprova';
+
+  const tono = esito.esito === 'gps' ? 'ok'
+             : esito.esito === 'rete' ? 'avviso'
+             : esito.esito === 'invariata' ? 'neutro' : 'avviso';
+  posMostraEsito(esito.messaggio, tono);
+  posAggiornaScheda();
+
+  // Se non c'è ancora niente, la parte manuale deve saltare all'occhio:
+  // è l'unica strada rimasta e non deve sembrare un dettaglio in fondo.
+  const manuale = document.getElementById('pos-manuale');
+  if (manuale) {
+    manuale.classList.toggle('in-evidenza', esito.esito === 'manuale');
+    if (esito.esito === 'manuale') {
+      manuale.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      const campo = document.getElementById('pos-cerca-citta');
+      if (campo) setTimeout(() => campo.focus(), 300);
+    }
+  }
+
+  posRicercaInCorso = false;
+  if (esito.esito === 'gps' || esito.esito === 'rete') await posDopoCambio();
+}
+
+// Un cambio di posizione tocca mezza app: qui c'è l'unico posto in cui si
+// rimette tutto in riga, così nessuna vista resta indietro con i vecchi conti.
+async function posDopoCambio() {
+  aggiornaTastiPosizione();
+  posAggiornaScheda();
+  if (typeof aggiornaSchedaImpostazioni === 'function') aggiornaSchedaImpostazioni();
+  try { await caricaMeteo(true); } catch (e) { /* senza rete resta l'ultima previsione */ }
+  if (typeof costruisciStasera === 'function') costruisciStasera();
+  if (typeof aggiornaViste === 'function') aggiornaViste();
+  if (typeof telOggettiCache !== 'undefined' && telOggettiCache) telOggettiCache.quando = 0;
+  if (typeof telCostruisciPannello === 'function' && document.getElementById('telescopio-corpo')) {
+    try { telCostruisciPannello(); } catch (e) { /* la vista Telescopio non è aperta */ }
+  }
+  if (typeof skyAggiornaOggetti === 'function' && typeof sky !== 'undefined' && sky.aperto) {
+    skyAggiornaOggetti(true);
+  }
+}
+
+// --- Strato 3: la ricerca della città --------------------------------
+// L'elenco locale (quello delle eclissi) è già a bordo e funziona offline:
+// è la risposta immediata. Se c'è rete, il servizio di Open-Meteo aggiunge
+// i paesi piccoli, che in un elenco di capoluoghi non ci sono.
+// normalizzaTesto scompone gli accenti, ma non le lettere che accento non
+// sono: chi cerca "tromso" con la tastiera italiana non troverebbe Tromsø.
+const POS_LETTERE_SPECIALI = { 'ø': 'o', 'æ': 'ae', 'å': 'a', 'đ': 'd', 'ð': 'd', 'þ': 'th', 'ł': 'l', 'ß': 'ss' };
+
+function posNormalizzaNome(testo) {
+  return normalizzaTesto(testo).replace(/[øæåđðþłß]/g, c => POS_LETTERE_SPECIALI[c] || c);
+}
+
+function posCittaLocali(testo) {
+  const q = posNormalizzaNome(testo);
+  if (q.length < 2 || typeof ECL_CITTA === 'undefined') return [];
+  const inizia = [], contiene = [];
+  for (const [nome, paese, lat, lon] of ECL_CITTA) {
+    const n = posNormalizzaNome(nome);
+    if (n.startsWith(q)) inizia.push({ nome, paese, lat, lon });
+    else if (n.includes(q)) contiene.push({ nome, paese, lat, lon });
+  }
+  return inizia.concat(contiene).slice(0, 8);
+}
+
+async function posCittaOnline(testo) {
+  const q = (testo || '').trim();
+  if (q.length < 3) return [];
+  try {
+    const url = 'https://geocoding-api.open-meteo.com/v1/search' +
+      `?name=${encodeURIComponent(q)}&count=8&language=it&format=json`;
+    const risposta = await fetchConScadenza(url, 5000);
+    if (!risposta.ok) return [];
+    const dati = await risposta.json();
+    return (dati.results || [])
+      .filter(r => isFinite(r.latitude) && isFinite(r.longitude))
+      .map(r => ({
+        nome: r.name,
+        paese: [r.admin1, r.country].filter(Boolean).join(', '),
+        lat: r.latitude,
+        lon: r.longitude
+      }));
+  } catch (e) {
+    return []; // offline: restano le città a bordo, che bastano
+  }
+}
+
+function posMostraRisultati(elenco, nota) {
+  const box = document.getElementById('pos-risultati');
+  if (!box) return;
+  if (!elenco.length) {
+    box.innerHTML = nota ? `<p class="pos-risultati-nota">${nota}</p>` : '';
+    return;
+  }
+  box.innerHTML = elenco.map((c, i) => `
+    <button type="button" class="pos-risultato" role="option" data-citta="${i}">
+      <span class="pos-risultato-nome">${c.nome}</span>
+      <span class="pos-risultato-paese">${c.paese || ''}</span>
+    </button>`).join('') + (nota ? `<p class="pos-risultati-nota">${nota}</p>` : '');
+  box.querySelectorAll('[data-citta]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const c = elenco[parseInt(btn.dataset.citta, 10)];
+      if (c) posUsaLuogo(c.lat, c.lon, c.nome, 'citta');
+    });
+  });
+  // Sul telefono la tastiera copre metà schermo: senza questo le città
+  // trovate finiscono sotto di essa e sembra che la ricerca non risponda.
+  try { box.scrollIntoView({ block: 'nearest' }); } catch (e) { /* browser vecchio */ }
+}
+
+// Applica un luogo scelto a mano e aggiorna tutta l'app
+async function posUsaLuogo(lat, lon, nome, fonte) {
+  skyImpostaPosizione(lat, lon, fonte, { nome: nome || null, tempo: Date.now() });
+  const manuale = document.getElementById('pos-manuale');
+  if (manuale) manuale.classList.remove('in-evidenza');
+  posImpostaStrato('manuale', 'fatto', `Stai usando ${nome || formattaCoordinate(lat, lon)}.`);
+  posMostraEsito(`Fatto: l'app calcola tutto da ${nome || formattaCoordinate(lat, lon)}.`, 'ok');
+  posMostraRisultati([], null);
+  const campo = document.getElementById('pos-cerca-citta');
+  if (campo) campo.value = '';
+  await posDopoCambio();
+}
+
+function inizializzaPosizioneUI() {
+  // L'ultima posizione salvata torna in memoria subito, non solo quando si
+  // apre la vista Cielo: è quella che fa trovare l'app già "accesa" alla
+  // riapertura, anche senza rete e senza ripetere la richiesta di permesso.
+  if (!sky.posizione) skyCaricaPosizioneSalvata();
+
+  const modale = document.getElementById('modale-posizione');
+  if (modale) modale.addEventListener('click', (e) => { if (e.target === modale) chiudiPosizione(); });
+  ['btn-chiudi-posizione', 'btn-chiudi-posizione-basso'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', chiudiPosizione);
+  });
+
+  const cerca = document.getElementById('pos-btn-cerca');
+  if (cerca) cerca.addEventListener('click', () => posCerca());
+
+  // Ricerca della città: prima l'elenco a bordo (istantaneo), poi il
+  // servizio online se dice qualcosa in più.
+  const campo = document.getElementById('pos-cerca-citta');
+  if (campo) {
+    campo.addEventListener('input', () => {
+      const testo = campo.value;
+      if (posTimerCitta) clearTimeout(posTimerCitta);
+      const locali = posCittaLocali(testo);
+      if (testo.trim().length < 2) { posMostraRisultati([], null); return; }
+      posMostraRisultati(locali, locali.length ? null : 'Cerco anche fuori dall\'elenco…');
+      const richiesta = ++posRichiestaCitta;
+      posTimerCitta = setTimeout(async () => {
+        const online = await posCittaOnline(testo);
+        // Nel frattempo l'utente può aver scritto altro: quella risposta
+        // non vale più niente.
+        if (richiesta !== posRichiestaCitta) return;
+        const visti = new Set(locali.map(c => posNormalizzaNome(c.nome)));
+        const uniti = locali.concat(online.filter(c => !visti.has(posNormalizzaNome(c.nome)))).slice(0, 10);
+        posMostraRisultati(uniti, uniti.length ? null : 'Nessuna città trovata con questo nome.');
+      }, 320);
+    });
+    // Invio: se c'è una sola città plausibile, la prende
+    campo.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const primo = document.querySelector('#pos-risultati .pos-risultato');
+      if (primo) primo.click();
+    });
+  }
+
+  const btnCoord = document.getElementById('pos-btn-coordinate');
+  if (btnCoord) btnCoord.addEventListener('click', () => {
+    const lat = parseFloat(document.getElementById('pos-lat').value);
+    const lon = parseFloat(document.getElementById('pos-lon').value);
+    if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+      posMostraEsito('Coordinate non valide: la latitudine va da −90 a 90, la longitudine da −180 a 180.', 'errore');
+      return;
+    }
+    posUsaLuogo(lat, lon, null, 'manuale');
+  });
+
+  aggiornaTastiPosizione();
+}
+
+// Tutti i tasti che parlano di posizione dicono la stessa cosa, e la
+// dicono per esteso: dove sei secondo l'app, e quanto ci si può fidare.
+function aggiornaTastiPosizione() {
+  const qualita = qualitaPosizione();
+  const dove = etichettaLuogo();
+  const btn = document.getElementById('btn-stasera-posizione');
+  if (btn) {
+    const testo = btn.querySelector('.tasto-posizione-testo');
+    btn.dataset.stato = qualita === 'assente' ? 'assente' : qualita;
+    if (testo) testo.textContent = dove ? `Osservi da ${dove}` : 'Imposta la tua posizione';
+    btn.title = dove
+      ? `Orari, buio e meteo sono calcolati da ${dove}. Tocca per cambiare luogo o rilevarlo di nuovo.`
+      : 'Scegli il luogo da cui stai osservando: GPS, connessione o città in elenco';
+  }
+}
+
 // Altezza e azimut di un corpo del Sistema Solare a un dato istante
 function altAzCorpo(id, data, obs) {
   const t = Astronomy.MakeTime(data);
@@ -7711,7 +8364,9 @@ async function aggiornaPassaggiSatelliti(forza) {
   const luogo = luogoCorrente();
 
   if (!luogo) {
-    if (box) box.innerHTML = '<p class="text-slate-400">Serve la tua posizione: le stazioni spaziali passano sopra un punto preciso della Terra, e da un paese all\'altro cambia tutto. Premi “Dove sono” qui sopra.</p>';
+    if (box) box.innerHTML = '<p class="text-slate-400">Serve la tua posizione: le stazioni spaziali passano sopra un punto preciso della Terra, ' +
+      'e da un paese all\'altro cambia tutto. Qui il GPS conta davvero: una città sbagliata sposta gli orari di minuti.</p>' +
+      '<button type="button" onclick="apriPosizione(true)" class="mt-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors">Dimmi dove sono</button>';
     return;
   }
   if (typeof satellite === 'undefined') {
@@ -7908,7 +8563,11 @@ function costruisciStaseraRiepilogo() {
     box.innerHTML = `
       <div class="scheda-piena bg-slate-900 p-4 rounded-xl border border-amber-800">
         <p class="text-amber-400 font-semibold">Manca la tua posizione</p>
-        <p class="text-sm text-slate-300 mt-1">Senza coordinate non posso dirti a che ora fa buio, cosa sorge e cosa tramonta. Premi “Dove sono” qui sopra: resta salvata solo su questo dispositivo.</p>
+        <p class="text-sm text-slate-300 mt-1">Senza un punto sulla Terra non posso dirti a che ora fa buio,
+          cosa sorge e cosa tramonta. Ci sono tre modi per darmelo — il GPS, la connessione o la tua città
+          scelta in elenco — e almeno uno funziona sempre. Resta salvato solo su questo dispositivo.</p>
+        <button type="button" onclick="apriPosizione(true)"
+          class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Dimmi dove sono</button>
       </div>`;
     return;
   }
@@ -8021,7 +8680,11 @@ function costruisciStaseraPianeti() {
   if (!box) return;
 
   const obs = osservatoreCorrente();
-  if (!obs) { box.innerHTML = '<p class="text-slate-400">Serve la posizione per sapere cosa hai sopra la testa.</p>'; return; }
+  if (!obs) {
+    box.innerHTML = '<p class="text-slate-400">Serve la posizione per sapere cosa hai sopra la testa.</p>' +
+      '<button type="button" onclick="apriPosizione(true)" class="mt-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors">Dimmi dove sono</button>';
+    return;
+  }
 
   const buio = finestraBuio(new Date());
   const righe = STASERA_CORPI.map(c => {
@@ -8108,20 +8771,12 @@ function costruisciStasera() {
 }
 
 function inizializzaStasera() {
+  // Il tasto non "rileva" e basta: apre la finestra della posizione, dove si
+  // vede cosa sta usando l'app e si può cambiare in tre modi diversi. Se non
+  // c'è ancora niente la ricerca parte da sola, così chi vuole solo essere
+  // trovato non deve premere due volte.
   const btnPos = document.getElementById('btn-stasera-posizione');
-  if (btnPos) {
-    btnPos.addEventListener('click', async () => {
-      btnPos.textContent = 'Cerco…';
-      const ok = await skyRichiediPosizione();
-      btnPos.textContent = 'Dove sono';
-      if (!ok && !luogoCorrente()) {
-        alert('Non riesco a leggere la posizione. Controlla i permessi del browser, oppure inseriscila a mano dalle Impostazioni.');
-      }
-      await caricaMeteo(true);
-      costruisciStasera();
-      aggiornaViste();
-    });
-  }
+  if (btnPos) btnPos.addEventListener('click', () => apriPosizione(false));
 
   const btnSat = document.getElementById('btn-satelliti-aggiorna');
   if (btnSat) btnSat.addEventListener('click', () => aggiornaPassaggiSatelliti(true));
@@ -8576,7 +9231,11 @@ function esportaBackup() {
     esportato: new Date().toISOString(),
     eventiManuali: JSON.parse(localStorage.getItem(CHIAVE_EVENTI_MANUALI) || '[]'),
     diario,
-    posizione: luogoCorrente(),
+    // Non solo le coordinate: anche il nome del luogo e da quale strato
+    // veniva, così un ripristino non degrada un GPS in "punto anonimo".
+    posizione: sky.posizione
+      ? { lat: sky.posizione.lat, lon: sky.posizione.lon, nome: sky.posizione.nome, origine: sky.posizione.origine }
+      : luogoCorrente(),
     bussola: localStorage.getItem(CHIAVE_SKY_BUSSOLA)
   };
   const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
@@ -8612,7 +9271,10 @@ async function importaBackup(file) {
     }
 
     if (dati.posizione && typeof dati.posizione.lat === 'number') {
-      skyImpostaPosizione(dati.posizione.lat, dati.posizione.lon, 'backup');
+      skyImpostaPosizione(dati.posizione.lat, dati.posizione.lon, 'backup', {
+        nome: dati.posizione.nome || null,
+        origine: dati.posizione.origine || null
+      });
     }
     if (dati.bussola) {
       try { localStorage.setItem(CHIAVE_SKY_BUSSOLA, dati.bussola); } catch (e) { /* niente storage */ }
@@ -8632,16 +9294,21 @@ async function importaBackup(file) {
 function aggiornaSchedaImpostazioni() {
   const box = document.getElementById('imp-posizione');
   const luogo = luogoCorrente();
-  if (box) {
-    box.textContent = luogo
-      ? `Impostata: ${formattaCoordinate(luogo.lat, luogo.lon)}`
-      : 'Non impostata: molte funzioni restano spente.';
-    box.className = luogo ? 'text-sm text-green-400' : 'text-sm text-amber-400';
+  if (!box) return;
+  if (!luogo) {
+    box.textContent = 'Non impostata: molte funzioni restano spente.';
+    box.className = 'text-sm text-amber-400';
+    return;
   }
-  const lat = document.getElementById('imp-lat');
-  const lon = document.getElementById('imp-lon');
-  if (lat && luogo) lat.value = luogo.lat.toFixed(4);
-  if (lon && luogo) lon.value = luogo.lon.toFixed(4);
+  // Dire anche da dove arriva: "Roma" rilevata col GPS e "Roma" dedotta
+  // dall'indirizzo IP non danno lo stesso cielo.
+  const p = (typeof sky !== 'undefined' && sky.posizione) ? sky.posizione : null;
+  const et = p ? POS_ETICHETTE[p.origine || p.fonte] : null;
+  const dove = etichettaLuogo();
+  const coord = formattaCoordinate(luogo.lat, luogo.lon);
+  box.textContent = `${dove}${dove === coord ? '' : ` · ${coord}`}` +
+    (et ? ` · ${et.provenienza}` : '');
+  box.className = qualitaPosizione() === 'approssimata' ? 'text-sm text-amber-400' : 'text-sm text-green-400';
 }
 
 function inizializzaImpostazioni() {
@@ -8657,28 +9324,11 @@ function inizializzaImpostazioni() {
   if (btnChiudi) btnChiudi.addEventListener('click', chiudi);
   if (modale) modale.addEventListener('click', (e) => { if (e.target === modale) chiudi(); });
 
-  const btnGps = document.getElementById('imp-btn-gps');
-  if (btnGps) btnGps.addEventListener('click', async () => {
-    btnGps.textContent = 'Cerco…';
-    const ok = await skyRichiediPosizione();
-    btnGps.textContent = 'Rileva con il GPS';
-    aggiornaSchedaImpostazioni();
-    if (ok) { await caricaMeteo(true); costruisciStasera(); aggiornaViste(); }
-  });
-
-  const btnManuale = document.getElementById('imp-btn-manuale');
-  if (btnManuale) btnManuale.addEventListener('click', async () => {
-    const lat = parseFloat(document.getElementById('imp-lat').value);
-    const lon = parseFloat(document.getElementById('imp-lon').value);
-    if (isNaN(lat) || isNaN(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-      alert('Coordinate non valide: la latitudine va da −90 a 90, la longitudine da −180 a 180.');
-      return;
-    }
-    skyImpostaPosizione(lat, lon, 'manuale');
-    aggiornaSchedaImpostazioni();
-    await caricaMeteo(true);
-    costruisciStasera();
-    aggiornaViste();
+  // La posizione si gestisce in un posto solo: qui c'è la porta per arrivarci
+  const btnPos = document.getElementById('imp-btn-posizione');
+  if (btnPos) btnPos.addEventListener('click', () => {
+    chiudi();
+    apriPosizione(false);
   });
 
   const btnIcs = document.getElementById('imp-btn-ics');
@@ -9176,7 +9826,7 @@ function bloccoLocaleHtml(evento) {
     if (!luogoCorrente() && evento.dataObj.getTime() - Date.now() < 30 * 86400000) {
       return `<div class="bg-slate-900 p-3 rounded-xl mt-3 text-sm border border-slate-700">
         <p class="text-slate-400">Con la tua posizione posso dirti se questo evento si vede da casa tua, a che ora e in che direzione.</p>
-        <button onclick="document.getElementById('btn-impostazioni').click()" class="px-3 py-1.5 mt-2 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors">Imposta la tua posizione</button>
+        <button onclick="apriPosizione(true)" class="px-3 py-1.5 mt-2 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors">Dimmi dove sono</button>
       </div>`;
     }
     return '';

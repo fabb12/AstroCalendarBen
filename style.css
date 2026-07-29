@@ -1738,6 +1738,356 @@ main { padding-bottom: calc(clamp(24px, 3vw, 56px) + var(--barra-inferiore)); }
   #barra-ricerca .filtri-avanzati > div:last-child { margin-top: 10px; padding-top: 10px; }
 }
 
+/* ------------------------------------------------------- LA POSIZIONE       */
+/* Il dato da cui dipende metà dell'app, e quello che più spesso non si
+   riesce a leggere. Tutto quello che lo riguarda usa lo stesso codice di
+   colore, così a colpo d'occhio si sa quanto ci si può fidare:
+     verde  = GPS o coordinate scelte    (metri)
+     blu    = città scelta in elenco     (chilometro)
+     ambra  = dedotta dalla connessione  (decine di chilometri)
+     rosso  = nessuna posizione          (metà app spenta)                  */
+
+/* --- Il tasto "dove sono", nella scheda Stanotte --- */
+/* Non dice "Dove sono" e basta: dice il luogo da cui l'app sta calcolando,
+   con un pallino che ne dichiara la precisione. Un tasto che risponde alla
+   domanda prima ancora di essere premuto. */
+body button.tasto-posizione {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 62%;
+  padding: 7px 14px 7px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte);
+  background: var(--superficie-alta);
+  color: var(--testo);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transizione), background var(--transizione);
+}
+body button.tasto-posizione:hover { border-color: var(--blu); color: #fff; }
+.tasto-posizione-testo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tasto-posizione-segno {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--testo-3);
+  box-shadow: 0 0 0 3px rgba(148, 168, 214, 0.12);
+}
+.tasto-posizione[data-stato="precisa"] .tasto-posizione-segno {
+  background: var(--verde);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.18);
+}
+.tasto-posizione[data-stato="buona"] .tasto-posizione-segno {
+  background: var(--blu);
+  box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.2);
+}
+.tasto-posizione[data-stato="approssimata"] .tasto-posizione-segno {
+  background: var(--ambra);
+  box-shadow: 0 0 0 3px rgba(245, 181, 68, 0.2);
+}
+/* Senza posizione il tasto smette di essere un comando in più e diventa la
+   cosa da fare: bordo ambra e un pallino che pulsa piano. */
+body button.tasto-posizione[data-stato="assente"] {
+  border-color: rgba(245, 181, 68, 0.5);
+  background: var(--ambra-velo);
+  color: #f8d79a;
+  font-weight: 600;
+}
+.tasto-posizione[data-stato="assente"] .tasto-posizione-segno {
+  background: var(--ambra);
+  animation: posBattito 2.4s ease-in-out infinite;
+}
+@keyframes posBattito {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(245, 181, 68, 0.22); }
+  50%      { box-shadow: 0 0 0 7px rgba(245, 181, 68, 0.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tasto-posizione[data-stato="assente"] .tasto-posizione-segno { animation: none; }
+}
+
+/* --- La scheda in cima alla finestra: cosa sta usando l'app adesso --- */
+.pos-scheda {
+  padding: 14px 16px;
+  border-radius: var(--raggio-m);
+  border: 1px solid var(--bordo);
+  background: var(--incassato);
+  border-left: 3px solid var(--testo-3);
+}
+.pos-scheda[data-stato="precisa"]      { border-left-color: var(--verde); }
+.pos-scheda[data-stato="buona"]        { border-left-color: var(--blu); }
+.pos-scheda[data-stato="approssimata"] { border-left-color: var(--ambra); }
+.pos-scheda[data-stato="assente"]      { border-left-color: var(--ambra); background: var(--ambra-velo); }
+.pos-scheda-titolo {
+  font-family: var(--titolo);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+}
+.pos-scheda-coordinate {
+  margin: 4px 0 0;
+  font-size: 0.76rem;
+  color: var(--testo-2);
+  font-variant-numeric: tabular-nums;
+}
+.pos-scheda-dettaglio {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: var(--testo-2);
+  line-height: 1.5;
+}
+
+/* --- Il tasto grande che fa partire la cascata --- */
+body button.pos-tasto-principale {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(76, 141, 255, 0.4);
+  background-image: linear-gradient(180deg, var(--blu) 0%, var(--blu-scuro) 100%);
+  background-color: var(--blu-scuro);
+  color: #fff;
+  font-size: 0.98rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--alone-blu), var(--luce-interna);
+}
+body button.pos-tasto-principale:hover { filter: brightness(1.08); }
+body button.pos-tasto-principale:disabled { filter: saturate(0.5) brightness(0.8); cursor: progress; }
+/* Il segnalino disegnato in CSS: un puntatore da mappa, niente emoji */
+.pos-tasto-icona {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  border-radius: 50% 50% 50% 0;
+  border: 2.5px solid currentColor;
+  transform: rotate(-45deg);
+}
+button.pos-tasto-principale:disabled .pos-tasto-icona {
+  animation: posCerca 1.1s linear infinite;
+}
+@keyframes posCerca {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.25; }
+}
+
+/* --- L'esito della ricerca, in una riga --- */
+.pos-esito {
+  margin: 0;
+  padding: 11px 14px;
+  border-radius: var(--raggio-s);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  border: 1px solid var(--bordo);
+  background: var(--incassato);
+  color: var(--testo-2);
+}
+.pos-esito[data-tono="ok"]      { border-color: rgba(52, 211, 153, 0.36); color: #a7f3d0; }
+.pos-esito[data-tono="avviso"]  { border-color: rgba(245, 181, 68, 0.36); color: #fbe0ab; }
+.pos-esito[data-tono="errore"]  { border-color: rgba(248, 113, 113, 0.4);  color: #fecaca; }
+
+/* --- I tre strati: GPS, rete, a mano --- */
+/* Non è una barra di avanzamento: è la spiegazione di come funziona la
+   cosa. Chi guarda deve capire che se il primo modo non va ce n'è un
+   secondo, e che l'ultimo non può fallire. */
+.pos-strati {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pos-strato {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 13px;
+  border-radius: var(--raggio-s);
+  border: 1px solid transparent;
+  transition: background var(--transizione), border-color var(--transizione);
+}
+/* Il filo che tiene insieme i tre passaggi, come su una linea del tempo */
+.pos-strato:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: 30px;
+  bottom: -3px;
+  width: 1px;
+  background: var(--bordo);
+}
+.pos-strato-segno {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  margin-top: 1px;
+  border-radius: 999px;
+  border: 1.5px solid var(--bordo-forte);
+  background: var(--spazio-2);
+}
+/* Il segno di spunta e la croce sono due tratti disegnati col bordo */
+.pos-strato-segno::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--testo-3);
+}
+.pos-strato-titolo {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--testo-2);
+}
+.pos-strato-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo);
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--testo-3);
+  vertical-align: 1px;
+}
+.pos-strato-dettaglio {
+  margin: 3px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--testo-3);
+}
+.pos-strato-nota {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+/* Strato in corso: il pallino gira */
+.pos-strato[data-stato="corso"] { background: var(--blu-velo); border-color: rgba(76, 141, 255, 0.28); }
+.pos-strato[data-stato="corso"] .pos-strato-titolo { color: #fff; }
+.pos-strato[data-stato="corso"] .pos-strato-segno { border-color: var(--blu); }
+.pos-strato[data-stato="corso"] .pos-strato-segno::after {
+  background: var(--blu-chiaro);
+  animation: posBattitoPunto 1s ease-in-out infinite;
+}
+.pos-strato[data-stato="corso"] .pos-strato-nota { color: var(--blu-chiaro); }
+@keyframes posBattitoPunto {
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%      { transform: scale(1.9); opacity: 0.4; }
+}
+
+/* Strato riuscito: spunta verde */
+.pos-strato[data-stato="fatto"] .pos-strato-titolo { color: #fff; }
+.pos-strato[data-stato="fatto"] .pos-strato-segno {
+  border-color: var(--verde);
+  background: rgba(52, 211, 153, 0.16);
+}
+.pos-strato[data-stato="fatto"] .pos-strato-segno::after {
+  width: 4px;
+  height: 8px;
+  border: solid var(--verde);
+  border-width: 0 1.8px 1.8px 0;
+  border-radius: 0;
+  background: none;
+  transform: translateY(-1px) rotate(42deg);
+}
+.pos-strato[data-stato="fatto"] .pos-strato-nota { color: #86efac; }
+
+/* Strato fallito: non è un errore dell'utente, è solo una strada chiusa.
+   Resta leggibile e spiega il perché, senza allarmare. */
+.pos-strato[data-stato="fallito"] .pos-strato-segno {
+  border-color: rgba(245, 181, 68, 0.6);
+  background: rgba(245, 181, 68, 0.1);
+}
+.pos-strato[data-stato="fallito"] .pos-strato-segno::after {
+  width: 8px;
+  height: 1.8px;
+  border-radius: 2px;
+  background: var(--ambra);
+}
+.pos-strato[data-stato="fallito"] .pos-strato-nota { color: #fbe0ab; }
+
+/* Strato non necessario: sbiadito, perché quello sopra ha già risposto */
+.pos-strato[data-stato="ignorato"] { opacity: 0.45; }
+
+/* Strato che aspetta l'utente: è la via d'uscita, va vista */
+.pos-strato[data-stato="serve"] { background: var(--blu-velo); border-color: rgba(76, 141, 255, 0.3); }
+.pos-strato[data-stato="serve"] .pos-strato-titolo { color: #fff; }
+.pos-strato[data-stato="serve"] .pos-strato-segno { border-color: var(--blu-chiaro); }
+.pos-strato[data-stato="serve"] .pos-strato-segno::after { background: var(--blu-chiaro); }
+.pos-strato[data-stato="serve"] .pos-strato-nota { color: var(--blu-chiaro); }
+
+/* --- Lo strato che non fallisce mai: la scelta a mano --- */
+.pos-manuale {
+  padding: 15px 16px;
+  border-radius: var(--raggio-m);
+  border: 1px solid var(--bordo);
+  background: var(--superficie);
+  transition: border-color var(--transizione-lenta), box-shadow var(--transizione-lenta);
+}
+/* Quando è l'unica strada rimasta si accende, così non sembra un dettaglio */
+.pos-manuale.in-evidenza {
+  border-color: rgba(76, 141, 255, 0.5);
+  box-shadow: var(--alone-blu);
+}
+.pos-risultati {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 8px;
+  max-height: 244px;
+  overflow-y: auto;
+}
+body button.pos-risultato {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--raggio-s);
+  border: 1px solid var(--bordo);
+  background: var(--incassato);
+  color: var(--testo);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transizione), background var(--transizione);
+}
+body button.pos-risultato:hover,
+body button.pos-risultato:focus-visible {
+  border-color: var(--blu);
+  background: var(--blu-velo);
+}
+.pos-risultato-nome { font-size: 0.88rem; font-weight: 600; }
+.pos-risultato-paese { font-size: 0.72rem; color: var(--testo-3); text-align: right; }
+.pos-risultati-nota {
+  margin: 8px 2px 0;
+  font-size: 0.74rem;
+  color: var(--testo-3);
+}
+
 /* ------------------------------------------------------- VISTA CIELO        */
 .tela-cielo {
   display: block;
