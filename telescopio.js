@@ -389,6 +389,28 @@ function telGradiTesto(gradi, decimali = 1) {
   return `${segno}${Math.abs(gradi).toFixed(decimali)}°`;
 }
 
+// Declinazione in gradi e primi, cioè come è incisa sul cerchio graduato
+// della montatura. Sul cerchio i decimali non esistono: ci sono le tacche
+// dei gradi, e leggere "+38° 47′" è molto più diretto di "+38,8°".
+function telDecTesto(dec) {
+  const segno = dec < 0 ? '−' : '+';
+  const a = Math.abs(dec);
+  let g = Math.floor(a);
+  let m = Math.round((a - g) * 60);
+  if (m === 60) { g += 1; m = 0; }
+  return `${segno}${g}° ${String(m).padStart(2, '0')}′`;
+}
+
+// Ascensione retta in ore e minuti. Il cerchio orario di una EQ3 ha le
+// tacche ogni 10 minuti: i secondi sarebbero una precisione finta.
+function telArTesto(ra) {
+  const tot = ((ra % 24) + 24) % 24;
+  let h = Math.floor(tot);
+  let m = Math.round((tot - h) * 60);
+  if (m === 60) { h = (h + 1) % 24; m = 0; }
+  return `${h}h ${String(m).padStart(2, '0')}m`;
+}
+
 // Angoli piccoli: sotto il grado si legge molto meglio in primi d'arco
 function telAngoloTesto(gradi) {
   const a = Math.abs(gradi);
@@ -578,7 +600,7 @@ function telOggettiPuntabili(data) {
       lista.push({
         id: 'dso-' + o.nome.slice(0, 12), nome: o.nome, gruppo: 'profondo',
         colore: (typeof SKY_COLORI_PROFONDO !== 'undefined' && SKY_COLORI_PROFONDO[o.tipo]) || '#a5f3fc',
-        ra: o.ra, dec: o.dec, alt: hor.alt, az: hor.az,
+        ra: o.ra, dec: o.dec, j2000: true, alt: hor.alt, az: hor.az,
         dim: asp ? asp.dim : null, mag: o.mag, nota: o.nota,
         tipo: o.tipo, aspetto: asp
       });
@@ -590,7 +612,7 @@ function telOggettiPuntabili(data) {
     const hor = altAzCoordinate(s.ra, s.dec, quando, obs);
     lista.push({
       id: 'star-' + s.nome, nome: s.nome, gruppo: 'stelle', colore: '#e2e8f0',
-      ra: s.ra, dec: s.dec, alt: hor.alt, az: hor.az,
+      ra: s.ra, dec: s.dec, j2000: true, alt: hor.alt, az: hor.az,
       dim: null, mag: s.mag, costellazione: s.costellazione
     });
   });
@@ -603,6 +625,17 @@ function telOggettiPuntabili(data) {
   });
 
   return lista;
+}
+
+// Le coordinate da mettere sulle manopole sono quelle di stanotte, non
+// quelle stampate sul catalogo. Pianeti e Luna arrivano già calcolati per
+// oggi; stelle e deep sky sono J2000 e vanno portati avanti, se no il
+// cerchio graduato viene impostato su un cielo di venticinque anni fa.
+function telCoordinateOggi(oggetto, data) {
+  if (!oggetto) return null;
+  if (!oggetto.j2000) return { ra: oggetto.ra, dec: oggetto.dec, aggiornate: false };
+  const c = telCoordDiOggi(oggetto.ra, oggetto.dec, data || new Date());
+  return { ra: c.ra, dec: c.dec, aggiornate: true };
 }
 
 // Diametro apparente di un pianeta in primi d'arco. Astronomy Engine dà
@@ -680,20 +713,38 @@ function telOrologioPolare(data) {
     distanzaMin: distanza * 60,
     oraQuadrante,
     // Il verso in cui la Polare sta rispetto al polo, detto a parole
-    verso: telVersoOrologio(angolo)
+    verso: telVersoOrologio(angolo),
+    // E il verso opposto: dove sta il polo *rispetto alla Polare*. È
+    // quello che serve davvero, perché al cercatore si guarda la Polare
+    // e da lì ci si sposta.
+    versoPolo: telVersoSecco(angolo + 180),
+    // Lo stesso verso della Polare, ma detto secco: serve quando la frase
+    // attorno nomina già il punto di riferimento.
+    versoSecco: telVersoSecco(angolo),
+    // Quante Lune piene sta larga quella distanza: un numero che si può
+    // stimare a occhio senza righello, di notte, in giardino.
+    lune: distanza / 0.52
   };
 }
 
+// Le otto direzioni del quadrante, guardando verso Nord a occhio nudo:
+// 0° = in alto, e si gira in senso antiorario, cioè verso sinistra
+// (Ovest), che è il verso in cui gira il cielo attorno al polo.
+const TEL_SETTORI = [
+  'in alto', 'in alto a sinistra', 'a sinistra (Ovest)', 'in basso a sinistra',
+  'in basso', 'in basso a destra', 'a destra (Est)', 'in alto a destra'
+];
+
+function telVersoSecco(angolo) {
+  return TEL_SETTORI[Math.round(((angolo % 360) + 360) % 360 / 45) % 8];
+}
+
 function telVersoOrologio(angolo) {
-  // Guardando verso Nord: 0° = sopra il polo, e si gira in senso
-  // antiorario, quindi verso sinistra (Ovest).
-  const settori = [
-    'esattamente sopra il polo', 'in alto a sinistra', 'a sinistra (Ovest)',
-    'in basso a sinistra', 'sotto il polo', 'in basso a destra',
-    'a destra (Est)', 'in alto a destra'
-  ];
-  const i = Math.round(angolo / 45) % 8;
-  return settori[i];
+  const v = telVersoSecco(angolo);
+  // Detto del polo: "sopra il polo" si legge meglio di "in alto del polo".
+  if (v === 'in alto') return 'esattamente sopra il polo';
+  if (v === 'in basso') return 'esattamente sotto il polo';
+  return `${v} rispetto al polo`;
 }
 
 // Lo scarto fra il Nord della bussola e il Nord vero. La vista Cielo lo
@@ -709,6 +760,14 @@ function telDeclinazioneMagnetica() {
   } catch (e) {
     return 0;
   }
+}
+
+// Che numero deve segnare la bussola quando si guarda il Nord vero. È
+// più utile di "correggi di tot gradi", perché toglie di mezzo il dubbio
+// su da che parte correggere — che è l'errore che fanno tutti.
+function telBussolaNordVero() {
+  const d = telDeclinazioneMagnetica();
+  return ((360 - d) % 360 + 360) % 360;
 }
 
 // Posizione della Polare in altezza e azimut: serve alla realtà
@@ -949,11 +1008,15 @@ const TEL_FRAZIONI_CAMPO = [
 // ogni spostamento è una differenza rispetto a questo punto.
 function telFissaRiferimento(oggetto, data) {
   if (!oggetto) return false;
+  const quando = data || new Date();
+  // Si registrano le coordinate di stanotte, non quelle di catalogo: il
+  // cerchio graduato va tarato sul cielo che hai davanti.
+  const c = telCoordinateOggi(oggetto, quando);
   tel.riferimento = {
-    ra: oggetto.ra,
-    dec: oggetto.dec,
+    ra: c.ra,
+    dec: c.dec,
     nome: oggetto.nome,
-    quando: (data || new Date()).getTime()
+    quando: quando.getTime()
   };
   telSalvaSessione();
   return true;
@@ -973,9 +1036,10 @@ function telScartoVerso(bersaglio, data) {
   if (!tel.riferimento || !bersaglio) return null;
   const quando = data || new Date();
   const p = telProfilo();
+  const meta = telCoordinateOggi(bersaglio, quando);
 
   // Positivo = bisogna aumentare l'angolo orario, cioè andare verso Ovest
-  let dHA = tel.riferimento.ra - bersaglio.ra;
+  let dHA = tel.riferimento.ra - meta.ra;
 
   if (!p.motoreAR) {
     const lstOra = telTempoSiderale(quando);
@@ -993,14 +1057,23 @@ function telScartoVerso(bersaglio, data) {
   while (dHA > 12) dHA -= 24;
   while (dHA < -12) dHA += 24;
 
-  const dDec = bersaglio.dec - tel.riferimento.dec;
+  const dDec = meta.dec - tel.riferimento.dec;
+
+  // Il numero da leggere sul cerchio orario quando ci sei arrivato. Se il
+  // cerchio è stato tarato sull'ascensione retta della stella di
+  // riferimento, questo è semplicemente quel valore meno lo scarto — e
+  // senza motore tiene già conto del cielo scorso nel frattempo.
+  const letturaAR = ((tel.riferimento.ra - dHA) % 24 + 24) % 24;
 
   return {
     dHA,
     dDec,
+    letturaAR,
+    ra: meta.ra,
+    dec: meta.dec,
     versoRA: dHA > 0 ? 'Ovest' : 'Est',
     versoDec: dDec > 0 ? 'Nord' : 'Sud',
-    haBersaglio: telAngoloOrario(bersaglio.ra, quando),
+    haBersaglio: telAngoloOrario(meta.ra, quando),
     conMotore: !!p.motoreAR,
     riferimento: tel.riferimento.nome
   };
@@ -1644,7 +1717,10 @@ function telDisegnaOrologioPolare(canvas, dati) {
     const a = ora * 15 * TEL_D2R;
     const x = cx - Math.sin(a) * (R + 13);
     const y = cy - Math.cos(a) * (R + 13);
-    ctx.fillText(`${ora}h`, x, y);
+    // L'ora che cade dove sta la Polare non si scrive: finirebbe sotto il
+    // pallino, e fra le due cose quella che conta è il pallino.
+    let scarto = Math.abs(((ora * 15 - dati.angolo) % 360 + 540) % 360 - 180);
+    if (scarto > 20) ctx.fillText(`${ora}h`, x, y);
     ctx.beginPath();
     ctx.moveTo(cx - Math.sin(a) * (R - 4), cy - Math.cos(a) * (R - 4));
     ctx.lineTo(cx - Math.sin(a) * (R + 4), cy - Math.cos(a) * (R + 4));
@@ -1660,15 +1736,55 @@ function telDisegnaOrologioPolare(canvas, dati) {
   ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
   ctx.stroke();
 
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 10px system-ui, sans-serif';
-  ctx.fillText('POLO', cx, cy + 22);
-
   // La Polare, dove sta adesso. L'angolo si misura da sopra il polo, in
   // senso antiorario: guardando a Nord il cielo gira in quel verso.
   const a = dati.angolo * TEL_D2R;
   const px = cx - Math.sin(a) * R;
   const py = cy - Math.cos(a) * R;
+
+  // La scritta del polo va dalla parte opposta alla Polare, se no la
+  // freccia le passa sopra proprio nel punto che deve indicare.
+  const sotto = py < cy;
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 10px system-ui, sans-serif';
+  ctx.fillText('POLO', cx, cy + (sotto ? 22 : -30));
+  ctx.font = '9px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(56,189,248,0.75)';
+  ctx.fillText('qui va il centro', cx, cy + (sotto ? 34 : -18));
+
+  // La freccia dalla Polare al polo: è il movimento da fare, e detta così
+  // non c'è più bisogno di tradurre "in alto a sinistra" nella testa.
+  const ux = (cx - px) / R, uy = (cy - py) / R;
+  const daX = px + ux * 16, daY = py + uy * 16;
+  const aX = cx - ux * 16, aY = cy - uy * 16;
+  ctx.strokeStyle = 'rgba(56,189,248,0.85)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(daX, daY);
+  ctx.lineTo(aX, aY);
+  ctx.stroke();
+  // Punta della freccia
+  const ang = Math.atan2(aY - daY, aX - daX);
+  ctx.fillStyle = 'rgba(56,189,248,0.85)';
+  ctx.beginPath();
+  ctx.moveTo(aX, aY);
+  ctx.lineTo(aX - 8 * Math.cos(ang - 0.4), aY - 8 * Math.sin(ang - 0.4));
+  ctx.lineTo(aX - 8 * Math.cos(ang + 0.4), aY - 8 * Math.sin(ang + 0.4));
+  ctx.closePath();
+  ctx.fill();
+
+  // La misura dello spostamento, scritta di fianco alla freccia
+  ctx.save();
+  ctx.translate((daX + aX) / 2, (daY + aY) / 2);
+  ctx.rotate(Math.abs(ang) > Math.PI / 2 ? ang + Math.PI : ang);
+  ctx.fillStyle = '#7dd3fc';
+  ctx.font = 'bold 10px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(`${dati.distanzaMin.toFixed(0)}′`, 0, -4);
+  ctx.restore();
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
 
   ctx.beginPath();
   ctx.arc(px, py, 6, 0, Math.PI * 2);
@@ -1680,10 +1796,13 @@ function telDisegnaOrologioPolare(canvas, dati) {
   ctx.arc(px, py, 11, 0, Math.PI * 2);
   ctx.stroke();
 
+  // Il nome va per forza verso l'esterno: dalla parte del centro c'è la
+  // freccia, e sopra il pallino non ci sta.
   ctx.fillStyle = '#fde68a';
   ctx.font = 'bold 11px system-ui, sans-serif';
-  const dy = py < cy ? -20 : 22;
-  ctx.fillText('Polare', px, py + dy);
+  // Di fianco serve più spazio che sopra: la scritta è larga e bassa.
+  const stacco = 22 + 16 * Math.abs(ux);
+  ctx.fillText('Polare', px - ux * stacco, py - uy * stacco);
 
   // La direzione dello zenit, per orientarsi: guardando a Nord, l'alto
   // dello schermo è l'alto del cielo.
@@ -2245,8 +2364,8 @@ function telDisegnaTestStellare(canvas, scarto) {
 
 const TEL_PANNELLI = [
   { id: 'strumento',   nome: 'Strumento',   sottotitolo: 'Ingrandimenti, campi, cosa arriva' },
-  { id: 'allineamento', nome: 'Allineamento', sottotitolo: 'Il polo, la Polare, la deriva' },
-  { id: 'punta',       nome: 'Punta',       sottotitolo: 'Cerchi, salti di stella, telefono sul tubo' },
+  { id: 'allineamento', nome: 'Allineamento', sottotitolo: 'Puntare l\'asse al polo, in 6 passi' },
+  { id: 'punta',       nome: 'Punta',       sottotitolo: 'Coordinate AR e Dec, cerchi graduati, salti di stella' },
   { id: 'serata',      nome: 'Serata',      sottotitolo: 'La scaletta di stanotte' },
   { id: 'cura',        nome: 'Cura',        sottotitolo: 'Collimazione e test stellare' }
 ];
@@ -2540,71 +2659,142 @@ function telPannelloAllineamento() {
 
   const orologio = telOrologioPolare();
   const declinazione = telDeclinazioneMagnetica();
+  const bussola = telBussolaNordVero();
   const oculare = telOculareDeriva();
+  const polare = telPolareAltAz();
+  const cercatore = TEL_CERCATORI[p.cercatore] || TEL_CERCATORI.reddot;
+
+  // Il cercatore ottico capovolge l'immagine: la stessa istruzione detta
+  // "in alto a sinistra" a occhio diventa "in basso a destra" dentro il
+  // cercatore. Sbagliare questo verso raddoppia l'errore invece di
+  // azzerarlo, ed è il motivo per cui tanti allineamenti peggiorano.
+  const versoNelCercatore = orologio
+    ? (cercatore.dritta ? orologio.versoPolo : orologio.versoSecco)
+    : '';
+
+  const larga = telCombinazioni(p).find(c => !c.vuoto);
+  const autonomiaSenzaQuadrante = orologio ? telAutonomiaInseguimento(orologio.distanzaMin, larga) : null;
+
+  // --- La riga sola che riassume tutto ---------------------------------
+  const inSintesi = telHtmlScheda('In due righe', `
+    <p class="text-sm text-slate-300">Devi far guardare <strong class="text-white">l'asse della montatura</strong>
+    (non il tubo) verso il polo celeste: un punto esatto a Nord, alto quanto la tua latitudine.
+    La Polare è lì vicino ma <em>non</em> è quel punto: gli gira attorno a mezzo grado.</p>
+    <div class="griglia-sintesi mt-3">
+      ${telHtmlSintesi(`${l.lat.toFixed(1)}°`, 'scala della latitudine')}
+      ${telHtmlSintesi(`${Math.round(bussola)}°`, 'la bussola deve segnare')}
+      ${telHtmlSintesi(orologio ? `${orologio.distanzaMin.toFixed(0)}′` : '—', 'la Polare è larga così dal polo')}
+      ${telHtmlSintesi(polare ? `${polare.alt.toFixed(1)}°` : '—', 'altezza della Polare ora')}
+    </div>
+    <p class="mt-3 text-xs text-slate-400">Per guardare e basta, puntare l'asse <em>sulla</em> Polare è già
+    abbastanza${autonomiaSenzaQuadrante ? `: a ${Math.round(larga.ingrandimento)}× un oggetto centrato ti resta
+    nel campo per circa ${Math.round(autonomiaSenzaQuadrante)} minuti` : ''}. Il passo 6 qui sotto serve
+    per gli alti ingrandimenti e per le foto.</p>`);
+
+  // --- I passi ---------------------------------------------------------
+  const passo = (n, titolo, corpo) => `
+    <li class="flex gap-3">
+      <span class="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">${n}</span>
+      <div><strong class="text-white">${titolo}</strong><br>${corpo}</div>
+    </li>`;
 
   const passi = `
+    <p class="text-sm text-slate-300 mb-3">Si fa una volta sola, a inizio serata, e dura tre minuti.
+    <strong class="text-white">Regola d'oro:</strong> qui si muovono solo il treppiede e la vite di elevazione.
+    Le due manopole di ascensione retta e declinazione, in questa fase, non si toccano mai.</p>
     <ol class="space-y-3 text-sm text-slate-300">
-      <li class="flex gap-3">
-        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">1</span>
-        <div><strong class="text-white">Metti la scala della latitudine su ${l.lat.toFixed(1)}°.</strong>
-        È il numero inciso sul settore graduato della montatura, quello che si regola con la vite di elevazione.
-        Da solo ti porta a un paio di gradi dal polo.</div>
-      </li>
-      <li class="flex gap-3">
-        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">2</span>
-        <div><strong class="text-white">Punta l'asse verso il Nord vero.</strong>
-        Non quello della bussola: fra i due qui ci sono ${Math.abs(declinazione).toFixed(1)}°
-        (il Nord magnetico sta ${declinazione > 0 ? 'a Est' : 'a Ovest'} di quello vero).
-        Se usi una bussola da telefono o da campo, ruota di quei gradi ${declinazione > 0 ? 'verso Ovest' : 'verso Est'}.</div>
-      </li>
-      <li class="flex gap-3">
-        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">3</span>
-        <div><strong class="text-white">Controlla in realtà aumentata.</strong>
-        Nella vista Cielo accendi <em>Polo celeste</em>: comparirà un mirino sul punto esatto dove deve
-        guardare l'asse della montatura. Guarda lungo il tubo dell'asse polare e confronta.
-        <button id="tel-vai-cielo" class="ml-1 underline text-blue-400 hover:text-blue-300">Apri la vista Cielo</button></div>
-      </li>
-      <li class="flex gap-3">
-        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">4</span>
-        <div><strong class="text-white">Affina con la Polare.</strong>
-        La Polare <em>non</em> è il polo: gli gira attorno a ${orologio ? orologio.distanzaMin.toFixed(0) : '38'}′ di distanza.
-        Qui sotto c'è dov'è adesso.</div>
-      </li>
+      ${passo(1, 'Treppiede in piano, gamba «N» verso nord.',
+        `Allarga le gambe alla stessa altezza e blocca. Se la testa parte storta, tutto il resto è tempo perso.`)}
+      ${passo(2, `Scala della latitudine su ${l.lat.toFixed(1)}°.`,
+        `È il settore graduato sul fianco della testa, con l'indice che scorre sui gradi. Si muove allentando la
+         vite di elevazione (sulla EQ3 sono due, una davanti e una dietro: allenti una e stringi l'altra).
+         Poi ristringi tutt'e due.`)}
+      ${passo(3, `Ruota tutta la montatura finché la bussola segna ${Math.round(bussola)}°.`,
+        `Ruoti il treppiede intero, non la montatura sul treppiede. Quei ${Math.round(bussola)}° non sono un errore:
+         la bussola punta al Nord magnetico, che qui sta ${declinazione > 0 ? 'a Est' : 'a Ovest'} di quello vero
+         di ${Math.abs(declinazione).toFixed(1)}°, e il polo celeste sta sul Nord <em>vero</em>.
+         <button id="tel-vai-cielo" class="underline text-blue-400 hover:text-blue-300">Verifica in realtà aumentata</button>:
+         nella vista Cielo compare un mirino sul punto esatto.`)}
+      ${passo(4, 'Metti la declinazione a +90° e il contrappeso in basso.',
+        `<span class="text-amber-300">È il passo che manca su tutti i manuali, ed è quello che fa fallire l'allineamento.</span>
+         Con la declinazione a +90° il tubo diventa parallelo all'asse polare: da quel momento
+         <strong class="text-white">quello che vedi nel cercatore è esattamente dove guarda l'asse</strong>, e puoi
+         allinearlo guardando invece di indovinare. Se il cerchio di declinazione non è tarato, mettilo a occhio:
+         il tubo dev'essere parallelo al corpo dell'asse polare. Poi blocca le due manopole.`)}
+      ${passo(5, 'Trova la Polare nel cercatore.',
+        `Adesso è alta <strong class="text-white">${polare ? polare.alt.toFixed(1) : l.lat.toFixed(1)}°</strong>
+         sull'orizzonte, esattamente a Nord. Se non la vedi, muovi <em>solo</em> elevazione e treppiede finché
+         non entra nel campo del ${cercatore.nome.toLowerCase()} (${cercatore.campo}° di cielo).`)}
+      ${orologio
+        ? passo(6, `Sposta il centro di ${orologio.distanzaMin.toFixed(0)}′ ${versoNelCercatore}.`,
+          `La Polare non va messa al centro: al centro ci va il polo, che adesso sta
+           <strong class="text-amber-300">${versoNelCercatore}</strong> rispetto a lei${cercatore.dritta ? '' : ' <em>(verso già ribaltato per il tuo cercatore ottico)</em>'}.
+           Quanto? ${orologio.distanzaMin.toFixed(0)}′, cioè ${orologio.lune.toFixed(1)} Lune piene in fila: sul
+           disegno qui sotto è dove sta la croce azzurra. Salta questo passo e ti resta mezzo grado di errore —
+           per guardare va bene, per fotografare no.`)
+        : passo(6, 'Scosta il centro di mezzo grado dalla Polare.',
+          `La Polare non va messa al centro: gira attorno al polo a circa 38′ di distanza, e il centro va messo
+           sul polo. In che direzione dipende dall'ora: il disegno qui sotto lo dice, appena il calcolo è
+           disponibile.`)}
     </ol>`;
 
+  // --- Il quadrante ----------------------------------------------------
   const quadrante = orologio ? `
     <div class="grid gap-4 sm:grid-cols-2 items-center">
-      <canvas id="tel-tela-polare" class="block w-full rounded-xl border border-slate-700 bg-slate-950" style="height:260px"></canvas>
+      <canvas id="tel-tela-polare" class="block w-full rounded-xl border border-slate-700 bg-slate-950" style="height:280px"></canvas>
       <div class="text-sm text-slate-300 space-y-2">
-        <p>In questo momento la Polare sta <strong class="text-amber-300">${orologio.verso}</strong>,
-        a <strong>${orologio.distanzaMin.toFixed(0)}′</strong> dal polo
-        (angolo orario ${telOreTesto(orologio.ha)}, ora di quadrante ${orologio.oraQuadrante.toFixed(1)}h).</p>
-        <p class="text-xs text-slate-400">Il disegno è come si vede <strong>a occhio, guardando verso Nord</strong>.
-        Se monti un cannocchiale polare, lui capovolge tutto: la Polare andrà messa dalla parte opposta del reticolo.</p>
-        <p class="text-xs text-slate-400">Senza cannocchiale polare questo quadrante serve comunque: dice da che parte
-        sbagli. Se punti l'asse <em>sulla Polare</em> invece che sul polo, l'errore che ti resta è di
-        ${orologio.distanzaMin.toFixed(0)}′ nella direzione indicata — e il passo successivo lo azzera.</p>
+        <p class="bg-slate-900 rounded-xl border border-blue-800 p-3">
+          <span class="text-slate-400 text-xs">In pratica, adesso:</span><br>
+          punta il centro del cercatore <strong class="text-amber-300">${versoNelCercatore}</strong>
+          rispetto alla Polare, di <strong class="text-white">${orologio.distanzaMin.toFixed(0)}′</strong>
+          (${orologio.lune.toFixed(1)} Lune piene in fila).
+        </p>
+        <p class="text-xs text-slate-400">Il disegno è come si vede <strong>a occhio nudo, guardando verso Nord</strong>:
+        alto dello schermo = alto del cielo, sinistra = Ovest. La croce azzurra è il polo, il punto giallo la Polare.</p>
+        <p class="text-xs text-slate-400">La Polare gira attorno al polo in 24 ore: fra un'ora questo disegno sarà
+        ruotato di 15°, per questo si aggiorna da solo. Adesso la Polare è ${orologio.verso}
+        (angolo orario ${telOreTesto(orologio.ha)}, ora di quadrante ${orologio.oraQuadrante.toFixed(1)}h — è il numero
+        da usare se un giorno monti un cannocchiale polare con il reticolo a orologio).</p>
       </div>
     </div>` : '<p class="text-sm text-slate-400">Calcolo non disponibile.</p>';
 
+  // --- Quando non funziona ---------------------------------------------
+  const causa = (titolo, corpo) => `
+    <li><strong class="text-white">${titolo}</strong><br><span class="text-slate-400">${corpo}</span></li>`;
+
+  const problemi = `
+    <ul class="space-y-3 text-sm text-slate-300">
+      ${causa('Hai mosso le manopole invece del treppiede.',
+        `È la causa numero uno. Le manopole di ascensione retta e declinazione spostano il <em>tubo</em> rispetto
+         all'asse: l'asse resta storto dov'era. L'asse si muove solo con la vite di elevazione (su e giù) e
+         ruotando il treppiede (destra e sinistra).`)}
+      ${causa('Il cercatore non è allineato al tubo.',
+        `Allora "centrato nel cercatore" non vuol dire niente. Si tara di giorno, una volta per tutte: inquadra
+         un oggetto lontano e fermo (un camino, un traliccio a un chilometro) nell'oculare da
+         ${p.oculari[0].focale} mm, poi con le vitine del cercatore porta il puntino sopra lo stesso oggetto.`)}
+      ${causa('Hai usato il Nord della bussola.',
+        `Il Nord magnetico e quello vero qui distano ${Math.abs(declinazione).toFixed(1)}°: la bussola deve segnare
+         <strong class="text-white">${Math.round(bussola)}°</strong>, non 0°. E tienila lontana dal telescopio:
+         il tubo è di acciaio e se la porta dove vuole lui.`)}
+      ${causa('Non è la Polare.',
+        `Verifica: prendi le due stelle di fondo del Grande Carro (quelle opposte al timone), tira la linea che le
+         unisce e prolungala cinque volte. Finisci sulla Polare, ed è l'unica stella discretamente luminosa in
+         quella zona vuota di cielo. Deve stare a ${polare ? polare.alt.toFixed(1) : l.lat.toFixed(1)}° di altezza,
+         esattamente a Nord.`)}
+      ${causa('L\'hai messa al centro.',
+        `Non è un disastro: ti resta ${orologio ? orologio.distanzaMin.toFixed(0) : '38'}′ di errore, che per
+         guardare a occhio va benissimo. Diventa un problema solo sopra i 150× o con la fotografia.`)}
+      ${causa('Hai rifatto l\'allineamento a metà serata.',
+        `Una volta finito, elevazione e treppiede non si toccano più fino alla fine. Se sposti il treppiede per
+         girare attorno a un albero, l'allineamento è da rifare da capo.`)}
+    </ul>`;
+
   return `
-    ${telHtmlScheda('Perché conta', `
-      <p class="text-sm text-slate-300">Una montatura equatoriale fa una cosa sola: gira attorno a un asse.
-      Se quell'asse è parallelo a quello della Terra, una manopola sola insegue tutto il cielo — ed è
-      la condizione perché il motore serva a qualcosa. Se non lo è, il motore insegue un cielo che non esiste
-      e l'oggetto scappa lo stesso, solo più lentamente.</p>
-      <div class="griglia-sintesi mt-3">
-        ${telHtmlSintesi(`${l.lat.toFixed(2)}°`, 'la tua latitudine')}
-        ${telHtmlSintesi(`${declinazione >= 0 ? '+' : '−'}${Math.abs(declinazione).toFixed(1)}°`, 'declinazione magnetica')}
-        ${telHtmlSintesi(orologio ? `${orologio.distanzaMin.toFixed(0)}′` : '—', 'Polare dal polo')}
-        ${telHtmlSintesi(p.motoreAR ? 'sì' : 'no', 'motore in AR', p.motoreAR ? 'text-green-400' : 'text-slate-400')}
-      </div>`)}
-
-    ${telHtmlScheda('I quattro passi', passi)}
-
-    ${telHtmlScheda('L\'orologio della Polare', quadrante)}
-
-    ${telHtmlScheda('Allineamento per deriva', telHtmlDeriva(oculare))}`;
+    ${inSintesi}
+    ${telHtmlScheda('Allineare in 6 passi', passi)}
+    ${telHtmlScheda('Dove mettere la Polare, adesso', quadrante)}
+    ${telHtmlScheda('Non ci sei riuscito? Le sei cause, in ordine', problemi)}
+    ${telHtmlScheda('Precisione da fotografia: la deriva', telHtmlDeriva(oculare))}`;
 }
 
 function telHtmlDeriva(oculare) {
@@ -2689,9 +2879,14 @@ function telHtmlDeriva(oculare) {
     </div>` : '';
 
   return `
+    <p class="text-xs text-amber-300 bg-amber-950/40 border border-amber-900 rounded-xl p-3 mb-3">
+      Serve solo se fai foto a lunga posa o se lavori sopra i 150×. Per guardare, i 6 passi qui sopra bastano:
+      salta pure questa parte.</p>
     <p class="text-sm text-slate-300">È il metodo più preciso che esista senza elettronica, e non richiede
-    nessun accessorio: si centra una stella, si aspetta, e si guarda da che parte scivola. La direzione e la
-    velocità dello scivolamento dicono <em>esattamente</em> di quanto è storto l'asse polare.</p>
+    nessun accessorio: si centra una stella, si aspetta 4–5 minuti senza toccare niente, e si guarda da che parte
+    è scivolata. Direzione e velocità dello scivolamento dicono <em>esattamente</em> di quanto è storto l'asse.
+    Poi l'app traduce il conto in due frasi: quanto girare le viti di azimut e quanto alzare o abbassare
+    la scala della latitudine.</p>
 
     <div class="mt-4">
       <p class="text-xs text-slate-400 mb-2">Stelle buone <strong>per l'errore in azimut</strong> (a Sud, vicino al meridiano):</p>
@@ -2903,7 +3098,8 @@ function telPannelloPunta() {
   const bersaglio = telBersaglioCorrente();
   if (!bersaglio) {
     return telHtmlScheda('Cosa vuoi puntare?', avvisoGiorno + scelta +
-      '<p class="text-xs text-slate-500 mt-2">Sono elencati solo gli oggetti sopra i 5° di altezza: sotto, ci sono i tetti e la foschia.</p>');
+      '<p class="text-xs text-slate-500 mt-2">Sono elencati solo gli oggetti sopra i 5° di altezza: sotto, ci sono i tetti e la foschia.</p>') +
+      telHtmlScheda('Tutte le coordinate di stanotte', telHtmlTabellaCoordinate(oggetti));
   }
 
   const p = telProfilo();
@@ -2921,7 +3117,6 @@ function telPannelloPunta() {
     </div>
     <p class="text-sm ${coloriVerdetto[verdetto.esito]}">${verdetto.testo}</p>
     <div class="mt-3 text-sm text-slate-300 space-y-1">
-      <p><span class="text-slate-400">Coordinate:</span> <span class="font-mono">AR ${telOreDecimaliTesto(bersaglio.ra)} · Dec ${telGradiTesto(bersaglio.dec)}</span></p>
       <p><span class="text-slate-400">Angolo orario:</span> <span class="font-mono">${ha != null ? telOreTesto(ha) : '—'}</span>
         ${ha != null ? `<span class="text-xs text-slate-500">(${Math.abs(ha) < 0.2 ? 'in meridiano adesso: è il momento migliore' : (ha < 0 ? `passa in meridiano fra ${telOreTesto(-ha).replace('+', '')}` : `ha passato il meridiano da ${telOreTesto(ha).replace('+', '')}`)})</span>` : ''}</p>
       ${combinazione.scelta ? `<p><span class="text-slate-400">Oculare consigliato:</span>
@@ -2946,19 +3141,94 @@ function telPannelloPunta() {
 
   return `
     ${telHtmlScheda(bersaglio.nome, scheda)}
-    ${telHtmlScheda('Con i cerchi graduati', telHtmlCerchi(bersaglio))}
+    ${telHtmlScheda('Coordinate per le manopole', telHtmlManopole(bersaglio))}
+    ${telHtmlScheda('Usare i cerchi graduati, passo per passo', telHtmlCerchi(bersaglio))}
     ${salti}
     ${telHtmlScheda('Con il telefono sul tubo', telHtmlTubo(bersaglio))}`;
+}
+
+// Le due cifre che servono davanti al telescopio, grandi e senza contorno
+// di parole: l'ascensione retta da mettere sul cerchio orario e la
+// declinazione da mettere sul cerchio verticale.
+function telHtmlManopole(bersaglio) {
+  const quando = new Date();
+  const c = telCoordinateOggi(bersaglio, quando);
+  const lst = telTempoSiderale(quando);
+  const ha = telAngoloOrario(c.ra, quando);
+
+  const cifra = (etichetta, valore, sotto, colore) => `
+    <div class="bg-slate-900 rounded-xl border border-slate-700 p-4 text-center">
+      <div class="text-xs text-slate-400 mb-1">${etichetta}</div>
+      <div class="text-3xl font-bold font-mono ${colore} tracking-tight">${valore}</div>
+      <div class="text-xs text-slate-500 mt-1 font-mono">${sotto}</div>
+    </div>`;
+
+  return `
+    <div class="grid gap-3 sm:grid-cols-2">
+      ${cifra('Ascensione retta — cerchio orario', telArTesto(c.ra), telOreDecimaliTesto(c.ra), 'text-blue-300')}
+      ${cifra('Declinazione — cerchio verticale', telDecTesto(c.dec), `${telGradiTesto(c.dec, 2)} decimali`, 'text-amber-300')}
+    </div>
+
+    <p class="mt-3 text-xs text-slate-500">Coordinate di stanotte${c.aggiornate ? ' (precessione applicata: sul catalogo, in J2000, sono AR '
+      + telArTesto(bersaglio.ra) + ' e Dec ' + telDecTesto(bersaglio.dec) + ')' : ' — pianeti e Luna si spostano di ora in ora'}.
+      Tempo siderale locale adesso: <span class="font-mono">${lst != null ? telArTesto(lst) : '—'}</span>${ha != null ? ` · angolo orario del bersaglio <span class="font-mono">${telOreTesto(ha)}</span>` : ''}.</p>
+
+    <div class="mt-4 bg-slate-900 rounded-xl border border-slate-700 p-4 text-sm text-slate-300 space-y-3">
+      <p class="font-bold text-white">Come si usano sulla Spica (e su qualunque EQ3)</p>
+      <p><strong class="text-amber-300">La declinazione è assoluta.</strong> Il cerchio verticale, una volta
+      tarato, vale tutta la vita: allenta la manopola, muovi finché l'indice segna
+      <span class="font-mono text-white">${telDecTesto(c.dec)}</span>, ristringi. Se non ti torna, taralo una volta
+      sola: centra una stella di cui conosci la declinazione e ruota il cerchio finché legge il suo valore.</p>
+      <p><strong class="text-blue-300">L'ascensione retta no.</strong> Il cerchio orario gira insieme al cielo,
+      quindi va ritarato a ogni sessione (e, senza motore, ogni volta che passa mezz'ora): si centra una stella
+      nota e si fa scorrere il cerchio — è apposta che è morbido — finché legge l'ascensione retta di quella
+      stella. Da quel momento i numeri sono buoni. Il passo qui sotto lo fa fare all'app.</p>
+      <p class="text-xs text-slate-400">Precisione realistica di questi cerchi: mezzo grado o poco meno. Ti porta
+      dentro il campo del cercatore, non al centro dell'oculare — l'ultimo pezzetto lo fai a occhio.</p>
+    </div>`;
+}
+
+// L'elenco completo con le due cifre da mettere sulle manopole: serve a
+// chi vuole segnarsele su un foglio prima di uscire, invece di aprire
+// l'app oggetto per oggetto con le mani fredde.
+function telHtmlTabellaCoordinate(oggetti) {
+  const ora = new Date();
+  const righe = oggetti.slice().sort((a, b) => b.alt - a.alt).map(o => {
+    const c = telCoordinateOggi(o, ora);
+    return `<tr class="border-t border-slate-700/60">
+      <td class="py-1.5 pr-3 text-slate-200">${o.nome.split(' — ')[0]}</td>
+      <td class="py-1.5 pr-3 font-mono text-blue-300 whitespace-nowrap">${telArTesto(c.ra)}</td>
+      <td class="py-1.5 pr-3 font-mono text-amber-300 whitespace-nowrap">${telDecTesto(c.dec)}</td>
+      <td class="py-1.5 text-right text-slate-400 whitespace-nowrap">${Math.round(o.alt)}°</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <p class="text-sm text-slate-300 mb-3">Ascensione retta e declinazione di tutto quello che è sopra l'orizzonte
+    adesso, nel formato dei cerchi graduati. Sono coordinate di stanotte, già portate avanti dal J2000 del catalogo.</p>
+    <div class="overflow-x-auto -mx-2 px-2">
+      <table class="w-full text-sm">
+        <thead><tr class="text-xs text-slate-400 text-left">
+          <th class="pb-2 pr-3 font-normal">Oggetto</th>
+          <th class="pb-2 pr-3 font-normal">AR</th>
+          <th class="pb-2 pr-3 font-normal">Dec</th>
+          <th class="pb-2 font-normal text-right">Alt</th>
+        </tr></thead>
+        <tbody>${righe}</tbody>
+      </table>
+    </div>`;
 }
 
 // Ascensione retta in ore, minuti e secondi: è come sta scritta sui
 // cerchi della montatura e su qualunque catalogo.
 function telOreDecimaliTesto(ore) {
   const tot = ((ore % 24) + 24) % 24;
-  const h = Math.floor(tot);
-  const mDec = (tot - h) * 60;
-  const m = Math.floor(mDec);
-  const s = Math.round((mDec - m) * 60);
+  // Si arrotonda una volta sola, ai secondi, e poi si riportano: se no
+  // esce "4h 11m 60s", che è un orario che non esiste.
+  let secondi = Math.round(tot * 3600) % 86400;
+  const h = Math.floor(secondi / 3600);
+  const m = Math.floor((secondi % 3600) / 60);
+  const s = secondi % 60;
   return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
 }
 
@@ -2970,17 +3240,26 @@ function telHtmlCerchi(bersaglio) {
     .slice(0, 8);
 
   if (!tel.riferimento) {
+    const ora = new Date();
     return `
-      <p class="text-sm text-slate-300">I cerchi graduati di una montatura economica non si usano mai in assoluto:
-      si usano <strong>come differenza</strong> da qualcosa che hai appena centrato. Centra una stella luminosa che
-      riconosci, dì all'app quale, e da lì in poi ti dà gli scarti esatti da fare sulle due manopole.</p>
-      <p class="text-xs text-slate-400 mt-3 mb-2">Quale stella hai centrato?</p>
-      <div class="flex flex-wrap gap-2">
-        ${stelle.map(s => `<button data-tel-riferimento="${s.id}"
-          class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200">
-          ${s.nome} <span class="opacity-70">${Math.round(s.alt)}°</span></button>`).join('')}
+      <p class="text-sm text-slate-300"><strong class="text-white">Passo 1 di 2: tara il cerchio orario.</strong>
+      Centra nell'oculare una di queste stelle — sono le più luminose alte in cielo adesso — poi premi il suo nome.
+      L'app ti dirà su che numero far scorrere il cerchio.</p>
+      <div class="flex flex-col gap-2 mt-3">
+        ${stelle.map(s => {
+          const c = telCoordinateOggi(s, ora);
+          return `<button data-tel-riferimento="${s.id}"
+            class="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl text-left bg-slate-900 hover:bg-slate-700 border border-slate-700">
+            <span class="text-sm font-semibold text-white">${s.nome}
+              <span class="text-xs text-slate-400 font-normal">${Math.round(s.alt)}° · ${skyNomeDirezione(s.az)}</span></span>
+            <span class="font-mono text-xs text-slate-300 whitespace-nowrap">
+              <span class="text-blue-300">${telArTesto(c.ra)}</span> · <span class="text-amber-300">${telDecTesto(c.dec)}</span></span>
+          </button>`;
+        }).join('')}
       </div>
-      ${stelle.length ? '' : '<p class="text-xs text-slate-500">Nessuna stella luminosa abbastanza alta in questo momento.</p>'}`;
+      ${stelle.length ? '' : '<p class="text-xs text-slate-500 mt-2">Nessuna stella luminosa abbastanza alta in questo momento.</p>'}
+      <p class="text-xs text-slate-500 mt-3">Non riconosci nessuna di queste stelle? Va bene anche il bersaglio di
+      un giro precedente, o la Luna: l'importante è sapere con certezza su cosa sei puntato.</p>`;
   }
 
   const scarto = telScartoVerso(bersaglio);
@@ -2989,30 +3268,44 @@ function telHtmlCerchi(bersaglio) {
   const eta = Math.round((Date.now() - tel.riferimento.quando) / 60000);
 
   return `
-    <p class="text-sm text-slate-300 mb-3">Riferimento fissato su <strong class="text-white">${tel.riferimento.nome}</strong>${eta > 0 ? ` <span class="text-slate-400">(${eta} min fa)</span>` : ''}.</p>
+    <p class="text-sm text-slate-300">Sei puntato su <strong class="text-white">${tel.riferimento.nome}</strong>${eta > 0 ? ` <span class="text-slate-400">(da ${eta} min)</span>` : ''}:
+      fai scorrere il cerchio orario finché l'indice legge
+      <strong class="font-mono text-blue-300">${telArTesto(tel.riferimento.ra)}</strong>, e il cerchio verticale
+      <strong class="font-mono text-amber-300">${telDecTesto(tel.riferimento.dec)}</strong>. Tarato.</p>
 
+    <p class="text-sm text-white font-bold mt-4 mb-2">Passo 2 di 2: muovi le due manopole.</p>
     <div class="grid gap-3 sm:grid-cols-2">
-      <div class="bg-slate-900 rounded-xl border border-slate-700 p-4 text-center">
-        <div class="text-xs text-slate-400 mb-1">Ascensione retta</div>
-        <div class="text-2xl font-bold font-mono text-white">${telOreTesto(scarto.dHA).replace('+', '')}</div>
-        <div class="text-sm text-blue-300 mt-1">verso ${scarto.versoRA}</div>
+      <div class="bg-slate-900 rounded-xl border border-slate-700 p-4">
+        <div class="text-xs text-slate-400 mb-1">Manopola di ascensione retta</div>
+        <div class="text-2xl font-bold font-mono text-white">${telOreTesto(scarto.dHA).replace('+', '')}
+          <span class="text-base text-blue-300 font-semibold">verso ${scarto.versoRA}</span></div>
+        <div class="text-xs text-slate-400 mt-2">finché il cerchio orario legge
+          <span class="font-mono text-blue-300">${telArTesto(scarto.letturaAR)}</span></div>
       </div>
-      <div class="bg-slate-900 rounded-xl border border-slate-700 p-4 text-center">
-        <div class="text-xs text-slate-400 mb-1">Declinazione</div>
-        <div class="text-2xl font-bold font-mono text-white">${Math.abs(scarto.dDec).toFixed(1)}°</div>
-        <div class="text-sm text-blue-300 mt-1">verso ${scarto.versoDec}</div>
+      <div class="bg-slate-900 rounded-xl border border-slate-700 p-4">
+        <div class="text-xs text-slate-400 mb-1">Manopola di declinazione</div>
+        <div class="text-2xl font-bold font-mono text-white">${Math.abs(scarto.dDec).toFixed(1)}°
+          <span class="text-base text-amber-300 font-semibold">verso ${scarto.versoDec}</span></div>
+        <div class="text-xs text-slate-400 mt-2">finché il cerchio verticale legge
+          <span class="font-mono text-amber-300">${telDecTesto(scarto.dec)}</span></div>
       </div>
     </div>
 
     <p class="mt-3 text-xs ${scarto.conMotore ? 'text-slate-400' : 'text-amber-300'}">
       ${scarto.conMotore
         ? 'Motore acceso: lo scarto in ascensione retta è fisso, non cambia mentre armeggi.'
-        : 'Senza motore il cielo continua a scorrere: nello scarto qui sopra è già compreso il tempo passato dalla calibrazione, ma ricalcolalo appena prima di muovere la manopola.'}</p>
+        : `Senza motore il cielo scorre: la lettura in ascensione retta qui sopra tiene già conto del tempo
+           passato dalla taratura${eta > 0 ? ` (${eta} min)` : ''}, ma premi <em>Ricalcola</em> appena prima di
+           muovere la manopola.`}</p>
+
+    <p class="mt-3 text-xs text-slate-500">Arrivato in fondo, guarda nell'oculare più largo: l'oggetto è lì dentro
+    o poco fuori. Se non c'è, muovi piano in declinazione di mezzo grado avanti e indietro — l'errore dei cerchi
+    è quasi sempre lì.</p>
 
     <div class="flex flex-wrap gap-2 mt-3">
       <button id="tel-ricalcola" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Ricalcola adesso</button>
-      <button id="tel-nuovo-riferimento" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Cambia stella di riferimento</button>
       <button id="tel-riferimento-qui" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Sono arrivato: riparti da qui</button>
+      <button id="tel-nuovo-riferimento" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Cambia stella di taratura</button>
     </div>`;
 }
 
