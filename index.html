@@ -121,7 +121,15 @@
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="riepilogo">
         <div class="flex justify-between items-start gap-3 mb-3">
           <h2 class="text-2xl font-bold text-white">Stanotte</h2>
-          <button id="btn-stasera-posizione" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0" title="Rileva la posizione">Dove sono</button>
+          <!-- Il tasto dice sempre da dove sta guardando l'app: "Imposta la
+               tua posizione" se non c'è, altrimenti il nome del luogo con un
+               pallino che ne dichiara la precisione. Il testo lo scrive
+               aggiornaTastiPosizione(). -->
+          <button id="btn-stasera-posizione" class="tasto-posizione" data-stato="assente"
+            title="Scegli il luogo da cui stai osservando">
+            <span class="tasto-posizione-segno" aria-hidden="true"></span>
+            <span class="tasto-posizione-testo">Imposta la tua posizione</span>
+          </button>
         </div>
         <div id="stasera-riepilogo" class="griglia-sintesi"></div>
         <div id="stasera-meteo" class="mt-4"></div>
@@ -274,7 +282,7 @@
         <button id="skymap-btn-polo" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Mostra il punto in cui deve guardare l'asse della montatura equatoriale">Polo celeste</button>
         <button id="skymap-btn-camera" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Sovrapponi il cielo all'immagine della fotocamera">Fotocamera</button>
         <button id="skymap-btn-schermo" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Schermo intero">Schermo intero</button>
-        <button id="skymap-btn-posizione" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Rileva di nuovo la posizione">Aggiorna posizione</button>
+        <button id="skymap-btn-posizione" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Rileva di nuovo la posizione: GPS, poi rete, poi a mano">Aggiorna posizione</button>
       </div>
       <!-- Le istruzioni lunghe stanno ripiegate: sul telefono rubavano mezzo
            schermo. Su desktop l'app le apre da sola, lì lo spazio c'è. -->
@@ -568,6 +576,97 @@
     </div>
   </div>
 
+  <!-- MODALE: DOVE TI TROVI
+       La posizione è il dato da cui dipende metà dell'app, ed è anche quello
+       che più spesso non si riesce a leggere. Qui sta tutto in un posto solo:
+       cosa sta usando l'app adesso, i tre modi per ottenerla (GPS, rete, a
+       mano) con lo stato di ciascuno, e la via che non fallisce mai — la
+       città scelta in elenco o le coordinate scritte a mano. -->
+  <div id="modale-posizione" class="velo-modale hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="media">
+      <div class="flex justify-between items-start gap-3 p-5 border-b border-slate-700">
+        <div>
+          <h2 class="text-2xl font-bold text-white">Dove ti trovi</h2>
+          <p class="text-xs text-slate-400 mt-1">Serve per gli orari di sorgere e tramonto, il buio astronomico, il meteo e i passaggi della ISS</p>
+        </div>
+        <button id="btn-chiudi-posizione" class="tasto-chiudi" title="Chiudi la finestra" aria-label="Chiudi la finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+
+      <div class="corpo-modale spazio-verticale">
+
+        <!-- Cosa sta usando l'app in questo momento -->
+        <div id="pos-scheda-stato" class="pos-scheda" data-stato="assente"></div>
+
+        <!-- Il tasto che fa partire la cascata: GPS, poi rete, poi a mano -->
+        <button id="pos-btn-cerca" type="button" class="pos-tasto-principale">
+          <span class="pos-tasto-icona" aria-hidden="true"></span>
+          <span id="pos-btn-cerca-testo">Trova la mia posizione</span>
+        </button>
+        <p id="pos-esito" class="pos-esito hidden" role="status" aria-live="polite"></p>
+
+        <!-- I tre strati, con lo stato di ciascuno: si accendono man mano -->
+        <ol id="pos-strati" class="pos-strati">
+          <li class="pos-strato" data-strato="gps" data-stato="attesa">
+            <span class="pos-strato-segno" aria-hidden="true"></span>
+            <div class="pos-strato-testo">
+              <p class="pos-strato-titolo">GPS del dispositivo <span class="pos-strato-tag">precisa al metro</span></p>
+              <p class="pos-strato-dettaglio">Chiede il permesso al browser. All'aperto è la strada migliore.</p>
+            </div>
+          </li>
+          <li class="pos-strato" data-strato="rete" data-stato="attesa">
+            <span class="pos-strato-segno" aria-hidden="true"></span>
+            <div class="pos-strato-testo">
+              <p class="pos-strato-titolo">Dalla connessione <span class="pos-strato-tag">circa la città</span></p>
+              <p class="pos-strato-dettaglio">Se il GPS non risponde: nessun permesso, ma può sbagliare di decine di chilometri.</p>
+            </div>
+          </li>
+          <li class="pos-strato" data-strato="manuale" data-stato="attesa">
+            <span class="pos-strato-segno" aria-hidden="true"></span>
+            <div class="pos-strato-testo">
+              <p class="pos-strato-titolo">La scegli tu <span class="pos-strato-tag">sempre disponibile</span></p>
+              <p class="pos-strato-dettaglio">La città in elenco o le coordinate esatte. Funziona anche offline e senza permessi.</p>
+            </div>
+          </li>
+        </ol>
+
+        <!-- Strato 3: la via che non fallisce mai -->
+        <section id="pos-manuale" class="pos-manuale">
+          <h3 class="font-bold text-white">Scegli tu il luogo</h3>
+          <p class="text-xs text-slate-400">Basta la città più vicina: per gli orari del cielo qualche chilometro non cambia nulla.</p>
+
+          <label for="pos-cerca-citta" class="block text-xs text-slate-400 mt-3 mb-1">Cerca una città</label>
+          <input id="pos-cerca-citta" type="search" autocomplete="off" placeholder="Roma, Bologna, Parigi…"
+            class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+          <div id="pos-risultati" class="pos-risultati" role="listbox" aria-label="Città trovate"></div>
+
+          <details class="nota-ripiegata mt-3">
+            <summary>Conosco le coordinate esatte</summary>
+            <div class="flex flex-wrap items-end gap-2 mt-3">
+              <div>
+                <label for="pos-lat" class="block text-xs text-slate-400 mb-1">Latitudine</label>
+                <input id="pos-lat" type="number" step="0.0001" min="-90" max="90" placeholder="41.9"
+                  class="w-28 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label for="pos-lon" class="block text-xs text-slate-400 mb-1">Longitudine</label>
+                <input id="pos-lon" type="number" step="0.0001" min="-180" max="180" placeholder="12.5"
+                  class="w-28 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+              </div>
+              <button id="pos-btn-coordinate" type="button" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Usa queste coordinate</button>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">Gradi decimali, con il punto: sud e ovest si scrivono col meno (−). Su una mappa online basta tenere premuto sul punto per leggerle.</p>
+          </details>
+        </section>
+
+        <p class="text-xs text-slate-500">La posizione resta salvata solo su questo dispositivo: non viene inviata a nessuno, e l'app la usa per fare i conti in locale.</p>
+
+        <div class="barra-chiudi">
+          <button id="btn-chiudi-posizione-basso" type="button" class="tasto-chiudi-largo">Chiudi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODALE: IMPOSTAZIONI, BACKUP E CALENDARIO -->
   <div id="modale-impostazioni" class="velo-modale hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
     <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="media">
@@ -578,25 +677,14 @@
 
       <div class="corpo-modale spazio-verticale-largo">
 
+        <!-- La posizione ha una finestra tutta sua: qui resta solo il
+             riepilogo, così esiste un posto solo dove gestirla davvero. -->
         <section class="space-y-2">
           <h3 class="font-bold text-white">La tua posizione</h3>
           <p id="imp-posizione" class="text-sm text-slate-400">Non impostata.</p>
-          <p class="text-xs text-slate-500">Serve per orari di sorgere e tramonto, buio astronomico, meteo e passaggi delle stazioni spaziali.</p>
+          <p class="text-xs text-slate-500">Serve per orari di sorgere e tramonto, buio astronomico, meteo e passaggi delle stazioni spaziali. Si può rilevare col GPS, dedurre dalla connessione oppure scegliere a mano.</p>
           <div class="flex flex-wrap gap-2">
-            <button id="imp-btn-gps" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Rileva con il GPS</button>
-          </div>
-          <div class="flex flex-wrap items-end gap-2 pt-1">
-            <div>
-              <label for="imp-lat" class="block text-xs text-slate-400 mb-1">Latitudine</label>
-              <input id="imp-lat" type="number" step="0.0001" min="-90" max="90" placeholder="41.9"
-                class="w-28 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
-            </div>
-            <div>
-              <label for="imp-lon" class="block text-xs text-slate-400 mb-1">Longitudine</label>
-              <input id="imp-lon" type="number" step="0.0001" min="-180" max="180" placeholder="12.5"
-                class="w-28 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
-            </div>
-            <button id="imp-btn-manuale" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Imposta a mano</button>
+            <button id="imp-btn-posizione" class="px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Gestisci la posizione</button>
           </div>
         </section>
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v21';
+const CACHE_NAME = 'astrocal-v22';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -24,6 +24,11 @@ const LIBRERIE = [
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js',
   'https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js'
 ];
+
+// Servizi che deducono la posizione dall'indirizzo IP: sono lo strato di
+// ripiego quando il GPS non risponde, e una risposta vecchia di cache
+// racconterebbe dove eri, non dove sei.
+const SERVIZI_POSIZIONE = ['ipapi.co', 'ipwho.is', 'get.geojs.io'];
 
 // Host le cui risposte salviamo man mano che arrivano (librerie, tessere mappa)
 const HOST_DA_CONSERVARE = [
@@ -72,9 +77,14 @@ self.addEventListener('fetch', (e) => {
   let url;
   try { url = new URL(req.url); } catch (err) { return; }
 
-  // Meteo e dati orbitali dei satelliti devono essere freschi: mai dalla cache.
-  // Se la rete non c'è, l'app mostra il valore salvato in localStorage.
-  if (url.hostname.includes('open-meteo.com') || url.hostname.includes('celestrak')) {
+  // Meteo, dati orbitali dei satelliti e servizi di posizione devono essere
+  // freschi: mai dalla cache. Se la rete non c'è, l'app mostra il valore
+  // salvato in localStorage — e per la posizione resta la scelta a mano.
+  // Attenzione: senza questa deviazione la risposta di ripiego sarebbe
+  // index.html, cioè una pagina HTML servita al posto di un JSON.
+  if (url.hostname.includes('open-meteo.com') ||
+      url.hostname.includes('celestrak') ||
+      SERVIZI_POSIZIONE.some(h => url.hostname === h)) {
     e.respondWith(fetch(req).catch(() => new Response('', { status: 504 })));
     return;
   }
