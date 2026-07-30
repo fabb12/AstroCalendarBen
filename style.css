@@ -2555,8 +2555,13 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
 }
 
 /* Sul telefono le finestre diventano fogli che salgono dal basso: il pollice
-   arriva ai tasti, il titolo resta incollato in cima e scorre solo il corpo. */
-@media (max-width: 767px) {
+   arriva ai tasti, il titolo resta incollato in cima e scorre solo il corpo.
+   Vale anche a telefono girato — la seconda condizione — dove una finestra
+   centrata alta quanto vuole finirebbe metà dentro e metà fuori dallo schermo.
+   Questa coppia di condizioni è "siamo su un telefono", per larghezza o per
+   altezza, e torna identica più sotto: cambiarla in un posto solo non basta. */
+@media (max-width: 767px),
+       (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
   .velo-modale { padding: 0; align-items: flex-end; overflow: hidden; }
   .pannello-modale {
     margin: 0;
@@ -2628,7 +2633,8 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
    tagliato sotto ai comandi: mezza cupola e i punti cardinali spariti.
    In colonna flex, con flex-shrink a 0, ogni riga tiene la sua altezza e a
    scorrere è il corpo — che è quello che doveva succedere fin dall'inizio. */
-@media (max-width: 767px) {
+@media (max-width: 767px),
+       (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
   .sim-corpo, .ecl-corpo { display: flex; flex-direction: column; }
   .sim-corpo > *, .ecl-corpo > * { flex: 0 0 auto; }
 }
@@ -2704,7 +2710,8 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   .voce-menu { flex: 1 1 0; max-width: 148px; }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 767px),
+       (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
 
   .testata-app { padding-top: max(10px, env(safe-area-inset-top)); }
 
@@ -2798,21 +2805,113 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   .fc-col-header-cell-cushion { font-size: 0.55rem; }
 }
 
-/* Telefono girato di lato: di altezza ce n'è pochissima, e quella che c'è
-   deve andare al contenuto. La testata si schiaccia su una riga sola. */
-@media (max-width: 926px) and (orientation: landscape) and (pointer: coarse) {
+/* ============================================================================
+   TELEFONO GIRATO DI LATO
+   ----------------------------------------------------------------------------
+   Prima questo blocco si riconosceva dalla larghezza (max-width: 926px), e su
+   un telefono girato la larghezza è il numero sbagliato da guardare: un iPhone
+   Pro Max di lato misura 932 pixel, un pixel in più del confine, e restava
+   fuori — testata alta col sottotitolo, barra da 64px, riquadri da 76vh su 430
+   pixel d'altezza. Quello che manca girando il telefono non è larghezza:
+   è ALTEZZA. Quindi il confine è l'altezza, e vale per ogni telefono, largo
+   quanto vuole. Sopra i 560px si è su un tablet (un iPad di lato ne misura
+   750 e passa) e le regole qui sotto non servono.
+
+   Il tocco fa da guardia: una finestra schiacciata sul computer resta un
+   computer. Lo stesso confine sta in app.js (ALTEZZA_MINIMA_TABLET): se si
+   cambia qui, va cambiato anche lì.
+   ========================================================================== */
+@media (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
   :root {
-    --altezza-cielo: 86vh;
-    --altezza-mappa-eclissi: 70vh;
-    --altezza-simulazione: 70vh;
-    --barra-inferiore: 48px;
+    /* I riquadri grandi non si prendono più una frazione dello schermo (86vh
+       su 390 pixel sono 335, e con testata e barra in fondo il disegno finiva
+       tagliato): si prendono quello che AVANZA davvero, tolte le due fasce
+       fisse. `vh` prima e `dvh` poi, per i browser che non conoscono dvh. */
+    --altezza-cielo: calc(100vh - var(--barra-inferiore) - 62px);
+    --altezza-cielo: calc(100dvh - var(--barra-inferiore) - 62px);
+    /* La mappa e la scena stanno dentro a un foglio alto 92dvh, e il foglio
+       ha la sua testata: quello che tolgo qui è la testata più il respiro,
+       perché il disegno si veda tutto senza doverlo inseguire scorrendo. */
+    --altezza-mappa-eclissi: calc(100vh - 160px);
+    --altezza-mappa-eclissi: calc(100dvh - 160px);
+    --altezza-simulazione: calc(100vh - 160px);
+    --altezza-simulazione: calc(100dvh - 160px);
+    /* La misura è quella vera della barra, tacca del pollice compresa:
+       è il numero da cui dipende quanto spazio resta al contenuto */
+    --barra-inferiore: calc(48px + env(safe-area-inset-bottom));
+    --passo: 10px;
   }
+
+  /* --- La testata si schiaccia su una riga sola --- */
   .testata-app { padding-top: 6px; margin-bottom: 8px; }
   .marchio { width: 36px; height: 36px; border-radius: 12px; }
   .titolo-app { font-size: 1.02rem; }
-  /* La barra in fondo si assottiglia: di altezza ce n'è pochissima */
-  .nav-principale { padding: 2px 4px calc(2px + env(safe-area-inset-bottom)); }
+  /* Il sottotitolo se ne va a prescindere dalla larghezza: su un Pro Max
+     girato ci starebbe, ma costa una riga di schermo su tre che ce ne sono */
+  .sottotitolo-app { display: none; }
+
+  /* --- La barra in fondo si assottiglia --- */
+  .nav-principale {
+    /* Girato, il notch sta di lato: senza questo la prima voce ci finisce sotto */
+    padding: 2px max(4px, env(safe-area-inset-right)) calc(2px + env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+  }
   .voce-menu { min-height: 40px; font-size: 0.6rem; gap: 1px; }
+
+  /* Sotto al contenuto basta lo spazio della barra: il respiro in più
+     (fino a 56px) è una schermata intera di roba non vista */
+  main { padding-bottom: calc(10px + var(--barra-inferiore)); }
+
+  /* --- I riquadri grandi non hanno più un minimo più alto dello schermo ---
+     320px di minimo su 390 di finestra facevano sbordare il cielo sotto alla
+     barra: qui il minimo lo detta lo spazio che c'è, non una misura fissa. */
+  .tela-cielo, .tela-simulazione { min-height: 0; }
+  #mappa-eclissi { min-height: 0; }
+
+  /* La testata di una finestra pesa quanto due righe di titolo più il
+     sottotitolo: girati sono un terzo del foglio, spesi per ripetere il nome
+     di quello che si è appena toccato. Si stringe, e il titolo si ferma a due
+     righe — il tasto "Chiudi" resta comunque in vista, che è il suo mestiere. */
+  .testata-modale { padding: 10px 14px; }
+  .testata-modale h2 {
+    font-size: 1rem;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .testata-modale p { font-size: 0.72rem; }
+  .corpo-modale { padding: 12px 14px; }
+
+  /* La scheda dell'oggetto sulla mappa: di lato lo spazio è largo e basso,
+     quindi si stringe in colonna invece di coprire mezzo cielo */
+  .pannello-dettaglio { max-height: calc(100% - 74px); width: min(300px, 44%); }
+  .gruppo-comandi.gruppo-attivo { max-height: 74%; }
+
+  /* La schermata di benvenuto del cielo sta dentro al riquadro della mappa, e
+     girato quel riquadro è alto un terzo: centrata finiva sotto alle linguette
+     dei gruppi, con il titolo che passava dietro a "Tempo" e "Visualizzazione".
+     Qui scende sotto alla barra dei comandi e si stringe: due righe di testo
+     e i due tasti, che è tutto quello che deve dire. */
+  #skymap-overlay {
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 86px 18px 16px;
+    overflow-y: auto;
+  }
+  #skymap-overlay > p:first-child { font-size: 1.1rem; }
+  #skymap-overlay > p + p { font-size: 0.76rem; max-width: 52ch; line-height: 1.4; }
+  #skymap-btn-avvia { padding: 9px 22px; }
+}
+
+/* Girato c'è larghezza da spendere: "Stasera" va a due colonne già da 700px,
+   senza aspettare i 900 della regola generale. Su uno schermo alto 390 pixel
+   una colonna sola vuol dire scorrere per tutto il contenuto, con righe di
+   testo lunghe quanto lo schermo — larghi e bassi si legge peggio, non meglio. */
+@media (orientation: landscape) and (max-height: 560px) and (pointer: coarse) and (min-width: 700px) {
+  .griglia-stasera { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .griglia-stasera > [data-blocco="riepilogo"],
+  .griglia-stasera > [data-blocco="prossimi"] { grid-column: 1 / -1; }
 }
 
 /* ------------------------------------------------------------ PUNTATORI     */
