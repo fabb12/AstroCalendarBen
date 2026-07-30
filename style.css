@@ -636,7 +636,8 @@ details > summary::marker { color: var(--testo-3); font-size: 0.8em; }
 /* ------------------------------------------------- IL CIELO E GLI STRUMENTI */
 #skymap-contenitore,
 #sim-scena,
-#mappa-eclissi {
+#mappa-eclissi,
+#mappa-lunare {
   background-color: #03050c;
   box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.6), var(--ombra-3);
 }
@@ -942,7 +943,8 @@ body button.tasto-chiudi-largo:active { transform: translateY(0); }
 
 /* --- La mappa e le indicazioni sovrapposte --- */
 .ecl-mappa-guscio { position: relative; }
-#mappa-eclissi {
+#mappa-eclissi,
+#mappa-lunare {
   width: 100%;
   height: 58vh;
   min-height: 340px;
@@ -1389,6 +1391,34 @@ body .ecl-select {
   background: var(--ambra);
 }
 .ecl-fascia-passi b { color: var(--testo); font-family: var(--mono); }
+
+/* --- Eclissi lunari ----------------------------------------------------
+   La sigla dei contatti (P1, U2...) e' il modo in cui vengono chiamati
+   ovunque: sta accanto al nome esteso, in piccolo, cosi' chi legge un
+   almanacco altrove ritrova le stesse etichette. */
+.lun-sigla {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--testo-3);
+  font-weight: 400;
+}
+.lun-sw-parte {
+  width: 22px; height: 12px; border-radius: 3px;
+  background: rgba(167, 139, 250, 0.35);
+}
+.lun-sw-intera {
+  width: 22px; height: 12px; border-radius: 3px;
+  background: rgba(196, 181, 253, 0.6);
+}
+.lun-sw-zenit {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--viola); border: 2px solid #f5f3ff;
+}
 
 /* --- Il cielo sara' sereno? -------------------------------------------
    Quando la rete non risponde questo blocco sparisce del tutto: meglio il
@@ -2959,7 +2989,8 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
 .ecl-colonna-principale,
 .ecl-colonna-lato { display: grid; gap: 14px; align-content: start; min-width: 0; }
 
-#mappa-eclissi { height: var(--altezza-mappa-eclissi); }
+#mappa-eclissi,
+#mappa-lunare { height: var(--altezza-mappa-eclissi); }
 
 @media (min-width: 1180px) {
   /* La mappa e il suo filmato a sinistra, le letture a destra: si guarda

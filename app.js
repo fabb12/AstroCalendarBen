@@ -485,6 +485,7 @@ window.addEventListener('DOMContentLoaded', () => {
   inizializzaFormAggiungi();
   inizializzaMappaEclissiUI();
   inizializzaEclissiDiCasaUI();
+  inizializzaMappaLunareUI();
   inizializzaSimulazione();
   inizializzaSkymap();
   inizializzaNotifiche();
@@ -500,7 +501,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Helper: crea un evento con id sicuro e testo data formattato
-function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, corpoCielo, simul, strumento, congiunzione }) {
+function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, eclissiLunare, corpoCielo, simul, strumento, congiunzione }) {
   (destinazioneEventi || eventiCalcolati).push({
     id: id || `ev${contatoreId++}`,
     titolo,
@@ -514,6 +515,9 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     categoria: categoria || 'altro',
     // Dati per la mappa di visibilità (solo eclissi solari con fascia centrale)
     eclissi: eclissi || null,
+    // Le eclissi lunari hanno una mappa tutta loro: non c'è un'ombra che
+    // corre sulla Terra, ma la metà di pianeta da cui la Luna è visibile
+    eclissiLunare: eclissiLunare || null,
     // Corpo celeste protagonista dell'evento: apre la vista Cielo puntata su di lui
     corpoCielo: corpoCielo || null,
     // Misure fisiche usate dalla simulazione per renderizzare l'evento
@@ -747,6 +751,16 @@ function aggiungiEclissiLunari(t0, limite) {
         colore: '#ef4444',
         categoria: 'eclissi',
         corpoCielo: 'Moon',
+        // Le semidurate danno i contatti senza cercarli: bastano sommate e
+        // sottratte all'istante di massimo.
+        eclissiLunare: {
+          peakUt: ecl.peak.ut,
+          kind: ecl.kind,
+          sdPenum: ecl.sd_penum,
+          sdPartial: ecl.sd_partial,
+          sdTotal: ecl.sd_total,
+          oscuramento: ecl.obscuration
+        },
         // Semidurate (in minuti) delle varie fasi: da queste la simulazione
         // ricava il percorso della Luna dentro penombra e ombra terrestre.
         simul: {
@@ -2933,6 +2947,300 @@ function inizializzaEclissiDiCasaUI() {
   }
 }
 
+// =====================================================================
+// 1-quinquies. LE ECLISSI LUNARI
+//   Sono quelle che l'italiano medio vedra' davvero: da casa, senza
+//   spostarsi, senza filtri, una totale ogni pochi anni. Fino a ora
+//   avevano solo la simulazione, mentre le solari avevano tutta la mappa.
+//
+//   La geometria e' molto piu' semplice. Non c'e' un'ombra che corre sulla
+//   Terra: la Luna entra nell'ombra terrestre e chiunque la veda in cielo
+//   vede la stessa identica cosa, nello stesso identico istante. L'unica
+//   domanda e' se in quel momento la Luna e' sopra l'orizzonte.
+// =====================================================================
+
+// Sotto quale altezza geometrica si considera la Luna tramontata. Non zero:
+// l'atmosfera rifrange e alza di poco più di mezzo grado quello che sta sul
+// filo dell'orizzonte, ed è la convenzione con cui gli almanacchi danno le
+// zone di visibilità. Senza questo scarto la mappa risulterebbe più stretta
+// di quelle con cui verrà confrontata.
+const LUN_ORIZZONTE = -0.5;
+
+function _lunIstante(ut) {
+  const time = Astronomy.MakeTime(ut);
+  const rot = Astronomy.Rotation_EQJ_EQD(time);
+  const m = Astronomy.RotateVector(rot, Astronomy.GeoMoon(time));
+  return { ut, time, m: [m.x, m.y, m.z], gast: Astronomy.SiderealTime(time) * 15 };
+}
+
+// Altezza della Luna sull'orizzonte da un punto della superficie. La Luna e'
+// vicina: la parallasse vale quasi un grado, e va tenuta — e' proprio quella
+// che allarga la zona di visibilita' oltre il mezzo pianeta esatto.
+function _lunAltezza(lat, lon, d) {
+  const latR = lat * ECL_RAD, thetaR = (lon + d.gast) * ECL_RAD;
+  const cs = Math.cos(latR), sn = Math.sin(latR);
+  const ct = Math.cos(thetaR), st = Math.sin(thetaR);
+  const c = 1 / Math.sqrt(cs * cs + ECL_F2 * sn * sn);
+  const rc = c * RAGGIO_TERRA_UA, rz = c * ECL_F2 * RAGGIO_TERRA_UA;
+  const ux = cs * ct, uy = cs * st, uz = sn;
+  const mx = d.m[0] - rc * ux, my = d.m[1] - rc * uy, mz = d.m[2] - rz * sn;
+  const dm = Math.hypot(mx, my, mz);
+  return Math.asin(Math.max(-1, Math.min(1, (ux * mx + uy * my + uz * mz) / dm))) / ECL_RAD;
+}
+
+// Azimut della Luna, per dire da che parte guardare
+function _lunAzimut(lat, lon, d) {
+  const latR = lat * ECL_RAD, thetaR = (lon + d.gast) * ECL_RAD;
+  const cs = Math.cos(latR), sn = Math.sin(latR);
+  const ct = Math.cos(thetaR), st = Math.sin(thetaR);
+  const c = 1 / Math.sqrt(cs * cs + ECL_F2 * sn * sn);
+  const rc = c * RAGGIO_TERRA_UA, rz = c * ECL_F2 * RAGGIO_TERRA_UA;
+  const ux = cs * ct, uy = cs * st, uz = sn;
+  const mx = d.m[0] - rc * ux, my = d.m[1] - rc * uy, mz = d.m[2] - rz * sn;
+  const dm = Math.hypot(mx, my, mz);
+  const orizz = Math.hypot(ux, uy);
+  if (orizz < 1e-9) return null;
+  const ex = -uy / orizz, ey = ux / orizz;
+  const nx = -uz * ey, ny = uz * ex, nz = ux * ey - uy * ex;
+  const vx = mx / dm, vy = my / dm, vz = mz / dm;
+  return ((Math.atan2(vx * ex + vy * ey, vx * nx + vy * ny + vz * nz) / ECL_RAD) + 360) % 360;
+}
+
+// I contatti di un'eclissi lunare non si cercano: le semidurate calcolate
+// dalla libreria, sommate e sottratte al massimo, li danno tutti.
+function _lunContatti(dati) {
+  const v = [];
+  const agg = (min, sigla, nome) => v.push({ min, sigla, nome });
+  if (dati.sdPenum > 0) agg(-dati.sdPenum, 'P1', 'Inizio della penombra');
+  if (dati.sdPartial > 0) agg(-dati.sdPartial, 'U1', 'Inizio della fase parziale');
+  if (dati.sdTotal > 0) agg(-dati.sdTotal, 'U2', 'Inizio della totalità');
+  agg(0, '—', 'Massimo dell\'eclissi');
+  if (dati.sdTotal > 0) agg(dati.sdTotal, 'U3', 'Fine della totalità');
+  if (dati.sdPartial > 0) agg(dati.sdPartial, 'U4', 'Fine della fase parziale');
+  if (dati.sdPenum > 0) agg(dati.sdPenum, 'P4', 'Fine della penombra');
+  return v;
+}
+
+let _lunMappa = null;
+let _lunStrati = [];
+let _lunEventoInCorso = null;
+let _lunMarkerPosizione = null;
+
+function _lunNomeTipo(kind) {
+  return kind === 'total' ? 'totale' : kind === 'partial' ? 'parziale' : 'penombrale';
+}
+
+// La regione da cui la Luna e' sopra l'orizzonte in un dato istante: un
+// cerchio di raggio poco piu' che un quarto di meridiano attorno al punto
+// che ha la Luna allo zenit. Quasi sempre inghiotte un polo, e li' il
+// contorno per azimut non funziona — ma _eclContorno sa gia' cavarsela.
+function _lunRegioneVisibile(d, nAzimut) {
+  const centro = _eclVettoreALatLon(d.m, d.gast);
+  return _eclContorno(centro, (la, lo) => _lunAltezza(la, lo, d) > LUN_ORIZZONTE,
+                      11000, nAzimut || 72, 11);
+}
+
+function apriMappaLunare(id) {
+  const evento = eventiCalcolati.find(e => e.id === id);
+  if (!evento || !evento.eclissiLunare) return;
+  const modale = document.getElementById('modale-lunare');
+  if (!modale || typeof L === 'undefined' || typeof Astronomy === 'undefined') return;
+
+  _lunEventoInCorso = evento;
+  const titolo = document.getElementById('lunare-titolo');
+  if (titolo) titolo.textContent = `${evento.titolo} — ${evento.dataTesto}`;
+  modale.classList.remove('hidden');
+
+  if (!_lunMappa) {
+    _lunMappa = L.map('mappa-lunare', {
+      worldCopyJump: true, minZoom: 1, zoomControl: false, attributionControl: true
+    }).setView([20, 0], 1);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 6, attribution: '&copy; OpenStreetMap'
+    }).addTo(_lunMappa);
+    L.control.zoom({ position: 'topright' }).addTo(_lunMappa);
+  }
+
+  _lunStrati.forEach(s => _lunMappa.removeLayer(s));
+  _lunStrati = [];
+  if (_lunMarkerPosizione) { _lunMappa.removeLayer(_lunMarkerPosizione); _lunMarkerPosizione = null; }
+
+  const dati = evento.eclissiLunare;
+  const contatti = _lunContatti(dati);
+  const primo = contatti[0], ultimo = contatti[contatti.length - 1];
+  const dMax = _lunIstante(dati.peakUt);
+  const dPrimo = _lunIstante(dati.peakUt + primo.min / 1440);
+  const dUltimo = _lunIstante(dati.peakUt + ultimo.min / 1440);
+
+  // Tutta la mappa lavora attorno al meridiano che ha la Luna allo zenit
+  const zenit = _eclVettoreALatLon(dMax.m, dMax.gast);
+  _eclRifLon = zenit[1];
+
+  // Chi vede il massimo: la Luna e' su in quell'istante
+  const alMassimo = _lunRegioneVisibile(dMax);
+  if (alMassimo) {
+    _lunStrati.push(L.polygon(alMassimo, {
+      stroke: false, fillColor: '#a78bfa', fillOpacity: 0.18, fillRule: 'nonzero',
+      interactive: false
+    }).addTo(_lunMappa));
+  }
+
+  // Chi la vede dall'inizio alla fine: la Luna deve essere su in entrambi
+  // gli estremi. La Terra intanto ha girato, e la zona si stringe parecchio.
+  const intera = _eclContorno(zenit,
+    (la, lo) => _lunAltezza(la, lo, dPrimo) > LUN_ORIZZONTE &&
+                _lunAltezza(la, lo, dUltimo) > LUN_ORIZZONTE,
+    11000, 72, 11);
+  if (intera) {
+    _lunStrati.push(L.polygon(intera, {
+      stroke: false, fillColor: '#c4b5fd', fillOpacity: 0.3, fillRule: 'nonzero'
+    }).bindTooltip('Da qui si vede l\'eclissi per intero, dal primo all\'ultimo contatto',
+      { sticky: true }).addTo(_lunMappa));
+  }
+
+  // Il punto che ha la Luna esattamente allo zenit al massimo
+  _lunStrati.push(L.circleMarker(_eclInquadraPunto(zenit), {
+    radius: 6, color: '#f5f3ff', fillColor: '#8b5cf6', fillOpacity: 1, weight: 2
+  }).bindTooltip(`<b>Luna allo zenit</b><br>${_eclOra(evento.dataObj)} · ` +
+    `${formattaCoordinate(zenit[0], zenit[1])}`, { direction: 'top' }).addTo(_lunMappa));
+
+  _lunAggiornaTesti(evento, contatti);
+
+  setTimeout(() => {
+    _lunMappa.invalidateSize();
+    if (alMassimo) {
+      const b = L.latLngBounds(alMassimo.map(p => [Math.max(-80, Math.min(80, p[0])), p[1]]));
+      _lunMappa.fitBounds(b.pad(0.05));
+    }
+  }, 60);
+}
+
+function chiudiMappaLunare() {
+  const modale = document.getElementById('modale-lunare');
+  if (modale) modale.classList.add('hidden');
+  _lunEventoInCorso = null;
+}
+
+// Riepilogo, contatti locali e nota sul colore
+function _lunAggiornaTesti(evento, contatti) {
+  const dati = evento.eclissiLunare;
+  const riepilogo = document.getElementById('lunare-riepilogo');
+  const tabella = document.getElementById('lunare-contatti');
+  const luogoEl = document.getElementById('lunare-luogo');
+  const nota = document.getElementById('lunare-nota');
+
+  const durataTotale = dati.sdTotal > 0 ? dati.sdTotal * 2 : 0;
+  const durataParziale = dati.sdPartial > 0 ? dati.sdPartial * 2 : 0;
+  const inizio = new Date(evento.dataObj.getTime() - dati.sdPenum * 60000);
+  const fine = new Date(evento.dataObj.getTime() + dati.sdPenum * 60000);
+
+  if (riepilogo) {
+    const schede = [
+      { etichetta: 'Dura in tutto', valore: `${Math.round(dati.sdPenum * 2)} min`,
+        nota: `dalle ${_eclOra(inizio)} alle ${_eclOra(fine)}, ora locale` },
+      durataTotale > 0
+        ? { etichetta: 'Totalità', valore: _eclDurataSec(durataTotale * 60),
+            nota: 'la Luna è tutta dentro l\'ombra della Terra' }
+        : { etichetta: 'Fase più profonda',
+            valore: durataParziale > 0 ? _eclDurataSec(durataParziale * 60) : 'solo penombra',
+            nota: durataParziale > 0 ? 'la Luna è in parte dentro l\'ombra'
+                                     : 'la Luna sfiora solo la penombra: cambiamento appena percettibile' },
+      { etichetta: 'Massimo alle', valore: _eclOra(evento.dataObj),
+        nota: typeof dati.oscuramento === 'number'
+          ? `${_eclPerc(dati.oscuramento)} del disco lunare in ombra` : '—' }
+    ];
+    riepilogo.innerHTML = schede.map(s => `
+      <div class="ecl-scheda">
+        <span class="ecl-scheda-etichetta">${s.etichetta}</span>
+        <span class="ecl-scheda-valore">${s.valore}</span>
+        <span class="ecl-scheda-nota">${s.nota}</span>
+      </div>`).join('');
+  }
+
+  // I contatti valgono per tutto il pianeta: cambia solo se da casa tua la
+  // Luna, in quel momento, e' sopra o sotto l'orizzonte.
+  const luogo = luogoCorrente();
+  if (luogoEl) {
+    luogoEl.innerHTML = luogo
+      ? `${formattaCoordinate(luogo.lat, luogo.lon)} <span class="ecl-fonte">(la tua posizione)</span>`
+      : '<span class="ecl-fonte">nessuna posizione impostata</span>';
+  }
+
+  if (tabella) {
+    let sopra = 0;
+    const righe = contatti.map(c => {
+      const t = new Date(evento.dataObj.getTime() + c.min * 60000);
+      let stato = '';
+      if (luogo) {
+        const d = _lunIstante(dati.peakUt + c.min / 1440);
+        const alt = _lunAltezza(luogo.lat, luogo.lon, d);
+        const az = _lunAzimut(luogo.lat, luogo.lon, d);
+        if (alt > LUN_ORIZZONTE) {
+          sopra++;
+          stato = `Luna a ${alt.toFixed(0)}°${az != null ? ` verso ${skyNomeDirezione(az)}` : ''}`;
+        } else {
+          stato = 'la Luna è sotto l\'orizzonte';
+        }
+      }
+      return `
+        <li class="ecl-contatto${luogo && !stato.startsWith('Luna') ? ' sotto' : ''}">
+          <span class="ecl-contatto-nome">${c.nome}
+            ${c.sigla !== '—' ? `<span class="lun-sigla">${c.sigla}</span>` : ''}</span>
+          <span class="ecl-contatto-ora">${_eclOraSec(t)}</span>
+          <span class="ecl-contatto-nota">${stato || 'imposta la posizione per sapere se da te è visibile'}</span>
+        </li>`;
+    }).join('');
+
+    let avviso = '';
+    if (luogo) {
+      if (sopra === 0) {
+        avviso = `<p class="ecl-contatti-avviso">Da qui questa eclissi non si vede: la Luna
+          resta sotto l'orizzonte per tutta la sua durata.</p>`;
+      } else if (sopra < contatti.length) {
+        avviso = `<p class="ecl-contatti-avviso">Da qui se ne vede solo una parte: la Luna
+          sorge o tramonta a eclissi iniziata. I momenti con la Luna sotto l'orizzonte sono
+          barrati.</p>`;
+      }
+    }
+    tabella.innerHTML = righe + avviso;
+  }
+
+  if (nota) {
+    nota.innerHTML = dati.kind === 'total'
+      ? `<p><b>Di che colore sarà?</b> Nessuno può dirlo con precisione. Durante la totalità la
+         Luna non sparisce: viene illuminata dalla luce del Sole rifratta dall'atmosfera
+         terrestre — la somma di tutte le albe e i tramonti del pianeta, in quel momento —
+         e per questo diventa rossa. Quanto rossa dipende da com'è messa la nostra atmosfera:
+         dopo una grande eruzione vulcanica, con la stratosfera carica di polveri, le eclissi
+         totali sono state quasi nere.</p>
+         <p>Gli osservatori la classificano a occhio con la scala di Danjon, da <b>L=0</b>
+         (Luna quasi invisibile, grigio-nerastra) a <b>L=4</b> (arancione molto luminosa, con
+         il bordo azzurrino). Guardala e dai il tuo voto: è una misura che si fa ancora a
+         occhio nudo, e la tua vale quanto quella di chiunque altro.</p>
+         <p class="ecl-nota-piccola">Si guarda tranquillamente a occhio nudo, senza nessun
+         filtro: qui non c'è niente di pericoloso. Un binocolo aiuta moltissimo a cogliere
+         le sfumature di colore sul bordo dell'ombra.</p>`
+      : `<p>Le eclissi ${_lunNomeTipo(dati.kind)} sono più discrete di quelle totali: ${
+         dati.kind === 'partial'
+           ? 'un morso scuro sul bordo della Luna, netto e ben visibile a occhio nudo, ma senza il rosso della totalità.'
+           : 'la Luna attraversa solo la penombra, e il calo di luminosità è così graduale che spesso ci si accorge appena che stia succedendo qualcosa. Confronta una foto a inizio e a metà eclissi: lì la differenza si vede.'}</p>
+         <p class="ecl-nota-piccola">Si guarda a occhio nudo, senza filtri. Nessun pericolo.</p>`;
+  }
+}
+
+function inizializzaMappaLunareUI() {
+  const modale = document.getElementById('modale-lunare');
+  if (!modale) return;
+  ['btn-chiudi-lunare', 'btn-chiudi-lunare-basso'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', chiudiMappaLunare);
+  });
+  modale.addEventListener('click', (e) => { if (e.target === modale) chiudiMappaLunare(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modale.classList.contains('hidden')) chiudiMappaLunare();
+  });
+}
+
 // Le tacche dei contatti sopra al cursore del tempo: danno una forma alla
 // linea del tempo, che altrimenti è una barra uguale dappertutto.
 function _eclDisegnaTacche(circ) {
@@ -4525,6 +4833,10 @@ function costruisciAgenda() {
     if (evento.eclissi) {
       scorciatoie.push(`<button onclick="apriMappaEclissi('${evento.id}')" class="${stileScorciatoia}" ` +
         `title="Il percorso del cono d'ombra, minuto per minuto">Mappa dell'ombra</button>`);
+    }
+    if (evento.eclissiLunare) {
+      scorciatoie.push(`<button onclick="apriMappaLunare('${evento.id}')" class="${stileScorciatoia}" ` +
+        `title="Da dove si vede, a che ora, e con la Luna quanto alta">Dove e quando vederla</button>`);
     }
     // Il Sole resta fuori: puntarlo nel cielo di adesso non serve a nessuno e,
     // per un'eclissi, è pure un cattivo consiglio. Per la Luna e i pianeti sì.

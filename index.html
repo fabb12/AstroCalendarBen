@@ -697,6 +697,67 @@
     </div>
   </div>
 
+  <!-- MODALE: DOVE E QUANDO VEDERE UN'ECLISSI LUNARE -->
+  <div id="modale-lunare" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="larga">
+      <div class="testata-modale flex justify-between items-start gap-4 p-5 border-b border-slate-700">
+        <div>
+          <h2 id="lunare-titolo" class="text-xl md:text-2xl font-bold text-white">Eclissi lunare</h2>
+          <p class="text-xs text-slate-400 mt-1">La Luna entra nell'ombra della Terra: chi la vede in cielo la vede tutta, nello stesso istante</p>
+        </div>
+        <button id="btn-chiudi-lunare" class="tasto-chiudi con-etichetta" title="Chiudi la finestra (o premi Esc)" aria-label="Chiudi la finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Chiudi</span></button>
+      </div>
+
+      <div class="corpo-modale ecl-corpo">
+        <div id="lunare-riepilogo" class="ecl-riepilogo"></div>
+
+        <div class="ecl-colonna-principale">
+          <div class="ecl-mappa-guscio">
+            <div id="mappa-lunare"></div>
+          </div>
+          <details class="ecl-legenda" open>
+            <summary>Come si legge la mappa</summary>
+            <div class="ecl-legenda-griglia">
+              <div class="ecl-voce">
+                <span class="ecl-voce-campione"><span class="ecl-sw lun-sw-parte"></span></span>
+                <span class="ecl-voce-testo"><b>Vede il momento del massimo</b><span>Da qui, nell'istante di massima eclissi, la Luna è sopra l'orizzonte.</span></span>
+              </div>
+              <div class="ecl-voce">
+                <span class="ecl-voce-campione"><span class="ecl-sw lun-sw-intera"></span></span>
+                <span class="ecl-voce-testo"><b>Vede l'eclissi per intero</b><span>Qui la Luna resta su dal primo all'ultimo contatto. La zona è più stretta perché intanto la Terra gira.</span></span>
+              </div>
+              <div class="ecl-voce">
+                <span class="ecl-voce-campione"><span class="ecl-sw lun-sw-zenit"></span></span>
+                <span class="ecl-voce-testo"><b>Luna allo zenit</b><span>Il punto che al massimo ha la Luna esattamente sopra la testa: da lì si guarda in alto, senza ostacoli.</span></span>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="ecl-colonna-lato">
+          <div class="ecl-pannello">
+            <div class="ecl-pannello-testa">
+              <h3>Gli orari, da casa tua</h3>
+              <span id="lunare-luogo" class="ecl-luogo">—</span>
+            </div>
+            <ol id="lunare-contatti" class="ecl-contatti-lista"></ol>
+            <p class="ecl-nota-piccola">Gli istanti sono gli stessi per tutto il pianeta: cambia
+              solo se da dove sei la Luna, in quel momento, è sopra l'orizzonte.</p>
+          </div>
+
+          <div class="ecl-pannello">
+            <div class="ecl-pannello-testa"><h3>Cosa aspettarsi</h3></div>
+            <div id="lunare-nota" class="ecl-dati-locali"></div>
+          </div>
+        </div>
+
+        <div class="barra-chiudi">
+          <button id="btn-chiudi-lunare-basso" type="button" class="tasto-chiudi-largo">Chiudi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODALE: SIMULAZIONE DELL'EVENTO -->
   <div id="modale-simulazione" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
     <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="grande">
