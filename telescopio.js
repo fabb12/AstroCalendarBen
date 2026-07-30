@@ -4029,6 +4029,7 @@ function telDopoAllineamento() {
   const vaiCielo = document.getElementById('tel-vai-cielo');
   if (vaiCielo) vaiCielo.addEventListener('click', () => {
     sky.mostraPolo = true;
+    if (typeof skyTasto === 'function') skyTasto('skymap-btn-polo', true);
     mostraVista('cielo');
   });
 
@@ -5507,11 +5508,12 @@ function telInizializza() {
   telCaricaSessione();
   telInizializzaAnteprima();
 
-  // Il tasto del polo celeste nella vista Cielo
+  // Il tasto del polo celeste nella vista Cielo. L'aspetto del tasto lo
+  // decide il foglio di stile: qui si dice solo se è acceso o spento.
   const btnPolo = document.getElementById('skymap-btn-polo');
   if (btnPolo) btnPolo.addEventListener('click', () => {
     sky.mostraPolo = !sky.mostraPolo;
-    btnPolo.className = `px-3 py-1.5 rounded-full ${sky.mostraPolo ? 'bg-blue-700 hover:bg-blue-600' : 'bg-slate-700 hover:bg-slate-600'} text-white font-semibold`;
+    if (typeof skyTasto === 'function') skyTasto('skymap-btn-polo', sky.mostraPolo);
   });
 
   // Il ridisegno delle tele quando cambia la misura dello schermo
