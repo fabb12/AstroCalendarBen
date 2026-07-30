@@ -657,6 +657,11 @@ body .bg-slate-950\/90 {
 }
 #skymap-hud { color: var(--testo); }
 
+/* I comandi del cielo stanno appoggiati dentro a questo riquadro: se il suo
+   `position: relative` arrivasse solo dalla classe di Tailwind, con il CDN
+   giù finirebbero appesi all'angolo della pagina. Lo diciamo anche qui. */
+#skymap-contenitore { position: relative; }
+
 /* Il canvas del cielo: il dito serve a guardarsi intorno, non a scorrere */
 #skymap-canvas {
   touch-action: none;
@@ -1557,7 +1562,9 @@ figure.ecl-schema-fig {
   --larghezza-max: 100%;
   --margine-pagina: 14px;
   --passo: 12px;               /* distanza fra le schede */
-  --altezza-cielo: 54vh;
+  /* La mappa del cielo è la vista: i comandi le stanno sopra, non accanto,
+     quindi l'altezza è tutta sua */
+  --altezza-cielo: 74vh;
   --altezza-simulazione: 46vh;
   --altezza-mappa-eclissi: 46vh;
   --barra-inferiore: 0px;      /* spazio riservato alla navigazione in basso */
@@ -1569,7 +1576,7 @@ figure.ecl-schema-fig {
     --larghezza-max: 100%;
     --margine-pagina: 22px;
     --passo: 16px;
-    --altezza-cielo: 58vh;
+    --altezza-cielo: 76vh;
     --altezza-simulazione: 52vh;
     --altezza-mappa-eclissi: 54vh;
   }
@@ -1581,9 +1588,7 @@ figure.ecl-schema-fig {
     --larghezza-max: 1160px;
     --margine-pagina: 28px;
     --passo: 18px;
-    /* Con i comandi in cima al cielo resta un po' meno altezza: la mappa si
-       accorcia quel tanto che basta a vedere tutto senza scorrere */
-    --altezza-cielo: 60vh;
+    --altezza-cielo: 82vh;
     --altezza-simulazione: 56vh;
     --altezza-mappa-eclissi: 60vh;
   }
@@ -1597,7 +1602,7 @@ figure.ecl-schema-fig {
 /* Schermi larghi: si allarga ancora, ma non all'infinito — oltre una certa
    misura una riga di testo diventa faticosa da leggere */
 @media (min-width: 1800px) {
-  :root { --larghezza-max: 1660px; --margine-pagina: 40px; --altezza-cielo: 66vh; }
+  :root { --larghezza-max: 1660px; --margine-pagina: 40px; --altezza-cielo: 84vh; }
 }
 
 /* --------------------------------------------------- MOSTRA E NASCONDI      */
@@ -2124,61 +2129,147 @@ body button.pos-risultato:focus-visible {
   min-height: 280px;
 }
 
+/* La vista è una cosa sola: la mappa. I comandi stanno appoggiati sopra di
+   lei (vedi .cielo-chrome), quindi non le rubano nemmeno un pixel. */
 .vista-cielo { display: grid; gap: var(--passo); align-content: start; }
-.cielo-lato { display: grid; gap: 12px; align-content: start; }
 
 @media (min-width: 1180px) {
-  /* I comandi in cima per tutta la larghezza, il cielo sotto a sinistra e
-     l'elenco degli astri di fianco: nessun tasto finisce sotto la mappa */
-  .vista-cielo {
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
-    grid-template-areas: "barra barra" "scena lato";
-    align-items: start;
-  }
-  .cielo-barra  { grid-area: barra; }
-  .cielo-scena  { grid-area: scena; }
-  .cielo-lato   { grid-area: lato; position: sticky; top: 16px; }
-  .tela-cielo   { min-height: 420px; }
+  .tela-cielo { min-height: 520px; }
 }
 
-@media (min-width: 1800px) {
-  .vista-cielo { grid-template-columns: minmax(0, 1fr) 400px; }
-}
+/* --------------------------------------- I COMANDI APPOGGIATI SULLA MAPPA */
+/* Cinque gruppi con un mestiere chiaro (Tempo, Visualizzazione, Filtri,
+   Navigazione, Astri). Di norma sono tutti chiusi: si vedono cinque linguette
+   e nient'altro, e il cielo resta tutto in vista. Toccandone una si apre il
+   suo pannello sopra la mappa; toccandola di nuovo si richiude.
 
-/* ------------------------------------------- LA BARRA DEI COMANDI DEL CIELO */
-/* Quattro gruppi con un mestiere chiaro (Tempo, Visualizzazione, Filtri,
-   Navigazione). Su schermo largo stanno affiancati e si vedono tutti; sul
-   telefono e sul tablet se ne mostra uno per volta, scelto con le linguette:
-   i tasti restano grandi invece di rimpicciolirsi per stare tutti in fila. */
+   Stando dentro al riquadro del cielo, questi comandi funzionano identici
+   anche a schermo intero: non serve una seconda copia da tenere allineata. */
+.cielo-chrome {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  /* Il vuoto fra i comandi resta della mappa: trascinare lì muove il cielo */
+  pointer-events: none;
+}
+.cielo-chrome > * { pointer-events: auto; }
+
 .cielo-barra {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  /* Ogni gruppo tiene la sua altezza: allungarli tutti come il più alto
-     lasciava mezzo schermo di riquadri vuoti sopra la mappa */
-  align-items: flex-start;
-}
-
-.gruppo-comandi {
-  flex: 1 1 260px;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
-  padding: 12px 14px 14px;
-  border: 1px solid var(--bordo);
-  border-radius: var(--raggio-l);
-  background: var(--superficie);
-  box-shadow: var(--ombra-1);
 }
-.gruppo-comandi[data-gruppo="tempo"] { flex: 2 1 440px; }
 
-.titolo-gruppo {
-  margin: 0 0 10px;
-  font-family: var(--titolo);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--testo-3);
+/* Le linguette: una striscia di pillole sopra al cielo */
+.linguette-gruppi {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.linguette-gruppi::-webkit-scrollbar { display: none; }
+
+.linguetta-gruppo {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--testo-2);
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--transizione), color var(--transizione);
+}
+.linguetta-gruppo:hover { color: var(--testo); background: rgba(148, 168, 214, 0.1); }
+.linguetta-gruppo.attiva {
+  background: var(--blu);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--alone-blu);
+}
+
+/* Il promemoria che l'orologio è spostato: si vede solo quando serve */
+.chip-tempo { display: none; }
+.chip-tempo.visibile { display: inline-flex; align-items: center; }
+.chip-tempo {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid rgba(245, 181, 68, 0.5);
+  border-radius: 999px;
+  background: rgba(60, 40, 8, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--ambra);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.chip-tempo:hover { background: rgba(80, 55, 12, 0.9); }
+
+/* Le letture di puntamento e di stato, ai due lati sotto le linguette */
+.cielo-letture {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  /* Sono numeri da leggere, non comandi: il dito ci passa attraverso */
+  pointer-events: none;
+}
+.lettura-cielo {
+  padding: 7px 11px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-s);
+  background: rgba(6, 10, 20, 0.74);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--testo);
+}
+.lettura-stato { max-width: 55%; text-align: right; color: var(--testo-2); }
+
+/* Il pannello del gruppo aperto: uno solo, e si può scorrere se è lungo */
+.pannelli-gruppi { display: contents; }
+.gruppo-comandi { display: none; }
+.gruppo-comandi.gruppo-attivo {
+  display: block;
+  width: min(560px, 100%);
+  max-height: 58%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: var(--raggio-m);
+  background: rgba(6, 10, 20, 0.93);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--ombra-3);
+}
+/* L'elenco degli astri è lungo: gli si dà più corda che agli altri */
+.gruppo-comandi.gruppo-astri.gruppo-attivo { max-height: 66%; }
 
 .riga-comandi {
   display: flex;
@@ -2194,7 +2285,10 @@ body button.pos-risultato:focus-visible {
   letter-spacing: 0.01em;
 }
 /* L'etichetta di una riga intera (per esempio sopra al campo della data) */
-label.etichetta-comando { display: block; margin-bottom: 5px; }
+label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; }
+
+.elenco-astri { display: flex; flex-wrap: wrap; gap: 8px; }
+.nota-lunga { margin: 6px 0 0; font-size: 0.76rem; color: var(--testo-3); }
 
 /* I tasti del cielo: grandi, leggibili, con lo stato acceso ben visibile.
    Lo stato è una classe sola (`attiva`), così chi lo cambia da JavaScript
@@ -2275,54 +2369,19 @@ label.etichetta-comando { display: block; margin-bottom: 5px; }
   color: var(--testo-2);
 }
 
-/* Le linguette: si accendono solo dove i gruppi non ci stanno affiancati */
-.linguette-gruppi { display: none; }
-.linguetta-gruppo {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 42px;
-  padding: 9px 8px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--testo-2);
-  font-family: inherit;
-  font-size: 0.8rem;
-  font-weight: 550;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: background-color var(--transizione), color var(--transizione);
-}
-.linguetta-gruppo.attiva {
-  background: var(--blu-velo);
-  border-color: rgba(76, 141, 255, 0.4);
-  color: var(--blu-chiaro);
-}
-/* Quattro linguette su un telefono stretto: "Visualizzazione" per intero non
-   ci sta, e mezza parola con i puntini non si legge. Passa la forma corta. */
+/* Su un telefono i comandi appoggiati sul cielo devono rubargli il minimo
+   indispensabile: parole corte, misure strette, e le cinque linguette che
+   entrano tutte nella larghezza dello schermo senza scorrere */
 @media (max-width: 620px) {
+  .cielo-chrome { gap: 6px; padding: 8px; padding-top: max(8px, env(safe-area-inset-top)); }
   .linguetta-gruppo .nome-lungo { display: none; }
   .linguetta-gruppo .nome-corto { display: inline; }
-}
-
-@media (max-width: 1179px) {
-  .cielo-barra { display: block; }
-  .linguette-gruppi {
-    display: flex;
-    gap: 4px;
-    padding: 4px;
-    margin-bottom: 8px;
-    border: 1px solid var(--bordo);
-    border-radius: 999px;
-    background: var(--incassato);
-  }
-  /* Un gruppo per volta: gli altri restano nel documento (i tasti hanno
-     stati che l'app aggiorna comunque), semplicemente non si vedono */
-  .cielo-barra .gruppo-comandi { display: none; }
-  .cielo-barra .gruppo-comandi.gruppo-attivo { display: block; }
-  .titolo-gruppo { display: none; }
+  .linguetta-gruppo { min-height: 38px; padding: 8px 10px; font-size: 0.78rem; }
+  .linguette-gruppi { padding: 3px; gap: 2px; }
+  .chip-tempo { min-height: 34px; padding: 6px 10px; font-size: 0.7rem; }
+  .lettura-cielo { font-size: 0.62rem; padding: 5px 8px; }
+  .lettura-stato { max-width: 48%; }
+  .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
 }
 
 /* ------------------------------------------ SCHEDA DELL'OGGETTO SULLA MAPPA */
@@ -2381,13 +2440,6 @@ label.etichetta-comando { display: block; margin-bottom: 5px; }
 }
 .tasto-chiudi-dettaglio:hover { color: var(--testo); border-color: var(--bordo-forte); }
 
-/* Le stesse righe di dati compaiono anche nella scheda di fianco alla mappa */
-#skymap-info .voce-dato { color: var(--blu-chiaro); }
-#skymap-info ul { margin: 0; padding: 0; list-style: none; }
-#skymap-info li + li { margin-top: 4px; }
-#skymap-info .nota-dettaglio { margin: 9px 0 0; color: var(--testo-3); }
-#skymap-info .allarme-dettaglio { margin: 8px 0 0; color: var(--ambra); }
-
 /* ------------------------------------------------- ZOOM E USCITA SUL CIELO  */
 /* A schermo intero il fondo dello schermo può essere occupato dalla barra
    gestuale: i comandi si tengono dentro la zona sicura */
@@ -2440,10 +2492,10 @@ label.etichetta-comando { display: block; margin-bottom: 5px; }
 }
 .tasto-esci-cielo:hover { background: rgba(40, 52, 84, 0.94); }
 
-/* A schermo intero l'angolo in alto a destra è del tasto Esci: le letture di
-   posizione e bussola si spostano di lato per non finirgli sotto */
-#skymap-contenitore:fullscreen #skymap-stato,
-#skymap-contenitore.finto-schermo-intero #skymap-stato { margin-right: 104px; }
+/* A schermo intero l'angolo in alto a destra è del tasto Esci: le linguette
+   dei gruppi si fermano prima, per non finirgli sotto */
+#skymap-contenitore:fullscreen .cielo-barra,
+#skymap-contenitore.finto-schermo-intero .cielo-barra { padding-right: 104px; }
 
 /* Le note lunghe stanno ripiegate: il titolo si legge, il resto si apre */
 .nota-ripiegata > summary {
@@ -2719,7 +2771,7 @@ label.etichetta-comando { display: block; margin-bottom: 5px; }
    deve andare al contenuto. La testata si schiaccia su una riga sola. */
 @media (max-width: 926px) and (orientation: landscape) and (pointer: coarse) {
   :root {
-    --altezza-cielo: 74vh;
+    --altezza-cielo: 86vh;
     --altezza-mappa-eclissi: 70vh;
     --altezza-simulazione: 70vh;
     --barra-inferiore: 48px;
