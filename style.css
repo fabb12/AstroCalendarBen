@@ -1390,6 +1390,62 @@ body .ecl-select {
 }
 .ecl-fascia-passi b { color: var(--testo); font-family: var(--mono); }
 
+/* --- Sicurezza e fotografia -------------------------------------------
+   La regola sul filtro cambia col luogo, ed e' l'unica cosa in tutta la
+   finestra che puo' fare male se letta di sfuggita: sta in un riquadro
+   colorato, verde o rosso, che si vede prima del testo. */
+.ecl-sicurezza-corpo p { font-size: 0.76rem; color: var(--testo-2); line-height: 1.6; }
+.ecl-sic-titolo {
+  margin-bottom: 6px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  font-size: 0.84rem !important;
+  font-weight: 700;
+  line-height: 1.45 !important;
+}
+.ecl-sic-titolo.si {
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: var(--verde);
+}
+.ecl-sic-titolo.no {
+  background: rgba(248, 113, 113, 0.14);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  color: var(--rosso);
+}
+.ecl-sic-elenco {
+  margin: 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ecl-sic-elenco li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 0.75rem;
+  color: var(--testo-2);
+  line-height: 1.6;
+}
+.ecl-sic-elenco li::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0.6em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--bordo-forte);
+}
+.ecl-sic-elenco b { color: var(--testo); }
+.ecl-sic-sotto {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bordo);
+  font-size: 0.82rem !important;
+  font-weight: 600;
+  color: var(--testo) !important;
+}
+
 /* Tasto che apre una finestra da dentro un pannello */
 body .ecl-tasto-largo {
   width: 100%;

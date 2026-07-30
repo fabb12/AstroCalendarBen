@@ -2136,6 +2136,99 @@ function _eclAggiornaDossier(lat, lon) {
   _eclDisegnaConsiglioFascia(dossier);
   _eclDisegnaTacche(dossier && dossier.circ);
   _eclDisegnaCronologia(dossier);
+  _eclDisegnaSicurezza(dossier && dossier.circ);
+}
+
+// --- Sicurezza e fotografia -------------------------------------------
+//
+// La regola sul filtro non è la stessa dappertutto, e questa è esattamente
+// la cosa che la gente sbaglia: dentro la fascia si toglie, per quei pochi
+// minuti; un chilometro fuori non si toglie mai. Dirla in astratto non
+// serve a nessuno — qui la si dice per il punto che l'utente ha scelto,
+// con gli orari esatti in cui vale.
+let _eclSicurezzaResa = null;
+
+function _eclDisegnaSicurezza(circ) {
+  const el = document.getElementById('eclissi-sicurezza');
+  if (!el) return;
+  if (_eclSicurezzaResa === _eclCacheLocale.chiave) return;
+  _eclSicurezzaResa = _eclCacheLocale.chiave;
+
+  const totale = circ && circ.centrale && circ.tipo === 'totale' && circ.suOrizzonteAlMassimo;
+  const anulare = circ && circ.centrale && circ.tipo === 'anulare';
+
+  let regola;
+  if (totale) {
+    regola = `
+      <p class="ecl-sic-titolo si">Da questo punto il filtro si può togliere — ma solo
+        fra le ${_eclOraSec(circ.c2.data)} e le ${_eclOraSec(circ.c3.data)}.</p>
+      <p>Sono ${_eclDurataSec(circ.durataCentraleSec)}: l'unico momento di tutta l'eclissi in
+        cui il Sole si guarda a occhio nudo, ed è anche l'unico in cui vale la pena farlo.
+        Un secondo prima e un secondo dopo la luce torna pericolosa all'istante, senza dolore
+        che avverta: la retina non ha recettori per il dolore, e il danno si scopre ore dopo.
+        Rimetti il filtro <b>prima</b> che ricompaia il Sole, non quando lo vedi.</p>`;
+  } else if (anulare) {
+    regola = `
+      <p class="ecl-sic-titolo no">Il filtro non si toglie mai, in nessun istante.</p>
+      <p>Nelle eclissi anulari resta sempre un anello di fotosfera scoperto, e quell'anello
+        è abbagliante quanto il Sole intero. È l'errore più diffuso: si crede che "anulare"
+        somigli a "totale". Non c'entrano niente.</p>`;
+  } else {
+    regola = `
+      <p class="ecl-sic-titolo no">Il filtro non si toglie mai, in nessun istante.</p>
+      <p>Da qui il Sole non sparisce mai del tutto${circ && circ.visibile
+        ? ` — si ferma al ${_eclPerc(circ.oscVisibile)}` : ''}. Anche una falce sottilissima
+        di fotosfera basta a bruciare la retina, e il buio intorno inganna: la pupilla si
+        allarga e ne lascia entrare di più.</p>`;
+  }
+
+  el.innerHTML = `
+    ${regola}
+    <ul class="ecl-sic-elenco">
+      <li><b>Occhiali certificati ISO 12312-2.</b> Non occhiali da sole, per quanto scuri;
+        non lastre radiografiche, vetri affumicati, CD o pellicole. Guardando attraverso un
+        filtro giusto, in casa, non si deve vedere <i>nulla</i> tranne una lampada molto
+        forte.</li>
+      <li><b>Controllali contro luce prima di uscire.</b> Se il filtro è graffiato, forato o
+        staccato dalla montatura, si butta. Vale anche per quelli avanzati dall'eclissi
+        precedente, che spesso hanno passato anni in un cassetto.</li>
+      <li><b>Mai un binocolo o un telescopio con gli occhiali da eclissi.</b> Lo strumento
+        concentra la luce e fonde il filtro in una frazione di secondo. Il filtro solare va
+        <b>davanti all'obiettivo</b>, mai fra oculare e occhio.</li>
+      <li><b>Il modo più sicuro non guarda il Sole affatto.</b> Un foglio bucato con uno
+        spillo proietta l'immagine del Sole su un secondo foglio: si vede la falce, in
+        diretta. Uno scolapasta ne proietta cento in una volta, ed è il modo migliore di
+        mostrarla ai bambini — che guardano lo schermo, non il cielo.</li>
+      <li><b>Occhio all'ombra degli alberi.</b> Ogni spiraglio fra le foglie funziona da foro
+        stenopeico: il terreno si riempie di falci. È lo spettacolo che quasi tutti si
+        perdono, perché stanno guardando in alto.</li>
+    </ul>
+
+    <p class="ecl-sic-sotto">Se vuoi fotografarla</p>
+    <ul class="ecl-sic-elenco">
+      <li><b>Il filtro sta davanti all'obiettivo</b> per tutta la fase parziale, e non è
+        opzionale: senza, il sensore si rovina e il mirino ottico è pericoloso quanto
+        guardare il Sole a occhio nudo.</li>
+      <li><b>Trova l'esposizione una settimana prima.</b> Fotografa il Sole non eclissato con
+        lo stesso filtro, lo stesso obiettivo e la stessa apertura, e annota i valori: quella
+        posa vale identica per tutte le fasi parziali, perché la superficie del Sole ha
+        sempre la stessa luminosità — ne resta solo meno.</li>
+      ${totale ? `<li><b>In totalità, togli il filtro e apri la forcella.</b> La corona copre
+        un intervallo di luminosità enorme: la parte attaccata al bordo è migliaia di volte
+        più brillante di quella esterna, e nessuna singola posa le prende entrambe. Si parte
+        da tempi molto brevi — attorno al millesimo di secondo a f/8 e ISO 400, buoni per
+        l'anello di diamante e le protuberanze — e si scende per raddoppi fino a circa un
+        secondo per la corona esterna. Sono punti di partenza: la cosa che conta è
+        <b>variare molto</b>, non azzeccare un valore.</li>
+      <li><b>Metti a fuoco prima, a mano, e non toccare più.</b> L'autofocus non aggancia
+        niente su un cielo nero, e in ${_eclDurataSec(circ.durataCentraleSec)} non c'è tempo
+        per accorgersene.</li>
+      <li><b>Guardala.</b> Programma uno scatto a raffica e stacca gli occhi dal mirino: le
+        fotografie della corona esistono a migliaia, fatte meglio, con strumenti migliori.
+        Il ricordo di averla vista no.</li>` : `<li><b>Non serve altro.</b> Senza totalità
+        tutta l'eclissi si fotografa con il filtro montato e la stessa posa dall'inizio alla
+        fine. Le foto più belle, però, sono a terra: le falci proiettate dalle foglie.</li>`}
+    </ul>`;
 }
 
 // I cinque orari, in fila. Ognuno è cliccabile: porta il cursore del tempo
