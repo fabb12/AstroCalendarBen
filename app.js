@@ -1580,13 +1580,20 @@ function _eclNellaFascia(lat, lon) {
 // Dove andare e quanto costa: il punto più vicino della linea centrale, il
 // bordo più vicino della fascia, e quanto durerebbe la fase centrale se ci
 // si spostasse fin lì.
-function _eclConsiglioFascia(lat, lon, peakUt, finestra, dataPicco) {
+function _eclConsiglioFascia(lat, lon, peakUt, finestra, dataPicco, circQui) {
   if (!_eclPercorso) return null;
   const linea = _eclPercorso.lineaCentrale;
   if (!linea || linea.length < 2) return null; // parziale ovunque: non c'è dove andare
 
   const qui = [lat, _eclInquadra(lon)];
-  const dentro = _eclNellaFascia(lat, lon);
+  // Dentro o fuori lo dicono le circostanze calcolate, non il poligono
+  // disegnato sulla mappa. La fascia disegnata nasce da ombre campionate a
+  // istanti discreti e con un contorno a trenta azimut: sul filo del bordo
+  // e' un pelo piu' stretta del vero, e li' rispondeva "niente totalita'" a
+  // chi due riquadri piu' su leggeva "totalita': venti secondi".
+  const dentro = circQui
+    ? !!(circQui.centrale && circQui.suOrizzonteAlMassimo)
+    : _eclNellaFascia(lat, lon);
 
   let centro = null;
   for (const p of linea) {
@@ -1613,9 +1620,14 @@ function _eclConsiglioFascia(lat, lon, peakUt, finestra, dataPicco) {
       const p = _eclDestinazione(lat, lon, centro.az, m);
       if (_eclNellaFascia(p[0], p[1])) entro = m; else fuori = m;
     }
-    const p = _eclDestinazione(lat, lon, centro.az, entro);
-    bordo = { km: entro, az: centro.az, punto: [p[0], _eclInquadra(p[1])] };
-    bordo.nome = nomeLuogoVicino(bordo.punto[0], bordo.punto[1], 120);
+    // Se la bisezione trova il bordo a ridosso dei piedi vuol dire che si è
+    // proprio sul filo: il poligono e i conti la vedono diversamente, e
+    // "spostati di 300 metri" non è un consiglio da dare a nessuno.
+    if (entro > 1.5) {
+      const p = _eclDestinazione(lat, lon, centro.az, entro);
+      bordo = { km: entro, az: centro.az, punto: [p[0], _eclInquadra(p[1])] };
+      bordo.nome = nomeLuogoVicino(bordo.punto[0], bordo.punto[1], 120);
+    }
   }
 
   return { dentro, centro, bordo };
@@ -2161,7 +2173,7 @@ function _eclDossierLocale(lat, lon) {
   let valore = null;
   try {
     const circ = _eclCircostanzeLocali(lat, lon, ev.eclissi.peakUt, _eclFinestra, ev.dataObj);
-    const fascia = _eclConsiglioFascia(lat, lon, ev.eclissi.peakUt, _eclFinestra, ev.dataObj);
+    const fascia = _eclConsiglioFascia(lat, lon, ev.eclissi.peakUt, _eclFinestra, ev.dataObj, circ);
     valore = { circ, fascia, cronologia: _eclCronologia(circ) };
   } catch (e) {
     console.error('Errore nel calcolo delle circostanze locali:', e);
@@ -2363,14 +2375,15 @@ function _eclDisegnaConsiglioFascia(dossier) {
       ? ` Sulla linea centrale, <b>${_eclKm(fascia.centro.km)}</b> verso
          ${skyNomeDirezione(fascia.centro.az)}${dove(fascia.centro)}, arriva a
          <b>${_eclDurataSec(fascia.centro.durataSec)}</b>.`
-      : ' Sei praticamente sulla linea centrale: di meglio non c\'è.';
+      : fascia.centro.km < 25
+        ? ' Sei praticamente sulla linea centrale: di meglio non c\'è.'
+        : '';
     el.innerHTML = `
       <p class="ecl-fascia-esito dentro">Sei dentro la fascia di ${nomeFase}.</p>
       <p>${qui}${meglio}</p>`;
     return;
   }
 
-  if (!fascia.bordo) { el.innerHTML = ''; return; }
   // Se da qui il Sole è sotto l'orizzonte non ha senso parlare di quanto
   // viene coperto: il discorso è solo dove bisognerebbe andare.
   const visibile = circ ? circ.visibile : true;
@@ -2384,11 +2397,13 @@ function _eclDisegnaConsiglioFascia(dossier) {
     <p class="ecl-fascia-esito fuori">Da qui la ${nomeFase} non si vede.</p>
     ${premessa}
     <ul class="ecl-fascia-passi">
-      <li><b>${_eclKm(fascia.bordo.km)}</b> verso ${skyNomeDirezione(fascia.bordo.az)}${dove(fascia.bordo)}
-        — il primo punto da cui il Sole sparisce, per pochi istanti.</li>
+      ${fascia.bordo ? `<li><b>${_eclKm(fascia.bordo.km)}</b> verso
+        ${skyNomeDirezione(fascia.bordo.az)}${dove(fascia.bordo)}
+        — il primo punto da cui il Sole sparisce, per pochi istanti.</li>` : ''}
       <li><b>${_eclKm(fascia.centro.km)}</b> verso ${skyNomeDirezione(fascia.centro.az)}${dove(fascia.centro)}
-        — sulla linea centrale, dove la ${nomeFase} dura
-        <b>${_eclDurataSec(fascia.centro.durataSec)}</b>.</li>
+        — sulla linea centrale, ${fascia.centro.durataSec > 0
+          ? `dove la ${nomeFase} dura <b>${_eclDurataSec(fascia.centro.durataSec)}</b>`
+          : `dove la ${nomeFase} dura più a lungo`}.</li>
     </ul>`;
 }
 
@@ -2456,11 +2471,17 @@ function _eclCronologia(circ) {
         'Il Sole è sparito. Questo, e solo questo, è il momento in cui si può guardare a occhio ' +
         'nudo. Appare la corona, perlacea e ramificata. Sul bordo cerca le protuberanze rosa. ' +
         'Poi voltati: l\'orizzonte è arancione in tutte le direzioni, come un tramonto a 360°.');
-      const meta = (circ.c2.min + circ.c3.min) / 2;
-      agg(meta, 'clou', 'A metà totalità',
-        'Alza gli occhi dal Sole per qualche secondo: si vedono i pianeti più luminosi e le ' +
-        'stelle più brillanti, in pieno giorno. È il ricordo che resta più a lungo.');
-      agg(circ.c3.min - 0.2, 'avviso', 'Rimetti il filtro, adesso',
+      // Sotto il minuto non si fa in tempo a guardarsi intorno: dire di
+      // cercare i pianeti sprecherebbe metà dei secondi che ci sono.
+      if (circ.durataCentraleSec > 60) {
+        agg((circ.c2.min + circ.c3.min) / 2, 'clou', 'A metà totalità',
+          'Alza gli occhi dal Sole per qualche secondo: si vedono i pianeti più luminosi e le ' +
+          'stelle più brillanti, in pieno giorno. È il ricordo che resta più a lungo.');
+      }
+      // Al bordo della fascia la totalità può durare pochi secondi: l'avviso
+      // sul filtro non deve finire prima del suo inizio.
+      agg(Math.max(circ.c3.min - 0.2, (circ.c2.min + circ.c3.min) / 2),
+        'avviso', 'Rimetti il filtro, adesso',
         'Il secondo anello di diamante sta per arrivare. Va anticipato, non aspettato: appena ' +
         'ricompare un lembo di fotosfera la luce torna pericolosa in una frazione di secondo.');
       agg(circ.c3.min, 'attesa', 'Fine della totalità',
