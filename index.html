@@ -554,8 +554,12 @@
               <span class="ecl-icona-play"></span><span class="ecl-play-testo">Riproduci</span>
             </button>
             <div class="ecl-linea-tempo">
-              <input id="eclissi-tempo-slider" type="range" min="-180" max="180" value="0" step="0.5"
-                     aria-label="Momento dell'eclissi" title="Trascina per spostarti nel tempo">
+              <div class="ecl-tempo-pista">
+                <input id="eclissi-tempo-slider" type="range" min="-180" max="180" value="0" step="0.5"
+                       aria-label="Momento dell'eclissi" title="Trascina per spostarti nel tempo">
+                <!-- I contatti nel punto scelto, disegnati sopra al cursore -->
+                <div id="eclissi-tacche" class="ecl-tacche" aria-hidden="true"></div>
+              </div>
               <div class="ecl-linea-tempo-etichette">
                 <span id="eclissi-tempo-inizio">—</span>
                 <span id="eclissi-tempo-valore" class="ecl-tempo-valore">—</span>
@@ -612,6 +616,20 @@
           <div id="eclissi-dati-locali" class="ecl-dati-locali">
             <p>Scegli un punto sulla mappa per vedere cosa succede lì.</p>
           </div>
+          <!-- I cinque orari da scriversi sul palmo della mano -->
+          <div id="eclissi-contatti" class="ecl-contatti"></div>
+          <!-- Quanto dista la fascia di totalità, se non ci sei dentro -->
+          <div id="eclissi-fascia" class="ecl-fascia-consiglio"></div>
+        </div>
+
+        <!-- COSA SI VEDE, MINUTO PER MINUTO -->
+        <div class="ecl-pannello">
+          <div class="ecl-pannello-testa">
+            <h3>Cosa vedrai, minuto per minuto</h3>
+          </div>
+          <ol id="eclissi-cronologia" class="ecl-cronologia"></ol>
+          <p class="ecl-nota-piccola">Orari calcolati per il punto che hai scelto.
+            Tocca una riga per portare lì il cursore del tempo.</p>
         </div>
 
         <!-- LO SCHEMA: COME STANNO SOLE, LUNA E TERRA -->

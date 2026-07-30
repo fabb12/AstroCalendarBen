@@ -1086,7 +1086,13 @@ function _eclVettoreALatLon(v, gast) {
 
 // Quanta parte del Sole è coperta, vista da un punto preciso della
 // superficie terrestre in un dato istante. È il cuore di tutta la mappa.
-function _eclCircostanze(lat, lon, d) {
+//
+// Con `dettaglio` restituisce anche come i due dischi sono messi in cielo:
+// separazione, raggi apparenti e da che parte sta la Luna rispetto al Sole
+// per chi lo sta guardando. Servono ai tempi di contatto e alla simulazione,
+// ma non alla mappa — che chiama questa funzione centinaia di migliaia di
+// volte per ogni eclissi, e quei conti in più li pagherebbe cari.
+function _eclCircostanze(lat, lon, d, dettaglio) {
   const latR = lat * ECL_RAD;
   const thetaR = (lon + d.gast) * ECL_RAD;
   const cs = Math.cos(latR), sn = Math.sin(latR);
@@ -1121,13 +1127,64 @@ function _eclCircostanze(lat, lon, d) {
   }
   // Sotto l'orizzonte l'eclissi c'è, ma da lì non la vede nessuno.
   const suOrizzonte = altSole > -0.6;
-  return {
+  const esito = {
     osc: suOrizzonte ? osc : 0,
     oscGeometrico: osc,
     tipo: suOrizzonte ? tipo : 'nessuna',
+    tipoGeometrico: tipo,
     altSole,
     suOrizzonte
   };
+  if (!dettaglio) return esito;
+
+  esito.sep = sep;
+  esito.rSole = rSole;
+  esito.rLuna = rLuna;
+
+  // Est e nord locali, per l'azimut del Sole. Ai poli "est" non esiste:
+  // lì si lascia perdere l'azimut invece di dividere per zero.
+  const orizz = Math.hypot(ux, uy);
+  if (orizz > 1e-9) {
+    const ex = -uy / orizz, ey = ux / orizz;         // est
+    const nx = -uz * ey, ny = uz * ex, nz = ux * ey - uy * ex; // nord = û × ê
+    const sux = sx / ds, suy = sy / ds, suz = sz / ds;
+    esito.azSole = ((Math.atan2(sux * ex + suy * ey,
+                                sux * nx + suy * ny + suz * nz) / ECL_RAD) + 360) % 360;
+  } else {
+    esito.azSole = null;
+  }
+
+  // Dove sta la Luna rispetto al Sole per chi lo guarda: si proietta tutto
+  // sul piano del cielo perpendicolare alla direzione del Sole, con lo zenit
+  // come "alto". Così la Luna morde il disco dal lato giusto anche quando il
+  // Sole è basso e la scena va disegnata inclinata.
+  const su = [sx / ds, sy / ds, sz / ds];
+  const mu = [mx / dm, my / dm, mz / dm];
+  const usu = ux * su[0] + uy * su[1] + uz * su[2];
+  let alt = [ux - usu * su[0], uy - usu * su[1], uz - usu * su[2]];
+  let na = Math.hypot(alt[0], alt[1], alt[2]);
+  if (na < 1e-9) {
+    // Sole allo zenit esatto: "alto" non è definito, si prende il nord celeste
+    alt = [-su[2] * su[0], -su[2] * su[1], 1 - su[2] * su[2]];
+    na = Math.hypot(alt[0], alt[1], alt[2]) || 1;
+  }
+  alt = [alt[0] / na, alt[1] / na, alt[2] / na];
+  // destra dell'osservatore = direzione di sguardo × alto
+  const des = [
+    su[1] * alt[2] - su[2] * alt[1],
+    su[2] * alt[0] - su[0] * alt[2],
+    su[0] * alt[1] - su[1] * alt[0]
+  ];
+  const msu = mu[0] * su[0] + mu[1] * su[1] + mu[2] * su[2];
+  const scarto = [mu[0] - msu * su[0], mu[1] - msu * su[1], mu[2] - msu * su[2]];
+  const dxc = scarto[0] * des[0] + scarto[1] * des[1] + scarto[2] * des[2];
+  const dyc = scarto[0] * alt[0] + scarto[1] * alt[1] + scarto[2] * alt[2];
+  const nd = Math.hypot(dxc, dyc);
+  // Versore che punta dal centro del Sole a quello della Luna, nel riquadro
+  // dell'osservatore: x verso destra, y verso lo zenit.
+  esito.versoX = nd > 1e-12 ? dxc / nd : 1;
+  esito.versoY = nd > 1e-12 ? dyc / nd : 0;
+  return esito;
 }
 
 // La Terra è schiacciata ai poli: allungando l'asse z di 1/(1−f) diventa
@@ -1331,6 +1388,216 @@ function _eclFinestraGlobale(peakUt) {
   return { inizio: Math.floor(inizio) - 4, fine: Math.ceil(fine) + 4 };
 }
 
+// --- Le circostanze in un punto preciso: i tempi di contatto -----------
+//
+// La mappa risponde a "dove"; questi sono i numeri che uno si scrive sul
+// palmo della mano prima di uscire: a che ora la Luna tocca il Sole, a che
+// ora lo copre del tutto, quanto dura, a che ora finisce. Si trovano
+// cercando gli istanti in cui la distanza fra i due dischi attraversa le
+// soglie giuste — la somma dei raggi per l'inizio e la fine, la loro
+// differenza per la fase centrale.
+//
+// Non si può partire da un campionamento grezzo: al bordo della fascia la
+// totalità dura pochi secondi e qualunque passo ragionevole la salterebbe.
+// Si parte invece dall'istante di massimo avvicinamento, che è sempre uno
+// solo, e da lì si cercano i contatti verso l'esterno.
+
+// Istante in cui una condizione diventa vera, fra un minuto in cui è falsa
+// e uno in cui è vera. Diciotto dimezzamenti bastano a scendere sotto il
+// secondo anche partendo da una finestra di sei ore.
+function _eclQuandoDiventaVero(lat, lon, peakUt, minFalso, minVero, condizione) {
+  let a = minFalso, b = minVero;
+  for (let i = 0; i < 18; i++) {
+    const m = (a + b) / 2;
+    if (condizione(_eclCircostanze(lat, lon, _eclIstante(peakUt + m / 1440), true))) b = m;
+    else a = m;
+  }
+  return (a + b) / 2;
+}
+
+// Minuto in cui una grandezza tocca il minimo, cercato per sezioni successive.
+function _eclMinimoDi(lat, lon, peakUt, da, a, quanto) {
+  let lo = da, hi = a;
+  for (let i = 0; i < 22; i++) {
+    const t1 = lo + (hi - lo) / 3, t2 = hi - (hi - lo) / 3;
+    const v1 = quanto(_eclCircostanze(lat, lon, _eclIstante(peakUt + t1 / 1440), true));
+    const v2 = quanto(_eclCircostanze(lat, lon, _eclIstante(peakUt + t2 / 1440), true));
+    if (v1 < v2) hi = t2; else lo = t1;
+  }
+  return (lo + hi) / 2;
+}
+
+const ECL_CENTRALE = (c) => c.tipoGeometrico === 'totale' || c.tipoGeometrico === 'anulare';
+const ECL_IN_CORSO = (c) => c.sep < c.rSole + c.rLuna;
+
+// Un contatto, pronto da mostrare: quando, con che Sole in cielo.
+function _eclContatto(lat, lon, peakUt, dataPicco, min) {
+  const c = _eclCircostanze(lat, lon, _eclIstante(peakUt + min / 1440), true);
+  return {
+    min,
+    data: new Date(dataPicco.getTime() + min * 60000),
+    alt: c.altSole,
+    az: c.azSole,
+    osc: c.osc,
+    suOrizzonte: c.suOrizzonte
+  };
+}
+
+// Tutte le circostanze dell'eclissi viste da (lat, lon). null se da lì la
+// Luna non sfiora nemmeno il Sole.
+function _eclCircostanzeLocali(lat, lon, peakUt, finestra, dataPicco) {
+  const passo = Math.max(2, (finestra.fine - finestra.inizio) / 120);
+
+  // Primo giro grosso, solo per circondare il momento di massimo
+  // avvicinamento: è uno solo in tutta la finestra, quindi basta trovarne
+  // il campione più vicino.
+  let minSep = Infinity, minAt = 0;
+  let oscVisibile = 0, visibileAt = null;
+  for (let min = finestra.inizio; min <= finestra.fine; min += passo) {
+    const c = _eclCircostanze(lat, lon, _eclIstante(peakUt + min / 1440), true);
+    if (c.sep < minSep) { minSep = c.sep; minAt = min; }
+    if (c.suOrizzonte && c.osc > oscVisibile) { oscVisibile = c.osc; visibileAt = min; }
+  }
+
+  const tMax = _eclMinimoDi(lat, lon, peakUt, minAt - passo, minAt + passo, c => c.sep);
+  const cMax = _eclCircostanze(lat, lon, _eclIstante(peakUt + tMax / 1440), true);
+  if (cMax.sep >= cMax.rSole + cMax.rLuna) return null; // da qui non si vede nulla
+
+  // I due estremi: si esce dall'eclissi camminando all'indietro e in avanti.
+  // Dal punto di vista di un singolo luogo la fase parziale non supera mai
+  // le tre ore e mezza, quindi duecento minuti per parte bastano sempre.
+  let primaFuori = null, dopoFuori = null;
+  for (let dt = passo; dt <= 220; dt += 10) {
+    if (primaFuori === null &&
+        !ECL_IN_CORSO(_eclCircostanze(lat, lon, _eclIstante(peakUt + (tMax - dt) / 1440), true))) {
+      primaFuori = tMax - dt;
+    }
+    if (dopoFuori === null &&
+        !ECL_IN_CORSO(_eclCircostanze(lat, lon, _eclIstante(peakUt + (tMax + dt) / 1440), true))) {
+      dopoFuori = tMax + dt;
+    }
+    if (primaFuori !== null && dopoFuori !== null) break;
+  }
+  if (primaFuori === null) primaFuori = tMax - 230;
+  if (dopoFuori === null) dopoFuori = tMax + 230;
+
+  const c1 = _eclQuandoDiventaVero(lat, lon, peakUt, primaFuori, tMax, ECL_IN_CORSO);
+  const c4 = _eclQuandoDiventaVero(lat, lon, peakUt, tMax, dopoFuori, c => !ECL_IN_CORSO(c));
+
+  const centrale = ECL_CENTRALE(cMax);
+  let c2 = null, c3 = null;
+  if (centrale) {
+    c2 = _eclQuandoDiventaVero(lat, lon, peakUt, c1, tMax, ECL_CENTRALE);
+    c3 = _eclQuandoDiventaVero(lat, lon, peakUt, tMax, c4, c => !ECL_CENTRALE(c));
+  }
+
+  // Se al massimo il Sole è ancora (o già) sotto l'orizzonte, il momento
+  // buono per guardare è un altro: il migliore fra quelli in cui il Sole
+  // c'è davvero.
+  let momentoMigliore = null;
+  if (!cMax.suOrizzonte && visibileAt !== null) {
+    const t = _eclMinimoDi(lat, lon, peakUt, visibileAt - passo, visibileAt + passo,
+                           c => (c.suOrizzonte ? -c.osc : 1));
+    momentoMigliore = _eclContatto(lat, lon, peakUt, dataPicco, t);
+  }
+
+  const fatto = (min) => _eclContatto(lat, lon, peakUt, dataPicco, min);
+  return {
+    lat, lon,
+    tipo: cMax.tipoGeometrico,
+    centrale,
+    oscMax: cMax.oscGeometrico,
+    // Quanto Sole si vede sparire davvero da qui: se al massimo il Sole è
+    // sotto l'orizzonte, l'oscuramento geometrico racconta un'eclissi che
+    // da questo punto nessuno vedrà.
+    oscVisibile: cMax.suOrizzonte ? cMax.osc : oscVisibile,
+    visibile: cMax.suOrizzonte || visibileAt !== null,
+    suOrizzonteAlMassimo: cMax.suOrizzonte,
+    c1: fatto(c1),
+    c2: c2 !== null ? fatto(c2) : null,
+    massimo: fatto(tMax),
+    c3: c3 !== null ? fatto(c3) : null,
+    c4: fatto(c4),
+    durataCentraleSec: c2 !== null && c3 !== null ? (c3 - c2) * 60 : 0,
+    durataParzialeMin: c4 - c1,
+    momentoMigliore
+  };
+}
+
+// --- Quanto manca alla fascia di totalità ------------------------------
+//
+// La domanda che si fa chiunque abiti vicino alla fascia e non dentro. Il
+// salto fra il 99% e il 100% non è un punto percentuale: è la differenza fra
+// un pomeriggio curioso e l'unica volta nella vita in cui si vede la corona
+// solare. Vale la pena dire quanti chilometri costa, e in che direzione.
+//
+// Il test "sono dentro la fascia?" non rifà i conti astronomici: la fascia è
+// già disegnata sulla mappa come insieme di ombre istantanee, e basta
+// chiedersi se il punto cade dentro una di quelle.
+
+function _eclDentroAnello(anello, lat, lon) {
+  let dentro = false;
+  for (let i = 0, j = anello.length - 1; i < anello.length; j = i++) {
+    const yi = anello[i][0], xi = anello[i][1];
+    const yj = anello[j][0], xj = anello[j][1];
+    if ((yi > lat) !== (yj > lat) &&
+        lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      dentro = !dentro;
+    }
+  }
+  return dentro;
+}
+
+function _eclNellaFascia(lat, lon) {
+  if (!_eclPercorso || !_eclPercorso.regioneTotale.length) return false;
+  const l = _eclInquadra(lon);
+  return _eclPercorso.regioneTotale.some(a => _eclDentroAnello(a, lat, l));
+}
+
+// Dove andare e quanto costa: il punto più vicino della linea centrale, il
+// bordo più vicino della fascia, e quanto durerebbe la fase centrale se ci
+// si spostasse fin lì.
+function _eclConsiglioFascia(lat, lon, peakUt, finestra, dataPicco) {
+  if (!_eclPercorso) return null;
+  const linea = _eclPercorso.lineaCentrale;
+  if (!linea || linea.length < 2) return null; // parziale ovunque: non c'è dove andare
+
+  const qui = [lat, _eclInquadra(lon)];
+  const dentro = _eclNellaFascia(lat, lon);
+
+  let centro = null;
+  for (const p of linea) {
+    const d = _eclDistanzaAzimut(qui, p);
+    if (!centro || d.km < centro.km) centro = { punto: p, km: d.km, az: (d.az + 360) % 360 };
+  }
+  if (!centro) return null;
+
+  // Sulla linea centrale la fase centrale dura al massimo: è il posto da
+  // consigliare, non il primo lembo di fascia utile.
+  const circCentro = _eclCircostanzeLocali(centro.punto[0], centro.punto[1],
+                                           peakUt, finestra, dataPicco);
+  centro.durataSec = circCentro ? circCentro.durataCentraleSec : 0;
+  centro.nome = nomeLuogoVicino(centro.punto[0], _eclInquadra(centro.punto[1]), 120);
+
+  // Il bordo più vicino: si cammina lungo la rotta verso la linea centrale
+  // finché si entra nella fascia. Sono solo conti di geometria piana, quindi
+  // si può cercare a tentoni senza pagare nulla.
+  let bordo = null;
+  if (!dentro && centro.km > 0.5) {
+    let fuori = 0, entro = centro.km;
+    for (let i = 0; i < 16; i++) {
+      const m = (fuori + entro) / 2;
+      const p = _eclDestinazione(lat, lon, centro.az, m);
+      if (_eclNellaFascia(p[0], p[1])) entro = m; else fuori = m;
+    }
+    const p = _eclDestinazione(lat, lon, centro.az, entro);
+    bordo = { km: entro, az: centro.az, punto: [p[0], _eclInquadra(p[1])] };
+    bordo.nome = nomeLuogoVicino(bordo.punto[0], bordo.punto[1], 120);
+  }
+
+  return { dentro, centro, bordo };
+}
+
 // Campiona il percorso dell'ombra e ne ricava le due regioni disegnate sulla
 // mappa: la fascia di totalità e la zona di eclissi parziale.
 //
@@ -1420,6 +1687,10 @@ let _eclCittaMarker = [];
 let _eclCittaEvidenziata = -1;
 let _eclFilmato = { attivo: false, timer: null, velocita: 8, segui: true };
 let _eclCacheOrari = { chiave: null, valore: null };
+// Contatti e distanza dalla fascia costano qualche centinaio di posizioni di
+// Sole e Luna: si calcolano quando l'osservatore si sposta, non a ogni
+// fotogramma del filmato.
+let _eclCacheLocale = { chiave: null, valore: null };
 
 // Istante attualmente mostrato, nelle due forme che servono.
 function _eclissiTempoSelezionato() {
@@ -1446,6 +1717,23 @@ function _eclPerc(v) {
 // Come si chiama la fase centrale di questa eclissi
 function _eclNomeCentrale(kind) {
   return kind === 'total' ? 'totalità' : kind === 'annular' ? 'anularità' : 'fase centrale';
+}
+// Un contatto si annota al secondo: al bordo della fascia la totalità può
+// durarne una decina, e i minuti tondi non basterebbero a dire quando.
+function _eclOraSec(data) {
+  return data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+// Durata della fase centrale: sotto l'ora si legge meglio in minuti e secondi.
+function _eclDurataSec(sec) {
+  const s = Math.round(sec);
+  if (s < 60) return `${s} s`;
+  const m = Math.floor(s / 60);
+  return `${m} min ${String(s % 60).padStart(2, '0')} s`;
+}
+// Distanza da percorrere, arrotondata a quanto serve davvero saperla.
+function _eclKm(km) {
+  if (km < 10) return `${km.toFixed(1).replace('.', ',')} km`;
+  return `${Math.round(km)} km`;
 }
 
 // --- Disegno dei livelli mobili (il cono d'ombra vero e proprio) ------
@@ -1808,10 +2096,324 @@ function _eclissiAggiornaDatiLocali(quadro) {
       <p><span class="ecl-etichetta">Sole</span> alt ${horSole.altitude.toFixed(1)}° · az ${Math.round(horSole.azimuth)}° (${skyNomeDirezione(horSole.azimuth)})</p>
       <p class="ecl-nota-piccola">Alba ${skyOra(orari.sorge)} · Tramonto ${skyOra(orari.tramonta)}</p>
     `;
+    _eclAggiornaDossier(lat, lon);
   } catch (e) {
     console.error(e);
     datiLocaliEl.innerHTML = '<p class="text-red-400">Errore nel calcolo dei dati locali.</p>';
   }
+}
+
+// --- Il dossier del luogo: contatti e distanza dalla fascia ------------
+
+// Tutto ciò che di questo punto non cambia mentre scorre il filmato. Si
+// ricalcola solo quando l'osservatore si sposta.
+function _eclDossierLocale(lat, lon) {
+  const ev = _eclissiEventoInCorso;
+  if (!ev || !ev.eclissi) return null;
+  const chiave = `${lat.toFixed(4)}|${lon.toFixed(4)}|${ev.eclissi.peakUt}`;
+  if (_eclCacheLocale.chiave === chiave) return _eclCacheLocale.valore;
+
+  let valore = null;
+  try {
+    const circ = _eclCircostanzeLocali(lat, lon, ev.eclissi.peakUt, _eclFinestra, ev.dataObj);
+    const fascia = _eclConsiglioFascia(lat, lon, ev.eclissi.peakUt, _eclFinestra, ev.dataObj);
+    valore = { circ, fascia, cronologia: _eclCronologia(circ) };
+  } catch (e) {
+    console.error('Errore nel calcolo delle circostanze locali:', e);
+  }
+  _eclCacheLocale = { chiave, valore };
+  return valore;
+}
+
+function _eclAggiornaDossier(lat, lon) {
+  const dossier = _eclDossierLocale(lat, lon);
+  _eclDisegnaContatti(dossier && dossier.circ);
+  _eclDisegnaConsiglioFascia(dossier);
+  _eclDisegnaTacche(dossier && dossier.circ);
+  _eclDisegnaCronologia(dossier);
+}
+
+// I cinque orari, in fila. Ognuno è cliccabile: porta il cursore del tempo
+// esattamente lì, che è il modo più diretto di guardarsi un contatto.
+function _eclDisegnaContatti(circ) {
+  const el = document.getElementById('eclissi-contatti');
+  if (!el) return;
+  if (!circ) {
+    el.innerHTML = `<p class="ecl-contatti-vuoto">Da questo punto la Luna non tocca il Sole:
+      l'eclissi non è visibile qui.</p>`;
+    return;
+  }
+
+  const nomeFase = circ.tipo === 'anulare' ? 'Anularità' : 'Totalità';
+  let titolo, classeTitolo;
+  if (!circ.visibile) {
+    // I conti danno un'eclissi, ma da qui il Sole è sotto l'orizzonte per
+    // tutta la sua durata: dire "97% di Sole coperto" sarebbe una bugia.
+    titolo = 'Non visibile da qui';
+    classeTitolo = 'assente';
+  } else if (circ.centrale && circ.durataCentraleSec > 0 && circ.suOrizzonteAlMassimo) {
+    titolo = `${nomeFase}: ${_eclDurataSec(circ.durataCentraleSec)}`;
+    classeTitolo = 'centrale';
+  } else {
+    titolo = `Massimo ${_eclPerc(circ.oscVisibile)} di Sole coperto`;
+    classeTitolo = 'parziale';
+  }
+
+  const righe = [];
+  const aggiungi = (contatto, nome, nota) => {
+    if (!contatto) return;
+    righe.push({ contatto, nome, nota });
+  };
+  aggiungi(circ.c1, 'Primo contatto', 'la Luna tocca il bordo del Sole');
+  aggiungi(circ.c2, `Inizio ${nomeFase.toLowerCase()}`,
+           circ.tipo === 'anulare' ? 'si chiude l\'anello di fuoco' : 'il Sole sparisce');
+  aggiungi(circ.massimo, 'Massimo', `${_eclPerc(circ.massimo.osc)} di Sole coperto`);
+  aggiungi(circ.c3, `Fine ${nomeFase.toLowerCase()}`, 'ricompare il primo lembo di Sole');
+  aggiungi(circ.c4, 'Ultimo contatto', 'il Sole torna intero');
+
+  const corpo = righe.map(r => `
+    <li class="ecl-contatto${r.contatto.suOrizzonte ? '' : ' sotto'}" data-min="${r.contatto.min}"
+        title="Porta il cursore del tempo su questo momento">
+      <span class="ecl-contatto-nome">${r.nome}</span>
+      <span class="ecl-contatto-ora">${_eclOraSec(r.contatto.data)}</span>
+      <span class="ecl-contatto-nota">${r.contatto.suOrizzonte
+        ? `${r.nota} · Sole a ${r.contatto.alt.toFixed(0)}°`
+        : 'il Sole è sotto l\'orizzonte'}</span>
+    </li>`).join('');
+
+  // Quando il Sole sorge o tramonta a eclissi iniziata, i contatti da soli
+  // ingannano: dicono orari a cui da qui non si vede niente.
+  let avviso = '';
+  if (!circ.suOrizzonteAlMassimo) {
+    avviso = circ.momentoMigliore
+      ? `<p class="ecl-contatti-avviso">Al massimo il Sole è sotto l'orizzonte. Il momento
+         migliore per guardare da qui è <b>${_eclOraSec(circ.momentoMigliore.data)}</b>, con
+         <b>${_eclPerc(circ.momentoMigliore.osc)}</b> di Sole coperto e il Sole a
+         ${circ.momentoMigliore.alt.toFixed(0)}° sull'orizzonte.</p>`
+      : `<p class="ecl-contatti-avviso">Da qui l'eclissi cade tutta con il Sole sotto
+         l'orizzonte: non è visibile.</p>`;
+  }
+
+  el.innerHTML = `
+    <div class="ecl-contatti-testa">
+      <span class="ecl-contatti-titolo ${classeTitolo}">${titolo}</span>
+      <span class="ecl-contatti-durata">fase parziale ${Math.round(circ.durataParzialeMin)} min in tutto</span>
+    </div>
+    <ol class="ecl-contatti-lista">${corpo}</ol>
+    ${avviso}
+    <p class="ecl-nota-piccola">Orari nel fuso del tuo dispositivo. Tocca una riga per
+      spostare lì il cursore del tempo.</p>`;
+}
+
+// Il consiglio pratico: dove andare, quanto costa, quanto si guadagna.
+function _eclDisegnaConsiglioFascia(dossier) {
+  const el = document.getElementById('eclissi-fascia');
+  if (!el) return;
+  const fascia = dossier && dossier.fascia;
+  const circ = dossier && dossier.circ;
+  if (!fascia) { el.innerHTML = ''; el.classList.add('vuoto'); return; }
+  el.classList.remove('vuoto');
+
+  const nomeFase = circ && circ.tipo === 'anulare' ? 'anularità' : 'totalità';
+  const dove = (p) => p.nome ? ` (vicino a ${p.nome})` : '';
+
+  if (fascia.dentro) {
+    const qui = circ && circ.durataCentraleSec
+      ? `Qui dura <b>${_eclDurataSec(circ.durataCentraleSec)}</b>.` : '';
+    const meglio = fascia.centro.durataSec > (circ ? circ.durataCentraleSec : 0) + 5
+      ? ` Sulla linea centrale, <b>${_eclKm(fascia.centro.km)}</b> verso
+         ${skyNomeDirezione(fascia.centro.az)}${dove(fascia.centro)}, arriva a
+         <b>${_eclDurataSec(fascia.centro.durataSec)}</b>.`
+      : ' Sei praticamente sulla linea centrale: di meglio non c\'è.';
+    el.innerHTML = `
+      <p class="ecl-fascia-esito dentro">Sei dentro la fascia di ${nomeFase}.</p>
+      <p>${qui}${meglio}</p>`;
+    return;
+  }
+
+  if (!fascia.bordo) { el.innerHTML = ''; return; }
+  // Se da qui il Sole è sotto l'orizzonte non ha senso parlare di quanto
+  // viene coperto: il discorso è solo dove bisognerebbe andare.
+  const visibile = circ ? circ.visibile : true;
+  const premessa = visibile
+    ? `<p>Il Sole arriva a essere coperto al <b>${circ ? _eclPerc(circ.oscVisibile) : '—'}</b>,
+        ma non sparisce mai del tutto: niente corona, niente buio. La differenza fra il 99%
+        e il 100% è tutta l'eclissi.</p>`
+    : `<p>Da questo punto il Sole resta sotto l'orizzonte per tutta la durata dell'eclissi.
+        Per vederla bisogna spostarsi.</p>`;
+  el.innerHTML = `
+    <p class="ecl-fascia-esito fuori">Da qui la ${nomeFase} non si vede.</p>
+    ${premessa}
+    <ul class="ecl-fascia-passi">
+      <li><b>${_eclKm(fascia.bordo.km)}</b> verso ${skyNomeDirezione(fascia.bordo.az)}${dove(fascia.bordo)}
+        — il primo punto da cui il Sole sparisce, per pochi istanti.</li>
+      <li><b>${_eclKm(fascia.centro.km)}</b> verso ${skyNomeDirezione(fascia.centro.az)}${dove(fascia.centro)}
+        — sulla linea centrale, dove la ${nomeFase} dura
+        <b>${_eclDurataSec(fascia.centro.durataSec)}</b>.</li>
+    </ul>`;
+}
+
+// --- La cronologia: cosa si vede, minuto per minuto -------------------
+//
+// I contatti dicono gli orari; questa dice cosa guardare. Sono i fenomeni
+// che separano chi ha visto un'eclissi da chi l'ha soltanto guardata: la
+// luce che diventa metallica, le ombre volanti, i grani di Baily. Ogni voce
+// è ancorata a un orario vero, calcolato per questo punto.
+
+// Momento in cui il Sole risulta coperto almeno di una certa frazione.
+// Fra il primo contatto e il massimo l'oscuramento cresce sempre, quindi
+// la soglia si attraversa una volta sola.
+function _eclMinutoASoglia(circ, soglia) {
+  const ev = _eclissiEventoInCorso;
+  if (!ev || !circ || circ.oscMax < soglia) return null;
+  return _eclQuandoDiventaVero(circ.lat, circ.lon, ev.eclissi.peakUt,
+    circ.c1.min, circ.massimo.min, c => c.oscGeometrico >= soglia);
+}
+
+function _eclCronologia(circ) {
+  const ev = _eclissiEventoInCorso;
+  // Senza eclissi, o con il Sole sotto l'orizzonte per tutta la sua durata,
+  // non c'è nessuna sequenza da raccontare.
+  if (!circ || !ev || !circ.visibile) return null;
+  const anulare = circ.tipo === 'anulare';
+  const passi = [];
+  const agg = (min, classe, titolo, testo) => {
+    if (min === null || min === undefined || !isFinite(min)) return;
+    passi.push({ min, classe, titolo, testo });
+  };
+
+  agg(circ.c1.min, 'attesa', 'Primo contatto',
+    'La Luna intacca il bordo del Sole. A occhio nudo non si nota nulla: il cambiamento ' +
+    'si vede solo attraverso il filtro. È il momento di controllare che gli occhiali siano integri.');
+
+  const met = _eclMinutoASoglia(circ, 0.5);
+  agg(met, 'attesa', 'Sole coperto a metà',
+    'Metà disco è sparito, eppure intorno sembra ancora pieno giorno: l\'occhio compensa ' +
+    'in modo straordinario. Prova a fotografare l\'ombra di un albero — ogni spazio fra le ' +
+    'foglie proietta una piccola falce.');
+
+  const forte = _eclMinutoASoglia(circ, 0.85);
+  agg(forte, 'attesa', 'Sole coperto all\'85%',
+    'Ora la luce cambia davvero: si fa metallica, i colori si smorzano e le ombre diventano ' +
+    'insolitamente nette. La temperatura comincia a scendere, di qualche grado.');
+
+  if (circ.centrale) {
+    const nomeFase = anulare ? 'anularità' : 'totalità';
+    agg(circ.c2.min - 3, 'avviso', 'Tre minuti alla ' + nomeFase,
+      'La luce crolla in fretta. Gli uccelli tacciono e gli animali si comportano come ' +
+      'all\'imbrunire. Guarda in direzione da cui arriva l\'ombra: si vede una parete scura ' +
+      'avanzare sull\'orizzonte.');
+
+    if (!anulare) {
+      agg(circ.c2.min - 0.7, 'avviso', 'Ombre volanti',
+        'Sul terreno chiaro — un lenzuolo bianco steso per terra è perfetto — possono ' +
+        'comparire bande scure che scorrono e tremolano. Durano una manciata di secondi ' +
+        'e non sempre si vedono: è uno dei fenomeni più sfuggenti dell\'eclissi.');
+      agg(circ.c2.min - 0.2, 'avviso', 'Grani di Baily e anello di diamante',
+        'L\'ultimo lembo di Sole si spezza in perline luminose: è la luce che passa fra le ' +
+        'montagne del bordo lunare. Poi resta un solo punto brillante su un anello sottile — ' +
+        'l\'anello di diamante.');
+      agg(circ.c2.min, 'clou', 'TOTALITÀ — ora si toglie il filtro',
+        'Il Sole è sparito. Questo, e solo questo, è il momento in cui si può guardare a occhio ' +
+        'nudo. Appare la corona, perlacea e ramificata. Sul bordo cerca le protuberanze rosa. ' +
+        'Poi voltati: l\'orizzonte è arancione in tutte le direzioni, come un tramonto a 360°.');
+      const meta = (circ.c2.min + circ.c3.min) / 2;
+      agg(meta, 'clou', 'A metà totalità',
+        'Alza gli occhi dal Sole per qualche secondo: si vedono i pianeti più luminosi e le ' +
+        'stelle più brillanti, in pieno giorno. È il ricordo che resta più a lungo.');
+      agg(circ.c3.min - 0.2, 'avviso', 'Rimetti il filtro, adesso',
+        'Il secondo anello di diamante sta per arrivare. Va anticipato, non aspettato: appena ' +
+        'ricompare un lembo di fotosfera la luce torna pericolosa in una frazione di secondo.');
+      agg(circ.c3.min, 'attesa', 'Fine della totalità',
+        'Il Sole torna. Da qui in poi si ripete tutto al contrario, e la maggior parte della ' +
+        'gente se ne va: peccato, perché la luce che torna è bella quanto quella che se ne va.');
+    } else {
+      agg(circ.c2.min, 'clou', 'ANULARITÀ — il filtro resta su',
+        'La Luna è tutta dentro il disco del Sole e resta un anello di luce. Attenzione: ' +
+        'quell\'anello è fotosfera piena, abbagliante come il Sole intero. In un\'eclissi ' +
+        'anulare il filtro non si toglie mai, in nessun istante.');
+      agg(circ.c3.min, 'attesa', 'Fine dell\'anularità',
+        'L\'anello si spezza e torna la falce. La luce, che era calata in modo strano senza ' +
+        'mai diventare notte, ricomincia a salire.');
+    }
+  } else {
+    agg(circ.massimo.min, 'clou', 'Massimo dell\'eclissi',
+      `Il Sole è coperto al ${_eclPerc(circ.oscMax)} e non andrà oltre. Da qui non c'è ` +
+      'totalità: niente corona, niente buio, e il filtro non va tolto in nessun momento. ' +
+      'Sotto il 90% il paesaggio cambia sorprendentemente poco.');
+  }
+
+  agg(circ.c4.min, 'attesa', 'Ultimo contatto',
+    'Il disco solare è di nuovo intero. L\'eclissi è finita.');
+
+  passi.sort((a, b) => a.min - b.min);
+  return passi.map(p => Object.assign(p, {
+    data: new Date(ev.dataObj.getTime() + p.min * 60000)
+  }));
+}
+
+let _eclCronologiaResa = null;
+
+function _eclDisegnaCronologia(dossier) {
+  const el = document.getElementById('eclissi-cronologia');
+  if (!el) return;
+  const passi = dossier && dossier.cronologia;
+  if (!passi || !passi.length) {
+    el.innerHTML = `<p class="ecl-nota-piccola">Da questo punto non c'è niente da vedere:
+      o la Luna non tocca il Sole, o il Sole resta sotto l'orizzonte per tutta l'eclissi.
+      Sposta il punto di osservazione dentro la zona colorata sulla mappa.</p>`;
+    _eclCronologiaResa = null;
+    return;
+  }
+  // La lista si ricostruisce solo quando cambia il luogo: durante il filmato
+  // si limita a spostare l'evidenziazione, che è un'operazione da nulla.
+  if (_eclCronologiaResa !== _eclCacheLocale.chiave) {
+    el.innerHTML = passi.map(p => `
+      <li class="ecl-passo ${p.classe}" data-min="${p.min}"
+          title="Porta il cursore del tempo su questo momento">
+        <span class="ecl-passo-ora">${_eclOraSec(p.data)}</span>
+        <span class="ecl-passo-testo">
+          <b>${p.titolo}</b>
+          <span>${p.testo}</span>
+        </span>
+      </li>`).join('');
+    _eclCronologiaResa = _eclCacheLocale.chiave;
+  }
+  let attivo = -1;
+  passi.forEach((p, i) => { if (p.min <= _eclissiOffsetTempoMin) attivo = i; });
+  el.querySelectorAll('.ecl-passo').forEach((n, i) => n.classList.toggle('attivo', i === attivo));
+}
+
+// Le tacche dei contatti sopra al cursore del tempo: danno una forma alla
+// linea del tempo, che altrimenti è una barra uguale dappertutto.
+function _eclDisegnaTacche(circ) {
+  const el = document.getElementById('eclissi-tacche');
+  if (!el) return;
+  const ampiezza = _eclFinestra.fine - _eclFinestra.inizio;
+  if (!circ || ampiezza <= 0) { el.innerHTML = ''; return; }
+
+  const dove = (min) => ((min - _eclFinestra.inizio) / ampiezza) * 100;
+  const segni = [];
+  const segna = (contatto, classe, etichetta) => {
+    if (!contatto) return;
+    const pos = dove(contatto.min);
+    if (pos < -1 || pos > 101) return;
+    segni.push(`<span class="ecl-tacca ${classe}" style="left:${pos.toFixed(2)}%"
+      title="${etichetta} · ${_eclOraSec(contatto.data)}"></span>`);
+  };
+  segna(circ.c1, 'contatto', 'Primo contatto');
+  segna(circ.c4, 'contatto', 'Ultimo contatto');
+  segna(circ.massimo, 'massimo', 'Massimo');
+
+  // La fase centrale è una fascia, non un istante: al bordo dura pochi
+  // secondi e una tacca sola non si vedrebbe.
+  if (circ.c2 && circ.c3) {
+    const a = dove(circ.c2.min), b = dove(circ.c3.min);
+    segni.push(`<span class="ecl-tacca-fascia" style="left:${a.toFixed(2)}%;
+      width:${Math.max(0.6, b - a).toFixed(2)}%"
+      title="Fase centrale · ${_eclDurataSec(circ.durataCentraleSec)}"></span>`);
+  }
+  el.innerHTML = segni.join('');
 }
 
 // --- Testata della mappa (ora e fase globale) -------------------------
@@ -2494,11 +3096,26 @@ function inizializzaMappaEclissiUI() {
   modale.addEventListener('click', (e) => { if (e.target === modale) chiudiMappaEclissi(); });
   document.addEventListener('keydown', (e) => {
     if (modale.classList.contains('hidden')) return;
-    if (e.key === 'Escape') chiudiMappaEclissi();
-    // Barra spaziatrice: avvia e ferma il filmato, come in un lettore video
-    if (e.key === ' ' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+    if (e.key === 'Escape') { chiudiMappaEclissi(); return; }
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    // Comandi da lettore video: spazio riproduce, le frecce scorrono il tempo,
+    // Inizio e Fine saltano ai due estremi.
+    if (e.key === ' ') {
       e.preventDefault();
       _eclFilmatoAlterna();
+      return;
+    }
+    const passo = e.shiftKey ? 10 : 1;
+    const salti = {
+      ArrowLeft: () => _eclVaiA(_eclissiOffsetTempoMin - passo),
+      ArrowRight: () => _eclVaiA(_eclissiOffsetTempoMin + passo),
+      Home: () => _eclVaiA(_eclFinestra.inizio),
+      End: () => _eclVaiA(_eclFinestra.fine)
+    };
+    if (salti[e.key]) {
+      e.preventDefault();
+      if (_eclFilmato.attivo) _eclFilmatoFerma();
+      salti[e.key]();
     }
   });
 
@@ -2533,6 +3150,21 @@ function inizializzaMappaEclissiUI() {
 
   const segui = document.getElementById('eclissi-segui');
   if (segui) segui.addEventListener('change', () => { _eclFilmato.segui = segui.checked; });
+
+  // Contatti e cronologia: toccare una riga porta il cursore su quel momento.
+  // È il modo più diretto di guardarsi un istante preciso dell'eclissi.
+  ['eclissi-contatti', 'eclissi-cronologia'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('click', (e) => {
+      const riga = e.target.closest('[data-min]');
+      if (!riga) return;
+      const min = parseFloat(riga.dataset.min);
+      if (!isFinite(min)) return;
+      if (_eclFilmato.attivo) _eclFilmatoFerma();
+      _eclVaiA(min);
+    });
+  });
 
   // Toccando una città dell'elenco l'osservatore si sposta lì
   const lista = document.getElementById('eclissi-citta-lista');
