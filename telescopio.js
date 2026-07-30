@@ -4678,7 +4678,7 @@ function telHtmlTubo(bersaglio) {
   const p = telProfilo();
   const spinta = p.montatura === 'eq' ? 'le due manopole' : 'il tubo con le mani';
 
-  const intro = `<p class="text-sm text-slate-300">È il puntamento assistito delle app famose, fatto con quello che
+  const intro = `<p class="text-sm text-slate-300">È il puntamento assistito, fatto con quello che
     hai già: fissa il telefono al tubo con l'adattatore che sta nella scatola, centra una stella nota e premi
     <em>Sono su questa stella</em>. Da quel momento il telefono sa dove guarda il tubo, e mentre muovi ${spinta}
     ti dice quanto manca al bersaglio — con un pallino che si avvicina al centro e un battito che si infittisce.</p>`;
