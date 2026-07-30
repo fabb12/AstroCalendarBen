@@ -3048,6 +3048,19 @@ function inizializzaEclissiDiCasaUI() {
     });
   }
 
+  // Il diario ha già un traguardo "Cacciatore di eclissi": quello che
+  // mancava era il modo di arrivarci dalla finestra dell'eclissi appena
+  // vista, che è l'unico momento in cui uno ha voglia di scriverne.
+  const diarioEcl = document.getElementById('btn-eclissi-diario');
+  if (diarioEcl) {
+    diarioEcl.addEventListener('click', () => {
+      if (!_eclissiEventoInCorso) return;
+      const id = _eclissiEventoInCorso.id;
+      chiudiMappaEclissi();
+      apriDiarioEvento(id);
+    });
+  }
+
   const offline = document.getElementById('btn-eclissi-offline');
   if (offline) {
     offline.addEventListener('click', async () => {
@@ -3943,6 +3956,14 @@ function apriMappaEclissi(id) {
   _eclissiEventoInCorso = evento;
   _eclissiPosizioneTemporanea = null;
   _eclCittaEvidenziata = -1;
+  _eclEraCentrale = false;
+
+  // "L'ho vista" ha senso solo dopo che è passata: prima non c'è niente da
+  // raccontare, e il tasto sarebbe solo un invito a mentire al diario.
+  const tastoDiario = document.getElementById('btn-eclissi-diario');
+  if (tastoDiario) {
+    tastoDiario.classList.toggle('hidden', evento.dataObj.getTime() > Date.now());
+  }
 
   // Inizializza la mappa la prima volta
   if (!_mappaEclissi) {
@@ -5242,6 +5263,20 @@ const RITARDO_MASSIMO_MIN = 120;
 // Ogni quanto controlliamo se c'è un evento in arrivo
 const INTERVALLO_CONTROLLO_MS = 60 * 1000;
 
+// Un'eclissi non si prepara in mezz'ora. Se bisogna mettersi in viaggio per
+// entrare nella fascia di totalità, l'unico preavviso utile è di mesi: per
+// queste il promemoria arriva a scaglioni. Ogni scaglione ha una finestra
+// entro cui vale ancora la pena mandarlo — l'app avvisa solo quando è
+// aperta, e chi la riapre due giorni dopo non vuole sentirsi dire "manca un
+// mese" quando ormai mancano ventotto giorni.
+const SCAGLIONI_ECLISSI = [
+  { min: 365 * 24 * 60, finestraMin: 3 * 24 * 60, testo: 'Manca un anno' },
+  { min: 30 * 24 * 60, finestraMin: 24 * 60, testo: 'Manca un mese' },
+  { min: 7 * 24 * 60, finestraMin: 12 * 60, testo: 'Manca una settimana' },
+  { min: 15 * 60, finestraMin: 5 * 60, testo: 'È domani' },
+  { min: 60, finestraMin: 25, testo: 'Manca un\'ora' }
+];
+
 const CHIAVE_NOTIFICHE_INVIATE = 'astrocalendario_notifiche_inviate';
 
 let timerNotifiche = null;
@@ -5295,6 +5330,24 @@ function controllaNotifiche() {
 
   eventiCalcolati.forEach(evento => {
     const istante = evento.dataObj.getTime();
+
+    // Le eclissi hanno la loro scaletta di preavvisi, che parte da un anno
+    // prima. Le altre restano com'erano: mezz'ora e via.
+    if (evento.eclissi || evento.eclissiLunare) {
+      SCAGLIONI_ECLISSI.forEach(s => {
+        const quando = istante - s.min * 60000;
+        if (adesso < quando || adesso >= quando + s.finestraMin * 60000) return;
+        // La sigla dello scaglione sta prima della chiocciola: dopo c'è
+        // l'istante dell'evento, che serve a ripulire la lista.
+        const chiave = `${evento.titolo}#${s.min}@${istante}`;
+        if (notificheInviate.includes(chiave)) return;
+        notificheInviate.push(chiave);
+        salvaNotificheInviate();
+        mostraNotificaEvento(evento, s.testo);
+      });
+      return;
+    }
+
     if (istante > fineFinestra || istante < inizioFinestra) return;
 
     const chiave = chiaveNotifica(evento);
@@ -5306,13 +5359,17 @@ function controllaNotifiche() {
   });
 }
 
-function mostraNotificaEvento(evento) {
+function mostraNotificaEvento(evento, anticipo) {
   try {
-    const notifica = new Notification(evento.titolo, {
+    const notifica = new Notification(
+      anticipo ? `${anticipo}: ${evento.titolo}` : evento.titolo, {
       body: `${evento.dataTesto}\n${evento.spiegazione || ''}`.trim(),
       icon: 'icon-192.png',
       badge: 'icon-192.png',
-      tag: evento.id
+      // Con la scaletta dei preavvisi lo stesso evento avvisa piu' volte:
+      // senza distinguere le targhette ogni promemoria cancellerebbe il
+      // precedente, che e' giusto per un promemoria solo e sbagliato qui.
+      tag: anticipo ? `${evento.id}-${anticipo}` : evento.id
     });
     // Cliccando la notifica si torna all'app sulla scheda dell'evento
     notifica.onclick = () => {
