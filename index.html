@@ -620,6 +620,10 @@
           <div id="eclissi-contatti" class="ecl-contatti"></div>
           <!-- Quanto dista la fascia di totalità, se non ci sei dentro -->
           <div id="eclissi-fascia" class="ecl-fascia-consiglio"></div>
+          <button id="btn-eclissi-casa" type="button" class="ecl-tasto-largo"
+                  title="Tutte le eclissi solari visibili da questo punto, fino al 2070">
+            Tutte le eclissi visibili da qui
+          </button>
         </div>
 
         <!-- COSA SI VEDE, MINUTO PER MINUTO -->
@@ -655,6 +659,32 @@
           <button id="btn-chiudi-mappa-basso" type="button" class="tasto-chiudi-largo">Chiudi la mappa</button>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE: TUTTE LE ECLISSI VISIBILI DA UN LUOGO -->
+  <div id="modale-eclissi-casa" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="larga">
+      <div class="testata-modale flex justify-between items-start gap-4 p-5 border-b border-slate-700">
+        <div>
+          <h2 class="text-xl md:text-2xl font-bold text-white">Le eclissi di casa tua</h2>
+          <p id="casa-sottotitolo" class="text-xs text-slate-400 mt-1">Tutte le eclissi solari visibili dalla tua posizione</p>
+        </div>
+        <button id="btn-chiudi-casa" class="tasto-chiudi con-etichetta" title="Chiudi la finestra (o premi Esc)" aria-label="Chiudi la finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Chiudi</span></button>
+      </div>
+
+      <div class="corpo-modale">
+        <div id="casa-riepilogo" class="ecl-riepilogo"></div>
+        <div id="casa-elenco" class="casa-elenco">
+          <p class="ecl-nota-piccola">Calcolo in corso…</p>
+        </div>
+        <p class="ecl-nota-piccola">Ogni riga e' un'eclissi solare che da questo punto si vede,
+          almeno in parte. Toccane una per aprirne la mappa.</p>
+
+        <div class="barra-chiudi">
+          <button id="btn-chiudi-casa-basso" type="button" class="tasto-chiudi-largo">Chiudi</button>
+        </div>
       </div>
     </div>
   </div>

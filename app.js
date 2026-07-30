@@ -484,6 +484,7 @@ window.addEventListener('DOMContentLoaded', () => {
   inizializzaUI();
   inizializzaFormAggiungi();
   inizializzaMappaEclissiUI();
+  inizializzaEclissiDiCasaUI();
   inizializzaSimulazione();
   inizializzaSkymap();
   inizializzaNotifiche();
@@ -2386,6 +2387,218 @@ function _eclDisegnaCronologia(dossier) {
   let attivo = -1;
   passi.forEach((p, i) => { if (p.min <= _eclissiOffsetTempoMin) attivo = i; });
   el.querySelectorAll('.ecl-passo').forEach((n, i) => n.classList.toggle('attivo', i === attivo));
+}
+
+// =====================================================================
+// 1-quater. LE ECLISSI DI CASA TUA
+//   Una mappa risponde a "chi vede questa eclissi". Girando la domanda —
+//   "quali eclissi vedo io, da qui?" — viene fuori il calendario personale
+//   di chi guarda: quante ne passano sopra casa nella sua vita, quanto
+//   grosse, e soprattutto quando arriva quella che vale un viaggio.
+// =====================================================================
+
+// Sguardo veloce su una singola eclissi: quanto Sole viene coperto, al
+// massimo, da questo punto. Costa una frazione delle circostanze complete
+// perché non cerca i contatti — e va moltiplicato per un centinaio di
+// eclissi, quindi ogni conto risparmiato si sente.
+function _eclSguardoLocale(lat, lon, peakUt) {
+  let minSep = Infinity, minAt = 0;
+  let oscVista = 0, vistaAt = null;
+  // Il massimo avvicinamento fra i due dischi, da un punto qualsiasi, cade
+  // sempre entro poche ore dal culmine globale.
+  for (let min = -200; min <= 200; min += 10) {
+    const c = _eclCircostanze(lat, lon, _eclIstante(peakUt + min / 1440), true);
+    if (c.sep < minSep) { minSep = c.sep; minAt = min; }
+    if (c.suOrizzonte && c.osc > oscVista) { oscVista = c.osc; vistaAt = min; }
+  }
+
+  const t = _eclMinimoDi(lat, lon, peakUt, minAt - 10, minAt + 10, c => c.sep);
+  const c = _eclCircostanze(lat, lon, _eclIstante(peakUt + t / 1440), true);
+  if (c.sep >= c.rSole + c.rLuna) return null;      // da qui la Luna non tocca il Sole
+
+  if (c.suOrizzonte) {
+    return { min: t, osc: c.osc, tipo: c.tipoGeometrico, alt: c.altSole, alSorgere: false };
+  }
+  // Al massimo il Sole è sotto l'orizzonte: conta il momento migliore in cui
+  // il Sole c'è davvero, che è quello che questa persona vedrà.
+  if (vistaAt === null || oscVista < 0.005) return null;
+  const t2 = _eclMinimoDi(lat, lon, peakUt, vistaAt - 10, vistaAt + 10,
+                          x => (x.suOrizzonte ? -x.osc : 1));
+  const c2 = _eclCircostanze(lat, lon, _eclIstante(peakUt + t2 / 1440), true);
+  if (!c2.suOrizzonte || c2.osc < 0.005) return null;
+  return { min: t2, osc: c2.osc, tipo: c2.tipoGeometrico, alt: c2.altSole, alSorgere: true };
+}
+
+let _eclCasaCache = { chiave: null, valore: null };
+
+function _eclEclissiDiCasa(lat, lon) {
+  const chiave = `${lat.toFixed(3)}|${lon.toFixed(3)}`;
+  if (_eclCasaCache.chiave === chiave) return _eclCasaCache.valore;
+
+  const trovate = [];
+  eventiCalcolati.forEach(ev => {
+    if (!ev.eclissi || typeof ev.eclissi.peakUt !== 'number') return;
+    const s = _eclSguardoLocale(lat, lon, ev.eclissi.peakUt);
+    if (!s) return;
+    trovate.push({
+      id: ev.id,
+      titolo: ev.titolo,
+      data: new Date(ev.dataObj.getTime() + s.min * 60000),
+      osc: s.osc,
+      tipo: s.tipo,
+      alt: s.alt,
+      alSorgere: s.alSorgere
+    });
+  });
+  trovate.sort((a, b) => a.data - b.data);
+  _eclCasaCache = { chiave, valore: trovate };
+  return trovate;
+}
+
+function _eclColoreOsc(osc) {
+  if (osc >= 0.999) return 'var(--rosso)';
+  if (osc >= 0.9) return '#fb923c';
+  if (osc >= 0.6) return 'var(--ambra)';
+  if (osc >= 0.3) return 'var(--viola-chiaro)';
+  return 'var(--blu-chiaro)';
+}
+
+function _eclDisegnaEclissiDiCasa(lat, lon) {
+  const elenco = document.getElementById('casa-elenco');
+  const riepilogo = document.getElementById('casa-riepilogo');
+  const sotto = document.getElementById('casa-sottotitolo');
+  if (!elenco) return;
+
+  const luogo = nomeLuogoVicino(lat, lon, 60) || formattaCoordinate(lat, lon);
+  if (sotto) {
+    sotto.textContent = `Tutte le eclissi solari visibili da ${luogo}, fino al ${ANNO_LIMITE_ECLISSI}`;
+  }
+
+  let lista;
+  try {
+    lista = _eclEclissiDiCasa(lat, lon);
+  } catch (e) {
+    console.error('Errore nel calcolo delle eclissi locali:', e);
+    elenco.innerHTML = '<p class="text-red-400">Errore nel calcolo delle eclissi visibili da qui.</p>';
+    return;
+  }
+
+  if (!lista.length) {
+    elenco.innerHTML = `<p class="ecl-nota-piccola">Da questo punto, fino al
+      ${ANNO_LIMITE_ECLISSI}, non se ne vede nessuna. Succede: le eclissi solari sono
+      frequenti sul pianeta, ma rare sopra un punto preciso.</p>`;
+    if (riepilogo) riepilogo.innerHTML = '';
+    return;
+  }
+
+  const centrali = lista.filter(e => e.tipo === 'totale' || e.tipo === 'anulare');
+  const prossimaTotale = lista.find(e => e.tipo === 'totale');
+  const anni = (d) => (d - Date.now()) / (365.25 * 24 * 3600000);
+
+  if (riepilogo) {
+    const schede = [
+      { etichetta: 'Eclissi visibili da qui', valore: String(lista.length),
+        nota: `fino al ${ANNO_LIMITE_ECLISSI}, anche solo parziali` },
+      { etichetta: 'La prossima', valore: lista[0].data.toLocaleDateString('it-IT',
+          { day: 'numeric', month: 'short', year: 'numeric' }),
+        nota: `${_eclPerc(lista[0].osc)} di Sole coperto · fra ${Math.round(anni(lista[0].data))} anni`
+              .replace('fra 0 anni', 'entro l\'anno') },
+      prossimaTotale
+        ? { etichetta: 'La prossima totale', valore: prossimaTotale.data.toLocaleDateString('it-IT',
+              { day: 'numeric', month: 'short', year: 'numeric' }),
+            nota: `fra ${Math.round(anni(prossimaTotale.data))} anni — l'unica che vale davvero un viaggio` }
+        : { etichetta: 'Eclissi totali', valore: 'nessuna',
+            nota: `da qui, fino al ${ANNO_LIMITE_ECLISSI}, il Sole non sparisce mai del tutto` }
+    ];
+    riepilogo.innerHTML = schede.map(s => `
+      <div class="ecl-scheda">
+        <span class="ecl-scheda-etichetta">${s.etichetta}</span>
+        <span class="ecl-scheda-valore">${s.valore}</span>
+        <span class="ecl-scheda-nota">${s.nota}</span>
+      </div>`).join('');
+  }
+
+  const badge = (e) => e.tipo === 'totale'
+    ? '<span class="casa-badge totale">TOTALE</span>'
+    : e.tipo === 'anulare' ? '<span class="casa-badge anulare">ANULARE</span>' : '';
+
+  elenco.innerHTML = `
+    <p class="casa-intro">Da qui passano <b>${lista.length}</b> eclissi solari, di cui
+      <b>${centrali.length}</b> ${centrali.length === 1 ? 'centrale' : 'centrali'}. La barra dice
+      quanto Sole verrà coperto: sotto il 90% il paesaggio cambia molto meno di quanto
+      la gente si aspetti.</p>
+    <ol class="casa-lista">` +
+    lista.map(e => `
+      <li class="casa-riga${e.tipo === 'totale' ? ' totale' : ''}" data-evento="${e.id}"
+          title="Apri la mappa di questa eclissi">
+        <span class="casa-data">
+          <b>${e.data.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}</b>
+          <span>${e.data.getFullYear()}</span>
+        </span>
+        <span class="casa-barra">
+          <span style="width:${(e.osc * 100).toFixed(1)}%;background:${_eclColoreOsc(e.osc)}"></span>
+        </span>
+        <span class="casa-perc">${_eclPerc(e.osc)}</span>
+        <span class="casa-note">${badge(e)}${e.alSorgere
+          ? '<span class="casa-nota-piccola">al sorgere o al tramonto</span>' : ''}</span>
+      </li>`).join('') + '</ol>';
+}
+
+function apriEclissiDiCasa(lat, lon) {
+  const modale = document.getElementById('modale-eclissi-casa');
+  if (!modale) return;
+  const elenco = document.getElementById('casa-elenco');
+  if (elenco) {
+    elenco.innerHTML = `<p class="ecl-nota-piccola">Sto guardando una per una tutte le
+      eclissi da qui al ${ANNO_LIMITE_ECLISSI}…</p>`;
+  }
+  modale.classList.remove('hidden');
+  // Un attimo di respiro perché la finestra si disegni prima del calcolo:
+  // sono un centinaio di eclissi e su un telefono si sentono.
+  setTimeout(() => _eclDisegnaEclissiDiCasa(lat, lon), 40);
+}
+
+function chiudiEclissiDiCasa() {
+  const modale = document.getElementById('modale-eclissi-casa');
+  if (modale) modale.classList.add('hidden');
+}
+
+function inizializzaEclissiDiCasaUI() {
+  const modale = document.getElementById('modale-eclissi-casa');
+  if (!modale) return;
+  ['btn-chiudi-casa', 'btn-chiudi-casa-basso'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', chiudiEclissiDiCasa);
+  });
+  modale.addEventListener('click', (e) => { if (e.target === modale) chiudiEclissiDiCasa(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modale.classList.contains('hidden')) chiudiEclissiDiCasa();
+  });
+
+  // Da una riga si torna alla mappa dell'eclissi scelta
+  const elenco = document.getElementById('casa-elenco');
+  if (elenco) {
+    elenco.addEventListener('click', (e) => {
+      const riga = e.target.closest('[data-evento]');
+      if (!riga) return;
+      chiudiEclissiDiCasa();
+      apriMappaEclissi(riga.dataset.evento);
+    });
+  }
+
+  const apri = document.getElementById('btn-eclissi-casa');
+  if (apri) {
+    apri.addEventListener('click', () => {
+      // Si guarda dal punto scelto sulla mappa, che è quello di cui l'utente
+      // sta leggendo i numeri in quel momento.
+      const p = _eclissiPosizioneTemporanea || luogoCorrente();
+      if (!p) {
+        apriPosizione(true);
+        return;
+      }
+      apriEclissiDiCasa(p.lat, ((p.lon % 360) + 540) % 360 - 180);
+    });
+  }
 }
 
 // Le tacche dei contatti sopra al cursore del tempo: danno una forma alla

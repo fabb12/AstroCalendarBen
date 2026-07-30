@@ -1390,6 +1390,86 @@ body .ecl-select {
 }
 .ecl-fascia-passi b { color: var(--testo); font-family: var(--mono); }
 
+/* Tasto che apre una finestra da dentro un pannello */
+body .ecl-tasto-largo {
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--bordo-forte);
+  background: var(--superficie-alta);
+  color: var(--testo);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+body .ecl-tasto-largo:hover { background: var(--blu-velo); border-color: var(--blu); }
+
+/* --- Le eclissi di casa tua -------------------------------------------
+   Un calendario personale: una riga per eclissi, la barra dice quanto Sole
+   sparira'. Le totali si staccano dalle altre, perche' e' l'unica
+   distinzione che conta davvero quando si decide se mettersi in viaggio. */
+.casa-intro { font-size: 0.8rem; color: var(--testo-2); line-height: 1.6; margin-bottom: 12px; }
+.casa-intro b { color: var(--testo); }
+.casa-lista { display: flex; flex-direction: column; gap: 2px; }
+.casa-riga {
+  display: grid;
+  grid-template-columns: 56px 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.casa-riga:hover { background: rgba(148, 168, 214, 0.08); }
+.casa-riga.totale { background: var(--ambra-velo); }
+.casa-riga.totale:hover { background: rgba(245, 181, 68, 0.2); }
+.casa-data { display: flex; flex-direction: column; line-height: 1.2; }
+.casa-data b {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--testo);
+  font-weight: 600;
+}
+.casa-data span { font-family: var(--mono); font-size: 0.68rem; color: var(--testo-3); }
+.casa-barra {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--incassato);
+  overflow: hidden;
+  min-width: 40px;
+}
+.casa-barra > span { display: block; height: 100%; border-radius: 999px; }
+.casa-perc {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  color: var(--testo);
+  min-width: 42px;
+  text-align: right;
+}
+.casa-note { display: flex; align-items: center; gap: 6px; }
+.casa-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.casa-badge.totale { background: var(--rosso); color: #2b0606; }
+.casa-badge.anulare { background: var(--ambra); color: #2b1c02; }
+.casa-nota-piccola { font-size: 0.62rem; color: var(--testo-3); }
+.casa-elenco { margin-top: 4px; }
+
+@media (max-width: 560px) {
+  /* Su schermo stretto la percentuale basta: la barra da' gia' il colpo
+     d'occhio, e le due colonne insieme schiacciavano la data. */
+  .casa-riga { grid-template-columns: 52px 1fr auto; gap: 9px; }
+  .casa-note { grid-column: 2 / -1; }
+}
+
 /* --- La cronologia dei fenomeni ---------------------------------------
    Una riga per momento, con l'ora a sinistra come in un programma di sala.
    Il filo verticale lega i passi fra loro e rende la sequenza leggibile
