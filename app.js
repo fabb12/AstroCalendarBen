@@ -3786,6 +3786,9 @@ const CHIAVE_SKY_POSIZIONE = 'astrocalendario_posizione';
 // a mano (che quasi sempre servivano a rimediare proprio a quella) darebbero
 // una doppia correzione. Cambiando chiave ripartono tutti da zero.
 const CHIAVE_SKY_BUSSOLA = 'astrocalendario_bussola_offset_v2';
+// Taratura dell'obiettivo per la realtà aumentata: quanti gradi di mondo
+// entrano nel lato lungo dell'inquadratura (vedi skyCampoFotocamera)
+const CHIAVE_SKY_CAMERA = 'astrocalendario_camera_campo';
 
 // Corpi del Sistema Solare mostrati nel cielo.
 // Gli id sono i valori di Astronomy.Body (semplici stringhe): li scriviamo
@@ -3954,6 +3957,15 @@ const sky = {
   viaLattea: [],
   // Flusso video della fotocamera, quando la realtà aumentata è accesa
   camera: null,
+  // Realtà aumentata: sopra l'immagine vera il campo visivo non è più una
+  // preferenza, è una misura dell'obiettivo. `cameraCampoLato` è la taratura
+  // (gradi coperti dal lato lungo del fotogramma), `cameraCampo` il campo
+  // verticale che ne risulta nel riquadro, `fovPrimaCamera` il campo scelto a
+  // mano da riprendere quando la fotocamera si spegne.
+  cameraCampoLato: 0,
+  cameraCampo: 0,
+  fovPrimaCamera: null,
+  salvaCamera: null,     // timer per salvare la taratura a fine pizzico
   // Ultima proiezione usata per disegnare: serve a capire cosa c'è sotto al
   // dito senza rifare (e sporcare) il filtro della bussola
   ultimaBase: null,
@@ -4023,6 +4035,16 @@ function skyAngoloSchermo() {
 // singolarità.
 const SKY_TAU_FERMO = 0.35;     // secondi di memoria quando il telefono è fermo
 const SKY_TAU_MOSSA = 0.035;    // secondi di memoria quando lo si muove davvero
+// Sopra l'immagine della fotocamera lo stesso filtro non va bene. Sulla mappa
+// disegnata un ritardo di mezzo secondo non lo nota nessuno — non c'è niente
+// con cui confrontarlo — mentre il tremolio si vede tutto. In realtà
+// aumentata è il contrario: il confronto ce l'hai sotto, ed è impietoso. Il
+// cielo che arriva in ritardo scivola sull'immagine vera a ogni movimento del
+// braccio, e l'astro puntato scappa via dal punto in cui lo si è messo,
+// mentre il tremolio si confonde con la grana del video. Qui si smorza quindi
+// molto meno: si preferisce un filo di ballo a un cielo che insegue.
+const SKY_TAU_FERMO_AR = 0.12;
+const SKY_TAU_MOSSA_AR = 0.02;
 const SKY_TAU_SPIA_VELOCE = 0.1; // le due medie che riconoscono il movimento…
 const SKY_TAU_SPIA_LENTA = 0.5;  // …dal rumore: distanti solo se ci si muove
 const SKY_MOVIMENTO_GRADI = 3;   // oltre questo scarto fra le due è movimento
@@ -4083,7 +4105,9 @@ function skyLevigaBase(nuova) {
 
   const soglia = SKY_MOVIMENTO_GRADI + SKY_PESO_RUMORE * prec.rumore;
   const quota = Math.min(1, skyAngoloFra(veloce, lento) / soglia);
-  const tau = SKY_TAU_FERMO + (SKY_TAU_MOSSA - SKY_TAU_FERMO) * quota;
+  const tauFermo = sky.camera ? SKY_TAU_FERMO_AR : SKY_TAU_FERMO;
+  const tauMossa = sky.camera ? SKY_TAU_MOSSA_AR : SKY_TAU_MOSSA;
+  const tau = tauFermo + (tauMossa - tauFermo) * quota;
   const k = 1 - Math.exp(-dt / tau);
 
   // Di quanto sta ballando questo sensore: è la distanza fra la lettura grezza
@@ -4148,6 +4172,118 @@ function skyBase() {
 // Distanza focale in pixel corrispondente al campo visivo verticale scelto
 function skyFocale() {
   return (sky.altezza / 2) / Math.tan(sky.fov / 2 * SKY_D2R);
+}
+
+// --- Realtà aumentata: il campo del disegno è quello dell'obiettivo ---
+// Sulla mappa disegnata il campo visivo è una preferenza: si stringe per
+// guardare da vicino, si allarga per avere il colpo d'occhio. Sopra
+// l'immagine della fotocamera non lo è più: è un dato dell'obiettivo, e
+// sbagliarlo è il motivo per cui gli astri "scivolano" sul video.
+//
+// Il conto è questo. Un telefono tenuto dritto inquadra in altezza una
+// sessantina di gradi di mondo; la mappa ne disegnava 55 sulla stessa
+// altezza, cioè disegnava il cielo ingrandito di quasi un quinto. Al centro
+// le due immagini combaciano lo stesso — il centro è il centro per tutti e
+// due — ma già a un quarto di schermo dal centro il segno disegnato cade
+// quattro gradi più in là dell'astro vero, otto lune piene. E soprattutto:
+// girando il telefono il segno attraversa lo schermo più in fretta
+// dell'immagine sotto. È esattamente quello che si vede, e che sembra un
+// difetto del puntamento: punti un astro, lo centri, e appena ti muovi il suo
+// segno se ne va per conto proprio.
+//
+// Quanto riprenda l'obiettivo il browser non lo dice: né getSettings() né
+// getCapabilities() espongono il campo visivo. Lo si assume: SKY_CAMERA_LATO
+// è il campo coperto dal LATO LUNGO del fotogramma, che sui telefoni sta
+// intorno ai 65° e — a differenza della diagonale — non cambia se lo stream
+// arriva in 4:3 o in 16:9, perché il ritaglio del 16:9 toglie sempre dal lato
+// corto. Da lì si ricava la focale del video in pixel, e da quella quanti
+// gradi entrano davvero nell'altezza del riquadro, tenendo conto del ritaglio
+// di `object-fit: cover`. Se poi quell'obiettivo è più largo o più stretto
+// della media, il pizzico lo tara e la taratura resta salvata.
+const SKY_CAMERA_LATO = 65;      // gradi sul lato lungo del fotogramma
+const SKY_CAMERA_LATO_MIN = 25;
+const SKY_CAMERA_LATO_MAX = 120;
+
+// Misure del video così com'è inquadrato adesso: il lato lungo del fotogramma
+// e quanta della sua altezza sopravvive al ritaglio, in pixel di video.
+function skyGeometriaVideo() {
+  const video = document.getElementById('skymap-video');
+  if (!video) return null;
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const cw = sky.larghezza, ch = sky.altezza;
+  // videoWidth resta 0 finché il primo fotogramma non è arrivato
+  if (!vw || !vh || !cw || !ch) return null;
+  // `object-fit: cover`: il video è ingrandito quel tanto che basta a coprire
+  // il riquadro, e quel che avanza viene tagliato via.
+  const scala = Math.max(cw / vw, ch / vh);
+  return { latoLungo: Math.max(vw, vh), altezzaVisibile: Math.min(vh, ch / scala) };
+}
+
+function skyTaraturaCamera() {
+  return sky.cameraCampoLato || SKY_CAMERA_LATO;
+}
+
+// Campo verticale (in gradi) che l'immagine copre davvero nel riquadro
+function skyCampoFotocamera() {
+  const g = skyGeometriaVideo();
+  if (!g) return 0;
+  const focale = (g.latoLungo / 2) / Math.tan(skyTaraturaCamera() / 2 * SKY_D2R);
+  return 2 * Math.atan((g.altezzaVisibile / 2) / focale) * SKY_R2D;
+}
+
+// L'inverso: che obiettivo bisogna supporre perché nel riquadro entrino
+// esattamente quei gradi in verticale. Serve al pizzico, che tara guardando
+// l'immagine invece che i numeri.
+function skyLatoPerCampo(campoVerticale) {
+  const g = skyGeometriaVideo();
+  if (!g) return 0;
+  const focale = (g.altezzaVisibile / 2) / Math.tan(campoVerticale / 2 * SKY_D2R);
+  return 2 * Math.atan((g.latoLungo / 2) / focale) * SKY_R2D;
+}
+
+// Il campo lo detta l'obiettivo solo quando il cielo insegue davvero
+// l'inquadratura. Con la vista sganciata, o senza sensori, la fotocamera è
+// soltanto uno sfondo: lì lo zoom torna a essere una comodità di chi guarda.
+function skyCampoDaObiettivo() {
+  return !!sky.camera && skyUsaSensori();
+}
+
+// Riallinea il campo del disegno a quello dell'obiettivo. Va rifatto a ogni
+// fotogramma: il video parte dopo (le sue misure arrivano con il primo
+// fotogramma) e il riquadro cambia da solo con lo schermo intero e con la
+// rotazione del telefono.
+function skySincronizzaCampoFotocamera() {
+  if (!skyCampoDaObiettivo()) return;
+  const campo = skyCampoFotocamera();
+  if (!campo || !isFinite(campo)) return;
+  sky.cameraCampo = campo;
+  sky.fov = campo;
+}
+
+function skyImpostaTaraturaCamera(gradiLatoLungo) {
+  if (!gradiLatoLungo || !isFinite(gradiLatoLungo)) return;
+  sky.cameraCampoLato = Math.max(SKY_CAMERA_LATO_MIN, Math.min(SKY_CAMERA_LATO_MAX, gradiLatoLungo));
+  skySincronizzaCampoFotocamera();
+  // Durante il pizzico arrivano decine di valori al secondo: si salva quando
+  // le dita si fermano.
+  clearTimeout(sky.salvaCamera);
+  sky.salvaCamera = setTimeout(() => {
+    try { localStorage.setItem(CHIAVE_SKY_CAMERA, sky.cameraCampoLato.toFixed(2)); } catch (e) { /* niente storage */ }
+  }, 400);
+}
+
+// Con la fotocamera accesa lo zoom non ingrandisce: tara. Il gesto è lo
+// stesso di sempre — si allarga o si stringe il cielo disegnato — ma quello
+// che cambia è quanto si suppone che riprenda l'obiettivo, finché gli astri
+// non si posano su quelli veri.
+function skyTaraCampoFotocamera(campoVerticaleVoluto) {
+  const campo = Math.max(5, Math.min(140, campoVerticaleVoluto));
+  const lato = skyLatoPerCampo(campo);
+  if (!lato) return;
+  skyImpostaTaraturaCamera(lato);
+  skyAvviso('camera-taratura',
+    `Taratura della fotocamera: ${Math.round(sky.cameraCampo)}° di cielo nell'altezza dello schermo. ` +
+    'Allarga o stringi finché gli astri disegnati non si posano su quelli veri.', 5000);
 }
 
 // Proietta un versore del cielo sullo schermo (prospettiva gnomonica)
@@ -5932,6 +6068,11 @@ function skyDisegna() {
   const ctx = sky.ctx;
   const L = sky.larghezza, H = sky.altezza;
 
+  // Con la fotocamera accesa il campo del disegno lo detta l'obiettivo, non
+  // la preferenza dell'utente: si ricontrolla qui perché il video parte dopo
+  // e il riquadro cambia con lo schermo intero e con la rotazione.
+  skySincronizzaCampoFotocamera();
+
   const base = skyBase();
   const focale = skyFocale();
   // La proiezione appena usata resta a disposizione: serve a capire cosa c'è
@@ -6011,7 +6152,7 @@ function skyAggiornaHud(base) {
   const az = ((Math.atan2(f[0], f[1]) * SKY_R2D) % 360 + 360) % 360;
   const stretta = sky.larghezza && sky.larghezza < 560;
   const testo = `${skyNomeDirezione(az)} ${Math.round(az) % 360}° · alt ${alt.toFixed(0)}°` +
-    (stretta ? '' : ` · campo ${Math.round(sky.fov)}°`);
+    (stretta ? '' : ` · campo ${Math.round(sky.fov)}°${skyCampoDaObiettivo() ? ' (obiettivo)' : ''}`);
   // Riscrivere il testo sessanta volte al secondo costa e non serve: quasi
   // sempre è identico a quello di prima.
   if (hud.textContent !== testo) hud.textContent = testo;
@@ -6616,6 +6757,13 @@ function skyAlternaSeguiTelefono() {
   skyTasto('skymap-btn-segui', nuovo);
   skyAggiornaStato();
 
+  // Con la fotocamera accesa sganciare la vista stacca il cielo dall'immagine:
+  // non è più realtà aumentata, è una mappa sopra uno sfondo.
+  if (sky.camera && sky.sensori) {
+    skyAvviso('camera', nuovo ? '' :
+      'Vista sganciata: il cielo disegnato non sta più sopra quello che inquadri.');
+  }
+
   if (!sky.sensori) {
     skyAvviso('centratura', 'Bussola e giroscopio non sono attivi: la mappa la muovi già col dito.', 7000);
   } else {
@@ -6743,6 +6891,9 @@ function skyRilasciaSchermo() {
 }
 
 function skyZoom(fattore) {
+  // Sopra l'immagine della fotocamera ingrandire il cielo da solo lo
+  // scollerebbe dal mondo: lì lo stesso gesto tara l'obiettivo.
+  if (skyCampoDaObiettivo()) { skyTaraCampoFotocamera((sky.cameraCampo || sky.fov) * fattore); return; }
   sky.fov = Math.max(15, Math.min(110, sky.fov * fattore));
 }
 
@@ -6786,7 +6937,12 @@ function skyInizializzaGesti() {
 
     if (sky.puntatori.size === 2 && sky.pizzico) {
       const d = distanzaPuntatori();
-      if (d > 0) sky.fov = Math.max(15, Math.min(110, sky.pizzico.fov * sky.pizzico.distanza / d));
+      if (d > 0) {
+        const voluto = sky.pizzico.fov * sky.pizzico.distanza / d;
+        // Con la fotocamera accesa il pizzico non ingrandisce: tara
+        if (skyCampoDaObiettivo()) skyTaraCampoFotocamera(voluto);
+        else sky.fov = Math.max(15, Math.min(110, voluto));
+      }
       return;
     }
 
@@ -6880,6 +7036,12 @@ function inizializzaSkymap() {
   const salvato = parseFloat(localStorage.getItem(CHIAVE_SKY_BUSSOLA));
   skyImpostaOffsetBussola(isNaN(salvato) ? 0 : salvato);
 
+  // Taratura dell'obiettivo: se questo telefono l'ha già fatta, si riparte da lì
+  const camera = parseFloat(localStorage.getItem(CHIAVE_SKY_CAMERA));
+  if (!isNaN(camera)) {
+    sky.cameraCampoLato = Math.max(SKY_CAMERA_LATO_MIN, Math.min(SKY_CAMERA_LATO_MAX, camera));
+  }
+
   // Costellazioni, deep sky, macchina del tempo e fotocamera
   inizializzaSkymapExtra();
 
@@ -6894,7 +7056,18 @@ function inizializzaSkymap() {
   collega('skymap-zoom-out', () => skyZoom(1.25));
   collega('skymap-btn-zoom-piu', () => skyZoom(1 / 1.25));
   collega('skymap-btn-zoom-meno', () => skyZoom(1.25));
-  collega('skymap-btn-campo', () => { sky.fov = 55; });
+  collega('skymap-btn-campo', () => {
+    // Con la fotocamera accesa "campo normale" vuol dire togliere la taratura
+    // fatta a mano e tornare all'obiettivo tipico
+    if (skyCampoDaObiettivo()) {
+      sky.cameraCampoLato = 0;
+      try { localStorage.removeItem(CHIAVE_SKY_CAMERA); } catch (e) { /* niente storage */ }
+      skySincronizzaCampoFotocamera();
+      skyAvviso('camera-taratura', 'Taratura della fotocamera azzerata.', 3000);
+      return;
+    }
+    sky.fov = 55;
+  });
   collega('skymap-btn-centra', () => {
     const voce = skyVoceSelezionata();
     if (voce) skyCentraSu(voce);
@@ -10612,7 +10785,8 @@ function esportaBackup() {
     posizione: sky.posizione
       ? { lat: sky.posizione.lat, lon: sky.posizione.lon, nome: sky.posizione.nome, origine: sky.posizione.origine }
       : luogoCorrente(),
-    bussola: localStorage.getItem(CHIAVE_SKY_BUSSOLA)
+    bussola: localStorage.getItem(CHIAVE_SKY_BUSSOLA),
+    cameraCampo: localStorage.getItem(CHIAVE_SKY_CAMERA)
   };
   const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
   const giorno = new Date().toISOString().slice(0, 10);
@@ -10654,6 +10828,13 @@ async function importaBackup(file) {
     }
     if (dati.bussola) {
       try { localStorage.setItem(CHIAVE_SKY_BUSSOLA, dati.bussola); } catch (e) { /* niente storage */ }
+    }
+    // La taratura dell'obiettivo vale per la fotocamera di quel telefono: se
+    // il backup arriva da un altro, basta rifarla col pizzico (o azzerarla)
+    if (dati.cameraCampo) {
+      try { localStorage.setItem(CHIAVE_SKY_CAMERA, dati.cameraCampo); } catch (e) { /* niente storage */ }
+      const c = parseFloat(dati.cameraCampo);
+      if (!isNaN(c)) sky.cameraCampoLato = Math.max(SKY_CAMERA_LATO_MIN, Math.min(SKY_CAMERA_LATO_MAX, c));
     }
 
     pianificaNotifiche();
@@ -11409,6 +11590,14 @@ async function skyAttivaFotocamera() {
     sky.camera = null;
     video.srcObject = null;
     video.classList.add('hidden');
+    // Spenta la fotocamera il campo torna a essere una preferenza: si riprende
+    // quello che c'era prima, e il filtro riparte con lo smorzamento della
+    // mappa disegnata.
+    sky.cameraCampo = 0;
+    if (sky.fovPrimaCamera !== null) { sky.fov = sky.fovPrimaCamera; sky.fovPrimaCamera = null; }
+    sky.baseFiltrata = null;
+    skyAvviso('camera', '');
+    skyAvviso('camera-taratura', '');
     skyTasto('skymap-btn-camera', false, 'Fotocamera');
     return;
   }
@@ -11424,8 +11613,29 @@ async function skyAttivaFotocamera() {
     video.srcObject = sky.camera;
     video.classList.remove('hidden');
     await video.play().catch(() => {});
+    // Il campo scelto a mano si mette da parte: da adesso lo detta l'obiettivo
+    if (sky.fovPrimaCamera === null) sky.fovPrimaCamera = sky.fov;
+    // Il filtro anti-tremolio cambia regime (in AR smorza molto meno):
+    // ripartire da zero evita mezzo secondo di scivolata all'accensione.
+    sky.baseFiltrata = null;
+    skySincronizzaCampoFotocamera();
+    // Le misure del video arrivano col primo fotogramma, che può tardare
+    video.addEventListener('loadedmetadata', skySincronizzaCampoFotocamera, { once: true });
     skyTasto('skymap-btn-camera', true, 'Spegni fotocamera');
-    skyAvviso('camera', '');
+    // Senza bussola l'immagine e il cielo calcolato non possono stare
+    // insieme: meglio dirlo subito che lasciar credere a un difetto della
+    // realtà aumentata.
+    if (!skyUsaSensori()) {
+      skyAvviso('camera', sky.sensori
+        ? 'Vista sganciata: per sovrapporre il cielo all’immagine riattiva “Segui il telefono”.'
+        : 'Senza bussola e giroscopio il cielo non può seguire l’inquadratura: qui la fotocamera fa solo da sfondo.');
+    } else {
+      skyAvviso('camera', '');
+      if (!sky.assoluto) {
+        skyAvviso('camera-taratura', 'Bussola relativa: se il cielo è ruotato rispetto all’immagine, ' +
+          'correggilo con “Calibra”. Con il pizzico invece si tara il campo dell’obiettivo.', 8000);
+      }
+    }
   } catch (e) {
     sky.camera = null;
     skyAvviso('camera', 'Fotocamera non disponibile: serve il permesso del browser e una connessione sicura (https).');
