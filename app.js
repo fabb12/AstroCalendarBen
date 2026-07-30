@@ -5724,6 +5724,15 @@ const sky = {
   mostraProfondo: false,
   // Mirino sul polo celeste, per allineare una montatura equatoriale
   mostraPolo: false,
+  // Eventi del calendario segnati sulla mappa (radiante di uno sciame, astro
+  // eclissato): sono l'unica cosa disegnata che non è "un astro dove sta"
+  mostraEventi: true,
+  eventiOra: { chiave: null, inCorso: [], vicini: [] }, // cosa succede all'ora mostrata
+  eventiFirma: '',        // ultima versione scritta nel pannello, per non riscriverla
+  eventiMeseTimer: null,  // attesa prima di calcolare il mese di un istante lontano
+  // Inseguimento: la vista tiene l'oggetto scelto al centro, da sola, mentre
+  // il cielo ruota o mentre il playback corre
+  inseguimento: false,
   // Filtri della mappa: cosa compare e cosa no
   mostraPianeti: true,
   mostraSoleLuna: true,
@@ -6821,6 +6830,9 @@ function skyAggiornaOggetti(forza) {
 
   if (typeof Astronomy === 'undefined' || !sky.observer) {
     sky.oggetti = [];
+    // Senza posizione non si sa dove guardare, ma cosa succede stanotte sì:
+    // l'elenco degli eventi vive lo stesso
+    skyAggiornaEventi();
     return;
   }
   skyDefinisciStelle();
@@ -6867,6 +6879,9 @@ function skyAggiornaOggetti(forza) {
   skyAggiornaCatalogo(quando);
   skyAggiornaEtichette();
   skyAggiornaTestoTempo();
+  // Cosa succede nel cielo di quest'ora: l'elenco segue l'orologio
+  skyAggiornaEventi();
+  skyChiediEventiDelMese();
 
   // Chi arriva da un'altra scheda ("Trova Marte nel cielo") chiede di
   // centrare un astro le cui coordinate, in quel momento, non c'erano ancora
@@ -7901,6 +7916,10 @@ function skyDisegna() {
     .sort((a, b) => (ordine[a.tipo] || 0) - (ordine[b.tipo] || 0))
     .forEach(o => skyDisegnaAstro(ctx, base, focale, o));
 
+  // Gli eventi in corso all'ora mostrata: il radiante di uno sciame, l'anello
+  // attorno all'astro eclissato. Sopra agli astri, sotto alle guide.
+  skyDisegnaEventi(ctx, base, focale);
+
   const bersaglio = daDisegnare.find(o => o.id === sky.target);
   if (bersaglio) skyDisegnaGuida(ctx, base, focale, bersaglio);
 
@@ -8048,17 +8067,24 @@ function skyAggiornaEtichette() {
 // Scegliere un astro dall'elenco non è solo "accendere una freccia": la
 // mappa lo porta al centro, perché il gesto naturale dopo aver detto "voglio
 // vedere Saturno" è cercarlo con gli occhi al centro dello schermo.
+//
+// Quello che NON succede più: la scheda dei dati non si apre da sola. Scegliere
+// un astro dall'elenco vuol dire "portamelo davanti", non "raccontamelo", e la
+// scheda si prendeva mezzo cielo proprio nel momento in cui lo si cercava.
+// Da qui in poi la scheda si apre in un modo solo: premendo direttamente
+// sull'oggetto disegnato sulla mappa.
 function skyImpostaTarget(id, opzioni = {}) {
   const spegni = sky.target === id && !opzioni.mantieni;
   sky.target = spegni ? null : id;
   sky.cacheOrari = { chiave: null, valore: null };
 
   if (spegni) {
-    skyChiudiDettaglio();
+    // Se la scheda aperta era proprio la sua, se ne va con lui
+    const sel = sky.selezione;
+    if (sel && sel.categoria === 'astro' && sel.id === id) skyChiudiDettaglio();
   } else {
     const o = sky.oggetti.find(x => x.id === sky.target);
     skyAssicuraVisibile(o);
-    skyApriDettaglio({ categoria: 'astro', id: sky.target });
     // Se le posizioni non sono ancora state calcolate (si arriva qui anche
     // da un'altra scheda) il centraggio aspetta il primo calcolo
     if (o) skyCentraSu(o);
@@ -8429,7 +8455,7 @@ function skyAggiornaScheda() {
 function skyAttesaSchedaHtml() {
   const sel = sky.selezione;
   if (!sel || sel.categoria !== 'astro') {
-    return 'Tocca un oggetto sulla mappa, o scegline uno dall\'elenco, per vedere distanza, dimensioni, magnitudine, costellazione e coordinate.';
+    return 'Tocca un oggetto disegnato sulla mappa per vedere distanza, dimensioni, magnitudine, costellazione e coordinate.';
   }
   if (typeof sel.id === 'string' && sel.id.startsWith('sat-')) {
     satPrecaricaTle();
@@ -8439,6 +8465,302 @@ function skyAttesaSchedaHtml() {
         `<button type="button" onclick="apriPosizione(true)" class="senza-cornice underline text-blue-300 hover:text-blue-200">scegliamola insieme</button>.`;
   }
   return `Calcolo della posizione di <strong>${skyNomeCorpo(sel.id)}</strong> in corso…`;
+}
+
+// =====================================================================
+// 7.4-bis GLI EVENTI DEL CIELO MOSTRATO
+//   La mappa dice dove sono gli astri; il calendario dice quando succede
+//   qualcosa. Finché sono due schede separate, chi porta l'orologio sulla
+//   notte del 12 agosto vede un cielo qualsiasi e non sa che ci sta guardando
+//   dentro il picco delle Perseidi. Qui le due cose si toccano: gli eventi
+//   che cadono nell'istante mostrato compaiono sopra la mappa, e quelli che
+//   hanno un punto preciso nel cielo — il radiante di uno sciame, la Luna
+//   eclissata, i due corpi di una congiunzione — vengono anche segnati lì
+//   dove bisogna guardare.
+// =====================================================================
+
+// Quanto "dura", in minuti prima e dopo l'istante di picco, ciascun tipo di
+// evento. Non sono durate fisiche: sono la finestra dentro cui ha senso dire
+// che sta succedendo adesso. Un'eclissi dura le sue ore; il picco di uno
+// sciame è una notte intera; una massima elongazione resta buona per giorni.
+const SKY_EVENTI_FINESTRA_MIN = {
+  eclissi: 200,
+  meteore: 16 * 60,
+  luna: 10 * 60,
+  stagioni: 12 * 60,
+  pianeti: 24 * 60,
+  congiunzioni: 10 * 60,
+  personali: 120,
+  altro: 120
+};
+
+// Oltre questo scarto dall'istante mostrato un evento non entra più nemmeno
+// fra quelli "in giornata": è di un'altra notte
+const SKY_EVENTI_VICINI_MIN = 20 * 60;
+
+// Da quando a quando un evento si considera in corso
+function skyFinestraEvento(ev) {
+  const t = ev.dataObj.getTime();
+  // Le eclissi lunari sanno dire da sole quanto durano: la semidurata di
+  // penombra è esattamente metà evento, dal primo sfioramento all'ultimo
+  const mezza = (ev.eclissiLunare && ev.eclissiLunare.sdPenum)
+    ? ev.eclissiLunare.sdPenum
+    : (SKY_EVENTI_FINESTRA_MIN[ev.categoria] || SKY_EVENTI_FINESTRA_MIN.altro);
+  return { inizio: t - mezza * 60000, fine: t + mezza * 60000 };
+}
+
+// Cosa succede intorno all'istante mostrato: quello che è in corso adesso e
+// quello che cade nelle ore vicine. Il risultato si tiene da parte per mezzo
+// minuto: la lista degli eventi calcolati può avere migliaia di voci, e
+// questa funzione gira insieme al ricalcolo delle posizioni.
+function skyEventiVicini() {
+  const quando = skyAdesso().getTime();
+  const chiave = Math.floor(quando / 30000);
+  if (sky.eventiOra.chiave === chiave) return sky.eventiOra;
+
+  const inCorso = [], vicini = [];
+  const limite = SKY_EVENTI_VICINI_MIN * 60000;
+  eventiCalcolati.forEach(ev => {
+    if (!ev.dataObj) return;
+    const dt = ev.dataObj.getTime() - quando;
+    if (Math.abs(dt) > limite + 6 * 3600000) return;   // scarto grossolano, costa nulla
+    const f = skyFinestraEvento(ev);
+    if (quando >= f.inizio && quando <= f.fine) inCorso.push(ev);
+    else if (Math.abs(dt) <= limite) vicini.push(ev);
+  });
+
+  const vicinanza = (a, b) => Math.abs(a.dataObj - quando) - Math.abs(b.dataObj - quando);
+  inCorso.sort(vicinanza);
+  vicini.sort(vicinanza);
+
+  sky.eventiOra = { chiave, inCorso, vicini };
+  return sky.eventiOra;
+}
+
+// Il calendario nasce con i mesi da oggi in avanti. La macchina del tempo,
+// però, arriva al 1900 e al 2100: se l'orologio finisce su un mese mai
+// calcolato, glielo calcoliamo — una volta sola, e non mentre il playback
+// corre (i mesi passerebbero a decine e il cielo si pianterebbe).
+function skyChiediEventiDelMese() {
+  if (typeof assicuraMese !== 'function' || typeof Astronomy === 'undefined') return;
+  if (sky.playbackVerso) return;
+  clearTimeout(sky.eventiMeseTimer);
+  sky.eventiMeseTimer = setTimeout(() => {
+    if (!sky.aperto) return;
+    const quando = skyAdesso();
+    let aggiunti = 0;
+    // Anche il giorno prima e quello dopo: un evento della notte a cavallo
+    // del mese sta in un mese che non è quello dell'orologio
+    [-86400000, 0, 86400000].forEach(dt => {
+      const d = new Date(quando.getTime() + dt);
+      const anno = d.getFullYear();
+      if (anno < ANNO_MINIMO_NAVIGABILE || anno > ANNO_MASSIMO_NAVIGABILE) return;
+      try {
+        aggiunti += assicuraMese(anno, d.getMonth());
+      } catch (e) { /* un mese che non si calcola non deve fermare il cielo */ }
+    });
+    if (aggiunti) {
+      sky.eventiOra.chiave = null;
+      skyAggiornaEventi();
+    }
+  }, 600);
+}
+
+// Dove guardare per vedere un evento: il radiante per uno sciame, il corpo
+// protagonista per tutto il resto. null se l'evento non ha un punto in cielo
+// (una data sul calendario, un promemoria personale).
+function skyPosizioneEvento(ev, quando) {
+  if (!sky.observer || typeof Astronomy === 'undefined') return null;
+  try {
+    if (ev.simul && ev.simul.scena === 'sciame' && typeof ev.simul.ra === 'number') {
+      const p = altAzCoordinate(ev.simul.ra, ev.simul.dec, quando, sky.observer);
+      return { az: p.az, alt: p.alt, radiante: true, nome: ev.simul.nome || ev.titolo };
+    }
+    if (ev.corpoCielo) {
+      // Se l'astro è già stato calcolato per il disegno, riusiamo quello:
+      // sono le stesse coordinate, allo stesso istante
+      const o = sky.oggetti.find(x => x.id === ev.corpoCielo);
+      const p = o ? { az: o.az, alt: o.alt } : altAzCorpo(ev.corpoCielo, quando, sky.observer);
+      return { az: p.az, alt: p.alt, radiante: false, nome: skyNomeCorpo(ev.corpoCielo) };
+    }
+  } catch (e) { /* evento senza posizione: resta solo nell'elenco */ }
+  return null;
+}
+
+// Da quanto (o fra quanto) rispetto all'istante mostrato
+function skyQuandoEventoTesto(ev, inCorso) {
+  const scarto = Math.round((ev.dataObj.getTime() - skyAdesso().getTime()) / 1000);
+  const picco = Math.abs(scarto) < 60 ? 'al massimo adesso' : `massimo ${skyScartoTempoTesto(scarto)}`;
+  return inCorso ? `in corso · ${picco}` : skyScartoTempoTesto(scarto);
+}
+
+// Una riga dell'elenco: cosa succede, quando, e i due tasti che servono —
+// portarci sopra l'orologio e cercarlo in cielo.
+function skyEventoHtml(ev, inCorso) {
+  const cat = CATEGORIE[ev.categoria] || CATEGORIE.personali;
+  const posizione = skyPosizioneEvento(ev, skyAdesso());
+  const dove = posizione
+    ? `<span class="dove-evento">${skyNomeDirezione(posizione.az)}, ${Math.round(posizione.alt)}°` +
+      `${posizione.alt < 0 ? ' (sotto l\'orizzonte)' : ''}</span>`
+    : '';
+  const cerca = posizione
+    ? `<button type="button" class="tasto-evento-cielo" onclick="skyEventoNelCielo('${ev.id}')">Mostra in cielo</button>`
+    : '';
+  return `<div class="voce-evento-cielo${inCorso ? ' in-corso' : ''}" style="--colore-evento:${ev.colore || '#60a5fa'}">
+    <span class="segno-evento">${icona(cat.disegno, 18)}</span>
+    <div class="corpo-evento">
+      <p class="titolo-evento">${ev.titolo}</p>
+      <p class="quando-evento">${skyQuandoEventoTesto(ev, inCorso)}${dove ? ' · ' + dove : ''}</p>
+      <div class="azioni-evento">
+        <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Porta l'orologio qui</button>
+        ${cerca}
+      </div>
+    </div>
+  </div>`;
+}
+
+// Riscrive il pannello e il promemoria sopra la mappa. Gira una volta al
+// secondo insieme al resto: riscriviamo solo se è cambiato qualcosa, se no
+// un tasto premuto a metà secondo sparirebbe da sotto il dito.
+function skyAggiornaEventi() {
+  const dati = skyEventiVicini();
+  const elenco = document.getElementById('skymap-eventi-elenco');
+  const chip = document.getElementById('skymap-eventi-chip');
+
+  if (chip) {
+    const n = dati.inCorso.length;
+    chip.classList.toggle('visibile', n > 0);
+    if (n) {
+      const testo = n === 1 ? dati.inCorso[0].titolo : `${n} eventi nel cielo mostrato`;
+      // Su una mappa stretta il titolo intero non ci sta: si accorcia
+      const stretta = sky.larghezza && sky.larghezza < 560;
+      const mostrato = stretta && testo.length > 26 ? testo.slice(0, 24) + '…' : testo;
+      if (chip.textContent !== mostrato) chip.textContent = mostrato;
+    }
+  }
+
+  if (!elenco) return;
+  const firma = dati.inCorso.map(e => 'c' + e.id).concat(dati.vicini.map(e => 'v' + e.id)).join(',') +
+    '|' + Math.floor(skyAdesso().getTime() / 60000);
+  if (firma === sky.eventiFirma) return;
+  sky.eventiFirma = firma;
+
+  const pezzi = [];
+  if (dati.inCorso.length) {
+    pezzi.push('<p class="titolo-elenco-eventi">Sta succedendo adesso</p>');
+    dati.inCorso.forEach(ev => pezzi.push(skyEventoHtml(ev, true)));
+  }
+  if (dati.vicini.length) {
+    pezzi.push('<p class="titolo-elenco-eventi">Nelle ore vicine</p>');
+    dati.vicini.forEach(ev => pezzi.push(skyEventoHtml(ev, false)));
+  }
+  if (!pezzi.length) {
+    pezzi.push('<p class="nota-lunga">Nel cielo di quest\'ora non c\'è nessun evento del calendario. ' +
+      'Sposta l\'orologio — per esempio su una notte di agosto o di dicembre — e qui compariranno gli sciami, ' +
+      'le eclissi e le congiunzioni di quel momento.</p>');
+  }
+  elenco.innerHTML = pezzi.join('');
+}
+
+// Porta l'orologio della vista Cielo sull'istante di un evento
+window.skyVaiAEvento = (id) => {
+  const ev = eventiCalcolati.find(e => e.id === id);
+  if (!ev) return;
+  skyFermaPlayback();
+  skyImpostaOffsetTempo((ev.dataObj.getTime() - Date.now()) / 1000);
+  skyAvviso('eventi', `Orologio portato su “${ev.titolo}”.`, 5000);
+};
+
+// Punta la mappa dove si vede l'evento: il radiante di uno sciame, l'astro
+// protagonista negli altri casi (che diventa anche il bersaglio della freccia)
+window.skyEventoNelCielo = (id) => {
+  const ev = eventiCalcolati.find(e => e.id === id);
+  if (!ev) return;
+  const p = skyPosizioneEvento(ev, skyAdesso());
+  if (!p) {
+    skyAvviso('eventi', 'Questo evento non ha un punto preciso del cielo da mostrare.', 5000);
+    return;
+  }
+  if (!p.radiante && ev.corpoCielo) {
+    skyImpostaTarget(ev.corpoCielo, { mantieni: true });
+    return;
+  }
+  skyMostraGruppo('');
+  skyCentraSu({ nome: `il radiante delle ${p.nome}`, az: p.az, alt: p.alt });
+};
+
+// Il nome corto di un evento, quello che ci sta scritto sulla mappa: via il
+// prefisso di categoria, via il secondo sciame di una coppia, e comunque non
+// più lungo di una ventina di caratteri.
+function skyEtichettaEvento(ev, pos) {
+  let testo = pos.radiante
+    ? 'radiante ' + String(pos.nome).split(/\s+e\s+/)[0]
+    : String(ev.titolo).replace(/^(Sciame Meteorico|Congiunzione|Occultazione):?\s*/i, '');
+  if (testo.length > 30) testo = testo.slice(0, 29).trimEnd() + '…';
+  return testo;
+}
+
+// I segni degli eventi sulla mappa. Sono pochi e discreti: un anello
+// tratteggiato attorno all'astro protagonista, e per uno sciame un radiante
+// con le sue scie — perché lì non c'è nessun astro da cerchiare, ma è
+// esattamente il punto da cui vedrai partire le meteore.
+function skyDisegnaEventi(ctx, base, focale) {
+  if (!sky.mostraEventi) return;
+  const dati = skyEventiVicini();
+  if (!dati.inCorso.length) return;
+  const quando = skyAdesso();
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // Più di tre segni sulla stessa mappa sono confusione, non informazione
+  dati.inCorso.slice(0, 3).forEach(ev => {
+    const pos = skyPosizioneEvento(ev, quando);
+    if (!pos) return;
+    const p = skyProietta(skyVettore(pos.az, pos.alt), base, focale);
+    if (!p.davanti) return;
+    if (p.px < -60 || p.px > sky.larghezza + 60 || p.py < -60 || p.py > sky.altezza + 60) return;
+
+    const colore = ev.colore || '#60a5fa';
+    ctx.globalAlpha = pos.alt < 0 ? 0.35 : 0.9;
+    ctx.strokeStyle = colore;
+    ctx.fillStyle = colore;
+    ctx.lineWidth = 1.6;
+
+    if (pos.radiante) {
+      // Il radiante: un cerchietto e le scie che se ne allontanano
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, 7, 0, Math.PI * 2);
+      ctx.stroke();
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4 + 0.2;
+        ctx.beginPath();
+        ctx.moveTo(p.px + Math.cos(a) * 12, p.py + Math.sin(a) * 12);
+        ctx.lineTo(p.px + Math.cos(a) * 24, p.py + Math.sin(a) * 24);
+        ctx.stroke();
+      }
+    } else {
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, 26, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // L'etichetta sta sul cielo, non su un fondo: senza un'ombra sotto, sopra
+    // la Via Lattea o un alone lunare non si legge. E i titoli lunghi si
+    // accorciano: "Sciame Meteorico: Delta Aquaridi meridionali e Alfa
+    // Capricornidi" attraversava mezza mappa coprendo quello che indicava.
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.shadowColor = 'rgba(2, 6, 16, 0.9)';
+    ctx.shadowBlur = 4;
+    const etichetta = skyEtichettaEvento(ev, pos);
+    const meta = ctx.measureText(etichetta).width / 2 + 8;
+    ctx.fillText(etichetta,
+      Math.max(meta, Math.min(sky.larghezza - meta, p.px)), p.py - (pos.radiante ? 32 : 36));
+    ctx.shadowBlur = 0;
+  });
+  ctx.restore();
 }
 
 // Cosa c'è sotto al dito. Si prova prima con gli astri dell'elenco (sono
@@ -8511,6 +8833,88 @@ function skyCentraSu(o, opzioni = {}) {
   };
 }
 
+// ---------------------------------------------------------------------
+// Inseguimento
+//   "Centra" porta l'oggetto in mezzo allo schermo una volta sola: dopo un
+//   minuto la rotazione della Terra lo ha già spostato di un quarto di grado,
+//   e con il playback acceso a mille volte il tempo vero se ne va dal campo in
+//   pochi secondi. L'inseguimento tiene il timone da solo: a ogni fotogramma
+//   rimette lo sguardo sull'oggetto scelto, così quello resta immobile al
+//   centro e a muoversi è tutto il resto del cielo — che è esattamente ciò che
+//   fa una montatura motorizzata, e il modo più chiaro per capire cosa vedrà
+//   l'oculare durante la serata.
+// ---------------------------------------------------------------------
+
+// L'oggetto "scelto adesso": prima quello di cui è aperta la scheda, poi
+// l'astro acceso nell'elenco. Sono i due modi di dire "questo qui".
+function skyOggettoScelto() {
+  const voce = skyVoceSelezionata();
+  if (voce && typeof voce.az === 'number') return voce;
+  if (sky.target) {
+    const o = sky.oggetti.find(x => x.id === sky.target);
+    if (o) return o;
+  }
+  return voce || null;
+}
+
+function skyAlternaInseguimento() {
+  const acceso = !sky.inseguimento;
+  const o = skyOggettoScelto();
+
+  if (acceso && !o) {
+    skyAvviso('inseguimento', 'Prima scegli cosa inseguire: toccalo sulla mappa, o prendilo dall\'elenco degli astri.', 7000);
+    return;
+  }
+
+  sky.inseguimento = acceso;
+  skyAggiornaTastoInsegui();
+
+  if (!acceso) {
+    skyAvviso('inseguimento', '');
+    return;
+  }
+
+  // Con i sensori accesi la direzione la decide il telefono: nessun calcolo
+  // può spostare la vista, quindi lo diciamo invece di fingere che funzioni
+  if (skyUsaSensori()) {
+    skyAvviso('inseguimento', `Per inseguire ${o.nome} la mappa deve poter essere spostata: ` +
+      'spegni “Segui il telefono” e l\'inseguimento parte subito.', 9000);
+    return;
+  }
+
+  sky.animazioneVista = null;
+  skyCentraSu(o, { subito: true });
+  skyAvviso('inseguimento', `${o.nome} resta al centro della mappa: la vista lo segue da sola. ` +
+    'Trascinando il cielo col dito l\'inseguimento si spegne.', 7000);
+}
+
+// Un passo dell'inseguimento, a ogni fotogramma. Niente spostamento morbido:
+// qui l'oggetto non deve arrivare al centro, deve non allontanarsene mai.
+function skyInsegui() {
+  if (!sky.inseguimento) return;
+  if (skyUsaSensori()) return;      // la vista la punta il telefono
+  const o = skyOggettoScelto();
+  if (!o || typeof o.az !== 'number') return;
+  sky.animazioneVista = null;
+  sky.manuale.az = ((o.az % 360) + 360) % 360;
+  sky.manuale.alt = Math.max(-89, Math.min(89, o.alt));
+}
+
+// Chi trascina il cielo vuole guardare da un'altra parte: l'inseguimento che
+// riporta la vista indietro a ogni fotogramma sarebbe una mappa che non
+// risponde più al dito.
+function skySpegniInseguimento(motivo) {
+  if (!sky.inseguimento) return;
+  sky.inseguimento = false;
+  skyAggiornaTastoInsegui();
+  if (motivo) skyAvviso('inseguimento', motivo, 5000);
+  else skyAvviso('inseguimento', '');
+}
+
+function skyAggiornaTastoInsegui() {
+  skyTasto('skymap-btn-insegui', sky.inseguimento, sky.inseguimento ? 'Insegue' : 'Insegui');
+}
+
 // Un passo dello spostamento morbido, chiamato a ogni fotogramma
 function skyMuoviVista() {
   const a = sky.animazioneVista;
@@ -8539,6 +8943,9 @@ function skyAlternaSeguiTelefono() {
   }
   sky.seguiTelefono = nuovo;
   sky.animazioneVista = null;
+  // Riattaccando la vista al telefono l'inseguimento non ha più niente da
+  // guidare: meglio spegnerlo che lasciare acceso un tasto che non fa nulla
+  if (nuovo && sky.sensori) skySpegniInseguimento();
   skyTasto('skymap-btn-segui', nuovo);
   skyAggiornaStato();
 
@@ -8625,6 +9032,9 @@ function skyCiclo() {
   skyAggiornaOggetti(false);
   skyMuoviSatelliti();
   skyMuoviVista();
+  // L'inseguimento parla per ultimo: qualunque cosa abbiano deciso il
+  // playback o lo spostamento morbido, l'oggetto scelto torna al centro
+  skyInsegui();
   skyDisegna();
   sky.raf = requestAnimationFrame(skyCiclo);
 }
@@ -8741,6 +9151,11 @@ function skyInizializzaGesti() {
       // successive: il cielo risultava storto senza che si capisse perché.
       if (sky.calibrazione) skyImpostaOffsetBussola(sky.offsetBussola - dx * gradiPerPixel);
     } else {
+      // Il dito ha la precedenza sull'inseguimento: se no la vista tornerebbe
+      // indietro da sola a ogni fotogramma
+      if (sky.inseguimento && (dx || dy)) {
+        skySpegniInseguimento('Inseguimento spento: stai muovendo la mappa col dito.');
+      }
       sky.manuale.az = ((sky.manuale.az - dx * gradiPerPixel) % 360 + 360) % 360;
       sky.manuale.alt = Math.max(-89, Math.min(89, sky.manuale.alt + dy * gradiPerPixel));
     }
@@ -8854,10 +9269,12 @@ function inizializzaSkymap() {
     sky.fov = 55;
   });
   collega('skymap-btn-centra', () => {
-    const voce = skyVoceSelezionata();
+    const voce = skyOggettoScelto();
     if (voce) skyCentraSu(voce);
     else skyAvviso('centratura', 'Prima scegli un oggetto: dall\'elenco qui sotto, o toccandolo sulla mappa.', 7000);
   });
+  collega('skymap-btn-insegui', skyAlternaInseguimento);
+  skyAggiornaTastoInsegui();
   document.querySelectorAll('#cielo-comandi [data-verso]').forEach(b => {
     b.addEventListener('click', () => {
       const v = b.dataset.verso;
@@ -8892,6 +9309,14 @@ function inizializzaSkymap() {
   filtro('skymap-btn-etichette', 'mostraNomi');
   filtro('skymap-btn-vialattea', 'mostraViaLattea');
   filtro('skymap-btn-atmosfera', 'atmosfera');
+  // I segni degli eventi si accendono e si spengono senza rifare i conti
+  // delle posizioni: cambia solo cosa viene disegnato
+  collega('skymap-btn-eventi', () => {
+    sky.mostraEventi = !sky.mostraEventi;
+    skyAggiornaTastiFiltri();
+  });
+  // Il promemoria sopra la mappa apre l'elenco di cosa sta succedendo
+  collega('skymap-eventi-chip', () => skyMostraGruppo('eventi'));
   skyAggiornaTastiFiltri();
 
   // Le linguette dei gruppi di comandi (telefono e tablet)
@@ -8972,6 +9397,7 @@ function skyAggiornaTastiFiltri() {
   skyTasto('skymap-btn-deepsky', sky.mostraProfondo);
   skyTasto('skymap-btn-polo', sky.mostraPolo);
   skyTasto('skymap-btn-atmosfera', sky.atmosfera);
+  skyTasto('skymap-btn-eventi', sky.mostraEventi);
 }
 
 // Quale gruppo di comandi è aperto sopra la mappa: uno solo, e toccando di

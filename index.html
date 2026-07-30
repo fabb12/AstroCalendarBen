@@ -231,6 +231,8 @@
             <div class="linguette-gruppi" aria-label="Gruppi di comandi">
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="tempo" aria-pressed="false"
                 title="Data, ora, macchina del tempo e playback del cielo">Tempo</button>
+              <button type="button" class="linguetta-gruppo" data-vai-gruppo="eventi" aria-pressed="false"
+                title="Cosa succede nel cielo all'istante che stai guardando: eclissi, sciami meteorici, fasi lunari, congiunzioni">Eventi</button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="vista" aria-pressed="false"
                 title="Schermo intero, modalità notte, fotocamera"><span class="nome-lungo">Visualizzazione</span><span class="nome-corto">Vista</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="filtri" aria-pressed="false"
@@ -245,6 +247,11 @@
                  sbagliate senza sapere perché -->
             <button id="skymap-tempo-chip" type="button" class="chip-tempo"
               title="Il cielo mostrato non è quello di adesso: tocca per tornare al tempo reale"></button>
+            <!-- Compare quando all'ora mostrata sta succedendo qualcosa: un
+                 cielo che ospita un'eclissi o uno sciame deve dirlo da solo,
+                 senza costringere a controllare il calendario -->
+            <button id="skymap-eventi-chip" type="button" class="chip-eventi"
+              title="Cosa succede nel cielo all'ora mostrata: tocca per l'elenco"></button>
           </div>
 
           <!-- Dati di puntamento e stato -->
@@ -328,6 +335,16 @@
               <p id="skymap-tempo-testo" class="lettura-tempo">In tempo reale</p>
             </section>
 
+            <!-- EVENTI: cosa succede nel cielo all'istante mostrato. La vista
+                 Cielo mostra dove sono gli astri; qui si aggiunge il perché
+                 quella notte vale la pena guardarla — un'eclissi in corso, uno
+                 sciame al picco, una congiunzione — con il tasto per portare
+                 l'orologio sull'istante buono e quello per cercarlo in cielo. -->
+            <section class="gruppo-comandi gruppo-eventi" data-gruppo="eventi" aria-label="Eventi">
+              <p class="etichetta-comando">Cosa succede nel cielo intorno all'ora mostrata. Spostando l'orologio l'elenco cambia con lui.</p>
+              <div id="skymap-eventi-elenco" class="elenco-eventi-cielo" aria-live="polite"></div>
+            </section>
+
             <!-- VISUALIZZAZIONE: come si vede il cielo -->
             <section class="gruppo-comandi" data-gruppo="vista" aria-label="Visualizzazione">
               <div class="riga-comandi">
@@ -352,6 +369,7 @@
                 <button id="skymap-btn-satelliti" type="button" class="tasto-cielo attiva" title="ISS e Tiangong">Satelliti</button>
                 <button id="skymap-btn-sotto" type="button" class="tasto-cielo attiva" title="Mostra anche ciò che in questo momento è sotto l'orizzonte">Sotto l'orizzonte</button>
                 <button id="skymap-btn-polo" type="button" class="tasto-cielo" title="Mostra il punto in cui deve guardare l'asse della montatura equatoriale">Polo celeste</button>
+                <button id="skymap-btn-eventi" type="button" class="tasto-cielo attiva" title="Segna sulla mappa gli eventi in corso all'ora mostrata: il radiante di uno sciame, l'astro eclissato, i corpi di una congiunzione">Eventi in cielo</button>
               </div>
             </section>
 
@@ -362,6 +380,8 @@
                 <button id="skymap-btn-zoom-meno" type="button" class="tasto-cielo" title="Riduci (campo visivo più ampio). Con la fotocamera accesa tara l'obiettivo">Riduci</button>
                 <button id="skymap-btn-campo" type="button" class="tasto-cielo" title="Torna al campo visivo di partenza (con la fotocamera accesa: azzera la taratura dell'obiettivo)">Campo 55°</button>
                 <button id="skymap-btn-centra" type="button" class="tasto-cielo" title="Porta al centro della mappa l'oggetto selezionato">Centra</button>
+                <button id="skymap-btn-insegui" type="button" class="tasto-cielo"
+                  title="Tieni l'oggetto selezionato sempre al centro della mappa: la vista lo segue mentre il cielo ruota o mentre scorre il playback">Insegui</button>
                 <button id="skymap-btn-segui" type="button" class="tasto-cielo attiva"
                   title="Con bussola e giroscopio accesi il cielo lo punta il telefono. Spegnendolo la mappa la muovi tu col dito, e i tasti Centra e Guarda verso tornano a funzionare">Segui il telefono</button>
               </div>
@@ -392,7 +412,7 @@
 
             <!-- ASTRI: l'elenco di cosa cercare -->
             <section class="gruppo-comandi gruppo-astri" data-gruppo="astri" aria-label="Astri">
-              <p class="etichetta-comando">Scegli cosa cercare: la mappa lo porta al centro e una freccia ti guida verso l'astro.</p>
+              <p class="etichetta-comando">Scegli cosa cercare: la mappa lo porta al centro e una freccia ti guida verso l'astro. Per la sua scheda di dati, toccalo direttamente sulla mappa.</p>
               <div id="skymap-oggetti" class="elenco-astri"></div>
             </section>
 
