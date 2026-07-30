@@ -1390,6 +1390,38 @@ body .ecl-select {
 }
 .ecl-fascia-passi b { color: var(--testo); font-family: var(--mono); }
 
+/* --- Il cielo sara' sereno? -------------------------------------------
+   Quando la rete non risponde questo blocco sparisce del tutto: meglio il
+   silenzio di un riquadro che dice "dati non disponibili" in un campo dove
+   non c'e' campo. */
+.ecl-meteo { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--bordo); }
+.ecl-meteo.vuoto { display: none; }
+.ecl-meteo p { font-size: 0.76rem; color: var(--testo-2); line-height: 1.55; }
+.ecl-meteo b { color: var(--testo); font-family: var(--mono); }
+.ecl-meteo-testa {
+  font-size: 0.7rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--testo-3) !important;
+}
+.ecl-meteo-valore {
+  margin: 2px 0 6px;
+  font-size: 1.05rem !important;
+  font-weight: 700;
+}
+.ecl-meteo-valore.buono { color: var(--verde); }
+.ecl-meteo-valore.medio { color: var(--ambra); }
+.ecl-meteo-valore.brutto { color: var(--rosso); }
+.ecl-meteo-confronto {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--bordo-forte);
+  background: var(--incassato);
+}
+.ecl-meteo-confronto.meglio { border-color: rgba(52, 211, 153, 0.4); }
+.ecl-meteo-confronto.peggio { border-color: rgba(245, 181, 68, 0.4); }
+
 /* --- Sicurezza e fotografia -------------------------------------------
    La regola sul filtro cambia col luogo, ed e' l'unica cosa in tutta la
    finestra che puo' fare male se letta di sfuggita: sta in un riquadro

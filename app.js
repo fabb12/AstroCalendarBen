@@ -2137,6 +2137,7 @@ function _eclAggiornaDossier(lat, lon) {
   _eclDisegnaTacche(dossier && dossier.circ);
   _eclDisegnaCronologia(dossier);
   _eclDisegnaSicurezza(dossier && dossier.circ);
+  _eclAggiornaMeteo(lat, lon, dossier);
 }
 
 // --- Sicurezza e fotografia -------------------------------------------
@@ -2480,6 +2481,244 @@ function _eclDisegnaCronologia(dossier) {
   let attivo = -1;
   passi.forEach((p, i) => { if (p.min <= _eclissiOffsetTempoMin) attivo = i; });
   el.querySelectorAll('.ecl-passo').forEach((n, i) => n.classList.toggle('attivo', i === attivo));
+}
+
+// =====================================================================
+// 1-ter-bis. IL CIELO SARÀ SERENO?
+//   La geometria dice se l'eclissi passa di qui. Le nuvole decidono se la
+//   vedrai: e' l'unica variabile che conta davvero e l'unica su cui si puo'
+//   ancora fare qualcosa, spostandosi. Per gli eventi vicini si chiede la
+//   previsione; per quelli lontani — e sono quasi tutti, visto che il
+//   calendario arriva al 2070 — si guarda cosa faceva il cielo in quel
+//   punto, in quei giorni, negli ultimi quindici anni.
+//
+//   Tutto qui dentro fallisce in silenzio. L'app deve restare usabile in un
+//   campo senza campo: se la rete non risponde, semplicemente non si parla
+//   di nuvole.
+// =====================================================================
+
+const MET_CHIAVE_CACHE = 'astrocalendario_meteo';
+const MET_ANNI_STORICI = 15;
+const MET_SOGLIA_SERENO = 30;      // copertura media giornaliera, in percento
+const MET_ATTESA_MS = 9000;
+const MET_TTL_PREVISIONE = 3 * 3600000;  // le previsioni invecchiano in fretta
+const MET_TTL_CLIMA = 180 * 86400000;    // la climatologia praticamente mai
+
+function _metCacheLeggi(chiave) {
+  try {
+    const tutto = JSON.parse(localStorage.getItem(MET_CHIAVE_CACHE) || '{}');
+    const v = tutto[chiave];
+    if (v && v.scade > Date.now()) return v.dato;
+  } catch (e) { /* cache illeggibile: si rifà la richiesta */ }
+  return null;
+}
+
+function _metCacheScrivi(chiave, dato, ttl) {
+  try {
+    const tutto = JSON.parse(localStorage.getItem(MET_CHIAVE_CACHE) || '{}');
+    tutto[chiave] = { dato, scade: Date.now() + ttl };
+    // Senza potatura la cache cresce a ogni punto toccato sulla mappa
+    const voci = Object.entries(tutto).filter(([, v]) => v.scade > Date.now());
+    if (voci.length > 60) voci.splice(0, voci.length - 60);
+    localStorage.setItem(MET_CHIAVE_CACHE, JSON.stringify(Object.fromEntries(voci)));
+  } catch (e) { /* spazio finito o modalità privata: pazienza */ }
+}
+
+async function _metChiedi(url) {
+  if (typeof fetch !== 'function') return null;
+  const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+  const stop = ctrl ? setTimeout(() => ctrl.abort(), MET_ATTESA_MS) : null;
+  try {
+    const r = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) {
+    return null; // niente rete, niente meteo: non è un errore da mostrare
+  } finally {
+    if (stop) clearTimeout(stop);
+  }
+}
+
+function _metData(d) {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-` +
+         `${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+// Le previsioni arrivano a sedici giorni; oltre, non esistono.
+function _metEntroPrevisione(quando) {
+  const giorni = (quando.getTime() - Date.now()) / 86400000;
+  return giorni >= -1 && giorni <= 15;
+}
+
+// Nuvole previste nell'ora dell'eclissi, in quel punto.
+async function _metPrevisione(lat, lon, quando) {
+  const chiave = `p|${lat.toFixed(1)}|${lon.toFixed(1)}|${_metData(quando)}|${quando.getUTCHours()}`;
+  const salvato = _metCacheLeggi(chiave);
+  if (salvato) return salvato;
+
+  const giorno = _metData(quando);
+  const url = 'https://api.open-meteo.com/v1/forecast' +
+    `?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}` +
+    `&hourly=cloud_cover&start_date=${giorno}&end_date=${giorno}&timezone=UTC`;
+  const d = await _metChiedi(url);
+  const ore = d && d.hourly && d.hourly.time;
+  const cop = d && d.hourly && (d.hourly.cloud_cover || d.hourly.cloudcover);
+  if (!ore || !cop) return null;
+
+  const cercata = `${giorno}T${String(quando.getUTCHours()).padStart(2, '0')}:00`;
+  let i = ore.indexOf(cercata);
+  if (i < 0) i = Math.min(quando.getUTCHours(), cop.length - 1);
+  const nuvole = cop[i];
+  if (typeof nuvole !== 'number') return null;
+
+  const esito = { tipo: 'previsione', nuvole };
+  _metCacheScrivi(chiave, esito, MET_TTL_PREVISIONE);
+  return esito;
+}
+
+// Distanza fra due date del calendario, ignorando l'anno: serve a prendere
+// i giorni "attorno" alla data dell'eclissi anche a cavallo di capodanno.
+function _metDistanzaGiorni(mese, giorno, altroMese, altroGiorno) {
+  const gi = (m, g) => Math.round((Date.UTC(2001, m - 1, g) - Date.UTC(2001, 0, 1)) / 86400000);
+  const d = Math.abs(gi(mese, giorno) - gi(altroMese, altroGiorno));
+  return Math.min(d, 365 - d);
+}
+
+// Cosa faceva il cielo, in quel punto, nei giorni attorno a quella data,
+// negli ultimi quindici anni. Una richiesta sola: si scaricano le medie
+// giornaliere di tutto il periodo e si tengono le date che servono.
+async function _metClima(lat, lon, quando) {
+  const mese = quando.getUTCMonth() + 1, giorno = quando.getUTCDate();
+  const chiave = `c|${lat.toFixed(1)}|${lon.toFixed(1)}|${mese}-${giorno}`;
+  const salvato = _metCacheLeggi(chiave);
+  if (salvato) return salvato;
+
+  const ultimo = new Date().getUTCFullYear() - 1;
+  const primo = ultimo - MET_ANNI_STORICI + 1;
+  const url = 'https://archive-api.open-meteo.com/v1/archive' +
+    `?latitude=${lat.toFixed(3)}&longitude=${lon.toFixed(3)}` +
+    `&start_date=${primo}-01-01&end_date=${ultimo}-12-31` +
+    '&daily=cloud_cover_mean&timezone=UTC';
+  const d = await _metChiedi(url);
+  const giorni = d && d.daily && d.daily.time;
+  const cop = d && d.daily && (d.daily.cloud_cover_mean || d.daily.cloudcover_mean);
+  if (!giorni || !cop) return null;
+
+  // Una finestra di tre giorni per parte: la data esatta darebbe quindici
+  // valori soli, troppo pochi per dire qualcosa.
+  const valori = [];
+  for (let i = 0; i < giorni.length; i++) {
+    const v = cop[i];
+    if (typeof v !== 'number') continue;
+    const p = giorni[i].split('-');
+    if (_metDistanzaGiorni(mese, giorno, +p[1], +p[2]) <= 3) valori.push(v);
+  }
+  if (valori.length < 20) return null;
+
+  valori.sort((a, b) => a - b);
+  const esito = {
+    tipo: 'clima',
+    mediana: valori[Math.floor(valori.length / 2)],
+    quotaSereno: valori.filter(v => v <= MET_SOGLIA_SERENO).length / valori.length,
+    campioni: valori.length,
+    daAnno: primo,
+    adAnno: ultimo
+  };
+  _metCacheScrivi(chiave, esito, MET_TTL_CLIMA);
+  return esito;
+}
+
+function _metGiudizio(quota) {
+  if (quota >= 0.65) return { classe: 'buono', testo: 'buone probabilità' };
+  if (quota >= 0.45) return { classe: 'medio', testo: 'probabilità discrete' };
+  if (quota >= 0.25) return { classe: 'medio', testo: 'probabilità scarse' };
+  return { classe: 'brutto', testo: 'probabilità basse' };
+}
+
+// --- Il pannello -------------------------------------------------------
+
+let _metRichiestaInCorso = 0;
+let _metRimando = null;
+
+function _eclAggiornaMeteo(lat, lon, dossier) {
+  const el = document.getElementById('eclissi-meteo');
+  if (!el || !_eclissiEventoInCorso) return;
+  // Trascinando il punto sulla mappa si passa su decine di posizioni: si
+  // aspetta che la mano si fermi prima di chiedere qualcosa alla rete.
+  if (_metRimando) clearTimeout(_metRimando);
+  _metRimando = setTimeout(() => _metCarica(el, lat, lon, dossier), 700);
+}
+
+async function _metCarica(el, lat, lon, dossier) {
+  const ev = _eclissiEventoInCorso;
+  if (!ev) return;
+  const mio = ++_metRichiestaInCorso;
+
+  // L'ora che conta è quella del massimo in questo punto, non del culmine
+  // globale: possono distare ore.
+  const circ = dossier && dossier.circ;
+  const quando = circ && circ.visibile
+    ? (circ.momentoMigliore || circ.massimo).data
+    : ev.dataObj;
+
+  const vicino = _metEntroPrevisione(quando);
+  const qui = vicino ? await _metPrevisione(lat, lon, quando) : await _metClima(lat, lon, quando);
+  if (mio !== _metRichiestaInCorso) return;   // l'utente si è già spostato altrove
+  if (!qui) { el.innerHTML = ''; el.classList.add('vuoto'); return; }
+
+  // Il confronto che vale il viaggio: se la fascia è altrove, quanto cambia
+  // il cielo laggiù?
+  let laggiu = null;
+  const fascia = dossier && dossier.fascia;
+  if (!vicino && fascia && !fascia.dentro && fascia.centro) {
+    const p = fascia.centro.punto;
+    laggiu = await _metClima(p[0], ((p[1] % 360) + 540) % 360 - 180, quando);
+    if (mio !== _metRichiestaInCorso) return;
+  }
+
+  el.classList.remove('vuoto');
+  el.innerHTML = _metHtml(qui, laggiu, fascia, quando);
+}
+
+function _metHtml(qui, laggiu, fascia, quando) {
+  if (qui.tipo === 'previsione') {
+    const g = _metGiudizio(1 - qui.nuvole / 100);
+    return `
+      <p class="ecl-meteo-testa">Il cielo, quel giorno</p>
+      <p class="ecl-meteo-valore ${g.classe}">${Math.round(qui.nuvole)}% di nuvole previste</p>
+      <p>Previsione per le ${_eclOra(quando)} in questo punto. Manca poco: vale la pena
+        ricontrollarla il giorno prima, quando sarà molto più affidabile.</p>`;
+  }
+
+  const g = _metGiudizio(qui.quotaSereno);
+  const perc = (q) => `${Math.round(q * 100)}%`;
+  let confronto = '';
+  if (laggiu && fascia && fascia.centro) {
+    const salto = laggiu.quotaSereno - qui.quotaSereno;
+    const dove = fascia.centro.nome ? ` (${fascia.centro.nome})` : '';
+    confronto = Math.abs(salto) < 0.06
+      ? `<p class="ecl-meteo-confronto">Sulla linea centrale, a ${_eclKm(fascia.centro.km)}
+          verso ${skyNomeDirezione(fascia.centro.az)}${dove}, il cielo storicamente si comporta
+          quasi allo stesso modo (${perc(laggiu.quotaSereno)} di giornate serene).</p>`
+      : `<p class="ecl-meteo-confronto ${salto > 0 ? 'meglio' : 'peggio'}">
+          Sulla linea centrale, a ${_eclKm(fascia.centro.km)} verso
+          ${skyNomeDirezione(fascia.centro.az)}${dove}, si passa a
+          <b>${perc(laggiu.quotaSereno)}</b> di giornate serene:
+          ${salto > 0 ? 'oltre alla totalità, ci si guadagna anche in cielo'
+                      : 'la totalità si guadagna, ma il cielo è storicamente più chiuso'}.</p>`;
+  }
+
+  return `
+    <p class="ecl-meteo-testa">Il cielo, storicamente</p>
+    <p class="ecl-meteo-valore ${g.classe}">${perc(qui.quotaSereno)} di giornate serene</p>
+    <p>Negli ultimi ${MET_ANNI_STORICI} anni (${qui.daAnno}–${qui.adAnno}), nei giorni attorno
+      al ${quando.getUTCDate()} ${quando.toLocaleDateString('it-IT', { month: 'long', timeZone: 'UTC' })},
+      in questo punto il cielo era coperto in media al <b>${Math.round(qui.mediana)}%</b>.
+      Sono ${g.testo}.</p>
+    ${confronto}
+    <p class="ecl-nota-piccola">Statistica su ${qui.campioni} giornate, dalla rianalisi ERA5.
+      Non è una previsione — a questa distanza non esistono — ma dice dove conviene
+      cercare posto.</p>`;
 }
 
 // =====================================================================
