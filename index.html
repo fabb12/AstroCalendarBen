@@ -206,12 +206,134 @@
       <div id="eventi-container" class="griglia-schede"></div>
     </div>
 
-    <!-- VISTA CIELO: punta il telefono e trova gli astri (bussola + giroscopio) -->
-    <!-- Su schermo grande la scena e i comandi stanno affiancati: il cielo si
-         prende tutta l'altezza e i pannelli non lo spingono fuori vista.
-         Sul telefono tornano uno sotto l'altro. -->
+    <!-- VISTA CIELO: punta il telefono e trova gli astri (bussola + giroscopio)
+         I comandi stanno in cima, divisi per mestiere — Tempo, Visualizzazione,
+         Filtri, Navigazione — perché è lì che si cercano e perché così non
+         bisogna scorrere sotto la mappa per toccarli. Sul telefono se ne vede
+         un gruppo per volta, scelto con le linguette; da 1180px in su ci
+         stanno tutti in fila e sotto il cielo si allarga, con l'elenco degli
+         astri di fianco. -->
     <div id="vista-skymap" class="hidden vista-cielo">
 
+     <!-- ============================================================ COMANDI -->
+     <div id="cielo-barra" class="cielo-barra" data-gruppo-attivo="tempo">
+
+       <!-- Linguette dei gruppi: il CSS le accende solo dove i quattro gruppi
+            non ci stanno affiancati (telefono e tablet) -->
+       <div class="linguette-gruppi" aria-label="Gruppi di comandi">
+         <button type="button" class="linguetta-gruppo attiva" data-vai-gruppo="tempo" aria-pressed="true">Tempo</button>
+         <!-- Sui telefoni stretti "Visualizzazione" non ci sta accanto alle
+              altre tre: lì passa la forma corta, come per il nome dell'app -->
+         <button type="button" class="linguetta-gruppo" data-vai-gruppo="vista" aria-pressed="false"><span class="nome-lungo">Visualizzazione</span><span class="nome-corto">Vista</span></button>
+         <button type="button" class="linguetta-gruppo" data-vai-gruppo="filtri" aria-pressed="false">Filtri</button>
+         <button type="button" class="linguetta-gruppo" data-vai-gruppo="navigazione" aria-pressed="false"><span class="nome-lungo">Navigazione</span><span class="nome-corto">Naviga</span></button>
+       </div>
+
+       <!-- TEMPO: l'istante mostrato, dal secondo agli anni -->
+       <section class="gruppo-comandi gruppo-attivo" data-gruppo="tempo" aria-label="Tempo">
+         <h3 class="titolo-gruppo">Tempo</h3>
+
+         <label class="etichetta-comando" for="skymap-data">Data e ora mostrate</label>
+         <div class="riga-comandi">
+           <input id="skymap-data" type="datetime-local" step="1" class="campo-cielo"
+             title="Scrivi la data e l'ora che vuoi vedere: passato o futuro, secondi compresi">
+           <button id="skymap-tempo-ora" type="button" class="tasto-cielo tasto-primario">Adesso</button>
+         </div>
+
+         <!-- I salti: dai dieci secondi al giorno, per arrivare esattamente
+              sull'istante che interessa senza combattere con la slitta -->
+         <div class="riga-comandi passi-tempo" aria-label="Sposta l'orologio a passi">
+           <button type="button" class="tasto-cielo tasto-passo" data-passo="-86400" title="Un giorno indietro">−1 g</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-passo="-3600" title="Un'ora indietro">−1 h</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-passo="-600" title="Dieci minuti indietro">−10 m</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-passo="-60" title="Un minuto indietro">−1 m</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-passo="-10" title="Dieci secondi indietro">−10 s</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-passo="10" title="Dieci secondi avanti">+10 s</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-passo="60" title="Un minuto avanti">+1 m</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-passo="600" title="Dieci minuti avanti">+10 m</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-passo="3600" title="Un'ora avanti">+1 h</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-passo="86400" title="Un giorno avanti">+1 g</button>
+         </div>
+
+         <!-- La slitta scorre dentro una finestra scelta: con ±10 minuti un
+              pixel vale pochi secondi, ed è lì che serve la precisione -->
+         <div class="riga-comandi riga-slitta">
+           <input id="skymap-tempo" type="range" min="-3600" max="3600" step="5" value="0"
+             class="slitta-tempo" aria-label="Scorri il tempo dentro la finestra scelta"
+             title="Trascina per scorrere il tempo dentro la finestra scelta">
+         </div>
+
+         <div class="riga-comandi">
+           <span class="etichetta-comando">Finestra della slitta</span>
+           <button type="button" class="tasto-cielo tasto-passo" data-finestra="600">±10 m</button>
+           <button type="button" class="tasto-cielo tasto-passo attiva" data-finestra="3600">±1 h</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-finestra="43200">±12 h</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-finestra="604800">±7 g</button>
+         </div>
+
+         <p id="skymap-tempo-testo" class="lettura-tempo">In tempo reale</p>
+       </section>
+
+       <!-- VISUALIZZAZIONE: come si vede il cielo -->
+       <section class="gruppo-comandi" data-gruppo="vista" aria-label="Visualizzazione">
+         <h3 class="titolo-gruppo">Visualizzazione</h3>
+         <div class="riga-comandi">
+           <button id="skymap-btn-schermo" type="button" class="tasto-cielo" title="Il cielo occupa tutto lo schermo (anche con un doppio clic sulla mappa)">Schermo intero</button>
+           <button id="skymap-btn-notte" type="button" class="tasto-cielo" title="Filtro rosso: protegge la vista notturna">Modalità notte</button>
+           <button id="skymap-btn-camera" type="button" class="tasto-cielo" title="Sovrapponi il cielo all'immagine della fotocamera">Fotocamera</button>
+           <button id="skymap-btn-griglia" type="button" class="tasto-cielo attiva" title="Reticolo di azimut e altezza">Reticolo</button>
+           <button id="skymap-btn-etichette" type="button" class="tasto-cielo attiva" title="Nomi accanto agli astri disegnati">Nomi</button>
+         </div>
+       </section>
+
+       <!-- FILTRI: cosa compare sulla mappa -->
+       <section class="gruppo-comandi" data-gruppo="filtri" aria-label="Filtri">
+         <h3 class="titolo-gruppo">Filtri</h3>
+         <div class="riga-comandi">
+           <button id="skymap-btn-pianeti" type="button" class="tasto-cielo attiva" title="Mercurio, Venere, Marte, Giove, Saturno, Urano e Nettuno">Pianeti</button>
+           <button id="skymap-btn-solelun" type="button" class="tasto-cielo attiva" title="Sole e Luna">Sole e Luna</button>
+           <button id="skymap-btn-stelle" type="button" class="tasto-cielo attiva" title="Le stelle luminose di riferimento">Stelle</button>
+           <button id="skymap-btn-costellazioni" type="button" class="tasto-cielo attiva" title="Le figure delle costellazioni">Costellazioni</button>
+           <button id="skymap-btn-deepsky" type="button" class="tasto-cielo" title="Galassie, nebulose e ammassi">Deep Sky</button>
+           <button id="skymap-btn-satelliti" type="button" class="tasto-cielo attiva" title="ISS e Tiangong">Satelliti</button>
+           <button id="skymap-btn-sotto" type="button" class="tasto-cielo attiva" title="Mostra anche ciò che in questo momento è sotto l'orizzonte">Sotto l'orizzonte</button>
+           <button id="skymap-btn-polo" type="button" class="tasto-cielo" title="Mostra il punto in cui deve guardare l'asse della montatura equatoriale">Polo celeste</button>
+         </div>
+       </section>
+
+       <!-- NAVIGAZIONE: dove si guarda, e con che ingrandimento -->
+       <section class="gruppo-comandi" data-gruppo="navigazione" aria-label="Navigazione">
+         <h3 class="titolo-gruppo">Navigazione</h3>
+         <div class="riga-comandi">
+           <button id="skymap-btn-zoom-piu" type="button" class="tasto-cielo" title="Ingrandisci (campo visivo più stretto)">Ingrandisci</button>
+           <button id="skymap-btn-zoom-meno" type="button" class="tasto-cielo" title="Riduci (campo visivo più ampio)">Riduci</button>
+           <button id="skymap-btn-campo" type="button" class="tasto-cielo" title="Torna al campo visivo di partenza">Campo 55°</button>
+           <button id="skymap-btn-centra" type="button" class="tasto-cielo" title="Porta al centro della mappa l'oggetto selezionato">Centra</button>
+           <button id="skymap-btn-segui" type="button" class="tasto-cielo attiva"
+             title="Con bussola e giroscopio accesi il cielo lo punta il telefono. Spegnendolo la mappa la muovi tu col dito, e i tasti Centra e Guarda verso tornano a funzionare">Segui il telefono</button>
+         </div>
+         <div class="riga-comandi" aria-label="Guarda verso">
+           <span class="etichetta-comando">Guarda verso</span>
+           <button type="button" class="tasto-cielo tasto-passo" data-verso="0">Nord</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-verso="90">Est</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-verso="180">Sud</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-verso="270">Ovest</button>
+           <button type="button" class="tasto-cielo tasto-passo" data-verso="zenit">Zenit</button>
+         </div>
+         <div class="riga-comandi">
+           <span class="etichetta-comando">Bussola</span>
+           <button id="skymap-cal-meno" type="button" class="tasto-cielo tasto-passo" title="Ruota la bussola verso ovest">−5°</button>
+           <span id="skymap-cal-valore" class="lettura-bussola">0°</span>
+           <button id="skymap-cal-piu" type="button" class="tasto-cielo tasto-passo" title="Ruota la bussola verso est">+5°</button>
+           <button id="skymap-cal-zero" type="button" class="tasto-cielo tasto-passo" title="Torna alla bussola del telefono, senza correzioni">Azzera</button>
+           <button id="skymap-btn-calibra" type="button" class="tasto-cielo" title="Permette di correggere la bussola trascinando il dito sul cielo">Calibra</button>
+           <button id="skymap-btn-posizione" type="button" class="tasto-cielo" title="Rileva di nuovo la posizione: GPS, poi rete, poi a mano">Posizione</button>
+         </div>
+       </section>
+
+     </div>
+
+     <!-- ============================================================== SCENA -->
      <div class="cielo-scena">
       <div id="skymap-contenitore" class="relative bg-slate-950 rounded-2xl border border-slate-700 shadow-xl overflow-hidden">
         <!-- Realtà aumentata: l'immagine della fotocamera sta dietro al cielo disegnato -->
@@ -225,11 +347,25 @@
           <div id="skymap-stato" class="bg-slate-900/70 backdrop-blur px-3 py-2 rounded-xl text-xs text-slate-300 border border-slate-700 text-right max-w-[55%]">Posizione non ancora rilevata</div>
         </div>
 
+        <!-- Uscita dallo schermo intero: sta nell'angolo della mappa e si vede
+             sempre, perché sul telefono è l'unica via d'uscita (nessun doppio
+             tocco: darebbe fastidio allo zoom) -->
+        <button id="skymap-btn-esci" type="button" class="tasto-esci-cielo"
+          title="Esci dallo schermo intero (anche con Esc o un doppio clic)">✕ Esci</button>
+
         <!-- Zoom (campo visivo) -->
-        <div class="absolute bottom-3 right-3 flex flex-col gap-2">
-          <button id="skymap-zoom-in" class="w-10 h-10 rounded-full bg-slate-800/80 hover:bg-slate-700 text-white text-xl font-bold border border-slate-600" title="Ingrandisci">+</button>
-          <button id="skymap-zoom-out" class="w-10 h-10 rounded-full bg-slate-800/80 hover:bg-slate-700 text-white text-xl font-bold border border-slate-600" title="Riduci">−</button>
+        <div class="comandi-zoom-cielo">
+          <button id="skymap-zoom-in" type="button" class="tasto-zoom-cielo" title="Ingrandisci" aria-label="Ingrandisci">+</button>
+          <button id="skymap-zoom-out" type="button" class="tasto-zoom-cielo" title="Riduci" aria-label="Riduci">−</button>
         </div>
+
+        <!-- Scheda dell'oggetto toccato sulla mappa: sta dentro al riquadro
+             del cielo, così funziona anche a schermo intero -->
+        <aside id="skymap-dettaglio" class="pannello-dettaglio" aria-live="polite">
+          <button id="skymap-dettaglio-chiudi" type="button" class="tasto-chiudi-dettaglio"
+            title="Chiudi la scheda" aria-label="Chiudi la scheda">✕</button>
+          <div id="skymap-dettaglio-corpo"></div>
+        </aside>
 
         <!-- Schermata iniziale: richiesta dei permessi -->
         <div id="skymap-overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex flex-col items-center justify-center text-center gap-4 p-6">
@@ -244,51 +380,25 @@
       <p id="skymap-avviso" class="hidden mt-3 text-sm text-amber-400 bg-amber-950/40 border border-amber-800 rounded-xl p-3"></p>
      </div>
 
-     <div class="cielo-comandi">
-
-      <!-- Macchina del tempo: com'era o come sarà il cielo -->
-      <div class="mt-3 bg-slate-800 p-3 rounded-2xl border border-slate-700">
-        <div class="flex items-center gap-3">
-          <span class="text-xs text-slate-400 flex-shrink-0">Ora mostrata</span>
-          <input id="skymap-tempo" type="range" min="-720" max="720" value="0" step="5"
-            class="flex-1 accent-blue-500 cursor-pointer" title="Sposta l'orologio avanti o indietro">
-          <button id="skymap-tempo-ora" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold flex-shrink-0">Adesso</button>
-        </div>
-        <p id="skymap-tempo-testo" class="mt-2 text-xs text-slate-300 font-mono">In tempo reale</p>
-      </div>
+     <!-- ================================================== ELENCO E SCHEDA -->
+     <div class="cielo-lato">
 
       <!-- Selettore dell'oggetto da cercare -->
-      <div class="mt-4">
-        <p class="text-xs text-slate-400 mb-2">Scegli cosa cercare: comparirà una freccia che ti guida verso l'astro.</p>
+      <div>
+        <p class="text-xs text-slate-400 mb-2">Scegli cosa cercare: la mappa lo porta al centro e una freccia ti guida verso l'astro.</p>
         <div id="skymap-oggetti" class="flex flex-wrap gap-2"></div>
       </div>
 
       <!-- Scheda dell'oggetto selezionato -->
-      <div id="skymap-info" class="mt-4 bg-slate-800 p-4 rounded-2xl border border-slate-700 text-sm text-slate-300">
-        Seleziona un astro per vedere dove si trova, quando sorge e quando tramonta.
+      <div id="skymap-info" class="bg-slate-800 p-4 rounded-2xl border border-slate-700 text-sm text-slate-300">
+        Tocca un oggetto sulla mappa, o scegline uno dall'elenco, per vedere distanza, dimensioni, magnitudine, costellazione e coordinate.
       </div>
 
-      <!-- Strumenti da campo -->
-      <div class="mt-3 flex flex-wrap items-center gap-2 text-xs strumenti-cielo">
-        <span class="text-slate-400">Bussola:</span>
-        <button id="skymap-cal-meno" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Ruota la bussola verso ovest">−5°</button>
-        <span id="skymap-cal-valore" class="text-slate-300 font-mono w-14 text-center">0°</span>
-        <button id="skymap-cal-piu" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Ruota la bussola verso est">+5°</button>
-        <button id="skymap-cal-zero" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Torna alla bussola del telefono, senza correzioni">Azzera</button>
-        <button id="skymap-btn-calibra" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Permette di correggere la bussola trascinando il dito sul cielo">Calibra trascinando</button>
-        <button id="skymap-btn-notte" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Filtro rosso: protegge la vista notturna">Modalità notte</button>
-        <button id="skymap-btn-costellazioni" class="px-3 py-1.5 rounded-full bg-blue-700 hover:bg-blue-600 text-white" title="Mostra o nascondi le figure delle costellazioni">Costellazioni</button>
-        <button id="skymap-btn-deepsky" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Galassie, nebulose e ammassi visibili con binocolo">Deep Sky</button>
-        <button id="skymap-btn-polo" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Mostra il punto in cui deve guardare l'asse della montatura equatoriale">Polo celeste</button>
-        <button id="skymap-btn-camera" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Sovrapponi il cielo all'immagine della fotocamera">Fotocamera</button>
-        <button id="skymap-btn-schermo" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Schermo intero">Schermo intero</button>
-        <button id="skymap-btn-posizione" class="px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white" title="Rileva di nuovo la posizione: GPS, poi rete, poi a mano">Aggiorna posizione</button>
-      </div>
       <!-- Le istruzioni lunghe stanno ripiegate: sul telefono rubavano mezzo
            schermo. Su desktop l'app le apre da sola, lì lo spazio c'è. -->
-      <details id="skymap-istruzioni" class="nota-ripiegata mt-2">
+      <details id="skymap-istruzioni" class="nota-ripiegata">
         <summary>Se la bussola non punta dove dovrebbe</summary>
-        <p class="text-xs text-slate-500 mt-2">Lo scarto fra il Nord magnetico del telefono e il Nord vero è già corretto in automatico per il luogo in cui ti trovi. Se resta un errore, tocca “Calibra trascinando” e sposta il dito in orizzontale sul cielo (o usa i tasti ±5°) finché il Sole o la Luna non coincidono con quelli veri; “Azzera” toglie ogni correzione a mano. Se la bussola sbanda, allontana il telefono da magneti, auto e ringhiere e disegna un otto in aria per ricalibrarla. Non guardare mai il Sole direttamente.</p>
+        <p class="text-xs text-slate-500 mt-2">Lo scarto fra il Nord magnetico del telefono e il Nord vero è già corretto in automatico per il luogo in cui ti trovi. Se resta un errore, tocca “Calibra” e sposta il dito in orizzontale sul cielo (o usa i tasti ±5°) finché il Sole o la Luna non coincidono con quelli veri; “Azzera” toglie ogni correzione a mano. Se la bussola sbanda, allontana il telefono da magneti, auto e ringhiere e disegna un otto in aria per ricalibrarla. Non guardare mai il Sole direttamente.</p>
       </details>
 
      </div>
