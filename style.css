@@ -636,7 +636,8 @@ details > summary::marker { color: var(--testo-3); font-size: 0.8em; }
 /* ------------------------------------------------- IL CIELO E GLI STRUMENTI */
 #skymap-contenitore,
 #sim-scena,
-#mappa-eclissi {
+#mappa-eclissi,
+#mappa-lunare {
   background-color: #03050c;
   box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.6), var(--ombra-3);
 }
@@ -942,7 +943,8 @@ body button.tasto-chiudi-largo:active { transform: translateY(0); }
 
 /* --- La mappa e le indicazioni sovrapposte --- */
 .ecl-mappa-guscio { position: relative; }
-#mappa-eclissi {
+#mappa-eclissi,
+#mappa-lunare {
   width: 100%;
   height: 58vh;
   min-height: 340px;
@@ -1118,6 +1120,37 @@ body .ecl-btn-play.in-corso {
 .ecl-tempo-valore { color: var(--testo); font-size: 0.86rem; font-weight: 600; }
 .ecl-scarto { color: var(--blu-chiaro); font-size: 0.7rem; font-weight: 400; margin-left: 4px; }
 
+/* I contatti disegnati sulla linea del tempo. Stanno sotto al cursore e non
+   intercettano il puntatore: la barra si deve poter trascinare da ovunque. */
+.ecl-tempo-pista { position: relative; }
+.ecl-tacche {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 9px;
+  pointer-events: none;
+}
+.ecl-tacca {
+  position: absolute;
+  bottom: 0;
+  width: 2px;
+  height: 7px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--testo-3);
+}
+.ecl-tacca.massimo { background: var(--ambra); height: 9px; }
+/* La fase centrale al bordo della fascia dura pochi secondi: senza una
+   larghezza minima non resterebbe niente da vedere. */
+.ecl-tacca-fascia {
+  position: absolute;
+  bottom: 0;
+  height: 4px;
+  min-width: 3px;
+  border-radius: 2px;
+  background: var(--ambra);
+  box-shadow: 0 0 6px rgba(245, 181, 68, 0.7);
+}
+
 .ecl-gruppo-tasti { display: flex; flex-wrap: wrap; gap: 6px; }
 body .ecl-tasto {
   padding: 6px 12px;
@@ -1268,6 +1301,392 @@ body .ecl-select {
 .ecl-stato-parziale { color: var(--blu-chiaro); }
 .ecl-stato-no { color: var(--testo-3); }
 .ecl-nota-piccola { font-size: 0.7rem !important; color: var(--testo-3) !important; margin-top: 6px; }
+
+/* --- I tempi di contatto: i cinque orari da portarsi dietro ------------
+   Sono il dato più concreto di tutta la finestra, quindi hanno il
+   trattamento tipografico di una tabella oraria: cifre allineate, colonna
+   dell'ora sempre alla stessa larghezza, tutto leggibile in un colpo. */
+.ecl-contatti { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--bordo); }
+.ecl-contatti-testa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.ecl-contatti-titolo { font-size: 0.95rem; font-weight: 700; }
+.ecl-contatti-titolo.centrale { color: var(--ambra); }
+.ecl-contatti-titolo.parziale { color: var(--blu-chiaro); }
+.ecl-contatti-titolo.assente { color: var(--testo-3); }
+.ecl-contatti-durata { font-size: 0.7rem; color: var(--testo-3); }
+.ecl-contatti-vuoto { font-size: 0.78rem; color: var(--testo-3); line-height: 1.5; }
+
+.ecl-contatti-lista { display: flex; flex-direction: column; gap: 1px; }
+.ecl-contatto {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1px 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.ecl-contatto:hover { background: rgba(148, 168, 214, 0.08); }
+.ecl-contatto-nome { font-size: 0.78rem; color: var(--testo); font-weight: 600; }
+.ecl-contatto-ora {
+  grid-row: span 2;
+  align-self: center;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  color: var(--testo);
+}
+.ecl-contatto-nota { font-size: 0.68rem; color: var(--testo-3); line-height: 1.4; }
+/* Un contatto con il Sole sotto l'orizzonte esiste sui numeri ma non per
+   chi guarda: si spegne invece di sparire, così resta chiaro perché manca. */
+.ecl-contatto.sotto { opacity: 0.5; }
+.ecl-contatto.sotto .ecl-contatto-ora { text-decoration: line-through; }
+.ecl-contatti-avviso {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ambra-velo);
+  border: 1px solid rgba(245, 181, 68, 0.3);
+  font-size: 0.74rem !important;
+  color: var(--testo-2);
+  line-height: 1.5;
+}
+.ecl-contatti-avviso b { color: var(--ambra); font-family: var(--mono); }
+
+/* --- Quanto dista la fascia di totalità -------------------------------- */
+.ecl-fascia-consiglio { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--bordo); }
+.ecl-fascia-consiglio.vuoto { display: none; }
+.ecl-fascia-consiglio p { font-size: 0.76rem; color: var(--testo-2); line-height: 1.55; }
+.ecl-fascia-consiglio b { color: var(--testo); font-family: var(--mono); }
+.ecl-fascia-esito { font-weight: 700; font-size: 0.85rem !important; margin-bottom: 4px; }
+.ecl-fascia-esito.dentro { color: var(--verde); }
+.ecl-fascia-esito.fuori { color: var(--blu-chiaro); }
+.ecl-fascia-passi {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.ecl-fascia-passi li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 0.76rem;
+  color: var(--testo-2);
+  line-height: 1.5;
+}
+.ecl-fascia-passi li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ambra);
+}
+.ecl-fascia-passi b { color: var(--testo); font-family: var(--mono); }
+
+/* --- Eclissi lunari ----------------------------------------------------
+   La sigla dei contatti (P1, U2...) e' il modo in cui vengono chiamati
+   ovunque: sta accanto al nome esteso, in piccolo, cosi' chi legge un
+   almanacco altrove ritrova le stesse etichette. */
+.lun-sigla {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--testo-3);
+  font-weight: 400;
+}
+.lun-sw-parte {
+  width: 22px; height: 12px; border-radius: 3px;
+  background: rgba(167, 139, 250, 0.35);
+}
+.lun-sw-intera {
+  width: 22px; height: 12px; border-radius: 3px;
+  background: rgba(196, 181, 253, 0.6);
+}
+.lun-sw-zenit {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--viola); border: 2px solid #f5f3ff;
+}
+
+/* --- Il cielo sara' sereno? -------------------------------------------
+   Quando la rete non risponde questo blocco sparisce del tutto: meglio il
+   silenzio di un riquadro che dice "dati non disponibili" in un campo dove
+   non c'e' campo. */
+.ecl-meteo { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--bordo); }
+.ecl-meteo.vuoto { display: none; }
+.ecl-meteo p { font-size: 0.76rem; color: var(--testo-2); line-height: 1.55; }
+.ecl-meteo b { color: var(--testo); font-family: var(--mono); }
+.ecl-meteo-testa {
+  font-size: 0.7rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--testo-3) !important;
+}
+.ecl-meteo-valore {
+  margin: 2px 0 6px;
+  font-size: 1.05rem !important;
+  font-weight: 700;
+}
+.ecl-meteo-valore.buono { color: var(--verde); }
+.ecl-meteo-valore.medio { color: var(--ambra); }
+.ecl-meteo-valore.brutto { color: var(--rosso); }
+.ecl-meteo-confronto {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--bordo-forte);
+  background: var(--incassato);
+}
+.ecl-meteo-confronto.meglio { border-color: rgba(52, 211, 153, 0.4); }
+.ecl-meteo-confronto.peggio { border-color: rgba(245, 181, 68, 0.4); }
+
+/* --- Sicurezza e fotografia -------------------------------------------
+   La regola sul filtro cambia col luogo, ed e' l'unica cosa in tutta la
+   finestra che puo' fare male se letta di sfuggita: sta in un riquadro
+   colorato, verde o rosso, che si vede prima del testo. */
+.ecl-sicurezza-corpo p { font-size: 0.76rem; color: var(--testo-2); line-height: 1.6; }
+.ecl-sic-titolo {
+  margin-bottom: 6px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  font-size: 0.84rem !important;
+  font-weight: 700;
+  line-height: 1.45 !important;
+}
+.ecl-sic-titolo.si {
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: var(--verde);
+}
+.ecl-sic-titolo.no {
+  background: rgba(248, 113, 113, 0.14);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  color: var(--rosso);
+}
+.ecl-sic-elenco {
+  margin: 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ecl-sic-elenco li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 0.75rem;
+  color: var(--testo-2);
+  line-height: 1.6;
+}
+.ecl-sic-elenco li::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0.6em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--bordo-forte);
+}
+.ecl-sic-elenco b { color: var(--testo); }
+.ecl-sic-sotto {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bordo);
+  font-size: 0.82rem !important;
+  font-weight: 600;
+  color: var(--testo) !important;
+}
+
+/* --- Salto rapido fra le sezioni --------------------------------------
+   Serve solo dove il modale diventa una colonna sola: sopra i 1180px le due
+   colonne mostrano gia' tutto e la barra sparisce. */
+.ecl-salti {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 8px 0;
+  margin: -4px 0 4px;
+  background: linear-gradient(to bottom, var(--superficie-piena) 72%, transparent);
+}
+.ecl-salti::-webkit-scrollbar { display: none; }
+.ecl-salti button {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte);
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ecl-salti button:hover { background: var(--blu-velo); color: var(--testo); border-color: var(--blu); }
+/* La barra si incolla in alto solo dove il modale diventa un foglio con la
+   testata ferma fuori dal contenuto che scorre (sotto i 768px). Sopra,
+   testata e corpo scorrono insieme e una barra incollata finirebbe sotto la
+   testata, che ha la precedenza: li' resta dov'e', in cima. */
+@media (max-width: 767px) {
+  .ecl-salti { position: sticky; top: 0; z-index: 5; }
+}
+
+/* Tasto che apre una finestra da dentro un pannello */
+body .ecl-tasto-largo {
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--bordo-forte);
+  background: var(--superficie-alta);
+  color: var(--testo);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+body .ecl-tasto-largo:hover { background: var(--blu-velo); border-color: var(--blu); }
+body .ecl-tasto-largo:disabled { cursor: progress; opacity: 0.75; }
+body .ecl-tasto-largo.fatto { border-color: rgba(52, 211, 153, 0.5); color: var(--verde); }
+body .ecl-tasto-largo.fallito { border-color: rgba(248, 113, 113, 0.5); color: var(--rosso); }
+
+/* --- Le eclissi di casa tua -------------------------------------------
+   Un calendario personale: una riga per eclissi, la barra dice quanto Sole
+   sparira'. Le totali si staccano dalle altre, perche' e' l'unica
+   distinzione che conta davvero quando si decide se mettersi in viaggio. */
+.casa-intro { font-size: 0.8rem; color: var(--testo-2); line-height: 1.6; margin-bottom: 12px; }
+.casa-intro b { color: var(--testo); }
+.casa-lista { display: flex; flex-direction: column; gap: 2px; }
+.casa-riga {
+  display: grid;
+  grid-template-columns: 56px 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.casa-riga:hover { background: rgba(148, 168, 214, 0.08); }
+.casa-riga.totale { background: var(--ambra-velo); }
+.casa-riga.totale:hover { background: rgba(245, 181, 68, 0.2); }
+.casa-data { display: flex; flex-direction: column; line-height: 1.2; }
+.casa-data b {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--testo);
+  font-weight: 600;
+}
+.casa-data span { font-family: var(--mono); font-size: 0.68rem; color: var(--testo-3); }
+.casa-barra {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--incassato);
+  overflow: hidden;
+  min-width: 40px;
+}
+.casa-barra > span { display: block; height: 100%; border-radius: 999px; }
+.casa-perc {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  color: var(--testo);
+  min-width: 42px;
+  text-align: right;
+}
+.casa-note { display: flex; align-items: center; gap: 6px; }
+.casa-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.casa-badge.totale { background: var(--rosso); color: #2b0606; }
+.casa-badge.anulare { background: var(--ambra); color: #2b1c02; }
+.casa-nota-piccola { font-size: 0.62rem; color: var(--testo-3); }
+.casa-elenco { margin-top: 4px; }
+
+@media (max-width: 560px) {
+  /* Su schermo stretto la percentuale basta: la barra da' gia' il colpo
+     d'occhio, e le due colonne insieme schiacciavano la data. */
+  .casa-riga { grid-template-columns: 52px 1fr auto; gap: 9px; }
+  .casa-note { grid-column: 2 / -1; }
+}
+
+/* --- La cronologia dei fenomeni ---------------------------------------
+   Una riga per momento, con l'ora a sinistra come in un programma di sala.
+   Il filo verticale lega i passi fra loro e rende la sequenza leggibile
+   anche scorrendola in fretta col pollice. */
+.ecl-cronologia { display: flex; flex-direction: column; }
+.ecl-passo {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 8px 8px 8px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.ecl-passo:hover { background: rgba(148, 168, 214, 0.07); }
+.ecl-passo-ora {
+  position: relative;
+  padding-left: 18px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.76rem;
+  color: var(--testo-3);
+  white-space: nowrap;
+}
+/* Il pallino sul filo: cambia colore col peso del momento */
+.ecl-passo-ora::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0.35em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--testo-3);
+  box-shadow: 0 0 0 3px var(--superficie-piena);
+  z-index: 1;
+}
+.ecl-passo-ora::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 0.35em;
+  bottom: -16px;
+  width: 1px;
+  background: var(--bordo-forte);
+}
+.ecl-passo:last-child .ecl-passo-ora::after { display: none; }
+.ecl-passo-testo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ecl-passo-testo b { font-size: 0.78rem; color: var(--testo); font-weight: 600; }
+.ecl-passo-testo span { font-size: 0.72rem; color: var(--testo-3); line-height: 1.5; }
+
+.ecl-passo.avviso .ecl-passo-ora::before { background: var(--blu); }
+.ecl-passo.avviso .ecl-passo-testo b { color: var(--blu-chiaro); }
+.ecl-passo.clou .ecl-passo-ora::before { background: var(--ambra); }
+.ecl-passo.clou .ecl-passo-testo b { color: var(--ambra); }
+.ecl-passo.clou .ecl-passo-ora { color: var(--ambra); }
+
+/* Il momento in cui si trova adesso il cursore del tempo */
+.ecl-passo.attivo { background: rgba(76, 141, 255, 0.12); }
+.ecl-passo.attivo .ecl-passo-ora::before {
+  box-shadow: 0 0 0 3px var(--superficie-piena), 0 0 10px 2px currentColor;
+}
 
 /* --- La legenda: ogni voce con il suo campione, come su una carta --- */
 .ecl-legenda {
@@ -2612,7 +3031,8 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
 .ecl-colonna-principale,
 .ecl-colonna-lato { display: grid; gap: 14px; align-content: start; min-width: 0; }
 
-#mappa-eclissi { height: var(--altezza-mappa-eclissi); }
+#mappa-eclissi,
+#mappa-lunare { height: var(--altezza-mappa-eclissi); }
 
 @media (min-width: 1180px) {
   /* La mappa e il suo filmato a sinistra, le letture a destra: si guarda
@@ -2620,6 +3040,8 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   .ecl-corpo { grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); align-items: start; }
   .ecl-corpo > #eclissi-riepilogo,
   .ecl-corpo > .barra-chiudi { grid-column: 1 / -1; }
+  /* Con due colonne si vede gia' tutto: la barra di salto non serve piu' */
+  .ecl-salti { display: none; }
   .ecl-riepilogo { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
   #mappa-eclissi { min-height: 460px; }
 }
