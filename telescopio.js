@@ -11,15 +11,25 @@
 // in questo file nasce da quella differenza: i conti sono fatti sul
 // *tuo* strumento, e le istruzioni parlano di manopole vere.
 //
+// La seconda idea, che viene da com'è fatto un telefono: dentro ci sono
+// già una livella, un goniometro e una bussola, cioè esattamente i tre
+// attrezzi che servono per mettere una montatura equatoriale al suo
+// posto. E se lo si attacca al tubo, sa anche dove sta guardando il
+// tubo. Quindi le due fasi difficili — allineare al Nord e trovare
+// l'oggetto — non si spiegano soltanto: si guidano, un passo per volta,
+// con lo strumento acceso dentro il passo che lo usa.
+//
 // Le sezioni, nell'ordine in cui servono davvero in giardino:
 //   1. Il profilo dello strumento e l'ottica (ingrandimenti, campi)
-//   2. Allineamento polare: il polo, la Polare, la deriva
-//   3. Puntamento: cerchi graduati digitali, salti di stella, telefono
-//      sul tubo
+//   2. Allineamento polare: il polo, la Polare, i sensori del telefono
+//      come livella / goniometro / bussola, la deriva
+//   3. Puntamento: push-to col telefono sul tubo, cerchi graduati
+//      digitali, salti di stella
 //   4. La serata: scaletta, raffreddamento, rugiada
 //   5. Manutenzione: collimazione e test stellare
 //   6. "Cosa vedrò davvero": l'anticipo onesto all'oculare
-//   7. La vista e i suoi pannelli
+//   7. I disegni: quadrante polare, bussola, bolla, goniometro, radar
+//   8. La vista e i suoi pannelli
 // =====================================================================
 
 const CHIAVE_TEL_PROFILO = 'astrocalendario_telescopio_v1';
@@ -145,7 +155,12 @@ const TEL_PROFILO_BASE = {
   ],
   barlow: 3,
   motoreAR: false,
-  cielo: 5
+  cielo: 5,
+  // Il battito che accompagna il push-to: si punta guardando nel
+  // cercatore, non lo schermo, quindi è l'orecchio o il polso a dire
+  // "fermo". Il suono è spento di partenza perché in un raduno dà noia.
+  pushtoVibra: true,
+  pushtoSuono: false
 };
 
 // Stato del modulo. Tutto quello che deve sopravvivere alla chiusura
@@ -153,19 +168,28 @@ const TEL_PROFILO_BASE = {
 const tel = {
   profilo: null,
   pannello: 'strumento',
-  // Allineamento polare
+  // Allineamento polare: a che punto è la procedura guidata e quali passi
+  // sono già stati dichiarati fatti
+  passo: 0,
+  fatti: [],
+  tuttiPassi: false,
+  // Allineamento per deriva (la parte da fotografia)
   deriva: { misure: [], inCorso: null, stella: null },
+  // Sensori del telefono usati come livella, goniometro e bussola
+  bussola: { attiva: false, timer: null, storico: [] },
   // Cerchi graduati digitali
   riferimento: null,        // { ra, dec, nome, quando }
   bersaglio: null,          // oggetto scelto come prossimo target
-  // Telefono sul tubo
+  metodo: 'pushto',         // come si vuole puntare: pushto | cerchi | salti
+  // Telefono sul tubo (push-to)
   tubo: {
     attivo: false,
-    versore: null,          // asse del tubo nel sistema del telefono
-    orient: null,
-    ascolto: null,
-    raf: null,
-    ultimoAvviso: 0
+    allineamenti: [],       // punti di sincronizzazione { R, v, nome, quando }
+    modello: null,          // asse del tubo + correzione di bussola risolti
+    timer: null,
+    ultimoBattito: 0,
+    centrato: false,
+    audio: null
   },
   // Tele di disegno riusate dai vari pannelli
   tele: {},
@@ -675,6 +699,11 @@ function telDiametroPianeta(id, data) {
 //      · a occhio, con latitudine e Nord vero (arriva a ~2°)
 //      · con l'orologio della Polare (arriva a ~10 primi)
 //      · con la deriva, guardando nell'oculare (arriva a 1-2 primi)
+//
+//    E si fa con gli attrezzi del telefono: la bolla per il treppiede, il
+//    goniometro per la scala della latitudine, la bussola per il Nord —
+//    accesi dentro il passo che li usa, non spiegati a parole in un
+//    elenco da leggere in piedi al buio.
 // =====================================================================
 
 // Coordinate J2000 della Polare, dal catalogo delle costellazioni.
@@ -768,6 +797,183 @@ function telDeclinazioneMagnetica() {
 function telBussolaNordVero() {
   const d = telDeclinazioneMagnetica();
   return ((360 - d) % 360 + 360) % 360;
+}
+
+// --- I sensori del telefono al posto degli attrezzi ---------------------
+//
+//    Per allineare una montatura equatoriale servono tre attrezzi: una
+//    livella, un goniometro e una bussola. Un telefono li ha tutti e tre
+//    dentro, e sono anche già tarati. La vista Cielo usa gli stessi
+//    sensori per orientare la mappa; qui servono per una cosa molto più
+//    prosaica, cioè dire "gira il treppiede di tre gradi a destra" e
+//    cambiare colore quando è fatto.
+//
+//    Le tolleranze sotto non sono arbitrarie: sono quelle sotto le quali
+//    l'errore residuo non si vede più all'oculare.
+
+const TEL_TOLLERANZA_NORD = 2;        // gradi di azimut
+const TEL_TOLLERANZA_BOLLA = 0.8;     // gradi di inclinazione del treppiede
+const TEL_TOLLERANZA_GRADI = 0.7;     // gradi sulla scala della latitudine
+
+// Quanto ballerino può essere il numero della bussola prima che sia il
+// caso di dirlo: sopra questo rumore c'è ferro vicino, o il magnetometro
+// non è tarato.
+const TEL_JITTER_SOSPETTO = 2.5;
+
+function telStatoSensori() {
+  const orient = (typeof sky !== 'undefined' && sky.orient) ? sky.orient : null;
+  return {
+    // Livella e goniometro funzionano appena arrivano i primi eventi
+    attivi: !!(typeof sky !== 'undefined' && sky.sensori && orient),
+    // La bussola no: su Android l'orientamento può arrivare "relativo",
+    // cioè con l'azimut che parte da dove stava il telefono quando il
+    // sensore si è accesso. In quel caso il numero è un numero qualunque,
+    // e spacciarlo per il Nord farebbe sbagliare l'allineamento.
+    bussolaVera: !!(typeof sky !== 'undefined' && sky.sensori && orient && sky.assoluto),
+    possibile: typeof DeviceOrientationEvent !== 'undefined'
+  };
+}
+
+// Dove sta guardando il telefono, in azimut vero. Il numero è già
+// corretto della declinazione magnetica e della calibrazione manuale
+// fatta nella vista Cielo: quello che esce da qui si confronta
+// direttamente con l'azimut di un astro.
+//
+// Il telefono si può tenere in due modi, e l'asse da leggere è diverso:
+// appoggiato in piano conta dove punta il lato alto, tenuto in verticale
+// conta il dorso (dove guarda la fotocamera). Sceglie l'app in base a
+// com'è inclinato, perché leggere l'asse sbagliato dà un numero che
+// gira da solo appena si muove il polso.
+function telBussolaTelefono() {
+  const stato = telStatoSensori();
+  if (!stato.attivi) return null;
+  const R = telMatriceTelefono();
+  if (!R) return null;
+
+  const alto = [R[0][1], R[1][1], R[2][1]];        // +Y del telefono, in Est/Nord/Alto
+  const dorso = [-R[0][2], -R[1][2], -R[2][2]];    // -Z: la direzione della fotocamera
+  const modo = Math.abs(alto[2]) <= Math.abs(dorso[2]) ? 'piatto' : 'ritto';
+  const asse = modo === 'piatto' ? alto : dorso;
+
+  // Se l'asse scelto punta quasi allo zenit non ha più un azimut: capita
+  // tenendo il telefono a 45°, che è il modo in cui non va tenuto.
+  const orizzontale = Math.hypot(asse[0], asse[1]);
+  if (orizzontale < 0.2) {
+    return { modo, ambiguo: true, bussolaVera: stato.bussolaVera, jitter: null };
+  }
+
+  const az = ((Math.atan2(asse[0], asse[1]) * TEL_R2D) % 360 + 360) % 360;
+  const inclinazione = Math.asin(Math.max(-1, Math.min(1, asse[2]))) * TEL_R2D;
+
+  return {
+    az,
+    modo,
+    ambiguo: false,
+    // Quanto è inclinato l'asse che stiamo leggendo: a bussola piatta
+    // dovrebbe essere quasi zero, e se non lo è il numero peggiora.
+    inclinazione,
+    storto: modo === 'piatto' && Math.abs(inclinazione) > 20,
+    bussolaVera: stato.bussolaVera,
+    jitter: telJitterBussola(az)
+  };
+}
+
+// Quanto è disturbata la lettura della bussola. Non c'è modo di leggere il
+// campo magnetico grezzo da una pagina web, ma un magnetometro disturbato
+// si tradisce comunque: il numero salta avanti e indietro.
+//
+// La misura ovvia — di quanto è larga la finestra delle ultime letture —
+// non va bene: mentre si gira il treppiede il numero cambia *per forza*,
+// e darebbe un allarme continuo proprio nel momento in cui si sta
+// lavorando. Quel che distingue il rumore da una rotazione vera è che una
+// rotazione è liscia: cresce piano e in un verso. Quindi si guarda la
+// differenza seconda, cioè quanto la lettura "curva" da un campione al
+// successivo: per una rotazione a velocità qualunque è zero, per il
+// rumore è dell'ordine del rumore stesso.
+function telJitterBussola(az) {
+  const storico = tel.bussola.storico;
+  const adesso = Date.now();
+  storico.push({ t: adesso, az });
+  while (storico.length && adesso - storico[0].t > 2500) storico.shift();
+  if (storico.length < 8) return null;
+
+  // Le differenze fra letture consecutive, riportate nell'intervallo
+  // ±180°: fra 359° e 1° la differenza è 2, non 358.
+  const diff = [];
+  for (let i = 1; i < storico.length; i++) {
+    let d = storico[i].az - storico[i - 1].az;
+    while (d > 180) d -= 360;
+    while (d < -180) d += 360;
+    diff.push(d);
+  }
+
+  let somma = 0;
+  for (let i = 1; i < diff.length; i++) somma += Math.abs(diff[i] - diff[i - 1]);
+  const curvatura = somma / (diff.length - 1);
+  // Per rumore bianco la differenza seconda vale in media un paio di volte
+  // il rumore: dividendo si torna all'ampiezza, che è il numero che ha
+  // senso mostrare.
+  return curvatura / 2;
+}
+
+// Di quanto e da che parte girare, per portare la bussola sul valore
+// giusto. Lo scarto si dice sempre col verso, mai col segno: "3° a
+// destra" non si può capire al rovescio, "-3°" sì.
+function telScartoAzimut(attuale, bersaglio) {
+  let d = bersaglio - attuale;
+  while (d > 180) d -= 360;
+  while (d <= -180) d += 360;
+  return {
+    gradi: d,
+    modulo: Math.abs(d),
+    verso: d > 0 ? 'destra' : 'sinistra',
+    // "in senso orario" è il verso in cui si gira il treppiede guardandolo
+    // da sopra, ed è l'unica formulazione che non si sbaglia di notte.
+    senso: d > 0 ? 'orario' : 'antiorario'
+  };
+}
+
+// La livella: inclinazione del telefono, sui due assi. La riga "Alto"
+// della matrice dice quanto ciascun asse del telefono punta allo zenit,
+// e da lì escono i due angoli — nessun bisogno di leggere beta e gamma,
+// che vicino alla verticale impazziscono.
+//
+// Serve due volte, per due mestieri diversi: appoggiato sulla testa del
+// treppiede è una bolla, appoggiato lungo l'asse polare è un goniometro.
+function telLivella() {
+  const stato = telStatoSensori();
+  if (!stato.attivi) return null;
+  const R = telMatriceTelefono();
+  if (!R) return null;
+  const arcoseno = v => Math.asin(Math.max(-1, Math.min(1, v))) * TEL_R2D;
+  return {
+    // Il lato alto del telefono su o giù: è l'angolo che si legge
+    // appoggiandolo di lungo su un tubo o su un asse.
+    inclinazione: arcoseno(R[2][1]),
+    // Il fianco destro su o giù: la seconda bolla, quella che dice se il
+    // telefono è sghembo.
+    sbandamento: arcoseno(R[2][0])
+  };
+}
+
+// L'alternativa alla bussola quando c'è il Sole: l'ombra di un'asta
+// verticale punta esattamente all'opposto del Sole, e l'azimut del Sole
+// lo sappiamo al decimo di grado. È il modo con cui si trovava il Nord
+// prima dei magnetometri, e funziona anche in mezzo a un capannone di
+// ferro.
+function telNordDallOmbra(data) {
+  const obs = osservatoreCorrente();
+  if (!obs || typeof altAzCorpo !== 'function') return null;
+  try {
+    const h = altAzCorpo('Sun', data || new Date(), obs);
+    // Sole troppo basso: l'ombra è lunghissima e i bordi si sfumano.
+    // Troppo alto: è corta e il verso si legge male.
+    if (h.alt < 5 || h.alt > 75) return null;
+    const azOmbra = (h.az + 180) % 360;
+    return { altSole: h.alt, azSole: h.az, azOmbra, scarto: telScartoAzimut(azOmbra, 0) };
+  } catch (e) {
+    return null;
+  }
 }
 
 // Posizione della Polare in altezza e azimut: serve alla realtà
@@ -985,8 +1191,10 @@ const TEL_FRAZIONI_CAMPO = [
 // =====================================================================
 // 3. PUNTARE
 //
-//    Tre modi di arrivare sull'oggetto, dal più semplice al più
-//    tecnologico. Nessuno dei tre richiede di comprare niente.
+//    Tre modi di arrivare sull'oggetto. Nessuno dei tre richiede di
+//    comprare niente, e nel pannello se ne mostra uno per volta: quello
+//    che si sta usando. Tre schede aperte insieme, con le mani fredde,
+//    vogliono dire scorrere per trovare quella giusta.
 //
 //    a) I cerchi graduati digitali: si centra una stella nota, si dice
 //       all'app "sono qui", e da lì in poi lei dà gli scarti da fare
@@ -997,9 +1205,11 @@ const TEL_FRAZIONI_CAMPO = [
 //    b) I salti di stella: il percorso disegnato da una stella visibile
 //       a occhio nudo fino all'oggetto, un campo di cercatore alla volta.
 //
-//    c) Il telefono sul tubo: l'adattatore per smartphone è già nella
-//       scatola. Attaccato al tubo, il telefono diventa un inclinometro
-//       e una bussola, e l'app dice in tempo reale quanto manca.
+//    c) Il push-to: il telefono attaccato al tubo, come nelle app famose
+//       di puntamento assistito. Si sincronizza su una stella nota e da
+//       lì un radar dice, in tempo reale, quanto manca e da che parte —
+//       con un battito che si infittisce, così si può puntare tenendo
+//       l'occhio nel cercatore invece che sullo schermo.
 // =====================================================================
 
 // --- a) Cerchi graduati digitali ---------------------------------------
@@ -1178,21 +1388,44 @@ function telPercorsoSalti(bersaglio) {
   };
 }
 
-// --- c) Il telefono sul tubo -------------------------------------------
+// --- c) Il push-to: il telefono sul tubo -------------------------------
 //
-//    L'adattatore per lo smartphone serve a fotografare, ma il telefono
-//    che ci sta sopra ha dentro tre giroscopi e un magnetometro. Fissato
-//    al tubo, sa dove sta guardando il tubo.
+//    È il metodo delle app famose di puntamento assistito, e funziona
+//    così: si fissa il telefono al tubo, si centra una stella nota, si
+//    dice "adesso sono qui". Da quel momento il telefono sa dove guarda
+//    il tubo e dice quanto manca al bersaglio, in tempo reale, mentre lo
+//    si spinge. Nessun encoder, nessun cavo, nessuna montatura
+//    computerizzata: solo i sensori che il telefono ha già.
 //
-//    Il trucco dell'allineamento sta tutto in una riga: non serve sapere
-//    *come* è montato il telefono. Basta centrare una stella e dire
-//    "adesso". Da lì si ricava l'asse del tubo espresso negli assi del
-//    telefono (u = Rᵀ·v) e da quel momento la direzione del tubo è R·u,
-//    comunque sia stato attaccato il supporto.
+//    Il trucco dell'allineamento sta in una riga: non serve sapere *come*
+//    è montato il telefono. Con una stella si ricava l'asse del tubo
+//    espresso negli assi del telefono (u = Rᵀ·v), e da lì la direzione
+//    del tubo è R·u, comunque sia attaccato il supporto.
 //
-//    La precisione è quella di una bussola da telefono: due o tre gradi.
-//    Non basta per centrare l'oculare da 4 mm, ma porta dentro il campo
-//    del cercatore, che è il 90% della fatica.
+//    Ma con una stella sola resta dentro un errore che non si vede: il
+//    magnetometro. Su un telefono la bussola sbaglia di cinque, dieci,
+//    anche quindici gradi, e vicino a un tubo d'acciaio di più; quella
+//    rotazione sbagliata attorno alla verticale entra dritta nel conto.
+//
+//    Da qui la seconda idea, ed è quella che fa la differenza fra un
+//    push-to che funziona e uno che fa perdere la serata: con due stelle
+//    (o più) si può risolvere *anche* l'errore della bussola. Il modello è
+//
+//        v = Rz(θ) · R · u
+//
+//    dove v è la stella nel cielo, R quel che dice il telefono, u l'asse
+//    del tubo negli assi del telefono e θ l'errore di bussola. Gli
+//    incliniometri del telefono sono buoni — la gravità non si sbaglia —
+//    quindi basta correggere la rotazione attorno alla verticale. Due
+//    stelle danno quattro vincoli per tre incognite (u ne ha due, θ una):
+//    si risolve minimizzando su θ, che è una sola variabile e si può
+//    cercare a forza bruta in mezzo millisecondo.
+//
+//    Risultato pratico: con una stella la precisione è quella della
+//    bussola (2–3° nel migliore dei casi, molto peggio col ferro
+//    vicino); con due stelle lontane fra loro scende a mezzo grado, cioè
+//    dentro il campo di un oculare. È la differenza fra "da qualche parte
+//    lì" e "ce l'hai nell'oculare".
 
 function telMatriceTelefono() {
   if (typeof sky === 'undefined' || !sky.orient) return null;
@@ -1222,8 +1455,20 @@ function telApplicaTrasposta(R, v) {
   ];
 }
 
-// Si centra una stella nell'oculare e si preme il tasto: da qui l'app sa
-// come è orientato il telefono rispetto al tubo.
+// Rotazione di un versore attorno alla verticale, cioè uno spostamento
+// in azimut. È l'unica correzione che serve applicare a quel che dice il
+// telefono: l'inclinazione la misura la gravità e non sbaglia, il Nord lo
+// misura il magnetometro e sbaglia sempre.
+function telRuotaAzimut(v, gradi) {
+  const a = gradi * TEL_D2R;
+  const c = Math.cos(a), s = Math.sin(a);
+  return [v[0] * c + v[1] * s, v[1] * c - v[0] * s, v[2]];
+}
+
+// Si centra una stella nell'oculare e si preme il tasto: qui si registra
+// la coppia "com'era orientato il telefono" / "dov'era la stella". Sono i
+// dati grezzi, non ancora il modello: il modello si ricava da tutti i
+// punti insieme, ed è la cosa che rende utile registrarne più di uno.
 function telAllineaTubo(oggetto, data) {
   const R = telMatriceTelefono();
   if (!R || !oggetto) return false;
@@ -1231,19 +1476,110 @@ function telAllineaTubo(oggetto, data) {
   if (!obs) return false;
   const quando = data || new Date();
   const hor = altAzCoordinate(oggetto.ra, oggetto.dec, quando, obs);
-  const v = telVersore(hor.az, hor.alt);
-  tel.tubo.versore = telApplicaTrasposta(R, v);
-  tel.tubo.stella = oggetto.nome;
-  tel.tubo.quando = quando.getTime();
+
+  tel.tubo.allineamenti.push({
+    nome: oggetto.nome.split(' — ')[0],
+    R,
+    v: telVersore(hor.az, hor.alt),
+    alt: hor.alt,
+    az: hor.az,
+    quando: quando.getTime()
+  });
+  // Oltre i quattro punti non si guadagna più niente, e i più vecchi sono
+  // anche i meno buoni: se nel frattempo il supporto si è mosso di un
+  // millimetro, sono loro a mentire.
+  while (tel.tubo.allineamenti.length > 4) tel.tubo.allineamenti.shift();
+
+  telRisolviTubo();
   return true;
+}
+
+function telAzzeraAllineamentoTubo() {
+  tel.tubo.allineamenti = [];
+  tel.tubo.modello = null;
+}
+
+// Il cuore del push-to: da tutti i punti registrati ricava l'asse del
+// tubo negli assi del telefono e l'errore di bussola.
+//
+// Con un punto solo non c'è scelta: si crede alla bussola (θ = 0).
+// Con due o più si cerca il θ che rende i punti coerenti fra loro —
+// cioè quello per cui tutti danno lo *stesso* asse del tubo, che è
+// l'unica cosa che fisicamente non può cambiare se il telefono è
+// avvitato al tubo. Una scansione a un grado su tutto il giro, poi un
+// affinamento fine: sono qualche migliaio di prodotti scalari, e si fa
+// una volta per allineamento.
+function telRisolviTubo() {
+  const punti = tel.tubo.allineamenti;
+  if (!punti.length) { tel.tubo.modello = null; return null; }
+
+  const prova = theta => {
+    const assi = punti.map(a => telApplicaTrasposta(a.R, telRuotaAzimut(a.v, -theta)));
+    const somma = assi.reduce((s, x) => [s[0] + x[0], s[1] + x[1], s[2] + x[2]], [0, 0, 0]);
+    // Se i punti sono coerenti puntano tutti nello stesso verso e la loro
+    // somma è lunga quasi quanto il numero di punti. Se non lo sono, si
+    // accorciano fra loro: la lunghezza della somma *è* la misura della
+    // coerenza, e non serve nemmeno calcolare gli scarti per cercare il
+    // minimo.
+    const lunghezza = Math.hypot(somma[0], somma[1], somma[2]);
+    const media = telNormalizza(somma);
+    const scarto = assi.reduce((m, x) => Math.max(m, telSeparazione(x, media)), 0);
+    return { theta, u: media, scarto, lunghezza };
+  };
+
+  let migliore;
+  if (punti.length === 1) {
+    migliore = prova(0);
+  } else {
+    // Le due stelle devono stare lontane in cielo: se sono vicine, θ non
+    // è più osservabile e la ricerca troverebbe un minimo qualunque.
+    let baseMax = 0;
+    for (let i = 0; i < punti.length; i++) {
+      for (let j = i + 1; j < punti.length; j++) {
+        baseMax = Math.max(baseMax, telSeparazione(punti[i].v, punti[j].v));
+      }
+    }
+    if (baseMax < 15) {
+      // Base troppo corta: si tiene il θ già trovato prima, se c'era, e si
+      // usa il punto in più solo per mediare l'asse del tubo.
+      const precedente = tel.tubo.modello ? tel.tubo.modello.theta : 0;
+      migliore = prova(precedente);
+      migliore.baseCorta = true;
+      migliore.base = baseMax;
+    } else {
+      for (let t = -180; t < 180; t += 1) {
+        const s = prova(t);
+        if (!migliore || s.lunghezza > migliore.lunghezza) migliore = s;
+      }
+      for (let t = migliore.theta - 1; t <= migliore.theta + 1; t += 0.05) {
+        const s = prova(t);
+        if (s.lunghezza > migliore.lunghezza) migliore = s;
+      }
+      migliore.base = baseMax;
+    }
+  }
+
+  tel.tubo.modello = {
+    u: migliore.u,
+    theta: migliore.theta,
+    punti: punti.length,
+    // Lo scarto massimo fra i punti è la stima onesta della precisione:
+    // con un punto solo non si può stimare niente, e va detto.
+    scarto: punti.length > 1 ? migliore.scarto : null,
+    base: migliore.base || null,
+    baseCorta: !!migliore.baseCorta,
+    stelle: punti.map(a => a.nome)
+  };
+  return tel.tubo.modello;
 }
 
 // Dove sta guardando il tubo adesso
 function telDirezioneTubo() {
-  if (!tel.tubo.versore) return null;
+  const m = tel.tubo.modello;
+  if (!m) return null;
   const R = telMatriceTelefono();
   if (!R) return null;
-  const v = telNormalizza(telApplicaMatrice(R, tel.tubo.versore));
+  const v = telNormalizza(telRuotaAzimut(telApplicaMatrice(R, m.u), m.theta));
   const alt = Math.asin(Math.max(-1, Math.min(1, v[2]))) * TEL_R2D;
   const az = ((Math.atan2(v[0], v[1]) * TEL_R2D) % 360 + 360) % 360;
   return { v, alt, az };
@@ -1263,14 +1599,88 @@ function telGuidaVersoBersaglio(bersaglio, data) {
   const vB = telVersore(hor.az, hor.alt);
   const separazione = telSeparazione(tubo.v, vB);
 
+  const cercatore = TEL_CERCATORI[p.cercatore] || TEL_CERCATORI.reddot;
   const guida = {
     separazione,
     altBersaglio: hor.alt,
     azBersaglio: hor.az,
     altTubo: tubo.alt,
     azTubo: tubo.az,
-    dentroCercatore: separazione <= (TEL_CERCATORI[p.cercatore] || TEL_CERCATORI.reddot).campo / 2
+    vTubo: tubo.v,
+    vBersaglio: vB,
+    dentroCercatore: separazione <= cercatore.campo / 2
   };
+
+  // --- Il quadro per il radar -------------------------------------------
+  //
+  // Il piano tangente dove sta guardando il tubo, orientato come lo vede
+  // l'occhio: in alto lo zenit, e quindi a destra quel che si ha
+  // davvero a destra alzando la testa dal telefono. È l'unico
+  // orientamento che non richiede di ragionare — un radar con il Nord
+  // celeste in alto sarebbe più elegante e completamente inutile al buio.
+  const zenit = [0, 0, 1];
+  const proiezioneZenit = telDot(zenit, tubo.v);
+  let su = telNormalizza([
+    zenit[0] - proiezioneZenit * tubo.v[0],
+    zenit[1] - proiezioneZenit * tubo.v[1],
+    zenit[2] - proiezioneZenit * tubo.v[2]
+  ]);
+  // Tubo puntato allo zenit: "in alto" non esiste più, e si prende il Nord
+  if (Math.abs(proiezioneZenit) > 0.9995) {
+    const nord = [0, 1, 0];
+    const pn = telDot(nord, tubo.v);
+    su = telNormalizza([
+      nord[0] - pn * tubo.v[0], nord[1] - pn * tubo.v[1], nord[2] - pn * tubo.v[2]
+    ]);
+  }
+  const destra = telCross(tubo.v, su);
+
+  // Lo scarto in coordinate del radar: proiezione azimutale equidistante,
+  // cioè la distanza sul disegno è l'angolo vero in tutte le direzioni.
+  const proiezioneB = telDot(vB, tubo.v);
+  const perp = [
+    vB[0] - proiezioneB * tubo.v[0],
+    vB[1] - proiezioneB * tubo.v[1],
+    vB[2] - proiezioneB * tubo.v[2]
+  ];
+  const lunghezza = Math.hypot(perp[0], perp[1], perp[2]);
+  if (lunghezza > 1e-9) {
+    const dir = [perp[0] / lunghezza, perp[1] / lunghezza, perp[2] / lunghezza];
+    guida.dx = separazione * telDot(dir, destra);
+    guida.dy = separazione * telDot(dir, su);
+  } else {
+    guida.dx = 0;
+    guida.dy = 0;
+  }
+
+  // Dove cadono, sul radar, gli assi lungo cui si muove la montatura. Su
+  // una equatoriale il tubo non va su e giù: va lungo la declinazione e
+  // lungo l'ascensione retta, e sul disegno quei due assi sono storti di
+  // un angolo che cambia con la zona di cielo. Disegnarli è quello che
+  // trasforma "il bersaglio è là" in "gira questa manopola".
+  const l = luogoCorrente();
+  guida.assi = [];
+  const angoloSchermo = w => Math.atan2(telDot(w, destra), telDot(w, su));
+  if (p.montatura === 'eq' && l) {
+    const polo = [0, Math.cos(l.lat * TEL_D2R), Math.sin(l.lat * TEL_D2R)];
+    const pp = telDot(polo, tubo.v);
+    const versoPolo = telNormalizza([
+      polo[0] - pp * tubo.v[0], polo[1] - pp * tubo.v[1], polo[2] - pp * tubo.v[2]
+    ]);
+    if (Math.abs(pp) < 0.999) {
+      const versoEst = telCross(versoPolo, tubo.v);   // ascensione retta crescente
+      guida.assi = [
+        { nome: 'Dec +', angolo: angoloSchermo(versoPolo), colore: '#fbbf24' },
+        { nome: 'AR +', angolo: angoloSchermo(versoEst), colore: '#60a5fa' }
+      ];
+    }
+  } else {
+    const versoAz = telNormalizza([Math.cos(tubo.az * TEL_D2R), -Math.sin(tubo.az * TEL_D2R), 0]);
+    guida.assi = [
+      { nome: 'Alt +', angolo: angoloSchermo(su), colore: '#fbbf24' },
+      { nome: 'Az +', angolo: angoloSchermo(versoAz), colore: '#60a5fa' }
+    ];
+  }
 
   if (p.montatura === 'eq') {
     // Il tubo, ricondotto a coordinate equatoriali: da lì gli scarti
@@ -1329,7 +1739,14 @@ function telSalvaSessione() {
   try {
     localStorage.setItem(CHIAVE_TEL_SESSIONE, JSON.stringify({
       riferimento: tel.riferimento,
-      misure: tel.deriva.misure
+      misure: tel.deriva.misure,
+      // A che punto è l'allineamento. Serve perché in giardino l'app si
+      // chiude e si riapre dieci volte, e ricominciare dal passo 1 ogni
+      // volta sarebbe la cosa più irritante possibile.
+      passo: tel.passo,
+      fatti: tel.fatti,
+      metodo: tel.metodo,
+      quando: Date.now()
     }));
   } catch (e) { /* storage pieno: la sessione vale finché l'app è aperta */ }
 }
@@ -1343,6 +1760,15 @@ function telCaricaSessione() {
     if (d.riferimento && Date.now() - d.riferimento.quando < 14 * 3600 * 1000) {
       tel.riferimento = d.riferimento;
     }
+    // Lo stesso vale per l'allineamento: quello di ieri non c'è più.
+    const fresca = d.quando && Date.now() - d.quando < 14 * 3600 * 1000;
+    if (fresca) {
+      if (isFinite(d.passo)) tel.passo = d.passo | 0;
+      if (Array.isArray(d.fatti)) tel.fatti = d.fatti.filter(x => typeof x === 'string');
+    }
+    // Il metodo di puntamento invece è una preferenza, non un dato della
+    // serata: quello si tiene.
+    if (['pushto', 'cerchi', 'salti'].indexOf(d.metodo) >= 0) tel.metodo = d.metodo;
   } catch (e) { /* dato corrotto */ }
 }
 
@@ -1815,6 +2241,445 @@ function telDisegnaOrologioPolare(canvas, dati) {
   ctx.fillText('OVEST', 4, cy - 8);
   ctx.textAlign = 'right';
   ctx.fillText('EST', l - 4, cy - 8);
+}
+
+// --- La bussola ---------------------------------------------------------
+//
+// Una rosa dei venti che gira, con l'indice fermo in alto: è il
+// funzionamento di una bussola vera, e si legge senza pensarci. Il
+// settore verde è la tolleranza: quando l'indice ci sta dentro, l'asse
+// guarda al Nord vero abbastanza bene da non doverci tornare.
+function telDisegnaBussola(canvas, dati) {
+  const tela = telPreparaTela(canvas);
+  if (!tela) return;
+  const { ctx, l, h } = tela;
+  const cx = l / 2, cy = h / 2 + 4;
+  // La rosa è un cerchio: la misura che comanda è la più piccola delle due,
+  // meno il posto per l'indice e per le lettere dei venti.
+  const R = Math.min(l, h) / 2 - 26;
+  if (R <= 10) return;
+
+  // Senza lettura non si disegna un numero finto: si disegna la rosa
+  // spenta, che si vede subito che non sta funzionando.
+  const az = dati && isFinite(dati.az) ? dati.az : null;
+  const bersaglio = dati && isFinite(dati.bersaglio) ? dati.bersaglio : 0;
+  const scarto = az != null ? telScartoAzimut(az, bersaglio) : null;
+  const buono = scarto && scarto.modulo <= TEL_TOLLERANZA_NORD;
+
+  // Dove finisce sullo schermo un azimut, con la rosa ruotata perché la
+  // lettura corrente stia sotto l'indice in alto
+  const angolo = a => (a - (az || 0)) * TEL_D2R;
+  const punto = (a, raggio) => [cx + Math.sin(angolo(a)) * raggio, cy - Math.cos(angolo(a)) * raggio];
+
+  // Il settore di tolleranza attorno al bersaglio
+  if (az != null) {
+    const da = angolo(bersaglio - TEL_TOLLERANZA_NORD) - Math.PI / 2;
+    const a = angolo(bersaglio + TEL_TOLLERANZA_NORD) - Math.PI / 2;
+    ctx.fillStyle = buono ? 'rgba(34,197,94,0.35)' : 'rgba(34,197,94,0.16)';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, da, a);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // La corona
+  ctx.strokeStyle = buono ? 'rgba(34,197,94,0.9)' : 'rgba(148,163,184,0.55)';
+  ctx.lineWidth = buono ? 2.5 : 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Tacche ogni 15°, più marcate ai punti cardinali
+  ctx.lineWidth = 1;
+  for (let a = 0; a < 360; a += 15) {
+    const cardinale = a % 90 === 0;
+    const [x1, y1] = punto(a, R - (cardinale ? 10 : 5));
+    const [x2, y2] = punto(a, R);
+    ctx.strokeStyle = cardinale ? 'rgba(226,232,240,0.8)' : 'rgba(148,163,184,0.45)';
+    ctx.beginPath();
+    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  // Le lettere dei venti. Il Nord è di un altro colore: è l'unico che
+  // interessa, gli altri servono solo a capire da che parte si sta
+  // girando.
+  ctx.font = 'bold 12px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  [['N', 0], ['E', 90], ['S', 180], ['O', 270]].forEach(([lettera, a]) => {
+    const [x, y] = punto(a, R - 22);
+    ctx.fillStyle = lettera === 'N' ? '#f87171' : 'rgba(148,163,184,0.85)';
+    ctx.fillText(lettera, x, y);
+  });
+
+  // L'indice fermo in alto: quello che si legge è quello che sta qui
+  ctx.fillStyle = buono ? '#22c55e' : '#e2e8f0';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - R + 2);
+  ctx.lineTo(cx - 7, cy - R - 11);
+  ctx.lineTo(cx + 7, cy - R - 11);
+  ctx.closePath();
+  ctx.fill();
+
+  // Il numero al centro, e sotto quanto e da che parte girare
+  if (az != null) {
+    ctx.fillStyle = buono ? '#4ade80' : '#ffffff';
+    ctx.font = 'bold 30px system-ui, sans-serif';
+    ctx.fillText(`${Math.round(az)}°`, cx, cy - 6);
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.fillStyle = buono ? 'rgba(74,222,128,0.9)' : 'rgba(226,232,240,0.85)';
+    ctx.fillText(buono
+      ? 'ci sei: non toccare più il treppiede'
+      : `gira ${scarto.modulo.toFixed(0)}° verso ${scarto.verso}`, cx, cy + 20);
+  } else {
+    ctx.fillStyle = 'rgba(148,163,184,0.8)';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillText('bussola spenta', cx, cy);
+  }
+
+  // La freccia che indica dove sta il bersaglio, se è lontano dall'indice
+  if (az != null && !buono) {
+    const [bx, by] = punto(bersaglio, R - 34);
+    ctx.fillStyle = 'rgba(34,197,94,0.95)';
+    const a = angolo(bersaglio);
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(a);
+    ctx.beginPath();
+    ctx.moveTo(0, -9);
+    ctx.lineTo(-6, 5);
+    ctx.lineTo(6, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// --- La bolla -----------------------------------------------------------
+//
+// Una livella a bolla sferica, come quella che si avvita sui treppiedi
+// buoni: la bolla scappa dalla parte in cui il treppiede è alto, quindi
+// la gamba da accorciare è quella dove la bolla è andata.
+function telDisegnaBolla(canvas, dati) {
+  const tela = telPreparaTela(canvas);
+  if (!tela) return;
+  const { ctx, l, h } = tela;
+  const cx = l / 2, cy = h / 2;
+  const R = Math.min(l, h) / 2 - 16;
+  if (R <= 10) return;
+
+  // Fondo scala: 4°. Oltre non serve saperlo, serve solo saperlo tanto.
+  const scala = 4;
+  const fuori = dati ? Math.hypot(dati.inclinazione, dati.sbandamento) : null;
+  const buono = fuori != null && fuori <= TEL_TOLLERANZA_BOLLA;
+
+  ctx.fillStyle = 'rgba(15,23,42,0.9)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.fill();
+
+  // I due cerchi di riferimento: dentro il piccolo è in piano, dentro il
+  // grande è accettabile.
+  [[TEL_TOLLERANZA_BOLLA, buono ? 'rgba(34,197,94,0.9)' : 'rgba(34,197,94,0.5)'],
+   [2, 'rgba(148,163,184,0.4)'],
+   [scala, 'rgba(148,163,184,0.55)']].forEach(([gradi, colore]) => {
+    ctx.strokeStyle = colore;
+    ctx.lineWidth = gradi === TEL_TOLLERANZA_BOLLA ? 2 : 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * gradi / scala, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+
+  ctx.strokeStyle = 'rgba(148,163,184,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
+  ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
+  ctx.stroke();
+
+  if (fuori == null) {
+    ctx.fillStyle = 'rgba(148,163,184,0.8)';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('sensori spenti', cx, cy);
+    return;
+  }
+
+  // La bolla, come in una livella vera, scappa verso il lato alto: quello
+  // dove è andata è il lato da abbassare, cioè la gamba da accorciare.
+  const raggio = g => Math.max(-1, Math.min(1, g / scala)) * R;
+  const bx = cx + raggio(dati.sbandamento);
+  const by = cy - raggio(dati.inclinazione);
+  ctx.fillStyle = buono ? 'rgba(74,222,128,0.9)' : 'rgba(251,191,36,0.9)';
+  ctx.beginPath();
+  ctx.arc(bx, by, Math.max(9, R * 0.16), 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = buono ? '#4ade80' : '#fbbf24';
+  ctx.fillText(buono ? 'in piano' : `${fuori.toFixed(1)}° fuori piano`, cx, h - 10);
+}
+
+// --- Il goniometro ------------------------------------------------------
+//
+// Un quarto di cerchio con la lancetta sull'inclinazione letta adesso e
+// una tacca verde sul valore da raggiungere. Serve per la scala della
+// latitudine, che sulle montature economiche è stampata male e sbaglia
+// anche di due gradi, e per controllare l'altezza del tubo.
+function telDisegnaInclinometro(canvas, dati) {
+  const tela = telPreparaTela(canvas);
+  if (!tela) return;
+  const { ctx, l, h } = tela;
+  const cx = 22, cy = h - 22;
+  const R = Math.min(l - 44, h - 44);
+  if (R <= 20) return;
+
+  const angolo = dati && isFinite(dati.angolo) ? dati.angolo : null;
+  const bersaglio = dati && isFinite(dati.bersaglio) ? dati.bersaglio : null;
+  const scarto = (angolo != null && bersaglio != null) ? angolo - bersaglio : null;
+  const buono = scarto != null && Math.abs(scarto) <= TEL_TOLLERANZA_GRADI;
+
+  // L'arco da 0 a 90°, con le tacche ogni 10
+  ctx.strokeStyle = 'rgba(148,163,184,0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, -Math.PI / 2, 0);
+  ctx.stroke();
+
+  ctx.font = '9px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(148,163,184,0.75)';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  for (let g = 0; g <= 90; g += 10) {
+    const a = g * TEL_D2R;
+    const x1 = cx + Math.cos(a) * (R - 6), y1 = cy - Math.sin(a) * (R - 6);
+    const x2 = cx + Math.cos(a) * R, y2 = cy - Math.sin(a) * R;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    ctx.stroke();
+    if (g % 30 === 0) ctx.fillText(`${g}°`, cx + Math.cos(a) * (R + 6), cy - Math.sin(a) * (R + 6));
+  }
+
+  // Il bersaglio: una linea verde e la sua etichetta
+  if (bersaglio != null) {
+    const a = Math.max(0, Math.min(90, bersaglio)) * TEL_D2R;
+    ctx.strokeStyle = 'rgba(34,197,94,0.85)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * R, cy - Math.sin(a) * R);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // La lancetta: è il telefono visto di fianco, appoggiato sull'asse
+  if (angolo != null) {
+    const a = Math.max(-5, Math.min(95, angolo)) * TEL_D2R;
+    ctx.strokeStyle = buono ? '#4ade80' : '#fbbf24';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * (R - 12), cy - Math.sin(a) * (R - 12));
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  // Il numero grande, in alto a destra dove l'arco lascia spazio
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  if (angolo != null) {
+    ctx.fillStyle = buono ? '#4ade80' : '#ffffff';
+    ctx.font = 'bold 26px system-ui, sans-serif';
+    ctx.fillText(`${angolo.toFixed(1)}°`, l - 6, 4);
+    if (bersaglio != null) {
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.fillStyle = buono ? 'rgba(74,222,128,0.9)' : 'rgba(226,232,240,0.85)';
+      ctx.fillText(buono
+        ? 'ci sei'
+        : `${Math.abs(scarto).toFixed(1)}° ${scarto > 0 ? 'di troppo: abbassa' : 'in meno: alza'}`, l - 6, 34);
+      ctx.fillStyle = 'rgba(34,197,94,0.8)';
+      ctx.fillText(`bersaglio ${bersaglio.toFixed(1)}°`, l - 6, 50);
+    }
+  } else {
+    ctx.fillStyle = 'rgba(148,163,184,0.8)';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillText('sensori spenti', l - 6, 6);
+  }
+}
+
+// --- Il radar del push-to -----------------------------------------------
+//
+// Al centro c'è dove guarda il tubo adesso, e il pallino è il bersaglio:
+// si spinge il telescopio finché il pallino non arriva al centro. La
+// scala è vera — i cerchi del cercatore e dell'oculare sono grandi
+// esattamente quanto il cielo che inquadrano — così quando il pallino
+// entra nel cerchio verde l'oggetto è nell'oculare per davvero, non per
+// metafora.
+//
+// La proiezione è azimutale equidistante: sul disegno un grado è un
+// grado in tutte le direzioni, che è l'unica cosa che serve a un radar.
+function telDisegnaRadar(canvas, guida, opzioni) {
+  const tela = telPreparaTela(canvas);
+  if (!tela) return;
+  const { ctx, l, h } = tela;
+  const o = opzioni || {};
+  const cx = l / 2, cy = h / 2;
+  const R = Math.min(l, h) / 2 - 16;
+  if (R <= 20) return;
+
+  if (!guida) {
+    ctx.fillStyle = 'rgba(148,163,184,0.8)';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('in attesa dei sensori', cx, cy);
+    return;
+  }
+
+  const cercatore = o.campoCercatore || 0;
+  const oculare = o.campoOculare || 0;
+  // Fondo scala: tiene dentro il bersaglio con un margine, ma non si
+  // stringe mai tanto da far sparire il cerchio del cercatore, che è il
+  // riferimento con cui si giudica "quanto manca".
+  const scala = Math.min(90, Math.max(guida.separazione * 1.45, cercatore * 0.8, oculare * 2, 0.4));
+  const raggio = gradi => Math.min(R, gradi / scala * R);
+  const centrato = oculare ? guida.separazione < oculare / 2 : guida.separazione < 0.4;
+
+  // La corona del fondo scala, con la sua misura scritta
+  ctx.strokeStyle = 'rgba(148,163,184,0.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Un cerchio intermedio "tondo" (1°, 2°, 5°, 10°…) per avere il senso
+  // della distanza senza contare i pixel
+  const passi = [0.25, 0.5, 1, 2, 5, 10, 20, 45];
+  const intermedio = passi.filter(g => g < scala * 0.85).pop();
+  if (intermedio) {
+    ctx.setLineDash([2, 4]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, raggio(intermedio), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = '9px system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(148,163,184,0.65)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(intermedio < 1 ? `${(intermedio * 60).toFixed(0)}′` : `${intermedio}°`,
+      cx, cy - raggio(intermedio) - 2);
+  }
+
+  // Gli assi della montatura: le due direzioni lungo cui si muovono le
+  // manopole, con il nome in punta
+  (guida.assi || []).forEach(asse => {
+    const dx = Math.sin(asse.angolo), dy = -Math.cos(asse.angolo);
+    ctx.strokeStyle = asse.colore + '55';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath();
+    ctx.moveTo(cx - dx * R, cy - dy * R);
+    ctx.lineTo(cx + dx * R, cy + dy * R);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = 'bold 9px system-ui, sans-serif';
+    ctx.fillStyle = asse.colore + 'cc';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(asse.nome, cx + dx * (R - 10), cy + dy * (R - 10));
+  });
+
+  // Il campo del cercatore, in azzurro, e quello dell'oculare, in verde:
+  // sono i due traguardi della manovra.
+  if (cercatore && cercatore / 2 < scala) {
+    ctx.strokeStyle = 'rgba(56,189,248,0.75)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, raggio(cercatore / 2), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  if (oculare && oculare / 2 < scala) {
+    ctx.strokeStyle = centrato ? 'rgba(74,222,128,0.95)' : 'rgba(34,197,94,0.6)';
+    ctx.lineWidth = centrato ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, Math.max(4, raggio(oculare / 2)), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // La crocetta del centro: è dove guarda il tubo
+  ctx.strokeStyle = 'rgba(226,232,240,0.9)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
+  ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
+  ctx.stroke();
+
+  // Il bersaglio. Se cade fuori dal fondo scala si appoggia sul bordo con
+  // una freccia: meglio un verso giusto e una distanza tagliata che un
+  // pallino invisibile.
+  const px = cx + guida.dx / scala * R;
+  const py = cy - guida.dy / scala * R;
+  const distanza = Math.hypot(px - cx, py - cy);
+  const fuori = distanza > R - 6;
+  const fx = fuori ? cx + (px - cx) / distanza * (R - 6) : px;
+  const fy = fuori ? cy + (py - cy) / distanza * (R - 6) : py;
+
+  const colore = centrato ? '#4ade80' : (guida.dentroCercatore ? '#fbbf24' : '#f472b6');
+  if (!centrato) {
+    // La linea dal centro al bersaglio: dice il verso a colpo d'occhio,
+    // che è quel che serve quando si ha un occhio nel cercatore.
+    ctx.strokeStyle = colore + '99';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(fx, fy);
+    ctx.stroke();
+  }
+
+  if (fuori) {
+    const ang = Math.atan2(fy - cy, fx - cx);
+    ctx.fillStyle = colore;
+    ctx.beginPath();
+    ctx.moveTo(fx + Math.cos(ang) * 8, fy + Math.sin(ang) * 8);
+    ctx.lineTo(fx - Math.cos(ang - 0.5) * 9, fy - Math.sin(ang - 0.5) * 9);
+    ctx.lineTo(fx - Math.cos(ang + 0.5) * 9, fy - Math.sin(ang + 0.5) * 9);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    ctx.fillStyle = colore;
+    ctx.beginPath();
+    ctx.arc(fx, fy, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = colore + '55';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(fx, fy, 11, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  if (o.nome) {
+    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.fillStyle = colore;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = fy < cy ? 'top' : 'bottom';
+    ctx.fillText(o.nome, Math.max(30, Math.min(l - 30, fx)), fy + (fy < cy ? 16 : -16));
+  }
+
+  // Fondo scala e legenda, in basso
+  ctx.font = '9px system-ui, sans-serif';
+  ctx.fillStyle = 'rgba(148,163,184,0.7)';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(`raggio ${scala < 1 ? (scala * 60).toFixed(0) + '′' : scala.toFixed(scala < 10 ? 1 : 0) + '°'}`, 4, h - 4);
+  ctx.textAlign = 'right';
+  ctx.fillText('↑ zenit', l - 4, h - 4);
 }
 
 // --- Carta del cielo per i salti di stella -----------------------------
@@ -2364,8 +3229,8 @@ function telDisegnaTestStellare(canvas, scarto) {
 
 const TEL_PANNELLI = [
   { id: 'strumento',   nome: 'Strumento',   sottotitolo: 'Ingrandimenti, campi, cosa arriva' },
-  { id: 'allineamento', nome: 'Allineamento', sottotitolo: 'Puntare l\'asse al polo, in 6 passi' },
-  { id: 'punta',       nome: 'Punta',       sottotitolo: 'Coordinate AR e Dec, cerchi graduati, salti di stella' },
+  { id: 'allineamento', nome: 'Allineamento', sottotitolo: 'L\'asse al polo, un passo per volta, con livella e bussola' },
+  { id: 'punta',       nome: 'Punta',       sottotitolo: 'Push-to col telefono, cerchi graduati, salti di stella' },
   { id: 'serata',      nome: 'Serata',      sottotitolo: 'La scaletta di stanotte' },
   { id: 'cura',        nome: 'Cura',        sottotitolo: 'Collimazione e test stellare' }
 ];
@@ -2399,8 +3264,10 @@ function telCostruisciPannello() {
   const box = document.getElementById('telescopio-corpo');
   if (!box) return;
 
-  // Il ciclo del telefono sul tubo gira solo nel pannello che lo usa
+  // I due cicli che leggono i sensori girano solo nel pannello che li usa:
+  // fuori da lì sarebbero batteria buttata via al freddo.
   if (tel.pannello !== 'punta') telFermaTubo();
+  if (tel.pannello !== 'allineamento') telFermaSensori();
 
   switch (tel.pannello) {
     case 'strumento': box.innerHTML = telPannelloStrumento(); telDopoStrumento(); break;
@@ -2639,6 +3506,235 @@ function telOculareDeriva() {
   return utili.length ? utili[utili.length - 1] : null;
 }
 
+// I sei passi come dati, non come un blocco di HTML: ognuno si porta
+// dietro il suo testo e sa quale strumento del telefono serve mentre lo
+// si fa. È questo che permette di mostrarne uno per volta, con la
+// bussola o la livella accesa proprio dentro il passo che le usa —
+// invece di un elenco da leggere tutto in piedi al buio.
+function telPassiAllineamento() {
+  const l = luogoCorrente();
+  const p = telProfilo();
+  const orologio = telOrologioPolare();
+  const declinazione = telDeclinazioneMagnetica();
+  const bussolaMagnetica = telBussolaNordVero();
+  const polare = telPolareAltAz();
+  const cercatore = TEL_CERCATORI[p.cercatore] || TEL_CERCATORI.reddot;
+
+  // Il cercatore ottico capovolge l'immagine: la stessa istruzione detta
+  // "in alto a sinistra" a occhio diventa "in basso a destra" dentro il
+  // cercatore. Sbagliare questo verso raddoppia l'errore invece di
+  // azzerarlo, ed è il motivo per cui tanti allineamenti peggiorano.
+  const versoNelCercatore = orologio
+    ? (cercatore.dritta ? orologio.versoPolo : orologio.versoSecco)
+    : '';
+
+  return [
+    {
+      id: 'piano',
+      breve: 'In piano',
+      titolo: 'Treppiede in piano, gamba «N» verso Nord.',
+      corpo: `Allarga le gambe alla stessa altezza e blocca. Se la testa parte storta la scala della latitudine
+        misura da un piano sbagliato, e tutto il resto è tempo perso: un grado di treppiede è un grado di
+        errore sull'asse, e non c'è passo successivo che lo recuperi.`,
+      strumento: 'bolla',
+      invito: `Appoggia il telefono <strong class="text-white">in piano sulla testa della montatura</strong>
+        (o sul vassoio portaoculari, se è solidale al treppiede), schermo in su.`,
+      nota: `Il guscio del telefono non è mai perfettamente piatto: quando la bolla è dentro, giralo di 90° e
+        guarda se ci resta. Se salta fuori, la verità sta a metà fra le due letture.`
+    },
+    {
+      id: 'latitudine',
+      breve: 'Latitudine',
+      titolo: `Scala della latitudine su ${l.lat.toFixed(1)}°.`,
+      corpo: `È il settore graduato sul fianco della testa, con l'indice che scorre sui gradi. Si muove allentando
+        la vite di elevazione (sulla EQ3 sono due, una davanti e una dietro: allenti una e stringi l'altra).
+        Poi ristringi tutt'e due.`,
+      strumento: 'inclinometro',
+      bersaglio: l.lat,
+      invito: `Appoggia il telefono <strong class="text-white">di lungo contro il fianco dell'asse polare</strong>
+        — il cilindro che sta sotto le manopole — col lato alto verso il cielo. Il telefono si mette parallelo
+        all'asse, e quello che legge è l'altezza dell'asse.`,
+      nota: `Fidati di questo numero più che della scala stampata: sulle montature economiche il settore graduato
+        sbaglia anche di due gradi, e nessuno lo controlla mai.`
+    },
+    {
+      id: 'nord',
+      breve: 'Nord',
+      titolo: 'Gira tutto il treppiede verso il Nord vero.',
+      corpo: `Ruoti il treppiede <em>intero</em>, non la montatura sul treppiede. Il numero che conta è il Nord
+        <strong class="text-white">vero</strong>, non quello della bussola: qui distano
+        ${Math.abs(declinazione).toFixed(1)}°, perché il Nord magnetico sta
+        ${declinazione > 0 ? 'a Est' : 'a Ovest'} di quello vero. La bussola qui sotto la correzione la fa già;
+        se usi una bussola vera, o un'altra app, devi farla tu e leggere
+        <strong class="text-white">${Math.round(bussolaMagnetica)}°</strong> invece di 0°.`,
+      strumento: 'bussola',
+      bersaglio: 0,
+      invito: `Tieni il telefono <strong class="text-white">in piano, col lato alto in linea con l'asse polare</strong>,
+        e ruota il treppiede finché l'indice entra nel verde.`,
+      nota: `Tienilo almeno a un braccio dal tubo: un Newton è un cilindro d'acciaio e la bussola se la porta
+        dove vuole lui. Se il numero balla, il magnetometro è disturbato o da tarare — sotto ci sono due
+        modi di trovare il Nord che non usano la bussola.`
+    },
+    {
+      id: 'dec90',
+      breve: 'Dec +90°',
+      titolo: 'Metti la declinazione a +90° e il contrappeso in basso.',
+      corpo: `<span class="text-amber-300">È il passo che manca su tutti i manuali, ed è quello che fa fallire
+        l'allineamento.</span> Con la declinazione a +90° il tubo diventa parallelo all'asse polare: da quel
+        momento <strong class="text-white">quello che vedi nel cercatore è esattamente dove guarda l'asse</strong>,
+        e puoi allinearlo guardando invece di indovinare. Se il cerchio di declinazione non è tarato, mettilo a
+        occhio: il tubo dev'essere parallelo al corpo dell'asse polare. Poi blocca le due manopole.`,
+      strumento: 'inclinometro',
+      bersaglio: l.lat,
+      invito: `Appoggia il telefono <strong class="text-white">sul tubo, di lungo</strong>: se la declinazione è
+        davvero a +90° e i passi 2 e 3 sono a posto, il tubo è alto quanto la tua latitudine.`,
+      nota: `Se questo numero non torna con quello del passo 2, la declinazione non è a +90°: il cerchio è
+        sfasato, e va rifatto a occhio guardando il parallelismo fra tubo e asse.`
+    },
+    {
+      id: 'polare',
+      breve: 'Polare',
+      titolo: 'Trova la Polare nel cercatore.',
+      corpo: `Adesso è alta <strong class="text-white">${polare ? polare.alt.toFixed(1) : l.lat.toFixed(1)}°</strong>
+        sull'orizzonte, esattamente a Nord. Se non la vedi, muovi <em>solo</em> la vite di elevazione e il
+        treppiede finché non entra nel campo del ${cercatore.nome.toLowerCase()} (${cercatore.campo}° di cielo).
+        Per riconoscerla: prendi le due stelle di fondo del Grande Carro, tira la linea che le unisce e
+        prolungala cinque volte.`,
+      strumento: 'inclinometro',
+      bersaglio: polare ? polare.alt : l.lat,
+      invito: `Non la trovi? Appoggia il telefono sul tubo: se legge molto meno o molto più di
+        ${polare ? polare.alt.toFixed(1) : l.lat.toFixed(1)}°, stai guardando il pezzo di cielo sbagliato.`,
+      nota: `Da qui in avanti le manopole di ascensione retta e declinazione restano ferme: se le muovi, sposti
+        il tubo e non l'asse, e l'asse è l'unica cosa che stai allineando.`
+    },
+    {
+      id: 'scarto',
+      breve: 'Scarto',
+      titolo: orologio
+        ? `Sposta il centro di ${orologio.distanzaMin.toFixed(0)}′ ${versoNelCercatore}.`
+        : 'Scosta il centro di mezzo grado dalla Polare.',
+      corpo: orologio
+        ? `La Polare non va messa al centro: al centro ci va il polo, che adesso sta
+           <strong class="text-amber-300">${versoNelCercatore}</strong> rispetto a lei${cercatore.dritta ? '' : ' <em>(verso già ribaltato per il tuo cercatore ottico)</em>'}.
+           Quanto? ${orologio.distanzaMin.toFixed(0)}′, cioè ${orologio.lune.toFixed(1)} Lune piene in fila.
+           Salta questo passo e ti resta mezzo grado di errore: per guardare va bene, per fotografare no.`
+        : `La Polare gira attorno al polo a circa 38′ di distanza, e al centro va messo il polo, non lei.
+           In che direzione dipende dall'ora, e il calcolo in questo momento non è disponibile.`,
+      strumento: 'quadrante',
+      facoltativo: true,
+      nota: `Questo è l'unico passo che si può saltare senza rimpianti se stasera si guarda e basta.`
+    }
+  ];
+}
+
+// La barra dei passi: dove sei, cosa hai già fatto, e si può tornare
+// indietro toccando un pallino. Piccola, perché sta sopra al passo vero.
+function telHtmlProgresso(passi) {
+  return `<div class="flex items-center gap-1.5 flex-wrap mb-4">
+    ${passi.map((s, i) => {
+      const fatto = tel.fatti.indexOf(s.id) >= 0;
+      const attivo = i === tel.passo;
+      const classe = attivo
+        ? 'bg-blue-600 text-white ring-2 ring-blue-400'
+        : (fatto ? 'bg-green-700 text-white' : 'bg-slate-700 text-slate-400');
+      return `<button data-tel-vai-passo="${i}" title="${s.breve}"
+        class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${classe}">
+        <span>${fatto && !attivo ? '✓' : i + 1}</span>
+        <span class="${attivo ? '' : 'hidden sm:inline'}">${s.breve}</span>
+      </button>`;
+    }).join('')}
+  </div>`;
+}
+
+// Lo strumento del telefono che serve al passo corrente. È lo stesso
+// schema per tutti e tre: una tela che si ridisegna dieci volte al
+// secondo, una riga di lettura scritta, e il testo di come tenere il
+// telefono. Se i sensori sono spenti, al loro posto c'è il tasto per
+// accenderli — mai un numero finto.
+function telHtmlStrumento(passo) {
+  if (!passo.strumento) return '';
+
+  // Il quadrante polare non è un sensore: è un disegno del cielo, e vive
+  // anche senza permessi.
+  if (passo.strumento === 'quadrante') {
+    return `<canvas id="tel-tela-polare-passo" class="block w-full rounded-xl border border-slate-700 bg-slate-950 mt-3" style="height:260px"></canvas>
+      <p class="text-xs text-slate-400 mt-2">Come si vede <strong>a occhio nudo guardando a Nord</strong>:
+      la croce azzurra è il polo, il punto giallo la Polare. Il disegno si aggiorna da solo, perché la Polare
+      gira di 15° all'ora.</p>`;
+  }
+
+  const nomi = { bolla: 'livella a bolla', inclinometro: 'goniometro', bussola: 'bussola' };
+  const stato = telStatoSensori();
+
+  if (!stato.attivi) {
+    return `<div class="mt-3 bg-slate-900 rounded-xl border border-blue-800 p-4">
+      <p class="text-sm text-slate-300">${passo.invito}</p>
+      ${stato.possibile
+        ? `<button id="tel-accendi-sensori" class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">
+             Usa il telefono come ${nomi[passo.strumento]}</button>
+           <p class="text-xs text-slate-500 mt-2">Servono i sensori di movimento. Non escono dal telefono: il
+             calcolo è tutto qui dentro.</p>`
+        : `<p class="text-xs text-amber-300 mt-2">Questo dispositivo non espone i sensori di movimento: lo
+             strumento va usato quello vero.</p>`}
+    </div>`;
+  }
+
+  const tele = {
+    bolla: `<canvas id="tel-tela-bolla" class="block w-full rounded-xl border border-slate-700 bg-slate-950" style="height:220px"></canvas>`,
+    inclinometro: `<canvas id="tel-tela-goniometro" data-bersaglio="${passo.bersaglio != null ? passo.bersaglio.toFixed(3) : ''}"
+      class="block w-full rounded-xl border border-slate-700 bg-slate-950" style="height:200px"></canvas>`,
+    bussola: `<canvas id="tel-tela-bussola" data-bersaglio="${passo.bersaglio != null ? passo.bersaglio.toFixed(3) : '0'}"
+      class="block w-full rounded-xl border border-slate-700 bg-slate-950" style="height:290px"></canvas>`
+  };
+
+  return `<div class="mt-3 bg-slate-900 rounded-xl border border-slate-700 p-4">
+    <p class="text-sm text-slate-300 mb-3">${passo.invito}</p>
+    ${tele[passo.strumento]}
+    <div id="tel-lettura-sensori" class="mt-2 text-xs text-slate-400">Attendo i sensori…</div>
+    ${passo.strumento === 'bussola' ? telHtmlAlternativeNord() : ''}
+  </div>`;
+}
+
+// Quando la bussola non è affidabile — e con un tubo d'acciaio a mezzo
+// metro capita spesso — il Nord si trova in altri due modi, tutti e due
+// più precisi del magnetometro. Stanno qui, chiusi, per non spaventare
+// chi non ne ha bisogno.
+function telHtmlAlternativeNord() {
+  const ombra = telNordDallOmbra();
+  const stato = telStatoSensori();
+
+  const avviso = !stato.bussolaVera
+    ? `<p class="text-xs text-amber-300 bg-amber-950/40 border border-amber-900 rounded-xl p-3 mb-2">
+        Questo telefono sta dando un orientamento <strong>relativo</strong>: l'azimut parte da dove stava il
+        telefono quando i sensori si sono accesi, e come bussola non vale niente. Usa uno dei due modi qui
+        sotto, oppure taralo a mano nella vista Cielo su una stella che riconosci.</p>`
+    : '';
+
+  return `${avviso}
+    <details class="mt-3 text-sm">
+      <summary class="cursor-pointer text-blue-400 hover:text-blue-300 text-xs">Trovare il Nord senza bussola (due modi)</summary>
+      <div class="mt-2 space-y-3 text-xs text-slate-300">
+        ${ombra
+          ? `<p><strong class="text-white">Con l'ombra, adesso.</strong> Il Sole è alto ${ombra.altSole.toFixed(0)}°
+              a azimut ${Math.round(ombra.azSole)}°: l'ombra di un'asta verticale — un bastone, il treppiede
+              chiuso — punta a <strong class="text-amber-300">${Math.round(ombra.azOmbra)}°</strong>. Il Nord vero
+              sta ${ombra.scarto.modulo < 1 ? 'praticamente sulla linea dell\'ombra' :
+              `a <strong class="text-white">${ombra.scarto.modulo.toFixed(0)}°</strong> in senso
+              ${ombra.scarto.senso} rispetto all'ombra`}. Nessun magnetometro, nessuna declinazione: è geometria.</p>`
+          : `<p><strong class="text-white">Con l'ombra.</strong> Di giorno l'ombra di un'asta verticale dà il Nord
+              al mezzo grado, e l'app calcola l'angolo esatto. Adesso non si può: il Sole è troppo basso o non
+              c'è. Riprova quando è fra 5° e 75° di altezza.</p>`}
+        <p><strong class="text-white">Con la Polare.</strong> Di notte è il modo definitivo, e in fondo è quello
+          che stai facendo: la Polare <em>è</em> il Nord, a mezzo grado. Metti la latitudine (passo 2), la
+          declinazione a +90° (passo 4) e ruota il treppiede finché non entra nel cercatore. La bussola serve
+          solo a farti arrivare vicino.</p>
+        <p><button id="tel-vai-cielo" class="underline text-blue-400 hover:text-blue-300">Apri la realtà aumentata</button>:
+          nella vista Cielo compare un mirino sul polo celeste, e lì la bussola si può correggere a mano
+          trascinando finché le stelle sullo schermo coincidono con quelle vere.</p>
+      </div>
+    </details>`;
+}
+
 function telPannelloAllineamento() {
   const l = luogoCorrente();
   const p = telProfilo();
@@ -2665,10 +3761,6 @@ function telPannelloAllineamento() {
   const polare = telPolareAltAz();
   const cercatore = TEL_CERCATORI[p.cercatore] || TEL_CERCATORI.reddot;
 
-  // Il cercatore ottico capovolge l'immagine: la stessa istruzione detta
-  // "in alto a sinistra" a occhio diventa "in basso a destra" dentro il
-  // cercatore. Sbagliare questo verso raddoppia l'errore invece di
-  // azzerarlo, ed è il motivo per cui tanti allineamenti peggiorano.
   const versoNelCercatore = orologio
     ? (cercatore.dritta ? orologio.versoPolo : orologio.versoSecco)
     : '';
@@ -2683,61 +3775,57 @@ function telPannelloAllineamento() {
     La Polare è lì vicino ma <em>non</em> è quel punto: gli gira attorno a mezzo grado.</p>
     <div class="griglia-sintesi mt-3">
       ${telHtmlSintesi(`${l.lat.toFixed(1)}°`, 'scala della latitudine')}
-      ${telHtmlSintesi(`${Math.round(bussola)}°`, 'la bussola deve segnare')}
+      ${telHtmlSintesi(`${Math.round(bussola)}°`, 'una bussola vera deve segnare')}
       ${telHtmlSintesi(orologio ? `${orologio.distanzaMin.toFixed(0)}′` : '—', 'la Polare è larga così dal polo')}
       ${telHtmlSintesi(polare ? `${polare.alt.toFixed(1)}°` : '—', 'altezza della Polare ora')}
     </div>
     <p class="mt-3 text-xs text-slate-400">Per guardare e basta, puntare l'asse <em>sulla</em> Polare è già
     abbastanza${autonomiaSenzaQuadrante ? `: a ${Math.round(larga.ingrandimento)}× un oggetto centrato ti resta
-    nel campo per circa ${Math.round(autonomiaSenzaQuadrante)} minuti` : ''}. Il passo 6 qui sotto serve
+    nel campo per circa ${Math.round(autonomiaSenzaQuadrante)} minuti` : ''}. L'ultimo passo serve
     per gli alti ingrandimenti e per le foto.</p>`);
 
-  // --- I passi ---------------------------------------------------------
-  const passo = (n, titolo, corpo) => `
-    <li class="flex gap-3">
-      <span class="flex-shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">${n}</span>
-      <div><strong class="text-white">${titolo}</strong><br>${corpo}</div>
-    </li>`;
+  // --- La procedura guidata, un passo per volta ------------------------
+  const passi = telPassiAllineamento();
+  tel.passo = Math.max(0, Math.min(passi.length - 1, tel.passo | 0));
+  const corrente = passi[tel.passo];
+  const fatto = tel.fatti.indexOf(corrente.id) >= 0;
+  // "Allineato" vuol dire fatti tutti i passi che contano: l'ultimo, quello
+  // dello scarto dal polo, serve solo a chi fotografa.
+  const finito = passi.filter(s => !s.facoltativo).every(s => tel.fatti.indexOf(s.id) >= 0);
 
-  const passi = `
-    <p class="text-sm text-slate-300 mb-3">Si fa una volta sola, a inizio serata, e dura tre minuti.
-    <strong class="text-white">Regola d'oro:</strong> qui si muovono solo il treppiede e la vite di elevazione.
-    Le due manopole di ascensione retta e declinazione, in questa fase, non si toccano mai.</p>
-    <ol class="space-y-3 text-sm text-slate-300">
-      ${passo(1, 'Treppiede in piano, gamba «N» verso nord.',
-        `Allarga le gambe alla stessa altezza e blocca. Se la testa parte storta, tutto il resto è tempo perso.`)}
-      ${passo(2, `Scala della latitudine su ${l.lat.toFixed(1)}°.`,
-        `È il settore graduato sul fianco della testa, con l'indice che scorre sui gradi. Si muove allentando la
-         vite di elevazione (sulla EQ3 sono due, una davanti e una dietro: allenti una e stringi l'altra).
-         Poi ristringi tutt'e due.`)}
-      ${passo(3, `Ruota tutta la montatura finché la bussola segna ${Math.round(bussola)}°.`,
-        `Ruoti il treppiede intero, non la montatura sul treppiede. Quei ${Math.round(bussola)}° non sono un errore:
-         la bussola punta al Nord magnetico, che qui sta ${declinazione > 0 ? 'a Est' : 'a Ovest'} di quello vero
-         di ${Math.abs(declinazione).toFixed(1)}°, e il polo celeste sta sul Nord <em>vero</em>.
-         <button id="tel-vai-cielo" class="underline text-blue-400 hover:text-blue-300">Verifica in realtà aumentata</button>:
-         nella vista Cielo compare un mirino sul punto esatto.`)}
-      ${passo(4, 'Metti la declinazione a +90° e il contrappeso in basso.',
-        `<span class="text-amber-300">È il passo che manca su tutti i manuali, ed è quello che fa fallire l'allineamento.</span>
-         Con la declinazione a +90° il tubo diventa parallelo all'asse polare: da quel momento
-         <strong class="text-white">quello che vedi nel cercatore è esattamente dove guarda l'asse</strong>, e puoi
-         allinearlo guardando invece di indovinare. Se il cerchio di declinazione non è tarato, mettilo a occhio:
-         il tubo dev'essere parallelo al corpo dell'asse polare. Poi blocca le due manopole.`)}
-      ${passo(5, 'Trova la Polare nel cercatore.',
-        `Adesso è alta <strong class="text-white">${polare ? polare.alt.toFixed(1) : l.lat.toFixed(1)}°</strong>
-         sull'orizzonte, esattamente a Nord. Se non la vedi, muovi <em>solo</em> elevazione e treppiede finché
-         non entra nel campo del ${cercatore.nome.toLowerCase()} (${cercatore.campo}° di cielo).`)}
-      ${orologio
-        ? passo(6, `Sposta il centro di ${orologio.distanzaMin.toFixed(0)}′ ${versoNelCercatore}.`,
-          `La Polare non va messa al centro: al centro ci va il polo, che adesso sta
-           <strong class="text-amber-300">${versoNelCercatore}</strong> rispetto a lei${cercatore.dritta ? '' : ' <em>(verso già ribaltato per il tuo cercatore ottico)</em>'}.
-           Quanto? ${orologio.distanzaMin.toFixed(0)}′, cioè ${orologio.lune.toFixed(1)} Lune piene in fila: sul
-           disegno qui sotto è dove sta la croce azzurra. Salta questo passo e ti resta mezzo grado di errore —
-           per guardare va bene, per fotografare no.`)
-        : passo(6, 'Scosta il centro di mezzo grado dalla Polare.',
-          `La Polare non va messa al centro: gira attorno al polo a circa 38′ di distanza, e il centro va messo
-           sul polo. In che direzione dipende dall'ora: il disegno qui sotto lo dice, appena il calcolo è
-           disponibile.`)}
-    </ol>`;
+  const guidata = telHtmlScheda('Allineare, un passo per volta', `
+    ${telHtmlProgresso(passi)}
+    ${finito ? `<p class="mb-3 text-sm text-green-300 bg-green-950/40 border border-green-900 rounded-xl p-3">
+      Asse allineato. Da adesso elevazione e treppiede non si toccano più: se sposti il treppiede per girare
+      attorno a un albero, l'allineamento è da rifare da capo.</p>` : ''}
+    <div class="flex gap-3 items-start">
+      <span class="flex-shrink-0 w-8 h-8 rounded-full ${fatto ? 'bg-green-700' : 'bg-blue-600'} text-white text-sm font-bold flex items-center justify-center">${fatto ? '✓' : tel.passo + 1}</span>
+      <div class="min-w-0">
+        <p class="text-white font-bold">${corrente.titolo}</p>
+        <p class="text-sm text-slate-300 mt-1">${corrente.corpo}</p>
+      </div>
+    </div>
+    ${telHtmlStrumento(corrente)}
+    ${corrente.nota ? `<p class="mt-3 text-xs text-slate-500">${corrente.nota}</p>` : ''}
+    <div class="flex flex-wrap gap-2 mt-4">
+      ${tel.passo > 0 ? '<button id="tel-passo-indietro" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">← Indietro</button>' : ''}
+      <button id="tel-passo-fatto" class="px-4 py-2 rounded-full text-sm font-semibold bg-green-600 hover:bg-green-500 text-white">
+        ${tel.passo === passi.length - 1 ? 'Fatto: ho finito' : 'Fatto, avanti →'}</button>
+      ${tel.passo < passi.length - 1 ? '<button id="tel-passo-salta" class="px-4 py-2 rounded-full text-sm bg-slate-700 hover:bg-slate-600 text-slate-200">Salta</button>' : ''}
+      ${tel.fatti.length ? '<button id="tel-passo-azzera" class="px-4 py-2 rounded-full text-sm bg-slate-700 hover:bg-slate-600 text-slate-200">Ricomincia</button>' : ''}
+      <button id="tel-passo-tutti" class="px-4 py-2 rounded-full text-sm bg-slate-700 hover:bg-slate-600 text-slate-200">
+        ${tel.tuttiPassi ? 'Nascondi l\'elenco' : 'Vedi tutti i passi'}</button>
+    </div>
+    <p class="mt-3 text-xs text-amber-300"><strong>Regola d'oro:</strong> in questa fase si muovono solo il
+    treppiede e la vite di elevazione. Le manopole di ascensione retta e declinazione spostano il tubo, non
+    l'asse: qui non servono.</p>
+    ${tel.tuttiPassi ? `
+      <ol class="mt-4 space-y-2 text-sm text-slate-300 border-t border-slate-700 pt-4">
+        ${passi.map((s, i) => `<li class="flex gap-3">
+          <span class="flex-shrink-0 w-6 h-6 rounded-full ${tel.fatti.indexOf(s.id) >= 0 ? 'bg-green-700' : 'bg-slate-700'} text-white text-xs font-bold flex items-center justify-center">${i + 1}</span>
+          <div><strong class="text-white">${s.titolo}</strong><br><span class="text-slate-400">${s.corpo}</span></div>
+        </li>`).join('')}
+      </ol>` : ''}`);
 
   // --- Il quadrante ----------------------------------------------------
   const quadrante = orologio ? `
@@ -2774,9 +3862,10 @@ function telPannelloAllineamento() {
          un oggetto lontano e fermo (un camino, un traliccio a un chilometro) nell'oculare da
          ${p.oculari[0].focale} mm, poi con le vitine del cercatore porta il puntino sopra lo stesso oggetto.`)}
       ${causa('Hai usato il Nord della bussola.',
-        `Il Nord magnetico e quello vero qui distano ${Math.abs(declinazione).toFixed(1)}°: la bussola deve segnare
-         <strong class="text-white">${Math.round(bussola)}°</strong>, non 0°. E tienila lontana dal telescopio:
-         il tubo è di acciaio e se la porta dove vuole lui.`)}
+        `Il Nord magnetico e quello vero qui distano ${Math.abs(declinazione).toFixed(1)}°: una bussola vera deve
+         segnare <strong class="text-white">${Math.round(bussola)}°</strong>, non 0°. La bussola del passo 3 la
+         correzione la fa già, e mostra 0° quando sei sul Nord vero. In tutt'e due i casi tienila lontana dal
+         telescopio: il tubo è di acciaio e se la porta dove vuole lui.`)}
       ${causa('Non è la Polare.',
         `Verifica: prendi le due stelle di fondo del Grande Carro (quelle opposte al timone), tira la linea che le
          unisce e prolungala cinque volte. Finisci sulla Polare, ed è l'unica stella discretamente luminosa in
@@ -2792,7 +3881,7 @@ function telPannelloAllineamento() {
 
   return `
     ${inSintesi}
-    ${telHtmlScheda('Allineare in 6 passi', passi)}
+    ${guidata}
     ${telHtmlScheda('Dove mettere la Polare, adesso', quadrante)}
     ${telHtmlScheda('Non ci sei riuscito? Le sei cause, in ordine', problemi)}
     ${telHtmlScheda('Precisione da fotografia: la deriva', telHtmlDeriva(oculare))}`;
@@ -2911,15 +4000,23 @@ function telHtmlDeriva(oculare) {
 }
 
 function telDopoAllineamento() {
-  const tela = document.getElementById('tel-tela-polare');
-  if (tela) {
-    const disegna = () => telDisegnaOrologioPolare(tela, telOrologioPolare());
+  // Il quadrante polare compare in due posti: nella scheda di riferimento
+  // e, quando è il suo turno, dentro il passo della procedura. Si
+  // disegnano tutte le tele che ci sono.
+  const teleQuadrante = () => ['tel-tela-polare', 'tel-tela-polare-passo']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+  if (teleQuadrante().length) {
+    const disegna = () => {
+      const dati = telOrologioPolare();
+      teleQuadrante().forEach(t => telDisegnaOrologioPolare(t, dati));
+    };
     disegna();
     // La Polare gira di un grado ogni quattro minuti: ridisegnare ogni
     // mezzo minuto basta e avanza.
     clearInterval(tel.tele.polare);
     tel.tele.polare = setInterval(() => {
-      if (document.getElementById('tel-tela-polare')) disegna();
+      if (teleQuadrante().length) disegna();
       else clearInterval(tel.tele.polare);
     }, 30000);
   }
@@ -2934,6 +4031,78 @@ function telDopoAllineamento() {
     sky.mostraPolo = true;
     mostraVista('cielo');
   });
+
+  // Senza posizione, o dall'emisfero australe, il pannello mostra una
+  // scheda sola e non c'è niente d'altro da collegare.
+  const luogo = luogoCorrente();
+  if (!luogo || luogo.lat <= 0) return;
+
+  // --- La procedura guidata ---------------------------------------------
+  const passi = telPassiAllineamento();
+
+  document.querySelectorAll('[data-tel-vai-passo]').forEach(b => {
+    b.addEventListener('click', () => {
+      tel.passo = parseInt(b.dataset.telVaiPasso, 10) || 0;
+      telSalvaSessione();
+      telCostruisciPannello();
+    });
+  });
+
+  const avanti = () => {
+    tel.passo = Math.min(passi.length - 1, tel.passo + 1);
+    telSalvaSessione();
+    telCostruisciPannello();
+  };
+
+  const fatto = document.getElementById('tel-passo-fatto');
+  if (fatto) fatto.addEventListener('click', () => {
+    const id = passi[tel.passo] && passi[tel.passo].id;
+    if (id && tel.fatti.indexOf(id) < 0) tel.fatti.push(id);
+    if (tel.passo < passi.length - 1) avanti();
+    else { telSalvaSessione(); telCostruisciPannello(); }
+  });
+
+  const salta = document.getElementById('tel-passo-salta');
+  if (salta) salta.addEventListener('click', avanti);
+
+  const indietro = document.getElementById('tel-passo-indietro');
+  if (indietro) indietro.addEventListener('click', () => {
+    tel.passo = Math.max(0, tel.passo - 1);
+    telSalvaSessione();
+    telCostruisciPannello();
+  });
+
+  const azzeraPassi = document.getElementById('tel-passo-azzera');
+  if (azzeraPassi) azzeraPassi.addEventListener('click', () => {
+    tel.fatti = [];
+    tel.passo = 0;
+    telSalvaSessione();
+    telCostruisciPannello();
+  });
+
+  const tutti = document.getElementById('tel-passo-tutti');
+  if (tutti) tutti.addEventListener('click', () => {
+    tel.tuttiPassi = !tel.tuttiPassi;
+    telCostruisciPannello();
+  });
+
+  const accendi = document.getElementById('tel-accendi-sensori');
+  if (accendi) accendi.addEventListener('click', async () => {
+    accendi.textContent = 'Accendo i sensori…';
+    const ok = await skyRichiediSensori();
+    if (!ok) {
+      accendi.textContent = 'Permesso negato';
+      accendi.insertAdjacentHTML('afterend',
+        `<p class="text-xs text-amber-300 mt-2">Senza il permesso ai sensori di movimento gli strumenti del
+         telefono non funzionano. Su iPhone si concede da Impostazioni → Safari → Movimento e orientamento.</p>`);
+      return;
+    }
+    // I primi eventi arrivano entro un decimo di secondo: il pannello si
+    // ricostruisce da solo e trova già i sensori accesi.
+    setTimeout(() => telCostruisciPannello(), 250);
+  });
+
+  telAvviaSensori();
 
   document.querySelectorAll('[data-tel-stella-deriva]').forEach(b => {
     b.addEventListener('click', () => {
@@ -3023,6 +4192,104 @@ function telDopoAllineamento() {
     telSalvaSessione();
     telCostruisciPannello();
   });
+}
+
+// Il ciclo degli strumenti del telefono. Gira solo se sullo schermo c'è
+// una tela che li usa, e a dieci volte al secondo: i sensori non danno di
+// meglio, e ridisegnare più spesso servirebbe solo a scaldare la batteria
+// mentre si è al freddo. Le tele si aggiornano in posto, senza
+// ricostruire il pannello, perché un pannello che si ricostruisce dieci
+// volte al secondo perde il fuoco dei tasti e fa sfarfallare tutto.
+function telAvviaSensori() {
+  telFermaSensori();
+
+  const aggiorna = () => {
+    const bolla = document.getElementById('tel-tela-bolla');
+    const gonio = document.getElementById('tel-tela-goniometro');
+    const bussola = document.getElementById('tel-tela-bussola');
+    if (!bolla && !gonio && !bussola) { telFermaSensori(); return; }
+
+    const livella = telLivella();
+    const lettura = document.getElementById('tel-lettura-sensori');
+
+    if (bolla) {
+      telDisegnaBolla(bolla, livella);
+      if (lettura) {
+        lettura.innerHTML = livella
+          ? `Lato alto ${livella.inclinazione >= 0 ? '+' : ''}${livella.inclinazione.toFixed(1)}° ·
+             fianco destro ${livella.sbandamento >= 0 ? '+' : ''}${livella.sbandamento.toFixed(1)}°.
+             La gamba da accorciare è quella dalla parte della bolla.`
+          : 'Sensori in attesa: muovi un attimo il telefono.';
+      }
+    }
+
+    if (gonio) {
+      const bersaglio = parseFloat(gonio.dataset.bersaglio);
+      telDisegnaInclinometro(gonio, livella
+        ? { angolo: Math.abs(livella.inclinazione), bersaglio: isFinite(bersaglio) ? bersaglio : null }
+        : null);
+      if (lettura) {
+        lettura.innerHTML = livella
+          ? `Il telefono è inclinato di <strong class="text-white">${Math.abs(livella.inclinazione).toFixed(1)}°</strong>
+             sull'orizzonte${Math.abs(livella.sbandamento) > 5
+               ? ` — ma è anche sghembo di ${Math.abs(livella.sbandamento).toFixed(0)}°: raddrizzalo, se no legge di meno`
+               : ''}.`
+          : 'Sensori in attesa: muovi un attimo il telefono.';
+      }
+    }
+
+    if (bussola) {
+      const bersaglio = parseFloat(bussola.dataset.bersaglio);
+      const b = telBussolaTelefono();
+      telDisegnaBussola(bussola, b && !b.ambiguo
+        ? { az: b.az, bersaglio: isFinite(bersaglio) ? bersaglio : 0 }
+        : null);
+      if (lettura) lettura.innerHTML = telTestoBussola(b, isFinite(bersaglio) ? bersaglio : 0);
+    }
+  };
+
+  aggiorna();
+  tel.bussola.timer = setInterval(aggiorna, 100);
+}
+
+function telFermaSensori() {
+  if (tel.bussola.timer) { clearInterval(tel.bussola.timer); tel.bussola.timer = null; }
+  tel.bussola.storico = [];
+}
+
+// La riga scritta sotto alla bussola. Dice tre cose che il disegno non
+// può dire: com'è tenuto il telefono, se il numero è affidabile e se sta
+// ballando. Un numero di bussola senza queste tre cose è pericoloso,
+// perché sembra preciso.
+function telTestoBussola(b, bersaglio) {
+  if (!b) return 'Sensori in attesa: muovi un attimo il telefono.';
+  if (b.ambiguo) {
+    return `<span class="text-amber-300">Tienilo in piano</span> (appoggiato) oppure in verticale (come per una
+      foto): a mezza strada non c'è un verso da leggere.`;
+  }
+
+  const pezzi = [];
+  pezzi.push(b.modo === 'piatto'
+    ? 'Sto leggendo dove punta il <strong class="text-white">lato alto</strong> del telefono.'
+    : 'Sto leggendo dove punta il <strong class="text-white">dorso</strong> del telefono (la fotocamera).');
+
+  const scarto = telScartoAzimut(b.az, bersaglio);
+  pezzi.push(scarto.modulo <= TEL_TOLLERANZA_NORD
+    ? '<span class="text-green-300">Sei sul Nord vero.</span>'
+    : `Manca <strong class="text-white">${scarto.modulo.toFixed(0)}°</strong> in senso ${scarto.senso}.`);
+
+  if (!b.bussolaVera) {
+    pezzi.push('<span class="text-amber-300">Attenzione: orientamento relativo, questo azimut non è un Nord.</span>');
+  }
+  if (b.storto) {
+    pezzi.push(`<span class="text-amber-300">Il telefono è inclinato di ${Math.abs(b.inclinazione).toFixed(0)}°:
+      appoggialo più in piano.</span>`);
+  }
+  if (b.jitter != null && b.jitter > TEL_JITTER_SOSPETTO) {
+    pezzi.push(`<span class="text-amber-300">Il numero balla di ±${b.jitter.toFixed(0)}°: c'è ferro vicino
+      (il tubo, il contrappeso) oppure il magnetometro va tarato muovendo il telefono a otto nell'aria.</span>`);
+  }
+  return pezzi.join(' ');
 }
 
 function telAvviaCronometro() {
@@ -3133,18 +4400,49 @@ function telPannelloPunta() {
   // sarebbe solo una scheda in più da scorrere.
   const aOcchioNudo = bersaglio.mag != null && bersaglio.mag < 3;
   const salti = aOcchioNudo
-    ? telHtmlScheda('Come arrivarci', `<p class="text-sm text-slate-300">
+    ? `<p class="text-sm text-slate-300">
         ${bersaglio.nome.split(' — ')[0]} si vede a occhio nudo (magnitudine ${bersaglio.mag.toFixed(1)}):
         non serve nessun percorso. Guarda ${skyNomeDirezione(bersaglio.az)} a ${Math.round(bersaglio.alt)}° di altezza,
-        mettilo nel punto rosso del cercatore e sei già nel campo dell'oculare più largo.</p>`)
-    : telHtmlScheda('Con i salti di stella', telHtmlSalti(bersaglio));
+        mettilo nel punto rosso del cercatore e sei già nel campo dell'oculare più largo.</p>`
+    : telHtmlSalti(bersaglio);
+
+  // I tre modi di arrivarci non sono alternative equivalenti da mettere in
+  // fila: uno si sceglie, e gli altri due intanto stanno zitti. Metterli
+  // tutti aperti voleva dire cinque schede da scorrere con le mani fredde
+  // per trovare quella che si stava usando.
+  const metodi = [
+    { id: 'pushto', nome: 'Push-to col telefono', sotto: 'Il telefono sul tubo ti guida in tempo reale' },
+    // I cerchi graduati esistono solo su una equatoriale: su un Dobson non
+    // c'è niente da graduare, e offrirli sarebbe una porta che non si apre.
+    p.montatura === 'eq'
+      ? { id: 'cerchi', nome: 'Cerchi graduati', sotto: 'Due numeri sulle manopole, niente sensori' }
+      : null,
+    { id: 'salti', nome: 'Salti di stella', sotto: 'Di stella in stella nel cercatore' }
+  ].filter(Boolean);
+  if (!metodi.some(m => m.id === tel.metodo)) tel.metodo = 'pushto';
+  const scelto = metodi.find(m => m.id === tel.metodo);
+
+  const sceltaMetodo = `
+    <div class="flex flex-wrap gap-2">
+      ${metodi.map(m => `<button data-tel-metodo="${m.id}" title="${m.sotto}"
+        class="px-3 py-2 rounded-full text-sm font-semibold ${tel.metodo === m.id ? 'bg-blue-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-200'}">
+        ${m.nome}</button>`).join('')}
+    </div>
+    <p class="text-xs text-slate-500 mt-2">${scelto.sotto}. ${p.montatura === 'eq'
+      ? 'Sono tutti e tre buoni: il push-to è il più veloce, i cerchi il più preciso, i salti quello che non dipende da niente.'
+      : 'Su montatura altazimutale i cerchi graduati non ci sono: restano il push-to e i salti di stella.'}</p>`;
+
+  const corpoMetodo = tel.metodo === 'pushto'
+    ? telHtmlScheda('Push-to: il telefono sul tubo', telHtmlTubo(bersaglio))
+    : (tel.metodo === 'cerchi'
+      ? telHtmlScheda('Cerchi graduati, passo per passo', telHtmlCerchi(bersaglio))
+      : telHtmlScheda('Salti di stella', salti));
 
   return `
     ${telHtmlScheda(bersaglio.nome, scheda)}
-    ${telHtmlScheda('Coordinate per le manopole', telHtmlManopole(bersaglio))}
-    ${telHtmlScheda('Usare i cerchi graduati, passo per passo', telHtmlCerchi(bersaglio))}
-    ${salti}
-    ${telHtmlScheda('Con il telefono sul tubo', telHtmlTubo(bersaglio))}`;
+    ${telHtmlScheda('Come ci arrivi?', sceltaMetodo)}
+    ${corpoMetodo}
+    ${telHtmlScheda('Coordinate per le manopole', telHtmlManopole(bersaglio))}`;
 }
 
 // Le due cifre che servono davanti al telescopio, grandi e senza contorno
@@ -3357,43 +4655,148 @@ function telHtmlSalti(bersaglio) {
     <ol class="space-y-3">${passi}</ol>`;
 }
 
+// Le stelle buone per sincronizzare: luminose, alte abbastanza da non
+// ballare nella foschia, e — dalla seconda in poi — lontane da quelle già
+// usate, perché è la distanza fra le due che raddrizza la bussola.
+function telStelleSincronizzazione(quante) {
+  const usate = tel.tubo.allineamenti;
+  return telOggettiOra()
+    .filter(o => (o.gruppo === 'stelle' || o.gruppo === 'pianeti') && o.alt > 20 && (o.mag == null || o.mag < 2.2))
+    .map(o => {
+      const v = telVersore(o.az, o.alt);
+      const base = usate.length ? Math.min.apply(null, usate.map(a => telSeparazione(a.v, v))) : null;
+      return Object.assign({}, o, { base });
+    })
+    // Una stella a due gradi da una già usata non aggiunge nulla e rischia
+    // di peggiorare il conto: fuori.
+    .filter(o => o.base == null || o.base > 12)
+    .sort((a, b) => (b.base || 0) - (a.base || 0) || a.mag - b.mag)
+    .slice(0, quante || 6);
+}
+
 function telHtmlTubo(bersaglio) {
   const p = telProfilo();
-  const stelle = telOggettiOra()
-    .filter(o => o.gruppo === 'stelle' && o.alt > 20)
-    .sort((a, b) => a.mag - b.mag)
-    .slice(0, 6);
+  const spinta = p.montatura === 'eq' ? 'le due manopole' : 'il tubo con le mani';
 
-  const intro = `<p class="text-sm text-slate-300">L'adattatore per lo smartphone è già nella scatola del telescopio.
-    Fissa il telefono al tubo, centra una stella nell'oculare, premi <em>Sono su questa stella</em>: da quel momento
-    il telefono sa dove guarda il tubo e ti dice quanto manca al bersaglio, in tempo reale.</p>
-    <p class="text-xs text-slate-500 mt-2">Precisione realistica: 2–3°, quella di una bussola da telefono.
-    Non basta per centrare l'oculare da ${p.oculari[p.oculari.length - 1].focale} mm, ma ti porta dentro il campo del
-    cercatore — che è il 90% della fatica. Tieni il telefono lontano da calamite e da ferro.</p>`;
+  const intro = `<p class="text-sm text-slate-300">È il puntamento assistito delle app famose, fatto con quello che
+    hai già: fissa il telefono al tubo con l'adattatore che sta nella scatola, centra una stella nota e premi
+    <em>Sono su questa stella</em>. Da quel momento il telefono sa dove guarda il tubo, e mentre muovi ${spinta}
+    ti dice quanto manca al bersaglio — con un pallino che si avvicina al centro e un battito che si infittisce.</p>`;
 
   if (!tel.tubo.attivo) {
-    return intro + `<button id="tel-avvia-tubo" class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Accendi i sensori</button>`;
+    return intro + `
+      <ul class="mt-3 text-xs text-slate-400 space-y-1">
+        <li>· Il telefono va <strong class="text-slate-200">solidale al tubo</strong>: se scivola, l'allineamento è da rifare.</li>
+        <li>· Lontano da calamite e dal contrappeso: il ferro sposta la bussola.</li>
+        <li>· Non serve nessun cavo e nessuna montatura motorizzata.</li>
+      </ul>
+      <button id="tel-avvia-tubo" class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Accendi il push-to</button>`;
   }
 
-  if (!tel.tubo.versore) {
-    return intro + `
-      <p class="text-xs text-slate-400 mt-3 mb-2">Centra una di queste stelle nell'oculare, poi premi il suo nome:</p>
-      <div class="flex flex-wrap gap-2">
+  const modello = tel.tubo.modello;
+  const stelle = telStelleSincronizzazione(6);
+  const bottoniStelle = stelle.length
+    ? `<div class="flex flex-wrap gap-2">
         ${stelle.map(s => `<button data-tel-allinea-tubo="${s.id}"
           class="px-3 py-1.5 rounded-full text-xs font-semibold bg-green-700 hover:bg-green-600 text-white">
-          Sono su ${s.nome}</button>`).join('')}
+          Sono su ${s.nome.split(' — ')[0]}
+          <span class="opacity-70">${Math.round(s.alt)}°${s.base != null ? ` · ${Math.round(s.base)}° dalla prima` : ''}</span>
+        </button>`).join('')}
+      </div>`
+    : '<p class="text-xs text-slate-500">Nessuna stella adatta abbastanza alta e abbastanza lontana da quelle già usate.</p>';
+
+  // --- Non ancora allineato --------------------------------------------
+  if (!modello) {
+    return intro + `
+      <div class="mt-3 bg-slate-900 rounded-xl border border-blue-800 p-4">
+        <p class="text-sm text-white font-semibold mb-1">Passo 1: dimmi dove sei puntato adesso.</p>
+        <p class="text-xs text-slate-400 mb-3">Centra una di queste stelle nell'oculare — meglio in quello più
+          largo, e poi rifinisci — e premi il suo nome. Non serve che sia precisa al secondo d'arco: serve che
+          sia quella giusta.</p>
+        ${bottoniStelle}
       </div>
-      <button id="tel-spegni-tubo" class="mt-3 text-xs text-slate-400 underline hover:text-slate-200">Spegni i sensori</button>`;
+      <button id="tel-spegni-tubo" class="mt-3 text-xs text-slate-400 underline hover:text-slate-200">Spegni il push-to</button>`;
   }
 
+  // --- Allineato: la guida vera ----------------------------------------
+  const qualita = telQualitaPushTo(modello);
+
+  const secondaStella = modello.punti < 2 ? `
+    <div class="mt-3 bg-slate-900 rounded-xl border border-amber-900 p-4">
+      <p class="text-sm text-amber-300 font-semibold mb-1">Aggiungi una seconda stella: è il passo che raddoppia la precisione.</p>
+      <p class="text-xs text-slate-400 mb-3">Con una stella sola l'app deve credere alla bussola del telefono, che
+        sbaglia di qualche grado. Con due stelle <strong class="text-slate-200">lontane fra loro</strong> l'errore
+        della bussola viene calcolato e tolto: si passa da "dentro il cercatore" a "dentro l'oculare". Centra
+        un'altra stella e premi il suo nome.</p>
+      ${bottoniStelle}
+    </div>` : `
+    <details class="mt-3">
+      <summary class="cursor-pointer text-xs text-blue-400 hover:text-blue-300">Aggiungi un'altra stella (migliora ancora)</summary>
+      <div class="mt-2">${bottoniStelle}</div>
+    </details>`;
+
   return intro + `
-    <div id="tel-guida-tubo" class="mt-3 bg-slate-900 rounded-xl border border-slate-700 p-4">
+    <div id="tel-guida-tubo" class="mt-3 bg-slate-900 rounded-2xl border border-slate-700 p-4">
       <p class="text-sm text-slate-400">In attesa dei sensori…</p>
     </div>
+
+    <div class="mt-3 text-xs ${qualita.colore}">${qualita.testo}</div>
+
+    ${secondaStella}
+
     <div class="flex flex-wrap gap-2 mt-3">
-      <button id="tel-riallinea-tubo" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Riallinea su un'altra stella</button>
+      <button id="tel-sincronizza-qui" class="px-4 py-2 rounded-full text-sm font-semibold bg-green-700 hover:bg-green-600 text-white"
+        title="Da usare quando hai il bersaglio centrato: sincronizza qui e il prossimo salto parte preciso">
+        Ce l'ho centrato: sincronizza qui</button>
+      <button id="tel-azzera-tubo" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Riparti da zero</button>
       <button id="tel-spegni-tubo" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Spegni</button>
+    </div>
+
+    <div class="flex flex-wrap gap-2 mt-2">
+      <button id="tel-pushto-vibra" class="px-3 py-1.5 rounded-full text-xs font-semibold ${p.pushtoVibra ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300'}">
+        Vibrazione ${p.pushtoVibra ? 'accesa' : 'spenta'}</button>
+      <button id="tel-pushto-suono" class="px-3 py-1.5 rounded-full text-xs font-semibold ${p.pushtoSuono ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300'}">
+        Bip ${p.pushtoSuono ? 'acceso' : 'spento'}</button>
+      <span class="px-2 py-1.5 text-xs text-slate-500">Servono per puntare senza guardare lo schermo: il battito
+        si infittisce mentre ti avvicini.</span>
     </div>`;
+}
+
+// Che precisione può promettere l'allineamento fatto finora. È
+// l'informazione che quasi nessuna app dà, e senza la quale l'utente non
+// sa se fidarsi: con una stella sola si va a fiducia sulla bussola,
+// con due si può misurare l'errore residuo e dirlo.
+function telQualitaPushTo(modello) {
+  if (!modello) return { testo: '', colore: 'text-slate-400' };
+
+  const stelle = modello.stelle.join(' + ');
+  if (modello.punti < 2) {
+    return {
+      colore: 'text-slate-400',
+      testo: `Allineato su <strong class="text-white">${stelle}</strong>, un punto solo: la precisione è quella
+        della bussola del telefono, quindi qualche grado. Ti porta dentro il campo del cercatore.`
+    };
+  }
+
+  if (modello.baseCorta) {
+    return {
+      colore: 'text-amber-300',
+      testo: `${modello.punti} punti (${stelle}), ma tutti nella stessa zona di cielo (${Math.round(modello.base)}°
+        fra i più lontani): l'errore della bussola non si può ricavare. Aggiungi una stella in una parte di cielo
+        diversa — meglio ancora, dall'altra parte del meridiano.`
+    };
+  }
+
+  const scarto = modello.scarto;
+  const buono = scarto != null && scarto < 1.5;
+  return {
+    colore: buono ? 'text-green-300' : 'text-amber-300',
+    testo: `${modello.punti} punti (${stelle}), base di ${Math.round(modello.base)}°. Errore della bussola
+      calcolato e tolto: <strong class="text-white">${modello.theta >= 0 ? '+' : ''}${modello.theta.toFixed(1)}°</strong>.
+      I punti sono coerenti entro <strong class="text-white">${scarto.toFixed(1)}°</strong>, ed è più o meno la
+      precisione che puoi aspettarti.${buono ? '' : ` Se è tanto, o il supporto del telefono si è mosso, o una
+      delle stelle non era quella che credevi: prova a ripartire da zero.`}`
+  };
 }
 
 function telDopoPunta() {
@@ -3413,6 +4816,14 @@ function telDopoPunta() {
   if (cambia) cambia.addEventListener('click', () => {
     tel.bersaglio = null;
     telCostruisciPannello();
+  });
+
+  document.querySelectorAll('[data-tel-metodo]').forEach(b => {
+    b.addEventListener('click', () => {
+      tel.metodo = b.dataset.telMetodo;
+      telSalvaSessione();
+      telCostruisciPannello();
+    });
   });
 
   const anteprima = document.getElementById('tel-anteprima');
@@ -3484,13 +4895,19 @@ function telDopoPunta() {
     telCostruisciPannello();
   });
 
-  // Il telefono sul tubo
+  // --- Il push-to col telefono sul tubo ---------------------------------
   const avviaTubo = document.getElementById('tel-avvia-tubo');
   if (avviaTubo) avviaTubo.addEventListener('click', async () => {
+    // Il contesto audio nasce qui, dentro il gesto: dopo non si potrebbe più
+    telPreparaAudio();
     avviaTubo.textContent = 'Attivo i sensori…';
     const ok = await skyRichiediSensori();
     if (!ok) {
       avviaTubo.textContent = 'Sensori non disponibili';
+      avviaTubo.insertAdjacentHTML('afterend',
+        `<p class="text-xs text-amber-300 mt-2">Senza il permesso ai sensori di movimento il push-to non può
+         funzionare. Su iPhone si concede da Impostazioni → Safari → Movimento e orientamento; restano i cerchi
+         graduati e i salti di stella.</p>`);
       return;
     }
     tel.tubo.attivo = true;
@@ -3504,9 +4921,18 @@ function telDopoPunta() {
     });
   });
 
-  const riallinea = document.getElementById('tel-riallinea-tubo');
-  if (riallinea) riallinea.addEventListener('click', () => {
-    tel.tubo.versore = null;
+  // "Ce l'ho centrato": il bersaglio appena inquadrato diventa un punto di
+  // sincronizzazione in più. È il modo con cui il push-to migliora da solo
+  // andando avanti nella serata, invece di peggiorare.
+  const sincronizza = document.getElementById('tel-sincronizza-qui');
+  if (sincronizza) sincronizza.addEventListener('click', () => {
+    const b = telBersaglioCorrente();
+    if (b && telAllineaTubo(b)) telCostruisciPannello();
+  });
+
+  const azzeraTubo = document.getElementById('tel-azzera-tubo');
+  if (azzeraTubo) azzeraTubo.addEventListener('click', () => {
+    telAzzeraAllineamentoTubo();
     telCostruisciPannello();
   });
 
@@ -3514,79 +4940,222 @@ function telDopoPunta() {
     b.addEventListener('click', () => {
       telFermaTubo();
       tel.tubo.attivo = false;
+      if (typeof skyRilasciaSchermo === 'function' && !sky.aperto) skyRilasciaSchermo();
       telCostruisciPannello();
     });
   });
 
-  if (tel.tubo.attivo && tel.tubo.versore) telAvviaTubo();
+  const vibra = document.getElementById('tel-pushto-vibra');
+  if (vibra) vibra.addEventListener('click', () => {
+    const p = telProfilo();
+    p.pushtoVibra = !p.pushtoVibra;
+    if (p.pushtoVibra) telVibra(30);
+    telSalvaProfilo();
+    telCostruisciPannello();
+  });
+
+  const suono = document.getElementById('tel-pushto-suono');
+  if (suono) suono.addEventListener('click', () => {
+    const p = telProfilo();
+    p.pushtoSuono = !p.pushtoSuono;
+    if (p.pushtoSuono) { telPreparaAudio(); telBip(880, 0.1); }
+    telSalvaProfilo();
+    telCostruisciPannello();
+  });
+
+  if (tel.tubo.attivo && tel.tubo.modello) telAvviaTubo();
 }
 
-// Il ciclo che aggiorna la guida: gira solo quando serve, e a 5 volte al
-// secondo — i sensori non danno di meglio e la batteria ringrazia.
+// Il ciclo che aggiorna la guida: gira solo quando serve, e a 10 volte al
+// secondo — i sensori non danno di meglio e la batteria ringrazia. La
+// struttura HTML si scrive una volta sola e poi si aggiornano i pezzi che
+// cambiano: riscrivere tutto dieci volte al secondo farebbe sfarfallare
+// la tela e perdere i tasti sotto il dito.
 function telAvviaTubo() {
   telFermaTubo();
+  const p = telProfilo();
+  const cercatore = TEL_CERCATORI[p.cercatore] || TEL_CERCATORI.reddot;
+  // Il campo con cui si cerca è quello dell'oculare più largo: è il
+  // traguardo vero della manovra, non quello dell'oculare che si userà
+  // dopo per guardare l'oggetto.
+  const larga = telCombinazioni(p).find(c => !c.vuoto);
+  const campoOculare = larga ? larga.campoReale : 0;
+
   const aggiorna = () => {
     const box = document.getElementById('tel-guida-tubo');
     if (!box) { telFermaTubo(); return; }
     const bersaglio = telBersaglioCorrente();
     const guida = telGuidaVersoBersaglio(bersaglio);
+
+    if (!box.dataset.pronto) {
+      box.dataset.pronto = 'si';
+      box.innerHTML = `
+        <div class="grid gap-3 sm:grid-cols-2 items-center">
+          <canvas id="tel-tela-radar" class="block w-full rounded-xl border border-slate-700 bg-slate-950" style="height:260px"></canvas>
+          <div>
+            <div id="tel-radar-distanza" class="text-4xl font-bold text-white text-center leading-none">—</div>
+            <div id="tel-radar-stato" class="text-xs text-slate-400 mt-2 text-center">&nbsp;</div>
+            <div id="tel-radar-assi" class="mt-3"></div>
+          </div>
+        </div>
+        <p id="tel-radar-piede" class="mt-3 text-xs text-slate-500 text-center">&nbsp;</p>`;
+    }
+
+    const tela = document.getElementById('tel-tela-radar');
+    const distanza = document.getElementById('tel-radar-distanza');
+    const stato = document.getElementById('tel-radar-stato');
+    const assi = document.getElementById('tel-radar-assi');
+    const piede = document.getElementById('tel-radar-piede');
+
     if (!guida) {
-      box.innerHTML = '<p class="text-sm text-amber-400">Sensori fermi: muovi il telefono, o controlla i permessi.</p>';
+      telDisegnaRadar(tela, null);
+      if (distanza) distanza.textContent = '—';
+      if (stato) stato.innerHTML = '<span class="text-amber-400">Sensori fermi: muovi il telefono, o controlla i permessi.</span>';
       return;
     }
 
-    const vicino = guida.separazione < 1.5;
-    const colore = vicino ? 'text-green-400' : (guida.dentroCercatore ? 'text-amber-300' : 'text-white');
+    telDisegnaRadar(tela, guida, {
+      campoCercatore: cercatore.campo,
+      campoOculare,
+      nome: bersaglio ? bersaglio.nome.split(' — ')[0] : null
+    });
 
-    let manopole = '';
-    if (guida.dHA != null) {
-      manopole = `
-        <div class="grid grid-cols-2 gap-3 mt-3">
-          <div class="text-center">
-            <div class="text-xs text-slate-400">Ascensione retta</div>
-            <div class="text-lg font-mono font-bold text-white">${telOreTesto(guida.dHA).replace('+', '')}</div>
-            <div class="text-xs text-blue-300">verso ${guida.versoRA}</div>
-          </div>
-          <div class="text-center">
-            <div class="text-xs text-slate-400">Declinazione</div>
-            <div class="text-lg font-mono font-bold text-white">${Math.abs(guida.dDec).toFixed(1)}°</div>
-            <div class="text-xs text-blue-300">verso ${guida.versoDec}</div>
-          </div>
-        </div>`;
-    } else if (guida.dAlt != null) {
-      manopole = `
-        <div class="grid grid-cols-2 gap-3 mt-3">
-          <div class="text-center">
-            <div class="text-xs text-slate-400">Altezza</div>
-            <div class="text-lg font-mono font-bold text-white">${Math.abs(guida.dAlt).toFixed(1)}°</div>
-            <div class="text-xs text-blue-300">${guida.dAlt > 0 ? 'alza' : 'abbassa'}</div>
-          </div>
-          <div class="text-center">
-            <div class="text-xs text-slate-400">Azimut</div>
-            <div class="text-lg font-mono font-bold text-white">${Math.abs(guida.dAz).toFixed(1)}°</div>
-            <div class="text-xs text-blue-300">verso ${guida.dAz > 0 ? 'destra' : 'sinistra'}</div>
-          </div>
-        </div>`;
+    const nellOculare = campoOculare ? guida.separazione < campoOculare / 2 : guida.separazione < 0.4;
+    if (distanza) {
+      distanza.textContent = telAngoloTesto(guida.separazione);
+      distanza.className = `text-4xl font-bold text-center leading-none ${nellOculare ? 'text-green-400' : (guida.dentroCercatore ? 'text-amber-300' : 'text-white')}`;
+    }
+    if (stato) {
+      stato.innerHTML = nellOculare
+        ? `<span class="text-green-300 font-semibold">Ce l'hai nell'oculare da ${larga ? Math.round(larga.ingrandimento) : ''}×: guarda.</span>`
+        : (guida.dentroCercatore
+          ? `Dentro il campo del ${cercatore.nome.toLowerCase()}: cercalo, poi rifinisci piano.`
+          : 'Muovi seguendo la linea del radar.');
     }
 
-    box.innerHTML = `
-      <div class="text-center">
-        <div class="text-3xl font-bold ${colore}">${telAngoloTesto(guida.separazione)}</div>
-        <div class="text-xs text-slate-400 mt-1">${vicino
-          ? 'Sei sopra: guarda nell\'oculare.'
-          : (guida.dentroCercatore ? 'Sei dentro il campo del cercatore.' : 'Continua a muovere.')}</div>
-      </div>
-      ${manopole}
-      <p class="mt-3 text-xs text-slate-500 text-center">Tubo: ${Math.round(guida.altTubo)}° di altezza,
-        ${skyNomeDirezione(guida.azTubo)} · bersaglio: ${Math.round(guida.altBersaglio)}°, ${skyNomeDirezione(guida.azBersaglio)}</p>`;
+    if (assi) {
+      if (guida.dHA != null) {
+        assi.innerHTML = `
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-slate-950 rounded-xl border border-slate-700 p-2 text-center">
+              <div class="text-xs text-slate-400">Ascensione retta</div>
+              <div class="text-lg font-mono font-bold text-white">${telOreTesto(guida.dHA).replace('+', '')}</div>
+              <div class="text-xs text-blue-300">verso ${guida.versoRA}</div>
+            </div>
+            <div class="bg-slate-950 rounded-xl border border-slate-700 p-2 text-center">
+              <div class="text-xs text-slate-400">Declinazione</div>
+              <div class="text-lg font-mono font-bold text-white">${Math.abs(guida.dDec).toFixed(1)}°</div>
+              <div class="text-xs text-amber-300">verso ${guida.versoDec}</div>
+            </div>
+          </div>`;
+      } else if (guida.dAlt != null) {
+        assi.innerHTML = `
+          <div class="grid grid-cols-2 gap-2">
+            <div class="bg-slate-950 rounded-xl border border-slate-700 p-2 text-center">
+              <div class="text-xs text-slate-400">Altezza</div>
+              <div class="text-lg font-mono font-bold text-white">${Math.abs(guida.dAlt).toFixed(1)}°</div>
+              <div class="text-xs text-amber-300">${guida.dAlt > 0 ? 'alza il tubo' : 'abbassa il tubo'}</div>
+            </div>
+            <div class="bg-slate-950 rounded-xl border border-slate-700 p-2 text-center">
+              <div class="text-xs text-slate-400">Azimut</div>
+              <div class="text-lg font-mono font-bold text-white">${Math.abs(guida.dAz).toFixed(1)}°</div>
+              <div class="text-xs text-blue-300">verso ${guida.dAz > 0 ? 'destra' : 'sinistra'}</div>
+            </div>
+          </div>`;
+      }
+    }
+
+    if (piede) {
+      piede.innerHTML = `Tubo: ${Math.round(guida.altTubo)}° di altezza, ${skyNomeDirezione(guida.azTubo)} ·
+        bersaglio: ${Math.round(guida.altBersaglio)}°, ${skyNomeDirezione(guida.azBersaglio)}`;
+    }
+
+    telBattitoPushTo(guida.separazione, campoOculare);
   };
 
   aggiorna();
-  tel.tubo.timer = setInterval(aggiorna, 200);
+  tel.tubo.timer = setInterval(aggiorna, 100);
+  // Lo schermo che si spegne a metà manovra è il modo più sicuro di
+  // perdere il bersaglio: finché il push-to è accesso, resta acceso.
+  if (typeof skyTieniSchermoAcceso === 'function') skyTieniSchermoAcceso();
 }
 
 function telFermaTubo() {
   if (tel.tubo.timer) { clearInterval(tel.tubo.timer); tel.tubo.timer = null; }
+  tel.tubo.centrato = false;
+  // Un battito lasciato in coda continuerebbe a vibrare a pannello chiuso
+  telVibra(0);
+}
+
+// Il battito. Puntando si ha un occhio nel cercatore e le mani sulle
+// manopole: guardare lo schermo vuol dire perdere il campo. Un battito
+// che si infittisce mentre ci si avvicina, e un doppio colpo quando si è
+// dentro, risolvono il problema senza guardare niente. È il dettaglio
+// che, in giardino, fa la differenza più di qualunque conto.
+function telBattitoPushTo(separazione, campoOculare) {
+  const p = telProfilo();
+  if (!p.pushtoVibra && !p.pushtoSuono) return;
+  const soglia = campoOculare ? campoOculare / 2 : 0.4;
+
+  if (separazione < soglia) {
+    if (!tel.tubo.centrato) {
+      tel.tubo.centrato = true;
+      if (p.pushtoVibra) telVibra([50, 70, 50, 70, 160]);
+      if (p.pushtoSuono) { telBip(1180, 0.12); setTimeout(() => telBip(1570, 0.18), 150); }
+    }
+    return;
+  }
+
+  tel.tubo.centrato = false;
+  // Da un battito ogni secondo e mezzo, lontano, a uno ogni decimo
+  // quando ci si è quasi: la cadenza è la distanza, e l'orecchio la
+  // legge meglio di un numero.
+  const intervallo = Math.max(110, Math.min(1500, separazione * 90));
+  const adesso = Date.now();
+  if (adesso - tel.tubo.ultimoBattito < intervallo) return;
+  tel.tubo.ultimoBattito = adesso;
+  if (p.pushtoVibra) telVibra(22);
+  if (p.pushtoSuono) telBip(420 + Math.max(0, 880 - separazione * 55), 0.05);
+}
+
+function telVibra(schema) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(schema);
+  } catch (e) { /* niente vibrazione: pazienza */ }
+}
+
+// Il contesto audio si può creare solo durante un gesto dell'utente, e si
+// crea una volta sola: è il tasto che accende il push-to a farlo.
+function telPreparaAudio() {
+  if (tel.tubo.audio) {
+    if (tel.tubo.audio.state === 'suspended') tel.tubo.audio.resume().catch(() => {});
+    return;
+  }
+  try {
+    const Contesto = window.AudioContext || window.webkitAudioContext;
+    if (Contesto) tel.tubo.audio = new Contesto();
+  } catch (e) { /* audio non disponibile */ }
+}
+
+function telBip(frequenza, durata) {
+  const ctx = tel.tubo.audio;
+  if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator();
+    const guadagno = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = frequenza;
+    osc.connect(guadagno);
+    guadagno.connect(ctx.destination);
+    const t = ctx.currentTime;
+    // Attacco e coda morbidi: un'onda tagliata di netto fa "clic", e di
+    // notte in un campo un clic è più fastidioso del bip.
+    guadagno.gain.setValueAtTime(0.0001, t);
+    guadagno.gain.exponentialRampToValueAtTime(0.12, t + 0.012);
+    guadagno.gain.exponentialRampToValueAtTime(0.0001, t + durata);
+    osc.start(t);
+    osc.stop(t + durata + 0.03);
+  } catch (e) { /* audio non disponibile */ }
 }
 
 // --- Pannello: SERATA --------------------------------------------------
@@ -3867,7 +5436,11 @@ function telCostruisciVista() {
 
 function telChiudiVista() {
   telFermaTubo();
+  telFermaSensori();
   telFermaCronometro();
+  // Lo schermo lo tiene acceso anche la vista Cielo: si rilascia solo se
+  // non è lei ad averlo chiesto.
+  if (typeof skyRilasciaSchermo === 'function' && typeof sky !== 'undefined' && !sky.aperto) skyRilasciaSchermo();
   if (tel.tele.polare) { clearInterval(tel.tele.polare); tel.tele.polare = null; }
 }
 
