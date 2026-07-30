@@ -2647,6 +2647,85 @@ body button.pos-risultato:focus-visible {
 }
 .chip-tempo:hover { background: rgba(80, 55, 12, 0.9); }
 
+/* Il promemoria che nel cielo mostrato sta succedendo qualcosa: stessa forma
+   del chip del tempo, colore diverso — quello avverte, questo invita */
+.chip-eventi { display: none; }
+.chip-eventi.visibile { display: inline-flex; align-items: center; }
+.chip-eventi {
+  min-height: 40px;
+  max-width: min(320px, 60vw);
+  padding: 8px 14px;
+  border: 1px solid rgba(96, 165, 250, 0.5);
+  border-radius: 999px;
+  background: rgba(12, 32, 66, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--blu-chiaro);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip-eventi:hover { background: rgba(20, 48, 96, 0.9); }
+
+/* L'elenco di cosa succede nel cielo mostrato */
+.elenco-eventi-cielo { display: flex; flex-direction: column; gap: 8px; }
+.titolo-elenco-eventi {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+.voce-evento-cielo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--bordo);
+  /* Il colore dell'evento entra da una filetto laterale: lo stesso che ha
+     sul calendario, così una Perseide resta azzurra ovunque la si incontri */
+  border-left: 3px solid var(--colore-evento, #60a5fa);
+  border-radius: var(--raggio-s);
+  background: rgba(15, 23, 42, 0.6);
+}
+.voce-evento-cielo.in-corso {
+  border-color: var(--bordo-forte);
+  background: rgba(30, 41, 59, 0.72);
+}
+.voce-evento-cielo .segno-evento { color: var(--colore-evento, #60a5fa); flex: 0 0 auto; margin-top: 1px; }
+.voce-evento-cielo .corpo-evento { min-width: 0; }
+.voce-evento-cielo .titolo-evento {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--testo);
+}
+.voce-evento-cielo .quando-evento {
+  margin: 2px 0 0;
+  font-size: 0.74rem;
+  color: var(--testo-2);
+}
+.voce-evento-cielo .dove-evento { color: var(--blu-chiaro); }
+.azioni-evento { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.tasto-evento-cielo {
+  min-height: 32px;
+  padding: 5px 11px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transizione), color var(--transizione);
+}
+.tasto-evento-cielo:hover { background: var(--blu); border-color: transparent; color: #fff; }
+
 /* Le letture di puntamento e di stato, ai due lati sotto le linguette */
 .cielo-letture {
   display: flex;
@@ -2689,6 +2768,8 @@ body button.pos-risultato:focus-visible {
 }
 /* L'elenco degli astri è lungo: gli si dà più corda che agli altri */
 .gruppo-comandi.gruppo-astri.gruppo-attivo { max-height: 66%; }
+/* Anche quello degli eventi: ogni voce è tre righe più i suoi tasti */
+.gruppo-comandi.gruppo-eventi.gruppo-attivo { max-height: 66%; }
 
 .riga-comandi {
   display: flex;
@@ -2852,13 +2933,21 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   padding: 14px 34px 14px 14px;
   border: 1px solid var(--bordo-forte);
   border-radius: var(--raggio-m);
-  background: rgba(6, 10, 20, 0.93);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* Leggermente trasparente: la scheda sta sopra al cielo, e sotto ci sono
+     stelle che si continuano a intravedere. La sfocatura tiene il testo
+     leggibile anche quando sotto passa la Luna piena. */
+  background: rgba(6, 10, 20, 0.68);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
   box-shadow: var(--ombra-3);
   font-size: 0.84rem;
   color: var(--testo-2);
   overscroll-behavior: contain;
+}
+/* Dove la sfocatura non esiste (qualche browser la ignora) la trasparenza da
+   sola renderebbe illeggibile la scheda sopra una Via Lattea: lì si scurisce */
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  .pannello-dettaglio { background: rgba(6, 10, 20, 0.88); }
 }
 .pannello-dettaglio h3 {
   margin: 0 0 8px;

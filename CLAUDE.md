@@ -102,7 +102,8 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
 | 4362–5057 | **7.1** Posizione e sensori; **7.1-bis** posizione a tre strati (GPS → IP → a mano) | `skyRichiediPosizione()`, `posizioneDallaRete()`, declinazione magnetica |
 | 5058–5285 | **7.2** Posizioni degli astri (Sole, Luna, pianeti, stelle `Star1…Star8`) | |
 | 5286–6266 | **7.3** Disegno del cielo: colore del fondo per ora del giorno, Via Lattea, aloni delle stelle | `skyDisegna()` |
-| 6267–7254 | **7.4** Interfaccia della vista Cielo e scheda dell'oggetto | `inizializzaSkymap()` (**7075**) |
+| 6267–7254 | **7.4** Interfaccia della vista Cielo e scheda dell'oggetto (si apre **solo** toccando l'oggetto sulla mappa), inseguimento | `inizializzaSkymap()`, `skyAlternaInseguimento()`, `skyInsegui()` |
+| — | **7.4-bis** Eventi del calendario dentro la vista Cielo: elenco, chip e segni sulla mappa (radiante, anello sull'astro eclissato) | `skyEventiVicini()`, `skyAggiornaEventi()`, `skyDisegnaEventi()` |
 | 7255–7379 | **7.5** Schermo intero | |
 | 7380–8688 | **8. Simulazione dell'evento** — stato `sim` (**7404**), una scena per tipo | `simScenaEclissiLunare/Solare/FaseLunare/Stagioni/Sciame/Elongazione/Cielo` |
 | 8689–8864 | **9. Congiunzioni e occultazioni** | |
@@ -201,6 +202,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 | Nuovo tipo di evento astronomico | `calcolaEventiAstronomi()` `app.js:669` + una `aggiungi…()`, poi `CATEGORIE` `app.js:36` |
 | Nuova scena della simulazione | `app.js:7603` (costruzione scena) e una `simScena*` |
 | Qualcosa nel planetario | `sky` `app.js:3938`, disegno da `app.js:5286` |
+| Eventi mostrati nella vista Cielo | `SKY_EVENTI_FINESTRA_MIN` + `skyAggiornaEventi()` (sezione 7.4-bis) |
 | Bussola sbagliata / cielo storto | filtro anti-tremolio `app.js:4072`, declinazione `app.js:4366` |
 | Posizione non rilevata | posizione a strati `app.js:4811`, finestra `app.js:8899` |
 | Meteo o semaforo di osservabilità | `app.js:9492` |
