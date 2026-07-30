@@ -210,6 +210,14 @@ const CHIAVE_EVENTI_MANUALI = 'astrocalendario_eventi_manuali';
 
 const PUNTI_ROTTURA = { tablet: 768, computer: 1180 };
 
+// Un telefono girato di lato è largo quanto un tablet e alto la metà: 844x390
+// invece di 390x844. Guardando la sola larghezza lo scambiavamo per un tablet
+// e gli davamo l'impaginazione di uno schermo alto — elenchi lunghi, filtri
+// tutti aperti, riquadri da mezzo schermo — su 390 pixel d'altezza. Sotto
+// questa altezza, quindi, comanda il profilo "telefono" per quanto largo sia
+// lo schermo. Il confine è lo stesso del foglio di stile.
+const ALTEZZA_MINIMA_TABLET = 560;
+
 // Icona di ogni sezione: serve alla barra in fondo sul telefono, dove
 // un'etichetta da sola sarebbe troppo piccola per capirsi al volo
 const ICONE_VISTE = {
@@ -229,17 +237,31 @@ function larghezzaSchermo() {
   return window.innerWidth || document.documentElement.clientWidth || 1024;
 }
 
-function profiloDispositivo() {
-  const l = larghezzaSchermo();
-  if (l < PUNTI_ROTTURA.tablet) return 'telefono';
-  if (l < PUNTI_ROTTURA.computer) return 'tablet';
-  return 'computer';
+function altezzaSchermo() {
+  return window.innerHeight || document.documentElement.clientHeight || 768;
 }
 
 // Si comanda col dito? Allora i bersagli devono essere grandi e certi
 // effetti "al passaggio del mouse" non hanno senso
 function aTocco() {
   return window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+}
+
+// Telefono girato di lato: schermo basso, più largo che alto, e si tocca.
+// Il tocco fa da guardia — una finestra di browser schiacciata sul computer
+// resta un computer, con il mouse non c'è nessun pollice da avvicinare.
+function telefonoGirato() {
+  const a = altezzaSchermo();
+  return a <= ALTEZZA_MINIMA_TABLET && larghezzaSchermo() > a && aTocco();
+}
+
+function profiloDispositivo() {
+  // L'altezza ha l'ultima parola: è quella che manca quando si gira il telefono
+  if (telefonoGirato()) return 'telefono';
+  const l = larghezzaSchermo();
+  if (l < PUNTI_ROTTURA.tablet) return 'telefono';
+  if (l < PUNTI_ROTTURA.computer) return 'tablet';
+  return 'computer';
 }
 
 // Sceglie un valore diverso per ogni misura di schermo. Si legge come una
@@ -442,11 +464,35 @@ function inizializzaDispositivo() {
     });
   };
   window.addEventListener('resize', suCambio);
-  // Il giro di schermo cambia le proporzioni anche restando nella stessa
-  // fascia: qui si ridisegna comunque
-  window.addEventListener('orientationchange', () => {
-    setTimeout(() => applicaProfiloDispositivo({ forza: true }), 120);
-  });
+
+  // Girando lo schermo la fascia può restare la stessa (un telefono è un
+  // telefono in tutt'e due i versi) ma le proporzioni si ribaltano: le tele,
+  // gli elenchi e il calendario vanno rifatti comunque, quindi qui si forza.
+  //
+  // Due passate invece di una perché su iOS, al momento dell'avviso, la
+  // finestra ha ancora le misure di prima: senza il ripasso a 300ms il cielo
+  // resterebbe disegnato sulla forma vecchia. E poiché gli avvisi arrivano
+  // quasi sempre in coppia (matchMedia e orientationchange), i timer già in
+  // attesa si annullano: di ridisegni ne resta comunque uno.
+  let giri = [];
+  const suGiro = () => {
+    giri.forEach(clearTimeout);
+    const passata = () => {
+      applicaProfiloDispositivo({ forza: true });
+      adattaAltezzaCalendario();
+      if (fullCalendarInstance) fullCalendarInstance.updateSize();
+    };
+    giri = [setTimeout(passata, 120), setTimeout(passata, 300)];
+  };
+  // matchMedia è la via che funziona ovunque, anche dove `orientationchange`
+  // non arriva mai (schermi che ruotano senza avvisare, finestre affiancate)
+  const versoSchermo = window.matchMedia && window.matchMedia('(orientation: portrait)');
+  if (versoSchermo && versoSchermo.addEventListener) {
+    versoSchermo.addEventListener('change', suGiro);
+  } else if (versoSchermo && versoSchermo.addListener) {
+    versoSchermo.addListener(suGiro);       // Safari fino alla 13
+  }
+  window.addEventListener('orientationchange', suGiro);
 }
 
 // Barra di navigazione: sul telefono diventa la fila di icone in fondo allo
