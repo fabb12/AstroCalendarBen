@@ -1508,6 +1508,40 @@ body .ecl-select {
   color: var(--testo) !important;
 }
 
+/* --- Salto rapido fra le sezioni --------------------------------------
+   Serve solo dove il modale diventa una colonna sola: sopra i 1180px le due
+   colonne mostrano gia' tutto e la barra sparisce. */
+.ecl-salti {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 8px 0;
+  margin: -4px 0 4px;
+  background: linear-gradient(to bottom, var(--superficie-piena) 72%, transparent);
+}
+.ecl-salti::-webkit-scrollbar { display: none; }
+.ecl-salti button {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte);
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ecl-salti button:hover { background: var(--blu-velo); color: var(--testo); border-color: var(--blu); }
+/* La barra si incolla in alto solo dove il modale diventa un foglio con la
+   testata ferma fuori dal contenuto che scorre (sotto i 768px). Sopra,
+   testata e corpo scorrono insieme e una barra incollata finirebbe sotto la
+   testata, che ha la precedenza: li' resta dov'e', in cima. */
+@media (max-width: 767px) {
+  .ecl-salti { position: sticky; top: 0; z-index: 5; }
+}
+
 /* Tasto che apre una finestra da dentro un pannello */
 body .ecl-tasto-largo {
   width: 100%;
@@ -1523,6 +1557,9 @@ body .ecl-tasto-largo {
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 body .ecl-tasto-largo:hover { background: var(--blu-velo); border-color: var(--blu); }
+body .ecl-tasto-largo:disabled { cursor: progress; opacity: 0.75; }
+body .ecl-tasto-largo.fatto { border-color: rgba(52, 211, 153, 0.5); color: var(--verde); }
+body .ecl-tasto-largo.fallito { border-color: rgba(248, 113, 113, 0.5); color: var(--rosso); }
 
 /* --- Le eclissi di casa tua -------------------------------------------
    Un calendario personale: una riga per eclissi, la barra dice quanto Sole
@@ -2998,6 +3035,8 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   .ecl-corpo { grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); align-items: start; }
   .ecl-corpo > #eclissi-riepilogo,
   .ecl-corpo > .barra-chiudi { grid-column: 1 / -1; }
+  /* Con due colonne si vede gia' tutto: la barra di salto non serve piu' */
+  .ecl-salti { display: none; }
   .ecl-riepilogo { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
   #mappa-eclissi { min-height: 460px; }
 }

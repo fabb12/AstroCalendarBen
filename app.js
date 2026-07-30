@@ -1528,8 +1528,12 @@ function _eclCircostanzeLocali(lat, lon, peakUt, finestra, dataPicco) {
     oscMax: cMax.oscGeometrico,
     // Quanto Sole si vede sparire davvero da qui: se al massimo il Sole è
     // sotto l'orizzonte, l'oscuramento geometrico racconta un'eclissi che
-    // da questo punto nessuno vedrà.
-    oscVisibile: cMax.suOrizzonte ? cMax.osc : oscVisibile,
+    // da questo punto nessuno vedrà. Col Sole che tramonta a eclissi in
+    // corso l'oscuramento cambia in fretta, e il valore del giro grezzo
+    // sbaglierebbe di qualche punto rispetto all'istante affinato: si usa
+    // quello, cosi' il titolo e l'avviso sotto dicono lo stesso numero.
+    oscVisibile: cMax.suOrizzonte ? cMax.osc
+      : (momentoMigliore ? momentoMigliore.osc : oscVisibile),
     visibile: cMax.suOrizzonte || visibileAt !== null,
     suOrizzonteAlMassimo: cMax.suOrizzonte,
     c1: fatto(c1),
@@ -1753,6 +1757,28 @@ function _eclDurataSec(sec) {
 function _eclKm(km) {
   if (km < 10) return `${km.toFixed(1).replace('.', ',')} km`;
   return `${Math.round(km)} km`;
+}
+// Quanto manca, con la precisione che ha senso a quella distanza: gli anni
+// per un'eclissi del 2070, i minuti per una di stasera.
+function _eclQuantoManca(data) {
+  const ms = data.getTime() - Date.now();
+  if (ms <= 0) return 'in corso o appena passata';
+  const minuti = ms / 60000, ore = minuti / 60, giorni = ore / 24;
+  const mesiTesto = (n) => (n === 1 ? '1 mese' : `${n} mesi`);
+  if (giorni >= 730) {
+    const anni = Math.floor(giorni / 365.25);
+    const mesi = Math.round((giorni - anni * 365.25) / 30.44);
+    return mesi > 0 ? `fra ${anni} anni e ${mesiTesto(mesi)}` : `fra ${anni} anni`;
+  }
+  if (giorni >= 365) {
+    const mesi = Math.round((giorni - 365.25) / 30.44);
+    return mesi > 0 ? `fra un anno e ${mesiTesto(mesi)}` : 'fra un anno';
+  }
+  if (giorni >= 60) return `fra ${Math.round(giorni / 30.44)} mesi`;
+  if (giorni >= 2) return `fra ${Math.round(giorni)} giorni`;
+  if (ore >= 2) return `fra ${Math.floor(ore)}h ${String(Math.round(minuti % 60)).padStart(2, '0')}m`;
+  if (minuti >= 2) return `fra ${Math.round(minuti)} minuti`;
+  return 'fra pochi istanti';
 }
 
 // --- Disegno dei livelli mobili (il cono d'ombra vero e proprio) ------
@@ -2736,6 +2762,96 @@ function _metHtml(qui, laggiu, fascia, quando) {
 }
 
 // =====================================================================
+// 1-ter-ter. PORTARSELA DIETRO
+//   Il giorno dell'eclissi si e' in un campo, e nei campi spesso non c'e'
+//   campo. Tutto il resto dell'app funziona gia' offline — la libreria
+//   astronomica e' in cache e i conti si rifanno da soli — ma le tessere
+//   della mappa arrivano dalla rete, e senza quelle resta un rettangolo
+//   grigio proprio quando serve capire dove si e'.
+//
+//   Qui si scaricano in anticipo le tessere attorno al punto di
+//   osservazione. Non tutto il percorso: solo il pezzo di mondo in cui si
+//   stara' davvero, che e' anche l'unico modo onesto di chiedere quelle
+//   tessere a un servizio gratuito.
+// =====================================================================
+
+const OFF_RAGGIO_KM = 220;
+const OFF_ZOOM = [4, 5, 6, 7, 8];
+const OFF_MAX_TESSERE = 260;
+const OFF_IN_PARALLELO = 4;
+
+function _offTessellaX(lon, z) {
+  return Math.floor(((lon + 180) / 360) * Math.pow(2, z));
+}
+function _offTessellaY(lat, z) {
+  const r = Math.max(-85, Math.min(85, lat)) * ECL_RAD;
+  return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * Math.pow(2, z));
+}
+
+// Le tessere che coprono un quadrato attorno al punto, zoom per zoom, dal
+// piu' largo al piu' fitto: se il tetto arriva prima, resta comunque una
+// mappa d'insieme utilizzabile invece di un dettaglio a macchia di leopardo.
+function _offElencoTessere(lat, lon) {
+  const dLat = OFF_RAGGIO_KM / 111.32;
+  const dLon = OFF_RAGGIO_KM / (111.32 * Math.max(0.15, Math.cos(lat * ECL_RAD)));
+  const urls = [];
+  for (const z of OFF_ZOOM) {
+    const n = Math.pow(2, z);
+    const x1 = _offTessellaX(lon - dLon, z), x2 = _offTessellaX(lon + dLon, z);
+    const y1 = _offTessellaY(lat + dLat, z), y2 = _offTessellaY(lat - dLat, z);
+    for (let x = x1; x <= x2; x++) {
+      for (let y = y1; y <= y2; y++) {
+        if (y < 0 || y >= n) continue;
+        const xx = ((x % n) + n) % n;   // l'antimeridiano non spezza il giro
+        urls.push(`https://a.tile.openstreetmap.org/${z}/${xx}/${y}.png`);
+        if (urls.length >= OFF_MAX_TESSERE) return urls;
+      }
+    }
+  }
+  return urls;
+}
+
+let _offInCorso = false;
+
+async function _eclScaricaOffline(lat, lon, riferisci) {
+  if (_offInCorso) return;
+  _offInCorso = true;
+  const urls = _offElencoTessere(lat, lon);
+  let fatte = 0, fallite = 0;
+
+  // Le tessere passano dal service worker, che le conserva man mano: basta
+  // chiederle una volta perche' restino disponibili senza rete.
+  const coda = urls.slice();
+  const operaio = async () => {
+    while (coda.length) {
+      const url = coda.shift();
+      try {
+        const r = await fetch(url, { mode: 'cors' });
+        if (!r.ok) fallite++;
+      } catch (e) {
+        fallite++;
+      }
+      fatte++;
+      if (fatte % 5 === 0 || !coda.length) riferisci(fatte, urls.length, fallite);
+    }
+  };
+  try {
+    await Promise.all(Array.from({ length: OFF_IN_PARALLELO }, operaio));
+  } finally {
+    _offInCorso = false;
+  }
+  return { fatte, fallite, totali: urls.length };
+}
+
+function _eclAggiornaTastoOffline(testo, stato) {
+  const b = document.getElementById('btn-eclissi-offline');
+  if (!b) return;
+  b.textContent = testo;
+  b.className = `ecl-tasto-largo${stato ? ' ' + stato : ''}`;
+  b.disabled = stato === 'in-corso';
+}
+
+// =====================================================================
 // 1-quater. LE ECLISSI DI CASA TUA
 //   Una mappa risponde a "chi vede questa eclissi". Girando la domanda —
 //   "quali eclissi vedo io, da qui?" — viene fuori il calendario personale
@@ -2929,6 +3045,23 @@ function inizializzaEclissiDiCasaUI() {
       if (!riga) return;
       chiudiEclissiDiCasa();
       apriMappaEclissi(riga.dataset.evento);
+    });
+  }
+
+  const offline = document.getElementById('btn-eclissi-offline');
+  if (offline) {
+    offline.addEventListener('click', async () => {
+      const p = _eclissiPosizioneTemporanea || luogoCorrente();
+      if (!p) { apriPosizione(true); return; }
+      _eclAggiornaTastoOffline('Scarico le mappe…', 'in-corso');
+      const esito = await _eclScaricaOffline(p.lat, ((p.lon % 360) + 540) % 360 - 180,
+        (fatte, totali) => _eclAggiornaTastoOffline(`Scarico le mappe… ${fatte}/${totali}`, 'in-corso'));
+      if (!esito) { _eclAggiornaTastoOffline('Salva le mappe per l\'uso offline'); return; }
+      _eclAggiornaTastoOffline(
+        esito.fallite >= esito.totali
+          ? 'Non c\'è rete: riprova quando torna'
+          : `Salvate ${esito.totali - esito.fallite} tessere: qui la mappa ora funziona senza rete`,
+        esito.fallite >= esito.totali ? 'fallito' : 'fatto');
     });
   }
 
@@ -3320,6 +3453,25 @@ function _eclEvitaIlVuoto() {
   }
 }
 
+// La fase centrale, al bordo della fascia, dura pochi secondi: guardando la
+// mappa scorrere ci si accorge a stento di esserci passati sopra. Il telefono
+// lo racconta con una vibrazione, come farebbe con una notifica.
+let _eclEraCentrale = false;
+
+function _eclSegnalaFaseCentrale() {
+  const dossier = _eclCacheLocale.valore;
+  const circ = dossier && dossier.circ;
+  const dentro = !!(circ && circ.c2 && circ.c3 &&
+    _eclissiOffsetTempoMin >= circ.c2.min && _eclissiOffsetTempoMin <= circ.c3.min);
+  if (dentro === _eclEraCentrale) return;
+  _eclEraCentrale = dentro;
+  // Solo durante il filmato: chi trascina il cursore a mano sa gia' dove sta
+  // andando, e una vibrazione a ogni passaggio sarebbe fastidiosa.
+  if (dentro && _eclFilmato.attivo && navigator.vibrate) {
+    try { navigator.vibrate([40, 60, 140]); } catch (e) { /* non ovunque si puo' */ }
+  }
+}
+
 // --- Il ciclo di aggiornamento ----------------------------------------
 
 function _eclissiAggiornaTutto() {
@@ -3335,6 +3487,7 @@ function _eclissiAggiornaTutto() {
 
   const quadro = _eclDisegnaOmbra();
   if (!quadro) return;
+  _eclSegnalaFaseCentrale();
   _eclAggiornaHud(quadro);
   _eclAggiornaPannelloCitta(quadro);
   _eclissiAggiornaDatiLocali(quadro);
@@ -3748,6 +3901,9 @@ function _eclCostruisciRiepilogo(evento) {
   const migliori = (totali.length ? totali : _eclCitta).slice(0, 4);
 
   const schede = [
+    { etichetta: 'Quando', valore: _eclQuantoManca(evento.dataObj),
+      nota: evento.dataObj.toLocaleDateString('it-IT',
+        { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
     { etichetta: 'Sulla Terra dalle', valore: `${_eclOra(inizio)} alle ${_eclOra(fine)}`,
       nota: `${Math.round(_eclFinestra.fine - _eclFinestra.inizio)} minuti in tutto (ora locale)` },
     { etichetta: 'Massimo alle', valore: _eclOra(evento.dataObj),
@@ -4007,6 +4163,18 @@ function inizializzaMappaEclissiUI() {
 
   const segui = document.getElementById('eclissi-segui');
   if (segui) segui.addEventListener('change', () => { _eclFilmato.segui = segui.checked; });
+
+  // La barra di salto rapido: su telefono il modale è una colonna lunga e
+  // senza questa i pannelli in fondo non li trova nessuno.
+  const salti = modale.querySelector('.ecl-salti');
+  if (salti) {
+    salti.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-salta]');
+      if (!b) return;
+      const bersaglio = document.getElementById(b.dataset.salta);
+      if (bersaglio) bersaglio.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 
   // Contatti e cronologia: toccare una riga porta il cursore su quel momento.
   // È il modo più diretto di guardarsi un istante preciso dell'eclissi.

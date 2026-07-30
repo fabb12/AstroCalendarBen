@@ -533,12 +533,22 @@
         <!-- I numeri chiave dell'eclissi, prima ancora di guardare la mappa -->
         <div id="eclissi-riepilogo" class="ecl-riepilogo"></div>
 
+        <!-- Su telefono il modale e' una colonna lunga: questa barra ci salta
+             dentro. Su schermo largo sparisce, perche' si vede gia' tutto. -->
+        <nav class="ecl-salti" aria-label="Vai alla sezione">
+          <button type="button" data-salta="sez-mappa">Mappa</button>
+          <button type="button" data-salta="sez-qui">Da qui</button>
+          <button type="button" data-salta="sez-cronologia">Minuto per minuto</button>
+          <button type="button" data-salta="sez-citta">Città</button>
+          <button type="button" data-salta="sez-sicurezza">Sicurezza</button>
+        </nav>
+
         <!-- Su schermo largo: mappa e comandi a sinistra, pannelli di lettura a
              destra. Sotto i 1100px le due colonne tornano una sola. -->
         <div class="ecl-colonna-principale">
 
         <!-- LA MAPPA, con le indicazioni sovrapposte -->
-        <div class="ecl-mappa-guscio">
+        <div class="ecl-mappa-guscio" id="sez-mappa">
           <div id="mappa-eclissi"></div>
           <div class="ecl-hud">
             <div id="eclissi-hud-ora" class="ecl-hud-ora">—</div>
@@ -597,7 +607,7 @@
         <div class="ecl-colonna-lato">
 
         <!-- LE CITTÀ CHE L'OMBRA STA ATTRAVERSANDO -->
-        <div class="ecl-pannello">
+        <div class="ecl-pannello" id="sez-citta">
           <div class="ecl-pannello-testa">
             <h3>Dove sta passando l'ombra</h3>
             <span id="eclissi-citta-conteggio" class="ecl-conteggio">—</span>
@@ -608,7 +618,7 @@
         </div>
 
         <!-- IL LUOGO SCELTO -->
-        <div class="ecl-pannello">
+        <div class="ecl-pannello" id="sez-qui">
           <div class="ecl-pannello-testa">
             <h3>Da dove guardi</h3>
             <span id="eclissi-luogo-testo" class="ecl-luogo">—</span>
@@ -626,10 +636,14 @@
                   title="Tutte le eclissi solari visibili da questo punto, fino al 2070">
             Tutte le eclissi visibili da qui
           </button>
+          <button id="btn-eclissi-offline" type="button" class="ecl-tasto-largo"
+                  title="Scarica le tessere della mappa attorno a questo punto: il giorno dell'eclissi potresti non avere rete">
+            Salva le mappe per l'uso offline
+          </button>
         </div>
 
         <!-- COSA SI VEDE, MINUTO PER MINUTO -->
-        <div class="ecl-pannello">
+        <div class="ecl-pannello" id="sez-cronologia">
           <div class="ecl-pannello-testa">
             <h3>Cosa vedrai, minuto per minuto</h3>
           </div>
@@ -639,7 +653,7 @@
         </div>
 
         <!-- SICUREZZA E FOTOGRAFIA -->
-        <details class="ecl-legenda ecl-sicurezza" open>
+        <details class="ecl-legenda ecl-sicurezza" id="sez-sicurezza" open>
           <summary>Come guardarla senza farsi male</summary>
           <div id="eclissi-sicurezza" class="ecl-sicurezza-corpo"></div>
         </details>
