@@ -2338,6 +2338,33 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
 }
 .passi-tempo { gap: 6px; }
 
+/* Un tasto spento non deve sembrare pronto a fare qualcosa: succede ai due
+   estremi della scala delle velocità, dove più veloce (o più lento) non c'è */
+.tasto-cielo:disabled { opacity: 0.35; cursor: default; }
+.tasto-cielo:disabled:hover { border-color: var(--bordo); background: var(--superficie-alta); }
+
+/* Il playback: i due tasti del verso stanno un po' più larghi degli altri,
+   perché sono quelli che si cercano col pollice mentre si guarda la mappa */
+.riga-playback { margin-top: 10px; }
+.tasto-cielo.tasto-play {
+  min-height: 42px;
+  padding: 9px 14px;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+}
+/* Il moltiplicatore: si legge fra i due tasti che lo cambiano, e mentre il
+   cielo cammina si accende, così si sa a che passo sta andando */
+.lettura-velocita {
+  min-width: 132px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--testo-2);
+}
+.lettura-velocita.in-corso { color: var(--blu-chiaro); }
+
 .campo-cielo {
   flex: 1 1 200px;
   min-width: 0;
@@ -2382,6 +2409,10 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   .lettura-cielo { font-size: 0.62rem; padding: 5px 8px; }
   .lettura-stato { max-width: 48%; }
   .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
+  /* I tre tasti del playback devono restare in fila come su un lettore:
+     l'etichetta si sposta sopra e lascia loro la riga intera */
+  .riga-playback .etichetta-comando { flex: 1 0 100%; }
+  .tasto-cielo.tasto-play { padding: 9px 11px; }
 }
 
 /* ------------------------------------------ SCHEDA DELL'OGGETTO SULLA MAPPA */
