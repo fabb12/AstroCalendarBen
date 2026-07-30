@@ -230,7 +230,7 @@
           <div class="cielo-barra">
             <div class="linguette-gruppi" aria-label="Gruppi di comandi">
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="tempo" aria-pressed="false"
-                title="Data, ora e macchina del tempo">Tempo</button>
+                title="Data, ora, macchina del tempo e playback del cielo">Tempo</button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="vista" aria-pressed="false"
                 title="Schermo intero, modalità notte, fotocamera"><span class="nome-lungo">Visualizzazione</span><span class="nome-corto">Vista</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="filtri" aria-pressed="false"
@@ -294,6 +294,35 @@
                 <button type="button" class="tasto-cielo tasto-passo attiva" data-finestra="3600">±1 h</button>
                 <button type="button" class="tasto-cielo tasto-passo" data-finestra="43200">±12 h</button>
                 <button type="button" class="tasto-cielo tasto-passo" data-finestra="604800">±7 g</button>
+              </div>
+
+              <!-- PLAYBACK: il tempo che cammina da solo. I salti e la slitta
+                   portano su un istante e lì si fermano; qui invece il cielo si
+                   muove sotto gli occhi, ed è l'unico modo per vedere quello
+                   che un fermo immagine non racconta: il cielo che ruota
+                   attorno alla Polare, la Luna che scivola fra le stelle, un
+                   pianeta che rallenta e torna indietro. -->
+              <div class="riga-comandi riga-playback" aria-label="Playback del tempo">
+                <span class="etichetta-comando">Playback</span>
+                <button id="skymap-play-indietro" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
+                  title="Fai scorrere il cielo all'indietro (ripremi per fermarlo)">◀◀ Indietro</button>
+                <button id="skymap-play-ferma" type="button" class="tasto-cielo tasto-passo"
+                  title="Ferma il playback e lascia il cielo sull'istante raggiunto">■ Ferma</button>
+                <button id="skymap-play-avanti" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
+                  title="Fai scorrere il cielo in avanti (ripremi per fermarlo)">Avanti ▶▶</button>
+              </div>
+
+              <!-- Il moltiplicatore: quanto tempo di cielo passa in un secondo
+                   vero. Si sale e si scende per gradini, dai dieci secondi al
+                   secondo (le stazioni spaziali) al mese al secondo (le stagioni) -->
+              <div class="riga-comandi" aria-label="Velocità del playback">
+                <span class="etichetta-comando">Velocità</span>
+                <button id="skymap-vel-meno" type="button" class="tasto-cielo tasto-passo"
+                  title="Rallenta il playback" aria-label="Rallenta il playback">−</button>
+                <span id="skymap-vel-valore" class="lettura-velocita" aria-live="polite"
+                  title="Quanto tempo del cielo passa in un secondo vero">—</span>
+                <button id="skymap-vel-piu" type="button" class="tasto-cielo tasto-passo"
+                  title="Accelera il playback" aria-label="Accelera il playback">+</button>
               </div>
 
               <p id="skymap-tempo-testo" class="lettura-tempo">In tempo reale</p>

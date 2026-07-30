@@ -3926,6 +3926,11 @@ const sky = {
   offsetTempoSec: 0,
   ancoraTempoSec: 0,     // il centro della finestra su cui scorre la slitta
   finestraTempoSec: 3600, // mezza larghezza della finestra della slitta
+  // Playback: il tempo che cammina da solo. Verso 0 fermo, +1 avanti,
+  // −1 indietro; la velocità è un gradino della scala SKY_VELOCITA_PLAYBACK
+  playbackVerso: 0,
+  playbackVelIndice: 2,
+  playbackUltimo: 0,     // performance.now() dell'ultimo passo, per il dt
   // Figure delle costellazioni e oggetti del deep sky
   mostraCostellazioni: true,
   mostraProfondo: false,
@@ -4886,7 +4891,12 @@ function skyDefinisciStelle() {
 function skyAggiornaOggetti(forza) {
   const adesso = Date.now();
   if (!forza && adesso < sky.prossimoCalcolo) return;
-  sky.prossimoCalcolo = adesso + 1000;
+  // Di norma una volta al secondo basta: gli astri si spostano di un grado
+  // ogni quattro minuti. Con il playback acceso, invece, il cielo deve
+  // scorrere e non scattare — ma nemmeno rifare i conti a ogni fotogramma:
+  // le figure delle costellazioni e la Via Lattea sono centinaia di
+  // conversioni di coordinate, e a sessanta volte al secondo si pianta tutto.
+  sky.prossimoCalcolo = adesso + (sky.playbackVerso ? SKY_PLAYBACK_INTERVALLO : 1000);
 
   if (typeof Astronomy === 'undefined' || !sky.observer) {
     sky.oggetti = [];
@@ -6678,6 +6688,7 @@ async function skyAvvia(conSensori) {
 // Ciclo di disegno: gira solo quando la vista Cielo è a schermo
 function skyCiclo() {
   if (!sky.aperto) return;
+  skyAvanzaPlayback();
   skyAggiornaOggetti(false);
   skyMuoviSatelliti();
   skyMuoviVista();
@@ -6704,6 +6715,9 @@ function chiudiSkymap() {
   sky.aperto = false;
   if (sky.raf) cancelAnimationFrame(sky.raf);
   sky.raf = null;
+  // Il playback non deve sopravvivere alla vista: tornando qui domani il
+  // cielo ripartirebbe da un istante che nessuno ha più in mente
+  skyFermaPlayback();
   skySmettiDiSorvegliare();
   skyRilasciaSchermo();
   // Uscendo dalla vista non si può restare a schermo intero: resterebbe una
@@ -6978,6 +6992,9 @@ function inizializzaSkymap() {
       skyRilasciaSchermo();
     } else if (sky.aperto && !sky.raf) {
       skyTieniSchermoAcceso();
+      // Il playback riprende da adesso: i minuti passati con l'app in tasca
+      // non devono trasformarsi in un balzo di anni
+      sky.playbackUltimo = 0;
       sky.raf = requestAnimationFrame(skyCiclo);
     }
   });
@@ -11166,32 +11183,41 @@ function skyScartoTempoTesto(secondi) {
 function skyAggiornaTestoTempo() {
   const quando = skyAdesso();
   const scarto = Math.round(sky.offsetTempoSec || 0);
+  // Mentre il playback cammina, l'istante da solo non basta: bisogna vedere
+  // anche in che verso e con che passo sta scorrendo
+  const marcia = sky.playbackVerso
+    ? `${sky.playbackVerso > 0 ? '▶' : '◀'} ${skyVelocitaPlayback().nome}`
+    : '';
+  const spostato = scarto !== 0 || !!sky.playbackVerso;
+
   const el = document.getElementById('skymap-tempo-testo');
   if (el) {
     const istante = quando.toLocaleString('it-IT', {
       weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     });
-    el.textContent = scarto === 0
-      ? `${istante} · in tempo reale`
-      : `${istante} · ${skyScartoTempoTesto(scarto)}`;
-    el.classList.toggle('spostata', scarto !== 0);
+    const scartoTesto = scarto === 0 ? 'in tempo reale' : skyScartoTempoTesto(scarto);
+    el.textContent = [istante, scartoTesto, marcia].filter(Boolean).join(' · ');
+    el.classList.toggle('spostata', spostato);
   }
 
   // Sopra la mappa, quando l'ora non è quella vera, resta un promemoria:
   // altrimenti si guarderebbero posizioni sbagliate senza sapere perché
   const chip = document.getElementById('skymap-tempo-chip');
   if (chip) {
-    chip.classList.toggle('visibile', scarto !== 0);
-    if (scarto !== 0) {
+    chip.classList.toggle('visibile', spostato);
+    if (spostato) {
       // Su una mappa stretta la frase intera verrebbe tagliata a metà: lì
       // basta l'ora mostrata, che è la cosa da sapere
       const stretta = sky.larghezza && sky.larghezza < 560;
       const istante = quando.toLocaleString('it-IT',
         { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      // Col playback acceso lo scarto cambia a ogni fotogramma e diventa
+      // illeggibile: al suo posto si dice a che velocità sta correndo
+      const dettaglio = marcia || skyScartoTempoTesto(scarto);
       chip.textContent = stretta
-        ? `${istante} · ${skyScartoTempoTesto(scarto)}`
-        : `${istante} · ${skyScartoTempoTesto(scarto)} · torna ad adesso`;
+        ? `${istante} · ${dettaglio}`
+        : `${istante} · ${dettaglio} · torna ad adesso`;
     }
   }
 
@@ -11223,9 +11249,17 @@ function skyAggiornaSlittaTempo() {
 // `daSlitta`: il valore arriva dalla slitta, quindi è già dentro la finestra
 // e l'ancora non va spostata (se no il pollice si troverebbe il cursore che
 // gli scappa sotto).
+//
+// `fluido`: lo scarto arriva dal playback, un fotogramma per volta. Lì i
+// decimi di secondo vanno tenuti (arrotondando, alle velocità lente il tempo
+// non si muoverebbe più: mezzo secondo per fotogramma sparirebbe a ogni
+// passaggio) e il ricalcolo pieno non si forza — ci pensa il ciclo di
+// disegno, che durante il playback gira a passo ridotto.
 function skyImpostaOffsetTempo(secondi, opzioni = {}) {
   const limite = SKY_TEMPO_LIMITE_SEC;
-  sky.offsetTempoSec = Math.max(-limite, Math.min(limite, Math.round(secondi) || 0));
+  const valore = Number(secondi) || 0;
+  sky.offsetTempoSec = Math.max(-limite, Math.min(limite,
+    opzioni.fluido ? valore : Math.round(valore)));
 
   // Se l'istante nuovo è fuori dalla finestra, la finestra lo segue: altrimenti
   // la slitta resterebbe incollata a un estremo senza poter più tornare
@@ -11233,11 +11267,13 @@ function skyImpostaOffsetTempo(secondi, opzioni = {}) {
     sky.ancoraTempoSec = sky.offsetTempoSec;
   }
 
-  sky.prossimoCalcolo = 0;                       // ricalcolo immediato
-  sky.cacheOrari = { chiave: null, valore: null };
+  if (!opzioni.fluido) {
+    sky.prossimoCalcolo = 0;                     // ricalcolo immediato
+    sky.cacheOrari = { chiave: null, valore: null };
+  }
   skyAggiornaSlittaTempo();
   skyAggiornaTestoTempo();
-  skyAggiornaOggetti(true);
+  if (!opzioni.fluido) skyAggiornaOggetti(true);
 }
 
 // Quanto tempo copre la slitta, da un estremo all'altro
@@ -11247,6 +11283,119 @@ function skyImpostaFinestraTempo(secondi) {
   document.querySelectorAll('#cielo-comandi [data-finestra]').forEach(b =>
     b.classList.toggle('attiva', parseInt(b.dataset.finestra, 10) === sky.finestraTempoSec));
   skyAggiornaSlittaTempo();
+}
+
+// --- Playback del tempo ---
+// I salti e la slitta portano su un istante e lì si fermano. Il playback
+// invece fa camminare l'orologio, avanti o indietro, e il cielo si muove
+// sotto gli occhi: è l'unico modo per vedere quello che un fermo immagine
+// non racconta — la volta che ruota attorno alla Polare, la Luna che
+// scivola fra le stelle di notte in notte, un pianeta che rallenta, si
+// ferma e torna indietro.
+//
+// La velocità è un moltiplicatore del tempo vero: 3.600× vuol dire che in
+// un secondo di orologio passa un'ora di cielo. Siccome l'istante mostrato
+// è "adesso + scarto", e l'"adesso" cammina già per conto suo, allo scarto
+// se ne aggiunge una in meno: v − 1 andando avanti, −v − 1 all'indietro.
+// Con v = 1 in avanti lo scarto sta fermo, ed è esattamente il tempo reale.
+
+const SKY_VELOCITA_PLAYBACK = [
+  { fattore: 10,      nome: '10 s/s' },    // le stazioni spaziali che attraversano il cielo
+  { fattore: 60,      nome: '1 min/s' },
+  { fattore: 300,     nome: '5 min/s' },   // la rotazione della volta si vede a occhio
+  { fattore: 1800,    nome: '30 min/s' },
+  { fattore: 3600,    nome: '1 h/s' },     // alba e tramonto in pochi secondi
+  { fattore: 21600,   nome: '6 h/s' },
+  { fattore: 86400,   nome: '1 g/s' },     // la Luna che cambia posto e fase
+  { fattore: 604800,  nome: '7 g/s' },
+  { fattore: 2592000, nome: '30 g/s' }     // le stagioni, i pianeti che tornano indietro
+];
+
+const SKY_PLAYBACK_INTERVALLO = 80;   // ms fra un ricalcolo e l'altro, col playback acceso
+const SKY_PLAYBACK_SALTO_MAX = 0.5;   // s reali: oltre, l'intervallo si taglia
+
+function skyVelocitaPlayback() {
+  const i = Math.max(0, Math.min(SKY_VELOCITA_PLAYBACK.length - 1, sky.playbackVelIndice || 0));
+  return SKY_VELOCITA_PLAYBACK[i];
+}
+
+// Un fotogramma di playback: sposta lo scarto di quanto è passato davvero,
+// moltiplicato per la velocità scelta. Chiamata dal ciclo di disegno.
+function skyAvanzaPlayback() {
+  if (!sky.playbackVerso) return;
+
+  const ora = performance.now();
+  const precedente = sky.playbackUltimo || ora;
+  sky.playbackUltimo = ora;
+  // Dopo un fotogramma perso (o al ritorno da un'altra scheda) l'intervallo
+  // sarebbe enorme e il cielo farebbe un balzo: si taglia
+  const dt = Math.min(SKY_PLAYBACK_SALTO_MAX, Math.max(0, (ora - precedente) / 1000));
+  if (!dt) return;
+
+  const v = skyVelocitaPlayback().fattore * sky.playbackVerso;
+  const nuovo = (sky.offsetTempoSec || 0) + (v - 1) * dt;
+
+  // Arrivati al capolinea della macchina del tempo il playback si ferma da
+  // solo, invece di spingere contro il limite col tasto acceso a vuoto
+  if (Math.abs(nuovo) >= SKY_TEMPO_LIMITE_SEC) {
+    skyFermaPlayback();
+    skyImpostaOffsetTempo(nuovo);   // lo scarto viene tosato al limite
+    skyAvviso('playback', 'Il playback si ferma qui: la macchina del tempo arriva ' +
+      'a cinquant\'anni da adesso, avanti e indietro.', 6000);
+    return;
+  }
+
+  skyImpostaOffsetTempo(nuovo, { fluido: true });
+}
+
+// Avvia il playback in un verso (+1 avanti, −1 indietro). Ripremendo il
+// tasto già acceso si mette in pausa: è quello che fa ogni lettore.
+function skyAvviaPlayback(verso) {
+  if (sky.playbackVerso === verso) { skyFermaPlayback(); return; }
+  sky.playbackVerso = verso;
+  sky.playbackUltimo = 0;          // il primo dt parte dal fotogramma dopo
+  sky.prossimoCalcolo = 0;         // il cielo riparte subito, non fra un secondo
+  skyAvviso('playback', '');
+  skyAggiornaComandiPlayback();
+  skyAggiornaTestoTempo();
+}
+
+function skyFermaPlayback() {
+  if (!sky.playbackVerso) return;
+  sky.playbackVerso = 0;
+  sky.playbackUltimo = 0;
+  skyAggiornaComandiPlayback();
+  // Fermandosi si torna a un secondo intero (camminando lo scarto porta i
+  // decimi) e si rifà il conto pieno, che nel frattempo girava a passo ridotto
+  skyImpostaOffsetTempo(Math.round(sky.offsetTempoSec || 0));
+}
+
+// Il moltiplicatore sale e scende per gradini. Si può cambiare anche mentre
+// il cielo cammina: cambia il passo, non l'istante raggiunto.
+function skyCambiaVelocitaPlayback(passo) {
+  const massimo = SKY_VELOCITA_PLAYBACK.length - 1;
+  sky.playbackVelIndice = Math.max(0, Math.min(massimo, (sky.playbackVelIndice || 0) + passo));
+  skyAggiornaComandiPlayback();
+  skyAggiornaTestoTempo();
+}
+
+// Tasti del playback e lettura della velocità. Ai due estremi della scala i
+// tasti si spengono: dire "più veloce" quando più veloce non c'è confonde.
+function skyAggiornaComandiPlayback() {
+  skyTasto('skymap-play-indietro', sky.playbackVerso < 0);
+  skyTasto('skymap-play-avanti', sky.playbackVerso > 0);
+
+  const v = skyVelocitaPlayback();
+  const lettura = document.getElementById('skymap-vel-valore');
+  if (lettura) {
+    lettura.textContent = `${v.fattore.toLocaleString('it-IT')}× · ${v.nome}`;
+    lettura.title = `In un secondo vero passa ${v.nome.replace('/s', '')} di cielo`;
+    lettura.classList.toggle('in-corso', !!sky.playbackVerso);
+  }
+  const meno = document.getElementById('skymap-vel-meno');
+  const piu = document.getElementById('skymap-vel-piu');
+  if (meno) meno.disabled = sky.playbackVelIndice <= 0;
+  if (piu) piu.disabled = sky.playbackVelIndice >= SKY_VELOCITA_PLAYBACK.length - 1;
 }
 
 // --- Fotocamera: il cielo calcolato sopra l'immagine reale ---
@@ -11297,15 +11446,25 @@ function inizializzaSkymapExtra() {
   // --- Il tempo: la slitta, i salti, la data scritta a mano ---
   const slitta = document.getElementById('skymap-tempo');
   if (slitta) {
-    slitta.addEventListener('input', () =>
-      skyImpostaOffsetTempo(sky.ancoraTempoSec + (parseFloat(slitta.value) || 0), { daSlitta: true }));
+    slitta.addEventListener('input', () => {
+      // Scorrendo a mano il playback si ferma: se no il cursore scapperebbe
+      // da sotto il pollice mentre lo si tiene. La posizione del dito però si
+      // legge prima di fermarlo: fermandolo la slitta si riallinea all'istante
+      // raggiunto, e il primo scatto del trascinamento andrebbe perso.
+      const valore = parseFloat(slitta.value) || 0;
+      skyFermaPlayback();
+      skyImpostaOffsetTempo(sky.ancoraTempoSec + valore, { daSlitta: true });
+    });
   }
   const tornaAdesso = () => {
+    skyFermaPlayback();
     sky.ancoraTempoSec = 0;
     skyImpostaOffsetTempo(0);
   };
   collega('skymap-tempo-ora', tornaAdesso);
   collega('skymap-tempo-chip', tornaAdesso);
+  // I salti non fermano il playback: sono una spinta, e mentre il cielo
+  // cammina servono proprio a quello — saltare la mezz'ora che non interessa
   document.querySelectorAll('#cielo-comandi [data-passo]').forEach(b => {
     b.addEventListener('click', () =>
       skyImpostaOffsetTempo((sky.offsetTempoSec || 0) + (parseInt(b.dataset.passo, 10) || 0)));
@@ -11314,6 +11473,13 @@ function inizializzaSkymapExtra() {
     b.addEventListener('click', () => skyImpostaFinestraTempo(parseInt(b.dataset.finestra, 10) || 3600));
   });
 
+  // --- Il playback: il verso, lo stop e il moltiplicatore di velocità ---
+  collega('skymap-play-indietro', () => skyAvviaPlayback(-1));
+  collega('skymap-play-avanti', () => skyAvviaPlayback(1));
+  collega('skymap-play-ferma', () => skyFermaPlayback());
+  collega('skymap-vel-meno', () => skyCambiaVelocitaPlayback(-1));
+  collega('skymap-vel-piu', () => skyCambiaVelocitaPlayback(1));
+
   // La data scritta a mano: qualsiasi istante, passato o futuro. Il campo
   // parla in ora locale, e lo scarto rispetto ad adesso è quello che l'app usa.
   const campoData = document.getElementById('skymap-data');
@@ -11321,6 +11487,8 @@ function inizializzaSkymapExtra() {
     campoData.addEventListener('change', () => {
       const scelta = campoData.value ? new Date(campoData.value) : null;
       if (!scelta || isNaN(scelta.getTime())) { skyAggiornaTestoTempo(); return; }
+      // Chi scrive un istante preciso vuole quello, non vederselo scorrere via
+      skyFermaPlayback();
       skyImpostaOffsetTempo((scelta.getTime() - Date.now()) / 1000);
     });
     // Finito di scrivere, il campo torna a seguire l'istante mostrato
@@ -11347,6 +11515,7 @@ function inizializzaSkymapExtra() {
   });
 
   skyImpostaFinestraTempo(sky.finestraTempoSec);
+  skyAggiornaComandiPlayback();
   skyAggiornaTestoTempo();
 }
 
