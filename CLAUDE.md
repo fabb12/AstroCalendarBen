@@ -103,6 +103,7 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
 | 5058–5285 | **7.2** Posizioni degli astri (Sole, Luna, pianeti, stelle `Star1…Star8`) | |
 | 5286–6266 | **7.3** Disegno del cielo: colore del fondo per ora del giorno, Via Lattea, aloni delle stelle | `skyDisegna()` |
 | — | **7.3-bis** Traccia dell'oggetto osservato: la strada che percorre nelle ore attorno all'istante mostrato, con l'ora segnata di ora in ora | `skyCalcolaTraccia()`, `skyDisegnaTraccia()`, `SKY_TRACCIA_ORE` |
+| — | **7.3-ter** Eclittica: il cerchio del Sole in un anno, coi puntini dei mesi e il filo a piombo che misura quanto l'oggetto scelto sta sopra o sotto | `skyCalcolaEclittica()`, `skyDisegnaEclittica()`, `skyScartoEclittica()`, `skyObliquita()` |
 | 6267–7254 | **7.4** Interfaccia della vista Cielo e scheda dell'oggetto (si apre **solo** toccando l'oggetto sulla mappa), inseguimento | `inizializzaSkymap()`, `skyAlternaInseguimento()`, `skyInsegui()` |
 | — | **7.4-bis** Eventi del calendario dentro la vista Cielo: elenco (in corso, ore vicine, **prossimi 7 giorni**), chip e segni sulla mappa (radiante, anello sull'astro eclissato) | `skyEventiVicini()`, `skyAggiornaEventi()`, `skyDisegnaEventi()`, `apriEventoNelPlanetario(id)` |
 | 7255–7379 | **7.5** Schermo intero | |
@@ -206,6 +207,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 | Eventi mostrati nella vista Cielo | `SKY_EVENTI_FINESTRA_MIN`, `SKY_EVENTI_SETTIMANA_MS` + `skyAggiornaEventi()` (sezione 7.4-bis) |
 | "Vedi nel planetario" (dalle schede dell'agenda e dall'elenco della settimana) | `apriEventoNelPlanetario(id)` (sezione 7.4-bis) |
 | Traccia dell'oggetto nel planetario | `skyCalcolaTraccia()` (sezione 7.3-bis), tasto `skymap-btn-traccia` nei Filtri |
+| Eclittica e scarto di un astro da essa | `skyCalcolaEclittica()` (sezione 7.3-ter), tasto `skymap-btn-eclittica` nei Filtri; conversioni in `skyEquatorialiDiEclittica()` / `skyEclitticaDiEquatoriali()` |
 | Passo del tempo e finestra della slitta (sono un comando solo) | `SKY_FINESTRA_DEL_PASSO`, `skyImpostaPassoTempo()`, `skySpostaDiUnPasso()`; nel markup i chip `[data-passo-tempo]` |
 | Tasto della mappa dell'ombra negli eventi del planetario | `skyTastoMappaHtml()` + `skyApriMappaEvento(id)` (sezione 7.4-bis) |
 | Colori della mappa dell'eclissi (chiara/scura) | `ECL_TAVOLOZZE` + `_eclApplicaTemaMappa()`, e `#mappa-eclissi.mappa-chiara` in `style.css` |

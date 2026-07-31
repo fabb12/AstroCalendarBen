@@ -6055,6 +6055,11 @@ const sky = {
   // da dove è salito, dove sarà fra un'ora, quando tramonta (vedi 7.3-bis)
   mostraTraccia: true,
   traccia: { chiave: null, punti: [], nome: '', colore: '#93c5fd', prossimo: 0 },
+  // L'eclittica: la strada che il Sole percorre in un anno fra le stelle, e
+  // il binario attorno a cui stanno tutti i pianeti (vedi 7.3-ter). Resta
+  // accesa finché non la si spegne, qualunque oggetto si stia guardando.
+  mostraEclittica: false,
+  eclittica: { chiave: null, punti: [], mesi: [], scarto: null, prossimo: 0 },
   // Filtri della mappa: cosa compare e cosa no
   mostraPianeti: true,
   mostraSoleLuna: true,
@@ -8229,6 +8234,11 @@ function skyDisegna() {
   skyDisegnaCostellazioni(ctx, base, focale);
   skyDisegnaProfondo(ctx, base, focale);
 
+  // Il binario del Sistema Solare: sotto a tutto il resto, perché è lo
+  // sfondo su cui si leggono i pianeti, non uno degli attori
+  skyCalcolaEclittica();
+  skyDisegnaEclittica(ctx, base, focale);
+
   // La strada dell'oggetto scelto nelle ore attorno a questo istante: sta
   // sotto agli astri, perché è una guida e non deve coprirli
   skyCalcolaTraccia();
@@ -8485,6 +8495,273 @@ function skyDisegnaTraccia(ctx, base, focale) {
     }
   });
 
+  ctx.restore();
+}
+
+// =====================================================================
+// 7.3-ter L'ECLITTICA
+//   Chi guarda la traccia del Sole per la prima volta pensa: «questa è
+//   l'eclittica». Non lo è, ed è una confusione che vale la pena sciogliere
+//   proprio qui. La traccia del Sole nelle ore attorno a stasera è l'arco
+//   che gli fa fare la rotazione della Terra: un cerchio quasi parallelo
+//   all'equatore celeste, che a giugno passa alto e a dicembre raso.
+//   L'eclittica invece è la strada che il Sole percorre in un ANNO fra le
+//   stelle: un cerchio massimo inclinato di 23,4° sull'equatore, che nel
+//   cielo di un istante preciso sta lì tutto intero, dall'orizzonte da cui
+//   sale a quello in cui scende, anche di notte quando il Sole è dall'altra
+//   parte della Terra.
+//
+//   È quel cerchio che serve per capire il Sistema Solare: i pianeti si
+//   muovono quasi nello stesso piano della Terra, e perciò da qui li vediamo
+//   sempre appoggiati a questa linea, mai più di qualche grado sopra o
+//   sotto. Finché resta una frase in una scheda («Marte è 1,8° sotto
+//   l'eclittica») è un numero; con la linea disegnata diventa un fatto che
+//   si vede — e si vede anche perché la Luna, che di gradi ne prende fino a
+//   cinque, non ci eclissa il Sole tutti i mesi.
+//
+//   Perciò questo non è un tasto che "lascia la traccia del Sole sullo
+//   schermo": è il cerchio vero, disegnato con i marcatori dei mesi (dove
+//   sarà il Sole il primo di ogni mese) e, se un oggetto è selezionato, con
+//   il filo a piombo che lo unisce alla linea e ne misura lo scarto.
+// =====================================================================
+
+const SKY_ECL_PASSO_GRADI = 3;      // un campione ogni tre gradi di longitudine
+const SKY_ECL_RINFRESCO_MS = 400;   // come la traccia: mai più spesso di così
+const SKY_ECL_ARROTONDA_MS = 60000; // un minuto di cielo = 0,25° di rotazione: invisibile
+
+// Obliquità media dell'eclittica: l'inclinazione dell'asse terrestre, che
+// cala di poco più di un secondo d'arco all'anno. La formula è quella
+// classica; la nutazione (meno di un centesimo di grado) qui non serve.
+function skyObliquita(data) {
+  const T = Astronomy.MakeTime(data).tt / 36525;
+  return 23.439291111 - 0.0130041667 * T - 1.638e-7 * T * T + 5.036e-7 * T * T * T;
+}
+
+// Da coordinate eclittiche a equatoriali: una rotazione attorno all'asse che
+// punta al punto d'Ariete, di un angolo pari all'obliquità.
+function skyEquatorialiDiEclittica(lonGradi, latGradi, eps) {
+  const l = lonGradi * SKY_D2R, b = latGradi * SKY_D2R, e = eps * SKY_D2R;
+  const x = Math.cos(b) * Math.cos(l);
+  const y = Math.cos(b) * Math.sin(l) * Math.cos(e) - Math.sin(b) * Math.sin(e);
+  const z = Math.cos(b) * Math.sin(l) * Math.sin(e) + Math.sin(b) * Math.cos(e);
+  let ra = Math.atan2(y, x) * SKY_R2D / 15;
+  if (ra < 0) ra += 24;
+  return { ra, dec: Math.asin(Math.max(-1, Math.min(1, z))) * SKY_R2D };
+}
+
+// E la strada di ritorno: quanto un astro sta a nord ("sopra") o a sud
+// ("sotto") dell'eclittica, e a che punto del giro si trova.
+function skyEclitticaDiEquatoriali(raOre, decGradi, eps) {
+  const a = raOre * 15 * SKY_D2R, d = decGradi * SKY_D2R, e = eps * SKY_D2R;
+  const x = Math.cos(d) * Math.cos(a);
+  const y = Math.cos(d) * Math.sin(a) * Math.cos(e) + Math.sin(d) * Math.sin(e);
+  const z = Math.sin(d) * Math.cos(e) - Math.cos(d) * Math.sin(a) * Math.sin(e);
+  let lon = Math.atan2(y, x) * SKY_R2D;
+  if (lon < 0) lon += 360;
+  return { lon, lat: Math.asin(Math.max(-1, Math.min(1, z))) * SKY_R2D };
+}
+
+// Di quanto un oggetto sta fuori dal piano dell'orbita terrestre. Le
+// coordinate dell'epoca di oggi se ci sono (i pianeti), quelle di catalogo
+// altrimenti (stelle e deep sky): sulla latitudine eclittica la differenza
+// fra le due è di millesimi di grado.
+function skyScartoEclittica(o) {
+  if (!o || o.tipo === 'satellite' || typeof Astronomy === 'undefined') return null;
+  const ra = typeof o.raOra === 'number' ? o.raOra : o.ra;
+  const dec = typeof o.decOra === 'number' ? o.decOra : o.dec;
+  if (typeof ra !== 'number' || typeof dec !== 'number') return null;
+  try {
+    const data = skyAdesso();
+    return skyEclitticaDiEquatoriali(ra, dec, skyObliquita(data));
+  } catch (e) { return null; }
+}
+
+// Il cerchio in cielo, i marcatori dei mesi e il filo a piombo dell'oggetto
+// scelto. Sono un paio di centinaia di conversioni: si rifanno quando cambia
+// il minuto mostrato, il luogo o l'oggetto selezionato, non a ogni fotogramma.
+function skyCalcolaEclittica() {
+  if (!sky.mostraEclittica || !sky.observer || typeof Astronomy === 'undefined') {
+    sky.eclittica.punti = [];
+    sky.eclittica.mesi = [];
+    sky.eclittica.scarto = null;
+    sky.eclittica.chiave = null;
+    return;
+  }
+
+  const scelto = skyOggettoScelto();
+  const t0 = Math.round(skyAdesso().getTime() / SKY_ECL_ARROTONDA_MS) * SKY_ECL_ARROTONDA_MS;
+  const chiave = [t0, Math.round(sky.observer.latitude * 100), Math.round(sky.observer.longitude * 100),
+    scelto ? (scelto.id || `${scelto.ra},${scelto.dec}`) : '-'].join('|');
+  if (sky.eclittica.chiave === chiave) return;
+  const adesso = performance.now();
+  if (adesso < sky.eclittica.prossimo) return;
+  sky.eclittica.prossimo = adesso + SKY_ECL_RINFRESCO_MS;
+  sky.eclittica.chiave = chiave;
+
+  const data = new Date(t0);
+  const t = Astronomy.MakeTime(data);
+  const eps = skyObliquita(data);
+  // Dove finisce, nel cielo di questo istante, un punto dell'eclittica
+  const inCielo = (lon, lat) => {
+    const e = skyEquatorialiDiEclittica(lon, lat || 0, eps);
+    const hor = Astronomy.Horizon(t, sky.observer, e.ra, e.dec, 'normal');
+    return { az: hor.azimuth, alt: hor.altitude, lon };
+  };
+
+  const punti = [];
+  try {
+    // Si arriva a 360 per chiudere il cerchio sul punto di partenza
+    for (let lon = 0; lon <= 360; lon += SKY_ECL_PASSO_GRADI) punti.push(inCielo(lon % 360, 0));
+  } catch (e) { punti.length = 0; }
+  sky.eclittica.punti = punti;
+
+  // I paletti dell'eclittica sono i mesi, come le ore lo sono per la traccia:
+  // dodici puntini che dicono dove sarà il Sole il primo di ogni mese, cioè
+  // da che parte sta andando e quale pezzo di cerchio è cielo di stanotte.
+  const mesi = [];
+  try {
+    for (let i = 0; i < 12; i++) {
+      const primo = new Date(data.getFullYear(), data.getMonth() + i, 1);
+      const sole = Astronomy.SunPosition(primo);
+      const p = inCielo(sole.elon, 0);
+      p.mese = NOMI_MESI[primo.getMonth()].slice(0, 3).toLowerCase();
+      mesi.push(p);
+    }
+  } catch (e) { mesi.length = 0; }
+  sky.eclittica.mesi = mesi;
+
+  // Il filo a piombo: dall'oggetto scelto giù (o su) fino alla linea, nel
+  // punto che ha la sua stessa longitudine eclittica. È la misura dello
+  // scarto resa visibile, che è poi il motivo per cui questa linea esiste.
+  sky.eclittica.scarto = null;
+  if (scelto && typeof scelto.az === 'number') {
+    const ecl = skyScartoEclittica(scelto);
+    if (ecl && Math.abs(ecl.lat) > 0.05) {
+      try {
+        const piede = inCielo(ecl.lon, 0);
+        sky.eclittica.scarto = {
+          az: scelto.az, alt: scelto.alt,
+          azPiede: piede.az, altPiede: piede.alt,
+          lat: ecl.lat,
+          colore: scelto.colore || '#e2e8f0'
+        };
+      } catch (e) { /* senza il piede resta solo la linea */ }
+    }
+  }
+}
+
+// Colore della linea: ambra su cielo scuro, ambra bruciata di giorno, dove
+// un tratto chiaro sparirebbe nell'azzurro (stessa scelta del reticolo).
+function skyColoreEclittica() {
+  return sky.luceCielo > 0.4 ? '#b45309' : '#fbbf24';
+}
+
+function skyDisegnaEclittica(ctx, base, focale) {
+  if (!sky.mostraEclittica) return;
+  const punti = sky.eclittica.punti;
+  if (!punti || punti.length < 2) return;
+
+  const colore = skyColoreEclittica();
+  const proietta = p => {
+    const q = skyProietta(skyVettore(p.az, p.alt), base, focale);
+    return { px: q.px, py: q.py, davanti: q.davanti, alt: p.alt, mese: p.mese };
+  };
+  const dentro = p => p.davanti && p.px >= 0 && p.px <= sky.larghezza && p.py >= 0 && p.py <= sky.altezza;
+  const proiettati = punti.map(proietta);
+
+  ctx.save();
+  ctx.lineWidth = 1.6;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = colore;
+  ctx.setLineDash([10, 7]);
+
+  for (let i = 1; i < proiettati.length; i++) {
+    const a = proiettati[i - 1], b = proiettati[i];
+    if (!a.davanti || !b.davanti) continue;
+    // Come per la traccia: due campioni contigui ai due capi dello schermo
+    // sono un artefatto della proiezione, non un tratto di cerchio
+    if (Math.abs(a.px - b.px) > sky.larghezza || Math.abs(a.py - b.py) > sky.altezza) continue;
+    ctx.globalAlpha = (a.alt < 0 || b.alt < 0) ? 0.22 : 0.55;
+    ctx.beginPath();
+    ctx.moveTo(a.px, a.py);
+    ctx.lineTo(b.px, b.py);
+    ctx.stroke();
+  }
+
+  // I mesi lungo la linea
+  ctx.setLineDash([]);
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  sky.eclittica.mesi.map(proietta).forEach(p => {
+    if (!dentro(p)) return;
+    ctx.globalAlpha = p.alt < 0 ? 0.3 : 0.8;
+    ctx.fillStyle = colore;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    if (sky.mostraNomi) ctx.fillText(p.mese, p.px + 6, p.py - 7);
+  });
+
+  // Il nome della linea, una volta sola: senza, un cerchio tratteggiato in
+  // più è solo un'altra riga. Va scritto lontano dal centro dello schermo,
+  // perché al centro c'è quasi sempre l'oggetto inseguito, con la sua
+  // etichetta: due scritte sovrapposte sono peggio di nessuna.
+  if (sky.mostraNomi) {
+    const cx = sky.larghezza / 2, cy = sky.altezza / 2;
+    const margine = 60;
+    let migliore = null, distanza = -1;
+    proiettati.forEach(p => {
+      if (!dentro(p) || p.alt < 0) return;
+      if (p.px < margine || p.px > sky.larghezza - margine ||
+          p.py < margine || p.py > sky.altezza - margine) return;
+      const d = (p.px - cx) * (p.px - cx) + (p.py - cy) * (p.py - cy);
+      if (d > distanza) { distanza = d; migliore = p; }
+    });
+    if (migliore) {
+      ctx.globalAlpha = 0.8;
+      ctx.fillStyle = colore;
+      ctx.fillText('eclittica', migliore.px + 8, migliore.py + 10);
+    }
+  }
+
+  skyDisegnaScartoEclittica(ctx, base, focale);
+  ctx.restore();
+}
+
+// Il filo a piombo fra l'oggetto scelto e l'eclittica, con quanti gradi sono
+function skyDisegnaScartoEclittica(ctx, base, focale) {
+  const s = sky.eclittica.scarto;
+  if (!s) return;
+  const a = skyProietta(skyVettore(s.az, s.alt), base, focale);
+  const b = skyProietta(skyVettore(s.azPiede, s.altPiede), base, focale);
+  if (!a.davanti || !b.davanti) return;
+  if (Math.abs(a.px - b.px) > sky.larghezza / 2 || Math.abs(a.py - b.py) > sky.altezza / 2) return;
+
+  ctx.save();
+  ctx.strokeStyle = s.colore;
+  ctx.lineWidth = 1.2;
+  ctx.setLineDash([2, 3]);
+  ctx.globalAlpha = 0.75;
+  ctx.beginPath();
+  ctx.moveTo(a.px, a.py);
+  ctx.lineTo(b.px, b.py);
+  ctx.stroke();
+
+  if (sky.mostraNomi) {
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = s.colore;
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const segno = s.lat >= 0 ? '+' : '−';
+    // Lo scarto si scrive oltre il piede, proseguendo nel verso del filo:
+    // vicino all'astro ci sono già il suo simbolo e il suo nome
+    const verso = b.py >= a.py ? 1 : -1;
+    ctx.fillText(`${segno}${skyNumero(Math.abs(s.lat), 1)}°`, b.px + 7, b.py + verso * 12);
+  }
   ctx.restore();
 }
 
@@ -8786,6 +9063,17 @@ function skyRigheScheda(o) {
   if (typeof ra === 'number' && typeof dec === 'number') {
     const epoca = typeof o.raOra === 'number' ? 'epoca di oggi' : 'J2000';
     dato('Coordinate', `AR ${skyAscensioneTesto(ra)} · Dec ${skyDeclinazioneTesto(dec)} <span class="text-slate-500">(${epoca})</span>`);
+  }
+
+  // Quanto sta fuori dal piano dell'orbita terrestre. Il numero da solo dice
+  // poco: il tasto “Eclittica” disegna la linea a cui si riferisce, e allora
+  // «un grado e mezzo sotto» diventa una cosa che si vede.
+  const ecl = skyScartoEclittica(o);
+  if (ecl) {
+    dato('Rispetto all\'eclittica', (Math.abs(ecl.lat) < 0.1
+      ? 'praticamente sulla linea'
+      : `${skyNumero(Math.abs(ecl.lat), 1)}° ${ecl.lat > 0 ? 'sopra' : 'sotto'}`) +
+      ` <span class="text-slate-500">(longitudine ${Math.round(ecl.lon)}°)</span>`);
   }
 
   const orari = skyOrariDi(o);
@@ -9938,6 +10226,23 @@ function inizializzaSkymap() {
     sky.traccia.chiave = null;
     skyAggiornaTastiFiltri();
   });
+  // L'eclittica è una linea sola, ma quasi nessuno sa già cosa sia: la prima
+  // volta che si accende conviene dirlo, altrimenti resta un tratteggio in più
+  collega('skymap-btn-eclittica', () => {
+    sky.mostraEclittica = !sky.mostraEclittica;
+    sky.eclittica.chiave = null;
+    if (!sky.mostraEclittica) {
+      sky.eclittica.punti = [];
+      sky.eclittica.mesi = [];
+      sky.eclittica.scarto = null;
+      skyAvviso('eclittica', '');
+    } else {
+      skyAvviso('eclittica', 'L\'eclittica è la strada che il Sole percorre in un anno fra le stelle: ' +
+        'i puntini sono i primi del mese. I pianeti stanno sempre a pochi gradi da questa linea, ' +
+        'e il filo a piombo dice quanti.', 12000);
+    }
+    skyAggiornaTastiFiltri();
+  });
   // Il promemoria sopra la mappa apre l'elenco di cosa sta succedendo
   collega('skymap-eventi-chip', () => skyMostraGruppo('eventi'));
   skyAggiornaTastiFiltri();
@@ -10022,6 +10327,7 @@ function skyAggiornaTastiFiltri() {
   skyTasto('skymap-btn-atmosfera', sky.atmosfera);
   skyTasto('skymap-btn-eventi', sky.mostraEventi);
   skyTasto('skymap-btn-traccia', sky.mostraTraccia);
+  skyTasto('skymap-btn-eclittica', sky.mostraEclittica);
 }
 
 // Quale gruppo di comandi è aperto sopra la mappa: uno solo, e toccando di
