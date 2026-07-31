@@ -3486,6 +3486,9 @@ function chiudiMappaLunare() {
 // Riepilogo, contatti locali e nota sul colore
 function _lunAggiornaTesti(evento, contatti) {
   const dati = evento.eclissiLunare;
+  // Vale per le eclissi di Luna quanto per quelle di Sole: capitano solo
+  // quando il plenilunio incrocia un nodo
+  mostraStagioneEclissi('lunare-stagione', evento.dataObj);
   const riepilogo = document.getElementById('lunare-riepilogo');
   const tabella = document.getElementById('lunare-contatti');
   const luogoEl = document.getElementById('lunare-luogo');
@@ -4326,6 +4329,9 @@ function apriMappaEclissi(id) {
   _eclAggiornaTastoSchermo();
 
   _eclAggiornaLegenda(evento, _eclCostruisciRiepilogo(evento));
+
+  // Perché proprio adesso: i nodi della Luna e la stagione delle eclissi
+  mostraStagioneEclissi('eclissi-stagione', evento.dataObj);
 
   // Inquadra il percorso e ricalcola le dimensioni (il div era nascosto)
   setTimeout(() => {
@@ -9766,14 +9772,17 @@ function lezAggiornaTesti() {
   }
 }
 
-// Si apre dal tasto dentro la scheda del Sole
-window.apriLezioneEclittica = () => {
+// Si apre dal tasto dentro la scheda del Sole, e da chi ha bisogno di un
+// pezzo preciso della spiegazione: le finestre delle eclissi entrano
+// direttamente dal quadro dei nodi, che è quello che le riguarda.
+window.apriLezioneEclittica = (da) => {
   const modale = document.getElementById('modale-lezione');
   if (!modale) return;
   lez.canvas = document.getElementById('lez-canvas');
   if (!lez.canvas) return;
 
-  lez.capitolo = 0;
+  const chiesto = typeof da === 'string' ? LEZ_CAPITOLI.findIndex(c => c.tipo === da) : Number(da);
+  lez.capitolo = Number.isInteger(chiesto) && chiesto >= 0 && chiesto < LEZ_CAPITOLI.length ? chiesto : 0;
   lez.elev = 88;
   lez.rotazione = 0;
   lez.anni = 0;
@@ -9839,6 +9848,120 @@ function inizializzaLezioneEclittica() {
   if (avanti) avanti.addEventListener('click', () => lezVaiA(lez.capitolo + 1));
 
   window.addEventListener('resize', () => { if (lez.aperto) { lezRidimensiona(); lezDisegna(); } });
+}
+
+// --- Il ponte fra la lezione e le eclissi ----------------------------------
+//   Un'eclissi è la lezione dei nodi che capita davvero, in una data che sta
+//   sul calendario. Chi apre la mappa dell'ombra o la simulazione si chiede
+//   quasi sempre la stessa cosa — «perché proprio adesso, e perché non tutti
+//   i mesi?» — e la risposta è a due centimetri, nel quadro dei nodi. Qui si
+//   calcolano i numeri di QUESTA eclissi (quanto la Luna è fuori dal piano,
+//   quanto manca al suo passaggio al nodo, quali altre eclissi le fanno
+//   compagnia nella stessa stagione) e si offre la porta per andare a vedere
+//   la geometria che li produce.
+// =====================================================================
+
+const ECL_STAGIONE_GIORNI = 25;      // quanto larga è la finestra di una stagione
+const ECL_TIPI_SOLARI = { total: 'totale', annular: 'anulare', partial: 'parziale', hybrid: 'ibrida' };
+const ECL_TIPI_LUNARI = { penumbral: 'penombrale', partial: 'parziale', total: 'totale' };
+
+// Il nodo lunare più vicino a una data, e da che parte sta
+function nodoLunareVicino(data) {
+  let nodo = Astronomy.SearchMoonNode(Astronomy.MakeTime(new Date(data.getTime() - 20 * 86400000)));
+  let migliore = nodo;
+  for (let i = 0; i < 4; i++) {
+    nodo = Astronomy.NextMoonNode(nodo);
+    if (Math.abs(nodo.time.date - data) < Math.abs(migliore.time.date - data)) migliore = nodo;
+  }
+  return migliore;
+}
+
+// Le altre eclissi della stessa stagione: quelle che cadono entro tre
+// settimane e mezza, cioè quelle che il Sole illumina restando in linea coi
+// nodi. Non le si cerca in `eventiCalcolati` perché possono stare in un mese
+// che nessuno ha ancora aperto.
+function eclissiCompagne(data) {
+  const compagne = [];
+  const inizio = Astronomy.MakeTime(new Date(data.getTime() - ECL_STAGIONE_GIORNI * 86400000));
+  const dentro = quando => {
+    const scarto = Math.abs(quando - data) / 86400000;
+    return scarto <= ECL_STAGIONE_GIORNI && scarto > 1;   // oltre il giorno: non è lei stessa
+  };
+
+  let sol = Astronomy.SearchGlobalSolarEclipse(inizio);
+  for (let i = 0; i < 4 && sol; i++) {
+    if (sol.peak.date - data > ECL_STAGIONE_GIORNI * 86400000) break;
+    if (dentro(sol.peak.date)) {
+      compagne.push({ data: sol.peak.date, testo: `eclissi di Sole ${ECL_TIPI_SOLARI[sol.kind] || sol.kind}` });
+    }
+    sol = Astronomy.NextGlobalSolarEclipse(sol.peak);
+  }
+
+  let lun = Astronomy.SearchLunarEclipse(inizio);
+  for (let i = 0; i < 4 && lun; i++) {
+    if (lun.peak.date - data > ECL_STAGIONE_GIORNI * 86400000) break;
+    if (dentro(lun.peak.date)) {
+      compagne.push({ data: lun.peak.date, testo: `eclissi di Luna ${ECL_TIPI_LUNARI[lun.kind] || lun.kind}` });
+    }
+    lun = Astronomy.NextLunarEclipse(lun.peak);
+  }
+
+  return compagne.sort((a, b) => a.data - b.data);
+}
+
+// Il pannello, uguale per la mappa dell'ombra, per la mappa dell'eclissi
+// lunare e per la simulazione: gli stessi tre paragrafi e la stessa porta.
+function stagioneEclissiHtml(data) {
+  if (typeof Astronomy === 'undefined' || !(data instanceof Date) || isNaN(data)) return '';
+  let latitudine, nodo, compagne;
+  try {
+    latitudine = Astronomy.Ecliptic(Astronomy.GeoVector('Moon', Astronomy.MakeTime(data), true)).elat;
+    nodo = nodoLunareVicino(data);
+    compagne = eclissiCompagne(data);
+  } catch (e) { return ''; }
+
+  const oreAlNodo = (nodo.time.date - data) / 3600000;
+  const prima = oreAlNodo >= 0;
+  const quante = Math.abs(oreAlNodo) < 1.5
+    ? 'praticamente nello stesso momento'
+    : `${skyNumero(Math.abs(oreAlNodo), 0)} ore ${prima ? 'dopo' : 'prima'}`;
+  const verso = nodo.kind > 0 ? 'ascendente (la Luna sale sopra il piano)' : 'discendente (la Luna scende sotto il piano)';
+
+  const righe = [
+    '<p>Un\'eclissi non capita a ogni novilunio, e il motivo è tutto qui: l\'orbita della Luna è ' +
+    'inclinata di 5° sull\'eclittica, e la incrocia in due soli punti, i <b>nodi</b>. Serve che il ' +
+    'novilunio (o il plenilunio) capiti proprio mentre la Luna è di passaggio da lì, e che il Sole ' +
+    'sia in quella stessa direzione: è la <b>stagione delle eclissi</b>, e capita due volte l\'anno.</p>',
+
+    `<p>Per questa: al momento del massimo la Luna è a <b>${skyNumero(Math.abs(latitudine), 2)}°</b> ` +
+    `dall'eclittica${Math.abs(latitudine) < 0.6 ? ' (quasi esattamente sulla linea)' : ''} e passa ` +
+    `per il nodo ${verso} <b>${quante}</b>, il ${dataOraBreve(nodo.time.date)}. ` +
+    'Più i due istanti si avvicinano, più l\'allineamento è centrato.</p>'
+  ];
+
+  if (compagne.length) {
+    righe.push('<p>Nella stessa stagione: ' +
+      compagne.map(c => `<b>${c.testo}</b> il ${c.data.toLocaleDateString('it-IT',
+        { day: 'numeric', month: 'long', year: 'numeric' })}`).join(', ') +
+      '. Le eclissi vanno a coppie o a terzetti a un paio di settimane di distanza: è il tempo che ' +
+      'serve alla Luna per arrivare al nodo opposto, mentre il Sole è ancora in linea con essi.</p>');
+  }
+
+  righe.push('<button type="button" class="ecl-tasto-largo" onclick="apriLezioneEclittica(\'nodi\')" ' +
+    'title="Il quadro della lezione dedicato ai nodi e alle stagioni delle eclissi">' +
+    'Guarda la geometria dei nodi</button>');
+
+  return righe.join('');
+}
+
+// Riempie il pannello, se in quella finestra c'è
+function mostraStagioneEclissi(idElemento, data) {
+  const el = document.getElementById(idElemento);
+  if (!el) return;
+  const html = stagioneEclissiHtml(data);
+  el.innerHTML = html;
+  const guscio = el.closest('details, .sim-eclittica');
+  if (guscio) guscio.classList.toggle('hidden', !html);
 }
 
 // =====================================================================
@@ -13075,6 +13198,7 @@ window.apriSimulazione = (id) => {
   const btnVel = document.getElementById('sim-btn-velocita');
   if (btnVel) btnVel.textContent = '1×';
   simAggiornaPulsantePlay();
+  simPonteEclittica(evento);
 
   modale.classList.remove('hidden');
   sim.aperto = true;
@@ -13084,6 +13208,37 @@ window.apriSimulazione = (id) => {
     if (!sim.raf) sim.raf = requestAnimationFrame(simCiclo);
   });
 };
+
+// Sotto alla simulazione, il rimando alla lezione dell'eclittica. Per
+// un'eclissi è il discorso dei nodi, con i numeri di quella lì; per tutto il
+// resto è il ricordo che quel che si sta guardando succede su una riga sola,
+// e ogni scena dice perché la riguarda.
+const SIM_PERCHE_ECLITTICA = {
+  faseLunare: 'Le fasi sono la Luna che ci gira attorno restando sempre a pochi gradi da quella linea.',
+  stagione: 'Equinozi e solstizi sono i quattro punti in cui l\'eclittica incrocia l\'equatore celeste: ' +
+    'le stagioni nascono proprio dall\'angolo fra i due.',
+  elongazione: 'Un pianeta si allontana dal Sole muovendosi lungo quella linea: l\'elongazione si misura lì sopra.',
+  cielo: 'Sole, Luna e pianeti che vedi in scena stanno tutti appoggiati a quella riga.'
+};
+
+function simPonteEclittica(evento) {
+  const el = document.getElementById('sim-eclittica');
+  if (!el || !sim.scena) return;
+  const tipo = sim.scena.tipo;
+
+  if (tipo === 'eclissiLunare' || tipo === 'eclissiSolare') {
+    mostraStagioneEclissi('sim-eclittica', evento.dataObj);
+    return;
+  }
+
+  const perche = SIM_PERCHE_ECLITTICA[tipo];
+  if (!perche) { el.innerHTML = ''; el.classList.add('hidden'); return; }
+  el.innerHTML = `<p>Tutto questo succede lungo <b>l'eclittica</b>: il cerchio che il Sole percorre ` +
+    `in un anno fra le stelle, e attorno a cui stanno la Luna e i pianeti. ${perche}</p>` +
+    '<button type="button" class="ecl-tasto-largo" onclick="apriLezioneEclittica()" ' +
+    'title="La lezione animata: il Sistema Solare dall\'alto, poi di taglio">Che cos\'è l\'eclittica</button>';
+  el.classList.remove('hidden');
+}
 
 function chiudiSimulazione() {
   const modale = document.getElementById('modale-simulazione');

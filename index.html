@@ -734,6 +734,13 @@
           <div id="eclissi-schema" class="ecl-schema-corpo"></div>
         </details>
 
+        <!-- PERCHÉ PROPRIO ADESSO: i nodi e la stagione delle eclissi,
+             con la porta per il quadro della lezione che li disegna -->
+        <details class="ecl-legenda ecl-stagione">
+          <summary>Perché proprio adesso: la stagione delle eclissi</summary>
+          <div id="eclissi-stagione" class="ecl-stagione-corpo"></div>
+        </details>
+
         <!-- LEGENDA -->
         <details class="ecl-legenda">
           <summary>Come si legge la mappa</summary>
@@ -833,6 +840,11 @@
             <div class="ecl-pannello-testa"><h3>Cosa aspettarsi</h3></div>
             <div id="lunare-nota" class="ecl-dati-locali"></div>
           </div>
+
+          <details class="ecl-legenda ecl-stagione">
+            <summary>Perché proprio adesso: la stagione delle eclissi</summary>
+            <div id="lunare-stagione" class="ecl-stagione-corpo"></div>
+          </details>
         </div>
 
         <div class="barra-chiudi">
@@ -868,6 +880,10 @@
         <!-- Cosa sta succedendo in questo istante -->
         <div id="sim-didascalia" class="bg-slate-900 p-4 rounded-xl border border-slate-700 text-sm text-slate-300 space-y-1"></div>
         <p id="sim-nota" class="text-xs text-slate-500"></p>
+
+        <!-- Il ponte con la lezione dell'eclittica: per le eclissi è la
+             stagione dei nodi, per tutto il resto è la riga su cui succede -->
+        <div id="sim-eclittica" class="sim-eclittica hidden"></div>
 
         <div class="barra-chiudi">
           <button id="btn-chiudi-simulazione-basso" type="button" class="tasto-chiudi-largo">Chiudi la simulazione</button>
