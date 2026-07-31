@@ -104,7 +104,8 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
 | 5286–6266 | **7.3** Disegno del cielo: colore del fondo per ora del giorno, Via Lattea, aloni delle stelle | `skyDisegna()` |
 | — | **7.3-bis** Traccia dell'oggetto osservato: la strada che percorre nelle ore attorno all'istante mostrato, con l'ora segnata di ora in ora | `skyCalcolaTraccia()`, `skyDisegnaTraccia()`, `SKY_TRACCIA_ORE` |
 | — | **7.3-ter** Eclittica: il cerchio del Sole in un anno, coi puntini dei mesi e il filo a piombo che misura quanto l'oggetto scelto sta sopra o sotto | `skyCalcolaEclittica()`, `skyDisegnaEclittica()`, `skyScartoEclittica()`, `skyObliquita()` |
-| — | **7.3-quater** La lezione dell'eclittica: cinque quadri animati (Sistema Solare dall'alto → di taglio → il piano → la riga vista da qui → i nodi e le eclissi). Si apre dal tasto nella scheda del Sole | `LEZ_CAPITOLI`, `lez`, `apriLezioneEclittica()`, `lezQuadroSistema/Cielo/Nodi()` |
+| — | **7.3-ter (segue)** L'analemma: il Sole alla stessa ora ogni giorno per un anno. Si accende insieme all'eclittica, campioni a giorni interi (se no l'ora scivola e l'otto si apre) | `skyCalcolaAnalemma()`, `skyDisegnaAnalemma()`, `SKY_ANALEMMA_PASSO_MS` |
+| — | **7.3-quater** La lezione dell'eclittica: sei quadri animati (Sistema Solare dall'alto → di taglio → il piano → la riga vista da qui → l'analemma → i nodi e le eclissi). Si apre dal tasto nella scheda del Sole | `LEZ_CAPITOLI`, `lez`, `apriLezioneEclittica()`, `lezQuadroSistema/Cielo/Analemma/Nodi()` |
 | 6267–7254 | **7.4** Interfaccia della vista Cielo e scheda dell'oggetto (si apre **solo** toccando l'oggetto sulla mappa), inseguimento | `inizializzaSkymap()`, `skyAlternaInseguimento()`, `skyInsegui()` |
 | — | **7.4-bis** Eventi del calendario dentro la vista Cielo: elenco (in corso, ore vicine, **prossimi 7 giorni**), chip e segni sulla mappa (radiante, anello sull'astro eclissato) | `skyEventiVicini()`, `skyAggiornaEventi()`, `skyDisegnaEventi()`, `apriEventoNelPlanetario(id)` |
 | 7255–7379 | **7.5** Schermo intero | |
@@ -209,7 +210,8 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 | "Vedi nel planetario" (dalle schede dell'agenda e dall'elenco della settimana) | `apriEventoNelPlanetario(id)` (sezione 7.4-bis) |
 | Traccia dell'oggetto nel planetario | `skyCalcolaTraccia()` (sezione 7.3-bis), tasto `skymap-btn-traccia` nei Filtri |
 | Eclittica e scarto di un astro da essa | `skyCalcolaEclittica()` (sezione 7.3-ter), tasto `skymap-btn-eclittica` nei Filtri; conversioni in `skyEquatorialiDiEclittica()` / `skyEclitticaDiEquatoriali()` |
-| La lezione animata dell'eclittica | `LEZ_CAPITOLI` (i testi dei cinque quadri) e `lez*` (sezione 7.3-quater); markup in `modale-lezione`, stili `.lez-*` in `style.css`; il tasto sta in `skySchedaHtml()`, solo per il Sole |
+| Analemma (l'otto del Sole) | `skyCalcolaAnalemma()` sulla mappa e `lezQuadroAnalemma()` nella lezione; l'equazione del tempo si ricava da `Astronomy.HourAngle` in `lezLeggiAnalemma()` |
+| La lezione animata dell'eclittica | `LEZ_CAPITOLI` (i testi dei sei quadri) e `lez*` (sezione 7.3-quater); markup in `modale-lezione`, stili `.lez-*` in `style.css`; il tasto sta in `skySchedaHtml()`, solo per il Sole |
 | Passo del tempo e finestra della slitta (sono un comando solo) | `SKY_FINESTRA_DEL_PASSO`, `skyImpostaPassoTempo()`, `skySpostaDiUnPasso()`; nel markup i chip `[data-passo-tempo]` |
 | Tasto della mappa dell'ombra negli eventi del planetario | `skyTastoMappaHtml()` + `skyApriMappaEvento(id)` (sezione 7.4-bis) |
 | Colori della mappa dell'eclissi (chiara/scura) | `ECL_TAVOLOZZE` + `_eclApplicaTemaMappa()`, e `#mappa-eclissi.mappa-chiara` in `style.css` |
