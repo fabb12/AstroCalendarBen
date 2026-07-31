@@ -3336,6 +3336,68 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
 /* --------------------------------------------------- FINESTRA SIMULAZIONE   */
 .sim-corpo { display: grid; gap: 16px; align-content: start; }
 
+/* ------------------------------------------ FINESTRA LEZIONE DELL'ECLITTICA */
+/* Cinque quadri, uno per volta: le linguette in fila, sotto la spiegazione e
+   i due tasti per andare avanti e indietro. La lezione si legge, quindi il
+   testo ha la misura di un testo, non di una didascalia. */
+.lez-capitoli { display: flex; flex-wrap: wrap; gap: 7px; }
+.lez-capitolo {
+  min-height: 34px;
+  padding: 6px 13px;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transizione), color var(--transizione), border-color var(--transizione);
+}
+.lez-capitolo:hover { color: var(--testo); border-color: var(--bordo-forte); }
+.lez-capitolo.attiva {
+  background: var(--blu);
+  border-color: transparent;
+  color: #fff;
+}
+.lez-spiegazione {
+  padding: 16px 18px;
+  border: 1px solid var(--bordo);
+  border-radius: 14px;
+  background: var(--superficie);
+}
+.lez-titolo-quadro {
+  margin: 0 0 8px;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--testo);
+}
+.lez-testo p { margin: 0; font-size: 0.92rem; line-height: 1.62; color: var(--testo-2); }
+.lez-testo strong { color: var(--ambra); }
+.lez-comandi { display: flex; gap: 10px; }
+body button.lez-passo-tasto {
+  flex: 1;
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: var(--superficie-alta);
+  color: var(--testo);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+body button.lez-passo-tasto:hover:not(:disabled) { border-color: var(--blu); }
+body button.lez-passo-tasto:disabled { opacity: 0.4; cursor: default; }
+body button.lez-passo-avanti {
+  background: var(--blu);
+  border-color: transparent;
+  color: #fff;
+}
+body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
+.lez-nota { margin: 0; font-size: 0.74rem; line-height: 1.5; color: var(--testo-3); }
+
 /* ------------------------------------------- MAPPA ECLISSI SU DUE COLONNE   */
 .ecl-corpo { display: grid; gap: var(--passo); align-content: start; }
 .ecl-colonna-principale,
