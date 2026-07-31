@@ -25,10 +25,10 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 
 | File | Righe | Contenuto |
 |---|---|---|
-| `index.html` | ~880 | Struttura statica: testata, 6 viste, 8 modali. Nessuna logica. |
-| `app.js` | ~11.900 | Tutto tranne il telescopio. ~410 funzioni globali. |
+| `index.html` | ~1.120 | Struttura statica: testata, 6 viste, 9 modali. Nessuna logica. |
+| `app.js` | ~16.000 | Tutto tranne il telescopio. |
 | `telescopio.js` | ~5.530 | Vista Telescopio, isolata. ~136 funzioni, prefisso `tel`. |
-| `style.css` | ~2.930 | Tema "Deep Space" + impaginazione responsive. |
+| `style.css` | ~3.750 | Tema "Deep Space" + impaginazione responsive. |
 | `sw.js` | ~105 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio. |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
@@ -74,8 +74,8 @@ disegno, sensori e fotocamera.
 | **Diario** | Osservazioni registrate e traguardi. |
 
 Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
-`modale-simulazione`, `modale-diario`, `modale-posizione`, `modale-impostazioni`,
-`modale-oculare`.
+`modale-simulazione`, `modale-lezione` (che cos'è l'eclittica), `modale-diario`,
+`modale-posizione`, `modale-impostazioni`, `modale-oculare`.
 
 ## 6. Mappa di `app.js`
 
@@ -104,6 +104,7 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
 | 5286–6266 | **7.3** Disegno del cielo: colore del fondo per ora del giorno, Via Lattea, aloni delle stelle | `skyDisegna()` |
 | — | **7.3-bis** Traccia dell'oggetto osservato: la strada che percorre nelle ore attorno all'istante mostrato, con l'ora segnata di ora in ora | `skyCalcolaTraccia()`, `skyDisegnaTraccia()`, `SKY_TRACCIA_ORE` |
 | — | **7.3-ter** Eclittica: il cerchio del Sole in un anno, coi puntini dei mesi e il filo a piombo che misura quanto l'oggetto scelto sta sopra o sotto | `skyCalcolaEclittica()`, `skyDisegnaEclittica()`, `skyScartoEclittica()`, `skyObliquita()` |
+| — | **7.3-quater** La lezione dell'eclittica: cinque quadri animati (Sistema Solare dall'alto → di taglio → il piano → la riga vista da qui → i nodi e le eclissi). Si apre dal tasto nella scheda del Sole | `LEZ_CAPITOLI`, `lez`, `apriLezioneEclittica()`, `lezQuadroSistema/Cielo/Nodi()` |
 | 6267–7254 | **7.4** Interfaccia della vista Cielo e scheda dell'oggetto (si apre **solo** toccando l'oggetto sulla mappa), inseguimento | `inizializzaSkymap()`, `skyAlternaInseguimento()`, `skyInsegui()` |
 | — | **7.4-bis** Eventi del calendario dentro la vista Cielo: elenco (in corso, ore vicine, **prossimi 7 giorni**), chip e segni sulla mappa (radiante, anello sull'astro eclissato) | `skyEventiVicini()`, `skyAggiornaEventi()`, `skyDisegnaEventi()`, `apriEventoNelPlanetario(id)` |
 | 7255–7379 | **7.5** Schermo intero | |
@@ -175,7 +176,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 - **Tutto in italiano**: `calcolaEventiAstronomi`, `aggiungiFasiLunari`,
   `luogoCorrente`. Non introdurre nomi inglesi.
 - **Prefissi**: `sky*` = vista Cielo, `sim*` = simulazione, `tel*` = telescopio,
-  `_ecl*` = interni della mappa eclissi.
+  `_ecl*` = interni della mappa eclissi, `lez*` = la lezione animata dell'eclittica.
 - **Commenti discorsivi**: spiegano *perché*, non *cosa*, spesso con l'aneddoto
   del caso reale che ha portato alla scelta. Mantieni questo registro.
 - **Intestazioni di sezione**: blocco `// ====` numerato. Sono l'indice del file
@@ -208,6 +209,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 | "Vedi nel planetario" (dalle schede dell'agenda e dall'elenco della settimana) | `apriEventoNelPlanetario(id)` (sezione 7.4-bis) |
 | Traccia dell'oggetto nel planetario | `skyCalcolaTraccia()` (sezione 7.3-bis), tasto `skymap-btn-traccia` nei Filtri |
 | Eclittica e scarto di un astro da essa | `skyCalcolaEclittica()` (sezione 7.3-ter), tasto `skymap-btn-eclittica` nei Filtri; conversioni in `skyEquatorialiDiEclittica()` / `skyEclitticaDiEquatoriali()` |
+| La lezione animata dell'eclittica | `LEZ_CAPITOLI` (i testi dei cinque quadri) e `lez*` (sezione 7.3-quater); markup in `modale-lezione`, stili `.lez-*` in `style.css`; il tasto sta in `skySchedaHtml()`, solo per il Sole |
 | Passo del tempo e finestra della slitta (sono un comando solo) | `SKY_FINESTRA_DEL_PASSO`, `skyImpostaPassoTempo()`, `skySpostaDiUnPasso()`; nel markup i chip `[data-passo-tempo]` |
 | Tasto della mappa dell'ombra negli eventi del planetario | `skyTastoMappaHtml()` + `skyApriMappaEvento(id)` (sezione 7.4-bis) |
 | Colori della mappa dell'eclissi (chiara/scura) | `ECL_TAVOLOZZE` + `_eclApplicaTemaMappa()`, e `#mappa-eclissi.mappa-chiara` in `style.css` |

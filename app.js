@@ -534,6 +534,7 @@ window.addEventListener('DOMContentLoaded', () => {
   inizializzaMappaLunareUI();
   inizializzaSimulazione();
   inizializzaSkymap();
+  inizializzaLezioneEclittica();
   inizializzaNotifiche();
   inizializzaInstallazione();
   inizializzaDiarioUI();
@@ -8766,6 +8767,748 @@ function skyDisegnaScartoEclittica(ctx, base, focale) {
 }
 
 // =====================================================================
+// 7.3-quater LA LEZIONE DELL'ECLITTICA
+//   Disegnare la linea non basta a spiegarla. Chi la vede per la prima volta
+//   si chiede giustamente da dove esca: perché proprio lì, perché il Sole ci
+//   sta sempre sopra, perché i pianeti quasi. La risposta non si può dare a
+//   parole in una scheda, perché è una faccenda di geometria in tre
+//   dimensioni: il Sistema Solare è un disco, noi stiamo dentro al disco, e
+//   guardandolo di taglio da qui dentro lo vediamo come una riga.
+//
+//   Questa è quella spiegazione in cinque quadri, con il Sistema Solare che
+//   si inclina sotto gli occhi finché il bersaglio visto dall'alto diventa
+//   un piatto visto di profilo. Si apre dal tasto dentro la scheda del Sole,
+//   che è il posto dove la domanda nasce.
+//
+//   Le distanze fra le orbite sono compresse (Saturno è novanta volte più
+//   lontano di quanto lo si disegni qui): senza, Mercurio sarebbe dentro al
+//   Sole. Gli angoli invece sono veri, ed è di angoli che parla la lezione.
+// =====================================================================
+
+// Semiasse in unità astronomiche, periodo in anni, inclinazione dell'orbita
+// sull'eclittica e longitudine del nodo ascendente (dove l'orbita sale sopra
+// il piano della Terra): sono questi due ultimi numeri a fare la lezione.
+const LEZ_PIANETI = [
+  { nome: 'Mercurio', ua: 0.387, anni: 0.241, incl: 7.00, nodo: 48.3,  raggio: 3.4, colore: '#cbd5e1' },
+  { nome: 'Venere',   ua: 0.723, anni: 0.615, incl: 3.39, nodo: 76.7,  raggio: 4.6, colore: '#fde68a' },
+  { nome: 'Terra',    ua: 1.000, anni: 1.000, incl: 0.00, nodo: 0,     raggio: 4.8, colore: '#60a5fa' },
+  { nome: 'Marte',    ua: 1.524, anni: 1.881, incl: 1.85, nodo: 49.6,  raggio: 3.8, colore: '#f87171' },
+  { nome: 'Giove',    ua: 5.203, anni: 11.86, incl: 1.30, nodo: 100.5, raggio: 8.0, colore: '#fbbf24' },
+  { nome: 'Saturno',  ua: 9.537, anni: 29.45, incl: 2.49, nodo: 113.7, raggio: 6.8, colore: '#fcd34d' }
+];
+
+// I cinque quadri. `elev` è l'altezza della telecamera sul piano: 90° è la
+// vista dall'alto, pochi gradi è la vista di taglio.
+const LEZ_CAPITOLI = [
+  {
+    breve: 'Dall\'alto',
+    titolo: 'Visto dall\'alto sembra un bersaglio',
+    tipo: 'sistema', elev: 88, disco: 0, anniAlSecondo: 1 / 8,
+    testo: 'Sopra la testa del Sole il Sistema Solare sembra un bersaglio: cerchi quasi ' +
+      'perfetti, percorsi tutti nello stesso verso, come se qualcuno li avesse disegnati ' +
+      'col compasso. È la figura che tutti abbiamo in mente — ed è anche quella che ' +
+      'nasconde il fatto più importante, perché vista da sopra una cosa piatta e una cosa ' +
+      'spessa sono identiche.'
+  },
+  {
+    breve: 'Di taglio',
+    titolo: 'Girata di taglio: non è una palla, è un disco',
+    tipo: 'sistema', elev: 4, disco: 0, anniAlSecondo: 1 / 8,
+    testo: 'Adesso la stessa scena si abbassa fino a guardarla di profilo, e i cerchi si ' +
+      'schiacciano uno sull\'altro. Ecco il fatto: i pianeti non sono sparsi in tutte le ' +
+      'direzioni attorno al Sole, stanno tutti dentro a un piatto sottile. Ognuno viaggia ' +
+      'su un piano un po\' diverso, ma «un po\'» vuol dire pochi gradi.'
+  },
+  {
+    breve: 'Il piano',
+    titolo: 'Il pavimento del Sistema Solare',
+    tipo: 'sistema', elev: 13, disco: 1, anniAlSecondo: 1 / 8,
+    testo: 'Per misurare quei gradi serve un pavimento da cui contarli, e la scelta è ' +
+      'naturale: il piano dell\'orbita della Terra, cioè il nostro. Prolungalo all\'infinito, ' +
+      'fino alle stelle: il cerchio che disegna nel cielo è <strong>l\'eclittica</strong>. ' +
+      'Le orbite degli altri lo attraversano appena inclinate — Mercurio 7,0°, Venere 3,4°, ' +
+      'Saturno 2,5°, Marte 1,8°, Giove 1,3° — e per questo restano sempre lì attorno.'
+  },
+  {
+    breve: 'Da qui',
+    titolo: 'Come lo vediamo da dentro',
+    tipo: 'cielo', anniAlSecondo: 0,
+    testo: 'Noi stiamo dentro a quel pavimento e lo guardiamo di taglio: perciò il Sole, la ' +
+      'Luna e i pianeti ci sembrano infilati sulla stessa riga, che attraversa il cielo da ' +
+      'un orizzonte all\'altro. È esattamente la linea che accende il tasto «Eclittica» del ' +
+      'planetario. Questi sono i pianeti veri di adesso: la scala verticale è ingrandita ' +
+      'sei volte, altrimenti quei due o tre gradi non si vedrebbero.'
+  },
+  {
+    breve: 'Il nome',
+    titolo: 'Perché si chiama proprio “eclittica”',
+    tipo: 'nodi', anniAlSecondo: 1 / 22,
+    testo: 'Il nome viene dalle eclissi. La Luna gira su un piano inclinato di 5° sul nostro, ' +
+      'quindi tocca l\'eclittica in due soli punti: i <strong>nodi</strong>. Perché ci sia ' +
+      'un\'eclissi servono due coincidenze insieme — la Luna in un nodo, e il Sole nella ' +
+      'stessa direzione (eclissi di Sole) o in quella opposta (eclissi di Luna). Guarda il ' +
+      'Sole girare attorno: solo due volte l\'anno si mette in linea con i nodi, ed è lì che ' +
+      'si aprono le stagioni delle eclissi. Ecco perché non ne capita una al mese. ' +
+      'L\'inclinazione dell\'orbita lunare, qui, è disegnata quattro volte più marcata del ' +
+      'vero: a 5° esatti sarebbe indistinguibile dallo spessore della linea.'
+  }
+];
+
+const lez = {
+  aperto: false, canvas: null, ctx: null, L: 0, H: 0, raf: null, ultimoTs: 0,
+  capitolo: 0,
+  elev: 88,            // altezza della telecamera, insegue quella del capitolo
+  rotazione: 0,        // giro lento attorno al Sole, perché la scena respiri
+  anni: 0,             // il tempo della lezione, in anni
+  fade: 1,             // dissolvenza al cambio di quadro
+  scala: 1, cx: 0, cy: 0,
+  stelle: [],
+  cielo: null,         // posizioni vere dei pianeti per il quadro «Da qui»
+  skyDaRiprendere: false
+};
+
+// --- Geometria della scena -------------------------------------------------
+
+// Raggio con cui si disegna un'orbita: le distanze vere non ci stanno in uno
+// schermo (Saturno è venticinque volte Mercurio), quindi si comprimono. Gli
+// angoli, che sono il punto della lezione, restano invece esatti.
+function lezRaggio(ua) {
+  return Math.pow(ua / 9.537, 0.42);
+}
+
+// Un punto dell'orbita: cerchio inclinato di `incl` gradi sul piano
+// dell'eclittica, con la linea dei nodi ruotata di `nodo` gradi.
+function lezPuntoOrbita(p, gradi) {
+  const th = gradi * SKY_D2R, i = p.incl * SKY_D2R, om = p.nodo * SKY_D2R;
+  const r = lezRaggio(p.ua);
+  const x = r * Math.cos(th), y = r * Math.sin(th) * Math.cos(i), z = r * Math.sin(th) * Math.sin(i);
+  return { x: x * Math.cos(om) - y * Math.sin(om), y: x * Math.sin(om) + y * Math.cos(om), z };
+}
+
+// Dalla scena allo schermo: telecamera a `lez.elev` gradi sul piano, che gira
+// lentamente attorno all'asse. `vicinanza` serve a disegnare per ultimo ciò
+// che sta davanti.
+function lezProietta(x, y, z) {
+  const a = lez.rotazione, e = lez.elev * SKY_D2R;
+  const xr = x * Math.cos(a) - y * Math.sin(a);
+  const yr = x * Math.sin(a) + y * Math.cos(a);
+  return {
+    px: lez.cx + xr * lez.scala,
+    py: lez.cy - (yr * Math.sin(e) + z * Math.cos(e)) * lez.scala,
+    vicinanza: z * Math.sin(e) - yr * Math.cos(e)
+  };
+}
+
+// --- Pezzi di disegno riusati fra i quadri ---------------------------------
+
+function lezGeneraStelle(quante) {
+  lez.stelle = [];
+  for (let i = 0; i < quante; i++) {
+    lez.stelle.push({ x: Math.random(), y: Math.random(), r: Math.random() * 1.1 + 0.3, a: Math.random() * 0.5 + 0.2 });
+  }
+}
+
+function lezSfondo(ctx) {
+  const g = ctx.createLinearGradient(0, 0, 0, lez.H);
+  g.addColorStop(0, '#04060f');
+  g.addColorStop(1, '#0a1024');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, lez.L, lez.H);
+  ctx.fillStyle = '#e2e8f0';
+  lez.stelle.forEach(s => {
+    ctx.globalAlpha = s.a;
+    ctx.beginPath();
+    ctx.arc(s.x * lez.L, s.y * lez.H, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+function lezAlone(ctx, px, py, raggio, colore, forza) {
+  const g = ctx.createRadialGradient(px, py, 0, px, py, raggio);
+  g.addColorStop(0, colore);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.save();
+  ctx.globalAlpha = forza;
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(px, py, raggio, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function lezTesto(ctx, testo, px, py, colore, misura = 12, allinea = 'left') {
+  ctx.save();
+  ctx.font = `${misura}px system-ui, sans-serif`;
+  ctx.textAlign = allinea;
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(2, 6, 23, 0.85)';
+  ctx.strokeText(testo, px, py);
+  ctx.fillStyle = colore;
+  ctx.fillText(testo, px, py);
+  ctx.restore();
+}
+
+// --- Quadri 1-3: il Sistema Solare che si inclina --------------------------
+
+function lezQuadroSistema(ctx, cap) {
+  lezSfondo(ctx);
+  // Vista dall'alto il disco è largo quanto alto, e a comandare è l'altezza
+  // dello schermo; abbassando la telecamera si schiaccia, e allora si può
+  // ingrandire. La scena così riempie sempre il riquadro, e il passaggio da
+  // un quadro all'altro diventa anche un avvicinarsi.
+  const senoElev = Math.max(0.3, Math.sin(lez.elev * SKY_D2R));
+  lez.scala = Math.min(lez.L * 0.42, lez.H * 0.42 / senoElev);
+  lez.cx = lez.L / 2;
+  lez.cy = lez.H / 2;
+
+  // Il piano di riferimento: il disco su cui giace l'orbita terrestre,
+  // prolungato oltre Saturno. Compare solo nel terzo quadro, ed è la
+  // risposta disegnata alla domanda «l'eclittica dov'è?».
+  if (cap.disco > 0) lezDisegnaDisco(ctx, cap.disco);
+
+  const corpi = [];
+  LEZ_PIANETI.forEach(p => {
+    // L'orbita, campionata e sfumata con la profondità: il tratto che passa
+    // dietro al Sole si spegne, ed è quello che dà il senso dello spazio
+    const passo = 6;
+    let prec = null;
+    const terra = p.nome === 'Terra';
+    for (let g = 0; g <= 360; g += passo) {
+      const q = lezPuntoOrbita(p, g);
+      const s = lezProietta(q.x, q.y, q.z);
+      if (prec) {
+        const vicino = (s.vicinanza + prec.vicinanza) / 2;
+        ctx.globalAlpha = (terra ? 0.55 : 0.32) + 0.3 * Math.max(0, Math.min(1, vicino + 0.5));
+        ctx.strokeStyle = p.colore;
+        ctx.lineWidth = terra ? 2 : 1.2;
+        ctx.beginPath();
+        ctx.moveTo(prec.px, prec.py);
+        ctx.lineTo(s.px, s.py);
+        ctx.stroke();
+      }
+      prec = s;
+    }
+    ctx.globalAlpha = 1;
+
+    const ang = (lez.anni / p.anni) * 360 + p.nodo;
+    const q = lezPuntoOrbita(p, ang);
+    const s = lezProietta(q.x, q.y, q.z);
+    corpi.push({ p, s });
+  });
+
+  // Di taglio i sei pianeti finiscono tutti su una striscia alta pochi pixel,
+  // e i nomi si accavallano. Ognuno ha quindi il suo piolo su una scaletta,
+  // con un filo che lo lega al puntino: si legge in tutti e tre i quadri.
+  const scaletta = [-18, 20, -34, 36, -50, 52];
+
+  // Il Sole al centro, con il suo alone
+  const sole = lezProietta(0, 0, 0);
+  lezAlone(ctx, sole.px, sole.py, 46, 'rgba(253, 224, 71, 0.55)', 1);
+  ctx.fillStyle = '#fef3c7';
+  ctx.beginPath();
+  ctx.arc(sole.px, sole.py, 9, 0, Math.PI * 2);
+  ctx.fill();
+
+  // I pianeti, dal più lontano al più vicino
+  corpi.sort((a, b) => a.s.vicinanza - b.s.vicinanza).forEach(({ p, s }) => {
+    const terra = p.nome === 'Terra';
+    lezAlone(ctx, s.px, s.py, p.raggio * 3.4, p.colore, terra ? 0.5 : 0.32);
+    ctx.fillStyle = p.colore;
+    ctx.beginPath();
+    ctx.arc(s.px, s.py, p.raggio, 0, Math.PI * 2);
+    ctx.fill();
+    if (terra) {
+      ctx.strokeStyle = '#bfdbfe';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(s.px, s.py, p.raggio + 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    const dy = scaletta[LEZ_PIANETI.indexOf(p)] || -18;
+    ctx.save();
+    ctx.strokeStyle = p.colore;
+    ctx.globalAlpha = 0.45;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(s.px, s.py);
+    ctx.lineTo(s.px + 9, s.py + dy);
+    ctx.stroke();
+    ctx.restore();
+    lezTesto(ctx, p.nome, s.px + 12, s.py + dy, terra ? '#dbeafe' : '#cbd5e1', terra ? 13 : 12);
+  });
+}
+
+// Il piano dell'eclittica: un disco ambra appena percettibile, con il bordo
+// segnato, che dice «tutto quello che vedete sta praticamente qui dentro».
+function lezDisegnaDisco(ctx, forza) {
+  const punti = [];
+  for (let g = 0; g <= 360; g += 4) {
+    const th = g * SKY_D2R, r = 1.18;
+    punti.push(lezProietta(r * Math.cos(th), r * Math.sin(th), 0));
+  }
+  ctx.save();
+  ctx.beginPath();
+  punti.forEach((s, i) => i ? ctx.lineTo(s.px, s.py) : ctx.moveTo(s.px, s.py));
+  ctx.closePath();
+  ctx.globalAlpha = 0.1 * forza;
+  ctx.fillStyle = '#fbbf24';
+  ctx.fill();
+  ctx.globalAlpha = 0.55 * forza;
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([9, 6]);
+  ctx.stroke();
+  ctx.restore();
+
+  const eti = punti[Math.round(punti.length * 0.62)];
+  if (eti) lezTesto(ctx, 'piano dell\'eclittica', eti.px, eti.py + 14, '#fbbf24', 12);
+}
+
+// --- Quadro 4: la stessa scena vista da dentro -----------------------------
+
+// Dove sono adesso, davvero, i pianeti rispetto all'eclittica. Si legge una
+// volta all'apertura del quadro: in un minuto non si spostano.
+function lezLeggiCielo() {
+  if (typeof Astronomy === 'undefined') { lez.cielo = null; return; }
+  const nomi = [
+    { id: 'Sun', nome: 'Sole', colore: '#fde68a', raggio: 9 },
+    { id: 'Moon', nome: 'Luna', colore: '#e2e8f0', raggio: 7 },
+    { id: 'Mercury', nome: 'Mercurio', colore: '#cbd5e1', raggio: 4 },
+    { id: 'Venus', nome: 'Venere', colore: '#fde68a', raggio: 5 },
+    { id: 'Mars', nome: 'Marte', colore: '#f87171', raggio: 4.5 },
+    { id: 'Jupiter', nome: 'Giove', colore: '#fbbf24', raggio: 6.5 },
+    { id: 'Saturn', nome: 'Saturno', colore: '#fcd34d', raggio: 6 }
+  ];
+  try {
+    const t = Astronomy.MakeTime(skyAdesso());
+    lez.cielo = nomi.map(n => {
+      const e = Astronomy.Ecliptic(Astronomy.GeoVector(n.id, t, true));
+      return Object.assign({}, n, { lon: e.elon, lat: e.elat });
+    });
+  } catch (e) { lez.cielo = null; }
+}
+
+function lezQuadroCielo(ctx) {
+  lezSfondo(ctx);
+  const cy = lez.H * 0.52;
+  const margine = Math.min(60, lez.L * 0.06);
+  const largo = lez.L - margine * 2;
+  // In orizzontale ci sta tutto il giro del cielo; in verticale si ingrandisce
+  // sei volte, altrimenti due gradi sarebbero quattro pixel e la lezione non
+  // si vedrebbe. È un imbroglio dichiarato: sta scritto in fondo al quadro.
+  const ESAGERA = 6;
+  const perGrado = (largo / 360) * ESAGERA;
+
+  // La linea: stessa ambra tratteggiata del planetario, così chi torna sulla
+  // mappa riconosce di aver già visto questa riga
+  ctx.save();
+  ctx.strokeStyle = '#fbbf24';
+  ctx.globalAlpha = 0.75;
+  ctx.lineWidth = 1.8;
+  ctx.setLineDash([10, 7]);
+  ctx.beginPath();
+  ctx.moveTo(margine * 0.4, cy);
+  ctx.lineTo(lez.L - margine * 0.4, cy);
+  ctx.stroke();
+  ctx.restore();
+  lezTesto(ctx, 'eclittica', margine * 0.4 + 4, cy - 14, '#fbbf24', 12);
+
+  if (!lez.cielo) {
+    lezTesto(ctx, 'Servono i dati della libreria astronomica per mostrare il cielo di adesso.',
+      lez.L / 2, lez.H / 2, '#94a3b8', 13, 'center');
+    return;
+  }
+
+  // Le tacche dei trenta gradi di longitudine, per dare la misura del giro
+  ctx.save();
+  ctx.strokeStyle = '#475569';
+  ctx.globalAlpha = 0.7;
+  for (let g = 0; g <= 360; g += 30) {
+    const px = margine + largo * (g / 360);
+    ctx.beginPath();
+    ctx.moveTo(px, cy - 4);
+    ctx.lineTo(px, cy + 4);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Due astri nella stessa direzione (capita: si chiama congiunzione) avrebbero
+  // i nomi uno sull'altro. Chi arriva secondo scala di un gradino.
+  const occupati = [];
+  const gradino = o => {
+    let liv = 0;
+    while (occupati.some(u => Math.abs(u.px - o.px) < 62 && u.liv === liv)) liv++;
+    occupati.push({ px: o.px, liv });
+    return liv;
+  };
+
+  lez.cielo.slice().sort((a, b) => b.raggio - a.raggio).forEach(o => {
+    const px = margine + largo * (((o.lon % 360) + 360) % 360) / 360;
+    const py = cy - o.lat * perGrado;
+    lezAlone(ctx, px, py, o.raggio * 3.6, o.colore, o.id === 'Sun' ? 0.6 : 0.35);
+    ctx.fillStyle = o.colore;
+    ctx.beginPath();
+    ctx.arc(px, py, o.raggio, 0, Math.PI * 2);
+    ctx.fill();
+    // Il filo a piombo fino alla linea: lo stesso segno che il planetario
+    // disegna sull'oggetto scelto
+    if (Math.abs(o.lat) > 0.15) {
+      ctx.save();
+      ctx.strokeStyle = o.colore;
+      ctx.globalAlpha = 0.6;
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px, cy);
+      ctx.stroke();
+      ctx.restore();
+    }
+    const segno = o.lat >= 0 ? '+' : '−';
+    const su = o.lat >= 0;
+    const liv = gradino({ px });
+    const dy = (su ? -1 : 1) * (12 + liv * 30);
+    if (liv > 0) {
+      ctx.save();
+      ctx.strokeStyle = o.colore;
+      ctx.globalAlpha = 0.4;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px + 6, py + dy + (su ? 8 : -8));
+      ctx.stroke();
+      ctx.restore();
+    }
+    lezTesto(ctx, o.nome, px + o.raggio + 5, py + dy, '#e2e8f0', 12);
+    lezTesto(ctx, `${segno}${skyNumero(Math.abs(o.lat), 1)}°`,
+      px + o.raggio + 5, py + dy + (su ? -14 : 14), o.colore, 11);
+  });
+
+  lezTesto(ctx, 'scala verticale ingrandita 6 volte · in orizzontale il giro completo del cielo',
+    lez.L - 10, lez.H - 14, '#64748b', 11, 'right');
+}
+
+// --- Quadro 5: i nodi, e il nome della linea -------------------------------
+
+function lezQuadroNodi(ctx) {
+  lezSfondo(ctx);
+  // Il Sole sta più in fuori di tutto il resto: la scala lascia il posto a lui
+  // e al suo nome, se no finisce mezzo fuori dal riquadro
+  lez.scala = Math.min(lez.L * 0.27, lez.H * 0.58);
+  lez.cx = lez.L / 2;
+  lez.cy = lez.H / 2;
+  lez.elev = 14;
+  lez.rotazione = 0;
+
+  // L'inclinazione vera è 5,1°: disegnata così, con la telecamera bassa, si
+  // confonderebbe con lo spessore della linea, e il quadro direbbe il
+  // contrario di quello che deve dire. Qui è ingrandita quattro volte — sta
+  // scritto sotto, perché un disegno che imbroglia di nascosto non insegna.
+  const INCL = 20;
+  const orbita = g => {
+    const th = g * SKY_D2R, i = INCL * SKY_D2R;
+    return { x: Math.cos(th), y: Math.sin(th) * Math.cos(i), z: Math.sin(th) * Math.sin(i) };
+  };
+
+  // Il piano dell'eclittica attorno alla Terra
+  ctx.save();
+  ctx.beginPath();
+  for (let g = 0; g <= 360; g += 4) {
+    const s = lezProietta(1.5 * Math.cos(g * SKY_D2R), 1.5 * Math.sin(g * SKY_D2R), 0);
+    g ? ctx.lineTo(s.px, s.py) : ctx.moveTo(s.px, s.py);
+  }
+  ctx.closePath();
+  ctx.globalAlpha = 0.09;
+  ctx.fillStyle = '#fbbf24';
+  ctx.fill();
+  ctx.globalAlpha = 0.5;
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 1.3;
+  ctx.setLineDash([9, 6]);
+  ctx.stroke();
+  ctx.restore();
+  const bordo = lezProietta(1.5 * Math.cos(255 * SKY_D2R), 1.5 * Math.sin(255 * SKY_D2R), 0);
+  lezTesto(ctx, 'piano dell\'eclittica', bordo.px, bordo.py + 14, '#fbbf24', 11, 'center');
+
+  // L'orbita della Luna, inclinata: sopra il piano è chiara, sotto è spenta
+  let prec = null;
+  for (let g = 0; g <= 360; g += 4) {
+    const q = orbita(g);
+    const s = lezProietta(q.x, q.y, q.z);
+    if (prec) {
+      ctx.globalAlpha = q.z >= 0 ? 0.85 : 0.35;
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(prec.px, prec.py);
+      ctx.lineTo(s.px, s.py);
+      ctx.stroke();
+    }
+    prec = s;
+  }
+  ctx.globalAlpha = 1;
+
+  // La linea dei nodi: dove l'orbita taglia il piano. È fissa, mentre il
+  // Sole gira: è tutta qui la ragione delle stagioni delle eclissi.
+  const nodoA = lezProietta(1, 0, 0), nodoB = lezProietta(-1, 0, 0);
+  ctx.save();
+  ctx.strokeStyle = '#38bdf8';
+  ctx.globalAlpha = 0.8;
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([6, 5]);
+  ctx.beginPath();
+  ctx.moveTo(nodoA.px, nodoA.py);
+  ctx.lineTo(nodoB.px, nodoB.py);
+  ctx.stroke();
+  ctx.restore();
+  [nodoA, nodoB].forEach(n => {
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(n.px, n.py, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  lezTesto(ctx, 'nodo', nodoA.px + 8, nodoA.py - 12, '#38bdf8', 11);
+  lezTesto(ctx, 'nodo', nodoB.px - 8, nodoB.py - 12, '#38bdf8', 11, 'right');
+
+  // La Terra al centro
+  const terra = lezProietta(0, 0, 0);
+  lezAlone(ctx, terra.px, terra.py, 26, 'rgba(96, 165, 250, 0.5)', 1);
+  ctx.fillStyle = '#60a5fa';
+  ctx.beginPath();
+  ctx.arc(terra.px, terra.py, 7, 0, Math.PI * 2);
+  ctx.fill();
+  lezTesto(ctx, 'Terra', terra.px + 12, terra.py + 12, '#dbeafe', 12);
+
+  // Il Sole gira attorno in un anno (è la Terra che gira, ma da qui si vede
+  // così); la Luna fa un giro al mese, cioè dodici volte più in fretta.
+  const angSole = lez.anni * 360;
+  const angLuna = lez.anni * 360 * 12.37;
+  const dirSole = lezProietta(1.58 * Math.cos(angSole * SKY_D2R), 1.58 * Math.sin(angSole * SKY_D2R), 0);
+  lezAlone(ctx, dirSole.px, dirSole.py, 40, 'rgba(253, 224, 71, 0.6)', 1);
+  ctx.fillStyle = '#fef3c7';
+  ctx.beginPath();
+  ctx.arc(dirSole.px, dirSole.py, 8, 0, Math.PI * 2);
+  ctx.fill();
+  lezTesto(ctx, 'Sole', dirSole.px + 12, dirSole.py + 12, '#fde68a', 12);
+
+  const qL = orbita(angLuna);
+  const luna = lezProietta(qL.x, qL.y, qL.z);
+  ctx.fillStyle = '#f8fafc';
+  ctx.beginPath();
+  ctx.arc(luna.px, luna.py, 5, 0, Math.PI * 2);
+  ctx.fill();
+  lezTesto(ctx, 'Luna', luna.px + 9, luna.py - 9, '#e2e8f0', 11);
+
+  // Quanto manca perché il Sole sia in linea coi nodi, e quanto la Luna è
+  // lontana dal piano: le due condizioni che devono capitare insieme
+  const scartoSole = Math.abs(Math.sin(angSole * SKY_D2R));
+  const lunaAlNodo = Math.abs(Math.sin(angLuna * SKY_D2R));
+  const stagione = scartoSole < 0.26;      // Sole entro ~15° dalla linea dei nodi
+
+  if (stagione) {
+    // La linea che passa per Sole, Terra e punto opposto: quando è questa a
+    // coincidere con la linea dei nodi, l'eclissi diventa possibile
+    ctx.save();
+    ctx.strokeStyle = '#fbbf24';
+    ctx.globalAlpha = 0.4;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 6]);
+    const opposto = lezProietta(-1.58 * Math.cos(angSole * SKY_D2R), -1.58 * Math.sin(angSole * SKY_D2R), 0);
+    ctx.beginPath();
+    ctx.moveTo(dirSole.px, dirSole.py);
+    ctx.lineTo(opposto.px, opposto.py);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.16)';
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1;
+    const l = Math.min(300, lez.L - 40), h = 26, x = lez.L / 2 - l / 2, y = 14;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, l, h, 13); else ctx.rect(x, y, l, h);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    lezTesto(ctx, 'stagione delle eclissi: Sole in linea coi nodi',
+      lez.L / 2, y + h / 2, '#e0f2fe', 12, 'center');
+
+    if (lunaAlNodo < 0.12) {
+      // Luna dalla parte del Sole: si mette in mezzo, ed è un'eclissi di Sole.
+      // Dalla parte opposta è lei a entrare nell'ombra della Terra.
+      const insieme = Math.cos((angLuna - angSole) * SKY_D2R) > 0;
+      lezAlone(ctx, luna.px, luna.py, 30, 'rgba(248, 250, 252, 0.8)', 1);
+      lezTesto(ctx, insieme ? 'eclissi di Sole' : 'eclissi di Luna',
+        luna.px + 10, luna.py + 12, '#fca5a5', 12);
+    }
+  }
+
+  lezTesto(ctx, 'inclinazione ingrandita 4 volte (in realtà 5°) · un giro del Sole = un anno, uno della Luna = un mese',
+    lez.L - 10, lez.H - 14, '#64748b', 11, 'right');
+}
+
+// --- Ciclo, comandi e finestra ---------------------------------------------
+
+function lezRidimensiona() {
+  if (!lez.canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  lez.L = lez.canvas.clientWidth || 320;
+  lez.H = lez.canvas.clientHeight || 300;
+  lez.canvas.width = Math.round(lez.L * dpr);
+  lez.canvas.height = Math.round(lez.H * dpr);
+  lez.ctx = lez.canvas.getContext('2d');
+  lez.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function lezDisegna() {
+  if (!lez.ctx) return;
+  const ctx = lez.ctx;
+  const cap = LEZ_CAPITOLI[lez.capitolo];
+  ctx.clearRect(0, 0, lez.L, lez.H);
+  ctx.save();
+  ctx.globalAlpha = lez.fade;
+  try {
+    if (cap.tipo === 'cielo') lezQuadroCielo(ctx);
+    else if (cap.tipo === 'nodi') lezQuadroNodi(ctx);
+    else lezQuadroSistema(ctx, cap);
+  } catch (e) {
+    console.error('Errore nella lezione dell\'eclittica:', e);
+  }
+  ctx.restore();
+}
+
+function lezCiclo(ts) {
+  if (!lez.aperto) return;
+  const dt = lez.ultimoTs ? Math.min((ts - lez.ultimoTs) / 1000, 0.1) : 0;
+  lez.ultimoTs = ts;
+  const cap = LEZ_CAPITOLI[lez.capitolo];
+
+  lez.anni += dt * (cap.anniAlSecondo || 0);
+  // La telecamera non salta da un quadro all'altro: ci arriva, e vedere
+  // il disco che si chiude è metà della spiegazione
+  if (cap.tipo === 'sistema') {
+    lez.elev += (cap.elev - lez.elev) * Math.min(1, dt * 2.4);
+    lez.rotazione += dt * 0.06;
+  }
+  lez.fade = Math.min(1, lez.fade + dt * 2.5);
+
+  lezDisegna();
+  lez.raf = requestAnimationFrame(lezCiclo);
+}
+
+function lezVaiA(indice) {
+  const nuovo = Math.max(0, Math.min(LEZ_CAPITOLI.length - 1, indice));
+  const cambiaTipo = LEZ_CAPITOLI[nuovo].tipo !== LEZ_CAPITOLI[lez.capitolo].tipo;
+  lez.capitolo = nuovo;
+  if (cambiaTipo) lez.fade = 0;            // quadri diversi: dissolvenza
+  if (LEZ_CAPITOLI[nuovo].tipo === 'cielo') lezLeggiCielo();
+  if (LEZ_CAPITOLI[nuovo].tipo === 'nodi') lez.anni = 0.02;
+  lezAggiornaTesti();
+  lezDisegna();
+}
+
+function lezAggiornaTesti() {
+  const cap = LEZ_CAPITOLI[lez.capitolo];
+  const titolo = document.getElementById('lez-titolo-quadro');
+  if (titolo) titolo.textContent = cap.titolo;
+  const testo = document.getElementById('lez-testo');
+  if (testo) testo.innerHTML = `<p>${cap.testo}</p>`;
+  const passo = document.getElementById('lez-passo');
+  if (passo) passo.textContent = `${lez.capitolo + 1} / ${LEZ_CAPITOLI.length}`;
+  document.querySelectorAll('#lez-capitoli [data-capitolo]').forEach(b => {
+    const attivo = Number(b.dataset.capitolo) === lez.capitolo;
+    b.classList.toggle('attiva', attivo);
+    b.setAttribute('aria-pressed', attivo ? 'true' : 'false');
+  });
+  const indietro = document.getElementById('lez-btn-indietro');
+  if (indietro) indietro.disabled = lez.capitolo === 0;
+  const avanti = document.getElementById('lez-btn-avanti');
+  if (avanti) {
+    const ultimo = lez.capitolo === LEZ_CAPITOLI.length - 1;
+    avanti.disabled = ultimo;
+    avanti.textContent = ultimo ? 'Fine' : 'Avanti';
+  }
+}
+
+// Si apre dal tasto dentro la scheda del Sole
+window.apriLezioneEclittica = () => {
+  const modale = document.getElementById('modale-lezione');
+  if (!modale) return;
+  lez.canvas = document.getElementById('lez-canvas');
+  if (!lez.canvas) return;
+
+  lez.capitolo = 0;
+  lez.elev = 88;
+  lez.rotazione = 0;
+  lez.anni = 0;
+  lez.fade = 0;
+  lez.ultimoTs = 0;
+  lezGeneraStelle(90);
+  lezAggiornaTesti();
+
+  modale.classList.remove('hidden');
+  lez.aperto = true;
+
+  // Il planetario dietro alla finestra non serve a nessuno, e due tele che
+  // si ridisegnano insieme su un telefono si sentono: si mette in pausa.
+  lez.skyDaRiprendere = !!sky.raf;
+  if (sky.raf) { cancelAnimationFrame(sky.raf); sky.raf = null; }
+
+  requestAnimationFrame(() => {
+    lezRidimensiona();
+    if (!lez.raf) lez.raf = requestAnimationFrame(lezCiclo);
+  });
+};
+
+function chiudiLezioneEclittica() {
+  const modale = document.getElementById('modale-lezione');
+  if (modale) modale.classList.add('hidden');
+  lez.aperto = false;
+  if (lez.raf) cancelAnimationFrame(lez.raf);
+  lez.raf = null;
+  if (lez.skyDaRiprendere && sky.aperto && !sky.raf) {
+    sky.raf = requestAnimationFrame(skyCiclo);
+  }
+  lez.skyDaRiprendere = false;
+}
+
+function inizializzaLezioneEclittica() {
+  const modale = document.getElementById('modale-lezione');
+  if (!modale) return;
+
+  const chips = document.getElementById('lez-capitoli');
+  if (chips && chips.dataset.pronto !== 'si') {
+    chips.innerHTML = LEZ_CAPITOLI.map((c, i) =>
+      `<button type="button" class="lez-capitolo" data-capitolo="${i}">${i + 1}. ${c.breve}</button>`).join('');
+    chips.querySelectorAll('[data-capitolo]').forEach(b =>
+      b.addEventListener('click', () => lezVaiA(Number(b.dataset.capitolo))));
+    chips.dataset.pronto = 'si';
+  }
+
+  ['btn-chiudi-lezione', 'btn-chiudi-lezione-basso'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', chiudiLezioneEclittica);
+  });
+  modale.addEventListener('click', e => { if (e.target === modale) chiudiLezioneEclittica(); });
+  document.addEventListener('keydown', e => {
+    if (!lez.aperto) return;
+    if (e.key === 'Escape') chiudiLezioneEclittica();
+    else if (e.key === 'ArrowRight') lezVaiA(lez.capitolo + 1);
+    else if (e.key === 'ArrowLeft') lezVaiA(lez.capitolo - 1);
+  });
+
+  const indietro = document.getElementById('lez-btn-indietro');
+  if (indietro) indietro.addEventListener('click', () => lezVaiA(lez.capitolo - 1));
+  const avanti = document.getElementById('lez-btn-avanti');
+  if (avanti) avanti.addEventListener('click', () => lezVaiA(lez.capitolo + 1));
+
+  window.addEventListener('resize', () => { if (lez.aperto) { lezRidimensiona(); lezDisegna(); } });
+}
+
+// =====================================================================
 // 7.4 Interfaccia della vista Cielo
 // =====================================================================
 
@@ -9109,9 +9852,18 @@ function skySchedaHtml(o) {
     ? '<p class="allarme-dettaglio">Attenzione: non guardare mai il Sole direttamente, né a occhio nudo né con binocolo o telescopio.</p>'
     : '';
 
+  // La scheda del Sole è il posto dove nasce la domanda «ma l'eclittica cos'è,
+  // di preciso?»: il Sole ci sta sopra sempre, per definizione. Da qui si apre
+  // la lezione animata che lo spiega (sezione 7.3-quater).
+  const azioni = o.id === 'Sun'
+    ? '<div class="azioni-evento"><button type="button" class="tasto-evento-cielo tasto-evento-forte" ' +
+      'onclick="apriLezioneEclittica()" title="Il Sistema Solare visto dall\'alto e poi di taglio: ' +
+      'da dove esce l\'eclittica, in cinque quadri animati">Che cos\'è l\'eclittica</button></div>'
+    : '';
+
   return `<h3 class="flex items-center gap-2">${icona(disegno, 20)} ${titolo}</h3>
     <ul>${skyRigheScheda(o).join('')}</ul>${coda}
-    ${consiglio ? `<p class="nota-dettaglio">${consiglio}</p>` : ''}${nota}${avviso}`;
+    ${consiglio ? `<p class="nota-dettaglio">${consiglio}</p>` : ''}${nota}${avviso}${azioni}`;
 }
 
 // Il prossimo passaggio visibile di una stazione spaziale

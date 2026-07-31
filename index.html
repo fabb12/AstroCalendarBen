@@ -876,6 +876,47 @@
     </div>
   </div>
 
+  <!-- MODALE: LA LEZIONE DELL'ECLITTICA.
+       Si apre dal tasto nella scheda del Sole, dentro il planetario: cinque
+       quadri animati che portano dal Sistema Solare visto dall'alto alla riga
+       che i pianeti disegnano nel nostro cielo. -->
+  <div id="modale-lezione" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="grande">
+      <div class="testata-modale flex justify-between items-center p-5 border-b border-slate-700">
+        <h2 class="text-xl md:text-2xl font-bold text-white">Che cos'è l'eclittica</h2>
+        <button id="btn-chiudi-lezione" class="tasto-chiudi con-etichetta" title="Chiudi la finestra (o premi Esc)" aria-label="Chiudi la finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Chiudi</span></button>
+      </div>
+
+      <div class="corpo-modale spazio-verticale">
+        <div class="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950">
+          <canvas id="lez-canvas" class="block w-full tela-simulazione"></canvas>
+          <div id="lez-passo" class="absolute top-3 left-3 bg-slate-900/70 backdrop-blur px-3 py-1.5 rounded-xl text-xs md:text-sm font-mono text-slate-100 border border-slate-700">1 / 5</div>
+        </div>
+
+        <!-- I cinque quadri: si possono seguire in fila o saltare -->
+        <div id="lez-capitoli" class="lez-capitoli" role="group" aria-label="I quadri della lezione"></div>
+
+        <div class="lez-spiegazione">
+          <h3 id="lez-titolo-quadro" class="lez-titolo-quadro"></h3>
+          <div id="lez-testo" class="lez-testo"></div>
+        </div>
+
+        <div class="lez-comandi">
+          <button id="lez-btn-indietro" type="button" class="lez-passo-tasto">Indietro</button>
+          <button id="lez-btn-avanti" type="button" class="lez-passo-tasto lez-passo-avanti">Avanti</button>
+        </div>
+
+        <p class="lez-nota">Le distanze fra le orbite sono compresse per farcele stare tutte nello
+          schermo: Saturno è davvero venticinque volte più lontano di Mercurio. Gli angoli, che sono
+          quello di cui parla la lezione, sono invece quelli veri.</p>
+
+        <div class="barra-chiudi">
+          <button id="btn-chiudi-lezione-basso" type="button" class="tasto-chiudi-largo">Chiudi la lezione</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODALE: REGISTRA UN'OSSERVAZIONE NEL DIARIO -->
   <div id="modale-diario" class="velo-modale hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
     <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="media">
