@@ -341,7 +341,7 @@
                  sciame al picco, una congiunzione — con il tasto per portare
                  l'orologio sull'istante buono e quello per cercarlo in cielo. -->
             <section class="gruppo-comandi gruppo-eventi" data-gruppo="eventi" aria-label="Eventi">
-              <p class="etichetta-comando">Cosa succede nel cielo intorno all'ora mostrata. Spostando l'orologio l'elenco cambia con lui.</p>
+              <p class="etichetta-comando">Cosa succede nel cielo intorno all'ora mostrata, e il programma dei sette giorni dopo. Spostando l'orologio l'elenco cambia con lui.</p>
               <div id="skymap-eventi-elenco" class="elenco-eventi-cielo" aria-live="polite"></div>
             </section>
 
@@ -370,6 +370,7 @@
                 <button id="skymap-btn-sotto" type="button" class="tasto-cielo attiva" title="Mostra anche ciò che in questo momento è sotto l'orizzonte">Sotto l'orizzonte</button>
                 <button id="skymap-btn-polo" type="button" class="tasto-cielo" title="Mostra il punto in cui deve guardare l'asse della montatura equatoriale">Polo celeste</button>
                 <button id="skymap-btn-eventi" type="button" class="tasto-cielo attiva" title="Segna sulla mappa gli eventi in corso all'ora mostrata: il radiante di uno sciame, l'astro eclissato, i corpi di una congiunzione">Eventi in cielo</button>
+              <button id="skymap-btn-traccia" type="button" class="tasto-cielo attiva" title="La strada che l'oggetto scelto percorre nel cielo nelle ore attorno a questo istante: tratteggiata dove è già passato, piena dove sta andando, con l'ora segnata di ora in ora">Traccia</button>
               </div>
             </section>
 
@@ -618,6 +619,12 @@
               <label class="ecl-opzione" title="Tiene la mappa centrata sull'ombra mentre corre">
                 <input id="eclissi-segui" type="checkbox" checked> Segui l'ombra
               </label>
+              <!-- La mappa nasce chiara, quella vera di OpenStreetMap: coste,
+                   confini e nomi si leggono. Il fondo scuro resta per chi la
+                   guarda di notte, con gli occhi già abituati al buio. -->
+              <button id="btn-eclissi-tema" type="button" class="ecl-tasto"
+                      onclick="eclissiAlternaTemaMappa()"
+                      title="Passa al fondo scuro: di notte, con gli occhi abituati al buio, una mappa chiara abbaglia">Mappa scura</button>
             </div>
           </div>
         </div>

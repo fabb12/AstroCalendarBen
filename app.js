@@ -961,12 +961,89 @@ const ECL_F2 = (1 - APPIATTIMENTO) * (1 - APPIATTIMENTO);
 // della penombra (dove il Sole è appena intaccato) fino al cuore scuro.
 // Sono cerchi concentrici sovrapposti: più ci si avvicina all'asse, più
 // il velo si fa fitto, esattamente come accade nella realtà.
+// Qui stanno solo le soglie e i nomi: i colori dipendono dalla tavolozza,
+// perché su una mappa chiara e su una scura non possono essere gli stessi.
 const ECL_FASCE = [
-  { soglia: 0.0015, colore: '#7dd3fc', opacita: 0.09, bordo: 'rgba(125, 211, 252, 0.45)', etichetta: 'Sole appena intaccato' },
-  { soglia: 0.25,   colore: '#60a5fa', opacita: 0.11, bordo: 'rgba(96, 165, 250, 0.50)',  etichetta: 'almeno 1/4 coperto' },
-  { soglia: 0.50,   colore: '#6366f1', opacita: 0.15, bordo: 'rgba(129, 140, 248, 0.60)', etichetta: 'metà Sole coperto' },
-  { soglia: 0.75,   colore: '#4c1d95', opacita: 0.24, bordo: 'rgba(167, 139, 250, 0.75)', etichetta: 'quasi tutto coperto' }
+  { soglia: 0.0015, etichetta: 'Sole appena intaccato' },
+  { soglia: 0.25,   etichetta: 'almeno 1/4 coperto' },
+  { soglia: 0.50,   etichetta: 'metà Sole coperto' },
+  { soglia: 0.75,   etichetta: 'quasi tutto coperto' }
 ];
+
+// --- Le due tavolozze della mappa dell'eclissi ------------------------
+//
+// La mappa dell'ombra nasceva scura come tutto il resto dell'app: le tessere
+// di OpenStreetMap venivano rovesciate in negativo dal foglio di stile. Bello
+// da vedere, ma quella mappa serve a rispondere a una domanda geografica —
+// «l'ombra passa sopra casa mia? quanto devo guidare per entrare nella
+// fascia?» — e su un fondo in negativo i confini, le coste e i nomi delle
+// città diventano illeggibili proprio mentre li si cerca. Adesso la mappa è
+// chiara, quella vera di OpenStreetMap; il fondo scuro resta a disposizione
+// di chi la guarda di notte con gli occhi abituati al buio, e si cambia con
+// un tasto sotto al filmato.
+//
+// I colori non si limitano a invertirsi: su fondo chiaro i veli azzurri
+// tenui sparirebbero e la linea centrale, quasi bianca, non si vedrebbe
+// affatto. Ogni tema ha quindi la sua scala, con lo stesso significato:
+// azzurro→viola per la penombra, ambra per la fascia centrale, ombra scura
+// (o ambrata, se anulare) per il cono nell'istante mostrato.
+const ECL_TAVOLOZZE = {
+  chiara: {
+    fasce: [
+      { colore: '#0284c7', opacita: 0.14, bordo: 'rgba(2, 132, 199, 0.55)' },
+      { colore: '#2563eb', opacita: 0.18, bordo: 'rgba(37, 99, 235, 0.60)' },
+      { colore: '#4338ca', opacita: 0.24, bordo: 'rgba(67, 56, 202, 0.70)' },
+      { colore: '#3b0764', opacita: 0.34, bordo: 'rgba(88, 28, 135, 0.85)' }
+    ],
+    parziale: { colore: '#0369a1', opacita: 0.13 },
+    isocrona: { colore: '#075985', opacita: 0.45 },
+    // La fascia centrale deve saltare all'occhio anche sopra ai veli azzurri
+    // della penombra: sul chiaro l'ambra spento diventava un grigio fangoso
+    totale: { colore: '#ea580c', opacita: 0.42 },
+    centrale: '#7f1d1d',
+    massimo: { bordo: '#7c2d12', dentro: '#ea580c' },
+    umbra: { bordo: '#b91c1c', dentro: '#0b1020', opacita: 0.9 },
+    umbraAnulare: { bordo: '#b45309', dentro: '#fbbf24', opacita: 0.65 },
+    alone: '#dc2626',
+    aloneAnulare: '#f59e0b',
+    mirino: '#1f2937',
+    citta: { bordo: 'rgba(15, 23, 42, 0.6)', bordoAttivo: '#0f172a' },
+    osservatore: { bordo: '#0f172a', dentro: '#059669' }
+  },
+  scura: {
+    fasce: [
+      { colore: '#7dd3fc', opacita: 0.09, bordo: 'rgba(125, 211, 252, 0.45)' },
+      { colore: '#60a5fa', opacita: 0.11, bordo: 'rgba(96, 165, 250, 0.50)' },
+      { colore: '#6366f1', opacita: 0.15, bordo: 'rgba(129, 140, 248, 0.60)' },
+      { colore: '#4c1d95', opacita: 0.24, bordo: 'rgba(167, 139, 250, 0.75)' }
+    ],
+    parziale: { colore: '#38bdf8', opacita: 0.10 },
+    isocrona: { colore: '#7dd3fc', opacita: 0.30 },
+    totale: { colore: '#f59e0b', opacita: 0.34 },
+    centrale: '#fff3d6',
+    massimo: { bordo: '#fff3d6', dentro: '#f97316' },
+    umbra: { bordo: '#ff5f5f', dentro: '#05070f', opacita: 0.92 },
+    umbraAnulare: { bordo: '#fbbf24', dentro: '#2a1c05', opacita: 0.7 },
+    alone: '#f87171',
+    aloneAnulare: '#fbbf24',
+    mirino: '#fff8e7',
+    citta: { bordo: 'rgba(255, 255, 255, 0.55)', bordoAttivo: '#ffffff' },
+    osservatore: { bordo: '#ffffff', dentro: '#34d399' }
+  }
+};
+
+// La mappa parte chiara: è quella che si legge senza pensarci.
+let _eclTemaMappa = 'chiara';
+function _eclTav() { return ECL_TAVOLOZZE[_eclTemaMappa] || ECL_TAVOLOZZE.chiara; }
+
+// Un colore della tavolozza con la sua trasparenza. Serve ai campioni della
+// legenda, che devono essere veli come quelli disegnati sulla mappa.
+function _eclVelo(esa, alfa) {
+  const n = parseInt(String(esa).replace('#', ''), 16);
+  if (!isFinite(n)) return esa;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alfa)).toFixed(2)})`;
+}
 
 // Città di riferimento sparse su tutti i continenti: servono a dare un
 // nome ai luoghi che il cono d'ombra attraversa, così il filmato non è
@@ -1756,6 +1833,10 @@ function _eclCampionaPercorso(peakUt, finestra) {
 // =====================================================================
 let _mappaEclissi = null;
 let _mappaStrati = [];                  // tracciati fissi (percorso, fasce)
+// Gli stessi tracciati, ma per nome: cambiando tema della mappa vanno
+// ricolorati uno per uno, senza ricostruire tutto (e senza perdere l'istante
+// a cui è arrivato il filmato)
+let _eclStratiFissi = { parziale: null, isocrone: [], totale: null, centrale: null, massimo: null };
 let _eclissiEventoInCorso = null;
 let _eclissiOffsetTempoMin = 0;
 let _eclissiPosizioneTemporanea = null; // { lat, lon } se l'utente clicca sulla mappa
@@ -1845,23 +1926,26 @@ function _eclQuantoManca(data) {
 // il filmato aggiungere e togliere livelli a ogni fotogramma fa singhiozzare.
 function _eclCreaDinamici() {
   if (_eclDinamici) return;
-  const fasce = ECL_FASCE.map(f => L.polygon([], {
-    color: f.bordo, weight: 1, fillColor: f.colore, fillOpacity: f.opacita,
+  const tav = _eclTav();
+  const fasce = ECL_FASCE.map((f, i) => L.polygon([], {
+    color: tav.fasce[i].bordo, weight: 1,
+    fillColor: tav.fasce[i].colore, fillOpacity: tav.fasce[i].opacita,
     interactive: false, smoothFactor: 1, className: 'ecl-fascia'
   }).addTo(_mappaEclissi));
 
   const alone = L.polygon([], {
-    stroke: false, fillColor: '#f87171', fillOpacity: 0.18,
+    stroke: false, fillColor: tav.alone, fillOpacity: 0.18,
     interactive: false, smoothFactor: 1
   }).addTo(_mappaEclissi);
 
   const umbra = L.polygon([], {
-    color: '#ff5f5f', weight: 2.5, fillColor: '#05070f', fillOpacity: 0.92,
+    color: tav.umbra.bordo, weight: 2.5,
+    fillColor: tav.umbra.dentro, fillOpacity: tav.umbra.opacita,
     interactive: false, smoothFactor: 1, className: 'ecl-umbra'
   }).addTo(_mappaEclissi);
 
   const mirino = L.circleMarker([0, 0], {
-    radius: 3, color: '#fff8e7', fillColor: '#fff8e7', fillOpacity: 1,
+    radius: 3, color: tav.mirino, fillColor: tav.mirino, fillOpacity: 1,
     weight: 1, interactive: false
   }).addTo(_mappaEclissi);
 
@@ -1875,6 +1959,65 @@ function _eclSvuotaDinamici() {
   _eclDinamici.umbra.setLatLngs([]);
   _eclDinamici.mirino.setStyle({ opacity: 0, fillOpacity: 0 });
 }
+
+// --- Il tema della mappa: chiara (di partenza) o scura ------------------
+
+// Ricolora tutto quello che sta sopra le tessere. Non ricostruisce niente:
+// il filmato può essere a metà corsa e ci resta.
+function _eclApplicaTemaMappa() {
+  const tav = _eclTav();
+  const contenitore = document.getElementById('mappa-eclissi');
+  if (contenitore) {
+    contenitore.classList.toggle('mappa-chiara', _eclTemaMappa === 'chiara');
+    contenitore.classList.toggle('mappa-scura', _eclTemaMappa !== 'chiara');
+  }
+
+  if (_eclStratiFissi.parziale) {
+    _eclStratiFissi.parziale.setStyle({ fillColor: tav.parziale.colore, fillOpacity: tav.parziale.opacita });
+  }
+  _eclStratiFissi.isocrone.forEach(l =>
+    l.setStyle({ color: tav.isocrona.colore, opacity: tav.isocrona.opacita }));
+  if (_eclStratiFissi.totale) {
+    _eclStratiFissi.totale.setStyle({ fillColor: tav.totale.colore, fillOpacity: tav.totale.opacita });
+  }
+  if (_eclStratiFissi.centrale) _eclStratiFissi.centrale.setStyle({ color: tav.centrale });
+  if (_eclStratiFissi.massimo) {
+    _eclStratiFissi.massimo.setStyle({ color: tav.massimo.bordo, fillColor: tav.massimo.dentro });
+  }
+
+  if (_eclDinamici) {
+    _eclDinamici.fasce.forEach((f, i) => f.setStyle({
+      color: tav.fasce[i].bordo, fillColor: tav.fasce[i].colore, fillOpacity: tav.fasce[i].opacita
+    }));
+    _eclDinamici.mirino.setStyle({ color: tav.mirino, fillColor: tav.mirino });
+    // Ombra e alone li ritinge _eclDisegnaOmbra, che sa se è totale o anulare
+  }
+
+  if (_eclissiMarkerPosizione) {
+    _eclissiMarkerPosizione.setStyle({ color: tav.osservatore.bordo, fillColor: tav.osservatore.dentro });
+  }
+  // Le città sono decine di pallini con lo stesso stile: si ridisegnano
+  if (_mappaEclissi && _eclCittaMarker.length) _eclDisegnaCitta();
+
+  const tasto = document.getElementById('btn-eclissi-tema');
+  if (tasto) {
+    tasto.textContent = _eclTemaMappa === 'chiara' ? 'Mappa scura' : 'Mappa chiara';
+    tasto.title = _eclTemaMappa === 'chiara'
+      ? 'Passa al fondo scuro: di notte, con gli occhi abituati al buio, una mappa chiara abbaglia'
+      : 'Torna alla mappa chiara: coste, confini e nomi delle città si leggono molto meglio';
+  }
+}
+
+window.eclissiAlternaTemaMappa = () => {
+  _eclTemaMappa = _eclTemaMappa === 'chiara' ? 'scura' : 'chiara';
+  _eclApplicaTemaMappa();
+  // L'ombra e la legenda si rifanno con i colori nuovi: una legenda che
+  // spiega i colori di prima è peggio di nessuna legenda
+  if (_eclissiEventoInCorso) {
+    _eclissiAggiornaTutto();
+    _eclAggiornaLegenda(_eclissiEventoInCorso);
+  }
+};
 
 // Ridisegna ombra, penombra e fasce intermedie per l'istante selezionato.
 // Restituisce il quadro d'insieme: dove cade il massimo e quanto vale.
@@ -1929,12 +2072,12 @@ function _eclDisegnaOmbra() {
     }
     // L'ombra anulare non è nera: è un anello di luce, quindi cambia colore
     const anulare = cMax.tipo === 'anulare';
+    const tav = _eclTav();
+    const stile = anulare ? tav.umbraAnulare : tav.umbra;
     _eclDinamici.umbra.setStyle({
-      color: anulare ? '#fbbf24' : '#ff5f5f',
-      fillColor: anulare ? '#2a1c05' : '#05070f',
-      fillOpacity: anulare ? 0.7 : 0.92
+      color: stile.bordo, fillColor: stile.dentro, fillOpacity: stile.opacita
     });
-    _eclDinamici.alone.setStyle({ fillColor: anulare ? '#fbbf24' : '#f87171' });
+    _eclDinamici.alone.setStyle({ fillColor: anulare ? tav.aloneAnulare : tav.alone });
   } else {
     _eclDinamici.umbra.setLatLngs([]);
     _eclDinamici.alone.setLatLngs([]);
@@ -1993,7 +2136,7 @@ function _eclDisegnaCitta() {
   _eclCitta.forEach((c, i) => {
     const m = L.circleMarker([c.lat, _eclInquadra(c.lon)], {
       radius: c.oscMax >= 0.98 ? 5 : 3.5,
-      color: 'rgba(255,255,255,0.55)',
+      color: _eclTav().citta.bordo,
       weight: 1,
       fillColor: _eclColoreCitta(c.oscMax),
       fillOpacity: 0.9,
@@ -2034,14 +2177,14 @@ function _eclAggiornaPannelloCitta(quadro) {
       const vecchia = _eclCitta[_eclCittaEvidenziata];
       vecchioMarker.setStyle({
         radius: vecchia.oscMax >= 0.98 ? 5 : 3.5,
-        color: 'rgba(255,255,255,0.55)', weight: 1, fillOpacity: 0.9
+        color: _eclTav().citta.bordo, weight: 1, fillOpacity: 0.9
       });
       vecchioMarker.unbindTooltip().bindTooltip(
         `${vecchia.nome} — max ${_eclPerc(vecchia.oscMax)}`, { direction: 'top', offset: [0, -4] });
     }
     const nuovoMarker = _eclCittaMarker[nuovoIndice];
     if (nuovoMarker) {
-      nuovoMarker.setStyle({ radius: 8, color: '#ffffff', weight: 2.5, fillOpacity: 1 });
+      nuovoMarker.setStyle({ radius: 8, color: _eclTav().citta.bordoAttivo, weight: 2.5, fillOpacity: 1 });
       nuovoMarker.unbindTooltip().bindTooltip('', {
         direction: 'top', offset: [0, -9], permanent: true, className: 'ecl-tooltip-attiva'
       }).openTooltip();
@@ -2144,7 +2287,8 @@ function _eclissiAggiornaDatiLocali(quadro) {
       _eclissiMarkerPosizione.setLatLng([lat, _eclInquadra(lon)]);
     } else {
       _eclissiMarkerPosizione = L.circleMarker([lat, _eclInquadra(lon)], {
-        radius: 7, color: '#ffffff', fillColor: '#34d399', fillOpacity: 1, weight: 2.5,
+        radius: 7, color: _eclTav().osservatore.bordo, fillColor: _eclTav().osservatore.dentro,
+        fillOpacity: 1, weight: 2.5,
         className: 'ecl-osservatore'
       }).addTo(_mappaEclissi).bindTooltip('Il tuo punto di osservazione', { direction: 'top' });
     }
@@ -3650,18 +3794,33 @@ function _eclAggiornaLegenda(evento, riepilogo) {
   const kind = evento.eclissi.kind;
   const centrale = kind === 'total' || kind === 'annular' || kind === 'hybrid';
   const nomeCentrale = _eclNomeCentrale(kind);
-  const coloreOmbra = kind === 'annular' ? '#fbbf24' : '#ff5f5f';
-  const riempOmbra = kind === 'annular' ? '#2a1c05' : '#05070f';
+  // I campioni della legenda devono avere gli stessi colori che ha la mappa
+  // in questo momento: cambiando tema cambiano anche loro, se no la legenda
+  // spiegherebbe una mappa che non è quella sotto gli occhi.
+  const tav = _eclTav();
+  const ombra = kind === 'annular' ? tav.umbraAnulare : tav.umbra;
+  const coloreOmbra = ombra.bordo;
+  const riempOmbra = ombra.dentro;
+  const stileFascia = `background:${_eclVelo(tav.totale.colore, tav.totale.opacita + 0.08)};` +
+    `border-color:${tav.totale.colore}`;
+  const stileParziale = `background:${_eclVelo(tav.parziale.colore, tav.parziale.opacita + 0.04)};` +
+    `border-color:${_eclVelo(tav.isocrona.colore, 0.7)}`;
+  const stilePenombra = 'background: radial-gradient(circle,' + tav.fasce.slice().reverse()
+    .map((f, i) => {
+      const da = i * 25, a = (i + 1) * 25;
+      const c = _eclVelo(f.colore, Math.min(0.9, f.opacita * 3.4 + 0.2));
+      return ` ${c} ${da}%, ${c} ${a}%`;
+    }).join(',') + `); border-color:${_eclVelo(tav.fasce[0].colore, 0.6)}`;
 
   const voci = [];
   if (centrale) {
     voci.push({
-      campione: `<span class="ecl-sw ecl-sw-fascia"></span>`,
+      campione: `<span class="ecl-sw ecl-sw-fascia" style="${stileFascia}"></span>`,
       titolo: `Fascia di ${nomeCentrale}`,
       testo: 'La striscia di Terra da cui il Sole sparisce del tutto. È larga poche decine o centinaia di km: fuori di qui la totalità non si vede.'
     });
     voci.push({
-      campione: `<span class="ecl-sw ecl-sw-linea"></span>`,
+      campione: `<span class="ecl-sw ecl-sw-linea" style="border-top-color:${tav.centrale}"></span>`,
       titolo: 'Linea centrale',
       testo: `Il cuore della fascia: qui la ${nomeCentrale} dura più a lungo.`
     });
@@ -3672,22 +3831,22 @@ function _eclAggiornaLegenda(evento, riepilogo) {
     });
   }
   voci.push({
-    campione: `<span class="ecl-sw ecl-sw-parziale"></span>`,
+    campione: `<span class="ecl-sw ecl-sw-parziale" style="${stileParziale}"></span>`,
     titolo: 'Zona di eclissi parziale (tutta l\'eclissi)',
     testo: 'Il velo azzurro copre tutti i luoghi che, prima o poi, vedranno il Sole intaccato dalla Luna. È molto più esteso della fascia centrale.'
   });
   voci.push({
-    campione: `<span class="ecl-sw ecl-sw-penombra"></span>`,
+    campione: `<span class="ecl-sw ecl-sw-penombra" style="${stilePenombra}"></span>`,
     titolo: 'Penombra adesso',
     testo: 'La regione che in questo istante vede un\'eclissi parziale. I gradini di colore, andando verso il centro, sono 25%, 50% e 75% di Sole coperto.'
   });
   voci.push({
-    campione: `<span class="ecl-sw ecl-sw-citta"></span>`,
+    campione: `<span class="ecl-sw ecl-sw-citta" style="border-color:${tav.citta.bordoAttivo}"></span>`,
     titolo: 'Città toccate',
-    testo: 'Ogni pallino è una città che vede l\'eclissi; il colore dice quanto Sole le verrà coperto al massimo. Quella cerchiata di bianco è la più in ombra adesso.'
+    testo: `Ogni pallino è una città che vede l'eclissi; il colore dice quanto Sole le verrà coperto al massimo. Quella cerchiata di ${_eclTemaMappa === 'chiara' ? 'scuro' : 'bianco'} è la più in ombra adesso.`
   });
   voci.push({
-    campione: `<span class="ecl-sw ecl-sw-osservatore"></span>`,
+    campione: `<span class="ecl-sw ecl-sw-osservatore" style="background:${tav.osservatore.dentro};border-color:${tav.osservatore.bordo}"></span>`,
     titolo: 'Il tuo punto di osservazione',
     testo: 'Parte dalla tua posizione. Tocca un punto qualsiasi della mappa (o una città in elenco) per spostarlo.'
   });
@@ -4042,6 +4201,8 @@ function apriMappaEclissi(id) {
     }).addTo(_mappaEclissi);
     // I comandi dello zoom vanno a destra: a sinistra c'è l'orologio
     L.control.zoom({ position: 'topright' }).addTo(_mappaEclissi);
+    // Le tessere si mostrano com'è la mappa vera, chiara: è il tema di partenza
+    _eclApplicaTemaMappa();
 
     // Un tocco sulla mappa sposta l'osservatore
     _mappaEclissi.on('click', (e) => {
@@ -4058,6 +4219,7 @@ function apriMappaEclissi(id) {
   // Ripulisce i tracciati dell'eclissi precedente
   _mappaStrati.forEach(s => _mappaEclissi.removeLayer(s));
   _mappaStrati = [];
+  _eclStratiFissi = { parziale: null, isocrone: [], totale: null, centrale: null, massimo: null };
   _eclCittaMarker.forEach(m => _mappaEclissi.removeLayer(m));
   _eclCittaMarker = [];
   if (_eclissiMarkerPosizione) {
@@ -4078,10 +4240,11 @@ function apriMappaEclissi(id) {
   // in una macchia sola, senza cuciture e senza zone più scure.
   if (_eclPercorso.regioneParziale.length) {
     const p = L.polygon(_eclPercorso.regioneParziale, {
-      stroke: false, fillColor: '#38bdf8', fillOpacity: 0.10, fillRule: 'nonzero',
-      interactive: false, smoothFactor: 1.4
+      stroke: false, fillColor: _eclTav().parziale.colore, fillOpacity: _eclTav().parziale.opacita,
+      fillRule: 'nonzero', interactive: false, smoothFactor: 1.4
     }).addTo(_mappaEclissi);
     _mappaStrati.push(p);
+    _eclStratiFissi.parziale = p;
   }
 
   // Isocrone: dov'era (o dove sarà) la penombra di ora in ora. Danno il verso
@@ -4091,30 +4254,34 @@ function apriMappaEclissi(id) {
     if (linea.length < 2) return;
     const ora = _eclOra(new Date(evento.dataObj.getTime() + iso.min * 60000));
     const l = L.polyline(linea, {
-      color: '#7dd3fc', weight: 1, opacity: 0.3, dashArray: '3 7', smoothFactor: 1.4
+      color: _eclTav().isocrona.colore, weight: 1, opacity: _eclTav().isocrona.opacita,
+      dashArray: '3 7', smoothFactor: 1.4
     }).bindTooltip(`Penombra alle ${ora}: qui il Sole comincia a essere intaccato`,
       { sticky: true }).addTo(_mappaEclissi);
     _mappaStrati.push(l);
+    _eclStratiFissi.isocrone.push(l);
   });
 
   // Fascia di totalità/anularità: la striscia che conta davvero. Anche questa
   // è l'unione di tante ombre istantanee, così resta pulita pure ai poli.
   if (_eclPercorso.regioneTotale.length) {
     const p = L.polygon(_eclPercorso.regioneTotale, {
-      stroke: false, fillColor: '#f59e0b', fillOpacity: 0.34, fillRule: 'nonzero',
-      smoothFactor: 1
+      stroke: false, fillColor: _eclTav().totale.colore, fillOpacity: _eclTav().totale.opacita,
+      fillRule: 'nonzero', smoothFactor: 1
     }).addTo(_mappaEclissi);
     p.bindTooltip(`Fascia di ${_eclNomeCentrale(evento.eclissi.kind)}: da qui il Sole sparisce del tutto`,
       { sticky: true });
     _mappaStrati.push(p);
+    _eclStratiFissi.totale = p;
   }
 
   // Linea centrale
   if (_eclPercorso.lineaCentrale && _eclPercorso.lineaCentrale.length > 1) {
     const l = L.polyline(_eclPercorso.lineaCentrale, {
-      color: '#fff3d6', weight: 2, opacity: 0.9, dashArray: '9 7', interactive: false
+      color: _eclTav().centrale, weight: 2, opacity: 0.9, dashArray: '9 7', interactive: false
     }).addTo(_mappaEclissi);
     _mappaStrati.push(l);
+    _eclStratiFissi.centrale = l;
   }
 
   // Punto di massima eclissi
@@ -4123,12 +4290,14 @@ function apriMappaEclissi(id) {
   if (pMax) {
     const cMax = _eclCircostanze(pMax[0], pMax[1], dMax);
     const marker = L.circleMarker(pMax, {
-      radius: 6, color: '#fff3d6', fillColor: '#f97316', fillOpacity: 1, weight: 2
+      radius: 6, color: _eclTav().massimo.bordo, fillColor: _eclTav().massimo.dentro,
+      fillOpacity: 1, weight: 2
     }).bindTooltip(
       `<b>Massima eclissi</b><br>${_eclOra(evento.dataObj)} · ${_eclPerc(cMax.osc)} di Sole coperto`,
       { direction: 'top' }
     ).addTo(_mappaEclissi);
     _mappaStrati.push(marker);
+    _eclStratiFissi.massimo = marker;
   }
 
   _eclDisegnaCitta();
@@ -5086,6 +5255,14 @@ function costruisciAgenda() {
     const stileScorciatoia = 'px-3 py-1.5 rounded-full text-xs font-medium bg-slate-700 ' +
       'hover:bg-blue-600 text-slate-100 transition-colors border border-transparent';
     const scorciatoie = [];
+    // Il tasto principale di ogni evento: aprire il planetario già portato
+    // sull'istante giusto. Prima qui c'era "Trova la Luna nel cielo", che
+    // puntava la Luna di adesso — per un'eclissi di fra due mesi mostrava il
+    // punto sbagliato del cielo all'ora sbagliata, ed era il contrario di
+    // quello che serve. Adesso si arriva nel cielo di quel momento, con
+    // l'evento segnato dove bisogna guardare.
+    scorciatoie.push(`<button onclick="apriEventoNelPlanetario('${evento.id}')" class="${stileScorciatoia}" ` +
+      `title="Apre il planetario sull'istante dell'evento, puntato dove guardare">Vedi nel planetario</button>`);
     if (evento.eclissi) {
       scorciatoie.push(`<button onclick="apriMappaEclissi('${evento.id}')" class="${stileScorciatoia}" ` +
         `title="Il percorso del cono d'ombra, minuto per minuto">Mappa dell'ombra</button>`);
@@ -5093,12 +5270,6 @@ function costruisciAgenda() {
     if (evento.eclissiLunare) {
       scorciatoie.push(`<button onclick="apriMappaLunare('${evento.id}')" class="${stileScorciatoia}" ` +
         `title="Da dove si vede, a che ora, e con la Luna quanto alta">Dove e quando vederla</button>`);
-    }
-    // Il Sole resta fuori: puntarlo nel cielo di adesso non serve a nessuno e,
-    // per un'eclissi, è pure un cattivo consiglio. Per la Luna e i pianeti sì.
-    if (evento.corpoCielo && evento.corpoCielo !== 'Sun') {
-      scorciatoie.push(`<button onclick="cercaNelCielo('${evento.corpoCielo}')" class="${stileScorciatoia}" ` +
-        `title="Punta ${skyNomeCorpo(evento.corpoCielo)} nel cielo di adesso">Trova ${skyNomeCorpo(evento.corpoCielo)} nel cielo</button>`);
     }
     const barraScorciatoie = scorciatoie.length
       ? `<div class="flex flex-wrap gap-2 mt-3">${scorciatoie.join('')}</div>`
@@ -5727,12 +5898,17 @@ const sky = {
   // Eventi del calendario segnati sulla mappa (radiante di uno sciame, astro
   // eclissato): sono l'unica cosa disegnata che non è "un astro dove sta"
   mostraEventi: true,
-  eventiOra: { chiave: null, inCorso: [], vicini: [] }, // cosa succede all'ora mostrata
+  // cosa succede all'ora mostrata, e il programma dei sette giorni dopo
+  eventiOra: { chiave: null, inCorso: [], vicini: [], settimana: [] },
   eventiFirma: '',        // ultima versione scritta nel pannello, per non riscriverla
   eventiMeseTimer: null,  // attesa prima di calcolare il mese di un istante lontano
   // Inseguimento: la vista tiene l'oggetto scelto al centro, da sola, mentre
   // il cielo ruota o mentre il playback corre
   inseguimento: false,
+  // La strada che l'oggetto scelto percorre nel cielo durante l'osservazione:
+  // da dove è salito, dove sarà fra un'ora, quando tramonta (vedi 7.3-bis)
+  mostraTraccia: true,
+  traccia: { chiave: null, punti: [], nome: '', colore: '#93c5fd', prossimo: 0 },
   // Filtri della mappa: cosa compare e cosa no
   mostraPianeti: true,
   mostraSoleLuna: true,
@@ -7907,6 +8083,11 @@ function skyDisegna() {
   skyDisegnaCostellazioni(ctx, base, focale);
   skyDisegnaProfondo(ctx, base, focale);
 
+  // La strada dell'oggetto scelto nelle ore attorno a questo istante: sta
+  // sotto agli astri, perché è una guida e non deve coprirli
+  skyCalcolaTraccia();
+  skyDisegnaTraccia(ctx, base, focale);
+
   // Prima le stelle, poi i pianeti, infine Luna, Sole e le stazioni spaziali
   // (che si muovono e devono restare sempre riconoscibili sopra il resto)
   const ordine = { stella: 0, pianeta: 1, luna: 2, sole: 3, satellite: 4 };
@@ -8020,6 +8201,145 @@ function skyAggiornaStato() {
     righe.push('modalità manuale');
   }
   el.innerHTML = righe.join('<br>');
+}
+
+// =====================================================================
+// 7.3-bis LA TRACCIA DELL'OGGETTO OSSERVATO
+//   Un planetario dice dov'è un astro adesso. Ma chi passa una serata al
+//   telescopio ha bisogno di un'altra cosa: sapere che strada farà quell'astro
+//   mentre lo guarda. Se fra un'ora sarà dietro il tetto del vicino, tanto
+//   vale saperlo prima di montare la montatura; e se sta ancora salendo,
+//   conviene aspettare, perché più è alto e meno aria c'è da attraversare.
+//   Qui si disegna proprio quella strada: la curva che l'oggetto scelto
+//   percorre nelle ore attorno all'istante mostrato, tratteggiata dove è già
+//   passato e piena dove sta andando, con l'ora segnata di sessanta in
+//   sessanta minuti. È la stessa idea della scia della stazione spaziale
+//   (che però corre in minuti, non in ore, e la sua la calcola l'SGP4).
+// =====================================================================
+
+const SKY_TRACCIA_ORE = 4;          // quanto indietro e quanto avanti
+const SKY_TRACCIA_PASSO_MIN = 10;   // un campione ogni dieci minuti
+const SKY_TRACCIA_RINFRESCO_MS = 400;  // non più spesso di così, playback compreso
+
+// Di che cosa si disegna la traccia: l'oggetto scelto adesso, se è un astro
+// che la libreria sa calcolare o un punto fisso di cui conosciamo le
+// coordinate (una galassia, una stella di una figura). Le stazioni spaziali
+// no: hanno già la loro scia dei minuti, e in quattro ore fanno tre giri.
+function skyOggettoDaTracciare() {
+  const o = skyOggettoScelto();
+  if (!o || o.tipo === 'satellite') return null;
+  const idCorpo = o.id && SKY_ASTRI.some(a => a.id === o.id) ? o.id : null;
+  if (!idCorpo && (typeof o.ra !== 'number' || typeof o.dec !== 'number')) return null;
+  return { idCorpo, ra: o.ra, dec: o.dec, nome: o.nome || 'oggetto', colore: o.colore || '#93c5fd' };
+}
+
+// Ricalcola la traccia solo quando serve: cambiare oggetto, spostare
+// l'orologio di qualche minuto o cambiare posizione. Sono un'ottantina di
+// conversioni di coordinate — poco per una volta, troppo per ogni fotogramma.
+function skyCalcolaTraccia() {
+  if (!sky.mostraTraccia || !sky.observer || typeof Astronomy === 'undefined') {
+    sky.traccia.punti = [];
+    sky.traccia.chiave = null;
+    return;
+  }
+  const o = skyOggettoDaTracciare();
+  if (!o) {
+    sky.traccia.punti = [];
+    sky.traccia.chiave = null;
+    return;
+  }
+
+  const quando = skyAdesso().getTime();
+  const passoMs = SKY_TRACCIA_PASSO_MIN * 60000;
+  // I campioni si prendono sulla griglia dei dieci minuti, non a partire
+  // dall'istante mostrato: così uno di essi cade sempre sull'ora tonda, che è
+  // il punto su cui va scritto l'orario.
+  const t0 = Math.round(quando / passoMs) * passoMs;
+  const chiave = [o.idCorpo || `${o.ra},${o.dec}`, t0,
+    Math.round(sky.observer.latitude * 100), Math.round(sky.observer.longitude * 100)].join('|');
+  if (sky.traccia.chiave === chiave) return;
+  const adesso = performance.now();
+  if (adesso < sky.traccia.prossimo) return;
+  sky.traccia.prossimo = adesso + SKY_TRACCIA_RINFRESCO_MS;
+  sky.traccia.chiave = chiave;
+
+  const punti = [];
+  const passi = Math.round(SKY_TRACCIA_ORE * 60 / SKY_TRACCIA_PASSO_MIN);
+  for (let i = -passi; i <= passi; i++) {
+    const t = new Date(t0 + i * passoMs);
+    let p = null;
+    try {
+      p = o.idCorpo
+        ? altAzCorpo(o.idCorpo, t, sky.observer)
+        : altAzCoordinate(o.ra, o.dec, t, sky.observer);
+    } catch (e) { p = null; }
+    if (!p) continue;
+    punti.push({
+      az: p.az, alt: p.alt,
+      futuro: t.getTime() >= quando,
+      // Le ore tonde diventano i paletti chilometrici della traccia
+      ora: t.getMinutes() === 0 ? t.getHours() : null
+    });
+  }
+
+  sky.traccia.punti = punti;
+  sky.traccia.nome = o.nome;
+  sky.traccia.colore = o.colore;
+}
+
+// Disegna la traccia sotto agli astri: è una guida, non un protagonista.
+function skyDisegnaTraccia(ctx, base, focale) {
+  if (!sky.mostraTraccia) return;
+  const punti = sky.traccia.punti;
+  if (!punti || punti.length < 2) return;
+
+  const colore = sky.traccia.colore || '#93c5fd';
+  const proiettati = punti.map(t => {
+    const p = skyProietta(skyVettore(t.az, t.alt), base, focale);
+    return { px: p.px, py: p.py, davanti: p.davanti, futuro: t.futuro, ora: t.ora, alt: t.alt };
+  });
+
+  ctx.save();
+  ctx.lineWidth = 1.8;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = colore;
+
+  for (let i = 1; i < proiettati.length; i++) {
+    const a = proiettati[i - 1], b = proiettati[i];
+    if (!a.davanti || !b.davanti) continue;
+    // Vicino al bordo della proiezione due campioni contigui possono finire
+    // ai due capi dello schermo: un segmento così è una riga falsa
+    if (Math.abs(a.px - b.px) > sky.larghezza || Math.abs(a.py - b.py) > sky.altezza) continue;
+    const sotto = a.alt < 0 || b.alt < 0;
+    ctx.setLineDash(b.futuro ? [] : [4, 5]);
+    ctx.globalAlpha = (b.futuro ? 0.75 : 0.4) * (sotto ? 0.45 : 1);
+    ctx.beginPath();
+    ctx.moveTo(a.px, a.py);
+    ctx.lineTo(b.px, b.py);
+    ctx.stroke();
+  }
+
+  // I paletti dell'ora: un puntino e, se c'è spazio, l'orario accanto
+  ctx.setLineDash([]);
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  proiettati.forEach(p => {
+    if (p.ora === null || !p.davanti) return;
+    if (p.px < 0 || p.px > sky.larghezza || p.py < 0 || p.py > sky.altezza) return;
+    ctx.globalAlpha = p.alt < 0 ? 0.35 : 0.85;
+    ctx.fillStyle = colore;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+    if (sky.mostraNomi) {
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText(`${p.ora}`, p.px + 6, p.py - 6);
+    }
+  });
+
+  ctx.restore();
 }
 
 // =====================================================================
@@ -8498,6 +8818,11 @@ const SKY_EVENTI_FINESTRA_MIN = {
 // fra quelli "in giornata": è di un'altra notte
 const SKY_EVENTI_VICINI_MIN = 20 * 60;
 
+// Quanto avanti guarda l'elenco della settimana. Sette giorni sono l'orizzonte
+// di chi programma un'uscita: più in là il meteo non si sa, e l'elenco
+// diventerebbe un secondo calendario dentro al planetario.
+const SKY_EVENTI_SETTIMANA_MS = 7 * 86400000;
+
 // Da quando a quando un evento si considera in corso
 function skyFinestraEvento(ev) {
   const t = ev.dataObj.getTime();
@@ -8509,31 +8834,38 @@ function skyFinestraEvento(ev) {
   return { inizio: t - mezza * 60000, fine: t + mezza * 60000 };
 }
 
-// Cosa succede intorno all'istante mostrato: quello che è in corso adesso e
-// quello che cade nelle ore vicine. Il risultato si tiene da parte per mezzo
-// minuto: la lista degli eventi calcolati può avere migliaia di voci, e
-// questa funzione gira insieme al ricalcolo delle posizioni.
+// Cosa succede intorno all'istante mostrato: quello che è in corso adesso,
+// quello che cade nelle ore vicine e quello che arriva entro sette giorni.
+// Il risultato si tiene da parte per mezzo minuto: la lista degli eventi
+// calcolati può avere migliaia di voci, e questa funzione gira insieme al
+// ricalcolo delle posizioni.
 function skyEventiVicini() {
   const quando = skyAdesso().getTime();
   const chiave = Math.floor(quando / 30000);
   if (sky.eventiOra.chiave === chiave) return sky.eventiOra;
 
-  const inCorso = [], vicini = [];
+  const inCorso = [], vicini = [], settimana = [];
   const limite = SKY_EVENTI_VICINI_MIN * 60000;
   eventiCalcolati.forEach(ev => {
     if (!ev.dataObj) return;
     const dt = ev.dataObj.getTime() - quando;
-    if (Math.abs(dt) > limite + 6 * 3600000) return;   // scarto grossolano, costa nulla
+    // Scarto grossolano, costa nulla: indietro basta la finestra più larga,
+    // in avanti si arriva fino alla settimana dell'elenco in fondo
+    if (dt > SKY_EVENTI_SETTIMANA_MS || dt < -(limite + 6 * 3600000)) return;
     const f = skyFinestraEvento(ev);
     if (quando >= f.inizio && quando <= f.fine) inCorso.push(ev);
     else if (Math.abs(dt) <= limite) vicini.push(ev);
+    else if (dt > 0) settimana.push(ev);
   });
 
   const vicinanza = (a, b) => Math.abs(a.dataObj - quando) - Math.abs(b.dataObj - quando);
   inCorso.sort(vicinanza);
   vicini.sort(vicinanza);
+  // La settimana invece si legge in ordine di calendario: è un programma,
+  // non un elenco di cose vicine
+  settimana.sort((a, b) => a.dataObj - b.dataObj);
 
-  sky.eventiOra = { chiave, inCorso, vicini };
+  sky.eventiOra = { chiave, inCorso, vicini, settimana };
   return sky.eventiOra;
 }
 
@@ -8550,8 +8882,10 @@ function skyChiediEventiDelMese() {
     const quando = skyAdesso();
     let aggiunti = 0;
     // Anche il giorno prima e quello dopo: un evento della notte a cavallo
-    // del mese sta in un mese che non è quello dell'orologio
-    [-86400000, 0, 86400000].forEach(dt => {
+    // del mese sta in un mese che non è quello dell'orologio. E poi la
+    // settimana in avanti, perché l'elenco in fondo al menu Eventi arriva
+    // fin lì: senza questi mesi, a fine mese la settimana sarebbe vuota.
+    [-86400000, 0, 86400000, 4 * 86400000, 7 * 86400000].forEach(dt => {
       const d = new Date(quando.getTime() + dt);
       const anno = d.getFullYear();
       if (anno < ANNO_MINIMO_NAVIGABILE || anno > ANNO_MASSIMO_NAVIGABILE) return;
@@ -8619,6 +8953,34 @@ function skyEventoHtml(ev, inCorso) {
   </div>`;
 }
 
+// Giorno e ora di un evento della settimana, in forma corta: "gio 7 ago · 22:14".
+// Per quello che succede fra tre giorni "fra 68 h" non dice niente; la sera in
+// cui uscire, invece, sì.
+function skyGiornoEventoTesto(ev) {
+  const d = ev.dataObj;
+  return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }) +
+    ' · ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Una riga dell'elenco della settimana. Qui il tasto è uno solo, ed è quello
+// che serve: portare il planetario su quella sera e puntarlo dove guardare.
+// "Mostra in cielo" non avrebbe senso — al cielo di adesso quell'evento non
+// c'è ancora.
+function skyEventoSettimanaHtml(ev) {
+  const cat = CATEGORIE[ev.categoria] || CATEGORIE.personali;
+  const scarto = Math.round((ev.dataObj.getTime() - skyAdesso().getTime()) / 1000);
+  return `<div class="voce-evento-cielo settimana" style="--colore-evento:${ev.colore || '#60a5fa'}">
+    <span class="segno-evento">${icona(cat.disegno, 18)}</span>
+    <div class="corpo-evento">
+      <p class="titolo-evento">${ev.titolo}</p>
+      <p class="quando-evento">${skyGiornoEventoTesto(ev)} · ${skyScartoTempoTesto(scarto)}</p>
+      <div class="azioni-evento">
+        <button type="button" class="tasto-evento-cielo" onclick="apriEventoNelPlanetario('${ev.id}')">Vedi nel planetario</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 // Riscrive il pannello e il promemoria sopra la mappa. Gira una volta al
 // secondo insieme al resto: riscriviamo solo se è cambiato qualcosa, se no
 // un tasto premuto a metà secondo sparirebbe da sotto il dito.
@@ -8640,7 +9002,10 @@ function skyAggiornaEventi() {
   }
 
   if (!elenco) return;
-  const firma = dati.inCorso.map(e => 'c' + e.id).concat(dati.vicini.map(e => 'v' + e.id)).join(',') +
+  const settimana = dati.settimana || [];
+  const firma = dati.inCorso.map(e => 'c' + e.id)
+    .concat(dati.vicini.map(e => 'v' + e.id))
+    .concat(settimana.map(e => 's' + e.id)).join(',') +
     '|' + Math.floor(skyAdesso().getTime() / 60000);
   if (firma === sky.eventiFirma) return;
   sky.eventiFirma = firma;
@@ -8654,10 +9019,20 @@ function skyAggiornaEventi() {
     pezzi.push('<p class="titolo-elenco-eventi">Nelle ore vicine</p>');
     dati.vicini.forEach(ev => pezzi.push(skyEventoHtml(ev, false)));
   }
-  if (!pezzi.length) {
+  if (!dati.inCorso.length && !dati.vicini.length) {
     pezzi.push('<p class="nota-lunga">Nel cielo di quest\'ora non c\'è nessun evento del calendario. ' +
       'Sposta l\'orologio — per esempio su una notte di agosto o di dicembre — e qui compariranno gli sciami, ' +
       'le eclissi e le congiunzioni di quel momento.</p>');
+  }
+  // La settimana: il programma dei prossimi sette giorni, senza uscire dal
+  // planetario. È l'elenco da guardare per decidere quale sera vale la pena
+  // uscire, e ogni riga porta il cielo su quel momento.
+  if (settimana.length) {
+    pezzi.push('<p class="titolo-elenco-eventi">Nei prossimi 7 giorni</p>');
+    settimana.forEach(ev => pezzi.push(skyEventoSettimanaHtml(ev)));
+  } else {
+    pezzi.push('<p class="titolo-elenco-eventi">Nei prossimi 7 giorni</p>');
+    pezzi.push('<p class="nota-lunga">Nessun evento del calendario nei sette giorni dopo l\'ora mostrata.</p>');
   }
   elenco.innerHTML = pezzi.join('');
 }
@@ -8687,6 +9062,61 @@ window.skyEventoNelCielo = (id) => {
   }
   skyMostraGruppo('');
   skyCentraSu({ nome: `il radiante delle ${p.nome}`, az: p.az, alt: p.alt });
+};
+
+// Vedere l'evento nel planetario, nel momento giusto.
+//   È il tasto che ogni scheda dell'agenda porta in cima alle scorciatoie, e
+//   quello delle righe della settimana qui nel menu Eventi. Prima al suo posto
+//   c'era "Trova la Luna nel cielo": apriva il cielo di adesso e ci puntava la
+//   Luna: per un'eclissi di fra due mesi, il punto sbagliato all'ora sbagliata.
+//   Qui invece si fa tutto in un gesto solo — vista Cielo, orologio portato
+//   sull'istante dell'evento, mappa puntata dove bisogna guardare e traccia
+//   accesa, così si vede anche da che parte l'astro arriva e dove sarà dopo.
+window.apriEventoNelPlanetario = (id) => {
+  const ev = eventiCalcolati.find(e => e.id === id);
+  if (!ev || !ev.dataObj) return;
+
+  mostraVista('cielo');
+
+  // Prima si ferma il playback: se no il tempo, appena arrivati sull'istante
+  // giusto, ricomincerebbe subito a scappare via
+  skyFermaPlayback();
+  skyImpostaOffsetTempo((ev.dataObj.getTime() - Date.now()) / 1000);
+  // Un istante lontano può cadere in un mese mai calcolato: gli eventi di quel
+  // mese servono adesso, perché sono quelli che compaiono nell'elenco
+  skyChiediEventiDelMese();
+
+  // I segni degli eventi sulla mappa servono proprio qui: se il filtro era
+  // spento si arriverebbe su un cielo muto
+  sky.mostraEventi = true;
+
+  const p = skyPosizioneEvento(ev, skyAdesso());
+  if (ev.corpoCielo && (!p || !p.radiante)) {
+    // La traccia dell'astro protagonista si accende da sé: di un evento
+    // interessa anche da dove arriva e dove sarà fra un'ora
+    sky.mostraTraccia = true;
+    skyImpostaTarget(ev.corpoCielo, { mantieni: true });
+  } else {
+    // Uno sciame non ha un astro da puntare — il radiante è un punto del
+    // cielo, non un oggetto — e un equinozio non ha nemmeno quello. Il
+    // bersaglio di prima va spento: se no resterebbe acceso, con la sua
+    // traccia, sopra un evento che non lo riguarda.
+    sky.target = null;
+    sky.traccia.chiave = null;
+    sky.traccia.punti = [];
+    skyAggiornaStileElenco();
+    skyAggiornaScheda();
+    if (p) skyCentraSu({ nome: `il radiante delle ${p.nome}`, az: p.az, alt: p.alt });
+  }
+  skyAggiornaTastiFiltri();
+
+  // Il cielo mostrato non è quello di adesso: dirlo subito evita di leggere
+  // posizioni giuste credendole sbagliate (o il contrario)
+  const dove = p
+    ? ` — guarda verso ${skyNomeDirezione(p.az)}, a ${Math.round(p.alt)}° di altezza` +
+      (p.alt < 0 ? ' (in quel momento è ancora sotto l\'orizzonte)' : '')
+    : '';
+  skyAvviso('eventi', `Cielo di ${ev.dataTesto}: ${ev.titolo}${dove}.`, 12000);
 };
 
 // Il nome corto di un evento, quello che ci sta scritto sulla mappa: via il
@@ -9315,6 +9745,14 @@ function inizializzaSkymap() {
     sky.mostraEventi = !sky.mostraEventi;
     skyAggiornaTastiFiltri();
   });
+  // Anche la traccia è solo disegno: la sua curva si ricalcola da sé al
+  // prossimo fotogramma, e spegnendola sparisce senza rifare nessun conto
+  collega('skymap-btn-traccia', () => {
+    sky.mostraTraccia = !sky.mostraTraccia;
+    if (!sky.mostraTraccia) sky.traccia.punti = [];
+    sky.traccia.chiave = null;
+    skyAggiornaTastiFiltri();
+  });
   // Il promemoria sopra la mappa apre l'elenco di cosa sta succedendo
   collega('skymap-eventi-chip', () => skyMostraGruppo('eventi'));
   skyAggiornaTastiFiltri();
@@ -9398,6 +9836,7 @@ function skyAggiornaTastiFiltri() {
   skyTasto('skymap-btn-polo', sky.mostraPolo);
   skyTasto('skymap-btn-atmosfera', sky.atmosfera);
   skyTasto('skymap-btn-eventi', sky.mostraEventi);
+  skyTasto('skymap-btn-traccia', sky.mostraTraccia);
 }
 
 // Quale gruppo di comandi è aperto sopra la mappa: uno solo, e toccando di
