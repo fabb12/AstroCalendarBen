@@ -565,7 +565,7 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     // Le eclissi lunari hanno una mappa tutta loro: non c'è un'ombra che
     // corre sulla Terra, ma la metà di pianeta da cui la Luna è visibile
     eclissiLunare: eclissiLunare || null,
-    // Corpo celeste protagonista dell'evento: apre la vista Cielo puntata su di lui
+    // Corpo celeste protagonista dell'evento: apre il planetario puntato su di lui
     corpoCielo: corpoCielo || null,
     // Misure fisiche usate dalla simulazione per renderizzare l'evento
     simul: simul || null,
@@ -4710,7 +4710,7 @@ function aggiungiElongazioni(oggi, limite) {
       { body: Astronomy.Body.Mercury, nome: 'Mercurio' },
       { body: Astronomy.Body.Venus, nome: 'Venere' }
     ];
-    // Nota: Astronomy.Body.X è la stringa del corpo, riusata dalla vista Cielo
+    // Nota: Astronomy.Body.X è la stringa del corpo, riusata dal planetario
     pianeti.forEach(p => {
       let start = new Date(oggi);
       // Mercurio ~6 elongazioni/anno, Venere ~2: fino al 2030 servono decine di iterazioni
@@ -5524,10 +5524,13 @@ function inizializzaCalendario() {
 }
 
 // =====================================================================
-// 3. Gestione Tab (Cambia vista Mese / Agenda / Cielo)
+// 3. Gestione Tab (Cambia vista Mese / Agenda / Planetario)
 // =====================================================================
 
-// Le tre viste dell'app: pulsante, contenitore e nome logico
+// Le sei viste dell'app: pulsante, contenitore e nome logico.
+// Il nome logico di una vista non è la sua etichetta: `cielo` si legge
+// "Planetario" sullo schermo, ma resta `cielo` nei link condivisi
+// (`?vista=cielo`) e nel codice, perché quelli sono già in giro.
 const VISTE = [
   { nome: 'stasera',    btn: 'btn-vista-stasera',    vista: 'vista-stasera' },
   { nome: 'calendario', btn: 'btn-vista-calendario', vista: 'vista-calendario' },
@@ -5875,7 +5878,10 @@ function inizializzaInstallazione() {
 }
 
 // =====================================================================
-// 7. CIELO IN DIRETTA (SkyMap) — punta il telefono e trova gli astri
+// 7. IL PLANETARIO (SkyMap) — punta il telefono e trova gli astri
+//    Si chiamava "Cielo": è il cielo in diretta, ma la parola che dice
+//    davvero cos'è — un cielo calcolato in cui ci si muove e si viaggia
+//    nel tempo — è planetario, ed è quella che l'app usa dappertutto.
 //    · Astronomy Engine calcola azimut e altezza di Sole, Luna, pianeti
 //      e stelle luminose per la tua posizione, nell'istante esatto.
 //    · L'API DeviceOrientation (bussola + giroscopio) dice dove sta
@@ -5996,7 +6002,7 @@ function skyElenco() {
   return skyElencoCache;
 }
 
-// Stato della vista Cielo
+// Stato del planetario
 const sky = {
   aperto: false,
   raf: null,
@@ -6008,7 +6014,7 @@ const sky = {
   posizione: null,       // { lat, lon, fonte, origine, nome, precisione, tempo }
   attesaPosizione: null, // richiesta di geolocalizzazione in corso (una sola per volta)
   erroreGps: null,       // ultimo errore del navigatore: { codice, quando }
-  sorveglianza: null,    // id di watchPosition mentre la vista Cielo è aperta
+  sorveglianza: null,    // id di watchPosition mentre il planetario è aperto
   sensori: false,        // orientamento del dispositivo attivo
   seguiTelefono: true,   // con i sensori accesi, il cielo lo punta il telefono
   assoluto: false,       // alpha riferito al Nord magnetico (bussola affidabile)
@@ -6113,6 +6119,26 @@ const sky = {
   schermoIntero: false,
   fintoSchermoIntero: false,
   tappaStoria: false,
+  // Registrazione di un momento da condividere (vedi 7.6): il formato e la
+  // durata sono scelte che restano, il resto vive quanto la registrazione
+  reg: {
+    formato: 'video',      // 'video' | 'gif'
+    durataSec: 10,
+    attiva: false,
+    avvio: 0,              // performance.now() della prima immagine presa
+    tela: null,            // la tela di montaggio: fotocamera + cielo + firma
+    ctx: null,
+    flusso: null,          // MediaStream preso dalla tela (solo per il video)
+    registratore: null,    // MediaRecorder
+    pezzi: [],             // i blocchi che arrivano dal registratore
+    est: 'webm',
+    mime: '',
+    gif: null,             // fotogrammi indicizzati, tavolozza, cache (vedi 7.6)
+    durataReale: 0,        // quanto è durata davvero (si può fermare prima)
+    lavorazione: false,    // la GIF si sta montando: non se ne comincia un'altra
+    ultimaSpia: 0,         // per non riscrivere la spia sessanta volte al secondo
+    esito: null            // { blob, url, nome, tipo, video }
+  },
   ultimoPuntatore: 'mouse'  // com'è arrivato l'ultimo tocco: dito o mouse
 };
 
@@ -6460,8 +6486,8 @@ function skyNomeCorpo(id) {
 // `webkitCompassHeading` danno tutti e due la direzione del Nord MAGNETICO
 // (WebKit legge `CLHeading.magneticHeading`). Gli astri invece si calcolano
 // rispetto al Nord vero: usare l'una per puntare gli altri sposta tutto il
-// cielo di quei gradi, sempre nello stesso verso. È la ragione per cui la
-// vista Cielo cadeva accanto agli astri mentre le altre app di planetario,
+// cielo di quei gradi, sempre nello stesso verso. È la ragione per cui il
+// nostro cielo cadeva accanto agli astri mentre le altre app di planetario,
 // che questa correzione la fanno, sullo stesso telefono ci cascano sopra.
 //
 // La declinazione si ricava dal World Magnetic Model 2025 (NOAA/NGA, dato di
@@ -6855,13 +6881,13 @@ function skyRichiediPosizione() {
 // sempre quello di rete (wi-fi o cella), largo centinaia di metri o
 // chilometri, perché il GPS vero impiega decine di secondi ad agganciare i
 // satelliti. Chiedendo la posizione una volta sola all'apertura ci si teneva
-// quel primo fix per tutta la sessione. Finché la vista Cielo è aperta la
+// quel primo fix per tutta la sessione. Finché il planetario è aperto la
 // posizione resta invece sotto osservazione, così la lettura si stringe da
 // sola man mano che il GPS aggancia; il filtro qui sopra decide di volta in
 // volta se la nuova lettura è meglio di quella in uso.
 // `autorizzata` dice che il consenso c'è già (l'utente ha appena chiesto la
 // posizione): senza quella certezza la sorveglianza non parte da sola, se no
-// aprire la vista Cielo farebbe comparire subito la richiesta di permesso,
+// aprire il planetario farebbe comparire subito la richiesta di permesso,
 // che invece deve restare legata al pulsante.
 function skySorvegliaPosizione(autorizzata) {
   if (sky.sorveglianza !== null || !navigator.geolocation) return;
@@ -8294,6 +8320,10 @@ function skyDisegna() {
   }
 
   skyAggiornaHud(base);
+
+  // Se si sta registrando, questo fotogramma finisce anche nel filmato: il
+  // montaggio si fa qui, appena il cielo è finito (vedi 7.6)
+  if (sky.reg.attiva) skyRegAcquisisci();
 }
 
 // Azimut e altezza verso cui punta il telefono, mostrati in alto a sinistra
@@ -8328,7 +8358,7 @@ function skyAvviso(chiave, testo, durataMs) {
   el.classList.toggle('hidden', !completo);
 }
 
-// Accende o spegne un tasto della vista Cielo. Lo stato è una classe sola
+// Accende o spegne un tasto del planetario. Lo stato è una classe sola
 // (`attiva`) più aria-pressed: chi lo cambia non deve conoscere la grafica,
 // che sta tutta nel foglio di stile, e il testo si può cambiare insieme.
 function skyTasto(id, attiva, testo) {
@@ -9965,7 +9995,7 @@ function mostraStagioneEclissi(idElemento, data) {
 }
 
 // =====================================================================
-// 7.4 Interfaccia della vista Cielo
+// 7.4 Interfaccia del planetario
 // =====================================================================
 
 // Pulsanti per scegliere l'astro da cercare
@@ -10718,7 +10748,7 @@ function skyAggiornaEventi() {
   elenco.innerHTML = pezzi.join('');
 }
 
-// Porta l'orologio della vista Cielo sull'istante di un evento
+// Porta l'orologio del planetario sull'istante di un evento
 window.skyVaiAEvento = (id) => {
   const ev = eventiCalcolati.find(e => e.id === id);
   if (!ev) return;
@@ -10750,9 +10780,10 @@ window.skyEventoNelCielo = (id) => {
 //   quello delle righe della settimana qui nel menu Eventi. Prima al suo posto
 //   c'era "Trova la Luna nel cielo": apriva il cielo di adesso e ci puntava la
 //   Luna: per un'eclissi di fra due mesi, il punto sbagliato all'ora sbagliata.
-//   Qui invece si fa tutto in un gesto solo — vista Cielo, orologio portato
-//   sull'istante dell'evento, mappa puntata dove bisogna guardare e traccia
-//   accesa, così si vede anche da che parte l'astro arriva e dove sarà dopo.
+//   Qui invece si fa tutto in un gesto solo — planetario aperto, orologio
+//   portato sull'istante dell'evento, mappa puntata dove bisogna guardare e
+//   traccia accesa, così si vede anche da che parte l'astro arriva e dove
+//   sarà dopo.
 window.apriEventoNelPlanetario = (id) => {
   const ev = eventiCalcolati.find(e => e.id === id);
   if (!ev || !ev.dataObj) return;
@@ -11136,7 +11167,7 @@ async function skyAvvia(conSensori) {
   else aggiornaTastiPosizione();
 }
 
-// Ciclo di disegno: gira solo quando la vista Cielo è a schermo
+// Ciclo di disegno: gira solo quando il planetario è a schermo
 function skyCiclo() {
   if (!sky.aperto) return;
   skyAvanzaPlayback();
@@ -11174,6 +11205,11 @@ function chiudiSkymap() {
   skyFermaPlayback();
   skySmettiDiSorvegliare();
   skyRilasciaSchermo();
+  // Una registrazione in corso muore qui: senza il cielo davanti non ci sono
+  // più fotogrammi da prendere, e il risultato non avrebbe dove farsi vedere
+  skyRegFerma({ annulla: true });
+  skyRegChiudiPannello();
+  skyRegDimenticaEsito();
   // Uscendo dalla vista non si può restare a schermo intero: resterebbe una
   // mappa ferma sopra tutta la pagina
   skyEsciSchermoIntero();
@@ -11355,6 +11391,8 @@ function inizializzaSkymap() {
 
   // Costellazioni, deep sky, macchina del tempo e fotocamera
   inizializzaSkymapExtra();
+  // I comandi della registrazione (vedi 7.6)
+  skyRegInizializza();
 
   const collega = (id, azione) => {
     const el = document.getElementById(id);
@@ -11510,6 +11548,9 @@ function inizializzaSkymap() {
       if (sky.raf) cancelAnimationFrame(sky.raf);
       sky.raf = null;
       skyRilasciaSchermo();
+      // Il disegno si ferma, quindi nel filmato non entrerebbe più niente:
+      // la registrazione si chiude qui e si tiene quello che ha ripreso
+      skyRegFerma();
     } else if (sky.aperto && !sky.raf) {
       skyTieniSchermoAcceso();
       // Il playback riprende da adesso: i minuti passati con l'app in tasca
@@ -11675,7 +11716,764 @@ function skyInizializzaSchermoIntero() {
   });
 }
 
-// Apre la vista Cielo puntata su un astro (usata dalle schede dell'agenda)
+// =====================================================================
+// 7.6 REGISTRARE UN MOMENTO
+//     Certe cose del cielo non stanno in una fotografia. Una congiunzione
+//     ferma è due puntini; la Luna che in venti secondi di playback
+//     scavalca Giove si capisce al volo. Da qui si prendono pochi secondi
+//     di quello che c'è sulla mappa e se ne fa un file da mandare.
+//
+//     Quello che finisce nel file è il cielo, non lo schermo: si monta su
+//     una tela a parte l'immagine della fotocamera (se la realtà aumentata
+//     è accesa) più il cielo disegnato, e in fondo una firma con l'istante
+//     e il luogo — che è l'unica cosa che rende leggibile un filmato di
+//     stelle a chi lo riceve. I comandi appoggiati sulla mappa restano
+//     fuori: sono roba di chi guarda, non del cielo.
+//
+//     Due formati, due usi:
+//     · video (mp4 dove c'è, se no webm) — nitido, leggero, si condivide
+//       come un filmato qualsiasi;
+//     · GIF — parte da sola in ogni chat, ma pesa di più e ha 255 colori.
+//       Non esistono librerie qui dentro, quindi la GIF la scriviamo noi:
+//       tavolozza col taglio mediano, fotogrammi in differenza (i pixel
+//       che non cambiano diventano trasparenti) e compressione LZW. Su un
+//       cielo, dove metà dell'inquadratura è nera e ferma, la differenza
+//       vale da sola i tre quarti del peso.
+// =====================================================================
+
+const SKY_REG_DURATE = [5, 10, 20];
+const SKY_REG_FPS_VIDEO = 30;
+// La GIF va a dieci fotogrammi al secondo: sotto si vede scattare, sopra il
+// file raddoppia senza che il cielo — che si muove piano — ci guadagni nulla
+const SKY_REG_FPS_GIF = 10;
+// Lato lungo del file prodotto. Il video può permettersi la misura di un
+// telefono; la GIF no, ogni pixel in più la fa pesare.
+const SKY_REG_LATO_VIDEO = 1080;
+const SKY_REG_LATO_GIF = 440;
+// 255 colori: l'ultimo indice della tavolozza è la trasparenza dei fotogrammi
+// in differenza
+const SKY_REG_COLORI_GIF = 255;
+const SKY_GIF_TRASPARENTE = 255;
+// Un tetto ai fotogrammi tenuti in memoria: venti secondi a dieci al secondo
+// sono duecento, e a quel punto la GIF è già più pesante di quanto una chat
+// accetti di mandare
+const SKY_REG_GIF_MAX_FOTOGRAMMI = 220;
+
+// Il tipo di file lo decide il browser: si prende il primo che sa scrivere.
+// L'mp4 per primo perché è quello che le chat aprono senza discutere.
+const SKY_REG_TIPI_VIDEO = [
+  { mime: 'video/mp4;codecs=avc1.42E01E', est: 'mp4' },
+  { mime: 'video/mp4', est: 'mp4' },
+  { mime: 'video/webm;codecs=vp9', est: 'webm' },
+  { mime: 'video/webm;codecs=vp8', est: 'webm' },
+  { mime: 'video/webm', est: 'webm' }
+];
+
+// La modalità notte è un filtro CSS sul riquadro: la tela di montaggio non lo
+// eredita, quindi se lo rimette addosso da sola. Chi registra col filtro rosso
+// acceso si aspetta un filmato rosso.
+const SKY_REG_FILTRO_NOTTE = 'grayscale(1) sepia(1) saturate(6) hue-rotate(-38deg) brightness(0.85)';
+
+function skyRegTipoVideo() {
+  if (typeof MediaRecorder === 'undefined') return null;
+  for (const t of SKY_REG_TIPI_VIDEO) {
+    try {
+      if (!MediaRecorder.isTypeSupported || MediaRecorder.isTypeSupported(t.mime)) return t;
+    } catch (e) { /* tipo non riconosciuto: si prova il prossimo */ }
+  }
+  return null;
+}
+
+// --- La tela di montaggio -------------------------------------------------
+
+// Misura fissa per tutta la registrazione: se cambiasse a metà (rotazione,
+// schermo intero) il filmato si spezzerebbe. Larghezza e altezza pari, che
+// certi codificatori video non digeriscono i numeri dispari.
+function skyRegPreparaTela(latoMassimo) {
+  const l = sky.larghezza || 320;
+  const h = sky.altezza || 320;
+  const dpr = window.devicePixelRatio || 1;
+  const k = Math.min(dpr, latoMassimo / Math.max(l, h));
+  const tela = document.createElement('canvas');
+  tela.width = Math.max(2, Math.round(l * k / 2) * 2);
+  tela.height = Math.max(2, Math.round(h * k / 2) * 2);
+  sky.reg.tela = tela;
+  sky.reg.ctx = tela.getContext('2d', { willReadFrequently: sky.reg.formato === 'gif' });
+  return !!sky.reg.ctx;
+}
+
+// Un fotogramma: fotocamera sotto, cielo sopra, firma in fondo. Le due
+// immagini si ritagliano come fa il riquadro sullo schermo (`object-fit:
+// cover`), così quello che si registra è quello che si sta guardando.
+function skyRegComponi() {
+  const r = sky.reg;
+  if (!r.ctx || !r.tela) return;
+  const ctx = r.ctx;
+  const L = r.tela.width, H = r.tela.height;
+  const cont = document.getElementById('skymap-contenitore');
+  const filtro = cont && cont.classList.contains('modalita-notte') ? SKY_REG_FILTRO_NOTTE : 'none';
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.filter = 'none';
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, L, H);
+
+  ctx.filter = filtro;
+  const video = document.getElementById('skymap-video');
+  if (sky.camera && video && video.videoWidth) {
+    skyRegDisegnaCoprendo(ctx, video, video.videoWidth, video.videoHeight, L, H);
+  }
+  if (sky.canvas && sky.canvas.width) {
+    skyRegDisegnaCoprendo(ctx, sky.canvas, sky.canvas.width, sky.canvas.height, L, H);
+  }
+
+  // La firma passa sotto lo stesso filtro di tutto il resto: una scritta
+  // bianca su un filmato rosso si vedrebbe subito che è stata appiccicata dopo
+  skyRegFirma(ctx, L, H);
+  ctx.filter = 'none';
+}
+
+function skyRegDisegnaCoprendo(ctx, sorgente, sl, sh, L, H) {
+  const scala = Math.max(L / sl, H / sh);
+  const l = sl * scala, h = sh * scala;
+  ctx.drawImage(sorgente, (L - l) / 2, (H - h) / 2, l, h);
+}
+
+// La firma: quando e da dove. Senza, un filmato di stelle mandato a qualcuno
+// è un fondo nero con dei puntini; con due righe diventa "il cielo di
+// quella sera, da lì".
+function skyRegFirma(ctx, L, H) {
+  const misura = Math.max(11, Math.round(H / 34));
+  const margine = Math.round(misura * 1.1);
+  const quando = skyAdesso();
+  // Su un fotogramma stretto (telefono in verticale) il mese per esteso si
+  // mangia la riga: lì basta l'abbreviazione
+  const data = quando.toLocaleString('it-IT', {
+    day: 'numeric', month: L < 520 ? 'short' : 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  let dove = '';
+  if (sky.posizione) {
+    dove = sky.posizione.nome || formattaCoordinate(sky.posizione.lat, sky.posizione.lon);
+  }
+  const riga = dove ? `${data} · ${dove}` : data;
+
+  ctx.save();
+  ctx.textBaseline = 'bottom';
+  ctx.textAlign = 'left';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+  ctx.shadowBlur = Math.round(misura / 2);
+
+  const misuraNome = Math.round(misura * 0.82);
+  ctx.font = `600 ${misura}px system-ui, sans-serif`;
+  const largaRiga = ctx.measureText(riga).width;
+  ctx.font = `${misuraNome}px system-ui, sans-serif`;
+  const largoNome = ctx.measureText('AstroCalendario di Ben').width;
+  // Il nome dell'app sta in fondo a destra se ci sta senza toccare la data;
+  // se no si accomoda sopra, che è meglio di due scritte sovrapposte
+  const inFila = largaRiga + largoNome + margine * 3 <= L;
+
+  ctx.fillStyle = 'rgba(148, 168, 214, 0.85)';
+  if (inFila) {
+    ctx.textAlign = 'right';
+    ctx.fillText('AstroCalendario di Ben', L - margine, H - margine);
+    ctx.textAlign = 'left';
+  } else {
+    ctx.fillText('AstroCalendario di Ben', margine, H - margine - Math.round(misura * 1.25));
+  }
+
+  ctx.font = `600 ${misura}px system-ui, sans-serif`;
+  ctx.fillStyle = 'rgba(248, 250, 252, 0.92)';
+  ctx.fillText(riga, margine, H - margine);
+  ctx.restore();
+}
+
+// --- Avvio, presa dei fotogrammi, arresto ---------------------------------
+
+function skyRegAlterna() {
+  if (sky.reg.attiva) skyRegFerma();
+  else skyRegAvvia();
+}
+
+function skyRegAvvia() {
+  const r = sky.reg;
+  if (r.attiva) return;
+  if (r.lavorazione) {
+    skyAvviso('registra', 'Sto ancora montando la GIF di prima: un attimo e sono da te.', 5000);
+    return;
+  }
+  if (!sky.canvas) return;
+
+  // Un risultato per volta: quello di prima si butta solo adesso, così chi ha
+  // fatto due registrazioni di fila non si ritrova la prima sparita a metà
+  skyRegDimenticaEsito();
+  skyRegChiudiPannello();
+
+  const gif = r.formato === 'gif';
+  if (!skyRegPreparaTela(gif ? SKY_REG_LATO_GIF : SKY_REG_LATO_VIDEO)) {
+    skyAvviso('registra', 'Non riesco a preparare la registrazione su questo dispositivo.', 8000);
+    return;
+  }
+
+  if (gif) {
+    r.gif = {
+      larghezza: r.tela.width,
+      altezza: r.tela.height,
+      fotogrammi: [],
+      tavolozza: null,
+      cache: null,
+      precedente: null,
+      prossimo: 0
+    };
+  } else if (!skyRegAvviaVideo()) {
+    return;
+  }
+
+  r.attiva = true;
+  r.avvio = performance.now();
+  r.ultimaSpia = 0;
+  skyAvviso('registra', '');
+  // I pannelli si chiudono: chi registra vuole guardare il cielo, e i comandi
+  // aperti coprono metà di quello che sta riprendendo
+  skyMostraGruppo('');
+  skyTasto('skymap-btn-registra', true, 'Ferma');
+  skyRegAggiornaSpia(r.durataSec);
+}
+
+function skyRegAvviaVideo() {
+  const r = sky.reg;
+  const tipo = skyRegTipoVideo();
+  if (!tipo || typeof r.tela.captureStream !== 'function') {
+    // Niente registratore video: la GIF invece la sappiamo scrivere da soli,
+    // e funziona ovunque. Meglio proporla che lasciare un tasto che non fa nulla.
+    skyAvviso('registra', 'Questo browser non sa registrare un filmato: scegli il formato GIF, ' +
+      'che l\'app prepara per conto suo.', 10000);
+    return false;
+  }
+  try {
+    r.flusso = r.tela.captureStream(SKY_REG_FPS_VIDEO);
+    r.registratore = new MediaRecorder(r.flusso, { mimeType: tipo.mime, videoBitsPerSecond: 6000000 });
+  } catch (e) {
+    r.flusso = null;
+    r.registratore = null;
+    skyAvviso('registra', 'Il registratore video non è partito: prova con il formato GIF.', 10000);
+    return false;
+  }
+  r.pezzi = [];
+  r.est = tipo.est;
+  r.mime = tipo.mime.split(';')[0];
+  r.registratore.ondataavailable = (e) => { if (e.data && e.data.size) r.pezzi.push(e.data); };
+  r.registratore.onstop = () => {
+    if (r.flusso) { r.flusso.getTracks().forEach(t => t.stop()); r.flusso = null; }
+    const pezzi = r.pezzi;
+    r.pezzi = [];
+    r.registratore = null;
+    if (!pezzi.length) {
+      skyAvviso('registra', 'La registrazione è rimasta vuota: riprova.', 8000);
+      return;
+    }
+    skyRegMostraEsito(new Blob(pezzi, { type: r.mime }), r.est, r.mime);
+  };
+  r.registratore.start();
+  return true;
+}
+
+// Chiamata alla fine di ogni disegno del cielo, finché la registrazione dura:
+// è il posto giusto perché quello che si monta è esattamente il fotogramma
+// appena finito, non quello di mezzo secondo fa.
+function skyRegAcquisisci() {
+  const r = sky.reg;
+  if (!r.attiva) return;
+  const passato = performance.now() - r.avvio;
+
+  if (r.formato === 'gif') {
+    // Alla GIF servono dieci fotogrammi al secondo: montarne sessanta per
+    // buttarne cinquanta ruberebbe fluidità proprio al cielo che si sta
+    // riprendendo
+    if (r.gif && passato >= r.gif.prossimo) {
+      skyRegComponi();
+      skyRegPrendiFotogrammaGif(passato);
+    }
+  } else {
+    // Il filmato prende dalla tela quello che c'è, quando gli pare: la tela
+    // deve essere sempre aggiornata
+    skyRegComponi();
+  }
+
+  const restano = r.durataSec - passato / 1000;
+  skyRegAggiornaSpia(restano);
+  if (restano <= 0) skyRegFerma();
+}
+
+// Ferma la registrazione e passa alla lavorazione del file. Con `annulla`
+// invece si butta via tutto: succede uscendo dal planetario, dove il
+// risultato non avrebbe più nessun posto dove farsi vedere.
+function skyRegFerma(opzioni = {}) {
+  const r = sky.reg;
+  if (!r.attiva) return;
+  r.attiva = false;
+  // Fermando prima del tempo la registrazione dura quello che è durata: è
+  // questa la misura da scrivere sotto al risultato, non quella scelta
+  r.durataReale = Math.max(0.1, (performance.now() - r.avvio) / 1000);
+  skyTasto('skymap-btn-registra', false, 'Registra');
+  skyRegAggiornaSpia(null);
+
+  if (r.formato === 'gif') {
+    const g = r.gif;
+    r.gif = null;
+    if (opzioni.annulla || !g || !g.fotogrammi.length) return;
+    // La GIF dura quanti fotogrammi ha, non quanto è stato premuto il tasto
+    r.durataReale = g.fotogrammi.length / SKY_REG_FPS_GIF;
+    skyRegPreparaGif(g);
+    return;
+  }
+
+  if (r.registratore) {
+    if (opzioni.annulla) {
+      r.registratore.onstop = null;
+      r.pezzi = [];
+    }
+    try { r.registratore.stop(); } catch (e) { /* già fermo */ }
+    if (opzioni.annulla) {
+      r.registratore = null;
+      if (r.flusso) { r.flusso.getTracks().forEach(t => t.stop()); r.flusso = null; }
+    }
+  }
+}
+
+// La spia in basso: quanti secondi mancano. `restano` a null la spegne.
+function skyRegAggiornaSpia(restano, testo) {
+  const spia = document.getElementById('skymap-spia-reg');
+  const etichetta = document.getElementById('skymap-spia-reg-testo');
+  const ferma = document.getElementById('skymap-reg-ferma');
+  if (!spia) return;
+  if (restano === null && !testo) {
+    spia.classList.remove('visibile', 'in-lavorazione');
+    return;
+  }
+  spia.classList.add('visibile');
+  spia.classList.toggle('in-lavorazione', !!testo);
+  if (ferma) ferma.classList.toggle('hidden', !!testo);
+  if (!etichetta) return;
+  if (testo) { etichetta.textContent = testo; return; }
+  // Il conto alla rovescia si riscrive dieci volte al secondo, non sessanta
+  const ora = performance.now();
+  if (ora - sky.reg.ultimaSpia < 100) return;
+  sky.reg.ultimaSpia = ora;
+  etichetta.textContent = `${Math.max(0, restano).toFixed(1)} s`;
+}
+
+// --- Il risultato: guardarlo, mandarlo, salvarlo --------------------------
+
+function skyRegNomeFile(est) {
+  const d = skyAdesso();
+  const due = (n) => String(n).padStart(2, '0');
+  return `planetario-${d.getFullYear()}${due(d.getMonth() + 1)}${due(d.getDate())}-` +
+    `${due(d.getHours())}${due(d.getMinutes())}${due(d.getSeconds())}.${est}`;
+}
+
+function skyRegMostraEsito(blob, est, tipo) {
+  const r = sky.reg;
+  skyRegDimenticaEsito();
+  r.esito = {
+    blob,
+    url: URL.createObjectURL(blob),
+    nome: skyRegNomeFile(est),
+    tipo: tipo || blob.type,
+    video: est !== 'gif'
+  };
+
+  const anteprima = document.getElementById('skymap-clip-anteprima');
+  if (anteprima) {
+    anteprima.innerHTML = '';
+    if (r.esito.video) {
+      const v = document.createElement('video');
+      v.src = r.esito.url;
+      v.controls = true;
+      v.loop = true;
+      v.muted = true;
+      v.playsInline = true;
+      v.autoplay = true;
+      anteprima.appendChild(v);
+      v.play().catch(() => { /* basta il tasto play */ });
+    } else {
+      const img = document.createElement('img');
+      img.src = r.esito.url;
+      img.alt = 'La GIF appena registrata';
+      anteprima.appendChild(img);
+    }
+  }
+
+  const nota = document.getElementById('skymap-clip-nota');
+  if (nota) {
+    const mb = blob.size / (1024 * 1024);
+    const peso = mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(blob.size / 1024)} kB`;
+    const durata = (r.durataReale || r.durataSec).toFixed(1).replace('.0', '').replace('.', ',');
+    nota.textContent = `${r.esito.video ? 'Filmato' : 'GIF'} di ${durata} s · ${peso} · ${r.esito.nome}`;
+  }
+  const pannello = document.getElementById('skymap-clip');
+  if (pannello) pannello.classList.add('visibile');
+}
+
+function skyRegChiudiPannello() {
+  const pannello = document.getElementById('skymap-clip');
+  if (pannello) pannello.classList.remove('visibile');
+  const anteprima = document.getElementById('skymap-clip-anteprima');
+  // Il video dell'anteprima va tolto di mezzo davvero: lasciato lì continua a
+  // girare in sottofondo sopra a un cielo che nel frattempo cammina
+  if (anteprima) anteprima.innerHTML = '';
+}
+
+function skyRegDimenticaEsito() {
+  const r = sky.reg;
+  if (r.esito && r.esito.url) URL.revokeObjectURL(r.esito.url);
+  r.esito = null;
+}
+
+async function skyRegCondividi() {
+  const e = sky.reg.esito;
+  if (!e) return;
+  const quando = skyAdesso().toLocaleString('it-IT', {
+    day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
+  });
+  const testo = `Il cielo del ${quando}, dal planetario di AstroCalendario di Ben.`;
+  try {
+    const file = new File([e.blob], e.nome, { type: e.tipo });
+    if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Il cielo di stasera', text: testo });
+      return;
+    }
+  } catch (err) {
+    // L'utente che chiude il foglio di condivisione non è un errore da spiegare
+    if (err && err.name === 'AbortError') return;
+  }
+  // Dove non si può condividere direttamente (quasi tutti i computer) il file
+  // si scarica: da lì lo si allega a mano
+  skyRegSalva();
+  skyAvviso('registra', 'Questo dispositivo non passa i file alle altre app: ' +
+    'l\'ho scaricato, così lo puoi allegare a mano.', 9000);
+}
+
+function skyRegSalva() {
+  const e = sky.reg.esito;
+  if (!e) return;
+  const a = document.createElement('a');
+  a.href = e.url;
+  a.download = e.nome;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// --- La GIF, scritta a mano ----------------------------------------------
+
+// Un fotogramma preso dalla tela di montaggio e subito ridotto a indici di
+// tavolozza: tenere in memoria duecento immagini a colori pieni vorrebbe dire
+// decine di megabyte, gli indici ne occupano un quarto — e il lavoro si
+// spalma sulla registrazione invece di arrivare tutto alla fine.
+function skyRegPrendiFotogrammaGif(passato) {
+  const r = sky.reg;
+  const g = r.gif;
+  if (!g) return;
+  const intervallo = 1000 / SKY_REG_FPS_GIF;
+  // Se un fotogramma è saltato non si recupera il tempo perduto: si riparte da
+  // adesso, altrimenti la GIF accelererebbe per riprendersi il ritardo
+  g.prossimo = Math.max(passato + intervallo / 2, g.prossimo + intervallo);
+
+  let dati;
+  try {
+    dati = r.ctx.getImageData(0, 0, g.larghezza, g.altezza);
+  } catch (e) {
+    // Succede solo se nella tela è finita un'immagine di un altro sito
+    skyRegFerma({ annulla: true });
+    skyAvviso('registra', 'Non riesco a leggere il cielo per la GIF: prova con il formato video.', 9000);
+    return;
+  }
+
+  if (!g.tavolozza) {
+    g.tavolozza = skyGifTavolozza(dati);
+    // La corrispondenza colore → indice si ricorda per gruppi di colori
+    // vicini (cinque bit per canale): senza, ogni fotogramma rifarebbe
+    // centomila ricerche sulla tavolozza.
+    g.cache = new Int16Array(32768).fill(-1);
+  }
+  g.fotogrammi.push(skyGifFotogramma(dati, g));
+  if (g.fotogrammi.length >= SKY_REG_GIF_MAX_FOTOGRAMMI) skyRegFerma();
+}
+
+// Taglio mediano: si parte da una scatola con tutti i colori campionati e si
+// spacca in due, ogni volta quella che si allunga di più su un canale, finché
+// non se ne hanno 255. Il colore di ogni scatola è la media di chi ci sta
+// dentro. È il modo classico, e su un cielo — dove i colori sono pochi ma le
+// sfumature contano — se la cava meglio di una tavolozza fissa.
+function skyGifTavolozza(dati) {
+  const px = dati.data;
+  const totale = px.length / 4;
+  const passo = Math.max(1, Math.floor(totale / 12000));
+  const campioni = [];
+  for (let i = 0; i < totale; i += passo) {
+    const j = i * 4;
+    campioni.push([px[j], px[j + 1], px[j + 2]]);
+  }
+  let scatole = [campioni];
+  while (scatole.length < SKY_REG_COLORI_GIF) {
+    let quale = -1, canale = 0, largo = 0;
+    for (let k = 0; k < scatole.length; k++) {
+      const s = scatole[k];
+      if (s.length < 2) continue;
+      for (let c = 0; c < 3; c++) {
+        let min = 255, max = 0;
+        for (let i = 0; i < s.length; i++) {
+          const v = s[i][c];
+          if (v < min) min = v;
+          if (v > max) max = v;
+        }
+        if (max - min > largo) { largo = max - min; quale = k; canale = c; }
+      }
+    }
+    if (quale < 0 || largo === 0) break;
+    const s = scatole[quale];
+    s.sort((a, b) => a[canale] - b[canale]);
+    const mezzo = s.length >> 1;
+    scatole.splice(quale, 1, s.slice(0, mezzo), s.slice(mezzo));
+  }
+  return scatole.filter(s => s.length).map(s => {
+    let r = 0, v = 0, b = 0;
+    for (let i = 0; i < s.length; i++) { r += s[i][0]; v += s[i][1]; b += s[i][2]; }
+    return [Math.round(r / s.length), Math.round(v / s.length), Math.round(b / s.length)];
+  });
+}
+
+function skyGifVicino(tavolozza, r, v, b) {
+  let migliore = 0, minima = Infinity;
+  for (let i = 0; i < tavolozza.length; i++) {
+    const c = tavolozza[i];
+    const dr = r - c[0], dv = v - c[1], db = b - c[2];
+    const d = dr * dr + dv * dv + db * db;
+    if (d < minima) { minima = d; migliore = i; }
+    if (!d) break;
+  }
+  return migliore;
+}
+
+// Da immagine a fotogramma GIF: indici di tavolozza, e per tutti tranne il
+// primo solo il rettangolo che è cambiato — dentro, i pixel identici a prima
+// diventano trasparenti e restano quelli già disegnati sotto. Su un cielo
+// fermo un fotogramma così pesa pochissimo.
+function skyGifFotogramma(dati, g) {
+  const px = dati.data;
+  const L = g.larghezza, H = g.altezza;
+  const totale = L * H;
+  const indici = new Uint8Array(totale);
+  const prec = g.precedente;
+  let x0 = L, y0 = H, x1 = -1, y1 = -1;
+
+  for (let i = 0; i < totale; i++) {
+    const j = i * 4;
+    const r = px[j], v = px[j + 1], b = px[j + 2];
+    const chiave = ((r >> 3) << 10) | ((v >> 3) << 5) | (b >> 3);
+    let idx = g.cache[chiave];
+    if (idx < 0) {
+      idx = skyGifVicino(g.tavolozza, r, v, b);
+      g.cache[chiave] = idx;
+    }
+    indici[i] = idx;
+    if (!prec || prec[i] !== idx) {
+      const x = i % L, y = (i - x) / L;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+
+  g.precedente = indici;
+
+  // Niente è cambiato: si tiene in piedi il ritmo con un pixel trasparente
+  if (x1 < 0) {
+    return { x: 0, y: 0, l: 1, h: 1, byte: new Uint8Array([SKY_GIF_TRASPARENTE]) };
+  }
+
+  const l = x1 - x0 + 1, h = y1 - y0 + 1;
+  const byte = new Uint8Array(l * h);
+  for (let y = 0; y < h; y++) {
+    const rigaSorgente = (y + y0) * L + x0;
+    const rigaUscita = y * l;
+    for (let x = 0; x < l; x++) {
+      const i = rigaSorgente + x;
+      byte[rigaUscita + x] = (prec && prec[i] === indici[i]) ? SKY_GIF_TRASPARENTE : indici[i];
+    }
+  }
+  return { x: x0, y: y0, l, h, byte };
+}
+
+// La compressione del formato GIF: LZW a dizionario crescente, da 9 a 12 bit,
+// con il codice di azzeramento quando il dizionario è pieno. Il flusso di bit
+// esce in blocchi da 255 byte, come vuole il formato.
+function skyGifLzw(indici, bitMinimi) {
+  const fuori = [];
+  let accumulatore = 0, bit = 0;
+  const azzera = 1 << bitMinimi;
+  const fine = azzera + 1;
+  let prossimo = fine + 1;
+  let misura = bitMinimi + 1;
+  let tabella = new Map();
+
+  const scrivi = (codice) => {
+    accumulatore |= codice << bit;
+    bit += misura;
+    while (bit >= 8) {
+      fuori.push(accumulatore & 255);
+      accumulatore >>= 8;
+      bit -= 8;
+    }
+  };
+
+  scrivi(azzera);
+  if (indici.length) {
+    let corrente = indici[0];
+    for (let i = 1; i < indici.length; i++) {
+      const k = indici[i];
+      const chiave = (corrente << 8) | k;
+      const trovato = tabella.get(chiave);
+      if (trovato !== undefined) { corrente = trovato; continue; }
+      scrivi(corrente);
+      if (prossimo === 4096) {
+        scrivi(azzera);
+        tabella = new Map();
+        prossimo = fine + 1;
+        misura = bitMinimi + 1;
+      } else {
+        if (prossimo >= (1 << misura)) misura++;
+        tabella.set(chiave, prossimo++);
+      }
+      corrente = k;
+    }
+    scrivi(corrente);
+  }
+  scrivi(fine);
+  if (bit > 0) fuori.push(accumulatore & 255);
+
+  const uscita = new Uint8Array(fuori.length + Math.ceil(fuori.length / 255) + 1);
+  let p = 0;
+  for (let i = 0; i < fuori.length; i += 255) {
+    const n = Math.min(255, fuori.length - i);
+    uscita[p++] = n;
+    for (let j = 0; j < n; j++) uscita[p++] = fuori[i + j];
+  }
+  uscita[p++] = 0;
+  return uscita.subarray(0, p);
+}
+
+// Mette insieme il file: intestazione, tavolozza globale, ripetizione
+// infinita, e poi ogni fotogramma con il suo ritardo. La compressione si fa a
+// gruppetti, restituendo ogni tanto il controllo al browser: su un telefono
+// duecento fotogrammi sono qualche secondo di lavoro, e uno schermo bloccato
+// per qualche secondo sembra un'app che si è piantata.
+async function skyRegPreparaGif(g) {
+  const r = sky.reg;
+  r.lavorazione = true;
+  skyRegAggiornaSpia(null, 'Preparo la GIF… 0%');
+  try {
+    const pezzi = [];
+    const L = g.larghezza, H = g.altezza;
+    pezzi.push(new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]));  // "GIF89a"
+    // Schermo logico, con tavolozza globale da 256 voci
+    pezzi.push(new Uint8Array([L & 255, L >> 8, H & 255, H >> 8, 0xF7, 0, 0]));
+    const tavolozza = new Uint8Array(768);
+    g.tavolozza.forEach((c, i) => {
+      tavolozza[i * 3] = c[0];
+      tavolozza[i * 3 + 1] = c[1];
+      tavolozza[i * 3 + 2] = c[2];
+    });
+    pezzi.push(tavolozza);
+    // Estensione NETSCAPE 2.0: la GIF gira all'infinito, che è quello che
+    // tutti si aspettano da una GIF
+    pezzi.push(new Uint8Array([0x21, 0xFF, 0x0B, 0x4E, 0x45, 0x54, 0x53, 0x43, 0x41,
+      0x50, 0x45, 0x32, 0x2E, 0x30, 0x03, 0x01, 0x00, 0x00, 0x00]));
+
+    const ritardo = Math.round(100 / SKY_REG_FPS_GIF);   // in centesimi di secondo
+    for (let i = 0; i < g.fotogrammi.length; i++) {
+      const f = g.fotogrammi[i];
+      // Controllo grafico: non cancellare il fotogramma precedente (0x04) e
+      // trattare l'ultimo indice come trasparente (0x01)
+      pezzi.push(new Uint8Array([0x21, 0xF9, 0x04, 0x05,
+        ritardo & 255, ritardo >> 8, SKY_GIF_TRASPARENTE, 0x00]));
+      pezzi.push(new Uint8Array([0x2C, f.x & 255, f.x >> 8, f.y & 255, f.y >> 8,
+        f.l & 255, f.l >> 8, f.h & 255, f.h >> 8, 0x00]));
+      pezzi.push(new Uint8Array([8]));                   // 8 bit per indice
+      pezzi.push(skyGifLzw(f.byte, 8));
+      if ((i & 3) === 3) {
+        skyRegAggiornaSpia(null, `Preparo la GIF… ${Math.round((i + 1) / g.fotogrammi.length * 100)}%`);
+        await new Promise(esegui => setTimeout(esegui, 0));
+      }
+    }
+    pezzi.push(new Uint8Array([0x3B]));                  // fine del file
+    skyRegMostraEsito(new Blob(pezzi, { type: 'image/gif' }), 'gif', 'image/gif');
+  } catch (e) {
+    skyAvviso('registra', 'Non sono riuscito a montare la GIF: riprova, o passa al formato video.', 9000);
+  } finally {
+    r.lavorazione = false;
+    skyRegAggiornaSpia(null);
+  }
+}
+
+// --- Comandi --------------------------------------------------------------
+
+function skyRegAggiornaComandi() {
+  document.querySelectorAll('#cielo-comandi [data-durata-reg]').forEach(b => {
+    const attiva = parseInt(b.dataset.durataReg, 10) === sky.reg.durataSec;
+    b.classList.toggle('attiva', attiva);
+    b.setAttribute('aria-pressed', attiva ? 'true' : 'false');
+  });
+  document.querySelectorAll('#cielo-comandi [data-formato-reg]').forEach(b => {
+    const attiva = b.dataset.formatoReg === sky.reg.formato;
+    b.classList.toggle('attiva', attiva);
+    b.setAttribute('aria-pressed', attiva ? 'true' : 'false');
+  });
+}
+
+function skyRegInizializza() {
+  const collega = (id, azione) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', azione);
+  };
+
+  // Durata e formato si scelgono prima: cambiarli a registrazione avviata
+  // vorrebbe dire fermare una cosa e consegnarne un'altra
+  const aRiposo = () => {
+    if (!sky.reg.attiva) return true;
+    skyAvviso('registra', 'Sto registrando: ferma prima, poi cambia.', 4000);
+    return false;
+  };
+  document.querySelectorAll('#cielo-comandi [data-durata-reg]').forEach(b => {
+    b.addEventListener('click', () => {
+      if (!aRiposo()) return;
+      const d = parseInt(b.dataset.durataReg, 10);
+      if (SKY_REG_DURATE.indexOf(d) >= 0) sky.reg.durataSec = d;
+      skyRegAggiornaComandi();
+    });
+  });
+  document.querySelectorAll('#cielo-comandi [data-formato-reg]').forEach(b => {
+    b.addEventListener('click', () => {
+      if (!aRiposo()) return;
+      sky.reg.formato = b.dataset.formatoReg === 'gif' ? 'gif' : 'video';
+      skyRegAggiornaComandi();
+    });
+  });
+
+  collega('skymap-btn-registra', skyRegAlterna);
+  collega('skymap-reg-ferma', () => skyRegFerma());
+  collega('skymap-clip-chiudi', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); });
+  collega('skymap-clip-condividi', skyRegCondividi);
+  collega('skymap-clip-salva', skyRegSalva);
+  collega('skymap-clip-rifai', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); skyRegAvvia(); });
+
+  skyRegAggiornaComandi();
+}
+
+// Apre il planetario puntato su un astro (usata dalle schede dell'agenda)
 window.cercaNelCielo = (idCorpo) => {
   mostraVista('cielo');
   skyImpostaTarget(idCorpo, { mantieni: true });
@@ -13477,7 +14275,7 @@ function aggiungiCongiunzioni(oggi, limite) {
 
 // =====================================================================
 // 10. LA TUA POSIZIONE, USATA DA TUTTA L'APP
-//     Fino a ieri le coordinate servivano solo alla vista Cielo. Ora un
+//     Fino a ieri le coordinate servivano solo al planetario. Ora un
 //     evento senza contesto locale ("Luna Piena alle 04:12") diventa
 //     "sorge alle 21:03 a sud-est, alta 34° a mezzanotte".
 // =====================================================================
@@ -13810,7 +14608,7 @@ async function posUsaLuogo(lat, lon, nome, fonte) {
 
 function inizializzaPosizioneUI() {
   // L'ultima posizione salvata torna in memoria subito, non solo quando si
-  // apre la vista Cielo: è quella che fa trovare l'app già "accesa" alla
+  // apre il planetario: è lei che fa trovare l'app già "accesa" alla
   // riapertura, anche senza rete e senza ripetere la richiesta di permesso.
   if (!sky.posizione) skyCaricaPosizioneSalvata();
 
@@ -14422,8 +15220,8 @@ async function caricaTle(sat, forza) {
   }
 }
 
-// Scarica una volta sola i dati orbitali di tutte le stazioni: serve alla
-// vista Cielo, che li vuole appena si apre per disegnarle in diretta.
+// Scarica una volta sola i dati orbitali di tutte le stazioni: serve al
+// planetario, che li vuole appena si apre per disegnarle in diretta.
 function satPrecaricaTle() {
   if (satPrecaricaAvviata) return;
   satPrecaricaAvviata = true;
@@ -15626,7 +16424,7 @@ function consigliFoto(evento) {
 }
 
 // =====================================================================
-// 18. COSTELLAZIONI E deep sky NELLA VISTA CIELO
+// 18. COSTELLAZIONI E deep sky NEL PLANETARIO
 //     Le figure delle costellazioni sono ciò che la gente cerca davvero
 //     di riconoscere. Le stelle sono elencate con coordinate J2000
 //     (ascensione retta in ore, declinazione in gradi): lo scarto con le
@@ -15819,7 +16617,7 @@ const SKY_COLORI_PROFONDO = {
   globulare: '#fde68a', planetaria: '#86efac'
 };
 
-// L'ora mostrata nella vista Cielo: normalmente adesso, ma la si può
+// L'ora mostrata nel planetario: normalmente adesso, ma la si può
 // spostare avanti e indietro — di secondi o di anni — per rivedere una notte
 // passata o preparare quella che verrà.
 function skyAdesso() {
@@ -15984,7 +16782,7 @@ function skyDisegnaProfondo(ctx, base, focale) {
   ctx.restore();
 }
 
-// --- Macchina del tempo della vista Cielo ---
+// --- Macchina del tempo del planetario ---
 // L'istante mostrato si può dire in due modi, e servono tutti e due: uno
 // scarto rispetto a ora (i salti e la slitta, per "com'è fra dieci minuti")
 // oppure una data e un'ora precise (per "com'era la notte in cui…"). Sotto
@@ -16337,7 +17135,7 @@ function skySpegniFotocamera() {
   if (sky.camera) skyAttivaFotocamera();
 }
 
-// Collega i comandi nuovi della vista Cielo (chiamata da inizializzaSkymap)
+// Collega i comandi nuovi del planetario (chiamata da inizializzaSkymap)
 function inizializzaSkymapExtra() {
   const collega = (id, azione) => {
     const el = document.getElementById(id);
@@ -16407,7 +17205,7 @@ function inizializzaSkymapExtra() {
 
   collega('skymap-btn-camera', skyAttivaFotocamera);
 
-  // Uscendo dalla vista Cielo la fotocamera si spegne: batteria e privacy
+  // Uscendo dal planetario la fotocamera si spegne: batteria e privacy
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) skySpegniFotocamera();
   });

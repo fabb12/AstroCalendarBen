@@ -444,7 +444,7 @@ function telAngoloTesto(gradi) {
 }
 
 // Versore verso azimut/altezza, nella terna Est / Nord / Alto.
-// È la stessa convenzione della vista Cielo: azimut 0 = Nord.
+// È la stessa convenzione del planetario: azimut 0 = Nord.
 function telVersore(azGradi, altGradi) {
   const az = azGradi * TEL_D2R, alt = altGradi * TEL_D2R;
   return [Math.sin(az) * Math.cos(alt), Math.cos(az) * Math.cos(alt), Math.sin(alt)];
@@ -474,7 +474,7 @@ function telSeparazioneEq(ra1, dec1, ra2, dec2) {
 }
 
 // --- Il catalogo di stelle per orientarsi ------------------------------
-// Le costellazioni disegnate nella vista Cielo sono già un catalogo di
+// Le costellazioni disegnate nel planetario sono già un catalogo di
 // stelle con nome, posizione e luminosità: qui viene riusato per i
 // salti di stella e per scegliere le stelle di allineamento, invece di
 // portarsi dietro un secondo elenco che poi diverge dal primo.
@@ -776,7 +776,7 @@ function telVersoOrologio(angolo) {
   return `${v} rispetto al polo`;
 }
 
-// Lo scarto fra il Nord della bussola e il Nord vero. La vista Cielo lo
+// Lo scarto fra il Nord della bussola e il Nord vero. Il planetario lo
 // calcola già, ma solo dopo che è stata aperta almeno una volta: qui
 // serve subito, e si ricava dalla posizione senza passare da lei.
 function telDeclinazioneMagnetica() {
@@ -803,7 +803,7 @@ function telBussolaNordVero() {
 //
 //    Per allineare una montatura equatoriale servono tre attrezzi: una
 //    livella, un goniometro e una bussola. Un telefono li ha tutti e tre
-//    dentro, e sono anche già tarati. La vista Cielo usa gli stessi
+//    dentro, e sono anche già tarati. Il planetario usa gli stessi
 //    sensori per orientare la mappa; qui servono per una cosa molto più
 //    prosaica, cioè dire "gira il treppiede di tre gradi a destra" e
 //    cambiare colore quando è fatto.
@@ -836,7 +836,7 @@ function telStatoSensori() {
 
 // Dove sta guardando il telefono, in azimut vero. Il numero è già
 // corretto della declinazione magnetica e della calibrazione manuale
-// fatta nella vista Cielo: quello che esce da qui si confronta
+// fatta nel planetario: quello che esce da qui si confronta
 // direttamente con l'azimut di un astro.
 //
 // Il telefono si può tenere in due modi, e l'asse da leggere è diverso:
@@ -3707,7 +3707,7 @@ function telHtmlAlternativeNord() {
     ? `<p class="text-xs text-amber-300 bg-amber-950/40 border border-amber-900 rounded-xl p-3 mb-2">
         Questo telefono sta dando un orientamento <strong>relativo</strong>: l'azimut parte da dove stava il
         telefono quando i sensori si sono accesi, e come bussola non vale niente. Usa uno dei due modi qui
-        sotto, oppure taralo a mano nella vista Cielo su una stella che riconosci.</p>`
+        sotto, oppure taralo a mano nel planetario su una stella che riconosci.</p>`
     : '';
 
   return `${avviso}
@@ -3729,7 +3729,7 @@ function telHtmlAlternativeNord() {
           declinazione a +90° (passo 4) e ruota il treppiede finché non entra nel cercatore. La bussola serve
           solo a farti arrivare vicino.</p>
         <p><button id="tel-vai-cielo" class="underline text-blue-400 hover:text-blue-300">Apri la realtà aumentata</button>:
-          nella vista Cielo compare un mirino sul polo celeste, e lì la bussola si può correggere a mano
+          nel planetario compare un mirino sul polo celeste, e lì la bussola si può correggere a mano
           trascinando finché le stelle sullo schermo coincidono con quelle vere.</p>
       </div>
     </details>`;
@@ -5439,14 +5439,14 @@ function telChiudiVista() {
   telFermaTubo();
   telFermaSensori();
   telFermaCronometro();
-  // Lo schermo lo tiene acceso anche la vista Cielo: si rilascia solo se
+  // Lo schermo lo tiene acceso anche il planetario: si rilascia solo se
   // non è lei ad averlo chiesto.
   if (typeof skyRilasciaSchermo === 'function' && typeof sky !== 'undefined' && !sky.aperto) skyRilasciaSchermo();
   if (tel.tele.polare) { clearInterval(tel.tele.polare); tel.tele.polare = null; }
 }
 
-// Il mirino del polo celeste nella vista Cielo. È un aggancio: la vista
-// Cielo lo chiama a ogni fotogramma, e se il telescopio non serve non
+// Il mirino del polo celeste nel planetario. È un aggancio: il
+// planetario lo chiama a ogni fotogramma, e se il telescopio non serve non
 // disegna niente.
 function telDisegnaPoloSuCielo(ctx, base, focale) {
   if (typeof sky === 'undefined' || !sky.mostraPolo || !sky.observer) return;
@@ -5508,7 +5508,7 @@ function telInizializza() {
   telCaricaSessione();
   telInizializzaAnteprima();
 
-  // Il tasto del polo celeste nella vista Cielo. L'aspetto del tasto lo
+  // Il tasto del polo celeste nel planetario. L'aspetto del tasto lo
   // decide il foglio di stile: qui si dice solo se è acceso o spento.
   const btnPolo = document.getElementById('skymap-btn-polo');
   if (btnPolo) btnPolo.addEventListener('click', () => {

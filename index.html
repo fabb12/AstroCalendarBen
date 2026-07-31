@@ -78,7 +78,7 @@
       <button id="btn-vista-stasera" class="voce-menu attiva" title="Cosa si vede stanotte da casa tua">Stasera</button>
       <button id="btn-vista-calendario" class="voce-menu">Mese</button>
       <button id="btn-vista-agenda" class="voce-menu">Agenda</button>
-      <button id="btn-vista-skymap" class="voce-menu" title="Punta il telefono verso il cielo">Cielo</button>
+      <button id="btn-vista-skymap" class="voce-menu" title="Il planetario: punta il telefono verso il cielo e vedi cosa c'è">Planetario</button>
       <button id="btn-vista-telescopio" class="voce-menu" title="Allineamento, puntamento e scaletta per il tuo telescopio">Telescopio</button>
       <button id="btn-vista-diario" class="voce-menu" title="Le tue osservazioni e i traguardi raggiunti">Diario</button>
     </nav>
@@ -206,7 +206,7 @@
       <div id="eventi-container" class="griglia-schede"></div>
     </div>
 
-    <!-- VISTA CIELO: punta il telefono e trova gli astri (bussola + giroscopio)
+    <!-- VISTA PLANETARIO: punta il telefono e trova gli astri (bussola + giroscopio)
          I comandi stanno dentro alla mappa, appoggiati sopra il cielo: una
          riga di gruppi (Tempo, Eventi, Visualizzazione, Filtri, Navigazione,
          Astri) che di norma sono chiusi, e si apre uno per volta. Così di
@@ -365,6 +365,39 @@
                 <button id="skymap-btn-etichette" type="button" class="tasto-cielo attiva" title="Nomi accanto agli astri disegnati">Nomi</button>
                 <button id="skymap-btn-atmosfera" type="button" class="tasto-cielo attiva" title="Colore del cielo, foschia sull'orizzonte e alone del Sole: come si vede davvero a quest'ora">Atmosfera</button>
               </div>
+
+              <!-- REGISTRA: pochi secondi di quello che si sta guardando, da
+                   mandare a qualcuno. Un fermo immagine di una congiunzione
+                   non dice niente; la Luna che scivola fra le stelle col
+                   playback acceso, o l'ombra che attraversa il disco, si
+                   raccontano solo muovendosi. Nel filmato finisce il cielo e
+                   basta — i comandi che stanno qui sopra no — così quello che
+                   si condivide è la mappa, non lo schermo del telefono. -->
+              <div class="blocco-registra">
+                <p class="etichetta-comando">Registra quello che vedi — solo il cielo, senza i comandi — e mandalo a qualcuno.</p>
+                <div class="riga-comandi" role="group" aria-label="Durata della registrazione">
+                  <div class="segmenti-cielo">
+                    <button type="button" class="tasto-segmento" data-durata-reg="5" aria-pressed="false" title="Cinque secondi">5 s</button>
+                    <button type="button" class="tasto-segmento attiva" data-durata-reg="10" aria-pressed="true" title="Dieci secondi">10 s</button>
+                    <button type="button" class="tasto-segmento" data-durata-reg="20" aria-pressed="false" title="Venti secondi">20 s</button>
+                  </div>
+                </div>
+                <!-- Il video pesa poco ed è nitido; la GIF parte da sola in
+                     ogni chat e non chiede di essere aperta, ma è più grossa
+                     e ha meno colori. Sono due usi diversi, non uno migliore. -->
+                <div class="riga-comandi" role="group" aria-label="Formato della registrazione">
+                  <div class="segmenti-cielo">
+                    <button type="button" class="tasto-segmento attiva" data-formato-reg="video" aria-pressed="true"
+                      title="Filmato: nitido e leggero, si apre come un video">Video</button>
+                    <button type="button" class="tasto-segmento" data-formato-reg="gif" aria-pressed="false"
+                      title="GIF animata: parte da sola in qualsiasi chat, ma pesa di più e ha meno colori">GIF</button>
+                  </div>
+                </div>
+                <div class="riga-comandi">
+                  <button id="skymap-btn-registra" type="button" class="tasto-cielo tasto-primario"
+                    title="Registra il cielo mostrato per la durata scelta, poi lo puoi condividere o salvare">Registra</button>
+                </div>
+              </div>
             </section>
 
             <!-- FILTRI: cosa compare sulla mappa -->
@@ -435,6 +468,37 @@
 
           </div>
         </div>
+
+        <!-- La spia della registrazione: il pallino rosso, quanto manca alla
+             fine e il tasto per fermarla prima. Sta dentro al riquadro del
+             cielo, quindi si vede anche a schermo intero — ed è l'unica cosa
+             che dice che si sta registrando, visto che i pannelli si chiudono
+             appena si preme Registra. -->
+        <div id="skymap-spia-reg" class="spia-registrazione" aria-live="polite">
+          <span class="punto-reg" aria-hidden="true"></span>
+          <span id="skymap-spia-reg-testo">10 s</span>
+          <button id="skymap-reg-ferma" type="button" class="tasto-ferma-reg"
+            title="Ferma qui la registrazione e tieni quello che hai ripreso">Ferma</button>
+        </div>
+
+        <!-- Quello che è venuto fuori: si guarda, si manda, si salva, o si
+             rifà. Sta dentro al riquadro come la scheda dell'oggetto, così
+             chi ha registrato a schermo intero non deve uscirne per vederlo. -->
+        <aside id="skymap-clip" class="pannello-clip" aria-live="polite">
+          <button id="skymap-clip-chiudi" type="button" class="tasto-chiudi-dettaglio"
+            title="Chiudi" aria-label="Chiudi">✕</button>
+          <h3 id="skymap-clip-titolo">Il tuo momento</h3>
+          <div id="skymap-clip-anteprima" class="anteprima-clip"></div>
+          <p id="skymap-clip-nota" class="nota-clip"></p>
+          <div class="riga-comandi">
+            <button id="skymap-clip-condividi" type="button" class="tasto-cielo tasto-primario"
+              title="Mandalo con le app del telefono">Condividi</button>
+            <button id="skymap-clip-salva" type="button" class="tasto-cielo"
+              title="Scarica il file sul dispositivo">Salva</button>
+            <button id="skymap-clip-rifai" type="button" class="tasto-cielo"
+              title="Butta questo e registra di nuovo">Rifai</button>
+          </div>
+        </aside>
 
         <!-- Uscita dallo schermo intero: sta nell'angolo della mappa e si vede
              sempre, perché sul telefono è l'unica via d'uscita (nessun doppio
