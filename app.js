@@ -6060,7 +6060,12 @@ const sky = {
   // il binario attorno a cui stanno tutti i pianeti (vedi 7.3-ter). Resta
   // accesa finché non la si spegne, qualunque oggetto si stia guardando.
   mostraEclittica: false,
-  eclittica: { chiave: null, punti: [], mesi: [], scarto: null, prossimo: 0 },
+  eclittica: {
+    chiave: null, punti: [], mesi: [], scarto: null, prossimo: 0,
+    // L'analemma viaggia insieme all'eclittica ma ha i suoi conti e la sua
+    // chiave: cambiare oggetto scelto non deve rifarlo (vedi 7.3-ter)
+    analemma: { chiave: null, punti: [], mesi: [], oggi: null }
+  },
   // Filtri della mappa: cosa compare e cosa no
   mostraPianeti: true,
   mostraSoleLuna: true,
@@ -8586,6 +8591,7 @@ function skyCalcolaEclittica() {
     sky.eclittica.mesi = [];
     sky.eclittica.scarto = null;
     sky.eclittica.chiave = null;
+    sky.eclittica.analemma = { chiave: null, punti: [], mesi: [], oggi: null };
     return;
   }
 
@@ -8630,6 +8636,13 @@ function skyCalcolaEclittica() {
     }
   } catch (e) { mesi.length = 0; }
   sky.eclittica.mesi = mesi;
+
+  // L'analemma dipende solo dall'ora mostrata e dal luogo: non lo si rifà
+  // quando cambia soltanto l'oggetto selezionato
+  const chiaveAnalemma = [t0, Math.round(sky.observer.latitude * 100), Math.round(sky.observer.longitude * 100)].join('|');
+  if (sky.eclittica.analemma.chiave !== chiaveAnalemma) {
+    skyCalcolaAnalemma(t0, chiaveAnalemma);
+  }
 
   // Il filo a piombo: dall'oggetto scelto giù (o su) fino alla linea, nel
   // punto che ha la sua stessa longitudine eclittica. È la misura dello
@@ -8727,7 +8740,151 @@ function skyDisegnaEclittica(ctx, base, focale) {
     }
   }
 
+  skyDisegnaAnalemma(ctx, base, focale);
   skyDisegnaScartoEclittica(ctx, base, focale);
+  ctx.restore();
+}
+
+// --- L'ANALEMMA: il Sole alla stessa ora, un giorno dopo l'altro ------------
+//   L'eclittica dice dove passa il Sole in un anno fra le stelle. L'analemma
+//   risponde a una domanda più casalinga, e più sorprendente: se esco in
+//   giardino ogni giorno alla stessa ora e segno dov'è il Sole, che figura
+//   viene fuori? Non un punto, e nemmeno una riga: un otto allungato.
+//
+//   Le due cause sono le stesse che rendono l'eclittica interessante. L'asse
+//   della Terra è inclinato di 23,4°, e questo fa salire e scendere il Sole
+//   di 47° fra un solstizio e l'altro: è l'altezza dell'otto. E l'orbita è
+//   un'ellisse, quindi la Terra a gennaio corre più forte che a luglio: il
+//   Sole arriva al mezzogiorno un po' in anticipo o un po' in ritardo
+//   sull'orologio, fino a un quarto d'ora, ed è la larghezza dell'otto.
+//   Insomma: l'analemma è l'eclittica guardata sempre alla stessa ora.
+//
+//   Si accende insieme all'eclittica, perché è la stessa lezione vista da
+//   un'altra parte, e perché da sola non si saprebbe a cosa appenderla.
+// =====================================================================
+
+// I campioni vanno presi a giorni interi di distanza, se no cambia anche
+// l'ora e la figura non è più un analemma: con un passo di 5,003 giorni —
+// l'anno vero diviso in 73 — l'ultimo campione finisce quasi sei ore più
+// tardi del primo, e l'otto si apre in una spirale storta.
+const SKY_ANALEMMA_PASSI = 73;                    // 73 × 5 giorni = un anno
+const SKY_ANALEMMA_PASSO_MS = 5 * 86400000;
+const SKY_ANALEMMA_GIRO_MS = SKY_ANALEMMA_PASSI * SKY_ANALEMMA_PASSO_MS;
+
+// Il Sole allo stesso istante del giorno, per un anno intero. I campioni si
+// prendono a distanze esatte in millisecondi e non "stessa ora locale": l'ora
+// legale sposterebbe metà figura di quindici gradi, spezzandola in due.
+function skyCalcolaAnalemma(t0, chiave) {
+  const a = { chiave, punti: [], mesi: [], oggi: null };
+  sky.eclittica.analemma = a;
+  try {
+    const solePunto = quando => {
+      const t = Astronomy.MakeTime(quando);
+      const equ = Astronomy.Equator('Sun', t, sky.observer, true, true);
+      const hor = Astronomy.Horizon(t, sky.observer, equ.ra, equ.dec, 'normal');
+      return { az: hor.azimuth, alt: hor.altitude };
+    };
+
+    for (let i = 0; i < SKY_ANALEMMA_PASSI; i++) {
+      a.punti.push(solePunto(new Date(t0 + i * SKY_ANALEMMA_PASSO_MS)));
+    }
+    a.oggi = a.punti[0];
+
+    // I primi del mese, presi alla stessa ora universale dei campioni: sono i
+    // paletti che dicono da che parte si cammina lungo l'otto
+    const d0 = new Date(t0);
+    for (let i = 0; i < 12; i++) {
+      const m = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + i, 1,
+        d0.getUTCHours(), d0.getUTCMinutes(), d0.getUTCSeconds()));
+      const p = solePunto(m);
+      p.mese = NOMI_MESI[m.getUTCMonth()].slice(0, 3).toLowerCase();
+      a.mesi.push(p);
+    }
+  } catch (e) {
+    sky.eclittica.analemma = { chiave, punti: [], mesi: [], oggi: null };
+  }
+}
+
+function skyDisegnaAnalemma(ctx, base, focale) {
+  const a = sky.eclittica.analemma;
+  if (!a || a.punti.length < 3) return;
+
+  // Oro pallido e tratto pieno: l'eclittica è ambra e tratteggiata, e le due
+  // linee si incrociano di continuo. A distinguerle, comunque, è soprattutto
+  // la forma: un otto non lo fa nient'altro in cielo.
+  const colore = sky.luceCielo > 0.4 ? '#a16207' : '#fde68a';
+  const proietta = p => {
+    const q = skyProietta(skyVettore(p.az, p.alt), base, focale);
+    return { px: q.px, py: q.py, davanti: q.davanti, alt: p.alt, mese: p.mese };
+  };
+  const dentro = p => p.davanti && p.px >= 0 && p.px <= sky.larghezza && p.py >= 0 && p.py <= sky.altezza;
+  const punti = a.punti.map(proietta);
+
+  ctx.save();
+  ctx.strokeStyle = colore;
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+  for (let i = 0; i < punti.length; i++) {
+    const p = punti[i], q = punti[(i + 1) % punti.length];   // la figura è chiusa
+    if (!p.davanti || !q.davanti) continue;
+    if (Math.abs(p.px - q.px) > sky.larghezza || Math.abs(p.py - q.py) > sky.altezza) continue;
+    ctx.globalAlpha = (p.alt < 0 || q.alt < 0) ? 0.22 : 0.6;
+    ctx.beginPath();
+    ctx.moveTo(p.px, p.py);
+    ctx.lineTo(q.px, q.py);
+    ctx.stroke();
+  }
+
+  // I mesi, ma solo quelli che non si pestano i piedi: da lontano l'otto è
+  // lungo un centimetro, e dodici scritte lì sopra sono una macchia
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  const scritti = [];
+  a.mesi.map(proietta).forEach(p => {
+    if (!dentro(p)) return;
+    ctx.globalAlpha = p.alt < 0 ? 0.3 : 0.85;
+    ctx.fillStyle = colore;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    if (!sky.mostraNomi) return;
+    if (scritti.some(s => Math.abs(s.px - p.px) < 26 && Math.abs(s.py - p.py) < 16)) return;
+    scritti.push(p);
+    ctx.fillText(p.mese, p.px + 6, p.py - 7);
+  });
+
+  // Dove sta il Sole adesso è anche il punto dell'otto di oggi: le due cose
+  // coincidono sempre, ed è il modo più rapido per capire cos'è questa figura
+  const oggi = a.oggi ? proietta(a.oggi) : null;
+  if (oggi && dentro(oggi)) {
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = colore;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(oggi.px, oggi.py, 7, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Il nome, lontano dal Sole: lì attorno ci sono già l'anello di oggi, il
+  // nome del Sole e qualunque pianeta gli stia passando vicino
+  if (sky.mostraNomi) {
+    const margine = 50;
+    let migliore = null, distanza = -1;
+    punti.forEach(p => {
+      if (!dentro(p) || p.alt < 0) return;
+      if (p.px < margine || p.px > sky.larghezza - margine ||
+          p.py < margine || p.py > sky.altezza - margine) return;
+      const d = oggi ? (p.px - oggi.px) ** 2 + (p.py - oggi.py) ** 2 : 0;
+      if (d > distanza) { distanza = d; migliore = p; }
+    });
+    if (migliore) {
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = colore;
+      ctx.fillText('analemma', migliore.px + 9, migliore.py + 11);
+    }
+  }
   ctx.restore();
 }
 
@@ -8840,6 +8997,19 @@ const LEZ_CAPITOLI = [
       'sei volte, altrimenti quei due o tre gradi non si vedrebbero.'
   },
   {
+    breve: 'L\'analemma',
+    titolo: 'L\'eclittica guardata sempre alla stessa ora',
+    tipo: 'analemma', anniAlSecondo: 1 / 14,
+    testo: 'Prova a uscire ogni giorno alla stessa ora e a segnare dov\'è il Sole. Non viene un ' +
+      'punto — e nemmeno una riga: viene un <strong>otto allungato</strong>, l\'analemma. Le due ' +
+      'cause sono le stesse di prima, prese una per volta. L\'asse della Terra è inclinato di ' +
+      '23,4°, e questo alza e abbassa il Sole di 47° fra i due solstizi: è l\'altezza dell\'otto. ' +
+      'L\'orbita è un\'ellisse, quindi d\'inverno la Terra corre più forte e il Sole arriva al ' +
+      'mezzogiorno con un anticipo o un ritardo che tocca il quarto d\'ora: è la larghezza. ' +
+      'Sulla mappa lo trovi acceso insieme all\'eclittica, in oro pallido, e ti passa esattamente ' +
+      'per dove il Sole si trova adesso.'
+  },
+  {
     breve: 'Il nome',
     titolo: 'Perché si chiama proprio “eclittica”',
     tipo: 'nodi', anniAlSecondo: 1 / 22,
@@ -8864,6 +9034,7 @@ const lez = {
   scala: 1, cx: 0, cy: 0,
   stelle: [],
   cielo: null,         // posizioni vere dei pianeti per il quadro «Da qui»
+  analemma: null,      // il Sole a mezzogiorno per un anno, col suo anticipo
   skyDaRiprendere: false
 };
 
@@ -9190,7 +9361,167 @@ function lezQuadroCielo(ctx) {
     lez.L - 10, lez.H - 14, '#64748b', 11, 'right');
 }
 
-// --- Quadro 5: i nodi, e il nome della linea -------------------------------
+// --- Quadro 5: l'analemma, cioè l'eclittica presa sempre alla stessa ora ---
+
+// Il Sole a mezzogiorno medio locale, un anno intero. Oltre a dove sta, di
+// ogni giorno serve di quanto è avanti o indietro rispetto all'orologio:
+// è l'equazione del tempo, e nella figura è la larghezza.
+function lezLeggiAnalemma() {
+  lez.analemma = null;
+  if (typeof Astronomy === 'undefined') return;
+  try {
+    const obs = sky.observer || new Astronomy.Observer(42, 12.5, 0);
+    const anno = new Date().getFullYear();
+    // Mezzogiorno medio locale del 1° gennaio, dedotto dalla longitudine e non
+    // dal fuso: così la figura viene diritta, e l'ora legale non la spezza.
+    const t0 = Date.UTC(anno, 0, 1, 0, 0, 0) + (12 - obs.longitude / 15) * 3600000;
+    const punti = [];
+    for (let i = 0; i < SKY_ANALEMMA_PASSI; i++) {
+      const data = new Date(t0 + i * SKY_ANALEMMA_PASSO_MS);
+      const t = Astronomy.MakeTime(data);
+      const equ = Astronomy.Equator('Sun', t, obs, true, true);
+      const hor = Astronomy.Horizon(t, obs, equ.ra, equ.dec, 'normal');
+      // Tempo solare vero meno tempo solare medio: l'anticipo o il ritardo
+      // del Sole sull'orologio, in minuti
+      const oreAngolo = Astronomy.HourAngle('Sun', t, obs);
+      const vero = (oreAngolo + 12) % 24;
+      const ut = ((((t.ut + 0.5) % 1) + 1) % 1) * 24;
+      const medio = ((ut + obs.longitude / 15) % 24 + 24) % 24;
+      let scarto = vero - medio;
+      if (scarto > 12) scarto -= 24;
+      if (scarto < -12) scarto += 24;
+      punti.push({ alt: hor.altitude, eot: scarto * 60, data, primo: data.getUTCDate() <= 5 ? data.getUTCMonth() : -1 });
+    }
+    lez.analemma = { punti, t0, lat: obs.latitude };
+  } catch (e) { lez.analemma = null; }
+}
+
+function lezQuadroAnalemma(ctx) {
+  lezSfondo(ctx);
+  const a = lez.analemma;
+  if (!a || a.punti.length < 3) {
+    lezTesto(ctx, 'Serve la libreria astronomica per calcolare l\'analemma.',
+      lez.L / 2, lez.H / 2, '#94a3b8', 13, 'center');
+    return;
+  }
+
+  const eot = a.punti.map(p => p.eot), alt = a.punti.map(p => p.alt);
+  const eMin = Math.min(...eot), eMax = Math.max(...eot);
+  const aMin = Math.min(...alt), aMax = Math.max(...alt);
+  // Il grafico: in orizzontale i minuti di anticipo o ritardo, in verticale
+  // l'altezza del Sole. Nel cielo vero l'otto è sottile come un dito; qui i
+  // due assi hanno ciascuno la sua scala, se no la larghezza sparirebbe.
+  const larghezza = Math.min(lez.L * 0.34, 240);
+  const altezza = lez.H * 0.6;
+  const cx = lez.L * 0.52, cy = lez.H * 0.5;
+  const sx = e => cx + (e - (eMin + eMax) / 2) / Math.max(1, eMax - eMin) * larghezza;
+  const sy = h => cy - (h - (aMin + aMax) / 2) / Math.max(1, aMax - aMin) * altezza;
+
+  // La verticale dell'orologio: a sinistra il Sole è in anticipo, a destra in ritardo
+  ctx.save();
+  ctx.strokeStyle = '#475569';
+  ctx.globalAlpha = 0.7;
+  ctx.setLineDash([4, 5]);
+  ctx.beginPath();
+  ctx.moveTo(sx(0), sy(aMax) - 26);
+  ctx.lineTo(sx(0), sy(aMin) + 26);
+  ctx.stroke();
+  ctx.restore();
+  lezTesto(ctx, 'in orario', sx(0), sy(aMax) - 34, '#94a3b8', 11, 'center');
+
+  // L'otto
+  ctx.save();
+  ctx.strokeStyle = '#fde68a';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  a.punti.forEach((p, i) => {
+    const px = sx(p.eot), py = sy(p.alt);
+    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  });
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+
+  // I primi del mese, con il nome dove c'è posto
+  const scritti = [];
+  a.punti.forEach(p => {
+    if (p.primo < 0) return;
+    const px = sx(p.eot), py = sy(p.alt);
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = '#fde68a';
+    ctx.beginPath();
+    ctx.arc(px, py, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+    if (scritti.some(s => Math.abs(s.x - px) < 30 && Math.abs(s.y - py) < 15)) return;
+    scritti.push({ x: px, y: py });
+    lezTesto(ctx, NOMI_MESI[p.primo].slice(0, 3).toLowerCase(),
+      px + (p.eot >= (eMin + eMax) / 2 ? 7 : -7), py, '#cbd5e1', 11,
+      p.eot >= (eMin + eMax) / 2 ? 'left' : 'right');
+  });
+  ctx.globalAlpha = 1;
+
+  // La misura verticale: 47°, che sono due volte l'inclinazione dell'asse
+  const xMis = Math.max(30, sx(eMin) - 60);
+  lezMisura(ctx, xMis, sy(aMax), xMis, sy(aMin), true);
+  lezTesto(ctx, `${skyNumero(aMax - aMin, 1)}°`, xMis - 8, (sy(aMax) + sy(aMin)) / 2, '#a5b4fc', 12, 'right');
+  lezTesto(ctx, 'l\'asse è storto di 23,4°', xMis - 8, (sy(aMax) + sy(aMin)) / 2 + 16, '#818cf8', 11, 'right');
+
+  // E quella orizzontale: mezz'ora scarsa fra il giorno più in anticipo e
+  // quello più in ritardo
+  const yMis = sy(aMin) + 34;
+  lezMisura(ctx, sx(eMin), yMis, sx(eMax), yMis, false);
+  lezTesto(ctx, `da −${skyNumero(Math.abs(eMin), 0)} a +${skyNumero(eMax, 0)} minuti`,
+    cx, yMis + 16, '#a5b4fc', 12, 'center');
+  lezTesto(ctx, 'l\'orbita è un\'ellisse: la Terra non va sempre uguale', cx, yMis + 32, '#818cf8', 11, 'center');
+
+  // Il Sole che cammina lungo la figura, giorno dopo giorno
+  const frazione = ((lez.anni % 1) + 1) % 1;
+  const posto = frazione * a.punti.length;
+  const i0 = Math.floor(posto) % a.punti.length;
+  const i1 = (i0 + 1) % a.punti.length;
+  const f = posto - Math.floor(posto);
+  const pe = a.punti[i0].eot + (a.punti[i1].eot - a.punti[i0].eot) * f;
+  const pa = a.punti[i0].alt + (a.punti[i1].alt - a.punti[i0].alt) * f;
+  const px = sx(pe), py = sy(pa);
+  lezAlone(ctx, px, py, 30, 'rgba(253, 224, 71, 0.6)', 1);
+  ctx.fillStyle = '#fef3c7';
+  ctx.beginPath();
+  ctx.arc(px, py, 7, 0, Math.PI * 2);
+  ctx.fill();
+
+  const giorno = new Date(a.t0 + frazione * SKY_ANALEMMA_GIRO_MS);
+  lezTesto(ctx, `${giorno.getUTCDate()} ${NOMI_MESI[giorno.getUTCMonth()].toLowerCase()}`,
+    px + 13, py - 8, '#fde68a', 12);
+  lezTesto(ctx, `${pa >= 0 ? '' : '−'}${skyNumero(Math.abs(pa), 0)}° di altezza · ` +
+    `${pe >= 0 ? '+' : '−'}${skyNumero(Math.abs(pe), 0)} min`, px + 13, py + 8, '#cbd5e1', 11);
+
+  lezTesto(ctx, `il Sole a mezzogiorno, da ${skyNumero(a.lat, 1)}° di latitudine`,
+    lez.L - 10, lez.H - 14, '#64748b', 11, 'right');
+}
+
+// Una quota da disegno tecnico: la riga con i due trattini alle estremità
+function lezMisura(ctx, x1, y1, x2, y2, verticale) {
+  ctx.save();
+  ctx.strokeStyle = '#818cf8';
+  ctx.globalAlpha = 0.8;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  if (verticale) {
+    ctx.moveTo(x1 - 5, y1); ctx.lineTo(x1 + 5, y1);
+    ctx.moveTo(x2 - 5, y2); ctx.lineTo(x2 + 5, y2);
+  } else {
+    ctx.moveTo(x1, y1 - 5); ctx.lineTo(x1, y1 + 5);
+    ctx.moveTo(x2, y2 - 5); ctx.lineTo(x2, y2 + 5);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// --- Quadro 6: i nodi, e il nome della linea -------------------------------
 
 function lezQuadroNodi(ctx) {
   lezSfondo(ctx);
@@ -9372,6 +9703,7 @@ function lezDisegna() {
   ctx.globalAlpha = lez.fade;
   try {
     if (cap.tipo === 'cielo') lezQuadroCielo(ctx);
+    else if (cap.tipo === 'analemma') lezQuadroAnalemma(ctx);
     else if (cap.tipo === 'nodi') lezQuadroNodi(ctx);
     else lezQuadroSistema(ctx, cap);
   } catch (e) {
@@ -9405,6 +9737,7 @@ function lezVaiA(indice) {
   lez.capitolo = nuovo;
   if (cambiaTipo) lez.fade = 0;            // quadri diversi: dissolvenza
   if (LEZ_CAPITOLI[nuovo].tipo === 'cielo') lezLeggiCielo();
+  if (LEZ_CAPITOLI[nuovo].tipo === 'analemma') { lezLeggiAnalemma(); lez.anni = 0; }
   if (LEZ_CAPITOLI[nuovo].tipo === 'nodi') lez.anni = 0.02;
   lezAggiornaTesti();
   lezDisegna();
@@ -10991,7 +11324,8 @@ function inizializzaSkymap() {
     } else {
       skyAvviso('eclittica', 'L\'eclittica è la strada che il Sole percorre in un anno fra le stelle: ' +
         'i puntini sono i primi del mese. I pianeti stanno sempre a pochi gradi da questa linea, ' +
-        'e il filo a piombo dice quanti.', 12000);
+        'e il filo a piombo dice quanti. L\'otto in oro pallido è l\'analemma: dov\'è il Sole ' +
+        'a quest\'ora ogni giorno dell\'anno.', 14000);
     }
     skyAggiornaTastiFiltri();
   });
