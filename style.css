@@ -931,23 +931,25 @@ body button.tasto-chiudi-largo:active { transform: translateY(0); }
    l'elenco delle città che l'ombra sta attraversando.
    ========================================================================== */
 
-/* --- I numeri chiave, tre schede in fila --- */
+/* --- I numeri chiave, una striscia di schede strette ---
+   Erano tre riquadri alti quanto una riga di testo ciascuno più il respiro:
+   sopra alla mappa costavano un quinto di finestra per dire tre numeri. */
 .ecl-riepilogo {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
 }
 .ecl-scheda {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
+  gap: 1px;
+  padding: 7px 11px;
   border-radius: var(--raggio-m);
   background: var(--incassato);
   border: 1px solid var(--bordo);
 }
 .ecl-scheda-etichetta {
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--testo-3);
@@ -955,14 +957,22 @@ body button.tasto-chiudi-largo:active { transform: translateY(0); }
 .ecl-scheda-valore {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  font-size: 1.02rem;
+  font-size: 0.94rem;
   font-weight: 600;
   color: var(--testo);
 }
-.ecl-scheda-nota { font-size: 0.72rem; color: var(--testo-2); line-height: 1.35; }
+.ecl-scheda-nota { font-size: 0.7rem; color: var(--testo-2); line-height: 1.3; }
 
-/* --- La mappa e le indicazioni sovrapposte --- */
+/* --- La mappa, le indicazioni sovrapposte e il lettore ---
+   Il guscio della mappa dell'ombra (`.ecl-guscio-filmato`) sta in colonna:
+   sopra il riquadro della mappa, che si prende tutta l'altezza che avanza,
+   sotto il lettore del filmato. A schermo intero il lettore si stacca e va
+   in sovrimpressione, senza cambiare markup.
+   La mappa delle eclissi lunari usa lo stesso guscio ma non ha lettore:
+   per lei basta essere il riferimento delle indicazioni sovrapposte. */
 .ecl-mappa-guscio { position: relative; }
+.ecl-guscio-filmato { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.ecl-mappa-riquadro { position: relative; flex: 1 1 auto; min-height: 0; }
 #mappa-eclissi,
 #mappa-lunare {
   width: 100%;
@@ -972,6 +982,80 @@ body button.tasto-chiudi-largo:active { transform: translateY(0); }
   overflow: hidden;
   border: 1px solid var(--bordo-forte);
 }
+
+/* I due comandi appoggiati sull'angolo della mappa. Stanno sotto ai tasti
+   dello zoom di Leaflet, che occupano il primo posto in alto a destra. */
+.ecl-mappa-tasti {
+  position: absolute;
+  top: 84px;
+  right: 12px;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+body .ecl-tasto-mappa {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid var(--bordo-forte);
+  background: rgba(6, 10, 20, 0.86);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--testo);
+  font-size: 1.02rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--ombra-2);
+  transition: background-color var(--transizione), color var(--transizione);
+}
+body .ecl-tasto-mappa:hover { background: rgba(30, 41, 59, 0.95); color: #fff; }
+body .ecl-tasto-mappa.attiva { background: var(--blu); border-color: transparent; color: #fff; }
+
+/* --- La mappa a tutto schermo, con i comandi in sovrimpressione ---
+   Nel pieno schermo vero il guscio è tutta la finestra; nel ripiego (Safari
+   su iPhone non dà l'API Fullscreen agli elementi) il guscio esce dal modale
+   e si incolla al viewport — da fuori non si vede la differenza. */
+.ecl-guscio-filmato:fullscreen,
+.ecl-guscio-filmato.ecl-schermo-pieno { gap: 0; background: #05070f; }
+.ecl-guscio-filmato.ecl-schermo-pieno {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  width: 100vw;
+  height: 100dvh;
+}
+.ecl-guscio-filmato:fullscreen .ecl-mappa-riquadro,
+.ecl-guscio-filmato.ecl-schermo-pieno .ecl-mappa-riquadro { height: 100%; }
+.ecl-guscio-filmato:fullscreen #mappa-eclissi,
+.ecl-guscio-filmato.ecl-schermo-pieno #mappa-eclissi {
+  height: 100%;
+  min-height: 0;
+  border-radius: 0;
+  border: none;
+}
+/* Il lettore si stacca dal flusso e si appoggia in basso: la mappa gli passa
+   sotto, e i comandi restano tutti dove il pollice li ha appena lasciati */
+.ecl-guscio-filmato:fullscreen .ecl-lettore,
+.ecl-guscio-filmato.ecl-schermo-pieno .ecl-lettore {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 700;
+  gap: 9px;
+  padding: 11px 13px;
+  background: rgba(6, 10, 20, 0.86);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-color: var(--bordo-forte);
+  box-shadow: var(--ombra-3);
+}
+/* Sotto, la pagina non deve scorrere dietro alla mappa */
+body.ecl-mappa-immersiva { overflow: hidden; }
 .ecl-hud {
   position: absolute;
   top: 12px;
@@ -1035,6 +1119,13 @@ body button.tasto-chiudi-largo:active { transform: translateY(0); }
 }
 .ecl-hud-citta b { color: #fff; font-weight: 600; }
 .ecl-hud-citta.hidden { display: none; }
+/* A schermo intero il lettore sta proprio lì sotto: la targhetta sale sopra.
+   Quanto, lo dice il lettore stesso — app.js ne misura l'altezza a ogni
+   passaggio, perché su un telefono stretto è il doppio che su un monitor. */
+.ecl-guscio-filmato:fullscreen .ecl-hud-citta,
+.ecl-guscio-filmato.ecl-schermo-pieno .ecl-hud-citta {
+  bottom: calc(var(--ecl-altezza-lettore, 110px) + 26px);
+}
 .ecl-hud-pallino {
   width: 9px;
   height: 9px;
@@ -1204,9 +1295,9 @@ body .ecl-select {
   font-size: 0.75rem;
 }
 
-/* --- I pannelli sotto la mappa --- */
+/* --- I pannelli accanto alla mappa --- */
 .ecl-pannello {
-  padding: 14px;
+  padding: 12px 14px;
   border-radius: var(--raggio-l);
   background: var(--incassato);
   border: 1px solid var(--bordo);
@@ -1220,6 +1311,34 @@ body .ecl-select {
   margin-bottom: 10px;
 }
 .ecl-pannello-testa h3 { font-size: 0.92rem; font-weight: 600; color: var(--testo); }
+
+/* I pannelli a cassetto: la testata fa da maniglia e resta identica, aperta
+   o chiusa. Il triangolino di sistema va via — al suo posto un segno nostro,
+   che gira, così la maniglia si legge uguale su ogni browser. */
+.ecl-pieghevole > summary {
+  list-style: none;
+  cursor: pointer;
+  margin-bottom: 0;
+  align-items: center;
+}
+.ecl-pieghevole > summary::-webkit-details-marker { display: none; }
+.ecl-pieghevole > summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-right: 2px solid var(--testo-3);
+  border-bottom: 2px solid var(--testo-3);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform var(--transizione);
+}
+.ecl-pieghevole[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+.ecl-pieghevole[open] > summary { margin-bottom: 10px; }
+.ecl-pieghevole > summary:hover h3 { color: #fff; }
+/* I tasti larghi del pannello "Da dove guardi" non hanno bisogno di una riga
+   ciascuno: dove c'è larghezza si affiancano */
+.ecl-tasti-luogo { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ecl-tasti-luogo > .ecl-tasto-largo { flex: 1 1 210px; margin-top: 0; }
 .ecl-conteggio, .ecl-luogo {
   font-size: 0.72rem;
   color: var(--testo-3);
@@ -1940,20 +2059,35 @@ figure.ecl-schema-fig {
   .sottotitolo-app { font-size: 0.88rem; }
   .valore-riepilogo { font-size: 1.3rem; }
 
-  /* La mappa delle eclissi sul telefono: una colonna sola, comandi grandi */
-  .ecl-riepilogo { grid-template-columns: 1fr; }
+  /* La mappa delle eclissi sul telefono: una colonna sola, comandi grandi.
+     I numeri chiave restano in due colonne: uno sotto l'altro riempivano lo
+     schermo di apertura, e la mappa — che è il motivo per cui si è aperta
+     questa finestra — cominciava sotto al bordo. */
+  .ecl-riepilogo { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .ecl-scheda { padding: 6px 9px; }
+  .ecl-scheda-etichetta { font-size: 0.58rem; letter-spacing: 0.06em; }
+  .ecl-scheda-valore { font-size: 0.86rem; }
+  .ecl-scheda-nota { font-size: 0.66rem; }
   .ecl-legenda-griglia { grid-template-columns: 1fr; }
   /* Gli schemi non si rimpiccioliscono all'infinito: sotto una certa larghezza
      le scritte diventerebbero illeggibili, meglio farli scorrere di lato. */
   figure.ecl-schema-fig { overflow-x: auto; }
   .ecl-schema-svg { min-width: 470px; }
-  #mappa-eclissi { height: 46vh; min-height: 280px; }
-  .ecl-lettore-riga { flex-wrap: wrap; }
-  body .ecl-btn-play { width: 100%; justify-content: center; }
-  .ecl-linea-tempo { flex: 1 1 100%; }
-  .ecl-gruppo-tasti { width: 100%; justify-content: space-between; }
+  /* La mappa si prende metà schermo; il lettore sotto resta compatto, con il
+     tasto di riproduzione accanto alla linea del tempo invece che sopra —
+     una riga guadagnata è una fetta di mappa in più */
+  #mappa-eclissi { height: 52vh; min-height: 280px; }
+  .ecl-lettore { padding: 10px; gap: 9px; }
+  .ecl-lettore-riga { flex-wrap: wrap; gap: 10px; }
+  body .ecl-btn-play { padding: 9px 14px; }
+  .ecl-btn-play .ecl-play-testo { display: none; }
+  .ecl-linea-tempo { flex: 1 1 120px; }
+  .ecl-gruppo-tasti { width: 100%; justify-content: space-between; gap: 4px; }
+  body .ecl-tasto { padding: 6px 9px; font-size: 0.72rem; }
+  .ecl-gruppo-opzioni { width: 100%; justify-content: space-between; gap: 10px; }
   .ecl-citta-nome { flex: 0 0 46%; }
   .ecl-hud-citta { font-size: 0.72rem; bottom: 30px; }
+  .ecl-mappa-tasti { top: 78px; right: 10px; }
 
   /* La testata resta in cima per tutto il tempo: sul telefono deve pesare
      poco. Titolo su due righe al massimo, sottotitolo su una. */
@@ -2005,7 +2139,7 @@ figure.ecl-schema-fig {
      quindi l'altezza è tutta sua */
   --altezza-cielo: 74vh;
   --altezza-simulazione: 46vh;
-  --altezza-mappa-eclissi: 46vh;
+  --altezza-mappa-eclissi: 52vh;
   --barra-inferiore: 0px;      /* spazio riservato alla navigazione in basso */
 }
 
@@ -2017,7 +2151,7 @@ figure.ecl-schema-fig {
     --passo: 16px;
     --altezza-cielo: 76vh;
     --altezza-simulazione: 52vh;
-    --altezza-mappa-eclissi: 54vh;
+    --altezza-mappa-eclissi: 60vh;
   }
 }
 
@@ -2029,7 +2163,7 @@ figure.ecl-schema-fig {
     --passo: 18px;
     --altezza-cielo: 82vh;
     --altezza-simulazione: 56vh;
-    --altezza-mappa-eclissi: 60vh;
+    --altezza-mappa-eclissi: 68vh;
   }
 }
 
@@ -2577,8 +2711,8 @@ body button.pos-risultato:focus-visible {
 }
 
 /* --------------------------------------- I COMANDI APPOGGIATI SULLA MAPPA */
-/* Cinque gruppi con un mestiere chiaro (Tempo, Visualizzazione, Filtri,
-   Navigazione, Astri). Di norma sono tutti chiusi: si vedono cinque linguette
+/* Sei gruppi con un mestiere chiaro (Tempo, Eventi, Visualizzazione, Filtri,
+   Navigazione, Astri). Di norma sono tutti chiusi: si vedono sei linguette
    e nient'altro, e il cielo resta tutto in vista. Toccandone una si apre il
    suo pannello sopra la mappa; toccandola di nuovo si richiude.
 
@@ -2755,6 +2889,12 @@ body button.pos-risultato:focus-visible {
   transition: background-color var(--transizione), color var(--transizione);
 }
 .tasto-evento-cielo:hover { background: var(--blu); border-color: transparent; color: #fff; }
+/* La mappa dell'ombra è la cosa da fare per un'eclissi: si vede che è lei */
+.tasto-evento-cielo.tasto-evento-forte {
+  border-color: rgba(76, 141, 255, 0.45);
+  background: var(--blu-velo);
+  color: var(--blu-chiaro);
+}
 
 /* Le letture di puntamento e di stato, ai due lati sotto le linguette */
 .cielo-letture {
@@ -2820,6 +2960,48 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
 .elenco-astri { display: flex; flex-wrap: wrap; gap: 8px; }
 .nota-lunga { margin: 6px 0 0; font-size: 0.76rem; color: var(--testo-3); }
 
+/* Un comando a segmenti: scelte che si escludono, incollate in una pillola
+   sola. Occupa meno di altrettanti tasti staccati, non manda mai a capo, e
+   si legge come una scala — che è quello che sono il passo del tempo e i
+   quattro punti cardinali. */
+.segmenti-cielo {
+  display: flex;
+  flex: 1 1 100%;
+  min-width: 0;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: var(--incassato);
+}
+.tasto-segmento {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 6px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--testo-2);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--transizione), color var(--transizione);
+}
+.tasto-segmento:hover { color: var(--testo); background: rgba(148, 168, 214, 0.12); }
+.tasto-segmento.attiva {
+  background: var(--blu);
+  color: #fff;
+  box-shadow: var(--alone-blu);
+}
+
+/* Un respiro fra due gruppi che stanno sulla stessa riga (il verso del
+   playback e la sua velocità): si vede che sono due cose diverse */
+.stacco-comandi { flex: 0 0 auto; width: 1px; height: 24px; background: var(--bordo); }
+
 /* I tasti del cielo: grandi, leggibili, con lo stato acceso ben visibile.
    Lo stato è una classe sola (`attiva`), così chi lo cambia da JavaScript
    non deve riscrivere l'intero aspetto del tasto. */
@@ -2866,27 +3048,29 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
 }
-.passi-tempo { gap: 6px; }
 
 /* Un tasto spento non deve sembrare pronto a fare qualcosa: succede ai due
    estremi della scala delle velocità, dove più veloce (o più lento) non c'è */
 .tasto-cielo:disabled { opacity: 0.35; cursor: default; }
 .tasto-cielo:disabled:hover { border-color: var(--bordo); background: var(--superficie-alta); }
 
-/* Il playback: i due tasti del verso stanno un po' più larghi degli altri,
-   perché sono quelli che si cercano col pollice mentre si guarda la mappa */
+/* Il playback: i tre tasti del verso sono simboli da lettore, quindi larghi
+   uguali e senza parole — sono quelli che si cercano col pollice mentre si
+   guarda la mappa */
 .riga-playback { margin-top: 10px; }
 .tasto-cielo.tasto-play {
+  flex: 1 1 auto;
+  max-width: 88px;
   min-height: 42px;
   padding: 9px 14px;
   font-family: var(--mono);
   font-size: 0.82rem;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.06em;
 }
 /* Il moltiplicatore: si legge fra i due tasti che lo cambiano, e mentre il
    cielo cammina si accende, così si sa a che passo sta andando */
 .lettura-velocita {
-  min-width: 132px;
+  min-width: 62px;
   text-align: center;
   font-family: var(--mono);
   font-size: 0.8rem;
@@ -2905,8 +3089,10 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   font-variant-numeric: tabular-nums;
 }
 
-.riga-slitta { margin-top: 10px; }
-.slitta-tempo { flex: 1 1 100%; accent-color: var(--blu); cursor: pointer; }
+/* La slitta sta fra i due tasti del passo: il pollice prende la precisione
+   grossa trascinando e quella fine toccando − e + */
+.riga-slitta { margin-top: 10px; gap: 10px; flex-wrap: nowrap; }
+.slitta-tempo { flex: 1 1 60px; min-width: 0; accent-color: var(--blu); cursor: pointer; }
 
 .lettura-tempo {
   margin: 10px 0 0;
@@ -2939,10 +3125,15 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   .lettura-cielo { font-size: 0.62rem; padding: 5px 8px; }
   .lettura-stato { max-width: 48%; }
   .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
-  /* I tre tasti del playback devono restare in fila come su un lettore:
-     l'etichetta si sposta sopra e lascia loro la riga intera */
-  .riga-playback .etichetta-comando { flex: 1 0 100%; }
-  .tasto-cielo.tasto-play { padding: 9px 11px; }
+  /* Tutta la riga del playback — verso e velocità — deve restare in fila
+     come su un lettore: i tasti si stringono, ma nessuno va a capo */
+  .riga-playback { flex-wrap: nowrap; gap: 5px; }
+  .tasto-cielo.tasto-play { padding: 9px 8px; max-width: none; }
+  .riga-playback .tasto-cielo.tasto-passo { padding: 8px 9px; }
+  .lettura-velocita { min-width: 54px; font-size: 0.74rem; }
+  .stacco-comandi { margin: 0 1px; }
+  .tasto-segmento { min-height: 34px; padding: 7px 4px; font-size: 0.74rem; }
+  .riga-comandi { gap: 6px; }
 }
 
 /* ------------------------------------------ SCHEDA DELL'OGGETTO SULLA MAPPA */
@@ -3148,21 +3339,34 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
 /* ------------------------------------------- MAPPA ECLISSI SU DUE COLONNE   */
 .ecl-corpo { display: grid; gap: var(--passo); align-content: start; }
 .ecl-colonna-principale,
-.ecl-colonna-lato { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.ecl-colonna-lato { display: grid; gap: 10px; align-content: start; min-width: 0; }
 
 #mappa-eclissi,
 #mappa-lunare { height: var(--altezza-mappa-eclissi); }
 
 @media (min-width: 1180px) {
   /* La mappa e il suo filmato a sinistra, le letture a destra: si guarda
-     l'ombra correre e nello stesso momento si legge dove sta passando */
-  .ecl-corpo { grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); align-items: start; }
+     l'ombra correre e nello stesso momento si legge dove sta passando.
+     La mappa è il pezzo forte e si prende due terzi buoni della finestra:
+     la colonna di lato serve a leggere numeri e orari, non a sfogliare. */
+  .ecl-corpo { grid-template-columns: minmax(0, 2fr) minmax(290px, 0.85fr); align-items: start; }
+  /* I numeri chiave e il tasto di chiusura stanno di traverso, su tutte e
+     due le colonne. Vale anche per la finestra delle eclissi lunari, che
+     usa la stessa impalcatura con un riepilogo suo: senza il suo nome qui,
+     finiva a occupare la prima cella e spingeva la mappa nella colonna
+     stretta, lasciando mezza finestra vuota. */
   .ecl-corpo > #eclissi-riepilogo,
+  .ecl-corpo > #lunare-riepilogo,
   .ecl-corpo > .barra-chiudi { grid-column: 1 / -1; }
   /* Con due colonne si vede gia' tutto: la barra di salto non serve piu' */
   .ecl-salti { display: none; }
-  .ecl-riepilogo { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-  #mappa-eclissi { min-height: 460px; }
+  .ecl-riepilogo { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+  /* Mappa e lettore prendono l'altezza che avanza nella finestra, insieme:
+     la mappa si allunga fin dove può, ma il lettore resta sempre in vista.
+     Con un'altezza in `vh` per la sola mappa il lettore finiva sotto al
+     bordo, e per fermare il filmato bisognava scorrere. */
+  .ecl-guscio-filmato { height: calc(100dvh - 310px); min-height: 420px; }
+  .ecl-guscio-filmato #mappa-eclissi { height: 100%; min-height: 0; }
 }
 
 /* Sul telefono le righe di queste due finestre non si schiacciano.
@@ -3178,6 +3382,16 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
        (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
   .sim-corpo, .ecl-corpo { display: flex; flex-direction: column; }
   .sim-corpo > *, .ecl-corpo > * { flex: 0 0 auto; }
+
+  /* In colonna la mappa sale subito sotto alla barra dei salti: è la cosa
+     per cui si è aperta questa finestra, e prima cominciava sotto al bordo
+     dello schermo, dopo la testata e quattro riquadri di numeri. I numeri
+     restano — solo, si leggono scendendo di un dito. */
+  .ecl-corpo > .ecl-salti { order: 0; }
+  .ecl-corpo > .ecl-colonna-principale { order: 1; }
+  .ecl-corpo > #eclissi-riepilogo { order: 2; }
+  .ecl-corpo > .ecl-colonna-lato { order: 3; }
+  .ecl-corpo > .barra-chiudi { order: 4; }
 }
 
 /* ---------------------------------------------------------- CALENDARIO      */
@@ -3461,6 +3675,7 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   .chip-categoria, .chip-astro, .chip-strumento { padding-block: 8px; }
   .tasto-cielo { min-height: 46px; }
   .tasto-cielo.tasto-passo { min-height: 44px; }
+  .tasto-segmento { min-height: 42px; }
   .campo-cielo { min-height: 46px; }
   .selettore-mese-btn { padding: 9px 16px; }
   .selettore-mese-campo { padding: 9px 12px; font-size: 0.92rem; }

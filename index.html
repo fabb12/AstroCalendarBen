@@ -208,11 +208,16 @@
 
     <!-- VISTA CIELO: punta il telefono e trova gli astri (bussola + giroscopio)
          I comandi stanno dentro alla mappa, appoggiati sopra il cielo: una
-         riga di gruppi (Tempo, Visualizzazione, Filtri, Navigazione, Astri)
-         che di norma sono chiusi, e si apre uno per volta. Così di comandi se
-         ne vedono cinque invece di venticinque, la mappa si prende tutto lo
-         spazio, e a schermo intero i comandi restano dove sono — senza
-         doverne fare una seconda copia. -->
+         riga di gruppi (Tempo, Eventi, Visualizzazione, Filtri, Navigazione,
+         Astri) che di norma sono chiusi, e si apre uno per volta. Così di
+         comandi se ne vedono sei invece di quaranta, la mappa si prende tutto
+         lo spazio, e a schermo intero i comandi restano dove sono — senza
+         doverne fare una seconda copia.
+
+         Dentro a ogni gruppo vale la stessa regola: quello che si può dire
+         con un segno non si dice con una parola, e due comandi che si
+         scelgono sempre insieme (il passo del tempo e la finestra della
+         slitta) diventano un comando solo. -->
     <div id="vista-skymap" class="hidden vista-cielo">
 
      <div class="cielo-scena">
@@ -263,44 +268,51 @@
           <!-- Il pannello del gruppo aperto: uno solo per volta -->
           <div class="pannelli-gruppi">
 
-            <!-- TEMPO: l'istante mostrato, dal secondo agli anni -->
+            <!-- TEMPO: l'istante mostrato, in quattro righe.
+                 Prima ce n'erano sette: dieci tasti di salto, quattro per la
+                 finestra della slitta, due file di playback e le loro
+                 etichette. Venticinque bersagli per fare tre cose, e su un
+                 telefono il pannello copriva il cielo che si voleva guardare.
+                 Adesso il passo si sceglie una volta sola — è la stessa scelta
+                 che decide quanto tempo copre la slitta — e i due tasti − e +
+                 lo usano; il playback sta tutto in una riga, come su un
+                 lettore, dove i simboli dicono già cosa fanno. -->
             <section class="gruppo-comandi" data-gruppo="tempo" aria-label="Tempo">
-              <label class="etichetta-comando" for="skymap-data">Data e ora mostrate</label>
               <div class="riga-comandi">
                 <input id="skymap-data" type="datetime-local" step="1" class="campo-cielo"
+                  aria-label="Data e ora mostrate"
                   title="Scrivi la data e l'ora che vuoi vedere: passato o futuro, secondi compresi">
-                <button id="skymap-tempo-ora" type="button" class="tasto-cielo tasto-primario">Adesso</button>
+                <button id="skymap-tempo-ora" type="button" class="tasto-cielo tasto-primario"
+                  title="Torna al cielo di adesso">Adesso</button>
               </div>
 
-              <!-- I salti: dai dieci secondi al giorno, per arrivare esattamente
-                   sull'istante che interessa senza combattere con la slitta -->
-              <div class="riga-comandi passi-tempo" aria-label="Sposta l'orologio a passi">
-                <button type="button" class="tasto-cielo tasto-passo" data-passo="-86400" title="Un giorno indietro">−1 g</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-passo="-3600" title="Un'ora indietro">−1 h</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-passo="-600" title="Dieci minuti indietro">−10 m</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-passo="-60" title="Un minuto indietro">−1 m</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-passo="-10" title="Dieci secondi indietro">−10 s</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-passo="10" title="Dieci secondi avanti">+10 s</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-passo="60" title="Un minuto avanti">+1 m</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-passo="600" title="Dieci minuti avanti">+10 m</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-passo="3600" title="Un'ora avanti">+1 h</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-passo="86400" title="Un giorno avanti">+1 g</button>
+              <!-- Il passo: comanda insieme i tasti − e + e quanto tempo copre
+                   la slitta. Con dieci secondi un pixel di slitta vale un
+                   secondo, ed è lì che serve la precisione; con un giorno si
+                   attraversa il mese. -->
+              <div class="riga-comandi" role="group" aria-label="Passo del tempo">
+                <div class="segmenti-cielo">
+                  <button type="button" class="tasto-segmento" data-passo-tempo="10" aria-pressed="false"
+                    title="Passi da dieci secondi, slitta su ±10 minuti">10 s</button>
+                  <button type="button" class="tasto-segmento" data-passo-tempo="60" aria-pressed="false"
+                    title="Passi da un minuto, slitta su ±1 ora">1 min</button>
+                  <button type="button" class="tasto-segmento attiva" data-passo-tempo="600" aria-pressed="true"
+                    title="Passi da dieci minuti, slitta su ±12 ore">10 min</button>
+                  <button type="button" class="tasto-segmento" data-passo-tempo="3600" aria-pressed="false"
+                    title="Passi da un'ora, slitta su ±7 giorni">1 h</button>
+                  <button type="button" class="tasto-segmento" data-passo-tempo="86400" aria-pressed="false"
+                    title="Passi da un giorno, slitta su ±30 giorni">1 g</button>
+                </div>
               </div>
 
-              <!-- La slitta scorre dentro una finestra scelta: con ±10 minuti un
-                   pixel vale pochi secondi, ed è lì che serve la precisione -->
               <div class="riga-comandi riga-slitta">
+                <button id="skymap-passo-meno" type="button" class="tasto-cielo tasto-passo"
+                  title="Indietro di un passo" aria-label="Indietro di un passo">−</button>
                 <input id="skymap-tempo" type="range" min="-3600" max="3600" step="5" value="0"
                   class="slitta-tempo" aria-label="Scorri il tempo dentro la finestra scelta"
                   title="Trascina per scorrere il tempo dentro la finestra scelta">
-              </div>
-
-              <div class="riga-comandi">
-                <span class="etichetta-comando">Finestra della slitta</span>
-                <button type="button" class="tasto-cielo tasto-passo" data-finestra="600">±10 m</button>
-                <button type="button" class="tasto-cielo tasto-passo attiva" data-finestra="3600">±1 h</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-finestra="43200">±12 h</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-finestra="604800">±7 g</button>
+                <button id="skymap-passo-piu" type="button" class="tasto-cielo tasto-passo"
+                  title="Avanti di un passo" aria-label="Avanti di un passo">+</button>
               </div>
 
               <!-- PLAYBACK: il tempo che cammina da solo. I salti e la slitta
@@ -308,22 +320,20 @@
                    muove sotto gli occhi, ed è l'unico modo per vedere quello
                    che un fermo immagine non racconta: il cielo che ruota
                    attorno alla Polare, la Luna che scivola fra le stelle, un
-                   pianeta che rallenta e torna indietro. -->
+                   pianeta che rallenta e torna indietro. Accanto ai tre tasti
+                   del verso c'è il moltiplicatore, che dice quanto tempo di
+                   cielo passa in un secondo vero. -->
               <div class="riga-comandi riga-playback" aria-label="Playback del tempo">
-                <span class="etichetta-comando">Playback</span>
                 <button id="skymap-play-indietro" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
-                  title="Fai scorrere il cielo all'indietro (ripremi per fermarlo)">◀◀ Indietro</button>
-                <button id="skymap-play-ferma" type="button" class="tasto-cielo tasto-passo"
-                  title="Ferma il playback e lascia il cielo sull'istante raggiunto">■ Ferma</button>
+                  title="Fai scorrere il cielo all'indietro (ripremi per fermarlo)"
+                  aria-label="Playback all'indietro">◀◀</button>
+                <button id="skymap-play-ferma" type="button" class="tasto-cielo tasto-play"
+                  title="Ferma il playback e lascia il cielo sull'istante raggiunto"
+                  aria-label="Ferma il playback">■</button>
                 <button id="skymap-play-avanti" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
-                  title="Fai scorrere il cielo in avanti (ripremi per fermarlo)">Avanti ▶▶</button>
-              </div>
-
-              <!-- Il moltiplicatore: quanto tempo di cielo passa in un secondo
-                   vero. Si sale e si scende per gradini, dai dieci secondi al
-                   secondo (le stazioni spaziali) al mese al secondo (le stagioni) -->
-              <div class="riga-comandi" aria-label="Velocità del playback">
-                <span class="etichetta-comando">Velocità</span>
+                  title="Fai scorrere il cielo in avanti (ripremi per fermarlo)"
+                  aria-label="Playback in avanti">▶▶</button>
+                <span class="stacco-comandi" aria-hidden="true"></span>
                 <button id="skymap-vel-meno" type="button" class="tasto-cielo tasto-passo"
                   title="Rallenta il playback" aria-label="Rallenta il playback">−</button>
                 <span id="skymap-vel-valore" class="lettura-velocita" aria-live="polite"
@@ -374,39 +384,45 @@
               </div>
             </section>
 
-            <!-- NAVIGAZIONE: dove si guarda, e con che ingrandimento -->
+            <!-- NAVIGAZIONE: dove si guarda.
+                 Ingrandisci e Riduci non stanno più qui: sono i due tasti +
+                 e − appoggiati sull'angolo della mappa, sempre a portata, e
+                 tenerli anche dentro al pannello era solo un doppione. I
+                 quattro punti cardinali diventano quattro lettere in una
+                 pillola sola, e la bussola — che si tocca una volta in tutta
+                 la serata, e solo se punta storto — sta ripiegata insieme
+                 alle sue istruzioni. -->
             <section class="gruppo-comandi" data-gruppo="navigazione" aria-label="Navigazione">
               <div class="riga-comandi">
-                <button id="skymap-btn-zoom-piu" type="button" class="tasto-cielo" title="Ingrandisci (campo visivo più stretto). Con la fotocamera accesa tara l'obiettivo">Ingrandisci</button>
-                <button id="skymap-btn-zoom-meno" type="button" class="tasto-cielo" title="Riduci (campo visivo più ampio). Con la fotocamera accesa tara l'obiettivo">Riduci</button>
-                <button id="skymap-btn-campo" type="button" class="tasto-cielo" title="Torna al campo visivo di partenza (con la fotocamera accesa: azzera la taratura dell'obiettivo)">Campo 55°</button>
+                <button id="skymap-btn-segui" type="button" class="tasto-cielo attiva"
+                  title="Con bussola e giroscopio accesi il cielo lo punta il telefono. Spegnendolo la mappa la muovi tu col dito, e i tasti Centra e i punti cardinali tornano a funzionare">Segui il telefono</button>
                 <button id="skymap-btn-centra" type="button" class="tasto-cielo" title="Porta al centro della mappa l'oggetto selezionato">Centra</button>
                 <button id="skymap-btn-insegui" type="button" class="tasto-cielo"
                   title="Tieni l'oggetto selezionato sempre al centro della mappa: la vista lo segue mentre il cielo ruota o mentre scorre il playback">Insegui</button>
-                <button id="skymap-btn-segui" type="button" class="tasto-cielo attiva"
-                  title="Con bussola e giroscopio accesi il cielo lo punta il telefono. Spegnendolo la mappa la muovi tu col dito, e i tasti Centra e Guarda verso tornano a funzionare">Segui il telefono</button>
+                <button id="skymap-btn-campo" type="button" class="tasto-cielo" title="Torna al campo visivo di partenza, 55° (con la fotocamera accesa: azzera la taratura dell'obiettivo)">Campo 55°</button>
               </div>
-              <div class="riga-comandi" aria-label="Guarda verso">
-                <span class="etichetta-comando">Guarda verso</span>
-                <button type="button" class="tasto-cielo tasto-passo" data-verso="0">Nord</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-verso="90">Est</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-verso="180">Sud</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-verso="270">Ovest</button>
-                <button type="button" class="tasto-cielo tasto-passo" data-verso="zenit">Zenit</button>
+              <div class="riga-comandi" role="group" aria-label="Guarda verso">
+                <div class="segmenti-cielo">
+                  <button type="button" class="tasto-segmento" data-verso="0" title="Guarda verso nord">N</button>
+                  <button type="button" class="tasto-segmento" data-verso="90" title="Guarda verso est">E</button>
+                  <button type="button" class="tasto-segmento" data-verso="180" title="Guarda verso sud">S</button>
+                  <button type="button" class="tasto-segmento" data-verso="270" title="Guarda verso ovest">O</button>
+                  <button type="button" class="tasto-segmento" data-verso="zenit" title="Guarda dritto in alto">Zenit</button>
+                </div>
               </div>
-              <div class="riga-comandi">
-                <span class="etichetta-comando">Bussola</span>
-                <button id="skymap-cal-meno" type="button" class="tasto-cielo tasto-passo" title="Ruota la bussola verso ovest">−5°</button>
-                <span id="skymap-cal-valore" class="lettura-bussola">0°</span>
-                <button id="skymap-cal-piu" type="button" class="tasto-cielo tasto-passo" title="Ruota la bussola verso est">+5°</button>
-                <button id="skymap-cal-zero" type="button" class="tasto-cielo tasto-passo" title="Torna alla bussola del telefono, senza correzioni">Azzera</button>
-                <button id="skymap-btn-calibra" type="button" class="tasto-cielo" title="Permette di correggere la bussola trascinando il dito sul cielo">Calibra</button>
-                <button id="skymap-btn-posizione" type="button" class="tasto-cielo" title="Rileva di nuovo la posizione: GPS, poi rete, poi a mano">Posizione</button>
-              </div>
-              <!-- Le istruzioni lunghe stanno ripiegate: si aprono solo a chi
-                   ha davvero la bussola che punta storto -->
+              <!-- Bussola e posizione: le si apre solo quando qualcosa non
+                   torna, e insieme ai comandi ci sono le istruzioni per capire
+                   che cosa -->
               <details id="skymap-istruzioni" class="nota-ripiegata">
-                <summary>Se la bussola non punta dove dovrebbe</summary>
+                <summary>Bussola e posizione</summary>
+                <div class="riga-comandi">
+                  <button id="skymap-cal-meno" type="button" class="tasto-cielo tasto-passo" title="Ruota la bussola verso ovest">−5°</button>
+                  <span id="skymap-cal-valore" class="lettura-bussola">0°</span>
+                  <button id="skymap-cal-piu" type="button" class="tasto-cielo tasto-passo" title="Ruota la bussola verso est">+5°</button>
+                  <button id="skymap-cal-zero" type="button" class="tasto-cielo tasto-passo" title="Torna alla bussola del telefono, senza correzioni">Azzera</button>
+                  <button id="skymap-btn-calibra" type="button" class="tasto-cielo" title="Permette di correggere la bussola trascinando il dito sul cielo">Calibra</button>
+                  <button id="skymap-btn-posizione" type="button" class="tasto-cielo" title="Rileva di nuovo la posizione: GPS, poi rete, poi a mano">Posizione</button>
+                </div>
                 <p class="nota-lunga">Lo scarto fra il Nord magnetico del telefono e il Nord vero è già corretto in automatico per il luogo in cui ti trovi. Se resta un errore, tocca “Calibra” e sposta il dito in orizzontale sul cielo (o usa i tasti ±5°) finché il Sole o la Luna non coincidono con quelli veri; “Azzera” toglie ogni correzione a mano. Se la bussola sbanda, allontana il telefono da magneti, auto e ringhiere e disegna un otto in aria per ricalibrarla. Non guardare mai il Sole direttamente.</p>
               </details>
             </section>
@@ -559,8 +575,8 @@
         <nav class="ecl-salti" aria-label="Vai alla sezione">
           <button type="button" data-salta="sez-mappa">Mappa</button>
           <button type="button" data-salta="sez-qui">Da qui</button>
-          <button type="button" data-salta="sez-cronologia">Minuto per minuto</button>
           <button type="button" data-salta="sez-citta">Città</button>
+          <button type="button" data-salta="sez-cronologia">Minuto per minuto</button>
           <button type="button" data-salta="sez-sicurezza">Sicurezza</button>
         </nav>
 
@@ -568,88 +584,97 @@
              destra. Sotto i 1100px le due colonne tornano una sola. -->
         <div class="ecl-colonna-principale">
 
-        <!-- LA MAPPA, con le indicazioni sovrapposte -->
-        <div class="ecl-mappa-guscio" id="sez-mappa">
-          <div id="mappa-eclissi"></div>
-          <div class="ecl-hud">
-            <div id="eclissi-hud-ora" class="ecl-hud-ora">—</div>
-            <div id="eclissi-hud-fase" class="ecl-hud-fase attesa">—</div>
-          </div>
-          <div id="eclissi-hud-citta" class="ecl-hud-citta hidden"></div>
-        </div>
-
-        <!-- IL FILMATO DELL'OMBRA -->
-        <div class="ecl-lettore">
-          <div class="ecl-lettore-riga">
-            <button id="eclissi-play" type="button" class="ecl-btn-play" title="Avvia il filmato dell'ombra">
-              <span class="ecl-icona-play"></span><span class="ecl-play-testo">Riproduci</span>
-            </button>
-            <div class="ecl-linea-tempo">
-              <div class="ecl-tempo-pista">
-                <input id="eclissi-tempo-slider" type="range" min="-180" max="180" value="0" step="0.5"
-                       aria-label="Momento dell'eclissi" title="Trascina per spostarti nel tempo">
-                <!-- I contatti nel punto scelto, disegnati sopra al cursore -->
-                <div id="eclissi-tacche" class="ecl-tacche" aria-hidden="true"></div>
-              </div>
-              <div class="ecl-linea-tempo-etichette">
-                <span id="eclissi-tempo-inizio">—</span>
-                <span id="eclissi-tempo-valore" class="ecl-tempo-valore">—</span>
-                <span id="eclissi-tempo-fine">—</span>
-              </div>
+        <!-- LA MAPPA E IL SUO LETTORE, in un guscio solo.
+             Stanno insieme perché insieme vanno a schermo intero: lì il
+             lettore si appoggia sopra alla mappa invece di stare sotto, e
+             non serve tenerne due copie allineate. -->
+        <div class="ecl-mappa-guscio ecl-guscio-filmato" id="sez-mappa">
+          <div class="ecl-mappa-riquadro">
+            <div id="mappa-eclissi"></div>
+            <div class="ecl-hud">
+              <div id="eclissi-hud-ora" class="ecl-hud-ora">—</div>
+              <div id="eclissi-hud-fase" class="ecl-hud-fase attesa">—</div>
             </div>
-          </div>
-          <div class="ecl-lettore-riga secondaria">
-            <div class="ecl-gruppo-tasti">
-              <button id="eclissi-tempo-avvio" type="button" class="ecl-tasto" title="Vai all'inizio dell'eclissi">Inizio</button>
-              <button id="eclissi-tempo-meno" type="button" class="ecl-tasto" title="Indietro di 10 minuti">−10 min</button>
-              <button id="eclissi-tempo-reset" type="button" class="ecl-tasto principale" title="Vai al momento di massima eclissi">Massimo</button>
-              <button id="eclissi-tempo-piu" type="button" class="ecl-tasto" title="Avanti di 10 minuti">+10 min</button>
-              <button id="eclissi-tempo-termine" type="button" class="ecl-tasto" title="Vai alla fine dell'eclissi">Fine</button>
-            </div>
-            <div class="ecl-gruppo-opzioni">
-              <label class="ecl-opzione" title="Quanti minuti di eclissi scorrono in un secondo di filmato">
-                Velocità
-                <select id="eclissi-velocita" class="ecl-select">
-                  <option value="3">lenta</option>
-                  <option value="8" selected>normale</option>
-                  <option value="18">veloce</option>
-                  <option value="35">rapidissima</option>
-                </select>
-              </label>
-              <label class="ecl-opzione" title="Tiene la mappa centrata sull'ombra mentre corre">
-                <input id="eclissi-segui" type="checkbox" checked> Segui l'ombra
-              </label>
+            <!-- I due comandi della mappa stanno sull'angolo, non fra le
+                 opzioni del filmato: riguardano come si vede la mappa, e a
+                 schermo intero devono restare a portata di pollice -->
+            <div class="ecl-mappa-tasti">
+              <button id="btn-eclissi-schermo" type="button" class="ecl-tasto-mappa"
+                      title="La mappa a tutto schermo, con i comandi in sovrimpressione"
+                      aria-label="Mappa a schermo intero">⛶</button>
               <!-- La mappa nasce chiara, quella vera di OpenStreetMap: coste,
                    confini e nomi si leggono. Il fondo scuro resta per chi la
                    guarda di notte, con gli occhi già abituati al buio. -->
-              <button id="btn-eclissi-tema" type="button" class="ecl-tasto"
+              <button id="btn-eclissi-tema" type="button" class="ecl-tasto-mappa"
                       onclick="eclissiAlternaTemaMappa()"
-                      title="Passa al fondo scuro: di notte, con gli occhi abituati al buio, una mappa chiara abbaglia">Mappa scura</button>
+                      title="Passa al fondo scuro: di notte, con gli occhi abituati al buio, una mappa chiara abbaglia"
+                      aria-label="Mappa scura">☾</button>
+            </div>
+            <div id="eclissi-hud-citta" class="ecl-hud-citta hidden"></div>
+          </div>
+
+          <!-- IL FILMATO DELL'OMBRA -->
+          <div class="ecl-lettore">
+            <div class="ecl-lettore-riga">
+              <button id="eclissi-play" type="button" class="ecl-btn-play" title="Avvia il filmato dell'ombra">
+                <span class="ecl-icona-play"></span><span class="ecl-play-testo">Riproduci</span>
+              </button>
+              <div class="ecl-linea-tempo">
+                <div class="ecl-tempo-pista">
+                  <input id="eclissi-tempo-slider" type="range" min="-180" max="180" value="0" step="0.5"
+                         aria-label="Momento dell'eclissi" title="Trascina per spostarti nel tempo">
+                  <!-- I contatti nel punto scelto, disegnati sopra al cursore -->
+                  <div id="eclissi-tacche" class="ecl-tacche" aria-hidden="true"></div>
+                </div>
+                <div class="ecl-linea-tempo-etichette">
+                  <span id="eclissi-tempo-inizio">—</span>
+                  <span id="eclissi-tempo-valore" class="ecl-tempo-valore">—</span>
+                  <span id="eclissi-tempo-fine">—</span>
+                </div>
+              </div>
+            </div>
+            <div class="ecl-lettore-riga secondaria">
+              <div class="ecl-gruppo-tasti">
+                <button id="eclissi-tempo-avvio" type="button" class="ecl-tasto" title="Vai all'inizio dell'eclissi">Inizio</button>
+                <button id="eclissi-tempo-meno" type="button" class="ecl-tasto" title="Indietro di 10 minuti">−10 min</button>
+                <button id="eclissi-tempo-reset" type="button" class="ecl-tasto principale" title="Vai al momento di massima eclissi">Massimo</button>
+                <button id="eclissi-tempo-piu" type="button" class="ecl-tasto" title="Avanti di 10 minuti">+10 min</button>
+                <button id="eclissi-tempo-termine" type="button" class="ecl-tasto" title="Vai alla fine dell'eclissi">Fine</button>
+              </div>
+              <div class="ecl-gruppo-opzioni">
+                <label class="ecl-opzione" title="Quanti minuti di eclissi scorrono in un secondo di filmato">
+                  Velocità
+                  <select id="eclissi-velocita" class="ecl-select">
+                    <option value="3">lenta</option>
+                    <option value="8" selected>normale</option>
+                    <option value="18">veloce</option>
+                    <option value="35">rapidissima</option>
+                  </select>
+                </label>
+                <label class="ecl-opzione" title="Tiene la mappa centrata sull'ombra mentre corre">
+                  <input id="eclissi-segui" type="checkbox" checked> Segui l'ombra
+                </label>
+              </div>
             </div>
           </div>
         </div>
 
         </div><!-- /ecl-colonna-principale -->
 
+        <!-- I pannelli di lettura. Sono sei, e aperti tutti insieme facevano
+             una colonna lunga il triplo della mappa: chi cercava le nuvole
+             scorreva oltre lo schema del cono d'ombra e la legenda. Adesso
+             sono cassetti: aperti i due che si guardano sempre (il punto
+             scelto e le città sotto l'ombra), chiusi gli altri, che si
+             leggono una volta e poi si sanno. -->
         <div class="ecl-colonna-lato">
 
-        <!-- LE CITTÀ CHE L'OMBRA STA ATTRAVERSANDO -->
-        <div class="ecl-pannello" id="sez-citta">
-          <div class="ecl-pannello-testa">
-            <h3>Dove sta passando l'ombra</h3>
-            <span id="eclissi-citta-conteggio" class="ecl-conteggio">—</span>
-          </div>
-          <div id="eclissi-citta-ora" class="ecl-citta-ora">—</div>
-          <ul id="eclissi-citta-lista" class="ecl-citta-lista"></ul>
-          <p class="ecl-nota-piccola">Tocca una città per portare lì il tuo punto di osservazione.</p>
-        </div>
-
-        <!-- IL LUOGO SCELTO -->
-        <div class="ecl-pannello" id="sez-qui">
-          <div class="ecl-pannello-testa">
+        <!-- IL LUOGO SCELTO: è la domanda vera, quindi sta per prima -->
+        <details class="ecl-pannello ecl-pieghevole" id="sez-qui" open>
+          <summary class="ecl-pannello-testa">
             <h3>Da dove guardi</h3>
             <span id="eclissi-luogo-testo" class="ecl-luogo">—</span>
-          </div>
+          </summary>
           <div id="eclissi-dati-locali" class="ecl-dati-locali">
             <p>Scegli un punto sulla mappa per vedere cosa succede lì.</p>
           </div>
@@ -659,45 +684,58 @@
           <div id="eclissi-fascia" class="ecl-fascia-consiglio"></div>
           <!-- Le nuvole: l'unica variabile che decide davvero -->
           <div id="eclissi-meteo" class="ecl-meteo vuoto"></div>
-          <button id="btn-eclissi-casa" type="button" class="ecl-tasto-largo"
-                  title="Tutte le eclissi solari visibili da questo punto, fino al 2070">
-            Tutte le eclissi visibili da qui
-          </button>
-          <button id="btn-eclissi-offline" type="button" class="ecl-tasto-largo"
-                  title="Scarica le tessere della mappa attorno a questo punto: il giorno dell'eclissi potresti non avere rete">
-            Salva le mappe per l'uso offline
-          </button>
-          <!-- Compare solo a eclissi passata: prima non c'è niente da raccontare -->
-          <button id="btn-eclissi-diario" type="button" class="ecl-tasto-largo hidden"
-                  title="Registrala nel diario delle tue osservazioni">
-            L'ho vista: scrivilo nel diario
-          </button>
-        </div>
+          <div class="ecl-tasti-luogo">
+            <button id="btn-eclissi-casa" type="button" class="ecl-tasto-largo"
+                    title="Tutte le eclissi solari visibili da questo punto, fino al 2070">
+              Tutte le eclissi visibili da qui
+            </button>
+            <button id="btn-eclissi-offline" type="button" class="ecl-tasto-largo"
+                    title="Scarica le tessere della mappa attorno a questo punto: il giorno dell'eclissi potresti non avere rete">
+              Salva le mappe per l'uso offline
+            </button>
+            <!-- Compare solo a eclissi passata: prima non c'è niente da raccontare -->
+            <button id="btn-eclissi-diario" type="button" class="ecl-tasto-largo hidden"
+                    title="Registrala nel diario delle tue osservazioni">
+              L'ho vista: scrivilo nel diario
+            </button>
+          </div>
+        </details>
+
+        <!-- LE CITTÀ CHE L'OMBRA STA ATTRAVERSANDO -->
+        <details class="ecl-pannello ecl-pieghevole" id="sez-citta" open>
+          <summary class="ecl-pannello-testa">
+            <h3>Dove sta passando l'ombra</h3>
+            <span id="eclissi-citta-conteggio" class="ecl-conteggio">—</span>
+          </summary>
+          <div id="eclissi-citta-ora" class="ecl-citta-ora">—</div>
+          <ul id="eclissi-citta-lista" class="ecl-citta-lista"></ul>
+          <p class="ecl-nota-piccola">Tocca una città per portare lì il tuo punto di osservazione.</p>
+        </details>
 
         <!-- COSA SI VEDE, MINUTO PER MINUTO -->
-        <div class="ecl-pannello" id="sez-cronologia">
-          <div class="ecl-pannello-testa">
+        <details class="ecl-pannello ecl-pieghevole" id="sez-cronologia">
+          <summary class="ecl-pannello-testa">
             <h3>Cosa vedrai, minuto per minuto</h3>
-          </div>
+          </summary>
           <ol id="eclissi-cronologia" class="ecl-cronologia"></ol>
           <p class="ecl-nota-piccola">Orari calcolati per il punto che hai scelto.
             Tocca una riga per portare lì il cursore del tempo.</p>
-        </div>
+        </details>
 
         <!-- SICUREZZA E FOTOGRAFIA -->
-        <details class="ecl-legenda ecl-sicurezza" id="sez-sicurezza" open>
+        <details class="ecl-legenda ecl-sicurezza" id="sez-sicurezza">
           <summary>Come guardarla senza farsi male</summary>
           <div id="eclissi-sicurezza" class="ecl-sicurezza-corpo"></div>
         </details>
 
         <!-- LO SCHEMA: COME STANNO SOLE, LUNA E TERRA -->
-        <details class="ecl-legenda ecl-schema" open>
+        <details class="ecl-legenda ecl-schema">
           <summary>Perché l'ombra disegna una curva a S</summary>
           <div id="eclissi-schema" class="ecl-schema-corpo"></div>
         </details>
 
         <!-- LEGENDA -->
-        <details class="ecl-legenda" open>
+        <details class="ecl-legenda">
           <summary>Come si legge la mappa</summary>
           <div id="eclissi-legenda-griglia" class="ecl-legenda-griglia"></div>
           <div class="ecl-scala">

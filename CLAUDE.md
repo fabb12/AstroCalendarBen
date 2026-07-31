@@ -88,7 +88,7 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
 | 573–663 | Eventi di un periodo arbitrario (anche passato) | `calcolaEventiPeriodo()` |
 | 664–920 | **1. Calcolo eventi** — fasi lunari, eclissi lunari e solari | `calcolaEventiAstronomi()`, `aggiungiFasiLunari()`, `aggiungiEclissi*()` |
 | 921–1451 | **1-bis. Geometria di visibilità delle eclissi solari** | cono d'ombra, oscuramento per località |
-| 1452–2596 | **1-ter. La mappa Leaflet**: tracciati, filmato, legenda, schema | `apriMappaEclissi(id)`, `_eclissiAggiornaTutto()` |
+| 1452–2596 | **1-ter. La mappa Leaflet**: tracciati, filmato, legenda, schema, schermo intero della mappa | `apriMappaEclissi(id)`, `_eclissiAggiornaTutto()`, `_eclAlternaSchermoIntero()` |
 | 2597–2749 | Stagioni, sciami meteorici, elongazioni | `aggiungiStagioni()`, `aggiungiSciamiMeteorici()`, `aggiungiElongazioni()` |
 | 2750–3018 | **1-bis. Eventi manuali** dell'utente + form | `caricaEventiManuali()`, `inizializzaFormAggiungi()` |
 | 3019–3031 | **2.** `inizializzaUI()` |  |
@@ -206,7 +206,10 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 | Eventi mostrati nella vista Cielo | `SKY_EVENTI_FINESTRA_MIN`, `SKY_EVENTI_SETTIMANA_MS` + `skyAggiornaEventi()` (sezione 7.4-bis) |
 | "Vedi nel planetario" (dalle schede dell'agenda e dall'elenco della settimana) | `apriEventoNelPlanetario(id)` (sezione 7.4-bis) |
 | Traccia dell'oggetto nel planetario | `skyCalcolaTraccia()` (sezione 7.3-bis), tasto `skymap-btn-traccia` nei Filtri |
+| Passo del tempo e finestra della slitta (sono un comando solo) | `SKY_FINESTRA_DEL_PASSO`, `skyImpostaPassoTempo()`, `skySpostaDiUnPasso()`; nel markup i chip `[data-passo-tempo]` |
+| Tasto della mappa dell'ombra negli eventi del planetario | `skyTastoMappaHtml()` + `skyApriMappaEvento(id)` (sezione 7.4-bis) |
 | Colori della mappa dell'eclissi (chiara/scura) | `ECL_TAVOLOZZE` + `_eclApplicaTemaMappa()`, e `#mappa-eclissi.mappa-chiara` in `style.css` |
+| Mappa dell'eclissi a tutto schermo (comandi in sovrimpressione) | `_eclAlternaSchermoIntero()` e `.ecl-guscio-filmato:fullscreen` / `.ecl-schermo-pieno` in `style.css` |
 | Bussola sbagliata / cielo storto | filtro anti-tremolio `app.js:4072`, declinazione `app.js:4366` |
 | Posizione non rilevata | posizione a strati `app.js:4811`, finestra `app.js:8899` |
 | Meteo o semaforo di osservabilità | `app.js:9492` |
