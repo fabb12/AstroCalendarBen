@@ -3336,6 +3336,28 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
 /* --------------------------------------------------- FINESTRA SIMULAZIONE   */
 .sim-corpo { display: grid; gap: 16px; align-content: start; }
 
+/* --------------------------------- PERCHÉ PROPRIO ADESSO: I NODI E LE ECLISSI
+   Il pannello che collega un'eclissi vera alla geometria che la produce.
+   Vive in tre finestre — mappa dell'ombra, eclissi lunare, simulazione — e
+   ha lo stesso aspetto in tutte e tre, perché è lo stesso discorso. */
+.ecl-stagione-corpo p,
+.sim-eclittica p {
+  margin: 0 0 10px;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--testo-2);
+}
+.ecl-stagione-corpo b,
+.sim-eclittica b { color: var(--testo); font-weight: 600; }
+.sim-eclittica {
+  padding: 14px 16px;
+  border: 1px solid var(--bordo);
+  border-radius: 14px;
+  background: var(--superficie);
+}
+.sim-eclittica > .ecl-tasto-largo,
+.ecl-stagione-corpo > .ecl-tasto-largo { margin-top: 2px; }
+
 /* ------------------------------------------ FINESTRA LEZIONE DELL'ECLITTICA */
 /* Cinque quadri, uno per volta: le linguette in fila, sotto la spiegazione e
    i due tasti per andare avanti e indietro. La lezione si legge, quindi il
