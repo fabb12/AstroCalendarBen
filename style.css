@@ -807,6 +807,26 @@ body.cielo-immersivo .nav-principale { display: none; }
 .leaflet-control-zoom a:hover { background: var(--superficie-alta); color: #fff; }
 /* Le mappe di base sono chiare: le portiamo nella notte */
 .leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(0.86) saturate(0.6) contrast(0.95); }
+
+/* …tranne la mappa del cono d'ombra, che di partenza resta chiara. Lì la
+   domanda è geografica — «l'ombra passa sopra casa mia? quanto devo guidare
+   per entrare nella fascia?» — e su un fondo in negativo coste, confini e
+   nomi delle città diventano illeggibili proprio mentre li si cerca. Il
+   fondo scuro resta a un tasto di distanza, per chi la guarda di notte. */
+#mappa-eclissi.mappa-chiara .leaflet-tile-pane { filter: saturate(0.92) contrast(1.03); }
+#mappa-eclissi.mappa-chiara { background: #cfe0ef; }
+/* Sul chiaro i comandi devono staccarsi dal fondo, non confondersi con esso */
+#mappa-eclissi.mappa-chiara .leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.25);
+}
+#mappa-eclissi.mappa-chiara .leaflet-control-zoom a:hover { background: #fff; color: #000; }
+#mappa-eclissi.mappa-chiara .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.78) !important;
+  color: #334155 !important;
+}
+#mappa-eclissi.mappa-chiara .leaflet-control-attribution a { color: #1d4ed8 !important; }
 .leaflet-control-attribution {
   background: rgba(6, 10, 20, 0.7) !important;
   color: var(--testo-3) !important;
@@ -2710,6 +2730,16 @@ body button.pos-risultato:focus-visible {
   color: var(--testo-2);
 }
 .voce-evento-cielo .dove-evento { color: var(--blu-chiaro); }
+/* Le righe della settimana: stesso disegno, un tono più basso. Non stanno
+   succedendo adesso — sono il programma dei prossimi sette giorni, e non
+   devono rubare l'occhio a quello che c'è nel cielo mostrato. */
+.voce-evento-cielo.settimana {
+  padding: 7px 11px;
+  background: rgba(15, 23, 42, 0.42);
+  border-left-width: 2px;
+}
+.voce-evento-cielo.settimana .titolo-evento { font-size: 0.79rem; font-weight: 500; }
+.voce-evento-cielo.settimana .quando-evento { font-size: 0.72rem; color: var(--testo-3); }
 .azioni-evento { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
 .tasto-evento-cielo {
   min-height: 32px;
