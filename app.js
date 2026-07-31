@@ -1999,12 +1999,16 @@ function _eclApplicaTemaMappa() {
   // Le città sono decine di pallini con lo stesso stile: si ridisegnano
   if (_mappaEclissi && _eclCittaMarker.length) _eclDisegnaCitta();
 
+  // Il tasto sta sull'angolo della mappa, quindi è un segno solo: la luna
+  // porta al buio, il sole riporta alla mappa vera
   const tasto = document.getElementById('btn-eclissi-tema');
   if (tasto) {
-    tasto.textContent = _eclTemaMappa === 'chiara' ? 'Mappa scura' : 'Mappa chiara';
-    tasto.title = _eclTemaMappa === 'chiara'
+    const chiara = _eclTemaMappa === 'chiara';
+    tasto.textContent = chiara ? '☾' : '☀';
+    tasto.title = chiara
       ? 'Passa al fondo scuro: di notte, con gli occhi abituati al buio, una mappa chiara abbaglia'
       : 'Torna alla mappa chiara: coste, confini e nomi delle città si leggono molto meglio';
+    tasto.setAttribute('aria-label', chiara ? 'Mappa scura' : 'Mappa chiara');
   }
 }
 
@@ -4318,6 +4322,7 @@ function apriMappaEclissi(id) {
   const casellaSegui = document.getElementById('eclissi-segui');
   if (casellaSegui) { _eclFilmato.segui = true; casellaSegui.checked = true; }
   _eclFilmatoAggiornaPulsante();
+  _eclAggiornaTastoSchermo();
 
   _eclAggiornaLegenda(evento, _eclCostruisciRiepilogo(evento));
 
@@ -4348,9 +4353,123 @@ function apriMappaEclissi(id) {
 
 function chiudiMappaEclissi() {
   if (_eclFilmato.attivo) _eclFilmatoFerma();
+  if (_eclSchermoIntero) _eclEsciSchermoIntero();
   const modale = document.getElementById('modale-mappa');
   if (modale) modale.classList.add('hidden');
   _eclissiEventoInCorso = null;
+}
+
+// --- La mappa a tutto schermo ---
+//   Il cono d'ombra è una figura lunga mezzo pianeta: dentro alla finestra,
+//   con i pannelli di lettura accanto, se ne vede un pezzo per volta. A
+//   schermo intero la mappa si prende tutto e i comandi del filmato le
+//   restano appoggiati sopra, così si continua a scorrere il tempo mentre si
+//   guarda l'ombra correre.
+let _eclSchermoIntero = false;
+let _eclSegnaposto = null;    // dove rimettere il guscio quando si esce
+
+// Il guscio si cerca per la sua classe, non per il modale che lo contiene:
+// nel ripiego a schermo intero esce dal modale e va appeso al body, e da
+// lì una ricerca dentro `#modale-mappa` non lo troverebbe più. (La mappa
+// delle eclissi lunari ha un guscio suo, senza lettore: sono due elementi
+// diversi e non vanno confusi.)
+function _eclGuscioMappa() {
+  return document.querySelector('.ecl-guscio-filmato');
+}
+
+function _eclAlternaSchermoIntero() {
+  if (_eclSchermoIntero) _eclEsciSchermoIntero();
+  else _eclEntraSchermoIntero();
+}
+
+function _eclEntraSchermoIntero() {
+  const guscio = _eclGuscioMappa();
+  if (!guscio || _eclSchermoIntero) return;
+  _eclSchermoIntero = true;
+  document.body.classList.add('ecl-mappa-immersiva');
+
+  const chiedi = guscio.requestFullscreen || guscio.webkitRequestFullscreen;
+  if (chiedi) {
+    try {
+      const esito = chiedi.call(guscio);
+      if (esito && typeof esito.catch === 'function') esito.catch(() => _eclRipiegoSchermo(guscio));
+    } catch (e) {
+      _eclRipiegoSchermo(guscio);
+    }
+  } else {
+    _eclRipiegoSchermo(guscio);
+  }
+
+  _eclAggiornaTastoSchermo();
+  _eclRimisuraMappa();
+}
+
+// Il ripiego per chi non ha l'API Fullscreen sugli elementi (Safari su
+// iPhone). Qui non basta incollare il guscio al viewport dov'è: la finestra
+// ha lo sfondo sfocato, e un antenato con `backdrop-filter` diventa il
+// riferimento di tutto ciò che sta dentro — `position: fixed` compreso, che
+// finirebbe ancorato al contenuto che scorre. Il guscio esce quindi dal
+// modale e va appeso al body, lasciando un segnaposto per il ritorno.
+function _eclRipiegoSchermo(guscio) {
+  if (!_eclSchermoIntero || _eclSegnaposto) return;
+  _eclSegnaposto = document.createComment('guscio-mappa-eclissi');
+  guscio.parentNode.insertBefore(_eclSegnaposto, guscio);
+  document.body.appendChild(guscio);
+  guscio.classList.add('ecl-schermo-pieno');
+  _eclAggiornaTastoSchermo();
+  _eclRimisuraMappa();
+}
+
+function _eclEsciSchermoIntero() {
+  if (!_eclSchermoIntero) return;
+  const guscio = _eclGuscioMappa();
+  _eclSchermoIntero = false;
+  document.body.classList.remove('ecl-mappa-immersiva');
+
+  if (guscio) guscio.classList.remove('ecl-schermo-pieno');
+  if (guscio && _eclSegnaposto && _eclSegnaposto.parentNode) {
+    _eclSegnaposto.parentNode.replaceChild(guscio, _eclSegnaposto);
+  }
+  _eclSegnaposto = null;
+
+  const esci = document.exitFullscreen || document.webkitExitFullscreen;
+  const attivo = document.fullscreenElement || document.webkitFullscreenElement;
+  if (attivo && esci) {
+    try {
+      const esito = esci.call(document);
+      if (esito && typeof esito.catch === 'function') esito.catch(() => {});
+    } catch (e) { /* già uscito per conto suo */ }
+  }
+
+  _eclAggiornaTastoSchermo();
+  _eclRimisuraMappa();
+}
+
+// Leaflet misura il suo riquadro una volta sola: cambiandolo sotto i piedi
+// (schermo intero, rotazione) va avvisato, o resta con mezza mappa grigia.
+// Nella stessa occasione si misura il lettore: a schermo intero è lui a
+// decidere quanto in alto deve stare la targhetta della città sotto l'ombra,
+// e la sua altezza cambia con la larghezza dello schermo.
+function _eclRimisuraMappa() {
+  [90, 320].forEach(ms => setTimeout(() => {
+    const guscio = _eclGuscioMappa();
+    const lettore = guscio && guscio.querySelector('.ecl-lettore');
+    if (guscio && lettore) {
+      guscio.style.setProperty('--ecl-altezza-lettore', `${Math.round(lettore.offsetHeight)}px`);
+    }
+    if (_mappaEclissi) _mappaEclissi.invalidateSize();
+  }, ms));
+}
+
+function _eclAggiornaTastoSchermo() {
+  const b = document.getElementById('btn-eclissi-schermo');
+  if (!b) return;
+  b.classList.toggle('attiva', _eclSchermoIntero);
+  b.textContent = _eclSchermoIntero ? '✕' : '⛶';
+  b.title = _eclSchermoIntero
+    ? 'Esci dalla mappa a tutto schermo (anche con Esc)'
+    : 'La mappa a tutto schermo, con i comandi in sovrimpressione';
+  b.setAttribute('aria-label', _eclSchermoIntero ? 'Esci da schermo intero' : 'Mappa a schermo intero');
 }
 
 // Collega i comandi del modale: chiusura, cursore del tempo e filmato.
@@ -4364,9 +4483,31 @@ function inizializzaMappaEclissiUI() {
     if (b) b.addEventListener('click', chiudiMappaEclissi);
   });
   modale.addEventListener('click', (e) => { if (e.target === modale) chiudiMappaEclissi(); });
+
+  // Schermo intero della mappa, con i suoi due modi di uscire: il tasto e
+  // l'Esc. Nel pieno schermo vero l'Esc lo intercetta il browser (e ce lo
+  // racconta con `fullscreenchange`); nel ripiego arriva fin qui, e allora
+  // deve chiudere la mappa grande, non la finestra sotto.
+  const tastoSchermo = document.getElementById('btn-eclissi-schermo');
+  if (tastoSchermo) tastoSchermo.addEventListener('click', _eclAlternaSchermoIntero);
+  const cambioSchermo = () => {
+    const attivo = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!attivo && _eclSchermoIntero && !_eclSegnaposto) _eclEsciSchermoIntero();
+    else _eclRimisuraMappa();
+  };
+  document.addEventListener('fullscreenchange', cambioSchermo);
+  document.addEventListener('webkitfullscreenchange', cambioSchermo);
+  // Girando il telefono cambiano sia il riquadro della mappa sia l'altezza
+  // del lettore: entrambi vanno rimisurati, o l'ombra resta su mezza mappa
+  window.addEventListener('resize', () => { if (_eclSchermoIntero) _eclRimisuraMappa(); });
+
   document.addEventListener('keydown', (e) => {
     if (modale.classList.contains('hidden')) return;
-    if (e.key === 'Escape') { chiudiMappaEclissi(); return; }
+    if (e.key === 'Escape') {
+      if (_eclSchermoIntero) _eclEsciSchermoIntero();
+      else chiudiMappaEclissi();
+      return;
+    }
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
     // Comandi da lettore video: spazio riproduce, le frecce scorrono il tempo,
     // Inizio e Fine saltano ai due estremi.
@@ -4429,7 +4570,11 @@ function inizializzaMappaEclissiUI() {
       const b = e.target.closest('[data-salta]');
       if (!b) return;
       const bersaglio = document.getElementById(b.dataset.salta);
-      if (bersaglio) bersaglio.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (!bersaglio) return;
+      // I pannelli sono cassetti, e la metà nasce chiusa: saltare su uno
+      // chiuso porterebbe davanti alla sua sola maniglia. Lo si apre.
+      if (bersaglio.tagName === 'DETAILS') bersaglio.open = true;
+      bersaglio.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
 
@@ -5884,7 +6029,8 @@ const sky = {
   // anche di dieci secondi: le stazioni spaziali fanno un grado al secondo.
   offsetTempoSec: 0,
   ancoraTempoSec: 0,     // il centro della finestra su cui scorre la slitta
-  finestraTempoSec: 3600, // mezza larghezza della finestra della slitta
+  finestraTempoSec: 43200, // mezza larghezza della finestra della slitta
+  passoTempoSec: 600,    // quanto spostano i tasti − e +, e con loro la slitta
   // Playback: il tempo che cammina da solo. Verso 0 fermo, +1 avanti,
   // −1 indietro; la velocità è un gradino della scala SKY_VELOCITA_PLAYBACK
   playbackVerso: 0,
@@ -8928,8 +9074,45 @@ function skyQuandoEventoTesto(ev, inCorso) {
   return inCorso ? `in corso · ${picco}` : skyScartoTempoTesto(scarto);
 }
 
-// Una riga dell'elenco: cosa succede, quando, e i due tasti che servono —
-// portarci sopra l'orologio e cercarlo in cielo.
+// Il tasto della mappa, per gli eventi che ne hanno una.
+//   Un'eclissi di Sole non si capisce dalla sola posizione in cielo: la
+//   domanda vera è da dove la si vede e quanto — e la risposta è il percorso
+//   del cono d'ombra. Chi la incontra qui, nell'elenco del planetario, prima
+//   doveva ricordarsi di cercarla in agenda per arrivarci. Per le eclissi di
+//   Luna il gemello è la mappa di visibilità.
+function skyTastoMappaHtml(ev) {
+  if (ev.eclissi) {
+    return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" onclick="skyApriMappaEvento('${ev.id}')" ` +
+      `title="Il percorso del cono d'ombra sulla Terra, minuto per minuto">Mappa dell'ombra</button>`;
+  }
+  if (ev.eclissiLunare) {
+    return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" onclick="skyApriMappaEvento('${ev.id}')" ` +
+      `title="Da dove si vede, a che ora, e con la Luna quanto alta">Dove si vede</button>`;
+  }
+  return '';
+}
+
+// La finestra della mappa vive nella pagina, e la pagina non si vede finché
+// il cielo è a schermo intero (nel pieno schermo vero il browser disegna solo
+// l'elemento richiesto): si esce prima, se no il tasto sembrerebbe rotto.
+window.skyApriMappaEvento = (id) => {
+  const ev = eventiCalcolati.find(e => e.id === id);
+  if (!ev) return;
+  const apri = () => {
+    if (ev.eclissi && typeof apriMappaEclissi === 'function') apriMappaEclissi(id);
+    else if (ev.eclissiLunare && typeof apriMappaLunare === 'function') apriMappaLunare(id);
+  };
+  if (sky.schermoIntero) {
+    skyEsciSchermoIntero();
+    setTimeout(apri, 140);
+  } else {
+    apri();
+  }
+};
+
+// Una riga dell'elenco: cosa succede, quando, e i tasti che servono —
+// portarci sopra l'orologio, cercarlo in cielo e, per le eclissi, aprire
+// la mappa di dove si vede.
 function skyEventoHtml(ev, inCorso) {
   const cat = CATEGORIE[ev.categoria] || CATEGORIE.personali;
   const posizione = skyPosizioneEvento(ev, skyAdesso());
@@ -8948,6 +9131,7 @@ function skyEventoHtml(ev, inCorso) {
       <div class="azioni-evento">
         <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Porta l'orologio qui</button>
         ${cerca}
+        ${skyTastoMappaHtml(ev)}
       </div>
     </div>
   </div>`;
@@ -8976,6 +9160,7 @@ function skyEventoSettimanaHtml(ev) {
       <p class="quando-evento">${skyGiornoEventoTesto(ev)} · ${skyScartoTempoTesto(scarto)}</p>
       <div class="azioni-evento">
         <button type="button" class="tasto-evento-cielo" onclick="apriEventoNelPlanetario('${ev.id}')">Vedi nel planetario</button>
+        ${skyTastoMappaHtml(ev)}
       </div>
     </div>
   </div>`;
@@ -9682,10 +9867,10 @@ function inizializzaSkymap() {
 
   collega('skymap-btn-avvia', () => skyAvvia(true));
   collega('skymap-btn-manuale', () => skyAvvia(false));
+  // I due tasti dello zoom stanno sull'angolo della mappa, sempre a portata:
+  // dentro al pannello Navigazione erano un doppione degli stessi comandi
   collega('skymap-zoom-in', () => skyZoom(1 / 1.25));
   collega('skymap-zoom-out', () => skyZoom(1.25));
-  collega('skymap-btn-zoom-piu', () => skyZoom(1 / 1.25));
-  collega('skymap-btn-zoom-meno', () => skyZoom(1.25));
   collega('skymap-btn-campo', () => {
     // Con la fotocamera accesa "campo normale" vuol dire togliere la taratura
     // fatta a mano e tornare all'obiettivo tipico
@@ -14388,9 +14573,39 @@ function skyImpostaOffsetTempo(secondi, opzioni = {}) {
 function skyImpostaFinestraTempo(secondi) {
   sky.finestraTempoSec = Math.max(60, secondi || 3600);
   sky.ancoraTempoSec = sky.offsetTempoSec || 0;   // la finestra si centra su qui
-  document.querySelectorAll('#cielo-comandi [data-finestra]').forEach(b =>
-    b.classList.toggle('attiva', parseInt(b.dataset.finestra, 10) === sky.finestraTempoSec));
   skyAggiornaSlittaTempo();
+}
+
+// Il passo del tempo: quanto spostano i due tasti − e +, e insieme quanto
+// tempo copre la slitta che ci sta in mezzo. Sono la stessa cosa detta due
+// volte — chi lavora al secondo vuole la slitta sui minuti, chi salta di
+// giorno in giorno la vuole sul mese — e prima erano due file di tasti da
+// tenere d'accordo a mano. Adesso è una scelta sola.
+const SKY_FINESTRA_DEL_PASSO = {
+  10: 600,          // dieci secondi di passo, slitta su ±10 minuti
+  60: 3600,
+  600: 43200,
+  3600: 604800,
+  86400: 2592000    // un giorno di passo, slitta su ±30 giorni
+};
+
+function skyImpostaPassoTempo(secondi) {
+  const passo = Math.max(1, parseInt(secondi, 10) || 600);
+  sky.passoTempoSec = passo;
+  document.querySelectorAll('#cielo-comandi [data-passo-tempo]').forEach(b => {
+    const scelto = parseInt(b.dataset.passoTempo, 10) === passo;
+    b.classList.toggle('attiva', scelto);
+    b.setAttribute('aria-pressed', scelto ? 'true' : 'false');
+  });
+  skyImpostaFinestraTempo(SKY_FINESTRA_DEL_PASSO[passo] || passo * 72);
+}
+
+// Un passo avanti o indietro (verso +1 o −1). Non ferma il playback: è una
+// spinta, e mentre il cielo cammina serve proprio a quello — saltare la
+// mezz'ora che non interessa.
+function skySpostaDiUnPasso(verso) {
+  const passo = sky.passoTempoSec || 600;
+  skyImpostaOffsetTempo((sky.offsetTempoSec || 0) + verso * passo);
 }
 
 // --- Playback del tempo ---
@@ -14496,8 +14711,10 @@ function skyAggiornaComandiPlayback() {
   const v = skyVelocitaPlayback();
   const lettura = document.getElementById('skymap-vel-valore');
   if (lettura) {
-    lettura.textContent = `${v.fattore.toLocaleString('it-IT')}× · ${v.nome}`;
-    lettura.title = `In un secondo vero passa ${v.nome.replace('/s', '')} di cielo`;
+    // Solo il passo, senza il moltiplicatore: "1 h/s" dice già tutto, e sul
+    // telefono "3.600× · 1 h/s" mandava a capo la riga del playback
+    lettura.textContent = v.nome;
+    lettura.title = `In un secondo vero passa ${v.nome.replace('/s', '')} di cielo (${v.fattore.toLocaleString('it-IT')}×)`;
     lettura.classList.toggle('in-corso', !!sky.playbackVerso);
   }
   const meno = document.getElementById('skymap-vel-meno');
@@ -14600,15 +14817,12 @@ function inizializzaSkymapExtra() {
   };
   collega('skymap-tempo-ora', tornaAdesso);
   collega('skymap-tempo-chip', tornaAdesso);
-  // I salti non fermano il playback: sono una spinta, e mentre il cielo
-  // cammina servono proprio a quello — saltare la mezz'ora che non interessa
-  document.querySelectorAll('#cielo-comandi [data-passo]').forEach(b => {
-    b.addEventListener('click', () =>
-      skyImpostaOffsetTempo((sky.offsetTempoSec || 0) + (parseInt(b.dataset.passo, 10) || 0)));
+  // Il passo scelto vale per i due tasti e per la slitta insieme
+  document.querySelectorAll('#cielo-comandi [data-passo-tempo]').forEach(b => {
+    b.addEventListener('click', () => skyImpostaPassoTempo(b.dataset.passoTempo));
   });
-  document.querySelectorAll('#cielo-comandi [data-finestra]').forEach(b => {
-    b.addEventListener('click', () => skyImpostaFinestraTempo(parseInt(b.dataset.finestra, 10) || 3600));
-  });
+  collega('skymap-passo-meno', () => skySpostaDiUnPasso(-1));
+  collega('skymap-passo-piu', () => skySpostaDiUnPasso(1));
 
   // --- Il playback: il verso, lo stop e il moltiplicatore di velocità ---
   collega('skymap-play-indietro', () => skyAvviaPlayback(-1));
@@ -14651,7 +14865,7 @@ function inizializzaSkymapExtra() {
     if (document.hidden) skySpegniFotocamera();
   });
 
-  skyImpostaFinestraTempo(sky.finestraTempoSec);
+  skyImpostaPassoTempo(sky.passoTempoSec);
   skyAggiornaComandiPlayback();
   skyAggiornaTestoTempo();
 }
