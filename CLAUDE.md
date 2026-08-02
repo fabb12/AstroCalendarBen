@@ -93,7 +93,7 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
 | 580–670 | Eventi di un periodo arbitrario (anche passato) | `calcolaEventiIntervallo()` (**587**) |
 | 671–941 | **1. Calcolo eventi** — fasi lunari, eclissi lunari e solari | `calcolaEventiAstronomi()` (**675**), `aggiungiFasiLunari()`, `aggiungiEclissi*()` |
 | 942–1832 | **1-bis. Geometria di visibilità delle eclissi solari** | cono d'ombra, oscuramento per località |
-| 1833–2742 | **1-ter. La mappa Leaflet**: tracciati, filmato, legenda, schema, schermo intero della mappa | `apriMappaEclissi(id)`, `_eclissiAggiornaTutto()`, `_eclAlternaSchermoIntero()` |
+| 1833–2742 | **1-ter. La mappa Leaflet**: tracciati, filmato, legenda, schema, terminatore (giorno/notte), schermo intero della mappa | `apriMappaEclissi(id)`, `_eclissiAggiornaTutto()`, `_eclDisegnaNotte()`, `_eclAlternaSchermoIntero()` |
 | 2743–2980 | **1-ter-bis.** Il cielo sarà sereno? (meteo dell'eclissi) | |
 | 2981–3070 | **1-ter-ter.** Portarsela dietro (condividere l'eclissi) | |
 | 3071–3312 | **1-quater.** Le eclissi di casa tua | |
@@ -253,6 +253,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 | Quanto spazio lascia la barra a chi le sta sopra (zoom, scheda dell'oggetto, pannelli) | le misure `--tasto-tempo`, `--alta-barra-tempo` e `--sopra-barra-tempo` su `.vista-cielo` in `style.css`: cambiarle basta, le usano `.cielo-chrome`, `.comandi-mappa-cielo`, `.pannello-dettaglio` e `#skymap-overlay`. Sotto i 520px di larghezza la slitta va a capo da sola (media query dedicata) |
 | Tasto della mappa dell'ombra negli eventi del planetario | `skyTastoMappaHtml()` + `skyApriMappaEvento(id)` (sezione 7.4-bis) |
 | Colori della mappa dell'eclissi (chiara/scura) | `ECL_TAVOLOZZE` + `_eclApplicaTemaMappa()`, e `#mappa-eclissi.mappa-chiara` in `style.css` |
+| Il terminatore sulla mappa dell'ombra (dov'è giorno e dov'è notte) | `ECL_NOTTE_SOGLIE` (le tre altezze del Sole: tramonto, crepuscolo civile, notte astronomica) e `_eclFasciaDellaNotte()`, che per ogni meridiano dà il tratto al buio con una formula chiusa — **non** si può chiudere il poligono sul polo, perché vicino agli equinozi il polo non è al buio. Disegno in `_eclDisegnaNotte()`, colori in `ECL_TAVOLOZZE[...].notte`, livelli nel riquadro Leaflet `ecl-notte` (z-index 350: sopra le tessere, sotto i tracciati). Si accende e si spegne con `eclissiAlternaNotte()` (tasto ◐ `#btn-eclissi-notte` sulla mappa) |
 | Mappa dell'eclissi a tutto schermo (comandi in sovrimpressione) | `_eclAlternaSchermoIntero()` e `.ecl-guscio-filmato:fullscreen` / `.ecl-schermo-pieno` in `style.css` |
 | Bussola sbagliata / cielo storto | filtro anti-tremolio `app.js:6204`, declinazione `app.js:6536` |
 | Posizione non rilevata | posizione a strati `trovaPosizioneAStrati()` `app.js:7143`, finestra `app.js:16078` |
