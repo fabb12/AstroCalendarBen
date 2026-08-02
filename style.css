@@ -2951,6 +2951,8 @@ body button.pos-risultato:focus-visible {
 .gruppo-comandi.gruppo-astri.gruppo-attivo { max-height: 66%; }
 /* Anche quello degli eventi: ogni voce è tre righe più i suoi tasti */
 .gruppo-comandi.gruppo-eventi.gruppo-attivo { max-height: 66%; }
+/* E quello del tempo, che adesso dice due cose: quando, e da dove (7.1-ter) */
+.gruppo-comandi.gruppo-tempo.gruppo-attivo { max-height: 66%; }
 
 .riga-comandi {
   display: flex;
@@ -3099,6 +3101,32 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
 }
+/* Le due caselle delle coordinate stanno sulla stessa riga del tasto Usa:
+   da sole vogliono poco spazio, e su un telefono stretto vanno a capo
+   insieme invece di lasciare il tasto orfano. */
+.campo-coordinata { flex: 1 1 92px; }
+
+/* Uno stacco dentro a un pannello: il pannello Tempo dice due cose (quando,
+   e da dove), e senza una riga fra loro sembravano la stessa cosa. */
+.stacco-pannello {
+  height: 1px;
+  margin: 14px 0 12px;
+  background: var(--bordo);
+}
+
+/* Da dove si guarda il cielo. Quando è un luogo di visita — non la posizione
+   dell'app — la lettura si accende: è l'unica cosa che spiega perché il cielo
+   disegnato non è quello che si vede dalla finestra. */
+.lettura-luogo {
+  flex: 1 1 180px;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--testo-2);
+}
+.lettura-luogo[data-visita="si"] { color: var(--blu-chiaro); font-weight: 600; }
+.risultati-luogo { max-height: 200px; }
 
 .lettura-tempo {
   margin: 10px 0 0;
@@ -3465,6 +3493,28 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   cursor: pointer;
 }
 .tasto-zoom-cielo:hover { background: rgba(28, 36, 60, 0.92); }
+
+/* Lo schermo intero appoggiato sulla mappa, come sulla mappa dell'ombra
+   delle eclissi: stessa famiglia dei tasti dello zoom (stessa taglia, stessa
+   pelle), perché è un comando della mappa e non di un pannello. Un simbolo
+   solo, che cambia con lo stato: ⛶ per entrare, ✕ per uscire. */
+.tasto-schermo-cielo {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  color: var(--testo);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transizione), color var(--transizione);
+}
+.tasto-schermo-cielo:hover { background: rgba(28, 36, 60, 0.92); color: #fff; }
+.tasto-schermo-cielo.attiva { background: var(--blu); border-color: transparent; color: #fff; }
 
 /* Il tasto della registrazione: stessa taglia e stessa pelle dei tasti dello
    zoom, perché è della stessa famiglia — comandi della mappa, non di un
