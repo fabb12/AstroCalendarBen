@@ -688,6 +688,18 @@ body .bg-slate-950\/90 {
 }
 #skymap-contenitore.finto-schermo-intero #skymap-canvas { height: 100dvh !important; }
 
+/* Le finestre aperte mentre il cielo è a schermo intero vengono ospitate qui
+   dentro (vedi 7.5-bis in app.js): nel pieno schermo vero il browser disegna
+   solo questo riquadro e i suoi discendenti, e nel ripiego il riquadro è a
+   z-index 60 — più alto del 50 delle finestre. Da ospiti coprono lo schermo
+   per intero e stanno sopra a tutto: pannelli, comandi appoggiati sulla mappa
+   e barra del tempo. */
+#skymap-contenitore > .velo-modale.modale-sopra-il-cielo {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+}
+
 /* Mentre il cielo è a schermo intero la pagina sotto non scorre e la barra di
    navigazione in fondo si toglie di mezzo: rubava il pollice all'uscita */
 body.cielo-immersivo { overflow: hidden; }
