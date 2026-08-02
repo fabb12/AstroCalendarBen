@@ -11127,7 +11127,7 @@ const lez = {
   rotazione: 0,        // giro lento attorno al Sole, perché la scena respiri
   anni: 0,             // il tempo della lezione, in anni
   fade: 1,             // dissolvenza al cambio di quadro
-  scala: 1, cx: 0, cy: 0,
+  scala: 1, cx: 0, cy: 0, altaBarra: 0,
   stelle: [],
   cielo: null,         // posizioni vere dei pianeti per il quadro «Da qui»
   analemma: null,      // il Sole a mezzogiorno per un anno, col suo anticipo
@@ -14527,25 +14527,36 @@ const SOL_LUCE_MIN_UA = 8.3167;     // minuti che la luce impiega per un'unità 
 const SOL_RIF_UA = 30.07;           // Nettuno: il metro con cui si normalizza tutto il disegno
 
 // I pianeti, col loro colore del planetario (chi arriva qui riconosce le
-// stesse tinte che vede sulla mappa) e il raggio con cui si disegnano: non è
-// in scala — a scala vera, con Nettuno al bordo, la Terra sarebbe un
-// centesimo di pixel — ma l'ordine di grandezza fra i giganti e i sassi si
-// legge. Sono pallini generosi apposta: su un telefono un pianeta va toccato
-// col dito, e un dito copre una decina di pixel.
+// stesse tinte che vede sulla mappa) e due misure per disegnarli.
+//
+// `raggio` è il pallino ingrandito: comodo da toccare col dito, ma coi
+// rapporti schiacciati. `km` è il diametro vero, che serve all'altra misura —
+// quella in scala, dove Giove viene ventinove volte Mercurio come nella
+// realtà. Nessuna delle due è in scala con le *distanze*: lì la Terra sarebbe
+// un centesimo di pixel.
 const SOL_PIANETI = [
-  { id: 'Mercury', nome: 'Mercurio', colore: '#cbd5e1', raggio: 5.0,  ua: 0.387, anni: 0.241 },
-  { id: 'Venus',   nome: 'Venere',   colore: '#fde68a', raggio: 7.2,  ua: 0.723, anni: 0.615 },
-  { id: 'Earth',   nome: 'Terra',    colore: '#60a5fa', raggio: 7.6,  ua: 1.000, anni: 1.000 },
-  { id: 'Mars',    nome: 'Marte',    colore: '#f87171', raggio: 6.0,  ua: 1.524, anni: 1.881 },
-  { id: 'Jupiter', nome: 'Giove',    colore: '#fbbf24', raggio: 13.5, ua: 5.203, anni: 11.86 },
-  { id: 'Saturn',  nome: 'Saturno',  colore: '#fcd34d', raggio: 11.5, ua: 9.537, anni: 29.45 },
-  { id: 'Uranus',  nome: 'Urano',    colore: '#67e8f9', raggio: 8.6,  ua: 19.19, anni: 84.01 },
-  { id: 'Neptune', nome: 'Nettuno',  colore: '#93c5fd', raggio: 8.3,  ua: 30.07, anni: 164.8 }
+  { id: 'Mercury', nome: 'Mercurio', colore: '#cbd5e1', raggio: 5.0,  km: 4879,   ua: 0.387, anni: 0.241 },
+  { id: 'Venus',   nome: 'Venere',   colore: '#fde68a', raggio: 7.2,  km: 12104,  ua: 0.723, anni: 0.615 },
+  { id: 'Earth',   nome: 'Terra',    colore: '#60a5fa', raggio: 7.6,  km: 12742,  ua: 1.000, anni: 1.000 },
+  { id: 'Mars',    nome: 'Marte',    colore: '#f87171', raggio: 6.0,  km: 6779,   ua: 1.524, anni: 1.881 },
+  { id: 'Jupiter', nome: 'Giove',    colore: '#fbbf24', raggio: 13.5, km: 139820, ua: 5.203, anni: 11.86 },
+  { id: 'Saturn',  nome: 'Saturno',  colore: '#fcd34d', raggio: 11.5, km: 116460, ua: 9.537, anni: 29.45 },
+  { id: 'Uranus',  nome: 'Urano',    colore: '#67e8f9', raggio: 8.6,  km: 50724,  ua: 19.19, anni: 84.01 },
+  { id: 'Neptune', nome: 'Nettuno',  colore: '#93c5fd', raggio: 8.3,  km: 49244,  ua: 30.07, anni: 164.8 }
 ];
 
-// Il raggio del Sole e quello del pallino della Luna, in pixel
+// Il raggio del Sole e quello del pallino della Luna coi pallini ingranditi
 const SOL_RAGGIO_SOLE = 17;
 const SOL_RAGGIO_LUNA = 3.4;
+
+// A pallini in scala: quanti pixel vale un chilometro di diametro. Scelto
+// perché Mercurio, il più piccolo, resti un punto che si vede.
+const SOL_PX_PER_KM = 3.4e-4;
+const SOL_SOLE_KM = 1392700;
+// Il Sole in scala sarebbe 109 Terre, cioè quattro volte e mezza il disegno:
+// si mangerebbe tutte le orbite interne. Resta il più grosso di tutti — è la
+// cosa vera che deve restare — ma tosato, e sotto al disegno c'è scritto.
+const SOL_SOLE_MAX = 0.085;   // frazione del lato corto della tela
 
 // Quanto ci mettono la telecamera e lo zoom ad arrivare dove sono stati
 // mandati: sono tempi di dimezzamento, in secondi
@@ -14560,15 +14571,15 @@ const SOL_VISTE = {
   taglio: { elev: 2 }
 };
 
-// Quanto tempo passa in un secondo di orologio, quando il tempo cammina da
-// solo. Sotto il giorno non si vede muovere niente (la Terra fa un grado al
-// giorno), sopra l'anno i pianeti interni diventano una sfocatura.
-const SOL_VELOCITA = [
-  { giorni: 1,      nome: '1 g/s' },
-  { giorni: 10,     nome: '10 g/s' },
-  { giorni: 91.3,   nome: '3 mesi/s' },
-  { giorni: 365.25, nome: '1 anno/s' }
+// Il passo del tempo, e con lui quanto ne copre la slitta da un capo
+// all'altro. Il play fa tre passi al secondo, qualunque sia il passo scelto:
+// un comando solo per la velocità e per lo scatto, invece di due.
+const SOL_PASSI = [
+  { nome: 'giorno', sec: 86400,          finestra: 60 * 86400 },
+  { nome: 'mese',   sec: 30 * 86400,     finestra: 2 * 365.25 * 86400 },
+  { nome: 'anno',   sec: 365.25 * 86400, finestra: 30 * 365.25 * 86400 }
 ];
+const SOL_PASSI_AL_SECONDO = 3;
 
 const sol = {
   aperto: false, canvas: null, ctx: null, L: 0, H: 0, raf: null, ultimoTs: 0,
@@ -14585,6 +14596,7 @@ const sol = {
   // davvero, non "quasi". L'ingrandimento è lì per chi poi vuole vedere le
   // inclinazioni, ma dev'essere una cosa che si chiede, non che si trova.
   esagera: 1,
+  misureVere: false,     // false = pallini ingranditi, true = in scala fra loro
   scelto: null,          // id del pianeta di cui si legge la scheda
   pianeti: [], terra: null, luna: null,
   orbite: { chiave: null, tracce: [] },
@@ -14593,7 +14605,9 @@ const sol = {
   stelle: [],
   // Dita appoggiate sulla tela: una gira la scena, due la avvicinano
   puntatori: new Map(), pizzico: null, trascinamento: null, mosso: 0, giu: 0,
-  velIndice: 1, marcia: 0,    // 0 fermo, +1 il tempo avanti, −1 indietro
+  // Il tempo: il passo scelto, il centro della finestra su cui scorre la
+  // slitta, e il verso della marcia (0 fermo, +1 avanti, −1 indietro)
+  passoIndice: 0, ancoraSec: 0, marcia: 0,
   prossimaScheda: 0, firmaScheda: '',
   skyDaRiprendere: false
 };
@@ -14652,6 +14666,20 @@ function solMisura() {
   sol.cx = sol.L / 2;
   sol.cy = sol.H / 2;
   sol.scala = Math.min(sol.L, sol.H) * 0.44 * sol.zoom;
+}
+
+// Quanto si disegna grosso un corpo, nelle due misure: il pallino ingrandito
+// che si tocca col dito, o il diametro vero in scala fra i corpi.
+function solRaggioCorpo(p) {
+  // Sotto il pixel e mezzo un pianeta non è più un pianeta ma un granello di
+  // polvere: Mercurio e Marte si fermano lì. Fra tutti gli altri il rapporto
+  // è quello vero.
+  return sol.misureVere ? Math.max(1.2, p.km * SOL_PX_PER_KM / 2) : p.raggio;
+}
+
+function solRaggioSole() {
+  if (!sol.misureVere) return SOL_RAGGIO_SOLE;
+  return Math.min(Math.min(sol.L, sol.H) * SOL_SOLE_MAX, SOL_SOLE_KM * SOL_PX_PER_KM / 2);
 }
 
 // --- Le posizioni vere -----------------------------------------------------
@@ -14773,7 +14801,7 @@ function solEtichetta(ctx, testo, px, py, raggio, colore, misura, prese, obbliga
   // Libero vuol dire due cose: che nessun altro nome è già lì, e che sta
   // dentro alla tela — un nome tagliato a metà dal bordo è peggio che assente
   const libero = (b) =>
-    b.x >= 2 && b.x + b.w <= sol.L - 2 && b.y >= 2 && b.y + b.h <= sol.H - 24 &&
+    b.x >= 2 && b.x + b.w <= sol.L - 2 && b.y >= 2 && b.y + b.h <= sol.H - 26 - (sol.altaBarra || 0) &&
     !prese.some(q => b.x < q.x + q.w && b.x + b.w > q.x && b.y < q.y + q.h && b.y + b.h > q.y);
   const scatolaDi = (p) => ({ x: p.x - 2, y: p.y - alto, w: largo + 4, h: alto + 3 });
   let posto = posti.find(p => libero(scatolaDi(p)));
@@ -14839,7 +14867,7 @@ function solDisegnaOrbita(ctx, traccia) {
 
 function solDisegnaSole(ctx) {
   const p = solProietta({ x: 0, y: 0, z: 0 });
-  const raggio = SOL_RAGGIO_SOLE;
+  const raggio = solRaggioSole();
   const g = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, raggio * 6);
   g.addColorStop(0, 'rgba(253, 224, 71, 0.55)');
   g.addColorStop(0.35, 'rgba(251, 146, 60, 0.18)');
@@ -14880,6 +14908,7 @@ function solDisegnaPiombo(ctx, corpo) {
 
 function solDisegnaCorpo(ctx, corpo) {
   const p = corpo.schermo;
+  const r = corpo.rDisegno;
   const scelto = sol.scelto === corpo.id;
   ctx.save();
   if (scelto) {
@@ -14887,21 +14916,21 @@ function solDisegnaCorpo(ctx, corpo) {
     ctx.globalAlpha = 0.85;
     ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.arc(p.px, p.py, corpo.raggio + 6, 0, Math.PI * 2);
+    ctx.arc(p.px, p.py, r + 6, 0, Math.PI * 2);
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
   // Un filo di luce dalla parte del Sole, tanto per ricordare da dove
   // arriva: è il motivo per cui esistono le fasi
   const g = ctx.createRadialGradient(
-    p.px - (p.px - sol.cx) * 0.25, p.py - (p.py - sol.cy) * 0.25, corpo.raggio * 0.2,
-    p.px, p.py, corpo.raggio);
+    p.px - (p.px - sol.cx) * 0.25, p.py - (p.py - sol.cy) * 0.25, r * 0.2,
+    p.px, p.py, r);
   g.addColorStop(0, '#ffffff');
   g.addColorStop(0.35, corpo.colore);
   g.addColorStop(1, corpo.colore);
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.arc(p.px, p.py, corpo.raggio, 0, Math.PI * 2);
+  ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -14977,6 +15006,7 @@ function solDisegna() {
   sol.pianeti.forEach(p => {
     p.scena = solScena(p.pos);
     p.schermo = solProietta(p.scena);
+    p.rDisegno = solRaggioCorpo(p);
   });
   const terra = sol.pianeti.find(p => p.id === 'Earth');
   const scelto = sol.pianeti.find(p => p.id === sol.scelto) || null;
@@ -14991,10 +15021,11 @@ function solDisegna() {
   // sopra a un pianeta glielo cancella. Poi, mano a mano, i nomi già messi
   // (vedi solEtichetta).
   const sole = solProietta({ x: 0, y: 0, z: 0 });
-  const prese = [{ x: sole.px - SOL_RAGGIO_SOLE, y: sole.py - SOL_RAGGIO_SOLE,
-    w: SOL_RAGGIO_SOLE * 2, h: SOL_RAGGIO_SOLE * 2 }];
+  const rSole = solRaggioSole();
+  const prese = [{ x: sole.px - rSole, y: sole.py - rSole, w: rSole * 2, h: rSole * 2 }];
   sol.pianeti.forEach(p => prese.push({
-    x: p.schermo.px - p.raggio, y: p.schermo.py - p.raggio, w: p.raggio * 2, h: p.raggio * 2
+    x: p.schermo.px - p.rDisegno, y: p.schermo.py - p.rDisegno,
+    w: p.rDisegno * 2, h: p.rDisegno * 2
   }));
 
   // Dietro prima, davanti poi: è tutto quello che serve perché una scena
@@ -15010,11 +15041,11 @@ function solDisegna() {
   // tardi cancellerebbe la scritta di quello di prima. Il pianeta scelto
   // scrive per primo e ha sempre il suo posto: è l'unico che si sta cercando.
   if (scelto) solEtichetta(ctx, scelto.nome, scelto.schermo.px, scelto.schermo.py,
-    scelto.raggio, '#ffffff', 13, prese, true);
-  solEtichetta(ctx, 'Sole', sole.px, sole.py, SOL_RAGGIO_SOLE, '#fde68a', 12, prese, true);
+    scelto.rDisegno, '#ffffff', 13, prese, true);
+  solEtichetta(ctx, 'Sole', sole.px, sole.py, rSole, '#fde68a', 12, prese, true);
   ordinati.forEach(p => {
     if (p === scelto) return;
-    solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, p.raggio,
+    solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, p.rDisegno,
       'rgba(233, 237, 247, 0.82)', 11.5, prese);
   });
 
@@ -15022,15 +15053,17 @@ function solDisegna() {
   // Su una tela stretta le due scritte si tamponerebbero a metà strada:
   // allora diventano una sola, più corta.
   const stretta = sol.L < 560;
+  const riga = sol.H - 10 - (sol.altaBarra || 0);
   const alto = sol.elev > 70 ? 'a picco sul piano' : (sol.elev < 8 ? 'quasi dentro al piano' : `${Math.round(sol.elev)}° sopra il piano`);
   const largo = solUaAlBordo(sol.zoom);
-  const bordo = `${solNumero(largo, largo < 2 ? 2 : 1)} UA fino al bordo`;
+  const misure = sol.misureVere ? 'pianeti in scala, Sole no' : 'pianeti ingranditi';
+  const bordo = `${solNumero(largo, largo < 2 ? 2 : 1)} UA al bordo`;
   if (stretta) {
-    solTesto(ctx, `${alto} · ${bordo}${sol.distanzeVere ? '' : ' (compresse)'}`, 10, sol.H - 10, '#64748b', 10.5);
+    solTesto(ctx, `${alto} · ${bordo}${sol.distanzeVere ? '' : ' (compresse)'}`, 10, riga, '#64748b', 10.5);
   } else {
-    solTesto(ctx, `${alto} delle orbite`, 10, sol.H - 10, '#64748b', 11);
-    solTesto(ctx, `dal Sole al bordo ≈ ${bordo.replace(' fino al bordo', '')}` +
-      (sol.distanzeVere ? '' : ' · distanze compresse'), sol.L - 10, sol.H - 10, '#64748b', 11, 'right');
+    solTesto(ctx, `${alto} delle orbite · ${misure}`, 10, riga, '#64748b', 11);
+    solTesto(ctx, `dal Sole al bordo ≈ ${bordo.replace(' al bordo', '')}` +
+      (sol.distanzeVere ? '' : ' · distanze compresse'), sol.L - 10, riga, '#64748b', 11, 'right');
   }
 }
 
@@ -15164,14 +15197,65 @@ window.solGuardaNelPlanetario = () => {
   if (id && id !== 'Earth') skyImpostaTarget(id, { mantieni: true });
 };
 
-// --- Il tempo (lo stesso del planetario) -----------------------------------
+// --- Il tempo: la stessa barra del planetario -------------------------------
+//   Stessi tasti nello stesso ordine — ⟲, l'istante, un passo indietro, la
+//   slitta, un passo avanti, il play — perché chi l'ha già usata sotto al
+//   cielo qui non deve imparare niente. L'istante è quello del planetario:
+//   quello che si sposta di qua si trova spostato anche di là.
+//
+//   Cambia solo la misura del passo, che lì sono minuti e qui sono giorni: un
+//   pianeta in dieci minuti non si muove. Il passo scelto decide tre cose
+//   insieme — quanto saltano i tasti − e +, quanto tempo copre la slitta, e
+//   quanto corre il play (tre passi al secondo) — così la velocità non è un
+//   comando in più da capire.
 
-function solVelocita() {
-  const i = Math.max(0, Math.min(SOL_VELOCITA.length - 1, sol.velIndice || 0));
-  return SOL_VELOCITA[i];
+function solPasso() {
+  return SOL_PASSI[Math.max(0, Math.min(SOL_PASSI.length - 1, sol.passoIndice || 0))];
 }
 
-function solAggiornaComandiTempo() {
+function solOffset() {
+  return sky.offsetTempoSec || 0;
+}
+
+// Di quanto si è lontani da adesso, in parole corte
+function solScartoTesto(sec) {
+  const g = sec / 86400;
+  const a = Math.abs(g);
+  const segno = g >= 0 ? '+' : '−';
+  if (a < 1) return `${segno}${Math.round(Math.abs(sec) / 3600)} h`;
+  if (a < 60) return `${segno}${Math.round(a)} g`;
+  if (a < 365) return `${segno}${Math.round(a / 30.44)} mesi`;
+  return `${segno}${(a / 365.25).toFixed(a < 3652 ? 1 : 0)} anni`;
+}
+
+// La lettura, la slitta e i tasti: tutto quello che la barra mostra di sé
+function solAggiornaBarra(quando) {
+  const scarto = solOffset();
+  const spostato = Math.abs(scarto) >= 1;
+
+  const lettura = document.getElementById('sol-quando');
+  if (lettura) {
+    const data = (quando || skyAdesso()).toLocaleDateString('it-IT',
+      { day: 'numeric', month: 'short', year: 'numeric' });
+    const testo = spostato ? `${data} · ${solScartoTesto(scarto)}` : `${data} · adesso`;
+    if (lettura.textContent !== testo) lettura.textContent = testo;
+  }
+  const barra = document.getElementById('sol-tempo');
+  if (barra) barra.classList.toggle('spostata', spostato);
+
+  // La finestra segue l'istante quando questo le esce dai bordi: altrimenti
+  // il cursore resterebbe incollato a un estremo senza poter più tornare
+  const f = solPasso().finestra;
+  if (Math.abs(scarto - sol.ancoraSec) > f) sol.ancoraSec = scarto;
+  const slitta = document.getElementById('sol-slitta');
+  if (slitta && document.activeElement !== slitta) {
+    slitta.min = String(-f);
+    slitta.max = String(f);
+    slitta.step = String(Math.max(1, Math.round(f / 720)));
+    const v = String(Math.max(-f, Math.min(f, scarto - sol.ancoraSec)));
+    if (slitta.value !== v) slitta.value = v;
+  }
+
   const play = document.getElementById('sol-play');
   if (play) {
     play.textContent = sol.marcia ? '❚❚' : '▶';
@@ -15179,42 +15263,35 @@ function solAggiornaComandiTempo() {
     play.setAttribute('aria-pressed', sol.marcia ? 'true' : 'false');
     play.title = sol.marcia ? 'Ferma il tempo' : 'Fai camminare il tempo';
   }
-  document.querySelectorAll('#modale-sistema [data-sol-velocita]').forEach(b => {
-    const attivo = Number(b.dataset.solVelocita) === sol.velIndice;
+  document.querySelectorAll('#sol-passi [data-sol-passo]').forEach(b => {
+    const attivo = Number(b.dataset.solPasso) === sol.passoIndice;
     b.classList.toggle('attiva', attivo);
     b.setAttribute('aria-pressed', attivo ? 'true' : 'false');
   });
-  const adesso = document.getElementById('sol-tempo-adesso');
-  if (adesso) adesso.disabled = Math.abs(sky.offsetTempoSec || 0) < 1;
 }
 
 function solAlternaMarcia() {
   sol.marcia = sol.marcia ? 0 : 1;
-  solAggiornaComandiTempo();
+  solAggiornaBarra();
 }
 
-// Un passo secco: i tasti dei giorni e dei mesi. Spostano il tempo del
-// planetario, non un tempo tutto suo: chiudendo la finestra il cielo è
-// rimasto dove lo si è portato.
-function solPasso(giorni) {
+function solSpostaDiUnPasso(verso) {
   sol.marcia = 0;
-  skyImpostaOffsetTempo((sky.offsetTempoSec || 0) + giorni * 86400);
-  solAggiornaComandiTempo();
+  skyImpostaOffsetTempo(solOffset() + verso * solPasso().sec);
+  solAggiornaBarra();
+}
+
+function solImpostaPasso(indice) {
+  sol.passoIndice = Math.max(0, Math.min(SOL_PASSI.length - 1, indice));
+  sol.ancoraSec = solOffset();      // la finestra nuova si centra su dove siamo
+  solAggiornaBarra();
 }
 
 function solTornaAdesso() {
   sol.marcia = 0;
+  sol.ancoraSec = 0;
   skyImpostaOffsetTempo(0);
-  solAggiornaComandiTempo();
-}
-
-function solAggiornaLettura(quando) {
-  const el = document.getElementById('sol-quando');
-  if (!el) return;
-  const testo = quando.toLocaleString('it-IT', {
-    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  });
-  if (el.textContent !== testo) el.textContent = testo;
+  solAggiornaBarra();
 }
 
 // --- Ciclo, comandi e gesti ------------------------------------------------
@@ -15228,6 +15305,10 @@ function solRidimensiona() {
   sol.canvas.height = Math.round(sol.H * dpr);
   sol.ctx = sol.canvas.getContext('2d');
   sol.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Quanto della tela si prende la barra del tempo, che le sta appoggiata
+  // sopra: le scritte in fondo devono restarle sopra, e la misura la dà lei
+  const barra = document.getElementById('sol-tempo');
+  sol.altaBarra = barra ? barra.offsetHeight + 20 : 0;
 }
 
 function solCiclo(ts) {
@@ -15239,9 +15320,9 @@ function solCiclo(ts) {
   // ogni fotogramma il ricalcolo di tutto il planetario che sta dietro. I
   // conti veri li rifà questa vista, che ha bisogno solo di otto vettori.
   if (sol.marcia) {
-    const avanti = (sky.offsetTempoSec || 0) + sol.marcia * solVelocita().giorni * 86400 * dt;
+    const avanti = solOffset() + sol.marcia * solPasso().sec * SOL_PASSI_AL_SECONDO * dt;
     skyImpostaOffsetTempo(avanti, { fluido: true });
-    if (Math.abs(sky.offsetTempoSec) >= SKY_TEMPO_LIMITE_SEC - 1) { sol.marcia = 0; solAggiornaComandiTempo(); }
+    if (Math.abs(sky.offsetTempoSec) >= SKY_TEMPO_LIMITE_SEC - 1) { sol.marcia = 0; }
   }
 
   // La telecamera raggiunge il punto di vista chiesto scivolando. Smorzamento
@@ -15264,9 +15345,8 @@ function solCiclo(ts) {
   // sessanta fotogrammi al secondo si sente, e nessuno la legge così in fretta
   if (ts > sol.prossimaScheda) {
     sol.prossimaScheda = ts + 250;
-    solAggiornaLettura(quando);
+    solAggiornaBarra(quando);
     solAggiornaScheda(false);
-    solAggiornaComandiTempo();
   }
 
   sol.raf = requestAnimationFrame(solCiclo);
@@ -15297,6 +15377,7 @@ function solAggiornaTasti() {
   });
   segna('#modale-sistema [data-sol-distanze]', b => (b.dataset.solDistanze === 'vere') === sol.distanzeVere);
   segna('#modale-sistema [data-sol-altezze]', b => Number(b.dataset.solAltezze) === sol.esagera);
+  segna('#modale-sistema [data-sol-misure]', b => (b.dataset.solMisure === 'vere') === sol.misureVere);
 }
 
 // Il gesto è il comando principale di questa vista: si gira la scena col
@@ -15404,7 +15485,7 @@ function solTocco(e) {
   sol.pianeti.forEach(p => {
     if (!p.schermo) return;
     const d = Math.hypot(p.schermo.px - x, p.schermo.py - y);
-    if (d <= Math.max(22, p.raggio + 10) && d < miglioreD) { migliore = p; miglioreD = d; }
+    if (d <= Math.max(22, (p.rDisegno || p.raggio) + 10) && d < miglioreD) { migliore = p; miglioreD = d; }
   });
   if (migliore) solScegli(migliore.id);
 }
@@ -15422,6 +15503,7 @@ window.apriSistemaSolare = () => {
   const bersaglio = SOL_PIANETI.some(p => p.id === sky.target) ? sky.target : null;
   sol.scelto = bersaglio;
   sol.marcia = 0;
+  sol.ancoraSec = sky.offsetTempoSec || 0;
   sol.firmaScheda = '';
   sol.prossimaScheda = 0;
   sol.ultimoTs = 0;
@@ -15431,7 +15513,7 @@ window.apriSistemaSolare = () => {
   const aiuto = modale.querySelector('.sol-suggerimento');
   if (aiuto) aiuto.classList.remove('sol-svanito');
   solAggiornaTasti();
-  solAggiornaComandiTempo();
+  solAggiornaBarra();
 
   modale.classList.remove('hidden');
   sol.aperto = true;
@@ -15447,7 +15529,7 @@ window.apriSistemaSolare = () => {
     const quando = skyAdesso();
     solLeggiPosizioni(quando);
     solCalcolaOrbite(quando);
-    solAggiornaLettura(quando);
+    solAggiornaBarra(quando);
     solAggiornaScheda(true);
     if (!sol.raf) sol.raf = requestAnimationFrame(solCiclo);
   });
@@ -15520,21 +15602,48 @@ function inizializzaSistemaSolare() {
   const zoomOut = document.getElementById('sol-zoom-out');
   if (zoomOut) zoomOut.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto / 1.4, { morbido: true }));
 
-  modale.querySelectorAll('[data-sol-passo]').forEach(b =>
-    b.addEventListener('click', () => solPasso(Number(b.dataset.solPasso) || 0)));
+  modale.querySelectorAll('[data-sol-misure]').forEach(b =>
+    b.addEventListener('click', () => {
+      sol.misureVere = b.dataset.solMisure === 'vere';
+      solAggiornaTasti();
+      solDisegna();
+    }));
+
+  // La barra del tempo
   const play = document.getElementById('sol-play');
   if (play) play.addEventListener('click', solAlternaMarcia);
   const adesso = document.getElementById('sol-tempo-adesso');
   if (adesso) adesso.addEventListener('click', solTornaAdesso);
+  const meno = document.getElementById('sol-passo-meno');
+  if (meno) meno.addEventListener('click', () => solSpostaDiUnPasso(-1));
+  const piu = document.getElementById('sol-passo-piu');
+  if (piu) piu.addEventListener('click', () => solSpostaDiUnPasso(1));
 
-  const velocita = document.getElementById('sol-velocita');
-  if (velocita && velocita.dataset.pronto !== 'si') {
-    velocita.innerHTML = SOL_VELOCITA.map((v, i) =>
-      `<button type="button" class="tasto-segmento" data-sol-velocita="${i}" ` +
-      `title="In un secondo passa ${v.nome.replace('/s', '')}">${v.nome}</button>`).join('');
-    velocita.querySelectorAll('[data-sol-velocita]').forEach(b =>
-      b.addEventListener('click', () => { sol.velIndice = Number(b.dataset.solVelocita); solAggiornaComandiTempo(); }));
-    velocita.dataset.pronto = 'si';
+  const slitta = document.getElementById('sol-slitta');
+  if (slitta) {
+    // Mentre il pollice scorre arrivano decine di valori al secondo: il tempo
+    // si sposta «fluido», cioè senza rifare a ogni valore i conti di tutto il
+    // planetario che sta dietro (a questa vista bastano otto vettori, e se li
+    // rifà da sé a ogni fotogramma). Il conto pieno si fa quando il dito si
+    // stacca.
+    slitta.addEventListener('input', () => {
+      sol.marcia = 0;
+      skyImpostaOffsetTempo(sol.ancoraSec + Number(slitta.value), { fluido: true, daSlitta: true });
+    });
+    slitta.addEventListener('change', () => {
+      skyImpostaOffsetTempo(Math.round(sol.ancoraSec + Number(slitta.value)));
+      solAggiornaBarra();
+    });
+  }
+
+  const passi = document.getElementById('sol-passi');
+  if (passi && passi.dataset.pronto !== 'si') {
+    passi.innerHTML = SOL_PASSI.map((v, i) =>
+      `<button type="button" class="tasto-segmento" data-sol-passo="${i}" ` +
+      `title="I tasti − e + saltano di un ${v.nome}, e il play ne fa tre al secondo">${v.nome}</button>`).join('');
+    passi.querySelectorAll('[data-sol-passo]').forEach(b =>
+      b.addEventListener('click', () => solImpostaPasso(Number(b.dataset.solPasso))));
+    passi.dataset.pronto = 'si';
   }
 
   document.addEventListener('keydown', e => {
