@@ -6091,6 +6091,11 @@ const sky = {
   // Sole, foschia sull'orizzonte, stelle che sbiadiscono di giorno
   atmosfera: true,
   luceCielo: 0,          // quanto è chiaro il cielo adesso: 0 notte, 1 giorno
+  ariaOra: null,         // i colori dell'aria dell'ultimo fotogramma
+  // Eclissi di Sole in corso all'ora mostrata: quanto la Luna copre il disco
+  // solare. Si ricalcola a ogni fotogramma perché ne dipendono la misura
+  // della Luna, la corona, il bagliore e il colore del cielo (vedi 7.3.2)
+  eclisse: null,
   costellazioni: [],
   profondo: [],
   viaLattea: [],
@@ -7262,6 +7267,8 @@ function skyAggiornaOggetti(forza) {
     } catch (e) { /* corpo non calcolabile: lo saltiamo senza fermare gli altri */ }
   });
   skyAggiungiSatelliti(lista, quando);
+  skyOmbraDellaTerra(lista, t);
+  skyAssettoDiSaturno(lista, t);
   sky.oggetti = lista;
   skyAggiornaCatalogo(quando);
   skyAggiornaEtichette();
@@ -7279,6 +7286,72 @@ function skyAggiornaOggetti(forza) {
       skyCentraSu(atteso);
     }
   }
+}
+
+// La Luna dentro il cono d'ombra della Terra. Il conto va fatto dal centro
+// della Terra, non da qui: la parallasse lunare vale fino a un grado, cioè
+// quanto tutta l'ombra, e prendere le coordinate che vediamo noi metterebbe
+// l'ombra dalla parte sbagliata.
+// I raggi dell'ombra sono quelli classici (Chauvenet): l'ombra piena e la
+// penombra si costruiscono dalla parallasse della Luna, da quella del Sole e
+// dal raggio apparente del Sole, allargate dell'un per cento perché l'aria
+// della Terra gonfia un po' il cono.
+const SKY_RAGGIO_TERRA = 6378.14;
+const SKY_RAGGIO_SOLE = 696000;
+const SKY_RAGGIO_LUNA = 1737.4;
+
+function skyOmbraDellaTerra(lista, t) {
+  const luna = lista.find(o => o.id === 'Moon');
+  if (!luna) return;
+  luna.ombraTerra = null;
+  if (typeof Astronomy === 'undefined' || typeof Astronomy.GeoVector !== 'function') return;
+  try {
+    const gl = Astronomy.GeoVector('Moon', t, true);
+    const gs = Astronomy.GeoVector('Sun', t, true);
+    const dL = Math.hypot(gl.x, gl.y, gl.z) * SKY_KM_PER_UA;
+    const dS = Math.hypot(gs.x, gs.y, gs.z) * SKY_KM_PER_UA;
+    if (!dL || !dS) return;
+    const piL = Math.asin(SKY_RAGGIO_TERRA / dL) * SKY_R2D;
+    const piS = Math.asin(SKY_RAGGIO_TERRA / dS) * SKY_R2D;
+    const sS = Math.asin(SKY_RAGGIO_SOLE / dS) * SKY_R2D;
+    const rL = Math.asin(SKY_RAGGIO_LUNA / dL) * SKY_R2D;
+    const umbra = 1.02 * (piL + piS - sS);
+    const penombra = 1.02 * (piL + piS + sS);
+
+    // Il centro dell'ombra è il punto opposto al Sole
+    const u = skyNormalizza([gl.x, gl.y, gl.z]);
+    const a = skyNormalizza([-gs.x, -gs.y, -gs.z]);
+    const gamma = skyAngoloFra(u, a);
+    if (gamma > penombra + rL) return;     // la Luna è fuori: niente da disegnare
+
+    // Da che parte le sta l'ombra, detto come angolo di posizione (dal nord
+    // celeste verso est): è l'unico modo di passare il dato al disegno senza
+    // portarsi dietro tutto il sistema di coordinate.
+    const nord = skyNormalizza([-u[2] * u[0], -u[2] * u[1], 1 - u[2] * u[2]]);
+    const est = skyNormalizza([-u[1], u[0], 0]);
+    const p = skyDot(a, u);
+    const versoOmbra = skyNormalizza([a[0] - p * u[0], a[1] - p * u[1], a[2] - p * u[2]]);
+    const pa = Math.atan2(skyDot(versoOmbra, est), skyDot(versoOmbra, nord));
+    luna.ombraTerra = { gamma, umbra, penombra, rL, pa };
+  } catch (e) { /* niente ombra: la Luna resta piena, e pazienza */ }
+}
+
+// Quanto sono aperti gli anelli di Saturno. Non è un dettaglio da grafico:
+// nel marzo 2025 erano esattamente di taglio e sparivano per settimane,
+// mentre nel 2032 saranno spalancati. Il numero è il seno della latitudine
+// da cui li guardiamo, e si ricava dall'asse di rotazione del pianeta.
+function skyAssettoDiSaturno(lista, t) {
+  const saturno = lista.find(o => o.id === 'Saturn');
+  if (!saturno) return;
+  if (typeof Astronomy === 'undefined' || typeof Astronomy.RotationAxis !== 'function') return;
+  try {
+    const asse = Astronomy.RotationAxis('Saturn', t);
+    const g = Astronomy.GeoVector('Saturn', t, true);
+    const u = skyNormalizza([g.x, g.y, g.z]);
+    const n = skyNormalizza([asse.north.x, asse.north.y, asse.north.z]);
+    // Guardiamo il polo nord degli anelli se il loro nord punta verso di noi
+    saturno.aperturaAnelli = -skyDot(n, u);
+  } catch (e) { /* si userà l'apertura media */ }
 }
 
 // Aggiunge ISS e Tiangong agli oggetti del cielo. A differenza dei pianeti
@@ -7541,7 +7614,12 @@ function skyDisegnaSfondo(ctx, base, focale, aria) {
 // appena sotto — è la ragione per cui il crepuscolo esiste.
 function skyDisegnaAloneSole(ctx, base, focale, sole, aria) {
   if (!sole || !sky.atmosfera) return;
-  const forza = sole.alt >= 0 ? 0.9 : Math.max(0, 1 + sole.alt / 18);
+  let forza = sole.alt >= 0 ? 0.9 : Math.max(0, 1 + sole.alt / 18);
+  // Se la Luna gli sta davanti, il bagliore se ne va con la parte di Sole
+  // che copre: è la prima cosa che si nota durante un'eclissi, molto prima
+  // che il cielo cambi colore — e senza questo, alla totalità il cielo
+  // restava di un grigio da mezzogiorno con la corona in mezzo.
+  if (sky.eclisse && sky.eclisse.attiva) forza *= Math.pow(1 - sky.eclisse.copertura, 0.6);
   if (forza <= 0.02) return;
 
   // Sotto l'orizzonte l'alone si appoggia comunque al suo azimut, appena
@@ -7741,6 +7819,1049 @@ function skyDisegnaViaLattea(ctx, base, focale) {
   ctx.restore();
 }
 
+// =====================================================================
+// 7.3.2 LA PELLE DEGLI ASTRI
+//   Finché il campo era largo, un astro erano dieci pixel e bastava un
+//   pallino colorato. Ma adesso il campo si stringe fino a un quarto di
+//   grado: la Luna riempie mezzo schermo, Giove è grande come una moneta —
+//   e a quella misura un disco liscio si riconosce subito per quello che è,
+//   un cerchio disegnato, non un mondo.
+//   Qui ogni astro si prende la sua faccia vera: i mari della Luna alle
+//   loro coordinate selenografiche, le bande di Giove alle latitudini
+//   giuste, la calotta polare di Marte, la granulazione del Sole e la sua
+//   corona quando la Luna gli passa davanti.
+//   La spesa si paga una volta sola. Ogni faccia si dipinge su una tela
+//   fuori schermo, e da lì in poi si ricopia soltanto: per il browser
+//   ricopiare un'immagine è l'operazione più economica che ci sia, mentre
+//   ridisegnare cinquanta crateri sessanta volte al secondo farebbe
+//   scaldare il telefono e basta.
+// =====================================================================
+
+// Numeri a caso sempre uguali. La faccia della Luna non può cambiare fra un
+// fotogramma e l'altro (né fra una sessione e l'altra): da un seme — una
+// stringa qualunque — esce sempre la stessa sequenza.
+function skySeme(testo) {
+  let h = 2166136261;
+  for (let i = 0; i < testo.length; i++) {
+    h ^= testo.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function skyCaso(seme) {
+  let s = seme >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// --- Il deposito delle tele ------------------------------------------
+// Ogni astro ha una tela per taglia (le taglie raddoppiano: 64, 128, 256…),
+// perché ingrandendo servono più pixel. Quando sono troppe se ne va quella
+// che non si guarda da più tempo: una Map conserva l'ordine di inserimento,
+// quindi la più vecchia è sempre la prima chiave.
+const skyTele = new Map();
+const SKY_TELE_MAX = 18;
+
+// Quanto grande dipingere una faccia: la potenza di due che copre il
+// diametro sullo schermo, tenendo conto dei pixel veri del display. Più
+// grande di così non si vedrebbe, e su un telefono si sentirebbe.
+function skyLatoTela(rPixel) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const tetto = dispositivoAttuale === 'telefono' ? 256 : 512;
+  let lato = 64;
+  while (lato < rPixel * 2 * dpr && lato < tetto) lato *= 2;
+  return lato;
+}
+
+function skyPelle(chiave, lato, pennello) {
+  const k = chiave + '@' + lato;
+  if (skyTele.has(k)) {
+    const gia = skyTele.get(k);
+    skyTele.delete(k);
+    skyTele.set(k, gia);          // rimessa in fondo alla fila
+    return gia;
+  }
+  let tela = null;
+  try {
+    tela = document.createElement('canvas');
+    tela.width = lato;
+    tela.height = lato;
+    const c = tela.getContext('2d');
+    // Il pennello lavora in un mondo comodo: il disco dell'astro è il
+    // cerchio di raggio 1 attorno all'origine, qualunque sia la taglia della
+    // tela. Così le coordinate delle macchie si scrivono una volta sola.
+    c.translate(lato / 2, lato / 2);
+    c.scale(lato / 2, lato / 2);
+    c.lineWidth = 0.008;
+    pennello(c);
+  } catch (e) {
+    tela = null;                  // niente tela: si ripiega sul disco sfumato
+  }
+  skyTele.set(k, tela);
+  if (skyTele.size > SKY_TELE_MAX) skyTele.delete(skyTele.keys().next().value);
+  return tela;
+}
+
+// --- Attrezzi da pittore ---------------------------------------------
+
+// Una nuvola tonda che sfuma verso il bordo: è il pennello con cui si
+// dipinge tutto ciò che in natura non ha un contorno (mari, nebulose, aloni)
+function skyNuvola(ctx, r, colore, alpha, nocciolo) {
+  const g = ctx.createRadialGradient(0, 0, r * (nocciolo == null ? 0.25 : nocciolo), 0, 0, r);
+  g.addColorStop(0, skyColoreConAlpha(colore, alpha));
+  g.addColorStop(0.6, skyColoreConAlpha(colore, alpha * 0.45));
+  g.addColorStop(1, skyColoreConAlpha(colore, 0));
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// Dove cade, sul disco che vediamo, un punto di longitudine e latitudine
+// date. È la proiezione ortografica, quella giusta per una palla lontana:
+// `z` dice se il punto è sulla faccia rivolta a noi e quanto è vicino al
+// bordo (più è vicino, più tutto ciò che ci sta sopra si schiaccia).
+function skySuSfera(lon, lat) {
+  const a = lon * SKY_D2R, b = lat * SKY_D2R;
+  const x = Math.cos(b) * Math.sin(a);
+  const y = -Math.sin(b);
+  const z = Math.cos(b) * Math.cos(a);
+  return { x, y, z, rot: Math.atan2(y, x) };
+}
+
+// Una macchia appoggiata sulla palla: verso il bordo si stringe nella
+// direzione del centro, come succede a tutto ciò che sta su una sfera.
+// Il pennello riceve un contesto già portato lì e già schiacciato.
+function skyMacchiaSfera(ctx, lon, lat, raggio, pennello) {
+  const p = skySuSfera(lon, lat);
+  if (p.z <= 0.06) return;        // dall'altra parte, o proprio sul filo
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(p.rot);
+  ctx.scale(Math.max(0.1, p.z), 1);
+  pennello(ctx, raggio, p.z);
+  ctx.restore();
+}
+
+// Le bande di un gigante gassoso. Sono paralleli, e su una palla vista di
+// fianco un parallelo è una riga dritta: verso i poli le righe si stringono
+// da sé, perché la latitudine entra con un seno. I bordi sono appena
+// ondulati — una banda dal bordo dritto sembra nastro adesivo.
+function skyBandeSfera(ctx, bande) {
+  bande.forEach((b, n) => {
+    const y1 = -Math.sin(b.a * SKY_D2R), y2 = -Math.sin(b.b * SKY_D2R);
+    const onda = b.onda == null ? 0.014 : b.onda;
+    ctx.fillStyle = b.c;
+    ctx.globalAlpha = b.alfa == null ? 1 : b.alfa;
+    ctx.beginPath();
+    for (let x = -1; x <= 1.0001; x += 0.08) {
+      const y = y1 + Math.sin(x * 7 + n) * onda;
+      if (x === -1) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    for (let x = 1; x >= -1.0001; x -= 0.08) {
+      ctx.lineTo(x, y2 + Math.sin(x * 5.5 - n * 1.7) * onda);
+    }
+    ctx.closePath();
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// Crateri sparsi su una palla: un orlo chiaro di materiale scavato e un
+// fondo in ombra. La distribuzione è uniforme sulla sfera (la latitudine si
+// tira a sorte con un arcoseno, se no si affollano ai poli).
+function skyCrateriSfera(ctx, caso, quanti, opzioni) {
+  const o = opzioni || {};
+  for (let i = 0; i < quanti; i++) {
+    const lon = caso() * 360 - 180;
+    const lat = Math.asin(caso() * 2 - 1) * SKY_R2D;
+    if (o.evita && o.evita(lon, lat) && caso() > 0.25) continue;
+    const r = (o.min || 0.008) + Math.pow(caso(), 3) * (o.max || 0.05);
+    skyMacchiaSfera(ctx, lon, lat, r, (c, raggio) => {
+      c.beginPath();
+      c.arc(0, 0, raggio, 0, Math.PI * 2);
+      c.fillStyle = o.fondo || 'rgba(96, 92, 88, 0.32)';
+      c.fill();
+      c.lineWidth = raggio * 0.4;
+      c.strokeStyle = o.orlo || 'rgba(240, 236, 228, 0.30)';
+      c.stroke();
+    });
+  }
+}
+
+// Una stellina dentro una texture: nocciolo minuscolo e alone
+function skyStellina(ctx, x, y, r, colore, alpha) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3.4);
+  g.addColorStop(0, skyColoreConAlpha(colore, alpha));
+  g.addColorStop(0.25, skyColoreConAlpha(colore, alpha * 0.4));
+  g.addColorStop(1, skyColoreConAlpha(colore, 0));
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 3.4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// --- La Luna ----------------------------------------------------------
+// I mari, alle loro coordinate selenografiche vere: longitudine positiva
+// verso est, che guardando la Luna con il nord in alto è la destra (il Mare
+// Crisium, la macchia staccata in alto a destra, sta a +59°). Il raggio è in
+// raggi lunari: l'Imbrium è largo poco meno di un terzo del disco.
+const SKY_MARI_LUNA = [
+  { lon: -57, lat: 20,  r: 0.40, f: 0.75 },   // Oceanus Procellarum
+  { lon: -17, lat: 34,  r: 0.31, f: 0.95 },   // Mare Imbrium
+  { lon: 18,  lat: 28,  r: 0.20, f: 1    },   // Mare Serenitatis
+  { lon: 31,  lat: 8,   r: 0.23, f: 0.95 },   // Mare Tranquillitatis
+  { lon: 59,  lat: 17,  r: 0.14, f: 0.9  },   // Mare Crisium
+  { lon: 52,  lat: -8,  r: 0.17, f: 0.8  },   // Mare Fecunditatis
+  { lon: 34,  lat: -15, r: 0.11, f: 0.8  },   // Mare Nectaris
+  { lon: -17, lat: -21, r: 0.17, f: 0.75 },   // Mare Nubium
+  { lon: -39, lat: -24, r: 0.12, f: 0.8  },   // Mare Humorum
+  { lon: -2,  lat: 56,  r: 0.15, f: 0.55 },   // Mare Frigoris
+  { lon: 4,   lat: 13,  r: 0.09, f: 0.6  },   // Mare Vaporum
+  { lon: -31, lat: 8,   r: 0.13, f: 0.5  },   // Mare Insularum
+  { lon: -23, lat: -10, r: 0.10, f: 0.55 }    // Mare Cognitum
+];
+
+// I crateri che si riconoscono a occhio. Tycho, in basso, è quello con la
+// raggiera: alla Luna piena è la cosa più vistosa del disco.
+const SKY_CRATERI_LUNA = [
+  { lon: -11, lat: -43, r: 0.048, raggiera: 1.05 },   // Tycho
+  { lon: -20, lat: 10,  r: 0.042, raggiera: 0.55 },   // Copernico
+  { lon: -38, lat: 8,   r: 0.028, raggiera: 0.38 },   // Keplero
+  { lon: -47, lat: 24,  r: 0.024, raggiera: 0.34 },   // Aristarco
+  { lon: 61,  lat: -9,  r: 0.045, raggiera: 0.22 },   // Langrenus
+  { lon: -2,  lat: -9,  r: 0.052, raggiera: 0    },   // Tolomeo
+  { lon: 60,  lat: -25, r: 0.048, raggiera: 0    },   // Petavius
+  { lon: -8,  lat: -25, r: 0.040, raggiera: 0    }    // Walter
+];
+
+function skyDentroUnMare(lon, lat) {
+  const p = skySuSfera(lon, lat);
+  return SKY_MARI_LUNA.some(m => {
+    const q = skySuSfera(m.lon, m.lat);
+    return Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z) < m.r;
+  });
+}
+
+// Un mare non è un cerchio: è una pozza dai contorni frastagliati. Si
+// costruisce da più lobi sovrapposti attorno al punto giusto — con un
+// cerchio solo si vedeva subito il compasso.
+function skyDipingiMare(ctx, m) {
+  const caso = skyCaso(skySeme(`mare${m.lon}:${m.lat}`));
+  const gradiPerRaggio = 90;                 // un raggio lunare vale 90° d'arco
+  for (let i = 0; i < 11; i++) {
+    const a = caso() * Math.PI * 2;
+    const d = Math.pow(caso(), 0.65) * m.r * 0.6 * gradiPerRaggio;
+    const lat = m.lat + Math.sin(a) * d;
+    const lon = m.lon + Math.cos(a) * d / Math.max(0.35, Math.cos(lat * SKY_D2R));
+    // Lobi allungati e girati a caso: sovrapponendosi danno una pozza dai
+    // contorni frastagliati, che è come sono fatti i mari veri
+    const giro = caso() * Math.PI, stretto = 0.45 + caso() * 0.5;
+    skyMacchiaSfera(ctx, lon, lat, m.r * (0.4 + caso() * 0.5), (c, r) => {
+      c.rotate(giro);
+      c.scale(1, stretto);
+      skyNuvola(c, r, '#5f636d', 0.34 * m.f, 0.8);
+    });
+  }
+}
+
+function skyDipingiLuna(ctx) {
+  const caso = skyCaso(skySeme('luna'));
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.clip();
+
+  // Gli altopiani: la roccia chiara e piena di crateri che copre quasi tutto
+  ctx.fillStyle = '#c4bfb5';
+  ctx.fillRect(-1, -1, 2, 2);
+
+  // I mari: colate di lava antica, grigie e senza bordi netti
+  SKY_MARI_LUNA.forEach(m => skyDipingiMare(ctx, m));
+
+  // La grana della superficie: senza, i mari sembrano macchie di vernice
+  for (let i = 0; i < 300; i++) {
+    const lon = caso() * 360 - 180;
+    const lat = Math.asin(caso() * 2 - 1) * SKY_R2D;
+    const chiaro = caso() > 0.5;
+    skyMacchiaSfera(ctx, lon, lat, 0.015 + caso() * 0.05, (c, r) => {
+      skyNuvola(c, r, chiaro ? '#e7e2d8' : '#8d8a84', 0.07, 0.1);
+    });
+  }
+
+  // I crateri piccoli, quasi tutti sugli altopiani: i mari sono molto più
+  // giovani e non hanno avuto il tempo di prenderne
+  skyCrateriSfera(ctx, caso, 220, {
+    evita: skyDentroUnMare, min: 0.005, max: 0.038,
+    fondo: 'rgba(120, 116, 110, 0.16)', orlo: 'rgba(233, 228, 218, 0.15)'
+  });
+
+  // Quelli grandi, con nome: attorno hanno il mantello di detriti chiari
+  // lanciati dall'impatto, che è ciò che li rende riconoscibili
+  SKY_CRATERI_LUNA.forEach(k => {
+    if (k.raggiera) {
+      skyMacchiaSfera(ctx, k.lon, k.lat, k.r * 2.6, (c, r) => {
+        skyNuvola(c, r, '#ece7dd', 0.10 * Math.min(1, k.raggiera), 0.12);
+      });
+    }
+    skyMacchiaSfera(ctx, k.lon, k.lat, k.r, (c, r) => {
+      c.beginPath();
+      c.arc(0, 0, r, 0, Math.PI * 2);
+      c.fillStyle = 'rgba(112, 108, 104, 0.22)';
+      c.fill();
+      c.lineWidth = r * 0.3;
+      c.strokeStyle = 'rgba(240, 236, 228, 0.20)';
+      c.stroke();
+    });
+  });
+
+  // Le raggiere di Tycho e Copernico: schizzi chiari lanciati a mezza Luna
+  // di distanza. Alla Luna piena sono l'impronta più vistosa del disco — ma
+  // sono strisce di polvere, non fuochi d'artificio: partono dall'orlo del
+  // cratere (non dal centro, che se no diventa una stella) e si spengono.
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  SKY_CRATERI_LUNA.forEach(k => {
+    if (!k.raggiera) return;
+    const p = skySuSfera(k.lon, k.lat);
+    if (p.z <= 0.1) return;
+    for (let i = 0; i < 26; i++) {
+      const a = caso() * Math.PI * 2;
+      const dentro = k.r * 2.2;
+      const lungo = dentro + k.raggiera * (0.3 + caso() * 0.8);
+      const x1 = p.x + Math.cos(a) * dentro, y1 = p.y + Math.sin(a) * dentro;
+      const x2 = p.x + Math.cos(a) * lungo, y2 = p.y + Math.sin(a) * lungo;
+      const g = ctx.createLinearGradient(x1, y1, x2, y2);
+      g.addColorStop(0, 'rgba(250, 248, 240, 0.013)');
+      g.addColorStop(0.3, 'rgba(250, 248, 240, 0.010)');
+      g.addColorStop(1, 'rgba(250, 248, 240, 0)');
+      ctx.strokeStyle = g;
+      ctx.lineWidth = 0.012 + caso() * 0.03;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+  });
+  ctx.restore();
+
+  // Un filo di scurimento sul bordo: la Luna piena è famosa per essere
+  // piatta, ma l'ultimo orlo scuro le dà la rotondità
+  const g = ctx.createRadialGradient(0, 0, 0.72, 0, 0, 1);
+  g.addColorStop(0, 'rgba(12, 14, 22, 0)');
+  g.addColorStop(1, 'rgba(12, 14, 22, 0.32)');
+  ctx.fillStyle = g;
+  ctx.fillRect(-1, -1, 2, 2);
+  ctx.restore();
+}
+
+// --- Il Sole ----------------------------------------------------------
+// Non è un disco bianco: è gas a cinquemila gradi, con la grana delle celle
+// di convezione, le facole più chiare verso il bordo e — quasi sempre —
+// qualche macchia. E soprattutto è più scuro sull'orlo che al centro,
+// perché lì lo sguardo attraversa gli strati alti e più freddi.
+function skyDipingiSole(ctx) {
+  const caso = skyCaso(skySeme('sole'));
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.clip();
+
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+  g.addColorStop(0, '#fffef8');
+  g.addColorStop(0.55, '#fff7dd');
+  g.addColorStop(0.85, '#ffe3a4');
+  g.addColorStop(1, '#f8a83e');
+  ctx.fillStyle = g;
+  ctx.fillRect(-1, -1, 2, 2);
+
+  // La granulazione: un milione di celle di gas che salgono e ricadono. Vista
+  // da qui è una grana finissima, appena percepibile — non una schiuma.
+  for (let i = 0; i < 700; i++) {
+    const lon = caso() * 360 - 180;
+    const lat = Math.asin(caso() * 2 - 1) * SKY_R2D;
+    const chiara = caso() > 0.45;
+    skyMacchiaSfera(ctx, lon, lat, 0.012 + caso() * 0.018, (c, r) => {
+      skyNuvola(c, r, chiara ? '#fffdf0' : '#f3c469', 0.09, 0.15);
+    });
+  }
+
+  // Le facole: reticoli più chiari, visibili soprattutto verso l'orlo
+  for (let i = 0; i < 22; i++) {
+    const lon = (caso() > 0.5 ? 1 : -1) * (52 + caso() * 30);
+    const lat = caso() * 90 - 45;
+    skyMacchiaSfera(ctx, lon, lat, 0.05 + caso() * 0.08, (c, r) => {
+      skyNuvola(c, r, '#fffef2', 0.22, 0.05);
+    });
+  }
+
+  // Le macchie: un nocciolo scuro dentro una penombra più chiara. Stanno
+  // sempre in due fasce attorno all'equatore, mai ai poli — e sono piccole:
+  // una macchia grande come la Terra, sul disco solare, è un puntino.
+  [{ lon: -24, lat: 13, r: 0.028 }, { lon: 14, lat: -11, r: 0.020 },
+   { lon: 41, lat: 9, r: 0.014 }, { lon: -8, lat: -14, r: 0.010 }].forEach(m => {
+    skyMacchiaSfera(ctx, m.lon, m.lat, m.r, (c, r) => {
+      c.save();
+      c.scale(1, 0.8);
+      skyNuvola(c, r * 2.2, '#c98a35', 0.4, 0.45);
+      c.beginPath();
+      c.arc(0, 0, r * 0.8, 0, Math.PI * 2);
+      c.fillStyle = 'rgba(92, 58, 22, 0.7)';
+      c.fill();
+      c.restore();
+    });
+  });
+  ctx.restore();
+}
+
+// --- La corona --------------------------------------------------------
+// Si vede solo quando la Luna copre esattamente il disco: è il momento per
+// cui la gente attraversa gli oceani. La tela è più larga del Sole (tre
+// raggi e mezzo) perché i pennacchi equatoriali arrivano lontano, mentre
+// ai poli la corona fa ciuffi corti e dritti, come limatura di ferro su
+// una calamita — che è esattamente quello che è: gas che segue il campo
+// magnetico.
+const SKY_CORONA_RAGGI = 3.4;
+
+function skyDipingiCorona(ctx) {
+  const caso = skyCaso(skySeme('corona'));
+  const s = 1 / SKY_CORONA_RAGGI;           // dove finisce il disco del Sole
+  ctx.globalCompositeOperation = 'lighter';
+
+  // L'alone di fondo, che si spegne in fretta con la distanza: la corona
+  // interna è mille volte più luminosa di quella esterna
+  const g = ctx.createRadialGradient(0, 0, s * 0.92, 0, 0, 1);
+  g.addColorStop(0, 'rgba(255, 253, 246, 0.55)');
+  g.addColorStop(0.08, 'rgba(246, 247, 242, 0.16)');
+  g.addColorStop(0.3, 'rgba(224, 233, 245, 0.05)');
+  g.addColorStop(1, 'rgba(200, 216, 240, 0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // I pennacchi: lame sottili che partono dall'orlo e si assottigliano fino
+  // a sparire. Lunghe all'equatore, corte ai poli — è la forma che ha la
+  // corona quando il Sole è tranquillo, e la si riconosce in ogni fotografia.
+  for (let i = 0; i < 80; i++) {
+    const a = caso() * Math.PI * 2;
+    const equatoriale = Math.pow(Math.abs(Math.cos(a)), 1.4);
+    const lungo = s + (1 - s) * (0.25 + 0.75 * equatoriale) * (0.55 + caso() * 0.7);
+    const largo = (0.015 + caso() * 0.035) * (0.5 + equatoriale);
+    ctx.save();
+    ctx.rotate(a);
+    const gr = ctx.createLinearGradient(s, 0, lungo, 0);
+    gr.addColorStop(0, 'rgba(255, 252, 242, 0.085)');
+    gr.addColorStop(0.35, 'rgba(250, 248, 238, 0.035)');
+    gr.addColorStop(1, 'rgba(236, 242, 252, 0)');
+    ctx.fillStyle = gr;
+    ctx.beginPath();
+    ctx.moveTo(s * 0.97, -largo * 0.5);
+    ctx.quadraticCurveTo(lungo * 0.6, -largo, lungo, 0);
+    ctx.quadraticCurveTo(lungo * 0.6, largo, s * 0.97, largo * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // La cromosfera: il filo rosa che si accende un istante prima della
+  // totalità, e le protuberanze che sporgono dall'orlo
+  ctx.strokeStyle = 'rgba(255, 108, 74, 0.85)';
+  ctx.lineWidth = s * 0.035;
+  ctx.beginPath();
+  ctx.arc(0, 0, s * 1.012, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let i = 0; i < 5; i++) {
+    const a = caso() * Math.PI * 2;
+    ctx.save();
+    ctx.rotate(a);
+    ctx.translate(s, 0);
+    skyNuvola(ctx, s * (0.08 + caso() * 0.16), '#ff5a4a', 0.75, 0.2);
+    ctx.restore();
+  }
+}
+
+// --- I pianeti --------------------------------------------------------
+
+// Mercurio: una palla di roccia grigia coperta di crateri, senza aria e
+// senza mari. Il grande bacino chiaro in alto a destra è Caloris.
+function skyDipingiMercurio(ctx) {
+  const caso = skyCaso(skySeme('mercurio'));
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = '#9b968e';
+  ctx.fillRect(-1, -1, 2, 2);
+  for (let i = 0; i < 90; i++) {
+    const lon = caso() * 360 - 180;
+    const lat = Math.asin(caso() * 2 - 1) * SKY_R2D;
+    skyMacchiaSfera(ctx, lon, lat, 0.05 + caso() * 0.16, (c, r) => {
+      skyNuvola(c, r, caso() > 0.5 ? '#b3ada3' : '#807b74', 0.22, 0.1);
+    });
+  }
+  skyMacchiaSfera(ctx, 35, 30, 0.3, (c, r) => skyNuvola(c, r, '#c2bcb1', 0.5, 0.2));
+  skyCrateriSfera(ctx, caso, 190, {
+    min: 0.006, max: 0.055,
+    fondo: 'rgba(88, 84, 78, 0.34)', orlo: 'rgba(206, 200, 190, 0.34)'
+  });
+  ctx.restore();
+}
+
+// Venere: non si vede il pianeta, si vede il tetto delle sue nuvole. Per
+// questo è quasi senza dettagli — giallo pallido, uniforme, accecante.
+function skyDipingiVenere(ctx) {
+  const caso = skyCaso(skySeme('venere'));
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = '#efe3c0';
+  ctx.fillRect(-1, -1, 2, 2);
+  // Le fasce di nuvole, appena percettibili: nella luce visibile Venere è
+  // quasi liscia, e fingere il contrario sarebbe un falso
+  for (let i = 0; i < 22; i++) {
+    const lat = caso() * 150 - 75;
+    skyMacchiaSfera(ctx, caso() * 200 - 100, lat, 0.25 + caso() * 0.4, (c, r) => {
+      c.save();
+      c.scale(1, 0.32);
+      skyNuvola(c, r, caso() > 0.45 ? '#fdf6df' : '#dcc99c', 0.3, 0.05);
+      c.restore();
+    });
+  }
+  skyMacchiaSfera(ctx, 0, 78, 0.5, (c, r) => skyNuvola(c, r, '#fffbea', 0.4, 0.1));
+  ctx.restore();
+}
+
+// Marte: la ruggine, le regioni scure che i primi osservatori scambiarono
+// per mari (la più vistosa è la Syrtis Major, il "triangolo") e le calotte
+// polari di ghiaccio.
+const SKY_MACCHIE_MARTE = [
+  { lon: 70,  lat: 6,   r: 0.34, f: 0.85 },   // Syrtis Major
+  { lon: -40, lat: 42,  r: 0.32, f: 0.45 },   // Acidalia Planitia
+  { lon: -35, lat: -24, r: 0.32, f: 0.5  },   // Mare Erythraeum
+  { lon: 110, lat: -22, r: 0.30, f: 0.5  },   // Mare Cimmerium
+  { lon: 5,   lat: -8,  r: 0.22, f: 0.42 },   // Sinus Sabaeus
+  { lon: 145, lat: 12,  r: 0.22, f: 0.35 }    // Elysium scuro
+];
+
+function skyDipingiMarte(ctx) {
+  const caso = skyCaso(skySeme('marte'));
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = '#c1663a';
+  ctx.fillRect(-1, -1, 2, 2);
+  // Le zone chiare di polvere
+  for (let i = 0; i < 14; i++) {
+    skyMacchiaSfera(ctx, caso() * 360 - 180, caso() * 120 - 60, 0.2 + caso() * 0.3,
+      (c, r) => skyNuvola(c, r, '#dd9660', 0.35, 0.1));
+  }
+  SKY_MACCHIE_MARTE.forEach(m => {
+    skyMacchiaSfera(ctx, m.lon, m.lat, m.r, (c, r) => skyNuvola(c, r, '#6b4534', 0.8 * m.f, 0.35));
+  });
+  // Hellas, il bacino chiaro dell'emisfero sud
+  skyMacchiaSfera(ctx, 70, -42, 0.22, (c, r) => skyNuvola(c, r, '#e9b184', 0.5, 0.2));
+  // Le calotte di ghiaccio: piccole, perché stanno oltre i settanta gradi di
+  // latitudine (e quella sud, d'estate, è la più vistosa)
+  const calotta = (y, spessore, alpha) => {
+    const g = ctx.createLinearGradient(0, y, 0, y + spessore);
+    g.addColorStop(0, `rgba(250, 252, 255, ${alpha})`);
+    g.addColorStop(0.6, `rgba(246, 250, 255, ${alpha * 0.55})`);
+    g.addColorStop(1, 'rgba(250, 252, 255, 0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-1, Math.min(y, y + spessore), 2, Math.abs(spessore));
+  };
+  calotta(-1, 0.09, 0.8);
+  calotta(1, -0.14, 0.9);
+  ctx.restore();
+}
+
+// Giove: le bande. Le zone chiare sono nuvole alte di ammoniaca, le bande
+// scure buchi in cui si vede più in basso. La Grande Macchia Rossa è una
+// tempesta che gira da almeno trecento anni ed è larga come la Terra.
+function skyDipingiGiove(ctx) {
+  const caso = skyCaso(skySeme('giove'));
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = '#e7d8ba';
+  ctx.fillRect(-1, -1, 2, 2);
+  skyBandeSfera(ctx, [
+    { a: 90,  b: 62,  c: '#a89880' },
+    { a: 62,  b: 46,  c: '#c7b498' },
+    { a: 46,  b: 34,  c: '#a98d6c' },
+    { a: 34,  b: 22,  c: '#e6d7b8' },
+    { a: 22,  b: 9,   c: '#ab7d55' },   // banda equatoriale nord
+    { a: 9,   b: -8,  c: '#f1e5c9' },   // zona equatoriale
+    { a: -8,  b: -21, c: '#a5744f' },   // banda equatoriale sud
+    { a: -21, b: -34, c: '#e3d2b2' },
+    { a: -34, b: -48, c: '#b59a7c' },
+    { a: -48, b: -64, c: '#c9b79b' },
+    { a: -64, b: -90, c: '#a39482' }
+  ]);
+  // Festoni e turbolenze dove due bande si sfregano
+  for (let i = 0; i < 60; i++) {
+    const lat = [20, 10, -7, -20, 34][Math.floor(caso() * 5)] + caso() * 6 - 3;
+    skyMacchiaSfera(ctx, caso() * 360 - 180, lat, 0.06 + caso() * 0.12, (c, r) => {
+      c.save();
+      c.scale(1, 0.35);
+      skyNuvola(c, r, caso() > 0.5 ? '#f6ecd6' : '#8b5f3e', 0.4, 0.1);
+      c.restore();
+    });
+  }
+  // La Grande Macchia Rossa
+  skyMacchiaSfera(ctx, 22, -21, 0.24, (c, r) => {
+    c.save();
+    c.scale(1, 0.45);
+    skyNuvola(c, r, '#c05a37', 0.85, 0.35);
+    skyNuvola(c, r * 0.55, '#e07a4c', 0.6, 0.2);
+    c.restore();
+  });
+  ctx.restore();
+}
+
+// Saturno: le stesse bande di Giove ma sbiadite, come viste attraverso un
+// velo — perché è più freddo e più lontano dal Sole, e sopra le nuvole c'è
+// una foschia che smorza tutto.
+function skyDipingiSaturno(ctx) {
+  const caso = skyCaso(skySeme('saturno'));
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = '#e3cfa4';
+  ctx.fillRect(-1, -1, 2, 2);
+  skyBandeSfera(ctx, [
+    { a: 90,  b: 60,  c: '#b6a482', onda: 0.008 },
+    { a: 60,  b: 40,  c: '#d8c49a', onda: 0.008 },
+    { a: 40,  b: 22,  c: '#e9d7ac', onda: 0.008 },
+    { a: 22,  b: 6,   c: '#d3bb8c', onda: 0.008 },
+    { a: 6,   b: -12, c: '#f0e1b8', onda: 0.008 },
+    { a: -12, b: -30, c: '#d9c496', onda: 0.008 },
+    { a: -30, b: -52, c: '#c9b389', onda: 0.008 },
+    { a: -52, b: -90, c: '#ab9a7d', onda: 0.008 }
+  ]);
+  for (let i = 0; i < 20; i++) {
+    skyMacchiaSfera(ctx, caso() * 360 - 180, caso() * 100 - 50, 0.12 + caso() * 0.18, (c, r) => {
+      c.save();
+      c.scale(1, 0.3);
+      skyNuvola(c, r, caso() > 0.5 ? '#f4e6c2' : '#c2a87e', 0.3, 0.1);
+      c.restore();
+    });
+  }
+  ctx.restore();
+}
+
+// Urano e Nettuno: metano nell'atmosfera, che si mangia il rosso e lascia
+// passare l'azzurro. Urano è quasi liscio, Nettuno ha bande e tempeste.
+function skyDipingiUrano(ctx) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.clip();
+  const g = ctx.createRadialGradient(-0.2, -0.2, 0.1, 0, 0, 1.2);
+  g.addColorStop(0, '#c3f0f2');
+  g.addColorStop(0.7, '#8fd8e0');
+  g.addColorStop(1, '#5fb3c4');
+  ctx.fillStyle = g;
+  ctx.fillRect(-1, -1, 2, 2);
+  skyBandeSfera(ctx, [
+    { a: 40, b: 14, c: '#a7e2e8', alfa: 0.35, onda: 0.006 },
+    { a: -14, b: -40, c: '#88cfda', alfa: 0.35, onda: 0.006 }
+  ]);
+  ctx.restore();
+}
+
+function skyDipingiNettuno(ctx) {
+  const caso = skyCaso(skySeme('nettuno'));
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.clip();
+  const g = ctx.createRadialGradient(-0.2, -0.2, 0.1, 0, 0, 1.2);
+  g.addColorStop(0, '#7aa8ec');
+  g.addColorStop(0.65, '#4d7fd6');
+  g.addColorStop(1, '#2f5bab');
+  ctx.fillStyle = g;
+  ctx.fillRect(-1, -1, 2, 2);
+  skyBandeSfera(ctx, [
+    { a: 46, b: 20, c: '#6f9de6', alfa: 0.45, onda: 0.008 },
+    { a: -18, b: -44, c: '#3f6cc4', alfa: 0.45, onda: 0.008 }
+  ]);
+  skyMacchiaSfera(ctx, -25, -22, 0.22, (c, r) => {
+    c.save();
+    c.scale(1, 0.5);
+    skyNuvola(c, r, '#1e3f80', 0.7, 0.3);
+    c.restore();
+  });
+  for (let i = 0; i < 6; i++) {
+    skyMacchiaSfera(ctx, caso() * 360 - 180, caso() * 80 - 40, 0.06 + caso() * 0.06,
+      (c, r) => { c.save(); c.scale(1, 0.4); skyNuvola(c, r, '#e8f2ff', 0.4, 0.1); c.restore(); });
+  }
+  ctx.restore();
+}
+
+// Chi dipinge cosa. Gli astri che non stanno qui (le stelle, le stazioni
+// spaziali) non hanno una faccia: sono punti, e restano punti.
+const SKY_FACCE = {
+  Sun: skyDipingiSole,
+  Moon: skyDipingiLuna,
+  Mercury: skyDipingiMercurio,
+  Venus: skyDipingiVenere,
+  Mars: skyDipingiMarte,
+  Jupiter: skyDipingiGiove,
+  Saturn: skyDipingiSaturno,
+  Uranus: skyDipingiUrano,
+  Neptune: skyDipingiNettuno
+};
+
+// La tela giusta per questo astro, alla taglia giusta. Torna null quando
+// l'astro è troppo piccolo perché una faccia abbia senso: sotto gli otto
+// pixel di raggio resta il dischetto sfumato di prima, che non costa niente
+// — e che è anche più onesto, perché le bande di Giove disegnate su dieci
+// pixel non sembrano Giove, sembrano una caramella a righe.
+function skyFacciaDi(o, r) {
+  if (r < 8 || !o || !SKY_FACCE[o.id]) return null;
+  return skyPelle('faccia:' + o.id, skyLatoTela(r), SKY_FACCE[o.id]);
+}
+
+// --- Il cielo profondo -------------------------------------------------
+// Una galassia non è un'ellisse vuota e una nebulosa non è un cerchietto
+// tratteggiato: sono nuvole di luce senza bordi, e finché erano simboli non
+// si capiva perché la gente passa la notte a guardarle. Ognuna si dipinge
+// una volta sola, con il suo seme, e poi si ricopia grande quanto è grande
+// davvero in cielo.
+function skyPennelloProfondo(o) {
+  const seme = skySeme('dso:' + o.nome);
+  return function (ctx) {
+    const caso = skyCaso(seme);
+    ctx.globalCompositeOperation = 'lighter';
+    if (o.tipo === 'galassia') {
+      skyNuvola(ctx, 0.98, '#8fa6ff', 0.16, 0.02);
+      skyNuvola(ctx, 0.7, '#c3cfff', 0.24, 0.05);
+      // Due bracci a spirale, fatti di fiocchi sovrapposti e non di una riga:
+      // in un binocolo si intravede una macchia ovale, non una fotografia, e
+      // un tratto pieno si riconoscerebbe subito per quello che è
+      for (let b = 0; b < 2; b++) {
+        for (let t = 0.12; t < 1; t += 0.035) {
+          const a = b * Math.PI + t * 3.0 + caso() * 0.12;
+          const r = t * 0.72;
+          ctx.save();
+          ctx.translate(Math.cos(a) * r, Math.sin(a) * r);
+          skyNuvola(ctx, 0.09 + 0.11 * t, '#ccdaff', 0.085 * (1 - t * 0.45), 0.05);
+          ctx.restore();
+        }
+      }
+      skyNuvola(ctx, 0.26, '#ffeed2', 0.55, 0.03);
+      skyNuvola(ctx, 0.12, '#fff8e8', 0.9, 0.02);
+      for (let i = 0; i < 30; i++) {
+        const a = caso() * Math.PI * 2, r = Math.pow(caso(), 0.6) * 0.7;
+        skyStellina(ctx, Math.cos(a) * r, Math.sin(a) * r, 0.006, '#dbe6ff', 0.3);
+      }
+      // La banda di polvere che taglia il disco: nelle galassie di taglio è
+      // la cosa che si vede meglio di tutte
+      ctx.globalCompositeOperation = 'destination-out';
+      for (let i = 0; i < 14; i++) {
+        const x = -0.8 + i * 0.12;
+        ctx.save();
+        ctx.translate(x, 0.2 + Math.abs(x) * 0.08);
+        ctx.scale(1, 0.3);
+        skyNuvola(ctx, 0.3, '#000000', 0.26, 0.02);
+        ctx.restore();
+      }
+      ctx.globalCompositeOperation = 'lighter';
+    } else if (o.tipo === 'nebulosa') {
+      // Fiocchi sovrapposti di idrogeno acceso, con dentro qualche vena più
+      // fredda e le stelle appena nate che la illuminano da dentro
+      for (let i = 0; i < 9; i++) {
+        const a = caso() * Math.PI * 2, d = caso() * 0.42;
+        ctx.save();
+        ctx.translate(Math.cos(a) * d, Math.sin(a) * d);
+        ctx.rotate(caso() * Math.PI);
+        ctx.scale(1, 0.5 + caso() * 0.5);
+        skyNuvola(ctx, 0.34 + caso() * 0.42, caso() > 0.7 ? '#7fd7f0' : '#ff86a8', 0.16, 0.05);
+        ctx.restore();
+      }
+      skyNuvola(ctx, 0.3, '#ffd9e4', 0.22, 0.05);
+      for (let i = 0; i < 16; i++) {
+        const a = caso() * Math.PI * 2, r = Math.pow(caso(), 0.7) * 0.62;
+        skyStellina(ctx, Math.cos(a) * r, Math.sin(a) * r, 0.01, '#ecf4ff', 0.55);
+      }
+      // Le vene scure: polvere davanti alla nuvola. Si tolgono, non si
+      // aggiungono — sono buchi nella luce.
+      ctx.globalCompositeOperation = 'destination-out';
+      for (let i = 0; i < 5; i++) {
+        const a = caso() * Math.PI * 2, d = caso() * 0.5;
+        ctx.save();
+        ctx.translate(Math.cos(a) * d, Math.sin(a) * d);
+        ctx.rotate(caso() * Math.PI);
+        ctx.scale(1, 0.22 + caso() * 0.2);
+        skyNuvola(ctx, 0.3 + caso() * 0.3, '#000000', 0.5, 0.05);
+        ctx.restore();
+      }
+    } else if (o.tipo === 'planetaria') {
+      // Un anello di fumo: il guscio di gas che una stella morente si è
+      // sfilata di dosso, con la stella al centro
+      const g = ctx.createRadialGradient(0, 0, 0.3, 0, 0, 0.75);
+      g.addColorStop(0, 'rgba(120, 220, 190, 0)');
+      g.addColorStop(0.45, 'rgba(134, 239, 172, 0.55)');
+      g.addColorStop(0.8, 'rgba(96, 165, 250, 0.25)');
+      g.addColorStop(1, 'rgba(96, 165, 250, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, 0, 0.78, 0, Math.PI * 2);
+      ctx.fill();
+      skyStellina(ctx, 0, 0, 0.02, '#ffffff', 0.5);
+    } else if (o.tipo === 'globulare') {
+      // Mezzo milione di stelle in una palla: densissime al centro,
+      // sgranate ai bordi
+      skyNuvola(ctx, 0.85, '#ffeec4', 0.2, 0.02);
+      skyNuvola(ctx, 0.36, '#fff6de', 0.5, 0.05);
+      for (let i = 0; i < 260; i++) {
+        const a = caso() * Math.PI * 2;
+        const r = Math.pow(caso(), 2.1) * 0.9;
+        skyStellina(ctx, Math.cos(a) * r, Math.sin(a) * r, 0.006, '#fffaf0', 0.5);
+      }
+    } else {
+      // Ammasso aperto: un pugno di stelle giovani, larghe e sparse
+      skyNuvola(ctx, 0.9, '#bcd8ff', 0.08, 0.02);
+      for (let i = 0; i < 80; i++) {
+        const a = caso() * Math.PI * 2;
+        const r = Math.pow(caso(), 0.75) * 0.92;
+        const grande = caso() > 0.86;
+        skyStellina(ctx, Math.cos(a) * r, Math.sin(a) * r,
+          grande ? 0.018 : 0.008, grande ? '#dbeafe' : '#e8f0ff', grande ? 0.85 : 0.5);
+      }
+    }
+  };
+}
+
+function skyFacciaProfondo(o, r) {
+  return skyPelle('dso:' + o.nome, skyLatoTela(Math.min(r * 1.25, 150)), skyPennelloProfondo(o));
+}
+
+// --- Come si veste un astro sullo schermo ------------------------------
+
+// Gli angoli che servono a orientare una faccia: da che parte gli arriva la
+// luce del Sole (il lembo illuminato guarda sempre di là) e da che parte gli
+// sta il nord del cielo, che è il verso in cui la faccia va ruotata perché
+// i mari finiscano dove li vediamo davvero.
+function skyOrientamento(o, v, base) {
+  const schermo = (d) => Math.atan2(-skyDot(d, base.u), skyDot(d, base.r));
+  const tangente = (w) => {
+    const p = skyDot(w, v);
+    return skyNormalizza([w[0] - p * v[0], w[1] - p * v[1], w[2] - p * v[2]]);
+  };
+
+  let luce = 0;
+  const sole = sky.oggetti.find(x => x.id === 'Sun');
+  if (sole && o.id !== 'Sun') luce = schermo(tangente(skyVettore(sole.az, sole.alt)));
+
+  // Il polo celeste sta a nord, alto sull'orizzonte quanto la latitudine
+  const lat = sky.observer ? sky.observer.latitude : 45;
+  const polo = skyVettore(0, lat);
+  const nord = tangente(polo);
+  const est = skyNormalizza(skyCross(polo, v));
+  return { luce, polo: schermo(nord), nord, est, schermo };
+}
+
+// La parte illuminata di una palla, come percorso da ritagliare. Il
+// contesto dev'essere già ruotato in modo che il Sole stia verso destra.
+// Il terminatore è un semicerchio schiacciato: con la falce (k < 0,5) si
+// incurva verso il lato illuminato, con la gibbosa verso quello in ombra.
+function skyPercorsoIlluminato(ctx, r, k) {
+  const a = Math.abs(r * (1 - 2 * k));
+  ctx.beginPath();
+  ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);
+  ctx.ellipse(0, 0, a, r, 0, Math.PI / 2, -Math.PI / 2, k <= 0.5);
+  ctx.closePath();
+}
+
+// ...e la parte in ombra, che è il resto del disco
+function skyPercorsoOmbra(ctx, r, k) {
+  const a = Math.abs(r * (1 - 2 * k));
+  ctx.beginPath();
+  ctx.arc(0, 0, r, Math.PI / 2, -Math.PI / 2, false);
+  ctx.ellipse(0, 0, a, r, 0, -Math.PI / 2, Math.PI / 2, k > 0.5);
+  ctx.closePath();
+}
+
+// Di che colore è il lato in ombra di un astro: nero quando il cielo è
+// nero, del colore del cielo quando il cielo è chiaro. È la luce diffusa
+// dall'aria che sta *davanti* all'astro, e senza di lei la Luna del
+// pomeriggio sembrerebbe una palla da biliardo appesa in cielo.
+function skyColoreNotteAstro(o) {
+  const aria = sky.ariaOra;
+  const buio = [3, 5, 10];
+  if (!aria) return 'rgb(3, 5, 10)';
+  const cielo = skyColoreCielo(aria, Math.max(0, o.alt));
+  const m = skyMescolaColore(buio, cielo, Math.min(1, sky.luceCielo * 1.15));
+  return `rgb(${m[0]}, ${m[1]}, ${m[2]})`;
+}
+
+// L'ombreggiatura che fa sembrare tonda una palla: più chiara dalla parte
+// del Sole, più scura dall'altra, con l'orlo che scappa via.
+function skyRilievoSfera(ctx, r, angoloLuce, opzioni) {
+  const o = opzioni || {};
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.clip();
+  const cx = Math.cos(angoloLuce) * r * 0.5, cy = Math.sin(angoloLuce) * r * 0.5;
+  const g = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r * 1.9);
+  g.addColorStop(0, `rgba(255, 252, 240, ${o.brillante == null ? 0.12 : o.brillante})`);
+  g.addColorStop(0.4, 'rgba(0, 0, 0, 0)');
+  g.addColorStop(1, `rgba(2, 4, 12, ${o.bordo == null ? 0.5 : o.bordo})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+  ctx.restore();
+}
+
+// Il globo di un mondo: la sua faccia, ritagliata sulla parte illuminata.
+// Il punto è tutto lì — la parte non illuminata di un pianeta non è nera:
+// non c'è. Dietro ci si vede il cielo, e con la falce di Venere in pieno
+// giorno la differenza fra le due cose è tutta la differenza.
+function skyDisegnaGlobo(ctx, r, o, ang, opzioni) {
+  const k = Math.max(0, Math.min(1, typeof o.frazione === 'number' ? o.frazione : 1));
+  ctx.save();
+
+  // Prima però: il lato in ombra di un mondo non è un vetro. Di notte è nero
+  // e copre le stelle che ci stanno dietro; di giorno sparisce, perché
+  // l'aria fra noi e lui è piena di luce diffusa — ed è per questo che della
+  // Luna del pomeriggio si vede solo la falce. Il quanto lo dice la
+  // chiarezza del cielo: quello che si dipinge è il buio *che avanza*.
+  // Basta un cielo mezzo chiaro perché il lato in ombra sparisca del tutto:
+  // di giorno la Luna è una falce sospesa nell'azzurro, non una palla scura
+  const trasparenza = Math.max(0, 1 - sky.luceCielo * 2);
+  if (k < 0.985 && trasparenza > 0.015 && !sky.camera) {
+    ctx.save();
+    ctx.rotate(ang.luce);
+    skyPercorsoOmbra(ctx, r, k);
+    ctx.fillStyle = `rgba(3, 5, 10, ${trasparenza})`;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // E poi il morso: dove il lato in ombra passa davanti al disco del Sole
+  // non c'è più niente da vedere attraverso, e lì il nero è pieno anche in
+  // pieno giorno. Ritagliato sul Sole e non su tutta la Luna, se no durante
+  // una parziale comparirebbe in cielo un disco azzurro grande come la Luna
+  // — che non esiste: della Luna, davanti al Sole, si vede solo il morso.
+  if (k < 0.985 && opzioni && opzioni.morso) {
+    const m = opzioni.morso;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(m.dx, m.dy, m.r, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.rotate(ang.luce);
+    skyPercorsoOmbra(ctx, r, k);
+    ctx.fillStyle = '#050608';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  if (k < 0.985) {
+    // Il ritaglio si costruisce nel verso del Sole e poi si torna indietro:
+    // una volta preso, il ritaglio non segue più le rotazioni
+    ctx.rotate(ang.luce);
+    skyPercorsoIlluminato(ctx, r, k);
+    ctx.clip();
+    ctx.rotate(-ang.luce);
+  }
+  const faccia = skyFacciaDi(o, r);
+  if (faccia) {
+    ctx.save();
+    ctx.rotate(ang.polo);
+    ctx.drawImage(faccia, -r, -r, r * 2, r * 2);
+    ctx.restore();
+  } else if (opzioni && opzioni.ripiego) {
+    opzioni.ripiego(ctx, r);
+  }
+  skyRilievoSfera(ctx, r, ang.luce, opzioni);
+  // Il velo dell'aria bassa vale per il corpo, non per il cielo che gli sta
+  // intorno: sta dentro al ritaglio della fase, se no attorno alla Luna
+  // Nuova compariva un disco beige — l'aria "davanti" a un pezzo di mondo
+  // che in quel momento non si vede.
+  if (opzioni && typeof opzioni.estinzione === 'number') {
+    skyVeloAtmosferico(ctx, r, opzioni.estinzione);
+  }
+  ctx.restore();
+}
+
+// L'aria bassa sull'orizzonte non rende gli astri trasparenti: li smorza e
+// li arrossa, come fa con il Sole che tramonta. Prima era un'opacità, e la
+// Luna bassa lasciava vedere le stelle attraverso.
+function skyVeloAtmosferico(ctx, r, estinzione) {
+  const quanto = 1 - Math.max(0, Math.min(1, estinzione));
+  if (quanto < 0.02) return;
+  // Moltiplicare, non sovrapporre: così ciò che è già scuro (la parte in
+  // ombra, il morso dell'eclissi) resta scuro, e ciò che è chiaro si
+  // arrossa. Sovrapponendo un velo arancione, un'eclissi bassa sull'orizzonte
+  // diventava marrone anche dove non c'era niente di illuminato.
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.globalCompositeOperation = 'multiply';
+  const scuro = 1 - 0.22 * quanto;
+  ctx.fillStyle = `rgb(${Math.round(255 * scuro)}, ${Math.round(255 * (1 - 0.42 * quanto) * scuro)}, ` +
+    `${Math.round(255 * (1 - 0.78 * quanto) * scuro)})`;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+  ctx.restore();
+}
+
+// --- L'orizzonte non è una riga dritta --------------------------------
+// Il terreno era un poligono di colore piatto tagliato da una riga: giusto
+// come geometria, ma nessuno ha davanti un orizzonte così. Da casa si vedono
+// colline, una fila di alberi, il campanile del paese — ed è proprio quel
+// profilo a decidere se un astro basso si vedrà davvero o no.
+// Il profilo è inventato (la vera skyline di casa tua non la sa nessuno) ma
+// sempre lo stesso: onde lunghe per le colline, macchie strette per gli
+// alberi. Si calcola una volta sola, un grado per volta.
+const SKY_PROFILO = (() => {
+  const caso = skyCaso(skySeme('orizzonte'));
+  const fasi = [];
+  for (let i = 0; i < 6; i++) fasi.push(caso() * Math.PI * 2);
+  // Macchie d'alberi: strette e alte. Ne bastano poche perché l'orizzonte
+  // smetta di sembrare disegnato col righello.
+  const alberi = [];
+  for (let i = 0; i < 34; i++) {
+    alberi.push({ az: caso() * 360, largo: 0.8 + caso() * 3.5, alto: 0.4 + caso() * 1.6 });
+  }
+  const p = new Float32Array(361);
+  for (let i = 0; i < p.length; i++) {
+    const a = i * SKY_D2R;
+    let h = 1.05
+      + 0.75 * Math.sin(a + fasi[0])
+      + 0.45 * Math.sin(2 * a + fasi[1])
+      + 0.26 * Math.sin(3 * a + fasi[2])
+      + 0.14 * Math.sin(5 * a + fasi[3])
+      + 0.08 * Math.sin(8 * a + fasi[4]);
+    alberi.forEach(t => {
+      const d = Math.abs(((i - t.az + 540) % 360) - 180);
+      if (d < t.largo) h += t.alto * Math.pow(Math.cos(d / t.largo * Math.PI / 2), 2);
+    });
+    p[i] = Math.max(0.1, h);
+  }
+  p[360] = p[0];
+  return p;
+})();
+
+function skyAltezzaOrizzonte(az) {
+  const x = (((az % 360) + 360) % 360);
+  const i = Math.floor(x);
+  const t = x - i;
+  return SKY_PROFILO[i] + (SKY_PROFILO[i + 1] - SKY_PROFILO[i]) * t;
+}
+
 // --- Come si disegna un punto luminoso -------------------------------
 // Una stella non è un cerchio pieno: è un nocciolo piccolissimo con un alone
 // che sfuma, e più è luminosa più l'alone si allarga. Sopra una certa
@@ -7811,44 +8932,45 @@ function skyMescolaEsa(a, b, t) {
   return `rgb(${m[0]}, ${m[1]}, ${m[2]})`;
 }
 
-// Gli anelli di Saturno: due archi che passano dietro e davanti al disco.
-// Sono la cosa che tutti cercano quando puntano Saturno, e riconoscerlo
-// sulla mappa è metà del lavoro.
-function skyDisegnaAnelli(ctx, x, y, r, colore) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(-0.42);
-  ctx.strokeStyle = skyMescolaEsa(colore, '#ffffff', 0.35);
-  ctx.lineWidth = Math.max(1, r * 0.22);
-  ctx.beginPath();
-  ctx.ellipse(0, 0, r * 2.1, r * 0.62, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
-}
+// Gli anelli di Saturno. Non sono un cerchietto attorno al disco: sono un
+// piano di ghiaccio che passa dietro al globo da una parte e davanti
+// dall'altra, con la Divisione di Cassini a tagliarlo in due e l'ombra del
+// pianeta buttata sopra. Quanto sono aperti non lo si può inventare — nel
+// 2025 erano di taglio e sparivano del tutto — quindi l'apertura arriva
+// dall'asse vero di Saturno (vedi skyInclinazioneAnelli).
+const SKY_ANELLI = [
+  { da: 1.24, a: 1.52, colore: '#c9b48d', alpha: 0.30 },   // anello C, tenue
+  { da: 1.52, a: 1.95, colore: '#efe0be', alpha: 0.92 },   // anello B, il più luminoso
+  { da: 1.95, a: 2.03, colore: '#7a6a52', alpha: 0.18 },   // Divisione di Cassini
+  { da: 2.03, a: 2.27, colore: '#dfcda6', alpha: 0.62 }    // anello A
+];
 
-// Le bande di Giove: due sole, appena accennate. È quello che si vede in un
-// piccolo telescopio, ed è quanto basta a renderlo riconoscibile.
-function skyDisegnaBande(ctx, x, y, r, colore) {
+function skyDisegnaAnelli(ctx, r, apertura, davanti) {
+  const schiacciamento = Math.max(0.03, Math.abs(apertura));
   ctx.save();
+  // Metà per volta: quella dietro si disegna prima del globo, quella davanti
+  // dopo. Il taglio è la riga che passa per il centro del pianeta.
   ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
+  if (davanti === (apertura >= 0)) ctx.rect(-r * 3, 0, r * 6, r * 3);
+  else ctx.rect(-r * 3, -r * 3, r * 6, r * 3);
   ctx.clip();
-  ctx.fillStyle = skyMescolaEsa(colore, '#8a5a2b', 0.55);
-  ctx.globalAlpha = 0.55;
-  ctx.fillRect(x - r, y - r * 0.46, r * 2, r * 0.3);
-  ctx.fillRect(x - r, y + r * 0.16, r * 2, r * 0.26);
+  SKY_ANELLI.forEach(a => {
+    const raggio = r * (a.da + a.a) / 2;
+    ctx.globalAlpha = a.alpha;
+    ctx.strokeStyle = a.colore;
+    ctx.lineWidth = Math.max(0.5, r * (a.a - a.da));
+    ctx.beginPath();
+    ctx.ellipse(0, 0, raggio, raggio * schiacciamento, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  });
   ctx.restore();
 }
 
-// I mari della Luna: quattro macchie appena più scure, per non avere in
-// cielo un disco di plastica
-const SKY_MARI_LUNA = [[-0.32, -0.26, 0.30], [0.24, 0.10, 0.34], [0.06, -0.5, 0.18],
-                       [-0.44, 0.34, 0.22], [0.44, -0.4, 0.15]];
-
-// Riempie la parte di schermo sotto l'orizzonte e ne traccia la linea.
+// Riempie la parte di schermo sotto l'orizzonte, ci appoggia sopra il
+// profilo delle colline e ne traccia la linea vera.
 // In proiezione prospettica l'orizzonte è sempre una retta: la troviamo
 // tagliando il rettangolo dello schermo con il piano orizzontale.
-function skyDisegnaTerreno(ctx, base, focale) {
+function skyDisegnaTerreno(ctx, base, focale, aria) {
   const L = sky.larghezza, H = sky.altezza;
   // Componente verticale della direzione corrispondente al pixel (px, py):
   // negativa sotto l'orizzonte.
@@ -7866,28 +8988,97 @@ function skyDisegnaTerreno(ctx, base, focale) {
       sotto.push({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y), g: 0, bordo: true });
     }
   }
+
+  // I colori della terra. Di notte è quasi nera, di giorno è campagna; e in
+  // tutti e due i casi la parte lontana — quella appena sotto l'orizzonte —
+  // prende un po' del colore dell'aria, che è il modo in cui la distanza si
+  // vede: le cose lontane sbiadiscono verso il colore del cielo.
+  // Di notte la terra è quasi nera — più scura del cielo, sempre: è il
+  // contrasto che disegna il profilo delle colline. Di giorno invece la
+  // distanza la sbiadisce verso il colore dell'aria, e quello è il modo in
+  // cui l'occhio misura quanto è lontana una collina.
+  const vicino = skyMescolaColore([5, 8, 10], [38, 46, 32], sky.luceCielo);
+  const lontanoBase = skyMescolaColore([10, 14, 18], [74, 84, 62], sky.luceCielo);
+  const lontano = aria
+    ? skyMescolaColore(lontanoBase, aria.foschia, 0.06 + 0.3 * sky.luceCielo)
+    : lontanoBase;
+
+  if (sotto.length >= 3) {
+    // Dove cade l'orizzonte sullo schermo: da lì parte la sfumatura
+    const bordi = sotto.filter(p => p.bordo);
+    const y0 = bordi.length ? bordi.reduce((s, p) => s + p.y, 0) / bordi.length : 0;
+    ctx.save();
+    ctx.beginPath();
+    sotto.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+    ctx.closePath();
+    const gr = ctx.createLinearGradient(0, y0, 0, Math.max(y0 + 40, H));
+    gr.addColorStop(0, skyRgba(lontano, 0.98));
+    gr.addColorStop(0.35, skyRgba(skyMescolaColore(lontano, vicino, 0.7), 0.99));
+    gr.addColorStop(1, skyRgba(vicino, 1));
+    ctx.fillStyle = gr;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Le colline e gli alberi, appoggiati sopra la linea. Sono dello stesso
+  // colore del terreno che gli sta subito sotto — se no fra il profilo e il
+  // suolo si vedeva una cucitura — e si staccano dal cielo per contrasto,
+  // che è poi come si vede una collina all'imbrunire.
+  skyDisegnaProfiloOrizzonte(ctx, base, focale, skyRgba(lontano, 1));
+
   if (sotto.length < 3) return;
-
+  // La linea d'orizzonte vero resta, sotto al profilo: è il riferimento —
+  // zero gradi di altezza — e serve a capire quanto le colline coprono
   ctx.save();
-  ctx.beginPath();
-  sotto.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-  ctx.closePath();
-  // Di notte il terreno è quasi nero, di giorno è la campagna: lo stesso
-  // numero che colora il cielo (la luce in giro) decide anche questo
-  const terra = skyMescolaColore([14, 24, 22], [52, 62, 44], sky.luceCielo);
-  ctx.fillStyle = skyRgba(terra, 0.97);
-  ctx.fill();
-
-  // La linea d'orizzonte è il lato nato dal taglio
   ctx.beginPath();
   for (let i = 0; i < sotto.length; i++) {
     const a = sotto[i], b = sotto[(i + 1) % sotto.length];
     if (a.bordo && b.bordo) { ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }
   }
   ctx.strokeStyle = sky.luceCielo > 0.4 ? '#e8f2ff' : '#5eb8e8';
-  ctx.lineWidth = 1.6;
-  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 1.2;
+  ctx.globalAlpha = 0.3;
   ctx.stroke();
+  ctx.restore();
+}
+
+// Il profilo delle colline. Si disegnano solo gli azimut che possono
+// finire sullo schermo: fare tutto il giro costerebbe sei volte tanto e non
+// si vedrebbe. Il conto di quanto giro serve viene dal raggio angolare
+// dello schermo e da quanto in alto si sta guardando.
+function skyDisegnaProfiloOrizzonte(ctx, base, focale, colore) {
+  const L = sky.larghezza, H = sky.altezza;
+  const semi = Math.atan2(Math.hypot(L, H) / 2, focale);
+  const altF = Math.asin(Math.max(-1, Math.min(1, base.f[2])));
+  const cosAlt = Math.cos(altF);
+  if (cosAlt < 1e-4) return;
+  const rapporto = Math.cos(semi) / cosAlt;
+  if (rapporto >= 1) return;                 // l'orizzonte non è in vista
+  const mezzo = Math.min(180, Math.acos(Math.max(-1, rapporto)) * SKY_R2D + 6);
+  const centro = Math.atan2(base.f[0], base.f[1]) * SKY_R2D;
+  const passo = mezzo > 60 ? 2 : 1;
+
+  ctx.save();
+  ctx.fillStyle = colore;
+  let corsa = [];
+  const chiudi = () => {
+    if (corsa.length > 1) {
+      ctx.beginPath();
+      corsa.forEach((q, i) => (i === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
+      for (let i = corsa.length - 1; i >= 0; i--) ctx.lineTo(corsa[i].bx, corsa[i].by);
+      ctx.closePath();
+      ctx.fill();
+    }
+    corsa = [];
+  };
+  for (let d = -mezzo; d <= mezzo + 0.001; d += passo) {
+    const az = centro + d;
+    const cresta = skyProietta(skyVettore(az, skyAltezzaOrizzonte(az)), base, focale);
+    const piede = skyProietta(skyVettore(az, 0), base, focale);
+    if (!cresta.davanti || !piede.davanti) { chiudi(); continue; }
+    corsa.push({ cx: cresta.px, cy: cresta.py, bx: piede.px, by: piede.py });
+  }
+  chiudi();
   ctx.restore();
 }
 
@@ -7949,51 +9140,247 @@ function skyDisegnaCardinali(ctx, base, focale) {
   ctx.restore();
 }
 
-// Disegna la Luna con la fase reale: il lato illuminato guarda verso il Sole
-function skyDisegnaLuna(ctx, x, y, r, frazione, angoloLuce) {
-  const k = Math.max(0, Math.min(1, typeof frazione === 'number' ? frazione : 1));
+// Disegna la Luna: la faccia vera (i mari dove stanno davvero), la fase —
+// il lembo illuminato guarda sempre verso il Sole — la luce cinerea sul lato
+// in ombra e, quando capita, l'ombra della Terra addosso.
+function skyDisegnaLuna(ctx, x, y, r, o, ang, estinzione, morso) {
+  const k = Math.max(0, Math.min(1, typeof o.frazione === 'number' ? o.frazione : 1));
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(angoloLuce);
-  // Disco in ombra
-  ctx.beginPath();
-  ctx.arc(0, 0, r, 0, Math.PI * 2);
-  ctx.fillStyle = '#475569';
-  ctx.fill();
-  // Parte illuminata: semicerchio del lembo luminoso + ellisse del terminatore.
-  // Con la falce (k < 0,5) il terminatore si incurva verso il lato illuminato,
-  // con la gibbosa (k > 0,5) verso quello in ombra.
-  const a = Math.abs(r * (1 - 2 * k));
-  ctx.beginPath();
-  ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);
-  ctx.ellipse(0, 0, a, r, 0, Math.PI / 2, -Math.PI / 2, k <= 0.5);
-  ctx.closePath();
-  ctx.fillStyle = '#f4f6fb';
-  ctx.fill();
 
-  // I mari: appena accennati, e solo quando il disco è abbastanza grande
-  // perché si distinguano da una macchia di sporco sullo schermo
-  if (r >= 9) {
+  // La luce cinerea: quando la falce è sottile, il lato buio non è nero — è
+  // illuminato dalla Terra, che vista da lassù è quasi piena e quattro volte
+  // più grande. La si vede solo di notte, e non mentre la Luna passa davanti
+  // al Sole (lì attorno c'è la corona, e non si vedrebbe comunque).
+  const eclissiInCorso = sky.eclisse && sky.eclisse.attiva;
+  if (!eclissiInCorso && sky.luceCielo < 0.3 && k < 0.4 && k > 0.002) {
     ctx.save();
+    ctx.rotate(ang.luce);
+    skyPercorsoOmbra(ctx, r, k);
+    ctx.clip();
+    ctx.rotate(-ang.luce);
+    const forza = 0.16 * (1 - k / 0.4);
+    const g = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r);
+    g.addColorStop(0, `rgba(150, 168, 205, ${forza})`);
+    g.addColorStop(1, `rgba(120, 140, 180, ${forza * 0.35})`);
+    ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.globalAlpha = 0.22;
-    SKY_MARI_LUNA.forEach(m => {
-      const cx = m[0] * r, cy = m[1] * r, raggio = m[2] * r;
-      // Il bordo sfuma: con la Luna ingrandita a mezzo schermo un cerchio
-      // netto si vedrebbe per quello che è, cioè un cerchio disegnato
-      const g = ctx.createRadialGradient(cx, cy, raggio * 0.25, cx, cy, raggio);
-      g.addColorStop(0, '#7c8598');
-      g.addColorStop(1, 'rgba(124, 133, 152, 0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(cx, cy, raggio, 0, Math.PI * 2);
-      ctx.fill();
-    });
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // La faccia vera, orientata sul nord del cielo e non sul Sole: i mari
+  // stanno fermi mentre la fase cambia, com'è giusto che sia
+  skyDisegnaGlobo(ctx, r, o, ang, {
+    brillante: 0.05,
+    bordo: 0.4,
+    morso,
+    estinzione,
+    ripiego: (c, raggio) => {
+      c.beginPath();
+      c.arc(0, 0, raggio, 0, Math.PI * 2);
+      c.fillStyle = '#e9e6de';
+      c.fill();
+    }
+  });
+
+  // L'ombra della Terra, se ci siamo dentro (vedi skyOmbraDellaTerra)
+  if (o.ombraTerra) skyDisegnaOmbraLunare(ctx, r, o, ang);
+  ctx.restore();
+}
+
+// L'eclissi di Luna vista da vicino. L'ombra della Terra è un cerchio quasi
+// tre volte più grande del disco lunare: sulla Luna si vede come un morso
+// dal bordo curvo — fu quella curva a far capire agli antichi che la Terra
+// è una palla. Dentro l'ombra la Luna non sparisce: diventa ramata, perché
+// l'unica luce che le arriva è quella filtrata da tutti i tramonti del
+// mondo insieme.
+function skyDisegnaOmbraLunare(ctx, r, o, ang) {
+  const s = o.ombraTerra;
+  if (!s || !s.rL) return;
+  // Dove sta il centro dell'ombra rispetto alla Luna, sullo schermo: la
+  // direzione si costruisce dall'angolo di posizione (nord verso est)
+  const c = Math.cos(s.pa), q = Math.sin(s.pa);
+  const d = [
+    ang.nord[0] * c + ang.est[0] * q,
+    ang.nord[1] * c + ang.est[1] * q,
+    ang.nord[2] * c + ang.est[2] * q
+  ];
+  const angolo = ang.schermo(d);
+  const dist = (s.gamma / s.rL) * r;
+  const cx = Math.cos(angolo) * dist, cy = Math.sin(angolo) * dist;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.globalCompositeOperation = 'multiply';
+
+  // La penombra: un velo grigio che si stringe verso l'ombra vera
+  const rp = (s.penombra / s.rL) * r;
+  const gp = ctx.createRadialGradient(cx, cy, rp * 0.25, cx, cy, rp);
+  gp.addColorStop(0, 'rgba(120, 122, 130, 1)');
+  gp.addColorStop(1, 'rgba(255, 255, 255, 1)');
+  ctx.fillStyle = gp;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+
+  // L'ombra vera, ramata, con il bordo sfumato di un paio di centesimi
+  const ru = (s.umbra / s.rL) * r;
+  const gu = ctx.createRadialGradient(cx, cy, ru * 0.2, cx, cy, ru * 1.06);
+  gu.addColorStop(0, 'rgba(150, 52, 30, 1)');
+  gu.addColorStop(0.72, 'rgba(120, 46, 32, 1)');
+  gu.addColorStop(0.95, 'rgba(96, 60, 62, 1)');
+  gu.addColorStop(1, 'rgba(255, 255, 255, 1)');
+  ctx.fillStyle = gu;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+  ctx.restore();
+}
+
+// Un pianeta: la faccia vera se è abbastanza grande, la fase (Venere fa la
+// falce come la Luna, ed è la cosa che stupisce di più al telescopio) e per
+// Saturno gli anelli, metà dietro e metà davanti al globo.
+function skyDisegnaPianeta(ctx, x, y, r, o, ang, estinzione) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  const anelli = o.id === 'Saturn' && r >= 3;
+  const apertura = anelli ? skyAperturaAnelli(o) : 0;
+  if (anelli) {
+    ctx.save();
+    ctx.rotate(ang.polo);
+    skyDisegnaAnelli(ctx, r, apertura, false);
+    ctx.restore();
+  }
+
+  skyDisegnaGlobo(ctx, r, o, ang, {
+    brillante: 0.1,
+    bordo: 0.5,
+    estinzione,
+    // Sotto i cinque pixel non c'è spazio per una faccia: resta il dischetto
+    // sfumato, che però tiene lo stesso la fase — è la falce di Venere a
+    // dire che è un mondo e non una stella
+    ripiego: (c, raggio) => skyDisegnaDiscoPianeta(c, 0, 0, raggio, o.colore)
+  });
+
+  if (anelli) {
+    ctx.save();
+    ctx.rotate(ang.polo);
+    skyDisegnaAnelli(ctx, r, apertura, true);
     ctx.restore();
   }
   ctx.restore();
+}
+
+// Il Sole: il disco pieno di granulazione, e — quando la Luna ci passa
+// davanti — la corona. Era questo il buco più grosso del planetario: il
+// Sole veniva disegnato sopra la Luna e per giunta semitrasparente, così
+// durante un'eclissi non si vedeva né il morso né la corona. Adesso il Sole
+// sta sotto (lo disegna prima, vedi l'ordine in skyDisegna), è opaco, e il
+// suo bagliore si spegne man mano che la Luna lo copre — che è esattamente
+// quello che succede al cielo attorno.
+function skyDisegnaSole(ctx, x, y, r, o, estinzione) {
+  const ecl = sky.eclisse;
+  const coperto = ecl && ecl.attiva ? ecl.copertura : 0;
+  ctx.save();
+  ctx.translate(x, y);
+
+  // La corona: si accende negli ultimi istanti prima della totalità, quando
+  // la fotosfera è ormai tutta nascosta. In un'eclissi anulare non compare —
+  // resta un anello di Sole acceso, e quello acceca comunque.
+  if (ecl && ecl.attiva && ecl.rapporto >= 1 && coperto > 0.965) {
+    const forza = Math.min(1, (coperto - 0.965) / 0.033);
+    const tela = skyPelle('corona', skyLatoTela(r * SKY_CORONA_RAGGI), skyDipingiCorona);
+    if (tela) {
+      const R = r * SKY_CORONA_RAGGI;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = forza;
+      ctx.drawImage(tela, -R, -R, R * 2, R * 2);
+      ctx.restore();
+    }
+  }
+
+  const faccia = skyFacciaDi(o, r);
+  if (faccia) {
+    ctx.drawImage(faccia, -r, -r, r * 2, r * 2);
+  } else {
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+    g.addColorStop(0, '#fffef6');
+    g.addColorStop(0.75, '#fff0c4');
+    g.addColorStop(1, '#f9b451');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  skyVeloAtmosferico(ctx, r, estinzione);
+  ctx.restore();
+}
+
+// --- Le eclissi di Sole viste da qui ----------------------------------
+// Due dischi che si sovrappongono: il conto è tutto qui. Serve a tre cose —
+// quanto disegnare grande la Luna (deve coprire il Sole come lo copre
+// davvero), quando far comparire la corona, e di quanto scurire il cielo.
+function skyRaggioAngolare(o) {
+  if (!o || typeof o.diametroKm !== 'number') return 0;
+  const km = typeof o.distanzaUA === 'number' && o.distanzaUA > 0
+    ? o.distanzaUA * SKY_KM_PER_UA
+    : (typeof o.distanzaKm === 'number' ? o.distanzaKm : 0);
+  if (!km) return 0;
+  return Math.atan((o.diametroKm / 2) / km) * SKY_R2D;
+}
+
+// Quanta parte del disco del Sole è coperta: è l'area comune a due cerchi
+function skyCoperturaDischi(sep, rS, rL) {
+  if (sep >= rS + rL) return 0;
+  if (sep <= Math.abs(rL - rS)) return rL >= rS ? 1 : (rL * rL) / (rS * rS);
+  const a1 = Math.acos((sep * sep + rS * rS - rL * rL) / (2 * sep * rS));
+  const a2 = Math.acos((sep * sep + rL * rL - rS * rS) / (2 * sep * rL));
+  const area = rS * rS * (a1 - Math.sin(2 * a1) / 2) + rL * rL * (a2 - Math.sin(2 * a2) / 2);
+  return Math.max(0, Math.min(1, area / (Math.PI * rS * rS)));
+}
+
+function skyEclisseDiSole(sole, luna) {
+  if (!sole || !luna) return null;
+  const rS = skyRaggioAngolare(sole), rL = skyRaggioAngolare(luna);
+  if (!rS || !rL) return null;
+  const sep = skyAngoloFra(skyVettore(sole.az, sole.alt), skyVettore(luna.az, luna.alt));
+  if (sep > rS + rL) return null;
+  const copertura = skyCoperturaDischi(sep, rS, rL);
+  return {
+    attiva: copertura > 0.0004,
+    copertura,
+    sep,
+    rapporto: rL / rS,
+    totale: sep + rS <= rL,
+    anulare: sep + rL <= rS
+  };
+}
+
+// Il cielo durante un'eclissi. Non si spegne in proporzione a quanto Sole
+// resta scoperto — l'occhio non funziona così: fino all'ottanta per cento
+// non ci si accorge di niente, e poi negli ultimi minuti crolla tutto
+// insieme e vengono fuori le stelle.
+function skyAriaEclissata(aria, copertura) {
+  if (!(copertura > 0.02)) return aria;
+  const resta = Math.pow(Math.max(0, 1 - copertura), 0.35);
+  const notte = SKY_TAPPE_CIELO[0];
+  const verso = 1 - resta;
+  return {
+    zenit: skyMescolaColore(aria.zenit, notte.zenit, verso),
+    orizzonte: skyMescolaColore(aria.orizzonte, notte.orizzonte, verso * 0.85),
+    foschia: skyMescolaColore(aria.foschia, notte.foschia, verso * 0.8),
+    luce: aria.luce * resta
+  };
+}
+
+// Quanto sono aperti gli anelli di Saturno: è il seno della latitudine da
+// cui li vediamo, e cambia con lentezza (nel 2025 erano di taglio, nel 2032
+// saranno spalancati). Se la libreria non sa dirci dov'è l'asse del
+// pianeta, si ripiega su un'apertura media.
+function skyAperturaAnelli(o) {
+  return typeof o.aperturaAnelli === 'number' ? o.aperturaAnelli : 0.32;
 }
 
 // Raggio in pixel con cui disegnare un astro. Sono due misure che convivono:
@@ -8011,7 +9398,16 @@ function skyRaggio(o, focale) {
 
 function skyRaggioIcona(o) {
   if (o.tipo === 'sole') return 15;
-  if (o.tipo === 'luna') return 14;
+  if (o.tipo === 'luna') {
+    // Durante un'eclissi di Sole la Luna non può avere una misura sua: deve
+    // stare al Sole esattamente come ci sta in cielo, se no una totale
+    // sembra parziale (o viceversa). Quindi prende l'icona del Sole
+    // moltiplicata per il rapporto vero fra i due dischi — che è il numero
+    // da cui dipende tutto, ed è il motivo per cui certe eclissi sono
+    // anulari e certe altre no.
+    if (sky.eclisse && sky.eclisse.attiva) return 15 * sky.eclisse.rapporto;
+    return 14;
+  }
   if (o.tipo === 'satellite') return 5;
   const mag = typeof o.mag === 'number' ? o.mag : 3;
   return Math.max(2.5, Math.min(11, 6 - mag * 0.9));
@@ -8096,22 +9492,48 @@ function skyDisegnaAstro(ctx, base, focale, o) {
   ctx.globalAlpha = sottoOrizzonte ? 0.3 : visibilita;
 
   if (!sottoOrizzonte && o.tipo !== 'stella') {
-    // Alone luminoso: sul Sole è una corona vera e propria, sulla Luna un
+    // Alone luminoso: sul Sole è il bagliore che sbianca tutto, sulla Luna un
     // velo appena accennato (se no il disco spariva dentro al suo bagliore).
     // Ingrandendo, l'alone smette di crescere in proporzione e diventa una
     // fascia di larghezza fissa attorno al disco: sei volte un Sole grande
     // mezzo schermo sarebbe una macchia bianca su tutto il cielo.
+    // E se la Luna sta coprendo il Sole, il bagliore se ne va con lui: è la
+    // cosa che si nota per prima, molto prima che il cielo cambi colore.
     const largo = o.tipo === 'sole' ? Math.min(r * 6, r + 90)
       : (o.tipo === 'luna' ? Math.min(r * 2.2, r + 32) : Math.min(r * 3.2, r + 26));
-    const alone = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, largo);
-    alone.addColorStop(0, o.colore + (o.tipo === 'sole' ? 'cc' : (o.tipo === 'luna' ? '66' : 'aa')));
-    alone.addColorStop(o.tipo === 'sole' ? 0.35 : 0.5, o.colore + (o.tipo === 'luna' ? '33' : '55'));
-    alone.addColorStop(1, o.colore + '00');
-    ctx.fillStyle = alone;
-    ctx.beginPath();
-    ctx.arc(p.px, p.py, largo, 0, Math.PI * 2);
-    ctx.fill();
+    let scoperto = 1;
+    if (o.tipo === 'sole' && sky.eclisse && sky.eclisse.attiva) {
+      scoperto = Math.pow(1 - sky.eclisse.copertura, 0.6);
+    } else if (o.tipo === 'luna') {
+      // Il bagliore della Luna è la sua luce: una falce sottile non ne ha, e
+      // la Luna Nuova nemmeno. Senza questo, durante un'eclissi parziale
+      // restava in cielo un disco pallido grande come la Luna — l'alone di
+      // un astro che in quel momento non sta illuminando niente.
+      scoperto = Math.pow(Math.max(0, Math.min(1, typeof o.frazione === 'number' ? o.frazione : 1)), 0.7);
+    }
+    if (scoperto > 0.03) {
+      ctx.save();
+      ctx.globalAlpha *= scoperto;
+      const alone = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, largo);
+      alone.addColorStop(0, o.colore + (o.tipo === 'sole' ? 'cc' : (o.tipo === 'luna' ? '66' : 'aa')));
+      alone.addColorStop(o.tipo === 'sole' ? 0.35 : 0.5, o.colore + (o.tipo === 'luna' ? '33' : '55'));
+      alone.addColorStop(1, o.colore + '00');
+      ctx.fillStyle = alone;
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, largo, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
+
+  // Sole, Luna e pianeti non sono trasparenti: sono corpi solidi, e l'aria
+  // bassa li smorza e li arrossa invece di lasciarci vedere attraverso (è
+  // skyVeloAtmosferico a occuparsene, dentro al disco). L'opacità piena
+  // vale solo per loro: le stelle e le stazioni restano punti di luce, e
+  // per quelli sbiadire è giusto.
+  const corposo = !sottoOrizzonte &&
+    (o.tipo === 'sole' || o.tipo === 'luna' || (o.tipo === 'pianeta' && r >= 3));
+  if (corposo) ctx.globalAlpha = o.tipo === 'pianeta' ? Math.max(visibilita, 0.75) : 1;
 
   if (sottoOrizzonte) {
     // Un puntino spento e nient'altro: il corpo vero (disco, anelli, fase)
@@ -8136,33 +9558,26 @@ function skyDisegnaAstro(ctx, base, focale, o) {
     ctx.lineWidth = 1;
     ctx.stroke();
   } else if (o.tipo === 'luna') {
-    // Direzione del Sole vista dalla Luna, proiettata sullo schermo:
-    // il lembo illuminato punta sempre da quella parte.
-    const sole = sky.oggetti.find(x => x.id === 'Sun');
-    let angolo = 0;
-    if (sole) {
-      const s = skyVettore(sole.az, sole.alt);
-      const proiez = skyDot(s, v);
-      const t = [s[0] - proiez * v[0], s[1] - proiez * v[1], s[2] - proiez * v[2]];
-      angolo = Math.atan2(-skyDot(t, base.u), skyDot(t, base.r));
+    // Da che parte arriva la luce (il lembo illuminato punta sempre di là) e
+    // da che parte sta il nord del cielo (i mari si orientano su quello)
+    // Se il Sole è lì dietro, alla Luna serve sapere dove sta e quanto è
+    // grande sullo schermo: è il ritaglio del morso (vedi skyDisegnaGlobo)
+    let morso = null;
+    if (sky.eclisse && sky.eclisse.attiva) {
+      const sole = sky.oggetti.find(x => x.id === 'Sun');
+      if (sole) {
+        const q = skyProietta(skyVettore(sole.az, sole.alt), base, focale);
+        if (q.davanti) morso = { dx: q.px - p.px, dy: q.py - p.py, r: skyRaggio(sole, focale) };
+      }
     }
-    skyDisegnaLuna(ctx, p.px, p.py, r, o.frazione, angolo);
+    skyDisegnaLuna(ctx, p.px, p.py, r, o, skyOrientamento(o, v, base), skyEstinzione(o.alt), morso);
   } else if (o.tipo === 'sole') {
-    // Il disco solare è l'unica cosa in cielo che si disegna bianca: a
-    // quell'intensità l'occhio non distingue più il colore
-    ctx.fillStyle = '#fffbe8';
-    ctx.beginPath();
-    ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#fde68a';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    skyDisegnaSole(ctx, p.px, p.py, r, o, skyEstinzione(o.alt));
   } else {
-    // Pianeti: gli anelli di Saturno stanno dietro al disco, le bande di
-    // Giove dentro. Sotto i cinque pixel non ci sta niente: solo il punto.
-    if (o.id === 'Saturn' && r >= 4) { anelli = true; skyDisegnaAnelli(ctx, p.px, p.py, r, o.colore); }
-    skyDisegnaDiscoPianeta(ctx, p.px, p.py, r, o.colore);
-    if (o.id === 'Jupiter' && r >= 6) skyDisegnaBande(ctx, p.px, p.py, r, o.colore);
+    // Pianeti: la faccia vera se c'è spazio, la fase, e per Saturno gli
+    // anelli — metà dietro al globo e metà davanti.
+    if (o.id === 'Saturn' && r >= 3) anelli = true;
+    skyDisegnaPianeta(ctx, p.px, p.py, r, o, skyOrientamento(o, v, base), skyEstinzione(o.alt));
   }
 
   if (sottoOrizzonte) {
@@ -8191,7 +9606,7 @@ function skyDisegnaAstro(ctx, base, focale, o) {
     // sopra — e la Luna da vicino è bianca — a salvarlo è il contorno scuro.
     // Con gli anelli l'ingombro di Saturno è più del doppio del suo disco:
     // il nome deve stare fuori da quelli, non dal globo
-    const x = p.px + Math.min((anelli ? r * 2.1 : r) + 6, 46);
+    const x = p.px + Math.min((anelli ? r * 2.3 : r) + 6, 46);
     ctx.lineWidth = 3;
     ctx.lineJoin = 'round';
     ctx.strokeStyle = 'rgba(2, 6, 16, 0.75)';
@@ -8203,7 +9618,7 @@ function skyDisegnaAstro(ctx, base, focale, o) {
   if (o.id === sky.target) {
     ctx.globalAlpha = 1;
     ctx.beginPath();
-    ctx.arc(p.px, p.py, (anelli ? r * 2.1 : r) + 12, 0, Math.PI * 2);
+    ctx.arc(p.px, p.py, (anelli ? r * 2.3 : r) + 12, 0, Math.PI * 2);
     ctx.strokeStyle = '#60a5fa';
     ctx.lineWidth = 2;
     ctx.stroke();
@@ -8324,8 +9739,16 @@ function skyDisegna() {
   // vedono — di giorno nessuna.
   const sole = sky.oggetti.find(o => o.id === 'Sun');
   const luna = sky.oggetti.find(o => o.id === 'Moon');
-  const aria = skyAria(sole ? sole.alt : -30);
+  // C'è un'eclissi di Sole in corso? Si guarda una volta per fotogramma,
+  // perché la risposta serve a mezzo disegno: quanto grande fare la Luna,
+  // se accendere la corona, quanto spegnere il bagliore e il cielo.
+  sky.eclisse = skyEclisseDiSole(sole, luna);
+  let aria = skyAria(sole ? sole.alt : -30);
+  if (sky.eclisse && sky.eclisse.attiva) aria = skyAriaEclissata(aria, sky.eclisse.copertura);
   sky.luceCielo = aria.luce;
+  // L'aria di questo istante resta a disposizione di chi disegna: serve a
+  // sapere di che colore è il cielo dietro (e davanti) a un astro
+  sky.ariaOra = aria;
 
   // Con la fotocamera accesa il canvas resta trasparente: sotto si vede
   // il mondo vero e sopra ci finiscono solo gli astri calcolati.
@@ -8340,7 +9763,7 @@ function skyDisegna() {
   }
 
   if (sky.mostraGriglia) skyDisegnaGriglia(ctx, base, focale);
-  if (!conCamera) skyDisegnaTerreno(ctx, base, focale);
+  if (!conCamera) skyDisegnaTerreno(ctx, base, focale, aria);
   skyDisegnaCardinali(ctx, base, focale);
   skyDisegnaCostellazioni(ctx, base, focale);
   skyDisegnaProfondo(ctx, base, focale);
@@ -8355,9 +9778,12 @@ function skyDisegna() {
   skyCalcolaTraccia();
   skyDisegnaTraccia(ctx, base, focale);
 
-  // Prima le stelle, poi i pianeti, infine Luna, Sole e le stazioni spaziali
-  // (che si muovono e devono restare sempre riconoscibili sopra il resto)
-  const ordine = { stella: 0, pianeta: 1, luna: 2, sole: 3, satellite: 4 };
+  // Prima le stelle, poi i pianeti, poi il Sole, poi la Luna, infine le
+  // stazioni spaziali (che si muovono e devono restare sempre riconoscibili
+  // sopra il resto). L'ordine fra Sole e Luna non è un dettaglio: la Luna
+  // passa **davanti** al Sole, e finché il Sole veniva disegnato per ultimo
+  // un'eclissi non si vedeva affatto — la Luna gli finiva sotto.
+  const ordine = { stella: 0, pianeta: 1, sole: 2, luna: 3, satellite: 4 };
   const daDisegnare = skyOggettiDaDisegnare();
   daDisegnare
     .slice()
@@ -16318,47 +17744,51 @@ const SKY_COSTELLAZIONI = [
 // `distanza` e `dimensione` sono i dati che la scheda mostra e che non si
 // possono calcolare: la prima è una misura di catalogo, la seconda è quanto
 // grande appare in cielo (per confronto, la Luna piena misura circa 30′).
+// `assePrimi`, `asseMinore` e `angoloPosizione` sono la stessa misura in
+// forma di numeri — asse maggiore e minore in primi d'arco, orientamento in
+// gradi dal nord celeste verso est — e servono a disegnarli grandi e
+// storti come sono davvero, invece che tutti uguali (vedi skyDisegnaProfondo).
 const SKY_PROFONDO = [
-  { nome: 'M31 — Galassia di Andromeda', ra: 0.712, dec: 41.269, mag: 3.4, tipo: 'galassia', strumento: 'occhio',
+  { nome: 'M31 — Galassia di Andromeda', ra: 0.712, dec: 41.269, mag: 3.4, tipo: 'galassia', assePrimi: 190, asseMinore: 60, angoloPosizione: 38, strumento: 'occhio',
     distanza: '2,5 milioni di anni luce', dimensione: '3° × 1° (sei volte la Luna piena)',
     nota: 'La cosa più lontana visibile a occhio nudo: 2,5 milioni di anni luce. Nel binocolo è una macchia ovale.' },
-  { nome: 'M42 — Nebulosa di Orione', ra: 5.588, dec: -5.391, mag: 4.0, tipo: 'nebulosa', strumento: 'occhio',
+  { nome: 'M42 — Nebulosa di Orione', ra: 5.588, dec: -5.391, mag: 4.0, tipo: 'nebulosa', assePrimi: 65, asseMinore: 60, angoloPosizione: 20, strumento: 'occhio',
     distanza: '1.344 anni luce', dimensione: '65′ × 60′',
     nota: 'La stella di mezzo della spada di Orione non è una stella: è una nursery di stelle appena nate.' },
-  { nome: 'M45 — Pleiadi', ra: 3.790, dec: 24.117, mag: 1.6, tipo: 'ammasso', strumento: 'occhio',
+  { nome: 'M45 — Pleiadi', ra: 3.790, dec: 24.117, mag: 1.6, tipo: 'ammasso', assePrimi: 110, asseMinore: 100, angoloPosizione: 0, strumento: 'occhio',
     distanza: '444 anni luce', dimensione: '110′ (quattro Lune piene in fila)',
     nota: 'Le “sette sorelle”. A occhio nudo se ne contano 6–7, col binocolo diventano decine.' },
-  { nome: 'M44 — Presepe', ra: 8.670, dec: 19.983, mag: 3.7, tipo: 'ammasso', strumento: 'binocolo',
+  { nome: 'M44 — Presepe', ra: 8.670, dec: 19.983, mag: 3.7, tipo: 'ammasso', assePrimi: 95, asseMinore: 95, angoloPosizione: 0, strumento: 'binocolo',
     distanza: '577 anni luce', dimensione: '95′',
     nota: 'Una nuvoletta a occhio nudo, uno sciame di stelle nel binocolo.' },
-  { nome: 'M13 — Ammasso di Ercole', ra: 16.695, dec: 36.460, mag: 5.8, tipo: 'globulare', strumento: 'binocolo',
+  { nome: 'M13 — Ammasso di Ercole', ra: 16.695, dec: 36.460, mag: 5.8, tipo: 'globulare', assePrimi: 20, asseMinore: 20, angoloPosizione: 0, strumento: 'binocolo',
     distanza: '22.200 anni luce', dimensione: '20′',
     nota: 'Mezzo milione di stelle in una palla: il più bell\'ammasso globulare del cielo boreale.' },
-  { nome: 'M8 — Nebulosa Laguna', ra: 18.060, dec: -24.383, mag: 6.0, tipo: 'nebulosa', strumento: 'binocolo',
+  { nome: 'M8 — Nebulosa Laguna', ra: 18.060, dec: -24.383, mag: 6.0, tipo: 'nebulosa', assePrimi: 90, asseMinore: 40, angoloPosizione: 75, strumento: 'binocolo',
     distanza: '4.100 anni luce', dimensione: '90′ × 40′',
     nota: 'Nel cuore della Via Lattea estiva, sopra il “becco” della teiera del Sagittario.' },
-  { nome: 'M22 — Globulare del Sagittario', ra: 18.606, dec: -23.904, mag: 5.1, tipo: 'globulare', strumento: 'binocolo',
+  { nome: 'M22 — Globulare del Sagittario', ra: 18.606, dec: -23.904, mag: 5.1, tipo: 'globulare', assePrimi: 32, asseMinore: 32, angoloPosizione: 0, strumento: 'binocolo',
     distanza: '10.400 anni luce', dimensione: '32′',
     nota: 'Più luminoso di M13 ma più basso: serve un orizzonte sud pulito.' },
-  { nome: 'Doppio Ammasso di Perseo', ra: 2.317, dec: 57.133, mag: 4.3, tipo: 'ammasso', strumento: 'binocolo',
+  { nome: 'Doppio Ammasso di Perseo', ra: 2.317, dec: 57.133, mag: 4.3, tipo: 'ammasso', assePrimi: 60, asseMinore: 30, angoloPosizione: 100, strumento: 'binocolo',
     distanza: '7.500 anni luce', dimensione: '60′ in due gruppi',
     nota: 'Due ammassi vicini nello stesso campo del binocolo: uno dei colpi d\'occhio più belli.' },
-  { nome: 'M57 — Nebulosa Anello', ra: 18.893, dec: 33.029, mag: 8.8, tipo: 'planetaria', strumento: 'telescopio',
+  { nome: 'M57 — Nebulosa Anello', ra: 18.893, dec: 33.029, mag: 8.8, tipo: 'planetaria', assePrimi: 1.4, asseMinore: 1, angoloPosizione: 60, strumento: 'telescopio',
     distanza: '2.300 anni luce', dimensione: '1,4′ × 1′',
     nota: 'Un anello di fumo lasciato da una stella morente, fra le due stelle basse della Lira.' },
-  { nome: 'M27 — Nebulosa Manubrio', ra: 19.994, dec: 22.721, mag: 7.4, tipo: 'planetaria', strumento: 'telescopio',
+  { nome: 'M27 — Nebulosa Manubrio', ra: 19.994, dec: 22.721, mag: 7.4, tipo: 'planetaria', assePrimi: 8, asseMinore: 6, angoloPosizione: 30, strumento: 'telescopio',
     distanza: '1.360 anni luce', dimensione: '8′ × 6′',
     nota: 'Grande e alla portata di un piccolo telescopio, sotto cieli scuri anche del binocolo.' },
-  { nome: 'M51 — Galassia Vortice', ra: 13.498, dec: 47.195, mag: 8.4, tipo: 'galassia', strumento: 'telescopio',
+  { nome: 'M51 — Galassia Vortice', ra: 13.498, dec: 47.195, mag: 8.4, tipo: 'galassia', assePrimi: 11, asseMinore: 7, angoloPosizione: 170, strumento: 'telescopio',
     distanza: '23 milioni di anni luce', dimensione: '11′ × 7′',
     nota: 'Due galassie in collisione, sotto la coda del Grande Carro.' },
-  { nome: 'M81 — Galassia di Bode', ra: 9.926, dec: 69.066, mag: 6.9, tipo: 'galassia', strumento: 'telescopio',
+  { nome: 'M81 — Galassia di Bode', ra: 9.926, dec: 69.066, mag: 6.9, tipo: 'galassia', assePrimi: 27, asseMinore: 14, angoloPosizione: 157, strumento: 'telescopio',
     distanza: '12 milioni di anni luce', dimensione: '27′ × 14′',
     nota: 'Insieme a M82 entra nello stesso campo: due galassie in un colpo solo.' },
-  { nome: 'M15 — Globulare di Pegaso', ra: 21.500, dec: 12.167, mag: 6.2, tipo: 'globulare', strumento: 'binocolo',
+  { nome: 'M15 — Globulare di Pegaso', ra: 21.500, dec: 12.167, mag: 6.2, tipo: 'globulare', assePrimi: 18, asseMinore: 18, angoloPosizione: 0, strumento: 'binocolo',
     distanza: '33.600 anni luce', dimensione: '18′',
     nota: 'Compatto e luminoso, facile da trovare partendo da Enif.' },
-  { nome: 'M3 — Globulare dei Cani da Caccia', ra: 13.703, dec: 28.377, mag: 6.2, tipo: 'globulare', strumento: 'binocolo',
+  { nome: 'M3 — Globulare dei Cani da Caccia', ra: 13.703, dec: 28.377, mag: 6.2, tipo: 'globulare', assePrimi: 18, asseMinore: 18, angoloPosizione: 0, strumento: 'binocolo',
     distanza: '33.900 anni luce', dimensione: '18′',
     nota: 'Primavera: a metà strada fra Arturo e Cor Caroli.' }
 ];
@@ -16492,49 +17922,80 @@ function skyDisegnaCostellazioni(ctx, base, focale) {
   ctx.restore();
 }
 
-// Oggetti del deep sky: simboli discreti con etichetta
+// Oggetti del deep sky.
+// Erano cerchietti tratteggiati: un simbolo su una carta, non una cosa che
+// si guarda. Adesso ognuno è la nuvola di luce che è davvero, grande quanto
+// è grande in cielo (M31 è larga sei Lune piene, e a campo stretto si vede)
+// e orientata come sta lassù. Sotto una certa misura sullo schermo resta
+// comunque un fiocchetto visibile: se no, ingrandendo si perderebbero.
+// L'angolo di posizione è misurato dal nord celeste verso est, come su tutti
+// i cataloghi: sullo schermo diventa una direzione sola, con la stessa
+// bussola che orienta i mari della Luna.
 function skyDisegnaProfondo(ctx, base, focale) {
   if (!sky.profondo || !sky.profondo.length) return;
+  const velo = skyVelo();
+  if (velo < 0.05) return;                 // di giorno non c'è niente da vedere
 
   ctx.save();
   sky.profondo.forEach(o => {
-    const p = skyProietta(skyVettore(o.az, o.alt), base, focale);
+    const v = skyVettore(o.az, o.alt);
+    const p = skyProietta(v, base, focale);
     if (!p.davanti) return;
-    if (p.px < -40 || p.px > sky.larghezza + 40 || p.py < -40 || p.py > sky.altezza + 40) return;
 
-    const colore = SKY_COLORI_PROFONDO[o.tipo] || '#a5f3fc';
-    const velo = skyVelo();
-    ctx.globalAlpha = o.alt < 0 ? 0.25 * velo : 0.9 * velo * skyEstinzione(o.alt);
-    if (ctx.globalAlpha < 0.04) return;
+    // Quanto è grande sullo schermo: mezzo asse maggiore, in pixel. Il
+    // minimo tiene visibili gli oggetti piccoli (M57 è un anellino di un
+    // primo e mezzo: a campo largo sarebbe mezzo pixel).
+    const primi = typeof o.assePrimi === 'number' ? o.assePrimi : 20;
+    const vero = focale * Math.tan(primi / 120 * SKY_D2R);
+    const R = Math.max(9, vero);
+    const rapporto = typeof o.asseMinore === 'number' && primi > 0
+      ? Math.max(0.2, o.asseMinore / primi) : 1;
+    const margine = R * 1.4 + 20;
+    if (p.px < -margine || p.px > sky.larghezza + margine ||
+        p.py < -margine || p.py > sky.altezza + margine) return;
 
-    ctx.strokeStyle = colore;
-    ctx.lineWidth = 1.4;
-    if (o.tipo === 'galassia') {
-      ctx.beginPath();
-      ctx.ellipse(p.px, p.py, 9, 4.5, -0.5, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (o.tipo === 'nebulosa' || o.tipo === 'planetaria') {
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.arc(p.px, p.py, 7, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+    const alpha = (o.alt < 0 ? 0.18 : 0.95 * skyEstinzione(o.alt)) * velo;
+    if (alpha < 0.04) return;
+
+    // L'angolo di posizione, portato sullo schermo
+    const polo = skyVettore(0, sky.observer ? sky.observer.latitude : 45);
+    const pv = skyDot(polo, v);
+    const nord = skyNormalizza([polo[0] - pv * v[0], polo[1] - pv * v[1], polo[2] - pv * v[2]]);
+    const est = skyNormalizza(skyCross(polo, v));
+    const pa = (typeof o.angoloPosizione === 'number' ? o.angoloPosizione : 0) * SKY_D2R;
+    const d = [
+      nord[0] * Math.cos(pa) + est[0] * Math.sin(pa),
+      nord[1] * Math.cos(pa) + est[1] * Math.sin(pa),
+      nord[2] * Math.cos(pa) + est[2] * Math.sin(pa)
+    ];
+    const rotazione = Math.atan2(-skyDot(d, base.u), skyDot(d, base.r));
+
+    const tela = skyFacciaProfondo(o, R);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(p.px, p.py);
+    if (tela) {
+      // Additiva: la luce delle nebulose si somma a quella del cielo, non lo
+      // copre — è per questo che sotto un cielo chiaro non si vedono più
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.rotate(rotazione);
+      ctx.scale(1, rapporto);
+      ctx.drawImage(tela, -R * 1.25, -R * 1.25, R * 2.5, R * 2.5);
     } else {
+      ctx.fillStyle = SKY_COLORI_PROFONDO[o.tipo] || '#a5f3fc';
       ctx.beginPath();
-      ctx.arc(p.px, p.py, 7, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = colore;
-      ctx.globalAlpha *= 0.35;
+      ctx.arc(0, 0, 5, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.restore();
 
     if (sky.mostraNomi) {
       ctx.globalAlpha = (o.alt < 0 ? 0.3 : 0.85) * velo;
       ctx.font = '11px system-ui, sans-serif';
-      ctx.fillStyle = colore;
+      ctx.fillStyle = SKY_COLORI_PROFONDO[o.tipo] || '#a5f3fc';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
-      ctx.fillText(o.nome.split(' — ')[0], p.px + 12, p.py);
+      ctx.fillText(o.nome.split(' — ')[0], p.px + Math.min(R + 8, 60), p.py);
     }
   });
   ctx.restore();
