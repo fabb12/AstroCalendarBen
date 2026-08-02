@@ -4712,9 +4712,13 @@ function inizializzaMappaEclissiUI() {
   // deve chiudere la mappa grande, non la finestra sotto.
   const tastoSchermo = document.getElementById('btn-eclissi-schermo');
   if (tastoSchermo) tastoSchermo.addEventListener('click', _eclAlternaSchermoIntero);
+  // "Non c'è più niente a schermo intero" non basta a dire che la mappa grande
+  // è finita: la finestra può essere aperta sopra al planetario già a schermo
+  // intero (sezione 7.5-bis), e allora uscendo dalla mappa il posto resta al
+  // cielo. Quello che conta è se a tenerlo è ancora il guscio della mappa.
   const cambioSchermo = () => {
     const attivo = document.fullscreenElement || document.webkitFullscreenElement;
-    if (!attivo && _eclSchermoIntero && !_eclSegnaposto) _eclEsciSchermoIntero();
+    if (_eclSchermoIntero && !_eclSegnaposto && attivo !== _eclGuscioMappa()) _eclEsciSchermoIntero();
     else _eclRimisuraMappa();
   };
   document.addEventListener('fullscreenchange', cambioSchermo);
@@ -13966,6 +13970,7 @@ function skyRipiegoSchermoIntero(cont) {
   sky.fintoSchermoIntero = true;
   cont.classList.add('finto-schermo-intero');
   skyAggiornaTastiSchermo();
+  skySistemaModaliSchermoIntero();
   setTimeout(skyRidimensiona, 60);
 }
 
@@ -13978,6 +13983,11 @@ function skyEsciSchermoIntero(opzioni = {}) {
   sky.fintoSchermoIntero = false;
   if (cont) cont.classList.remove('finto-schermo-intero');
   document.body.classList.remove('cielo-immersivo');
+
+  // Le finestre ospitate qui dentro tornano al loro posto nella pagina prima
+  // che il riquadro smetta di essere a schermo intero: se restassero, si
+  // ritroverebbero appese al riquadro del cielo in mezzo alla pagina
+  skyRiportaModaliDalCielo();
 
   const esci = document.exitFullscreen || document.webkitExitFullscreen;
   const attivo = document.fullscreenElement || document.webkitFullscreenElement;
@@ -14027,6 +14037,9 @@ function skyInizializzaSchermoIntero() {
   const cambio = () => {
     const attivo = document.fullscreenElement || document.webkitFullscreenElement;
     if (!attivo && sky.schermoIntero && !sky.fintoSchermoIntero) skyEsciSchermoIntero();
+    // Il pieno schermo vero arriva (e se ne va) in differita: è qui che si
+    // decide se le finestre aperte devono stare dentro al cielo o nella pagina
+    skySistemaModaliSchermoIntero();
     setTimeout(skyRidimensiona, 80);
   };
   document.addEventListener('fullscreenchange', cambio);
@@ -14046,6 +14059,118 @@ function skyInizializzaSchermoIntero() {
   // Il tasto (o il gesto) Indietro di Android
   window.addEventListener('popstate', () => {
     if (sky.schermoIntero) skyEsciSchermoIntero({ daStoria: true });
+  });
+
+  skyInizializzaModaliSopraIlCielo();
+}
+
+// =====================================================================
+// 7.5-bis LE FINESTRE CHE SI APRONO SOPRA IL CIELO A SCHERMO INTERO
+//     Dalla scheda del Sole si aprono il Sistema Solare in 3D e la lezione
+//     dell'eclittica; dagli eventi la mappa dell'ombra e la simulazione.
+//     Col cielo a schermo intero non se ne vedeva nessuna: si toccava il
+//     tasto e non succedeva niente.
+//
+//     Le due ragioni sono diverse ma il rimedio è uno solo. Nel pieno
+//     schermo vero il browser disegna soltanto l'elemento andato a schermo
+//     intero e i suoi discendenti: le finestre, che stanno in fondo alla
+//     pagina, esistono e sono aperte — semplicemente non le vede nessuno.
+//     Nel ripiego in CSS (Safari su iPhone) il riquadro del cielo si incolla
+//     al viewport con z-index 60, e le finestre, ferme al 50 di Tailwind, ci
+//     finiscono sotto.
+//
+//     Quindi finché il cielo è a schermo intero le finestre aperte vanno a
+//     stare *dentro* il suo riquadro, e alla chiusura tornano esattamente da
+//     dove erano venute — stesso padre, stesso posto fra i fratelli. Spostare
+//     un nodo non tocca né i suoi ascoltatori né il contenuto delle sue tele,
+//     e la misura la prendono comunque nel `requestAnimationFrame` che segue,
+//     cioè dopo il trasloco.
+//
+//     Nessuna finestra viene aperta o chiusa da qui: si guarda solo la classe
+//     `hidden` con un MutationObserver, così vale per tutte quelle di oggi e
+//     per quelle di domani, senza toccare le loro `apri…()`.
+// =====================================================================
+
+// Dove stava ogni finestra prima di essere portata sopra al cielo
+const skyModaliOspitate = new Map();
+// Mentre riordiniamo cambiamo delle classi: senza questa guardia
+// l'osservatore si richiamerebbe da solo
+let skyModaliInRiordino = false;
+
+// Il riquadro che tiene il pieno schermo del planetario: quello vero se il
+// browser ce l'ha concesso, il ripiego incollato al viewport se no. Fuori dal
+// pieno schermo — e quando a schermo intero c'è altro, per esempio la mappa
+// dell'eclissi — qui non c'è niente da ospitare.
+function skyGuscioSchermoIntero() {
+  const cont = document.getElementById('skymap-contenitore');
+  if (!cont) return null;
+  const vero = document.fullscreenElement || document.webkitFullscreenElement;
+  if (vero === cont) return cont;
+  if (cont.classList.contains('finto-schermo-intero')) return cont;
+  return null;
+}
+
+function skyOspitaModale(modale, guscio) {
+  if (!modale || !guscio || modale.parentElement === guscio) return;
+  if (!skyModaliOspitate.has(modale)) {
+    skyModaliOspitate.set(modale, {
+      padre: modale.parentElement,
+      dopo: modale.nextElementSibling
+    });
+  }
+  guscio.appendChild(modale);
+  modale.classList.add('modale-sopra-il-cielo');
+}
+
+// Chi non è mai stato ospite esce di qui subito, e non è un dettaglio: togliere
+// una classe che non c'è conta lo stesso come una modifica dell'attributo, e
+// l'osservatore si sveglierebbe di nuovo — all'infinito, a pagina bloccata.
+function skyRestituisciModale(modale) {
+  const casa = skyModaliOspitate.get(modale);
+  if (!casa) {
+    if (modale.classList.contains('modale-sopra-il-cielo')) modale.classList.remove('modale-sopra-il-cielo');
+    return;
+  }
+  skyModaliOspitate.delete(modale);
+  modale.classList.remove('modale-sopra-il-cielo');
+  if (!casa.padre) return;
+  // Il fratello di allora potrebbe non essere più lì: in quel caso in fondo
+  if (casa.dopo && casa.dopo.parentElement === casa.padre) casa.padre.insertBefore(modale, casa.dopo);
+  else casa.padre.appendChild(modale);
+}
+
+// Rimette d'accordo il posto di ogni finestra con lo stato del pieno schermo
+function skySistemaModaliSchermoIntero() {
+  if (skyModaliInRiordino) return;
+  skyModaliInRiordino = true;
+  try {
+    const guscio = skyGuscioSchermoIntero();
+    document.querySelectorAll('.velo-modale').forEach(modale => {
+      const aperta = !modale.classList.contains('hidden');
+      if (guscio && aperta) skyOspitaModale(modale, guscio);
+      else skyRestituisciModale(modale);
+    });
+  } finally {
+    skyModaliInRiordino = false;
+  }
+}
+
+// Si esce dal pieno schermo: tutte a casa, aperte o chiuse che siano
+function skyRiportaModaliDalCielo() {
+  if (skyModaliInRiordino || !skyModaliOspitate.size) return;
+  skyModaliInRiordino = true;
+  try {
+    Array.from(skyModaliOspitate.keys()).forEach(skyRestituisciModale);
+  } finally {
+    skyModaliInRiordino = false;
+  }
+}
+
+function skyInizializzaModaliSopraIlCielo() {
+  if (typeof MutationObserver !== 'function') return;
+  const occhio = new MutationObserver(() => skySistemaModaliSchermoIntero());
+  document.querySelectorAll('.velo-modale').forEach(modale => {
+    occhio.observe(modale, { attributes: true, attributeFilter: ['class'] });
   });
 }
 
