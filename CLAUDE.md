@@ -26,7 +26,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | File | Righe | Contenuto |
 |---|---|---|
 | `index.html` | ~1.270 | Struttura statica: testata, 6 viste, 9 modali. Nessuna logica. |
-| `app.js` | ~18.960 | Tutto tranne il telescopio. |
+| `app.js` | ~19.240 | Tutto tranne il telescopio. |
 | `telescopio.js` | ~5.530 | Vista Telescopio, isolata. ~136 funzioni, prefisso `tel`. |
 | `style.css` | ~4.190 | Tema "Deep Space" + impaginazione responsive. |
 | `sw.js` | ~105 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio. |
@@ -107,33 +107,35 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
 | 5603–5647 | **4. Lettura vocale (TTS)** — parte solo da tasto o notifica | `ORIGINI_VOCE_AMMESSE` (**5608**) |
 | 5648–5830 | **5. Notifiche e promemoria** | `inizializzaNotifiche()` (**5796**) |
 | 5831–5880 | **6. Installazione PWA** | `inizializzaInstallazione()` (**5835**) |
-| 5881–6512 | **7. Il planetario** — stato `sky`, algebra Est/Nord/Alto, filtro anti-tremolio bussola, limiti del campo visivo, campo visivo AR | `sky` (**6006**), `sky.reg` (**6139**), `skyVettore()` (**6164**), `SKY_FOV_MIN` (**6350**)/`skyImpostaFov()` (**6359**), `skyProietta()` (**6486**) |
-| 6513–7220 | **7.1** Posizione e sensori; **7.1-bis** posizione a tre strati (GPS → IP → a mano) | `skyRichiediPosizione()` (**6882**), `posizioneDallaRete()`, `trovaPosizioneAStrati()` (**7123**), declinazione magnetica (**6536**) |
-| 7221–7420 | **7.1-ter** Il luogo da cui si guarda: il planetario può spostare l'occhio altrove senza toccare la posizione dell'app | `skyLuogoDelCielo()` (**7243**), `skyAggiornaOsservatore()` (**7259**), `skyImpostaLuogoVista()`, `skyTornaAlLuogoDiCasa()`, `skyInizializzaLuogoVista()` (**7371**) |
-| 7484–7787 | **7.2** Posizioni degli astri (Sole, Luna, pianeti, stelle `Star1…Star8`); qui si calcolano anche l'ombra della Terra sulla Luna e l'apertura degli anelli di Saturno | `skyOmbraDellaTerra()` (**7588**), `skyAssettoDiSaturno()` (**7628**) |
-| 7788–8109 | **7.3 / 7.3.1** Disegno del cielo e aspetto dell'aria: colore del fondo per ora del giorno, foschia, aloni, Via Lattea | `skyAria()`, `skyDisegnaSfondo()`, `skyDisegnaViaLattea()` |
-| 8110–9750 | **7.3.2 La pelle degli astri** — le facce vere, dipinte una volta sola su tele fuori schermo: Luna coi mari, Sole con granulazione e corona, pianeti con bande e calotte, nebulose e galassie, profilo dell'orizzonte, eclissi | `skyPelle()` (**8168**), `SKY_FACCE` (**8801**), `skyFacciaDi()` (**8818**), `skyDisegnaGlobo()` (**9019**), `SKY_PROFILO` (**9116**), `skyDisegnaTerreno()` (**9260**), `skyDisegnaLuna()` (**9433**), `skyDisegnaPianeta()` (**9530**), `skyDisegnaSole()` (**9569**), `skyEclisseDiSole()` (**9631**) |
-| 9751–10203 | **7.3 (seguito)** Misura degli astri (icona o disco vero), disegno di ogni astro, ciclo di disegno | `skyRaggio(o, focale)` (**9682**), `skyDisegnaAstro()` (**9743**), `skyDisegna()` (**10006**) |
-| 10204–10342 | **7.3-bis** Traccia dell'oggetto osservato: la strada che percorre nelle ore attorno all'istante mostrato, con l'ora segnata di ora in ora | `skyCalcolaTraccia()` (**10236**), `skyDisegnaTraccia()`, `SKY_TRACCIA_ORE` |
-| 10343–10761 | **7.3-ter** Eclittica: il cerchio del Sole in un anno, coi puntini dei mesi e il filo a piombo che misura quanto l'oggetto scelto sta sopra o sotto. Insieme a lei l'**analemma** (il Sole alla stessa ora ogni giorno per un anno) | `skyCalcolaEclittica()` (**10423**), `skyDisegnaEclittica()`, `skyScartoEclittica()`, `skyCalcolaAnalemma()` |
-| 10762–11796 | **7.3-quater** La lezione dell'eclittica: sei quadri animati (Sistema Solare dall'alto → di taglio → il piano → la riga vista da qui → l'analemma → i nodi e le eclissi). Si apre dal tasto nella scheda del Sole | `LEZ_CAPITOLI` (**10794**), `lez`, `apriLezioneEclittica()`, `lezQuadroSistema/Cielo/Analemma/Nodi()` |
-| 11797–12261 | **7.4** Interfaccia del planetario e scheda dell'oggetto (si apre **solo** toccando l'oggetto sulla mappa), inseguimento | `skyAlternaInseguimento()`, `skyInsegui()`, `skyAggiornaTastoInsegui()` (tiene d'accordo i due tasti: quello del pannello Navigazione e il bersaglio sulla mappa) |
-| 12262–13411 | **7.4-bis** Eventi del calendario dentro il planetario: elenco (in corso, ore vicine, **prossimi 7 giorni**), chip e segni sulla mappa (radiante, anello sull'astro eclissato); qui stanno anche il ciclo di disegno e i comandi | `skyEventiVicini()` (**12313**), `skyAggiornaEventi()`, `apriEventoNelPlanetario(id)`, `skyCiclo()`, `inizializzaSkymap()` (**13175**) |
-| 13412–13545 | **7.5** Schermo intero (dal pannello Visualizzazione, dal ⛶ sulla mappa, con Esc o col doppio clic) | `skyAlternaSchermoIntero()` (**13427**), `skyAggiornaTastiSchermo()` (**13497**) |
-| 13546–13987 | **7.6 Registrare un momento**: pochi secondi di cielo in un filmato (MediaRecorder, mp4 dove c'è, se no webm) da condividere o salvare. Il tasto sta sulla mappa, non in un pannello | `skyRegAvvia()`, `skyRegComponi()`, `skyRegFirma()`, `skyRegFerma()`, `skyRegAggiornaComando()`, `skyRegCondividi()` |
-| 13988–15605 | **8. Simulazione dell'evento** — stato `sim` (**14011**), una scena per tipo | `simScenaEclissiLunare/Solare/FaseLunare/Stagioni/Sciame/Elongazione/Cielo` |
-| 15606–15781 | **9. Congiunzioni e occultazioni** | |
-| 15782–15815 | **10. La posizione usata da tutta l'app** | `luogoCorrente()` (**15792**) |
-| 15816–16415 | **10-bis. Finestra della posizione** + ricerca città (locale, poi Open-Meteo) | `apriPosizione(forza)` (**15870**), `inizializzaPosizioneUI()` (**16121**) |
-| 16416–16590 | **11. Meteo e indice di osservabilità** | `indiceOsservabilita(evento)` (**16517**) |
-| 16591–16639 | **12. Strumento necessario** (occhio / binocolo / telescopio) | `STRUMENTI` (**16596**) |
-| 16640–17037 | **13. Passaggi di ISS e Tiangong** (SGP4) | `SATELLITI` (**16651**) |
-| 17038–17303 | **14. Vista "Stasera"** | `costruisciStasera()` (**17283**) |
-| 17304–17505 | **15. Diario e traguardi** | `TRAGUARDI` (**17340**), `caricaDiario()` (**17316**) |
-| 17506–17886 | **16. Condivisione (`?evento=`), export `.ics`, backup JSON** | `esportaBackup()` (**17745**), `urlEvento(id)` (**17509**) |
-| 17887–17938 | **17. Consigli di astrofotografia** | `consigliFoto(evento)` (**17892**) |
-| 17939–18836 | **18. Costellazioni e deep sky nel planetario**, macchina del tempo, **barra del tempo** (la riga sempre in vista in fondo alla mappa), playback, fotocamera AR | `SKY_COSTELLAZIONI` (**17946**), `SKY_PROFONDO` (**18079**, con le misure vere), `skyDisegnaProfondo()` (**18262**), `skyAggiornaTestoTempo()` (**18368**), `skyTestoBarraTempo()` (**18436**), `skyImpostaOffsetTempo()` (**18485**), `skyAttivaFotocamera()` |
-| 18837–18956 | **19. Schede dell'agenda arricchite** | `bloccoLocaleHtml()` (**18843**), `barraAzioniHtml()` (**18898**) |
+| 5881–6532 | **7. Il planetario** — stato `sky`, algebra Est/Nord/Alto, filtro anti-tremolio bussola, limiti del campo visivo, campo visivo AR | `sky` (**6006**), `sky.reg` (**6146**), `skyVettore()` (**6171**), `SKY_FOV_MIN` (**6357**)/`skyImpostaFov()` (**6374**), `skyProietta()` (**6506**) |
+| 6533–7241 | **7.1** Posizione e sensori; **7.1-bis** posizione a tre strati (GPS → IP → a mano) | `skyRichiediPosizione()` (**6902**), `posizioneDallaRete()`, `trovaPosizioneAStrati()` (**7143**), declinazione magnetica (**6556**) |
+| 7242–7492 | **7.1-ter** Il luogo da cui si guarda: il planetario può spostare l'occhio altrove senza toccare la posizione dell'app | `skyLuogoDelCielo()` (**7263**), `skyAggiornaOsservatore()` (**7279**), `skyImpostaLuogoVista()`, `skyTornaAlLuogoDiCasa()`, `skyInizializzaLuogoVista()` (**7395**) |
+| 7493–7833 | **7.2** Posizioni degli astri (Sole, Luna, pianeti, stelle `Star1…Star8`); qui si calcolano anche l'ombra della Terra sulla Luna e l'apertura degli anelli di Saturno. Ogni quanto rifarle non è fisso: si adatta a quanto si è ingranditi (mezzo pixel di movimento del cielo), mentre i numeri scritti attorno alla mappa vanno più piano | `skyIntervalloCalcolo()` (**7530**), `SKY_UI_INTERVALLO` (**7528**), `skyAggiornaOggetti()` (**7537**), `skyOmbraDellaTerra()` (**7634**), `skyAssettoDiSaturno()` (**7674**) |
+| 7834–8155 | **7.3 / 7.3.1** Disegno del cielo e aspetto dell'aria: colore del fondo per ora del giorno, foschia, aloni, Via Lattea | `skyAria()`, `skyDisegnaSfondo()`, `skyDisegnaViaLattea()` |
+| 8156–9807 | **7.3.2 La pelle degli astri** — le facce vere, dipinte una volta sola su tele fuori schermo: Luna coi mari, Sole con granulazione e corona, pianeti con bande e calotte, nebulose e galassie, profilo dell'orizzonte, eclissi | `skyPelle()` (**8214**), `SKY_FACCE` (**8847**), `skyFacciaDi()` (**8864**), `skyDisegnaGlobo()` (**9065**), `SKY_PROFILO` (**9162**), `skyDisegnaTerreno()` (**9306**), `skyDisegnaLuna()` (**9479**), `skyDisegnaPianeta()` (**9576**), `skyDisegnaSole()` (**9615**), `skyEclisseDiSole()` (**9677**) |
+| 9808–10249 | **7.3 (seguito)** Misura degli astri (icona o disco vero), disegno di ogni astro, ciclo di disegno | `skyRaggio(o, focale)` (**9739**), `skyDisegnaAstro()` (**9789**), `skyDisegna()` (**10052**) |
+| 10250–10388 | **7.3-bis** Traccia dell'oggetto osservato: la strada che percorre nelle ore attorno all'istante mostrato, con l'ora segnata di ora in ora | `skyCalcolaTraccia()` (**10282**), `skyDisegnaTraccia()`, `SKY_TRACCIA_ORE` |
+| 10389–10807 | **7.3-ter** Eclittica: il cerchio del Sole in un anno, coi puntini dei mesi e il filo a piombo che misura quanto l'oggetto scelto sta sopra o sotto. Insieme a lei l'**analemma** (il Sole alla stessa ora ogni giorno per un anno) | `skyCalcolaEclittica()` (**10469**), `skyDisegnaEclittica()`, `skyScartoEclittica()`, `skyCalcolaAnalemma()` |
+| 10808–11842 | **7.3-quater** La lezione dell'eclittica: sei quadri animati (Sistema Solare dall'alto → di taglio → il piano → la riga vista da qui → l'analemma → i nodi e le eclissi). Si apre dal tasto nella scheda del Sole | `LEZ_CAPITOLI` (**10840**), `lez`, `apriLezioneEclittica()`, `lezQuadroSistema/Cielo/Analemma/Nodi()` |
+| 11843–12307 | **7.4** Interfaccia del planetario e scheda dell'oggetto (si apre **solo** toccando l'oggetto sulla mappa), inseguimento | `skyAlternaInseguimento()`, `skyInsegui()`, `skyAggiornaTastoInsegui()` (tiene d'accordo i due tasti: quello del pannello Navigazione e il bersaglio sulla mappa) |
+| 12308–12791 | **7.4-bis** Eventi del calendario dentro il planetario: elenco (in corso, ore vicine, **prossimi 7 giorni**), chip e segni sulla mappa (radiante, anello sull'astro eclissato) | `skyEventiVicini()` (**12359**), `skyAggiornaEventi()`, `apriEventoNelPlanetario(id)` |
+| 12792–13141 | **7.4-ter Movimenti morbidi** — perché il cielo non faccia scatti: inerzia del trascinamento (si lascia andare e si spegne da sé), zoom che ci scivola dentro invece di saltarci, spostamento verso un oggetto con partenza e arrivo lisci. Tutti smorzamenti esponenziali col `dt` del fotogramma, per comportarsi uguale a qualunque cadenza | `skyDeltaFotogramma()` (**12815**), `skyMuoviZoom()` (**12829**), `skyGradiAzPerPixel()` (**12871**), `skyRicordaTrascinamento()` (**12879**), `skyLanciaVista()` (**12896**), `skyScorriPerInerzia()` (**12909**), `skyFermaMovimenti()` (**12927**), `skyCentraSu()` (**12935**), `skyInsegui()`, `skyMuoviVista()` |
+| 13142–13684 | **7.4-quater** Avvio della vista, ciclo di disegno, gesti (trascinamento, pizzico, tocco, rotellina) e collegamento di tutti i comandi | `skyAvvia()`, `skyCiclo()` (**13190**), `apriSkymap()`, `skyZoom()` (**13265**), `skyInizializzaGesti()` (**13278**), `inizializzaSkymap()` (**13444**) |
+| 13685–13818 | **7.5** Schermo intero (dal pannello Visualizzazione, dal ⛶ sulla mappa, con Esc o col doppio clic) | `skyAlternaSchermoIntero()` (**13699**), `skyAggiornaTastiSchermo()` (**13773**) |
+| 13819–14260 | **7.6 Registrare un momento**: pochi secondi di cielo in un filmato (MediaRecorder, mp4 dove c'è, se no webm) da condividere o salvare. Il tasto sta sulla mappa, non in un pannello | `skyRegAvvia()`, `skyRegComponi()`, `skyRegFirma()`, `skyRegFerma()`, `skyRegAggiornaComando()`, `skyRegCondividi()` |
+| 14261–15878 | **8. Simulazione dell'evento** — stato `sim` (**14284**), una scena per tipo | `simScenaEclissiLunare/Solare/FaseLunare/Stagioni/Sciame/Elongazione/Cielo` |
+| 15879–16054 | **9. Congiunzioni e occultazioni** | |
+| 16055–16088 | **10. La posizione usata da tutta l'app** | `luogoCorrente()` (**16065**) |
+| 16089–16688 | **10-bis. Finestra della posizione** + ricerca città (locale, poi Open-Meteo) | `apriPosizione(forza)` (**16132**), `inizializzaPosizioneUI()` (**16394**) |
+| 16689–16863 | **11. Meteo e indice di osservabilità** | `indiceOsservabilita(evento)` (**16779**) |
+| 16864–16912 | **12. Strumento necessario** (occhio / binocolo / telescopio) | `STRUMENTI` (**16869**) |
+| 16913–17310 | **13. Passaggi di ISS e Tiangong** (SGP4) | `SATELLITI` (**16924**) |
+| 17311–17576 | **14. Vista "Stasera"** | `costruisciStasera()` (**17556**) |
+| 17577–17778 | **15. Diario e traguardi** | `TRAGUARDI` (**17613**), `caricaDiario()` (**17589**) |
+| 17779–18159 | **16. Condivisione (`?evento=`), export `.ics`, backup JSON** | `esportaBackup()` (**18018**), `urlEvento(id)` (**17771**) |
+| 18160–18211 | **17. Consigli di astrofotografia** | `consigliFoto(evento)` (**18154**) |
+| 18212–19118 | **18. Costellazioni e deep sky nel planetario**, macchina del tempo, **barra del tempo** (la riga sempre in vista in fondo alla mappa), playback, fotocamera AR | `SKY_COSTELLAZIONI` (**18219**), `SKY_PROFONDO` (**18341**, con le misure vere), `skyDisegnaProfondo()` (**18535**), `skyAggiornaTestoTempo()` (**18641**), `skyTestoBarraTempo()` (**18709**), `skyImpostaOffsetTempo()` (**18758**), `skyAttivaFotocamera()` |
+| 19119–19236 | **19. Schede dell'agenda arricchite** | `bloccoLocaleHtml()` (**19125**), `barraAzioniHtml()` (**19180**) |
 
 ## 7. Mappa di `telescopio.js`
 
@@ -164,10 +166,10 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `impronteEventi` / `mesiCalcolati` | `app.js:16,24` | Anti-duplicazione quando si calcola un mese su richiesta. |
 | `vistaAttuale` | `app.js:234` | Serve a chi ridisegna dopo un cambio di schermo. |
 | `dispositivoAttuale` | `app.js:233` | `'telefono' \| 'tablet' \| 'computer'`, scritto anche su `<html data-dispositivo>`. |
-| `sky` | `app.js:6006` | Planetario: canvas, posizione, sensori, fov, target, tempo, `eclisse` (l'eclissi di Sole in corso) e `ariaOra` (i colori dell'aria di questo istante). `sky.posizione` è la posizione dell'app; `sky.luogoVista` il luogo di sola visita del planetario (non salvato), e `sky.observer` nasce dal secondo se c'è, dalla prima se no. |
-| `sky.reg` | `app.js:6129` | Registrazione di un momento: durata, tela di montaggio, registratore, risultato. |
-| `skyTele` | `app.js:7867` | Le facce già dipinte degli astri, una per taglia. Al massimo diciotto: oltre, se ne va la più vecchia. |
-| `sim` | `app.js:13646` | Simulazione: canvas, scena, posizione nel tempo, velocità. |
+| `sky` | `app.js:6006` | Planetario: canvas, posizione, sensori, fov, target, tempo, `eclisse` (l'eclissi di Sole in corso) e `ariaOra` (i colori dell'aria di questo istante). `sky.posizione` è la posizione dell'app; `sky.luogoVista` il luogo di sola visita del planetario (non salvato), e `sky.observer` nasce dal secondo se c'è, dalla prima se no. `sky.fov` è il campo disegnato adesso e `sky.fovVoluto` quello a cui sta andando; `sky.inerzia` è la corsa lasciata dal dito e `sky.animazioneVista` lo spostamento verso un oggetto (sezione 7.4-ter). |
+| `sky.reg` | `app.js:6146` | Registrazione di un momento: durata, tela di montaggio, registratore, risultato. |
+| `skyTele` | `app.js:8200` | Le facce già dipinte degli astri, una per taglia. Al massimo diciotto: oltre, se ne va la più vecchia. |
+| `sim` | `app.js:14284` | Simulazione: canvas, scena, posizione nel tempo, velocità. |
 | `tel` | `telescopio.js:168` | Telescopio: profilo, pannello, allineamento, push-to. |
 
 ## 9. Persistenza (`localStorage`, tutte le chiavi)
@@ -225,18 +227,21 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 | Richiesta | Punto di partenza |
 |---|---|
 | Nuovo tipo di evento astronomico | `calcolaEventiAstronomi()` `app.js:675` + una `aggiungi…()`, poi `CATEGORIE` `app.js:36` |
-| Nuova scena della simulazione | `app.js:14211` (costruzione scena) e una `simScena*` |
-| Qualcosa nel planetario | `sky` `app.js:6006`, disegno da `app.js:7788` |
+| Nuova scena della simulazione | `app.js:14473` (costruzione scena) e una `simScena*` |
+| Qualcosa nel planetario | `sky` `app.js:6006`, disegno da `app.js:7845` |
 | Eventi mostrati nel planetario | `SKY_EVENTI_FINESTRA_MIN`, `SKY_EVENTI_SETTIMANA_MS` + `skyAggiornaEventi()` (sezione 7.4-bis) |
 | "Vedi nel planetario" (dalle schede dell'agenda e dall'elenco della settimana) | `apriEventoNelPlanetario(id)` (sezione 7.4-bis) |
 | Registrare e condividere un momento | sezione 7.6: `skyRegAvvia()`, il montaggio in `skyRegComponi()`, la firma in `skyRegFirma()`; il tasto è `#skymap-btn-registra` **sulla mappa** (`.tasto-registra-cielo` dentro `.comandi-mappa-cielo`), la durata i chip `[data-durata-reg]` nel pannello Visualizzazione; stili `.tasto-registra-cielo`, `.tempo-reg`, `.pannello-clip` |
-| Quanto si può ingrandire, e quanto grandi si disegnano gli astri | `SKY_FOV_MIN` / `SKY_FOV_MAX` e `skyImpostaFov()` (`app.js:6359`); la misura di ogni astro in `skyRaggio(o, focale)` (`app.js:9682`), che sceglie fra icona fissa e disco vero (diametro ÷ distanza) |
-| La faccia di un astro (mari della Luna, bande di Giove, calotte di Marte) | il pennello `skyDipingi*` nella sezione 7.3.2, registrato in `SKY_FACCE` (`app.js:8801`). Si dipinge in un mondo dove il disco ha raggio 1; le macchie si mettono con `skyMacchiaSfera(lon, lat, …)` (`app.js:8227`), che le schiaccia da sé verso il bordo |
-| Un'eclissi di Sole (corona, morso, cielo che si spegne) | `skyEclisseDiSole()` (`app.js:9631`) calcola la copertura a ogni fotogramma in `sky.eclisse`; da lì dipendono `skyRaggioIcona()` (la Luna prende la misura giusta rispetto al Sole), la corona in `skyDisegnaSole()`, il bagliore in `skyDisegnaAloneSole()` e il colore del cielo in `skyAriaEclissata()` |
-| Un'eclissi di Luna (il morso ramato) | `skyOmbraDellaTerra()` (`app.js:7588`, una volta al secondo) e `skyDisegnaOmbraLunare()` (`app.js:9486`) |
-| Perché un astro non è trasparente | `skyColoreNotteAstro()` (`app.js:8988`): il lato in ombra si riempie del colore del cielo, tanto quanto il cielo è chiaro — di notte copre le stelle, di giorno sparisce. E `skyVeloAtmosferico()` (`app.js:9089`) smorza e arrossa invece di sbiadire |
-| Il profilo dell'orizzonte (colline e alberi) | `SKY_PROFILO` (`app.js:9116`, calcolato una volta all'avvio), `skyAltezzaOrizzonte()` (`app.js:9145`) e `skyDisegnaProfiloOrizzonte()` (`app.js:9336`) |
-| Come si vedono nebulose, galassie e ammassi | `skyPennelloProfondo()` (`app.js:8829`) dipinge la nuvola, `skyDisegnaProfondo()` (`app.js:18262`) la mette in cielo grande quanto è davvero (`assePrimi`, `asseMinore`, `angoloPosizione` in `SKY_PROFONDO`) |
+| Quanto si può ingrandire, e quanto grandi si disegnano gli astri | `SKY_FOV_MIN` / `SKY_FOV_MAX` e `skyImpostaFov()` (`app.js:6374`); la misura di ogni astro in `skyRaggio(o, focale)` (`app.js:9739`), che sceglie fra icona fissa e disco vero (diametro ÷ distanza) |
+| Il cielo si muove a scatti (trascinamento, zoom, centratura) | sezione **7.4-ter**: `sky.fov` è il campo disegnato adesso e `sky.fovVoluto` quello a cui si sta andando (`skyImpostaFov(g, { morbido: true })` chiede il viaggio, `skyMuoviZoom()` lo fa); l'inerzia è `skyLanciaVista()` + `skyScorriPerInerzia()`, e si spegne sempre con `skyFermaMovimenti()`. Le costanti da girare: `SKY_TAU_ZOOM`, `SKY_TAU_INERZIA`, `SKY_INERZIA_MAX_SCHERMI` |
+| Le stelle saltellano di un pixel una volta al secondo | `skyIntervalloCalcolo()` (`app.js:7530`): ogni quanto `skyAggiornaOggetti()` rifà le posizioni. Si adatta al campo (mezzo pixel di movimento del cielo), fra `SKY_CALCOLO_MIN_MS` e `SKY_CALCOLO_MAX_MS`. I numeri scritti attorno alla mappa vanno invece a `SKY_UI_INTERVALLO`, più piano |
+| Il cielo resta indietro sotto il dito quando si guarda in alto | `skyGradiAzPerPixel()` (sezione 7.4-ter): un pixel vale più gradi di azimut quanto più si guarda in alto (fattore 1/cos, tosato a 4) |
+| La faccia di un astro (mari della Luna, bande di Giove, calotte di Marte) | il pennello `skyDipingi*` nella sezione 7.3.2, registrato in `SKY_FACCE` (`app.js:8847`). Si dipinge in un mondo dove il disco ha raggio 1; le macchie si mettono con `skyMacchiaSfera(lon, lat, …)` (`app.js:8284`), che le schiaccia da sé verso il bordo |
+| Un'eclissi di Sole (corona, morso, cielo che si spegne) | `skyEclisseDiSole()` (`app.js:9677`) calcola la copertura a ogni fotogramma in `sky.eclisse`; da lì dipendono `skyRaggioIcona()` (la Luna prende la misura giusta rispetto al Sole), la corona in `skyDisegnaSole()`, il bagliore in `skyDisegnaAloneSole()` e il colore del cielo in `skyAriaEclissata()` |
+| Un'eclissi di Luna (il morso ramato) | `skyOmbraDellaTerra()` (`app.js:7645`, una volta al secondo) e `skyDisegnaOmbraLunare()` (`app.js:9532`) |
+| Perché un astro non è trasparente | `skyColoreNotteAstro()` (`app.js:9034`): il lato in ombra si riempie del colore del cielo, tanto quanto il cielo è chiaro — di notte copre le stelle, di giorno sparisce. E `skyVeloAtmosferico()` (`app.js:9135`) smorza e arrossa invece di sbiadire |
+| Il profilo dell'orizzonte (colline e alberi) | `SKY_PROFILO` (`app.js:9173`, calcolato una volta all'avvio), `skyAltezzaOrizzonte()` (`app.js:9191`) e `skyDisegnaProfiloOrizzonte()` (`app.js:9382`) |
+| Come si vedono nebulose, galassie e ammassi | `skyPennelloProfondo()` (`app.js:8875`) dipinge la nuvola, `skyDisegnaProfondo()` (`app.js:18535`) la mette in cielo grande quanto è davvero (`assePrimi`, `asseMinore`, `angoloPosizione` in `SKY_PROFONDO`) |
 | Traccia dell'oggetto nel planetario | `skyCalcolaTraccia()` (sezione 7.3-bis), tasto `skymap-btn-traccia` nei Filtri |
 | Eclittica e scarto di un astro da essa | `skyCalcolaEclittica()` (sezione 7.3-ter), tasto `skymap-btn-eclittica` nei Filtri; conversioni in `skyEquatorialiDiEclittica()` / `skyEclitticaDiEquatoriali()` |
 | Analemma (l'otto del Sole) | `skyCalcolaAnalemma()` sulla mappa e `lezQuadroAnalemma()` nella lezione; l'equazione del tempo si ricava da `Astronomy.HourAngle` in `lezLeggiAnalemma()` |
@@ -249,13 +254,13 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 | Tasto della mappa dell'ombra negli eventi del planetario | `skyTastoMappaHtml()` + `skyApriMappaEvento(id)` (sezione 7.4-bis) |
 | Colori della mappa dell'eclissi (chiara/scura) | `ECL_TAVOLOZZE` + `_eclApplicaTemaMappa()`, e `#mappa-eclissi.mappa-chiara` in `style.css` |
 | Mappa dell'eclissi a tutto schermo (comandi in sovrimpressione) | `_eclAlternaSchermoIntero()` e `.ecl-guscio-filmato:fullscreen` / `.ecl-schermo-pieno` in `style.css` |
-| Bussola sbagliata / cielo storto | filtro anti-tremolio `app.js:6197`, declinazione `app.js:6516` |
-| Posizione non rilevata | posizione a strati `trovaPosizioneAStrati()` `app.js:7123`, finestra `app.js:15816` |
-| Una posizione scelta a mano che "non resta" | `POS_SCELTA_UTENTE` / `POS_FONTI_AUTOMATICHE` e il guardiano in cima a `skyImpostaPosizione()` (`app.js:6789`): GPS, rete e posizione riletta non scavalcano una scelta dell'utente. Solo una cascata con `{ forzato: true }` (tasto "Rileva di nuovo", tasto Posizione del planetario) può farlo |
+| Bussola sbagliata / cielo storto | filtro anti-tremolio `app.js:6204`, declinazione `app.js:6536` |
+| Posizione non rilevata | posizione a strati `trovaPosizioneAStrati()` `app.js:7143`, finestra `app.js:16078` |
+| Una posizione scelta a mano che "non resta" | `POS_SCELTA_UTENTE` / `POS_FONTI_AUTOMATICHE` e il guardiano in cima a `skyImpostaPosizione()` (`app.js:6809`): GPS, rete e posizione riletta non scavalcano una scelta dell'utente. Solo una cascata con `{ forzato: true }` (tasto "Rileva di nuovo", tasto Posizione del planetario) può farlo |
 | Guardare il cielo da un altro luogo (solo nel planetario) | sezione 7.1-ter: `sky.luogoVista`, `skyLuogoDelCielo()`, `skyAggiornaOsservatore()`; i comandi stanno nel pannello **Tempo e luogo** e sono due soli: la ricerca della città (`#skymap-luogo-cerca`) e `#skymap-luogo-casa` |
 | I comandi appoggiati sulla mappa (colonna a destra) | in `index.html`, `.comandi-mappa-cielo`: `#skymap-btn-schermo-mappa` (⛶), `#skymap-btn-insegui-mappa` (bersaglio), la registrazione, i due dello zoom. Girati vanno in riga sopra la barra del tempo (media query landscape in `style.css`); stili `.tasto-schermo-cielo`, `.tasto-insegui-cielo`, `.tasto-registra-cielo`, `.tasto-zoom-cielo` |
 | Schermo intero del planetario | `skyAlternaSchermoIntero()` (sezione 7.5); i tasti sono `#skymap-btn-schermo` (pannello Visualizzazione), `#skymap-btn-schermo-mappa` (⛶ sulla mappa, in cima alla colonna dei comandi, sopra la registrazione) e `#skymap-btn-esci` |
-| Meteo o semaforo di osservabilità | `app.js:16416` |
+| Meteo o semaforo di osservabilità | `app.js:16678` |
 | Calcoli ottici del telescopio | `telescopio.js:243` |
 | Impaginazione su telefono | `PUNTI_ROTTURA` `app.js:211` + i `@media` di `style.css` |
 | Nuova icona | `DISEGNI` `app.js:53` |
