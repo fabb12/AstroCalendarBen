@@ -247,11 +247,9 @@
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="astri" aria-pressed="false"
                 title="Scegli l'astro da cercare">Astri</button>
             </div>
-            <!-- Compare solo quando l'orologio è spostato: un cielo che non è
-                 quello di adesso deve dirlo, se no si guardano posizioni
-                 sbagliate senza sapere perché -->
-            <button id="skymap-tempo-chip" type="button" class="chip-tempo"
-              title="Il cielo mostrato non è quello di adesso: tocca per tornare al tempo reale"></button>
+            <!-- Il promemoria che l'orologio è spostato non sta più qui: adesso
+                 c'è la barra del tempo in fondo alla mappa, che l'istante lo
+                 dice sempre — non solo quando è già andato storto qualcosa. -->
             <!-- Compare quando all'ora mostrata sta succedendo qualcosa: un
                  cielo che ospita un'eclissi o uno sciame deve dirlo da solo,
                  senza costringere a controllare il calendario -->
@@ -268,15 +266,14 @@
           <!-- Il pannello del gruppo aperto: uno solo per volta -->
           <div class="pannelli-gruppi">
 
-            <!-- TEMPO: l'istante mostrato, in quattro righe.
-                 Prima ce n'erano sette: dieci tasti di salto, quattro per la
-                 finestra della slitta, due file di playback e le loro
-                 etichette. Venticinque bersagli per fare tre cose, e su un
-                 telefono il pannello copriva il cielo che si voleva guardare.
-                 Adesso il passo si sceglie una volta sola — è la stessa scelta
-                 che decide quanto tempo copre la slitta — e i due tasti − e +
-                 lo usano; il playback sta tutto in una riga, come su un
-                 lettore, dove i simboli dicono già cosa fanno. -->
+            <!-- TEMPO: le regolazioni dell'orologio.
+                 Quello che si usa di continuo — dove sei nel tempo, il passo
+                 avanti e indietro, la slitta e il play — è uscito di qui e
+                 sta sulla barra in fondo alla mappa, sempre in vista. Qui
+                 resta quello che si sceglie una volta e poi si dimentica: la
+                 data scritta a mano, quanto è lungo un passo, il verso e la
+                 velocità del playback. Così il pannello si apre di rado, e
+                 quando si apre non copre il cielo per mezzo minuto. -->
             <section class="gruppo-comandi" data-gruppo="tempo" aria-label="Tempo">
               <div class="riga-comandi">
                 <input id="skymap-data" type="datetime-local" step="1" class="campo-cielo"
@@ -286,10 +283,10 @@
                   title="Torna al cielo di adesso">Adesso</button>
               </div>
 
-              <!-- Il passo: comanda insieme i tasti − e + e quanto tempo copre
-                   la slitta. Con dieci secondi un pixel di slitta vale un
-                   secondo, ed è lì che serve la precisione; con un giorno si
-                   attraversa il mese. -->
+              <!-- Il passo: comanda insieme i tasti − e + della barra in fondo
+                   alla mappa e quanto tempo copre la sua slitta. Con dieci
+                   secondi un pixel di slitta vale un secondo, ed è lì che serve
+                   la precisione; con un giorno si attraversa il mese. -->
               <div class="riga-comandi" role="group" aria-label="Passo del tempo">
                 <div class="segmenti-cielo">
                   <button type="button" class="tasto-segmento" data-passo-tempo="10" aria-pressed="false"
@@ -304,16 +301,8 @@
                     title="Passi da un giorno, slitta su ±30 giorni">1 g</button>
                 </div>
               </div>
-
-              <div class="riga-comandi riga-slitta">
-                <button id="skymap-passo-meno" type="button" class="tasto-cielo tasto-passo"
-                  title="Indietro di un passo" aria-label="Indietro di un passo">−</button>
-                <input id="skymap-tempo" type="range" min="-3600" max="3600" step="5" value="0"
-                  class="slitta-tempo" aria-label="Scorri il tempo dentro la finestra scelta"
-                  title="Trascina per scorrere il tempo dentro la finestra scelta">
-                <button id="skymap-passo-piu" type="button" class="tasto-cielo tasto-passo"
-                  title="Avanti di un passo" aria-label="Avanti di un passo">+</button>
-              </div>
+              <p class="etichetta-comando nota-lunga">Il passo vale per i tasti − e + e per la slitta della barra
+                del tempo, quella in fondo alla mappa.</p>
 
               <!-- PLAYBACK: il tempo che cammina da solo. I salti e la slitta
                    portano su un istante e lì si fermano; qui invece il cielo si
@@ -322,7 +311,11 @@
                    attorno alla Polare, la Luna che scivola fra le stelle, un
                    pianeta che rallenta e torna indietro. Accanto ai tre tasti
                    del verso c'è il moltiplicatore, che dice quanto tempo di
-                   cielo passa in un secondo vero. -->
+                   cielo passa in un secondo vero.
+
+                   Il verso scelto qui è quello che poi userà il ▶ della barra
+                   del tempo: chi guarda il cielo tornare indietro di solito
+                   vuole rifarlo, e non deve riaprire il pannello per dirlo. -->
               <div class="riga-comandi riga-playback" aria-label="Playback del tempo">
                 <button id="skymap-play-indietro" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
                   title="Fai scorrere il cielo all'indietro (ripremi per fermarlo)"
@@ -479,6 +472,50 @@
              tocco: darebbe fastidio allo zoom) -->
         <button id="skymap-btn-esci" type="button" class="tasto-esci-cielo"
           title="Esci dallo schermo intero (anche con Esc o un doppio clic)">✕ Esci</button>
+
+        <!-- ================================================ LA BARRA DEL TEMPO
+             Il planetario mostra un istante, e quell'istante non è per forza
+             adesso. Finché l'orologio stava tutto dentro al pannello "Tempo"
+             una mappa spostata di tre ore non lo diceva: per accorgersene
+             bisognava aprire il pannello, che copriva proprio il cielo che si
+             stava guardando. Era il modo più veloce per cercare Saturno dove
+             sarà stanotte e non trovarlo, senza capire perché.
+
+             Adesso l'orologio sta appoggiato in fondo alla mappa e non se ne
+             va mai: si legge con la coda dell'occhio, si usa col pollice — è
+             il bordo basso, dove il pollice arriva senza cambiare presa — e
+             alla mappa costa una cinquantina di pixel. Sul telefono la slitta
+             scende su una riga sua, per essere lunga quanto la mappa invece
+             che quanto un dito: sono trenta pixel in più, e li vale (il conto
+             sta in style.css, nel blocco sotto i 520px).
+
+             Sulla riga c'è solo quello che serve a muoversi nel tempo:
+             · dove sei, e il ⟲ per tornare ad adesso (che compare solo se sei
+               altrove: quando il cielo è quello vero non c'è niente da tornare);
+             · i due tasti del passo, per lo scatto preciso;
+             · la slitta, per il trascinamento;
+             · il play, che parte nel verso scelto l'ultima volta.
+             Il resto — la data scritta a mano, la misura del passo, il verso e
+             la velocità del playback — resta nel pannello "Tempo", che si apre
+             toccando la lettura stessa. -->
+        <div id="cielo-tempo" class="barra-tempo" role="group" aria-label="Controllo del tempo">
+          <button id="skymap-tempo-adesso" type="button" class="tasto-barra-tempo tasto-adesso"
+            title="Il cielo mostrato non è quello di adesso: tocca per tornare al tempo reale"
+            aria-label="Torna al cielo di adesso">⟲</button>
+          <button id="skymap-tempo-quando" type="button" class="lettura-barra-tempo"
+            title="L'istante mostrato: tocca per data, passo e velocità del playback"
+            aria-label="Istante mostrato: apri i comandi del tempo">—</button>
+          <button id="skymap-passo-meno" type="button" class="tasto-barra-tempo"
+            title="Indietro di un passo" aria-label="Indietro di un passo">−</button>
+          <input id="skymap-tempo" type="range" min="-3600" max="3600" step="5" value="0"
+            class="slitta-tempo" aria-label="Scorri il tempo dentro la finestra scelta"
+            title="Trascina per scorrere il tempo dentro la finestra scelta">
+          <button id="skymap-passo-piu" type="button" class="tasto-barra-tempo"
+            title="Avanti di un passo" aria-label="Avanti di un passo">+</button>
+          <button id="skymap-tempo-play" type="button" class="tasto-barra-tempo tasto-play-barra"
+            aria-pressed="false" title="Fai camminare il cielo da solo"
+            aria-label="Avvia il playback">▶</button>
+        </div>
 
         <!-- I comandi appoggiati sull'angolo della mappa: quelli che si usano
              mentre si guarda il cielo, senza aprire nessun pannello.

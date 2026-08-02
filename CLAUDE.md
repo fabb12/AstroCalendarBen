@@ -131,8 +131,8 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
 | 16932–17133 | **15. Diario e traguardi** | `TRAGUARDI` (**16968**), `caricaDiario()` (**16944**) |
 | 17134–17514 | **16. Condivisione (`?evento=`), export `.ics`, backup JSON** | `esportaBackup()` (**17373**), `urlEvento(id)` (**17137**) |
 | 17515–17566 | **17. Consigli di astrofotografia** | `consigliFoto(evento)` (**17520**) |
-| 17567–18393 | **18. Costellazioni e deep sky nel planetario**, macchina del tempo, playback, fotocamera AR | `SKY_COSTELLAZIONI` (**17574**), `SKY_PROFONDO` (**17573**, con le misure vere), `skyDisegnaProfondo()` (**17890**), `skyImpostaOffsetTempo()` (**18071**), `skyAttivaFotocamera()` |
-| 18394–18511 | **19. Schede dell'agenda arricchite** | `bloccoLocaleHtml()` (**18400**), `barraAzioniHtml()` (**18455**) |
+| 17567–18504 | **18. Costellazioni e deep sky nel planetario**, macchina del tempo, **barra del tempo** (la riga sempre in vista in fondo alla mappa), playback, fotocamera AR | `SKY_COSTELLAZIONI` (**17574**), `SKY_PROFONDO` (**17573**, con le misure vere), `skyDisegnaProfondo()` (**17890**), `skyAggiornaTestoTempo()` (**18044**), `skyTestoBarraTempo()` (**18110**), `skyImpostaOffsetTempo()` (**18155**), `skyAttivaFotocamera()` |
+| 18505–18624 | **19. Schede dell'agenda arricchite** | `bloccoLocaleHtml()` (**18513**), `barraAzioniHtml()` (**18568**) |
 
 ## 7. Mappa di `telescopio.js`
 
@@ -242,7 +242,9 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 | La lezione animata dell'eclittica | `LEZ_CAPITOLI` (i testi dei sei quadri) e `lez*` (sezione 7.3-quater); markup in `modale-lezione`, stili `.lez-*` in `style.css`; il tasto sta in `skySchedaHtml()`, solo per il Sole |
 | "Perché proprio adesso" sotto un'eclissi | `stagioneEclissiHtml(data)` + `mostraStagioneEclissi(id, data)` (fine 7.3-quater): nodo lunare più vicino, latitudine della Luna, eclissi compagne. Appare in `#eclissi-stagione` (mappa dell'ombra), `#lunare-stagione` (eclissi lunare) e `#sim-eclittica` (simulazione) |
 | Aprire la lezione a un quadro preciso | `apriLezioneEclittica('nodi')` — accetta il `tipo` del capitolo o il suo indice |
-| Passo del tempo e finestra della slitta (sono un comando solo) | `SKY_FINESTRA_DEL_PASSO`, `skyImpostaPassoTempo()`, `skySpostaDiUnPasso()`; nel markup i chip `[data-passo-tempo]` |
+| Passo del tempo e finestra della slitta (sono un comando solo) | `SKY_FINESTRA_DEL_PASSO`, `skyImpostaPassoTempo()`, `skySpostaDiUnPasso()`; nel markup i chip `[data-passo-tempo]`, nel pannello Tempo |
+| La barra del tempo (l'orologio sempre in vista sulla mappa) | `#cielo-tempo` in `index.html` (dentro `#skymap-contenitore`, dopo i pannelli): ⟲ `skymap-tempo-adesso`, lettura `skymap-tempo-quando` (che apre il pannello Tempo), `skymap-passo-meno`/`-piu`, slitta `skymap-tempo`, play `skymap-tempo-play`. Testo in `skyTestoBarraTempo()` / `skyScartoBreve()`, stato in `skyAggiornaTestoTempo()` e `skyAggiornaComandiPlayback()`; stili `.barra-tempo`, `.tasto-barra-tempo`, `.lettura-barra-tempo`, `.slitta-tempo` |
+| Quanto spazio lascia la barra a chi le sta sopra (zoom, scheda dell'oggetto, pannelli) | le misure `--tasto-tempo`, `--alta-barra-tempo` e `--sopra-barra-tempo` su `.vista-cielo` in `style.css`: cambiarle basta, le usano `.cielo-chrome`, `.comandi-mappa-cielo`, `.pannello-dettaglio` e `#skymap-overlay`. Sotto i 520px di larghezza la slitta va a capo da sola (media query dedicata) |
 | Tasto della mappa dell'ombra negli eventi del planetario | `skyTastoMappaHtml()` + `skyApriMappaEvento(id)` (sezione 7.4-bis) |
 | Colori della mappa dell'eclissi (chiara/scura) | `ECL_TAVOLOZZE` + `_eclApplicaTemaMappa()`, e `#mappa-eclissi.mappa-chiara` in `style.css` |
 | Mappa dell'eclissi a tutto schermo (comandi in sovrimpressione) | `_eclAlternaSchermoIntero()` e `.ecl-guscio-filmato:fullscreen` / `.ecl-schermo-pieno` in `style.css` |

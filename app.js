@@ -6049,6 +6049,10 @@ const sky = {
   playbackVerso: 0,
   playbackVelIndice: 2,
   playbackUltimo: 0,     // performance.now() dell'ultimo passo, per il dt
+  // Il verso scelto l'ultima volta: il play della barra del tempo è uno solo,
+  // e riparte da dove si era rimasti. Chi guarda un pianeta tornare indietro
+  // vuole rivederlo tornare indietro, non ricominciare in avanti.
+  playbackUltimoVerso: 1,
   // Figure delle costellazioni e oggetti del deep sky
   mostraCostellazioni: true,
   mostraProfondo: false,
@@ -18058,27 +18062,69 @@ function skyAggiornaTestoTempo() {
     el.classList.toggle('spostata', spostato);
   }
 
-  // Sopra la mappa, quando l'ora non è quella vera, resta un promemoria:
-  // altrimenti si guarderebbero posizioni sbagliate senza sapere perché
-  const chip = document.getElementById('skymap-tempo-chip');
-  if (chip) {
-    chip.classList.toggle('visibile', spostato);
-    if (spostato) {
-      // Su una mappa stretta la frase intera verrebbe tagliata a metà: lì
-      // basta l'ora mostrata, che è la cosa da sapere
-      const stretta = sky.larghezza && sky.larghezza < 560;
-      const istante = quando.toLocaleString('it-IT',
-        { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      // Col playback acceso lo scarto cambia a ogni fotogramma e diventa
-      // illeggibile: al suo posto si dice a che velocità sta correndo
-      const dettaglio = marcia || skyScartoTempoTesto(scarto);
-      chip.textContent = stretta
-        ? `${istante} · ${dettaglio}`
-        : `${istante} · ${dettaglio} · torna ad adesso`;
-    }
+  // La barra in fondo alla mappa: l'istante mostrato si legge sempre, non
+  // solo quando è già andato storto qualcosa. Fuori dal tempo reale si
+  // accende d'ambra e tira fuori il ⟲, che è l'unica via di ritorno che serva
+  // avere sempre sotto il pollice.
+  const barra = document.getElementById('cielo-tempo');
+  if (barra) barra.classList.toggle('spostata', spostato);
+
+  const lettura = document.getElementById('skymap-tempo-quando');
+  if (lettura) {
+    lettura.textContent = skyTestoBarraTempo(quando, scarto, marcia);
+    const esteso = quando.toLocaleString('it-IT', {
+      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    lettura.title = `${esteso}${scarto === 0 ? ' (tempo reale)' : ' · ' + skyScartoTempoTesto(scarto)}` +
+      ' — tocca per data, passo e velocità del playback';
   }
 
   skyAggiornaCampoData(quando);
+}
+
+// Lo stesso scarto in forma di targhetta: "+20 min", "+7h46", "−3g 4h". Serve
+// dove lo spazio si conta a lettere — la barra del tempo su un telefono — e
+// dove "3 g 4 h fa" non ci starebbe mai.
+function skyScartoBreve(secondi) {
+  const a = Math.abs(secondi);
+  const segno = secondi > 0 ? '+' : '−';
+  const g = Math.floor(a / 86400);
+  const h = Math.floor((a % 86400) / 3600);
+  const m = Math.floor((a % 3600) / 60);
+  // Le ore si scrivono all'orologiaia — "+7h46" — perché "+7 h 46" lascia
+  // quel 46 senza unità, e chi legge di sfuggita capisce quarantasei ore
+  if (g) return `${segno}${g}g${h ? ' ' + h + 'h' : ''}`;
+  if (h) return `${segno}${h}h${m ? String(m).padStart(2, '0') : ''}`;
+  if (m) return `${segno}${m} min`;
+  return `${segno}${Math.floor(a)} s`;
+}
+
+// Che cosa scrive la barra del tempo. Deve stare in una pillola stretta senza
+// rubare spazio alla slitta, quindi dice il minimo che serve a non sbagliarsi:
+//   · l'ora, sempre;
+//   · il giorno, solo se non è oggi (spostarsi di tre ore è un conto,
+//     spostarsi di tre giorni e vedere solo "22:41" è una trappola);
+//   · di quanto ci si è spostati — o, se il cielo sta camminando, a che passo,
+//     perché lì lo scarto cambia a ogni fotogramma ed è illeggibile.
+// L'ultima riga è quella che cambia con la larghezza: sulla mappa larga si
+// dice per esteso ("fra 20 min"), su quella stretta in targhetta ("+20 min").
+function skyTestoBarraTempo(quando, scarto, marcia) {
+  const ora = quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const oggi = new Date();
+  const giorno = quando.toDateString() === oggi.toDateString()
+    ? ''
+    : quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ' ';
+  const testa = giorno + ora;
+  if (scarto === 0 && !marcia) return testa;
+
+  const stretta = !sky.larghezza || sky.larghezza < 500;
+  // Su una mappa stretta, quando c'è già la data non si aggiunge anche di
+  // quanto: "5 ago 10:01" dice dove sei meglio di "5 ago 10:01 · +3 g" tagliato
+  if (stretta && giorno && !marcia) return testa;
+
+  const coda = marcia || (stretta ? skyScartoBreve(scarto) : skyScartoTempoTesto(scarto));
+  return `${testa} · ${coda}`;
 }
 
 // Il campo della data segue l'istante mostrato, ma non mentre ci si scrive
@@ -18240,6 +18286,7 @@ function skyAvanzaPlayback() {
 function skyAvviaPlayback(verso) {
   if (sky.playbackVerso === verso) { skyFermaPlayback(); return; }
   sky.playbackVerso = verso;
+  sky.playbackUltimoVerso = verso;  // il play della barra ripartirà di qui
   sky.playbackUltimo = 0;          // il primo dt parte dal fotogramma dopo
   sky.prossimoCalcolo = 0;         // il cielo riparte subito, non fra un secondo
   skyAvviso('playback', '');
@@ -18285,6 +18332,26 @@ function skyAggiornaComandiPlayback() {
   const piu = document.getElementById('skymap-vel-piu');
   if (meno) meno.disabled = sky.playbackVelIndice <= 0;
   if (piu) piu.disabled = sky.playbackVelIndice >= SKY_VELOCITA_PLAYBACK.length - 1;
+
+  // Il play della barra del tempo: un tasto solo, che avvia e ferma. Da fermo
+  // il simbolo ricorda il verso in cui ripartirà — chi ha appena visto Marte
+  // tornare indietro trova il ◀ e sa che ripremendo tornerà indietro ancora.
+  // In marcia diventa il quadratino di stop e si accende: è l'unico segnale
+  // che l'ora si muove da sola, e senza si guarda un cielo che scorre senza
+  // sapere chi lo sta spingendo.
+  const play = document.getElementById('skymap-tempo-play');
+  if (play) {
+    const inMarcia = !!sky.playbackVerso;
+    const verso = sky.playbackVerso || sky.playbackUltimoVerso || 1;
+    play.textContent = inMarcia ? '■' : (verso > 0 ? '▶' : '◀');
+    play.classList.toggle('attiva', inMarcia);
+    play.setAttribute('aria-pressed', inMarcia ? 'true' : 'false');
+    play.setAttribute('aria-label', inMarcia ? 'Ferma il playback' : 'Avvia il playback');
+    play.title = inMarcia
+      ? `Ferma il playback (il cielo sta camminando a ${v.nome})`
+      : `Fai camminare il cielo ${verso > 0 ? 'in avanti' : 'all’indietro'}, a ${v.nome}` +
+        ' (verso e velocità si cambiano nel pannello Tempo)';
+  }
 }
 
 // --- Fotocamera: il cielo calcolato sopra l'immagine reale ---
@@ -18380,7 +18447,15 @@ function inizializzaSkymapExtra() {
     skyImpostaOffsetTempo(0);
   };
   collega('skymap-tempo-ora', tornaAdesso);
-  collega('skymap-tempo-chip', tornaAdesso);
+  collega('skymap-tempo-adesso', tornaAdesso);
+  // La lettura della barra è anche la porta del pannello: il posto dove uno
+  // si accorge che l'ora è sbagliata è lo stesso dove vuole aggiustarla
+  collega('skymap-tempo-quando', () => skyMostraGruppo('tempo'));
+  // Il play della barra: avvia nel verso di prima, o ferma quello che cammina
+  collega('skymap-tempo-play', () => {
+    if (sky.playbackVerso) skyFermaPlayback();
+    else skyAvviaPlayback(sky.playbackUltimoVerso || 1);
+  });
   // Il passo scelto vale per i due tasti e per la slitta insieme
   document.querySelectorAll('#cielo-comandi [data-passo-tempo]').forEach(b => {
     b.addEventListener('click', () => skyImpostaPassoTempo(b.dataset.passoTempo));
