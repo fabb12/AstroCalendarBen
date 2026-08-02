@@ -7300,26 +7300,30 @@ function skyAggiornaLuogoVistaUI() {
   const nota = document.getElementById('skymap-luogo-nota');
   const l = skyLuogoDelCielo();
 
+  // Il nome basta: le coordinate stanno già nella lettura di stato in alto a
+  // destra, e ripeterle qui allungava la riga senza dire niente di nuovo.
   if (nomeEl) {
-    nomeEl.textContent = l
-      ? (l.nome ? `${l.nome} · ${formattaCoordinate(l.lat, l.lon)}` : formattaCoordinate(l.lat, l.lon))
-      : 'nessuna posizione';
+    nomeEl.textContent = l ? (l.nome || formattaCoordinate(l.lat, l.lon)) : 'nessuna posizione';
+    nomeEl.title = l ? formattaCoordinate(l.lat, l.lon) : '';
     nomeEl.dataset.visita = l && l.proprio ? 'si' : 'no';
   }
   if (casa) casa.classList.toggle('hidden', !(l && l.proprio));
+  // Una riga sola, e diversa nei due casi: quando il cielo è spostato la nota
+  // deve rassicurare (il resto dell'app non si è mosso), quando è a casa deve
+  // solo dire cosa succede se si cerca una città.
   if (nota) {
     nota.textContent = l && l.proprio
-      ? 'Stai guardando il cielo da un altro posto: vale solo qui nel planetario. Orari, meteo, ' +
-        'passaggi dei satelliti e telescopio continuano a usare la posizione delle Impostazioni.'
-      : 'Il cielo è quello della tua posizione. Se scegli un altro luogo, il cambio vale solo per il ' +
-        'planetario: il resto dell\'app resta a casa.';
+      ? 'Solo qui: orari, meteo, satelliti e telescopio restano sulla tua posizione.'
+      : 'Vale solo per il planetario: il resto dell\'app resta sulla tua posizione.';
   }
 }
 
 // Applica una città o un punto scelto nel pannello e lo racconta
 function skyUsaLuogoVista(lat, lon, nome) {
+  // Le coordinate arrivano da un elenco di città, quindi sono buone: il
+  // controllo resta come rete di sicurezza per chi chiamasse da altrove.
   if (!skyImpostaLuogoVista(lat, lon, nome)) {
-    skyAvviso('luogo', 'Coordinate fuori scala: la latitudine sta fra −90 e 90, la longitudine fra −180 e 180.', 6000);
+    skyAvviso('luogo', 'Quel punto non sta sulla Terra: riprova con un\'altra città.', 6000);
     return;
   }
   skyMostraRisultatiLuogo([], null);
@@ -7381,19 +7385,6 @@ function skyInizializzaLuogoVista() {
     });
   }
 
-  const usa = document.getElementById('skymap-luogo-usa');
-  if (usa) {
-    usa.addEventListener('click', () => {
-      const lat = parseFloat((document.getElementById('skymap-luogo-lat') || {}).value);
-      const lon = parseFloat((document.getElementById('skymap-luogo-lon') || {}).value);
-      if (!isFinite(lat) || !isFinite(lon)) {
-        skyAvviso('luogo', 'Scrivi latitudine e longitudine in gradi decimali (per esempio 45,07 e 7,69).', 6000);
-        return;
-      }
-      skyUsaLuogoVista(lat, lon, null);
-    });
-  }
-
   const casa = document.getElementById('skymap-luogo-casa');
   if (casa) {
     casa.addEventListener('click', () => {
@@ -7402,11 +7393,9 @@ function skyInizializzaLuogoVista() {
     });
   }
 
-  // La posizione principale si cambia dove si è sempre cambiata: una sola
-  // finestra per quella, o si torna ad avere due verità sulla stessa cosa.
-  const imp = document.getElementById('skymap-luogo-impostazioni');
-  if (imp) imp.addEventListener('click', () => apriPosizione(false));
-
+  // La posizione principale non si cambia da qui: per quella c'è la sua
+  // finestra (Impostazioni, o il tasto Posizione). Un secondo ingresso in
+  // questo pannello avrebbe rimesso in dubbio quale delle due comanda.
   skyAggiornaLuogoVistaUI();
 }
 

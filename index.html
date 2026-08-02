@@ -343,14 +343,20 @@
                    sta già chiedendo "e se guardassi da un'altra parte?".
                    La posizione dell'app — quella che comanda orari, meteo,
                    passaggi dei satelliti e telescopio — resta quella delle
-                   Impostazioni: qui si sposta solo l'occhio, e solo nel
-                   planetario. Il tasto "Torna a casa" rimette tutto a posto,
-                   e comunque alla riapertura si riparte da casa. -->
+                   Impostazioni e da qui non si tocca: si sposta solo l'occhio,
+                   e solo nel planetario. Il tasto "Torna a casa" rimette tutto
+                   a posto, e comunque alla riapertura si riparte da casa.
+
+                   Tre righe in tutto: dove sei, il campo per cercare, e una
+                   nota corta. Le coordinate scritte a mano non ci sono più —
+                   chi vuole guardare da un altro posto lo dice col nome della
+                   città, non con due numeri, e quelle due caselle costavano
+                   una riga di pannello sopra al cielo. -->
               <div class="stacco-pannello" role="separator"></div>
-              <p class="etichetta-comando">Da dove stai guardando il cielo</p>
-              <div class="riga-comandi">
+              <div class="riga-comandi riga-luogo">
+                <span class="etichetta-comando etichetta-luogo">Cielo da</span>
                 <span id="skymap-luogo-nome" class="lettura-luogo" data-visita="no">—</span>
-                <button id="skymap-luogo-casa" type="button" class="tasto-cielo hidden"
+                <button id="skymap-luogo-casa" type="button" class="tasto-cielo tasto-passo hidden"
                   title="Rimetti il cielo sulla tua posizione, quella delle Impostazioni">Torna a casa</button>
               </div>
               <div class="riga-comandi">
@@ -360,19 +366,7 @@
                   title="Scrivi il nome di una città: il cielo si sposta lì, ma solo qui nel planetario">
               </div>
               <div id="skymap-luogo-risultati" class="pos-risultati risultati-luogo" role="listbox" aria-label="Città trovate"></div>
-              <div class="riga-comandi">
-                <input id="skymap-luogo-lat" type="number" step="0.0001" min="-90" max="90"
-                  class="campo-cielo campo-coordinata" placeholder="Lat" aria-label="Latitudine in gradi decimali">
-                <input id="skymap-luogo-lon" type="number" step="0.0001" min="-180" max="180"
-                  class="campo-cielo campo-coordinata" placeholder="Lon" aria-label="Longitudine in gradi decimali">
-                <button id="skymap-luogo-usa" type="button" class="tasto-cielo"
-                  title="Usa queste coordinate come punto di vista del planetario">Usa</button>
-              </div>
-              <p id="skymap-luogo-nota" class="etichetta-comando nota-lunga">Il cielo è quello della tua posizione.</p>
-              <div class="riga-comandi">
-                <button id="skymap-luogo-impostazioni" type="button" class="tasto-cielo"
-                  title="La posizione principale, quella che l'app usa per orari, meteo, satelliti e telescopio">Cambia la posizione dell'app</button>
-              </div>
+              <p id="skymap-luogo-nota" class="nota-luogo">Vale solo per il planetario: il resto dell'app resta sulla tua posizione.</p>
             </section>
 
             <!-- EVENTI: cosa succede nel cielo all'istante mostrato. La vista
@@ -559,22 +553,21 @@
              · lo schermo intero, com'è sulla mappa dell'ombra delle eclissi:
                è la prima cosa che si vuole quando il cielo si fa interessante,
                e andarla a cercare dentro al pannello Visualizzazione era una
-               tappa di troppo. Lo stesso tasto riporta indietro (⛶ → ✕), e
-               sta in riga con la registrazione per non rubare altezza;
+               tappa di troppo. Lo stesso tasto riporta indietro, e si accende
+               in blu mentre il cielo è a tutto schermo;
              · il tondo rosso della registrazione, che deve stare lì sempre —
                la si fa partire dopo aver preparato la vista, non prima;
              · lo zoom, che adesso arriva fino a un quarto di grado. -->
         <div class="comandi-mappa-cielo">
+          <!-- Sopra alla registrazione, in colonna con lei e con lo zoom: una
+               fila sola di comandi sul bordo destro, nell'ordine in cui si
+               usano scendendo. -->
+          <button id="skymap-btn-schermo-mappa" type="button" class="tasto-schermo-cielo" aria-pressed="false"
+            title="Il cielo a tutto schermo, con i comandi in sovrimpressione"
+            aria-label="Cielo a schermo intero">⛶</button>
           <div class="riga-registra-cielo">
             <!-- Compare solo mentre si registra: quanto manca alla fine -->
             <span id="skymap-reg-tempo" class="tempo-reg" aria-live="polite"></span>
-            <!-- Lo schermo intero divide la riga con la registrazione invece di
-                 prendersene una sua: col telefono girato la mappa è alta poco
-                 più di trecento pixel, e una quarta fila di tasti finiva sotto
-                 le letture in alto a destra. -->
-            <button id="skymap-btn-schermo-mappa" type="button" class="tasto-schermo-cielo" aria-pressed="false"
-              title="Il cielo a tutto schermo, con i comandi in sovrimpressione"
-              aria-label="Cielo a schermo intero">⛶</button>
             <button id="skymap-btn-registra" type="button" class="tasto-registra-cielo" aria-pressed="false"
               title="Registra qualche secondo di cielo da condividere" aria-label="Registra il cielo">
               <span class="segno-reg" aria-hidden="true"></span>
