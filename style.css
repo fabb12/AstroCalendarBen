@@ -2704,7 +2704,21 @@ body button.pos-risultato:focus-visible {
 
 /* La vista è una cosa sola: la mappa. I comandi stanno appoggiati sopra di
    lei (vedi .cielo-chrome), quindi non le rubano nemmeno un pixel. */
-.vista-cielo { display: grid; gap: var(--passo); align-content: start; }
+.vista-cielo {
+  display: grid;
+  gap: var(--passo);
+  align-content: start;
+
+  /* La misura dei comandi della barra del tempo, e da lì l'altezza della
+     barra intera. Sta qui, in un posto solo, perché la stessa misura serve a
+     tre cose che devono restare d'accordo: la barra, lo zoom e la scheda
+     dell'oggetto, che in fondo alla mappa si salgono in braccio a vicenda.
+     Cambiando telefono o girandolo cambia solo questo numero. */
+  --tasto-tempo: 40px;
+  --alta-barra-tempo: calc(var(--tasto-tempo) + 14px);   /* + imbottitura e bordi */
+  /* Quanto sta sopra al bordo basso chi deve stare sopra alla barra */
+  --sopra-barra-tempo: calc(max(12px, env(safe-area-inset-bottom)) + var(--alta-barra-tempo) + 8px);
+}
 
 @media (min-width: 1180px) {
   .tela-cielo { min-height: 520px; }
@@ -2723,9 +2737,18 @@ body button.pos-risultato:focus-visible {
   top: 0;
   left: 0;
   right: 0;
+  /* Si ferma sopra alla barra del tempo. Non è un dettaglio di allineamento:
+     è quello che impedisce a un pannello aperto di coprirla. Su un telefono
+     da 320 pixel il pannello "Tempo" arrivava fin sotto, e per richiuderlo
+     bisognava ritrovare una linguetta finita sotto al pannello stesso. Con
+     il fondo fissato qui l'altezza della fascia è una misura vera, i pannelli
+     ci si adattano dentro (si stringono e scorrono), e l'orologio in fondo
+     resta sempre raggiungibile. */
+  bottom: var(--sopra-barra-tempo);
   z-index: 7;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
   gap: 8px;
   padding: 10px;
   padding-top: max(10px, env(safe-area-inset-top));
@@ -2740,7 +2763,11 @@ body button.pos-risultato:focus-visible {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  /* Linguette e letture non si schiacciano mai: quando lo spazio manca è il
+     pannello a stringersi, che ha già il suo scorrimento */
+  flex: 0 0 auto;
 }
+.cielo-letture { flex: 0 0 auto; }
 
 /* Le linguette: una striscia di pillole sopra al cielo */
 .linguette-gruppi {
@@ -2781,28 +2808,8 @@ body button.pos-risultato:focus-visible {
   box-shadow: var(--alone-blu);
 }
 
-/* Il promemoria che l'orologio è spostato: si vede solo quando serve */
-.chip-tempo { display: none; }
-.chip-tempo.visibile { display: inline-flex; align-items: center; }
-.chip-tempo {
-  min-height: 40px;
-  padding: 8px 14px;
-  border: 1px solid rgba(245, 181, 68, 0.5);
-  border-radius: 999px;
-  background: rgba(60, 40, 8, 0.82);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: var(--ambra);
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.chip-tempo:hover { background: rgba(80, 55, 12, 0.9); }
-
-/* Il promemoria che nel cielo mostrato sta succedendo qualcosa: stessa forma
-   del chip del tempo, colore diverso — quello avverte, questo invita */
+/* Il promemoria che nel cielo mostrato sta succedendo qualcosa: la stessa
+   pillola delle linguette, colore diverso — questo invita */
 .chip-eventi { display: none; }
 .chip-eventi.visibile { display: inline-flex; align-items: center; }
 .chip-eventi {
@@ -2925,6 +2932,10 @@ body button.pos-risultato:focus-visible {
 .gruppo-comandi.gruppo-attivo {
   display: block;
   width: min(560px, 100%);
+  /* Il tetto è la solita frazione della fascia; se anche così non ci sta
+     (telefono girato, pannello lungo) è lui a cedere, non le linguette */
+  flex: 0 1 auto;
+  min-height: 0;
   max-height: 58%;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -3089,11 +3100,6 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   font-variant-numeric: tabular-nums;
 }
 
-/* La slitta sta fra i due tasti del passo: il pollice prende la precisione
-   grossa trascinando e quella fine toccando − e + */
-.riga-slitta { margin-top: 10px; gap: 10px; flex-wrap: nowrap; }
-.slitta-tempo { flex: 1 1 60px; min-width: 0; accent-color: var(--blu); cursor: pointer; }
-
 .lettura-tempo {
   margin: 10px 0 0;
   font-family: var(--mono);
@@ -3112,6 +3118,184 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   color: var(--testo-2);
 }
 
+/* ------------------------------------------------- LA BARRA DEL TEMPO      */
+/* L'orologio appoggiato in fondo alla mappa, che non se ne va mai: dice che
+   istante si sta guardando e lo sposta. Una riga sola dove c'è larghezza,
+   due sul telefono (vedi il blocco sotto i 520px). Sta in fondo e non in
+   cima per due motivi — in cima ci sono già le linguette e le letture di
+   puntamento, e in fondo il pollice ci arriva senza cambiare presa.
+
+   La forma è quella delle linguette (pillola scura sfocata): si legge sopra
+   una Via Lattea o sopra la Luna piena, e si vede che è un comando della
+   mappa, non un pannello aperto. */
+.barra-tempo {
+  position: absolute;
+  z-index: 6;
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--ombra-2);
+}
+/* Senza sfocatura la sola trasparenza non basta a tenere leggibili dei numeri
+   sopra a un cielo stellato: lì la barra si scurisce */
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  .barra-tempo { background: rgba(6, 10, 20, 0.94); }
+}
+
+/* I tasti della barra: tondi, tutti della stessa misura, larghi quanto un
+   polpastrello anche sul telefono più stretto */
+.tasto-barra-tempo {
+  flex: 0 0 auto;
+  /* La misura dichiarata è quella vera, bordo compreso: da lei dipende
+     l'altezza della barra, e da quella dove si fermano zoom e pannelli */
+  box-sizing: border-box;
+  width: var(--tasto-tempo);
+  height: var(--tasto-tempo);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: var(--superficie-alta);
+  color: var(--testo);
+  font-family: var(--mono);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transizione), border-color var(--transizione),
+              color var(--transizione);
+}
+.tasto-barra-tempo:hover { border-color: var(--bordo-forte); background: rgba(40, 52, 84, 0.9); }
+.tasto-barra-tempo:active { transform: translateY(1px); }
+
+/* Il ritorno ad adesso c'è solo quando c'è un altrove da cui tornare: in
+   tempo reale sarebbe un tasto che non fa niente, e occuperebbe lo spazio
+   che serve alla slitta proprio sugli schermi dove ne serve di più */
+.tasto-adesso { display: none; }
+.barra-tempo.spostata .tasto-adesso { display: inline-flex; }
+.tasto-adesso {
+  border-color: rgba(245, 181, 68, 0.5);
+  background: rgba(60, 40, 8, 0.85);
+  color: var(--ambra);
+  font-size: 1.05rem;
+}
+.tasto-adesso:hover { border-color: var(--ambra); background: rgba(80, 55, 12, 0.95); }
+
+/* Mentre il cielo cammina il play è acceso: è l'unico segnale che l'ora si
+   muove da sola, e senza si resta a guardare un cielo che scorre senza
+   sapere chi lo sta spingendo */
+.tasto-play-barra { font-size: 0.86rem; letter-spacing: 0.04em; }
+.tasto-play-barra.attiva {
+  background: var(--blu);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--alone-blu);
+}
+
+/* La lettura: è anche il tasto che apre il pannello "Tempo". Un numero che si
+   può toccare deve sembrare toccabile, quindi ha la sua cornice; ma resta
+   scritto in tono minore, perché è una lettura e non un comando. */
+.lettura-barra-tempo {
+  flex: 0 1 auto;
+  box-sizing: border-box;
+  min-width: 0;
+  height: var(--tasto-tempo);
+  padding: 0 12px;
+  /* Riga di testo e non scatola flessibile: così, quando lo spazio manca
+     davvero, si perde la coda con tre puntini invece di tagliare la scritta
+     da tutte e due le parti e restare con "o 10:01 · +3 g" */
+  display: block;
+  line-height: calc(var(--tasto-tempo) - 2px);
+  text-align: center;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: var(--incassato);
+  color: var(--testo);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.lettura-barra-tempo:hover { border-color: var(--bordo-forte); color: var(--testo); }
+/* Fuori dal tempo reale la lettura si accende d'ambra: è lo stesso colore di
+   ogni avvertimento dell'app, e si vede con la coda dell'occhio senza doverla
+   leggere */
+.barra-tempo.spostata .lettura-barra-tempo {
+  border-color: rgba(245, 181, 68, 0.45);
+  color: var(--ambra);
+}
+
+/* La slitta si prende tutto lo spazio che avanza: è il comando che dallo
+   spazio guadagna di più — più è lunga, più fine è il controllo — mentre i
+   tasti tondi con due pixel in più non ci fanno niente.
+
+   Il cursore e il binario sono ridisegnati a mano: quelli di serie sono alti
+   quattro pixel, e con un dito sopra a un cielo scuro non si prendono. */
+.barra-tempo .slitta-tempo {
+  flex: 1 1 90px;
+  min-width: 54px;
+  height: var(--tasto-tempo);
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  /* Il trascinamento orizzontale è tutto il mestiere di questa slitta: la
+     pagina non se lo deve prendere per scorrere */
+  touch-action: none;
+}
+.barra-tempo .slitta-tempo:focus-visible { outline: 2px solid var(--blu); outline-offset: 2px; border-radius: 999px; }
+
+/* Il binario si vede: sopra a un cielo nero un incassato scuro spariva, e
+   restava un pallino che galleggiava nel niente — senza il binario non si
+   capisce nemmeno che è una slitta, né dove sono i suoi due capi */
+.barra-tempo .slitta-tempo::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 168, 214, 0.26);
+}
+.barra-tempo .slitta-tempo::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -8px;          /* centra il cursore sul binario */
+  border-radius: 999px;
+  border: 2px solid rgba(6, 10, 20, 0.9);
+  background: var(--blu-chiaro);
+  box-shadow: var(--alone-blu);
+}
+.barra-tempo .slitta-tempo::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 168, 214, 0.26);
+}
+.barra-tempo .slitta-tempo::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid rgba(6, 10, 20, 0.9);
+  background: var(--blu-chiaro);
+  box-shadow: var(--alone-blu);
+}
+
+/* La schermata di benvenuto sta dentro allo stesso riquadro e ha il suo tasto
+   di avvio centrato: senza questo, sui riquadri bassi finisce sotto la barra */
+#skymap-overlay { padding-bottom: var(--sopra-barra-tempo); }
+
 /* Su un telefono i comandi appoggiati sul cielo devono rubargli il minimo
    indispensabile: parole corte, misure strette, e le cinque linguette che
    entrano tutte nella larghezza dello schermo senza scorrere */
@@ -3121,7 +3305,6 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   .linguetta-gruppo .nome-corto { display: inline; }
   .linguetta-gruppo { min-height: 38px; padding: 8px 10px; font-size: 0.78rem; }
   .linguette-gruppi { padding: 3px; gap: 2px; }
-  .chip-tempo { min-height: 34px; padding: 6px 10px; font-size: 0.7rem; }
   .lettura-cielo { font-size: 0.62rem; padding: 5px 8px; }
   .lettura-stato { max-width: 48%; }
   .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
@@ -3134,6 +3317,53 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   .stacco-comandi { margin: 0 1px; }
   .tasto-segmento { min-height: 34px; padding: 7px 4px; font-size: 0.74rem; }
   .riga-comandi { gap: 6px; }
+
+  /* --- La barra del tempo su uno schermo stretto ---
+     Il conto, su un telefono da 360 pixel: 16 di margini, 16 di imbottitura,
+     5 spazi da 5, e in fila 36 (⟲) + 36 (−) + 36 (+) + 36 (play) più la
+     lettura. Alla slitta restano una novantina di pixel quando il ⟲ c'è, e
+     centoventicinque quando l'orologio è in tempo reale e il ⟲ non c'è. Con
+     la finestra del passo dietro (dieci minuti di slitta, non un mese) sono
+     abbastanza per prendere il minuto giusto trascinando; il secondo esatto
+     lo prendono i tasti − e +, che restano larghi quanto un polpastrello.
+     Sotto ai 36 non si scende: un bersaglio più piccolo si sbaglia. */
+  .vista-cielo { --tasto-tempo: 36px; --alta-barra-tempo: calc(var(--tasto-tempo) + 12px); }
+  .barra-tempo { gap: 5px; padding: 5px 6px; left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); }
+  .lettura-barra-tempo { padding: 0 9px; font-size: 0.72rem; }
+  .tasto-barra-tempo { font-size: 0.94rem; }
+}
+
+/* --- La slitta va a capo ---
+   Sotto questa larghezza il conto non torna più: quattro tasti tondi e la
+   lettura si mangiano tutta la riga, e alla slitta restavano cinquanta pixel.
+   Cinquanta pixel di binario vogliono dire che un polpastrello, largo undici,
+   copre un quinto della finestra: si trascina alla cieca e si sbaglia sempre.
+   Quindi la slitta si prende una riga tutta sua, larga quanto la mappa —
+   duecentocinquanta pixel invece di cinquanta — e la barra diventa alta due
+   righe. Trenta pixel di cielo in meno, in cambio di un comando che si usa
+   davvero: sulla mappa la slitta è il modo in cui ci si muove nel tempo, i
+   tasti − e + servono solo per l'ultimo scatto.
+
+   Andando a capo la riga di sopra si allarga, e la lettura ci sta comoda. */
+@media (max-width: 520px) {
+  .vista-cielo {
+    --alta-barra-tempo: calc(var(--tasto-tempo) + 30px + 4px + 12px);
+  }
+  /* Su due righe la pillola non è più una pillola: gli angoli tondi da 999
+     pixel mangerebbero proprio i due capi della slitta */
+  .barra-tempo { flex-wrap: wrap; row-gap: 4px; border-radius: var(--raggio-m); padding: 5px 8px; }
+  /* `order` e non un altro ordine nel markup: andando a capo la slitta si
+     porterebbe dietro i tasti + e ▶, che le stanno dopo. Così invece scende
+     da sola e i cinque tondi restano in fila sopra. Sulla mappa larga la
+     slitta torna dov'è scritta, in mezzo ai due tasti del passo. */
+  .barra-tempo .slitta-tempo { order: 1; flex: 1 1 100%; height: 30px; }
+  /* Base zero, non "auto": con la base sul contenuto una lettura un po' più
+     lunga ("06:24 · +25 min") spingeva il ▶ su una terza riga, e la barra
+     cresceva sotto ai conti fatti qui sopra. Partendo da zero i cinque tondi
+     stanno sempre in fila, e la lettura si prende quello che avanza — se
+     proprio non ci sta, sono i puntini di sospensione a cedere, non il
+     comando. */
+  .lettura-barra-tempo { flex: 1 1 0; }
 }
 
 /* ------------------------------------------ SCHEDA DELL'OGGETTO SULLA MAPPA */
@@ -3146,7 +3376,10 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
 .pannello-dettaglio {
   position: absolute;
   left: max(12px, env(safe-area-inset-left));
-  bottom: max(12px, env(safe-area-inset-bottom));
+  /* Sopra alla barra del tempo, come lo zoom: in fondo alla mappa la barra
+     c'è sempre, e una scheda che ci finisce sotto nasconde proprio l'ora a
+     cui valgono i dati che sta mostrando */
+  bottom: var(--sopra-barra-tempo);
   z-index: 6;
   width: min(340px, calc(100% - 96px));
   max-height: min(62%, 420px);
@@ -3208,7 +3441,8 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
 .comandi-mappa-cielo {
   position: absolute;
   right: max(12px, env(safe-area-inset-right));
-  bottom: max(12px, env(safe-area-inset-bottom));
+  /* Il fondo adesso è della barra del tempo: questi le salgono sopra */
+  bottom: var(--sopra-barra-tempo);
   z-index: 5;
   display: flex;
   flex-direction: column;
@@ -3707,7 +3941,7 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   /* --- Tasti comodi da toccare: mai sotto i 38px di altezza utile --- */
   /* I comandi del cielo restano fuori: la loro misura la decidono da sé, ed
      è più generosa (si usano al buio, spesso con una mano sola) */
-  body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.tasto-cielo):not(.leaflet-control-zoom a) {
+  body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.tasto-cielo):not(.tasto-barra-tempo):not(.lettura-barra-tempo):not(.leaflet-control-zoom a) {
     min-height: 38px;
   }
   /* …ma i tasti di servizio dentro le schede restano piccoli e discreti */
@@ -3855,8 +4089,15 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
 
   /* La scheda dell'oggetto sulla mappa: di lato lo spazio è largo e basso,
      quindi si stringe in colonna invece di coprire mezzo cielo */
-  .pannello-dettaglio { max-height: calc(100% - 74px); width: min(300px, 44%); }
-  .gruppo-comandi.gruppo-attivo { max-height: 74%; }
+  .pannello-dettaglio { max-height: calc(100% - 74px - var(--alta-barra-tempo)); width: min(300px, 44%); }
+  .gruppo-comandi.gruppo-attivo { max-height: 100%; }
+
+  /* Girato, la mappa è alta un terzo: la barra del tempo si stringe quanto
+     può senza che i tasti diventino difficili da prendere. Di larghezza però
+     ce n'è tanta, e la slitta se la prende tutta — il controllo fine, qui,
+     lo dà la lunghezza del binario più che l'altezza dei tasti. */
+  .vista-cielo { --tasto-tempo: 34px; --alta-barra-tempo: calc(var(--tasto-tempo) + 10px); }
+  .barra-tempo { padding: 4px 6px; }
 
   /* La schermata di benvenuto del cielo sta dentro al riquadro della mappa, e
      girato quel riquadro è alto un terzo: centrata finiva sotto alle linguette
@@ -3866,7 +4107,9 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   #skymap-overlay {
     justify-content: flex-end;
     gap: 8px;
-    padding: 86px 18px 16px;
+    /* In fondo si lascia il posto della barra del tempo: i due tasti di
+       avvio non devono finirle sotto */
+    padding: 86px 18px calc(16px + var(--alta-barra-tempo));
     overflow-y: auto;
   }
   #skymap-overlay > p:first-child { font-size: 1.1rem; }
