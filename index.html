@@ -474,6 +474,13 @@
             <section class="gruppo-comandi gruppo-astri" data-gruppo="astri" aria-label="Astri">
               <p class="etichetta-comando">Scegli cosa cercare: la mappa lo porta al centro e una freccia ti guida verso l'astro. Per la sua scheda di dati, toccalo direttamente sulla mappa.</p>
               <div id="skymap-oggetti" class="elenco-astri"></div>
+
+              <!-- La mappa dice in che direzione guardare; questa dice perché
+                   proprio in quella direzione. È la stessa scena vista da
+                   fuori, nello stesso istante, e sta qui — nel pannello in cui
+                   si scelgono i pianeti — perché è lì che nasce la domanda. -->
+              <button id="skymap-btn-sistema" type="button" class="tasto-cielo tasto-largo-cielo"
+                title="Esci dal Sistema Solare e guardalo da fuori: dove sta ogni pianeta sulla sua orbita in questo istante, e in che direzione lo stai guardando da qui. Si gira col dito.">Il Sistema Solare in 3D</button>
             </section>
 
           </div>
@@ -1079,6 +1086,83 @@
 
         <div class="barra-chiudi">
           <button id="btn-chiudi-lezione-basso" type="button" class="tasto-chiudi-largo">Chiudi la scheda</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALE: IL SISTEMA SOLARE IN 3D
+       Il planetario mostra il cielo da dentro: una direzione, e basta. Questa
+       finestra mostra la stessa scena da fuori, nello stesso istante, in
+       proiezione ortogonale — nessuna prospettiva, così le distanze restano
+       confrontabili. Si gira col dito: dall'alto è il bersaglio dei libri, di
+       taglio si scopre che il bersaglio è un piatto. Il codice sta in app.js,
+       sezione 7.7. -->
+  <div id="modale-sistema" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="grande">
+      <div class="testata-modale flex justify-between items-center p-5 border-b border-slate-700">
+        <h2 class="text-xl md:text-2xl font-bold text-white">Il Sistema Solare, adesso</h2>
+        <button id="btn-chiudi-sistema" class="tasto-chiudi con-etichetta" title="Chiudi la finestra (o premi Esc)" aria-label="Chiudi la finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Chiudi</span></button>
+      </div>
+
+      <div class="corpo-modale spazio-verticale">
+        <div class="sol-guscio">
+          <canvas id="sol-canvas" class="block w-full tela-sistema"></canvas>
+          <div id="sol-quando" class="sol-quando">—</div>
+          <p class="sol-suggerimento">Trascina per girarci attorno · pizzica o usa la rotella per avvicinarti · tocca un pianeta per sceglierlo</p>
+        </div>
+
+        <div class="sol-comandi">
+          <div class="sol-riga" role="group" aria-label="Punto di vista">
+            <span class="sol-etichetta">Guarda</span>
+            <div class="segmenti-cielo">
+              <button type="button" class="tasto-segmento" data-sol-vista="alto" title="A picco sul Sole: la figura dei libri di scuola">Dall'alto</button>
+              <button type="button" class="tasto-segmento" data-sol-vista="obliqua" title="Da trentaquattro gradi sopra il piano">Di sbieco</button>
+              <button type="button" class="tasto-segmento" data-sol-vista="taglio" title="Quasi dentro al piano delle orbite: è così che lo vediamo da qui, ed è da qui che nasce l'eclittica">Di taglio</button>
+            </div>
+            <div class="segmenti-cielo">
+              <button type="button" class="tasto-segmento" data-sol-quadro="tutto" title="Tutto il sistema, fino a Nettuno">Tutto</button>
+              <button type="button" class="tasto-segmento" data-sol-quadro="interni" title="Solo Mercurio, Venere, Terra e Marte">Pianeti interni</button>
+            </div>
+            <button id="sol-zoom-out" type="button" class="tasto-cielo tasto-passo" title="Allontanati" aria-label="Allontanati">−</button>
+            <button id="sol-zoom-in" type="button" class="tasto-cielo tasto-passo" title="Avvicinati" aria-label="Avvicinati">+</button>
+          </div>
+
+          <div class="sol-riga" role="group" aria-label="Come sono disegnate le distanze">
+            <span class="sol-etichetta">Distanze</span>
+            <div class="segmenti-cielo">
+              <button type="button" class="tasto-segmento" data-sol-distanze="compresse" title="Compresse per farceli stare tutti: gli angoli restano veri, i rapporti fra le distanze no">Compresse</button>
+              <button type="button" class="tasto-segmento" data-sol-distanze="vere" title="Distanze vere: Nettuno è settantasette volte più lontano di Mercurio, e si vede">Reali</button>
+            </div>
+            <span class="sol-etichetta">Fuori dal piano</span>
+            <div class="segmenti-cielo">
+              <button type="button" class="tasto-segmento" data-sol-altezze="1" title="L'altezza vera sopra e sotto il piano dell'eclittica: pochi gradi, quasi invisibili">Vero</button>
+              <button type="button" class="tasto-segmento" data-sol-altezze="10" title="Altezza ingrandita dieci volte: le inclinazioni delle orbite diventano visibili">×10</button>
+            </div>
+          </div>
+
+          <div class="sol-riga" role="group" aria-label="Il tempo">
+            <span class="sol-etichetta">Tempo</span>
+            <button id="sol-tempo-adesso" type="button" class="tasto-cielo tasto-passo" title="Torna a questo momento">⟲ Adesso</button>
+            <button type="button" class="tasto-cielo tasto-passo" data-sol-passo="-30" title="Indietro di un mese">−1 mese</button>
+            <button type="button" class="tasto-cielo tasto-passo" data-sol-passo="-1" title="Indietro di un giorno">−1 g</button>
+            <button id="sol-play" type="button" class="tasto-cielo tasto-passo" aria-pressed="false" title="Fai camminare il tempo">▶</button>
+            <button type="button" class="tasto-cielo tasto-passo" data-sol-passo="1" title="Avanti di un giorno">+1 g</button>
+            <button type="button" class="tasto-cielo tasto-passo" data-sol-passo="30" title="Avanti di un mese">+1 mese</button>
+            <div id="sol-velocita" class="segmenti-cielo" role="group" aria-label="Velocità del tempo"></div>
+          </div>
+        </div>
+
+        <div id="sol-scheda" class="sol-scheda"></div>
+
+        <p class="sol-nota">L'istante è lo stesso del planetario: spostando il tempo qui, il cielo là si sposta con te.
+          Le posizioni dei pianeti sono quelle vere, calcolate per questo momento; le orbite si disegnano seguendole
+          davvero per un giro intero. Il disegno è ortogonale — niente prospettiva, come nei disegni tecnici — e la
+          Luna è messa a distanza esagerata dalla Terra: la sua direzione è vera, la distanza no, o starebbe dentro
+          al pallino.</p>
+
+        <div class="barra-chiudi">
+          <button id="btn-chiudi-sistema-basso" type="button" class="tasto-chiudi-largo">Chiudi la scheda</button>
         </div>
       </div>
     </div>

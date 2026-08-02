@@ -535,6 +535,7 @@ window.addEventListener('DOMContentLoaded', () => {
   inizializzaSimulazione();
   inizializzaSkymap();
   inizializzaLezioneEclittica();
+  inizializzaSistemaSolare();
   inizializzaNotifiche();
   inizializzaInstallazione();
   inizializzaDiarioUI();
@@ -12400,11 +12401,22 @@ function skySchedaHtml(o) {
   // La scheda del Sole è il posto dove nasce la domanda «ma l'eclittica cos'è,
   // di preciso?»: il Sole ci sta sopra sempre, per definizione. Da qui si apre
   // la lezione animata che lo spiega (sezione 7.3-quater).
-  const azioni = o.id === 'Sun'
-    ? '<div class="azioni-evento"><button type="button" class="tasto-evento-cielo tasto-evento-forte" ' +
+  //
+  // Dalla scheda di un pianeta nasce invece l'altra domanda — «e perché
+  // stasera sta proprio lì?» — che dentro alla cupola non ha risposta: quella
+  // porta al Sistema Solare visto da fuori (sezione 7.7), già puntato su di lui.
+  let azioni = '';
+  if (o.id === 'Sun') {
+    azioni = '<button type="button" class="tasto-evento-cielo tasto-evento-forte" ' +
       'onclick="apriLezioneEclittica()" title="Il Sistema Solare visto dall\'alto e poi di taglio: ' +
-      'da dove esce l\'eclittica, in cinque quadri animati">Che cos\'è l\'eclittica</button></div>'
-    : '';
+      'da dove esce l\'eclittica, in cinque quadri animati">Che cos\'è l\'eclittica</button>';
+  }
+  if (o.tipo === 'pianeta' || o.id === 'Sun') {
+    azioni += '<button type="button" class="tasto-evento-cielo" onclick="apriSistemaSolare()" ' +
+      'title="Guarda il Sistema Solare da fuori, in questo istante: dove sta ogni pianeta sulla ' +
+      'sua orbita, e in che direzione lo stai guardando">Vedilo dall\'esterno</button>';
+  }
+  if (azioni) azioni = `<div class="azioni-evento">${azioni}</div>`;
 
   return `<h3 class="flex items-center gap-2">${icona(disegno, 20)} ${titolo}</h3>
     <ul>${skyRigheScheda(o).join('')}</ul>${coda}
@@ -13714,6 +13726,9 @@ function inizializzaSkymap() {
   });
   collega('skymap-btn-insegui', skyAlternaInseguimento);
   collega('skymap-btn-insegui-mappa', skyAlternaInseguimento);
+  // Il Sistema Solare visto da fuori (sezione 7.7): sta in fondo al pannello
+  // degli astri, subito sotto l'elenco da cui si sceglie il pianeta
+  collega('skymap-btn-sistema', () => apriSistemaSolare());
   skyAggiornaTastoInsegui();
   document.querySelectorAll('#cielo-comandi [data-verso]').forEach(b => {
     b.addEventListener('click', () => {
@@ -14018,9 +14033,14 @@ function skyInizializzaSchermoIntero() {
   document.addEventListener('webkitfullscreenchange', cambio);
 
   // Esc: il browser lo gestisce da sé nel pieno schermo vero, ma nel ripiego
-  // in CSS nessuno lo ascolterebbe
+  // in CSS nessuno lo ascolterebbe. Se però sopra al cielo c'è aperta una
+  // finestra — la lezione dell'eclittica, il Sistema Solare in 3D — l'Esc è
+  // suo: chiude quella, e il pieno schermo resta com'era. Altrimenti un tasto
+  // solo farebbe due cose insieme, e chi lo preme ne voleva una.
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && sky.schermoIntero) skyEsciSchermoIntero();
+    if (e.key !== 'Escape' || !sky.schermoIntero) return;
+    if (lez.aperto || sol.aperto) return;
+    skyEsciSchermoIntero();
   });
 
   // Il tasto (o il gesto) Indietro di Android
@@ -14470,6 +14490,1005 @@ window.cercaNelCielo = (idCorpo) => {
   mostraVista('cielo');
   skyImpostaTarget(idCorpo, { mantieni: true });
 };
+
+// =====================================================================
+// 7.7 IL SISTEMA SOLARE IN 3D — dove sono davvero, in questo momento
+//   Il planetario risponde a «dove devo guardare»: dà una direzione dentro
+//   alla cupola, e finisce lì. Ma la domanda che nasce subito dopo — «e
+//   perché stasera Marte sta lì, e fra sei mesi starà dall'altra parte?» —
+//   dentro alla cupola non ha risposta: la risposta è fuori, nel disegno
+//   delle orbite, e si vede solo uscendo dal Sistema Solare e guardandolo
+//   da lontano.
+//
+//   Questa è quella vista da fuori. Le posizioni sono quelle vere
+//   dell'istante mostrato dal planetario — lo stesso istante, sempre: si
+//   sposta il tempo di qua e si trova spostato anche di là — proiettate in
+//   ortogonale, cioè senza prospettiva: chi guarda sta infinitamente
+//   lontano, i raggi arrivano paralleli e due segmenti lunghi uguali si
+//   disegnano uguali ovunque stiano. È la proiezione dei disegni tecnici, e
+//   qui serve proprio perché non fa rimpicciolire quello che sta in fondo:
+//   le distanze restano confrontabili a occhio.
+//
+//   Ci si gira attorno col dito, ed è il punto di tutto. Vista dall'alto la
+//   scena è il bersaglio dei libri di scuola. Girata di taglio si scopre che
+//   quel bersaglio è un piatto sottile, e che i pianeti ci stanno dentro per
+//   pochi gradi: da lì l'eclittica smette di essere una riga da credere sulla
+//   parola e diventa il bordo di un pavimento visto di profilo.
+//
+//   Due imbrogli, entrambi dichiarati sotto al disegno e disattivabili:
+//   le distanze si possono comprimere (con quelle vere Mercurio finisce
+//   dentro al Sole, perché Nettuno è settantasette volte più lontano) e
+//   l'altezza fuori dal piano si può ingrandire (2° di inclinazione, a
+//   schermo, sono meno dello spessore della linea).
+// =====================================================================
+
+const SOL_UA_KM = 149597870.7;
+const SOL_LUCE_MIN_UA = 8.3167;     // minuti che la luce impiega per un'unità astronomica
+const SOL_RIF_UA = 30.07;           // Nettuno: il metro con cui si normalizza tutto il disegno
+
+// I pianeti, col loro colore del planetario (chi arriva qui riconosce le
+// stesse tinte che vede sulla mappa) e il raggio con cui si disegnano: non è
+// in scala — a scala vera la Terra sarebbe un centesimo di pixel — ma
+// l'ordine di grandezza fra i giganti e i sassi si legge.
+const SOL_PIANETI = [
+  { id: 'Mercury', nome: 'Mercurio', colore: '#cbd5e1', raggio: 3.0, ua: 0.387, anni: 0.241 },
+  { id: 'Venus',   nome: 'Venere',   colore: '#fde68a', raggio: 4.4, ua: 0.723, anni: 0.615 },
+  { id: 'Earth',   nome: 'Terra',    colore: '#60a5fa', raggio: 4.6, ua: 1.000, anni: 1.000 },
+  { id: 'Mars',    nome: 'Marte',    colore: '#f87171', raggio: 3.6, ua: 1.524, anni: 1.881 },
+  { id: 'Jupiter', nome: 'Giove',    colore: '#fbbf24', raggio: 8.4, ua: 5.203, anni: 11.86 },
+  { id: 'Saturn',  nome: 'Saturno',  colore: '#fcd34d', raggio: 7.2, ua: 9.537, anni: 29.45 },
+  { id: 'Uranus',  nome: 'Urano',    colore: '#67e8f9', raggio: 5.4, ua: 19.19, anni: 84.01 },
+  { id: 'Neptune', nome: 'Nettuno',  colore: '#93c5fd', raggio: 5.2, ua: 30.07, anni: 164.8 }
+];
+
+// I tre punti di vista preimpostati. `elev` è l'altezza della telecamera sul
+// piano dell'eclittica: 90° è a picco sul Sole, 0° è dentro al piano.
+const SOL_VISTE = {
+  alto:   { elev: 89 },
+  obliqua: { elev: 34 },
+  taglio: { elev: 2 }
+};
+
+// Quanto tempo passa in un secondo di orologio, quando il tempo cammina da
+// solo. Sotto il giorno non si vede muovere niente (la Terra fa un grado al
+// giorno), sopra l'anno i pianeti interni diventano una sfocatura.
+const SOL_VELOCITA = [
+  { giorni: 1,      nome: '1 g/s' },
+  { giorni: 10,     nome: '10 g/s' },
+  { giorni: 91.3,   nome: '3 mesi/s' },
+  { giorni: 365.25, nome: '1 anno/s' }
+];
+
+const sol = {
+  aperto: false, canvas: null, ctx: null, L: 0, H: 0, raf: null, ultimoTs: 0,
+  // La telecamera: `az` gira attorno all'asse del Sistema Solare, `elev` sale
+  // e scende sul piano. I due valori "voluti" servono ai tasti dei punti di
+  // vista, che ci portano scivolando invece che di scatto (come lo zoom del
+  // planetario, sezione 7.4-ter): vedere il disco che si chiude è metà della
+  // spiegazione, e saltarci sopra la butterebbe via.
+  az: -0.55, elev: 34, elevVoluta: 34,
+  zoom: 1, zoomVoluto: 1,
+  distanzeVere: false,   // false = distanze compresse, per farceli stare tutti
+  // Si parte dall'altezza vera fuori dal piano, non da quella ingrandita: la
+  // prima cosa che questa vista deve dire è che il Sistema Solare è piatto
+  // davvero, non "quasi". L'ingrandimento è lì per chi poi vuole vedere le
+  // inclinazioni, ma dev'essere una cosa che si chiede, non che si trova.
+  esagera: 1,
+  scelto: null,          // id del pianeta di cui si legge la scheda
+  pianeti: [], terra: null, luna: null,
+  orbite: { chiave: null, tracce: [] },
+  istante: 0,            // ms dell'ultimo calcolo delle posizioni
+  scala: 1, cx: 0, cy: 0,
+  stelle: [],
+  // Dita appoggiate sulla tela: una gira la scena, due la avvicinano
+  puntatori: new Map(), pizzico: null, trascinamento: null, mosso: 0, giu: 0,
+  velIndice: 1, marcia: 0,    // 0 fermo, +1 il tempo avanti, −1 indietro
+  prossimaScheda: 0, firmaScheda: '',
+  skyDaRiprendere: false
+};
+
+// --- Geometria della scena -------------------------------------------------
+
+// Il raggio a cui si disegna una distanza vera, in unità di schermo (1 = il
+// bordo del disegno). Con le distanze compresse si usa una potenza: gli
+// intervalli fra i pianeti interni si allargano e quelli fra gli esterni si
+// stringono, ma l'ordine e i rapporti angolari restano quelli veri.
+function solRaggio(ua) {
+  const q = Math.max(0, ua) / SOL_RIF_UA;
+  return sol.distanzeVere ? q : Math.pow(q, 0.42);
+}
+
+// Da un vettore eliocentrico in unità astronomiche al punto della scena.
+// La compressione delle distanze si applica al vettore intero, direzione
+// compresa: così l'inclinazione dell'orbita non cambia di un grado. Poi, e
+// solo poi, l'altezza fuori dal piano si ingrandisce del fattore scelto.
+function solScena(v) {
+  const r = Math.hypot(v.x, v.y, v.z);
+  if (!r) return { x: 0, y: 0, z: 0 };
+  const k = solRaggio(r) / r;
+  return { x: v.x * k, y: v.y * k, z: v.z * k * sol.esagera };
+}
+
+// Dalla scena allo schermo, in proiezione ortogonale: nessuna prospettiva,
+// nessun rimpicciolimento con la distanza. `vicinanza` dice quanto un punto
+// sta verso chi guarda, e serve a disegnare per ultimo ciò che sta davanti.
+function solProietta(p) {
+  const a = sol.az, e = sol.elev * SKY_D2R;
+  const xr = p.x * Math.cos(a) - p.y * Math.sin(a);
+  const yr = p.x * Math.sin(a) + p.y * Math.cos(a);
+  return {
+    px: sol.cx + xr * sol.scala,
+    py: sol.cy - (yr * Math.sin(e) + p.z * Math.cos(e)) * sol.scala,
+    vicinanza: p.z * Math.sin(e) - yr * Math.cos(e)
+  };
+}
+
+// Lo zoom che porta l'orbita di un pianeta a riempire il disegno
+function solZoomPer(ua) {
+  const r = solRaggio(ua);
+  return r > 0 ? 0.9 / r : 1;
+}
+
+// Quante unità astronomiche ci sono dal Sole al bordo corto del disegno. Con
+// le distanze compresse è l'unico modo di sapere dove si è arrivati, e serve
+// anche a cambiare metro senza far saltare via l'inquadratura.
+function solUaAlBordo(zoom) {
+  const unita = 0.5 / (0.44 * (zoom || sol.zoom));
+  return SOL_RIF_UA * (sol.distanzeVere ? unita : Math.pow(unita, 1 / 0.42));
+}
+
+function solMisura() {
+  sol.cx = sol.L / 2;
+  sol.cy = sol.H / 2;
+  sol.scala = Math.min(sol.L, sol.H) * 0.44 * sol.zoom;
+}
+
+// --- Le posizioni vere -----------------------------------------------------
+
+// Coordinate eclittiche eliocentriche, in unità astronomiche: l'unico posto
+// in cui questa sezione parla con Astronomy Engine.
+function solVettore(id, t) {
+  return Astronomy.Ecliptic(Astronomy.HelioVector(id, t)).vec;
+}
+
+function solLeggiPosizioni(quando) {
+  if (typeof Astronomy === 'undefined') { sol.pianeti = []; sol.terra = null; return; }
+  const ms = quando.getTime();
+  if (sol.istante === ms && sol.pianeti.length) return;
+  try {
+    const t = Astronomy.MakeTime(quando);
+    sol.pianeti = SOL_PIANETI.map(p => {
+      const v = solVettore(p.id, t);
+      return Object.assign({}, p, { pos: v, r: Math.hypot(v.x, v.y, v.z) });
+    });
+    sol.terra = sol.pianeti.find(p => p.id === 'Earth') || null;
+    // La Luna: a 384.000 km da noi, in questa scena, sta dentro al pallino
+    // della Terra. Del resto qui non interessa quanto è lontana ma da che
+    // parte sta — è quello che fa la fase e, due volte l'anno, le eclissi —
+    // e allora la si disegna a distanza esagerata tenendo la direzione vera.
+    const m = Astronomy.Ecliptic(Astronomy.GeoMoon(t)).vec;
+    const d = Math.hypot(m.x, m.y, m.z) || 1;
+    sol.luna = { x: m.x / d, y: m.y / d, z: m.z / d };
+  } catch (e) {
+    sol.pianeti = []; sol.terra = null; sol.luna = null;
+  }
+  sol.istante = ms;
+}
+
+// Le orbite si disegnano campionando la posizione vera lungo un periodo
+// intero, centrato sull'istante mostrato: nessuna ellisse inventata, e le
+// inclinazioni vengono da sé. Cambiano di pochissimo in un secolo, quindi il
+// conto si rifà solo se ci si sposta di più di cinque anni.
+function solCalcolaOrbite(quando) {
+  if (typeof Astronomy === 'undefined') return;
+  const chiave = Math.round(quando.getFullYear() / 5);
+  if (sol.orbite.chiave === chiave && sol.orbite.tracce.length) return;
+  const tracce = [];
+  try {
+    SOL_PIANETI.forEach(p => {
+      const passi = p.anni < 3 ? 84 : 128;
+      const durata = p.anni * 365.25 * 86400000;
+      const punti = [];
+      for (let i = 0; i <= passi; i++) {
+        const d = new Date(quando.getTime() + (i / passi - 0.5) * durata);
+        punti.push(solVettore(p.id, Astronomy.MakeTime(d)));
+      }
+      tracce.push({ id: p.id, colore: p.colore, punti });
+    });
+  } catch (e) { return; }
+  sol.orbite = { chiave, tracce };
+}
+
+// --- Pezzi di disegno ------------------------------------------------------
+
+function solGeneraStelle(quante) {
+  sol.stelle = [];
+  for (let i = 0; i < quante; i++) {
+    sol.stelle.push({ x: Math.random(), y: Math.random(), r: Math.random() * 1.1 + 0.3, a: Math.random() * 0.5 + 0.18 });
+  }
+}
+
+function solSfondo(ctx) {
+  const g = ctx.createLinearGradient(0, 0, 0, sol.H);
+  g.addColorStop(0, '#04060f');
+  g.addColorStop(1, '#0a1024');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, sol.L, sol.H);
+  ctx.fillStyle = '#e2e8f0';
+  sol.stelle.forEach(s => {
+    ctx.globalAlpha = s.a;
+    ctx.beginPath();
+    ctx.arc(s.x * sol.L, s.y * sol.H, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// Il carattere della pagina si chiede una volta sola: getComputedStyle costa
+// un calcolo di stile, e qui di scritte ce ne sono una dozzina per fotogramma
+let SOL_CARATTERE = '';
+function solTesto(ctx, testo, x, y, colore, misura, allinea) {
+  if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
+  ctx.font = `${misura || 12}px ${SOL_CARATTERE}`;
+  ctx.textAlign = allinea || 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = colore;
+  ctx.fillText(testo, x, y);
+  ctx.textAlign = 'left';
+}
+
+// I nomi accanto ai pianeti. Quando i quattro interni si stringono attorno al
+// Sole — succede sempre, con le distanze compresse e ancora di più con quelle
+// vere — quattro scritte nello stesso posto diventano una macchia illeggibile.
+// Allora ogni nome prova quattro angoli attorno al suo pallino, e se sono
+// tutti occupati rinuncia: meglio un nome in meno che cinque sovrapposti.
+// Chi resta senza si legge lo stesso, toccandolo o dalla tabella qui sotto.
+function solEtichetta(ctx, testo, px, py, raggio, colore, misura, prese, obbligata) {
+  if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
+  ctx.font = `${misura}px ${SOL_CARATTERE}`;
+  const largo = ctx.measureText(testo).width;
+  const alto = misura + 2;
+  const posti = [
+    { x: px + raggio + 4, y: py - raggio - 2 },
+    { x: px + raggio + 4, y: py + raggio + alto },
+    { x: px - raggio - 4 - largo, y: py - raggio - 2 },
+    { x: px - raggio - 4 - largo, y: py + raggio + alto }
+  ];
+  // Libero vuol dire due cose: che nessun altro nome è già lì, e che sta
+  // dentro alla tela — un nome tagliato a metà dal bordo è peggio che assente
+  const libero = (b) =>
+    b.x >= 2 && b.x + b.w <= sol.L - 2 && b.y >= 2 && b.y + b.h <= sol.H - 24 &&
+    !prese.some(q => b.x < q.x + q.w && b.x + b.w > q.x && b.y < q.y + q.h && b.y + b.h > q.y);
+  const scatolaDi = (p) => ({ x: p.x - 2, y: p.y - alto, w: largo + 4, h: alto + 3 });
+  let posto = posti.find(p => libero(scatolaDi(p)));
+  // Il nome del pianeta scelto non rinuncia mai: se tutti e quattro gli
+  // angoli sono occupati si mette comunque nel primo, e si legge sopra
+  if (!posto && obbligata) posto = posti[0];
+  if (!posto) return;
+  prese.push(scatolaDi(posto));
+  solTesto(ctx, testo, posto.x, posto.y, colore, misura);
+}
+
+// Il pavimento: dodici raggi e un cerchio esterno sul piano dell'eclittica.
+// Vista dall'alto è un reticolo qualunque; girata di taglio diventa la riga
+// che spiega tutto, perché è il piano stesso visto di profilo.
+function solDisegnaPiano(ctx) {
+  const bordo = solRaggio(SOL_RIF_UA * 1.06);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(148, 168, 214, 0.16)';
+  ctx.lineWidth = 1;
+  for (let g = 0; g < 360; g += 30) {
+    const a = g * SKY_D2R;
+    const p = solProietta({ x: Math.cos(a) * bordo, y: Math.sin(a) * bordo, z: 0 });
+    const c = solProietta({ x: 0, y: 0, z: 0 });
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(c.px, c.py);
+    ctx.lineTo(p.px, p.py);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 0.75;
+  ctx.beginPath();
+  for (let g = 0; g <= 360; g += 4) {
+    const a = g * SKY_D2R;
+    const p = solProietta({ x: Math.cos(a) * bordo, y: Math.sin(a) * bordo, z: 0 });
+    if (g === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Un'orbita, in due passate: prima il mezzo giro che passa dietro al Sole,
+// più smorzato, poi quello che passa davanti. Costa due tratti invece di
+// centoventotto, e basta a far sentire quale metà è più vicina.
+function solDisegnaOrbita(ctx, traccia) {
+  const punti = traccia.punti.map(v => solProietta(solScena(v)));
+  ctx.save();
+  ctx.lineWidth = 1.1;
+  ctx.strokeStyle = traccia.colore;
+  [false, true].forEach(davanti => {
+    ctx.globalAlpha = davanti ? 0.5 : 0.16;
+    ctx.beginPath();
+    let penna = false;
+    punti.forEach(p => {
+      const suo = (p.vicinanza >= 0) === davanti;
+      if (!suo) { penna = false; return; }
+      if (!penna) { ctx.moveTo(p.px, p.py); penna = true; }
+      else ctx.lineTo(p.px, p.py);
+    });
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+function solDisegnaSole(ctx, prese) {
+  const p = solProietta({ x: 0, y: 0, z: 0 });
+  const raggio = 11;
+  const g = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, raggio * 6);
+  g.addColorStop(0, 'rgba(253, 224, 71, 0.55)');
+  g.addColorStop(0.35, 'rgba(251, 146, 60, 0.18)');
+  g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(p.px, p.py, raggio * 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fef3c7';
+  ctx.beginPath();
+  ctx.arc(p.px, p.py, raggio, 0, Math.PI * 2);
+  ctx.fill();
+  solEtichetta(ctx, 'Sole', p.px, p.py, raggio, '#fde68a', 12, prese, true);
+}
+
+// Il filo a piombo: dal pianeta giù fino al piano dell'eclittica, con il suo
+// segno per terra. È il pezzo che rende tridimensionale un disegno piatto —
+// senza, un pianeta alto sul piano e uno lontano dal Sole si somigliano.
+function solDisegnaPiombo(ctx, corpo) {
+  const suolo = solProietta({ x: corpo.scena.x, y: corpo.scena.y, z: 0 });
+  const alto = corpo.schermo;
+  if (Math.abs(suolo.py - alto.py) < 2.5) return;
+  ctx.save();
+  ctx.strokeStyle = corpo.colore;
+  ctx.globalAlpha = 0.42;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 3]);
+  ctx.beginPath();
+  ctx.moveTo(alto.px, alto.py);
+  ctx.lineTo(suolo.px, suolo.py);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.ellipse(suolo.px, suolo.py, 2.6, Math.max(1, 2.6 * Math.sin(sol.elev * SKY_D2R)), 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function solDisegnaCorpo(ctx, corpo) {
+  const p = corpo.schermo;
+  const scelto = sol.scelto === corpo.id;
+  ctx.save();
+  if (scelto) {
+    ctx.strokeStyle = '#fff';
+    ctx.globalAlpha = 0.85;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, corpo.raggio + 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  // Un filo di luce dalla parte del Sole, tanto per ricordare da dove
+  // arriva: è il motivo per cui esistono le fasi
+  const g = ctx.createRadialGradient(
+    p.px - (p.px - sol.cx) * 0.25, p.py - (p.py - sol.cy) * 0.25, corpo.raggio * 0.2,
+    p.px, p.py, corpo.raggio);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.35, corpo.colore);
+  g.addColorStop(1, corpo.colore);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(p.px, p.py, corpo.raggio, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// La Luna attorno alla Terra, a distanza esagerata (vedi solLeggiPosizioni)
+function solDisegnaLuna(ctx, terra) {
+  if (!sol.luna || !terra) return;
+  const passo = 15 / sol.scala;
+  const p = solProietta({
+    x: terra.scena.x + sol.luna.x * passo,
+    y: terra.scena.y + sol.luna.y * passo,
+    z: terra.scena.z + sol.luna.z * passo * sol.esagera
+  });
+  ctx.save();
+  ctx.strokeStyle = 'rgba(226, 232, 240, 0.28)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(terra.schermo.px, terra.schermo.py);
+  ctx.lineTo(p.px, p.py);
+  ctx.stroke();
+  ctx.fillStyle = '#e2e8f0';
+  ctx.beginPath();
+  ctx.arc(p.px, p.py, 2.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// La riga che unisce il tuo occhio all'oggetto scelto, prolungata fino alle
+// stelle: è il ponte fra questa vista e il planetario. Da una parte c'è "in
+// che direzione lo vedo", dall'altra "perché è in quella direzione".
+function solDisegnaSguardo(ctx, terra, corpo) {
+  if (!terra || !corpo || corpo.id === 'Earth') return;
+  const dx = corpo.scena.x - terra.scena.x;
+  const dy = corpo.scena.y - terra.scena.y;
+  const dz = corpo.scena.z - terra.scena.z;
+  const d = Math.hypot(dx, dy, dz) || 1;
+  const oltre = solRaggio(SOL_RIF_UA * 1.25) * 2 / d;
+  const fine = solProietta({
+    x: terra.scena.x + dx * oltre, y: terra.scena.y + dy * oltre, z: terra.scena.z + dz * oltre
+  });
+  ctx.save();
+  ctx.strokeStyle = '#4c8dff';
+  ctx.lineWidth = 1.4;
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  ctx.moveTo(terra.schermo.px, terra.schermo.py);
+  ctx.lineTo(corpo.schermo.px, corpo.schermo.py);
+  ctx.stroke();
+  ctx.globalAlpha = 0.4;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(corpo.schermo.px, corpo.schermo.py);
+  ctx.lineTo(fine.px, fine.py);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function solDisegna() {
+  if (!sol.ctx) return;
+  const ctx = sol.ctx;
+  solMisura();
+  solSfondo(ctx);
+
+  if (!sol.pianeti.length) {
+    solTesto(ctx, 'Le posizioni dei pianeti non sono disponibili', sol.L / 2, sol.H / 2, '#94a3b8', 13, 'center');
+    return;
+  }
+
+  // Ogni corpo porta con sé il suo punto nella scena e sullo schermo: si
+  // calcolano una volta e li usano il piombo, la riga dello sguardo e la Luna
+  sol.pianeti.forEach(p => {
+    p.scena = solScena(p.pos);
+    p.schermo = solProietta(p.scena);
+  });
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  const scelto = sol.pianeti.find(p => p.id === sol.scelto) || null;
+
+  solDisegnaPiano(ctx);
+  sol.orbite.tracce.forEach(t => solDisegnaOrbita(ctx, t));
+  // I posti già occupati dalle scritte: il Sole se li prende per primo,
+  // poi ogni pianeta cerca il suo (vedi solEtichetta)
+  const prese = [];
+  solDisegnaSole(ctx, prese);
+  solDisegnaSguardo(ctx, terra, scelto);
+
+  // Dietro prima, davanti poi: è tutto quello che serve perché una scena
+  // ortogonale sembri profonda
+  const ordinati = sol.pianeti.slice().sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
+  ordinati.forEach(p => {
+    solDisegnaPiombo(ctx, p);
+    if (p.id === 'Earth') solDisegnaLuna(ctx, p);
+    solDisegnaCorpo(ctx, p);
+  });
+
+  // I nomi vengono dopo tutti i pallini, altrimenti un pianeta disegnato più
+  // tardi cancellerebbe la scritta di quello di prima. Il pianeta scelto
+  // scrive per primo e ha sempre il suo posto: è l'unico che si sta cercando.
+  if (scelto) solEtichetta(ctx, scelto.nome, scelto.schermo.px, scelto.schermo.py,
+    scelto.raggio, '#ffffff', 13, prese, true);
+  ordinati.forEach(p => {
+    if (p === scelto) return;
+    solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, p.raggio,
+      'rgba(233, 237, 247, 0.82)', 11.5, prese);
+  });
+
+  // In basso: da che altezza si sta guardando, e quanto è largo il disegno.
+  // Su una tela stretta le due scritte si tamponerebbero a metà strada:
+  // allora diventano una sola, più corta.
+  const stretta = sol.L < 560;
+  const alto = sol.elev > 70 ? 'a picco sul piano' : (sol.elev < 8 ? 'quasi dentro al piano' : `${Math.round(sol.elev)}° sopra il piano`);
+  const largo = solUaAlBordo(sol.zoom);
+  const bordo = `${solNumero(largo, largo < 2 ? 2 : 1)} UA fino al bordo`;
+  if (stretta) {
+    solTesto(ctx, `${alto} · ${bordo}${sol.distanzeVere ? '' : ' (compresse)'}`, 10, sol.H - 10, '#64748b', 10.5);
+  } else {
+    solTesto(ctx, `${alto} delle orbite`, 10, sol.H - 10, '#64748b', 11);
+    solTesto(ctx, `dal Sole al bordo ≈ ${bordo.replace(' fino al bordo', '')}` +
+      (sol.distanzeVere ? '' : ' · distanze compresse'), sol.L - 10, sol.H - 10, '#64748b', 11, 'right');
+  }
+}
+
+// --- I numeri sotto al disegno ---------------------------------------------
+
+// L'angolo Sole–Terra–pianeta: quanto lontano dal Sole lo vediamo in cielo.
+// È il numero che decide tutto — sotto i 15° è perso nella luce, a 180° è in
+// opposizione e si vede tutta la notte — e non dipende da dove sei sulla
+// Terra: è geometria del Sistema Solare, ed è per questo che sta qui.
+function solElongazione(corpo, terra) {
+  if (!corpo || !terra) return null;
+  const ax = -terra.pos.x, ay = -terra.pos.y, az = -terra.pos.z;          // verso il Sole
+  const bx = corpo.pos.x - terra.pos.x, by = corpo.pos.y - terra.pos.y, bz = corpo.pos.z - terra.pos.z;
+  const na = Math.hypot(ax, ay, az), nb = Math.hypot(bx, by, bz);
+  if (!na || !nb) return null;
+  const cos = Math.max(-1, Math.min(1, (ax * bx + ay * by + az * bz) / (na * nb)));
+  const gradi = Math.acos(cos) * SKY_R2D;
+  // A est o a ovest del Sole: la differenza fra le due longitudini viste da
+  // qui. A est vuol dire che tramonta dopo di lui, cioè che si vede la sera.
+  const lonP = Math.atan2(by, bx) * SKY_R2D;
+  const lonS = Math.atan2(ay, ax) * SKY_R2D;
+  const d = ((lonP - lonS) % 360 + 360) % 360;
+  return { gradi, est: d < 180, distanza: nb };
+}
+
+// Che cosa vuol dire, per chi stanotte esce a guardare
+function solQuandoSiVede(el, corpo) {
+  if (!el) return '';
+  const dove = el.est ? 'a ovest, dopo il tramonto' : 'a est, prima dell\'alba';
+  if (el.gradi < 15) {
+    return corpo.r < 1
+      ? 'È quasi in linea col Sole: per qualche settimana resta dentro alla sua luce.'
+      : 'È dietro al Sole, o quasi: sorge e tramonta con lui, e non si vede.';
+  }
+  if (el.gradi > 150) return 'È dalla parte opposta al Sole: sorge quando lui tramonta e resta in cielo tutta la notte.';
+  if (el.gradi < 45) return `Si stacca poco dal Sole: lo trovi basso ${dove}.`;
+  if (el.est) return 'Lo vedi la sera, già alto al buio, e tramonta nel cuore della notte.';
+  return 'Lo vedi nella seconda metà della notte: sorge a notte fonda e resta fino all\'alba.';
+}
+
+function solNumero(v, cifre) {
+  return v.toLocaleString('it-IT', { maximumFractionDigits: cifre });
+}
+
+function solRigaTabella(p, terra) {
+  const el = solElongazione(p, terra);
+  if (!el && p.id !== 'Earth') return '';
+  const scelto = sol.scelto === p.id ? ' attiva' : '';
+  if (p.id === 'Earth') {
+    return `<button type="button" class="sol-riga-pianeta sei-qui${scelto}" data-sol-pianeta="Earth">
+        <span class="sol-pallino" style="background:${p.colore}"></span>
+        <span class="sol-nome">Terra</span>
+        <span class="sol-dato">sei qui</span>
+        <span class="sol-dato">${solNumero(p.r, 3)} UA dal Sole</span>
+      </button>`;
+  }
+  const breve = el.gradi < 15 ? 'nella luce del Sole'
+    : (el.gradi > 150 ? 'tutta la notte' : (el.est ? 'la sera' : 'la mattina'));
+  return `<button type="button" class="sol-riga-pianeta${scelto}" data-sol-pianeta="${p.id}">
+      <span class="sol-pallino" style="background:${p.colore}"></span>
+      <span class="sol-nome">${p.nome}</span>
+      <span class="sol-dato">${solNumero(el.distanza, 2)} UA da noi</span>
+      <span class="sol-dato">${Math.round(el.gradi)}° dal Sole</span>
+      <span class="sol-quando-breve">${breve}</span>
+    </button>`;
+}
+
+function solSchedaHtml() {
+  if (!sol.pianeti.length) {
+    return '<p class="sol-vuoto">Senza la libreria di calcolo non si possono mettere i pianeti al loro posto. ' +
+      'Torna quando c\'è rete: da lì in poi funziona anche offline.</p>';
+  }
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  const scelto = sol.pianeti.find(p => p.id === sol.scelto) || null;
+
+  let testa = '';
+  if (scelto && scelto.id !== 'Earth') {
+    const el = solElongazione(scelto, terra);
+    const luce = el.distanza * SOL_LUCE_MIN_UA;
+    const luceTesto = luce < 60 ? `${Math.round(luce)} minuti` : `${solNumero(luce / 60, 1)} ore`;
+    testa = `<div class="sol-testa">
+        <h4 style="color:${scelto.colore}">${scelto.nome}</h4>
+        <ul class="sol-dati">
+          <li><span>Dal Sole</span><strong>${solNumero(scelto.r, 3)} UA</strong></li>
+          <li><span>Da noi</span><strong>${solNumero(el.distanza, 3)} UA</strong>
+            <em>${solNumero(el.distanza * SOL_UA_KM / 1e6, 0)} milioni di km</em></li>
+          <li><span>La sua luce ci mette</span><strong>${luceTesto}</strong></li>
+          <li><span>Angolo dal Sole in cielo</span><strong>${Math.round(el.gradi)}°</strong>
+            <em>${el.gradi < 3 || el.gradi > 177 ? 'in linea' : (el.est ? 'a est del Sole' : 'a ovest del Sole')}</em></li>
+        </ul>
+        <p class="sol-frase">${solQuandoSiVede(el, scelto)}</p>
+        <div class="sol-azioni">
+          <button type="button" class="tasto-cielo tasto-primario" onclick="solGuardaNelPlanetario()">Guardalo nel planetario</button>
+        </div>
+      </div>`;
+  } else if (scelto) {
+    testa = `<div class="sol-testa">
+        <h4 style="color:${scelto.colore}">Terra</h4>
+        <p class="sol-frase">Sei qui, sul pallino azzurro. La riga che parte da qui, quando scegli un pianeta,
+          è la direzione in cui devi guardare: è la stessa che il planetario ti mostra dentro alla cupola.</p>
+      </div>`;
+  }
+
+  const righe = sol.pianeti.map(p => solRigaTabella(p, terra)).join('');
+  return `${testa}<div class="sol-tabella">${righe}</div>`;
+}
+
+function solAggiornaScheda(forza) {
+  const box = document.getElementById('sol-scheda');
+  if (!box) return;
+  const html = solSchedaHtml();
+  const firma = `${sol.scelto}|${Math.round(sol.istante / 60000)}|${html.length}`;
+  if (!forza && firma === sol.firmaScheda) return;
+  sol.firmaScheda = firma;
+  box.innerHTML = html;
+  box.querySelectorAll('[data-sol-pianeta]').forEach(b =>
+    b.addEventListener('click', () => solScegli(b.dataset.solPianeta)));
+}
+
+function solScegli(id) {
+  sol.scelto = sol.scelto === id ? null : id;
+  solAggiornaScheda(true);
+  solDisegna();
+}
+
+// Dal disegno alla cupola: chiude la finestra e lascia il planetario puntato
+// sull'oggetto che si stava guardando da fuori
+window.solGuardaNelPlanetario = () => {
+  const id = sol.scelto;
+  chiudiSistemaSolare();
+  if (id && id !== 'Earth') skyImpostaTarget(id, { mantieni: true });
+};
+
+// --- Il tempo (lo stesso del planetario) -----------------------------------
+
+function solVelocita() {
+  const i = Math.max(0, Math.min(SOL_VELOCITA.length - 1, sol.velIndice || 0));
+  return SOL_VELOCITA[i];
+}
+
+function solAggiornaComandiTempo() {
+  const play = document.getElementById('sol-play');
+  if (play) {
+    play.textContent = sol.marcia ? '❚❚' : '▶';
+    play.classList.toggle('attiva', !!sol.marcia);
+    play.setAttribute('aria-pressed', sol.marcia ? 'true' : 'false');
+    play.title = sol.marcia ? 'Ferma il tempo' : 'Fai camminare il tempo';
+  }
+  document.querySelectorAll('#modale-sistema [data-sol-velocita]').forEach(b => {
+    const attivo = Number(b.dataset.solVelocita) === sol.velIndice;
+    b.classList.toggle('attiva', attivo);
+    b.setAttribute('aria-pressed', attivo ? 'true' : 'false');
+  });
+  const adesso = document.getElementById('sol-tempo-adesso');
+  if (adesso) adesso.disabled = Math.abs(sky.offsetTempoSec || 0) < 1;
+}
+
+function solAlternaMarcia() {
+  sol.marcia = sol.marcia ? 0 : 1;
+  solAggiornaComandiTempo();
+}
+
+// Un passo secco: i tasti dei giorni e dei mesi. Spostano il tempo del
+// planetario, non un tempo tutto suo: chiudendo la finestra il cielo è
+// rimasto dove lo si è portato.
+function solPasso(giorni) {
+  sol.marcia = 0;
+  skyImpostaOffsetTempo((sky.offsetTempoSec || 0) + giorni * 86400);
+  solAggiornaComandiTempo();
+}
+
+function solTornaAdesso() {
+  sol.marcia = 0;
+  skyImpostaOffsetTempo(0);
+  solAggiornaComandiTempo();
+}
+
+function solAggiornaLettura(quando) {
+  const el = document.getElementById('sol-quando');
+  if (!el) return;
+  const testo = quando.toLocaleString('it-IT', {
+    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+  if (el.textContent !== testo) el.textContent = testo;
+}
+
+// --- Ciclo, comandi e gesti ------------------------------------------------
+
+function solRidimensiona() {
+  if (!sol.canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  sol.L = sol.canvas.clientWidth || 320;
+  sol.H = sol.canvas.clientHeight || 320;
+  sol.canvas.width = Math.round(sol.L * dpr);
+  sol.canvas.height = Math.round(sol.H * dpr);
+  sol.ctx = sol.canvas.getContext('2d');
+  sol.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function solCiclo(ts) {
+  if (!sol.aperto) return;
+  const dt = sol.ultimoTs ? Math.min((ts - sol.ultimoTs) / 1000, 0.1) : 0;
+  sol.ultimoTs = ts;
+
+  // Il tempo che cammina: lo si sposta con `fluido`, cioè senza forzare a
+  // ogni fotogramma il ricalcolo di tutto il planetario che sta dietro. I
+  // conti veri li rifà questa vista, che ha bisogno solo di otto vettori.
+  if (sol.marcia) {
+    const avanti = (sky.offsetTempoSec || 0) + sol.marcia * solVelocita().giorni * 86400 * dt;
+    skyImpostaOffsetTempo(avanti, { fluido: true });
+    if (Math.abs(sky.offsetTempoSec) >= SKY_TEMPO_LIMITE_SEC - 1) { sol.marcia = 0; solAggiornaComandiTempo(); }
+  }
+
+  // La telecamera raggiunge il punto di vista chiesto scivolando
+  sol.elev += (sol.elevVoluta - sol.elev) * Math.min(1, dt * 3.2);
+  if (Math.abs(sol.zoomVoluto - sol.zoom) > 0.0005) {
+    sol.zoom *= Math.exp(Math.log(sol.zoomVoluto / sol.zoom) * Math.min(1, dt * 4));
+  } else sol.zoom = sol.zoomVoluto;
+
+  const quando = skyAdesso();
+  solLeggiPosizioni(quando);
+  solCalcolaOrbite(quando);
+  solDisegna();
+
+  // I numeri scritti sotto vanno più piano del disegno: rifare la tabella a
+  // sessanta fotogrammi al secondo si sente, e nessuno la legge così in fretta
+  if (ts > sol.prossimaScheda) {
+    sol.prossimaScheda = ts + 250;
+    solAggiornaLettura(quando);
+    solAggiornaScheda(false);
+    solAggiornaComandiTempo();
+  }
+
+  sol.raf = requestAnimationFrame(solCiclo);
+}
+
+function solImpostaVista(nome) {
+  const v = SOL_VISTE[nome];
+  if (v) sol.elevVoluta = v.elev;
+  solAggiornaTasti();
+}
+
+function solImpostaZoom(z, opzioni = {}) {
+  const valore = Math.max(0.35, Math.min(60, z));
+  sol.zoomVoluto = valore;
+  if (!opzioni.morbido) sol.zoom = valore;
+  solAggiornaTasti();
+}
+
+function solAggiornaTasti() {
+  const segna = (sel, prova) => document.querySelectorAll(sel).forEach(b => {
+    const attivo = prova(b);
+    b.classList.toggle('attiva', attivo);
+    b.setAttribute('aria-pressed', attivo ? 'true' : 'false');
+  });
+  segna('#modale-sistema [data-sol-vista]', b => {
+    const v = SOL_VISTE[b.dataset.solVista];
+    return v && Math.abs(sol.elevVoluta - v.elev) < 0.5;
+  });
+  segna('#modale-sistema [data-sol-distanze]', b => (b.dataset.solDistanze === 'vere') === sol.distanzeVere);
+  segna('#modale-sistema [data-sol-altezze]', b => Number(b.dataset.solAltezze) === sol.esagera);
+}
+
+// Il gesto è il comando principale di questa vista: si gira la scena col
+// dito come si girerebbe un modellino in mano. In orizzontale gira attorno
+// all'asse, in verticale alza e abbassa il punto di vista fino a entrare nel
+// piano delle orbite — che è il momento in cui si capisce.
+function solInizializzaGesti() {
+  const c = sol.canvas;
+  if (!c || c.dataset.gestiPronti === 'si') return;
+  c.dataset.gestiPronti = 'si';
+
+  const distanzaDita = () => {
+    const p = [...sol.puntatori.values()];
+    return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+  };
+
+  c.addEventListener('pointerdown', (e) => {
+    c.setPointerCapture(e.pointerId);
+    sol.puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    sol.mosso = 0;
+    sol.giu = performance.now();
+    // Le istruzioni servono finché non si è capito come si fa: al primo dito
+    // appoggiato sulla scena hanno finito il loro lavoro e se ne vanno
+    const aiuto = document.querySelector('#modale-sistema .sol-suggerimento');
+    if (aiuto) aiuto.classList.add('sol-svanito');
+    if (sol.puntatori.size === 2) sol.pizzico = { d: distanzaDita(), zoom: sol.zoom };
+    else sol.trascinamento = { x: e.clientX, y: e.clientY };
+  });
+
+  c.addEventListener('pointermove', (e) => {
+    if (!sol.puntatori.has(e.pointerId)) return;
+    sol.puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (sol.puntatori.size >= 2 && sol.pizzico) {
+      const d = distanzaDita();
+      if (sol.pizzico.d > 4) solImpostaZoom(sol.pizzico.zoom * (d / sol.pizzico.d));
+      sol.mosso += 10;
+      return;
+    }
+    if (!sol.trascinamento) return;
+    const dx = e.clientX - sol.trascinamento.x;
+    const dy = e.clientY - sol.trascinamento.y;
+    sol.trascinamento = { x: e.clientX, y: e.clientY };
+    sol.mosso += Math.abs(dx) + Math.abs(dy);
+    sol.az -= dx * 0.008;
+    sol.elevVoluta = Math.max(-89, Math.min(89, sol.elevVoluta - dy * 0.32));
+    sol.elev = Math.max(-89, Math.min(89, sol.elev - dy * 0.32));
+    solAggiornaTasti();
+  });
+
+  const fine = (e) => {
+    const era = sol.puntatori.size;
+    sol.puntatori.delete(e.pointerId);
+    if (sol.puntatori.size < 2) sol.pizzico = null;
+    if (sol.puntatori.size === 0) sol.trascinamento = null;
+    // Un tocco secco, senza trascinamento: sceglie il pianeta più vicino
+    if (era === 1 && sol.mosso < 8 && performance.now() - sol.giu < 500) solTocco(e);
+  };
+  c.addEventListener('pointerup', fine);
+  c.addEventListener('pointercancel', fine);
+  c.addEventListener('pointerleave', fine);
+
+  c.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const pixel = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);
+    const scatti = Math.max(-4, Math.min(4, pixel / 100));
+    if (scatti) solImpostaZoom(sol.zoom * Math.exp(-scatti * 0.12));
+  }, { passive: false });
+}
+
+function solTocco(e) {
+  if (!sol.canvas || !sol.pianeti.length) return;
+  const r = sol.canvas.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  let migliore = null, distanza = 26;
+  sol.pianeti.forEach(p => {
+    if (!p.schermo) return;
+    const d = Math.hypot(p.schermo.px - x, p.schermo.py - y);
+    if (d < Math.max(distanza, p.raggio + 8)) { migliore = p; distanza = d; }
+  });
+  if (migliore) solScegli(migliore.id);
+}
+
+// --- Apertura e chiusura ---------------------------------------------------
+
+window.apriSistemaSolare = () => {
+  const modale = document.getElementById('modale-sistema');
+  if (!modale) return;
+  sol.canvas = document.getElementById('sol-canvas');
+  if (!sol.canvas) return;
+
+  // Si entra guardando quello che si stava guardando: se nel planetario era
+  // scelto un pianeta, la riga dello sguardo parte già puntata su di lui
+  const bersaglio = SOL_PIANETI.some(p => p.id === sky.target) ? sky.target : null;
+  sol.scelto = bersaglio;
+  sol.marcia = 0;
+  sol.firmaScheda = '';
+  sol.prossimaScheda = 0;
+  sol.ultimoTs = 0;
+  sol.istante = 0;
+  solGeneraStelle(110);
+  solInizializzaGesti();
+  const aiuto = modale.querySelector('.sol-suggerimento');
+  if (aiuto) aiuto.classList.remove('sol-svanito');
+  solAggiornaTasti();
+  solAggiornaComandiTempo();
+
+  modale.classList.remove('hidden');
+  sol.aperto = true;
+
+  // Due tele che si ridisegnano insieme su un telefono si sentono, e il
+  // planetario dietro alla finestra non lo guarda nessuno: si mette in pausa
+  // (com'è per la lezione dell'eclittica, sezione 7.3-quater)
+  sol.skyDaRiprendere = !!sky.raf;
+  if (sky.raf) { cancelAnimationFrame(sky.raf); sky.raf = null; }
+
+  requestAnimationFrame(() => {
+    solRidimensiona();
+    const quando = skyAdesso();
+    solLeggiPosizioni(quando);
+    solCalcolaOrbite(quando);
+    solAggiornaLettura(quando);
+    solAggiornaScheda(true);
+    if (!sol.raf) sol.raf = requestAnimationFrame(solCiclo);
+  });
+};
+
+function chiudiSistemaSolare() {
+  const modale = document.getElementById('modale-sistema');
+  if (modale) modale.classList.add('hidden');
+  sol.aperto = false;
+  sol.marcia = 0;
+  if (sol.raf) cancelAnimationFrame(sol.raf);
+  sol.raf = null;
+
+  // Il tempo camminato qui dentro è quello del planetario: prima di tornarci
+  // si arrotonda al secondo e si forza il ricalcolo, che durante la marcia
+  // fluida era stato saltato apposta
+  skyImpostaOffsetTempo(Math.round(sky.offsetTempoSec || 0));
+
+  if (sol.skyDaRiprendere && sky.aperto && !sky.raf) {
+    sky.raf = requestAnimationFrame(skyCiclo);
+  }
+  sol.skyDaRiprendere = false;
+}
+
+function inizializzaSistemaSolare() {
+  const modale = document.getElementById('modale-sistema');
+  if (!modale) return;
+
+  ['btn-chiudi-sistema', 'btn-chiudi-sistema-basso'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.addEventListener('click', chiudiSistemaSolare);
+  });
+  modale.addEventListener('click', e => { if (e.target === modale) chiudiSistemaSolare(); });
+
+  modale.querySelectorAll('[data-sol-vista]').forEach(b =>
+    b.addEventListener('click', () => solImpostaVista(b.dataset.solVista)));
+
+  modale.querySelectorAll('[data-sol-quadro]').forEach(b =>
+    b.addEventListener('click', () => {
+      const interni = b.dataset.solQuadro === 'interni';
+      solImpostaZoom(solZoomPer(interni ? 1.7 : SOL_RIF_UA), { morbido: true });
+    }));
+
+  modale.querySelectorAll('[data-sol-distanze]').forEach(b =>
+    b.addEventListener('click', () => {
+      const vere = b.dataset.solDistanze === 'vere';
+      if (vere === sol.distanzeVere) return;
+      // Cambiare metro cambia quanti pixel vale un'unità astronomica: senza
+      // rifare i conti, passando alle distanze vere la scena si accartoccia
+      // dentro al Sole e non si capisce più cosa sia successo. Si tiene fermo
+      // quello che sta al bordo: l'inquadratura resta la stessa, e si vede
+      // solo la cosa che conta, cioè i pianeti che si riordinano dentro.
+      const bordo = solUaAlBordo(sol.zoomVoluto);
+      sol.distanzeVere = vere;
+      const r = solRaggio(bordo);
+      solImpostaZoom(r > 0 ? 0.5 / (0.44 * r) : 1, { morbido: true });
+      solAggiornaTasti();
+      solDisegna();
+    }));
+
+  modale.querySelectorAll('[data-sol-altezze]').forEach(b =>
+    b.addEventListener('click', () => {
+      sol.esagera = Number(b.dataset.solAltezze) || 1;
+      solAggiornaTasti();
+      solDisegna();
+    }));
+
+  const zoomIn = document.getElementById('sol-zoom-in');
+  if (zoomIn) zoomIn.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto * 1.4, { morbido: true }));
+  const zoomOut = document.getElementById('sol-zoom-out');
+  if (zoomOut) zoomOut.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto / 1.4, { morbido: true }));
+
+  modale.querySelectorAll('[data-sol-passo]').forEach(b =>
+    b.addEventListener('click', () => solPasso(Number(b.dataset.solPasso) || 0)));
+  const play = document.getElementById('sol-play');
+  if (play) play.addEventListener('click', solAlternaMarcia);
+  const adesso = document.getElementById('sol-tempo-adesso');
+  if (adesso) adesso.addEventListener('click', solTornaAdesso);
+
+  const velocita = document.getElementById('sol-velocita');
+  if (velocita && velocita.dataset.pronto !== 'si') {
+    velocita.innerHTML = SOL_VELOCITA.map((v, i) =>
+      `<button type="button" class="tasto-segmento" data-sol-velocita="${i}" ` +
+      `title="In un secondo passa ${v.nome.replace('/s', '')}">${v.nome}</button>`).join('');
+    velocita.querySelectorAll('[data-sol-velocita]').forEach(b =>
+      b.addEventListener('click', () => { sol.velIndice = Number(b.dataset.solVelocita); solAggiornaComandiTempo(); }));
+    velocita.dataset.pronto = 'si';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (!sol.aperto) return;
+    if (e.key === 'Escape') chiudiSistemaSolare();
+    else if (e.key === 'ArrowLeft') sol.az += 0.12;
+    else if (e.key === 'ArrowRight') sol.az -= 0.12;
+    else if (e.key === 'ArrowUp') { sol.elevVoluta = Math.min(89, sol.elevVoluta + 4); solAggiornaTasti(); }
+    else if (e.key === 'ArrowDown') { sol.elevVoluta = Math.max(-89, sol.elevVoluta - 4); solAggiornaTasti(); }
+    else if (e.key === ' ') { e.preventDefault(); solAlternaMarcia(); }
+  });
+
+  window.addEventListener('resize', () => { if (sol.aperto) { solRidimensiona(); solDisegna(); } });
+}
 
 // =====================================================================
 // 8. SIMULAZIONE DELL'EVENTO — "guarda cosa succede"

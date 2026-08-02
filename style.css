@@ -2145,6 +2145,7 @@ figure.ecl-schema-fig {
      quindi l'altezza è tutta sua */
   --altezza-cielo: 74vh;
   --altezza-simulazione: 46vh;
+  --altezza-sistema: 50vh;
   --altezza-mappa-eclissi: 52vh;
   --barra-inferiore: 0px;      /* spazio riservato alla navigazione in basso */
 }
@@ -2157,6 +2158,7 @@ figure.ecl-schema-fig {
     --passo: 16px;
     --altezza-cielo: 76vh;
     --altezza-simulazione: 52vh;
+    --altezza-sistema: 56vh;
     --altezza-mappa-eclissi: 60vh;
   }
 }
@@ -2169,6 +2171,7 @@ figure.ecl-schema-fig {
     --passo: 18px;
     --altezza-cielo: 82vh;
     --altezza-simulazione: 56vh;
+    --altezza-sistema: 60vh;
     --altezza-mappa-eclissi: 68vh;
   }
 }
@@ -3873,6 +3876,147 @@ body button.lez-passo-avanti {
 body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
 .lez-nota { margin: 0; font-size: 0.74rem; line-height: 1.5; color: var(--testo-3); }
 
+/* ------------------------------------ FINESTRA DEL SISTEMA SOLARE IN 3D     */
+/* La tela è il pezzo forte e si prende tutto lo spazio che può: i comandi
+   stanno sotto, su righe che vanno a capo da sole quando lo schermo è
+   stretto. Il disegno si gira col dito, quindi la tela non deve scrollare la
+   pagina sotto di sé: touch-action: none, come il cielo del planetario. */
+.sol-guscio {
+  position: relative;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  overflow: hidden;
+  background: var(--spazio);
+}
+.tela-sistema {
+  display: block;
+  width: 100%;
+  height: var(--altezza-sistema, 52vh);
+  min-height: 300px;
+  touch-action: none;
+  cursor: grab;
+}
+.tela-sistema:active { cursor: grabbing; }
+.sol-quando {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  padding: 5px 11px;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: rgba(9, 12, 22, 0.72);
+  backdrop-filter: blur(6px);
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--testo);
+  pointer-events: none;
+}
+.sol-suggerimento {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  max-width: 46%;
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--testo-3);
+  text-align: right;
+  pointer-events: none;
+  transition: opacity var(--transizione-lenta);
+}
+.sol-suggerimento.sol-svanito { opacity: 0; }
+.sol-comandi { display: grid; gap: 8px; }
+.sol-riga { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.sol-etichetta {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+/* Nei pannelli del planetario un gruppo di segmenti si prende tutta la riga
+   e si divide in parti uguali. Qui invece sulla stessa riga ce ne stanno due
+   o tre, e allora ognuno tiene la larghezza delle sue parole: se non ci
+   stanno, va a capo il gruppo intero — meglio che vedere «Pianeti inter…». */
+.sol-riga .segmenti-cielo { flex: 0 1 auto; }
+.sol-riga .tasto-segmento { flex: 0 0 auto; }
+
+/* La lettura: prima il pianeta scelto per esteso, poi la fila di tutti gli
+   altri — che è anche il modo più veloce per cambiarlo. */
+.sol-scheda { display: grid; gap: 10px; }
+.sol-testa {
+  padding: 14px 16px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: var(--superficie);
+}
+.sol-testa h4 { margin: 0 0 8px; font-size: 1.04rem; font-weight: 700; }
+.sol-dati { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
+.sol-dati li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.84rem;
+  color: var(--testo-2);
+}
+.sol-dati li span { min-width: 11rem; color: var(--testo-3); }
+.sol-dati li strong { color: var(--testo); font-variant-numeric: tabular-nums; }
+.sol-dati li em { font-style: normal; font-size: 0.78rem; color: var(--testo-3); }
+.sol-frase { margin: 10px 0 0; font-size: 0.88rem; line-height: 1.6; color: var(--testo-2); }
+.sol-azioni { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 7px; }
+
+.sol-tabella { display: grid; gap: 4px; }
+body button.sol-riga-pianeta {
+  display: grid;
+  grid-template-columns: 14px minmax(5rem, 1fr) auto auto minmax(6rem, auto);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--raggio-s);
+  background: var(--incassato);
+  color: var(--testo-2);
+  font-family: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transizione), background-color var(--transizione);
+}
+body button.sol-riga-pianeta:hover { border-color: var(--bordo-forte); }
+body button.sol-riga-pianeta.attiva { border-color: var(--blu); background: var(--blu-velo); }
+body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
+.sol-pallino { width: 11px; height: 11px; border-radius: 50%; }
+.sol-nome { font-weight: 600; color: var(--testo); }
+.sol-dato { font-variant-numeric: tabular-nums; color: var(--testo-3); }
+.sol-quando-breve { color: var(--testo-2); text-align: right; }
+.sol-nota { margin: 0; font-size: 0.74rem; line-height: 1.55; color: var(--testo-3); }
+.sol-vuoto { margin: 0; font-size: 0.85rem; color: var(--testo-2); }
+
+/* Un tasto che occupa tutta la riga del pannello: serve a quello che apre una
+   finestra intera, non a quelli che accendono e spengono una cosa sola */
+.tasto-cielo.tasto-largo-cielo { width: 100%; max-width: none; margin-top: 8px; }
+
+@media (max-width: 640px) {
+  /* Su un telefono il suggerimento ruberebbe metà cielo: scende sotto la
+     tela, dove è ancora leggibile ma non copre niente */
+  .sol-suggerimento {
+    position: static;
+    max-width: none;
+    padding: 7px 12px;
+    text-align: left;
+    border-top: 1px solid var(--bordo);
+    background: var(--incassato);
+  }
+  .sol-dati li span { min-width: 100%; }
+  body button.sol-riga-pianeta {
+    grid-template-columns: 14px 1fr auto;
+    row-gap: 2px;
+  }
+  .sol-quando-breve { grid-column: 2 / -1; text-align: left; }
+}
+
 /* ------------------------------------------- MAPPA ECLISSI SU DUE COLONNE   */
 .ecl-corpo { display: grid; gap: var(--passo); align-content: start; }
 .ecl-colonna-principale,
@@ -4128,6 +4272,8 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
     --altezza-mappa-eclissi: calc(100dvh - 160px);
     --altezza-simulazione: calc(100vh - 160px);
     --altezza-simulazione: calc(100dvh - 160px);
+    --altezza-sistema: calc(100vh - 200px);
+    --altezza-sistema: calc(100dvh - 200px);
     /* La misura è quella vera della barra, tacca del pollice compresa:
        è il numero da cui dipende quanto spazio resta al contenuto */
     --barra-inferiore: calc(48px + env(safe-area-inset-bottom));
