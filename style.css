@@ -3897,30 +3897,18 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   cursor: grab;
 }
 .tela-sistema:active { cursor: grabbing; }
-.sol-quando {
-  position: absolute;
-  top: 10px;
-  left: 12px;
-  padding: 5px 11px;
-  border: 1px solid var(--bordo);
-  border-radius: 999px;
-  background: rgba(9, 12, 22, 0.72);
-  backdrop-filter: blur(6px);
-  font-family: var(--mono);
-  font-size: 0.76rem;
-  color: var(--testo);
-  pointer-events: none;
-}
+/* La barra del tempo è quella del planetario, appoggiata in fondo alla tela
+   allo stesso modo: qui serve solo dirle quanto sono alti i suoi tasti, che
+   nel planetario glielo dice la vista. */
+.sol-barra-tempo { --tasto-tempo: 38px; }
 .sol-suggerimento {
   position: absolute;
   top: 10px;
+  left: 12px;
   right: 12px;
-  max-width: 46%;
   margin: 0;
-  font-size: 0.68rem;
-  line-height: 1.45;
+  font-size: 0.7rem;
   color: var(--testo-3);
-  text-align: right;
   pointer-events: none;
   transition: opacity var(--transizione-lenta);
 }
@@ -3999,16 +3987,7 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
 .tasto-cielo.tasto-largo-cielo { width: 100%; max-width: none; margin-top: 8px; }
 
 @media (max-width: 640px) {
-  /* Su un telefono il suggerimento ruberebbe metà cielo: scende sotto la
-     tela, dove è ancora leggibile ma non copre niente */
-  .sol-suggerimento {
-    position: static;
-    max-width: none;
-    padding: 7px 12px;
-    text-align: left;
-    border-top: 1px solid var(--bordo);
-    background: var(--incassato);
-  }
+  .sol-barra-tempo { --tasto-tempo: 34px; gap: 5px; }
   .sol-dati li span { min-width: 100%; }
   body button.sol-riga-pianeta {
     grid-template-columns: 14px 1fr auto;

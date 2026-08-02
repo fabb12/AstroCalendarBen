@@ -1108,8 +1108,24 @@
       <div class="corpo-modale spazio-verticale">
         <div class="sol-guscio">
           <canvas id="sol-canvas" class="block w-full tela-sistema"></canvas>
-          <div id="sol-quando" class="sol-quando">—</div>
-          <p class="sol-suggerimento">Trascina per girarci attorno · pizzica o usa la rotella per avvicinarti · tocca un pianeta per sceglierlo</p>
+          <p class="sol-suggerimento">Trascina per girare · pizzica per avvicinarti · tocca un pianeta</p>
+
+          <!-- La stessa barra del tempo del planetario, stessi tasti e stesso
+               ordine: ⟲ per tornare ad adesso, l'istante, un passo indietro,
+               la slitta, un passo avanti, il play. -->
+          <div id="sol-tempo" class="barra-tempo sol-barra-tempo" role="group" aria-label="Il tempo">
+            <button id="sol-tempo-adesso" type="button" class="tasto-barra-tempo tasto-adesso"
+              title="Torna ad adesso" aria-label="Torna ad adesso">⟲</button>
+            <span id="sol-quando" class="lettura-barra-tempo">—</span>
+            <button id="sol-passo-meno" type="button" class="tasto-barra-tempo"
+              title="Indietro di un passo" aria-label="Indietro di un passo">−</button>
+            <input id="sol-slitta" type="range" min="-100" max="100" step="1" value="0"
+              class="slitta-tempo" aria-label="Scorri il tempo" title="Trascina per scorrere il tempo">
+            <button id="sol-passo-piu" type="button" class="tasto-barra-tempo"
+              title="Avanti di un passo" aria-label="Avanti di un passo">+</button>
+            <button id="sol-play" type="button" class="tasto-barra-tempo tasto-play-barra"
+              aria-pressed="false" title="Fai camminare il tempo" aria-label="Avvia">▶</button>
+          </div>
         </div>
 
         <div class="sol-comandi">
@@ -1136,30 +1152,26 @@
             </div>
             <span class="sol-etichetta">Fuori dal piano</span>
             <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-altezze="1" title="L'altezza vera sopra e sotto il piano dell'eclittica: pochi gradi, quasi invisibili">Vero</button>
-              <button type="button" class="tasto-segmento" data-sol-altezze="10" title="Altezza ingrandita dieci volte: le inclinazioni delle orbite diventano visibili">×10</button>
+              <button type="button" class="tasto-segmento" data-sol-altezze="1" title="L'altezza vera sopra e sotto il piano dell'eclittica: pochi gradi">Vero</button>
+              <button type="button" class="tasto-segmento" data-sol-altezze="10" title="Altezza ingrandita dieci volte: le inclinazioni si vedono">×10</button>
             </div>
           </div>
 
-          <div class="sol-riga" role="group" aria-label="Il tempo">
-            <span class="sol-etichetta">Tempo</span>
-            <button id="sol-tempo-adesso" type="button" class="tasto-cielo tasto-passo" title="Torna a questo momento">⟲ Adesso</button>
-            <button type="button" class="tasto-cielo tasto-passo" data-sol-passo="-30" title="Indietro di un mese">−1 mese</button>
-            <button type="button" class="tasto-cielo tasto-passo" data-sol-passo="-1" title="Indietro di un giorno">−1 g</button>
-            <button id="sol-play" type="button" class="tasto-cielo tasto-passo" aria-pressed="false" title="Fai camminare il tempo">▶</button>
-            <button type="button" class="tasto-cielo tasto-passo" data-sol-passo="1" title="Avanti di un giorno">+1 g</button>
-            <button type="button" class="tasto-cielo tasto-passo" data-sol-passo="30" title="Avanti di un mese">+1 mese</button>
-            <div id="sol-velocita" class="segmenti-cielo" role="group" aria-label="Velocità del tempo"></div>
+          <div class="sol-riga" role="group" aria-label="Come sono disegnati i pianeti">
+            <span class="sol-etichetta">Pianeti</span>
+            <div class="segmenti-cielo">
+              <button type="button" class="tasto-segmento" data-sol-misure="grandi" title="Pallini tutti leggibili, comodi da toccare col dito">Ingranditi</button>
+              <button type="button" class="tasto-segmento" data-sol-misure="vere" title="In scala fra loro: Giove è ventinove volte Mercurio, e si vede">In scala</button>
+            </div>
+            <span class="sol-etichetta">Passo del tempo</span>
+            <div id="sol-passi" class="segmenti-cielo" role="group" aria-label="Passo del tempo"></div>
           </div>
         </div>
 
         <div id="sol-scheda" class="sol-scheda"></div>
 
-        <p class="sol-nota">L'istante è lo stesso del planetario: spostando il tempo qui, il cielo là si sposta con te.
-          Le posizioni dei pianeti sono quelle vere, calcolate per questo momento; le orbite si disegnano seguendole
-          davvero per un giro intero. Il disegno è ortogonale — niente prospettiva, come nei disegni tecnici — e la
-          Luna è messa a distanza esagerata dalla Terra: la sua direzione è vera, la distanza no, o starebbe dentro
-          al pallino.</p>
+        <p class="sol-nota">Stesso istante del planetario: se lo sposti qui, si sposta anche là.
+          La Luna è disegnata più lontana dalla Terra di quanto sia, o starebbe dentro al pallino.</p>
 
         <div class="barra-chiudi">
           <button id="btn-chiudi-sistema-basso" type="button" class="tasto-chiudi-largo">Chiudi la scheda</button>
