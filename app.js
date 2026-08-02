@@ -14528,18 +14528,29 @@ const SOL_RIF_UA = 30.07;           // Nettuno: il metro con cui si normalizza t
 
 // I pianeti, col loro colore del planetario (chi arriva qui riconosce le
 // stesse tinte che vede sulla mappa) e il raggio con cui si disegnano: non è
-// in scala — a scala vera la Terra sarebbe un centesimo di pixel — ma
-// l'ordine di grandezza fra i giganti e i sassi si legge.
+// in scala — a scala vera, con Nettuno al bordo, la Terra sarebbe un
+// centesimo di pixel — ma l'ordine di grandezza fra i giganti e i sassi si
+// legge. Sono pallini generosi apposta: su un telefono un pianeta va toccato
+// col dito, e un dito copre una decina di pixel.
 const SOL_PIANETI = [
-  { id: 'Mercury', nome: 'Mercurio', colore: '#cbd5e1', raggio: 3.0, ua: 0.387, anni: 0.241 },
-  { id: 'Venus',   nome: 'Venere',   colore: '#fde68a', raggio: 4.4, ua: 0.723, anni: 0.615 },
-  { id: 'Earth',   nome: 'Terra',    colore: '#60a5fa', raggio: 4.6, ua: 1.000, anni: 1.000 },
-  { id: 'Mars',    nome: 'Marte',    colore: '#f87171', raggio: 3.6, ua: 1.524, anni: 1.881 },
-  { id: 'Jupiter', nome: 'Giove',    colore: '#fbbf24', raggio: 8.4, ua: 5.203, anni: 11.86 },
-  { id: 'Saturn',  nome: 'Saturno',  colore: '#fcd34d', raggio: 7.2, ua: 9.537, anni: 29.45 },
-  { id: 'Uranus',  nome: 'Urano',    colore: '#67e8f9', raggio: 5.4, ua: 19.19, anni: 84.01 },
-  { id: 'Neptune', nome: 'Nettuno',  colore: '#93c5fd', raggio: 5.2, ua: 30.07, anni: 164.8 }
+  { id: 'Mercury', nome: 'Mercurio', colore: '#cbd5e1', raggio: 5.0,  ua: 0.387, anni: 0.241 },
+  { id: 'Venus',   nome: 'Venere',   colore: '#fde68a', raggio: 7.2,  ua: 0.723, anni: 0.615 },
+  { id: 'Earth',   nome: 'Terra',    colore: '#60a5fa', raggio: 7.6,  ua: 1.000, anni: 1.000 },
+  { id: 'Mars',    nome: 'Marte',    colore: '#f87171', raggio: 6.0,  ua: 1.524, anni: 1.881 },
+  { id: 'Jupiter', nome: 'Giove',    colore: '#fbbf24', raggio: 13.5, ua: 5.203, anni: 11.86 },
+  { id: 'Saturn',  nome: 'Saturno',  colore: '#fcd34d', raggio: 11.5, ua: 9.537, anni: 29.45 },
+  { id: 'Uranus',  nome: 'Urano',    colore: '#67e8f9', raggio: 8.6,  ua: 19.19, anni: 84.01 },
+  { id: 'Neptune', nome: 'Nettuno',  colore: '#93c5fd', raggio: 8.3,  ua: 30.07, anni: 164.8 }
 ];
+
+// Il raggio del Sole e quello del pallino della Luna, in pixel
+const SOL_RAGGIO_SOLE = 17;
+const SOL_RAGGIO_LUNA = 3.4;
+
+// Quanto ci mettono la telecamera e lo zoom ad arrivare dove sono stati
+// mandati: sono tempi di dimezzamento, in secondi
+const SOL_TAU_VISTA = 0.28;
+const SOL_TAU_ZOOM = 0.22;
 
 // I tre punti di vista preimpostati. `elev` è l'altezza della telecamera sul
 // piano dell'eclittica: 90° è a picco sul Sole, 0° è dentro al piano.
@@ -14748,11 +14759,16 @@ function solEtichetta(ctx, testo, px, py, raggio, colore, misura, prese, obbliga
   ctx.font = `${misura}px ${SOL_CARATTERE}`;
   const largo = ctx.measureText(testo).width;
   const alto = misura + 2;
+  // Sei posti: i quattro angoli, poi sopra e sotto in colonna. Gli ultimi due
+  // servono ai pianeti interni, che con le distanze compresse si stringono in
+  // un pugno attorno al Sole e agli angoli non ci stanno più.
   const posti = [
     { x: px + raggio + 4, y: py - raggio - 2 },
     { x: px + raggio + 4, y: py + raggio + alto },
     { x: px - raggio - 4 - largo, y: py - raggio - 2 },
-    { x: px - raggio - 4 - largo, y: py + raggio + alto }
+    { x: px - raggio - 4 - largo, y: py + raggio + alto },
+    { x: px - largo / 2, y: py - raggio - 5 },
+    { x: px - largo / 2, y: py + raggio + alto + 3 }
   ];
   // Libero vuol dire due cose: che nessun altro nome è già lì, e che sta
   // dentro alla tela — un nome tagliato a metà dal bordo è peggio che assente
@@ -14821,9 +14837,9 @@ function solDisegnaOrbita(ctx, traccia) {
   ctx.restore();
 }
 
-function solDisegnaSole(ctx, prese) {
+function solDisegnaSole(ctx) {
   const p = solProietta({ x: 0, y: 0, z: 0 });
-  const raggio = 11;
+  const raggio = SOL_RAGGIO_SOLE;
   const g = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, raggio * 6);
   g.addColorStop(0, 'rgba(253, 224, 71, 0.55)');
   g.addColorStop(0.35, 'rgba(251, 146, 60, 0.18)');
@@ -14836,7 +14852,6 @@ function solDisegnaSole(ctx, prese) {
   ctx.beginPath();
   ctx.arc(p.px, p.py, raggio, 0, Math.PI * 2);
   ctx.fill();
-  solEtichetta(ctx, 'Sole', p.px, p.py, raggio, '#fde68a', 12, prese, true);
 }
 
 // Il filo a piombo: dal pianeta giù fino al piano dell'eclittica, con il suo
@@ -14894,7 +14909,9 @@ function solDisegnaCorpo(ctx, corpo) {
 // La Luna attorno alla Terra, a distanza esagerata (vedi solLeggiPosizioni)
 function solDisegnaLuna(ctx, terra) {
   if (!sol.luna || !terra) return;
-  const passo = 15 / sol.scala;
+  // Abbastanza staccata dalla Terra da non finirle dentro, adesso che i
+  // pallini sono più grossi
+  const passo = 23 / sol.scala;
   const p = solProietta({
     x: terra.scena.x + sol.luna.x * passo,
     y: terra.scena.y + sol.luna.y * passo,
@@ -14909,7 +14926,7 @@ function solDisegnaLuna(ctx, terra) {
   ctx.stroke();
   ctx.fillStyle = '#e2e8f0';
   ctx.beginPath();
-  ctx.arc(p.px, p.py, 2.4, 0, Math.PI * 2);
+  ctx.arc(p.px, p.py, SOL_RAGGIO_LUNA, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
@@ -14966,11 +14983,19 @@ function solDisegna() {
 
   solDisegnaPiano(ctx);
   sol.orbite.tracce.forEach(t => solDisegnaOrbita(ctx, t));
-  // I posti già occupati dalle scritte: il Sole se li prende per primo,
-  // poi ogni pianeta cerca il suo (vedi solEtichetta)
-  const prese = [];
-  solDisegnaSole(ctx, prese);
+  solDisegnaSole(ctx);
   solDisegnaSguardo(ctx, terra, scelto);
+
+  // Il terreno che le scritte non possono occupare. Prima di tutto i corpi
+  // stessi: «Venere» scritto in bianco sopra al disco del Sole non si legge, e
+  // sopra a un pianeta glielo cancella. Poi, mano a mano, i nomi già messi
+  // (vedi solEtichetta).
+  const sole = solProietta({ x: 0, y: 0, z: 0 });
+  const prese = [{ x: sole.px - SOL_RAGGIO_SOLE, y: sole.py - SOL_RAGGIO_SOLE,
+    w: SOL_RAGGIO_SOLE * 2, h: SOL_RAGGIO_SOLE * 2 }];
+  sol.pianeti.forEach(p => prese.push({
+    x: p.schermo.px - p.raggio, y: p.schermo.py - p.raggio, w: p.raggio * 2, h: p.raggio * 2
+  }));
 
   // Dietro prima, davanti poi: è tutto quello che serve perché una scena
   // ortogonale sembri profonda
@@ -14986,6 +15011,7 @@ function solDisegna() {
   // scrive per primo e ha sempre il suo posto: è l'unico che si sta cercando.
   if (scelto) solEtichetta(ctx, scelto.nome, scelto.schermo.px, scelto.schermo.py,
     scelto.raggio, '#ffffff', 13, prese, true);
+  solEtichetta(ctx, 'Sole', sole.px, sole.py, SOL_RAGGIO_SOLE, '#fde68a', 12, prese, true);
   ordinati.forEach(p => {
     if (p === scelto) return;
     solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, p.raggio,
@@ -15218,10 +15244,15 @@ function solCiclo(ts) {
     if (Math.abs(sky.offsetTempoSec) >= SKY_TEMPO_LIMITE_SEC - 1) { sol.marcia = 0; solAggiornaComandiTempo(); }
   }
 
-  // La telecamera raggiunge il punto di vista chiesto scivolando
-  sol.elev += (sol.elevVoluta - sol.elev) * Math.min(1, dt * 3.2);
+  // La telecamera raggiunge il punto di vista chiesto scivolando. Smorzamento
+  // esponenziale col `dt` del fotogramma, come i movimenti del planetario
+  // (sezione 7.4-ter): a 30 o a 120 fotogrammi al secondo il viaggio dura
+  // uguale. Lo zoom si interpola in geometrica — raddoppiare e dimezzare
+  // devono costare lo stesso.
+  const versoVista = 1 - Math.exp(-dt / SOL_TAU_VISTA);
+  sol.elev += (sol.elevVoluta - sol.elev) * versoVista;
   if (Math.abs(sol.zoomVoluto - sol.zoom) > 0.0005) {
-    sol.zoom *= Math.exp(Math.log(sol.zoomVoluto / sol.zoom) * Math.min(1, dt * 4));
+    sol.zoom *= Math.pow(sol.zoomVoluto / sol.zoom, 1 - Math.exp(-dt / SOL_TAU_ZOOM));
   } else sol.zoom = sol.zoomVoluto;
 
   const quando = skyAdesso();
@@ -15282,6 +15313,28 @@ function solInizializzaGesti() {
     return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
   };
 
+  // Ogni volta che il numero di dita cambia, i due riferimenti del gesto —
+  // da dove sta scorrendo il trascinamento e quanto erano lontane le dita
+  // quando è cominciato il pizzico — ripartono da adesso.
+  //
+  // Senza questo c'era il salto: si pizzicava per avvicinarsi, si staccava un
+  // dito, e il primo millimetro percorso dal dito rimasto veniva misurato dal
+  // punto in cui quel dito si era appoggiato *prima* del pizzico. Due dita
+  // allargate di sei centimetri diventavano una ventina di gradi di rotazione
+  // in un fotogramma solo: la scena scattava di lato, e sembrava che fossero
+  // i pianeti a essersi spostati. Lo stesso capitava col terzo dito
+  // appoggiato per sbaglio col palmo.
+  const riancora = () => {
+    const dita = [...sol.puntatori.values()];
+    sol.trascinamento = dita.length === 1 ? { x: dita[0].x, y: dita[0].y } : null;
+    if (dita.length < 2) { sol.pizzico = null; return; }
+    // Con le dita sopra, lo zoom morbido si ferma: da qui in poi comanda il
+    // pizzico, e deve partire esattamente da quello che si sta vedendo — non
+    // dal campo verso cui la vista stava ancora scivolando
+    sol.zoomVoluto = sol.zoom;
+    sol.pizzico = { d: distanzaDita(), zoom: sol.zoom };
+  };
+
   c.addEventListener('pointerdown', (e) => {
     c.setPointerCapture(e.pointerId);
     sol.puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -15291,8 +15344,7 @@ function solInizializzaGesti() {
     // appoggiato sulla scena hanno finito il loro lavoro e se ne vanno
     const aiuto = document.querySelector('#modale-sistema .sol-suggerimento');
     if (aiuto) aiuto.classList.add('sol-svanito');
-    if (sol.puntatori.size === 2) sol.pizzico = { d: distanzaDita(), zoom: sol.zoom };
-    else sol.trascinamento = { x: e.clientX, y: e.clientY };
+    riancora();
   });
 
   c.addEventListener('pointermove', (e) => {
@@ -15318,9 +15370,10 @@ function solInizializzaGesti() {
 
   const fine = (e) => {
     const era = sol.puntatori.size;
-    sol.puntatori.delete(e.pointerId);
-    if (sol.puntatori.size < 2) sol.pizzico = null;
-    if (sol.puntatori.size === 0) sol.trascinamento = null;
+    if (!sol.puntatori.delete(e.pointerId)) return;
+    // Il dito che resta ricomincia da dove si trova adesso, e la rotazione
+    // continua da lì senza doverlo staccare e riappoggiare
+    riancora();
     // Un tocco secco, senza trascinamento: sceglie il pianeta più vicino
     if (era === 1 && sol.mosso < 8 && performance.now() - sol.giu < 500) solTocco(e);
   };
@@ -15328,11 +15381,15 @@ function solInizializzaGesti() {
   c.addEventListener('pointercancel', fine);
   c.addEventListener('pointerleave', fine);
 
+  // La rotella non salta: chiede un campo e ci si scivola dentro, com'è nel
+  // planetario (sezione 7.4-ter). Il conto parte da dove la vista *sta
+  // andando*, non da dov'è arrivata: così due scatti di rotella di fila si
+  // sommano, invece che il secondo rimangiarsi il viaggio del primo.
   c.addEventListener('wheel', (e) => {
     e.preventDefault();
     const pixel = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);
     const scatti = Math.max(-4, Math.min(4, pixel / 100));
-    if (scatti) solImpostaZoom(sol.zoom * Math.exp(-scatti * 0.12));
+    if (scatti) solImpostaZoom(sol.zoomVoluto * Math.exp(-scatti * 0.12), { morbido: true });
   }, { passive: false });
 }
 
@@ -15340,11 +15397,14 @@ function solTocco(e) {
   if (!sol.canvas || !sol.pianeti.length) return;
   const r = sol.canvas.getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
-  let migliore = null, distanza = 26;
+  // Ogni pianeta ha la sua area sensibile — almeno un polpastrello, di più se
+  // il pallino è grosso — ma a vincere è sempre il più vicino al dito: la
+  // soglia dice *se* si può prendere, non *chi* si prende.
+  let migliore = null, miglioreD = Infinity;
   sol.pianeti.forEach(p => {
     if (!p.schermo) return;
     const d = Math.hypot(p.schermo.px - x, p.schermo.py - y);
-    if (d < Math.max(distanza, p.raggio + 8)) { migliore = p; distanza = d; }
+    if (d <= Math.max(22, p.raggio + 10) && d < miglioreD) { migliore = p; miglioreD = d; }
   });
   if (migliore) solScegli(migliore.id);
 }
