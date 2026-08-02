@@ -6031,13 +6031,20 @@ const sky = {
   offsetBussola: 0,      // correzione manuale della bussola, in gradi
   calibrazione: false,   // il trascinamento sta ritoccando la bussola
   salvaBussola: null,    // timer per salvare la calibrazione a fine trascinamento
-  fov: 55,               // campo visivo verticale, in gradi
+  fov: 55,               // campo visivo verticale, in gradi (quello disegnato adesso)
+  fovVoluto: 55,         // dove lo zoom sta andando: ci arriva scivolando (vedi 7.4-ter)
   manuale: { az: 180, alt: 25 },
   puntatori: new Map(),  // dita appoggiate sul canvas (per trascinamento e pizzico)
   pizzico: null,
+  // Trascinamento e sua inerzia: quanto correva il dito quando ha lasciato il
+  // cielo, e la vista che continua da sola e si spegne (vedi 7.4-ter)
+  trascinamento: null,
+  inerzia: null,
+  ultimoFotogramma: 0,   // performance.now() del fotogramma precedente, per il dt
   target: null,          // id dell'astro da cercare
   oggetti: [],           // posizioni calcolate (az/alt) degli astri
   prossimoCalcolo: 0,
+  prossimoAggiornoUI: 0, // i numeri attorno alla mappa vanno più piano del cielo
   cacheOrari: { chiave: null, valore: null },
   stelleDefinite: false,
   wakeLock: null,
@@ -6356,9 +6363,18 @@ const SKY_FOV_MAX = 110;
 // sessione, e solo a chi sta puntando col telefono.
 let skyDettoDelTremolio = false;
 
-function skyImpostaFov(gradi) {
-  sky.fov = Math.max(SKY_FOV_MIN, Math.min(SKY_FOV_MAX, gradi));
-  if (!skyDettoDelTremolio && sky.fov <= 6 && skyUsaSensori()) {
+// Il campo si può cambiare in due modi. Di netto — ed è quello che serve
+// quando a comandare sono le dita (il pizzico) o l'obiettivo della
+// fotocamera: lì un ritardo, per quanto piccolo, si vedrebbe come un cielo
+// che scivola sotto le dita invece di stare attaccato. Oppure `morbido`, e
+// allora questo dice solo dove si vuole arrivare: al campo ci si scivola
+// dentro un fotogramma per volta (vedi `skyMuoviZoom`, sezione 7.4-ter). È il
+// modo dei tasti + e −, della rotellina e del "campo normale", dove il salto
+// secco fa perdere il filo di cosa si stava guardando.
+function skyImpostaFov(gradi, opzioni = {}) {
+  sky.fovVoluto = Math.max(SKY_FOV_MIN, Math.min(SKY_FOV_MAX, gradi));
+  if (!opzioni.morbido) sky.fov = sky.fovVoluto;
+  if (!skyDettoDelTremolio && sky.fovVoluto <= 6 && skyUsaSensori()) {
     skyDettoDelTremolio = true;
     skyAvviso('ingrandimento', 'A questo ingrandimento il tremolio della mano si vede tutto: ' +
       'spegni “Segui il telefono” e muovi la mappa col dito, oppure scegli l’astro e accendi “Insegui”.', 12000);
@@ -6453,7 +6469,11 @@ function skySincronizzaCampoFotocamera() {
   const campo = skyCampoFotocamera();
   if (!campo || !isFinite(campo)) return;
   sky.cameraCampo = campo;
+  // Qui il campo non è una preferenza ma una misura: si prende com'è, e si
+  // spegne anche l'eventuale zoom morbido ancora in viaggio, che altrimenti
+  // continuerebbe a tirare il cielo via dall'inquadratura
   sky.fov = campo;
+  sky.fovVoluto = campo;
 }
 
 function skyImpostaTaraturaCamera(gradiLatoLungo) {
@@ -7483,16 +7503,41 @@ function skyDefinisciStelle() {
   sky.stelleDefinite = true;
 }
 
+// Ogni quanto rifare i conti delle posizioni quando l'orologio cammina da
+// solo. Una volta al secondo è stata a lungo la risposta giusta: il cielo
+// ruota di quindici secondi d'arco al secondo, e a campo largo sono due
+// centesimi di pixel — nessuno può vederli. Ma il planetario adesso arriva a
+// un quarto di grado di campo, e lì quello stesso scatto vale un pixel
+// abbondante: le stelle smettono di scorrere e cominciano a saltellare una
+// volta al secondo, e con l'inseguimento acceso a saltellare è tutto il
+// cielo attorno all'astro tenuto fermo.
+//
+// L'intervallo si adatta quindi a quanto si è ingranditi: si sceglie il
+// tempo che il cielo impiega a spostarsi di mezzo pixel. A campo largo viene
+// un tempo lunghissimo e si resta al secondo tondo; stringendo scende da
+// solo fino a dieci volte al secondo, che è già il passo del playback e non
+// ha mai dato problemi. Sotto non si va: le figure delle costellazioni e la
+// Via Lattea sono centinaia di conversioni di coordinate, e rifarle a ogni
+// fotogramma pianta tutto.
+const SKY_ROTAZIONE_GRADI_SEC = 360 / 86164;   // quanto ruota il cielo in un secondo
+const SKY_CALCOLO_MIN_MS = 100;
+const SKY_CALCOLO_MAX_MS = 1000;
+// I numeri scritti attorno alla mappa, invece, restano a due volte al secondo
+// qualunque cosa faccia il cielo: nessuno legge un'altezza che cambia dieci
+// volte al secondo, e riscriverla costa più che disegnare
+const SKY_UI_INTERVALLO = 500;
+
+function skyIntervalloCalcolo() {
+  const gradiPerPixel = sky.fov / Math.max(1, sky.altezza || 340);
+  const secondi = (gradiPerPixel * 0.5) / SKY_ROTAZIONE_GRADI_SEC;
+  return Math.max(SKY_CALCOLO_MIN_MS, Math.min(SKY_CALCOLO_MAX_MS, secondi * 1000));
+}
+
 // Ricalcola azimut e altezza di tutti gli astri (al massimo una volta al secondo)
 function skyAggiornaOggetti(forza) {
   const adesso = Date.now();
   if (!forza && adesso < sky.prossimoCalcolo) return;
-  // Di norma una volta al secondo basta: gli astri si spostano di un grado
-  // ogni quattro minuti. Con il playback acceso, invece, il cielo deve
-  // scorrere e non scattare — ma nemmeno rifare i conti a ogni fotogramma:
-  // le figure delle costellazioni e la Via Lattea sono centinaia di
-  // conversioni di coordinate, e a sessanta volte al secondo si pianta tutto.
-  sky.prossimoCalcolo = adesso + (sky.playbackVerso ? SKY_PLAYBACK_INTERVALLO : 1000);
+  sky.prossimoCalcolo = adesso + (sky.playbackVerso ? SKY_PLAYBACK_INTERVALLO : skyIntervalloCalcolo());
 
   if (typeof Astronomy === 'undefined' || !sky.observer) {
     sky.oggetti = [];
@@ -7545,11 +7590,23 @@ function skyAggiornaOggetti(forza) {
   skyAssettoDiSaturno(lista, t);
   sky.oggetti = lista;
   skyAggiornaCatalogo(quando);
-  skyAggiornaEtichette();
-  skyAggiornaTestoTempo();
-  // Cosa succede nel cielo di quest'ora: l'elenco segue l'orologio
-  skyAggiornaEventi();
-  skyChiediEventiDelMese();
+
+  // Quello che sta INTORNO alla mappa — le altezze scritte nei chip, la
+  // scheda dell'oggetto, l'elenco di cosa succede — non ha bisogno di
+  // seguire il cielo scatto per scatto: sono numeri che un occhio umano
+  // legge, non un'immagine che scorre. Ricalcolarli dieci volte al secondo
+  // (a forte ingrandimento, o col playback lanciato) vuol dire rifare dieci
+  // volte al secondo una scansione di tutto il calendario e riscrivere pezzi
+  // di pagina — ed è esattamente il lavoro che ruba i millisecondi al
+  // disegno, cioè la fluidità che si stava cercando di guadagnare.
+  if (forza || adesso >= sky.prossimoAggiornoUI) {
+    sky.prossimoAggiornoUI = adesso + SKY_UI_INTERVALLO;
+    skyAggiornaEtichette();
+    skyAggiornaTestoTempo();
+    // Cosa succede nel cielo di quest'ora: l'elenco segue l'orologio
+    skyAggiornaEventi();
+    skyChiediEventiDelMese();
+  }
 
   // Chi arriva da un'altra scheda ("Trova Marte nel cielo") chiede di
   // centrare un astro le cui coordinate, in quel momento, non c'erano ancora
@@ -12731,6 +12788,147 @@ function skyOggettoNelPunto(px, py) {
   return scelto ? scelto.sel : null;
 }
 
+// =====================================================================
+// 7.4-ter MOVIMENTI MORBIDI
+//   Il cielo vero non fa scatti. Un planetario che invece li fa — il campo
+//   che salta di colpo a ogni tocco dello zoom, la vista che si pianta di
+//   netto appena il dito lascia lo schermo — non sembra un cielo, sembra un
+//   grafico che si aggiorna. E c'è di più di un vezzo: guardando un cielo
+//   che si sposta a scatti si perde ogni volta il filo di dove si era, e si
+//   deve ricominciare a cercare l'astro da capo.
+//
+//   Qui stanno le tre cose che rendono continuo quello che prima era a
+//   gradini: l'inerzia del trascinamento (la vista continua a scorrere e si
+//   ferma da sé), lo zoom che ci scivola dentro invece di saltarci, e il dt
+//   del fotogramma, che tiene tutto questo uguale a venti come a centoventi
+//   fotogrammi al secondo.
+//
+//   Tutti smorzamenti sono esponenziali con costante di tempo: `tau` è il
+//   tempo in cui resta un terzo di quello che c'era. È la stessa forma del
+//   filtro anti-tremolio della bussola (sezione 7), ed è l'unica che si
+//   comporta uguale a qualunque cadenza di fotogrammi.
+// =====================================================================
+
+// Quanto tempo è passato dal fotogramma precedente, in secondi. Tosato a un
+// decimo: dopo un fotogramma perso, o tornando da un'altra scheda, un dt
+// enorme farebbe fare all'inerzia un balzo di mezzo cielo.
+function skyDeltaFotogramma() {
+  const ora = performance.now();
+  const prec = sky.ultimoFotogramma || ora;
+  sky.ultimoFotogramma = ora;
+  return Math.min(0.1, Math.max(0, (ora - prec) / 1000));
+}
+
+// --- Lo zoom che ci scivola dentro ---
+// Il campo si stringe e si allarga per rapporti, non per differenze: da 40°
+// a 20° è lo stesso gesto che da 2° a 1°. Per questo l'avvicinamento si fa
+// sul logaritmo del campo — così il cielo cresce a velocità costante — e non
+// sul campo stesso, che partirebbe a razzo per poi strisciare all'arrivo.
+const SKY_TAU_ZOOM = 0.13;      // secondi: sotto sembra uno scatto, sopra una melassa
+
+function skyMuoviZoom(dt) {
+  const voluto = sky.fovVoluto;
+  if (!voluto || !dt) return;
+  if (!(sky.fov > 0)) { sky.fov = voluto; return; }
+  const scarto = Math.log(voluto / sky.fov);
+  // Arrivati a un millesimo si posa esattamente sul valore voluto: se no il
+  // campo resterebbe per sempre a inseguirlo per cifre invisibili
+  if (Math.abs(scarto) < 0.001) { sky.fov = voluto; return; }
+  sky.fov = sky.fov * Math.exp(scarto * (1 - Math.exp(-dt / SKY_TAU_ZOOM)));
+}
+
+// --- L'inerzia del trascinamento ---
+// Chi spinge il cielo con il dito si aspetta che continui: è il gesto che fa
+// ogni mappa e ogni elenco da quindici anni a questa parte. Senza, per
+// attraversare il cielo bisogna trascinare cinque volte di fila, e ogni volta
+// la vista si inchioda a metà strada.
+//
+// La velocità non si prende dall'ultimo spostamento — un solo evento di
+// puntatore è rumore puro, e basta un dito che si ferma un istante prima di
+// staccarsi per lanciare il cielo dalla parte sbagliata — ma da una media
+// pronta degli ultimi centesimi di secondo.
+const SKY_TAU_LANCIO = 0.06;    // memoria della media che misura quanto corre il dito
+const SKY_TAU_INERZIA = 0.45;   // in quanto tempo la corsa si spegne
+const SKY_LANCIO_SCADUTO = 90;  // ms: dito fermo più di così, nessun lancio
+const SKY_INERZIA_MAX_SCHERMI = 4;   // schermate al secondo: oltre è un cielo impazzito
+const SKY_INERZIA_MINIMA = 0.02;     // schermate al secondo: sotto, si è fermo
+
+// Quanto corre la vista, in schermate al secondo. In gradi non si potrebbe
+// dire: dieci gradi al secondo sono un lento panoramico a campo largo e un
+// cielo che scappa via a un quarto di grado di campo. E i gradi di azimut
+// vanno prima riportati a gradi di cielo, che in alto valgono meno.
+function skySchermateAlSecondo(vAz, vAlt) {
+  const stretta = Math.max(0.25, Math.cos(sky.manuale.alt * SKY_D2R));
+  return Math.hypot(vAz * stretta, vAlt) / Math.max(0.0001, sky.fov);
+}
+
+// Un pixel di dito quanti gradi di azimut vale. Vicino allo zenit molti di
+// più: un grado di azimut, lassù, è un pezzetto di cielo grande quanto il suo
+// coseno. Senza compensare, più si guarda in alto più il cielo si incolla e
+// il dito gli scivola sopra — proprio dove si guarda quando un astro è al
+// culmine. Il fattore si tosa a quattro: agli ultimi gradi diventerebbe
+// infinito e basterebbe un tremito per far girare la volta su se stessa.
+function skyGradiAzPerPixel() {
+  const gradiPerPixel = sky.fov / Math.max(1, sky.altezza);
+  const compensa = Math.min(4, 1 / Math.max(0.25, Math.cos(sky.manuale.alt * SKY_D2R)));
+  return gradiPerPixel * compensa;
+}
+
+// Il dito ha spostato la vista: si tiene nota di quanto sta correndo, per
+// poterla lasciare andare quando si stacca.
+function skyRicordaTrascinamento(dAz, dAlt) {
+  const ora = performance.now();
+  const prec = sky.trascinamento;
+  const dt = prec ? Math.max(0.004, Math.min(0.1, (ora - prec.quando) / 1000)) : 0;
+  if (!dt) {
+    sky.trascinamento = { vAz: 0, vAlt: 0, quando: ora };
+    return;
+  }
+  const k = 1 - Math.exp(-dt / SKY_TAU_LANCIO);
+  sky.trascinamento = {
+    vAz: prec.vAz + (dAz / dt - prec.vAz) * k,
+    vAlt: prec.vAlt + (dAlt / dt - prec.vAlt) * k,
+    quando: ora
+  };
+}
+
+// Il dito si stacca: se stava ancora correndo, la vista prosegue da sola.
+function skyLanciaVista() {
+  const t = sky.trascinamento;
+  sky.trascinamento = null;
+  if (!t || sky.inseguimento || skyUsaSensori()) return;
+  if (performance.now() - t.quando > SKY_LANCIO_SCADUTO) return;   // dito fermo prima di staccarsi
+
+  const vSchermi = skySchermateAlSecondo(t.vAz, t.vAlt);
+  if (vSchermi < SKY_INERZIA_MINIMA) return;
+  const freno = vSchermi > SKY_INERZIA_MAX_SCHERMI ? SKY_INERZIA_MAX_SCHERMI / vSchermi : 1;
+  sky.inerzia = { vAz: t.vAz * freno, vAlt: t.vAlt * freno };
+}
+
+// Un passo dell'inerzia, a ogni fotogramma
+function skyScorriPerInerzia(dt) {
+  const i = sky.inerzia;
+  if (!i) return;
+  if (!dt || skyUsaSensori() || sky.inseguimento || sky.animazioneVista) { sky.inerzia = null; return; }
+
+  sky.manuale.az = ((sky.manuale.az + i.vAz * dt) % 360 + 360) % 360;
+  sky.manuale.alt = Math.max(-89, Math.min(89, sky.manuale.alt + i.vAlt * dt));
+
+  const smorza = Math.exp(-dt / SKY_TAU_INERZIA);
+  i.vAz *= smorza;
+  i.vAlt *= smorza;
+
+  // Sotto il cinquantesimo di schermata al secondo il movimento non si vede
+  // più: meglio posarsi che restare a strisciare per sempre
+  if (skySchermateAlSecondo(i.vAz, i.vAlt) < SKY_INERZIA_MINIMA) sky.inerzia = null;
+}
+
+// Chi tocca comanda: qualunque movimento in corso si ferma qui
+function skyFermaMovimenti() {
+  sky.inerzia = null;
+  sky.animazioneVista = null;
+}
+
 // Porta al centro della mappa l'oggetto scelto, con uno spostamento morbido
 // (uno scatto secco fa perdere l'orientamento). Con i sensori accesi la
 // mappa la punta il telefono: lì si può solo dire da che parte girarsi.
@@ -12748,6 +12946,7 @@ function skyCentraSu(o, opzioni = {}) {
 
   const az = ((o.az % 360) + 360) % 360;
   const alt = Math.max(-85, Math.min(85, o.alt));
+  sky.inerzia = null;      // una corsa in corso porterebbe via dal bersaglio
   if (opzioni.subito) {
     sky.animazioneVista = null;
     sky.manuale.az = az;
@@ -12756,10 +12955,17 @@ function skyCentraSu(o, opzioni = {}) {
   }
   // Si gira dalla parte più corta: da 350° a 10° sono venti gradi, non 340
   const giro = ((az - sky.manuale.az + 540) % 360) - 180;
+  const dAlt = alt - sky.manuale.alt;
+  // Quanto cielo c'è davvero da attraversare (l'azimut conta meno in alto,
+  // dove i meridiani si stringono): un ritocco di dieci gradi e un mezzo giro
+  // della volta non possono durare uguale. Sotto il terzo di secondo il
+  // movimento non si legge, sopra il secondo si aspetta.
+  const distanza = Math.hypot(giro * Math.max(0.25, Math.cos((sky.manuale.alt + alt) / 2 * SKY_D2R)), dAlt);
   sky.animazioneVista = {
     az0: sky.manuale.az, alt0: sky.manuale.alt,
-    dAz: giro, dAlt: alt - sky.manuale.alt,
-    inizio: performance.now(), durata: 450
+    dAz: giro, dAlt,
+    inizio: performance.now(),
+    durata: Math.max(320, Math.min(1100, 260 + distanza * 6))
   };
 }
 
@@ -12812,7 +13018,7 @@ function skyAlternaInseguimento() {
     return;
   }
 
-  sky.animazioneVista = null;
+  skyFermaMovimenti();
   skyCentraSu(o, { subito: true });
   skyAvviso('inseguimento', `${o.nome} resta al centro della mappa: la vista lo segue da sola. ` +
     'Trascinando il cielo col dito l\'inseguimento si spegne.', 7000);
@@ -12825,7 +13031,7 @@ function skyInsegui() {
   if (skyUsaSensori()) return;      // la vista la punta il telefono
   const o = skyOggettoScelto();
   if (!o || typeof o.az !== 'number') return;
-  sky.animazioneVista = null;
+  skyFermaMovimenti();
   sky.manuale.az = ((o.az % 360) + 360) % 360;
   sky.manuale.alt = Math.max(-89, Math.min(89, o.alt));
 }
@@ -12862,8 +13068,12 @@ function skyMuoviVista() {
   const a = sky.animazioneVista;
   if (!a) return;
   const k = Math.min(1, (performance.now() - a.inizio) / a.durata);
-  // Partenza e arrivo rallentati, il tratto in mezzo veloce
-  const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+  // Partenza e arrivo rallentati, il tratto in mezzo veloce. La curva è
+  // quella "liscia due volte": parte e arriva non solo con velocità nulla ma
+  // anche senza strappo. Con la parabola di prima l'accelerazione compariva
+  // di colpo al primo fotogramma, e a forte ingrandimento quel piccolo
+  // strattone iniziale si vedeva tutto.
+  const e = k * k * k * (k * (6 * k - 15) + 10);
   sky.manuale.az = ((a.az0 + a.dAz * e) % 360 + 360) % 360;
   sky.manuale.alt = a.alt0 + a.dAlt * e;
   if (k >= 1) sky.animazioneVista = null;
@@ -12884,7 +13094,7 @@ function skyAlternaSeguiTelefono() {
     skyAggiornaTastoCalibrazione();
   }
   sky.seguiTelefono = nuovo;
-  sky.animazioneVista = null;
+  skyFermaMovimenti();
   // Riattaccando la vista al telefono l'inseguimento non ha più niente da
   // guidare: meglio spegnerlo che lasciare acceso un tasto che non fa nulla
   if (nuovo && sky.sensori) skySpegniInseguimento();
@@ -12928,6 +13138,15 @@ window.cercaSatelliteNelCielo = (satId) => {
   satPrecaricaTle();
 };
 
+// =====================================================================
+// 7.4-quater AVVIO, CICLO E GESTI DELLA VISTA
+//   Da qui la vista prende vita: i permessi e la posizione all'avvio, il
+//   ciclo di disegno che gira solo finché il planetario è a schermo, e le
+//   dita — trascinamento, pizzico, tocco secco sull'oggetto. Chi cerca il
+//   comportamento dei movimenti (inerzia, zoom morbido) lo trova invece
+//   nella sezione 7.4-ter: qui ci sono solo i gesti che lo mettono in moto.
+// =====================================================================
+
 // Avvio: permessi, posizione e sensori (parte da un gesto dell'utente).
 // Il permesso dei sensori va chiesto subito, prima di qualsiasi attesa,
 // altrimenti iOS non lo collega più al tocco e lo rifiuta.
@@ -12970,9 +13189,14 @@ async function skyAvvia(conSensori) {
 // Ciclo di disegno: gira solo quando il planetario è a schermo
 function skyCiclo() {
   if (!sky.aperto) return;
+  // Quanto è durato il fotogramma precedente: lo chiedono lo zoom morbido e
+  // l'inerzia, che devono comportarsi uguale a qualunque cadenza (vedi 7.4-ter)
+  const dt = skyDeltaFotogramma();
   skyAvanzaPlayback();
   skyAggiornaOggetti(false);
   skyMuoviSatelliti();
+  skyMuoviZoom(dt);
+  skyScorriPerInerzia(dt);
   skyMuoviVista();
   // L'inseguimento parla per ultimo: qualunque cosa abbiano deciso il
   // playback o lo spostamento morbido, l'oggetto scelto torna al centro
@@ -12992,6 +13216,12 @@ function apriSkymap() {
   skyAggiornaStato();
   skyAggiornaOggetti(true);
   skyTieniSchermoAcceso();
+  // Il primo fotogramma non eredita né il tempo né la corsa di quando la
+  // vista è stata chiusa: il cielo riparte fermo, da dove lo si era lasciato
+  sky.ultimoFotogramma = 0;
+  sky.inerzia = null;
+  sky.trascinamento = null;
+  sky.fovVoluto = sky.fov;
   sky.raf = requestAnimationFrame(skyCiclo);
 }
 
@@ -13032,11 +13262,14 @@ function skyRilasciaSchermo() {
   }
 }
 
-function skyZoom(fattore) {
+function skyZoom(fattore, opzioni = {}) {
   // Sopra l'immagine della fotocamera ingrandire il cielo da solo lo
   // scollerebbe dal mondo: lì lo stesso gesto tara l'obiettivo.
   if (skyCampoDaObiettivo()) { skyTaraCampoFotocamera((sky.cameraCampo || sky.fov) * fattore); return; }
-  skyImpostaFov(sky.fov * fattore);
+  // Il fattore si applica a dove lo zoom sta andando, non a dov'è arrivato:
+  // due tocchi di fila sul + devono valere due passi interi, anche se il
+  // primo non ha ancora finito di scivolare
+  skyImpostaFov((opzioni.morbido ? sky.fovVoluto || sky.fov : sky.fov) * fattore, opzioni);
 }
 
 // Trascinamento: in manuale ci si guarda intorno, con i sensori si calibra la
@@ -13054,12 +13287,19 @@ function skyInizializzaGesti() {
   c.addEventListener('pointerdown', (e) => {
     c.setPointerCapture(e.pointerId);
     sky.puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (sky.puntatori.size === 2) sky.pizzico = { distanza: distanzaPuntatori(), fov: sky.fov };
+    // Il pizzico parte dal campo che si ha davanti adesso, e ferma sul posto
+    // lo zoom morbido ancora in viaggio: da qui in poi comandano le dita
+    if (sky.puntatori.size === 2) {
+      sky.fovVoluto = sky.fov;
+      sky.pizzico = { distanza: distanzaPuntatori(), fov: sky.fov };
+    }
     // Il doppio clic si accetta solo dal mouse: sul touch il doppio tocco è
     // già preso dallo zoom del sistema, e rubarglielo confonde le dita
     sky.ultimoPuntatore = e.pointerType || 'mouse';
-    // Chi tocca comanda: lo spostamento morbido verso un oggetto si ferma qui
-    sky.animazioneVista = null;
+    // Chi tocca comanda: lo spostamento morbido verso un oggetto e la corsa
+    // per inerzia si fermano qui, sotto il dito
+    skyFermaMovimenti();
+    sky.trascinamento = null;
     // Da qui si capirà se è stato un tocco (per aprire la scheda) o un
     // trascinamento (per guardarsi intorno)
     sky.tocco = { id: e.pointerId, x: e.clientX, y: e.clientY, quando: performance.now(), mosso: false };
@@ -13090,6 +13330,7 @@ function skyInizializzaGesti() {
 
     const gradiPerPixel = sky.fov / Math.max(1, sky.altezza);
     if (skyUsaSensori()) {
+      sky.trascinamento = null;   // qui il dito non muove il cielo: niente da lanciare
       // Con i sensori attivi il cielo lo punta il telefono, non il dito: qui
       // il trascinamento può solo correggere la bussola, e solo se la
       // correzione è stata chiesta apposta. Prima bastava sfiorare il cielo —
@@ -13103,8 +13344,17 @@ function skyInizializzaGesti() {
       if (sky.inseguimento && (dx || dy)) {
         skySpegniInseguimento('Inseguimento spento: stai muovendo la mappa col dito.');
       }
-      sky.manuale.az = ((sky.manuale.az - dx * gradiPerPixel) % 360 + 360) % 360;
-      sky.manuale.alt = Math.max(-89, Math.min(89, sky.manuale.alt + dy * gradiPerPixel));
+      // In azimut un pixel non vale sempre lo stesso: verso lo zenit vale di
+      // più (vedi skyGradiAzPerPixel). Così il pezzo di cielo preso sotto al
+      // dito ci resta anche guardando in alto, invece di scivolare via.
+      const dAz = -dx * skyGradiAzPerPixel();
+      const dAlt = dy * gradiPerPixel;
+      sky.manuale.az = ((sky.manuale.az + dAz) % 360 + 360) % 360;
+      const altPrima = sky.manuale.alt;
+      sky.manuale.alt = Math.max(-89, Math.min(89, sky.manuale.alt + dAlt));
+      // Contro il fermo dei ±89° la corsa non deve accumularsi, se no
+      // staccando il dito la vista partirebbe di lato senza motivo
+      skyRicordaTrascinamento(dAz, sky.manuale.alt - altPrima);
     }
   });
 
@@ -13130,13 +13380,20 @@ function skyInizializzaGesti() {
     skyApriDettaglio(sel);
   };
 
-  const finePuntatore = (e) => {
+  // Il dito se ne va. Se era l'ultimo rimasto e stava ancora spingendo il
+  // cielo, la vista prosegue da sola e si spegne (vedi 7.4-ter); se ne resta
+  // un altro appoggiato — la fine di un pizzico — il trascinamento riparte
+  // da lì, e la corsa di prima non c'entra più nulla.
+  const finePuntatore = (e, lancia) => {
     sky.puntatori.delete(e.pointerId);
     if (sky.puntatori.size < 2) sky.pizzico = null;
+    if (sky.puntatori.size > 0) { sky.trascinamento = null; return; }
+    if (lancia) skyLanciaVista();
+    else sky.trascinamento = null;
   };
-  c.addEventListener('pointerup', (e) => { forseTocco(e); finePuntatore(e); });
+  c.addEventListener('pointerup', (e) => { forseTocco(e); finePuntatore(e, true); });
   c.addEventListener('pointercancel', (e) => { sky.tocco = null; finePuntatore(e); });
-  c.addEventListener('pointerleave', finePuntatore);
+  c.addEventListener('pointerleave', (e) => finePuntatore(e));
 
   // Doppio clic: entra e esce dallo schermo intero. Solo col mouse — sul
   // touch il doppio tocco resta libero per lo zoom e la navigazione.
@@ -13146,9 +13403,20 @@ function skyInizializzaGesti() {
     skyAlternaSchermoIntero();
   });
 
+  // La rotellina. Prima ogni evento valeva uno scatto tondo del 10%, in un
+  // verso o nell'altro: sul mouse andava bene, sul trackpad no — lì gli
+  // eventi arrivano a decine al secondo con spostamenti di pochi pixel, e il
+  // cielo partiva a razzo al primo sfioramento. Adesso conta quanto è girata
+  // davvero: uno scatto di mouse (deltaY 100) vale ancora il 10%, un
+  // millimetro di dito sul trackpad vale la sua frazione. Il campo poi ci
+  // scivola dentro invece di saltarci (vedi 7.4-ter).
   c.addEventListener('wheel', (e) => {
     e.preventDefault();
-    skyZoom(e.deltaY > 0 ? 1.1 : 1 / 1.1);
+    // deltaMode dice in che unità è deltaY: pixel, righe o schermate
+    const pixel = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);
+    const scatti = Math.max(-4, Math.min(4, pixel / 100));
+    if (!scatti) return;
+    skyZoom(Math.exp(scatti * 0.0953), { morbido: true });   // e^0.0953 = 1.1
   }, { passive: false });
 }
 
@@ -13208,8 +13476,8 @@ function inizializzaSkymap() {
   // Un tocco vale il 40% del campo: da 55° si arriva sulla Luna ingrandita in
   // una dozzina di tocchi, invece che in venticinque. La rotellina e il
   // pizzico restano più fini, che lì la precisione è del polso.
-  collega('skymap-zoom-in', () => skyZoom(1 / 1.4));
-  collega('skymap-zoom-out', () => skyZoom(1.4));
+  collega('skymap-zoom-in', () => skyZoom(1 / 1.4, { morbido: true }));
+  collega('skymap-zoom-out', () => skyZoom(1.4, { morbido: true }));
   collega('skymap-btn-campo', () => {
     // Con la fotocamera accesa "campo normale" vuol dire togliere la taratura
     // fatta a mano e tornare all'obiettivo tipico
@@ -13220,7 +13488,10 @@ function inizializzaSkymap() {
       skyAvviso('camera-taratura', 'Taratura della fotocamera azzerata.', 3000);
       return;
     }
-    sky.fov = 55;
+    // Tornare al campo normale da un quarto di grado è un balzo di duecento
+    // volte: fatto di colpo si perde ogni riferimento, fatto scivolando si
+    // vede il cielo allargarsi e si capisce da dove si stava venendo
+    skyImpostaFov(55, { morbido: true });
   });
   collega('skymap-btn-centra', () => {
     const voce = skyOggettoScelto();
@@ -18502,7 +18773,15 @@ function skyImpostaOffsetTempo(secondi, opzioni = {}) {
   }
   skyAggiornaSlittaTempo();
   skyAggiornaTestoTempo();
-  if (!opzioni.fluido) skyAggiornaOggetti(true);
+  // Dalla slitta, mentre il pollice scorre, arrivano decine di valori al
+  // secondo: rifare qui i conti a ognuno vuol dire farli anche tre volte per
+  // fotogramma, e il cielo va a scatti proprio mentre lo si sta scorrendo. Con
+  // il planetario aperto basta segnare che il conto è scaduto (`prossimoCalcolo`
+  // è già a zero): il ciclo di disegno lo rifà una volta sola, al fotogramma
+  // dopo, con l'ultimo valore arrivato. Fuori dal ciclo — vista chiusa — il
+  // conto va invece fatto subito, perché non c'è nessuno che lo farà.
+  const aspettaIlFotogramma = opzioni.daSlitta && sky.aperto && sky.raf;
+  if (!opzioni.fluido && !aspettaIlFotogramma) skyAggiornaOggetti(true);
 }
 
 // Quanto tempo copre la slitta, da un estremo all'altro
@@ -18695,7 +18974,7 @@ async function skyAttivaFotocamera() {
     // quello che c'era prima, e il filtro riparte con lo smorzamento della
     // mappa disegnata.
     sky.cameraCampo = 0;
-    if (sky.fovPrimaCamera !== null) { sky.fov = sky.fovPrimaCamera; sky.fovPrimaCamera = null; }
+    if (sky.fovPrimaCamera !== null) { skyImpostaFov(sky.fovPrimaCamera, { morbido: true }); sky.fovPrimaCamera = null; }
     sky.baseFiltrata = null;
     skyAvviso('camera', '');
     skyAvviso('camera-taratura', '');
@@ -18715,7 +18994,8 @@ async function skyAttivaFotocamera() {
     video.classList.remove('hidden');
     await video.play().catch(() => {});
     // Il campo scelto a mano si mette da parte: da adesso lo detta l'obiettivo
-    if (sky.fovPrimaCamera === null) sky.fovPrimaCamera = sky.fov;
+    // (quello a cui si stava andando, se uno zoom morbido è ancora in viaggio)
+    if (sky.fovPrimaCamera === null) sky.fovPrimaCamera = sky.fovVoluto || sky.fov;
     // Il filtro anti-tremolio cambia regime (in AR smorza molto meno):
     // ripartire da zero evita mezzo secondo di scivolata all'accensione.
     sky.baseFiltrata = null;
