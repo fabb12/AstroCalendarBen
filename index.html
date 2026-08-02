@@ -565,6 +565,22 @@
           <button id="skymap-btn-schermo-mappa" type="button" class="tasto-schermo-cielo" aria-pressed="false"
             title="Il cielo a tutto schermo, con i comandi in sovrimpressione"
             aria-label="Cielo a schermo intero">⛶</button>
+          <!-- L'inseguimento sta qui, fra lo schermo intero e la registrazione,
+               perché è un comando del guardare, non una preferenza: si accende
+               dopo aver scelto l'astro, spesso col playback che già corre, e
+               dentro al pannello Navigazione voleva dire perdere di vista
+               proprio la cosa che si stava inseguendo. Il bersaglio è la
+               stessa figura del mirino disegnato sulla mappa. -->
+          <button id="skymap-btn-insegui-mappa" type="button" class="tasto-insegui-cielo" aria-pressed="false"
+            title="Tieni al centro l'oggetto scelto: la vista lo segue da sola"
+            aria-label="Insegui l'oggetto scelto">
+            <svg class="icona-disegnata" width="22" height="22" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="8.4"/>
+              <circle cx="12" cy="12" r="5"/>
+              <circle cx="12" cy="12" r="1.8"/>
+            </svg>
+          </button>
           <div class="riga-registra-cielo">
             <!-- Compare solo mentre si registra: quanto manca alla fine -->
             <span id="skymap-reg-tempo" class="tempo-reg" aria-live="polite"></span>

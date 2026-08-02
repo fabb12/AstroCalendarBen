@@ -12843,6 +12843,18 @@ function skySpegniInseguimento(motivo) {
 
 function skyAggiornaTastoInsegui() {
   skyTasto('skymap-btn-insegui', sky.inseguimento, sky.inseguimento ? 'Insegue' : 'Insegui');
+  // Il gemello sulla mappa: stessa cosa, senza parole. Il testo qui non c'è
+  // (è un bersaglio disegnato), quindi lo stato lo dicono il colore e il
+  // suggerimento — che deve cambiare, o resterebbe a promettere di accendere
+  // qualcosa che è già acceso.
+  skyTasto('skymap-btn-insegui-mappa', sky.inseguimento);
+  const mappa = document.getElementById('skymap-btn-insegui-mappa');
+  if (mappa) {
+    mappa.title = sky.inseguimento
+      ? 'Smetti di inseguire: la vista torna libera'
+      : 'Tieni al centro l\'oggetto scelto: la vista lo segue da sola';
+    mappa.setAttribute('aria-label', sky.inseguimento ? 'Smetti di inseguire' : 'Insegui l\'oggetto scelto');
+  }
 }
 
 // Un passo dello spostamento morbido, chiamato a ogni fotogramma
@@ -13216,6 +13228,7 @@ function inizializzaSkymap() {
     else skyAvviso('centratura', 'Prima scegli un oggetto: dall\'elenco qui sotto, o toccandolo sulla mappa.', 7000);
   });
   collega('skymap-btn-insegui', skyAlternaInseguimento);
+  collega('skymap-btn-insegui-mappa', skyAlternaInseguimento);
   skyAggiornaTastoInsegui();
   document.querySelectorAll('#cielo-comandi [data-verso]').forEach(b => {
     b.addEventListener('click', () => {

@@ -3526,6 +3526,28 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
 .tasto-schermo-cielo:hover { background: rgba(28, 36, 60, 0.92); color: #fff; }
 .tasto-schermo-cielo.attiva { background: var(--blu); border-color: transparent; color: #fff; }
 
+/* L'inseguimento: stessa pelle degli altri comandi della mappa. Acceso
+   diventa blu, perché è uno stato che dura — la vista continua a muoversi da
+   sola finché non lo si spegne, e chi lo dimentica acceso non capisce più
+   perché il cielo non sta fermo. */
+.tasto-insegui-cielo {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  color: var(--testo);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transizione), color var(--transizione);
+}
+.tasto-insegui-cielo:hover { background: rgba(28, 36, 60, 0.92); color: #fff; }
+.tasto-insegui-cielo.attiva { background: var(--blu); border-color: transparent; color: #fff; }
+.tasto-insegui-cielo .icona-disegnata { display: block; }
+
 /* Il tasto della registrazione: stessa taglia e stessa pelle dei tasti dello
    zoom, perché è della stessa famiglia — comandi della mappa, non di un
    pannello. Dentro c'è solo un tondo rosso, che tutti sanno già cosa vuol
@@ -4159,14 +4181,15 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   .vista-cielo { --tasto-tempo: 34px; --alta-barra-tempo: calc(var(--tasto-tempo) + 10px); }
   .barra-tempo { padding: 4px 6px; }
 
-  /* La colonna dei comandi sul bordo destro — schermo intero, registrazione,
-     zoom — girata sale fin sotto alle letture. Due mosse: i tasti si
-     stringono, e la lettura di stato si ferma prima invece di passarci
-     sotto. Sono numeri da leggere: se finiscono dietro a un tasto tondo non
-     si leggono più, e il tasto non si vede. */
-  .comandi-mappa-cielo { gap: 6px; }
-  .tasto-schermo-cielo, .tasto-zoom-cielo, .tasto-registra-cielo { width: 42px; height: 42px; }
-  .cielo-letture { padding-right: 56px; }
+  /* I comandi della mappa — schermo intero, inseguimento, registrazione,
+     zoom — in colonna sarebbero cinque tasti su una mappa alta trecento
+     pixel: arriverebbero fin sotto alle linguette dei gruppi. Girati, però,
+     di larghezza ce n'è da vendere: la colonna si sdraia in una riga sopra
+     alla barra del tempo, dove non copre niente (la scheda dell'oggetto sta
+     sul lato opposto) e resta comunque a portata di pollice. */
+  .comandi-mappa-cielo { flex-direction: row; align-items: center; gap: 6px; }
+  .tasto-schermo-cielo, .tasto-insegui-cielo,
+  .tasto-zoom-cielo, .tasto-registra-cielo { width: 42px; height: 42px; }
 
   /* La schermata di benvenuto del cielo sta dentro al riquadro della mappa, e
      girato quel riquadro è alto un terzo: centrata finiva sotto alle linguette
