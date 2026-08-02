@@ -971,6 +971,21 @@ const ECL_FASCE = [
   { soglia: 0.75,   etichetta: 'quasi tutto coperto' }
 ];
 
+// Le soglie del terminatore, cioè della linea che separa il giorno dalla
+// notte. Non è una riga sola: fra il tramonto e il buio vero passa quasi
+// un'ora, e sulla carta quel passaggio si legge molto meglio come fascia
+// sfumata che come un taglio netto.
+//   −0,833° è il Sole con il bordo superiore appoggiato all'orizzonte:
+//   un quarto di grado di raggio apparente più mezzo grado abbondante di
+//   rifrazione. È il tramonto vero, quello che si vede dalla spiaggia.
+// Un'eclissi si può guardare solo dalla parte illuminata, quindi questo velo
+// dice a colpo d'occhio dove non ha senso nemmeno provare.
+const ECL_NOTTE_SOGLIE = [
+  { alt: -0.833, nome: 'Sole tramontato' },
+  { alt: -6,     nome: 'crepuscolo civile finito' },
+  { alt: -18,    nome: 'notte astronomica' }
+];
+
 // --- Le due tavolozze della mappa dell'eclissi ------------------------
 //
 // La mappa dell'ombra nasceva scura come tutto il resto dell'app: le tessere
@@ -1009,7 +1024,11 @@ const ECL_TAVOLOZZE = {
     aloneAnulare: '#f59e0b',
     mirino: '#1f2937',
     citta: { bordo: 'rgba(15, 23, 42, 0.6)', bordoAttivo: '#0f172a' },
-    osservatore: { bordo: '#0f172a', dentro: '#059669' }
+    osservatore: { bordo: '#0f172a', dentro: '#059669' },
+    // Il velo della notte: tre strati dello stesso blu di fondo, uno sopra
+    // l'altro. Sono tenui apposta — sotto ci sono coste e confini, e la
+    // domanda della mappa resta geografica anche al buio.
+    notte: { colore: '#0f172a', veli: [0.13, 0.10, 0.09], linea: '#1e293b' }
   },
   scura: {
     fasce: [
@@ -1029,7 +1048,12 @@ const ECL_TAVOLOZZE = {
     aloneAnulare: '#fbbf24',
     mirino: '#fff8e7',
     citta: { bordo: 'rgba(255, 255, 255, 0.55)', bordoAttivo: '#ffffff' },
-    osservatore: { bordo: '#ffffff', dentro: '#34d399' }
+    osservatore: { bordo: '#ffffff', dentro: '#34d399' },
+    // Sul fondo scuro le tessere sono già in negativo: il velo deve pesare
+    // meno, o la metà in ombra diventa una macchia nera in cui le coste
+    // spariscono. Lì a raccontare il confine è soprattutto la linea, che
+    // infatti si schiarisce.
+    notte: { colore: '#000308', veli: [0.12, 0.09, 0.08], linea: '#bfdbfe' }
   }
 };
 
@@ -1928,6 +1952,20 @@ function _eclQuantoManca(data) {
 function _eclCreaDinamici() {
   if (_eclDinamici) return;
   const tav = _eclTav();
+
+  // La notte è un fondale, non un velo da stendere sopra: sta in un riquadro
+  // suo, fra le tessere e i tracciati dell'eclissi, che devono restare
+  // leggibili qualunque cosa venga disegnata dopo.
+  const veli = ECL_NOTTE_SOGLIE.map((s, i) => L.polygon([], {
+    stroke: false, fillColor: tav.notte.colore, fillOpacity: tav.notte.veli[i],
+    interactive: false, smoothFactor: 1.5, pane: 'ecl-notte', className: 'ecl-velo-notte'
+  }).addTo(_mappaEclissi));
+
+  const linea = L.polyline([], {
+    color: tav.notte.linea, weight: 1.2, opacity: 0.8,
+    interactive: false, smoothFactor: 1.5, pane: 'ecl-notte'
+  }).addTo(_mappaEclissi);
+
   const fasce = ECL_FASCE.map((f, i) => L.polygon([], {
     color: tav.fasce[i].bordo, weight: 1,
     fillColor: tav.fasce[i].colore, fillOpacity: tav.fasce[i].opacita,
@@ -1950,7 +1988,7 @@ function _eclCreaDinamici() {
     weight: 1, interactive: false
   }).addTo(_mappaEclissi);
 
-  _eclDinamici = { fasce, alone, umbra, mirino };
+  _eclDinamici = { fasce, alone, umbra, mirino, notte: { veli, linea } };
 }
 
 function _eclSvuotaDinamici() {
@@ -1959,7 +1997,156 @@ function _eclSvuotaDinamici() {
   _eclDinamici.alone.setLatLngs([]);
   _eclDinamici.umbra.setLatLngs([]);
   _eclDinamici.mirino.setStyle({ opacity: 0, fillOpacity: 0 });
+  _eclSvuotaNotte();
 }
+
+// --- Il terminatore: dov'è giorno e dov'è notte in questo istante -------
+//
+// La penombra di un'eclissi è larga migliaia di chilometri e spesso arriva a
+// lambire il bordo del mondo illuminato: là il Sole è intaccato, ma è già
+// tramontato, e la mappa da sola non lo diceva. Chi guardava la macchia
+// azzurra allungarsi sull'Atlantico non aveva modo di sapere che metà di
+// quella macchia cadeva su un oceano in cui era notte.
+//
+// Da qui in poi la carta lo dice: un velo scuro sulla metà di Terra in ombra,
+// con il suo bordo — il terminatore — disegnato sopra.
+
+// La regione in cui il Sole sta più in basso di una certa altezza è una
+// calotta: quella centrata sul punto antisolare, con raggio 90° + altezza.
+// La si descrive meridiano per meridiano, perché su una carta di Mercatore è
+// così che si disegna senza cuciture — per ogni longitudine, da che latitudine
+// a che latitudine è buio.
+//
+// Il conto è la formula di sempre,
+//     sin(alt) = sin(lat)·sin(δ) + cos(lat)·cos(δ)·cos(H),
+// risolta però rispetto alla latitudine invece che rispetto all'altezza. Il
+// membro di destra è R·cos(lat − ψ), con R = |(sin δ, cos δ·cos H)| e
+// ψ = atan2(sin δ, cos δ·cos H): le due latitudini cercate sono ψ ± acos(sin alt / R),
+// e fra loro sta il tratto buio. Nessuna bisezione, due arcotangenti a meridiano.
+//
+// Attenzione all'errore facile: non si può chiudere la fascia sul polo dando
+// per scontato che il polo sia al buio. Al polo il Sole sta esattamente alla
+// declinazione del giorno, quindi a marzo — con δ vicina a zero — il polo non
+// è né in notte astronomica né in crepuscolo: la calotta non lo tocca e la
+// fascia si chiude su sé stessa come una lente. Prendendo l'intervallo vero,
+// tutti e due i casi vengono da soli.
+function _eclFasciaDellaNotte(d, altGradi, nPunti) {
+  const r = Math.hypot(d.s[0], d.s[1], d.s[2]) || 1;
+  const ar = Math.atan2(d.s[1], d.s[0]) / ECL_RAD;              // ascensione retta, gradi
+  const dec = Math.asin(Math.max(-1, Math.min(1, d.s[2] / r))); // declinazione, radianti
+  const senoDec = Math.sin(dec), cosDec = Math.cos(dec);
+  const senoAlt = Math.sin(altGradi * ECL_RAD);
+  const bassa = [], alta = [], veroBassa = [], veroAlta = [];
+  for (let i = 0; i <= nPunti; i++) {
+    // Si gira tutto il mondo, ma restando nella copia di mappa dell'eclissi:
+    // il velo deve combaciare con l'ombra, non finire un giro più in là.
+    const lon = _eclRifLon - 180 + (360 * i) / nPunti;
+    const angOrario = (lon + d.gast - ar) * ECL_RAD;
+    const b = cosDec * Math.cos(angOrario);
+    const raggio = Math.hypot(senoDec, b);
+    const psi = raggio > 1e-12 ? Math.atan2(senoDec, b) / ECL_RAD : 180;
+    // La latitudine in cui, su questo meridiano, il Sole tocca il fondo della
+    // sua corsa: è lì che la fascia si stringe fino a sparire.
+    let piuBuia = psi + 180;
+    if (piuBuia > 180) piuBuia -= 360;
+    piuBuia = Math.max(-ECL_LAT_POLO, Math.min(ECL_LAT_POLO, piuBuia));
+    let da = piuBuia, a = piuBuia, veroDa = false, veroA = false;
+    if (raggio > Math.abs(senoAlt)) {
+      const scarto = Math.acos(Math.max(-1, Math.min(1, senoAlt / raggio))) / ECL_RAD;
+      // L'arco buio va da ψ+scarto a ψ+360−scarto. È lungo meno di mezzo giro
+      // (lo scarto supera sempre i 90°, perché l'altezza cercata è negativa),
+      // quindi una sola delle sue copie può cadere sulla carta.
+      for (const giro of [-1, 0, 1]) {
+        const x = psi + scarto + giro * 360, y = psi + 360 - scarto + giro * 360;
+        if (y <= -ECL_LAT_POLO || x >= ECL_LAT_POLO) continue;
+        da = Math.max(-ECL_LAT_POLO, x);
+        a = Math.min(ECL_LAT_POLO, y);
+        // Un capo tosato dal bordo della carta non è il terminatore: è il
+        // polo. Va nel poligono, ma non nella linea.
+        veroDa = x > -ECL_LAT_POLO;
+        veroA = y < ECL_LAT_POLO;
+        break;
+      }
+    }
+    bassa.push([da, lon]); veroBassa.push(veroDa);
+    alta.push([a, lon]); veroAlta.push(veroA);
+  }
+  return { bassa, alta, veroBassa, veroAlta };
+}
+
+// La carta ripete il mondo a destra e a sinistra: il velo va ricopiato nelle
+// due copie vicine, o trascinando la mappa la notte finirebbe di colpo.
+// Ogni copia è un poligono a sé — anelli annidati sarebbero buchi.
+function _eclAnelliNotte(fascia) {
+  const anello = fascia.bassa.concat(fascia.alta.slice().reverse());
+  return [-1, 0, 1].map(giro => [anello.map(p => [p[0], p[1] + giro * 360])]);
+}
+
+// Il bordo si disegna a pezzi: dove la fascia si appoggia al polo o si chiude
+// su sé stessa non c'è nessun terminatore da mostrare, e una linea tirata
+// dritta lì taglierebbe la carta da parte a parte.
+function _eclSpezzaBordo(punti, validi, pezzi) {
+  let corrente = [];
+  punti.forEach((p, i) => {
+    if (validi[i]) { corrente.push(p); return; }
+    if (corrente.length > 1) pezzi.push(corrente);
+    corrente = [];
+  });
+  if (corrente.length > 1) pezzi.push(corrente);
+  return pezzi;
+}
+
+function _eclSvuotaNotte() {
+  if (!_eclDinamici || !_eclDinamici.notte) return;
+  _eclDinamici.notte.veli.forEach(v => v.setLatLngs([]));
+  _eclDinamici.notte.linea.setLatLngs([]);
+}
+
+function _eclDisegnaNotte(d) {
+  if (!_eclDinamici || !_eclDinamici.notte) return;
+  if (!_eclMostraNotte) { _eclSvuotaNotte(); return; }
+  // Durante il filmato si dimezzano i meridiani: il terminatore è una curva
+  // dolce, e a cinque gradi di passo nessuno se ne accorge.
+  const nPunti = _eclFilmato.attivo ? 72 : 144;
+  ECL_NOTTE_SOGLIE.forEach((soglia, i) => {
+    const fascia = _eclFasciaDellaNotte(d, soglia.alt, nPunti);
+    _eclDinamici.notte.veli[i].setLatLngs(_eclAnelliNotte(fascia));
+    // La linea si disegna solo sulla prima soglia: quella è il terminatore.
+    if (i > 0) return;
+    const pezzi = [];
+    _eclSpezzaBordo(fascia.bassa, fascia.veroBassa, pezzi);
+    _eclSpezzaBordo(fascia.alta, fascia.veroAlta, pezzi);
+    const copie = [];
+    for (const giro of [-1, 0, 1]) {
+      for (const pezzo of pezzi) copie.push(pezzo.map(p => [p[0], p[1] + giro * 360]));
+    }
+    _eclDinamici.notte.linea.setLatLngs(copie);
+  });
+}
+
+// Si può spegnere: chi studia la fascia di totalità sull'Atlantico a volte
+// vuole la carta pulita, senza niente sopra alle coste.
+let _eclMostraNotte = true;
+
+function _eclAggiornaTastoNotte() {
+  const tasto = document.getElementById('btn-eclissi-notte');
+  if (!tasto) return;
+  tasto.classList.toggle('attiva', _eclMostraNotte);
+  tasto.setAttribute('aria-pressed', _eclMostraNotte ? 'true' : 'false');
+  tasto.title = _eclMostraNotte
+    ? 'Nascondi la linea del giorno e della notte'
+    : 'Mostra dov\'è giorno e dov\'è notte: un\'eclissi si vede solo dalla parte illuminata';
+}
+
+window.eclissiAlternaNotte = () => {
+  _eclMostraNotte = !_eclMostraNotte;
+  _eclAggiornaTastoNotte();
+  if (_eclissiEventoInCorso) {
+    _eclissiAggiornaTutto();
+    // La legenda spiega anche il velo: spento, quella voce non ha più oggetto
+    _eclAggiornaLegenda(_eclissiEventoInCorso);
+  }
+};
 
 // --- Il tema della mappa: chiara (di partenza) o scura ------------------
 
@@ -1991,6 +2178,9 @@ function _eclApplicaTemaMappa() {
       color: tav.fasce[i].bordo, fillColor: tav.fasce[i].colore, fillOpacity: tav.fasce[i].opacita
     }));
     _eclDinamici.mirino.setStyle({ color: tav.mirino, fillColor: tav.mirino });
+    _eclDinamici.notte.veli.forEach((v, i) =>
+      v.setStyle({ fillColor: tav.notte.colore, fillOpacity: tav.notte.veli[i] }));
+    _eclDinamici.notte.linea.setStyle({ color: tav.notte.linea });
     // Ombra e alone li ritinge _eclDisegnaOmbra, che sa se è totale o anulare
   }
 
@@ -2031,6 +2221,9 @@ function _eclDisegnaOmbra() {
   _eclCreaDinamici();
 
   const d = _eclIstante(_eclUtSelezionato());
+  // Il giorno e la notte ci sono anche quando l'ombra manca la Terra: il velo
+  // si disegna prima, e non dipende da come è messa la Luna.
+  _eclDisegnaNotte(d);
   const massimo = _eclInquadraPunto(_eclPuntoMassimo(d));
   const asse = _eclInquadraPunto(_eclPuntoAsse(d));
   const cMax = massimo ? _eclCircostanze(massimo[0], massimo[1], d) : null;
@@ -3848,6 +4041,21 @@ function _eclAggiornaLegenda(evento, riepilogo) {
     titolo: 'Penombra adesso',
     testo: 'La regione che in questo istante vede un\'eclissi parziale. I gradini di colore, andando verso il centro, sono 25%, 50% e 75% di Sole coperto.'
   });
+  if (_eclMostraNotte) {
+    // Il campione è la mappa in piccolo: metà chiara, metà velata, con il
+    // terminatore in mezzo.
+    const veloNotte = _eclVelo(tav.notte.colore, tav.notte.veli[0] + 0.10);
+    const veloFondo = _eclVelo(tav.notte.colore, tav.notte.veli[0] + 0.26);
+    const stileNotte = `background: linear-gradient(100deg,` +
+      ` rgba(0,0,0,0) 44%, ${tav.notte.linea} 44%, ${tav.notte.linea} 47%,` +
+      ` ${veloNotte} 47%, ${veloNotte} 72%, ${veloFondo} 72%);` +
+      `border-color:${_eclVelo(tav.notte.linea, 0.55)}`;
+    voci.push({
+      campione: `<span class="ecl-sw ecl-sw-notte" style="${stileNotte}"></span>`,
+      titolo: 'Dov\'è notte in questo istante',
+      testo: 'Il velo copre la metà di Terra in cui il Sole è già tramontato, e il suo bordo è il terminatore: la linea che separa il giorno dalla notte. Più il velo è fitto, più il Sole è sceso — il primo gradino è il crepuscolo, l\'ultimo la notte piena. L\'eclissi si vede solo dalla parte illuminata: dove passa questa linea, il Sole sta sorgendo o tramontando eclissato.'
+    });
+  }
   voci.push({
     campione: `<span class="ecl-sw ecl-sw-citta" style="border-color:${tav.citta.bordoAttivo}"></span>`,
     titolo: 'Città toccate',
@@ -4207,6 +4415,11 @@ function apriMappaEclissi(id) {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 8, attribution: '&copy; OpenStreetMap'
     }).addTo(_mappaEclissi);
+    // Il velo del giorno e della notte ha un riquadro tutto suo, appena sopra
+    // le tessere: così l'ombra, le isocrone e le città gli restano sempre
+    // sopra, per quanto tardi vengano aggiunte alla mappa.
+    _mappaEclissi.createPane('ecl-notte');
+    _mappaEclissi.getPane('ecl-notte').style.zIndex = 350;
     // I comandi dello zoom vanno a destra: a sinistra c'è l'orologio
     L.control.zoom({ position: 'topright' }).addTo(_mappaEclissi);
     // Le tessere si mostrano com'è la mappa vera, chiara: è il tema di partenza
@@ -4327,6 +4540,7 @@ function apriMappaEclissi(id) {
   if (casellaSegui) { _eclFilmato.segui = true; casellaSegui.checked = true; }
   _eclFilmatoAggiornaPulsante();
   _eclAggiornaTastoSchermo();
+  _eclAggiornaTastoNotte();
 
   _eclAggiornaLegenda(evento, _eclCostruisciRiepilogo(evento));
 

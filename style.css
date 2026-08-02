@@ -1885,6 +1885,12 @@ body .ecl-tasto-largo.fallito { border-color: rgba(248, 113, 113, 0.5); color: v
       rgba(125, 211, 252, 0.28) 76%);
   border: 1px solid rgba(125, 211, 252, 0.5);
 }
+/* Giorno a sinistra, terminatore, notte a destra: il campione è la mappa in
+   miniatura. Il gradiente arriva da JS, che conosce la tavolozza in uso. */
+.ecl-sw-notte {
+  width: 26px; height: 14px; border-radius: 3px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+}
 .ecl-sw-citta {
   width: 12px; height: 12px; border-radius: 50%;
   background: #fbbf24;
