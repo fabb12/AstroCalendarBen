@@ -6010,8 +6010,14 @@ const sky = {
   ctx: null,
   larghezza: 0,
   altezza: 0,
-  observer: null,        // Astronomy.Observer con la posizione dell'utente
+  observer: null,        // Astronomy.Observer del luogo da cui si guarda il cielo
   posizione: null,       // { lat, lon, fonte, origine, nome, precisione, tempo }
+  // Il luogo di sola visita: quando c'è, il planetario disegna il cielo da
+  // qui invece che dalla posizione dell'app. Vale solo per questa vista e
+  // non viene salvato: la posizione vera resta quella delle Impostazioni
+  // (vedi 7.1-ter). { lat, lon, nome }
+  luogoVista: null,
+  scartoPerScelta: false, // l'ultima lettura automatica è stata rifiutata perché comanda la posizione scelta
   attesaPosizione: null, // richiesta di geolocalizzazione in corso (una sola per volta)
   erroreGps: null,       // ultimo errore del navigatore: { codice, quando }
   sorveglianza: null,    // id di watchPosition mentre il planetario è aperto
@@ -6686,6 +6692,13 @@ const SKY_FONTI_RIPIEGO = ['salvata', 'backup'];
 // Le sorgenti che l'utente ha scelto o che vengono da un vero satellite:
 // una lettura di rete non deve mai scavalcarle, se non per un trasloco vero.
 const POS_ORIGINI_PRECISE = ['gps', 'manuale', 'citta'];
+// Le due sorgenti che sono una decisione, non una misura: la città scelta in
+// elenco e le coordinate scritte a mano.
+const POS_SCELTA_UTENTE = ['manuale', 'citta'];
+// Le letture che arrivano da sole, senza che nessuno le abbia chieste in
+// quel momento: il GPS che si stringe mentre aggancia, l'indirizzo IP, la
+// posizione riletta dal browser all'avvio.
+const POS_FONTI_AUTOMATICHE = ['gps', 'rete', 'salvata'];
 // Quanto deve dire "sei altrove" la rete perché le crediamo comunque: sotto i
 // 150 km è la solita imprecisione dell'indirizzo IP, sopra è un trasferimento.
 const POS_RETE_TRASLOCO_M = 150000;
@@ -6753,6 +6766,24 @@ function skyLetturaAttendibile(lat, lon, fonte, precisione, tempo) {
   return true;
 }
 
+// --- La posizione scelta comanda ---
+// Chi apre le Impostazioni e sceglie la sua città sta dicendo una cosa
+// precisa: "l'app deve calcolare da qui". Poi però il planetario si apre,
+// il GPS aggancia, la sorveglianza consegna un fix a duecento metri — e
+// quello, passando il filtro qui sopra, buttava via la scelta appena fatta.
+// Da fuori sembrava che la posizione non venisse salvata: si impostava, si
+// tornava indietro e ne era già comparsa un'altra.
+// Da qui in poi una scelta esplicita resta finché è l'utente a chiedere un
+// nuovo rilevamento (il tasto "Rileva di nuovo" della finestra della
+// posizione, o il tasto Posizione del planetario): sono loro a mettere
+// `posRilevamentoForzato`, e solo per il tempo della cascata.
+let posRilevamentoForzato = false;
+
+function posizioneSceltaDaUtente() {
+  const p = sky.posizione;
+  return !!p && POS_SCELTA_UTENTE.includes(p.origine || p.fonte);
+}
+
 // Applica una posizione, se la lettura supera il filtro qui sopra.
 // Restituisce true quando la posizione è stata davvero cambiata.
 function skyImpostaPosizione(lat, lon, fonte, dettagli) {
@@ -6765,6 +6796,17 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   const origine = (dettagli && dettagli.origine) ||
     (SKY_FONTI_RIPIEGO.includes(fonte) ? null : fonte);
   const nome = dettagli && dettagli.nome ? dettagli.nome : null;
+
+  // Prima di ogni altro giudizio: una lettura automatica non tocca la
+  // posizione che l'utente ha scelto. Lo scarto viene annotato, perché chi
+  // aveva chiesto la lettura deve poterlo raccontare invece di far finta
+  // che il GPS abbia deciso lui.
+  if (POS_FONTI_AUTOMATICHE.includes(fonte) && !posRilevamentoForzato && posizioneSceltaDaUtente()) {
+    sky.scartoPerScelta = true;
+    skyAggiornaStato();
+    return false;
+  }
+  sky.scartoPerScelta = false;
 
   if (!skyLetturaAttendibile(lat, lon, fonte, precisione, tempo)) {
     // Lettura scartata: la posizione resta ferma, ma se è arrivata da un GPS
@@ -6790,14 +6832,15 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
     lat, lon, fonte, origine, precisione, tempo,
     nome: nome || nomeLuogoVicino(lat, lon)
   };
-  if (typeof Astronomy !== 'undefined') {
-    sky.observer = new Astronomy.Observer(lat, lon, 0);
-  }
-  // Lo scarto fra Nord magnetico e Nord vero dipende dal luogo: cambiando
-  // posizione va rifatto, altrimenti la bussola resta puntata a quello vecchio.
+  // L'osservatore non lo si costruisce più qui: nel planetario può esserci un
+  // luogo di sola visita che ha la precedenza, e sceglierlo è compito suo
+  // (vedi 7.1-ter). Con il luogo di visita acceso, questo cambio di posizione
+  // aggiorna il resto dell'app ma non sposta il cielo disegnato.
+  skyAggiornaOsservatore();
+  // Lo scarto fra Nord magnetico e Nord vero dipende da dove sei davvero (è
+  // il magnetometro del telefono a leggerlo, non il cielo che stai guardando):
+  // si rifà sulla posizione vera, non sul luogo di visita.
   skyAggiornaDeclinazione();
-  sky.prossimoCalcolo = 0;
-  sky.cacheOrari = { chiave: null, valore: null };
   // Cambiando luogo cambiano orari, altezze e giudizi: la memoria va svuotata
   svuotaCacheLocali();
   try {
@@ -6868,7 +6911,10 @@ function skyRichiediPosizione() {
         tempo: pos.timestamp
       });
       skyAggiornaOggetti(true);
-      concludi(true);
+      // Il dispositivo ha risposto: resta da dire se la sua risposta è stata
+      // presa o se comanda ancora la posizione scelta a mano. Sono due esiti
+      // diversi da raccontare, non lo stesso "fatto".
+      concludi(sky.scartoPerScelta ? 'scartata' : 'gps');
     };
 
     // Il motivo del rifiuto cambia tutto quello che ha senso dire dopo:
@@ -7067,15 +7113,46 @@ function posMotivoGps() {
 //   stato: 'corso' | 'fatto' | 'fallito' | 'ignorato' | 'serve'
 // Restituisce { esito, strato, messaggio }, dove esito vale:
 //   'gps' | 'rete'      → posizione nuova, dallo strato indicato
-//   'invariata'         → gli strati automatici non hanno migliorato quella che c'era
+//   'invariata'         → gli strati automatici non hanno cambiato quella che c'era
 //   'manuale'           → non c'è nessuna posizione: tocca all'utente
-async function trovaPosizioneAStrati(suPasso) {
+//
+// `opzioni.forzato` dice che la cascata parte da un gesto esplicito ("Rileva
+// di nuovo", il tasto Posizione): solo allora una lettura automatica può
+// sostituire la posizione che l'utente aveva scelto a mano. Senza questo, il
+// primo fix del GPS cancellava la città appena scelta nelle Impostazioni.
+async function trovaPosizioneAStrati(suPasso, opzioni) {
   const passo = (strato, stato, testo) => { if (suPasso) suPasso(strato, stato, testo); };
   const avevaPosizione = !!luogoCorrente();
+  const scelta = posizioneSceltaDaUtente();
+  const nomeScelto = (sky.posizione && sky.posizione.nome) || null;
+  const forzato = !!(opzioni && opzioni.forzato);
+  const precedente = posRilevamentoForzato;
+  posRilevamentoForzato = forzato;
 
+  try {
+    return await _trovaPosizioneAStrati(passo, { avevaPosizione, scelta, nomeScelto });
+  } finally {
+    posRilevamentoForzato = precedente;
+  }
+}
+
+async function _trovaPosizioneAStrati(passo, { avevaPosizione, scelta, nomeScelto }) {
   // --- Strato 1: il GPS del dispositivo ---
   passo('gps', 'corso', 'Chiedo la posizione al dispositivo…');
   const daGps = await skyRichiediPosizione();
+  if (daGps === 'scartata') {
+    // Il dispositivo ha risposto, ma la posizione la comanda chi l'ha scelta:
+    // qui si dice cosa è successo e come cambiare idea, senza spostare niente.
+    const dove = nomeScelto ? ` (${nomeScelto})` : '';
+    passo('gps', 'ignorato', `Il dispositivo ha risposto, ma stai usando la posizione che hai scelto tu${dove}.`);
+    passo('rete', 'ignorato', 'Non serve.');
+    passo('manuale', 'serve', 'Cambiala qui sotto, o usa “Rileva di nuovo” per tornare al GPS.');
+    return {
+      esito: 'invariata', strato: 'gps',
+      messaggio: `Tengo la posizione che hai scelto tu${dove}: le letture automatiche non la sostituiscono. ` +
+        'Per tornare al GPS usa “Rileva di nuovo”.'
+    };
+  }
   if (daGps) {
     passo('gps', 'fatto', 'Posizione rilevata dal dispositivo.');
     passo('rete', 'ignorato', 'Non serve: il GPS ha risposto.');
@@ -7103,7 +7180,19 @@ async function trovaPosizioneAStrati(suPasso) {
           'può sbagliare di qualche decina di chilometri. Se non è il posto giusto, correggila qui sotto.'
       };
     }
-    // Rifiutata dal filtro: quella che abbiamo già è più precisa di così.
+    // Rifiutata: o perché quella che abbiamo è più precisa, o perché è una
+    // scelta dell'utente e nessuna lettura automatica la scavalca. Sono due
+    // cose diverse e vanno dette in modo diverso: la seconda non è un
+    // fallimento, è l'app che rispetta quello che le è stato detto.
+    if (scelta) {
+      const dove = nomeScelto ? ` (${nomeScelto})` : '';
+      passo('rete', 'ignorato', `Comanda la posizione che hai scelto tu${dove}.`);
+      passo('manuale', 'serve', 'Cambiala qui sotto, se ti sei spostato.');
+      return {
+        esito: 'invariata', strato: 'rete',
+        messaggio: `Tengo la posizione che hai scelto tu${dove}: la rete indovina la città, ma la tua scelta vale di più.`
+      };
+    }
     passo('rete', 'ignorato', 'La posizione che hai già è più precisa di questa.');
     passo('manuale', 'serve', 'Cambiala qui sotto se ti sei spostato.');
     return {
@@ -7127,6 +7216,198 @@ async function trovaPosizioneAStrati(suPasso) {
     messaggio: 'Né GPS né rete hanno risposto. Nessun problema: scegli la tua città qui sotto, ' +
       'oppure scrivi le coordinate. Funziona anche senza connessione.'
   };
+}
+
+// =====================================================================
+// 7.1-ter  IL LUOGO DA CUI SI GUARDA (solo nel planetario)
+//   L'app ha una posizione sola, e la decide chi la usa: quella delle
+//   Impostazioni. È lei che dice a che ora fa buio, che tempo farà, quando
+//   passa la stazione spaziale, dove puntare il telescopio. Quella non si
+//   tocca da nessun'altra parte.
+//
+//   Il planetario però fa anche un altro mestiere: guardare. "Che cielo si
+//   vede stanotte dal Cile?", "Da casa dei miei l'eclissi è totale?" —
+//   domande legittime, che con una posizione sola costringevano a cambiare
+//   davvero residenza all'app, e poi a ricordarsi di rimetterla a posto
+//   (di solito ce se ne accorgeva il giorno dopo, con il meteo di un'altra
+//   nazione nella scheda Stasera).
+//
+//   Da qui in poi il planetario può avere un luogo suo, di sola visita:
+//   sposta il cielo disegnato e nient'altro. Non viene salvato — alla
+//   riapertura si torna a casa da soli — e la barra in alto lo dichiara
+//   sempre, perché un cielo che non è il tuo deve dirlo.
+// =====================================================================
+
+// Da dove si sta guardando il cielo: il luogo di visita se c'è, se no la
+// posizione vera. `proprio` distingue i due casi per chi deve raccontarlo.
+function skyLuogoDelCielo() {
+  if (sky.luogoVista) {
+    return { lat: sky.luogoVista.lat, lon: sky.luogoVista.lon, nome: sky.luogoVista.nome || null, proprio: true };
+  }
+  const l = luogoCorrente();
+  if (!l) return null;
+  return {
+    lat: l.lat, lon: l.lon,
+    nome: (sky.posizione && sky.posizione.nome) || null,
+    proprio: false
+  };
+}
+
+// Rifà l'osservatore del planetario a partire dal luogo effettivo. Va
+// chiamata a ogni cambio — di posizione vera o di luogo di visita — perché
+// tutto il cielo (astri, orari, traccia, eclittica) parte da qui.
+function skyAggiornaOsservatore() {
+  const l = skyLuogoDelCielo();
+  sky.observer = (l && typeof Astronomy !== 'undefined')
+    ? new Astronomy.Observer(l.lat, l.lon, 0)
+    : null;
+  // Cambiando luogo cambiano altezze, orari e giudizi: la memoria va svuotata
+  sky.prossimoCalcolo = 0;
+  sky.cacheOrari = { chiave: null, valore: null };
+  if (sky.aperto && typeof skyAggiornaOggetti === 'function') skyAggiornaOggetti(true);
+  skyAggiornaStato();
+  skyAggiornaLuogoVistaUI();
+}
+
+// Sposta l'occhio altrove. Restituisce false se il punto non ha senso: le
+// coordinate scritte a mano possono essere qualsiasi cosa.
+function skyImpostaLuogoVista(lat, lon, nome) {
+  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return false;
+  sky.luogoVista = { lat, lon, nome: nome || nomeLuogoVicino(lat, lon) };
+  skyAggiornaOsservatore();
+  return true;
+}
+
+// Torna a casa: il cielo riprende a essere quello della posizione dell'app.
+function skyTornaAlLuogoDiCasa() {
+  if (!sky.luogoVista) return;
+  sky.luogoVista = null;
+  skyAggiornaOsservatore();
+}
+
+// --- Il riquadro del luogo, dentro il pannello Tempo ------------------
+// Sta lì e non altrove perché tempo e luogo sono le due coordinate dello
+// stesso cielo: chi apre quel pannello sta già chiedendo "e se guardassi
+// da un'altra parte?" — che sia un'altra ora o un altro posto.
+
+let skyLuogoTimerCitta = null;
+let skyLuogoRichiesta = 0;
+
+// La riga di lettura: da dove si guarda, e se è casa o una visita.
+function skyAggiornaLuogoVistaUI() {
+  const nomeEl = document.getElementById('skymap-luogo-nome');
+  const casa = document.getElementById('skymap-luogo-casa');
+  const nota = document.getElementById('skymap-luogo-nota');
+  const l = skyLuogoDelCielo();
+
+  if (nomeEl) {
+    nomeEl.textContent = l
+      ? (l.nome ? `${l.nome} · ${formattaCoordinate(l.lat, l.lon)}` : formattaCoordinate(l.lat, l.lon))
+      : 'nessuna posizione';
+    nomeEl.dataset.visita = l && l.proprio ? 'si' : 'no';
+  }
+  if (casa) casa.classList.toggle('hidden', !(l && l.proprio));
+  if (nota) {
+    nota.textContent = l && l.proprio
+      ? 'Stai guardando il cielo da un altro posto: vale solo qui nel planetario. Orari, meteo, ' +
+        'passaggi dei satelliti e telescopio continuano a usare la posizione delle Impostazioni.'
+      : 'Il cielo è quello della tua posizione. Se scegli un altro luogo, il cambio vale solo per il ' +
+        'planetario: il resto dell\'app resta a casa.';
+  }
+}
+
+// Applica una città o un punto scelto nel pannello e lo racconta
+function skyUsaLuogoVista(lat, lon, nome) {
+  if (!skyImpostaLuogoVista(lat, lon, nome)) {
+    skyAvviso('luogo', 'Coordinate fuori scala: la latitudine sta fra −90 e 90, la longitudine fra −180 e 180.', 6000);
+    return;
+  }
+  skyMostraRisultatiLuogo([], null);
+  const campo = document.getElementById('skymap-luogo-cerca');
+  if (campo) campo.value = '';
+  const l = skyLuogoDelCielo();
+  skyAvviso('luogo', `Cielo visto da ${l && l.nome ? l.nome : formattaCoordinate(lat, lon)}: solo qui nel planetario.`, 7000);
+}
+
+function skyMostraRisultatiLuogo(elenco, nota) {
+  const box = document.getElementById('skymap-luogo-risultati');
+  if (!box) return;
+  if (!elenco.length) {
+    box.innerHTML = nota ? `<p class="pos-risultati-nota">${nota}</p>` : '';
+    return;
+  }
+  box.innerHTML = elenco.map((c, i) => `
+    <button type="button" class="pos-risultato" role="option" data-luogo="${i}">
+      <span class="pos-risultato-nome">${c.nome}</span>
+      <span class="pos-risultato-paese">${c.paese || ''}</span>
+    </button>`).join('') + (nota ? `<p class="pos-risultati-nota">${nota}</p>` : '');
+  box.querySelectorAll('[data-luogo]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const c = elenco[parseInt(btn.dataset.luogo, 10)];
+      if (c) skyUsaLuogoVista(c.lat, c.lon, c.nome);
+    });
+  });
+}
+
+// Stessa ricerca della finestra della posizione: prima l'elenco a bordo, che
+// risponde subito e funziona offline, poi il servizio online per i paesi
+// piccoli. Riusarla evita due comportamenti diversi per la stessa domanda.
+function skyCercaCittaVista(testo) {
+  if (skyLuogoTimerCitta) clearTimeout(skyLuogoTimerCitta);
+  const locali = posCittaLocali(testo);
+  if ((testo || '').trim().length < 2) { skyMostraRisultatiLuogo([], null); return; }
+  skyMostraRisultatiLuogo(locali, locali.length ? null : 'Cerco anche fuori dall\'elenco…');
+  const richiesta = ++skyLuogoRichiesta;
+  skyLuogoTimerCitta = setTimeout(async () => {
+    const online = await posCittaOnline(testo);
+    if (richiesta !== skyLuogoRichiesta) return;  // nel frattempo ha scritto altro
+    const visti = new Set(locali.map(c => posNormalizzaNome(c.nome)));
+    const uniti = locali.concat(online.filter(c => !visti.has(posNormalizzaNome(c.nome)))).slice(0, 10);
+    skyMostraRisultatiLuogo(uniti, uniti.length ? null : 'Nessuna città con questo nome.');
+  }, 420);
+}
+
+// Collega i comandi del riquadro. Chiamata una volta sola, da inizializzaSkymap.
+function skyInizializzaLuogoVista() {
+  const cerca = document.getElementById('skymap-luogo-cerca');
+  if (cerca) {
+    cerca.addEventListener('input', () => skyCercaCittaVista(cerca.value));
+    // Invio: se c'è una sola città trovata è quella che si vuole
+    cerca.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const primo = document.querySelector('#skymap-luogo-risultati [data-luogo]');
+      if (primo) primo.click();
+    });
+  }
+
+  const usa = document.getElementById('skymap-luogo-usa');
+  if (usa) {
+    usa.addEventListener('click', () => {
+      const lat = parseFloat((document.getElementById('skymap-luogo-lat') || {}).value);
+      const lon = parseFloat((document.getElementById('skymap-luogo-lon') || {}).value);
+      if (!isFinite(lat) || !isFinite(lon)) {
+        skyAvviso('luogo', 'Scrivi latitudine e longitudine in gradi decimali (per esempio 45,07 e 7,69).', 6000);
+        return;
+      }
+      skyUsaLuogoVista(lat, lon, null);
+    });
+  }
+
+  const casa = document.getElementById('skymap-luogo-casa');
+  if (casa) {
+    casa.addEventListener('click', () => {
+      skyTornaAlLuogoDiCasa();
+      skyAvviso('luogo', 'Cielo di nuovo dalla tua posizione.', 4000);
+    });
+  }
+
+  // La posizione principale si cambia dove si è sempre cambiata: una sola
+  // finestra per quella, o si torna ad avere due verità sulla stessa cosa.
+  const imp = document.getElementById('skymap-luogo-impostazioni');
+  if (imp) imp.addEventListener('click', () => apriPosizione(false));
+
+  skyAggiornaLuogoVistaUI();
 }
 
 // Il telefono può mandare DUE flussi di orientamento, e sono flussi diversi:
@@ -7363,7 +7644,9 @@ function skyAssettoDiSaturno(lista, t) {
 // scia, cioè da dove arrivano e dove stanno andando nei minuti vicini.
 function skyAggiungiSatelliti(lista, quando) {
   if (typeof satellite === 'undefined') return;
-  const luogo = luogoCorrente();
+  // Come tutto il resto del disegno, anche le stazioni spaziali si vedono
+  // dal luogo da cui si sta guardando, che può non essere casa (7.1-ter)
+  const luogo = skyLuogoDelCielo();
   if (!luogo) return;
   const gd = satOsservatoreGd(luogo);
 
@@ -7407,7 +7690,7 @@ function skyAggiungiSatelliti(lista, quando) {
 // propagazioni per volta: costano poco e il puntino non salta più).
 function skyMuoviSatelliti() {
   if (typeof satellite === 'undefined' || !sky.oggetti.length) return;
-  const luogo = luogoCorrente();
+  const luogo = skyLuogoDelCielo();
   if (!luogo) return;
   const gd = satOsservatoreGd(luogo);
   const quando = skyAdesso();
@@ -9882,6 +10165,13 @@ function skyAggiornaStato() {
   const el = document.getElementById('skymap-stato');
   if (!el) return;
   const righe = [];
+  // Un cielo che non è quello di casa tua deve dirlo prima di ogni altra
+  // cosa, sempre, e non solo nel pannello che l'ha deciso: chi torna sulla
+  // mappa dieci minuti dopo non si ricorda di averlo spostato.
+  if (sky.luogoVista) {
+    const nome = sky.luogoVista.nome || formattaCoordinate(sky.luogoVista.lat, sky.luogoVista.lon);
+    righe.push(`cielo visto da ${nome} · solo qui`);
+  }
   if (sky.posizione) {
     // Dire quanto è larga la lettura evita di dare per buono un fix di rete
     // scambiandolo per GPS: è la prima cosa da guardare se il cielo non torna.
@@ -12902,6 +13192,8 @@ function inizializzaSkymap() {
   inizializzaSkymapExtra();
   // I comandi della registrazione (vedi 7.6)
   skyRegInizializza();
+  // Il luogo da cui si guarda, dentro il pannello Tempo (vedi 7.1-ter)
+  skyInizializzaLuogoVista();
 
   const collega = (id, azione) => {
     const el = document.getElementById(id);
@@ -13015,7 +13307,9 @@ function inizializzaSkymap() {
   // risposta si apre la finestra, dove la posizione si può scegliere a mano.
   collega('skymap-btn-posizione', async () => {
     skyAvviso('posizione', 'Sto cercando la tua posizione…');
-    const esito = await trovaPosizioneAStrati();
+    // Anche questo è un gesto esplicito: chi lo preme sta chiedendo di
+    // rilevarla adesso, quindi il rilevamento può sostituire una scelta.
+    const esito = await trovaPosizioneAStrati(null, { forzato: true });
     if (esito.esito === 'gps') {
       skyAvviso('posizione', '');
       skySorvegliaPosizione(true);
@@ -13046,6 +13340,11 @@ function inizializzaSkymap() {
   });
 
   collega('skymap-btn-schermo', skyAlternaSchermoIntero);
+  // Lo stesso comando, ma appoggiato sull'angolo della mappa: com'è per la
+  // mappa dell'ombra delle eclissi, dove il ⛶ sta lì e non dentro a un
+  // pannello. Andarlo a cercare fra le opzioni della Visualizzazione,
+  // mentre si guarda il cielo, era una tappa di troppo.
+  collega('skymap-btn-schermo-mappa', skyAlternaSchermoIntero);
   collega('skymap-btn-esci', () => skyEsciSchermoIntero());
 
   window.addEventListener('resize', () => { if (sky.aperto) skyRidimensiona(); });
@@ -13203,6 +13502,21 @@ function skyAggiornaTastiSchermo() {
   if (esci) esci.classList.toggle('visibile', sky.schermoIntero);
   skyTasto('skymap-btn-schermo', sky.schermoIntero,
     sky.schermoIntero ? 'Esci da schermo intero' : 'Schermo intero');
+
+  // Il tasto sull'angolo della mappa. Il simbolo resta lo stesso e a dire
+  // "sei dentro" è il colore: una ✕ accanto al tondo rosso della
+  // registrazione si leggerebbe come "annulla il filmato", che è l'ultima
+  // cosa che deve succedere premendola. Per uscire con una parola scritta
+  // c'è comunque il tasto Esci nell'angolo in alto.
+  const mappa = document.getElementById('skymap-btn-schermo-mappa');
+  if (mappa) {
+    mappa.classList.toggle('attiva', sky.schermoIntero);
+    mappa.title = sky.schermoIntero
+      ? 'Esci dallo schermo intero (anche con Esc)'
+      : 'Il cielo a tutto schermo, con i comandi in sovrimpressione';
+    mappa.setAttribute('aria-label', sky.schermoIntero ? 'Esci da schermo intero' : 'Cielo a schermo intero');
+    mappa.setAttribute('aria-pressed', sky.schermoIntero ? 'true' : 'false');
+  }
 }
 
 function skyInizializzaSchermoIntero() {
@@ -13355,9 +13669,12 @@ function skyRegFirma(ctx, L, H) {
     day: 'numeric', month: L < 520 ? 'short' : 'long', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
+  // Il luogo della firma è quello da cui si guarda: se il cielo è stato
+  // spostato altrove, il filmato deve dire quello, non dove sei seduto.
   let dove = '';
-  if (sky.posizione) {
-    dove = sky.posizione.nome || formattaCoordinate(sky.posizione.lat, sky.posizione.lon);
+  const luogoFirma = skyLuogoDelCielo();
+  if (luogoFirma) {
+    dove = luogoFirma.nome || formattaCoordinate(luogoFirma.lat, luogoFirma.lon);
   }
   const riga = dove ? `${data} · ${dove}` : data;
 
@@ -15614,7 +15931,12 @@ function posAggiornaScheda() {
     ${qualita === 'approssimata'
       ? '<p class="pos-scheda-dettaglio">È una posizione di ripiego: va bene per gli orari, ' +
         'ma se il paese non è quello giusto scegli la città qui sotto.</p>'
-      : '<p class="pos-scheda-dettaglio">L\'app sta calcolando tutto da qui.</p>'}`;
+      : posizioneSceltaDaUtente()
+        // Dirlo serve: prima il primo fix del GPS la sostituiva in silenzio, e
+        // sembrava che la scelta non venisse salvata.
+        ? '<p class="pos-scheda-dettaglio">L\'app sta calcolando tutto da qui. L\'hai scelta tu, ' +
+          'quindi resta: né il GPS né la rete la cambiano da soli, finché non premi “Rileva di nuovo”.</p>'
+        : '<p class="pos-scheda-dettaglio">L\'app sta calcolando tutto da qui.</p>'}`;
 }
 
 // Riporta i tre strati allo stato "non ancora provato"
@@ -15664,7 +15986,9 @@ async function posCerca() {
 
   let esito;
   try {
-    esito = await trovaPosizioneAStrati(posImpostaStrato);
+    // Il tasto grande è la richiesta esplicita per eccellenza: qui, e solo
+    // qui, una lettura automatica può sostituire una posizione scelta a mano.
+    esito = await trovaPosizioneAStrati(posImpostaStrato, { forzato: true });
   } catch (e) {
     esito = { esito: 'manuale', messaggio: 'Qualcosa è andato storto durante la ricerca: scegli la città qui sotto.' };
   }
