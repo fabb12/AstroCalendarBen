@@ -643,6 +643,113 @@ function corpoMinoreDiId(id) {
 
 
 // =====================================================================
+// 5. IN CIELO
+//     Un corpo minore che compare nell'elenco ma non sulla mappa è una
+//     promessa non mantenuta: uno legge «cometa di sesta magnitudine»,
+//     tocca il nome e non trova niente da nessuna parte. Qui si calcolano
+//     le posizioni sull'orizzonte, si disegnano e si possono toccare.
+// =====================================================================
+
+// Le posizioni si rifanno di rado di proposito: un asteroide si sposta di
+// qualche primo d'arco al giorno, e ricalcolare Keplero per sessanta
+// corpi a ogni fotogramma sarebbe spendere un millisecondo per non
+// muovere niente. Mezzo minuto è precisione da avanzo.
+const CORPI_CACHE_MS = 30000;
+let corpiInCielo = { quando: 0, offset: null, elenco: [] };
+
+function corpiMinoriVisibili() {
+  if (typeof sky === 'undefined' || !sky.observer || typeof Astronomy === 'undefined') return [];
+  if (!sky.mostraCorpiMinori) return [];
+
+  const istante = typeof skyAdesso === 'function' ? skyAdesso() : new Date();
+  const offset = typeof sky.offsetTempoSec === 'number' ? sky.offsetTempoSec : 0;
+
+  // La macchina del tempo invalida la cache: se si è saltati a un altro
+  // giorno le posizioni di mezzo minuto fa non valgono più niente.
+  if (Date.now() - corpiInCielo.quando < CORPI_CACHE_MS && corpiInCielo.offset === offset) {
+    return corpiInCielo.elenco;
+  }
+
+  const t = Astronomy.MakeTime(istante);
+  const elenco = [];
+
+  corpiMinoriInteressanti(istante, CORPI_MAG_UTILE).forEach(c => {
+    try {
+      // corpoMinoreInCielo dà coordinate J2000; Horizon vuole quelle di
+      // oggi, come per tutti gli altri cataloghi.
+      const oggi = typeof skyJ2000AllaData === 'function'
+        ? skyJ2000AllaData(c.ra, c.dec, t)
+        : { ra: c.ra, dec: c.dec };
+      const hor = Astronomy.Horizon(t, sky.observer, oggi.ra, oggi.dec, 'normal');
+      elenco.push(Object.assign({}, c, {
+        az: hor.azimuth, alt: hor.altitude,
+        raOra: oggi.ra, decOra: oggi.dec,
+        sottotipo: c.tipo,
+        disegno: c.tipo === 'cometa' ? 'cometa' : 'asteroide'
+      }));
+    } catch (e) { /* fuori scala: si salta */ }
+  });
+
+  corpiInCielo = { quando: Date.now(), offset, elenco };
+  return elenco;
+}
+
+// Sulla mappa sono un puntino con il nome accanto, e le comete hanno un
+// accenno di coda — che punta sempre in direzione opposta al Sole, perché
+// è il vento solare a spingerla, non il movimento della cometa.
+function corpiMinoriDisegna(ctx, base, focale) {
+  const elenco = corpiMinoriVisibili();
+  if (!elenco.length) return;
+
+  const velo = typeof skyVelo === 'function' ? skyVelo() : 1;
+  if (velo < 0.05) return;
+
+  ctx.save();
+  elenco.forEach(c => {
+    if (c.alt < 0 && !sky.mostraSottoOrizzonte) return;
+    const p = skyProietta(skyVettore(c.az, c.alt), base, focale);
+    if (!p.davanti) return;
+    if (p.px < -40 || p.px > sky.larghezza + 40 || p.py < -40 || p.py > sky.altezza + 40) return;
+
+    const opacita = (c.alt < 0 ? 0.25 : 1) * velo;
+    const cometa = c.tipo === 'cometa';
+    const colore = cometa ? '#a7f3d0' : '#fcd34d';
+    // Le più luminose un po' più grosse, come per le stelle
+    const r = Math.max(2.2, 5 - c.mag * 0.28);
+
+    if (cometa) {
+      // La chioma: una nuvoletta sfumata, non un punto netto — è quello
+      // che distingue una cometa da una stella anche nel binocolo.
+      const alone = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, r * 3.4);
+      alone.addColorStop(0, `rgba(167, 243, 208, ${0.55 * opacita})`);
+      alone.addColorStop(1, 'rgba(167, 243, 208, 0)');
+      ctx.fillStyle = alone;
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, r * 3.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = opacita;
+    ctx.fillStyle = colore;
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (sky.mostraNomi) {
+      ctx.globalAlpha = opacita * 0.85;
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      // I nomi delle comete sono lunghi ("C/2026 A3 (PANSTARRS)"): sulla
+      // mappa sta la sigla, il resto lo dice la scheda.
+      ctx.fillText(c.nome.split(' (')[0], p.px + r + 6, p.py);
+    }
+  });
+  ctx.restore();
+}
+
+
+// =====================================================================
 // 5. VETTORI — le tre righe che servono e basta
 // =====================================================================
 

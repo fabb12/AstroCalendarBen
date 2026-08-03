@@ -986,6 +986,186 @@ function catPosizioneStella(indice) {
   };
 }
 
+// =====================================================================
+// 8-bis. TOCCARE UNA STELLA
+//
+//     Cinquemila puntini che non si possono toccare sono uno sfondo, non
+//     un cielo. Il punto di un planetario è poter chiedere «questa qui,
+//     cos'è?» — ed è la domanda che uno si fa proprio davanti a quelle
+//     che non conosce, non davanti a Vega.
+//
+//     Del resto delle otto stelle di riferimento l'app sapeva già dire
+//     tutto (spettro, raggio, distanza), perché quelle otto erano scritte
+//     a mano. Per le altre cinquemila i dati sono due: la magnitudine e
+//     l'indice di colore. Sembra poco, e invece da lì si tira fuori la
+//     cosa più interessante che una stella abbia — quanto è calda.
+// =====================================================================
+
+// Quale stella del catalogo sta sotto quel punto dello schermo.
+//
+// Si guardano solo quelle davvero disegnate: sopra l'orizzonte e dentro
+// la magnitudine limite di questo cielo. Toccare un puntino che non si
+// vede sarebbe peggio che non toccare niente.
+function catStellaNelPunto(px, py, base, focale) {
+  if (!catPronto() || !sky.mostraStelle) return null;
+
+  const limite = catMagnitudineLimite();
+  if (limite < -50) return null;
+
+  const ora = cat.versoriOra, mag = cat.magnitudini;
+  const L = sky.larghezza, A = sky.altezza;
+  const cx = L / 2, cy = A / 2;
+  const fr = base.f, br = base.r, bu = base.u;
+
+  let migliore = null;
+  for (let k = 0; k < cat.quante; k++) {
+    const m = mag[k];
+    if (m > limite) continue;
+
+    const x = ora[k * 3], y = ora[k * 3 + 1], z = ora[k * 3 + 2];
+    if (z < 0) continue;
+
+    const d = x * fr[0] + y * fr[1] + z * fr[2];
+    if (d <= 0.001) continue;
+    const sx = cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / d);
+    const sy = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / d);
+
+    // Il bersaglio è largo quanto la stella è disegnata, più un margine
+    // per il dito: una di prima grandezza si prende facile, una al limite
+    // della vista bisogna centrarla. È lo stesso criterio con cui l'occhio
+    // decide di averla "colpita".
+    const soglia = Math.max(10, catRaggioStella(m, limite) * 2 + 9);
+    const dist = Math.hypot(sx - px, sy - py);
+    if (dist > soglia) continue;
+
+    // A parità di vicinanza vince la più luminosa: è quella che uno
+    // stava guardando.
+    const punteggio = dist - (limite - m) * 1.5;
+    if (!migliore || punteggio < migliore.punteggio) {
+      migliore = { indice: k, punteggio, dist };
+    }
+  }
+
+  return migliore ? catSchedaStella(migliore.indice) : null;
+}
+
+// --- Il colore, e cosa vuol dire ---
+//
+// L'indice B−V è la differenza fra quanto una stella è luminosa nel blu e
+// quanto lo è nel giallo-verde. Non è un dato di gusto: è una misura, e
+// da quella misura si ricava la temperatura della superficie, perché un
+// corpo caldo emette più nel blu e uno freddo più nel rosso — la stessa
+// cosa che fa un ferro nella forgia, che passa dal rosso all'azzurro man
+// mano che scalda.
+//
+// La formula è quella di Ballesteros (2012), che approssima la relazione
+// vera entro un centinaio di gradi nell'intervallo che ci interessa. Si
+// controlla facilmente: col B−V del Sole (0,65) dà 5.778 K, e il Sole ne
+// ha 5.772.
+function catTemperaturaDaBV(bv) {
+  return 4600 * (1 / (0.92 * bv + 1.70) + 1 / (0.92 * bv + 0.62));
+}
+
+// La classe spettrale, dedotta dal colore.
+//
+// È una stima, e la scheda lo dice: la classe vera si legge nelle righe
+// dello spettro, non nel colore, e le due cose combaciano bene per le
+// stelle di sequenza principale ma meno per le giganti. Enif, per dirne
+// una, ha un B−V da classe M ed è una K2 supergigante: a parità di
+// colore una gigante è più fredda di quanto la scala delle nane dica.
+//
+// Il colore e la temperatura restano comunque veri — quelli si misurano.
+// È l'etichetta che è approssimata, ed è per questo che nella scheda
+// viene dopo, e con un "circa" attaccato.
+const CAT_CLASSI = [
+  { fino: -0.30, classe: 'O', colore: 'azzurra' },
+  { fino: -0.02, classe: 'B', colore: 'azzurra' },
+  { fino:  0.30, classe: 'A', colore: 'bianco-azzurra' },
+  { fino:  0.58, classe: 'F', colore: 'bianca' },
+  { fino:  0.81, classe: 'G', colore: 'gialla' },
+  { fino:  1.40, classe: 'K', colore: 'arancione' },
+  { fino:  99,   classe: 'M', colore: 'rossa' }
+];
+
+function catClasseDaBV(bv) {
+  return CAT_CLASSI.find(c => bv <= c.fino) || CAT_CLASSI[CAT_CLASSI.length - 1];
+}
+
+// La scheda di una stella del catalogo, nella forma che skyRigheScheda()
+// sa già leggere.
+function catSchedaStella(indice) {
+  if (!catPronto() || indice < 0 || indice >= cat.quante) return null;
+
+  // Le otto stelle di riferimento sono state messe a magnitudine 99 da
+  // catIndiciDaSaltare(): di quelle app.js ha una scheda molto più ricca
+  // (spettro vero, raggio, distanza), ed è quella che si deve aprire.
+  // Qui uscirebbe una "Stella di magnitudine 0,0" senza nome — che per
+  // Vega sarebbe ridicolo. Non ci si arriva toccando la mappa, perché il
+  // filtro sulla magnitudine le esclude comunque; ma chi chiamasse questa
+  // funzione a mano si troverebbe con quella scheda in mano, e meglio un
+  // niente esplicito di una risposta sbagliata.
+  if (cat.magnitudini[indice] > 90) return null;
+
+  // I dati grezzi stanno nel livello giusto: sotto CATALOGO_STELLE_QUANTE
+  // nel primo file, sopra nel secondo.
+  const primo = indice < CATALOGO_STELLE_QUANTE;
+  const dentro = primo ? CATALOGO_STELLE : CATALOGO_STELLE_DEBOLI;
+  const k = (primo ? indice : indice - CATALOGO_STELLE_QUANTE) * 4;
+
+  const ra = dentro[k], dec = dentro[k + 1];
+  const magnitudine = dentro[k + 2], bv = dentro[k + 3];
+
+  const c = catClasseDaBV(bv);
+  const T = catTemperaturaDaBV(bv);
+  const nome = cat.nomiPerIndice.get(indice);
+
+  // Senza nome non si inventa niente: si dice quello che è. «Stella di
+  // magnitudine 5,4 nel Cigno» è un'informazione vera, e più utile di una
+  // sigla di catalogo che non dice nulla a chi guarda.
+  const costellazione = catCostellazioneDi(ra, dec);
+  const comeSiChiama = nome ||
+    `Stella di magnitudine ${magnitudine.toFixed(1).replace('.', ',')}` +
+    (costellazione ? ` — ${costellazione}` : '');
+
+  return {
+    nome: comeSiChiama,
+    disegno: 'stella',
+    tipo: 'stella',
+    senzaNome: !nome,
+    ra, dec, mag: magnitudine, bv,
+    indiceCatalogo: indice,
+    colore: cat.colori.get(indice) || CAT_FAMIGLIE_COLORE[cat.famiglie[indice]],
+    // Prima il colore, che è misurato; poi la classe, che è dedotta
+    classe: `Stella ${c.colore} <span class="text-slate-500">(classe ${c.classe} circa, dedotta dal colore)</span>`,
+    temperatura: T,
+    nota: catNotaStella(c, T, magnitudine)
+  };
+}
+
+// Una riga che spieghi cosa si sta guardando. Il paragone è sempre col
+// Sole, perché è l'unica stella di cui tutti hanno un'idea.
+function catNotaStella(c, T, mag) {
+  const gradi = Math.round(T / 100) * 100;
+  const controIlSole = T > 6400 ? 'più calda del Sole'
+                     : T < 5300 ? 'più fredda del Sole'
+                     : 'calda quasi quanto il Sole';
+
+  let testo = `Il colore non è un dettaglio estetico: dice la temperatura. ` +
+    `Questa è ${c.colore}, sui ${gradi.toLocaleString('it')} gradi in superficie — ` +
+    `${controIlSole}, che ne ha 5.800.`;
+
+  // Le rosse molto fredde sono quasi sempre giganti: una nana rossa a
+  // quella temperatura sarebbe troppo debole per vedersi a occhio nudo.
+  if (c.classe === 'M' && mag < 6) {
+    testo += ' Una rossa così visibile a occhio nudo è quasi certamente una gigante: ' +
+      'le nane rosse sono la maggioranza delle stelle della Galassia, ma nessuna si vede senza telescopio.';
+  } else if ((c.classe === 'O' || c.classe === 'B') && mag < 4) {
+    testo += ' Le azzurre bruciano in fretta e vivono poco: qualche decina di milioni di anni, ' +
+      'contro i dieci miliardi del Sole.';
+  }
+  return testo;
+}
+
 // In che costellazione cade un punto del cielo. Astronomy Engine conosce i
 // confini ufficiali del 1875, quelli veri: la nostra tabella ha solo le
 // figure, che sono un'altra cosa.

@@ -147,6 +147,16 @@ const DISEGNI = {
   nebulosa: `<path d="M4.8 13.8c-1.6-5.2 3.2-9.4 8.2-8.4 4.4 1 6.8 5.4 5 8.8-2 3.6-11.4 4.4-13.2-.4z"/>
     <circle cx="9.8" cy="11.4" r="1.3"/><circle cx="14.4" cy="13.2" r="0.9"/>`,
 
+  // La chioma tonda e due code che partono dalla stessa parte: quella di
+  // gas dritta e quella di polvere ricurva. Non puntano dove la cometa va,
+  // ma dalla parte opposta al Sole — è il vento solare che le spinge.
+  cometa: `<circle cx="15.8" cy="8.4" r="3.2"/>
+    <path d="M13.2 10.4 4.6 18.6M14.8 11.8c-3 1.4-5.6 3.6-7.4 6.4"/>`,
+
+  // Un sasso: un poligono irregolare con due crateri
+  asteroide: `<path d="M9.4 4.4 16.8 5.2 20 11.4 17 18.2 9.8 19.4 4.4 14.6 5 7.8z"/>
+    <circle cx="10.4" cy="10.2" r="1.5"/><circle cx="14.6" cy="14.4" r="1.1"/>`,
+
   quaderno: `<rect x="4.4" y="3.6" width="15.2" height="16.8" rx="2"/>
     <path d="M8.4 3.6v16.8M11.4 8.4h5.4M11.4 12h5.4M11.4 15.6h3.6"/>`,
 
@@ -6323,6 +6333,30 @@ function skyVoceDiId(id) {
   if (!id) return null;
   const o = (sky.oggetti || []).find(x => x.id === id);
   if (o) return o;
+
+  // Le stelle del catalogo grande: l'identificativo porta il loro indice
+  if (typeof id === 'string' && id.startsWith('cat:') && typeof catSchedaStella === 'function') {
+    const stella = catSchedaStella(parseInt(id.slice(4), 10));
+    if (!stella) return null;
+    const dove = catPosizioneStella(stella.indiceCatalogo);
+    return Object.assign({ id, categoria: 'stellaCatalogo' }, stella, dove || {});
+  }
+
+  // Comete e asteroidi
+  if (typeof id === 'string' && id.startsWith('min:') && typeof corpiMinoriVisibili === 'function') {
+    const vivo = corpiMinoriVisibili().find(c => c.nome === id.slice(4));
+    if (vivo) return Object.assign({ id, categoria: 'corpoMinore' }, vivo);
+    // Fuori dalla finestra utile (troppo debole o troppo vicino al Sole)
+    // resta comunque la sua scheda: dove sta e perché non si vede
+    const dato = typeof corpoMinoreDiId === 'function' ? corpoMinoreDiId(id) : null;
+    if (dato && typeof corpoMinoreInCielo === 'function') {
+      const p = corpoMinoreInCielo(dato, skyAdesso());
+      if (p) return Object.assign({ id, categoria: 'corpoMinore', nome: dato.nome,
+        tipo: dato.tipo, sottotipo: dato.tipo, disegno: dato.tipo === 'cometa' ? 'cometa' : 'asteroide' }, p);
+    }
+    return null;
+  }
+
   const dato = skyProfondoDiId(id);
   if (!dato) return null;
   const dove = skyPosizioneProfondo(dato);
@@ -6428,6 +6462,10 @@ const sky = {
   mostraSoleLuna: true,
   mostraStelle: true,
   mostraSatelliti: true,
+  // Comete e asteroidi. Acceso: quando ce n'è uno alla portata è il motivo
+  // per cui uno esce, e quasi sempre non ce n'è nessuno — quindi non
+  // affolla niente.
+  mostraCorpiMinori: true,
   mostraSottoOrizzonte: true,
   // Il filtro "Su ora" del pannello Astri: restringe l'elenco a chi in questo
   // momento sta sopra l'orizzonte. È un filtro dell'*elenco*, non della mappa —
@@ -10453,6 +10491,8 @@ function skyDisegna() {
 
   skyDisegnaCostellazioni(ctx, base, focale);
   skyDisegnaProfondo(ctx, base, focale);
+  // Comete e asteroidi: dopo il terreno, come gli altri astri con un nome
+  if (typeof corpiMinoriDisegna === 'function') corpiMinoriDisegna(ctx, base, focale);
 
   // Il binario del Sistema Solare: sotto a tutto il resto, perché è lo
   // sfondo su cui si leggono i pianeti, non uno degli attori
@@ -12541,7 +12581,17 @@ function skyMagnitudineTesto(o) {
 
 function skyClasseTesto(o) {
   if (o.classe) return o.classe;
-  if (o.categoria === 'profondo') return SKY_NOMI_PROFONDO[o.tipo] || 'Oggetto del cielo profondo';
+  if (o.categoria === 'profondo') {
+    // Il catalogo grande porta con sé il tipo già scritto in italiano
+    // ("nebulosa planetaria", "galassia a spirale"); i quattordici del
+    // vecchio elenco no, e per quelli resta la tabella.
+    return o.tipoTesto
+      ? o.tipoTesto.charAt(0).toUpperCase() + o.tipoTesto.slice(1)
+      : (SKY_NOMI_PROFONDO[o.tipo] || 'Oggetto del cielo profondo');
+  }
+  if (o.categoria === 'corpoMinore') {
+    return o.sottotipo === 'cometa' || o.tipo === 'cometa' ? 'Cometa' : 'Asteroide';
+  }
   if (o.categoria === 'figura') {
     return o.costellazioneFigura
       ? `Stella della figura: ${o.costellazioneFigura}`
@@ -12574,6 +12624,35 @@ function skyRigheScheda(o) {
   dato('Distanza dalla Terra', skyDistanzaTesto(o));
   dato('Dimensioni', skyDimensioniTesto(o));
   dato('Magnitudine', skyMagnitudineTesto(o));
+
+  // Una stella del catalogo non ha distanza né diametro da mostrare — di
+  // lei sappiamo il colore, e il colore è la temperatura. È il dato più
+  // interessante che una stella abbia, ed è misurato, non stimato a occhio.
+  if (typeof o.temperatura === 'number') {
+    dato('Temperatura', `circa ${skyNumero(Math.round(o.temperatura / 100) * 100)} K in superficie ` +
+      `<span class="text-slate-500">(il Sole ne ha 5.800)</span>`);
+    if (typeof o.bv === 'number') {
+      dato('Indice di colore', `B−V ${skyNumero(o.bv, 2)} ` +
+        '<span class="text-slate-500">(quanto è più luminosa nel blu che nel giallo)</span>');
+    }
+  }
+
+  // Comete e asteroidi: le due distanze dicono cose diverse. Quella dal
+  // Sole spiega quanto sta scaldando — per una cometa è tutto —, quella
+  // dalla Terra quanto la vediamo grande.
+  if (o.categoria === 'corpoMinore') {
+    if (typeof o.distanzaSole === 'number') {
+      dato('Distanza dal Sole', `${skyNumero(o.distanzaSole, 2)} unità astronomiche`);
+    }
+    if (typeof o.distanzaTerra === 'number') {
+      dato('Distanza dalla Terra', `${skyNumero(o.distanzaTerra, 2)} unità astronomiche · ` +
+        `la luce ci mette ${skyTempoLuceTesto(o.distanzaTerra * SKY_SEC_LUCE_PER_UA)}`);
+    }
+    if (typeof o.elongazione === 'number') {
+      dato('Distanza dal Sole in cielo', `${Math.round(o.elongazione)}°` +
+        (o.elongazione < 30 ? ' — troppo vicino: se ne sta nella luce del crepuscolo' : ''));
+    }
+  }
 
   // La fase si dice per la Luna sempre, e per i pianeti solo quando c'è
   // davvero: Giove e Saturno mostrano un disco pieno tutto l'anno, e
@@ -12717,14 +12796,34 @@ function skyVoceSelezionata() {
   }
 
   const voce = Object.assign({ categoria: sel.categoria }, sel.dati);
-  if (sky.observer && typeof Astronomy !== 'undefined') {
+  if (sky.observer && typeof Astronomy !== 'undefined' && typeof voce.ra === 'number') {
     try {
-      const hor = Astronomy.Horizon(Astronomy.MakeTime(skyAdesso()), sky.observer, voce.ra, voce.dec, 'normal');
+      const t = Astronomy.MakeTime(skyAdesso());
+      // Le coordinate di un catalogo sono in J2000; Horizon() vuole quelle
+      // dell'equatore di oggi. Senza questo passaggio la scheda direbbe una
+      // direzione sbagliata di 0,36° — poco per il dito, ma è lo stesso
+      // scarto che il planetario correggeva già nel disegno, e due numeri
+      // diversi per la stessa stella sono peggio di un numero solo.
+      const oggi = skyJ2000AllaData(voce.ra, voce.dec, t);
+      voce.raOra = oggi.ra;
+      voce.decOra = oggi.dec;
+      const hor = Astronomy.Horizon(t, sky.observer, oggi.ra, oggi.dec, 'normal');
       voce.az = hor.azimuth;
       voce.alt = hor.altitude;
     } catch (e) { /* senza posizione restano le sole coordinate di catalogo */ }
   }
   return voce;
+}
+
+// Da coordinate di catalogo (J2000) a coordinate dell'equatore di oggi.
+// Le due differiscono per la precessione: mezzo grado ogni settant'anni,
+// che sembra poco finché non si ingrandisce.
+function skyJ2000AllaData(raOre, dec, t) {
+  const rot = Astronomy.Rotation_EQJ_EQD(t);
+  const ra = raOre * 15 * SKY_D2R, d = dec * SKY_D2R, cd = Math.cos(d);
+  const v = new Astronomy.Vector(cd * Math.cos(ra), cd * Math.sin(ra), Math.sin(d), t);
+  const s = Astronomy.SphereFromVector(Astronomy.RotateVector(rot, v));
+  return { ra: ((s.lon / 15) + 24) % 24, dec: s.lat };
 }
 
 // Apre la scheda sopra la mappa (e aggiorna quella di fianco)
@@ -13262,9 +13361,21 @@ function skyOggettoNelPunto(px, py) {
   sky.profondo.forEach(o =>
     guarda(o.az, o.alt, 22, () => ({
       categoria: 'profondo',
-      dati: SKY_PROFONDO.find(x => x.nome === o.nome) || o
+      // Il dato buono è quello del catalogo grande, che porta con sé le
+      // misure vere e la brillanza; i quattordici scritti a mano restano
+      // il ripiego di quando i cataloghi non sono ancora arrivati.
+      dati: (typeof catProfondoDiNome === 'function' && catProfondoDiNome(o.nome)) ||
+            SKY_PROFONDO.find(x => x.nome === o.nome) || o
     })));
   if (scelto) return scelto.sel;
+
+  // Comete e asteroidi: pochi, e quando ci sono sono il motivo per cui uno
+  // ha aperto il planetario quella sera.
+  if (typeof corpiMinoriVisibili === 'function') {
+    corpiMinoriVisibili().forEach(c =>
+      guarda(c.az, c.alt, 20, () => ({ categoria: 'corpoMinore', dati: c })));
+    if (scelto) return scelto.sel;
+  }
 
   if (sky.mostraCostellazioni) {
     sky.costellazioni.forEach(c => c.stelle.forEach(s =>
@@ -13272,7 +13383,18 @@ function skyOggettoNelPunto(px, py) {
         categoria: 'figura',
         dati: Object.assign({ costellazioneFigura: c.nome, disegno: 'stella' }, s)
       }))));
+    if (scelto) return scelto.sel;
   }
+
+  // Per ultimo il fondo di stelle: cinquemila puntini vincerebbero su
+  // tutto il resto, e toccare Saturno diventerebbe questione di fortuna.
+  // Qui invece ci si arriva solo quando sotto il dito non c'era nient'altro
+  // — che è esattamente quando uno sta chiedendo «e questa cos'è?».
+  if (typeof catStellaNelPunto === 'function') {
+    const stella = catStellaNelPunto(px, py, base, focale);
+    if (stella) return { categoria: 'stellaCatalogo', dati: stella };
+  }
+
   return scelto ? scelto.sel : null;
 }
 
@@ -14035,6 +14157,7 @@ function inizializzaSkymap() {
   filtro('skymap-btn-solelun', 'mostraSoleLuna');
   filtro('skymap-btn-stelle', 'mostraStelle');
   filtro('skymap-btn-satelliti', 'mostraSatelliti');
+  filtro('skymap-btn-corpiminori', 'mostraCorpiMinori');
   filtro('skymap-btn-sotto', 'mostraSottoOrizzonte');
   filtro('skymap-btn-griglia', 'mostraGriglia');
   filtro('skymap-btn-etichette', 'mostraNomi');
@@ -14186,6 +14309,7 @@ function skyAggiornaTastiFiltri() {
   skyTasto('skymap-btn-solelun', sky.mostraSoleLuna);
   skyTasto('skymap-btn-stelle', sky.mostraStelle);
   skyTasto('skymap-btn-satelliti', sky.mostraSatelliti);
+  skyTasto('skymap-btn-corpiminori', sky.mostraCorpiMinori);
   skyTasto('skymap-btn-sotto', sky.mostraSottoOrizzonte);
   skyTasto('skymap-btn-griglia', sky.mostraGriglia);
   skyTasto('skymap-btn-etichette', sky.mostraNomi);
