@@ -42,7 +42,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `verifica.html` | ~360 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~4.915 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v51`). |
+| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v52`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 
@@ -268,7 +268,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v51`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v52`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene
@@ -377,6 +377,9 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Messier e il cielo profondo | `dati-profondo.js` (142 oggetti). Il disegno resta `skyDisegnaProfondo()` in `app.js`, che riceve i dati da `catAggiornaPosizioni()`. Con che strumento si veda lo decide `profondoStrumento()` a partire dal Bortle, **non** è scritto nei dati |
 | Il cielo di casa (scala di Bortle) | `cieloDiCasa()` / `impostaCieloDiCasa()` in `catalogo.js`, `CAT_CIELI`. È in sincrono col `profilo.cielo` del telescopio: cambiarlo di là o di qua è la stessa cosa |
 | Il palazzo di fronte (ostacoli sull'orizzonte) | `orizzonteCarica()` / `orizzonteAltezza(az)` in `pianifica.js`: sedici settori, interpolati. Entra nella curva della notte e nella scelta dei bersagli |
+| Toccare una stella qualsiasi e sapere cos'è | `catStellaNelPunto()` + `catSchedaStella()` in `catalogo.js`, agganciate in fondo a `skyOggettoNelPunto()` (`app.js`). Il fondo di stelle si cerca **per ultimo**, dopo pianeti, cielo profondo e corpi minori: cinquemila puntini vincerebbero su tutto |
+| Il colore di una stella, e la sua temperatura | `catTemperaturaDaBV()` (formula di Ballesteros: col B−V del Sole restituisce 5.778 K) e `catClasseDaBV()`. La classe è **dedotta dal colore**, non di catalogo: per le giganti sbaglia di una lettera, e la scheda lo dice |
+| Comete e asteroidi sulla mappa | `corpiMinoriVisibili()` (posizioni, cache di mezzo minuto) e `corpiMinoriDisegna()` in `corpi-minori.js`; tasto `#skymap-btn-corpiminori` nei Filtri, stato `sky.mostraCorpiMinori` |
 | Le lune di Giove | `luneDiGiove()` in `corpi-minori.js` (posizioni, transiti, ombre, eclissi) e `disegnaLuneDiGiove()` in `ui-nuova.js`. Compaiono nella scheda di Giove |
 | Comete e asteroidi | `corpi-minori.js`: `posizioneCorpoMinore()` è Keplero a mano (ellisse, parabola con Barker, iperbole), `corpoMinoreInCielo()` porta in cielo. Gli elementi stanno in `dati-corpi-minori.js`, e se ne possono incollare altri con `corpiMinoriLeggiIncollato()` |
 | Una cometa nuova, appena scoperta | non si aggiunge al file: si incollano gli elementi dell'MPC. Il file dei dati contiene solo quelle stabili |

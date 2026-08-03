@@ -223,7 +223,49 @@ if (primaBortle) localStorage.setItem('astrocalendario_cielo_casa', primaBortle)
 else localStorage.removeItem('astrocalendario_cielo_casa');
 
 // =====================================================================
-titolo('4. Le lune di Giove');
+titolo('4. Toccare una stella');
+// =====================================================================
+// Il colore di una stella è una misura, e da quella si ricava la
+// temperatura. Il controllo che vale è il Sole: col suo B−V la formula
+// deve restituire la sua temperatura vera.
+const tSole = catTemperaturaDaBV(0.65);
+prova('la temperatura dal colore ritrova quella del Sole',
+      Math.abs(tSole - 5772) < 60, `${Math.round(tSole)} K contro 5.772 K`);
+
+[[-0.35, 'O', 'azzurra'], [-0.20, 'B', 'azzurra'], [0.00, 'A', 'bianco-azzurra'],
+ [0.45, 'F', 'bianca'], [0.65, 'G', 'gialla'], [1.20, 'K', 'arancione'],
+ [1.60, 'M', 'rossa']].forEach(([bv, classe, colore]) => {
+  const c = catClasseDaBV(bv);
+  prova(`B−V ${bv.toFixed(2)} → ${classe}, ${colore}`, c.classe === classe && c.colore === colore,
+        `${c.classe}, ${c.colore}, ${Math.round(catTemperaturaDaBV(bv))} K`);
+});
+
+// Una stella con nome: scheda completa, con temperatura e spiegazione.
+// Aldebaran va bene — è arancione, luminosa, e non è fra le otto di app.js.
+const aldebaran = STELLE_NOMI.find(x => x[1] === 'Aldebaran');
+if (aldebaran) {
+  const s = catSchedaStella(aldebaran[0]);
+  prova('la scheda di Aldebaran è completa',
+        !!s && s.nome === 'Aldebaran' && s.mag < 1.2 && s.temperatura < 5000 && !!s.nota,
+        s && `${s.nome}, magnitudine ${s.mag}, ${Math.round(s.temperatura)} K, ${s.classe.replace(/<[^>]+>/g, '')}`);
+}
+
+// Le otto stelle di riferimento restano ad app.js, che di loro sa molto
+// di più: qui devono dare niente, non una scheda povera senza nome.
+const vega = STELLE_NOMI.find(x => x[1] === 'Vega');
+prova('Vega non passa dal catalogo: la sua scheda ricca è di app.js',
+      !vega || catSchedaStella(vega[0]) === null);
+let senzaNome = -1;
+for (let i = cat.quante - 1; i > 0; i--) if (!cat.nomiPerIndice.has(i)) { senzaNome = i; break; }
+if (senzaNome > 0) {
+  const s = catSchedaStella(senzaNome);
+  prova('una stella senza nome si presenta lo stesso, senza inventarsi una sigla',
+        !!s && /^Stella di magnitudine/.test(s.nome), s && s.nome);
+}
+nota(`Stelle con un nome o una lettera di Bayer: ${STELLE_NOMI.length.toLocaleString('it')} su ${cat.quante.toLocaleString('it')}.`);
+
+// =====================================================================
+titolo('5. Le lune di Giove');
 // =====================================================================
 const lune = luneDiGiove(quando);
 prova('sono quattro', lune && lune.length === 4);
@@ -245,7 +287,7 @@ LUNE_GIOVE.forEach((cfg, k) => {
 nota('In fila adesso: ' + luneDiGioveRacconto(quando).fila);
 
 // =====================================================================
-titolo('5. Keplero — comete e asteroidi');
+titolo('6. Keplero — comete e asteroidi');
 // =====================================================================
 // Si prendono posizione e velocità di un pianeta vero da Astronomy
 // Engine, se ne ricavano gli elementi orbitali osculatori e li si
@@ -327,7 +369,7 @@ if (halley) {
 });
 
 // =====================================================================
-titolo('6. Effemeridi note');
+titolo('7. Effemeridi note');
 // =====================================================================
 // Date che si trovano su qualunque almanacco: se una di queste si sposta,
 // qualcosa si è rotto a monte.

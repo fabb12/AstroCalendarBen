@@ -97,15 +97,21 @@ function costruisciStelle() {
     );
 
     // Il nome proprio è quello che la gente cerca ("Vega", non "HIP 91262").
-    // Le lettere di Bayer valgono solo per le stelle già abbastanza
-    // luminose da essere additate: sotto la quarta magnitudine nessuno
-    // punta il dito e dice "quella è ζ".
+    // Il nome proprio quando c'è, se no la lettera di Bayer.
+    //
+    // Bayer sì e Flamsteed no, ed è una scelta: «α» vuol dire "la più
+    // luminosa della sua costellazione" e chi guarda il cielo lo impara
+    // subito, mentre «29 Psc» è solo il numero d'ordine con cui un
+    // catalogo del Settecento le ha elencate da ovest a est. Costerebbe
+    // altri trenta kilobyte per non dire niente a nessuno, e per una
+    // stella senza lettera «Stella di magnitudine 5,1 nei Pesci» è più
+    // informativo del suo numero.
     const n = nomi[s.id];
     if (!n) return;
     const proprio = (n.name || '').trim();
     const bayer = (n.bayer || '').trim();
     if (proprio) conNome.push([indice, NOMI_ITALIANI[proprio] || proprio, n.c || '']);
-    else if (bayer && s.properties.mag <= 4.0) conNome.push([indice, `${bayer} ${n.c || ''}`.trim(), n.c || '']);
+    else if (bayer) conNome.push([indice, `${bayer} ${n.c || ''}`.trim(), n.c || '']);
   });
 
   // Otto stelle per riga: il file resta apribile in un editor senza che
