@@ -10431,17 +10431,27 @@ function skyDisegna() {
     if (sky.mostraViaLattea) skyDisegnaViaLattea(ctx, base, focale);
   }
 
+  // Il fondo di stelle del catalogo grande, e sopra di lui le figure.
+  // VANNO PRIMA DEL TERRENO, ed è tutto il punto: il terreno le deve
+  // coprire. Messe dopo, le cinquemila stelle finivano dipinte sul prato
+  // e sulle colline — un cielo stellato sotto i piedi.
+  //
+  // La Via Lattea sta già prima per la stessa ragione. Gli astri con un
+  // nome (pianeti, satelliti, oggetti profondi) invece restano dopo, di
+  // proposito: per quelli il tasto «Sotto l'orizzonte» serve davvero —
+  // uno vuole sapere dov'è Saturno anche mentre è tramontato, mentre di
+  // duemila stelle anonime sotto la collina non se ne fa niente.
+  //
+  // Quando catalogo.js non è caricato queste due non fanno nulla e resta
+  // il cielo di prima, con le ventitré figure scritte a mano.
+  if (typeof catDisegnaStelle === 'function') catDisegnaStelle(ctx, base, focale);
+  if (typeof catDisegnaFigure === 'function') catDisegnaFigure(ctx, base, focale);
+
   if (sky.mostraGriglia) skyDisegnaGriglia(ctx, base, focale);
   if (!conCamera) skyDisegnaTerreno(ctx, base, focale, aria);
   skyDisegnaCardinali(ctx, base, focale);
 
-  // Il fondo di stelle del catalogo grande, sotto a tutto il resto: le
-  // figure delle costellazioni ci si appoggiano sopra, e i pianeti pure.
-  // Quando catalogo.js non è caricato queste due non fanno niente e
-  // resta il cielo di prima — le ventitré figure scritte a mano.
-  if (typeof catDisegnaStelle === 'function') catDisegnaStelle(ctx, base, focale);
   skyDisegnaCostellazioni(ctx, base, focale);
-  if (typeof catDisegnaFigure === 'function') catDisegnaFigure(ctx, base, focale);
   skyDisegnaProfondo(ctx, base, focale);
 
   // Il binario del Sistema Solare: sotto a tutto il resto, perché è lo
