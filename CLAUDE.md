@@ -42,7 +42,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `verifica.html` | ~360 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~4.915 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v50`). |
+| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v51`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 
@@ -268,7 +268,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v50`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v51`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene

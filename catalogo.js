@@ -728,7 +728,6 @@ function catDisegnaStelle(ctx, base, focale) {
   const mag = cat.magnitudini;
   const fam = cat.famiglie;
   const L = sky.larghezza, A = sky.altezza;
-  const sotto = sky.mostraSottoOrizzonte;
   const cx = L / 2, cy = A / 2;
 
   // Un tracciato per famiglia di colore, riempito una volta sola alla fine
@@ -743,7 +742,19 @@ function catDisegnaStelle(ctx, base, focale) {
     if (m > limite) continue;                     // include il 99 delle saltate
 
     const x = ora[k * 3], y = ora[k * 3 + 1], z = ora[k * 3 + 2];
-    if (!sotto && z < 0) continue;
+
+    // Sotto l'orizzonte non si disegna, e non è una scelta di gusto: è
+    // dove sta la terra. Il terreno viene dipinto subito dopo e le
+    // coprirebbe comunque, quindi proiettarle sarebbe lavoro buttato —
+    // metà catalogo, a ogni fotogramma. Con la fotocamera accesa il
+    // terreno non c'è, ma dietro c'è quello vero: peggio ancora.
+    //
+    // Il tasto «Sotto l'orizzonte» non vale qui: quello serve agli astri
+    // che hanno un nome — uno vuole sapere dov'è Saturno anche mentre è
+    // tramontato — e continua a funzionare per loro, che si disegnano
+    // dopo il terreno. Duemila stelle anonime sepolte nella collina non
+    // dicono niente a nessuno.
+    if (z < 0) continue;
 
     // La proiezione, srotolata: skyProietta() farebbe la stessa cosa ma
     // costruendo un oggetto per stella — cinquemila oggetti per
@@ -783,9 +794,12 @@ function catDisegnaStelle(ctx, base, focale) {
     const k = luminose[i], px = luminose[i + 1], py = luminose[i + 2];
     const r = luminose[i + 3], z = luminose[i + 4];
 
+    // Qui sotto l'orizzonte non ci arriva niente: il ciclo di sopra le ha
+    // già scartate. Resta solo lo smorzamento dell'aria bassa, che è
+    // vero — una stella a due gradi sull'orizzonte attraversa quaranta
+    // volte più atmosfera di una allo zenit, e si vede.
     const alt = Math.asin(Math.max(-1, Math.min(1, z))) * 180 / Math.PI;
-    const est = typeof skyEstinzione === 'function' ? skyEstinzione(alt) : 1;
-    const opacita = (alt < 0 ? 0.18 : est) * velo;
+    const opacita = (typeof skyEstinzione === 'function' ? skyEstinzione(alt) : 1) * velo;
     if (opacita < 0.03) continue;
 
     const colore = cat.colori.get(k) || CAT_FAMIGLIE_COLORE[cat.famiglie[k]];
@@ -838,9 +852,15 @@ function catDisegnaFigure(ctx, base, focale) {
   const cx = L / 2, cy = A / 2;
   const fr = base.f, br = base.r, bu = base.u;
 
+  // Un tracciato solo: quello che sta sotto l'orizzonte non si disegna
+  // affatto. Prima le linee interrate si tiravano come un'ombra, perché
+  // «la figura si intuisce» — ma quella era una scelta di quando le
+  // figure portavano con sé le proprie stelle, e le stelle facevano la
+  // stessa fine. Adesso le stelle vengono dal catalogo e sotto
+  // l'orizzonte non ci vanno: lasciare le linee vorrebbe dire disegnare
+  // il Grande Carro sul prato senza nessuna stella dentro.
   const sopra = new Path2D();
-  const sottoTerra = new Path2D();
-  let cSopra = false, cSotto = false;
+  let cSopra = false;
   const etichette = [];
 
   cat.figure.forEach(fig => {
@@ -851,9 +871,12 @@ function catDisegnaFigure(ctx, base, focale) {
       for (let k = 0; k < s.quanti; k++) {
         const x = s.ora[k * 3], y = s.ora[k * 3 + 1], z = s.ora[k * 3 + 2];
         const d = x * fr[0] + y * fr[1] + z * fr[2];
-        const punto = d > 0.001
+        // Un punto sotto l'orizzonte interrompe la spezzata: il tratto
+        // che ci arriva e quello che ne riparte non si disegnano, e la
+        // figura esce da terra dove esce davvero.
+        const punto = (d > 0.001 && z >= 0)
           ? { px: cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / d),
-              py: cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / d), z }
+              py: cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / d) }
           : null;
 
         if (precedente && punto) {
@@ -862,9 +885,9 @@ function catDisegnaFigure(ctx, base, focale) {
           // se è più lungo di due schermi, non è una linea, è un errore.
           const dx = punto.px - precedente.px, dy = punto.py - precedente.py;
           if (dx * dx + dy * dy < (L + A) * (L + A)) {
-            const interrata = (precedente.z + punto.z) / 2 < 0;
-            if (interrata) { sottoTerra.moveTo(precedente.px, precedente.py); sottoTerra.lineTo(punto.px, punto.py); cSotto = true; }
-            else { sopra.moveTo(precedente.px, precedente.py); sopra.lineTo(punto.px, punto.py); cSopra = true; }
+            sopra.moveTo(precedente.px, precedente.py);
+            sopra.lineTo(punto.px, punto.py);
+            cSopra = true;
           }
         }
         precedente = punto;
@@ -874,7 +897,10 @@ function catDisegnaFigure(ctx, base, focale) {
     if (!sky.mostraNomi) return;
     const x = fig.centroOra[0], y = fig.centroOra[1], z = fig.centroOra[2];
     const d = x * fr[0] + y * fr[1] + z * fr[2];
-    if (d <= 0.001 || z < -0.05) return;
+    // Il nome sta nel baricentro della figura: se quello è sotto
+    // l'orizzonte, la figura è per la gran parte tramontata e il nome
+    // finirebbe sul terreno da solo.
+    if (d <= 0.001 || z < 0) return;
     const px = cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / d);
     const py = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / d);
     if (px < 0 || px > L || py < 0 || py > A) return;
@@ -886,10 +912,6 @@ function catDisegnaFigure(ctx, base, focale) {
   if (cSopra) {
     ctx.strokeStyle = `rgba(120, 178, 255, ${0.4 * velo})`;
     ctx.stroke(sopra);
-  }
-  if (cSotto) {
-    ctx.strokeStyle = `rgba(120, 178, 255, ${0.1 * velo})`;
-    ctx.stroke(sottoTerra);
   }
 
   if (etichette.length) {
