@@ -1168,9 +1168,28 @@
       </div>
 
       <div class="corpo-modale spazio-verticale">
-        <div class="sol-guscio">
+        <div id="sol-guscio" class="sol-guscio">
           <canvas id="sol-canvas" class="block w-full tela-sistema"></canvas>
           <p class="sol-suggerimento">Trascina per girare · due dita per spostare e avvicinare · tocca un pianeta</p>
+
+          <!-- I comandi appoggiati sulla scena, come quelli sulla mappa del
+               planetario. Stanno qui e non nella fila di sotto perché servono
+               mentre si sta guardando — e perché a tutto schermo la fila di
+               sotto non c'è più. Il ⟲ è il paracadute: dopo qualche giro e
+               due spostamenti col dito non si sa più da dove si stava
+               guardando, e questo rimette la scena com'era all'apertura. -->
+          <div class="comandi-mappa-sistema">
+            <button id="sol-schermo" type="button" class="tasto-mappa-sistema"
+              title="Il Sistema Solare a tutto schermo, con la barra del tempo in sovrimpressione"
+              aria-label="A tutto schermo">⛶</button>
+            <button id="sol-reset" type="button" class="tasto-mappa-sistema"
+              title="Rimetti la vista com'era all'apertura: stessa inquadratura, stesso ingrandimento (o premi R)"
+              aria-label="Rimetti la vista come all'apertura">⟲</button>
+            <button id="sol-zoom-meno" type="button" class="tasto-mappa-sistema"
+              title="Allontanati" aria-label="Allontanati">−</button>
+            <button id="sol-zoom-piu" type="button" class="tasto-mappa-sistema"
+              title="Avvicinati" aria-label="Avvicinati">+</button>
+          </div>
 
           <!-- Il pannello del tempo, quando lo si chiede da qui. Dentro non
                c'è una copia dei comandi del planetario: c'è proprio il suo
@@ -1225,7 +1244,7 @@
             <!-- Spostare la scena serve appena ci si avvicina; questo la
                  rimette in mezzo, che è l'unico modo per non perdersi -->
             <button id="sol-centra" type="button" class="tasto-cielo tasto-passo"
-              title="Rimetti il Sole al centro (o premi C). La scena si sposta con due dita, o trascinando col tasto destro."
+              title="Rimetti il Sole al centro, lasciando il giro e l'ingrandimento come stanno (o premi C). Per rimettere tutto com'era, il ⟲ sulla scena."
               aria-label="Rimetti la scena al centro">⌖</button>
           </div>
 
