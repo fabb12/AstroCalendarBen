@@ -15881,6 +15881,29 @@ function solCentra() {
   if (sol.aperto) solDisegna();
 }
 
+// L'inquadratura di partenza: da trentaquattro gradi sopra il piano, con
+// tutto il sistema dentro alla tela. È quella che si vede aprendo la finestra.
+const SOL_VISTA_INIZIALE = { az: -0.55, elev: 34, zoom: 1 };
+
+// Il paracadute. Girare, spostare e ingrandire sono tre gesti che si sommano,
+// e dopo qualche mossa non si sa più da dove si sta guardando: la scena è
+// tutta uguale a sé stessa da ogni parte, e senza il Sole in mezzo non c'è
+// niente a cui aggrapparsi. Questo rimette la vista com'era all'apertura —
+// non solo lo spostamento, anche il giro e l'ingrandimento, perché "mi sono
+// perso" vuol dire tutt'e tre insieme.
+//
+// L'arrivo è morbido, come per i tasti dei punti di vista: vedere la scena
+// tornare al suo posto dice cosa è successo, saltarci sopra no.
+function solRipristinaVista() {
+  sol.panX = 0;
+  sol.panY = 0;
+  sol.az = SOL_VISTA_INIZIALE.az;
+  sol.elevVoluta = SOL_VISTA_INIZIALE.elev;
+  solImpostaZoom(SOL_VISTA_INIZIALE.zoom, { morbido: true });
+  solAggiornaTasti();
+  if (sol.aperto) solDisegna();
+}
+
 function solSposta(dx, dy) {
   sol.panX += dx;
   sol.panY += dy;
@@ -16023,6 +16046,114 @@ function solTocco(e) {
   if (migliore) solScegli(migliore.id);
 }
 
+// --- A tutto schermo -------------------------------------------------------
+//   La scena è piccola: dentro alla finestra le resta poco più di mezza
+//   altezza dello schermo, e su un telefono girare il Sistema Solare in un
+//   francobollo alto trecento pixel non fa vedere quello che c'è da vedere —
+//   che è un piatto, e quanto sono lontane le cose fra loro.
+//
+//   A tutto schermo ci va il guscio, non la finestra: dentro al guscio ci
+//   sono già la tela, la barra del tempo e il pannello del tempo, cioè tutto
+//   quello che serve mentre si guarda. I comandi della fila di sotto restano
+//   fuori — quelli si scelgono una volta e poi si dimenticano — ma i quattro
+//   tasti appoggiati sulla scena (schermo, ⟲, − e +) vengono con lei.
+//
+//   Come per la mappa dell'ombra (1-ter), c'è un ripiego per chi non ha
+//   l'API Fullscreen sugli elementi: il guscio esce dal modale e si appende
+//   al body, perché un antenato con `backdrop-filter` fa da riferimento anche
+//   a `position: fixed` e lo lascerebbe ancorato al contenuto che scorre.
+
+let solSchermoIntero = false;
+let solSegnaposto = null;
+
+function solGuscio() {
+  return document.getElementById('sol-guscio');
+}
+
+function solAlternaSchermoIntero() {
+  if (solSchermoIntero) solEsciSchermoIntero();
+  else solEntraSchermoIntero();
+}
+
+function solEntraSchermoIntero() {
+  const guscio = solGuscio();
+  if (!guscio || solSchermoIntero) return;
+  solSchermoIntero = true;
+  document.body.classList.add('sol-immersivo');
+
+  const chiedi = guscio.requestFullscreen || guscio.webkitRequestFullscreen;
+  if (chiedi) {
+    try {
+      const esito = chiedi.call(guscio);
+      if (esito && typeof esito.catch === 'function') esito.catch(() => solRipiegoSchermo(guscio));
+    } catch (e) {
+      solRipiegoSchermo(guscio);
+    }
+  } else {
+    solRipiegoSchermo(guscio);
+  }
+
+  solAggiornaTastoSchermo();
+  solRimisura();
+}
+
+function solRipiegoSchermo(guscio) {
+  if (!solSchermoIntero || solSegnaposto) return;
+  solSegnaposto = document.createComment('guscio-sistema-solare');
+  guscio.parentNode.insertBefore(solSegnaposto, guscio);
+  document.body.appendChild(guscio);
+  guscio.classList.add('sol-schermo-pieno');
+  solAggiornaTastoSchermo();
+  solRimisura();
+}
+
+function solEsciSchermoIntero() {
+  if (!solSchermoIntero) return;
+  const guscio = solGuscio();
+  solSchermoIntero = false;
+  document.body.classList.remove('sol-immersivo');
+
+  if (guscio) guscio.classList.remove('sol-schermo-pieno');
+  if (guscio && solSegnaposto && solSegnaposto.parentNode) {
+    solSegnaposto.parentNode.replaceChild(guscio, solSegnaposto);
+  }
+  solSegnaposto = null;
+
+  const esci = document.exitFullscreen || document.webkitExitFullscreen;
+  const attivo = document.fullscreenElement || document.webkitFullscreenElement;
+  if (attivo && esci) {
+    try {
+      const esito = esci.call(document);
+      if (esito && typeof esito.catch === 'function') esito.catch(() => {});
+    } catch (e) { /* già uscito per conto suo */ }
+  }
+
+  solAggiornaTastoSchermo();
+  solRimisura();
+}
+
+// La tela cambia misura dopo che il browser ha finito di rifare il posto:
+// due passate, come per la mappa dell'ombra, perché la prima a volte arriva
+// mentre lo schermo intero sta ancora aprendosi
+function solRimisura() {
+  [80, 320].forEach(ms => setTimeout(() => {
+    if (!sol.aperto) return;
+    solRidimensiona();
+    solDisegna();
+  }, ms));
+}
+
+function solAggiornaTastoSchermo() {
+  const b = document.getElementById('sol-schermo');
+  if (!b) return;
+  b.classList.toggle('attiva', solSchermoIntero);
+  b.textContent = solSchermoIntero ? '✕' : '⛶';
+  b.title = solSchermoIntero
+    ? 'Esci dal tutto schermo (anche con Esc)'
+    : 'Il Sistema Solare a tutto schermo, con la barra del tempo in sovrimpressione';
+  b.setAttribute('aria-label', solSchermoIntero ? 'Esci da schermo intero' : 'A tutto schermo');
+}
+
 // --- Apertura e chiusura ---------------------------------------------------
 
 window.apriSistemaSolare = () => {
@@ -16053,6 +16184,7 @@ window.apriSistemaSolare = () => {
   const aiuto = modale.querySelector('.sol-suggerimento');
   if (aiuto) aiuto.classList.remove('sol-svanito');
   solAggiornaTasti();
+  solAggiornaTastoSchermo();
   solAggiornaBarra();
 
   modale.classList.remove('hidden');
@@ -16076,6 +16208,10 @@ window.apriSistemaSolare = () => {
 };
 
 function chiudiSistemaSolare() {
+  // Prima di tutto si torna dentro alla finestra: col ripiego il guscio è
+  // appeso al body, e nasconderei il modale lasciando la scena a coprire
+  // tutto lo schermo
+  solEsciSchermoIntero();
   // Il pannello del tempo qui è in prestito: va restituito *prima* di chiudere
   // la finestra, o resterebbe murato dentro a un modale nascosto — e il
   // planetario si ritroverebbe senza i suoi comandi del tempo (7.5-ter)
@@ -16154,8 +16290,31 @@ function inizializzaSistemaSolare() {
   if (zoomIn) zoomIn.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto * 1.4, { morbido: true }));
   const zoomOut = document.getElementById('sol-zoom-out');
   if (zoomOut) zoomOut.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto / 1.4, { morbido: true }));
+  // Il ⌖ della fila di comandi e il ⟲ appoggiato sulla scena dicono la stessa
+  // cosa a due misure diverse: uno rimette al centro, l'altro rimette tutto
   const centra = document.getElementById('sol-centra');
   if (centra) centra.addEventListener('click', solCentra);
+  const reset = document.getElementById('sol-reset');
+  if (reset) reset.addEventListener('click', solRipristinaVista);
+
+  // I comandi appoggiati sulla scena: schermo intero e zoom. Gli stessi che
+  // stanno nella fila di sotto, ma qui arrivano anche a tutto schermo
+  const schermo = document.getElementById('sol-schermo');
+  if (schermo) schermo.addEventListener('click', solAlternaSchermoIntero);
+  const zoomMenoMappa = document.getElementById('sol-zoom-meno');
+  if (zoomMenoMappa) zoomMenoMappa.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto / 1.4, { morbido: true }));
+  const zoomPiuMappa = document.getElementById('sol-zoom-piu');
+  if (zoomPiuMappa) zoomPiuMappa.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto * 1.4, { morbido: true }));
+
+  // Il pieno schermo può finire anche senza passare dal tasto (Esc, o il
+  // gesto del sistema): quando succede, la tela va rimisurata comunque
+  const cambioSchermo = () => {
+    const attivo = document.fullscreenElement || document.webkitFullscreenElement;
+    if (solSchermoIntero && !solSegnaposto && attivo !== solGuscio()) solEsciSchermoIntero();
+    else solRimisura();
+  };
+  document.addEventListener('fullscreenchange', cambioSchermo);
+  document.addEventListener('webkitfullscreenchange', cambioSchermo);
 
   modale.querySelectorAll('[data-sol-misure]').forEach(b =>
     b.addEventListener('click', () => {
@@ -16216,6 +16375,9 @@ function inizializzaSistemaSolare() {
     // Le frecce girano la scena nello stesso verso del dito; con Maiusc
     // premuto la spostano, come il trascinamento col tasto destro
     const passoPan = 40;
+    // A tutto schermo l'Esc è del pieno schermo: si torna alla finestra, non
+    // si chiude tutto. È lo stesso patto della mappa dell'ombra
+    if (e.key === 'Escape' && solSchermoIntero) { solEsciSchermoIntero(); return; }
     if (e.key === 'Escape') chiudiSistemaSolare();
     else if (e.key === 'ArrowLeft') { e.shiftKey ? solSposta(-passoPan, 0) : (sol.az -= 0.12); }
     else if (e.key === 'ArrowRight') { e.shiftKey ? solSposta(passoPan, 0) : (sol.az += 0.12); }
@@ -16226,6 +16388,8 @@ function inizializzaSistemaSolare() {
       if (e.shiftKey) solSposta(0, passoPan);
       else { sol.elevVoluta = Math.min(89, sol.elevVoluta + 4); solAggiornaTasti(); }
     } else if (e.key === 'c' || e.key === 'C') solCentra();
+    else if (e.key === 'r' || e.key === 'R') solRipristinaVista();
+    else if (e.key === 'f' || e.key === 'F') solAlternaSchermoIntero();
     else if (e.key === ' ') { e.preventDefault(); solAlternaMarcia(); }
   });
 

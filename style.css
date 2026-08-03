@@ -4038,7 +4038,9 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   position: absolute;
   top: 10px;
   left: 12px;
-  right: 12px;
+  /* A destra si ferma prima: lì sta la colonna dei tasti appoggiati sulla
+     scena, e la riga delle istruzioni ci finiva sotto */
+  right: 60px;
   margin: 0;
   font-size: 0.7rem;
   color: var(--testo-3);
@@ -4046,6 +4048,87 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   transition: opacity var(--transizione-lenta);
 }
 .sol-suggerimento.sol-svanito { opacity: 0; }
+
+/* I comandi appoggiati sulla scena, come quelli sulla mappa del planetario:
+   stessa colonna a destra, stessa pelle. Stanno qui e non nella fila di sotto
+   perché servono mentre si guarda — e perché a tutto schermo la fila di sotto
+   non c'è più. */
+.comandi-mappa-sistema {
+  position: absolute;
+  top: 10px;
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.tasto-mappa-sistema {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  color: var(--testo);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transizione), border-color var(--transizione);
+}
+.tasto-mappa-sistema:hover { background: rgba(28, 36, 60, 0.92); }
+.tasto-mappa-sistema.attiva { border-color: var(--blu); color: var(--blu-chiaro); }
+
+/* --- Il Sistema Solare a tutto schermo ---
+   Va a schermo intero il guscio, non la finestra: dentro ha già la tela, la
+   barra del tempo e il pannello del tempo. La barra si stacca dal flusso e si
+   appoggia in fondo, la scena le passa sotto — le stesse regole della mappa
+   dell'ombra a tutto schermo, perché è lo stesso gesto. */
+.sol-guscio:fullscreen,
+.sol-guscio.sol-schermo-pieno { background: #05070f; border-radius: 0; border: none; }
+.sol-guscio.sol-schermo-pieno {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  width: 100vw;
+  height: 100dvh;
+}
+.sol-guscio:fullscreen .tela-sistema,
+.sol-guscio.sol-schermo-pieno .tela-sistema {
+  height: 100%;
+  min-height: 0;
+}
+.sol-guscio:fullscreen #sol-tempo,
+.sol-guscio.sol-schermo-pieno #sol-tempo {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 700;
+  background: rgba(6, 10, 20, 0.86);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--bordo-forte);
+  border-radius: var(--raggio-m);
+  padding: 9px 11px;
+  box-shadow: var(--ombra-3);
+}
+/* I tasti sulla scena scendono di quel tanto che serve a non finire sotto la
+   safe area in alto (la tacca del telefono girato) */
+.sol-guscio:fullscreen .comandi-mappa-sistema,
+.sol-guscio.sol-schermo-pieno .comandi-mappa-sistema {
+  top: max(12px, env(safe-area-inset-top));
+}
+/* Il pannello del tempo, a tutto schermo, lascia scoperta la barra da cui si
+   apre: qui lo spazio in fondo è quello della barra staccata */
+.sol-guscio:fullscreen .sol-pannello-tempo,
+.sol-guscio.sol-schermo-pieno .sol-pannello-tempo {
+  max-height: calc(100% - 120px);
+}
+body.sol-immersivo { overflow: hidden; }
 
 /* Il pannello del tempo in prestito dal planetario (7.5-ter in app.js): si
    appoggia sulla scena come i pannelli del cielo si appoggiano sul cielo, e
