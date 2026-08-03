@@ -2298,7 +2298,7 @@ main { padding-bottom: calc(clamp(24px, 3vw, 56px) + var(--barra-inferiore)); }
 .griglia-vista   { display: grid; gap: var(--passo); align-content: start; }
 .griglia-elenco  { display: grid; gap: 8px; align-content: start; }
 
-/* Le schedine con un numero grande (buio, Luna, prossimo evento…) */
+/* Le schedine con un numero grande (da che ora è buio, quanta Luna c'è…) */
 .griglia-sintesi {
   display: grid;
   gap: 12px;
@@ -2307,6 +2307,73 @@ main { padding-bottom: calc(clamp(24px, 3vw, 56px) + var(--barra-inferiore)); }
 
 /* Un avviso che prende tutta la riga, comunque sia divisa la griglia */
 .scheda-piena { grid-column: 1 / -1; }
+
+/* ------------------------------------------ I prossimi appuntamenti          */
+/* Una riga sola con due porte: quasi tutta la riga apre il planetario sulla
+   sera dell'evento — che è quello che si vuole fare dopo aver letto
+   "eclissi di Luna fra sei giorni" — e la linguetta a destra porta alla
+   scheda dell'agenda, per i dettagli e per il "Visto!" da segnare.
+   Due tasti annidati non si possono fare (un <button> dentro un <button>
+   non è HTML valido): sono due tasti affiancati dentro alla stessa
+   cornice, separati da un filo. */
+.riga-prossimo {
+  display: flex;
+  align-items: stretch;
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color var(--transizione);
+}
+.riga-prossimo:hover { border-color: var(--blu-chiaro); }
+
+.apri-prossimo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 12px;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.apri-prossimo:hover { background: rgba(96, 165, 250, 0.07); }
+
+.testa-prossimo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.titolo-prossimo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--testo);
+}
+.voto-prossimo { font-size: 0.72rem; color: var(--testo-3); white-space: nowrap; }
+.quando-prossimo { font-size: 0.75rem; color: var(--testo-3); }
+
+/* Scritta in verticale no: sarebbe originale e illeggibile. È una linguetta
+   stretta, con il filo che la stacca dal corpo della riga. */
+.tasto-scheda-prossimo {
+  flex: 0 0 auto;
+  padding: 0 11px;
+  font-size: 0.72rem;
+  color: var(--testo-3);
+  background: none;
+  border: 0;
+  border-left: 1px solid var(--bordo);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tasto-scheda-prossimo:hover { background: var(--superficie-alta); color: var(--testo); }
 
 /* Le schede evento dell'agenda: una per riga sul telefono, due o tre su
    schermo grande. `min(100%, …)` evita che una riga sfori il contenitore. */
@@ -2383,8 +2450,9 @@ main { padding-bottom: calc(clamp(24px, 3vw, 56px) + var(--barra-inferiore)); }
      Cosa guardare                    [ tutta la riga, le parti affiancate ]
 
    "Cosa guardare" è il più lungo dei quattro e proprio per questo va largo:
-   affiancando le sue tre parti, nessun riquadro resta alto il doppio degli
-   altri, e non c'è più niente da incastrare.
+   affiancando le sue parti — gli oggetti di stanotte e le stazioni
+   spaziali — nessun riquadro resta alto il doppio degli altri, e non c'è
+   più niente da incastrare.
 
    Il posto di ognuno è scritto a mano, riga e colonna. Lasciandoli scorrere
    da soli finivano nell'ordine del documento — meteo, guardare, prossimi —
@@ -4526,7 +4594,7 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
      mezzo alla freccia. Dodici bastano. */
   .scheda-riepilogo { padding: 12px; }
   /* Il dispari rimasto solo in fondo si prende la riga: mezza riga vuota
-     accanto a "Prossimo evento" sembra un pezzo che non è arrivato. */
+     accanto all'ultima schedina sembra un pezzo che non è arrivato. */
   .griglia-sintesi > :last-child:nth-child(odd) { grid-column: 1 / -1; }
 
   /* Le parti dei riquadri raggruppati si stringono un po': il filo che le
@@ -4866,6 +4934,11 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
 }
 .testo-finestra-meteo[data-esito="ottima"] { color: #9ad17f; font-weight: 600; }
 .testo-finestra-meteo[data-esito="no"] { color: var(--testo-3); }
+/* "Che cielo avrai" è una parte sola: il giudizio di stanotte, la finestra
+   migliore delle prossime notti e la griglia, una sotto l'altra. Le due
+   etichette che le dividevano se ne sono andate insieme all'istogramma
+   doppione delle nuvole: a tenerle staccate basta lo spazio. */
+#stasera-meteo + .testo-finestra-meteo { margin-top: 12px; }
 
 .nota-meteo { font-size: 0.82rem; color: var(--testo-3); margin-top: 8px; }
 
@@ -4938,6 +5011,48 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
   color: var(--testo-3);
 }
 .segno-strumento svg { opacity: 0.8; }
+
+/* Che cos'è: "pianeta", "galassia a spirale", "cometa". Da quando i pianeti
+   non hanno più un elenco tutto loro, in questa lista Saturno e M57 stanno
+   sulla stessa riga, e senza un'etichetta la sigla non dice niente. */
+.tipo-migliore {
+  font-size: 0.72rem;
+  color: var(--testo-3);
+}
+
+/* Il piede della riga: con che strumento si vede (a sinistra) e la porta
+   per il planetario (a destra, dove il pollice la trova). */
+.piede-migliore {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 7px;
+}
+.piede-migliore:empty { display: none; }
+.piede-migliore .segno-strumento { margin-top: 0; }
+.piede-migliore .tasto-planetario { margin-left: auto; }
+
+.tasto-planetario {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--testo-2);
+  background: var(--superficie-alta);
+  border: 1px solid var(--bordo);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.tasto-planetario:hover {
+  background: var(--blu);
+  border-color: var(--blu-chiaro);
+  color: #fff;
+}
+.tasto-planetario svg { opacity: 0.85; }
 
 /* ---------------------------------------- Il cielo di casa (scala di Bortle) */
 .segmenti-cielo-casa {

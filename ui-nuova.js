@@ -30,7 +30,12 @@ function aggiornaStaseraMeteoAstro() {
   const finestra = document.getElementById('meteo-astro-finestra');
   if (!griglia) return;
 
-  griglia.innerHTML = meteoGrigliaHtml(30);
+  // Senza previsioni la griglia resta vuota: a dirlo basta la riga della
+  // finestra migliore, subito sopra. Da quando le due parti del riquadro
+  // sono una sola, i due messaggi di "dati non ancora arrivati" finivano
+  // uno sotto l'altro a dire la stessa cosa con parole diverse.
+  const pronto = !!(meteoAstro && meteoAstro.ore && meteoAstro.ore.length);
+  griglia.innerHTML = pronto ? meteoGrigliaHtml(30) : '';
 
   if (finestra) {
     const f = meteoFinestraMigliore();
@@ -59,13 +64,35 @@ function aggiornaAvvisoAurora() {
   box.textContent = a.testo;
 }
 
+// Che cos'è, in due parole, quello che si sta leggendo.
+//   Da quando i pianeti non hanno più un elenco tutto loro, in questa lista
+//   "Saturno" e "M57" stanno sulla stessa riga: senza un'etichetta, chi non
+//   riconosce la sigla non sa se sta guardando un pianeta, una galassia o
+//   una cometa — e sono tre serate diverse.
+function tipoDelBersaglio(m) {
+  if (m.tipo === 'pianeta') return 'pianeta';
+  if (m.tipo === 'luna') return '';                    // "Luna" si dice già da sé
+  if (m.tipo === 'corpoMinore') return m.dato && m.dato.tipo === 'cometa' ? 'cometa' : 'asteroide';
+  if (m.tipo === 'profondo' && m.dato) {
+    const che = m.dato.tipoTesto || m.dato.tipo || '';
+    // Il nome di catalogo di un oggetto senza nome proprio finisce già col
+    // suo tipo — "M39 — ammasso aperto" — e l'etichetta accanto sarebbe la
+    // terza volta che si legge la stessa cosa nella stessa riga. Si mette
+    // solo a chi il nome proprio ce l'ha: "M110 — Compagna di Andromeda"
+    // non dice che è una galassia.
+    return che && !m.nome.toLowerCase().includes(che.toLowerCase()) ? che : '';
+  }
+  return '';
+}
+
 function aggiornaStaseraMigliori() {
   const box = document.getElementById('stasera-migliori');
   const sotto = document.getElementById('migliori-sottotitolo');
   if (!box) return;
 
   if (!osservatoreCorrente()) {
-    box.innerHTML = '<p class="text-slate-400 text-sm">Serve la posizione per sapere cosa hai sopra la testa.</p>';
+    box.innerHTML = '<p class="text-slate-400 text-sm">Serve la posizione per sapere cosa hai sopra la testa.</p>' +
+      '<button type="button" onclick="apriPosizione(true)" class="mt-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors">Dimmi dove sono</button>';
     if (sotto) sotto.textContent = '';
     return;
   }
@@ -76,8 +103,12 @@ function aggiornaStaseraMigliori() {
   // Dieci bersagli erano dieci ovunque: sul telefono sono quattro schermate
   // di elenco dentro a un riquadro che ne ha altri due sotto, e il decimo
   // della lista non lo raggiunge nessuno. `quanto()` è la stessa misura che
-  // usa il resto dell'app per gli elenchi lunghi.
-  const migliori = migliorDiStanotte(typeof quanto === 'function' ? quanto(5, 8, 10) : 10);
+  // usa il resto dell'app per gli elenchi lunghi. Sul telefono uno in più
+  // di prima: questo elenco adesso è l'unico, e deve tenerci dentro anche i
+  // pianeti, che avevano il loro. Sul monitor restano dieci — allungarlo
+  // ancora voleva dire una colonna di asteroidi di ottava magnitudine sotto
+  // ai primi cinque che valgono la serata.
+  const migliori = migliorDiStanotte(typeof quanto === 'function' ? quanto(6, 8, 10) : 10);
   if (!migliori.length) {
     box.innerHTML = '<p class="text-slate-400 text-sm">Stanotte non c\'è niente che salga abbastanza da qui.</p>';
     return;
@@ -87,14 +118,23 @@ function aggiornaStaseraMigliori() {
     const strumento = m.strumento && typeof STRUMENTI !== 'undefined' && STRUMENTI[m.strumento]
       ? `<span class="segno-strumento">${icona(STRUMENTI[m.strumento].disegno, 14)} ${STRUMENTI[m.strumento].nome}</span>` : '';
     const colore = m.punti >= 75 ? '#7fb069' : m.punti >= 50 ? '#eab54a' : '#e2685c';
+    const che = tipoDelBersaglio(m);
+    // Il tasto che porta al cielo: `cercaNelCielo` apre il planetario e ci
+    // punta il bersaglio, e l'identificativo giusto — pianeta, oggetto
+    // profondo o cometa — se lo porta dietro la voce (`idCielo`).
+    const alCielo = m.idCielo
+      ? `<button type="button" class="tasto-planetario" onclick="cercaNelCielo('${m.idCielo.replace(/'/g, "\\'")}')"
+           title="Aprilo nel planetario, con la mappa puntata su di lui">${icona('bersaglio', 14)} Planetario</button>`
+      : '';
     return `<div class="riga-migliore">
       <div class="riga-migliore-testa">
         <span class="pallino-voto" style="background:${colore}" title="${m.punti} su 100"></span>
         <strong class="nome-migliore">${m.nome}</strong>
+        ${che ? `<span class="tipo-migliore">${che}</span>` : ''}
         <span class="ora-migliore">verso le ${oraBreve(m.quando)}, a ${Math.round(m.altezza)}°</span>
       </div>
       <p class="motivi-migliore">${m.motivi.join(' · ')}</p>
-      ${strumento}
+      <div class="piede-migliore">${strumento}${alCielo}</div>
     </div>`;
   }).join('');
 }

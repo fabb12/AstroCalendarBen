@@ -12425,6 +12425,10 @@ function skyAssicuraVisibile(o) {
   else if (o.tipo === 'stella') sky.mostraStelle = true;
   else if (o.tipo === 'satellite') sky.mostraSatelliti = true;
   else if (o.tipo === 'profondo') sky.mostraProfondo = true;
+  // Comete e asteroidi arrivano qui da quando la dashboard sa puntarli
+  // ("Cosa guardare" li mette in fila con i pianeti): il loro filtro nasce
+  // acceso, ma chi l'aveva spento si troverebbe la freccia su un cielo vuoto
+  else if (o.categoria === 'corpoMinore') sky.mostraCorpiMinori = true;
   if (o.alt < 0) sky.mostraSottoOrizzonte = true;
   skyAggiornaTastiFiltri();
 }
@@ -19589,8 +19593,16 @@ function mostraPassaggiSatelliti() {
     ? `<p class="text-xs text-amber-400 mt-1">Dati orbitali vecchi di ${giorniEta} giorn${giorniEta === 1 ? 'o' : 'i'}: gli orari possono spostarsi di qualche minuto. Premi “Aggiorna” con la rete accesa.</p>`
     : '';
 
-  // Riepilogo per stazione: quando tocca alla ISS e quando a Tiangong
-  const riepilogo = SATELLITI.map(sat => {
+  // Il riepilogo per stazione resta solo a chi non ha un passaggio nelle
+  // schede qui sotto.
+  //   Prima c'era per tutt'e due sempre, e diceva la stessa cosa della prima
+  //   scheda — stessa stazione, stessa ora, stessa direzione, e un tasto
+  //   "Dov'è ora" che chiama la stessa funzione di "Trova nel cielo". Due
+  //   righe per dire una cosa. Per una stazione che invece non passa, quella
+  //   riga è l'unica che ne parla: senza, sparirebbe dalla pagina e non si
+  //   capirebbe se il conto è stato fatto.
+  const conScheda = new Set(visibili.map(p => p.satId));
+  const riepilogo = SATELLITI.filter(sat => !conScheda.has(sat.id)).map(sat => {
     const elenco = satPassaggi[sat.id];
     let testo;
     if (!elenco) {
@@ -19616,7 +19628,9 @@ function mostraPassaggiSatelliti() {
       </div>`;
   }).join('');
 
-  const intestazione = `<div class="grid gap-2 bg-slate-900 p-3 rounded-xl border border-slate-700">${riepilogo}</div>`;
+  const intestazione = riepilogo
+    ? `<div class="grid gap-2 bg-slate-900 p-3 rounded-xl border border-slate-700">${riepilogo}</div>`
+    : '';
 
   if (!visibili.length) {
     box.innerHTML = intestazione +
@@ -19654,8 +19668,10 @@ function mostraPassaggiSatelliti() {
       </div>`;
   }).join('');
 
-  box.innerHTML = intestazione + schede +
-    `<p class="text-xs text-slate-500">Sembra una stella luminosa che scivola senza fare rumore: non lampeggia come un aereo. Guarda qualche minuto prima dell'orario e tieni d'occhio la direzione indicata.</p>` +
+  // Le schede prima, il riepilogo di chi non passa dopo: è una nota a piè
+  // di pagina, non un'intestazione.
+  box.innerHTML = schede + intestazione +
+    `<p class="text-xs text-slate-500">Sembra una stella che scivola senza lampeggiare: mettiti fuori qualche minuto prima, guardando nella direzione indicata.</p>` +
     notaEta;
 }
 
@@ -19664,17 +19680,6 @@ function mostraPassaggiSatelliti() {
 //     È la risposta alla domanda che ci si fa davvero guardando fuori
 //     dalla finestra: mette insieme buio, Luna, pianeti, meteo e ISS.
 // =====================================================================
-
-// Pianeti che vale la pena cercare stanotte (Urano e Nettuno restano fuori:
-// senza telescopio non si distinguono da una stella qualsiasi)
-const STASERA_CORPI = [
-  { id: 'Moon',    nome: 'Luna',     disegno: 'luna' },
-  { id: 'Mercury', nome: 'Mercurio', disegno: 'mercurio' },
-  { id: 'Venus',   nome: 'Venere',   disegno: 'venere' },
-  { id: 'Mars',    nome: 'Marte',    disegno: 'marte' },
-  { id: 'Jupiter', nome: 'Giove',    disegno: 'giove' },
-  { id: 'Saturn',  nome: 'Saturno',  disegno: 'saturno' }
-];
 
 function schedaRiepilogo(titolo, valore, dettaglio) {
   return `
@@ -19761,15 +19766,12 @@ function costruisciStaseraRiepilogo() {
     schede.push(schedaRiepilogo('Luna', 'dati non disponibili', ''));
   }
 
-  // 3. Prossimo evento del calendario
-  const prossimo = eventiCalcolati.filter(e => e.dataObj > new Date())
-    .sort((a, b) => a.dataObj - b.dataObj)[0];
-  if (prossimo) {
-    const fra = Math.round((prossimo.dataObj - Date.now()) / 3600000);
-    const quando = fra < 48 ? `fra ${fra} ore` : `fra ${Math.round(fra / 24)} giorni`;
-    schede.push(schedaRiepilogo('Prossimo evento', prossimo.titolo, `${quando} · ${prossimo.dataTesto}`));
-  }
-
+  // Il prossimo evento del calendario qui non c'è più: era la prima riga
+  // di "Prossimi appuntamenti" scritta una seconda volta, con meno dentro
+  // (senza semaforo di osservabilità e senza il tasto che porta al
+  // planetario). Di due copie della stessa cosa si tiene quella che ne dice
+  // di più — e le due schede che restano sono quelle che rispondono alla
+  // domanda del riquadro: da che ora è buio, e quanta Luna c'è.
   box.innerHTML = schede.join('');
 }
 
@@ -19802,27 +19804,21 @@ async function costruisciStaseraMeteo() {
   const vecchio = Math.round((Date.now() - meteo.quando) / 60000);
   const notaVecchio = vecchio > 90 ? ` · previsione di ${vecchio > 1440 ? Math.round(vecchio / 1440) + ' giorni' : Math.round(vecchio / 60) + ' ore'} fa` : '';
 
-  const barre = ore.map(o => {
-    const n = o.nuvole ?? 0;
-    const colore = n <= 25 ? '#22c55e' : n <= 60 ? '#eab308' : '#64748b';
-    const ora = new Date(o.ms).getHours();
-    return `<div class="flex flex-col items-center gap-1" title="${ora}:00 · ${descriviNuvole(n)} (${Math.round(n)}%)">
-      <div class="w-3 rounded-sm" style="height:${Math.max(3, Math.round(n * 0.4))}px; background:${colore}"></div>
-      <span class="text-[10px] text-slate-500">${ora}</span>
-    </div>`;
-  }).join('');
-
-  // La riga grande non ripete più "Nuvole stanotte": lo dice l'etichetta
-  // della parte, subito sopra, e qui rubava il posto al dato — che è il
-  // giudizio in parole, non il titolo.
+  // Il giudizio di stanotte in una riga, e nient'altro.
+  //   Qui sotto c'era anche l'istogramma delle nuvole ora per ora, con la
+  //   sua legenda. Erano gli stessi numeri della prima riga della griglia
+  //   del meteo, che sta dieci centimetri più in basso nello stesso
+  //   riquadro: due disegni diversi degli stessi dati, uno sopra l'altro,
+  //   e chi guardava doveva capire da sé che non si contraddicevano.
+  //   L'istogramma se n'è andato perché la griglia dice tutto quello che
+  //   diceva lui e, sulla stessa scala di colori, anche seeing,
+  //   trasparenza, vento e rugiada.
   box.innerHTML = `
     <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
       <div class="flex justify-between items-baseline flex-wrap gap-2">
-        <p class="font-bold text-white">${semaforo} ${iniziale(descriviNuvole(media))} (${media}% in media)</p>
+        <p class="font-bold text-white">${semaforo} ${iniziale(descriviNuvole(media))} (${media}% di nuvole in media stanotte)</p>
         <p class="text-xs text-slate-400">Ora migliore: ${oraBreve(new Date(migliore.ms))} con ${Math.round(migliore.nuvole ?? 0)}%${notaVecchio}</p>
       </div>
-      <div class="flex items-end gap-1 mt-3 overflow-x-auto pb-1">${barre}</div>
-      <p class="text-xs text-slate-500 mt-2">Altezza della barra = copertura nuvolosa prevista, ora per ora (dati Open-Meteo).</p>
     </div>`;
 
   // Le previsioni appena arrivate cambiano i semafori: vanno riscritti sia
@@ -19831,57 +19827,21 @@ async function costruisciStaseraMeteo() {
   aggiornaSemaforiAgenda();
 }
 
-function costruisciStaseraPianeti() {
-  const box = document.getElementById('stasera-pianeti');
-  if (!box) return;
-
-  const obs = osservatoreCorrente();
-  if (!obs) {
-    box.innerHTML = '<p class="text-slate-400">Serve la posizione per sapere cosa hai sopra la testa.</p>' +
-      '<button type="button" onclick="apriPosizione(true)" class="mt-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors">Dimmi dove sono</button>';
-    return;
-  }
-
-  const buio = finestraBuio(new Date());
-  const righe = STASERA_CORPI.map(c => {
-    let migliore = null, orari = null, mag = null, fase = null;
-    try {
-      migliore = momentoMigliore(c.id, buio, obs, null);
-      orari = orariSorgereTramonto(c.id, new Date(), obs);
-      const ill = Astronomy.Illumination(c.id, Astronomy.MakeTime(new Date()));
-      mag = ill.mag;
-      fase = ill.phase_fraction;
-    } catch (e) { /* corpo non calcolabile */ }
-
-    if (!migliore) return null;
-    const visibile = migliore.alt > 5;
-    return { c, migliore, orari, mag, fase, visibile };
-  }).filter(Boolean).sort((a, b) => b.migliore.alt - a.migliore.alt);
-
-  const visibili = righe.filter(r => r.visibile);
-  const nascosti = righe.filter(r => !r.visibile);
-
-  const html = visibili.map(r => `
-    <div class="flex items-center justify-between gap-3 bg-slate-900 p-3 rounded-xl border border-slate-700">
-      <div class="min-w-0">
-        <p class="font-bold text-white flex items-center gap-2">${icona(r.c.disegno, 24)} ${r.c.nome}
-          <span class="text-xs font-normal text-slate-400">${r.mag !== null ? `mag ${r.mag.toFixed(1)}` : ''}</span>
-        </p>
-        <p class="text-xs text-slate-400 mt-0.5">
-          Più alto alle <strong class="text-slate-200">${oraBreve(r.migliore.quando)}</strong>
-          a ${Math.round(r.migliore.alt)}° verso ${skyNomeDirezione(r.migliore.az)}
-          ${r.orari && r.orari.tramonta ? ` · tramonta ${oraBreve(r.orari.tramonta)}` : ''}
-        </p>
-      </div>
-      <button onclick="cercaNelCielo('${r.c.id}')" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-blue-600 text-white font-semibold flex-shrink-0" title="Trovalo nel cielo">Trova</button>
-    </div>`).join('');
-
-  const htmlNascosti = nascosti.length
-    ? `<p class="text-xs text-slate-500 mt-1">Stanotte non si vedono (troppo bassi o dietro il Sole): ${nascosti.map(r => r.c.nome).join(', ')}.</p>`
-    : '';
-
-  box.innerHTML = (html || '<p class="text-slate-400">Nessun pianeta sopra l\'orizzonte durante le ore di buio.</p>') + htmlNascosti;
-}
+// L'elenco "Pianeti e Luna" non c'è più, e con lui `STASERA_CORPI`.
+//   Diceva, dei sei corpi che tutti conoscono, a che ora sono più alti e
+//   verso dove. Ma quei sei stanno già dentro ai migliori di stanotte
+//   (`migliorDiStanotte`, in pianifica.js), che li mette in fila insieme al
+//   cielo profondo e alle comete con lo stesso metro — quanto salgono, per
+//   quanto tempo, con che Luna, con che cielo e con che meteo — e per
+//   ognuno dice anche perché sta lì. Averli due volte nello stesso riquadro
+//   voleva dire leggere due volte di Saturno, la seconda con meno dentro, e
+//   poi chiedersi se le due righe parlassero dello stesso Saturno.
+//
+//   Quello che si perde è la riga "stanotte non si vedono: Mercurio,
+//   Nettuno" — che è l'unica cosa che l'elenco diceva e i migliori non
+//   dicono. È una perdita voluta: un riquadro che si chiama "Cosa guardare"
+//   non è il posto dove elencare cosa non guardare, e chi cerca proprio
+//   Mercurio ha l'elenco degli astri del planetario, col filtro "Su ora".
 
 function costruisciStaseraProssimi() {
   const box = document.getElementById('stasera-prossimi');
@@ -19901,26 +19861,38 @@ function costruisciStaseraProssimi() {
     return;
   }
 
+  // Toccando la riga si va nel planetario, non più in agenda.
+  //   Leggere "eclissi di Luna, fra sei giorni" fa venire in mente una cosa
+  //   sola: e da qui come si vedrà? La risposta è il cielo di quella sera, e
+  //   ci si arrivava in tre passaggi — la riga apriva l'agenda, l'agenda
+  //   mostrava la scheda, e in fondo alla scheda c'era "Vedi nel planetario".
+  //   Adesso è il primo tasto, ed è tutta la riga: `apriEventoNelPlanetario`
+  //   porta l'orologio sull'istante giusto, punta la mappa e accende la
+  //   traccia. La scheda dell'agenda resta lì accanto, per chi cerca i
+  //   dettagli e il "Visto!" da segnare sul diario.
   box.innerHTML = prossimi.map(ev => {
     const indice = indiceOsservabilita(ev);
-    const cat = CATEGORIE[ev.categoria];
     const semaforo = indice ? `${indice.semaforo} ${indice.punteggio}/100` : '';
     const motivo = indice && indice.motivi.length ? indice.motivi[0] : '';
     return `
-      <button onclick="vaiAllEvento('${ev.id}')" class="text-left bg-slate-900 p-3 rounded-xl border border-slate-700 hover:border-blue-500 transition-colors w-full">
-        <div class="flex justify-between items-baseline gap-2 flex-wrap">
-          <span class="font-bold text-white inline-flex items-center gap-2">${iconaCategoria(ev.categoria, 18)} ${ev.titolo}</span>
-          <span class="text-xs text-slate-400">${semaforo}</span>
-        </div>
-        <p class="text-xs text-slate-400 mt-1">${ev.dataTesto}${motivo ? ` · ${motivo}` : ''}</p>
-      </button>`;
+      <div class="riga-prossimo">
+        <button type="button" class="apri-prossimo" onclick="apriEventoNelPlanetario('${ev.id}')"
+          title="Apri il planetario sulla sera dell'evento, puntato dove guardare">
+          <span class="testa-prossimo">
+            <span class="titolo-prossimo">${iconaCategoria(ev.categoria, 18)} ${ev.titolo}</span>
+            <span class="voto-prossimo">${semaforo}</span>
+          </span>
+          <span class="quando-prossimo">${ev.dataTesto}${motivo ? ` · ${motivo}` : ''}</span>
+        </button>
+        <button type="button" class="tasto-scheda-prossimo" onclick="vaiAllEvento('${ev.id}')"
+          title="La scheda completa nell'agenda">Scheda</button>
+      </div>`;
   }).join('');
 }
 
 // Ricostruisce tutta la vista Stasera (la parte meteo e ISS arriva dopo)
 function costruisciStasera() {
   costruisciStaseraRiepilogo();
-  costruisciStaseraPianeti();
   costruisciStaseraProssimi();
   costruisciStaseraMeteo();
   aggiornaPassaggiSatelliti(false);
