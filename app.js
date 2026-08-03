@@ -23,9 +23,19 @@ let calendarioInMovimento = false;
 // che ricade in due finestre di calcolo diverse
 const impronteEventi = new Set();
 
-// Fin dove si può andare indietro e avanti nel tempo col selettore del mese
-const ANNO_MINIMO_NAVIGABILE = 1900;
-const ANNO_MASSIMO_NAVIGABILE = 2100;
+// Fin dove si può andare indietro e avanti nel tempo: vale per il selettore
+// del mese e per la macchina del tempo del planetario, che sono due modi di
+// dire la stessa cosa e non devono contraddirsi (scrivere il 2500 nel
+// planetario e non poterlo aprire nel calendario è il genere di incoerenza
+// che fa credere a un guasto).
+//
+// Il 1600 è l'inizio dell'astronomia col telescopio; il 3000 è il limite
+// chiesto in avanti. Fuori da una fascia di due o tre secoli attorno a oggi
+// le effemeridi di Astronomy Engine perdono precisione — di minuti, non di
+// giorni — ma le posizioni restano quelle giuste per guardare il cielo, che è
+// quello che serve qui.
+const ANNO_MINIMO_NAVIGABILE = 1600;
+const ANNO_MASSIMO_NAVIGABILE = 3000;
 
 const NOMI_MESI = [
   'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
@@ -6216,9 +6226,69 @@ function skyElenco() {
       disegno: 'satellite',
       colore: s.colore,
       tipo: 'satellite'
+    })), SKY_PROFONDO.map(o => ({
+      // Nebulose, galassie e ammassi erano gli unici che si potevano solo
+      // *incontrare* sulla mappa: non c'era modo di chiedere «portami su
+      // Andromeda». Nell'elenco ci stanno come gli altri — l'identificativo è
+      // il nome, che qui è unico e non cambia mai.
+      id: 'dso:' + o.nome,
+      nome: o.nome,
+      disegno: 'nebulosa',
+      colore: SKY_COLORI_PROFONDO[o.tipo] || '#c4b5fd',
+      tipo: 'profondo',
+      tipoProfondo: o.tipo
     })));
   }
   return skyElencoCache;
+}
+
+// Il dato di catalogo di un oggetto profondo, a partire dall'identificativo
+// dell'elenco
+function skyProfondoDiId(id) {
+  if (typeof id !== 'string' || !id.startsWith('dso:')) return null;
+  const nome = id.slice(4);
+  return SKY_PROFONDO.find(o => o.nome === nome) || null;
+}
+
+// Dove sta adesso un oggetto profondo. Le sue coordinate non cambiano mai
+// (è fermo rispetto alle stelle), ma azimut e altezza sì: si ricalcolano
+// mezzo minuto per volta, perché l'elenco le chiede una volta per pillola a
+// ogni giro e per una tabella di numeri mezzo minuto è precisione da avanzo.
+let skyProfondoOrizzonte = { chiave: null, mappa: new Map() };
+function skyPosizioneProfondo(dato) {
+  // Se il filtro del cielo profondo è acceso le posizioni ci sono già:
+  // le ha appena calcolate skyAggiornaCatalogo, e sono quelle disegnate
+  const vivo = (sky.profondo || []).find(p => p.nome === dato.nome);
+  if (vivo) return { az: vivo.az, alt: vivo.alt };
+  if (!sky.observer || typeof Astronomy === 'undefined') return null;
+
+  const chiave = Math.floor(skyAdesso().getTime() / 30000) + '|' +
+    sky.observer.latitude.toFixed(3) + ',' + sky.observer.longitude.toFixed(3);
+  if (skyProfondoOrizzonte.chiave !== chiave) skyProfondoOrizzonte = { chiave, mappa: new Map() };
+  if (skyProfondoOrizzonte.mappa.has(dato.nome)) return skyProfondoOrizzonte.mappa.get(dato.nome);
+
+  let posizione = null;
+  try {
+    const hor = Astronomy.Horizon(Astronomy.MakeTime(skyAdesso()), sky.observer, dato.ra, dato.dec, 'normal');
+    posizione = { az: hor.azimuth, alt: hor.altitude };
+  } catch (e) { /* senza posizione restano le sole coordinate di catalogo */ }
+  skyProfondoOrizzonte.mappa.set(dato.nome, posizione);
+  return posizione;
+}
+
+// L'oggetto puntabile che si chiama così: prima fra quelli calcolati a ogni
+// giro (Sole, Luna, pianeti, stelle, satelliti), poi fra quelli del cielo
+// profondo, che vivono in un elenco a parte ma dall'elenco degli astri si
+// scelgono allo stesso modo.
+function skyVoceDiId(id) {
+  if (!id) return null;
+  const o = (sky.oggetti || []).find(x => x.id === id);
+  if (o) return o;
+  const dato = skyProfondoDiId(id);
+  if (!dato) return null;
+  const dove = skyPosizioneProfondo(dato);
+  return Object.assign({ id, tipo: 'profondo', disegno: 'nebulosa', categoria: 'profondo' },
+    dato, dove || {});
 }
 
 // Stato del planetario
@@ -6324,6 +6394,9 @@ const sky = {
   // momento sta sopra l'orizzonte. È un filtro dell'*elenco*, non della mappa —
   // il cielo continua a disegnare quello che gli dicono i `mostra…` qui sopra
   soloAstriVisibili: false,
+  // La categoria scelta nel pannello Astri: 'tutte', oppure la `chiave` di
+  // una delle SKY_FAMIGLIE. Anche questo filtra l'elenco, non la mappa
+  famigliaAstri: 'tutte',
   mostraGriglia: true,
   mostraNomi: true,
   mostraViaLattea: true,
@@ -7834,8 +7907,9 @@ function skyAggiornaOggetti(forza) {
   // Chi arriva da un'altra scheda ("Trova Marte nel cielo") chiede di
   // centrare un astro le cui coordinate, in quel momento, non c'erano ancora
   if (sky.centraQuandoPronto) {
-    const atteso = lista.find(x => x.id === sky.centraQuandoPronto);
-    if (atteso) {
+    const atteso = lista.find(x => x.id === sky.centraQuandoPronto) ||
+      skyVoceDiId(sky.centraQuandoPronto);
+    if (atteso && typeof atteso.az === 'number') {
       sky.centraQuandoPronto = null;
       skyCentraSu(atteso);
     }
@@ -10350,8 +10424,12 @@ function skyDisegna() {
   // attorno all'astro eclissato. Sopra agli astri, sotto alle guide.
   skyDisegnaEventi(ctx, base, focale);
 
-  const bersaglio = daDisegnare.find(o => o.id === sky.target);
-  if (bersaglio) skyDisegnaGuida(ctx, base, focale, bersaglio);
+  // La freccia che dice da che parte è finito l'astro scelto. Vale anche per
+  // una galassia presa dall'elenco: quella non sta fra gli astri disegnati
+  // qui, ma un azimut e un'altezza ce li ha come tutti gli altri.
+  const bersaglio = daDisegnare.find(o => o.id === sky.target) ||
+    (sky.target ? skyVoceDiId(sky.target) : null);
+  if (bersaglio && typeof bersaglio.az === 'number') skyDisegnaGuida(ctx, base, focale, bersaglio);
 
   // Cerchio attorno all'oggetto di cui è aperta la scheda, quando non è un
   // astro dell'elenco (una galassia, una stella di una figura): senza questo
@@ -12072,14 +12150,50 @@ function mostraStagioneEclissi(idElemento, data) {
 // un telescopio — l'occhio salta al gruppo giusto invece di leggere una fila
 // di pillole tutte uguali.
 const SKY_FAMIGLIE = [
-  { titolo: 'Sole e Luna',       tipi: ['sole', 'luna'] },
-  { titolo: 'Pianeti',           tipi: ['pianeta'] },
-  { titolo: 'Stelle',            tipi: ['stella'] },
-  { titolo: 'Stazioni spaziali', tipi: ['satellite'] }
+  { chiave: 'soleluna',  etichetta: 'Sole e Luna', titolo: 'Sole e Luna',       tipi: ['sole', 'luna'] },
+  { chiave: 'pianeti',   etichetta: 'Pianeti',     titolo: 'Pianeti',           tipi: ['pianeta'] },
+  { chiave: 'stelle',    etichetta: 'Stelle',      titolo: 'Stelle',            tipi: ['stella'] },
+  { chiave: 'profondo',  etichetta: 'Profondo',    titolo: 'Cielo profondo',    tipi: ['profondo'] },
+  { chiave: 'satelliti', etichetta: 'Stazioni',    titolo: 'Stazioni spaziali', tipi: ['satellite'] }
 ];
+
+// I titolini dicono dove sei nell'elenco; questi tasti dicono cosa vuoi
+// vedere. Sono la stessa divisione, usata nell'altro verso: chi sa già che
+// gli interessa un pianeta tocca «Pianeti» e si toglie di mezzo tutto il
+// resto, invece di scorrere quattro famiglie per arrivare alla seconda.
+function skyCostruisciCategorie() {
+  const cont = document.getElementById('skymap-astri-categorie');
+  if (!cont || cont.dataset.pronto === 'si') return;
+  const chip = (chiave, testo, aiuto) =>
+    `<button type="button" class="tasto-segmento" data-famiglia-astri="${chiave}" ` +
+    `aria-pressed="false" title="${aiuto}">${testo}</button>`;
+  cont.innerHTML = chip('tutte', 'Tutti', 'Tutte le categorie insieme') +
+    SKY_FAMIGLIE.map(f => chip(f.chiave, f.etichetta, `Solo ${f.titolo.toLowerCase()}`)).join('');
+  cont.querySelectorAll('[data-famiglia-astri]').forEach(b =>
+    b.addEventListener('click', () => skyImpostaFamigliaAstri(b.dataset.famigliaAstri)));
+  cont.dataset.pronto = 'si';
+  skyAggiornaTastiCategorie();
+}
+
+function skyImpostaFamigliaAstri(chiave) {
+  // Ripremendo la categoria accesa si torna a vederle tutte: è il gesto che
+  // tutti provano, e senza di lui bisogna ricordarsi che esiste «Tutti»
+  sky.famigliaAstri = (chiave !== 'tutte' && sky.famigliaAstri === chiave) ? 'tutte' : chiave;
+  skyAggiornaTastiCategorie();
+  skyFiltraElenco();
+}
+
+function skyAggiornaTastiCategorie() {
+  document.querySelectorAll('#skymap-astri-categorie [data-famiglia-astri]').forEach(b => {
+    const attivo = b.dataset.famigliaAstri === (sky.famigliaAstri || 'tutte');
+    b.classList.toggle('attiva', attivo);
+    b.setAttribute('aria-pressed', attivo ? 'true' : 'false');
+  });
+}
 
 // Pulsanti per scegliere l'astro da cercare
 function skyCostruisciElenco() {
+  skyCostruisciCategorie();
   const cont = document.getElementById('skymap-oggetti');
   if (!cont || cont.dataset.pronto === 'si') return;
   const tutti = skyElenco();
@@ -12089,10 +12203,11 @@ function skyCostruisciElenco() {
     // Il nome normalizzato viaggia col tasto: la ricerca non deve rifare
     // diciannove volte lo stesso lavoro a ogni lettera digitata
     const chip = astri.map(a =>
-      `<button type="button" data-astro="${a.id}" data-nome="${normalizzaTesto(a.nome)}" data-fuori="no" class="chip-astro">` +
+      `<button type="button" data-astro="${a.id}" data-nome="${normalizzaTesto(a.nome)}" ` +
+      `data-famiglia="${f.chiave}" data-fuori="no" class="chip-astro">` +
       `${icona(a.disegno, 15)}<span class="nome-astro">${a.nome}</span><span class="sky-alt"></span></button>`
     ).join('');
-    return `<div class="famiglia-astri" data-fuori="no">` +
+    return `<div class="famiglia-astri" data-famiglia="${f.chiave}" data-fuori="no">` +
       `<p class="titolo-famiglia">${f.titolo}</p>` +
       `<div class="astri-famiglia">${chip}</div></div>`;
   }).join('');
@@ -12109,7 +12224,7 @@ function skyAggiornaStileElenco() {
   // stringere sui telefoni: qui restano solo i colori, che dicono lo stato
   const base = 'chip-astro inline-flex items-center rounded-full border border-slate-600';
   document.querySelectorAll('.chip-astro').forEach(btn => {
-    const o = sky.oggetti.find(x => x.id === btn.dataset.astro);
+    const o = skyVoceDiId(btn.dataset.astro);
     const visibile = o && o.alt > 0;
     let stile;
     if (btn.dataset.astro === sky.target) stile = ' bg-blue-600 text-white shadow';
@@ -12119,8 +12234,10 @@ function skyAggiornaStileElenco() {
   });
 }
 
-// La ricerca per nome e il filtro "Su ora", che sono la stessa cosa vista da
-// due parti: tutt'e due tolgono di mezzo quello che adesso non interessa.
+// La categoria, la ricerca per nome e il filtro "Su ora": tre modi di dire la
+// stessa cosa — togli di mezzo quello che adesso non interessa — e lavorano
+// insieme, non uno al posto dell'altro (si può cercare "m" dentro ai soli
+// oggetti del cielo profondo che stanno su adesso).
 // Chi resta fuori lo dice un attributo, non una classe: `skyAggiornaStileElenco`
 // riscrive il `className` di ogni tasto a ogni giro, e una classe non
 // sopravviverebbe al primo aggiornamento delle altezze.
@@ -12128,16 +12245,18 @@ function skyFiltraElenco() {
   const campo = document.getElementById('skymap-astri-cerca');
   const cercato = normalizzaTesto(campo ? campo.value : '').trim();
   const parole = cercato ? cercato.split(/\s+/) : [];
+  const famiglia = sky.famigliaAstri || 'tutte';
   let trovati = 0;
 
   document.querySelectorAll('#skymap-oggetti .chip-astro').forEach(btn => {
     const nome = btn.dataset.nome || '';
-    const o = sky.oggetti.find(x => x.id === btn.dataset.astro);
+    const o = skyVoceDiId(btn.dataset.astro);
     const perNome = parole.every(p => nome.includes(p));
+    const perFamiglia = famiglia === 'tutte' || btn.dataset.famiglia === famiglia;
     // Finché le posizioni non sono state calcolate "Su ora" non toglie
     // niente: un elenco vuoto all'apertura sembrerebbe un guasto
     const perAltezza = !sky.soloAstriVisibili || !o || o.alt > 0;
-    const dentro = perNome && perAltezza;
+    const dentro = perNome && perFamiglia && perAltezza;
     btn.dataset.fuori = dentro ? 'no' : 'si';
     if (dentro) trovati++;
   });
@@ -12150,7 +12269,7 @@ function skyFiltraElenco() {
   const vuoto = document.getElementById('skymap-astri-vuoto');
   if (vuoto) {
     vuoto.textContent = sky.soloAstriVisibili && !parole.length
-      ? 'Adesso non c\'è niente sopra l\'orizzonte.'
+      ? 'In questa categoria, adesso, non c\'è niente sopra l\'orizzonte.'
       : 'Nessun astro con questo nome.';
     vuoto.classList.toggle('hidden', trovati > 0);
   }
@@ -12160,7 +12279,7 @@ function skyFiltraElenco() {
 function skyAggiornaEtichette() {
   document.querySelectorAll('.chip-astro').forEach(btn => {
     const span = btn.querySelector('.sky-alt');
-    const o = sky.oggetti.find(x => x.id === btn.dataset.astro);
+    const o = skyVoceDiId(btn.dataset.astro);
     if (span) span.textContent = o ? `${o.alt >= 0 ? '↑' : '↓'}${Math.abs(Math.round(o.alt))}°` : '';
   });
   skyAggiornaStileElenco();
@@ -12189,7 +12308,7 @@ function skyImpostaTarget(id, opzioni = {}) {
     const sel = sky.selezione;
     if (sel && sel.categoria === 'astro' && sel.id === id) skyChiudiDettaglio();
   } else {
-    const o = sky.oggetti.find(x => x.id === sky.target);
+    const o = skyVoceDiId(sky.target);
     skyAssicuraVisibile(o);
     // Se le posizioni non sono ancora state calcolate (si arriva qui anche
     // da un'altra scheda) il centraggio aspetta il primo calcolo
@@ -12209,6 +12328,7 @@ function skyAssicuraVisibile(o) {
   else if (o.tipo === 'sole' || o.tipo === 'luna') sky.mostraSoleLuna = true;
   else if (o.tipo === 'stella') sky.mostraStelle = true;
   else if (o.tipo === 'satellite') sky.mostraSatelliti = true;
+  else if (o.tipo === 'profondo') sky.mostraProfondo = true;
   if (o.alt < 0) sky.mostraSottoOrizzonte = true;
   skyAggiornaTastiFiltri();
 }
@@ -13287,8 +13407,8 @@ function skyOggettoScelto() {
   const voce = skyVoceSelezionata();
   if (voce && typeof voce.az === 'number') return voce;
   if (sky.target) {
-    const o = sky.oggetti.find(x => x.id === sky.target);
-    if (o) return o;
+    const o = skyVoceDiId(sky.target);
+    if (o && typeof o.az === 'number') return o;
   }
   return voce || null;
 }
@@ -14333,8 +14453,9 @@ function solApriPannelloTempo() {
   if (!sezione || !ospite || !corpo) return;
 
   // Si sta scegliendo un istante: il tempo che cammina se lo porterebbe via
-  // da sotto le dita mentre lo si scrive
-  sol.marcia = 0;
+  // da sotto le dita mentre lo si scrive. Vale anche per il playback acceso
+  // nel planetario, che è lo stesso orologio visto dall'altra parte
+  solFermaTempo();
   // E sotto, nel planetario, non resta un pannello aperto a metà con dentro
   // un buco al posto della sezione che ci siamo appena presi
   skyMostraGruppo('');
@@ -14907,6 +15028,12 @@ const sol = {
   // spiegazione, e saltarci sopra la butterebbe via.
   az: -0.55, elev: 34, elevVoluta: 34,
   zoom: 1, zoomVoluto: 1,
+  // Lo spostamento della scena dentro alla tela, in pixel: il Sole non è
+  // inchiodato al centro. Serve appena ci si avvicina — a zoom alto Nettuno
+  // sta fuori dallo schermo, e girando la scena per raggiungerlo si perde
+  // l'inquadratura che si voleva. Si sposta con due dita (o col tasto destro,
+  // o con Maiusc premuto), e il tasto ⌖ la rimette al centro.
+  panX: 0, panY: 0,
   distanzeVere: false,   // false = distanze compresse, per farceli stare tutti
   // Si parte dall'altezza vera fuori dal piano, non da quella ingrandita: la
   // prima cosa che questa vista deve dire è che il Sistema Solare è piatto
@@ -14922,6 +15049,7 @@ const sol = {
   stelle: [],
   // Dita appoggiate sulla tela: una gira la scena, due la avvicinano
   puntatori: new Map(), pizzico: null, trascinamento: null, mosso: 0, giu: 0,
+  modoPan: false,        // il dito sposta la scena invece di girarla (Maiusc o tasto destro)
   // Il tempo: il passo scelto, il centro della finestra su cui scorre la
   // slitta, e il verso della marcia (0 fermo, +1 avanti, −1 indietro)
   passoIndice: 0, ancoraSec: 0, marcia: 0,
@@ -14959,8 +15087,8 @@ function solProietta(p) {
   const xr = p.x * Math.cos(a) - p.y * Math.sin(a);
   const yr = p.x * Math.sin(a) + p.y * Math.cos(a);
   return {
-    px: sol.cx + xr * sol.scala,
-    py: sol.cy - (yr * Math.sin(e) + p.z * Math.cos(e)) * sol.scala,
+    px: sol.cx + sol.panX + xr * sol.scala,
+    py: sol.cy + sol.panY - (yr * Math.sin(e) + p.z * Math.cos(e)) * sol.scala,
     vicinanza: p.z * Math.sin(e) - yr * Math.cos(e)
   };
 }
@@ -15575,10 +15703,17 @@ function solAggiornaBarra(quando) {
 
   const play = document.getElementById('sol-play');
   if (play) {
-    play.textContent = sol.marcia ? '❚❚' : '▶';
-    play.classList.toggle('attiva', !!sol.marcia);
-    play.setAttribute('aria-pressed', sol.marcia ? 'true' : 'false');
-    play.title = sol.marcia ? 'Ferma il tempo' : 'Fai camminare il tempo';
+    // Il tempo può camminare per due motivi: il play di questa barra, oppure
+    // il playback lasciato acceso nel planetario. È lo stesso orologio, e il
+    // tasto deve dire la verità su tutt'e due — se no qui si vede ❚❚ mentre
+    // la scena si muove da sola
+    const cammina = solInMarcia();
+    play.textContent = cammina ? '❚❚' : '▶';
+    play.classList.toggle('attiva', !!cammina);
+    play.setAttribute('aria-pressed', cammina ? 'true' : 'false');
+    play.title = cammina
+      ? (sky.playbackVerso ? `Ferma il tempo (playback del planetario, ${skyVelocitaPlayback().nome})` : 'Ferma il tempo')
+      : 'Fai camminare il tempo';
   }
   document.querySelectorAll('#sol-passi [data-sol-passo]').forEach(b => {
     const attivo = Number(b.dataset.solPasso) === sol.passoIndice;
@@ -15592,13 +15727,29 @@ function solAggiornaBarra(quando) {
   if (solPannelloTempoAperto()) skyAggiornaTestoTempo();
 }
 
+// Il tempo cammina, sì o no — comunque lo si sia messo in moto. Il playback
+// del planetario resta acceso anche mentre questa finestra è aperta (è lo
+// stesso orologio: chi lo fa avanzare, finché il cielo è in pausa dietro alla
+// finestra, è il ciclo di qui), quindi «in marcia» sono due cose che valgono
+// come una.
+function solInMarcia() {
+  return sol.marcia || sky.playbackVerso || 0;
+}
+
+// Ferma il tempo da qualunque parte lo si sia avviato
+function solFermaTempo() {
+  sol.marcia = 0;
+  if (sky.playbackVerso) skyFermaPlayback();
+}
+
 function solAlternaMarcia() {
-  sol.marcia = sol.marcia ? 0 : 1;
+  if (solInMarcia()) solFermaTempo();
+  else sol.marcia = 1;
   solAggiornaBarra();
 }
 
 function solSpostaDiUnPasso(verso) {
-  sol.marcia = 0;
+  solFermaTempo();
   skyImpostaOffsetTempo(solOffset() + verso * solPasso().sec);
   solAggiornaBarra();
 }
@@ -15610,7 +15761,7 @@ function solImpostaPasso(indice) {
 }
 
 function solTornaAdesso() {
-  sol.marcia = 0;
+  solFermaTempo();
   sol.ancoraSec = 0;
   skyImpostaOffsetTempo(0);
   solAggiornaBarra();
@@ -15644,7 +15795,13 @@ function solCiclo(ts) {
   if (sol.marcia) {
     const avanti = solOffset() + sol.marcia * solPasso().sec * SOL_PASSI_AL_SECONDO * dt;
     skyImpostaOffsetTempo(avanti, { fluido: true });
-    if (Math.abs(sky.offsetTempoSec) >= SKY_TEMPO_LIMITE_SEC - 1) { sol.marcia = 0; }
+    if (skyAlCapolineaDelTempo()) { sol.marcia = 0; }
+  } else if (sky.playbackVerso) {
+    // Il playback acceso nel planetario non si ferma perché si è aperta questa
+    // finestra: il cielo dietro è in pausa, ma l'orologio è lo stesso e a
+    // farlo camminare, adesso, è questo ciclo. Senza, la barra diceva «▶ 1 h/s»
+    // e la scena restava immobile — due orologi che dicevano cose diverse.
+    skyAvanzaPlayback();
   }
 
   // La telecamera raggiunge il punto di vista chiesto scivolando. Smorzamento
@@ -15706,6 +15863,29 @@ function solAggiornaTasti() {
 // dito come si girerebbe un modellino in mano. In orizzontale gira attorno
 // all'asse, in verticale alza e abbassa il punto di vista fino a entrare nel
 // piano delle orbite — che è il momento in cui si capisce.
+//
+// Il verso è quello del modellino, non quello della telecamera: il dito
+// spinge il Sistema Solare, non l'occhio che lo guarda. Trascinando verso
+// destra la scena gira verso destra, e tirando verso il basso si scende sul
+// piano delle orbite — come se la si prendesse per il bordo e la si
+// inclinasse verso di sé. Prima era l'opposto (si muoveva il punto di vista)
+// e ogni volta bisognava provare in che verso andasse.
+const SOL_GIRO_PER_PIXEL = 0.008;    // radianti di azimut per pixel di dito
+const SOL_ELEV_PER_PIXEL = 0.32;     // gradi di elevazione per pixel di dito
+
+// Rimette la scena in mezzo alla tela: lo spostamento con due dita è comodo
+// finché non ci si perde, e allora serve un modo solo per tornare.
+function solCentra() {
+  sol.panX = 0;
+  sol.panY = 0;
+  if (sol.aperto) solDisegna();
+}
+
+function solSposta(dx, dy) {
+  sol.panX += dx;
+  sol.panY += dy;
+}
+
 function solInizializzaGesti() {
   const c = sol.canvas;
   if (!c || c.dataset.gestiPronti === 'si') return;
@@ -15714,6 +15894,17 @@ function solInizializzaGesti() {
   const distanzaDita = () => {
     const p = [...sol.puntatori.values()];
     return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+  };
+
+  // Il punto di mezzo fra le dita appoggiate: con due dita è quello che
+  // comanda lo spostamento della scena, mentre la loro distanza comanda lo zoom
+  const centroDita = () => {
+    const p = [...sol.puntatori.values()];
+    if (!p.length) return { x: 0, y: 0 };
+    return {
+      x: p.reduce((s, q) => s + q.x, 0) / p.length,
+      y: p.reduce((s, q) => s + q.y, 0) / p.length
+    };
   };
 
   // Ogni volta che il numero di dita cambia, i due riferimenti del gesto —
@@ -15735,7 +15926,8 @@ function solInizializzaGesti() {
     // pizzico, e deve partire esattamente da quello che si sta vedendo — non
     // dal campo verso cui la vista stava ancora scivolando
     sol.zoomVoluto = sol.zoom;
-    sol.pizzico = { d: distanzaDita(), zoom: sol.zoom };
+    const m = centroDita();
+    sol.pizzico = { d: distanzaDita(), zoom: sol.zoom, cx: m.x, cy: m.y };
   };
 
   c.addEventListener('pointerdown', (e) => {
@@ -15743,6 +15935,10 @@ function solInizializzaGesti() {
     sol.puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
     sol.mosso = 0;
     sol.giu = performance.now();
+    // Col mouse un dito solo gira; per spostare la scena si tiene premuto
+    // Maiusc o si trascina col tasto destro (o con quello centrale), che è
+    // come si sposta una mappa in ogni altro programma
+    if (sol.puntatori.size === 1) sol.modoPan = !!e.shiftKey || e.button === 1 || e.button === 2;
     // Le istruzioni servono finché non si è capito come si fa: al primo dito
     // appoggiato sulla scena hanno finito il loro lavoro e se ne vanno
     const aiuto = document.querySelector('#modale-sistema .sol-suggerimento');
@@ -15754,9 +15950,16 @@ function solInizializzaGesti() {
     if (!sol.puntatori.has(e.pointerId)) return;
     sol.puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
+    // Due dita fanno due cose insieme, come su una mappa: allontanandole si
+    // ingrandisce, spostandole tutt'e due si sposta la scena. Il punto di
+    // mezzo è la maniglia — resta sotto le dita mentre lo zoom lavora
     if (sol.puntatori.size >= 2 && sol.pizzico) {
       const d = distanzaDita();
       if (sol.pizzico.d > 4) solImpostaZoom(sol.pizzico.zoom * (d / sol.pizzico.d));
+      const m = centroDita();
+      solSposta(m.x - sol.pizzico.cx, m.y - sol.pizzico.cy);
+      sol.pizzico.cx = m.x;
+      sol.pizzico.cy = m.y;
       sol.mosso += 10;
       return;
     }
@@ -15765,9 +15968,12 @@ function solInizializzaGesti() {
     const dy = e.clientY - sol.trascinamento.y;
     sol.trascinamento = { x: e.clientX, y: e.clientY };
     sol.mosso += Math.abs(dx) + Math.abs(dy);
-    sol.az -= dx * 0.008;
-    sol.elevVoluta = Math.max(-89, Math.min(89, sol.elevVoluta - dy * 0.32));
-    sol.elev = Math.max(-89, Math.min(89, sol.elev - dy * 0.32));
+    if (sol.modoPan) { solSposta(dx, dy); return; }
+    // Il verso del modellino: il dito porta con sé la scena
+    sol.az += dx * SOL_GIRO_PER_PIXEL;
+    const elev = Math.max(-89, Math.min(89, sol.elevVoluta + dy * SOL_ELEV_PER_PIXEL));
+    sol.elevVoluta = elev;
+    sol.elev = elev;
     solAggiornaTasti();
   });
 
@@ -15778,11 +15984,16 @@ function solInizializzaGesti() {
     // continua da lì senza doverlo staccare e riappoggiare
     riancora();
     // Un tocco secco, senza trascinamento: sceglie il pianeta più vicino
-    if (era === 1 && sol.mosso < 8 && performance.now() - sol.giu < 500) solTocco(e);
+    if (era === 1 && sol.mosso < 8 && performance.now() - sol.giu < 500 && !sol.modoPan) solTocco(e);
+    if (!sol.puntatori.size) sol.modoPan = false;
   };
   c.addEventListener('pointerup', fine);
   c.addEventListener('pointercancel', fine);
   c.addEventListener('pointerleave', fine);
+
+  // Col tasto destro si sposta la scena: il menù contestuale, qui, sarebbe
+  // solo il modo di interrompere il gesto a metà
+  c.addEventListener('contextmenu', (e) => e.preventDefault());
 
   // La rotella non salta: chiede un campo e ci si scivola dentro, com'è nel
   // planetario (sezione 7.4-ter). Il conto parte da dove la vista *sta
@@ -15825,6 +16036,13 @@ window.apriSistemaSolare = () => {
   const bersaglio = SOL_PIANETI.some(p => p.id === sky.target) ? sky.target : null;
   sol.scelto = bersaglio;
   sol.marcia = 0;
+  // La scena riparte in mezzo alla tela: lo spostamento di due dita è una
+  // cosa di questa sessione, non una preferenza da ritrovare
+  sol.panX = 0;
+  sol.panY = 0;
+  sol.modoPan = false;
+  // Si entra anche nello stesso istante, sempre: l'orologio è quello del
+  // planetario, e la finestra della slitta si centra su dove siamo
   sol.ancoraSec = sky.offsetTempoSec || 0;
   sol.firmaScheda = '';
   sol.prossimaScheda = 0;
@@ -15865,6 +16083,12 @@ function chiudiSistemaSolare() {
   const modale = document.getElementById('modale-sistema');
   if (modale) modale.classList.add('hidden');
   sol.aperto = false;
+  // La marcia di questa vista finisce con lei: i suoi passi (un giorno, un
+  // mese, un anno per scatto) non hanno un corrispondente fra le velocità del
+  // playback del planetario, e farlo ripartire a caso vorrebbe dire tornare
+  // su un cielo che scappa. Il playback del planetario, invece, se era acceso
+  // resta acceso: qui dentro non si è mai fermato, l'ha solo fatto camminare
+  // il ciclo di questa finestra.
   sol.marcia = 0;
   if (sol.raf) cancelAnimationFrame(sol.raf);
   sol.raf = null;
@@ -15896,6 +16120,9 @@ function inizializzaSistemaSolare() {
   modale.querySelectorAll('[data-sol-quadro]').forEach(b =>
     b.addEventListener('click', () => {
       const interni = b.dataset.solQuadro === 'interni';
+      // Questi due sono comandi di inquadratura: se la scena era stata
+      // spostata di lato, "Tutto" deve tornare a farla vedere tutta
+      solCentra();
       solImpostaZoom(solZoomPer(interni ? 1.7 : SOL_RIF_UA), { morbido: true });
     }));
 
@@ -15927,6 +16154,8 @@ function inizializzaSistemaSolare() {
   if (zoomIn) zoomIn.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto * 1.4, { morbido: true }));
   const zoomOut = document.getElementById('sol-zoom-out');
   if (zoomOut) zoomOut.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto / 1.4, { morbido: true }));
+  const centra = document.getElementById('sol-centra');
+  if (centra) centra.addEventListener('click', solCentra);
 
   modale.querySelectorAll('[data-sol-misure]').forEach(b =>
     b.addEventListener('click', () => {
@@ -15958,7 +16187,7 @@ function inizializzaSistemaSolare() {
     // rifà da sé a ogni fotogramma). Il conto pieno si fa quando il dito si
     // stacca.
     slitta.addEventListener('input', () => {
-      sol.marcia = 0;
+      solFermaTempo();
       skyImpostaOffsetTempo(sol.ancoraSec + Number(slitta.value), { fluido: true, daSlitta: true });
     });
     slitta.addEventListener('change', () => {
@@ -15984,11 +16213,19 @@ function inizializzaSistemaSolare() {
     if (e.key === 'Escape' && solPannelloTempoAperto()) { solChiudiPannelloTempo(); return; }
     // E finché si scrive una data, le frecce e lo spazio sono del campo
     if (solPannelloTempoAperto() && e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    // Le frecce girano la scena nello stesso verso del dito; con Maiusc
+    // premuto la spostano, come il trascinamento col tasto destro
+    const passoPan = 40;
     if (e.key === 'Escape') chiudiSistemaSolare();
-    else if (e.key === 'ArrowLeft') sol.az += 0.12;
-    else if (e.key === 'ArrowRight') sol.az -= 0.12;
-    else if (e.key === 'ArrowUp') { sol.elevVoluta = Math.min(89, sol.elevVoluta + 4); solAggiornaTasti(); }
-    else if (e.key === 'ArrowDown') { sol.elevVoluta = Math.max(-89, sol.elevVoluta - 4); solAggiornaTasti(); }
+    else if (e.key === 'ArrowLeft') { e.shiftKey ? solSposta(-passoPan, 0) : (sol.az -= 0.12); }
+    else if (e.key === 'ArrowRight') { e.shiftKey ? solSposta(passoPan, 0) : (sol.az += 0.12); }
+    else if (e.key === 'ArrowUp') {
+      if (e.shiftKey) solSposta(0, -passoPan);
+      else { sol.elevVoluta = Math.max(-89, sol.elevVoluta - 4); solAggiornaTasti(); }
+    } else if (e.key === 'ArrowDown') {
+      if (e.shiftKey) solSposta(0, passoPan);
+      else { sol.elevVoluta = Math.min(89, sol.elevVoluta + 4); solAggiornaTasti(); }
+    } else if (e.key === 'c' || e.key === 'C') solCentra();
     else if (e.key === ' ') { e.preventDefault(); solAlternaMarcia(); }
   });
 
@@ -20351,13 +20588,29 @@ function skyDisegnaProfondo(ctx, base, focale) {
 // dei secondi non si parlava nemmeno; con la finestra a ±10 minuti un pixel
 // vale pochi secondi, ed è lì che la precisione serve davvero.
 
-const SKY_TEMPO_LIMITE_SEC = 50 * 365.25 * 86400;   // mezzo secolo, in ogni verso
+// Fin dove arriva la macchina del tempo. Prima era «mezzo secolo in ogni
+// verso», una misura comoda da scrivere ma che non voleva dire niente per chi
+// guarda: non si pensa «fra cinquant'anni», si pensa «nel 2100», «nel 3000».
+// Adesso gli estremi sono due anni veri — gli stessi del calendario
+// (ANNO_MINIMO_NAVIGABILE e ANNO_MASSIMO_NAVIGABILE) — e lo scarto massimo si
+// ricava da lì, perché in secondi cambia di giorno in giorno.
+function skyLimiteTempoSec(verso) {
+  const ora = Date.now();
+  if (verso > 0) return (new Date(ANNO_MASSIMO_NAVIGABILE, 11, 31, 23, 59, 59).getTime() - ora) / 1000;
+  return (new Date(ANNO_MINIMO_NAVIGABILE, 0, 1, 0, 0, 0).getTime() - ora) / 1000;
+}
 
-// La data e l'ora locali nel formato che vuole <input type="datetime-local">
-function skyDataLocaleIso(d) {
-  const p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}` +
-         `T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+// Siamo arrivati a un capolinea? Serve al playback e alla marcia del Sistema
+// Solare, che a fine corsa si devono fermare da soli invece di spingere
+// contro il fermo col tasto acceso a vuoto.
+function skyAlCapolineaDelTempo() {
+  const s = sky.offsetTempoSec || 0;
+  return s >= skyLimiteTempoSec(1) - 1 || s <= skyLimiteTempoSec(-1) + 1;
+}
+
+// Come si dice a chi guarda dove finisce la corsa
+function skyTestoCapolinea() {
+  return `La macchina del tempo va dal ${ANNO_MINIMO_NAVIGABILE} al ${ANNO_MASSIMO_NAVIGABILE}.`;
 }
 
 // "fra 2 h 15 min", "3 g 4 h fa": lo scarto detto in parole
@@ -20462,13 +20715,81 @@ function skyTestoBarraTempo(quando, scarto, marcia) {
   return `${testa} · ${coda}`;
 }
 
+// --- Le sei caselle della data ---
+// Giorno, mese, anno, ore, minuti, secondi: sei numeri, nell'ordine in cui in
+// italiano una data si dice. Ognuno è un campo suo, e l'anno si scrive per
+// intero — è l'unico modo di arrivare al 3000 senza mille clic su una
+// freccetta.
+const SKY_CASELLE_DATA = [
+  { id: 'skymap-data-giorno',  leggi: d => d.getDate() },
+  { id: 'skymap-data-mese',    leggi: d => d.getMonth() + 1 },
+  { id: 'skymap-data-anno',    leggi: d => d.getFullYear(), cifre: 4 },
+  { id: 'skymap-data-ore',     leggi: d => d.getHours() },
+  { id: 'skymap-data-minuti',  leggi: d => d.getMinutes() },
+  { id: 'skymap-data-secondi', leggi: d => d.getSeconds() }
+];
+
 // Il campo della data segue l'istante mostrato, ma non mentre ci si scrive
 // dentro: sovrascrivere quello che l'utente sta digitando è il modo più
-// sicuro di rendere inservibile un campo.
+// sicuro di rendere inservibile un campo. Basta che *una* delle caselle abbia
+// il fuoco perché tutte stiano ferme: si scrive una data intera, non un
+// numero per volta, e riscrivere le altre cinque mentre si digita l'anno
+// vorrebbe dire cancellare il giorno appena messo.
 function skyAggiornaCampoData(quando) {
-  const campo = document.getElementById('skymap-data');
-  if (!campo || document.activeElement === campo) return;
-  campo.value = skyDataLocaleIso(quando);
+  const gruppo = document.getElementById('skymap-data');
+  if (!gruppo || gruppo.contains(document.activeElement)) return;
+  SKY_CASELLE_DATA.forEach(c => {
+    const campo = document.getElementById(c.id);
+    if (!campo) return;
+    const valore = String(c.leggi(quando)).padStart(c.cifre || 2, '0');
+    if (campo.value !== valore) campo.value = valore;
+  });
+}
+
+// Che istante dicono le sei caselle. Torna `null` se quello che c'è scritto
+// non è una data: un 31 di febbraio, un anno fuori dai due estremi, una
+// casella lasciata vuota. Chi chiama se lo aspetta e rimette i numeri di
+// prima, invece di portare il cielo in un posto a caso.
+function skyDataDalleCaselle() {
+  const n = {};
+  for (const c of SKY_CASELLE_DATA) {
+    const campo = document.getElementById(c.id);
+    if (!campo || campo.value.trim() === '') return null;
+    const v = parseInt(campo.value, 10);
+    if (!Number.isFinite(v)) return null;
+    n[c.id] = v;
+  }
+  const anno = n['skymap-data-anno'];
+  const mese = n['skymap-data-mese'];
+  const giorno = n['skymap-data-giorno'];
+  if (anno < ANNO_MINIMO_NAVIGABILE || anno > ANNO_MASSIMO_NAVIGABILE) return null;
+  if (mese < 1 || mese > 12 || giorno < 1 || giorno > 31) return null;
+  const d = new Date(anno, mese - 1, giorno,
+    n['skymap-data-ore'], n['skymap-data-minuti'], n['skymap-data-secondi'], 0);
+  if (isNaN(d.getTime())) return null;
+  // Il 31 di febbraio, scritto in un campo, diventerebbe il 3 di marzo senza
+  // che nessuno lo dica: se la data si è "sistemata" da sola non era una data
+  if (d.getFullYear() !== anno || d.getMonth() !== mese - 1 || d.getDate() !== giorno) return null;
+  return d;
+}
+
+// "Vai": porta il cielo alla data scritta. Se non è una data, le caselle
+// tornano a dire l'istante mostrato — un errore che si corregge da sé è
+// meglio di un messaggio da leggere.
+function skyVaiAllaDataScritta() {
+  const d = skyDataDalleCaselle();
+  if (!d) {
+    skyAvviso('data', `Quella data non esiste. ${skyTestoCapolinea()}`, 5000);
+    skyAggiornaTestoTempo();
+    return;
+  }
+  skyAvviso('data', '');
+  // Chi scrive un istante preciso vuole quello, non vederselo scorrere via:
+  // si ferma tutto ciò che sta camminando, di qua come nella finestra del
+  // Sistema Solare, che è lo stesso orologio
+  skyFermaPlayback();
+  sol.marcia = 0;
+  skyImpostaOffsetTempo((d.getTime() - Date.now()) / 1000);
 }
 
 // La slitta si riadatta alla finestra scelta. Il passo è la finestra divisa
@@ -20494,9 +20815,8 @@ function skyAggiornaSlittaTempo() {
 // passaggio) e il ricalcolo pieno non si forza — ci pensa il ciclo di
 // disegno, che durante il playback gira a passo ridotto.
 function skyImpostaOffsetTempo(secondi, opzioni = {}) {
-  const limite = SKY_TEMPO_LIMITE_SEC;
   const valore = Number(secondi) || 0;
-  sky.offsetTempoSec = Math.max(-limite, Math.min(limite,
+  sky.offsetTempoSec = Math.max(skyLimiteTempoSec(-1), Math.min(skyLimiteTempoSec(1),
     opzioni.fluido ? valore : Math.round(valore)));
 
   // Se l'istante nuovo è fuori dalla finestra, la finestra lo segue: altrimenti
@@ -20613,11 +20933,10 @@ function skyAvanzaPlayback() {
 
   // Arrivati al capolinea della macchina del tempo il playback si ferma da
   // solo, invece di spingere contro il limite col tasto acceso a vuoto
-  if (Math.abs(nuovo) >= SKY_TEMPO_LIMITE_SEC) {
+  if (nuovo >= skyLimiteTempoSec(1) || nuovo <= skyLimiteTempoSec(-1)) {
     skyFermaPlayback();
     skyImpostaOffsetTempo(nuovo);   // lo scarto viene tosato al limite
-    skyAvviso('playback', 'Il playback si ferma qui: la macchina del tempo arriva ' +
-      'a cinquant\'anni da adesso, avanti e indietro.', 6000);
+    skyAvviso('playback', `Il playback si ferma qui: ${skyTestoCapolinea().toLowerCase()}`, 6000);
     return;
   }
 
@@ -20814,20 +21133,37 @@ function inizializzaSkymapExtra() {
   collega('skymap-vel-meno', () => skyCambiaVelocitaPlayback(-1));
   collega('skymap-vel-piu', () => skyCambiaVelocitaPlayback(1));
 
-  // La data scritta a mano: qualsiasi istante, passato o futuro. Il campo
-  // parla in ora locale, e lo scarto rispetto ad adesso è quello che l'app usa.
-  const campoData = document.getElementById('skymap-data');
-  if (campoData) {
-    campoData.addEventListener('change', () => {
-      const scelta = campoData.value ? new Date(campoData.value) : null;
-      if (!scelta || isNaN(scelta.getTime())) { skyAggiornaTestoTempo(); return; }
-      // Chi scrive un istante preciso vuole quello, non vederselo scorrere via
-      skyFermaPlayback();
-      skyImpostaOffsetTempo((scelta.getTime() - Date.now()) / 1000);
+  // La data scritta a mano: qualsiasi istante fra i due anni estremi, in ora
+  // locale. Sono sei caselle, e ognuna si comporta come le altre — Invio vale
+  // "Vai", uscire dall'ultima applica quello che si è scritto.
+  const gruppoData = document.getElementById('skymap-data');
+  if (gruppoData) {
+    const anno = document.getElementById('skymap-data-anno');
+    if (anno) {
+      anno.min = String(ANNO_MINIMO_NAVIGABILE);
+      anno.max = String(ANNO_MASSIMO_NAVIGABILE);
+    }
+    SKY_CASELLE_DATA.forEach(c => {
+      const campo = document.getElementById(c.id);
+      if (!campo) return;
+      campo.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); skyVaiAllaDataScritta(); campo.blur(); }
+      });
+      // Le frecce ↑ e ↓ dentro alla casella spostano il cielo appena si
+      // premono: è il modo più veloce di dire "il giorno dopo, e quello dopo"
+      campo.addEventListener('change', skyVaiAllaDataScritta);
     });
-    // Finito di scrivere, il campo torna a seguire l'istante mostrato
-    campoData.addEventListener('blur', () => skyAggiornaTestoTempo());
+    // Uscendo dal gruppo si applica quello che c'è scritto: nessuno deve
+    // scoprire, dieci secondi dopo, che la data digitata non è mai partita
+    gruppoData.addEventListener('focusout', (e) => {
+      if (gruppoData.contains(e.relatedTarget)) return;
+      const d = skyDataDalleCaselle();
+      const attuale = skyAdesso();
+      if (d && Math.abs(d.getTime() - attuale.getTime()) >= 1000) skyVaiAllaDataScritta();
+      else skyAggiornaTestoTempo();
+    });
   }
+  collega('skymap-data-vai', skyVaiAllaDataScritta);
 
   collega('skymap-btn-costellazioni', () => {
     sky.mostraCostellazioni = !sky.mostraCostellazioni;

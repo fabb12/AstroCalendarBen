@@ -3042,6 +3042,14 @@ body .chip-astro {
 .riga-cerca-astri .campo-cielo { flex: 1 1 auto; min-width: 0; }
 .riga-cerca-astri .tasto-cielo { flex: 0 0 auto; }
 
+/* Le categorie, sotto al campo di ricerca: sei scelte in una pillola sola.
+   Con sei segmenti le parole sono corte ("Profondo", "Stazioni") e a 360
+   pixel ci stanno lo stesso, ma si lascia che vadano a capo invece di
+   schiacciarle sotto la larghezza di un dito. */
+.riga-categorie-astri { margin-top: 6px; }
+.segmenti-categorie { flex-wrap: wrap; }
+.segmenti-categorie .tasto-segmento { flex: 1 1 auto; min-width: 4.5rem; }
+
 .nota-lunga { margin: 6px 0 0; font-size: 0.76rem; color: var(--testo-3); }
 
 /* Un comando a segmenti: scelte che si escludono, incollate in una pillola
@@ -3172,6 +3180,59 @@ body .chip-astro {
   font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
 }
+
+/* LA DATA A MANO: gg / mm / aaaa · hh : mm : ss
+   Sei caselle strette dentro a una cornice sola, con i separatori al posto
+   giusto: da fuori si legge come un unico campo — che è quello che è — ma
+   ogni numero si scrive per conto suo, e l'anno si digita invece di doverlo
+   far salire di uno alla volta. Le freccine su/giù del campo numerico sono
+   tolte — in una casella larga tre caratteri si mangiavano il numero — ma le
+   frecce ↑ e ↓ della tastiera funzionano lo stesso, ed è il modo più rapido
+   di dire "il giorno dopo". */
+.riga-data { align-items: center; }
+.campo-data {
+  display: flex;
+  align-items: center;
+  flex: 1 1 240px;
+  min-width: 0;
+  gap: 1px;
+  padding: 3px 6px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: rgba(6, 9, 17, 0.7);
+}
+.campo-data:focus-within {
+  border-color: rgba(76, 141, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(76, 141, 255, 0.18);
+}
+body input.casella-data {
+  min-width: 0;
+  min-height: 34px;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+body input.casella-data:focus { border: 0; box-shadow: none; color: var(--blu-chiaro); }
+body input.casella-data:hover { border: 0; }
+.casella-data::-webkit-outer-spin-button,
+.casella-data::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.casella-data { -moz-appearance: textfield; appearance: textfield; }
+.casella-2 { flex: 0 1 3.2ch; width: 3.2ch; }
+.casella-4 { flex: 0 1 5ch; width: 5ch; }
+.sep-data {
+  flex: 0 0 auto;
+  color: var(--testo-3);
+  font-family: var(--mono);
+  font-size: 0.86rem;
+  user-select: none;
+}
+/* Fra la data e l'ora ci vuole più aria che fra due numeri della stessa data */
+.sep-larga { padding: 0 4px; }
 /* Uno stacco dentro a un pannello: il pannello Tempo dice due cose (quando,
    e da dove), e senza una riga fra loro sembravano la stessa cosa. Sottile e
    stretto: serve a separare, non a occupare. */
@@ -3422,6 +3483,11 @@ body .chip-astro {
   .cerca-astri { margin: -10px -12px 8px; padding: 8px 12px; }
   body .chip-astro { padding: 5px 8px; font-size: 0.76rem; }
   .titolo-famiglia { font-size: 0.65rem; }
+  /* Su un telefono le sei caselle della data si prendono tutta la riga, e i
+     due tasti stanno insieme in quella dopo: "Vai" da solo in fondo a una
+     riga, con "Adesso" a capo, sembrava che appartenessero a due comandi */
+  .campo-data { flex: 1 1 100%; }
+  .riga-data .tasto-cielo { flex: 1 1 auto; }
   /* Tutta la riga del playback — verso e velocità — deve restare in fila
      come su un lettore: i tasti si stringono, ma nessuno va a capo */
   .riga-playback { flex-wrap: nowrap; gap: 5px; }
