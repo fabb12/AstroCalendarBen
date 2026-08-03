@@ -613,6 +613,10 @@ function calcolaEventiIntervallo(inizio, fine, opzioni = {}) {
     aggiungiSciamiMeteorici(inizio, fine);
     aggiungiElongazioni(inizio, fine);
     aggiungiCongiunzioni(inizio, fine);
+    // Superlune, opposizioni, massimo splendore di Venere, transiti sul
+    // Sole e comete: stanno in eventi-extra.js, che si carica dopo di
+    // noi. Ognuna di quelle famiglie ha il suo try/catch là dentro.
+    if (typeof aggiungiEventiExtra === 'function') aggiungiEventiExtra(inizio, fine);
   } finally {
     destinazioneEventi = precedente;
   }
@@ -6217,6 +6221,15 @@ const SKY_ASTRI = SKY_CORPI.concat(
 // così si possono cercare e disegnare allo stesso modo. L'elenco si compone
 // al primo uso: SATELLITI è definito più avanti nel file.
 let skyElencoCache = null;
+
+// I moduli caricati dopo (il catalogo del cielo, i corpi minori) portano
+// altre voci, e arrivano quando arrivano — dopo che questo elenco è già
+// stato composto una volta. Quando succede, lo buttano via con questa e
+// al giro dopo si rifà con tutto dentro.
+function skyInvalidaElenco() {
+  skyElencoCache = null;
+}
+
 function skyElenco() {
   if (!skyElencoCache) {
     skyElencoCache = SKY_ASTRI.concat(SATELLITI.map(s => ({
@@ -6238,6 +6251,27 @@ function skyElenco() {
       tipo: 'profondo',
       tipoProfondo: o.tipo
     })));
+
+    // Quello che portano i moduli caricati dopo: i centoquarantadue
+    // oggetti profondi del catalogo grande al posto dei quattordici qui
+    // sopra, le stelle che hanno un nome, le comete e gli asteroidi che
+    // stanotte si vedono. Se un modulo non c'è, semplicemente non
+    // aggiunge niente.
+    if (typeof catVociElenco === 'function') {
+      const dalCatalogo = catVociElenco();
+      if (dalCatalogo.length) {
+        // Gli stessi oggetti profondi non ci vanno due volte: quelli del
+        // catalogo grande hanno lo stesso identificativo dei quattordici
+        // di prima, e vincono loro (hanno più dati attaccati).
+        const nuovi = new Set(dalCatalogo.map(v => v.id));
+        skyElencoCache = skyElencoCache.filter(v => !nuovi.has(v.id)).concat(dalCatalogo);
+      }
+    }
+    if (typeof corpiMinoriVociElenco === 'function') {
+      try {
+        skyElencoCache = skyElencoCache.concat(corpiMinoriVociElenco(skyAdesso()));
+      } catch (e) { /* dati non ancora pronti */ }
+    }
   }
   return skyElencoCache;
 }
@@ -6247,6 +6281,11 @@ function skyElenco() {
 function skyProfondoDiId(id) {
   if (typeof id !== 'string' || !id.startsWith('dso:')) return null;
   const nome = id.slice(4);
+  // Prima il catalogo grande, se c'è: ha le misure vere e la brillanza
+  if (typeof catProfondoDiNome === 'function') {
+    const dal = catProfondoDiNome(nome);
+    if (dal) return dal;
+  }
   return SKY_PROFONDO.find(o => o.nome === nome) || null;
 }
 
@@ -10395,7 +10434,14 @@ function skyDisegna() {
   if (sky.mostraGriglia) skyDisegnaGriglia(ctx, base, focale);
   if (!conCamera) skyDisegnaTerreno(ctx, base, focale, aria);
   skyDisegnaCardinali(ctx, base, focale);
+
+  // Il fondo di stelle del catalogo grande, sotto a tutto il resto: le
+  // figure delle costellazioni ci si appoggiano sopra, e i pianeti pure.
+  // Quando catalogo.js non è caricato queste due non fanno niente e
+  // resta il cielo di prima — le ventitré figure scritte a mano.
+  if (typeof catDisegnaStelle === 'function') catDisegnaStelle(ctx, base, focale);
   skyDisegnaCostellazioni(ctx, base, focale);
+  if (typeof catDisegnaFigure === 'function') catDisegnaFigure(ctx, base, focale);
   skyDisegnaProfondo(ctx, base, focale);
 
   // Il binario del Sistema Solare: sotto a tutto il resto, perché è lo
@@ -12705,6 +12751,18 @@ function skyAggiornaScheda() {
   if (!pannello.classList.contains('visibile')) return;
   const scorrimento = pannello.scrollTop;
   corpo.innerHTML = voce ? skySchedaHtml(voce) : skyAttesaSchedaHtml();
+
+  // In coda alla scheda: le lune di Giove (solo per Giove) e la curva
+  // dell'altezza di stanotte. Sono due canvas, e vanno disegnati DOPO
+  // essere finiti nel documento — prima non hanno ancora una misura.
+  if (voce && typeof schedaExtraHtml === 'function') {
+    const extra = schedaExtraHtml(voce);
+    if (extra) {
+      corpo.insertAdjacentHTML('beforeend', extra);
+      disegnaSchedaExtra(voce);
+    }
+  }
+
   pannello.scrollTop = scorrimento;
 }
 
@@ -13628,6 +13686,20 @@ function skyCiclo() {
 function apriSkymap() {
   if (sky.aperto) return;
   sky.aperto = true;
+
+  // È qui che i cataloghi cominciano ad arrivare: alla prima apertura del
+  // planetario, non all'avvio dell'app. Sono quattrocento kilobyte, e chi
+  // apre l'AstroCalendario per sapere a che ora tramonta il Sole non deve
+  // aspettarli. Non si aspetta nemmeno adesso: il cielo parte subito con
+  // le ventitré figure scritte a mano, e quando le cinquemila stelle
+  // arrivano si accendono da sole al fotogramma dopo.
+  //
+  // Va in apriSkymap() e non in skyAvvia(): quello parte solo se si tocca
+  // il tasto dei sensori, mentre qui ci si passa ogni volta che la vista
+  // va a schermo.
+  if (typeof catCarica === 'function') catCarica();
+  if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica();
+
   skyCostruisciElenco();
   skyRidimensiona();
   if (!sky.observer) skyCaricaPosizioneSalvata();
@@ -19698,6 +19770,9 @@ function costruisciStasera() {
   costruisciStaseraProssimi();
   costruisciStaseraMeteo();
   aggiornaPassaggiSatelliti(false);
+  // I migliori bersagli, la griglia del meteo da astronomo e l'aurora:
+  // stanno in ui-nuova.js, che si carica dopo di noi.
+  if (typeof aggiornaStaseraNuovo === 'function') aggiornaStaseraNuovo();
 }
 
 function inizializzaStasera() {
@@ -20167,7 +20242,12 @@ function esportaBackup() {
       ? { lat: sky.posizione.lat, lon: sky.posizione.lon, nome: sky.posizione.nome, origine: sky.posizione.origine }
       : luogoCorrente(),
     bussola: localStorage.getItem(CHIAVE_SKY_BUSSOLA),
-    cameraCampo: localStorage.getItem(CHIAVE_SKY_CAMERA)
+    cameraCampo: localStorage.getItem(CHIAVE_SKY_CAMERA),
+    // Il cielo di casa e il profilo degli ostacoli sono due risposte date
+    // a mano, che nessuno ha voglia di ridare: vanno nel backup.
+    cieloCasa: localStorage.getItem('astrocalendario_cielo_casa'),
+    orizzonte: localStorage.getItem('astrocalendario_orizzonte'),
+    corpiMiei: localStorage.getItem('astrocalendario_corpi_minori_miei')
   };
   const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
   const giorno = new Date().toISOString().slice(0, 10);
@@ -20217,6 +20297,18 @@ async function importaBackup(file) {
       const c = parseFloat(dati.cameraCampo);
       if (!isNaN(c)) sky.cameraCampoLato = Math.max(SKY_CAMERA_LATO_MIN, Math.min(SKY_CAMERA_LATO_MAX, c));
     }
+
+    // Il cielo di casa, gli ostacoli davanti e le comete aggiunte a mano.
+    // Sono nei backup solo dalla versione con i cataloghi in poi: un file
+    // più vecchio semplicemente non li ha, e va bene lo stesso.
+    [['cieloCasa', 'astrocalendario_cielo_casa'],
+     ['orizzonte', 'astrocalendario_orizzonte'],
+     ['corpiMiei', 'astrocalendario_corpi_minori_miei']].forEach(([campo, chiave]) => {
+      if (!dati[campo]) return;
+      try { localStorage.setItem(chiave, dati[campo]); } catch (e) { /* niente storage */ }
+    });
+    if (typeof orizzonteDimentica === 'function') orizzonteDimentica();
+    if (typeof corpiMinoriCaricaMiei === 'function') corpiMinoriCaricaMiei();
 
     pianificaNotifiche();
     aggiornaViste();
@@ -20559,6 +20651,16 @@ function skyAggiornaCatalogo(data) {
     sky.profondo = [];
     return;
   }
+
+  // Quando c'è il catalogo grande fa tutto lui, e lo fa con una matrice
+  // di rotazione invece di cinquemila ricerche: vedi catalogo.js. Questo
+  // che segue è la strada di prima, che resta viva per chi apre l'app
+  // senza rete la prima volta e i cataloghi non li ha ancora.
+  if (typeof catAggiornaPosizioni === 'function' && catAggiornaPosizioni(data)) {
+    sky.costellazioni = [];        // le figure le disegna catDisegnaFigure()
+    return;
+  }
+
   const t = Astronomy.MakeTime(data);
 
   if (sky.mostraCostellazioni) {

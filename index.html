@@ -135,6 +135,28 @@
         <div id="stasera-meteo" class="mt-4"></div>
       </div>
 
+      <!-- Il meteo da astronomo: seeing, trasparenza, nuvole a tre quote,
+           nella griglia oraria del Clear Sky Chart. Si riempie da sé al
+           primo caricamento delle previsioni; senza rete resta vuoto e lo
+           dice. -->
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="meteo-astro">
+        <div class="flex justify-between items-center gap-3 mb-1">
+          <h3 class="text-lg font-bold text-white">Che notte sarà</h3>
+          <button id="btn-meteo-astro-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0">Aggiorna</button>
+        </div>
+        <p id="meteo-astro-finestra" class="testo-finestra-meteo"></p>
+        <div id="meteo-astro-griglia"></div>
+        <p id="meteo-astro-aurora" class="avviso-aurora hidden"></p>
+      </div>
+
+      <!-- I migliori bersagli di stanotte, ordinati tenendo conto di tutto
+           insieme: quanto salgono, la Luna, il cielo di casa, il meteo. -->
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="migliori">
+        <h3 class="text-lg font-bold text-white mb-1">I migliori di stanotte</h3>
+        <p id="migliori-sottotitolo" class="testo-sotto-titolo"></p>
+        <div id="stasera-migliori" class="elenco-migliori"></div>
+      </div>
+
       <!-- Pianeti e Luna visibili stanotte -->
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="pianeti">
         <h3 class="text-lg font-bold text-white mb-3">Cosa si vede</h3>
@@ -1438,6 +1460,24 @@
           </div>
         </section>
 
+        <!-- Il cielo di casa e gli ostacoli davanti: due domande che
+             cambiano tutto quello che l'app risponde. -->
+        <section class="space-y-2 border-t border-slate-700 pt-4">
+          <h3 class="font-bold text-white">Il cielo che hai</h3>
+          <p class="text-xs text-slate-500">Quante stelle si vedono non dipende dal cielo ma da dove lo guardi. Scegli quello che assomiglia di più al tuo: comanda il planetario (quante stelle disegna), la scelta dei bersagli di stanotte e il conto del contrasto al telescopio.</p>
+          <div id="imp-cielo-scelta" class="segmenti-cielo-casa" role="group" aria-label="Il cielo da cui osservi"></div>
+          <p id="imp-cielo-nota" class="text-xs text-slate-400"></p>
+        </section>
+
+        <section class="space-y-2 border-t border-slate-700 pt-4">
+          <h3 class="font-bold text-white">Cosa hai davanti</h3>
+          <p class="text-xs text-slate-500">Il palazzo di fronte, la collina, gli alberi. Dichiara quanto sono alti in gradi (un pugno a braccio teso è circa 10°) e da lì in poi l'app smette di proporti cose che da casa tua non vedrai mai. Zero vuol dire orizzonte libero.</p>
+          <div id="imp-orizzonte" class="griglia-orizzonte"></div>
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button id="imp-orizzonte-azzera" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white">Orizzonte libero</button>
+          </div>
+        </section>
+
         <section class="space-y-2 border-t border-slate-700 pt-4">
           <h3 class="font-bold text-white">Porta gli eventi nel tuo calendario</h3>
           <p class="text-xs text-slate-500">Scarica un file <code>.ics</code> con i prossimi eventi: il calendario del telefono penserà lui ai promemoria, anche ad app chiusa.</p>
@@ -1486,5 +1526,18 @@
 
   <script src="app.js"></script>
   <script src="telescopio.js"></script>
+
+  <!-- I moduli aggiunti dopo. Tutti dipendono da app.js e vanno dopo di lui;
+       fra loro l'ordine conta solo per pianifica.js, che usa `cieloDiCasa`
+       di catalogo.js. I CATALOGHI VERI E PROPRI NON STANNO QUI: sono
+       duecento kilobyte, e se li carica catalogo.js da sé la prima volta
+       che qualcuno apre il planetario. Chi vuole solo sapere che tempo
+       fa stanotte non li scarica mai. -->
+  <script src="catalogo.js"></script>
+  <script src="corpi-minori.js"></script>
+  <script src="pianifica.js"></script>
+  <script src="meteo-astro.js"></script>
+  <script src="eventi-extra.js"></script>
+  <script src="ui-nuova.js"></script>
 </body>
 </html>

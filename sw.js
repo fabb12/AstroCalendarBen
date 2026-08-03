@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v47';
+const CACHE_NAME = 'astrocal-v50';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -7,12 +7,29 @@ const ASSETS = [
   './style.css',
   './app.js',
   './telescopio.js',
+  './catalogo.js',
+  './corpi-minori.js',
+  './pianifica.js',
+  './meteo-astro.js',
+  './eventi-extra.js',
+  './ui-nuova.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
   './icon-maskable-512.png',
   './apple-touch-icon.png'
 ];
+
+// I file dei cataloghi — dati-stelle.js, dati-stelle-deboli.js,
+// dati-costellazioni.js, dati-profondo.js, dati-corpi-minori.js — NON
+// stanno in ASSETS, ed è una scelta: sono quattrocento kilobyte, e
+// metterli lì vorrebbe dire scaricarli all'installazione anche a chi il
+// planetario non lo aprirà mai.
+//
+// Non serve elencarli da nessuna parte: se li chiede catalogo.js quando
+// servono, e la regola qui sotto — «tutto quello che viene da questa
+// stessa origine, conservalo» — li mette in cache appena passano. Da
+// quel momento ci sono anche in campo, senza rete.
 
 // Librerie esterne: vanno messe in cache anche loro, altrimenti l'app
 // installata si apre "rotta" quando non c'è rete (proprio di notte, in campo).
@@ -82,8 +99,14 @@ self.addEventListener('fetch', (e) => {
   // salvato in localStorage — e per la posizione resta la scelta a mano.
   // Attenzione: senza questa deviazione la risposta di ripiego sarebbe
   // index.html, cioè una pagina HTML servita al posto di un JSON.
+  // Il meteo da astronomo passa dagli stessi host di open-meteo (compreso
+  // air-quality-api), quindi è già coperto. Il tempo dello spazio del
+  // NOAA no, e una tempesta magnetica di ieri è la peggiore delle
+  // informazioni vecchie: dice «guarda a nord» la sera in cui non c'è
+  // niente da vedere.
   if (url.hostname.includes('open-meteo.com') ||
       url.hostname.includes('celestrak') ||
+      url.hostname.includes('services.swpc.noaa.gov') ||
       SERVIZI_POSIZIONE.some(h => url.hostname === h)) {
     e.respondWith(fetch(req).catch(() => new Response('', { status: 504 })));
     return;
@@ -99,7 +122,33 @@ self.addEventListener('fetch', (e) => {
           caches.open(CACHE_NAME).then(c => c.put(req, copia)).catch(() => {});
         }
         return rete;
-      }).catch(() => caches.match('./index.html'));
+      }).catch(() => ripiego(req));
     })
   );
 });
+
+// Che cosa rispondere quando una richiesta non si può soddisfare.
+//
+// La risposta ovvia — «rimando index.html, così almeno l'app si apre» —
+// è giusta soltanto per la navigazione, cioè quando è il browser a
+// chiedere una PAGINA. Per tutto il resto è un disastro silenzioso: il
+// browser chiede astronomy.browser.min.js, si sente rispondere 200 con
+// dentro dell'HTML, prova a interpretarlo come codice e muore su
+// «Unexpected token '<'». L'utente vede un'app rotta senza capire
+// perché, e nella console c'è un errore di sintassi in un file che di
+// errori di sintassi non ne ha.
+//
+// Succedeva davvero: basta essere senza rete la prima volta che si apre
+// l'app installata, quando le librerie del CDN non sono ancora in cache.
+// Un 504 onesto, invece, fa fallire il caricamento di quello script e
+// basta — e i moduli che sanno vivere senza (il catalogo del cielo, i
+// corpi minori) continuano a funzionare.
+function ripiego(req) {
+  if (req.mode === 'navigate') {
+    return caches.match('./index.html').then(r => r || new Response(
+      '<!doctype html><meta charset="utf-8"><title>Senza rete</title>' +
+      '<p style="font:16px system-ui;padding:2rem">Non riesco ad aprire l\'app e non ne ho una copia salvata. Riprova quando c\'è rete.</p>',
+      { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+  }
+  return new Response('', { status: 504, statusText: 'Non disponibile senza rete' });
+}
