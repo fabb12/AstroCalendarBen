@@ -25,16 +25,51 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 
 | File | Righe | Contenuto |
 |---|---|---|
-| `index.html` | ~1.470 | Struttura statica: testata, 6 viste, 10 modali. Nessuna logica. |
-| `app.js` | ~21.310 | Tutto tranne il telescopio. |
+| `index.html` | ~1.545 | Struttura statica: testata, 6 viste, 10 modali. Nessuna logica. |
+| `app.js` | ~21.560 | Tutto tranne il telescopio e i moduli aggiunti dopo. |
 | `telescopio.js` | ~5.535 | Vista Telescopio, isolata. ~136 funzioni, prefisso `tel`. |
-| `style.css` | ~4.545 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~105 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v47`). |
+| `catalogo.js` | ~980 | **Il catalogo del cielo**: 5.044 stelle, 88 costellazioni, 142 oggetti profondi, e il motore a matrice che li muove. Prefisso `cat`. |
+| `corpi-minori.js` | ~660 | **Lune di Giove, comete e asteroidi**: `JupiterMoons` e propagazione kepleriana a mano. |
+| `pianifica.js` | ~500 | **Pianificare la serata**: curva dell'altezza, migliori bersagli, profilo degli ostacoli. Prefisso `pian`/`orizzonte`. |
+| `meteo-astro.js` | ~510 | **Meteo da astronomo**: seeing, trasparenza, griglia Clear Sky Chart, aurora. Prefisso `meteo`/`aurora`. |
+| `eventi-extra.js` | ~435 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete. |
+| `ui-nuova.js` | ~350 | L'interfaccia di tutto quanto sopra. |
+| `dati-stelle.js` | ~1.360 | 5.044 stelle fino alla mag 6,0 (147 KB). **Caricato su richiesta.** |
+| `dati-stelle-deboli.js` | ~1.335 | Altre 10.500 fino alla mag 7,0 (267 KB). **Solo a chi serve** (Bortle ≤ 4 o forte zoom). |
+| `dati-costellazioni.js` | ~195 | Le 88 figure IAU coi nomi italiani (24 KB). **Su richiesta.** |
+| `dati-profondo.js` | ~170 | Messier completo + NGC luminosi, 142 oggetti (29 KB). **Su richiesta.** |
+| `dati-corpi-minori.js` | ~85 | Elementi orbitali di 41 comete e 20 asteroidi (11 KB). **Su richiesta.** |
+| `verifica.html` | ~360 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
+| `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
+| `style.css` | ~4.915 | Tema "Deep Space" + impaginazione responsive. |
+| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v50`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 
-Ordine di caricamento: `app.js` poi `telescopio.js` (che quindi può usare `sky`,
-`skyProietta`, `icona`, …; il contrario va protetto con `typeof x === 'function'`).
+**Ordine di caricamento** (è quello di `index.html`, e conta):
+
+```
+app.js → telescopio.js → catalogo.js → corpi-minori.js
+       → pianifica.js → meteo-astro.js → eventi-extra.js → ui-nuova.js
+```
+
+Ogni file può usare quelli prima di lui; il contrario va sempre protetto con
+`typeof x === 'function'`. I `dati-*.js` **non stanno in `index.html`**: se li
+carica `catalogo.js` da sé alla prima apertura del planetario (`apriSkymap()`).
+
+**I ganci dentro `app.js` sono cinque, e sono tutti guardati da un `typeof`:**
+
+| Dove | Cosa fa |
+|---|---|
+| `apriSkymap()` | avvia `catCarica()` e `corpiMinoriCarica()` |
+| `skyAggiornaCatalogo()` | se `catAggiornaPosizioni()` risponde, esce subito |
+| `skyDisegna()` | chiama `catDisegnaStelle()` e `catDisegnaFigure()` |
+| `skyElenco()` / `skyProfondoDiId()` | pescano anche da `catVociElenco()` e `corpiMinoriVociElenco()` |
+| `calcolaEventiIntervallo()` | chiama `aggiungiEventiExtra()` |
+| `costruisciStasera()` | chiama `aggiornaStaseraNuovo()` |
+| `skyAggiornaScheda()` | appende `schedaExtraHtml()` e `disegnaSchedaExtra()` |
+
+Se i moduli nuovi non ci sono, l'app resta esattamente quella di prima.
 
 ## 3. Librerie esterne (da CDN, nessuna installata)
 
@@ -176,6 +211,11 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `sol` | `app.js:15022` | Sistema Solare in 3D: telecamera (`az`, `elev`/`elevVoluta`, `zoom`/`zoomVoluto`, spostamento nella tela `panX`/`panY`), metro delle distanze (`distanzeVere`) e ingrandimento fuori dal piano (`esagera`), posizioni eliocentriche in UA (`pianeti`, `luna`), orbite campionate (`orbite`), pianeta scelto (`scelto`) e marcia del tempo (`marcia`, `velIndice`). L'istante non è suo: lo legge da `skyAdesso()` e lo sposta con `skyImpostaOffsetTempo()`; anche la marcia è condivisa — `solInMarcia()` mette insieme `sol.marcia` e il playback del planetario, che qui dentro continua a camminare. |
 | `sim` | `app.js:15829` | Simulazione: canvas, scena, posizione nel tempo, velocità. |
 | `tel` | `telescopio.js:168` | Telescopio: profilo, pannello, allineamento, push-to. |
+| `cat` | `catalogo.js` | Il catalogo del cielo. `versoriJ2000` (fermi, calcolati una volta) e `versoriOra` (riscritti a ogni aggiornamento con una sola matrice), `magnitudini`, `famiglie` (il colore, già in bucket), `figure`, `profondo`. `stato` dice se i dati sono arrivati; `secondoLivello` se sono arrivate anche le stelle deboli. |
+| `corpiMinori` | `corpi-minori.js` | `elenco` sono comete e asteroidi del file, `miei` quelli incollati a mano dall'utente. |
+| `meteoAstro` | `meteo-astro.js` | Previsioni ora per ora con seeing e trasparenza già calcolati. |
+| `aurora` | `meteo-astro.js` | Indice Kp attuale e previsto dal NOAA. |
+| `orizzonteMio` | `pianifica.js` | I sedici settori del profilo degli ostacoli. |
 
 ## 9. Persistenza (`localStorage`, tutte le chiavi)
 
@@ -190,6 +230,11 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `CHIAVE_DIARIO` | `astrocalendario_diario` |
 | `CHIAVE_TEL_PROFILO` | `astrocalendario_telescopio_v1` |
 | `CHIAVE_TEL_SESSIONE` | `astrocalendario_telescopio_sessione_v1` |
+| `CHIAVE_CIELO_CASA` | `astrocalendario_cielo_casa` (la scala di Bortle, in `catalogo.js`) |
+| `CHIAVE_ORIZZONTE` | `astrocalendario_orizzonte` (i sedici settori degli ostacoli) |
+| `CHIAVE_CORPI_MIEI` | `astrocalendario_corpi_minori_miei` (comete e asteroidi incollati a mano) |
+| `CHIAVE_METEO_ASTRO` | `astrocalendario_meteo_astro` |
+| `CHIAVE_AURORA` | `astrocalendario_aurora` |
 
 Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
@@ -222,11 +267,49 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 ## 11. Rilascio e verifica
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
-- **Non ci sono test.** La verifica è aprire l'app e guardare la vista toccata.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v47`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v50`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
-- Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`.
+- Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
+  `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene
+  da sé quando passano (regola «stessa origine»).
+
+### Il banco di prova — `verifica.html`
+
+Per la gran parte del codice la verifica resta quella di sempre: si apre l'app e
+si guarda la vista toccata. Ma i conti astronomici non si controllano a occhio —
+un segno sbagliato non si vede, e mezzo grado di errore sembra un problema di
+bussola. Per quelli c'è `verifica.html`:
+
+```
+python3 -m http.server 8000     # poi apri localhost:8000/verifica.html
+```
+
+Trentatré controlli contro valori noti: le coordinate di catalogo delle stelle
+famose, il motore del cielo contro `Astronomy.Horizon()`, il raggio orbitale
+delle quattro lune di Giove, il propagatore di Keplero contro le posizioni vere
+dei pianeti, l'eclissi del 2027, il transito di Mercurio del 2032. **Va aperto da
+un server**: i cataloghi si caricano come `<script>` e `file://` non lo permette.
+
+Se tocchi qualcosa in `catalogo.js` o `corpi-minori.js`, passa di lì prima di
+chiudere.
+
+### Rigenerare i cataloghi — `scripts/costruisci-dati.js`
+
+I `dati-*.js` non si scrivono a mano. Si rifanno da fonti pubbliche:
+
+```
+node scripts/costruisci-dati.js <cartella-dati-d3-celestial> . <ssystem_minor.ini>
+```
+
+- stelle, costellazioni e cielo profondo vengono da
+  [d3-celestial](https://github.com/ofrohn/d3-celestial) (BSD-3, a monte
+  Hipparcos, Yale BSC e il catalogo di Messier);
+- gli elementi orbitali di comete e asteroidi da `ssystem_minor.ini` di
+  [Stellarium](https://github.com/Stellarium/stellarium) (GPL, a monte MPC e JPL).
+
+Gli elementi orbitali **invecchiano**: per gli asteroidi vanno bene per anni, per
+le comete no. Vale la pena riprenderli a ogni rilascio importante.
 
 ## 12. Dove guardare per…
 
@@ -287,3 +370,18 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 | Calcoli ottici del telescopio | `telescopio.js:243` |
 | Impaginazione su telefono | `PUNTI_ROTTURA` `app.js:211` + i `@media` di `style.css` |
 | Nuova icona | `DISEGNI` `app.js:53` |
+| Le stelle del cielo (quante, quali, di che colore) | `catalogo.js`: i dati in `dati-stelle.js` (mag ≤ 6) e `dati-stelle-deboli.js` (fino a 7, caricato solo se serve); il motore in `catAggiornaPosizioni()`, il disegno in `catDisegnaStelle()`. Quante se ne vedono lo decide `catMagnitudineLimite()`, che somma il cielo di casa (Bortle) e lo zoom |
+| Il cielo è storto o specchiato dopo un tocco al catalogo | `catMatriceCielo()` in `catalogo.js`: `RotationMatrix.rot` è memorizzata `rot[sorgente][destinazione]`, cioè trasposta rispetto a come si scrive a mano, e la terna della libreria è (Nord, Ovest, Zenit) mentre `skyProietta` vuole (Est, Nord, Alto) |
+| Un astro fuori posto di mezzo grado | quasi sempre è la precessione: `Astronomy.Horizon()` vuole coordinate **dell'equatore di oggi**, i cataloghi sono in J2000, e fra i due ballano 0,36°. Passando per `catMatriceCielo()` la correzione è obbligata |
+| Le costellazioni (tutte e 88, i nomi italiani) | `dati-costellazioni.js` + `catDisegnaFigure()`. Quante se ne disegnano dipende dal campo: `rango` 1 a campo largo, fino a 3 ingrandendo |
+| Messier e il cielo profondo | `dati-profondo.js` (142 oggetti). Il disegno resta `skyDisegnaProfondo()` in `app.js`, che riceve i dati da `catAggiornaPosizioni()`. Con che strumento si veda lo decide `profondoStrumento()` a partire dal Bortle, **non** è scritto nei dati |
+| Il cielo di casa (scala di Bortle) | `cieloDiCasa()` / `impostaCieloDiCasa()` in `catalogo.js`, `CAT_CIELI`. È in sincrono col `profilo.cielo` del telescopio: cambiarlo di là o di qua è la stessa cosa |
+| Il palazzo di fronte (ostacoli sull'orizzonte) | `orizzonteCarica()` / `orizzonteAltezza(az)` in `pianifica.js`: sedici settori, interpolati. Entra nella curva della notte e nella scelta dei bersagli |
+| Le lune di Giove | `luneDiGiove()` in `corpi-minori.js` (posizioni, transiti, ombre, eclissi) e `disegnaLuneDiGiove()` in `ui-nuova.js`. Compaiono nella scheda di Giove |
+| Comete e asteroidi | `corpi-minori.js`: `posizioneCorpoMinore()` è Keplero a mano (ellisse, parabola con Barker, iperbole), `corpoMinoreInCielo()` porta in cielo. Gli elementi stanno in `dati-corpi-minori.js`, e se ne possono incollare altri con `corpiMinoriLeggiIncollato()` |
+| Una cometa nuova, appena scoperta | non si aggiunge al file: si incollano gli elementi dell'MPC. Il file dei dati contiene solo quelle stabili |
+| La curva dell'altezza di stanotte | `pianCurvaNotturna()` + `pianDisegnaCurva()` in `pianifica.js`. Sta in fondo alla scheda dell'oggetto nel planetario |
+| «Cosa guardo stanotte» | `migliorDiStanotte()` in `pianifica.js` e `aggiornaStaseraMigliori()` in `ui-nuova.js` |
+| Seeing, trasparenza, griglia oraria del meteo | `meteo-astro.js`: `meteoSeeing()` (viene dal vento a 250 hPa, la corrente a getto), `meteoTrasparenza()` (dagli aerosol), `meteoGrigliaHtml()` per la griglia stile Clear Sky Chart |
+| Aurora | `caricaAurora()` + `auroraDaQui()` in `meteo-astro.js`: indice Kp dal NOAA, confronto con la **latitudine geomagnetica** (non quella geografica — per l'Italia il divario conta) |
+| Superlune, opposizioni, transiti sul Sole | `eventi-extra.js`, agganciato da `calcolaEventiIntervallo()` |

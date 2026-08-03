@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroCalendario — banco di prova</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    background: #04060d; color: #e9edf7;
+    font: 15px/1.5 system-ui, -apple-system, sans-serif;
+    margin: 0; padding: 24px 18px 60px; max-width: 900px; margin-inline: auto;
+  }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1rem; color: #8ab4ff; margin: 26px 0 8px; font-weight: 600; }
+  .intro { color: #a9b4cc; font-size: 0.9rem; margin-bottom: 8px; }
+  .prova { padding: 5px 10px; border-left: 3px solid #333; margin: 3px 0; font-size: 0.88rem; }
+  .ok { border-color: #7fb069; }
+  .ko { border-color: #e2685c; background: rgba(226,104,92,0.08); }
+  .nota { border-color: #475569; color: #a9b4cc; }
+  .extra { color: #74809a; font-size: 0.82rem; }
+  #esito {
+    position: sticky; top: 0; z-index: 5;
+    padding: 12px 14px; border-radius: 10px; font-weight: 600;
+    background: #131a2b; border: 1px solid rgba(148,168,214,0.2); margin-bottom: 4px;
+  }
+  #esito[data-stato="ok"] { background: rgba(127,176,105,0.16); border-color: #7fb069; }
+  #esito[data-stato="ko"] { background: rgba(226,104,92,0.16); border-color: #e2685c; }
+  code { background: rgba(8,11,20,0.7); padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
+</style>
+</head>
+<body>
+
+<h1>Banco di prova</h1>
+<p class="intro">
+  L'AstroCalendario non ha né build né test, e per la gran parte del codice va
+  benissimo così: si apre l'app e si guarda. Ma i conti astronomici sono
+  un'altra cosa — un segno sbagliato non si vede a occhio, e uno scarto di
+  mezzo grado sembra un problema di bussola. Questa pagina li controlla contro
+  valori noti. Si apre e basta: nessun server, nessuna installazione.
+</p>
+<p class="intro">
+  Va aperta <strong>da un server</strong> (anche <code>python3 -m http.server</code>
+  nella cartella del progetto), non con un doppio clic: i cataloghi si caricano
+  come script, e <code>file://</code> non lo permette.
+</p>
+
+<div id="esito">In corso…</div>
+<div id="risultati"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+<script src="dati-stelle.js"></script>
+<!-- Anche il secondo livello, che nell'app arriva solo a chi serve: qui
+     serve sempre, o il conteggio delle stelle a Bortle 2 direbbe cinquemila
+     invece delle quindicimila che si vedono davvero da un cielo di montagna. -->
+<script src="dati-stelle-deboli.js"></script>
+<script src="dati-costellazioni.js"></script>
+<script src="dati-profondo.js"></script>
+<script src="dati-corpi-minori.js"></script>
+
+<script>
+// Il minimo di app.js che serve ai moduli sotto esame. Non si carica
+// app.js intero perché lui all'avvio costruisce l'interfaccia, e qui
+// l'interfaccia non c'è.
+const SKY_STELLE = [
+  { nome: 'Stella Polare', ra: 2.5303, dec: 89.2641 }, { nome: 'Sirio', ra: 6.7525, dec: -16.7161 },
+  { nome: 'Vega', ra: 18.6156, dec: 38.7837 }, { nome: 'Capella', ra: 5.2782, dec: 45.9980 },
+  { nome: 'Arturo', ra: 14.2610, dec: 19.1825 }, { nome: 'Rigel', ra: 5.2423, dec: -8.2016 },
+  { nome: 'Betelgeuse', ra: 5.9195, dec: 7.4070 }, { nome: 'Altair', ra: 19.8464, dec: 8.8683 }
+];
+const SKY_PROFONDO = [{ nome: 'M31 — Galassia di Andromeda', angoloPosizione: 38,
+  distanza: '2,5 milioni di anni luce', nota: 'La cosa più lontana visibile a occhio nudo.' }];
+const SKY_COLORI_PROFONDO = { galassia: '#c4b5fd', nebulosa: '#a5f3fc', ammasso: '#fde68a',
+  globulare: '#fed7aa', planetaria: '#86efac' };
+const SKY_VIA_LATTEA = [];
+const sky = {
+  observer: new Astronomy.Observer(45.4642, 9.19, 120),
+  fov: 55, larghezza: 900, altezza: 600,
+  mostraStelle: true, mostraCostellazioni: true, mostraProfondo: true,
+  mostraSottoOrizzonte: false, mostraNomi: true, mostraViaLattea: false, atmosfera: true
+};
+function skyVelo() { return 1; }
+function skyEstinzione(alt) { return alt >= 22 ? 1 : alt <= 0 ? 0.4 : 0.4 + 0.6 * (alt / 22); }
+function skyAdesso() { return new Date(); }
+</script>
+
+<script src="catalogo.js"></script>
+<script src="corpi-minori.js"></script>
+
+<script>
+// ---------------------------------------------------------------------
+// Il minimo indispensabile per dire "questa prova è passata"
+// ---------------------------------------------------------------------
+let passate = 0, fallite = 0;
+const uscita = document.getElementById('risultati');
+
+function titolo(t) {
+  uscita.insertAdjacentHTML('beforeend', `<h2>${t}</h2>`);
+}
+function prova(nome, condizione, dettaglio) {
+  condizione ? passate++ : fallite++;
+  uscita.insertAdjacentHTML('beforeend',
+    `<div class="prova ${condizione ? 'ok' : 'ko'}">${condizione ? '✓' : '✗'} ${nome}` +
+    (dettaglio ? ` <span class="extra">— ${dettaglio}</span>` : '') + '</div>');
+}
+function nota(testo) {
+  uscita.insertAdjacentHTML('beforeend', `<div class="prova nota">${testo}</div>`);
+}
+
+const D2R = Math.PI / 180;
+const UA_KM = 149597870.7;
+
+// Astronomy.Horizon vuole coordinate dell'equatore DI OGGI, non J2000:
+// per confrontarci bisogna precessarle, o si sbaglia di 0,36° e si crede
+// che l'errore sia nostro.
+function orizzonteDaJ2000(raOre, dec, t, obs) {
+  const rot = Astronomy.Rotation_EQJ_EQD(t);
+  const ra = raOre * 15 * D2R, d = dec * D2R, cd = Math.cos(d);
+  const v = new Astronomy.Vector(cd * Math.cos(ra), cd * Math.sin(ra), Math.sin(d), t);
+  const s = Astronomy.SphereFromVector(Astronomy.RotateVector(rot, v));
+  return Astronomy.Horizon(t, obs, ((s.lon / 15) + 24) % 24, s.lat, null);
+}
+
+// =====================================================================
+titolo('1. I cataloghi sono arrivati interi');
+// =====================================================================
+prova('il catalogo stellare c\'è', typeof CATALOGO_STELLE !== 'undefined' && CATALOGO_STELLE.length > 0,
+      `${CATALOGO_STELLE_QUANTE.toLocaleString('it')} stelle`);
+prova('quattro numeri per stella, senza avanzi', CATALOGO_STELLE.length === CATALOGO_STELLE_QUANTE * 4);
+prova('le ottantotto costellazioni', COSTELLAZIONI_IAU.length >= 88, `${COSTELLAZIONI_IAU.length} figure`);
+prova('il catalogo di Messier al completo',
+      CATALOGO_PROFONDO.filter(o => o.messier).length === 110,
+      `${CATALOGO_PROFONDO.length} oggetti in tutto`);
+prova('gli elementi orbitali', typeof CORPI_MINORI !== 'undefined' && CORPI_MINORI.length > 20,
+      `${CORPI_MINORI.filter(c => c.tipo === 'cometa').length} comete, ` +
+      `${CORPI_MINORI.filter(c => c.tipo === 'asteroide').length} asteroidi`);
+
+// Le coordinate del catalogo contro quelle già cablate in app.js: se una
+// delle due fonti sbaglia, qui si vede.
+[['Sirio', 6.7525, -16.716], ['Vega', 18.6156, 38.784], ['Stella Polare', 2.5303, 89.264],
+ ['Betelgeuse', 5.9195, 7.407], ['Arturo', 14.2610, 19.182]].forEach(([nome, ra, dec]) => {
+  const v = STELLE_NOMI.find(x => x[1] === nome);
+  if (!v) { prova(`${nome} è in catalogo`, false); return; }
+  const i = v[0] * 4;
+  const dRa = Math.abs(CATALOGO_STELLE[i] - ra) * 15 * Math.cos(dec * D2R);
+  const dDec = Math.abs(CATALOGO_STELLE[i + 1] - dec);
+  prova(`${nome} è dove ci si aspetta`, dRa < 0.02 && dDec < 0.02,
+        `AR ${CATALOGO_STELLE[i].toFixed(4)}h, dec ${CATALOGO_STELLE[i + 1].toFixed(3)}°`);
+});
+
+// =====================================================================
+titolo('2. Il motore del cielo — una matrice al posto di cinquemila conti');
+// =====================================================================
+cat.secondoLivello = 'pronto';         // in questa pagina ci sono tutt'e due i livelli
+catPreparaStelle(); catPreparaFigure(); catPreparaProfondo();
+cat.stato = 'pronto';
+
+prova('le otto stelle di riferimento non sono doppie',
+      Array.from(cat.magnitudini).filter(m => m === 99).length === 8);
+prova('la nota scritta a mano di M31 è sopravvissuta al catalogo grande',
+      !!cat.profondo.find(o => o.sigla === 'M31').nota);
+
+const quando = new Date();
+const t = Astronomy.MakeTime(quando);
+catAggiornaPosizioni(quando);
+
+let peggio = 0;
+[0, 1, 7, 50, 400, 1500, 4000].forEach(i => {
+  const mio = catPosizioneStella(i);
+  const vero = orizzonteDaJ2000(CATALOGO_STELLE[i * 4], CATALOGO_STELLE[i * 4 + 1], t, sky.observer);
+  const dAlt = Math.abs(mio.alt - vero.altitude);
+  const dAz = Math.abs(((mio.az - vero.azimuth + 540) % 360) - 180) * Math.cos(vero.altitude * D2R);
+  peggio = Math.max(peggio, dAlt, dAz);
+});
+prova('le posizioni coincidono con Astronomy.Horizon()', peggio * 3600 < 0.01,
+      `scarto massimo ${(peggio * 3600).toFixed(5)} secondi d'arco`);
+
+const m31 = cat.profondo.find(o => o.sigla === 'M31');
+const m31vero = orizzonteDaJ2000(m31.ra, m31.dec, t, sky.observer);
+prova('anche per il cielo profondo', Math.abs(m31.alt - m31vero.altitude) * 3600 < 0.01,
+      `M31 a ${m31.alt.toFixed(3)}°`);
+
+// La precessione: questo è il controllo che avrebbe pescato il vecchio
+// difetto — coordinate J2000 passate a Horizon() come se fossero di oggi.
+//
+// Va misurata come separazione angolare fra i due punti, non come
+// differenza di altezza: vicino all'orizzonte la componente verticale si
+// comprime, e un oggetto basso mostrerebbe uno scarto molto minore di
+// quello vero facendo credere che l'errore non ci sia.
+const senzaPrecessione = Astronomy.Horizon(t, sky.observer, m31.ra, m31.dec, null);
+const separazione = Math.acos(Math.max(-1, Math.min(1,
+  Math.sin(m31.alt * D2R) * Math.sin(senzaPrecessione.altitude * D2R) +
+  Math.cos(m31.alt * D2R) * Math.cos(senzaPrecessione.altitude * D2R) *
+  Math.cos((m31.az - senzaPrecessione.azimuth) * D2R)))) / D2R;
+const attesa = (new Date().getFullYear() - 2000) * 50.3 / 3600;   // ~50″ l'anno
+prova('la precessione dal 2000 a oggi è applicata',
+      separazione > attesa * 0.5 && separazione < attesa * 2.5,
+      `senza, M31 sarebbe ${(separazione * 60).toFixed(1)} primi d'arco fuori posto — ` +
+      `${(separazione * 60 / 31).toFixed(1)} volte il diametro della Luna piena`);
+
+const t0 = performance.now();
+for (let g = 0; g < 100; g++) catAggiornaPosizioni(new Date(quando.getTime() + g * 1000));
+const ms = (performance.now() - t0) / 100;
+prova('un aggiornamento sta sotto il millisecondo', ms < 1.2,
+      `${ms.toFixed(3)} ms per ${cat.quante.toLocaleString('it')} stelle, ${cat.figure.length} figure, ${cat.profondo.length} oggetti`);
+
+// =====================================================================
+titolo('3. Il cielo di casa cambia quello che si vede');
+// =====================================================================
+const primaBortle = localStorage.getItem('astrocalendario_cielo_casa');
+[[2, 'Cielo di montagna'], [5, 'Periferia luminosa'], [8, 'Città']].forEach(([b, nome]) => {
+  localStorage.setItem('astrocalendario_cielo_casa', String(b));
+  const lim = catMagnitudineLimite();
+  let quante = 0;
+  for (let i = 0; i < cat.quante; i++) if (cat.magnitudini[i] <= lim) quante++;
+  nota(`Bortle ${b} — ${nome}: magnitudine limite ${lim.toFixed(1)}, ${quante.toLocaleString('it')} stelle disegnate`);
+});
+localStorage.setItem('astrocalendario_cielo_casa', '5');
+prova('M31 si vede a occhio nudo dalla montagna e non dalla città',
+      profondoStrumento(m31, 2) === 'occhio' && profondoStrumento(m31, 8) === 'telescopio',
+      `montagna: ${profondoStrumento(m31, 2)}, città: ${profondoStrumento(m31, 8)}`);
+if (primaBortle) localStorage.setItem('astrocalendario_cielo_casa', primaBortle);
+else localStorage.removeItem('astrocalendario_cielo_casa');
+
+// =====================================================================
+titolo('4. Le lune di Giove');
+// =====================================================================
+const lune = luneDiGiove(quando);
+prova('sono quattro', lune && lune.length === 4);
+
+// Il raggio orbitale vero di ognuna, in raggi di Giove. Si controlla
+// cercando il massimo allontanamento lungo un'orbita intera: quello è il
+// raggio, perché le orbite sono quasi circolari e le vediamo di taglio.
+const raggiVeri = { Io: 5.90, Europa: 9.39, Ganimede: 14.97, Callisto: 26.33 };
+LUNE_GIOVE.forEach((cfg, k) => {
+  let massimo = 0;
+  for (let g = 0; g < 120; g++) {
+    const l = luneDiGiove(new Date(quando.getTime() + g * cfg.giorni * 86400000 / 120))[k];
+    massimo = Math.max(massimo, Math.hypot(l.x, l.y));
+  }
+  const atteso = raggiVeri[cfg.nome];
+  prova(`${cfg.nome} orbita al raggio giusto`, Math.abs(massimo - atteso) / atteso < 0.03,
+        `${massimo.toFixed(2)} raggi di Giove contro ${atteso}`);
+});
+nota('In fila adesso: ' + luneDiGioveRacconto(quando).fila);
+
+// =====================================================================
+titolo('5. Keplero — comete e asteroidi');
+// =====================================================================
+// Si prendono posizione e velocità di un pianeta vero da Astronomy
+// Engine, se ne ricavano gli elementi orbitali osculatori e li si
+// propaga col nostro codice. Se c'è un segno sbagliato o una rotazione
+// fuori posto, qui salta fuori subito.
+//
+// Non si usa la Terra: HelioVector('Earth') dà il centro della Terra,
+// che gira attorno al baricentro Terra-Luna a 13 m/s — in dieci giorni
+// sono undicimila chilometri che non c'entrano niente col propagatore.
+// E non si usa Mercurio, la cui precessione del perielio è
+// relativistica e Newton da solo non la fa.
+const OBL = 23.4392911 * D2R;
+const eqAEcl = v => ({ x: v.x, y: v.y * Math.cos(OBL) + v.z * Math.sin(OBL),
+                       z: -v.y * Math.sin(OBL) + v.z * Math.cos(OBL) });
+
+function osculatori(corpo, epoca) {
+  const st = Astronomy.HelioState(corpo, Astronomy.MakeTime(epoca));
+  const r = eqAEcl(st), v = eqAEcl({ x: st.vx, y: st.vy, z: st.vz });
+  const K = 0.01720209895, mu = K * K;
+  const R = Math.hypot(r.x, r.y, r.z), V2 = v.x * v.x + v.y * v.y + v.z * v.z;
+  const a = 1 / (2 / R - V2 / mu);
+  const h = [r.y * v.z - r.z * v.y, r.z * v.x - r.x * v.z, r.x * v.y - r.y * v.x];
+  const inc = Math.acos(h[2] / Math.hypot(h[0], h[1], h[2]));
+  const nodo = Math.atan2(h[0], -h[1]);
+  const rv = r.x * v.x + r.y * v.y + r.z * v.z;
+  const ev = [(V2 / mu - 1 / R) * r.x - rv / mu * v.x,
+              (V2 / mu - 1 / R) * r.y - rv / mu * v.y,
+              (V2 / mu - 1 / R) * r.z - rv / mu * v.z];
+  const e = Math.hypot(ev[0], ev[1], ev[2]);
+  let peri = Math.acos((Math.cos(nodo) * ev[0] + Math.sin(nodo) * ev[1]) / e);
+  if (ev[2] < 0) peri = 2 * Math.PI - peri;
+  let nu = Math.acos((ev[0] * r.x + ev[1] * r.y + ev[2] * r.z) / (e * R));
+  if (rv < 0) nu = 2 * Math.PI - nu;
+  const E = 2 * Math.atan2(Math.sqrt(1 - e) * Math.sin(nu / 2), Math.sqrt(1 + e) * Math.cos(nu / 2));
+  return { a, e, i: inc / D2R, nodo: ((nodo / D2R) + 360) % 360, peri: ((peri / D2R) + 360) % 360,
+           M0: (((E - e * Math.sin(E)) / D2R) + 360) % 360,
+           epoca: epoca.getTime() / 86400000 + 2440587.5 };
+}
+
+['Mars', 'Jupiter', 'Pluto'].forEach(corpo => {
+  const epoca = new Date();
+  const el = osculatori(corpo, epoca);
+  let breve = 0, lungo = 0;
+  [1, 5, 10].forEach(g => {
+    const q = new Date(epoca.getTime() + g * 86400000);
+    const mio = posizioneCorpoMinore(el, q);
+    const vero = eqAEcl(Astronomy.HelioVector(corpo, Astronomy.MakeTime(q)));
+    breve = Math.max(breve, Math.hypot(mio.x - vero.x, mio.y - vero.y, mio.z - vero.z));
+  });
+  [100, 300].forEach(g => {
+    const q = new Date(epoca.getTime() + g * 86400000);
+    const mio = posizioneCorpoMinore(el, q);
+    const vero = eqAEcl(Astronomy.HelioVector(corpo, Astronomy.MakeTime(q)));
+    lungo = Math.max(lungo, Math.hypot(mio.x - vero.x, mio.y - vero.y, mio.z - vero.z));
+  });
+  prova(`${corpo}: propagazione esatta sui primi dieci giorni`, breve * UA_KM < 1500,
+        `${(breve * UA_KM).toFixed(0)} km in dieci giorni, ${(lungo * UA_KM).toFixed(0)} km in trecento (deriva delle perturbazioni)`);
+});
+
+// Un'orbita quasi parabolica: e = 0,967
+const halley = CORPI_MINORI.find(c => c.nome.indexOf('1P/') === 0);
+if (halley) {
+  const alPerielio = posizioneCorpoMinore(halley, new Date((halley.tPerielio - 2440587.5) * 86400000));
+  prova('Halley al perielio è alla distanza di perielio',
+        Math.abs(alPerielio.r - halley.q) < 1e-4,
+        `${alPerielio.r.toFixed(6)} contro ${halley.q} unità astronomiche`);
+  const oggi = posizioneCorpoMinore(halley, quando);
+  prova('e adesso è oltre l\'orbita di Nettuno', oggi.r > 25,
+        `${oggi.r.toFixed(1)} unità astronomiche dal Sole`);
+}
+
+['Cerere', 'Vesta', 'Pallade'].forEach(nome => {
+  const el = CORPI_MINORI.find(c => c.nome === nome);
+  if (!el) { prova(`${nome} è in elenco`, false); return; }
+  const p = corpoMinoreInCielo(el, quando);
+  prova(`${nome} sta nella fascia principale ed è plausibile`,
+        p.distanzaSole > 1.9 && p.distanzaSole < 3.6 && p.mag > 5 && p.mag < 12,
+        `magnitudine ${p.mag.toFixed(1)}, a ${p.distanzaSole.toFixed(2)} UA dal Sole, in ${Astronomy.Constellation(p.ra, p.dec).name}`);
+});
+
+// =====================================================================
+titolo('6. Effemeridi note');
+// =====================================================================
+// Date che si trovano su qualunque almanacco: se una di queste si sposta,
+// qualcosa si è rotto a monte.
+[
+  ['eclissi totale di Sole del 2 agosto 2027', () => Astronomy.SearchGlobalSolarEclipse(new Date('2027-07-01')),
+   e => e.kind === 'total' && e.peak.date.toISOString().slice(0, 10) === '2027-08-02'],
+  ['equinozio di primavera 2027 (20 marzo)', () => Astronomy.Seasons(2027),
+   s => s.mar_equinox.date.toISOString().slice(0, 10) === '2027-03-20'],
+  ['transito di Mercurio del 13 novembre 2032', () => Astronomy.SearchTransit('Mercury', new Date('2030-01-01')),
+   t2 => t2.peak.date.toISOString().slice(0, 10) === '2032-11-13']
+].forEach(([nome, cerca, controlla]) => {
+  try {
+    const r = cerca();
+    prova(nome, controlla(r));
+  } catch (e) {
+    prova(nome, false, e.message);
+  }
+});
+
+// =====================================================================
+const esito = document.getElementById('esito');
+esito.dataset.stato = fallite ? 'ko' : 'ok';
+esito.textContent = fallite
+  ? `${fallite} PROVE FALLITE su ${passate + fallite}`
+  : `Tutte e ${passate} le prove sono passate.`;
+</script>
+
+</body>
+</html>

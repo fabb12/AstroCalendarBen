@@ -1,0 +1,978 @@
+// =====================================================================
+// IL CATALOGO DEL CIELO
+//
+// Fino a ieri il planetario disegnava centocinquanta stelle: quelle delle
+// ventitré figure che qualcuno aveva scritto a mano. Bastavano a
+// riconoscere Orione, ma un cielo con centocinquanta stelle non è un
+// cielo — è uno schema. Fra le figure c'era il vuoto, e il vuoto è la
+// cosa che più di tutte tradisce che stai guardando un disegno.
+//
+// Adesso ce ne sono cinquemila: tutte quelle che un occhio abituato al
+// buio vede da un cielo scuro, con le ottantotto figure ufficiali sopra.
+//
+// Due problemi da risolvere, e sono il motivo per cui questo file esiste
+// invece di essere tre righe dentro app.js:
+//
+//   1. COSTA. app.js chiamava Astronomy.Horizon() una volta per stella,
+//      a ogni aggiornamento. Con centocinquanta stelle sono
+//      centocinquanta ricerche trigonometriche complete — si sopporta.
+//      Con cinquemila, fino a quindici volte al secondo, sono
+//      settantacinquemila al secondo, e il ciclo del planetario (che
+//      deve stare sotto il millisecondo per fotogramma) muore. Qui la
+//      rotazione dal cielo di J2000 al cielo di stasera si calcola UNA
+//      VOLTA per aggiornamento, come matrice 3×3, e poi si applica a
+//      ogni stella con nove moltiplicazioni. Cinquemila stelle costano
+//      meno di quanto ne costassero cinquanta prima.
+//
+//   2. PESA. Duecento kilobyte di cataloghi non devono stare sulla
+//      strada di chi apre l'app per sapere che tempo fa stasera. I tre
+//      file dei dati si caricano da soli la prima volta che si apre il
+//      planetario, non prima, e da lì in poi li tiene il service worker.
+//
+// Ordine di caricamento: dopo app.js (usa `sky`, `skyProietta`,
+// `skyEstinzione`, `skyVelo`), prima o dopo telescopio.js — non si parlano.
+//
+// Fonte dei dati: Hipparcos, Yale Bright Star Catalog e il catalogo di
+// Messier, per il tramite di d3-celestial (BSD-3-Clause). Cataloghi
+// pubblici: nessuna chiave, nessun servizio, nessuna rete dopo il primo
+// caricamento.
+// =====================================================================
+
+
+// =====================================================================
+// 1. CARICAMENTO PIGRO
+//     I tre file dei dati non stanno in index.html: ci arrivano da soli
+//     quando il planetario si apre davvero. Chi non lo apre mai non li
+//     scarica mai.
+// =====================================================================
+
+const CAT_FILE = ['dati-stelle.js', 'dati-costellazioni.js', 'dati-profondo.js'];
+const CAT_FILE_DEBOLI = 'dati-stelle-deboli.js';
+
+// Il taglio fra i due livelli del catalogo stellare, lo stesso che usa lo
+// script che genera i dati.
+const CAT_MAG_PRIMO_LIVELLO = 6.0;
+
+const cat = {
+  stato: 'niente',        // niente | in-corso | pronto | fallito
+  promessa: null,
+
+  // Il secondo livello — le diecimilacinquecento stelle fra la sesta e la
+  // settima magnitudine — è un file a parte da 267 KB che quasi nessuno
+  // scarica: serve solo a chi ha un cielo di montagna o sta ingrandendo
+  // forte. Chi guarda dal balcone di città non lo vedrà mai passare.
+  secondoLivello: 'niente',
+  promessaDeboli: null,
+
+  quante: 0,              // quante stelle ci sono adesso, primo livello + eventuale secondo
+
+  // Vettori unitari delle stelle nel cielo di J2000, calcolati una volta
+  // sola: sono la parte cara del conto, e non cambia mai.
+  versoriJ2000: null,     // Float64Array, 3 per stella
+  // Gli stessi vettori portati nel cielo di stasera, in coordinate
+  // Est/Nord/Alto — la convenzione che usa skyProietta.
+  versoriOra: null,       // Float64Array, 3 per stella
+  magnitudini: null,      // Float32Array
+  famiglie: null,         // Uint8Array: in quale delle sette famiglie di colore cade
+  colori: null,           // Map indice → colore CSS, solo per quelle disegnate a una a una
+  nomiPerIndice: null,    // Map indice → nome, solo per le 701 che ne hanno uno
+
+  // Le figure: gli stessi punti, ma sono novecento in tutto e si possono
+  // tenere come semplici array.
+  figure: null,
+
+  profondo: null,         // il catalogo degli oggetti profondi, arricchito
+  viaLattea: null,        // i novanta punti della banda, in versori
+  quandoAggiornato: 0
+};
+
+function catPronto() {
+  return cat.stato === 'pronto';
+}
+
+// Carica i tre file di dati, una volta sola. Se la rete non c'è e il
+// service worker non li ha ancora presi, il planetario resta quello di
+// prima: le figure scritte a mano in app.js. Nessun errore in faccia a
+// nessuno — semplicemente un cielo più spoglio.
+function catCarica() {
+  if (cat.promessa) return cat.promessa;
+  cat.stato = 'in-corso';
+
+  cat.promessa = Promise.all(CAT_FILE.map(catCaricaScript))
+    .then(() => {
+      catPreparaStelle();
+      catPreparaFigure();
+      catPreparaProfondo();
+      cat.stato = 'pronto';
+
+      // L'elenco degli astri era già stato composto con i quattordici
+      // oggetti profondi di prima: va rifatto, adesso che ce ne sono
+      // centoquarantadue.
+      if (typeof skyInvalidaElenco === 'function') skyInvalidaElenco();
+      return true;
+    })
+    .catch(e => {
+      console.warn('Catalogo del cielo non caricato:', e);
+      cat.stato = 'fallito';
+      return false;
+    });
+
+  return cat.promessa;
+}
+
+function catCaricaScript(file) {
+  return new Promise((risolvi, rifiuta) => {
+    const s = document.createElement('script');
+    s.src = file;
+    s.async = false;                  // l'ordine fra i tre non conta, ma tanto vale
+    s.onload = () => risolvi();
+    s.onerror = () => rifiuta(new Error('non si carica: ' + file));
+    document.head.appendChild(s);
+  });
+}
+
+// Il secondo livello si chiede da sé, la prima volta che serve: quando il
+// cielo impostato è così scuro, o lo zoom così stretto, che il primo
+// livello finisce e il cielo comincia a svuotarsi invece di riempirsi.
+function catServeSecondoLivello() {
+  if (!catPronto() || cat.secondoLivello !== 'niente') return;
+  if (catMagnitudineLimite() <= CAT_MAG_PRIMO_LIVELLO) return;
+
+  cat.secondoLivello = 'in-corso';
+  cat.promessaDeboli = catCaricaScript(CAT_FILE_DEBOLI)
+    .then(() => {
+      cat.secondoLivello = 'pronto';
+      catPreparaStelle();             // si rifà da capo con l'elenco unito
+      catAggiornaPosizioni(typeof skyAdesso === 'function' ? skyAdesso() : new Date());
+      // Non serve chiedere un ridisegno: il ciclo del planetario gira su
+      // requestAnimationFrame finché la vista è aperta, e al fotogramma
+      // dopo le stelle nuove ci sono già.
+    })
+    .catch(() => {
+      // Niente rete: si continua col primo livello, e non si riprova a
+      // ogni fotogramma. Il cielo è meno fitto, e basta.
+      cat.secondoLivello = 'fallito';
+    });
+}
+
+
+// =====================================================================
+// 2. IL COLORE DI UNA STELLA
+//     Un cielo di puntini bianchi è un cielo finto. Le stelle hanno un
+//     colore, e a occhio nudo si vede: Antares e Betelgeuse sono
+//     arancioni, Rigel e Spica azzurre, e chi ha imparato a vederlo non
+//     riesce più a non vederlo.
+//
+//     L'indice B−V è la misura di quel colore: quanto una stella è più
+//     luminosa nel blu che nel visuale. Negativo vuol dire azzurra
+//     (Rigel, −0,03), positivo rossa (Betelgeuse, +1,50).
+// =====================================================================
+
+// Sette tacche lungo la scala, interpolate. I valori vengono dalla
+// temperatura di colore corrispondente, non da un gusto personale.
+const CAT_SCALA_COLORE = [
+  [-0.40, 155, 176, 255],   // azzurra, 30.000 K
+  [ 0.00, 202, 215, 255],   // bianco-azzurra, 10.000 K
+  [ 0.40, 248, 247, 255],   // bianca, 7.000 K
+  [ 0.80, 255, 244, 234],   // bianco-gialla, 5.500 K
+  [ 1.20, 255, 210, 161],   // gialla-arancione, 4.200 K
+  [ 1.60, 255, 190, 127],   // arancione, 3.500 K
+  [ 2.00, 255, 165, 105]    // rossa, 3.000 K
+];
+
+function catColoreDaBV(bv) {
+  const s = CAT_SCALA_COLORE;
+  if (bv <= s[0][0]) return `rgb(${s[0][1]},${s[0][2]},${s[0][3]})`;
+  for (let i = 1; i < s.length; i++) {
+    if (bv > s[i][0]) continue;
+    const a = s[i - 1], b = s[i];
+    const k = (bv - a[0]) / (b[0] - a[0]);
+    const r = Math.round(a[1] + k * (b[1] - a[1]));
+    const g = Math.round(a[2] + k * (b[2] - a[2]));
+    const bl = Math.round(a[3] + k * (b[3] - a[3]));
+    return `rgb(${r},${g},${bl})`;
+  }
+  const u = s[s.length - 1];
+  return `rgb(${u[1]},${u[2]},${u[3]})`;
+}
+
+
+// =====================================================================
+// 3. PREPARAZIONE DEL CATALOGO
+//     Si fa una volta sola, appena i dati arrivano. Tutto quello che non
+//     dipende né dall'ora né da dove sei si calcola qui e non si tocca
+//     più: i vettori unitari, i colori, i nomi.
+// =====================================================================
+
+// Le otto stelle degli slot Star1…Star8 di app.js le disegna già lui, con
+// l'icona, il nome e la scheda ricca (spettro, raggio, distanza). Il
+// catalogo deve saltarle, o finirebbero disegnate due volte — e mai
+// esattamente nello stesso posto, perché i due cataloghi differiscono di
+// qualche centesimo di grado. Due Sirii affiancati sono la cosa più
+// brutta che possa capitare a un planetario.
+function catIndiciDaSaltare() {
+  const salta = new Set();
+  if (typeof SKY_STELLE === 'undefined') return salta;
+
+  const n = CATALOGO_STELLE_QUANTE;
+  SKY_STELLE.forEach(s => {
+    let migliore = -1, minimo = Infinity;
+    for (let i = 0; i < n; i++) {
+      // Sopra la terza magnitudine ci sono duecento stelle: cercare fra
+      // quelle basta e avanza, e ci risparmia cinquemila confronti per
+      // ognuna delle otto.
+      if (CATALOGO_STELLE[i * 4 + 2] > 3.0) break;
+      const dRa = (CATALOGO_STELLE[i * 4] - s.ra) * 15 *
+                  Math.cos(s.dec * Math.PI / 180);
+      const dDec = CATALOGO_STELLE[i * 4 + 1] - s.dec;
+      const d2 = dRa * dRa + dDec * dDec;
+      if (d2 < minimo) { minimo = d2; migliore = i; }
+    }
+    // Un decimo di grado: abbastanza largo da assorbire la differenza fra
+    // due cataloghi, abbastanza stretto da non prendere la stella accanto.
+    if (migliore >= 0 && minimo < 0.01) salta.add(migliore);
+  });
+  return salta;
+}
+
+// Al di sopra di questa magnitudine una stella si disegna a una a una,
+// con l'alone e il nome; sotto, finisce nel mucchio del suo colore. Sono
+// un centinaio scarse, e sono quelle che si cercano davvero.
+const CAT_MAG_LUMINOSE = 2.2;
+
+function catPreparaStelle() {
+  const salta = catIndiciDaSaltare();
+
+  // I due livelli si leggono di fila senza unirli in un array nuovo:
+  // sarebbero altri quattrocento kilobyte di memoria per niente.
+  const primo = CATALOGO_STELLE, quantiPrimo = CATALOGO_STELLE_QUANTE;
+  const haDeboli = cat.secondoLivello === 'pronto' && typeof CATALOGO_STELLE_DEBOLI !== 'undefined';
+  const secondo = haDeboli ? CATALOGO_STELLE_DEBOLI : null;
+  const quantiSecondo = haDeboli ? CATALOGO_STELLE_DEBOLI_QUANTE : 0;
+  const n = quantiPrimo + quantiSecondo;
+
+  cat.quante = n;
+  cat.versoriJ2000 = new Float64Array(n * 3);
+  cat.versoriOra = new Float64Array(n * 3);
+  cat.magnitudini = new Float32Array(n);
+  cat.famiglie = new Uint8Array(n);
+  cat.colori = new Map();
+
+  const D2R = Math.PI / 180;
+  for (let i = 0; i < n; i++) {
+    const dentro = i < quantiPrimo ? primo : secondo;
+    const k = (i < quantiPrimo ? i : i - quantiPrimo) * 4;
+
+    const ra = dentro[k] * 15 * D2R;              // ore → gradi → radianti
+    const dec = dentro[k + 1] * D2R;
+    const cd = Math.cos(dec);
+
+    // Vettore unitario nel sistema equatoriale di J2000, la stessa
+    // convenzione di Astronomy Engine: x verso il punto d'Ariete,
+    // z verso il polo nord celeste.
+    cat.versoriJ2000[i * 3]     = cd * Math.cos(ra);
+    cat.versoriJ2000[i * 3 + 1] = cd * Math.sin(ra);
+    cat.versoriJ2000[i * 3 + 2] = Math.sin(dec);
+
+    // Una stella saltata non si cancella dagli array — sposterebbe tutti
+    // gli indici, e i nomi puntano agli indici. Si mette a una
+    // magnitudine che nessun filtro lascia mai passare.
+    const mag = salta.has(i) ? 99 : dentro[k + 2];
+    cat.magnitudini[i] = mag;
+
+    // La famiglia di colore si decide qui, non nel ciclo di disegno: là
+    // sarebbe una divisione e due arrotondamenti per stella per
+    // fotogramma, e non cambia mai.
+    cat.famiglie[i] = catFamigliaDi(dentro[k + 3]);
+    // Il colore per esteso serve solo a quelle disegnate a una a una e a
+    // quelle che compaiono in elenco: tenerne quindicimila stringhe
+    // sarebbe un megabyte buttato.
+    if (mag <= 3.2) cat.colori.set(i, catColoreDaBV(dentro[k + 3]));
+  }
+
+  cat.nomiPerIndice = new Map();
+  if (typeof STELLE_NOMI !== 'undefined') {
+    STELLE_NOMI.forEach(([i, nome]) => {
+      if (!salta.has(i)) cat.nomiPerIndice.set(i, nome);
+    });
+  }
+}
+
+function catPreparaFigure() {
+  if (typeof COSTELLAZIONI_IAU === 'undefined') { cat.figure = []; return; }
+  const D2R = Math.PI / 180;
+
+  cat.figure = COSTELLAZIONI_IAU.map(c => {
+    // Ogni spezzata diventa due array paralleli: i vettori J2000 (fermi) e
+    // quelli di stasera (riscritti a ogni aggiornamento). Novecento punti
+    // in tutto: si può stare comodi.
+    const spezzate = c.spezzate.map(linea => {
+      const j2000 = new Float64Array(linea.length * 3);
+      linea.forEach(([raOre, dec], k) => {
+        const ra = raOre * 15 * D2R, d = dec * D2R, cd = Math.cos(d);
+        j2000[k * 3]     = cd * Math.cos(ra);
+        j2000[k * 3 + 1] = cd * Math.sin(ra);
+        j2000[k * 3 + 2] = Math.sin(d);
+      });
+      return { j2000, ora: new Float64Array(linea.length * 3), quanti: linea.length };
+    });
+
+    // Il nome della figura si scrive nel suo baricentro, che si calcola
+    // dalla media dei vettori: farlo sulle coordinate darebbe un punto
+    // sbagliato per ogni figura a cavallo delle zero ore (Pegaso, Pesci).
+    const centro = new Float64Array(3);
+    let quanti = 0;
+    spezzate.forEach(s => {
+      for (let k = 0; k < s.quanti; k++) {
+        centro[0] += s.j2000[k * 3];
+        centro[1] += s.j2000[k * 3 + 1];
+        centro[2] += s.j2000[k * 3 + 2];
+        quanti++;
+      }
+    });
+    const norma = Math.hypot(centro[0], centro[1], centro[2]) || 1;
+    centro[0] /= norma; centro[1] /= norma; centro[2] /= norma;
+
+    return {
+      sigla: c.sigla, nome: c.nome, latino: c.latino, rango: c.rango,
+      spezzate, centroJ2000: centro, centroOra: new Float64Array(3)
+    };
+  });
+}
+
+// I quattordici oggetti profondi che app.js aveva già hanno qualcosa che
+// nessun catalogo dà: una nota scritta a mano da chi li ha guardati
+// davvero ("la stella di mezzo della spada di Orione non è una stella"),
+// la distanza in anni luce e l'angolo di posizione. Quella roba non si
+// butta: si appiccica sopra alle voci del catalogo grande.
+function catPreparaProfondo() {
+  if (typeof CATALOGO_PROFONDO === 'undefined') { cat.profondo = []; return; }
+
+  const scritteAMano = new Map();
+  if (typeof SKY_PROFONDO !== 'undefined') {
+    SKY_PROFONDO.forEach(o => scritteAMano.set(o.nome.split(' ')[0], o));
+  }
+
+  const D2R = Math.PI / 180;
+  cat.profondo = CATALOGO_PROFONDO.map(o => {
+    const vecchio = scritteAMano.get(o.sigla);
+    const ra = o.ra * 15 * D2R, dec = o.dec * D2R, cd = Math.cos(dec);
+
+    return {
+      // Il nome per esteso è quello che compare in elenco e sulla mappa.
+      // "M31 — Galassia di Andromeda" se un nome ce l'ha, se no
+      // "M85 — galassia ellittica": mai una sigla nuda.
+      nome: o.alt ? `${o.sigla} — ${o.alt}` : `${o.sigla} — ${o.tipoTesto}`,
+      sigla: o.sigla,
+      altro: o.altro,
+      ra: o.ra, dec: o.dec, mag: o.mag,
+      tipo: o.tipo, tipoTesto: o.tipoTesto,
+      assePrimi: o.assePrimi, asseMinore: o.asseMinore,
+      brillanza: o.brillanza,
+      messier: o.messier,
+
+      // Dal vecchio elenco: l'angolo di posizione (senza, ogni galassia
+      // sarebbe disegnata dritta), la distanza e la nota.
+      angoloPosizione: vecchio && typeof vecchio.angoloPosizione === 'number'
+        ? vecchio.angoloPosizione : 0,
+      distanza: vecchio ? vecchio.distanza : null,
+      dimensione: vecchio ? vecchio.dimensione : catDimensioneTesto(o),
+      nota: vecchio ? vecchio.nota : null,
+
+      versore: [cd * Math.cos(ra), cd * Math.sin(ra), Math.sin(dec)],
+      az: 0, alt: 0
+    };
+  });
+}
+
+// "3° × 1° (sei volte la Luna piena)" invece di "190 × 60": i primi d'arco
+// non dicono niente a nessuno, il paragone con la Luna sì.
+function catDimensioneTesto(o) {
+  const gradi = p => p >= 60 ? `${(p / 60).toFixed(1).replace('.0', '')}°` : `${Math.round(p)}′`;
+  const misura = o.asseMinore && Math.abs(o.asseMinore - o.assePrimi) > 0.5
+    ? `${gradi(o.assePrimi)} × ${gradi(o.asseMinore)}`
+    : gradi(o.assePrimi);
+  const lune = o.assePrimi / 31;
+  if (lune >= 1.6) return `${misura} (${Math.round(lune)} volte la Luna piena)`;
+  if (lune >= 0.7) return `${misura} (grande come la Luna piena)`;
+  if (lune >= 0.25) return `${misura} (un terzo della Luna piena)`;
+  return misura;
+}
+
+
+// =====================================================================
+// 4. IL MOTORE — una matrice al posto di cinquemila conti
+//
+//     Astronomy.Horizon() fa il lavoro completo: precessione, nutazione,
+//     rotazione terrestre, rifrazione. Per una stella è la cosa giusta.
+//     Per cinquemila è cinquemila volte lo stesso lavoro, perché
+//     precessione, nutazione e rotazione terrestre sono le stesse per
+//     tutto il cielo in un dato istante: cambia solo da quale punto del
+//     cielo parti.
+//
+//     Quindi: si chiede alla libreria la rotazione composta
+//
+//        cielo di J2000 → cielo di oggi → orizzonte di qui
+//
+//     una volta sola, come matrice 3×3, e la si applica a ogni versore.
+//     Nove moltiplicazioni e sei somme per stella.
+//
+//     La rifrazione si perde per strada, ed è giusto così: vale mezzo
+//     grado esatto sull'orizzonte e crolla a zero salendo. Sulle stelle
+//     di riferimento — quelle che si puntano davvero — app.js continua a
+//     usare Horizon() con la rifrazione. Qui si disegna il fondo.
+//
+//     E c'è un guadagno che non era previsto. Astronomy.Horizon() vuole
+//     coordinate dell'equatore DI OGGI, mentre i cataloghi (il nostro
+//     compreso) sono in J2000: passargliele così com'erano metteva tutto
+//     il cielo fuori posto di 0,36° — la precessione di ventisei anni,
+//     più del diametro della Luna. A campo largo non si vedeva; a
+//     mezzo grado di campo, dove si arriva con lo zoom, è tutto lo
+//     schermo. Passando per la matrice, Rotation_EQJ_EQD fa la
+//     precessione per forza, ed è impossibile dimenticarsene.
+// =====================================================================
+
+// ATTENZIONE all'indicizzazione: RotationMatrix.rot è memorizzata
+// `rot[sorgente][destinazione]`, cioè la trasposta di come si scrive una
+// matrice sul quaderno. Lo si vede in RotateVector, che fa
+// out.x = rot[0][0]·v.x + rot[1][0]·v.y + rot[2][0]·v.z: il primo indice
+// scorre la sorgente. Scambiarli non dà un errore, dà un cielo storto di
+// una quarantina di gradi che sembra un problema di bussola.
+
+function catMatriceCielo(data, osservatore) {
+  const t = Astronomy.MakeTime(data);
+  const rotazione = Astronomy.CombineRotation(
+    Astronomy.Rotation_EQJ_EQD(t),
+    Astronomy.Rotation_EQD_HOR(t, osservatore)
+  );
+  return rotazione.rot;
+}
+
+// Riscrive le posizioni di tutto il catalogo per l'istante dato. È la
+// funzione che app.js chiama al posto del suo giro di Horizon().
+function catAggiornaPosizioni(data) {
+  if (!catPronto() || !sky.observer || typeof Astronomy === 'undefined') return false;
+
+  let M;
+  try {
+    M = catMatriceCielo(data, sky.observer);
+  } catch (e) {
+    return false;                                   // data fuori scala: si lascia stare
+  }
+
+  // La matrice, srotolata in nove variabili locali, raggruppate per la
+  // coordinata che producono. Dentro un ciclo da cinquemila giri ogni
+  // M[0][0] è un doppio salto di puntatore: tirarle fuori una volta sola
+  // vale il triplo della velocità.
+  const nx = M[0][0], ny = M[1][0], nz = M[2][0];   // → Nord
+  const ox = M[0][1], oy = M[1][1], oz = M[2][1];   // → Ovest
+  const zx = M[0][2], zy = M[1][2], zz = M[2][2];   // → Zenit
+
+  const j = cat.versoriJ2000, ora = cat.versoriOra;
+  const n = cat.quante;
+
+  for (let k = 0; k < n; k++) {
+    const x = j[k * 3], y = j[k * 3 + 1], z = j[k * 3 + 2];
+    // Est = −Ovest: è tutto il travaso dalla terna della libreria
+    // (Nord, Ovest, Zenit) a quella di skyProietta (Est, Nord, Alto).
+    // Sbagliare questo segno specchia il cielo da destra a sinistra, e il
+    // modo più rapido di accorgersene è guardare da che parte gira il
+    // Grande Carro.
+    ora[k * 3]     = -(ox * x + oy * y + oz * z);
+    ora[k * 3 + 1] =   nx * x + ny * y + nz * z;
+    ora[k * 3 + 2] =   zx * x + zy * y + zz * z;
+  }
+
+  // Le figure: novecento punti, stessa storia
+  cat.figure.forEach(fig => {
+    fig.spezzate.forEach(s => {
+      for (let k = 0; k < s.quanti; k++) {
+        const x = s.j2000[k * 3], y = s.j2000[k * 3 + 1], z = s.j2000[k * 3 + 2];
+        s.ora[k * 3]     = -(ox * x + oy * y + oz * z);
+        s.ora[k * 3 + 1] =   nx * x + ny * y + nz * z;
+        s.ora[k * 3 + 2] =   zx * x + zy * y + zz * z;
+      }
+    });
+    const x = fig.centroJ2000[0], y = fig.centroJ2000[1], z = fig.centroJ2000[2];
+    fig.centroOra[0] = -(ox * x + oy * y + oz * z);
+    fig.centroOra[1] =   nx * x + ny * y + nz * z;
+    fig.centroOra[2] =   zx * x + zy * y + zz * z;
+  });
+
+  // Il cielo profondo è solo centoquarantadue voci, e a lui serve anche
+  // l'azimut in gradi: lo usano l'elenco, la freccia guida e la scheda.
+  const R2D = 180 / Math.PI;
+  cat.profondo.forEach(o => {
+    const x = o.versore[0], y = o.versore[1], z = o.versore[2];
+    const est  = -(ox * x + oy * y + oz * z);
+    const nord =   nx * x + ny * y + nz * z;
+    const alto =   zx * x + zy * y + zz * z;
+    o.alt = Math.asin(Math.max(-1, Math.min(1, alto))) * R2D;
+    o.az = (Math.atan2(est, nord) * R2D + 360) % 360;
+    o.vOra = [est, nord, alto];
+  });
+
+  // La banda della Via Lattea passava anche lei per Horizon() con
+  // coordinate J2000, e si portava dietro lo stesso mezzo grado di
+  // scarto. Sono novanta punti: tanto vale rifarli qui, con la matrice
+  // che la precessione la fa per forza.
+  if (sky.mostraViaLattea && typeof SKY_VIA_LATTEA !== 'undefined') {
+    if (!cat.viaLattea) {
+      const D2R = Math.PI / 180;
+      cat.viaLattea = SKY_VIA_LATTEA.map(p => {
+        const ra = p.ra * 15 * D2R, dec = p.dec * D2R, cd = Math.cos(dec);
+        return { v: [cd * Math.cos(ra), cd * Math.sin(ra), Math.sin(dec)], luce: p.luce };
+      });
+    }
+    sky.viaLattea = cat.viaLattea.map(p => {
+      const x = p.v[0], y = p.v[1], z = p.v[2];
+      const est  = -(ox * x + oy * y + oz * z);
+      const nord =   nx * x + ny * y + nz * z;
+      const alto =   zx * x + zy * y + zz * z;
+      return {
+        alt: Math.asin(Math.max(-1, Math.min(1, alto))) * R2D,
+        az: (Math.atan2(est, nord) * R2D + 360) % 360,
+        luce: p.luce
+      };
+    });
+  } else {
+    sky.viaLattea = [];
+  }
+
+  // app.js disegna il cielo profondo dal suo `sky.profondo`, e continua a
+  // farlo: gli si mette dentro il catalogo grande, nella forma che si
+  // aspetta. Nessuna riga di skyDisegnaProfondo() è stata toccata.
+  sky.profondo = sky.mostraProfondo
+    ? cat.profondo.filter(o => o.mag <= catLimiteProfondo())
+    : [];
+
+  cat.quandoAggiornato = Date.now();
+  return true;
+}
+
+
+// =====================================================================
+// 5. IL CIELO DI CHI GUARDA — la scala di Bortle
+//
+//     Quante stelle si vedono non è una proprietà del cielo: è una
+//     proprietà del posto da cui lo guardi. Dal centro di una città ne
+//     conti trenta, dalla campagna duemila, da un rifugio in quota
+//     tremila e la Via Lattea che fa ombra.
+//
+//     Finora questo numero stava in un solo posto — il profilo del
+//     telescopio, dentro telescopio.js — e serviva solo a stimare il
+//     contrasto all'oculare. Adesso è un'impostazione dell'app, e
+//     comanda il planetario: cambiare Bortle cambia il cielo disegnato,
+//     e vedere trecento stelle diventare tremila spostandosi di due
+//     tacche spiega l'inquinamento luminoso meglio di qualunque testo.
+// =====================================================================
+
+const CHIAVE_CIELO_CASA = 'astrocalendario_cielo_casa';
+
+// Le stesse sei tacche di TEL_CIELI in telescopio.js, con in più la
+// brillanza del fondo cielo in magnitudini per primo quadrato: serve a
+// dire se un oggetto esteso si stacca dallo sfondo oppure no.
+const CAT_CIELI = {
+  2: { nome: 'Cielo di montagna',        magLimite: 7.1, fondo: 13.0 },
+  3: { nome: 'Campagna buia',            magLimite: 6.6, fondo: 12.7 },
+  4: { nome: 'Periferia / campagna vicina', magLimite: 6.0, fondo: 12.2 },
+  5: { nome: 'Periferia luminosa',       magLimite: 5.6, fondo: 11.6 },
+  6: { nome: 'Cielo di paese',           magLimite: 5.1, fondo: 11.0 },
+  8: { nome: 'Città',                    magLimite: 4.2, fondo: 9.8 }
+};
+
+const CAT_CIELO_PREDEFINITO = 5;
+
+function cieloDiCasa() {
+  try {
+    const v = parseInt(localStorage.getItem(CHIAVE_CIELO_CASA), 10);
+    if (CAT_CIELI[v]) return v;
+  } catch (e) { /* storage negato */ }
+
+  // Se non è mai stato scelto ma il telescopio sì, vale quello: è la
+  // stessa domanda fatta due volte, e chi ha già risposto una volta non
+  // deve rispondere di nuovo.
+  try {
+    if (typeof telProfilo === 'function') {
+      const p = telProfilo();
+      if (p && CAT_CIELI[p.cielo]) return p.cielo;
+    }
+  } catch (e) { /* telescopio non caricato */ }
+
+  return CAT_CIELO_PREDEFINITO;
+}
+
+function impostaCieloDiCasa(bortle) {
+  if (!CAT_CIELI[bortle]) return;
+  try { localStorage.setItem(CHIAVE_CIELO_CASA, String(bortle)); } catch (e) { /* pieno */ }
+
+  // Il telescopio fa lo stesso conto per il contrasto all'oculare: se
+  // gliela cambio qui e non lì, le due parti dell'app si contraddicono.
+  try {
+    if (typeof telProfilo === 'function' && typeof telSalvaProfilo === 'function') {
+      const p = telProfilo();
+      if (p && p.cielo !== bortle) { p.cielo = bortle; telSalvaProfilo(); }
+    }
+  } catch (e) { /* telescopio non caricato */ }
+
+  // Il cielo si riaggiusta da sé: catMagnitudineLimite() legge questa
+  // impostazione a ogni fotogramma, e il ciclo del planetario gira già.
+}
+
+// Fin dove si arriva a vedere, adesso, su questa mappa.
+//
+// Due cose la spostano. La prima è il cielo di casa. La seconda è lo
+// zoom: avvicinarsi con le dita è la stessa cosa che alzare un binocolo,
+// e come col binocolo compaiono stelle che a occhio nudo non c'erano.
+// Senza questo, ingrandire dava un cielo sempre più vuoto — le stesse
+// poche stelle sempre più distanti fra loro.
+function catMagnitudineLimite() {
+  const cielo = CAT_CIELI[cieloDiCasa()] || CAT_CIELI[CAT_CIELO_PREDEFINITO];
+  const fov = sky && sky.fov ? sky.fov : 55;
+  const guadagno = Math.max(0, Math.min(3, Math.log2(55 / Math.max(0.2, fov)) * 0.8));
+
+  // Di giorno e al crepuscolo restano solo le più luminose, e il conto lo
+  // fa già `skyVelo()` sull'opacità: qui si taglia più in basso per non
+  // spendere tempo a disegnare cinquemila stelle invisibili.
+  const luce = typeof skyVelo === 'function' ? skyVelo() : 1;
+  if (luce < 0.02) return -99;
+  const scalino = luce < 0.35 ? (1 - luce / 0.35) * 4 : 0;
+
+  return cielo.magLimite + guadagno - scalino;
+}
+
+// Per gli oggetti estesi il limite è più basso: la magnitudine totale di
+// una galassia larga mezzo grado non dice quasi niente di quanto sia
+// facile vederla, e disegnarne cento invisibili non aiuta nessuno.
+function catLimiteProfondo() {
+  return Math.min(11, catMagnitudineLimite() + 3.5);
+}
+
+// Con che strumento si vede questo oggetto, da QUESTO cielo.
+//
+// Il conto è di contrasto, non di luminosità: un oggetto esteso si vede
+// se la sua brillanza superficiale non è troppo più debole di quella del
+// fondo cielo. Un binocolo non rende più brillante niente — la
+// brillanza superficiale non si può aumentare, è una legge dell'ottica —
+// ma ingrandisce, e un oggetto che occupa più retina si stacca meglio dal
+// rumore: valgono grosso modo due magnitudini e mezzo di guadagno
+// apparente. Un telescopio raccoglie più luce e ne vale cinque.
+function profondoStrumento(o, bortle) {
+  const cielo = CAT_CIELI[bortle || cieloDiCasa()] || CAT_CIELI[CAT_CIELO_PREDEFINITO];
+  const brillanza = typeof o.brillanza === 'number' ? o.brillanza : o.mag + 5;
+  const largo = o.assePrimi || 5;
+
+  // Piccolo e debole nel binocolo c'è, ma resta un puntino uguale alle
+  // stelle intorno: non lo si riconosce. M57 è il caso da manuale —
+  // brillante quanto si vuole, ma largo un primo.
+  const nonSiRiconosce = largo < 3 && o.mag > 8;
+
+  const staccaDi = cielo.fondo - brillanza;      // positivo = più brillante del cielo
+
+  if (o.mag <= cielo.magLimite && staccaDi > -1.0 && !nonSiRiconosce) return 'occhio';
+  if (o.mag <= cielo.magLimite + 4 && staccaDi > -2.5 && !nonSiRiconosce) return 'binocolo';
+  return 'telescopio';
+}
+
+
+// =====================================================================
+// 6. DISEGNO DELLE STELLE
+//
+//     Cinquemila arc() con altrettanti fill() sono cinquemila cambi di
+//     stato del contesto, e il ciclo del planetario non ce la fa. Il
+//     trucco è che a occhio le stelle deboli sono tutte uguali: si
+//     raccolgono in poche famiglie di colore, si accumulano in un
+//     tracciato solo e si riempiono in un colpo. Le luminose — sono
+//     meno di cento — se le meritano, il trattamento singolo.
+// =====================================================================
+
+// Sette famiglie di colore. Più di così l'occhio non le distingue, e ogni
+// famiglia in più è un fill() in più per fotogramma.
+const CAT_FAMIGLIE_COLORE = [
+  'rgb(170,190,255)', 'rgb(205,218,255)', 'rgb(235,240,255)',
+  'rgb(255,250,245)', 'rgb(255,235,205)', 'rgb(255,205,155)',
+  'rgb(255,175,120)'
+];
+
+function catFamigliaDi(bv) {
+  const k = Math.round((bv + 0.4) / 2.4 * (CAT_FAMIGLIE_COLORE.length - 1));
+  return Math.max(0, Math.min(CAT_FAMIGLIE_COLORE.length - 1, k));
+}
+
+// Quanto grande si disegna una stella di magnitudine m. Non è la sua
+// dimensione vera (una stella è sempre un punto, anche nel più grande
+// telescopio del mondo): è quanta luce arriva, che l'occhio legge come
+// un disco più grosso. La radice tiene le più luminose dal diventare
+// palle da biliardo.
+function catRaggioStella(m, limite) {
+  const sopra = limite - m;                       // quanto è sopra la soglia
+  if (sopra <= 0) return 0;
+  return Math.min(4.2, 0.55 + Math.sqrt(sopra) * 0.62);
+}
+
+function catDisegnaStelle(ctx, base, focale) {
+  if (!catPronto() || !sky.mostraStelle) return;
+
+  const velo = typeof skyVelo === 'function' ? skyVelo() : 1;
+  if (velo < 0.02) return;
+
+  const limite = catMagnitudineLimite();
+  if (limite < -50) return;
+
+  // Se il limite è sceso sotto il primo livello, è il momento di chiedere
+  // le stelle deboli. Non blocca niente: arrivano quando arrivano.
+  catServeSecondoLivello();
+
+  const n = cat.quante;
+  const ora = cat.versoriOra;
+  const mag = cat.magnitudini;
+  const fam = cat.famiglie;
+  const L = sky.larghezza, A = sky.altezza;
+  const sotto = sky.mostraSottoOrizzonte;
+  const cx = L / 2, cy = A / 2;
+
+  // Un tracciato per famiglia di colore, riempito una volta sola alla fine
+  const tracciati = CAT_FAMIGLIE_COLORE.map(() => new Path2D());
+  const usato = new Array(CAT_FAMIGLIE_COLORE.length).fill(false);
+  const luminose = [];
+
+  const fr = base.f, br = base.r, bu = base.u;
+
+  for (let k = 0; k < n; k++) {
+    const m = mag[k];
+    if (m > limite) continue;                     // include il 99 delle saltate
+
+    const x = ora[k * 3], y = ora[k * 3 + 1], z = ora[k * 3 + 2];
+    if (!sotto && z < 0) continue;
+
+    // La proiezione, srotolata: skyProietta() farebbe la stessa cosa ma
+    // costruendo un oggetto per stella — cinquemila oggetti per
+    // fotogramma che il raccoglitore di memoria deve poi buttare via.
+    const d = x * fr[0] + y * fr[1] + z * fr[2];
+    if (d <= 0.001) continue;
+    const px = cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / d);
+    if (px < -4 || px > L + 4) continue;
+    const py = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / d);
+    if (py < -4 || py > A + 4) continue;
+
+    const r = catRaggioStella(m, limite);
+    if (r <= 0) continue;
+
+    if (m <= CAT_MAG_LUMINOSE) { luminose.push(k, px, py, r, z); continue; }
+
+    const f = fam[k];
+    const t = tracciati[f];
+    // Sotto il pixel, un rettangolo costa la metà di un cerchio e sullo
+    // schermo è la stessa identica cosa.
+    if (r < 0.9) t.rect(px - r, py - r, r * 2, r * 2);
+    else { t.moveTo(px + r, py); t.arc(px, py, r, 0, Math.PI * 2); }
+    usato[f] = true;
+  }
+
+  ctx.save();
+  for (let f = 0; f < tracciati.length; f++) {
+    if (!usato[f]) continue;
+    ctx.globalAlpha = velo * 0.92;
+    ctx.fillStyle = CAT_FAMIGLIE_COLORE[f];
+    ctx.fill(tracciati[f]);
+  }
+
+  // Le luminose, una per una: alone morbido e nome accanto. Sono poche
+  // decine, e sono quelle che uno cerca davvero.
+  for (let i = 0; i < luminose.length; i += 5) {
+    const k = luminose[i], px = luminose[i + 1], py = luminose[i + 2];
+    const r = luminose[i + 3], z = luminose[i + 4];
+
+    const alt = Math.asin(Math.max(-1, Math.min(1, z))) * 180 / Math.PI;
+    const est = typeof skyEstinzione === 'function' ? skyEstinzione(alt) : 1;
+    const opacita = (alt < 0 ? 0.18 : est) * velo;
+    if (opacita < 0.03) continue;
+
+    const colore = cat.colori.get(k) || CAT_FAMIGLIE_COLORE[cat.famiglie[k]];
+    ctx.globalAlpha = opacita * 0.28;
+    ctx.fillStyle = colore;
+    ctx.beginPath();
+    ctx.arc(px, py, r * 3.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = opacita;
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    const nome = cat.nomiPerIndice.get(k);
+    if (sky.mostraNomi && nome && cat.magnitudini[k] <= 1.9) {
+      ctx.globalAlpha = opacita * 0.8;
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(nome, px + r + 6, py);
+    }
+  }
+  ctx.restore();
+}
+
+
+// =====================================================================
+// 7. DISEGNO DELLE FIGURE
+//
+//     Un filo sottile, non un disegno tecnico. Le linee che passano sotto
+//     l'orizzonte restano un'ombra: la figura si intuisce, ma non sembra
+//     disegnata sul prato davanti a casa. È la stessa regola che aveva
+//     app.js con le sue ventitré figure — funzionava, e resta.
+// =====================================================================
+
+function catDisegnaFigure(ctx, base, focale) {
+  if (!catPronto() || !sky.mostraCostellazioni) return;
+
+  const velo = typeof skyVelo === 'function' ? skyVelo() : 1;
+  if (velo < 0.06) return;                        // in pieno giorno, niente figure
+
+  // A campo largo si vede tutto il cielo e ottantotto figure diventano una
+  // ragnatela. Ingrandendo si entra nel dettaglio e allora ha senso
+  // mostrare anche le minori: il rango 1 sono le venti che tutti sanno
+  // additare, il 3 quelle che non addita nessuno.
+  const rangoMax = sky.fov > 90 ? 1 : sky.fov > 45 ? 2 : 3;
+
+  const L = sky.larghezza, A = sky.altezza;
+  const cx = L / 2, cy = A / 2;
+  const fr = base.f, br = base.r, bu = base.u;
+
+  const sopra = new Path2D();
+  const sottoTerra = new Path2D();
+  let cSopra = false, cSotto = false;
+  const etichette = [];
+
+  cat.figure.forEach(fig => {
+    if (fig.rango > rangoMax) return;
+
+    fig.spezzate.forEach(s => {
+      let precedente = null;
+      for (let k = 0; k < s.quanti; k++) {
+        const x = s.ora[k * 3], y = s.ora[k * 3 + 1], z = s.ora[k * 3 + 2];
+        const d = x * fr[0] + y * fr[1] + z * fr[2];
+        const punto = d > 0.001
+          ? { px: cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / d),
+              py: cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / d), z }
+          : null;
+
+        if (precedente && punto) {
+          // Un segmento che scavalca il bordo dello schermo in
+          // proiezione prospettica può schizzare a coordinate assurde:
+          // se è più lungo di due schermi, non è una linea, è un errore.
+          const dx = punto.px - precedente.px, dy = punto.py - precedente.py;
+          if (dx * dx + dy * dy < (L + A) * (L + A)) {
+            const interrata = (precedente.z + punto.z) / 2 < 0;
+            if (interrata) { sottoTerra.moveTo(precedente.px, precedente.py); sottoTerra.lineTo(punto.px, punto.py); cSotto = true; }
+            else { sopra.moveTo(precedente.px, precedente.py); sopra.lineTo(punto.px, punto.py); cSopra = true; }
+          }
+        }
+        precedente = punto;
+      }
+    });
+
+    if (!sky.mostraNomi) return;
+    const x = fig.centroOra[0], y = fig.centroOra[1], z = fig.centroOra[2];
+    const d = x * fr[0] + y * fr[1] + z * fr[2];
+    if (d <= 0.001 || z < -0.05) return;
+    const px = cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / d);
+    const py = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / d);
+    if (px < 0 || px > L || py < 0 || py > A) return;
+    etichette.push({ nome: fig.nome, px, py });
+  });
+
+  ctx.save();
+  ctx.lineWidth = 1.1;
+  if (cSopra) {
+    ctx.strokeStyle = `rgba(120, 178, 255, ${0.4 * velo})`;
+    ctx.stroke(sopra);
+  }
+  if (cSotto) {
+    ctx.strokeStyle = `rgba(120, 178, 255, ${0.1 * velo})`;
+    ctx.stroke(sottoTerra);
+  }
+
+  if (etichette.length) {
+    ctx.globalAlpha = 0.5 * velo;
+    ctx.fillStyle = '#93c5fd';
+    ctx.font = '600 11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    etichette.forEach(e => ctx.fillText(e.nome, e.px, e.py));
+  }
+  ctx.restore();
+}
+
+
+// =====================================================================
+// 8. TROVARE UNA STELLA O UN OGGETTO PROFONDO
+//     L'elenco degli astri del pannello, la ricerca per nome e il tocco
+//     sulla mappa passano tutti di qui.
+// =====================================================================
+
+// Le voci da aggiungere all'elenco degli astri di app.js: i
+// centoquarantadue oggetti profondi e le stelle che hanno un nome
+// proprio. Le ottocento con la sola lettera di Bayer no: «ζ Lyr»
+// nell'elenco non aiuta nessuno, e allungherebbe la lista di dieci volte.
+function catVociElenco() {
+  if (!catPronto()) return [];
+
+  const voci = cat.profondo.map(o => ({
+    id: 'dso:' + o.nome,
+    nome: o.nome,
+    disegno: 'nebulosa',
+    colore: (typeof SKY_COLORI_PROFONDO !== 'undefined' && SKY_COLORI_PROFONDO[o.tipo]) || '#c4b5fd',
+    tipo: 'profondo',
+    tipoProfondo: o.tipo
+  }));
+
+  cat.nomiPerIndice.forEach((nome, indice) => {
+    if (cat.magnitudini[indice] > 3.2) return;    // solo quelle che si additano
+    voci.push({
+      id: 'cat:' + indice,
+      nome,
+      disegno: 'stella',
+      colore: cat.colori.get(indice) || '#e2e8f0',
+      tipo: 'stella',
+      mag: cat.magnitudini[indice],
+      ra: CATALOGO_STELLE[indice * 4],
+      dec: CATALOGO_STELLE[indice * 4 + 1],
+      indiceCatalogo: indice
+    });
+  });
+
+  return voci;
+}
+
+// L'oggetto profondo che si chiama così (l'identificativo è il nome per
+// esteso, che nel catalogo è unico)
+function catProfondoDiNome(nome) {
+  if (!catPronto()) return null;
+  return cat.profondo.find(o => o.nome === nome) || null;
+}
+
+// Azimut e altezza di una stella del catalogo, per la freccia guida e per
+// l'inseguimento
+function catPosizioneStella(indice) {
+  if (!catPronto() || indice < 0 || indice >= cat.quante) return null;
+  const v = cat.versoriOra;
+  const est = v[indice * 3], nord = v[indice * 3 + 1], alto = v[indice * 3 + 2];
+  if (!est && !nord && !alto) return null;         // posizioni non ancora calcolate
+  return {
+    alt: Math.asin(Math.max(-1, Math.min(1, alto))) * 180 / Math.PI,
+    az: (Math.atan2(est, nord) * 180 / Math.PI + 360) % 360
+  };
+}
+
+// In che costellazione cade un punto del cielo. Astronomy Engine conosce i
+// confini ufficiali del 1875, quelli veri: la nostra tabella ha solo le
+// figure, che sono un'altra cosa.
+function catCostellazioneDi(raOre, dec) {
+  try {
+    const c = Astronomy.Constellation(raOre, dec);
+    const nostra = catPronto() && cat.figure.find(f => f.sigla === c.symbol);
+    return nostra ? nostra.nome : c.name;
+  } catch (e) {
+    return null;
+  }
+}
