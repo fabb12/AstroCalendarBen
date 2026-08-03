@@ -287,7 +287,7 @@
                    alla mappa e quanto tempo copre la sua slitta. Con dieci
                    secondi un pixel di slitta vale un secondo, ed è lì che serve
                    la precisione; con un giorno si attraversa il mese. -->
-              <div class="riga-comandi" role="group" aria-label="Passo del tempo">
+              <div class="riga-comandi" role="group" aria-label="Passo del tempo" data-solo-cielo>
                 <div class="segmenti-cielo">
                   <button type="button" class="tasto-segmento" data-passo-tempo="10" aria-pressed="false"
                     title="Passi da dieci secondi, slitta su ±10 minuti">10 s</button>
@@ -301,7 +301,7 @@
                     title="Passi da un giorno, slitta su ±30 giorni">1 g</button>
                 </div>
               </div>
-              <p class="etichetta-comando nota-lunga">Il passo vale per i tasti − e + e per la slitta della barra
+              <p class="etichetta-comando nota-lunga" data-solo-cielo>Il passo vale per i tasti − e + e per la slitta della barra
                 del tempo, quella in fondo alla mappa.</p>
 
               <!-- PLAYBACK: il tempo che cammina da solo. I salti e la slitta
@@ -316,7 +316,7 @@
                    Il verso scelto qui è quello che poi userà il ▶ della barra
                    del tempo: chi guarda il cielo tornare indietro di solito
                    vuole rifarlo, e non deve riaprire il pannello per dirlo. -->
-              <div class="riga-comandi riga-playback" aria-label="Playback del tempo">
+              <div class="riga-comandi riga-playback" aria-label="Playback del tempo" data-solo-cielo>
                 <button id="skymap-play-indietro" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
                   title="Fai scorrere il cielo all'indietro (ripremi per fermarlo)"
                   aria-label="Playback all'indietro">◀◀</button>
@@ -352,21 +352,28 @@
                    chi vuole guardare da un altro posto lo dice col nome della
                    città, non con due numeri, e quelle due caselle costavano
                    una riga di pannello sopra al cielo. -->
-              <div class="stacco-pannello" role="separator"></div>
-              <div class="riga-comandi riga-luogo">
+              <div class="stacco-pannello" role="separator" data-solo-cielo></div>
+              <div class="riga-comandi riga-luogo" data-solo-cielo>
                 <span class="etichetta-comando etichetta-luogo">Cielo da</span>
                 <span id="skymap-luogo-nome" class="lettura-luogo" data-visita="no">—</span>
                 <button id="skymap-luogo-casa" type="button" class="tasto-cielo tasto-passo hidden"
                   title="Rimetti il cielo sulla tua posizione, quella delle Impostazioni">Torna a casa</button>
               </div>
-              <div class="riga-comandi">
+              <div class="riga-comandi" data-solo-cielo>
                 <input id="skymap-luogo-cerca" type="search" class="campo-cielo" autocomplete="off"
                   placeholder="Guarda il cielo da un'altra città…"
                   aria-label="Cerca la città da cui guardare il cielo"
                   title="Scrivi il nome di una città: il cielo si sposta lì, ma solo qui nel planetario">
               </div>
-              <div id="skymap-luogo-risultati" class="pos-risultati risultati-luogo" role="listbox" aria-label="Città trovate"></div>
-              <p id="skymap-luogo-nota" class="nota-luogo">Vale solo per il planetario: il resto dell'app resta sulla tua posizione.</p>
+              <div id="skymap-luogo-risultati" class="pos-risultati risultati-luogo" role="listbox" aria-label="Città trovate" data-solo-cielo></div>
+              <p id="skymap-luogo-nota" class="nota-luogo" data-solo-cielo>Vale solo per il planetario: il resto dell'app resta sulla tua posizione.</p>
+              <!-- Quando il pannello è ospite della finestra del Sistema Solare
+                   (7.5-ter) le righe qui sopra sono spente: il passo e il play
+                   lì sono quelli della scena, che stanno sotto di lei, e da
+                   dove guardi il cielo a un disegno eliocentrico non serve.
+                   Resta quello che vale in tutt'e due: che istante è. -->
+              <p class="nota-luogo nota-solo-sistema">Sposta l'istante, e con lui il cielo del planetario.
+                Il passo e il play della scena stanno sotto, nei suoi comandi.</p>
             </section>
 
             <!-- EVENTI: cosa succede nel cielo all'istante mostrato. La vista
@@ -472,8 +479,23 @@
 
             <!-- ASTRI: l'elenco di cosa cercare -->
             <section class="gruppo-comandi gruppo-astri" data-gruppo="astri" aria-label="Astri">
-              <p class="etichetta-comando">Scegli cosa cercare: la mappa lo porta al centro e una freccia ti guida verso l'astro. Per la sua scheda di dati, toccalo direttamente sulla mappa.</p>
+              <!-- Diciannove tasti in fila su un telefono erano quattro schermate
+                   di pillole tutte uguali, e per trovare Nettuno bisognava
+                   leggerle una per una. Adesso in cima c'è il filtro — che
+                   resta appiccicato al bordo mentre l'elenco scorre — e sotto
+                   l'elenco è diviso per famiglie, con i tasti più stretti. -->
+              <div class="cerca-astri">
+                <div class="riga-comandi riga-cerca-astri">
+                  <input id="skymap-astri-cerca" type="search" class="campo-cielo" autocomplete="off"
+                    placeholder="Cerca per nome…" aria-label="Cerca un astro per nome"
+                    title="Scrivi le prime lettere: l'elenco si stringe. Invio sceglie il primo.">
+                  <button id="skymap-astri-visibili" type="button" class="tasto-cielo tasto-passo" aria-pressed="false"
+                    title="Lascia solo gli astri che adesso stanno sopra l'orizzonte">Su ora</button>
+                </div>
+              </div>
+              <p class="etichetta-comando">Toccane uno: la mappa lo porta al centro e una freccia ti guida. Per la scheda dei dati, toccalo sulla mappa.</p>
               <div id="skymap-oggetti" class="elenco-astri"></div>
+              <p id="skymap-astri-vuoto" class="etichetta-comando nota-lunga hidden">Nessun astro con questo nome.</p>
 
               <!-- La mappa dice in che direzione guardare; questa dice perché
                    proprio in quella direzione. È la stessa scena vista da
@@ -1110,13 +1132,31 @@
           <canvas id="sol-canvas" class="block w-full tela-sistema"></canvas>
           <p class="sol-suggerimento">Trascina per girare · pizzica per avvicinarti · tocca un pianeta</p>
 
+          <!-- Il pannello del tempo, quando lo si chiede da qui. Dentro non
+               c'è una copia dei comandi del planetario: c'è proprio il suo
+               pannello, spostato qui sopra finché serve (sezione 7.5-ter di
+               app.js). Stesso aspetto, stessi tasti, stesso istante. -->
+          <div id="sol-tempo-pannello" class="sol-pannello-tempo hidden" role="dialog"
+               aria-label="Quando" aria-modal="false">
+            <div class="sol-tempo-testata">
+              <span class="sol-etichetta">Quando</span>
+              <button id="sol-tempo-chiudi" type="button" class="tasto-chiudi-dettaglio"
+                title="Chiudi" aria-label="Chiudi i comandi del tempo">✕</button>
+            </div>
+            <div id="sol-tempo-corpo" class="sol-tempo-corpo"></div>
+          </div>
+
           <!-- La stessa barra del tempo del planetario, stessi tasti e stesso
                ordine: ⟲ per tornare ad adesso, l'istante, un passo indietro,
-               la slitta, un passo avanti, il play. -->
+               la slitta, un passo avanti, il play. E come là, la lettura è
+               anche la porta del pannello: dove ci si accorge che l'ora è
+               sbagliata è dove la si vuole aggiustare. -->
           <div id="sol-tempo" class="barra-tempo sol-barra-tempo" role="group" aria-label="Il tempo">
             <button id="sol-tempo-adesso" type="button" class="tasto-barra-tempo tasto-adesso"
               title="Torna ad adesso" aria-label="Torna ad adesso">⟲</button>
-            <span id="sol-quando" class="lettura-barra-tempo">—</span>
+            <button id="sol-quando" type="button" class="lettura-barra-tempo"
+              title="L'istante mostrato: tocca per scrivere una data"
+              aria-label="Istante mostrato: apri i comandi del tempo">—</button>
             <button id="sol-passo-meno" type="button" class="tasto-barra-tempo"
               title="Indietro di un passo" aria-label="Indietro di un passo">−</button>
             <input id="sol-slitta" type="range" min="-100" max="100" step="1" value="0"

@@ -6320,6 +6320,10 @@ const sky = {
   mostraStelle: true,
   mostraSatelliti: true,
   mostraSottoOrizzonte: true,
+  // Il filtro "Su ora" del pannello Astri: restringe l'elenco a chi in questo
+  // momento sta sopra l'orizzonte. È un filtro dell'*elenco*, non della mappa —
+  // il cielo continua a disegnare quello che gli dicono i `mostra…` qui sopra
+  soloAstriVisibili: false,
   mostraGriglia: true,
   mostraNomi: true,
   mostraViaLattea: true,
@@ -12062,22 +12066,48 @@ function mostraStagioneEclissi(idElemento, data) {
 // 7.4 Interfaccia del planetario
 // =====================================================================
 
+// I diciannove astri non sono un elenco solo: sono quattro famiglie, e uno che
+// cerca Nettuno sa già in quale guardare. Divisi per famiglia — nell'ordine in
+// cui li si cerca, da quello che si vede a occhio nudo a quello che ci vuole
+// un telescopio — l'occhio salta al gruppo giusto invece di leggere una fila
+// di pillole tutte uguali.
+const SKY_FAMIGLIE = [
+  { titolo: 'Sole e Luna',       tipi: ['sole', 'luna'] },
+  { titolo: 'Pianeti',           tipi: ['pianeta'] },
+  { titolo: 'Stelle',            tipi: ['stella'] },
+  { titolo: 'Stazioni spaziali', tipi: ['satellite'] }
+];
+
 // Pulsanti per scegliere l'astro da cercare
 function skyCostruisciElenco() {
   const cont = document.getElementById('skymap-oggetti');
   if (!cont || cont.dataset.pronto === 'si') return;
-  cont.innerHTML = skyElenco().map(a =>
-    `<button type="button" data-astro="${a.id}" class="chip-astro">${icona(a.disegno, 17)} ${a.nome} <span class="sky-alt text-slate-400"></span></button>`
-  ).join('');
+  const tutti = skyElenco();
+  cont.innerHTML = SKY_FAMIGLIE.map(f => {
+    const astri = tutti.filter(a => f.tipi.includes(a.tipo));
+    if (!astri.length) return '';
+    // Il nome normalizzato viaggia col tasto: la ricerca non deve rifare
+    // diciannove volte lo stesso lavoro a ogni lettera digitata
+    const chip = astri.map(a =>
+      `<button type="button" data-astro="${a.id}" data-nome="${normalizzaTesto(a.nome)}" data-fuori="no" class="chip-astro">` +
+      `${icona(a.disegno, 15)}<span class="nome-astro">${a.nome}</span><span class="sky-alt"></span></button>`
+    ).join('');
+    return `<div class="famiglia-astri" data-fuori="no">` +
+      `<p class="titolo-famiglia">${f.titolo}</p>` +
+      `<div class="astri-famiglia">${chip}</div></div>`;
+  }).join('');
   cont.querySelectorAll('.chip-astro').forEach(btn => {
     btn.addEventListener('click', () => skyImpostaTarget(btn.dataset.astro));
   });
   cont.dataset.pronto = 'si';
   skyAggiornaStileElenco();
+  skyFiltraElenco();
 }
 
 function skyAggiornaStileElenco() {
-  const base = 'chip-astro inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border border-slate-600';
+  // Misure e spaziature stanno in style.css (`.chip-astro`), che le sa
+  // stringere sui telefoni: qui restano solo i colori, che dicono lo stato
+  const base = 'chip-astro inline-flex items-center rounded-full border border-slate-600';
   document.querySelectorAll('.chip-astro').forEach(btn => {
     const o = sky.oggetti.find(x => x.id === btn.dataset.astro);
     const visibile = o && o.alt > 0;
@@ -12089,6 +12119,43 @@ function skyAggiornaStileElenco() {
   });
 }
 
+// La ricerca per nome e il filtro "Su ora", che sono la stessa cosa vista da
+// due parti: tutt'e due tolgono di mezzo quello che adesso non interessa.
+// Chi resta fuori lo dice un attributo, non una classe: `skyAggiornaStileElenco`
+// riscrive il `className` di ogni tasto a ogni giro, e una classe non
+// sopravviverebbe al primo aggiornamento delle altezze.
+function skyFiltraElenco() {
+  const campo = document.getElementById('skymap-astri-cerca');
+  const cercato = normalizzaTesto(campo ? campo.value : '').trim();
+  const parole = cercato ? cercato.split(/\s+/) : [];
+  let trovati = 0;
+
+  document.querySelectorAll('#skymap-oggetti .chip-astro').forEach(btn => {
+    const nome = btn.dataset.nome || '';
+    const o = sky.oggetti.find(x => x.id === btn.dataset.astro);
+    const perNome = parole.every(p => nome.includes(p));
+    // Finché le posizioni non sono state calcolate "Su ora" non toglie
+    // niente: un elenco vuoto all'apertura sembrerebbe un guasto
+    const perAltezza = !sky.soloAstriVisibili || !o || o.alt > 0;
+    const dentro = perNome && perAltezza;
+    btn.dataset.fuori = dentro ? 'no' : 'si';
+    if (dentro) trovati++;
+  });
+
+  // Una famiglia rimasta senza nessuno se ne va col suo titolo
+  document.querySelectorAll('#skymap-oggetti .famiglia-astri').forEach(f => {
+    f.dataset.fuori = f.querySelector('.chip-astro[data-fuori="no"]') ? 'no' : 'si';
+  });
+
+  const vuoto = document.getElementById('skymap-astri-vuoto');
+  if (vuoto) {
+    vuoto.textContent = sky.soloAstriVisibili && !parole.length
+      ? 'Adesso non c\'è niente sopra l\'orizzonte.'
+      : 'Nessun astro con questo nome.';
+    vuoto.classList.toggle('hidden', trovati > 0);
+  }
+}
+
 // Aggiorna l'altezza mostrata accanto a ogni astro e la scheda in basso
 function skyAggiornaEtichette() {
   document.querySelectorAll('.chip-astro').forEach(btn => {
@@ -12097,6 +12164,9 @@ function skyAggiornaEtichette() {
     if (span) span.textContent = o ? `${o.alt >= 0 ? '↑' : '↓'}${Math.abs(Math.round(o.alt))}°` : '';
   });
   skyAggiornaStileElenco();
+  // Le altezze cambiano di continuo: se il filtro guarda proprio quelle,
+  // l'elenco va ripassato insieme a loro
+  if (sky.soloAstriVisibili) skyFiltraElenco();
   skyAggiornaScheda();
 }
 
@@ -13845,6 +13915,36 @@ function inizializzaSkymap() {
     skyTasto('skymap-btn-notte', attiva, attiva ? 'Colori normali' : 'Modalità notte');
   });
 
+  // --- Trovare un astro senza scorrere tutto l'elenco ---
+  const cercaAstri = document.getElementById('skymap-astri-cerca');
+  if (cercaAstri) {
+    cercaAstri.addEventListener('input', skyFiltraElenco);
+    cercaAstri.addEventListener('keydown', (e) => {
+      // Invio sceglie il primo rimasto: scritto "sat", il gesto dopo è
+      // sempre quello, e farglielo cercare col dito è una tappa di troppo
+      if (e.key === 'Enter') {
+        const primo = document.querySelector('#skymap-oggetti .chip-astro[data-fuori="no"]');
+        if (primo) {
+          e.preventDefault();
+          skyImpostaTarget(primo.dataset.astro, { mantieni: true });
+        }
+        return;
+      }
+      // Esc svuota il campo invece di uscire dallo schermo intero: qui dentro
+      // "annulla" vuol dire "annulla la ricerca"
+      if (e.key === 'Escape' && cercaAstri.value) {
+        e.stopPropagation();
+        cercaAstri.value = '';
+        skyFiltraElenco();
+      }
+    });
+  }
+  collega('skymap-astri-visibili', () => {
+    sky.soloAstriVisibili = !sky.soloAstriVisibili;
+    skyTasto('skymap-astri-visibili', sky.soloAstriVisibili);
+    skyFiltraElenco();
+  });
+
   collega('skymap-btn-schermo', skyAlternaSchermoIntero);
   // Lo stesso comando, ma appoggiato sull'angolo della mappa: com'è per la
   // mappa dell'ombra delle eclissi, dove il ⛶ sta lì e non dentro a un
@@ -14091,6 +14191,26 @@ function skyInizializzaSchermoIntero() {
 //     per quelle di domani, senza toccare le loro `apri…()`.
 // =====================================================================
 
+// --- Prestare un pezzo di pagina a un'altra finestra, e saperlo rimettere ---
+//     Lo fanno in due: le finestre sopra al cielo a schermo intero (qui) e il
+//     pannello del tempo che va a farsi vedere nel Sistema Solare (7.5-ter).
+//     Si ricorda il padre *e* il fratello che veniva dopo, perché rimettere un
+//     nodo in fondo al suo vecchio padre non è rimetterlo dov'era.
+function skyRicordaPosto(mappa, nodo) {
+  if (!mappa.has(nodo)) mappa.set(nodo, { padre: nodo.parentElement, dopo: nodo.nextElementSibling });
+}
+
+function skyRimettiAlSuoPosto(mappa, nodo) {
+  const casa = mappa.get(nodo);
+  if (!casa) return false;
+  mappa.delete(nodo);
+  if (!casa.padre) return true;
+  // Il fratello di allora potrebbe non essere più lì: in quel caso in fondo
+  if (casa.dopo && casa.dopo.parentElement === casa.padre) casa.padre.insertBefore(nodo, casa.dopo);
+  else casa.padre.appendChild(nodo);
+  return true;
+}
+
 // Dove stava ogni finestra prima di essere portata sopra al cielo
 const skyModaliOspitate = new Map();
 // Mentre riordiniamo cambiamo delle classi: senza questa guardia
@@ -14112,12 +14232,7 @@ function skyGuscioSchermoIntero() {
 
 function skyOspitaModale(modale, guscio) {
   if (!modale || !guscio || modale.parentElement === guscio) return;
-  if (!skyModaliOspitate.has(modale)) {
-    skyModaliOspitate.set(modale, {
-      padre: modale.parentElement,
-      dopo: modale.nextElementSibling
-    });
-  }
+  skyRicordaPosto(skyModaliOspitate, modale);
   guscio.appendChild(modale);
   modale.classList.add('modale-sopra-il-cielo');
 }
@@ -14126,17 +14241,12 @@ function skyOspitaModale(modale, guscio) {
 // una classe che non c'è conta lo stesso come una modifica dell'attributo, e
 // l'osservatore si sveglierebbe di nuovo — all'infinito, a pagina bloccata.
 function skyRestituisciModale(modale) {
-  const casa = skyModaliOspitate.get(modale);
-  if (!casa) {
+  if (!skyModaliOspitate.has(modale)) {
     if (modale.classList.contains('modale-sopra-il-cielo')) modale.classList.remove('modale-sopra-il-cielo');
     return;
   }
-  skyModaliOspitate.delete(modale);
   modale.classList.remove('modale-sopra-il-cielo');
-  if (!casa.padre) return;
-  // Il fratello di allora potrebbe non essere più lì: in quel caso in fondo
-  if (casa.dopo && casa.dopo.parentElement === casa.padre) casa.padre.insertBefore(modale, casa.dopo);
-  else casa.padre.appendChild(modale);
+  skyRimettiAlSuoPosto(skyModaliOspitate, modale);
 }
 
 // Rimette d'accordo il posto di ogni finestra con lo stato del pieno schermo
@@ -14172,6 +14282,88 @@ function skyInizializzaModaliSopraIlCielo() {
   document.querySelectorAll('.velo-modale').forEach(modale => {
     occhio.observe(modale, { attributes: true, attributeFilter: ['class'] });
   });
+}
+
+// =====================================================================
+// 7.5-ter IL PANNELLO DEL TEMPO, PRESTATO AL SISTEMA SOLARE
+//     Le due barre del tempo — quella sotto al cielo e quella sotto alla
+//     scena in 3D — sono la stessa barra: stessi tasti, stesso ordine,
+//     stesso istante. Solo che nel planetario la lettura al centro è anche
+//     una porta (si tocca e si apre il pannello "Tempo": la data scritta a
+//     mano, il passo, il playback), mentre nel Sistema Solare non apriva
+//     niente. Due barre gemelle di cui una sola risponde al tocco: uno ci
+//     prova, non succede nulla, e smette di fidarsi anche dell'altra.
+//
+//     Qui non se ne fa una copia — una copia diverge al primo ritocco, e
+//     avremmo due pannelli da tenere d'accordo. Si presta *quello vero*:
+//     finché serve, la `section[data-gruppo="tempo"]` va a stare dentro
+//     alla finestra del Sistema Solare, e alla chiusura torna al suo posto
+//     fra i pannelli del cielo. Stesso nodo, stessi ascoltatori, stesso
+//     stato: coerente per costruzione, non per manutenzione.
+//
+//     Da ospite tace quello che lì non vorrebbe dire niente (`data-solo-cielo`):
+//     il passo e il playback, perché il passo della scena è il suo — sta nei
+//     comandi appena sotto — e il playback del cielo mentre il cielo è fermo
+//     non camminerebbe; e il luogo da cui si guarda, che a un disegno visto
+//     da fuori dal Sistema Solare non serve. Resta quello che nelle due viste
+//     vuol dire la stessa identica cosa: che istante stiamo guardando.
+// =====================================================================
+
+const skyPostoDelTempo = new Map();
+
+function skySezioneTempo() {
+  return document.querySelector('.gruppo-comandi.gruppo-tempo');
+}
+
+function solPannelloTempoAperto() {
+  const ospite = document.getElementById('sol-tempo-pannello');
+  return !!ospite && !ospite.classList.contains('hidden');
+}
+
+// La lettura fa da interruttore, come la sua gemella nel planetario
+function solAlternaPannelloTempo() {
+  if (solPannelloTempoAperto()) solChiudiPannelloTempo();
+  else solApriPannelloTempo();
+}
+
+function solApriPannelloTempo() {
+  const sezione = skySezioneTempo();
+  const ospite = document.getElementById('sol-tempo-pannello');
+  const corpo = document.getElementById('sol-tempo-corpo');
+  if (!sezione || !ospite || !corpo) return;
+
+  // Si sta scegliendo un istante: il tempo che cammina se lo porterebbe via
+  // da sotto le dita mentre lo si scrive
+  sol.marcia = 0;
+  // E sotto, nel planetario, non resta un pannello aperto a metà con dentro
+  // un buco al posto della sezione che ci siamo appena presi
+  skyMostraGruppo('');
+
+  skyRicordaPosto(skyPostoDelTempo, sezione);
+  corpo.appendChild(sezione);
+  sezione.classList.add('gruppo-attivo', 'gruppo-ospite');
+  ospite.classList.remove('hidden');
+  sol.ancoraSec = solOffset();
+
+  // Il ciclo del cielo è in pausa finché questa finestra è aperta: la data
+  // scritta nel campo e la lettura lunga se le rinfresca la barra della scena
+  skyAggiornaTestoTempo();
+  solAggiornaBarra();
+}
+
+function solChiudiPannelloTempo() {
+  const sezione = skySezioneTempo();
+  const ospite = document.getElementById('sol-tempo-pannello');
+  if (ospite) ospite.classList.add('hidden');
+  if (sezione) {
+    sezione.classList.remove('gruppo-attivo', 'gruppo-ospite');
+    skyRimettiAlSuoPosto(skyPostoDelTempo, sezione);
+  }
+  // Scritta una data qui dentro, la slitta della scena riparte da lì: se
+  // restasse ancorata a dove eravamo prima, il primo trascinamento
+  // riporterebbe indietro di quanto ci si era appena spostati
+  sol.ancoraSec = solOffset();
+  solAggiornaBarra();
 }
 
 // =====================================================================
@@ -15393,6 +15585,11 @@ function solAggiornaBarra(quando) {
     b.classList.toggle('attiva', attivo);
     b.setAttribute('aria-pressed', attivo ? 'true' : 'false');
   });
+
+  // Col pannello del tempo in prestito qui (7.5-ter) il ciclo del cielo è in
+  // pausa, e nessuno rinfrescherebbe la data scritta nel campo né la lettura
+  // lunga: mentre il pannello è aperto ci pensa questa barra
+  if (solPannelloTempoAperto()) skyAggiornaTestoTempo();
 }
 
 function solAlternaMarcia() {
@@ -15661,6 +15858,10 @@ window.apriSistemaSolare = () => {
 };
 
 function chiudiSistemaSolare() {
+  // Il pannello del tempo qui è in prestito: va restituito *prima* di chiudere
+  // la finestra, o resterebbe murato dentro a un modale nascosto — e il
+  // planetario si ritroverebbe senza i suoi comandi del tempo (7.5-ter)
+  solChiudiPannelloTempo();
   const modale = document.getElementById('modale-sistema');
   if (modale) modale.classList.add('hidden');
   sol.aperto = false;
@@ -15739,6 +15940,11 @@ function inizializzaSistemaSolare() {
   if (play) play.addEventListener('click', solAlternaMarcia);
   const adesso = document.getElementById('sol-tempo-adesso');
   if (adesso) adesso.addEventListener('click', solTornaAdesso);
+  // La lettura è la porta del pannello del tempo, come nel planetario (7.5-ter)
+  const quando = document.getElementById('sol-quando');
+  if (quando) quando.addEventListener('click', solAlternaPannelloTempo);
+  const chiudiTempo = document.getElementById('sol-tempo-chiudi');
+  if (chiudiTempo) chiudiTempo.addEventListener('click', solChiudiPannelloTempo);
   const meno = document.getElementById('sol-passo-meno');
   if (meno) meno.addEventListener('click', () => solSpostaDiUnPasso(-1));
   const piu = document.getElementById('sol-passo-piu');
@@ -15773,6 +15979,11 @@ function inizializzaSistemaSolare() {
 
   document.addEventListener('keydown', e => {
     if (!sol.aperto) return;
+    // Col pannello del tempo aperto l'Esc è suo: chiude quello e la scena
+    // resta dov'è, com'è nel planetario per le finestre sopra al cielo
+    if (e.key === 'Escape' && solPannelloTempoAperto()) { solChiudiPannelloTempo(); return; }
+    // E finché si scrive una data, le frecce e lo spazio sono del campo
+    if (solPannelloTempoAperto() && e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
     if (e.key === 'Escape') chiudiSistemaSolare();
     else if (e.key === 'ArrowLeft') sol.az += 0.12;
     else if (e.key === 'ArrowRight') sol.az -= 0.12;

@@ -2991,7 +2991,57 @@ body button.pos-risultato:focus-visible {
 /* L'etichetta di una riga intera (per esempio sopra al campo della data) */
 label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; }
 
-.elenco-astri { display: flex; flex-wrap: wrap; gap: 8px; }
+/* L'elenco degli astri: quattro famiglie, non una fila sola. Il titolino
+   costa una riga e ne fa risparmiare tre di lettura — su un telefono si
+   salta al gruppo giusto invece di scorrere diciannove pillole uguali. */
+.elenco-astri { display: block; }
+.famiglia-astri + .famiglia-astri { margin-top: 9px; }
+.famiglia-astri[data-fuori="si"] { display: none; }
+.titolo-famiglia {
+  margin: 0 0 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+.astri-famiglia { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-astro[data-fuori="si"] { display: none; }
+
+/* Le pillole degli astri: la misura la comanda qui, non Tailwind, perché
+   deve stringersi da sé sui telefoni. Il nome può accorciarsi, l'altezza
+   accanto no: è il numero per cui uno sta guardando l'elenco. */
+body .chip-astro {
+  gap: 5px;
+  padding: 5px 9px;
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+.chip-astro .nome-astro { white-space: nowrap; }
+.chip-astro .sky-alt {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+/* Il filtro resta incollato in cima mentre l'elenco scorre sotto: cercare
+   "net" e non vedere più il campo in cui si sta scrivendo è il modo più
+   veloce per credere che la ricerca non funzioni. I margini negativi lo
+   allargano fino ai bordi del pannello, che ha 12px/14px di rientro. */
+.cerca-astri {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: -12px -14px 8px;
+  padding: 10px 14px 8px;
+  background: rgba(6, 10, 20, 0.97);
+  border-bottom: 1px solid var(--bordo);
+}
+.riga-cerca-astri { flex-wrap: nowrap; gap: 6px; }
+.riga-cerca-astri .campo-cielo { flex: 1 1 auto; min-width: 0; }
+.riga-cerca-astri .tasto-cielo { flex: 0 0 auto; }
+
 .nota-lunga { margin: 6px 0 0; font-size: 0.76rem; color: var(--testo-3); }
 
 /* Un comando a segmenti: scelte che si escludono, incollate in una pillola
@@ -3367,6 +3417,11 @@ label.etichetta-comando, p.etichetta-comando { display: block; margin: 0 0 6px; 
   .lettura-cielo { font-size: 0.62rem; padding: 5px 8px; }
   .lettura-stato { max-width: 48%; }
   .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
+  /* Il rientro del pannello qui è più stretto, e il filtro appiccicato in
+     cima deve arrivare lo stesso ai suoi bordi */
+  .cerca-astri { margin: -10px -12px 8px; padding: 8px 12px; }
+  body .chip-astro { padding: 5px 8px; font-size: 0.76rem; }
+  .titolo-famiglia { font-size: 0.65rem; }
   /* Tutta la riga del playback — verso e velocità — deve restare in fila
      come su un lettore: i tasti si stringono, ma nessuno va a capo */
   .riga-playback { flex-wrap: nowrap; gap: 5px; }
@@ -3925,6 +3980,51 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   transition: opacity var(--transizione-lenta);
 }
 .sol-suggerimento.sol-svanito { opacity: 0; }
+
+/* Il pannello del tempo in prestito dal planetario (7.5-ter in app.js): si
+   appoggia sulla scena come i pannelli del cielo si appoggiano sul cielo, e
+   lascia scoperta la barra del tempo in fondo — è da lì che l'hanno chiamato,
+   e ritoccando la data si vuole vedere la lettura cambiare. */
+.sol-pannello-tempo {
+  position: absolute;
+  z-index: 7;
+  top: 10px;
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: calc(100% - 86px);
+  padding: 10px 12px 12px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: var(--raggio-m);
+  background: rgba(6, 10, 20, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--ombra-3);
+}
+.sol-pannello-tempo.hidden { display: none; }
+.sol-tempo-testata { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sol-tempo-corpo { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+/* Da ospite la sezione non è più "il gruppo aperto sopra al cielo": il vetro,
+   il bordo e il tetto ce li mette la finestra che la ospita, e se li mettesse
+   anche lei sarebbero due scatole una dentro l'altra. */
+.gruppo-comandi.gruppo-ospite.gruppo-attivo {
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+/* Quello che fuori dal planetario non vuol dire niente tace (vedi 7.5-ter) */
+.gruppo-ospite [data-solo-cielo] { display: none; }
+.nota-solo-sistema { display: none; }
+.gruppo-ospite .nota-solo-sistema { display: block; }
 .sol-comandi { display: grid; gap: 8px; }
 .sol-riga { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
 .sol-etichetta {
@@ -4365,7 +4465,10 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
 /* ------------------------------------------------------------ PUNTATORI     */
 /* Dito grosso, bersaglio grosso: vale su ogni schermo touch, tablet compresi */
 @media (pointer: coarse) {
-  .chip-categoria, .chip-astro, .chip-strumento { padding-block: 8px; }
+  .chip-categoria, .chip-strumento { padding-block: 8px; }
+  /* Le pillole degli astri la loro misura se la danno da sé (`body .chip-astro`),
+     e a specificità più alta: il bersaglio grosso glielo si ridà da qui */
+  body .chip-astro { padding-block: 8px; }
   .tasto-cielo { min-height: 46px; }
   .tasto-cielo.tasto-passo { min-height: 44px; }
   .tasto-segmento { min-height: 42px; }
