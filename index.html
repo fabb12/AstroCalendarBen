@@ -179,7 +179,7 @@
         <span class="selettore-mese-etichetta">Vai al mese</span>
         <select data-campo-mese class="selettore-mese-campo" aria-label="Mese"></select>
         <input type="number" data-campo-anno class="selettore-mese-campo selettore-mese-anno"
-          min="1900" max="2100" step="1" aria-label="Anno" inputmode="numeric">
+          min="1600" max="3000" step="1" aria-label="Anno" inputmode="numeric">
         <button type="button" data-azione-mese="vai" class="selettore-mese-btn selettore-mese-btn-primario">Mostra</button>
         <button type="button" data-azione-mese="oggi" class="selettore-mese-btn">Mese corrente</button>
       </div>
@@ -195,7 +195,7 @@
           <span class="selettore-mese-etichetta">Mese</span>
           <select data-campo-mese class="selettore-mese-campo" aria-label="Mese"></select>
           <input type="number" data-campo-anno class="selettore-mese-campo selettore-mese-anno"
-            min="1900" max="2100" step="1" aria-label="Anno" inputmode="numeric">
+            min="1600" max="3000" step="1" aria-label="Anno" inputmode="numeric">
           <button type="button" data-azione-mese="vai" class="selettore-mese-btn selettore-mese-btn-primario">Mostra</button>
           <button type="button" data-azione-mese="oggi" class="selettore-mese-btn">Mese corrente</button>
           <button type="button" data-azione-mese="prossimi" class="selettore-mese-btn">Tutti i prossimi</button>
@@ -275,13 +275,44 @@
                  velocità del playback. Così il pannello si apre di rado, e
                  quando si apre non copre il cielo per mezzo minuto. -->
             <section class="gruppo-comandi gruppo-tempo" data-gruppo="tempo" aria-label="Tempo e luogo">
-              <div class="riga-comandi">
-                <input id="skymap-data" type="datetime-local" step="1" class="campo-cielo"
-                  aria-label="Data e ora mostrate"
-                  title="Scrivi la data e l'ora che vuoi vedere: passato o futuro, secondi compresi">
+              <!-- LA DATA, SCRITTA A MANO
+                   Prima qui c'era un <input type="datetime-local">: comodo da
+                   programmare, ma è il browser a decidere che faccia ha — su
+                   alcuni l'ordine dei campi non è quello italiano, su altri
+                   l'anno si può solo far salire di uno alla volta col
+                   pulsantino, e arrivare al 2900 voleva dire novecento clic.
+                   Adesso sono caselle vere, nell'ordine in cui una data si
+                   dice: giorno, mese, anno — e poi l'ora. L'anno si scrive e
+                   basta, fino al 3000. -->
+              <div class="riga-comandi riga-data">
+                <div id="skymap-data" class="campo-data" role="group" aria-label="Data e ora mostrate">
+                  <input id="skymap-data-giorno" type="number" min="1" max="31" step="1" inputmode="numeric"
+                    class="casella-data casella-2" placeholder="gg" aria-label="Giorno" title="Giorno del mese">
+                  <span class="sep-data" aria-hidden="true">/</span>
+                  <input id="skymap-data-mese" type="number" min="1" max="12" step="1" inputmode="numeric"
+                    class="casella-data casella-2" placeholder="mm" aria-label="Mese" title="Mese (1–12)">
+                  <span class="sep-data" aria-hidden="true">/</span>
+                  <input id="skymap-data-anno" type="number" step="1" inputmode="numeric"
+                    class="casella-data casella-4" placeholder="aaaa" aria-label="Anno"
+                    title="Anno: si può scrivere, fino al 3000">
+                  <span class="sep-data sep-larga" aria-hidden="true">·</span>
+                  <input id="skymap-data-ore" type="number" min="0" max="23" step="1" inputmode="numeric"
+                    class="casella-data casella-2" placeholder="hh" aria-label="Ore" title="Ore (0–23)">
+                  <span class="sep-data" aria-hidden="true">:</span>
+                  <input id="skymap-data-minuti" type="number" min="0" max="59" step="1" inputmode="numeric"
+                    class="casella-data casella-2" placeholder="mm" aria-label="Minuti" title="Minuti">
+                  <span class="sep-data" aria-hidden="true">:</span>
+                  <input id="skymap-data-secondi" type="number" min="0" max="59" step="1" inputmode="numeric"
+                    class="casella-data casella-2" placeholder="ss" aria-label="Secondi" title="Secondi">
+                </div>
+                <button id="skymap-data-vai" type="button" class="tasto-cielo"
+                  title="Porta il cielo alla data scritta qui accanto (o premi Invio)">Vai</button>
                 <button id="skymap-tempo-ora" type="button" class="tasto-cielo tasto-primario"
                   title="Torna al cielo di adesso">Adesso</button>
               </div>
+              <p id="skymap-data-nota" class="etichetta-comando nota-lunga">Giorno, mese, anno e ora:
+                dal 1600 al 3000. Il cielo del planetario e il Sistema Solare in 3D vanno insieme,
+                mostrano sempre lo stesso istante.</p>
 
               <!-- Il passo: comanda insieme i tasti − e + della barra in fondo
                    alla mappa e quanto tempo copre la sua slitta. Con dieci
@@ -491,6 +522,15 @@
                     title="Scrivi le prime lettere: l'elenco si stringe. Invio sceglie il primo.">
                   <button id="skymap-astri-visibili" type="button" class="tasto-cielo tasto-passo" aria-pressed="false"
                     title="Lascia solo gli astri che adesso stanno sopra l'orizzonte">Su ora</button>
+                </div>
+                <!-- Le categorie: Sole e Luna, pianeti, stelle, cielo
+                     profondo, stazioni spaziali. Sono le stesse famiglie in
+                     cui l'elenco qui sotto è diviso, ma usate nell'altro
+                     verso — chi sa già che cerca un pianeta se ne toglie
+                     davanti tutto il resto. Le riempie skyCostruisciCategorie(). -->
+                <div class="riga-comandi riga-categorie-astri">
+                  <div id="skymap-astri-categorie" class="segmenti-cielo segmenti-categorie"
+                    role="group" aria-label="Categorie di astri"></div>
                 </div>
               </div>
               <p class="etichetta-comando">Toccane uno: la mappa lo porta al centro e una freccia ti guida. Per la scheda dei dati, toccalo sulla mappa.</p>
@@ -1130,7 +1170,7 @@
       <div class="corpo-modale spazio-verticale">
         <div class="sol-guscio">
           <canvas id="sol-canvas" class="block w-full tela-sistema"></canvas>
-          <p class="sol-suggerimento">Trascina per girare · pizzica per avvicinarti · tocca un pianeta</p>
+          <p class="sol-suggerimento">Trascina per girare · due dita per spostare e avvicinare · tocca un pianeta</p>
 
           <!-- Il pannello del tempo, quando lo si chiede da qui. Dentro non
                c'è una copia dei comandi del planetario: c'è proprio il suo
@@ -1182,6 +1222,11 @@
             </div>
             <button id="sol-zoom-out" type="button" class="tasto-cielo tasto-passo" title="Allontanati" aria-label="Allontanati">−</button>
             <button id="sol-zoom-in" type="button" class="tasto-cielo tasto-passo" title="Avvicinati" aria-label="Avvicinati">+</button>
+            <!-- Spostare la scena serve appena ci si avvicina; questo la
+                 rimette in mezzo, che è l'unico modo per non perdersi -->
+            <button id="sol-centra" type="button" class="tasto-cielo tasto-passo"
+              title="Rimetti il Sole al centro (o premi C). La scena si sposta con due dita, o trascinando col tasto destro."
+              aria-label="Rimetti la scena al centro">⌖</button>
           </div>
 
           <div class="sol-riga" role="group" aria-label="Come sono disegnate le distanze">
