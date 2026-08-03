@@ -353,6 +353,18 @@ const PIAN_NOMI_PIANETI = {
 };
 function pianNomePianeta(id) { return PIAN_NOMI_PIANETI[id] || id; }
 
+// Con che nome il planetario conosce questo bersaglio.
+//   Serve al tasto "Planetario" della dashboard: da lì si apre il cielo già
+//   puntato su quello che si stava leggendo, che è il gesto successivo
+//   naturale a «M31, sale fino a 62° verso le 2:10». I pianeti e la Luna si
+//   chiamano come li chiama Astronomy Engine; il cielo profondo e i corpi
+//   minori portano il loro prefisso, e `skyVoceDiId()` sa leggerli tutt'e tre.
+function pianIdCielo(b) {
+  if (b.tipo === 'profondo') return 'dso:' + b.nome;
+  if (b.tipo === 'corpoMinore') return 'min:' + b.nome;
+  return b.id || null;
+}
+
 // Quanto disturba la Luna stanotte: zero se è nuova o sotto l'orizzonte,
 // uno se è piena e alta. Si calcola una volta per tutta la classifica.
 function pianDisturboLunare(quando) {
@@ -452,6 +464,7 @@ function migliorDiStanotte(quanti) {
 
     return {
       nome: b.nome, tipo: b.tipo, dato: b.dato, strumento,
+      idCielo: pianIdCielo(b),
       punti: Math.max(0, Math.min(100, punti)),
       quando: new Date(curva.migliore.ms),
       altezza: alt, oreUtili: curva.oreUtili,

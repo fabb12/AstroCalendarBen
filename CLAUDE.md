@@ -42,7 +42,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `verifica.html` | ~360 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~4.915 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v52`). |
+| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v54`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 
@@ -106,7 +106,7 @@ i testi — ma resta `cielo` nel codice, nelle classi CSS (`vista-cielo`,
 
 | Vista | Cosa fa |
 |---|---|
-| **Stasera** (default) | Cosa si vede stanotte da qui, in quattro riquadri: **Stanotte** (buio, Luna, prossimo evento), **Che cielo avrai** (tutto il meteo: nuvole e seeing), **Cosa guardare** (tutti gli astri: migliori bersagli, pianeti, stazioni spaziali), **Prossimi appuntamenti**. |
+| **Stasera** (default) | Cosa si vede stanotte da qui, in quattro riquadri, **e ogni cosa una volta sola**: **Stanotte** (da che ora è buio, quanta Luna c'è), **Che cielo avrai** (tutto il meteo in una parte sola: giudizio della notte, finestra migliore, griglia oraria), **Cosa guardare** (gli oggetti di stanotte — pianeti, Luna, cielo profondo e comete nella stessa classifica, ognuno col tasto **Planetario** — e i passaggi delle stazioni spaziali), **Prossimi appuntamenti** (la riga apre il planetario sulla sera dell'evento, la linguetta «Scheda» l'agenda). |
 | **Mese** | Calendario FullCalendar con gli eventi calcolati. |
 | **Agenda** | Elenco di schede ricche: da qui si vede? con che cielo? con che strumento? |
 | **Planetario** (nel codice `cielo`) | Il cielo in tempo reale: punta il telefono, oppure realtà aumentata con la fotocamera, macchina del tempo, playback, zoom fino a un quarto di grado (Luna e pianeti a grandezza vera, **con la loro faccia**: mari, bande, anelli, calotte), eclissi con corona e ombra della Terra, orizzonte con le colline, registrazione di un filmato da condividere, e il **Sistema Solare visto da fuori in 3D** — la stessa ora, ma guardata da lontano, per capire perché i pianeti stanno proprio lì. Nel pannello **Tempo e luogo** si può anche spostare il punto di vista in un'altra città: vale solo qui, la posizione dell'app non si tocca. |
@@ -268,7 +268,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v52`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v54`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene
@@ -319,7 +319,8 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Nuova scena della simulazione | `app.js:16044` (costruzione scena) e una `simScena*` |
 | Qualcosa nel planetario | `sky` `app.js:6295`, disegno da `app.js:8054` |
 | Eventi mostrati nel planetario | `SKY_EVENTI_FINESTRA_MIN`, `SKY_EVENTI_SETTIMANA_MS` + `skyAggiornaEventi()` (sezione 7.4-bis) |
-| "Vedi nel planetario" (dalle schede dell'agenda e dall'elenco della settimana) | `apriEventoNelPlanetario(id)` (sezione 7.4-bis) |
+| "Vedi nel planetario" (dalle schede dell'agenda, dall'elenco della settimana e da ogni riga dei **Prossimi appuntamenti** della dashboard) | `apriEventoNelPlanetario(id)` (sezione 7.4-bis) |
+| Dalla dashboard al planetario, puntato su un astro | il tasto **Planetario** di ogni riga di "Cosa guardare" chiama `cercaNelCielo(idCielo)`; l'identificativo lo mette `pianIdCielo()` in `pianifica.js` (`Mars`, `dso:<nome>`, `min:<nome>`), e `skyVoceDiId()` sa leggerli tutt'e tre. Stili `.tasto-planetario`, `.piede-migliore`, `.tipo-migliore` |
 | Registrare e condividere un momento | sezione 7.6: `skyRegAvvia()`, il montaggio in `skyRegComponi()`, la firma in `skyRegFirma()`; il tasto è `#skymap-btn-registra` **sulla mappa** (`.tasto-registra-cielo` dentro `.comandi-mappa-cielo`), la durata i chip `[data-durata-reg]` nel pannello Visualizzazione; stili `.tasto-registra-cielo`, `.tempo-reg`, `.pannello-clip` |
 | Quanto si può ingrandire, e quanto grandi si disegnano gli astri | `SKY_FOV_MIN` / `SKY_FOV_MAX` e `skyImpostaFov()` (`app.js:6593`); la misura di ogni astro in `skyRaggio(o, focale)` (`app.js:9947`), che sceglie fra icona fissa e disco vero (diametro ÷ distanza) |
 | Il cielo si muove a scatti (trascinamento, zoom, centratura) | sezione **7.4-ter**: `sky.fov` è il campo disegnato adesso e `sky.fovVoluto` quello a cui si sta andando (`skyImpostaFov(g, { morbido: true })` chiede il viaggio, `skyMuoviZoom()` lo fa); l'inerzia è `skyLanciaVista()` + `skyScorriPerInerzia()`, e si spegne sempre con `skyFermaMovimenti()`. Le costanti da girare: `SKY_TAU_ZOOM`, `SKY_TAU_INERZIA`, `SKY_INERZIA_MAX_SCHERMI` |
@@ -385,7 +386,8 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Una cometa nuova, appena scoperta | non si aggiunge al file: si incollano gli elementi dell'MPC. Il file dei dati contiene solo quelle stabili |
 | La curva dell'altezza di stanotte | `pianCurvaNotturna()` + `pianDisegnaCurva()` in `pianifica.js`. Sta in fondo alla scheda dell'oggetto nel planetario |
 | «Cosa guardo stanotte» | `migliorDiStanotte()` in `pianifica.js` e `aggiornaStaseraMigliori()` in `ui-nuova.js` |
-| I riquadri della dashboard (quali sono, in che ordine, cosa tengono dentro) | `#vista-stasera` in `index.html`: quattro `div[data-blocco]` — `riepilogo`, `cielo`, `guardare`, `prossimi`. I due raggruppati (`cielo` e `guardare`) tengono le loro parti in `.parti-gruppo > .parte-gruppo`, separate da un filo e non da una cornice; il titolo di ognuna è `.titolo-parte` (`.testa-parte` se ha un tasto suo). Gli `id` che il JavaScript riempie non sono cambiati: spostare una parte vuol dire spostare il suo `<section>`, non toccare il codice |
+| I riquadri della dashboard (quali sono, in che ordine, cosa tengono dentro) | `#vista-stasera` in `index.html`: quattro `div[data-blocco]` — `riepilogo`, `cielo`, `guardare`, `prossimi`. Solo `guardare` è ancora diviso in parti (`.parti-gruppo > .parte-gruppo`, separate da un filo e non da una cornice; il titolo di ognuna è `.titolo-parte`, `.testa-parte` se ha un tasto suo). Gli `id` che il JavaScript riempie non sono cambiati: spostare una parte vuol dire spostare il suo `<section>`, non toccare il codice |
+| Un doppione nella dashboard | ce n'erano tre, e sono andati via tutti insieme: il prossimo evento stava sia nel colpo d'occhio sia in cima ai "Prossimi appuntamenti" (è rimasta la seconda copia, che ha semaforo e tasti); le nuvole erano un istogramma in `costruisciStaseraMeteo()` **e** la prima riga di `meteoGrigliaHtml()` (è rimasta la griglia, l'istogramma no); i pianeti avevano `costruisciStaseraPianeti()` pur essendo già dentro a `migliorDiStanotte()` (la funzione e `STASERA_CORPI` non ci sono più). Le stazioni spaziali dicevano il primo passaggio due volte: adesso il riepilogo per stazione compare solo per chi non ha una scheda sotto |
 | Come si dispongono i riquadri di Stasera su schermo largo | `.griglia-stasera` in `style.css` (sezione GRIGLIE): riga e colonna di ognuno sono scritte a mano da 900px in su — le due schede corte affiancate, quella lunga larga quanto la pagina con le parti in fila. Lasciandole scorrere da sole la griglia lascia buchi: non è una muratura, le righe le detta il riquadro più alto |
 | Quanto spazio lascia la barra di navigazione in fondo | `--barra-inferiore` in `style.css`: `calc(61px + env(safe-area-inset-bottom))` sotto i 1180px, `calc(48px + env(...))` col telefono girato. È la misura vera della barra, tacca del pollice compresa — se si cambia il `min-height` di `.voce-menu` o il suo `padding`, va rifatta anche qui |
 | Seeing, trasparenza, griglia oraria del meteo | `meteo-astro.js`: `meteoSeeing()` (viene dal vento a 250 hPa, la corrente a getto), `meteoTrasparenza()` (dagli aerosol), `meteoGrigliaHtml()` per la griglia stile Clear Sky Chart |

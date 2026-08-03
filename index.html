@@ -122,17 +122,26 @@
          dalle stazioni spaziali pur rispondendo alla stessa domanda. Ora le
          schede seguono le domande di chi guarda, in ordine:
 
-           1. Stanotte      — il colpo d'occhio: buio, Luna, prossimo evento
+           1. Stanotte      — il colpo d'occhio: buio e Luna
            2. Che cielo avrai — TUTTO il meteo insieme (nuvole + seeing)
-           3. Cosa guardare  — TUTTI gli astri insieme (migliori, pianeti, ISS)
+           3. Cosa guardare  — gli oggetti di stanotte, uno per riga
            4. Prossimi appuntamenti
 
-         Dentro ai due riquadri raggruppati le parti restano riconoscibili:
-         un'etichetta piccola e un filo di separazione (.parte-gruppo), non
-         una scheda dentro la scheda. -->
+         **Ogni cosa una volta sola.** Il giro di pulizia successivo ha
+         tolto i doppioni, che erano tre: il prossimo evento stava sia nel
+         colpo d'occhio sia in cima ai "Prossimi appuntamenti"; le nuvole
+         ora per ora erano un istogramma e, dieci centimetri più in basso,
+         la prima riga della griglia del meteo; i pianeti avevano un elenco
+         tutto loro pur essendo già dentro ai migliori di stanotte, che li
+         ordina insieme a tutto il resto. Ne resta una copia sola, quella
+         che dice di più.
+
+         Dentro al riquadro raggruppato che resta ("Cosa guardare") le parti
+         sono ancora riconoscibili: un'etichetta piccola e un filo di
+         separazione (.parte-gruppo), non una scheda dentro la scheda. -->
     <div id="vista-stasera" class="hidden griglia-vista griglia-stasera">
 
-      <!-- 1. Il colpo d'occhio: buio astronomico, Luna, prossimo evento -->
+      <!-- 1. Il colpo d'occhio: buio astronomico e Luna -->
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="riepilogo">
         <div class="testa-gruppo">
           <h2 class="text-2xl font-bold text-white">Stanotte</h2>
@@ -161,45 +170,43 @@
           <button id="btn-meteo-astro-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0">Aggiorna</button>
         </div>
 
-        <div class="parti-gruppo">
-          <section class="parte-gruppo">
-            <h4 class="titolo-parte">Nuvole stanotte</h4>
-            <div id="stasera-meteo"></div>
-          </section>
-
-          <section class="parte-gruppo">
-            <h4 class="titolo-parte">Seeing e trasparenza</h4>
-            <p id="meteo-astro-finestra" class="testo-finestra-meteo"></p>
-            <div id="meteo-astro-griglia"></div>
-            <p id="meteo-astro-aurora" class="avviso-aurora hidden"></p>
-          </section>
-        </div>
+        <!-- Una parte sola, in tre righe che vanno dal grosso al fine: il
+             giudizio di stanotte, la finestra migliore delle prossime notti
+             e la griglia ora per ora. Le nuvole erano disegnate due volte —
+             un istogramma qui e la prima riga della griglia dieci centimetri
+             più in basso, stessi dati e due colori diversi: è rimasta la
+             griglia, che accanto alle nuvole ha anche seeing, trasparenza,
+             vento e rugiada. -->
+        <div id="stasera-meteo"></div>
+        <p id="meteo-astro-finestra" class="testo-finestra-meteo"></p>
+        <div id="meteo-astro-griglia"></div>
+        <p id="meteo-astro-aurora" class="avviso-aurora hidden"></p>
       </div>
 
-      <!-- 3. GLI ASTRI, TUTTI INSIEME
-           "Cosa guardo stanotte?" è una domanda sola, e prima aveva tre
-           schede: i migliori bersagli, i pianeti, le stazioni spaziali. Qui
-           stanno una sotto l'altra nell'ordine in cui servono — prima cosa
-           vale la pena cercare, poi cosa c'è di sicuro sopra la testa, poi
-           l'unica cosa che passa a un'ora precisa e non aspetta. -->
+      <!-- 3. GLI OGGETTI DI STANOTTE
+           "Cosa guardo stanotte?" è una domanda sola, e aveva tre elenchi:
+           i migliori bersagli, i pianeti, le stazioni spaziali. I pianeti
+           erano un doppione — stanno già nei migliori di stanotte, che li
+           ordina insieme al cielo profondo e alle comete tenendo conto di
+           quanto salgono, della Luna, del cielo di casa e del meteo — e
+           l'elenco a parte li ripeteva con altre parole, dicendo di meno.
+
+           Restano due elenchi, e sono due cose diverse: gli oggetti che
+           stanotte stanno su (si guardano quando si vuole) e i passaggi
+           delle stazioni spaziali (che passano a un'ora precisa e non
+           aspettano). Ogni riga porta al planetario, puntato su di lei. -->
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="guardare">
         <div class="testa-gruppo">
           <h3 class="text-lg font-bold text-white">Cosa guardare</h3>
         </div>
 
         <div class="parti-gruppo">
-          <!-- I migliori bersagli, ordinati tenendo conto di tutto insieme:
-               quanto salgono, la Luna, il cielo di casa, il meteo. -->
+          <!-- I migliori bersagli: pianeti, Luna, cielo profondo e corpi
+               minori nello stesso ordine di merito. -->
           <section class="parte-gruppo">
-            <h4 class="titolo-parte">I migliori di stanotte</h4>
+            <h4 class="titolo-parte">Gli oggetti di stanotte</h4>
             <p id="migliori-sottotitolo" class="testo-sotto-titolo"></p>
             <div id="stasera-migliori" class="elenco-migliori"></div>
-          </section>
-
-          <!-- Pianeti e Luna visibili stanotte -->
-          <section class="parte-gruppo">
-            <h4 class="titolo-parte">Pianeti e Luna</h4>
-            <div id="stasera-pianeti" class="griglia-elenco"></div>
           </section>
 
           <!-- Passaggi delle stazioni spaziali: ISS e Tiangong -->
@@ -207,19 +214,23 @@
             <!-- Il tasto sta qui e non nel titolo del riquadro: ricarica i
                  dati orbitali, che riguardano queste due righe e nient'altro.
                  Un "Aggiorna" in cima al gruppo avrebbe promesso di rifare
-                 anche i pianeti, che invece non si scaricano da nessuna
-                 parte — sono calcolati qui. -->
+                 anche gli altri bersagli, che invece non si scaricano da
+                 nessuna parte — sono calcolati qui. -->
             <div class="testa-parte">
               <h4 class="titolo-parte">Stazioni spaziali</h4>
               <button id="btn-satelliti-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0">Aggiorna</button>
             </div>
-            <p class="testo-sotto-titolo">ISS e Tiangong, con orari e direzioni calcolati per il punto esatto in cui ti trovi.</p>
             <div id="stasera-satelliti" class="griglia-elenco text-sm text-slate-300">Caricamento dei dati orbitali…</div>
           </section>
         </div>
       </div>
 
-      <!-- 4. Prossimi eventi del calendario, con indice di osservabilità -->
+      <!-- 4. Prossimi eventi del calendario, con indice di osservabilità.
+           Toccando una riga si va dritti al planetario, con l'orologio già
+           portato sulla sera dell'evento e la mappa puntata dove guardare:
+           è la cosa che si vuole fare dopo aver letto "eclissi di Luna fra
+           sei giorni", e prima costava tre passaggi (agenda → scheda →
+           "Vedi nel planetario"). La scheda resta a un tasto di distanza. -->
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="prossimi">
         <div class="testa-gruppo">
           <h3 class="text-lg font-bold text-white">Prossimi appuntamenti</h3>
