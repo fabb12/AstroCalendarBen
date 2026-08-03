@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v52';
+const CACHE_NAME = 'astrocal-v53';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [

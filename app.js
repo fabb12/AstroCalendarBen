@@ -19120,6 +19120,13 @@ function meteoPerData(data) {
   return distanza <= 90 * 60000 ? migliore : null;
 }
 
+// "poco nuvoloso" → "Poco nuvoloso". Le frasi del meteo nascono minuscole
+// perché per lo più stanno in mezzo a un'altra frase; quando invece ne
+// aprono una, la maiuscola ci vuole.
+function iniziale(testo) {
+  return testo ? testo.charAt(0).toUpperCase() + testo.slice(1) : testo;
+}
+
 function descriviNuvole(perc) {
   if (perc === null || perc === undefined) return 'previsione non disponibile';
   if (perc <= 15) return 'cielo sereno';
@@ -19714,8 +19721,13 @@ function costruisciStaseraRiepilogo() {
 
   // 1. Buio astronomico
   if (buio && buio.tramonto) {
+    // Fra la freccia e l'ora d'arrivo c'è uno spazio unificatore (\u00A0),
+    // non uno normale: se la riga deve andare a capo — e su un telefono
+    // stretto, con due riquadri per riga, ci va — si spezza prima della
+    // freccia e non dopo. "22:41 →" da solo su una riga sembra una frase
+    // lasciata a metà.
     const finestra = buio.buioInizio && buio.buioFine
-      ? `${oraBreve(buio.buioInizio)} → ${oraBreve(buio.buioFine)}`
+      ? `${oraBreve(buio.buioInizio)} →\u00A0${oraBreve(buio.buioFine)}`
       : 'niente buio completo stanotte';
     const dettaglio = buio.buioInizio
       ? `Tramonto ${oraBreve(buio.tramonto)} · alba ${oraBreve(buio.alba)}`
@@ -19735,10 +19747,15 @@ function costruisciStaseraRiepilogo() {
     const disturbo = perc > 70 ? 'cielo molto schiarito: meglio Luna e pianeti che oggetti deboli'
                    : perc > 30 ? 'disturbo moderato per gli oggetti deboli'
                    : 'cielo scuro: ottimo per meteore e deep sky';
+    // Il dato da leggere in un colpo d'occhio è la percentuale, e basta
+    // quella: "illuminata al 78%" era una frase, e con due riquadri per riga
+    // sul telefono andava a capo — un numero che va a capo non è più un
+    // numero. Sopra c'è scritto "Gibbosa calante", sotto a che ora sorge e
+    // quanto disturba: non c'è altro che quel 78% possa voler dire.
     schede.push(schedaRiepilogo(
-      `${nomeFaseLunare(fase)}`,
-      `illuminata al ${perc}%`,
-      `Sorge ${oraBreve(orari.sorge)} · tramonta ${oraBreve(orari.tramonta)}. ${disturbo}.`
+      nomeFaseLunare(fase),
+      `${perc}%`,
+      `Sorge ${oraBreve(orari.sorge)} · tramonta ${oraBreve(orari.tramonta)}. ${iniziale(disturbo)}.`
     ));
   } catch (e) {
     schede.push(schedaRiepilogo('Luna', 'dati non disponibili', ''));
@@ -19795,10 +19812,13 @@ async function costruisciStaseraMeteo() {
     </div>`;
   }).join('');
 
+  // La riga grande non ripete più "Nuvole stanotte": lo dice l'etichetta
+  // della parte, subito sopra, e qui rubava il posto al dato — che è il
+  // giudizio in parole, non il titolo.
   box.innerHTML = `
     <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
       <div class="flex justify-between items-baseline flex-wrap gap-2">
-        <p class="font-bold text-white">${semaforo} Nuvole stanotte: ${descriviNuvole(media)} (${media}% in media)</p>
+        <p class="font-bold text-white">${semaforo} ${iniziale(descriviNuvole(media))} (${media}% in media)</p>
         <p class="text-xs text-slate-400">Ora migliore: ${oraBreve(new Date(migliore.ms))} con ${Math.round(migliore.nuvole ?? 0)}%${notaVecchio}</p>
       </div>
       <div class="flex items-end gap-1 mt-3 overflow-x-auto pb-1">${barre}</div>
