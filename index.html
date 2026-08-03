@@ -114,12 +114,27 @@
       </div>
     </div>
 
-    <!-- VISTA STASERA: cosa si vede stanotte, da qui, e se il cielo lo permette -->
+    <!-- VISTA STASERA: cosa si vede stanotte, da qui, e se il cielo lo permette
+         ------------------------------------------------------------------
+         Quattro riquadri, non sei. Prima ogni argomento aveva la sua scheda
+         e sul telefono la pagina era lunga tre schermate: le nuvole stavano
+         in cima, il seeing due schede più giù, e i pianeti erano separati
+         dalle stazioni spaziali pur rispondendo alla stessa domanda. Ora le
+         schede seguono le domande di chi guarda, in ordine:
+
+           1. Stanotte      — il colpo d'occhio: buio, Luna, prossimo evento
+           2. Che cielo avrai — TUTTO il meteo insieme (nuvole + seeing)
+           3. Cosa guardare  — TUTTI gli astri insieme (migliori, pianeti, ISS)
+           4. Prossimi appuntamenti
+
+         Dentro ai due riquadri raggruppati le parti restano riconoscibili:
+         un'etichetta piccola e un filo di separazione (.parte-gruppo), non
+         una scheda dentro la scheda. -->
     <div id="vista-stasera" class="hidden griglia-vista griglia-stasera">
 
-      <!-- Riepilogo della notte: buio astronomico, Luna, meteo -->
+      <!-- 1. Il colpo d'occhio: buio astronomico, Luna, prossimo evento -->
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="riepilogo">
-        <div class="flex justify-between items-start gap-3 mb-3">
+        <div class="testa-gruppo">
           <h2 class="text-2xl font-bold text-white">Stanotte</h2>
           <!-- Il tasto dice sempre da dove sta guardando l'app: "Imposta la
                tua posizione" se non c'è, altrimenti il nome del luogo con un
@@ -132,50 +147,83 @@
           </button>
         </div>
         <div id="stasera-riepilogo" class="griglia-sintesi"></div>
-        <div id="stasera-meteo" class="mt-4"></div>
       </div>
 
-      <!-- Il meteo da astronomo: seeing, trasparenza, nuvole a tre quote,
-           nella griglia oraria del Clear Sky Chart. Si riempie da sé al
-           primo caricamento delle previsioni; senza rete resta vuoto e lo
-           dice. -->
-      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="meteo-astro">
-        <div class="flex justify-between items-center gap-3 mb-1">
-          <h3 class="text-lg font-bold text-white">Che notte sarà</h3>
+      <!-- 2. IL METEO, TUTTO INSIEME
+           Le nuvole ora per ora (Open-Meteo) e il meteo da astronomo (seeing,
+           trasparenza, nuvole a tre quote nella griglia del Clear Sky Chart)
+           rispondono alla stessa domanda — "il cielo sarà buono?" — e stavano
+           in due schede lontane. Un tasto "Aggiorna" solo, in cima: ricarica
+           le previsioni, e da quelle dipendono tutt'e due le parti. -->
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="cielo">
+        <div class="testa-gruppo">
+          <h3 class="text-lg font-bold text-white">Che cielo avrai</h3>
           <button id="btn-meteo-astro-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0">Aggiorna</button>
         </div>
-        <p id="meteo-astro-finestra" class="testo-finestra-meteo"></p>
-        <div id="meteo-astro-griglia"></div>
-        <p id="meteo-astro-aurora" class="avviso-aurora hidden"></p>
-      </div>
 
-      <!-- I migliori bersagli di stanotte, ordinati tenendo conto di tutto
-           insieme: quanto salgono, la Luna, il cielo di casa, il meteo. -->
-      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="migliori">
-        <h3 class="text-lg font-bold text-white mb-1">I migliori di stanotte</h3>
-        <p id="migliori-sottotitolo" class="testo-sotto-titolo"></p>
-        <div id="stasera-migliori" class="elenco-migliori"></div>
-      </div>
+        <div class="parti-gruppo">
+          <section class="parte-gruppo">
+            <h4 class="titolo-parte">Nuvole stanotte</h4>
+            <div id="stasera-meteo"></div>
+          </section>
 
-      <!-- Pianeti e Luna visibili stanotte -->
-      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="pianeti">
-        <h3 class="text-lg font-bold text-white mb-3">Cosa si vede</h3>
-        <div id="stasera-pianeti" class="griglia-elenco"></div>
-      </div>
-
-      <!-- Passaggi delle stazioni spaziali: ISS e Tiangong -->
-      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="satelliti">
-        <div class="flex justify-between items-center gap-3 mb-1">
-          <h3 class="text-lg font-bold text-white">Stazioni spaziali sopra di te</h3>
-          <button id="btn-satelliti-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0">Aggiorna</button>
+          <section class="parte-gruppo">
+            <h4 class="titolo-parte">Seeing e trasparenza</h4>
+            <p id="meteo-astro-finestra" class="testo-finestra-meteo"></p>
+            <div id="meteo-astro-griglia"></div>
+            <p id="meteo-astro-aurora" class="avviso-aurora hidden"></p>
+          </section>
         </div>
-        <p class="text-xs text-slate-400 mb-3">ISS e Tiangong, con orari e direzioni calcolati per il punto esatto in cui ti trovi.</p>
-        <div id="stasera-satelliti" class="griglia-elenco text-sm text-slate-300">Caricamento dei dati orbitali…</div>
       </div>
 
-      <!-- Prossimi eventi del calendario, con indice di osservabilità -->
+      <!-- 3. GLI ASTRI, TUTTI INSIEME
+           "Cosa guardo stanotte?" è una domanda sola, e prima aveva tre
+           schede: i migliori bersagli, i pianeti, le stazioni spaziali. Qui
+           stanno una sotto l'altra nell'ordine in cui servono — prima cosa
+           vale la pena cercare, poi cosa c'è di sicuro sopra la testa, poi
+           l'unica cosa che passa a un'ora precisa e non aspetta. -->
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="guardare">
+        <div class="testa-gruppo">
+          <h3 class="text-lg font-bold text-white">Cosa guardare</h3>
+        </div>
+
+        <div class="parti-gruppo">
+          <!-- I migliori bersagli, ordinati tenendo conto di tutto insieme:
+               quanto salgono, la Luna, il cielo di casa, il meteo. -->
+          <section class="parte-gruppo">
+            <h4 class="titolo-parte">I migliori di stanotte</h4>
+            <p id="migliori-sottotitolo" class="testo-sotto-titolo"></p>
+            <div id="stasera-migliori" class="elenco-migliori"></div>
+          </section>
+
+          <!-- Pianeti e Luna visibili stanotte -->
+          <section class="parte-gruppo">
+            <h4 class="titolo-parte">Pianeti e Luna</h4>
+            <div id="stasera-pianeti" class="griglia-elenco"></div>
+          </section>
+
+          <!-- Passaggi delle stazioni spaziali: ISS e Tiangong -->
+          <section class="parte-gruppo">
+            <!-- Il tasto sta qui e non nel titolo del riquadro: ricarica i
+                 dati orbitali, che riguardano queste due righe e nient'altro.
+                 Un "Aggiorna" in cima al gruppo avrebbe promesso di rifare
+                 anche i pianeti, che invece non si scaricano da nessuna
+                 parte — sono calcolati qui. -->
+            <div class="testa-parte">
+              <h4 class="titolo-parte">Stazioni spaziali</h4>
+              <button id="btn-satelliti-aggiorna" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex-shrink-0">Aggiorna</button>
+            </div>
+            <p class="testo-sotto-titolo">ISS e Tiangong, con orari e direzioni calcolati per il punto esatto in cui ti trovi.</p>
+            <div id="stasera-satelliti" class="griglia-elenco text-sm text-slate-300">Caricamento dei dati orbitali…</div>
+          </section>
+        </div>
+      </div>
+
+      <!-- 4. Prossimi eventi del calendario, con indice di osservabilità -->
       <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl" data-blocco="prossimi">
-        <h3 class="text-lg font-bold text-white mb-3">Prossimi appuntamenti</h3>
+        <div class="testa-gruppo">
+          <h3 class="text-lg font-bold text-white">Prossimi appuntamenti</h3>
+        </div>
         <div id="stasera-prossimi" class="griglia-elenco"></div>
       </div>
     </div>

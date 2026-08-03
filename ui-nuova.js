@@ -73,7 +73,11 @@ function aggiornaStaseraMigliori() {
   const notte = pianComEStanotte();
   if (sotto) sotto.textContent = notte ? notte.testo.charAt(0).toUpperCase() + notte.testo.slice(1) + '.' : '';
 
-  const migliori = migliorDiStanotte(10);
+  // Dieci bersagli erano dieci ovunque: sul telefono sono quattro schermate
+  // di elenco dentro a un riquadro che ne ha altri due sotto, e il decimo
+  // della lista non lo raggiunge nessuno. `quanto()` è la stessa misura che
+  // usa il resto dell'app per gli elenchi lunghi.
+  const migliori = migliorDiStanotte(typeof quanto === 'function' ? quanto(5, 8, 10) : 10);
   if (!migliori.length) {
     box.innerHTML = '<p class="text-slate-400 text-sm">Stanotte non c\'è niente che salga abbastanza da qui.</p>';
     return;
@@ -320,12 +324,25 @@ function inizializzaNuoveFunzioni() {
     }
   }, 1200);
 
+  // Il tasto sta in cima al riquadro "Che cielo avrai", che tiene dentro
+  // tutt'e due i meteo: le nuvole ora per ora (Open-Meteo, `costruisciStaseraMeteo`)
+  // e il meteo da astronomo con l'aurora. Prima ne ricaricava solo metà, e
+  // premendolo le nuvole restavano quelle di un'ora fa dieci centimetri più
+  // su: adesso rifà quello che il riquadro mostra.
   const aggiorna = document.getElementById('btn-meteo-astro-aggiorna');
   if (aggiorna) {
     aggiorna.addEventListener('click', () => {
       aggiorna.disabled = true;
-      Promise.all([caricaMeteoAstro(true), caricaAurora(true)])
-        .then(() => { aggiornaStaseraMeteoAstro(); aggiornaAvvisoAurora(); })
+      // `caricaMeteo(true)`, non (false): il ripiego dalla cache è quello che
+      // serve all'apertura della vista, ma qui l'ha chiesto qualcuno che ha
+      // premuto un tasto, e vuole i dati di adesso.
+      Promise.all([caricaMeteoAstro(true), caricaAurora(true), caricaMeteo(true).catch(() => null)])
+        .then(() => {
+          aggiornaStaseraMeteoAstro();
+          aggiornaAvvisoAurora();
+          return costruisciStaseraMeteo();
+        })
+        .catch(() => {})
         .finally(() => { aggiorna.disabled = false; });
     });
   }

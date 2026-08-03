@@ -95,6 +95,13 @@ body {
   overflow-x: hidden;
 }
 
+/* Il `min-h-screen` di Tailwind vale 100vh, e sul telefono `vh` è la finestra
+   più alta possibile — quella con la barra degli indirizzi già scomparsa.
+   Finché la barra c'è, il corpo è più alto dello schermo e la pagina scorre
+   di quei cinquanta pixel anche quando non ci sarebbe niente da scorrere.
+   `dvh` è la finestra vera, quella di adesso. */
+body.min-h-screen { min-height: 100dvh; }
+
 /* Il cielo profondo dietro all'interfaccia: nebulose appena percettibili,
    poi un pulviscolo di stelle. Due strati fissi, zero costo di layout. */
 body::before,
@@ -2071,11 +2078,14 @@ figure.ecl-schema-fig {
   .selettore-mese-btn { flex: 1 1 auto; }
 
   body .rounded-2xl { border-radius: var(--raggio-l); }
-  /* Sul telefono la testata cede spazio ai contenuti */
-  .marchio { width: 54px; height: 54px; border-radius: 18px; }
-  .marchio svg { width: 27px; height: 27px; }
-  .sottotitolo-app { font-size: 0.88rem; }
-  .valore-riepilogo { font-size: 1.3rem; }
+
+  /* Della testata qui non si tocca più niente. Ci stavano tre righe rimaste
+     indietro dall'impaginazione di prima — il marchio a 54px, che è il
+     massimo della scala e non il minimo (il commento diceva "la testata cede
+     spazio ai contenuti" e faceva l'opposto), il sottotitolo, che sotto i
+     900px non si vede più, e il numero dei riquadri, riscritto comunque dal
+     blocco dei 767px che viene dopo. Le misure della testata le decide una
+     scala continua sola (clamp), in cima al foglio. */
 
   /* La mappa delle eclissi sul telefono: una colonna sola, comandi grandi.
      I numeri chiave restano in due colonne: uno sotto l'altro riempivano lo
@@ -2315,22 +2325,96 @@ main { padding-bottom: calc(clamp(24px, 3vw, 56px) + var(--barra-inferiore)); }
   align-items: start;
 }
 
-/* --- Stasera: il riepilogo in cima, poi le colonne --- */
+/* ------------------------------------------------- RIQUADRI RAGGRUPPATI    */
+/* Nella dashboard due riquadri tengono dentro più argomenti (il meteo:
+   nuvole e seeing; gli astri: migliori, pianeti, stazioni). Le parti devono
+   restare distinguibili senza diventare schede dentro alle schede — una
+   cornice dentro una cornice, sul telefono, mangia venti pixel per lato e
+   non aggiunge niente. Bastano un'etichetta piccola e un filo. */
+
+/* La riga del titolo, con l'eventuale tasto a destra */
+.testa-gruppo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.parti-gruppo { display: grid; gap: 16px; }
+
+/* Ogni parte è separata dalla precedente da un filo, non da una cornice.
+   La prima non ce l'ha: non si mette una riga sotto a un titolo. */
+.parte-gruppo + .parte-gruppo {
+  border-top: 1px solid var(--bordo);
+  padding-top: 16px;
+}
+
+.titolo-parte {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+  margin-bottom: 8px;
+}
+
+/* Quando una parte ha un tasto suo, il titolo gli sta accanto */
+.testa-parte {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.testa-parte .titolo-parte { margin-bottom: 0; }
+.testa-parte + .testo-sotto-titolo { margin-top: 8px; }
+
+/* --- Stasera: tre fasce, non sei riquadri da incastrare ---
+   Con sei riquadri di altezza qualunque le colonne si riempivano a caso e
+   sotto al più corto restava un buco alto mezzo schermo (una griglia non è
+   una muratura: le righe le detta il riquadro più alto). Ora i riquadri
+   sono quattro e stanno in tre fasce, ognuna larga quanto la pagina o
+   divisa in due:
+
+     Stanotte                         [ tutta la riga ]
+     Che cielo avrai | Prossimi       [ due colonne ]
+     Cosa guardare                    [ tutta la riga, le parti affiancate ]
+
+   "Cosa guardare" è il più lungo dei quattro e proprio per questo va largo:
+   affiancando le sue tre parti, nessun riquadro resta alto il doppio degli
+   altri, e non c'è più niente da incastrare.
+
+   Il posto di ognuno è scritto a mano, riga e colonna. Lasciandoli scorrere
+   da soli finivano nell'ordine del documento — meteo, guardare, prossimi —
+   e siccome quello di mezzo occupa tutta la riga, gli altri due restavano
+   uno sopra l'altro nella prima colonna con mezza pagina vuota accanto.
+   Qui le due schede corte vanno affiancate, ed è l'unico modo per non
+   lasciare buchi: i due riquadri bassi condividono la riga, quello alto se
+   la prende tutta. */
 @media (min-width: 900px) {
   .griglia-stasera { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-  .griglia-stasera > [data-blocco="riepilogo"],
-  .griglia-stasera > [data-blocco="prossimi"] { grid-column: 1 / -1; }
+  .griglia-stasera > [data-blocco="riepilogo"] { grid-column: 1 / -1; grid-row: 1; }
+  .griglia-stasera > [data-blocco="cielo"]     { grid-column: 1; grid-row: 2; }
+  .griglia-stasera > [data-blocco="prossimi"]  { grid-column: 2; grid-row: 2; }
+  .griglia-stasera > [data-blocco="guardare"]  { grid-column: 1 / -1; grid-row: 3; }
+
   /* Quando un blocco è largo quanto la pagina, il suo elenco si sdoppia */
   .griglia-stasera > [data-blocco="prossimi"] .griglia-elenco {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
   }
-}
 
-@media (min-width: 1440px) {
-  .griglia-stasera { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  /* Con tre colonne "Prossimi appuntamenti" torna una colonna sua */
-  .griglia-stasera > [data-blocco="prossimi"] { grid-column: auto; }
-  .griglia-stasera > [data-blocco="prossimi"] .griglia-elenco { grid-template-columns: 1fr; }
+  /* Le parti affiancate non hanno bisogno del filo che le separa quando
+     erano una sotto l'altra: a dividerle bastano lo spazio e l'etichetta. */
+  .griglia-stasera > [data-blocco="guardare"] .parti-gruppo {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 24px;
+  }
+  .griglia-stasera > [data-blocco="guardare"] .parte-gruppo + .parte-gruppo {
+    border-top: none;
+    padding-top: 0;
+  }
 }
 
 /* --- Diario: statistiche di lato, osservazioni al centro --- */
@@ -4336,7 +4420,14 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
    telefoni e tablet. Su un tablet da 10 pollici la fila di voci in cima
    sarebbe comunque lontana dal pollice, e la testata resta più leggera. */
 @media (max-width: 1179px) {
-  :root { --barra-inferiore: 64px; }
+  /* Quanto spazio la pagina deve lasciarle sotto. Il numero non è a occhio:
+     è la barra vera, misurata — 5px di respiro sopra, 50px di voce, 5px
+     sotto, 1px di filo — più la tacca del pollice sui telefoni che ce
+     l'hanno. Era un 64 fisso, e su un iPhone la tacca (34px) non era
+     contata: l'ultima scheda della dashboard finiva sotto la barra, e per
+     leggerla bisognava tenerla ferma col dito. Il blocco del telefono
+     girato lo faceva già bene: adesso lo fanno tutt'e due. */
+  :root { --barra-inferiore: calc(61px + env(safe-area-inset-bottom)); }
 
   .nav-principale {
     position: fixed;
@@ -4389,7 +4480,13 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
 @media (max-width: 767px),
        (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
 
-  .testata-app { padding-top: max(10px, env(safe-area-inset-top)); }
+  /* La tacca si somma al respiro, non lo sostituisce. Con `max()` il nome
+     dell'app finiva incollato all'orologio del telefono quando l'app è
+     installata sulla schermata iniziale (lì la barra di stato la copre la
+     pagina, e l'inset vale 47-59px): il massimo fra 10 e 59 è 59, e sopra
+     al titolo non restava niente. Nel browser l'inset è zero e i 10px di
+     prima restano quelli. */
+  .testata-app { padding-top: calc(10px + env(safe-area-inset-top)); }
 
   /* --- Ricerca: i filtri stanno chiusi finché non servono --- */
   .filtri-avanzati.filtri-chiusi { display: none; }
@@ -4407,8 +4504,36 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
   /* Le targhette (categoria, strumento) vanno a capo intere, non a metà
      parola: "A occhio nudo" spezzato su due righe non si legge */
   .griglia-schede article span.inline-flex { white-space: nowrap; }
-  .valore-riepilogo { font-size: 1.22rem; }
+  /* Il numero grande si misura sulla colonna che ha, non su un valore fisso:
+     con due riquadri per riga, "illuminata al 78%" a 1,22rem andava a capo
+     su ogni telefono sotto i 400px — e un dato che va a capo non è più un
+     colpo d'occhio. Il carattere dell'app potrebbe anche non arrivare mai
+     (Inter viene dalla rete), quindi la misura deve reggere con quello di
+     sistema, che è più largo. */
+  .valore-riepilogo { font-size: clamp(1rem, 4vw, 1.22rem); }
   .etichetta-riepilogo { font-size: 0.64rem; letter-spacing: 0.06em; }
+
+  /* I riquadri col numero grande, due per riga. Il minimo di 220px era
+     pensato per lo schermo largo: dentro a una scheda del telefono non ce ne
+     stanno due, e il colpo d'occhio di "Stanotte" diventava una colonna alta
+     mezzo schermo. A 140px ce ne stanno due anche sul telefono più stretto. */
+  .griglia-sintesi {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+    gap: 8px;
+  }
+  /* Con due riquadri per riga i sedici pixel di bordo interno diventano
+     trentadue tolti alla riga di testo, e "22:41 → 04:58" andava a capo in
+     mezzo alla freccia. Dodici bastano. */
+  .scheda-riepilogo { padding: 12px; }
+  /* Il dispari rimasto solo in fondo si prende la riga: mezza riga vuota
+     accanto a "Prossimo evento" sembra un pezzo che non è arrivato. */
+  .griglia-sintesi > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+  /* Le parti dei riquadri raggruppati si stringono un po': il filo che le
+     separa basta già a tenerle distinte. */
+  .parti-gruppo { gap: 14px; }
+  .parte-gruppo + .parte-gruppo { padding-top: 14px; }
+  .testa-gruppo { margin-bottom: 12px; }
 
   /* --- Tasti comodi da toccare: mai sotto i 38px di altezza utile --- */
   /* I comandi del cielo restano fuori: la loro misura la decidono da sé, ed
@@ -4607,8 +4732,21 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
    testo lunghe quanto lo schermo — larghi e bassi si legge peggio, non meglio. */
 @media (orientation: landscape) and (max-height: 560px) and (pointer: coarse) and (min-width: 700px) {
   .griglia-stasera { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-  .griglia-stasera > [data-blocco="riepilogo"],
-  .griglia-stasera > [data-blocco="prossimi"] { grid-column: 1 / -1; }
+  .griglia-stasera > [data-blocco="riepilogo"] { grid-column: 1 / -1; grid-row: 1; }
+  .griglia-stasera > [data-blocco="cielo"]     { grid-column: 1; grid-row: 2; }
+  .griglia-stasera > [data-blocco="prossimi"]  { grid-column: 2; grid-row: 2; }
+  .griglia-stasera > [data-blocco="guardare"]  { grid-column: 1 / -1; grid-row: 3; }
+
+  /* Come sullo schermo grande: il riquadro più lungo va largo e mette le sue
+     parti in fila, così nessuna colonna resta alta il doppio dell'altra */
+  .griglia-stasera > [data-blocco="guardare"] .parti-gruppo {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    gap: 18px;
+  }
+  .griglia-stasera > [data-blocco="guardare"] .parte-gruppo + .parte-gruppo {
+    border-top: none;
+    padding-top: 0;
+  }
 }
 
 /* ------------------------------------------------------------ PUNTATORI     */
