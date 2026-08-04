@@ -81,6 +81,13 @@ const TERRENO_ALT_MAX = 60;
 // senso riscaricarlo perché ci si è spostati di un isolato.
 const TERRENO_RAGGIO_VALIDO_KM = 2;
 
+// Quanti posti si tengono da parte. Uno solo non basta più da quando il
+// planetario può andare a guardare il cielo di un'altra città: si va a
+// vedere Bolzano, si torna a casa, e casa andrebbe riscaricata da capo —
+// sei richieste per delle colline che non si sono mosse. Quattro coprono
+// casa, il posto delle osservazioni e le due città guardate per curiosità.
+const TERRENO_POSTI_SALVATI = 4;
+
 // Quanto sotto si scende prima di dire «qui è acqua». I modelli del suolo
 // non dicono dov'è il mare: ci mettono uno zero e via. Ma uno zero ripetuto
 // per dieci campioni in fila, a dieci, venti, quaranta chilometri, non è una
@@ -104,6 +111,22 @@ const TERRENO_SOGLIA_COLLINA_M = 120;
 // I quattro paesaggi. L'ordine è quello dei codici salvati: non
 // riordinarli, o un profilo salvato ieri racconta un posto diverso.
 const TERRENO_TIPI = ['mare', 'pianura', 'collina', 'montagna'];
+
+// Di quanti gradi si sfuma il passaggio da un paesaggio all'altro.
+//
+// I settori campionati sono larghi 7°30′, e presi così come sono danno
+// confini netti: il mare finisce e comincia la montagna dentro un grado,
+// con uno spigolo che si vede da lontano ed è l'unica cosa che l'occhio
+// guarda. Ma un confine netto sull'orizzonte non esiste — nemmeno la costa
+// è netta, perché la costa è dove finisce l'acqua, non dove finisce il
+// colore. Nove gradi di sfumatura (poco più di un settore) bastano a far
+// sparire lo spigolo senza impastare tutto — e la larghezza conta anche
+// per un'altra ragione: la velatura del disegno cambia di un pezzo a ogni
+// grado, e il pezzo è tanto più piccolo quanto la campana è larga. A nove
+// gradi il salto era del dieci per cento per grado, abbastanza da vedersi
+// come una scaletta di bande verticali; a dodici scende sotto l'otto, e a
+// quel punto la scaletta sparisce sotto al rumore del gradiente.
+const TERRENO_SFUMA_GRADI = 12;
 const TERRENO_MARE = 0, TERRENO_PIANURA = 1, TERRENO_COLLINA = 2, TERRENO_MONTAGNA = 3;
 
 
@@ -118,6 +141,7 @@ const terreno = {
   quota: null,            // quota del suolo sotto l'osservatore, in metri
   profilo: null,          // Float32Array(361): l'altezza dell'orizzonte, grado per grado
   tipi: null,             // Uint8Array(361): che paesaggio c'è in quella direzione
+  miscela: null,          // Float32Array(361×4): gli stessi tipi, ma sfumati fra loro
   quando: 0,
   motivo: '',             // perché non c'è, quando non c'è
   acceso: true
@@ -235,7 +259,9 @@ function terrenoTipoDiDirezione(quote, i, quotaCasa, cresta) {
 
 // I tipi non si interpolano: fra il mare e la montagna non c'è una via di
 // mezzo, c'è la costa. Si prende il settore più vicino, e il confine cade
-// a metà strada fra due direzioni campionate.
+// a metà strada fra due direzioni campionate. Questa è la risposta secca —
+// «lì c'è il mare» — e serve a chi deve decidere qualcosa: per esempio che
+// sull'acqua non si disegnano alberi.
 function terrenoTipiPerGrado(tipi) {
   const p = new Uint8Array(361);
   const n = tipi.length;
@@ -243,6 +269,38 @@ function terrenoTipiPerGrado(tipi) {
     p[g] = tipi[Math.round((g % 360) / TERRENO_PASSO_AZ) % n];
   }
   return p;
+}
+
+// La stessa cosa, ma sfumata: per ogni grado, quanta parte di mare, di
+// pianura, di collina e di montagna c'è lì attorno. Serve al disegno, che
+// una risposta secca non la può usare — dipingere un settore di un colore
+// e quello accanto di un altro fa comparire dei bordi netti che non sono
+// nel paesaggio, sono nel modo in cui l'abbiamo campionato.
+//
+// È una media pesata con una campana (finestra di Hann) larga
+// TERRENO_SFUMA_GRADI da una parte e dall'altra. I pesi si sommano a uno,
+// quindi le quattro frazioni si sommano a uno: il colore che ne esce è una
+// media vera, non una sovrapposizione.
+function terrenoMiscelaPerGrado(tipiPerGrado) {
+  const n = TERRENO_TIPI.length;
+  const W = TERRENO_SFUMA_GRADI;
+  const m = new Float32Array(361 * n);
+  const pesi = [];
+  let somma = 0;
+  for (let d = -W; d <= W; d++) {
+    const w = 0.5 * (1 + Math.cos(Math.PI * d / (W + 1)));
+    pesi.push(w);
+    somma += w;
+  }
+  for (let g = 0; g < 360; g++) {
+    for (let k = 0, d = -W; d <= W; d++, k++) {
+      const gg = (((g + d) % 360) + 360) % 360;
+      m[g * n + tipiPerGrado[gg]] += pesi[k] / somma;
+    }
+  }
+  // Il 360 è il 359+1, cioè lo 0: il giro si chiude
+  for (let t = 0; t < n; t++) m[360 * n + t] = m[t];
+  return m;
 }
 
 async function terrenoCostruisci(lat, lon) {
@@ -307,26 +365,37 @@ function terrenoDistanzaKm(la1, lo1, la2, lo2) {
   return Math.hypot(dLa, dLo) * TERRENO_RAGGIO_KM;
 }
 
-function terrenoLeggiSalvato(lat, lon) {
+function terrenoArchivio() {
   try {
     const v = JSON.parse(localStorage.getItem(CHIAVE_TERRENO) || 'null');
-    if (!v || !Array.isArray(v.creste) || v.creste.length !== TERRENO_DIREZIONI) return null;
-    // I profili salvati prima che esistessero i paesaggi hanno le creste ma
-    // non i tipi: si buttano e si riscaricano. Sono sei richieste, e senza
-    // i tipi il mare si disegnerebbe col prato.
-    if (!Array.isArray(v.tipi) || v.tipi.length !== TERRENO_DIREZIONI) return null;
-    if (terrenoDistanzaKm(lat, lon, v.lat, v.lon) > TERRENO_RAGGIO_VALIDO_KM) return null;
-    return v;
-  } catch (e) {
-    return null;
-  }
+    // I salvataggi vecchi tenevano un posto solo, scritto in piano, e non
+    // avevano i paesaggi: si buttano e si riscaricano. Sono sei richieste,
+    // e senza i tipi il mare si disegnerebbe col prato.
+    if (v && Array.isArray(v.posti)) return v.posti;
+  } catch (e) { /* niente storage, o roba illeggibile */ }
+  return [];
+}
+
+function terrenoPostoValido(v) {
+  return !!v && typeof v.lat === 'number' &&
+    Array.isArray(v.creste) && v.creste.length === TERRENO_DIREZIONI &&
+    Array.isArray(v.tipi) && v.tipi.length === TERRENO_DIREZIONI;
+}
+
+function terrenoLeggiSalvato(lat, lon) {
+  return terrenoArchivio().find(v => terrenoPostoValido(v) &&
+    terrenoDistanzaKm(lat, lon, v.lat, v.lon) <= TERRENO_RAGGIO_VALIDO_KM) || null;
 }
 
 function terrenoSalva(lat, lon, dati) {
   try {
-    localStorage.setItem(CHIAVE_TERRENO, JSON.stringify({
-      lat, lon, quota: dati.quota, creste: dati.creste, tipi: dati.tipi, quando: Date.now()
-    }));
+    // Il posto nuovo va in cima, e quello che occupava lo stesso pezzo di
+    // mondo se ne va: se no dopo dieci aperture l'archivio è pieno di copie
+    // della stessa collina.
+    const posti = terrenoArchivio().filter(v => terrenoPostoValido(v) &&
+      terrenoDistanzaKm(lat, lon, v.lat, v.lon) > TERRENO_RAGGIO_VALIDO_KM);
+    posti.unshift({ lat, lon, quota: dati.quota, creste: dati.creste, tipi: dati.tipi, quando: Date.now() });
+    localStorage.setItem(CHIAVE_TERRENO, JSON.stringify({ posti: posti.slice(0, TERRENO_POSTI_SALVATI) }));
   } catch (e) { /* storage pieno: pazienza, si riscarica */ }
 }
 
@@ -336,6 +405,7 @@ function terrenoDimentica() {
   terreno.stato = 'niente';
   terreno.profilo = null;
   terreno.tipi = null;
+  terreno.miscela = null;
   terreno.lat = terreno.lon = null;
 }
 
@@ -350,6 +420,7 @@ function terrenoApplica(lat, lon, dati, sorgente) {
   terreno.quota = dati.quota;
   terreno.profilo = terrenoInterpola(dati.creste);
   terreno.tipi = terrenoTipiPerGrado(dati.tipi);
+  terreno.miscela = terrenoMiscelaPerGrado(terreno.tipi);
   terreno.stato = 'pronto';
   terreno.motivo = '';
   terreno.quando = Date.now();
@@ -359,22 +430,35 @@ function terrenoApplica(lat, lon, dati, sorgente) {
   terrenoAggiornaPannello();
 }
 
-// Si chiama ogni volta che la posizione può essere cambiata: all'apertura
-// del planetario e dopo `skyImpostaPosizione`. Se il profilo che c'è vale
-// ancora per dove siamo, non fa niente.
+// Da che punto si sta guardando il cielo, che non è sempre casa: nel
+// pannello «Tempo e luogo» del planetario si può andare a vedere il cielo
+// di un'altra città, e da lì in poi il terreno è il suo. Prima non lo era,
+// e si finiva a guardare il cielo di Bolzano con davanti le colline di
+// Genova — che è peggio che non averne nessuna, perché sembra vero.
+function terrenoLuogo() {
+  const vista = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
+  if (vista && typeof vista.lat === 'number' && typeof vista.lon === 'number') return vista;
+  const casa = typeof luogoCorrente === 'function' ? luogoCorrente() : null;
+  return (casa && typeof casa.lat === 'number' && typeof casa.lon === 'number') ? casa : null;
+}
+
+// Si chiama ogni volta che il luogo può essere cambiato: all'apertura del
+// planetario, dopo `skyImpostaPosizione` e a ogni cambio del luogo di
+// visita. Se il profilo che c'è vale ancora per dove siamo, non fa niente.
 function terrenoCarica(forza) {
   if (!terreno.acceso) return Promise.resolve(false);
 
-  const luogo = typeof luogoCorrente === 'function' ? luogoCorrente() : null;
-  if (!luogo || typeof luogo.lat !== 'number' || typeof luogo.lon !== 'number') {
-    return Promise.resolve(false);
-  }
+  const luogo = terrenoLuogo();
+  if (!luogo) return Promise.resolve(false);
   const lat = luogo.lat, lon = luogo.lon;
 
   if (!forza && terreno.stato === 'pronto' && terreno.lat !== null &&
       terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) <= TERRENO_RAGGIO_VALIDO_KM) {
     return Promise.resolve(true);
   }
+  // C'è già una richiesta in volo. Se è per questo stesso posto, si aspetta
+  // quella; se nel frattempo il luogo è cambiato di nuovo (due città scelte
+  // in fretta), la si lascia finire e si riparte dopo — nel `finally`.
   if (terreno.stato === 'in-corso') return terreno.promessa || Promise.resolve(false);
 
   if (!forza) {
@@ -404,7 +488,15 @@ function terrenoCarica(forza) {
       terrenoAggiornaPannello();
       return false;
     })
-    .finally(() => { terreno.promessa = null; });
+    .finally(() => {
+      terreno.promessa = null;
+      // Il luogo è cambiato mentre scaricavamo? Allora quello che è appena
+      // arrivato è il terreno di un posto che non si sta più guardando.
+      const ora = terrenoLuogo();
+      if (ora && terrenoDistanzaKm(ora.lat, ora.lon, lat, lon) > TERRENO_RAGGIO_VALIDO_KM) {
+        terrenoCarica();
+      }
+    });
 
   return terreno.promessa;
 }
@@ -436,6 +528,21 @@ function terrenoTipo(az) {
   if (!terrenoDisponibile() || !terreno.tipi) return null;
   const x = (((az % 360) + 360) % 360);
   return TERRENO_TIPI[terreno.tipi[Math.round(x) % 360]] || null;
+}
+
+// Quanta parte di ogni paesaggio c'è guardando da quella parte: quattro
+// frazioni che si sommano a uno. È la versione da disegno di `terrenoTipo`,
+// e le due rispondono a domande diverse — questa dice «tre quarti mare e un
+// quarto collina», che è quello che serve per scegliere un colore che non
+// faccia lo scalino con quello del grado accanto.
+function terrenoMiscela(az) {
+  if (!terrenoDisponibile() || !terreno.miscela) return null;
+  const n = TERRENO_TIPI.length;
+  const i = (Math.round((((az % 360) + 360) % 360)) % 360) * n;
+  return {
+    mare: terreno.miscela[i], pianura: terreno.miscela[i + 1],
+    collina: terreno.miscela[i + 2], montagna: terreno.miscela[i + 3]
+  };
 }
 
 // Il punto più alto e quello più basso del giro, e quanta parte
@@ -693,25 +800,30 @@ function cittaDaElencoInterno(lat, lon) {
 
 // --- Tenersele --------------------------------------------------------
 
-function cittaLeggiSalvate(lat, lon) {
+function cittaArchivio() {
   try {
     const v = JSON.parse(localStorage.getItem(CHIAVE_CITTA) || 'null');
-    if (!v || !Array.isArray(v.elenco) || typeof v.lat !== 'number') return null;
-    if (terrenoDistanzaKm(lat, lon, v.lat, v.lon) > CITTA_RAGGIO_VALIDO_KM) return null;
-    return v;
-  } catch (e) {
-    return null;
-  }
+    if (v && Array.isArray(v.posti)) return v.posti;
+  } catch (e) { /* niente storage, o roba illeggibile */ }
+  return [];
+}
+
+function cittaLeggiSalvate(lat, lon) {
+  return cittaArchivio().find(v => v && Array.isArray(v.elenco) && typeof v.lat === 'number' &&
+    terrenoDistanzaKm(lat, lon, v.lat, v.lon) <= CITTA_RAGGIO_VALIDO_KM) || null;
 }
 
 function cittaSalva(lat, lon, grezze, fonte) {
   try {
-    localStorage.setItem(CHIAVE_CITTA, JSON.stringify({
+    const posti = cittaArchivio().filter(v => v && typeof v.lat === 'number' &&
+      terrenoDistanzaKm(lat, lon, v.lat, v.lon) > CITTA_RAGGIO_VALIDO_KM);
+    posti.unshift({
       lat, lon, fonte, quando: Date.now(),
       // Nomi corti e coordinate a quattro decimali: un centinaio di paesi
       // stanno in una decina di kilobyte
       elenco: grezze.map(c => ({ n: c.nome, a: +c.lat.toFixed(4), o: +c.lon.toFixed(4), p: c.abitanti }))
-    }));
+    });
+    localStorage.setItem(CHIAVE_CITTA, JSON.stringify({ posti: posti.slice(0, TERRENO_POSTI_SALVATI) }));
   } catch (e) { /* storage pieno: pazienza, si riscarica */ }
 }
 
@@ -739,10 +851,8 @@ function cittaApplica(lat, lon, grezze, fonte) {
 }
 
 function cittaCarica(forza) {
-  const luogo = typeof luogoCorrente === 'function' ? luogoCorrente() : null;
-  if (!luogo || typeof luogo.lat !== 'number' || typeof luogo.lon !== 'number') {
-    return Promise.resolve(false);
-  }
+  const luogo = terrenoLuogo();
+  if (!luogo) return Promise.resolve(false);
   const lat = luogo.lat, lon = luogo.lon;
 
   if (!forza && citta.stato === 'pronto' && citta.lat !== null &&
@@ -788,7 +898,13 @@ function cittaCarica(forza) {
       terrenoAggiornaPannello();
       return false;
     })
-    .finally(() => { citta.promessa = null; });
+    .finally(() => {
+      citta.promessa = null;
+      const ora = terrenoLuogo();
+      if (ora && terrenoDistanzaKm(ora.lat, ora.lon, lat, lon) > CITTA_RAGGIO_VALIDO_KM) {
+        cittaCarica();
+      }
+    });
 
   return citta.promessa;
 }
