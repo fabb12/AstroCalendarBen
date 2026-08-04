@@ -246,7 +246,8 @@ const ICONE_VISTE = {
   agenda:     'lista',
   cielo:      'stella',
   telescopio: 'telescopio',
-  diario:     'quaderno'
+  diario:     'quaderno',
+  didattica:  'bersaglio'
 };
 
 // La sezione mostrata in questo momento, per ridisegnarla se cambia lo schermo
@@ -6013,7 +6014,8 @@ const VISTE = [
   { nome: 'agenda',     btn: 'btn-vista-agenda',     vista: 'vista-agenda' },
   { nome: 'cielo',      btn: 'btn-vista-skymap',     vista: 'vista-skymap' },
   { nome: 'telescopio', btn: 'btn-vista-telescopio', vista: 'vista-telescopio' },
-  { nome: 'diario',     btn: 'btn-vista-diario',     vista: 'vista-diario' }
+  { nome: 'diario',     btn: 'btn-vista-diario',     vista: 'vista-diario' },
+  { nome: 'didattica',  btn: 'btn-vista-didattica',  vista: 'vista-didattica' }
 ];
 
 // Mostra una sola vista alla volta e aggiorna lo stile dei pulsanti
@@ -6065,6 +6067,13 @@ function mostraVista(nome) {
   if (nome === 'agenda' && agendaDaRicostruire) {
     agendaDaRicostruire = false;
     costruisciAgenda();
+  }
+
+  // Didattica: avvio/spegnimento del loop e dei canvas
+  if (nome === 'didattica') {
+    if (typeof didatticaAvvia === 'function') didatticaAvvia();
+  } else {
+    if (typeof didatticaSpegni === 'function') didatticaSpegni();
   }
 }
 
