@@ -2294,8 +2294,20 @@ main { padding-bottom: calc(clamp(24px, 3vw, 56px) + var(--barra-inferiore)); }
 
 /* ------------------------------------------------------------- GRIGLIE      */
 /* Una manciata di griglie riusabili: cambiano da sole con la larghezza,
-   senza bisogno di una regola diversa per ogni vista. */
-.griglia-vista   { display: grid; gap: var(--passo); align-content: start; }
+   senza bisogno di una regola diversa per ogni vista.
+
+   `minmax(0, 1fr)` e non la colonna implicita: una colonna di griglia,
+   lasciata a sé, è larga almeno quanto il suo contenuto **minimo**, e c'è
+   un contenuto che di minimo ne ha parecchio — la tabella del Clear Sky
+   Chart, trenta colonne di ore, settecento pixel. Il suo riquadro ha
+   `overflow-x: auto` proprio per tenerla dentro e farla scorrere, ma non
+   serviva a niente: era la colonna della vista a crescere fino a
+   contenerla, e con lei tutte le schede. Su un telefono da 390 pixel la
+   dashboard diventava larga 760 — ogni riquadro il doppio dello schermo,
+   la pagina da scorrere di lato, e le previsioni erano l'unica cosa
+   servita bene. Con lo zero come minimo la colonna torna a misurarsi sullo
+   schermo, e a scorrere è la tabella, da sola, dentro al suo riquadro. */
+.griglia-vista   { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--passo); align-content: start; }
 .griglia-elenco  { display: grid; gap: 8px; align-content: start; }
 
 /* Le schedine con un numero grande (da che ora è buio, quanta Luna c'è…) */
@@ -2438,50 +2450,40 @@ main { padding-bottom: calc(clamp(24px, 3vw, 56px) + var(--barra-inferiore)); }
 .testa-parte .titolo-parte { margin-bottom: 0; }
 .testa-parte + .testo-sotto-titolo { margin-top: 8px; }
 
-/* --- Stasera: tre fasce, non sei riquadri da incastrare ---
-   Con sei riquadri di altezza qualunque le colonne si riempivano a caso e
-   sotto al più corto restava un buco alto mezzo schermo (una griglia non è
-   una muratura: le righe le detta il riquadro più alto). Ora i riquadri
-   sono quattro e stanno in tre fasce, ognuna larga quanto la pagina o
-   divisa in due:
+/* --- Stasera: a crescere in larghezza, non in altezza ---
+   Prima i quattro riquadri stavano in tre fasce, con la riga di mezzo
+   divisa in due colonne, e il posto di ognuno era scritto a mano. Era la
+   cura sbagliata per il male giusto. Il male: su uno schermo largo la
+   dashboard restava lunga 2.660 pixel — quanto su un telefono — con due
+   buchi grossi come mezzo schermo, 475 pixel sotto "Che cielo avrai" e 700
+   sotto "Gli oggetti di stanotte". La cura sbagliata: spostare i riquadri.
+   Una griglia non è una muratura — le righe le detta il riquadro più alto —
+   e finché quello che c'è dentro cresce *solo* in altezza il buco si
+   riforma comunque li si metta.
 
-     Stanotte                         [ tutta la riga ]
-     Che cielo avrai | Prossimi       [ due colonne ]
-     Cosa guardare                    [ tutta la riga, le parti affiancate ]
+   Quello che non si adattava allo schermo non erano i riquadri: erano gli
+   elenchi. Prossimi appuntamenti, oggetti di stanotte, passaggi delle
+   stazioni: tutti e tre una colonna sola, larga uno e alta quanto le voci
+   che aveva, su un telefono come su un monitor da 27 pollici.
 
-   "Cosa guardare" è il più lungo dei quattro e proprio per questo va largo:
-   affiancando le sue parti — gli oggetti di stanotte e le stazioni
-   spaziali — nessun riquadro resta alto il doppio degli altri, e non c'è
-   più niente da incastrare.
+   Quindi: i riquadri restano larghi quanto la pagina — uno sotto l'altro,
+   nell'ordine in cui si leggono — e sono gli elenchi a sdoppiarsi da sé.
+   Due voci per riga su un tablet, tre o quattro su un monitor. Nessuna
+   colonna da pareggiare, quindi nessun buco possibile: la dashboard passa
+   da 2.660 pixel a poco più di 1.500, e la larghezza in più viene spesa
+   dove serve — le schede restano leggibili e se ne vedono di più.
 
-   Il posto di ognuno è scritto a mano, riga e colonna. Lasciandoli scorrere
-   da soli finivano nell'ordine del documento — meteo, guardare, prossimi —
-   e siccome quello di mezzo occupa tutta la riga, gli altri due restavano
-   uno sopra l'altro nella prima colonna con mezza pagina vuota accanto.
-   Qui le due schede corte vanno affiancate, ed è l'unico modo per non
-   lasciare buchi: i due riquadri bassi condividono la riga, quello alto se
-   la prende tutta. */
-@media (min-width: 900px) {
-  .griglia-stasera { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-  .griglia-stasera > [data-blocco="riepilogo"] { grid-column: 1 / -1; grid-row: 1; }
-  .griglia-stasera > [data-blocco="cielo"]     { grid-column: 1; grid-row: 2; }
-  .griglia-stasera > [data-blocco="prossimi"]  { grid-column: 2; grid-row: 2; }
-  .griglia-stasera > [data-blocco="guardare"]  { grid-column: 1 / -1; grid-row: 3; }
-
-  /* Quando un blocco è largo quanto la pagina, il suo elenco si sdoppia */
-  .griglia-stasera > [data-blocco="prossimi"] .griglia-elenco {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
-  }
-
-  /* Le parti affiancate non hanno bisogno del filo che le separa quando
-     erano una sotto l'altra: a dividerle bastano lo spazio e l'etichetta. */
-  .griglia-stasera > [data-blocco="guardare"] .parti-gruppo {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-    gap: 24px;
-  }
-  .griglia-stasera > [data-blocco="guardare"] .parte-gruppo + .parte-gruppo {
-    border-top: none;
-    padding-top: 0;
+   `auto-fit` e non `auto-fill`: quando le voci sono meno delle colonne che
+   ci starebbero (una serata con due soli bersagli) le colonne vuote
+   spariscono e le schede si allargano, invece di restare due francobolli
+   in cima a una riga vuota. E `min(100%, …)` tiene la voce dentro al suo
+   riquadro anche quando il riquadro è più stretto del minimo. */
+@media (min-width: 700px) {
+  .griglia-stasera .griglia-elenco,
+  .griglia-stasera .elenco-migliori {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    align-content: start;
   }
 }
 
@@ -4794,26 +4796,16 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
   #skymap-btn-avvia { padding: 9px 22px; }
 }
 
-/* Girato c'è larghezza da spendere: "Stasera" va a due colonne già da 700px,
-   senza aspettare i 900 della regola generale. Su uno schermo alto 390 pixel
-   una colonna sola vuol dire scorrere per tutto il contenuto, con righe di
-   testo lunghe quanto lo schermo — larghi e bassi si legge peggio, non meglio. */
+/* Girato c'è larghezza da spendere e altezza da risparmiare: su uno schermo
+   alto 390 pixel ogni riga guadagnata è un ottavo di schermata. Gli elenchi
+   di "Stasera" si sdoppiano già dai 700 della regola generale, ma qui il
+   minimo della scheda scende a 240: fra i due margini e i bordi del
+   riquadro, 844 pixel di larghezza ne lasciano dentro 760, e con 280 di
+   minimo ci starebbero due colonne dove ce ne stanno tre. */
 @media (orientation: landscape) and (max-height: 560px) and (pointer: coarse) and (min-width: 700px) {
-  .griglia-stasera { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-  .griglia-stasera > [data-blocco="riepilogo"] { grid-column: 1 / -1; grid-row: 1; }
-  .griglia-stasera > [data-blocco="cielo"]     { grid-column: 1; grid-row: 2; }
-  .griglia-stasera > [data-blocco="prossimi"]  { grid-column: 2; grid-row: 2; }
-  .griglia-stasera > [data-blocco="guardare"]  { grid-column: 1 / -1; grid-row: 3; }
-
-  /* Come sullo schermo grande: il riquadro più lungo va largo e mette le sue
-     parti in fila, così nessuna colonna resta alta il doppio dell'altra */
-  .griglia-stasera > [data-blocco="guardare"] .parti-gruppo {
+  .griglia-stasera .griglia-elenco,
+  .griglia-stasera .elenco-migliori {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-    gap: 18px;
-  }
-  .griglia-stasera > [data-blocco="guardare"] .parte-gruppo + .parte-gruppo {
-    border-top: none;
-    padding-top: 0;
   }
 }
 
@@ -4868,6 +4860,14 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
   color: var(--testo-2);
   font-weight: 500;
   white-space: nowrap;
+  /* Larga quanto il nome più lungo e non un pixel di più. `width: 1%` è il
+     modo di dirlo a una tabella: chiedere l'un percento a una colonna che
+     non può stare sotto al suo contenuto vuol dire "dai il resto agli
+     altri". Senza, quando la tabella è più stretta del riquadro che la
+     tiene lo spazio avanzato se lo prendeva tutto questa colonna — su un
+     monitor era una fascia vuota da seicento pixel, con la griglia
+     schiacciata contro il bordo destro. */
+  width: 1%;
   /* La colonna dei nomi resta ferma mentre le ore scorrono: senza, dopo
      due dita di scorrimento non si sa più che riga si sta guardando. */
   position: sticky;
@@ -4891,6 +4891,7 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
   z-index: 2;
   text-align: right;
   padding-right: 8px;
+  width: 1%;                 /* la stessa colonna dei nomi, in testa */
 }
 
 .griglia-meteo .giorno-meteo {

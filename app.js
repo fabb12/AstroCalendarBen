@@ -435,6 +435,15 @@ function sorvegliaIstruzioniCielo() {
 function ridisegnaPerDispositivo() {
   if (vistaAttuale === 'stasera') {
     costruisciStaseraProssimi();
+    // Anche i bersagli di stanotte e la griglia del meteo hanno una misura
+    // che dipende dallo schermo — `quanto(6, 8, 10)` bersagli in
+    // aggiornaStaseraMigliori, `quanto(30, 44, 60)` ore in
+    // aggiornaStaseraMeteoAstro — e da qui non ci passava nessuno: chi
+    // apriva l'app col telefono e poi allargava la finestra si teneva sei
+    // bersagli e trenta ore per sempre, mentre gli appuntamenti qui sopra
+    // passavano da cinque a dodici. Tre elenchi nella stessa pagina che
+    // leggevano due schermi diversi.
+    if (typeof aggiornaStaseraNuovo === 'function') aggiornaStaseraNuovo();
     // I passaggi si riscrivono solo se i dati orbitali sono già arrivati:
     // altrimenti cancelleremmo il "Caricamento…" con un "non disponibile"
     if (Object.keys(satTle).length) mostraPassaggiSatelliti();
