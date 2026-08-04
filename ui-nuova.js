@@ -34,8 +34,17 @@ function aggiornaStaseraMeteoAstro() {
   // finestra migliore, subito sopra. Da quando le due parti del riquadro
   // sono una sola, i due messaggi di "dati non ancora arrivati" finivano
   // uno sotto l'altro a dire la stessa cosa con parole diverse.
+  // Trenta ore erano trenta su qualunque schermo, e la tabella si allargava
+  // lo stesso fino a riempire il riquadro: le caselle restano larghe venti
+  // pixel (gliel'ho scritto io) e tutto lo spazio avanzato se lo prendeva
+  // la colonna dei nomi, che su un monitor diventava una fascia vuota da
+  // seicento pixel con il grafico schiacciato a destra. La larghezza in più
+  // va spesa in ore, non in vuoto: due giorni e mezzo di previsioni dove ci
+  // stanno, trenta ore sul telefono. Il massimo è 72 — tanto ne chiediamo
+  // (METEO_ASTRO_GIORNI), e oltre i tre giorni non varrebbero niente.
+  const quante = typeof quanto === 'function' ? quanto(30, 44, 60) : 30;
   const pronto = !!(meteoAstro && meteoAstro.ore && meteoAstro.ore.length);
-  griglia.innerHTML = pronto ? meteoGrigliaHtml(30) : '';
+  griglia.innerHTML = pronto ? meteoGrigliaHtml(quante) : '';
 
   if (finestra) {
     const f = meteoFinestraMigliore();
