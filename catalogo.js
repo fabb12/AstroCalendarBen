@@ -759,11 +759,16 @@ function catDisegnaStelle(ctx, base, focale) {
     // La proiezione, srotolata: skyProietta() farebbe la stessa cosa ma
     // costruendo un oggetto per stella — cinquemila oggetti per
     // fotogramma che il raccoglitore di memoria deve poi buttare via.
+    // Srotolata sì, ma **la stessa**: è stereografica come quella di
+    // app.js, cioè si divide per `(1+d)/2` e non per `d`. Se le due
+    // formule divergono le stelle si staccano dalle figure e dai pianeti,
+    // e il cielo non torna più.
     const d = x * fr[0] + y * fr[1] + z * fr[2];
-    if (d <= 0.001) continue;
-    const px = cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / d);
+    if (d <= SKY_D_MIN) continue;
+    const den = (1 + d) * 0.5;
+    const px = cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / den);
     if (px < -4 || px > L + 4) continue;
-    const py = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / d);
+    const py = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / den);
     if (py < -4 || py > A + 4) continue;
 
     const r = catRaggioStella(m, limite);
@@ -874,9 +879,10 @@ function catDisegnaFigure(ctx, base, focale) {
         // Un punto sotto l'orizzonte interrompe la spezzata: il tratto
         // che ci arriva e quello che ne riparte non si disegnano, e la
         // figura esce da terra dove esce davvero.
-        const punto = (d > 0.001 && z >= 0)
-          ? { px: cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / d),
-              py: cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / d) }
+        const den = (1 + d) * 0.5;
+        const punto = (d > SKY_D_MIN && z >= 0)
+          ? { px: cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / den),
+              py: cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / den) }
           : null;
 
         if (precedente && punto) {
@@ -900,9 +906,10 @@ function catDisegnaFigure(ctx, base, focale) {
     // Il nome sta nel baricentro della figura: se quello è sotto
     // l'orizzonte, la figura è per la gran parte tramontata e il nome
     // finirebbe sul terreno da solo.
-    if (d <= 0.001 || z < 0) return;
-    const px = cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / d);
-    const py = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / d);
+    if (d <= SKY_D_MIN || z < 0) return;
+    const den = (1 + d) * 0.5;
+    const px = cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / den);
+    const py = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / den);
     if (px < 0 || px > L || py < 0 || py > A) return;
     etichette.push({ nome: fig.nome, px, py });
   });
@@ -1026,9 +1033,10 @@ function catStellaNelPunto(px, py, base, focale) {
     if (z < 0) continue;
 
     const d = x * fr[0] + y * fr[1] + z * fr[2];
-    if (d <= 0.001) continue;
-    const sx = cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / d);
-    const sy = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / d);
+    if (d <= SKY_D_MIN) continue;
+    const den = (1 + d) * 0.5;
+    const sx = cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / den);
+    const sy = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / den);
 
     // Il bersaglio è largo quanto la stella è disegnata, più un margine
     // per il dito: una di prima grandezza si prende facile, una al limite

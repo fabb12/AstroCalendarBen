@@ -31,6 +31,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `catalogo.js` | ~980 | **Il catalogo del cielo**: 5.044 stelle, 88 costellazioni, 142 oggetti profondi, e il motore a matrice che li muove. Prefisso `cat`. |
 | `corpi-minori.js` | ~660 | **Lune di Giove, comete e asteroidi**: `JupiterMoons` e propagazione kepleriana a mano. |
 | `pianifica.js` | ~500 | **Pianificare la serata**: curva dell'altezza, migliori bersagli, profilo degli ostacoli. Prefisso `pian`/`orizzonte`. |
+| `terreno.js` | ~420 | **La forma vera del terreno attorno a casa**: quote del suolo da Open-Meteo, orizzonte per ogni direzione. Prefisso `terreno`. |
 | `meteo-astro.js` | ~510 | **Meteo da astronomo**: seeing, trasparenza, griglia Clear Sky Chart, aurora. Prefisso `meteo`/`aurora`. |
 | `eventi-extra.js` | ~435 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete. |
 | `ui-nuova.js` | ~350 | L'interfaccia di tutto quanto sopra. |
@@ -39,10 +40,10 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `dati-costellazioni.js` | ~195 | Le 88 figure IAU coi nomi italiani (24 KB). **Su richiesta.** |
 | `dati-profondo.js` | ~170 | Messier completo + NGC luminosi, 142 oggetti (29 KB). **Su richiesta.** |
 | `dati-corpi-minori.js` | ~85 | Elementi orbitali di 41 comete e 20 asteroidi (11 KB). **Su richiesta.** |
-| `verifica.html` | ~360 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
+| `verifica.html` | ~530 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~4.915 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v54`). |
+| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v55`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 
@@ -50,7 +51,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 
 ```
 app.js → telescopio.js → catalogo.js → corpi-minori.js
-       → pianifica.js → meteo-astro.js → eventi-extra.js → ui-nuova.js
+       → pianifica.js → terreno.js → meteo-astro.js → eventi-extra.js → ui-nuova.js
 ```
 
 Ogni file può usare quelli prima di lui; il contrario va sempre protetto con
@@ -61,13 +62,14 @@ carica `catalogo.js` da sé alla prima apertura del planetario (`apriSkymap()`).
 
 | Dove | Cosa fa |
 |---|---|
-| `apriSkymap()` | avvia `catCarica()` e `corpiMinoriCarica()` |
+| `apriSkymap()` | avvia `catCarica()`, `corpiMinoriCarica()` e `terrenoCarica()` |
 | `skyAggiornaCatalogo()` | se `catAggiornaPosizioni()` risponde, esce subito |
 | `skyDisegna()` | chiama `catDisegnaStelle()` e `catDisegnaFigure()` |
 | `skyElenco()` / `skyProfondoDiId()` | pescano anche da `catVociElenco()` e `corpiMinoriVociElenco()` |
 | `calcolaEventiIntervallo()` | chiama `aggiungiEventiExtra()` |
 | `costruisciStasera()` | chiama `aggiornaStaseraNuovo()` |
 | `skyAggiornaScheda()` | appende `schedaExtraHtml()` e `disegnaSchedaExtra()` |
+| `skyAltezzaOrizzonte()` | chiede a `terrenoAltezza()` la cresta vera, e a `orizzonteAltezza()` gli ostacoli |
 
 Se i moduli nuovi non ci sono, l'app resta esattamente quella di prima.
 
@@ -86,6 +88,7 @@ Se i moduli nuovi non ci sono, l'app resta esattamente quella di prima.
 | Endpoint | Uso | Se non risponde |
 |---|---|---|
 | `api.open-meteo.com/v1/forecast` | Meteo orario, nuvolosità, rugiada | Ultimo valore da `localStorage` |
+| `api.open-meteo.com/v1/elevation` | Quote del suolo per il terreno vero (6 richieste, una volta per luogo) | Orizzonte disegnato, come prima |
 | `geocoding-api.open-meteo.com/v1/search` | Ricerca città | Elenco città locale (offline) |
 | `celestrak.org/NORAD/elements/gp.php` | TLE dei satelliti | Niente passaggi |
 | `ipapi.co` / `ipwho.is` / `get.geojs.io` | Posizione da IP (ripiego del GPS) | Si chiede a mano |
@@ -109,7 +112,7 @@ i testi — ma resta `cielo` nel codice, nelle classi CSS (`vista-cielo`,
 | **Stasera** (default) | Cosa si vede stanotte da qui, in quattro riquadri, **e ogni cosa una volta sola**: **Stanotte** (da che ora è buio, quanta Luna c'è), **Che cielo avrai** (tutto il meteo in una parte sola: giudizio della notte, finestra migliore, griglia oraria), **Cosa guardare** (gli oggetti di stanotte — pianeti, Luna, cielo profondo e comete nella stessa classifica, ognuno col tasto **Planetario** — e i passaggi delle stazioni spaziali), **Prossimi appuntamenti** (la riga apre il planetario sulla sera dell'evento, la linguetta «Scheda» l'agenda). |
 | **Mese** | Calendario FullCalendar con gli eventi calcolati. |
 | **Agenda** | Elenco di schede ricche: da qui si vede? con che cielo? con che strumento? |
-| **Planetario** (nel codice `cielo`) | Il cielo in tempo reale: punta il telefono, oppure realtà aumentata con la fotocamera, macchina del tempo, playback, zoom fino a un quarto di grado (Luna e pianeti a grandezza vera, **con la loro faccia**: mari, bande, anelli, calotte), eclissi con corona e ombra della Terra, orizzonte con le colline, registrazione di un filmato da condividere, e il **Sistema Solare visto da fuori in 3D** — la stessa ora, ma guardata da lontano, per capire perché i pianeti stanno proprio lì. Nel pannello **Tempo e luogo** si può anche spostare il punto di vista in un'altra città: vale solo qui, la posizione dell'app non si tocca. |
+| **Planetario** (nel codice `cielo`) | Il cielo in tempo reale: punta il telefono, oppure realtà aumentata con la fotocamera, macchina del tempo, playback, zoom da 180° (grandangolo, tutto il cielo in un colpo) fino a un quarto di grado (Luna e pianeti a grandezza vera, **con la loro faccia**: mari, bande, anelli, calotte), eclissi con corona e ombra della Terra, orizzonte con le colline, registrazione di un filmato da condividere, e il **Sistema Solare visto da fuori in 3D** — la stessa ora, ma guardata da lontano, per capire perché i pianeti stanno proprio lì. Nel pannello **Tempo e luogo** si può anche spostare il punto di vista in un'altra città: vale solo qui, la posizione dell'app non si tocca. |
 | **Telescopio** | Allineamento polare, puntamento, programma della serata, manutenzione. |
 | **Diario** | Osservazioni registrate e traguardi. |
 
@@ -216,6 +219,7 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `meteoAstro` | `meteo-astro.js` | Previsioni ora per ora con seeing e trasparenza già calcolati. |
 | `aurora` | `meteo-astro.js` | Indice Kp attuale e previsto dal NOAA. |
 | `orizzonteMio` | `pianifica.js` | I sedici settori del profilo degli ostacoli. |
+| `terreno` | `terreno.js` | La forma vera del terreno: `profilo` sono i 361 gradi dell'orizzonte, `quota` l'altezza del suolo sotto i piedi, `stato` dice se è arrivato, `acceso` se lo si vuole. |
 
 ## 9. Persistenza (`localStorage`, tutte le chiavi)
 
@@ -235,6 +239,7 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `CHIAVE_CORPI_MIEI` | `astrocalendario_corpi_minori_miei` (comete e asteroidi incollati a mano) |
 | `CHIAVE_METEO_ASTRO` | `astrocalendario_meteo_astro` |
 | `CHIAVE_AURORA` | `astrocalendario_aurora` |
+| `CHIAVE_TERRENO` | `astrocalendario_terreno` (la forma del terreno attorno a casa, in `terreno.js`) |
 
 Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
@@ -247,7 +252,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
   volta sola, dentro `skyPelle`), `skyReg*` = registrazione di un momento,
   `sol*` = il Sistema Solare in 3D, `sim*` = simulazione, `tel*` = telescopio,
   `_ecl*` = interni della mappa eclissi, `lez*` = la lezione animata
-  dell'eclittica.
+  dell'eclittica, `terreno*` = la forma vera del terreno attorno a casa.
 - **Niente disegno pesante a ogni fotogramma**: tutto ciò che è complicato e
   non cambia (i mari della Luna, le bande di Giove, la corona, le nebulose)
   si dipinge una volta sola su una tela fuori schermo e poi si ricopia. Il
@@ -268,7 +273,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v54`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v55`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene
@@ -285,7 +290,7 @@ bussola. Per quelli c'è `verifica.html`:
 python3 -m http.server 8000     # poi apri localhost:8000/verifica.html
 ```
 
-Trentatré controlli contro valori noti: le coordinate di catalogo delle stelle
+Quarantasette controlli contro valori noti: le coordinate di catalogo delle stelle
 famose, il motore del cielo contro `Astronomy.Horizon()`, il raggio orbitale
 delle quattro lune di Giove, il propagatore di Keplero contro le posizioni vere
 dei pianeti, l'eclissi del 2027, il transito di Mercurio del 2032. **Va aperto da
@@ -322,7 +327,9 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | "Vedi nel planetario" (dalle schede dell'agenda, dall'elenco della settimana e da ogni riga dei **Prossimi appuntamenti** della dashboard) | `apriEventoNelPlanetario(id)` (sezione 7.4-bis) |
 | Dalla dashboard al planetario, puntato su un astro | il tasto **Planetario** di ogni riga di "Cosa guardare" chiama `cercaNelCielo(idCielo)`; l'identificativo lo mette `pianIdCielo()` in `pianifica.js` (`Mars`, `dso:<nome>`, `min:<nome>`), e `skyVoceDiId()` sa leggerli tutt'e tre. Stili `.tasto-planetario`, `.piede-migliore`, `.tipo-migliore` |
 | Registrare e condividere un momento | sezione 7.6: `skyRegAvvia()`, il montaggio in `skyRegComponi()`, la firma in `skyRegFirma()`; il tasto è `#skymap-btn-registra` **sulla mappa** (`.tasto-registra-cielo` dentro `.comandi-mappa-cielo`), la durata i chip `[data-durata-reg]` nel pannello Visualizzazione; stili `.tasto-registra-cielo`, `.tempo-reg`, `.pannello-clip` |
-| Quanto si può ingrandire, e quanto grandi si disegnano gli astri | `SKY_FOV_MIN` / `SKY_FOV_MAX` e `skyImpostaFov()` (`app.js:6593`); la misura di ogni astro in `skyRaggio(o, focale)` (`app.js:9947`), che sceglie fra icona fissa e disco vero (diametro ÷ distanza) |
+| Quanto si può ingrandire, e quanto grandi si disegnano gli astri | `SKY_FOV_MIN` (0,25°) / `SKY_FOV_MAX` (**180°**) e `skyImpostaFov()`; la misura di ogni astro in `skyRaggio(o, focale, scala)`, che sceglie fra icona fissa e disco vero (diametro ÷ distanza) e moltiplica per `skyScalaLocale(d)` — quanto la proiezione ingrandisce *lì* |
+| Come il cielo finisce sullo schermo (la proiezione) | `skyProietta()` e la sua inversa `skyDirezione()`. È **stereografica**: si divide per `(1+d)/2` invece che per `d`, cioè `r = 2F·tan(θ/2)`. A campo stretto è indistinguibile dalla prospettiva di prima, a campo largo non ha il muro dei 90° ed è conforme (i cerchi restano cerchi). Il metro angolare è in `skyRaggioAngolare()` / `skyAngoloDiRaggio()` / `skyScalaLocale()`, e `skyFocale()` ne tiene conto. **La stessa formula è srotolata dentro `catalogo.js`** (quattro punti) per non costruire cinquemila oggetti a fotogramma: se le due divergono le stelle si staccano dai pianeti — lo controlla il §8 di `verifica.html` |
+| Il grandangolo | tasto `#skymap-btn-grandangolo` nel pannello Navigazione: porta a 160°, quasi tutto il cielo in un colpo. `SKY_FOV_LARGO` è la soglia oltre la quale si parla di grandangolo |
 | Il cielo si muove a scatti (trascinamento, zoom, centratura) | sezione **7.4-ter**: `sky.fov` è il campo disegnato adesso e `sky.fovVoluto` quello a cui si sta andando (`skyImpostaFov(g, { morbido: true })` chiede il viaggio, `skyMuoviZoom()` lo fa); l'inerzia è `skyLanciaVista()` + `skyScorriPerInerzia()`, e si spegne sempre con `skyFermaMovimenti()`. Le costanti da girare: `SKY_TAU_ZOOM`, `SKY_TAU_INERZIA`, `SKY_INERZIA_MAX_SCHERMI` |
 | Le stelle saltellano di un pixel una volta al secondo | `skyIntervalloCalcolo()` (`app.js:7749`): ogni quanto `skyAggiornaOggetti()` rifà le posizioni. Si adatta al campo (mezzo pixel di movimento del cielo), fra `SKY_CALCOLO_MIN_MS` e `SKY_CALCOLO_MAX_MS`. I numeri scritti attorno alla mappa vanno invece a `SKY_UI_INTERVALLO`, più piano |
 | Il cielo resta indietro sotto il dito quando si guarda in alto | `skyGradiAzPerPixel()` (sezione 7.4-ter): un pixel vale più gradi di azimut quanto più si guarda in alto (fattore 1/cos, tosato a 4) |
@@ -330,7 +337,9 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Un'eclissi di Sole (corona, morso, cielo che si spegne) | `skyEclisseDiSole()` (`app.js:9896`) calcola la copertura a ogni fotogramma in `sky.eclisse`; da lì dipendono `skyRaggioIcona()` (la Luna prende la misura giusta rispetto al Sole), la corona in `skyDisegnaSole()`, il bagliore in `skyDisegnaAloneSole()` e il colore del cielo in `skyAriaEclissata()` |
 | Un'eclissi di Luna (il morso ramato) | `skyOmbraDellaTerra()` (`app.js:7853`, una volta al secondo) e `skyDisegnaOmbraLunare()` (`app.js:9751`) |
 | Perché un astro non è trasparente | `skyColoreNotteAstro()` (`app.js:9253`): il lato in ombra si riempie del colore del cielo, tanto quanto il cielo è chiaro — di notte copre le stelle, di giorno sparisce. E `skyVeloAtmosferico()` (`app.js:9354`) smorza e arrossa invece di sbiadire |
-| Il profilo dell'orizzonte (colline e alberi) | `SKY_PROFILO` (`app.js:9381`, calcolato una volta all'avvio), `skyAltezzaOrizzonte()` (`app.js:9410`) e `skyDisegnaProfiloOrizzonte()` (`app.js:9601`) |
+| Il profilo dell'orizzonte (colline e alberi) | `skyAltezzaOrizzonte()` mette insieme tre cose e tiene la più alta: la **forma vera** del terreno (`terrenoAltezza()`), gli **ostacoli dichiarati a mano** (`orizzonteAltezza()` di `pianifica.js`) e, sommato sopra a quello che c'è, il **dettaglio inventato** degli alberi (`SKY_ALBERI`). Senza terreno vero resta la finzione di sempre, `SKY_ONDE` + `SKY_ALBERI` (cioè `SKY_PROFILO`). Il disegno è `skyDisegnaProfiloOrizzonte()` |
+| Il terreno vero, quello del posto in cui sei | `terreno.js`: `terrenoCarica()` prende le quote del suolo da `api.open-meteo.com/v1/elevation` (Copernicus DEM) lungo 48 direzioni × 12 distanze fino a 60 km, `terrenoAngolo()` ne ricava sotto che angolo si vede ogni campione — **curvatura e rifrazione comprese**, che a 60 km valgono due gradi e mezzo — e il massimo lungo una direzione è la cresta. Sei richieste, una volta sola per luogo, poi sta in `localStorage` e vale anche senza rete. Tasto `#skymap-btn-terreno` nel pannello Visualizzazione, riga di stato `#skymap-terreno-nota` |
+| Il riempimento del terreno sullo schermo | `skyCerchioOrizzonte()` + `skyDisegnaTerreno()`. In stereografica l'orizzonte **non è più una retta ma un cerchio**, e si scrive in forma chiusa: centro `(2a/c, 2b/c)`, raggio `2/\|c\|`, con `(a,b,c)` lo zenit scritto negli assi della vista. Guardando in su la terra sta *fuori* dal cerchio (si riempie con la regola pari-dispari), guardando in giù ci sta *dentro*; con `\|c\| < 0.02` — l'occhio dritto all'orizzonte — torna una retta |
 | Puntare una nebulosa o una galassia dall'elenco | Nell'elenco degli astri stanno anche loro, con identificativo `dso:<nome>` (`skyElenco()`): chi li cerca passa da `skyVoceDiId()`, che li trova in `SKY_PROFONDO` e ne calcola azimut e altezza con `skyPosizioneProfondo()` (mezzo minuto di cache). Da lì funzionano come gli altri bersagli: centratura, freccia guida, inseguimento |
 | Come si vedono nebulose, galassie e ammassi | `skyPennelloProfondo()` (`app.js:9094`) dipinge la nuvola, `skyDisegnaProfondo()` (`app.js:20094`) la mette in cielo grande quanto è davvero (`assePrimi`, `asseMinore`, `angoloPosizione` in `SKY_PROFONDO`) |
 | Traccia dell'oggetto nel planetario | `skyCalcolaTraccia()` (sezione 7.3-bis), tasto `skymap-btn-traccia` nei Filtri |
@@ -380,7 +389,9 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Il palazzo di fronte (ostacoli sull'orizzonte) | `orizzonteCarica()` / `orizzonteAltezza(az)` in `pianifica.js`: sedici settori, interpolati. Entra nella curva della notte e nella scelta dei bersagli |
 | Toccare una stella qualsiasi e sapere cos'è | `catStellaNelPunto()` + `catSchedaStella()` in `catalogo.js`, agganciate in fondo a `skyOggettoNelPunto()` (`app.js`). Il fondo di stelle si cerca **per ultimo**, dopo pianeti, cielo profondo e corpi minori: cinquemila puntini vincerebbero su tutto |
 | Il colore di una stella, e la sua temperatura | `catTemperaturaDaBV()` (formula di Ballesteros: col B−V del Sole restituisce 5.778 K) e `catClasseDaBV()`. La classe è **dedotta dal colore**, non di catalogo: per le giganti sbaglia di una lettera, e la scheda lo dice |
-| Comete e asteroidi sulla mappa | `corpiMinoriVisibili()` (posizioni, cache di mezzo minuto) e `corpiMinoriDisegna()` in `corpi-minori.js`; tasto `#skymap-btn-corpiminori` nei Filtri, stato `sky.mostraCorpiMinori` |
+| Comete e asteroidi sulla mappa | `corpiMinoriVisibili()` (posizioni, cache di mezzo minuto) e `corpiMinoriDisegna()` in `corpi-minori.js`; tasto `#skymap-btn-corpiminori` nei Filtri, stato `sky.mostraCorpiMinori`. La coda punta in direzione opposta al Sole (`corpiMinoriDirezioneCoda()`), non dietro alla cometa |
+| Comete e asteroidi **nell'elenco degli astri** | ci vogliono due cose, e per un po' non c'era nessuna delle due. Una famiglia in `SKY_FAMIGLIE` col tipo `corpoMinore` (senza, `skyCostruisciElenco()` non scrive la pillola), e un elenco che si **rifà** quando i dati arrivano: `skyInvalidaElenco()` azzera anche il `data-pronto` di `#skymap-oggetti` e ricostruisce. I cataloghi arrivano dopo che il pannello è stato costruito, quindi senza quel secondo pezzo l'elenco resta per sempre quello di prima — valeva per le comete e valeva per i 142 oggetti profondi del catalogo grande |
+| Una cometa che è nell'elenco ma non sulla mappa | `CORPI_MAG_UTILE` è **una soglia sola** (12,5): elenco e mappa devono guardare lo stesso limite, se no si sceglie un nome e sul cielo non c'è niente |
 | Le lune di Giove | `luneDiGiove()` in `corpi-minori.js` (posizioni, transiti, ombre, eclissi) e `disegnaLuneDiGiove()` in `ui-nuova.js`. Compaiono nella scheda di Giove |
 | Comete e asteroidi | `corpi-minori.js`: `posizioneCorpoMinore()` è Keplero a mano (ellisse, parabola con Barker, iperbole), `corpoMinoreInCielo()` porta in cielo. Gli elementi stanno in `dati-corpi-minori.js`, e se ne possono incollare altri con `corpiMinoriLeggiIncollato()` |
 | Una cometa nuova, appena scoperta | non si aggiunge al file: si incollano gli elementi dell'MPC. Il file dei dati contiene solo quelle stabili |
