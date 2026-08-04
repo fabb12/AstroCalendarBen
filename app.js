@@ -2153,9 +2153,9 @@ function _eclSvuotaNotte() {
 function _eclDisegnaNotte(d) {
   if (!_eclDinamici || !_eclDinamici.notte) return;
   if (!_eclMostraNotte) { _eclSvuotaNotte(); return; }
-  // Durante il filmato si dimezzano i meridiani: il terminatore è una curva
-  // dolce, e a cinque gradi di passo nessuno se ne accorge.
-  const nPunti = _eclFilmato.attivo ? 72 : 144;
+  // Mentre il tempo cammina si dimezzano i meridiani: il terminatore è una
+  // curva dolce, e a cinque gradi di passo nessuno se ne accorge.
+  const nPunti = _eclInMarcia() ? 72 : 144;
   ECL_NOTTE_SOGLIE.forEach((soglia, i) => {
     const fascia = _eclFasciaDellaNotte(d, soglia.alt, nPunti);
     _eclDinamici.notte.veli[i].setLatLngs(_eclAnelliNotte(fascia));
@@ -2276,9 +2276,9 @@ function _eclDisegnaOmbra() {
   const asse = _eclInquadraPunto(_eclPuntoAsse(d));
   const cMax = massimo ? _eclCircostanze(massimo[0], massimo[1], d) : null;
 
-  // Con il filmato in corso si alleggerisce il calcolo: meno raggi, più fluidità
-  const nAz = _eclFilmato.attivo ? 36 : 56;
-  const nPassi = _eclFilmato.attivo ? 10 : 12;
+  // Col tempo in marcia si alleggerisce il calcolo: meno raggi, più fluidità
+  const nAz = _eclInMarcia() ? 36 : 56;
+  const nPassi = _eclInMarcia() ? 10 : 12;
 
   if (!massimo || !cMax || cMax.osc <= 0.0015) {
     _eclDinamici.fasce.forEach(f => f.setLatLngs([]));
@@ -3938,9 +3938,10 @@ function _eclSegnalaFaseCentrale() {
     _eclissiOffsetTempoMin >= circ.c2.min && _eclissiOffsetTempoMin <= circ.c3.min);
   if (dentro === _eclEraCentrale) return;
   _eclEraCentrale = dentro;
-  // Solo durante il filmato: chi trascina il cursore a mano sa gia' dove sta
-  // andando, e una vibrazione a ogni passaggio sarebbe fastidiosa.
-  if (dentro && _eclFilmato.attivo && navigator.vibrate) {
+  // Solo col tempo in marcia (il filmato, o il playback del planetario che
+  // adesso muove anche la mappa): chi trascina il cursore a mano sa gia' dove
+  // sta andando, e una vibrazione a ogni passaggio sarebbe fastidiosa.
+  if (dentro && _eclInMarcia() && navigator.vibrate) {
     try { navigator.vibrate([40, 60, 140]); } catch (e) { /* non ovunque si puo' */ }
   }
 }
@@ -3958,6 +3959,11 @@ function _eclissiAggiornaTutto() {
       `<span class="ecl-scarto">${m === 0 ? 'culmine' : `${segno}${m} min`}</span>`;
   }
 
+  // L'orologio del planetario segue la mappa (vedi "Un orologio solo", più
+  // sotto): quando è la mappa a muoversi, è lei a dettare l'ora.
+  _eclPortaIlCieloQui();
+  _eclAggiornaNotaCielo();
+
   const quadro = _eclDisegnaOmbra();
   if (!quadro) return;
   _eclSegnalaFaseCentrale();
@@ -3968,7 +3974,7 @@ function _eclissiAggiornaTutto() {
   // Con "segui l'ombra" la mappa insegue il cono, ma senza strattoni: si
   // rimette al centro solo quando l'ombra sta per uscire dal riquadro
   // centrale, come una telecamera che accompagna il soggetto.
-  if (_eclFilmato.segui && _eclFilmato.attivo && quadro.massimo) {
+  if (_eclFilmato.segui && _eclInMarcia() && quadro.massimo) {
     const centro = quadro.asse || quadro.massimo;
     const punto = _mappaEclissi.latLngToContainerPoint(centro);
     const misura = _mappaEclissi.getSize();
@@ -3995,6 +4001,9 @@ function _eclFilmatoAggiornaPulsante() {
 
 function _eclFilmatoAvvia() {
   if (_eclFilmato.attivo || !_eclissiEventoInCorso) return;
+  // Il tempo cammina da una parte sola: se il playback del planetario stava
+  // correndo, i due si strapperebbero l'orologio di mano a ogni fotogramma.
+  if (typeof skyFermaPlayback === 'function') skyFermaPlayback();
   // Ripartendo dalla fine si torna all'inizio, come un vero lettore
   if (_eclissiOffsetTempoMin >= _eclFinestra.fine - 0.5) {
     _eclissiOffsetTempoMin = _eclFinestra.inizio;
@@ -4031,6 +4040,185 @@ function _eclVaiA(minuti) {
   _eclissiOffsetTempoMin = Math.max(_eclFinestra.inizio, Math.min(_eclFinestra.fine, minuti));
   _eclissiAggiornaTutto();
 }
+
+// --- Un orologio solo: la mappa e il planetario ------------------------
+//   La mappa dell'ombra e il planetario raccontano la stessa eclissi da due
+//   parti diverse: la prima da fuori — dove cade il cono, chi ci sta sotto —,
+//   il secondo da dentro, con il Sole che si assottiglia sopra la testa. Erano
+//   due orologi separati: si scorreva il cursore fino al secondo contatto, si
+//   chiudeva la finestra, e nel planetario il Sole era intero. Adesso l'orario
+//   è uno solo, come già succede fra il planetario e il Sistema Solare in 3D
+//   (sezione 7.7): l'istante vive in `sky.offsetTempoSec` e la mappa ne è una
+//   seconda lettura, tarata sul culmine dell'eclissi invece che su adesso.
+//
+//   Le due direzioni non sono simmetriche, e non possono esserlo: il
+//   planetario può andare ovunque fra il 1600 e il 3000, la mappa vive dentro
+//   la sua finestra di poche ore. Quando il cielo esce da quella finestra la
+//   mappa si ferma al bordo e lo dice, invece di trascinarci il planetario
+//   indietro per forza.
+
+// Guardia contro il rimbalzo: chi dei due sta scrivendo non deve farsi
+// riscrivere addosso dall'altro nello stesso giro.
+let _eclSincronizzando = false;
+// Mentre il cursore corre al planetario si sposta solo la lancetta; il conto
+// pieno delle posizioni si fa una volta, quando ci si ferma.
+const ECL_ASSESTA_MS = 260;
+let _eclAssestaTimer = null;
+// Il cielo che insegue la mappa può muoversi a ogni fotogramma del playback:
+// l'ombra costa qualche centinaio di posizioni di Sole e Luna, e ridisegnarla
+// sessanta volte al secondo non la renderebbe più leggibile.
+const ECL_SEGUI_MS = 150;
+let _eclSeguiTimer = null;
+// Il planetario è fuori dalla finestra dell'eclissi: la mappa è ferma al bordo
+let _eclCieloFuoriFinestra = false;
+
+// Il tempo sta camminando da solo: col filmato della mappa o col playback del
+// planetario, che adesso muove anche lei. In tutt'e due i casi l'ombra si
+// disegna alleggerita e la mappa accompagna il cono — mentre scorre nessuno
+// legge la costa metro per metro, e a fermarsi si ridisegna tutto per bene.
+function _eclInMarcia() {
+  return _eclFilmato.attivo || !!(typeof sky === 'object' && sky && sky.playbackVerso);
+}
+
+// Di quanti minuti dal culmine è lontano l'istante mostrato dal planetario.
+// Senza tosature: serve anche a sapere se è fuori dalla finestra, e di quanto.
+function _eclMinutiDelCielo() {
+  if (!_eclissiEventoInCorso) return 0;
+  return (skyAdesso().getTime() - _eclissiEventoInCorso.dataObj.getTime()) / 60000;
+}
+
+// Il bordo della finestra va preso con un minuto di larghezza: il planetario
+// tiene lo scarto in secondi interi, e chi lascia la mappa proprio sull'ultimo
+// istante ci torna con qualche decimo di minuto di troppo. Senza questa
+// tolleranza la riapertura lo rispedirebbe al culmine, che è l'unica cosa che
+// di sicuro non stava guardando.
+const ECL_BORDO_TOLLERANZA_MIN = 1;
+
+function _eclCieloDentroLaFinestra() {
+  const m = _eclMinutiDelCielo();
+  return m >= _eclFinestra.inizio - ECL_BORDO_TOLLERANZA_MIN &&
+         m <= _eclFinestra.fine + ECL_BORDO_TOLLERANZA_MIN;
+}
+
+// Lo scarto da adesso, in secondi, dell'istante che la mappa sta mostrando:
+// è il metro del planetario, non il nostro.
+function _eclScartoCieloSec() {
+  return (_eclissiTempoSelezionato().getTime() - Date.now()) / 1000;
+}
+
+function _eclScriviNelCielo(secondi, opzioni) {
+  if (typeof skyImpostaOffsetTempo !== 'function') return;
+  _eclSincronizzando = true;
+  try { skyImpostaOffsetTempo(secondi, opzioni); }
+  finally { _eclSincronizzando = false; }
+}
+
+// La mappa detta l'ora al planetario. Si chiama a ogni aggiornamento — anche
+// a ogni fotogramma del filmato — quindi la parte cara è rimandata.
+function _eclPortaIlCieloQui() {
+  if (_eclSincronizzando || !_eclissiEventoInCorso) return;
+  _eclCieloFuoriFinestra = false;   // ce lo stiamo portando noi, dentro c'è per forza
+  _eclScriviNelCielo(_eclScartoCieloSec(), { fluido: true });
+  if (_eclAssestaTimer) clearTimeout(_eclAssestaTimer);
+  _eclAssestaTimer = setTimeout(_eclAssestaIlCielo, ECL_ASSESTA_MS);
+}
+
+// Fermi da un attimo (o mappa chiusa): il planetario rifà i suoi conti sul
+// serio, così chi ci arriva trova le posizioni dell'istante giusto.
+function _eclAssestaIlCielo() {
+  if (_eclAssestaTimer) clearTimeout(_eclAssestaTimer);
+  _eclAssestaTimer = null;
+  if (!_eclissiEventoInCorso) return;
+  _eclScriviNelCielo(_eclScartoCieloSec(), {});
+}
+
+// L'altra direzione: il planetario detta l'ora alla mappa. È agganciata in
+// fondo a `skyImpostaOffsetTempo()`, che è l'unico posto da cui quell'orologio
+// si muove, quindi vale per il pannello Tempo, per la slitta, per il playback
+// e per chiunque altro ci scriva domani.
+function eclSeguiOrologioCielo() {
+  if (_eclSincronizzando || !_eclissiEventoInCorso || !_mappaEclissi) return;
+  // Mentre il filmato corre è la mappa a comandare: non si fa ridettare
+  // l'ora da chi la sta ricevendo da lei.
+  if (_eclFilmato.attivo || _eclSeguiTimer) return;
+  _eclSeguiTimer = setTimeout(() => {
+    _eclSeguiTimer = null;
+    if (!_eclissiEventoInCorso || _eclFilmato.attivo) return;
+    const grezzo = _eclMinutiDelCielo();
+    const minuti = Math.max(_eclFinestra.inizio, Math.min(_eclFinestra.fine, grezzo));
+    _eclCieloFuoriFinestra = Math.abs(grezzo - minuti) > 0.5;
+    if (Math.abs(minuti - _eclissiOffsetTempoMin) < 0.05) {
+      _eclAggiornaNotaCielo();
+      return;
+    }
+    _eclissiOffsetTempoMin = minuti;
+    // L'ora arriva da là: rimandarla indietro tosata alla finestra
+    // trascinerebbe il planetario dentro l'eclissi contro la sua volontà.
+    _eclSincronizzando = true;
+    try { _eclissiAggiornaTutto(); }
+    finally { _eclSincronizzando = false; }
+  }, ECL_SEGUI_MS);
+}
+
+// La riga che dice come stanno le due finestre. È un tasto perché in tutt'e
+// due i casi la domanda che viene subito dopo ha una risposta sola: se gli
+// orologi sono insieme si va a vedere l'eclissi da sotto, se il planetario è
+// scappato via lo si riporta qui.
+function _eclAggiornaNotaCielo() {
+  const nota = document.getElementById('eclissi-nota-cielo');
+  if (!nota) return;
+  if (_eclCieloFuoriFinestra) {
+    const dove = _eclMinutiDelCielo() < _eclFinestra.inizio ? 'prima dell\'eclissi' : 'dopo l\'eclissi';
+    nota.innerHTML = `<span class="ecl-nota-segno">◷</span> Il planetario è ${dove}: ` +
+      `la mappa è ferma al bordo. <b>Riportalo qui</b>`;
+    nota.title = 'Il planetario sta mostrando un istante fuori dalla finestra dell\'eclissi: ' +
+      'riportalo sul momento che vedi sulla mappa';
+  } else {
+    nota.innerHTML = `<span class="ecl-nota-segno">◷</span> Il planetario è su questo istante. ` +
+      `<b>Guardalo da sotto</b>`;
+    nota.title = 'Apre il planetario sullo stesso momento, con il Sole eclissato in cielo';
+  }
+}
+
+// Il tasto della nota fa la cosa che la nota dice, e sono due cose diverse.
+window.eclissiTastoOrologio = () => {
+  if (!_eclissiEventoInCorso) return;
+  if (_eclCieloFuoriFinestra) {
+    _eclAssestaIlCielo();          // il cielo torna sull'istante della mappa
+    _eclCieloFuoriFinestra = false;
+    _eclAggiornaNotaCielo();
+    return;
+  }
+  eclissiVaiAlPlanetario();
+};
+
+// Dal cono d'ombra a sotto il cono d'ombra. L'orologio è già dove deve
+// essere: qui si chiude la finestra e si va a vedere che faccia ha il cielo.
+window.eclissiVaiAlPlanetario = () => {
+  const evento = _eclissiEventoInCorso;
+  if (!evento) return;
+  if (_eclFilmato.attivo) _eclFilmatoFerma();
+  // L'ora va letta adesso: chiudendo la mappa l'evento in corso non c'è più,
+  // e `_eclissiTempoSelezionato()` tornerebbe a dire "adesso"
+  const ora = _eclOra(_eclissiTempoSelezionato());
+  // Se il cielo era scappato fuori dalla finestra lo si riporta all'istante
+  // che la mappa sta mostrando: è quello che si è chiesto di guardare.
+  _eclAssestaIlCielo();
+  chiudiMappaEclissi();
+  if (typeof mostraVista === 'function') mostraVista('cielo');
+  if (typeof skyFermaPlayback === 'function') skyFermaPlayback();
+  sky.mostraEventi = true;
+  // Il Sole è il protagonista: si punta lui, e la sua traccia racconta da
+  // dove è arrivato e dove sarà quando l'ombra se ne sarà andata.
+  sky.mostraTraccia = true;
+  if (typeof skyImpostaTarget === 'function') {
+    skyImpostaTarget(evento.corpoCielo || 'Sun', { mantieni: true });
+  }
+  if (typeof skyAggiornaTastiFiltri === 'function') skyAggiornaTastiFiltri();
+  if (typeof skyAvviso === 'function') {
+    skyAvviso('eventi', `Cielo delle ${ora}: ${evento.titolo} vista da dove sei.`, 10000);
+  }
+};
 
 // --- Legenda e riepilogo ----------------------------------------------
 
@@ -4502,7 +4690,21 @@ function apriMappaEclissi(id) {
   _eclFinestra = _eclFinestraGlobale(peakUt);
   _eclPercorso = _eclCampionaPercorso(peakUt, _eclFinestra);
   _eclCitta = _eclPreparaCitta(peakUt, _eclFinestra);
-  _eclissiOffsetTempoMin = 0;
+
+  // Un orologio solo (vedi la sezione più sotto). Prima si ferma il playback
+  // del planetario — se no l'istante appena scelto scapperebbe via da solo,
+  // e la mappa si metterebbe a rincorrerlo —, poi si guarda dov'è rimasto
+  // quell'orologio: se è già dentro alla finestra di questa eclissi (ci si è
+  // arrivati dal planetario, o dal tasto "Porta l'orologio qui") la mappa si
+  // apre su quell'istante e non sul culmine, e chi stava guardando il secondo
+  // contatto lo ritrova qui. Se invece il cielo è altrove si parte dal
+  // massimo e ce lo si porta.
+  if (typeof skyFermaPlayback === 'function') skyFermaPlayback();
+  if (_eclSeguiTimer) { clearTimeout(_eclSeguiTimer); _eclSeguiTimer = null; }
+  _eclissiOffsetTempoMin = _eclCieloDentroLaFinestra()
+    ? Math.max(_eclFinestra.inizio, Math.min(_eclFinestra.fine, _eclMinutiDelCielo()))
+    : 0;
+  _eclCieloFuoriFinestra = false;
 
   // Zona di eclissi parziale: la penombra di tutti gli istanti, tutta insieme.
   // Con la regola di riempimento "nonzero" gli anelli sovrapposti si fondono
@@ -4577,7 +4779,7 @@ function apriMappaEclissi(id) {
     slider.min = _eclFinestra.inizio;
     slider.max = _eclFinestra.fine;
     slider.step = 0.5;
-    slider.value = 0;
+    slider.value = _eclissiOffsetTempoMin;
   }
   const etInizio = document.getElementById('eclissi-tempo-inizio');
   const etFine = document.getElementById('eclissi-tempo-fine');
@@ -4625,6 +4827,14 @@ function chiudiMappaEclissi() {
   if (_eclSchermoIntero) _eclEsciSchermoIntero();
   const modale = document.getElementById('modale-mappa');
   if (modale) modale.classList.add('hidden');
+  // L'orologio resta dove la mappa l'ha portato — è lo stesso orologio — ma
+  // il conto pieno delle posizioni va fatto adesso: chiusa la finestra non
+  // c'è più nessuno che lo rimanderà, e il planetario dietro riprende a
+  // disegnare. Il timer che insegue il cielo, invece, non ha più un evento a
+  // cui riferirsi e va spento.
+  if (_eclSeguiTimer) { clearTimeout(_eclSeguiTimer); _eclSeguiTimer = null; }
+  _eclAssestaIlCielo();
+  _eclCieloFuoriFinestra = false;
   _eclissiEventoInCorso = null;
 }
 
@@ -21985,6 +22195,12 @@ function skyImpostaOffsetTempo(secondi, opzioni = {}) {
   // conto va invece fatto subito, perché non c'è nessuno che lo farà.
   const aspettaIlFotogramma = opzioni.daSlitta && sky.aperto && sky.raf;
   if (!opzioni.fluido && !aspettaIlFotogramma) skyAggiornaOggetti(true);
+
+  // Questo è l'unico posto da cui l'orologio del planetario si muove, quindi
+  // è l'unico posto da cui dirlo alla mappa dell'ombra, se è aperta: da lì in
+  // poi cono e cielo raccontano lo stesso minuto (sezione 1-ter, "Un orologio
+  // solo"). La mappa si difende da sé dai rimbalzi.
+  if (typeof eclSeguiOrologioCielo === 'function') eclSeguiOrologioCielo();
 }
 
 // Quanto tempo copre la slitta, da un estremo all'altro

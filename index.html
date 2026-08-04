@@ -961,6 +961,14 @@
                 </label>
               </div>
             </div>
+            <!-- L'orologio è uno solo: quello che si sposta qui si sposta
+                 anche nel planetario, e viceversa. La riga lo dice e, già
+                 che c'è, porta a guardare lo stesso istante da sotto. -->
+            <button id="eclissi-nota-cielo" type="button" class="ecl-nota-cielo"
+                    onclick="eclissiTastoOrologio()"
+                    title="Apre il planetario sullo stesso momento, con il Sole eclissato in cielo">
+              <span class="ecl-nota-segno">◷</span> Il planetario è su questo istante. <b>Guardalo da sotto</b>
+            </button>
           </div>
         </div>
 
