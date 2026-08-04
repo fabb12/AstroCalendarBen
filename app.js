@@ -6236,8 +6236,25 @@ let skyElencoCache = null;
 // altre voci, e arrivano quando arrivano — dopo che questo elenco è già
 // stato composto una volta. Quando succede, lo buttano via con questa e
 // al giro dopo si rifà con tutto dentro.
+// L'elenco degli astri non è solo un array: è anche una fila di pillole
+// già scritte in pagina, e quelle non si rifanno da sole.
+//
+// È qui che si nascondeva il motivo per cui le comete non si vedevano
+// **mai** nell'elenco. I cataloghi arrivano dopo: `apriSkymap()` avvia
+// `catCarica()` e `corpiMinoriCarica()`, che scaricano un file, e alla
+// riga dopo costruisce l'elenco — con quello che c'è in quel momento,
+// cioè niente di nuovo. Quando i dati poi arrivavano, questa funzione
+// buttava via la cache dell'array ma lasciava in pagina le pillole
+// vecchie, e `skyCostruisciElenco()` si tirava indietro da sé perché
+// trovava `data-pronto="si"`. Risultato: nessuna cometa, nessun
+// asteroide, e nemmeno i centoquarantadue oggetti del cielo profondo del
+// catalogo grande, per tutta la sessione.
 function skyInvalidaElenco() {
   skyElencoCache = null;
+  const cont = document.getElementById('skymap-oggetti');
+  if (!cont || cont.dataset.pronto !== 'si') return;
+  cont.dataset.pronto = '';
+  skyCostruisciElenco();
 }
 
 function skyElenco() {
@@ -6727,8 +6744,22 @@ function skyBase() {
 // grado la Luna esce dallo schermo con i suoi mari, Giove mostra le bande e
 // Saturno gli anelli. È lo stesso gesto di prima — il pizzico, la rotellina,
 // i tasti + e − — solo che adesso non si ferma a metà strada.
+// Il massimo era 110°, ed era il muro della proiezione, non una scelta:
+// finché il cielo si disegnava in prospettiva (gnomonica) i gradi si
+// pagano con la tangente, e la tangente a 90° va all'infinito. A 110° gli
+// angoli dello schermo erano già stirati al punto che una costellazione
+// bassa sembrava allungata col mattarello. Adesso la proiezione è
+// stereografica (vedi `skyProietta`) e il campo può arrivare a 180°:
+// tutto il cielo dall'orizzonte all'orizzonte, come un fisheye — che è
+// poi il modo in cui si guarda il cielo davvero, sdraiati, senza cercare
+// niente in particolare.
 const SKY_FOV_MIN = 0.25;
-const SKY_FOV_MAX = 110;
+const SKY_FOV_MAX = 180;
+
+// Il campo oltre il quale si comincia a parlare di grandangolo: sotto
+// questa soglia i tasti dicono i gradi e basta, sopra vale la pena dire
+// che si sta guardando mezzo cielo in una volta.
+const SKY_FOV_LARGO = 100;
 
 // A forte ingrandimento la mano trema più del cielo: un grado di oscillazione
 // del polso, che a campo largo valeva mezzo pixel, a mezzo grado di campo
@@ -6754,9 +6785,42 @@ function skyImpostaFov(gradi, opzioni = {}) {
   }
 }
 
-// Distanza focale in pixel corrispondente al campo visivo verticale scelto
+// Distanza focale in pixel corrispondente al campo visivo verticale scelto.
+//
+// In stereografica un punto a θ gradi dall'asse cade a `2·F·tan(θ/2)`
+// pixel dal centro (vedi `skyProietta`): perché nell'altezza dello schermo
+// ci stiano `fov` gradi, mezza altezza deve valere 2·F·tan(fov/4).
 function skyFocale() {
-  return (sky.altezza / 2) / Math.tan(sky.fov / 2 * SKY_D2R);
+  return (sky.altezza / 2) / (2 * Math.tan(sky.fov / 4 * SKY_D2R));
+}
+
+// --- Il metro angolare della proiezione -------------------------------
+// Tre conversioni che prima erano sparse a mano — sempre con la tangente,
+// cioè sempre supponendo la prospettiva. Ora che la proiezione è una sola
+// e sta in un posto solo, anche loro.
+
+// Quanti pixel dal centro dello schermo dista un punto a `gradi` di
+// distanza angolare dall'asse della vista. Serve agli aloni e a tutto ciò
+// che è un cerchio attorno a un astro.
+function skyRaggioAngolare(gradi, focale) {
+  const g = Math.max(0, Math.min(179, gradi));
+  return 2 * focale * Math.tan(g / 2 * SKY_D2R);
+}
+
+// L'inverso: che distanza angolare copre un raggio di tanti pixel.
+function skyAngoloDiRaggio(pixel, focale) {
+  return 2 * Math.atan(pixel / (2 * focale)) * SKY_R2D;
+}
+
+// Quanto è ingrandito il disegno *lì*, rispetto al centro dello schermo.
+//
+// Nessuna proiezione può tenere in piano una sfera senza stirarla da
+// qualche parte: la stereografica sceglie di stirare tutto uguale in ogni
+// direzione (per questo i cerchi restano cerchi e la Luna resta tonda
+// anche all'angolo), ma di quanto dipende da dove. `d` è il coseno
+// dell'angolo dall'asse, cioè la componente in avanti del versore.
+function skyScalaLocale(d) {
+  return 2 / Math.max(0.01, 1 + d);
 }
 
 // --- Realtà aumentata: il campo del disegno è quello dell'obiettivo ---
@@ -6875,18 +6939,68 @@ function skyTaraCampoFotocamera(campoVerticaleVoluto) {
     'Allarga o stringi finché gli astri disegnati non si posano su quelli veri.', 5000);
 }
 
-// Proietta un versore del cielo sullo schermo (prospettiva gnomonica)
+// --- Come il cielo finisce sullo schermo ------------------------------
+//
+// PROIEZIONE STEREOGRAFICA. Prima era la prospettiva (gnomonica): si
+// pianta un piano davanti all'occhio e si tirano le rette. È la
+// proiezione dell'obiettivo fotografico, ed è giusta finché il campo è
+// stretto — ma ha due difetti che a campo largo diventano tutto.
+//
+// Il primo è un muro: a 90° dall'asse la retta non incontra più il piano,
+// la tangente esplode, e il campo non può passare quel limite per nessun
+// motivo. Il secondo è lo stiramento: un astro all'angolo dello schermo
+// veniva disegnato `1/cos²θ` volte più grande che al centro — a 110° di
+// campo sono quattro volte, ed è il motivo per cui la Luna bassa
+// all'angolo sembrava un uovo.
+//
+// La stereografica invece proietta dal punto opposto della sfera: mezza
+// tangente invece che tangente intera, `r = 2F·tan(θ/2)`. Il muro si
+// sposta a 180° — cioè non c'è più — e soprattutto è **conforme**: stira
+// sì, ma uguale in tutte le direzioni, quindi i cerchi restano cerchi e
+// gli angoli fra le figure sono quelli veri. È la proiezione con cui si
+// disegnano i planisferi celesti da quattrocento anni, ed è quella che i
+// planetari usano per default.
+//
+// A campo stretto le due coincidono: `2tan(θ/2)` e `tan(θ)` differiscono
+// di θ³/4, che a mezzo grado di campo è un miliardesimo di pixel. Quindi
+// non c'è nessun caso da distinguere, nessuna modalità da scegliere, e
+// nessun salto quando si allarga il campo: la formula è una sola.
+//
+// Il conto è più corto di quello di prima. Se `v` è un versore, la sua
+// componente in avanti `d` è già il coseno dell'angolo dall'asse, e vale
+// l'identità `tan(θ/2) = sinθ/(1+cosθ)`: basta dividere per `(1+d)/2`
+// invece che per `d`. Nemmeno un'operazione in più per stella.
+const SKY_D_MIN = -0.9995;   // 178°: oltre, la stereografica va all'infinito
+
 function skyProietta(v, base, focale) {
   const d = skyDot(v, base.f);
   const x = skyDot(v, base.r);
   const y = skyDot(v, base.u);
-  const davanti = d > 0.001;
+  const davanti = d > SKY_D_MIN;
+  const den = (1 + d) * 0.5;
   return {
     davanti,
-    px: davanti ? sky.larghezza / 2 + focale * (x / d) : 0,
-    py: davanti ? sky.altezza / 2 - focale * (y / d) : 0,
+    px: davanti ? sky.larghezza / 2 + focale * (x / den) : 0,
+    py: davanti ? sky.altezza / 2 - focale * (y / den) : 0,
     x, y, d
   };
+}
+
+// L'inverso: che direzione del cielo sta sotto quel pixel. Si ricava
+// invertendo la stessa formula — posto `S` il quadrato della distanza dal
+// centro in unità di focale, la componente in avanti è `(4−S)/(4+S)`.
+// Torna un versore nel riferimento del mondo (Est, Nord, Alto).
+function skyDirezione(px, py, base, focale) {
+  const X = (px - sky.larghezza / 2) / focale;
+  const Y = (sky.altezza / 2 - py) / focale;
+  const S = X * X + Y * Y;
+  const k = 4 / (4 + S);
+  const x = X * k, y = Y * k, d = (4 - S) / (4 + S);
+  return [
+    x * base.r[0] + y * base.u[0] + d * base.f[0],
+    x * base.r[1] + y * base.u[1] + d * base.f[1],
+    x * base.r[2] + y * base.u[2] + d * base.f[2]
+  ];
 }
 
 // Nome della direzione (16 settori) a partire dall'azimut
@@ -7246,6 +7360,10 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   skyAvviso('posizione', ''); // la posizione c'è: via l'eventuale avviso
   skyAggiornaStato();
   aggiornaTastiPosizione();
+  // Ci si è spostati davvero? Allora anche le colline sono altre. Il
+  // modulo decide da sé se vale la pena rifare i conti: sotto i due
+  // chilometri l'orizzonte lontano è lo stesso e non tocca niente.
+  if (typeof terrenoCarica === 'function') terrenoCarica();
   return true;
 }
 
@@ -8297,14 +8415,8 @@ function skyColoreCielo(aria, alt) {
 function skyDisegnaSfondo(ctx, base, focale, aria) {
   const L = sky.larghezza, H = sky.altezza;
   const altezzaDellaRiga = (py) => {
-    const k = (H / 2 - py) / focale;
-    const v = [
-      base.f[0] + k * base.u[0],
-      base.f[1] + k * base.u[1],
-      base.f[2] + k * base.u[2]
-    ];
-    const n = Math.hypot(v[0], v[1], v[2]) || 1;
-    return Math.asin(Math.max(-1, Math.min(1, v[2] / n))) * SKY_R2D;
+    const v = skyDirezione(L / 2, py, base, focale);
+    return Math.asin(Math.max(-1, Math.min(1, v[2]))) * SKY_R2D;
   };
 
   const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -8334,7 +8446,7 @@ function skyDisegnaAloneSole(ctx, base, focale, sole, aria) {
   const p = skyProietta(skyVettore(sole.az, Math.max(sole.alt, -8)), base, focale);
   if (!p.davanti) return;
 
-  const raggio = Math.max(60, focale * Math.tan(38 * SKY_D2R));
+  const raggio = Math.max(60, skyRaggioAngolare(38, focale));
   const centro = sole.alt >= 0 ? [255, 246, 214] : [255, 196, 128];
   const bordo = skyMescolaColore(aria.foschia, [255, 150, 70], 0.6);
 
@@ -8360,7 +8472,7 @@ function skyDisegnaAloneLuna(ctx, base, focale, luna) {
 
   const p = skyProietta(skyVettore(luna.az, luna.alt), base, focale);
   if (!p.davanti) return;
-  const raggio = Math.max(30, focale * Math.tan(8 * SKY_D2R));
+  const raggio = Math.max(30, skyRaggioAngolare(8, focale));
 
   ctx.save();
   const g = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, raggio);
@@ -8519,7 +8631,7 @@ function skyDisegnaViaLattea(ctx, base, focale) {
 
     veli.forEach(strato => {
       ctx.globalAlpha = strato.alpha * forza;
-      ctx.lineWidth = Math.max(2, focale * Math.tan(strato.gradi * SKY_D2R));
+      ctx.lineWidth = Math.max(2, skyRaggioAngolare(strato.gradi, focale));
       ctx.stroke(percorso);
     });
   });
@@ -9530,10 +9642,20 @@ function skyVeloAtmosferico(ctx, r, estinzione) {
 // come geometria, ma nessuno ha davanti un orizzonte così. Da casa si vedono
 // colline, una fila di alberi, il campanile del paese — ed è proprio quel
 // profilo a decidere se un astro basso si vedrà davvero o no.
-// Il profilo è inventato (la vera skyline di casa tua non la sa nessuno) ma
-// sempre lo stesso: onde lunghe per le colline, macchie strette per gli
-// alberi. Si calcola una volta sola, un grado per volta.
-const SKY_PROFILO = (() => {
+// Il profilo inventato: onde lunghe per le colline, macchie strette per
+// gli alberi. Si calcola una volta sola, un grado per volta.
+//
+// Non è più l'unica risposta, ed è la differenza che conta: adesso
+// `terreno.js` sa prendere la **forma vera** del terreno attorno a casa
+// (Copernicus DEM via Open-Meteo), e quando c'è comanda lei. Questo resta
+// per chi è senza rete, e resta comunque il **dettaglio fine** sopra al
+// terreno vero — perché il DEM conosce le colline ma non i pioppi in
+// fondo al campo, e un crinale liscio si riconosce subito per finto.
+//
+// Le due parti si tengono separate proprio per questo: `SKY_ONDE` è la
+// finzione della collina, `SKY_ALBERI` il dettaglio che si mette in cima
+// a qualunque cosa ci sia sotto.
+const SKY_PROFILO_PARTI = (() => {
   const caso = skyCaso(skySeme('orizzonte'));
   const fasi = [];
   for (let i = 0; i < 6; i++) fasi.push(caso() * Math.PI * 2);
@@ -9543,30 +9665,66 @@ const SKY_PROFILO = (() => {
   for (let i = 0; i < 34; i++) {
     alberi.push({ az: caso() * 360, largo: 0.8 + caso() * 3.5, alto: 0.4 + caso() * 1.6 });
   }
-  const p = new Float32Array(361);
-  for (let i = 0; i < p.length; i++) {
+  const onde = new Float32Array(361);
+  const macchie = new Float32Array(361);
+  for (let i = 0; i < 361; i++) {
     const a = i * SKY_D2R;
-    let h = 1.05
+    onde[i] = 1.05
       + 0.75 * Math.sin(a + fasi[0])
       + 0.45 * Math.sin(2 * a + fasi[1])
       + 0.26 * Math.sin(3 * a + fasi[2])
       + 0.14 * Math.sin(5 * a + fasi[3])
       + 0.08 * Math.sin(8 * a + fasi[4]);
+    let m = 0;
     alberi.forEach(t => {
       const d = Math.abs(((i - t.az + 540) % 360) - 180);
-      if (d < t.largo) h += t.alto * Math.pow(Math.cos(d / t.largo * Math.PI / 2), 2);
+      if (d < t.largo) m += t.alto * Math.pow(Math.cos(d / t.largo * Math.PI / 2), 2);
     });
-    p[i] = Math.max(0.1, h);
+    macchie[i] = m;
   }
-  p[360] = p[0];
+  onde[360] = onde[0];
+  macchie[360] = macchie[0];
+  return { onde, macchie };
+})();
+
+const SKY_ONDE = SKY_PROFILO_PARTI.onde;
+const SKY_ALBERI = SKY_PROFILO_PARTI.macchie;
+
+// Il profilo inventato completo, che è quello di prima: serve ancora a chi
+// non ha il terreno vero.
+const SKY_PROFILO = (() => {
+  const p = new Float32Array(361);
+  for (let i = 0; i < 361; i++) p[i] = Math.max(0.1, SKY_ONDE[i] + SKY_ALBERI[i]);
   return p;
 })();
 
-function skyAltezzaOrizzonte(az) {
+function skyInterpolaProfilo(tavola, az) {
   const x = (((az % 360) + 360) % 360);
   const i = Math.floor(x);
   const t = x - i;
-  return SKY_PROFILO[i] + (SKY_PROFILO[i + 1] - SKY_PROFILO[i]) * t;
+  return tavola[i] + (tavola[i + 1] - tavola[i]) * t;
+}
+
+// Quanto è alto l'orizzonte in quella direzione. Tre cose, e vince sempre
+// la più alta, perché è la più alta che nasconde:
+//
+//   1. la forma vera del terreno, se `terreno.js` è riuscito a prenderla;
+//   2. gli ostacoli dichiarati a mano nel profilo a sedici settori di
+//      `pianifica.js` — il condominio di fronte, che nessun DEM conosce;
+//   3. il dettaglio inventato degli alberi, che è l'unica parte che si
+//      **somma** invece di gareggiare: sta in cima a quello che c'è
+//      sotto, che sia una collina vera o una finta.
+function skyAltezzaOrizzonte(az) {
+  const vero = typeof terrenoAltezza === 'function' ? terrenoAltezza(az) : null;
+  const suolo = vero === null ? skyInterpolaProfilo(SKY_ONDE, az) : vero;
+
+  const ostacoli = typeof orizzonteAltezza === 'function' ? orizzonteAltezza(az) : 0;
+  const base = Math.max(suolo, ostacoli);
+
+  // Gli alberi si diradano su una montagna vera: una cresta a venti gradi
+  // è lontana, e a quella distanza un pioppo non sporge di un grado
+  const quota = base > 6 ? 0.25 : 1;
+  return Math.max(0.1, base + skyInterpolaProfilo(SKY_ALBERI, az) * quota);
 }
 
 // --- Come si disegna un punto luminoso -------------------------------
@@ -9673,28 +9831,55 @@ function skyDisegnaAnelli(ctx, r, apertura, davanti) {
   ctx.restore();
 }
 
+// --- Dove cade l'orizzonte sullo schermo ------------------------------
+//
+// In prospettiva l'orizzonte era sempre una retta, e bastava tagliare il
+// rettangolo dello schermo con il piano orizzontale. In stereografica non
+// è più così: un cerchio massimo diventa un **cerchio**. Ed è una
+// fortuna, perché il cerchio si sa scrivere in forma chiusa, esatta, in
+// quattro righe — non serve campionare niente.
+//
+// Il conto. Lo zenit, scritto nel riferimento dello schermo, è il versore
+// `(a, b, c) = (r_z, u_z, f_z)`: le componenti verticali dei tre assi
+// della vista. Un punto del cielo sta sull'orizzonte quando è
+// perpendicolare allo zenit, cioè `a·x + b·y + c·d = 0`. Sostituendo la
+// stereografica inversa (`d = (4−S)/(4+S)`, `x = 4X/(4+S)`, con S il
+// quadrato della distanza dal centro in unità di focale) resta
+//
+//     X² + Y² − (4a/c)·X − (4b/c)·Y − 4 = 0
+//
+// cioè un cerchio di centro `(2a/c, 2b/c)` e raggio `2/|c|` — il raggio
+// viene così semplice perché `(a,b,c)` è un versore.
+//
+// Il caso `c ≈ 0` è quello di chi guarda dritto all'orizzonte: lì il
+// cerchio ha raggio infinito ed è davvero una retta. Si tiene a parte.
+function skyCerchioOrizzonte(base, focale) {
+  const a = base.r[2], b = base.u[2], c = base.f[2];
+  const cx = sky.larghezza / 2, cy = sky.altezza / 2;
+  if (Math.abs(c) < 0.02) {
+    // Retta per il centro dello schermo, perpendicolare a (a, b). Il
+    // verso "sotto" è quello in cui `a·X + b·Y` diventa negativo.
+    return { retta: true, nx: a, ny: b, cx, cy };
+  }
+  return {
+    retta: false,
+    // In pixel: X è verso destra, Y verso l'alto, e py cresce verso il basso
+    px: cx + focale * (2 * a / c),
+    py: cy - focale * (2 * b / c),
+    r: focale * 2 / Math.abs(c),
+    // Guardando in su (c > 0) la terra è **fuori** dal cerchio; guardando
+    // in giù ci sta dentro. Il nadir dice chi ha ragione, e sta a
+    // `sqrt((1+c)/(1−c))` volte il raggio.
+    fuori: c > 0,
+    nadir: 2 / Math.abs(c) * Math.sqrt(Math.max(0, (1 + c) / (1 - c))) * focale
+  };
+}
+
 // Riempie la parte di schermo sotto l'orizzonte, ci appoggia sopra il
 // profilo delle colline e ne traccia la linea vera.
-// In proiezione prospettica l'orizzonte è sempre una retta: la troviamo
-// tagliando il rettangolo dello schermo con il piano orizzontale.
 function skyDisegnaTerreno(ctx, base, focale, aria) {
   const L = sky.larghezza, H = sky.altezza;
-  // Componente verticale della direzione corrispondente al pixel (px, py):
-  // negativa sotto l'orizzonte.
-  const g = (px, py) => base.f[2] + (px - L / 2) * base.r[2] / focale + (H / 2 - py) * base.u[2] / focale;
-
-  const angoli = [{ x: 0, y: 0 }, { x: L, y: 0 }, { x: L, y: H }, { x: 0, y: H }]
-    .map(p => ({ x: p.x, y: p.y, g: g(p.x, p.y), bordo: false }));
-
-  const sotto = [];
-  for (let i = 0; i < angoli.length; i++) {
-    const a = angoli[i], b = angoli[(i + 1) % angoli.length];
-    if (a.g <= 0) sotto.push(a);
-    if ((a.g <= 0) !== (b.g <= 0)) {
-      const t = a.g / (a.g - b.g);
-      sotto.push({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y), g: 0, bordo: true });
-    }
-  }
+  const o = skyCerchioOrizzonte(base, focale);
 
   // I colori della terra. Di notte è quasi nera, di giorno è campagna; e in
   // tutti e due i casi la parte lontana — quella appena sotto l'orizzonte —
@@ -9710,22 +9895,51 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
     ? skyMescolaColore(lontanoBase, aria.foschia, 0.06 + 0.3 * sky.luceCielo)
     : lontanoBase;
 
-  if (sotto.length >= 3) {
-    // Dove cade l'orizzonte sullo schermo: da lì parte la sfumatura
-    const bordi = sotto.filter(p => p.bordo);
-    const y0 = bordi.length ? bordi.reduce((s, p) => s + p.y, 0) / bordi.length : 0;
-    ctx.save();
-    ctx.beginPath();
-    sotto.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  const passaggi = [
+    [0, skyRgba(lontano, 0.98)],
+    [0.35, skyRgba(skyMescolaColore(lontano, vicino, 0.7), 0.99)],
+    [1, skyRgba(vicino, 1)]
+  ];
+
+  ctx.save();
+  ctx.beginPath();
+  if (o.retta) {
+    // Mezzo schermo, tagliato dalla retta. Si prende un segmento lungo
+    // quanto basta a uscire dal riquadro da tutt'e due le parti e lo si
+    // chiude verso il lato in ombra.
+    const lungo = L + H;
+    const tx = -o.ny, ty = -o.nx;      // lungo la retta, in coordinate schermo
+    const sx = -o.nx * lungo, sy = o.ny * lungo;   // verso il "sotto", in pixel
+    ctx.moveTo(o.cx - tx * lungo, o.cy - ty * lungo);
+    ctx.lineTo(o.cx + tx * lungo, o.cy + ty * lungo);
+    ctx.lineTo(o.cx + tx * lungo + sx, o.cy + ty * lungo + sy);
+    ctx.lineTo(o.cx - tx * lungo + sx, o.cy - ty * lungo + sy);
     ctx.closePath();
-    const gr = ctx.createLinearGradient(0, y0, 0, Math.max(y0 + 40, H));
-    gr.addColorStop(0, skyRgba(lontano, 0.98));
-    gr.addColorStop(0.35, skyRgba(skyMescolaColore(lontano, vicino, 0.7), 0.99));
-    gr.addColorStop(1, skyRgba(vicino, 1));
+    const gr = ctx.createLinearGradient(o.cx, o.cy, o.cx + sx * 0.25, o.cy + sy * 0.25);
+    passaggi.forEach(([t, c]) => gr.addColorStop(t, c));
     ctx.fillStyle = gr;
     ctx.fill();
-    ctx.restore();
+  } else {
+    // Il gradiente segue il cerchio: parte dalla linea d'orizzonte (dove
+    // la terra è lontana e sbiadita) e va verso il nadir, cioè verso i
+    // propri piedi. È lo stesso effetto di prima, ma stavolta è giusto
+    // anche quando l'orizzonte sullo schermo è curvo.
+    const gr = ctx.createRadialGradient(o.px, o.py, o.r, o.px, o.py, Math.max(1, o.nadir));
+    passaggi.forEach(([t, c]) => gr.addColorStop(t, c));
+    ctx.fillStyle = gr;
+    if (o.fuori) {
+      // Fuori dal cerchio: tutto lo schermo meno il disco. Due
+      // sottotracciati e la regola pari-dispari, che è il modo di dire
+      // «questo pezzo no» senza doverlo ritagliare a mano.
+      ctx.rect(0, 0, L, H);
+      ctx.arc(o.px, o.py, o.r, 0, Math.PI * 2);
+      ctx.fill('evenodd');
+    } else {
+      ctx.arc(o.px, o.py, o.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
+  ctx.restore();
 
   // Le colline e gli alberi, appoggiati sopra la linea. Sono dello stesso
   // colore del terreno che gli sta subito sotto — se no fra il profilo e il
@@ -9733,14 +9947,17 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // che è poi come si vede una collina all'imbrunire.
   skyDisegnaProfiloOrizzonte(ctx, base, focale, skyRgba(lontano, 1));
 
-  if (sotto.length < 3) return;
   // La linea d'orizzonte vero resta, sotto al profilo: è il riferimento —
   // zero gradi di altezza — e serve a capire quanto le colline coprono
   ctx.save();
   ctx.beginPath();
-  for (let i = 0; i < sotto.length; i++) {
-    const a = sotto[i], b = sotto[(i + 1) % sotto.length];
-    if (a.bordo && b.bordo) { ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }
+  if (o.retta) {
+    const lungo = L + H;
+    const tx = -o.ny, ty = -o.nx;
+    ctx.moveTo(o.cx - tx * lungo, o.cy - ty * lungo);
+    ctx.lineTo(o.cx + tx * lungo, o.cy + ty * lungo);
+  } else {
+    ctx.arc(o.px, o.py, o.r, 0, Math.PI * 2);
   }
   ctx.strokeStyle = sky.luceCielo > 0.4 ? '#e8f2ff' : '#5eb8e8';
   ctx.lineWidth = 1.2;
@@ -9755,7 +9972,7 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
 // dello schermo e da quanto in alto si sta guardando.
 function skyDisegnaProfiloOrizzonte(ctx, base, focale, colore) {
   const L = sky.larghezza, H = sky.altezza;
-  const semi = Math.atan2(Math.hypot(L, H) / 2, focale);
+  const semi = skyAngoloDiRaggio(Math.hypot(L, H) / 2, focale) * SKY_D2R;
   const altF = Math.asin(Math.max(-1, Math.min(1, base.f[2])));
   const cosAlt = Math.cos(altF);
   if (cosAlt < 1e-4) return;
@@ -10099,8 +10316,14 @@ function skyAperturaAnelli(o) {
 // l'icona e non cambia niente; appena si stringe il campo — e adesso lo si
 // può stringere fino a un quarto di grado — comanda il disco vero, e gli
 // astri crescono come crescerebbero in un oculare.
-function skyRaggio(o, focale) {
-  return Math.max(skyRaggioIcona(o), skyRaggioVero(o, focale));
+// `scala` è quanto la proiezione ingrandisce nel punto dove l'astro cade
+// (vedi `skyScalaLocale`): al centro dello schermo è 1, verso il bordo di
+// un campo largo cresce, ed è quello che tiene la Luna della stessa
+// misura del cielo attorno a lei invece che della misura che avrebbe al
+// centro. Chi non ce l'ha — la ricerca di cosa c'è sotto al dito, dove
+// serve solo un bersaglio generoso — lascia perdere e usa 1.
+function skyRaggio(o, focale, scala) {
+  return Math.max(skyRaggioIcona(o), skyRaggioVero(o, focale, scala));
 }
 
 function skyRaggioIcona(o) {
@@ -10125,13 +10348,13 @@ function skyRaggioIcona(o) {
 // pixel. Le stelle non hanno diametro apparente misurabile (Betelgeuse, la
 // più grande del nostro cielo, sta sotto il centesimo di secondo d'arco) e
 // le stazioni spaziali nemmeno: per loro resta l'icona.
-function skyRaggioVero(o, focale) {
+function skyRaggioVero(o, focale, scala) {
   if (!focale || typeof o.diametroKm !== 'number') return 0;
   const km = typeof o.distanzaUA === 'number' && o.distanzaUA > 0
     ? o.distanzaUA * SKY_KM_PER_UA
     : (typeof o.distanzaKm === 'number' ? o.distanzaKm : 0);
   if (!km) return 0;
-  return focale * (o.diametroKm / 2) / km;
+  return focale * (o.diametroKm / 2) / km * (scala || 1);
 }
 
 // Percorso della stazione spaziale nei minuti attorno all'istante mostrato:
@@ -10166,7 +10389,7 @@ function skyDisegnaAstro(ctx, base, focale, o) {
   if (!p.davanti) return;
 
   const sottoOrizzonte = o.alt < 0;
-  const r = skyRaggio(o, focale);
+  const r = skyRaggio(o, focale, skyScalaLocale(p.d));
   // Saturno con gli anelli occupa più del suo disco: lo segnano il nome e il
   // cerchio dell'astro cercato
   let anelli = false;
@@ -10274,7 +10497,7 @@ function skyDisegnaAstro(ctx, base, focale, o) {
       const sole = sky.oggetti.find(x => x.id === 'Sun');
       if (sole) {
         const q = skyProietta(skyVettore(sole.az, sole.alt), base, focale);
-        if (q.davanti) morso = { dx: q.px - p.px, dy: q.py - p.py, r: skyRaggio(sole, focale) };
+        if (q.davanti) morso = { dx: q.px - p.px, dy: q.py - p.py, r: skyRaggio(sole, focale, skyScalaLocale(q.d)) };
       }
     }
     skyDisegnaLuna(ctx, p.px, p.py, r, o, skyOrientamento(o, v, base), skyEstinzione(o.alt), morso);
@@ -12250,6 +12473,12 @@ const SKY_FAMIGLIE = [
   { chiave: 'pianeti',   etichetta: 'Pianeti',     titolo: 'Pianeti',           tipi: ['pianeta'] },
   { chiave: 'stelle',    etichetta: 'Stelle',      titolo: 'Stelle',            tipi: ['stella'] },
   { chiave: 'profondo',  etichetta: 'Profondo',    titolo: 'Cielo profondo',    tipi: ['profondo'] },
+  // Comete e asteroidi non avevano una famiglia, e senza famiglia non
+  // esistevano: `skyCostruisciElenco()` scrive solo i tipi elencati qui, e
+  // il tipo `corpoMinore` non era in nessuna riga. Le comete si calcolavano,
+  // si disegnavano sulla mappa, si potevano perfino toccare — ma nel
+  // pannello Astri non c'erano, che è l'unico posto dove uno le va a cercare.
+  { chiave: 'corpiminori', etichetta: 'Comete',    titolo: 'Comete e asteroidi', tipi: ['corpoMinore'] },
   { chiave: 'satelliti', etichetta: 'Stazioni',    titolo: 'Stazioni spaziali', tipi: ['satellite'] }
 ];
 
@@ -13483,7 +13712,11 @@ function skySchermateAlSecondo(vAz, vAlt) {
 // culmine. Il fattore si tosa a quattro: agli ultimi gradi diventerebbe
 // infinito e basterebbe un tremito per far girare la volta su se stessa.
 function skyGradiAzPerPixel() {
-  const gradiPerPixel = sky.fov / Math.max(1, sky.altezza);
+  // Quanti gradi vale un pixel al centro dello schermo. Con la
+  // stereografica non è più `fov / altezza`: al centro la scala è `1/F`
+  // radianti per pixel, e a campo largo le due cose non coincidono più
+  // (a 180° la vecchia formula faceva scappare il cielo sotto il dito).
+  const gradiPerPixel = SKY_R2D / Math.max(1, skyFocale());
   const compensa = Math.min(4, 1 / Math.max(0.25, Math.cos(sky.manuale.alt * SKY_D2R)));
   return gradiPerPixel * compensa;
 }
@@ -13835,6 +14068,9 @@ function apriSkymap() {
   // va a schermo.
   if (typeof catCarica === 'function') catCarica();
   if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica();
+  // La forma vera del terreno attorno a casa (sei richieste, una volta
+  // sola per luogo: poi sta in localStorage e vale anche senza rete)
+  if (typeof terrenoCarica === 'function') terrenoCarica();
 
   skyCostruisciElenco();
   skyRidimensiona();
@@ -14121,6 +14357,18 @@ function inizializzaSkymap() {
     // vede il cielo allargarsi e si capisce da dove si stava venendo
     skyImpostaFov(55, { morbido: true });
   });
+  // Il grandangolo: 160°, cioè quasi tutto il cielo visibile in una volta.
+  // Non è il massimo possibile (180° sarebbe l'emisfero intero, orizzonte
+  // compreso, e l'orizzonte finirebbe schiacciato sul bordo dello
+  // schermo): 160 lascia le costellazioni basse ancora leggibili.
+  collega('skymap-btn-grandangolo', () => {
+    if (skyCampoDaObiettivo()) {
+      skyAvviso('grandangolo', 'Con la fotocamera accesa il campo lo detta l\'obiettivo: ' +
+        'spegnila per allargare il cielo disegnato.', 6000);
+      return;
+    }
+    skyImpostaFov(160, { morbido: true });
+  });
   collega('skymap-btn-centra', () => {
     const voce = skyOggettoScelto();
     if (voce) skyCentraSu(voce);
@@ -14167,6 +14415,13 @@ function inizializzaSkymap() {
   filtro('skymap-btn-etichette', 'mostraNomi');
   filtro('skymap-btn-vialattea', 'mostraViaLattea');
   filtro('skymap-btn-atmosfera', 'atmosfera');
+  // Il terreno vero non è un filtro come gli altri: non nasconde
+  // qualcosa che c'è già, cambia la forma dell'orizzonte. Se lo si
+  // accende la prima volta senza rete, lo dice e resta il disegnato.
+  collega('skymap-btn-terreno', () => {
+    if (typeof terrenoAlterna === 'function') terrenoAlterna();
+  });
+  if (typeof terrenoAggiornaPannello === 'function') terrenoAggiornaPannello();
   // I segni degli eventi si accendono e si spengono senza rifare i conti
   // delle posizioni: cambia solo cosa viene disegnato
   collega('skymap-btn-eventi', () => {
@@ -20373,7 +20628,12 @@ function esportaBackup() {
     // a mano, che nessuno ha voglia di ridare: vanno nel backup.
     cieloCasa: localStorage.getItem('astrocalendario_cielo_casa'),
     orizzonte: localStorage.getItem('astrocalendario_orizzonte'),
-    corpiMiei: localStorage.getItem('astrocalendario_corpi_minori_miei')
+    corpiMiei: localStorage.getItem('astrocalendario_corpi_minori_miei'),
+    // La forma del terreno si potrebbe riscaricare, ma sono sei richieste
+    // di rete: rimetterla nel backup vuol dire che un telefono nuovo, la
+    // prima sera, ha già le colline giuste anche in mezzo a un campo
+    // senza segnale.
+    terreno: localStorage.getItem('astrocalendario_terreno')
   };
   const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
   const giorno = new Date().toISOString().slice(0, 10);
@@ -20429,12 +20689,16 @@ async function importaBackup(file) {
     // più vecchio semplicemente non li ha, e va bene lo stesso.
     [['cieloCasa', 'astrocalendario_cielo_casa'],
      ['orizzonte', 'astrocalendario_orizzonte'],
-     ['corpiMiei', 'astrocalendario_corpi_minori_miei']].forEach(([campo, chiave]) => {
+     ['corpiMiei', 'astrocalendario_corpi_minori_miei'],
+     ['terreno', 'astrocalendario_terreno']].forEach(([campo, chiave]) => {
       if (!dati[campo]) return;
       try { localStorage.setItem(chiave, dati[campo]); } catch (e) { /* niente storage */ }
     });
     if (typeof orizzonteDimentica === 'function') orizzonteDimentica();
     if (typeof corpiMinoriCaricaMiei === 'function') corpiMinoriCaricaMiei();
+    // Il profilo in memoria è ancora quello di prima: si butta, e alla
+    // prossima apertura del planetario si rilegge dal salvato
+    if (typeof terrenoDimentica === 'function') { terrenoDimentica(); terrenoCarica(); }
 
     pianificaNotifiche();
     aggiornaViste();
@@ -20914,7 +21178,7 @@ function skyDisegnaProfondo(ctx, base, focale) {
     // minimo tiene visibili gli oggetti piccoli (M57 è un anellino di un
     // primo e mezzo: a campo largo sarebbe mezzo pixel).
     const primi = typeof o.assePrimi === 'number' ? o.assePrimi : 20;
-    const vero = focale * Math.tan(primi / 120 * SKY_D2R);
+    const vero = skyRaggioAngolare(primi / 120, focale) * skyScalaLocale(p.d);
     const R = Math.max(9, vero);
     const rapporto = typeof o.asseMinore === 'number' && primi > 0
       ? Math.max(0.2, o.asseMinore / primi) : 1;

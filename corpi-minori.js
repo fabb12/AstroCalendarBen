@@ -599,8 +599,15 @@ function corpoMinoreTogli(nome) {
 // =====================================================================
 
 // Magnitudine oltre la quale non ha senso proporre un corpo minore: è
-// quella che un 130 mm da un cielo di periferia raggiunge a fatica.
-const CORPI_MAG_UTILE = 11.5;
+// quella che un 200 mm da un cielo di periferia raggiunge a fatica.
+//
+// È una soglia sola, e prima non lo era: l'elenco degli astri si fermava a
+// 12,5 e la mappa a 11,5, così una cometa di dodicesima compariva nel
+// pannello, uno la sceglieva, e sul cielo non c'era niente da nessuna
+// parte — né il puntino, né la freccia guida, perché `corpiMinoriVisibili`
+// non l'aveva calcolata. Un nome nell'elenco è una promessa: quello che si
+// può scegliere si deve poter trovare.
+const CORPI_MAG_UTILE = 12.5;
 
 function corpiMinoriInteressanti(data, magMassima) {
   const limite = magMassima !== undefined ? magMassima : CORPI_MAG_UTILE;
@@ -622,7 +629,7 @@ function corpiMinoriInteressanti(data, magMassima) {
 function corpiMinoriVociElenco(data) {
   if (corpiMinori.stato !== 'pronto' && !corpiMinori.miei.length) return [];
 
-  return corpiMinoriInteressanti(data, 12.5).map(c => ({
+  return corpiMinoriInteressanti(data).map(c => ({
     id: 'min:' + c.nome,
     nome: c.nome,
     disegno: c.tipo === 'cometa' ? 'cometa' : 'asteroide',
@@ -673,7 +680,7 @@ function corpiMinoriVisibili() {
   const t = Astronomy.MakeTime(istante);
   const elenco = [];
 
-  corpiMinoriInteressanti(istante, CORPI_MAG_UTILE).forEach(c => {
+  corpiMinoriInteressanti(istante).forEach(c => {
     try {
       // corpoMinoreInCielo dà coordinate J2000; Horizon vuole quelle di
       // oggi, come per tutti gli altri cataloghi.
@@ -692,6 +699,29 @@ function corpiMinoriVisibili() {
 
   corpiInCielo = { quando: Date.now(), offset, elenco };
   return elenco;
+}
+
+// Dove va la coda, sullo schermo.
+//
+// Non dietro alla cometa: **in direzione opposta al Sole**. La coda non la
+// tira il movimento, la spinge il vento solare, e questo è il fatto che
+// sorprende tutti la prima volta — mezza cometa in cielo ha la coda
+// davanti a sé, perché sta tornando verso l'esterno del Sistema Solare.
+//
+// Basta il Sole proiettato: la direzione da lui alla cometa, sullo
+// schermo, è già la direzione della coda. Quando il Sole è dietro
+// l'osservatore la sua proiezione non c'è, e allora la coda si tace
+// invece di puntare a caso.
+function corpiMinoriDirezioneCoda(p, base, focale) {
+  if (typeof sky === 'undefined' || !sky.oggetti) return null;
+  const sole = sky.oggetti.find(o => o.id === 'Sun');
+  if (!sole || typeof sole.az !== 'number') return null;
+  const ps = skyProietta(skyVettore(sole.az, sole.alt), base, focale);
+  if (!ps.davanti) return null;
+  const dx = p.px - ps.px, dy = p.py - ps.py;
+  const n = Math.hypot(dx, dy);
+  if (n < 1) return null;
+  return { x: dx / n, y: dy / n };
 }
 
 // Sulla mappa sono un puntino con il nome accanto, e le comete hanno un
@@ -714,10 +744,41 @@ function corpiMinoriDisegna(ctx, base, focale) {
     const opacita = (c.alt < 0 ? 0.25 : 1) * velo;
     const cometa = c.tipo === 'cometa';
     const colore = cometa ? '#a7f3d0' : '#fcd34d';
-    // Le più luminose un po' più grosse, come per le stelle
-    const r = Math.max(2.2, 5 - c.mag * 0.28);
+    // Le più luminose un po' più grosse, come per le stelle. Il fondo
+    // scala sul limite dell'elenco: una di dodicesima resta un puntino,
+    // una di sesta si vede da lontano.
+    const r = Math.max(2.2, 6.4 - c.mag * 0.42);
 
     if (cometa) {
+      // La coda, prima di tutto: sta dietro alla chioma, non davanti.
+      // Quanto è lunga non è un dato che abbiamo — dipende da quanta
+      // materia sta buttando fuori, che è la cosa che le comete non
+      // dicono mai in anticipo. Si usa la luminosità come indizio,
+      // perché è la stessa causa: quello che la fa brillare è quello che
+      // le fa la coda.
+      const coda = corpiMinoriDirezioneCoda(p, base, focale);
+      if (coda && c.mag < 11) {
+        const lungo = Math.min(120, Math.max(14, (11 - c.mag) * 13));
+        const fx = p.px + coda.x * lungo, fy = p.py + coda.y * lungo;
+        const sfuma = ctx.createLinearGradient(p.px, p.py, fx, fy);
+        sfuma.addColorStop(0, `rgba(167, 243, 208, ${0.34 * opacita})`);
+        sfuma.addColorStop(1, 'rgba(167, 243, 208, 0)');
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = sfuma;
+        // Un cuneo, non una riga: larga alla fine e stretta alla chioma,
+        // che è il verso in cui si apre davvero
+        const larga = Math.max(3, r * 2.4);
+        ctx.beginPath();
+        ctx.moveTo(p.px - coda.y * r * 0.8, p.py + coda.x * r * 0.8);
+        ctx.lineTo(fx - coda.y * larga, fy + coda.x * larga);
+        ctx.lineTo(fx + coda.y * larga, fy - coda.x * larga);
+        ctx.lineTo(p.px + coda.y * r * 0.8, p.py - coda.x * r * 0.8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
       // La chioma: una nuvoletta sfumata, non un punto netto — è quello
       // che distingue una cometa da una stella anche nel binocolo.
       const alone = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, r * 3.4);

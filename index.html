@@ -507,7 +507,9 @@
                 <button id="skymap-btn-griglia" type="button" class="tasto-cielo attiva" title="Reticolo di azimut e altezza">Reticolo</button>
                 <button id="skymap-btn-etichette" type="button" class="tasto-cielo attiva" title="Nomi accanto agli astri disegnati">Nomi</button>
                 <button id="skymap-btn-atmosfera" type="button" class="tasto-cielo attiva" title="Colore del cielo, foschia sull'orizzonte e alone del Sole: come si vede davvero a quest'ora">Atmosfera</button>
+                <button id="skymap-btn-terreno" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'orizzonte prende la forma vera del terreno attorno a te: colline, montagne, la valle. Si scarica una volta sola e poi resta anche senza rete. Spento, torna il profilo disegnato">Terreno vero</button>
               </div>
+              <p id="skymap-terreno-nota" class="etichetta-comando nota-lunga"></p>
 
               <!-- REGISTRA: qui c'è solo quanto dura. Il tasto per farla
                    partire sta sulla mappa e non se ne va mai, perché una
@@ -564,6 +566,7 @@
                 <button id="skymap-btn-insegui" type="button" class="tasto-cielo"
                   title="Tieni l'oggetto selezionato sempre al centro della mappa: la vista lo segue mentre il cielo ruota o mentre scorre il playback">Insegui</button>
                 <button id="skymap-btn-campo" type="button" class="tasto-cielo" title="Torna al campo visivo di partenza, 55° (con la fotocamera accesa: azzera la taratura dell'obiettivo)">Campo 55°</button>
+                <button id="skymap-btn-grandangolo" type="button" class="tasto-cielo" title="Grandangolo: 160° di cielo in un colpo solo, da un orizzonte all'altro. È la vista di chi si sdraia e guarda in su senza cercare niente in particolare">Grandangolo</button>
               </div>
               <div class="riga-comandi" role="group" aria-label="Guarda verso">
                 <div class="segmenti-cielo">
@@ -1596,6 +1599,7 @@
   <script src="catalogo.js"></script>
   <script src="corpi-minori.js"></script>
   <script src="pianifica.js"></script>
+  <script src="terreno.js"></script>
   <script src="meteo-astro.js"></script>
   <script src="eventi-extra.js"></script>
   <script src="ui-nuova.js"></script>

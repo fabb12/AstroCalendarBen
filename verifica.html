@@ -82,10 +82,39 @@ const sky = {
 function skyVelo() { return 1; }
 function skyEstinzione(alt) { return alt >= 22 ? 1 : alt <= 0 ? 0.4 : 0.4 + 0.6 * (alt / 22); }
 function skyAdesso() { return new Date(); }
+
+// La proiezione del planetario, ricopiata da app.js. È l'unica cosa in
+// questa pagina che sia una copia invece dell'originale, e ci sta per un
+// motivo preciso: catalogo.js NON chiama skyProietta — si srotola la
+// formula in casa, per non costruire cinquemila oggetti a fotogramma. Due
+// scritture della stessa formula sono due cose che possono divergere, e
+// il giorno che divergono le stelle si staccano dai pianeti senza che
+// nessuna delle due parti sembri sbagliata. Il §8 le mette a confronto.
+const SKY_D_MIN = -0.9995;
+const SKY_D2R = Math.PI / 180, SKY_R2D = 180 / Math.PI;
+function skyFocale() { return (sky.altezza / 2) / (2 * Math.tan(sky.fov / 4 * SKY_D2R)); }
+function skyDot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+function skyVettore(az, alt) {
+  const a = az * SKY_D2R, h = alt * SKY_D2R;
+  return [Math.cos(h) * Math.sin(a), Math.cos(h) * Math.cos(a), Math.sin(h)];
+}
+function skyProietta(v, base, focale) {
+  const d = skyDot(v, base.f), x = skyDot(v, base.r), y = skyDot(v, base.u);
+  const davanti = d > SKY_D_MIN, den = (1 + d) * 0.5;
+  return { davanti,
+    px: davanti ? sky.larghezza / 2 + focale * (x / den) : 0,
+    py: davanti ? sky.altezza / 2 - focale * (y / den) : 0, x, y, d };
+}
+function skyBaseVerso(az, alt) {
+  const f = skyVettore(az, alt), a = az * SKY_D2R;
+  const r = [Math.cos(a), -Math.sin(a), 0];
+  return { f, r, u: [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]] };
+}
 </script>
 
 <script src="catalogo.js"></script>
 <script src="corpi-minori.js"></script>
+<script src="terreno.js"></script>
 
 <script>
 // ---------------------------------------------------------------------
@@ -388,6 +417,169 @@ titolo('7. Effemeridi note');
     prova(nome, false, e.message);
   }
 });
+
+// =====================================================================
+titolo('8. La proiezione del cielo');
+// =====================================================================
+// Stereografica: un punto a θ dall'asse cade a 2·F·tan(θ/2) dal centro.
+// Le prove qui sotto non sono decorative — ognuna corrisponde a un modo
+// in cui il cielo si è rotto davvero mentre la si cambiava.
+{
+  const F = skyFocale();
+
+  // Il campo chiesto è il campo disegnato: se questa salta, tutto lo zoom
+  // mente di un fattore costante e nessuno se ne accorge finché non
+  // confronta con una carta stellare.
+  const bordo = skyProietta(skyVettore(0, sky.fov / 2), skyBaseVerso(0, 0), F);
+  prova('nell\'altezza dello schermo ci stanno esattamente i gradi chiesti',
+        Math.abs(bordo.py) < 1e-6, `${sky.fov}° → y = ${bordo.py.toFixed(9)} px`);
+
+  // Andata e ritorno: skyDirezione è l'inversa esatta di skyProietta, e
+  // ci si appoggia il colore del cielo riga per riga.
+  let peggio = 0;
+  const b = skyBaseVerso(123, 35);
+  for (let i = 0; i < 200; i++) {
+    const v = skyVettore(Math.random() * 360, Math.random() * 180 - 90);
+    const p = skyProietta(v, b, F);
+    if (!p.davanti) continue;
+    // l'inversa, scritta come in app.js
+    const X = (p.px - sky.larghezza / 2) / F, Y = (sky.altezza / 2 - p.py) / F;
+    const S = X * X + Y * Y, k = 4 / (4 + S);
+    const w = [X * k, Y * k, (4 - S) / (4 + S)];
+    const m = [w[0] * b.r[0] + w[1] * b.u[0] + w[2] * b.f[0],
+               w[0] * b.r[1] + w[1] * b.u[1] + w[2] * b.f[1],
+               w[0] * b.r[2] + w[1] * b.u[2] + w[2] * b.f[2]];
+    peggio = Math.max(peggio, Math.hypot(v[0] - m[0], v[1] - m[1], v[2] - m[2]));
+  }
+  prova('la proiezione inversa riporta esattamente al punto di partenza',
+        peggio < 1e-9, `scarto massimo ${peggio.toExponential(1)}`);
+
+  // L'ORIZZONTE È UN CERCHIO. skyDisegnaTerreno non campiona più niente:
+  // riempie un cerchio calcolato in forma chiusa, di centro (2a/c, 2b/c)
+  // e raggio 2/|c|. Se la formula sbaglia, il terreno finisce nel cielo.
+  let scartoCerchio = 0;
+  [[0, 25], [90, -15], [210, 60]].forEach(([az, alt]) => {
+    const base = skyBaseVerso(az, alt);
+    const a = base.r[2], bb = base.u[2], c = base.f[2];
+    const ox = sky.larghezza / 2 + F * (2 * a / c);
+    const oy = sky.altezza / 2 - F * (2 * bb / c);
+    const R = F * 2 / Math.abs(c);
+    for (let g = 0; g < 360; g += 5) {
+      const p = skyProietta(skyVettore(g, 0), base, F);
+      if (!p.davanti) continue;
+      scartoCerchio = Math.max(scartoCerchio, Math.abs(Math.hypot(p.px - ox, p.py - oy) - R));
+    }
+  });
+  prova('l\'orizzonte proiettato sta sul cerchio che usa il terreno',
+        scartoCerchio < 1e-6, `scarto massimo ${scartoCerchio.toExponential(1)} px`);
+
+  // A campo stretto deve coincidere con la prospettiva di prima: è la
+  // garanzia che nessuna vista ingrandita è cambiata.
+  const vecchio = sky.fov;
+  sky.fov = 0.5;
+  const Fs = skyFocale(), Fg = (sky.altezza / 2) / Math.tan(sky.fov / 2 * SKY_D2R);
+  const bb2 = skyBaseVerso(0, 0), vv = skyVettore(0.2, 0.15);
+  const ps = skyProietta(vv, bb2, Fs), dd = skyDot(vv, bb2.f);
+  const scarto = Math.hypot(ps.px - (sky.larghezza / 2 + Fg * skyDot(vv, bb2.r) / dd),
+                            ps.py - (sky.altezza / 2 - Fg * skyDot(vv, bb2.u) / dd));
+  sky.fov = vecchio;
+  prova('a mezzo grado di campo è indistinguibile dalla prospettiva di prima',
+        scarto < 1e-3, `${scarto.toExponential(1)} px di differenza`);
+
+  // LA PROVA CHE CONTA DAVVERO: catalogo.js si srotola la proiezione in
+  // casa per non costruire cinquemila oggetti a fotogramma, e quella
+  // copia deve dare lo stesso risultato di questa. Il giorno che le due
+  // divergono, le stelle si staccano dai pianeti e dalle figure.
+  if (catPronto()) {
+    catAggiornaPosizioni(new Date());
+    const base = skyBaseVerso(180, 40);
+    const Fq = skyFocale();
+    let trovate = 0, disaccordo = 0;
+    for (let k = 0; k < cat.quante && trovate < 40; k++) {
+      if (cat.magnitudini[k] > 3) continue;
+      const v = [cat.versoriOra[k * 3], cat.versoriOra[k * 3 + 1], cat.versoriOra[k * 3 + 2]];
+      if (v[2] < 0) continue;
+      const p = skyProietta(v, base, Fq);
+      if (!p.davanti || p.px < 0 || p.px > sky.larghezza || p.py < 0 || p.py > sky.altezza) continue;
+      trovate++;
+      // catStellaNelPunto usa la formula srotolata: se le due coincidono,
+      // cercando nel punto dove skyProietta dice che sta, la trova.
+      const trovata = catStellaNelPunto(p.px, p.py, base, Fq);
+      if (!trovata || trovata.indiceCatalogo !== k) disaccordo++;
+    }
+    prova('la proiezione srotolata di catalogo.js dà lo stesso punto di app.js',
+          trovate > 5 && disaccordo === 0,
+          `${trovate} stelle luminose provate, ${disaccordo} in disaccordo`);
+  } else {
+    nota('Il catalogo non è pronto: la prova di coerenza fra le due proiezioni è saltata.');
+  }
+}
+
+// =====================================================================
+titolo('9. La forma vera del terreno');
+// =====================================================================
+// terreno.js prende le quote del suolo attorno a casa e ne ricava
+// l'altezza dell'orizzonte. Qui non si tocca la rete: si controlla la
+// geometria, che è la parte che può sbagliare in silenzio.
+{
+  // I campioni devono cadere dove si dice, o l'orizzonte è quello di un
+  // altro posto.
+  let peggio = 0;
+  [[45.46, 9.19], [41.9, 12.5], [-33.9, 151.2]].forEach(([la, lo]) => {
+    [0, 45, 90, 180, 270, 335].forEach(az => {
+      TERRENO_DISTANZE.forEach(km => {
+        const p = terrenoPuntoA(la, lo, az, km);
+        peggio = Math.max(peggio, Math.abs(terrenoDistanzaKm(la, lo, p.lat, p.lon) - km) / km);
+      });
+    });
+  });
+  prova('i campioni cadono alla distanza e nella direzione giuste',
+        peggio < 0.005, `scarto massimo ${(peggio * 100).toFixed(3)}%`);
+
+  const nord = terrenoPuntoA(45, 9, 0, 10), est = terrenoPuntoA(45, 9, 90, 10);
+  prova('azimut 0 va a nord e azimut 90 va a est',
+        nord.lat > 45 && Math.abs(nord.lon - 9) < 1e-6 && est.lon > 9);
+
+  // Oltre l'antimeridiano la longitudine deve restare fra −180 e 180, o
+  // il servizio rifiuta la richiesta e il terreno non arriva mai.
+  let dentro = true;
+  [0, 90, 180, 270].forEach(az => TERRENO_DISTANZE.forEach(km => {
+    const p = terrenoPuntoA(-17, 179.9, az, km);
+    if (p.lon < -180 || p.lon > 180) dentro = false;
+  }));
+  prova('oltre l\'antimeridiano la longitudine resta valida', dentro);
+
+  // La curvatura: senza, il mare non finirebbe mai e ogni pianura
+  // lontana sembrerebbe una collina.
+  const piatto = terrenoAngolo(100, 101.6, 10);
+  prova('dieci chilometri di pianura stanno sotto l\'orizzonte per la curvatura',
+        piatto < 0 && piatto > -0.1, `${piatto.toFixed(3)}°`);
+  const collina = terrenoAngolo(300, 101.6, 2);
+  prova('una collina 200 m più alta a 2 km si vede a 5,7°',
+        Math.abs(collina - 5.68) < 0.15, `${collina.toFixed(2)}°`);
+  const cima = terrenoAngolo(2120, 121.6, 60);
+  prova('a 60 km la curvatura abbassa la cima di due gradi buoni',
+        cima > 0 && cima < Math.atan2(2000, 60000) * SKY_R2D - 0.2,
+        `${cima.toFixed(2)}° invece di ${(Math.atan2(2000, 60000) * SKY_R2D).toFixed(2)}°`);
+
+  // L'interpolazione da quarantotto creste a trecentosessanta gradi
+  const creste = new Array(TERRENO_DIREZIONI).fill(0).map((_, i) => (i % 2 ? 12 : 3));
+  const profilo = terrenoInterpola(creste);
+  prova('il profilo si chiude su se stesso', Math.abs(profilo[0] - profilo[360]) < 1e-6);
+  let fuori = 0, salto = 0, alto = 0;
+  for (let g = 0; g <= 360; g++) {
+    if (profilo[g] < 2.9 || profilo[g] > 12.1) fuori++;
+    if (g) salto = Math.max(salto, Math.abs(profilo[g] - profilo[g - 1]));
+    if (g < 360) alto = Math.max(alto, profilo[g]);
+  }
+  prova('resta fra la cresta più bassa e la più alta, senza scalini',
+        fuori === 0 && salto < 2.5, `salto massimo ${salto.toFixed(2)}° per grado`);
+  prova('il massimo del profilo è la cresta più alta misurata',
+        Math.abs(alto - 12) < 0.15, `${alto.toFixed(2)}° contro 12°`);
+
+  prova('senza dati scaricati tace, e il planetario usa il profilo disegnato',
+        terrenoAltezza(123) === null);
+}
 
 // =====================================================================
 const esito = document.getElementById('esito');
