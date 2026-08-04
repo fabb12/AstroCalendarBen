@@ -644,6 +644,38 @@ titolo('10. Che paesaggio c\'è, e chi illumina l\'orizzonte');
         'settori larghi 7°30′, confine a 3°45′');
 
   prova('senza dati scaricati nessuno inventa un paesaggio', terrenoTipo(90) === null);
+
+  // La miscela: la stessa cosa dei tipi, ma sfumata, e serve al disegno.
+  // Un colore che salta da un grado all'altro disegna sull'orizzonte un
+  // bordo che nel paesaggio non c'è — c'è solo nel modo in cui l'abbiamo
+  // campionato.
+  const secchi = new Uint8Array(361);
+  for (let g = 0; g <= 360; g++) secchi[g] = (g % 360) < 90 ? 0 : 3;   // mare a nord-est, monti altrove
+  const mix = terrenoMiscelaPerGrado(secchi);
+  const n4 = TERRENO_TIPI.length;
+  let sommaPeggio = 0, saltoPeggio = 0, precedente = null;
+  for (let g = 0; g <= 360; g++) {
+    let s = 0;
+    for (let t = 0; t < n4; t++) s += mix[g * n4 + t];
+    sommaPeggio = Math.max(sommaPeggio, Math.abs(s - 1));
+    const mare = mix[g * n4];
+    if (precedente !== null) saltoPeggio = Math.max(saltoPeggio, Math.abs(mare - precedente));
+    precedente = mare;
+  }
+  prova('le quattro frazioni si sommano sempre a uno',
+        sommaPeggio < 1e-5, `scarto massimo ${sommaPeggio.toExponential(1)}`);
+  prova('fra un grado e il successivo il paesaggio non salta',
+        saltoPeggio < 0.085, `salto massimo ${(saltoPeggio * 100).toFixed(1)}% per grado`);
+  prova('lontano dal confine resta il paesaggio puro',
+        mix[45 * n4] > 0.999 && mix[200 * n4 + 3] > 0.999);
+  // Il confine vero cade fra un grado e l'altro — il settore del mare è
+  // [0°, 90°), quindi la metà esatta sta a −0,5° — e mezzo grado di
+  // sbilanciamento è quello che si legge qui.
+  prova('sul confine il paesaggio è metà e metà',
+        Math.abs(mix[0] - 0.5) < 0.06 && Math.abs(mix[90 * n4] - 0.5) < 0.06,
+        `${(mix[0] * 100).toFixed(0)}% di mare a 0°, ${(mix[90 * n4] * 100).toFixed(0)}% a 90°`);
+  prova('e la miscela si chiude sul giro',
+        Math.abs(mix[360 * n4] - mix[0]) < 1e-6);
 }
 {
   // Le città: dove stanno e quanto illuminano. L'azimut sbagliato è

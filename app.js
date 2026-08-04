@@ -7807,6 +7807,12 @@ function skyAggiornaOsservatore() {
   sky.prossimoCalcolo = 0;
   sky.cacheOrari = { chiave: null, valore: null };
   if (sky.aperto && typeof skyAggiornaOggetti === 'function') skyAggiornaOggetti(true);
+  // Cambiando luogo cambia anche l'orizzonte: le colline sono altre, e
+  // altri sono i paesi che di notte lo illuminano. I due moduli decidono da
+  // sé se vale la pena rifare i conti — e i posti già visti se li tengono
+  // da parte, quindi tornare a casa è immediato.
+  if (typeof terrenoCarica === 'function') terrenoCarica();
+  if (typeof cittaCarica === 'function') cittaCarica();
   skyAggiornaStato();
   skyAggiornaLuogoVistaUI();
 }
@@ -9970,22 +9976,19 @@ function skyCerchioOrizzonte(base, focale) {
 // distanze: quello che si vede lontano, appena sotto l'orizzonte, e quello
 // che si ha ai piedi.
 const SKY_PAESAGGI = {
-  // Il default: è il colore di sempre, quello che vale quando il terreno
-  // vero non c'è e nessuno può dire che paesaggio sia.
+  // Il suolo: è il colore di sempre, ed è quello di TUTTA la terra sotto
+  // l'orizzonte. Gli altri non lo sostituiscono, lo velano.
   suolo:    { vicinoNotte: [5, 8, 10],  vicinoGiorno: [38, 46, 32],
               lontanoNotte: [10, 14, 18], lontanoGiorno: [74, 84, 62] },
-  pianura:  { vicinoNotte: [5, 9, 8],   vicinoGiorno: [46, 54, 32],
-              lontanoNotte: [10, 15, 17], lontanoGiorno: [86, 94, 64] },
-  collina:  { vicinoNotte: [5, 8, 9],   vicinoGiorno: [36, 48, 28],
-              lontanoNotte: [10, 14, 17], lontanoGiorno: [70, 82, 56] },
-  // La montagna è più fredda e più grigia: è roccia, e da lontano prende
-  // il colore dell'aria molto più della campagna
-  montagna: { vicinoNotte: [6, 8, 12],  vicinoGiorno: [58, 62, 62],
-              lontanoNotte: [12, 16, 22], lontanoGiorno: [104, 112, 118] },
+  // La montagna è appena più fredda e più grigia: è roccia, e da lontano
+  // prende il colore dell'aria più della campagna. Appena, però — la prima
+  // versione la faceva grigio chiaro e a mezzogiorno sembrava cemento.
+  montagna: { vicinoNotte: [7, 9, 12],  vicinoGiorno: [52, 56, 54],
+              lontanoNotte: [12, 15, 20], lontanoGiorno: [96, 100, 102] },
   // Il mare è l'unico che non è terra: di giorno è blu, di notte è più
   // scuro del cielo ma non nero — un po' di cielo lo rispecchia sempre
-  mare:     { vicinoNotte: [3, 6, 13],  vicinoGiorno: [26, 56, 84],
-              lontanoNotte: [7, 12, 24], lontanoGiorno: [74, 112, 146] }
+  mare:     { vicinoNotte: [4, 7, 14],  vicinoGiorno: [34, 62, 88],
+              lontanoNotte: [8, 13, 24], lontanoGiorno: [72, 106, 138] }
 };
 
 // Quanto è opaco il terreno adesso.
@@ -10106,16 +10109,22 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   ctx.fillStyle = skyGradienteTerreno(ctx, o, suolo.vicino, suolo.lontano);
   ctx.fill(regola);
 
-  // Le fette di paesaggio diverso, sopra al fondo: il mare a ponente, la
-  // montagna a nord. Ognuna è un settore di azimut, e sotto l'orizzonte un
-  // settore di azimut è un ventaglio che va dalla linea fino ai piedi.
-  skyDisegnaFettePaesaggio(ctx, base, focale, o, aria);
+  // Il paesaggio, velato sopra al fondo: il mare a ponente, la montagna a
+  // nord. Non è più un ventaglio fino ai piedi — quello disegnava dei
+  // triangoli enormi che convergevano sotto di te, con i bordi netti, e a
+  // guardarli sembravano un difetto del programma. Adesso è una velatura
+  // che si spegne a una ventina di gradi sotto la linea: il paesaggio si
+  // legge dov'è vero — vicino all'orizzonte — e ai piedi la terra torna a
+  // essere una sola, uguale dappertutto.
+  skyDisegnaVeloPaesaggio(ctx, base, focale, aria);
 
   // Le colline e gli alberi, appoggiati sopra la linea. Sono dello stesso
   // colore del terreno che gli sta subito sotto — se no fra il profilo e il
-  // suolo si vedeva una cucitura — e si staccano dal cielo per contrasto,
-  // che è poi come si vede una collina all'imbrunire.
-  skyDisegnaProfiloOrizzonte(ctx, base, focale, aria);
+  // suolo si vede una cucitura, ed era il secondo artefatto della prima
+  // versione: le creste di montagna dipinte di grigio chiaro sopra un
+  // terreno verde, con una riga netta in mezzo. Che sia una montagna lo
+  // dice la sua forma, non il suo colore.
+  skyDisegnaProfiloOrizzonte(ctx, base, focale, skyRgba(suolo.lontano, 1));
   ctx.restore();
 
   // La linea d'orizzonte vero resta, sotto al profilo: è il riferimento —
@@ -10139,12 +10148,6 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   ctx.restore();
 }
 
-// Fin dove si spinge il ventaglio di una fetta di paesaggio: praticamente
-// fino ai piedi. Non proprio al nadir, che è un punto e non un cerchio: a
-// −84° resta una monetina di suolo attorno ai piedi con il colore di
-// fondo, e a nessuno è mai importato del colore esatto delle proprie scarpe.
-const SKY_FETTA_FONDO = -84;
-
 // Il giro di azimut che può finire sullo schermo, dato quanto è largo il
 // riquadro e quanto in alto si sta guardando. Serve al profilo delle
 // colline e alle fette di paesaggio: fare tutti e trecentosessanta gradi
@@ -10162,87 +10165,113 @@ function skyArcoOrizzonteInVista(base, focale) {
   };
 }
 
-// Il paesaggio in quella direzione, o 'suolo' se il terreno vero non c'è.
-function skyPaesaggioDi(az) {
-  const t = typeof terrenoTipo === 'function' ? terrenoTipo(az) : null;
-  return t || 'suolo';
-}
+// Quanto scende la velatura del paesaggio sotto la linea dell'orizzonte, e
+// quanto è forte dove è più forte.
+//
+// Venticinque gradi: sotto quelli la terra è terra e basta. È la scelta che
+// toglie di mezzo il difetto della prima versione — i settori disegnati
+// fino ai piedi, che convergendo sul nadir facevano una girandola di
+// triangoli con i bordi netti. Il paesaggio si vede lontano, vicino
+// all'orizzonte; a dieci metri dalle scarpe il mare e la montagna sono
+// tutt'e due «per terra».
+const SKY_VELO_PROFONDITA = 25;
+const SKY_VELO_ALFA = 0.62;
 
-// Le fette di mare e di montagna. Si cammina lungo l'arco visibile e si
-// raccolgono i tratti che hanno lo stesso paesaggio; la pianura e le
-// colline non si disegnano nemmeno — il fondo è già il loro colore, e
-// riempire due volte lo stesso pixel con lo stesso colore è tempo buttato.
-function skyDisegnaFettePaesaggio(ctx, base, focale, o, aria) {
-  if (typeof terrenoTipo !== 'function' || !terrenoDisponibile()) return;
+// Sotto questa frazione di mare-più-montagna non si disegna niente: è
+// pianura o collina, cioè esattamente il colore che c'è già sotto.
+const SKY_VELO_SOGLIA = 0.05;
+
+// La velatura del paesaggio.
+//
+// Si cammina lungo l'arco visibile e si disegna un trapezio per passo, dal
+// grado precedente a quello attuale, dalla linea dell'orizzonte fino a
+// SKY_VELO_PROFONDITA gradi sotto. Il colore non viene da un tipo secco ma
+// dalla **miscela** di `terreno.js` (mare, pianura, collina, montagna
+// sfumati fra loro su nove gradi), e l'opacità la segue: dove il mare è
+// mezzo mezzo con la collina, il velo blu è mezzo. Così il passaggio non ha
+// bordi — non perché siano stati ammorbiditi dopo, ma perché non ci sono
+// mai stati.
+//
+// Un trapezio per passo e non un poligono unico per tratto: il colore
+// cambia a ogni grado, e un poligono ha un colore solo. Sono una trentina
+// di riempimenti piccoli, e costano meno del ventaglio di prima.
+function skyDisegnaVeloPaesaggio(ctx, base, focale, aria) {
+  if (typeof terrenoMiscela !== 'function' || !terrenoDisponibile()) return;
   const arco = skyArcoOrizzonteInVista(base, focale);
   if (!arco) return;
-  const passo = arco.mezzo > 60 ? 3 : 1.5;
+  // Il passo è fine di proposito: ogni trapezio ha un'opacità sola, e due
+  // trapezi larghi con opacità diverse si vedono come due bande. A un
+  // grado e mezzo la banda è una decina di pixel e non la nota nessuno.
+  const passo = arco.mezzo > 60 ? 2 : 1.5;
 
-  let corsa = [], tipoCorsa = null;
-  const chiudi = () => {
-    if (corsa.length > 1 && tipoCorsa && tipoCorsa !== 'suolo' && tipoCorsa !== 'pianura' && tipoCorsa !== 'collina') {
-      const c = skyColoriPaesaggio(tipoCorsa, aria);
-      ctx.beginPath();
-      corsa.forEach((q, i) => (i === 0 ? ctx.moveTo(q.ox, q.oy) : ctx.lineTo(q.ox, q.oy)));
-      for (let i = corsa.length - 1; i >= 0; i--) ctx.lineTo(corsa[i].fx, corsa[i].fy);
-      ctx.closePath();
-      ctx.fillStyle = skyGradienteTerreno(ctx, o, c.vicino, c.lontano);
-      ctx.fill();
-    }
-    corsa = [];
+  const mare = skyColoriPaesaggio('mare', aria).lontano;
+  const monte = skyColoriPaesaggio('montagna', aria).lontano;
+
+  const punto = az => {
+    const m = terrenoMiscela(az);
+    if (!m) return null;
+    const orlo = skyProietta(skyVettore(az, 0), base, focale);
+    const giu = skyProietta(skyVettore(az, -SKY_VELO_PROFONDITA), base, focale);
+    if (!orlo.davanti || !giu.davanti) return null;
+    return { m, forza: m.mare + m.montagna, orlo, giu };
   };
 
-  const punti = az => {
-    const orlo = skyProietta(skyVettore(az, 0), base, focale);
-    const fondo = skyProietta(skyVettore(az, SKY_FETTA_FONDO), base, focale);
-    if (!orlo.davanti || !fondo.davanti) return null;
-    return { ox: orlo.px, oy: orlo.py, fx: fondo.px, fy: fondo.py };
-  };
+  ctx.save();
+  let prima = punto(arco.centro - arco.mezzo);
+  for (let d = -arco.mezzo + passo; d <= arco.mezzo + 0.001; d += passo) {
+    const dopo = punto(arco.centro + d);
+    const sinistra = prima;
+    prima = dopo;
+    if (!sinistra || !dopo) continue;
 
-  for (let d = -arco.mezzo; d <= arco.mezzo + 0.001; d += passo) {
-    const az = arco.centro + d;
-    const tipo = skyPaesaggioDi(az);
-    if (tipo !== tipoCorsa) {
-      // Il ventaglio che finisce si chiude sull'azimut di confine: se no
-      // fra il mare e la montagna resta una fetta larga un passo col
-      // colore del fondo, e la costa sembra sfrangiata
-      if (corsa.length) {
-        const q = punti(az);
-        if (q) corsa.push(q);
-      }
-      chiudi();
-      tipoCorsa = tipo;
-    }
-    const orlo = skyProietta(skyVettore(az, 0), base, focale);
-    const fondo = skyProietta(skyVettore(az, SKY_FETTA_FONDO), base, focale);
-    // Guardando quasi allo zenit il fondo del ventaglio finisce
-    // dall'altra parte del mondo e la proiezione non lo sa più disegnare:
-    // meglio saltare quel tratto che tirare una riga a caso
-    if (!orlo.davanti || !fondo.davanti) { chiudi(); tipoCorsa = null; continue; }
-    corsa.push({ ox: orlo.px, oy: orlo.py, fx: fondo.px, fy: fondo.py });
+    const forza = (sinistra.forza + dopo.forza) / 2;
+    if (forza < SKY_VELO_SOGLIA) continue;
+    const acqua = (sinistra.m.mare + dopo.m.mare) / 2;
+    const colore = skyMescolaColore(monte, mare, acqua / forza);
+    const alfa = SKY_VELO_ALFA * forza;
+
+    // Il velo si spegne scendendo: in cima è pieno, in fondo non c'è più.
+    // Il gradiente segue il trapezio, dal mezzo del lato alto al mezzo di
+    // quello basso — che è la direzione «verso i piedi» proprio lì.
+    const g = ctx.createLinearGradient(
+      (sinistra.orlo.px + dopo.orlo.px) / 2, (sinistra.orlo.py + dopo.orlo.py) / 2,
+      (sinistra.giu.px + dopo.giu.px) / 2, (sinistra.giu.py + dopo.giu.py) / 2);
+    g.addColorStop(0, skyRgba(colore, alfa));
+    g.addColorStop(0.45, skyRgba(colore, alfa * 0.42));
+    g.addColorStop(1, skyRgba(colore, 0));
+    ctx.fillStyle = g;
+
+    ctx.beginPath();
+    ctx.moveTo(sinistra.orlo.px, sinistra.orlo.py);
+    ctx.lineTo(dopo.orlo.px, dopo.orlo.py);
+    ctx.lineTo(dopo.giu.px, dopo.giu.py);
+    ctx.lineTo(sinistra.giu.px, sinistra.giu.py);
+    ctx.closePath();
+    ctx.fill();
   }
-  chiudi();
+  ctx.restore();
 }
 
 // Il profilo delle colline. Si disegnano solo gli azimut che possono
-// finire sullo schermo, e ogni tratto prende il colore del suo paesaggio:
-// una cresta di montagna è più fredda di una fila di colline, e il mare
-// non ha nessun profilo — è già la sua linea.
-function skyDisegnaProfiloOrizzonte(ctx, base, focale, aria) {
+// finire sullo schermo: fare tutto il giro costerebbe sei volte tanto e non
+// si vedrebbe.
+//
+// Il colore è uno solo, ed è quello del terreno lontano. Per un po' ogni
+// tratto ha preso il colore del suo paesaggio, e sembrava una buona idea:
+// il risultato era una cresta di montagna grigio chiaro appiccicata sopra
+// un terreno verde, con una cucitura netta in mezzo e un cambio di colore
+// a metà di una collina. Che quella cresta sia una montagna si vede da
+// quanto è alta, non da come è dipinta.
+function skyDisegnaProfiloOrizzonte(ctx, base, focale, colore) {
   const arco = skyArcoOrizzonteInVista(base, focale);
   if (!arco) return;
   const passo = arco.mezzo > 60 ? 2 : 1;
 
   ctx.save();
-  let corsa = [], tipoCorsa = null;
+  ctx.fillStyle = colore;
+  let corsa = [];
   const chiudi = () => {
     if (corsa.length > 1) {
-      // Sul mare il profilo è una riga e il poligono viene degenere: non
-      // disegna niente da sé, e non serve saltarlo. Se però lì davanti c'è
-      // un ostacolo dichiarato a mano — un molo, un palazzo sul lungomare —
-      // quello sporge davvero, e va disegnato color terra: è terra.
-      const tinta = tipoCorsa === 'mare' ? 'suolo' : (tipoCorsa || 'suolo');
-      ctx.fillStyle = skyRgba(skyColoriPaesaggio(tinta, aria).lontano, 1);
       ctx.beginPath();
       corsa.forEach((q, i) => (i === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
       for (let i = corsa.length - 1; i >= 0; i--) ctx.lineTo(corsa[i].bx, corsa[i].by);
@@ -10253,18 +10282,6 @@ function skyDisegnaProfiloOrizzonte(ctx, base, focale, aria) {
   };
   for (let d = -arco.mezzo; d <= arco.mezzo + 0.001; d += passo) {
     const az = arco.centro + d;
-    const tipo = skyPaesaggioDi(az);
-    if (tipo !== tipoCorsa) {
-      // Il tratto precedente si chiude sull'azimut di confine, se no fra
-      // due paesaggi resta una fessura larga un passo
-      if (corsa.length) {
-        const c = skyProietta(skyVettore(az, skyAltezzaOrizzonte(az)), base, focale);
-        const p = skyProietta(skyVettore(az, 0), base, focale);
-        if (c.davanti && p.davanti) corsa.push({ cx: c.px, cy: c.py, bx: p.px, by: p.py });
-      }
-      chiudi();
-      tipoCorsa = tipo;
-    }
     const cresta = skyProietta(skyVettore(az, skyAltezzaOrizzonte(az)), base, focale);
     const piede = skyProietta(skyVettore(az, 0), base, focale);
     if (!cresta.davanti || !piede.davanti) { chiudi(); continue; }
@@ -13695,41 +13712,14 @@ function skyTastoMappaHtml(ev) {
     return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" onclick="skyApriMappaEvento('${ev.id}')" ` +
       `title="Da dove si vede, a che ora, e con la Luna quanto alta">Dove si vede</button>`;
   }
-  // Una cometa (o un asteroide) non è un corpo che si trova scorrendo
-  // l'elenco: i nomi sono sigle, e chi legge «Cometa 12P al massimo» non
-  // ha nessuna voglia di ricopiarsela nella ricerca. Qui il tasto la
-  // sceglie e basta: selezionata, centrata, con la sua scheda e la sua
-  // traccia, come si fa con un pianeta.
-  if (typeof ev.corpoCielo === 'string' && ev.corpoCielo.startsWith('min:')) {
-    const cometa = /^cometa/i.test(ev.titolo || '');
-    return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" ` +
-      `onclick="skyPuntaCorpoEvento('${ev.id}')" ` +
-      `title="${cometa ? 'Seleziona la cometa e portala' : 'Seleziona il corpo e portalo'} al centro della mappa">` +
-      `Vai ${cometa ? 'sulla cometa' : 'sull\'asteroide'}</button>`;
-  }
+  // Una cometa non ha un terzo tasto suo, e per un po' l'ha avuto: «Vai
+  // sulla cometa», accanto a «Porta l'orologio qui» e «Mostra in cielo».
+  // Tre tasti in fila su una riga di elenco sono due di troppo, e quel
+  // terzo faceva esattamente quello che fa il secondo. Adesso a
+  // selezionare la cometa ci pensa «Mostra in cielo», che è dove uno la
+  // cerca.
   return '';
 }
-
-// Il tasto qui sopra. Sceglie l'astro dell'evento — che è la stessa cosa
-// che fa un tocco sulla sua pillola nell'elenco — senza toccare
-// l'orologio: se si sta guardando il cielo di stanotte, si resta lì.
-window.skyPuntaCorpoEvento = (id) => {
-  const ev = eventiCalcolati.find(e => e.id === id);
-  if (!ev || !ev.corpoCielo) return;
-  // I cataloghi dei corpi minori arrivano su richiesta: se non sono ancora
-  // qui, li si chiede e si punta appena ci sono (`centraQuandoPronto`).
-  if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica();
-  sky.mostraCorpiMinori = true;
-  sky.mostraTraccia = true;
-  skyImpostaTarget(ev.corpoCielo, { mantieni: true });
-  skyAggiornaTastiFiltri();
-  const nome = skyNomeCorpo(ev.corpoCielo);
-  const p = skyPosizioneEvento(ev, skyAdesso());
-  skyAvviso('eventi', p
-    ? `${nome}: guarda verso ${skyNomeDirezione(p.az)}, a ${Math.round(p.alt)}° di altezza` +
-      (p.alt < 0 ? ' (adesso è sotto l\'orizzonte).' : '.')
-    : `${nome} è selezionata: sto ancora calcolando dove sta.`, 9000);
-};
 
 // La finestra della mappa vive nella pagina, e la pagina non si vede finché
 // il cielo è a schermo intero (nel pieno schermo vero il browser disegna solo
@@ -13881,6 +13871,14 @@ window.skyEventoNelCielo = (id) => {
     return;
   }
   if (!p.radiante && ev.corpoCielo) {
+    // Se il protagonista è una cometa il filtro dei corpi minori deve
+    // essere acceso, e il catalogo caricato: se no si arriva sul punto
+    // giusto del cielo e lì non c'è disegnato niente
+    if (String(ev.corpoCielo).startsWith('min:')) {
+      sky.mostraCorpiMinori = true;
+      if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica();
+      skyAggiornaTastiFiltri();
+    }
     skyImpostaTarget(ev.corpoCielo, { mantieni: true });
     return;
   }
