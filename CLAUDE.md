@@ -43,7 +43,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `verifica.html` | ~530 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~4.915 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v55`). |
+| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v59`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 
@@ -133,7 +133,7 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
 | 581–671 | Eventi di un periodo arbitrario (anche passato) | `calcolaEventiIntervallo()` (**588**) |
 | 672–942 | **1. Calcolo eventi** — fasi lunari, eclissi lunari e solari | `calcolaEventiAstronomi()` (**676**), `aggiungiFasiLunari()`, `aggiungiEclissi*()` |
 | 943–1857 | **1-bis. Geometria di visibilità delle eclissi solari** | cono d'ombra, oscuramento per località |
-| 1858–2936 | **1-ter. La mappa Leaflet**: tracciati, filmato, legenda, schema, terminatore (giorno/notte), schermo intero della mappa | `apriMappaEclissi(id)`, `_eclissiAggiornaTutto()`, `_eclDisegnaNotte()`, `_eclAlternaSchermoIntero()` (**4602**) |
+| 1858–2936 | **1-ter. La mappa Leaflet**: tracciati, filmato, legenda, schema, terminatore (giorno/notte), schermo intero della mappa, **orologio condiviso col planetario** | `apriMappaEclissi(id)`, `_eclissiAggiornaTutto()`, `_eclDisegnaNotte()`, `_eclAlternaSchermoIntero()` (**4602**), `_eclInMarcia()`, `_eclPortaIlCieloQui()` / `eclSeguiOrologioCielo()` (**4044**, «Un orologio solo») |
 | 2937–3174 | **1-ter-bis.** Il cielo sarà sereno? (meteo dell'eclissi) | |
 | 3175–3264 | **1-ter-ter.** Portarsela dietro (condividere l'eclissi) | |
 | 3265–3506 | **1-quater.** Le eclissi di casa tua | |
@@ -276,7 +276,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v55`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v59`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene
@@ -373,6 +373,7 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | La barra del tempo (l'orologio sempre in vista sulla mappa) | `#cielo-tempo` in `index.html` (dentro `#skymap-contenitore`, dopo i pannelli): ⟲ `skymap-tempo-adesso`, lettura `skymap-tempo-quando` (che apre il pannello Tempo), `skymap-passo-meno`/`-piu`, slitta `skymap-tempo`, play `skymap-tempo-play`. Testo in `skyTestoBarraTempo()` / `skyScartoBreve()`, stato in `skyAggiornaTestoTempo()` e `skyAggiornaComandiPlayback()`; stili `.barra-tempo`, `.tasto-barra-tempo`, `.lettura-barra-tempo`, `.slitta-tempo` |
 | Quanto spazio lascia la barra a chi le sta sopra (zoom, scheda dell'oggetto, pannelli) | le misure `--tasto-tempo`, `--alta-barra-tempo` e `--sopra-barra-tempo` su `.vista-cielo` in `style.css`: cambiarle basta, le usano `.cielo-chrome`, `.comandi-mappa-cielo`, `.pannello-dettaglio` e `#skymap-overlay`. Sotto i 520px di larghezza la slitta va a capo da sola (media query dedicata) |
 | Tasto della mappa dell'ombra negli eventi del planetario | `skyTastoMappaHtml()` + `skyApriMappaEvento(id)` (sezione 7.4-bis) |
+| Tempo condiviso fra planetario e mappa del cono d'ombra | Lo stesso orologio unico della vista 3D: `sky.offsetTempoSec`. La mappa ne è una seconda lettura, tarata sul culmine dell'eclissi (`_eclissiOffsetTempoMin`, minuti dal massimo). **Mappa → cielo**: `_eclPortaIlCieloQui()` in fondo a `_eclissiAggiornaTutto()`, che scrive `fluido` a ogni fotogramma e rimanda a `_eclAssestaIlCielo()` (`ECL_ASSESTA_MS`) il conto pieno. **Cielo → mappa**: `eclSeguiOrologioCielo()`, agganciata in fondo a `skyImpostaOffsetTempo()` — l'unico posto da cui quell'orologio si muove — strozzata a `ECL_SEGUI_MS` e tosata alla finestra dell'eclissi. Il rimbalzo lo ferma `_eclSincronizzando`. Quando il cielo esce dalla finestra la mappa resta al bordo e `_eclCieloFuoriFinestra` lo fa dire alla riga `#eclissi-nota-cielo` (`_eclAggiornaNotaCielo()`), che è anche il tasto: riporta l'orologio o apre il planetario lì (`eclissiTastoOrologio()` → `eclissiVaiAlPlanetario()`). Il tempo cammina da una parte sola: `_eclFilmatoAvvia()` e `apriMappaEclissi()` spengono il playback del cielo, e `_eclInMarcia()` (filmato **o** playback) è quello che alleggerisce il disegno dell'ombra e accende «Segui l'ombra» |
 | Colori della mappa dell'eclissi (chiara/scura) | `ECL_TAVOLOZZE` + `_eclApplicaTemaMappa()`, e `#mappa-eclissi.mappa-chiara` in `style.css` |
 | Il terminatore sulla mappa dell'ombra (dov'è giorno e dov'è notte) | `ECL_NOTTE_SOGLIE` (le tre altezze del Sole: tramonto, crepuscolo civile, notte astronomica) e `_eclFasciaDellaNotte()`, che per ogni meridiano dà il tratto al buio con una formula chiusa — **non** si può chiudere il poligono sul polo, perché vicino agli equinozi il polo non è al buio. Disegno in `_eclDisegnaNotte()`, colori in `ECL_TAVOLOZZE[...].notte`, livelli nel riquadro Leaflet `ecl-notte` (z-index 350: sopra le tessere, sotto i tracciati). Si accende e si spegne con `eclissiAlternaNotte()` (tasto ◐ `#btn-eclissi-notte` sulla mappa) |
 | Mappa dell'eclissi a tutto schermo (comandi in sovrimpressione) | `_eclAlternaSchermoIntero()` e `.ecl-guscio-filmato:fullscreen` / `.ecl-schermo-pieno` in `style.css` |

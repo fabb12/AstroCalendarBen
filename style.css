@@ -1305,6 +1305,33 @@ body .ecl-tasto.principale { color: var(--blu-chiaro); border-color: rgba(76, 14
   cursor: pointer;
 }
 .ecl-opzione input[type="checkbox"] { accent-color: var(--blu); width: 15px; height: 15px; }
+
+/* La riga dell'orologio condiviso: dice che il planetario sta guardando lo
+   stesso minuto, ed è un tasto perché la domanda che viene dopo — "e da
+   sotto com'è?" — ha una risposta sola. Sta bassa di tono: è un promemoria,
+   non un comando da cercare. */
+.ecl-nota-cielo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 7px 11px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-s);
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  font-size: 0.72rem;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--transizione), border-color var(--transizione);
+}
+.ecl-nota-cielo:hover { color: #fff; border-color: var(--bordo-forte); }
+.ecl-nota-cielo b { color: var(--blu-chiaro); font-weight: 600; }
+.ecl-nota-segno { color: var(--blu-chiaro); font-size: 0.9rem; line-height: 1; }
+/* A schermo intero il lettore è appoggiato sopra la mappa: ogni riga in più
+   è mappa coperta, e la nota si stringe a quanto basta per leggerla */
+.ecl-guscio-filmato:fullscreen .ecl-nota-cielo,
+.ecl-guscio-filmato.ecl-schermo-pieno .ecl-nota-cielo { padding: 5px 9px; font-size: 0.68rem; }
 body .ecl-select {
   background: var(--superficie-piena);
   color: var(--testo);
