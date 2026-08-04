@@ -81,6 +81,31 @@ const TERRENO_ALT_MAX = 60;
 // senso riscaricarlo perché ci si è spostati di un isolato.
 const TERRENO_RAGGIO_VALIDO_KM = 2;
 
+// Quanto sotto si scende prima di dire «qui è acqua». I modelli del suolo
+// non dicono dov'è il mare: ci mettono uno zero e via. Ma uno zero ripetuto
+// per dieci campioni in fila, a dieci, venti, quaranta chilometri, non è una
+// pianura: le pianure vere non sono piatte al centimetro. Mezzo metro di
+// tolleranza copre le maree e gli errori del modello senza prendersi la
+// pianura padana per l'Adriatico.
+const TERRENO_MARE_QUOTA = 0.5;
+const TERRENO_MARE_FRAZIONE = 0.75;   // quanta parte dei campioni lontani
+const TERRENO_MARE_DA_KM = 1.5;       // sotto questa distanza non conta
+
+// Le soglie fra un paesaggio e l'altro. Sono due misure diverse e servono
+// tutt'e due: l'angolo dice quanto quella cosa **copre** (è la domanda
+// dell'astronomo), il dislivello dice che cos'**è** (è la domanda di chi
+// guarda fuori dalla finestra). Una montagna a cinquanta chilometri copre
+// due gradi scarsi ma resta una montagna, e va detto.
+const TERRENO_SOGLIA_MONTAGNA_GRADI = 2.0;
+const TERRENO_SOGLIA_MONTAGNA_M = 600;
+const TERRENO_SOGLIA_COLLINA_GRADI = 0.5;
+const TERRENO_SOGLIA_COLLINA_M = 120;
+
+// I quattro paesaggi. L'ordine è quello dei codici salvati: non
+// riordinarli, o un profilo salvato ieri racconta un posto diverso.
+const TERRENO_TIPI = ['mare', 'pianura', 'collina', 'montagna'];
+const TERRENO_MARE = 0, TERRENO_PIANURA = 1, TERRENO_COLLINA = 2, TERRENO_MONTAGNA = 3;
+
 
 // =====================================================================
 // 2. LO STATO
@@ -92,6 +117,7 @@ const terreno = {
   lon: null,
   quota: null,            // quota del suolo sotto l'osservatore, in metri
   profilo: null,          // Float32Array(361): l'altezza dell'orizzonte, grado per grado
+  tipi: null,             // Uint8Array(361): che paesaggio c'è in quella direzione
   quando: 0,
   motivo: '',             // perché non c'è, quando non c'è
   acceso: true
@@ -178,6 +204,47 @@ function terrenoInterpola(creste) {
   return p;
 }
 
+// Che paesaggio c'è in quella direzione. Non è un dato che si scarica: si
+// legge nei campioni che abbiamo già in mano, ed è la differenza fra un
+// orizzonte «alto 3,4°» e un orizzonte che uno riconosce — la montagna a
+// nord, il mare a ponente, la pianura per il resto.
+//
+// L'ordine dei controlli conta: il mare per primo, perché il mare è
+// perfettamente piatto e senza questo controllo finirebbe classificato
+// pianura — e la pianura si disegna col prato e con gli alberi.
+function terrenoTipoDiDirezione(quote, i, quotaCasa, cresta) {
+  const n = TERRENO_DISTANZE.length;
+  let qmax = -Infinity, lontani = 0, piatti = 0;
+  for (let k = 0; k < n; k++) {
+    const q = quote[i * n + k];
+    if (typeof q !== 'number') continue;
+    if (q > qmax) qmax = q;
+    if (TERRENO_DISTANZE[k] >= TERRENO_MARE_DA_KM) {
+      lontani++;
+      if (q <= TERRENO_MARE_QUOTA) piatti++;
+    }
+  }
+  if (lontani && piatti / lontani >= TERRENO_MARE_FRAZIONE) return TERRENO_MARE;
+  if (qmax === -Infinity) return TERRENO_PIANURA;
+
+  const dislivello = qmax - (typeof quotaCasa === 'number' ? quotaCasa : 0);
+  if (cresta >= TERRENO_SOGLIA_MONTAGNA_GRADI || dislivello >= TERRENO_SOGLIA_MONTAGNA_M) return TERRENO_MONTAGNA;
+  if (cresta >= TERRENO_SOGLIA_COLLINA_GRADI || dislivello >= TERRENO_SOGLIA_COLLINA_M) return TERRENO_COLLINA;
+  return TERRENO_PIANURA;
+}
+
+// I tipi non si interpolano: fra il mare e la montagna non c'è una via di
+// mezzo, c'è la costa. Si prende il settore più vicino, e il confine cade
+// a metà strada fra due direzioni campionate.
+function terrenoTipiPerGrado(tipi) {
+  const p = new Uint8Array(361);
+  const n = tipi.length;
+  for (let g = 0; g <= 360; g++) {
+    p[g] = tipi[Math.round((g % 360) / TERRENO_PASSO_AZ) % n];
+  }
+  return p;
+}
+
 async function terrenoCostruisci(lat, lon) {
   // Prima la quota di casa: senza sapere da che altezza si guarda, ogni
   // angolo è sbagliato — e sbagliato tanto, perché è il termine che si
@@ -204,6 +271,7 @@ async function terrenoCostruisci(lat, lon) {
   if (quote.length !== punti.length) throw new Error('quote incomplete');
 
   const creste = new Array(TERRENO_DIREZIONI).fill(0);
+  const tipi = new Array(TERRENO_DIREZIONI).fill(TERRENO_PIANURA);
   for (let i = 0; i < TERRENO_DIREZIONI; i++) {
     let massimo = 0;
     for (let k = 0; k < TERRENO_DISTANZE.length; k++) {
@@ -217,9 +285,10 @@ async function terrenoCostruisci(lat, lon) {
     // cominci a zero gradi — dal riempimento del terreno alla curva della
     // notte. Meglio un orizzonte piatto che un'app che si contraddice.
     creste[i] = Math.max(0, Math.min(TERRENO_ALT_MAX, massimo));
+    tipi[i] = terrenoTipoDiDirezione(quote, i, quotaCasa, creste[i]);
   }
 
-  return { quota: quotaCasa, creste };
+  return { quota: quotaCasa, creste, tipi };
 }
 
 
@@ -242,6 +311,10 @@ function terrenoLeggiSalvato(lat, lon) {
   try {
     const v = JSON.parse(localStorage.getItem(CHIAVE_TERRENO) || 'null');
     if (!v || !Array.isArray(v.creste) || v.creste.length !== TERRENO_DIREZIONI) return null;
+    // I profili salvati prima che esistessero i paesaggi hanno le creste ma
+    // non i tipi: si buttano e si riscaricano. Sono sei richieste, e senza
+    // i tipi il mare si disegnerebbe col prato.
+    if (!Array.isArray(v.tipi) || v.tipi.length !== TERRENO_DIREZIONI) return null;
     if (terrenoDistanzaKm(lat, lon, v.lat, v.lon) > TERRENO_RAGGIO_VALIDO_KM) return null;
     return v;
   } catch (e) {
@@ -252,7 +325,7 @@ function terrenoLeggiSalvato(lat, lon) {
 function terrenoSalva(lat, lon, dati) {
   try {
     localStorage.setItem(CHIAVE_TERRENO, JSON.stringify({
-      lat, lon, quota: dati.quota, creste: dati.creste, quando: Date.now()
+      lat, lon, quota: dati.quota, creste: dati.creste, tipi: dati.tipi, quando: Date.now()
     }));
   } catch (e) { /* storage pieno: pazienza, si riscarica */ }
 }
@@ -262,6 +335,7 @@ function terrenoSalva(lat, lon, dati) {
 function terrenoDimentica() {
   terreno.stato = 'niente';
   terreno.profilo = null;
+  terreno.tipi = null;
   terreno.lat = terreno.lon = null;
 }
 
@@ -275,6 +349,7 @@ function terrenoApplica(lat, lon, dati, sorgente) {
   terreno.lon = lon;
   terreno.quota = dati.quota;
   terreno.profilo = terrenoInterpola(dati.creste);
+  terreno.tipi = terrenoTipiPerGrado(dati.tipi);
   terreno.stato = 'pronto';
   terreno.motivo = '';
   terreno.quando = Date.now();
@@ -354,19 +429,48 @@ function terrenoDisponibile() {
   return terreno.acceso && terreno.stato === 'pronto' && !!terreno.profilo;
 }
 
-// Il punto più alto e quello più basso del giro: è il modo più corto di
-// dire com'è fatto il posto in cui sei.
+// Che paesaggio c'è guardando da quella parte: 'mare', 'pianura',
+// 'collina', 'montagna' — oppure `null` se il terreno vero non c'è, e
+// allora nessuno può dirlo.
+function terrenoTipo(az) {
+  if (!terrenoDisponibile() || !terreno.tipi) return null;
+  const x = (((az % 360) + 360) % 360);
+  return TERRENO_TIPI[terreno.tipi[Math.round(x) % 360]] || null;
+}
+
+// Il punto più alto e quello più basso del giro, e quanta parte
+// dell'orizzonte occupa ciascun paesaggio: è il modo più corto di dire
+// com'è fatto il posto in cui sei.
 function terrenoRiassunto() {
   if (!terrenoDisponibile()) return null;
   let alto = -1, altoAz = 0, basso = 999;
+  const gradi = [0, 0, 0, 0];
+  // La direzione centrale di ogni paesaggio: si somma il versore di ogni
+  // grado e si guarda dove punta la somma. Sommare gli azimut e dividerli
+  // no: fra 350° e 10° la media aritmetica dà sud.
+  const sx = [0, 0, 0, 0], sy = [0, 0, 0, 0];
   for (let g = 0; g < 360; g++) {
     if (terreno.profilo[g] > alto) { alto = terreno.profilo[g]; altoAz = g; }
     if (terreno.profilo[g] < basso) basso = terreno.profilo[g];
+    const t = terreno.tipi ? terreno.tipi[g] : TERRENO_PIANURA;
+    gradi[t]++;
+    sx[t] += Math.sin(g * Math.PI / 180);
+    sy[t] += Math.cos(g * Math.PI / 180);
   }
+  const verso = t => (Math.atan2(sx[t], sy[t]) * 180 / Math.PI + 360) % 360;
+  const nome = a => (typeof skyNomeDirezione === 'function' ? skyNomeDirezione(a) : '');
+
+  const paesaggi = TERRENO_TIPI
+    .map((n, t) => ({ tipo: n, gradi: gradi[t], quota: gradi[t] / 360, direzione: nome(verso(t)) }))
+    .filter(p => p.gradi > 0)
+    .sort((a, b) => b.gradi - a.gradi);
+
   return {
     alto, altoAz, basso,
     quota: terreno.quota,
-    direzione: typeof skyNomeDirezione === 'function' ? skyNomeDirezione(altoAz) : ''
+    tipoPiuAlto: terrenoTipo(altoAz),
+    paesaggi,
+    direzione: nome(altoAz)
   };
 }
 
@@ -396,12 +500,33 @@ function terrenoTesto() {
   if (!r) return 'Apri il planetario da un posto con la rete e prendo la forma vera del terreno qui attorno.';
 
   const quota = typeof r.quota === 'number' ? `Sei a ${Math.round(r.quota)} m. ` : '';
+
+  // Com'è fatto il giro. Non «l'orizzonte è alto 3,4°» — che è vero e non
+  // dice niente — ma le parole con cui uno descriverebbe il posto in cui
+  // vive: il mare da una parte, la montagna dall'altra, la pianura in mezzo.
+  const parole = {
+    mare: 'il mare', pianura: 'pianura', collina: 'colline', montagna: 'montagne'
+  };
+  const pezzi = r.paesaggi
+    .filter(p => p.quota >= 0.08)
+    .map(p => {
+      const q = p.quota >= 0.75 ? 'quasi tutt\'intorno'
+        : p.quota >= 0.45 ? 'per metà orizzonte'
+        : p.quota >= 0.22 ? `verso ${p.direzione}`
+        : `un tratto verso ${p.direzione}`;
+      return `${parole[p.tipo] || p.tipo} ${q}`;
+    });
+  const paesaggio = pezzi.length ? `Attorno a te: ${pezzi.join(', ')}. ` : '';
+
   if (r.alto < 0.35) {
-    return quota + 'Attorno a te il terreno è piatto: orizzonte libero in tutte le direzioni.';
+    return quota + paesaggio + 'L\'orizzonte è libero in tutte le direzioni: non c\'è niente che copra.';
   }
-  return quota + `Il punto più alto dell'orizzonte è a ${r.alto.toFixed(1)}° verso ${r.direzione}. ` +
+  const cosa = r.tipoPiuAlto && r.tipoPiuAlto !== 'pianura' && r.tipoPiuAlto !== 'mare'
+    ? ` (${r.tipoPiuAlto === 'montagna' ? 'la montagna' : 'la collina'})` : '';
+  return quota + paesaggio +
+    `Il punto più alto è a ${r.alto.toFixed(1)}° verso ${r.direzione}${cosa}. ` +
     (r.basso < 0.35
-      ? 'Dalla parte opposta il terreno non copre niente.'
+      ? 'Da qualche parte l\'orizzonte è invece completamente libero.'
       : `Il più basso è a ${r.basso.toFixed(1)}°.`);
 }
 
@@ -414,5 +539,294 @@ function terrenoAggiornaPannello() {
     tasto.textContent = terreno.stato === 'in-corso' ? 'Terreno vero…' : 'Terreno vero';
   }
   const nota = document.getElementById('skymap-terreno-nota');
-  if (nota) nota.textContent = terrenoTesto();
+  if (nota) nota.textContent = terrenoTesto() + ' ' + cittaTesto();
+  cittaAggiornaTasto();
+}
+
+
+// =====================================================================
+// 10. LE CITTÀ VERE
+//
+//     Un orizzonte notturno non è nero. Da qualunque posto abitato, sopra
+//     il crinale ci sono delle cupole di luce: arancioni quelle vecchie al
+//     sodio, bianche quelle nuove a LED. E non sono un disturbo da
+//     nascondere — sono l'informazione più utile che ci sia sull'orizzonte
+//     di casa, perché dicono da che parte NON puntare il telescopio.
+//
+//     Fin qui il planetario faceva l'opposto: cielo uniformemente scuro
+//     fino a terra, come se ogni posto fosse un deserto. Uno guardava la
+//     mappa, sceglieva una galassia bassa a sud, usciva — e a sud c'era il
+//     capoluogo.
+//
+//     I paesi e le città vengono da OpenStreetMap (Overpass, senza chiave e
+//     senza account). Se non risponde restano le città dell'elenco interno,
+//     quello delle eclissi: sono i capoluoghi, cioè proprio quelli che si
+//     vedono da lontano. Se non c'è né l'uno né l'altro, l'orizzonte torna
+//     nero com'era e non se ne parla più.
+// =====================================================================
+
+const CHIAVE_CITTA = 'astrocalendario_citta';
+
+// Novanta chilometri: oltre, l'alone di una città grande c'è ancora, ma è
+// più basso della foschia e non vale la richiesta.
+const CITTA_RAGGIO_KM = 90;
+// I paesi piccoli si prendono solo da vicino: a venti chilometri un paese
+// di duemila anime non illumina niente, e ce ne sono a centinaia.
+const CITTA_RAGGIO_PAESI_KM = 20;
+const CITTA_MAX = 60;
+const CITTA_RAGGIO_VALIDO_KM = 5;
+const CITTA_ATTESA_MS = 15000;
+
+// Quando OpenStreetMap non dice quanti abitanti ha, si va per categoria.
+// Sono numeri all'ingrosso, e vanno benissimo: la differenza fra una città
+// e un paese si vede, quella fra 40.000 e 55.000 abitanti no.
+const CITTA_ABITANTI = { city: 150000, town: 18000, village: 2200, suburb: 25000, borough: 60000 };
+
+const citta = {
+  stato: 'niente',        // niente | in-corso | pronto | fallito
+  lat: null, lon: null,
+  elenco: [],             // { nome, az, km, abitanti, forza, alto, mezzo, alfa }
+  fonte: '',
+  motivo: '',
+  acceso: true
+};
+
+
+// --- Dove sta, e quanto è lontana ------------------------------------
+
+function cittaAzimut(la1, lo1, la2, lo2) {
+  const D2R = Math.PI / 180;
+  const f1 = la1 * D2R, f2 = la2 * D2R, dl = (lo2 - lo1) * D2R;
+  const y = Math.sin(dl) * Math.cos(f2);
+  const x = Math.cos(f1) * Math.sin(f2) - Math.sin(f1) * Math.cos(f2) * Math.cos(dl);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+// Quanto illumina il cielo. La legge di Walker dice che il chiarore sopra
+// una città cala come la distanza alla due e mezzo, ed è quella che usano
+// gli atlanti dell'inquinamento luminoso. Qui basta la forma: gli abitanti
+// contano più che linearmente (una città grande è anche più illuminata
+// per abitante) e la distanza li smorza in fretta.
+//
+// I due numeri che ne escono sono quelli del disegno: quanto sale la
+// cupola e quanto è larga. Vengono da come si vedono davvero — Milano da
+// trenta chilometri occupa un quarto dell'orizzonte e arriva a venti gradi
+// d'altezza, un paese a tre chilometri fa una gobba bassa e stretta.
+function cittaForza(abitanti, km) {
+  const d = Math.max(1.2, km);
+  return Math.pow(Math.max(200, abitanti), 1.2) / (d * d + 4);
+}
+
+function cittaPrepara(grezze, lat, lon) {
+  return grezze.map(c => {
+    const km = terrenoDistanzaKm(lat, lon, c.lat, c.lon);
+    const az = cittaAzimut(lat, lon, c.lat, c.lon);
+    const forza = cittaForza(c.abitanti, km);
+    // Il raggio dell'abitato, in chilometri: una città di un milione di
+    // abitanti è larga una decina di chilometri, un paese di duemila
+    // qualche centinaio di metri. Da lì quanto la si vede larga.
+    const raggioKm = 0.5 * Math.sqrt(Math.max(200, c.abitanti) / 10000);
+    const largoVero = Math.atan2(raggioKm, Math.max(0.4, km)) * 180 / Math.PI;
+    const alto = Math.max(0.5, Math.min(22, 0.9 * Math.pow(forza, 0.30)));
+    return {
+      nome: c.nome,
+      abitanti: c.abitanti,
+      lat: c.lat, lon: c.lon,
+      az, km, forza, alto,
+      // L'alone è sempre più largo dell'abitato: la luce si sparge nell'aria
+      mezzo: Math.max(4, Math.min(55, largoVero + 3.5 + alto * 0.6)),
+      alfa: Math.max(0.03, Math.min(0.30, 0.03 * Math.pow(forza, 0.22)))
+    };
+  })
+    .filter(c => c.km <= CITTA_RAGGIO_KM + 5 && c.forza > 12)
+    .sort((a, b) => b.forza - a.forza)
+    .slice(0, CITTA_MAX);
+}
+
+
+// --- Prenderle da OpenStreetMap --------------------------------------
+
+function cittaQueryOverpass(lat, lon) {
+  const la = lat.toFixed(4), lo = lon.toFixed(4);
+  return '[out:json][timeout:20];(' +
+    `node["place"~"^(city|town)$"](around:${Math.round(CITTA_RAGGIO_KM * 1000)},${la},${lo});` +
+    `node["place"~"^(village|suburb|borough)$"](around:${Math.round(CITTA_RAGGIO_PAESI_KM * 1000)},${la},${lo});` +
+    ');out body 400;';
+}
+
+async function cittaDaOverpass(lat, lon) {
+  const controllo = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = controllo ? setTimeout(() => controllo.abort(), CITTA_ATTESA_MS) : null;
+  try {
+    const risposta = await fetch('https://overpass-api.de/api/interpreter?data=' +
+      encodeURIComponent(cittaQueryOverpass(lat, lon)), controllo ? { signal: controllo.signal } : undefined);
+    if (!risposta.ok) throw new Error('OpenStreetMap non risponde (' + risposta.status + ')');
+    const dati = await risposta.json();
+    if (!dati || !Array.isArray(dati.elements)) throw new Error('risposta senza luoghi');
+    return dati.elements
+      .filter(n => n && n.tags && n.tags.name && typeof n.lat === 'number')
+      .map(n => {
+        // La popolazione, quando c'è, arriva come stringa e ogni tanto con
+        // i punti delle migliaia dentro
+        const grezza = parseInt(String(n.tags.population || '').replace(/[^\d]/g, ''), 10);
+        return {
+          nome: n.tags.name,
+          lat: n.lat, lon: n.lon,
+          abitanti: isFinite(grezza) && grezza > 0 ? grezza : (CITTA_ABITANTI[n.tags.place] || 3000)
+        };
+      });
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+// Il ripiego: l'elenco dei capoluoghi che l'app si porta dietro per le
+// eclissi. Non ha i paesi, ma le città che si vedono da lontano ci sono
+// tutte — ed è quello che serve a un orizzonte.
+function cittaDaElencoInterno(lat, lon) {
+  if (typeof ECL_CITTA === 'undefined') return [];
+  return ECL_CITTA
+    .map(([nome, paese, cLat, cLon]) => ({ nome, lat: cLat, lon: cLon, abitanti: 250000 }))
+    .filter(c => terrenoDistanzaKm(lat, lon, c.lat, c.lon) <= CITTA_RAGGIO_KM);
+}
+
+
+// --- Tenersele --------------------------------------------------------
+
+function cittaLeggiSalvate(lat, lon) {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHIAVE_CITTA) || 'null');
+    if (!v || !Array.isArray(v.elenco) || typeof v.lat !== 'number') return null;
+    if (terrenoDistanzaKm(lat, lon, v.lat, v.lon) > CITTA_RAGGIO_VALIDO_KM) return null;
+    return v;
+  } catch (e) {
+    return null;
+  }
+}
+
+function cittaSalva(lat, lon, grezze, fonte) {
+  try {
+    localStorage.setItem(CHIAVE_CITTA, JSON.stringify({
+      lat, lon, fonte, quando: Date.now(),
+      // Nomi corti e coordinate a quattro decimali: un centinaio di paesi
+      // stanno in una decina di kilobyte
+      elenco: grezze.map(c => ({ n: c.nome, a: +c.lat.toFixed(4), o: +c.lon.toFixed(4), p: c.abitanti }))
+    }));
+  } catch (e) { /* storage pieno: pazienza, si riscarica */ }
+}
+
+function cittaDalSalvato(v) {
+  return v.elenco.map(c => ({ nome: c.n, lat: c.a, lon: c.o, abitanti: c.p }));
+}
+
+function cittaDimentica() {
+  citta.stato = 'niente';
+  citta.elenco = [];
+  citta.lat = citta.lon = null;
+}
+
+
+// --- L'innesco --------------------------------------------------------
+
+function cittaApplica(lat, lon, grezze, fonte) {
+  citta.lat = lat;
+  citta.lon = lon;
+  citta.elenco = cittaPrepara(grezze, lat, lon);
+  citta.fonte = fonte;
+  citta.stato = 'pronto';
+  citta.motivo = '';
+  terrenoAggiornaPannello();
+}
+
+function cittaCarica(forza) {
+  const luogo = typeof luogoCorrente === 'function' ? luogoCorrente() : null;
+  if (!luogo || typeof luogo.lat !== 'number' || typeof luogo.lon !== 'number') {
+    return Promise.resolve(false);
+  }
+  const lat = luogo.lat, lon = luogo.lon;
+
+  if (!forza && citta.stato === 'pronto' && citta.lat !== null &&
+      terrenoDistanzaKm(lat, lon, citta.lat, citta.lon) <= CITTA_RAGGIO_VALIDO_KM) {
+    return Promise.resolve(true);
+  }
+  if (citta.stato === 'in-corso') return citta.promessa || Promise.resolve(false);
+
+  if (!forza) {
+    const salvate = cittaLeggiSalvate(lat, lon);
+    if (salvate) {
+      cittaApplica(salvate.lat, salvate.lon, cittaDalSalvato(salvate), salvate.fonte || 'salvato');
+      return Promise.resolve(true);
+    }
+  }
+
+  citta.stato = 'in-corso';
+  citta.motivo = '';
+  terrenoAggiornaPannello();
+
+  citta.promessa = cittaDaOverpass(lat, lon)
+    .then(elenco => {
+      if (!elenco.length) throw new Error('nessun luogo abitato qui attorno');
+      cittaApplica(lat, lon, elenco, 'osm');
+      // Si salva quello che è rimasto dopo la potatura, non i quattrocento
+      // nodi grezzi: in una provincia densa Overpass risponde con ogni
+      // frazione, e in localStorage ci vanno solo quelle che illuminano.
+      if (!citta.elenco.length) throw new Error('nessun luogo abbastanza illuminato');
+      cittaSalva(lat, lon, citta.elenco, 'osm');
+      return true;
+    })
+    .catch(e => {
+      console.warn('Città da OpenStreetMap non disponibili:', e);
+      // Il ripiego non si salva: è una supplenza, e alla prossima apertura
+      // con la rete vera vale la pena riprovare con i paesi veri.
+      const interne = cittaDaElencoInterno(lat, lon);
+      if (interne.length) {
+        cittaApplica(lat, lon, interne, 'interno');
+        return true;
+      }
+      citta.stato = 'fallito';
+      citta.motivo = 'Non conosco i paesi qui attorno: l\'orizzonte resta senza luci.';
+      terrenoAggiornaPannello();
+      return false;
+    })
+    .finally(() => { citta.promessa = null; });
+
+  return citta.promessa;
+}
+
+
+// --- Quello che serve al planetario -----------------------------------
+
+// Le città che vale la pena disegnare, dalla più luminosa in giù. Il
+// planetario le proietta da sé: qui si sa dove stanno e quanto illuminano,
+// non come finiscono sullo schermo.
+function cittaVicine() {
+  if (!citta.acceso || citta.stato !== 'pronto') return [];
+  return citta.elenco;
+}
+
+function cittaAlterna() {
+  citta.acceso = !citta.acceso;
+  if (citta.acceso && citta.stato !== 'pronto') cittaCarica();
+  terrenoAggiornaPannello();
+}
+
+function cittaTesto() {
+  if (!citta.acceso) return 'Luci delle città spente: orizzonte nero, come da un deserto.';
+  if (citta.stato === 'in-corso') return 'Sto cercando i paesi qui attorno…';
+  if (citta.stato === 'fallito') return citta.motivo;
+  if (citta.stato !== 'pronto' || !citta.elenco.length) return '';
+
+  const prima = citta.elenco[0];
+  const dove = typeof skyNomeDirezione === 'function' ? skyNomeDirezione(prima.az) : '';
+  return `Sull'orizzonte ci sono le luci di ${citta.elenco.length} centri abitati: ` +
+    `il chiarore più forte è quello di ${prima.nome}, a ${prima.km.toFixed(0)} km verso ${dove}. ` +
+    'È la direzione in cui conviene NON cercare le cose deboli.';
+}
+
+function cittaAggiornaTasto() {
+  const tasto = document.getElementById('skymap-btn-citta');
+  if (!tasto) return;
+  tasto.classList.toggle('attiva', citta.acceso);
+  tasto.setAttribute('aria-pressed', citta.acceso ? 'true' : 'false');
+  tasto.textContent = citta.stato === 'in-corso' ? 'Luci delle città…' : 'Luci delle città';
 }

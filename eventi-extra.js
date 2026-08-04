@@ -387,6 +387,13 @@ function aggiungiComete(inizio, fine) {
       dataObj: new Date(massimo.ms),
       categoria: 'pianeti',
       colore: '#6ee7b7',
+      // L'astro protagonista, con l'identificativo che usa l'elenco degli
+      // astri del planetario (`min:<nome>`). Senza questo l'evento era una
+      // riga di testo e basta: si leggeva «cometa al massimo» e poi
+      // toccava cercarsela a mano nell'elenco. Con questo, «Vai sulla
+      // cometa» la seleziona, la centra e le accende la traccia — come per
+      // un'eclissi si punta la Luna.
+      corpoCielo: 'min:' + c.nome,
       strumento: aOcchio ? 'occhio' : massimo.mag <= 8 ? 'binocolo' : 'telescopio',
       spiegazione: `La cometa ${c.nome} raggiunge la magnitudine ${massimo.mag.toFixed(1)}, ` +
         `a ${massimo.p.distanzaTerra.toFixed(2)} unità astronomiche dalla Terra e ` +
