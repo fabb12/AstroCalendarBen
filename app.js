@@ -6784,11 +6784,6 @@ function skyBase() {
 const SKY_FOV_MIN = 0.25;
 const SKY_FOV_MAX = 180;
 
-// Il campo oltre il quale si comincia a parlare di grandangolo: sotto
-// questa soglia i tasti dicono i gradi e basta, sopra vale la pena dire
-// che si sta guardando mezzo cielo in una volta.
-const SKY_FOV_LARGO = 100;
-
 // A forte ingrandimento la mano trema più del cielo: un grado di oscillazione
 // del polso, che a campo largo valeva mezzo pixel, a mezzo grado di campo
 // sposta la vista di uno schermo intero. Lo si dice una volta sola per
@@ -7041,7 +7036,13 @@ function skyNomeDirezione(az) {
 
 function skyNomeCorpo(id) {
   const a = skyElenco().find(x => x.id === id);
-  return a ? a.nome : id;
+  if (a) return a.nome;
+  // I cataloghi arrivano su richiesta: finché non ci sono, l'elenco non
+  // conosce la cometa dell'evento. Il prefisso però lo sappiamo togliere
+  // da soli, e «12P/Pons-Brooks» è già una risposta — «min:12P/Pons-Brooks»
+  // no.
+  if (typeof id === 'string' && /^(min|dso|cat):/.test(id)) return id.slice(id.indexOf(':') + 1);
+  return id;
 }
 
 // =====================================================================
@@ -7388,10 +7389,12 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   skyAvviso('posizione', ''); // la posizione c'è: via l'eventuale avviso
   skyAggiornaStato();
   aggiornaTastiPosizione();
-  // Ci si è spostati davvero? Allora anche le colline sono altre. Il
-  // modulo decide da sé se vale la pena rifare i conti: sotto i due
-  // chilometri l'orizzonte lontano è lo stesso e non tocca niente.
+  // Ci si è spostati davvero? Allora anche le colline sono altre, e altri
+  // sono i paesi che illuminano l'orizzonte. I moduli decidono da sé se
+  // vale la pena rifare i conti: sotto i due chilometri l'orizzonte
+  // lontano è lo stesso e non tocca niente.
   if (typeof terrenoCarica === 'function') terrenoCarica();
+  if (typeof cittaCarica === 'function') cittaCarica();
   return true;
 }
 
@@ -9792,6 +9795,14 @@ function skyAltezzaOrizzonte(az) {
   const ostacoli = typeof orizzonteAltezza === 'function' ? orizzonteAltezza(az) : 0;
   const base = Math.max(suolo, ostacoli);
 
+  // Sul mare non crescono alberi, ed è la cosa che si vede di più: un
+  // orizzonte marino è una riga, l'unica riga davvero dritta che esista in
+  // natura. Metterci sopra le macchie degli alberi lo faceva sembrare una
+  // costa boscosa vista da dentro terra — cioè il contrario di quello che
+  // uno ha davanti.
+  if (typeof terrenoTipo === 'function' && terrenoTipo(az) === 'mare') {
+    return Math.max(0, ostacoli);
+  }
   // Gli alberi si diradano su una montagna vera: una cresta a venti gradi
   // è lontana, e a quella distanza un pioppo non sporge di un grado
   const quota = base > 6 ? 0.25 : 1;
@@ -9946,84 +9957,175 @@ function skyCerchioOrizzonte(base, focale) {
   };
 }
 
-// Riempie la parte di schermo sotto l'orizzonte, ci appoggia sopra il
-// profilo delle colline e ne traccia la linea vera.
-function skyDisegnaTerreno(ctx, base, focale, aria) {
-  const L = sky.larghezza, H = sky.altezza;
-  const o = skyCerchioOrizzonte(base, focale);
+// --- Di che colore è la terra, e quanto si vede attraverso ------------
+//
+// Il terreno era di un colore solo: un verde-grigio che di notte diventa
+// quasi nero. Adesso `terreno.js` sa che cosa c'è in ogni direzione — mare,
+// pianura, colline, montagne — e il colore lo segue. Non è un vezzo: il
+// mare e la pianura, allo stesso zero di altezza, sono due cose diversissime
+// da guardare, e chi apre il planetario da Genova deve ritrovarci Genova.
+//
+// Due colori per paesaggio, uno per la notte e uno per il giorno pieno; in
+// mezzo si interpola con la luce del cielo, esattamente come prima. E due
+// distanze: quello che si vede lontano, appena sotto l'orizzonte, e quello
+// che si ha ai piedi.
+const SKY_PAESAGGI = {
+  // Il default: è il colore di sempre, quello che vale quando il terreno
+  // vero non c'è e nessuno può dire che paesaggio sia.
+  suolo:    { vicinoNotte: [5, 8, 10],  vicinoGiorno: [38, 46, 32],
+              lontanoNotte: [10, 14, 18], lontanoGiorno: [74, 84, 62] },
+  pianura:  { vicinoNotte: [5, 9, 8],   vicinoGiorno: [46, 54, 32],
+              lontanoNotte: [10, 15, 17], lontanoGiorno: [86, 94, 64] },
+  collina:  { vicinoNotte: [5, 8, 9],   vicinoGiorno: [36, 48, 28],
+              lontanoNotte: [10, 14, 17], lontanoGiorno: [70, 82, 56] },
+  // La montagna è più fredda e più grigia: è roccia, e da lontano prende
+  // il colore dell'aria molto più della campagna
+  montagna: { vicinoNotte: [6, 8, 12],  vicinoGiorno: [58, 62, 62],
+              lontanoNotte: [12, 16, 22], lontanoGiorno: [104, 112, 118] },
+  // Il mare è l'unico che non è terra: di giorno è blu, di notte è più
+  // scuro del cielo ma non nero — un po' di cielo lo rispecchia sempre
+  mare:     { vicinoNotte: [3, 6, 13],  vicinoGiorno: [26, 56, 84],
+              lontanoNotte: [7, 12, 24], lontanoGiorno: [74, 112, 146] }
+};
 
-  // I colori della terra. Di notte è quasi nera, di giorno è campagna; e in
-  // tutti e due i casi la parte lontana — quella appena sotto l'orizzonte —
-  // prende un po' del colore dell'aria, che è il modo in cui la distanza si
-  // vede: le cose lontane sbiadiscono verso il colore del cielo.
-  // Di notte la terra è quasi nera — più scura del cielo, sempre: è il
-  // contrasto che disegna il profilo delle colline. Di giorno invece la
-  // distanza la sbiadisce verso il colore dell'aria, e quello è il modo in
-  // cui l'occhio misura quanto è lontana una collina.
-  const vicino = skyMescolaColore([5, 8, 10], [38, 46, 32], sky.luceCielo);
-  const lontanoBase = skyMescolaColore([10, 14, 18], [74, 84, 62], sky.luceCielo);
-  const lontano = aria
-    ? skyMescolaColore(lontanoBase, aria.foschia, 0.06 + 0.3 * sky.luceCielo)
-    : lontanoBase;
+// Quanto è opaco il terreno adesso.
+//
+// Stellarium lo fa da sempre, ed è giusto: quando si stringe il campo su un
+// pianeta, il paesaggio smette di essere il contesto e diventa un muro. Si
+// ingrandisce la Luna fino a mezzo grado di campo, la si segue mentre
+// tramonta — e sul più bello sparisce dietro una collina che a
+// quell'ingrandimento non è più una collina: è una macchia scura che copre
+// mezzo schermo, e sotto cui non c'è niente da vedere.
+//
+// Sopra i trenta gradi di campo il terreno resta pieno: lì serve, è
+// l'orizzonte di casa e il suo mestiere è proprio coprire. Sotto, sfuma; a
+// un grado e mezzo di campo resta un velo, quel tanto che basta a sapere da
+// che parte è giù. La linea dell'orizzonte invece non sfuma mai: è il
+// riferimento, e un riferimento che sparisce non serve a nessuno.
+const SKY_TERRENO_FOV_PIENO = 30;
+const SKY_TERRENO_FOV_VELO = 1.5;
+const SKY_TERRENO_VELO_MIN = 0.12;
 
+function skyOpacitaTerreno() {
+  const fov = sky.fov;
+  if (!(fov < SKY_TERRENO_FOV_PIENO)) return 1;
+  if (fov <= SKY_TERRENO_FOV_VELO) return SKY_TERRENO_VELO_MIN;
+  // In scala logaritmica, non lineare: fra 30° e 1,5° ci sono poco più di
+  // quattro raddoppi dell'ingrandimento, e il terreno deve svanire di pari
+  // passo con quanto ci si è avvicinati — non con la differenza dei gradi,
+  // che è quasi tutta spesa nei primi gesti del pizzico.
+  const t = Math.log(fov / SKY_TERRENO_FOV_VELO) / Math.log(SKY_TERRENO_FOV_PIENO / SKY_TERRENO_FOV_VELO);
+  return SKY_TERRENO_VELO_MIN + (1 - SKY_TERRENO_VELO_MIN) * t;
+}
+
+// I due colori (lontano e vicino) di un paesaggio, a quest'ora e con
+// quest'aria.
+function skyColoriPaesaggio(tipo, aria) {
+  const p = SKY_PAESAGGI[tipo] || SKY_PAESAGGI.suolo;
+  const vicino = skyMescolaColore(p.vicinoNotte, p.vicinoGiorno, sky.luceCielo);
+  const lontanoBase = skyMescolaColore(p.lontanoNotte, p.lontanoGiorno, sky.luceCielo);
+  // La distanza si vede perché le cose lontane prendono il colore
+  // dell'aria. Sul mare succede di più che a terra: l'acqua rispecchia il
+  // cielo, e la riga dell'orizzonte marino è quasi sempre più chiara di
+  // quella di una collina.
+  const quanto = (tipo === 'mare' ? 0.14 : 0.06) + (tipo === 'mare' ? 0.42 : 0.3) * sky.luceCielo;
+  const lontano = aria ? skyMescolaColore(lontanoBase, aria.foschia, quanto) : lontanoBase;
+  return { vicino, lontano };
+}
+
+// Il gradiente che va dalla linea dell'orizzonte verso i propri piedi.
+// Vale sia per il riempimento di tutto il suolo sia per le fette di un
+// paesaggio diverso: cambiano solo i due colori.
+function skyGradienteTerreno(ctx, o, vicino, lontano) {
   const passaggi = [
     [0, skyRgba(lontano, 0.98)],
     [0.35, skyRgba(skyMescolaColore(lontano, vicino, 0.7), 0.99)],
     [1, skyRgba(vicino, 1)]
   ];
+  let gr;
+  if (o.retta) {
+    const lungo = sky.larghezza + sky.altezza;
+    gr = ctx.createLinearGradient(o.cx, o.cy,
+      o.cx - o.nx * lungo * 0.25, o.cy + o.ny * lungo * 0.25);
+  } else {
+    gr = ctx.createRadialGradient(o.px, o.py, o.r, o.px, o.py, Math.max(1, o.nadir));
+  }
+  passaggi.forEach(([t, c]) => gr.addColorStop(t, c));
+  return gr;
+}
 
-  ctx.save();
+// Il tracciato di tutto ciò che sta sotto l'orizzonte. In stereografica
+// può essere mezzo schermo tagliato da una retta, il dentro di un cerchio
+// o il fuori di un cerchio: sono i tre casi di `skyCerchioOrizzonte`.
+function skyTracciaSuolo(ctx, o) {
+  const L = sky.larghezza, H = sky.altezza;
   ctx.beginPath();
   if (o.retta) {
     // Mezzo schermo, tagliato dalla retta. Si prende un segmento lungo
     // quanto basta a uscire dal riquadro da tutt'e due le parti e lo si
     // chiude verso il lato in ombra.
     const lungo = L + H;
-    const tx = -o.ny, ty = -o.nx;      // lungo la retta, in coordinate schermo
-    const sx = -o.nx * lungo, sy = o.ny * lungo;   // verso il "sotto", in pixel
+    const tx = -o.ny, ty = -o.nx;                  // lungo la retta
+    const sx = -o.nx * lungo, sy = o.ny * lungo;   // verso il "sotto"
     ctx.moveTo(o.cx - tx * lungo, o.cy - ty * lungo);
     ctx.lineTo(o.cx + tx * lungo, o.cy + ty * lungo);
     ctx.lineTo(o.cx + tx * lungo + sx, o.cy + ty * lungo + sy);
     ctx.lineTo(o.cx - tx * lungo + sx, o.cy - ty * lungo + sy);
     ctx.closePath();
-    const gr = ctx.createLinearGradient(o.cx, o.cy, o.cx + sx * 0.25, o.cy + sy * 0.25);
-    passaggi.forEach(([t, c]) => gr.addColorStop(t, c));
-    ctx.fillStyle = gr;
-    ctx.fill();
-  } else {
-    // Il gradiente segue il cerchio: parte dalla linea d'orizzonte (dove
-    // la terra è lontana e sbiadita) e va verso il nadir, cioè verso i
-    // propri piedi. È lo stesso effetto di prima, ma stavolta è giusto
-    // anche quando l'orizzonte sullo schermo è curvo.
-    const gr = ctx.createRadialGradient(o.px, o.py, o.r, o.px, o.py, Math.max(1, o.nadir));
-    passaggi.forEach(([t, c]) => gr.addColorStop(t, c));
-    ctx.fillStyle = gr;
-    if (o.fuori) {
-      // Fuori dal cerchio: tutto lo schermo meno il disco. Due
-      // sottotracciati e la regola pari-dispari, che è il modo di dire
-      // «questo pezzo no» senza doverlo ritagliare a mano.
-      ctx.rect(0, 0, L, H);
-      ctx.arc(o.px, o.py, o.r, 0, Math.PI * 2);
-      ctx.fill('evenodd');
-    } else {
-      ctx.arc(o.px, o.py, o.r, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    return 'nonzero';
   }
-  ctx.restore();
+  if (o.fuori) {
+    // Fuori dal cerchio: tutto lo schermo meno il disco. Due sottotracciati
+    // e la regola pari-dispari, che è il modo di dire «questo pezzo no»
+    // senza doverlo ritagliare a mano.
+    ctx.rect(0, 0, L, H);
+    ctx.arc(o.px, o.py, o.r, 0, Math.PI * 2);
+    return 'evenodd';
+  }
+  ctx.arc(o.px, o.py, o.r, 0, Math.PI * 2);
+  return 'nonzero';
+}
+
+// Riempie la parte di schermo sotto l'orizzonte, ci mette le fette di mare
+// e di montagna dove ci sono, ci appoggia sopra il profilo delle colline e
+// ne traccia la linea vera.
+function skyDisegnaTerreno(ctx, base, focale, aria) {
+  const o = skyCerchioOrizzonte(base, focale);
+  const velo = skyOpacitaTerreno();
+
+  // Di notte la terra è quasi nera — più scura del cielo, sempre: è il
+  // contrasto che disegna il profilo delle colline. Di giorno invece la
+  // distanza la sbiadisce verso il colore dell'aria, e quello è il modo in
+  // cui l'occhio misura quanto è lontana una collina.
+  const suolo = skyColoriPaesaggio('suolo', aria);
+
+  ctx.save();
+  ctx.globalAlpha = velo;
+
+  const regola = skyTracciaSuolo(ctx, o);
+  ctx.fillStyle = skyGradienteTerreno(ctx, o, suolo.vicino, suolo.lontano);
+  ctx.fill(regola);
+
+  // Le fette di paesaggio diverso, sopra al fondo: il mare a ponente, la
+  // montagna a nord. Ognuna è un settore di azimut, e sotto l'orizzonte un
+  // settore di azimut è un ventaglio che va dalla linea fino ai piedi.
+  skyDisegnaFettePaesaggio(ctx, base, focale, o, aria);
 
   // Le colline e gli alberi, appoggiati sopra la linea. Sono dello stesso
   // colore del terreno che gli sta subito sotto — se no fra il profilo e il
   // suolo si vedeva una cucitura — e si staccano dal cielo per contrasto,
   // che è poi come si vede una collina all'imbrunire.
-  skyDisegnaProfiloOrizzonte(ctx, base, focale, skyRgba(lontano, 1));
+  skyDisegnaProfiloOrizzonte(ctx, base, focale, aria);
+  ctx.restore();
 
   // La linea d'orizzonte vero resta, sotto al profilo: è il riferimento —
-  // zero gradi di altezza — e serve a capire quanto le colline coprono
+  // zero gradi di altezza — e serve a capire quanto le colline coprono. Non
+  // sbiadisce con il terreno: a forte ingrandimento è l'ultima cosa che
+  // resta, ed è quella che dice se l'astro che si sta guardando è ancora su.
   ctx.save();
   ctx.beginPath();
   if (o.retta) {
-    const lungo = L + H;
+    const lungo = sky.larghezza + sky.altezza;
     const tx = -o.ny, ty = -o.nx;
     ctx.moveTo(o.cx - tx * lungo, o.cy - ty * lungo);
     ctx.lineTo(o.cx + tx * lungo, o.cy + ty * lungo);
@@ -10037,27 +10139,110 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   ctx.restore();
 }
 
-// Il profilo delle colline. Si disegnano solo gli azimut che possono
-// finire sullo schermo: fare tutto il giro costerebbe sei volte tanto e non
-// si vedrebbe. Il conto di quanto giro serve viene dal raggio angolare
-// dello schermo e da quanto in alto si sta guardando.
-function skyDisegnaProfiloOrizzonte(ctx, base, focale, colore) {
-  const L = sky.larghezza, H = sky.altezza;
-  const semi = skyAngoloDiRaggio(Math.hypot(L, H) / 2, focale) * SKY_D2R;
+// Fin dove si spinge il ventaglio di una fetta di paesaggio: praticamente
+// fino ai piedi. Non proprio al nadir, che è un punto e non un cerchio: a
+// −84° resta una monetina di suolo attorno ai piedi con il colore di
+// fondo, e a nessuno è mai importato del colore esatto delle proprie scarpe.
+const SKY_FETTA_FONDO = -84;
+
+// Il giro di azimut che può finire sullo schermo, dato quanto è largo il
+// riquadro e quanto in alto si sta guardando. Serve al profilo delle
+// colline e alle fette di paesaggio: fare tutti e trecentosessanta gradi
+// costerebbe sei volte tanto e non si vedrebbe.
+function skyArcoOrizzonteInVista(base, focale) {
+  const semi = skyAngoloDiRaggio(Math.hypot(sky.larghezza, sky.altezza) / 2, focale) * SKY_D2R;
   const altF = Math.asin(Math.max(-1, Math.min(1, base.f[2])));
   const cosAlt = Math.cos(altF);
-  if (cosAlt < 1e-4) return;
+  if (cosAlt < 1e-4) return null;
   const rapporto = Math.cos(semi) / cosAlt;
-  if (rapporto >= 1) return;                 // l'orizzonte non è in vista
-  const mezzo = Math.min(180, Math.acos(Math.max(-1, rapporto)) * SKY_R2D + 6);
-  const centro = Math.atan2(base.f[0], base.f[1]) * SKY_R2D;
-  const passo = mezzo > 60 ? 2 : 1;
+  if (rapporto >= 1) return null;                 // l'orizzonte non è in vista
+  return {
+    mezzo: Math.min(180, Math.acos(Math.max(-1, rapporto)) * SKY_R2D + 6),
+    centro: Math.atan2(base.f[0], base.f[1]) * SKY_R2D
+  };
+}
+
+// Il paesaggio in quella direzione, o 'suolo' se il terreno vero non c'è.
+function skyPaesaggioDi(az) {
+  const t = typeof terrenoTipo === 'function' ? terrenoTipo(az) : null;
+  return t || 'suolo';
+}
+
+// Le fette di mare e di montagna. Si cammina lungo l'arco visibile e si
+// raccolgono i tratti che hanno lo stesso paesaggio; la pianura e le
+// colline non si disegnano nemmeno — il fondo è già il loro colore, e
+// riempire due volte lo stesso pixel con lo stesso colore è tempo buttato.
+function skyDisegnaFettePaesaggio(ctx, base, focale, o, aria) {
+  if (typeof terrenoTipo !== 'function' || !terrenoDisponibile()) return;
+  const arco = skyArcoOrizzonteInVista(base, focale);
+  if (!arco) return;
+  const passo = arco.mezzo > 60 ? 3 : 1.5;
+
+  let corsa = [], tipoCorsa = null;
+  const chiudi = () => {
+    if (corsa.length > 1 && tipoCorsa && tipoCorsa !== 'suolo' && tipoCorsa !== 'pianura' && tipoCorsa !== 'collina') {
+      const c = skyColoriPaesaggio(tipoCorsa, aria);
+      ctx.beginPath();
+      corsa.forEach((q, i) => (i === 0 ? ctx.moveTo(q.ox, q.oy) : ctx.lineTo(q.ox, q.oy)));
+      for (let i = corsa.length - 1; i >= 0; i--) ctx.lineTo(corsa[i].fx, corsa[i].fy);
+      ctx.closePath();
+      ctx.fillStyle = skyGradienteTerreno(ctx, o, c.vicino, c.lontano);
+      ctx.fill();
+    }
+    corsa = [];
+  };
+
+  const punti = az => {
+    const orlo = skyProietta(skyVettore(az, 0), base, focale);
+    const fondo = skyProietta(skyVettore(az, SKY_FETTA_FONDO), base, focale);
+    if (!orlo.davanti || !fondo.davanti) return null;
+    return { ox: orlo.px, oy: orlo.py, fx: fondo.px, fy: fondo.py };
+  };
+
+  for (let d = -arco.mezzo; d <= arco.mezzo + 0.001; d += passo) {
+    const az = arco.centro + d;
+    const tipo = skyPaesaggioDi(az);
+    if (tipo !== tipoCorsa) {
+      // Il ventaglio che finisce si chiude sull'azimut di confine: se no
+      // fra il mare e la montagna resta una fetta larga un passo col
+      // colore del fondo, e la costa sembra sfrangiata
+      if (corsa.length) {
+        const q = punti(az);
+        if (q) corsa.push(q);
+      }
+      chiudi();
+      tipoCorsa = tipo;
+    }
+    const orlo = skyProietta(skyVettore(az, 0), base, focale);
+    const fondo = skyProietta(skyVettore(az, SKY_FETTA_FONDO), base, focale);
+    // Guardando quasi allo zenit il fondo del ventaglio finisce
+    // dall'altra parte del mondo e la proiezione non lo sa più disegnare:
+    // meglio saltare quel tratto che tirare una riga a caso
+    if (!orlo.davanti || !fondo.davanti) { chiudi(); tipoCorsa = null; continue; }
+    corsa.push({ ox: orlo.px, oy: orlo.py, fx: fondo.px, fy: fondo.py });
+  }
+  chiudi();
+}
+
+// Il profilo delle colline. Si disegnano solo gli azimut che possono
+// finire sullo schermo, e ogni tratto prende il colore del suo paesaggio:
+// una cresta di montagna è più fredda di una fila di colline, e il mare
+// non ha nessun profilo — è già la sua linea.
+function skyDisegnaProfiloOrizzonte(ctx, base, focale, aria) {
+  const arco = skyArcoOrizzonteInVista(base, focale);
+  if (!arco) return;
+  const passo = arco.mezzo > 60 ? 2 : 1;
 
   ctx.save();
-  ctx.fillStyle = colore;
-  let corsa = [];
+  let corsa = [], tipoCorsa = null;
   const chiudi = () => {
     if (corsa.length > 1) {
+      // Sul mare il profilo è una riga e il poligono viene degenere: non
+      // disegna niente da sé, e non serve saltarlo. Se però lì davanti c'è
+      // un ostacolo dichiarato a mano — un molo, un palazzo sul lungomare —
+      // quello sporge davvero, e va disegnato color terra: è terra.
+      const tinta = tipoCorsa === 'mare' ? 'suolo' : (tipoCorsa || 'suolo');
+      ctx.fillStyle = skyRgba(skyColoriPaesaggio(tinta, aria).lontano, 1);
       ctx.beginPath();
       corsa.forEach((q, i) => (i === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
       for (let i = corsa.length - 1; i >= 0; i--) ctx.lineTo(corsa[i].bx, corsa[i].by);
@@ -10066,14 +10251,166 @@ function skyDisegnaProfiloOrizzonte(ctx, base, focale, colore) {
     }
     corsa = [];
   };
-  for (let d = -mezzo; d <= mezzo + 0.001; d += passo) {
-    const az = centro + d;
+  for (let d = -arco.mezzo; d <= arco.mezzo + 0.001; d += passo) {
+    const az = arco.centro + d;
+    const tipo = skyPaesaggioDi(az);
+    if (tipo !== tipoCorsa) {
+      // Il tratto precedente si chiude sull'azimut di confine, se no fra
+      // due paesaggi resta una fessura larga un passo
+      if (corsa.length) {
+        const c = skyProietta(skyVettore(az, skyAltezzaOrizzonte(az)), base, focale);
+        const p = skyProietta(skyVettore(az, 0), base, focale);
+        if (c.davanti && p.davanti) corsa.push({ cx: c.px, cy: c.py, bx: p.px, by: p.py });
+      }
+      chiudi();
+      tipoCorsa = tipo;
+    }
     const cresta = skyProietta(skyVettore(az, skyAltezzaOrizzonte(az)), base, focale);
     const piede = skyProietta(skyVettore(az, 0), base, focale);
     if (!cresta.davanti || !piede.davanti) { chiudi(); continue; }
     corsa.push({ cx: cresta.px, cy: cresta.py, bx: piede.px, by: piede.py });
   }
   chiudi();
+  ctx.restore();
+}
+
+// --- Le luci delle città sull'orizzonte -------------------------------
+//
+// Chi guarda il cielo da un posto abitato non vede mai un orizzonte nero:
+// vede delle cupole di luce, una per ogni paese, e sa a memoria quali sono.
+// «A sud c'è il capoluogo, lì non si vede niente» è la prima cosa che
+// impara chi osserva sempre dallo stesso posto — e il planetario, che
+// disegnava una notte perfetta fino a terra, non gliel'ha mai detta.
+//
+// I paesi veri li sa `terreno.js` (OpenStreetMap, con l'elenco interno dei
+// capoluoghi come ripiego). Qui si disegnano soltanto.
+//
+// La forma. Un alone di città è mezza campana appoggiata sull'orizzonte:
+// si alza dove sta il centro abitato e sfuma sui lati. Si disegna come un
+// cerchio sfumato **centrato sulla linea dell'orizzonte**, e la metà di
+// sotto la copre il terreno che viene disegnato subito dopo — che è poi
+// quello che succede davvero, visto che di quella luce ci arriva solo
+// quella diffusa dall'aria sopra il crinale.
+//
+// Il cerchio funziona proprio perché la proiezione è stereografica: è
+// conforme, e un cerchio di cielo resta un cerchio sullo schermo. In
+// prospettiva sarebbe stata un'ellisse storta.
+
+// Sotto questa luce del cielo gli aloni non si vedono più: al crepuscolo
+// il cielo è già più luminoso di qualunque città.
+const SKY_CITTA_LUCE_MAX = 0.34;
+
+// Sotto questo campo l'alone non si disegna: a dieci gradi di campo si sta
+// guardando dentro a un pianeta, la cupola di luce è più larga dello
+// schermo e quello che resta non è più un alone — è una vernice arancione
+// stesa dappertutto. Da lì in su si accende scivolando, come il terreno.
+const SKY_CITTA_FOV_MIN = 10;
+const SKY_CITTA_FOV_PIENO = 28;
+
+// Quante se ne disegnano al massimo. Sono ordinate dalla più luminosa, e
+// oltre la decina si sovrappongono tutte in una fascia sola.
+const SKY_CITTA_MAX_ALONI = 12;
+const SKY_CITTA_MAX_NOMI = 7;
+
+function skyCittaDaDisegnare() {
+  if (typeof cittaVicine !== 'function') return [];
+  return cittaVicine();
+}
+
+function skyDisegnaAloniCitta(ctx, base, focale) {
+  if (!sky.atmosfera || sky.fov < SKY_CITTA_FOV_MIN) return;
+  const lista = skyCittaDaDisegnare();
+  if (!lista.length) return;
+
+  // Di giorno non c'è niente da vedere, e all'imbrunire si accendono piano.
+  // Stringendo il campo si smorzano allo stesso modo: quello che resta è
+  // il contesto di un ingrandimento, non il soggetto.
+  const notte = (1 - Math.min(1, sky.luceCielo / SKY_CITTA_LUCE_MAX)) *
+    Math.min(1, sky.fov / SKY_CITTA_FOV_PIENO);
+  if (notte <= 0.03) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  let disegnate = 0;
+  for (const c of lista) {
+    if (disegnate >= SKY_CITTA_MAX_ALONI) break;
+    const p = skyProietta(skyVettore(c.az, 0), base, focale);
+    if (!p.davanti) continue;
+    // Quanti pixel vale un grado *lì*: la stereografica ingrandisce di più
+    // ai bordi, e un alone messo con la scala del centro sarebbe piccolo
+    // proprio dove lo si guarda di sbieco
+    const perGrado = focale * skyScalaLocale(p.d) * SKY_D2R;
+    const rx = Math.max(8, c.mezzo * perGrado);
+    const ry = Math.max(5, c.alto * perGrado);
+    if (rx > sky.larghezza * 6) continue;      // troppo vicina e troppo grande: sarebbe una velatura piatta
+    // Fuori dal riquadro di quanto è grande l'alone: non c'è niente da
+    // dipingere, e un gradiente da duemila pixel costa comunque
+    if (p.px < -rx || p.px > sky.larghezza + rx || p.py < -ry || p.py > sky.altezza + ry) continue;
+    disegnate++;
+
+    const a = c.alfa * notte;
+    ctx.save();
+    ctx.translate(p.px, p.py);
+    ctx.scale(rx, ry);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    // Arancione sporco: è il colore dell'inquinamento luminoso, sodio e
+    // LED caldi insieme. Verso l'esterno si fa più freddo e sparisce.
+    g.addColorStop(0, `rgba(255, 186, 120, ${a.toFixed(3)})`);
+    g.addColorStop(0.35, `rgba(255, 160, 96, ${(a * 0.45).toFixed(3)})`);
+    g.addColorStop(0.7, `rgba(226, 140, 92, ${(a * 0.15).toFixed(3)})`);
+    g.addColorStop(1, 'rgba(200, 130, 90, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+// I nomi dei paesi, appoggiati sopra il loro crinale. Vanno **dopo** il
+// terreno, se no li coprirebbe; e sono l'altra metà del motivo per cui
+// queste luci stanno qui — sapere che quel chiarore a sud è il capoluogo
+// vale quanto vederlo.
+function skyDisegnaNomiCitta(ctx, base, focale) {
+  if (!sky.mostraNomi || sky.fov < SKY_CITTA_FOV_MIN) return;
+  const lista = skyCittaDaDisegnare();
+  if (!lista.length) return;
+
+  ctx.save();
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  const occupati = [];
+  let scritte = 0;
+  for (const c of lista) {
+    if (scritte >= SKY_CITTA_MAX_NOMI) break;
+    // Il nome sta appena sopra la cresta, non sopra la linea: se davanti
+    // alla città c'è una montagna, la scritta deve stare sopra la montagna
+    const alt = skyAltezzaOrizzonte(c.az);
+    const p = skyProietta(skyVettore(c.az, alt), base, focale);
+    if (!p.davanti) continue;
+    if (p.px < -60 || p.px > sky.larghezza + 60 || p.py < -20 || p.py > sky.altezza + 20) continue;
+    const largo = ctx.measureText(c.nome).width;
+    if (occupati.some(q => Math.abs(q.x - p.px) < (q.l + largo) / 2 + 8 && Math.abs(q.y - p.py) < 14)) continue;
+    occupati.push({ x: p.px, y: p.py, l: largo });
+    scritte++;
+
+    // Un trattino verticale che collega il nome al punto dell'orizzonte:
+    // senza, una scritta sospesa sopra le colline sembra il nome di una
+    // stella
+    ctx.strokeStyle = 'rgba(251, 191, 120, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(p.px, p.py);
+    ctx.lineTo(p.px, p.py - 7);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.fillText(c.nome, p.px + 1, p.py - 7);
+    ctx.fillStyle = sky.luceCielo > 0.45 ? 'rgba(120, 72, 20, 0.9)' : 'rgba(253, 200, 138, 0.82)';
+    ctx.fillText(c.nome, p.px, p.py - 8);
+  }
   ctx.restore();
 }
 
@@ -10780,7 +11117,13 @@ function skyDisegna() {
   if (typeof catDisegnaFigure === 'function') catDisegnaFigure(ctx, base, focale);
 
   if (sky.mostraGriglia) skyDisegnaGriglia(ctx, base, focale);
+  // Le cupole di luce dei paesi: **prima** del terreno, così la collina le
+  // taglia come fa dal vero (la luce viene da dietro il crinale), e
+  // **dopo** le stelle, perché è esattamente quello che fanno — sbiadire
+  // le stelle basse sopra la città.
+  if (!conCamera) skyDisegnaAloniCitta(ctx, base, focale);
   if (!conCamera) skyDisegnaTerreno(ctx, base, focale, aria);
+  if (!conCamera) skyDisegnaNomiCitta(ctx, base, focale);
   skyDisegnaCardinali(ctx, base, focale);
 
   skyDisegnaCostellazioni(ctx, base, focale);
@@ -13322,7 +13665,8 @@ function skyPosizioneEvento(ev, quando) {
       // Se l'astro è già stato calcolato per il disegno, riusiamo quello:
       // sono le stesse coordinate, allo stesso istante
       const o = sky.oggetti.find(x => x.id === ev.corpoCielo);
-      const p = o ? { az: o.az, alt: o.alt } : altAzCorpo(ev.corpoCielo, quando, sky.observer);
+      const p = o ? { az: o.az, alt: o.alt } : altAzCorpoQualunque(ev.corpoCielo, quando, sky.observer);
+      if (!p) return null;
       return { az: p.az, alt: p.alt, radiante: false, nome: skyNomeCorpo(ev.corpoCielo) };
     }
   } catch (e) { /* evento senza posizione: resta solo nell'elenco */ }
@@ -13351,8 +13695,41 @@ function skyTastoMappaHtml(ev) {
     return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" onclick="skyApriMappaEvento('${ev.id}')" ` +
       `title="Da dove si vede, a che ora, e con la Luna quanto alta">Dove si vede</button>`;
   }
+  // Una cometa (o un asteroide) non è un corpo che si trova scorrendo
+  // l'elenco: i nomi sono sigle, e chi legge «Cometa 12P al massimo» non
+  // ha nessuna voglia di ricopiarsela nella ricerca. Qui il tasto la
+  // sceglie e basta: selezionata, centrata, con la sua scheda e la sua
+  // traccia, come si fa con un pianeta.
+  if (typeof ev.corpoCielo === 'string' && ev.corpoCielo.startsWith('min:')) {
+    const cometa = /^cometa/i.test(ev.titolo || '');
+    return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" ` +
+      `onclick="skyPuntaCorpoEvento('${ev.id}')" ` +
+      `title="${cometa ? 'Seleziona la cometa e portala' : 'Seleziona il corpo e portalo'} al centro della mappa">` +
+      `Vai ${cometa ? 'sulla cometa' : 'sull\'asteroide'}</button>`;
+  }
   return '';
 }
+
+// Il tasto qui sopra. Sceglie l'astro dell'evento — che è la stessa cosa
+// che fa un tocco sulla sua pillola nell'elenco — senza toccare
+// l'orologio: se si sta guardando il cielo di stanotte, si resta lì.
+window.skyPuntaCorpoEvento = (id) => {
+  const ev = eventiCalcolati.find(e => e.id === id);
+  if (!ev || !ev.corpoCielo) return;
+  // I cataloghi dei corpi minori arrivano su richiesta: se non sono ancora
+  // qui, li si chiede e si punta appena ci sono (`centraQuandoPronto`).
+  if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica();
+  sky.mostraCorpiMinori = true;
+  sky.mostraTraccia = true;
+  skyImpostaTarget(ev.corpoCielo, { mantieni: true });
+  skyAggiornaTastiFiltri();
+  const nome = skyNomeCorpo(ev.corpoCielo);
+  const p = skyPosizioneEvento(ev, skyAdesso());
+  skyAvviso('eventi', p
+    ? `${nome}: guarda verso ${skyNomeDirezione(p.az)}, a ${Math.round(p.alt)}° di altezza` +
+      (p.alt < 0 ? ' (adesso è sotto l\'orizzonte).' : '.')
+    : `${nome} è selezionata: sto ancora calcolando dove sta.`, 9000);
+};
 
 // La finestra della mappa vive nella pagina, e la pagina non si vede finché
 // il cielo è a schermo intero (nel pieno schermo vero il browser disegna solo
@@ -13543,6 +13920,13 @@ window.apriEventoNelPlanetario = (id) => {
     // La traccia dell'astro protagonista si accende da sé: di un evento
     // interessa anche da dove arriva e dove sarà fra un'ora
     sky.mostraTraccia = true;
+    // Se il protagonista è una cometa, il filtro dei corpi minori deve
+    // essere acceso: se no si arriva sul punto giusto del cielo e lì non
+    // c'è disegnato niente
+    if (String(ev.corpoCielo).startsWith('min:')) {
+      sky.mostraCorpiMinori = true;
+      if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica();
+    }
     skyImpostaTarget(ev.corpoCielo, { mantieni: true });
   } else {
     // Uno sciame non ha un astro da puntare — il radiante è un punto del
@@ -14140,8 +14524,10 @@ function apriSkymap() {
   if (typeof catCarica === 'function') catCarica();
   if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica();
   // La forma vera del terreno attorno a casa (sei richieste, una volta
-  // sola per luogo: poi sta in localStorage e vale anche senza rete)
+  // sola per luogo: poi sta in localStorage e vale anche senza rete), e i
+  // paesi che di notte lo illuminano
   if (typeof terrenoCarica === 'function') terrenoCarica();
+  if (typeof cittaCarica === 'function') cittaCarica();
 
   skyCostruisciElenco();
   skyRidimensiona();
@@ -14428,18 +14814,6 @@ function inizializzaSkymap() {
     // vede il cielo allargarsi e si capisce da dove si stava venendo
     skyImpostaFov(55, { morbido: true });
   });
-  // Il grandangolo: 160°, cioè quasi tutto il cielo visibile in una volta.
-  // Non è il massimo possibile (180° sarebbe l'emisfero intero, orizzonte
-  // compreso, e l'orizzonte finirebbe schiacciato sul bordo dello
-  // schermo): 160 lascia le costellazioni basse ancora leggibili.
-  collega('skymap-btn-grandangolo', () => {
-    if (skyCampoDaObiettivo()) {
-      skyAvviso('grandangolo', 'Con la fotocamera accesa il campo lo detta l\'obiettivo: ' +
-        'spegnila per allargare il cielo disegnato.', 6000);
-      return;
-    }
-    skyImpostaFov(160, { morbido: true });
-  });
   collega('skymap-btn-centra', () => {
     const voce = skyOggettoScelto();
     if (voce) skyCentraSu(voce);
@@ -14491,6 +14865,11 @@ function inizializzaSkymap() {
   // accende la prima volta senza rete, lo dice e resta il disegnato.
   collega('skymap-btn-terreno', () => {
     if (typeof terrenoAlterna === 'function') terrenoAlterna();
+  });
+  // Le luci dei paesi: anche loro non nascondono niente, aggiungono. E si
+  // possono volere spente — chi disegna una carta del cielo vuole il nero.
+  collega('skymap-btn-citta', () => {
+    if (typeof cittaAlterna === 'function') cittaAlterna();
   });
   if (typeof terrenoAggiornaPannello === 'function') terrenoAggiornaPannello();
   // I segni degli eventi si accendono e si spengono senza rifare i conti
@@ -19159,6 +19538,38 @@ function altAzCoordinate(raOre, decGradi, data, obs) {
   return { alt: hor.altitude, az: hor.azimuth };
 }
 
+// Altezza e azimut di *qualunque* identificativo dell'elenco degli astri.
+// I corpi della libreria ('Mars', 'Moon') li sa fare Astronomy; le comete
+// e gli asteroidi ('min:12P/Pons-Brooks') e il cielo profondo ('dso:M31')
+// no, e passandoli ad `altAzCorpo` sollevano un'eccezione.
+//
+// Serve da quando un evento può avere per protagonista una cometa: senza
+// questo, la riga «Cometa al massimo» non sapeva dire da che parte
+// guardare, e il tasto per andarci non poteva nemmeno comparire.
+function altAzCorpoQualunque(id, data, obs) {
+  if (typeof id !== 'string' || !obs) return null;
+  if (id.startsWith('min:')) {
+    if (typeof corpoMinoreDiId !== 'function' || typeof corpoMinoreInCielo !== 'function') return null;
+    const dato = corpoMinoreDiId(id);
+    if (!dato) return null;
+    const p = corpoMinoreInCielo(dato, data);
+    if (!p) return null;
+    return altAzCoordinate(p.ra, p.dec, data, obs);
+  }
+  if (id.startsWith('dso:')) {
+    const dato = typeof skyProfondoDiId === 'function' ? skyProfondoDiId(id) : null;
+    if (!dato || typeof dato.ra !== 'number') return null;
+    return altAzCoordinate(dato.ra, dato.dec, data, obs);
+  }
+  return altAzCorpo(id, data, obs);
+}
+
+// Un identificativo che non è un corpo della libreria: per lui non hanno
+// senso né `SearchRiseSet` né le effemeridi di Astronomy.
+function idNonDiLibreria(id) {
+  return typeof id === 'string' && (id.startsWith('min:') || id.startsWith('dso:') || id.startsWith('cat:'));
+}
+
 function altezzaSole(data, obs) {
   try { return altAzCorpo('Sun', data, obs).alt; } catch (e) { return null; }
 }
@@ -19299,13 +19710,19 @@ function circostanzeLocali(evento) {
   try {
     pos = radiante
       ? altAzCoordinate(radiante.ra, radiante.dec, evento.dataObj, obs)
-      : altAzCorpo(corpo, evento.dataObj, obs);
+      : altAzCorpoQualunque(corpo, evento.dataObj, obs);
   } catch (e) {
     return null;
   }
+  if (!pos) return null;
 
   const altSole = altezzaSole(evento.dataObj, obs);
-  const orari = corpo ? orariSorgereTramonto(corpo, evento.dataObj, obs) : { sorge: null, tramonta: null };
+  // Sorgere e tramontare li sa cercare solo per i corpi della libreria: di
+  // una cometa resta l'altezza a quell'ora, che è comunque la risposta
+  // alla domanda «da qui si vede?».
+  const orari = corpo && !idNonDiLibreria(corpo)
+    ? orariSorgereTramonto(corpo, evento.dataObj, obs)
+    : { sorge: null, tramonta: null };
 
   // Il momento migliore della notte conta soprattutto per gli sciami e per
   // gli eventi il cui istante di picco cade quando l'astro è sotto l'orizzonte:
@@ -20703,8 +21120,9 @@ function esportaBackup() {
     // La forma del terreno si potrebbe riscaricare, ma sono sei richieste
     // di rete: rimetterla nel backup vuol dire che un telefono nuovo, la
     // prima sera, ha già le colline giuste anche in mezzo a un campo
-    // senza segnale.
-    terreno: localStorage.getItem('astrocalendario_terreno')
+    // senza segnale. Stessa cosa per i paesi che lo illuminano.
+    terreno: localStorage.getItem('astrocalendario_terreno'),
+    citta: localStorage.getItem('astrocalendario_citta')
   };
   const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
   const giorno = new Date().toISOString().slice(0, 10);
@@ -20761,7 +21179,8 @@ async function importaBackup(file) {
     [['cieloCasa', 'astrocalendario_cielo_casa'],
      ['orizzonte', 'astrocalendario_orizzonte'],
      ['corpiMiei', 'astrocalendario_corpi_minori_miei'],
-     ['terreno', 'astrocalendario_terreno']].forEach(([campo, chiave]) => {
+     ['terreno', 'astrocalendario_terreno'],
+     ['citta', 'astrocalendario_citta']].forEach(([campo, chiave]) => {
       if (!dati[campo]) return;
       try { localStorage.setItem(chiave, dati[campo]); } catch (e) { /* niente storage */ }
     });
@@ -20770,6 +21189,7 @@ async function importaBackup(file) {
     // Il profilo in memoria è ancora quello di prima: si butta, e alla
     // prossima apertura del planetario si rilegge dal salvato
     if (typeof terrenoDimentica === 'function') { terrenoDimentica(); terrenoCarica(); }
+    if (typeof cittaDimentica === 'function') { cittaDimentica(); cittaCarica(); }
 
     pianificaNotifiche();
     aggiornaViste();

@@ -582,6 +582,110 @@ titolo('9. La forma vera del terreno');
 }
 
 // =====================================================================
+titolo('10. Che paesaggio c\'è, e chi illumina l\'orizzonte');
+// =====================================================================
+// Il terreno non dice più soltanto quanto è alto: dice anche che cos'è —
+// mare, pianura, colline, montagne — e da lì dipendono il colore con cui
+// si disegna e il fatto che sul mare non crescano alberi. Sbagliare la
+// classificazione non si vede in un numero: si vede in un orizzonte
+// marino pieno di pioppi.
+{
+  const n = TERRENO_DISTANZE.length;
+  // Un finto giro di campioni: si costruisce una direzione per volta e la
+  // si dà in pasto al classificatore come se venisse dal servizio.
+  const direzione = (quotaCasa, quoteDellaDirezione) => {
+    const q = new Array(n * 2).fill(0);
+    quoteDellaDirezione.forEach((v, k) => { q[k] = v; });
+    let cresta = 0;
+    for (let k = 0; k < n; k++) {
+      const a = terrenoAngolo(q[k], quotaCasa + 1.6, TERRENO_DISTANZE[k]);
+      if (a > cresta) cresta = a;
+    }
+    return { tipo: terrenoTipoDiDirezione(q, 0, quotaCasa, cresta), cresta };
+  };
+
+  const mare = direzione(0, TERRENO_DISTANZE.map(() => 0));
+  prova('dodici campioni a quota zero sono il mare, non una pianura',
+        TERRENO_TIPI[mare.tipo] === 'mare', TERRENO_TIPI[mare.tipo]);
+
+  // Una pianura vera non è piatta al centimetro: ondeggia di qualche metro
+  const pianura = direzione(15, TERRENO_DISTANZE.map((km, k) => 12 + (k % 3) * 4));
+  prova('una pianura ondulata resta pianura',
+        TERRENO_TIPI[pianura.tipo] === 'pianura', TERRENO_TIPI[pianura.tipo]);
+
+  const collina = direzione(40, TERRENO_DISTANZE.map(km => (km < 5 ? 40 + km * 30 : 200)));
+  prova('duecento metri di dislivello sono colline',
+        TERRENO_TIPI[collina.tipo] === 'collina', TERRENO_TIPI[collina.tipo]);
+
+  // Duemila metri a sessanta chilometri: la cresta è bassa (meno di due
+  // gradi, curvatura compresa) ma resta una montagna, ed è proprio il
+  // caso per cui il dislivello conta accanto all'angolo
+  const montagna = direzione(30, TERRENO_DISTANZE.map(km => (km >= 60 ? 2000 : 30)));
+  prova('duemila metri a sessanta chilometri sono una montagna',
+        TERRENO_TIPI[montagna.tipo] === 'montagna',
+        `${TERRENO_TIPI[montagna.tipo]}, cresta ${montagna.cresta.toFixed(2)}°`);
+
+  // Un centimetro d'acqua non fa il mare: se il DEM dà una quota vera, per
+  // quanto bassa, è terra
+  const olanda = direzione(3, TERRENO_DISTANZE.map(() => 3));
+  prova('tre metri di quota sono terra ferma, non acqua',
+        TERRENO_TIPI[olanda.tipo] !== 'mare', TERRENO_TIPI[olanda.tipo]);
+
+  // Da quarantotto settori a trecentosessantuno gradi: i tipi non si
+  // interpolano, si prende il più vicino
+  const tipi = new Array(TERRENO_DIREZIONI).fill(1);
+  tipi[0] = 0; tipi[24] = 3;
+  const perGrado = terrenoTipiPerGrado(tipi);
+  prova('i paesaggi si chiudono sul giro', perGrado[0] === perGrado[360]);
+  prova('il settore giusto finisce nella direzione giusta',
+        perGrado[0] === 0 && perGrado[180] === 3 && perGrado[90] === 1);
+  prova('il confine cade a metà strada fra due settori campionati',
+        perGrado[3] === 0 && perGrado[5] === 1,
+        'settori larghi 7°30′, confine a 3°45′');
+
+  prova('senza dati scaricati nessuno inventa un paesaggio', terrenoTipo(90) === null);
+}
+{
+  // Le città: dove stanno e quanto illuminano. L'azimut sbagliato è
+  // l'errore che non si nota — l'alone c'è, ma dalla parte opposta.
+  prova('una città più a nord sta a nord',
+        Math.abs(cittaAzimut(45, 9, 46, 9)) < 0.01);
+  prova('una città più a est sta a est',
+        Math.abs(cittaAzimut(45, 9, 45, 10) - 90) < 0.5,
+        `${cittaAzimut(45, 9, 45, 10).toFixed(2)}°`);
+  prova('una città a sud-ovest sta a sud-ovest',
+        Math.abs(cittaAzimut(45, 9, 44.3, 8.2) - 225) < 6,
+        `${cittaAzimut(45, 9, 44.3, 8.2).toFixed(1)}°`);
+
+  // Più è vicina e più è grande, più illumina: l'ordine è tutto quello che
+  // conta, perché il disegno prende le prime della lista
+  const pronte = cittaPrepara([
+    { nome: 'Capoluogo', lat: 45.30, lon: 9.00, abitanti: 900000 },
+    { nome: 'Paese', lat: 45.02, lon: 9.00, abitanti: 3000 },
+    { nome: 'Lontana', lat: 45.70, lon: 9.00, abitanti: 900000 },
+    { nome: 'Oltremare', lat: 48.00, lon: 9.00, abitanti: 2000000 }
+  ], 45, 9);
+  prova('le città oltre il raggio utile non entrano',
+        !pronte.some(c => c.nome === 'Oltremare'), `${pronte.length} su 4`);
+  prova('la più luminosa è la prima della lista',
+        pronte.length && pronte[0].nome === 'Capoluogo',
+        pronte.map(c => c.nome).join(' > '));
+  const capo = pronte.find(c => c.nome === 'Capoluogo');
+  const lontana = pronte.find(c => c.nome === 'Lontana');
+  prova('a parità di abitanti vince la più vicina',
+        capo && lontana && capo.forza > lontana.forza,
+        `${capo.km.toFixed(0)} km contro ${lontana.km.toFixed(0)} km`);
+  prova('l\'alone di una città grande è alto ma non copre il cielo',
+        capo && capo.alto > 4 && capo.alto <= 22 && capo.mezzo <= 55,
+        `${capo.alto.toFixed(1)}° di altezza, ${capo.mezzo.toFixed(1)}° di semilarghezza`);
+  prova('e resta comunque un velo, non una vernice',
+        pronte.every(c => c.alfa > 0 && c.alfa <= 0.3),
+        `opacità massima ${Math.max(...pronte.map(c => c.alfa)).toFixed(3)}`);
+
+  prova('senza elenco scaricato l\'orizzonte resta nero', cittaVicine().length === 0);
+}
+
+// =====================================================================
 const esito = document.getElementById('esito');
 esito.dataset.stato = fallite ? 'ko' : 'ok';
 esito.textContent = fallite
