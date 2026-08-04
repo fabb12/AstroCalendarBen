@@ -448,8 +448,22 @@ function ridisegnaPerDispositivo() {
     // altrimenti cancelleremmo il "Caricamento…" con un "non disponibile"
     if (Object.keys(satTle).length) mostraPassaggiSatelliti();
   }
+  // Le tele. Ognuna ha già il suo `resize`, ma girando il telefono quel
+  // `resize` arriva mentre la finestra ha ancora le misure di prima (su iOS
+  // sempre): la passata buona è questa, che parte a 120 e a 300 millisecondi
+  // dal giro (vedi `inizializzaDispositivo`). Chi non ci passa resta
+  // disegnato nella forma di prima della rotazione — è successo alla vista
+  // 3D e alla lezione dell'eclittica, che erano le due che mancavano.
   if (typeof sky === 'object' && sky.aperto) skyRidimensiona();
   if (typeof sim === 'object' && sim.aperto) simRidimensiona();
+  if (typeof sol === 'object' && sol.aperto && typeof solRidimensiona === 'function') {
+    solRidimensiona();
+    solDisegna();
+  }
+  if (typeof lez === 'object' && lez.aperto && typeof lezRidimensiona === 'function') {
+    lezRidimensiona();
+    lezDisegna();
+  }
   // La mappa dell'eclissi cambia riquadro passando a due colonne: senza
   // questo Leaflet continuerebbe a disegnare sulla misura vecchia
   if (_mappaEclissi) _mappaEclissi.invalidateSize();
@@ -6398,6 +6412,11 @@ const sky = {
   ctx: null,
   larghezza: 0,
   altezza: 0,
+  // L'ultima altezza **davvero misurata** del riquadro. A vista nascosta
+  // `clientHeight` vale zero e `skyRidimensiona` ripiega su un numero di
+  // comodo: quel numero non è una misura, e confrontarcisi farebbe credere
+  // a un cambio di forma che non è mai avvenuto (vedi 7.3, skyRidimensiona).
+  altezzaMisurata: 0,
   observer: null,        // Astronomy.Observer del luogo da cui si guarda il cielo
   posizione: null,       // { lat, lon, fonte, origine, nome, precisione, tempo }
   // Il luogo di sola visita: quando c'è, il planetario disegna il cielo da
@@ -8335,17 +8354,60 @@ function skyOra(data) {
 // 7.3 Disegno del cielo sul canvas
 // =====================================================================
 
+// Girando il telefono il riquadro non si limita a cambiare forma: passa da
+// 360×625 a 798×280, e l'altezza — che è il lato su cui è definito il campo
+// visivo (`skyFocale`) — si dimezza abbondantemente. Tenendo fermo `sky.fov`
+// il cielo si ritrovava disegnato a un quinto della scala di prima: la Luna
+// che riempiva mezzo schermo diventava un puntino, il campo orizzontale
+// saltava da 32° a 140° e l'oggetto che si stava guardando scappava via.
+// Non è quello che fa una finestra quando la si gira — e a schermo intero
+// era lo stesso, perché anche entrare e uscire dal pieno schermo cambia
+// l'altezza del riquadro.
+//
+// Quello che deve restare fermo attraverso un cambio di forma non è il campo
+// ma la **scala**: quanti gradi di cielo vale un pixel. Da `skyFocale` la
+// condizione è immediata — la focale è `(altezza/2) / (2·tan(fov/4))`, quindi
+// perché resti la stessa `tan(fov/4)` deve seguire l'altezza in proporzione.
+// Così girando il telefono gli astri restano grandi uguali e nello stesso
+// posto, e a cambiare è solo quanto cielo ci sta dentro: più largo e meno
+// alto, che è esattamente quello che si è chiesto girandolo.
+function skyCampoPerNuovaAltezza(fov, altezzaVecchia, altezzaNuova) {
+  const t = Math.tan(fov / 4 * SKY_D2R) * (altezzaNuova / altezzaVecchia);
+  return 4 * Math.atan(t) * SKY_R2D;
+}
+
 function skyRidimensiona() {
   if (!sky.canvas) return;
   const dpr = window.devicePixelRatio || 1;
   const l = sky.canvas.clientWidth || 320;
   const h = sky.canvas.clientHeight || 340;
+  // Misura vera o ripiego? A vista nascosta il riquadro è alto zero, e il
+  // 340 qui sopra è solo un numero per non dividere per niente: la prima
+  // misura vera che arriva dopo non è una rotazione, è il primo respiro
+  // della vista, e non deve toccare il campo.
+  const misurato = sky.canvas.clientHeight > 0;
+  const altezzaPrec = sky.altezzaMisurata;
   sky.larghezza = l;
   sky.altezza = h;
+  if (misurato) sky.altezzaMisurata = h;
   sky.canvas.width = Math.round(l * dpr);
   sky.canvas.height = Math.round(h * dpr);
   sky.ctx = sky.canvas.getContext('2d');
   sky.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // Con la fotocamera accesa il campo non è una preferenza ma una misura
+  // dell'obiettivo: `skySincronizzaCampoFotocamera()` lo rifà a ogni
+  // fotogramma dalla geometria vera del video, e qui non va toccato.
+  if (!misurato || !altezzaPrec || altezzaPrec === h) return;
+  if (typeof skyCampoDaObiettivo === 'function' && skyCampoDaObiettivo()) return;
+
+  const voluto = sky.fovVoluto || sky.fov;
+  sky.fov = Math.max(SKY_FOV_MIN, Math.min(SKY_FOV_MAX,
+    skyCampoPerNuovaAltezza(sky.fov, altezzaPrec, h)));
+  // Anche lo zoom morbido ancora in viaggio va riscritto nella scala nuova,
+  // se no finisce di scivolare verso il campo di prima della rotazione
+  sky.fovVoluto = Math.max(SKY_FOV_MIN, Math.min(SKY_FOV_MAX,
+    skyCampoPerNuovaAltezza(voluto, altezzaPrec, h)));
 }
 
 // =====================================================================
