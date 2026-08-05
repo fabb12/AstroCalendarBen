@@ -1,0 +1,4 @@
+1. visualizzazione realistica delle aurore boreali e australi 
+2. sezione didattica possibilita di ingradire la visualizzine 3D
+3. sistemare dimensione delle oggetto della dashboard per piccoli schermi 
+4. mettere didattica prima di diario nel menu principale
