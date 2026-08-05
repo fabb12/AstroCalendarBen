@@ -2,3 +2,4 @@
 2. sezione didattica possibilita di ingradire la visualizzine 3D
 3. sistemare dimensione delle oggetto della dashboard per piccoli schermi 
 4. mettere voce didattica prima di diario nel menu principale
+5. sistemare nel sistema solare 3d la dimensione del sole quando ingrandisci o diminuisci
