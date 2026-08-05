@@ -5195,3 +5195,580 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
   white-space: nowrap;
   border: 0;
 }
+
+/* ================================================================== */
+/* IL LABORATORIO — la vista Didattica                                 */
+/*                                                                     */
+/* Cinque banchi, uno a schermo per volta. La forma è sempre la stessa */
+/* e questo è il punto: chi impara a usare il primo li sa usare tutti. */
+/* Dall'alto: la tela (o due), la barra di trasporto, i comandi propri */
+/* dell'esperimento, i numeri vivi, la spiegazione che cambia mentre   */
+/* si muove, e in fondo i ponti verso il resto dell'app.               */
+/* ================================================================== */
+
+/* ---------------------------------------------------- La testata */
+.did-intro {
+  padding: 22px 24px 18px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-l);
+  background:
+    radial-gradient(900px 320px at 8% -30%, rgba(139, 92, 246, 0.16), transparent 62%),
+    radial-gradient(760px 280px at 92% -10%, rgba(76, 141, 255, 0.14), transparent 60%),
+    var(--superficie);
+  box-shadow: var(--ombra-2), var(--luce-interna);
+}
+
+.did-occhiello {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--viola-chiaro);
+}
+
+.did-intro-titolo {
+  margin: 6px 0 8px;
+  font-family: var(--titolo);
+  font-size: clamp(1.5rem, 3.6vw, 2.05rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--testo);
+}
+
+.did-intro-testo {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 0.94rem;
+  line-height: 1.66;
+  color: var(--testo-2);
+}
+
+/* ------------------------------------- Le linguette dei cinque banchi */
+/* Scorrono di lato sul telefono invece di andare a capo su tre righe:
+   restano una fila sola, e la fila sola dice «sono cinque, e ne stai
+   guardando uno». */
+.did-linguette {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.did-linguette::-webkit-scrollbar { display: none; }
+
+body button.did-linguetta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 8px 15px 8px 9px;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  font-family: inherit;
+  font-size: 0.83rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--transizione), border-color var(--transizione),
+              background-color var(--transizione), box-shadow var(--transizione);
+}
+body button.did-linguetta:hover { color: var(--testo); border-color: var(--bordo-forte); }
+body button.did-linguetta.attiva {
+  background: linear-gradient(135deg, var(--blu), var(--viola));
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--alone-blu);
+}
+
+.did-linguetta-numero {
+  display: inline-grid;
+  place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 999px;
+  background: rgba(148, 168, 214, 0.16);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+body button.did-linguetta.attiva .did-linguetta-numero { background: rgba(255, 255, 255, 0.22); }
+
+/* ------------------------------------------------------- Il banco */
+.did-banco { display: block; }
+
+.did-lab {
+  display: grid;
+  gap: 16px;
+  padding: 22px 24px 24px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-l);
+  background: var(--superficie);
+  box-shadow: var(--ombra-2), var(--luce-interna);
+  animation: did-entra 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes did-entra {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .did-lab { animation: none; }
+}
+
+.did-testa { display: grid; gap: 5px; }
+.did-titolo {
+  margin: 0;
+  font-family: var(--titolo);
+  font-size: clamp(1.18rem, 2.6vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  color: var(--testo);
+}
+.did-sommario {
+  margin: 2px 0 0;
+  max-width: 82ch;
+  font-size: 0.9rem;
+  line-height: 1.62;
+  color: var(--testo-2);
+}
+.did-sommario em { font-style: normal; color: var(--blu-chiaro); font-weight: 600; }
+
+.did-corpo { display: grid; gap: 14px; }
+
+/* -------------------------------------------------------- Le tele */
+/* Il fondo nero della scena non è quello della scheda: una tela che
+   sfuma nel pannello che la contiene non si legge più come una finestra
+   sullo spazio, e questi disegni devono essere finestre. */
+.did-scene { display: grid; gap: 12px; }
+.did-scene-due { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 760px) {
+  .did-scene-due { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.did-scena {
+  position: relative;
+  margin: 0;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: #04070f;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), var(--ombra-2);
+}
+
+/* Le scene tonde — orbite, sistemi solari — non guadagnano niente a
+   essere larghe due volte quanto sono alte: il disegno resta grande
+   quanto la loro altezza e ai lati avanza solo nero. Le si tiene a una
+   misura in cui il cerchio riempie il riquadro. */
+.did-scena-tonda { max-width: 760px; margin-inline: auto; width: 100%; }
+
+.did-tela {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Le tele su cui si trascina (il parametro d'impatto della fionda) non
+     devono portarsi via lo scorrimento della pagina */
+  touch-action: pan-y;
+}
+#did-fionda-pianeta { touch-action: none; cursor: ns-resize; }
+
+.did-targhetta {
+  position: absolute;
+  left: 10px; bottom: 10px;
+  max-width: calc(100% - 20px);
+  padding: 5px 11px;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--testo-2);
+}
+.did-targhetta em { font-style: normal; color: var(--testo); }
+.did-targhetta.did-bene { border-color: rgba(52, 211, 153, 0.5); color: var(--verde); }
+.did-targhetta.did-male { border-color: rgba(248, 113, 113, 0.5); color: var(--rosso); }
+
+/* ------------------------------------------- La barra di trasporto */
+/* È uguale in tutti i banchi, ed è la cosa che li rende una famiglia:
+   torna all'inizio, avvia, scorri, e la velocità a segmenti. */
+.did-barra {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: var(--incassato);
+}
+
+body button.did-tondo {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px; height: 38px;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  cursor: pointer;
+  transition: color var(--transizione), border-color var(--transizione),
+              background-color var(--transizione);
+}
+body button.did-tondo:hover { color: var(--testo); border-color: var(--bordo-forte); }
+body button.did-play {
+  background: var(--blu);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--alone-blu);
+}
+body button.did-play.in-marcia {
+  background: var(--superficie-alta);
+  border-color: var(--blu);
+  color: var(--blu-chiaro);
+  box-shadow: none;
+}
+
+.did-lettura {
+  flex: 0 0 auto;
+  min-width: 3.4rem;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--testo-3);
+}
+
+.did-velocita { flex: 0 0 auto; max-width: 190px; }
+
+/* ------------------------------------------------- Slitte e comandi */
+.did-slitta {
+  flex: 1 1 180px;
+  min-width: 120px;
+  height: 26px;
+  margin: 0;
+  accent-color: var(--blu);
+  background: transparent;
+  cursor: pointer;
+}
+.did-slitta-larga { width: 100%; flex: 1 1 100%; }
+
+.did-riga {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.did-riga-fine { justify-content: space-between; }
+.did-riga-fine .segmenti-cielo { flex: 1 1 220px; }
+.did-riga-avvolgi { gap: 7px; }
+.did-riga-avvolgi .did-etichetta { flex: 0 0 auto; }
+
+.did-etichetta {
+  flex: 1 1 auto;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--testo-2);
+}
+.did-valore {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--testo);
+}
+.did-quando {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--testo-3);
+}
+
+.did-quadri { flex: 1 1 100%; }
+
+body button.did-tasto {
+  min-height: 36px;
+  padding: 7px 15px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: var(--superficie-alta);
+  color: var(--testo);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transizione), background-color var(--transizione);
+}
+body button.did-tasto:hover { border-color: var(--blu); }
+body button.did-primario {
+  background: var(--blu);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--alone-blu);
+}
+body button.did-primario:hover { filter: brightness(1.08); }
+
+body button.did-pillola {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 5px 13px;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: var(--incassato);
+  color: var(--testo-2);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--transizione), border-color var(--transizione),
+              background-color var(--transizione);
+}
+body button.did-pillola:hover { color: var(--testo); border-color: var(--bordo-forte); }
+body button.did-pillola.attiva {
+  background: rgba(76, 141, 255, 0.22);
+  border-color: var(--blu);
+  color: #fff;
+  box-shadow: var(--alone-blu);
+}
+
+.did-pallino {
+  width: 9px; height: 9px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  box-shadow: 0 0 8px -1px currentColor;
+}
+
+/* --------------------------------------------------- I numeri vivi */
+/* Sono la parte che si guarda mentre si muove la slitta, quindi devono
+   avere cifre di larghezza fissa: senza `tabular-nums` un 11,1 che
+   diventa 8,8 fa saltare tutta la riga di due pixel, sessanta volte al
+   secondo, e sembra che tremi lo schermo. */
+.did-letture {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr));
+  gap: 8px;
+}
+
+.did-lettura-voce {
+  display: grid;
+  gap: 3px;
+  padding: 9px 12px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-s);
+  background: var(--incassato);
+}
+.did-lettura-voce.forte { border-color: rgba(148, 168, 214, 0.22); background: rgba(20, 27, 46, 0.6); }
+
+.did-lettura-nome {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+.did-lettura-valore {
+  font-family: var(--mono);
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--testo);
+}
+.did-lettura-valore.verde { color: var(--verde); }
+.did-lettura-valore.rosso { color: var(--rosso); }
+.did-lettura-valore.ambra { color: var(--ambra); }
+.did-lettura-valore.blu   { color: var(--blu-chiaro); }
+
+/* ----------------------------------------------- Testi e spiegazioni */
+.did-spiega {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--bordo);
+  border-left: 3px solid var(--blu);
+  border-radius: var(--raggio-s);
+  background: rgba(76, 141, 255, 0.06);
+  font-size: 0.9rem;
+  line-height: 1.66;
+  color: var(--testo-2);
+}
+.did-spiega strong { color: var(--testo); font-weight: 700; }
+.did-spiega em { font-style: italic; color: var(--testo-2); }
+
+.did-nota {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.56;
+  color: var(--testo-3);
+}
+.did-nota strong { color: var(--testo-2); }
+
+/* ------------------------------------------------------- I ponti */
+/* Il pezzo che collega il laboratorio al resto dell'app: da qui si esce
+   sempre verso qualcosa di vero — il cielo di quella data, le orbite di
+   quell'istante. */
+.did-ponti {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bordo);
+}
+
+body button.did-ponte {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 9px 18px 9px 13px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(76, 141, 255, 0.16), rgba(139, 92, 246, 0.12));
+  color: var(--testo);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transizione), transform var(--transizione),
+              box-shadow var(--transizione);
+}
+body button.did-ponte:hover {
+  border-color: var(--blu);
+  box-shadow: var(--alone-blu);
+}
+body button.did-ponte:active { transform: translateY(1px); }
+.did-ponte-segno { display: inline-grid; place-items: center; color: var(--blu-chiaro); }
+
+/* ------------------------------------------ Ricerca e risultati (5) */
+.did-avanzamento {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--testo-3);
+}
+.did-avanzamento-barra {
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--incassato);
+  overflow: hidden;
+}
+.did-avanzamento-barra i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--blu), var(--viola));
+  transition: width 120ms linear;
+}
+
+.did-risultati {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 10px;
+  max-height: 620px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.did-riassunto {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 12px 15px;
+  border: 1px solid var(--bordo);
+  border-left: 3px solid var(--viola);
+  border-radius: var(--raggio-s);
+  background: rgba(139, 92, 246, 0.07);
+  font-size: 0.85rem;
+  line-height: 1.62;
+  color: var(--testo-2);
+}
+.did-riassunto strong { color: var(--testo); }
+
+.did-esito {
+  display: grid;
+  gap: 7px;
+  padding: 12px 14px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: var(--incassato);
+}
+.did-esito-forte { border-color: rgba(76, 141, 255, 0.4); background: rgba(76, 141, 255, 0.07); }
+
+.did-esito-testa { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.did-esito-data { font-size: 0.9rem; font-weight: 700; color: var(--testo); }
+.did-esito-scarto {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--testo-3);
+}
+
+.did-marchio {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.did-marchio-elio   { background: var(--ambra-velo); color: var(--ambra); }
+.did-marchio-geo    { background: rgba(52, 211, 153, 0.14); color: var(--verde); }
+.did-marchio-raduno { background: var(--viola-velo); color: var(--viola-chiaro); }
+
+.did-esito-avviso {
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: var(--raggio-s);
+  background: rgba(245, 181, 68, 0.10);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--ambra);
+}
+
+.did-esito-corpi {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--testo);
+}
+.did-esito-testo { margin: 0; font-size: 0.78rem; line-height: 1.55; color: var(--testo-2); }
+.did-esito-tasti { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 2px; }
+
+.did-vuoto {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 24px 12px;
+  text-align: center;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--testo-3);
+}
+.did-vuoto.did-male { color: var(--rosso); }
+
+/* ------------------------------------------------------- Telefono */
+@media (max-width: 640px) {
+  .did-intro { padding: 18px 16px 14px; }
+  .did-lab { padding: 18px 16px 20px; border-radius: var(--raggio-m); }
+  .did-barra { border-radius: var(--raggio-m); padding: 9px; }
+  /* Con lo schermo stretto la slitta si prende una riga sua: schiacciata
+     fra due tasti tondi e la lettura restava larga quaranta pixel, e
+     scorrere il tempo diventava impossibile. */
+  .did-slitta { flex: 1 1 100%; order: 3; }
+  .did-lettura { order: 2; margin-left: auto; }
+  .did-velocita { order: 4; flex: 1 1 100%; max-width: none; }
+  .did-letture { grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
+  body button.did-ponte { flex: 1 1 100%; justify-content: center; }
+}

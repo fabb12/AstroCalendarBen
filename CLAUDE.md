@@ -35,6 +35,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `meteo-astro.js` | ~510 | **Meteo da astronomo**: seeing, trasparenza, griglia Clear Sky Chart, aurora. Prefisso `meteo`/`aurora`. |
 | `eventi-extra.js` | ~435 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete. |
 | `ui-nuova.js` | ~350 | L'interfaccia di tutto quanto sopra. |
+| `didattica.js` | ~2.800 | **Il laboratorio**: i cinque banchi di prova della vista Didattica — moto retrogrado, leggi di Keplero, fionda gravitazionale, finestre di lancio, allineamenti. Prefisso `did`. |
 | `dati-stelle.js` | ~1.360 | 5.044 stelle fino alla mag 6,0 (147 KB). **Caricato su richiesta.** |
 | `dati-stelle-deboli.js` | ~1.335 | Altre 10.500 fino alla mag 7,0 (267 KB). **Solo a chi serve** (Bortle ≤ 4 o forte zoom). |
 | `dati-costellazioni.js` | ~195 | Le 88 figure IAU coi nomi italiani (24 KB). **Su richiesta.** |
@@ -43,7 +44,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `verifica.html` | ~530 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~4.915 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v59`). |
+| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v61`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 
@@ -52,6 +53,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 ```
 app.js → telescopio.js → catalogo.js → corpi-minori.js
        → pianifica.js → terreno.js → meteo-astro.js → eventi-extra.js → ui-nuova.js
+       → didattica.js
 ```
 
 Ogni file può usare quelli prima di lui; il contrario va sempre protetto con
@@ -97,7 +99,7 @@ Se i moduli nuovi non ci sono, l'app resta esattamente quella di prima.
 `sw.js` **esclude deliberatamente questi host dalla cache**: una risposta vecchia
 racconterebbe il meteo di ieri o dove eri, non dove sei.
 
-## 5. Le sei viste
+## 5. Le sette viste
 
 Definite in `VISTE` (`app.js:5749`), commutate da `mostraVista(nome)`
 (`app.js:5759`), che è anche il posto dove si **accendono e spengono** cicli di
@@ -116,6 +118,7 @@ i testi — ma resta `cielo` nel codice, nelle classi CSS (`vista-cielo`,
 | **Planetario** (nel codice `cielo`) | Il cielo in tempo reale: punta il telefono, oppure realtà aumentata con la fotocamera, macchina del tempo, playback, zoom da 180° (grandangolo, tutto il cielo in un colpo) fino a un quarto di grado (Luna e pianeti a grandezza vera, **con la loro faccia**: mari, bande, anelli, calotte), eclissi con corona e ombra della Terra, orizzonte con le colline, registrazione di un filmato da condividere, e il **Sistema Solare visto da fuori in 3D** — la stessa ora, ma guardata da lontano, per capire perché i pianeti stanno proprio lì. Nel pannello **Tempo e luogo** si può anche spostare il punto di vista in un'altra città: vale solo qui, la posizione dell'app non si tocca. |
 | **Telescopio** | Allineamento polare, puntamento, programma della serata, manutenzione. |
 | **Diario** | Osservazioni registrate e traguardi. |
+| **Didattica** | Il laboratorio: cinque banchi di prova con dentro le posizioni vere dei pianeti, uno a schermo per volta. Perché i pianeti tornano indietro, le tre leggi di Keplero, la fionda gravitazionale, le finestre di lancio, gli allineamenti. Ogni banco finisce con i tasti che portano la stessa cosa nel planetario e nella vista 3D. |
 
 Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
 `modale-simulazione`, `modale-lezione` (che cos'è l'eclittica),
@@ -220,6 +223,7 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `meteoAstro` | `meteo-astro.js` | Previsioni ora per ora con seeing e trasparenza già calcolati. |
 | `aurora` | `meteo-astro.js` | Indice Kp attuale e previsto dal NOAA. |
 | `orizzonteMio` | `pianifica.js` | I sedici settori del profilo degli ostacoli. |
+| `stato` / `LABORATORI` | `didattica.js` | Il laboratorio. `stato.lab` dice quale banco è a schermo — ed è l'unico che calcola e disegna. `LABORATORI` è l'elenco dei cinque, ognuno con `costruisci`/`collega`/`entra`/`esce`/`passo`/`disegna`: chi non ha bisogno di una di quelle cose non la definisce. Gli stati dei banchi sono `retro`, `kep`, `fionda`, `lancio`, `allin`. |
 | `terreno` | `terreno.js` | La forma vera del terreno: `profilo` sono i 361 gradi dell'orizzonte, `tipi` che paesaggio c'è in ognuno (mare/pianura/collina/montagna), `miscela` gli stessi tipi sfumati fra loro su `TERRENO_SFUMA_GRADI` (è quella che usa il disegno: un tipo secco farebbe i bordi), `quota` l'altezza del suolo sotto i piedi, `stato` dice se è arrivato, `acceso` se lo si vuole. |
 | `citta` | `terreno.js` | I paesi attorno a casa, già pronti per il disegno: per ognuno `az`, `km`, `abitanti`, `forza` (quanto illumina), `alto` e `mezzo` (quanto è grande la cupola di luce), `alfa`. Ordinati dal più luminoso. |
 
@@ -255,7 +259,8 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
   volta sola, dentro `skyPelle`), `skyReg*` = registrazione di un momento,
   `sol*` = il Sistema Solare in 3D, `sim*` = simulazione, `tel*` = telescopio,
   `_ecl*` = interni della mappa eclissi, `lez*` = la lezione animata
-  dell'eclittica, `terreno*` = la forma vera del terreno attorno a casa, `citta*` = i paesi che la illuminano.
+  dell'eclittica, `terreno*` = la forma vera del terreno attorno a casa, `citta*` = i paesi che la illuminano,
+  `did*` = il laboratorio della vista Didattica.
 - **Niente disegno pesante a ogni fotogramma**: tutto ciò che è complicato e
   non cambia (i mari della Luna, le bande di Giove, la corona, le nebulose)
   si dipinge una volta sola su una tela fuori schermo e poi si ricopia. Il
@@ -276,7 +281,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v59`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v61`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene
@@ -387,6 +392,15 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Prestare un pezzo di pagina a un'altra finestra | `skyRicordaPosto(mappa, nodo)` / `skyRimettiAlSuoPosto(mappa, nodo)` (in cima alla 7.5-bis): si ricorda il padre **e** il fratello che veniva dopo. Li usano le finestre sopra al cielo (7.5-bis) e il pannello del tempo (7.5-ter), ognuno con la sua mappa |
 | Cercare un astro per nome, per categoria, o vedere solo quelli su adesso | `skyFiltraElenco()` (sezione 7.4): campo `#skymap-astri-cerca` (ricerca morbida con `normalizzaTesto`, Invio sceglie il primo), tasti delle categorie `#skymap-astri-categorie` → `sky.famigliaAstri`, tasto `#skymap-astri-visibili` → `sky.soloAstriVisibili`. I tre filtri si sommano. Chi resta fuori lo dice `data-fuori="si"`, **non** una classe: `skyAggiornaStileElenco()` riscrive il `className` di ogni pillola a ogni giro. Stili `.cerca-astri` (appiccicata in cima), `.segmenti-categorie`, `.famiglia-astri`, `.titolo-famiglia`, `body .chip-astro` |
 | Una finestra che non si vede col cielo a schermo intero | sezione **7.5-bis**: finché il planetario è a schermo intero le `.velo-modale` aperte vengono spostate dentro `#skymap-contenitore` (e riportate al loro posto alla chiusura). Nessuna `apri…()` è stata toccata: a guardare la classe `hidden` è un `MutationObserver` in `skyInizializzaModaliSopraIlCielo()`. Stile dell'ospite: `.modale-sopra-il-cielo` in `style.css` |
+| Un banco del laboratorio (Didattica) | `didattica.js`, sezione dell'esperimento. La struttura è sempre la stessa: `costruisci()` scrive il markup, `collega()` attacca i comandi, `passo(dt)` fa camminare il tempo, `disegna()` mette tutto sulla tela. Le linguette in cima cambiano `stato.lab`, e **solo il banco a schermo calcola**: quattro tele che animavano insieme facevano scaldare il telefono per mostrare tre cose che nessuno stava guardando |
+| Un nuovo banco nel laboratorio | una chiamata a `laboratorio({...})` in `didattica.js` e basta: linguetta, riquadro e ciclo di disegno se li costruisce da sé `didCostruisci()`. Il markup non va toccato — `index.html` tiene solo il guscio (`#did-linguette` e `#did-banco`) |
+| I comandi del laboratorio (avvia, scorri, velocità) | `didBarra(prefisso)` scrive la barra e `collegaBarra(prefisso, oggetto, ganci)` la collega: è la stessa in tutti i banchi, ed è quello il punto — imparata una volta, funziona su tutti e cinque. Stili `.did-barra`, `.did-tondo`, `.did-slitta`, `.did-velocita` |
+| Le tele del laboratorio (misura, nitidezza, rotazione) | `didTela(id, proporzione, altezzaMax)`: rimisura il riquadro a ogni fotogramma (è una lettura di `clientWidth`, non costa niente) e rifà il buffer solo quando serve, moltiplicato per il `devicePixelRatio`. Per questo girare il telefono non ha bisogno di nessun gancio esterno. Lo sfondo stellato è dipinto una volta sola e ricopiato (`didSfondo`) |
+| Dal laboratorio al resto dell'app | `didPortaOrologio(data)` (sposta `sky.offsetTempoSec`: è lo stesso orologio del planetario), `didVaiInCielo(data, astro)` → `cercaNelCielo`, `didVaiInTreD(data)` → `apriSistemaSolare`, `didVaiAllaLezione(quadro)` → `apriLezioneEclittica`. I tasti li scrive `didPonti([...])` e li ascolta `collegaPonti(idLab, azione)` |
+| Il cappio del moto retrogrado non si vede | `retroDisegnaCielo()`: l'inquadratura si stringe sul **tratto retrogrado** più un mese per parte, non su tutta la finestra. Inquadrando i quattrocento giorni interi il pianeta percorre novanta gradi di longitudine e quindici di cappio, e il cappio diventa un puntino schiacciato in un angolo |
+| Il segno del guadagno nella fionda | `fiondaCalcola()`: la sonda parte a `y = -bKm`, e non è un dettaglio — il pianeta si muove verso `+y`, quindi «sotto» vuol dire passargli dietro, che è la manovra che fa guadagnare. Con la slitta a destra si guadagna, a sinistra si frena |
+| Le Voyager passano dal posto sbagliato | `voyNodi(chi)` prende la posizione di ogni pianeta **il giorno dell'incontro**, non all'anno che si sta guardando: con la seconda le scie si arrotolavano attorno al Sole seguendo i pianeti invece di stare ferme dov'erano passate |
+| «Nessun allineamento trovato» | `allinConcludi()`: la ricerca guarda **ogni coppia** di pianeti, non solo il gruppo intero — cinque pianeti dentro a pochi gradi non capita quasi mai, e cercando solo quello la risposta era sempre «niente». La riga di riepilogo (`did-riassunto`) dice comunque qual è la fila più stretta del periodo, che è la risposta vera alla domanda |
 | Meteo o semaforo di osservabilità | `app.js:18248` |
 | Calcoli ottici del telescopio | `telescopio.js:243` |
 | Impaginazione su telefono | `PUNTI_ROTTURA` `app.js:211` + i `@media` di `style.css` |
