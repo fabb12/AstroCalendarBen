@@ -3342,7 +3342,7 @@ function telPannelloStrumento() {
     `<option value="${k}" ${p.cercatore === k ? 'selected' : ''}>${TEL_CERCATORI[k].nome}</option>`).join('');
 
   const oculari = p.oculari.map((oc, i) => `
-    <div class="flex items-center gap-2 bg-slate-900 rounded-xl border border-slate-700 p-2">
+    <div class="riga-oculare flex items-center gap-2 bg-slate-900 rounded-xl border border-slate-700 p-2">
       <input type="number" data-tel-oculare="${i}" data-campo="focale" value="${oc.focale}"
         min="2" max="60" step="0.5" class="w-16 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1 text-white text-sm">
       <span class="text-xs text-slate-400">mm, campo apparente</span>

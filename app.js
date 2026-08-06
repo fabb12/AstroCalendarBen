@@ -5905,13 +5905,13 @@ function costruisciAgenda() {
       : '';
     card.innerHTML = `
       <div class="barra-evento" style="background-color: ${evento.colore}; color: ${evento.colore}"></div>
-      <div class="flex justify-between items-start mb-4 pl-4">
-        <div>
+      <div class="testa-scheda-evento flex justify-between items-start mb-4 pl-4">
+        <div class="titolo-scheda-evento">
           <h2 class="text-2xl font-bold text-white">${evento.titolo}${badgeManuale}</h2>
           <p class="text-blue-400 text-sm font-semibold mt-1">${evento.dataTesto}</p>
           <div class="mt-2">${badgeCategoria}${badgeStrumentoHtml(evento)}</div>
         </div>
-        <div class="flex gap-2 flex-shrink-0">
+        <div class="azioni-scheda-evento flex gap-2 flex-shrink-0">
           <button onclick="apriSimulazione('${evento.id}')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-purple-600 rounded-full" title="Guarda cosa succede, passo per passo">Simula</button>
           <button onclick="leggiEvento('${evento.id}', 'tasto')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-slate-600 rounded-full" title="Leggi ad alta voce">Ascolta</button>
           ${bottoneModifica}
@@ -20646,7 +20646,7 @@ function schedaRiepilogo(titolo, valore, dettaglio) {
     <div class="scheda-riepilogo bg-slate-900 p-4 rounded-xl border border-slate-700">
       <p class="etichetta-riepilogo text-xs text-slate-400 uppercase tracking-wide">${titolo}</p>
       <p class="valore-riepilogo text-lg font-bold text-white mt-1">${valore}</p>
-      <p class="text-xs text-slate-400 mt-1">${dettaglio}</p>
+      <p class="dettaglio-riepilogo text-xs text-slate-400 mt-1">${dettaglio}</p>
     </div>`;
 }
 

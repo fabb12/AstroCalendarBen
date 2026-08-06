@@ -2431,6 +2431,29 @@ main { padding-bottom: calc(clamp(24px, 3vw, 56px) + var(--barra-inferiore)); }
   align-items: start;
 }
 
+/* La testata di una scheda dell'agenda: il titolo a sinistra, "Simula" e
+   "Ascolta" (e i tasti dell'evento aggiunto a mano) a destra.
+
+   Su uno schermo stretto quei tasti non si stringono — e non devono, se no
+   diventano due francobolli — ma il titolo accanto a loro nemmeno: un titolo
+   è fatto di parole intere, e la sua larghezza minima è la parola più lunga.
+   Le due cose insieme sfondavano la scheda: su un telefono da 320 pixel
+   "Congiunzione Luna–Mercurio" e i tasti si sovrapponevano, e "Ascolta"
+   veniva tagliato a metà dal bordo. Con `min-width: 0` il titolo può
+   stringersi e mandare le parole a capo, e quando anche così non basta è la
+   riga a spezzarsi: i tasti scendono sotto al titolo, interi. */
+.testa-scheda-evento { flex-wrap: wrap; }
+.titolo-scheda-evento { min-width: 0; flex: 1 1 12rem; }
+.azioni-scheda-evento { flex-wrap: wrap; }
+
+/* La riga di un oculare, nel telescopio: focale, "mm, campo apparente",
+   campo, "°", e il tasto per toglierlo. Sono cinque cose su una riga sola, e
+   su un telefono da 320 pixel la quinta usciva dal riquadro — il "Togli"
+   sporgeva di otto pixel oltre il bordo della scheda, tagliato a metà. Basta
+   che la riga possa andare a capo: il tasto scende sotto ai due campi e
+   resta a destra, dove il pollice lo cerca. */
+.riga-oculare { flex-wrap: wrap; }
+
 /* ------------------------------------------------- RIQUADRI RAGGRUPPATI    */
 /* Nella dashboard due riquadri tengono dentro più argomenti (il meteo:
    nuvole e seeing; gli astri: migliori, pianeti, stazioni). Le parti devono
@@ -4559,6 +4582,16 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
     border-radius: 14px;
     font-size: clamp(0.64rem, 1.1vw, 0.76rem);
     letter-spacing: 0;
+    /* Il `nowrap` della testata qui è la rovina: in cima le voci sono larghe
+       quanto il nome, in fondo sono larghe un settimo di schermo, e un nome
+       che non può andare a capo esce dalla sua casella e si stampa sopra a
+       quello accanto. Il punto in cui andare a capo lo dicono i trattini
+       morbidi di index.html — `hyphens: manual` li rispetta senza inventarne
+       altri, e il trattino compare solo quando la riga si spezza davvero. */
+    white-space: normal;
+    text-align: center;
+    hyphens: manual;
+    overflow-wrap: break-word;
   }
   .voce-menu.attiva {
     background: var(--blu-velo);
@@ -4572,6 +4605,42 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
      restano al centro, alla distanza che hanno sul telefono */
   .nav-principale { justify-content: center; }
   .voce-menu { flex: 1 1 0; max-width: 148px; }
+}
+
+/* --- La barra in fondo su uno schermo stretto ---------------------------
+   Sette voci in trecentoventi pixel fanno quarantaquattro pixel a testa, e
+   i nomi lunghi ("Planetario", "Telescopio", "Didattica") ne chiedono una
+   cinquantina: non ci stanno su una riga sola, e finché non potevano andare
+   a capo si stampavano una sopra l'altra — sull'iPhone SE si leggeva
+   "Agenda Planetari|elescopio Diario". Adesso vanno a capo sul trattino
+   morbido, e le due righe sono riservate a TUTTE le voci, anche a "Mese"
+   che ne riempie una sola: è l'unico modo di tenere le sette icone allineate
+   sulla stessa riga. Il testo si appoggia in alto (`flex-start`) perché a
+   contare, per l'occhio, è che le prime righe partano tutte da lì.
+
+   Le due righe costano una decina di pixel d'altezza, e quei pixel li
+   recuperiamo dall'icona (da 20 a 18) e dal respiro interno. Quello che
+   resta è dichiarato in `--barra-inferiore`: è la misura vera della barra
+   (misurata: 61px a 320, 61,8px a 390 — 63 le stanno larghi di un pelo), ed
+   è da lì che tutta la pagina sa quanto spazio lasciarle sotto. */
+@media (max-width: 480px) {
+  :root { --barra-inferiore: calc(63px + env(safe-area-inset-bottom)); }
+
+  .nav-principale { padding: 4px 3px calc(4px + env(safe-area-inset-bottom)); }
+
+  .voce-menu {
+    gap: 2px;
+    padding: 5px 1px;
+    min-height: 52px;
+  }
+  .voce-menu-icona svg { width: 18px; height: 18px; }
+  .voce-menu-testo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 2.1em;
+    line-height: 1.05;
+  }
 }
 
 @media (max-width: 767px),
@@ -4625,6 +4694,12 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
   /* Il dispari rimasto solo in fondo si prende la riga: mezza riga vuota
      accanto all'ultima schedina sembra un pezzo che non è arrivato. */
   .griglia-sintesi > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  /* La riga sotto al numero grande è una frase intera ("Sorge 23:59 ·
+     tramonta 15:06. Disturbo moderato per gli oggetti deboli"), e con due
+     schedine per riga ha centoventi pixel in cui stare: a 0,75rem ci
+     metteva sei righe e faceva la schedina alta il doppio di quella
+     accanto. Un filo più piccola e più fitta, e sono quattro. */
+  .dettaglio-riepilogo { font-size: 0.7rem; line-height: 1.35; }
 
   /* Le parti dei riquadri raggruppati si stringono un po': il filo che le
      separa basta già a tenerle distinte. */
@@ -5028,6 +5103,16 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
 
 .nome-migliore { color: var(--testo); font-size: 0.92rem; }
 .ora-migliore { color: var(--testo-3); font-size: 0.78rem; margin-left: auto; }
+
+/* Su uno schermo stretto l'ora non si incolla più a destra. Il `margin-left:
+   auto` la spinge in fondo alla riga, e quando il nome dell'astro e il suo
+   tipo hanno già riempito la riga lei va a capo — restando spinta a destra.
+   Il risultato era una riga con dentro solo "verso le 04:07, a 45°",
+   allineata a destra, incastrata fra il nome e il motivo: sembrava di un
+   altro oggetto. Senza quel margine segue il nome, dove uno la cerca. */
+@media (max-width: 460px) {
+  .ora-migliore { margin-left: 0; }
+}
 .motivi-migliore { color: var(--testo-2); font-size: 0.78rem; margin-top: 3px; }
 
 .segno-strumento {
