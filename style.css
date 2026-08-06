@@ -2334,8 +2334,42 @@ main { padding-bottom: calc(clamp(24px, 3vw, 56px) + var(--barra-inferiore)); }
    la pagina da scorrere di lato, e le previsioni erano l'unica cosa
    servita bene. Con lo zero come minimo la colonna torna a misurarsi sullo
    schermo, e a scorrere è la tabella, da sola, dentro al suo riquadro. */
-.griglia-vista   { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--passo); align-content: start; }
+/* E l'`overflow-x: clip` è la rete sotto al trapezio. Quando una vista si
+   allarga più dello schermo non si rompe solo lei: sul telefono la barra di
+   navigazione è fissa e larga il 100% della finestra di impaginazione, e
+   quella finestra il browser la ricava dal documento. Una tabella larga
+   settecento pixel su uno schermo da 360 non fa scorrere la pagina di lato:
+   fa diventare la barra in fondo larga settecento pixel, e le ultime voci
+   del menu finiscono fuori dallo schermo — l'app diventa inservibile per
+   colpa di un riquadro.
+
+   `clip` e non `hidden`: `hidden` farebbe di ogni vista un contenitore di
+   scorrimento, e il primo a rimetterci sarebbe il riquadro appiccicoso del
+   Diario (`position: sticky`, che si misura sul contenitore di scorrimento
+   più vicino). `clip` taglia e basta, senza toccare né lo sticky né lo
+   scorrimento verticale della pagina — che resta `visible`, perché `clip` è
+   l'unico valore che permette all'altro asse di restare libero.
+
+   Non è un permesso a sbordare: quello che sborda sparisce, e sparire si
+   vede. È che sparisca un pezzo di riquadro invece del menu. */
+.griglia-vista   { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--passo); align-content: start; overflow-x: clip; }
 .griglia-elenco  { display: grid; gap: 8px; align-content: start; }
+
+/* Le tabelle che scorrono di lato, ovunque siano. Nel Telescopio i due
+   elenchi larghi (le combinazioni di oculari, le coordinate di stanotte)
+   stanno dentro a un `overflow-x-auto` di Tailwind, che è la cosa giusta e
+   non basta: su uno schermo da 360 pixel la tabella delle coordinate ne
+   misura 458, e finché quei 458 contano per il documento la barra in fondo
+   si allarga con lui e il menu esce dallo schermo — è lo stesso guaio della
+   griglia del meteo, in un'altra vista. `contain: paint` è la frase che
+   mancava: quello che sborda da qui dentro non riguarda nessuno fuori.
+
+   L'`overflow-x` è ripetuto di proposito. È la stessa rete di sicurezza di
+   `.hidden`: se il CDN di Tailwind non risponde la classe resta scritta nel
+   markup senza fare niente, e senza scorrimento `contain: paint` taglierebbe
+   la tabella invece di lasciarla scorrere. Dichiarandoli insieme, la coppia
+   regge da sola. */
+.overflow-x-auto { overflow-x: auto; contain: paint; }
 
 /* Le schedine con un numero grande (da che ora è buio, quanta Luna c'è…) */
 .griglia-sintesi {
@@ -4970,9 +5004,33 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
 
 /* ---------------------------------------- La griglia del Clear Sky Chart */
 /* Trenta colonne non ci stanno su un telefono, e non devono starci: la
-   tabella scorre nel suo riquadro, e la pagina resta ferma. */
+   tabella scorre nel suo riquadro, e la pagina resta ferma.
+
+   `contain: paint` non è un ornamento, ed è la seconda volta che questa
+   tabella allarga la pagina. La prima era la colonna della griglia, che si
+   misurava sul contenuto minimo (l'ha sistemata `minmax(0, 1fr)` in
+   .griglia-vista): il riquadro cresceva fino a contenere i settecento pixel
+   della tabella. Adesso il riquadro sta dentro allo schermo, la tabella
+   scorre — e la pagina si allargava lo stesso.
+
+   Perché `overflow-x: auto` dice che la tabella *si scorre* dentro al
+   riquadro, non che il resto della pagina possa dimenticarsela: la sua
+   larghezza continua a contare per il documento, e sul telefono il
+   documento è la misura da cui il browser ricava la finestra di
+   impaginazione. Una volta arrivate le previsioni, su uno schermo da 360
+   pixel `window.innerWidth` diventava 722 — e con lui la barra in fondo,
+   che è larga il 100% di quella finestra: sette voci spalmate su 722 pixel,
+   di cui se ne vedono tre e mezza. Il menu principale spariva di lato
+   perché era arrivato il meteo.
+
+   `contain: paint` chiude il discorso: quello che sborda da questo riquadro
+   non riguarda nessuno fuori di qui. La tabella scorre come prima (la
+   colonna dei nomi resta appiccicata: `contain: paint` non fa del riquadro
+   un contenitore di scorrimento in più, quindi lo sticky non se ne accorge),
+   ma la pagina non si allarga di un pixel. */
 .griglia-meteo-guscio {
   overflow-x: auto;
+  contain: paint;
   margin-top: 10px;
   border-radius: 10px;
   border: 1px solid var(--bordo);
