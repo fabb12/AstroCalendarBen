@@ -48,6 +48,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v64`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
+| `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
 
 **Ordine di caricamento** (è quello di `index.html`, e conta):
 
@@ -290,6 +291,29 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene
   da sé quando passano (regola «stessa origine»).
+
+### Come va online — `.github/workflows/pubblica.yml`
+
+Ogni push su `main` pubblica il sito su GitHub Pages. Non c'è build: il workflow
+copia i file in una cartella (lasciando fuori `.git`, `.github`, `scripts/`,
+questa mappa e il file delle idee), controlla che ci siano `index.html`,
+`manifest.json`, `sw.js`, `style.css`, `app.js` **e tutti gli script che
+`index.html` carica** — un `<script src>` che dà 404 non ferma niente, spegne
+solo una funzione, ed è il modo peggiore di accorgersene — e manda su.
+
+**La sorgente di Pages deve essere «GitHub Actions»** (Settings → Pages → Build
+and deployment → Source). Con «Deploy from a branch» a pubblicare resta la
+pipeline implicita di GitHub e l'ultimo passo di questo workflow fallisce.
+
+Il tasto **Run workflow** (Actions → *Pubblica il sito*) rilancia la
+pubblicazione senza bisogno di un commit vuoto. Serve più spesso di quanto
+sembri: quando il deploy fallisce, quasi mai è colpa del codice — il 6 agosto
+2026 è morto in avvio con «Failed to resolve action download info: Service
+Unavailable», un disservizio di GitHub. Il sintomo è insidioso, perché non c'è
+nessun errore da nessuna parte: online resta l'ultima versione buona e le
+modifiche appena unite semplicemente non si vedono. **Se una modifica unita in
+`main` non compare sul sito, il primo posto da guardare è la scheda Actions**,
+non il codice.
 
 ### Il banco di prova — `verifica.html`
 

@@ -1,0 +1,112 @@
+# Pubblicazione del sito su GitHub Pages.
+#
+# Perché esiste questo file. Fino a ieri il sito veniva pubblicato dalla
+# pipeline implicita di GitHub ("pages build and deployment"), quella che parte
+# da sola quando si sceglie «Deploy from a branch». Funziona, ma ha un difetto:
+# è di GitHub, non del progetto, e quando fallisce — il 6 agosto 2026 è morta
+# in fase di avvio con «Failed to resolve action download info: Service
+# Unavailable», cioè un disservizio loro, niente a che vedere col codice —
+# l'unico modo di riprovare è il tasto «Re-run jobs» nell'interfaccia. Chi non
+# se ne accorge resta con l'ultima versione buona online e le modifiche appena
+# unite invisibili, senza nessun errore da nessuna parte.
+#
+# Con un workflow nostro invece: `workflow_dispatch` lo fa ripartire con un
+# clic (Actions → Pubblica il sito → Run workflow) senza inventarsi un commit
+# vuoto, e i passi sono scritti qui, leggibili e modificabili.
+#
+# NOTA IMPORTANTE — va fatta una volta sola, a mano:
+#   Settings → Pages → Build and deployment → Source: «GitHub Actions».
+# Finché la sorgente resta «Deploy from a branch» questo workflow fallisce
+# nell'ultimo passo (Pages non accetta artefatti dalle Actions) e a pubblicare
+# continua la pipeline implicita.
+
+name: Pubblica il sito
+
+on:
+  push:
+    branches: [main]
+  # Il tasto «Run workflow»: serve a riprovare quando il guasto è di GitHub.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Se arrivano due merge ravvicinati, l'ultimo vince e il precedente si ferma:
+# non ha senso pubblicare una versione che è già vecchia. `cancel-in-progress`
+# è false apposta sui deploy già avviati — interromperne uno a metà lascerebbe
+# il sito in uno stato indefinito.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  costruisci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prendi il codice
+        uses: actions/checkout@v4
+
+      - name: Prepara la cartella del sito
+        # L'app non ha build: i file sorgente *sono* il sito. Si copiano da una
+        # parte solo per lasciar fuori quello che online non serve — la storia
+        # di git, i workflow, la mappa del progetto e lo script che rigenera i
+        # cataloghi (gira a mano, con node, sul computer di chi sviluppa).
+        # `verifica.html` invece resta: è il banco di prova, e per aprirlo serve
+        # proprio un server.
+        run: |
+          mkdir -p _sito
+          rsync -a ./ _sito/ \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '_sito' \
+            --exclude 'scripts' \
+            --exclude 'CLAUDE.md' \
+            --exclude 'Idee_da_implementare.txt'
+          # Senza questo file Pages passerebbe tutto per Jekyll, che salta le
+          # cartelle e i file che cominciano per underscore. Qui non ce ne sono,
+          # ma il giorno che ci fossero il guasto sarebbe silenzioso.
+          touch _sito/.nojekyll
+
+      - name: Controlla che ci sia tutto
+        # Una pubblicazione a metà è peggio di una fallita: il service worker
+        # tiene in cache quello che trova e l'app resta zoppa anche dopo. Se
+        # manca un pezzo, meglio fermarsi qui.
+        run: |
+          mancanti=0
+          for f in index.html manifest.json sw.js style.css app.js; do
+            if [ ! -s "_sito/$f" ]; then
+              echo "::error::manca (o è vuoto) _sito/$f"
+              mancanti=1
+            fi
+          done
+          # Gli script che index.html carica devono esistere davvero: un
+          # <script src> che dà 404 non ferma niente, spegne solo una funzione.
+          for f in $(grep -oE '<script[^>]+src="[^":]+\.js"' _sito/index.html | grep -oE 'src="[^"]+"' | cut -d'"' -f2); do
+            if [ ! -s "_sito/$f" ]; then
+              echo "::error::index.html carica $f, che non c'è"
+              mancanti=1
+            fi
+          done
+          [ "$mancanti" -eq 0 ] || exit 1
+          echo "Versione della cache del service worker: $(grep -oE "astrocal-v[0-9]+" _sito/sw.js | head -1)"
+
+      - name: Configura Pages
+        uses: actions/configure-pages@v5
+
+      - name: Carica il sito
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _sito
+
+  pubblica:
+    needs: costruisci
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Manda online
+        id: deploy
+        uses: actions/deploy-pages@v4
