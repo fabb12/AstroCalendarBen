@@ -73,15 +73,24 @@
     </div>
 
     <!-- Navigazione: sopra i 1180px è un segmented control qui in testata,
-         sotto diventa la barra in fondo allo schermo (vedi style.css) -->
+         sotto diventa la barra in fondo allo schermo (vedi style.css).
+
+         I `&shy;` nei nomi lunghi sono trattini morbidi: non si vedono finché
+         il nome ci sta, e dicono dove spezzarlo quando non ci sta più. Sul
+         telefono le voci sono sette e la barra è larga quanto lo schermo —
+         su un 320 fanno quarantaquattro pixel a testa, e "Telescopio" ne
+         chiede una cinquantina: senza un punto in cui andare a capo le
+         scritte si scavalcavano, e "Planetario" e "Telescopio" finivano una
+         dentro l'altra. Il posto in cui spezzare lo scegliamo noi, che una
+         sillaba a caso ("Telescopi-o") si legge peggio del nome intero. -->
     <nav class="nav-principale" aria-label="Sezioni">
       <button id="btn-vista-stasera" class="voce-menu attiva" title="Cosa si vede stanotte da casa tua">Stasera</button>
       <button id="btn-vista-calendario" class="voce-menu">Mese</button>
       <button id="btn-vista-agenda" class="voce-menu">Agenda</button>
-      <button id="btn-vista-skymap" class="voce-menu" title="Il planetario: punta il telefono verso il cielo e vedi cosa c'è">Planetario</button>
-      <button id="btn-vista-telescopio" class="voce-menu" title="Allineamento, puntamento e scaletta per il tuo telescopio">Telescopio</button>
+      <button id="btn-vista-skymap" class="voce-menu" title="Il planetario: punta il telefono verso il cielo e vedi cosa c'è">Plane&shy;tario</button>
+      <button id="btn-vista-telescopio" class="voce-menu" title="Allineamento, puntamento e scaletta per il tuo telescopio">Tele&shy;scopio</button>
       <button id="btn-vista-diario" class="voce-menu" title="Le tue osservazioni e i traguardi raggiunti">Diario</button>
-      <button id="btn-vista-didattica" class="voce-menu" title="Laboratorio didattico e simulazioni interattive della meccanica celeste">Didattica</button>
+      <button id="btn-vista-didattica" class="voce-menu" title="Laboratorio didattico e simulazioni interattive della meccanica celeste">Didat&shy;tica</button>
     </nav>
 
     <div class="azioni-testata">
