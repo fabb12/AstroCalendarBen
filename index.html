@@ -558,6 +558,22 @@
                 <button id="skymap-btn-eventi" type="button" class="tasto-cielo attiva" title="Segna sulla mappa gli eventi in corso all'ora mostrata: il radiante di uno sciame, l'astro eclissato, i corpi di una congiunzione">Eventi in cielo</button>
               <button id="skymap-btn-traccia" type="button" class="tasto-cielo attiva" title="La strada che l'oggetto scelto percorre nel cielo nelle ore attorno a questo istante: tratteggiata dove è già passato, piena dove sta andando, con l'ora segnata di ora in ora">Traccia</button>
               <button id="skymap-btn-eclittica" type="button" class="tasto-cielo" title="Il cerchio che il Sole percorre in un anno fra le stelle: il piano dell'orbita terrestre visto di taglio. I pianeti stanno sempre a pochi gradi da questa linea, e il filo a piombo misura quanti. Resta accesa qualunque oggetto si scelga, finché non la si spegne">Eclittica</button>
+              <button id="skymap-btn-aurora" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'ovale aurorale — boreale o australe, secondo l'emisfero — messo in cielo dove sta davvero: se da qui si vede, e quanto se ne affaccia sopra l'orizzonte, lo decide la curvatura della Terra">Aurora</button>
+              </div>
+
+              <!-- L'aurora vera, da queste latitudini, capita una volta ogni
+                   dieci anni. La slitta serve a vederla lo stesso: si alza
+                   la tempesta e si guarda da che Kp comincia ad affacciarsi
+                   sopra le colline di casa. -->
+              <div class="blocco-aurora">
+                <p id="skymap-aurora-nota" class="etichetta-comando nota-lunga"></p>
+                <div class="riga-comandi riga-aurora">
+                  <label class="etichetta-comando" for="skymap-aurora-kp">Simula una tempesta</label>
+                  <input id="skymap-aurora-kp" type="range" min="0" max="9" step="0.5" value="0"
+                         aria-label="Indice Kp simulato">
+                  <span id="skymap-aurora-kp-valore" class="lettura-aurora"></span>
+                  <button id="skymap-aurora-vero" type="button" class="tasto-cielo" title="Torna al Kp misurato dal NOAA per quest'ora">Kp vero</button>
+                </div>
               </div>
             </section>
 
@@ -1641,6 +1657,7 @@
   <script src="pianifica.js"></script>
   <script src="terreno.js"></script>
   <script src="meteo-astro.js"></script>
+  <script src="aurora-polare.js"></script>
   <script src="eventi-extra.js"></script>
   <script src="ui-nuova.js"></script>
   <script src="didattica.js"></script>
