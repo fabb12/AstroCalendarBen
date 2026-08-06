@@ -111,6 +111,212 @@
 
   const $ = (id) => document.getElementById(id);
 
+  // -------------------------------------------------------------------
+  // La lente — avvicinarsi a un disegno
+  //
+  // Le tele dei banchi sono piccole e i disegni ci stanno dentro tutti
+  // interi: è quello che serve per capire la forma d'insieme, ed è anche
+  // il motivo per cui i dettagli non si vedono. Il cappio del moto
+  // retrogrado è largo pochi gradi in un riquadro che ne inquadra decine;
+  // le due somme di vettori della fionda si accavallano in tre pixel; la
+  // finestra di lancio fa incrociare due orbite in un punto grande come la
+  // punta di una matita. Da qui la lente: la stessa tela, ingrandita, e ci
+  // si sposta dentro col dito.
+  //
+  // È un ingrandimento di *disegno*, non di scena: si moltiplica la
+  // matrice della tela e basta. I banchi continuano a disegnare nelle loro
+  // coordinate di sempre — larghe `L`, alte `H` — e nessuno di loro sa che
+  // esiste una lente. Le scritte crescono insieme al resto, ed è giusto
+  // così: sotto una lente cresce tutto.
+  // -------------------------------------------------------------------
+
+  const DID_LENTE_MAX = 8;
+  const DID_LENTE_PASSO = 1.45;      // quanto salta un tocco di + o di −
+  const lenti = new Map();           // id della tela → stato della sua lente
+
+  function didLente(id) {
+    let l = lenti.get(id);
+    if (!l) { l = { zoom: 1, x: 0, y: 0, L: 0, H: 0, tela: null, box: null, lettura: null }; lenti.set(id, l); }
+    return l;
+  }
+
+  // Lo spostamento non può portare il disegno fuori dal riquadro: il bordo
+  // del mondo resta sempre attaccato al bordo della tela. Senza, ci si
+  // ritrovava nel nero, e da lì non si capiva più come tornare indietro.
+  function didLenteAssesta(l, L, H) {
+    if (L) l.L = L;
+    if (H) l.H = H;
+    l.zoom = Math.max(1, Math.min(DID_LENTE_MAX, l.zoom));
+    l.x = Math.max(l.L - l.zoom * l.L, Math.min(0, l.x));
+    l.y = Math.max(l.H - l.zoom * l.H, Math.min(0, l.y));
+  }
+
+  // Ingrandisce tenendo fermo il punto sotto il dito: è l'unico modo perché
+  // la rotella non porti via quello che si stava guardando
+  function didLenteIngrandisci(l, fattore, sx, sy) {
+    const prima = l.zoom;
+    const dopo = Math.max(1, Math.min(DID_LENTE_MAX, prima * fattore));
+    if (Math.abs(dopo - prima) < 1e-4) return false;
+    const ax = sx === undefined ? l.L / 2 : sx;
+    const ay = sy === undefined ? l.H / 2 : sy;
+    l.x = ax - (ax - l.x) * (dopo / prima);
+    l.y = ay - (ay - l.y) * (dopo / prima);
+    l.zoom = dopo;
+    didLenteAssesta(l);
+    return true;
+  }
+
+  function didLenteSposta(l, dx, dy) {
+    l.x += dx; l.y += dy;
+    didLenteAssesta(l);
+  }
+
+  function didLenteAzzera(l) {
+    l.zoom = 1; l.x = 0; l.y = 0;
+    didLenteAssesta(l);
+  }
+
+  // Da un punto della tela al punto del disegno. Serve a chi sulla tela ci
+  // trascina qualcosa — il parametro d'impatto della fionda — che se no,
+  // con la lente accesa, misurerebbe pixel di schermo su un disegno che
+  // schermo non è più.
+  function didLenteMondo(id, x, y) {
+    const l = lenti.get(id);
+    if (!l || l.zoom === 1) return { x, y };
+    return { x: (x - l.x) / l.zoom, y: (y - l.y) / l.zoom };
+  }
+
+  function didLenteMostra(l) {
+    const accesa = l.zoom > 1.001;
+    if (l.box) {
+      l.box.classList.toggle('did-lente-accesa', accesa);
+      if (l.lettura) l.lettura.textContent = l.zoom.toFixed(1).replace('.', ',') + '×';
+    }
+    // Finché la lente è ferma la pagina scorre anche col dito appoggiato
+    // sulla tela (`pan-y`, dal foglio di stile); appena si è ingrandito quel
+    // dito serve a spostarsi dentro al disegno, e lo scorrimento della
+    // pagina si fa a lato. È una scelta che si disfa da sé: basta il ⟲.
+    if (l.tela && !l.tela.dataset.lenteFerma) l.tela.style.touchAction = accesa ? 'none' : '';
+    if (l.tela) l.tela.classList.toggle('did-tela-accesa', accesa);
+  }
+
+  // I comandi se li appende la lente da sé al riquadro della scena: i banchi
+  // scrivono solo il loro <canvas>, e il markup non va toccato
+  function didLenteComandi(c, l) {
+    const scena = c.closest('.did-scena');
+    if (!scena) return;
+    const box = document.createElement('div');
+    box.className = 'did-lente';
+    box.innerHTML =
+      '<span class="did-lente-fattore">1,0×</span>' +
+      '<button type="button" class="did-lente-tasto" data-lente="meno" title="Allontanati" aria-label="Allontanati">−</button>' +
+      '<button type="button" class="did-lente-tasto" data-lente="piu" title="Avvicinati al disegno (anche con due dita, o con Ctrl e la rotella)" aria-label="Avvicinati">+</button>' +
+      '<button type="button" class="did-lente-tasto did-lente-azzera" data-lente="azzera" title="Torna a vedere tutto il disegno" aria-label="Torna a vedere tutto il disegno">⟲</button>';
+    scena.appendChild(box);
+    box.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-lente]');
+      if (!b) return;
+      if (b.dataset.lente === 'azzera') didLenteAzzera(l);
+      else didLenteIngrandisci(l, b.dataset.lente === 'piu' ? DID_LENTE_PASSO : 1 / DID_LENTE_PASSO);
+      didLenteMostra(l);
+    });
+    l.box = box;
+    l.lettura = box.querySelector('.did-lente-fattore');
+  }
+
+  function didLenteAttacca(c, id, opz) {
+    if (c.dataset.lente === 'si') return;
+    c.dataset.lente = 'si';
+    const l = didLente(id);
+    l.tela = c;
+    // Le tele che hanno già un gesto loro (la fionda: si trascina per
+    // spostare il punto di passaggio) tengono quello, e la lente si muove
+    // coi tasti e col pizzico. Due significati per lo stesso dito sarebbero
+    // un indovinello.
+    const trascina = !(opz && opz.trascina === false);
+    if (!trascina) c.dataset.lenteFerma = 'si';
+    didLenteComandi(c, l);
+    didLenteMostra(l);
+
+    const dove = (e) => {
+      const r = c.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+
+    // La rotella: solo con Ctrl (o ⌘) premuto finché la lente è ferma. Su
+    // una pagina che scorre, una tela che si mangia la rotella appena il
+    // puntatore ci passa sopra è una trappola — si scorre l'articolo e ci si
+    // ritrova ingranditi dentro a un disegno senza aver chiesto niente.
+    // Quando invece la lente è già accesa la rotella è chiaramente sua, e
+    // tornando a 1× la restituisce alla pagina.
+    c.addEventListener('wheel', (e) => {
+      if (!e.ctrlKey && !e.metaKey && l.zoom <= 1.001) return;
+      const pixel = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);
+      const scatti = Math.max(-4, Math.min(4, pixel / 100));
+      if (!scatti) return;
+      e.preventDefault();
+      const p = dove(e);
+      if (didLenteIngrandisci(l, Math.exp(-scatti * 0.2), p.x, p.y)) didLenteMostra(l);
+    }, { passive: false });
+
+    // Un dito sposta il disegno, due lo avvicinano *e* lo spostano — le
+    // stesse regole della vista 3D, perché è lo stesso gesto. Come lì, a
+    // ogni dito che si appoggia o si stacca i riferimenti si rifanno: se no
+    // il dito rimasto verrebbe misurato da dove si era appoggiato prima del
+    // pizzico, e il disegno scatterebbe di lato.
+    const dita = new Map();
+    let pizzico = null, ultimo = null;
+    const insieme = () => [...dita.values()];
+    const riancora = () => {
+      const p = insieme();
+      ultimo = p.length === 1 ? { x: p[0].x, y: p[0].y } : null;
+      pizzico = p.length >= 2
+        ? { d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y), x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2 }
+        : null;
+    };
+
+    c.addEventListener('pointerdown', (e) => {
+      dita.set(e.pointerId, dove(e));
+      riancora();
+      if (dita.size >= 2 || (trascina && l.zoom > 1.001)) {
+        try { c.setPointerCapture(e.pointerId); } catch (err) { /* niente */ }
+      }
+    });
+
+    c.addEventListener('pointermove', (e) => {
+      if (!dita.has(e.pointerId)) return;
+      dita.set(e.pointerId, dove(e));
+      const p = insieme();
+      if (p.length >= 2 && pizzico) {
+        const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+        const mx = (p[0].x + p[1].x) / 2, my = (p[0].y + p[1].y) / 2;
+        if (pizzico.d > 6) didLenteIngrandisci(l, d / pizzico.d, mx, my);
+        didLenteSposta(l, mx - pizzico.x, my - pizzico.y);
+        pizzico = { d, x: mx, y: my };
+        didLenteMostra(l);
+        return;
+      }
+      if (!trascina || !ultimo || l.zoom <= 1.001) return;
+      const q = dove(e);
+      didLenteSposta(l, q.x - ultimo.x, q.y - ultimo.y);
+      ultimo = q;
+    });
+
+    const stacca = (e) => { if (dita.delete(e.pointerId)) riancora(); };
+    c.addEventListener('pointerup', stacca);
+    c.addEventListener('pointercancel', stacca);
+    c.addEventListener('pointerleave', stacca);
+
+    // Doppio clic: avvicina dov'è il puntatore, e la seconda volta rimette
+    // tutto il disegno nel riquadro. È la scorciatoia di chi ha il mouse.
+    c.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      if (l.zoom > 1.001) didLenteAzzera(l);
+      else { const p = dove(e); didLenteIngrandisci(l, 2.4, p.x, p.y); }
+      didLenteMostra(l);
+    });
+  }
+
   // Le tele sono larghe quanto il loro riquadro e alte in proporzione, e
   // ogni volta che cambiano misura si ridisegnano da sé: girare il
   // telefono o allargare la finestra non richiede nessun gancio esterno,
@@ -119,7 +325,7 @@
   // serve davvero. Il fattore `dpr` è quello che tiene le linee nitide
   // sugli schermi fitti: senza, un cerchio di stelle sembra disegnato col
   // pennarello.
-  function didTela(id, proporzione, altezzaMax) {
+  function didTela(id, proporzione, altezzaMax, opz) {
     const c = $(id);
     if (!c || !c.isConnected) return null;
     const largo = Math.round(c.clientWidth || 0);
@@ -132,6 +338,17 @@
     if (c.style.height !== alto + 'px') c.style.height = alto + 'px';
     const ctx = c.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // Le tele che hanno la lente la agganciano qui, al primo fotogramma in
+    // cui esistono davvero: prima di allora il riquadro è nascosto, largo
+    // zero, e non c'è niente a cui appendere i comandi.
+    if (opz && opz.lente) {
+      didLenteAttacca(c, id, opz);
+      const l = didLente(id);
+      didLenteAssesta(l, largo, alto);
+      if (l.zoom !== 1 || l.x || l.y) {
+        ctx.setTransform(dpr * l.zoom, 0, 0, dpr * l.zoom, dpr * l.x, dpr * l.y);
+      }
+    }
     return { c, ctx, L: largo, H: alto };
   }
 
@@ -177,7 +394,14 @@
       cacheStelle.chiave = chiave;
       cacheStelle.tela = t;
     }
+    // Lo sfondo resta fuori dalla lente: è il cielo lontano, e ingrandirlo
+    // vorrebbe dire solo sgranarlo. Si stende alla misura del riquadro —
+    // che la lente non cambia — e il disegno ingrandito ci va sopra.
+    ctx.save();
+    const dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.drawImage(cacheStelle.tela, 0, 0, L, H);
+    ctx.restore();
   }
 
   // Un corpo celeste: il disco, il bordo appena più chiaro dalla parte
@@ -739,7 +963,7 @@
   }
 
   function retroDisegnaElio() {
-    const t = didTela('did-retro-elio', 1, 400);
+    const t = didTela('did-retro-elio', 1, 400, { lente: true });
     if (!t || !retro.campioni) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -800,7 +1024,7 @@
   }
 
   function retroDisegnaCielo() {
-    const t = didTela('did-retro-cielo', 1, 400);
+    const t = didTela('did-retro-cielo', 1, 400, { lente: true });
     if (!t || !retro.campioni) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -1153,7 +1377,7 @@
   }
 
   function kepDisegna() {
-    const t = didTela('did-kep-tela', 1.5, 440);
+    const t = didTela('did-kep-tela', 1.5, 440, { lente: true });
     if (!t) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -1491,7 +1715,12 @@
       if (tela) {
         const muovi = (ev) => {
           const r = tela.getBoundingClientRect();
-          const y = (ev.touches ? ev.touches[0].clientY : ev.clientY) - r.top;
+          // Il punto va letto attraverso la lente: se il disegno è
+          // ingrandito, il pixel sotto il dito non è più il pixel del
+          // disegno, e il punto di passaggio saltava via appena ci si
+          // avvicinava per vederlo meglio
+          const y = didLenteMondo('did-fionda-pianeta', 0,
+            (ev.touches ? ev.touches[0].clientY : ev.clientY) - r.top).y;
           const q = (r.height / 2 - y) / (r.height / 2);   // da -1 a 1
           fionda.b = Math.max(-40, Math.min(40, Math.round(q * 40 * 2) / 2));
           const s = $('did-fionda-b'); if (s) s.value = String(fionda.b);
@@ -1688,7 +1917,7 @@
   }
 
   function fiondaDisegnaPianeta() {
-    const t = didTela('did-fionda-pianeta', 1.1, 340);
+    const t = didTela('did-fionda-pianeta', 1.1, 340, { lente: true, trascina: false });
     if (!t || !fionda.traiettoria) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -1739,7 +1968,7 @@
   }
 
   function fiondaDisegnaSole() {
-    const t = didTela('did-fionda-sole', 1.1, 340);
+    const t = didTela('did-fionda-sole', 1.1, 340, { lente: true });
     if (!t || !fionda.traiettoria) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -1800,7 +2029,7 @@
   // del pianeta) e i due lati relativi lunghi uguali: si vede a occhio
   // che ruotano soltanto, e che le risultanti no.
   function fiondaDisegnaVettori() {
-    const t = didTela('did-fionda-vettori', 2.6, 270);
+    const t = didTela('did-fionda-vettori', 2.6, 270, { lente: true });
     if (!t || !fionda.traiettoria) return;
     const { ctx, L, H } = t;
     ctx.fillStyle = '#070b16';
@@ -2011,7 +2240,7 @@
   }
 
   function voyDisegnaMappa() {
-    const t = didTela('did-voy-tela', 1.45, 430);
+    const t = didTela('did-voy-tela', 1.45, 430, { lente: true });
     if (!t) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -2065,7 +2294,7 @@
   }
 
   function voyDisegnaGrafico() {
-    const t = didTela('did-voy-grafico', 3.2, 200);
+    const t = didTela('did-voy-grafico', 3.2, 200, { lente: true });
     if (!t) return;
     const { ctx, L, H } = t;
     ctx.fillStyle = '#070b16';
@@ -2354,7 +2583,7 @@
   }
 
   function lancioDisegna() {
-    const t = didTela('did-lancio-tela', 1.35, 470);
+    const t = didTela('did-lancio-tela', 1.35, 470, { lente: true });
     if (!t || !lancio.conti) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);

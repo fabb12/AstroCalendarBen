@@ -16136,7 +16136,9 @@ const SOL_PIANETI = [
   { id: 'Neptune', nome: 'Nettuno',  colore: '#93c5fd', raggio: 8.3,  km: 49244,  ua: 30.07, anni: 164.8 }
 ];
 
-// Il raggio del Sole e quello del pallino della Luna coi pallini ingranditi
+// Il raggio del Sole e quello del pallino della Luna coi pallini ingranditi,
+// alla scala di partenza (zoom 1): da lì in poi crescono col disegno, vedi
+// `solCrescita()`.
 const SOL_RAGGIO_SOLE = 17;
 const SOL_RAGGIO_LUNA = 3.4;
 
@@ -16148,6 +16150,28 @@ const SOL_SOLE_KM = 1392700;
 // si mangerebbe tutte le orbite interne. Resta il più grosso di tutti — è la
 // cosa vera che deve restare — ma tosato, e sotto al disegno c'è scritto.
 const SOL_SOLE_MAX = 0.085;   // frazione del lato corto della tela
+
+// Quanto crescono i corpi quando ci si avvicina. Non era previsto niente: i
+// raggi erano numeri di pixel fissi, e le orbite invece si allargavano con lo
+// zoom. Il risultato era che più ci si avvicinava e più il Sole *sembrava*
+// rimpicciolirsi — a 8× l'orbita di Mercurio era larga due palmi e in mezzo
+// c'era lo stesso bollo giallo di prima, che a quel punto non era più il
+// Sole ma un puntino qualunque. Allontanandosi succedeva il contrario: il
+// bollo restava di diciassette pixel mentre l'orbita di Mercurio scendeva
+// sotto i dieci, e i pianeti interni sparivano dentro al Sole.
+//
+// L'ingrandimento pieno però non va bene: a 60× Giove diventerebbe un muro
+// giallo alto quanto la tela. La radice quadrata è il compromesso —
+// avvicinandosi di quattro volte i corpi raddoppiano — con un tetto perché
+// oltre un certo punto sono già abbastanza grossi da essere riconoscibili.
+const SOL_CRESCITA_MAX = 3.4;
+// Il Sole non deve mai mangiarsi l'orbita più interna: questa è la sua
+// frazione massima del raggio dell'orbita di Mercurio, misurato con lo
+// stesso metro delle distanze. Con le distanze compresse a zoom 1 vale
+// esattamente i diciassette pixel di sempre; con quelle vere lo riduce a un
+// punto, che è la cosa onesta — a distanze vere il Sole *è* un punto.
+const SOL_SOLE_QUOTA_MERCURIO = 0.62;
+const SOL_SOLE_MIN_PX = 2.6;
 
 // Quanto ci mettono la telecamera e lo zoom ad arrivare dove sono stati
 // mandati: sono tempi di dimezzamento, in secondi
@@ -16266,18 +16290,44 @@ function solMisura() {
   sol.scala = Math.min(sol.L, sol.H) * 0.44 * sol.zoom;
 }
 
+// Quanto crescono i corpi con l'ingrandimento (vedi SOL_CRESCITA_MAX). È un
+// fattore solo, uguale per il Sole, i pianeti e la Luna: se crescessero con
+// leggi diverse, avvicinandosi cambierebbero i rapporti fra loro, e i
+// rapporti sono l'unica cosa che questo disegno racconta.
+function solCrescita() {
+  return Math.min(SOL_CRESCITA_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
+}
+
 // Quanto si disegna grosso un corpo, nelle due misure: il pallino ingrandito
 // che si tocca col dito, o il diametro vero in scala fra i corpi.
 function solRaggioCorpo(p) {
   // Sotto il pixel e mezzo un pianeta non è più un pianeta ma un granello di
   // polvere: Mercurio e Marte si fermano lì. Fra tutti gli altri il rapporto
   // è quello vero.
-  return sol.misureVere ? Math.max(1.2, p.km * SOL_PX_PER_KM / 2) : p.raggio;
+  const base = sol.misureVere ? Math.max(1.2, p.km * SOL_PX_PER_KM / 2) : p.raggio;
+  return base * solCrescita();
 }
 
+// Il Sole, che è il caso difficile: sta al centro, è il più grosso di tutti e
+// gli si stringono attorno le quattro orbite interne. Tre numeri in fila —
+// quanto sarebbe, quanto può essere al massimo senza coprire Mercurio, e
+// quanto deve essere al minimo per restare il più grosso della scena.
 function solRaggioSole() {
-  if (!sol.misureVere) return SOL_RAGGIO_SOLE;
-  return Math.min(Math.min(sol.L, sol.H) * SOL_SOLE_MAX, SOL_SOLE_KM * SOL_PX_PER_KM / 2);
+  const cresciuto = (sol.misureVere
+    ? Math.min(Math.min(sol.L, sol.H) * SOL_SOLE_MAX, SOL_SOLE_KM * SOL_PX_PER_KM / 2)
+    : SOL_RAGGIO_SOLE) * solCrescita();
+  // Il tetto: una frazione dell'orbita di Mercurio, che segue il metro delle
+  // distanze e quindi anche lo zoom
+  const mercurio = SOL_PIANETI[0] ? SOL_PIANETI[0].ua : 0.387;
+  const tetto = SOL_SOLE_QUOTA_MERCURIO * solRaggio(mercurio) * sol.scala;
+  // Il pavimento: più grosso del più grosso dei pianeti. Coi pallini in scala
+  // il tetto da solo lo farebbe diventare più piccolo di Giove, e un Sole più
+  // piccolo di Giove è una bugia peggiore di un Sole ingrandito.
+  let piuGrosso = 0;
+  sol.pianeti.forEach(p => { if (p.rDisegno > piuGrosso) piuGrosso = p.rDisegno; });
+  if (!piuGrosso) piuGrosso = SOL_PIANETI[4].raggio * solCrescita();
+  const pavimento = Math.max(SOL_SOLE_MIN_PX, piuGrosso * 1.2);
+  return Math.max(pavimento, Math.min(cresciuto, tetto));
 }
 
 // --- Le posizioni vere -----------------------------------------------------
@@ -16466,13 +16516,17 @@ function solDisegnaOrbita(ctx, traccia) {
 function solDisegnaSole(ctx) {
   const p = solProietta({ x: 0, y: 0, z: 0 });
   const raggio = solRaggioSole();
-  const g = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, raggio * 6);
+  // L'alone è sei volte il disco, ma non oltre la tela: adesso che il disco
+  // cresce con lo zoom, sei volte un Sole ingrandito sarebbe una velatura
+  // gialla su tutto il disegno, e le orbite interne non si vedrebbero più
+  const alone = Math.max(raggio * 1.6, Math.min(raggio * 6, Math.min(sol.L, sol.H) * 0.8));
+  const g = ctx.createRadialGradient(p.px, p.py, 0, p.px, p.py, alone);
   g.addColorStop(0, 'rgba(253, 224, 71, 0.55)');
   g.addColorStop(0.35, 'rgba(251, 146, 60, 0.18)');
   g.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = g;
   ctx.beginPath();
-  ctx.arc(p.px, p.py, raggio * 6, 0, Math.PI * 2);
+  ctx.arc(p.px, p.py, alone, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = '#fef3c7';
   ctx.beginPath();
@@ -16537,8 +16591,10 @@ function solDisegnaCorpo(ctx, corpo) {
 function solDisegnaLuna(ctx, terra) {
   if (!sol.luna || !terra) return;
   // Abbastanza staccata dalla Terra da non finirle dentro, adesso che i
-  // pallini sono più grossi
-  const passo = 23 / sol.scala;
+  // pallini sono più grossi — e la misura la detta il pallino stesso, che
+  // con lo zoom cresce: uno stacco fisso di ventitré pixel, a forte
+  // ingrandimento, lasciava la Luna sepolta dentro alla Terra
+  const passo = ((terra.rDisegno || SOL_RAGGIO_LUNA) * 2 + 8) / sol.scala;
   const p = solProietta({
     x: terra.scena.x + sol.luna.x * passo,
     y: terra.scena.y + sol.luna.y * passo,
@@ -16553,7 +16609,7 @@ function solDisegnaLuna(ctx, terra) {
   ctx.stroke();
   ctx.fillStyle = '#e2e8f0';
   ctx.beginPath();
-  ctx.arc(p.px, p.py, SOL_RAGGIO_LUNA, 0, Math.PI * 2);
+  ctx.arc(p.px, p.py, SOL_RAGGIO_LUNA * solCrescita(), 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
