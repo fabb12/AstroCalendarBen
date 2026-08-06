@@ -4002,6 +4002,37 @@ body input.casella-data:hover { border: 0; }
   border-top: 1px solid var(--bordo);
 }
 
+/* ------------------------------------------- L'AURORA                      */
+/* Sta in fondo ai Filtri, sotto al suo tasto: una riga che dice cosa si
+   vedrebbe da qui e la slitta per alzare la tempesta. La slitta non è un
+   comando qualunque — è il modo in cui questa vista si usa quasi sempre,
+   visto che l'aurora vera da queste latitudini capita una volta ogni dieci
+   anni — e per questo si prende la riga tutta per sé. */
+.blocco-aurora {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--bordo);
+}
+.riga-aurora { margin-top: 8px; flex-wrap: wrap; }
+.riga-aurora label.etichetta-comando { flex: 0 0 100%; margin: 0 0 4px; }
+.riga-aurora input[type="range"] { flex: 1 1 120px; min-width: 100px; }
+.lettura-aurora {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--testo-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Il tasto acceso dell'aurora si tinge del suo verde: fra dodici tasti
+   tutti uguali, quello che sta disegnando qualcosa di grosso sul cielo
+   conviene che si riconosca. */
+#skymap-btn-aurora.attiva {
+  background: rgba(15, 118, 90, 0.92);
+  border-color: rgba(52, 211, 153, 0.55);
+  color: #d1fae5;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
+}
+
 /* Il risultato: si guarda subito, lì dov'è stato registrato */
 .pannello-clip { display: none; }
 .pannello-clip.visibile { display: block; }
@@ -5065,6 +5096,7 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
   border-color: rgba(129, 140, 248, 0.38);
   color: #c7d2fe;
 }
+.avviso-aurora .tasto-planetario { margin-top: 8px; }
 .avviso-aurora[data-livello="improbabile"] {
   background: var(--incassato);
   border-color: var(--bordo);

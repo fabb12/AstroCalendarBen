@@ -412,13 +412,17 @@ const CHIAVE_AURORA = 'astrocalendario_aurora';
 const AURORA_CONFINE = { 0: 66.5, 1: 64.5, 2: 62.4, 3: 60.4, 4: 58.3, 5: 56.3, 6: 54.2, 7: 52.2, 8: 50.1, 9: 48.1 };
 
 // La latitudine geomagnetica non è quella geografica: il polo nord
-// magnetico non sta sul polo. Per l'Italia lo scarto vale parecchio —
-// Milano è a 45,5° geografici ma a circa 44° geomagnetici, cioè un po'
-// più lontana dall'aurora di quanto la carta faccia pensare.
+// magnetico non sta sul polo. Lo scarto cambia da meridiano a meridiano —
+// Milano è a 45,5° geografici e 46,0° magnetici, Vancouver a 49° ne fa
+// 54 — ed è il motivo per cui la stessa tempesta si vede dal Canada e non
+// dall'Italia.
 //
-// La formula esatta richiederebbe il modello completo del campo; questa
-// è l'approssimazione a dipolo, che per l'Europa sbaglia di meno di un
-// grado ed è più che abbastanza per dire «vale la pena o no».
+// La formula esatta richiederebbe il modello completo del campo; questa è
+// l'approssimazione a dipolo, che è quella con cui la scala del confine
+// qui sopra è stata tarata. Le due cose vanno insieme: chi cambiasse
+// questa formula dovrebbe ritarare anche quella tabella. Il §11 di
+// `verifica.html` controlla che il disegno dell'aurora nel planetario usi
+// esattamente lo stesso numero.
 const AURORA_POLO_LAT = 80.7 * Math.PI / 180;      // polo geomagnetico nord, epoca 2025
 const AURORA_POLO_LON = -72.7 * Math.PI / 180;
 
@@ -478,7 +482,16 @@ function auroraDaQui() {
   const luogo = typeof luogoCorrente === 'function' ? luogoCorrente() : null;
   if (!luogo || !aurora) return null;
 
-  const mia = latitudineGeomagnetica(luogo.lat, luogo.lon);
+  // Il segno della latitudine geomagnetica dice l'emisfero, il valore
+  // assoluto dice quanto si è lontani dal proprio ovale: quello boreale a
+  // nord, quello australe a sud. La scala del confine è la stessa per
+  // tutt'e due — il dipolo è simmetrico — e prima questo conto girava solo
+  // per metà mondo: da Hobart, che è a 50° geomagnetici sud ed è uno dei
+  // posti al mondo dove l'aurora si vede meglio, la risposta era «no».
+  const geomagnetica = latitudineGeomagnetica(luogo.lat, luogo.lon);
+  const boreale = geomagnetica >= 0;
+  const mia = Math.abs(geomagnetica);
+  const versoIlPolo = boreale ? 'nord' : 'sud';
   const kp = aurora.massimoPrevisto !== null ? aurora.massimoPrevisto : aurora.kp;
   if (kp === null || kp === undefined || isNaN(kp)) return null;
 
@@ -493,10 +506,10 @@ function auroraDaQui() {
   let livello, testo;
   if (scarto >= 0) {
     livello = 'alta';
-    testo = `Con Kp ${kp.toFixed(1)} l'aurora arriva sopra la tua latitudine: guarda a nord.`;
+    testo = `Con Kp ${kp.toFixed(1)} l'aurora arriva sopra la tua latitudine: guarda a ${versoIlPolo}.`;
   } else if (scarto >= -4) {
     livello = 'possibile';
-    testo = `Con Kp ${kp.toFixed(1)} il bagliore potrebbe affacciarsi basso sull'orizzonte nord. Serve un orizzonte libero e niente luci.`;
+    testo = `Con Kp ${kp.toFixed(1)} il bagliore potrebbe affacciarsi basso sull'orizzonte ${versoIlPolo}. Serve un orizzonte libero e niente luci.`;
   } else if (scarto >= -8) {
     livello = 'improbabile';
     testo = `Kp ${kp.toFixed(1)}: da qui è improbabile, servirebbe una tempesta più forte.`;
@@ -505,5 +518,5 @@ function auroraDaQui() {
     testo = null;                       // sotto questa soglia non si dice niente: sarebbe rumore
   }
 
-  return { livello, testo, kp, latGeomagnetica: mia, confine, scarto };
+  return { livello, testo, kp, latGeomagnetica: geomagnetica, confine, scarto, boreale, versoIlPolo };
 }

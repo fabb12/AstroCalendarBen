@@ -71,6 +71,19 @@ function aggiornaAvvisoAurora() {
   box.classList.remove('hidden');
   box.dataset.livello = a.livello;
   box.textContent = a.testo;
+  // «Guarda a nord» è un'istruzione che presuppone di sapere già cosa
+  // cercare. Il planetario adesso l'aurora la disegna dov'è davvero — e
+  // soprattutto sa dire quanto se ne affaccerebbe da qui sopra
+  // l'orizzonte: è la differenza fra uscire e non uscire.
+  if (typeof aurGuardaInCielo === 'function') {
+    const tasto = document.createElement('button');
+    tasto.type = 'button';
+    tasto.className = 'tasto-planetario';
+    tasto.textContent = 'Vedila nel planetario';
+    tasto.addEventListener('click', () => aurGuardaInCielo());
+    box.appendChild(document.createElement('br'));
+    box.appendChild(tasto);
+  }
 }
 
 // Che cos'è, in due parole, quello che si sta leggendo.

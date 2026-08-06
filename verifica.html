@@ -115,6 +115,11 @@ function skyBaseVerso(az, alt) {
 <script src="catalogo.js"></script>
 <script src="corpi-minori.js"></script>
 <script src="terreno.js"></script>
+<!-- meteo-astro.js serve solo per una prova: che la sua latitudine
+     geomagnetica e quella dell'aurora siano lo stesso numero. Non fa
+     niente all'avvio, quindi caricarlo qui non costa nulla. -->
+<script src="meteo-astro.js"></script>
+<script src="aurora-polare.js"></script>
 
 <script>
 // ---------------------------------------------------------------------
@@ -715,6 +720,118 @@ titolo('10. Che paesaggio c\'è, e chi illumina l\'orizzonte');
         `opacità massima ${Math.max(...pronte.map(c => c.alfa)).toFixed(3)}`);
 
   prova('senza elenco scaricato l\'orizzonte resta nero', cittaVicine().length === 0);
+}
+
+// =====================================================================
+titolo('11. L\'ovale aurorale');
+// =====================================================================
+//   Qui non c'è niente da guardare a occhio: un'aurora disegnata storta
+//   sembra comunque un'aurora. Gli unici controlli che valgono sono i
+//   numeri — dove passa l'anello, quanto se ne vede da una certa
+//   latitudine, e da che parte.
+if (typeof aurGeometria !== 'function') {
+  nota('aurora-polare.js non caricato: sezione saltata.');
+} else {
+  const rifN = aurRiferimento(AUR_POLO_NORD);
+
+  // Andata e ritorno del dipolo: se le due conversioni non sono l'una
+  // l'inversa dell'altra, l'ovale finisce ruotato di qualche grado e non
+  // se ne accorge nessuno.
+  let scartoMax = 0;
+  [[45.46, 9.19], [69.65, 18.96], [-42.88, 147.33], [0, -170], [80, 0]].forEach(([la, lo]) => {
+    const m = aurMagnetiche(la, lo, rifN);
+    const g = aurGeografiche(m.lat, m.lon, rifN);
+    scartoMax = Math.max(scartoMax, Math.abs(g.lat - la),
+      Math.abs(((g.lon - lo + 540) % 360) - 180) * Math.cos(la * D2R));
+  });
+  prova('geografiche → magnetiche → geografiche torna al punto di partenza',
+        scartoMax < 1e-6, `scarto massimo ${(scartoMax * 3600).toExponential(1)}″`);
+
+  prova('il polo geomagnetico ha latitudine magnetica 90°',
+        Math.abs(aurMagnetiche(AUR_POLO_NORD.lat, AUR_POLO_NORD.lon, rifN).lat - 90) < 1e-6);
+
+  // La latitudine magnetica non è quella geografica, ed è la stessa che
+  // calcola `latitudineGeomagnetica` in meteo-astro.js: le due devono dare
+  // lo stesso numero, o il riquadro della dashboard e il disegno del cielo
+  // racconterebbero due aurore diverse.
+  const milano = aurMagnetiche(45.46, 9.19, rifN).lat;
+  prova('Milano sta a 46° geomagnetici (dipolo)', Math.abs(milano - 46) < 0.3,
+        `${milano.toFixed(2)}°`);
+  if (typeof latitudineGeomagnetica === 'function') {
+    prova('e meteo-astro.js dice lo stesso numero',
+          Math.abs(latitudineGeomagnetica(45.46, 9.19) - milano) < 1e-9);
+  }
+  const hobart = aurMagnetiche(-42.88, 147.33, rifN).lat;
+  prova('Hobart sta nell\'emisfero magnetico sud', hobart < 0, `${hobart.toFixed(1)}°`);
+
+  // Il bordo dell'ovale: la stessa scala del riquadro della dashboard —
+  // 66,5° con campo tranquillo, un paio di gradi in meno per ogni punto
+  // di Kp — e la forma a uovo, con il lato notte più basso.
+  prova('con Kp 0 il bordo è a 66,5° magnetici', Math.abs(aurBordo(0, 0) - 66.5) < 0.1);
+  prova('con Kp 9 scende sotto i 49°', Math.abs(aurBordo(9, 0) - 48.05) < 0.2,
+        `${aurBordo(9, 0).toFixed(1)}°`);
+  prova('a mezzogiorno magnetico l\'ovale è più vicino al polo che a mezzanotte',
+        aurBordo(5, 12) - aurBordo(5, 0) > 6,
+        `${aurBordo(5, 0).toFixed(1)}° → ${aurBordo(5, 12).toFixed(1)}°`);
+
+  // La curvatura della Terra: un punto a cento chilometri di quota si vede
+  // fino a poco più di dieci gradi di distanza angolare, e non oltre.
+  const orizzonte100 = Math.acos(6371 / 6471) / D2R;
+  prova('a 100 km di quota l\'orizzonte geometrico è a 10,1°',
+        Math.abs(aurAltezza(orizzonte100 * D2R, 100)) < 0.01, `${orizzonte100.toFixed(2)}°`);
+  prova('sopra la testa fa 90°', Math.abs(aurAltezza(0, 250) - 90) < 1e-6);
+  prova('più in là, sotto l\'orizzonte', aurAltezza(15 * D2R, 100) < 0);
+
+  prova('l\'aria smorza di più quello che sta basso',
+        aurEstinzione(60) > aurEstinzione(20) && aurEstinzione(20) > aurEstinzione(3) &&
+        aurEstinzione(3) > 0,
+        `60°: ${aurEstinzione(60).toFixed(2)} · 20°: ${aurEstinzione(20).toFixed(2)} · ` +
+        `3°: ${aurEstinzione(3).toFixed(2)}`);
+
+  // Il punto col Sole allo zenit: al mezzogiorno UTC dell'equinozio sta
+  // sul meridiano di Greenwich, all'equatore.
+  const sub = aurSubsolare(new Date(Date.UTC(2024, 2, 20, 12, 0, 0)));
+  prova('il punto subsolare all\'equinozio è su Greenwich, all\'equatore',
+        Math.abs(sub.lat) < 1 && Math.abs(sub.lon) < 3,
+        `${sub.lat.toFixed(2)}°, ${sub.lon.toFixed(2)}°`);
+
+  // E adesso le tre risposte che il modulo esiste per dare.
+  const notte = new Date(Date.UTC(2024, 4, 10, 22, 0, 0));      // la grande tempesta
+  const bologna = { lat: 44.49, lon: 11.34 };
+  const italia = aurGeometria(notte, bologna, 5.5);
+  prova('dall\'Italia, con una tempesta forte, il verde resta sotto l\'orizzonte',
+        !italia.verde && italia.altMassima > 3,
+        `il rosso arriva a ${italia.altMassima.toFixed(1)}°`);
+  prova('e sta a nord', italia.boreale &&
+        (italia.azMassima < 60 || italia.azMassima > 300), `az ${italia.azMassima.toFixed(0)}°`);
+
+  const norvegia = aurGeometria(new Date(Date.UTC(2024, 11, 15, 21, 0, 0)),
+    { lat: 69.65, lon: 18.96 }, 3);
+  prova('dalla Norvegia, con il campo quasi tranquillo, il verde è alto in cielo',
+        norvegia.verde && norvegia.altMassima > 30,
+        `fino a ${norvegia.altMassima.toFixed(0)}°`);
+
+  const tasmania = aurGeometria(new Date(Date.UTC(2024, 5, 15, 13, 0, 0)),
+    { lat: -42.88, lon: 147.33 }, 7);
+  prova('dalla Tasmania l\'aurora è australe e si guarda a sud',
+        !tasmania.boreale && tasmania.azMassima > 100 && tasmania.azMassima < 260,
+        `az ${tasmania.azMassima.toFixed(0)}°`);
+
+  // L'ora conta quanto il Kp: lo stesso posto, la stessa tempesta, e
+  // l'ovale scende verso la mezzanotte magnetica per poi risalire.
+  const notteBologna = aurGeometria(new Date(Date.UTC(2024, 4, 10, 22, 0, 0)), bologna, 8);
+  const giornoBologna = aurGeometria(new Date(Date.UTC(2024, 4, 10, 10, 0, 0)), bologna, 8);
+  prova('a mezzanotte l\'ovale è più in alto che dodici ore prima',
+        notteBologna.altMassima > giornoBologna.altMassima + 5,
+        `${giornoBologna.altMassima.toFixed(1)}° → ${notteBologna.altMassima.toFixed(1)}°`);
+
+  // Il Kp simulato è l'unica strada quando il NOAA non ha niente da dire
+  // sull'ora mostrata — cioè sempre, per una data che non sia stanotte.
+  aurImpostaKpSimulato(6);
+  prova('il Kp simulato prende il posto di quello vero', aurKpMostrato().kp === 6 &&
+        aurKpMostrato().simulato === true);
+  aurImpostaKpSimulato(null);
+  prova('e senza dati del NOAA non si inventa nessun Kp', aurKpMostrato().kp === null);
 }
 
 // =====================================================================

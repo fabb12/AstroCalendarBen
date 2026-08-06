@@ -11353,6 +11353,13 @@ function skyDisegna() {
   if (typeof catDisegnaFigure === 'function') catDisegnaFigure(ctx, base, focale);
 
   if (sky.mostraGriglia) skyDisegnaGriglia(ctx, base, focale);
+  // L'aurora: **dopo** le stelle e **prima** del terreno. Dopo le stelle
+  // perché non le copre — è luce che si somma al cielo, e attraverso una
+  // tenda aurorale le stelle si vedono, che è la cosa che colpisce di più
+  // chi la vede la prima volta. Prima del terreno perché sta a duecento
+  // chilometri di quota ma spesso a mille di distanza: quello che le
+  // finisce sotto la cresta, sotto la cresta deve restare.
+  if (typeof aurDisegna === 'function') aurDisegna(ctx, base, focale);
   // Le cupole di luce dei paesi: **prima** del terreno, così la collina le
   // taglia come fa dal vero (la luce viene da dietro il crinale), e
   // **dopo** le stelle, perché è esattamente quello che fanno — sbiadire
@@ -14745,6 +14752,13 @@ function apriSkymap() {
   // paesi che di notte lo illuminano
   if (typeof terrenoCarica === 'function') terrenoCarica();
   if (typeof cittaCarica === 'function') cittaCarica();
+  // Il Kp del NOAA: serve a sapere se l'ovale aurorale, stanotte, scende
+  // fin qui. Senza rete non si sa, e resta la simulazione.
+  if (typeof caricaAurora === 'function') {
+    caricaAurora()
+      .then(() => { if (typeof aurAggiornaPannello === 'function') aurAggiornaPannello(); })
+      .catch(() => {});
+  }
 
   skyCostruisciElenco();
   skyRidimensiona();
@@ -15087,6 +15101,13 @@ function inizializzaSkymap() {
   // possono volere spente — chi disegna una carta del cielo vuole il nero.
   collega('skymap-btn-citta', () => {
     if (typeof cittaAlterna === 'function') cittaAlterna();
+  });
+  // L'aurora: acceso, l'ovale c'è sempre — solo che da quasi tutta Europa
+  // sta sotto l'orizzonte e non si disegna niente. Il tasto serve a
+  // spegnerla quando si sta simulando una tempesta e si vuole rivedere il
+  // cielo di prima.
+  collega('skymap-btn-aurora', () => {
+    if (typeof aurAlterna === 'function') aurAlterna();
   });
   if (typeof terrenoAggiornaPannello === 'function') terrenoAggiornaPannello();
   // I segni degli eventi si accendono e si spengono senza rifare i conti
