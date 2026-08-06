@@ -4,3 +4,5 @@
 3. sistemare dimensione degli oggetto della dashboard per i piccoli schermi 
 4. mettere voce didattica prima di diario nel menu principale
 5. sistemare nel sistema solare 3d la dimensione del sole quando ingrandisci o diminuisci
+6. migliorare il box di informazione dello oggetto del planetario inserendo anche una foto dell oggetto .
+
