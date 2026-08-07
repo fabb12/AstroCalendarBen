@@ -5605,6 +5605,13 @@ body button.did-linguetta.attiva .did-linguetta-numero { background: rgba(255, 2
 .did-lente-tasto {
   width: 30px;
   height: 30px;
+  /* Il + e il − si tengono premuti per avvicinarsi piano: senza questo, su
+     un telefono una pressione lunga apre il menù contestuale e seleziona il
+     segno invece di ingrandire */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
