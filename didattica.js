@@ -2456,6 +2456,17 @@
     disegna() { lancioDisegna(); }
   });
 
+  // Un angolo riportato dentro al giro, fra −180° e +180°. Serve perché la
+  // formula dell'angolo di fase, per le mete veloci, esce dal giro: Mercurio
+  // durante il volo percorre 431°, e «180 − 431» fa −252°, che non è un posto
+  // ma un giro e mezzo. Il posto è lo stesso detto per la via corta, +108°, e
+  // quello è il numero che va scritto e disegnato — con −252° la lettura
+  // diceva «252° dietro alla Terra» e il settore sul disegno faceva un
+  // pacman di tre quarti di orbita al posto di uno spicchio.
+  function lancioGiro(g) {
+    return ((g % 360) + 540) % 360 - 180;
+  }
+
   function lancioPrepara() {
     const k = lancio.meta;
     const r1 = 1.0, r2 = CORPI[k].a;
@@ -2466,7 +2477,7 @@
     // quando si parte: la sonda arriva a 180° dal punto di partenza
     const omega = 360 / (CORPI[k].T * 365.25);      // gradi al giorno della meta
     const omegaTerra = 360 / 365.25;
-    const fase = 180 - omega * tVoloGiorni;          // angolo di anticipo della meta al lancio
+    const fase = lancioGiro(180 - omega * tVoloGiorni);   // angolo di anticipo della meta al lancio
     const sinodico = Math.abs(1 / (1 / 1 - 1 / CORPI[k].T)) * 365.25;
     const vTerra = 29.785;
     const dv1 = Math.abs(vTerra / Math.sqrt(r1) * (Math.sqrt(2 * r2 / (r1 + r2)) - 1));
@@ -2519,7 +2530,7 @@
     scrivi('did-lancio-volo', c.tVoloGiorni > 400
       ? `${num(c.tVoloAnni, 2)} anni (${Math.round(c.tVoloGiorni)} giorni)`
       : `${Math.round(c.tVoloGiorni)} giorni`);
-    scrivi('did-lancio-angolo', `${num(c.fase, 1)}° ${c.fase >= 0 ? 'avanti alla Terra' : 'dietro alla Terra'}`);
+    scrivi('did-lancio-angolo', `${num(Math.abs(c.fase), 1)}° ${c.fase >= 0 ? 'avanti alla Terra' : 'dietro alla Terra'}`);
     scrivi('did-lancio-sinodico', c.sinodico > 400
       ? `ogni ${num(c.sinodico / 365.25, 2)} anni` : `ogni ${Math.round(c.sinodico)} giorni (${num(c.sinodico / 30.44, 0)} mesi)`);
     scrivi('did-lancio-dv', `${num(c.dv1 + c.dv2, 2)} km/s (${num(c.dv1, 2)} + ${num(c.dv2, 2)})`);
@@ -2533,7 +2544,13 @@
     // rispetto a dove doveva stare — e ci resta per tutto il volo, perché
     // l'ellisse della sonda è sempre la stessa e ci mette sempre lo stesso
     // tempo. Il resto è un arco di circonferenza al raggio della meta.
-    const scartoGradi = lancio.scarto * (c.omega - c.omegaTerra);
+    // Anche questo va riportato dentro al giro: per Mercurio, che si sposta
+    // di 3,1° al giorno rispetto a noi, novanta giorni di ritardo fanno 279°
+    // — che come «errore di mira» non vuol dire niente, perché il pianeta è
+    // dall'altra parte ed è a 81° dal punto d'arrivo, non a 279°. Riportarlo
+    // dentro al giro dice anche la cosa giusta al limite: dopo un periodo
+    // sinodico intero lo scarto torna a zero, ed è vero — è la finestra dopo.
+    const scartoGradi = lancioGiro(lancio.scarto * (c.omega - c.omegaTerra));
     const mancatoKm = Math.abs(scartoGradi) / GRADI * c.r2 * AU_KM;
     const centrato = mancatoKm < 3e6;   // la sfera d'influenza di un pianeta, presa larga
 
@@ -2555,10 +2572,12 @@
     const sp = $('did-lancio-spiega');
     if (!sp) return;
     if (!lancio.partito) {
-      sp.innerHTML = `Per arrivare a ${nome} la sonda deve percorrere <strong>mezza ellisse</strong> col
-        perielio sull'orbita della Terra e l'afelio su quella di ${nome}: ci mette
+      sp.innerHTML = `Per arrivare a ${nome} la sonda deve percorrere <strong>mezza ellisse</strong>
+        ${c.interno
+          ? `con l'afelio sull'orbita della Terra e il perielio su quella di ${nome}`
+          : `col perielio sull'orbita della Terra e l'afelio su quella di ${nome}`}: ci mette
         <strong>${Math.round(c.tVoloGiorni)} giorni</strong>, e questo numero non si può cambiare — lo
-        fissa Keplero. Quindi ${nome} al momento del lancio deve trovarsi <strong>${num(c.fase, 0)}°
+        fissa Keplero. Quindi ${nome} al momento del lancio deve trovarsi <strong>${num(Math.abs(c.fase), 0)}°
         ${c.fase >= 0 ? 'più avanti' : 'più indietro'}</strong> della Terra, per essere al punto d'arrivo
         quando ci arriva la sonda. Questa configurazione si ripete
         ${c.sinodico > 400 ? `ogni ${num(c.sinodico / 365.25, 1)} anni` : `ogni ${Math.round(c.sinodico / 30.44)} mesi`}:
@@ -2575,10 +2594,15 @@
         volo cieco — nessuna spinta, solo caduta libera attorno al Sole — e ha trovato ${nome} esattamente
         dove doveva essere. È così che si arriva su un pianeta: non si insegue, si dà appuntamento.`;
     } else {
-      sp.innerHTML = `La sonda è in caduta libera. Dopo la spinta iniziale di
-        <strong>${num(c.dv1, 2)} km/s</strong> non accende più niente: sale verso l'afelio rallentando
-        (seconda legge di Keplero), e quando ci arriva le servirà un'altra spinta di
-        ${num(c.dv2, 2)} km/s per non ricadere indietro.`;
+      // Verso l'esterno si sale rallentando, verso l'interno si scende
+      // accelerando: è la stessa seconda legge di Keplero letta nei due
+      // versi, e dirla al contrario è il modo più rapido di insegnarla male
+      sp.innerHTML = `La sonda è in caduta libera. Dopo la ${c.interno ? 'frenata' : 'spinta'} iniziale di
+        <strong>${num(c.dv1, 2)} km/s</strong> non accende più niente: ${c.interno
+          ? `scende verso il perielio andando sempre più forte (seconda legge di Keplero), e quando ci
+             arriva le servirà un'altra spinta di ${num(c.dv2, 2)} km/s per frenare, se no risale`
+          : `sale verso l'afelio rallentando (seconda legge di Keplero), e quando ci arriva le servirà
+             un'altra spinta di ${num(c.dv2, 2)} km/s per non ricadere indietro`}.`;
     }
   }
 
@@ -2651,12 +2675,20 @@
 
     // La sonda lungo la mezza ellisse, col moto vero di Keplero: parte
     // dal perielio (M = 0) e arriva all'afelio (M = π) in mezzo periodo
+    //
+    // Verso una meta interna il viaggio è al contrario: la partenza è
+    // l'*afelio* dell'ellisse — che è l'orbita della Terra, la più larga
+    // delle due — e l'arrivo è il perielio. L'anomalia media va quindi da π
+    // a 2π, non da 0 a π. Con lo 0–π la sonda faceva il volo alla rovescia e
+    // non se ne accorgeva nessuno finché non si guardava: partiva dal punto
+    // d'arrivo, girava in senso orario mentre Terra e Venere andavano
+    // dall'altra parte, e finiva esattamente dove la Terra era al lancio.
     if (lancio.partito) {
       const punti = [];
       for (let i = 0; i <= 80; i++) {
         const f = (i / 80) * lancio.t;
-        const p = kepPunto(f * Math.PI, et);
         const segno = c.interno ? -1 : 1;
+        const p = kepPunto(Math.PI * (c.interno ? 1 + f : f), et);
         punti.push({ x: X(p.x * at * segno), y: Y(p.y * at * segno) });
       }
       didPercorso(ctx, punti, { colore: '#f5b544', spessore: 2.2 });
