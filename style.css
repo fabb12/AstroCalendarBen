@@ -5513,7 +5513,16 @@ body button.did-linguetta.attiva .did-linguetta-numero { background: rgba(255, 2
 }
 .did-sommario em { font-style: normal; color: var(--blu-chiaro); font-weight: 600; }
 
-.did-corpo { display: grid; gap: 14px; }
+/* Lo zero delle colonne, che qui serve come nella dashboard (§12 della
+   mappa): un contenuto largo più dello schermo — la linea del tempo del
+   Grand Tour, sedici tappe in fila — allarga la colonna della griglia che
+   lo contiene, e da lì il banco intero. Con `minmax(0, 1fr)` la colonna
+   resta larga quanto la pagina; col `min-width: 0` sui figli ci restano
+   dentro anche loro, e chi ha l'`overflow-x` scorre invece di sfondare. */
+.did-lab { grid-template-columns: minmax(0, 1fr); }
+.did-corpo { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+.did-lab > *,
+.did-corpo > * { min-width: 0; }
 
 /* -------------------------------------------------------- Le tele */
 /* Il fondo nero della scena non è quello della scheda: una tela che
@@ -5645,6 +5654,82 @@ body button.did-linguetta.attiva .did-linguetta-numero { background: rgba(255, 2
 /* Dove la scena è un grafico o una carta del cielo non c'è nessun piano da
    girare, e il tasto non compare: `.did-lente-gira` gliela dà il codice */
 .did-lente:not(.did-lente-gira) .did-lente-giro { display: none; }
+
+/* Il tasto dello schermo intero sta per primo, a sinistra dei gradi: è
+   l'unico che non riguarda il disegno ma il posto in cui lo si guarda */
+.did-lente-pieno { font-size: 0.9rem; }
+.did-lente-pieno.did-lente-esci { border-color: var(--blu); color: var(--blu-chiaro); }
+
+/* ------------------------------------------- La scena a schermo intero */
+/* Una scena in tre dimensioni dentro a un riquadro di quattrocento pixel,
+   messa di taglio, è una riga: il piano che si chiude — che è metà della
+   spiegazione — non si vede. A schermo intero la scena si prende tutto, e
+   **si porta dietro la barra del tempo**: senza, bisognerebbe uscire ogni
+   volta per premere play, e girare la scena mentre il tempo cammina è
+   esattamente la cosa per cui esistono questi banchi. La barra non viene
+   duplicata, viene spostata (in didattica.js) e poi rimessa a posto. */
+.did-scena:fullscreen,
+.did-scena.did-pieno-ripiego {
+  display: flex;
+  flex-direction: column;
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: #04070f;
+  box-shadow: none;
+}
+/* Il ripiego per chi non ha il pieno schermo sugli elementi (iPhone): la
+   scena esce dal banco e si appende al body, sopra a tutto — barra di
+   navigazione compresa, che qui sarebbe solo un modo di uscire per sbaglio */
+.did-scena.did-pieno-ripiego {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  width: 100vw;
+  height: 100dvh;
+}
+/* La tela prende tutto lo spazio che avanza. `flex-basis: 0` e non `auto`:
+   con `auto` l'altezza di partenza sarebbe quella del buffer, che il codice
+   ricalcola dall'altezza risultante — e le due si rincorrerebbero. */
+.did-scena:fullscreen .did-tela,
+.did-scena.did-pieno-ripiego .did-tela {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  width: 100%;
+}
+/* La targhetta passa in alto a sinistra, ma **sotto** ai tasti della lente:
+   in basso adesso c'è la barra, e in cima a destra ci sono già sei tondi —
+   su un telefono la targhetta va a capo e ci finiva proprio sopra */
+.did-scena:fullscreen .did-targhetta,
+.did-scena.did-pieno-ripiego .did-targhetta {
+  top: calc(max(10px, env(safe-area-inset-top)) + 38px);
+  bottom: auto;
+  left: max(10px, env(safe-area-inset-left));
+  max-width: min(520px, calc(100% - 40px));
+}
+.did-scena:fullscreen .did-lente,
+.did-scena.did-pieno-ripiego .did-lente {
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  opacity: 1;
+}
+.did-pieno-barra {
+  flex: 0 0 auto;
+  padding: 8px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom))
+           max(10px, env(safe-area-inset-left));
+}
+.did-pieno-barra .did-barra {
+  background: rgba(6, 10, 20, 0.86);
+  border-color: var(--bordo-forte);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--ombra-3);
+}
+body.did-immersivo { overflow: hidden; }
 
 /* Con la lente accesa il dito, sulla tela, sposta il disegno: il puntatore
    lo dice. La tela della fionda no — lì il dito continua a spostare il
@@ -5858,6 +5943,62 @@ body button.did-pillola.attiva {
 }
 .did-spiega strong { color: var(--testo); font-weight: 700; }
 .did-spiega em { font-style: italic; color: var(--testo-2); }
+/* La scheda di una tappa del Grand Tour: titolo, la riga secca dei numeri
+   (giorno, distanza, guadagno) e poi il racconto */
+.did-spiega-dati,
+.did-spiega-testo { display: block; }
+.did-spiega-dati {
+  margin-top: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.74rem;
+  color: var(--ambra);
+}
+.did-spiega-testo { margin-top: 7px; }
+
+/* -------------------------------------------- La linea del tempo (Voyager) */
+/* Tredici anni di viaggio e undici tappe: cercarle scorrendo una slitta è
+   un lavoro da nessuno, e la data esatta di Urano non la si azzecca. Ogni
+   tappa è un tasto e l'orologio ci salta. Scorre di lato, come le
+   linguette dei banchi. */
+.did-linea-tempo {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  contain: paint;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.did-linea-tempo::-webkit-scrollbar { display: none; }
+
+body button.did-tappa {
+  display: grid;
+  gap: 1px;
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-s);
+  background: var(--incassato);
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.62;
+  transition: opacity var(--transizione), border-color var(--transizione), background-color var(--transizione);
+}
+body button.did-tappa:hover { opacity: 1; border-color: var(--bordo-forte); }
+body button.did-tappa.did-tappa-fatta { opacity: 0.85; }
+body button.did-tappa.attiva {
+  opacity: 1;
+  border-color: var(--ambra);
+  background: rgba(245, 181, 68, 0.1);
+}
+/* Le tappe di avvicinamento sono un contorno, non un evento: restano più
+   in ombra perché a saltare l'occhio siano gli incontri */
+body button.did-tappa.did-tappa-lieve { opacity: 0.42; }
+body button.did-tappa.did-tappa-lieve:hover { opacity: 0.85; }
+.did-tappa-chi { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em; }
+.did-tappa-v1 .did-tappa-chi { color: var(--blu-chiaro); }
+.did-tappa-v2 .did-tappa-chi { color: var(--verde); }
+.did-tappa-che { font-size: 0.78rem; font-weight: 700; color: var(--testo); white-space: nowrap; }
+.did-tappa-quando { font-size: 0.64rem; color: var(--testo-3); white-space: nowrap; }
 
 .did-nota {
   margin: 0;
@@ -5866,6 +6007,121 @@ body button.did-pillola.attiva {
   color: var(--testo-3);
 }
 .did-nota strong { color: var(--testo-2); }
+
+/* --------------------------------------------------- I conti in chiaro */
+/* «Come si calcola» della fionda: i dati che servono e le formule con
+   dentro i numeri di adesso. Il colpo d'occhio deve dire subito quali
+   sono i dati (una griglia di schede) e quali i passi (una colonna
+   numerata): sono due cose diverse e vanno lette in due modi diversi. */
+.did-sottotitolo {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--testo);
+}
+
+.did-dati {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 700px) {
+  .did-dati { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+}
+.did-dato {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-s);
+  background: var(--incassato);
+}
+.did-dato-simbolo {
+  grid-row: span 2;
+  align-self: start;
+  min-width: 30px;
+  padding-top: 1px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--blu-chiaro);
+}
+.did-dato-nome { font-size: 0.76rem; color: var(--testo-3); }
+.did-dato-valore {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--testo);
+  font-variant-numeric: tabular-nums;
+}
+.did-dato-nota {
+  grid-column: 1 / -1;
+  margin-top: 5px;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--testo-3);
+}
+.did-dato-nota em { font-style: italic; color: var(--testo-2); }
+
+.did-passi { display: grid; gap: 10px; }
+.did-passo {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-s);
+  background: rgba(20, 27, 46, 0.5);
+}
+.did-passo-numero {
+  display: grid;
+  place-items: center;
+  width: 24px; height: 24px;
+  border-radius: 999px;
+  background: rgba(76, 141, 255, 0.18);
+  color: var(--blu-chiaro);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+.did-passo-corpo { display: grid; gap: 6px; min-width: 0; }
+.did-passo-titolo { font-size: 0.84rem; font-weight: 700; color: var(--testo); }
+
+/* Le formule scorrono per conto loro invece di allargare la pagina: una
+   riga lunga dentro a una griglia senza freni è il modo in cui la barra di
+   navigazione finisce fuori dallo schermo (vedi §12 della mappa) */
+.did-formula,
+.did-conto {
+  display: block;
+  overflow-x: auto;
+  contain: paint;
+  padding: 6px 9px;
+  border-radius: var(--raggio-s);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.did-formula {
+  border: 1px solid rgba(76, 141, 255, 0.28);
+  background: rgba(76, 141, 255, 0.08);
+  color: var(--blu-chiaro);
+  font-weight: 700;
+}
+.did-conto {
+  border: 1px solid var(--bordo);
+  background: var(--incassato);
+  color: var(--testo-3);
+}
+.did-conto strong { color: var(--testo); font-weight: 700; }
+.did-passo-nota {
+  font-size: 0.74rem;
+  line-height: 1.56;
+  color: var(--testo-3);
+}
+.did-passo-nota strong { color: var(--testo-2); }
+.did-passo-nota em { font-style: italic; color: var(--testo-2); }
 
 /* ------------------------------------------------------- I ponti */
 /* Il pezzo che collega il laboratorio al resto dell'app: da qui si esce
