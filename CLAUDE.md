@@ -25,27 +25,27 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 
 | File | Righe | Contenuto |
 |---|---|---|
-| `index.html` | ~1.545 | Struttura statica: testata, 6 viste, 10 modali. Nessuna logica. |
-| `app.js` | ~22.760 | Tutto tranne il telescopio e i moduli aggiunti dopo. |
+| `index.html` | ~1.665 | Struttura statica: testata, 6 viste, 10 modali. Nessuna logica. |
+| `app.js` | ~22.810 | Tutto tranne il telescopio e i moduli aggiunti dopo. |
 | `telescopio.js` | ~5.535 | Vista Telescopio, isolata. ~136 funzioni, prefisso `tel`. |
 | `catalogo.js` | ~980 | **Il catalogo del cielo**: 5.044 stelle, 88 costellazioni, 142 oggetti profondi, e il motore a matrice che li muove. Prefisso `cat`. |
 | `corpi-minori.js` | ~660 | **Lune di Giove, comete e asteroidi**: `JupiterMoons` e propagazione kepleriana a mano. |
 | `pianifica.js` | ~500 | **Pianificare la serata**: curva dell'altezza, migliori bersagli, profilo degli ostacoli. Prefisso `pian`/`orizzonte`. |
 | `terreno.js` | ~830 | **La forma vera del terreno attorno a casa**: quote del suolo da Open-Meteo, orizzonte per ogni direzione, che paesaggio c'è (mare/pianura/collina/montagna), e le **luci dei paesi veri** da OpenStreetMap. Prefissi `terreno` e `citta`. |
 | `meteo-astro.js` | ~515 | **Meteo da astronomo**: seeing, trasparenza, griglia Clear Sky Chart, avviso di aurora. Prefisso `meteo`/`aurora`. |
-| `aurora-polare.js` | ~790 | **Le aurore polari nel planetario**: l'ovale aurorale attorno al polo geomagnetico, boreale e australe, disegnato dove sta davvero. Prefisso `aur`. |
-| `eventi-extra.js` | ~435 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete. |
+| `aurora-polare.js` | ~1.015 | **Le aurore polari nel planetario**: l'ovale aurorale attorno al polo geomagnetico, boreale e australe, disegnato dove sta davvero, più la **forma dello scudo** (magnetopausa e onda d'urto) che serve al banco della Didattica. Prefisso `aur`. |
+| `eventi-extra.js` | ~720 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete e **aurore** (previsione del Kp a tre giorni + stagione degli equinozi). |
 | `ui-nuova.js` | ~350 | L'interfaccia di tutto quanto sopra. |
-| `didattica.js` | ~3.120 | **Il laboratorio**: i cinque banchi di prova della vista Didattica — moto retrogrado, leggi di Keplero, fionda gravitazionale, finestre di lancio, allineamenti. Prefisso `did`. |
+| `didattica.js` | ~4.630 | **Il laboratorio**: i sei banchi di prova della vista Didattica — moto retrogrado, leggi di Keplero, fionda gravitazionale, finestre di lancio, allineamenti, aurore polari. Prefisso `did`. |
 | `dati-stelle.js` | ~1.360 | 5.044 stelle fino alla mag 6,0 (147 KB). **Caricato su richiesta.** |
 | `dati-stelle-deboli.js` | ~1.335 | Altre 10.500 fino alla mag 7,0 (267 KB). **Solo a chi serve** (Bortle ≤ 4 o forte zoom). |
 | `dati-costellazioni.js` | ~195 | Le 88 figure IAU coi nomi italiani (24 KB). **Su richiesta.** |
 | `dati-profondo.js` | ~170 | Messier completo + NGC luminosi, 142 oggetti (29 KB). **Su richiesta.** |
 | `dati-corpi-minori.js` | ~85 | Elementi orbitali di 41 comete e 20 asteroidi (11 KB). **Su richiesta.** |
-| `verifica.html` | ~530 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
+| `verifica.html` | ~905 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
-| `style.css` | ~6.020 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v65`). |
+| `style.css` | ~6.090 | Tema "Deep Space" + impaginazione responsive. |
+| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v66`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -121,7 +121,7 @@ i testi — ma resta `cielo` nel codice, nelle classi CSS (`vista-cielo`,
 | **Planetario** (nel codice `cielo`) | Il cielo in tempo reale: punta il telefono, oppure realtà aumentata con la fotocamera, macchina del tempo, playback, zoom da 180° (grandangolo, tutto il cielo in un colpo) fino a un quarto di grado (Luna e pianeti a grandezza vera, **con la loro faccia**: mari, bande, anelli, calotte), eclissi con corona e ombra della Terra, orizzonte con le colline, **aurore polari** dove passa davvero l'ovale aurorale (con la slitta del Kp per vedere che tempesta ci vorrebbe, da qui), registrazione di un filmato da condividere, e il **Sistema Solare visto da fuori in 3D** — la stessa ora, ma guardata da lontano, per capire perché i pianeti stanno proprio lì. Nel pannello **Tempo e luogo** si può anche spostare il punto di vista in un'altra città: vale solo qui, la posizione dell'app non si tocca. |
 | **Telescopio** | Allineamento polare, puntamento, programma della serata, manutenzione. |
 | **Diario** | Osservazioni registrate e traguardi. |
-| **Didattica** | Il laboratorio: cinque banchi di prova con dentro le posizioni vere dei pianeti, uno a schermo per volta. Perché i pianeti tornano indietro, le tre leggi di Keplero, la fionda gravitazionale, le finestre di lancio, gli allineamenti. Ogni banco finisce con i tasti che portano la stessa cosa nel planetario e nella vista 3D. |
+| **Didattica** | Il laboratorio: sei banchi di prova con dentro le posizioni vere dei pianeti, uno a schermo per volta. Perché i pianeti tornano indietro, le tre leggi di Keplero, la fionda gravitazionale, le finestre di lancio, gli allineamenti, e **come si accende un'aurora** (il vento solare, la magnetosfera in 3D, la coda che si rompe, l'ovale attorno al polo, e perché da qui è rossa). Ogni banco finisce con i tasti che portano la stessa cosa nel planetario e nella vista 3D — quello delle aurore ci porta anche in un altro luogo e in un'altra notte, dove l'aurora c'è stata davvero. |
 
 Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
 `modale-simulazione`, `modale-lezione` (che cos'è l'eclittica),
@@ -226,8 +226,9 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `meteoAstro` | `meteo-astro.js` | Previsioni ora per ora con seeing e trasparenza già calcolati. |
 | `aurora` | `meteo-astro.js` | Indice Kp attuale e previsto dal NOAA. |
 | `orizzonteMio` | `pianifica.js` | I sedici settori del profilo degli ostacoli. |
-| `stato` / `LABORATORI` | `didattica.js` | Il laboratorio. `stato.lab` dice quale banco è a schermo — ed è l'unico che calcola e disegna. `LABORATORI` è l'elenco dei cinque, ognuno con `costruisci`/`collega`/`entra`/`esce`/`passo`/`disegna`: chi non ha bisogno di una di quelle cose non la definisce. Gli stati dei banchi sono `retro`, `kep`, `fionda`, `lancio`, `allin`. |
+| `stato` / `LABORATORI` | `didattica.js` | Il laboratorio. `stato.lab` dice quale banco è a schermo — ed è l'unico che calcola e disegna. `LABORATORI` è l'elenco dei sei, ognuno con `costruisci`/`collega`/`entra`/`esce`/`passo`/`disegna`: chi non ha bisogno di una di quelle cose non la definisce. Gli stati dei banchi sono `retro`, `kep`, `fionda`, `lancio`, `allin`, `aurL`. |
 | `terreno` | `terreno.js` | La forma vera del terreno: `profilo` sono i 361 gradi dell'orizzonte, `tipi` che paesaggio c'è in ognuno (mare/pianura/collina/montagna), `miscela` gli stessi tipi sfumati fra loro su `TERRENO_SFUMA_GRADI` (è quella che usa il disegno: un tipo secco farebbe i bordi), `quota` l'altezza del suolo sotto i piedi, `stato` dice se è arrivato, `acceso` se lo si vuole. |
+| `aurL` | `didattica.js` | Il banco delle aurore. `quadro` è quale dei cinque è a schermo, `t` le ore dall'eruzione (ogni quadro gira dentro la sua `finestra`), `cam`/`camV` la telecamera in tre dimensioni (quella disegnata adesso e quella a cui sta andando), `luogo` e `kpTaglio` il posto e la tempesta del quadro del taglio. `campo`, `visto` e `ore` sono le tre memorie: le linee di campo, la risposta «da qui cosa si vedrebbe» e l'ora della mezzanotte magnetica. |
 | `aur` | `aurora-polare.js` | Le aurore. `acceso` se le si vuole, `kpSimulato` il Kp della slitta (`null` = quello vero del NOAA), `geo` la geometria dell'ovale già calcolata per l'istante mostrato (`chiave` dice per quale), `tela`/`sfocata` le due tele di servizio. |
 | `citta` | `terreno.js` | I paesi attorno a casa, già pronti per il disegno: per ognuno `az`, `km`, `abitanti`, `forza` (quanto illumina), `alto` e `mezzo` (quanto è grande la cupola di luce), `alfa`. Ordinati dal più luminoso. |
 
@@ -264,8 +265,9 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
   `sol*` = il Sistema Solare in 3D, `sim*` = simulazione, `tel*` = telescopio,
   `_ecl*` = interni della mappa eclissi, `lez*` = la lezione animata
   dell'eclittica, `terreno*` = la forma vera del terreno attorno a casa, `citta*` = i paesi che la illuminano,
-  `did*` = il laboratorio della vista Didattica, `aur*` = le aurore polari
-  nel planetario.
+  `did*` = il laboratorio della vista Didattica (`aurL*` il suo banco delle
+  aurore), `aur*` = le aurore polari nel planetario e la forma della
+  magnetosfera.
 - **Niente disegno pesante a ogni fotogramma**: tutto ciò che è complicato e
   non cambia (i mari della Luna, le bande di Giove, la corona, le nebulose)
   si dipinge una volta sola su una tela fuori schermo e poi si ricopia. Il
@@ -286,7 +288,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v65`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v66`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene
@@ -329,7 +331,7 @@ python3 -m http.server 8000     # poi apri localhost:8000/verifica.html
 Un centinaio di controlli contro valori noti: le coordinate di catalogo delle stelle
 famose, il motore del cielo contro `Astronomy.Horizon()`, il raggio orbitale
 delle quattro lune di Giove, il propagatore di Keplero contro le posizioni vere
-dei pianeti, l'eclissi del 2027, il transito di Mercurio del 2032, la classificazione dei paesaggi, la forza delle luci delle città e la geometria dell'ovale aurorale (§11: il dipolo, la curvatura della Terra, e le tre risposte che il modulo esiste per dare — dall'Italia il rosso, dalla Norvegia il verde alto, dalla Tasmania a sud). **Va aperto da
+dei pianeti, l'eclissi del 2027, il transito di Mercurio del 2032, la classificazione dei paesaggi, la forza delle luci delle città e la geometria dell'ovale aurorale (§11: il dipolo, la curvatura della Terra, le tre risposte che il modulo esiste per dare — dall'Italia il rosso, dalla Norvegia il verde alto, dalla Tasmania a sud — la forma della magnetopausa di Shue, e il fatto che da Tromsø con Kp 4 l'ovale è addosso e non lontano). **Va aperto da
 un server**: i cataloghi si caricano come `<script>` e `file://` non lo permette.
 
 Se tocchi qualcosa in `catalogo.js`, `corpi-minori.js`, `terreno.js` o
@@ -356,7 +358,7 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 
 | Richiesta | Punto di partenza |
 |---|---|
-| Nuovo tipo di evento astronomico | `calcolaEventiAstronomi()` `app.js:676` + una `aggiungi…()`, poi `CATEGORIE` `app.js:36` |
+| Nuovo tipo di evento astronomico | `calcolaEventiAstronomi()` `app.js:676` + una `aggiungi…()`, poi `CATEGORIE` `app.js:46` (che oggi tiene anche `aurore`) |
 | Nuova scena della simulazione | `app.js:16044` (costruzione scena) e una `simScena*` |
 | Qualcosa nel planetario | `sky` `app.js:6295`, disegno da `app.js:8054` |
 | Eventi mostrati nel planetario | `SKY_EVENTI_FINESTRA_MIN`, `SKY_EVENTI_SETTIMANA_MS` + `skyAggiornaEventi()` (sezione 7.4-bis) |
@@ -421,6 +423,16 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Prestare un pezzo di pagina a un'altra finestra | `skyRicordaPosto(mappa, nodo)` / `skyRimettiAlSuoPosto(mappa, nodo)` (in cima alla 7.5-bis): si ricorda il padre **e** il fratello che veniva dopo. Li usano le finestre sopra al cielo (7.5-bis) e il pannello del tempo (7.5-ter), ognuno con la sua mappa |
 | Cercare un astro per nome, per categoria, o vedere solo quelli su adesso | `skyFiltraElenco()` (sezione 7.4): campo `#skymap-astri-cerca` (ricerca morbida con `normalizzaTesto`, Invio sceglie il primo), tasti delle categorie `#skymap-astri-categorie` → `sky.famigliaAstri`, tasto `#skymap-astri-visibili` → `sky.soloAstriVisibili`. I tre filtri si sommano. Chi resta fuori lo dice `data-fuori="si"`, **non** una classe: `skyAggiornaStileElenco()` riscrive il `className` di ogni pillola a ogni giro. Stili `.cerca-astri` (appiccicata in cima), `.segmenti-categorie`, `.famiglia-astri`, `.titolo-famiglia`, `body .chip-astro` |
 | Una finestra che non si vede col cielo a schermo intero | sezione **7.5-bis**: finché il planetario è a schermo intero le `.velo-modale` aperte vengono spostate dentro `#skymap-contenitore` (e riportate al loro posto alla chiusura). Nessuna `apri…()` è stata toccata: a guardare la classe `hidden` è un `MutationObserver` in `skyInizializzaModaliSopraIlCielo()`. Stile dell'ospite: `.modale-sopra-il-cielo` in `style.css` |
+| Come si accende un'aurora (il banco della Didattica) | `didattica.js`, sezione 8, prefisso `aurL`. Cinque quadri: quattro sulla stessa scena in 3D (`aurLDisegnaScena`, telecamera in `aurLVista`/`aurLPro`) e uno che è un taglio visto di lato (`aurLDisegnaTaglio`). Le finestre di tempo di ogni quadro stanno in `AURL_QUADRI[...].finestra`, le quattro notti vere in `AURL_METE`, e il tasto che ci porta è `aurLPortami()` |
+| «Portami dove l'aurora si vede» | `aurLPortami()` in `didattica.js`: sposta il **luogo di visita** del planetario (`skyImpostaLuogoVista`, non la posizione dell'app), porta l'orologio alla notte giusta (`didPortaOrologio`), accende l'ovale col Kp di allora (`aurImpostaKpSimulato`) e gira la vista con `skyCentraSu`. Le quattro mete sono Tromsø, Fairbanks, la Pianura Padana del 10 maggio 2024 e Hobart |
+| «Ma allora perché a me è venuta rossa?» | il quadro `taglio` del banco delle aurore, `aurLDisegnaTaglio()`. È l'unico disegno del laboratorio senza esagerazioni: curvatura, distanza dell'ovale e quote sono tutte alla stessa scala, e gli angoli scritti accanto alle linee di vista si possono misurare col goniometro sullo schermo. Il raggio in pixel esce dal minimo fra due vincoli (che l'ovale ci stia in larghezza e le quote in altezza) — vedi il commento in funzione |
+| I numeri del banco delle aurore sono quelli di adesso, e adesso è mezzogiorno | `aurLOraBuona()`: la domanda «da qui si vedrebbe?» ha senso solo alla **mezzanotte magnetica**, e l'orologio si porta avanti da sé fino a lì. Il verso in cui l'ora magnetica cammina si misura con due letture a un'ora di distanza invece di dedurlo: nel riferimento australe la longitudine magnetica è ribaltata |
+| L'ovale visto dal banco è diverso da quello del planetario | non deve esserlo: `aurLCalcola()` usa `aurBordo()`, `aurSpessore()` e `aurAltezza()`, cioè le stesse funzioni del cielo. E come `aurGeometria()` guarda **tutte le falde**, non il solo bordo verso l'equatore — guardando quello, da Tromsø con Kp 4 la risposta era «un bagliore lontano», perché il bordo sta mille chilometri a sud: il paese è già dentro all'anello |
+| La forma della magnetosfera (naso, fianchi, coda, onda d'urto) | `aurora-polare.js` §7: `aurStandoff(pressione, bz)` e `aurAperturaCoda()` sono il modello di Shue et al. (1997), `aurMagnetopausa(θ, r₀, α)` la superficie. Col vento tranquillo il naso sta a 10,3 raggi terrestri, sotto tempesta a 5,5 — dentro all'orbita geostazionaria. Li controlla il §11 di `verifica.html` |
+| Le aurore nel calendario e nell'agenda | `aggiungiAurore()` in `eventi-extra.js` §6, categoria `aurore`. Due famiglie e nient'altro: le **notti previste** dal Kp del NOAA (`aurorePreviste`, tre giorni, solo per le ore in cui è buio e solo se da questa latitudine geomagnetica qualcosa si vedrebbe) e la **stagione degli equinozi** (`auroreStagioni`, l'effetto Russell-McPherron). Un'aurora a data fissa non esiste e il calendario non la inventa |
+| Le notti previste non compaiono in calendario | il Kp del NOAA arriva un paio di secondi dopo che gli eventi sono stati calcolati: a rimetterle dentro è `aggiornaEventiAurora()`, chiamata da `ui-nuova.js` appena `caricaAurora()` ha risposto (e di nuovo dal tasto «aggiorna» del riquadro meteo) |
+| Un evento che apre il planetario con l'aurora accesa | il campo `aurora: { kp }` di `creaEvento`, letto da `apriEventoNelPlanetario()`: accende l'ovale col Kp dell'evento e gira la vista con `aurGuardaInCielo()` |
+| «Portare: undefined» in una scheda dell'agenda | `normalizzaProgramma()` (`app.js`, accanto a `creaEvento`). Il `programma` di un evento è tre righe, ma le famiglie di `eventi-extra.js` lo scrivono come paragrafo unico: una stringa diventa il solo «come», e `righeProgrammaHtml()` salta le righe vuote invece di stamparci «undefined» |
 | Un banco del laboratorio (Didattica) | `didattica.js`, sezione dell'esperimento. La struttura è sempre la stessa: `costruisci()` scrive il markup, `collega()` attacca i comandi, `passo(dt)` fa camminare il tempo, `disegna()` mette tutto sulla tela. Le linguette in cima cambiano `stato.lab`, e **solo il banco a schermo calcola**: quattro tele che animavano insieme facevano scaldare il telefono per mostrare tre cose che nessuno stava guardando |
 | Un nuovo banco nel laboratorio | una chiamata a `laboratorio({...})` in `didattica.js` e basta: linguetta, riquadro e ciclo di disegno se li costruisce da sé `didCostruisci()`. Il markup non va toccato — `index.html` tiene solo il guscio (`#did-linguette` e `#did-banco`) |
 | I comandi del laboratorio (avvia, scorri, velocità) | `didBarra(prefisso)` scrive la barra e `collegaBarra(prefisso, oggetto, ganci)` la collega: è la stessa in tutti i banchi, ed è quello il punto — imparata una volta, funziona su tutti e cinque. Stili `.did-barra`, `.did-tondo`, `.did-slitta`, `.did-velocita` |

@@ -907,13 +907,22 @@ function aurGuardaInCielo() {
   setTimeout(() => {
     const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
     const k = aurKpMostrato();
-    let az = 0;
+    let az = 0, alt = 18;
     if (luogo && k.kp !== null && !isNaN(k.kp)) {
       const g = aurGeometria(skyAdesso(), luogo, k.kp);
-      if (g) az = g.altMassima > -2 ? g.azMassima : (g.boreale ? 0 : 180);
+      if (g) {
+        az = g.altMassima > -2 ? g.azMassima : (g.boreale ? 0 : 180);
+        // A che altezza guardare non è sempre lo stesso: da mille chilometri
+        // l'ovale è un bagliore appoggiato all'orizzonte, e inquadrare a
+        // diciotto gradi vuol dire mettercelo sotto il bordo dello schermo;
+        // da sotto l'ovale, invece, le tende scendono dallo zenit e a
+        // diciotto gradi si guarda il terreno. Metà dell'altezza della cima
+        // le tiene tutte e due dentro l'inquadratura.
+        alt = Math.max(10, Math.min(65, g.altMassima * 0.5));
+      }
     }
     if (typeof skyCentraSu === 'function') {
-      skyCentraSu({ nome: 'l\'aurora', az, alt: 18 });
+      skyCentraSu({ nome: 'l\'aurora', az, alt });
     }
     aurAggiornaPannello();
   }, 60);
@@ -934,3 +943,73 @@ if (document.readyState === 'loading') {
 } else {
   aurCollega();
 }
+
+
+// =====================================================================
+// 7. LA FORMA DELLO SCUDO
+//     Dove finisce il campo magnetico terrestre e comincia il vento
+//     solare. Non serve al disegno dell'ovale nel planetario: serve al
+//     banco delle aurore della vista Didattica, che il campo lo fa
+//     vedere. Sta qui perché è fisica dell'aurora — la stessa di tutto
+//     il resto del file — e perché così `verifica.html` la può
+//     controllare contro i numeri pubblicati.
+//
+//     Il modello è quello di Shue et al. (1997), che è la forma con cui
+//     si disegna la magnetopausa da trent'anni:
+//
+//         r(θ) = r₀ · ( 2 / (1 + cos θ) ) ^ α
+//
+//     con θ contato dalla direzione del Sole. A θ = 0 dà r₀, il "naso"
+//     dello scudo; crescendo θ si apre nei fianchi e poi nella coda.
+//     Due numeri la governano, e tutti e due li detta il vento solare:
+//     r₀ dice quanto lontano arriva il naso, α quanto la coda è aperta.
+// =====================================================================
+
+// La distanza del naso, in raggi terrestri, in funzione della pressione
+// dinamica del vento (nPa) e della componente sud del campo magnetico
+// interplanetario (nT, negativa = verso sud). È la formula di Shue: la
+// pressione schiaccia lo scudo con l'esponente 1/6,6 — quindi ci vuole
+// una pressione dieci volte più alta per dimezzarlo — mentre un campo
+// rivolto a sud lo eroda, perché è quello che si riconnette col nostro.
+//
+// Coi valori del vento tranquillo (2 nPa, Bz nullo) viene 10,3 raggi
+// terrestri, cioè 65.000 km: è il numero che sta su tutti i libri.
+// Con l'urto di una tempesta forte (20 nPa, Bz −20 nT) scende a 5,5, e
+// in quelle occasioni i satelliti geostazionari — che stanno a
+// 6,6 raggi — si sono trovati **fuori** dalla magnetosfera, in pieno
+// vento solare. Non è un modo di dire: è successo, e si vede nei dati.
+function aurStandoff(pressioneNPa, bzNT) {
+  const p = Math.max(0.05, pressioneNPa || 2);
+  const bz = bzNT === undefined ? 0 : bzNT;
+  const base = bz >= 0
+    ? 11.4 + 0.013 * bz
+    : 11.4 + 0.140 * bz;
+  return base * Math.pow(p, -1 / 6.6);
+}
+
+// L'apertura della coda. Anche questa cresce con la pressione e con il
+// campo verso sud: sotto tempesta la magnetosfera non si limita a
+// stringersi davanti, si allunga anche dietro.
+function aurAperturaCoda(pressioneNPa, bzNT) {
+  const p = Math.max(0.05, pressioneNPa || 2);
+  const bz = bzNT === undefined ? 0 : bzNT;
+  return (0.58 - 0.007 * bz) * (1 + 0.024 * Math.log(p));
+}
+
+// Il raggio della magnetopausa nella direzione θ (radianti, contati dal
+// Sole). La formula diverge verso θ = π — la coda vera non si chiude
+// mai — quindi oltre `AUR_MP_THETA_MAX` si smette di chiedere e si tira
+// dritto: è quello che fa il disegno del banco.
+const AUR_MP_THETA_MAX = 2.55;      // ~146°, dove la coda è ormai un tubo
+
+function aurMagnetopausa(theta, r0, alfa) {
+  const t = Math.min(Math.abs(theta), AUR_MP_THETA_MAX);
+  const c = Math.cos(t);
+  return r0 * Math.pow(2 / (1 + c), alfa === undefined ? 0.58 : alfa);
+}
+
+// L'onda d'urto sta più avanti del naso di circa un quarto, e si apre di
+// più: il vento solare è supersonico e frena lì, prima di scivolare
+// attorno allo scudo.
+const AUR_URTO_AVANTI = 1.28;
+const AUR_URTO_APERTURA = 1.42;
