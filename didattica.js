@@ -132,12 +132,76 @@
 
   const DID_LENTE_MAX = 8;
   const DID_LENTE_PASSO = 1.45;      // quanto salta un tocco di + o di −
-  const lenti = new Map();           // id della tela → stato della sua lente
+
+  // --- La giostra: girare la scena come nel Sistema Solare in 3D ---------
+  //
+  // Le scene dei banchi sono piante: il piano delle orbite visto a picco.
+  // È l'inquadratura giusta per leggere gli angoli — l'angolo di fase di una
+  // finestra di lancio, il cappio del retrogrado — ed è anche quella che
+  // nasconde l'unica cosa che una pianta non può dire: che quel piano è un
+  // piano. Girandolo di taglio l'ellisse di trasferimento si chiude, le
+  // orbite diventano righe, e si capisce di essere dentro a un disco.
+  //
+  // La rotazione è la stessa della vista 3D, e non per gusto: chi arriva qui
+  // dopo aver girato il Sistema Solare col dito si aspetta che il dito
+  // faccia la stessa cosa. `az` gira attorno all'asse del piano, `elev` è
+  // l'altezza dell'occhio sul piano (90° a picco, 0° dentro al piano), e i
+  // versi sono quelli di `solProietta` — il dito porta con sé la scena.
+  //
+  // Anche questa, come la lente, è una moltiplicazione della matrice della
+  // tela: per un punto del piano (z = 0) la proiezione ortogonale della
+  // vista 3D *è* una matrice 2×2, e i banchi continuano a non saperne
+  // niente. Due cose però devono restare fuori dallo schiacciamento — i
+  // dischi dei corpi e le scritte — e infatti ne escono (vedi `didPunto`).
+  const DID_GIRO_PER_PIXEL = 0.008;   // radianti di azimut per pixel di dito
+  const DID_ELEV_PER_PIXEL = 0.32;    // gradi di elevazione per pixel di dito
+  const DID_VISTE = [90, 34, 8];      // a picco, obliqua, di taglio
+  const DID_TAU_VISTA = 0.24;         // tempo di dimezzamento dello scivolo, in secondi
+
+  const lenti = new Map();           // id della tela → stato della sua vista
 
   function didLente(id) {
     let l = lenti.get(id);
-    if (!l) { l = { zoom: 1, x: 0, y: 0, L: 0, H: 0, tela: null, box: null, lettura: null }; lenti.set(id, l); }
+    if (!l) {
+      l = {
+        zoom: 1, x: 0, y: 0, L: 0, H: 0,
+        az: 0, elev: 90, elevVoluta: 90, puoGirare: false, ultimoTs: 0,
+        tela: null, box: null, lettura: null, tastoGiro: null
+      };
+      lenti.set(id, l);
+    }
     return l;
+  }
+
+  // La matrice del giro, attorno al centro della tela. Per un punto del
+  // piano vale quello che fa `solProietta` con z = 0: si ruota di `az`
+  // attorno all'asse verticale e si schiaccia di sin(elev). A 90° torna
+  // l'identità, cioè esattamente la pianta di prima.
+  function didGiroMatrice(l, L, H) {
+    if (!l.puoGirare) return null;
+    const a = l.az, e = Math.max(0.5, Math.min(90, l.elev)) * Math.PI / 180;
+    const ca = Math.cos(a), sa = Math.sin(a), se = Math.sin(e);
+    if (Math.abs(a) < 1e-4 && se > 0.9999) return null;
+    // In coordinate di tela la y cresce verso il basso, ed è per questo che
+    // la seconda riga ha i segni girati rispetto alla formula in coordinate
+    // matematiche: è la stessa algebra di `solProietta`, letta al contrario
+    const m = { a: ca, b: -sa * se, c: sa, d: ca * se };
+    const cx = L / 2, cy = H / 2;
+    m.e = cx - (m.a * cx + m.c * cy);
+    m.f = cy - (m.b * cx + m.d * cy);
+    return m;
+  }
+
+  // Il punto di vista successivo: il primo preset più basso di dove siamo
+  // adesso, e arrivati di taglio si ricomincia dall'alto
+  function didGiroProssima(l) {
+    // Si guarda dove la scena *sta andando*, non dove è arrivata: lo scivolo
+    // dura mezzo secondo, e due tocchi svelti sul tasto leggevano tutt'e due
+    // l'inclinazione di partenza — si premeva due volte e si tornava sempre
+    // allo stesso punto di vista
+    const da = l.elevVoluta;
+    const giu = DID_VISTE.filter(v => v < da - 1.5);
+    return giu.length ? giu[0] : DID_VISTE[0];
   }
 
   // Lo spostamento non può portare il disegno fuori dal riquadro: il bordo
@@ -173,7 +237,33 @@
 
   function didLenteAzzera(l) {
     l.zoom = 1; l.x = 0; l.y = 0;
+    l.az = 0; l.elev = 90; l.elevVoluta = 90;
     didLenteAssesta(l);
+  }
+
+  // --- Che cosa sta disegnando la tela adesso ---------------------------
+  //
+  // La matrice composta (giro + lente, senza il `dpr`) e l'ingrandimento,
+  // riscritti da `didTela` a ogni fotogramma. Servono ai due pennelli che
+  // dalla matrice devono *uscire*: un pianeta schiacciato di taglio non
+  // sarebbe più un pianeta, e una scritta inclinata di sessanta gradi non
+  // si legge. Tutt'e due si proiettano il loro punto e poi disegnano in
+  // coordinate di schermo, esattamente come fanno i nomi della vista 3D.
+  //
+  // Basta una variabile sola perché disegna una tela per volta: `didTela`
+  // apre il fotogramma di quella tela, e tutto quello che segue è suo.
+  let vista = null;
+
+  function didPunto(x, y) {
+    if (!vista) return { x, y };
+    return { x: vista.a * x + vista.c * y + vista.e, y: vista.b * x + vista.d * y + vista.f };
+  }
+
+  // Rimette la matrice nuda del riquadro: niente giro, niente lente, solo
+  // il `dpr`. Va sempre fra un `ctx.save()` e un `ctx.restore()`.
+  function didSchermo(ctx) {
+    const dpr = vista ? vista.dpr : Math.min(2.5, window.devicePixelRatio || 1);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   // Da un punto della tela al punto del disegno. Serve a chi sulla tela ci
@@ -182,20 +272,36 @@
   // schermo non è più.
   function didLenteMondo(id, x, y) {
     const l = lenti.get(id);
-    if (!l || l.zoom === 1) return { x, y };
-    return { x: (x - l.x) / l.zoom, y: (y - l.y) / l.zoom };
+    if (!l) return { x, y };
+    // Prima si toglie la lente, poi il giro: l'ordine è quello di `didTela`
+    // letto al contrario
+    const px = (x - l.x) / l.zoom, py = (y - l.y) / l.zoom;
+    const m = didGiroMatrice(l, l.L, l.H);
+    // Il determinante della matrice del giro è sin(elev): messa quasi di
+    // taglio, tornare indietro vorrebbe dire moltiplicare per venti, e un
+    // millimetro di dito diventerebbe mezza scena. Lì si fa finta di niente.
+    const det = m ? m.a * m.d - m.b * m.c : 0;
+    if (!m || Math.abs(det) < 0.05) return { x: px, y: py };
+    const ux = px - m.e, uy = py - m.f;
+    return { x: (m.d * ux - m.c * uy) / det, y: (-m.b * ux + m.a * uy) / det };
   }
 
   function didLenteMostra(l) {
-    const accesa = l.zoom > 1.001;
+    const girata = l.puoGirare && (l.elev < 89.5 || Math.abs(l.az) > 0.005);
+    const accesa = l.zoom > 1.001 || girata;
     if (l.box) {
       l.box.classList.toggle('did-lente-accesa', accesa);
+      l.box.classList.toggle('did-lente-gira', !!l.puoGirare);
       if (l.lettura) l.lettura.textContent = l.zoom.toFixed(1).replace('.', ',') + '×';
+      // Il tasto del punto di vista dice l'inclinazione di adesso: è la sua
+      // etichetta e insieme il suo modo di spiegarsi, perché un numero di
+      // gradi che cambia mentre si trascina si capisce da sé
+      if (l.tastoGiro) l.tastoGiro.textContent = Math.round(l.elev) + '°';
     }
-    // Finché la lente è ferma la pagina scorre anche col dito appoggiato
-    // sulla tela (`pan-y`, dal foglio di stile); appena si è ingrandito quel
-    // dito serve a spostarsi dentro al disegno, e lo scorrimento della
-    // pagina si fa a lato. È una scelta che si disfa da sé: basta il ⟲.
+    // Finché la vista è ferma la pagina scorre anche col dito appoggiato
+    // sulla tela (`pan-y`, dal foglio di stile); appena si è ingrandito o
+    // girato, quel dito serve al disegno e lo scorrimento della pagina si fa
+    // a lato. È una scelta che si disfa da sé: basta il ⟲.
     if (l.tela && !l.tela.dataset.lenteFerma) l.tela.style.touchAction = accesa ? 'none' : '';
     if (l.tela) l.tela.classList.toggle('did-tela-accesa', accesa);
   }
@@ -208,20 +314,25 @@
     const box = document.createElement('div');
     box.className = 'did-lente';
     box.innerHTML =
+      '<button type="button" class="did-lente-tasto did-lente-giro" data-lente="gira" ' +
+        'title="Gira la scena: a picco sul piano, obliqua, di taglio. Si trascina anche col dito, come il Sistema Solare in 3D." ' +
+        'aria-label="Cambia il punto di vista sul piano">90°</button>' +
       '<span class="did-lente-fattore">1,0×</span>' +
       '<button type="button" class="did-lente-tasto" data-lente="meno" title="Allontanati" aria-label="Allontanati">−</button>' +
       '<button type="button" class="did-lente-tasto" data-lente="piu" title="Avvicinati al disegno (anche con due dita, o con Ctrl e la rotella)" aria-label="Avvicinati">+</button>' +
-      '<button type="button" class="did-lente-tasto did-lente-azzera" data-lente="azzera" title="Torna a vedere tutto il disegno" aria-label="Torna a vedere tutto il disegno">⟲</button>';
+      '<button type="button" class="did-lente-tasto did-lente-azzera" data-lente="azzera" title="Rimetti la scena a picco, alla misura intera" aria-label="Rimetti la scena com\'era">⟲</button>';
     scena.appendChild(box);
     box.addEventListener('click', (e) => {
       const b = e.target.closest('[data-lente]');
       if (!b) return;
       if (b.dataset.lente === 'azzera') didLenteAzzera(l);
+      else if (b.dataset.lente === 'gira') l.elevVoluta = didGiroProssima(l);
       else didLenteIngrandisci(l, b.dataset.lente === 'piu' ? DID_LENTE_PASSO : 1 / DID_LENTE_PASSO);
       didLenteMostra(l);
     });
     l.box = box;
     l.lettura = box.querySelector('.did-lente-fattore');
+    l.tastoGiro = box.querySelector('.did-lente-giro');
   }
 
   function didLenteAttacca(c, id, opz) {
@@ -259,13 +370,19 @@
       if (didLenteIngrandisci(l, Math.exp(-scatti * 0.2), p.x, p.y)) didLenteMostra(l);
     }, { passive: false });
 
-    // Un dito sposta il disegno, due lo avvicinano *e* lo spostano — le
-    // stesse regole della vista 3D, perché è lo stesso gesto. Come lì, a
-    // ogni dito che si appoggia o si stacca i riferimenti si rifanno: se no
-    // il dito rimasto verrebbe misurato da dove si era appoggiato prima del
-    // pizzico, e il disegno scatterebbe di lato.
+    // Le regole del dito sono quelle della vista 3D, alla lettera, perché è
+    // lo stesso gesto e chi arriva qui l'ha già imparato lì: **un dito gira**
+    // la scena (e il dito porta con sé la scena, non l'occhio), **due dita**
+    // avvicinano *e* spostano, col mouse si sposta tenendo Maiusc o col tasto
+    // destro. Dove la scena non si può girare — un grafico, una carta del
+    // cielo — un dito solo torna a spostare il disegno ingrandito, che lì è
+    // l'unica cosa sensata da fargli fare.
+    //
+    // Come nella vista 3D, a ogni dito che si appoggia o si stacca i
+    // riferimenti si rifanno: se no il dito rimasto verrebbe misurato da dove
+    // si era appoggiato *prima* del pizzico, e la scena scatterebbe di lato.
     const dita = new Map();
-    let pizzico = null, ultimo = null;
+    let pizzico = null, ultimo = null, modoPan = false;
     const insieme = () => [...dita.values()];
     const riancora = () => {
       const p = insieme();
@@ -277,11 +394,16 @@
 
     c.addEventListener('pointerdown', (e) => {
       dita.set(e.pointerId, dove(e));
+      if (dita.size === 1) modoPan = !!e.shiftKey || e.button === 1 || e.button === 2;
       riancora();
-      if (dita.size >= 2 || (trascina && l.zoom > 1.001)) {
+      if (dita.size >= 2 || (trascina && (l.puoGirare || l.zoom > 1.001))) {
         try { c.setPointerCapture(e.pointerId); } catch (err) { /* niente */ }
       }
     });
+
+    // Col tasto destro si sposta: il menù contestuale, qui, sarebbe solo il
+    // modo di interrompere il gesto a metà
+    c.addEventListener('contextmenu', (e) => { if (trascina) e.preventDefault(); });
 
     c.addEventListener('pointermove', (e) => {
       if (!dita.has(e.pointerId)) return;
@@ -296,22 +418,41 @@
         didLenteMostra(l);
         return;
       }
-      if (!trascina || !ultimo || l.zoom <= 1.001) return;
+      if (!ultimo) return;
       const q = dove(e);
-      didLenteSposta(l, q.x - ultimo.x, q.y - ultimo.y);
+      const dx = q.x - ultimo.x, dy = q.y - ultimo.y;
       ultimo = q;
+      // Maiusc, o tasto destro: si sposta. Su una tela che non si gira è
+      // sempre così, e serve solo quando c'è qualcosa fuori dal riquadro.
+      if (modoPan || !l.puoGirare) {
+        if (!trascina || l.zoom <= 1.001) return;
+        didLenteSposta(l, dx, dy);
+        didLenteMostra(l);
+        return;
+      }
+      if (!trascina) return;
+      l.az += dx * DID_GIRO_PER_PIXEL;
+      l.elevVoluta = Math.max(2, Math.min(90, l.elevVoluta + dy * DID_ELEV_PER_PIXEL));
+      l.elev = l.elevVoluta;
+      didLenteMostra(l);
     });
 
-    const stacca = (e) => { if (dita.delete(e.pointerId)) riancora(); };
+    const stacca = (e) => {
+      if (!dita.delete(e.pointerId)) return;
+      riancora();
+      if (!dita.size) modoPan = false;
+    };
     c.addEventListener('pointerup', stacca);
     c.addEventListener('pointercancel', stacca);
     c.addEventListener('pointerleave', stacca);
 
     // Doppio clic: avvicina dov'è il puntatore, e la seconda volta rimette
-    // tutto il disegno nel riquadro. È la scorciatoia di chi ha il mouse.
+    // tutto com'era — misura intera e scena a picco. È la scorciatoia di chi
+    // ha il mouse, e la via d'uscita di chi si è perso girando.
     c.addEventListener('dblclick', (e) => {
       e.preventDefault();
-      if (l.zoom > 1.001) didLenteAzzera(l);
+      const girata = l.puoGirare && (l.elev < 89.5 || Math.abs(l.az) > 0.005);
+      if (l.zoom > 1.001 || girata) didLenteAzzera(l);
       else { const p = dove(e); didLenteIngrandisci(l, 2.4, p.x, p.y); }
       didLenteMostra(l);
     });
@@ -338,18 +479,47 @@
     if (c.style.height !== alto + 'px') c.style.height = alto + 'px';
     const ctx = c.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    vista = { dpr, zoom: 1, a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
     // Le tele che hanno la lente la agganciano qui, al primo fotogramma in
     // cui esistono davvero: prima di allora il riquadro è nascosto, largo
     // zero, e non c'è niente a cui appendere i comandi.
     if (opz && opz.lente) {
       didLenteAttacca(c, id, opz);
       const l = didLente(id);
+      // Se la scena si può girare lo decide il banco, e può cambiare da un
+      // fotogramma all'altro: il quadro dell'armonia di Keplero è un grafico
+      // a barre, e un grafico a barre girato di taglio non è più niente
+      const gira = !!(opz.gira);
+      if (l.puoGirare !== gira) { l.puoGirare = gira; didLenteMostra(l); }
       didLenteAssesta(l, largo, alto);
-      if (l.zoom !== 1 || l.x || l.y) {
-        ctx.setTransform(dpr * l.zoom, 0, 0, dpr * l.zoom, dpr * l.x, dpr * l.y);
+      didGiroScivola(l);
+      // Prima il giro (attorno al centro della tela), poi la lente: così lo
+      // spostamento della lente lavora sull'immagine già girata, che è
+      // quello che si aspetta il dito
+      const m = didGiroMatrice(l, largo, alto);
+      const z = l.zoom;
+      if (m) {
+        vista = { dpr, zoom: z, a: z * m.a, b: z * m.b, c: z * m.c, d: z * m.d, e: z * m.e + l.x, f: z * m.f + l.y };
+      } else if (z !== 1 || l.x || l.y) {
+        vista = { dpr, zoom: z, a: z, b: 0, c: 0, d: z, e: l.x, f: l.y };
       }
+      ctx.setTransform(dpr * vista.a, dpr * vista.b, dpr * vista.c, dpr * vista.d,
+        dpr * vista.e, dpr * vista.f);
     }
     return { c, ctx, L: largo, H: alto };
+  }
+
+  // L'inclinazione ci scivola invece di saltarci: vedere il piano che si
+  // chiude è metà della spiegazione, e saltarci sopra la butterebbe via. È
+  // lo stesso smorzamento esponenziale col `dt` del fotogramma che usa la
+  // vista 3D, quindi si comporta uguale a qualunque cadenza.
+  function didGiroScivola(l) {
+    const ora = performance.now();
+    const dt = l.ultimoTs ? Math.min(0.1, (ora - l.ultimoTs) / 1000) : 0;
+    l.ultimoTs = ora;
+    if (!dt || Math.abs(l.elevVoluta - l.elev) < 0.05) { l.elev = l.elevVoluta; return; }
+    l.elev += (l.elevVoluta - l.elev) * (1 - Math.pow(0.5, dt / DID_TAU_VISTA));
+    didLenteMostra(l);
   }
 
   // Lo sfondo stellato: un pulviscolo fermo, sempre lo stesso, dipinto su
@@ -407,6 +577,19 @@
   // Un corpo celeste: il disco, il bordo appena più chiaro dalla parte
   // della luce, e l'alone che lo fa sembrare acceso invece che incollato.
   function didCorpo(ctx, x, y, r, colore, opz = {}) {
+    // Il disco non si schiaccia quando si gira la scena: un pianeta visto di
+    // taglio resta un pianeta, e sono le *orbite* che devono diventare
+    // ellissi, non i corpi. Si proietta il centro e si disegna tondo in
+    // coordinate di schermo — come i pallini della vista 3D, che infatti
+    // restano tondi anche col Sistema Solare messo di profilo.
+    const p = didPunto(x, y);
+    ctx.save();
+    didSchermo(ctx);
+    didCorpoSchermo(ctx, p.x, p.y, r * (vista ? vista.zoom : 1), colore, opz);
+    ctx.restore();
+  }
+
+  function didCorpoSchermo(ctx, x, y, r, colore, opz = {}) {
     const alone = opz.alone === undefined ? 2.6 : opz.alone;
     if (alone > 0) {
       const g = ctx.createRadialGradient(x, y, r * 0.6, x, y, r * alone);
@@ -432,15 +615,24 @@
   // Una scritta che resta leggibile anche se le passa sotto un'orbita:
   // il contorno scuro costa un `strokeText` e risparmia un riquadro.
   function didScritta(ctx, testo, x, y, opz = {}) {
-    ctx.font = `${opz.peso || 600} ${opz.misura || 11}px ${opz.mono ? 'ui-monospace, SFMono-Regular, monospace' : 'system-ui, -apple-system, sans-serif'}`;
+    // Come i dischi, le scritte escono dal giro: dentro alla matrice, con la
+    // scena di taglio, «Terra» diventerebbe una riga alta due pixel e
+    // inclinata. Il posto lo dà la proiezione, il resto è schermo. La lente
+    // invece se la tengono — sotto una lente cresce tutto, scritte comprese.
+    const p = didPunto(x, y);
+    const k = vista ? vista.zoom : 1;
+    ctx.save();
+    didSchermo(ctx);
+    ctx.font = `${opz.peso || 600} ${(opz.misura || 11) * k}px ${opz.mono ? 'ui-monospace, SFMono-Regular, monospace' : 'system-ui, -apple-system, sans-serif'}`;
     ctx.textAlign = opz.allinea || 'left';
     ctx.textBaseline = opz.base || 'alphabetic';
     ctx.lineJoin = 'round';
-    ctx.lineWidth = 3.2;
+    ctx.lineWidth = 3.2 * k;
     ctx.strokeStyle = 'rgba(3, 6, 14, 0.88)';
-    ctx.strokeText(testo, x, y);
+    ctx.strokeText(testo, p.x, p.y);
     ctx.fillStyle = opz.colore || C.testo;
-    ctx.fillText(testo, x, y);
+    ctx.fillText(testo, p.x, p.y);
+    ctx.restore();
   }
 
   function didFreccia(ctx, x1, y1, x2, y2, opz = {}) {
@@ -963,7 +1155,7 @@
   }
 
   function retroDisegnaElio() {
-    const t = didTela('did-retro-elio', 1, 400, { lente: true });
+    const t = didTela('did-retro-elio', 1, 400, { lente: true, gira: true });
     if (!t || !retro.campioni) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -1377,7 +1569,7 @@
   }
 
   function kepDisegna() {
-    const t = didTela('did-kep-tela', 1.5, 440, { lente: true });
+    const t = didTela('did-kep-tela', 1.5, 440, { lente: true, gira: kep.quadro !== 'armonia' });
     if (!t) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -1917,7 +2109,7 @@
   }
 
   function fiondaDisegnaPianeta() {
-    const t = didTela('did-fionda-pianeta', 1.1, 340, { lente: true, trascina: false });
+    const t = didTela('did-fionda-pianeta', 1.1, 340, { lente: true, gira: true, trascina: false });
     if (!t || !fionda.traiettoria) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -1968,7 +2160,7 @@
   }
 
   function fiondaDisegnaSole() {
-    const t = didTela('did-fionda-sole', 1.1, 340, { lente: true });
+    const t = didTela('did-fionda-sole', 1.1, 340, { lente: true, gira: true });
     if (!t || !fionda.traiettoria) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -2240,7 +2432,7 @@
   }
 
   function voyDisegnaMappa() {
-    const t = didTela('did-voy-tela', 1.45, 430, { lente: true });
+    const t = didTela('did-voy-tela', 1.45, 430, { lente: true, gira: true });
     if (!t) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -2607,7 +2799,7 @@
   }
 
   function lancioDisegna() {
-    const t = didTela('did-lancio-tela', 1.35, 470, { lente: true });
+    const t = didTela('did-lancio-tela', 1.35, 470, { lente: true, gira: true });
     if (!t || !lancio.conti) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);

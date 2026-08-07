@@ -5625,12 +5625,26 @@ body button.did-linguetta.attiva .did-linguetta-numero { background: rgba(255, 2
   font-variant-numeric: tabular-nums;
 }
 
+/* Il tasto del punto di vista dice l'inclinazione con un numero di gradi, e
+   sta più largo dei tondi: «90°» in un cerchio da trenta pixel non ci sta */
+.did-lente-giro {
+  width: auto;
+  min-width: 40px;
+  padding-inline: 8px;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .did-lente .did-lente-fattore,
 .did-lente [data-lente="meno"],
 .did-lente .did-lente-azzera { display: none; }
 .did-lente.did-lente-accesa .did-lente-fattore,
 .did-lente.did-lente-accesa [data-lente="meno"],
 .did-lente.did-lente-accesa .did-lente-azzera { display: inline-flex; }
+
+/* Dove la scena è un grafico o una carta del cielo non c'è nessun piano da
+   girare, e il tasto non compare: `.did-lente-gira` gliela dà il codice */
+.did-lente:not(.did-lente-gira) .did-lente-giro { display: none; }
 
 /* Con la lente accesa il dito, sulla tela, sposta il disegno: il puntatore
    lo dice. La tela della fionda no — lì il dito continua a spostare il
