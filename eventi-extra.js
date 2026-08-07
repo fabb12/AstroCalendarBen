@@ -5,7 +5,7 @@
 // mostrava. Non erano assenti per una scelta: erano semplicemente
 // funzioni della libreria che nessuno aveva ancora chiamato.
 //
-// Qui ci sono sei famiglie nuove, e sono tutte cose che la gente
+// Qui ci sono sette famiglie nuove, e sono tutte cose che la gente
 // riconosce e di cui parla:
 //
 //   LA SUPERLUNA. Il nome non è astronomico, è giornalistico, e proprio
@@ -30,7 +30,14 @@
 //
 //   LE COMETE che diventano abbastanza luminose da uscire a vederle.
 //
-// Ordine di caricamento: dopo app.js (usa `creaEvento`, `CATEGORIE`).
+//   LE AURORE, che sono l'eccezione: non si calcolano, si prevedono a
+//   tre giorni (il Kp del NOAA) e si aspettano nella loro stagione (gli
+//   equinozi). Sono l'unica famiglia di qui dentro che non dipende dalla
+//   meccanica celeste ma da cosa fa il Sole, e per questo il calendario
+//   non promette mai una data: dice quando vale la pena guardare.
+//
+// Ordine di caricamento: dopo app.js (usa `creaEvento`, `CATEGORIE`),
+// dopo `meteo-astro.js` (usa `aurora` e `latitudineGeomagnetica`).
 // Il gancio è una sola riga dentro `calcolaEventiIntervallo()`.
 // =====================================================================
 
@@ -414,7 +421,281 @@ function aggiungiComete(inizio, fine) {
 
 
 // =====================================================================
-// 6. IL GANCIO
+// 6. LE AURORE POLARI
+//
+//     Un'aurora non si mette in calendario come un'eclissi. L'eclissi si
+//     sa al secondo per i prossimi mille anni, perché dipende solo da
+//     dove stanno la Luna e la Terra; l'aurora dipende da cosa fa il
+//     Sole fra tre giorni, e quello non lo sa nessuno.
+//
+//     Ma due cose si sanno, e sono tutte e due vere.
+//
+//     LA PREVISIONE A TRE GIORNI. Il NOAA pubblica il Kp previsto ogni
+//     tre ore fino a tre giorni avanti (lo scarica già `meteo-astro.js`
+//     per il riquadro della dashboard). Quello è un vero appuntamento:
+//     ha una data, un'ora e un numero. Qui diventa un evento del
+//     calendario — ma solo per le notti in cui da **questa** latitudine
+//     geomagnetica qualcosa si vedrebbe davvero, e solo per le ore in
+//     cui è buio: un avviso di aurora a mezzogiorno è rumore.
+//
+//     LA STAGIONE. Le tempeste geomagnetiche non sono distribuite a
+//     caso nell'anno: attorno agli equinozi sono circa il doppio che
+//     attorno ai solstizi. Non è folklore, è l'effetto di
+//     Russell-McPherron (1973): il campo magnetico interplanetario
+//     arriva avvolto nella spirale di Parker, e in marzo e settembre
+//     l'inclinazione dell'asse terrestre lo presenta al nostro campo
+//     nel verso che favorisce la riconnessione. Marzo e settembre-
+//     ottobre sono i mesi delle aurore, e questo si può scrivere in
+//     calendario con anni di anticipo.
+//
+//     Quello che qui **non** si fa è inventare una data. Non esiste
+//     nessun modo di dire «il 14 novembre 2029 ci sarà l'aurora», e un
+//     calendario che lo scrivesse mentirebbe.
+// =====================================================================
+
+// La stessa scala del confine dell'ovale che usano `meteo-astro.js`
+// (a tabella) e `aurora-polare.js` (a retta). Scritta come retta anche
+// qui, perché serve invertita: non «dove arriva l'ovale con questo Kp»,
+// ma «che Kp ci vorrebbe per arrivare fin qui».
+const AURORA_EV_CONFINE_ZERO = 66.5;
+const AURORA_EV_CONFINE_PER_KP = 2.05;
+
+// Quanti gradi più a sud del confine si affaccia almeno il bagliore. È
+// la stessa soglia di `auroraDaQui()`: sotto l'ovale ci si sta a
+// quattro gradi di distanza, e da lì si vede la parte alta delle tende.
+const AURORA_EV_BAGLIORE = 4;
+
+// Sotto questo Kp non si scrive niente in calendario nemmeno a chi vive
+// sotto l'ovale: da Tromsø un Kp 2 è una notte come tutte le altre, e
+// segnarla come «evento» vorrebbe dire riempire il calendario di righe
+// che non aggiungono niente.
+const AURORA_EV_KP_MINIMO = 3;
+
+// Il Sole dev'essere almeno sotto il crepuscolo civile: con il Sole a
+// −3° il cielo è ancora azzurro e l'aurora più forte del secolo non si
+// vedrebbe lo stesso.
+const AURORA_EV_SOLE_MAX = -6;
+
+// Dove siamo, in coordinate che contano per l'aurora.
+function auroraCasaGeomagnetica() {
+  if (typeof luogoCorrente !== 'function' || typeof latitudineGeomagnetica !== 'function') return null;
+  const l = luogoCorrente();
+  if (!l || !isFinite(l.lat) || !isFinite(l.lon)) return null;
+  const g = latitudineGeomagnetica(l.lat, l.lon);
+  const boreale = g >= 0;
+  return {
+    lat: l.lat, lon: l.lon,
+    mia: Math.abs(g),
+    boreale,
+    nome: boreale ? 'boreale' : 'australe',
+    verso: boreale ? 'nord' : 'sud'
+  };
+}
+
+// Il Kp che ci vorrebbe da qui: uno perché l'ovale arrivi sopra la
+// testa, uno perché almeno il bagliore si affacci sull'orizzonte.
+function auroraKpNecessario(mia) {
+  return {
+    sopra: (AURORA_EV_CONFINE_ZERO - mia) / AURORA_EV_CONFINE_PER_KP,
+    bagliore: (AURORA_EV_CONFINE_ZERO - AURORA_EV_BAGLIORE - mia) / AURORA_EV_CONFINE_PER_KP
+  };
+}
+
+function auroraAltezzaSole(data, lat, lon) {
+  if (typeof Astronomy === 'undefined') return null;
+  try {
+    const obs = new Astronomy.Observer(lat, lon, 0);
+    const eq = Astronomy.Equator(Astronomy.Body.Sun, data, obs, true, true);
+    return Astronomy.Horizon(data, obs, eq.ra, eq.dec, 'normal').altitude;
+  } catch (e) { return null; }
+}
+
+function auroraNumero(v) {
+  return (Math.round(v * 10) / 10).toString().replace('.', ',');
+}
+
+// --- (a) le notti che il NOAA prevede -------------------------------
+function aurorePreviste(inizio, fine) {
+  if (typeof aurora === 'undefined' || !aurora) return;
+  const prossime = Array.isArray(aurora.prossime) ? aurora.prossime : [];
+  if (!prossime.length) return;
+
+  const casa = auroraCasaGeomagnetica();
+  if (!casa) return;
+  const serve = auroraKpNecessario(casa.mia);
+
+  // Da qui, che Kp vale la pena segnalare. Non ha senso avvisare chi sta
+  // a Bologna di un Kp 5 (l'ovale resterebbe mille chilometri più a
+  // nord), né tacere a chi sta a Tromsø un Kp 5 perché «è poco».
+  const soglia = Math.max(AURORA_EV_KP_MINIMO, serve.bagliore);
+
+  // Una notte per volta: la previsione arriva a passi di tre ore, e di
+  // una notte interessa il picco, non ogni singolo scalino. Le ore
+  // piccole appartengono ancora alla notte del giorno prima — è per
+  // questo che si toglie mezza giornata prima di prendere la data.
+  const notti = new Map();
+  prossime.forEach(p => {
+    const q = p.quando instanceof Date ? p.quando : new Date(p.quando);
+    if (isNaN(q.getTime()) || q < inizio || q > fine) return;
+    const kp = Number(p.kp);
+    if (!isFinite(kp)) return;
+    // Buio o niente: l'aurora c'è anche di giorno, e non la vede nessuno
+    const sole = auroraAltezzaSole(q, casa.lat, casa.lon);
+    if (sole === null || sole > AURORA_EV_SOLE_MAX) return;
+    const n = new Date(q.getTime() - 12 * 3600000);
+    const chiave = `${n.getFullYear()}-${n.getMonth()}-${n.getDate()}`;
+    const prima = notti.get(chiave);
+    if (!prima || kp > prima.kp) notti.set(chiave, { kp, quando: q });
+  });
+
+  notti.forEach(n => {
+    if (n.kp < soglia) return;
+    const addosso = n.kp >= serve.sopra;
+    const solaCoda = !addosso && n.kp >= serve.bagliore;
+
+    creaEvento({
+      titolo: `Aurora ${casa.nome}: Kp ${auroraNumero(n.kp)} previsto`,
+      dataObj: n.quando,
+      categoria: 'aurore',
+      colore: addosso ? '#4ade80' : '#fb7185',
+      strumento: 'occhio',
+      aurora: { kp: n.kp, previsione: true },
+      spiegazione:
+        `Il NOAA prevede un indice Kp di ${auroraNumero(n.kp)} per questa notte. ` +
+        `Da qui — ${auroraNumero(casa.mia)}° di latitudine geomagnetica — ` +
+        (addosso
+          ? `l'ovale aurorale scende sopra la tua testa: se il cielo è sereno, gli archi verdi ` +
+            `si vedono alti a ${casa.verso}, e con questa tempesta possono arrivare allo zenit.`
+          : solaCoda
+            ? `l'ovale resta oltre l'orizzonte, ma non tutto: il verde vive a 100–180 km e la ` +
+              `curvatura della Terra lo nasconde, mentre il rosso dell'ossigeno a duecento e passa ` +
+              `chilometri si affaccia lo stesso. Aspettati un bagliore rosato basso a ${casa.verso}, ` +
+              `non archi verdi — è l'aurora che si è vista dall'Italia nel maggio 2024.`
+            : `è al limite: serve un orizzonte ${casa.verso} completamente libero e buio.`) +
+        ' Le previsioni del Kp a tre giorni sbagliano spesso di un punto in su o in giù.',
+      programma: {
+        cosaPortare: 'Niente strumenti: l\'aurora è larga decine di gradi e il binocolo la taglia. ' +
+          'Semmai una macchina fotografica su treppiede — il sensore vede i colori che l\'occhio, ' +
+          'al buio, quasi non distingue.',
+        doveVederlo: `Un posto con l'orizzonte ${casa.verso} completamente sgombro e nessun paese ` +
+          'illuminato da quella parte: una cupola di luce arancione su un bagliore rosso lo cancella. ' +
+          'La costa, un crinale, un campo aperto.',
+        comeVederlo: 'Dai venti minuti agli occhi prima di giudicare, e guarda a lungo: l\'aurora ' +
+          'cambia in pochi minuti e le sottotempeste arrivano a ondate, con mezz\'ora di niente in ' +
+          'mezzo. Il momento migliore è attorno alla mezzanotte magnetica, cioè poco prima o poco ' +
+          'dopo la mezzanotte vera. Il tasto «Vedi nel planetario» ti fa vedere adesso che forma ' +
+          'avrebbe da qui.'
+      }
+    });
+  });
+}
+
+// --- (b) le due stagioni dell'anno ----------------------------------
+function auroreStagioni(inizio, fine) {
+  if (typeof Astronomy === 'undefined') return;
+  const casa = auroraCasaGeomagnetica();
+  const serve = casa ? auroraKpNecessario(casa.mia) : null;
+
+  const primo = inizio.getFullYear(), ultimo = fine.getFullYear();
+  if (ultimo - primo > 40) return;              // finestre enormi: non ha senso
+
+  for (let anno = primo; anno <= ultimo; anno++) {
+    let s;
+    try { s = Astronomy.Seasons(anno); } catch (e) { continue; }
+
+    [['marzo', s.mar_equinox.date], ['settembre', s.sep_equinox.date]].forEach(([mese, eq]) => {
+      if (!eq || eq < inizio || eq > fine) return;
+      // L'evento è la notte dell'equinozio, non l'istante: un equinozio
+      // cade spesso a mezzogiorno, e aprire il planetario lì mostrerebbe
+      // un cielo azzurro.
+      const notte = new Date(eq.getFullYear(), eq.getMonth(), eq.getDate(), 22, 30, 0);
+
+      // Il Kp che ci vorrebbe da qui, tosato alla scala: è anche quello
+      // con cui il planetario disegnerà l'ovale premendo «Vedi nel
+      // planetario», e per una data di fra due anni non c'è nessun Kp
+      // vero da mostrare — quindi tanto vale mostrare quello che serve.
+      const kpFinto = serve
+        ? Math.max(3, Math.min(9, Math.round(serve.bagliore * 10) / 10))
+        : 6;
+
+      creaEvento({
+        titolo: `Stagione delle aurore — equinozio di ${mese}`,
+        dataObj: notte,
+        categoria: 'aurore',
+        colore: '#34d399',
+        strumento: 'occhio',
+        aurora: { kp: kpFinto, stagione: true },
+        spiegazione:
+          'Attorno agli equinozi le tempeste geomagnetiche sono circa il doppio che attorno ai ' +
+          'solstizi, e non è una coincidenza: è l\'effetto di Russell-McPherron. Il campo magnetico ' +
+          'che il Sole ci soffia addosso arriva avvolto a spirale, e in marzo e in settembre ' +
+          'l\'inclinazione dell\'asse terrestre lo presenta al campo terrestre nel verso che ' +
+          'favorisce la riconnessione — che è il rubinetto da cui passa l\'energia dell\'aurora. ' +
+          'Le tre settimane attorno a questa data sono il periodo dell\'anno in cui vale la pena ' +
+          'tenere d\'occhio le previsioni. ' +
+          (casa
+            ? `Da qui, a ${auroraNumero(casa.mia)}° di latitudine geomagnetica, ` +
+              (serve.bagliore <= 6
+                ? `basta un Kp ${auroraNumero(Math.max(0, serve.bagliore))} perché qualcosa si affacci a ${casa.verso}: ` +
+                  'in una stagione buona capita più volte.'
+                : serve.bagliore <= 9
+                  ? `servirebbe un Kp ${auroraNumero(serve.bagliore)}: capita qualche volta per ciclo solare, ` +
+                    'e il maggio 2024 è stata l\'ultima.'
+                  : 'ci vorrebbe una tempesta fuori scala — dal tuo parallelo l\'aurora è una cosa ' +
+                    'da una volta ogni molte decine d\'anni.')
+            : ''),
+        programma: {
+          cosaPortare: 'Niente di speciale: l\'aurora si guarda a occhio nudo. Utile invece un ' +
+            'telefono con la notifica delle tempeste geomagnetiche, perché il preavviso vero è ' +
+            'di poche ore.',
+          doveVederlo: casa
+            ? `Serve un orizzonte ${casa.verso} libero e buio. Se abiti in pianura, il posto giusto ` +
+              'lo si sceglie una volta e ci si torna: quando arriva la tempesta non c\'è tempo di cercarlo.'
+            : 'Serve un orizzonte libero e buio verso il polo più vicino.',
+          comeVederlo: 'Non è un evento a data fissa e nessuno può prometterlo: è una stagione. ' +
+            'Il riquadro «Che cielo avrai» della dashboard mostra il Kp previsto per le prossime ' +
+            'tre notti, ed è quello il momento in cui decidere se uscire. Il banco «Aurore polari» ' +
+            'della vista Didattica spiega da dove viene tutto questo, e ti porta nel planetario ' +
+            'in un posto e in una notte in cui l\'aurora si è vista per davvero.'
+        }
+      });
+    });
+  }
+}
+
+function aggiungiAurore(inizio, fine) {
+  aurorePreviste(inizio, fine);
+  auroreStagioni(inizio, fine);
+}
+
+// Il Kp del NOAA arriva un secondo o due dopo l'avvio, quando gli eventi
+// sono già stati calcolati: senza questa funzione le notti previste non
+// entrerebbero mai in calendario. La chiama `ui-nuova.js` appena la
+// previsione è in casa.
+function aggiornaEventiAurora() {
+  if (typeof creaEvento !== 'function' || typeof inserisciEventi !== 'function') return 0;
+
+  const raccolta = [];
+  const precedente = destinazioneEventi;
+  destinazioneEventi = raccolta;
+  try {
+    // Mezza giornata indietro perché la notte in corso ci stia dentro, e
+    // quattro giorni avanti perché è fin dove arriva la previsione.
+    aurorePreviste(new Date(Date.now() - 12 * 3600000), new Date(Date.now() + 4 * 86400000));
+  } catch (e) {
+    console.warn('Eventi «aurore previste» non calcolati:', e);
+  } finally {
+    destinazioneEventi = precedente;
+  }
+
+  const aggiunti = inserisciEventi(raccolta);
+  if (aggiunti && typeof applicaFiltri === 'function') applicaFiltri();
+  return aggiunti;
+}
+
+
+// =====================================================================
+// 7. IL GANCIO
 //     Una funzione sola, che app.js chiama dentro
 //     calcolaEventiIntervallo(). Come tutte le altre famiglie di eventi,
 //     ognuna sta nel suo try/catch: se una fallisce, le altre entrano
@@ -427,7 +708,8 @@ function aggiungiEventiExtra(inizio, fine) {
     ['opposizioni', () => aggiungiOpposizioni(inizio, fine)],
     ['splendore di Venere', () => aggiungiSplendoreVenere(inizio, fine)],
     ['transiti solari', () => aggiungiTransitiSolari(inizio, fine)],
-    ['comete', () => aggiungiComete(inizio, fine)]
+    ['comete', () => aggiungiComete(inizio, fine)],
+    ['aurore', () => aggiungiAurore(inizio, fine)]
   ];
 
   famiglie.forEach(([nome, fai]) => {

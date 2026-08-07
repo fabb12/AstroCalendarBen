@@ -382,7 +382,12 @@ function inizializzaNuoveFunzioni() {
       caricaMeteoAstro().then(() => aggiornaStaseraMeteoAstro()).catch(() => {});
     }
     if (typeof caricaAurora === 'function') {
-      caricaAurora().then(() => aggiornaAvvisoAurora()).catch(() => {});
+      caricaAurora().then(() => {
+        aggiornaAvvisoAurora();
+        // La previsione del Kp arriva a eventi già calcolati: le notti che
+        // vale la pena segnare entrano in calendario adesso, non prima.
+        if (typeof aggiornaEventiAurora === 'function') aggiornaEventiAurora();
+      }).catch(() => {});
     }
   }, 1200);
 
@@ -402,6 +407,7 @@ function inizializzaNuoveFunzioni() {
         .then(() => {
           aggiornaStaseraMeteoAstro();
           aggiornaAvvisoAurora();
+          if (typeof aggiornaEventiAurora === 'function') aggiornaEventiAurora();
           return costruisciStaseraMeteo();
         })
         .catch(() => {})

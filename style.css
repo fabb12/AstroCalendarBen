@@ -6016,6 +6016,80 @@ body button.did-ponte:active { transform: translateY(1px); }
 }
 .did-vuoto.did-male { color: var(--rosso); }
 
+/* ------------------------------------------- Le mete delle aurore
+   Il banco delle aurore finisce con quattro posti e quattro notti in cui
+   l'aurora c'è stata davvero, e ognuno è un tasto che porta il planetario
+   lì. Sono schede, non righe di elenco: ognuna deve poter essere letta da
+   sola, perché la si legge per decidere dove andare. */
+.did-sottotitolo {
+  margin: 22px 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--testo);
+}
+
+.did-mete {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.did-meta {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 13px 15px;
+  border: 1px solid var(--bordo);
+  border-left: 3px solid rgba(92, 245, 160, 0.55);
+  border-radius: var(--raggio-m);
+  background: var(--incassato);
+}
+
+.did-meta-testa { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.did-meta-nome { font-size: 0.98rem; color: var(--testo); }
+.did-meta-paese { font-size: 0.75rem; color: var(--testo-3); }
+.did-meta-kp {
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--viola-velo);
+  color: var(--viola-chiaro);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Un Kp misurato e un Kp inventato non possono avere la stessa faccia:
+   due di queste notti sono tempeste vere e registrate, due sono notti
+   normali con la tempesta che di solito c'è. */
+.did-meta-kp-vero { background: rgba(52, 211, 153, 0.16); color: var(--verde); }
+
+.did-meta-quando {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--blu-chiaro);
+}
+.did-meta-testo { margin: 0; font-size: 0.78rem; line-height: 1.55; color: var(--testo-2); }
+.did-meta-testo em { font-style: italic; color: var(--testo); }
+.did-meta-esito {
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: var(--raggio-s);
+  background: rgba(92, 245, 160, 0.08);
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--testo-2);
+}
+.did-meta-esito strong { color: var(--verde); }
+.did-meta .did-tasto { justify-self: start; margin-top: 2px; }
+
+/* La riga che spiega il gesto sta sotto alla tela e non deve pesare
+   quanto le note che spiegano la fisica */
+.did-nota-gesto { margin-top: 4px; opacity: 0.85; }
+
 /* ------------------------------------------------------- Telefono */
 @media (max-width: 640px) {
   .did-intro { padding: 18px 16px 14px; }
