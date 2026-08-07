@@ -164,9 +164,9 @@
     let l = lenti.get(id);
     if (!l) {
       l = {
-        zoom: 1, x: 0, y: 0, L: 0, H: 0,
+        id, zoom: 1, x: 0, y: 0, L: 0, H: 0,
         az: 0, elev: 90, elevVoluta: 90, puoGirare: false, ultimoTs: 0,
-        tela: null, box: null, lettura: null, tastoGiro: null
+        tela: null, box: null, lettura: null, tastoGiro: null, tastoPieno: null
       };
       lenti.set(id, l);
     }
@@ -241,6 +241,153 @@
     didLenteAssesta(l);
   }
 
+  // -------------------------------------------------------------------
+  // Lo schermo intero — la scena da sola, con la sua barra
+  //
+  // Una scena che si può girare in tre dimensioni chiede spazio: dentro a
+  // un riquadro alto quattrocento pixel, il piano dei pianeti messo di
+  // taglio è una riga di due millimetri, e il viaggio della Voyager 1 che
+  // esce dal piano non si vede proprio. Da qui il ⛶: la scena si prende
+  // tutto lo schermo, e il ✕ (o Esc) la rimette dov'era.
+  //
+  // Con lei viene la **barra del tempo**. È la differenza fra un banco di
+  // prova e una figura: a schermo intero uno vuole far camminare il tempo
+  // e girare la scena insieme, e se la barra resta fuori bisogna uscire
+  // per premere play. La barra non si duplica — si sposta, e alla chiusura
+  // torna esattamente da dove era venuta (lo stesso mestiere che fa
+  // `skyRicordaPosto` in app.js, con la stessa cura per il fratello che
+  // veniva dopo).
+  //
+  // Il pieno schermo vero non c'è dappertutto — su iPhone l'API non vale
+  // per gli elementi — e allora si ripiega su una scena in `position:
+  // fixed` appesa al body, con un segnaposto che le tiene il posto. È lo
+  // stesso ripiego della mappa dell'ombra e della vista 3D.
+  // -------------------------------------------------------------------
+
+  const pieno = {
+    id: null, scena: null, segnaposto: null,
+    barra: null, barraPosto: null, guscioBarra: null, ripiego: false
+  };
+
+  function didPienoAttivo(id) { return !!id && pieno.id === id; }
+
+  // La barra che appartiene a questa scena: si sale di padre in padre finché
+  // non se ne trova una, e ci si ferma al banco. Sembra un giro largo e
+  // invece è l'unico modo che regge tutti i casi: la fionda ne ha due (il
+  // passaggio e il Grand Tour) in due schede diverse, e la scena sa a quale
+  // delle due appartiene solo per il fatto di starci dentro.
+  function didBarraDiScena(scena) {
+    let n = scena.parentElement;
+    while (n && n !== document.body) {
+      const b = n.querySelector('.did-barra');
+      if (b) return b;
+      if (n.classList.contains('did-lab')) break;
+      n = n.parentElement;
+    }
+    return null;
+  }
+
+  function didPienoAlterna(id) {
+    if (didPienoAttivo(id)) didPienoEsci();
+    else didPienoEntra(id);
+  }
+
+  function didPienoEntra(id) {
+    const c = $(id);
+    const scena = c && c.closest('.did-scena');
+    if (!scena) return;
+    if (pieno.id) didPienoEsci();
+    pieno.id = id;
+    pieno.scena = scena;
+    scena.classList.add('did-scena-piena');
+    document.body.classList.add('did-immersivo');
+
+    const barra = didBarraDiScena(scena);
+    if (barra) {
+      pieno.barra = barra;
+      pieno.barraPosto = document.createComment('barra-didattica');
+      barra.parentNode.insertBefore(pieno.barraPosto, barra);
+      const guscio = document.createElement('div');
+      guscio.className = 'did-pieno-barra';
+      guscio.appendChild(barra);
+      scena.appendChild(guscio);
+      pieno.guscioBarra = guscio;
+    }
+
+    // L'altezza fissa che `didTela` aveva messo alla tela va tolta: qui
+    // l'altezza la detta il riquadro, e una tela alta 430px in mezzo a uno
+    // schermo intero è la cosa più triste che ci sia
+    if (c.style.height) c.style.height = '';
+
+    const chiedi = scena.requestFullscreen || scena.webkitRequestFullscreen;
+    if (chiedi) {
+      try {
+        const esito = chiedi.call(scena);
+        if (esito && typeof esito.catch === 'function') esito.catch(() => didPienoRipiego());
+      } catch (e) { didPienoRipiego(); }
+    } else {
+      didPienoRipiego();
+    }
+    didLenteMostra(didLente(id));
+  }
+
+  function didPienoRipiego() {
+    if (!pieno.scena || pieno.ripiego) return;
+    pieno.ripiego = true;
+    pieno.segnaposto = document.createComment('scena-didattica');
+    pieno.scena.parentNode.insertBefore(pieno.segnaposto, pieno.scena);
+    document.body.appendChild(pieno.scena);
+    pieno.scena.classList.add('did-pieno-ripiego');
+  }
+
+  function didPienoEsci() {
+    if (!pieno.id) return;
+    const id = pieno.id, scena = pieno.scena;
+    pieno.id = null;
+    document.body.classList.remove('did-immersivo');
+
+    if (pieno.barra && pieno.barraPosto && pieno.barraPosto.parentNode) {
+      pieno.barraPosto.parentNode.replaceChild(pieno.barra, pieno.barraPosto);
+    }
+    if (pieno.guscioBarra && pieno.guscioBarra.parentNode) pieno.guscioBarra.remove();
+    pieno.barra = null; pieno.barraPosto = null; pieno.guscioBarra = null;
+
+    if (scena) {
+      scena.classList.remove('did-scena-piena', 'did-pieno-ripiego');
+      if (pieno.segnaposto && pieno.segnaposto.parentNode) {
+        pieno.segnaposto.parentNode.replaceChild(scena, pieno.segnaposto);
+      }
+    }
+    pieno.segnaposto = null;
+    pieno.ripiego = false;
+    pieno.scena = null;
+
+    const attivo = document.fullscreenElement || document.webkitFullscreenElement;
+    const esci = document.exitFullscreen || document.webkitExitFullscreen;
+    if (attivo && esci) {
+      try {
+        const esito = esci.call(document);
+        if (esito && typeof esito.catch === 'function') esito.catch(() => {});
+      } catch (e) { /* era già uscito per conto suo */ }
+    }
+    didLenteMostra(didLente(id));
+  }
+
+  // Esc, il tasto ⛶ della barra del browser, o un cambio di scheda: il
+  // pieno schermo può finire senza passare dal nostro tasto, e allora la
+  // barra resterebbe murata dentro a una scena che non è più piena.
+  document.addEventListener('fullscreenchange', didPienoControlla);
+  document.addEventListener('webkitfullscreenchange', didPienoControlla);
+  function didPienoControlla() {
+    if (!pieno.id || pieno.ripiego) return;
+    const attivo = document.fullscreenElement || document.webkitFullscreenElement;
+    if (attivo !== pieno.scena) didPienoEsci();
+  }
+  // Nel ripiego Esc non lo gestisce nessuno: qui la via d'uscita la diamo noi
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && pieno.id && pieno.ripiego) { e.preventDefault(); didPienoEsci(); }
+  });
+
   // --- Che cosa sta disegnando la tela adesso ---------------------------
   //
   // La matrice composta (giro + lente, senza il `dpr`) e l'ingrandimento,
@@ -257,6 +404,37 @@
   function didPunto(x, y) {
     if (!vista) return { x, y };
     return { x: vista.a * x + vista.c * y + vista.e, y: vista.b * x + vista.d * y + vista.f };
+  }
+
+  // --- Uscire dal piano -------------------------------------------------
+  //
+  // Le scene dei banchi sono piante, e per quasi tutto va benissimo: le
+  // orbite dei pianeti stanno in un piano, e le inclinazioni vere sono
+  // gradi che non si vedrebbero. Un viaggio però dal piano esce davvero, e
+  // di parecchio: dopo Saturno la Voyager 1 è stata scagliata trentacinque
+  // gradi sopra il piano dei pianeti, la 2 quarantotto sotto dopo Nettuno.
+  // Disegnate a picco, quelle due sonde sembrano andarsene di lato come
+  // tutte le altre — e il pezzo più bello del Grand Tour sparisce.
+  //
+  // `didQuota(h)` dice di quanto va spostato un punto **in coordinate di
+  // tela** perché venga disegnato `h` sopra al piano. Si somma alle
+  // coordinate di prima e poi si disegna come sempre: la matrice della
+  // scena ci pensa lei. Guardando a picco (elev 90°) l'offset è zero, ed è
+  // giusto — da sopra, un aereo in volo e la sua ombra sono lo stesso
+  // punto. Girando la scena il punto si stacca, e più la si mette di taglio
+  // più si stacca, fino a valere `h` pixel pieni.
+  function didQuota(h) {
+    if (!vista || !vista.gira || !h) return { x: 0, y: 0 };
+    const e = Math.max(0.5, Math.min(90, vista.elev)) * Math.PI / 180;
+    const k = h * Math.cos(e) / Math.sin(e);
+    return { x: Math.sin(vista.az) * k, y: -Math.cos(vista.az) * k };
+  }
+
+  // Lo stesso, già sommato: da un punto del piano e una quota, il punto di
+  // tela da passare ai pennelli di sempre
+  function didAlza(x, y, h) {
+    const q = didQuota(h);
+    return { x: x + q.x, y: y + q.y };
   }
 
   // Rimette la matrice nuda del riquadro: niente giro, niente lente, solo
@@ -288,7 +466,19 @@
 
   function didLenteMostra(l) {
     const girata = l.puoGirare && (l.elev < 89.5 || Math.abs(l.az) > 0.005);
-    const accesa = l.zoom > 1.001 || girata;
+    const intero = didPienoAttivo(l.id);
+    const accesa = l.zoom > 1.001 || girata || intero;
+    if (l.tastoPieno) {
+      // Lo stesso tasto fa le due cose, e da pieno dice ✕ come ogni via
+      // d'uscita dell'app: due tasti distinti, di cui uno sempre spento,
+      // sarebbero solo un tasto in più nell'angolo di un disegno
+      l.tastoPieno.textContent = intero ? '✕' : '⛶';
+      l.tastoPieno.title = intero ? 'Esci dallo schermo intero (anche con Esc)'
+        : 'Guarda la scena a schermo intero, con la sua barra del tempo';
+      l.tastoPieno.setAttribute('aria-label', l.tastoPieno.title);
+      l.tastoPieno.setAttribute('aria-pressed', intero ? 'true' : 'false');
+      l.tastoPieno.classList.toggle('did-lente-esci', intero);
+    }
     if (l.box) {
       l.box.classList.toggle('did-lente-accesa', accesa);
       l.box.classList.toggle('did-lente-gira', !!l.puoGirare);
@@ -308,12 +498,17 @@
 
   // I comandi se li appende la lente da sé al riquadro della scena: i banchi
   // scrivono solo il loro <canvas>, e il markup non va toccato
-  function didLenteComandi(c, l) {
+  function didLenteComandi(c, l, opz) {
     const scena = c.closest('.did-scena');
     if (!scena) return;
     const box = document.createElement('div');
     box.className = 'did-lente';
     box.innerHTML =
+      (opz && opz.pieno
+        ? '<button type="button" class="did-lente-tasto did-lente-pieno" data-lente="pieno" ' +
+            'title="Guarda la scena a schermo intero, con la sua barra del tempo" ' +
+            'aria-label="Schermo intero" aria-pressed="false">⛶</button>'
+        : '') +
       '<button type="button" class="did-lente-tasto did-lente-giro" data-lente="gira" ' +
         'title="Gira la scena: a picco sul piano, obliqua, di taglio. Si trascina anche col dito, come il Sistema Solare in 3D." ' +
         'aria-label="Cambia il punto di vista sul piano">90°</button>' +
@@ -325,7 +520,8 @@
     box.addEventListener('click', (e) => {
       const b = e.target.closest('[data-lente]');
       if (!b) return;
-      if (b.dataset.lente === 'azzera') didLenteAzzera(l);
+      if (b.dataset.lente === 'pieno') didPienoAlterna(l.id);
+      else if (b.dataset.lente === 'azzera') didLenteAzzera(l);
       else if (b.dataset.lente === 'gira') l.elevVoluta = didGiroProssima(l);
       else didLenteIngrandisci(l, b.dataset.lente === 'piu' ? DID_LENTE_PASSO : 1 / DID_LENTE_PASSO);
       didLenteMostra(l);
@@ -333,6 +529,7 @@
     l.box = box;
     l.lettura = box.querySelector('.did-lente-fattore');
     l.tastoGiro = box.querySelector('.did-lente-giro');
+    l.tastoPieno = box.querySelector('.did-lente-pieno');
   }
 
   function didLenteAttacca(c, id, opz) {
@@ -346,7 +543,7 @@
     // un indovinello.
     const trascina = !(opz && opz.trascina === false);
     if (!trascina) c.dataset.lenteFerma = 'si';
-    didLenteComandi(c, l);
+    didLenteComandi(c, l, opz);
     didLenteMostra(l);
 
     const dove = (e) => {
@@ -471,15 +668,22 @@
     if (!c || !c.isConnected) return null;
     const largo = Math.round(c.clientWidth || 0);
     if (largo < 40) return null;
-    let alto = Math.round(largo / proporzione);
-    if (altezzaMax) alto = Math.min(alto, altezzaMax);
+    // A schermo intero la proporzione non comanda più: la tela prende
+    // l'altezza che le lascia il riquadro (il foglio di stile la fa crescere
+    // e la barra le sta sotto), e qui la si legge invece di calcolarla
+    const intero = didPienoAttivo(id);
+    let alto = intero ? Math.round(c.clientHeight || 0) : 0;
+    if (alto < 40) {
+      alto = Math.round(largo / proporzione);
+      if (altezzaMax) alto = Math.min(alto, altezzaMax);
+    }
     const dpr = Math.min(2.5, window.devicePixelRatio || 1);
     const wPx = Math.round(largo * dpr), hPx = Math.round(alto * dpr);
     if (c.width !== wPx || c.height !== hPx) { c.width = wPx; c.height = hPx; }
-    if (c.style.height !== alto + 'px') c.style.height = alto + 'px';
+    if (!intero && c.style.height !== alto + 'px') c.style.height = alto + 'px';
     const ctx = c.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    vista = { dpr, zoom: 1, a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+    vista = { dpr, zoom: 1, a: 1, b: 0, c: 0, d: 1, e: 0, f: 0, gira: false, az: 0, elev: 90 };
     // Le tele che hanno la lente la agganciano qui, al primo fotogramma in
     // cui esistono davvero: prima di allora il riquadro è nascosto, largo
     // zero, e non c'è niente a cui appendere i comandi.
@@ -498,10 +702,13 @@
       // quello che si aspetta il dito
       const m = didGiroMatrice(l, largo, alto);
       const z = l.zoom;
+      const occhio = { gira, az: l.az, elev: l.elev };
       if (m) {
-        vista = { dpr, zoom: z, a: z * m.a, b: z * m.b, c: z * m.c, d: z * m.d, e: z * m.e + l.x, f: z * m.f + l.y };
+        vista = { dpr, zoom: z, a: z * m.a, b: z * m.b, c: z * m.c, d: z * m.d, e: z * m.e + l.x, f: z * m.f + l.y, ...occhio };
       } else if (z !== 1 || l.x || l.y) {
-        vista = { dpr, zoom: z, a: z, b: 0, c: 0, d: z, e: l.x, f: l.y };
+        vista = { dpr, zoom: z, a: z, b: 0, c: 0, d: z, e: l.x, f: l.y, ...occhio };
+      } else {
+        Object.assign(vista, occhio);
       }
       ctx.setTransform(dpr * vista.a, dpr * vista.b, dpr * vista.c, dpr * vista.d,
         dpr * vista.e, dpr * vista.f);
@@ -619,8 +826,22 @@
     // scena di taglio, «Terra» diventerebbe una riga alta due pixel e
     // inclinata. Il posto lo dà la proiezione, il resto è schermo. La lente
     // invece se la tengono — sotto una lente cresce tutto, scritte comprese.
-    const p = didPunto(x, y);
-    const k = vista ? vista.zoom : 1;
+    //
+    // Due opzioni, e nascono tutt'e due dallo stesso inciampo. `schermo`
+    // salta la proiezione: le scritte appoggiate a un angolo della tela —
+    // l'anno, la riga delle velocità — sono etichette del riquadro, non
+    // cose che stanno nella scena, e girando la scena andavano a spasso.
+    // `dx`/`dy` sono uno scostamento **dopo** la proiezione: scansare una
+    // scritta di dodici pixel sopra al suo pallino, dentro alla matrice,
+    // con la scena quasi di taglio diventa uno scostamento di due — e due
+    // etichette che dovevano stare una sopra l'altra si stampavano una
+    // sull'altra.
+    // Un'etichetta del riquadro non cresce con la lente: è scritta sul
+    // vetro, non sul disegno
+    const k = opz.schermo ? 1 : (vista ? vista.zoom : 1);
+    const p = opz.schermo ? { x, y } : didPunto(x, y);
+    if (opz.dx) p.x += opz.dx * k;
+    if (opz.dy) p.y += opz.dy * k;
     ctx.save();
     didSchermo(ctx);
     ctx.font = `${opz.peso || 600} ${(opz.misura || 11) * k}px ${opz.mono ? 'ui-monospace, SFMono-Regular, monospace' : 'system-ui, -apple-system, sans-serif'}`;
@@ -790,6 +1011,12 @@
   function didDataBreve(d) { return `${d.getDate()} ${MESI_BREVI[d.getMonth()]} ${d.getFullYear()}`; }
   function didDataCorta(d) { return `${d.getDate()} ${MESI_BREVI[d.getMonth()]}`; }
   function num(v, dec = 1) { return Number(v).toFixed(dec).replace('.', ','); }
+  // I chilometri di un'orbita si scrivono a gruppi di tre: «1266870» non si
+  // legge, «1.266.870» sì. Serve solo al pannello dei conti della fionda,
+  // dove i numeri sono grossi e devono restare confrontabili a occhio.
+  function numMila(v, dec = 0) {
+    return Number(v).toLocaleString('it-IT', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
 
   // L'istante da cui parte tutto: è l'orologio del planetario, non quello
   // del computer. Se qualcuno ha spostato il tempo di là, il laboratorio
@@ -1155,7 +1382,7 @@
   }
 
   function retroDisegnaElio() {
-    const t = didTela('did-retro-elio', 1, 400, { lente: true, gira: true });
+    const t = didTela('did-retro-elio', 1, 400, { lente: true, gira: true, pieno: true });
     if (!t || !retro.campioni) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -1425,6 +1652,7 @@
         const b = e.target.closest('[data-quadro]');
         if (!b) return;
         quadri.querySelectorAll('[data-quadro]').forEach(x => x.classList.toggle('attiva', x === b));
+        didPienoEsci();
         kep.quadro = b.dataset.quadro;
         kepAggiornaComandi();
       });
@@ -1569,7 +1797,7 @@
   }
 
   function kepDisegna() {
-    const t = didTela('did-kep-tela', 1.5, 440, { lente: true, gira: kep.quadro !== 'armonia' });
+    const t = didTela('did-kep-tela', 1.5, 440, { lente: true, gira: kep.quadro !== 'armonia', pieno: true });
     if (!t) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -1758,12 +1986,14 @@
   };
 
   // Il GM dei pianeti (km³/s²) e la loro velocità orbitale media (km/s):
-  // sono i due numeri che decidono quanto si può guadagnare
+  // sono i due numeri che decidono quanto si può guadagnare. `muTesto` è lo
+  // stesso μ scritto come si scrive a mano, che nel pannello dei conti
+  // vale più di 126687000.
   const FIONDA_PIANETI = {
-    Venus:   { mu: 3.24859e5, vOrb: 35.02, raggio: 6052,  nome: 'Venere',  colore: '#e8cf9a' },
-    Earth:   { mu: 3.98600e5, vOrb: 29.78, raggio: 6371,  nome: 'Terra',   colore: '#4c8dff' },
-    Jupiter: { mu: 1.26687e8, vOrb: 13.07, raggio: 69911, nome: 'Giove',   colore: '#e0a367' },
-    Saturn:  { mu: 3.79312e7, vOrb: 9.68,  raggio: 58232, nome: 'Saturno', colore: '#e3d6a3' }
+    Venus:   { mu: 3.24859e5, vOrb: 35.02, raggio: 6052,  nome: 'Venere',  colore: '#e8cf9a', muTesto: '3,24859 × 10⁵' },
+    Earth:   { mu: 3.98600e5, vOrb: 29.78, raggio: 6371,  nome: 'Terra',   colore: '#4c8dff', muTesto: '3,98600 × 10⁵' },
+    Jupiter: { mu: 1.26687e8, vOrb: 13.07, raggio: 69911, nome: 'Giove',   colore: '#e0a367', muTesto: '1,26687 × 10⁸' },
+    Saturn:  { mu: 3.79312e7, vOrb: 9.68,  raggio: 58232, nome: 'Saturno', colore: '#e3d6a3', muTesto: '3,79312 × 10⁷' }
   };
 
   laboratorio({
@@ -1774,12 +2004,14 @@
     sommario: `Una sonda che passa vicino a un pianeta ne esce con la stessa velocità con cui è entrata —
       ma solo per chi guarda dal pianeta. Per chi guarda dal Sole la sonda è più veloce, e il pianeta
       un pochino più lento: la velocità non si crea, si prende in prestito. Guarda le due tele insieme,
-      è tutta lì la differenza.`,
+      è tutta lì la differenza. Nella terza scheda ci sono i conti, uno per uno, con i tuoi numeri
+      dentro.`,
 
     costruisci() {
       return `
         <div class="segmenti-cielo did-quadri" id="did-fionda-schede">
           <button type="button" class="tasto-segmento attiva" data-scheda="sim">Il banco di prova</button>
+          <button type="button" class="tasto-segmento" data-scheda="conti">Come si calcola</button>
           <button type="button" class="tasto-segmento" data-scheda="voyager">Il Grand Tour delle Voyager</button>
         </div>
 
@@ -1824,16 +2056,50 @@
             { id: 'did-fionda-prima', nome: 'Velocità prima (dal Sole)', forte: true },
             { id: 'did-fionda-dopo', nome: 'Velocità dopo (dal Sole)', forte: true },
             { id: 'did-fionda-guadagno', nome: 'Guadagno netto', forte: true },
-            { id: 'did-fionda-dev', nome: 'Di quanto viene piegata' },
+            { id: 'did-fionda-dev', nome: 'Di quanto viene piegata (δ)' },
             { id: 'did-fionda-peri', nome: 'Passaggio più stretto' },
-            { id: 'did-fionda-max', nome: 'Massimo teorico da questo pianeta' }
+            { id: 'did-fionda-vperi', nome: 'Quanto va forte là in mezzo' },
+            { id: 'did-fionda-max', nome: 'Il massimo da questa rotta' }
           ])}
 
           <p class="did-spiega" id="did-fionda-spiega">—</p>
-          <p class="did-nota">Il massimo teorico è il doppio della velocità orbitale del pianeta, e si
-            otterrebbe solo con una deviazione di 180°: impossibile, perché prima si toccherebbe la
-            superficie. Ed è per questo che le fionde si fanno a Giove: non perché sia grosso, ma perché è
-            grosso <em>e</em> si muove — Saturno pesa un terzo e viaggia più piano, e infatti rende meno.</p>
+          <p class="did-nota">Arrivando di traverso alla corsa del pianeta — come qui — il massimo non si
+            ottiene con la deviazione più forte possibile ma con una deviazione di <strong>90°</strong>, e
+            vale <em>v∞ + V − √(v∞² + V²)</em>: piegare di più vuol dire ributtare indietro velocità appena
+            guadagnata. Il tetto assoluto, potendo scegliere anche da che parte arrivare, è due volte la più
+            piccola fra la velocità della sonda e quella del pianeta. Ed è per questo che le fionde si fanno
+            a Giove: non perché sia grosso, ma perché è grosso <em>e</em> si muove — Saturno pesa un terzo e
+            viaggia più piano, e infatti rende meno.</p>
+        </div>
+
+        <div id="did-fionda-conti" class="hidden">
+          <p class="did-spiega"><strong>Prima, senza formule.</strong> Tira una pallina contro un treno
+            che ti viene incontro. Per il macchinista la pallina arriva a una certa velocità e rimbalza
+            via con la stessa: il treno non se ne accorge nemmeno. Ma il treno, intanto, si è mosso — e
+            per te che stai a bordo strada la pallina torna indietro con la sua velocità <em>più due
+            volte</em> quella del treno. Non l'ha spinta nessuno: è cambiato chi guarda.
+            La fionda gravitazionale è quella pallina. Il pianeta è il treno, e al posto della lamiera
+            c'è la gravità: non tocca, ma piega — e per il resto il conto è identico.</p>
+
+          <h4 class="did-sottotitolo">I cinque numeri che servono</h4>
+          <p class="did-nota">Tre li dà il pianeta e stanno sulle tabelle; due li scegli tu, e sono le
+            due slitte del banco di prova. Non serve altro: né la massa della sonda (non compare mai),
+            né dove si trova il Sole.</p>
+          <div class="did-dati" id="did-fionda-dati"></div>
+
+          <h4 class="did-sottotitolo">Il conto, in sei passi</h4>
+          <p class="did-nota">Sono i numeri che hai adesso sulle slitte: cambia una slitta nell'altra
+            scheda e qui cambia tutto, riga per riga.</p>
+          <div class="did-passi" id="did-fionda-passi"></div>
+
+          <p class="did-spiega" id="did-fionda-tetto">—</p>
+
+          <p class="did-nota">Due cose che stupiscono, e sono tutt'e due vere. <strong>La massa della
+            sonda non compare</strong>: la fionda funziona identica per una sonda da una tonnellata e per
+            un sasso, perché la gravità accelera tutti allo stesso modo. E <strong>l'energia si
+            conserva</strong>: quella che la sonda guadagna il pianeta la perde, rallentando sulla propria
+            orbita. Voyager 2 ha rubato a Giove tanta velocità da spostarlo — di circa un miliardesimo di
+            miliardesimo di millimetro al secondo.</p>
         </div>
 
         <div id="did-fionda-voyager" class="hidden">
@@ -1842,6 +2108,12 @@
             <figcaption class="did-targhetta">Il Grand Tour, 1977 – 1990 · posizioni planetarie reali</figcaption>
           </figure>
 
+          <p class="did-nota did-nota-gesto"><strong>Girala col dito</strong> (o col tasto dei gradi in alto
+            a destra, o trascinando col mouse): vista a picco questa è una pianta, e la cosa più bella del
+            viaggio non si vede. Mettila di taglio e guarda la <strong>Voyager 1 staccarsi dal piano dei
+            pianeti</strong> dopo Saturno, e la 2 tuffarcisi sotto dopo Nettuno. Col ⛶ la scena si prende
+            tutto lo schermo, barra del tempo compresa.</p>
+
           <figure class="did-scena did-scena-bassa">
             <canvas id="did-voy-grafico" class="did-tela"></canvas>
             <figcaption class="did-targhetta">La velocità rispetto al Sole, incontro dopo incontro</figcaption>
@@ -1849,18 +2121,25 @@
 
           ${didBarra('did-voy', { min: 1977, max: 1990.5, passo: 0.02, valore: 1977.6, etichettaSlitta: 'Scorri gli anni' })}
 
+          <div class="did-linea-tempo" id="did-voy-linea"></div>
+
           ${didLetture([
             { id: 'did-voy-quando', nome: 'Siamo nel', forte: true },
-            { id: 'did-voy-1', nome: 'Voyager 1', forte: true },
-            { id: 'did-voy-2', nome: 'Voyager 2', forte: true },
+            { id: 'did-voy-1', nome: 'Voyager 1 · velocità', forte: true },
+            { id: 'did-voy-d1', nome: 'Voyager 1 · dov\'è' },
+            { id: 'did-voy-2', nome: 'Voyager 2 · velocità', forte: true },
+            { id: 'did-voy-d2', nome: 'Voyager 2 · dov\'è' },
             { id: 'did-voy-prossimo', nome: 'Prossimo incontro' }
           ])}
 
           <p class="did-spiega" id="did-voy-spiega">—</p>
-          <p class="did-nota">Le posizioni dei quattro giganti sono quelle vere, calcolate anno per anno:
-            l'allineamento del Grand Tour — che si ripresenta una volta ogni 176 anni — è quello che c'era
-            davvero. Le date degli incontri sono esatte. La traiettoria fra un incontro e l'altro è
-            stilizzata, e i valori di velocità sono i valori indicativi ricostruiti dalle carte JPL.</p>
+          <p class="did-nota">Le posizioni dei quattro giganti sono quelle vere, calcolate anno per anno,
+            <strong>z compresa</strong>: l'allineamento del Grand Tour — che si ripresenta una volta ogni
+            176 anni — è quello che c'era davvero. Le date degli incontri, le distanze di massimo
+            avvicinamento e le due inclinazioni di fuga (35° sopra il piano per la 1, 48° sotto per la 2)
+            sono esatte. La traiettoria fra un incontro e l'altro è stilizzata — passa per i punti veri nei
+            giorni veri, ma la curva che li unisce è disegnata — e i valori di velocità sono quelli
+            indicativi ricostruiti dalle carte JPL.</p>
         </div>
 
         ${didPonti([
@@ -1875,10 +2154,14 @@
         const b = e.target.closest('[data-scheda]');
         if (!b) return;
         schede.querySelectorAll('[data-scheda]').forEach(x => x.classList.toggle('attiva', x === b));
+        didPienoEsci();
         fionda.scheda = b.dataset.scheda;
-        const s = $('did-fionda-sim'), v = $('did-fionda-voyager');
-        if (s) s.classList.toggle('hidden', fionda.scheda !== 'sim');
-        if (v) v.classList.toggle('hidden', fionda.scheda !== 'voyager');
+        [['did-fionda-sim', 'sim'], ['did-fionda-conti', 'conti'], ['did-fionda-voyager', 'voyager']]
+          .forEach(([id, quale]) => {
+            const n = $(id);
+            if (n) n.classList.toggle('hidden', fionda.scheda !== quale);
+          });
+        if (fionda.scheda === 'conti') fiondaConti();
       });
 
       collegaBarra('did-fionda', fionda, {
@@ -1942,10 +2225,17 @@
       if (!fionda.traiettoria) fiondaCalcola();
       alterna('did-fionda', fionda.marcia);
       alterna('did-voy', fionda.voyMarcia);
+      // La linea del tempo si costruisce qui e non in `collega()`: ha
+      // bisogno delle posizioni dei pianeti, e quelle arrivano da
+      // Astronomy Engine, che alla costruzione del banco può non esserci
+      // ancora
+      voyCostruisciLinea();
       voyNumeri();
+      fiondaConti();
     },
 
     passo(dt) {
+      if (fionda.scheda === 'conti') return;   // qui non cammina niente: sono conti
       if (fionda.scheda === 'sim') {
         if (!fionda.marcia) return;
         fionda.t += dt * 0.16 * fionda.velocita;
@@ -1963,35 +2253,102 @@
 
     disegna() {
       if (fionda.scheda === 'sim') { fiondaDisegnaPianeta(); fiondaDisegnaSole(); fiondaDisegnaVettori(); }
-      else { voyDisegnaMappa(); voyDisegnaGrafico(); }
+      else if (fionda.scheda === 'voyager') { voyDisegnaMappa(); voyDisegnaGrafico(); }
     }
   });
 
+  // -------------------------------------------------------------- i conti
+  //
+  // Tutta la fionda sta in cinque righe di formule, e vale la pena tenerle
+  // separate dal disegno: sono loro che il pannello «Come si calcola»
+  // mostra, e sono loro che rispondono senza integrare niente.
+  //
+  //   a  = μ / v∞²              il semiasse dell'iperbole
+  //   e  = √(1 + (b/a)²)        l'apertura — b è il parametro d'impatto
+  //   δ  = 2·arcsin(1/e)        di quanto la traiettoria viene piegata
+  //   rp = a·(e − 1)            il passaggio più stretto
+  //   vp = √(v∞² + 2μ/rp)       quanto va forte là in mezzo
+  //
+  // Attenzione a un inciampo che c'era e ha resistito a lungo: la formula
+  // scritta qui sopra vuole il **parametro d'impatto**, e la sua sorella
+  // `e = 1 + rp·v∞²/μ` vuole il **perielio**. Mescolarle — usare b dentro
+  // alla seconda — dà un numero perfettamente plausibile e completamente
+  // sbagliato: per Giove a 15 raggi con 10 km/s diceva 66° dove la
+  // traiettoria ne fa 101. Il controllo vero è il perielio: quello che
+  // esce dalla formula e quello che misura l'integrazione devono
+  // coincidere alla terza cifra, e adesso lo fanno.
+  function fiondaIperbole(P, bRaggi, vInf) {
+    const b = Math.abs(bRaggi) * P.raggio;
+    const a = P.mu / (vInf * vInf);
+    const e = Math.sqrt(1 + (b / a) * (b / a));
+    const peri = a * (e - 1);
+    return {
+      b, a, e, peri,
+      verso: bRaggi >= 0 ? 1 : -1,        // dietro (+) o davanti (−) al pianeta
+      h: b * vInf,                        // momento angolare per unità di massa
+      dev: 2 * Math.asin(1 / e),          // radianti
+      vPeri: Math.sqrt(vInf * vInf + 2 * P.mu / peri)
+    };
+  }
+
+  // Lo stato di partenza, preso **sull'iperbole** e non a occhio.
+  //
+  // La prima versione metteva la sonda in (−d, −b) con velocità (v∞, 0),
+  // cioè la appoggiava sull'asintoto invece che sull'orbita, e a quel
+  // punto né v∞ né b erano più quelli chiesti: a 220 raggi da Giove la
+  // velocità di caduta è già il 4% in più, e il parametro d'impatto vero
+  // (h/v∞) usciva di un raggio e mezzo più largo. Qui si fa il contrario:
+  // si parte dalla coppia (v∞, b) che l'utente ha scelto, si scrive
+  // l'orbita che ne segue, e si va a prendere il punto in cui quell'orbita
+  // passa a distanza `d`. Così i numeri del pannello dei conti e la curva
+  // disegnata parlano dello stesso volo.
+  function fiondaPartenza(P, ip, d) {
+    const p = ip.a * (ip.e * ip.e - 1);
+    // anomalia vera alla distanza d, sul ramo in arrivo (negativa)
+    const nu = -Math.acos(Math.max(-1, Math.min(1, (p / d - 1) / ip.e)));
+    const k = P.mu / ip.h;
+    const px = d * Math.cos(nu), py = d * Math.sin(nu);
+    const pvx = -k * Math.sin(nu), pvy = k * (ip.e + Math.cos(nu));
+    // Si gira tutto perché l'asintoto d'arrivo sia orizzontale: la sonda
+    // deve entrare da sinistra, che è come la guarda il disegno
+    const nuInf = Math.acos(-1 / ip.e);
+    const th = Math.atan2(ip.e - 1 / ip.e, Math.sin(nuInf));
+    const c = Math.cos(-th), s = Math.sin(-th);
+    return {
+      x: c * px - s * py,
+      y: ip.verso * (s * px + c * py),
+      vx: c * pvx - s * pvy,
+      vy: ip.verso * (s * pvx + c * pvy)
+    };
+  }
+
   // Il passaggio si calcola una volta sola quando cambiano i comandi, non
-  // a ogni fotogramma: quattromila passi di integrazione sono niente da
-  // fare una volta e sono troppi da fare sessanta volte al secondo. Dopo,
-  // il tempo che cammina si limita a leggere l'ennesimo punto — e la
-  // slitta può scorrere avanti e indietro senza che la sonda «derivi».
+  // a ogni fotogramma: qualche migliaio di passi di integrazione sono
+  // niente da fare una volta e sono troppi da fare sessanta volte al
+  // secondo. Dopo, il tempo che cammina si limita a leggere il punto
+  // dell'istante — e la slitta può scorrere avanti e indietro senza che la
+  // sonda «derivi».
   function fiondaCalcola() {
     const P = FIONDA_PIANETI[fionda.pianeta];
-    const bKm = fionda.b * P.raggio;
     const v0 = fionda.vInf;
-    // Si parte abbastanza lontano perché il pianeta non conti quasi
-    // niente: dieci volte la distanza a cui la sua gravità piega
-    const dIniziale = Math.max(Math.abs(bKm) * 6, P.raggio * 220);
-    const dt = Math.max(2, dIniziale / v0 / 900);   // passo in secondi
+    const ip = fiondaIperbole(P, fionda.b, v0);
 
-    // La sonda parte sotto al pianeta quando il parametro d'impatto è
-    // positivo, ed è una scelta di segno che conta: il pianeta si muove
-    // verso l'alto (+y), quindi «sotto» vuol dire passargli dietro, dalla
-    // parte che sta lasciando — e passare dietro è la manovra che fa
-    // guadagnare. Con la slitta a destra si guadagna, a sinistra si
-    // frena: è l'unico verso che uno si aspetta.
-    let x = -dIniziale, y = -bKm, vx = v0, vy = 0;
+    // Si parte abbastanza lontano perché il pianeta conti poco, ma non
+    // così lontano da passare metà del filmato in mezzo al niente
+    const dIniziale = Math.max(ip.b * 6, P.raggio * 220, ip.peri * 6);
+    const p0 = fiondaPartenza(P, ip, dIniziale);
+    let { x, y, vx, vy } = p0;
     const punti = [{ x, y, vx, vy, t: 0 }];
     let t = 0, peri = Infinity, schianto = false;
+    let ux = x, uy = y;                       // ultimo punto messo da parte
+    const passoDisegno = dIniziale / 500;     // ogni quanto salvare un punto
 
-    for (let i = 0; i < 20000; i++) {
+    // Il passo si accorcia avvicinandosi: lontano non succede niente e un
+    // passo lungo va benissimo, al perielio la sonda gira di novanta gradi
+    // in poche ore e un passo lungo tagliava la curva — il perielio usciva
+    // più largo del vero e la deviazione più debole
+    const passoBase = dIniziale / v0 / 900;
+    for (let i = 0; i < 60000; i++) {
       // Velocity-Verlet: conserva l'energia molto meglio di Eulero, e su
       // un'iperbole si vede subito — con Eulero la sonda usciva più lenta
       // di quanto era entrata anche nel riferimento del pianeta, che è
@@ -2000,6 +2357,7 @@
       const r = Math.sqrt(r2);
       peri = Math.min(peri, r);
       if (r < P.raggio) { schianto = true; break; }
+      const dt = Math.max(0.5, passoBase * Math.pow(r / dIniziale, 1.5));
       const a = -P.mu / (r2 * r);
       const ax = a * x, ay = a * y;
       const xn = x + vx * dt + 0.5 * ax * dt * dt;
@@ -2011,49 +2369,91 @@
       vy += 0.5 * (ay + an * yn) * dt;
       x = xn; y = yn;
       t += dt;
-      if (i % 6 === 0) punti.push({ x, y, vx, vy, t });
+      // I punti si mettono da parte a distanza, non a numero di passi: la
+      // curva disegnata vuole punti fitti uguale dappertutto, e col passo
+      // che si accorcia vicino al pianeta «uno ogni sei» ne avrebbe
+      // ammucchiati mille sul perielio e dieci sulle due gambe dritte
+      if (Math.hypot(x - ux, y - uy) > passoDisegno) {
+        punti.push({ x, y, vx, vy, t });
+        ux = x; uy = y;
+      }
       // Si smette quando si è tornati lontani **e** ci si sta
       // allontanando. La prima versione chiedeva anche `x > 0`, e con una
       // deviazione forte — che è il caso interessante — la sonda esce
       // all'indietro e quella condizione non si avverava mai: il ciclo
-      // andava fino in fondo ai ventimila passi e la velocità finale era
+      // andava fino in fondo ai passi disponibili e la velocità finale era
       // presa chissà dove.
       if (r > dIniziale && (x * vx + y * vy) > 0) break;
     }
     punti.push({ x, y, vx, vy, t });
+
+    // Le velocità **da lontano**, che sono quelle di cui parla la fionda:
+    // in arrivo (v∞, 0), in uscita la stessa ruotata di δ. Il verso della
+    // rotazione lo dà la parte da cui si passa, ed è tutta lì la
+    // differenza fra guadagnare e restituire.
+    const dev = ip.dev;
+    const vIn = { x: v0, y: 0 };
+    const vOut = { x: v0 * Math.cos(dev), y: ip.verso * v0 * Math.sin(dev) };
 
     // Nel riferimento del Sole: si somma la velocità del pianeta. Il
     // pianeta va lungo +y, la sonda arriva lungo +x — così la geometria
     // «davanti/dietro» è quella dei libri e il segno del parametro
     // d'impatto decide se si guadagna o si perde.
     const V = P.vOrb;
-    const primaSole = Math.hypot(punti[0].vx, punti[0].vy + V);
-    const ultimo = punti[punti.length - 1];
-    const dopoSole = Math.hypot(ultimo.vx, ultimo.vy + V);
-
-    // L'angolo di deviazione analitico dell'iperbole: sin(δ/2) = 1/(1+b·v∞²/μ)
-    const dev = 2 * Math.asin(1 / (1 + Math.abs(bKm) * v0 * v0 / P.mu)) * GRADI;
+    const primaSole = Math.hypot(vIn.x, vIn.y + V);
+    const dopoSole = Math.hypot(vOut.x, vOut.y + V);
 
     fionda.traiettoria = {
-      punti, schianto, peri, primaSole, dopoSole, dev,
+      punti, schianto, dev: dev * GRADI, ecc: ip.e, semiasse: ip.a,
+      bKm: ip.b, verso: ip.verso, vInf: v0, vIn, vOut,
+      peri: schianto ? peri : ip.peri,
+      periRaggi: (schianto ? peri : ip.peri) / P.raggio,
+      periInt: peri, vPeri: ip.vPeri,
+      primaSole, dopoSole,
       guadagno: dopoSole - primaSole,
-      max: 2 * V,
+      // Il salto della velocità *relativa al pianeta*: la corda dell'arco
+      // di cerchio percorso dalla punta del vettore. È lo stesso numero in
+      // tutti e due i riferimenti, ed è il massimo che si può spostare
+      dvRel: 2 * v0 * Math.sin(dev / 2),
+      // Il massimo di questa rotta: arrivando di traverso, prima vale
+      // sempre √(v∞²+V²) e dopo al più v∞+V, cioè con δ = 90°
+      max: v0 + V - Math.hypot(v0, V),
+      // Il massimo assoluto, potendo scegliere anche da dove arrivare
+      maxAssoluto: 2 * Math.min(v0, V),
+      tTot: t,
       vOrb: V,
       raggio: P.raggio,
+      mu: P.mu,
       colore: P.colore,
       nome: P.nome,
-      periRaggi: peri / P.raggio
+      muTesto: P.muTesto
     };
     fionda.t = 0;
     const s = $('did-fionda-slitta'); if (s) s.value = '0';
     fiondaNumeri();
   }
 
+  // Il punto dell'istante mostrato. Si cerca **per tempo**, non per
+  // indice: i punti sono equidistanti nello spazio, e la sonda quello
+  // spazio non lo percorre a velocità costante — scorrendo per indice si
+  // vedeva la sonda rallentare proprio al perielio, cioè fare il
+  // contrario di quello che fa.
   function fiondaPunto() {
     const tr = fionda.traiettoria;
-    if (!tr) return null;
-    const i = Math.max(0, Math.min(tr.punti.length - 1, Math.round(fionda.t * (tr.punti.length - 1))));
-    return tr.punti[i];
+    if (!tr || !tr.punti.length) return null;
+    const pu = tr.punti;
+    const t = fionda.t * tr.tTot;
+    let lo = 0, hi = pu.length - 1;
+    while (lo < hi - 1) {
+      const m = (lo + hi) >> 1;
+      if (pu[m].t <= t) lo = m; else hi = m;
+    }
+    const a = pu[lo], b = pu[hi];
+    const f = b.t > a.t ? Math.max(0, Math.min(1, (t - a.t) / (b.t - a.t))) : 0;
+    return {
+      x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f,
+      vx: a.vx + (b.vx - a.vx) * f, vy: a.vy + (b.vy - a.vy) * f, t
+    };
   }
 
   function fiondaNumeri() {
@@ -2071,11 +2471,14 @@
       scrivi('did-fionda-guadagno', '—', 'rosso');
       scrivi('did-fionda-dev', '—');
       scrivi('did-fionda-peri', 'impatto');
-      scrivi('did-fionda-max', `${num(tr.max, 1)} km/s`);
+      scrivi('did-fionda-vperi', '—');
+      scrivi('did-fionda-max', `+ ${num(tr.max, 2)} km/s`);
       const sp = $('did-fionda-spiega');
       if (sp) sp.innerHTML = `Troppo stretto: la sonda ha colpito ${tr.nome}. È il limite vero della fionda —
-        più si passa vicino più si viene deviati, ma sotto la superficie non si passa. Allarga il
-        parametro d'impatto.`;
+        più si passa vicino più si viene deviati, ma sotto la superficie non si passa. La formula lo dice
+        prima ancora di provare: il perielio <em>r<sub>p</sub> = a·(e − 1)</em> viene
+        ${num(tr.periRaggi, 2)} raggi, e il pianeta ne occupa uno. Allarga il parametro d'impatto.`;
+      fiondaConti();
       return;
     }
 
@@ -2084,11 +2487,13 @@
     scrivi('did-fionda-guadagno', `${tr.guadagno >= 0 ? '+' : '−'}${num(Math.abs(tr.guadagno), 2)} km/s`,
       tr.guadagno >= 0 ? 'verde' : 'rosso');
     scrivi('did-fionda-dev', `${num(tr.dev, 1)}°`);
-    scrivi('did-fionda-peri', `${num(tr.periRaggi, 1)} raggi di ${tr.nome} · ${num(tr.peri / 1000, 0)} mila km`);
-    scrivi('did-fionda-max', `± ${num(tr.max, 1)} km/s (2 × ${num(tr.vOrb, 1)})`);
+    scrivi('did-fionda-peri', `${num(tr.periRaggi, 1)} raggi di ${tr.nome} · ${numMila(tr.peri)} km`);
+    scrivi('did-fionda-vperi', `${num(tr.vPeri, 1)} km/s`);
+    scrivi('did-fionda-max', `+ ${num(tr.max, 2)} km/s (con δ = 90°)`);
     const p = fiondaPunto();
     const lettura = $('did-fionda-lettura');
     if (lettura && p) lettura.textContent = `${num(p.t / 86400, 1)} g`;
+    fiondaConti();
 
     const sp = $('did-fionda-spiega');
     if (!sp) return;
@@ -2108,8 +2513,120 @@
          portare. Prova a mandare la sonda dall'altra parte, e il segno cambia.`;
   }
 
+  // ------------------------------------------- «Come si calcola», dal vivo
+  //
+  // Le stesse formule di `fiondaIperbole`, ma scritte con dentro i numeri
+  // che ci sono adesso sulle slitte. È la differenza fra leggere
+  // «δ = 2·arcsin(1/e)» e vedere che con Giove, quindici raggi e dieci
+  // km/s viene centouno gradi: la formula da sola non convince nessuno,
+  // la formula col proprio caso dentro sì.
+  //
+  // Si ricostruisce solo quando la scheda è a schermo: girando la slitta
+  // del parametro d'impatto `fiondaCalcola` gira decine di volte al
+  // secondo, e riscrivere due dozzine di nodi che nessuno sta guardando è
+  // lavoro buttato.
+  function fiondaConti() {
+    if (fionda.scheda !== 'conti') return;
+    const tr = fionda.traiettoria;
+    const dati = $('did-fionda-dati'), passi = $('did-fionda-passi'), tetto = $('did-fionda-tetto');
+    if (!tr || !dati || !passi) return;
+    const v0 = tr.vInf, V = tr.vOrb;
+
+    const riga = (simbolo, nome, valore, nota) => `
+      <div class="did-dato">
+        <span class="did-dato-simbolo">${simbolo}</span>
+        <span class="did-dato-nome">${nome}</span>
+        <strong class="did-dato-valore">${valore}</strong>
+        <span class="did-dato-nota">${nota}</span>
+      </div>`;
+
+    dati.innerHTML =
+      riga('μ', `Quanto tira ${tr.nome}`, `${tr.muTesto} km³/s²`,
+        `La massa del pianeta moltiplicata per la costante di gravitazione. Si usa sempre il prodotto,
+         mai i due numeri separati: è lui che si misura davvero, guardando una luna girare.`) +
+      riga('R', `Il raggio di ${tr.nome}`, `${numMila(tr.raggio)} km`,
+        'Il muro: sotto non si passa, e infatti è lui a mettere il limite a tutta la manovra.') +
+      riga('V', `Quanto corre ${tr.nome}`, `${num(V, 2)} km/s`,
+        'La velocità con cui il pianeta gira attorno al Sole. È da qui che si ruba: un pianeta fermo non regalerebbe niente.') +
+      riga('v∞', 'Con che velocità arriva la sonda', `${num(v0, 1)} km/s`,
+        `Misurata <em>dal pianeta</em> e <em>da lontano</em>: la velocità che la sonda avrebbe se il pianeta
+         non la tirasse. Arrivandogli addosso va già più forte — a bordo campo, in questo caso,
+         ${num(Math.sqrt(v0 * v0 + 2 * tr.mu / Math.max(1, tr.raggio * 220)), 1)} km/s.`) +
+      riga('b', 'Di quanto lo manca', `${num(Math.abs(fionda.b), 1)} raggi = ${numMila(tr.bKm)} km`,
+        `Il <em>parametro d'impatto</em>: quanto la sonda mancherebbe il centro del pianeta se la gravità
+         non la piegasse. Non è la distanza a cui passa davvero — quella viene dopo, ed è più piccola.`);
+
+    const passo = (n, titolo, formula, conto, esito, spiega) => `
+      <div class="did-passo">
+        <span class="did-passo-numero">${n}</span>
+        <div class="did-passo-corpo">
+          <span class="did-passo-titolo">${titolo}</span>
+          <code class="did-formula">${formula}</code>
+          <code class="did-conto">${conto} <strong>= ${esito}</strong></code>
+          <span class="did-passo-nota">${spiega}</span>
+        </div>
+      </div>`;
+
+    const dev = tr.dev;
+    passi.innerHTML =
+      passo(1, 'Quanto pesa la gravità rispetto alla corsa',
+        'a = μ / v∞²',
+        `${tr.muTesto} / ${num(v0, 1)}²`, `${numMila(tr.semiasse)} km (${num(tr.semiasse / tr.raggio, 1)} raggi)`,
+        `È il semiasse dell'iperbole, e si legge come un metro di paragone: se <em>b</em> è molto più
+         piccolo di <em>a</em>, la sonda entra nel campo del pianeta e ne esce girata; se è molto più
+         grande, tira dritto. Qui b/a vale ${num(tr.bKm / tr.semiasse, 2)}.`) +
+      passo(2, 'Quanto è aperta la curva',
+        'e = √(1 + (b/a)²)',
+        `√(1 + ${num(tr.bKm / tr.semiasse, 3)}²)`, num(tr.ecc, 3),
+        `L'eccentricità. Sotto 1 sarebbe un'orbita chiusa e la sonda resterebbe prigioniera del pianeta;
+         qui è sempre sopra 1 — la sonda passa e se ne va. Più <em>e</em> è vicino a 1, più la curva è
+         stretta attorno al pianeta.`) +
+      passo(3, 'Di quanto viene piegata — è il numero che conta',
+        'sin(δ/2) = 1/e   →   δ = 2 · arcsin(1/e)',
+        `2 · arcsin(1 / ${num(tr.ecc, 3)})`, `${num(dev, 1)}°`,
+        `<strong>δ è tutta la manovra.</strong> La gravità non cambia di un centesimo la velocità della
+         sonda rispetto al pianeta: le gira soltanto la freccia, di questi gradi. Tutto quello che segue
+         è conseguenza di questa rotazione.`) +
+      passo(4, 'Quanto passa vicino davvero',
+        'r_p = a · (e − 1)',
+        `${numMila(tr.semiasse)} · (${num(tr.ecc, 3)} − 1)`,
+        `${numMila(tr.peri)} km (${num(tr.periRaggi, 2)} raggi)`,
+        `Il passaggio più stretto. Se viene meno di R la sonda non passa: si schianta, e la manovra non
+         esiste. È questo il vero limite della fionda, non la fisica.`) +
+      passo(5, 'Quanto va forte là in mezzo',
+        'v_p = √(v∞² + 2μ / r_p)',
+        `√(${num(v0, 1)}² + 2 · ${tr.muTesto} / ${numMila(tr.peri)})`, `${num(tr.vPeri, 2)} km/s`,
+        `Conservazione dell'energia, niente di più. Cadendo verso il pianeta la sonda accelera fino a
+         qui; risalendo restituisce tutto e torna a ${num(v0, 1)} km/s. È il motivo per cui, <em>per il
+         pianeta</em>, il bilancio è zero.`) +
+      passo(6, 'La stessa cosa, guardata dal Sole',
+        'v_prima = √(v∞² + V²)   ·   v_dopo = √(v∞² + V² + 2·v∞·V·sin δ)',
+        `√(${num(v0, 1)}² + ${num(V, 2)}² ${tr.verso > 0 ? '+' : '−'} 2·${num(v0, 1)}·${num(V, 2)}·sin ${num(dev, 1)}°)`,
+        `${num(tr.dopoSole, 2)} km/s, contro i ${num(tr.primaSole, 2)} di prima`,
+        `Nessuna formula nuova: è la somma di due frecce, fatta prima e dopo. La sonda arriva di traverso
+         alla corsa del pianeta, e per questo prima vale sempre √(v∞²+V²). Passando
+         <strong>${tr.verso > 0 ? 'dietro' : 'davanti'}</strong> la rotazione porta la freccia
+         ${tr.verso > 0 ? 'dalla parte in cui il pianeta viaggia, e le due si sommano' :
+           'contro la corsa del pianeta, e le due si sottraggono'}:
+         <strong>${tr.guadagno >= 0 ? '+' : '−'}${num(Math.abs(tr.guadagno), 2)} km/s</strong>.`);
+
+    if (tetto) {
+      tetto.innerHTML = `<strong>E il tetto?</strong> La punta della freccia relativa gira su un cerchio,
+        quindi il salto più grande possibile della velocità è la corda di quel cerchio:
+        <em>Δv = 2·v∞·sin(δ/2)</em> = ${num(tr.dvRel, 2)} km/s. Ma non tutto quel salto diventa velocità
+        in più rispetto al Sole: dipende da dove punta. Con questa rotta d'arrivo il massimo si ottiene
+        con <strong>δ = 90°</strong> e vale <em>v∞ + V − √(v∞² + V²)</em> =
+        <strong>${num(tr.max, 2)} km/s</strong>; ${tr.schianto ? 'adesso però la sonda non passa proprio'
+          : tr.guadagno >= 0 ? `adesso ne stai prendendo ${num(tr.guadagno / tr.max * 100, 0)}%`
+          : `adesso invece stai frenando di ${num(-tr.guadagno, 2)} km/s, ed è un limite che non c'è —
+             perdere si può perdere quanto si vuole, fino a fermarsi`}. Potendo scegliere anche da che parte arrivare,
+        il limite invalicabile è due volte la più piccola fra v∞ e V, cioè
+        ${num(tr.maxAssoluto, 1)} km/s: più di così un pianeta non può dare, per quanto lo si sfiori.`;
+    }
+  }
+
   function fiondaDisegnaPianeta() {
-    const t = didTela('did-fionda-pianeta', 1.1, 340, { lente: true, gira: true, trascina: false });
+    const t = didTela('did-fionda-pianeta', 1.1, 340, { lente: true, gira: true, trascina: false, pieno: true });
     if (!t || !fionda.traiettoria) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -2136,7 +2653,7 @@
 
     const raggioPx = Math.max(6, tr.raggio * scala);
     didCorpo(ctx, cx, cy, raggioPx, tr.colore, { alone: 2.4, anelli: fionda.pianeta === 'Saturn' });
-    didScritta(ctx, tr.nome, cx, cy + raggioPx + 15, { colore: C.testo2, misura: 11, allinea: 'center' });
+    didScritta(ctx, tr.nome, cx, cy, { colore: C.testo2, misura: 11, allinea: 'center', dy: raggioPx + 15 });
 
     const p = fiondaPunto();
     if (p) {
@@ -2144,23 +2661,22 @@
       didFreccia(ctx, X(p.x), Y(p.y), X(p.x) + p.vx / v * 34, Y(p.y) - p.vy / v * 34,
         { colore: C.verde, spessore: 2.2, punta: 8 });
       didCorpo(ctx, X(p.x), Y(p.y), 4.5, '#ffffff', { alone: 2.6 });
-      didScritta(ctx, `${num(v, 2)} km/s`, X(p.x) + 8, Y(p.y) - 12, { colore: C.verde, misura: 11, peso: 700, mono: true });
+      didScritta(ctx, `${num(v, 2)} km/s`, X(p.x), Y(p.y),
+        { colore: C.verde, misura: 11, peso: 700, mono: true, dx: 8, dy: -12 });
     }
     // Va detto con precisione, se no il numero che cammina sembra
     // smentire la targhetta: cadendo verso il pianeta la sonda accelera
     // (a cinque raggi da Giove va a ventisette km/s), risalendo
     // restituisce tutto. Quello che non cambia è la velocità **da
-    // lontano**: entra e esce con la stessa, al centesimo.
-    const vIn = Math.hypot(tr.punti[0].vx, tr.punti[0].vy);
-    const vOut = Math.hypot(tr.punti[tr.punti.length - 1].vx, tr.punti[tr.punti.length - 1].vy);
-    didScritta(ctx, `entra a ${num(vIn, 2)}  ·  esce a ${num(vOut, 2)} km/s`, 12, 20,
-      { colore: C.testo2, misura: 10, peso: 700, mono: true });
-    didScritta(ctx, 'in mezzo accelera cadendo e rallenta risalendo: si riprende tutto', 12, 35,
-      { colore: C.testo3, misura: 9, peso: 500 });
+    // lontano**, cioè v∞: entra e esce con quella, identica.
+    didScritta(ctx, `entra a ${num(tr.vInf, 2)}  ·  esce a ${num(tr.vInf, 2)} km/s  ·  piegata di ${num(tr.dev, 1)}°`,
+      12, 20, { colore: C.testo2, misura: 10, peso: 700, mono: true, schermo: true });
+    didScritta(ctx, `in mezzo accelera cadendo fino a ${num(tr.vPeri, 1)} km/s e rallenta risalendo: si riprende tutto`,
+      12, 35, { colore: C.testo3, misura: 9, peso: 500, schermo: true });
   }
 
   function fiondaDisegnaSole() {
-    const t = didTela('did-fionda-sole', 1.1, 340, { lente: true, gira: true });
+    const t = didTela('did-fionda-sole', 1.1, 340, { lente: true, gira: true, pieno: true });
     if (!t || !fionda.traiettoria) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -2206,12 +2722,13 @@
       const px = X(p), pyS = Y(p, p.t);
       didFreccia(ctx, px, pyS, px + vsx / v * 38, pyS - vsy / v * 38, { colore: C.verde, spessore: 2.4, punta: 9 });
       didCorpo(ctx, px, pyS, 4.5, '#ffffff', { alone: 2.6 });
-      didScritta(ctx, `${num(v, 2)} km/s`, px + 9, pyS - 12, { colore: C.verde, misura: 11, peso: 700, mono: true });
+      didScritta(ctx, `${num(v, 2)} km/s`, px, pyS,
+        { colore: C.verde, misura: 11, peso: 700, mono: true, dx: 9, dy: -12 });
     }
     didScritta(ctx, `entra a ${num(tr.primaSole, 2)}  ·  esce a ${num(tr.dopoSole, 2)} km/s`, 12, 20,
-      { colore: tr.guadagno >= 0 ? C.verde : C.rosso, misura: 10, peso: 700, mono: true });
+      { colore: tr.guadagno >= 0 ? C.verde : C.rosso, misura: 10, peso: 700, mono: true, schermo: true });
     didScritta(ctx, `${tr.guadagno >= 0 ? '+' : '−'}${num(Math.abs(tr.guadagno), 2)} km/s, e nessuno ha acceso niente`,
-      12, 35, { colore: C.testo3, misura: 9, peso: 500 });
+      12, 35, { colore: C.testo3, misura: 9, peso: 500, schermo: true });
   }
 
   // Il triangolo dei vettori. Stava schiacciato in un angolo della tela
@@ -2233,18 +2750,23 @@
       return;
     }
     const V = tr.vOrb;
-    const a = tr.punti[0], b = tr.punti[tr.punti.length - 1];
-    const vMax = Math.max(Math.hypot(a.vx, a.vy + V), Math.hypot(b.vx, b.vy + V), V + fionda.vInf) || 1;
+    // Le due frecce relative sono quelle **da lontano** — v∞ prima, la
+    // stessa ruotata di δ dopo — e non i vettori all'ultimo punto
+    // calcolato: a bordo campo la sonda è già un po' caduta verso il
+    // pianeta, e il disegno mostrerebbe due frecce lunghe diverse proprio
+    // nella figura che deve far vedere che sono uguali
+    const a = tr.vIn, b = tr.vOut;
+    const vMax = Math.max(tr.primaSole, tr.dopoSole, V + tr.vInf) || 1;
     const k = Math.min(L * 0.20, H * 0.40) / vMax;
 
     const disegna = (ox, oy, p, colore, titolo, valore) => {
       // la velocità del pianeta (il lato in comune)
       didFreccia(ctx, ox, oy, ox, oy - V * k, { colore: didVela(tr.colore, 0.95), spessore: 2.2, punta: 8 });
       // la velocità rispetto al pianeta, appoggiata in cima
-      didFreccia(ctx, ox, oy - V * k, ox + p.vx * k, oy - V * k - p.vy * k,
+      didFreccia(ctx, ox, oy - V * k, ox + p.x * k, oy - V * k - p.y * k,
         { colore: 'rgba(138, 180, 255, 0.95)', spessore: 2, punta: 7 });
       // la risultante: quella che si misura dal Sole
-      didFreccia(ctx, ox, oy, ox + p.vx * k, oy - V * k - p.vy * k, { colore, spessore: 2.6, punta: 10 });
+      didFreccia(ctx, ox, oy, ox + p.x * k, oy - V * k - p.y * k, { colore, spessore: 2.6, punta: 10 });
       didScritta(ctx, titolo, ox, oy + 20, { colore: C.testo2, misura: 11, allinea: 'center', peso: 700 });
       didScritta(ctx, valore, ox, oy + 36, { colore, misura: 12, allinea: 'center', peso: 700, mono: true });
     };
@@ -2256,7 +2778,7 @@
     // La legenda: tre righe, tre colori, e si smette di indovinare
     const voci = [
       [didVela(tr.colore, 0.95), `velocità di ${tr.nome} (${num(V, 1)} km/s)`],
-      ['rgba(138, 180, 255, 0.95)', `velocità rispetto a ${tr.nome} — ruota soltanto, resta ${num(fionda.vInf, 1)} km/s`],
+      ['rgba(138, 180, 255, 0.95)', `velocità rispetto a ${tr.nome} — ruota di ${num(tr.dev, 0)}°, resta ${num(tr.vInf, 1)} km/s`],
       [tr.guadagno >= 0 ? C.verde : C.rosso, 'somma delle due: la velocità rispetto al Sole']
     ];
     voci.forEach(([col, testo], i) => {
@@ -2273,28 +2795,85 @@
   // calcolate, e sono il pezzo che rende onesto tutto il quadro — il
   // famoso allineamento del 1977 si vede perché c'era, non perché l'ho
   // disegnato allineato.
+  //
+  // Ogni tappa che è un incontro porta con sé i suoi dettagli: il giorno,
+  // quanto è passata vicino (dal **centro** del pianeta, che è la misura
+  // con cui si fanno i conti della fionda: le carte spesso danno la quota
+  // sulle nubi, e fra le due c'è un raggio planetario di differenza), e
+  // quanto ha guadagnato. Sono i numeri con cui il banco di prova qui
+  // accanto si può rifare l'incontro vero.
   const VOY_TAPPE = {
     v1: [
-      { anno: 1977.68, dove: null,      v: 36.0, testo: 'Lancio da Cape Canaveral, 5 settembre 1977' },
-      { anno: 1979.17, dove: 'Jupiter', v: 10.5, testo: 'Arrivo a Giove: la sonda ha rallentato salendo verso l\'esterno' },
-      { anno: 1979.20, dove: 'Jupiter', v: 25.0, testo: 'Fionda di Giove, 5 marzo 1979: +15 km/s in un giorno' },
-      { anno: 1980.85, dove: 'Saturn',  v: 14.5, testo: 'Arrivo a Saturno' },
-      { anno: 1980.88, dove: 'Saturn',  v: 21.5, testo: 'Fionda di Saturno, 12 novembre 1980: la sonda esce dal piano dei pianeti' },
-      { anno: 1990.5,  dove: null,      v: 17.4, testo: 'In viaggio verso il fuori: oggi va a 17 km/s ed è l\'oggetto umano più lontano' }
+      { anno: 1977.68, dove: null, v: 36.0, giorno: '5 settembre 1977',
+        titolo: 'Lancio', testo: `Parte da Cape Canaveral con un Titan IIIE-Centaur, sedici giorni <em>dopo</em>
+          la gemella ma su una rotta più corta e veloce: la sorpasserà prima di Giove. I 36 km/s sono
+          rispetto al Sole, e comprendono i 30 che la Terra le ha regalato semplicemente stando lì.` },
+      { anno: 1979.17, dove: 'Jupiter', v: 10.5, arrivo: true,
+        titolo: 'In avvicinamento a Giove', testo: `Diciotto mesi di salita verso l'esterno: la sonda ha
+          speso quasi tutta la velocità del lancio a risalire il pozzo gravitazionale del Sole, e arriva a
+          Giove a 10,5 km/s. Senza la fionda, da qui in poi rallenterebbe ancora e ricadrebbe indietro.` },
+      { anno: 1979.20, dove: 'Jupiter', v: 25.0, giorno: '5 marzo 1979', stretta: 348890, salto: 14.5,
+        titolo: 'Fionda di Giove', testo: `Passa a 349.000 km dal centro di Giove — cinque raggi — e in un
+          giorno guadagna 14,5 km/s: più di quanto potrebbe darle qualunque motore montato a bordo. Da qui
+          in avanti la sonda è su una traiettoria di fuga dal Sistema Solare, e non lo era prima.` },
+      { anno: 1980.85, dove: 'Saturn', v: 14.5, arrivo: true,
+        titolo: 'In avvicinamento a Saturno', testo: `Venti mesi e mezzo miliardo di chilometri più in là.
+          Salendo ha di nuovo rallentato, da 25 a 14,5 km/s: è il Sole che tira indietro, e si paga sempre.` },
+      { anno: 1980.88, dove: 'Saturn', v: 21.5, giorno: '12 novembre 1980', stretta: 184300, salto: 7.0,
+        titolo: 'Fionda di Saturno, e addio al piano', testo: `La manovra più costosa del programma, e fu una
+          scelta: per passare a 6.500 km da <strong>Titano</strong> — l'unica luna del Sistema Solare con
+          un'atmosfera densa — la traiettoria venne piegata <strong>fuori dal piano dei pianeti</strong>.
+          Il prezzo fu Plutone, che la Voyager 1 avrebbe potuto raggiungere e che nessuno ha più visto da
+          vicino fino al 2015. Da questo istante la sonda sale di 35° sopra il piano: gira la scena col dito
+          e la vedi staccarsi.` },
+      { anno: 1990.5, dove: null, v: 17.4,
+        titolo: 'Verso il fuori', testo: `Va a 17 km/s ed è l'oggetto costruito da noi più lontano di tutti.
+          Il 14 febbraio 1990, da sei miliardi di chilometri, si è girata a fotografare la Terra: un puntino
+          in un raggio di luce, il <em>Pale Blue Dot</em>. Poi le telecamere sono state spente per sempre.` }
     ],
     v2: [
-      { anno: 1977.62, dove: null,      v: 36.0, testo: 'Lancio, 20 agosto 1977 — sedici giorni prima della gemella' },
-      { anno: 1979.50, dove: 'Jupiter', v: 10.0, testo: 'Arrivo a Giove' },
-      { anno: 1979.53, dove: 'Jupiter', v: 25.0, testo: 'Fionda di Giove, 9 luglio 1979' },
-      { anno: 1981.62, dove: 'Saturn',  v: 14.0, testo: 'Arrivo a Saturno' },
-      { anno: 1981.65, dove: 'Saturn',  v: 20.5, testo: 'Fionda di Saturno, 26 agosto 1981: rotta su Urano' },
-      { anno: 1986.05, dove: 'Uranus',  v: 17.0, testo: 'Arrivo a Urano' },
-      { anno: 1986.07, dove: 'Uranus',  v: 21.0, testo: 'Fionda di Urano, 24 gennaio 1986: unica visita mai fatta' },
-      { anno: 1989.63, dove: 'Neptune', v: 19.0, testo: 'Arrivo a Nettuno' },
-      { anno: 1989.65, dove: 'Neptune', v: 17.4, testo: 'Nettuno, 25 agosto 1989: qui la fionda serve a FRENARE, per passare vicino a Tritone' },
-      { anno: 1990.5,  dove: null,      v: 15.4, testo: 'Verso il fuori, a 15,4 km/s' }
+      { anno: 1977.62, dove: null, v: 36.0, giorno: '20 agosto 1977',
+        titolo: 'Lancio', testo: `Parte per prima, su una rotta più lenta ma capace di incrociare tutti e
+          quattro i giganti: è lei la vera Grand Tour. L'allineamento che lo permette si ripresenta una volta
+          ogni 176 anni.` },
+      { anno: 1979.50, dove: 'Jupiter', v: 10.0, arrivo: true,
+        titolo: 'In avvicinamento a Giove', testo: 'Ventitré mesi di salita, e arriva a Giove a 10 km/s.' },
+      { anno: 1979.53, dove: 'Jupiter', v: 25.0, giorno: '9 luglio 1979', stretta: 721670, salto: 15.0,
+        titolo: 'Fionda di Giove', testo: `Passa più larga della gemella — 722.000 km dal centro, dieci raggi —
+          perché la deviazione doveva essere quella giusta per arrivare a Saturno <em>nel punto</em> da cui si
+          riparte per Urano. Una fionda non si sceglie per il guadagno massimo: si sceglie per dove ti manda.` },
+      { anno: 1981.62, dove: 'Saturn', v: 14.0, arrivo: true,
+        titolo: 'In avvicinamento a Saturno', testo: 'Due anni dopo Giove, di nuovo rallentata a 14 km/s.' },
+      { anno: 1981.65, dove: 'Saturn', v: 20.5, giorno: '26 agosto 1981', stretta: 161000, salto: 6.5,
+        titolo: 'Fionda di Saturno', testo: `Passa a 161.000 km dal centro, restando <strong>nel piano</strong>:
+          è la differenza con la sorella, e le costa la vista ravvicinata di Titano ma le regala Urano e
+          Nettuno. Durante il passaggio la piattaforma delle telecamere si bloccò, e per due giorni si temette
+          fosse finito tutto lì.` },
+      { anno: 1986.05, dove: 'Uranus', v: 17.0, arrivo: true,
+        titolo: 'In avvicinamento a Urano', testo: 'Quattro anni e mezzo di traversata nel vuoto, a tre miliardi di chilometri da casa.' },
+      { anno: 1986.07, dove: 'Uranus', v: 21.0, giorno: '24 gennaio 1986', stretta: 107000, salto: 4.0,
+        titolo: 'Urano — la prima e unica volta', testo: `81.500 km sopra le nubi. Urano gira coricato su un
+          fianco, quindi le sue lune formano un bersaglio a cerchi concentrici invece che una fila: la sonda
+          ci passò in mezzo in poche ore. Nessuno c'è più tornato, e non ci sono missioni approvate.` },
+      { anno: 1989.63, dove: 'Neptune', v: 19.0, arrivo: true,
+        titolo: 'In avvicinamento a Nettuno', testo: 'Tre anni e mezzo ancora, e siamo a 4,5 miliardi di chilometri.' },
+      { anno: 1989.65, dove: 'Neptune', v: 17.4, giorno: '25 agosto 1989', stretta: 29240, salto: -1.6,
+        titolo: 'Nettuno — qui la fionda FRENA', testo: `4.950 km sopra le nubi del polo nord: il passaggio più
+          ravvicinato di tutto il programma. E la manovra, per una volta, <strong>toglie</strong> velocità
+          invece di darla: serviva a piegare la rotta verso il basso per incontrare <strong>Tritone</strong>
+          cinque ore dopo. Il segno negativo che vedi nel banco di prova, quando mandi la sonda davanti al
+          pianeta, è esattamente questo. Da qui la Voyager 2 scende di 48° sotto il piano dei pianeti.` },
+      { anno: 1990.5, dove: null, v: 15.4,
+        titolo: 'Verso il fuori', testo: `Va a 15,4 km/s, più piano della gemella perché ha speso due incontri
+          a girare invece che ad accelerare. Ha visitato quattro pianeti: nessun'altra sonda, prima o dopo.` }
     ]
   };
+
+  // Quanto ogni sonda esce dal piano dei pianeti dopo l'ultimo incontro,
+  // in gradi. Sono i due numeri che rendono questo viaggio una faccenda a
+  // tre dimensioni invece che una pianta: la 1 sale, la 2 scende, e
+  // guardando a picco sembrerebbero due rotte qualunque.
+  const VOY_FUGA = { v1: 35.5, v2: -47.5 };
 
   const voyCache = { pianeti: null };
 
@@ -2310,7 +2889,10 @@
           try {
             const d = new Date(Date.UTC(Math.floor(a), 0, 1 + Math.round((a % 1) * 365.25)));
             const v = Astronomy.Ecliptic(Astronomy.HelioVector(k, Astronomy.MakeTime(d))).vec;
-            tabella[k].push({ anno: a, x: v.x, y: v.y });
+            // La z si porta dietro perché la scena adesso è in tre
+            // dimensioni: sono decimi di UA — Nettuno arriva a poco più di
+            // una — e a picco non si vedono, ma girando la scena sì
+            tabella[k].push({ anno: a, x: v.x, y: v.y, z: v.z });
           } catch (e) { /* niente */ }
         }
       });
@@ -2324,7 +2906,7 @@
       const q = Math.max(0, Math.min(arr.length - 1.001, (anno - 1977) / 0.25));
       const i = Math.floor(q), f = q - i;
       const a = arr[i], b = arr[Math.min(arr.length - 1, i + 1)];
-      out[k] = { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f };
+      out[k] = { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, z: a.z + (b.z - a.z) * f };
     });
     return out;
   }
@@ -2341,28 +2923,59 @@
   // scorreva il tempo e le due scie si arrotolavano attorno al Sole
   // seguendo i pianeti invece di stare ferme dov'erano passate. Sono
   // undici posizioni in tutto: si calcolano una volta e non cambiano più.
+  //
+  // I nodi adesso hanno anche una **z**, e non è un vezzo: è il pezzo di
+  // Grand Tour che una pianta non può raccontare. Fino all'ultimo incontro
+  // le due sonde stanno praticamente nel piano dei pianeti (la z è quella
+  // vera del pianeta che stanno incontrando, decimi di UA); dopo, la
+  // fionda le scaglia fuori — la 1 di 35° in su dopo Titano, la 2 di 48°
+  // in giù dopo Tritone — e da lì in avanti se ne vanno in due direzioni
+  // che, viste a picco, sembrano la stessa cosa e non lo sono affatto.
   const voyNodiCache = {};
   function voyNodi(chi) {
     if (voyNodiCache[chi]) return voyNodiCache[chi];
     const tappe = VOY_TAPPE[chi];
-    const nodi = [{ anno: tappe[0].anno, p: { x: 0.6, y: 0.75 } }];
+    const nodi = [{ anno: tappe[0].anno, p: { x: 0.6, y: 0.75, z: 0 }, dove: null }];
     tappe.forEach(t => {
-      if (!t.dove) return;
+      // Le tappe di avvicinamento non sono nodi: sono lo stesso punto
+      // dell'incontro, e l'interpolazione ci si fermerebbe sopra
+      if (!t.dove || t.arrivo) return;
       const p = voyPosizioni(t.anno)[t.dove];
-      // due tappe sullo stesso pianeta (arrivo e fionda) sono lo stesso
-      // punto: la seconda si scarta, se no l'interpolazione ci si ferma
-      if (p && !(nodi.length > 1 && Math.abs(nodi[nodi.length - 1].anno - t.anno) < 0.1)) {
-        nodi.push({ anno: t.anno, p });
-      }
+      if (p) nodi.push({ anno: t.anno, p: { x: p.x, y: p.y, z: p.z || 0 }, dove: t.dove, tappa: t });
     });
+    // Dopo l'ultimo incontro si tira dritto verso fuori, lungo la direzione
+    // in cui la fionda l'ha lanciata e con l'inclinazione che le ha dato.
+    //
+    // La fuga si scrive **un anno per volta**, e non con un nodo solo
+    // lontanissimo. Con un nodo solo la Catmull-Rom prende la tangente
+    // all'ultimo incontro guardando il nodo successivo, che stava a
+    // trentaquattro unità astronomiche e ventiquattro fuori dal piano: quel
+    // ventiquattro rientrava all'indietro nel tratto precedente e la
+    // Voyager 1, nel 1980 — quando ancora doveva arrivare a Saturno —
+    // risultava un'unità astronomica e mezza *sotto* il piano, cioè tredici
+    // gradi dalla parte sbagliata. Con nodi equidistanti e in fila la
+    // spline passa per la retta esatta, che è quello che fa una sonda su
+    // cui non agisce più niente.
     const ultimo = nodi[nodi.length - 1];
-    // Dopo l'ultimo incontro si tira dritto verso fuori, lungo la
-    // direzione in cui la fionda l'ha lanciata
-    const dir = Math.hypot(ultimo.p.x, ultimo.p.y) || 1;
-    nodi.push({
-      anno: ultimo.anno + 12,
-      p: { x: ultimo.p.x * (1 + 34 / dir), y: ultimo.p.y * (1 + 34 / dir) }
-    });
+    const piano = Math.hypot(ultimo.p.x, ultimo.p.y) || 1;
+    const salita = Math.tan((VOY_FUGA[chi] || 0) * Math.PI / 180);
+    const dx = ultimo.p.x / piano, dy = ultimo.p.y / piano;
+    const lung = Math.hypot(1, salita);
+    // La velocità di fuga in UA all'anno, dall'ultima tappa: 17,4 km/s
+    // sono tre unità astronomiche e mezza all'anno
+    const passo = tappe[tappe.length - 1].v * 31557600 / AU_KM;
+    for (let k = 1; k <= 12; k++) {
+      const d = passo * k;
+      nodi.push({
+        anno: ultimo.anno + k,
+        dove: null,
+        p: {
+          x: ultimo.p.x + dx * d / lung,
+          y: ultimo.p.y + dy * d / lung,
+          z: ultimo.p.z + salita * d / lung
+        }
+      });
+    }
     if (voyCache.pianeti) voyNodiCache[chi] = nodi;   // solo se i dati c'erano davvero
     return nodi;
   }
@@ -2377,16 +2990,34 @@
         // un pianeta e l'altro si vede lontano un miglio che è finta —
         // nessuna sonda ha mai svoltato ad angolo retto. Questa passa per
         // gli stessi punti (che sono veri, e nei giorni veri) ma ci arriva
-        // curvando, come si arriva davvero.
+        // curvando, come si arriva davvero. Adesso curva anche in altezza.
         const p0 = nodi[Math.max(0, i - 2)].p, p1 = nodi[i - 1].p;
         const p2 = nodi[i].p, p3 = nodi[Math.min(nodi.length - 1, i + 1)].p;
         const f2 = f * f, f3 = f2 * f;
         const cr = (a, b, c, d) => 0.5 * ((2 * b) + (-a + c) * f +
           (2 * a - 5 * b + 4 * c - d) * f2 + (-a + 3 * b - 3 * c + d) * f3);
-        return { x: cr(p0.x, p1.x, p2.x, p3.x), y: cr(p0.y, p1.y, p2.y, p3.y) };
+        return {
+          x: cr(p0.x, p1.x, p2.x, p3.x),
+          y: cr(p0.y, p1.y, p2.y, p3.y),
+          z: cr(p0.z || 0, p1.z || 0, p2.z || 0, p3.z || 0)
+        };
       }
     }
     return nodi[nodi.length - 1].p;
+  }
+
+  // Quanto è lontana dal Sole, e di quanti gradi sta fuori dal piano dei
+  // pianeti: sono le due letture che raccontano il viaggio meglio di
+  // qualunque disegno, perché la seconda per dodici anni vale zero e poi
+  // improvvisamente no
+  function voyStato(chi, anno) {
+    const p = voyDove(chi, anno);
+    const piano = Math.hypot(p.x, p.y);
+    return {
+      p,
+      ua: Math.hypot(piano, p.z || 0),
+      lat: Math.atan2(p.z || 0, piano) * GRADI
+    };
   }
 
   function voyVelocita(chi, anno) {
@@ -2401,38 +3032,117 @@
     return tappe[tappe.length - 1].v;
   }
 
+  const VOY_NOMI = { v1: 'Voyager 1', v2: 'Voyager 2' };
+
+  // Le tappe di tutt'e due messe in fila, ordinate per data: è l'elenco su
+  // cui si costruisce la linea del tempo, e quello su cui si cerca «dove
+  // siamo adesso»
+  function voyTutteLeTappe() {
+    const tutte = [];
+    ['v1', 'v2'].forEach(chi => VOY_TAPPE[chi].forEach(t => tutte.push({ chi, t })));
+    return tutte.sort((a, b) => a.t.anno - b.t.anno);
+  }
+
   function voyNumeri() {
     const a = fionda.voyAnno;
     const anno = Math.floor(a);
     const mese = MESI[Math.min(11, Math.floor((a % 1) * 12))];
     scrivi('did-voy-quando', `${mese} ${anno}`);
-    scrivi('did-voy-1', a < 1977.68 ? 'non ancora partita' : `${num(voyVelocita('v1', a), 1)} km/s`, 'blu');
-    scrivi('did-voy-2', a < 1977.62 ? 'non ancora partita' : `${num(voyVelocita('v2', a), 1)} km/s`, 'verde');
+
+    ['v1', 'v2'].forEach(chi => {
+      const partita = a >= VOY_TAPPE[chi][0].anno;
+      const n = chi === 'v1' ? '1' : '2';
+      if (!partita) {
+        scrivi('did-voy-' + n, 'non ancora partita', chi === 'v1' ? 'blu' : 'verde');
+        scrivi('did-voy-d' + n, '—');
+        return;
+      }
+      const s = voyStato(chi, a);
+      scrivi('did-voy-' + n, `${num(voyVelocita(chi, a), 1)} km/s`, chi === 'v1' ? 'blu' : 'verde');
+      // Sotto il grado non vale la pena parlare di «fuori dal piano»: sono
+      // le inclinazioni di sempre delle orbite planetarie
+      const fuori = Math.abs(s.lat) < 1 ? 'nel piano dei pianeti'
+        : `${num(Math.abs(s.lat), 0)}° ${s.lat > 0 ? 'sopra' : 'sotto'} il piano`;
+      scrivi('did-voy-d' + n, `${num(s.ua, 1)} UA · ${fuori}`);
+    });
 
     // La prossima tappa, di chiunque sia
     let prossima = null, diChi = '';
     ['v1', 'v2'].forEach(chi => {
       VOY_TAPPE[chi].forEach(t => {
-        if (t.anno > a && t.dove && (!prossima || t.anno < prossima.anno)) { prossima = t; diChi = chi === 'v1' ? 'Voyager 1' : 'Voyager 2'; }
+        if (t.anno > a && t.dove && !t.arrivo && (!prossima || t.anno < prossima.anno)) {
+          prossima = t; diChi = VOY_NOMI[chi];
+        }
       });
     });
-    scrivi('did-voy-prossimo', prossima ? `${diChi} → ${CORPI[prossima.dove].nome}` : 'nessuno: sono uscite dal Sistema Solare');
+    scrivi('did-voy-prossimo', prossima
+      ? `${diChi} → ${CORPI[prossima.dove].nome}, ${prossima.giorno}`
+      : 'nessuno: sono uscite dal Sistema Solare');
     const lettura = $('did-voy-lettura');
     if (lettura) lettura.textContent = `${anno}`;
 
     // La spiegazione segue la tappa più vicina appena passata
-    let ultima = null, chiUltima = '';
-    ['v1', 'v2'].forEach(chi => {
-      VOY_TAPPE[chi].forEach(t => {
-        if (t.anno <= a && (!ultima || t.anno > ultima.anno)) { ultima = t; chiUltima = chi === 'v1' ? 'Voyager 1' : 'Voyager 2'; }
-      });
-    });
+    let ultima = null;
+    voyTutteLeTappe().forEach(v => { if (v.t.anno <= a) ultima = v; });
     const sp = $('did-voy-spiega');
-    if (sp && ultima) sp.innerHTML = `<strong>${chiUltima}</strong> — ${ultima.testo}.`;
+    if (sp && ultima) {
+      const t = ultima.t;
+      const dettagli = [];
+      if (t.giorno) dettagli.push(t.giorno);
+      if (t.stretta) dettagli.push(`${numMila(t.stretta)} km dal centro del pianeta`);
+      if (t.salto !== undefined) {
+        dettagli.push(`${t.salto >= 0 ? '+' : '−'}${num(Math.abs(t.salto), 1)} km/s rispetto al Sole`);
+      }
+      sp.innerHTML = `<strong>${VOY_NOMI[ultima.chi]} · ${t.titolo}</strong>` +
+        (dettagli.length ? `<span class="did-spiega-dati">${dettagli.join(' · ')}</span>` : '') +
+        `<span class="did-spiega-testo">${t.testo}</span>`;
+    }
+    voyAggiornaLinea();
+  }
+
+  // La linea del tempo: ogni incontro è un tasto, e toccandolo l'orologio
+  // ci va. Scorrere a mano una slitta di tredici anni per ritrovare il
+  // giorno di Urano è un lavoro da nessuno.
+  function voyCostruisciLinea() {
+    const n = $('did-voy-linea');
+    if (!n || n.dataset.pronto === 'si') return;
+    n.dataset.pronto = 'si';
+    n.innerHTML = voyTutteLeTappe().map(({ chi, t }, i) => `
+      <button type="button" class="did-tappa did-tappa-${chi}${t.arrivo ? ' did-tappa-lieve' : ''}"
+        data-tappa="${i}" data-anno="${t.anno}"
+        title="${VOY_NOMI[chi]} — ${t.titolo}${t.giorno ? ', ' + t.giorno : ''}">
+        <span class="did-tappa-chi">${chi === 'v1' ? 'V1' : 'V2'}</span>
+        <span class="did-tappa-che">${t.dove ? CORPI[t.dove].nome : t.titolo}</span>
+        <span class="did-tappa-quando">${t.giorno || Math.floor(t.anno)}</span>
+      </button>`).join('');
+    n.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-tappa]');
+      if (!b) return;
+      fionda.voyMarcia = false;
+      alterna('did-voy', false);
+      // Un filo dopo l'incontro, se no si arriva sull'istante esatto in cui
+      // la velocità sta ancora saltando e la lettura dice il numero di prima
+      fionda.voyAnno = Math.min(1990.5, Number(b.dataset.anno) + 0.01);
+      voySlitta();
+      voyNumeri();
+    });
+  }
+
+  function voyAggiornaLinea() {
+    const n = $('did-voy-linea');
+    if (!n || n.dataset.pronto !== 'si') return;
+    const tappe = voyTutteLeTappe();
+    let ultima = -1;
+    tappe.forEach((v, i) => { if (v.t.anno <= fionda.voyAnno) ultima = i; });
+    n.querySelectorAll('[data-tappa]').forEach(b => {
+      const i = Number(b.dataset.tappa);
+      b.classList.toggle('attiva', i === ultima);
+      b.classList.toggle('did-tappa-fatta', i < ultima);
+    });
   }
 
   function voyDisegnaMappa() {
-    const t = didTela('did-voy-tela', 1.45, 430, { lente: true, gira: true });
+    const t = didTela('did-voy-tela', 1.45, 430, { lente: true, gira: true, pieno: true });
     if (!t) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -2442,6 +3152,13 @@
     const X = (x) => cx + x * scala;
     const Y = (y) => cy - y * scala;
 
+    // Un punto del viaggio sullo schermo, quota compresa: `didQuota`
+    // aggiunge lo scostamento fuori dal piano, che a picco è zero e
+    // girando la scena si apre
+    // (la z positiva è il nord dell'eclittica, e sullo schermo va in su:
+    //  `didQuota` alza di quanto serve, cioè di niente se si guarda a picco)
+    const P = (p) => didAlza(X(p.x), Y(p.y), (p.z || 0) * scala);
+
     ['Jupiter', 'Saturn', 'Uranus', 'Neptune'].forEach(k => {
       didCerchio(ctx, cx, cy, CORPI[k].a * scala, 'rgba(148, 168, 214, 0.12)', 1);
     });
@@ -2450,8 +3167,8 @@
     ['Jupiter', 'Saturn', 'Uranus', 'Neptune'].forEach(k => {
       const p = pos[k];
       if (!p) return;
-      const x = X(p.x), y = Y(p.y);
-      didCorpo(ctx, x, y, k === 'Jupiter' ? 6 : 5, CORPI[k].colore, { anelli: k === 'Saturn' });
+      const q = P(p);
+      didCorpo(ctx, q.x, q.y, k === 'Jupiter' ? 6 : 5, CORPI[k].colore, { anelli: k === 'Saturn' });
       // Il nome va messo verso fuori, lungo il raggio: nel 1978 Giove e
       // Saturno erano a pochi gradi l'uno dall'altro e le due scritte
       // finivano una sopra l'altra («SaturnGiove»). Spingendole in fuori
@@ -2459,30 +3176,65 @@
       // diversi.
       const d = Math.hypot(p.x, p.y) || 1;
       const ux = p.x / d, uy = p.y / d;
-      didScritta(ctx, CORPI[k].nome, x + ux * 14, y - uy * 14 + 4,
-        { colore: C.testo2, misura: 10, allinea: ux < -0.25 ? 'right' : ux > 0.25 ? 'left' : 'center' });
+      didScritta(ctx, CORPI[k].nome, q.x, q.y,
+        { colore: C.testo2, misura: 10, dx: ux * 14, dy: -uy * 14 + 4,
+          allinea: ux < -0.25 ? 'right' : ux > 0.25 ? 'left' : 'center' });
+    });
+
+    // I punti in cui è successo qualcosa restano segnati anche dopo che la
+    // sonda è passata: la scia da sola dice dov'è andata, non dove ha
+    // girato — e il Grand Tour è tutto nei posti in cui ha girato
+    ['v1', 'v2'].forEach(chi => {
+      voyNodi(chi).forEach(nodo => {
+        if (!nodo.dove || nodo.anno > fionda.voyAnno) return;
+        const q = P(nodo.p);
+        didCerchio(ctx, q.x, q.y, 8, 'rgba(245, 181, 68, 0.55)', 1.2, [2, 3]);
+      });
     });
 
     // Le due scie, ricostruite dall'inizio fino all'anno mostrato
     [['v1', C.bluChiaro], ['v2', C.verde]].forEach(([chi, col]) => {
       const punti = [];
       for (let a = VOY_TAPPE[chi][0].anno; a <= fionda.voyAnno; a += 0.05) {
-        const p = voyDove(chi, a);
-        punti.push({ x: X(p.x), y: Y(p.y) });
+        punti.push(P(voyDove(chi, a)));
       }
       didPercorso(ctx, punti, { colore: didVela(col, 0.55), spessore: 1.6 });
       if (fionda.voyAnno >= VOY_TAPPE[chi][0].anno) {
         const p = voyDove(chi, fionda.voyAnno);
-        didCorpo(ctx, X(p.x), Y(p.y), 4, col, { alone: 3 });
+        const q = P(p);
+        // Il filo a piombo fino al piano dei pianeti, come nella vista 3D
+        // del Sistema Solare: senza, un punto sospeso in aria è solo un
+        // punto spostato, e non si capisce di quanto sia alto
+        const piede = { x: X(p.x), y: Y(p.y) };
+        if (Math.hypot(q.x - piede.x, q.y - piede.y) > 3) {
+          ctx.strokeStyle = didVela(col, 0.4);
+          ctx.lineWidth = 1; ctx.setLineDash([2, 4]);
+          ctx.beginPath(); ctx.moveTo(piede.x, piede.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+          ctx.setLineDash([]);
+          didCorpo(ctx, piede.x, piede.y, 1.6, col, { alone: 0 });
+        }
+        didCorpo(ctx, q.x, q.y, 4, col, { alone: 3 });
         // Una sopra e una sotto: nei primi mesi le due sonde sono quasi
         // nello stesso punto, e i due nomi si sovrapporrebbero
-        didScritta(ctx, chi === 'v1' ? 'Voyager 1' : 'Voyager 2',
-          X(p.x) + 13, Y(p.y) + (chi === 'v1' ? -14 : 24),
-          { colore: col, misura: 10, peso: 700 });
+        const s = voyStato(chi, fionda.voyAnno);
+        // Gli scostamenti sono in pixel di schermo (`dx`/`dy`): dentro alla
+        // matrice, con la scena di taglio, i dodici pixel che separano le
+        // due righe diventavano due e le scritte si stampavano una sull'altra
+        didScritta(ctx, `${VOY_NOMI[chi]} · ${num(s.ua, 1)} UA`, q.x, q.y,
+          { colore: col, misura: 10, peso: 700, dx: 13, dy: chi === 'v1' ? -14 : 24 });
+        if (Math.abs(s.lat) >= 1) {
+          didScritta(ctx, `${num(Math.abs(s.lat), 0)}° ${s.lat > 0 ? 'sopra' : 'sotto'} il piano`,
+            q.x, q.y,
+            { colore: didVela(col, 0.75), misura: 9, peso: 600, dx: 13, dy: chi === 'v1' ? -1 : 37 });
+        }
       }
     });
 
-    didScritta(ctx, `${Math.floor(fionda.voyAnno)}`, 12, 24, { colore: C.testo, misura: 18, peso: 700, mono: true });
+    // L'anno sta in alto a destra, sotto ai tasti della lente: in basso a
+    // sinistra c'è la targhetta, e a schermo intero la targhetta sale
+    // nell'angolo in alto a sinistra — cioè proprio dove l'anno stava prima
+    didScritta(ctx, `${Math.floor(fionda.voyAnno)}`, L - 12, 60,
+      { colore: C.testo, misura: 18, peso: 700, mono: true, schermo: true, allinea: 'right' });
   }
 
   function voyDisegnaGrafico() {
@@ -2508,14 +3260,22 @@
     }
     didScritta(ctx, 'km/s', x0 - 6, y1 - 8, { colore: C.testo3, misura: 9, allinea: 'right', peso: 500 });
 
-    [['v1', '#8ab4ff'], ['v2', '#34d399']].forEach(([chi, col]) => {
+    [['v1', '#8ab4ff'], ['v2', '#34d399']].forEach(([chi, col], riga) => {
       const punti = [];
       for (let a = VOY_TAPPE[chi][0].anno; a <= A1; a += 0.02) punti.push({ x: X(a), y: Y(voyVelocita(chi, a)) });
       didPercorso(ctx, punti, { colore: col, spessore: 1.9 });
-      // I gradini: gli incontri, dove la curva salta
+      // I gradini: gli incontri, dove la curva salta. Ognuno dice di
+      // quanto — «G +14,5» — perché è quello il numero per cui esiste
+      // tutto il grafico, e leggerlo sull'asse a occhio non riesce
       VOY_TAPPE[chi].forEach(tp => {
-        if (!tp.dove) return;
-        didCerchio(ctx, X(tp.anno), Y(tp.v), 3, col, 1.4);
+        if (!tp.dove || tp.arrivo) return;
+        const px = X(tp.anno), py = Y(tp.v);
+        didCerchio(ctx, px, py, 3, col, 1.4);
+        if (tp.salto === undefined) return;
+        const segno = tp.salto >= 0 ? '+' : '−';
+        didScritta(ctx, `${CORPI[tp.dove].nome[0]} ${segno}${num(Math.abs(tp.salto), 1)}`,
+          px, py - 8 + (riga ? 20 : 0),
+          { colore: col, misura: 9, peso: 700, mono: true, allinea: 'center' });
       });
     });
 
@@ -2799,7 +3559,7 @@
   }
 
   function lancioDisegna() {
-    const t = didTela('did-lancio-tela', 1.35, 470, { lente: true, gira: true });
+    const t = didTela('did-lancio-tela', 1.35, 470, { lente: true, gira: true, pieno: true });
     if (!t || !lancio.conti) return;
     const { ctx, L, H } = t;
     didSfondo(ctx, L, H);
@@ -3944,6 +4704,7 @@
         const b = e.target.closest('[data-quadro]');
         if (!b) return;
         quadri.querySelectorAll('[data-quadro]').forEach(x => x.classList.toggle('attiva', x === b));
+        didPienoEsci();
         aurLApriQuadro(b.dataset.quadro);
       });
 
@@ -4265,7 +5026,7 @@
   // ===================================================================
 
   function aurLDisegnaScena() {
-    const tela = didTela('did-aur-tela', 1.62, 470, { lente: true, trascina: false });
+    const tela = didTela('did-aur-tela', 1.62, 470, { lente: true, trascina: false, pieno: true });
     if (!tela) return;
     const { ctx, L, H } = tela;
     didSfondo(ctx, L, H);
@@ -4792,6 +5553,9 @@
   function didApri(id) {
     const prima = labAttivo();
     if (prima && prima.id === id) return;
+    // Cambiando banco la scena piena non ha più senso: dentro c'è la barra
+    // di un esperimento che sta per sparire
+    didPienoEsci();
     if (prima && prima.esce) { try { prima.esce(); } catch (e) { /* niente */ } }
     stato.lab = id;
     LABORATORI.forEach(l => {
@@ -4838,6 +5602,7 @@
   };
 
   window.didatticaSpegni = function () {
+    didPienoEsci();
     stato.acceso = false;
     if (stato.raf) { cancelAnimationFrame(stato.raf); stato.raf = null; }
     const l = labAttivo();
@@ -4848,5 +5613,13 @@
   // da sole a ogni fotogramma, quindi qui non c'è quasi niente da fare —
   // basta buttare via lo sfondo stellato, che è l'unica cosa in cache
   window.didatticaRidimensiona = function () { cacheStelle.chiave = ''; };
+
+  // Un gancio per il banco di prova (`verifica.html`). La geometria della
+  // fionda è l'unico pezzo di questo file che a occhio non si controlla:
+  // un angolo di deviazione sbagliato del 40% disegna una curva
+  // perfettamente credibile, e infatti c'è stato per mesi. Sono funzioni
+  // pure, senza DOM e senza stato: qui esce solo quello che serve a
+  // rifare i conti da fuori.
+  window.didProve = { fiondaIperbole, FIONDA_PIANETI };
 
 })();

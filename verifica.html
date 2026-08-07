@@ -120,6 +120,10 @@ function skyBaseVerso(az, alt) {
      niente all'avvio, quindi caricarlo qui non costa nulla. -->
 <script src="meteo-astro.js"></script>
 <script src="aurora-polare.js"></script>
+<!-- didattica.js all'avvio non fa niente: costruisce i banchi solo quando
+     `didatticaAvvia()` lo chiede. Serve per il §12, la geometria della
+     fionda gravitazionale, che espone da sé quello che si può provare. -->
+<script src="didattica.js"></script>
 
 <script>
 // ---------------------------------------------------------------------
@@ -889,6 +893,117 @@ if (typeof aurGeometria !== 'function') {
     { lat: 69.65, lon: 18.96 }, 4);
   prova('e infatti da lì con Kp 4 l\'aurora è quasi allo zenit',
         tromso.verde && tromso.altMassima > 60, `fino a ${tromso.altMassima.toFixed(0)}°`);
+}
+
+// =====================================================================
+titolo('12. La fionda gravitazionale (didattica.js)');
+// =====================================================================
+// Un angolo di deviazione sbagliato non si vede: la curva resta bella e
+// plausibile, e il numero scritto accanto è semplicemente un altro
+// numero. Per un pezzo questo banco ha usato la formula con il perielio
+// dandole in pasto il parametro d'impatto — che sono due cose diverse —
+// e diceva 66° dove la traiettoria ne fa 101. Da qui in poi la formula
+// la si controlla contro la geometria, non contro l'impressione.
+if (typeof didProve === 'undefined' || !didProve.fiondaIperbole) {
+  nota('didattica.js non caricato: sezione saltata.');
+} else {
+  const { fiondaIperbole, FIONDA_PIANETI } = didProve;
+  const G = FIONDA_PIANETI.Jupiter;
+  const ip = fiondaIperbole(G, 15, 10);   // Giove, quindici raggi, 10 km/s
+
+  // 1. Le due scritture dell'eccentricità devono dare lo stesso numero:
+  //    quella col parametro d'impatto e quella col perielio. È la prova
+  //    che smaschera esattamente l'errore di prima.
+  const eDalPerielio = 1 + ip.peri * 100 / G.mu;
+  prova('e dal parametro d\'impatto = e dal perielio',
+        Math.abs(ip.e - eDalPerielio) < 1e-9,
+        `${ip.e.toFixed(6)} contro ${eDalPerielio.toFixed(6)}`);
+
+  // 2. Il perielio contro l'integrazione vera del moto (Verlet, passo
+  //    corto: qui non si bara, si integra e si guarda dove passa)
+  function periVero(P, bRaggi, vInf) {
+    const b = Math.abs(bRaggi) * P.raggio, a = P.mu / (vInf * vInf);
+    const e = Math.sqrt(1 + (b / a) * (b / a));
+    const p = a * (e * e - 1), h = b * vInf, d = Math.max(b * 8, P.raggio * 400);
+    const nu = -Math.acos(Math.max(-1, Math.min(1, (p / d - 1) / e)));
+    const k = P.mu / h, th = Math.atan2(e - 1 / e, Math.sin(Math.acos(-1 / e)));
+    const c = Math.cos(-th), s = Math.sin(-th);
+    let x = c * (d * Math.cos(nu)) - s * (d * Math.sin(nu));
+    let y = s * (d * Math.cos(nu)) + c * (d * Math.sin(nu));
+    let vx = c * (-k * Math.sin(nu)) - s * (k * (e + Math.cos(nu)));
+    let vy = s * (-k * Math.sin(nu)) + c * (k * (e + Math.cos(nu)));
+    const vIn = Math.atan2(vy, vx);
+    let peri = Infinity;
+    const base = d / vInf / 3000;
+    for (let i = 0; i < 400000; i++) {
+      const r2 = x * x + y * y, r = Math.sqrt(r2);
+      peri = Math.min(peri, r);
+      const dt = Math.max(0.2, base * Math.pow(r / d, 1.5));
+      const ac = -P.mu / (r2 * r), ax = ac * x, ay = ac * y;
+      const xn = x + vx * dt + 0.5 * ax * dt * dt, yn = y + vy * dt + 0.5 * ay * dt * dt;
+      const rn2 = xn * xn + yn * yn, rn = Math.sqrt(rn2), an = -P.mu / (rn2 * rn);
+      vx += 0.5 * (ax + an * xn) * dt; vy += 0.5 * (ay + an * yn) * dt;
+      x = xn; y = yn;
+      if (r > d && (x * vx + y * vy) > 0) break;
+    }
+    return { peri, dev: Math.abs(Math.atan2(vy, vx) - vIn) / D2R,
+             vInfFine: Math.sqrt(vx * vx + vy * vy - 2 * P.mu / Math.hypot(x, y)) };
+  }
+  const vero = periVero(G, 15, 10);
+  prova('il perielio della formula è quello a cui passa davvero',
+        Math.abs(vero.peri - ip.peri) / ip.peri < 0.002,
+        `${(ip.peri / G.raggio).toFixed(3)} raggi contro ${(vero.peri / G.raggio).toFixed(3)}`);
+  prova('e la deviazione pure, entro il grado di scarto degli asintoti',
+        Math.abs(vero.dev - ip.dev / D2R) < 1.5,
+        `${(ip.dev / D2R).toFixed(2)}° contro ${vero.dev.toFixed(2)}°`);
+  prova('la sonda esce con la stessa velocità con cui è entrata',
+        Math.abs(vero.vInfFine - 10) < 0.001, `${vero.vInfFine.toFixed(5)} km/s`);
+
+  // 3. Il caso di scuola: passando alla superficie di Giove a bassa
+  //    velocità la deviazione tende a 180°, e allargandosi tende a zero
+  prova('più stretto si passa, più si viene piegati',
+        fiondaIperbole(G, 1.2, 4).dev > fiondaIperbole(G, 40, 4).dev);
+  prova('a un\'unità astronomica di distanza la sonda tira dritto',
+        fiondaIperbole(G, 2000, 20).dev / D2R < 0.5,
+        `${(fiondaIperbole(G, 2000, 20).dev / D2R).toFixed(2)}°`);
+
+  // 4. Il tetto del guadagno, contro una ricerca a forza bruta su δ. La
+  //    sonda arriva di traverso alla corsa del pianeta, quindi il massimo
+  //    NON è a 180° (che ributterebbe indietro tutto) ma a 90°.
+  const vInf = 10, V = G.vOrb;
+  const prima = Math.hypot(vInf, V);
+  let migliore = { g: -Infinity, dev: 0 };
+  for (let d = 0; d <= 180; d += 0.1) {
+    const g = Math.hypot(vInf * Math.cos(d * D2R), vInf * Math.sin(d * D2R) + V) - prima;
+    if (g > migliore.g) migliore = { g, dev: d };
+  }
+  prova('il massimo guadagno si ha con una deviazione di 90°',
+        Math.abs(migliore.dev - 90) < 0.5, `${migliore.dev.toFixed(1)}°`);
+  prova('e vale v∞ + V − √(v∞² + V²)',
+        Math.abs(migliore.g - (vInf + V - prima)) < 0.001,
+        `${migliore.g.toFixed(3)} km/s`);
+  prova('nessuna rotta può superare 2 × min(v∞, V)',
+        migliore.g < 2 * Math.min(vInf, V),
+        `${migliore.g.toFixed(2)} contro ${(2 * Math.min(vInf, V)).toFixed(2)} km/s`);
+
+  // 5. Passare davanti frena, passare dietro accelera: è il segno del
+  //    parametro d'impatto, ed è l'unica cosa che l'utente sceglie col dito
+  const dietro = fiondaIperbole(G, 15, 10), davanti = fiondaIperbole(G, -15, 10);
+  prova('davanti e dietro girano la sonda dalla stessa quantità',
+        Math.abs(dietro.dev - davanti.dev) < 1e-12);
+  prova('ma dalle due parti opposte', dietro.verso === 1 && davanti.verso === -1);
+  const dopoDietro = Math.hypot(10 * Math.cos(dietro.dev), 10 * Math.sin(dietro.dev) + V);
+  const dopoDavanti = Math.hypot(10 * Math.cos(davanti.dev), -10 * Math.sin(davanti.dev) + V);
+  prova('dietro si guadagna, davanti si perde',
+        dopoDietro > prima && dopoDavanti < prima,
+        `${dopoDietro.toFixed(2)} e ${dopoDavanti.toFixed(2)} contro ${prima.toFixed(2)} km/s`);
+
+  // 6. Giove rende più di Saturno, ed è il motivo per cui il Grand Tour
+  //    passa di lì per primo: pesa di più *e* corre di più
+  const S = FIONDA_PIANETI.Saturn;
+  const resa = (P) => P.vOrb + 10 - Math.hypot(10, P.vOrb);
+  prova('Giove rende più di Saturno', resa(G) > resa(S),
+        `${resa(G).toFixed(2)} contro ${resa(S).toFixed(2)} km/s`);
 }
 
 // =====================================================================
