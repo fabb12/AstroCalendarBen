@@ -3015,7 +3015,1512 @@
 
 
   // ===================================================================
-  // 8. IL BANCO — linguette, costruzione e ciclo di disegno
+  // 8. ESPERIMENTO 6 — LE AURORE POLARI
+  //
+  //   Delle cose che si vedono in cielo, l'aurora è l'unica che non
+  //   viene dalla meccanica celeste. Non c'è un'orbita da cui ricavarla
+  //   e non c'è una data da scrivere in calendario: c'è il Sole che
+  //   soffia, la Terra che si difende, e il punto in cui la difesa cede.
+  //
+  //   È anche la cosa che più di tutte viene raccontata male. «Le
+  //   particelle del Sole colpiscono l'atmosfera ai poli» è una frase
+  //   che sta in una riga e sbaglia due volte: le particelle del vento
+  //   solare non arrivano quasi mai dritte fin qui — è il campo
+  //   terrestre a portarcele, e le prende dalla coda, cioè da dietro,
+  //   non dal davanti — e non arrivano *al polo*, arrivano su un
+  //   **anello** attorno al polo, che sopra il polo lascia un buco. Chi
+  //   va in Lapponia e guarda a nord aspettandosi il massimo verso il
+  //   polo, non di rado ce l'ha dietro le spalle.
+  //
+  //   Il banco fa vedere la catena intera, e la fa vedere in tre
+  //   dimensioni, perché in due non si capisce: la magnetosfera è un
+  //   solido, la coda è un tubo, e l'ovale è un anello che si può solo
+  //   guardare da fuori. Quattro quadri sulla stessa scena — si gira col
+  //   dito e l'inquadratura si sposta da sola — e un quinto quadro che è
+  //   un taglio visto di lato, quello che risponde alla domanda che in
+  //   Italia si sono fatti tutti: «ma allora perché a me è venuta rossa?».
+  //
+  //   I NUMERI. La magnetopausa e l'onda d'urto sono il modello di Shue
+  //   et al. (1997), che sta in `aurora-polare.js` §7 e che
+  //   `verifica.html` controlla. Le linee di campo sono dipolari
+  //   (r = L·cos²λ) e vengono poi stirate dal vento con una regola
+  //   dichiarata sotto al disegno. L'ovale è `aurBordo()` e
+  //   `aurSpessore()`: le stesse due funzioni con cui il planetario
+  //   disegna l'aurora vera, quindi l'anello che si vede qui e le tende
+  //   che si vedono là sono lo stesso oggetto guardato da due parti. Il
+  //   taglio di lato è `aurAltezza()`, cioè la Terra tonda: quello è a
+  //   scala vera, curvatura e quote comprese, senza nessuna esagerazione.
+  //
+  //   Il ponte finale non è il solito «guardalo stasera»: da qui stasera
+  //   non c'è niente da guardare. È un elenco di posti e di notti in cui
+  //   l'aurora c'è stata **davvero**, e ogni riga porta il planetario lì:
+  //   altro luogo, altra data, l'ovale acceso col Kp di quella notte. È
+  //   l'unico modo onesto di far vedere un'aurora a chi vive a
+  //   quarantacinque gradi di latitudine.
+  // ===================================================================
+
+  const RE_KM = 6371;                  // un raggio terrestre, in km
+  const AURL_SOLE_X = 200;             // dov'è il Sole nella scena, in raggi terrestri
+  const AURL_ORE = 60;                 // quanto dura la storia
+  const AURL_VIAGGIO_H = 45;           // quanto ci mette la nube ad arrivare
+  const AURL_TILT = 18;                // inclinazione del dipolo sul vento, in gradi
+  const AURL_CODA_MAX = 78;            // fin dove si disegna la coda, in raggi terrestri
+  const AURL_QUOTA_ALTA = 380;         // la cima delle tende, in km
+
+  const CA = {
+    sole:   '#ffc94d',
+    vento:  '#7dd3fc',
+    nube:   '#f0abfc',
+    urto:   '#94a3b8',
+    scudo:  '#8ab4ff',
+    coda:   '#a78bfa',
+    chiusa: '#5eead4',
+    aperta: '#c4b5fd',
+    verde:  '#5cf5a0',
+    rosso:  '#ff6b7a',
+    casa:   '#ffe066'
+  };
+
+  // I cinque quadri. `centro` e `campo` sono l'inquadratura (in raggi
+  // terrestri), `elev` l'altezza da cui si guarda finché non ci si mette
+  // il dito.
+  const AURL_QUADRI = {
+    vento: {
+      chip: 'Il Sole soffia',
+      centro: [-95, 0, 0], campo: 128, elev: 14, az: -90,
+      // Ogni quadro ha la sua finestra di tempo, e la barra si accorcia su
+      // quella. Con un'unica barra da sessanta ore aprire «la scarica» e
+      // trovare la coda tranquilla — perché la nube è ancora a mezza
+      // strada, o perché la tempesta è già passata — era il modo più veloce
+      // di far credere che il banco fosse rotto. Adesso ogni quadro gira
+      // sul pezzo di storia che racconta.
+      finestra: [0, 47],
+      targhetta: 'Dal Sole alla Terra — <em>distanze compresse 117 volte</em>',
+      titolo: 'Il vento non smette mai, ogni tanto arriva una folata',
+      testo: `La corona solare è così calda che il Sole non riesce a tenersela: perde di continuo un
+        milione di tonnellate al secondo di gas elettricamente carico, che si allarga in tutte le
+        direzioni a quattrocento chilometri al secondo. Quello è il <strong>vento solare</strong>, e
+        c'è sempre. Ogni tanto, da una regione attiva, parte in più una bolla: un miliardo di
+        tonnellate di plasma con dentro un pezzo del campo magnetico solare, sparata a mille
+        chilometri al secondo. Si chiama <em>espulsione di massa coronale</em>, e ci mette un giorno
+        o due ad arrivare. Scorri la barra: quello che vedi partire adesso lo sapremo fra due giorni.`
+    },
+    scudo: {
+      chip: 'Lo scudo',
+      centro: [12, 0, 0], campo: 52, elev: 16, az: -90,
+      finestra: [38, 54],
+      targhetta: 'La magnetosfera nel vento — <em>magnetopausa di Shue (1997)</em>',
+      titolo: 'Perché il vento solare non ci arriva addosso',
+      testo: `Il campo magnetico terrestre non è un guscio: è un ostacolo in un fiume. Il vento lo
+        schiaccia dalla parte del Sole fino a fermarsi dove le due pressioni si pareggiano — il
+        <strong>naso</strong> della magnetopausa, una decina di raggi terrestri, sessantacinquemila
+        chilometri — e se lo porta dietro dall'altra parte in una <strong>coda</strong> lunga
+        centinaia di raggi. Più avanti ancora c'è l'<em>onda d'urto</em>: il vento arriva
+        supersonico e lì frena di colpo, come l'acqua davanti alla prua. Guarda il naso mentre la
+        nube arriva: sotto tempesta si schiaccia quasi a metà, e i satelliti geostazionari — che
+        stanno a 6,6 raggi — si sono trovati per qualche ora <em>fuori</em> dalla magnetosfera.`
+    },
+    scarica: {
+      chip: 'La scarica',
+      centro: [26, 0, 0], campo: 58, elev: 18, az: -90,
+      finestra: [45.2, 55],
+      targhetta: 'La coda che si carica e si rompe — <em>la sottotempesta</em>',
+      titolo: 'L\'aurora non viene dal davanti: viene da dietro',
+      testo: `Qui sta il pezzo che quasi nessuno racconta. Se il campo magnetico della nube è rivolto a
+        <strong>sud</strong>, cioè al contrario del nostro, sul naso le linee di campo si
+        <em>riconnettono</em>: si aprono, e il vento se le trascina dietro nella coda. La coda si
+        carica come una molla, per una mezz'ora o un'ora. Poi si rompe nel mezzo — un secondo punto
+        di riconnessione, a una ventina di raggi — e succedono due cose insieme: un pezzo di coda se
+        ne va verso l'esterno, e tutto il resto scatta indietro verso la Terra sparando elettroni
+        lungo le linee di campo. È la <strong>sottotempesta</strong>, dura una decina di minuti, e
+        quegli elettroni finiscono in fondo alle linee — cioè attorno ai poli.`
+    },
+    anello: {
+      chip: 'L\'anello',
+      centro: [0, 0, 0], campo: 3.2, elev: 40, az: -118,
+      finestra: [43, 58],
+      targhetta: 'L\'ovale aurorale, boreale e australe — <em>quote ingrandite 6 volte</em>',
+      titolo: 'Non è al polo: è un anello attorno al polo',
+      testo: `Le linee di campo che raccolgono gli elettroni della coda non finiscono al polo: finiscono
+        su un <strong>anello</strong> largo qualche grado attorno al polo <em>geomagnetico</em>, che
+        a sua volta non sta sul polo geografico. L'anello è schiacciato verso il lato notte, sta
+        fermo rispetto al Sole, ed è la Terra che gli gira sotto: per questo l'ora migliore è la
+        mezzanotte magnetica, e per questo il tuo paese ci passa sotto una volta al giorno — guarda
+        il pallino giallo mentre scorre la barra. Più la tempesta è forte, più l'anello si allarga
+        verso l'equatore: è tutto lì il motivo per cui certe notti si vede anche da sud. E ce ne
+        sono due, uguali e opposti: quello che si guarda dalla Norvegia e quello che si guarda dalla
+        Tasmania sono i due capi delle stesse linee di campo, e si accendono negli stessi minuti.`
+    },
+    taglio: {
+      chip: 'Perché da qui è rossa',
+      targhetta: 'Il taglio visto di lato, alla mezzanotte magnetica — <em>curvatura e quote a scala vera</em>',
+      titolo: 'La Terra è tonda, e l\'aurora ha un\'altezza',
+      testo: `Questo quadro non è una scena, è un taglio, e risponde alla domanda che in Italia si sono
+        fatti tutti nel maggio 2024. L'aurora non è una luce appoggiata sull'orizzonte: è un volume
+        di atmosfera fra i 100 e i 400 chilometri, e ogni quota ha il suo colore, perché ogni quota
+        ha la sua riga di emissione. Se l'ovale è a mille chilometri da te, la curvatura della Terra
+        ti nasconde il fondo della tenda e ti lascia vedere solo la cima: sotto l'orizzonte resta il
+        verde dell'ossigeno a 120 km, si affaccia il rosso dello stesso ossigeno a 250. Non c'è
+        nessuna regola scritta da qualche parte che dica «in Italia fai il rosso»: viene fuori da qui.`
+    }
+  };
+
+  // I posti e le notti in cui l'aurora c'è stata davvero. Sono quattro
+  // perché sono quattro casi diversi, non quattro cartoline: l'ovale
+  // addosso, l'ovale accanto, il solo rosso da lontano, e l'altro
+  // emisfero.
+  const AURL_METE = [
+    {
+      id: 'tromso', nome: 'Tromsø', paese: 'Norvegia', lat: 69.65, lon: 18.96,
+      quando: Date.UTC(2024, 11, 21, 21, 0), kp: 4, kpVero: false,
+      titolo: 'L\'ovale sopra la testa',
+      testo: `Notte del solstizio, dentro al circolo polare: il Sole non sorge e il buio dura
+        ventiquattr'ore. A questa latitudine geomagnetica non serve una tempesta — con un Kp 4, che
+        capita più volte al mese, l'ovale passa proprio di sopra e le tende scendono dallo zenit.
+        È l'aurora delle fotografie.`
+    },
+    {
+      id: 'fairbanks', nome: 'Fairbanks', paese: 'Alaska', lat: 64.84, lon: -147.72,
+      quando: Date.UTC(2025, 2, 21, 7, 0), kp: 5, kpVero: false,
+      titolo: 'L\'equinozio, cioè la stagione giusta',
+      testo: `La notte dell'equinozio di marzo, che statisticamente è il periodo dell'anno con più
+        tempeste (è l'effetto Russell-McPherron, quello per cui il calendario segna la «stagione
+        delle aurore»). Fairbanks sta appena a sud dell'ovale tranquillo: con un Kp 5 l'anello le
+        scende addosso e l'arco passa allo zenit verso mezzanotte.`
+    },
+    {
+      id: 'padana', nome: 'Pianura Padana', paese: 'Italia', lat: 44.49, lon: 11.34,
+      quando: Date.UTC(2024, 4, 10, 21, 0), kp: 9, kpVero: true,
+      titolo: 'Il cielo rosso del maggio 2024',
+      testo: `La sera del 10 maggio 2024, tempesta di Gannon: Kp 9, la più forte dal 2003. Mezza Italia
+        ha fotografato un cielo <em>rosso</em> a nord, e quasi nessuno lì per lì ha capito perché — dai
+        posti più bui e più a nord si è visto anche un accenno di verde, ma bassissimo. Con un Kp così
+        l'ovale scende a quattrocento chilometri da qui, ed è la sola volta in vent'anni che è successo:
+        con la slitta del quadro «Perché da qui è rossa» si vede a che Kp il verde comincia ad
+        affacciarsi, e quanto ci vuole ad arrivarci.`
+    },
+    {
+      id: 'hobart', nome: 'Hobart', paese: 'Tasmania', lat: -42.88, lon: 147.33,
+      quando: Date.UTC(2024, 4, 11, 12, 0), kp: 8, kpVero: true,
+      titolo: 'La stessa tempesta, dall\'altra parte',
+      testo: `La notte dopo, dall'emisfero sud. La stessa nube, la stessa tempesta, l'ovale
+        <em>australe</em> — che non è un'altra aurora: è l'altro capo delle stesse linee di campo. Da
+        Hobart si guarda a sud, e tutto il resto funziona identico.`
+    }
+  ];
+
+  const AURL_LUOGHI = [
+    { id: 'casa', nome: 'Casa mia' },
+    { id: 'tromso', nome: 'Tromsø', lat: 69.65, lon: 18.96 },
+    { id: 'reykjavik', nome: 'Reykjavík', lat: 64.15, lon: -21.94 },
+    { id: 'edimburgo', nome: 'Edimburgo', lat: 55.95, lon: -3.19 },
+    { id: 'padana', nome: 'Pianura Padana', lat: 44.49, lon: 11.34 },
+    { id: 'hobart', nome: 'Hobart', lat: -42.88, lon: 147.33 }
+  ];
+
+  const aurL = {
+    quadro: 'vento',
+    t: 0,                 // ore dall'eruzione
+    marcia: true,
+    velocita: 1,
+    cam: { az: -90, elev: 14 },
+    camV: { az: -90, elev: 14 },
+    trascina: null,
+    luogo: 'casa',
+    // Sei è il Kp da cui partire, e non è un numero a caso: è la tempesta
+    // forte ma non irripetibile, quella che dalle nostre latitudini fa
+    // esattamente il caso che il quadro racconta — il verde ancora sotto
+    // la curvatura, il rosso già sopra l'orizzonte.
+    kpTaglio: 6,
+    // le due memorie: le linee di campo e la risposta «da qui cosa si
+    // vedrebbe» costano troppo per rifarle sessanta volte al secondo, e
+    // cambiano molto più piano di così
+    campo: { chiave: '', linee: null },
+    visto: new Map(),
+    ore: new Map()
+  };
+
+  // -------------------------------------------------- la tempesta
+  // Il vento in funzione delle ore: prima della nube è quello di tutti i
+  // giorni, poi in un'ora sale a valori da tempesta e poi decade in
+  // mezza giornata. `s` è il solo parametro che conta: 0 = quiete, 1 = il
+  // colpo. Non è un modello del Sole, è la forma che ha una tempesta
+  // vera, e i valori agli estremi sono quelli misurati.
+  function aurLVento(t) {
+    const d = t - AURL_VIAGGIO_H;
+    const s = d < 0 ? 0 : (d < 1 ? d : Math.exp(-(d - 1) / 10));
+    return {
+      s,
+      p: 2 + 18 * s,             // pressione dinamica, nPa
+      bz: -1 - 24 * s,           // campo interplanetario verso sud, nT
+      v: 400 + 520 * s           // velocità, km/s
+    };
+  }
+
+  function aurLKp(t) {
+    const s = aurLVento(t).s;
+    return Math.max(1, Math.min(9, 1.5 + 7.3 * Math.pow(s, 0.75)));
+  }
+
+  // La sottotempesta: la coda si carica per un paio d'ore e poi si scarica
+  // in dieci minuti. È il ciclo che fa comparire e sparire gli archi
+  // mentre uno sta lì a guardare — ed è il motivo per cui chi esce, vede
+  // niente per venti minuti e rientra, si perde l'aurora.
+  const AURL_CICLO_H = 2.4;
+  function aurLSottotempesta(t) {
+    const d = t - AURL_VIAGGIO_H;
+    if (d < 0.3) return { carica: 0, luce: 0.06, scarica: false };
+    const f = ((d - 0.3) % AURL_CICLO_H) / AURL_CICLO_H;
+    if (f < 0.78) return { carica: f / 0.78, luce: 0.12 + 0.2 * (f / 0.78), scarica: false };
+    const u = (f - 0.78) / 0.22;
+    return { carica: 1 - u, luce: 0.35 + 0.65 * Math.sin(u * Math.PI), scarica: true };
+  }
+
+  // Dov'è la nube adesso, sull'asse Sole-Terra
+  function aurLNube(t) {
+    const q = Math.max(0, Math.min(1.4, t / AURL_VIAGGIO_H));
+    return {
+      x: -AURL_SOLE_X + AURL_SOLE_X * q,
+      // il raggio della calotta è la strada che il fronte ha già fatto: a
+      // q = 1 il naso della nube è esattamente sulla Terra
+      raggioFronte: Math.max(6, AURL_SOLE_X * q),
+      q,
+      partita: t > 0.4
+    };
+  }
+
+  // -------------------------------------------------- lo scudo
+  function aurLUrtoAvanti() { return typeof AUR_URTO_AVANTI === 'number' ? AUR_URTO_AVANTI : 1.28; }
+  function aurLUrtoApertura() { return typeof AUR_URTO_APERTURA === 'number' ? AUR_URTO_APERTURA : 1.42; }
+  function aurLThetaMax() { return typeof AUR_MP_THETA_MAX === 'number' ? AUR_MP_THETA_MAX : 2.55; }
+
+  function aurLMagnetopausa(theta, r0, alfa) {
+    if (typeof aurMagnetopausa === 'function') return aurMagnetopausa(theta, r0, alfa);
+    const t = Math.min(Math.abs(theta), aurLThetaMax());
+    return r0 * Math.pow(2 / (1 + Math.cos(t)), alfa);
+  }
+
+  function aurLScudo(t) {
+    const v = aurLVento(t);
+    const r0 = typeof aurStandoff === 'function' ? aurStandoff(v.p, v.bz) : 10.3;
+    const alfa = typeof aurAperturaCoda === 'function' ? aurAperturaCoda(v.p, v.bz) : 0.59;
+    return { r0, alfa, codaR: aurLMagnetopausa(2.2, r0, alfa) * Math.sin(2.2), v };
+  }
+
+  // Il profilo della magnetopausa come tabella (x, raggio perpendicolare).
+  // Da qui esce sia il disegno della superficie sia la deviazione dei fili
+  // di vento, che devono girarci attorno senza attraversarla.
+  function aurLProfilo(s, n, avanti, apertura) {
+    const r0 = s.r0 * (avanti || 1);
+    const alfa = Math.min(1.05, s.alfa * (apertura || 1));
+    const t = [];
+    const max = aurLThetaMax();
+    for (let i = 0; i <= n; i++) {
+      const th = max * i / n;
+      const r = aurLMagnetopausa(th, r0, alfa);
+      const x = -r * Math.cos(th);
+      if (x > AURL_CODA_MAX) break;
+      t.push({ x, rho: r * Math.sin(th) });
+    }
+    return t;
+  }
+
+  function aurLRho(prof, x) {
+    if (!prof.length) return 0;
+    if (x <= prof[0].x) return 0;
+    const ultimo = prof[prof.length - 1];
+    if (x >= ultimo.x) return ultimo.rho;
+    for (let i = 1; i < prof.length; i++) {
+      if (prof[i].x >= x) {
+        const a = prof[i - 1], b = prof[i];
+        const u = (x - a.x) / ((b.x - a.x) || 1);
+        return a.rho + (b.rho - a.rho) * u;
+      }
+    }
+    return ultimo.rho;
+  }
+
+  // -------------------------------------------------- la telecamera
+  function aurLVista(L, H, centro, campo) {
+    const az = aurL.cam.az * Math.PI / 180, el = aurL.cam.elev * Math.PI / 180;
+    const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
+    return {
+      L, H, cx: L / 2, cy: H / 2, c: centro,
+      scala: Math.min(L * 0.47, H * 0.86) / campo,
+      r: [-sa, ca, 0],
+      u: [-se * ca, -se * sa, ce],
+      f: [ce * ca, ce * sa, se]
+    };
+  }
+
+  // La profondità (`z`) si misura dall'**origine**, cioè dalla Terra, non
+  // dal centro dell'inquadratura: se no bastava spostare la telecamera
+  // lungo la coda perché la metà «davanti» del globo diventasse quella
+  // sbagliata, e l'ovale si disegnava dalla parte nascosta.
+  function aurLPro(p, w) {
+    const dx = p[0] - w.c[0], dy = p[1] - w.c[1], dz = p[2] - w.c[2];
+    return {
+      x: w.cx + (dx * w.r[0] + dy * w.r[1] + dz * w.r[2]) * w.scala,
+      y: w.cy - (dx * w.u[0] + dy * w.u[1] + dz * w.u[2]) * w.scala,
+      z: p[0] * w.f[0] + p[1] * w.f[1] + p[2] * w.f[2]
+    };
+  }
+
+  // Una polilinea in due passate: davanti piena, dietro sbiadita. Costa
+  // due `stroke` per linea invece di uno per segmento, ed è la differenza
+  // fra un reticolo che si legge come un solido e uno che sembra un
+  // ghirigoro piatto.
+  function aurLFilo(ctx, punti, colore, spessore, opacita) {
+    const o = opacita === undefined ? 1 : opacita;
+    for (let passata = 0; passata < 2; passata++) {
+      const davanti = passata === 1;
+      ctx.beginPath();
+      let dentro = false;
+      for (let i = 1; i < punti.length; i++) {
+        const a = punti[i - 1], b = punti[i];
+        if ((((a.z + b.z) / 2 >= 0)) !== davanti) { dentro = false; continue; }
+        if (!dentro) { ctx.moveTo(a.x, a.y); dentro = true; }
+        ctx.lineTo(b.x, b.y);
+      }
+      ctx.strokeStyle = didVela(colore, o * (davanti ? 0.9 : 0.24));
+      ctx.lineWidth = spessore * (davanti ? 1 : 0.8);
+      ctx.stroke();
+    }
+  }
+
+  // -------------------------------------------------- il campo magnetico
+  // Una linea di campo dipolare, r = L·cos²λ, inclinata col dipolo e poi
+  // deformata dal vento. La deformazione è dichiarata: dentro alla
+  // magnetopausa una compressione dal lato del Sole, fuori la linea si
+  // apre e il vento se la porta nella coda stringendola verso l'asse.
+  // La forma esatta la darebbero solo le equazioni del plasma; questa la
+  // somiglia, e le due cose che contano — dove finiscono i piedi delle
+  // linee, e da che parte arriva la roba — sono al posto giusto.
+  function aurLDeforma(p, s) {
+    const r = Math.hypot(p[0], p[1], p[2]);
+    if (r < 1.001) return p;
+    const cos = Math.max(-1, Math.min(1, -p[0] / r));
+    const R = aurLMagnetopausa(Math.acos(cos), s.r0, s.alfa);
+    if (r <= R) {
+      const k = 1 - 0.12 * Math.max(0, cos);
+      return [p[0] * k, p[1] * k, p[2] * k];
+    }
+    const ecc = r - R;
+    const perp = Math.hypot(p[1], p[2]);
+    const f = Math.min(1, ecc / 10);
+    const stretta = perp > 0.001 ? Math.min(1, (s.codaR * 0.92) / perp) : 1;
+    const k = 1 + (stretta - 1) * f;
+    return [p[0] + ecc * 2.4, p[1] * k, p[2] * k];
+  }
+
+  function aurLRuotaTilt(p, tiltRad) {
+    const c = Math.cos(tiltRad), sn = Math.sin(tiltRad);
+    return [p[0] * c + p[2] * sn, p[1], -p[0] * sn + p[2] * c];
+  }
+
+  // Una linea di campo dal piede a nord al piede a sud. `lat0` è la
+  // latitudine magnetica del piede: sotto i 72° torna indietro (linea
+  // chiusa, è lo scudo), sopra il vento se la porta via (linea aperta, ed
+  // è la strada per cui gli elettroni scendono sull'ovale).
+  const AURL_PASSI_LINEA = 64;
+  function aurLLinea(lat0, lonDeg, s, tiltRad) {
+    const la0 = lat0 * Math.PI / 180;
+    const cos0 = Math.cos(la0);
+    const L = 1 / Math.max(1e-4, cos0 * cos0);
+    const lon = lonDeg * Math.PI / 180;
+    const punti = [];
+    for (let i = 0; i <= AURL_PASSI_LINEA; i++) {
+      const la = la0 - 2 * la0 * i / AURL_PASSI_LINEA;
+      const c = Math.cos(la);
+      const r = L * c * c;
+      if (r < 0.999) continue;
+      let p = aurLRuotaTilt([r * c * Math.cos(lon), r * c * Math.sin(lon), r * Math.sin(la)], tiltRad);
+      p = aurLDeforma(p, s);
+      if (p[0] > AURL_CODA_MAX) {
+        // la linea esce dal quadro: si spezza qui e riprende dall'altra
+        // metà, se no il segmento di ritorno taglia tutta la scena
+        if (punti.length && punti[punti.length - 1]) punti.push(null);
+        continue;
+      }
+      punti.push(p);
+    }
+    return punti;
+  }
+
+  // Le linee si rifanno solo quando la tempesta è cambiata abbastanza da
+  // vedersi: un quarto d'ora di racconto, che a velocità 1× è un decimo
+  // di secondo. Rifarle a ogni fotogramma sarebbero duemila radici
+  // quadrate e duemila arcocoseni per un disegno identico a quello di
+  // prima.
+  const AURL_CHIUSE = [56, 65, 71];
+  const AURL_APERTE = [75, 79, 84];
+  const AURL_LONGITUDINI = [0, 60, 120, 180, 240, 300];
+  function aurLLinee(s, tiltRad) {
+    const chiave = Math.round(aurL.t * 4);
+    if (aurL.campo.chiave === chiave && aurL.campo.linee) return aurL.campo.linee;
+    const chiuse = [], aperte = [];
+    AURL_CHIUSE.forEach(la => AURL_LONGITUDINI.forEach(f => chiuse.push(aurLLinea(la, f, s, tiltRad))));
+    AURL_APERTE.forEach(la => AURL_LONGITUDINI.forEach(f => aperte.push(aurLLinea(la, f, s, tiltRad))));
+    aurL.campo = { chiave, linee: { chiuse, aperte } };
+    return aurL.campo.linee;
+  }
+
+  function aurLDisegnaLinea(ctx, w, punti, colore, spessore, opacita) {
+    let pezzo = [];
+    const scarica = () => {
+      if (pezzo.length > 1) aurLFilo(ctx, pezzo, colore, spessore, opacita);
+      pezzo = [];
+    };
+    for (let i = 0; i < punti.length; i++) {
+      if (!punti[i]) { scarica(); continue; }
+      pezzo.push(aurLPro(punti[i], w));
+    }
+    scarica();
+  }
+
+  // -------------------------------------------------- l'ovale sul globo
+  // Un punto dell'ovale: latitudine magnetica `la`, ora magnetica `mlt`,
+  // quota `km`. Mezzogiorno magnetico guarda il Sole, cioè -X.
+  function aurLPuntoOvale(la, mlt, km, boreale, tiltRad) {
+    const fi = (180 + (mlt - 12) * 15) * Math.PI / 180;
+    const l = (boreale ? la : -la) * Math.PI / 180;
+    const r = 1 + (km || 0) / RE_KM;
+    return aurLRuotaTilt(
+      [r * Math.cos(l) * Math.cos(fi), r * Math.cos(l) * Math.sin(fi), r * Math.sin(l)], tiltRad);
+  }
+
+  // Il nastro dell'ovale, dal bordo verso l'equatore a quello verso il
+  // polo. `aurBordo` e `aurSpessore` sono quelle del planetario: se un
+  // giorno si ritocca la forma dell'ovale, si ritocca in un posto solo.
+  function aurLNastro(kp, boreale, tiltRad, km, quanti) {
+    const n = quanti || 72;
+    const fuori = [], dentro = [];
+    for (let i = 0; i <= n; i++) {
+      const mlt = i * 24 / n;
+      const b = typeof aurBordo === 'function' ? aurBordo(kp, mlt) : 66.5 - 2.05 * kp;
+      const sp = typeof aurSpessore === 'function' ? aurSpessore(kp, mlt) : 5;
+      fuori.push(aurLPuntoOvale(b, mlt, km, boreale, tiltRad));
+      dentro.push(aurLPuntoOvale(Math.min(88, b + sp), mlt, km, boreale, tiltRad));
+    }
+    return { fuori, dentro };
+  }
+
+  // -------------------------------------------------- dove sono io
+  // La stessa domanda che si fa il planetario, ridotta all'osso: da un
+  // luogo e con un Kp, quanto è lontano l'ovale e sotto che angolo se ne
+  // vedono il verde e il rosso. Le funzioni sono quelle di
+  // `aurora-polare.js`, quindi la risposta è la stessa che darà il cielo.
+  // Le falde: l'ovale ha uno spessore, e va guardato tutto. Cercando solo
+  // il bordo verso l'equatore si sbagliava proprio il caso che questo
+  // banco esiste per raccontare — da Tromsø con Kp 4 quel bordo sta mille
+  // chilometri **a sud**, perché il paese è già dentro all'anello, e la
+  // risposta veniva «un bagliore lontano a 16°» invece che «ce l'hai
+  // sopra la testa». È lo stesso motivo per cui `aurGeometria()` disegna
+  // più falde invece di una riga sola.
+  const AURL_FALDE = [0, 0.35, 0.7, 1];
+
+  function aurLCalcola(data, lat, lon, kp) {
+    if (typeof aurBordo !== 'function' || typeof aurRiferimento !== 'function') return null;
+    const provaNord = aurMagnetiche(lat, lon, aurRiferimento(AUR_POLO_NORD));
+    const boreale = provaNord.lat >= 0;
+    const rif = aurRiferimento(boreale ? AUR_POLO_NORD : AUR_POLO_SUD);
+    const mia = aurMagnetiche(lat, lon, rif);
+    const sub = aurSubsolare(data);
+    const subM = aurMagnetiche(sub.lat, sub.lon, rif);
+    const soglia = typeof AUR_VERDE_MIN_ALT === 'number' ? AUR_VERDE_MIN_ALT : 3;
+
+    let migliore = null, verdeSuOrizzonte = false;
+    AURL_FALDE.forEach(f => {
+      for (let i = 0; i < 48; i++) {
+        const mlt = i * 24 / 48;
+        const lonM = subM.lon + (mlt - 12) * 15;
+        const sp = typeof aurSpessore === 'function' ? aurSpessore(kp, mlt) : 5;
+        const g = aurGeografiche(Math.min(88, aurBordo(kp, mlt) + f * sp), lonM, rif);
+        const rotta = aurRotta(lat, lon, g.lat, g.lon);
+        const verde = aurAltezza(rotta.psi, 120);
+        if (verde > soglia) verdeSuOrizzonte = true;
+        const cima = aurAltezza(rotta.psi, 400);
+        if (!migliore || cima > migliore.cima) {
+          migliore = {
+            mlt, az: rotta.az, psi: rotta.psi, km: rotta.psi * RE_KM,
+            verde, rosso: aurAltezza(rotta.psi, 250), cima
+          };
+        }
+      }
+    });
+
+    return Object.assign({
+      boreale, mia: mia.lat, verso: boreale ? 'nord' : 'sud',
+      nome: boreale ? 'boreale' : 'australe',
+      siVedeVerde: verdeSuOrizzonte,
+      siVede: migliore.cima > 0.5
+    }, migliore);
+  }
+
+  // L'ora magnetica di un posto: 12 è mezzogiorno magnetico (il Sole dalla
+  // parte del polo), 0 la mezzanotte magnetica.
+  function aurLOraMagnetica(data, lat, lon) {
+    if (typeof aurRiferimento !== 'function') return null;
+    const boreale = aurMagnetiche(lat, lon, aurRiferimento(AUR_POLO_NORD)).lat >= 0;
+    const rif = aurRiferimento(boreale ? AUR_POLO_NORD : AUR_POLO_SUD);
+    const mia = aurMagnetiche(lat, lon, rif);
+    const sub = aurSubsolare(data);
+    const subM = aurMagnetiche(sub.lat, sub.lon, rif);
+    return ((((12 + (mia.lon - subM.lon) / 15) % 24) + 24) % 24);
+  }
+
+  // «Da qui si vedrebbe?» è una domanda che ha senso solo di notte, e
+  // precisamente attorno alla **mezzanotte magnetica**: è lì che l'ovale
+  // scende, perché è schiacciato verso il lato notte. Chiedendolo
+  // all'istante di adesso — che per chi apre l'app di pomeriggio è
+  // mezzogiorno magnetico — la risposta era giusta e inutile: l'ovale
+  // dall'altra parte del pianeta, duemila chilometri invece di mille, e un
+  // verdetto molto più pessimista del vero. Quindi l'orologio si porta
+  // avanti da sé fino all'ora buona della prossima rotazione.
+  //
+  // Il verso in cui l'ora magnetica cammina non si dà per scontato — nel
+  // riferimento australe la longitudine magnetica è ribaltata — e si
+  // misura invece di dedurlo: due letture a un'ora di distanza.
+  function aurLOraBuona(data, lat, lon) {
+    // Anche questa si tiene da parte: sta in mezzo al ciclo di disegno e
+    // dentro ci sono due chiamate ad Astronomy Engine
+    const chiave = [Math.round(data.getTime() / 600000), lat.toFixed(2), lon.toFixed(2)].join('|');
+    if (aurL.ore.has(chiave)) return aurL.ore.get(chiave);
+    const v = aurLOraBuonaConto(data, lat, lon);
+    if (aurL.ore.size > 200) aurL.ore.clear();
+    aurL.ore.set(chiave, v);
+    return v;
+  }
+
+  function aurLOraBuonaConto(data, lat, lon) {
+    const m0 = aurLOraMagnetica(data, lat, lon);
+    if (m0 === null) return data;
+    const m1 = aurLOraMagnetica(new Date(data.getTime() + 3600000), lat, lon);
+    const giro = (x) => { let v = x % 24; if (v > 12) v -= 24; if (v < -12) v += 24; return v; };
+    const passo = giro(m1 - m0);
+    if (Math.abs(passo) < 0.2) return data;
+    const mancano = giro((typeof AUR_ORA_PIU_VIVA === 'number' ? AUR_ORA_PIU_VIVA : 22.5) - m0);
+    let ore = mancano / passo;
+    if (ore < 0) ore += 24 / Math.abs(passo);
+    return new Date(data.getTime() + ore * 3600000);
+  }
+
+  // Quarantotto giri di trigonometria sferica per quattro falde non si
+  // fanno sessanta volte al secondo per scrivere una riga di testo che
+  // cambia ogni tanto: la risposta si tiene da parte, con la grana con cui
+  // si legge.
+  function aurLGuarda(data, lat, lon, kp) {
+    const chiave = [Math.round(data.getTime() / 600000), lat.toFixed(2), lon.toFixed(2),
+      Math.round(kp * 10)].join('|');
+    if (aurL.visto.has(chiave)) return aurL.visto.get(chiave);
+    const v = aurLCalcola(data, lat, lon, kp);
+    if (aurL.visto.size > 300) aurL.visto.clear();
+    aurL.visto.set(chiave, v);
+    return v;
+  }
+
+  function aurLLuogoScelto() {
+    const v = AURL_LUOGHI.find(l => l.id === aurL.luogo) || AURL_LUOGHI[0];
+    if (v.id !== 'casa') return { nome: v.nome, lat: v.lat, lon: v.lon };
+    const l = typeof luogoCorrente === 'function' ? luogoCorrente() : null;
+    if (!l) return { nome: 'Pianura Padana', lat: 44.49, lon: 11.34, ripiego: true };
+    return { nome: 'Casa mia', lat: l.lat, lon: l.lon };
+  }
+
+  // ===================================================================
+  //   Il banco
+  // ===================================================================
+
+  laboratorio({
+    id: 'aurora',
+    chip: 'Aurore polari',
+    occhiello: 'Concetto 6 — dal Sole ai poli',
+    titolo: 'Come si accende un\'aurora',
+    sommario: `Il Sole soffia, la Terra si difende, e nel punto in cui la difesa cede si accende una
+      luce. Quattro quadri sulla stessa scena in tre dimensioni — il vento che parte, lo scudo che lo
+      devia, la coda che si carica e si rompe, l'anello attorno al polo — e un taglio visto di lato
+      che spiega perché la stessa aurora, dalla Norvegia, è verde e riempie il cielo, mentre
+      dall'Italia è un bagliore rosso appoggiato all'orizzonte. In fondo ci sono quattro notti in cui
+      è successo davvero, e ognuna apre il planetario lì.`,
+
+    costruisci() {
+      return `
+        <div class="segmenti-cielo did-quadri" id="did-aur-quadri">
+          ${Object.keys(AURL_QUADRI).map((k, i) =>
+            `<button type="button" class="tasto-segmento${i === 0 ? ' attiva' : ''}" data-quadro="${k}">${AURL_QUADRI[k].chip}</button>`).join('')}
+        </div>
+
+        <div id="did-aur-scena">
+          <figure class="did-scena did-scena-tonda">
+            <canvas id="did-aur-tela" class="did-tela"></canvas>
+            <figcaption class="did-targhetta" id="did-aur-targhetta">—</figcaption>
+          </figure>
+
+          ${didBarra('did-aur', { min: 0, max: AURL_ORE * 10, valore: 0,
+            etichettaSlitta: 'Scorri le ore della tempesta' })}
+
+          ${didLetture([
+            { id: 'did-aur-nube', nome: 'La nube è a' },
+            { id: 'did-aur-vel', nome: 'Vento solare' },
+            { id: 'did-aur-naso', nome: 'Naso dello scudo', forte: true },
+            { id: 'did-aur-kp', nome: 'Indice Kp', forte: true },
+            { id: 'did-aur-daqui', nome: 'Da casa tua', forte: true }
+          ])}
+
+          <p class="did-nota did-nota-gesto">Gira la scena col dito (o trascinando col mouse) per
+            guardarla da un'altra parte. Il + della lente avvicina, il ⟲ rimette tutto a posto.</p>
+        </div>
+
+        <div id="did-aur-scena-taglio" class="hidden">
+          <figure class="did-scena">
+            <canvas id="did-aur-taglio" class="did-tela"></canvas>
+            <figcaption class="did-targhetta" id="did-aur-taglio-targhetta">—</figcaption>
+          </figure>
+
+          <div class="did-riga did-riga-avvolgi" id="did-aur-luoghi">
+            ${AURL_LUOGHI.map(l => `<button type="button" class="did-pillola${l.id === 'casa' ? ' attiva' : ''}" data-luogo="${l.id}">${l.nome}</button>`).join('')}
+          </div>
+
+          <div class="did-riga">
+            <label class="did-etichetta" for="did-aur-kp-slitta">Quanto è forte la tempesta</label>
+            <span class="did-valore" id="did-aur-kp-val">Kp 6,0</span>
+          </div>
+          <input id="did-aur-kp-slitta" class="did-slitta did-slitta-larga" type="range" min="0" max="9" step="0.1" value="6">
+
+          ${didLetture([
+            { id: 'did-aur-t-lat', nome: 'Latitudine geomagnetica' },
+            { id: 'did-aur-t-dist', nome: 'L\'ovale dista', forte: true },
+            { id: 'did-aur-t-verde', nome: 'Il verde (120 km)', forte: true },
+            { id: 'did-aur-t-rosso', nome: 'Il rosso (250 km)', forte: true }
+          ])}
+
+          <p class="did-spiega" id="did-aur-t-spiega">—</p>
+        </div>
+
+        <p class="did-spiega" id="did-aur-spiega">—</p>
+        <p class="did-nota" id="did-aur-nota">—</p>
+
+        <h4 class="did-sottotitolo">Quattro notti in cui è successo davvero</h4>
+        <p class="did-nota">Da quasi tutta Europa l'aurora capita una volta ogni molti anni: aspettare
+          che succeda per vederla non è un piano. Queste righe portano il planetario in un altro posto e
+          in un'altra notte — quelle vere — con l'ovale acceso al Kp di allora. La posizione dell'app non
+          si tocca: è una visita, e dal pannello <em>Tempo e luogo</em> del planetario si torna a casa
+          con un tasto.</p>
+        <div class="did-mete" id="did-aur-mete"></div>
+
+        ${didPonti([
+          { azione: 'cielo', icona: 'stella', testo: 'L\'aurora nel cielo di casa', titolo: 'Apre il planetario da qui, con l\'ovale acceso alla tempesta scelta qui sopra' },
+          { azione: 'tred', icona: 'saturno', testo: 'Il Sistema Solare adesso', titolo: 'Apre la vista dall\'esterno all\'istante di adesso' }
+        ])}`;
+    },
+
+    collega() {
+      const quadri = $('did-aur-quadri');
+      if (quadri) quadri.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-quadro]');
+        if (!b) return;
+        quadri.querySelectorAll('[data-quadro]').forEach(x => x.classList.toggle('attiva', x === b));
+        aurLApriQuadro(b.dataset.quadro);
+      });
+
+      collegaBarra('did-aur', aurL, {
+        suSlitta: (v) => { aurL.t = v / 10; aurLNumeri(); },
+        suInizio: () => { aurL.t = aurLFinestra(aurL.quadro)[0]; aurLNumeri(); }
+      });
+
+      const luoghi = $('did-aur-luoghi');
+      if (luoghi) luoghi.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-luogo]');
+        if (!b) return;
+        luoghi.querySelectorAll('[data-luogo]').forEach(x => x.classList.toggle('attiva', x === b));
+        aurL.luogo = b.dataset.luogo;
+        aurLNumeriTaglio();
+      });
+
+      const kp = $('did-aur-kp-slitta');
+      if (kp) kp.addEventListener('input', (e) => {
+        aurL.kpTaglio = Number(e.target.value);
+        aurLNumeriTaglio();
+      });
+
+      // Girare la scena. Il dito porta con sé il modellino, come nella
+      // vista 3D del Sistema Solare: è lo stesso gesto e deve fare la
+      // stessa cosa. Con due dita comanda la lente, e questo si tira da
+      // parte — due significati per lo stesso gesto sarebbero un
+      // indovinello.
+      const tela = $('did-aur-tela');
+      if (tela) {
+        const dita = new Set();
+        tela.addEventListener('pointerdown', (e) => {
+          dita.add(e.pointerId);
+          aurL.trascina = dita.size === 1 ? { x: e.clientX, y: e.clientY } : null;
+        });
+        tela.addEventListener('pointermove', (e) => {
+          if (!aurL.trascina || dita.size !== 1) return;
+          const dx = e.clientX - aurL.trascina.x, dy = e.clientY - aurL.trascina.y;
+          aurL.trascina = { x: e.clientX, y: e.clientY };
+          aurL.cam.az -= dx * 0.42;
+          aurL.cam.elev = Math.max(-84, Math.min(84, aurL.cam.elev + dy * 0.34));
+          aurL.camV.az = aurL.cam.az;
+          aurL.camV.elev = aurL.cam.elev;
+        });
+        const su = (e) => { dita.delete(e.pointerId); if (!dita.size) aurL.trascina = null; };
+        tela.addEventListener('pointerup', su);
+        tela.addEventListener('pointercancel', su);
+        tela.addEventListener('pointerleave', su);
+      }
+
+      const mete = $('did-aur-mete');
+      if (mete) mete.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-meta]');
+        if (!b) return;
+        const m = AURL_METE.find(x => x.id === b.dataset.meta);
+        if (m) aurLPortami(m);
+      });
+
+      collegaPonti('aurora', (azione) => {
+        if (azione === 'tred') { didVaiInTreD(didAdesso()); return; }
+        const l = aurLLuogoScelto();
+        aurLPortami({
+          nome: l.nome, lat: l.lat, lon: l.lon,
+          quando: didAdesso().getTime(), kp: aurL.kpTaglio,
+          daCasa: aurL.luogo === 'casa' && !l.ripiego
+        });
+      });
+
+      aurLCostruisciMete();
+      aurLApriQuadro('vento');
+    },
+
+    entra() {
+      alterna('did-aur', aurL.marcia);
+      aurLApriQuadro(aurL.quadro);
+    },
+
+    passo(dt) {
+      // La telecamera scivola verso l'inquadratura del quadro invece di
+      // saltarci: cambiando linguetta si capisce dove si è andati.
+      const k = 1 - Math.exp(-dt / 0.30);
+      aurL.cam.az += (aurL.camV.az - aurL.cam.az) * k;
+      aurL.cam.elev += (aurL.camV.elev - aurL.cam.elev) * k;
+
+      if (aurL.quadro === 'taglio' || !aurL.marcia) return;
+      const f = aurLFinestra(aurL.quadro);
+      aurL.t += dt * 2.6 * aurL.velocita;
+      if (aurL.t >= f[1]) aurL.t = f[0];
+      const s = $('did-aur-slitta');
+      if (s && document.activeElement !== s) s.value = String(Math.round(aurL.t * 10));
+      aurLNumeri();
+    },
+
+    disegna() {
+      if (aurL.quadro === 'taglio') aurLDisegnaTaglio();
+      else aurLDisegnaScena();
+    }
+  });
+
+  function aurLFinestra(id) {
+    const q = AURL_QUADRI[id];
+    return (q && q.finestra) || [0, AURL_ORE];
+  }
+
+  function aurLApriQuadro(id) {
+    const q = AURL_QUADRI[id];
+    if (!q) return;
+    aurL.quadro = id;
+    const scena = $('did-aur-scena'), taglio = $('did-aur-scena-taglio');
+    if (scena) scena.classList.toggle('hidden', id === 'taglio');
+    if (taglio) taglio.classList.toggle('hidden', id !== 'taglio');
+
+    const f = aurLFinestra(id);
+    const slitta = $('did-aur-slitta');
+    if (slitta) { slitta.min = String(Math.round(f[0] * 10)); slitta.max = String(Math.round(f[1] * 10)); }
+    if (aurL.t < f[0] || aurL.t > f[1]) aurL.t = f[0];
+    if (slitta) slitta.value = String(Math.round(aurL.t * 10));
+    if (q.elev !== undefined) aurL.camV.elev = q.elev;
+    // L'anello si guarda da sopra il polo, e va inquadrato chiuso: visto
+    // di taglio sembra un arco, e l'idea dell'anello non passa.
+    if (q.az !== undefined) aurL.camV.az = q.az;
+
+    const targhetta = $(id === 'taglio' ? 'did-aur-taglio-targhetta' : 'did-aur-targhetta');
+    if (targhetta) targhetta.innerHTML = q.targhetta;
+    const spiega = $('did-aur-spiega');
+    if (spiega) spiega.innerHTML = `<strong>${q.titolo}.</strong> ${q.testo}`;
+    const nota = $('did-aur-nota');
+    if (nota) nota.innerHTML = aurLNotaQuadro(id);
+
+    if (id === 'taglio') aurLNumeriTaglio(); else aurLNumeri();
+  }
+
+  function aurLNotaQuadro(id) {
+    if (id === 'vento') {
+      return `Le distanze sono compresse: il Sole sta a 23.481 raggi terrestri e qui è disegnato a 200,
+        centodiciassette volte più vicino — se no la Terra sarebbe un punto invisibile a un metro dal
+        bordo dello schermo. Anche il disco solare è fuori scala. Il tempo di viaggio invece è vero:
+        45 ore fanno 920 km/s, cioè una nube veloce. Quelle lente ci mettono tre giorni; quelle del
+        1859 e del 2003 arrivarono in diciassette ore.`;
+    }
+    if (id === 'anello') {
+      return `Le quote sono ingrandite sei volte: l'aurora vive fra i 100 e i 400 chilometri, che su un
+        globo grande come questo sarebbero una buccia più sottile della riga che la disegna. La forma
+        e la posizione dell'anello no, quelle sono vere — <code>aurBordo()</code> e
+        <code>aurSpessore()</code> sono le stesse funzioni con cui il planetario disegna l'aurora nel
+        cielo.`;
+    }
+    if (id === 'taglio') {
+      return `Questo è l'unico quadro senza nessuna esagerazione: curvatura della Terra, distanza
+        dell'ovale e quote dell'aurora sono tutte alla stessa scala, e gli angoli scritti sul disegno
+        sono gli angoli veri sopra l'orizzonte — li calcola <code>aurAltezza()</code>, la stessa
+        funzione del planetario. È per questo che il disegno viene così largo e così basso: a mille
+        chilometri di distanza, trecento chilometri di quota sono una cosa piccola. I numeri sono quelli
+        della <strong>mezzanotte magnetica</strong> della prossima notte, non quelli di adesso: l'ovale
+        è schiacciato verso il lato notte, e chiederlo alle tre del pomeriggio darebbe una risposta
+        giusta e inutile — l'anello dall'altra parte del pianeta.`;
+    }
+    return `La magnetopausa e l'onda d'urto sono il modello di Shue et al. (1997), con la pressione e il
+      campo della tempesta che scorre nella barra. Le linee di campo sono dipolari
+      (<code>r = L·cos²λ</code>) e poi stirate dal vento con una regola dichiarata nel codice: la forma
+      esatta della coda la darebbero solo le equazioni del plasma, ma le due cose che qui contano —
+      dove finiscono i piedi delle linee e da che parte arriva la roba — sono al posto giusto.`;
+  }
+
+  // -------------------------------------------------- i numeri
+  function aurLNumeri() {
+    const t = aurL.t;
+    const v = aurLVento(t);
+    const s = aurLScudo(t);
+    const nube = aurLNube(t);
+    const kp = aurLKp(t);
+
+    const lettura = $('did-aur-lettura');
+    if (lettura) {
+      lettura.textContent = `${num(t, 1)} h — ` + (
+        t < 0.5 ? 'l\'eruzione'
+          : nube.q < 1 ? 'la nube viaggia'
+            : t - AURL_VIAGGIO_H < 1 ? 'l\'urto'
+              : aurLSottotempesta(t).scarica ? 'sottotempesta' : 'la coda si carica');
+    }
+
+    scrivi('did-aur-nube', nube.q >= 1
+      ? 'arrivata'
+      : `${num((AURL_SOLE_X - Math.abs(nube.x)) * RE_KM / 1e6, 1)} milioni di km dal Sole`);
+    scrivi('did-aur-vel', `${Math.round(v.v)} km/s`);
+    scrivi('did-aur-naso', `${num(s.r0, 1)} R⊕ · ${Math.round(s.r0 * RE_KM / 1000)} mila km`,
+      s.r0 < 7 ? 'rosso' : '');
+    scrivi('did-aur-kp', `Kp ${num(kp, 1)}`, kp >= 7 ? 'verde' : (kp >= 5 ? 'ambra' : ''));
+
+    const l = typeof luogoCorrente === 'function' ? luogoCorrente() : null;
+    if (!l) { scrivi('did-aur-daqui', 'posizione ignota'); return; }
+    const g = aurLGuarda(aurLOraBuona(didAdesso(), l.lat, l.lon), l.lat, l.lon, kp);
+    if (!g) { scrivi('did-aur-daqui', '—'); return; }
+    scrivi('did-aur-daqui',
+      !g.siVede ? 'niente: resta sotto l\'orizzonte'
+        : g.siVedeVerde ? `archi verdi, fino a ${num(g.cima, 0)}°`
+          : `solo bagliore rosso, fino a ${num(g.cima, 0)}°`,
+      g.siVedeVerde ? 'verde' : (g.siVede ? 'ambra' : ''));
+  }
+
+  function aurLNumeriTaglio() {
+    const kp = aurL.kpTaglio;
+    const lettura = $('did-aur-kp-val');
+    if (lettura) lettura.textContent = `Kp ${num(kp, 1)}`;
+    const l = aurLLuogoScelto();
+    const g = aurLGuarda(aurLOraBuona(didAdesso(), l.lat, l.lon), l.lat, l.lon, kp);
+    const spiega = $('did-aur-t-spiega');
+    if (!g) { if (spiega) spiega.textContent = 'Il modulo delle aurore non è caricato.'; return; }
+
+    scrivi('did-aur-t-lat', `${num(Math.abs(g.mia), 1)}° ${g.boreale ? 'nord' : 'sud'}`);
+    scrivi('did-aur-t-dist', `${Math.round(g.km)} km`);
+    scrivi('did-aur-t-verde', `${num(g.verde, 1)}°`, g.verde > 3 ? 'verde' : 'rosso');
+    scrivi('did-aur-t-rosso', `${num(g.rosso, 1)}°`, g.rosso > 3 ? 'verde' : (g.rosso > 0 ? 'ambra' : 'rosso'));
+
+    if (!spiega) return;
+    if (g.cima <= 0.5) {
+      spiega.innerHTML = `Da <strong>${l.nome}</strong>, con Kp ${num(kp, 1)}, l'ovale resta
+        ${Math.round(g.km)} km più in là e la curvatura della Terra lo nasconde tutto: non si affaccia
+        nemmeno la cima. Alza il Kp e guarda da che punto comincia a spuntare — quel numero, per il tuo
+        parallelo, dice tutto.`;
+    } else if (!g.siVedeVerde) {
+      spiega.innerHTML = `<strong>Ecco il caso italiano.</strong> Da ${l.nome} l'ovale è a
+        ${Math.round(g.km)} km: il verde a 120 km di quota sta a ${num(g.verde, 1)}°, cioè
+        ${g.verde < 0 ? 'sotto l\'orizzonte, oltre il bordo della Terra' : 'talmente basso da essere spento dall\'aria'},
+        mentre il rosso a 250 km si affaccia a ${num(g.rosso, 1)}° e la cima della tenda arriva a
+        ${num(g.cima, 1)}°. Aspettati un bagliore rosato, non archi verdi. Nessuno l'ha deciso: è la
+        Terra che è tonda.`;
+    } else if (g.cima > 60) {
+      spiega.innerHTML = `Da <strong>${l.nome}</strong> con Kp ${num(kp, 1)} l'ovale è praticamente
+        addosso — ${Math.round(g.km)} km — e le tende arrivano a ${num(g.cima, 0)}° sopra l'orizzonte,
+        cioè quasi allo zenit. Da sotto l'ovale l'aurora non si guarda «verso ${g.verso}»: si guarda in
+        su, e la corona aurorale si apre a raggiera sopra la testa.`;
+    } else {
+      spiega.innerHTML = `Da <strong>${l.nome}</strong> con Kp ${num(kp, 1)} l'ovale è a
+        ${Math.round(g.km)} km: abbastanza vicino perché il verde stia sopra l'orizzonte
+        (${num(g.verde, 1)}°) e si vedano gli archi, non solo il bagliore. La cima della tenda arriva a
+        ${num(g.cima, 0)}° verso ${g.verso}.`;
+    }
+  }
+
+  // -------------------------------------------------- le mete
+  // Il riepilogo di una meta non è un giudizio, sono i tre numeri: il
+  // verde, il rosso e la cima della tenda. Un giudizio solo («aurora
+  // verde», «solo il rosso») prima o poi contraddice il calcolo che gli
+  // sta sotto — ed è successo, scrivendo «il cielo rosso del 2024» sopra
+  // a una riga che con Kp 9 dice che il verde ci arrivava eccome.
+  function aurLRiassunto(g) {
+    if (!g) return 'Il modulo delle aurore non è caricato.';
+    if (!g.siVede) return 'Da lì, quella notte: l\'ovale resta sotto l\'orizzonte.';
+    const dice = (nome, alt) => alt > 0
+      ? `${nome} a <strong>${num(alt, 0)}°</strong>`
+      : `${nome} sotto l'orizzonte`;
+    return `Da lì, quella notte: ${dice('il verde', g.verde)}, ${dice('il rosso', g.rosso)}, ` +
+      `la cima della tenda a <strong>${num(g.cima, 0)}°</strong> verso ${g.verso}.`;
+  }
+
+  function aurLCostruisciMete() {
+    const box = $('did-aur-mete');
+    if (!box) return;
+    box.innerHTML = AURL_METE.map(m => {
+      const data = new Date(m.quando);
+      const g = aurLGuarda(data, m.lat, m.lon, m.kp);
+      return `
+        <article class="did-meta">
+          <div class="did-meta-testa">
+            <strong class="did-meta-nome">${m.nome}</strong>
+            <span class="did-meta-paese">${m.paese}</span>
+            <span class="did-meta-kp${m.kpVero ? ' did-meta-kp-vero' : ''}">Kp ${num(m.kp, 0)}${m.kpVero ? ' · vero' : ''}</span>
+          </div>
+          <p class="did-meta-quando">${didData(data)} — ${m.titolo}</p>
+          <p class="did-meta-testo">${m.testo}</p>
+          <p class="did-meta-esito">${aurLRiassunto(g)}</p>
+          <button type="button" class="did-tasto did-primario" data-meta="${m.id}">Portami lì nel planetario</button>
+        </article>`;
+    }).join('');
+  }
+
+  // Il ponte vero di questo banco: un altro luogo, un'altra notte, e
+  // l'ovale acceso. Sposta il *luogo di visita* del planetario, non la
+  // posizione dell'app — quella resta dov'è, e dal pannello Tempo e luogo
+  // si torna a casa con un tasto.
+  function aurLPortami(m) {
+    const data = new Date(m.quando);
+    if (typeof mostraVista === 'function') mostraVista('cielo');
+    if (typeof skyFermaPlayback === 'function') skyFermaPlayback();
+    if (!m.daCasa && typeof skyImpostaLuogoVista === 'function') {
+      skyImpostaLuogoVista(m.lat, m.lon, m.nome || null);
+    }
+    didPortaOrologio(data);
+    if (typeof aurImpostaKpSimulato === 'function') aurImpostaKpSimulato(m.kp);
+    // L'ovale è largo decine di gradi: col campo stretto se ne vedrebbe un
+    // pezzo e non si capirebbe nemmeno che è un arco
+    if (typeof skyImpostaFov === 'function') skyImpostaFov(110);
+
+    // Un giro di schermo, perché l'osservatore del planetario sia già
+    // quello nuovo quando si decide da che parte guardare
+    setTimeout(() => {
+      const g = aurLGuarda(data, m.lat, m.lon, m.kp);
+      if (!g) return;
+      if (typeof skyCentraSu === 'function') {
+        skyCentraSu({ nome: 'l\'aurora', az: g.az, alt: Math.max(8, Math.min(65, g.cima * 0.5)) },
+          { subito: true });
+      }
+      if (typeof skyAvviso === 'function') {
+        skyAvviso('aurora',
+          `${m.nome || 'Da qui'}, ${didData(data)}, Kp ${num(m.kp, 1)}: ` +
+          (g.siVedeVerde
+            ? `l'ovale ${g.nome} è a ${Math.round(g.km)} km e gli archi verdi arrivano a ${num(g.cima, 0)}° verso ${g.verso}.`
+            : g.siVede
+              ? `l'ovale ${g.nome} è a ${Math.round(g.km)} km — il verde resta sotto la curvatura, si affaccia il rosso fino a ${num(g.cima, 0)}° verso ${g.verso}.`
+              : 'con questo Kp, da qui l\'ovale resta sotto l\'orizzonte: alza la slitta del Kp nel pannello Filtri.'),
+          14000);
+      }
+    }, 90);
+  }
+
+  // ===================================================================
+  //   Il disegno della scena in tre dimensioni
+  // ===================================================================
+
+  function aurLDisegnaScena() {
+    const tela = didTela('did-aur-tela', 1.62, 470, { lente: true, trascina: false });
+    if (!tela) return;
+    const { ctx, L, H } = tela;
+    didSfondo(ctx, L, H);
+
+    const q = AURL_QUADRI[aurL.quadro];
+    const w = aurLVista(L, H, q.centro, q.campo);
+    const s = aurLScudo(aurL.t);
+    const kp = aurLKp(aurL.t);
+    const tilt = AURL_TILT * Math.PI / 180;
+    const lontano = q.campo > 70;         // si vede anche il Sole
+    const vicino = q.campo < 8;           // si vede solo il globo
+
+    if (!vicino) {
+      const prof = aurLProfilo(s, 40);
+      const urto = aurLProfilo(s, 40, aurLUrtoAvanti(), aurLUrtoApertura());
+      if (lontano) aurLDisegnaSole(ctx, w);
+      // I fili si scostano sull'**onda d'urto**, non sulla magnetopausa: è
+      // lì che il vento frena e comincia a scivolare di lato, e fra le due
+      // superfici c'è la guaina, dove il flusso è già deviato
+      aurLDisegnaVento(ctx, w, s, urto, lontano);
+      if (!lontano) {
+        aurLDisegnaSuperficie(ctx, w, urto, CA.urto, 0.28);
+        aurLDisegnaSuperficie(ctx, w, prof, CA.scudo, 0.60);
+      }
+    }
+
+    const linee = aurLLinee(s, tilt);
+    linee.chiuse.forEach(p => aurLDisegnaLinea(ctx, w, p, CA.chiusa, 1.1, 0.5));
+    if (!vicino) linee.aperte.forEach(p => aurLDisegnaLinea(ctx, w, p, CA.aperta, 1.2, 0.45));
+
+    if (aurL.quadro === 'scarica') aurLDisegnaSottotempesta(ctx, w, s, linee);
+    if (!vicino) aurLDisegnaNube(ctx, w);
+    aurLDisegnaTerra(ctx, w, kp, tilt, q.campo);
+    aurLEtichette(ctx, w, s, q, vicino, lontano);
+  }
+
+  function aurLDisegnaSole(ctx, w) {
+    const c = aurLPro([-AURL_SOLE_X, 0, 0], w);
+    const r = Math.max(10, 22 * w.scala);
+    const alone = ctx.createRadialGradient(c.x, c.y, r * 0.7, c.x, c.y, r * 4.2);
+    alone.addColorStop(0, 'rgba(255, 201, 77, 0.32)');
+    alone.addColorStop(0.4, 'rgba(255, 150, 60, 0.11)');
+    alone.addColorStop(1, 'rgba(255, 150, 60, 0)');
+    ctx.fillStyle = alone;
+    ctx.beginPath(); ctx.arc(c.x, c.y, r * 4.2, 0, Math.PI * 2); ctx.fill();
+    didCorpo(ctx, c.x, c.y, r, CA.sole, { alone: 1.9 });
+    didScritta(ctx, 'Sole', c.x, c.y + r + 16, { colore: CA.sole, misura: 11, allinea: 'center' });
+  }
+
+  // Il vento: fili che scorrono verso la coda e girano attorno allo scudo.
+  // Non attraversano mai la magnetopausa, ed è quello il punto — il vento
+  // solare non ci arriva addosso, ci scivola attorno.
+  const AURL_FILI = 20;
+  // Un `max` secco fra il filo dritto e il bordo dell'ostacolo fa uno
+  // spigolo, e uno spigolo in un fiume non c'è: il filo si scosta prima e
+  // rientra dopo. Questa è la stessa cosa scritta morbida.
+  function aurLScosta(b, r) {
+    if (r <= 0) return b;
+    const d = b - r;
+    return r + 0.5 * (d + Math.sqrt(d * d + 9));
+  }
+
+  function aurLDisegnaVento(ctx, w, s, prof, lontano) {
+    const v = aurLVento(aurL.t);
+    const x0 = lontano ? -AURL_SOLE_X + 24 : -46;
+    const x1 = lontano ? 74 : AURL_CODA_MAX;
+    const passi = 26;
+    const fase = (aurL.t * 0.7) % 1;
+
+    for (let i = 0; i < AURL_FILI; i++) {
+      const fi = i / AURL_FILI * 2 * Math.PI + 0.21;
+      const b = lontano ? (8 + (i % 5) * 17) : (3 + (i % 6) * 6.5);
+      const punti = [];
+      for (let k = 0; k <= passi; k++) {
+        const x = x0 + (x1 - x0) * k / passi;
+        const rho = lontano ? b : aurLScosta(b, aurLRho(prof, x) * 1.04);
+        punti.push(aurLPro([x, rho * Math.cos(fi), rho * Math.sin(fi)], w));
+      }
+      aurLFilo(ctx, punti, CA.vento, 1, 0.26);
+
+      // il pacchetto che scorre: fa vedere il verso e la velocità
+      const u = (fase + i / AURL_FILI) % 1;
+      const p = punti[Math.min(passi - 1, Math.floor(u * passi))];
+      if (p && p.z >= 0) {
+        ctx.fillStyle = didVela(CA.vento, 0.75);
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.9, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    if (lontano) {
+      const a = aurLPro([x0 + 26, 0, 62], w), b = aurLPro([x0 + 86, 0, 62], w);
+      didFreccia(ctx, a.x, a.y, b.x, b.y, { colore: didVela(CA.vento, 0.8), spessore: 1.6, punta: 8 });
+      didScritta(ctx, `vento solare · ${Math.round(v.v)} km/s`, a.x, a.y - 8,
+        { colore: CA.vento, misura: 10, peso: 700 });
+    }
+  }
+
+  function aurLDisegnaSuperficie(ctx, w, prof, colore, opacita) {
+    if (!prof.length) return;
+    const meridiani = 10;
+    for (let m = 0; m < meridiani; m++) {
+      const fi = m / meridiani * 2 * Math.PI;
+      aurLFilo(ctx, prof.map(p => aurLPro([p.x, p.rho * Math.cos(fi), p.rho * Math.sin(fi)], w)),
+        colore, 1.1, opacita);
+    }
+    // gli anelli: senza, i meridiani da soli sembrano una gabbia piatta
+    [0.1, 0.28, 0.48, 0.7, 0.95].forEach(u => {
+      const p = prof[Math.min(prof.length - 1, Math.round(u * (prof.length - 1)))];
+      const punti = [];
+      for (let k = 0; k <= 40; k++) {
+        const fi = k / 40 * 2 * Math.PI;
+        punti.push(aurLPro([p.x, p.rho * Math.cos(fi), p.rho * Math.sin(fi)], w));
+      }
+      aurLFilo(ctx, punti, colore, 1, opacita * 0.75);
+    });
+  }
+
+  // La sottotempesta: il punto in cui la coda si rompe, il pezzo che se ne
+  // va, e gli elettroni che corrono verso la Terra.
+  function aurLDisegnaSottotempesta(ctx, w, s, linee) {
+    if (aurL.t < AURL_VIAGGIO_H) return;
+    const st = aurLSottotempesta(aurL.t);
+    const xX = 20 + 4 * st.carica;                   // dove si rompe
+
+    // il piano neutro: dove le due metà della coda si toccano
+    const bordo = [];
+    for (let k = 0; k <= 28; k++) {
+      const a = k / 28 * 2 * Math.PI;
+      bordo.push(aurLPro([xX, s.codaR * 0.8 * Math.cos(a), s.codaR * 0.8 * Math.sin(a) * 0.22], w));
+    }
+    aurLFilo(ctx, bordo, CA.coda, 1.2, 0.5);
+
+    const x = aurLPro([xX, 0, 0], w);
+    ctx.strokeStyle = didVela(CA.rosso, 0.9);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x.x - 7, x.y - 7); ctx.lineTo(x.x + 7, x.y + 7);
+    ctx.moveTo(x.x + 7, x.y - 7); ctx.lineTo(x.x - 7, x.y + 7);
+    ctx.stroke();
+    didScritta(ctx, 'qui si rompe', x.x + 11, x.y - 9, { colore: CA.rosso, misura: 10, peso: 700 });
+
+    if (st.scarica) {
+      const d = ((aurL.t - AURL_VIAGGIO_H - 0.3) % AURL_CICLO_H) / AURL_CICLO_H;
+      const c = aurLPro([xX + 12 + 60 * Math.max(0, d - 0.78) / 0.22, 0, 0], w);
+      const rr = Math.max(7, 9 * w.scala);
+      const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, rr);
+      g.addColorStop(0, didVela(CA.coda, 0.55));
+      g.addColorStop(1, didVela(CA.coda, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(c.x, c.y, rr, 0, Math.PI * 2); ctx.fill();
+      didScritta(ctx, 'via il plasmoide', c.x, c.y - rr - 6,
+        { colore: CA.coda, misura: 10, allinea: 'center', peso: 700 });
+    }
+
+    // Gli elettroni che corrono verso la Terra lungo le ultime linee
+    // chiuse: sono loro l'aurora, e vengono da dietro. Si riusano le linee
+    // già calcolate — sono le stesse che si stanno disegnando.
+    const quanti = st.scarica ? 30 : 10;
+    const fase = (aurL.t * 3.4) % 1;
+    const ultime = linee.chiuse.slice(-AURL_LONGITUDINI.length);
+    for (let i = 0; i < quanti; i++) {
+      const linea = ultime[i % ultime.length];
+      if (!linea) continue;
+      const validi = linea.filter(Boolean);
+      if (validi.length < 6) continue;
+      // dal punto più lontano verso il piede, cioè al contrario
+      const meta = validi.slice(0, Math.floor(validi.length / 2));
+      const u = (fase + i / quanti) % 1;
+      const p = meta[Math.max(0, Math.min(meta.length - 1, Math.floor((1 - u) * meta.length)))];
+      const q = aurLPro(p, w);
+      if (q.z < 0) continue;
+      ctx.fillStyle = didVela(st.scarica ? CA.verde : CA.aperta, 0.85);
+      ctx.beginPath(); ctx.arc(q.x, q.y, 2.1, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // La nube è una **calotta**, non un anello: un pezzo di guscio sferico
+  // centrato sul Sole che si allarga mentre corre. Disegnandola come
+  // cerchi nel piano perpendicolare alla corsa, con la telecamera che li
+  // guarda di taglio, collassavano tutti in un trattino verticale — che è
+  // geometricamente giusto e non somiglia a niente. Gli archi della
+  // calotta invece si vedono da qualunque parte la si guardi, e sono anche
+  // la forma vera: il fronte di un'espulsione coronale è un arco di sfera
+  // largo decine di gradi, non un proiettile.
+  const AURL_NUBE_APERTURA = 0.72;        // semiapertura della calotta, radianti
+  function aurLDisegnaNube(ctx, w) {
+    const n = aurLNube(aurL.t);
+    if (!n.partita || n.q >= 1.25) return;
+    const sole = -AURL_SOLE_X;
+    const meridiani = 9, passi = 22;
+
+    for (let m = 0; m < meridiani; m++) {
+      const fi = m / meridiani * 2 * Math.PI;
+      const punti = [];
+      for (let k = 0; k <= passi; k++) {
+        const th = -AURL_NUBE_APERTURA + 2 * AURL_NUBE_APERTURA * k / passi;
+        punti.push(aurLPro([
+          sole + n.raggioFronte * Math.cos(th),
+          n.raggioFronte * Math.sin(th) * Math.cos(fi),
+          n.raggioFronte * Math.sin(th) * Math.sin(fi)], w));
+      }
+      aurLFilo(ctx, punti, CA.nube, 1.1, 0.34);
+    }
+    // il fronte, cioè il bordo che urta: più marcato degli altri
+    const fronte = [];
+    for (let k = 0; k <= 40; k++) {
+      const a = k / 40 * 2 * Math.PI;
+      const th = AURL_NUBE_APERTURA;
+      fronte.push(aurLPro([
+        sole + n.raggioFronte * Math.cos(th),
+        n.raggioFronte * Math.sin(th) * Math.cos(a),
+        n.raggioFronte * Math.sin(th) * Math.sin(a)], w));
+    }
+    aurLFilo(ctx, fronte, CA.nube, 1.8, 0.6);
+
+    const c = aurLPro([n.x, 0, n.raggioFronte * Math.sin(AURL_NUBE_APERTURA)], w);
+    didScritta(ctx, 'la nube', c.x, c.y - 8,
+      { colore: CA.nube, misura: 11, allinea: 'center', peso: 700 });
+  }
+
+  // La Terra, e sopra di lei i due ovali. Il globo è dipinto col
+  // terminatore dalla parte giusta: il Sole sta a -X, quindi la metà
+  // illuminata guarda là.
+  function aurLDisegnaTerra(ctx, w, kp, tilt, campo) {
+    const c = aurLPro([0, 0, 0], w);
+    const r = Math.max(3, w.scala);
+    const versoSole = aurLPro([-1, 0, 0], w);
+    const dx = versoSole.x - c.x, dy = versoSole.y - c.y;
+    const n = Math.hypot(dx, dy) || 1;
+
+    const g = ctx.createRadialGradient(
+      c.x + dx / n * r * 0.62, c.y + dy / n * r * 0.62, r * 0.08, c.x, c.y, r);
+    g.addColorStop(0, '#9cc0ff');
+    g.addColorStop(0.42, '#2f5fbf');
+    g.addColorStop(1, '#07101f');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(138, 180, 255, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    if (r < 16) {
+      didScritta(ctx, 'Terra', c.x, c.y + r + 15, { colore: C.testo2, misura: 11, allinea: 'center' });
+      return;
+    }
+
+    // L'asse del dipolo: si vede subito che non è quello di rotazione
+    const a0 = aurLPro(aurLRuotaTilt([0, 0, -1.5], tilt), w);
+    const a1 = aurLPro(aurLRuotaTilt([0, 0, 1.5], tilt), w);
+    ctx.strokeStyle = 'rgba(233, 237, 247, 0.28)';
+    ctx.setLineDash([4, 5]); ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(a0.x, a0.y); ctx.lineTo(a1.x, a1.y); ctx.stroke();
+    ctx.setLineDash([]);
+
+    const esagera = campo < 8 ? 6 : 1;
+    aurLDisegnaOvale(ctx, w, kp, true, tilt, esagera);
+    aurLDisegnaOvale(ctx, w, kp, false, tilt, esagera);
+    aurLDisegnaCasa(ctx, w, tilt);
+  }
+
+  function aurLDisegnaOvale(ctx, w, kp, boreale, tilt, esagera) {
+    const st = aurL.t >= AURL_VIAGGIO_H ? aurLSottotempesta(aurL.t) : { luce: 0.3 };
+    const forza = Math.max(0.14, Math.min(1, st.luce));
+    const base = aurLNastro(kp, boreale, tilt, 0, 72);
+    const cima = aurLNastro(kp, boreale, tilt, AURL_QUOTA_ALTA * esagera, 72);
+    const n = base.fuori.length - 1;
+
+    for (let i = 0; i < n; i++) {
+      const a0 = aurLPro(base.fuori[i], w), a1 = aurLPro(base.fuori[i + 1], w);
+      const b0 = aurLPro(base.dentro[i], w), b1 = aurLPro(base.dentro[i + 1], w);
+      if ((a0.z + b0.z) / 2 < 0) continue;      // l'altra metà la copre il globo
+      const vivo = typeof aurLuminositaOra === 'function' ? aurLuminositaOra(i * 24 / n) : 1;
+      ctx.fillStyle = `rgba(92, 245, 160, ${(0.16 + 0.58 * vivo * forza).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.moveTo(a0.x, a0.y); ctx.lineTo(a1.x, a1.y);
+      ctx.lineTo(b1.x, b1.y); ctx.lineTo(b0.x, b0.y);
+      ctx.closePath(); ctx.fill();
+    }
+
+    if (esagera <= 1) return;
+
+    // le tende: dal suolo alla quota alta, verde in basso e rosso in cima,
+    // che sono le due righe di emissione dell'ossigeno
+    for (let i = 0; i < n; i += 2) {
+      const p0 = aurLPro(base.fuori[i], w), p1 = aurLPro(cima.fuori[i], w);
+      if (p0.z < 0) continue;
+      const vivo = typeof aurLuminositaOra === 'function' ? aurLuminositaOra(i * 24 / n) : 1;
+      const gr = ctx.createLinearGradient(p0.x, p0.y, p1.x, p1.y);
+      gr.addColorStop(0, `rgba(92, 245, 160, ${(0.66 * vivo * forza).toFixed(3)})`);
+      gr.addColorStop(0.55, `rgba(206, 232, 116, ${(0.34 * vivo * forza).toFixed(3)})`);
+      gr.addColorStop(1, 'rgba(255, 74, 92, 0)');
+      ctx.strokeStyle = gr;
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+    }
+
+    const eti = aurLPro(aurLPuntoOvale(
+      (typeof aurBordo === 'function' ? aurBordo(kp, 21) : 60), 21,
+      AURL_QUOTA_ALTA * esagera, boreale, tilt), w);
+    if (eti.z >= 0) {
+      didScritta(ctx, boreale ? 'ovale boreale' : 'ovale australe', eti.x, eti.y - 7,
+        { colore: CA.verde, misura: 10, allinea: 'center', peso: 700 });
+    }
+  }
+
+  // Il segnalino di casa, che gira col mondo: nel quadro dell'anello si
+  // vede il proprio paese passare sotto (o accanto) all'ovale, e l'ora
+  // magnetica dice quanto manca alla mezzanotte buona.
+  function aurLDisegnaCasa(ctx, w, tilt) {
+    if (typeof luogoCorrente !== 'function' || typeof aurMagnetiche !== 'function') return;
+    const l = luogoCorrente();
+    if (!l) return;
+    const data = new Date(didAdesso().getTime() + (aurL.t - AURL_VIAGGIO_H) * 3600000);
+    const provaNord = aurMagnetiche(l.lat, l.lon, aurRiferimento(AUR_POLO_NORD));
+    const boreale = provaNord.lat >= 0;
+    const rif = aurRiferimento(boreale ? AUR_POLO_NORD : AUR_POLO_SUD);
+    const mia = aurMagnetiche(l.lat, l.lon, rif);
+    const sub = aurSubsolare(data);
+    const subM = aurMagnetiche(sub.lat, sub.lon, rif);
+    const mlt = ((((12 + (mia.lon - subM.lon) / 15) % 24) + 24) % 24);
+
+    const p = aurLPro(aurLPuntoOvale(Math.abs(mia.lat), mlt, 0, boreale, tilt), w);
+    if (p.z < 0) return;
+    ctx.fillStyle = CA.casa;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 3.2, 0, Math.PI * 2); ctx.fill();
+    didScritta(ctx,
+      `qui · ${String(Math.floor(mlt)).padStart(2, '0')}:${String(Math.floor((mlt % 1) * 60)).padStart(2, '0')} magnetiche`,
+      p.x + 7, p.y - 5, { colore: CA.casa, misura: 10, peso: 700 });
+  }
+
+  function aurLEtichette(ctx, w, s, q, vicino, lontano) {
+    if (vicino) {
+      const sole = aurLPro([-2.6, 0, 0], w);
+      const terra = aurLPro([-1.15, 0, 0], w);
+      didFreccia(ctx, sole.x, sole.y, terra.x, terra.y,
+        { colore: didVela(CA.sole, 0.85), spessore: 1.8, punta: 8 });
+      didScritta(ctx, 'verso il Sole', sole.x, sole.y - 9,
+        { colore: CA.sole, misura: 10, allinea: 'center', peso: 700 });
+      return;
+    }
+    if (lontano) return;
+
+    const naso = aurLPro([-s.r0, 0, 0], w);
+    didFreccia(ctx, naso.x - 48, naso.y - 28, naso.x - 5, naso.y - 4,
+      { colore: didVela(CA.scudo, 0.85), spessore: 1.4, punta: 7 });
+    didScritta(ctx, `naso · ${num(s.r0, 1)} R⊕`, naso.x - 52, naso.y - 32,
+      { colore: CA.scudo, misura: 10, peso: 700, allinea: 'right' });
+
+    const coda = aurLPro([AURL_CODA_MAX * 0.62, 0, s.codaR * 1.25], w);
+    didScritta(ctx, 'la coda — lunga centinaia di raggi', coda.x, coda.y,
+      { colore: CA.coda, misura: 10, allinea: 'center', peso: 700 });
+  }
+
+  // ===================================================================
+  //   Il taglio visto di lato — a scala vera
+  // ===================================================================
+
+  function aurLDisegnaTaglio() {
+    const tela = didTela('did-aur-taglio', 2.6, 330, { lente: true });
+    if (!tela) return;
+    const { ctx, L, H } = tela;
+    didSfondo(ctx, L, H);
+
+    const l = aurLLuogoScelto();
+    const g = aurLGuarda(aurLOraBuona(didAdesso(), l.lat, l.lon), l.lat, l.lon, aurL.kpTaglio);
+    if (!g) return;
+
+    // La curvatura è vera: la Terra è un cerchio enorme di cui si vede solo
+    // un pezzo, e l'osservatore ci sta sopra.
+    //
+    // Il raggio in pixel esce da due esigenze, e si prende la più stretta.
+    // La prima: l'ovale, che dista `psi` radianti, deve cascare dentro la
+    // tela. La seconda: le quote, che seguono **lo stesso metro** della
+    // curvatura, devono starci in altezza. Prendendo il minimo, il disegno
+    // resta a scala vera in tutti e due i sensi sempre — e questa è
+    // l'unica ragione per cui gli angoli scritti accanto alle linee di
+    // vista si possono anche misurare col goniometro sullo schermo. Il
+    // primo tentativo comprimeva le quote quando non ci stavano, e in quel
+    // caso il disegno diceva una cosa e i numeri un'altra.
+    const psi = Math.max(0.012, g.psi);
+    const obsX = L * 0.15, obsY = H * 0.80;
+    const perAltezza = (H * 0.58) / 440 * RE_KM;
+    const Rpx = Math.min((L * 0.6) / Math.sin(psi), perAltezza);
+    const Cx = obsX, Cy = obsY + Rpx;
+    const scalaKm = Rpx / RE_KM;
+
+    const P = (ang, km) => {
+      const rp = Rpx + (km || 0) * scalaKm;
+      return { x: Cx + rp * Math.sin(ang), y: Cy - rp * Math.cos(ang) };
+    };
+    // Il suolo si disegna per tutta la larghezza della tela, non per il
+    // solo tratto fra l'osservatore e l'ovale: con l'ovale vicino quel
+    // tratto è largo cinquanta pixel, e il riempimento chiudeva sull'angolo
+    // in basso con una diagonale che sembrava una montagna.
+    const suolo = (k, n) => {
+      const x = -40 + (L + 80) * k / n;
+      return P(Math.asin(Math.max(-1, Math.min(1, (x - Cx) / Rpx))), 0);
+    };
+    const filoSuolo = (n) => {
+      ctx.beginPath();
+      for (let k = 0; k <= n; k++) {
+        const p = suolo(k, n);
+        if (k === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      }
+    };
+
+    filoSuolo(70);
+    ctx.lineTo(L + 40, H + 60); ctx.lineTo(-40, H + 60); ctx.closePath();
+    const terra = ctx.createLinearGradient(0, obsY, 0, H);
+    terra.addColorStop(0, 'rgba(30, 48, 84, 0.95)');
+    terra.addColorStop(1, 'rgba(8, 14, 28, 0.98)');
+    ctx.fillStyle = terra; ctx.fill();
+    ctx.strokeStyle = 'rgba(138, 180, 255, 0.5)'; ctx.lineWidth = 1.4;
+    filoSuolo(70);
+    ctx.stroke();
+
+    // La tenda aurorale, quota per quota, coi colori delle righe di
+    // emissione: sono AUR_QUOTE, le stesse del planetario.
+    const quote = typeof AUR_QUOTE !== 'undefined' ? AUR_QUOTE : [
+      { km: 104, colore: [96, 255, 176], alfa: 0.9 },
+      { km: 250, colore: [255, 138, 108], alfa: 0.32 },
+      { km: 420, colore: [214, 40, 74], alfa: 0 }
+    ];
+    const largo = Math.max(16, psi * 0.18 * Rpx);
+    for (let i = 0; i < quote.length - 1; i++) {
+      const a = quote[i], b = quote[i + 1];
+      const pa = P(psi, a.km), pb = P(psi, b.km);
+      const gr = ctx.createLinearGradient(pa.x, pa.y, pb.x, pb.y);
+      gr.addColorStop(0, `rgba(${a.colore[0]},${a.colore[1]},${a.colore[2]},${(a.alfa * 0.6).toFixed(3)})`);
+      gr.addColorStop(1, `rgba(${b.colore[0]},${b.colore[1]},${b.colore[2]},${(b.alfa * 0.6).toFixed(3)})`);
+      ctx.fillStyle = gr;
+      ctx.beginPath();
+      ctx.moveTo(pa.x - largo / 2, pa.y); ctx.lineTo(pa.x + largo / 2, pa.y);
+      ctx.lineTo(pb.x + largo / 2, pb.y); ctx.lineTo(pb.x - largo / 2, pb.y);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // l'orizzonte dell'osservatore: nel disegno è esattamente orizzontale,
+    // perché l'osservatore sta in cima al cerchio
+    ctx.strokeStyle = 'rgba(233, 237, 247, 0.42)';
+    ctx.setLineDash([5, 5]); ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(obsX - 26, obsY); ctx.lineTo(L + 30, obsY); ctx.stroke();
+    ctx.setLineDash([]);
+    didScritta(ctx, 'orizzonte', L - 10, obsY - 7,
+      { colore: C.testo2, misura: 10, allinea: 'right', peso: 700 });
+
+    // Le linee di vista. Gli angoli scritti sono quelli veri, e sul disegno
+    // si misurano con un goniometro: è la stessa scala.
+    [
+      { km: 120, alt: g.verde, colore: CA.verde, nome: 'verde 120 km' },
+      { km: 250, alt: g.rosso, colore: CA.rosso, nome: 'rosso 250 km' }
+    ].forEach(r => {
+      const p = P(psi, r.km);
+      const dentro = r.alt > 0;
+      ctx.strokeStyle = didVela(r.colore, dentro ? 0.85 : 0.32);
+      ctx.lineWidth = dentro ? 1.8 : 1.2;
+      if (!dentro) ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(obsX, obsY); ctx.lineTo(p.x, p.y); ctx.stroke();
+      ctx.setLineDash([]);
+      didScritta(ctx, `${r.nome} → ${num(r.alt, 1)}°${dentro ? '' : ' · sotto l\'orizzonte'}`,
+        (obsX + p.x) / 2, (obsY + p.y) / 2 - 7,
+        { colore: r.colore, misura: 10, allinea: 'center', peso: 700 });
+    });
+
+    ctx.fillStyle = CA.casa;
+    ctx.beginPath(); ctx.arc(obsX, obsY, 4, 0, Math.PI * 2); ctx.fill();
+    didScritta(ctx, l.nome, obsX, obsY + 18,
+      { colore: CA.casa, misura: 11, allinea: 'center', peso: 700 });
+
+    const pOvale = P(psi, 470);
+    didScritta(ctx, `l'ovale · ${Math.round(g.km)} km di distanza`, pOvale.x, pOvale.y,
+      { colore: C.testo2, misura: 10, allinea: 'center', peso: 700 });
+    didScritta(ctx, 'curvatura e quote alla stessa scala — nessuna esagerazione',
+      12, 18, { colore: C.testo3, misura: 10, peso: 600 });
+  }
+
+
+  // ===================================================================
+  // 9. IL BANCO — linguette, costruzione e ciclo di disegno
   // ===================================================================
 
   function collegaPonti(labId, azione) {
@@ -3095,7 +4600,7 @@
   }
 
   // ===================================================================
-  // 9. AVVIO E SPEGNIMENTO — li chiama mostraVista() in app.js
+  // 10. AVVIO E SPEGNIMENTO — li chiama mostraVista() in app.js
   // ===================================================================
 
   window.didatticaAvvia = function () {

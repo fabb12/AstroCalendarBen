@@ -832,6 +832,63 @@ if (typeof aurGeometria !== 'function') {
         aurKpMostrato().simulato === true);
   aurImpostaKpSimulato(null);
   prova('e senza dati del NOAA non si inventa nessun Kp', aurKpMostrato().kp === null);
+
+  // ---------------------------------------------------------------
+  // La forma dello scudo (§7 di aurora-polare.js). Serve al banco delle
+  // aurore della vista Didattica, e i suoi numeri sono numeri
+  // pubblicati: se qualcuno tocca le costanti di Shue se ne accorge qui,
+  // non guardando un disegno che «sembra giusto».
+  if (typeof aurStandoff !== 'function') {
+    nota('il modello della magnetopausa non c\'è: sotto-sezione saltata.');
+  } else {
+    const quiete = aurStandoff(2, 0);
+    prova('col vento tranquillo il naso della magnetopausa sta a 10,3 raggi terrestri',
+          Math.abs(quiete - 10.26) < 0.05, `${quiete.toFixed(2)} R⊕ · ${(quiete * 6371 / 1000).toFixed(0)} mila km`);
+
+    const tempesta = aurStandoff(20, -20);
+    prova('sotto tempesta forte si schiaccia dentro all\'orbita geostazionaria (6,6 R⊕)',
+          tempesta < 6.6 && tempesta > 4, `${tempesta.toFixed(2)} R⊕`);
+
+    prova('un campo interplanetario verso sud erode lo scudo, verso nord quasi no',
+          aurStandoff(2, -10) < aurStandoff(2, 0) - 1 &&
+          Math.abs(aurStandoff(2, 10) - aurStandoff(2, 0)) < 0.2,
+          `Bz −10: ${aurStandoff(2, -10).toFixed(2)} · Bz +10: ${aurStandoff(2, 10).toFixed(2)}`);
+
+    prova('la coda si apre di più sotto tempesta',
+          aurAperturaCoda(20, -20) > aurAperturaCoda(2, 0) + 0.1,
+          `α ${aurAperturaCoda(2, 0).toFixed(3)} → ${aurAperturaCoda(20, -20).toFixed(3)}`);
+
+    const r0 = aurStandoff(2, 0), alfa = aurAperturaCoda(2, 0);
+    prova('a θ = 0 la magnetopausa vale esattamente il naso',
+          Math.abs(aurMagnetopausa(0, r0, alfa) - r0) < 1e-9);
+    prova('sul fianco (θ = 90°) è una volta e mezza il naso',
+          Math.abs(aurMagnetopausa(Math.PI / 2, r0, alfa) / r0 - 1.5) < 0.05,
+          `${(aurMagnetopausa(Math.PI / 2, r0, alfa) / r0).toFixed(3)}×`);
+    prova('la coda è un tubo largo una ventina di raggi',
+          Math.abs(aurMagnetopausa(2.2, r0, alfa) * Math.sin(2.2) - 21) < 3,
+          `${(aurMagnetopausa(2.2, r0, alfa) * Math.sin(2.2)).toFixed(1)} R⊕`);
+    prova('e oltre il limite non si chiede più: la formula divergerebbe',
+          aurMagnetopausa(Math.PI, r0, alfa) === aurMagnetopausa(AUR_MP_THETA_MAX, r0, alfa));
+    prova('l\'onda d\'urto sta più avanti del naso e si apre di più',
+          AUR_URTO_AVANTI > 1 && AUR_URTO_APERTURA > 1);
+  }
+
+  // ---------------------------------------------------------------
+  // Il banco delle aurore guarda **tutto** lo spessore dell'ovale, non
+  // il solo bordo verso l'equatore. Guardando quello, da Tromsø con Kp 4
+  // la risposta era «un bagliore lontano»: il bordo sta mille chilometri
+  // a sud perché il paese è già dentro all'anello. Questa prova tiene
+  // ferma la differenza fra i due modi di chiedere.
+  const rifTromso = aurRiferimento(AUR_POLO_NORD);
+  const latTromso = aurMagnetiche(69.65, 18.96, rifTromso).lat;
+  prova('Tromsø con Kp 4 sta dentro all\'ovale, non a sud del suo bordo',
+        latTromso > aurBordo(4, 0) && latTromso < aurBordo(4, 0) + aurSpessore(4, 0) + 2,
+        `${latTromso.toFixed(1)}° magnetici, ovale da ${aurBordo(4, 0).toFixed(1)}° ` +
+        `a ${(aurBordo(4, 0) + aurSpessore(4, 0)).toFixed(1)}°`);
+  const tromso = aurGeometria(new Date(Date.UTC(2024, 11, 21, 21, 0, 0)),
+    { lat: 69.65, lon: 18.96 }, 4);
+  prova('e infatti da lì con Kp 4 l\'aurora è quasi allo zenit',
+        tromso.verde && tromso.altMassima > 60, `fino a ${tromso.altMassima.toFixed(0)}°`);
 }
 
 // =====================================================================

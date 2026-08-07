@@ -50,6 +50,7 @@ const CATEGORIE = {
   meteore:   { nome: 'Sciami Meteorici', disegno: 'meteora' },
   pianeti:   { nome: 'Pianeti',          disegno: 'saturno' },
   congiunzioni: { nome: 'Congiunzioni',  disegno: 'congiunzione' },
+  aurore:    { nome: 'Aurore',           disegno: 'aurora' },
   personali: { nome: 'Personali',        disegno: 'segnalino' }
 };
 
@@ -111,6 +112,13 @@ const DISEGNI = {
 
   congiunzione: `<circle cx="8.8" cy="13.4" r="4.6"/>
     <circle cx="16.2" cy="10.2" r="3.2"/>`,
+
+  // Un arco aurorale con le sue frange: due tende annidate e i raggi che
+  // scendono. Non è una tenda a caso — è la forma che ha davvero, e la
+  // stessa che il planetario disegna.
+  aurora: `<path d="M2.6 16.8C4.4 8.8 8 4.8 12.4 4.8c4 0 7 3.3 8.7 9.3"/>
+    <path d="M6.2 18.4c1.4-5.7 3.6-8.7 6.4-8.7 2.6 0 4.6 2.4 5.8 6.9"/>
+    <path d="M7.9 20.6v-2.7M12.1 21.6v-3.3M16.3 20.8v-2.9"/>`,
 
   segnalino: `<path d="M12 21c4-4.4 6-7.8 6-10.4a6 6 0 1 0-12 0C6 13.2 8 16.6 12 21z"/>
     <circle cx="12" cy="10.4" r="2.2"/>`,
@@ -592,8 +600,26 @@ window.addEventListener('DOMContentLoaded', () => {
   gestisciLinkCondiviso();
 });
 
+// Il "programma" di un evento sono tre righe: cosa portare, dove andare,
+// come fare. Alcune famiglie di eventi — quelle di `eventi-extra.js` — lo
+// scrivono però come un paragrafo unico, perché per una superluna «cosa
+// portare» non ha una risposta sensata. Le due forme convivono da qui in
+// poi: una stringa diventa il solo «come», e le righe vuote l'agenda non
+// le stampa (prima ci finiva scritto tre volte «undefined»).
+function normalizzaProgramma(programma) {
+  if (!programma) return { cosaPortare: '', doveVederlo: '', comeVederlo: '' };
+  if (typeof programma === 'string') {
+    return { cosaPortare: '', doveVederlo: '', comeVederlo: programma };
+  }
+  return {
+    cosaPortare: programma.cosaPortare || '',
+    doveVederlo: programma.doveVederlo || '',
+    comeVederlo: programma.comeVederlo || ''
+  };
+}
+
 // Helper: crea un evento con id sicuro e testo data formattato
-function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, eclissiLunare, corpoCielo, simul, strumento, congiunzione }) {
+function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, eclissiLunare, corpoCielo, simul, strumento, congiunzione, aurora }) {
   (destinazioneEventi || eventiCalcolati).push({
     id: id || `ev${contatoreId++}`,
     titolo,
@@ -601,7 +627,7 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     dataTesto: formattData(dataObj),
     spiegazione,
     colore,
-    programma,
+    programma: normalizzaProgramma(programma),
     manuale: !!manuale,
     linkMappa: linkMappa || null,
     categoria: categoria || 'altro',
@@ -617,7 +643,11 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     // Strumento minimo con cui l'evento ha senso (occhio, binocolo, telescopio)
     strumento: strumento || null,
     // Dati della congiunzione: quali corpi si incontrano e a che distanza
-    congiunzione: congiunzione || null
+    congiunzione: congiunzione || null,
+    // Un'aurora non ha un astro da puntare: ha un Kp. Con questo campo il
+    // planetario sa che deve accendere l'ovale aurorale e con che tempesta
+    // disegnarlo, e sa da che parte girare la vista.
+    aurora: aurora || null
   });
 }
 
@@ -5925,11 +5955,7 @@ function costruisciAgenda() {
         ${bloccoFotoHtml(evento)}
         <div class="bg-slate-900 p-4 rounded-xl mt-4 text-sm border border-slate-700">
           <h3 class="font-bold text-white mb-2">Come prepararsi</h3>
-          <ul class="space-y-2">
-            <li><span class="text-blue-400">Portare:</span> ${evento.programma.cosaPortare}</li>
-            <li><span class="text-blue-400">Dove:</span> ${evento.programma.doveVederlo}</li>
-            <li><span class="text-blue-400">Come:</span> ${evento.programma.comeVederlo}</li>
-          </ul>
+          <ul class="space-y-2">${righeProgrammaHtml(evento)}</ul>
           ${barraScorciatoie}
         </div>
       </div>
@@ -6101,14 +6127,18 @@ window.leggiEvento = (id, origine) => {
 
   window.speechSynthesis.cancel();
 
+  const prog = evento.programma || {};
+  const programmaDetto = [
+    prog.cosaPortare && `Cosa portare: ${prog.cosaPortare}.`,
+    prog.doveVederlo && `Dove vederlo: ${prog.doveVederlo}.`,
+    prog.comeVederlo && `Come procedere: ${prog.comeVederlo}.`
+  ].filter(Boolean).join('\n    ');
+
   const testo = `
     Il calendario di Ben ti ricorda l'evento: ${evento.titolo}.
     Previsto per il ${evento.dataTesto}.
     Cosa succede? ${evento.spiegazione}.
-    Passiamo al programma.
-    Cosa portare: ${evento.programma.cosaPortare}.
-    Dove vederlo: ${evento.programma.doveVederlo}.
-    Come procedere: ${evento.programma.comeVederlo}.
+    ${programmaDetto ? 'Passiamo al programma.\n    ' + programmaDetto : ''}
     Cieli Sereni da Ben!
   `;
 
@@ -14164,6 +14194,18 @@ window.apriEventoNelPlanetario = (id) => {
     skyAggiornaScheda();
     if (p) skyCentraSu({ nome: `il radiante delle ${p.nome}`, az: p.az, alt: p.alt });
   }
+
+  // Un'aurora non è in nessun punto del cielo: è un anello attorno al polo
+  // geomagnetico, e da qui se ne vede un pezzo. Arrivare su un cielo con
+  // l'ovale spento sarebbe come aprire un'eclissi senza la Luna, quindi lo
+  // si accende — col Kp che l'evento porta con sé, che per una data di
+  // domani è la previsione del NOAA e per una di fra sei mesi è quello che
+  // servirebbe — e si gira la vista dalla parte giusta.
+  if (ev.aurora && typeof aurImpostaKpSimulato === 'function') {
+    aurImpostaKpSimulato(typeof ev.aurora.kp === 'number' ? ev.aurora.kp : null);
+    if (typeof aurGuardaInCielo === 'function') aurGuardaInCielo();
+  }
+
   skyAggiornaTastiFiltri();
 
   // Il cielo mostrato non è quello di adesso: dirlo subito evita di leggere
@@ -22709,6 +22751,18 @@ function barraAzioniHtml(evento) {
     <button onclick="immagineEvento('${evento.id}')" class="${stile} bg-slate-700 hover:bg-purple-600 text-slate-100" title="Crea una cartolina da mandare in chat">Cartolina</button>
     <button onclick="scaricaIcsEvento('${evento.id}')" class="${stile} bg-slate-700 hover:bg-blue-600 text-slate-100" title="Aggiungi al calendario del telefono">Al calendario</button>
   </div>`;
+}
+
+// Le tre righe del "Come prepararsi", saltando quelle che l'evento non ha
+function righeProgrammaHtml(evento) {
+  const p = evento.programma || {};
+  return [
+    ['Portare', p.cosaPortare],
+    ['Dove', p.doveVederlo],
+    ['Come', p.comeVederlo]
+  ].filter(([, testo]) => testo)
+    .map(([nome, testo]) => `<li><span class="text-blue-400">${nome}:</span> ${testo}</li>`)
+    .join('');
 }
 
 // Badge con lo strumento minimo consigliato
