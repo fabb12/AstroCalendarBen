@@ -5570,6 +5570,75 @@ body button.did-linguetta.attiva .did-linguetta-numero { background: rgba(255, 2
 .did-targhetta.did-bene { border-color: rgba(52, 211, 153, 0.5); color: var(--verde); }
 .did-targhetta.did-male { border-color: rgba(248, 113, 113, 0.5); color: var(--rosso); }
 
+/* ------------------------------------------------- La lente sulle tele */
+/* I disegni dei banchi ci stanno tutti interi nel riquadro, ed è il loro
+   pregio: si vede la forma d'insieme. Il prezzo è che i dettagli — il
+   cappio del retrogrado, l'incrocio delle due orbite al lancio — sono
+   larghi tre pixel. La lente li avvicina, e i suoi comandi stanno
+   nell'angolo opposto alla targhetta, che è in basso a sinistra.
+   A riposo si vede il solo +: tre tasti spenti nell'angolo di un disegno
+   piccolo sono più rumore che comando. */
+.did-lente {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.6;
+  transition: opacity var(--transizione);
+}
+.did-scena:hover .did-lente,
+.did-lente:focus-within,
+.did-lente.did-lente-accesa { opacity: 1; }
+
+.did-lente-tasto {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--testo);
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transizione), border-color var(--transizione);
+}
+.did-lente-tasto:hover { background: rgba(28, 36, 60, 0.92); }
+
+.did-lente-fattore {
+  padding: 5px 9px;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.78);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--blu-chiaro);
+  font-variant-numeric: tabular-nums;
+}
+
+.did-lente .did-lente-fattore,
+.did-lente [data-lente="meno"],
+.did-lente .did-lente-azzera { display: none; }
+.did-lente.did-lente-accesa .did-lente-fattore,
+.did-lente.did-lente-accesa [data-lente="meno"],
+.did-lente.did-lente-accesa .did-lente-azzera { display: inline-flex; }
+
+/* Con la lente accesa il dito, sulla tela, sposta il disegno: il puntatore
+   lo dice. La tela della fionda no — lì il dito continua a spostare il
+   punto di passaggio, e la lente si muove coi tasti e col pizzico. */
+.did-tela.did-tela-accesa { cursor: grab; }
+.did-tela.did-tela-accesa:active { cursor: grabbing; }
+#did-fionda-pianeta.did-tela-accesa { cursor: ns-resize; }
+
 /* ------------------------------------------- La barra di trasporto */
 /* È uguale in tutti i banchi, ed è la cosa che li rende una famiglia:
    torna all'inizio, avvia, scorri, e la velocità a segmenti. */
