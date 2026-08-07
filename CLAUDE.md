@@ -29,6 +29,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `app.js` | ~22.810 | Tutto tranne il telescopio e i moduli aggiunti dopo. |
 | `telescopio.js` | ~5.535 | Vista Telescopio, isolata. ~136 funzioni, prefisso `tel`. |
 | `catalogo.js` | ~980 | **Il catalogo del cielo**: 5.044 stelle, 88 costellazioni, 142 oggetti profondi, e il motore a matrice che li muove. Prefisso `cat`. |
+| `costellazioni.js` | ~2.200 | **I disegni delle figure, i nomi delle altre culture, il cielo australe**: 29 disegni agganciati alle stelle vere con un telaio di due ancore, i nomi arabi/cinesi/māori/aborigeni/andini con la loro storia, l'atlante di tutte e 88 e il tasto che porta il planetario sotto il cielo giusto. Prefisso `cost`. |
 | `corpi-minori.js` | ~660 | **Lune di Giove, comete e asteroidi**: `JupiterMoons` e propagazione kepleriana a mano. |
 | `pianifica.js` | ~500 | **Pianificare la serata**: curva dell'altezza, migliori bersagli, profilo degli ostacoli. Prefisso `pian`/`orizzonte`. |
 | `terreno.js` | ~830 | **La forma vera del terreno attorno a casa**: quote del suolo da Open-Meteo, orizzonte per ogni direzione, che paesaggio c'è (mare/pianura/collina/montagna), e le **luci dei paesi veri** da OpenStreetMap. Prefissi `terreno` e `citta`. |
@@ -45,7 +46,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `verifica.html` | ~905 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~6.090 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v67`). |
+| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v68`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -53,7 +54,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 **Ordine di caricamento** (è quello di `index.html`, e conta):
 
 ```
-app.js → telescopio.js → catalogo.js → corpi-minori.js
+app.js → telescopio.js → catalogo.js → costellazioni.js → corpi-minori.js
        → pianifica.js → terreno.js → meteo-astro.js → aurora-polare.js
        → eventi-extra.js → ui-nuova.js
        → didattica.js
@@ -69,7 +70,8 @@ carica `catalogo.js` da sé alla prima apertura del planetario (`apriSkymap()`).
 |---|---|
 | `apriSkymap()` | avvia `catCarica()`, `corpiMinoriCarica()`, `terrenoCarica()`, `cittaCarica()` e `caricaAurora()` |
 | `skyAggiornaCatalogo()` | se `catAggiornaPosizioni()` risponde, esce subito |
-| `skyDisegna()` | chiama `catDisegnaStelle()`, `catDisegnaFigure()` e `aurDisegna()` |
+| `skyDisegna()` | chiama `catDisegnaStelle()`, `catDisegnaFigure()`, `costDisegnaArte()` e `aurDisegna()` |
+| `skyOggettoNelPunto()` | in fondo a tutto chiede a `costFiguraNelPunto()` che figura c'è lì |
 | `skyElenco()` / `skyProfondoDiId()` | pescano anche da `catVociElenco()` e `corpiMinoriVociElenco()` |
 | `calcolaEventiIntervallo()` | chiama `aggiungiEventiExtra()` |
 | `costruisciStasera()` | chiama `aggiornaStaseraNuovo()` |
@@ -118,12 +120,12 @@ i testi — ma resta `cielo` nel codice, nelle classi CSS (`vista-cielo`,
 | **Stasera** (default) | Cosa si vede stanotte da qui, in quattro riquadri, **e ogni cosa una volta sola**: **Stanotte** (da che ora è buio, quanta Luna c'è), **Che cielo avrai** (tutto il meteo in una parte sola: giudizio della notte, finestra migliore, griglia oraria), **Cosa guardare** (gli oggetti di stanotte — pianeti, Luna, cielo profondo e comete nella stessa classifica, ognuno col tasto **Planetario** — e i passaggi delle stazioni spaziali), **Prossimi appuntamenti** (la riga apre il planetario sulla sera dell'evento, la linguetta «Scheda» l'agenda). |
 | **Mese** | Calendario FullCalendar con gli eventi calcolati. |
 | **Agenda** | Elenco di schede ricche: da qui si vede? con che cielo? con che strumento? |
-| **Planetario** (nel codice `cielo`) | Il cielo in tempo reale: punta il telefono, oppure realtà aumentata con la fotocamera, macchina del tempo, playback, zoom da 180° (grandangolo, tutto il cielo in un colpo) fino a un quarto di grado (Luna e pianeti a grandezza vera, **con la loro faccia**: mari, bande, anelli, calotte), eclissi con corona e ombra della Terra, orizzonte con le colline, **aurore polari** dove passa davvero l'ovale aurorale (con la slitta del Kp per vedere che tempesta ci vorrebbe, da qui), registrazione di un filmato da condividere, e il **Sistema Solare visto da fuori in 3D** — la stessa ora, ma guardata da lontano, per capire perché i pianeti stanno proprio lì. Nel pannello **Tempo e luogo** si può anche spostare il punto di vista in un'altra città: vale solo qui, la posizione dell'app non si tocca. |
+| **Planetario** (nel codice `cielo`) | Il cielo in tempo reale: punta il telefono, oppure realtà aumentata con la fotocamera, macchina del tempo, playback, zoom da 180° (grandangolo, tutto il cielo in un colpo) fino a un quarto di grado (Luna e pianeti a grandezza vera, **con la loro faccia**: mari, bande, anelli, calotte), eclissi con corona e ombra della Terra, orizzonte con le colline, **aurore polari** dove passa davvero l'ovale aurorale (con la slitta del Kp per vedere che tempesta ci vorrebbe, da qui), **le figure delle costellazioni disegnate sopra le stelle** (e toccandone una si apre la sua pagina: chi le ha dato il nome, come la chiamano altrove, e se da casa tua si vede), registrazione di un filmato da condividere, e il **Sistema Solare visto da fuori in 3D** — la stessa ora, ma guardata da lontano, per capire perché i pianeti stanno proprio lì. Nel pannello **Tempo e luogo** si può anche spostare il punto di vista in un'altra città: vale solo qui, la posizione dell'app non si tocca. |
 | **Telescopio** | Allineamento polare, puntamento, programma della serata, manutenzione. |
 | **Diario** | Osservazioni registrate e traguardi. |
 | **Didattica** | Il laboratorio: sei banchi di prova con dentro le posizioni vere dei pianeti, uno a schermo per volta. Ogni scena in tre dimensioni si gira col dito e si prende tutto lo schermo col ⛶, barra del tempo compresa. Perché i pianeti tornano indietro, le tre leggi di Keplero, la fionda gravitazionale (col banco di prova, i **conti passo per passo** e il Grand Tour delle Voyager in 3D, con le due sonde che escono dal piano dei pianeti), le finestre di lancio, gli allineamenti, e **come si accende un'aurora** (il vento solare, la magnetosfera in 3D, la coda che si rompe, l'ovale attorno al polo, e perché da qui è rossa). Ogni banco finisce con i tasti che portano la stessa cosa nel planetario e nella vista 3D — quello delle aurore ci porta anche in un altro luogo e in un'altra notte, dove l'aurora c'è stata davvero. |
 
-Modali (in `index.html`): `modale-aggiungi`, `modale-mappa` (eclissi),
+Modali (in `index.html`): `modale-aggiungi`, `modale-costellazioni` (l'atlante), `modale-mappa` (eclissi),
 `modale-simulazione`, `modale-lezione` (che cos'è l'eclittica),
 `modale-sistema` (il Sistema Solare in 3D), `modale-diario`, `modale-posizione`,
 `modale-impostazioni`, `modale-oculare`.
@@ -222,6 +224,7 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `sim` | `app.js:15829` | Simulazione: canvas, scena, posizione nel tempo, velocità. |
 | `tel` | `telescopio.js:168` | Telescopio: profilo, pannello, allineamento, push-to. |
 | `cat` | `catalogo.js` | Il catalogo del cielo. `versoriJ2000` (fermi, calcolati una volta) e `versoriOra` (riscritti a ogni aggiornamento con una sola matrice), `magnitudini`, `famiglie` (il colore, già in bucket), `figure`, `profondo`. `stato` dice se i dati sono arrivati; `secondoLivello` se sono arrivate anche le stelle deboli. |
+| `cost` | `costellazioni.js` | I disegni delle figure. `arte` dice se lo strato è acceso, `telai` sono le due ancore di ogni disegno già portate nel cielo di adesso (rifatte quando `cat.quandoAggiornato` cambia), `centri` il baricentro di ognuna delle 88, `scelta`/`filtro`/`cerca` lo stato dell'atlante. |
 | `corpiMinori` | `corpi-minori.js` | `elenco` sono comete e asteroidi del file, `miei` quelli incollati a mano dall'utente. |
 | `meteoAstro` | `meteo-astro.js` | Previsioni ora per ora con seeing e trasparenza già calcolati. |
 | `aurora` | `meteo-astro.js` | Indice Kp attuale e previsto dal NOAA. |
@@ -267,7 +270,8 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
   dell'eclittica, `terreno*` = la forma vera del terreno attorno a casa, `citta*` = i paesi che la illuminano,
   `did*` = il laboratorio della vista Didattica (`aurL*` il suo banco delle
   aurore), `aur*` = le aurore polari nel planetario e la forma della
-  magnetosfera.
+  magnetosfera, `cost*` = i disegni delle costellazioni, i loro nomi nelle
+  altre culture e l'atlante.
 - **Niente disegno pesante a ogni fotogramma**: tutto ciò che è complicato e
   non cambia (i mari della Luna, le bande di Giove, la corona, le nebulose)
   si dipinge una volta sola su una tela fuori schermo e poi si ricopia. Il
@@ -288,7 +292,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v67`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v68`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene
@@ -334,8 +338,16 @@ delle quattro lune di Giove, il propagatore di Keplero contro le posizioni vere
 dei pianeti, l'eclissi del 2027, il transito di Mercurio del 2032, la geometria della fionda gravitazionale (§12: la formula della deviazione contro l'integrazione vera del moto, e il massimo guadagno contro una ricerca a forza bruta), la classificazione dei paesaggi, la forza delle luci delle città e la geometria dell'ovale aurorale (§11: il dipolo, la curvatura della Terra, le tre risposte che il modulo esiste per dare — dall'Italia il rosso, dalla Norvegia il verde alto, dalla Tasmania a sud — la forma della magnetopausa di Shue, e il fatto che da Tromsø con Kp 4 l'ovale è addosso e non lontano). **Va aperto da
 un server**: i cataloghi si caricano come `<script>` e `file://` non lo permette.
 
-Se tocchi qualcosa in `catalogo.js`, `corpi-minori.js`, `terreno.js`,
-`aurora-polare.js` o la fionda di `didattica.js`, passa di lì prima di chiudere.
+**§13** guarda i disegni delle costellazioni: che ogni ancora sia davvero una
+stella della sua figura, che nessun tratto esca dal gruppo di stelle a cui
+appartiene, e soprattutto che il telaio dello schermo **non sia specchiato**
+rispetto a quello con cui i disegni sono stati scritti — l'unico errore di
+questo modulo che a occhio non si vede (la figura resta bella, solo che lo
+scudo di Orione finisce dove c'è la clava).
+
+Se tocchi qualcosa in `catalogo.js`, `costellazioni.js`, `corpi-minori.js`,
+`terreno.js`, `aurora-polare.js` o la fionda di `didattica.js`, passa di lì
+prima di chiudere.
 
 ### Rigenerare i cataloghi — `scripts/costruisci-dati.js`
 
@@ -472,6 +484,15 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Il cielo è storto o specchiato dopo un tocco al catalogo | `catMatriceCielo()` in `catalogo.js`: `RotationMatrix.rot` è memorizzata `rot[sorgente][destinazione]`, cioè trasposta rispetto a come si scrive a mano, e la terna della libreria è (Nord, Ovest, Zenit) mentre `skyProietta` vuole (Est, Nord, Alto) |
 | Un astro fuori posto di mezzo grado | quasi sempre è la precessione: `Astronomy.Horizon()` vuole coordinate **dell'equatore di oggi**, i cataloghi sono in J2000, e fra i due ballano 0,36°. Passando per `catMatriceCielo()` la correzione è obbligata |
 | Le costellazioni (tutte e 88, i nomi italiani) | `dati-costellazioni.js` + `catDisegnaFigure()`. Quante se ne disegnano dipende dal campo: `rango` 1 a campo largo, fino a 3 ingrandendo |
+| **Il disegno di una figura** (il cacciatore, il leone, la nave) | `COST_ARTE` in `costellazioni.js` §2, e il motore in §5. Ogni disegno è scritto nel **telaio di due ancore**: due stelle vere della figura, la prima vale (0,0) e la seconda (1,0). Al disegno si arriva proiettando le due ancore e appoggiandoci sopra le curve, quindi ruota, cresce e si sposta insieme alle sue stelle senza che ci sia niente da aggiornare. `tratti` sono curve morbide, `rette` spezzate dritte, `cerchi` cerchi; una curva che finisce dove è cominciata si chiude da sé |
+| Un disegno che sta dalla parte sbagliata delle sue stelle | è **uno specchio, non una rotazione**. In cielo l'ascensione retta cresce verso EST, cioè verso sinistra per chi guarda da dentro la volta: rispetto alla carta vista da fuori lo schermo è girato di mezzo giro, e mezzo giro è una rotazione che il telaio si porta dietro senza accorgersene. Negare **un asse solo** invece dei due lo trasforma in una riflessione, che ribalta l'asse y del telaio — ed è successo davvero, in `costDisegnaScheda`. Lo controlla il §13 di `verifica.html` |
+| Come si autora un disegno nuovo | servono le stelle della figura **nel telaio delle sue ancore**: senza quei numeri si disegna a caso. Il modo è proiettare i vertici di `COSTELLAZIONI_IAU` sul piano tangente al loro baricentro e passarli nel telaio (la stessa algebra di `costDisegnaScheda`), poi tirare le curve passando per le stelle giuste. Il §13 di `verifica.html` rifiuta i disegni che escono dal gruppo di stelle a cui appartengono |
+| Quanto si vedono i disegni | `costOpacitaArte()`: appena accennati a campo largo (a 180° ci sono ottantotto figure in croce), al massimo al campo di un binocolo, spenti sotto i 4° — a quel punto si sta guardando una stella, non una figura. Tasto `#skymap-btn-arte` nei Filtri |
+| I nomi di una costellazione nelle altre culture | `COST_NOMI` in `costellazioni.js` §4, con `COST_CULTURE` (chi sono le culture citate) e `COST_GRUPPI`/`COST_DI_GRUPPO` (da chi viene la figura: le 48 di Tolomeo, le 12 dei navigatori olandesi, le 14 di Lacaille, i pezzi della Nave Argo, Hevelius, Plancius). Le costellazioni **del buio** — l'Emù, Yacana, il Sacco di Carbone — stanno in `COST_BUIO`: non sono figure IAU e non si disegnano unendo puntini |
+| L'atlante delle costellazioni | `apriAtlanteCostellazioni(sigla)` (§8 e §10 di `costellazioni.js`); markup in `modale-costellazioni` (solo il guscio: righe e scheda le scrive il JavaScript), stili `.cost-*` in `style.css`. È una pagina da telefono: elenco e scheda si danno il cambio con `data-vista` su `#cost-corpo`, e solo sopra i 900 pixel stanno affiancate. I tasti che la aprono sono `#skymap-btn-atlante` in fondo al pannello **Astri** e il tocco su una figura sulla mappa |
+| Toccare una figura sulla mappa | `costFiguraNelPunto()` (§6), agganciata **in fondo** a `skyOggettoNelPunto()`: va per ultima perché una figura è larga venti gradi e messa prima si mangerebbe ogni altro tocco. Il tocco cade sulle **linee** della figura, non sul disegno — le linee ci sono anche per le sessanta senza disegno |
+| «Da qui si vede?» per una costellazione | `costVisibilita(sigla, lat)` (§7): per una figura non dipende dall'ora ma dalla latitudine, e metà cielo da un dato posto non sorge e non sorgerà mai. `costMeseMigliore(ra)` dice invece a che mese culmina a mezzanotte |
+| «Portami sotto il suo cielo» | `costPortami(sigla)` (§9): sceglie una delle mete di `COST_METE` (la latitudine più vicina alla figura, con una penale per i posti dove d'estate la notte non esiste), cerca con `costMiglioreIstante()` la prima notte in cui passa alta col Sole sotto i −14°, sposta il **luogo di visita** del planetario (`skyImpostaLuogoVista`, non la posizione dell'app) e gira la vista. Si torna a casa dal pannello Tempo e luogo |
 | Messier e il cielo profondo | `dati-profondo.js` (142 oggetti). Il disegno resta `skyDisegnaProfondo()` in `app.js`, che riceve i dati da `catAggiornaPosizioni()`. Con che strumento si veda lo decide `profondoStrumento()` a partire dal Bortle, **non** è scritto nei dati |
 | Il cielo di casa (scala di Bortle) | `cieloDiCasa()` / `impostaCieloDiCasa()` in `catalogo.js`, `CAT_CIELI`. È in sincrono col `profilo.cielo` del telescopio: cambiarlo di là o di qua è la stessa cosa |
 | Il palazzo di fronte (ostacoli sull'orizzonte) | `orizzonteCarica()` / `orizzonteAltezza(az)` in `pianifica.js`: sedici settori, interpolati. Entra nella curva della notte e nella scelta dei bersagli |

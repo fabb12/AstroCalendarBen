@@ -549,6 +549,7 @@
                 <button id="skymap-btn-solelun" type="button" class="tasto-cielo attiva" title="Sole e Luna">Sole e Luna</button>
                 <button id="skymap-btn-stelle" type="button" class="tasto-cielo attiva" title="Le stelle luminose di riferimento">Stelle</button>
                 <button id="skymap-btn-costellazioni" type="button" class="tasto-cielo attiva" title="Le figure delle costellazioni">Costellazioni</button>
+                <button id="skymap-btn-arte" type="button" class="tasto-cielo attiva" aria-pressed="true" title="Sopra le linee, la figura: il cacciatore, il leone, la nave. È un velo leggero, appoggiato sulle stelle vere — a campo largo si accenna appena, ingrandendo molto sparisce da sé. Tocca una figura sulla mappa per aprire la sua pagina">Disegni</button>
                 <button id="skymap-btn-vialattea" type="button" class="tasto-cielo attiva" title="La banda luminosa del piano della nostra galassia">Via Lattea</button>
                 <button id="skymap-btn-deepsky" type="button" class="tasto-cielo" title="Galassie, nebulose e ammassi">Deep Sky</button>
                 <button id="skymap-btn-satelliti" type="button" class="tasto-cielo attiva" title="ISS e Tiangong">Satelliti</button>
@@ -654,6 +655,13 @@
                    si scelgono i pianeti — perché è lì che nasce la domanda. -->
               <button id="skymap-btn-sistema" type="button" class="tasto-cielo tasto-largo-cielo"
                 title="Esci dal Sistema Solare e guardalo da fuori: dove sta ogni pianeta sulla sua orbita in questo istante, e in che direzione lo stai guardando da qui. Si gira col dito.">Il Sistema Solare in 3D</button>
+
+              <!-- Tutte e ottantotto, comprese le sessanta che da qui non si
+                   vedranno mai: con il disegno, chi gli ha dato il nome nelle
+                   altre culture, e il tasto che porta il planetario sotto il
+                   cielo giusto. -->
+              <button id="skymap-btn-atlante" type="button" class="tasto-cielo tasto-largo-cielo"
+                title="Le ottantotto costellazioni: la figura, il disegno, i nomi che le hanno dato le altre culture, e da qui si vede o no. Metà sono australi e dall'Italia non sorgono mai: da lì si può andare.">Atlante delle costellazioni</button>
             </section>
 
           </div>
@@ -1644,6 +1652,39 @@
     </div>
   </div>
 
+  <!-- L'ATLANTE DELLE COSTELLAZIONI
+       Una finestra sola, pensata prima per il telefono: elenco e scheda si
+       danno il cambio (il tasto «indietro» in cima le commuta), e solo su
+       uno schermo largo stanno affiancate. Il markup è il guscio: righe,
+       scheda e disegno li scrive costellazioni.js. -->
+  <div id="modale-costellazioni" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="grande">
+      <div class="testata-modale flex justify-between items-center p-5 border-b border-slate-700">
+        <div>
+          <h2 class="text-xl md:text-2xl font-bold text-white">Atlante delle costellazioni</h2>
+          <p class="text-xs text-slate-400 mt-1">Tutte e ottantotto: la figura, il disegno, i nomi delle altre culture</p>
+        </div>
+        <button id="btn-chiudi-costellazioni" class="tasto-chiudi con-etichetta" title="Chiudi la finestra (o premi Esc)" aria-label="Chiudi la finestra"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Chiudi</span></button>
+      </div>
+
+      <div id="cost-corpo" class="cost-corpo" data-vista="elenco">
+        <div class="cost-colonna cost-colonna-elenco">
+          <div class="cost-cerca-riga">
+            <input id="cost-cerca" type="search" class="campo-cielo" autocomplete="off"
+              placeholder="Cerca: Orione, Crux, Matariki…" aria-label="Cerca una costellazione">
+            <div id="cost-filtri" class="segmenti-cielo cost-filtri" role="group" aria-label="Filtri"></div>
+          </div>
+          <div id="cost-elenco" class="cost-elenco"></div>
+        </div>
+
+        <div class="cost-colonna cost-colonna-scheda">
+          <button id="cost-indietro" type="button" class="cost-indietro">← Tutte le costellazioni</button>
+          <div id="cost-scheda" class="cost-scheda"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
   <script src="telescopio.js"></script>
 
@@ -1654,6 +1695,9 @@
        che qualcuno apre il planetario. Chi vuole solo sapere che tempo
        fa stanotte non li scarica mai. -->
   <script src="catalogo.js"></script>
+  <!-- Va dopo catalogo.js: i disegni delle figure si agganciano alle stelle
+       con la stessa matrice che il catalogo usa per muoverle. -->
+  <script src="costellazioni.js"></script>
   <script src="corpi-minori.js"></script>
   <script src="pianifica.js"></script>
   <script src="terreno.js"></script>

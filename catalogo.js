@@ -83,6 +83,13 @@ const cat = {
 
   profondo: null,         // il catalogo degli oggetti profondi, arricchito
   viaLattea: null,        // i novanta punti della banda, in versori
+  // La rotazione dal cielo di J2000 a quello di adesso, come l'ha
+  // calcolata l'ultimo aggiornamento. Non serve a noi: serve a chi vuole
+  // portare in cielo un punto qualsiasi (i telai dei disegni delle
+  // costellazioni) **con la stessa matrice** delle stelle. Ricalcolarla
+  // per conto proprio funzionerebbe lo stesso, ma un istante diverso di
+  // mezzo secondo staccherebbe il disegno dalle sue stelle.
+  matrice: null,
   quandoAggiornato: 0
 };
 
@@ -546,6 +553,7 @@ function catAggiornaPosizioni(data) {
     ? cat.profondo.filter(o => o.mag <= catLimiteProfondo())
     : [];
 
+  cat.matrice = M;
   cat.quandoAggiornato = Date.now();
   return true;
 }

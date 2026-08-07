@@ -11381,6 +11381,12 @@ function skyDisegna() {
   // il cielo di prima, con le ventitré figure scritte a mano.
   if (typeof catDisegnaStelle === 'function') catDisegnaStelle(ctx, base, focale);
   if (typeof catDisegnaFigure === 'function') catDisegnaFigure(ctx, base, focale);
+  // E sopra le linee, la figura vera: il cacciatore, il leone, la nave.
+  // Sta qui e non altrove perché deve stare *sopra* alle linee (che sono
+  // la sua ossatura) e *sotto* al terreno, come le stelle: un cigno
+  // dipinto sulla collina sarebbe la stessa bruttura del cielo stellato
+  // sotto i piedi.
+  if (typeof costDisegnaArte === 'function') costDisegnaArte(ctx, base, focale);
 
   if (sky.mostraGriglia) skyDisegnaGriglia(ctx, base, focale);
   // L'aurora: **dopo** le stelle e **prima** del terreno. Dopo le stelle
@@ -14349,6 +14355,16 @@ function skyOggettoNelPunto(px, py) {
     if (stella) return { categoria: 'stellaCatalogo', dati: stella };
   }
 
+  // Ultimissimo: le linee di una figura. Chi tocca il vuoto fra due
+  // stelle non sta chiedendo «che stella è» — sta chiedendo «che roba è
+  // tutta questa qui», e la risposta è la pagina dell'atlante. Va per
+  // ultimo perché una figura è larga venti gradi: messa prima, si
+  // mangerebbe ogni altro tocco.
+  if (typeof costFiguraNelPunto === 'function') {
+    const sigla = costFiguraNelPunto(px, py, base, focale);
+    if (sigla) return { categoria: 'costellazione', sigla };
+  }
+
   return scelto ? scelto.sel : null;
 }
 
@@ -14964,6 +14980,13 @@ function skyInizializzaGesti() {
     const r = c.getBoundingClientRect();
     const sel = skyOggettoNelPunto(e.clientX - r.left, e.clientY - r.top);
     if (!sel) { skyChiudiDettaglio(); return; }
+    // Una figura non ha una scheda da aprire sopra la mappa: ha una
+    // pagina, con il disegno, i nomi delle altre culture e il tasto per
+    // andarci sotto. Si apre quella, e la scheda dell'oggetto resta com'era.
+    if (sel.categoria === 'costellazione') {
+      if (typeof apriAtlanteCostellazioni === 'function') apriAtlanteCostellazioni(sel.sigla);
+      return;
+    }
     if (sel.categoria === 'astro') {
       // Toccarlo sulla mappa vale come sceglierlo dall'elenco, ma senza
       // spostare la vista: è già sotto il dito

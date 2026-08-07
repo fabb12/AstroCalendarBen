@@ -124,6 +124,10 @@ function skyBaseVerso(az, alt) {
      `didatticaAvvia()` lo chiede. Serve per il §12, la geometria della
      fionda gravitazionale, che espone da sé quello che si può provare. -->
 <script src="didattica.js"></script>
+<!-- costellazioni.js all'avvio prova ad agganciare i comandi dell'atlante
+     e non trova nulla: esce subito. Le tabelle dei disegni e dei nomi,
+     e la geometria dei telai, restano a disposizione del §13. -->
+<script src="costellazioni.js"></script>
 
 <script>
 // ---------------------------------------------------------------------
@@ -1004,6 +1008,199 @@ if (typeof didProve === 'undefined' || !didProve.fiondaIperbole) {
   const resa = (P) => P.vOrb + 10 - Math.hypot(10, P.vOrb);
   prova('Giove rende più di Saturno', resa(G) > resa(S),
         `${resa(G).toFixed(2)} contro ${resa(S).toFixed(2)} km/s`);
+}
+
+// =====================================================================
+titolo('13. Le costellazioni: disegni, telai, nomi (costellazioni.js)');
+// =====================================================================
+{
+  const sigle = new Set(COSTELLAZIONI_IAU.map(c => c.sigla));
+  const conArte = Object.keys(COST_ARTE);
+
+  prova('ogni disegno appartiene a una costellazione vera',
+        conArte.every(s => sigle.has(s)), `${conArte.length} disegni`);
+  prova('nessun disegno vuoto',
+        conArte.every(s => {
+          const a = COST_ARTE[s];
+          return (a.tratti || []).length + (a.rette || []).length + (a.cerchi || []).length > 0;
+        }));
+  prova('ogni tratto è fatto di coppie x,y, e almeno due punti',
+        conArte.every(s => (COST_ARTE[s].tratti || []).concat(COST_ARTE[s].rette || [])
+          .every(t => t.length >= 4 && t.length % 2 === 0)));
+  prova('i cerchi sono [x, y, raggio] con raggio positivo',
+        conArte.every(s => (COST_ARTE[s].cerchi || [])
+          .every(c => c.length === 3 && c[2] > 0 && c[2] < 0.5)));
+
+  // --- Le ancore sono stelle della figura, non punti a caso ---
+  //
+  // È la proprietà su cui sta in piedi tutto: se un'ancora non è una
+  // stella della costellazione, il disegno non le è agganciato e prima o
+  // poi se ne va per conto suo.
+  const distanzaMinima = (raOre, dec, sigla) => {
+    let minimo = Infinity;
+    COSTELLAZIONI_IAU.filter(c => c.sigla === sigla).forEach(c =>
+      c.spezzate.forEach(l => l.forEach(p => {
+        const dRa = (p[0] - raOre) * 15 * Math.cos(dec * D2R);
+        const dDec = p[1] - dec;
+        minimo = Math.min(minimo, Math.hypot(dRa, dDec));
+      })));
+    return minimo;
+  };
+  const ancoreFuori = conArte.filter(s => {
+    const a = COST_ARTE[s].ancore;
+    return distanzaMinima(a[0][0], a[0][1], s) > 0.01 || distanzaMinima(a[1][0], a[1][1], s) > 0.01;
+  });
+  prova('tutte le ancore sono stelle della loro figura', ancoreFuori.length === 0,
+        ancoreFuori.length ? ancoreFuori.join(', ') : `${conArte.length * 2} ancore controllate`);
+
+  // Ancore troppo vicine fra loro: il telaio diventa instabile e basta
+  // mezzo pixel di errore per far ballare tutto il disegno
+  const vicine = conArte.filter(s => {
+    const a = COST_ARTE[s].ancore;
+    const dRa = (a[0][0] - a[1][0]) * 15 * Math.cos(a[0][1] * D2R);
+    return Math.hypot(dRa, a[0][1] - a[1][1]) < 4;
+  });
+  prova('le due ancore sono lontane almeno quattro gradi', vicine.length === 0, vicine.join(', '));
+
+  // --- Il disegno sta addosso alle sue stelle ---
+  //
+  // Un disegno può essere brutto (è una questione di gusti) ma non può
+  // stare da un'altra parte. Si misura in unità di telaio: la distanza
+  // fra le due ancore vale 1, e nessun tratto deve uscire di più di
+  // un'ancora e mezza dal rettangolo che contiene le stelle.
+  const telaioLocale = (sigla) => {
+    const punti = [];
+    COSTELLAZIONI_IAU.filter(c => c.sigla === sigla).forEach(c =>
+      c.spezzate.forEach(l => l.forEach(p => punti.push(p))));
+    // piano tangente al baricentro, come in costDisegnaScheda
+    let cx = 0, cy = 0, cz = 0;
+    punti.forEach(p => { const v = costVersore(p[0], p[1]); cx += v[0]; cy += v[1]; cz += v[2]; });
+    const n = Math.hypot(cx, cy, cz);
+    cx /= n; cy /= n; cz /= n;
+    const dec0 = Math.asin(cz), ra0 = Math.atan2(cy, cx);
+    const piano = (raOre, dec) => {
+      const a = raOre * 15 * D2R, d = dec * D2R;
+      const cosc = Math.sin(dec0) * Math.sin(d) + Math.cos(dec0) * Math.cos(d) * Math.cos(a - ra0);
+      return [Math.cos(d) * Math.sin(a - ra0) / cosc,
+        (Math.cos(dec0) * Math.sin(d) - Math.sin(dec0) * Math.cos(d) * Math.cos(a - ra0)) / cosc];
+    };
+    const anc = COST_ARTE[sigla].ancore;
+    const A = piano(anc[0][0], anc[0][1]), B = piano(anc[1][0], anc[1][1]);
+    const dx = B[0] - A[0], dy = B[1] - A[1], len2 = dx * dx + dy * dy;
+    const locale = p => [((p[0] - A[0]) * dx + (p[1] - A[1]) * dy) / len2,
+                         ((p[0] - A[0]) * -dy + (p[1] - A[1]) * dx) / len2];
+    return { piano, locale, stelle: punti.map(p => locale(piano(p[0], p[1]))) };
+  };
+
+  const scappati = [];
+  conArte.forEach(s => {
+    const t = telaioLocale(s);
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    t.stelle.forEach(p => {
+      minX = Math.min(minX, p[0]); maxX = Math.max(maxX, p[0]);
+      minY = Math.min(minY, p[1]); maxY = Math.max(maxY, p[1]);
+    });
+    const m = 0.5;
+    const dentro = (x, y) => x > minX - m && x < maxX + m && y > minY - m && y < maxY + m;
+    const tutti = (COST_ARTE[s].tratti || []).concat(COST_ARTE[s].rette || []);
+    let fuori = 0;
+    tutti.forEach(tr => { for (let i = 0; i < tr.length; i += 2) if (!dentro(tr[i], tr[i + 1])) fuori++; });
+    (COST_ARTE[s].cerchi || []).forEach(c => { if (!dentro(c[0], c[1])) fuori++; });
+    if (fuori) scappati.push(`${s} (${fuori} punti)`);
+  });
+  prova('nessun disegno esce dalle stelle della sua figura', scappati.length === 0,
+        scappati.join(', '));
+
+  // --- L'ORIENTAMENTO: il telaio sullo schermo non è specchiato ---
+  //
+  // Questa è la prova che conta, ed è la traduzione di un errore vero:
+  // il disegno era stato costruito su una carta vista da fuori (est a
+  // destra, nord in alto) e messo su un cielo visto da dentro (est a
+  // sinistra). Fra i due c'è mezzo giro, che è una ROTAZIONE e non
+  // cambia nulla — ma se per sbaglio si nega un solo asse diventa uno
+  // SPECCHIO, e lo specchio ribalta l'asse y del telaio: lo scudo di
+  // Orione finisce dove c'è la clava. Non si vede a occhio, perché la
+  // figura resta bella; si vede solo confrontando i due telai.
+  {
+    const t = telaioLocale('Ori');
+    const base = skyBaseVerso(180, 30);
+    const focale = skyFocale();
+    const tempo = Astronomy.MakeTime(new Date(Date.UTC(2027, 0, 15, 21, 0, 0)));
+    const M = Astronomy.CombineRotation(
+      Astronomy.Rotation_EQJ_EQD(tempo),
+      Astronomy.Rotation_EQD_HOR(tempo, sky.observer)).rot;
+
+    const sulloSchermo = (raOre, dec) => {
+      const p = skyProietta(costAllOra(costVersore(raOre, dec), M), base, focale);
+      return [p.px, p.py];
+    };
+    const anc = COST_ARTE['Ori'].ancore;
+    const A = sulloSchermo(anc[0][0], anc[0][1]), B = sulloSchermo(anc[1][0], anc[1][1]);
+    const dx = B[0] - A[0], dy = B[1] - A[1], len2 = dx * dx + dy * dy;
+    const localeSchermo = p => [((p[0] - A[0]) * dx + (p[1] - A[1]) * dy) / len2,
+                                ((p[0] - A[0]) * -dy + (p[1] - A[1]) * dx) / len2];
+
+    // Tre stelle sparse di Orione: Betelgeuse, Bellatrix e Saiph
+    const controlli = [[5.9195, 7.4071], [5.4189, 6.3497], [5.7959, -9.6696]];
+    let scartoMax = 0, segnoGirato = false;
+    controlli.forEach(([ra, dec]) => {
+      const carta = t.locale(t.piano(ra, dec));
+      const schermo = localeSchermo(sulloSchermo(ra, dec));
+      scartoMax = Math.max(scartoMax, Math.hypot(carta[0] - schermo[0], carta[1] - schermo[1]));
+      if (Math.abs(carta[1]) > 0.02 && carta[1] * schermo[1] < 0) segnoGirato = true;
+    });
+    prova('il telaio sullo schermo NON è specchiato rispetto a quello di autore',
+          !segnoGirato, segnoGirato ? 'l\'asse y è ribaltato: i disegni escono riflessi' : 'stesso verso');
+    prova('e i due telai danno le stesse coordinate', scartoMax < 0.05,
+          `scarto massimo ${scartoMax.toFixed(4)} in unità di telaio`);
+  }
+
+  // --- Da qui si vede? ---
+  prova('dall\'Italia la Croce del Sud non sorge mai',
+        costVisibilita('Cru', 45.46).maiVisibile,
+        `culminerebbe a ${costVisibilita('Cru', 45.46).altMax.toFixed(0)}°`);
+  prova('da Sydney passa altissima', costVisibilita('Cru', -33.87).altMax > 60,
+        `${costVisibilita('Cru', -33.87).altMax.toFixed(0)}°`);
+  prova('dall\'Italia l\'Orsa Minore non tramonta mai', costVisibilita('UMi', 45.46).circumpolare);
+  prova('ma da Nairobi sì', !costVisibilita('UMi', -1.29).circumpolare);
+  prova('l\'Ottante australe è invisibile da tutto l\'emisfero nord',
+        costVisibilita('Oct', 20).maiVisibile && !costVisibilita('Oct', -20).maiVisibile);
+
+  // La culminazione a mezzanotte: quattro figure di quattro stagioni
+  prova('Orione culmina a mezzanotte a dicembre',
+        costMeseMigliore(costCentri()['Ori'].ra) === 'dicembre');
+  prova('il Leone a febbraio', costMeseMigliore(costCentri()['Leo'].ra) === 'febbraio');
+  prova('lo Scorpione a giugno', costMeseMigliore(costCentri()['Sco'].ra) === 'giugno');
+  prova('il Cigno a luglio', costMeseMigliore(costCentri()['Cyg'].ra) === 'luglio');
+
+  // Il baricentro va calcolato sui versori, non sulle coordinate: Pegaso
+  // sta a cavallo delle zero ore, e la media delle ascensioni rette lo
+  // manderebbe dalla parte opposta del cielo
+  const peg = costCentri()['Peg'];
+  prova('il baricentro di Pegaso non finisce dall\'altra parte del cielo',
+        peg.ra > 22 || peg.ra < 1, `AR ${peg.ra.toFixed(1)}h`);
+
+  // --- I nomi delle culture ---
+  const culture = new Set(Object.keys(COST_CULTURE));
+  const sigleNomi = Object.keys(COST_NOMI);
+  prova('ogni scheda di nomi appartiene a una costellazione vera',
+        sigleNomi.every(s => sigle.has(s)), `${sigleNomi.length} schede`);
+  const culturaIgnota = [];
+  sigleNomi.forEach(s => (COST_NOMI[s].nomi || []).forEach(n => {
+    if (!culture.has(n.cultura)) culturaIgnota.push(`${s}: ${n.cultura}`);
+  }));
+  prova('ogni nome dichiara una cultura conosciuta', culturaIgnota.length === 0,
+        culturaIgnota.join(', ') || `${culture.size} culture citate`);
+  COST_BUIO.forEach(b => prova(`«${b.nome}» dichiara una cultura conosciuta`, culture.has(b.cultura)));
+
+  // --- Le mete del «portami sotto il suo cielo» ---
+  prova('le mete sono posti reali, con coordinate valide',
+        COST_METE.every(m => Math.abs(m.lat) <= 90 && Math.abs(m.lon) <= 180 && m.nome),
+        `${COST_METE.length} luoghi`);
+  prova('per la Croce del Sud si va nell\'emisfero australe',
+        costMetaPer(costCentri()['Cru'].dec).lat < -20, costMetaPer(costCentri()['Cru'].dec).nome);
+  prova('per l\'Orsa Minore si resta al nord',
+        costMetaPer(costCentri()['UMi'].dec).lat > 40, costMetaPer(costCentri()['UMi'].dec).nome);
 }
 
 // =====================================================================

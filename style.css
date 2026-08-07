@@ -6367,3 +6367,279 @@ body button.did-ponte:active { transform: translateY(1px); }
   .did-letture { grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); }
   body button.did-ponte { flex: 1 1 100%; justify-content: center; }
 }
+
+
+/* =========================================================================
+   L'ATLANTE DELLE COSTELLAZIONI  (costellazioni.js)
+
+   Regola di partenza: è una pagina da telefono, e su uno schermo largo
+   diventa due colonne — non il contrario. Sul telefono l'elenco e la
+   scheda occupano tutta la finestra e si danno il cambio (`data-vista`
+   sul contenitore), con il tasto «indietro» in cima alla scheda; sopra i
+   900 pixel stanno affiancate, l'elenco scorre per conto suo e il tasto
+   indietro sparisce perché non c'è più niente da cui tornare.
+
+   L'altezza è quella del riquadro, non del contenuto: una finestra che
+   cresce fino a duemila pixel e si scrolla dentro alla pagina, sul
+   telefono, fa perdere il segno a ogni tocco.
+   ========================================================================= */
+
+.cost-corpo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  height: min(76vh, 640px);
+  /* Senza questo la finestra cresce con il contenuto e l'elenco esce dal
+     riquadro arrotondato: sono ottantotto righe, e quando escono si porta
+     dietro anche la scheda. Le due colonne scorrono dentro, non fuori. */
+  overflow: hidden;
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+}
+
+/* `min-height: 0` è quello che permette a una colonna di essere più corta
+   del suo contenuto: senza, un elemento di griglia non scende mai sotto la
+   misura naturale di quello che contiene, e l'`overflow-y` dei figli non
+   ha nulla da tagliare. */
+.cost-colonna { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+
+/* Telefono: una colonna per volta */
+.cost-corpo[data-vista="elenco"] .cost-colonna-scheda { display: none; }
+.cost-corpo[data-vista="scheda"] .cost-colonna-elenco { display: none; }
+
+/* --- la riga della ricerca, appiccicata in cima --- */
+.cost-cerca-riga {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--bordo);
+  background: var(--superficie);
+  background: linear-gradient(180deg, rgba(20, 27, 45, 0.98), rgba(20, 27, 45, 0.92));
+  backdrop-filter: blur(6px);
+}
+.cost-cerca-riga .campo-cielo { flex: 1 1 100%; font-family: inherit; }
+
+/* I filtri sono tanti e su uno schermo stretto vanno a capo: la pillola
+   unica dei segmenti qui non regge, e diventa una fila che si avvolge. */
+.cost-filtri {
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  border-radius: var(--raggio-m);
+  gap: 4px;
+}
+.cost-filtri .tasto-cielo { min-height: 34px; font-size: 0.72rem; padding: 4px 11px; }
+
+/* --- l'elenco --- */
+.cost-elenco {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  align-content: start;
+}
+
+.cost-riga {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-height: 54px;                 /* il pollice, non il testo */
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--raggio-m);
+  background: transparent;
+  color: var(--testo);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color var(--transizione), border-color var(--transizione);
+}
+.cost-riga:hover { background: var(--superficie-alta); border-color: var(--bordo); }
+.cost-riga:active { transform: translateY(1px); }
+.cost-riga-nome { font-size: 0.94rem; font-weight: 600; }
+.cost-riga-sotto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--testo-3);
+}
+
+.cost-tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(148, 168, 214, 0.12);
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--testo-2);
+  white-space: nowrap;
+}
+.cost-tag-mai  { background: rgba(248, 113, 113, 0.14); color: #fca5a5; }
+.cost-tag-si   { background: rgba(92, 245, 160, 0.12);  color: var(--verde); }
+.cost-tag-arte { background: var(--viola-velo);          color: var(--viola-chiaro); }
+
+.cost-vuoto {
+  margin: 0;
+  padding: 22px 16px;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--testo-3);
+}
+
+/* --- la scheda --- */
+.cost-indietro {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--bordo);
+  background: rgba(20, 27, 45, 0.96);
+  backdrop-filter: blur(6px);
+  color: var(--blu);
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cost-indietro:hover { color: #7fb0ff; }
+
+.cost-scheda {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px 26px;
+}
+.cost-scheda > * + * { margin-top: 14px; }
+
+.cost-testa h3 { margin: 0; font-size: 1.35rem; font-weight: 700; color: #fff; }
+.cost-latino {
+  margin: 2px 0 0;
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--testo-3);
+}
+.cost-etichette { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.cost-etichetta {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(148, 168, 214, 0.12);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--testo-2);
+}
+.cost-etichetta-arte { background: var(--viola-velo); color: var(--viola-chiaro); }
+.cost-etichetta-buio { background: rgba(8, 11, 20, 0.9); color: var(--testo-2); border: 1px solid var(--bordo-forte); }
+
+/* La tela del disegno: proporzione fissa, misurata sulla larghezza vera
+   del riquadro (la rimisura la fa costDisegnaScheda a ogni apertura e a
+   ogni rotazione dello schermo). */
+.cost-tela-guscio {
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: radial-gradient(circle at 50% 40%, rgba(30, 41, 70, 0.9), rgba(8, 11, 20, 0.95));
+  overflow: hidden;
+}
+.cost-tela { display: block; width: 100%; }
+.cost-tela-nota {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--testo-3);
+}
+
+.cost-daqui {
+  margin: 0;
+  padding: 11px 13px;
+  border-left: 3px solid var(--blu);
+  border-radius: var(--raggio-s);
+  background: rgba(76, 141, 255, 0.08);
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--testo-2);
+}
+.cost-daqui-no { border-left-color: #f87171; background: rgba(248, 113, 113, 0.08); }
+
+.cost-racconto {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.68;
+  color: var(--testo-2);
+}
+
+.cost-origine {
+  padding: 12px 14px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: var(--incassato);
+}
+.cost-origine h4 { margin: 0 0 5px; font-size: 0.82rem; font-weight: 700; color: var(--testo); }
+.cost-origine p  { margin: 0; font-size: 0.8rem; line-height: 1.62; color: var(--testo-3); }
+
+.cost-titolo-sezione {
+  margin: 20px 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+
+.cost-nomi, .cost-stelle { margin: 8px 0 0; padding: 0; list-style: none; }
+.cost-nomi > li + li, .cost-stelle > li + li { margin-top: 10px; }
+.cost-stelle { font-size: 0.83rem; line-height: 1.6; color: var(--testo-2); }
+.cost-stelle strong { color: var(--testo); }
+
+.cost-nome {
+  padding: 10px 12px;
+  border-radius: var(--raggio-m);
+  background: var(--incassato);
+}
+.cost-cultura {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--viola-chiaro);
+}
+.cost-nome-corpo { margin-top: 3px; font-size: 0.88rem; line-height: 1.55; color: var(--testo-2); }
+.cost-nome-corpo strong { color: #fff; }
+.cost-nome-nota { margin: 5px 0 0; font-size: 0.76rem; line-height: 1.6; color: var(--testo-3); }
+
+/* ------------------------------------------------------- Schermo largo */
+@media (min-width: 900px) {
+  .cost-corpo {
+    grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+    /* Non è 72vh per gusto: sopra a questo riquadro ci stanno la testata
+       della finestra (titolo e sottotitolo, un centinaio di pixel) e il
+       margine del modale, e la somma deve restare dentro allo schermo —
+       se no a scorrere è la finestra intera, e l'elenco non scorre più. */
+    height: min(66vh, 620px);
+  }
+  /* Affiancate: nessuna delle due si nasconde più, qualunque cosa dica
+     `data-vista` */
+  .cost-corpo[data-vista="elenco"] .cost-colonna-scheda,
+  .cost-corpo[data-vista="scheda"] .cost-colonna-elenco { display: flex; }
+  .cost-colonna-elenco { border-right: 1px solid var(--bordo); }
+  .cost-indietro { display: none; }
+}
+
+/* ------------------------------------------------------- Telefono */
+@media (max-width: 640px) {
+  .cost-corpo { height: min(74vh, 560px); }
+  .cost-cerca-riga { padding: 12px 12px 10px; }
+  .cost-scheda { padding: 14px 14px 24px; }
+  .cost-testa h3 { font-size: 1.2rem; }
+}
