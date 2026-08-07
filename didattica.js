@@ -132,6 +132,15 @@
 
   const DID_LENTE_MAX = 8;
   const DID_LENTE_PASSO = 1.45;      // quanto salta un tocco di + o di −
+  const DID_TOCCO_ZOOM = 2.4;        // quanto avvicina un doppio clic (o doppio tocco)
+  const DID_TOCCO_DOPPIO = 320;      // entro quanti ms due tocchi sono un doppio tocco
+  // Tenendo premuto + o − lo zoom cammina da solo: è l'unico modo, su un
+  // telefono, di avere il giro continuo della rotella. Parte dopo mezzo
+  // istante — se no un tocco normale ne farebbe due — e va a passi piccoli,
+  // perché tenuto premuto un secondo deve arrivare in fondo, non oltre.
+  const DID_RIPETI_ATTESA = 340;     // ms prima che il tasto cominci a ripetere
+  const DID_RIPETI_OGNI = 70;        // ms fra un passo e l'altro
+  const DID_RIPETI_PASSO = 1.10;     // quanto vale un passo della ripetizione
 
   // --- La giostra: girare la scena come nel Sistema Solare in 3D ---------
   //
@@ -513,13 +522,57 @@
         'title="Gira la scena: a picco sul piano, obliqua, di taglio. Si trascina anche col dito, come il Sistema Solare in 3D." ' +
         'aria-label="Cambia il punto di vista sul piano">90°</button>' +
       '<span class="did-lente-fattore">1,0×</span>' +
-      '<button type="button" class="did-lente-tasto" data-lente="meno" title="Allontanati" aria-label="Allontanati">−</button>' +
-      '<button type="button" class="did-lente-tasto" data-lente="piu" title="Avvicinati al disegno (anche con due dita, o con Ctrl e la rotella)" aria-label="Avvicinati">+</button>' +
-      '<button type="button" class="did-lente-tasto did-lente-azzera" data-lente="azzera" title="Rimetti la scena a picco, alla misura intera" aria-label="Rimetti la scena com\'era">⟲</button>';
+      // Il ⟲ sta **prima** del − e del +, e non in fondo com'era. In fondo
+      // spuntava esattamente sotto al dito che aveva appena toccato il +:
+      // a riposo si vede il solo +, appena si ingrandisce compaiono gli
+      // altri tre, la fila cresce verso sinistra e l'ultimo posto — quello
+      // che il dito stava già mirando — passava all'azzera. Si toccava due
+      // volte «avvicinati» e ci si ritrovava al punto di partenza. Con
+      // questo ordine il + resta l'ultimo in tutti e due i casi, cioè non
+      // si muove mai.
+      '<button type="button" class="did-lente-tasto did-lente-azzera" data-lente="azzera" title="Rimetti la scena a picco, alla misura intera" aria-label="Rimetti la scena com\'era">⟲</button>' +
+      '<button type="button" class="did-lente-tasto" data-lente="meno" title="Allontanati (tienilo premuto per andare via piano)" aria-label="Allontanati">−</button>' +
+      '<button type="button" class="did-lente-tasto" data-lente="piu" title="Avvicinati al disegno: tienilo premuto per avvicinarti piano, oppure usa la rotella, due dita, o due tocchi" aria-label="Avvicinati">+</button>';
     scena.appendChild(box);
+
+    // Tenere premuto + o − avvicina di continuo. Su un telefono la rotella
+    // non c'è e il pizzico chiede due dita libere — che con una mano sola,
+    // reggendo il telefono, sono una pretesa: questo è il comando che fa la
+    // stessa cosa con un dito solo, e per giunta più preciso di un pizzico.
+    let ripete = null, haRipetuto = false;
+    const fermaRipetizione = () => {
+      if (ripete) { clearTimeout(ripete.avvio); clearInterval(ripete.giro); ripete = null; }
+    };
+    box.addEventListener('pointerdown', (e) => {
+      const b = e.target.closest('[data-lente="piu"], [data-lente="meno"]');
+      if (!b) return;
+      fermaRipetizione();
+      haRipetuto = false;
+      const su = b.dataset.lente === 'piu';
+      ripete = {
+        avvio: setTimeout(() => {
+          ripete.giro = setInterval(() => {
+            haRipetuto = true;
+            if (!didLenteIngrandisci(l, su ? DID_RIPETI_PASSO : 1 / DID_RIPETI_PASSO)) fermaRipetizione();
+            didLenteMostra(l);
+          }, DID_RIPETI_OGNI);
+        }, DID_RIPETI_ATTESA),
+        giro: null
+      };
+      try { b.setPointerCapture(e.pointerId); } catch (err) { /* niente */ }
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev =>
+      box.addEventListener(ev, fermaRipetizione));
+
     box.addEventListener('click', (e) => {
       const b = e.target.closest('[data-lente]');
       if (!b) return;
+      // Il clic arriva anche in fondo a una pressione lunga: lì lo zoom l'ha
+      // già fatto la ripetizione, e un salto in più sarebbe un sussulto
+      if (haRipetuto && (b.dataset.lente === 'piu' || b.dataset.lente === 'meno')) {
+        haRipetuto = false;
+        return;
+      }
       if (b.dataset.lente === 'pieno') didPienoAlterna(l.id);
       else if (b.dataset.lente === 'azzera') didLenteAzzera(l);
       else if (b.dataset.lente === 'gira') l.elevVoluta = didGiroProssima(l);
@@ -551,20 +604,32 @@
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
 
-    // La rotella: solo con Ctrl (o ⌘) premuto finché la lente è ferma. Su
-    // una pagina che scorre, una tela che si mangia la rotella appena il
-    // puntatore ci passa sopra è una trappola — si scorre l'articolo e ci si
-    // ritrova ingranditi dentro a un disegno senza aver chiesto niente.
-    // Quando invece la lente è già accesa la rotella è chiaramente sua, e
-    // tornando a 1× la restituisce alla pagina.
+    // La rotella avvicina e allontana, senza chiedere permesso a nessun
+    // tasto: sopra a un disegno che si può ingrandire, girare la rotella
+    // vuol dire quello e basta, ed è quello che si prova per primo.
+    //
+    // Il rischio noto è la trappola dello scorrimento — si scorre
+    // l'articolo, il puntatore passa sopra a una tela e ci si ritrova
+    // dentro a un disegno senza aver chiesto niente. Il freno non è più un
+    // tasto da tenere premuto ma il **capolinea**: quando la lente è già
+    // alla misura intera e si continua ad allontanare, la rotella torna
+    // alla pagina, che riprende a scorrere da dove era. Così una tela ferma
+    // — cioè come la si trova arrivando — non trattiene niente, e una
+    // ingrandita è chiaramente sua.
     c.addEventListener('wheel', (e) => {
-      if (!e.ctrlKey && !e.metaKey && l.zoom <= 1.001) return;
       const pixel = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);
       const scatti = Math.max(-4, Math.min(4, pixel / 100));
       if (!scatti) return;
+      const fattore = Math.exp(-scatti * 0.2);
+      const alCapolinea = fattore < 1
+        ? l.zoom <= 1 + 1e-4
+        : l.zoom >= DID_LENTE_MAX - 1e-4;
+      // Con Ctrl la rotella resta comunque nostra: è il gesto di chi vuole
+      // ingrandire *questo* e non ha voglia di ragionare su dove sta
+      if (alCapolinea && !e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       const p = dove(e);
-      if (didLenteIngrandisci(l, Math.exp(-scatti * 0.2), p.x, p.y)) didLenteMostra(l);
+      if (didLenteIngrandisci(l, fattore, p.x, p.y)) didLenteMostra(l);
     }, { passive: false });
 
     // Le regole del dito sono quelle della vista 3D, alla lettera, perché è
@@ -634,24 +699,72 @@
       didLenteMostra(l);
     });
 
+    // Dove si è appoggiato il dito e quanto si è mosso: serve al doppio
+    // tocco, che deve distinguere due colpetti secchi da due trascinamenti
+    const partenze = new Map();
+    c.addEventListener('pointerdown', (e) => partenze.set(e.pointerId, { ...dove(e), t: performance.now() }));
+
     const stacca = (e) => {
+      partenze.delete(e.pointerId);
       if (!dita.delete(e.pointerId)) return;
       riancora();
       if (!dita.size) modoPan = false;
     };
-    c.addEventListener('pointerup', stacca);
     c.addEventListener('pointercancel', stacca);
     c.addEventListener('pointerleave', stacca);
 
-    // Doppio clic: avvicina dov'è il puntatore, e la seconda volta rimette
-    // tutto com'era — misura intera e scena a picco. È la scorciatoia di chi
-    // ha il mouse, e la via d'uscita di chi si è perso girando.
-    c.addEventListener('dblclick', (e) => {
-      e.preventDefault();
+    // Doppio clic e doppio tocco: avvicinano dov'è il dito, e la seconda
+    // volta rimettono tutto com'era — misura intera e scena a picco. È la
+    // scorciatoia di chi ha il mouse e la via d'uscita di chi si è perso
+    // girando.
+    let doppioFatto = 0;      // quando l'ha fatto il nostro contatore di tocchi
+    const raddoppia = (x, y) => {
+      doppioFatto = performance.now();
       const girata = l.puoGirare && (l.elev < 89.5 || Math.abs(l.az) > 0.005);
       if (l.zoom > 1.001 || girata) didLenteAzzera(l);
-      else { const p = dove(e); didLenteIngrandisci(l, 2.4, p.x, p.y); }
+      else didLenteIngrandisci(l, DID_TOCCO_ZOOM, x, y);
       didLenteMostra(l);
+    };
+
+    c.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      // Chrome, dopo due tocchi svelti, manda **anche** un `dblclick` — e i
+      // due si annullavano a vicenda: il nostro contatore avvicinava, il suo
+      // `dblclick` trovava la lente accesa e rimetteva tutto com'era. Da
+      // fuori sembrava che il doppio tocco non funzionasse; in realtà ne
+      // funzionavano due.
+      if (performance.now() - doppioFatto < 700) return;
+      const p = dove(e);
+      raddoppia(p.x, p.y);
+    });
+
+    // Il doppio tocco lo contiamo noi e non lo lasciamo a `dblclick`: c'è chi
+    // lo manda (Chrome), chi lo tiene per sé come zoom della pagina e chi lo
+    // consegna mezzo secondo dopo, e mezzo secondo su un gesto è un'eternità.
+    // Due colpetti fermi e vicini: se in mezzo il dito ha camminato era un
+    // trascinamento, e la scena l'ha già girata.
+    let scorso = { t: 0, x: 0, y: 0 };
+    c.addEventListener('pointerup', (e) => {
+      const giu = partenze.get(e.pointerId);
+      const dita2 = dita.size;
+      stacca(e);
+      // Il doppio tocco vale solo per il dito, solo da solo, e non dove il
+      // dito ha già un mestiere suo (il punto di passaggio della fionda, la
+      // telecamera del banco delle aurore): lì due colpetti capitano di
+      // continuo, e azzerare la vista per sbaglio è la cosa più fastidiosa
+      // che possa fare un disegno
+      if (e.pointerType === 'mouse' || !trascina || !giu || dita2 !== 1) return;
+      const q = dove(e);
+      const ora = performance.now();
+      const fermo = Math.hypot(q.x - giu.x, q.y - giu.y) < 12 && ora - giu.t < 500;
+      if (!fermo) { scorso = { t: 0, x: 0, y: 0 }; return; }
+      if (ora - scorso.t < DID_TOCCO_DOPPIO && Math.hypot(q.x - scorso.x, q.y - scorso.y) < 34) {
+        e.preventDefault();
+        raddoppia(q.x, q.y);
+        scorso = { t: 0, x: 0, y: 0 };
+        return;
+      }
+      scorso = { t: ora, x: q.x, y: q.y };
     });
   }
 
@@ -2111,8 +2224,9 @@
           <p class="did-nota did-nota-gesto"><strong>Girala col dito</strong> (o col tasto dei gradi in alto
             a destra, o trascinando col mouse): vista a picco questa è una pianta, e la cosa più bella del
             viaggio non si vede. Mettila di taglio e guarda la <strong>Voyager 1 staccarsi dal piano dei
-            pianeti</strong> dopo Saturno, e la 2 tuffarcisi sotto dopo Nettuno. Col ⛶ la scena si prende
-            tutto lo schermo, barra del tempo compresa.</p>
+            pianeti</strong> dopo Saturno, e la 2 tuffarcisi sotto dopo Nettuno. Per <strong>avvicinarti</strong>:
+            la rotella del mouse, due dita sullo schermo, due tocchi svelti, o il + tenuto premuto. Col ⛶ la
+            scena si prende tutto lo schermo, barra del tempo compresa.</p>
 
           <figure class="did-scena did-scena-bassa">
             <canvas id="did-voy-grafico" class="did-tela"></canvas>
@@ -4652,7 +4766,8 @@
           ])}
 
           <p class="did-nota did-nota-gesto">Gira la scena col dito (o trascinando col mouse) per
-            guardarla da un'altra parte. Il + della lente avvicina, il ⟲ rimette tutto a posto.</p>
+            guardarla da un'altra parte. Per avvicinarti: la rotella del mouse, due dita sullo schermo, o il
+            + tenuto premuto. Il ⟲ rimette tutto a posto, e il ⛶ prende tutto lo schermo.</p>
         </div>
 
         <div id="did-aur-scena-taglio" class="hidden">
