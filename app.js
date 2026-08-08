@@ -10949,19 +10949,76 @@ function skyDisegnaAloniCitta(ctx, base, focale) {
   ctx.restore();
 }
 
+// --- Le scritte appoggiate all'orizzonte ------------------------------
+//
+// Sono due — i nomi dei paesi e le lettere dei punti cardinali — e vivono
+// nel posto peggiore del disegno: sopra il crinale, cioè sopra una fascia
+// che nel giro di pochi pixel passa dal terreno scuro al velo del
+// paesaggio, alla cupola arancione di una città, al cielo. Un colore solo
+// lì non basta mai: qualunque tinta si scelga, da qualche parte finisce
+// sopra a un fondo che le assomiglia.
+//
+// La cura è quella delle carte geografiche: il nome si scrive due volte,
+// prima col tratto — un alone del colore opposto, coi giunti tondi — e poi
+// col pieno. Prima c'era una copia nera spostata di un pixel, che è la
+// stessa idea fatta male: sotto una cresta chiara spariva da un lato e
+// raddoppiava dall'altro, e non separava la scritta dal fondo, la
+// sporcava soltanto.
+//
+// Il carattere è quello dell'app (Inter). `system-ui` voleva dire un
+// carattere diverso a ogni sistema — San Francisco su iPhone, Roboto su
+// Android, Segoe su Windows — con tre larghezze diverse per la stessa
+// scritta e tre risultati diversi nella prova di sovrapposizione.
+const SKY_FONT_ETICHETTE = '"Inter", "SF Pro Display", system-ui, sans-serif';
+
+// Una scritta col suo alone. `spessore` è la larghezza *totale* del
+// contorno: metà cade fuori dalla lettera, quindi 3,5 vuol dire un alone
+// di poco meno di due pixel per parte, che è quanto basta a staccare senza
+// ingrossare il carattere.
+function skyScrittaConAlone(ctx, testo, x, y, colore, alone, spessore = 3.5) {
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.miterLimit = 2;
+  ctx.lineWidth = spessore;
+  ctx.strokeStyle = alone;
+  ctx.strokeText(testo, x, y);
+  ctx.fillStyle = colore;
+  ctx.fillText(testo, x, y);
+}
+
 // I nomi dei paesi, appoggiati sopra il loro crinale. Vanno **dopo** il
 // terreno, se no li coprirebbe; e sono l'altra metà del motivo per cui
 // queste luci stanno qui — sapere che quel chiarore a sud è il capoluogo
-// vale quanto vederlo.
+// vale quanto vederlo. E per saperlo bisogna riuscire a leggerlo: undici
+// pixel di grigio ambrato al 0,82 sopra a una cupola arancione erano una
+// scritta che c'era ma non si leggeva, che è il modo peggiore di occupare
+// un pezzo di cielo.
 function skyDisegnaNomiCitta(ctx, base, focale) {
   if (!sky.mostraNomi || sky.fov < SKY_CITTA_FOV_MIN) return;
   const lista = skyCittaDaDisegnare();
   if (!lista.length) return;
 
+  // Sul telefono lo schermo è piccolo ma si guarda da vicino, sul monitor
+  // il contrario: la misura giusta non è la stessa, come per tutto il resto
+  // di quello che passa da `quanto()`.
+  const corpo = quanto(13, 14, 15);
+  const giorno = sky.luceCielo > 0.45;
+
   ctx.save();
-  ctx.font = '11px system-ui, sans-serif';
+  // Il semigrassetto non è un vezzo: sopra a un fondo che cambia, le aste
+  // sottili del peso normale si mangiano proprio dove il fondo è chiaro.
+  ctx.font = `600 ${corpo}px ${SKY_FONT_ETICHETTE}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
+
+  // Di giorno il cielo è chiaro: scritta scura e alone bianco. Di notte
+  // l'opposto, con l'ambra calda delle luci di città invece del bianco —
+  // è il colore di quello che sta nominando.
+  const colore = giorno ? 'rgba(35, 20, 4, 0.96)' : 'rgba(255, 226, 178, 0.97)';
+  const alone = giorno ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.78)';
+
+  const stacco = Math.round(corpo * 0.85);   // quanto sta sopra la cresta
+  const riga = corpo + 6;                    // altezza di riga, per le sovrapposizioni
   const occupati = [];
   let scritte = 0;
   for (const c of lista) {
@@ -10973,24 +11030,21 @@ function skyDisegnaNomiCitta(ctx, base, focale) {
     if (!p.davanti) continue;
     if (p.px < -60 || p.px > sky.larghezza + 60 || p.py < -20 || p.py > sky.altezza + 20) continue;
     const largo = ctx.measureText(c.nome).width;
-    if (occupati.some(q => Math.abs(q.x - p.px) < (q.l + largo) / 2 + 8 && Math.abs(q.y - p.py) < 14)) continue;
+    if (occupati.some(q => Math.abs(q.x - p.px) < (q.l + largo) / 2 + 10 && Math.abs(q.y - p.py) < riga)) continue;
     occupati.push({ x: p.px, y: p.py, l: largo });
     scritte++;
 
     // Un trattino verticale che collega il nome al punto dell'orizzonte:
     // senza, una scritta sospesa sopra le colline sembra il nome di una
-    // stella
-    ctx.strokeStyle = 'rgba(251, 191, 120, 0.35)';
-    ctx.lineWidth = 1;
+    // stella. Cresce con la scritta, se no una resta appesa all'altra.
+    ctx.strokeStyle = giorno ? 'rgba(120, 72, 20, 0.5)' : 'rgba(253, 205, 150, 0.5)';
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(p.px, p.py);
-    ctx.lineTo(p.px, p.py - 7);
+    ctx.lineTo(p.px, p.py - stacco + 2);
     ctx.stroke();
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-    ctx.fillText(c.nome, p.px + 1, p.py - 7);
-    ctx.fillStyle = sky.luceCielo > 0.45 ? 'rgba(120, 72, 20, 0.9)' : 'rgba(253, 200, 138, 0.82)';
-    ctx.fillText(c.nome, p.px, p.py - 8);
+    skyScrittaConAlone(ctx, c.nome, p.px, p.py - stacco, colore, alone, corpo * 0.26);
   }
   ctx.restore();
 }
@@ -11033,22 +11087,27 @@ function skyDisegnaCardinali(ctx, base, focale) {
     { az: 180, testo: 'S' }, { az: 225, testo: 'SO' }, { az: 270, testo: 'O' }, { az: 315, testo: 'NO' }
   ];
   // Su un cielo diurno le lettere chiare sparirebbero: cambiano tinta con la
-  // luce, e sotto restano leggibili grazie a un'ombra morbida
+  // luce. Il distacco dal fondo però non lo fa più una sfocatura — che sopra
+  // al terreno si limitava a impastare — ma l'alone col tratto, lo stesso dei
+  // nomi dei paesi: sono scritte vicine, e devono comportarsi allo stesso modo
   const giorno = sky.luceCielo > 0.45;
+  const grande = quanto(18, 19, 20);
+  const piccolo = quanto(13, 13, 14);
+  const alone = giorno ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.75)';
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.shadowColor = giorno ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.75)';
-  ctx.shadowBlur = 4;
   punti.forEach(p => {
     const q = skyProietta(skyVettore(p.az, 0), base, focale);
     if (!q.davanti || q.px < -40 || q.px > sky.larghezza + 40) return;
     const principale = p.testo.length === 1;
-    ctx.font = principale ? 'bold 16px system-ui, sans-serif' : '12px system-ui, sans-serif';
-    if (p.testo === 'N') ctx.fillStyle = giorno ? '#b91c1c' : '#f87171';
-    else if (principale) ctx.fillStyle = giorno ? '#0f172a' : '#e2e8f0';
-    else ctx.fillStyle = giorno ? '#334155' : '#94a3b8';
-    ctx.fillText(p.testo, q.px, q.py + 14);
+    const corpo = principale ? grande : piccolo;
+    ctx.font = `${principale ? 700 : 600} ${corpo}px ${SKY_FONT_ETICHETTE}`;
+    let colore;
+    if (p.testo === 'N') colore = giorno ? '#991b1b' : '#fca5a5';
+    else if (principale) colore = giorno ? '#0f172a' : '#f1f5f9';
+    else colore = giorno ? '#334155' : '#cbd5e1';
+    skyScrittaConAlone(ctx, p.testo, q.px, q.py + 14, colore, alone, corpo * 0.22);
   });
   ctx.restore();
 }
