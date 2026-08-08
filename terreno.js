@@ -765,30 +765,58 @@ function cittaQueryOverpass(lat, lon) {
     ');out body 400;';
 }
 
-async function cittaDaOverpass(lat, lon) {
-  const controllo = typeof AbortController === 'function' ? new AbortController() : null;
-  const timer = controllo ? setTimeout(() => controllo.abort(), CITTA_ATTESA_MS) : null;
-  try {
-    const risposta = await fetch('https://overpass-api.de/api/interpreter?data=' +
-      encodeURIComponent(cittaQueryOverpass(lat, lon)), controllo ? { signal: controllo.signal } : undefined);
-    if (!risposta.ok) throw new Error('OpenStreetMap non risponde (' + risposta.status + ')');
-    const dati = await risposta.json();
-    if (!dati || !Array.isArray(dati.elements)) throw new Error('risposta senza luoghi');
-    return dati.elements
-      .filter(n => n && n.tags && n.tags.name && typeof n.lat === 'number')
-      .map(n => {
-        // La popolazione, quando c'è, arriva come stringa e ogni tanto con
-        // i punti delle migliaia dentro
-        const grezza = parseInt(String(n.tags.population || '').replace(/[^\d]/g, ''), 10);
-        return {
-          nome: n.tags.name,
-          lat: n.lat, lon: n.lon,
-          abitanti: isFinite(grezza) && grezza > 0 ? grezza : (CITTA_ABITANTI[n.tags.place] || 3000)
-        };
-      });
-  } finally {
-    if (timer) clearTimeout(timer);
+// --- Chiedere a Overpass ----------------------------------------------
+//
+// Il servizio pubblico è gratuito e senza chiave, e si comporta di
+// conseguenza: quando è carico risponde 429 («troppe richieste») o 504, e
+// ogni tanto una macchina è giù del tutto. Chiedendo a una sola e
+// arrendendosi al primo intoppo, metà delle volte l'orizzonte restava
+// senza nomi — non perché i dati non ci fossero, ma perché era martedì
+// sera. Le richieste vanno quindi provate su più istanze, e l'errore va
+// detto com'è: «429» e «non c'è rete» sono due guai diversi.
+const OVERPASS_ISTANZE = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter'
+];
+
+async function overpassChiedi(query, attesaMs) {
+  let ultimo = null;
+  for (const istanza of OVERPASS_ISTANZE) {
+    const controllo = typeof AbortController === 'function' ? new AbortController() : null;
+    // L'attesa del client deve essere più lunga di quella scritta nella
+    // query, se no si taglia la richiesta proprio mentre il server la sta
+    // ancora onorando — e il colpevole sembra il server.
+    const timer = controllo ? setTimeout(() => controllo.abort(), attesaMs) : null;
+    try {
+      const risposta = await fetch(istanza + '?data=' + encodeURIComponent(query),
+        controllo ? { signal: controllo.signal } : undefined);
+      if (!risposta.ok) throw new Error('OpenStreetMap non risponde (' + risposta.status + ')');
+      const dati = await risposta.json();
+      if (!dati || !Array.isArray(dati.elements)) throw new Error('risposta senza elementi');
+      return dati.elements;
+    } catch (e) {
+      ultimo = e;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
+  throw ultimo || new Error('nessuna istanza di OpenStreetMap ha risposto');
+}
+
+async function cittaDaOverpass(lat, lon) {
+  const elementi = await overpassChiedi(cittaQueryOverpass(lat, lon), CITTA_ATTESA_MS);
+  return elementi
+    .filter(n => n && n.tags && n.tags.name && typeof n.lat === 'number')
+    .map(n => {
+      // La popolazione, quando c'è, arriva come stringa e ogni tanto con
+      // i punti delle migliaia dentro
+      const grezza = parseInt(String(n.tags.population || '').replace(/[^\d]/g, ''), 10);
+      return {
+        nome: n.tags.name,
+        lat: n.lat, lon: n.lon,
+        abitanti: isFinite(grezza) && grezza > 0 ? grezza : (CITTA_ABITANTI[n.tags.place] || 3000)
+      };
+    });
 }
 
 // Il ripiego: l'elenco dei capoluoghi che l'app si porta dietro per le
@@ -992,9 +1020,18 @@ const CIME_RAGGIO_KM = 130;
 // chilometri una cima di ottocento metri è sotto l'orizzonte comunque.
 const CIME_QUOTA_LONTANE_M = 1500;
 const CIME_RAGGIO_VICINE_KM = 25;
+// Quando la richiesta larga non passa si ripiega su questo raggio: sono le
+// montagne di casa, quelle che uno riconosce a occhio e chiama per nome.
+const CIME_RAGGIO_RIPIEGO_KM = 35;
 const CIME_MAX = 40;
 const CIME_RAGGIO_VALIDO_KM = 5;
-const CIME_ATTESA_MS = 15000;
+// Più lunga del `timeout` scritto nella query (25 s): il client non deve
+// mai essere lui ad arrendersi per primo.
+const CIME_ATTESA_MS = 32000;
+// Dopo un buco nell'acqua non si ritenta a ogni respiro: il servizio
+// pubblico che risponde 429 lo fa perché lo stiamo chiamando troppo, e
+// insistere è il modo migliore per continuare a prendere 429.
+const CIME_RIPROVA_DOPO_MS = 5 * 60 * 1000;
 
 // Quanto può stare sotto la cresta del terreno una vetta e valere ancora
 // come visibile. Non è tolleranza di comodo: è il fatto che la cresta è
@@ -1012,6 +1049,8 @@ const cime = {
   fonte: '',
   motivo: '',
   acceso: true,
+  quandoFallito: 0,       // per non ritentare a raffica dopo un buco nell'acqua
+  fallitoLat: null, fallitoLon: null,   // e dove era andata male: altrove si riprova subito
   // Le altezze apparenti si rifanno solo quando cambia qualcosa: la quota
   // dell'occhio o il profilo del terreno. Fra un fotogramma e l'altro no.
   vistaChiave: null,
@@ -1021,41 +1060,73 @@ const cime = {
 
 // --- Da OpenStreetMap -------------------------------------------------
 
+// Il rettangolo che contiene il cerchio di raggio `km`. Overpass gira una
+// selezione per riquadro molto più in fretta di un `around` largo — che a
+// centotrenta chilometri è la differenza fra una risposta e un 504 — e
+// quello che avanza agli angoli lo taglia `cimePrepara`, che le distanze
+// vere le misura comunque.
+function terrenoRiquadro(lat, lon, km) {
+  const dLat = km / 111.32;
+  const dLon = km / (111.32 * Math.max(0.15, Math.cos(lat * Math.PI / 180)));
+  return {
+    s: Math.max(-90, lat - dLat), n: Math.min(90, lat + dLat),
+    o: lon - dLon, e: lon + dLon
+  };
+}
+
 // Due anelli, come per le città: le vette alte da lontano, tutte quelle
 // che hanno un nome da vicino. Il filtro sulla quota si fa sul server —
-// nelle Alpi un anello da centotrenta chilometri senza filtro risponde
+// nelle Alpi un riquadro da centotrenta chilometri senza filtro risponde
 // con qualche migliaio di punte, e la maggior parte sono spuntoni di
 // cresta che nessuno guarda.
+//
+// Il `timeout` scritto qui dentro è quello che il server si dà; il nostro
+// (`CIME_ATTESA_MS`) deve essere più lungo, se no tagliamo la corda
+// mentre lui sta ancora lavorando.
 function cimeQueryOverpass(lat, lon) {
   const la = lat.toFixed(4), lo = lon.toFixed(4);
-  const lontano = Math.round(CIME_RAGGIO_KM * 1000);
+  const r = terrenoRiquadro(lat, lon, CIME_RAGGIO_KM);
   const vicino = Math.round(CIME_RAGGIO_VICINE_KM * 1000);
+  // A cavallo dell'antimeridiano il riquadro si spezza in due e Overpass
+  // lo rifiuta: là si torna all'anello, che è lento ma sempre giusto.
+  const lontane = (r.o < -180 || r.e > 180)
+    ? `(around:${Math.round(CIME_RAGGIO_KM * 1000)},${la},${lo})`
+    : `(${r.s.toFixed(4)},${r.o.toFixed(4)},${r.n.toFixed(4)},${r.e.toFixed(4)})`;
   return '[out:json][timeout:25];(' +
-    `node["natural"="peak"]["name"]["ele"](if:number(t["ele"]) > ${CIME_QUOTA_LONTANE_M})(around:${lontano},${la},${lo});` +
+    `node["natural"="peak"]["name"]["ele"](if:number(t["ele"]) > ${CIME_QUOTA_LONTANE_M})${lontane};` +
     `node["natural"="peak"]["name"]["ele"](around:${vicino},${la},${lo});` +
     ');out body 900;';
 }
 
+// Il ripiego: le vette vicine e basta, senza filtri sulla quota. È corta,
+// non usa `(if:)` e non chiede un riquadro grande, quindi passa anche
+// quando la prima si è presa un 504 o un 429 — e le montagne di casa,
+// che sono quelle che uno riconosce, ci sono comunque.
+function cimeQueryVicina(lat, lon) {
+  const la = lat.toFixed(4), lo = lon.toFixed(4);
+  return '[out:json][timeout:20];' +
+    `node["natural"="peak"]["name"]["ele"](around:${Math.round(CIME_RAGGIO_RIPIEGO_KM * 1000)},${la},${lo});` +
+    'out body 300;';
+}
+
+function cimeLeggiNodi(elementi) {
+  return elementi
+    .filter(n => n && n.tags && n.tags.name && typeof n.lat === 'number')
+    .map(n => {
+      // La quota arriva come stringa, e ogni tanto con l'unità appiccicata
+      // («1850 m») o con la virgola decimale
+      const q = parseFloat(String(n.tags.ele).replace(',', '.').replace(/[^\d.\-]/g, ''));
+      return { nome: n.tags.name, lat: n.lat, lon: n.lon, quota: q };
+    })
+    .filter(c => isFinite(c.quota));
+}
+
 async function cimeDaOverpass(lat, lon) {
-  const controllo = typeof AbortController === 'function' ? new AbortController() : null;
-  const timer = controllo ? setTimeout(() => controllo.abort(), CIME_ATTESA_MS) : null;
   try {
-    const risposta = await fetch('https://overpass-api.de/api/interpreter?data=' +
-      encodeURIComponent(cimeQueryOverpass(lat, lon)), controllo ? { signal: controllo.signal } : undefined);
-    if (!risposta.ok) throw new Error('OpenStreetMap non risponde (' + risposta.status + ')');
-    const dati = await risposta.json();
-    if (!dati || !Array.isArray(dati.elements)) throw new Error('risposta senza vette');
-    return dati.elements
-      .filter(n => n && n.tags && n.tags.name && typeof n.lat === 'number')
-      .map(n => {
-        // La quota arriva come stringa, e ogni tanto con l'unità appiccicata
-        // («1850 m») o con la virgola decimale
-        const q = parseFloat(String(n.tags.ele).replace(',', '.').replace(/[^\d.\-]/g, ''));
-        return { nome: n.tags.name, lat: n.lat, lon: n.lon, quota: q };
-      })
-      .filter(c => isFinite(c.quota));
-  } finally {
-    if (timer) clearTimeout(timer);
+    return cimeLeggiNodi(await overpassChiedi(cimeQueryOverpass(lat, lon), CIME_ATTESA_MS));
+  } catch (e) {
+    console.warn('Vette: la richiesta larga non è passata, riprovo con quelle vicine —', e.message);
+    return cimeLeggiNodi(await overpassChiedi(cimeQueryVicina(lat, lon), CIME_ATTESA_MS));
   }
 }
 
@@ -1118,6 +1189,8 @@ function cimeDalSalvato(v) {
 
 function cimeDimentica() {
   cime.stato = 'niente';
+  cime.quandoFallito = 0;
+  cime.fallitoLat = cime.fallitoLon = null;
   cime.elenco = [];
   cime.vista = [];
   cime.vistaChiave = null;
@@ -1149,6 +1222,19 @@ function cimeCarica(forza) {
     return Promise.resolve(true);
   }
   if (cime.stato === 'in-corso') return cime.promessa || Promise.resolve(false);
+  // Ha appena fallito *per questo posto*: si aspetta prima di ridare
+  // fastidio al servizio. Senza, ogni giro di `skyAggiornaOsservatore` (e
+  // ce n'è più d'uno all'avvio) rilanciava la richiesta, e a un'istanza che
+  // risponde 429 si finisce per chiedere sempre più spesso proprio quando
+  // andrebbe lasciata in pace. L'attesa vale però solo dove era andata
+  // male: chi sposta il cielo su un'altra città sta facendo una domanda
+  // nuova, e ha diritto a un tentativo nuovo.
+  if (!forza && cime.stato === 'fallito' &&
+      Date.now() - (cime.quandoFallito || 0) < CIME_RIPROVA_DOPO_MS &&
+      cime.fallitoLat !== null &&
+      terrenoDistanzaKm(lat, lon, cime.fallitoLat, cime.fallitoLon) <= CIME_RAGGIO_VALIDO_KM) {
+    return Promise.resolve(false);
+  }
 
   if (!forza) {
     const salvate = cimeLeggiSalvate(lat, lon);
@@ -1162,7 +1248,11 @@ function cimeCarica(forza) {
   cime.motivo = '';
   terrenoAggiornaPannello();
 
-  cime.promessa = cimeDaOverpass(lat, lon)
+  // Le due richieste a Overpass — i paesi e le vette — non partono
+  // insieme: è lo stesso servizio pubblico, e due colpi nello stesso
+  // istante sono il modo più rapido per prendersi un «troppe richieste».
+  cime.promessa = Promise.resolve(citta.promessa).catch(() => {})
+    .then(() => cimeDaOverpass(lat, lon))
     .then(elenco => {
       cimeApplica(lat, lon, elenco, 'osm');
       if (!cime.elenco.length) {
@@ -1180,7 +1270,14 @@ function cimeCarica(forza) {
     .catch(e => {
       console.warn('Vette da OpenStreetMap non disponibili:', e);
       cime.stato = 'fallito';
-      cime.motivo = 'Non conosco i nomi delle montagne qui attorno: serve la rete, una volta sola.';
+      cime.quandoFallito = Date.now();
+      cime.fallitoLat = lat;
+      cime.fallitoLon = lon;
+      // Il perché va detto: «serve la rete» a chi la rete ce l'ha è una
+      // risposta che non aiuta, e la differenza fra un servizio occupato
+      // (si riprova fra poco) e un guasto vero la si legge solo qui.
+      cime.motivo = 'Non ho i nomi delle montagne: ' + (e && e.message ? e.message : 'OpenStreetMap non risponde') +
+        '. Si riprova da sé fra qualche minuto.';
       terrenoAggiornaPannello();
       return false;
     })
@@ -1234,7 +1331,11 @@ function cimeVisibili() {
 
 function cimeAlterna() {
   cime.acceso = !cime.acceso;
-  if (cime.acceso && cime.stato !== 'pronto') cimeCarica();
+  // Accendendolo a mano si riprova subito, anche se la volta prima era
+  // andata male: un tasto premuto è una richiesta esplicita, e l'attesa di
+  // cortesia verso il servizio vale per i tentativi automatici, non per
+  // quello di chi sta lì a guardare.
+  if (cime.acceso && cime.stato !== 'pronto') cimeCarica(cime.stato === 'fallito');
   terrenoAggiornaPannello();
 }
 
@@ -1246,7 +1347,14 @@ function cimeTesto() {
   if (cime.motivo) return cime.motivo;
 
   const viste = cimeVisibili();
-  if (!viste.length) return 'Nessuna vetta spunta sopra l\'orizzonte da qui.';
+  // Due silenzi diversi, e vale la pena distinguerli: «non ci sono
+  // montagne» è un fatto del posto, «ci sono ma non si vedono» è un fatto
+  // dell'orizzonte — e la seconda è la risposta a «perché non leggo niente».
+  if (!viste.length) {
+    return cime.elenco.length
+      ? `Le ${cime.elenco.length} vette qui attorno restano tutte sotto la prima cresta: da qui non se ne vede nessuna.`
+      : 'Nessuna vetta spunta sopra l\'orizzonte da qui.';
+  }
   const prima = viste[0];
   const dove = typeof skyNomeDirezione === 'function' ? skyNomeDirezione(prima.az) : '';
   return `Sopra l'orizzonte si riconoscono ${viste.length} vette: la più imponente è ${prima.nome} ` +
