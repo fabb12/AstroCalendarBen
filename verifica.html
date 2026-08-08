@@ -1317,6 +1317,110 @@ titolo('14. Le distanze delle stelle, e le costellazioni nello spazio');
 }
 
 // =====================================================================
+titolo('15. Le montagne che hanno un nome');
+// =====================================================================
+//   Il nome di una vetta sull'orizzonte è la cosa più facile da sbagliare
+//   in modo invisibile: una scritta appoggiata a una punta sembra giusta
+//   comunque, e nessuno può accorgersi a occhio che quel monte da qui è
+//   nascosto dietro alla collina davanti, o che la curvatura della Terra
+//   se l'è mangiato. Qui si controllano le tre cose che il modulo esiste
+//   per fare: mettere ogni vetta al suo posto, calcolarne l'altezza vera
+//   e togliere di mezzo quelle che da qui non si vedono.
+{
+  // --- Cernita e ordine ---
+  const grezze = [
+    { nome: 'Cima Vicina', lat: 44.30, lon: 11.34, quota: 900 },
+    { nome: 'Cima Lontana', lat: 43.40, lon: 11.34, quota: 2200 },
+    { nome: 'Cima Vicina', lat: 44.3001, lon: 11.3401, quota: 940 },  // stessa vetta, punta più alta
+    { nome: 'Fuori Raggio', lat: 42.00, lon: 11.34, quota: 3000 }
+  ];
+  const pronte = cimePrepara(grezze, 44.49, 11.34);
+  prova('la stessa vetta non si nomina due volte',
+        pronte.filter(c => c.nome === 'Cima Vicina').length === 1, `${pronte.length} vette su 4`);
+  prova('e a parità di nome resta la punta più alta',
+        pronte.find(c => c.nome === 'Cima Vicina').quota === 940);
+  prova('oltre il raggio utile non si guarda',
+        !pronte.some(c => c.nome === 'Fuori Raggio'));
+  prova('una vetta a sud sta a sud',
+        Math.abs(pronte.find(c => c.nome === 'Cima Vicina').az - 180) < 0.5,
+        `${pronte.find(c => c.nome === 'Cima Vicina').az.toFixed(1)}°`);
+
+  // --- L'altezza apparente, con la Terra tonda ---
+  // È lo stesso conto del terreno (`terrenoAngolo`), e deve restarlo: se
+  // le due divergono, il nome si stacca dalla cresta che sta nominando.
+  // Il Monte Cimone visto da Bologna: 2165 m a 61 km, occhio a 55 m.
+  const cimone = terrenoAngolo(2165, 55, 61);
+  prova('il Cimone da Bologna sta poco sopra un grado e mezzo',
+        cimone > 1.4 && cimone < 2.0, `${cimone.toFixed(2)}°`);
+  // Su una Terra piatta verrebbe un quarto di grado più in alto — a
+  // sessanta chilometri il suolo si abbassa di duecentocinquanta metri —
+  // ed è tutta la differenza fra una cresta e una fila di denti staccati
+  // dall'orizzonte
+  const piatta = Math.atan2(2165 - 55, 61000) * 180 / Math.PI;
+  prova('e la curvatura gliene toglie un quarto',
+        piatta - cimone > 0.18 && piatta - cimone < 0.35,
+        `piatta ${piatta.toFixed(2)}° contro tonda ${cimone.toFixed(2)}°`);
+  // A duecento chilometri se lo mangia del tutto: duemilaseicento metri di
+  // abbassamento contro duemila di montagna, e la punta resta sotto
+  prova('a duecento chilometri una vetta di duemila metri sta sotto l\'orizzonte',
+        terrenoAngolo(2000, 55, 200) < 0, `${terrenoAngolo(2000, 55, 200).toFixed(2)}°`);
+
+  // --- Chi si vede e chi no ---
+  const primaStato = { stato: cime.stato, elenco: cime.elenco, acceso: cime.acceso };
+  const primaTerreno = { stato: terreno.stato, profilo: terreno.profilo, quota: terreno.quota, acceso: terreno.acceso };
+  prova('senza elenco scaricato non si nomina niente', cimeVisibili().length === 0);
+
+  cime.stato = 'pronto';
+  cime.acceso = true;
+  cime.vistaChiave = null;
+  cime.elenco = [
+    { nome: 'Alta e vicina', lat: 0, lon: 0, quota: 1800, km: 30, az: 180 },
+    { nome: 'Dietro la collina', lat: 0, lon: 0, quota: 700, km: 40, az: 0 },
+    { nome: 'Rasoterra', lat: 0, lon: 0, quota: 60, km: 50, az: 90 }
+  ];
+  terreno.stato = 'niente';
+  terreno.profilo = null;
+  terreno.quota = 100;
+  let viste = cimeVisibili();
+  prova('senza il terreno vero si nominano tutte quelle che spuntano',
+        viste.length === 2 && !viste.some(c => c.nome === 'Rasoterra'),
+        viste.map(c => `${c.nome} ${c.alt.toFixed(2)}°`).join(', '));
+  prova('e la più imponente è la prima', viste[0].nome === 'Alta e vicina');
+
+  // Adesso il terreno: una cresta di sei gradi verso nord, niente altrove.
+  // «Dietro la collina» sta a un grado scarso e deve sparire.
+  const creste = new Float32Array(TERRENO_DIREZIONI);
+  for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+    const az = i * TERRENO_PASSO_AZ;
+    creste[i] = (az < 30 || az > 330) ? 6 : 0.05;
+  }
+  terreno.profilo = terrenoInterpola(creste);
+  terreno.stato = 'pronto';
+  terreno.acceso = true;
+  terreno.quando = Date.now();
+  cime.vistaChiave = null;
+  viste = cimeVisibili();
+  prova('una vetta nascosta da una cresta più alta non si nomina',
+        !viste.some(c => c.nome === 'Dietro la collina'),
+        viste.map(c => c.nome).join(', ') || 'nessuna');
+  prova('quella che spunta davvero resta',
+        viste.some(c => c.nome === 'Alta e vicina'));
+
+  // La risposta si tiene da parte fra un fotogramma e l'altro, ma non deve
+  // fossilizzarsi: scendendo al livello del mare le altezze si rifanno tutte
+  const daiCento = cimeVisibili().find(c => c.nome === 'Alta e vicina').alt;
+  terreno.quota = 0;
+  const dalMare = cimeVisibili().find(c => c.nome === 'Alta e vicina').alt;
+  prova('cambiando la quota dell\'osservatore le altezze si rifanno',
+        dalMare > daiCento + 0.1,
+        `${daiCento.toFixed(2)}° da cento metri, ${dalMare.toFixed(2)}° dal livello del mare`);
+
+  // Si rimette tutto com'era: le prove non devono lasciare tracce
+  Object.assign(cime, primaStato, { vistaChiave: null, vista: [] });
+  Object.assign(terreno, primaTerreno);
+}
+
+// =====================================================================
 const esito = document.getElementById('esito');
 esito.dataset.stato = fallite ? 'ko' : 'ok';
 esito.textContent = fallite

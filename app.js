@@ -7644,6 +7644,7 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   // lontano è lo stesso e non tocca niente.
   if (typeof terrenoCarica === 'function') terrenoCarica();
   if (typeof cittaCarica === 'function') cittaCarica();
+  if (typeof cimeCarica === 'function') cimeCarica();
   return true;
 }
 
@@ -8056,12 +8057,14 @@ function skyAggiornaOsservatore() {
   sky.prossimoCalcolo = 0;
   sky.cacheOrari = { chiave: null, valore: null };
   if (sky.aperto && typeof skyAggiornaOggetti === 'function') skyAggiornaOggetti(true);
-  // Cambiando luogo cambia anche l'orizzonte: le colline sono altre, e
-  // altri sono i paesi che di notte lo illuminano. I due moduli decidono da
-  // sé se vale la pena rifare i conti — e i posti già visti se li tengono
-  // da parte, quindi tornare a casa è immediato.
+  // Cambiando luogo cambia anche l'orizzonte: le colline sono altre, altri
+  // i paesi che di notte lo illuminano e altre le montagne che ci spuntano
+  // sopra. I tre moduli decidono da sé se vale la pena rifare i conti — e i
+  // posti già visti se li tengono da parte, quindi tornare a casa è
+  // immediato.
   if (typeof terrenoCarica === 'function') terrenoCarica();
   if (typeof cittaCarica === 'function') cittaCarica();
+  if (typeof cimeCarica === 'function') cimeCarica();
   skyAggiornaStato();
   skyAggiornaLuogoVistaUI();
 }
@@ -10951,8 +10954,9 @@ function skyDisegnaAloniCitta(ctx, base, focale) {
 
 // --- Le scritte appoggiate all'orizzonte ------------------------------
 //
-// Sono due — i nomi dei paesi e le lettere dei punti cardinali — e vivono
-// nel posto peggiore del disegno: sopra il crinale, cioè sopra una fascia
+// Sono tre — i nomi dei paesi, quelli delle montagne e le lettere dei punti
+// cardinali — e vivono nel posto peggiore del disegno: sopra il crinale,
+// cioè sopra una fascia
 // che nel giro di pochi pixel passa dal terreno scuro al velo del
 // paesaggio, alla cupola arancione di una città, al cielo. Un colore solo
 // lì non basta mai: qualunque tinta si scelga, da qualche parte finisce
@@ -10986,15 +10990,72 @@ function skyScrittaConAlone(ctx, testo, x, y, colore, alone, spessore = 3.5) {
   ctx.fillText(testo, x, y);
 }
 
-// I nomi dei paesi, appoggiati sopra il loro crinale. Vanno **dopo** il
-// terreno, se no li coprirebbe; e sono l'altra metà del motivo per cui
-// queste luci stanno qui — sapere che quel chiarore a sud è il capoluogo
-// vale quanto vederlo. E per saperlo bisogna riuscire a leggerlo: undici
-// pixel di grigio ambrato al 0,82 sopra a una cupola arancione erano una
-// scritta che c'era ma non si leggeva, che è il modo peggiore di occupare
-// un pezzo di cielo.
-function skyDisegnaNomiCitta(ctx, base, focale) {
+// Quante vette si nominano. Sono meno delle città di proposito: una città
+// è un posto solo e il suo nome è un'informazione secca, una cresta di
+// montagne è una fila di punte e nominarle tutte vuol dire scrivere sopra
+// al cielo invece che sopra all'orizzonte.
+const SKY_CIME_MAX_NOMI = 6;
+
+function skyCimeDaDisegnare() {
+  if (typeof cimeVisibili !== 'function') return [];
+  return cimeVisibili();
+}
+
+// Le due famiglie di nomi sull'orizzonte, e come si distinguono.
+//
+// Non è una scelta di gusto: dicono due cose diverse e stanno in due posti
+// diversi. Una città è **sull'orizzonte** — la si nomina dove finisce la
+// terra, perché quello che se ne vede è il chiarore sopra il crinale — e il
+// suo colore è quello della sua luce, l'ambra calda del sodio. Una montagna
+// invece **ha un'altezza**: il suo nome va appoggiato alla punta, dove la
+// punta sta davvero, e il suo colore è quello della roccia lontana, il
+// grigio-azzurro dell'aria che ci sta in mezzo. Il segno sotto al nome
+// finisce il discorso: un filo verticale che scende alla cresta per le
+// città, un triangolino per le vette.
+//
+// Chi guarda non deve leggere una legenda per capire quale sia quale: un
+// nome caldo appeso in basso è un paese, uno freddo con la punta sotto è
+// una montagna.
+const SKY_NOMI_ORIZZONTE = {
+  citta: {
+    notte: { pieno: 'rgba(255, 226, 178, 0.97)', alone: 'rgba(0, 0, 0, 0.78)', segno: 'rgba(253, 205, 150, 0.5)' },
+    giorno: { pieno: 'rgba(92, 46, 4, 0.97)', alone: 'rgba(255, 255, 255, 0.88)', segno: 'rgba(120, 72, 20, 0.55)' }
+  },
+  cime: {
+    notte: { pieno: 'rgba(206, 224, 245, 0.95)', alone: 'rgba(0, 0, 0, 0.8)', segno: 'rgba(186, 208, 235, 0.75)' },
+    giorno: { pieno: 'rgba(22, 34, 52, 0.95)', alone: 'rgba(255, 255, 255, 0.85)', segno: 'rgba(40, 56, 80, 0.7)' }
+  }
+};
+
+// I nomi appoggiati all'orizzonte: prima i paesi, poi le montagne. L'ordine
+// conta perché il posto è poco e se lo giocano in una lista sola di zone
+// occupate — e a vincere devono essere le città, che sono quelle che dicono
+// dove non puntare il telescopio.
+//
+// Vanno **dopo** il terreno, se no li coprirebbe.
+function skyDisegnaNomiOrizzonte(ctx, base, focale) {
   if (!sky.mostraNomi || sky.fov < SKY_CITTA_FOV_MIN) return;
+  const occupati = [];
+  skyNomiCitta(ctx, base, focale, occupati);
+  skyNomiCime(ctx, base, focale, occupati);
+}
+
+// Prova a piazzare una scritta: se pesta i piedi a una già messa, no.
+// `occupati` è condiviso fra paesi e vette, quindi «Firenze» e «Monte
+// Falterona» non si stampano una sull'altra.
+function skyPostoLibero(occupati, px, py, largo, riga) {
+  if (occupati.some(q => Math.abs(q.x - px) < (q.l + largo) / 2 + 10 && Math.abs(q.y - py) < riga)) return false;
+  occupati.push({ x: px, y: py, l: largo });
+  return true;
+}
+
+// I nomi dei paesi, appoggiati sopra il loro crinale. Sono l'altra metà del
+// motivo per cui queste luci stanno qui — sapere che quel chiarore a sud è
+// il capoluogo vale quanto vederlo. E per saperlo bisogna riuscire a
+// leggerlo: undici pixel di grigio ambrato al 0,82 sopra a una cupola
+// arancione erano una scritta che c'era ma non si leggeva, che è il modo
+// peggiore di occupare un pezzo di cielo.
+function skyNomiCitta(ctx, base, focale, occupati) {
   const lista = skyCittaDaDisegnare();
   if (!lista.length) return;
 
@@ -11003,6 +11064,7 @@ function skyDisegnaNomiCitta(ctx, base, focale) {
   // di quello che passa da `quanto()`.
   const corpo = quanto(13, 14, 15);
   const giorno = sky.luceCielo > 0.45;
+  const tinta = SKY_NOMI_ORIZZONTE.citta[giorno ? 'giorno' : 'notte'];
 
   ctx.save();
   // Il semigrassetto non è un vezzo: sopra a un fondo che cambia, le aste
@@ -11011,15 +11073,8 @@ function skyDisegnaNomiCitta(ctx, base, focale) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
 
-  // Di giorno il cielo è chiaro: scritta scura e alone bianco. Di notte
-  // l'opposto, con l'ambra calda delle luci di città invece del bianco —
-  // è il colore di quello che sta nominando.
-  const colore = giorno ? 'rgba(35, 20, 4, 0.96)' : 'rgba(255, 226, 178, 0.97)';
-  const alone = giorno ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.78)';
-
   const stacco = Math.round(corpo * 0.85);   // quanto sta sopra la cresta
   const riga = corpo + 6;                    // altezza di riga, per le sovrapposizioni
-  const occupati = [];
   let scritte = 0;
   for (const c of lista) {
     if (scritte >= SKY_CITTA_MAX_NOMI) break;
@@ -11029,22 +11084,82 @@ function skyDisegnaNomiCitta(ctx, base, focale) {
     const p = skyProietta(skyVettore(c.az, alt), base, focale);
     if (!p.davanti) continue;
     if (p.px < -60 || p.px > sky.larghezza + 60 || p.py < -20 || p.py > sky.altezza + 20) continue;
-    const largo = ctx.measureText(c.nome).width;
-    if (occupati.some(q => Math.abs(q.x - p.px) < (q.l + largo) / 2 + 10 && Math.abs(q.y - p.py) < riga)) continue;
-    occupati.push({ x: p.px, y: p.py, l: largo });
+    if (!skyPostoLibero(occupati, p.px, p.py - stacco, ctx.measureText(c.nome).width, riga)) continue;
     scritte++;
 
     // Un trattino verticale che collega il nome al punto dell'orizzonte:
     // senza, una scritta sospesa sopra le colline sembra il nome di una
     // stella. Cresce con la scritta, se no una resta appesa all'altra.
-    ctx.strokeStyle = giorno ? 'rgba(120, 72, 20, 0.5)' : 'rgba(253, 205, 150, 0.5)';
+    ctx.strokeStyle = tinta.segno;
     ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(p.px, p.py);
     ctx.lineTo(p.px, p.py - stacco + 2);
     ctx.stroke();
 
-    skyScrittaConAlone(ctx, c.nome, p.px, p.py - stacco, colore, alone, corpo * 0.26);
+    skyScrittaConAlone(ctx, c.nome, p.px, p.py - stacco, tinta.pieno, tinta.alone, corpo * 0.26);
+  }
+  ctx.restore();
+}
+
+// I nomi delle montagne. La differenza con i paesi non è solo di colore: il
+// nome di una vetta si mette **sulla vetta**, cioè al suo azimut e alla sua
+// altezza vera — che `cimeVisibili()` calcola con curvatura e rifrazione,
+// come il terreno — e non sull'orizzonte. È l'unico modo perché il nome
+// finisca sulla punta a cui appartiene invece che sulla riga di terra sotto
+// di lei, che con una cresta di montagne vuol dire sul monte sbagliato.
+//
+// Sotto il nome c'è la quota, più piccola: è quella che dice se quella
+// cresta è un ostacolo serio o una collina, ed è l'informazione che uno
+// cercherebbe subito dopo aver letto il nome.
+function skyNomiCime(ctx, base, focale, occupati) {
+  const lista = skyCimeDaDisegnare();
+  if (!lista.length) return;
+
+  const corpo = quanto(12, 13, 14);
+  const corpoQuota = Math.round(corpo * 0.78);
+  const giorno = sky.luceCielo > 0.45;
+  const tinta = SKY_NOMI_ORIZZONTE.cime[giorno ? 'giorno' : 'notte'];
+  const riga = corpo + corpoQuota + 8;
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  let scritte = 0;
+  for (const c of lista) {
+    if (scritte >= SKY_CIME_MAX_NOMI) break;
+    const p = skyProietta(skyVettore(c.az, c.alt), base, focale);
+    if (!p.davanti) continue;
+    if (p.px < -70 || p.px > sky.larghezza + 70 || p.py < -20 || p.py > sky.altezza + 20) continue;
+    ctx.font = `600 ${corpo}px ${SKY_FONT_ETICHETTE}`;
+    const largo = ctx.measureText(c.nome).width;
+    // Il nome sta sopra il triangolino, la quota sotto: il blocco occupato
+    // è alto quanto tutt'e due, e il centro sta in mezzo
+    if (!skyPostoLibero(occupati, p.px, p.py - corpo, largo, riga)) continue;
+    scritte++;
+
+    // Il triangolino appoggiato alla punta: è il segno con cui le carte
+    // dicono «montagna» da sempre, e qui fa anche il mestiere che per le
+    // città fa il trattino — legare il nome al posto a cui si riferisce.
+    const lato = Math.max(5, corpo * 0.5);
+    ctx.fillStyle = tinta.segno;
+    ctx.beginPath();
+    ctx.moveTo(p.px, p.py - lato * 0.9);
+    ctx.lineTo(p.px + lato * 0.62, p.py + lato * 0.35);
+    ctx.lineTo(p.px - lato * 0.62, p.py + lato * 0.35);
+    ctx.closePath();
+    ctx.fill();
+
+    skyScrittaConAlone(ctx, c.nome, p.px, p.py - lato - 3, tinta.pieno, tinta.alone, corpo * 0.26);
+
+    // La quota va sotto la punta e non sopra il nome: sopra, il blocco
+    // diventava una colonna alta trenta pixel e a due vette vicine non ci
+    // stava più nessuno dei due nomi.
+    ctx.font = `500 ${corpoQuota}px ${SKY_FONT_ETICHETTE}`;
+    ctx.textBaseline = 'top';
+    skyScrittaConAlone(ctx, `${Math.round(c.quota)} m`, p.px, p.py + lato * 0.6,
+      tinta.pieno, tinta.alone, corpoQuota * 0.26);
+    ctx.textBaseline = 'bottom';
   }
   ctx.restore();
 }
@@ -11776,7 +11891,9 @@ function skyDisegna() {
   // le stelle basse sopra la città.
   if (!conCamera) skyDisegnaAloniCitta(ctx, base, focale);
   if (!conCamera) skyDisegnaTerreno(ctx, base, focale, aria);
-  if (!conCamera) skyDisegnaNomiCitta(ctx, base, focale);
+  // I nomi — paesi e montagne insieme, in una passata sola perché il posto
+  // se lo devono dividere (vedi `skyDisegnaNomiOrizzonte`)
+  if (!conCamera) skyDisegnaNomiOrizzonte(ctx, base, focale);
   skyDisegnaCardinali(ctx, base, focale);
 
   skyDisegnaCostellazioni(ctx, base, focale);
@@ -15180,10 +15297,11 @@ function apriSkymap() {
   if (typeof catCarica === 'function') catCarica();
   if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica();
   // La forma vera del terreno attorno a casa (sei richieste, una volta
-  // sola per luogo: poi sta in localStorage e vale anche senza rete), e i
-  // paesi che di notte lo illuminano
+  // sola per luogo: poi sta in localStorage e vale anche senza rete), i
+  // paesi che di notte lo illuminano e le montagne che gli danno un nome
   if (typeof terrenoCarica === 'function') terrenoCarica();
   if (typeof cittaCarica === 'function') cittaCarica();
+  if (typeof cimeCarica === 'function') cimeCarica();
   // Il Kp del NOAA: serve a sapere se l'ovale aurorale, stanotte, scende
   // fin qui. Senza rete non si sa, e resta la simulazione.
   if (typeof caricaAurora === 'function') {
@@ -15540,6 +15658,13 @@ function inizializzaSkymap() {
   // possono volere spente — chi disegna una carta del cielo vuole il nero.
   collega('skymap-btn-citta', () => {
     if (typeof cittaAlterna === 'function') cittaAlterna();
+  });
+  // I nomi delle montagne: stessa famiglia dei due qui sopra — non
+  // nascondono niente, dicono come si chiama quello che c'è già. Si
+  // spengono perché sette nomi sull'orizzonte, a chi le montagne le
+  // conosce a memoria, sono sette scritte davanti al cielo.
+  collega('skymap-btn-cime', () => {
+    if (typeof cimeAlterna === 'function') cimeAlterna();
   });
   // L'aurora: acceso, l'ovale c'è sempre — solo che da quasi tutta Europa
   // sta sotto l'orizzonte e non si disegna niente. Il tasto serve a
@@ -21855,7 +21980,8 @@ function esportaBackup() {
     // prima sera, ha già le colline giuste anche in mezzo a un campo
     // senza segnale. Stessa cosa per i paesi che lo illuminano.
     terreno: localStorage.getItem('astrocalendario_terreno'),
-    citta: localStorage.getItem('astrocalendario_citta')
+    citta: localStorage.getItem('astrocalendario_citta'),
+    cime: localStorage.getItem('astrocalendario_cime')
   };
   const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
   const giorno = new Date().toISOString().slice(0, 10);
@@ -21913,7 +22039,8 @@ async function importaBackup(file) {
      ['orizzonte', 'astrocalendario_orizzonte'],
      ['corpiMiei', 'astrocalendario_corpi_minori_miei'],
      ['terreno', 'astrocalendario_terreno'],
-     ['citta', 'astrocalendario_citta']].forEach(([campo, chiave]) => {
+     ['citta', 'astrocalendario_citta'],
+     ['cime', 'astrocalendario_cime']].forEach(([campo, chiave]) => {
       if (!dati[campo]) return;
       try { localStorage.setItem(chiave, dati[campo]); } catch (e) { /* niente storage */ }
     });
@@ -21923,6 +22050,7 @@ async function importaBackup(file) {
     // prossima apertura del planetario si rilegge dal salvato
     if (typeof terrenoDimentica === 'function') { terrenoDimentica(); terrenoCarica(); }
     if (typeof cittaDimentica === 'function') { cittaDimentica(); cittaCarica(); }
+    if (typeof cimeDimentica === 'function') { cimeDimentica(); cimeCarica(); }
 
     pianificaNotifiche();
     aggiornaViste();
