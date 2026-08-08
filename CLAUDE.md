@@ -29,7 +29,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `app.js` | ~22.810 | Tutto tranne il telescopio e i moduli aggiunti dopo. |
 | `telescopio.js` | ~5.535 | Vista Telescopio, isolata. ~136 funzioni, prefisso `tel`. |
 | `catalogo.js` | ~980 | **Il catalogo del cielo**: 5.044 stelle, 88 costellazioni, 142 oggetti profondi, e il motore a matrice che li muove. Prefisso `cat`. |
-| `costellazioni.js` | ~2.200 | **I disegni delle figure, i nomi delle altre culture, il cielo australe**: 29 disegni agganciati alle stelle vere con un telaio di due ancore, i nomi arabi/cinesi/māori/aborigeni/andini con la loro storia, l'atlante di tutte e 88 e il tasto che porta il planetario sotto il cielo giusto. Prefisso `cost`. |
+| `costellazioni.js` | ~2.480 | **I disegni delle figure, i nomi delle altre culture, il cielo australe**: 29 disegni agganciati alle stelle vere con un telaio di due ancore, i nomi arabi/cinesi/māori/aborigeni/andini con la loro storia, l'atlante di tutte e 88, il tasto che porta il planetario sotto il cielo giusto e le **distanze vere** che servono al banco in 3D. Prefisso `cost`. |
 | `corpi-minori.js` | ~660 | **Lune di Giove, comete e asteroidi**: `JupiterMoons` e propagazione kepleriana a mano. |
 | `pianifica.js` | ~500 | **Pianificare la serata**: curva dell'altezza, migliori bersagli, profilo degli ostacoli. Prefisso `pian`/`orizzonte`. |
 | `terreno.js` | ~830 | **La forma vera del terreno attorno a casa**: quote del suolo da Open-Meteo, orizzonte per ogni direzione, che paesaggio c'è (mare/pianura/collina/montagna), e le **luci dei paesi veri** da OpenStreetMap. Prefissi `terreno` e `citta`. |
@@ -37,16 +37,17 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `aurora-polare.js` | ~1.015 | **Le aurore polari nel planetario**: l'ovale aurorale attorno al polo geomagnetico, boreale e australe, disegnato dove sta davvero, più la **forma dello scudo** (magnetopausa e onda d'urto) che serve al banco della Didattica. Prefisso `aur`. |
 | `eventi-extra.js` | ~720 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete e **aurore** (previsione del Kp a tre giorni + stagione degli equinozi). |
 | `ui-nuova.js` | ~350 | L'interfaccia di tutto quanto sopra. |
-| `didattica.js` | ~5.700 | **Il laboratorio**: i sei banchi di prova della vista Didattica — moto retrogrado, leggi di Keplero, fionda gravitazionale (tre schede: il banco di prova, i conti, il Grand Tour), finestre di lancio, allineamenti, aurore polari. Prefisso `did`. |
+| `didattica.js` | ~6.100 | **Il laboratorio**: i sette banchi di prova della vista Didattica — moto retrogrado, leggi di Keplero, fionda gravitazionale (tre schede: il banco di prova, i conti, il Grand Tour), finestre di lancio, allineamenti, aurore polari, e **le costellazioni nello spazio vero**. Prefisso `did`. |
 | `dati-stelle.js` | ~1.360 | 5.044 stelle fino alla mag 6,0 (147 KB). **Caricato su richiesta.** |
 | `dati-stelle-deboli.js` | ~1.335 | Altre 10.500 fino alla mag 7,0 (267 KB). **Solo a chi serve** (Bortle ≤ 4 o forte zoom). |
 | `dati-costellazioni.js` | ~195 | Le 88 figure IAU coi nomi italiani (24 KB). **Su richiesta.** |
 | `dati-profondo.js` | ~170 | Messier completo + NGC luminosi, 142 oggetti (29 KB). **Su richiesta.** |
 | `dati-corpi-minori.js` | ~85 | Elementi orbitali di 41 comete e 20 asteroidi (11 KB). **Su richiesta.** |
+| `dati-distanze.js` | ~95 | **Quanto è lontana ogni stella delle figure**: 767 vertici con la distanza in anni luce, magnitudine, colore e nome (35 KB). **Solo al banco «Le costellazioni non esistono».** |
 | `verifica.html` | ~905 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~6.090 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v68`). |
+| `sw.js` | ~155 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v69`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -123,7 +124,7 @@ i testi — ma resta `cielo` nel codice, nelle classi CSS (`vista-cielo`,
 | **Planetario** (nel codice `cielo`) | Il cielo in tempo reale: punta il telefono, oppure realtà aumentata con la fotocamera, macchina del tempo, playback, zoom da 180° (grandangolo, tutto il cielo in un colpo) fino a un quarto di grado (Luna e pianeti a grandezza vera, **con la loro faccia**: mari, bande, anelli, calotte), eclissi con corona e ombra della Terra, orizzonte con le colline, **aurore polari** dove passa davvero l'ovale aurorale (con la slitta del Kp per vedere che tempesta ci vorrebbe, da qui), **le figure delle costellazioni disegnate sopra le stelle** (e toccandone una si apre la sua pagina: chi le ha dato il nome, come la chiamano altrove, e se da casa tua si vede), registrazione di un filmato da condividere, e il **Sistema Solare visto da fuori in 3D** — la stessa ora, ma guardata da lontano, per capire perché i pianeti stanno proprio lì. Nel pannello **Tempo e luogo** si può anche spostare il punto di vista in un'altra città: vale solo qui, la posizione dell'app non si tocca. |
 | **Telescopio** | Allineamento polare, puntamento, programma della serata, manutenzione. |
 | **Diario** | Osservazioni registrate e traguardi. |
-| **Didattica** | Il laboratorio: sei banchi di prova con dentro le posizioni vere dei pianeti, uno a schermo per volta. Ogni scena in tre dimensioni si gira col dito e si prende tutto lo schermo col ⛶, barra del tempo compresa. Perché i pianeti tornano indietro, le tre leggi di Keplero, la fionda gravitazionale (col banco di prova, i **conti passo per passo** e il Grand Tour delle Voyager in 3D, con le due sonde che escono dal piano dei pianeti), le finestre di lancio, gli allineamenti, e **come si accende un'aurora** (il vento solare, la magnetosfera in 3D, la coda che si rompe, l'ovale attorno al polo, e perché da qui è rossa). Ogni banco finisce con i tasti che portano la stessa cosa nel planetario e nella vista 3D — quello delle aurore ci porta anche in un altro luogo e in un'altra notte, dove l'aurora c'è stata davvero. |
+| **Didattica** | Il laboratorio: sette banchi di prova con dentro le posizioni vere dei pianeti, uno a schermo per volta. Ogni scena in tre dimensioni si gira col dito e si prende tutto lo schermo col ⛶, barra del tempo compresa. Perché i pianeti tornano indietro, le tre leggi di Keplero, la fionda gravitazionale (col banco di prova, i **conti passo per passo** e il Grand Tour delle Voyager in 3D, con le due sonde che escono dal piano dei pianeti), le finestre di lancio, gli allineamenti, **come si accende un'aurora** (il vento solare, la magnetosfera in 3D, la coda che si rompe, l'ovale attorno al polo, e perché da qui è rossa), e **perché le costellazioni non esistono** (le stelle di una figura messe nello spazio vero, ognuna alla sua distanza misurata: si gira intorno alla nuvola, e ci si allontana fino a duemila anni luce finché la figura si disfa). Ogni banco finisce con i tasti che portano la stessa cosa nel planetario e nella vista 3D — quello delle aurore ci porta anche in un altro luogo e in un'altra notte, dove l'aurora c'è stata davvero. |
 
 Modali (in `index.html`): `modale-aggiungi`, `modale-costellazioni` (l'atlante), `modale-mappa` (eclissi),
 `modale-simulazione`, `modale-lezione` (che cos'è l'eclittica),
@@ -229,7 +230,7 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `meteoAstro` | `meteo-astro.js` | Previsioni ora per ora con seeing e trasparenza già calcolati. |
 | `aurora` | `meteo-astro.js` | Indice Kp attuale e previsto dal NOAA. |
 | `orizzonteMio` | `pianifica.js` | I sedici settori del profilo degli ostacoli. |
-| `stato` / `LABORATORI` | `didattica.js` | Il laboratorio. `stato.lab` dice quale banco è a schermo — ed è l'unico che calcola e disegna. `LABORATORI` è l'elenco dei sei, ognuno con `costruisci`/`collega`/`entra`/`esce`/`passo`/`disegna`: chi non ha bisogno di una di quelle cose non la definisce. Gli stati dei banchi sono `retro`, `kep`, `fionda`, `lancio`, `allin`, `aurL`. |
+| `stato` / `LABORATORI` | `didattica.js` | Il laboratorio. `stato.lab` dice quale banco è a schermo — ed è l'unico che calcola e disegna. `LABORATORI` è l'elenco dei sette, ognuno con `costruisci`/`collega`/`entra`/`esce`/`passo`/`disegna`: chi non ha bisogno di una di quelle cose non la definisce. Gli stati dei banchi sono `retro`, `kep`, `fionda`, `lancio`, `allin`, `aurL`, `spa`. |
 | `terreno` | `terreno.js` | La forma vera del terreno: `profilo` sono i 361 gradi dell'orizzonte, `tipi` che paesaggio c'è in ognuno (mare/pianura/collina/montagna), `miscela` gli stessi tipi sfumati fra loro su `TERRENO_SFUMA_GRADI` (è quella che usa il disegno: un tipo secco farebbe i bordi), `quota` l'altezza del suolo sotto i piedi, `stato` dice se è arrivato, `acceso` se lo si vuole. |
 | `aurL` | `didattica.js` | Il banco delle aurore. `quadro` è quale dei cinque è a schermo, `t` le ore dall'eruzione (ogni quadro gira dentro la sua `finestra`), `cam`/`camV` la telecamera in tre dimensioni (quella disegnata adesso e quella a cui sta andando), `luogo` e `kpTaglio` il posto e la tempesta del quadro del taglio. `campo`, `visto` e `ore` sono le tre memorie: le linee di campo, la risposta «da qui cosa si vedrebbe» e l'ora della mezzanotte magnetica. |
 | `aur` | `aurora-polare.js` | Le aurore. `acceso` se le si vuole, `kpSimulato` il Kp della slitta (`null` = quello vero del NOAA), `geo` la geometria dell'ovale già calcolata per l'istante mostrato (`chiave` dice per quale), `tela`/`sfocata` le due tele di servizio. |
@@ -292,7 +293,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v68`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v69`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene
@@ -349,19 +350,27 @@ Se tocchi qualcosa in `catalogo.js`, `costellazioni.js`, `corpi-minori.js`,
 `terreno.js`, `aurora-polare.js` o la fionda di `didattica.js`, passa di lì
 prima di chiudere.
 
+**§14** guarda le distanze: che ogni vertice delle figure abbia la sua (767 su 767), che i valori noti tornino (Alnilam a duemila anni luce, le altre due della cintura a settecento), che la conversione da direzione e distanza al punto nello spazio sia invertibile, e che da mille anni luce di lato le stelle di Orione si spostino davvero di decine di gradi — che è la promessa del banco, e vale la pena provarla invece che sperarla.
+
 ### Rigenerare i cataloghi — `scripts/costruisci-dati.js`
 
 I `dati-*.js` non si scrivono a mano. Si rifanno da fonti pubbliche:
 
 ```
-node scripts/costruisci-dati.js <cartella-dati-d3-celestial> . <ssystem_minor.ini>
+node scripts/costruisci-dati.js <cartella-dati-d3-celestial> . <ssystem_minor.ini> <hygdata.csv>
 ```
 
 - stelle, costellazioni e cielo profondo vengono da
   [d3-celestial](https://github.com/ofrohn/d3-celestial) (BSD-3, a monte
   Hipparcos, Yale BSC e il catalogo di Messier);
 - gli elementi orbitali di comete e asteroidi da `ssystem_minor.ini` di
-  [Stellarium](https://github.com/Stellarium/stellarium) (GPL, a monte MPC e JPL).
+  [Stellarium](https://github.com/Stellarium/stellarium) (GPL, a monte MPC e JPL);
+- le distanze dal [database HYG](https://github.com/astronexus/HYG-Database)
+  (CC BY-SA 4.0, a monte Hipparcos, Yale BSC e Gliese). Quel generatore legge i
+  vertici da `dati-costellazioni.js` e non dalla sorgente, di proposito: le
+  distanze devono corrispondere cifra per cifra ai vertici che l'app disegna,
+  e passando dalla sorgente basterebbe un arrotondamento diverso per non
+  trovare più niente.
 
 Gli elementi orbitali **invecchiano**: per gli asteroidi vanno bene per anni, per
 le comete no. Vale la pena riprenderli a ogni rilascio importante.
@@ -446,6 +455,8 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Un evento che apre il planetario con l'aurora accesa | il campo `aurora: { kp }` di `creaEvento`, letto da `apriEventoNelPlanetario()`: accende l'ovale col Kp dell'evento e gira la vista con `aurGuardaInCielo()` |
 | «Portare: undefined» in una scheda dell'agenda | `normalizzaProgramma()` (`app.js`, accanto a `creaEvento`). Il `programma` di un evento è tre righe, ma le famiglie di `eventi-extra.js` lo scrivono come paragrafo unico: una stringa diventa il solo «come», e `righeProgrammaHtml()` salta le righe vuote invece di stamparci «undefined» |
 | Un banco del laboratorio (Didattica) | `didattica.js`, sezione dell'esperimento. La struttura è sempre la stessa: `costruisci()` scrive il markup, `collega()` attacca i comandi, `passo(dt)` fa camminare il tempo, `disegna()` mette tutto sulla tela. Le linguette in cima cambiano `stato.lab`, e **solo il banco a schermo calcola**: quattro tele che animavano insieme facevano scaldare il telefono per mostrare tre cose che nessuno stava guardando |
+| **«Le costellazioni non esistono»** (il banco in 3D) | `didattica.js` §8-bis, prefisso `spa`. Tre quadri: la figura come si vede da qui con le distanze scritte accanto, il **grafico delle distanze** (barre in scala logaritmica: fra Tabit a 26 anni luce e Alnilam a 1.977 c'è un fattore settantacinque), e le stesse stelle nello spazio vero — si gira col dito, e girandola la figura si disfa. Il terzo quadro sposta l'osservatore fino a duemila anni luce di lato e rifà il cielo da lì, ricalcolando anche le **magnitudini** dalla distanza vera: allontanandosi non cambia solo il disegno, cambia chi si vede ancora |
+| Le distanze delle stelle | `dati-distanze.js`, generato da `scripts/costruisci-dati.js` a partire dal database HYG (parallassi di Hipparcos). Si carica solo entrando nel banco, con `costCaricaDistanze()` — che tira dentro **anche** `dati-costellazioni.js` se non c'è, perché chi entra dalla Didattica senza essere mai passato dal planetario non ha le figure. `costStelle3D(sigla)` restituisce le stelle con le loro coordinate cartesiane, il Sole nell'origine |
 | Un nuovo banco nel laboratorio | una chiamata a `laboratorio({...})` in `didattica.js` e basta: linguetta, riquadro e ciclo di disegno se li costruisce da sé `didCostruisci()`. Il markup non va toccato — `index.html` tiene solo il guscio (`#did-linguette` e `#did-banco`) |
 | I comandi del laboratorio (avvia, scorri, velocità) | `didBarra(prefisso)` scrive la barra e `collegaBarra(prefisso, oggetto, ganci)` la collega: è la stessa in tutti i banchi, ed è quello il punto — imparata una volta, funziona su tutti e cinque. Stili `.did-barra`, `.did-tondo`, `.did-slitta`, `.did-velocita` |
 | Le tele del laboratorio (misura, nitidezza, rotazione) | `didTela(id, proporzione, altezzaMax, opz)`: rimisura il riquadro a ogni fotogramma (è una lettura di `clientWidth`, non costa niente) e rifà il buffer solo quando serve, moltiplicato per il `devicePixelRatio`. Per questo girare il telefono non ha bisogno di nessun gancio esterno. Lo sfondo stellato è dipinto una volta sola e ricopiato (`didSfondo`) |
@@ -486,6 +497,8 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Le costellazioni (tutte e 88, i nomi italiani) | `dati-costellazioni.js` + `catDisegnaFigure()`. Quante se ne disegnano dipende dal campo: `rango` 1 a campo largo, fino a 3 ingrandendo |
 | **Il disegno di una figura** (il cacciatore, il leone, la nave) | `COST_ARTE` in `costellazioni.js` §2, e il motore in §5. Ogni disegno è scritto nel **telaio di due ancore**: due stelle vere della figura, la prima vale (0,0) e la seconda (1,0). Al disegno si arriva proiettando le due ancore e appoggiandoci sopra le curve, quindi ruota, cresce e si sposta insieme alle sue stelle senza che ci sia niente da aggiornare. `tratti` sono curve morbide, `rette` spezzate dritte, `cerchi` cerchi; una curva che finisce dove è cominciata si chiude da sé |
 | Un disegno che sta dalla parte sbagliata delle sue stelle | è **uno specchio, non una rotazione**. In cielo l'ascensione retta cresce verso EST, cioè verso sinistra per chi guarda da dentro la volta: rispetto alla carta vista da fuori lo schermo è girato di mezzo giro, e mezzo giro è una rotazione che il telaio si porta dietro senza accorgersene. Negare **un asse solo** invece dei due lo trasforma in una riflessione, che ribalta l'asse y del telaio — ed è successo davvero, in `costDisegnaScheda`. Lo controlla il §13 di `verifica.html` |
+| Un disegno che non si stira insieme alle sue stelle | il **telaio a tre ancore** (`costTerzaAncora`, §1 e §5). Con due ancore la trasformazione è una similitudine e tiene per forza gli angoli; con tre diventa affine, cioè può anche stirarsi — che è quello che la proiezione fa a una figura larga venti gradi lontana dal centro della vista. La terza ancora non sta nei dati: si sceglie da sé, ed è la stella della figura più lontana dalla retta fra le prime due. È lo stesso metodo delle illustrazioni di Stellarium, che ancora ogni immagine a tre stelle |
+| Una figura che sembra un groviglio di linee | in `costTracciaFigura`: le curve **chiuse** (quelle che finiscono dove sono cominciate) finiscono in un secondo tracciato e vengono riempite con un velo a un sesto dell'opacità del tratto. Chiudere la sagoma del corpo — dorso, groppa, pancia, petto in un'unica curva invece di due righe parallele — è quello che fa la differenza fra un animale e un ghirigoro. Le zampe e le code restano linee aperte, di proposito: una zampa riempita è una macchia |
 | Come si autora un disegno nuovo | servono le stelle della figura **nel telaio delle sue ancore**: senza quei numeri si disegna a caso. Il modo è proiettare i vertici di `COSTELLAZIONI_IAU` sul piano tangente al loro baricentro e passarli nel telaio (la stessa algebra di `costDisegnaScheda`), poi tirare le curve passando per le stelle giuste. Il §13 di `verifica.html` rifiuta i disegni che escono dal gruppo di stelle a cui appartengono |
 | Quanto si vedono i disegni | `costOpacitaArte()`: appena accennati a campo largo (a 180° ci sono ottantotto figure in croce), al massimo al campo di un binocolo, spenti sotto i 4° — a quel punto si sta guardando una stella, non una figura. Tasto `#skymap-btn-arte` nei Filtri |
 | I nomi di una costellazione nelle altre culture | `COST_NOMI` in `costellazioni.js` §4, con `COST_CULTURE` (chi sono le culture citate) e `COST_GRUPPI`/`COST_DI_GRUPPO` (da chi viene la figura: le 48 di Tolomeo, le 12 dei navigatori olandesi, le 14 di Lacaille, i pezzi della Nave Argo, Hevelius, Plancius). Le costellazioni **del buio** — l'Emù, Yacana, il Sacco di Carbone — stanno in `COST_BUIO`: non sono figure IAU e non si disegnano unendo puntini |
