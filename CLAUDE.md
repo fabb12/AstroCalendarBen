@@ -32,7 +32,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `costellazioni.js` | ~2.480 | **I disegni delle figure, i nomi delle altre culture, il cielo australe**: 29 disegni agganciati alle stelle vere con un telaio di due ancore, i nomi arabi/cinesi/māori/aborigeni/andini con la loro storia, l'atlante di tutte e 88, il tasto che porta il planetario sotto il cielo giusto e le **distanze vere** che servono al banco in 3D. Prefisso `cost`. |
 | `corpi-minori.js` | ~660 | **Lune di Giove, comete e asteroidi**: `JupiterMoons` e propagazione kepleriana a mano. |
 | `pianifica.js` | ~500 | **Pianificare la serata**: curva dell'altezza, migliori bersagli, profilo degli ostacoli. Prefisso `pian`/`orizzonte`. |
-| `terreno.js` | ~830 | **La forma vera del terreno attorno a casa**: quote del suolo da Open-Meteo, orizzonte per ogni direzione, che paesaggio c'è (mare/pianura/collina/montagna), e le **luci dei paesi veri** da OpenStreetMap. Prefissi `terreno` e `citta`. |
+| `terreno.js` | ~1.230 | **La forma vera del terreno attorno a casa**: quote del suolo da Open-Meteo, orizzonte per ogni direzione, che paesaggio c'è (mare/pianura/collina/montagna), le **luci dei paesi veri** e i **nomi delle montagne** che ci spuntano sopra, tutt'e due da OpenStreetMap. Prefissi `terreno`, `citta` e `cime`. |
 | `meteo-astro.js` | ~515 | **Meteo da astronomo**: seeing, trasparenza, griglia Clear Sky Chart, avviso di aurora. Prefisso `meteo`/`aurora`. |
 | `aurora-polare.js` | ~1.015 | **Le aurore polari nel planetario**: l'ovale aurorale attorno al polo geomagnetico, boreale e australe, disegnato dove sta davvero, più la **forma dello scudo** (magnetopausa e onda d'urto) che serve al banco della Didattica. Prefisso `aur`. |
 | `eventi-extra.js` | ~720 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete e **aurore** (previsione del Kp a tre giorni + stagione degli equinozi). |
@@ -97,7 +97,7 @@ Se i moduli nuovi non ci sono, l'app resta esattamente quella di prima.
 |---|---|---|
 | `api.open-meteo.com/v1/forecast` | Meteo orario, nuvolosità, rugiada | Ultimo valore da `localStorage` |
 | `api.open-meteo.com/v1/elevation` | Quote del suolo per il terreno vero (6 richieste, una volta per luogo) | Orizzonte disegnato, come prima |
-| `overpass-api.de/api/interpreter` | I paesi veri attorno a casa, per le luci sull'orizzonte (1 richiesta, una volta per luogo) | L'elenco interno `ECL_CITTA`, e se non basta orizzonte nero |
+| `overpass-api.de/api/interpreter` | I paesi veri attorno a casa per le luci sull'orizzonte, e le **vette con un nome** (2 richieste, una volta per luogo) | Per i paesi l'elenco interno `ECL_CITTA`, e se non basta orizzonte nero; per le montagne niente — l'orizzonte resta la forma senza nomi che era prima |
 | `geocoding-api.open-meteo.com/v1/search` | Ricerca città | Elenco città locale (offline) |
 | `celestrak.org/NORAD/elements/gp.php` | TLE dei satelliti | Niente passaggi |
 | `ipapi.co` / `ipwho.is` / `get.geojs.io` | Posizione da IP (ripiego del GPS) | Si chiede a mano |
@@ -236,6 +236,7 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `terreno` | `terreno.js` | La forma vera del terreno: `profilo` sono i 361 gradi dell'orizzonte, `tipi` che paesaggio c'è in ognuno (mare/pianura/collina/montagna), `miscela` gli stessi tipi sfumati fra loro su `TERRENO_SFUMA_GRADI` (è quella che usa il disegno: un tipo secco farebbe i bordi), `quota` l'altezza del suolo sotto i piedi, `stato` dice se è arrivato, `acceso` se lo si vuole. |
 | `aurL` | `didattica.js` | Il banco delle aurore. `quadro` è quale dei cinque è a schermo, `t` le ore dall'eruzione (ogni quadro gira dentro la sua `finestra`), `cam`/`camV` la telecamera in tre dimensioni (quella disegnata adesso e quella a cui sta andando), `luogo` e `kpTaglio` il posto e la tempesta del quadro del taglio. `campo`, `visto` e `ore` sono le tre memorie: le linee di campo, la risposta «da qui cosa si vedrebbe» e l'ora della mezzanotte magnetica. |
 | `aur` | `aurora-polare.js` | Le aurore. `acceso` se le si vuole, `kpSimulato` il Kp della slitta (`null` = quello vero del NOAA), `geo` la geometria dell'ovale già calcolata per l'istante mostrato (`chiave` dice per quale), `tela`/`sfocata` le due tele di servizio. |
+| `cime` | `terreno.js` | Le montagne con un nome, da OpenStreetMap: `elenco` sono le vette del posto (`nome`, `quota`, `az`, `km`), `vista` quelle che da qui si vedono davvero, con la loro altezza apparente — rifatta solo quando cambia la quota dell'occhio o il profilo del terreno (`vistaChiave`). `acceso` se le si vuole. |
 | `citta` | `terreno.js` | I paesi attorno a casa, già pronti per il disegno: per ognuno `az`, `km`, `abitanti`, `forza` (quanto illumina), `alto` e `mezzo` (quanto è grande la cupola di luce), `alfa`. Ordinati dal più luminoso. |
 
 ## 9. Persistenza (`localStorage`, tutte le chiavi)
@@ -258,6 +259,7 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `CHIAVE_AURORA` | `astrocalendario_aurora` |
 | `CHIAVE_TERRENO` | `astrocalendario_terreno` (la forma del terreno: `{posti: […]}`, gli ultimi quattro luoghi guardati) |
 | `CHIAVE_CITTA` | `astrocalendario_citta` (i paesi che illuminano l'orizzonte: stessa forma a più posti) |
+| `CHIAVE_CIME` | `astrocalendario_cime` (le vette con un nome attorno a casa: stessa forma a più posti) |
 
 Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
@@ -270,7 +272,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
   volta sola, dentro `skyPelle`), `skyReg*` = registrazione di un momento,
   `sol*` = il Sistema Solare in 3D, `sim*` = simulazione, `tel*` = telescopio,
   `_ecl*` = interni della mappa eclissi, `lez*` = la lezione animata
-  dell'eclittica, `terreno*` = la forma vera del terreno attorno a casa, `citta*` = i paesi che la illuminano,
+  dell'eclittica, `terreno*` = la forma vera del terreno attorno a casa, `citta*` = i paesi che la illuminano, `cime*` = le montagne che ci spuntano sopra,
   `did*` = il laboratorio della vista Didattica (`aurL*` il suo banco delle
   aurore), `aur*` = le aurore polari nel planetario e la forma della
   magnetosfera, `cost*` = i disegni delle costellazioni, i loro nomi nelle
@@ -354,6 +356,8 @@ prima di chiudere.
 
 **§14** guarda le distanze: che ogni vertice delle figure abbia la sua (767 su 767), che i valori noti tornino (Alnilam a duemila anni luce, le altre due della cintura a settecento), che la conversione da direzione e distanza al punto nello spazio sia invertibile, e che da mille anni luce di lato le stelle di Orione si spostino davvero di decine di gradi — che è la promessa del banco, e vale la pena provarla invece che sperarla.
 
+**§15** guarda le montagne: che la stessa vetta non si nomini due volte, che l'altezza apparente sia quella vera (il Cimone da Bologna è alto 1,7° e non 2, perché la curvatura a sessanta chilometri se ne mangia un quarto), e soprattutto che una vetta nascosta dietro a una cresta più alta **non** compaia — che è l'errore che a occhio non si vede, perché un nome appoggiato a una punta sembra giusto comunque.
+
 ### Rigenerare i cataloghi — `scripts/costruisci-dati.js`
 
 I `dati-*.js` non si scrivono a mano. Si rifanno da fonti pubbliche:
@@ -404,6 +408,8 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Il profilo delle creste ha un colore solo | ed è di proposito (`skyDisegnaProfiloOrizzonte`): dipingere ogni tratto col colore del suo paesaggio metteva una cresta grigio chiaro sopra un terreno verde, con la cucitura in mezzo. Che quella cresta sia una montagna si vede da quanto è alta |
 | Il terreno diventa trasparente quando ingrandisco (come Stellarium) | `skyOpacitaTerreno()`: piena sopra `SKY_TERRENO_FOV_PIENO` (30°), poi sfuma **in scala logaritmica** fino a `SKY_TERRENO_VELO_MIN` (0,12) a `SKY_TERRENO_FOV_VELO` (1,5°). Vale per tutto il riempimento e per il profilo; la **linea** dell'orizzonte no, resta sempre al suo 0,3 di opacità — a forte ingrandimento è l'unico riferimento rimasto |
 | I nomi dei paesi e le lettere dei punti cardinali non si leggono | `skyDisegnaNomiCitta()` e `skyDisegnaCardinali()` scrivono nel posto peggiore del disegno — sopra il crinale, dove in pochi pixel si passa dal terreno al velo del paesaggio, alla cupola arancione di una città, al cielo — e un colore solo lì non basta mai. Passano tutt'e due da `skyScrittaConAlone()`: contorno col tratto (giunti tondi) e pieno sopra, come sulle carte geografiche. La copia nera spostata di un pixel che c'era prima è la stessa idea fatta male — sotto una cresta chiara spariva da un lato e raddoppiava dall'altro. Il carattere è `SKY_FONT_ETICHETTE` (Inter, quello dell'app): con `system-ui` la stessa scritta era larga diversamente su ogni sistema, e con lei cambiava l'esito della prova di sovrapposizione. Le misure passano da `quanto()` |
+| I nomi delle montagne sull'orizzonte | `terreno.js` §11, prefisso `cime`. Le vette vengono da Overpass (`natural=peak` con nome e quota: le alte entro 130 km, tutte entro 25), e `cimeVisibili()` fa le due cernite che contano — l'altezza apparente con `terrenoAngolo()` (curvatura e rifrazione: a duecento chilometri una cima di duemila metri sta **sotto** l'orizzonte) e il confronto con la cresta del terreno in quella direzione, perché una vetta nascosta da una collina non si nomina. Tasto `#skymap-btn-cime`, prove nel §15 di `verifica.html` |
+| Come si distinguono i nomi dei paesi da quelli delle montagne | `SKY_NOMI_ORIZZONTE` e le due funzioni di `skyDisegnaNomiOrizzonte()`. Non è gusto: dicono due cose diverse e stanno in due posti diversi. Una città si nomina **sull'orizzonte** (quello che se ne vede è il chiarore sopra il crinale) in ambra calda, col filo verticale che scende alla cresta; una montagna si nomina **sulla sua punta**, alla sua altezza vera, in grigio-azzurro di roccia lontana, col triangolino sotto e la quota in metri. I due elenchi si dividono una lista sola di zone occupate, e a vincere sono le città: sono quelle che dicono dove non puntare il telescopio |
 | Le luci delle città sull'orizzonte | `skyDisegnaAloniCitta()` (le cupole, **prima** del terreno: la collina le taglia, e sbiadiscono le stelle come fanno dal vero) e `skyDisegnaNomiCitta()` (i nomi, **dopo**, se no li coprirebbe il terreno). I dati sono di `citta` in `terreno.js`; l'alone è un cerchio sfumato centrato sulla **linea d'orizzonte**, e funziona perché la stereografica è conforme — un cerchio di cielo resta un cerchio. Si spengono col tasto `#skymap-btn-citta` |
 | Da dove vengono i paesi, e quanto illuminano | `cittaCarica()` in `terreno.js`: Overpass (OpenStreetMap) per i `place=city/town` entro 90 km e i `village` entro 20, ripiego su `ECL_CITTA`. `cittaForza(abitanti, km)` è la legge di Walker riscritta a mano — gli abitanti contano più che linearmente, la distanza li smorza al quadrato — e da lì escono altezza, larghezza e opacità della cupola in `cittaPrepara()` |
 | Il terreno vero, quello del posto in cui sei | `terreno.js`: `terrenoCarica()` prende le quote del suolo da `api.open-meteo.com/v1/elevation` (Copernicus DEM) lungo 48 direzioni × 12 distanze fino a 60 km, `terrenoAngolo()` ne ricava sotto che angolo si vede ogni campione — **curvatura e rifrazione comprese**, che a 60 km valgono due gradi e mezzo — e il massimo lungo una direzione è la cresta. Sei richieste, una volta sola per luogo, poi sta in `localStorage` e vale anche senza rete. Tasto `#skymap-btn-terreno` nel pannello Visualizzazione, riga di stato `#skymap-terreno-nota` |

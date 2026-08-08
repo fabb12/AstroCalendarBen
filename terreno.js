@@ -646,8 +646,12 @@ function terrenoAggiornaPannello() {
     tasto.textContent = terreno.stato === 'in-corso' ? 'Terreno vero…' : 'Terreno vero';
   }
   const nota = document.getElementById('skymap-terreno-nota');
-  if (nota) nota.textContent = terrenoTesto() + ' ' + cittaTesto();
+  if (nota) {
+    nota.textContent = [terrenoTesto(), cittaTesto(), cimeTesto()]
+      .map(t => (t || '').trim()).filter(Boolean).join(' ');
+  }
   cittaAggiornaTasto();
+  cimeAggiornaTasto();
 }
 
 
@@ -945,4 +949,314 @@ function cittaAggiornaTasto() {
   tasto.classList.toggle('attiva', citta.acceso);
   tasto.setAttribute('aria-pressed', citta.acceso ? 'true' : 'false');
   tasto.textContent = citta.stato === 'in-corso' ? 'Luci delle città…' : 'Luci delle città';
+}
+
+
+// =====================================================================
+// 11. LE MONTAGNE, COL LORO NOME
+//
+//     Il terreno della sezione 4 sa che forma ha l'orizzonte, ma non sa
+//     come si chiama: disegna una cresta a 3,4 gradi verso nord-ovest e
+//     tace. Chi osserva sempre dallo stesso posto quella cresta però ce
+//     l'ha in testa con un nome — «dietro al Cimone», «finché non passa
+//     il Resegone» — ed è così che si ragiona davvero la sera: non per
+//     gradi di altezza, ma per montagne.
+//
+//     Le vette vengono da OpenStreetMap (`natural=peak`), che le tiene
+//     con nome e quota. Da nome, quota e distanza esce l'unica cosa che
+//     serve al planetario: sotto che angolo si vede la punta — con la
+//     curvatura e la rifrazione dentro, come per il terreno, che a cento
+//     chilometri valgono sei gradi buoni di abbassamento.
+//
+//     Due filtri, e sono quelli che distinguono un elenco da un disegno
+//     leggibile. Una vetta si nomina solo se **spunta davvero**: se sta
+//     sotto la cresta del terreno in quella direzione, da qui non la si
+//     vede — c'è una collina davanti — e scriverne il nome sarebbe una
+//     bugia. E si nominano le più alte *viste da qui*, non le più alte in
+//     assoluto: il Monte Bianco a duecento chilometri è un dente
+//     all'orizzonte, la collina dietro casa copre mezzo cielo.
+//
+//     Senza rete non c'è ripiego, e non poteva essercene uno: un elenco
+//     di vette da portarsi dietro sarebbe stato o inutile (le dieci più
+//     famose d'Italia) o enorme. Senza Overpass l'orizzonte resta la
+//     forma senza nomi che era prima.
+// =====================================================================
+
+const CHIAVE_CIME = 'astrocalendario_cime';
+
+// Le montagne grandi si vedono da lontanissimo: dalla pianura padana le
+// Alpi stanno a centoventi chilometri e nelle giornate terse si contano
+// una per una. Oltre i centotrenta ci pensa la foschia.
+const CIME_RAGGIO_KM = 130;
+// Sotto questa quota una vetta si prende solo da vicino: a cento
+// chilometri una cima di ottocento metri è sotto l'orizzonte comunque.
+const CIME_QUOTA_LONTANE_M = 1500;
+const CIME_RAGGIO_VICINE_KM = 25;
+const CIME_MAX = 40;
+const CIME_RAGGIO_VALIDO_KM = 5;
+const CIME_ATTESA_MS = 15000;
+
+// Quanto può stare sotto la cresta del terreno una vetta e valere ancora
+// come visibile. Non è tolleranza di comodo: è il fatto che la cresta è
+// campionata ogni 7,5 gradi e interpolata, quindi la punta vera cade
+// quasi sempre poco sopra o poco sotto la curva che la descrive.
+const CIME_SOTTO_CRESTA_GRADI = 0.25;
+// Una punta che si affaccia per un decimo di grado non è una montagna che
+// si riconosce: è una riga di orizzonte con sopra un nome.
+const CIME_ALT_MIN_GRADI = 0.15;
+
+const cime = {
+  stato: 'niente',        // niente | in-corso | pronto | fallito
+  lat: null, lon: null,
+  elenco: [],             // { nome, lat, lon, quota, az, km }
+  fonte: '',
+  motivo: '',
+  acceso: true,
+  // Le altezze apparenti si rifanno solo quando cambia qualcosa: la quota
+  // dell'occhio o il profilo del terreno. Fra un fotogramma e l'altro no.
+  vistaChiave: null,
+  vista: []
+};
+
+
+// --- Da OpenStreetMap -------------------------------------------------
+
+// Due anelli, come per le città: le vette alte da lontano, tutte quelle
+// che hanno un nome da vicino. Il filtro sulla quota si fa sul server —
+// nelle Alpi un anello da centotrenta chilometri senza filtro risponde
+// con qualche migliaio di punte, e la maggior parte sono spuntoni di
+// cresta che nessuno guarda.
+function cimeQueryOverpass(lat, lon) {
+  const la = lat.toFixed(4), lo = lon.toFixed(4);
+  const lontano = Math.round(CIME_RAGGIO_KM * 1000);
+  const vicino = Math.round(CIME_RAGGIO_VICINE_KM * 1000);
+  return '[out:json][timeout:25];(' +
+    `node["natural"="peak"]["name"]["ele"](if:number(t["ele"]) > ${CIME_QUOTA_LONTANE_M})(around:${lontano},${la},${lo});` +
+    `node["natural"="peak"]["name"]["ele"](around:${vicino},${la},${lo});` +
+    ');out body 900;';
+}
+
+async function cimeDaOverpass(lat, lon) {
+  const controllo = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = controllo ? setTimeout(() => controllo.abort(), CIME_ATTESA_MS) : null;
+  try {
+    const risposta = await fetch('https://overpass-api.de/api/interpreter?data=' +
+      encodeURIComponent(cimeQueryOverpass(lat, lon)), controllo ? { signal: controllo.signal } : undefined);
+    if (!risposta.ok) throw new Error('OpenStreetMap non risponde (' + risposta.status + ')');
+    const dati = await risposta.json();
+    if (!dati || !Array.isArray(dati.elements)) throw new Error('risposta senza vette');
+    return dati.elements
+      .filter(n => n && n.tags && n.tags.name && typeof n.lat === 'number')
+      .map(n => {
+        // La quota arriva come stringa, e ogni tanto con l'unità appiccicata
+        // («1850 m») o con la virgola decimale
+        const q = parseFloat(String(n.tags.ele).replace(',', '.').replace(/[^\d.\-]/g, ''));
+        return { nome: n.tags.name, lat: n.lat, lon: n.lon, quota: q };
+      })
+      .filter(c => isFinite(c.quota));
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+// Dove sta ognuna. L'altezza apparente qui non si calcola: dipende da dove
+// si hanno i piedi e da che cresta c'è davanti, cioè da cose che possono
+// arrivare dopo (il terreno è un'altra richiesta). Si fa in `cimeVisibili`.
+function cimePrepara(grezze, lat, lon) {
+  const viste = new Map();
+  for (const c of grezze) {
+    const km = terrenoDistanzaKm(lat, lon, c.lat, c.lon);
+    if (km > CIME_RAGGIO_KM + 5 || km < 0.05) continue;
+    // Lo stesso monte compare più volte in OSM (la punta, la croce, la
+    // cima secondaria): a parità di nome si tiene la più alta.
+    const gia = viste.get(c.nome);
+    if (gia && gia.quota >= c.quota) continue;
+    viste.set(c.nome, {
+      nome: c.nome, lat: c.lat, lon: c.lon, quota: c.quota,
+      km, az: cittaAzimut(lat, lon, c.lat, c.lon)
+    });
+  }
+  // Si tengono le più imponenti *da qui*: la quota sopra i piedi divisa
+  // per la distanza è già l'angolo, a meno della curvatura, e ordinare per
+  // quello vuol dire ordinare per quanto sono grosse all'orizzonte.
+  return Array.from(viste.values())
+    .sort((a, b) => (b.quota / (b.km + 4)) - (a.quota / (a.km + 4)))
+    .slice(0, CIME_MAX);
+}
+
+
+// --- Tenersele --------------------------------------------------------
+
+function cimeArchivio() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHIAVE_CIME) || 'null');
+    if (v && Array.isArray(v.posti)) return v.posti;
+  } catch (e) { /* niente storage, o roba illeggibile */ }
+  return [];
+}
+
+function cimeLeggiSalvate(lat, lon) {
+  return cimeArchivio().find(v => v && Array.isArray(v.elenco) && typeof v.lat === 'number' &&
+    terrenoDistanzaKm(lat, lon, v.lat, v.lon) <= CIME_RAGGIO_VALIDO_KM) || null;
+}
+
+function cimeSalva(lat, lon, elenco, fonte) {
+  try {
+    const posti = cimeArchivio().filter(v => v && typeof v.lat === 'number' &&
+      terrenoDistanzaKm(lat, lon, v.lat, v.lon) > CIME_RAGGIO_VALIDO_KM);
+    posti.unshift({
+      lat, lon, fonte, quando: Date.now(),
+      elenco: elenco.map(c => ({ n: c.nome, a: +c.lat.toFixed(4), o: +c.lon.toFixed(4), q: Math.round(c.quota) }))
+    });
+    localStorage.setItem(CHIAVE_CIME, JSON.stringify({ posti: posti.slice(0, TERRENO_POSTI_SALVATI) }));
+  } catch (e) { /* storage pieno: pazienza, si riscarica */ }
+}
+
+function cimeDalSalvato(v) {
+  return v.elenco.map(c => ({ nome: c.n, lat: c.a, lon: c.o, quota: c.q }));
+}
+
+function cimeDimentica() {
+  cime.stato = 'niente';
+  cime.elenco = [];
+  cime.vista = [];
+  cime.vistaChiave = null;
+  cime.lat = cime.lon = null;
+}
+
+
+// --- L'innesco --------------------------------------------------------
+
+function cimeApplica(lat, lon, grezze, fonte) {
+  cime.lat = lat;
+  cime.lon = lon;
+  cime.elenco = cimePrepara(grezze, lat, lon);
+  cime.vista = [];
+  cime.vistaChiave = null;
+  cime.fonte = fonte;
+  cime.stato = 'pronto';
+  cime.motivo = '';
+  terrenoAggiornaPannello();
+}
+
+function cimeCarica(forza) {
+  const luogo = terrenoLuogo();
+  if (!luogo) return Promise.resolve(false);
+  const lat = luogo.lat, lon = luogo.lon;
+
+  if (!forza && cime.stato === 'pronto' && cime.lat !== null &&
+      terrenoDistanzaKm(lat, lon, cime.lat, cime.lon) <= CIME_RAGGIO_VALIDO_KM) {
+    return Promise.resolve(true);
+  }
+  if (cime.stato === 'in-corso') return cime.promessa || Promise.resolve(false);
+
+  if (!forza) {
+    const salvate = cimeLeggiSalvate(lat, lon);
+    if (salvate) {
+      cimeApplica(salvate.lat, salvate.lon, cimeDalSalvato(salvate), salvate.fonte || 'salvato');
+      return Promise.resolve(true);
+    }
+  }
+
+  cime.stato = 'in-corso';
+  cime.motivo = '';
+  terrenoAggiornaPannello();
+
+  cime.promessa = cimeDaOverpass(lat, lon)
+    .then(elenco => {
+      cimeApplica(lat, lon, elenco, 'osm');
+      if (!cime.elenco.length) {
+        // Non è un errore: in mezzo alla pianura o in mezzo al mare le
+        // montagne non ci sono, e dirlo è una risposta buona quanto un
+        // elenco. Ma non vale la pena salvarla — basta un trasloco.
+        cime.stato = 'pronto';
+        cime.motivo = 'Qui attorno non ci sono vette con un nome.';
+        terrenoAggiornaPannello();
+        return true;
+      }
+      cimeSalva(lat, lon, cime.elenco, 'osm');
+      return true;
+    })
+    .catch(e => {
+      console.warn('Vette da OpenStreetMap non disponibili:', e);
+      cime.stato = 'fallito';
+      cime.motivo = 'Non conosco i nomi delle montagne qui attorno: serve la rete, una volta sola.';
+      terrenoAggiornaPannello();
+      return false;
+    })
+    .finally(() => {
+      cime.promessa = null;
+      const ora = terrenoLuogo();
+      if (ora && terrenoDistanzaKm(ora.lat, ora.lon, lat, lon) > CIME_RAGGIO_VALIDO_KM) {
+        cimeCarica();
+      }
+    });
+
+  return cime.promessa;
+}
+
+
+// --- Quello che serve al planetario -----------------------------------
+
+// A che quota sta l'occhio: il suolo sotto i piedi, se il terreno vero
+// c'è, più l'altezza di una persona. Senza terreno resta il livello del
+// mare, che per chi sta in pianura è quasi giusto e per chi sta in
+// montagna sbaglia dalla parte prudente (le vette sembrano più alte).
+function cimeQuotaOcchio() {
+  const suolo = typeof terreno.quota === 'number' ? terreno.quota : 0;
+  return suolo + TERRENO_ALTEZZA_OCCHIO_M;
+}
+
+// Le vette che da qui si vedono davvero, con la loro altezza apparente.
+// Il conto è lo stesso del terreno — `terrenoAngolo` — perché è la stessa
+// domanda: sotto che angolo si vede un punto alto tot a tot chilometri.
+//
+// La cernita vera è la seconda riga: se la punta sta sotto la cresta del
+// terreno in quella direzione, davanti c'è qualcosa che la nasconde. È il
+// motivo per cui questo elenco è corto e quello di OpenStreetMap è lungo.
+function cimeVisibili() {
+  if (!cime.acceso || cime.stato !== 'pronto' || !cime.elenco.length) return [];
+  const chiave = `${cimeQuotaOcchio().toFixed(1)}|${terrenoDisponibile() ? terreno.quando : 0}`;
+  if (cime.vistaChiave === chiave) return cime.vista;
+
+  const occhio = cimeQuotaOcchio();
+  cime.vista = cime.elenco
+    .map(c => Object.assign({}, c, { alt: terrenoAngolo(c.quota, occhio, c.km) }))
+    .filter(c => {
+      if (c.alt < CIME_ALT_MIN_GRADI) return false;
+      const cresta = terrenoAltezza(c.az);
+      return cresta === null || c.alt >= cresta - CIME_SOTTO_CRESTA_GRADI;
+    })
+    .sort((a, b) => b.alt - a.alt);
+  cime.vistaChiave = chiave;
+  return cime.vista;
+}
+
+function cimeAlterna() {
+  cime.acceso = !cime.acceso;
+  if (cime.acceso && cime.stato !== 'pronto') cimeCarica();
+  terrenoAggiornaPannello();
+}
+
+function cimeTesto() {
+  if (!cime.acceso) return 'Nomi delle montagne spenti.';
+  if (cime.stato === 'in-corso') return 'Sto cercando le montagne qui attorno…';
+  if (cime.stato === 'fallito') return cime.motivo;
+  if (cime.stato !== 'pronto') return '';
+  if (cime.motivo) return cime.motivo;
+
+  const viste = cimeVisibili();
+  if (!viste.length) return 'Nessuna vetta spunta sopra l\'orizzonte da qui.';
+  const prima = viste[0];
+  const dove = typeof skyNomeDirezione === 'function' ? skyNomeDirezione(prima.az) : '';
+  return `Sopra l'orizzonte si riconoscono ${viste.length} vette: la più imponente è ${prima.nome} ` +
+    `(${Math.round(prima.quota)} m), a ${prima.km.toFixed(0)} km verso ${dove}, alta ${prima.alt.toFixed(1)}°.`;
+}
+
+function cimeAggiornaTasto() {
+  const tasto = document.getElementById('skymap-btn-cime');
+  if (!tasto) return;
+  tasto.classList.toggle('attiva', cime.acceso);
+  tasto.setAttribute('aria-pressed', cime.acceso ? 'true' : 'false');
+  tasto.textContent = cime.stato === 'in-corso' ? 'Nomi dei monti…' : 'Nomi dei monti';
 }
