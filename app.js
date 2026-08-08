@@ -8190,10 +8190,325 @@ function skyInizializzaLuogoVista() {
     });
   }
 
+  // Il mappamondo: la via per i punti che un nome non ce l'hanno (7.1-quater)
+  const mappa = document.getElementById('skymap-luogo-mappa');
+  if (mappa) mappa.addEventListener('click', apriMappaLuogoCielo);
+  inizializzaMappaLuogo();
+
   // La posizione principale non si cambia da qui: per quella c'è la sua
   // finestra (Impostazioni, o il tasto Posizione). Un secondo ingresso in
   // questo pannello avrebbe rimesso in dubbio quale delle due comanda.
   skyAggiornaLuogoVistaUI();
+}
+
+// =====================================================================
+// 7.1-quater  IL PUNTO SCELTO SUL MAPPAMONDO
+//   Il campo di ricerca del pannello chiede un nome, e un nome quasi
+//   sempre c'è. Ma non sempre: il passo di montagna dove si va a
+//   fotografare non è una città, la spiaggia scelta per l'eclissi
+//   nemmeno, e un punto in mezzo al Pacifico non ha proprio niente da
+//   scrivere in un campo di ricerca. Quel punto lo si sa indicare, non
+//   lo si sa chiamare — ed è esattamente il mestiere di una mappa.
+//
+//   Qui c'è: si tocca dove si vuole e il cielo si sposta lì. Sotto ci
+//   sono anche le due caselle delle coordinate, che dal pannello erano
+//   state tolte perché costavano una riga di cielo per un caso raro:
+//   dentro a una finestra lo spazio c'è, e il caso raro va servito.
+//
+//   Vale la regola della 7.1-ter, senza eccezioni: si sposta l'occhio
+//   del planetario e nient'altro. Orari, meteo, satelliti e telescopio
+//   restano sulla posizione dell'app.
+// =====================================================================
+
+const LUOGO_ZOOM_APERTURA = 5;    // abbastanza per riconoscere la costa e le montagne
+// Oltre questo ingrandimento la mappa continuerebbe a stringere ma il cielo
+// no: mezzo chilometro di spostamento non muove una stella di un pixel.
+const LUOGO_ZOOM_MAX = 12;
+// Entro questa distanza il punto prende il nome del paese vicino. È la stessa
+// soglia di `nomeLuogoVicino`, ed è giusto che lo sia: la scritta della
+// finestra e il nome che finisce nel pannello devono dire la stessa cosa.
+const LUOGO_NOME_KM = 60;
+
+const luogoMappa = {
+  mappa: null,     // la mappa Leaflet, costruita alla prima apertura
+  segno: null,     // il pallino del punto scelto
+  casa: null,      // dove si sta davvero: il riferimento, non si tocca
+  scelto: null,    // { lat, lon } già normalizzati
+  occhio: null     // ResizeObserver: la mappa va rimisurata a ogni cambio di forma
+};
+
+// Longitudine riportata fra −180 e +180: Leaflet, con `worldCopyJump`, per un
+// tocco sulla copia del mondo a destra restituisce 200 o 380, che a Astronomy
+// Engine non vorrebbero dire niente di sbagliato ma nelle caselle sì.
+function luogoNormalizzaLon(lon) {
+  return ((lon + 180) % 360 + 360) % 360 - 180;
+}
+
+// Il paese più vicino a un punto qualunque, con la sua distanza. A differenza
+// di `nomeLuogoVicino` risponde *sempre*: un punto in mezzo all'Atlantico non
+// ha un nome, ma "il posto più vicino che conosco è Reykjavík, 900 km" è
+// comunque il modo più corto per dire dove si è finiti.
+function luogoCittaPiuVicina(lat, lon) {
+  if (typeof ECL_CITTA === 'undefined' || !isFinite(lat) || !isFinite(lon)) return null;
+  let nome = null, paese = null, distanza = Infinity;
+  for (const [n, p, cLat, cLon] of ECL_CITTA) {
+    const d = skyDistanzaMetri(lat, lon, cLat, cLon);
+    if (d < distanza) { distanza = d; nome = n; paese = p; }
+  }
+  return nome ? { nome, paese, km: distanza / 1000 } : null;
+}
+
+// Una distanza detta come la direbbe una persona: sotto il chilometro non si
+// dà un numero, sopra i cento non si danno i decimali.
+function luogoDistanzaTesto(km) {
+  if (!isFinite(km)) return '';
+  if (km < 1) return 'meno di un chilometro';
+  if (km < 100) return `${km.toFixed(0)} km`;
+  return `${Math.round(km).toLocaleString('it-IT')} km`;
+}
+
+// Le coordinate del punto scelto, più fini di quelle della barra di stato:
+// lì un decimale basta (è una posizione, non un bersaglio), qui no — chi
+// sceglie a mano un punto sulla mappa lo sceglie proprio lì.
+function luogoCoordinateFini(lat, lon) {
+  const ns = lat >= 0 ? 'N' : 'S';
+  const ew = lon >= 0 ? 'E' : 'O';
+  return `${Math.abs(lat).toFixed(3)}° ${ns}, ${Math.abs(lon).toFixed(3)}° ${ew}`;
+}
+
+// Costruisce la mappa la prima volta che la finestra si apre. Senza Leaflet
+// (CDN irraggiungibile) non è un errore: la finestra resta buona, con le
+// coordinate a mano al posto della mappa.
+function luogoMappaCostruisci() {
+  const riquadro = document.getElementById('mappa-luogo');
+  const assente = document.getElementById('luogo-mappa-assente');
+  if (!riquadro || luogoMappa.mappa) return;
+  if (typeof L === 'undefined') {
+    riquadro.classList.add('hidden');
+    if (assente) assente.classList.remove('hidden');
+    return;
+  }
+  luogoMappa.mappa = L.map('mappa-luogo', {
+    worldCopyJump: true, minZoom: 1, zoomControl: false, attributionControl: true
+  }).setView([41.9, 12.5], LUOGO_ZOOM_APERTURA);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: LUOGO_ZOOM_MAX, attribution: '&copy; OpenStreetMap'
+  }).addTo(luogoMappa.mappa);
+  // Lo zoom a destra, come sulla mappa dell'ombra: le due mappe dell'app si
+  // devono comandare allo stesso modo.
+  L.control.zoom({ position: 'topright' }).addTo(luogoMappa.mappa);
+
+  luogoMappa.mappa.on('click', (e) => luogoMappaScegli(e.latlng.lat, e.latlng.lng));
+
+  // Una mappa Leaflet dentro a un riquadro che cambia forma va rimisurata, se
+  // no disegna le tessere per la misura di prima e resta mezza grigia. Qui i
+  // cambi di forma sono tre — l'apertura (nasce dentro a un modale nascosto,
+  // quindi alta zero), il telefono girato, e il trasloco dentro al guscio del
+  // cielo a schermo intero (7.5-bis) — e un osservatore li prende tutti.
+  if (typeof ResizeObserver === 'function') {
+    luogoMappa.occhio = new ResizeObserver(() => {
+      if (luogoMappa.mappa) luogoMappa.mappa.invalidateSize();
+    });
+    luogoMappa.occhio.observe(riquadro);
+  }
+}
+
+// Il segno di dove si sta davvero. È il riferimento della mappa: senza, un
+// punto scelto dall'altra parte del mondo non si sa quanto sia "dall'altra
+// parte". Non si tocca e non si sposta: la posizione dell'app sta altrove.
+function luogoMappaSegnaCasa() {
+  if (!luogoMappa.mappa) return;
+  const casa = luogoCorrente();
+  if (!casa) return;
+  if (luogoMappa.casa) {
+    luogoMappa.casa.setLatLng([casa.lat, casa.lon]);
+    return;
+  }
+  luogoMappa.casa = L.circleMarker([casa.lat, casa.lon], {
+    radius: 6, color: 'rgba(226, 232, 240, 0.85)', fillColor: '#38bdf8',
+    fillOpacity: 0.9, weight: 2
+  }).addTo(luogoMappa.mappa).bindTooltip('Dove sei davvero', { direction: 'top' });
+}
+
+// Sposta il punto scelto. `centra` porta lì la mappa (serve all'apertura e a
+// chi scrive le coordinate a mano); un tocco sulla mappa invece non la muove,
+// o il punto scapperebbe da sotto il dito.
+function luogoMappaScegli(lat, lon, opz = {}) {
+  if (!isFinite(lat) || !isFinite(lon)) return false;
+  const la = Math.max(-90, Math.min(90, lat));
+  luogoMappa.scelto = { lat: la, lon: luogoNormalizzaLon(lon) };
+
+  if (luogoMappa.mappa) {
+    // Il pallino si appoggia dove è stato toccato — anche su una copia del
+    // mondo a destra o a sinistra. Mettendolo alla longitudine normalizzata
+    // saltava dall'altra parte della mappa proprio sotto il dito.
+    const punto = [la, lon];
+    if (luogoMappa.segno) luogoMappa.segno.setLatLng(punto);
+    else {
+      luogoMappa.segno = L.circleMarker(punto, {
+        radius: 8, color: '#fbbf24', fillColor: '#f59e0b',
+        fillOpacity: 0.95, weight: 2.5
+      }).addTo(luogoMappa.mappa).bindTooltip('Da qui', { direction: 'top' });
+    }
+    luogoMappa.segno.bringToFront();
+    if (opz.centra) {
+      luogoMappa.mappa.setView(punto, opz.zoom || luogoMappa.mappa.getZoom());
+    }
+  }
+
+  if (!opz.senzaCaselle) {
+    const campoLat = document.getElementById('luogo-lat');
+    const campoLon = document.getElementById('luogo-lon');
+    if (campoLat) campoLat.value = luogoMappa.scelto.lat.toFixed(4);
+    if (campoLon) campoLon.value = luogoMappa.scelto.lon.toFixed(4);
+  }
+  luogoMappaAggiornaLettura();
+  return true;
+}
+
+// Che punto si è scelto: il nome se ce l'ha, le coordinate sempre, e le due
+// distanze che servono a capirlo — dal paese vicino e da casa.
+function luogoMappaAggiornaLettura() {
+  const elNome = document.getElementById('luogo-scelta-nome');
+  const elCoord = document.getElementById('luogo-scelta-coord');
+  const elNota = document.getElementById('luogo-scelta-nota');
+  const s = luogoMappa.scelto;
+  if (!elNome || !elCoord) return;
+  if (!s) {
+    elNome.textContent = 'Nessun punto scelto';
+    elCoord.textContent = 'Tocca la mappa.';
+    if (elNota) elNota.textContent = '';
+    return;
+  }
+
+  const vicina = luogoCittaPiuVicina(s.lat, s.lon);
+  const haNome = vicina && vicina.km <= LUOGO_NOME_KM;
+  elNome.textContent = haNome ? vicina.nome : 'Punto senza nome';
+  elCoord.textContent = luogoCoordinateFini(s.lat, s.lon);
+
+  if (elNota) {
+    const righe = [];
+    if (vicina) {
+      righe.push(haNome
+        ? `a ${luogoDistanzaTesto(vicina.km)} da ${vicina.nome}${vicina.paese ? ` (${vicina.paese})` : ''}`
+        : `il posto più vicino che conosco è ${vicina.nome}, a ${luogoDistanzaTesto(vicina.km)}`);
+    }
+    const casa = luogoCorrente();
+    if (casa) {
+      const km = skyDistanzaMetri(casa.lat, casa.lon, s.lat, s.lon) / 1000;
+      righe.push(km < 1 ? 'è dove sei adesso' : `a ${luogoDistanzaTesto(km)} da casa`);
+    }
+    elNota.textContent = righe.join(' · ');
+  }
+}
+
+// Un avviso che resta dentro alla finestra. Quello del planetario
+// (`skyAvviso`) qui non servirebbe: sta sotto a questo foglio, e sul telefono
+// il foglio copre lo schermo intero.
+let luogoAvvisoTimer = null;
+function luogoAvviso(testo) {
+  const el = document.getElementById('luogo-avviso');
+  if (!el) return;
+  clearTimeout(luogoAvvisoTimer);
+  el.textContent = testo || '';
+  el.classList.toggle('hidden', !testo);
+  if (testo) luogoAvvisoTimer = setTimeout(() => luogoAvviso(''), 6000);
+}
+
+// Le due caselle delle coordinate. Un numero che non sta sulla Terra non
+// muove niente: le caselle tornano a dire il punto scelto.
+function luogoMappaDalleCaselle() {
+  const campoLat = document.getElementById('luogo-lat');
+  const campoLon = document.getElementById('luogo-lon');
+  const lat = parseFloat(campoLat && campoLat.value);
+  const lon = parseFloat(campoLon && campoLon.value);
+  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+    luogoAvviso('Coordinate fuori dal mondo: la latitudine sta fra −90 e 90, la longitudine fra −180 e 180.');
+    const s = luogoMappa.scelto;
+    if (s) luogoMappaScegli(s.lat, s.lon, { centra: true });
+    return;
+  }
+  luogoAvviso('');
+  luogoMappaScegli(lat, lon, { centra: true, zoom: Math.max(
+    luogoMappa.mappa ? luogoMappa.mappa.getZoom() : LUOGO_ZOOM_APERTURA, LUOGO_ZOOM_APERTURA) });
+}
+
+function apriMappaLuogoCielo() {
+  const modale = document.getElementById('modale-luogo-cielo');
+  if (!modale) return;
+  modale.classList.remove('hidden');
+  luogoAvviso('');
+  luogoMappaCostruisci();
+  luogoMappaSegnaCasa();
+
+  // Si riparte sempre da dove il cielo è adesso — casa o luogo di visita che
+  // sia — e non dall'ultimo punto toccato: riaprendo la finestra la domanda è
+  // "e se guardassi da un'altra parte *rispetto a qui*".
+  const l = skyLuogoDelCielo();
+  const partenza = l || { lat: 41.9, lon: 12.5 };
+  luogoMappaScegli(partenza.lat, partenza.lon, { centra: true, zoom: LUOGO_ZOOM_APERTURA });
+
+  // La mappa è nata dentro a un modale nascosto, cioè alta zero: senza questa
+  // passata resterebbe un rettangolo grigio finché non la si tocca. Il
+  // ResizeObserver farebbe lo stesso lavoro, ma non c'è su tutti i browser.
+  if (luogoMappa.mappa) setTimeout(() => luogoMappa.mappa.invalidateSize(), 60);
+}
+
+function chiudiMappaLuogoCielo() {
+  const modale = document.getElementById('modale-luogo-cielo');
+  if (modale) modale.classList.add('hidden');
+}
+
+// Applica il punto: da qui in poi è la stessa strada di una città scelta in
+// elenco (`skyUsaLuogoVista`), avviso compreso. Il nome lo mette lei, con la
+// regola di sempre — il paese vicino se c'è, le coordinate se non c'è.
+function luogoMappaUsa() {
+  const s = luogoMappa.scelto;
+  if (!s) {
+    luogoAvviso('Tocca prima un punto sulla mappa.');
+    return;
+  }
+  chiudiMappaLuogoCielo();
+  skyUsaLuogoVista(s.lat, s.lon, null);
+}
+
+// Collega i comandi della finestra. Una volta sola, da skyInizializzaLuogoVista.
+function inizializzaMappaLuogo() {
+  const modale = document.getElementById('modale-luogo-cielo');
+  if (!modale) return;
+
+  const chiudi = document.getElementById('btn-chiudi-luogo-cielo');
+  if (chiudi) chiudi.addEventListener('click', chiudiMappaLuogoCielo);
+  // Il velo scuro attorno al foglio è anche lui una via d'uscita, come nelle
+  // altre finestre: si tocca fuori e si torna al cielo.
+  modale.addEventListener('click', (e) => { if (e.target === modale) chiudiMappaLuogoCielo(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modale.classList.contains('hidden')) chiudiMappaLuogoCielo();
+  });
+
+  const usa = document.getElementById('luogo-btn-usa');
+  if (usa) usa.addEventListener('click', luogoMappaUsa);
+
+  const casa = document.getElementById('luogo-btn-casa');
+  if (casa) {
+    casa.addEventListener('click', () => {
+      const mio = luogoCorrente();
+      if (!mio) { luogoAvviso('Non so ancora dove sei: la posizione si sceglie dalle Impostazioni.'); return; }
+      luogoMappaScegli(mio.lat, mio.lon, { centra: true, zoom: LUOGO_ZOOM_APERTURA });
+    });
+  }
+
+  const coord = document.getElementById('luogo-btn-coordinate');
+  if (coord) coord.addEventListener('click', luogoMappaDalleCaselle);
+  ['luogo-lat', 'luogo-lon'].forEach(id => {
+    const campo = document.getElementById(id);
+    if (!campo) return;
+    campo.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      luogoMappaDalleCaselle();
+    });
+  });
 }
 
 // Il telefono può mandare DUE flussi di orientamento, e sono flussi diversi:
