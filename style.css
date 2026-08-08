@@ -644,7 +644,8 @@ details > summary::marker { color: var(--testo-3); font-size: 0.8em; }
 #skymap-contenitore,
 #sim-scena,
 #mappa-eclissi,
-#mappa-lunare {
+#mappa-lunare,
+#mappa-luogo {
   background-color: #03050c;
   box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.6), var(--ombra-3);
 }
@@ -993,7 +994,8 @@ body button.tasto-chiudi-largo:active { transform: translateY(0); }
 .ecl-guscio-filmato { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
 .ecl-mappa-riquadro { position: relative; flex: 1 1 auto; min-height: 0; }
 #mappa-eclissi,
-#mappa-lunare {
+#mappa-lunare,
+#mappa-luogo {
   width: 100%;
   height: 58vh;
   min-height: 340px;
@@ -3500,6 +3502,12 @@ body input.casella-data:hover { border: 0; }
 }
 .lettura-luogo[data-visita="si"] { color: var(--blu-chiaro); font-weight: 600; }
 .riga-luogo .tasto-cielo { flex: 0 0 auto; }
+/* Il campo del nome e il tasto del mappamondo stanno in fila e si dividono
+   la riga: sono le due risposte alla stessa domanda — "da dove?" — e la
+   seconda serve quando la prima non ha un nome da offrire. Il campo cede
+   spazio per primo, il tasto resta leggibile. */
+.riga-cerca-luogo .campo-cielo { flex: 1 1 150px; }
+.tasto-luogo-mappa { flex: 0 0 auto; }
 .risultati-luogo { max-height: 168px; margin-top: 6px; }
 .nota-luogo {
   margin: 6px 0 0;
@@ -4532,7 +4540,90 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
 .ecl-colonna-lato { display: grid; gap: 10px; align-content: start; min-width: 0; }
 
 #mappa-eclissi,
-#mappa-lunare { height: var(--altezza-mappa-eclissi); }
+#mappa-lunare,
+#mappa-luogo { height: var(--altezza-mappa-eclissi); }
+
+/* --------------------------------- IL PUNTO DA CUI GUARDARE IL CIELO (7.1-quater)
+   La mappa dell'ombra è la vista: si guarda l'ombra correre, e più è grande
+   meglio è. Questa invece è un attrezzo — si apre, si tocca un punto, si
+   chiude — e sotto ci vanno tre righe di lettura e due tasti che devono
+   restare in vista senza scorrere. Per questo si tiene più bassa, pur
+   seguendo la stessa misura quando lo schermo è piccolo. */
+#mappa-luogo {
+  height: min(var(--altezza-mappa-eclissi), 420px);
+  min-height: 220px;
+}
+/* Sul telefono la finestra è un foglio che sale dal basso, e quello che sta
+   sotto la mappa — il nome del punto e i due tasti — deve restare in vista
+   senza doverlo andare a cercare scorrendo: una mappa alta metà schermo li
+   spingeva tutti fuori. Stessa coppia di condizioni delle altre finestre. */
+@media (max-width: 767px),
+       (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
+  #mappa-luogo { height: min(var(--altezza-mappa-eclissi), 300px); }
+}
+.luogo-mappa-guscio { position: relative; }
+.luogo-mappa-assente {
+  padding: 22px 18px;
+  border: 1px dashed var(--bordo-forte);
+  border-radius: var(--raggio-l);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--testo-2);
+  text-align: center;
+}
+.luogo-suggerimento {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--testo-3);
+  text-align: center;
+}
+/* La lettura del punto: il nome grande, le coordinate in monospaziato sotto
+   (numeri che si confrontano a colpo d'occhio da una scelta all'altra) e la
+   riga delle distanze, che è quella che dice davvero dove si è finiti. */
+.luogo-scelta {
+  padding: 12px 14px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-l);
+  background: rgba(6, 10, 20, 0.55);
+}
+.luogo-scelta-nome {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--testo);
+}
+.luogo-scelta-coord {
+  margin: 3px 0 0;
+  font-family: var(--mono);
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--blu-chiaro);
+}
+.luogo-scelta-nota {
+  margin: 5px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--testo-3);
+}
+.luogo-avviso {
+  margin: 8px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--ambra);
+}
+/* I due tasti: quello che chiude il giro sta a destra ed è l'unico colorato.
+   Su schermo stretto vanno a capo e prendono tutta la riga, in quest'ordine —
+   il paracadute sopra, l'azione sotto, col pollice che ci arriva per primo. */
+.luogo-azioni {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+@media (max-width: 480px) {
+  .luogo-azioni { flex-direction: column; }
+  .luogo-azioni button { width: 100%; }
+}
 
 @media (min-width: 1180px) {
   /* La mappa e il suo filmato a sinistra, le letture a destra: si guarda
