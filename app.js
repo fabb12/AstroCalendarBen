@@ -10676,6 +10676,12 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   ctx.fillStyle = skyGradienteTerreno(ctx, o, suolo.vicino, suolo.lontano);
   ctx.fill(regola);
 
+  // La grana: quel tanto di irregolarità che distingue un prato da una
+  // campitura. Solo di giorno — di notte la terra è nera e non c'è niente
+  // da texturizzare — e sotto al velo del paesaggio, che deve restare
+  // l'informazione che si legge.
+  skyDisegnaGranaTerreno(ctx, o, focale, velo);
+
   // Il paesaggio, velato sopra al fondo: il mare a ponente, la montagna a
   // nord. Non è più un ventaglio fino ai piedi — quello disegnava dei
   // triangoli enormi che convergevano sotto di te, con i bordi netti, e a
@@ -10691,7 +10697,7 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // versione: le creste di montagna dipinte di grigio chiaro sopra un
   // terreno verde, con una riga netta in mezzo. Che sia una montagna lo
   // dice la sua forma, non il suo colore.
-  skyDisegnaProfiloOrizzonte(ctx, base, focale, skyRgba(suolo.lontano, 1));
+  skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria);
   ctx.restore();
 
   // La linea d'orizzonte vero resta, sotto al profilo: è il riferimento —
@@ -10819,43 +10825,410 @@ function skyDisegnaVeloPaesaggio(ctx, base, focale, aria) {
   ctx.restore();
 }
 
-// Il profilo delle colline. Si disegnano solo gli azimut che possono
-// finire sullo schermo: fare tutto il giro costerebbe sei volte tanto e non
-// si vedrebbe.
+// --- La grana del terreno ---------------------------------------------
 //
-// Il colore è uno solo, ed è quello del terreno lontano. Per un po' ogni
-// tratto ha preso il colore del suo paesaggio, e sembrava una buona idea:
-// il risultato era una cresta di montagna grigio chiaro appiccicata sopra
-// un terreno verde, con una cucitura netta in mezzo e un cambio di colore
-// a metà di una collina. Che quella cresta sia una montagna si vede da
-// quanto è alta, non da come è dipinta.
-function skyDisegnaProfiloOrizzonte(ctx, base, focale, colore) {
-  const arco = skyArcoOrizzonteInVista(base, focale);
-  if (!arco) return;
-  const passo = arco.mezzo > 60 ? 2 : 1;
+// Il suolo era un gradiente liscio, ed è la cosa che più di ogni altra fa
+// sembrare disegnato un paesaggio: in natura non esiste una superficie
+// senza grana. Di notte non importa — la terra è quasi nera e una texture
+// su un nero è un nero — ma al crepuscolo e di giorno quella campitura
+// verde uniforme si vede per quello che è.
+//
+// La grana è una tela sola di poco più di cento pixel, dipinta una volta e
+// ripetuta: costa un riempimento, che è quello che costava anche prima. La
+// si sposta insieme all'orizzonte (`setTransform` sul motivo) perché una
+// texture inchiodata allo schermo è peggio di nessuna texture — girando il
+// telefono si vedrebbe il terreno scorrere sotto una grana ferma.
+//
+// Si stende in `overlay`: schiarisce dove il fondo è chiaro e scurisce
+// dove è scuro, cioè non aggiunge un colore suo. Un velo grigio steso
+// normalmente avrebbe slavato il prato.
+const SKY_GRANA_LATO = 112;
+let skyGranaMotivo = null;
+let skyGranaProvata = false;
+
+function skyGrana(ctx) {
+  if (skyGranaProvata) return skyGranaMotivo;
+  skyGranaProvata = true;
+  try {
+    const tela = document.createElement('canvas');
+    tela.width = tela.height = SKY_GRANA_LATO;
+    const g = tela.getContext('2d');
+    if (!g) return null;
+    g.fillStyle = '#808080';
+    g.fillRect(0, 0, SKY_GRANA_LATO, SKY_GRANA_LATO);
+    // Macchie tonde e sfumate, di due misure: poche larghe per i campi e le
+    // radure, tante strette per il grosso della grana. Le proporzioni sono
+    // state rifatte una volta: con quaranta macchie larghe e opache il
+    // terreno diventava una mimetica militare — chiazze da mezzo palmo che
+    // si vedevano prima del paesaggio. Una grana si deve sentire e non
+    // guardare, quindi tante e piccole.
+    //
+    // Ognuna si ridisegna anche oltre i bordi (i nove riquadri attorno)
+    // perché la tela sia **ripetibile**: senza, si vedrebbe la griglia delle
+    // piastrelle, che è il difetto per cui una texture si nota invece di
+    // funzionare.
+    const caso = skyCaso(skySeme('grana-terreno'));
+    for (let i = 0; i < 260; i++) {
+      const x = caso() * SKY_GRANA_LATO, y = caso() * SKY_GRANA_LATO;
+      const r = (i < 14 ? 10 + caso() * 14 : 1.6 + caso() * 5);
+      const chiaro = caso() < 0.5;
+      const a = (i < 14 ? 0.05 : 0.14) * (0.35 + caso() * 0.65);
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const cx = x + dx * SKY_GRANA_LATO, cy = y + dy * SKY_GRANA_LATO;
+          if (cx < -r || cx > SKY_GRANA_LATO + r || cy < -r || cy > SKY_GRANA_LATO + r) continue;
+          const rad = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+          const tinta = chiaro ? '255, 255, 255' : '0, 0, 0';
+          rad.addColorStop(0, `rgba(${tinta}, ${a.toFixed(3)})`);
+          rad.addColorStop(1, `rgba(${tinta}, 0)`);
+          g.fillStyle = rad;
+          g.beginPath();
+          g.arc(cx, cy, r, 0, Math.PI * 2);
+          g.fill();
+        }
+      }
+    }
+    skyGranaMotivo = ctx.createPattern(tela, 'repeat');
+  } catch (e) {
+    skyGranaMotivo = null;
+  }
+  return skyGranaMotivo;
+}
+
+// Sotto questa luce del cielo la grana non si disegna: la terra è già nera.
+const SKY_GRANA_LUCE_MIN = 0.12;
+
+function skyDisegnaGranaTerreno(ctx, o, focale, velo) {
+  if (!sky.atmosfera || sky.luceCielo < SKY_GRANA_LUCE_MIN) return;
+  const motivo = skyGrana(ctx);
+  if (!motivo) return;
+
+  // La grana cresce con l'ingrandimento, come tutto il resto: se restasse
+  // della stessa misura in pixel, avvicinandosi a una collina diventerebbe
+  // sabbia e allontanandosi un rumore.
+  const scala = Math.max(0.45, Math.min(1.8, focale / 900));
+  if (typeof DOMMatrix !== 'undefined' && typeof motivo.setTransform === 'function') {
+    // L'ancora è il centro della geometria dell'orizzonte: è il punto che
+    // si muove esattamente come il terreno. Il resto della divisione tiene
+    // i numeri piccoli — con l'occhio quasi all'orizzonte il centro del
+    // cerchio se ne va a centomila pixel da qui.
+    const ax = o.retta ? o.cx : o.px;
+    const ay = o.retta ? o.cy : o.py;
+    const giro = SKY_GRANA_LATO * scala;
+    const tx = Number.isFinite(ax) ? ax % giro : 0;
+    const ty = Number.isFinite(ay) ? ay % giro : 0;
+    motivo.setTransform(new DOMMatrix([scala, 0, 0, scala, tx, ty]));
+  }
 
   ctx.save();
-  ctx.fillStyle = colore;
-  let corsa = [];
-  const chiudi = () => {
-    if (corsa.length > 1) {
-      ctx.beginPath();
-      corsa.forEach((q, i) => (i === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
-      for (let i = corsa.length - 1; i >= 0; i--) ctx.lineTo(corsa[i].bx, corsa[i].by);
-      ctx.closePath();
-      ctx.fill();
+  const regola = skyTracciaSuolo(ctx, o);
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = velo * 0.3 * Math.min(1, (sky.luceCielo - SKY_GRANA_LUCE_MIN) / 0.28);
+  ctx.fillStyle = motivo;
+  ctx.fill(regola);
+  ctx.restore();
+}
+
+// --- Il rilievo fine delle creste -------------------------------------
+//
+// Il terreno vero di `terreno.js` è esatto ma liscio: quarantotto
+// direzioni interpolate a un grado fanno un crinale che sale e scende come
+// una duna. Una montagna vera non è così — è fatta di punte, di selle, di
+// canaloni — e la differenza fra un profilo di montagna e uno di collina
+// sta quasi tutta lì, non nell'altezza. Due creste alte uguali, una liscia
+// e una dentata, si leggono come due posti diversi del mondo.
+//
+// Il dettaglio non si somma: si **morde**. La cresta disegnata non sale
+// mai sopra a quella vera, perché quella è la stessa che decide se un
+// astro è sorto (`skyAltezzaOrizzonte`) e se una vetta si vede
+// (`cimeVisibili`): un disegno che aggiungesse un grado di roccia
+// racconterebbe una cosa che poi nessun conto conferma — e il nome di una
+// vetta finirebbe appeso nel vuoto accanto alla punta inventata. Togliere
+// invece è onesto: è la sella fra due cime, ed è quanto basta a fare la
+// forma.
+const SKY_RILIEVO_PUNTI = 4096;          // un campione ogni 0,088°
+
+// Un rumore periodico sul giro dell'orizzonte: somma di ottave, ognuna con
+// i suoi nodi sparsi a caso e interpolati morbidi. Il giro si chiude da sé
+// perché i nodi sono un anello — è il motivo per cui non c'è una cucitura
+// a nord.
+//
+// Con `piega` ogni ottava viene ribaltata attorno alla sua metà
+// (`1 − |2v − 1|`): dove il valore attraversava la metà con una pendenza
+// nasce uno spigolo invece di un colmo tondo. È il *ridged multifractal*
+// dei generatori di terreno in una riga, ed è tutta la differenza fra una
+// duna e una cresta di roccia.
+//
+// Alla fine il rumore si stira su tutto [0, 1] e si alza a potenza. Non è
+// un ritocco estetico, è la cosa che tiene onesto il disegno: un rumore
+// grezzo ha media un mezzo, quindi morderebbe *dappertutto* — la cresta
+// disegnata starebbe un sesto sotto a quella vera per tutto il giro, e i
+// nomi delle vette, che stanno alla loro altezza vera, resterebbero
+// sospesi un grado sopra al crinale. Con l'esponente il valore sta quasi
+// sempre vicino a zero e sale solo di rado: il profilo segue la quota
+// misurata e si apre soltanto nelle selle, che è quello che fa una cresta.
+function skyRumoreCircolare(seme, ottave, piega, forma) {
+  const N = SKY_RILIEVO_PUNTI;
+  const out = new Float32Array(N + 1);
+  const caso = skyCaso(seme);
+  let somma = 0;
+  ottave.forEach(([nodi, amp]) => {
+    const v = new Float32Array(nodi);
+    for (let i = 0; i < nodi; i++) v[i] = caso();
+    somma += amp;
+    const passo = nodi / N;
+    for (let i = 0; i < N; i++) {
+      const x = i * passo;
+      const k = Math.floor(x);
+      const t = x - k;
+      const s = t * t * (3 - 2 * t);       // morbido sui nodi, o si vedrebbero
+      const a = v[k % nodi], b = v[(k + 1) % nodi];
+      let u = a + (b - a) * s;
+      if (piega) u = 1 - Math.abs(2 * u - 1);
+      out[i] += amp * u;
     }
-    corsa = [];
-  };
+  });
+  let min = Infinity, max = -Infinity;
+  for (let i = 0; i < N; i++) {
+    out[i] /= somma;
+    if (out[i] < min) min = out[i];
+    if (out[i] > max) max = out[i];
+  }
+  const ampiezza = max - min || 1;
+  for (let i = 0; i < N; i++) out[i] = Math.pow((out[i] - min) / ampiezza, forma);
+  out[N] = out[0];
+  return out;
+}
+
+// Due caratteri, e si mescolano grado per grado con quanta montagna c'è da
+// quella parte. Le frequenze non sono multiple fra loro di proposito: con
+// 8, 16, 32 le ottave vanno tutte a tempo e il profilo si ripete.
+//
+// L'esponente della roccia è più alto di quello delle colline: una cresta
+// di montagna è fatta di punte con poche selle profonde, un dorso di
+// collina di gobbe che si somigliano tutte.
+const SKY_RILIEVO = {
+  aspro: skyRumoreCircolare(skySeme('creste-roccia'),
+    [[11, 1], [26, 0.62], [59, 0.4], [137, 0.26], [311, 0.16], [701, 0.09]], true, 2.4),
+  dolce: skyRumoreCircolare(skySeme('creste-colline'),
+    [[9, 1], [21, 0.5], [47, 0.24], [113, 0.11]], false, 1.8)
+};
+
+function skyRilievo(tavola, az) {
+  const x = (((az % 360) + 360) % 360) / 360 * SKY_RILIEVO_PUNTI;
+  const i = Math.floor(x);
+  const t = x - i;
+  return tavola[i] + (tavola[i + 1] - tavola[i]) * t;
+}
+
+// Quanto si morde la cresta, paesaggio per paesaggio: è il numero che
+// distingue una montagna da una collina a colpo d'occhio. Sul mare zero, e
+// non per prudenza — un orizzonte marino è una riga, l'unica riga davvero
+// dritta che esista in natura, ed è il motivo per cui si riconosce da un
+// fotogramma.
+const SKY_RUVIDEZZA = { mare: 0, pianura: 0.07, collina: 0.15, montagna: 0.28 };
+
+// I piani della veduta.
+//
+// Una catena non è una sagoma sola: è una fila di dorsali una dietro
+// l'altra, e quello che le racconta non è il disegno di ciascuna ma il
+// fatto che le più vicine sono più scure. È la prospettiva aerea, ed è
+// l'unico indizio di profondità che un orizzonte possiede — a mille metri
+// di distanza gli occhi non convergono più.
+//
+// I piani vicini stanno **sotto** alla cresta vera, mai sopra: la cresta è
+// la linea più alta che c'è in quella direzione, ed è quella che il DEM ha
+// misurato. Le dorsali davanti sono più basse, e ognuna ha il suo rilievo
+// (`salto` sposta il punto di lettura del rumore) perché non sia la stessa
+// forma rimpicciolita.
+const SKY_CRESTE_PIANI = [
+  { quota: 1,    salto: 0,     ruvido: 1,    tinta: 0,    buio: 0 },
+  { quota: 0.62, salto: 143.7, ruvido: 0.85, tinta: 0.45, buio: 0.14 },
+  { quota: 0.33, salto: 257.3, ruvido: 0.7,  tinta: 0.8,  buio: 0.26 }
+];
+
+// Sotto questa altezza in pixel i piani davanti non si disegnano: una
+// cresta di quindici pixel divisa in tre dorsali sono tre righe, non tre
+// piani.
+const SKY_CRESTE_PX_MIN = 16;
+
+// Il profilo dell'orizzonte. Si disegnano solo gli azimut che possono
+// finire sullo schermo: fare tutto il giro costerebbe sei volte tanto e
+// non si vedrebbe.
+//
+// Il colore di base è uno solo, ed è quello del terreno lontano. Per un po'
+// ogni tratto ha preso il colore del suo paesaggio, e sembrava una buona
+// idea: il risultato era una cresta di montagna grigio chiaro appiccicata
+// sopra un terreno verde, con una cucitura netta in mezzo e un cambio di
+// colore a metà di una collina. Che quella cresta sia una montagna si vede
+// da quanto è alta e da **com'è fatta**, non da come è dipinta: qui
+// cambiano il morso del rilievo e i piani, non la tinta.
+function skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria) {
+  const arco = skyArcoOrizzonteInVista(base, focale);
+  if (!arco) return;
+
+  // Il passo non è più fisso. Con due gradi la roccia non c'è: un dente di
+  // cresta è largo mezzo grado, e campionando ogni due se ne perde uno su
+  // quattro e gli altri diventano triangoli.
+  //
+  // Quanti campioni servano lo dice la **larghezza del riquadro**, non un
+  // numero deciso a tavolino: uno ogni quattro pixel. Più fitto di così il
+  // dettaglio è più fine del pixel e si paga senza vederlo — ed è un costo
+  // che si paga quattro volte, una per il piede e una per ognuno dei tre
+  // piani. Meno, e la cresta torna a essere una spezzata.
+  const campioni = Math.max(120, Math.min(quanto(220, 300, 380), Math.round(sky.larghezza / 4)));
+  const passo = Math.max(0.05, Math.min(2, (2 * arco.mezzo) / campioni));
+
+  // Una passata sola di conti per tutti i piani: l'altezza vera, il piede,
+  // e che paesaggio c'è. Sono le tre cose care (una lettura del profilo,
+  // una della miscela, una proiezione); i piani poi si ricavano da queste.
+  const colonne = [];
+  let altezzaMax = 0;
   for (let d = -arco.mezzo; d <= arco.mezzo + 0.001; d += passo) {
     const az = arco.centro + d;
-    const cresta = skyProietta(skyVettore(az, skyAltezzaOrizzonte(az)), base, focale);
     const piede = skyProietta(skyVettore(az, 0), base, focale);
-    if (!cresta.davanti || !piede.davanti) { chiudi(); continue; }
-    corsa.push({ cx: cresta.px, cy: cresta.py, bx: piede.px, by: piede.py });
+    if (!piede.davanti) { colonne.push(null); continue; }
+    const h = skyAltezzaOrizzonte(az);
+    // Senza il terreno vero non si sa che paesaggio sia: resta la finzione
+    // di sempre, che è una collina.
+    let ruvido = SKY_RUVIDEZZA.collina;
+    let roccia = 0.45;
+    const m = typeof terrenoMiscela === 'function' ? terrenoMiscela(az) : null;
+    if (m) {
+      ruvido = SKY_RUVIDEZZA.mare * m.mare + SKY_RUVIDEZZA.pianura * m.pianura
+        + SKY_RUVIDEZZA.collina * m.collina + SKY_RUVIDEZZA.montagna * m.montagna;
+      // Quanta parte del rilievo è roccia e quanta è dorso di collina
+      roccia = Math.min(1, m.montagna + m.collina * 0.5);
+    }
+    colonne.push({ az, h, piede, ruvido, roccia });
+    if (h > altezzaMax) altezzaMax = h;
+  }
+  if (colonne.length < 2) return;
+
+  // Quanto è alta la cresta più alta, in pixel, al centro della vista.
+  // Serve solo a decidere se i piani davanti hanno senso.
+  const pxCresta = altezzaMax * focale * SKY_D2R;
+  const piani = pxCresta >= SKY_CRESTE_PX_MIN ? SKY_CRESTE_PIANI : SKY_CRESTE_PIANI.slice(0, 1);
+
+  ctx.save();
+  // I piani si disegnano dal più lontano al più vicino: ognuno copre la
+  // parte bassa di quello dietro, che è esattamente quello che fa una
+  // dorsale davanti a un'altra.
+  for (let k = 0; k < piani.length; k++) {
+    const piano = piani[k];
+    const corse = skyCorseDiCresta(colonne, piano, base, focale);
+    if (!corse.length) continue;
+
+    const colore = skyMescolaColore(
+      skyMescolaColore(suolo.lontano, suolo.vicino, piano.tinta), [0, 0, 0], piano.buio);
+
+    ctx.beginPath();
+    corse.forEach(r => {
+      r.forEach((q, i) => (i === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
+      for (let i = r.length - 1; i >= 0; i--) ctx.lineTo(r[i].bx, r[i].by);
+      ctx.closePath();
+    });
+    ctx.fillStyle = skyRgba(colore, 1);
+    ctx.fill();
+
+    // Il cappello ce l'ha ogni piano, se no le dorsali davanti sono tre
+    // ritagli piatti. Il filo di luce no, solo la cresta vera: dietro a lei
+    // c'è il cielo, dietro alle altre c'è la montagna di prima — e un bordo
+    // luminoso lì sarebbe una luce che non viene da nessuna parte.
+    if (pxCresta * piano.quota >= 10) skyDisegnaCappello(ctx, corse, colore, piano);
+    if (k === 0) skyDisegnaFiloCresta(ctx, corse, aria);
+  }
+  ctx.restore();
+}
+
+// L'altezza disegnata di una cresta su un piano: la vera, scalata dal
+// piano e morsa dal rilievo. Il rumore aspro e quello dolce si mescolano
+// con quanta roccia c'è da quella parte — sulla stessa vista, la costa
+// resta liscia e il crinale dietro no.
+function skyMorsoCresta(col, piano) {
+  const az = col.az + piano.salto;
+  const aspro = skyRilievo(SKY_RILIEVO.aspro, az);
+  const dolce = skyRilievo(SKY_RILIEVO.dolce, az);
+  const n = dolce + (aspro - dolce) * col.roccia;
+  // I piani davanti ci sono dove c'è un rilievo. In pianura non esistono
+  // dorsali una dietro l'altra, e disegnarle lo stesso vuol dire tagliare
+  // una macchia d'alberi alta trenta pixel in tre fasce orizzontali —
+  // sembrano le curve di livello di una carta, non degli alberi. Dove non
+  // c'è montagna la loro quota va a zero e i piani si appiattiscono sulla
+  // linea dell'orizzonte, cioè spariscono da soli.
+  const quota = piano.quota === 1 ? 1 : piano.quota * col.roccia;
+  return col.h * quota * (1 - col.ruvido * piano.ruvido * n);
+}
+
+// I tratti continui di un piano: si spezza dove la proiezione perde il
+// punto (dietro all'occhio), se no il poligono si chiuderebbe attraverso
+// mezzo schermo.
+function skyCorseDiCresta(colonne, piano, base, focale) {
+  const corse = [];
+  let corsa = [];
+  const chiudi = () => { if (corsa.length > 1) corse.push(corsa); corsa = []; };
+  for (const col of colonne) {
+    if (!col) { chiudi(); continue; }
+    const cresta = skyProietta(skyVettore(col.az, skyMorsoCresta(col, piano)), base, focale);
+    if (!cresta.davanti) { chiudi(); continue; }
+    corsa.push({ az: col.az, cx: cresta.px, cy: cresta.py, bx: col.piede.px, by: col.piede.py });
   }
   chiudi();
-  ctx.restore();
+  return corse;
+}
+
+// Il cappello della cresta: la fascia in cima, quella che prende la luce.
+//
+// Una dorsale non è un ritaglio di cartone: ha una schiena, e la schiena è
+// rivolta al cielo mentre il fianco no. La fascia in cima si schiarisce, e
+// **quanto è profonda cambia da punto a punto** — larga sulle spalle
+// tondeggianti, sottile dove la cresta è affilata. È quella larghezza
+// irregolare a raccontare il volume: una fascia di spessore costante
+// sarebbe una riga di evidenziatore.
+//
+// Il primo tentativo erano i canaloni, righe verticali che scendevano dalla
+// cresta. Sulla carta erano i fianchi della montagna; sullo schermo erano
+// un codice a barre — righe della stessa larghezza, alla stessa distanza,
+// perché una passata di tratto ha una larghezza sola e i campioni sono
+// equidistanti per costruzione. Un profilo di montagna con i denti di un
+// pettine si nota subito, ed era esattamente il contrario dello scopo.
+//
+// Quanto si schiarisce dipende da quanta luce c'è: di notte quasi niente,
+// perché una cresta controluce è nera e basta, e una fascia grigia lassù
+// sarebbe una luce che non viene da nessuna parte.
+function skyDisegnaCappello(ctx, corse, colore, piano) {
+  ctx.beginPath();
+  for (const r of corse) {
+    r.forEach((q, i) => (i === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
+    for (let i = r.length - 1; i >= 0; i--) {
+      const q = r[i];
+      const f = 0.1 + 0.45 * skyRilievo(SKY_RILIEVO.dolce, q.az * 2.3 + 17 + piano.salto);
+      ctx.lineTo(q.cx + (q.bx - q.cx) * f, q.cy + (q.by - q.cy) * f);
+    }
+    ctx.closePath();
+  }
+  ctx.fillStyle = skyRgba(
+    skyMescolaColore(colore, [255, 255, 255], 0.05 + 0.2 * sky.luceCielo), 0.55);
+  ctx.fill();
+}
+
+// Il filo di luce sul crinale. Dietro a una cresta c'è sempre del cielo, e
+// il cielo — anche di notte, anche solo per il chiarore delle città — è
+// più chiaro della roccia: il bordo si stacca con una riga sottile e
+// leggermente più chiara. È quello che si vede in qualunque fotografia di
+// montagne controluce, ed è la ragione per cui un profilo nero puro sembra
+// sempre incollato sopra al cielo invece che stare dentro alla stessa aria.
+function skyDisegnaFiloCresta(ctx, corse, aria) {
+  const foschia = aria ? aria.foschia : [80, 90, 105];
+  ctx.beginPath();
+  for (const r of corse) {
+    r.forEach((q, i) => (i === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
+  }
+  ctx.strokeStyle = skyRgba(skyMescolaColore(foschia, [255, 255, 255], 0.25),
+    0.1 + 0.22 * sky.luceCielo);
+  ctx.lineWidth = 1;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
 }
 
 // --- Le luci delle città sull'orizzonte -------------------------------
