@@ -5529,6 +5529,10 @@ body button.did-linguetta.attiva .did-linguetta-numero { background: rgba(255, 2
    sfuma nel pannello che la contiene non si legge più come una finestra
    sullo spazio, e questi disegni devono essere finestre. */
 .did-scene { display: grid; gap: 12px; }
+/* Un quadro spento è spento davvero: `display: grid` batterebbe il
+   `[hidden]` di serie del browser, e il quadro nascosto resterebbe lì —
+   con la sua tela che continua a ridisegnarsi sotto a quella buona. */
+.did-scene[hidden] { display: none; }
 .did-scene-due { grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 760px) {
   .did-scene-due { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -146,14 +146,17 @@ const COST_ARTE = {
   UMa: {                                    // l'orsa, col carro sulla schiena
     ancore: [[8.9868, 48.0418], [13.7923, 49.3133]],  // la zampa davanti → Alkaid
     tratti: [
-      [0.060, 0.200, 0.200, 0.242, 0.330, 0.222, 0.450, 0.172, 0.560, 0.112, 0.642, 0.068],
-      [0.220, 0.140, 0.140, 0.172, 0.060, 0.140, 0.002, 0.062, 0.012, -0.010,
-       0.090, -0.030, 0.180, 0.018, 0.228, 0.072, 0.220, 0.140],
-      [0.160, 0.168, 0.150, 0.212, 0.192, 0.208],     // l'orecchio
-      [0.245, -0.055, 0.310, -0.122, 0.400, -0.152, 0.500, -0.130, 0.575, -0.085],
-      [0.268, -0.062, 0.258, -0.145, 0.246, -0.240],  // zampa davanti
-      [0.500, -0.100, 0.480, -0.230, 0.462, -0.350, 0.456, -0.460],  // zampa dietro
-      [0.560, -0.095, 0.566, -0.142],
+      // Il corpo dell'orsa, chiuso: dal collo lungo il dorso fino
+      // all'attacco della coda, e indietro lungo la pancia
+      [0.230, 0.130, 0.330, 0.222, 0.450, 0.172, 0.560, 0.112, 0.642, 0.068,
+       0.620, -0.020, 0.500, -0.108, 0.390, -0.145, 0.300, -0.120, 0.248, -0.055,
+       0.230, 0.130],
+      [0.230, 0.130, 0.140, 0.172, 0.060, 0.140, 0.002, 0.062, 0.012, -0.010,
+       0.090, -0.030, 0.180, 0.018, 0.235, 0.070, 0.230, 0.130],      // la testa
+      [0.160, 0.168, 0.150, 0.212, 0.192, 0.204],     // l'orecchio
+      [0.268, -0.090, 0.258, -0.170, 0.246, -0.240],  // zampa davanti
+      [0.500, -0.115, 0.480, -0.240, 0.462, -0.355, 0.456, -0.460],  // zampa dietro
+      [0.566, -0.070, 0.566, -0.142],
       [0.642, 0.068, 0.760, 0.070, 0.862, 0.078, 0.995, 0.004]       // la coda lunga
     ]
   },
@@ -161,12 +164,14 @@ const COST_ARTE = {
   UMi: {                                    // l'orsetto, con la Polare in cima
     ancore: [[15.3455, 71.834], [2.5303, 89.2641]],   // Pherkad → Polaris
     tratti: [
-      [0.129, 0.109, 0.250, 0.062, 0.330, -0.028],
-      [0.129, 0.109, 0.050, 0.122, -0.020, 0.070, -0.020, 0.000,
-       0.050, -0.040, 0.120, -0.010, 0.142, 0.050, 0.129, 0.109],
-      [0.100, -0.058, 0.180, -0.128, 0.262, -0.150, 0.330, -0.100],
-      [0.130, -0.050, 0.120, -0.140, 0.128, -0.200],
-      [0.280, -0.130, 0.300, -0.200, 0.312, -0.250],
+      // Il corpo dell'orsetto: quattro stelle del mestolo piccolo fanno
+      // il tronco, e la coda lunghissima arriva alla Polare
+      [0.129, 0.109, 0.250, 0.062, 0.330, -0.028, 0.290, -0.120, 0.180, -0.146,
+       0.100, -0.100, 0.096, -0.010, 0.129, 0.109],
+      [0.129, 0.109, 0.050, 0.128, -0.014, 0.078, -0.018, 0.006,
+       0.048, -0.036, 0.112, -0.006, 0.134, 0.052, 0.129, 0.109],     // la testa
+      [0.132, -0.130, 0.122, -0.196, 0.128, -0.240],
+      [0.276, -0.136, 0.298, -0.204, 0.310, -0.252],                  // le zampe
       [0.330, -0.028, 0.450, -0.112, 0.572, -0.150, 0.720, -0.140, 0.862, -0.078, 0.996, 0.002]
     ]
   },
@@ -217,11 +222,15 @@ const COST_ARTE = {
     ancore: [[9.7642, 23.7743], [11.8177, 14.5721]],  // ε → Denebola
     cerchi: [[1.008, 0.002, 0.028]],                  // il fiocco della coda
     tratti: [
-      [0.270, -0.050, 0.420, 0.020, 0.550, 0.060, 0.663, 0.082],      // il dorso, fino a Zosma
-      [0.663, 0.082, 0.790, 0.055, 0.900, 0.025, 0.985, 0.002],       // la groppa e la coda
-      [0.265, -0.100, 0.262, -0.200, 0.259, -0.331],                  // la zampa davanti, su Regolo
-      [0.282, -0.140, 0.430, -0.140, 0.580, -0.120, 0.700, -0.080],   // la pancia
-      [0.700, -0.080, 0.714, -0.180, 0.724, -0.262],                  // la zampa dietro (Chort)
+      // Il corpo è una sagoma sola e chiusa — dorso, groppa, pancia,
+      // petto — e passa per Zosma e Chort: chiusa si riempie, e un leone
+      // pieno si riconosce da lontano meglio di due righe parallele
+      [0.270, -0.050, 0.420, 0.020, 0.550, 0.060, 0.663, 0.082, 0.722, 0.044,
+       0.700, -0.080, 0.580, -0.120, 0.430, -0.140, 0.290, -0.150, 0.258, -0.104,
+       0.270, -0.050],
+      [0.663, 0.082, 0.790, 0.055, 0.900, 0.025, 0.985, 0.002],       // la coda
+      [0.265, -0.120, 0.262, -0.230, 0.259, -0.331],                  // la zampa davanti, su Regolo
+      [0.700, -0.090, 0.714, -0.180, 0.724, -0.262],                  // la zampa dietro (Chort)
       [0.270, -0.050, 0.250, 0.030, 0.180, 0.086, 0.090, 0.100, 0.020, 0.070,
        -0.010, 0.000, 0.020, -0.080, 0.100, -0.130, 0.190, -0.130, 0.250, -0.090,
        0.270, -0.050],                                                // la criniera
@@ -451,9 +460,13 @@ const COST_ARTE = {
   Sco: {                                    // lo scorpione, dalle chele al pungiglione
     ancore: [[16.0906, -19.8055], [17.622, -42.9978]],
     tratti: [
-      [0.050, -0.050, 0.160, -0.030, 0.280, 0.020, 0.400, 0.020, 0.580, -0.020,
-       0.700, -0.090, 0.800, -0.172, 0.900, -0.110, 0.992, 0.000, 0.972, 0.108,
-       0.900, 0.130, 0.848, 0.124],                                   // il corpo e la coda
+      // Il torace è una sagoma chiusa (dalla testa fino a dove comincia
+      // la coda), la coda resta una linea che si arriccia: riempirla
+      // l'avrebbe fatta sembrare un tubo invece di un pungiglione
+      [0.050, -0.050, 0.160, -0.030, 0.280, 0.020, 0.400, 0.020, 0.560, -0.010,
+       0.560, -0.086, 0.400, -0.070, 0.270, -0.076, 0.150, -0.104, 0.050, -0.050],
+      [0.560, -0.010, 0.700, -0.090, 0.800, -0.172, 0.900, -0.110, 0.992, 0.000,
+       0.972, 0.108, 0.900, 0.130, 0.848, 0.124],                     // la coda
       [0.080, -0.020, 0.020, 0.040, -0.060, 0.060, -0.020, 0.000, 0.040, -0.030],
       [0.100, -0.080, 0.040, -0.130, -0.020, -0.180, 0.030, -0.192, 0.090, -0.162],
       [0.848, 0.124, 0.792, 0.162, 0.740, 0.152]                      // il pungiglione
@@ -565,8 +578,8 @@ const COST_ARTE = {
     ancore: [[4.2671, -51.4866], [5.7462, -65.7355]],
     cerchi: [[0.880, 0.030, 0.018]],
     tratti: [
-      [0.100, 0.020, 0.320, 0.100, 0.580, 0.130, 0.800, 0.110, 0.950, 0.040],
-      [0.100, -0.020, 0.340, -0.060, 0.600, -0.060, 0.820, -0.030, 0.950, 0.040],
+      [0.100, 0.020, 0.320, 0.100, 0.580, 0.130, 0.800, 0.110, 0.950, 0.040,
+       0.820, -0.030, 0.600, -0.060, 0.340, -0.060, 0.100, -0.020, 0.100, 0.020],
       [0.100, 0.020, 0.000, 0.100, -0.040, 0.020, -0.020, -0.060, 0.100, -0.020],
       [0.300, 0.090, 0.420, 0.180, 0.600, 0.200, 0.780, 0.150, 0.900, 0.090],
       [0.500, -0.060, 0.520, -0.140, 0.600, -0.100]
@@ -580,8 +593,9 @@ const COST_ARTE = {
   Lup: {                                    // il lupo, che il centauro porta all'altare
     ancore: [[15.2047, -52.0992], [15.8493, -33.6272]],
     tratti: [
-      [0.101, 0.331, 0.280, 0.300, 0.450, 0.200, 0.600, 0.080, 0.720, -0.030],
-      [0.120, 0.150, 0.219, 0.040, 0.382, 0.068, 0.588, 0.026, 0.740, -0.110],
+      [0.101, 0.331, 0.280, 0.300, 0.450, 0.200, 0.600, 0.080, 0.720, -0.030,
+       0.740, -0.110, 0.588, 0.026, 0.382, 0.068, 0.219, 0.040, 0.120, 0.150,
+       0.101, 0.331],
       [0.720, -0.030, 0.800, -0.100, 0.880, -0.130, 0.950, -0.180, 0.890, -0.240,
        0.810, -0.212, 0.760, -0.150, 0.740, -0.110],                  // il muso
       [0.790, -0.086, 0.830, -0.030, 0.868, -0.078],                  // l'orecchio
@@ -598,8 +612,8 @@ const COST_ARTE = {
     ancore: [[21.7491, -33.0258], [22.9608, -29.6222]],
     cerchi: [[0.880, 0.010, 0.020]],
     tratti: [
-      [0.100, 0.060, 0.300, 0.100, 0.550, 0.080, 0.780, 0.040, 0.950, 0.000],
-      [0.100, -0.040, 0.320, -0.100, 0.560, -0.120, 0.780, -0.100, 0.950, 0.000],
+      [0.100, 0.060, 0.300, 0.100, 0.550, 0.080, 0.780, 0.040, 0.950, 0.000,
+       0.780, -0.100, 0.560, -0.120, 0.320, -0.100, 0.100, -0.040, 0.100, 0.060],
       [0.100, 0.060, 0.000, 0.140, -0.060, 0.060, -0.050, -0.040, 0.020, -0.100, 0.100, -0.040],
       [0.420, 0.090, 0.550, 0.180, 0.720, 0.200, 0.818, 0.130],
       [0.500, -0.110, 0.580, -0.200, 0.720, -0.200, 0.870, -0.150]
@@ -1238,12 +1252,15 @@ const COST_BUIO = [
 const cost = {
   arte: true,             // il disegno è acceso
   quando: 0,              // per quale aggiornamento del catalogo sono buoni i telai
-  telai: null,            // sigla → { a, b } versori nel cielo di adesso
+  telai: null,            // sigla → { a, b, c } versori delle ancore nel cielo di adesso
+  terze: null,            // sigla → la terza ancora scelta da sé, con le sue coordinate nel telaio
   centri: null,           // sigla → { ra, dec } del baricentro della figura
   scelta: null,           // la sigla aperta nell'atlante
   filtro: 'tutte',
   cerca: '',
-  atlante: false
+  atlante: false,
+  distanze: 'niente',     // 'niente' | 'in-corso' | 'pronto' | 'fallito'
+  promessaDistanze: null
 };
 
 // Quanto si vede il disegno. A campo largo è appena accennato (a 180°
@@ -1260,6 +1277,69 @@ function costOpacitaArte() {
   return 0;
 }
 
+// --- LA TERZA ANCORA ---
+//
+// Con due ancore il disegno può ruotare e cambiare misura, ma non
+// deformarsi: la trasformazione è una similitudine, e tiene per forza gli
+// angoli. Con TRE il telaio diventa affine — può anche stirarsi e
+// inclinarsi — e questo conta, perché la proiezione del cielo su uno
+// schermo piatto una figura larga venti gradi la stira davvero, tanto più
+// quanto più sta lontano dal centro della vista. Con due sole ancore, a
+// campo largo, il disegno restava rigido mentre le sue stelle si
+// allargavano sotto di lui.
+//
+// È anche quello che fa Stellarium con le sue illustrazioni: tre punti
+// dell'immagine, tre stelle, e l'immagine ci si adatta sopra.
+//
+// La terza ancora non sta scritta nei dati: si sceglie da sé, ed è la
+// stella della figura più lontana dalla retta fra le prime due — quella
+// che dà il telaio più stabile. Le sue coordinate nel telaio si ricavano
+// dalla stessa geometria con cui il disegno è stato scritto.
+function costTerzaAncora(sigla, ancore) {
+  const pezzi = (typeof COSTELLAZIONI_IAU === 'undefined' ? [] : COSTELLAZIONI_IAU)
+    .filter(c => c.sigla === sigla);
+  if (!pezzi.length) return null;
+
+  const punti = [];
+  pezzi.forEach(c => c.spezzate.forEach(l => l.forEach(p => punti.push(p))));
+
+  // Piano tangente al baricentro: la stessa proiezione con cui i disegni
+  // sono stati scritti (vedi §2)
+  let cx = 0, cy = 0, cz = 0;
+  punti.forEach(p => { const v = costVersore(p[0], p[1]); cx += v[0]; cy += v[1]; cz += v[2]; });
+  const norma = Math.hypot(cx, cy, cz) || 1;
+  cx /= norma; cy /= norma; cz /= norma;
+  const dec0 = Math.asin(Math.max(-1, Math.min(1, cz))), ra0 = Math.atan2(cy, cx);
+  const D2R = Math.PI / 180;
+  const piano = (raOre, dec) => {
+    const a = raOre * 15 * D2R, d = dec * D2R;
+    const cosc = Math.sin(dec0) * Math.sin(d) + Math.cos(dec0) * Math.cos(d) * Math.cos(a - ra0);
+    if (cosc <= 0.05) return null;
+    return [Math.cos(d) * Math.sin(a - ra0) / cosc,
+      (Math.cos(dec0) * Math.sin(d) - Math.sin(dec0) * Math.cos(d) * Math.cos(a - ra0)) / cosc];
+  };
+
+  const A = piano(ancore[0][0], ancore[0][1]), B = piano(ancore[1][0], ancore[1][1]);
+  if (!A || !B) return null;
+  const dx = B[0] - A[0], dy = B[1] - A[1], len2 = dx * dx + dy * dy;
+  if (len2 < 1e-12) return null;
+
+  let scelto = null, massimo = 0;
+  punti.forEach(p => {
+    const q = piano(p[0], p[1]);
+    if (!q) return;
+    const ux = q[0] - A[0], uy = q[1] - A[1];
+    const y = (ux * -dy + uy * dx) / len2;
+    if (Math.abs(y) > Math.abs(massimo)) {
+      massimo = y;
+      scelto = { ra: p[0], dec: p[1], x: (ux * dx + uy * dy) / len2, y };
+    }
+  });
+  // Una stella troppo vicina alla retta delle prime due non fa da terza
+  // ancora: dividendo per la sua `y` si moltiplicherebbe il rumore
+  return scelto && Math.abs(scelto.y) > 0.08 ? scelto : null;
+}
+
 // I telai si rifanno quando il catalogo rifà le posizioni delle stelle,
 // e per la stessa ragione: se le due cose si aggiornassero in momenti
 // diversi il disegno si staccherebbe dalle sue stelle di qualche pixel a
@@ -1269,12 +1349,25 @@ function costSincronizza() {
   if (cost.telai && cost.quando === cat.quandoAggiornato) return true;
 
   const M = cat.matrice;
+  // Le terze ancore non cambiano mai (dipendono solo dal catalogo delle
+  // figure): si scelgono una volta e si tengono
+  if (!cost.terze) {
+    cost.terze = {};
+    for (const sigla in COST_ARTE) {
+      cost.terze[sigla] = costTerzaAncora(sigla, COST_ARTE[sigla].ancore);
+    }
+  }
+
   cost.telai = {};
   for (const sigla in COST_ARTE) {
     const anc = COST_ARTE[sigla].ancore;
+    const terza = cost.terze[sigla];
     cost.telai[sigla] = {
       a: costAllOra(costVersore(anc[0][0], anc[0][1]), M),
-      b: costAllOra(costVersore(anc[1][0], anc[1][1]), M)
+      b: costAllOra(costVersore(anc[1][0], anc[1][1]), M),
+      c: terza ? costAllOra(costVersore(terza.ra, terza.dec), M) : null,
+      cx: terza ? terza.x : 0,
+      cy: terza ? terza.y : 0
     };
   }
   cost.quando = cat.quandoAggiornato;
@@ -1297,7 +1390,27 @@ function costTelaioSchermo(sigla, base, focale) {
   // schermo e l'altra metà è deformata: in tutt'e due i casi il disegno
   // non aiuta nessuno.
   if (lungo < 26 || lungo > (sky.larghezza + sky.altezza) * 3) return null;
-  return { ox: A.px, oy: A.py, dx, dy, px: -dy, py: dx, lungo };
+
+  // Con la terza ancora l'asse y non è più la perpendicolare all'asse x:
+  // è quello che serve perché la terza stella finisca dove il disegno se
+  // l'aspetta. Se la terza ancora manca o è finita dietro all'osservatore
+  // si torna alla perpendicolare, che è il telaio di prima.
+  let px = -dy, py = dx;
+  if (t.c) {
+    const C = skyProietta(t.c, base, focale);
+    if (C.davanti) {
+      const vx = (C.px - A.px - t.cx * dx) / t.cy;
+      const vy = (C.py - A.py - t.cx * dy) / t.cy;
+      // Un telaio quasi degenere (i tre punti quasi in fila) stira il
+      // disegno all'infinito: meglio la similitudine, che è sempre sana
+      const area = Math.abs(dx * vy - dy * vx);
+      if (area > lungo * lungo * 0.02) { px = vx; py = vy; }
+    }
+  }
+  // La misura media del telaio: serve ai cerchi, che restano cerchi anche
+  // quando il telaio stira (una testa schiacciata non è una testa)
+  const scala = Math.sqrt(lungo * Math.hypot(px, py)) || lungo;
+  return { ox: A.px, oy: A.py, dx, dy, px, py, lungo, scala };
 }
 
 function costPunto(telaio, x, y) {
@@ -1343,7 +1456,14 @@ function costCurva(ctx, punti) {
 
 // Scrive nel tracciato tutte le curve di una figura, già portate sullo
 // schermo. Torna false se non c'è finito niente.
-function costTracciaFigura(ctx, sigla, telaio) {
+//
+// `pieni`, se c'è, raccoglie a parte le curve CHIUSE — quelle che
+// finiscono dove sono cominciate, cioè le sagome: il corpo del leone, il
+// torso di Orione, la faccia del toro. Riempite con un velo leggerissimo
+// smettono di essere un groviglio di linee e diventano un animale. Le
+// altre curve (le zampe, la coda, le corna) restano linee, perché una
+// zampa riempita sarebbe una macchia.
+function costTracciaFigura(ctx, sigla, telaio, pieni) {
   const arte = COST_ARTE[sigla];
   let qualcosa = false;
 
@@ -1354,6 +1474,9 @@ function costTracciaFigura(ctx, sigla, telaio) {
       s[i] = p[0]; s[i + 1] = p[1];
     }
     costCurva(ctx, s);
+    const chiusa = Math.abs(t[0] - t[t.length - 2]) < 1e-9 &&
+                   Math.abs(t[1] - t[t.length - 1]) < 1e-9;
+    if (pieni && chiusa) costCurva(pieni, s);
     qualcosa = true;
   });
 
@@ -1368,10 +1491,12 @@ function costTracciaFigura(ctx, sigla, telaio) {
   (arte.cerchi || []).forEach(c => {
     const p = costPunto(telaio, c[0], c[1]);
     // Il raggio è nella scala del telaio: cresce e cala con la figura
-    const r = c[2] * telaio.lungo;
+    const r = c[2] * (telaio.scala || telaio.lungo);
     if (r < 0.6) return;
     ctx.moveTo(p[0] + r, p[1]);
     ctx.arc(p[0], p[1], r, 0, Math.PI * 2);
+    // Anche le teste sono sagome: riempite, una figura ha una faccia
+    if (pieni) { pieni.moveTo(p[0] + r, p[1]); pieni.arc(p[0], p[1], r, 0, Math.PI * 2); }
     qualcosa = true;
   });
 
@@ -1390,6 +1515,7 @@ function costDisegnaArte(ctx, base, focale) {
   if (!costSincronizza()) return;
 
   const tracciato = new Path2D();
+  const pieni = new Path2D();
   let qualcosa = false;
   for (const sigla in COST_ARTE) {
     const telaio = costTelaioSchermo(sigla, base, focale);
@@ -1401,15 +1527,22 @@ function costDisegnaArte(ctx, base, focale) {
                   (telaio.oy < -telaio.lungo * 1.6 && telaio.oy + telaio.dy < -telaio.lungo * 1.6) ||
                   (telaio.oy > sky.altezza + telaio.lungo * 1.6 && telaio.oy + telaio.dy > sky.altezza + telaio.lungo * 1.6);
     if (fuori) continue;
-    if (costTracciaFigura(tracciato, sigla, telaio)) qualcosa = true;
+    if (costTracciaFigura(tracciato, sigla, telaio, pieni)) qualcosa = true;
   }
   if (!qualcosa) return;
 
   ctx.save();
-  ctx.lineWidth = sky.fov < 30 ? 1.3 : 1;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
+  // Prima il velo dentro alle sagome, poi le linee sopra. Il velo è un
+  // sesto del tratto: deve dire «qui c'è un corpo» e nient'altro — più
+  // scuro di così diventa una macchia che copre le stelle, che sono la
+  // ragione per cui uno sta guardando lì.
+  ctx.globalAlpha = opacita * 0.17;
+  ctx.fillStyle = 'rgb(178, 160, 250)';
+  ctx.fill(pieni, 'nonzero');
   ctx.globalAlpha = opacita;
+  ctx.lineWidth = sky.fov < 30 ? 1.3 : 1;
   ctx.strokeStyle = 'rgb(196, 181, 253)';     // lo stesso viola del cielo profondo
   ctx.stroke(tracciato);
   ctx.restore();
@@ -1724,6 +1857,15 @@ function costSchedaHtml(sigla) {
   }
   azioni.push(`<button type="button" class="tasto-evento-cielo" onclick="costPortami('${sigla}')">` +
     `${vis && vis.maiVisibile ? 'Portami dove si vede' : 'Portami sotto il suo cielo'}</button>`);
+  // La stessa figura, ma nello spazio vero: è la risposta alla domanda
+  // che viene dopo aver letto che ogni cultura ci ha visto una cosa
+  // diversa — «ma allora la figura c'è o no?». No.
+  if (typeof didCostellazioneNelloSpazio === 'function') {
+    azioni.push(`<button type="button" class="tasto-evento-cielo" ` +
+      `onclick="didCostellazioneNelloSpazio('${sigla}')" ` +
+      `title="Le sue stelle messe nello spazio vero, ognuna alla sua distanza: la figura è ` +
+      `un effetto di prospettiva, e da un altro pianeta non c'è">Dove stanno davvero</button>`);
+  }
 
   return `
     <div class="cost-testa">
@@ -1902,14 +2044,31 @@ function costDisegnaScheda(sigla) {
   const B = schermo(piano(arte.ancore[1][0], arte.ancore[1][1]));
   if (!A || !B) return;
   const dx = B[0] - A[0], dy = B[1] - A[1];
-  const telaio = { ox: A[0], oy: A[1], dx, dy, px: -dy, py: dx, lungo: Math.hypot(dx, dy) };
+  const lungo = Math.hypot(dx, dy);
+  let px = -dy, py = dx;
+  // La stessa terza ancora del planetario: il disegno qui e quello in
+  // cielo devono essere lo stesso disegno, anche nel modo in cui si stira
+  const terza = costTerzaAncora(sigla, arte.ancore);
+  if (terza) {
+    const C = schermo(piano(terza.ra, terza.dec));
+    if (C) {
+      const vx = (C[0] - A[0] - terza.x * dx) / terza.y;
+      const vy = (C[1] - A[1] - terza.x * dy) / terza.y;
+      if (Math.abs(dx * vy - dy * vx) > lungo * lungo * 0.02) { px = vx; py = vy; }
+    }
+  }
+  const telaio = { ox: A[0], oy: A[1], dx, dy, px, py, lungo,
+                   scala: Math.sqrt(lungo * Math.hypot(px, py)) || lungo };
 
   const tracciato = new Path2D();
-  costTracciaFigura(tracciato, sigla, telaio);
+  const pieni = new Path2D();
+  costTracciaFigura(tracciato, sigla, telaio, pieni);
   ctx.save();
-  ctx.lineWidth = 1.5;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
+  ctx.fillStyle = 'rgba(178, 160, 250, 0.14)';
+  ctx.fill(pieni, 'nonzero');
+  ctx.lineWidth = 1.5;
   ctx.strokeStyle = 'rgba(196, 181, 253, 0.85)';
   ctx.stroke(tracciato);
   ctx.restore();
@@ -2244,4 +2403,131 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', costInizializza);
 } else {
   costInizializza();
+}
+
+
+// =====================================================================
+// 11. LE STELLE NELLO SPAZIO VERO
+//
+//     Una costellazione è un effetto di prospettiva. Le sue stelle non
+//     hanno niente a che fare l'una con l'altra: sembrano vicine perché
+//     stanno quasi nella stessa direzione, e «quasi nella stessa
+//     direzione» è una proprietà di CHI GUARDA, non del cielo. Le tre
+//     stelle della cintura di Orione, che sembrano gemelle e in fila,
+//     stanno a 692, 1.977 e 736 anni luce: la seconda è quasi tre volte
+//     più lontana delle altre due.
+//
+//     Per far vedere questa cosa serve un dato che il planetario non ha
+//     mai avuto: la distanza. Sta in `dati-distanze.js` — un vertice per
+//     ogni stella delle ottantotto figure, con la sua parallasse tradotta
+//     in anni luce — e si carica solo a chi apre il banco che lo usa.
+//
+//     Qui ci sono il caricamento e la geometria: da (ascensione retta,
+//     declinazione, distanza) alle tre coordinate cartesiane, con il Sole
+//     nell'origine. Da lì in poi è tutto disegno, e sta in didattica.js.
+// =====================================================================
+
+const COST_FILE_DISTANZE = 'dati-distanze.js';
+
+// Le stelle senza parallasse buona sono dieci su settecentosessantasette,
+// e sono quasi tutte supergiganti lontanissime. Metterle a zero le
+// piazzerebbe addosso al Sole; metterle a mille sarebbe inventare un
+// numero. Si mettono alla distanza mediana della loro figura e si dice
+// che è una stima — che è quello che si può onestamente dire.
+function costDistanzaDiRipiego(voci) {
+  const note = voci.map(v => v[2]).filter(d => typeof d === 'number' && d > 0).sort((a, b) => a - b);
+  if (!note.length) return 500;
+  return note[Math.floor(note.length / 2)];
+}
+
+// Servono DUE file, e chi chiama non deve saperlo: le distanze
+// (dati-distanze.js) e le figure (dati-costellazioni.js, che se le carica
+// il catalogo). Il secondo di solito c'è già — chi ha aperto il
+// planetario ce l'ha — ma chi entra dalla Didattica senza essere mai
+// passato dal cielo non ce l'ha, e senza figure le distanze sono numeri
+// senza linee da unire.
+function costCaricaDistanze() {
+  if (cost.distanze === 'pronto') return Promise.resolve(true);
+  if (cost.promessaDistanze) return cost.promessaDistanze;
+  cost.distanze = 'in-corso';
+
+  const soloDistanze = new Promise((risolvi) => {
+    const s = document.createElement('script');
+    s.src = COST_FILE_DISTANZE;
+    s.async = false;
+    s.onload = () => risolvi(true);
+    s.onerror = () => risolvi(false);
+    document.head.appendChild(s);
+  });
+  const figure = (typeof COSTELLAZIONI_IAU !== 'undefined') ? Promise.resolve(true)
+    : (typeof catCarica === 'function' ? catCarica().then(() => true).catch(() => false)
+                                       : Promise.resolve(false));
+
+  cost.promessaDistanze = Promise.all([soloDistanze, figure]).then(([a, b]) => {
+    const bene = a && typeof DISTANZE_FIGURE !== 'undefined' && typeof COSTELLAZIONI_IAU !== 'undefined';
+    cost.distanze = bene ? 'pronto' : 'fallito';
+    cost.centri = null;             // adesso le figure ci sono: i baricentri si rifanno
+    return bene;
+  });
+  return cost.promessaDistanze;
+}
+
+// Da direzione e distanza al punto nello spazio, in anni luce, con il
+// Sole nell'origine e gli assi dell'equatore celeste: x verso il punto
+// vernale, z verso il polo nord celeste.
+function costPuntoSpazio(raOre, dec, al) {
+  const D2R = Math.PI / 180;
+  const ra = raOre * 15 * D2R, d = dec * D2R, cd = Math.cos(d);
+  return [al * cd * Math.cos(ra), al * cd * Math.sin(ra), al * Math.sin(d)];
+}
+
+// Le stelle di una figura, con la loro posizione vera nello spazio e le
+// linee che le uniscono. `null` se i dati non sono ancora arrivati.
+function costStelle3D(sigla) {
+  if (typeof DISTANZE_FIGURE === 'undefined' || typeof COSTELLAZIONI_IAU === 'undefined') return null;
+  const voci = DISTANZE_FIGURE[sigla];
+  if (!voci || !voci.length) return null;
+
+  const ripiego = costDistanzaDiRipiego(voci);
+  const indice = new Map();
+  const stelle = voci.map((v, i) => {
+    const stimata = !(typeof v[2] === 'number' && v[2] > 0);
+    const al = stimata ? ripiego : v[2];
+    const p = costPuntoSpazio(v[0], v[1], al);
+    indice.set(v[0] + ',' + v[1], i);
+    return {
+      ra: v[0], dec: v[1], al, stimata,
+      mag: typeof v[3] === 'number' ? v[3] : 4.5,
+      bv: typeof v[4] === 'number' ? v[4] : 0.6,
+      nome: v[5] || '',
+      x: p[0], y: p[1], z: p[2]
+    };
+  });
+
+  // Le linee della figura, tradotte in coppie di indici
+  const linee = [];
+  COSTELLAZIONI_IAU.filter(c => c.sigla === sigla).forEach(c =>
+    c.spezzate.forEach(l => {
+      for (let k = 1; k < l.length; k++) {
+        const a = indice.get(l[k - 1][0] + ',' + l[k - 1][1]);
+        const b = indice.get(l[k][0] + ',' + l[k][1]);
+        if (a !== undefined && b !== undefined) linee.push([a, b]);
+      }
+    }));
+
+  return { sigla, stelle, linee };
+}
+
+// Il colore di una stella dal suo indice di colore, come lo fa il
+// catalogo: il banco in 3D deve dipingere le stesse stelle dello stesso
+// colore del planetario, o sembrano due cieli diversi.
+function costColoreStella(bv) {
+  if (typeof catColoreDaBV === 'function') return catColoreDaBV(bv);
+  const t = Math.max(-0.3, Math.min(2, bv));
+  if (t < 0) return '#a8c8ff';
+  if (t < 0.3) return '#cfe0ff';
+  if (t < 0.6) return '#ffffff';
+  if (t < 0.9) return '#ffeab8';
+  if (t < 1.4) return '#ffcc8a';
+  return '#ff9d6b';
 }

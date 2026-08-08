@@ -5620,6 +5620,766 @@
 
 
   // ===================================================================
+  // 8-bis. ESPERIMENTO 7 — LE COSTELLAZIONI NON ESISTONO
+  //
+  //   È il banco che smonta tutto il resto dell'app, ed è per questo che
+  //   ci vuole. Il planetario passa il tempo a dire «quella è Orione»; qui
+  //   si dice come stanno davvero le cose: Orione non è un oggetto. È una
+  //   coincidenza di direzioni, valida da un unico punto dell'universo —
+  //   questo — e da nessun altro.
+  //
+  //   Le tre stelle della cintura sembrano gemelle, uguali di luce e
+  //   allineate: stanno a 692, 1.977 e 736 anni luce. Alnilam, quella in
+  //   mezzo, è quasi tre volte più lontana delle altre due, e sembra
+  //   uguale soltanto perché è enormemente più luminosa. Metterle nello
+  //   spazio vero e girarci intorno è l'unico modo di vederlo.
+  //
+  //   Tre quadri, che sono tre domande in fila:
+  //     1. «La figura» — quella che si vede da qui, con accanto quanto è
+  //        lontana ogni stella. Il grafico delle distanze fa il resto.
+  //     2. «Nello spazio» — le stesse stelle in tre dimensioni, con il
+  //        Sole e i raggi visuali. Si gira col dito, e girandola la figura
+  //        si disfa: è il momento in cui la cosa si capisce.
+  //     3. «Da un altro pianeta» — il cielo rifatto da un punto di vista
+  //        che si sposta, fino a duemila anni luce da qui.
+  //
+  //   I dati sono le parallassi di Hipparcos via HYG, in dati-distanze.js:
+  //   si caricano solo entrando qui. Prefisso `spa`.
+  // ===================================================================
+
+  const SPA_FIGURE = [
+    { sigla: 'Ori', nome: 'Orione' },
+    { sigla: 'UMa', nome: 'Orsa Maggiore' },
+    { sigla: 'Cru', nome: 'Croce del Sud' },
+    { sigla: 'Cas', nome: 'Cassiopea' },
+    { sigla: 'Leo', nome: 'Leone' },
+    { sigla: 'Cyg', nome: 'Cigno' },
+    { sigla: 'Sco', nome: 'Scorpione' },
+    { sigla: 'Gem', nome: 'Gemelli' }
+  ];
+
+  const SPA_QUADRI = {
+    figura:  { nome: 'La figura',            elev: 90, az: 0 },
+    spazio:  { nome: 'Nello spazio',         elev: 16, az: 28 },
+    altrove: { nome: 'Da un altro pianeta',  elev: 90, az: 0 }
+  };
+
+  // Fin dove si può andare. Duemila anni luce sono più della stella più
+  // lontana di quasi tutte le figure: oltre, non si sta più guardando la
+  // costellazione da un altro punto — si sta guardando il suo relitto.
+  const SPA_VIAGGIO_MAX = 2000;
+
+  const spa = {
+    sigla: 'Ori',
+    quadro: 'figura',
+    dati: null,            // { stelle, linee } della figura scelta
+    stato: 'niente',       // niente | carico | pronto | fallito
+    cam: { az: 28, elev: 16 },
+    camV: { az: 28, elev: 16 },
+    trascina: null,
+    viaggio: 0,            // anni luce di distanza dal Sole del punto di vista
+    direzione: 0,          // gradi: da che parte ci si allontana
+    marcia: false,
+    velocita: 1
+  };
+
+  const SPA_C = {
+    sole: '#ffd166',
+    raggio: 'rgba(120, 178, 255, 0.32)',
+    linea: 'rgba(120, 178, 255, 0.75)',
+    linea3d: 'rgba(139, 92, 246, 0.55)',
+    barra: '#8b5cf6',
+    barraLontana: '#4c8dff'
+  };
+
+  // --- I dati ---------------------------------------------------------
+
+  function spaChiediDati() {
+    if (typeof costCaricaDistanze !== 'function') { spa.stato = 'fallito'; return; }
+    if (spa.stato === 'carico') return;
+    spa.stato = 'carico';
+    costCaricaDistanze().then((bene) => {
+      spa.stato = bene ? 'pronto' : 'fallito';
+      if (!bene) return;
+      spaPrepara();
+      spaAggiornaTesti();
+    });
+  }
+
+  function spaPrepara() {
+    if (typeof costStelle3D !== 'function') return;
+    const d = costStelle3D(spa.sigla);
+    if (!d) return;
+    // Le stelle si ordinano dalla più vicina alla più lontana: serve al
+    // grafico delle distanze, e serve a disegnare in 3D quelle davanti
+    // per ultime
+    d.ordine = d.stelle.map((s, i) => i).sort((a, b) => d.stelle[a].al - d.stelle[b].al);
+    d.minima = d.stelle[d.ordine[0]].al;
+    d.massima = d.stelle[d.ordine[d.ordine.length - 1]].al;
+    spa.dati = d;
+  }
+
+  // Il punto da cui si guarda: si parte dal Sole e ci si sposta di
+  // `viaggio` anni luce in una direzione PERPENDICOLARE alla linea che
+  // punta alla costellazione. È la scelta che fa vedere di più: andando
+  // verso la figura o allontanandosene si vedrebbe solo cambiare di
+  // scala, mentre di traverso la prospettiva si smonta.
+  function spaOsservatore() {
+    const d = spa.dati;
+    if (!d) return [0, 0, 0];
+    const c = spaCentro();
+    const n = Math.hypot(c[0], c[1], c[2]) || 1;
+    const f = [c[0] / n, c[1] / n, c[2] / n];
+    // Due assi qualunque perpendicolari alla direzione della figura
+    const su = Math.abs(f[2]) > 0.9 ? [1, 0, 0] : [0, 0, 1];
+    const a = spaNormale(spaCroce(f, su));
+    const b = spaNormale(spaCroce(f, a));
+    const t = spa.direzione * Math.PI / 180;
+    const ca = Math.cos(t), sa = Math.sin(t);
+    return [
+      spa.viaggio * (a[0] * ca + b[0] * sa),
+      spa.viaggio * (a[1] * ca + b[1] * sa),
+      spa.viaggio * (a[2] * ca + b[2] * sa)
+    ];
+  }
+
+  function spaCroce(u, v) {
+    return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+  }
+  function spaNormale(v) {
+    const n = Math.hypot(v[0], v[1], v[2]) || 1;
+    return [v[0] / n, v[1] / n, v[2] / n];
+  }
+
+  // Il baricentro della figura nello spazio, pesato sulla luminosità: è
+  // lì che punta la telecamera, ed è la direzione da cui si misura lo
+  // spostamento dell'osservatore
+  function spaCentro() {
+    const d = spa.dati;
+    if (!d) return [0, 0, 1];
+    let x = 0, y = 0, z = 0, p = 0;
+    d.stelle.forEach(s => {
+      const w = Math.pow(2.512, -s.mag);
+      x += s.x * w; y += s.y * w; z += s.z * w; p += w;
+    });
+    return p ? [x / p, y / p, z / p] : [0, 0, 1];
+  }
+
+  // --- Come si vede una stella da un punto qualunque -------------------
+  //
+  // Non è una formula astronomica: è la definizione stessa di «vedere».
+  // Si prende il vettore dall'osservatore alla stella, lo si normalizza,
+  // e si guarda dove cade rispetto alla direzione in cui si sta
+  // guardando. Da qui (osservatore nell'origine) torna esattamente la
+  // posizione di catalogo; da altrove torna un'altra cosa, ed è tutto il
+  // punto del banco.
+  function spaCielo(s, occhio, base) {
+    const dx = s.x - occhio[0], dy = s.y - occhio[1], dz = s.z - occhio[2];
+    const dist = Math.hypot(dx, dy, dz) || 1e-6;
+    const u = [dx / dist, dy / dist, dz / dist];
+    return {
+      x: u[0] * base.r[0] + u[1] * base.r[1] + u[2] * base.r[2],
+      y: u[0] * base.u[0] + u[1] * base.u[1] + u[2] * base.u[2],
+      avanti: u[0] * base.f[0] + u[1] * base.f[1] + u[2] * base.f[2],
+      dist
+    };
+  }
+
+  // Una terna ortonormale che guarda verso `f`
+  function spaBaseVerso(f) {
+    const fn = spaNormale(f);
+    const su = Math.abs(fn[2]) > 0.95 ? [1, 0, 0] : [0, 0, 1];
+    const r = spaNormale(spaCroce(su, fn));
+    const u = spaCroce(fn, r);
+    return { f: fn, r, u };
+  }
+
+  // Quanto appare luminosa una stella da una certa distanza: la magnitudine
+  // cambia col quadrato della distanza, e questa è la seconda metà della
+  // sorpresa — allontanandosi non cambia solo il disegno, cambia CHI si
+  // vede. Rigel da vicino è un faro, Sirio da mille anni luce sparisce.
+  function spaMagnitudine(s, dist) {
+    return s.mag + 5 * Math.log10(Math.max(0.001, dist / s.al));
+  }
+
+  function spaRaggioStella(mag) {
+    return Math.max(0.7, 4.6 - mag * 0.72);
+  }
+
+  // Le tre stelle della cintura di Orione stanno a otto pixel l'una
+  // dall'altra: scritte lì com'è, le tre etichette si stampano una sopra
+  // l'altra e non si legge nessuna delle tre. Qui si tiene l'elenco delle
+  // zone già occupate e si prova a scostare l'etichetta — sopra, sotto, a
+  // sinistra — finché trova posto. Se non lo trova, non si scrive: una
+  // scritta illeggibile è peggio di una scritta assente.
+  function spaEtichetta(ctx, testo, x, y, colore, zone) {
+    const largo = testo.length * 5.4 + 8, alto = 13;
+    const prove = [[6, -3], [6, 11], [6, -15], [-largo - 6, -3], [-largo - 6, 11], [6, 23]];
+    for (const [dx, dy] of prove) {
+      const bx = x + dx, by = y + dy - alto + 3;
+      const libero = zone.every(z =>
+        bx > z.x + z.w || bx + largo < z.x || by > z.y + z.h || by + alto < z.y);
+      if (!libero) continue;
+      zone.push({ x: bx, y: by, w: largo, h: alto });
+      didScritta(ctx, testo, x + dx, y + dy, { colore, misura: 10, peso: 600, schermo: true });
+      return true;
+    }
+    return false;
+  }
+
+  // --- Quadro 1: la figura come si vede da qui -------------------------
+
+  function spaDisegnaFigura() {
+    const tela = didTela('did-spa-figura', 1.5, 420, { lente: true, pieno: true });
+    if (!tela) return;
+    const { ctx, L, H } = tela;
+    didSfondo(ctx, L, H);
+    const d = spa.dati;
+    if (!d) { spaAttesa(ctx, L, H); return; }
+
+    const base = spaBaseVerso(spaCentro());
+    const punti = d.stelle.map(s => spaCielo(s, [0, 0, 0], base));
+    const g = spaInquadra(punti, L, H, 42);
+
+    // Le linee della figura
+    ctx.strokeStyle = SPA_C.linea;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    d.linee.forEach(([a, b]) => {
+      const pa = g(punti[a]), pb = g(punti[b]);
+      ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y);
+    });
+    ctx.stroke();
+
+    // Le stelle, con la distanza scritta accanto alle più luminose
+    const zone = [{ x: 0, y: 0, w: 300, h: 26 }];   // la riga di titolo in alto
+    d.stelle.forEach((s, i) => {
+      const p = g(punti[i]);
+      const r = spaRaggioStella(s.mag);
+      didCorpoSchermo(ctx, p.x, p.y, r, costColoreStella(s.bv), { alone: r * 3 });
+      if (s.mag < 2.9 && s.nome) {
+        spaEtichetta(ctx, `${s.nome} · ${Math.round(s.al)} al`, p.x + r, p.y, C.testo2, zone);
+      }
+    });
+
+    didScritta(ctx, 'Da qui: la figura che tutti conoscono', 12, 18,
+      { colore: C.testo3, misura: 11, peso: 700, schermo: true });
+  }
+
+  // --- Il grafico delle distanze ---------------------------------------
+  //
+  // Un istogramma orizzontale, una barra per stella, in scala logaritmica
+  // — perché fra Gacrux (89 anni luce) e Alnilam (1.977) c'è un fattore
+  // venti, e in scala lineare le vicine diventerebbero righe invisibili.
+  // È il quadro che dice la cosa in un colpo solo: le barre non sono
+  // nemmeno lontanamente uguali.
+
+  function spaDisegnaDistanze() {
+    const tela = didTela('did-spa-distanze', 1.35, 430, { lente: true });
+    if (!tela) return;
+    const { ctx, L, H } = tela;
+    ctx.clearRect(0, 0, L, H);
+    const d = spa.dati;
+    if (!d) { spaAttesa(ctx, L, H); return; }
+
+    // Solo le stelle che hanno un nome o sono luminose: ottanta barre non
+    // si leggono, dodici sì
+    const scelte = d.ordine
+      .map(i => ({ i, s: d.stelle[i] }))
+      .filter(v => v.s.mag < 3.6 || v.s.nome)
+      .slice(0, 14);
+    if (!scelte.length) return;
+
+    const sx = 104, dx = 34, alto = 26, basso = 44;
+    const larga = Math.max(40, L - sx - dx);
+    const passo = (H - alto - basso) / scelte.length;
+    const min = Math.max(1, d.minima * 0.7), max = d.massima * 1.15;
+    const lg = v => Math.log10(Math.max(1, v));
+    const perX = v => sx + larga * (lg(v) - lg(min)) / Math.max(0.05, lg(max) - lg(min));
+
+    // Le tacche: 10, 100, 1.000 anni luce
+    ctx.strokeStyle = 'rgba(148, 168, 214, 0.16)';
+    ctx.lineWidth = 1;
+    [10, 30, 100, 300, 1000, 3000].forEach(v => {
+      if (v < min || v > max) return;
+      const x = perX(v);
+      ctx.beginPath(); ctx.moveTo(x, alto - 6); ctx.lineTo(x, H - basso + 4); ctx.stroke();
+      didScritta(ctx, v >= 1000 ? (v / 1000) + '.000' : String(v), x, H - basso + 16,
+        { colore: C.testo3, misura: 10, allinea: 'center', peso: 600, schermo: true });
+    });
+    didScritta(ctx, 'anni luce', L - dx, H - basso + 16,
+      { colore: C.testo3, misura: 10, allinea: 'right', peso: 600, schermo: true });
+
+    scelte.forEach((v, k) => {
+      const y = alto + passo * (k + 0.5);
+      const x = perX(v.s.al);
+      const colore = v.s.al > d.minima * 4 ? SPA_C.barraLontana : SPA_C.barra;
+      ctx.strokeStyle = colore;
+      ctx.lineWidth = Math.max(3, Math.min(9, passo * 0.42));
+      ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(x, y); ctx.stroke();
+      didCorpoSchermo(ctx, x, y, 3.4, costColoreStella(v.s.bv), { alone: 9 });
+      didScritta(ctx, v.s.nome || 'una stella', sx - 8, y + 3,
+        { colore: C.testo2, misura: 10.5, allinea: 'right', peso: 600, schermo: true });
+      didScritta(ctx, `${Math.round(v.s.al)}${v.s.stimata ? ' ?' : ''}`, x + 9, y + 3,
+        { colore: C.testo3, misura: 10, peso: 600, schermo: true });
+    });
+
+    didScritta(ctx, 'Quanto è lontana ognuna — scala logaritmica', 12, 16,
+      { colore: C.testo3, misura: 11, peso: 700, schermo: true });
+  }
+
+  // --- Quadro 2: le stelle nello spazio, in tre dimensioni -------------
+
+  function spaVista(L, H, campo) {
+    const az = spa.cam.az * Math.PI / 180, el = spa.cam.elev * Math.PI / 180;
+    const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
+    return {
+      L, H, cx: L / 2, cy: H / 2,
+      scala: Math.min(L * 0.44, H * 0.82) / campo,
+      r: [-sa, ca, 0],
+      u: [-se * ca, -se * sa, ce],
+      f: [ce * ca, ce * sa, se]
+    };
+  }
+
+  // La scena si guarda in un riferimento in cui la figura sta davanti:
+  // si ruota lo spazio perché la direzione della costellazione diventi
+  // l'asse y, e il Sole resta nell'origine. Senza, una figura vicina al
+  // polo si vedrebbe di taglio comunque si giri la telecamera.
+  function spaLocale(p, telaio) {
+    const q = [p[0] - 0, p[1] - 0, p[2] - 0];
+    return [
+      q[0] * telaio.a[0] + q[1] * telaio.a[1] + q[2] * telaio.a[2],
+      q[0] * telaio.f[0] + q[1] * telaio.f[1] + q[2] * telaio.f[2],
+      q[0] * telaio.b[0] + q[1] * telaio.b[1] + q[2] * telaio.b[2]
+    ];
+  }
+
+  function spaTelaio() {
+    const f = spaNormale(spaCentro());
+    const su = Math.abs(f[2]) > 0.95 ? [1, 0, 0] : [0, 0, 1];
+    const a = spaNormale(spaCroce(su, f));
+    const b = spaCroce(f, a);
+    return { f, a, b };
+  }
+
+  function spaPro(p, w) {
+    return {
+      x: w.cx + (p[0] * w.r[0] + p[1] * w.r[1] + p[2] * w.r[2]) * w.scala,
+      y: w.cy - (p[0] * w.u[0] + p[1] * w.u[1] + p[2] * w.u[2]) * w.scala,
+      z: p[0] * w.f[0] + p[1] * w.f[1] + p[2] * w.f[2]
+    };
+  }
+
+  function spaDisegnaSpazio() {
+    const tela = didTela('did-spa-tela', 1.45, 480, { lente: true, trascina: false, pieno: true });
+    if (!tela) return;
+    const { ctx, L, H } = tela;
+    didSfondo(ctx, L, H);
+    const d = spa.dati;
+    if (!d) { spaAttesa(ctx, L, H); return; }
+
+    const telaio = spaTelaio();
+    const locali = d.stelle.map(s => spaLocale([s.x, s.y, s.z], telaio));
+
+    // L'inquadratura si misura sui punti veri, non sulla distanza massima:
+    // le stelle di una figura stanno tutte quasi nella stessa direzione,
+    // quindi occupano un fuso sottile: inquadrando una sfera larga quanto
+    // la più lontana, la scena finiva tutta in un francobollo in mezzo
+    // alla tela.
+    const grezza = spaVista(L, H, 1);
+    const crudi = locali.concat([[0, 0, 0]]).map(p => spaPro(p, grezza));
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    crudi.forEach(p => {
+      minX = Math.min(minX, p.x - L / 2); maxX = Math.max(maxX, p.x - L / 2);
+      minY = Math.min(minY, p.y - H / 2); maxY = Math.max(maxY, p.y - H / 2);
+    });
+    const campo = Math.max(1e-6, Math.max(maxX - minX, (maxY - minY) * 1.25)) /
+      (Math.min(L * 0.44, H * 0.82) / 1) * 1.16;
+    const w = spaVista(L, H, campo);
+    // Il centro della scena è il mezzo di quello che c'è, non l'origine:
+    // il Sole sta a un capo del fuso, e centrare su di lui butterebbe
+    // fuori schermo metà delle stelle
+    w.cx -= (minX + maxX) / 2 * (w.scala / grezza.scala);
+    w.cy -= (minY + maxY) / 2 * (w.scala / grezza.scala);
+    const punti = locali.map(p => spaPro(p, w));
+    const sole = spaPro([0, 0, 0], w);
+
+    // I cerchi di distanza attorno al Sole: 100, 500, 1.000, 2.000 anni
+    // luce. Sono il metro della scena — senza, «lontano» non vuol dire
+    // niente e la scena sembra un modellino senza misure.
+    ctx.save();
+    [100, 250, 500, 1000, 2000, 4000].forEach(raggio => {
+      if (raggio > d.massima * 1.4) return;
+      ctx.beginPath();
+      for (let k = 0; k <= 72; k++) {
+        const t = k / 72 * Math.PI * 2;
+        const p = spaPro([raggio * Math.cos(t), raggio * Math.sin(t), 0], w);
+        if (k === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      }
+      ctx.strokeStyle = 'rgba(148, 168, 214, 0.13)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      const et = spaPro([raggio, 0, 0], w);
+      didScritta(ctx, raggio >= 1000 ? (raggio / 1000) + '.000 al' : raggio + ' al', et.x, et.y - 4,
+        { colore: C.testo3, misura: 9.5, allinea: 'center', peso: 600, schermo: true });
+    });
+    ctx.restore();
+
+    // I raggi visuali dal Sole a ogni stella: sono LA spiegazione. Tutte
+    // le stelle della figura stanno dentro a un fascio strettissimo visto
+    // da qui, e a distanze completamente diverse lungo quel fascio.
+    ctx.strokeStyle = SPA_C.raggio;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    punti.forEach(p => { ctx.moveTo(sole.x, sole.y); ctx.lineTo(p.x, p.y); });
+    ctx.stroke();
+
+    // Le linee della figura, che qui si vedono per quello che sono:
+    // congiungimenti fra stelle che non si toccano
+    ctx.strokeStyle = SPA_C.linea3d;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    d.linee.forEach(([a, b]) => {
+      ctx.moveTo(punti[a].x, punti[a].y);
+      ctx.lineTo(punti[b].x, punti[b].y);
+    });
+    ctx.stroke();
+
+    // Le stelle, dalla più lontana alla più vicina
+    const zone3d = [{ x: 0, y: 0, w: 360, h: 26 }];
+    const perZ = d.stelle.map((s, i) => i).sort((a, b) => punti[a].z - punti[b].z);
+    perZ.forEach(i => {
+      const s = d.stelle[i], p = punti[i];
+      const r = spaRaggioStella(s.mag);
+      didCorpoSchermo(ctx, p.x, p.y, r, costColoreStella(s.bv), { alone: r * 2.8 });
+      if (s.mag < 2.2 && s.nome) {
+        spaEtichetta(ctx, `${s.nome} · ${Math.round(s.al)} al`, p.x + r, p.y, C.testo2, zone3d);
+      }
+    });
+
+    // Il Sole, che qui è un puntino come gli altri
+    didCorpoSchermo(ctx, sole.x, sole.y, 3.4, SPA_C.sole, { alone: 8 });
+    didScritta(ctx, 'il Sole — noi siamo qui', sole.x, sole.y + 18,
+      { colore: SPA_C.sole, misura: 10.5, allinea: 'center', peso: 700, schermo: true });
+
+    didScritta(ctx, 'Gira col dito: la figura è un caso, e si vede subito', 12, 18,
+      { colore: C.testo3, misura: 11, peso: 700, schermo: true });
+  }
+
+  // --- Quadro 3: il cielo da un altro punto ----------------------------
+
+  function spaDisegnaAltrove() {
+    const tela = didTela('did-spa-altrove', 1.5, 460, { lente: true, pieno: true });
+    if (!tela) return;
+    const { ctx, L, H } = tela;
+    didSfondo(ctx, L, H);
+    const d = spa.dati;
+    if (!d) { spaAttesa(ctx, L, H); return; }
+
+    const occhio = spaOsservatore();
+    const centro = spaCentro();
+    // Si continua a guardare verso la figura, da dove si è arrivati
+    const base = spaBaseVerso([centro[0] - occhio[0], centro[1] - occhio[1], centro[2] - occhio[2]]);
+
+    // L'inquadratura è quella di partenza e NON si riadatta mentre ci si
+    // sposta: se si riadattasse, la figura resterebbe sempre della stessa
+    // misura e non si vedrebbe più niente cambiare. È il punto: si sta
+    // guardando lo stesso pezzo di cielo, ed è la figura a smontarsi.
+    const daQui = d.stelle.map(s => spaCielo(s, [0, 0, 0], spaBaseVerso(centro)));
+    const g = spaInquadra(daQui, L, H, 46);
+    const punti = d.stelle.map(s => spaCielo(s, occhio, base));
+
+    ctx.strokeStyle = SPA_C.linea;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    d.linee.forEach(([a, b]) => {
+      if (!punti[a].avanti || !punti[b].avanti) return;
+      const pa = g(punti[a]), pb = g(punti[b]);
+      ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y);
+    });
+    ctx.stroke();
+
+    d.stelle.forEach((s, i) => {
+      if (!punti[i].avanti) return;
+      const p = g(punti[i]);
+      const mag = spaMagnitudine(s, punti[i].dist);
+      if (mag > 6.5) return;               // da lì, a occhio nudo, non c'è più
+      const r = spaRaggioStella(mag);
+      didCorpoSchermo(ctx, p.x, p.y, r, costColoreStella(s.bv), { alone: r * 3 });
+    });
+
+    const testo = spa.viaggio < 1
+      ? 'Sei sul Sole: è la figura di sempre'
+      : `${Math.round(spa.viaggio)} anni luce di lato — e la figura non c'è più`;
+    didScritta(ctx, testo, 12, 18,
+      { colore: spa.viaggio < 1 ? C.testo3 : '#c4b5fd', misura: 11, peso: 700, schermo: true });
+  }
+
+  // Un'inquadratura che tiene dentro tutti i punti dati, con un margine
+  function spaInquadra(punti, L, H, margine) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    punti.forEach(p => {
+      if (!p.avanti) return;
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    });
+    if (!isFinite(minX)) { minX = maxX = minY = maxY = 0; }
+    const scala = Math.min(
+      (L - margine * 2) / Math.max(0.02, maxX - minX),
+      (H - margine * 2) / Math.max(0.02, maxY - minY));
+    const mx = (minX + maxX) / 2, my = (minY + maxY) / 2;
+    return p => ({ x: L / 2 - (p.x - mx) * scala, y: H / 2 - (p.y - my) * scala });
+  }
+
+  function spaAttesa(ctx, L, H) {
+    didScritta(ctx, spa.stato === 'fallito'
+      ? 'Le distanze non si sono caricate: serve la rete, una volta sola.'
+      : 'Sto prendendo le distanze delle stelle…',
+      L / 2, H / 2, { colore: C.testo3, misura: 12, allinea: 'center', peso: 600, schermo: true });
+  }
+
+  // --- I numeri scritti sotto ------------------------------------------
+
+  function spaAggiornaTesti() {
+    const d = spa.dati;
+    if (!d) return;
+    const vicina = d.stelle[d.ordine[0]];
+    const lontana = d.stelle[d.ordine[d.ordine.length - 1]];
+    const rapporto = lontana.al / Math.max(1, vicina.al);
+    const occhio = spaOsservatore();
+    // Quante stelle della figura, da dove ci si è spostati, sono già
+    // scese sotto la sesta magnitudine: è la seconda metà della sorpresa
+    const svanite = d.stelle.filter(s =>
+      spaMagnitudine(s, Math.hypot(s.x - occhio[0], s.y - occhio[1], s.z - occhio[2])) > 6.5).length;
+
+    scrivi('did-spa-vicina', `${vicina.nome || 'una stella'} · ${Math.round(vicina.al)} al`);
+    scrivi('did-spa-lontana', `${lontana.nome || 'una stella'} · ${Math.round(lontana.al)} al`);
+    scrivi('did-spa-rapporto', `${rapporto.toFixed(1)} volte`, rapporto > 3 ? 'ambra' : null);
+    scrivi('did-spa-svanite', `${svanite} su ${d.stelle.length}`, svanite ? 'ambra' : null);
+  }
+
+  function spaAggiornaSlitte() {
+    const v = $('did-spa-viaggio-valore');
+    if (v) v.textContent = spa.viaggio < 1 ? 'sul Sole' : `${Math.round(spa.viaggio)} anni luce`;
+    const dir = $('did-spa-direzione-valore');
+    if (dir) dir.textContent = `${Math.round(spa.direzione)}°`;
+  }
+
+  // Il ponte in entrata: dalla scheda dell'atlante si arriva qui, con la
+  // figura già scelta. Funziona per tutte e ottantotto, non solo per le
+  // otto che hanno una pillola: se la figura non è fra quelle, nessuna
+  // pillola resta accesa ed è giusto così — il banco sta mostrando una
+  // costellazione che non è in elenco.
+  window.didCostellazioneNelloSpazio = function (sigla) {
+    // Chi arriva qui dall'atlante lo lascia aperto dietro di sé: si
+    // ritroverebbe il banco sotto a un velo nero, senza capire perché
+    if (typeof chiudiAtlanteCostellazioni === 'function') chiudiAtlanteCostellazioni();
+    if (typeof mostraVista === 'function') mostraVista('didattica');
+    didatticaAvvia();
+    spa.sigla = sigla || spa.sigla;
+    spa.viaggio = 0;
+    spa.quadro = 'figura';
+    didApri('spazio');
+    const figure = $('did-spa-figure');
+    if (figure) figure.querySelectorAll('[data-figura]').forEach(x =>
+      x.classList.toggle('attiva', x.dataset.figura === spa.sigla));
+    const quadri = $('did-spa-quadri');
+    if (quadri) quadri.querySelectorAll('[data-quadro]').forEach(x =>
+      x.classList.toggle('attiva', x.dataset.quadro === 'figura'));
+    const banco = $('did-lab-spazio');
+    if (banco) banco.querySelectorAll('.did-scene[data-quadro]').forEach(sez => {
+      sez.hidden = sez.dataset.quadro !== 'figura';
+    });
+    const sl = $('did-spa-viaggio');
+    if (sl) sl.value = 0;
+    if (spa.stato === 'pronto') { spaPrepara(); spaAggiornaTesti(); }
+    else spaChiediDati();
+    spaAggiornaSlitte();
+  };
+
+  laboratorio({
+    id: 'spazio',
+    chip: 'Le costellazioni non esistono',
+    occhiello: 'Concetto 7 — la prospettiva',
+    titolo: 'Orione, da un altro pianeta, non è niente',
+    sommario: `Una costellazione non è un oggetto: è un allineamento apparente, e vale da un solo
+      punto dell'universo — questo. Le tre stelle della cintura di Orione sembrano gemelle e in
+      fila: stanno a 692, 1.977 e 736 anni luce, e non hanno niente a che fare l'una con l'altra.
+      Qui le stesse stelle sono messe nello spazio vero, ognuna alla sua distanza misurata, e ci
+      si può girare intorno.`,
+
+    costruisci() {
+      return `
+        <!-- Otto nomi di costellazione in una pillola unica, su un
+             telefono, si accavallano: qui vanno a capo, come i luoghi del
+             banco delle aurore. -->
+        <div class="did-riga did-riga-avvolgi" id="did-spa-figure">
+          ${SPA_FIGURE.map((f, i) => `<button type="button" class="did-pillola${i === 0 ? ' attiva' : ''}" data-figura="${f.sigla}">${f.nome}</button>`).join('')}
+        </div>
+
+        <div class="did-riga did-riga-avvolgi" id="did-spa-quadri">
+          ${Object.keys(SPA_QUADRI).map((k, i) => `<button type="button" class="did-pillola${i === 0 ? ' attiva' : ''}" data-quadro="${k}">${SPA_QUADRI[k].nome}</button>`).join('')}
+        </div>
+
+        <div class="did-scene did-scene-due" data-quadro="figura">
+          <figure class="did-scena">
+            <canvas id="did-spa-figura" class="did-tela"></canvas>
+            <figcaption class="did-targhetta">La figura, come si vede da qui</figcaption>
+          </figure>
+          <figure class="did-scena">
+            <canvas id="did-spa-distanze" class="did-tela"></canvas>
+            <figcaption class="did-targhetta">Le distanze vere, una barra per stella</figcaption>
+          </figure>
+        </div>
+
+        <div class="did-scene" data-quadro="spazio" hidden>
+          <figure class="did-scena">
+            <canvas id="did-spa-tela" class="did-tela"></canvas>
+            <figcaption class="did-targhetta">Le stesse stelle nello spazio, con i raggi visuali dal Sole</figcaption>
+          </figure>
+        </div>
+
+        <div class="did-scene" data-quadro="altrove" hidden>
+          <figure class="did-scena">
+            <canvas id="did-spa-altrove" class="did-tela"></canvas>
+            <figcaption class="did-targhetta">Lo stesso pezzo di cielo, visto da un altro punto</figcaption>
+          </figure>
+          <div class="did-riga">
+            <label class="did-etichetta" for="did-spa-viaggio">Quanto ti allontani dal Sole</label>
+            <span class="did-valore" id="did-spa-viaggio-valore">sul Sole</span>
+          </div>
+          <input id="did-spa-viaggio" class="did-slitta did-slitta-larga" type="range"
+            min="0" max="${SPA_VIAGGIO_MAX}" step="10" value="0">
+
+          <div class="did-riga">
+            <label class="did-etichetta" for="did-spa-direzione">Da che parte ti sposti</label>
+            <span class="did-valore" id="did-spa-direzione-valore">0°</span>
+          </div>
+          <input id="did-spa-direzione" class="did-slitta did-slitta-larga" type="range"
+            min="0" max="360" step="5" value="0">
+        </div>
+
+        ${didLetture([
+          { id: 'did-spa-vicina', nome: 'La più vicina' },
+          { id: 'did-spa-lontana', nome: 'La più lontana' },
+          { id: 'did-spa-rapporto', nome: 'Quante volte più lontana', forte: true },
+          { id: 'did-spa-svanite', nome: 'Da lì, invisibili a occhio', forte: true }
+        ])}
+
+        <p class="did-nota">Le distanze vengono dalle parallassi di Hipparcos (database HYG). Per una
+          decina di stelle molto lontane la parallasse non basta a dare un numero: quelle sono
+          segnate con un punto interrogativo, e messe alla distanza mediana della loro figura.
+          Le magnitudini nel terzo quadro sono ricalcolate dalla distanza vera: allontanandosi non
+          cambia solo il disegno, cambia anche quali stelle si vedono ancora.</p>
+
+        ${didPonti([
+          { azione: 'cielo', icona: 'stella', testo: 'Vedila nel planetario',
+            titolo: 'La stessa figura sul cielo di stanotte, con il suo disegno' },
+          { azione: 'atlante', icona: 'lista', testo: 'La sua pagina nell\'atlante',
+            titolo: 'Chi le ha dato il nome, come la chiamano altrove, e se da qui si vede' }
+        ])}`;
+    },
+
+    collega() {
+      const figure = $('did-spa-figure');
+      if (figure) figure.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-figura]');
+        if (!b) return;
+        spa.sigla = b.dataset.figura;
+        figure.querySelectorAll('[data-figura]').forEach(x =>
+          x.classList.toggle('attiva', x.dataset.figura === spa.sigla));
+        spa.viaggio = 0;
+        const sl = $('did-spa-viaggio');
+        if (sl) sl.value = 0;
+        spaPrepara();
+        spaAggiornaTesti();
+        spaAggiornaSlitte();
+      });
+
+      const quadri = $('did-spa-quadri');
+      if (quadri) quadri.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-quadro]');
+        if (!b) return;
+        spa.quadro = b.dataset.quadro;
+        quadri.querySelectorAll('[data-quadro]').forEach(x =>
+          x.classList.toggle('attiva', x.dataset.quadro === spa.quadro));
+        const banco = $('did-lab-spazio');
+        if (banco) banco.querySelectorAll('[data-quadro]').forEach(sez => {
+          if (sez.tagName !== 'DIV' || !sez.classList.contains('did-scene')) return;
+          sez.hidden = sez.dataset.quadro !== spa.quadro;
+        });
+      });
+
+      const viaggio = $('did-spa-viaggio');
+      if (viaggio) viaggio.addEventListener('input', (e) => {
+        spa.viaggio = Number(e.target.value);
+        spaAggiornaSlitte();
+        spaAggiornaTesti();
+      });
+      const direzione = $('did-spa-direzione');
+      if (direzione) direzione.addEventListener('input', (e) => {
+        spa.direzione = Number(e.target.value);
+        spaAggiornaSlitte();
+        spaAggiornaTesti();
+      });
+
+      // Girare la scena in 3D: lo stesso gesto del banco delle aurore e
+      // della vista 3D del Sistema Solare — il dito porta con sé il
+      // modellino. Con due dita comanda la lente, e questo si tira da parte.
+      const tela = $('did-spa-tela');
+      if (tela) {
+        const dita = new Set();
+        tela.addEventListener('pointerdown', (e) => {
+          dita.add(e.pointerId);
+          spa.trascina = dita.size === 1 ? { x: e.clientX, y: e.clientY } : null;
+        });
+        tela.addEventListener('pointermove', (e) => {
+          if (!spa.trascina || dita.size !== 1) return;
+          const dx = e.clientX - spa.trascina.x, dy = e.clientY - spa.trascina.y;
+          spa.trascina = { x: e.clientX, y: e.clientY };
+          spa.cam.az -= dx * 0.42;
+          spa.cam.elev = Math.max(-84, Math.min(84, spa.cam.elev + dy * 0.34));
+          spa.camV.az = spa.cam.az;
+          spa.camV.elev = spa.cam.elev;
+        });
+        const su = (e) => { dita.delete(e.pointerId); if (!dita.size) spa.trascina = null; };
+        tela.addEventListener('pointerup', su);
+        tela.addEventListener('pointercancel', su);
+        tela.addEventListener('pointerleave', su);
+      }
+
+      collegaPonti('spazio', (azione) => {
+        if (azione === 'cielo' && typeof costMostraInCielo === 'function') costMostraInCielo(spa.sigla);
+        if (azione === 'atlante' && typeof apriAtlanteCostellazioni === 'function') {
+          apriAtlanteCostellazioni(spa.sigla);
+        }
+      });
+    },
+
+    entra() {
+      if (spa.stato === 'pronto') { spaPrepara(); spaAggiornaTesti(); }
+      else spaChiediDati();
+      spaAggiornaSlitte();
+    },
+
+    passo() {
+      // La telecamera ci scivola invece di saltarci
+      const k = 0.12;
+      spa.cam.az += (spa.camV.az - spa.cam.az) * k;
+      spa.cam.elev += (spa.camV.elev - spa.cam.elev) * k;
+    },
+
+    disegna() {
+      if (spa.quadro === 'figura') { spaDisegnaFigura(); spaDisegnaDistanze(); }
+      else if (spa.quadro === 'spazio') spaDisegnaSpazio();
+      else spaDisegnaAltrove();
+    }
+  });
+
+
+  // ===================================================================
   // 9. IL BANCO — linguette, costruzione e ciclo di disegno
   // ===================================================================
 

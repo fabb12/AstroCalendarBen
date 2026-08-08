@@ -55,6 +55,7 @@
      invece delle quindicimila che si vedono davvero da un cielo di montagna. -->
 <script src="dati-stelle-deboli.js"></script>
 <script src="dati-costellazioni.js"></script>
+<script src="dati-distanze.js"></script>
 <script src="dati-profondo.js"></script>
 <script src="dati-corpi-minori.js"></script>
 
@@ -1201,6 +1202,118 @@ titolo('13. Le costellazioni: disegni, telai, nomi (costellazioni.js)');
         costMetaPer(costCentri()['Cru'].dec).lat < -20, costMetaPer(costCentri()['Cru'].dec).nome);
   prova('per l\'Orsa Minore si resta al nord',
         costMetaPer(costCentri()['UMi'].dec).lat > 40, costMetaPer(costCentri()['UMi'].dec).nome);
+}
+
+// =====================================================================
+titolo('14. Le distanze delle stelle, e le costellazioni nello spazio');
+// =====================================================================
+{
+  const sigle = new Set(COSTELLAZIONI_IAU.map(c => c.sigla));
+  const chiavi = Object.keys(DISTANZE_FIGURE);
+
+  prova('c\'è una voce per ogni costellazione', chiavi.length >= 88, `${chiavi.length} figure`);
+  prova('e nessuna che non esista', chiavi.every(k => sigle.has(k)));
+
+  let vertici = 0, conDistanza = 0, conNome = 0;
+  chiavi.forEach(k => DISTANZE_FIGURE[k].forEach(v => {
+    vertici++;
+    if (typeof v[2] === 'number' && v[2] > 0) conDistanza++;
+    if (v[5]) conNome++;
+  }));
+  prova('ogni vertice ha sei campi',
+        chiavi.every(k => DISTANZE_FIGURE[k].every(v => v.length === 6)), `${vertici} vertici`);
+  prova('quasi tutti hanno una distanza misurata', conDistanza > vertici * 0.97,
+        `${conDistanza} su ${vertici} — le altre non hanno parallasse buona`);
+  prova('la maggior parte ha un nome', conNome > vertici * 0.8, `${conNome} con nome`);
+
+  // I vertici delle distanze devono essere ESATTAMENTE quelli delle
+  // figure: è su quelli che costStelle3D va a cercare, e un
+  // arrotondamento diverso vorrebbe dire una figura senza linee
+  let mancanti = 0;
+  COSTELLAZIONI_IAU.forEach(c => {
+    const noti = new Set((DISTANZE_FIGURE[c.sigla] || []).map(v => v[0] + ',' + v[1]));
+    c.spezzate.forEach(l => l.forEach(p => { if (!noti.has(p[0] + ',' + p[1])) mancanti++; }));
+  });
+  prova('ogni vertice delle figure ha la sua distanza', mancanti === 0,
+        mancanti ? `${mancanti} vertici scoperti` : 'combaciano tutti');
+
+  // --- Qualche distanza nota, contro i valori di Hipparcos ---
+  const cerca = (sigla, nome) => (DISTANZE_FIGURE[sigla] || []).find(v => v[5] === nome);
+  const vicino = (a, b, tolleranza) => Math.abs(a - b) / b < tolleranza;
+  const alnilam = cerca('Ori', 'Alnilam'), alnitak = cerca('Ori', 'Alnitak'),
+        mintaka = cerca('Ori', 'Mintaka');
+  prova('le tre stelle della cintura ci sono tutte', !!(alnilam && alnitak && mintaka));
+  prova('Alnilam sta a circa duemila anni luce', vicino(alnilam[2], 1977, 0.02), `${alnilam[2]} al`);
+  prova('e le altre due a settecento scarsi',
+        vicino(alnitak[2], 736, 0.05) && vicino(mintaka[2], 693, 0.05),
+        `${alnitak[2]} e ${mintaka[2]} al`);
+  prova('la stella in mezzo è quasi tre volte più lontana delle sue vicine',
+        alnilam[2] / alnitak[2] > 2.5,
+        `${(alnilam[2] / alnitak[2]).toFixed(1)} volte — e sembrano gemelle`);
+  prova('Rigel a circa 860 anni luce', vicino(cerca('Ori', 'Rigel')[2], 863, 0.03));
+  prova('Gacrux è la più vicina della Croce del Sud',
+        cerca('Cru', 'Gacrux')[2] < cerca('Cru', 'Acrux')[2],
+        `${cerca('Cru', 'Gacrux')[2]} contro ${cerca('Cru', 'Acrux')[2]} al`);
+
+  // --- La geometria: da direzione e distanza al punto nello spazio ---
+  //
+  // Il controllo che conta: rimettendo un punto dello spazio in
+  // coordinate celesti si deve ritrovare la direzione di partenza. Se la
+  // conversione avesse un asse scambiato o un segno girato, la figura in
+  // 3D sarebbe una figura diversa — e nessuno se ne accorgerebbe, perché
+  // «una nuvola di puntini» sembra giusta comunque.
+  {
+    let peggio = 0;
+    [['Ori', 5.6036, -1.2019], ['Cru', 12.4433, -63.0991], ['UMi', 2.5303, 89.2641],
+     ['Cyg', 20.3705, 40.2567], ['Sco', 16.4901, -26.432]].forEach(([, ra, dec]) => {
+      const p = costPuntoSpazio(ra, dec, 137);
+      const d = Math.hypot(p[0], p[1], p[2]);
+      const raTorna = ((Math.atan2(p[1], p[0]) * 180 / Math.PI / 15) + 24) % 24;
+      const decTorna = Math.asin(p[2] / d) * 180 / Math.PI;
+      peggio = Math.max(peggio,
+        Math.abs(((raTorna - ra + 36) % 24) - 12) < 1e-6 ? 0 : Math.abs(raTorna - ra) * 15,
+        Math.abs(decTorna - dec), Math.abs(d - 137));
+    });
+    prova('direzione e distanza tornano indietro esatte', peggio < 1e-6,
+          `scarto massimo ${peggio.toExponential(1)}`);
+  }
+
+  // Il Sole nell'origine: una stella a distanza zero starebbe addosso a
+  // noi, e nessuna delle formule del banco funzionerebbe
+  prova('nessuna stella sta addosso al Sole',
+        chiavi.every(k => DISTANZE_FIGURE[k].every(v => v[2] === null || v[2] > 3)),
+        'la più vicina di tutte è a più di tre anni luce');
+
+  // --- Da un altro punto, la figura cambia davvero ---
+  //
+  // È la promessa del banco, e va verificata invece che sperata: si
+  // prendono le direzioni delle stelle di Orione viste dal Sole e viste
+  // da mille anni luce di lato, e si guarda quanto sono cambiate.
+  {
+    const voci = DISTANZE_FIGURE['Ori'].filter(v => typeof v[2] === 'number' && v[3] < 3);
+    const punti = voci.map(v => costPuntoSpazio(v[0], v[1], v[2]));
+    const versore = p => { const n = Math.hypot(p[0], p[1], p[2]); return [p[0] / n, p[1] / n, p[2] / n]; };
+    const occhio = [0, 0, 1000];        // mille anni luce verso il polo nord celeste
+    let massimo = 0;
+    punti.forEach((p, i) => {
+      const a = versore(p);
+      const b = versore([p[0] - occhio[0], p[1] - occhio[1], p[2] - occhio[2]]);
+      const cos = Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]));
+      massimo = Math.max(massimo, Math.acos(cos) * 180 / Math.PI);
+    });
+    prova('da mille anni luce di lato le stelle di Orione si spostano di decine di gradi',
+          massimo > 25, `la più spostata di ${massimo.toFixed(0)}°`);
+  }
+
+  // E la magnitudine cambia col quadrato della distanza: allontanandosi
+  // non cambia solo il disegno, cambia chi si vede ancora
+  {
+    const rigel = cerca('Ori', 'Rigel');
+    const daDieciVolte = rigel[3] + 5 * Math.log10(10);
+    prova('a dieci volte la distanza una stella perde cinque magnitudini',
+          Math.abs(daDieciVolte - rigel[3] - 5) < 1e-9,
+          `Rigel passerebbe da ${rigel[3]} a ${daDieciVolte.toFixed(1)}`);
+  }
 }
 
 // =====================================================================

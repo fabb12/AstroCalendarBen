@@ -532,3 +532,165 @@ console.log('stelle       ', costruisciStelle());
 console.log('costellazioni', costruisciCostellazioni());
 console.log('profondo     ', costruisciProfondo());
 if (process.argv[4]) console.log('corpi minori ', costruisciCorpiMinori(process.argv[4]));
+
+// ---------------------------------------------------------------------
+// 4. LE DISTANZE — quanto è lontana ogni stella delle figure
+//
+//     Serve a una cosa sola, ma è una cosa che cambia il modo di guardare
+//     il cielo: mettere le stelle di una costellazione nello spazio VERO,
+//     ognuna alla sua distanza, e far vedere che la figura non esiste —
+//     è un effetto di prospettiva che funziona da qui e da nessun altro
+//     posto. Le tre stelle della cintura di Orione sembrano gemelle e
+//     stanno a 1.260, 2.000 e 1.260 anni luce.
+//
+//     Il catalogo delle figure (dati-costellazioni.js) porta solo
+//     ascensione retta e declinazione: la distanza non c'è, perché al
+//     planetario non è mai servita. Qui si va a prenderla nel database
+//     HYG, che mette insieme Hipparcos, Yale BSC e Gliese e per ogni
+//     stella riporta la parallasse convertita in parsec.
+//
+//     L'accoppiamento è per posizione: le due sorgenti sono entrambe
+//     J2000 e le coordinate coincidono alla terza cifra. Se una stella
+//     non si trova, o la sua parallasse è troppo incerta perché HYG dia
+//     una distanza (succede per le supergiganti lontane), la distanza
+//     resta `null` e il disegno in 3D la mette alla distanza di catalogo
+//     dicendo che è una stima.
+// ---------------------------------------------------------------------
+
+const PARSEC_IN_AL = 3.261564;
+
+function costruisciDistanze(fileHyg) {
+  const righe = fs.readFileSync(fileHyg, 'utf8').split('\n');
+  const intestazione = righe[0].split(',').map(s => s.replace(/"/g, ''));
+  const col = n => intestazione.indexOf(n);
+  const iRa = col('ra'), iDec = col('dec'), iDist = col('dist'), iMag = col('mag'),
+        iCi = col('ci'), iProper = col('proper'), iBayer = col('bayer'), iCon = col('con'),
+        iSpect = col('spect');
+
+  // Una riga CSV con virgolette: le stelle con nome proprio hanno campi
+  // fra apici, e uno split secco sulle virgole li spezzerebbe in due
+  const spezza = riga => {
+    const fuori = [];
+    let corrente = '', dentroApici = false;
+    for (let i = 0; i < riga.length; i++) {
+      const c = riga[i];
+      if (c === '"') dentroApici = !dentroApici;
+      else if (c === ',' && !dentroApici) { fuori.push(corrente); corrente = ''; }
+      else corrente += c;
+    }
+    fuori.push(corrente);
+    return fuori;
+  };
+
+  // Le stelle di HYG in una griglia grossolana, per non fare centomila
+  // confronti per ogni vertice
+  const griglia = new Map();
+  const chiave = (ra, dec) => `${Math.round(ra * 4)}|${Math.round(dec)}`;
+  const stelle = [];
+  for (let i = 1; i < righe.length; i++) {
+    if (!righe[i]) continue;
+    const c = spezza(righe[i]);
+    const ra = parseFloat(c[iRa]), dec = parseFloat(c[iDec]), mag = parseFloat(c[iMag]);
+    if (!isFinite(ra) || !isFinite(dec) || !isFinite(mag) || mag > 7.2) continue;
+    const dist = parseFloat(c[iDist]);
+    const s = {
+      ra, dec, mag,
+      // 100000 parsec è il tappo che HYG mette quando la parallasse non
+      // c'è o è minore del suo errore: non è una distanza, è un «non lo so»
+      al: isFinite(dist) && dist > 0 && dist < 99999 ? dist * PARSEC_IN_AL : null,
+      ci: isFinite(parseFloat(c[iCi])) ? parseFloat(c[iCi]) : null,
+      nome: c[iProper] || '', bayer: c[iBayer] || '', con: c[iCon] || '',
+      spett: (c[iSpect] || '').slice(0, 3)
+    };
+    const indice = stelle.push(s) - 1;
+    // Anche le celle vicine: un vertice sul bordo di una cella deve
+    // trovare la stella che sta appena di là
+    for (let dr = -1; dr <= 1; dr++) for (let dd = -1; dd <= 1; dd++) {
+      const k = `${Math.round(ra * 4) + dr}|${Math.round(dec) + dd}`;
+      if (!griglia.has(k)) griglia.set(k, []);
+      griglia.get(k).push(indice);
+    }
+  }
+
+  const piuVicina = (ra, dec) => {
+    const vicine = griglia.get(chiave(ra, dec)) || [];
+    let migliore = null, minimo = Infinity;
+    const cd = Math.cos(dec * Math.PI / 180);
+    vicine.forEach(i => {
+      const s = stelle[i];
+      const d = Math.hypot((s.ra - ra) * 15 * cd, s.dec - dec);
+      if (d < minimo) { minimo = d; migliore = s; }
+    });
+    return minimo < 0.05 ? migliore : null;
+  };
+
+  // I vertici delle figure si leggono da dati-costellazioni.js, non dalla
+  // sorgente d3-celestial: le distanze devono corrispondere ESATTAMENTE
+  // ai vertici che l'app disegna, cifra per cifra, perché è su quelli che
+  // il banco in 3D andrà a cercarle. Passando dalla sorgente basterebbe
+  // un arrotondamento diverso per non trovare più niente.
+  const sorgenteFigure = fs.readFileSync(path.join(DESTINAZIONE, 'dati-costellazioni.js'), 'utf8');
+  const ambiente = {};
+  new Function('e', sorgenteFigure + '\ne.COSTELLAZIONI_IAU = COSTELLAZIONI_IAU;')(ambiente);
+  const figure = ambiente.COSTELLAZIONI_IAU;
+
+  const fuori = [];
+  let trovate = 0, totale = 0, senzaDistanza = 0;
+  const perSigla = {};
+
+  figure.forEach(f => {
+    const sigla = f.sigla;
+    // Il Serpente è in due tronconi e compare due volte: le voci del
+    // secondo si aggiungono a quelle del primo
+    const visti = new Map();
+    const voci = perSigla[sigla] || [];
+    voci.forEach(v => visti.set(v[0] + ',' + v[1], true));
+    (f.spezzate || []).forEach(linea => linea.forEach(p => {
+      const ra = p[0], dec = p[1];
+      const k = ra + ',' + dec;
+      if (visti.has(k)) return;
+      visti.set(k, true);
+      totale++;
+      const s = piuVicina(ra, dec);
+      if (!s) { fuori.push(`${sigla} ${ra} ${dec}`); voci.push([ra, dec, null, null, null, '']); return; }
+      trovate++;
+      if (s.al === null) senzaDistanza++;
+      // Il nome che ha senso scrivere: quello proprio se c'è, se no la
+      // lettera di Bayer con la costellazione (Zeta Orionis)
+      const nome = s.nome || (s.bayer ? s.bayer + ' ' + s.con : '');
+      voci.push([ra, dec, s.al === null ? null : arr(s.al, 1), arr(s.mag, 2),
+                 s.ci === null ? null : arr(s.ci, 3), nome]);
+    }));
+    perSigla[sigla] = voci;
+  });
+
+  const testoFile = INTESTAZIONE('LE DISTANZE DELLE STELLE DELLE FIGURE', [
+    'Per ogni vertice delle ottantotto figure: ascensione retta e',
+    'declinazione (le stesse di dati-costellazioni.js, così si',
+    'riconoscono), la distanza in anni luce, la magnitudine, l\'indice di',
+    'colore B−V e il nome se ne ha uno.',
+    '',
+    'Serve al banco «Le costellazioni non esistono»: mettere le stelle di',
+    'una figura nello spazio vero, ognuna alla sua distanza, e allontanare',
+    'l\'osservatore finché la figura si disfa. Da qui la cintura di Orione',
+    'sono tre stelle uguali in fila; da mille anni luce di lato sono tre',
+    'stelle che non hanno niente a che fare l\'una con l\'altra.',
+    '',
+    'Distanza `null` vuol dire che la parallasse non basta a saperla: HYG',
+    'per quelle stelle non dà un numero, e non lo inventiamo nemmeno noi.',
+    '',
+    'Fonte: HYG Database v4.1 (CC BY-SA 4.0, astronexus/HYG-Database), a',
+    'monte Hipparcos, Yale Bright Star Catalog e Gliese.',
+    'Ripreso il ' + new Date().toISOString().slice(0, 10) + '.'
+  ]) +
+`const DISTANZE_FIGURE = {\n${
+  Object.keys(perSigla).sort().map(s =>
+    `  ${s}: [${perSigla[s].map(v => JSON.stringify(v)).join(',')}]`).join(',\n')
+}\n};\n`;
+
+  fs.writeFileSync(path.join(DESTINAZIONE, 'dati-distanze.js'), testoFile);
+  return { vertici: totale, trovati: trovate, senzaDistanza,
+           nonTrovati: fuori.length, kb: Math.round(testoFile.length / 1024) };
+}
+
+if (process.argv[5]) console.log('distanze     ', costruisciDistanze(process.argv[5]));
