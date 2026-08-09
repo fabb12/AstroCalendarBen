@@ -10133,10 +10133,36 @@ function skyVelo() {
 }
 
 // --- La Via Lattea ---------------------------------------------------
-// Non è un catalogo: è il piano della nostra galassia visto da dentro. Basta
-// sapere dove passa (le coordinate galattiche b = 0) e quanto è luminoso
-// lungo il giro: verso il centro, in Sagittario, è una nuvola densa; verso
-// l'anticentro, in Auriga, si intuisce appena.
+//
+// Non è un catalogo: è il piano della nostra Galassia guardato da dentro.
+// Per molto tempo qui c'è stata una riga — i punti di latitudine galattica
+// zero — ripassata venti volte con tratti sempre più larghi. Da lontano
+// funzionava, ma raccontava tre bugie, e sono le tre cose che chiunque
+// abbia visto la Via Lattea da un posto buio riconosce per prime:
+//
+//   · la banda non ha una larghezza sola. Verso il Sagittario si guarda
+//     il rigonfiamento centrale della Galassia — ventiseimila anni luce
+//     di stelle in fila — e occupa venti gradi di cielo; verso
+//     l'anticentro, in Auriga, si guarda fuori dal disco e resta un
+//     nastro di cinque;
+//   · non ha una luminosità sola, e non cambia con dolcezza: le nubi
+//     stellari (la Grande Nube del Sagittario, la Nube dello Scudo,
+//     quella del Cigno, la Carena) sono chiazze, con un loro bordo;
+//   · e soprattutto **non è continua**. La Fenditura del Cigno la taglia
+//     in due dal Cigno al Sagittario, settanta gradi di cielo di seguito.
+//     Non è un vuoto: è polvere davanti, ed è il dettaglio che più di
+//     ogni altro dice «Via Lattea vera» invece di «nastro disegnato».
+//
+// Quindi non più una linea, ma una nuvola: milleseicento fiocchi sparsi
+// in coordinate galattiche seguendo una densità che mette insieme lo
+// spessore della banda, la luce lungo il giro e le nubi con un nome,
+// chiare e scure. Dove la densità è zero non si mette niente, e quel
+// niente è la fenditura — un buco vero, non una vernice scura stesa sopra
+// al chiaro (che con la fusione additiva non esisterebbe nemmeno).
+//
+// I fiocchi si sorteggiano una volta sola — alla prima apertura del
+// planetario, non all'avvio dell'app — da un seme fisso: la Via Lattea di
+// stasera dev'essere la stessa di ieri sera.
 const SKY_NGP_RA = 192.85948;    // polo nord galattico, ascensione retta in gradi
 const SKY_NGP_DEC = 27.12825;    // ...e declinazione
 const SKY_L_NCP = 122.93192;     // longitudine galattica del polo nord celeste
@@ -10153,120 +10179,365 @@ function skyGalatticoAEquatoriale(l, b) {
   return { ra: ra / 15, dec: dec * SKY_R2D };
 }
 
-// Quanto brilla la banda a quella longitudine galattica
-function skyLuceViaLattea(l) {
+// Quanti gradi di longitudine galattica siamo lontani dal centro (che sta
+// in Sagittario, a l = 0): il numero da cui dipende quasi tutto il resto.
+function skyVLDalCentro(l) {
   const a = ((l % 360) + 360) % 360;
-  const dalCentro = Math.min(a, 360 - a);
-  const verso = Math.pow(Math.cos(dalCentro * 0.5 * SKY_D2R), 2);
-  // Addensamenti e vuoti lungo il giro: una banda perfettamente uniforme si
-  // riconosce subito come disegnata a tavolino
-  const grumi = 0.86 + 0.14 * Math.sin(a * 0.11) * Math.cos(a * 0.043 + 1.7);
-  return (0.4 + 0.6 * verso) * grumi;
+  return Math.min(a, 360 - a);
 }
 
-// Il percorso del piano galattico, calcolato una volta sola
-const SKY_VIA_LATTEA = (() => {
-  const punti = [];
-  for (let l = 0; l <= 360; l += 4) {
-    const p = skyGalatticoAEquatoriale(l % 360, 0);
-    punti.push({ ra: p.ra, dec: p.dec, luce: skyLuceViaLattea(l) });
-  }
-  return punti;
-})();
+// Distanza fra due punti in coordinate galattiche. Il coseno sulla
+// longitudine serve perché a b = 30° un grado di longitudine è mezzo grado
+// di cielo: senza, le nubi alte sopra al piano verrebbero stirate.
+function skyVLDistanza(l1, b1, l2, b2) {
+  const dl = (((l1 - l2 + 540) % 360) - 180) * Math.cos((b1 + b2) * 0.5 * SKY_D2R);
+  return Math.hypot(dl, b1 - b2);
+}
 
-// I passaggi con cui si dipinge la banda: dal velo larghissimo e tenue al
-// nocciolo stretto e più chiaro. Sommandoli viene una nuvola sfumata, che è
-// il modo giusto di disegnare una cosa che non ha bordi.
-// I veli con cui si dipinge la banda: venti passate, dalla più larga e
-// impalpabile al nocciolo stretto. Con pochi strati larghi si vedeva il bordo
-// di ciascuno e la banda sembrava un nastro cucito; venti veli quasi
-// trasparenti si fondono in una nuvola sola, senza scalini.
-function skyCostruisciVeliViaLattea(quanti, guadagno) {
-  const strati = [];
-  for (let i = 0; i < quanti; i++) {
-    const t = i / (quanti - 1);      // 0 = il velo più largo, 1 = il nocciolo
-    strati.push({
-      gradi: 1.1 + 17 * Math.pow(1 - t, 1.7),
-      alpha: (0.006 + 0.011 * t * t) * guadagno
+// Semispessore della banda, in gradi. Il rigonfiamento centrale è il primo
+// termine gaussiano; il secondo è la gobba del Cigno, dove il braccio di
+// Orione ci passa accanto e la banda torna a essere larga.
+function skyVLSemiSpessore(l) {
+  const d = skyVLDalCentro(l);
+  return 3.4
+    + 8.4 * Math.exp(-Math.pow(d / 38, 2))
+    + 1.6 * Math.exp(-Math.pow((d - 82) / 34, 2));
+}
+
+// Quanto brilla la banda lungo il giro: verso il centro è una nuvola
+// densa, all'anticentro un quinto di quella luce. L'esponente 1,7 (invece
+// del quadrato) tiene la caduta ripida vicino al centro e piatta lontano,
+// che è come si comporta davvero.
+function skyVLLuceGiro(l) {
+  const d = skyVLDalCentro(l);
+  return 0.2 + 0.8 * Math.exp(-Math.pow(d / 62, 1.7));
+}
+
+// Le nubi stellari con un nome: chiazze dove la banda si addensa. Sono
+// quelle che si vedono a occhio nudo da un cielo buio, e sono il motivo
+// per cui la Via Lattea non sembra mai dipinta con un pennello solo.
+const SKY_VL_CHIARE = [
+  { nome: 'Grande Nube del Sagittario',  l: 6,   b: -3.6, r: 6.0, forza: 0.95 },
+  { nome: 'Piccola Nube del Sagittario', l: 13,  b: -1.6, r: 2.6, forza: 0.62 },
+  { nome: 'Nube dello Scudo',            l: 27,  b: -0.6, r: 4.0, forza: 0.78 },
+  { nome: "Nube dell'Aquila",            l: 45,  b: -1.2, r: 4.0, forza: 0.42 },
+  { nome: 'Nube del Cigno',              l: 78,  b: 1.4,  r: 6.5, forza: 0.58 },
+  { nome: 'Cassiopea',                   l: 118, b: -1.0, r: 4.5, forza: 0.30 },
+  { nome: 'Perseo',                      l: 134, b: -2.0, r: 4.5, forza: 0.26 },
+  { nome: 'Auriga',                      l: 174, b: 0.6,  r: 4.0, forza: 0.20 },
+  { nome: 'Poppa',                       l: 245, b: -1.4, r: 5.0, forza: 0.26 },
+  { nome: 'Vele',                        l: 266, b: -1.6, r: 5.0, forza: 0.38 },
+  { nome: 'Carena',                      l: 287, b: -0.8, r: 5.0, forza: 0.72 },
+  { nome: 'Croce del Sud',               l: 301, b: 0.4,  r: 4.5, forza: 0.46 },
+  { nome: 'Centauro',                    l: 312, b: 0.2,  r: 4.5, forza: 0.44 },
+  { nome: 'Regolo',                      l: 330, b: -0.6, r: 4.5, forza: 0.52 },
+  { nome: 'Scorpione',                   l: 344, b: 1.2,  r: 4.0, forza: 0.48 }
+];
+
+// Le nubi scure: polvere fra noi e le stelle. La lunga catena da l = 80 a
+// l = 0 è la Fenditura del Cigno, che nel Cigno corre sul piano e
+// salendo verso l'Ofiuco se ne stacca di cinque gradi — per questo è una
+// fila di macchie e non una riga: quella deviazione è il suo aspetto.
+// Le macchie della catena si toccano — passo di sei gradi, raggio di
+// quattro — perché la fenditura è una cosa sola: con macchie distanziate
+// restava una collana di buchi, che è il difetto opposto e altrettanto
+// riconoscibile.
+const SKY_VL_SCURE = [
+  { nome: 'Fenditura del Cigno',    l: 86,  b: 0.2,  r: 3.6, forza: 0.50 },
+  { nome: 'Fenditura del Cigno',    l: 80,  b: 0.4,  r: 3.8, forza: 0.66 },
+  { nome: 'Fenditura del Cigno',    l: 74,  b: 0.6,  r: 3.9, forza: 0.76 },
+  { nome: 'Fenditura del Cigno',    l: 68,  b: 0.8,  r: 4.0, forza: 0.80 },
+  { nome: 'Fenditura del Cigno',    l: 62,  b: 1.1,  r: 4.0, forza: 0.82 },
+  { nome: "Fenditura dell'Aquila",  l: 56,  b: 1.5,  r: 4.0, forza: 0.82 },
+  { nome: "Fenditura dell'Aquila",  l: 50,  b: 1.9,  r: 4.0, forza: 0.82 },
+  { nome: "Fenditura dell'Aquila",  l: 44,  b: 2.3,  r: 4.1, forza: 0.82 },
+  { nome: "Fenditura dell'Aquila",  l: 38,  b: 2.8,  r: 4.1, forza: 0.80 },
+  { nome: 'Fenditura del Serpente', l: 32,  b: 3.3,  r: 4.2, forza: 0.78 },
+  { nome: 'Fenditura del Serpente', l: 26,  b: 3.9,  r: 4.2, forza: 0.76 },
+  { nome: "Fenditura dell'Ofiuco",  l: 20,  b: 4.5,  r: 4.3, forza: 0.74 },
+  { nome: "Fenditura dell'Ofiuco",  l: 14,  b: 5.1,  r: 4.3, forza: 0.72 },
+  { nome: "Fenditura dell'Ofiuco",  l: 8,   b: 5.7,  r: 4.2, forza: 0.68 },
+  { nome: 'Nebulosa Pipa',          l: 2,   b: 6.2,  r: 4.0, forza: 0.60 },
+  { nome: 'Rho Ofiuco',             l: 355, b: 6.6,  r: 3.6, forza: 0.46 },
+  { nome: 'Sacco di Carbone',       l: 303, b: -0.8, r: 3.0, forza: 0.82 },
+  { nome: 'Buco nel Centauro',      l: 316, b: 0.6,  r: 2.8, forza: 0.46 },
+  { nome: 'Polvere nel Regolo',     l: 337, b: 1.4,  r: 3.0, forza: 0.44 },
+  { nome: 'Polvere nel Cefeo',      l: 104, b: 2.2,  r: 3.2, forza: 0.40 },
+  { nome: 'Polvere nel Toro',       l: 168, b: -3.0, r: 3.4, forza: 0.30 }
+];
+
+// Ogni nube con un nome tocca una decina di gradi di longitudine e basta,
+// ma il sorteggio chiede la densità trentamila volte, e cercarle tutte
+// ogni volta è quasi tutto il tempo che ci vuole. Si dividono una volta
+// sola in spicchi di dieci gradi: per un punto se ne guardano tre o
+// quattro invece di trentasei.
+const SKY_VL_SPICCHIO = 10;              // gradi di longitudine per spicchio
+const SKY_VL_SPICCHI = 360 / SKY_VL_SPICCHIO;
+
+function skyVLPerSpicchi(elenco) {
+  const spicchi = [];
+  for (let i = 0; i < SKY_VL_SPICCHI; i++) spicchi.push([]);
+  elenco.forEach(n => {
+    // Fin dove arriva: oltre i 2,6 raggi la gaussiana è sotto lo 0,1% e il
+    // conto la salta. Il coseno della latitudine allarga quel raggio in
+    // longitudine, e 0,85 è il caso peggiore (una nube sul piano guardata
+    // da trenta gradi sopra).
+    const arrivo = 2.6 * n.r / 0.85 + SKY_VL_SPICCHIO;
+    const da = Math.floor((n.l - arrivo) / SKY_VL_SPICCHIO);
+    const a = Math.ceil((n.l + arrivo) / SKY_VL_SPICCHIO);
+    for (let k = da; k <= a; k++) spicchi[((k % SKY_VL_SPICCHI) + SKY_VL_SPICCHI) % SKY_VL_SPICCHI].push(n);
+  });
+  return spicchi;
+}
+
+const SKY_VL_CHIARE_SPICCHI = skyVLPerSpicchi(SKY_VL_CHIARE);
+const SKY_VL_SCURE_SPICCHI = skyVLPerSpicchi(SKY_VL_SCURE);
+
+// Quanta luce c'è in quel punto del cielo galattico. Il profilo verticale
+// è una gaussiana con una coda: il nocciolo della banda è stretto, ma un
+// alone tenue arriva molto più in alto — e senza la coda la banda ha un
+// bordo, che è la cosa che non deve avere.
+function skyVLDensita(l, b) {
+  const u = b / skyVLSemiSpessore(l);
+  const profilo = 0.84 * Math.exp(-u * u * 1.7) + 0.16 * Math.exp(-Math.abs(u) * 1.2);
+  let d = skyVLLuceGiro(l) * profilo;
+
+  const spicchio = ((Math.floor(l / SKY_VL_SPICCHIO) % SKY_VL_SPICCHI) + SKY_VL_SPICCHI) % SKY_VL_SPICCHI;
+  const chiare = SKY_VL_CHIARE_SPICCHI[spicchio];
+  const scure = SKY_VL_SCURE_SPICCHI[spicchio];
+
+  for (let i = 0; i < chiare.length; i++) {
+    const n = chiare[i];
+    const x = skyVLDistanza(l, b, n.l, n.b) / n.r;
+    if (x < 2.6) d += n.forza * Math.exp(-x * x);
+  }
+  for (let i = 0; i < scure.length; i++) {
+    const n = scure[i];
+    const x = skyVLDistanza(l, b, n.l, n.b) / n.r;
+    if (x < 2.6) d *= 1 - n.forza * Math.exp(-x * x);
+  }
+
+  // La grana: tre onde con periodi che non sono uno il multiplo dell'altro
+  // (17°, 48°, 7°), perché due sole facevano una scalloppatura regolare —
+  // una fila di gobbe tutte uguali, che è il difetto che questa riga esiste
+  // per togliere.
+  const grana = 0.72
+    + 0.16 * Math.sin(l * 0.37 + b * 0.21)
+    + 0.13 * Math.cos(l * 0.131 - b * 0.44 + 2.1)
+    + 0.09 * Math.sin(l * 0.89 + b * 0.63 + 0.7);
+  return Math.max(0, d * grana);
+}
+
+// Il colore. A occhio nudo la Via Lattea è grigia, ma questa è una
+// figura, e in una figura il colore dice una cosa vera: verso il centro
+// la luce attraversa migliaia di anni luce di polvere e arriva arrossata,
+// verso l'anticentro sono le giovani stelle azzurre dei bracci esterni.
+const SKY_VL_COLORI = [
+  [236, 214, 178],   // 0 — il rigonfiamento centrale, arrossato dalla polvere
+  [206, 216, 255],   // 1 — il grosso della banda
+  [180, 200, 255]    // 2 — i bracci esterni, verso l'anticentro
+];
+
+// Massimo della densità (con un margine): serve al sorteggio per
+// accettazione-rifiuto, che è il modo di sparpagliare punti seguendo una
+// funzione senza doverla saper integrare.
+const SKY_VL_DENSITA_MAX = 1.9;
+const SKY_VL_QUANTE = 1600;
+
+// Il sorteggio dei fiocchi. Si fa una volta sola, ma **non all'avvio**:
+// sono trentamila estrazioni, e su un telefono si sentono. Chi apre l'app
+// per sapere che tempo fa stasera non deve pagarle: si fanno la prima
+// volta che il planetario chiede le nubi, dentro a `skyNubiDelCielo()`.
+function skyGeneraViaLattea() {
+  const caso = skyCaso(skySeme('via lattea'));
+  const nubi = [];
+  let tentativi = 0;
+
+  while (nubi.length < SKY_VL_QUANTE && tentativi < SKY_VL_QUANTE * 60) {
+    tentativi++;
+    const l = caso() * 360;
+    const semi = skyVLSemiSpessore(l);
+    // La latitudine si pesca su una fascia larga due volte e mezzo lo
+    // spessore: più in là la densità è comunque zero e il campione si
+    // butterebbe via
+    const b = (caso() * 2 - 1) * semi * 2.5;
+    const d = skyVLDensita(l, b);
+    if (d < 0.02 || caso() * SKY_VL_DENSITA_MAX > d) continue;
+
+    // Le misure dei fiocchi sono sbilanciate verso i piccoli (l'esponente
+    // 1,8), perché sono loro a fare la grana; i pochi grandi fanno l'alone
+    // che tiene insieme il tutto. Dove la banda è larga sono più grandi:
+    // in Sagittario il rigonfiamento è una nuvola, non un filo.
+    const r = (1.0 + 3.2 * Math.pow(caso(), 1.8)) * (0.62 + 0.05 * semi);
+
+    // La luce di un fiocco cala con la sua misura: se no i pochi grandi si
+    // prenderebbero tutta la scena e la banda tornerebbe liscia
+    const luce = d * 1.6 / (1 + r);
+
+    // La tinta segue la longitudine, con un po' di rimescolamento: una
+    // separazione netta fra caldo e freddo si vedrebbe come una cucitura
+    const verso = Math.max(0, Math.min(1, (skyVLDalCentro(l) - 22) / 88)) + caso() * 0.34 - 0.17;
+    const tinta = verso < 0.33 ? 0 : (verso < 0.72 ? 1 : 2);
+
+    const p = skyGalatticoAEquatoriale(((l % 360) + 360) % 360, b);
+    const ra = p.ra * 15 * SKY_D2R, dec = p.dec * SKY_D2R, cd = Math.cos(dec);
+    nubi.push({
+      ra: p.ra, dec: p.dec,
+      v: [cd * Math.cos(ra), cd * Math.sin(ra), Math.sin(dec)],
+      r, luce, tinta
     });
   }
-  return strati;
+  return nubi;
 }
 
-// Due ricette: venti veli dove la GPU se lo può permettere, dieci (più densi,
-// così la banda resta della stessa luminosità) sul telefono — riempire venti
-// volte mezzo schermo a ogni fotogramma è il conto più caro di tutta la vista.
-const SKY_VELI_VIA_LATTEA = skyCostruisciVeliViaLattea(20, 1);
-const SKY_VELI_VIA_LATTEA_LEGGERI = skyCostruisciVeliViaLattea(10, 1.9);
+// Le nubi portate nel cielo di adesso. Sono più di mille: gli oggetti si
+// costruiscono una volta e a ogni aggiornamento si riscrivono soltanto il
+// versore orizzontale e l'altezza, dentro agli stessi oggetti. Chi le
+// calcola è catalogo.js quando il catalogo è caricato (stessa matrice
+// delle stelle, quindi stessa precessione); qui c'è la strada di riserva
+// per i primi secondi, quando il catalogo non c'è ancora.
+let skyVLCielo = null;
 
-function skyDisegnaViaLattea(ctx, base, focale) {
-  const punti = sky.viaLattea;
-  if (!punti || punti.length < 2) return;
+function skyNubiDelCielo() {
+  if (!skyVLCielo) {
+    skyVLCielo = skyGeneraViaLattea().map(n => ({
+      v: n.v, vh: [0, 0, 0], alt: -90, r: n.r, luce: n.luce, tinta: n.tinta
+    }));
+  }
+  return skyVLCielo;
+}
+
+// Una matrice sola per tutte le nubi, come fa catalogo.js per le stelle:
+// milleseicento chiamate a Horizon() a ogni aggiornamento sarebbero il
+// conto più caro della vista, e per un fondo sfocato non ha senso.
+function skyPortaViaLatteaInCielo(t) {
+  if (!sky.observer || typeof Astronomy === 'undefined') { sky.viaLattea = []; return; }
+  let M;
+  try {
+    M = Astronomy.CombineRotation(
+      Astronomy.Rotation_EQJ_EQD(t),
+      Astronomy.Rotation_EQD_HOR(t, sky.observer)
+    ).rot;
+  } catch (e) {
+    sky.viaLattea = [];                    // data fuori scala: si lascia stare
+    return;
+  }
+  // Stessa avvertenza di catalogo.js: `rot` è memorizzata [sorgente][destinazione],
+  // e la terna della libreria è (Nord, Ovest, Zenit) — Est = −Ovest.
+  const nx = M[0][0], ny = M[1][0], nz = M[2][0];
+  const ox = M[0][1], oy = M[1][1], oz = M[2][1];
+  const zx = M[0][2], zy = M[1][2], zz = M[2][2];
+
+  const nubi = skyNubiDelCielo();
+  for (let i = 0; i < nubi.length; i++) {
+    const n = nubi[i], x = n.v[0], y = n.v[1], z = n.v[2];
+    const alto = zx * x + zy * y + zz * z;
+    n.vh[0] = -(ox * x + oy * y + oz * z);
+    n.vh[1] =   nx * x + ny * y + nz * z;
+    n.vh[2] =   alto;
+    n.alt = Math.asin(Math.max(-1, Math.min(1, alto))) * SKY_R2D;
+  }
+  sky.viaLattea = nubi;
+}
+
+// --- Il fiocco ---------------------------------------------------------
+// Un solo disegno, dipinto una volta per tinta su una tela fuori schermo e
+// da lì in poi soltanto ricopiato. Un gradiente radiale costruito a ogni
+// fiocco vorrebbe dire milleseicento oggetti gradiente per fotogramma, che
+// è esattamente il genere di spesa che questa vista non si può permettere.
+const SKY_VL_PROFILO = [[0, 1], [0.22, 0.66], [0.42, 0.36], [0.62, 0.15], [0.82, 0.04], [1, 0]];
+let skyVLTele = null;
+
+function skyTeleViaLattea() {
+  if (skyVLTele) return skyVLTele;
+  skyVLTele = SKY_VL_COLORI.map(colore => {
+    const lato = 96, m = lato / 2;
+    const tela = document.createElement('canvas');
+    tela.width = tela.height = lato;
+    const c = tela.getContext('2d');
+    const g = c.createRadialGradient(m, m, 0, m, m, m);
+    SKY_VL_PROFILO.forEach(([p, a]) => g.addColorStop(p, skyRgba(colore, a)));
+    c.fillStyle = g;
+    c.fillRect(0, 0, lato, lato);
+    return tela;
+  });
+  return skyVLTele;
+}
+
+// Quanto della Via Lattea arriva davvero all'occhio da qui. È la parte che
+// mancava del tutto: la banda è la prima cosa che il cielo perde. Da un
+// cielo di città non c'è, con la Luna piena alta nemmeno, e disegnarla lo
+// stesso è la bugia più grossa che questa vista possa raccontare a chi la
+// cerca poi fuori dalla finestra.
+const SKY_VL_PER_CIELO = { 2: 1, 3: 0.88, 4: 0.70, 5: 0.52, 6: 0.30, 8: 0.12 };
+const SKY_VL_ALFA = 0.13;
+
+function skyForzaViaLattea(luna) {
+  // Atmosfera spenta: è una carta stellare, e su una carta la banda si
+  // disegna per intero
+  if (!sky.atmosfera) return 1;
+
+  let k = 0.42;
+  if (typeof cieloDiCasa === 'function') {
+    try { k = SKY_VL_PER_CIELO[cieloDiCasa()] || k; } catch (e) { /* niente storage */ }
+  }
+
+  // La Luna: piena e alta cancella la banda come un lampione. Conta la
+  // fase più che proporzionalmente (un primo quarto illumina un quarto di
+  // quanto illumina la piena, non la metà) e conta quanto è alta.
+  if (luna && luna.alt > -2) {
+    const fase = typeof luna.frazione === 'number' ? luna.frazione : 1;
+    const quanta = Math.pow(fase, 1.7) * Math.min(1, (luna.alt + 2) / 32);
+    k *= 1 - 0.88 * Math.max(0, quanta);
+  }
+
+  // Ingrandendo, quella che a occhio nudo è una nuvola diventa un campo di
+  // stelle, e il catalogo qui sotto ce le mette davvero: la nube si fa da
+  // parte invece di restare una macchia sfocata sopra le stelle.
+  const fov = sky.fov || 55;
+  if (fov < 12) k *= Math.max(0.45, (fov - 1.5) / 12);
+
+  return Math.max(0, k);
+}
+
+function skyDisegnaViaLattea(ctx, base, focale, luna) {
+  const nubi = sky.viaLattea;
+  if (!nubi || !nubi.length) return;
   const velo = skyVelo();
-  if (velo < 0.08) return;      // di giorno non c'è niente da mostrare
+  if (velo < 0.08) return;               // di giorno non c'è niente da mostrare
+  const forza = skyForzaViaLattea(luna) * velo * SKY_VL_ALFA;
+  if (forza < 0.002) return;
 
-  const proiettati = punti.map(p => {
-    const q = skyProietta(skyVettore(p.az, p.alt), base, focale);
-    return { px: q.px, py: q.py, davanti: q.davanti, alt: p.alt, luce: p.luce };
-  });
-
-  // La banda si spezza in tratti continui: dove passa dietro di noi, dove
-  // scende sotto l'orizzonte, dove il salto fra due punti è troppo grande.
-  // Ogni tratto diventa un percorso solo, ripassato venti volte: novanta
-  // segmenti con i cappucci tondi lasciavano in cielo una collana di cerchi.
-  const tratti = [];
-  let corrente = [];
-  const chiudi = () => { if (corrente.length > 1) tratti.push(corrente); corrente = []; };
-  proiettati.forEach((q, i) => {
-    const prec = i > 0 ? proiettati[i - 1] : null;
-    const rotto = !q.davanti || q.alt < -8 ||
-      (prec && Math.hypot(q.px - prec.px, q.py - prec.py) > sky.larghezza * 0.6);
-    if (rotto) { chiudi(); if (q.davanti && q.alt >= -8) corrente.push(q); return; }
-    corrente.push(q);
-  });
-  chiudi();
-  if (!tratti.length) return;
-
-  // Ogni tratto si spezza in pezzi corti, ciascuno con la sua luminosità:
-  // verso il centro galattico la banda è una nuvola densa, verso l'anticentro
-  // si intuisce appena. (Un gradiente da un capo all'altro del tratto
-  // sarebbe stato più elegante, ma quando la banda si ripiega i suoi due capi
-  // finiscono vicini sullo schermo e il gradiente taglia la nuvola a metà.)
-  const pezzi = [];
-  tratti.forEach(tratto => {
-    const lungo = 5;
-    for (let i = 0; i < tratto.length - 1; i += lungo) {
-      const pezzo = tratto.slice(i, Math.min(tratto.length, i + lungo + 1));
-      if (pezzo.length > 1) pezzi.push(pezzo);
-    }
-  });
-
-  const veli = sky.larghezza < 560 ? SKY_VELI_VIA_LATTEA_LEGGERI : SKY_VELI_VIA_LATTEA;
+  // Sul telefono si disegna un fiocco su due, con il doppio della luce
+  // ciascuno: la banda resta della stessa luminosità e il riempimento si
+  // dimezza. È lo stesso patto che c'era coi veli di prima, e qui vale
+  // anche di più: a campo largo i fiocchi in vista sono quattrocento, e
+  // il riempimento è tutto il costo di questo disegno.
+  const passo = sky.larghezza < 560 ? 2 : 1;
+  const tele = skyTeleViaLattea();
+  const L = sky.larghezza, H = sky.altezza;
 
   ctx.save();
+  // La Via Lattea è luce che si somma al cielo, non vernice che lo copre:
+  // le stelle si devono vedere attraverso, ed è quello che fa `lighter`.
   ctx.globalCompositeOperation = 'lighter';
-  // Cappucci tagliati, non tondi: con i veli larghi il cappuccio tondo
-  // sporgeva oltre la fine del pezzo e si sovrapponeva al pezzo dopo,
-  // lasciando lungo la banda una fila di perline chiare
-  ctx.lineCap = 'butt';
-  ctx.lineJoin = 'round';
-  ctx.strokeStyle = '#ced8ff';
 
-  pezzi.forEach(pezzo => {
-    // Il percorso si costruisce una volta e i venti veli lo ripassano
-    const percorso = new Path2D();
-    pezzo.forEach((q, i) => (i === 0 ? percorso.moveTo(q.px, q.py) : percorso.lineTo(q.px, q.py)));
+  for (let i = 0; i < nubi.length; i += passo) {
+    const n = nubi[i];
+    if (n.alt < -8) continue;            // sotto l'orizzonte la copre il terreno
+    const p = skyProietta(n.vh, base, focale);
+    if (!p.davanti) continue;
 
-    const media = pezzo.reduce((acc, q) => acc + q.luce * skyEstinzione(q.alt), 0) / pezzo.length;
-    const forza = media * velo;
-    if (forza < 0.05) return;
+    const r = skyRaggioAngolare(n.r, focale) * skyScalaLocale(p.d);
+    if (r < 1) continue;
+    if (p.px + r < 0 || p.px - r > L || p.py + r < 0 || p.py - r > H) continue;
 
-    veli.forEach(strato => {
-      ctx.globalAlpha = strato.alpha * forza;
-      ctx.lineWidth = Math.max(2, skyRaggioAngolare(strato.gradi, focale));
-      ctx.stroke(percorso);
-    });
-  });
+    const a = n.luce * forza * passo * skyEstinzione(n.alt);
+    if (a < 0.005) continue;
+
+    ctx.globalAlpha = Math.min(0.5, a);
+    ctx.drawImage(tele[n.tinta], p.px - r, p.py - r, r * 2, r * 2);
+  }
   ctx.restore();
 }
 
@@ -13299,7 +13570,7 @@ function skyDisegna() {
     skyDisegnaSfondo(ctx, base, focale, aria);
     skyDisegnaAloneSole(ctx, base, focale, sole, aria);
     skyDisegnaAloneLuna(ctx, base, focale, luna);
-    if (sky.mostraViaLattea) skyDisegnaViaLattea(ctx, base, focale);
+    if (sky.mostraViaLattea) skyDisegnaViaLattea(ctx, base, focale, luna);
   }
 
   // Il fondo di stelle del catalogo grande, e sopra di lui le figure.
@@ -24042,12 +24313,12 @@ function skyAggiornaCatalogo(data) {
     sky.profondo = [];
   }
 
-  // La banda della Via Lattea: novanta punti, ricalcolati con il resto
+  // Le nubi della Via Lattea, ricalcolate con il resto. Non passano di qui
+  // per Horizon() — sono milleseicento — ma per la matrice unica di
+  // `skyPortaViaLatteaInCielo()`. Quando catalogo.js è caricato questo giro
+  // non si fa nemmeno: le nubi se le porta lui, con la matrice delle stelle.
   if (sky.mostraViaLattea) {
-    sky.viaLattea = SKY_VIA_LATTEA.map(o => {
-      const hor = Astronomy.Horizon(t, sky.observer, o.ra, o.dec, 'normal');
-      return { az: hor.azimuth, alt: hor.altitude, luce: o.luce };
-    });
+    skyPortaViaLatteaInCielo(t);
   } else {
     sky.viaLattea = [];
   }

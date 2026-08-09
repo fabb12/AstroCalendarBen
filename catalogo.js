@@ -82,7 +82,10 @@ const cat = {
   figure: null,
 
   profondo: null,         // il catalogo degli oggetti profondi, arricchito
-  viaLattea: null,        // i novanta punti della banda, in versori
+  // Le nubi della Via Lattea non stanno qui: le tiene app.js, che è dove
+  // nascono e dove si disegnano. Questo modulo si limita a portarle nel
+  // cielo di adesso con la matrice delle stelle.
+
   // La rotazione dal cielo di J2000 a quello di adesso, come l'ha
   // calcolata l'ultimo aggiornamento. Non serve a noi: serve a chi vuole
   // portare in cielo un punto qualsiasi (i telai dei disegni delle
@@ -519,29 +522,27 @@ function catAggiornaPosizioni(data) {
     o.vOra = [est, nord, alto];
   });
 
-  // La banda della Via Lattea passava anche lei per Horizon() con
-  // coordinate J2000, e si portava dietro lo stesso mezzo grado di
-  // scarto. Sono novanta punti: tanto vale rifarli qui, con la matrice
-  // che la precessione la fa per forza.
-  if (sky.mostraViaLattea && typeof SKY_VIA_LATTEA !== 'undefined') {
-    if (!cat.viaLattea) {
-      const D2R = Math.PI / 180;
-      cat.viaLattea = SKY_VIA_LATTEA.map(p => {
-        const ra = p.ra * 15 * D2R, dec = p.dec * D2R, cd = Math.cos(dec);
-        return { v: [cd * Math.cos(ra), cd * Math.sin(ra), Math.sin(dec)], luce: p.luce };
-      });
+  // Le nubi della Via Lattea passavano anche loro per Horizon() con
+  // coordinate J2000, e si portavano dietro lo stesso mezzo grado di
+  // scarto. Adesso sono milleseicento — tanto più vale rifarle qui, con
+  // la matrice che la precessione la fa per forza.
+  //
+  // E si riscrivono **dentro agli stessi oggetti**: milleseicento oggetti
+  // nuovi ogni volta che il cielo si aggiorna sarebbero, da soli, il conto
+  // più caro di questo modulo. Gli oggetti se li costruisce app.js una
+  // volta sola (`skyNubiDelCielo()`), qui si riempiono solo il versore
+  // orizzontale e l'altezza.
+  if (sky.mostraViaLattea && typeof skyNubiDelCielo === 'function') {
+    const nubi = skyNubiDelCielo();
+    for (let k = 0; k < nubi.length; k++) {
+      const p = nubi[k], x = p.v[0], y = p.v[1], z = p.v[2];
+      const alto = zx * x + zy * y + zz * z;
+      p.vh[0] = -(ox * x + oy * y + oz * z);
+      p.vh[1] =   nx * x + ny * y + nz * z;
+      p.vh[2] =   alto;
+      p.alt = Math.asin(Math.max(-1, Math.min(1, alto))) * R2D;
     }
-    sky.viaLattea = cat.viaLattea.map(p => {
-      const x = p.v[0], y = p.v[1], z = p.v[2];
-      const est  = -(ox * x + oy * y + oz * z);
-      const nord =   nx * x + ny * y + nz * z;
-      const alto =   zx * x + zy * y + zz * z;
-      return {
-        alt: Math.asin(Math.max(-1, Math.min(1, alto))) * R2D,
-        az: (Math.atan2(est, nord) * R2D + 360) % 360,
-        luce: p.luce
-      };
-    });
+    sky.viaLattea = nubi;
   } else {
     sky.viaLattea = [];
   }
