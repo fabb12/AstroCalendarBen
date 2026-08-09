@@ -1782,9 +1782,9 @@ const COST_IMMAGINI = {
   // di foglio più a destra del dovuto, sempre della stessa quantità — che
   // è la firma di uno scostamento, non di una scala sbagliata. Se un
   // giorno il disegno venisse rifatto, questi sono i due numeri da girare.
-  Tau: { file: 'toro.png', sposta: [0.28, 0.09] },
-  Psc: { file: 'pesci.png'},
-  Ari: { file: 'ariete.png' }
+  Tau: { file: 'toro.png', gira: 4, sposta: [0.2, 0.2] },
+  Psc: { file: 'pesci.png',  sposta: [0.20,0.2]},
+  Ari: { file: 'ariete.png', sposta: [-0.1, 0.3]}
 };
 
 // Un'entrata può essere una stringa (il solo nome del file) o un oggetto
