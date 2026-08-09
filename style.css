@@ -4545,10 +4545,11 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
 
 /* --------------------------------- IL PUNTO DA CUI GUARDARE IL CIELO (7.1-quater)
    La mappa dell'ombra è la vista: si guarda l'ombra correre, e più è grande
-   meglio è. Questa invece è un attrezzo — si apre, si tocca un punto, si
+   meglio è. Questa invece è un attrezzo — si cerca, si tocca un punto, si
    chiude — e sotto ci vanno tre righe di lettura e due tasti che devono
-   restare in vista senza scorrere. Per questo si tiene più bassa, pur
-   seguendo la stessa misura quando lo schermo è piccolo. */
+   restare in vista senza scorrere. Per questo dentro la finestra si tiene
+   più bassa; a schermo intero (il tasto ⛶) diventa lei la vista, e il piede
+   con la lettura le si appoggia sopra. */
 #mappa-luogo {
   height: min(var(--altezza-mappa-eclissi), 420px);
   min-height: 220px;
@@ -4561,7 +4562,295 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
        (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
   #mappa-luogo { height: min(var(--altezza-mappa-eclissi), 300px); }
 }
-.luogo-mappa-guscio { position: relative; }
+
+/* Il guscio: barra di ricerca, mappa, piede. È quello che va a schermo
+   intero, e per questo tiene insieme tutte e tre le cose — cercare un posto e
+   accettarlo non devono costare un'uscita dal pieno schermo. */
+.luogo-guscio {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.luogo-mappa-riquadro { position: relative; flex: 1 1 auto; min-height: 0; }
+
+/* --- La barra: cerca per nome, oppure incolla da un'altra mappa --- */
+.luogo-barra {
+  position: relative;
+  z-index: 1200;   /* l'elenco dei risultati scende sopra la mappa */
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.luogo-cerca-guscio { position: relative; flex: 1 1 200px; min-width: 0; }
+.luogo-cerca-lente {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--testo-3);
+  pointer-events: none;
+}
+.luogo-cerca-campo {
+  width: 100%;
+  min-height: 44px;   /* il pollice: sotto i 44px si sbaglia bersaglio */
+  padding: 10px 12px 10px 36px;
+  border-radius: var(--raggio-l);
+  border: 1px solid var(--bordo-forte);
+  background: rgba(6, 10, 20, 0.72);
+  color: var(--testo);
+  font-size: 0.9rem;
+}
+.luogo-cerca-campo:focus { outline: none; border-color: var(--blu); }
+.luogo-cerca-campo::placeholder { color: var(--testo-3); }
+.luogo-cerca-risultati {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px;
+  border-radius: var(--raggio-l);
+  border: 1px solid var(--bordo-forte);
+  background: rgba(6, 10, 20, 0.96);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--ombra-3);
+}
+.luogo-cerca-risultati.aperta { display: flex; }
+body .luogo-cerca-risultato {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  min-height: 42px;
+  padding: 7px 10px;
+  border: none;
+  border-radius: var(--raggio-m);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+body .luogo-cerca-risultato:hover,
+body .luogo-cerca-risultato:focus-visible { background: rgba(59, 130, 246, 0.2); }
+.luogo-cerca-nome { font-size: 0.88rem; font-weight: 600; color: var(--testo); }
+.luogo-cerca-paese { font-size: 0.72rem; color: var(--testo-3); }
+.luogo-cerca-nota { margin: 0; padding: 7px 10px; font-size: 0.76rem; color: var(--testo-3); }
+
+body .luogo-tasto-barra {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--raggio-l);
+  border: 1px solid var(--bordo-forte);
+  background: rgba(6, 10, 20, 0.72);
+  color: var(--testo-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transizione), color var(--transizione);
+}
+body .luogo-tasto-barra:hover { background: rgba(30, 41, 59, 0.9); color: var(--testo); }
+body .luogo-tasto-barra.attiva { background: var(--blu); border-color: transparent; color: #fff; }
+/* Su schermo stretto la scritta se ne va e resta lo spillo: due tasti con la
+   loro etichetta e un campo di ricerca in 320 pixel non ci stanno, e fra le
+   tre cose quella che si può disegnare è questa. */
+@media (max-width: 460px) {
+  body .luogo-tasto-barra span { display: none; }
+  body .luogo-tasto-barra { padding: 0 12px; }
+}
+
+/* --- Il pannello dell'incollato --- */
+.luogo-incolla {
+  display: grid;
+  gap: 9px;
+  padding: 12px 13px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: var(--raggio-l);
+  background: rgba(6, 10, 20, 0.6);
+}
+.luogo-incolla-titolo { font-size: 0.78rem; font-weight: 600; color: var(--testo-2); }
+.luogo-incolla-riga { display: flex; flex-wrap: wrap; gap: 7px; }
+.luogo-incolla-campo {
+  flex: 1 1 240px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 9px 12px;
+  border-radius: var(--raggio-l);
+  border: 1px solid var(--bordo-forte);
+  background: rgba(2, 6, 16, 0.8);
+  color: var(--testo);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+.luogo-incolla-campo:focus { outline: none; border-color: var(--blu); }
+.luogo-incolla-campo::placeholder { color: var(--testo-3); font-family: var(--mono); }
+.luogo-incolla-aiuto { margin: 0; font-size: 0.72rem; line-height: 1.5; color: var(--testo-3); }
+.luogo-incolla-aiuto code {
+  font-family: var(--mono);
+  font-size: 0.94em;
+  color: var(--blu-chiaro);
+}
+.luogo-coordinate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--bordo);
+}
+.luogo-coordinate-etichetta { display: block; font-size: 0.7rem; color: var(--testo-3); margin-bottom: 3px; }
+.luogo-coordinate-campo {
+  width: 7.5rem;
+  min-height: 42px;
+  padding: 8px 11px;
+  border-radius: var(--raggio-m);
+  border: 1px solid var(--bordo-forte);
+  background: rgba(2, 6, 16, 0.8);
+  color: var(--testo);
+  font-family: var(--mono);
+  font-size: 0.84rem;
+}
+.luogo-coordinate-campo:focus { outline: none; border-color: var(--blu); }
+body .luogo-tasto-secondario {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte);
+  background: rgba(30, 41, 59, 0.85);
+  color: var(--testo);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+body .luogo-tasto-secondario:hover { background: rgba(51, 65, 85, 0.95); }
+body .luogo-tasto-secondario.forte { background: var(--blu); border-color: transparent; color: #fff; }
+body .luogo-tasto-secondario.forte:hover { background: var(--blu-chiaro); }
+
+/* --- I comandi appoggiati sulla mappa --- */
+/* I tre fondi in alto a sinistra, dove Leaflet non mette niente. */
+.luogo-sfondi {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 600;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte);
+  background: rgba(6, 10, 20, 0.86);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--ombra-2);
+}
+body .luogo-sfondo {
+  min-height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--testo-3);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transizione), color var(--transizione);
+}
+body .luogo-sfondo:hover { color: var(--testo); }
+body .luogo-sfondo.attiva { background: var(--blu); color: #fff; }
+
+/* La colonna a destra sta sotto ai tasti dello zoom di Leaflet, che si
+   prendono il primo posto in alto. */
+.luogo-mappa-tasti {
+  position: absolute;
+  top: 86px;
+  right: 10px;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+body .luogo-tasto-mappa {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid var(--bordo-forte);
+  background: rgba(6, 10, 20, 0.86);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--testo);
+  cursor: pointer;
+  box-shadow: var(--ombra-2);
+  transition: background-color var(--transizione), color var(--transizione);
+}
+body .luogo-tasto-mappa:hover { background: rgba(30, 41, 59, 0.95); color: #fff; }
+body .luogo-tasto-mappa.attiva { background: var(--blu); border-color: transparent; color: #fff; }
+/* I tasti dello zoom di Leaflet: quelli di serie sono da 26 pixel, che con un
+   dito sono meno della metà del bersaglio buono. */
+#mappa-luogo .leaflet-control-zoom a {
+  width: 40px;
+  height: 40px;
+  line-height: 38px;
+  font-size: 1.3rem;
+}
+
+/* Il segno del punto scelto: un pallino ambra con l'alone che pulsa. Si
+   trascina, e per questo ha bisogno di essere grosso quanto un dito — il
+   cerchio disegnato di prima era largo otto pixel e non si prendeva. */
+.luogo-segno { cursor: grab; }
+.luogo-segno:active { cursor: grabbing; }
+.luogo-segno-punto,
+.luogo-segno-alone {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.luogo-segno-punto {
+  width: 15px;
+  height: 15px;
+  background: #f59e0b;
+  border: 2.5px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+}
+.luogo-segno-alone {
+  width: 30px;
+  height: 30px;
+  background: rgba(245, 158, 11, 0.22);
+  animation: luogo-pulsa 2.2s ease-out infinite;
+}
+@keyframes luogo-pulsa {
+  0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+  70%  { box-shadow: 0 0 0 14px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .luogo-segno-alone { animation: none; }
+}
+
+/* Senza Leaflet non c'è niente sotto ai comandi appoggiati sulla mappa: li si
+   toglie, o si stamperebbero sopra alla riga che spiega perché la mappa
+   manca. */
+.luogo-guscio.senza-mappa .luogo-sfondi,
+.luogo-guscio.senza-mappa .luogo-mappa-tasti { display: none; }
+.luogo-guscio.senza-mappa ~ .luogo-suggerimento { display: none; }
+
+/* --- Il piede: la lettura e i due tasti --- */
+.luogo-piede { display: grid; gap: 9px; }
+
 .luogo-mappa-assente {
   padding: 22px 18px;
   border: 1px dashed var(--bordo-forte);
@@ -4620,10 +4909,120 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
   justify-content: flex-end;
   gap: 8px;
 }
+body .luogo-tasto-azione {
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte);
+  background: rgba(30, 41, 59, 0.9);
+  color: var(--testo);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transizione);
+}
+body .luogo-tasto-azione:hover { background: rgba(51, 65, 85, 0.95); }
+body .luogo-tasto-azione.forte { background: var(--blu); border-color: transparent; color: #fff; }
+body .luogo-tasto-azione.forte:hover { background: var(--blu-chiaro); }
 @media (max-width: 480px) {
-  .luogo-azioni { flex-direction: column; }
+  .luogo-azioni { flex-direction: column-reverse; }
   .luogo-azioni button { width: 100%; }
 }
+
+/* --- La mappa a tutto schermo ---
+   Nel pieno schermo vero il guscio è tutta la finestra; nel ripiego (Safari
+   su iPhone non dà l'API Fullscreen agli elementi) esce dal modale e si
+   incolla al viewport — da fuori non si vede la differenza. In tutti e due i
+   casi la mappa si prende tutto e il piede le si appoggia sopra: un punto
+   scelto si accetta lì, senza uscire prima. */
+.luogo-guscio:fullscreen,
+.luogo-guscio.luogo-schermo-pieno {
+  gap: 0;
+  padding: 0;
+  background: #05070f;
+}
+.luogo-guscio.luogo-schermo-pieno {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  width: 100vw;
+  height: 100dvh;
+}
+/* La barra della ricerca si stacca e va in sovrimpressione in alto, lasciando
+   tutta l'altezza alla mappa. Larga al massimo quanto una riga leggibile: a
+   schermo intero su un monitor, un campo di ricerca lungo un metro. */
+.luogo-guscio:fullscreen .luogo-barra,
+.luogo-guscio.luogo-schermo-pieno .luogo-barra {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  z-index: 1200;
+  width: min(520px, calc(100% - 20px));
+}
+.luogo-guscio:fullscreen .luogo-incolla,
+.luogo-guscio.luogo-schermo-pieno .luogo-incolla {
+  position: absolute;
+  top: calc(max(10px, env(safe-area-inset-top)) + 52px);
+  left: max(10px, env(safe-area-inset-left));
+  z-index: 1200;
+  width: min(520px, calc(100% - 20px));
+  background: rgba(6, 10, 20, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--ombra-3);
+}
+.luogo-guscio:fullscreen .luogo-mappa-riquadro,
+.luogo-guscio.luogo-schermo-pieno .luogo-mappa-riquadro { height: 100%; }
+.luogo-guscio:fullscreen #mappa-luogo,
+.luogo-guscio.luogo-schermo-pieno #mappa-luogo {
+  height: 100%;
+  min-height: 0;
+  border-radius: 0;
+  border: none;
+}
+/* I fondi scendono sotto alla barra della ricerca, che a schermo intero
+   occupa l'angolo che era loro. */
+.luogo-guscio:fullscreen .luogo-sfondi,
+.luogo-guscio.luogo-schermo-pieno .luogo-sfondi {
+  top: calc(max(10px, env(safe-area-inset-top)) + 54px);
+  left: max(10px, env(safe-area-inset-left));
+}
+.luogo-guscio:fullscreen .luogo-piede,
+.luogo-guscio.luogo-schermo-pieno .luogo-piede {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 900;
+  padding: 11px 13px;
+  border-radius: var(--raggio-l);
+  border: 1px solid var(--bordo-forte);
+  background: rgba(6, 10, 20, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--ombra-3);
+}
+/* Dentro al piede sovrapposto la lettura non ha più bisogno della sua
+   cornice: il riquadro ce l'ha già lui. */
+.luogo-guscio:fullscreen .luogo-scelta,
+.luogo-guscio.luogo-schermo-pieno .luogo-scelta {
+  padding: 0;
+  border: none;
+  background: none;
+}
+/* Su uno schermo largo lettura e tasti stanno sulla stessa riga: il piede si
+   mangia meno mappa, e il tasto resta dove il pollice lo trova. */
+@media (min-width: 700px) {
+  .luogo-guscio:fullscreen .luogo-piede,
+  .luogo-guscio.luogo-schermo-pieno .luogo-piede {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .luogo-guscio:fullscreen .luogo-azioni,
+  .luogo-guscio.luogo-schermo-pieno .luogo-azioni { flex-wrap: nowrap; }
+}
+/* Sotto, la pagina non deve scorrere dietro alla mappa */
+body.luogo-immersivo { overflow: hidden; }
 
 @media (min-width: 1180px) {
   /* La mappa e il suo filmato a sinistra, le letture a destra: si guarda

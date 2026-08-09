@@ -1592,50 +1592,108 @@
       </div>
 
       <div class="corpo-modale spazio-verticale">
-        <div class="luogo-mappa-guscio">
-          <div id="mappa-luogo" role="application" aria-label="Mappa: tocca il punto da cui guardare il cielo"></div>
-          <!-- Senza Leaflet (CDN irraggiungibile, o prima apertura offline) la
-               finestra continua a funzionare: restano le coordinate a mano. -->
-          <p id="luogo-mappa-assente" class="luogo-mappa-assente hidden">La mappa non è disponibile adesso — serve la rete per caricarla.
-            Le coordinate qui sotto funzionano lo stesso.</p>
-        </div>
-        <p class="luogo-suggerimento">Il pallino giallo è il punto scelto, quello azzurro dove sei davvero · un tocco sposta il punto · trascina per spostare la mappa</p>
+        <!-- Il guscio è tutto quello che va a schermo intero: la barra di
+             ricerca, la mappa e il piede con la lettura e i due tasti. A
+             schermo intero il piede si stacca e si appoggia sulla mappa,
+             come fa il lettore della mappa dell'ombra. -->
+        <div id="luogo-guscio" class="luogo-guscio">
 
-        <!-- Che punto si è scelto: il nome se ce l'ha, le coordinate sempre,
-             e a che distanza sta dal paese più vicino e da casa — che è il
-             modo più corto per dire quanto sarà diverso il cielo. -->
-        <div class="luogo-scelta">
-          <p id="luogo-scelta-nome" class="luogo-scelta-nome">—</p>
-          <p id="luogo-scelta-coord" class="luogo-scelta-coord">—</p>
-          <p id="luogo-scelta-nota" class="luogo-scelta-nota"></p>
-          <!-- Quello che va storto va detto qui dentro: la riga di avviso del
-               planetario sta sotto a questa finestra, e sul telefono, dove la
-               finestra è un foglio che copre tutto, non la vedrebbe nessuno. -->
-          <p id="luogo-avviso" class="luogo-avviso hidden" role="status" aria-live="polite"></p>
-        </div>
-
-        <details class="nota-ripiegata">
-          <summary>Conosco le coordinate esatte</summary>
-          <div class="flex flex-wrap items-end gap-2 mt-3">
-            <div>
-              <label for="luogo-lat" class="block text-xs text-slate-400 mb-1">Latitudine</label>
-              <input id="luogo-lat" type="number" step="0.0001" min="-90" max="90" placeholder="41.9"
-                class="w-28 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
+          <!-- Tre modi di arrivare allo stesso punto, in ordine di quanto
+               spesso servono: il nome, il dito sulla mappa, il link
+               incollato da Google Maps. -->
+          <div class="luogo-barra">
+            <div class="luogo-cerca-guscio">
+              <svg class="luogo-cerca-lente" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input id="luogo-cerca" type="search" autocomplete="off" placeholder="Cerca una città o un paese"
+                aria-label="Cerca il luogo per nome" class="luogo-cerca-campo">
+              <div id="luogo-cerca-risultati" class="luogo-cerca-risultati" role="listbox" aria-label="Luoghi trovati"></div>
             </div>
-            <div>
-              <label for="luogo-lon" class="block text-xs text-slate-400 mb-1">Longitudine</label>
-              <input id="luogo-lon" type="number" step="0.0001" min="-180" max="180" placeholder="12.5"
-                class="w-28 bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500">
-            </div>
-            <button id="luogo-btn-coordinate" type="button" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Porta il punto qui</button>
+            <button id="luogo-btn-incolla" type="button" class="luogo-tasto-barra" aria-expanded="false" aria-controls="luogo-incolla"
+              title="Incolla un link di Google Maps, o scrivi le coordinate">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></svg>
+              <span>Da Google Maps</span>
+            </button>
           </div>
-          <p class="text-xs text-slate-500 mt-2">Gradi decimali, con il punto: sud e ovest si scrivono col meno (−). Su una mappa online basta tenere premuto sul punto per leggerle.</p>
-        </details>
 
-        <div class="luogo-azioni">
-          <button id="luogo-btn-casa" type="button" class="px-4 py-2 rounded-full text-sm font-semibold bg-slate-700 hover:bg-slate-600 text-white">Riporta il punto a casa</button>
-          <button id="luogo-btn-usa" type="button" class="px-5 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Guarda il cielo da qui</button>
+          <!-- Il pannello dell'incollato. Chiuso finché non serve: è la via
+               di chi il punto ce l'ha già scelto su un'altra mappa. -->
+          <div id="luogo-incolla" class="luogo-incolla hidden">
+            <label for="luogo-incolla-testo" class="luogo-incolla-titolo">Incolla qui il link di Google Maps, o le coordinate</label>
+            <div class="luogo-incolla-riga">
+              <input id="luogo-incolla-testo" type="text" inputmode="text" autocomplete="off" spellcheck="false"
+                placeholder="https://www.google.com/maps/@45.976,7.658,14z — oppure 45.976, 7.658"
+                class="luogo-incolla-campo">
+              <button id="luogo-incolla-appunti" type="button" class="luogo-tasto-secondario hidden" title="Prendi quello che hai copiato">Incolla</button>
+              <button id="luogo-incolla-usa" type="button" class="luogo-tasto-secondario forte">Porta il punto qui</button>
+            </div>
+            <p class="luogo-incolla-aiuto">In Google Maps tieni premuto sul punto: compaiono le coordinate, e si copiano con un tocco.
+              Vanno bene anche i link lunghi con <code>@</code>, i gradi e primi (45°58'34"N 7°39'29"E) e i due numeri secchi.
+              I link corti <code>maps.app.goo.gl</code> no: aprili una volta, e copia quello che diventano.</p>
+            <div class="luogo-coordinate">
+              <div>
+                <label for="luogo-lat" class="luogo-coordinate-etichetta">Latitudine</label>
+                <input id="luogo-lat" type="number" step="0.0001" min="-90" max="90" placeholder="41.9" class="luogo-coordinate-campo">
+              </div>
+              <div>
+                <label for="luogo-lon" class="luogo-coordinate-etichetta">Longitudine</label>
+                <input id="luogo-lon" type="number" step="0.0001" min="-180" max="180" placeholder="12.5" class="luogo-coordinate-campo">
+              </div>
+              <button id="luogo-btn-coordinate" type="button" class="luogo-tasto-secondario">Porta il punto qui</button>
+            </div>
+          </div>
+
+          <div class="luogo-mappa-riquadro">
+            <div id="mappa-luogo" role="application" aria-label="Mappa: tocca il punto da cui guardare il cielo"></div>
+
+            <!-- I fondi della mappa. Per scegliere dove osservare la strada
+                 non basta: servono le curve di livello (dove si sale) e la
+                 fotografia dall'alto (dove finisce il bosco). -->
+            <div class="luogo-sfondi" role="group" aria-label="Che mappa mostrare">
+              <button type="button" class="luogo-sfondo attiva" data-luogo-sfondo="strade">Mappa</button>
+              <button type="button" class="luogo-sfondo" data-luogo-sfondo="rilievo">Rilievo</button>
+              <button type="button" class="luogo-sfondo" data-luogo-sfondo="satellite">Satellite</button>
+            </div>
+
+            <div class="luogo-mappa-tasti">
+              <button id="luogo-btn-schermo" type="button" class="luogo-tasto-mappa" title="Mappa a tutto schermo (o premi F)" aria-label="Mappa a tutto schermo">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+              </button>
+              <button id="luogo-btn-inquadra" type="button" class="luogo-tasto-mappa" title="Rimetti in vista il punto scelto" aria-label="Rimetti in vista il punto scelto">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="6.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+              </button>
+              <button id="luogo-btn-google" type="button" class="luogo-tasto-mappa" title="Apri questo punto in Google Maps" aria-label="Apri questo punto in Google Maps">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-8.5 8.5"/><path d="M18 14v5a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 19V8.2A1.6 1.6 0 0 1 5.6 6.6H10"/></svg>
+              </button>
+            </div>
+
+            <!-- Senza Leaflet (CDN irraggiungibile, o prima apertura offline) la
+                 finestra continua a funzionare: restano le coordinate a mano. -->
+            <p id="luogo-mappa-assente" class="luogo-mappa-assente hidden">La mappa non è disponibile adesso — serve la rete per caricarla.
+              Le coordinate del pannello «Da Google Maps» funzionano lo stesso.</p>
+          </div>
+
+          <!-- Il piede: che punto si è scelto (il nome se ce l'ha, le
+               coordinate sempre, e a che distanza sta dal paese più vicino e
+               da casa — il modo più corto per dire quanto sarà diverso il
+               cielo) e i due tasti che chiudono il giro. -->
+          <div class="luogo-piede">
+            <div class="luogo-scelta">
+              <p id="luogo-scelta-nome" class="luogo-scelta-nome">—</p>
+              <p id="luogo-scelta-coord" class="luogo-scelta-coord">—</p>
+              <p id="luogo-scelta-nota" class="luogo-scelta-nota"></p>
+              <!-- Quello che va storto va detto qui dentro: la riga di avviso del
+                   planetario sta sotto a questa finestra, e sul telefono, dove la
+                   finestra è un foglio che copre tutto, non la vedrebbe nessuno. -->
+              <p id="luogo-avviso" class="luogo-avviso hidden" role="status" aria-live="polite"></p>
+            </div>
+            <div class="luogo-azioni">
+              <button id="luogo-btn-casa" type="button" class="luogo-tasto-azione">Riporta a casa</button>
+              <button id="luogo-btn-usa" type="button" class="luogo-tasto-azione forte">Guarda il cielo da qui</button>
+            </div>
+          </div>
         </div>
+
+        <p class="luogo-suggerimento">Un tocco sposta il punto · il pallino si può anche trascinare · due dita per ingrandire · il segno azzurro è dove sei davvero</p>
         <p class="text-xs text-slate-500">Vale solo per il planetario: orari, meteo, passaggi delle stazioni spaziali e telescopio restano sulla tua posizione, quella delle Impostazioni.</p>
       </div>
     </div>
