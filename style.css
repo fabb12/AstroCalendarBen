@@ -4843,13 +4843,12 @@ body .luogo-sfondo {
 body .luogo-sfondo:hover { color: var(--testo); }
 body .luogo-sfondo.attiva { background: var(--blu); color: #fff; }
 
-/* La colonna a destra sta sotto ai tasti dello zoom di Leaflet, che si
-   prendono il primo posto in alto. */
-.luogo-mappa-tasti {
-  position: absolute;
-  top: 86px;
-  right: 10px;
-  z-index: 600;
+/* La colonna a destra la impila Leaflet, sotto ai suoi tasti dello zoom
+   (`luogoMappaConsegnaTasti`): fino a che non l'ha presa in consegna non si
+   vede, se no comparirebbe in mezzo al riquadro. Un `top` scritto a mano qui
+   sembra funzionare e poi si scolla al primo tasto che cambia misura. */
+.luogo-mappa-tasti { display: none; }
+.luogo-mappa-tasti.leaflet-control {
   display: flex;
   flex-direction: column;
   gap: 6px;
