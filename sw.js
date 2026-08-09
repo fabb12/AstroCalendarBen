@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v75';
+const CACHE_NAME = 'astrocal-v76';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -57,6 +57,13 @@ const HOST_DA_CONSERVARE = [
   'cdn.tailwindcss.com',
   'unpkg.com',
   'tile.openstreetmap.org',
+  // Le curve di livello della mappa del luogo: stesse tessere PNG leggere di
+  // OpenStreetMap, e tenerle vuol dire che il posto guardato ieri si rivede
+  // anche senza rete. La fotografia dall'alto (Esri) di proposito **non** sta
+  // qui: a forte ingrandimento una sola tessera pesa quanto tutta l'app, e
+  // riempire la cache di immagini satellitari per una mappa che si apre due
+  // volte l'anno è un pessimo affare.
+  'tile.opentopomap.org',
   'fonts.googleapis.com',
   'fonts.gstatic.com'
 ];

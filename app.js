@@ -8221,22 +8221,57 @@ function skyInizializzaLuogoVista() {
 //   Vale la regola della 7.1-ter, senza eccezioni: si sposta l'occhio
 //   del planetario e nient'altro. Orari, meteo, satelliti e telescopio
 //   restano sulla posizione dell'app.
+//
+//   Chi sceglie un posto da cui osservare però non lo sceglie a caso su un
+//   mappamondo: lo sceglie perché è alto, perché è al buio, perché la
+//   strada ci arriva. Per quello qui ci sono tre fondi di mappa (strade,
+//   rilievo, fotografia dall'alto), l'ingrandimento fino al singolo
+//   spiazzo, il pieno schermo, e la porta d'ingresso da Google Maps —
+//   che è la mappa su cui quel punto è stato trovato nove volte su dieci.
 // =====================================================================
 
-const LUOGO_ZOOM_APERTURA = 5;    // abbastanza per riconoscere la costa e le montagne
-// Oltre questo ingrandimento la mappa continuerebbe a stringere ma il cielo
-// no: mezzo chilometro di spostamento non muove una stella di un pixel.
-const LUOGO_ZOOM_MAX = 12;
+const LUOGO_ZOOM_APERTURA = 6;    // abbastanza per riconoscere la costa e le montagne
+// Fin dove si può stringere. Al cielo non serve — mezzo chilometro non muove
+// una stella di un pixel, ed era la ragione del vecchio tetto a 12 — ma a chi
+// sceglie il posto sì: fra il parcheggio e il prato dietro agli alberi passa
+// tutta la differenza di una serata, e quella differenza si vede solo qui.
+const LUOGO_ZOOM_MAX = 19;
+// Dove si arriva atterrando su un punto preciso (una città cercata per nome,
+// un link incollato): abbastanza stretto da riconoscere il posto, abbastanza
+// largo da vedere dove si è finiti.
+const LUOGO_ZOOM_PUNTO = 13;
 // Entro questa distanza il punto prende il nome del paese vicino. È la stessa
 // soglia di `nomeLuogoVicino`, ed è giusto che lo sia: la scritta della
 // finestra e il nome che finisce nel pannello devono dire la stessa cosa.
 const LUOGO_NOME_KM = 60;
 
+// I tre fondi. `maxNativeZoom` è il punto in cui il servizio smette di avere
+// tessere: oltre, Leaflet ingrandisce l'ultima invece di lasciare il grigio —
+// sgranata ma leggibile, che per capire dove si è è quello che conta.
+const LUOGO_SFONDI = {
+  strade: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    nativo: 19, attribuzione: '&copy; OpenStreetMap'
+  },
+  rilievo: {
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    nativo: 17, attribuzione: '&copy; OpenTopoMap (CC-BY-SA)'
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    nativo: 19, attribuzione: 'Immagini &copy; Esri, Maxar, Earthstar Geographics'
+  }
+};
+
 const luogoMappa = {
   mappa: null,     // la mappa Leaflet, costruita alla prima apertura
-  segno: null,     // il pallino del punto scelto
+  segno: null,     // il segno del punto scelto (si trascina)
   casa: null,      // dove si sta davvero: il riferimento, non si tocca
+  filo: null,      // la riga tratteggiata fra casa e il punto scelto
   scelto: null,    // { lat, lon } già normalizzati
+  nome: null,      // il nome arrivato col punto (una città cercata, un link)
+  sfondo: 'strade',// quale dei tre fondi è acceso
+  strato: null,    // il tileLayer di adesso
   occhio: null     // ResizeObserver: la mappa va rimisurata a ogni cambio di forma
 };
 
@@ -8288,20 +8323,36 @@ function luogoMappaCostruisci() {
   if (!riquadro || luogoMappa.mappa) return;
   if (typeof L === 'undefined') {
     riquadro.classList.add('hidden');
+    // Senza mappa i comandi appoggiati sopra non hanno più niente sotto: si
+    // ritroverebbero sovrapposti alla riga che spiega perché la mappa non c'è.
+    // Con loro se ne va anche il suggerimento dei gesti, che parlerebbe di un
+    // pallino da trascinare che non c'è.
+    const guscio = document.getElementById('luogo-guscio');
+    if (guscio) guscio.classList.add('senza-mappa');
     if (assente) assente.classList.remove('hidden');
     return;
   }
   luogoMappa.mappa = L.map('mappa-luogo', {
-    worldCopyJump: true, minZoom: 1, zoomControl: false, attributionControl: true
+    worldCopyJump: true, minZoom: 1, maxZoom: LUOGO_ZOOM_MAX,
+    zoomControl: false, attributionControl: true,
+    // Due dita che si allargano sono il gesto dello zoom su qualunque mappa
+    // del telefono, e la rotellina lo è sul computer: qui la mappa è dentro a
+    // una finestra che scorre, e senza queste due righe la rotellina scorreva
+    // il foglio invece di avvicinare il terreno.
+    scrollWheelZoom: true, touchZoom: true, tap: true
   }).setView([41.9, 12.5], LUOGO_ZOOM_APERTURA);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: LUOGO_ZOOM_MAX, attribution: '&copy; OpenStreetMap'
-  }).addTo(luogoMappa.mappa);
+  luogoMappaSfondo(luogoMappa.sfondo, { zitto: true });
   // Lo zoom a destra, come sulla mappa dell'ombra: le due mappe dell'app si
   // devono comandare allo stesso modo.
   L.control.zoom({ position: 'topright' }).addTo(luogoMappa.mappa);
 
-  luogoMappa.mappa.on('click', (e) => luogoMappaScegli(e.latlng.lat, e.latlng.lng));
+  luogoMappa.mappa.on('click', (e) => {
+    // Toccare la mappa è anche il modo di dire "ho finito di cercare": se
+    // l'elenco dei nomi resta aperto copre proprio la parte che si sta
+    // guardando.
+    luogoMostraRisultati([], null);
+    luogoMappaScegli(e.latlng.lat, e.latlng.lng);
+  });
 
   // Una mappa Leaflet dentro a un riquadro che cambia forma va rimisurata, se
   // no disegna le tessere per la misura di prima e resta mezza grigia. Qui i
@@ -8333,6 +8384,77 @@ function luogoMappaSegnaCasa() {
   }).addTo(luogoMappa.mappa).bindTooltip('Dove sei davvero', { direction: 'top' });
 }
 
+// Cambia il fondo della mappa. I tre servizi non hanno chiave e possono non
+// rispondere: se succede restano le tessere grigie e si torna indietro con un
+// tocco — nessun altro pezzo dell'app dipende da loro.
+function luogoMappaSfondo(quale, opz = {}) {
+  const scelto = LUOGO_SFONDI[quale] ? quale : 'strade';
+  luogoMappa.sfondo = scelto;
+  if (luogoMappa.mappa) {
+    const s = LUOGO_SFONDI[scelto];
+    if (luogoMappa.strato) luogoMappa.mappa.removeLayer(luogoMappa.strato);
+    luogoMappa.strato = L.tileLayer(s.url, {
+      maxNativeZoom: s.nativo, maxZoom: LUOGO_ZOOM_MAX, attribution: s.attribuzione
+    }).addTo(luogoMappa.mappa);
+    // Il fondo va dietro a tutto: senza, cambiandolo si copriva il segno del
+    // punto scelto, che è l'unica cosa che in questa finestra deve restare
+    // sempre in vista.
+    luogoMappa.strato.bringToBack();
+  }
+  document.querySelectorAll('[data-luogo-sfondo]').forEach(b =>
+    b.classList.toggle('attiva', b.dataset.luogoSfondo === scelto));
+  // Il perché delle tessere sgranate si dice solo quando si sta già oltre il
+  // punto in cui succede: dirlo sempre sarebbe una riga d'avviso a ogni tocco.
+  const zoom = luogoMappa.mappa ? luogoMappa.mappa.getZoom() : 0;
+  if (!opz.zitto) {
+    luogoAvviso(zoom > LUOGO_SFONDI[scelto].nativo
+      ? 'A questo ingrandimento le tessere di questo fondo non esistono: quello che vedi è l\'ultima ingrandita.'
+      : '');
+  }
+}
+
+// Il segno del punto scelto. Non è un pallino disegnato ma un marcatore vero,
+// e la differenza è che si può **trascinare**: sul telefono centrare un
+// tornante con un tocco solo non riesce a nessuno, e il gesto naturale — lo
+// stesso di ogni mappa — è appoggiare il dito sul segno e portarlo lì.
+function luogoMappaFaiSegno(punto) {
+  const icona = L.divIcon({
+    className: 'luogo-segno',
+    html: '<span class="luogo-segno-alone"></span><span class="luogo-segno-punto"></span>',
+    iconSize: [30, 30], iconAnchor: [15, 15]
+  });
+  luogoMappa.segno = L.marker(punto, {
+    icon: icona, draggable: true, autoPan: true, keyboard: true,
+    title: 'Il punto da cui guardare — si può trascinare',
+    zIndexOffset: 1000
+  }).addTo(luogoMappa.mappa);
+  // Mentre il dito lo porta in giro la lettura sotto cambia con lui: è quella
+  // che dice se si è ancora dentro al paese o già in mezzo al bosco.
+  luogoMappa.segno.on('drag', () => {
+    const ll = luogoMappa.segno.getLatLng();
+    luogoMappaScegli(ll.lat, ll.lng, { senzaSegno: true });
+  });
+  luogoMappa.segno.on('dragend', () => {
+    const ll = luogoMappa.segno.getLatLng();
+    luogoMappaScegli(ll.lat, ll.lng, { senzaSegno: true });
+  });
+}
+
+// La riga tratteggiata fra casa e il punto: la distanza scritta sotto dice
+// quanti chilometri sono, questa dice da che parte — ed è l'unica delle due
+// che si legge senza leggere.
+function luogoMappaFilo(punto) {
+  if (!luogoMappa.mappa) return;
+  const casa = luogoCorrente();
+  if (!casa) return;
+  const tratto = [[casa.lat, casa.lon], punto];
+  if (luogoMappa.filo) { luogoMappa.filo.setLatLngs(tratto); return; }
+  luogoMappa.filo = L.polyline(tratto, {
+    color: '#7dd3fc', weight: 1.4, opacity: 0.45, dashArray: '4 7', interactive: false
+  }).addTo(luogoMappa.mappa);
+  luogoMappa.filo.bringToBack();
+}
+
 // Sposta il punto scelto. `centra` porta lì la mappa (serve all'apertura e a
 // chi scrive le coordinate a mano); un tocco sulla mappa invece non la muove,
 // o il punto scapperebbe da sotto il dito.
@@ -8340,20 +8462,23 @@ function luogoMappaScegli(lat, lon, opz = {}) {
   if (!isFinite(lat) || !isFinite(lon)) return false;
   const la = Math.max(-90, Math.min(90, lat));
   luogoMappa.scelto = { lat: la, lon: luogoNormalizzaLon(lon) };
+  // Il nome vale solo per il punto con cui è arrivato: trascinato il segno di
+  // due chilometri, quello non è più «Chamonix» ed è giusto che la lettura
+  // torni a dire cos'è davvero.
+  luogoMappa.nome = opz.nome || null;
 
   if (luogoMappa.mappa) {
-    // Il pallino si appoggia dove è stato toccato — anche su una copia del
+    // Il segno si appoggia dove è stato toccato — anche su una copia del
     // mondo a destra o a sinistra. Mettendolo alla longitudine normalizzata
     // saltava dall'altra parte della mappa proprio sotto il dito.
     const punto = [la, lon];
-    if (luogoMappa.segno) luogoMappa.segno.setLatLng(punto);
-    else {
-      luogoMappa.segno = L.circleMarker(punto, {
-        radius: 8, color: '#fbbf24', fillColor: '#f59e0b',
-        fillOpacity: 0.95, weight: 2.5
-      }).addTo(luogoMappa.mappa).bindTooltip('Da qui', { direction: 'top' });
+    // Mentre lo si trascina il segno è già dov'è il dito: riscriverlo lo fa
+    // scattare indietro di un fotogramma a ogni movimento.
+    if (!opz.senzaSegno) {
+      if (luogoMappa.segno) luogoMappa.segno.setLatLng(punto);
+      else luogoMappaFaiSegno(punto);
     }
-    luogoMappa.segno.bringToFront();
+    luogoMappaFilo(punto);
     if (opz.centra) {
       luogoMappa.mappa.setView(punto, opz.zoom || luogoMappa.mappa.getZoom());
     }
@@ -8386,12 +8511,15 @@ function luogoMappaAggiornaLettura() {
 
   const vicina = luogoCittaPiuVicina(s.lat, s.lon);
   const haNome = vicina && vicina.km <= LUOGO_NOME_KM;
-  elNome.textContent = haNome ? vicina.nome : 'Punto senza nome';
+  // Il nome arrivato col punto vince su tutto: chi ha cercato «Sestriere» o
+  // ha incollato il link del Colle dell'Agnello si aspetta di leggere quello,
+  // non il capoluogo di provincia che l'elenco a bordo conosce.
+  elNome.textContent = luogoMappa.nome || (haNome ? vicina.nome : 'Punto senza nome');
   elCoord.textContent = luogoCoordinateFini(s.lat, s.lon);
 
   if (elNota) {
     const righe = [];
-    if (vicina) {
+    if (vicina && vicina.nome !== luogoMappa.nome) {
       righe.push(haNome
         ? `a ${luogoDistanzaTesto(vicina.km)} da ${vicina.nome}${vicina.paese ? ` (${vicina.paese})` : ''}`
         : `il posto più vicino che conosco è ${vicina.nome}, a ${luogoDistanzaTesto(vicina.km)}`);
@@ -8409,13 +8537,13 @@ function luogoMappaAggiornaLettura() {
 // (`skyAvviso`) qui non servirebbe: sta sotto a questo foglio, e sul telefono
 // il foglio copre lo schermo intero.
 let luogoAvvisoTimer = null;
-function luogoAvviso(testo) {
+function luogoAvviso(testo, ms = 6000) {
   const el = document.getElementById('luogo-avviso');
   if (!el) return;
   clearTimeout(luogoAvvisoTimer);
   el.textContent = testo || '';
   el.classList.toggle('hidden', !testo);
-  if (testo) luogoAvvisoTimer = setTimeout(() => luogoAvviso(''), 6000);
+  if (testo) luogoAvvisoTimer = setTimeout(() => luogoAvviso(''), ms);
 }
 
 // Le due caselle delle coordinate. Un numero che non sta sulla Terra non
@@ -8433,7 +8561,334 @@ function luogoMappaDalleCaselle() {
   }
   luogoAvviso('');
   luogoMappaScegli(lat, lon, { centra: true, zoom: Math.max(
-    luogoMappa.mappa ? luogoMappa.mappa.getZoom() : LUOGO_ZOOM_APERTURA, LUOGO_ZOOM_APERTURA) });
+    luogoMappa.mappa ? luogoMappa.mappa.getZoom() : LUOGO_ZOOM_PUNTO, LUOGO_ZOOM_PUNTO) });
+}
+
+// --- Il punto che arriva da un'altra mappa ----------------------------
+//   Un posto da cui osservare non si sceglie qui la prima volta: si sceglie
+//   guardando Google Maps, la carta escursionistica, il messaggio di un
+//   amico. Quello che si ha in mano a quel punto è un link o due numeri, e
+//   ricopiarli a mano in due caselle è il modo più sicuro di sbagliare un
+//   segno. Qui dentro ci si incolla quello che si ha e basta.
+//
+//   I formati sono quelli che Google Maps produce davvero — il link lungo
+//   della barra degli indirizzi, quello del tasto «Condividi», le coordinate
+//   che compaiono tenendo premuto sul punto — più i gradi e primi delle
+//   carte e i due numeri secchi.
+
+// Gradi, primi e secondi con la lettera dell'emisfero: 45°58'34.3"N 7°39'29.0"E.
+// È il formato che Google Maps scrive nella scheda di un punto senza nome, ed
+// è anche quello delle carte di montagna.
+function luogoGradiPrimi(testo) {
+  const re = /(\d{1,3})\s*[°º]\s*(?:(\d{1,2}(?:[.,]\d+)?)\s*['′’]\s*)?(?:(\d{1,2}(?:[.,]\d+)?)\s*["″”]\s*)?([NSEWO])/gi;
+  const trovati = [];
+  let m;
+  while ((m = re.exec(testo)) !== null && trovati.length < 4) {
+    const g = parseFloat(m[1]);
+    const p = m[2] ? parseFloat(m[2].replace(',', '.')) : 0;
+    const s = m[3] ? parseFloat(m[3].replace(',', '.')) : 0;
+    const lettera = m[4].toUpperCase();
+    let v = g + p / 60 + s / 3600;
+    // O sta per Ovest all'italiana, W per West: la stessa parte del mondo
+    if (lettera === 'S' || lettera === 'W' || lettera === 'O') v = -v;
+    trovati.push({ v, asse: (lettera === 'N' || lettera === 'S') ? 'lat' : 'lon' });
+  }
+  const lat = trovati.find(x => x.asse === 'lat');
+  const lon = trovati.find(x => x.asse === 'lon');
+  return (lat && lon) ? { lat: lat.v, lon: lon.v } : null;
+}
+
+// Due numeri e nient'altro: «45.976, 7.658». Con la virgola come separatore
+// i decimali devono essere col punto, se no «45,976 7,658» e «45,976,7658»
+// sarebbero la stessa cosa; con lo spazio in mezzo si accetta anche la
+// virgola decimale, che è come li scrive mezza Europa.
+function luogoCoppiaNumeri(testo) {
+  const t = (testo || '').trim();
+  let m = t.match(/^(-?\d{1,3}(?:\.\d+)?)\s*[,;]\s*(-?\d{1,3}(?:\.\d+)?)$/);
+  if (m) return { lat: parseFloat(m[1]), lon: parseFloat(m[2]) };
+  m = t.match(/^(-?\d{1,3}(?:[.,]\d+)?)\s+(-?\d{1,3}(?:[.,]\d+)?)$/);
+  if (m) return { lat: parseFloat(m[1].replace(',', '.')), lon: parseFloat(m[2].replace(',', '.')) };
+  return null;
+}
+
+// Il nome del posto, quando il link ce l'ha: /maps/place/Colle+del+Nivolet/@…
+// Se al posto del nome ci sono le coordinate (Google fa così per i punti che
+// un nome non ce l'hanno) è meglio non dire niente: ci pensa la lettura.
+function luogoNomeDaLink(testo) {
+  const m = testo.match(/\/maps\/place\/([^/@?#]+)/);
+  if (!m) return null;
+  let nome;
+  try { nome = decodeURIComponent(m[1].replace(/\+/g, ' ')).trim(); }
+  catch (e) { nome = m[1].replace(/\+/g, ' ').trim(); }
+  if (!nome || /^[-\d.,°º'"′″\s+NSEWO]+$/i.test(nome)) return null;
+  return nome.length > 48 ? nome.slice(0, 48) + '…' : nome;
+}
+
+function luogoPuntoValido(lat, lon, nome) {
+  if (!isFinite(lat) || !isFinite(lon)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  return { lat, lon, nome: nome || null };
+}
+
+// Legge un punto da quello che è stato incollato. Restituisce { lat, lon,
+// nome }, oppure { corto: true } per i link accorciati — che non contengono
+// le coordinate da nessuna parte: sono una chiave da chiedere a un server, e
+// il server non risponde a una pagina che non è la sua.
+function luogoDaTesto(testo) {
+  const grezzo = (testo || '').trim();
+  if (!grezzo) return null;
+  if (/(maps\.app\.goo\.gl|goo\.gl\/maps)/i.test(grezzo)) return { corto: true };
+
+  // Nei link i separatori arrivano spesso già codificati (%2C per la virgola)
+  let t = grezzo;
+  try { t = decodeURIComponent(grezzo); } catch (e) { /* percentuali sbilenche: si legge com'è */ }
+  const nome = luogoNomeDaLink(t);
+
+  // 1. !3d…!4d… — è il punto del posto, quello che Google mette in fondo ai
+  //    link lunghi. Vince sugli altri perché @ dice dov'era la telecamera,
+  //    che con un pannello aperto di lato non è dov'è il posto.
+  let m = t.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (m) return luogoPuntoValido(parseFloat(m[1]), parseFloat(m[2]), nome);
+
+  // 2. @lat,lon,zoom — la barra degli indirizzi di Google Maps
+  m = t.match(/@(-?\d{1,3}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)/);
+  if (m) return luogoPuntoValido(parseFloat(m[1]), parseFloat(m[2]), nome);
+
+  // 3. I parametri: ?q=, ?ll=, &query=, ¢er=, &daddr= (Google, Apple, Bing)
+  m = t.match(/[?&#](?:q|ll|sll|query|center|daddr|saddr|destination|cp)=(-?\d{1,3}(?:\.\d+)?)[,~](-?\d{1,3}(?:\.\d+)?)/i);
+  if (m) return luogoPuntoValido(parseFloat(m[1]), parseFloat(m[2]), nome);
+
+  // 4. OpenStreetMap: mlat e mlon separati, e il #map=zoom/lat/lon
+  const mlat = t.match(/[?&]mlat=(-?\d{1,3}(?:\.\d+)?)/i);
+  const mlon = t.match(/[?&]mlon=(-?\d{1,3}(?:\.\d+)?)/i);
+  if (mlat && mlon) return luogoPuntoValido(parseFloat(mlat[1]), parseFloat(mlon[1]), nome);
+  m = t.match(/#map=\d+(?:\.\d+)?\/(-?\d{1,3}(?:\.\d+)?)\/(-?\d{1,3}(?:\.\d+)?)/i);
+  if (m) return luogoPuntoValido(parseFloat(m[1]), parseFloat(m[2]), nome);
+
+  // 5. geo: — quello che manda una app di mappe quando condivide un punto
+  m = t.match(/geo:(-?\d{1,3}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)/i);
+  if (m) return luogoPuntoValido(parseFloat(m[1]), parseFloat(m[2]), nome);
+
+  // 6. Gradi e primi, e infine due numeri secchi
+  const dms = luogoGradiPrimi(t);
+  if (dms) return luogoPuntoValido(dms.lat, dms.lon, nome);
+  const coppia = luogoCoppiaNumeri(t);
+  if (coppia) return luogoPuntoValido(coppia.lat, coppia.lon, nome);
+  return null;
+}
+
+// Applica quello che è stato incollato. Ogni modo di fallire ha la sua
+// risposta: un link corto si può ancora salvare (basta aprirlo), un testo
+// senza numeri no, e le due cose non si dicono allo stesso modo.
+function luogoIncollaUsa() {
+  const campo = document.getElementById('luogo-incolla-testo');
+  const punto = luogoDaTesto(campo && campo.value);
+  if (!punto) {
+    luogoAvviso('Lì dentro non ci sono coordinate. Da Google Maps: tieni premuto sul punto, e copia i numeri che compaiono in fondo.', 9000);
+    return;
+  }
+  if (punto.corto) {
+    luogoAvviso('I link corti (maps.app.goo.gl) non contengono le coordinate: aprilo una volta nel browser e incolla l\'indirizzo lungo che diventa.', 10000);
+    return;
+  }
+  luogoAvviso('');
+  const zoom = Math.max(luogoMappa.mappa ? luogoMappa.mappa.getZoom() : 0, LUOGO_ZOOM_PUNTO);
+  luogoMappaScegli(punto.lat, punto.lon, { centra: true, zoom, nome: punto.nome });
+  if (campo) campo.value = '';
+}
+
+// Il tasto «Incolla»: c'è solo dove il browser lascia leggere gli appunti
+// (Chrome e Safari recenti, e solo in risposta a un tocco). Dove non c'è, il
+// campo resta e si incolla come sempre — il gesto lo conoscono tutti.
+async function luogoIncollaDagliAppunti() {
+  const campo = document.getElementById('luogo-incolla-testo');
+  if (!campo || !navigator.clipboard || !navigator.clipboard.readText) return;
+  try {
+    const testo = await navigator.clipboard.readText();
+    if (!testo) { luogoAvviso('Negli appunti non c\'è niente da incollare.'); return; }
+    campo.value = testo.trim();
+    luogoIncollaUsa();
+  } catch (e) {
+    luogoAvviso('Il browser non mi lascia leggere gli appunti: incolla nel campo con le dita.');
+  }
+}
+
+// Il pannello dell'incollato si apre e si chiude. Aperto, il fuoco va nel
+// campo: chi ha appena copiato un link vuole incollarlo, non cercarlo.
+function luogoAlternaIncolla(forza) {
+  const pannello = document.getElementById('luogo-incolla');
+  const tasto = document.getElementById('luogo-btn-incolla');
+  if (!pannello) return;
+  const apri = forza === undefined ? pannello.classList.contains('hidden') : !!forza;
+  pannello.classList.toggle('hidden', !apri);
+  if (tasto) {
+    tasto.classList.toggle('attiva', apri);
+    tasto.setAttribute('aria-expanded', apri ? 'true' : 'false');
+  }
+  if (apri) {
+    const campo = document.getElementById('luogo-incolla-testo');
+    if (campo) setTimeout(() => campo.focus(), 40);
+  }
+}
+
+// Il punto scelto aperto in Google Maps: la strada per arrivarci, le
+// fotografie, i cancelli chiusi. Sono cose che questa mappa non sa, e che chi
+// parte di notte con il telescopio in macchina vuole sapere prima.
+function luogoApriInGoogle() {
+  const s = luogoMappa.scelto;
+  if (!s) { luogoAvviso('Scegli prima un punto.'); return; }
+  const url = `https://www.google.com/maps/search/?api=1&query=${s.lat.toFixed(6)},${s.lon.toFixed(6)}`;
+  window.open(url, '_blank', 'noopener');
+}
+
+// --- La ricerca per nome, dentro la finestra --------------------------
+//   È la stessa del pannello (elenco a bordo, poi il servizio online), ma
+//   qui non applica niente: porta la mappa lì e lascia il punto in mano a
+//   chi guarda. Una città è un centro abitato — il posto buono è dieci
+//   chilometri più in là, ed è quello che si va a cercare col dito.
+
+let luogoCercaTimer = null;
+let luogoCercaRichiesta = 0;
+
+function luogoMostraRisultati(elenco, nota) {
+  const box = document.getElementById('luogo-cerca-risultati');
+  if (!box) return;
+  if (!elenco.length) {
+    box.innerHTML = nota ? `<p class="luogo-cerca-nota">${nota}</p>` : '';
+    box.classList.toggle('aperta', !!nota);
+    return;
+  }
+  box.innerHTML = elenco.map((c, i) => `
+    <button type="button" class="luogo-cerca-risultato" role="option" data-luogo-trovato="${i}">
+      <span class="luogo-cerca-nome">${c.nome}</span>
+      <span class="luogo-cerca-paese">${c.paese || ''}</span>
+    </button>`).join('');
+  box.classList.add('aperta');
+  box.querySelectorAll('[data-luogo-trovato]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const c = elenco[parseInt(btn.dataset.luogoTrovato, 10)];
+      if (!c) return;
+      luogoMappaScegli(c.lat, c.lon, { centra: true, zoom: LUOGO_ZOOM_PUNTO, nome: c.nome });
+      luogoMostraRisultati([], null);
+      const campo = document.getElementById('luogo-cerca');
+      // Sul telefono la tastiera copre mezza mappa: appena scelto il posto,
+      // quello che si vuole vedere è il posto.
+      if (campo) { campo.value = c.nome; campo.blur(); }
+    });
+  });
+}
+
+function luogoCerca(testo) {
+  if (luogoCercaTimer) clearTimeout(luogoCercaTimer);
+  const locali = typeof posCittaLocali === 'function' ? posCittaLocali(testo) : [];
+  if ((testo || '').trim().length < 2) { luogoMostraRisultati([], null); return; }
+  luogoMostraRisultati(locali, locali.length ? null : 'Cerco anche fuori dall\'elenco…');
+  const richiesta = ++luogoCercaRichiesta;
+  luogoCercaTimer = setTimeout(async () => {
+    const online = typeof posCittaOnline === 'function' ? await posCittaOnline(testo) : [];
+    if (richiesta !== luogoCercaRichiesta) return;  // nel frattempo ha scritto altro
+    const visti = new Set(locali.map(c => posNormalizzaNome(c.nome)));
+    const uniti = locali.concat(online.filter(c => !visti.has(posNormalizzaNome(c.nome)))).slice(0, 8);
+    luogoMostraRisultati(uniti, uniti.length ? null : 'Nessun luogo con questo nome. Se non ce l\'ha, indicalo sulla mappa.');
+  }, 420);
+}
+
+// --- La mappa a tutto schermo -----------------------------------------
+//   Dentro alla finestra la mappa è alta trecento pixel: bastano per dire
+//   "più o meno lì", non per scegliere fra due radure. A schermo intero la
+//   mappa è tutto, e la lettura col tasto «Guarda il cielo da qui» si
+//   stacca e le si appoggia sopra — così il giro si chiude senza uscire.
+//   Stessa impalcatura della mappa dell'ombra e della vista 3D, ripiego
+//   compreso: Safari su iPhone non dà il pieno schermo agli elementi.
+
+let luogoSchermoIntero = false;
+let luogoSegnaposto = null;
+
+function luogoGuscio() {
+  return document.getElementById('luogo-guscio');
+}
+
+function luogoAlternaSchermoIntero() {
+  if (luogoSchermoIntero) luogoEsciSchermoIntero();
+  else luogoEntraSchermoIntero();
+}
+
+function luogoEntraSchermoIntero() {
+  const guscio = luogoGuscio();
+  if (!guscio || luogoSchermoIntero) return;
+  luogoSchermoIntero = true;
+  document.body.classList.add('luogo-immersivo');
+
+  const chiedi = guscio.requestFullscreen || guscio.webkitRequestFullscreen;
+  if (chiedi) {
+    try {
+      const esito = chiedi.call(guscio);
+      if (esito && typeof esito.catch === 'function') esito.catch(() => luogoRipiegoSchermo(guscio));
+    } catch (e) {
+      luogoRipiegoSchermo(guscio);
+    }
+  } else {
+    luogoRipiegoSchermo(guscio);
+  }
+  luogoAggiornaTastoSchermo();
+  luogoRimisura();
+}
+
+// Il ripiego: il guscio esce dal modale e si appende in cima alla pagina, con
+// un segnaposto che si ricorda dov'era. Se il planetario è già a schermo
+// intero va appeso *dentro* al suo guscio, se no il pieno schermo vero non lo
+// disegnerebbe (è la stessa regola della 7.5-bis).
+function luogoRipiegoSchermo(guscio) {
+  if (!luogoSchermoIntero || luogoSegnaposto) return;
+  luogoSegnaposto = document.createComment('guscio-luogo-cielo');
+  guscio.parentNode.insertBefore(luogoSegnaposto, guscio);
+  const ospite = (typeof skyGuscioSchermoIntero === 'function' && skyGuscioSchermoIntero()) || document.body;
+  ospite.appendChild(guscio);
+  guscio.classList.add('luogo-schermo-pieno');
+  luogoAggiornaTastoSchermo();
+  luogoRimisura();
+}
+
+function luogoEsciSchermoIntero() {
+  if (!luogoSchermoIntero) return;
+  const guscio = luogoGuscio();
+  luogoSchermoIntero = false;
+  document.body.classList.remove('luogo-immersivo');
+
+  if (guscio) guscio.classList.remove('luogo-schermo-pieno');
+  if (guscio && luogoSegnaposto && luogoSegnaposto.parentNode) {
+    luogoSegnaposto.parentNode.replaceChild(guscio, luogoSegnaposto);
+  }
+  luogoSegnaposto = null;
+
+  const esci = document.exitFullscreen || document.webkitExitFullscreen;
+  const attivo = document.fullscreenElement || document.webkitFullscreenElement;
+  if (attivo && esci) {
+    try {
+      const esito = esci.call(document);
+      if (esito && typeof esito.catch === 'function') esito.catch(() => {});
+    } catch (e) { /* già uscito per conto suo */ }
+  }
+  luogoAggiornaTastoSchermo();
+  luogoRimisura();
+}
+
+function luogoAggiornaTastoSchermo() {
+  const tasto = document.getElementById('luogo-btn-schermo');
+  if (!tasto) return;
+  tasto.classList.toggle('attiva', luogoSchermoIntero);
+  const testo = luogoSchermoIntero ? 'Esci dal tutto schermo (o premi Esc)' : 'Mappa a tutto schermo (o premi F)';
+  tasto.title = testo;
+  tasto.setAttribute('aria-label', testo);
+}
+
+// Leaflet disegna le tessere per la misura che il riquadro aveva: dopo un
+// cambio di forma va rimisurata, e due passate perché la prima a volte arriva
+// mentre il pieno schermo si sta ancora aprendo.
+function luogoRimisura() {
+  [80, 320].forEach(ms => setTimeout(() => {
+    if (luogoMappa.mappa) luogoMappa.mappa.invalidateSize();
+  }, ms));
 }
 
 function apriMappaLuogoCielo() {
@@ -8441,6 +8896,10 @@ function apriMappaLuogoCielo() {
   if (!modale) return;
   modale.classList.remove('hidden');
   luogoAvviso('');
+  luogoAlternaIncolla(false);
+  luogoMostraRisultati([], null);
+  const cerca = document.getElementById('luogo-cerca');
+  if (cerca) cerca.value = '';
   luogoMappaCostruisci();
   luogoMappaSegnaCasa();
 
@@ -8449,7 +8908,9 @@ function apriMappaLuogoCielo() {
   // "e se guardassi da un'altra parte *rispetto a qui*".
   const l = skyLuogoDelCielo();
   const partenza = l || { lat: 41.9, lon: 12.5 };
-  luogoMappaScegli(partenza.lat, partenza.lon, { centra: true, zoom: LUOGO_ZOOM_APERTURA });
+  luogoMappaScegli(partenza.lat, partenza.lon, {
+    centra: true, zoom: LUOGO_ZOOM_APERTURA, nome: l && l.nome ? l.nome : null
+  });
 
   // La mappa è nata dentro a un modale nascosto, cioè alta zero: senza questa
   // passata resterebbe un rettangolo grigio finché non la si tocca. Il
@@ -8458,21 +8919,26 @@ function apriMappaLuogoCielo() {
 }
 
 function chiudiMappaLuogoCielo() {
+  // Prima si esce dal pieno schermo, se no il guscio resta murato fuori dal
+  // modale — e alla riapertura la finestra sarebbe vuota.
+  if (luogoSchermoIntero) luogoEsciSchermoIntero();
   const modale = document.getElementById('modale-luogo-cielo');
   if (modale) modale.classList.add('hidden');
 }
 
 // Applica il punto: da qui in poi è la stessa strada di una città scelta in
-// elenco (`skyUsaLuogoVista`), avviso compreso. Il nome lo mette lei, con la
-// regola di sempre — il paese vicino se c'è, le coordinate se non c'è.
+// elenco (`skyUsaLuogoVista`), avviso compreso. Se il punto un nome se l'è
+// portato dietro — una città cercata, un link di Google Maps — si tiene
+// quello; se no lo mette lei, con la regola di sempre.
 function luogoMappaUsa() {
   const s = luogoMappa.scelto;
   if (!s) {
     luogoAvviso('Tocca prima un punto sulla mappa.');
     return;
   }
+  const nome = luogoMappa.nome;
   chiudiMappaLuogoCielo();
-  skyUsaLuogoVista(s.lat, s.lon, null);
+  skyUsaLuogoVista(s.lat, s.lon, nome);
 }
 
 // Collega i comandi della finestra. Una volta sola, da skyInizializzaLuogoVista.
@@ -8486,7 +8952,22 @@ function inizializzaMappaLuogo() {
   // altre finestre: si tocca fuori e si torna al cielo.
   modale.addEventListener('click', (e) => { if (e.target === modale) chiudiMappaLuogoCielo(); });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !modale.classList.contains('hidden')) chiudiMappaLuogoCielo();
+    if (modale.classList.contains('hidden')) return;
+    if (e.key === 'Escape') {
+      // A schermo intero l'Esc è già una via d'uscita: la prima volta apre la
+      // mappa dentro alla finestra, la seconda chiude la finestra. Chiudere
+      // tutto in un colpo farebbe sparire anche il punto appena scelto.
+      if (luogoSchermoIntero) luogoEsciSchermoIntero();
+      else chiudiMappaLuogoCielo();
+      return;
+    }
+    // La F del pieno schermo, come nella vista 3D. Non mentre si scrive: in un
+    // campo di testo la F è una lettera.
+    const dentroUnCampo = e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName || '');
+    if ((e.key === 'f' || e.key === 'F') && !dentroUnCampo && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      luogoAlternaSchermoIntero();
+    }
   });
 
   const usa = document.getElementById('luogo-btn-usa');
@@ -8497,8 +8978,74 @@ function inizializzaMappaLuogo() {
     casa.addEventListener('click', () => {
       const mio = luogoCorrente();
       if (!mio) { luogoAvviso('Non so ancora dove sei: la posizione si sceglie dalle Impostazioni.'); return; }
-      luogoMappaScegli(mio.lat, mio.lon, { centra: true, zoom: LUOGO_ZOOM_APERTURA });
+      luogoMappaScegli(mio.lat, mio.lon, {
+        centra: true, zoom: Math.max(luogoMappa.mappa ? luogoMappa.mappa.getZoom() : 0, LUOGO_ZOOM_APERTURA),
+        nome: (sky.posizione && sky.posizione.nome) || null
+      });
     });
+  }
+
+  // I tre fondi della mappa
+  modale.querySelectorAll('[data-luogo-sfondo]').forEach(b =>
+    b.addEventListener('click', () => luogoMappaSfondo(b.dataset.luogoSfondo)));
+
+  // I tasti appoggiati sulla mappa
+  const schermo = document.getElementById('luogo-btn-schermo');
+  if (schermo) schermo.addEventListener('click', luogoAlternaSchermoIntero);
+  const inquadra = document.getElementById('luogo-btn-inquadra');
+  if (inquadra) {
+    inquadra.addEventListener('click', () => {
+      const s = luogoMappa.scelto;
+      if (!s || !luogoMappa.mappa) return;
+      luogoMappa.mappa.setView([s.lat, s.lon],
+        Math.max(luogoMappa.mappa.getZoom(), LUOGO_ZOOM_APERTURA), { animate: true });
+    });
+  }
+  const google = document.getElementById('luogo-btn-google');
+  if (google) google.addEventListener('click', luogoApriInGoogle);
+
+  // Il pieno schermo può finire anche senza passare dal tasto (Esc, o il
+  // gesto del sistema): quando succede la mappa va rimisurata comunque
+  const cambioSchermo = () => {
+    const attivo = document.fullscreenElement || document.webkitFullscreenElement;
+    if (luogoSchermoIntero && !luogoSegnaposto && attivo !== luogoGuscio()) luogoEsciSchermoIntero();
+    else luogoRimisura();
+  };
+  document.addEventListener('fullscreenchange', cambioSchermo);
+  document.addEventListener('webkitfullscreenchange', cambioSchermo);
+
+  // La ricerca per nome
+  const cerca = document.getElementById('luogo-cerca');
+  if (cerca) {
+    cerca.addEventListener('input', () => luogoCerca(cerca.value));
+    cerca.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const primo = document.querySelector('#luogo-cerca-risultati [data-luogo-trovato]');
+      if (primo) primo.click();
+    });
+  }
+
+  // Il pannello «Da Google Maps»
+  const incolla = document.getElementById('luogo-btn-incolla');
+  if (incolla) incolla.addEventListener('click', () => luogoAlternaIncolla());
+  const incollaUsa = document.getElementById('luogo-incolla-usa');
+  if (incollaUsa) incollaUsa.addEventListener('click', luogoIncollaUsa);
+  const campoIncolla = document.getElementById('luogo-incolla-testo');
+  if (campoIncolla) {
+    campoIncolla.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      luogoIncollaUsa();
+    });
+    // Un link incollato è già la risposta: non c'è niente da correggere, e
+    // chiedere anche un tocco sul tasto sarebbe un passaggio in più a vuoto.
+    campoIncolla.addEventListener('paste', () => setTimeout(luogoIncollaUsa, 0));
+  }
+  const appunti = document.getElementById('luogo-incolla-appunti');
+  if (appunti && navigator.clipboard && navigator.clipboard.readText) {
+    appunti.classList.remove('hidden');
+    appunti.addEventListener('click', luogoIncollaDagliAppunti);
   }
 
   const coord = document.getElementById('luogo-btn-coordinate');
@@ -8512,6 +9059,8 @@ function inizializzaMappaLuogo() {
       luogoMappaDalleCaselle();
     });
   });
+
+  luogoAggiornaTastoSchermo();
 }
 
 // Il telefono può mandare DUE flussi di orientamento, e sono flussi diversi:
