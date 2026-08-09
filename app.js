@@ -11077,6 +11077,68 @@ function skyDipingiVenere(ctx) {
   ctx.restore();
 }
 
+// La Terra. In cielo non si disegna mai — ci siamo sopra — ma nella vista
+// 3D del Sistema Solare è il pallino che si cerca per primo, ed era l'unico
+// mondo senza una faccia. Le terre sono macchie appoggiate alle coordinate
+// vere: non è una carta geografica, è quello che si riconosce da lontano —
+// la massa dell'Africa, il triangolo del Sudamerica, il bianco dei poli.
+const SKY_TERRE = [
+  { lon: 20,   lat: 3,   r: 0.36, c: '#3f6b3d' },   // Africa
+  { lon: 18,   lat: 24,  r: 0.26, c: '#b39a63' },   // Sahara
+  { lon: 45,   lat: 24,  r: 0.15, c: '#b39a63' },   // Arabia
+  { lon: 14,   lat: 50,  r: 0.17, c: '#4d7a45' },   // Europa
+  { lon: 88,   lat: 52,  r: 0.42, c: '#4a7442' },   // Asia
+  { lon: 78,   lat: 21,  r: 0.15, c: '#5c7f3e' },   // India
+  { lon: -100, lat: 45,  r: 0.33, c: '#4a7442' },   // Nord America
+  { lon: -60,  lat: -14, r: 0.27, c: '#3d6f39' },   // Sud America
+  { lon: 134,  lat: -25, r: 0.21, c: '#a98d55' },   // Australia
+  { lon: -42,  lat: 72,  r: 0.15, c: '#e8f1f7' }    // Groenlandia
+];
+
+function skyDipingiTerra(ctx) {
+  const caso = skyCaso(skySeme('terra'));
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.clip();
+  // L'oceano non è di un blu solo: verso i tropici è più chiaro
+  const g = ctx.createLinearGradient(0, -1, 0, 1);
+  g.addColorStop(0, '#1b3f78');
+  g.addColorStop(0.5, '#2a68b0');
+  g.addColorStop(1, '#1b3f78');
+  ctx.fillStyle = g;
+  ctx.fillRect(-1, -1, 2, 2);
+  SKY_TERRE.forEach(t => {
+    skyMacchiaSfera(ctx, t.lon, t.lat, t.r, (c, r) => {
+      skyNuvola(c, r, t.c, 0.92, 0.55);
+      skyNuvola(c, r * 0.62, t.c, 0.6, 0.4);
+    });
+  });
+  // Le nuvole: sono la prima cosa che si vede da fuori, e sono in fasce —
+  // fitte all'equatore e ai sessanta gradi, rade sui deserti
+  for (let i = 0; i < 46; i++) {
+    const lat = [4, 4, 52, -52, 30, -28][Math.floor(caso() * 6)] + caso() * 16 - 8;
+    skyMacchiaSfera(ctx, caso() * 360 - 180, lat, 0.1 + caso() * 0.2, (c, r) => {
+      c.save();
+      c.scale(1, 0.45);
+      skyNuvola(c, r, '#ffffff', 0.42, 0.1);
+      c.restore();
+    });
+  }
+  // Le calotte, come su Marte ma più larghe
+  const calotta = (y, spessore, alpha) => {
+    const cg = ctx.createLinearGradient(0, y, 0, y + spessore);
+    cg.addColorStop(0, `rgba(248, 252, 255, ${alpha})`);
+    cg.addColorStop(0.6, `rgba(240, 248, 255, ${alpha * 0.5})`);
+    cg.addColorStop(1, 'rgba(248, 252, 255, 0)');
+    ctx.fillStyle = cg;
+    ctx.fillRect(-1, Math.min(y, y + spessore), 2, Math.abs(spessore));
+  };
+  calotta(-1, 0.12, 0.85);
+  calotta(1, -0.16, 0.9);
+  ctx.restore();
+}
+
 // Marte: la ruggine, le regioni scure che i primi osservatori scambiarono
 // per mari (la più vistosa è la Syrtis Major, il "triangolo") e le calotte
 // polari di ghiaccio.
@@ -11255,6 +11317,7 @@ const SKY_FACCE = {
   Moon: skyDipingiLuna,
   Mercury: skyDipingiMercurio,
   Venus: skyDipingiVenere,
+  Earth: skyDipingiTerra,       // solo per la vista 3D: in cielo ci siamo sopra
   Mars: skyDipingiMarte,
   Jupiter: skyDipingiGiove,
   Saturn: skyDipingiSaturno,
@@ -18675,6 +18738,54 @@ function solProietta(p) {
   };
 }
 
+// I tre assi della vista, letti in coordinate eclittiche: dove va a finire
+// sullo schermo la destra, l'alto e la direzione verso chi guarda. Sono le
+// tre righe di `solProietta` scritte al contrario, e servono a tutto ciò che
+// ha un orientamento vero e non se lo può inventare — la fase di un pianeta,
+// l'inclinazione del suo asse, l'apertura degli anelli di Saturno. Formano
+// una terna ortonormale, quindi il prodotto scalare con un versore dà
+// direttamente la sua componente.
+function solAssiVista() {
+  const a = sol.az, e = sol.elev * SKY_D2R;
+  const ca = Math.cos(a), sa = Math.sin(a), ce = Math.cos(e), se = Math.sin(e);
+  return {
+    destra: [ca, -sa, 0],
+    alto: [sa * se, ca * se, ce],
+    verso: [-sa * ce, -ca * ce, se]
+  };
+}
+
+// L'angolo, sullo schermo, di una direzione dello spazio. La `y` della tela
+// cresce in giù, e da lì il segno meno sull'alto.
+function solAngoloSchermo(d, assi) {
+  return Math.atan2(-skyDot(d, assi.alto), skyDot(d, assi.destra));
+}
+
+// Quanto rigirare la faccia dipinta perché il suo nord finisca dov'è il
+// polo vero. La faccia ha il nord in alto, cioè in (0,−1): una rotazione di
+// θ la porta in (sin θ, −cos θ), e il polo proiettato è
+// (asse·destra, −asse·alto) — da cui θ = atan2(asse·destra, asse·alto).
+function solAngoloPolo(asse, assi) {
+  return Math.atan2(skyDot(asse, assi.destra), skyDot(asse, assi.alto));
+}
+
+// La frazione illuminata vista *da questa telecamera*, che non è la Terra:
+// è la cosa che rende onesta la scena, perché guardando il Sistema Solare
+// dall'alto un pianeta interno mostra la falce e uno esterno no.
+function solFrazione(corpo, assi) {
+  const s = solVersoIlSole(corpo);
+  if (!s) return 1;
+  return Math.max(0, Math.min(1, (1 + skyDot(s, assi.verso)) / 2));
+}
+
+// Da un pianeta al Sole, normalizzato: il Sole sta nell'origine, quindi è
+// semplicemente la sua posizione col segno cambiato
+function solVersoIlSole(corpo) {
+  const p = corpo.pos;
+  const d = Math.hypot(p.x, p.y, p.z);
+  return d ? [-p.x / d, -p.y / d, -p.z / d] : null;
+}
+
 // Lo zoom che porta l'orbita di un pianeta a riempire il disegno
 function solZoomPer(ua) {
   const r = solRaggio(ua);
@@ -18743,6 +18854,23 @@ function solVettore(id, t) {
   return Astronomy.Ecliptic(Astronomy.HelioVector(id, t)).vec;
 }
 
+// L'asse di rotazione di un pianeta, in coordinate eclittiche e già
+// normalizzato. Da qui vengono tre cose che non si possono inventare: da
+// che parte sta il polo (e quindi come vanno le bande di Giove), quanto
+// sono aperti gli anelli di Saturno — nel 2025 erano di taglio e
+// sparivano — e il fatto che Urano rotola sul fianco invece di girare
+// dritto. `RotationAxis` risponde in coordinate equatoriali, e il giro
+// per l'eclittica è lo stesso di `solVettore`.
+function solAsse(id, t) {
+  try {
+    const n = Astronomy.Ecliptic(Astronomy.RotationAxis(id, t).north).vec;
+    const d = Math.hypot(n.x, n.y, n.z) || 1;
+    return [n.x / d, n.y / d, n.z / d];
+  } catch (e) {
+    return [0, 0, 1];               // dritto sul piano: meglio che niente
+  }
+}
+
 function solLeggiPosizioni(quando) {
   if (typeof Astronomy === 'undefined') { sol.pianeti = []; sol.terra = null; return; }
   const ms = quando.getTime();
@@ -18751,7 +18879,7 @@ function solLeggiPosizioni(quando) {
     const t = Astronomy.MakeTime(quando);
     sol.pianeti = SOL_PIANETI.map(p => {
       const v = solVettore(p.id, t);
-      return Object.assign({}, p, { pos: v, r: Math.hypot(v.x, v.y, v.z) });
+      return Object.assign({}, p, { pos: v, r: Math.hypot(v.x, v.y, v.z), asse: solAsse(p.id, t) });
     });
     sol.terra = sol.pianeti.find(p => p.id === 'Earth') || null;
     // La Luna: a 384.000 km da noi, in questa scena, sta dentro al pallino
@@ -18944,10 +19072,22 @@ function solDisegnaAloneSole(ctx) {
 function solDisegnaDiscoSole(ctx) {
   const p = solProietta({ x: 0, y: 0, z: 0 });
   const raggio = solRaggioSole();
-  ctx.fillStyle = '#fef3c7';
-  ctx.beginPath();
-  ctx.arc(p.px, p.py, raggio, 0, Math.PI * 2);
-  ctx.fill();
+  // La stessa granulazione del planetario, se c'è spazio per vederla: il
+  // Sole è l'unico corpo di questa scena che si vede sempre tutto
+  // illuminato, e un cerchio giallo piatto in mezzo a otto pianeti con la
+  // faccia era diventato il pezzo meno credibile del disegno
+  const faccia = skyFacciaDi({ id: 'Sun' }, raggio);
+  ctx.save();
+  ctx.translate(p.px, p.py);
+  if (faccia) {
+    ctx.drawImage(faccia, -raggio, -raggio, raggio * 2, raggio * 2);
+  } else {
+    ctx.fillStyle = '#fef3c7';
+    ctx.beginPath();
+    ctx.arc(0, 0, raggio, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 // Il filo a piombo: dal pianeta giù fino al piano dell'eclittica, con il suo
@@ -18974,33 +19114,122 @@ function solDisegnaPiombo(ctx, corpo) {
   ctx.restore();
 }
 
-function solDisegnaCorpo(ctx, corpo) {
+// Un pianeta. Era un pallino sfumato: diceva dov'è, non che cos'è, e
+// Saturno senza anelli in una vista del Sistema Solare è la prima cosa che
+// non torna. Le facce sono già dipinte per il planetario (§7.3.2) e non
+// costano niente — bastava dirgli quanto grandi e con che inclinazione.
+//
+// Il di più che serve qui è che il punto di vista non è la Terra: fase,
+// asse e apertura degli anelli si rifanno per la telecamera, con i tre
+// assi di `solAssiVista()`. Sotto gli otto pixel di raggio la faccia non
+// si dipinge nemmeno — le bande di Giove su dieci pixel non sembrano
+// Giove, sembrano una caramella a righe — e resta il dischetto di prima.
+function solDisegnaCorpo(ctx, corpo, assi) {
   const p = corpo.schermo;
   const r = corpo.rDisegno;
   const scelto = sol.scelto === corpo.id;
   ctx.save();
+  ctx.translate(p.px, p.py);
   if (scelto) {
     ctx.strokeStyle = '#fff';
     ctx.globalAlpha = 0.85;
     ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.arc(p.px, p.py, r + 6, 0, Math.PI * 2);
+    ctx.arc(0, 0, r + solRaggioAnelli(corpo, r) + 6, 0, Math.PI * 2);
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
-  // Un filo di luce dalla parte del Sole, tanto per ricordare da dove
-  // arriva: è il motivo per cui esistono le fasi
-  const g = ctx.createRadialGradient(
-    p.px - (p.px - sol.cx) * 0.25, p.py - (p.py - sol.cy) * 0.25, r * 0.2,
-    p.px, p.py, r);
-  g.addColorStop(0, '#ffffff');
-  g.addColorStop(0.35, corpo.colore);
-  g.addColorStop(1, corpo.colore);
-  ctx.fillStyle = g;
+
+  const versoSole = solVersoIlSole(corpo);
+  const k = solFrazione(corpo, assi);
+  const angLuce = versoSole ? solAngoloSchermo(versoSole, assi) : 0;
+  const asse = corpo.asse || [0, 0, 1];
+  const polo = solAngoloPolo(asse, assi);
+  const anelli = corpo.id === 'Saturn' && r >= 3;
+  const apertura = anelli ? skyDot(asse, assi.verso) : 0;
+
+  // Gli anelli in due metà: quella che passa dietro al globo prima, quella
+  // che gli passa davanti dopo — è l'unica cosa che li fa sembrare un piano
+  // e non un cerchio disegnato attorno
+  if (anelli) {
+    ctx.save(); ctx.rotate(polo);
+    skyDisegnaAnelli(ctx, r, apertura, false);
+    ctx.restore();
+  }
+
+  // Il lato in ombra. Qui, a differenza del planetario, è nero davvero: non
+  // c'è un'atmosfera davanti a illuminarlo, e soprattutto è **opaco** —
+  // dietro a un pianeta le orbite non si vedono (vedi l'ordine di
+  // `solDisegna`). Perciò prima il disco pieno e scuro, poi la parte
+  // illuminata ritagliata sopra.
+  ctx.fillStyle = solColoreNotte(corpo.colore);
   ctx.beginPath();
-  ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.fill();
+  // Un filo del suo colore tutt'attorno. Serve al caso limite: guardando la
+  // scena da dalla parte del Sole un pianeta è quasi tutto notte, e un disco
+  // scuro su fondo scuro non si legge come un mondo ma come un buco nel
+  // disegno — con l'orlo resta una biglia in ombra, che è quello che è
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = corpo.colore;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(0, 0, r - 0.5, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.restore();
+
+  ctx.save();
+  if (k < 0.985) {
+    ctx.rotate(angLuce);
+    skyPercorsoIlluminato(ctx, r, k);
+    ctx.clip();
+    ctx.rotate(-angLuce);
+  }
+  const faccia = skyFacciaDi(corpo, r);
+  if (faccia) {
+    ctx.save();
+    ctx.rotate(polo);
+    ctx.drawImage(faccia, -r, -r, r * 2, r * 2);
+    ctx.restore();
+  } else {
+    // Il dischetto di sempre, che però adesso prende la luce dalla parte
+    // giusta invece che dal centro della tela
+    const cx = Math.cos(angLuce) * r * 0.35, cy = Math.sin(angLuce) * r * 0.35;
+    const g = ctx.createRadialGradient(cx, cy, r * 0.15, 0, 0, r);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.4, corpo.colore);
+    g.addColorStop(1, corpo.colore);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  skyRilievoSfera(ctx, r, angLuce, { brillante: 0.1, bordo: 0.55 });
+  ctx.restore();
+
+  if (anelli) {
+    ctx.save(); ctx.rotate(polo);
+    skyDisegnaAnelli(ctx, r, apertura, true);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+// Quanto sporgono gli anelli oltre il globo, in pixel: serve al cerchio del
+// pianeta scelto e al posto delle scritte, che se no finiscono sugli anelli
+function solRaggioAnelli(corpo, r) {
+  return corpo.id === 'Saturn' && r >= 3 ? r * 1.3 : 0;
+}
+
+// Il lato in ombra: il colore del pianeta portato quasi a zero. Non nero
+// pieno, perché un cerchio nero su fondo nero non si legge come un corpo
+// ma come un buco — e un filo del suo colore basta a dire che è lui.
+function solColoreNotte(hex) {
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  if (!isFinite(n)) return '#0a0e18';
+  const q = (v) => Math.round(v * 0.17);
+  return `rgb(${q((n >> 16) & 255)}, ${q((n >> 8) & 255)}, ${q(n & 255)})`;
 }
 
 // La Luna attorno alla Terra, a distanza esagerata (vedi solLeggiPosizioni).
@@ -19008,7 +19237,7 @@ function solDisegnaCorpo(ctx, corpo) {
 // e metà dietro, e disegnarla sempre prima la faceva sparire a metà dentro
 // al pallino azzurro proprio nei giorni in cui invece dovrebbe coprirlo.
 // `davanti` dice quale delle due metà si sta disegnando adesso.
-function solDisegnaLuna(ctx, terra, davanti) {
+function solDisegnaLuna(ctx, terra, davanti, assi) {
   if (!sol.luna || !terra) return;
   // Abbastanza staccata dalla Terra da non finirle dentro, adesso che i
   // pallini sono più grossi — e la misura la detta il pallino stesso, che
@@ -19028,9 +19257,28 @@ function solDisegnaLuna(ctx, terra, davanti) {
   ctx.moveTo(terra.schermo.px, terra.schermo.py);
   ctx.lineTo(p.px, p.py);
   ctx.stroke();
-  ctx.fillStyle = '#e2e8f0';
+  // La Luna ha la fase della Terra: da qui fuori sono nello stesso punto
+  // rispetto al Sole, e questa è la cosa che di solito non viene in mente —
+  // quando da noi è Luna Nuova, chi guardasse da Giove vedrebbe una Terra e
+  // una Luna con la stessa identica falce, l'una accanto all'altra
+  const r = SOL_RAGGIO_LUNA * solCrescita();
+  const k = assi ? solFrazione(terra, assi) : 1;
+  const versoSole = solVersoIlSole(terra);
+  const angLuce = assi && versoSole ? solAngoloSchermo(versoSole, assi) : 0;
+  ctx.translate(p.px, p.py);
+  ctx.fillStyle = '#22262f';
   ctx.beginPath();
-  ctx.arc(p.px, p.py, SOL_RAGGIO_LUNA * solCrescita(), 0, Math.PI * 2);
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  if (k < 0.985) {
+    ctx.rotate(angLuce);
+    skyPercorsoIlluminato(ctx, r, k);
+    ctx.rotate(-angLuce);
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+  }
+  ctx.fillStyle = '#e2e8f0';
   ctx.fill();
   ctx.restore();
 }
@@ -19085,6 +19333,7 @@ function solDisegna() {
   });
   const terra = sol.pianeti.find(p => p.id === 'Earth');
   const scelto = sol.pianeti.find(p => p.id === sol.scelto) || null;
+  const assi = solAssiVista();     // gli stessi per tutti: si calcolano una volta
 
   solDisegnaPiano(ctx);
   sol.orbite.tracce.forEach(t => solDisegnaOrbita(ctx, t));
@@ -19098,10 +19347,14 @@ function solDisegna() {
   const sole = solProietta({ x: 0, y: 0, z: 0 });
   const rSole = solRaggioSole();
   const prese = [{ x: sole.px - rSole, y: sole.py - rSole, w: rSole * 2, h: rSole * 2 }];
-  sol.pianeti.forEach(p => prese.push({
-    x: p.schermo.px - p.rDisegno, y: p.schermo.py - p.rDisegno,
-    w: p.rDisegno * 2, h: p.rDisegno * 2
-  }));
+  sol.pianeti.forEach(p => {
+    // Gli anelli fanno parte del corpo: «Saturno» scritto sopra all'anello A
+    // è scritto sopra a Saturno
+    const raggio = p.rDisegno + solRaggioAnelli(p, p.rDisegno);
+    prese.push({
+      x: p.schermo.px - raggio, y: p.schermo.py - raggio, w: raggio * 2, h: raggio * 2
+    });
+  });
 
   // Dietro prima, davanti poi: è tutto quello che serve perché una scena
   // ortogonale sembri profonda. Il Sole entra in questa fila come tutti gli
@@ -19124,21 +19377,22 @@ function solDisegna() {
   ordinati.forEach(p => {
     if (p.schermo.vicinanza >= dietroAlSole) soleQui();
     solDisegnaPiombo(ctx, p);
-    if (p.id === 'Earth') solDisegnaLuna(ctx, p, false);
-    solDisegnaCorpo(ctx, p);
-    if (p.id === 'Earth') solDisegnaLuna(ctx, p, true);
+    if (p.id === 'Earth') solDisegnaLuna(ctx, p, false, assi);
+    solDisegnaCorpo(ctx, p, assi);
+    if (p.id === 'Earth') solDisegnaLuna(ctx, p, true, assi);
   });
   soleQui();   // tutti i pianeti sono dietro al Sole: tocca a lui chiudere
 
   // I nomi vengono dopo tutti i pallini, altrimenti un pianeta disegnato più
   // tardi cancellerebbe la scritta di quello di prima. Il pianeta scelto
   // scrive per primo e ha sempre il suo posto: è l'unico che si sta cercando.
+  const stacco = (p) => p.rDisegno + solRaggioAnelli(p, p.rDisegno);
   if (scelto) solEtichetta(ctx, scelto.nome, scelto.schermo.px, scelto.schermo.py,
-    scelto.rDisegno, '#ffffff', 13, prese, true);
+    stacco(scelto), '#ffffff', 13, prese, true);
   solEtichetta(ctx, 'Sole', sole.px, sole.py, rSole, '#fde68a', 12, prese, true);
   ordinati.forEach(p => {
     if (p === scelto) return;
-    solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, p.rDisegno,
+    solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, stacco(p),
       'rgba(233, 237, 247, 0.82)', 11.5, prese);
   });
 
