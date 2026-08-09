@@ -4563,6 +4563,36 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
   #mappa-luogo { height: min(var(--altezza-mappa-eclissi), 300px); }
 }
 
+/* Questa mappa si tiene CHIARA, ed è la stessa ragione della mappa
+   dell'ombra. Tutto il resto dell'app è scuro perché guarda il cielo di
+   notte, e le mappe di base — che chiare lo sono di partenza — vengono
+   portate nella notte da un filtro in negativo (`.leaflet-tile-pane`, in
+   cima al foglio). Qui però la domanda non è astronomica ma geografica:
+   dov'è quel passo, che strada ci arriva, quanto dista il paese, dove
+   finisce il bosco. Sul negativo coste, strade e nomi diventano illeggibili
+   proprio mentre li si sta cercando, e sulla fotografia dall'alto è peggio
+   che inutile — un bosco invertito è viola e un lago è arancione. Resta il
+   filtro leggero della mappa dell'ombra, che smorza appena i colori da
+   atlante senza toccare la leggibilità. */
+#mappa-luogo {
+  background-color: #cfe0ef;   /* il colore dell'acqua, finché le tessere arrivano */
+  box-shadow: var(--ombra-3);
+}
+#mappa-luogo .leaflet-tile-pane { filter: saturate(0.94) contrast(1.03); }
+/* Sul chiaro i comandi di Leaflet devono staccarsi dal fondo, non
+   confondersi con esso: quelli di serie sono pensati per il tema scuro. */
+#mappa-luogo .leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.25);
+}
+#mappa-luogo .leaflet-control-zoom a:hover { background: #fff; color: #000; }
+#mappa-luogo .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.8) !important;
+  color: #334155 !important;
+}
+#mappa-luogo .leaflet-control-attribution a { color: #1d4ed8 !important; }
+
 /* Il guscio: barra di ricerca, mappa, piede. È quello che va a schermo
    intero, e per questo tiene insieme tutte e tre le cose — cercare un posto e
    accettarlo non devono costare un'uscita dal pieno schermo. */
@@ -4819,12 +4849,16 @@ body .luogo-tasto-mappa.attiva { background: var(--blu); border-color: transpare
   border-radius: 50%;
   transform: translate(-50%, -50%);
 }
+/* L'anello bianco lo stacca dalla fotografia dall'alto (scura), il filo scuro
+   che gli sta appena fuori lo stacca dalla mappa delle strade (chiara). Ci
+   vogliono tutti e due: con il solo bianco il segno spariva sulle strade, con
+   il solo scuro spariva nel bosco. */
 .luogo-segno-punto {
   width: 15px;
   height: 15px;
   background: #f59e0b;
-  border: 2.5px solid rgba(255, 255, 255, 0.92);
-  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
+  border: 2.5px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.6), 0 1px 5px rgba(0, 0, 0, 0.45);
 }
 .luogo-segno-alone {
   width: 30px;
