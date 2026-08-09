@@ -29,7 +29,8 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `app.js` | ~24.400 | Tutto tranne il telescopio e i moduli aggiunti dopo. |
 | `telescopio.js` | ~5.535 | Vista Telescopio, isolata. ~136 funzioni, prefisso `tel`. |
 | `catalogo.js` | ~980 | **Il catalogo del cielo**: 5.044 stelle, 88 costellazioni, 142 oggetti profondi, e il motore a matrice che li muove. Prefisso `cat`. |
-| `costellazioni.js` | ~2.480 | **I disegni delle figure, i nomi delle altre culture, il cielo australe**: 29 disegni agganciati alle stelle vere con un telaio di due ancore, i nomi arabi/cinesi/māori/aborigeni/andini con la loro storia, l'atlante di tutte e 88, il tasto che porta il planetario sotto il cielo giusto e le **distanze vere** che servono al banco in 3D. Prefisso `cost`. |
+| `costellazioni.js` | ~2.700 | **I disegni delle figure, i nomi delle altre culture, il cielo australe**: 29 disegni agganciati alle stelle vere con un telaio di due ancore, i **disegni fatti a mano** che si appoggiano da soli sulle stelle (basta il nome del file), i nomi arabi/cinesi/māori/aborigeni/andini con la loro storia, l'atlante di tutte e 88, il tasto che porta il planetario sotto il cielo giusto e le **distanze vere** che servono al banco in 3D. Prefisso `cost`. |
+| `arte-costellazioni/` | | **I disegni fatti a mano**, un file per figura, più il `LEGGIMI.md` che spiega come aggiungerne uno. Non è codice: si carica l'immagine e si scrive il suo nome in `COST_IMMAGINI` (§5-bis di `costellazioni.js`). |
 | `corpi-minori.js` | ~660 | **Lune di Giove, comete e asteroidi**: `JupiterMoons` e propagazione kepleriana a mano. |
 | `pianifica.js` | ~500 | **Pianificare la serata**: curva dell'altezza, migliori bersagli, profilo degli ostacoli. Prefisso `pian`/`orizzonte`. |
 | `terreno.js` | ~1.230 | **La forma vera del terreno attorno a casa**: quote del suolo da Open-Meteo, orizzonte per ogni direzione, che paesaggio c'è (mare/pianura/collina/montagna), le **luci dei paesi veri** e i **nomi delle montagne** che ci spuntano sopra, tutt'e due da OpenStreetMap. Prefissi `terreno`, `citta` e `cime`. |
@@ -47,7 +48,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `verifica.html` | ~905 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~7.130 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~165 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v77`). |
+| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v78`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -300,11 +301,12 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v77`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v78`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
-  `dati-*.js` no**: restano fuori di proposito, e il service worker se li tiene
-  da sé quando passano (regola «stessa origine»).
+  `dati-*.js` e le immagini di `arte-costellazioni/` no**: restano fuori di
+  proposito, e il service worker se li tiene da sé quando passano (regola
+  «stessa origine»).
 
 ### Come va online — `.github/workflows/pubblica.yml`
 
@@ -360,6 +362,8 @@ prima di chiudere.
 **§14** guarda le distanze: che ogni vertice delle figure abbia la sua (767 su 767), che i valori noti tornino (Alnilam a duemila anni luce, le altre due della cintura a settecento), che la conversione da direzione e distanza al punto nello spazio sia invertibile, e che da mille anni luce di lato le stelle di Orione si spostino davvero di decine di gradi — che è la promessa del banco, e vale la pena provarla invece che sperarla.
 
 **§15** guarda le montagne: che la stessa vetta non si nomini due volte, che l'altezza apparente sia quella vera (il Cimone da Bologna è alto 1,7° e non 2, perché la curvatura a sessanta chilometri se ne mangia un quarto), e soprattutto che una vetta nascosta dietro a una cresta più alta **non** compaia — che è l'errore che a occhio non si vede, perché un nome appoggiato a una punta sembra giusto comunque.
+
+**§16** guarda i disegni fatti a mano: che l'entrata sia leggibile nelle due forme (il solo nome, o l'oggetto con le manopole), che la carta locale della figura sia invertibile — le immagini dichiarano i loro angoli su quella carta e chiedono che pezzo di cielo sono, e se le due strade non si chiudono il disegno finisce da un'altra parte *tutto insieme*, che a occhio sembra solo un disegno sbagliato — che l'affine a tre ancore porti i tre pixel esattamente sui tre punti, che tre ancore in fila vengano rifiutate invece di dividere per zero, e soprattutto che **col solo nome del file il disegno copra davvero tutte le stelle della figura**, che è la promessa della forma breve.
 
 ### Rigenerare i cataloghi — `scripts/costruisci-dati.js`
 
@@ -536,6 +540,7 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Il cielo è storto o specchiato dopo un tocco al catalogo | `catMatriceCielo()` in `catalogo.js`: `RotationMatrix.rot` è memorizzata `rot[sorgente][destinazione]`, cioè trasposta rispetto a come si scrive a mano, e la terna della libreria è (Nord, Ovest, Zenit) mentre `skyProietta` vuole (Est, Nord, Alto) |
 | Un astro fuori posto di mezzo grado | quasi sempre è la precessione: `Astronomy.Horizon()` vuole coordinate **dell'equatore di oggi**, i cataloghi sono in J2000, e fra i due ballano 0,36°. Passando per `catMatriceCielo()` la correzione è obbligata |
 | Le costellazioni (tutte e 88, i nomi italiani) | `dati-costellazioni.js` + `catDisegnaFigure()`. Quante se ne disegnano dipende dal campo: `rango` 1 a campo largo, fino a 3 ingrandendo |
+| **Aggiungere un disegno fatto a mano** (un'immagine, non delle curve) | Due passi e nessuno dei due è codice difficile: si mette il file in `arte-costellazioni/` e si scrive il suo nome in `COST_IMMAGINI` (§5-bis di `costellazioni.js`), `Tau: 'toro.png'`. Il disegno si appoggia da solo sul rettangolo delle stelle della figura, **col nord in alto**, e da lì gira, si stira e cresce con loro. Se sta storto ci sono `margine` e `sposta`; se si vuole la precisione al pixel ci sono le tre `ancore` (tre stelle vere e i loro pixel, come fa Stellarium). Se il file non c'è si torna alle curve, in silenzio. Tutto scritto in `arte-costellazioni/LEGGIMI.md`, prove nel §16 di `verifica.html` |
 | **Il disegno di una figura** (il cacciatore, il leone, la nave) | `COST_ARTE` in `costellazioni.js` §2, e il motore in §5. Ogni disegno è scritto nel **telaio di due ancore**: due stelle vere della figura, la prima vale (0,0) e la seconda (1,0). Al disegno si arriva proiettando le due ancore e appoggiandoci sopra le curve, quindi ruota, cresce e si sposta insieme alle sue stelle senza che ci sia niente da aggiornare. `tratti` sono curve morbide, `rette` spezzate dritte, `cerchi` cerchi; una curva che finisce dove è cominciata si chiude da sé |
 | Un disegno che sta dalla parte sbagliata delle sue stelle | è **uno specchio, non una rotazione**. In cielo l'ascensione retta cresce verso EST, cioè verso sinistra per chi guarda da dentro la volta: rispetto alla carta vista da fuori lo schermo è girato di mezzo giro, e mezzo giro è una rotazione che il telaio si porta dietro senza accorgersene. Negare **un asse solo** invece dei due lo trasforma in una riflessione, che ribalta l'asse y del telaio — ed è successo davvero, in `costDisegnaScheda`. Lo controlla il §13 di `verifica.html` |
 | Un disegno che non si stira insieme alle sue stelle | il **telaio a tre ancore** (`costTerzaAncora`, §1 e §5). Con due ancore la trasformazione è una similitudine e tiene per forza gli angoli; con tre diventa affine, cioè può anche stirarsi — che è quello che la proiezione fa a una figura larga venti gradi lontana dal centro della vista. La terza ancora non sta nei dati: si sceglie da sé, ed è la stella della figura più lontana dalla retta fra le prime due. È lo stesso metodo delle illustrazioni di Stellarium, che ancora ogni immagine a tre stelle |

@@ -1254,6 +1254,11 @@ const cost = {
   quando: 0,              // per quale aggiornamento del catalogo sono buoni i telai
   telai: null,            // sigla → { a, b, c } versori delle ancore nel cielo di adesso
   terze: null,            // sigla → la terza ancora scelta da sé, con le sue coordinate nel telaio
+  sigle: null,            // l'elenco delle figure che hanno un disegno (curve o immagine)
+  ancoreAuto: null,       // sigla → le due ancore scelte da sé, per chi ha solo l'immagine
+  immagini: {},           // sigla → { stato, tela, larghezza, altezza } (§5-bis)
+  piani: null,            // sigla → la carta locale della figura (piano tangente, andata e ritorno)
+  riquadri: null,         // sigla → il rettangolo delle stelle su quella carta, per le immagini
   centri: null,           // sigla → { ra, dec } del baricentro della figura
   scelta: null,           // la sigla aperta nell'atlante
   filtro: 'tutte',
@@ -1291,26 +1296,28 @@ function costOpacitaArte() {
 // È anche quello che fa Stellarium con le sue illustrazioni: tre punti
 // dell'immagine, tre stelle, e l'immagine ci si adatta sopra.
 //
-// La terza ancora non sta scritta nei dati: si sceglie da sé, ed è la
-// stella della figura più lontana dalla retta fra le prime due — quella
-// che dà il telaio più stabile. Le sue coordinate nel telaio si ricavano
-// dalla stessa geometria con cui il disegno è stato scritto.
-function costTerzaAncora(sigla, ancore) {
+// Il piano tangente al baricentro della figura, con dentro i suoi vertici.
+// È la carta locale su cui poggia tutto il resto: le curve ci sono state
+// autorate sopra, le immagini ci si appoggiano, la scheda dell'atlante la
+// disegna. `piano(ra, dec)` dà [est, nord] in unità di tangente.
+function costPianoFigura(sigla) {
+  if (!cost.piani) cost.piani = {};
+  if (sigla in cost.piani) return cost.piani[sigla];
+
   const pezzi = (typeof COSTELLAZIONI_IAU === 'undefined' ? [] : COSTELLAZIONI_IAU)
     .filter(c => c.sigla === sigla);
-  if (!pezzi.length) return null;
+  if (!pezzi.length) { cost.piani[sigla] = null; return null; }
 
   const punti = [];
   pezzi.forEach(c => c.spezzate.forEach(l => l.forEach(p => punti.push(p))));
 
-  // Piano tangente al baricentro: la stessa proiezione con cui i disegni
-  // sono stati scritti (vedi §2)
   let cx = 0, cy = 0, cz = 0;
   punti.forEach(p => { const v = costVersore(p[0], p[1]); cx += v[0]; cy += v[1]; cz += v[2]; });
   const norma = Math.hypot(cx, cy, cz) || 1;
   cx /= norma; cy /= norma; cz /= norma;
   const dec0 = Math.asin(Math.max(-1, Math.min(1, cz))), ra0 = Math.atan2(cy, cx);
   const D2R = Math.PI / 180;
+
   const piano = (raOre, dec) => {
     const a = raOre * 15 * D2R, d = dec * D2R;
     const cosc = Math.sin(dec0) * Math.sin(d) + Math.cos(dec0) * Math.cos(d) * Math.cos(a - ra0);
@@ -1319,25 +1326,111 @@ function costTerzaAncora(sigla, ancore) {
       (Math.cos(dec0) * Math.sin(d) - Math.sin(dec0) * Math.cos(d) * Math.cos(a - ra0)) / cosc];
   };
 
+  // La strada di ritorno: da un punto della carta alla stella che ci sta.
+  // Serve alle immagini (§5-bis), che dichiarano i loro angoli sulla carta
+  // e hanno bisogno di sapere che pezzo di cielo sono.
+  const cielo = (est, nord) => {
+    const rho = Math.hypot(est, nord);
+    if (rho < 1e-12) return [((ra0 / D2R / 15) + 24) % 24, dec0 / D2R];
+    const c = Math.atan(rho), sc = Math.sin(c), cc = Math.cos(c);
+    const dec = Math.asin(cc * Math.sin(dec0) + nord * sc * Math.cos(dec0) / rho);
+    const ra = ra0 + Math.atan2(est * sc,
+      rho * Math.cos(dec0) * cc - nord * Math.sin(dec0) * sc);
+    return [(((ra / D2R / 15) % 24) + 24) % 24, dec / D2R];
+  };
+
+  const fatto = { ra0: ((ra0 / D2R / 15) + 24) % 24, dec0: dec0 / D2R, punti, piano, cielo };
+  cost.piani[sigla] = fatto;
+  return fatto;
+}
+
+// I vertici della figura, scritti nel telaio delle sue ancore: la prima
+// ancora vale (0,0), la seconda (1,0). È la stessa proiezione con cui i
+// disegni della §2 sono stati autorati, per questo i numeri che escono di
+// qui si possono dare in pasto a `costPunto()` senza altre conversioni.
+function costPuntiNelTelaio(sigla, ancore) {
+  const carta = costPianoFigura(sigla);
+  if (!carta || !ancore) return null;
+  const { punti, piano } = carta;
+
   const A = piano(ancore[0][0], ancore[0][1]), B = piano(ancore[1][0], ancore[1][1]);
   if (!A || !B) return null;
   const dx = B[0] - A[0], dy = B[1] - A[1], len2 = dx * dx + dy * dy;
   if (len2 < 1e-12) return null;
 
-  let scelto = null, massimo = 0;
+  const fuori = [];
   punti.forEach(p => {
     const q = piano(p[0], p[1]);
     if (!q) return;
     const ux = q[0] - A[0], uy = q[1] - A[1];
-    const y = (ux * -dy + uy * dx) / len2;
-    if (Math.abs(y) > Math.abs(massimo)) {
-      massimo = y;
-      scelto = { ra: p[0], dec: p[1], x: (ux * dx + uy * dy) / len2, y };
-    }
+    fuori.push({
+      ra: p[0], dec: p[1],
+      x: (ux * dx + uy * dy) / len2,
+      y: (ux * -dy + uy * dx) / len2
+    });
+  });
+  return fuori.length ? fuori : null;
+}
+
+// La terza ancora non sta scritta nei dati: si sceglie da sé, ed è la
+// stella della figura più lontana dalla retta fra le prime due — quella
+// che dà il telaio più stabile. Le sue coordinate nel telaio si ricavano
+// dalla stessa geometria con cui il disegno è stato scritto.
+function costTerzaAncora(sigla, ancore) {
+  const punti = costPuntiNelTelaio(sigla, ancore);
+  if (!punti) return null;
+
+  let scelto = null;
+  punti.forEach(p => {
+    if (!scelto || Math.abs(p.y) > Math.abs(scelto.y)) scelto = p;
   });
   // Una stella troppo vicina alla retta delle prime due non fa da terza
   // ancora: dividendo per la sua `y` si moltiplicherebbe il rumore
   return scelto && Math.abs(scelto.y) > 0.08 ? scelto : null;
+}
+
+// Le due ancore di una figura. Se ha un disegno a curve sono quelle
+// scritte in `COST_ARTE`, e restano quelle: i numeri delle curve sono
+// scritti in quel telaio lì e cambiarlo vorrebbe dire riscriverle tutte.
+//
+// Se invece la figura ha solo un'immagine (§5-bis) le ancore non le ha
+// dichiarate nessuno, e si scelgono da sé: le due stelle più lontane fra
+// loro della figura. È la coppia che dà il telaio più lungo, cioè quella
+// su cui mezzo pixel di errore pesa meno — ed è deterministica, quindi il
+// disegno non balla da una sessione all'altra.
+function costAncoreDi(sigla) {
+  if (COST_ARTE[sigla]) return COST_ARTE[sigla].ancore;
+  if (!cost.ancoreAuto) cost.ancoreAuto = {};
+  if (sigla in cost.ancoreAuto) return cost.ancoreAuto[sigla];
+
+  let scelte = null;
+  const pezzi = (typeof COSTELLAZIONI_IAU === 'undefined' ? [] : COSTELLAZIONI_IAU)
+    .filter(c => c.sigla === sigla);
+  const punti = [];
+  pezzi.forEach(c => c.spezzate.forEach(l => l.forEach(p => punti.push(p))));
+  if (punti.length >= 2) {
+    const versori = punti.map(p => costVersore(p[0], p[1]));
+    let peggiore = 2;   // il coseno più piccolo, cioè l'angolo più grande
+    for (let i = 0; i < punti.length; i++) {
+      for (let j = i + 1; j < punti.length; j++) {
+        const a = versori[i], b = versori[j];
+        const cos = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+        if (cos < peggiore) { peggiore = cos; scelte = [punti[i], punti[j]]; }
+      }
+    }
+  }
+  cost.ancoreAuto[sigla] = scelte;
+  return scelte;
+}
+
+// Tutte le sigle che qualcosa da disegnare ce l'hanno: le curve, le
+// immagini, o tutt'e due. È l'elenco su cui girano i telai e il disegno.
+function costSigleArte() {
+  if (cost.sigle) return cost.sigle;
+  const viste = new Set(Object.keys(COST_ARTE));
+  for (const sigla in COST_IMMAGINI) viste.add(sigla);
+  cost.sigle = Array.from(viste).filter(s => costAncoreDi(s));
+  return cost.sigle;
 }
 
 // I telai si rifanno quando il catalogo rifà le posizioni delle stelle,
@@ -1349,18 +1442,19 @@ function costSincronizza() {
   if (cost.telai && cost.quando === cat.quandoAggiornato) return true;
 
   const M = cat.matrice;
+  const sigle = costSigleArte();
   // Le terze ancore non cambiano mai (dipendono solo dal catalogo delle
   // figure): si scelgono una volta e si tengono
   if (!cost.terze) {
     cost.terze = {};
-    for (const sigla in COST_ARTE) {
-      cost.terze[sigla] = costTerzaAncora(sigla, COST_ARTE[sigla].ancore);
-    }
+    sigle.forEach(sigla => {
+      cost.terze[sigla] = costTerzaAncora(sigla, costAncoreDi(sigla));
+    });
   }
 
   cost.telai = {};
-  for (const sigla in COST_ARTE) {
-    const anc = COST_ARTE[sigla].ancore;
+  for (const sigla of sigle) {
+    const anc = costAncoreDi(sigla);
     const terza = cost.terze[sigla];
     cost.telai[sigla] = {
       a: costAllOra(costVersore(anc[0][0], anc[0][1]), M),
@@ -1514,10 +1608,18 @@ function costDisegnaArte(ctx, base, focale) {
   if (opacita < 0.02) return;
   if (!costSincronizza()) return;
 
+  // Dalle coordinate di catalogo al punto sullo schermo: serve alle
+  // immagini agganciate a tre stelle (§5-bis), che le loro ancore se le
+  // proiettano da sé invece di passare dal telaio
+  const proietta = (ra, dec) => {
+    const p = skyProietta(costAllOra(costVersore(ra, dec), cat.matrice), base, focale);
+    return p.davanti ? [p.px, p.py] : null;
+  };
+
   const tracciato = new Path2D();
   const pieni = new Path2D();
   let qualcosa = false;
-  for (const sigla in COST_ARTE) {
+  for (const sigla of costSigleArte()) {
     const telaio = costTelaioSchermo(sigla, base, focale);
     if (!telaio) continue;
     // Fuori schermo del tutto: le ancore stanno lontanissime da tutti e
@@ -1527,7 +1629,13 @@ function costDisegnaArte(ctx, base, focale) {
                   (telaio.oy < -telaio.lungo * 1.6 && telaio.oy + telaio.dy < -telaio.lungo * 1.6) ||
                   (telaio.oy > sky.altezza + telaio.lungo * 1.6 && telaio.oy + telaio.dy > sky.altezza + telaio.lungo * 1.6);
     if (fuori) continue;
-    if (costTracciaFigura(tracciato, sigla, telaio, pieni)) qualcosa = true;
+    // L'immagine, se questa figura ce l'ha e se è già arrivata, prende il
+    // posto delle curve: sono due disegni della stessa cosa, e messi uno
+    // sopra l'altro fanno solo confusione. Finché non arriva (o se il file
+    // non c'è) restano le curve, che è il ripiego giusto — un disegno c'è
+    // comunque.
+    if (costDisegnaImmagine(ctx, sigla, opacita, proietta)) { qualcosa = true; continue; }
+    if (COST_ARTE[sigla] && costTracciaFigura(tracciato, sigla, telaio, pieni)) qualcosa = true;
   }
   if (!qualcosa) return;
 
@@ -1546,6 +1654,337 @@ function costDisegnaArte(ctx, base, focale) {
   ctx.strokeStyle = 'rgb(196, 181, 253)';     // lo stesso viola del cielo profondo
   ctx.stroke(tracciato);
   ctx.restore();
+}
+
+
+// =====================================================================
+// 5-bis. I DISEGNI FATTI A MANO (le immagini)
+//
+//     Le curve della §2 sono precise ma sono anche un lavoro da certosino:
+//     per ogni figura bisogna proiettare le sue stelle nel telaio, tirare
+//     le curve una per una e controllare che non escano dal gruppo. Trenta
+//     figure sono venute così; le altre cinquantotto, di questo passo, non
+//     verranno mai.
+//
+//     Un disegno fatto a mano — su carta, o su una tavoletta grafica sopra
+//     a una schermata del planetario — è un'altra strada, e per chi disegna
+//     è l'unica sensata. Qui c'è quello che serve per appoggiarlo sul cielo
+//     invece che sulle curve.
+//
+//     COME SI AGGIUNGE UN DISEGNO NUOVO. Due passi, e nessuno dei due è
+//     scrivere codice difficile:
+//
+//       1. si mette il file dentro `arte-costellazioni/`;
+//       2. si aggiunge una riga a `COST_IMMAGINI` qui sotto:
+//
+//              Leo: 'leone.png',
+//
+//     e basta. Il disegno si appoggia da solo sul rettangolo che contiene
+//     le stelle della figura, e da lì in poi ruota, si stira e si ingrandisce
+//     con loro come fanno le curve.
+//
+//     L'INCHIOSTRO E LA CARTA. Un disegno nasce quasi sempre scuro su
+//     fondo bianco, e appoggiato così com'è sul cielo sarebbe un francobollo
+//     bianco con sopra un toro. Al caricamento l'immagine viene perciò
+//     rovesciata una volta sola: quanto più un punto è scuro, tanto più
+//     diventa opaco — la carta bianca sparisce, l'inchiostro resta e prende
+//     il viola dei disegni. Un PNG che la trasparenza ce l'ha già (fondo
+//     ritagliato) viene riconosciuto e lasciato stare.
+//
+//     QUANDO IL COLPO D'OCCHIO NON BASTA. L'appoggio automatico presume
+//     che la figura stia in mezzo all'immagine e la riempia per intero:
+//     quasi sempre è vero, perché un disegno si fa proprio così. Se il
+//     disegno risulta spostato o troppo grande ci sono tre manopole, in
+//     ordine di fatica:
+//
+//         Tau: { file: 'toro.png', margine: 1.35, sposta: [0.05, -0.1] }
+//
+//     `margine` è quanto il disegno deborda dalle stelle (1 = il disegno
+//     tocca esattamente le stelle di bordo), `sposta` lo scosta in frazioni
+//     del riquadro. E se si vuole la precisione al pixel, le tre ancore —
+//     tre stelle vere, e dove stanno nell'immagine:
+//
+//         Tau: { file: 'toro.png', ancore: [
+//                 [5.4382, 28.6075, 190,   35],    // Elnath      → pixel
+//                 [5.6274, 21.1425,  68,  218],    // zeta Tauri  → pixel
+//                 [3.4528,  9.7327, 1105, 690]     // lambda Tauri→ pixel
+//               ] }
+//
+//     che è esattamente il modo in cui Stellarium ancora le sue
+//     illustrazioni, ed è anche il motivo per cui è quello scelto: chi ha
+//     già tarato un'immagine per Stellarium può portarsi dietro i numeri.
+//
+//     SE IL FILE NON C'È, non succede niente di male: la richiesta fallisce
+//     una volta sola, non si riprova più, e la figura torna al suo disegno
+//     a curve. È voluto — così una riga scritta qui prima di aver caricato
+//     l'immagine non rompe il planetario a nessuno.
+// =====================================================================
+
+// Dove stanno i file. Cartella a parte e non in mezzo al codice: sono
+// disegni, si guardano e si sostituiscono senza aprire un editor di testo.
+const COST_ARTE_CARTELLA = 'arte-costellazioni/';
+
+// Il viola dei disegni: lo stesso del tratto delle curve e del cielo
+// profondo, perché immagine e curve devono sembrare la stessa cosa.
+const COST_IMMAGINE_TINTA = 'rgb(196, 181, 253)';
+
+// Quanto il disegno deborda dalle stelle, quando non lo dice l'entrata.
+// Un disegno si fa lasciando un margine attorno alla figura, e 1,2 è
+// quello che viene alla mano di quasi tutti.
+const COST_IMMAGINE_MARGINE = 1.2;
+
+// ---------------------------------------------------------------------
+// L'ELENCO. È l'unica cosa da toccare per aggiungerne uno.
+// ---------------------------------------------------------------------
+const COST_IMMAGINI = {
+  // Il toro disegnato a mano sopra le linee della figura: le corna che
+  // escono dalla V delle Iadi, il muso, la groppa. Sotto ci sono ancora
+  // le curve della §2, e tornano da sole se il file manca.
+  //
+  // `sposta` non è un numero di gusto: nel disegno la figura di stelle non
+  // sta in mezzo al foglio, perché la groppa dell'animale continua a
+  // destra ben oltre l'ultima stella. Misurando dove cadono Elnath, zeta e
+  // lambda si vede che l'appoggio automatico le manda tutte e tre un sesto
+  // di foglio più a destra del dovuto, sempre della stessa quantità — che
+  // è la firma di uno scostamento, non di una scala sbagliata. Se un
+  // giorno il disegno venisse rifatto, questi sono i due numeri da girare.
+  Tau: { file: 'toro.png', sposta: [0.28, 0.09] }
+};
+
+// Un'entrata può essere una stringa (il solo nome del file) o un oggetto
+// con le manopole. Qui diventano la stessa cosa, così il resto del codice
+// non deve più chiederselo.
+function costImmagineVoce(sigla) {
+  let v = COST_IMMAGINI[sigla];
+  if (!v) return null;
+  if (typeof v === 'string') v = { file: v };
+  if (!v || !v.file) return null;
+  return {
+    file: v.file,
+    margine: v.margine > 0 ? v.margine : COST_IMMAGINE_MARGINE,
+    sposta: v.sposta || [0, 0],
+    ancore: (v.ancore && v.ancore.length >= 3) ? v.ancore : null,
+    tinta: v.tinta || COST_IMMAGINE_TINTA,     // 'originale' tiene i colori del disegno
+    forza: v.forza > 0 ? v.forza : 1,
+    sfondo: v.sfondo || 'auto'                 // 'auto' | 'bianco' | 'trasparente'
+  };
+}
+
+function costColoreRgb(testo) {
+  const m = String(testo).match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (m) return [+m[1], +m[2], +m[3]];
+  const h = String(testo).match(/^#([0-9a-f]{6})$/i);
+  if (h) return [parseInt(h[1].slice(0, 2), 16), parseInt(h[1].slice(2, 4), 16), parseInt(h[1].slice(4, 6), 16)];
+  return [196, 181, 253];
+}
+
+// Da disegno su carta a velo di luce. Si fa una volta sola, al
+// caricamento, su una tela fuori schermo: nel ciclo del planetario resta
+// un `drawImage` e nient'altro (vedi le convenzioni: niente disegno
+// pesante a ogni fotogramma).
+function costImmagineVelo(memoria, img, voce) {
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  if (!w || !h) throw new Error('immagine vuota');
+
+  const tela = document.createElement('canvas');
+  tela.width = w; tela.height = h;
+  const c = tela.getContext('2d');
+  c.drawImage(img, 0, 0);
+
+  const dati = c.getImageData(0, 0, w, h);
+  const p = dati.data;
+
+  // Ha già la trasparenza sua? Si guarda un pixel ogni tanto: se una
+  // parte consistente è già completamente trasparente, il fondo qualcuno
+  // l'ha già ritagliato e non tocca a noi rifarlo.
+  let ritagliata = voce.sfondo === 'trasparente';
+  if (voce.sfondo === 'auto') {
+    let vuoti = 0, campioni = 0;
+    for (let i = 3; i < p.length; i += 4 * 53) { if (p[i] < 16) vuoti++; campioni++; }
+    ritagliata = campioni > 0 && vuoti > campioni * 0.08;
+  }
+
+  const originale = voce.tinta === 'originale';
+  if (!(ritagliata && originale)) {
+    const [tr, tg, tb] = costColoreRgb(voce.tinta);
+    for (let i = 0; i < p.length; i += 4) {
+      const a = p[i + 3] / 255;
+      // La carta è bianca: quel che è trasparente conta come bianco, così
+      // un JPEG e un PNG ritagliato danno lo stesso risultato
+      const r = p[i] * a + 255 * (1 - a);
+      const g = p[i + 1] * a + 255 * (1 - a);
+      const b = p[i + 2] * a + 255 * (1 - a);
+      let inchiostro = ritagliata ? a : 1 - (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      // I fondi scansionati non sono mai bianchi davvero: senza questa
+      // sogliatura il disegno si porta dietro un rettangolo di foschia
+      inchiostro = (inchiostro - 0.06) / 0.94;
+      if (inchiostro <= 0) { p[i + 3] = 0; continue; }
+      if (inchiostro > 1) inchiostro = 1;
+      if (!originale) { p[i] = tr; p[i + 1] = tg; p[i + 2] = tb; }
+      p[i + 3] = Math.round(inchiostro * 255);
+    }
+    c.putImageData(dati, 0, 0);
+  }
+
+  memoria.tela = tela;
+  memoria.larghezza = w;
+  memoria.altezza = h;
+}
+
+// La chiede la prima volta che la figura passa davanti allo schermo: non
+// si scaricano ottantotto disegni per guardarne uno. Torna la memoria
+// solo quando è pronta davvero.
+function costImmagine(sigla) {
+  const voce = costImmagineVoce(sigla);
+  if (!voce) return null;
+
+  let memoria = cost.immagini[sigla];
+  if (!memoria) memoria = cost.immagini[sigla] = { stato: 'niente' };
+
+  if (memoria.stato === 'niente') {
+    memoria.stato = 'in-corso';
+    const img = new Image();
+    img.onload = () => {
+      try {
+        costImmagineVelo(memoria, img, voce);
+        memoria.stato = 'pronta';
+        // L'atlante disegna la sua scheda una volta sola, all'apertura:
+        // se l'immagine arriva dopo, la scheda non la vedrebbe mai
+        if (cost.atlante && cost.scelta === sigla) costDisegnaScheda(sigla);
+      } catch (e) {
+        memoria.stato = 'fallita';
+      }
+    };
+    // Un file che non c'è (o un nome sbagliato) non si riprova: la figura
+    // torna alle curve e nessuno se ne accorge
+    img.onerror = () => { memoria.stato = 'fallita'; };
+    img.src = COST_ARTE_CARTELLA + voce.file;
+  }
+
+  return memoria.stato === 'pronta' ? memoria : null;
+}
+
+// Il rettangolo che contiene le stelle della figura, misurato sulla carta
+// locale con il NORD IN ALTO e l'EST A SINISTRA — cioè come si vede il
+// cielo, e come è messo il foglio su cui uno disegna.
+//
+// Non è un dettaglio: è la ragione per cui questo riquadro non si misura
+// nel telaio delle due ancore, che pure ci sarebbe già. Il telaio delle
+// ancore ha per asse x la congiungente di due stelle, che per il Toro è
+// la retta ξ→Elnath, inclinata di cinquanta gradi rispetto al nord.
+// Appoggiandoci sopra un'immagine, il disegno verrebbe fuori girato di
+// altrettanto: un toro coricato di traverso, agganciato benissimo alle
+// stelle sbagliate. Un disegno, a differenza di una curva, ha un suo alto
+// e un suo basso, e va appeso a quelli.
+function costRiquadroFigura(sigla) {
+  if (!cost.riquadri) cost.riquadri = {};
+  if (sigla in cost.riquadri) return cost.riquadri[sigla];
+
+  const carta = costPianoFigura(sigla);
+  let box = null;
+  if (carta) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    carta.punti.forEach(p => {
+      const q = carta.piano(p[0], p[1]);
+      if (!q) return;
+      // Il mezzo giro che porta dalla carta al cielo visto da dentro: la
+      // x cresce verso ovest e la y verso sud, che sono il destra e il
+      // giù di un'immagine (vedi la nota lunga della §1 e §8)
+      const x = -q[0], y = -q[1];
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    });
+    if (x1 - x0 > 1e-6 && y1 - y0 > 1e-6) box = { x0, y0, x1, y1 };
+  }
+  cost.riquadri[sigla] = box;
+  return box;
+}
+
+// Le tre ancore che l'entrata non ha dichiarato: tre angoli dell'immagine
+// e il pezzo di cielo su cui vanno a finire. Da qui in poi un'immagine
+// appoggiata da sé e una tarata al pixel percorrono la stessa strada.
+function costAncoreAutomatiche(sigla, voce, memoria) {
+  const box = costRiquadroFigura(sigla);
+  const carta = costPianoFigura(sigla);
+  if (!box || !carta) return null;
+
+  const larga = box.x1 - box.x0, alta = box.y1 - box.y0;
+  // Una scala sola per i due assi: il disegno non si deve schiacciare per
+  // adattarsi a una figura più larga che alta. Si prende la più grande
+  // delle due, così le stelle ci stanno dentro comunque.
+  const s = Math.max(larga * voce.margine / memoria.larghezza,
+                     alta * voce.margine / memoria.altezza);
+  const cx = (box.x0 + box.x1) / 2 + (voce.sposta[0] || 0) * larga;
+  const cy = (box.y0 + box.y1) / 2 + (voce.sposta[1] || 0) * alta;
+  const x0 = cx - memoria.larghezza * s / 2;
+  const y0 = cy - memoria.altezza * s / 2;
+
+  const angolo = (u, v) => {
+    const c = carta.cielo(-(x0 + u * s), -(y0 + v * s));
+    return [c[0], c[1], u, v];
+  };
+  return [angolo(0, 0), angolo(memoria.larghezza, 0), angolo(0, memoria.altezza)];
+}
+
+// Da tre punti dell'immagine a tre punti dello schermo: la trasformazione
+// affine che ci va sopra, nella forma che vuole `ctx.transform`
+// (x' = a·u + c·v + e, y' = b·u + d·v + f). Tre punti sono esattamente
+// quello che serve: due darebbero una similitudine, che non sa stirare.
+function costAffineDaTre(ancore, schermo) {
+  const u0 = ancore[0][2], v0 = ancore[0][3];
+  const u1 = ancore[1][2], v1 = ancore[1][3];
+  const u2 = ancore[2][2], v2 = ancore[2][3];
+  const det = u0 * (v1 - v2) - v0 * (u1 - u2) + (u1 * v2 - u2 * v1);
+  // Tre punti in fila (o due coincidenti) non definiscono niente
+  if (!isFinite(det) || Math.abs(det) < 1e-6) return null;
+
+  const risolvi = (z0, z1, z2) => [
+    (z0 * (v1 - v2) - v0 * (z1 - z2) + (z1 * v2 - z2 * v1)) / det,
+    (u0 * (z1 - z2) - z0 * (u1 - u2) + (u1 * z2 - u2 * z1)) / det,
+    (u0 * (v1 * z2 - v2 * z1) - v0 * (u1 * z2 - u2 * z1) + z0 * (u1 * v2 - u2 * v1)) / det
+  ];
+  const [a, c, e] = risolvi(schermo[0][0], schermo[1][0], schermo[2][0]);
+  const [b, d, f] = risolvi(schermo[0][1], schermo[1][1], schermo[2][1]);
+  return [a, b, c, d, e, f];
+}
+
+// L'immagine appoggiata sulla figura. Torna true se ce l'ha fatta: chi
+// chiama, in quel caso, salta le curve.
+//
+// `proietta(ra, dec)` porta una stella sullo schermo di chi sta
+// disegnando — il planetario o la scheda dell'atlante. È l'unica cosa che
+// serve: le tre ancore, dichiarate o scelte da sé, sono tre punti del
+// cielo, e tre punti del cielo bastano a dire dove va l'immagine.
+function costDisegnaImmagine(ctx, sigla, opacita, proietta) {
+  const voce = costImmagineVoce(sigla);
+  if (!voce || !proietta) return false;
+  const memoria = costImmagine(sigla);
+  if (!memoria) return false;
+
+  const ancore = voce.ancore
+    ? voce.ancore.slice(0, 3)
+    : costAncoreAutomatiche(sigla, voce, memoria);
+  if (!ancore) return false;
+
+  const punti = ancore.map(a => proietta(a[0], a[1]));
+  if (punti.some(p => !p)) return false;
+  const M = costAffineDaTre(ancore, punti);
+  if (!M) return false;
+
+  const alfa = opacita * voce.forza;
+  if (!(alfa > 0.01)) return false;
+
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, alfa);
+  // Luce che si somma al cielo, non vernice che lo copre: è la stessa
+  // ragione per cui l'aurora si ricalca in `lighter`. Le stelle sotto al
+  // disegno si devono continuare a vedere — sono loro il motivo per cui
+  // uno sta guardando lì.
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.transform(M[0], M[1], M[2], M[3], M[4], M[5]);
+  ctx.drawImage(memoria.tela, 0, 0);
+  ctx.restore();
+  return true;
 }
 
 
@@ -1732,7 +2171,9 @@ function costElencoVoci() {
     voci.push({
       sigla: c.sigla, nome: c.nome, latino: c.latino, rango: c.rango,
       emisfero: costEmisfero(c.sigla),
-      disegno: !!COST_ARTE[c.sigla],
+      // «Ha un disegno» vuol dire che qualcosa da vedere c'è: le curve
+      // della §2 o l'immagine della §5-bis, indifferentemente
+      disegno: !!(COST_ARTE[c.sigla] || COST_IMMAGINI[c.sigla]),
       nomi: (COST_NOMI[c.sigla] && COST_NOMI[c.sigla].nomi) || []
     });
   });
@@ -2038,17 +2479,17 @@ function costDisegnaScheda(sigla) {
 
   // E sopra, il disegno — costruito sullo stesso telaio di due ancore che
   // usa il planetario, così quello che si impara qui si ritrova là
-  const arte = COST_ARTE[sigla];
-  if (!arte) return;
-  const A = schermo(piano(arte.ancore[0][0], arte.ancore[0][1]));
-  const B = schermo(piano(arte.ancore[1][0], arte.ancore[1][1]));
+  const ancore = costAncoreDi(sigla);
+  if (!ancore) return;
+  const A = schermo(piano(ancore[0][0], ancore[0][1]));
+  const B = schermo(piano(ancore[1][0], ancore[1][1]));
   if (!A || !B) return;
   const dx = B[0] - A[0], dy = B[1] - A[1];
   const lungo = Math.hypot(dx, dy);
   let px = -dy, py = dx;
   // La stessa terza ancora del planetario: il disegno qui e quello in
   // cielo devono essere lo stesso disegno, anche nel modo in cui si stira
-  const terza = costTerzaAncora(sigla, arte.ancore);
+  const terza = costTerzaAncora(sigla, ancore);
   if (terza) {
     const C = schermo(piano(terza.ra, terza.dec));
     if (C) {
@@ -2059,6 +2500,13 @@ function costDisegnaScheda(sigla) {
   }
   const telaio = { ox: A[0], oy: A[1], dx, dy, px, py, lungo,
                    scala: Math.sqrt(lungo * Math.hypot(px, py)) || lungo };
+
+  // Se la figura ha un disegno fatto a mano (§5-bis) è lui che si vede, e
+  // qui si vede meglio che in cielo: questa è la pagina in cui uno la
+  // guarda apposta, non un velo appoggiato sulle stelle mentre cerca
+  // altro. Le curve restano il ripiego, come nel planetario.
+  if (costDisegnaImmagine(ctx, sigla, 0.9, (ra, dec) => schermo(piano(ra, dec)))) return;
+  if (!COST_ARTE[sigla]) return;
 
   const tracciato = new Path2D();
   const pieni = new Path2D();

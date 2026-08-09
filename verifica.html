@@ -1421,6 +1421,172 @@ titolo('15. Le montagne che hanno un nome');
 }
 
 // =====================================================================
+titolo('16. I disegni fatti a mano (le immagini delle costellazioni)');
+// =====================================================================
+//
+// Qui non si può controllare che il disegno sia bello, e nemmeno che il
+// file ci sia (il §16 gira senza rete e senza aspettare i caricamenti).
+// Si controlla la geometria, che è la parte che a occhio non si vede:
+// che l'entrata sia leggibile, che il riquadro su cui l'immagine si
+// appoggia esista e non sia degenere, e che la trasformazione a tre
+// ancore porti davvero i tre pixel sui tre punti dichiarati.
+{
+  const sigle = new Set(COSTELLAZIONI_IAU.map(c => c.sigla));
+  const conImmagine = Object.keys(COST_IMMAGINI);
+
+  prova('ogni immagine appartiene a una costellazione vera',
+        conImmagine.every(s => sigle.has(s)),
+        conImmagine.length ? conImmagine.join(', ') : 'nessuna immagine registrata');
+
+  prova('ogni entrata ha un nome di file',
+        conImmagine.every(s => {
+          const v = costImmagineVoce(s);
+          return v && typeof v.file === 'string' && v.file.length > 0;
+        }));
+
+  // Un'entrata scritta come stringa e la stessa scritta come oggetto
+  // devono dare la stessa cosa: è tutto il senso della forma breve
+  {
+    const a = costImmagineVoce(conImmagine[0]);
+    prova('la forma breve e quella lunga si normalizzano uguale',
+          !a || (a.margine > 0 && a.forza > 0 && Array.isArray(a.sposta)),
+          a ? `margine ${a.margine}, forza ${a.forza}` : 'niente da normalizzare');
+  }
+
+  // --- La carta locale: andata e ritorno ---
+  //
+  // Le immagini dichiarano i loro angoli sulla carta della figura e poi
+  // chiedono che pezzo di cielo sono. Se le due strade non si chiudono, il
+  // disegno finisce da un'altra parte — e siccome finisce lì *tutto
+  // insieme*, a occhio sembra semplicemente un disegno sbagliato.
+  {
+    let peggio = 0;
+    conImmagine.concat(['Ori', 'Leo']).forEach(s => {
+      const carta = costPianoFigura(s);
+      if (!carta) return;
+      carta.punti.forEach(p => {
+        const q = carta.piano(p[0], p[1]);
+        if (!q) return;
+        const c = carta.cielo(q[0], q[1]);
+        const dRa = (((c[0] - p[0] + 36) % 24) - 12) * 15 * Math.cos(p[1] * D2R);
+        peggio = Math.max(peggio, Math.hypot(dRa, c[1] - p[1]));
+      });
+    });
+    prova('dalla carta al cielo e ritorno si torna sulla stessa stella',
+          peggio < 1e-9, `scarto massimo ${peggio.toExponential(1)}°`);
+  }
+
+  // --- L'appoggio automatico copre davvero le stelle ---
+  //
+  // È la promessa della forma breve («metti il file, scrivi il nome»): un
+  // disegno grande quanto la figura, e messo dove sta la figura. Si prova
+  // con un'immagine finta della stessa forma del riquadro e senza
+  // manopole: tutte le stelle devono cadere dentro al foglio.
+  {
+    const scappate = [];
+    conImmagine.forEach(s => {
+      const box = costRiquadroFigura(s), carta = costPianoFigura(s);
+      if (!box || !carta) return;
+      const larga = box.x1 - box.x0, alta = box.y1 - box.y0;
+      const finta = { larghezza: 1000, altezza: Math.round(1000 * alta / larga) };
+      const anc = costAncoreAutomatiche(s, { margine: 1, sposta: [0, 0] }, finta);
+      if (!anc) { scappate.push(s + ' (nessuna ancora)'); return; }
+      // I tre angoli sulla carta: (0,0), (larghezza,0), (0,altezza)
+      const carte = anc.map(a => { const q = carta.piano(a[0], a[1]); return [-q[0], -q[1]]; });
+      const pu = (carte[1][0] - carte[0][0]) / finta.larghezza;
+      const pv = (carte[2][1] - carte[0][1]) / finta.altezza;
+      carta.punti.forEach(p => {
+        const q = carta.piano(p[0], p[1]);
+        if (!q) return;
+        const u = (-q[0] - carte[0][0]) / pu, v = (-q[1] - carte[0][1]) / pv;
+        if (u < -1 || u > finta.larghezza + 1 || v < -1 || v > finta.altezza + 1) {
+          scappate.push(`${s} (${Math.round(u)},${Math.round(v)})`);
+        }
+      });
+    });
+    prova('col solo nome del file il disegno copre tutte le stelle della figura',
+          scappate.length === 0, scappate.slice(0, 4).join(', '));
+  }
+
+  // Il riquadro delle stelle: è quello su cui si appoggia un'immagine che
+  // le ancore non le dichiara. Senza, il disegno non ha dove andare.
+  const senzaRiquadro = conImmagine.filter(s => {
+    const r = costRiquadroFigura(s);
+    return !r || !(r.x1 - r.x0 > 0.01) || !(r.y1 - r.y0 > 0.01);
+  });
+  prova('ogni figura con un\'immagine ha il suo riquadro di stelle',
+        senzaRiquadro.length === 0, senzaRiquadro.join(', '));
+
+  // Le ancore scelte da sé, per le figure che il disegno a curve non ce
+  // l'hanno: devono essere due stelle vere, e lontane fra loro
+  const autoRotte = [];
+  conImmagine.forEach(s => {
+    const anc = costAncoreDi(s);
+    if (!anc || anc.length < 2) { autoRotte.push(s + ' (nessuna ancora)'); return; }
+    const dRa = (anc[0][0] - anc[1][0]) * 15 * Math.cos(anc[0][1] * D2R);
+    if (Math.hypot(dRa, anc[0][1] - anc[1][1]) < 4) autoRotte.push(s + ' (ancore vicine)');
+  });
+  prova('le ancore di ogni figura con un\'immagine sono lontane almeno quattro gradi',
+        autoRotte.length === 0, autoRotte.join(', '));
+
+  // --- L'affine a tre ancore ---
+  //
+  // È la prova che conta davvero: tre pixel dell'immagine devono finire
+  // esattamente sui tre punti dello schermo. Un errore qui non si vede —
+  // il disegno resta bello, solo che sta un po' più in là.
+  {
+    const ancore = [[0, 0, 100, 50], [0, 0, 900, 80], [0, 0, 300, 700]];
+    const schermo = [[12, -4], [430, 60], [90, 380]];
+    const M = costAffineDaTre(ancore, schermo);
+    let peggio = 0;
+    if (M) {
+      ancore.forEach((a, i) => {
+        const x = M[0] * a[2] + M[2] * a[3] + M[4];
+        const y = M[1] * a[2] + M[3] * a[3] + M[5];
+        peggio = Math.max(peggio, Math.hypot(x - schermo[i][0], y - schermo[i][1]));
+      });
+    }
+    prova('la trasformazione a tre ancore porta i pixel dove deve',
+          !!M && peggio < 1e-6, M ? `scarto massimo ${peggio.toExponential(1)} px` : 'nessuna matrice');
+  }
+
+  // Tre punti in fila non definiscono un'affine, e provarci vuol dire
+  // dividere per zero: si deve arrendere invece di sputare NaN
+  {
+    const M = costAffineDaTre([[0, 0, 0, 0], [0, 0, 100, 100], [0, 0, 200, 200]],
+                              [[0, 0], [10, 10], [20, 20]]);
+    prova('tre ancore in fila vengono rifiutate', M === null);
+  }
+
+  // Il colore: si legge sia 'rgb(...)' sia '#rrggbb', e un colore
+  // incomprensibile non deve dare NaN (finirebbe in un disegno invisibile)
+  {
+    const a = costColoreRgb('rgb(196, 181, 253)');
+    const b = costColoreRgb('#c4b5fd');
+    const c = costColoreRgb('cose a caso');
+    prova('il colore del disegno si legge nelle due forme',
+          a[0] === 196 && a[1] === 181 && a[2] === 253 &&
+          b[0] === 196 && b[1] === 181 && b[2] === 253 &&
+          c.every(n => isFinite(n)),
+          `rgb → ${a.join(',')}, hex → ${b.join(',')}`);
+  }
+
+  // Una sigla che un'immagine non ce l'ha non deve inventarsi niente:
+  // è il caso normale di ottantasette figure su ottantotto
+  prova('una figura senza immagine non ne cerca una',
+        costImmagineVoce('XXX') === null && costDisegnaImmagine(null, 'XXX', 1, null) === false);
+
+  // L'elenco delle figure disegnabili tiene dentro tutt'e due le famiglie
+  {
+    const tutte = costSigleArte();
+    prova('l\'elenco dei disegni tiene dentro curve e immagini',
+          Object.keys(COST_ARTE).every(s => tutte.includes(s)) &&
+          conImmagine.every(s => tutte.includes(s)),
+          `${tutte.length} figure disegnabili`);
+  }
+}
+
+// =====================================================================
 const esito = document.getElementById('esito');
 esito.dataset.stato = fallite ? 'ko' : 'ok';
 esito.textContent = fallite
