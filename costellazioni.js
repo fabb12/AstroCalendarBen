@@ -1697,11 +1697,39 @@ function costDisegnaArte(ctx, base, focale) {
 //     disegno risulta spostato o troppo grande ci sono tre manopole, in
 //     ordine di fatica:
 //
-//         Tau: { file: 'toro.png', margine: 1.35, sposta: [0.05, -0.1] }
+//         Tau: { file: 'toro.png', margine: 1.35, sposta: [0.05, -0.1],
+//                gira: -6, scala: [1.1, 1] }
 //
-//     `margine` è quanto il disegno deborda dalle stelle (1 = il disegno
-//     tocca esattamente le stelle di bordo), `sposta` lo scosta in frazioni
-//     del riquadro. E se si vuole la precisione al pixel, le tre ancore —
+//     Sono cinque, e si applicano in quest'ordine — conta, perché `gira`
+//     gira anche gli assi di `scala`, mentre `sposta` viene dopo tutto e
+//     resta sempre nella direzione in cui lo si legge (destra e giù):
+//
+//         1. il disegno viene portato grande quanto le stelle × `margine`
+//         2. × `scala` (un numero, o [orizzontale, verticale])
+//         3. specchiato, se `specchio`
+//         4. girato di `gira` gradi in senso orario
+//         5. scostato di `sposta`, in frazioni del riquadro delle stelle
+//
+//     Le manopole in due parole:
+//
+//         margine   quanto deborda dalle stelle (1 = le tocca esattamente)
+//         scala     ingrandimento in più; [x, y] per stirarlo su un asse solo
+//         gira      gradi in senso orario, come «ruota a destra» di un editor
+//         specchio  'x' ribalta destra-sinistra, 'y' sopra-sotto, 'xy' tutt'e due
+//         sposta    [destra, giù] in frazioni del riquadro delle stelle
+//
+//     TROVARE I CINQUE NUMERI SENZA IMPAZZIRE. Cambiarli a mano, ricaricare
+//     e guardare è un giro da mezzo minuto per tentativo, e i tentativi sono
+//     tanti. Col planetario aperto sulla figura, dalla console del browser:
+//
+//         costArteRegola('Tau', { gira: -6, scala: 1.1 })   → si vede subito
+//         costArteMostra('Tau')                             → la riga da incollare
+//
+//     `costArteRegola` cambia l'entrata viva e il fotogramma dopo il disegno
+//     è già lì; `costArteMostra` stampa l'entrata come va scritta qui, con
+//     dentro solo le manopole che sono state davvero toccate.
+//
+//     E se si vuole la precisione al pixel, le tre ancore —
 //     tre stelle vere, e dove stanno nell'immagine:
 //
 //         Tau: { file: 'toro.png', ancore: [
@@ -1713,6 +1741,12 @@ function costDisegnaArte(ctx, base, focale) {
 //     che è esattamente il modo in cui Stellarium ancora le sue
 //     illustrazioni, ed è anche il motivo per cui è quello scelto: chi ha
 //     già tarato un'immagine per Stellarium può portarsi dietro i numeri.
+//
+//     Con le tre ancore le cinque manopole non servono più e vengono
+//     ignorate: dicono la stessa cosa in un modo più scomodo. Tre punti
+//     fissano posizione, misura, rotazione, stiramento e specchio tutti
+//     insieme — e li fissano *sulle stelle*, che è meglio che fissarli
+//     rispetto a un riquadro.
 //
 //     SE IL FILE NON C'È, non succede niente di male: la richiesta fallisce
 //     una volta sola, non si riprova più, e la figura torna al suo disegno
@@ -1759,9 +1793,22 @@ function costImmagineVoce(sigla) {
   if (!v) return null;
   if (typeof v === 'string') v = { file: v };
   if (!v || !v.file) return null;
+
+  // `scala` è un numero se il disegno va solo ingrandito, e una coppia se
+  // va anche stirato su un asse solo. Qui diventa sempre una coppia.
+  const s = v.scala;
+  const scala = Array.isArray(s)
+    ? [s[0] > 0 ? s[0] : 1, s[1] > 0 ? s[1] : 1]
+    : (s > 0 ? [s, s] : [1, 1]);
+
+  const spec = String(v.specchio === true ? 'x' : (v.specchio || '')).toLowerCase();
+
   return {
     file: v.file,
     margine: v.margine > 0 ? v.margine : COST_IMMAGINE_MARGINE,
+    scala,
+    gira: isFinite(v.gira) ? +v.gira : 0,      // gradi, senso orario
+    specchio: [spec.includes('x'), spec.includes('y')],
     sposta: v.sposta || [0, 0],
     ancore: (v.ancore && v.ancore.length >= 3) ? v.ancore : null,
     tinta: v.tinta || COST_IMMAGINE_TINTA,     // 'originale' tiene i colori del disegno
@@ -1903,24 +1950,51 @@ function costRiquadroFigura(sigla) {
 // Le tre ancore che l'entrata non ha dichiarato: tre angoli dell'immagine
 // e il pezzo di cielo su cui vanno a finire. Da qui in poi un'immagine
 // appoggiata da sé e una tarata al pixel percorrono la stessa strada.
+//
+// È anche il posto in cui si applicano le cinque manopole, e l'ordine è
+// quello scritto nella testata della sezione: misura, scala, specchio,
+// rotazione, scostamento. Il giro viene prima dello scostamento apposta —
+// così `sposta` vuol dire sempre «più a destra, più in giù» qualunque sia
+// l'inclinazione del disegno, che è l'unico modo di poterlo correggere
+// guardando lo schermo invece di rifare i conti.
 function costAncoreAutomatiche(sigla, voce, memoria) {
   const box = costRiquadroFigura(sigla);
   const carta = costPianoFigura(sigla);
   if (!box || !carta) return null;
 
+  // Le manopole si leggono con la loro scappatoia: normalmente arrivano
+  // già a posto da `costImmagineVoce`, ma questa funzione la chiama anche
+  // chi sta tarando un disegno a mano, e una manopola non scritta deve
+  // voler dire «lasciala com'è» invece di far esplodere tutto
+  const margine = voce.margine > 0 ? voce.margine : COST_IMMAGINE_MARGINE;
+  const scala = voce.scala || [1, 1];
+  const specchio = voce.specchio || [false, false];
+  const sposta = voce.sposta || [0, 0];
+
   const larga = box.x1 - box.x0, alta = box.y1 - box.y0;
   // Una scala sola per i due assi: il disegno non si deve schiacciare per
   // adattarsi a una figura più larga che alta. Si prende la più grande
   // delle due, così le stelle ci stanno dentro comunque.
-  const s = Math.max(larga * voce.margine / memoria.larghezza,
-                     alta * voce.margine / memoria.altezza);
-  const cx = (box.x0 + box.x1) / 2 + (voce.sposta[0] || 0) * larga;
-  const cy = (box.y0 + box.y1) / 2 + (voce.sposta[1] || 0) * alta;
-  const x0 = cx - memoria.larghezza * s / 2;
-  const y0 = cy - memoria.altezza * s / 2;
+  const base = Math.max(larga * margine / memoria.larghezza,
+                        alta * margine / memoria.altezza);
+  const sx = base * scala[0] * (specchio[0] ? -1 : 1);
+  const sy = base * scala[1] * (specchio[1] ? -1 : 1);
+
+  // Sulla carta la x cresce verso destra e la y verso il basso (§5-bis):
+  // con la y in giù la matrice di rotazione scritta come si scrive sempre
+  // gira in senso ORARIO, che è il verso del «ruota a destra» di un
+  // qualunque editor di immagini. Torna comodo, ed è un caso — ma è il
+  // caso per cui `gira` positivo vuol dire quello che uno si aspetta.
+  const th = (voce.gira || 0) * Math.PI / 180;
+  const co = Math.cos(th), si = Math.sin(th);
+
+  const cx = (box.x0 + box.x1) / 2 + (sposta[0] || 0) * larga;
+  const cy = (box.y0 + box.y1) / 2 + (sposta[1] || 0) * alta;
+  const mx = memoria.larghezza / 2, my = memoria.altezza / 2;
 
   const angolo = (u, v) => {
-    const c = carta.cielo(-(x0 + u * s), -(y0 + v * s));
+    const a = (u - mx) * sx, b = (v - my) * sy;
+    const c = carta.cielo(-(cx + a * co - b * si), -(cy + a * si + b * co));
     return [c[0], c[1], u, v];
   };
   return [angolo(0, 0), angolo(memoria.larghezza, 0), angolo(0, memoria.altezza)];
@@ -1985,6 +2059,79 @@ function costDisegnaImmagine(ctx, sigla, opacita, proietta) {
   ctx.drawImage(memoria.tela, 0, 0);
   ctx.restore();
   return true;
+}
+
+
+// ---------------------------------------------------------------------
+// ALLINEARE UN DISEGNO SENZA RICARICARE OGNI VOLTA
+//
+// Le manopole sono cinque e nessuna delle cinque si indovina: si guarda
+// il disegno sulle stelle e si corregge. Il giro «cambio il numero →
+// salvo → ricarico → riapro il planetario → riinquadro la figura» dura
+// mezzo minuto, e mezzo minuto per tentativo vuol dire rinunciare al
+// terzo tentativo e tenersi un disegno storto.
+//
+// Queste due funzioni tolgono quel giro. Non hanno interfaccia e non ne
+// vogliono una: si chiamano dalla console del browser, col planetario
+// aperto sulla figura, e la seconda stampa la riga da incollare qui
+// sopra. Sono l'equivalente della matita sul foglio.
+// ---------------------------------------------------------------------
+
+// Cambia l'entrata viva. Il ciclo del planetario disegna sessanta volte
+// al secondo e la prossima passata è già col numero nuovo: non c'è niente
+// da invalidare, perché il riquadro delle stelle non dipende dalle
+// manopole e le tre ancore si rifanno a ogni fotogramma.
+//
+// Le uniche due che fanno eccezione sono `tinta` e `sfondo`: quelle sono
+// cotte dentro alla tela del velo, e cambiarle vuol dire ridipingerla.
+function costArteRegola(sigla, cambi) {
+  const attuale = COST_IMMAGINI[sigla];
+  if (!attuale) { console.warn(`[arte] ${sigla} non ha un'immagine registrata`); return null; }
+
+  const base = typeof attuale === 'string' ? { file: attuale } : attuale;
+  const nuova = Object.assign({}, base, cambi || {});
+  COST_IMMAGINI[sigla] = nuova;
+
+  if (cambi && ('tinta' in cambi || 'sfondo' in cambi)) delete cost.immagini[sigla];
+  if (cost.atlante && cost.scelta === sigla) costDisegnaScheda(sigla);
+
+  return costArteMostra(sigla);
+}
+
+// La riga da incollare in COST_IMMAGINI, con dentro solo le manopole che
+// sono state davvero toccate: una entrata piena di valori di serie si
+// legge peggio e invecchia peggio (il giorno che il valore di serie
+// cambia, quelli scritti a mano non se ne accorgono).
+function costArteMostra(sigla) {
+  const v = COST_IMMAGINI[sigla];
+  if (!v) return null;
+  const o = typeof v === 'string' ? { file: v } : v;
+
+  const num = n => (Math.round(n * 1000) / 1000);
+  const pezzi = [`file: '${o.file}'`];
+  if (o.margine > 0 && o.margine !== COST_IMMAGINE_MARGINE) pezzi.push(`margine: ${num(o.margine)}`);
+  if (o.scala != null) {
+    pezzi.push(Array.isArray(o.scala)
+      ? `scala: [${num(o.scala[0])}, ${num(o.scala[1])}]`
+      : `scala: ${num(o.scala)}`);
+  }
+  if (o.gira) pezzi.push(`gira: ${num(o.gira)}`);
+  if (o.specchio) pezzi.push(`specchio: '${o.specchio === true ? 'x' : o.specchio}'`);
+  if (o.sposta && (o.sposta[0] || o.sposta[1])) {
+    pezzi.push(`sposta: [${num(o.sposta[0])}, ${num(o.sposta[1])}]`);
+  }
+  if (o.forza > 0 && o.forza !== 1) pezzi.push(`forza: ${num(o.forza)}`);
+  if (o.tinta) pezzi.push(`tinta: '${o.tinta}'`);
+  if (o.sfondo && o.sfondo !== 'auto') pezzi.push(`sfondo: '${o.sfondo}'`);
+
+  // Col solo nome del file l'entrata torna alla sua forma breve: è quella
+  // che va scritta, e vederla stampata così è anche il modo di scoprire
+  // che il disegno andava bene com'era
+  const riga = pezzi.length === 1
+    ? `  ${sigla}: '${o.file}',`
+    : `  ${sigla}: { ${pezzi.join(', ')} },`;
+  console.log(riga);
+  return riga;
 }
 
 
