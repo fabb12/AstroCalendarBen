@@ -18918,7 +18918,13 @@ function solDisegnaOrbita(ctx, traccia) {
   ctx.restore();
 }
 
-function solDisegnaSole(ctx) {
+// Il Sole è in due pezzi, e non è un vezzo: l'alone va steso presto, sotto a
+// tutto, perché è luce diffusa; il disco invece è un corpo opaco e deve
+// entrare nella fila della profondità insieme ai pianeti. Disegnandoli
+// insieme — com'era prima — il Sole finiva sempre *sotto* a tutti e otto, e
+// Mercurio in congiunzione superiore, che sta un'unità astronomica dietro,
+// si vedeva comunque, appoggiato sul disco come se stesse davanti.
+function solDisegnaAloneSole(ctx) {
   const p = solProietta({ x: 0, y: 0, z: 0 });
   const raggio = solRaggioSole();
   // L'alone è sei volte il disco, ma non oltre la tela: adesso che il disco
@@ -18933,6 +18939,11 @@ function solDisegnaSole(ctx) {
   ctx.beginPath();
   ctx.arc(p.px, p.py, alone, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function solDisegnaDiscoSole(ctx) {
+  const p = solProietta({ x: 0, y: 0, z: 0 });
+  const raggio = solRaggioSole();
   ctx.fillStyle = '#fef3c7';
   ctx.beginPath();
   ctx.arc(p.px, p.py, raggio, 0, Math.PI * 2);
@@ -18992,8 +19003,12 @@ function solDisegnaCorpo(ctx, corpo) {
   ctx.restore();
 }
 
-// La Luna attorno alla Terra, a distanza esagerata (vedi solLeggiPosizioni)
-function solDisegnaLuna(ctx, terra) {
+// La Luna attorno alla Terra, a distanza esagerata (vedi solLeggiPosizioni).
+// Anche lei ha il suo posto nella fila: metà del mese sta davanti alla Terra
+// e metà dietro, e disegnarla sempre prima la faceva sparire a metà dentro
+// al pallino azzurro proprio nei giorni in cui invece dovrebbe coprirlo.
+// `davanti` dice quale delle due metà si sta disegnando adesso.
+function solDisegnaLuna(ctx, terra, davanti) {
   if (!sol.luna || !terra) return;
   // Abbastanza staccata dalla Terra da non finirle dentro, adesso che i
   // pallini sono più grossi — e la misura la detta il pallino stesso, che
@@ -19005,6 +19020,7 @@ function solDisegnaLuna(ctx, terra) {
     y: terra.scena.y + sol.luna.y * passo,
     z: terra.scena.z + sol.luna.z * passo * sol.esagera
   });
+  if (davanti !== undefined && (p.vicinanza >= terra.schermo.vicinanza) !== davanti) return;
   ctx.save();
   ctx.strokeStyle = 'rgba(226, 232, 240, 0.28)';
   ctx.lineWidth = 1;
@@ -19072,7 +19088,7 @@ function solDisegna() {
 
   solDisegnaPiano(ctx);
   sol.orbite.tracce.forEach(t => solDisegnaOrbita(ctx, t));
-  solDisegnaSole(ctx);
+  solDisegnaAloneSole(ctx);
   solDisegnaSguardo(ctx, terra, scelto);
 
   // Il terreno che le scritte non possono occupare. Prima di tutto i corpi
@@ -19088,13 +19104,31 @@ function solDisegna() {
   }));
 
   // Dietro prima, davanti poi: è tutto quello che serve perché una scena
-  // ortogonale sembri profonda
+  // ortogonale sembri profonda. Il Sole entra in questa fila come tutti gli
+  // altri — la sua `vicinanza` è zero, perché sta nell'origine della scena —
+  // e da lì in poi la copertura si fa da sé: quello che passa dietro al suo
+  // disco sparisce davvero, quello che passa davanti glielo copre.
+  //
+  // Il Sole però non si mette a profondità zero ma un raggio più indietro: il
+  // suo disco è disegnato molto più grosso del vero, e un pianeta che gli
+  // passa **accanto** — visto a picco, Mercurio è alla stessa profondità del
+  // Sole a meno di un pelo — cadrebbe dentro a quel disco gonfiato e
+  // sparirebbe e ricomparirebbe a ogni giro. Con la soglia a un raggio
+  // indietro si nasconde solo ciò che sta davvero dietro alla palla, che è
+  // poi il caso che conta: la congiunzione superiore, un'unità astronomica
+  // più in là.
   const ordinati = sol.pianeti.slice().sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
+  const dietroAlSole = -solRaggioSole() / Math.max(1e-6, sol.scala);
+  let soleFatto = false;
+  const soleQui = () => { if (!soleFatto) { soleFatto = true; solDisegnaDiscoSole(ctx); } };
   ordinati.forEach(p => {
+    if (p.schermo.vicinanza >= dietroAlSole) soleQui();
     solDisegnaPiombo(ctx, p);
-    if (p.id === 'Earth') solDisegnaLuna(ctx, p);
+    if (p.id === 'Earth') solDisegnaLuna(ctx, p, false);
     solDisegnaCorpo(ctx, p);
+    if (p.id === 'Earth') solDisegnaLuna(ctx, p, true);
   });
+  soleQui();   // tutti i pianeti sono dietro al Sole: tocca a lui chiudere
 
   // I nomi vengono dopo tutti i pallini, altrimenti un pianeta disegnato più
   // tardi cancellerebbe la scritta di quello di prima. Il pianeta scelto
