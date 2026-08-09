@@ -8244,10 +8244,22 @@ const LUOGO_ZOOM_MAX = 19;
 // un link incollato): abbastanza stretto da riconoscere il posto, abbastanza
 // largo da vedere dove si è finiti.
 const LUOGO_ZOOM_PUNTO = 13;
-// Entro questa distanza il punto prende il nome del paese vicino. È la stessa
-// soglia di `nomeLuogoVicino`, ed è giusto che lo sia: la scritta della
-// finestra e il nome che finisce nel pannello devono dire la stessa cosa.
-const LUOGO_NOME_KM = 60;
+// Entro questa distanza il punto si può chiamare col nome del paese: ci si è
+// dentro, o nella sua campagna.
+//
+// Era 60 km, cioè il raggio di `nomeLuogoVicino`, e sembrava giusto che le
+// due soglie coincidessero. Non lo era: quel raggio è tarato su un elenco
+// mondiale che dell'Italia conosce trenta città, e a 60 km si mangia
+// esattamente quello che questa finestra serve a distinguere. Un punto
+// scelto col dito sui Piani di Bobbio si chiamava «Milano» (59 km), il Passo
+// Giau si chiamava «Bolzano» (54 km), e Bergamo pure «Milano» — con la
+// scritta del pannello del planetario che diceva «Cielo da Milano» dopo che
+// si era appena messo il puntino su una cresta a milletrecento metri.
+//
+// Fuori da qui il punto non prende in prestito il nome di nessuno: si chiama
+// con le sue coordinate, e il paese più vicino resta scritto nella riga di
+// sotto, con la sua distanza, che è l'unico modo di dirlo senza mentire.
+const LUOGO_NOME_KM = 12;
 
 // I tre fondi. `maxNativeZoom` è il punto in cui il servizio smette di avere
 // tessere: oltre, Leaflet ingrandisce l'ultima invece di lasciare il grigio —
@@ -8299,6 +8311,33 @@ function luogoCittaPiuVicina(lat, lon) {
     if (d < distanza) { distanza = d; nome = n; paese = p; }
   }
   return nome ? { nome, paese, km: distanza / 1000 } : null;
+}
+
+// Un nome che è un nome, e non delle coordinate travestite. Serve quando si
+// riapre la finestra: il luogo del cielo può già chiamarsi «45.9° N, 9.5° E»
+// perché la volta prima era stato scelto un punto senza paese, e riportarlo
+// dentro come «nome» lo inchioderebbe lì anche dopo aver spostato il segno.
+function luogoNomeVero(nome) {
+  if (!nome) return null;
+  return /^[-\d.,°º'"′″\s+NSEWO]+$/i.test(nome) ? null : nome;
+}
+
+// Come si chiama il punto scelto. Vale **sia** per la scritta grande della
+// finestra sia per il nome che finisce nel pannello del planetario, ed è per
+// questo che è una funzione sola: erano due strade diverse, e la seconda
+// passava da `nomeLuogoVicino()` col suo raggio di 60 km — così la finestra
+// diceva «Punto senza nome» e il pannello, dello stesso identico punto,
+// diceva «Milano».
+//
+// Non torna mai una stringa vuota: se un nome non c'è, le coordinate sono un
+// nome anche loro, e più onesto di un paese a cinquanta chilometri.
+function luogoNomeDelPunto() {
+  const s = luogoMappa.scelto;
+  if (!s) return null;
+  if (luogoMappa.nome) return luogoMappa.nome;
+  const vicina = luogoCittaPiuVicina(s.lat, s.lon);
+  if (vicina && vicina.km <= LUOGO_NOME_KM) return vicina.nome;
+  return formattaCoordinate(s.lat, s.lon);
 }
 
 // Una distanza detta come la direbbe una persona: sotto il chilometro non si
@@ -8548,7 +8587,9 @@ function luogoMappaAggiornaLettura() {
   const haNome = vicina && vicina.km <= LUOGO_NOME_KM;
   // Il nome arrivato col punto vince su tutto: chi ha cercato «Sestriere» o
   // ha incollato il link del Colle dell'Agnello si aspetta di leggere quello,
-  // non il capoluogo di provincia che l'elenco a bordo conosce.
+  // non il capoluogo di provincia che l'elenco a bordo conosce. Fuori dai
+  // LUOGO_NOME_KM il punto non ha un nome, e lo dice: le coordinate stanno
+  // nella riga qui sotto, che è dove `luogoNomeDelPunto()` va a prenderle.
   elNome.textContent = luogoMappa.nome || (haNome ? vicina.nome : 'Punto senza nome');
   elCoord.textContent = luogoCoordinateFini(s.lat, s.lon);
 
@@ -8950,7 +8991,7 @@ function apriMappaLuogoCielo() {
   luogoMappaScegli(partenza.lat, partenza.lon, {
     centra: true,
     zoom: l ? luogoMappa.zoomUltimo : Math.min(luogoMappa.zoomUltimo, LUOGO_ZOOM_APERTURA),
-    nome: l && l.nome ? l.nome : null
+    nome: luogoNomeVero(l && l.nome)
   });
 
   // La mappa è nata dentro a un modale nascosto, cioè alta zero: senza questa
@@ -8977,7 +9018,11 @@ function luogoMappaUsa() {
     luogoAvviso('Tocca prima un punto sulla mappa.');
     return;
   }
-  const nome = luogoMappa.nome;
+  // Il nome si calcola **qui** e si passa sempre: lasciandolo a null,
+  // `skyImpostaLuogoVista()` ripiegava su `nomeLuogoVicino()`, che pesca da
+  // un elenco mondiale nel raggio di 60 km — ed è così che un punto scelto
+  // col dito in montagna finiva nel pannello come «Cielo da Milano».
+  const nome = luogoNomeDelPunto();
   chiudiMappaLuogoCielo();
   skyUsaLuogoVista(s.lat, s.lon, nome);
 }
