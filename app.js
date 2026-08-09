@@ -8378,9 +8378,12 @@ function luogoMappaSegnaCasa() {
     luogoMappa.casa.setLatLng([casa.lat, casa.lon]);
     return;
   }
+  // Il contorno è scuro e il pieno è un azzurro carico: la mappa qui sotto è
+  // chiara (vedi il commento di `#mappa-luogo` in style.css), e il contorno
+  // chiaro che andava bene sul fondo notturno qui sbiadiva nelle strade.
   luogoMappa.casa = L.circleMarker([casa.lat, casa.lon], {
-    radius: 6, color: 'rgba(226, 232, 240, 0.85)', fillColor: '#38bdf8',
-    fillOpacity: 0.9, weight: 2
+    radius: 6, color: 'rgba(15, 23, 42, 0.8)', fillColor: '#0284c7',
+    fillOpacity: 0.95, weight: 2
   }).addTo(luogoMappa.mappa).bindTooltip('Dove sei davvero', { direction: 'top' });
 }
 
@@ -8450,7 +8453,7 @@ function luogoMappaFilo(punto) {
   const tratto = [[casa.lat, casa.lon], punto];
   if (luogoMappa.filo) { luogoMappa.filo.setLatLngs(tratto); return; }
   luogoMappa.filo = L.polyline(tratto, {
-    color: '#7dd3fc', weight: 1.4, opacity: 0.45, dashArray: '4 7', interactive: false
+    color: '#0369a1', weight: 2, opacity: 0.55, dashArray: '4 7', interactive: false
   }).addTo(luogoMappa.mappa);
   luogoMappa.filo.bringToBack();
 }
