@@ -1508,6 +1508,105 @@ titolo('16. I disegni fatti a mano (le immagini delle costellazioni)');
           scappate.length === 0, scappate.slice(0, 4).join(', '));
   }
 
+  // --- Le cinque manopole ---
+  //
+  // Rotazione, scala, specchio e scostamento si controllano tutti allo
+  // stesso modo: si guarda dove finisce un angolo del foglio. Il disegno
+  // finto è quadrato e il riquadro pure, così i conti si fanno a mente.
+  {
+    const sigla = conImmagine[0] || 'Ori';
+    const prima = COST_IMMAGINI[sigla];
+    const finta = { larghezza: 400, altezza: 400 };
+    const carta = costPianoFigura(sigla);
+
+    // Si passa dalla strada vera — l'entrata scritta come la si scrive in
+    // COST_IMMAGINI, normalizzata da `costImmagineVoce` — così la prova
+    // copre anche la lettura delle manopole e non solo la geometria
+    const dove = (manopole, angolo) => {
+      COST_IMMAGINI[sigla] = Object.assign({ file: 'finto.png', margine: 1 }, manopole);
+      const anc = costAncoreAutomatiche(sigla, costImmagineVoce(sigla), finta);
+      const q = carta.piano(anc[angolo][0], anc[angolo][1]);
+      return [-q[0], -q[1]];
+    };
+
+    const centro = costRiquadroFigura(sigla);
+    const cx = (centro.x0 + centro.x1) / 2, cy = (centro.y0 + centro.y1) / 2;
+    const rel = p => [p[0] - cx, p[1] - cy];
+    const uguali = (a, b) => Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9;
+
+    // Senza manopole l'angolo in alto a sinistra del foglio sta in alto a
+    // sinistra sul cielo: non è ovvio, è la prova che il disegno non arriva
+    // già girato o specchiato
+    const fermo = rel(dove({}, 0));
+    prova('senza manopole l\'angolo del foglio sta dove deve',
+          fermo[0] < 0 && fermo[1] < 0,
+          `(${fermo[0].toFixed(3)}, ${fermo[1].toFixed(3)}) dal centro`);
+
+    // Mezzo giro: l'angolo in alto a sinistra finisce in basso a destra,
+    // alla stessa distanza dal centro. Sbagliare il verso o il centro di
+    // rotazione lo rompe subito.
+    prova('una rotazione di mezzo giro ribalta l\'angolo attorno al centro',
+          uguali(rel(dove({ gira: 180 }, 0)), [-fermo[0], -fermo[1]]));
+
+    // Un quarto di giro in senso ORARIO porta l'angolo in alto a sinistra
+    // in alto a destra: (x, y) → (−y, x). Se il verso fosse al contrario
+    // finirebbe in basso a sinistra — ed è l'errore che poi ci si "corregge"
+    // scrivendo il numero col segno cambiato, tenendosi il codice sbagliato.
+    prova('gira positivo gira in senso orario, come negli editor di immagini',
+          uguali(rel(dove({ gira: 90 }, 0)), [-fermo[1], fermo[0]]),
+          `l'angolo in alto a sinistra va a (${(-fermo[1]).toFixed(3)}, ${fermo[0].toFixed(3)})`);
+
+    // La scala moltiplica la distanza dal centro, e su un asse solo se è
+    // una coppia
+    prova('la scala allontana dal centro di quel tanto',
+          uguali(rel(dove({ scala: 2 }, 0)), [fermo[0] * 2, fermo[1] * 2]));
+    prova('una scala a due numeri stira su un asse solo',
+          uguali(rel(dove({ scala: [2, 1] }, 0)), [fermo[0] * 2, fermo[1]]));
+
+    // Lo specchio ribalta un asse e lascia stare l'altro
+    prova('lo specchio ribalta destra-sinistra e non sopra-sotto',
+          uguali(rel(dove({ specchio: 'x' }, 0)), [-fermo[0], fermo[1]]));
+
+    // E lo scostamento resta «destra e giù» anche col disegno girato: è
+    // tutto il senso di applicarlo dopo la rotazione, ed è la differenza
+    // fra una manopola che si usa guardando lo schermo e una che chiede
+    // di rifare i conti a mente ogni volta
+    const larga = centro.x1 - centro.x0;
+    const scostato = rel(dove({ sposta: [0.25, 0] }, 0));
+    const soloGirato = rel(dove({ gira: 40 }, 0));
+    const giratoEScostato = rel(dove({ gira: 40, sposta: [0.25, 0] }, 0));
+    prova('sposta vuol dire destra e giù anche col disegno girato',
+          uguali(scostato, [fermo[0] + 0.25 * larga, fermo[1]]) &&
+          uguali(giratoEScostato, [soloGirato[0] + 0.25 * larga, soloGirato[1]]));
+
+    COST_IMMAGINI[sigla] = prima;              // le prove non lasciano tracce
+  }
+
+  // --- La riga da incollare ---
+  //
+  // `costArteMostra` è il ponte fra la console e questo file: se stampa
+  // una riga che non si può incollare, tutto il giro dell'allineamento
+  // non serve a niente.
+  {
+    const prima = COST_IMMAGINI.Tau;
+    costArteRegola('Tau', { gira: -6, scala: 1.25, specchio: 'x' });
+    const riga = costArteMostra('Tau');
+    const letta = costImmagineVoce('Tau');
+    prova('la riga stampata si può rileggere',
+          /^\s*Tau: \{ file: '.+'/.test(riga) && riga.includes('gira: -6') &&
+          riga.includes('scala: 1.25') && riga.includes("specchio: 'x'") &&
+          letta.gira === -6 && letta.scala[0] === 1.25 && letta.specchio[0] === true,
+          riga.trim());
+
+    // Tolte le manopole, l'entrata torna alla sua forma breve
+    COST_IMMAGINI.Tau = 'toro.png';
+    prova('col solo nome del file torna la forma breve',
+          costArteMostra('Tau').trim() === "Tau: 'toro.png',");
+
+    COST_IMMAGINI.Tau = prima;                 // le prove non lasciano tracce
+    delete cost.immagini.Tau;
+  }
+
   // Il riquadro delle stelle: è quello su cui si appoggia un'immagine che
   // le ancore non le dichiara. Senza, il disegno non ha dove andare.
   const senzaRiquadro = conImmagine.filter(s => {
