@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v77';
+const CACHE_NAME = 'astrocal-v78';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -23,6 +23,12 @@ const ASSETS = [
   './icon-maskable-512.png',
   './apple-touch-icon.png'
 ];
+
+// I disegni fatti a mano delle costellazioni (`arte-costellazioni/`) non
+// stanno in ASSETS per la stessa ragione dei cataloghi qui sotto: sono
+// immagini, e scaricarle tutte all'installazione a chi il planetario non
+// lo aprirà mai è spreco. Se le prende la regola della stessa origine
+// quando passano, e da quel momento ci sono anche in campo.
 
 // I file dei cataloghi — dati-stelle.js, dati-stelle-deboli.js,
 // dati-costellazioni.js, dati-profondo.js, dati-corpi-minori.js — NON
