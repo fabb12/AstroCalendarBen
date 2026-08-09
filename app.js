@@ -8230,7 +8230,11 @@ function skyInizializzaLuogoVista() {
 //   che è la mappa su cui quel punto è stato trovato nove volte su dieci.
 // =====================================================================
 
-const LUOGO_ZOOM_APERTURA = 6;    // abbastanza per riconoscere la costa e le montagne
+// Dove si apre la prima volta, quando ancora non c'è un ingrandimento da
+// ricordare: il paese e la campagna attorno. Il mappamondo largo che c'era
+// prima faceva ricominciare ogni volta dal continente, e la prima cosa da
+// fare era sempre la stessa — stringere fin dove si era rimasti.
+const LUOGO_ZOOM_APERTURA = 12;
 // Fin dove si può stringere. Al cielo non serve — mezzo chilometro non muove
 // una stella di un pixel, ed era la ragione del vecchio tetto a 12 — ma a chi
 // sceglie il posto sì: fra il parcheggio e il prato dietro agli alberi passa
@@ -8270,6 +8274,7 @@ const luogoMappa = {
   filo: null,      // la riga tratteggiata fra casa e il punto scelto
   scelto: null,    // { lat, lon } già normalizzati
   nome: null,      // il nome arrivato col punto (una città cercata, un link)
+  zoomUltimo: LUOGO_ZOOM_APERTURA,  // com'era stretta l'ultima volta che si è chiusa
   sfondo: 'strade',// quale dei tre fondi è acceso
   strato: null,    // il tileLayer di adesso
   occhio: null     // ResizeObserver: la mappa va rimisurata a ogni cambio di forma
@@ -8345,6 +8350,7 @@ function luogoMappaCostruisci() {
   // Lo zoom a destra, come sulla mappa dell'ombra: le due mappe dell'app si
   // devono comandare allo stesso modo.
   L.control.zoom({ position: 'topright' }).addTo(luogoMappa.mappa);
+  luogoMappaConsegnaTasti();
 
   luogoMappa.mappa.on('click', (e) => {
     // Toccare la mappa è anche il modo di dire "ho finito di cercare": se
@@ -8352,6 +8358,12 @@ function luogoMappaCostruisci() {
     // guardando.
     luogoMostraRisultati([], null);
     luogoMappaScegli(e.latlng.lat, e.latlng.lng);
+  });
+
+  // Quanto si era stretto se lo ricorda: chi ha appena scelto un prato a
+  // zoom 17 e riapre la finestra vuole ritrovarsi lì, non sul continente.
+  luogoMappa.mappa.on('zoomend', () => {
+    luogoMappa.zoomUltimo = luogoMappa.mappa.getZoom();
   });
 
   // Una mappa Leaflet dentro a un riquadro che cambia forma va rimisurata, se
@@ -8365,6 +8377,26 @@ function luogoMappaCostruisci() {
     });
     luogoMappa.occhio.observe(riquadro);
   }
+}
+
+// I tasti appoggiati sulla mappa diventano un comando di Leaflet, e non è un
+// vezzo: messi a mano con un `top` fisso vanno d'accordo con lo zoom solo
+// finché lo zoom è alto quanto quel numero dice. È successo — i tasti dello
+// zoom portati da 26 a 40 pixel per il dito, e la colonna qui sotto ferma a
+// 86, cioè in mezzo. Consegnandoli a Leaflet è lui a impilarli sotto agli
+// altri comandi dello stesso angolo, e la misura non la deve sapere nessuno.
+function luogoMappaConsegnaTasti() {
+  const tasti = document.querySelector('.luogo-mappa-tasti');
+  if (!tasti || !luogoMappa.mappa) return;
+  const Colonna = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: () => tasti
+  });
+  luogoMappa.mappa.addControl(new Colonna());
+  // Un tocco sui tasti non deve arrivare alla mappa sotto: senza questo,
+  // premere ⛶ spostava anche il punto scelto lì dove si era premuto.
+  L.DomEvent.disableClickPropagation(tasti);
+  L.DomEvent.disableScrollPropagation(tasti);
 }
 
 // Il segno di dove si sta davvero. È il riferimento della mappa: senza, un
@@ -8908,11 +8940,17 @@ function apriMappaLuogoCielo() {
 
   // Si riparte sempre da dove il cielo è adesso — casa o luogo di visita che
   // sia — e non dall'ultimo punto toccato: riaprendo la finestra la domanda è
-  // "e se guardassi da un'altra parte *rispetto a qui*".
+  // "e se guardassi da un'altra parte *rispetto a qui*". Il punto quindi è
+  // quello del cielo; l'**ingrandimento** invece è l'ultimo usato, che è una
+  // cosa diversa — dice quanto da vicino si sta ragionando, e ricominciare
+  // ogni volta dal mappamondo vuol dire rifare ogni volta la stessa strada.
+  // Chi il punto l'ha applicato ritrova esattamente dove era rimasto.
   const l = skyLuogoDelCielo();
   const partenza = l || { lat: 41.9, lon: 12.5 };
   luogoMappaScegli(partenza.lat, partenza.lon, {
-    centra: true, zoom: LUOGO_ZOOM_APERTURA, nome: l && l.nome ? l.nome : null
+    centra: true,
+    zoom: l ? luogoMappa.zoomUltimo : Math.min(luogoMappa.zoomUltimo, LUOGO_ZOOM_APERTURA),
+    nome: l && l.nome ? l.nome : null
   });
 
   // La mappa è nata dentro a un modale nascosto, cioè alta zero: senza questa
