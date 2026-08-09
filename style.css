@@ -3859,6 +3859,51 @@ body input.casella-data:hover { border: 0; }
 }
 .tasto-chiudi-dettaglio:hover { color: var(--testo); border-color: var(--bordo-forte); }
 
+/* --------------------------------------------- "STO PREPARANDO IL CIELO" */
+/* La riga che compare sulla mappa mentre il catalogo arriva. Sta in basso
+   a sinistra, e i due posti che ha scartato dicono perché: al centro
+   coprirebbe proprio il cielo che si è venuti a guardare (e quel cielo —
+   pianeti, Luna, le figure scritte a mano — è già lì e già vivo, questa
+   dice solo che sta per riempirsi), in alto finirebbe sotto alla striscia
+   delle linguette, che è alta quanto un pollice e sta sempre lì. In basso
+   a sinistra non c'è niente: lo zoom, l'inseguimento e la registrazione
+   stanno tutti a destra, e la barra del tempo comincia più sotto. */
+.caricamento-cielo {
+  position: absolute;
+  bottom: var(--sopra-barra-tempo);
+  left: max(12px, env(safe-area-inset-left));
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  /* Non arriva mai sotto ai tasti dell'angolo destro */
+  max-width: min(calc(100% - 90px), 320px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo);
+  background: rgba(9, 14, 28, 0.86);
+  backdrop-filter: blur(4px);
+  color: var(--testo-2);
+  font-size: 0.82rem;
+  line-height: 1.2;
+  pointer-events: none;   /* è un'informazione, non un comando: il dito ci passa attraverso */
+}
+.rotella-cielo {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  border-top-color: #93c5fd;
+  animation: gira-rotella-cielo 0.9s linear infinite;
+}
+@keyframes gira-rotella-cielo { to { transform: rotate(360deg); } }
+/* Chi ha chiesto meno animazioni non deve vedersi girare niente: la riga
+   resta, ferma, e dice comunque quello che deve dire */
+@media (prefers-reduced-motion: reduce) {
+  .rotella-cielo { animation: none; border-top-color: rgba(148, 163, 184, 0.35); }
+}
+
 /* --------------------------------- COMANDI SULL'ANGOLO DELLA MAPPA E USCITA */
 /* Registrazione e zoom: i due comandi che si usano guardando il cielo, non
    leggendo un pannello. Stanno in colonna nell'angolo, allineati a destra.
