@@ -3708,10 +3708,6 @@ body input.casella-data:hover { border: 0; }
   box-shadow: var(--alone-blu);
 }
 
-/* La schermata di benvenuto sta dentro allo stesso riquadro e ha il suo tasto
-   di avvio centrato: senza questo, sui riquadri bassi finisce sotto la barra */
-#skymap-overlay { padding-bottom: var(--sopra-barra-tempo); }
-
 /* Su un telefono i comandi appoggiati sul cielo devono rubargli il minimo
    indispensabile: parole corte, misure strette, e le cinque linguette che
    entrano tutte nella larghezza dello schermo senza scorrere */
@@ -5513,22 +5509,6 @@ body.luogo-immersivo { overflow: hidden; }
   .tasto-schermo-cielo, .tasto-insegui-cielo,
   .tasto-zoom-cielo, .tasto-registra-cielo { width: 42px; height: 42px; }
 
-  /* La schermata di benvenuto del cielo sta dentro al riquadro della mappa, e
-     girato quel riquadro è alto un terzo: centrata finiva sotto alle linguette
-     dei gruppi, con il titolo che passava dietro a "Tempo" e "Visualizzazione".
-     Qui scende sotto alla barra dei comandi e si stringe: due righe di testo
-     e i due tasti, che è tutto quello che deve dire. */
-  #skymap-overlay {
-    justify-content: flex-end;
-    gap: 8px;
-    /* In fondo si lascia il posto della barra del tempo: i due tasti di
-       avvio non devono finirle sotto */
-    padding: 86px 18px calc(16px + var(--alta-barra-tempo));
-    overflow-y: auto;
-  }
-  #skymap-overlay > p:first-child { font-size: 1.1rem; }
-  #skymap-overlay > p + p { font-size: 0.76rem; max-width: 52ch; line-height: 1.4; }
-  #skymap-btn-avvia { padding: 9px 22px; }
 }
 
 /* Girato c'è larghezza da spendere e altezza da risparmiare: su uno schermo
