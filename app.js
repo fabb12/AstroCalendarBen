@@ -8715,6 +8715,46 @@ function skyAggiornaOggetti(forza) {
   }
 }
 
+// --- L'eclissi di Sole, fotogramma per fotogramma ---------------------
+//
+// Tutto il cielo si ricalcola a intervalli (vedi `skyIntervalloCalcolo`), e
+// va benissimo: fra un calcolo e l'altro la volta si sposta di mezzo pixel
+// e nessuno se ne accorge. Ma la Luna che entra nel Sole è l'unica cosa che
+// si guarda ingrandita **mentre il tempo corre**, e lì la regola non tiene.
+// Col playback acceso il ricalcolo è fisso a ottanta millisecondi: a un'ora
+// al secondo sono quasi cinque minuti di eclissi per volta, cioè un
+// ventesimo del disco a ogni passo. La Luna smette di scivolare sul Sole e
+// comincia a incastrarcisi a scatti — e visto che lì il disegno è tutto in
+// quel millimetro di scarto, si vede fortissimo.
+//
+// Il rimedio è ricalcolare a ogni fotogramma i due soli corpi che contano,
+// e solo mentre sono vicini: quattro chiamate alla libreria, meno di un
+// centesimo di quello che costa disegnare il cielo attorno a loro.
+const SKY_ECLISSE_VICINI = 1.2;   // gradi fra i due centri: sotto, si affina
+
+function skyAffinaEclisse() {
+  if (typeof Astronomy === 'undefined' || !sky.observer || !sky.oggetti.length) return;
+  const sole = sky.oggetti.find(o => o.id === 'Sun');
+  const luna = sky.oggetti.find(o => o.id === 'Moon');
+  if (!sole || !luna) return;
+  // La distanza dell'ultimo calcolo pieno basta a decidere se vale la pena:
+  // fra un fotogramma e l'altro la Luna non attraversa un grado di cielo
+  if (skyAngoloFra(skyVettore(sole.az, sole.alt), skyVettore(luna.az, luna.alt)) > SKY_ECLISSE_VICINI) return;
+
+  const t = Astronomy.MakeTime(skyAdesso());
+  [sole, luna].forEach(o => {
+    try {
+      const equ = Astronomy.Equator(o.id, t, sky.observer, true, true);
+      const hor = Astronomy.Horizon(t, sky.observer, equ.ra, equ.dec, 'normal');
+      o.az = hor.azimuth;
+      o.alt = hor.altitude;
+      o.distanzaUA = equ.dist;
+      o.raOra = equ.ra;
+      o.decOra = equ.dec;
+    } catch (e) { /* resta la posizione dell'ultimo calcolo pieno */ }
+  });
+}
+
 // La Luna dentro il cono d'ombra della Terra. Il conto va fatto dal centro
 // della Terra, non da qui: la parallasse lunare vale fino a un grado, cioè
 // quanto tutta l'ombra, e prendere le coordinate che vediamo noi metterebbe
@@ -11386,17 +11426,25 @@ function skyCimeDaDisegnare() {
 // finisce il discorso: un filo verticale che scende alla cresta per le
 // città, un triangolino per le vette.
 //
-// Chi guarda non deve leggere una legenda per capire quale sia quale: un
-// nome caldo appeso in basso è un paese, uno freddo con la punta sotto è
-// una montagna.
+// Il colore però da solo non basta, e per due motivi. In modalità notte il
+// rosso porta l'ambra e il grigio-azzurro quasi alla stessa tinta; e un
+// nome corto su un crinale scuro, letto di sfuggita, il colore non lo si
+// guarda nemmeno. Quindi le due famiglie hanno anche due **corsivi**
+// diversi, che è la distinzione delle carte geografiche da sempre: i nomi
+// dei luoghi abitati dritti, quelli del rilievo in corsivo. Non è una
+// differenza che salta agli occhi — non deve: sono due scritte piccole
+// appoggiate alla stessa cresta — ma appena si confrontano si vede subito
+// che dicono due cose diverse.
 const SKY_NOMI_ORIZZONTE = {
   citta: {
-    notte: { pieno: 'rgba(255, 226, 178, 0.97)', alone: 'rgba(0, 0, 0, 0.78)', segno: 'rgba(253, 205, 150, 0.5)' },
+    stile: '600',
+    notte: { pieno: 'rgba(255, 219, 158, 0.97)', alone: 'rgba(0, 0, 0, 0.78)', segno: 'rgba(253, 199, 132, 0.55)' },
     giorno: { pieno: 'rgba(92, 46, 4, 0.97)', alone: 'rgba(255, 255, 255, 0.88)', segno: 'rgba(120, 72, 20, 0.55)' }
   },
   cime: {
-    notte: { pieno: 'rgba(206, 224, 245, 0.95)', alone: 'rgba(0, 0, 0, 0.8)', segno: 'rgba(186, 208, 235, 0.75)' },
-    giorno: { pieno: 'rgba(22, 34, 52, 0.95)', alone: 'rgba(255, 255, 255, 0.85)', segno: 'rgba(40, 56, 80, 0.7)' }
+    stile: 'italic 500',
+    notte: { pieno: 'rgba(184, 209, 240, 0.93)', alone: 'rgba(0, 0, 0, 0.8)', segno: 'rgba(168, 196, 230, 0.75)' },
+    giorno: { pieno: 'rgba(24, 44, 78, 0.95)', alone: 'rgba(255, 255, 255, 0.85)', segno: 'rgba(42, 62, 96, 0.7)' }
   }
 };
 
@@ -11442,7 +11490,8 @@ function skyNomiCitta(ctx, base, focale, occupati) {
   ctx.save();
   // Il semigrassetto non è un vezzo: sopra a un fondo che cambia, le aste
   // sottili del peso normale si mangiano proprio dove il fondo è chiaro.
-  ctx.font = `600 ${corpo}px ${SKY_FONT_ETICHETTE}`;
+  // Dritto, che è il modo in cui le carte scrivono i luoghi abitati.
+  ctx.font = `${SKY_NOMI_ORIZZONTE.citta.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
 
@@ -11504,7 +11553,9 @@ function skyNomiCime(ctx, base, focale, occupati) {
     const p = skyProietta(skyVettore(c.az, c.alt), base, focale);
     if (!p.davanti) continue;
     if (p.px < -70 || p.px > sky.larghezza + 70 || p.py < -20 || p.py > sky.altezza + 20) continue;
-    ctx.font = `600 ${corpo}px ${SKY_FONT_ETICHETTE}`;
+    // Corsivo: è così che le carte scrivono il rilievo, ed è quello che qui
+    // separa «Firenze» da «Monte Falterona» anche quando il colore non può
+    ctx.font = `${SKY_NOMI_ORIZZONTE.cime.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
     const largo = ctx.measureText(c.nome).width;
     // Il nome sta sopra il triangolino, la quota sotto: il blocco occupato
     // è alto quanto tutt'e due, e il centro sta in mezzo
@@ -11528,7 +11579,7 @@ function skyNomiCime(ctx, base, focale, occupati) {
     // La quota va sotto la punta e non sopra il nome: sopra, il blocco
     // diventava una colonna alta trenta pixel e a due vette vicine non ci
     // stava più nessuno dei due nomi.
-    ctx.font = `500 ${corpoQuota}px ${SKY_FONT_ETICHETTE}`;
+    ctx.font = `italic 400 ${corpoQuota}px ${SKY_FONT_ETICHETTE}`;
     ctx.textBaseline = 'top';
     skyScrittaConAlone(ctx, `${Math.round(c.quota)} m`, p.px, p.py + lato * 0.6,
       tinta.pieno, tinta.alone, corpoQuota * 0.26);
@@ -11782,7 +11833,18 @@ function skyDisegnaSole(ctx, x, y, r, o, estinzione) {
 // Due dischi che si sovrappongono: il conto è tutto qui. Serve a tre cose —
 // quanto disegnare grande la Luna (deve coprire il Sole come lo copre
 // davvero), quando far comparire la corona, e di quanto scurire il cielo.
-function skyRaggioAngolare(o) {
+
+// Il semidiametro apparente di un astro, in gradi: mezzo diametro diviso
+// la distanza. Si chiamava `skyRaggioAngolare` come il metro angolare della
+// proiezione (sezione 7.3), ed è un guaio che non fa rumore: due
+// dichiarazioni con lo stesso nome nello stesso file non sono un errore,
+// **vince l'ultima**. Vinceva questa, e le quattro chiamate all'altra —
+// l'alone del Sole, quello della Luna, i veli della Via Lattea e la misura
+// vera di nebulose e galassie — ricevevano un numero al posto di un astro,
+// quindi zero. Restavano tutte inchiodate al loro minimo: il bagliore del
+// Sole largo sessanta pixel a qualunque ingrandimento (e durante un'eclissi
+// è la cosa che si guarda), e M31 disegnata grande nove pixel come M57.
+function skySemidiametro(o) {
   if (!o || typeof o.diametroKm !== 'number') return 0;
   const km = typeof o.distanzaUA === 'number' && o.distanzaUA > 0
     ? o.distanzaUA * SKY_KM_PER_UA
@@ -11803,7 +11865,7 @@ function skyCoperturaDischi(sep, rS, rL) {
 
 function skyEclisseDiSole(sole, luna) {
   if (!sole || !luna) return null;
-  const rS = skyRaggioAngolare(sole), rL = skyRaggioAngolare(luna);
+  const rS = skySemidiametro(sole), rL = skySemidiametro(luna);
   if (!rS || !rL) return null;
   const sep = skyAngoloFra(skyVettore(sole.az, sole.alt), skyVettore(luna.az, luna.alt));
   if (sep > rS + rL) return null;
@@ -11816,6 +11878,49 @@ function skyEclisseDiSole(sole, luna) {
     totale: sep + rS <= rL,
     anulare: sep + rL <= rS
   };
+}
+
+// Quanto il Sole è disegnato più grande di com'è davvero. A campo largo
+// comanda l'icona (quindici pixel), e quindici pixel a 180° di campo sono
+// dieci volte il disco vero: il Sole è gonfiato dieci volte.
+//
+// Fuori da un'eclissi è un numero che non interessa a nessuno. Durante
+// un'eclissi è **tutto**, perché i due dischi erano gonfiati insieme ma la
+// distanza fra i loro centri no — quella restava quella vera. Il risultato
+// era una sovrapposizione che non voleva dire niente: a campo largo la Luna
+// stava incollata sopra al Sole (una parziale del venti per cento sembrava
+// una totale), e stringendo il campo il gonfiaggio calava e il morso si
+// apriva sotto gli occhi. La stessa eclissi, nello stesso istante, con
+// un'area coperta diversa a ogni ingrandimento.
+function skyGonfiaggioEclisse(sole, focale, scala, rDisegnato) {
+  const vero = skyRaggioVero(sole, focale, scala);
+  if (!(vero > 0.001)) return 1;
+  return Math.max(1, rDisegnato / vero);
+}
+
+// Dove disegnare la Luna mentre passa davanti al Sole. Non dove sta: dove
+// deve stare *rispetto al Sole*, cioè alla stessa distanza vera moltiplicata
+// per il gonfiaggio dei dischi. Così il morso disegnato è il morso vero a
+// qualunque campo — che è l'unica cosa che questa vista deve promettere.
+//
+// Il raggio della Luna non ha bisogno di niente: `skyRaggioIcona` le dà già
+// l'icona del Sole moltiplicata per il rapporto fra i due dischi, che è
+// esattamente il suo raggio vero moltiplicato per lo stesso gonfiaggio.
+//
+// Lo spostamento vale solo mentre l'eclissi è in corso — cioè finché i due
+// dischi si toccano davvero — e lì non è una bugia sulla posizione della
+// Luna: a mezzo grado dal Sole la Luna è già dentro al disegno del Sole
+// comunque, e l'unica domanda che ha una risposta è quanto lo copre.
+function skyPosaLunaEclissata(p, base, focale) {
+  const sole = sky.oggetti.find(x => x.id === 'Sun');
+  if (!sole) return;
+  const q = skyProietta(skyVettore(sole.az, sole.alt), base, focale);
+  if (!q.davanti) return;
+  const scala = skyScalaLocale(q.d);
+  const gonfia = skyGonfiaggioEclisse(sole, focale, scala, skyRaggio(sole, focale, scala));
+  if (gonfia <= 1.0001) return;
+  p.px = q.px + (p.px - q.px) * gonfia;
+  p.py = q.py + (p.py - q.py) * gonfia;
 }
 
 // Il cielo durante un'eclissi. Non si spegne in proporzione a quanto Sole
@@ -11926,6 +12031,13 @@ function skyDisegnaAstro(ctx, base, focale, o) {
 
   const sottoOrizzonte = o.alt < 0;
   const r = skyRaggio(o, focale, skyScalaLocale(p.d));
+  // La Luna che sta coprendo il Sole va posata sul Sole con la geometria
+  // vera, non con la sua (vedi skyPosaLunaEclissata). Si sposta qui, prima
+  // di ogni altra cosa, perché da questo punto in poi la sua posizione la
+  // usano tutti: il bordo dello schermo, il morso, il nome, il mirino.
+  if (o.tipo === 'luna' && !sottoOrizzonte && sky.eclisse && sky.eclisse.attiva) {
+    skyPosaLunaEclissata(p, base, focale);
+  }
   // Saturno con gli anelli occupa più del suo disco: lo segnano il nome e il
   // cerchio dell'astro cercato
   let anelli = false;
@@ -15642,6 +15754,7 @@ function skyCiclo() {
   const dt = skyDeltaFotogramma();
   skyAvanzaPlayback();
   skyAggiornaOggetti(false);
+  skyAffinaEclisse();
   skyMuoviSatelliti();
   skyMuoviZoom(dt);
   skyScorriPerInerzia(dt);
@@ -16943,7 +17056,14 @@ async function skyRegCondividi() {
   const quando = skyAdesso().toLocaleString('it-IT', {
     day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
   });
-  const testo = `Il cielo del ${quando}, dal planetario di AstroCalendario di Ben.`;
+  // Il luogo sta già impresso nel filmato (skyRegFirma), ma chi riceve il
+  // messaggio legge il testo prima di aprire il video — e quel cielo è
+  // quello di lì, non il suo. È il luogo da cui si guarda, non la posizione
+  // dell'app: se il planetario è in visita altrove, vale l'altrove.
+  const daDove = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
+  const luogo = daDove ? (daDove.nome || formattaCoordinate(daDove.lat, daDove.lon)) : '';
+  const testo = `Il cielo del ${quando}${luogo ? `, da ${luogo}` : ''}, ` +
+    'dal planetario di AstroCalendario di Ben.';
   try {
     const file = new File([e.blob], e.nome, { type: e.tipo });
     if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
@@ -22129,9 +22249,18 @@ window.condividiEvento = async (id) => {
   const ev = eventiCalcolati.find(e => e.id === id);
   if (!ev) return;
 
+  // Un evento astronomico non è lo stesso per tutti: l'ora, l'altezza e
+  // perfino il "si vede o no" dipendono da dove si guarda. Il "Da qui" che
+  // l'app scrive per sé, mandato a qualcun altro, diventa una frase senza
+  // soggetto — e chi la riceve la legge come se valesse a casa sua. Quindi
+  // il luogo va detto per nome (o per coordinate, se un nome non ce l'ha).
   const locale = circostanzeLocali(ev);
+  const dove = etichettaLuogo();
+  const rigaLuogo = locale
+    ? `Da ${dove || 'qui'}: ${locale.giudizio}`
+    : (dove ? `Osservazione da ${dove}` : '');
   const testo = `${ev.titolo}\n${ev.dataTesto}\n\n${ev.spiegazione}` +
-    (locale ? `\n\nDa qui: ${locale.giudizio}` : '');
+    (rigaLuogo ? `\n\n${rigaLuogo}` : '');
 
   if (navigator.share) {
     try {
@@ -22200,10 +22329,22 @@ window.immagineEvento = async (id) => {
   ctx.font = '40px system-ui, sans-serif';
   ctx.fillText(ev.dataTesto, 70, y + 90);
 
+  // Il luogo, sotto la data e con lo stesso peso di lei: quando e dove sono
+  // la stessa informazione. Una cartolina che dice l'ora ma non il posto
+  // fa credere che quell'ora valga dappertutto, e non è così.
+  const dove = etichettaLuogo();
+  let dopoData = y + 90;
+  if (dove) {
+    ctx.fillStyle = '#a5b4fc';
+    ctx.font = '30px system-ui, sans-serif';
+    ctx.fillText(`Da ${dove}`, 70, y + 138);
+    dopoData = y + 138;
+  }
+
   // Spiegazione, tagliata a quel che ci sta
   ctx.fillStyle = '#cbd5e1';
   ctx.font = '32px system-ui, sans-serif';
-  let ry = y + 170, rriga = '';
+  let ry = dopoData + 80, rriga = '';
   ev.spiegazione.split(' ').forEach(p => {
     if (ry > lato - 160) return;
     const prova = rriga ? `${rriga} ${p}` : p;
@@ -22271,6 +22412,12 @@ function icsPiega(riga) {
 }
 
 function generaIcs(eventi) {
+  // Il luogo da cui si osserva vale per tutto il file: gli orari degli
+  // eventi sono già calcolati da lì, e un promemoria che dice "alle 21:40"
+  // senza dire da dove è un orario che non si può controllare.
+  const dove = etichettaLuogo();
+  const punto = luogoCorrente();
+
   const righe = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -22284,6 +22431,7 @@ function generaIcs(eventi) {
     const prog = ev.programma || {};
     const descrizione = [
       ev.spiegazione,
+      dove ? `Orari calcolati da: ${dove}` : '',
       prog.cosaPortare ? `Portare: ${prog.cosaPortare}` : '',
       prog.doveVederlo ? `Dove: ${prog.doveVederlo}` : '',
       prog.comeVederlo ? `Come: ${prog.comeVederlo}` : '',
@@ -22297,6 +22445,10 @@ function generaIcs(eventi) {
     righe.push(`DTEND:${icsData(new Date(ev.dataObj.getTime() + 60 * 60000))}`);
     righe.push(icsPiega(`SUMMARY:${icsTesto(ev.titolo)}`));
     righe.push(icsPiega(`DESCRIPTION:${icsTesto(descrizione)}`));
+    if (dove) righe.push(icsPiega(`LOCATION:${icsTesto(dove)}`));
+    // GEO vuole latitudine e longitudine in gradi decimali separate da un
+    // punto e virgola (RFC 5545): non è testo, quindi non passa da icsTesto
+    if (punto) righe.push(`GEO:${punto.lat.toFixed(4)};${punto.lon.toFixed(4)}`);
     righe.push('BEGIN:VALARM');
     righe.push('TRIGGER:-PT30M');
     righe.push('ACTION:DISPLAY');
