@@ -598,6 +598,13 @@ window.addEventListener('DOMContentLoaded', () => {
   mostraVista('stasera');
   // Un link condiviso (?evento=…) porta direttamente sulla scheda giusta
   gestisciLinkCondiviso();
+  // E, appena la prima schermata è disegnata, si cerca da soli dove siamo:
+  // GPS se il permesso c'è, connessione se no. La schermata è già in piedi
+  // con l'ultima posizione salvata, quindi questo non fa aspettare nessuno —
+  // e infatti parte *dopo* il disegno, non prima (vedi 7.1-bis, in fondo).
+  setTimeout(() => {
+    avviaPosizioneAllAvvio().catch(() => { /* nessuno strato ha risposto: resta la scelta a mano */ });
+  }, 0);
 });
 
 // Il "programma" di un evento sono tre righe: cosa portare, dove andare,
@@ -6676,7 +6683,11 @@ const sky = {
   scartoPerScelta: false, // l'ultima lettura automatica è stata rifiutata perché comanda la posizione scelta
   attesaPosizione: null, // richiesta di geolocalizzazione in corso (una sola per volta)
   erroreGps: null,       // ultimo errore del navigatore: { codice, quando }
-  sorveglianza: null,    // id di watchPosition mentre il planetario è aperto
+  sorveglianza: null,    // id di watchPosition: acceso per tutta la vita dell'app
+  // Il resto dei moduli (comete, terreno, paesi, vette, aurora, satelliti)
+  // si carica dopo i primi fotogrammi, in fila: questo dice che la fila
+  // sta ancora scorrendo, così riaprire la vista non ne accoda una seconda
+  restoInCorso: false,
   sensori: false,        // orientamento del dispositivo attivo
   seguiTelefono: true,   // con i sensori accesi, il cielo lo punta il telefono
   assoluto: false,       // alpha riferito al Nord magnetico (bussola affidabile)
@@ -7611,12 +7622,19 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   }
 
   // Il nome del luogo: quello dichiarato da chi ha fornito il punto, oppure
-  // la città di riferimento più vicina. Serve a dire "Roma" invece di
-  // "41,9° N, 12,5° E", che a colpo d'occhio non dice niente a nessuno.
+  // — subito, senza aspettare nessuno — il nome già trovato per questo punto
+  // in una sessione precedente, e in mancanza di quello la città di
+  // riferimento più vicina. Serve a dire "Roma" invece di "41,9° N, 12,5° E",
+  // che a colpo d'occhio non dice niente a nessuno.
   sky.posizione = {
     lat, lon, fonte, origine, precisione, tempo,
-    nome: nome || nomeLuogoVicino(lat, lon)
+    nome: nome || nomeLuogoSalvato(lat, lon) || nomeLuogoVicino(lat, lon)
   };
+  // ...e intanto si chiede il nome vero a chi ha la mappa. Solo per i punti
+  // che un nome non ce l'hanno: una città scelta in elenco è già il nome che
+  // l'utente ha letto prima di sceglierla, e riscriverlo con quello del
+  // comune vicino sarebbe contraddirlo.
+  if (!nome) posAggiornaNomeLuogo(lat, lon);
   // L'osservatore non lo si costruisce più qui: nel planetario può esserci un
   // luogo di sola visita che ha la precedenza, e sceglierlo è compito suo
   // (vedi 7.1-ter). Con il luogo di visita acceso, questo cambio di posizione
@@ -7746,40 +7764,82 @@ function skyRichiediPosizione() {
   return sky.attesaPosizione;
 }
 
+// --- La posizione sotto osservazione, per tutta la vita dell'app -----
+//
 // Una sola lettura non basta: il primo fix che il browser consegna è quasi
 // sempre quello di rete (wi-fi o cella), largo centinaia di metri o
 // chilometri, perché il GPS vero impiega decine di secondi ad agganciare i
 // satelliti. Chiedendo la posizione una volta sola all'apertura ci si teneva
-// quel primo fix per tutta la sessione. Finché il planetario è aperto la
-// posizione resta invece sotto osservazione, così la lettura si stringe da
-// sola man mano che il GPS aggancia; il filtro qui sopra decide di volta in
-// volta se la nuova lettura è meglio di quella in uso.
-// `autorizzata` dice che il consenso c'è già (l'utente ha appena chiesto la
-// posizione): senza quella certezza la sorveglianza non parte da sola, se no
-// aprire il planetario farebbe comparire subito la richiesta di permesso,
-// che invece deve restare legata al pulsante.
-function skySorvegliaPosizione(autorizzata) {
-  if (sky.sorveglianza !== null || !navigator.geolocation) return;
-  if (!autorizzata) {
+// quel primo fix per tutta la sessione.
+//
+// Per un po' la sorveglianza è vissuta solo dentro al planetario: si
+// accendeva aprendolo e moriva uscendo. Ma spostarsi non è una cosa che si
+// fa col planetario aperto — si fa in macchina, andando al posto buio — e
+// tornando su "Stasera" gli orari, il meteo e il buio restavano quelli di
+// casa. Adesso la sorveglianza parte all'avvio dell'app e non si spegne
+// più: cambia solo di *finezza*, perché un GPS ad alta precisione tenuto
+// acceso tutta la sera si mangia la batteria.
+//
+//   — col planetario a schermo: alta precisione, letture fresche. Lì
+//     duecento metri spostano l'orizzonte e la parallasse della Luna.
+//   — altrove: bassa precisione e letture anche di un minuto fa. Per
+//     sapere a che ora tramonta il Sole basta e avanza.
+//
+// Il filtro di `skyLetturaAttendibile` decide di volta in volta se la nuova
+// lettura porta davvero qualcosa: sotto i 150 metri è il respiro del GPS e
+// non muove niente.
+const POS_WATCH_PRECISO = { enableHighAccuracy: true,  timeout: 30000, maximumAge: 0 };
+const POS_WATCH_RIPOSO  = { enableHighAccuracy: false, timeout: 60000, maximumAge: 60000 };
+// Quanto ci si deve spostare perché valga la pena rifare *tutta* l'app —
+// meteo, orari, agenda, bersagli di stanotte. Sotto i due chilometri non
+// cambia niente di leggibile, e rifare i conti a ogni semaforo vorrebbe
+// dire una richiesta di meteo al minuto.
+const POS_RIFAI_TUTTO_M = 2000;
+// ...e comunque non più spesso di così, anche attraversando mezza regione.
+const POS_RIFAI_TUTTO_MS = 3 * 60 * 1000;
+
+let posUltimoRifacimento = { lat: null, lon: null, quando: 0 };
+let posModoSorveglianza = null;   // 'preciso' | 'riposo' | null (spenta)
+
+// Accende (o cambia di finezza) la sorveglianza. `autorizzata` dice che il
+// consenso c'è già: senza quella certezza si chiede al browser che ne pensa
+// invece di far comparire la richiesta di permesso da un punto qualunque
+// del programma.
+function skySorvegliaPosizione(autorizzata, modo) {
+  if (!navigator.geolocation) return;
+  const voluto = modo || (typeof sky === 'object' && sky.aperto ? 'preciso' : 'riposo');
+  if (sky.sorveglianza !== null && posModoSorveglianza === voluto) return;
+
+  if (!autorizzata && sky.sorveglianza === null) {
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'geolocation' })
-        .then(p => { if (p.state === 'granted' && sky.aperto) skySorvegliaPosizione(true); })
+        .then(p => { if (p.state === 'granted') skySorvegliaPosizione(true, modo); })
         .catch(() => { /* alcuni browser non sanno interrogare questo permesso */ });
     }
     return;
   }
+
+  // Cambio di finezza: il vecchio osservatore va chiuso, se no restano
+  // due watch accesi e la batteria se ne accorge.
+  if (sky.sorveglianza !== null) skySmettiDiSorvegliare();
+
   try {
+    posModoSorveglianza = voluto;
     sky.sorveglianza = navigator.geolocation.watchPosition(
       (pos) => {
         const cambiata = skyImpostaPosizione(pos.coords.latitude, pos.coords.longitude, 'gps', {
           precisione: pos.coords.accuracy,
           tempo: pos.timestamp
         });
-        if (cambiata) skyAggiornaOggetti(true);
-        else skyAggiornaStato();
+        if (cambiata) {
+          if (sky.aperto) skyAggiornaOggetti(true);
+          posSeguiSpostamento();
+        } else {
+          skyAggiornaStato();
+        }
       },
       () => { /* permesso negato o sensore assente: restano le letture a richiesta */ },
-      { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+      voluto === 'preciso' ? POS_WATCH_PRECISO : POS_WATCH_RIPOSO
     );
   } catch (e) { /* browser senza watchPosition: pazienza */ }
 }
@@ -7788,6 +7848,32 @@ function skySmettiDiSorvegliare() {
   if (sky.sorveglianza === null) return;
   try { navigator.geolocation.clearWatch(sky.sorveglianza); } catch (e) { /* già chiuso */ }
   sky.sorveglianza = null;
+  posModoSorveglianza = null;
+}
+
+// Uscendo dal planetario la sorveglianza non si spegne: si mette a riposo.
+// È la stessa chiamata che c'era prima in `chiudiSkymap`, con dentro la sola
+// differenza che conta — chi si sposta continua a essere seguito.
+function skySorveglianzaARiposo() {
+  if (sky.sorveglianza === null) return;
+  skySorvegliaPosizione(true, 'riposo');
+}
+
+// Ci si è spostati davvero: qui si decide se rifare i conti di tutta l'app.
+// I tasti e il cielo si aggiornano comunque (lo fa `skyImpostaPosizione`);
+// quello che costa — il meteo, l'agenda, i bersagli di stanotte — si rifà
+// solo per uno spostamento vero, e non più spesso di ogni tre minuti.
+function posSeguiSpostamento() {
+  const p = sky.posizione;
+  if (!p) return;
+  const u = posUltimoRifacimento;
+  const lontano = u.lat === null ||
+    skyDistanzaMetri(u.lat, u.lon, p.lat, p.lon) >= POS_RIFAI_TUTTO_M;
+  if (!lontano) { aggiornaTastiPosizione(); return; }
+  if (Date.now() - u.quando < POS_RIFAI_TUTTO_MS) { aggiornaTastiPosizione(); return; }
+
+  posUltimoRifacimento = { lat: p.lat, lon: p.lon, quando: Date.now() };
+  if (typeof posDopoCambio === 'function') posDopoCambio().catch(() => {});
 }
 
 // =====================================================================
@@ -7836,6 +7922,166 @@ function nomeLuogoVicino(lat, lon, raggioKm = 60) {
     if (d < distanza) { distanza = d; migliore = nome; }
   }
   return distanza <= raggioKm * 1000 ? migliore : null;
+}
+
+// =====================================================================
+// 7.1-bis-bis  COME SI CHIAMA IL POSTO IN CUI SEI
+//   L'elenco a bordo (`ECL_CITTA`) è fatto di capoluoghi: serviva alle
+//   eclissi, dove il punto interessante è una città grande e i sessanta
+//   chilometri di tolleranza vanno benissimo. Come nome del *tuo* posto
+//   però sbaglia quasi sempre, e sbaglia in due modi diversi:
+//
+//     — di nome: chi sta a Sasso Marconi si vede scritto "Bologna", che è
+//       il capoluogo più vicino ma non è dove si trova;
+//     — di silenzio: chi sta in un paese di montagna a più di sessanta
+//       chilometri da un capoluogo non si vede scritto niente, e al posto
+//       del nome compaiono due numeri con la virgola.
+//
+//   La domanda "come si chiama questo punto" ha una risposta sola e non
+//   la si può indovinare da un elenco di duecento città: la si chiede a
+//   chi ha la mappa. Due servizi in fila, tutt'e due senza chiave, e
+//   l'elenco locale resta sotto come ultima rete — se la rete non c'è, il
+//   nome approssimato di prima è comunque meglio delle coordinate.
+//
+//   Il nome trovato si tiene in `localStorage`: le coordinate arrotondate
+//   a tre decimali sono un quadrato di poco più di cento metri, e dentro
+//   a cento metri il paese non cambia. Serve a non chiedere lo stesso
+//   nome a ogni passo del GPS.
+// =====================================================================
+
+const CHIAVE_NOMI_LUOGO = 'astrocalendario_nomi_luogo';
+// Quanti nomi ci si tiene in memoria. Una serata in movimento ne produce
+// una decina; con questo margine chi va e torna dallo stesso posto non
+// rifà mai la domanda.
+const NOMI_LUOGO_MAX = 60;
+// Nessun servizio è tenuto a rispondere: sotto questa attesa si passa al
+// prossimo, e il nome resta quello approssimato dell'elenco a bordo.
+const NOMI_LUOGO_ATTESA_MS = 5000;
+
+// I due servizi di geocodifica inversa, provati in ordine. Il primo è
+// pensato proprio per essere chiamato dal browser (nessuna chiave, nessun
+// limite di frequenza dichiarato); il secondo è Nominatim di
+// OpenStreetMap, che è la mappa stessa e conosce anche le frazioni, ma
+// chiede gentilezza — una richiesta al secondo — e per questo sta sotto e
+// non sopra.
+const POS_SERVIZI_NOME = [
+  {
+    url: (lat, lon) => 'https://api.bigdatacloud.net/data/reverse-geocode-client' +
+      `?latitude=${lat.toFixed(5)}&longitude=${lon.toFixed(5)}&localityLanguage=it`,
+    leggi: (d) => {
+      if (!d) return null;
+      // In ordine di precisione: la località vera (una frazione), il
+      // comune, e solo alla fine la provincia. `locality` da solo a volte
+      // è un quartiere, e va benissimo: è dove sei.
+      const nome = d.locality || d.city || d.localityInfo &&
+        (d.localityInfo.administrative || []).slice(-1)[0] &&
+        d.localityInfo.administrative.slice(-1)[0].name;
+      return nome || null;
+    }
+  },
+  {
+    url: (lat, lon) => 'https://nominatim.openstreetmap.org/reverse' +
+      `?format=jsonv2&lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&zoom=13&accept-language=it`,
+    leggi: (d) => {
+      const a = d && d.address;
+      if (!a) return d && d.name ? d.name : null;
+      return a.village || a.town || a.city || a.hamlet ||
+             a.suburb || a.municipality || a.county || null;
+    }
+  }
+];
+
+// La chiave di memoria di un punto: tre decimali, cioè un quadrato di
+// centoundici metri di lato. Più fine non servirebbe a niente (il paese
+// non cambia in cinquanta metri) e riempirebbe la memoria di doppioni.
+function nomeLuogoChiave(lat, lon) {
+  return lat.toFixed(3) + ',' + lon.toFixed(3);
+}
+
+function nomiLuogoArchivio() {
+  try {
+    const d = JSON.parse(localStorage.getItem(CHIAVE_NOMI_LUOGO) || 'null');
+    return d && typeof d === 'object' ? d : {};
+  } catch (e) { return {}; }
+}
+
+function nomeLuogoSalvato(lat, lon) {
+  const a = nomiLuogoArchivio();
+  const v = a[nomeLuogoChiave(lat, lon)];
+  return typeof v === 'string' && v ? v : null;
+}
+
+function nomeLuogoRicorda(lat, lon, nome) {
+  if (!nome) return;
+  try {
+    const a = nomiLuogoArchivio();
+    a[nomeLuogoChiave(lat, lon)] = nome;
+    // La memoria non cresce all'infinito: passato il tetto si buttano le
+    // voci più vecchie, che in un oggetto sono le prime inserite.
+    const chiavi = Object.keys(a);
+    if (chiavi.length > NOMI_LUOGO_MAX) {
+      chiavi.slice(0, chiavi.length - NOMI_LUOGO_MAX).forEach(k => delete a[k]);
+    }
+    localStorage.setItem(CHIAVE_NOMI_LUOGO, JSON.stringify(a));
+  } catch (e) { /* storage pieno: il nome resta valido per questa sessione */ }
+}
+
+// Il nome vero del posto, chiesto a chi ha la mappa. Non solleva mai:
+// senza rete, o coi servizi muti, restituisce null e chi chiama tiene
+// quello che aveva.
+async function nomeLuogoDaRete(lat, lon) {
+  if (!isFinite(lat) || !isFinite(lon)) return null;
+  const gia = nomeLuogoSalvato(lat, lon);
+  if (gia) return gia;
+
+  for (const servizio of POS_SERVIZI_NOME) {
+    try {
+      const risposta = await fetchConScadenza(servizio.url(lat, lon), NOMI_LUOGO_ATTESA_MS);
+      if (!risposta.ok) continue;
+      const nome = servizio.leggi(await risposta.json());
+      if (nome && typeof nome === 'string') {
+        const pulito = nome.trim();
+        if (pulito) { nomeLuogoRicorda(lat, lon, pulito); return pulito; }
+      }
+    } catch (e) { /* servizio muto: si prova il prossimo */ }
+  }
+  return null;
+}
+
+// Una richiesta per volta, e solo se il punto si è davvero spostato: il
+// GPS consegna una lettura ogni pochi secondi, e chiedere il nome a ogni
+// lettura vorrebbe dire mille richieste per una passeggiata.
+let nomeLuogoInVolo = null;
+
+// Chiede il nome vero del posto e, quando arriva, lo mette al suo posto
+// ovunque: nella posizione in uso, in quella salvata, e in tutti i tasti
+// che la raccontano. Va chiamata *dopo* aver impostato la posizione, mai
+// prima: il nome dell'elenco a bordo è già lì e fa da segnaposto.
+function posAggiornaNomeLuogo(lat, lon) {
+  if (nomeLuogoInVolo === nomeLuogoChiave(lat, lon)) return;
+  nomeLuogoInVolo = nomeLuogoChiave(lat, lon);
+
+  nomeLuogoDaRete(lat, lon).then(nome => {
+    nomeLuogoInVolo = null;
+    if (!nome) return;
+    const p = sky.posizione;
+    // Nel frattempo ci si può essere spostati, o l'utente può aver scelto
+    // un'altra città: quel nome non parla più di dove siamo.
+    if (!p || skyDistanzaMetri(p.lat, p.lon, lat, lon) > 300) return;
+    if (p.nome === nome) return;
+    p.nome = nome;
+    try {
+      const dati = JSON.parse(localStorage.getItem(CHIAVE_SKY_POSIZIONE) || 'null');
+      if (dati && typeof dati.lat === 'number') {
+        dati.nome = nome;
+        localStorage.setItem(CHIAVE_SKY_POSIZIONE, JSON.stringify(dati));
+      }
+    } catch (e) { /* pazienza: il nome vale comunque per questa sessione */ }
+    aggiornaTastiPosizione();
+    if (typeof posAggiornaScheda === 'function') posAggiornaScheda();
+    if (typeof aggiornaSchedaImpostazioni === 'function') aggiornaSchedaImpostazioni();
+    if (typeof skyAggiornaStato === 'function') skyAggiornaStato();
+  }).catch(() => { nomeLuogoInVolo = null; });
 }
 
 // --- Strato 2: la posizione dedotta dall'indirizzo IP -----------------
@@ -8008,6 +8254,70 @@ async function _trovaPosizioneAStrati(passo, { avevaPosizione, scelta, nomeScelt
     messaggio: 'Né GPS né rete hanno risposto. Nessun problema: scegli la tua città qui sotto, ' +
       'oppure scrivi le coordinate. Funziona anche senza connessione.'
   };
+}
+
+// --- La posizione all'apertura dell'app ------------------------------
+//
+// Per molto tempo l'app non chiedeva niente a nessuno finché non si apriva
+// il planetario o la finestra della posizione. Era una scelta prudente —
+// una richiesta di permesso che compare da sola spaventa — ma il prezzo lo
+// pagava la prima schermata, che è quella che si guarda davvero: "Stasera"
+// si apriva sulla posizione della sessione precedente, o su niente, e per
+// avere gli orari giusti bisognava sapere che c'era un tasto da premere.
+//
+// Adesso la posizione si cerca da sé all'avvio, con una accortezza sola:
+// il permesso non si chiede mai a sorpresa quando il browser ci sa dire
+// che risposta darebbe.
+//
+//   — permesso già dato   → GPS subito, e la sorveglianza parte con lui;
+//   — permesso già negato → niente GPS (chiederlo di nuovo non fa comparire
+//                           nulla, il browser risponde no da solo): si va
+//                           dritti alla rete, che non chiede niente;
+//   — mai deciso, o browser che non sa rispondere → la cascata intera.
+//
+// In tutt'e tre i casi la posizione salvata è già in memoria (ci pensa
+// `inizializzaPosizioneUI`), quindi l'app è utilizzabile dal primo istante
+// e quello che arriva dopo è un miglioramento, non un'attesa.
+async function posPermessoGeolocalizzazione() {
+  if (!navigator.permissions || !navigator.permissions.query) return 'ignoto';
+  try {
+    const p = await navigator.permissions.query({ name: 'geolocation' });
+    return p.state || 'ignoto';
+  } catch (e) {
+    return 'ignoto';               // Safari fino a poco fa non conosceva questo nome
+  }
+}
+
+async function avviaPosizioneAllAvvio() {
+  if (!('geolocation' in navigator) && typeof fetch !== 'function') return;
+  const permesso = await posPermessoGeolocalizzazione();
+
+  let esito;
+  if (permesso === 'denied') {
+    // Il GPS è escluso per decisione dell'utente: saltarlo non è una
+    // rinuncia, è evitare sedici secondi di attesa per un no già scritto.
+    const daRete = await posizioneDallaRete();
+    esito = daRete && skyImpostaPosizione(daRete.lat, daRete.lon, 'rete', {
+      precisione: POS_PRECISIONE_RETE_M, tempo: Date.now(), nome: daRete.nome || null
+    }) ? 'rete' : 'invariata';
+  } else {
+    const r = await trovaPosizioneAStrati();
+    esito = r.esito;
+  }
+
+  // La sorveglianza parte comunque, a riposo: se il permesso c'è si accende
+  // subito, se no la chiamata si limita a chiedere al browser che ne pensa
+  // e non fa comparire niente.
+  skySorvegliaPosizione(permesso === 'granted' || esito === 'gps', 'riposo');
+
+  if (esito === 'gps' || esito === 'rete') {
+    posUltimoRifacimento = {
+      lat: sky.posizione.lat, lon: sky.posizione.lon, quando: Date.now()
+    };
+    await posDopoCambio();
+  } else {
+    aggiornaTastiPosizione();
+  }
 }
 
 // =====================================================================
@@ -9923,7 +10233,23 @@ function skyCaso(seme) {
 // che non si guarda da più tempo: una Map conserva l'ordine di inserimento,
 // quindi la più vecchia è sempre la prima chiave.
 const skyTele = new Map();
-const SKY_TELE_MAX = 18;
+// Quante tenerne. Diciotto bastavano quando gli astri col volto erano
+// diciotto: Sole, Luna, otto pianeti e qualche nebulosa disegnata a mano.
+// Col catalogo grande il cielo profondo è passato da quattordici oggetti a
+// centoquarantadue, e con il filtro acceso in un fotogramma se ne disegnano
+// anche settanta: ognuno chiedeva la sua tela, la fila si riempiva a metà
+// fotogramma e le prime venivano buttate prima ancora di essere usate. Il
+// risultato era il peggiore possibile — settanta nebulose *ridipinte da
+// capo a ogni fotogramma*, cioè il lavoro che questa cache esiste per
+// evitare, fatto sessanta volte al secondo.
+//
+// La fila dev'essere quindi almeno larga quanto un fotogramma pieno. Le
+// tele sono piccole (64 o 128 pixel di lato quasi sempre, 256 al massimo
+// sul telefono) e chi ha il cielo profondo spento non ne crea nessuna: si
+// paga solo quando serve.
+function skyTeleMax() {
+  return quanto(96, 140, 180);
+}
 
 // Quanto grande dipingere una faccia: la potenza di due che copre il
 // diametro sullo schermo, tenendo conto dei pixel veri del display. Più
@@ -9961,7 +10287,8 @@ function skyPelle(chiave, lato, pennello) {
     tela = null;                  // niente tela: si ripiega sul disco sfumato
   }
   skyTele.set(k, tela);
-  if (skyTele.size > SKY_TELE_MAX) skyTele.delete(skyTele.keys().next().value);
+  const tetto = skyTeleMax();
+  while (skyTele.size > tetto) skyTele.delete(skyTele.keys().next().value);
   return tela;
 }
 
@@ -14765,19 +15092,33 @@ function skyCostruisciElenco() {
   skyFiltraElenco();
 }
 
+// Il colore di una pillola dice il suo stato: scelta, su adesso, tramontata.
+// Misure e spaziature stanno in style.css (`.chip-astro`), che le sa
+// stringere sui telefoni: qui restano solo i colori.
+const SKY_CHIP_BASE = 'chip-astro inline-flex items-center rounded-full border border-slate-600';
+
+function skyStileChip(id, o) {
+  if (id === sky.target) return SKY_CHIP_BASE + ' bg-blue-600 text-white shadow';
+  if (o && o.alt > 0) return SKY_CHIP_BASE + ' bg-slate-700 text-slate-100 hover:bg-slate-600';
+  return SKY_CHIP_BASE + ' bg-slate-800 text-slate-500 hover:bg-slate-700';
+}
+
 function skyAggiornaStileElenco() {
-  // Misure e spaziature stanno in style.css (`.chip-astro`), che le sa
-  // stringere sui telefoni: qui restano solo i colori, che dicono lo stato
-  const base = 'chip-astro inline-flex items-center rounded-full border border-slate-600';
   document.querySelectorAll('.chip-astro').forEach(btn => {
-    const o = skyVoceDiId(btn.dataset.astro);
-    const visibile = o && o.alt > 0;
-    let stile;
-    if (btn.dataset.astro === sky.target) stile = ' bg-blue-600 text-white shadow';
-    else if (visibile) stile = ' bg-slate-700 text-slate-100 hover:bg-slate-600';
-    else stile = ' bg-slate-800 text-slate-500 hover:bg-slate-700';
-    btn.className = base + stile;
+    btn.className = skyStileChip(btn.dataset.astro, skyVoceDiId(btn.dataset.astro));
   });
+}
+
+// L'elenco degli astri sta dentro a un pannello che quasi sempre è chiuso.
+// Non è un dettaglio estetico: dentro ci sono trecentosettanta pillole, e
+// tenere aggiornata l'altezza di ognuna vuol dire — due volte al secondo —
+// altrettante posizioni da ricalcolare, con dentro la costellazione di
+// appartenenza di centottanta stelle di catalogo. Era il lavoro più caro
+// del planetario, e serviva a scrivere numeri che nessuno stava leggendo.
+// Da qui in poi si fa solo quando quelle pillole si vedono davvero.
+function skyElencoInVista() {
+  const cont = document.getElementById('skymap-oggetti');
+  return !!cont && cont.dataset.pronto === 'si' && cont.offsetParent !== null;
 }
 
 // La categoria, la ricerca per nome e il filtro "Su ora": tre modi di dire la
@@ -14821,17 +15162,29 @@ function skyFiltraElenco() {
   }
 }
 
-// Aggiorna l'altezza mostrata accanto a ogni astro e la scheda in basso
+// Aggiorna l'altezza mostrata accanto a ogni astro e la scheda in basso.
+//
+// Il giro sulle pillole si fa **una volta sola** e serve a due cose insieme
+// — la scritta dell'altezza e il colore dello stato — perché la posizione di
+// un astro (`skyVoceDiId`) è la parte cara di tutt'e due, e chiederla due
+// volte per la stessa pillola voleva dire pagarla due volte, due volte al
+// secondo, per trecentosettanta pillole.
+//
+// E si fa solo col pannello degli astri aperto: a pannello chiuso quei
+// numeri non li legge nessuno (la scheda dell'oggetto scelto, che invece si
+// vede, si aggiorna comunque qui sotto).
 function skyAggiornaEtichette() {
-  document.querySelectorAll('.chip-astro').forEach(btn => {
-    const span = btn.querySelector('.sky-alt');
-    const o = skyVoceDiId(btn.dataset.astro);
-    if (span) span.textContent = o ? `${o.alt >= 0 ? '↑' : '↓'}${Math.abs(Math.round(o.alt))}°` : '';
-  });
-  skyAggiornaStileElenco();
-  // Le altezze cambiano di continuo: se il filtro guarda proprio quelle,
-  // l'elenco va ripassato insieme a loro
-  if (sky.soloAstriVisibili) skyFiltraElenco();
+  if (skyElencoInVista()) {
+    document.querySelectorAll('#skymap-oggetti .chip-astro').forEach(btn => {
+      const o = skyVoceDiId(btn.dataset.astro);
+      const span = btn.querySelector('.sky-alt');
+      if (span) span.textContent = o ? `${o.alt >= 0 ? '↑' : '↓'}${Math.abs(Math.round(o.alt))}°` : '';
+      btn.className = skyStileChip(btn.dataset.astro, o);
+    });
+    // Le altezze cambiano di continuo: se il filtro guarda proprio quelle,
+    // l'elenco va ripassato insieme a loro
+    if (sky.soloAstriVisibili) skyFiltraElenco();
+  }
   skyAggiornaScheda();
 }
 
@@ -16332,27 +16685,23 @@ function apriSkymap() {
   // Va in apriSkymap() e non in skyAvvia(): quello parte solo se si tocca
   // il tasto dei sensori, mentre qui ci si passa ogni volta che la vista
   // va a schermo.
-  if (typeof catCarica === 'function') catCarica();
-  if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica();
-  // La forma vera del terreno attorno a casa (sei richieste, una volta
-  // sola per luogo: poi sta in localStorage e vale anche senza rete), i
-  // paesi che di notte lo illuminano e le montagne che gli danno un nome
-  if (typeof terrenoCarica === 'function') terrenoCarica();
-  if (typeof cittaCarica === 'function') cittaCarica();
-  if (typeof cimeCarica === 'function') cimeCarica();
-  // Il Kp del NOAA: serve a sapere se l'ovale aurorale, stanotte, scende
-  // fin qui. Senza rete non si sa, e resta la simulazione.
-  if (typeof caricaAurora === 'function') {
-    caricaAurora()
-      .then(() => { if (typeof aurAggiornaPannello === 'function') aurAggiornaPannello(); })
-      .catch(() => {});
+  // Solo il catalogo del cielo parte subito: è l'unica cosa che si vede.
+  // Tutto il resto — le comete, il terreno, i paesi, le vette, il Kp, i
+  // dati orbitali delle stazioni — è roba che arriva dalla rete e che il
+  // primo fotogramma non usa, e partire tutti insieme voleva dire otto
+  // richieste, otto risposte da leggere e otto pezzi di lavoro schiacciati
+  // nello stesso istante in cui il cielo doveva comparire. Adesso vanno in
+  // fila dietro ai primi fotogrammi (vedi `skyCaricaIlResto`).
+  if (typeof catCarica === 'function') {
+    skyCaricamentoMostra(!catProntoOMancante());
+    catCarica().then(skyCaricamentoNascondi, skyCaricamentoNascondi);
   }
 
-  skyCostruisciElenco();
   skyRidimensiona();
   if (!sky.observer) skyCaricaPosizioneSalvata();
-  satPrecaricaTle();
-  skySorvegliaPosizione();
+  // Col planetario a schermo la posizione si guarda da vicino: qui duecento
+  // metri spostano l'orizzonte, e la sorveglianza passa ad alta precisione.
+  skySorvegliaPosizione(false, 'preciso');
   skyAggiornaStato();
   skyAggiornaOggetti(true);
   skyTieniSchermoAcceso();
@@ -16363,6 +16712,85 @@ function apriSkymap() {
   sky.trascinamento = null;
   sky.fovVoluto = sky.fov;
   sky.raf = requestAnimationFrame(skyCiclo);
+  skyCaricaIlResto();
+}
+
+// Il cielo è già disegnato: da qui in poi si può caricare il resto senza
+// che nessuno se ne accorga. Un pezzo per volta e mai due nello stesso
+// fotogramma — è la differenza fra "ci mette un attimo" e "si blocca".
+//
+// `requestIdleCallback` è la strada giusta (il browser ci chiama quando
+// ha tempo libero) ma su Safari non c'è: là si ripiega su un timer, che
+// fa la stessa cosa in modo più grossolano.
+function skyQuandoLibero(f, ritardo) {
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(() => f(), { timeout: Math.max(500, ritardo || 0) });
+  } else {
+    setTimeout(f, ritardo || 0);
+  }
+}
+
+function skyCaricaIlResto() {
+  // Entrare e uscire dalla vista non deve accodare due file di compiti: chi
+  // sta già scorrendo la sua finisce, e le funzioni chiamate sanno da sé se
+  // hanno già i loro dati.
+  if (sky.restoInCorso) return;
+  sky.restoInCorso = true;
+
+  // L'elenco degli astri sta dentro a un pannello chiuso: sono trecento
+  // pillole con dentro un disegno ognuna, e costruirle mentre il cielo
+  // cerca di comparire era il pezzo più caro dell'apertura. Nessuno le
+  // sta guardando: possono aspettare qualche fotogramma.
+  skyQuandoLibero(() => { if (sky.aperto) skyCostruisciElenco(); }, 120);
+
+  const compiti = [
+    () => { if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica(); },
+    () => { if (typeof satPrecaricaTle === 'function') satPrecaricaTle(); },
+    // La forma vera del terreno attorno a casa (sei richieste, una volta
+    // sola per luogo: poi sta in localStorage e vale anche senza rete), i
+    // paesi che di notte lo illuminano e le montagne che gli danno un nome
+    () => { if (typeof terrenoCarica === 'function') terrenoCarica(); },
+    () => { if (typeof cittaCarica === 'function') cittaCarica(); },
+    () => { if (typeof cimeCarica === 'function') cimeCarica(); },
+    // Il Kp del NOAA: serve a sapere se l'ovale aurorale, stanotte, scende
+    // fin qui. Senza rete non si sa, e resta la simulazione.
+    () => {
+      if (typeof caricaAurora !== 'function') return;
+      caricaAurora()
+        .then(() => { if (typeof aurAggiornaPannello === 'function') aurAggiornaPannello(); })
+        .catch(() => {});
+    }
+  ];
+
+  const prossimo = (i) => {
+    if (i >= compiti.length) { sky.restoInCorso = false; return; }
+    skyQuandoLibero(() => {
+      try { compiti[i](); } catch (e) { /* un modulo assente non ferma gli altri */ }
+      prossimo(i + 1);
+    }, 200 + i * 60);
+  };
+  prossimo(0);
+}
+
+// --- "Sto preparando il cielo" ---------------------------------------
+// Il planetario non è mai stato *vuoto* durante l'attesa — parte con le
+// ventitré figure scritte a mano e i pianeti, che ci sono da subito — ma
+// chi lo apriva per la prima volta vedeva un cielo spoglio, poi qualche
+// secondo di niente, e poi cinquemila stelle comparire tutte insieme. Da
+// fuori era indistinguibile da un'app rotta che poi si riprende.
+// Una riga che dice cosa sta succedendo costa niente e cambia tutto.
+function catProntoOMancante() {
+  return typeof cat === 'undefined' || cat.stato === 'pronto' || cat.stato === 'fallito';
+}
+
+function skyCaricamentoMostra(mostra) {
+  const el = document.getElementById('skymap-caricamento');
+  if (!el) return;
+  el.classList.toggle('hidden', !mostra);
+}
+
+function skyCaricamentoNascondi() {
+  skyCaricamentoMostra(false);
 }
 
 function chiudiSkymap() {
@@ -16373,7 +16801,11 @@ function chiudiSkymap() {
   // Il playback non deve sopravvivere alla vista: tornando qui domani il
   // cielo ripartirebbe da un istante che nessuno ha più in mente
   skyFermaPlayback();
-  skySmettiDiSorvegliare();
+  // La sorveglianza della posizione non muore con la vista: si mette a
+  // riposo (bassa precisione) e continua a seguire chi si sposta, perché
+  // ci si sposta proprio quando il planetario è chiuso — in macchina,
+  // andando al posto buio.
+  skySorveglianzaARiposo();
   skyRilasciaSchermo();
   // Una registrazione in corso muore qui: senza il cielo davanti non ci sono
   // più fotogrammi da prendere, e il risultato non avrebbe dove farsi vedere
@@ -16878,6 +17310,11 @@ function skyAggiornaTastiFiltri() {
 function skyMostraGruppo(nome) {
   const barra = document.getElementById('cielo-comandi');
   if (!barra) return;
+  // L'elenco degli astri si costruisce quando serve, non all'apertura della
+  // vista: sono trecento pillole con dentro un disegno ognuna, e farle
+  // mentre il cielo cerca di comparire era il pezzo più caro dell'apertura.
+  // Chi tocca "Astri" prima che il tempo libero arrivi le trova comunque.
+  if (nome === 'astri') skyCostruisciElenco();
   const aperto = barra.dataset.gruppoAttivo === nome ? '' : (nome || '');
   barra.dataset.gruppoAttivo = aperto;
   barra.querySelectorAll('.gruppo-comandi').forEach(s =>
@@ -16887,6 +17324,11 @@ function skyMostraGruppo(nome) {
     b.classList.toggle('attiva', attiva);
     b.setAttribute('aria-pressed', attiva ? 'true' : 'false');
   });
+  // Le altezze accanto ai nomi si aggiornano solo a pannello aperto (vedi
+  // `skyElencoInVista`): aprendolo adesso sarebbero quelle di quando lo si è
+  // chiuso, e mezzo minuto in cielo si vede. Una passata subito, prima che
+  // il primo battito da mezzo secondo arrivi.
+  if (aperto === 'astri') skyAggiornaEtichette();
 }
 
 // =====================================================================
@@ -21393,6 +21835,17 @@ function inizializzaPosizioneUI() {
       if (primo) primo.click();
     });
   }
+
+  // Con l'app in secondo piano non ha senso tenere acceso il GPS: la
+  // posizione non la sta leggendo nessuno, e su Android il watch continua
+  // a lavorare finché la pagina è viva. Si spegne e si riaccende da sé.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      skySmettiDiSorvegliare();
+    } else {
+      skySorvegliaPosizione(false, sky.aperto ? 'preciso' : 'riposo');
+    }
+  });
 
   const btnCoord = document.getElementById('pos-btn-coordinate');
   if (btnCoord) btnCoord.addEventListener('click', () => {
