@@ -10717,10 +10717,14 @@ function skyTeleMax() {
 
 // Quanto grande dipingere una faccia: la potenza di due che copre il
 // diametro sullo schermo, tenendo conto dei pixel veri del display. Più
-// grande di così non si vedrebbe, e su un telefono si sentirebbe.
+// grande di così non si vedrebbe, e su un telefono si sentirebbe — per questo
+// il tetto resta basso lì, ma sale su tablet e computer: da quando ci si può
+// avvicinare alla Terra molto più di prima (`SOL_ZOOM_MAX_TERRA`), un tetto
+// di 512 px veniva superato dal disco vero e la tela usciva sgranata,
+// ricopiata più grande di quanto fosse stata dipinta.
 function skyLatoTela(rPixel) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const tetto = dispositivoAttuale === 'telefono' ? 256 : 512;
+  const tetto = quanto(256, 512, 1024);
   let lato = 64;
   while (lato < rPixel * 2 * dpr && lato < tetto) lato *= 2;
   return lato;
@@ -11191,7 +11195,9 @@ function skyDipingiVenere(ctx) {
 // 3D del Sistema Solare è il pallino che si cerca per primo, ed era l'unico
 // mondo senza una faccia. Le terre sono macchie appoggiate alle coordinate
 // vere: non è una carta geografica, è quello che si riconosce da lontano —
-// la massa dell'Africa, il triangolo del Sudamerica, il bianco dei poli.
+// la massa dell'Africa, il triangolo del Sudamerica, il bianco dei poli — e
+// da vicino, adesso che ci si può avvicinare parecchio (`SOL_ZOOM_MAX_TERRA`),
+// anche una costa frastagliata e un terreno che non è tinta piatta.
 const SKY_TERRE = [
   { lon: 20,   lat: 3,   r: 0.36, c: '#3f6b3d' },   // Africa
   { lon: 18,   lat: 24,  r: 0.26, c: '#b39a63' },   // Sahara
@@ -11204,6 +11210,73 @@ const SKY_TERRE = [
   { lon: 134,  lat: -25, r: 0.21, c: '#a98d55' },   // Australia
   { lon: -42,  lat: 72,  r: 0.15, c: '#e8f1f7' }    // Groenlandia
 ];
+
+// Le isole che si notano anche da un pianeta vicino, ma non nel disco intero:
+// senza queste, da vicino, l'oceano restava una tinta piatta e sconfinata.
+const SKY_ISOLE_TERRA = [
+  { lon: -3,   lat: 54,  r: 0.06,  c: '#4d7a45' },   // Isole Britanniche
+  { lon: 138,  lat: 37,  r: 0.055, c: '#4a7442' },   // Giappone
+  { lon: 47,   lat: -19, r: 0.09,  c: '#a98d55' },   // Madagascar
+  { lon: 113,  lat: -1,  r: 0.11,  c: '#3f6b3d' },   // Indonesia/Borneo
+  { lon: 122,  lat: 12,  r: 0.05,  c: '#4a7442' },   // Filippine
+  { lon: -79,  lat: 22,  r: 0.05,  c: '#5c7f3e' },   // Cuba e Caraibi
+  { lon: 174,  lat: -41, r: 0.065, c: '#4d7a45' },   // Nuova Zelanda
+  { lon: -19,  lat: 65,  r: 0.04,  c: '#6f8f5a' }    // Islanda
+];
+
+// Le coste vere non sono cerchi lisci, e un continente visto da vicino non è
+// un colore piatto. Il pennello lavora già nello spazio locale del
+// continente — quello che `skyMacchiaSfera` ha traslato, ruotato e
+// schiacciato verso il bordo — quindi ogni macchia che si aggiunge qui è già
+// nel posto giusto sulla sfera, senza dover cercare di nuovo dove cade.
+//
+// Prima il bordo: qualche macchia più piccola appoggiata fuori dal cerchio
+// liscio, a un angolo e una misura presi a sorte, perché sembri una costa
+// frastagliata e non una moneta colorata. Poi il rilievo: due o tre zone
+// larghe e sfumate, più scure o più chiare — non tanti granelli piccoli
+// (un primo tentativo li usava, e le trasparenze del canvas si sommano: un
+// continente pieno di granelli si legge a pois, non come un terreno).
+//
+// `caso` è la stessa fila di numeri di tutto il resto della Terra, sempre la
+// stessa: la costa e il rilievo non cambiano a ogni fotogramma.
+function skyDipingiCosta(ctx, raggio, colore, caso) {
+  skyNuvola(ctx, raggio, colore, 0.92, 0.55);
+  skyNuvola(ctx, raggio * 0.62, colore, 0.6, 0.4);
+  const quante = 5 + Math.floor(caso() * 5);
+  for (let i = 0; i < quante; i++) {
+    const ang = caso() * Math.PI * 2;
+    const dist = raggio * (0.55 + caso() * 0.55);
+    const rc = raggio * (0.14 + caso() * 0.22);
+    ctx.save();
+    ctx.translate(Math.cos(ang) * dist, Math.sin(ang) * dist);
+    skyNuvola(ctx, rc, colore, 0.75, 0.3);
+    ctx.restore();
+  }
+  // Il rilievo: non tanti granelli (coi granelli, ogni prova sembrava un
+  // continente a pois — le trasparenze del canvas si sommano, e in tanti si
+  // vedono anche se ognuno da solo non si vedrebbe), ma due o tre zone
+  // larghe e sfumate, un po' più scure o più chiare, appoggiate a caso —
+  // un altopiano, una pianura. È quel poco che basta perché da vicino un
+  // continente non sia una tinta unita, senza mai leggersi come decorazione.
+  const zone = 2 + Math.floor(caso() * 2);
+  for (let i = 0; i < zone; i++) {
+    const ang = caso() * Math.PI * 2;
+    // Mai troppo vicino al centro: appoggiate lì, col cerchio morbido della
+    // costa già concentrico, il risultato era un bersaglio — due cerchi
+    // annidati — invece di una macchia fuori asse
+    const dist = raggio * (0.18 + caso() * 0.42);
+    const rz = raggio * (0.4 + caso() * 0.3);
+    const tono = caso() > 0.5
+      ? skyMescolaEsa(colore, '#000000', 0.06 + caso() * 0.08)
+      : skyMescolaEsa(colore, '#ffffff', 0.06 + caso() * 0.08);
+    ctx.save();
+    ctx.translate(Math.cos(ang) * dist, Math.sin(ang) * dist);
+    ctx.rotate(caso() * Math.PI);
+    ctx.scale(1, 0.6 + caso() * 0.3);
+    skyNuvola(ctx, rz, tono, 0.22, 0.15);
+    ctx.restore();
+  }
+}
 
 function skyDipingiTerra(ctx) {
   const caso = skyCaso(skySeme('terra'));
@@ -11219,14 +11292,14 @@ function skyDipingiTerra(ctx) {
   ctx.fillStyle = g;
   ctx.fillRect(-1, -1, 2, 2);
   SKY_TERRE.forEach(t => {
-    skyMacchiaSfera(ctx, t.lon, t.lat, t.r, (c, r) => {
-      skyNuvola(c, r, t.c, 0.92, 0.55);
-      skyNuvola(c, r * 0.62, t.c, 0.6, 0.4);
-    });
+    skyMacchiaSfera(ctx, t.lon, t.lat, t.r, (c, r) => skyDipingiCosta(c, r, t.c, caso));
+  });
+  SKY_ISOLE_TERRA.forEach(t => {
+    skyMacchiaSfera(ctx, t.lon, t.lat, t.r, (c, r) => skyNuvola(c, r, t.c, 0.85, 0.35));
   });
   // Le nuvole: sono la prima cosa che si vede da fuori, e sono in fasce —
   // fitte all'equatore e ai sessanta gradi, rade sui deserti
-  for (let i = 0; i < 46; i++) {
+  for (let i = 0; i < 60; i++) {
     const lat = [4, 4, 52, -52, 30, -28][Math.floor(caso() * 6)] + caso() * 16 - 8;
     skyMacchiaSfera(ctx, caso() * 360 - 180, lat, 0.1 + caso() * 0.2, (c, r) => {
       c.save();
@@ -11246,6 +11319,18 @@ function skyDipingiTerra(ctx) {
   };
   calotta(-1, 0.12, 0.85);
   calotta(1, -0.16, 0.9);
+  // Il velo dell'aria: quasi niente al centro, un filo azzurro chiaro sul
+  // bordo — la stessa luce diffusa che nelle fotografie vere disegna la riga
+  // sottile fra la Terra e il nero dello spazio. Da lontano si perde nel
+  // disco; da vicino è la prima cosa che dice "ha un'aria", non un sasso.
+  const velo = ctx.createRadialGradient(0, 0, 0.82, 0, 0, 1);
+  velo.addColorStop(0, 'rgba(150, 200, 255, 0)');
+  velo.addColorStop(0.82, 'rgba(150, 200, 255, 0.05)');
+  velo.addColorStop(1, 'rgba(190, 225, 255, 0.55)');
+  ctx.fillStyle = velo;
+  ctx.beginPath();
+  ctx.arc(0, 0, 1, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
@@ -18862,6 +18947,15 @@ const SOL_ENTRATA_MARGINE = 1.14;
 // dentro comodi — ma con la Terra al centro invece del Sole.
 const SOL_VICINO_TERRA_UA = 1.7;
 
+// Quanto ci si può avvicinare con lo zoom. Il tetto normale (`SOL_ZOOM_MAX`)
+// è pensato per la vista d'insieme, dove non ha senso spingersi oltre — a
+// quello zoom il Sole comincia già a mangiarsi Mercurio (vedi `solTettoSole`).
+// Girando intorno alla Terra quel problema non c'è: il Sole è lontano fuori
+// dallo schermo, e il senso della vista è proprio avvicinarsi a lei quanto
+// si vuole. `SOL_ZOOM_MAX_TERRA` vale solo mentre `sol.centratoTerra` è vero.
+const SOL_ZOOM_MAX = 60;
+const SOL_ZOOM_MAX_TERRA = 900;
+
 // Il passo del tempo, e con lui quanto ne copre la slitta da un capo
 // all'altro. Il play fa tre passi al secondo, qualunque sia il passo scelto:
 // un comando solo per la velocità e per lo scatto, invece di due.
@@ -19062,6 +19156,17 @@ function solCrescita() {
   return Math.max(minimo, Math.min(base, tetto / soleBase));
 }
 
+// Quanto cresce SOLO la Terra, quando si gira intorno a lei da vicino
+// (`sol.centratoTerra`): stessa legge di `solCrescita` — radice quadrata
+// dello zoom, perché raddoppiare e dimezzare costino uguale — ma senza il
+// tetto pensato per il Sole, che qui non c'entra niente: a questi zoom il
+// Sole è già fuori dallo schermo. È lei che si sta avvicinando, e deve poter
+// crescere finché lo zoom lo permette (vedi `SOL_ZOOM_MAX_TERRA`).
+const SOL_CRESCITA_TERRA_MAX = 60;
+function solCrescitaTerra() {
+  return Math.min(SOL_CRESCITA_TERRA_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
+}
+
 // Quanto si disegna grosso un corpo, nelle due misure: il pallino ingrandito
 // che si tocca col dito, o il diametro vero in scala fra i corpi.
 function solRaggioCorpo(p) {
@@ -19069,10 +19174,11 @@ function solRaggioCorpo(p) {
   // polvere: Mercurio e Marte si fermano lì. Fra tutti gli altri il rapporto
   // è quello vero.
   const base = sol.misureVere ? Math.max(1.2, p.km * SOL_PX_PER_KM / 2) : p.raggio;
+  const crescita = (sol.centratoTerra && p.id === 'Earth') ? solCrescitaTerra() : solCrescita();
   // Mezzo pixel è il minimo assoluto: quando la scena si stringe i pianeti
   // rimpiccioliscono col Sole (vedi `solCrescita`), ma un pianeta che sparisce
   // del tutto lascerebbe l'orbita senza chi la percorre
-  return Math.max(0.55, base * solCrescita());
+  return Math.max(0.55, base * crescita);
 }
 
 // Il Sole. Adesso che il tetto è dentro a `solCrescita()`, qui resta solo la
@@ -20207,7 +20313,8 @@ function solImpostaVista(nome) {
 }
 
 function solImpostaZoom(z, opzioni = {}) {
-  const valore = Math.max(0.35, Math.min(60, z));
+  const tetto = sol.centratoTerra ? SOL_ZOOM_MAX_TERRA : SOL_ZOOM_MAX;
+  const valore = Math.max(0.35, Math.min(tetto, z));
   sol.zoomVoluto = valore;
   if (!opzioni.morbido) sol.zoom = valore;
   solAggiornaTasti();

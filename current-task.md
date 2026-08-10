@@ -16,61 +16,58 @@ non un verbale.
 
 ## Cosa si sta facendo
 
-Nella vista **Sistema Solare 3D** (`app.js`, sezione 7.7, stato `sol`),
-aggiungere la possibilità di avvicinarsi alla Terra e girarci intorno con la
-telecamera — toccandola sulla scena o nella tabella — per vedere come sono
-disposti gli altri pianeti nello spazio vicino a lei in questo momento. È la
-stessa domanda a cui risponde il planetario (che guarda *da* qui), vista
-stavolta da fuori, con la Terra come perno invece del Sole.
+Seguito diretto della vista "vicino alla Terra" nel Sistema Solare 3D
+(vedi commit precedenti su questo branch): l'utente ha chiesto di potersi
+avvicinare molto di più alla Terra con lo zoom, e di migliorare la sua
+texture perché avvicinandosi si veda meglio invece di restare una macchia
+sfocata.
 
 ## A che punto siamo
 
-- [x] Letta la sezione 7.7 di `app.js` (righe 18672–20677): lo stato `sol`, la
-      proiezione ortogonale `solProietta`/`solScena`, il perno attuale (il
-      Sole nell'origine), i gesti (`solInizializzaGesti`, `solTocco`) e
-      l'inquadratura d'ingresso (`solInquadraDaTerra`).
-- [x] Aggiunto `sol.centratoTerra` e `solAggiornaPivotTerra()`: quando è
-      attivo, a ogni fotogramma lo spostamento della scena (`panX`/`panY`)
-      viene ricalcolato per tenere la Terra incollata al centro della tela.
-      In proiezione ortogonale, ruotare tutto intorno al Sole e poi
-      ricentrare sulla Terra è **esattamente** equivalente a ruotare la
-      telecamera intorno alla Terra (la differenza è una sola traslazione,
-      uguale per ogni punto della scena) — quindi il gesto di trascinamento
-      che già gira la scena (`az`/`elev`) diventa da solo "gira intorno alla
-      Terra", senza toccare la matematica della rotazione.
-- [x] `solScegli('Earth')` chiama `solAvvicinaTerra()` al primo tocco sulla
-      Terra (dalla scena o dalla riga della tabella) e `solEsciDaTerra()` se
-      la si tocca di nuovo mentre si è già centrati.
-- [x] Bottone nella scheda della Terra per entrare/uscire dalla vista vicina,
-      con testo diverso nei due stati.
-- [x] `solInquadraDaTerra()` (il tasto "Da qui" e il ⟲ paracadute) e i tasti
-      "Tutto"/"Pianeti interni" spengono `centratoTerra`: sono inquadrature
-      centrate sul Sole, e altrimenti il ricentraggio automatico le
-      contraddirebbe a ogni fotogramma.
-- [x] `apriSistemaSolare()` riparte sempre con `centratoTerra: false`.
-- [x] Bump di `CACHE_NAME` in `sw.js`.
-- [x] Aggiunta una riga alla tabella "Dove guardare per…" di `CLAUDE.md`.
-- [x] Provato nel browser (server locale + Chromium, via Playwright: il CDN
-      di astronomy-engine è bloccato in questo ambiente di sviluppo, quindi
-      il pacchetto è stato scaricato da npm e servito in locale solo per la
-      prova). Verificato con conti esatti sullo schermo, non solo a vista:
-      toccando la Terra `centratoTerra` diventa vero e lei finisce esattamente
-      al centro della tela; girando la scena — anche con un vero trascinamento
-      del mouse sulla tela, non solo cambiando `sol.az` a mano — la Terra
-      resta incollata al centro mentre Venere/Marte/Mercurio si spostano
-      intorno a lei; ritoccando la Terra si torna alla vista d'insieme con
-      `centratoTerra` di nuovo falso e l'inquadratura d'ingresso. Nessun
-      errore JavaScript dall'app (solo richieste di rete bloccate dalla
-      sandbox, previste e innocue).
+- [x] `SOL_ZOOM_MAX` (60, invariato) e `SOL_ZOOM_MAX_TERRA` (900, nuovo):
+      `solImpostaZoom()` usa il secondo tetto solo mentre `sol.centratoTerra`
+      è vero — il tetto basso esiste per non far mangiare al Sole l'orbita di
+      Mercurio nella vista d'insieme, un problema che vicino alla Terra non
+      c'è (il Sole è fuori dallo schermo).
+- [x] `solCrescitaTerra()` + `SOL_CRESCITA_TERRA_MAX` (60): fa crescere SOLO
+      la Terra, quando `centratoTerra` è vero, senza il tetto di
+      `solCrescita()` (pensato per il Sole, condiviso da tutti i corpi).
+      `solRaggioCorpo()` sceglie fra le due in base a `centratoTerra` e
+      `p.id === 'Earth'`.
+- [x] `skyLatoTela()`: tetto della tela dipinta alzato da `dispositivoAttuale
+      === 'telefono' ? 256 : 512` a `quanto(256, 512, 1024)` — sopra i 512 px
+      il disco vero (adesso può arrivare a ~230 px di raggio) superava la
+      tela e veniva ricopiato più grande di quanto fosse stata dipinta, cioè
+      sfocato.
+- [x] `skyDipingiTerra()` arricchita: `SKY_ISOLE_TERRA` (isole visibili solo
+      da vicino), `skyDipingiCosta()` (bordo frastagliato con macchie più
+      piccole intorno al cerchio liscio, più due o tre zone larghe e sfumate
+      dentro il continente per un rilievo che non sia tinta piatta — **non**
+      tanti granelli piccoli: le trasparenze del canvas si sommano, e il primo
+      tentativo con tanti granelli dava un continente a pois), velo
+      atmosferico sul bordo del disco (il filo azzurro delle fotografie
+      vere). Rimossa `skyTerraSotto` (era della versione a granelli, non
+      serve più: la grana adesso si dipinge dentro allo stesso spazio locale
+      già proiettato del continente, non cercando "che continente c'è sotto
+      a questo punto a caso").
+- [x] Verificato in browser (Playwright, stessa procedura delle prove
+      precedenti — CDN di astronomy-engine bloccato in sandbox, scaricato da
+      npm e servito in locale solo per la prova): zoom arriva davvero a 900
+      mentre centrati sulla Terra e torna a tosare a 60 appena si esce; la
+      texture isolata (fuori dal ritaglio giorno/notte, `skyPelle` chiamata
+      a mano a 900 px) mostra coste frastagliate, isole, rilievo a zone e
+      velo atmosferico senza l'effetto "a pois" dei tentativi precedenti;
+      nessun errore JavaScript.
+- [x] `CACHE_NAME` incrementato a `astrocal-v86`, riga aggiunta a
+      `CLAUDE.md` §12.
 - [x] Commit e push su `claude/token-optimization-solar-system-crbzv3`
-      (`115b872`).
+      (PR #108).
 
-**Niente in corso oltre a questo.** La prossima sessione che apre questo
-file può ignorarlo e riscriverlo da capo per il compito successivo.
+**Niente in corso oltre a questo.**
 
 ## File toccati
 
-- `app.js` (sezione 7.7, indicativamente righe 18860–20680)
+- `app.js` (sezione 7.3.2 per la faccia della Terra, sezione 7.7 per zoom
+  e crescita)
 - `CLAUDE.md` (tabella "Dove guardare per…", §12)
 - `sw.js` (`CACHE_NAME`)
-- `.github/workflows/pubblica.yml` (esclude anche questo file dal deploy)
