@@ -6747,23 +6747,34 @@
   // ===================================================================
   // 9. ESPERIMENTO 8 — IL TRAMONTO
   //
-  //   L'ultimo pezzo di cielo di ogni sera, e sono due bugie ottiche
-  //   insieme, non una. La prima: quello che vedi appoggiato
-  //   sull'orizzonte non è dove il Sole sta. L'aria è più densa vicino al
-  //   suolo, il suo raggio ci si piega dentro, e arriva all'occhio da più
-  //   in alto di quanto il disco stia davvero — di più della sua stessa
-  //   larghezza. La seconda: quel poco che arriva ha fatto una strada
-  //   assurda. Rasente all'orizzonte la luce attraversa l'aria una
-  //   trentina di volte più a lungo che a mezzogiorno, e la stessa
-  //   diffusione di Rayleigh che di giorno manda il blu in giro per tutto
-  //   il cielo (ed è per quello che il cielo è blu) qui si mangia il blu
-  //   del raggio diretto quasi per intero: resta soprattutto il rosso.
+  //   Il punto di partenza è la geometria, e va detta prima di tutto il
+  //   resto perché è quella che spiega il perché: a mezzogiorno il Sole è
+  //   alto e i suoi raggi cadono quasi verticali sulla Terra, cioè
+  //   attraversano l'aria una volta sola, il cammino più corto che ci sia.
+  //   Al tramonto il Sole è basso sull'orizzonte, e lo stesso raggio taglia
+  //   l'atmosfera **di sbieco**: la stessa aria, ma una strada molto più
+  //   lunga per attraversarla — dieci volte a pochi gradi dall'orizzonte,
+  //   fino a una quarantina proprio sul filo, perché lì il raggio non
+  //   scende quasi più, corre quasi parallelo al suolo.
   //
-  //   Una sola scena in tre dimensioni, che si gira come le altre: il
-  //   raggio del Sole, dalla sua posizione vera fino all'occhio, piegato
-  //   e colorato dal vero — il colore del disco non è dipinto a mano,
-  //   esce dai tre conti di trasmittanza qui sotto. Accanto, le stesse
-  //   tre bande di luce in un istogramma. Prefisso `tram`.
+  //   Da quella sola strada più lunga vengono le due bugie ottiche della
+  //   serata. La prima: quello che vedi appoggiato sull'orizzonte non è
+  //   dove il Sole sta. L'aria è più densa vicino al suolo, il suo raggio
+  //   ci si piega dentro, e arriva all'occhio da più in alto di quanto il
+  //   disco stia davvero — di più della sua stessa larghezza. La seconda:
+  //   quel poco che arriva ha attraversato l'aria come un filtro. Il blu,
+  //   con l'onda corta, sbatte contro le molecole e si disperde in ogni
+  //   direzione — è la diffusione di Rayleigh, la stessa che di giorno
+  //   manda il blu in giro per tutto il cielo, ed è per quello che il
+  //   cielo è blu — mentre il rosso, con l'onda lunga, la strada più lunga
+  //   la buca quasi indisturbato.
+  //
+  //   Una sola scena in tre dimensioni, che si gira come le altre: due
+  //   raggi a confronto, uno corto e verticale (mezzogiorno) e uno lungo e
+  //   obliquo (adesso, colorato dal vero — il colore del disco non è
+  //   dipinto a mano, esce dai tre conti di trasmittanza qui sotto).
+  //   Accanto, le stesse tre bande di luce in un istogramma. Prefisso
+  //   `tram`.
   // ===================================================================
 
   const TRAM_MIN = -1.5, TRAM_MAX = 12;        // gradi, gli estremi della slitta
@@ -6777,6 +6788,12 @@
   const TRAM_D = 90;            // raggio schematico della cupola del cielo
   const TRAM_D_SOLE = 88;       // dove si disegna il segnaposto del Sole
   const TRAM_OCCHIO = [0, 0, 1.6];
+  // Il metro del confronto fra i due cammini: il raggio di mezzogiorno è
+  // disegnato lungo esattamente `TRAM_SPESSORE`, e quello obliquo lungo
+  // `TRAM_SPESSORE × massa d'aria` — così la LUNGHEZZA disegnata è la
+  // stessa identica massa d'aria che leggi nella lettura qui sotto, non
+  // un secondo numero da riconciliare col primo
+  const TRAM_SPESSORE = 2.1;
   const TRAM_ZENIT_COL = { r: 27, g: 58, b: 120 };
   const TRAM_ORIZZ_COL = { r: 245, g: 181, b: 68 };
   const TRAM_BIANCO_SOLE = { r: 255, g: 244, b: 214 };
@@ -7062,15 +7079,44 @@
     didScritta(ctx, `dove sta davvero: ${num(s.hVero, 1)}°`, veroPr.x, veroPr.y + 16,
       { colore: C.testo3, misura: 10.5, allinea: 'center', peso: 600, schermo: true });
 
+    // --- Il confronto che spiega il «di sbieco»: due cammini nella
+    // stessa aria. A mezzogiorno il raggio cade quasi verticale — a
+    // destra, corto e spento — e attraversa lo spessore dell'aria una
+    // volta sola. Quello di adesso è disegnato LUNGO esattamente quanto
+    // la massa d'aria che leggi qui sotto: non un secondo numero da far
+    // tornare col primo, lo stesso (`TRAM_SPESSORE × X`). Più il Sole è
+    // basso, più il raggio giace quasi piatto sul terreno invece di
+    // scendere — è proprio questo, disegnato, il «di sbieco»
+    const puntoAlto = [0, 0, TRAM_SPESSORE];
+    const altoP = P(puntoAlto);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(148, 168, 214, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(occhioP.x, occhioP.y); ctx.lineTo(altoP.x, altoP.y); ctx.stroke();
+    ctx.restore();
+    // Le due etichette del confronto stanno vicine fra loro, appoggiate al
+    // bastoncino corto — non ai punti lontani del raggio obliquo, che a
+    // seconda di come si gira la scena possono proiettarsi quasi sopra ai
+    // segnaposto «vero»/«apparente» (stessa direzione, sola distanza
+    // diversa: in prospettiva si scorciano fino quasi a coincidere)
+    didScritta(ctx, 'a mezzogiorno — il cammino più corto', altoP.x, altoP.y - 22,
+      { colore: C.testo2, misura: 10, allinea: 'center', peso: 600, schermo: true });
+
     // Il raggio vero: quasi dritto lontano dalla Terra, piegato negli
-    // ultimi chilometri — qui disegnati vicino all'occhio, o non si
-    // vedrebbe affatto: la curvatura reale è continua e minuscola a ogni
-    // passo, e tutta concentrata nell'aria bassa e densa
-    const ingressoP = [60 * Math.cos(hVeroRad), 0, 60 * Math.sin(hVeroRad)];
+    // ultimi gradi — qui il piegamento è concentrato vicino all'occhio, o
+    // non si vedrebbe affatto: la curvatura reale è continua e minuscola a
+    // ogni passo, tutta nell'aria bassa e densa. I due punti di controllo
+    // sono in FRAZIONE della lunghezza totale (non fissi): a mezzogiorno
+    // il cammino può essere pochi passi soli, e un piegamento a distanza
+    // fissa lo avrebbe superato in pieno, sbucando dall'altra parte
+    const lunghezzaObliqua = TRAM_SPESSORE * s.X;
+    const direzioneApp = [Math.cos(hAppRad), 0, Math.sin(hAppRad)];
+    const ingressoP = tramScala(direzioneApp, lunghezzaObliqua);
     const dirRetta = tramNormalizza(tramSub(TRAM_OCCHIO, ingressoP));
     const dirApp = tramNormalizza(tramSub(appP, TRAM_OCCHIO));
-    const C1 = tramAdd(ingressoP, tramScala(dirRetta, 22));
-    const C2 = tramAdd(TRAM_OCCHIO, tramScala(dirApp, 14));
+    const C1 = tramAdd(ingressoP, tramScala(dirRetta, lunghezzaObliqua * 0.55));
+    const C2 = tramAdd(TRAM_OCCHIO, tramScala(dirApp, Math.min(lunghezzaObliqua * 0.3, 10)));
     let precedente = null;
     for (let k = 0; k <= 48; k++) {
       const t = k / 48, it = 1 - t;
@@ -7085,12 +7131,14 @@
         // bassa e densa, che avviene quasi tutta la diffusione
         const colT = Math.pow(t - 0.5 / 48, 2.4);
         ctx.strokeStyle = tramRGBA(tramMix3(TRAM_BIANCO_SOLE, coloreSole, colT), 1);
-        ctx.lineWidth = 2.4;
+        ctx.lineWidth = 2.6;
         ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(precedente.x, precedente.y); ctx.lineTo(pr.x, pr.y); ctx.stroke();
       }
       precedente = pr;
     }
+    didScritta(ctx, `adesso — ${num(s.X, 1)}× più lungo, di sbieco`, altoP.x, altoP.y - 8,
+      { colore: tramRGBA(coloreSole), misura: 10.5, allinea: 'center', peso: 700, schermo: true });
 
     // Il Sole come lo vedi: il colore vero, calcolato dalle tre bande
     const appPr = P(appP);
@@ -7106,7 +7154,7 @@
     didCorpoSchermo(ctx, occhioP.x, occhioP.y, 3, C.testo2, { alone: 2 });
     didScritta(ctx, 'tu', occhioP.x + 8, occhioP.y + 4, { colore: C.testo3, misura: 9.5, schermo: true });
 
-    didScritta(ctx, 'Il raggio del Sole, piegato dall\'aria', 12, 18,
+    didScritta(ctx, 'Due cammini nella stessa aria: verticale a mezzogiorno, di sbieco adesso', 12, 18,
       { colore: C.testo3, misura: 11, peso: 700, schermo: true });
   }
 
@@ -7194,9 +7242,10 @@
         ancora: la rifrazione piega il suo raggio di <strong>${Math.round(s.R)}′</strong>, quasi quanto l'intero
         disco è largo (32′). Quello che stai guardando appoggiato sull'orizzonte, in realtà, non c'è già più.`;
     } else {
-      sp.innerHTML = `Il Sole è ancora sopra l'orizzonte vero, ma già basso: la luce che ti arriva ha attraversato
-        <strong>${num(s.X, 1)} volte</strong> l'aria che attraversa a mezzogiorno, e il blu ne è quasi sparito —
-        resta soprattutto il rosso.`;
+      sp.innerHTML = `Il Sole è ancora sopra l'orizzonte vero, ma già basso: a mezzogiorno il suo raggio cade
+        quasi verticale (il cammino corto, a destra nella scena), adesso la taglia di sbieco — un cammino
+        <strong>${num(s.X, 1)} volte più lungo</strong>. Lungo tutta quella strada in più il blu si è disperso
+        quasi per intero: resta soprattutto il rosso.`;
     }
   }
 
@@ -7205,20 +7254,23 @@
     chip: 'Il Sole al tramonto',
     occhiello: 'Concetto 8 — l\'aria non è vuota',
     titolo: 'Perché lo vedi ancora, e perché è così debole',
-    sommario: `Negli ultimi minuti prima che il Sole sparisca succedono due cose insieme, e sono due bugie
-      ottiche diverse. La prima: quello che vedi non è dove il Sole sta — l'aria piega il suo raggio, e
-      quando lo vedi appoggiato sull'orizzonte il disco vero è già scomparso, di più della sua stessa
-      larghezza. La seconda: quel poco che arriva ha attraversato l'aria una trentina di volte più a lungo
-      che a mezzogiorno, e la stessa diffusione che di giorno manda il blu in giro per tutto il cielo qui lo
-      toglie quasi tutto dal raggio diretto — resta il rosso. Scorri la slitta, o lascia correre il tempo, e
-      guarda il Sole cambiare colore dal vero.`,
+    sommario: `Parte tutto da un angolo. A mezzogiorno il Sole è alto e i suoi raggi cadono quasi
+      verticali: attraversano lo spessore dell'aria una volta sola, il cammino più corto che ci sia. Al
+      tramonto il Sole è basso, e lo stesso raggio taglia la stessa aria <strong>di sbieco</strong> — una
+      strada che può essere anche trenta volte più lunga. Da quella sola strada più lunga vengono due
+      bugie ottiche insieme: quello che vedi non è dove il Sole sta (l'aria piega il raggio, e il disco
+      vero è già scomparso quando lo vedi ancora appoggiato sull'orizzonte), e l'aria lungo quella strada
+      si comporta come un filtro — il blu, onda corta, sbatte contro le sue molecole e si disperde in ogni
+      direzione, mentre il rosso, onda lunga, la buca quasi indisturbato. Scorri la slitta, o lascia
+      correre il tempo, e guarda i due raggi — quello corto di mezzogiorno, quello lungo di adesso —
+      cambiare lunghezza e colore dal vero.`,
 
     costruisci() {
       return `
         <div class="did-scene did-scene-due">
           <figure class="did-scena">
             <canvas id="did-tram-scena" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">Il raggio del Sole, piegato dall'aria — <em>curvatura e spessore dell'atmosfera esagerati, per vederli</em></figcaption>
+            <figcaption class="did-targhetta">Due cammini nella stessa aria: verticale a mezzogiorno, di sbieco adesso — <em>curvatura e spessore dell'atmosfera esagerati, per vederli</em></figcaption>
           </figure>
           <figure class="did-scena">
             <canvas id="did-tram-bande" class="did-tela"></canvas>
@@ -7239,17 +7291,25 @@
         ])}
 
         <p class="did-spiega" id="did-tram-spiega">—</p>
-        <p class="did-nota">La rifrazione qui usa la formula di Bennett (1982): a zero gradi vale circa 34
+        <p class="did-nota">Nella scena i due raggi sono disegnati in scala fra loro: quello di mezzogiorno
+          lungo un solo «spessore» d'aria, quello di adesso lungo tanti spessori quanti ne dice la lettura
+          «Aria attraversata» — non un secondo numero da far tornare col primo, lo stesso. Quel numero è la
+          massa d'aria di Kasten &amp; Young (1989), che non manda all'infinito come farebbe la legge
+          ingenua 1/sin(h): la curvatura della Terra la ferma da sola, attorno a 38 volte lo zenit — è
+          per questo che in giro si trovano numeri diversi («dieci volte», «trenta volte»): dipende da
+          quanto vicino all'orizzonte si guarda, a pochi gradi è già una decina, proprio sul filo sale
+          fino a una quarantina. Il blu, lungo tutta quella strada, si disperde in ogni direzione —
+          diffusione di Rayleigh (λ⁻⁴), la stessa che di giorno fa il cielo blu — mentre il rosso la buca
+          quasi indisturbato: è l'estinzione, qui tarata su un cielo molto pulito. La rifrazione che piega
+          il raggio (l'altra bugia ottica) usa la formula di Bennett (1982): a zero gradi vale circa 34
           primi, lo stesso mezzo grado abbondante che questo calendario usa per calcolare l'ora vera del
           tramonto — a cui si somma il quarto di grado del raggio del disco, per il momento in cui l'ultimo
-          lembo sparisce davvero. La massa d'aria è quella di Kasten &amp; Young (1989), che non manda
-          all'infinito come farebbe 1/sin(h): la curvatura della Terra la ferma da sola, attorno a 38 volte
-          lo zenit. L'estinzione è solo Rayleigh (λ⁻⁴), tarata su un cielo molto pulito: foschia e umidità —
-          che si accumulano proprio vicino al suolo, cioè lungo la strada più lunga — la aggravano parecchio,
-          ed è per questo che nella vita vera si può guardare il Sole al tramonto a occhio nudo, cosa
-          impossibile a mezzogiorno. La discesa della slitta è resa uniforme per chiarezza: quanto ci mette
-          il Sole vero a scendere di un grado dipende dalla latitudine — pochi minuti all'equatore, ore
-          intere vicino ai circoli polari, dove infatti il crepuscolo può durare tutta la notte.</p>
+          lembo sparisce davvero. Foschia e umidità, che si accumulano proprio vicino al suolo — cioè
+          lungo la strada più lunga — aggravano parecchio l'estinzione vera, ed è per questo che nella vita
+          vera si può guardare il Sole al tramonto a occhio nudo, cosa impossibile a mezzogiorno. La
+          discesa della slitta è resa uniforme per chiarezza: quanto ci mette il Sole vero a scendere di un
+          grado dipende dalla latitudine — pochi minuti all'equatore, ore intere vicino ai circoli polari,
+          dove infatti il crepuscolo può durare tutta la notte.</p>
 
         ${didPonti([
           { azione: 'cielo', icona: 'sole', testo: 'Guardalo stasera, da qui',
