@@ -19680,6 +19680,65 @@ function solDisegnaSguardo(ctx, terra, corpo) {
   ctx.restore();
 }
 
+// La bussola sera/mattina, appoggiata alla Terra: due frecce corte nella
+// direzione dell'elongazione a novanta gradi — la stessa geometria che nel
+// planetario decide se un pianeta si vede dopo il tramonto o prima dell'alba
+// (§7.7, `solQuandoSiVede`). È il filo che tiene insieme le due viste: quando
+// si arriva da lì, i pianeti a sinistra sono quelli appena visti (o da
+// vedere) la sera, quelli a destra quelli del mattino — ed è per questo che
+// `solInquadraDaTerra()` mette la Terra sotto al Sole. Le frecce non sono
+// un'icona incollata sullo schermo: sono calcolate dalla vera posizione della
+// Terra, quindi girano con la scena e si spostano da sole quando i mesi
+// passano e la Terra si muove lungo la sua orbita.
+function solDisegnaBussolaOrari(ctx, terra, prese) {
+  if (!terra || !terra.schermo) return;
+  const p0 = terra.schermo;
+  // Fuori dalla tela non c'è niente a cui appoggiarsi: succede zoomando su un
+  // pianeta lontano, dove la Terra resta indietro fuori dal riquadro
+  if (p0.px < -20 || p0.px > sol.L + 20 || p0.py < -20 || p0.py > sol.H + 20) return;
+  const d = Math.hypot(terra.pos.x, terra.pos.y, terra.pos.z);
+  if (!d) return;
+  const lonSole = Math.atan2(-terra.pos.y, -terra.pos.x);
+  const passo = d * 0.16;
+  if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
+  ctx.save();
+  ctx.font = `10px ${SOL_CARATTERE}`;
+  [{ segno: 1, testo: 'Sera' }, { segno: -1, testo: 'Mattina' }].forEach(v => {
+    // +90° di elongazione è la sera (si vede dopo il tramonto), −90° è il
+    // mattino (si vede prima dell'alba): la stessa convenzione di
+    // `solElongazione`, verificata contro di lei nel banco di prova
+    const dir = lonSole + v.segno * Math.PI / 2;
+    const punto = solScena({
+      x: terra.pos.x + Math.cos(dir) * passo,
+      y: terra.pos.y + Math.sin(dir) * passo,
+      z: terra.pos.z
+    });
+    const p = solProietta(punto);
+    const ang = Math.atan2(p.py - p0.py, p.px - p0.px);
+    if (!isFinite(ang)) return;
+    const lung = 26;
+    const fx = p0.px + Math.cos(ang) * lung, fy = p0.py + Math.sin(ang) * lung;
+    ctx.strokeStyle = 'rgba(148, 168, 214, 0.4)';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(p0.px + Math.cos(ang) * 9, p0.py + Math.sin(ang) * 9);
+    ctx.lineTo(fx, fy);
+    ctx.stroke();
+    const allinea = Math.cos(ang) >= 0 ? 'left' : 'right';
+    const largo = ctx.measureText(v.testo).width;
+    const tx = fx + Math.cos(ang) * 3, ty = fy + Math.sin(ang) * 3;
+    const bx = allinea === 'left' ? tx : tx - largo;
+    prese.push({ x: bx - 2, y: ty - 10, w: largo + 4, h: 13 });
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
+    ctx.textAlign = allinea;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(v.testo, tx, ty);
+    ctx.globalAlpha = 1;
+  });
+  ctx.restore();
+}
+
 function solDisegna() {
   if (!sol.ctx) return;
   const ctx = sol.ctx;
@@ -19752,6 +19811,11 @@ function solDisegna() {
     if (p.id === 'Earth') solDisegnaLuna(ctx, p, true, assi);
   });
   soleQui();   // tutti i pianeti sono dietro al Sole: tocca a lui chiudere
+
+  // La bussola sera/mattina, sopra ai pallini (se no il disco della Terra le
+  // coprirebbe l'attacco) ma sotto ai nomi: registra qui il suo ingombro,
+  // così un nome di pianeta non le finisce sopra
+  solDisegnaBussolaOrari(ctx, terra, prese);
 
   // I nomi vengono dopo tutti i pallini, altrimenti un pianeta disegnato più
   // tardi cancellerebbe la scritta di quello di prima. Il pianeta scelto
