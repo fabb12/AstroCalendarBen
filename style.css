@@ -3290,6 +3290,22 @@ body .chip-astro {
 .segmenti-categorie { flex-wrap: wrap; }
 .segmenti-categorie .tasto-segmento { flex: 1 1 auto; min-width: 4.5rem; }
 
+/* Le due viste da fuori — Sistema Solare 3D, Atlante delle costellazioni —
+   stavano in fondo al pannello, sotto un elenco che su un telefono corre
+   anche per due schermate: un tasto che c'è ma non si vede è un tasto che
+   non c'è. Restano appiccicate sopra l'elenco come il campo di ricerca,
+   fianco a fianco per non rubare più riga di quella che avevano già. */
+.riga-viste-astri { margin-top: 6px; }
+.tasto-vista-esterna {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.15;
+}
+
 .nota-lunga { margin: 6px 0 0; font-size: 0.76rem; color: var(--testo-3); }
 
 /* Un comando a segmenti: scelte che si escludono, incollate in una pillola
@@ -4560,10 +4576,6 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
 .sol-quando-breve { color: var(--testo-2); text-align: right; }
 .sol-nota { margin: 0; font-size: 0.74rem; line-height: 1.55; color: var(--testo-3); }
 .sol-vuoto { margin: 0; font-size: 0.85rem; color: var(--testo-2); }
-
-/* Un tasto che occupa tutta la riga del pannello: serve a quello che apre una
-   finestra intera, non a quelli che accendono e spengono una cosa sola */
-.tasto-cielo.tasto-largo-cielo { width: 100%; max-width: none; margin-top: 8px; }
 
 @media (max-width: 640px) {
   .sol-barra-tempo { --tasto-tempo: 34px; gap: 5px; }

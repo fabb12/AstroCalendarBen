@@ -649,24 +649,30 @@
                   <div id="skymap-astri-categorie" class="segmenti-cielo segmenti-categorie"
                     role="group" aria-label="Categorie di astri"></div>
                 </div>
+                <!-- Le due viste da fuori: stavano in fondo al pannello, sotto
+                     a un elenco che su un telefono può correre per due
+                     schermate — un tasto che c'è ma non si vede è un tasto che
+                     non c'è. Stanno nella parte appiccicata in cima, come il
+                     campo di ricerca sopra di loro, per restarci sempre. -->
+                <div class="riga-comandi riga-viste-astri">
+                  <!-- La mappa dice in che direzione guardare; questa dice perché
+                       proprio in quella direzione. È la stessa scena vista da
+                       fuori, nello stesso istante, e sta qui — nel pannello in cui
+                       si scelgono i pianeti — perché è lì che nasce la domanda. -->
+                  <button id="skymap-btn-sistema" type="button" class="tasto-cielo tasto-vista-esterna"
+                    title="Esci dal Sistema Solare e guardalo da fuori: dove sta ogni pianeta sulla sua orbita in questo istante, e in che direzione lo stai guardando da qui. Si gira col dito.">Sistema Solare 3D</button>
+
+                  <!-- Tutte e ottantotto, comprese le sessanta che da qui non si
+                       vedranno mai: con il disegno, chi gli ha dato il nome nelle
+                       altre culture, e il tasto che porta il planetario sotto il
+                       cielo giusto. -->
+                  <button id="skymap-btn-atlante" type="button" class="tasto-cielo tasto-vista-esterna"
+                    title="Le ottantotto costellazioni: la figura, il disegno, i nomi che le hanno dato le altre culture, e da qui si vede o no. Metà sono australi e dall'Italia non sorgono mai: da lì si può andare.">Atlante costellazioni</button>
+                </div>
               </div>
               <p class="etichetta-comando">Toccane uno: la mappa lo porta al centro e una freccia ti guida. Per la scheda dei dati, toccalo sulla mappa.</p>
               <div id="skymap-oggetti" class="elenco-astri"></div>
               <p id="skymap-astri-vuoto" class="etichetta-comando nota-lunga hidden">Nessun astro con questo nome.</p>
-
-              <!-- La mappa dice in che direzione guardare; questa dice perché
-                   proprio in quella direzione. È la stessa scena vista da
-                   fuori, nello stesso istante, e sta qui — nel pannello in cui
-                   si scelgono i pianeti — perché è lì che nasce la domanda. -->
-              <button id="skymap-btn-sistema" type="button" class="tasto-cielo tasto-largo-cielo"
-                title="Esci dal Sistema Solare e guardalo da fuori: dove sta ogni pianeta sulla sua orbita in questo istante, e in che direzione lo stai guardando da qui. Si gira col dito.">Il Sistema Solare in 3D</button>
-
-              <!-- Tutte e ottantotto, comprese le sessanta che da qui non si
-                   vedranno mai: con il disegno, chi gli ha dato il nome nelle
-                   altre culture, e il tasto che porta il planetario sotto il
-                   cielo giusto. -->
-              <button id="skymap-btn-atlante" type="button" class="tasto-cielo tasto-largo-cielo"
-                title="Le ottantotto costellazioni: la figura, il disegno, i nomi che le hanno dato le altre culture, e da qui si vede o no. Metà sono australi e dall'Italia non sorgono mai: da lì si può andare.">Atlante delle costellazioni</button>
             </section>
 
           </div>
