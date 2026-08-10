@@ -6772,9 +6772,13 @@
   //   Una sola scena in tre dimensioni, che si gira come le altre: due
   //   raggi a confronto, uno corto e verticale (mezzogiorno) e uno lungo e
   //   obliquo (adesso, colorato dal vero — il colore del disco non è
-  //   dipinto a mano, esce dai tre conti di trasmittanza qui sotto).
-  //   Accanto, le stesse tre bande di luce in un istogramma. Prefisso
-  //   `tram`.
+  //   dipinto a mano, esce dai tre conti di trasmittanza qui sotto). Lungo
+  //   i due raggi, dei piccoli segni azzurri che «volano via» di lato
+  //   rendono visibile la diffusione di Rayleigh — pochi sul cammino corto,
+  //   tanti su quello lungo, proprio come nell'infografica da cui è nata
+  //   questa scena — e un pulviscolo fermo nella cupola fa da aria.
+  //   L'osservatore è una figura minima, non più un punto. Accanto, le
+  //   stesse tre bande di luce in un istogramma. Prefisso `tram`.
   // ===================================================================
 
   const TRAM_MIN = -1.5, TRAM_MAX = 12;        // gradi, gli estremi della slitta
@@ -6797,13 +6801,21 @@
   const TRAM_ZENIT_COL = { r: 27, g: 58, b: 120 };
   const TRAM_ORIZZ_COL = { r: 245, g: 181, b: 68 };
   const TRAM_BIANCO_SOLE = { r: 255, g: 244, b: 214 };
+  const TRAM_BLU_COL = { r: 91, g: 155, b: 255 };      // il colore dei segni di dispersione (Rayleigh)
 
   const tram = {
     hVero: 3,
     marcia: false,
     velocita: 1,
-    cam: { az: -34, elev: 21 },
-    camV: { az: -34, elev: 21 },
+    // L'azimut di partenza non è a caso: Sole, raggio e bastoncino di
+    // mezzogiorno stanno tutti nel piano y=0 (azimut 0), e la proiezione
+    // qui sotto è ortogonale — senza prospettiva a dare profondità, un
+    // segmento quasi allineato con lo sguardo si scorcia quasi a un punto.
+    // Con la camera vicino a −34° il raggio lungo perdeva un terzo della
+    // sua lunghezza sullo schermo proprio quando serve di più mostrarlo
+    // lungo (vicino all'orizzonte): −70° lo tiene quasi di taglio
+    cam: { az: -70, elev: 24 },
+    camV: { az: -70, elev: 24 },
     trascina: null,
     veroAdesso: undefined     // l'altezza vera del Sole, adesso, da casa: calcolata una volta sola in entra()
   };
@@ -6912,6 +6924,29 @@
     const n = Math.hypot(a[0], a[1], a[2]) || 1;
     return [a[0] / n, a[1] / n, a[2] / n];
   }
+  // Un generatore pseudocasuale deterministico (niente Math.random): le
+  // molecole dell'aria e i segni di dispersione devono stare fermi nello
+  // spazio mentre si gira la scena col dito, non tremolare a ogni fotogramma
+  function tramPseudo(n) {
+    const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453;
+    return x - Math.floor(x);
+  }
+
+  // Le molecole dell'aria: un pulviscolo fermo nella cupola, più fitto
+  // vicino all'orizzonte che allo zenit — non è un dato fisico, è la
+  // controparte visiva della parola «aria» quando è ancora vuota. Calcolate
+  // una volta sola, come le orbite del Sistema Solare in 3D
+  const TRAM_MOLECOLE = (() => {
+    const pts = [];
+    for (let i = 0; i < 46; i++) {
+      const ang = Math.pow(tramPseudo(i * 3 + 1), 2.1) * 72 + 3;   // gradi, sbilanciato verso il basso
+      const az = tramPseudo(i * 3 + 2) * Math.PI * 2;
+      const raggio = TRAM_D * (0.32 + tramPseudo(i * 3 + 3) * 0.6);
+      const rOriz = raggio * Math.cos(ang * Math.PI / 180);
+      pts.push([rOriz * Math.cos(az), rOriz * Math.sin(az), raggio * Math.sin(ang * Math.PI / 180)]);
+    }
+    return pts;
+  })();
 
   // --- La telecamera: la stessa algebra di `spaVista`/`spaPro` (e della
   // vista 3D del Sistema Solare), con l'occhio che orbita attorno alla
@@ -6959,6 +6994,40 @@
     tela.addEventListener('pointerup', su);
     tela.addEventListener('pointercancel', su);
     tela.addEventListener('pointerleave', su);
+  }
+
+  // Un piccolo segno che «vola via» di lato: un trattino più un puntino,
+  // nella direzione perpendicolare al raggio. È la diffusione di Rayleigh
+  // disegnata — non in scala, ma nel verso giusto: se ne mettono pochi sul
+  // cammino corto e tanti su quello lungo (la stessa X che allunga il
+  // raggio ne decide il numero, poco più giù in `tramDisegnaScena`)
+  function tramSegnoDispersione(ctx, x, y, dx, dy, alfa) {
+    const l = 3.4 + tramPseudo(x * 7.1 + y * 3.3) * 2.4;
+    ctx.strokeStyle = tramRGBA(TRAM_BLU_COL, alfa);
+    ctx.lineWidth = 1.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx * l, y + dy * l); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x + dx * l, y + dy * l, 1, 0, Math.PI * 2);
+    ctx.fillStyle = tramRGBA(TRAM_BLU_COL, Math.min(1, alfa * 1.3));
+    ctx.fill();
+  }
+
+  // L'osservatore: una figura minima — testa, corpo, gambe, braccia, in
+  // poche linee — come nell'infografica da cui è nata questa scena. Un
+  // punto solo, prima, si leggeva come uno degli astri e non come «te»
+  function tramFiguraPersona(ctx, x, y, colore) {
+    ctx.save();
+    ctx.strokeStyle = colore;
+    ctx.fillStyle = colore;
+    ctx.lineWidth = 1.4;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(x, y - 10, 2.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(x, y - 7.5); ctx.lineTo(x, y + 1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - 5.5); ctx.lineTo(x - 3.8, y - 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - 5.5); ctx.lineTo(x + 3.8, y - 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y + 1); ctx.lineTo(x - 3.4, y + 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y + 1); ctx.lineTo(x + 3.4, y + 7); ctx.stroke();
+    ctx.restore();
   }
 
   // --- La scena: la cupola del cielo, il terreno, e il raggio del Sole
@@ -7012,6 +7081,20 @@
     }
     ctx.restore();
 
+    // Le molecole dell'aria: un pulviscolo fermo nella cupola, più fitto
+    // vicino all'orizzonte — la parola «aria» diventa qualcosa da vedere,
+    // non solo da immaginare mentre si legge il resto della scena
+    ctx.save();
+    TRAM_MOLECOLE.forEach((m) => {
+      const p = P(m);
+      const vicinanza = 1 - Math.min(1, m[2] / TRAM_D);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(148, 168, 214, ${(0.10 + vicinanza * 0.14).toFixed(2)})`;
+      ctx.fill();
+    });
+    ctx.restore();
+
     // Il terreno: un disco pieno, che è anche l'orizzonte — l'anello ad
     // altezza zero della cupola coincide col suo bordo
     ctx.beginPath();
@@ -7040,7 +7123,14 @@
     ctx.setLineDash([]);
     ctx.restore();
     didScritta(ctx, 'zenit', zenit.x, zenit.y - 8, { colore: C.testo3, misura: 10, allinea: 'center', peso: 600, schermo: true });
-    didScritta(ctx, 'orizzonte', orizz.x, orizz.y + 16, { colore: C.testo3, misura: 10, allinea: 'center', peso: 600, schermo: true });
+    // A bassa quota il Sole vero sta proprio su questo punto di
+    // riferimento (sono lo stesso raggio, l'uno vicino all'altro): la sua
+    // etichetta «dove sta davvero», poco più giù nella scena, dice già
+    // «vicino all'orizzonte» — scriverlo due volte sovrapposto non aiuta
+    const veroVicinoAllOrizzonte = Math.hypot(orizz.x - P(veroP).x, orizz.y - P(veroP).y) < 36;
+    if (!veroVicinoAllOrizzonte) {
+      didScritta(ctx, 'orizzonte', orizz.x, orizz.y + 16, { colore: C.testo3, misura: 10, allinea: 'center', peso: 600, schermo: true });
+    }
 
     // Due archetti attorno all'occhio: quanto è alto il Sole vero, quanto
     // quello apparente. La differenza fra i due È la rifrazione
@@ -7095,13 +7185,28 @@
     ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(occhioP.x, occhioP.y); ctx.lineTo(altoP.x, altoP.y); ctx.stroke();
     ctx.restore();
+    // Anche a mezzogiorno un po' di blu si disperde — è la ragione per cui
+    // il cielo di giorno è blu — ma il cammino è così corto che ne resta
+    // pochissimo da vedere: due soli segni, contro gli undici del tramonto
+    const dxCorto = altoP.x - occhioP.x, dyCorto = altoP.y - occhioP.y;
+    const lCorto = Math.hypot(dxCorto, dyCorto) || 1;
+    const pxCorto = -dyCorto / lCorto, pyCorto = dxCorto / lCorto;
+    [0.4, 0.75].forEach((t, i) => {
+      const x = occhioP.x + dxCorto * t, y = occhioP.y + dyCorto * t;
+      tramSegnoDispersione(ctx, x, y, pxCorto * (i % 2 ? -1 : 1), pyCorto * (i % 2 ? -1 : 1), 0.4);
+    });
+    didCorpoSchermo(ctx, altoP.x, altoP.y, 6, tramHexOf(TRAM_BIANCO_SOLE), { alone: 3 });
     // Le due etichette del confronto stanno vicine fra loro, appoggiate al
     // bastoncino corto — non ai punti lontani del raggio obliquo, che a
     // seconda di come si gira la scena possono proiettarsi quasi sopra ai
     // segnaposto «vero»/«apparente» (stessa direzione, sola distanza
-    // diversa: in prospettiva si scorciano fino quasi a coincidere)
-    didScritta(ctx, 'a mezzogiorno — il cammino più corto', altoP.x, altoP.y - 22,
-      { colore: C.testo2, misura: 10, allinea: 'center', peso: 600, schermo: true });
+    // diversa: in prospettiva si scorciano fino quasi a coincidere). Sono
+    // allineate a destra e crescono verso sinistra, non centrate: con la
+    // camera di partenza il Sole vero sta sempre a destra del bastoncino
+    // corto, e un testo lungo centrato gli finiva sopra ad angoli alti,
+    // dove i due punti sono più vicini fra loro
+    didScritta(ctx, 'mezzogiorno — il cammino più corto', altoP.x - 10, altoP.y - 30,
+      { colore: C.testo2, misura: 10, allinea: 'right', peso: 600, schermo: true });
 
     // Il raggio vero: quasi dritto lontano dalla Terra, piegato negli
     // ultimi gradi — qui il piegamento è concentrato vicino all'occhio, o
@@ -7117,6 +7222,19 @@
     const dirApp = tramNormalizza(tramSub(appP, TRAM_OCCHIO));
     const C1 = tramAdd(ingressoP, tramScala(dirRetta, lunghezzaObliqua * 0.55));
     const C2 = tramAdd(TRAM_OCCHIO, tramScala(dirApp, Math.min(lunghezzaObliqua * 0.3, 10)));
+
+    // Quanti segni di dispersione mettere lungo il raggio: pochi vicino
+    // allo zenit (poca aria, poco da disperdere), fino a undici vicino
+    // all'orizzonte — è la stessa X che allunga il raggio a infittirli, e
+    // più forte è stata la dispersione del blu (letta dalla trasmittanza),
+    // più i segni sono marcati
+    const numDispersi = Math.max(2, Math.min(11, Math.round(2 + s.X * 0.26)));
+    const kDispersi = new Set();
+    for (let i = 0; i < numDispersi; i++) {
+      kDispersi.add(4 + Math.round((44 - 4) * (i + 0.5) / numDispersi));
+    }
+    const alfaDispersione = 0.32 + 0.55 * Math.min(1, 1 - s.bande.blu);
+
     let precedente = null;
     for (let k = 0; k <= 48; k++) {
       const t = k / 48, it = 1 - t;
@@ -7134,11 +7252,18 @@
         ctx.lineWidth = 2.6;
         ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(precedente.x, precedente.y); ctx.lineTo(pr.x, pr.y); ctx.stroke();
+        if (kDispersi.has(k)) {
+          const tx = pr.x - precedente.x, ty = pr.y - precedente.y;
+          const tl = Math.hypot(tx, ty) || 1;
+          const px = -ty / tl, py = tx / tl;
+          const verso = tramPseudo(k * 5.7) > 0.5 ? 1 : -1;
+          tramSegnoDispersione(ctx, pr.x, pr.y, px * verso, py * verso, alfaDispersione);
+        }
       }
       precedente = pr;
     }
-    didScritta(ctx, `adesso — ${num(s.X, 1)}× più lungo, di sbieco`, altoP.x, altoP.y - 8,
-      { colore: tramRGBA(coloreSole), misura: 10.5, allinea: 'center', peso: 700, schermo: true });
+    didScritta(ctx, `adesso — ${num(s.X, 1)}× più lungo, di sbieco`, altoP.x - 10, altoP.y - 16,
+      { colore: tramRGBA(coloreSole), misura: 10.5, allinea: 'right', peso: 700, schermo: true });
 
     // Il Sole come lo vedi: il colore vero, calcolato dalle tre bande
     const appPr = P(appP);
@@ -7151,8 +7276,31 @@
         { colore: C.testo3, misura: 10.5, allinea: 'center', peso: 600, schermo: true });
     }
 
-    didCorpoSchermo(ctx, occhioP.x, occhioP.y, 3, C.testo2, { alone: 2 });
-    didScritta(ctx, 'tu', occhioP.x + 8, occhioP.y + 4, { colore: C.testo3, misura: 9.5, schermo: true });
+    tramFiguraPersona(ctx, occhioP.x, occhioP.y, C.testo2);
+
+    // La legenda dei colori: la luce del Sole li contiene tutti, ed è
+    // l'aria lungo il cammino a togliergliene alcuni più di altri — lo
+    // stesso concetto dell'istogramma qui accanto, in una riga sola.
+    // Centrata sulla larghezza della tela (non ancorata a un bordo): le
+    // due didascalie sono più larghe della barra stessa, e con un margine
+    // fisso da destra la metà destra del testo finiva fuori dalla tela
+    const legL = Math.min(130, L * 0.26), legCX = L / 2, legY = H - 34;
+    const legX = legCX - legL / 2;
+    const grad = ctx.createLinearGradient(legX, 0, legX + legL, 0);
+    grad.addColorStop(0, '#7c5cff');
+    grad.addColorStop(0.28, TRAM_BANDE[0].colore);
+    grad.addColorStop(0.55, TRAM_BANDE[1].colore);
+    grad.addColorStop(0.8, '#f2c14e');
+    grad.addColorStop(1, TRAM_BANDE[2].colore);
+    ctx.fillStyle = grad;
+    ctx.fillRect(legX, legY, legL, 7);
+    ctx.strokeStyle = 'rgba(148, 168, 214, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(legX, legY, legL, 7);
+    didScritta(ctx, 'il Sole li contiene tutti', legCX, legY - 9,
+      { colore: C.testo3, misura: 9, allinea: 'center', peso: 600, schermo: true });
+    didScritta(ctx, 'l\'aria toglie prima i corti', legCX, legY + 19,
+      { colore: C.testo3, misura: 9, allinea: 'center', peso: 600, schermo: true });
 
     didScritta(ctx, 'Due cammini nella stessa aria: verticale a mezzogiorno, di sbieco adesso', 12, 18,
       { colore: C.testo3, misura: 11, peso: 700, schermo: true });
@@ -7270,7 +7418,7 @@
         <div class="did-scene did-scene-due">
           <figure class="did-scena">
             <canvas id="did-tram-scena" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">Due cammini nella stessa aria: verticale a mezzogiorno, di sbieco adesso — <em>curvatura e spessore dell'atmosfera esagerati, per vederli</em></figcaption>
+            <figcaption class="did-targhetta">Due cammini nella stessa aria: verticale a mezzogiorno, di sbieco adesso. I segni azzurri sono il blu che si disperde lungo la strada — <em>curvatura e spessore dell'atmosfera esagerati, per vederli</em></figcaption>
           </figure>
           <figure class="did-scena">
             <canvas id="did-tram-bande" class="did-tela"></canvas>
