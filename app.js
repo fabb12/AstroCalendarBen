@@ -6689,6 +6689,10 @@ const sky = {
   // sta ancora scorrendo, così riaprire la vista non ne accoda una seconda
   restoInCorso: false,
   sensori: false,        // orientamento del dispositivo attivo
+  ascolto: false,        // gli ascoltatori dell'orientamento sono già attaccati
+  sensoriNegati: false,  // il permesso dei sensori è stato rifiutato: non si insiste
+  attesaGesto: false,    // il permesso aspetta un tocco (iOS lo lega al gesto)
+  avviata: false,        // la prima apertura del planetario ha già cercato la posizione
   seguiTelefono: true,   // con i sensori accesi, il cielo lo punta il telefono
   assoluto: false,       // alpha riferito al Nord magnetico (bussola affidabile)
   orient: null,          // { alpha, beta, gamma } dall'ultimo evento
@@ -9498,25 +9502,38 @@ function skyEventoOrientamento(e) {
   const cambioSorgente = assoluto !== sky.assoluto;
   if (cambioSorgente) sky.baseFiltrata = null;
 
+  const primaLettura = !sky.sensori;
   sky.orient = { alpha, beta, gamma };
   sky.assoluto = assoluto;
   sky.sensori = true;
+  // La prima lettura è anche la sola occasione buona per dire com'è che
+  // funziona: la schermata di benvenuto non c'è più (e non deve tornare),
+  // ma «muovi il telefono» resta una cosa che nessuno indovina guardando
+  // una mappa ferma. Una riga, cinque secondi, e solo su un dispositivo che
+  // i sensori ce li ha davvero.
+  if (primaLettura) {
+    skyAvviso('sensori', 'Punta il telefono verso il cielo: la mappa segue quello che inquadri.', 6000);
+  }
   // Cambia anche quel che possiamo promettere all'utente: con una bussola
   // relativa il Nord va corretto a mano.
-  if (cambioSorgente) skyAggiornaStato();
+  if (cambioSorgente || primaLettura) skyAggiornaStato();
 }
 
-async function skyRichiediSensori() {
+// Un telefono che l'evento ce l'ha ma non lo manda mai — manca il
+// magnetometro, o il browser i sensori se li tiene — non si distingue da uno
+// che li sta ancora scaldando: l'unico modo di saperlo è aspettare. Passati
+// quattro secondi senza una lettura si dice come si fa lo stesso, e lo si
+// dice solo dove ci si aspettava che funzionasse: sul computer il dito è la
+// norma e non c'è niente da spiegare.
+const SKY_ATTESA_SENSORI_MS = 4000;
+
+// Mettersi in ascolto, e basta: nessun permesso di mezzo. Su Android e sul
+// computer è tutto quello che serve, ed è anche il secondo tempo di iOS,
+// dopo che il permesso è arrivato.
+function skyAscoltaOrientamento() {
   if (typeof DeviceOrientationEvent === 'undefined') return false;
-  try {
-    // iOS 13+: il permesso va chiesto durante un gesto dell'utente
-    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-      const esito = await DeviceOrientationEvent.requestPermission();
-      if (esito !== 'granted') return false;
-    }
-  } catch (e) {
-    return false;
-  }
+  if (sky.ascolto) return true;
+  sky.ascolto = true;
   // Ci si iscrive a entrambi gli eventi, ma non per usarli entrambi: quello
   // assoluto è il migliore e su certi dispositivi esiste senza mai arrivare,
   // quindi il relativo resta lì come rete di sicurezza. A scegliere fra i due,
@@ -9526,7 +9543,100 @@ async function skyRichiediSensori() {
     window.addEventListener('deviceorientationabsolute', skyEventoOrientamento, true);
   }
   window.addEventListener('deviceorientation', skyEventoOrientamento, true);
+  setTimeout(skyControllaSensori, SKY_ATTESA_SENSORI_MS);
   return true;
+}
+
+function skyControllaSensori() {
+  if (sky.sensori || sky.sensoriNegati || sky.attesaGesto || !sky.aperto) return;
+  if (dispositivoAttuale === 'computer') return;
+  skyAvviso('sensori', 'Bussola e giroscopio non rispondono: la mappa la muovi col dito, ' +
+    'trascinando sul cielo.', 8000);
+}
+
+async function skyRichiediSensori() {
+  if (typeof DeviceOrientationEvent === 'undefined') return false;
+  try {
+    // iOS 13+: il permesso va chiesto durante un gesto dell'utente
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+      const esito = await DeviceOrientationEvent.requestPermission();
+      if (esito !== 'granted') { sky.sensoriNegati = true; return false; }
+    }
+  } catch (e) {
+    // Fuori da un gesto iOS non risponde "no": solleva un'eccezione. Non è
+    // un rifiuto, è "non me l'hai chiesto nel momento giusto" — e chi chiama
+    // lo distingue da `sensoriNegati`, che invece è una decisione presa.
+    return false;
+  }
+  return skyAscoltaOrientamento();
+}
+
+// --- I sensori si accendono da soli ----------------------------------
+// Per anni il planetario si apriva su una schermata con due tasti: «Attiva
+// bussola e posizione» oppure «continua senza sensori». Era una domanda mal
+// posta — chi apre un planetario col telefono in mano vuole puntarlo verso
+// il cielo, non scegliere una modalità — e costava un tocco a ogni apertura,
+// per giunta prima di aver visto una sola stella.
+//
+// Adesso non si chiede niente: si accende tutto quello che c'è. Giroscopio e
+// accelerometro arrivano insieme, dallo stesso evento `deviceorientation`
+// (beta e gamma sono l'inclinazione, cioè l'accelerometro; alpha è la
+// direzione, cioè giroscopio e magnetometro fusi), e dove non c'è nessuno
+// dei due l'evento semplicemente non arriva mai: sul computer si resta col
+// dito, senza aver detto niente a nessuno.
+//
+// L'unico nodo è iOS, che il permesso lo lega al gesto che l'ha chiesto.
+// `apriSkymap()` è chiamata proprio dal tocco sulla voce «Planetario» del
+// menu, e finché la catena resta sincrona il permesso arriva. Quando un
+// gesto non c'è — si entra da un link `?vista=cielo`, o da una notifica —
+// la richiesta si rimette in coda al primo tocco che passa: un tasto in meno
+// da inventare, e chi tocca lo schermo per guardarsi intorno ha già fatto
+// il gesto che serviva.
+function skyAvviaSensori() {
+  if (sky.ascolto || sky.sensoriNegati) return;
+  if (typeof DeviceOrientationEvent === 'undefined') return;
+  // Dove il permesso non esiste non c'è niente da aspettare, e non c'è
+  // motivo di passare da una promessa: si ascolta e via.
+  if (typeof DeviceOrientationEvent.requestPermission !== 'function') {
+    skyAscoltaOrientamento();
+    return;
+  }
+  skyRichiediSensori().then((ok) => {
+    if (ok) { skyAggiornaStato(); return; }
+    if (sky.sensoriNegati) {
+      skyAvviso('sensori', 'Bussola e giroscopio non autorizzati: la mappa la muovi col dito. ' +
+        'Il permesso si ridà dalle impostazioni del browser.', 9000);
+      return;
+    }
+    skySensoriAlPrimoTocco();
+  });
+}
+
+// iOS ha rifiutato perché non c'era nessun gesto in corso: si riprova al
+// primo che arriva. Vale una volta sola, e gli ascoltatori si tolgono da sé
+// — non deve restare niente attaccato alla finestra dopo il primo tocco.
+function skySensoriAlPrimoTocco() {
+  if (sky.attesaGesto || sky.ascolto || sky.sensoriNegati) return;
+  sky.attesaGesto = true;
+  // `touchend` e `click` sono i due eventi che iOS riconosce come gesto:
+  // `pointerdown` da solo non basta, e il tocco sul cielo finisce lì.
+  const eventi = ['touchend', 'click'];
+  const stacca = () => {
+    sky.attesaGesto = false;
+    eventi.forEach(e => window.removeEventListener(e, prova, true));
+  };
+  const prova = () => {
+    stacca();
+    // Nel frattempo il permesso può essere arrivato per un'altra strada —
+    // riaprire il planetario è già un gesto, e la richiesta riparte da lì:
+    // rifarla adesso non servirebbe a niente.
+    if (sky.ascolto || sky.sensoriNegati) return;
+    skyRichiediSensori().then((ok) => {
+      if (ok) skyAggiornaStato();
+      else if (!sky.sensoriNegati) skySensoriAlPrimoTocco();  // gesto non valido: si resta in attesa
+    });
+  };
+  eventi.forEach(e => window.addEventListener(e, prova, true));
 }
 
 // =====================================================================
@@ -17029,19 +17139,26 @@ window.cercaSatelliteNelCielo = (satId) => {
 //   nella sezione 7.4-ter: qui ci sono solo i gesti che lo mettono in moto.
 // =====================================================================
 
-// Avvio: permessi, posizione e sensori (parte da un gesto dell'utente).
-// Il permesso dei sensori va chiesto subito, prima di qualsiasi attesa,
-// altrimenti iOS non lo collega più al tocco e lo rifiuta.
-async function skyAvvia(conSensori) {
-  const attesaSensori = conSensori ? skyRichiediSensori() : Promise.resolve(false);
+// Avvio: sensori e posizione, appena la vista va a schermo. Non parte più da
+// un tasto — non c'è più nessun tasto da premere — ma da `apriSkymap()`, che
+// è chiamata dal tocco sulla voce del menu: il permesso dei sensori va
+// chiesto lì, prima di qualsiasi attesa, altrimenti iOS non lo collega più
+// al gesto e lo rifiuta.
+async function skyAvvia() {
+  // Prima di ogni altra cosa, e senza `await` davanti: su iOS il permesso
+  // dei sensori vale solo se lo si chiede dentro al gesto che ha aperto la
+  // vista, e una sola attesa messa qui in mezzo lo perderebbe.
+  skyAvviaSensori();
 
-  // Il cielo si vede subito: la posizione arriva quando arriva
-  const overlay = document.getElementById('skymap-overlay');
-  if (overlay) overlay.classList.add('hidden');
-
-  if (conSensori && !(await attesaSensori)) {
-    skyAvviso('sensori', 'Bussola e giroscopio non disponibili: puoi comunque trascinare il dito sul cielo per guardarti intorno.');
-  }
+  // La posizione l'app la cerca già da sé all'avvio (7.1-bis), e la
+  // sorveglianza la tiene aggiornata: rifare la cascata a ogni apertura del
+  // planetario vorrebbe dire una richiesta GPS in più ogni volta che si
+  // passa di qui. Si insiste solo se non c'è ancora niente — senza un luogo
+  // il planetario non sa cosa hai sopra la testa — e comunque una volta
+  // sola per sessione.
+  if (sky.avviata) return;
+  sky.avviata = true;
+  if (luogoCorrente()) return;
 
   // La geolocalizzazione può metterci qualche secondo: intanto lo diciamo.
   // Se il GPS non risponde si scende di strato (rete, poi scelta a mano):
@@ -17092,6 +17209,13 @@ function apriSkymap() {
   if (sky.aperto) return;
   sky.aperto = true;
 
+  // Sensori e posizione, subito e senza chiedere il permesso di chiedere.
+  // Sta in cima e non più in fondo per una ragione sola: su iOS il permesso
+  // dei sensori è legato al gesto che ha aperto la vista (il tocco sulla
+  // voce «Planetario»), e ogni riga di lavoro messa prima è tempo che quel
+  // gesto ha per scadere. Vedi `skyAvviaSensori`.
+  skyAvvia();
+
   // È qui che i cataloghi cominciano ad arrivare: alla prima apertura del
   // planetario, non all'avvio dell'app. Sono quattrocento kilobyte, e chi
   // apre l'AstroCalendario per sapere a che ora tramonta il Sole non deve
@@ -17099,9 +17223,6 @@ function apriSkymap() {
   // le ventitré figure scritte a mano, e quando le cinquemila stelle
   // arrivano si accendono da sole al fotogramma dopo.
   //
-  // Va in apriSkymap() e non in skyAvvia(): quello parte solo se si tocca
-  // il tasto dei sensori, mentre qui ci si passa ogni volta che la vista
-  // va a schermo.
   // Solo il catalogo del cielo parte subito: è l'unica cosa che si vede.
   // Tutto il resto — le comete, il terreno, i paesi, le vette, il Kp, i
   // dati orbitali delle stazioni — è roba che arriva dalla rete e che il
@@ -17465,8 +17586,6 @@ function inizializzaSkymap() {
     if (el) el.addEventListener('click', azione);
   };
 
-  collega('skymap-btn-avvia', () => skyAvvia(true));
-  collega('skymap-btn-manuale', () => skyAvvia(false));
   // I due tasti dello zoom stanno sull'angolo della mappa, sempre a portata:
   // dentro al pannello Navigazione erano un doppione degli stessi comandi
   // Un tocco vale il 40% del campo: da 55° si arriva sulla Luna ingrandita in
