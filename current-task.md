@@ -62,7 +62,11 @@ stavolta da fuori, con la Terra come perno invece del Sole.
       `centratoTerra` di nuovo falso e l'inquadratura d'ingresso. Nessun
       errore JavaScript dall'app (solo richieste di rete bloccate dalla
       sandbox, previste e innocue).
-- [ ] Commit e push su `claude/token-optimization-solar-system-crbzv3`.
+- [x] Commit e push su `claude/token-optimization-solar-system-crbzv3`
+      (`115b872`).
+
+**Niente in corso oltre a questo.** La prossima sessione che apre questo
+file può ignorarlo e riscriverlo da capo per il compito successivo.
 
 ## File toccati
 
