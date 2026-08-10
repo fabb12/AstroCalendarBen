@@ -5,6 +5,12 @@ esplorare, cerca qui la sezione giusta: ogni voce ha il file e l'intervallo di
 righe. Le righe sono indicative (±20 dopo qualche modifica): usale come punto di
 atterraggio, poi conferma con una `grep` sul nome della funzione.
 
+**Prima ancora, guarda `current-task.md`** (radice del repo, non pubblicato):
+se dice qualcosa di diverso da «Niente in corso», è lì che sta scritto a che
+punto è arrivato l'ultimo lavoro — evita di ricostruirlo rileggendo la chat o
+riesplorando il codice. Chi lascia un compito a metà lo aggiorna prima di
+finire la sessione; chi ne comincia uno nuovo lo riscrive da capo.
+
 ---
 
 ## 1. Cos'è l'app
@@ -48,7 +54,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `verifica.html` | ~905 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~7.130 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v84`). |
+| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v85`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -301,7 +307,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v84`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v85`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` e le immagini di `arte-costellazioni/` no**: restano fuori di
@@ -453,6 +459,7 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | **La vista 3D si apre già puntata sulla Terra** | `solInquadraDaTerra()` (§7.7), chiamata da `apriSistemaSolare()` dentro al `requestAnimationFrame` — le servono le posizioni *e* la misura della tela. Mette la Terra sotto al Sole sulla stessa verticale (`sol.az = −π/2 − atan2(Ey, Ex)`: la rotazione della scena somma `az` alla longitudine di tutti), alza l'occhio a `SOL_ENTRATA_ELEV` (68°) e inquadra fino a Saturno (`SOL_ENTRATA_UA`), o fino al pianeta scelto nel planetario se sta più in là. `solPanFraSoleETerra()` mette il punto di mezzo Sole–Terra in mezzo alla tela, e il conto dello zoom se ne tiene conto — se no il pianeta che si era venuti a vedere finiva mezzo fuori. Da così, **a sinistra della verticale c'è il cielo della sera** (elongazione est) e a destra quello del mattino. Ci si riporta col chip «Da qui» (`data-sol-quadro="terra"`) |
 | **Perché un pianeta sta a sinistra o a destra della Terra, nella vista 3D** | `solDisegnaBussolaOrari()` (§7.7): due frecce corte dalla Terra, «Sera» e «Mattina», nella direzione dell'elongazione a ±90° — la stessa geometria di `solQuandoSiVede()` nel planetario. Non sono un'icona incollata sullo schermo: sono calcolate dalla vera posizione della Terra a ogni fotogramma, quindi girano con la scena quando si trascina col dito e si spostano da sole quando i mesi passano. È il filo che tiene insieme le due viste — `solInquadraDaTerra()` mette la Terra sotto al Sole apposta perché queste due frecce nascano orizzontali, una a sinistra e una a destra |
 | Rimettere a posto la vista 3D (ci si perde col pan) | `solRipristinaVista()` (sezione 7.7), che è `solInquadraDaTerra({ morbido: true })`: «rimetti la vista com'era all'apertura» vuol dire *quella* inquadratura, non una posa fissa scritta in una costante — con l'orologio spostato di sei mesi la Terra sta da un'altra parte. Il tasto è il ⟲ `#sol-reset` **appoggiato sulla scena** (`.comandi-mappa-sistema`), o il tasto R. `solCentra()` invece rimette solo lo spostamento (⌖ `#sol-centra` fra i comandi, tasto C, e i due tasti dell'inquadratura) |
+| **Girare intorno alla Terra invece che al Sole, nella vista 3D** | `sol.centratoTerra` + `solAggiornaPivotTerra()` (sezione 7.7), chiamata a ogni fotogramma da `solDisegna()` subito dopo `solMisura()`. Non è un perno nuovo: in proiezione ortogonale ruotare l'intera scena intorno al Sole e poi traslare lo schermo per rimettere la Terra al centro è **esattamente** la stessa cosa che ruotare intorno a lei — la differenza è una traslazione costante, uguale per ogni punto — quindi il gesto che già gira la scena (`solInizializzaGesti`) diventa da solo «gira intorno alla Terra», senza una rotazione scritta apposta. Si entra toccando la Terra — sulla scena o nella riga della tabella, è lo stesso tocco in `solScegli()` — che chiama `solAvvicinaTerra()` e zooma a `SOL_VICINO_TERRA_UA`; se ne esce ritoccando la Terra, dal bottone nella sua scheda (`solEsciDaTerra()`), oppure con "Da qui"/"Tutto"/"Pianeti interni"/⟲, che sono inquadrature centrate sul Sole e spengono `centratoTerra` da sé |
 | **Le due fasce di sassi** (asteroidi fra Marte e Giove, Kuiper oltre Nettuno) | `SOL_FASCE` (§7.7) e le tre funzioni `solGeneraFasce()` / `solFasciaScena()` / `solDisegnaFasce()`. Ogni fascia è una nuvola di punti sorteggiati **una volta sola**, per rifiuto sulla sua `densita(ua)`: da lì vengono da soli i **vuoti di Kirkwood** (le risonanze con Giove: 4:1, 3:1, 5:2, 7:3, 2:1) e il **precipizio di Kuiper** a 48 UA, che disegnati a mano sarebbero decorazione. L'inclinazione è una Rayleigh (`inclSigma`), che è la forma vera. Le coordinate di scena si rifanno solo quando cambia il metro delle distanze, e la proiezione è **srotolata** dentro al disegno come in `catalogo.js`: novecento oggetti a fotogramma si sentirebbero. L'altezza fuori dal piano qui **non** si esagera — una fascia è già spessa davvero, e ×10 la farebbe una palla. Tasti `[data-sol-fascia]`, e `solBordoUa()` allarga il pavimento quando Kuiper è acceso |
 | Quanto è grossa la Luna nella vista 3D | `solRaggioLuna()`. Coi pallini in scala era rimasta ai suoi tre pixel e mezzo fissi, cioè disegnata **più grossa della Terra** proprio nel modo che promette di essere in scala: adesso passa da `SOL_LUNA_KM` come tutti gli altri corpi. La sua *distanza* dalla Terra resta esagerata di proposito (`solDisegnaLuna`), se no starebbe dentro al pallino |
 | La vista 3D a tutto schermo | sezione **7.7-bis**: `solAlternaSchermoIntero()` manda a schermo intero il **guscio** `#sol-guscio`, non la finestra — dentro ci sono già la tela, la barra del tempo e il pannello del tempo, e con loro i quattro tasti sulla scena (⛶/✕, ⟲, −, +). Come per la mappa dell'ombra c'è il ripiego per chi non ha l'API Fullscreen sugli elementi (`solRipiegoSchermo()`: il guscio esce dal modale e si appende al body, con un segnaposto per il ritorno). `chiudiSistemaSolare()` esce dal pieno schermo **per primo**. Stili `.sol-guscio:fullscreen` / `.sol-schermo-pieno`, `body.sol-immersivo`, `.comandi-mappa-sistema`, `.tasto-mappa-sistema` |
