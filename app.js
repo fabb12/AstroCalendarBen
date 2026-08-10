@@ -18728,6 +18728,63 @@ const SOL_PIANETI = [
 // `solCrescita()`.
 const SOL_RAGGIO_SOLE = 17;
 const SOL_RAGGIO_LUNA = 3.4;
+const SOL_LUNA_KM = 3474;     // serve ai pallini in scala: la Luna è un quarto della Terra
+
+// --- Le due fasce di sassi ---------------------------------------------------
+//   Non sono un ornamento. Sono la ragione per cui questo disegno si legge in
+//   due metà: fra Marte e Giove c'è un anello di detriti che un pianeta non è
+//   mai diventato — Giove non gliel'ha permesso — e oltre Nettuno ce n'è un
+//   secondo, largo da solo quanto tutto il resto del sistema, da cui vengono le
+//   comete che il calendario annuncia.
+//
+//   Si disegnano come sono: non un anello tratteggiato ma una nuvola di punti.
+//   Un tratto continuo racconterebbe una bugia sul vuoto che c'è là dentro —
+//   fra un asteroide e il suo vicino ci sono milioni di chilometri — e
+//   soprattutto non farebbe vedere le due cose che questa fascia ha da dire:
+//   i **vuoti di Kirkwood**, dove Giove ha spazzato via tutto quello che gli
+//   girava in risonanza, e il **precipizio di Kuiper**, il bordo netto a 48 UA
+//   che nessuno ha ancora spiegato.
+//
+//   `da`/`a` sono i bordi in unità astronomiche, `densita(ua)` dice quanto è
+//   fitta a ogni raggio (è lì che stanno i vuoti e il precipizio), `inclSigma`
+//   quanto la fascia è spessa fuori dal piano.
+const SOL_FASCE = [
+  {
+    id: 'principale', nome: 'Fascia principale', colore: '#cbd5e1',
+    da: 2.02, a: 3.34, quanti: 460, inclSigma: 6.5,
+    densita: (ua) => {
+      // I vuoti di Kirkwood, coi loro rapporti col periodo di Giove:
+      // 4:1, 3:1, 5:2, 7:3, 2:1. Non sono orbite proibite, sono orbite da cui
+      // si viene buttati fuori — in qualche milione di anni, che qui è subito.
+      // Le larghezze sono quelle vere, dell'ordine del centesimo di unità
+      // astronomica: sullo schermo, a fascia intera, sono un pixel. Si vedono
+      // avvicinandosi, ed è lì che ha senso guardarle.
+      let d = 1;
+      [[2.065, 0.035], [2.502, 0.038], [2.825, 0.030], [2.958, 0.022], [3.279, 0.040]]
+        .forEach(v => { d -= 0.97 * Math.exp(-Math.pow((ua - v[0]) / v[1], 2)); });
+      // E i due bordi, che sfumano invece di tagliare
+      const t = Math.max(0, Math.min(1, (ua - 2.0) / 1.36));
+      return Math.max(0, d) * (0.5 + 0.5 * Math.sin(Math.PI * t));
+    }
+  },
+  {
+    id: 'kuiper', nome: 'Fascia di Kuiper', colore: '#a5b4fc',
+    da: 34.5, a: 49.6, quanti: 520, inclSigma: 7,
+    densita: (ua) => {
+      // I plutini: in risonanza 3:2 con Nettuno, il gruppo in cui sta Plutone
+      const plutini = 0.85 * Math.exp(-Math.pow((ua - 39.4) / 0.45, 2));
+      // La fascia classica, e il precipizio: a 48 UA la fascia finisce di
+      // colpo, ed è uno dei buchi aperti del Sistema Solare esterno
+      let classica = 0;
+      if (ua >= 42 && ua <= 47.8) classica = 1;
+      else if (ua > 39.6 && ua < 42) classica = 0.35 + 0.65 * (ua - 39.6) / 2.4;
+      else if (ua > 47.8) classica = Math.max(0, 1 - (ua - 47.8) / 0.9);
+      // Sotto ai plutini non è vuoto: è il disco disperso, rado
+      return Math.max(0.06, Math.min(1, classica + plutini));
+    }
+  }
+];
+const SOL_FASCIA_PUNTO = 1.25;   // il lato del sassolino, in pixel
 
 // A pallini in scala: quanti pixel vale un chilometro di diametro. Scelto
 // perché Mercurio, il più piccolo, resti un punto che si vede.
@@ -18773,6 +18830,33 @@ const SOL_VISTE = {
   taglio: { elev: 2 }
 };
 
+// L'inquadratura con cui si entra, e a cui il ⟲ riporta. Non è un punto di
+// vista qualunque: è *il* punto di vista che questa finestra esiste per dare.
+// Chi arriva qui arriva dal planetario, dove ha appena visto Marte basso a
+// ovest e Giove alto a sud, e la domanda che si porta dietro è una sola —
+// perché lì? La risposta è la disposizione di adesso guardata da sopra la
+// Terra, con la Terra in basso e il Sole davanti a lei, sulla stessa
+// verticale: da così, tutto quello che sta a sinistra della riga Terra–Sole è
+// a est del Sole, cioè lo si vede la sera, e tutto quello che sta a destra è
+// del mattino. La riga verticale in mezzo al disegno diventa la linea di
+// mezzogiorno, e i pianeti si dispongono attorno a lei nell'ordine in cui si
+// affacciano in cielo.
+//
+// Elevazione alta, ma non a picco: da 68° il piano si legge ancora come un
+// piano — è l'altra cosa che questa vista deve dire — e la disposizione in
+// longitudine non è ancora schiacciata.
+const SOL_ENTRATA_ELEV = 68;
+// E quanto largo. Non tutto il sistema: fino a Saturno, cioè fino all'ultimo
+// pianeta che si vede a occhio nudo — la compagnia al completo di quello che
+// c'era in cielo un minuto fa, e nessuno di più. Inquadrando fino a Nettuno,
+// come faceva il tasto «Tutto», i quattro pianeti che contano finiscono in un
+// nodo di pochi pixel attorno al Sole, e la Terra — che è il punto da cui si
+// sta guardando — diventa un puntino fra gli altri. Urano, Nettuno e la fascia
+// di Kuiper restano a un tocco di distanza, sul tasto «Tutto».
+const SOL_ENTRATA_UA = 10.4;
+// Quanto lasciare attorno all'ultimo pianeta che deve entrare nel quadro
+const SOL_ENTRATA_MARGINE = 1.14;
+
 // Il passo del tempo, e con lui quanto ne copre la slitta da un capo
 // all'altro. Il play fa tre passi al secondo, qualunque sia il passo scelto:
 // un comando solo per la velocità e per lo scatto, invece di due.
@@ -18805,6 +18889,9 @@ const sol = {
   // inclinazioni, ma dev'essere una cosa che si chiede, non che si trova.
   esagera: 1,
   misureVere: false,     // false = pallini ingranditi, true = in scala fra loro
+  // Le due fasce di sassi: `fasce` sono le nuvole di punti sorteggiate una
+  // volta sola, `fasceAccese` dice quali si vogliono vedere
+  fasce: [], fasceAccese: { principale: true, kuiper: true },
   scelto: null,          // id del pianeta di cui si legge la scheda
   pianeti: [], terra: null, luna: null,
   orbite: { chiave: null, tracce: [] },
@@ -18925,12 +19012,46 @@ function solMisura() {
   sol.scala = Math.min(sol.L, sol.H) * 0.44 * sol.zoom;
 }
 
+// Il raggio del Sole prima di qualunque limite, a crescita 1: diciassette
+// pixel coi pallini ingranditi, il diametro vero (tosato) con quelli in scala.
+function solSoleBase() {
+  return sol.misureVere
+    ? Math.min(Math.min(sol.L, sol.H) * SOL_SOLE_MAX, SOL_SOLE_KM * SOL_PX_PER_KM / 2)
+    : SOL_RAGGIO_SOLE;
+}
+
+// Il tetto, in pixel: quanto può essere grosso il Sole senza mangiarsi
+// l'orbita più interna. Segue il metro delle distanze *e* lo zoom, perché
+// segue `sol.scala`: è la misura della scena, non un numero fisso.
+function solTettoSole() {
+  const mercurio = SOL_PIANETI[0] ? SOL_PIANETI[0].ua : 0.387;
+  return SOL_SOLE_QUOTA_MERCURIO * solRaggio(mercurio) * sol.scala;
+}
+
 // Quanto crescono i corpi con l'ingrandimento (vedi SOL_CRESCITA_MAX). È un
 // fattore solo, uguale per il Sole, i pianeti e la Luna: se crescessero con
 // leggi diverse, avvicinandosi cambierebbero i rapporti fra loro, e i
 // rapporti sono l'unica cosa che questo disegno racconta.
+//
+// E per lo stesso motivo il tetto del Sole vale per tutti. Prima non era così:
+// il Sole aveva un tetto suo (l'orbita di Mercurio) e un pavimento suo (più
+// grosso del più grosso dei pianeti), e il pavimento vinceva sempre — perché
+// era fatto di pixel fissi mentre il tetto rimpiccioliva con lo zoom. Il
+// risultato si vedeva bene con le **distanze reali**: allontanandosi le orbite
+// si stringevano come devono, il bollo giallo restava dov'era, e il Sole
+// sembrava gonfiarsi fino a inghiottire tutti i pianeti interni. Adesso quando
+// la scena si stringe si stringe tutto insieme, Sole compreso, e a distanze
+// vere il Sole torna a essere quello che è: un punto.
 function solCrescita() {
-  return Math.min(SOL_CRESCITA_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
+  const base = Math.min(SOL_CRESCITA_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
+  const soleBase = solSoleBase() || SOL_RAGGIO_SOLE;
+  const tetto = solTettoSole();
+  if (soleBase * base <= tetto) return base;
+  // Il pavimento non è più «più grosso di Giove» ma «grosso abbastanza da
+  // esistere»: sotto ai due pixel e mezzo il Sole non sarebbe più il centro
+  // di niente, e la scena resterebbe senza il suo unico punto fermo.
+  const minimo = SOL_SOLE_MIN_PX / soleBase;
+  return Math.max(minimo, Math.min(base, tetto / soleBase));
 }
 
 // Quanto si disegna grosso un corpo, nelle due misure: il pallino ingrandito
@@ -18940,29 +19061,27 @@ function solRaggioCorpo(p) {
   // polvere: Mercurio e Marte si fermano lì. Fra tutti gli altri il rapporto
   // è quello vero.
   const base = sol.misureVere ? Math.max(1.2, p.km * SOL_PX_PER_KM / 2) : p.raggio;
-  return base * solCrescita();
+  // Mezzo pixel è il minimo assoluto: quando la scena si stringe i pianeti
+  // rimpiccioliscono col Sole (vedi `solCrescita`), ma un pianeta che sparisce
+  // del tutto lascerebbe l'orbita senza chi la percorre
+  return Math.max(0.55, base * solCrescita());
 }
 
-// Il Sole, che è il caso difficile: sta al centro, è il più grosso di tutti e
-// gli si stringono attorno le quattro orbite interne. Tre numeri in fila —
-// quanto sarebbe, quanto può essere al massimo senza coprire Mercurio, e
-// quanto deve essere al minimo per restare il più grosso della scena.
+// Il Sole. Adesso che il tetto è dentro a `solCrescita()`, qui resta solo la
+// misura: la base per il fattore di crescita, con il minimo che lo tiene in
+// vita quando ci si allontana.
 function solRaggioSole() {
-  const cresciuto = (sol.misureVere
-    ? Math.min(Math.min(sol.L, sol.H) * SOL_SOLE_MAX, SOL_SOLE_KM * SOL_PX_PER_KM / 2)
-    : SOL_RAGGIO_SOLE) * solCrescita();
-  // Il tetto: una frazione dell'orbita di Mercurio, che segue il metro delle
-  // distanze e quindi anche lo zoom
-  const mercurio = SOL_PIANETI[0] ? SOL_PIANETI[0].ua : 0.387;
-  const tetto = SOL_SOLE_QUOTA_MERCURIO * solRaggio(mercurio) * sol.scala;
-  // Il pavimento: più grosso del più grosso dei pianeti. Coi pallini in scala
-  // il tetto da solo lo farebbe diventare più piccolo di Giove, e un Sole più
-  // piccolo di Giove è una bugia peggiore di un Sole ingrandito.
-  let piuGrosso = 0;
-  sol.pianeti.forEach(p => { if (p.rDisegno > piuGrosso) piuGrosso = p.rDisegno; });
-  if (!piuGrosso) piuGrosso = SOL_PIANETI[4].raggio * solCrescita();
-  const pavimento = Math.max(SOL_SOLE_MIN_PX, piuGrosso * 1.2);
-  return Math.max(pavimento, Math.min(cresciuto, tetto));
+  return Math.max(SOL_SOLE_MIN_PX, solSoleBase() * solCrescita());
+}
+
+// La Luna, che nelle due misure va trattata come tutti gli altri: coi pallini
+// in scala era rimasta a tre pixel e mezzo, cioè disegnata **più grossa della
+// Terra** proprio nel modo che promette di essere in scala (è un quarto di
+// Terra, non una Terra e mezza).
+function solRaggioLuna() {
+  return sol.misureVere
+    ? Math.max(0.55, SOL_LUNA_KM * SOL_PX_PER_KM / 2 * solCrescita())
+    : SOL_RAGGIO_LUNA * solCrescita();
 }
 
 // --- Le posizioni vere -----------------------------------------------------
@@ -19113,11 +19232,18 @@ function solEtichetta(ctx, testo, px, py, raggio, colore, misura, prese, obbliga
   solTesto(ctx, testo, posto.x, posto.y, colore, misura);
 }
 
+// Fin dove arriva il disegno: Nettuno, o il bordo esterno della fascia di
+// Kuiper quando è accesa. Serve al pavimento e all'inquadratura d'insieme —
+// una fascia che esce dal cerchio di riferimento sembra un errore di disegno.
+function solBordoUa() {
+  return sol.fasceAccese.kuiper ? 50.2 : SOL_RIF_UA * 1.06;
+}
+
 // Il pavimento: dodici raggi e un cerchio esterno sul piano dell'eclittica.
 // Vista dall'alto è un reticolo qualunque; girata di taglio diventa la riga
 // che spiega tutto, perché è il piano stesso visto di profilo.
 function solDisegnaPiano(ctx) {
-  const bordo = solRaggio(SOL_RIF_UA * 1.06);
+  const bordo = solRaggio(solBordoUa());
   ctx.save();
   ctx.strokeStyle = 'rgba(148, 168, 214, 0.16)';
   ctx.lineWidth = 1;
@@ -19139,6 +19265,128 @@ function solDisegnaPiano(ctx) {
     if (g === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
   }
   ctx.stroke();
+  ctx.restore();
+}
+
+// --- Le fasce di sassi -----------------------------------------------------
+
+// I sassi si sorteggiano una volta sola, all'apertura: da lì in poi stanno
+// fermi dove sono. Non è pigrizia — una fascia è statisticamente uguale a sé
+// stessa, e farla girare col tempo costerebbe un'orbita per punto per fare un
+// disegno identico a quello di prima.
+//
+// Il raggio si estrae per rifiuto sulla densità della fascia: è il modo più
+// corto per far comparire da soli i vuoti di Kirkwood e il precipizio di
+// Kuiper, senza doverli disegnare a mano. L'inclinazione viene da una
+// Rayleigh, che è la forma vera: tantissimi sassi quasi nel piano, pochi molto
+// fuori.
+function solGeneraFasce() {
+  sol.fasce = SOL_FASCE.map(f => {
+    const punti = [];
+    for (let prova = 0; prova < f.quanti * 40 && punti.length < f.quanti; prova++) {
+      const ua = f.da + Math.random() * (f.a - f.da);
+      if (Math.random() > f.densita(ua)) continue;
+      const lon = Math.random() * Math.PI * 2;
+      const inc = f.inclSigma * SKY_D2R * Math.sqrt(-2 * Math.log(1 - Math.random())) *
+        (Math.random() < 0.5 ? -1 : 1);
+      const co = Math.cos(inc);
+      punti.push({
+        x: ua * co * Math.cos(lon), y: ua * co * Math.sin(lon), z: ua * Math.sin(inc),
+        // Quanto è chiaro: un pulviscolo tutto della stessa tinta sembra una
+        // retinatura, e questi sono sassi di taglie diverse
+        b: 0.4 + Math.random() * 0.6
+      });
+    }
+    return { id: f.id, nome: f.nome, colore: f.colore, punti, scena: null, chiave: '', secchi: [[], [], []] };
+  });
+}
+
+// Le stesse coordinate portate nella scena. Si rifanno solo quando cambia il
+// metro delle distanze: sono novecento punti, e rifarli a ogni fotogramma
+// vorrebbe dire novecento radici e novecento potenze per niente.
+//
+// L'altezza fuori dal piano qui **non** si esagera, ed è l'unico posto in
+// questa vista dove la manopola non arriva: le fasce sono già spesse davvero —
+// un decimo del loro raggio, contro i due gradi di un pianeta — e
+// moltiplicarle per dieci farebbe di un anello una palla, cioè la sola cosa
+// che una fascia non è.
+function solFasciaScena(f) {
+  const chiave = sol.distanzeVere ? 'vere' : 'compresse';
+  if (f.chiave === chiave && f.scena) return f.scena;
+  f.scena = f.punti.map(p => {
+    const r = Math.hypot(p.x, p.y, p.z) || 1;
+    const k = solRaggio(r) / r;
+    return { x: p.x * k, y: p.y * k, z: p.z * k, b: p.b };
+  });
+  f.chiave = chiave;
+  return f.scena;
+}
+
+// Il disegno. La proiezione è srotolata qui dentro invece di passare da
+// `solProietta` per la stessa ragione per cui `catalogo.js` fa lo stesso col
+// cielo: novecento oggetti costruiti e buttati a ogni fotogramma si sentono.
+// I punti finiscono in tre secchi di trasparenza — dietro, di lato, davanti —
+// e ogni secchio è un tracciato solo: tre riempimenti invece di novecento.
+function solDisegnaFasce(ctx) {
+  if (!sol.fasce.length) return;
+  const a = sol.az, e = sol.elev * SKY_D2R;
+  const ca = Math.cos(a), sa = Math.sin(a), se = Math.sin(e), ce = Math.cos(e);
+  const s = sol.scala, cx = sol.cx + sol.panX, cy = sol.cy + sol.panY;
+  const lato = SOL_FASCIA_PUNTO;
+  ctx.save();
+  sol.fasce.forEach(f => {
+    if (!sol.fasceAccese[f.id]) return;
+    const punti = solFasciaScena(f);
+    f.secchi.forEach(v => { v.length = 0; });
+    for (let i = 0; i < punti.length; i++) {
+      const p = punti[i];
+      const xr = p.x * ca - p.y * sa, yr = p.x * sa + p.y * ca;
+      const px = cx + xr * s;
+      if (px < -4 || px > sol.L + 4) continue;
+      const py = cy - (yr * se + p.z * ce) * s;
+      if (py < -4 || py > sol.H + 4) continue;
+      // Chi sta dietro è più smorzato: è l'unico indizio di profondità che
+      // una proiezione ortogonale possiede
+      const dietro = (p.z * se - yr * ce) < 0;
+      const secchio = dietro ? 0 : (p.b > 0.75 ? 2 : 1);
+      f.secchi[secchio].push(px, py);
+    }
+    ctx.fillStyle = f.colore;
+    [0.22, 0.42, 0.7].forEach((alfa, i) => {
+      const v = f.secchi[i];
+      if (!v.length) return;
+      ctx.globalAlpha = alfa;
+      ctx.beginPath();
+      for (let j = 0; j < v.length; j += 2) ctx.rect(v[j], v[j + 1], lato, lato);
+      ctx.fill();
+    });
+  });
+  ctx.restore();
+}
+
+// Il nome della fascia, appoggiato sull'anello a sinistra della scena (dove
+// il disegno è più spesso lo si legge peggio, e a sinistra c'è sempre il
+// bordo). Torna anche l'ingombro, che va a finire fra le zone occupate: un
+// nome di pianeta stampato sopra a «Fascia principale» le rende illeggibili
+// tutt'e due.
+function solEtichettaFascia(ctx, f, prese) {
+  const dato = SOL_FASCE.find(v => v.id === f.id);
+  if (!dato) return;
+  const ua = f.id === 'kuiper' ? 44.5 : (dato.da + dato.a) / 2;
+  const lon = Math.PI - sol.az;      // a sinistra, qualunque sia il giro
+  const r = solRaggio(ua);
+  const p = solProietta({ x: r * Math.cos(lon), y: r * Math.sin(lon), z: 0 });
+  if (p.px < 4 || p.px > sol.L - 4 || p.py < 12 || p.py > sol.H - 24 - (sol.altaBarra || 0)) return;
+  if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
+  ctx.font = `10.5px ${SOL_CARATTERE}`;
+  const largo = ctx.measureText(f.nome).width;
+  const scatola = { x: p.px - largo / 2 - 3, y: p.py - 14, w: largo + 6, h: 15 };
+  if (prese.some(q => scatola.x < q.x + q.w && scatola.x + scatola.w > q.x &&
+    scatola.y < q.y + q.h && scatola.y + scatola.h > q.y)) return;
+  prese.push(scatola);
+  ctx.save();
+  ctx.globalAlpha = 0.72;
+  solTesto(ctx, f.nome, p.px - largo / 2, p.py - 4, f.colore, 10.5);
   ctx.restore();
 }
 
@@ -19380,7 +19628,7 @@ function solDisegnaLuna(ctx, terra, davanti, assi) {
   // rispetto al Sole, e questa è la cosa che di solito non viene in mente —
   // quando da noi è Luna Nuova, chi guardasse da Giove vedrebbe una Terra e
   // una Luna con la stessa identica falce, l'una accanto all'altra
-  const r = SOL_RAGGIO_LUNA * solCrescita();
+  const r = solRaggioLuna();
   const k = assi ? solFrazione(terra, assi) : 1;
   const versoSole = solVersoIlSole(terra);
   const angLuce = assi && versoSole ? solAngoloSchermo(versoSole, assi) : 0;
@@ -19455,6 +19703,9 @@ function solDisegna() {
   const assi = solAssiVista();     // gli stessi per tutti: si calcolano una volta
 
   solDisegnaPiano(ctx);
+  // Le fasce vanno sotto alle orbite: sono il fondo su cui i pianeti corrono,
+  // e una riga d'orbita coperta da un pulviscolo non si segue più
+  solDisegnaFasce(ctx);
   sol.orbite.tracce.forEach(t => solDisegnaOrbita(ctx, t));
   solDisegnaAloneSole(ctx);
   solDisegnaSguardo(ctx, terra, scelto);
@@ -19514,6 +19765,9 @@ function solDisegna() {
     solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, stacco(p),
       'rgba(233, 237, 247, 0.82)', 11.5, prese);
   });
+  // I nomi delle fasce per ultimi: sono i soli che possono mancare senza che
+  // manchi niente — la nuvola di punti si riconosce da sé
+  sol.fasce.forEach(f => { if (sol.fasceAccese[f.id]) solEtichettaFascia(ctx, f, prese); });
 
   // In basso: da che altezza si sta guardando, e quanto è largo il disegno.
   // Su una tela stretta le due scritte si tamponerebbero a metà strada:
@@ -19878,6 +20132,7 @@ function solAggiornaTasti() {
   segna('#modale-sistema [data-sol-distanze]', b => (b.dataset.solDistanze === 'vere') === sol.distanzeVere);
   segna('#modale-sistema [data-sol-altezze]', b => Number(b.dataset.solAltezze) === sol.esagera);
   segna('#modale-sistema [data-sol-misure]', b => (b.dataset.solMisure === 'vere') === sol.misureVere);
+  segna('#modale-sistema [data-sol-fascia]', b => !!sol.fasceAccese[b.dataset.solFascia]);
 }
 
 // Il gesto è il comando principale di questa vista: si gira la scena col
@@ -19902,9 +20157,62 @@ function solCentra() {
   if (sol.aperto) solDisegna();
 }
 
-// L'inquadratura di partenza: da trentaquattro gradi sopra il piano, con
-// tutto il sistema dentro alla tela. È quella che si vede aprendo la finestra.
-const SOL_VISTA_INIZIALE = { az: -0.55, elev: 34, zoom: 1 };
+// Mette il punto di mezzo fra il Sole e la Terra in mezzo alla tela: così
+// nessuno dei due finisce sul bordo, e la riga che li unisce — la linea di
+// mezzogiorno — cade in verticale nel mezzo del disegno. Lo zoom si passa da
+// fuori perché l'inquadratura va calcolata su quello di **arrivo**: durante il
+// viaggio morbido `sol.zoom` è ancora quello di partenza.
+function solPanFraSoleETerra(zoom) {
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  sol.panX = 0;
+  sol.panY = 0;
+  if (!terra || !sol.L || !sol.H) return;
+  const salvaZoom = sol.zoom, salvaElev = sol.elev;
+  sol.zoom = zoom || sol.zoom;
+  sol.elev = sol.elevVoluta;
+  solMisura();
+  const p = solProietta(solScena(terra.pos));
+  sol.zoom = salvaZoom;
+  sol.elev = salvaElev;
+  solMisura();
+  sol.panX = -(p.px - sol.cx) / 2;
+  sol.panY = -(p.py - sol.cy) / 2;
+}
+
+// L'inquadratura d'ingresso (vedi SOL_ENTRATA_ELEV): la disposizione di
+// adesso, guardata da sopra la Terra. È quella con cui si entra e quella a cui
+// il ⟲ riporta — «rimetti la vista com'era all'apertura» vuol dire questa.
+function solInquadraDaTerra(opzioni = {}) {
+  const morbido = !!opzioni.morbido;
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  // Il giro: la Terra sotto al Sole, sulla stessa verticale. La rotazione
+  // della scena somma `az` alla longitudine di tutti, quindi basta chiedere
+  // che quella della Terra finisca a −90°, cioè in basso.
+  if (terra) sol.az = -Math.PI / 2 - Math.atan2(terra.pos.y, terra.pos.x);
+  sol.elevVoluta = SOL_ENTRATA_ELEV;
+  if (!morbido) sol.elev = SOL_ENTRATA_ELEV;
+  // Quanto largo: tutto il sistema, oppure — se si arriva col planetario
+  // puntato su un pianeta — quel tanto che basta a tenere dentro lui e la
+  // Terra, che è la coppia di cui si è venuti a chiedere conto.
+  // Quanto largo: fino a Saturno (vedi SOL_ENTRATA_UA), e di più solo se si
+  // arriva col planetario puntato su qualcosa che sta più in là — Urano e
+  // Nettuno, che nel quadro di prima resterebbero fuori proprio mentre sono
+  // quelli di cui si è venuti a chiedere conto.
+  //
+  // Il conto si fa nei raggi della scena e non in unità astronomiche, perché
+  // ci va sommato lo spostamento del quadro: mettendo il punto di mezzo
+  // Sole–Terra al centro tutto si alza di mezza orbita terrestre, e senza
+  // tenerne conto il pianeta che si era venuti a vedere finiva mezzo fuori.
+  const scelto = sol.pianeti.find(p => p.id === sol.scelto);
+  const ua = Math.max(SOL_ENTRATA_UA,
+    scelto && scelto.id !== 'Earth' ? scelto.r * SOL_ENTRATA_MARGINE : 0);
+  const rScena = solRaggio(ua) + solRaggio(1) * 0.5;
+  const zoom = rScena > 0 ? 0.9 / rScena : 1;
+  solImpostaZoom(zoom, { morbido });
+  solPanFraSoleETerra(zoom);
+  solAggiornaTasti();
+  if (sol.aperto) solDisegna();
+}
 
 // Il paracadute. Girare, spostare e ingrandire sono tre gesti che si sommano,
 // e dopo qualche mossa non si sa più da dove si sta guardando: la scena è
@@ -19916,13 +20224,7 @@ const SOL_VISTA_INIZIALE = { az: -0.55, elev: 34, zoom: 1 };
 // L'arrivo è morbido, come per i tasti dei punti di vista: vedere la scena
 // tornare al suo posto dice cosa è successo, saltarci sopra no.
 function solRipristinaVista() {
-  sol.panX = 0;
-  sol.panY = 0;
-  sol.az = SOL_VISTA_INIZIALE.az;
-  sol.elevVoluta = SOL_VISTA_INIZIALE.elev;
-  solImpostaZoom(SOL_VISTA_INIZIALE.zoom, { morbido: true });
-  solAggiornaTasti();
-  if (sol.aperto) solDisegna();
+  solInquadraDaTerra({ morbido: true });
 }
 
 function solSposta(dx, dy) {
@@ -20201,6 +20503,7 @@ window.apriSistemaSolare = () => {
   sol.ultimoTs = 0;
   sol.istante = 0;
   solGeneraStelle(110);
+  if (!sol.fasce.length) solGeneraFasce();
   solInizializzaGesti();
   const aiuto = modale.querySelector('.sol-suggerimento');
   if (aiuto) aiuto.classList.remove('sol-svanito');
@@ -20222,6 +20525,12 @@ window.apriSistemaSolare = () => {
     const quando = skyAdesso();
     solLeggiPosizioni(quando);
     solCalcolaOrbite(quando);
+    // L'inquadratura d'ingresso viene qui e non prima: ha bisogno di sapere
+    // dov'è la Terra (le posizioni) e quanto è larga la tela (la misura). È il
+    // motivo per cui questa finestra esiste — si arriva dal planetario con una
+    // domanda su come stanno le cose stasera, e la prima immagine deve già
+    // essere la risposta, non un bersaglio da girare finché si capisce.
+    solInquadraDaTerra();
     solAggiornaBarra(quando);
     solAggiornaScheda(true);
     if (!sol.raf) sol.raf = requestAnimationFrame(solCiclo);
@@ -20276,11 +20585,15 @@ function inizializzaSistemaSolare() {
 
   modale.querySelectorAll('[data-sol-quadro]').forEach(b =>
     b.addEventListener('click', () => {
+      // «Da qui» è l'inquadratura d'ingresso, quella che risponde alla domanda
+      // con cui si arriva dal planetario: rifà anche il giro, non solo la
+      // larghezza, e per questo passa da una funzione sua
+      if (b.dataset.solQuadro === 'terra') { solInquadraDaTerra({ morbido: true }); return; }
       const interni = b.dataset.solQuadro === 'interni';
-      // Questi due sono comandi di inquadratura: se la scena era stata
+      // Gli altri due sono comandi di sola inquadratura: se la scena era stata
       // spostata di lato, "Tutto" deve tornare a farla vedere tutta
       solCentra();
-      solImpostaZoom(solZoomPer(interni ? 1.7 : SOL_RIF_UA), { morbido: true });
+      solImpostaZoom(solZoomPer(interni ? 1.7 : solBordoUa()), { morbido: true });
     }));
 
   modale.querySelectorAll('[data-sol-distanze]').forEach(b =>
@@ -20340,6 +20653,18 @@ function inizializzaSistemaSolare() {
   modale.querySelectorAll('[data-sol-misure]').forEach(b =>
     b.addEventListener('click', () => {
       sol.misureVere = b.dataset.solMisure === 'vere';
+      solAggiornaTasti();
+      solDisegna();
+    }));
+
+  // Le due fasce: si accendono e si spengono una per volta, perché dicono due
+  // cose diverse — una è il confine fra i pianeti di roccia e quelli di gas,
+  // l'altra è il bordo del Sistema Solare
+  modale.querySelectorAll('[data-sol-fascia]').forEach(b =>
+    b.addEventListener('click', () => {
+      const id = b.dataset.solFascia;
+      sol.fasceAccese[id] = !sol.fasceAccese[id];
+      if (!sol.fasce.length) solGeneraFasce();
       solAggiornaTasti();
       solDisegna();
     }));

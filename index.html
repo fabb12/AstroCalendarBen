@@ -1400,7 +1400,8 @@
               <button type="button" class="tasto-segmento" data-sol-vista="taglio" title="Quasi dentro al piano delle orbite: è così che lo vediamo da qui, ed è da qui che nasce l'eclittica">Di taglio</button>
             </div>
             <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-quadro="tutto" title="Tutto il sistema, fino a Nettuno">Tutto</button>
+              <button type="button" class="tasto-segmento" data-sol-quadro="terra" title="L'inquadratura con cui si entra: la Terra in basso e il Sole davanti a lei, cioè la disposizione di stasera vista da sopra casa nostra. A sinistra i pianeti della sera, a destra quelli del mattino.">Da qui</button>
+              <button type="button" class="tasto-segmento" data-sol-quadro="tutto" title="Tutto il sistema, fino a Nettuno e alla fascia di Kuiper">Tutto</button>
               <button type="button" class="tasto-segmento" data-sol-quadro="interni" title="Solo Mercurio, Venere, Terra e Marte">Pianeti interni</button>
             </div>
             <button id="sol-zoom-out" type="button" class="tasto-cielo tasto-passo" title="Allontanati" aria-label="Allontanati">−</button>
@@ -1434,12 +1435,25 @@
             <span class="sol-etichetta">Passo del tempo</span>
             <div id="sol-passi" class="segmenti-cielo" role="group" aria-label="Passo del tempo"></div>
           </div>
+
+          <div class="sol-riga" role="group" aria-label="Le fasce di sassi">
+            <span class="sol-etichetta">Fasce di sassi</span>
+            <div class="segmenti-cielo">
+              <button type="button" class="tasto-segmento" data-sol-fascia="principale" aria-pressed="true"
+                title="La fascia principale, fra Marte e Giove: i detriti di un pianeta che Giove non ha lasciato nascere. I due anelli vuoti sono i vuoti di Kirkwood, spazzati dalle risonanze con la sua orbita.">Asteroidi</button>
+              <button type="button" class="tasto-segmento" data-sol-fascia="kuiper" aria-pressed="true"
+                title="La fascia di Kuiper, oltre Nettuno: da 30 a 50 unità astronomiche, con il gruppo di Plutone a 39,4 e il precipizio a 48, dove finisce di colpo e nessuno sa perché.">Kuiper</button>
+            </div>
+          </div>
         </div>
 
         <div id="sol-scheda" class="sol-scheda"></div>
 
         <p class="sol-nota">Stesso istante del planetario: se lo sposti qui, si sposta anche là.
-          La Luna è disegnata più lontana dalla Terra di quanto sia, o starebbe dentro al pallino.</p>
+          Si entra guardando da sopra la Terra, che sta sotto al Sole: a sinistra i pianeti della sera,
+          a destra quelli del mattino. La Luna è disegnata più lontana dalla Terra di quanto sia,
+          o starebbe dentro al pallino; le due fasce di sassi sono nuvole di punti sorteggiati, non
+          i sassi veri — quello che è vero è dove comincia e dove finisce ognuna, e i vuoti che ci sono dentro.</p>
 
         <div class="barra-chiudi">
           <button id="btn-chiudi-sistema-basso" type="button" class="tasto-chiudi-largo">Chiudi la scheda</button>
