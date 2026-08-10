@@ -63,6 +63,7 @@ jobs:
             --exclude '_sito' \
             --exclude 'scripts' \
             --exclude 'CLAUDE.md' \
+            --exclude 'current-task.md' \
             --exclude 'Idee_da_implementare.txt'
           # Senza questo file Pages passerebbe tutto per Jekyll, che salta le
           # cartelle e i file che cominciano per underscore. Qui non ce ne sono,

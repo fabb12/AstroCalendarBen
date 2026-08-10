@@ -18857,6 +18857,11 @@ const SOL_ENTRATA_UA = 10.4;
 // Quanto lasciare attorno all'ultimo pianeta che deve entrare nel quadro
 const SOL_ENTRATA_MARGINE = 1.14;
 
+// L'inquadratura di «vicino alla Terra» (vedi `solAvvicinaTerra`): stessa
+// cornice della vista «Pianeti interni» — Mercurio, Venere e Marte ci stanno
+// dentro comodi — ma con la Terra al centro invece del Sole.
+const SOL_VICINO_TERRA_UA = 1.7;
+
 // Il passo del tempo, e con lui quanto ne copre la slitta da un capo
 // all'altro. Il play fa tre passi al secondo, qualunque sia il passo scelto:
 // un comando solo per la velocità e per lo scatto, invece di due.
@@ -18893,6 +18898,9 @@ const sol = {
   // volta sola, `fasceAccese` dice quali si vogliono vedere
   fasce: [], fasceAccese: { principale: true, kuiper: true },
   scelto: null,          // id del pianeta di cui si legge la scheda
+  // Se attivo, il perno della telecamera non è più il Sole ma la Terra: si
+  // gira intorno a lei invece che intorno all'origine (vedi `solAggiornaPivotTerra`)
+  centratoTerra: false,
   pianeti: [], terra: null, luna: null,
   orbite: { chiave: null, tracce: [] },
   istante: 0,            // ms dell'ultimo calcolo delle posizioni
@@ -19743,6 +19751,7 @@ function solDisegna() {
   if (!sol.ctx) return;
   const ctx = sol.ctx;
   solMisura();
+  solAggiornaPivotTerra();
   solSfondo(ctx);
 
   if (!sol.pianeti.length) {
@@ -19944,10 +19953,20 @@ function solSchedaHtml() {
         </div>
       </div>`;
   } else if (scelto) {
+    // Il tocco che ha scelto la Terra ha già avvicinato e cominciato a
+    // girarci intorno (`solScegli`): qui la scheda deve dirlo, non ripetere
+    // l'invito. Il solo caso in cui si vede l'invito è arrivare qui già con
+    // la Terra scelta ma senza essersi ancora avvicinati (si apre la
+    // finestra puntati su di lei, un caso raro ma non impossibile).
+    const vicino = !!sol.centratoTerra;
     testa = `<div class="sol-testa">
         <h4 style="color:${scelto.colore}">Terra</h4>
-        <p class="sol-frase">Sei qui, sul pallino azzurro. La riga che parte da qui, quando scegli un pianeta,
-          è la direzione in cui devi guardare: è la stessa che il planetario ti mostra dentro alla cupola.</p>
+        <p class="sol-frase">${vicino
+          ? 'Stai girando intorno alla Terra: trascina per guardarla da un’altra parte, e vedi dove sono finiti gli altri pianeti nello spazio qui vicino.'
+          : 'Sei qui, sul pallino azzurro. La riga che parte da qui, quando scegli un pianeta, è la direzione in cui devi guardare: è la stessa che il planetario ti mostra dentro alla cupola.'}</p>
+        <div class="sol-azioni">
+          <button type="button" class="tasto-cielo tasto-primario" onclick="${vicino ? 'solEsciDaTerra()' : 'solAvvicinaTerra()'}">${vicino ? 'Torna alla vista d’insieme' : 'Avvicinati e gira intorno alla Terra'}</button>
+        </div>
       </div>`;
   }
 
@@ -19968,7 +19987,18 @@ function solAggiornaScheda(forza) {
 }
 
 function solScegli(id) {
-  sol.scelto = sol.scelto === id ? null : id;
+  const nuovo = sol.scelto === id ? null : id;
+  sol.scelto = nuovo;
+  // Toccare la Terra — sulla scena o nella riga della tabella, è lo stesso
+  // tocco — è il modo di entrare e uscire dalla vista da vicino: il primo
+  // tocco avvicina e comincia a girarci intorno, il secondo (quello che la
+  // deseleziona) torna alla vista d'insieme se ci si era entrati da lì.
+  // Scegliere un *altro* pianeta mentre si gira intorno alla Terra non
+  // sposta il perno: si resta lì, a guardare dove sta finendo quel pianeta.
+  if (id === 'Earth') {
+    if (nuovo === 'Earth') solAvvicinaTerra();
+    else if (sol.centratoTerra) solEsciDaTerra();
+  }
   solAggiornaScheda(true);
   solDisegna();
 }
@@ -20243,11 +20273,57 @@ function solPanFraSoleETerra(zoom) {
   sol.panY = -(p.py - sol.cy) / 2;
 }
 
+// Il perno della telecamera, quando si è scelto di girare intorno alla Terra
+// invece che al Sole (vedi `solAvvicinaTerra`). Si chiama a ogni fotogramma,
+// prima di proiettare qualunque cosa: azzera lo spostamento e lo ricalcola da
+// zero, così da tenere la Terra incollata al centro della tela qualunque cosa
+// stiano facendo il trascinamento, lo zoom o l'orologio.
+//
+// Non è un'approssimazione. In proiezione ortogonale ruotare l'intera scena
+// intorno all'origine (il Sole) e poi traslare lo schermo per rimettere un
+// punto al centro dà **esattamente** lo stesso disegno che si avrebbe
+// ruotando intorno a quel punto: la differenza fra le due rotazioni è una
+// traslazione costante, uguale per ogni punto della scena — non dipende da
+// dove sta il punto. Per questo il gesto che già gira la scena
+// (`solInizializzaGesti`, che cambia `az`/`elev`) diventa da solo «gira
+// intorno alla Terra», senza bisogno di una matematica di rotazione diversa.
+function solAggiornaPivotTerra() {
+  if (!sol.centratoTerra) return;
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  if (!terra) return;
+  sol.panX = 0;
+  sol.panY = 0;
+  const p = solProietta(solScena(terra.pos));
+  sol.panX = sol.cx - p.px;
+  sol.panY = sol.cy - p.py;
+}
+
+// Zooma sulla Terra e comincia a girarci intorno: la chiama `solScegli` al
+// primo tocco sulla Terra, dalla scena o dalla riga della tabella.
+function solAvvicinaTerra() {
+  sol.centratoTerra = true;
+  solImpostaZoom(solZoomPer(SOL_VICINO_TERRA_UA), { morbido: true });
+  solAggiornaTasti();
+  if (sol.aperto) solDisegna();
+}
+
+// Torna alla vista d'insieme centrata sul Sole: stessa inquadratura con cui
+// ci si è entrati, non un ritorno a metà — «vicino alla Terra» e «vista
+// d'insieme» sono due modi diversi di guardare, non due gradi dello stesso.
+// Spegne da sé `centratoTerra`: lo fa `solInquadraDaTerra`.
+function solEsciDaTerra() {
+  solInquadraDaTerra({ morbido: true });
+}
+
 // L'inquadratura d'ingresso (vedi SOL_ENTRATA_ELEV): la disposizione di
 // adesso, guardata da sopra la Terra. È quella con cui si entra e quella a cui
 // il ⟲ riporta — «rimetti la vista com'era all'apertura» vuol dire questa.
 function solInquadraDaTerra(opzioni = {}) {
   const morbido = !!opzioni.morbido;
+  // È un'inquadratura centrata sul Sole: se si stava girando intorno alla
+  // Terra, quel perno smette qui, o il ricentraggio automatico di
+  // `solAggiornaPivotTerra` la contraddirebbe a ogni fotogramma successivo.
+  sol.centratoTerra = false;
   const terra = sol.pianeti.find(p => p.id === 'Earth');
   // Il giro: la Terra sotto al Sole, sulla stessa verticale. La rotazione
   // della scena somma `az` alla longitudine di tutti, quindi basta chiedere
@@ -20554,6 +20630,9 @@ window.apriSistemaSolare = () => {
   const bersaglio = SOL_PIANETI.some(p => p.id === sky.target) ? sky.target : null;
   sol.scelto = bersaglio;
   sol.marcia = 0;
+  // Si riparte sempre dalla vista d'insieme: girare intorno alla Terra è una
+  // scelta di questa sessione, non una preferenza da ritrovare
+  sol.centratoTerra = false;
   // La scena riparte in mezzo alla tela: lo spostamento di due dita è una
   // cosa di questa sessione, non una preferenza da ritrovare
   sol.panX = 0;
@@ -20654,6 +20733,9 @@ function inizializzaSistemaSolare() {
       // larghezza, e per questo passa da una funzione sua
       if (b.dataset.solQuadro === 'terra') { solInquadraDaTerra({ morbido: true }); return; }
       const interni = b.dataset.solQuadro === 'interni';
+      // Anche questi due sono centrati sul Sole: se si stava girando intorno
+      // alla Terra il perno smette qui, come per "Da qui"
+      sol.centratoTerra = false;
       // Gli altri due sono comandi di sola inquadratura: se la scena era stata
       // spostata di lato, "Tutto" deve tornare a farla vedere tutta
       solCentra();
