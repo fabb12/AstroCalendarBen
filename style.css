@@ -2229,13 +2229,28 @@ figure.ecl-schema-fig {
 
 /* Monitor da scrivania */
 @media (min-width: 1440px) {
-  :root { --larghezza-max: 1380px; --margine-pagina: 32px; --passo: 20px; }
+  :root {
+    --larghezza-max: 1380px; --margine-pagina: 32px; --passo: 20px;
+    /* Le finestre di contenuto (Sistema Solare, simulazione, mappa
+       dell'ombra) qui non hanno un foglio che le tiene sotto 92dvh come
+       sul telefono: possono crescere in verticale quanto la finestra della
+       pagina, che a sua volta si allarga sopra — la pagina scorre se
+       avanza qualcosa sotto, non si taglia niente. */
+    --altezza-simulazione: 62vh;
+    --altezza-sistema: 66vh;
+    --altezza-mappa-eclissi: 72vh;
+  }
 }
 
 /* Schermi larghi: si allarga ancora, ma non all'infinito — oltre una certa
    misura una riga di testo diventa faticosa da leggere */
 @media (min-width: 1800px) {
-  :root { --larghezza-max: 1660px; --margine-pagina: 40px; --altezza-cielo: 84vh; }
+  :root {
+    --larghezza-max: 1660px; --margine-pagina: 40px; --altezza-cielo: 84vh;
+    --altezza-simulazione: 66vh;
+    --altezza-sistema: 70vh;
+    --altezza-mappa-eclissi: 76vh;
+  }
 }
 
 /* --------------------------------------------------- MOSTRA E NASCONDI      */
@@ -4192,8 +4207,15 @@ body input.casella-data:hover { border: 0; }
 /* ------------------------------------------------------------- FINESTRE     */
 .velo-modale { padding: 16px; }
 .pannello-modale { margin-block: 24px; max-width: 560px; }
-.pannello-modale[data-misura="grande"] { max-width: 880px; }
-.pannello-modale[data-misura="larga"]  { max-width: 1080px; }
+/* "grande" e "larga" sono le finestre di contenuto — atlante, Sistema
+   Solare, mappa dell'ombra, lezione, simulazione — non i moduli. Più
+   spazio dentro vuol dire una mappa o una scena più grandi, quindi
+   crescono con lo schermo invece di fermarsi alla prima misura comoda: le
+   due soglie qui sotto sono le stesse a cui cresce `--larghezza-max`
+   (1440/1800), così la finestra e la pagina che la ospita si allargano
+   insieme. */
+.pannello-modale[data-misura="grande"] { max-width: 960px; }
+.pannello-modale[data-misura="larga"]  { max-width: 1220px; }
 
 .corpo-modale { padding: 20px; }
 .spazio-verticale > * + *       { margin-top: 16px; }
@@ -4201,9 +4223,16 @@ body input.casella-data:hover { border: 0; }
 
 @media (min-width: 1440px) {
   /* Sul monitor grande la mappa dell'eclissi merita tutta la larghezza */
-  .pannello-modale[data-misura="grande"] { max-width: 1020px; }
-  .pannello-modale[data-misura="larga"]  { max-width: 1400px; }
+  .pannello-modale[data-misura="grande"] { max-width: 1180px; }
+  .pannello-modale[data-misura="larga"]  { max-width: 1560px; }
   .corpo-modale { padding: 24px; }
+}
+
+@media (min-width: 1800px) {
+  /* E sui monitor grandissimi ancora di più: fermarsi a 1180/1560px su
+     2560 di schermo avrebbe lasciato mezzo desktop vuoto ai lati. */
+  .pannello-modale[data-misura="grande"] { max-width: 1380px; }
+  .pannello-modale[data-misura="larga"]  { max-width: 1880px; }
 }
 
 /* Sul telefono le finestre diventano fogli che salgono dal basso: il pollice
@@ -6952,7 +6981,12 @@ body button.did-ponte:active { transform: translateY(1px); }
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
-  height: min(76vh, 640px);
+  /* Fra il telefono (sotto) e il monitor (sopra i 900px) c'è la fascia dei
+     tablet: né un foglio a 92dvh né una finestra a due colonne, solo una
+     scheda centrata con un margine suo. Lì sopra c'è la stessa testata di
+     sempre, quindi il tetto può salire parecchio senza uscire dallo
+     schermo. */
+  height: min(70vh, 780px);
   /* Senza questo la finestra cresce con il contenuto e l'elenco esce dal
      riquadro arrotondato: sono ottantotto righe, e quando escono si porta
      dietro anche la scheda. Le due colonne scorrono dentro, non fuori. */
@@ -7186,11 +7220,11 @@ body button.did-ponte:active { transform: translateY(1px); }
 @media (min-width: 900px) {
   .cost-corpo {
     grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
-    /* Non è 72vh per gusto: sopra a questo riquadro ci stanno la testata
-       della finestra (titolo e sottotitolo, un centinaio di pixel) e il
-       margine del modale, e la somma deve restare dentro allo schermo —
-       se no a scorrere è la finestra intera, e l'elenco non scorre più. */
-    height: min(66vh, 620px);
+    /* Non è a caso: sopra a questo riquadro ci stanno la testata della
+       finestra (titolo e sottotitolo, un centinaio di pixel) e il margine
+       del modale, e la somma deve restare dentro allo schermo — se no a
+       scorrere è la finestra intera, e l'elenco non scorre più. */
+    height: min(70vh, 700px);
   }
   /* Affiancate: nessuna delle due si nasconde più, qualunque cosa dica
      `data-vista` */
@@ -7200,10 +7234,36 @@ body button.did-ponte:active { transform: translateY(1px); }
   .cost-indietro { display: none; }
 }
 
+/* Monitor da scrivania e oltre: la testata resta la stessa manciata di
+   pixel, quindi quasi tutta l'altezza in più che lo schermo guadagna può
+   andare al riquadro. */
+@media (min-width: 1440px) {
+  .cost-corpo { height: min(72vh, 860px); }
+}
+@media (min-width: 1800px) {
+  .cost-corpo { height: min(74vh, 980px); }
+}
+
 /* ------------------------------------------------------- Telefono */
 @media (max-width: 640px) {
   .cost-corpo { height: min(74vh, 560px); }
   .cost-cerca-riga { padding: 12px 12px 10px; }
   .cost-scheda { padding: 14px 14px 24px; }
   .cost-testa h3 { font-size: 1.2rem; }
+}
+
+/* Qui sotto la finestra è un foglio che sale dal basso, alto fino a
+   92dvh (regola generale in FINESTRE): una frazione fissa dello schermo
+   non lo sapeva, e su un telefono più alto della media il foglio finiva a
+   metà con l'elenco corto e il resto vuoto sotto — proprio quello che
+   questa finestra dovrebbe evitare. Quello che conta è lo spazio che il
+   foglio lascia dopo la sua testata (titolo, sottotitolo, il bordo), non
+   una percentuale dello schermo: da lì il calcolo, non una misura vista a
+   occhio. */
+@media (max-width: 767px),
+       (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
+  .cost-corpo {
+    height: calc(92vh - 100px);
+    height: calc(92dvh - 100px);
+  }
 }
