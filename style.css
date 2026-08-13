@@ -5915,6 +5915,83 @@ body.luogo-immersivo { overflow: hidden; }
   .griglia-orizzonte { grid-template-columns: repeat(8, minmax(0, 1fr)); }
 }
 
+/* ---------------------------------------- Fin dove guardare attorno */
+/* Le due manopole del raggio (montagne e paesi) e i due interruttori.
+   Una colonna sul telefono, due su schermo largo: sono quattro comandi
+   corti, e in colonna singola su un monitor diventano una scala. */
+.griglia-dintorni {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.manopola-dintorni,
+.interruttore-dintorni {
+  display: block;
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+  border-radius: 10px;
+  padding: 9px 11px;
+}
+
+.manopola-testa {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.manopola-nome {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--testo);
+}
+
+.manopola-valore {
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--blu-chiaro);
+  font-weight: 600;
+}
+
+.manopola-dintorni input[type="range"] {
+  width: 100%;
+  margin: 7px 0 2px;
+  accent-color: var(--blu-chiaro);
+}
+
+.manopola-nota {
+  display: block;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--testo-3);
+}
+
+.interruttore-dintorni {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  cursor: pointer;
+}
+.interruttore-dintorni input {
+  margin-top: 2px;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  accent-color: var(--blu-chiaro);
+}
+.interruttore-dintorni strong {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--testo);
+  font-weight: 600;
+}
+
+@media (min-width: 720px) {
+  .griglia-dintorni { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* ---------------------------------------- In coda alla scheda dell'oggetto */
 .scheda-extra {
   margin-top: 12px;

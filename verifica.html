@@ -1327,6 +1327,38 @@ titolo('15. Le montagne che hanno un nome');
 //   per fare: mettere ogni vetta al suo posto, calcolarne l'altezza vera
 //   e togliere di mezzo quelle che da qui non si vedono.
 {
+  // Le prove girano col raggio di serie, qualunque cosa abbia scelto chi
+  // usa l'app su questo browser: `cimePrepara` lo legge dalle preferenze,
+  // e con la manopola a venti chilometri metà di questi controlli
+  // parlerebbe di un'altra cosa. Alla fine si rimette com'era.
+  const prefPrima = Object.assign({}, dintorni());
+  Object.assign(dintorni(), { cimeKm: DINTORNI_DIFETTO.cimeKm, cittaKm: DINTORNI_DIFETTO.cittaKm });
+
+  // --- Fin dove si guarda: la manopola delle Impostazioni ---
+  prova('di serie i nomi delle montagne sono spenti',
+        DINTORNI_DIFETTO.cimeAccese === false);
+  prova('un raggio assurdo viene tosato invece di essere creduto',
+        dintorniTosa('cimeKm', 9999) === DINTORNI_LIMITI.cimeKm[1] &&
+        dintorniTosa('cimeKm', -3) === DINTORNI_LIMITI.cimeKm[0] &&
+        dintorniTosa('cimeKm', 'boh') === DINTORNI_DIFETTO.cimeKm,
+        `${dintorniTosa('cimeKm', 9999)} / ${dintorniTosa('cimeKm', -3)} / ${dintorniTosa('cimeKm', 'boh')}`);
+  // Stringendo il raggio scende anche la soglia di quota delle vette
+  // lontane: a quaranta chilometri chiedere solo i millecinquecento metri
+  // vorrebbe dire, in mezza Italia, non chiedere niente
+  {
+    dintorni().cimeKm = 40;
+    const stretta = cimeQuotaLontaneM();
+    dintorni().cimeKm = DINTORNI_DIFETTO.cimeKm;
+    prova('col raggio corto si prendono anche le vette basse',
+          stretta < CIME_QUOTA_LONTANE_M && stretta >= 300, `${stretta} m contro ${CIME_QUOTA_LONTANE_M} m`);
+    // E la richiesta corta non chiede più in là di quanto le si è detto
+    dintorni().cimeKm = 12;
+    const q = cimeQueryOverpass(44.49, 11.34);
+    dintorni().cimeKm = DINTORNI_DIFETTO.cimeKm;
+    prova('e la richiesta non va oltre il raggio chiesto',
+          q.indexOf('around:12000') > 0 && q.indexOf('if:number') < 0);
+  }
+
   // --- Cernita e ordine ---
   const grezze = [
     { nome: 'Cima Vicina', lat: 44.30, lon: 11.34, quota: 900 },
@@ -1366,7 +1398,7 @@ titolo('15. Le montagne che hanno un nome');
         terrenoAngolo(2000, 55, 200) < 0, `${terrenoAngolo(2000, 55, 200).toFixed(2)}°`);
 
   // --- Chi si vede e chi no ---
-  const primaStato = { stato: cime.stato, elenco: cime.elenco, acceso: cime.acceso };
+  const primaStato = { stato: cime.stato, elenco: cime.elenco, acceso: cime.acceso, verificate: cime.verificate };
   const primaTerreno = { stato: terreno.stato, profilo: terreno.profilo, quota: terreno.quota, acceso: terreno.acceso };
   prova('senza elenco scaricato non si nomina niente', cimeVisibili().length === 0);
 
@@ -1414,10 +1446,83 @@ titolo('15. Le montagne che hanno un nome');
   prova('cambiando la quota dell\'osservatore le altezze si rifanno',
         dalMare > daiCento + 0.1,
         `${daiCento.toFixed(2)}° da cento metri, ${dalMare.toFixed(2)}° dal livello del mare`);
+  terreno.quota = 100;
+
+  // --- La linea di vista, che è quella che decide davvero ---
+  //
+  // È il controllo per cui questo pezzo di codice esiste, ed è quello che
+  // a occhio non si vede: il profilo del terreno è campionato ogni 7°30′ e
+  // interpolato, quindi alla direzione di una vetta non dice quello che
+  // c'è in quella direzione ma la mescolanza dei due settori vicini. Nelle
+  // valli strette è l'errore di sempre — un costone laterale alza il
+  // settore e fa sparire tutte le cime della testata.
+  //
+  // Con i due numeri della linea di vista (quanto è alto il punto che
+  // copre di più e a che distanza sta) la risposta si ribalta nei due
+  // versi, ed è giusto che si ribalti: quello che conta è la retta che
+  // porta alla punta, non la media di quello che le sta attorno.
+  cime.elenco = [
+    // Il profilo dice 6° verso nord, ma sulla retta che porta a questa
+    // vetta non c'è niente: da qui si vede, e prima spariva
+    { nome: 'Oltre la sella', lat: 0, lon: 0, quota: 2400, km: 45, az: 0, bloccoQuota: 300, bloccoKm: 8 },
+    // Il profilo dice orizzonte libero a est, ma a tre chilometri c'è una
+    // dorsale di ottocento metri: da qui non si vede, e prima si nominava
+    { nome: 'Dietro la dorsale', lat: 0, lon: 0, quota: 1900, km: 60, az: 90, bloccoQuota: 800, bloccoKm: 3 }
+  ];
+  cime.verificate = true;
+  cime.vistaChiave = null;
+  viste = cimeVisibili();
+  prova('la linea di vista libera fa ricomparire una vetta che la cresta interpolata nascondeva',
+        viste.some(c => c.nome === 'Oltre la sella'),
+        viste.map(c => c.nome).join(', ') || 'nessuna');
+  prova('e una dorsale vicina la fa sparire anche dove il profilo dice orizzonte libero',
+        !viste.some(c => c.nome === 'Dietro la dorsale'),
+        viste.map(c => c.nome).join(', ') || 'nessuna');
+  prova('di ogni vetta si sa di quanto sporge su quello che ha davanti',
+        viste[0].sporgenza > 0 && viste[0].sporgenza <= viste[0].alt,
+        `${viste[0].nome}: alta ${viste[0].alt.toFixed(2)}°, sporge ${viste[0].sporgenza.toFixed(2)}°`);
+  // Le più nette per prime: è l'ordine in cui si scrivono i nomi quando il
+  // posto non basta per tutti, e deve essere la sporgenza a comandarlo —
+  // non l'altezza sull'orizzonte, che premia le colline dietro casa
+  cime.elenco = [
+    { nome: 'Collinetta addosso', lat: 0, lon: 0, quota: 400, km: 2, az: 10, bloccoQuota: 300, bloccoKm: 1.5 },
+    { nome: 'Punta netta', lat: 0, lon: 0, quota: 2000, km: 40, az: 200, bloccoQuota: 200, bloccoKm: 6 }
+  ];
+  cime.vistaChiave = null;
+  viste = cimeVisibili();
+  prova('a comandare l\'ordine è quanto una punta stacca, non quanto è alta',
+        viste[0].nome === 'Punta netta' && viste[0].alt < viste[1].alt,
+        viste.map(c => `${c.nome} ${c.alt.toFixed(1)}°/${c.sporgenza.toFixed(1)}°`).join(', '));
+
+  // --- Le punte dentro al profilo disegnato ---
+  //
+  // Una vetta che si vede deve comparire nella forma dell'orizzonte, se no
+  // il nome resta appoggiato a una cresta che lì non ha nessuna punta. E
+  // la larghezza non è a piacere: un fianco di montagna sta attorno ai 25°
+  // di pendenza, quindi una punta che sale di un grado è larga un paio di
+  // gradi per parte — e a cinque gradi da lì il profilo non deve sapere
+  // nemmeno che quella montagna esiste.
+  cime.elenco = [{ nome: 'Punta netta', lat: 0, lon: 0, quota: 2000, km: 40, az: 200, bloccoQuota: 200, bloccoKm: 6 }];
+  cime.vistaChiave = null;
+  const punta = cimeVisibili()[0];
+  prova('la punta compare nel profilo alla sua altezza e nel suo azimut',
+        Math.abs(cimeAltezza(200) - punta.alt) < 0.02,
+        `${cimeAltezza(200).toFixed(2)}° contro ${punta.alt.toFixed(2)}°`);
+  prova('e si spegne da sé allontanandosene',
+        cimeAltezza(200 + punta.sporgenza * 2.2 + 1) === 0 && cimeAltezza(20) === 0,
+        `a ${(punta.sporgenza * 2.2 + 1).toFixed(1)}° di lato vale ${cimeAltezza(200 + punta.sporgenza * 2.2 + 1).toFixed(2)}°`);
+  prova('il fianco scende, non fa uno scalino',
+        cimeAltezza(200) > cimeAltezza(201) && cimeAltezza(201) > cimeAltezza(202),
+        [200, 201, 202, 203].map(g => cimeAltezza(g).toFixed(2)).join(' → '));
+  // Spente, non devono alzare l'orizzonte di un pixel: il tasto è un tasto
+  cime.acceso = false;
+  cime.profilo = null;
+  prova('a nomi spenti le punte non toccano l\'orizzonte', cimeAltezza(200) === 0);
 
   // Si rimette tutto com'era: le prove non devono lasciare tracce
-  Object.assign(cime, primaStato, { vistaChiave: null, vista: [] });
+  Object.assign(cime, primaStato, { vistaChiave: null, vista: [], profilo: null });
   Object.assign(terreno, primaTerreno);
+  Object.assign(dintorni(), prefPrima);
 }
 
 // =====================================================================

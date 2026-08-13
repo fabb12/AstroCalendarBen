@@ -244,6 +244,78 @@ function costruisciOrizzonte() {
 }
 
 
+// L'orizzonte attorno a casa: fin dove cercare le montagne e i paesi, e
+// se i nomi delle montagne si vogliono o no.
+//
+// Non è una preferenza estetica: quei due raggi comandano la richiesta a
+// OpenStreetMap — quanti nodi tornano indietro e quanto ci mette — e sono
+// l'unica risposta possibile a «da qui non si vede niente di tutto questo».
+// Chi sta in una conca di collina non ha nessun motivo di chiedere
+// centotrenta chilometri di vette, e chi sta in pianura padana ne ha
+// bisogno di tutti e centotrenta.
+function costruisciDintorni() {
+  const box = document.getElementById('imp-dintorni');
+  if (!box || typeof dintorni !== 'function') return;
+  const pref = dintorni();
+
+  const manopola = (campo, etichetta, spiega) => {
+    const [min, max] = DINTORNI_LIMITI[campo];
+    return `<label class="manopola-dintorni">
+      <span class="manopola-testa"><span class="manopola-nome">${etichetta}</span>
+        <span class="manopola-valore" data-valore="${campo}">${pref[campo]} km</span></span>
+      <input type="range" min="${min}" max="${max}" step="1" value="${pref[campo]}" data-dintorni="${campo}"
+             aria-label="${etichetta}, in chilometri">
+      <span class="manopola-nota">${spiega}</span>
+    </label>`;
+  };
+
+  const interruttore = (campo, etichetta, spiega) => `<label class="interruttore-dintorni">
+      <input type="checkbox" data-dintorni-si="${campo}"${pref[campo] ? ' checked' : ''}>
+      <span><strong>${etichetta}</strong><span class="manopola-nota">${spiega}</span></span>
+    </label>`;
+
+  box.innerHTML =
+    interruttore('cimeAccese', 'Scrivi i nomi delle montagne',
+      'Di serie sono spenti: un orizzonte pieno di scritte è la prima cosa che si nota e la prima che stanca. Acceso, l\'app controlla per ogni vetta che cosa c\'è lungo la linea di vista e nomina solo quelle che da qui spuntano davvero.') +
+    manopola('cimeKm', 'Fin dove cercare le montagne',
+      'Oltre questa distanza non si guarda. Più largo vuol dire più vette, una richiesta più lenta e più nomi lontani sull\'orizzonte.') +
+    interruttore('cittaAccese', 'Disegna le luci dei paesi',
+      'Le cupole di luce sopra il crinale: dicono da che parte NON puntare il telescopio.') +
+    manopola('cittaKm', 'Fin dove cercare i paesi',
+      'I centri grandi si vedono da lontano, le frazioni no: quelle si prendono comunque solo entro venti chilometri.');
+
+  const nota = document.getElementById('imp-dintorni-nota');
+  const dillo = () => {
+    if (!nota) return;
+    const pezzi = [];
+    if (typeof cimeTesto === 'function') pezzi.push(cimeTesto());
+    if (typeof cittaTesto === 'function') pezzi.push(cittaTesto());
+    nota.textContent = pezzi.map(t => (t || '').trim()).filter(Boolean).join(' ');
+  };
+  dillo();
+
+  // Le slitte si leggono mentre si trascinano ma si applicano al rilascio:
+  // ogni applicazione butta via l'elenco scaricato e ne chiede un altro, e
+  // farlo a ogni pixel vorrebbe dire cinquanta richieste per un gesto.
+  box.querySelectorAll('[data-dintorni]').forEach(s => {
+    const campo = s.dataset.dintorni;
+    const letto = box.querySelector(`[data-valore="${campo}"]`);
+    s.addEventListener('input', () => { if (letto) letto.textContent = `${s.value} km`; });
+    s.addEventListener('change', () => {
+      dintorniImposta({ [campo]: Number(s.value) });
+      setTimeout(dillo, 300);
+    });
+  });
+
+  box.querySelectorAll('[data-dintorni-si]').forEach(t => {
+    t.addEventListener('change', () => {
+      dintorniImposta({ [t.dataset.dintorniSi]: t.checked });
+      setTimeout(dillo, 300);
+    });
+  });
+}
+
+
 // =====================================================================
 // 3. PLANETARIO — le lune di Giove e la curva della notte
 //
@@ -422,6 +494,7 @@ function inizializzaNuoveFunzioni() {
   if (apri) apri.addEventListener('click', () => {
     costruisciSceltaCielo();
     costruisciOrizzonte();
+    costruisciDintorni();
   });
 
   aggiornaStaseraNuovo();

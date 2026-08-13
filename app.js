@@ -11883,18 +11883,26 @@ function skyInterpolaProfilo(tavola, az) {
   return tavola[i] + (tavola[i + 1] - tavola[i]) * t;
 }
 
-// Quanto è alto l'orizzonte in quella direzione. Tre cose, e vince sempre
-// la più alta, perché è la più alta che nasconde:
+// Quanto è alto l'orizzonte in quella direzione. Quattro cose, e vince
+// sempre la più alta, perché è la più alta che nasconde:
 //
 //   1. la forma vera del terreno, se `terreno.js` è riuscito a prenderla;
-//   2. gli ostacoli dichiarati a mano nel profilo a sedici settori di
+//   2. le **punte** delle vette che da qui si vedono (`cimeAltezza`). Il
+//      profilo del DEM è campionato ogni 7°30′ e interpolato morbido: la
+//      conformazione è giusta, le cime no — una vetta larga mezzo grado
+//      diventa una gobba tonda a metà strada fra due direzioni. Le vette
+//      con un nome invece si sanno al grado, e rimetterle dentro vuol dire
+//      che il crinale disegnato ha le sue punte dove uno le vede — e che
+//      il nome scritto sopra sta appoggiato a qualcosa;
+//   3. gli ostacoli dichiarati a mano nel profilo a sedici settori di
 //      `pianifica.js` — il condominio di fronte, che nessun DEM conosce;
-//   3. il dettaglio inventato degli alberi, che è l'unica parte che si
+//   4. il dettaglio inventato degli alberi, che è l'unica parte che si
 //      **somma** invece di gareggiare: sta in cima a quello che c'è
 //      sotto, che sia una collina vera o una finta.
 function skyAltezzaOrizzonte(az) {
   const vero = typeof terrenoAltezza === 'function' ? terrenoAltezza(az) : null;
-  const suolo = vero === null ? skyInterpolaProfilo(SKY_ONDE, az) : vero;
+  let suolo = vero === null ? skyInterpolaProfilo(SKY_ONDE, az) : vero;
+  if (vero !== null && typeof cimeAltezza === 'function') suolo = Math.max(suolo, cimeAltezza(az));
 
   const ostacoli = typeof orizzonteAltezza === 'function' ? orizzonteAltezza(az) : 0;
   const base = Math.max(suolo, ostacoli);
@@ -12619,20 +12627,10 @@ function skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria) {
     const az = arco.centro + d;
     const piede = skyProietta(skyVettore(az, 0), base, focale);
     if (!piede.davanti) { colonne.push(null); continue; }
-    const h = skyAltezzaOrizzonte(az);
-    // Senza il terreno vero non si sa che paesaggio sia: resta la finzione
-    // di sempre, che è una collina.
-    let ruvido = SKY_RUVIDEZZA.collina;
-    let roccia = 0.45;
-    const m = typeof terrenoMiscela === 'function' ? terrenoMiscela(az) : null;
-    if (m) {
-      ruvido = SKY_RUVIDEZZA.mare * m.mare + SKY_RUVIDEZZA.pianura * m.pianura
-        + SKY_RUVIDEZZA.collina * m.collina + SKY_RUVIDEZZA.montagna * m.montagna;
-      // Quanta parte del rilievo è roccia e quanta è dorso di collina
-      roccia = Math.min(1, m.montagna + m.collina * 0.5);
-    }
-    colonne.push({ az, h, piede, ruvido, roccia });
-    if (h > altezzaMax) altezzaMax = h;
+    const col = skyColonnaDiCresta(az);
+    col.piede = piede;
+    colonne.push(col);
+    if (col.h > altezzaMax) altezzaMax = col.h;
   }
   if (colonne.length < 2) return;
 
@@ -12672,6 +12670,40 @@ function skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria) {
   ctx.restore();
 }
 
+// Tutto quello che serve a disegnare una colonna di cresta in quella
+// direzione: quanto è alta, quanto è ruvido il rilievo lì, quanta parte è
+// roccia e quanta di quell'altezza è una punta con un nome. Sta in una
+// funzione sola perché la chiedono in due — il disegno del profilo e i
+// nomi delle vette, che devono appoggiarsi *esattamente* alla riga che il
+// disegno traccia, non a una sua approssimazione.
+function skyColonnaDiCresta(az) {
+  const h = skyAltezzaOrizzonte(az);
+  // Senza il terreno vero non si sa che paesaggio sia: resta la finzione
+  // di sempre, che è una collina.
+  let ruvido = SKY_RUVIDEZZA.collina;
+  let roccia = 0.45;
+  const m = typeof terrenoMiscela === 'function' ? terrenoMiscela(az) : null;
+  if (m) {
+    ruvido = SKY_RUVIDEZZA.mare * m.mare + SKY_RUVIDEZZA.pianura * m.pianura
+      + SKY_RUVIDEZZA.collina * m.collina + SKY_RUVIDEZZA.montagna * m.montagna;
+    // Quanta parte del rilievo è roccia e quanta è dorso di collina
+    roccia = Math.min(1, m.montagna + m.collina * 0.5);
+  }
+  // Quanto di quell'altezza è una punta con un nome: quella parte del
+  // profilo non è interpolata né inventata, e il rilievo non la tocca
+  const punta = typeof cimeAltezza === 'function' ? cimeAltezza(az) : 0;
+  return { az, h, ruvido, roccia, punta };
+}
+
+// Dove passa la cresta **disegnata**, in quella direzione. Non è
+// `skyAltezzaOrizzonte`: quella è la cresta misurata, e il disegno la
+// morde col rilievo fine (§ «Il rilievo fine delle creste»). La differenza
+// è di qualche pixel, ma è tutta la differenza fra un triangolino
+// appoggiato a una punta e uno che le galleggia sopra.
+function skyCrestaDisegnata(az) {
+  return skyMorsoCresta(skyColonnaDiCresta(az), SKY_CRESTE_PIANI[0]);
+}
+
 // L'altezza disegnata di una cresta su un piano: la vera, scalata dal
 // piano e morsa dal rilievo. Il rumore aspro e quello dolce si mescolano
 // con quanta roccia c'è da quella parte — sulla stessa vista, la costa
@@ -12688,7 +12720,15 @@ function skyMorsoCresta(col, piano) {
   // c'è montagna la loro quota va a zero e i piani si appiattiscono sulla
   // linea dell'orizzonte, cioè spariscono da soli.
   const quota = piano.quota === 1 ? 1 : piano.quota * col.roccia;
-  return col.h * quota * (1 - col.ruvido * piano.ruvido * n);
+  const morso = col.h * quota * (1 - col.ruvido * piano.ruvido * n);
+  // Dove c'è una vetta vera il morso non morde. Il rumore è un'invenzione
+  // che serve a dare grana a una curva misurata troppo di rado; la punta
+  // di una montagna con un nome invece è un dato, e abbassarla di un
+  // decimo di grado vuol dire staccare il suo nome dalla sua punta — la
+  // scritta resta appesa in cielo e il triangolino galleggia sopra al
+  // crinale. Vale solo per la cresta vera (il piano zero): le dorsali
+  // davanti stanno per forza più in basso.
+  return piano.quota === 1 && col.punta > morso ? col.punta : morso;
 }
 
 // I tratti continui di un piano: si spezza dove la proiezione perde il
@@ -12894,11 +12934,22 @@ function skyScrittaConAlone(ctx, testo, x, y, colore, alone, spessore = 3.5) {
   ctx.fillText(testo, x, y);
 }
 
-// Quante vette si nominano. Sono meno delle città di proposito: una città
-// è un posto solo e il suo nome è un'informazione secca, una cresta di
-// montagne è una fila di punte e nominarle tutte vuol dire scrivere sopra
-// al cielo invece che sopra all'orizzonte.
-const SKY_CIME_MAX_NOMI = 6;
+// Quante vette si nominano. Con le scritte orizzontali erano sei: su una
+// cresta di montagne sei nomi in fila occupano tutta la larghezza dello
+// schermo e il settimo non ci sta. Inclinate ci stanno tre volte tanto —
+// due scritte parallele si sfiorano invece di sovrapporsi — ed è il motivo
+// per cui le carte dei panorami, PeakFinder compreso, le scrivono così.
+const SKY_CIME_MAX_NOMI = () => quanto(9, 13, 16);
+
+// Di quanto sono inclinate. Cinquantadue gradi non è un numero a caso: più
+// piatte e tornano a pestarsi i piedi, più ripide e diventano faticose da
+// leggere. Il segno è negativo perché sulla tela la y cresce verso il
+// basso: la scritta sale verso destra.
+const SKY_CIME_INCLINA = -52;
+// Quanti tentativi si fanno allungando il gambo prima di rinunciare a un
+// nome. È lo scaletto che si vede nelle carte dei panorami: la scritta che
+// non ci sta accanto a un'altra sale di una riga e ci passa sopra.
+const SKY_CIME_GRADINI = 7;
 
 function skyCimeDaDisegnare() {
   if (typeof cimeVisibili !== 'function') return [];
@@ -12955,10 +13006,19 @@ function skyDisegnaNomiOrizzonte(ctx, base, focale) {
 // Prova a piazzare una scritta: se pesta i piedi a una già messa, no.
 // `occupati` è condiviso fra paesi e vette, quindi «Firenze» e «Monte
 // Falterona» non si stampano una sull'altra.
-function skyPostoLibero(occupati, px, py, largo, riga) {
-  if (occupati.some(q => Math.abs(q.x - px) < (q.l + largo) / 2 + 10 && Math.abs(q.y - py) < riga)) return false;
-  occupati.push({ x: px, y: py, l: largo });
+function skyPostoLibero(occupati, px, py, largo, alto) {
+  if (skyZonaOccupata(occupati, px, py, largo, alto)) return false;
+  occupati.push({ x: px, y: py, l: largo, a: alto });
   return true;
+}
+
+// La stessa prova, ma senza prendere posto. La usano le scritte inclinate
+// delle vette: fra loro si contano il posto in un altro modo (sono
+// parallele, e per due rette parallele quello che conta è quanto distano
+// fra loro), ma con le città non si devono accavallare comunque.
+function skyZonaOccupata(occupati, px, py, largo, alto) {
+  return occupati.some(q => Math.abs(q.x - px) < (q.l + largo) / 2 + 10 &&
+    Math.abs(q.y - py) < (q.a + alto) / 2);
 }
 
 // I nomi dei paesi, appoggiati sopra il loro crinale. Sono l'altra metà del
@@ -12992,8 +13052,10 @@ function skyNomiCitta(ctx, base, focale, occupati) {
   for (const c of lista) {
     if (scritte >= SKY_CITTA_MAX_NOMI) break;
     // Il nome sta appena sopra la cresta, non sopra la linea: se davanti
-    // alla città c'è una montagna, la scritta deve stare sopra la montagna
-    const alt = skyAltezzaOrizzonte(c.az);
+    // alla città c'è una montagna, la scritta deve stare sopra la montagna.
+    // E sopra la cresta *disegnata*, se no il trattino verticale finisce
+    // dentro al terreno per i pixel che il rilievo fine le ha morso.
+    const alt = skyCrestaDisegnata(c.az);
     const p = skyProietta(skyVettore(c.az, alt), base, focale);
     if (!p.davanti) continue;
     if (p.px < -60 || p.px > sky.larghezza + 60 || p.py < -20 || p.py > sky.altezza + 20) continue;
@@ -13025,38 +13087,102 @@ function skyNomiCitta(ctx, base, focale, occupati) {
 // Sotto il nome c'è la quota, più piccola: è quella che dice se quella
 // cresta è un ostacolo serio o una collina, ed è l'informazione che uno
 // cercherebbe subito dopo aver letto il nome.
+// Il modo in cui sono scritte è quello delle carte dei panorami — è anche
+// quello di PeakFinder, e non per imitazione: è l'unica disposizione che
+// regge su una cresta di montagne. Una scritta orizzontale sopra a una
+// punta occupa la sua larghezza per intero, e su una catena le punte sono
+// una ogni due gradi: alla terza non c'è più posto. Inclinate, due scritte
+// vicine sono due rette parallele, e due rette parallele si sfiorano —
+// quello che le separa non è la larghezza ma la distanza fra le rette, che
+// è dieci volte meno. Ognuna è legata alla sua punta da un gambo
+// verticale, e quando due si darebbero fastidio il gambo della seconda si
+// allunga di una riga: è lo scaletto di nomi che si vede in qualunque
+// panoramica disegnata.
 function skyNomiCime(ctx, base, focale, occupati) {
   const lista = skyCimeDaDisegnare();
   if (!lista.length) return;
 
   const corpo = quanto(12, 13, 14);
-  const corpoQuota = Math.round(corpo * 0.78);
+  const corpoQuota = Math.round(corpo * 0.76);
   const giorno = sky.luceCielo > 0.45;
   const tinta = SKY_NOMI_ORIZZONTE.cime[giorno ? 'giorno' : 'notte'];
-  const riga = corpo + corpoQuota + 8;
+  const massimo = SKY_CIME_MAX_NOMI();
+
+  const ang = SKY_CIME_INCLINA * SKY_D2R;
+  const dirX = Math.cos(ang), dirY = Math.sin(ang);
+  const riga = corpo + 4;                       // quanto devono distare due scritte parallele
+  const gamboMin = Math.max(14, corpo * 1.3);   // il gambo più corto: la scritta non tocca la punta
+  const gradino = riga / Math.abs(dirX);        // di quanto si allunga per guadagnare una riga
+  const messe = [];                             // le scritte già piazzate, in coordinate inclinate
 
   ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
   let scritte = 0;
   for (const c of lista) {
-    if (scritte >= SKY_CIME_MAX_NOMI) break;
-    const p = skyProietta(skyVettore(c.az, c.alt), base, focale);
+    if (scritte >= massimo) break;
+
+    // La punta si disegna dove sta davvero. Se però la cresta disegnata lì
+    // è più alta della vetta — capita quando il profilo del DEM, che è
+    // interpolato fra due direzioni, prende in prestito un costone
+    // vicino — il nome si appoggia alla cresta invece di finire sepolto
+    // dentro la montagna, che è il modo peggiore di scriverlo.
+    const alt = Math.max(c.alt, skyCrestaDisegnata(c.az));
+    const p = skyProietta(skyVettore(c.az, alt), base, focale);
     if (!p.davanti) continue;
     if (p.px < -70 || p.px > sky.larghezza + 70 || p.py < -20 || p.py > sky.altezza + 20) continue;
+
     // Corsivo: è così che le carte scrivono il rilievo, ed è quello che qui
     // separa «Firenze» da «Monte Falterona» anche quando il colore non può
     ctx.font = `${SKY_NOMI_ORIZZONTE.cime.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
-    const largo = ctx.measureText(c.nome).width;
-    // Il nome sta sopra il triangolino, la quota sotto: il blocco occupato
-    // è alto quanto tutt'e due, e il centro sta in mezzo
-    if (!skyPostoLibero(occupati, p.px, p.py - corpo, largo, riga)) continue;
+    const largoNome = ctx.measureText(c.nome).width;
+    const quota = `  ${Math.round(c.quota)} m`;
+    ctx.font = `italic 400 ${corpoQuota}px ${SKY_FONT_ETICHETTE}`;
+    const largo = largoNome + ctx.measureText(quota).width;
+
+    // Si cerca la lunghezza del gambo che lascia stare la scritta senza
+    // toccare le altre. Nel riferimento inclinato ogni scritta è un
+    // segmento su una retta: `v` dice su quale retta sta, `u` dove
+    // comincia. Due scritte danno fastidio solo se stanno su rette vicine
+    // *e* si sovrappongono lungo la retta.
+    let posto = null;
+    for (let k = 0; k < SKY_CIME_GRADINI; k++) {
+      const gambo = gamboMin + k * gradino;
+      const ax = p.px, ay = p.py - gambo;
+      // Fuori dal riquadro dalla parte di sopra non si scrive: la scritta
+      // sale verso destra, quindi quello che esce è la sua coda
+      if (ay + largo * dirY < 6 || ax + largo * dirX > sky.larghezza + 40) continue;
+      const u = ax * dirX + ay * dirY;
+      const v = -ax * dirY + ay * dirX;
+      const scontro = messe.some(m => Math.abs(m.v - v) < riga &&
+        u < m.u + m.largo + 8 && m.u < u + largo + 8);
+      if (scontro) continue;
+      // E con i nomi dei paesi, che hanno la precedenza e stanno per
+      // traverso: lì basta l'ingombro squadrato della scritta inclinata
+      const cx = ax + largo * dirX / 2, cy = ay + largo * dirY / 2;
+      if (skyZonaOccupata(occupati, cx, cy, Math.abs(largo * dirX) + corpo,
+        Math.abs(largo * dirY) + corpo)) continue;
+      posto = { gambo, ax, ay, u, v };
+      break;
+    }
+    if (!posto) continue;
+    messe.push({ u: posto.u, v: posto.v, largo });
     scritte++;
 
+    // Il gambo, dalla punta alla scritta: senza, un nome inclinato in
+    // mezzo al cielo non si sa a chi appartenga — e con una cresta di
+    // punte è esattamente la domanda che uno si fa.
+    ctx.strokeStyle = tinta.segno;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(p.px, p.py - 1);
+    ctx.lineTo(posto.ax, posto.ay + 1);
+    ctx.stroke();
+
     // Il triangolino appoggiato alla punta: è il segno con cui le carte
-    // dicono «montagna» da sempre, e qui fa anche il mestiere che per le
-    // città fa il trattino — legare il nome al posto a cui si riferisce.
-    const lato = Math.max(5, corpo * 0.5);
+    // dicono «montagna» da sempre, ed è quello che tiene il gambo attaccato
+    // al posto giusto invece che a un punto qualunque del crinale.
+    const lato = Math.max(4, corpo * 0.38);
     ctx.fillStyle = tinta.segno;
     ctx.beginPath();
     ctx.moveTo(p.px, p.py - lato * 0.9);
@@ -13065,16 +13191,17 @@ function skyNomiCime(ctx, base, focale, occupati) {
     ctx.closePath();
     ctx.fill();
 
-    skyScrittaConAlone(ctx, c.nome, p.px, p.py - lato - 3, tinta.pieno, tinta.alone, corpo * 0.26);
-
-    // La quota va sotto la punta e non sopra il nome: sopra, il blocco
-    // diventava una colonna alta trenta pixel e a due vette vicine non ci
-    // stava più nessuno dei due nomi.
+    // Nome e quota sulla stessa riga inclinata: la quota sotto al nome
+    // raddoppiava l'altezza del blocco, e su una cresta fitta era la
+    // differenza fra tre nomi e sei.
+    ctx.save();
+    ctx.translate(posto.ax, posto.ay);
+    ctx.rotate(ang);
+    ctx.font = `${SKY_NOMI_ORIZZONTE.cime.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
+    skyScrittaConAlone(ctx, c.nome, 0, 0, tinta.pieno, tinta.alone, corpo * 0.28);
     ctx.font = `italic 400 ${corpoQuota}px ${SKY_FONT_ETICHETTE}`;
-    ctx.textBaseline = 'top';
-    skyScrittaConAlone(ctx, `${Math.round(c.quota)} m`, p.px, p.py + lato * 0.6,
-      tinta.pieno, tinta.alone, corpoQuota * 0.26);
-    ctx.textBaseline = 'bottom';
+    skyScrittaConAlone(ctx, quota, largoNome, 0, tinta.segno, tinta.alone, corpoQuota * 0.28);
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -24850,7 +24977,11 @@ function esportaBackup() {
     // senza segnale. Stessa cosa per i paesi che lo illuminano.
     terreno: localStorage.getItem('astrocalendario_terreno'),
     citta: localStorage.getItem('astrocalendario_citta'),
-    cime: localStorage.getItem('astrocalendario_cime')
+    cime: localStorage.getItem('astrocalendario_cime'),
+    // Fin dove cercare montagne e paesi, e se i loro nomi si vogliono:
+    // sono risposte date a mano come il cielo di casa, e vanno nel backup
+    // insieme agli elenchi che hanno prodotto.
+    dintorni: localStorage.getItem('astrocalendario_dintorni')
   };
   const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
   const giorno = new Date().toISOString().slice(0, 10);
@@ -24909,11 +25040,20 @@ async function importaBackup(file) {
      ['corpiMiei', 'astrocalendario_corpi_minori_miei'],
      ['terreno', 'astrocalendario_terreno'],
      ['citta', 'astrocalendario_citta'],
-     ['cime', 'astrocalendario_cime']].forEach(([campo, chiave]) => {
+     ['cime', 'astrocalendario_cime'],
+     ['dintorni', 'astrocalendario_dintorni']].forEach(([campo, chiave]) => {
       if (!dati[campo]) return;
       try { localStorage.setItem(chiave, dati[campo]); } catch (e) { /* niente storage */ }
     });
     if (typeof orizzonteDimentica === 'function') orizzonteDimentica();
+    // Le preferenze vanno rilette **prima** di rilanciare i caricamenti:
+    // sono loro a dire con che raggio chiederli, e se sono ancora quelle
+    // di prima si riscarica con i numeri sbagliati.
+    if (typeof dintorniDimentica === 'function') {
+      dintorniDimentica();
+      if (typeof cime !== 'undefined') cime.acceso = dintorni().cimeAccese;
+      if (typeof citta !== 'undefined') citta.acceso = dintorni().cittaAccese;
+    }
     if (typeof corpiMinoriCaricaMiei === 'function') corpiMinoriCaricaMiei();
     // Il profilo in memoria è ancora quello di prima: si butta, e alla
     // prossima apertura del planetario si rilegge dal salvato
