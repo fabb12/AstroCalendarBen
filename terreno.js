@@ -142,6 +142,12 @@ const terreno = {
   profilo: null,          // Float32Array(361): l'altezza dell'orizzonte, grado per grado
   tipi: null,             // Uint8Array(361): che paesaggio c'è in quella direzione
   miscela: null,          // Float32Array(361×4): gli stessi tipi, ma sfumati fra loro
+  // La cresta parziale: per ogni direzione campionata e per ogni distanza,
+  // quanto è alto il terreno **fino a lì**. È la stessa cosa del profilo,
+  // ma fermata a metà strada — e serve a sapere che cosa nasconde che cosa
+  // (§8, `terrenoCrestaDavanti`). Manca ai profili salvati vecchi, e chi la
+  // usa deve sapersene fare una ragione.
+  fronti: null,           // Float32Array(48×12)
   quando: 0,
   motivo: '',             // perché non c'è, quando non c'è
   acceso: true
@@ -303,6 +309,34 @@ function terrenoMiscelaPerGrado(tipiPerGrado) {
   return m;
 }
 
+// La cresta parziale, direzione per direzione: quanto sale il terreno da
+// qui fino al campione k-esimo. È un massimo che si accumula andando
+// avanti, quindi la riga è per forza non decrescente — e l'ultima casella
+// di ogni riga è la cresta intera, quella di `creste`.
+//
+// Serve a una domanda sola, ma è la domanda giusta: una vetta a otto
+// chilometri non la nasconde la montagna a trenta che le sta dietro, la
+// nasconde solo quello che le sta **davanti**. Confrontando col profilo
+// intero — com'era prima — bastava una vetta più alta e più lontana nella
+// stessa direzione per cancellare tutte le punte davanti a lei, che è il
+// contrario di quello che succede fuori dalla finestra.
+function terrenoFronti(quote, occhio) {
+  const n = TERRENO_DISTANZE.length;
+  const f = new Float32Array(TERRENO_DIREZIONI * n);
+  for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+    let massimo = 0;
+    for (let k = 0; k < n; k++) {
+      const q = quote[i * n + k];
+      if (typeof q === 'number') {
+        const a = terrenoAngolo(q, occhio, TERRENO_DISTANZE[k]);
+        if (a > massimo) massimo = a;
+      }
+      f[i * n + k] = Math.min(TERRENO_ALT_MAX, massimo);
+    }
+  }
+  return f;
+}
+
 async function terrenoCostruisci(lat, lon) {
   // Prima la quota di casa: senza sapere da che altezza si guarda, ogni
   // angolo è sbagliato — e sbagliato tanto, perché è il termine che si
@@ -346,7 +380,15 @@ async function terrenoCostruisci(lat, lon) {
     tipi[i] = terrenoTipoDiDirezione(quote, i, quotaCasa, creste[i]);
   }
 
-  return { quota: quotaCasa, creste, tipi };
+  // Le quote grezze si portano dietro, arrotondate al metro: sono le
+  // stesse che hanno fatto le creste, ma tenerle vuol dire poter
+  // rispondere anche alla domanda più fine — «che c'è **davanti** a quel
+  // punto lì», che è quella da cui dipende se una vetta si vede (§8).
+  // Cinquecentosettantasei interi: qualche kilobyte.
+  return {
+    quota: quotaCasa, creste, tipi,
+    quote: quote.map(q => (typeof q === 'number' ? Math.round(q) : null))
+  };
 }
 
 
@@ -394,7 +436,10 @@ function terrenoSalva(lat, lon, dati) {
     // della stessa collina.
     const posti = terrenoArchivio().filter(v => terrenoPostoValido(v) &&
       terrenoDistanzaKm(lat, lon, v.lat, v.lon) > TERRENO_RAGGIO_VALIDO_KM);
-    posti.unshift({ lat, lon, quota: dati.quota, creste: dati.creste, tipi: dati.tipi, quando: Date.now() });
+    posti.unshift({
+      lat, lon, quota: dati.quota, creste: dati.creste, tipi: dati.tipi,
+      quote: dati.quote, quando: Date.now()
+    });
     localStorage.setItem(CHIAVE_TERRENO, JSON.stringify({ posti: posti.slice(0, TERRENO_POSTI_SALVATI) }));
   } catch (e) { /* storage pieno: pazienza, si riscarica */ }
 }
@@ -406,6 +451,7 @@ function terrenoDimentica() {
   terreno.profilo = null;
   terreno.tipi = null;
   terreno.miscela = null;
+  terreno.fronti = null;
   terreno.lat = terreno.lon = null;
 }
 
@@ -421,6 +467,13 @@ function terrenoApplica(lat, lon, dati, sorgente) {
   terreno.profilo = terrenoInterpola(dati.creste);
   terreno.tipi = terrenoTipiPerGrado(dati.tipi);
   terreno.miscela = terrenoMiscelaPerGrado(terreno.tipi);
+  // I profili salvati prima che esistessero le quote grezze non ce le
+  // hanno: si resta senza creste parziali, e chi le usa ripiega sul
+  // profilo intero come faceva prima. Si rifanno da sé al primo posto
+  // nuovo, e sono sei richieste che nessuno rifà apposta.
+  terreno.fronti = Array.isArray(dati.quote) && dati.quote.length === TERRENO_DIREZIONI * TERRENO_DISTANZE.length
+    ? terrenoFronti(dati.quote, (typeof dati.quota === 'number' ? dati.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M)
+    : null;
   terreno.stato = 'pronto';
   terreno.motivo = '';
   terreno.quando = Date.now();
@@ -519,6 +572,40 @@ function terrenoAltezza(az) {
 
 function terrenoDisponibile() {
   return terreno.acceso && terreno.stato === 'pronto' && !!terreno.profilo;
+}
+
+// Quanto si può stare vicini a un punto lontano `km` e contare ancora come
+// «davanti a lui». Il campione a nove chilometri di una montagna che
+// culmina a dieci è il suo stesso fianco: preso come ostacolo, ogni vetta
+// nasconderebbe sé stessa. Il quindici per cento di margine è più o meno
+// mezzo campione della griglia, che è la finezza con cui questo terreno sa
+// rispondere.
+const TERRENO_FRONTE_MARGINE = 0.85;
+
+// Quanto è alta la cresta che sta **davanti** a un punto in direzione `az`
+// e distante `km`. `null` quando non lo si può sapere — niente terreno, o
+// un profilo salvato di quelli vecchi senza quote grezze — e allora chi
+// chiama torni pure al profilo intero.
+//
+// Fra due direzioni campionate si interpola con la stessa curva a S del
+// profilo: le due risposte devono essere parenti, se no una vetta cambia
+// stato passando da un settore all'altro.
+function terrenoCrestaDavanti(az, km) {
+  if (!terrenoDisponibile() || !terreno.fronti) return null;
+  const n = TERRENO_DISTANZE.length;
+  const limite = km * TERRENO_FRONTE_MARGINE;
+  // L'ultimo campione che le sta davvero davanti. Nessuno: niente ostacoli,
+  // e la risposta è zero — non `null`, che vuol dire un'altra cosa.
+  let k = -1;
+  for (let j = 0; j < n; j++) if (TERRENO_DISTANZE[j] <= limite) k = j;
+  if (k < 0) return 0;
+
+  const dove = (((az % 360) + 360) % 360) / TERRENO_PASSO_AZ;
+  const i = Math.floor(dove) % TERRENO_DIREZIONI;
+  const j = (i + 1) % TERRENO_DIREZIONI;
+  const t = dove - Math.floor(dove);
+  const s = t * t * (3 - 2 * t);
+  return terreno.fronti[i * n + k] * (1 - s) + terreno.fronti[j * n + k] * s;
 }
 
 // Che paesaggio c'è guardando da quella parte: 'mare', 'pianura',
@@ -656,6 +743,107 @@ function terrenoAggiornaPannello() {
 
 
 // =====================================================================
+// 9-bis. FIN DOVE SI GUARDA
+//
+//     Due misure sole, e non c'è un valore giusto: dipende da dove sei.
+//     Dalla pianura padana le Alpi stanno a centoventi chilometri e nelle
+//     giornate terse si contano una per una, quindi il raggio va largo; in
+//     mezzo all'Appennino a centoventi chilometri non si vede niente, e
+//     tenerlo largo vuol dire solo riempire l'orizzonte di nomi di
+//     montagne che stanno dietro ad altre montagne. La stessa cosa vale
+//     per le luci dei paesi.
+//
+//     Fin qui erano due costanti scritte nel codice. Adesso stanno nelle
+//     Impostazioni, perché sono l'unica cosa di questo file che dipende da
+//     chi guarda e non dal terreno.
+//
+//     Il raggio entra anche nel salvataggio: un elenco preso a quaranta
+//     chilometri non risponde alla domanda di chi ne ha chiesti cento, e
+//     riusarlo vorrebbe dire dare per buona una risposta che non è stata
+//     fatta. Al contrario un elenco più largo di quello chiesto va
+//     benissimo — basta tagliarlo, e le richieste di rete si risparmiano.
+// =====================================================================
+
+const CHIAVE_RAGGI = 'astrocalendario_raggi_orizzonte';
+
+// Il passo non è un vezzo: la slitta deve dare numeri tondi, e un raggio
+// di 87 km non vuol dire niente di diverso da uno di 85.
+const RAGGI_LIMITI = {
+  cime: { min: 15, max: 200, passo: 5, predefinito: 80 },
+  citta: { min: 10, max: 150, passo: 5, predefinito: 90 }
+};
+
+function raggiTosa(quale, km) {
+  const l = RAGGI_LIMITI[quale];
+  const v = Math.round(Number(km) / l.passo) * l.passo;
+  return Math.max(l.min, Math.min(l.max, isFinite(v) ? v : l.predefinito));
+}
+
+function raggiLeggiSalvati() {
+  const v = { cime: RAGGI_LIMITI.cime.predefinito, citta: RAGGI_LIMITI.citta.predefinito, nomiMonti: false };
+  try {
+    const s = JSON.parse(localStorage.getItem(CHIAVE_RAGGI) || 'null');
+    if (s && typeof s === 'object') {
+      if (typeof s.cime === 'number') v.cime = raggiTosa('cime', s.cime);
+      if (typeof s.citta === 'number') v.citta = raggiTosa('citta', s.citta);
+      // I nomi dei monti nascono spenti, e restano spenti finché qualcuno
+      // non li accende: sono l'unico strato di questo file che aggiunge
+      // scritte sopra al cielo, e chi apre il planetario per la prima
+      // volta vuole vedere il cielo.
+      if (typeof s.nomiMonti === 'boolean') v.nomiMonti = s.nomiMonti;
+    }
+  } catch (e) { /* niente storage, o roba illeggibile */ }
+  return v;
+}
+
+const raggi = raggiLeggiSalvati();
+
+function raggiSalva() {
+  try { localStorage.setItem(CHIAVE_RAGGI, JSON.stringify(raggi)); } catch (e) { /* pieno */ }
+}
+
+function raggioCime() { return raggi.cime; }
+function raggioCitta() { return raggi.citta; }
+
+// Rileggere da capo quello che c'è in `localStorage`. Serve al ripristino
+// di un backup, che in localStorage ci scrive direttamente: senza questa,
+// l'oggetto in memoria resterebbe quello di prima e le due verità si
+// contraddirebbero fino al ricaricamento della pagina.
+function raggiRicarica() {
+  Object.assign(raggi, raggiLeggiSalvati());
+  cime.acceso = raggi.nomiMonti;
+  if (typeof costruisciRaggiOrizzonte === 'function') costruisciRaggiOrizzonte();
+}
+
+// Cambia un raggio e rimette in moto quello che dipende da lui. Torna
+// `true` se è cambiato davvero: chi chiama non deve ricaricare mezzo mondo
+// perché la slitta si è mossa e poi è tornata dov'era.
+function raggiImposta(quale, km) {
+  const valore = raggiTosa(quale, km);
+  if (raggi[quale] === valore) return false;
+  raggi[quale] = valore;
+  raggiSalva();
+  if (quale === 'cime') {
+    cimeDimentica();
+    if (cime.acceso) cimeCarica(true);
+  } else {
+    cittaDimentica();
+    if (citta.acceso) cittaCarica(true);
+  }
+  terrenoAggiornaPannello();
+  return true;
+}
+
+// Il salvato serve solo se è stato preso guardando **almeno** fin dove si
+// sta guardando adesso. I salvataggi vecchi non dicono con che raggio sono
+// stati fatti: valgono per quello che era il raggio fisso di allora.
+function raggiSalvatoBuono(v, quale, vecchio) {
+  const preso = (v && typeof v.raggio === 'number') ? v.raggio : vecchio;
+  return preso >= raggi[quale] - 0.5;
+}
+
+
+// =====================================================================
 // 10. LE CITTÀ VERE
 //
 //     Un orizzonte notturno non è nero. Da qualunque posto abitato, sopra
@@ -679,7 +867,9 @@ function terrenoAggiornaPannello() {
 const CHIAVE_CITTA = 'astrocalendario_citta';
 
 // Novanta chilometri: oltre, l'alone di una città grande c'è ancora, ma è
-// più basso della foschia e non vale la richiesta.
+// più basso della foschia e non vale la richiesta. Da quando il raggio si
+// sceglie nelle Impostazioni (§9-bis) questo è solo il valore di partenza,
+// e resta come metro per i salvataggi vecchi, che il raggio non lo dicono.
 const CITTA_RAGGIO_KM = 90;
 // I paesi piccoli si prendono solo da vicino: a venti chilometri un paese
 // di duemila anime non illumina niente, e ce ne sono a centinaia.
@@ -749,7 +939,7 @@ function cittaPrepara(grezze, lat, lon) {
       alfa: Math.max(0.03, Math.min(0.30, 0.03 * Math.pow(forza, 0.22)))
     };
   })
-    .filter(c => c.km <= CITTA_RAGGIO_KM + 5 && c.forza > 12)
+    .filter(c => c.km <= raggioCitta() + 5 && c.forza > 12)
     .sort((a, b) => b.forza - a.forza)
     .slice(0, CITTA_MAX);
 }
@@ -759,9 +949,15 @@ function cittaPrepara(grezze, lat, lon) {
 
 function cittaQueryOverpass(lat, lon) {
   const la = lat.toFixed(4), lo = lon.toFixed(4);
+  const largo = raggioCitta();
+  // I paesini seguono il raggio grande finché è piccolo: con venti
+  // chilometri di ricerca chiedere le città a venti e i paesi a venti è la
+  // stessa richiesta, e chiederli a venti quando il raggio è dieci vuol
+  // dire prendersi paesi che non si è chiesto di vedere.
+  const vicino = Math.min(CITTA_RAGGIO_PAESI_KM, largo);
   return '[out:json][timeout:20];(' +
-    `node["place"~"^(city|town)$"](around:${Math.round(CITTA_RAGGIO_KM * 1000)},${la},${lo});` +
-    `node["place"~"^(village|suburb|borough)$"](around:${Math.round(CITTA_RAGGIO_PAESI_KM * 1000)},${la},${lo});` +
+    `node["place"~"^(city|town)$"](around:${Math.round(largo * 1000)},${la},${lo});` +
+    `node["place"~"^(village|suburb|borough)$"](around:${Math.round(vicino * 1000)},${la},${lo});` +
     ');out body 400;';
 }
 
@@ -826,7 +1022,7 @@ function cittaDaElencoInterno(lat, lon) {
   if (typeof ECL_CITTA === 'undefined') return [];
   return ECL_CITTA
     .map(([nome, paese, cLat, cLon]) => ({ nome, lat: cLat, lon: cLon, abitanti: 250000 }))
-    .filter(c => terrenoDistanzaKm(lat, lon, c.lat, c.lon) <= CITTA_RAGGIO_KM);
+    .filter(c => terrenoDistanzaKm(lat, lon, c.lat, c.lon) <= raggioCitta());
 }
 
 
@@ -842,6 +1038,7 @@ function cittaArchivio() {
 
 function cittaLeggiSalvate(lat, lon) {
   return cittaArchivio().find(v => v && Array.isArray(v.elenco) && typeof v.lat === 'number' &&
+    raggiSalvatoBuono(v, 'citta', CITTA_RAGGIO_KM) &&
     terrenoDistanzaKm(lat, lon, v.lat, v.lon) <= CITTA_RAGGIO_VALIDO_KM) || null;
 }
 
@@ -850,7 +1047,7 @@ function cittaSalva(lat, lon, grezze, fonte) {
     const posti = cittaArchivio().filter(v => v && typeof v.lat === 'number' &&
       terrenoDistanzaKm(lat, lon, v.lat, v.lon) > CITTA_RAGGIO_VALIDO_KM);
     posti.unshift({
-      lat, lon, fonte, quando: Date.now(),
+      lat, lon, fonte, quando: Date.now(), raggio: raggioCitta(),
       // Nomi corti e coordinate a quattro decimali: un centinaio di paesi
       // stanno in una decina di kilobyte
       elenco: grezze.map(c => ({ n: c.nome, a: +c.lat.toFixed(4), o: +c.lon.toFixed(4), p: c.abitanti }))
@@ -1014,7 +1211,10 @@ const CHIAVE_CIME = 'astrocalendario_cime';
 
 // Le montagne grandi si vedono da lontanissimo: dalla pianura padana le
 // Alpi stanno a centoventi chilometri e nelle giornate terse si contano
-// una per una. Oltre i centotrenta ci pensa la foschia.
+// una per una. Oltre i centotrenta ci pensa la foschia. Da quando il
+// raggio si sceglie nelle Impostazioni (§9-bis) questo numero non comanda
+// più la ricerca: resta il metro con cui si giudicano i salvataggi vecchi,
+// che il raggio con cui sono stati presi non lo dicono.
 const CIME_RAGGIO_KM = 130;
 // Sotto questa quota una vetta si prende solo da vicino: a cento
 // chilometri una cima di ottocento metri è sotto l'orizzonte comunque.
@@ -1023,7 +1223,11 @@ const CIME_RAGGIO_VICINE_KM = 25;
 // Quando la richiesta larga non passa si ripiega su questo raggio: sono le
 // montagne di casa, quelle che uno riconosce a occhio e chiama per nome.
 const CIME_RAGGIO_RIPIEGO_KM = 35;
-const CIME_MAX = 40;
+// Quante se ne tengono in mano. Sono più di quelle che si scrivono
+// (`SKY_CIME_MAX_NOMI` in app.js), e devono esserlo: girandosi cambia il
+// pezzo di orizzonte in vista, e chi si nomina lì lo si sceglie fra quelle
+// che stanno lì, non fra le sei più grosse del giro intero.
+const CIME_MAX = 80;
 const CIME_RAGGIO_VALIDO_KM = 5;
 // Più lunga del `timeout` scritto nella query (25 s): il client non deve
 // mai essere lui ad arrendersi per primo.
@@ -1042,13 +1246,25 @@ const CIME_SOTTO_CRESTA_GRADI = 0.25;
 // si riconosce: è una riga di orizzonte con sopra un nome.
 const CIME_ALT_MIN_GRADI = 0.15;
 
+// Due nomi diversi per la stessa punta: OpenStreetMap ha «Monte Alben» e
+// «Cima Alben Ovest» a trecento metri uno dall'altra, e da trenta
+// chilometri sono lo stesso dente sull'orizzonte. Quando due vette cadono
+// dentro a questo fazzoletto di cielo se ne nomina una sola, la più alta —
+// se no si scrivono due etichette sopra allo stesso punto, che è il modo
+// più veloce di far sembrare sbagliate anche quelle giuste.
+const CIME_VICINE_AZ_GRADI = 0.45;
+const CIME_VICINE_ALT_GRADI = 0.30;
+
 const cime = {
   stato: 'niente',        // niente | in-corso | pronto | fallito
   lat: null, lon: null,
   elenco: [],             // { nome, lat, lon, quota, az, km }
   fonte: '',
   motivo: '',
-  acceso: true,
+  // Spente di partenza, e la scelta si ricorda (§9-bis): i nomi delle
+  // montagne sono l'unica cosa di questo file che scrive sopra al cielo, e
+  // chi apre il planetario la prima volta è venuto a vedere le stelle.
+  acceso: raggi.nomiMonti,
   quandoFallito: 0,       // per non ritentare a raffica dopo un buco nell'acqua
   fallitoLat: null, fallitoLon: null,   // e dove era andata male: altrove si riprova subito
   // Le altezze apparenti si rifanno solo quando cambia qualcosa: la quota
@@ -1085,15 +1301,24 @@ function terrenoRiquadro(lat, lon, km) {
 // mentre lui sta ancora lavorando.
 function cimeQueryOverpass(lat, lon) {
   const la = lat.toFixed(4), lo = lon.toFixed(4);
-  const r = terrenoRiquadro(lat, lon, CIME_RAGGIO_KM);
-  const vicino = Math.round(CIME_RAGGIO_VICINE_KM * 1000);
+  const largo = raggioCime();
+  const r = terrenoRiquadro(lat, lon, largo);
+  // L'anello vicino non può essere più largo della ricerca: chiedendo
+  // venticinque chilometri di tutto dentro a un raggio di quindici si
+  // prendono vette che poi `cimePrepara` butta via, e intanto la richiesta
+  // è stata fatta.
+  const vicino = Math.round(Math.min(CIME_RAGGIO_VICINE_KM, largo) * 1000);
   // A cavallo dell'antimeridiano il riquadro si spezza in due e Overpass
   // lo rifiuta: là si torna all'anello, che è lento ma sempre giusto.
   const lontane = (r.o < -180 || r.e > 180)
-    ? `(around:${Math.round(CIME_RAGGIO_KM * 1000)},${la},${lo})`
+    ? `(around:${Math.round(largo * 1000)},${la},${lo})`
     : `(${r.s.toFixed(4)},${r.o.toFixed(4)},${r.n.toFixed(4)},${r.e.toFixed(4)})`;
+  // Il filtro sulla quota vale solo per l'anello di fuori, e si abbassa
+  // insieme al raggio: con quaranta chilometri di ricerca pretendere
+  // millecinquecento metri vuol dire non trovare niente in Appennino.
+  const quota = Math.round(Math.min(CIME_QUOTA_LONTANE_M, largo * 12));
   return '[out:json][timeout:25];(' +
-    `node["natural"="peak"]["name"]["ele"](if:number(t["ele"]) > ${CIME_QUOTA_LONTANE_M})${lontane};` +
+    `node["natural"="peak"]["name"]["ele"](if:number(t["ele"]) > ${quota})${lontane};` +
     `node["natural"="peak"]["name"]["ele"](around:${vicino},${la},${lo});` +
     ');out body 900;';
 }
@@ -1104,8 +1329,9 @@ function cimeQueryOverpass(lat, lon) {
 // che sono quelle che uno riconosce, ci sono comunque.
 function cimeQueryVicina(lat, lon) {
   const la = lat.toFixed(4), lo = lon.toFixed(4);
+  const km = Math.min(CIME_RAGGIO_RIPIEGO_KM, raggioCime());
   return '[out:json][timeout:20];' +
-    `node["natural"="peak"]["name"]["ele"](around:${Math.round(CIME_RAGGIO_RIPIEGO_KM * 1000)},${la},${lo});` +
+    `node["natural"="peak"]["name"]["ele"](around:${Math.round(km * 1000)},${la},${lo});` +
     'out body 300;';
 }
 
@@ -1135,9 +1361,10 @@ async function cimeDaOverpass(lat, lon) {
 // arrivare dopo (il terreno è un'altra richiesta). Si fa in `cimeVisibili`.
 function cimePrepara(grezze, lat, lon) {
   const viste = new Map();
+  const limite = raggioCime();
   for (const c of grezze) {
     const km = terrenoDistanzaKm(lat, lon, c.lat, c.lon);
-    if (km > CIME_RAGGIO_KM + 5 || km < 0.05) continue;
+    if (km > limite || km < 0.05) continue;
     // Lo stesso monte compare più volte in OSM (la punta, la croce, la
     // cima secondaria): a parità di nome si tiene la più alta.
     const gia = viste.get(c.nome);
@@ -1168,6 +1395,7 @@ function cimeArchivio() {
 
 function cimeLeggiSalvate(lat, lon) {
   return cimeArchivio().find(v => v && Array.isArray(v.elenco) && typeof v.lat === 'number' &&
+    raggiSalvatoBuono(v, 'cime', CIME_RAGGIO_KM) &&
     terrenoDistanzaKm(lat, lon, v.lat, v.lon) <= CIME_RAGGIO_VALIDO_KM) || null;
 }
 
@@ -1176,7 +1404,7 @@ function cimeSalva(lat, lon, elenco, fonte) {
     const posti = cimeArchivio().filter(v => v && typeof v.lat === 'number' &&
       terrenoDistanzaKm(lat, lon, v.lat, v.lon) > CIME_RAGGIO_VALIDO_KM);
     posti.unshift({
-      lat, lon, fonte, quando: Date.now(),
+      lat, lon, fonte, quando: Date.now(), raggio: raggioCime(),
       elenco: elenco.map(c => ({ n: c.nome, a: +c.lat.toFixed(4), o: +c.lon.toFixed(4), q: Math.round(c.quota) }))
     });
     localStorage.setItem(CHIAVE_CIME, JSON.stringify({ posti: posti.slice(0, TERRENO_POSTI_SALVATI) }));
@@ -1213,6 +1441,11 @@ function cimeApplica(lat, lon, grezze, fonte) {
 }
 
 function cimeCarica(forza) {
+  // Spente vuol dire spente anche in rete: la richiesta a Overpass è la
+  // parte cara di questo modulo, e chi non ha chiesto i nomi delle
+  // montagne non deve pagarla. Ad accenderle si riparte da qui.
+  if (!cime.acceso) return Promise.resolve(false);
+
   const luogo = terrenoLuogo();
   if (!luogo) return Promise.resolve(false);
   const lat = luogo.lat, lon = luogo.lon;
@@ -1311,26 +1544,59 @@ function cimeQuotaOcchio() {
 // La cernita vera è la seconda riga: se la punta sta sotto la cresta del
 // terreno in quella direzione, davanti c'è qualcosa che la nasconde. È il
 // motivo per cui questo elenco è corto e quello di OpenStreetMap è lungo.
+// Quella davanti nasconde quella dietro. La cernita è in due tempi: prima
+// si tiene chi spunta sopra al terreno **che gli sta davanti**, poi si
+// buttano i doppioni — due nomi per lo stesso dente d'orizzonte.
+//
+// Il primo passo è il cuore, ed è quello che è cambiato: prima si
+// confrontava la punta con la cresta intera di quella direzione, cioè col
+// massimo su tutte le distanze. Ma quel massimo comprende anche le
+// montagne che stanno **dietro** alla vetta in esame, e una montagna dietro
+// non nasconde niente — anzi, è proprio lo sfondo su cui la si vede.
+// Guardando le Prealpi dalla pianura, ogni collina davanti finiva
+// cancellata dalla cresta più alta che le stava alle spalle: sparivano
+// esattamente le vette vicine, quelle che uno riconosce.
 function cimeVisibili() {
   if (!cime.acceso || cime.stato !== 'pronto' || !cime.elenco.length) return [];
   const chiave = `${cimeQuotaOcchio().toFixed(1)}|${terrenoDisponibile() ? terreno.quando : 0}`;
   if (cime.vistaChiave === chiave) return cime.vista;
 
   const occhio = cimeQuotaOcchio();
-  cime.vista = cime.elenco
+  const spuntano = cime.elenco
     .map(c => Object.assign({}, c, { alt: terrenoAngolo(c.quota, occhio, c.km) }))
     .filter(c => {
       if (c.alt < CIME_ALT_MIN_GRADI) return false;
-      const cresta = terrenoAltezza(c.az);
+      const davanti = terrenoCrestaDavanti(c.az, c.km);
+      // Senza le quote grezze non si sa cosa c'è davanti: si torna al
+      // confronto con la cresta intera, che è severo ma non inventa niente.
+      const cresta = davanti === null ? terrenoAltezza(c.az) : davanti;
       return cresta === null || c.alt >= cresta - CIME_SOTTO_CRESTA_GRADI;
     })
     .sort((a, b) => b.alt - a.alt);
+
+  // Dalla più imponente in giù: chi arriva dopo e cade dentro al fazzoletto
+  // di una già tenuta è la stessa punta con un altro nome.
+  const tenute = [];
+  for (const c of spuntano) {
+    const doppione = tenute.some(t => {
+      const dAz = Math.abs(((c.az - t.az + 540) % 360) - 180);
+      return dAz < CIME_VICINE_AZ_GRADI && Math.abs(c.alt - t.alt) < CIME_VICINE_ALT_GRADI;
+    });
+    if (!doppione) tenute.push(c);
+  }
+
+  cime.vista = tenute;
   cime.vistaChiave = chiave;
   return cime.vista;
 }
 
 function cimeAlterna() {
   cime.acceso = !cime.acceso;
+  // La scelta si ricorda: chi le accende non vuole riaccenderle domani, e
+  // chi le lascia spente non vuole ritrovarsele.
+  raggi.nomiMonti = cime.acceso;
+  raggiSalva();
+  if (typeof costruisciRaggiOrizzonte === 'function') costruisciRaggiOrizzonte();
   // Accendendolo a mano si riprova subito, anche se la volta prima era
   // andata male: un tasto premuto è una richiesta esplicita, e l'attesa di
   // cortesia verso il servizio vale per i tentativi automatici, non per
@@ -1341,6 +1607,7 @@ function cimeAlterna() {
 
 function cimeTesto() {
   if (!cime.acceso) return 'Nomi delle montagne spenti.';
+  if (cime.stato === 'niente') return `Accesi: cerco le vette entro ${raggioCime()} km…`;
   if (cime.stato === 'in-corso') return 'Sto cercando le montagne qui attorno…';
   if (cime.stato === 'fallito') return cime.motivo;
   if (cime.stato !== 'pronto') return '';
@@ -1352,12 +1619,12 @@ function cimeTesto() {
   // dell'orizzonte — e la seconda è la risposta a «perché non leggo niente».
   if (!viste.length) {
     return cime.elenco.length
-      ? `Le ${cime.elenco.length} vette qui attorno restano tutte sotto la prima cresta: da qui non se ne vede nessuna.`
-      : 'Nessuna vetta spunta sopra l\'orizzonte da qui.';
+      ? `Le ${cime.elenco.length} vette entro ${raggioCime()} km restano tutte dietro alla prima cresta: da qui non se ne vede nessuna.`
+      : `Nessuna vetta con un nome entro ${raggioCime()} km: nelle Impostazioni puoi allargare la ricerca.`;
   }
   const prima = viste[0];
   const dove = typeof skyNomeDirezione === 'function' ? skyNomeDirezione(prima.az) : '';
-  return `Sopra l'orizzonte si riconoscono ${viste.length} vette: la più imponente è ${prima.nome} ` +
+  return `Sopra l'orizzonte si riconoscono ${viste.length} vette entro ${raggioCime()} km: la più imponente è ${prima.nome} ` +
     `(${Math.round(prima.quota)} m), a ${prima.km.toFixed(0)} km verso ${dove}, alta ${prima.alt.toFixed(1)}°.`;
 }
 

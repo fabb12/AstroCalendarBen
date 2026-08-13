@@ -523,7 +523,7 @@
                 <button id="skymap-btn-atmosfera" type="button" class="tasto-cielo attiva" title="Colore del cielo, foschia sull'orizzonte e alone del Sole: come si vede davvero a quest'ora">Atmosfera</button>
                 <button id="skymap-btn-terreno" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'orizzonte prende la forma vera del terreno attorno a te: colline, montagne, mare, pianura — ognuno col suo colore. Si scarica una volta sola e poi resta anche senza rete. Spento, torna il profilo disegnato. Ingrandendo molto su un astro il terreno diventa trasparente da sé, come in Stellarium">Terreno vero</button>
                 <button id="skymap-btn-citta" type="button" class="tasto-cielo attiva" aria-pressed="true" title="Le cupole di luce dei paesi veri attorno a te, col loro nome sull'orizzonte: dicono da che parte NON cercare le cose deboli. Di giorno non si vedono">Luci delle città</button>
-                <button id="skymap-btn-cime" type="button" class="tasto-cielo attiva" aria-pressed="true" title="I nomi delle montagne che spuntano sopra l'orizzonte, con la loro quota, appoggiati alla vetta vera: si nominano solo quelle che da qui si vedono davvero, non quelle nascoste dietro a una collina. Si scaricano una volta sola">Nomi dei monti</button>
+                <button id="skymap-btn-cime" type="button" class="tasto-cielo" aria-pressed="false" title="I nomi delle montagne che spuntano sopra l'orizzonte, con la loro quota, agganciati alla vetta vera da un filo: si nominano solo quelle che da qui si vedono davvero, non quelle nascoste dietro a una cresta più vicina. Nascono spenti; una volta accesi si scaricano una volta sola e la scelta si ricorda. Fin dove cercarle si decide nelle Impostazioni">Nomi dei monti</button>
               </div>
               <p id="skymap-terreno-nota" class="etichetta-comando nota-lunga"></p>
 
@@ -1766,6 +1766,16 @@
           <div class="flex flex-wrap gap-2 pt-1">
             <button id="imp-orizzonte-azzera" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-white">Orizzonte libero</button>
           </div>
+        </section>
+
+        <!-- Fin dove guardare attorno a sé: le due misure che decidono
+             quante montagne e quante luci compaiono sull'orizzonte del
+             planetario. Non c'è un valore giusto — dipende da dove sei. -->
+        <section class="space-y-2 border-t border-slate-700 pt-4">
+          <h3 class="font-bold text-white">L'orizzonte attorno a te</h3>
+          <p class="text-xs text-slate-500">Nel planetario l'orizzonte porta i nomi dei paesi che lo illuminano e, se vuoi, quelli delle montagne che ci spuntano sopra. Fin dove andarli a cercare lo decidi qui: dalla pianura le Alpi si vedono a centoventi chilometri e vale la pena andare larghi, in mezzo alle valli oltre i venti c'è solo il versante di fronte.</p>
+          <div id="imp-raggi" class="griglia-raggi"></div>
+          <p id="imp-raggi-nota" class="text-xs text-slate-400"></p>
         </section>
 
         <section class="space-y-2 border-t border-slate-700 pt-4">

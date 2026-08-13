@@ -12894,15 +12894,95 @@ function skyScrittaConAlone(ctx, testo, x, y, colore, alone, spessore = 3.5) {
   ctx.fillText(testo, x, y);
 }
 
-// Quante vette si nominano. Sono meno delle città di proposito: una città
-// è un posto solo e il suo nome è un'informazione secca, una cresta di
-// montagne è una fila di punte e nominarle tutte vuol dire scrivere sopra
-// al cielo invece che sopra all'orizzonte.
-const SKY_CIME_MAX_NOMI = 6;
+// Quante vette si nominano. Sei erano poche — su una catena di Prealpi ne
+// spuntano venti e nominarne sei vuol dire dare sei risposte a caso — ma
+// tante orizzontali si accavallavano. Le etichette inclinate (qui sotto)
+// occupano un decimo dello spazio in larghezza, e a quel punto quindici
+// nomi ci stanno come prima ce ne stavano sei.
+const SKY_CIME_MAX_NOMI_QUANTO = [10, 13, 16];
+
+function skyCimeMaxNomi() {
+  return quanto(SKY_CIME_MAX_NOMI_QUANTO[0], SKY_CIME_MAX_NOMI_QUANTO[1], SKY_CIME_MAX_NOMI_QUANTO[2]);
+}
 
 function skyCimeDaDisegnare() {
   if (typeof cimeVisibili !== 'function') return [];
   return cimeVisibili();
+}
+
+// --- Le etichette inclinate, come sulle carte dei panorami ------------
+//
+// L'idea non è nostra: è di PeakFinder, e prima ancora delle tavole
+// panoramiche disegnate a mano che si trovano sulle vette. Il nome di una
+// montagna non si scrive orizzontale sopra la sua punta, perché su una
+// cresta le punte sono dieci in venti gradi e dieci scritte orizzontali
+// non ci stanno mai. Si scrive **inclinato**, appeso a un filo verticale
+// che scende sulla punta: così le etichette si incastrano una nell'altra
+// come le righe di un elenco messo di traverso, e allungando il filo se ne
+// fanno stare quante se ne vuole senza che nessuna copra l'altra.
+//
+// L'inclinazione è la stessa per tutte, e non è un vezzo: rettangoli tutti
+// paralleli si impacchettano, rettangoli a inclinazioni diverse fanno un
+// mucchio.
+const SKY_CIME_INCLINA = -48 * Math.PI / 180;
+// Il filo più corto, e di quanto si allunga a ogni tentativo. Il passo è
+// poco meno dell'altezza di un'etichetta: più fitto e i tentativi non
+// portano da nessuna parte, più rado e si spreca cielo.
+const SKY_CIME_FILO_MIN = 12;
+const SKY_CIME_FILO_TENTATIVI = 16;
+
+// Un rettangolo orientato: dove sta il centro, quanto è grande e come è
+// girato. `hu` è la mezza misura lungo il testo, `hv` di traverso.
+function skyRettOrientato(cx, cy, larg, alt, ang) {
+  const cos = Math.cos(ang), sin = Math.sin(ang);
+  return { cx, cy, hu: larg / 2, hv: alt / 2, ux: cos, uy: sin, vx: -sin, vy: cos };
+}
+
+// Il rettangolo di una scritta che **comincia** in (x, y) e va avanti
+// inclinata di `ang`, alta `alt` e centrata sulla riga di base.
+function skyRettAppoggiato(x, y, larg, alt, ang) {
+  return skyRettOrientato(x + Math.cos(ang) * larg / 2, y + Math.sin(ang) * larg / 2, larg, alt, ang);
+}
+
+// Due rettangoli girati si toccano? Teorema degli assi separatori: se
+// esiste una direzione lungo cui le due ombre non si sovrappongono, allora
+// non si toccano, e per due rettangoli le direzioni da provare sono
+// soltanto i loro quattro lati. Con le etichette orizzontali bastava il
+// confronto per coordinate; con quelle inclinate no, e un confronto per
+// riquadro dritto (l'ingombro esterno) le avrebbe fatte litigare a
+// distanza — un'etichetta inclinata riempie meno di metà del suo riquadro.
+function skyRettiSiToccano(a, b, margine) {
+  const assi = [[a.ux, a.uy], [a.vx, a.vy], [b.ux, b.uy], [b.vx, b.vy]];
+  const dx = b.cx - a.cx, dy = b.cy - a.cy;
+  for (const [ax, ay] of assi) {
+    const pa = Math.abs(a.hu * (a.ux * ax + a.uy * ay)) + Math.abs(a.hv * (a.vx * ax + a.vy * ay));
+    const pb = Math.abs(b.hu * (b.ux * ax + b.uy * ay)) + Math.abs(b.hv * (b.vx * ax + b.vy * ay));
+    if (Math.abs(dx * ax + dy * ay) > pa + pb + margine) return false;
+  }
+  return true;
+}
+
+// Prova a piazzare un'etichetta: se pesta i piedi a una già messa, no.
+// `occupati` è condiviso fra paesi e vette, quindi «Firenze» e «Monte
+// Falterona» non si stampano una sull'altra.
+function skyPostoLibero(occupati, rett, margine = 2) {
+  if (occupati.some(q => skyRettiSiToccano(q, rett, margine))) return false;
+  occupati.push(rett);
+  return true;
+}
+
+// La pillola scura dietro a una scritta. Sull'orizzonte il fondo cambia in
+// pochi pixel — terreno, cresta chiara, cupola arancione di un paese,
+// cielo — e il solo alone col tratto lì regge fino a un certo punto: la
+// pillola è quello che le carte dei panorami hanno sempre fatto col
+// cartiglio bianco. Resta trasparente, però: sotto ci deve passare la
+// montagna, se no il nome sembra incollato sopra a un altro disegno.
+function skyPillola(ctx, x, y, l, h, r, colore) {
+  ctx.fillStyle = colore;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, l, h, r);
+  else ctx.rect(x, y, l, h);
+  ctx.fill();
 }
 
 // Le due famiglie di nomi sull'orizzonte, e come si distinguono.
@@ -12934,8 +13014,14 @@ const SKY_NOMI_ORIZZONTE = {
   },
   cime: {
     stile: 'italic 500',
-    notte: { pieno: 'rgba(184, 209, 240, 0.93)', alone: 'rgba(0, 0, 0, 0.8)', segno: 'rgba(168, 196, 230, 0.75)' },
-    giorno: { pieno: 'rgba(24, 44, 78, 0.95)', alone: 'rgba(255, 255, 255, 0.85)', segno: 'rgba(42, 62, 96, 0.7)' }
+    notte: {
+      pieno: 'rgba(226, 238, 252, 0.95)', alone: 'rgba(0, 0, 0, 0.8)',
+      segno: 'rgba(196, 216, 244, 0.6)', pillola: 'rgba(8, 12, 22, 0.52)'
+    },
+    giorno: {
+      pieno: 'rgba(20, 38, 68, 0.97)', alone: 'rgba(255, 255, 255, 0.85)',
+      segno: 'rgba(42, 62, 96, 0.62)', pillola: 'rgba(255, 255, 255, 0.5)'
+    }
   }
 };
 
@@ -12946,19 +13032,15 @@ const SKY_NOMI_ORIZZONTE = {
 //
 // Vanno **dopo** il terreno, se no li coprirebbe.
 function skyDisegnaNomiOrizzonte(ctx, base, focale) {
-  if (!sky.mostraNomi || sky.fov < SKY_CITTA_FOV_MIN) return;
+  if (!sky.mostraNomi) return;
   const occupati = [];
-  skyNomiCitta(ctx, base, focale, occupati);
+  // I paesi si nominano solo a campo largo, come i loro aloni: sotto i
+  // dieci gradi la cupola è più larga dello schermo e nominarla vuol dire
+  // scrivere un nome in mezzo al nulla arancione. Le vette no: ingrandire
+  // sull'orizzonte è **il** momento in cui si vuole sapere che monte è
+  // quello, ed è quello che si fa con un binocolo in mano.
+  if (sky.fov >= SKY_CITTA_FOV_MIN) skyNomiCitta(ctx, base, focale, occupati);
   skyNomiCime(ctx, base, focale, occupati);
-}
-
-// Prova a piazzare una scritta: se pesta i piedi a una già messa, no.
-// `occupati` è condiviso fra paesi e vette, quindi «Firenze» e «Monte
-// Falterona» non si stampano una sull'altra.
-function skyPostoLibero(occupati, px, py, largo, riga) {
-  if (occupati.some(q => Math.abs(q.x - px) < (q.l + largo) / 2 + 10 && Math.abs(q.y - py) < riga)) return false;
-  occupati.push({ x: px, y: py, l: largo });
-  return true;
 }
 
 // I nomi dei paesi, appoggiati sopra il loro crinale. Sono l'altra metà del
@@ -12997,7 +13079,10 @@ function skyNomiCitta(ctx, base, focale, occupati) {
     const p = skyProietta(skyVettore(c.az, alt), base, focale);
     if (!p.davanti) continue;
     if (p.px < -60 || p.px > sky.larghezza + 60 || p.py < -20 || p.py > sky.altezza + 20) continue;
-    if (!skyPostoLibero(occupati, p.px, p.py - stacco, ctx.measureText(c.nome).width, riga)) continue;
+    // Il posto occupato è la scritta più un margine: le città si nominano
+    // orizzontali, quindi il rettangolo non è girato.
+    if (!skyPostoLibero(occupati, skyRettOrientato(
+      p.px, p.py - stacco - corpo * 0.35, ctx.measureText(c.nome).width + 12, riga, 0), 4)) continue;
     scritte++;
 
     // Un trattino verticale che collega il nome al punto dell'orizzonte:
@@ -13016,65 +13101,115 @@ function skyNomiCitta(ctx, base, focale, occupati) {
 }
 
 // I nomi delle montagne. La differenza con i paesi non è solo di colore: il
-// nome di una vetta si mette **sulla vetta**, cioè al suo azimut e alla sua
-// altezza vera — che `cimeVisibili()` calcola con curvatura e rifrazione,
-// come il terreno — e non sull'orizzonte. È l'unico modo perché il nome
-// finisca sulla punta a cui appartiene invece che sulla riga di terra sotto
-// di lei, che con una cresta di montagne vuol dire sul monte sbagliato.
+// nome di una vetta si aggancia **alla vetta**, cioè al suo azimut e alla
+// sua altezza vera — che `cimeVisibili()` calcola con curvatura e
+// rifrazione, come il terreno — e non alla riga dell'orizzonte. È l'unico
+// modo perché il nome finisca sulla punta a cui appartiene invece che sulla
+// terra sotto di lei, che con una cresta di montagne vuol dire sul monte
+// sbagliato.
 //
-// Sotto il nome c'è la quota, più piccola: è quella che dice se quella
-// cresta è un ostacolo serio o una collina, ed è l'informazione che uno
-// cercherebbe subito dopo aver letto il nome.
+// Agganciato, non appoggiato: la scritta sta in cima a un filo verticale
+// che parte dalla punta, ed è inclinata. È il modo delle tavole
+// panoramiche, e serve a una cosa sola — farcene stare tante. Allungando il
+// filo di chi arriva dopo, le etichette si impilano di sbieco e su una
+// cresta fitta si leggono lo stesso.
+//
+// La quota sta in coda al nome, più piccola: dice se quella cresta è un
+// ostacolo serio o una collina, ed è l'informazione che uno cerca subito
+// dopo aver letto il nome.
 function skyNomiCime(ctx, base, focale, occupati) {
   const lista = skyCimeDaDisegnare();
   if (!lista.length) return;
 
   const corpo = quanto(12, 13, 14);
-  const corpoQuota = Math.round(corpo * 0.78);
+  const corpoQuota = Math.round(corpo * 0.76);
   const giorno = sky.luceCielo > 0.45;
   const tinta = SKY_NOMI_ORIZZONTE.cime[giorno ? 'giorno' : 'notte'];
-  const riga = corpo + corpoQuota + 8;
+  const massimo = skyCimeMaxNomi();
+
+  const sin = Math.sin(SKY_CIME_INCLINA);
+  const altoBlocco = corpo * 1.45;              // quanto è alta la pillola
+  const passo = Math.round(altoBlocco * 0.92);  // di quanto si allunga il filo
+  const bordo = Math.round(corpo * 0.42);       // il respiro dentro la pillola
 
   ctx.save();
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  const poste = [];
   let scritte = 0;
   for (const c of lista) {
-    if (scritte >= SKY_CIME_MAX_NOMI) break;
+    if (scritte >= massimo) break;
     const p = skyProietta(skyVettore(c.az, c.alt), base, focale);
     if (!p.davanti) continue;
-    if (p.px < -70 || p.px > sky.larghezza + 70 || p.py < -20 || p.py > sky.altezza + 20) continue;
+    // Di traverso si è larghi di manica (la scritta parte da qui e va a
+    // destra: un nome che comincia fuori dallo schermo non serve a
+    // nessuno), in verticale no
+    if (p.px < -20 || p.px > sky.larghezza + 20 || p.py < -20 || p.py > sky.altezza + 20) continue;
+
     // Corsivo: è così che le carte scrivono il rilievo, ed è quello che qui
     // separa «Firenze» da «Monte Falterona» anche quando il colore non può
     ctx.font = `${SKY_NOMI_ORIZZONTE.cime.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
-    const largo = ctx.measureText(c.nome).width;
-    // Il nome sta sopra il triangolino, la quota sotto: il blocco occupato
-    // è alto quanto tutt'e due, e il centro sta in mezzo
-    if (!skyPostoLibero(occupati, p.px, p.py - corpo, largo, riga)) continue;
-    scritte++;
+    const largoNome = ctx.measureText(c.nome).width;
+    ctx.font = `italic 400 ${corpoQuota}px ${SKY_FONT_ETICHETTE}`;
+    const quotaTesto = `${Math.round(c.quota)} m`;
+    const largoQuota = ctx.measureText(quotaTesto).width;
+    const largo = largoNome + corpo * 0.4 + largoQuota;
 
-    // Il triangolino appoggiato alla punta: è il segno con cui le carte
-    // dicono «montagna» da sempre, e qui fa anche il mestiere che per le
-    // città fa il trattino — legare il nome al posto a cui si riferisce.
-    const lato = Math.max(5, corpo * 0.5);
-    ctx.fillStyle = tinta.segno;
+    // Il filo si allunga finché l'etichetta non trova posto. Chi arriva
+    // prima — la vetta più imponente — sta vicino alla sua punta; le altre
+    // salgono, ed è esattamente quello che si vede sulle tavole disegnate.
+    let messa = null;
+    for (let t = 0; t < SKY_CIME_FILO_TENTATIVI; t++) {
+      const filo = SKY_CIME_FILO_MIN + t * passo;
+      const ax = p.px, ay = p.py - filo;
+      // Sopra il bordo non si sale: da lì in poi allungare il filo non
+      // libera più niente, porta solo la scritta fuori dallo schermo
+      if (ay + sin * largo < 4) break;
+      const rett = skyRettAppoggiato(ax, ay, largo + bordo * 2, altoBlocco, SKY_CIME_INCLINA);
+      if (skyPostoLibero(occupati, rett, 2)) { messa = { ax, ay }; break; }
+    }
+    if (!messa) continue;
+    scritte++;
+    poste.push({ p, ax: messa.ax, ay: messa.ay, nome: c.nome, quotaTesto, largoNome, largo });
+  }
+
+  // Prima tutti i fili, poi tutte le scritte: disegnandoli man mano, il filo
+  // di una vetta più bassa attraversava l'etichetta di quella già scritta —
+  // e una riga che taglia un nome lo rende illeggibile molto più di quanto
+  // il nome non copra il filo.
+  ctx.strokeStyle = tinta.segno;
+  ctx.fillStyle = tinta.segno;
+  ctx.lineWidth = 1.2;
+  const lato = Math.max(3.5, corpo * 0.32);
+  for (const e of poste) {
     ctx.beginPath();
-    ctx.moveTo(p.px, p.py - lato * 0.9);
-    ctx.lineTo(p.px + lato * 0.62, p.py + lato * 0.35);
-    ctx.lineTo(p.px - lato * 0.62, p.py + lato * 0.35);
+    ctx.moveTo(e.p.px, e.p.py);
+    ctx.lineTo(e.ax, e.ay + altoBlocco * 0.35);
+    ctx.stroke();
+    // Il triangolino è il segno con cui le carte dicono «montagna» da
+    // sempre: qui dice *quale* punta, che con dieci denti in venti gradi è
+    // tutta l'informazione.
+    ctx.beginPath();
+    ctx.moveTo(e.p.px, e.p.py - lato);
+    ctx.lineTo(e.p.px + lato * 0.75, e.p.py + lato * 0.5);
+    ctx.lineTo(e.p.px - lato * 0.75, e.p.py + lato * 0.5);
     ctx.closePath();
     ctx.fill();
+  }
 
-    skyScrittaConAlone(ctx, c.nome, p.px, p.py - lato - 3, tinta.pieno, tinta.alone, corpo * 0.26);
-
-    // La quota va sotto la punta e non sopra il nome: sopra, il blocco
-    // diventava una colonna alta trenta pixel e a due vette vicine non ci
-    // stava più nessuno dei due nomi.
+  for (const e of poste) {
+    ctx.save();
+    ctx.translate(e.ax, e.ay);
+    ctx.rotate(SKY_CIME_INCLINA);
+    skyPillola(ctx, -bordo, -altoBlocco / 2, e.largo + bordo * 2, altoBlocco,
+      altoBlocco / 2, tinta.pillola);
+    ctx.font = `${SKY_NOMI_ORIZZONTE.cime.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
+    skyScrittaConAlone(ctx, e.nome, 0, 0, tinta.pieno, tinta.alone, corpo * 0.24);
     ctx.font = `italic 400 ${corpoQuota}px ${SKY_FONT_ETICHETTE}`;
-    ctx.textBaseline = 'top';
-    skyScrittaConAlone(ctx, `${Math.round(c.quota)} m`, p.px, p.py + lato * 0.6,
-      tinta.pieno, tinta.alone, corpoQuota * 0.26);
-    ctx.textBaseline = 'bottom';
+    ctx.globalAlpha = 0.82;
+    skyScrittaConAlone(ctx, e.quotaTesto, e.largoNome + corpo * 0.4, 0,
+      tinta.pieno, tinta.alone, corpoQuota * 0.24);
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -24850,7 +24985,10 @@ function esportaBackup() {
     // senza segnale. Stessa cosa per i paesi che lo illuminano.
     terreno: localStorage.getItem('astrocalendario_terreno'),
     citta: localStorage.getItem('astrocalendario_citta'),
-    cime: localStorage.getItem('astrocalendario_cime')
+    cime: localStorage.getItem('astrocalendario_cime'),
+    // Fin dove cercare montagne e paesi, e se le montagne si nominano: tre
+    // risposte date a mano nelle Impostazioni, come il cielo di casa.
+    raggiOrizzonte: localStorage.getItem('astrocalendario_raggi_orizzonte')
   };
   const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
   const giorno = new Date().toISOString().slice(0, 10);
@@ -24909,10 +25047,15 @@ async function importaBackup(file) {
      ['corpiMiei', 'astrocalendario_corpi_minori_miei'],
      ['terreno', 'astrocalendario_terreno'],
      ['citta', 'astrocalendario_citta'],
-     ['cime', 'astrocalendario_cime']].forEach(([campo, chiave]) => {
+     ['cime', 'astrocalendario_cime'],
+     ['raggiOrizzonte', 'astrocalendario_raggi_orizzonte']].forEach(([campo, chiave]) => {
       if (!dati[campo]) return;
       try { localStorage.setItem(chiave, dati[campo]); } catch (e) { /* niente storage */ }
     });
+    // I raggi vanno riletti prima di rilanciare le ricerche qui sotto: se
+    // no si va a cercare montagne col raggio di prima e si salva il
+    // risultato con l'etichetta di quello nuovo.
+    if (typeof raggiRicarica === 'function') raggiRicarica();
     if (typeof orizzonteDimentica === 'function') orizzonteDimentica();
     if (typeof corpiMinoriCaricaMiei === 'function') corpiMinoriCaricaMiei();
     // Il profilo in memoria è ancora quello di prima: si butta, e alla
