@@ -14,40 +14,46 @@ non un verbale.
 
 ---
 
-## I nomi delle montagne sull'orizzonte, rifatti alla PeakFinder
+## L'orizzonte a tre strati, e i comandi sopra il cielo
 
-- [x] **Le vette giuste.** L'ostacolo di una punta non è più la cresta
-      *intera* di quella direzione (che comprende le montagne dietro di lei,
-      cioè lo sfondo su cui la si vede) ma solo il terreno che le sta
-      **davanti**: `terreno.fronti` (48 direzioni × 12 distanze, la cresta
-      accumulata fino a lì) e `terrenoCrestaDavanti(az, km)` in `terreno.js`
-      §8. Le quote grezze si salvano in `localStorage`; i profili salvati
-      prima non ce le hanno e ripiegano sul confronto di prima.
-- [x] **Niente doppioni**: due nodi OSM per lo stesso dente (`Monte Alben` /
-      `Cima Alben Ovest`) si nominano una volta sola — `CIME_VICINE_AZ_GRADI`.
-- [x] **Etichette inclinate** (`skyNomiCime` in `app.js`): nome + quota su una
-      pillola girata di −48°, appesa a un filo verticale che scende sulla
-      punta, col triangolino sulla vetta. Il filo si allunga finché l'etichetta
-      trova posto, quindi si impilano di sbieco: da 6 nomi si è passati a
-      `quanto(10, 13, 16)`. La prova di sovrapposizione è il teorema degli assi
-      separatori (`skyRettiSiToccano`), condivisa con i nomi dei paesi.
-- [x] **I due raggi nelle Impostazioni** (§9-bis di `terreno.js`, prefisso
-      `raggi`; UI `#imp-raggi` costruita da `costruisciRaggiOrizzonte()` in
-      `ui-nuova.js`): montagne 15–200 km (di serie 80), paesi 10–150 km (di
-      serie 90). Il raggio finisce dentro al salvataggio: uno più stretto di
-      quello chiesto si butta, uno più largo si tiene e si taglia.
-- [x] **Le vette nascono spente** e la scelta si ricorda
-      (`raggi.nomiMonti`); finché sono spente `cimeCarica` non chiede niente
-      a Overpass.
-- [x] I nomi delle vette si vedono a qualunque ingrandimento (prima
-      sparivano sotto i 10° di campo, insieme agli aloni delle città).
-- [x] Nuova chiave di backup `astrocalendario_raggi_orizzonte`.
-- [x] `CACHE_NAME` → `astrocal-v91`, `CLAUDE.md` aggiornata, §15 di
-      `verifica.html` allargato.
+- [x] **Il terreno si disegna a tre profondità vere**, non a tre copie
+      rimpicciolite della stessa sagoma: primo piano (entro 4 km), piano
+      intermedio (entro 16), sfondo (tutto). Le tre altezze vengono da
+      `terrenoCrestaEntro(az, km)` (`terreno.js` §8, che adesso è la
+      funzione sotto a `terrenoCrestaDavanti`) e da `skyStratiOrizzonte()`
+      in `app.js`. Essendo massimi accumulati sono per costruzione una
+      sopra l'altra: disegnate dallo sfondo in avanti, **la collina qui
+      davanti copre davvero la catena dietro**.
+- [x] `skyMorsoCresta` è diventata `skyCresteDelleColonne(col)`: calcola
+      tutte e tre le altezze in una passata e le **taglia** una sull'altra
+      (`tetto`), se no una sella scavata nel piano intermedio lo faceva
+      scendere sotto al primo piano e le due creste si intrecciavano.
+- [x] Ostacoli dichiarati a mano e alberi (`skyAddossoAllOcchio`) si
+      sommano al primo piano, non allo sfondo. Senza terreno vero restano
+      i piani finti di prima, identici (il campo `quota` di
+      `SKY_CRESTE_PIANI`).
+- [x] **Le etichette delle vette partono dal loro strato**
+      (`SKY_CIME_FILO_STRATO`, `skyStratoDiCima(km)`, stesse soglie del
+      disegno): una collina vicina rasente alla punta, una cima lontana in
+      alto sopra al crinale. `SKY_CIME_VELO_STRATO` le sbiadisce con la
+      distanza, come le creste.
+- [x] **Bussola fissa in alto a destra** (`#skymap-bussola`,
+      `skyAggiornaBussola()`): quadrante che gira, indice giallo della
+      vista, N ambrato, gradi in mezzo. Lo stato (Nord geografico /
+      magnetico / vista a dito) lo dice l'aspetto, via `data-modo`.
+- [x] **Mirino centrale giallo** (`skyDisegnaMirino`, era grigio e si
+      perdeva), stesso giallo dell'indice della bussola.
+- [x] **Letture compattate**: due righe corte a sinistra. Via da sopra il
+      cielo «Nord vero», la declinazione magnetica e «bussola relativa» —
+      il dettaglio esteso è nel `title` (`skyStatoEsteso()`), e la
+      precisione della posizione ricompare da sola quando è larga.
+- [x] `CACHE_NAME` → `astrocal-v92`, `CLAUDE.md` aggiornata, §15 di
+      `verifica.html` allargato con le tre bande.
 
-**Nota sul banco di prova**: le prove nuove del §15 girano sulla geometria di
-`terreno.js` e sono state verificate a mano; `verifica.html` per intero vuole
-la rete (astronomy-engine dal CDN), che nell'ambiente in cui è stato scritto
-questo lavoro non c'era.
+**Banco di prova**: `verifica.html` gira tutto — 219 prove passate, comprese
+le tre nuove. L'ordinamento delle tre bande e il ripiego senza terreno vero
+sono stati provati anche a parte, e il disegno guardato a schermo (il
+planetario con un DEM sintetico: i tre piani si vedono, e quello davanti
+copre).
 
 Niente in sospeso.

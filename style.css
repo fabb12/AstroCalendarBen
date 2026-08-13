@@ -3188,19 +3188,137 @@ body button.pos-risultato:focus-visible {
   /* Sono numeri da leggere, non comandi: il dito ci passa attraverso */
   pointer-events: none;
 }
+/* Le due righe di sinistra, incolonnate e strette: sono due letture, non
+   due riquadri, e ognuna è larga quanto il suo testo */
+.letture-sinistra {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  max-width: calc(100% - 82px);   /* quanto lascia libero la bussola */
+}
 .lettura-cielo {
-  padding: 7px 11px;
+  padding: 5px 9px;
   border: 1px solid var(--bordo);
   border-radius: var(--raggio-s);
   background: rgba(6, 10, 20, 0.74);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
   color: var(--testo);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.lettura-stato { max-width: 55%; text-align: right; color: var(--testo-2); }
+.lettura-stato { color: var(--testo-2); font-size: 0.68rem; }
+
+
+/* ------------------------------------------------- LA BUSSOLA DEL CIELO */
+/* Un quadrante vero, in alto a destra, che gira come quello di una bussola
+   da tavolo: fermo l'indice, gira il mondo. Prende il posto di tre righe di
+   testo — l'azimut in cifre, "Nord vero", la declinazione magnetica — che
+   dicevano a parole una cosa che si guarda: da che parte sto guardando.
+
+   L'indice in cima è giallo, lo stesso giallo del mirino al centro della
+   mappa, perché sono i due capi della stessa informazione: quello dice
+   *dove* si sta guardando in cielo, questo *verso dove* rispetto alla
+   Terra. Il Nord è ambra, che è il colore che questa app usa per «guarda
+   qui» da sempre. */
+.bussola-cielo {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte);
+  background: rgba(6, 10, 20, 0.74);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  /* È una lettura, non un comando: il dito ci passa attraverso e trascina
+     il cielo che le sta sotto */
+  pointer-events: none;
+}
+.bussola-quadrante { display: block; width: 100%; height: 100%; }
+.bussola-fondo { fill: rgba(10, 16, 30, 0.35); stroke: none; }
+
+/* Il quadrante che gira lo ruota `skyAggiornaBussola()` scrivendogli
+   l'attributo `transform` (che in SVG gira attorno all'origine del
+   viewBox, cioè al centro del quadrante). Nessuna transizione, di
+   proposito: l'angolo lo riscrive il ciclo del cielo a ogni fotogramma, e
+   una transizione sopra a un valore già interpolato fa solo ritardo. */
+.bussola-tacca-lunga,
+.bussola-tacca-corta {
+  fill: none;
+  stroke: rgba(169, 180, 204, 0.75);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.bussola-tacca-corta { stroke: rgba(169, 180, 204, 0.4); stroke-width: 2.5; }
+.bussola-ago { fill: var(--ambra); }
+.bussola-nord,
+.bussola-lettera {
+  font-family: var(--sans);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.bussola-nord { font-size: 13px; fill: var(--ambra); }
+.bussola-lettera { font-size: 11px; fill: rgba(200, 210, 232, 0.82); }
+
+/* L'indice della vista: una punta gialla appoggiata sul bordo alto, che
+   guarda in dentro */
+.bussola-indice {
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 8px solid #facc15;
+}
+
+/* I gradi, in mezzo al quadrante: è il numero che si legge a voce ("sono
+   a 51 gradi"), e sta fermo mentre tutto il resto gira */
+.bussola-gradi {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--testo);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 6px rgba(6, 10, 20, 0.9);
+}
+
+/* Quando la bussola non sa dov'è il Nord vero — sensori spenti, vista
+   mossa col dito, magnetometro da tarare — non lo dice a parole: si spegne.
+   Un quadrante smorto è la stessa informazione senza una riga di testo, e
+   chi ha bisogno del dettaglio lo trova nel titolo. */
+.bussola-cielo[data-modo="manuale"] { opacity: 0.78; }
+.bussola-cielo[data-modo="manuale"] .bussola-ago,
+.bussola-cielo[data-modo="magnetica"] .bussola-ago { fill: rgba(245, 181, 68, 0.5); }
+.bussola-cielo[data-modo="manuale"] .bussola-nord,
+.bussola-cielo[data-modo="magnetica"] .bussola-nord { fill: rgba(245, 181, 68, 0.6); }
+
+/* Col mouse le letture si possono sorvolare, e allora il loro `title` dice
+   il dettaglio esteso (le coordinate vere, la provenienza per intero, che
+   Nord sta segnando la bussola). Col dito no, e di proposito: sul telefono
+   un `title` non si vede mai, il cielo si trascina da qualunque punto, e
+   tre zone morte negli angoli si sentirebbero. */
+@media (hover: hover) and (pointer: fine) {
+  .lettura-cielo,
+  .bussola-cielo { pointer-events: auto; }
+}
 
 /* Il pannello del gruppo aperto: uno solo, e si può scorrere se è lungo */
 .pannelli-gruppi { display: contents; }
@@ -3748,8 +3866,12 @@ body input.casella-data:hover { border: 0; }
   .linguetta-gruppo .nome-corto { display: inline; }
   .linguetta-gruppo { min-height: 38px; padding: 8px 10px; font-size: 0.78rem; }
   .linguette-gruppi { padding: 3px; gap: 2px; }
-  .lettura-cielo { font-size: 0.62rem; padding: 5px 8px; }
-  .lettura-stato { max-width: 48%; }
+  .lettura-cielo { font-size: 0.62rem; padding: 4px 7px; }
+  .lettura-stato { font-size: 0.6rem; }
+  .letture-sinistra { max-width: calc(100% - 66px); gap: 3px; }
+  .bussola-cielo { width: 52px; height: 52px; }
+  .bussola-gradi { font-size: 0.6rem; }
+  .bussola-indice { border-left-width: 4px; border-right-width: 4px; border-top-width: 7px; }
   .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
   /* Il rientro del pannello qui è più stretto, e il filtro appiccicato in
      cima deve arrivare lo stesso ai suoi bordi */

@@ -1480,6 +1480,41 @@ titolo('15. Le montagne che hanno un nome');
     prova('quella dietro al muro no',
           !chi.includes('Nascosta dal muro'), chi.join(', ') || 'nessuna');
 
+    // --- Le tre bande del disegno a strati ---
+    // `terrenoCrestaEntro` è la stessa funzione, chiesta senza il margine:
+    // «quanto sale il terreno entro tot chilometri». È da lei che
+    // `skyStratiOrizzonte` (app.js) ricava le tre sagome dell'orizzonte, e
+    // tutta l'occlusione sta in una proprietà sola — che la risposta non
+    // scenda mai allargando il raggio. Se scendesse, la sagoma del primo
+    // piano potrebbe bucare quella dello sfondo, e due creste che si
+    // attraversano a mezza costa sono la cosa che a colpo d'occhio dice
+    // «questo disegno è finto».
+    prova('la cresta entro un raggio non scende mai allargando il raggio',
+          (() => {
+            for (let az = 0; az < 360; az += 3) {
+              let prima = -1;
+              for (const km of [1, 2, 4, 8, 16, 30, 60]) {
+                const v = terrenoCrestaEntro(az, km);
+                if (v < prima - 1e-6) return false;
+                prima = v;
+              }
+            }
+            return true;
+          })());
+    prova('e al raggio più largo è la cresta intera',
+          Math.abs(terrenoCrestaEntro(0, 60) - terrenoAltezza(0)) < 0.01,
+          `${terrenoCrestaEntro(0, 60).toFixed(2)}° contro ${terrenoAltezza(0).toFixed(2)}°`);
+
+    // I due tagli fra gli strati (4 e 16 km, `SKY_STRATI_KM` in app.js)
+    // sono scelti perché **cadono su due campioni** di questa griglia: lì
+    // la risposta è una quota misurata, non un'interpolazione fra due
+    // distanze. Chi ritocca `TERRENO_DISTANZE` senza saperlo non rompe
+    // niente di visibile — gli strati si spostano un po' più vicini — ed è
+    // esattamente il genere di scivolone che non si nota mai.
+    prova('i due tagli fra gli strati cadono su campioni della griglia',
+          TERRENO_DISTANZE.includes(4) && TERRENO_DISTANZE.includes(16),
+          TERRENO_DISTANZE.join(', '));
+
     terreno.fronti = primaFronti;
   }
 
