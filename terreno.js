@@ -185,6 +185,12 @@ const terreno = {
   quando: 0,
   motivo: '',             // perché non c'è, quando non c'è
   avanzamento: 0,         // 0…1 mentre le quote stanno arrivando
+  misurate: 0,            // quante delle 120 direzioni sono misurate davvero
+  tentativi: 0,           // quante volte si è già riprovato da soli
+  sveglia: null,          // il timer del prossimo tentativo
+  provatoLat: null,       // per quale posto valgono i tentativi qui sopra
+  provatoLon: null,
+  completatoPer: null,    // per quale posto si è già tentato di completare un salvataggio parziale
   acceso: true
 };
 
@@ -235,12 +241,74 @@ function terrenoUrl(punti) {
   return `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`;
 }
 
+// Una richiesta sola, con la sua sveglia.
+//
+// Il `timeout` non c'era, e senza di lui una richiesta che non torna più —
+// capita, su una rete mobile che passa da una cella all'altra — lasciava il
+// terreno «in-corso» per sempre: la riga di stato diceva «sto misurando…» e
+// non finiva mai, che è il modo peggiore di fallire, perché non sembra
+// nemmeno un errore.
+const TERRENO_TIMEOUT_MS = 15000;
+
 async function terrenoQuote(punti) {
-  const risposta = await fetch(terrenoUrl(punti));
-  if (!risposta.ok) throw new Error('quote non disponibili (' + risposta.status + ')');
-  const dati = await risposta.json();
-  if (!dati || !Array.isArray(dati.elevation)) throw new Error('risposta senza quote');
-  return dati.elevation;
+  const ac = typeof AbortController === 'function' ? new AbortController() : null;
+  const sveglia = ac ? setTimeout(() => ac.abort(), TERRENO_TIMEOUT_MS) : null;
+  try {
+    const risposta = await fetch(terrenoUrl(punti), ac ? { signal: ac.signal } : undefined);
+    if (!risposta.ok) {
+      const e = new Error('il servizio delle quote ha risposto ' + risposta.status);
+      e.stato = risposta.status;
+      // Quanto aspettare prima di riprovare, se è il servizio stesso a dirlo
+      const dopo = parseFloat(risposta.headers.get('retry-after'));
+      if (dopo > 0 && dopo < 60) e.attesa = dopo * 1000;
+      throw e;
+    }
+    const dati = await risposta.json();
+    if (!dati || !Array.isArray(dati.elevation)) throw new Error('risposta senza quote');
+    return dati.elevation;
+  } finally {
+    if (sveglia) clearTimeout(sveglia);
+  }
+}
+
+// Quante volte insistere su una richiesta, e quanto aspettare fra un
+// tentativo e l'altro.
+//
+// È la parte che mancava, ed è quella che faceva fallire tutto. Le richieste
+// sono ventiquattro: se ognuna ha anche solo il due per cento di probabilità
+// di andare storta — un 429 perché il servizio è carico, un pacchetto perso,
+// una cella che cambia — la probabilità che **almeno una** vada storta è
+// quasi il quarantacinque per cento. E una sola bastava a buttare via anche
+// le altre ventitré, senza riprovare mai.
+const TERRENO_TENTATIVI = 3;
+const TERRENO_ATTESE_MS = [700, 2200, 5000];
+
+function terrenoAspetta(ms) {
+  return new Promise(f => setTimeout(f, ms));
+}
+
+// Vale la pena riprovare? Sì per i 429 («sei andato troppo forte»), per i
+// guasti del server e per tutto quello che non è nemmeno arrivato a una
+// risposta (rete caduta, sveglia scaduta). No per un 400: se la richiesta è
+// scritta male, riprovarla identica dà lo stesso errore tre volte.
+function terrenoRiprovabile(e) {
+  if (!e || typeof e.stato !== 'number') return true;
+  return e.stato === 429 || e.stato >= 500;
+}
+
+async function terrenoQuoteInsistendo(punti) {
+  let ultimo = null;
+  for (let t = 0; t < TERRENO_TENTATIVI; t++) {
+    try {
+      return await terrenoQuote(punti);
+    } catch (e) {
+      ultimo = e;
+      if (!terrenoRiprovabile(e) || t === TERRENO_TENTATIVI - 1) break;
+      /* eslint-disable no-await-in-loop */
+      await terrenoAspetta(e.attesa || TERRENO_ATTESE_MS[t]);
+    }
+  }
+  throw ultimo;
 }
 
 
@@ -384,52 +452,149 @@ function terrenoFronti(quote, occhio) {
   return f;
 }
 
-async function terrenoCostruisci(lat, lon) {
-  // Prima la quota di casa: senza sapere da che altezza si guarda, ogni
-  // angolo è sbagliato — e sbagliato tanto, perché è il termine che si
-  // sottrae a tutti gli altri.
-  const [quotaCasa] = await terrenoQuote([{ lat, lon }]);
-  const occhio = (typeof quotaCasa === 'number' ? quotaCasa : 0) + TERRENO_ALTEZZA_OCCHIO_M;
+// --- Le richieste, e in che ordine si fanno --------------------------
+//
+// Ogni richiesta porta un numero **intero di direzioni**: cinque, che sono
+// novanta punti. Non è un dettaglio di comodo, è quello che rende il
+// fallimento sopportabile — una richiesta che va male lascia un buco fatto
+// di direzioni intere, e un buco di direzioni si tappa interpolando le
+// vicine. Con le richieste tagliate ogni novanta punti a caso, un buco
+// cadeva a metà di una direzione e quella direzione era da buttare.
+const TERRENO_DIREZIONI_PER_RICHIESTA =
+  Math.max(1, Math.floor(TERRENO_PER_RICHIESTA / TERRENO_DISTANZE.length));
 
-  // Tutti i campioni in fila, poi tagliati in richieste da novantasei.
-  const punti = [];
+// Due giri. Il primo prende una direzione ogni tre — quaranta direzioni,
+// otto richieste — e appena arriva **si disegna**: un orizzonte a nove gradi
+// di passo è già il posto in cui uno vive, e si vede dopo un paio di secondi
+// invece che dopo dieci. Il secondo riempie le altre ottanta e lo affina.
+//
+// Serve a due cose insieme. La prima è l'attesa: prima il terreno compariva
+// tutto in una volta alla fine, e fino a lì c'era l'orizzonte finto — che è
+// esattamente il momento in cui uno si convince che «non funziona». La
+// seconda è che se il secondo giro non ce la fa, il primo resta: meglio un
+// orizzonte vero un po' grosso che nessun orizzonte vero.
+const TERRENO_PASSO_GROSSO = 3;
+
+function terrenoRichieste(lat, lon) {
+  const grosse = [], fini = [];
   for (let i = 0; i < TERRENO_DIREZIONI; i++) {
-    const az = i * TERRENO_PASSO_AZ;
-    TERRENO_DISTANZE.forEach(km => punti.push(terrenoPuntoA(lat, lon, az, km)));
+    (i % TERRENO_PASSO_GROSSO === 0 ? grosse : fini).push(i);
   }
+  const richieste = [];
+  const impacchetta = (elenco, giro) => {
+    for (let i = 0; i < elenco.length; i += TERRENO_DIREZIONI_PER_RICHIESTA) {
+      const dirs = elenco.slice(i, i + TERRENO_DIREZIONI_PER_RICHIESTA);
+      const punti = [];
+      dirs.forEach(d => TERRENO_DISTANZE.forEach(
+        km => punti.push(terrenoPuntoA(lat, lon, d * TERRENO_PASSO_AZ, km))));
+      richieste.push({ giro, dirs, punti });
+    }
+  };
+  impacchetta(grosse, 0);
+  impacchetta(fini, 1);
+  return richieste;
+}
 
-  // Le richieste, tagliate a novanta punti l'una: con centoventi direzioni e
-  // diciotto distanze sono ventiquattro.
-  const pezzi = [];
-  for (let i = 0; i < punti.length; i += TERRENO_PER_RICHIESTA) {
-    pezzi.push(punti.slice(i, i + TERRENO_PER_RICHIESTA));
+// Quante direzioni si osa mettere in una richiesta, adesso.
+//
+// Parte da cinque (novanta punti, che è quanto il servizio dichiara di
+// accettare) e **si stringe da sola** se il servizio dice di no. Un 400 o un
+// 414 vogliono dire «questa richiesta non mi va bene», e con una richiesta
+// fatta di sole coordinate il motivo plausibile è uno solo: sono troppe.
+// Riprovarla identica dà lo stesso errore all'infinito — ed è il modo in cui
+// una cosa «non funziona mai» invece di funzionare a singhiozzo.
+//
+// Dimezzando si trova da sé la misura buona, qualunque sia, e da quel
+// momento tutte le richieste seguenti nascono già di quella misura: si paga
+// il tentativo una volta sola e non ventiquattro.
+let terrenoDirezioniPerVolta = TERRENO_DIREZIONI_PER_RICHIESTA;
+
+function terrenoTroppoLunga(e) {
+  return !!e && (e.stato === 400 || e.stato === 413 || e.stato === 414);
+}
+
+// Una richiesta tagliata in due, sul confine fra due direzioni.
+function terrenoSpezza(r, da, a) {
+  const nd = TERRENO_DISTANZE.length;
+  return { giro: r.giro, dirs: r.dirs.slice(da, a), punti: r.punti.slice(da * nd, a * nd) };
+}
+
+// Chiede una richiesta, e se serve la spezza. Torna l'elenco dei pezzi
+// riusciti — che può essere anche solo una metà, ed è meglio di niente.
+async function terrenoChiedi(r) {
+  const nd = TERRENO_DISTANZE.length;
+  if (r.dirs.length > terrenoDirezioniPerVolta) {
+    const meta = Math.max(1, Math.min(terrenoDirezioniPerVolta, r.dirs.length - 1));
+    return terrenoDueMeta(r, meta);
   }
-
-  // A gruppi di quattro. In fila indiana ci vorrebbero venti secondi — e in
-  // venti secondi chi ha aperto il planetario si è già fatto l'idea che
-  // l'orizzonte sia quello disegnato; tutte insieme, il servizio risponde 429
-  // e non se ne fa niente.
-  const risposte = new Array(pezzi.length);
-  terreno.avanzamento = 0;
-  for (let i = 0; i < pezzi.length; i += TERRENO_RICHIESTE_INSIEME) {
-    const giro = pezzi.slice(i, i + TERRENO_RICHIESTE_INSIEME);
-    /* eslint-disable no-await-in-loop */
-    const fatte = await Promise.all(giro.map(p => terrenoQuote(p)));
-    fatte.forEach((q, j) => { risposte[i + j] = q; });
-    terreno.avanzamento = Math.min(1, (i + giro.length) / pezzi.length);
-    terrenoAggiornaPannello();
+  try {
+    const q = await terrenoQuoteInsistendo(r.punti);
+    if (!Array.isArray(q) || q.length !== r.dirs.length * nd) {
+      throw new Error(`il servizio ha risposto con ${q ? q.length : 0} quote invece di ${r.dirs.length * nd}`);
+    }
+    return [{ dirs: r.dirs, quote: q }];
+  } catch (e) {
+    if (!terrenoTroppoLunga(e) || r.dirs.length < 2) throw e;
+    terrenoDirezioniPerVolta = Math.max(1, Math.floor(r.dirs.length / 2));
+    return terrenoDueMeta(r, terrenoDirezioniPerVolta);
   }
+}
 
-  const quote = [];
-  risposte.forEach(q => quote.push(...q));
-  if (quote.length !== punti.length) throw new Error('quote incomplete');
+async function terrenoDueMeta(r, taglio) {
+  const pezzi = await Promise.all([
+    terrenoChiedi(terrenoSpezza(r, 0, taglio)).catch(() => null),
+    terrenoChiedi(terrenoSpezza(r, taglio, r.dirs.length)).catch(() => null)
+  ]);
+  const buoni = pezzi.filter(Boolean).reduce((a, p) => a.concat(p), []);
+  if (!buoni.length) throw new Error('nessuna delle due metà è arrivata');
+  return buoni;
+}
 
+// I buchi si tappano interpolando fra le due direzioni misurate che stanno
+// prima e dopo, sul giro. Sono quote del suolo: fra un campione e l'altro il
+// terreno non fa salti, e a tre gradi di distanza una media pesata è più
+// vicina al vero di qualunque altra cosa si possa inventare.
+//
+// È questo che rende il disegno possibile anche quando manca qualcosa: il
+// resto dell'app vuole una griglia piena — centoventi direzioni per diciotto
+// distanze — e non le importa da dove arrivano i numeri.
+function terrenoRiempiVuoti(quote, avute) {
+  const nd = TERRENO_DISTANZE.length;
+  const presente = new Uint8Array(TERRENO_DIREZIONI);
+  avute.forEach(i => { presente[i] = 1; });
+  if (!avute.length) return false;
+
+  for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+    if (presente[i]) continue;
+    let a = i, b = i, da = 0, db = 0;
+    while (!presente[a]) { a = (a - 1 + TERRENO_DIREZIONI) % TERRENO_DIREZIONI; da++; }
+    while (!presente[b]) { b = (b + 1) % TERRENO_DIREZIONI; db++; }
+    const t = da / (da + db);
+    for (let k = 0; k < nd; k++) {
+      const qa = quote[a * nd + k], qb = quote[b * nd + k];
+      quote[i * nd + k] = (typeof qa === 'number' && typeof qb === 'number')
+        ? Math.round(qa + (qb - qa) * t)
+        : (typeof qa === 'number' ? qa : (typeof qb === 'number' ? qb : null));
+    }
+  }
+  return true;
+}
+
+// Dalle quote grezze al profilo: le creste, i paesaggi, e la griglia piena
+// da salvare. Si può chiamare con qualunque sottoinsieme di direzioni in
+// mano — è quello che permette di disegnare a metà strada.
+function terrenoMonta(grezze, avute, quotaCasa) {
+  const nd = TERRENO_DISTANZE.length;
+  const quote = grezze.slice();
+  terrenoRiempiVuoti(quote, avute);
+
+  const occhio = (typeof quotaCasa === 'number' ? quotaCasa : 0) + TERRENO_ALTEZZA_OCCHIO_M;
   const creste = new Array(TERRENO_DIREZIONI).fill(0);
   const tipi = new Array(TERRENO_DIREZIONI).fill(TERRENO_PIANURA);
   for (let i = 0; i < TERRENO_DIREZIONI; i++) {
     let massimo = 0;
-    for (let k = 0; k < TERRENO_DISTANZE.length; k++) {
-      const q = quote[i * TERRENO_DISTANZE.length + k];
+    for (let k = 0; k < nd; k++) {
+      const q = quote[i * nd + k];
       if (typeof q !== 'number') continue;
       const a = terrenoAngolo(q, occhio, TERRENO_DISTANZE[k]);
       if (a > massimo) massimo = a;
@@ -448,10 +613,60 @@ async function terrenoCostruisci(lat, lon) {
   // punto lì» (§8, da cui dipende se una vetta si vede) e «che forma ha il
   // terreno fino a lì», che è quella che il planetario disegna. Duemilacento
   // interi: una decina di kilobyte, e non si riscaricano mai più.
-  return {
-    quota: quotaCasa, creste, tipi,
-    quote: quote.map(q => (typeof q === 'number' ? Math.round(q) : null))
-  };
+  return { quota: quotaCasa, creste, tipi, quote, misurate: avute.length };
+}
+
+// Scarica quello che riesce, e non si arrende per una richiesta andata male.
+//
+// `mostra` viene chiamata alla fine del giro grosso, con quello che c'è: da
+// lì in poi l'orizzonte sullo schermo è quello vero, e il resto lo affina.
+async function terrenoCostruisci(lat, lon, mostra) {
+  // Prima la quota di casa: senza sapere da che altezza si guarda, ogni
+  // angolo è sbagliato — e sbagliato tanto, perché è il termine che si
+  // sottrae a tutti gli altri. Questa sola, se non arriva, ferma tutto.
+  const [quotaCasa] = await terrenoQuoteInsistendo([{ lat, lon }]);
+
+  const nd = TERRENO_DISTANZE.length;
+  const richieste = terrenoRichieste(lat, lon);
+  const grezze = new Array(TERRENO_DIREZIONI * nd).fill(null);
+  const avute = [];
+  let guaio = null, fatte = 0;
+  terreno.avanzamento = 0;
+
+  for (const giro of [0, 1]) {
+    const daFare = richieste.filter(r => r.giro === giro);
+    for (let i = 0; i < daFare.length; i += TERRENO_RICHIESTE_INSIEME) {
+      const mazzo = daFare.slice(i, i + TERRENO_RICHIESTE_INSIEME);
+      // Ogni richiesta si porta dietro il proprio errore invece di far
+      // fallire il gruppo: è la differenza fra «ne mancano cinque
+      // direzioni» e «non c'è niente».
+      /* eslint-disable no-await-in-loop */
+      const esiti = await Promise.all(mazzo.map(r => terrenoChiedi(r)
+        .then(pezzi => ({ pezzi })).catch(e => ({ e }))));
+      for (const esito of esiti) {
+        fatte++;
+        if (esito.e) { guaio = esito.e; continue; }
+        for (const pezzo of esito.pezzi) {
+          pezzo.dirs.forEach((d, j) => {
+            for (let k = 0; k < nd; k++) {
+              const v = pezzo.quote[j * nd + k];
+              grezze[d * nd + k] = typeof v === 'number' ? Math.round(v) : null;
+            }
+          });
+          avute.push(...pezzo.dirs);
+        }
+      }
+      terreno.avanzamento = fatte / richieste.length;
+      terrenoAggiornaPannello();
+    }
+    if (giro === 0 && avute.length && typeof mostra === 'function') {
+      mostra(terrenoMonta(grezze, avute, quotaCasa));
+    }
+  }
+
+  // Niente di niente: allora è un guasto vero, e si dice.
+  if (!avute.length) throw guaio || new Error('nessuna quota è arrivata');
+  return { dati: terrenoMonta(grezze, avute, quotaCasa), guaio };
 }
 
 
@@ -501,7 +716,7 @@ function terrenoSalva(lat, lon, dati) {
       terrenoDistanzaKm(lat, lon, v.lat, v.lon) > TERRENO_RAGGIO_VALIDO_KM);
     posti.unshift({
       lat, lon, quota: dati.quota, creste: dati.creste, tipi: dati.tipi,
-      quote: dati.quote, quando: Date.now()
+      quote: dati.quote, misurate: dati.misurate, quando: Date.now()
     });
     localStorage.setItem(CHIAVE_TERRENO, JSON.stringify({ posti: posti.slice(0, TERRENO_POSTI_SALVATI) }));
   } catch (e) { /* storage pieno: pazienza, si riscarica */ }
@@ -523,10 +738,11 @@ function terrenoDimentica() {
 // 7. L'INNESCO
 // =====================================================================
 
-function terrenoApplica(lat, lon, dati, sorgente) {
+function terrenoApplica(lat, lon, dati, sorgente, ancoraInCorso) {
   terreno.lat = lat;
   terreno.lon = lon;
   terreno.quota = dati.quota;
+  terreno.misurate = typeof dati.misurate === 'number' ? dati.misurate : TERRENO_DIREZIONI;
   terreno.profilo = terrenoInterpola(dati.creste);
   terreno.tipi = terrenoTipiPerGrado(dati.tipi);
   terreno.miscela = terrenoMiscelaPerGrado(terreno.tipi);
@@ -537,9 +753,13 @@ function terrenoApplica(lat, lon, dati, sorgente) {
   terreno.fronti = Array.isArray(dati.quote) && dati.quote.length === TERRENO_DIREZIONI * TERRENO_DISTANZE.length
     ? terrenoFronti(dati.quote, (typeof dati.quota === 'number' ? dati.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M)
     : null;
-  terreno.stato = 'pronto';
+  // Col giro grosso appena arrivato l'orizzonte è già quello vero e si
+  // disegna, ma lo scarico non è finito: lo stato resta «in-corso», se no
+  // chiunque richiami `terrenoCarica` crederebbe che non ci sia più niente
+  // da fare e ne farebbe partire un secondo sopra al primo.
+  terreno.stato = ancoraInCorso ? 'in-corso' : 'pronto';
   terreno.motivo = '';
-  terreno.avanzamento = 0;
+  if (!ancoraInCorso) terreno.avanzamento = 0;
   terreno.quando = Date.now();
   terreno.sorgente = sorgente;
   // Non serve chiedere un ridisegno: il planetario ridisegna a ogni
@@ -582,27 +802,63 @@ function terrenoCarica(forza) {
     const salvato = terrenoLeggiSalvato(lat, lon);
     if (salvato) {
       terrenoApplica(salvato.lat, salvato.lon, salvato, 'salvato');
+      // Un profilo salvato a metà — l'ultima volta la rete non ha retto — si
+      // completa in sottofondo, una volta per sessione. Intanto quello che
+      // c'è si disegna: nessuno resta a guardare l'orizzonte finto per un
+      // pomeriggio andato storto la settimana scorsa.
+      const misurate = typeof salvato.misurate === 'number' ? salvato.misurate : TERRENO_DIREZIONI;
+      const qui = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+      if (misurate < TERRENO_DIREZIONI * 0.9 && terreno.completatoPer !== qui) {
+        terreno.completatoPer = qui;
+        setTimeout(() => terrenoCarica(true), 4000);
+      }
       return Promise.resolve(true);
     }
   }
+
+  // Una sveglia in giro per un tentativo di prima non serve più: o è per
+  // questo stesso posto (e stiamo già partendo), o è per un altro (e allora
+  // non la vogliamo proprio). E il conto dei tentativi riparte da zero
+  // quando cambia il posto: il servizio che ha detto di no per Bolzano non
+  // ha detto niente su Genova.
+  if (terreno.sveglia) { clearTimeout(terreno.sveglia); terreno.sveglia = null; }
+  if (terreno.provatoLat === null || terreno.provatoLat === undefined ||
+      terrenoDistanzaKm(lat, lon, terreno.provatoLat, terreno.provatoLon) > TERRENO_RAGGIO_VALIDO_KM) {
+    terreno.tentativi = 0;
+  }
+  terreno.provatoLat = lat;
+  terreno.provatoLon = lon;
 
   terreno.stato = 'in-corso';
   terreno.motivo = '';
   terreno.avanzamento = 0;
   terrenoAggiornaPannello();
 
-  terreno.promessa = terrenoCostruisci(lat, lon)
-    .then(dati => {
+  terreno.promessa = terrenoCostruisci(lat, lon,
+    // Il giro grosso: si disegna subito, ma lo scarico continua.
+    dati => terrenoApplica(lat, lon, dati, 'rete', true))
+    .then(({ dati, guaio }) => {
       terrenoSalva(lat, lon, dati);
       terrenoApplica(lat, lon, dati, 'rete');
+      terreno.tentativi = 0;
+      // Andata a metà: il terreno c'è e si disegna, ma qualche direzione è
+      // stimata invece che misurata. Vale la pena riprovare più tardi a
+      // completarla — non subito, che il servizio ha appena detto di no.
+      if (guaio) {
+        console.warn('Terreno: qualche direzione non è arrivata', guaio);
+        terrenoRiprovaPiuTardi();
+      }
       return true;
     })
     .catch(e => {
       // Senza rete resta il profilo inventato, che è esattamente com'era
-      // prima: l'app non deve accorgersi di niente.
+      // prima: l'app non deve accorgersi di niente. Ma **si dice perché**:
+      // «non sono riuscito» e basta non permette a nessuno di capire se
+      // aspettare, riprovare o smettere.
       console.warn('Terreno vero non disponibile:', e);
       terreno.stato = 'fallito';
-      terreno.motivo = 'Non sono riuscito a scaricare la forma del terreno: resta l\'orizzonte disegnato.';
+      terreno.motivo = terrenoMotivoGuaio(e);
+      terrenoRiprovaPiuTardi();
       terrenoAggiornaPannello();
       return false;
     })
@@ -617,6 +873,46 @@ function terrenoCarica(forza) {
     });
 
   return terreno.promessa;
+}
+
+// Perché non ce l'ha fatta, detto a chi guarda.
+//
+// Il messaggio di prima era sempre lo stesso — «non sono riuscito a
+// scaricare la forma del terreno» — e non distingueva il caso «sei senza
+// rete» da «il servizio è sovraccarico, fra un minuto va» da «c'è un errore
+// nella richiesta». Sono tre cose che chiedono tre comportamenti diversi, e
+// chi legge non poteva sapere quale delle tre stesse capitando.
+function terrenoMotivoGuaio(e) {
+  let che;
+  if (e && e.stato === 429) {
+    che = 'il servizio delle quote è sovraccarico (429)';
+  } else if (e && typeof e.stato === 'number') {
+    che = `il servizio delle quote ha risposto ${e.stato}`;
+  } else if (e && e.name === 'AbortError') {
+    che = 'il servizio delle quote non ha risposto in tempo';
+  } else {
+    che = 'non c\'è rete, o il servizio delle quote non risponde';
+  }
+  return `Non sono riuscito a prendere la forma del terreno: ${che}. ` +
+    'Riprovo da solo fra poco; intanto resta l\'orizzonte disegnato.';
+}
+
+// Quando riprovare da soli, dopo un buco nell'acqua. Tre volte, sempre più
+// distanti: venti secondi coprono il singhiozzo di rete, un minuto e mezzo
+// il servizio momentaneamente carico, cinque minuti il tunnel o l'ascensore.
+// Poi si smette — riprovare all'infinito su un servizio che dice di no è il
+// modo di farsi bloccare sul serio — e resta il tasto nel pannello.
+const TERRENO_RIPROVE_MS = [20000, 90000, 300000];
+
+function terrenoRiprovaPiuTardi() {
+  const n = terreno.tentativi || 0;
+  if (n >= TERRENO_RIPROVE_MS.length) return;
+  terreno.tentativi = n + 1;
+  if (terreno.sveglia) clearTimeout(terreno.sveglia);
+  terreno.sveglia = setTimeout(() => {
+    terreno.sveglia = null;
+    terrenoCarica(true);
+  }, TERRENO_RIPROVE_MS[n]);
 }
 
 
@@ -791,7 +1087,15 @@ function terrenoRiassunto() {
 
 function terrenoAlterna() {
   terreno.acceso = !terreno.acceso;
-  if (terreno.acceso && terreno.stato !== 'pronto') terrenoCarica();
+  // Riaccendendolo si riprova **subito**, e si azzera il conto dei tentativi
+  // automatici: quelli sono la cortesia verso un servizio che ha detto di
+  // no, ma un tasto premuto è una richiesta esplicita di chi sta lì a
+  // guardare — ed è anche il solo modo che ha per riprovare quando i tre
+  // tentativi da soli sono finiti. Stessa regola dei nomi delle montagne.
+  if (terreno.acceso && terreno.stato !== 'pronto') {
+    if (terreno.stato === 'fallito') terreno.tentativi = 0;
+    terrenoCarica(terreno.stato === 'fallito');
+  }
   // Non serve chiedere un ridisegno: il planetario ridisegna a ogni
   // fotogramma, e al primo utile la collina nuova è già lì.
   terrenoAggiornaPannello();
@@ -814,6 +1118,9 @@ function terrenoTesto() {
     // sa cosa sta succedendo: serve a chi non lo sa.
     const q = terreno.avanzamento > 0 && terreno.avanzamento < 1
       ? ` (${Math.round(terreno.avanzamento * 100)}%)` : '';
+    // Dopo il giro grosso l'orizzonte disegnato è già quello vero: va detto,
+    // se no chi guarda crede che quello che vede sia ancora la finzione.
+    if (terreno.profilo) return `L'orizzonte qui sopra è già quello vero: lo sto affinando${q}…`;
     return `Sto misurando com'è fatto il terreno attorno a te${q}…`;
   }
   if (terreno.stato === 'fallito') return terreno.motivo;
@@ -822,6 +1129,11 @@ function terrenoTesto() {
   if (!r) return 'Apri il planetario da un posto con la rete e prendo la forma vera del terreno qui attorno.';
 
   const quota = typeof r.quota === 'number' ? `Sei a ${Math.round(r.quota)} m. ` : '';
+  // Quando manca qualche direzione lo si dice, ma in coda e senza allarme:
+  // il terreno c'è ed è quello vero, solo un po' meno fine da qualche parte.
+  const meta = terreno.misurate && terreno.misurate < TERRENO_DIREZIONI
+    ? ` (${TERRENO_DIREZIONI - terreno.misurate} direzioni su ${TERRENO_DIREZIONI} sono stimate: la rete non le ha portate tutte)`
+    : '';
 
   // Com'è fatto il giro. Non «l'orizzonte è alto 3,4°» — che è vero e non
   // dice niente — ma le parole con cui uno descriverebbe il posto in cui
@@ -841,7 +1153,7 @@ function terrenoTesto() {
   const paesaggio = pezzi.length ? `Attorno a te: ${pezzi.join(', ')}. ` : '';
 
   if (r.alto < 0.35) {
-    return quota + paesaggio + 'L\'orizzonte è libero in tutte le direzioni: non c\'è niente che copra.';
+    return quota + paesaggio + 'L\'orizzonte è libero in tutte le direzioni: non c\'è niente che copra.' + meta;
   }
   const cosa = r.tipoPiuAlto && r.tipoPiuAlto !== 'pianura' && r.tipoPiuAlto !== 'mare'
     ? ` (${r.tipoPiuAlto === 'montagna' ? 'la montagna' : 'la collina'})` : '';
@@ -849,7 +1161,7 @@ function terrenoTesto() {
     `Il punto più alto è a ${r.alto.toFixed(1)}° verso ${r.direzione}${cosa}. ` +
     (r.basso < 0.35
       ? 'Da qualche parte l\'orizzonte è invece completamente libero.'
-      : `Il più basso è a ${r.basso.toFixed(1)}°.`);
+      : `Il più basso è a ${r.basso.toFixed(1)}°.`) + meta;
 }
 
 function terrenoAggiornaPannello() {

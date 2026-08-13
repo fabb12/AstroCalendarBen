@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v93';
+const CACHE_NAME = 'astrocal-v94';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -121,11 +121,39 @@ self.addEventListener('fetch', (e) => {
   // NOAA no, e una tempesta magnetica di ieri è la peggiore delle
   // informazioni vecchie: dice «guarda a nord» la sera in cui non c'è
   // niente da vedere.
-  if (url.hostname.includes('open-meteo.com') ||
+  //
+  // Con una sola eccezione, ed è quella qui sotto: le quote del suolo.
+  const quoteDelSuolo = url.hostname.includes('open-meteo.com') &&
+    url.pathname.indexOf('/elevation') !== -1;
+
+  if (!quoteDelSuolo && (
+      url.hostname.includes('open-meteo.com') ||
       url.hostname.includes('celestrak') ||
       url.hostname.includes('services.swpc.noaa.gov') ||
-      SERVIZI_POSIZIONE.some(h => url.hostname === h)) {
+      SERVIZI_POSIZIONE.some(h => url.hostname === h))) {
     e.respondWith(fetch(req).catch(() => new Response('', { status: 504 })));
+    return;
+  }
+
+  // Le quote del suolo sono l'unica cosa che passa da open-meteo a **non**
+  // invecchiare: una collina è dove era, e ci sarà anche domani. Quindi si
+  // tengono, e non è un risparmio qualunque: la forma del terreno sono
+  // venticinque richieste, e se una va male l'app riprova. Con la cache,
+  // riprovare costa solo il pezzo che manca; senza, ogni tentativo
+  // ricominciava da capo — ed è uno dei motivi per cui su una rete ballerina
+  // il terreno non arrivava mai.
+  if (quoteDelSuolo) {
+    e.respondWith(
+      caches.match(req)
+        .then(salvata => salvata || fetch(req).then(rete => {
+          if (rete && rete.status === 200) {
+            const copia = rete.clone();
+            caches.open(CACHE_NAME).then(c => c.put(req, copia)).catch(() => {});
+          }
+          return rete;
+        }))
+        .catch(() => new Response('', { status: 504, statusText: 'Non disponibile senza rete' }))
+    );
     return;
   }
 
