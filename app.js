@@ -11913,6 +11913,55 @@ function skyAltezzaOrizzonte(az) {
   return Math.max(0.1, base + skyInterpolaProfilo(SKY_ALBERI, az) * quota);
 }
 
+// --- L'orizzonte diviso in tre bande di distanza ----------------------
+//
+// Un panorama non è una sagoma sola. Fuori dalla finestra ci sono almeno
+// tre cose distinte: la collina dietro casa, la dorsale a un quarto d'ora
+// di macchina e la catena all'orizzonte — e non si confondono mai, perché
+// la prima **copre** la seconda e la seconda copre la terza. È l'unico
+// indizio di profondità che un orizzonte possiede: a dieci chilometri gli
+// occhi non convergono più, e quello che resta è chi sta davanti a chi.
+//
+// I due tagli. Quattro chilometri è il paesaggio in cui si cammina — la
+// collina di fronte, il bosco, il paese —; sedici è quello che si guarda,
+// ed è anche uno dei campioni della griglia di `terreno.js`, quindi la
+// risposta è un dato misurato e non un'interpolazione. Oltre, è sfondo.
+const SKY_STRATI_KM = [4, 16];
+
+// Quello che sta addosso all'occhio: gli ostacoli dichiarati a mano (il
+// condominio di fronte) e il dettaglio inventato degli alberi. Sono le due
+// cose del profilo che *per forza* stanno in primo piano — un palazzo a
+// trenta metri non è sfondo — e per questo si sommano alla banda vicina e
+// non a quella lontana. È la stessa formula di `skyAltezzaOrizzonte`, con
+// la sola differenza che la prova «gli alberi si diradano in montagna»
+// guarda la cresta *vicina* invece di quella intera: un pioppo a due passi
+// c'è anche se dietro di lui, a quaranta chilometri, si alza una cima.
+function skyAddossoAllOcchio(az, suoloVicino) {
+  const ostacoli = typeof orizzonteAltezza === 'function' ? orizzonteAltezza(az) : 0;
+  if (typeof terrenoTipo === 'function' && terrenoTipo(az) === 'mare') return Math.max(0, ostacoli);
+  const base = Math.max(suoloVicino, ostacoli);
+  const quota = base > 6 ? 0.25 : 1;
+  return Math.max(0, base + skyInterpolaProfilo(SKY_ALBERI, az) * quota);
+}
+
+// Le tre altezze dell'orizzonte in quella direzione — primo piano, piano
+// intermedio, sfondo — o `null` se il terreno vero non c'è, e allora chi
+// disegna torni pure ai piani finti di prima (§ `SKY_CRESTE_PIANI`).
+//
+// Sono per costruzione non decrescenti: `terrenoCrestaEntro` accumula un
+// massimo andando avanti, quindi il primo piano non può stare sopra allo
+// sfondo. Non è un dettaglio di comodo, è tutta l'occlusione: disegnando
+// le tre sagome dallo sfondo in avanti, ognuna copre la parte bassa di
+// quella dietro, che è quello che fa una dorsale davanti a un'altra.
+function skyStratiOrizzonte(az, pieno) {
+  if (typeof terrenoCrestaEntro !== 'function') return null;
+  const vicino = terrenoCrestaEntro(az, SKY_STRATI_KM[0]);
+  const medio = terrenoCrestaEntro(az, SKY_STRATI_KM[1]);
+  if (vicino === null || medio === null) return null;
+  const primo = Math.min(pieno, Math.max(vicino, skyAddossoAllOcchio(az, vicino)));
+  return [primo, Math.min(pieno, Math.max(medio, primo)), pieno];
+}
+
 // --- Come si disegna un punto luminoso -------------------------------
 // Una stella non è un cerchio pieno: è un nocciolo piccolissimo con un alone
 // che sfuma, e più è luminosa più l'alone si allarga. Sopra una certa
@@ -12559,23 +12608,31 @@ function skyRilievo(tavola, az) {
 // fotogramma.
 const SKY_RUVIDEZZA = { mare: 0, pianura: 0.07, collina: 0.15, montagna: 0.28 };
 
-// I piani della veduta.
+// I tre strati della veduta.
 //
 // Una catena non è una sagoma sola: è una fila di dorsali una dietro
 // l'altra, e quello che le racconta non è il disegno di ciascuna ma il
-// fatto che le più vicine sono più scure. È la prospettiva aerea, ed è
-// l'unico indizio di profondità che un orizzonte possiede — a mille metri
-// di distanza gli occhi non convergono più.
+// fatto che le più vicine sono più scure e **coprono** quelle dietro. È la
+// prospettiva aerea, ed è l'unico indizio di profondità che un orizzonte
+// possiede — a mille metri di distanza gli occhi non convergono più.
 //
-// I piani vicini stanno **sotto** alla cresta vera, mai sopra: la cresta è
-// la linea più alta che c'è in quella direzione, ed è quella che il DEM ha
-// misurato. Le dorsali davanti sono più basse, e ognuna ha il suo rilievo
-// (`salto` sposta il punto di lettura del rumore) perché non sia la stessa
-// forma rimpicciolita.
+// `banda` dice a quale fetta di distanza appartiene lo strato: 2 è lo
+// sfondo (tutto), 1 il piano intermedio (entro `SKY_STRATI_KM[1]`), 0 il
+// primo piano (entro `SKY_STRATI_KM[0]`). Con il terreno vero quelle tre
+// altezze sono misurate, non inventate, e sono per costruzione una sopra
+// l'altra: il primo piano nasconde davvero quello che gli sta dietro.
+//
+// `quota` è il ripiego di quando il terreno vero non c'è: la vecchia
+// scaletta di frazioni della cresta unica. Faceva la stessa figura, ma per
+// finta — tre copie rimpicciolite della stessa sagoma, con la dorsale
+// davanti che era quella dietro moltiplicata per 0,62.
+//
+// Il rilievo di ognuno è suo (`salto` sposta il punto di lettura del
+// rumore), se no le tre sagome hanno gli stessi denti.
 const SKY_CRESTE_PIANI = [
-  { quota: 1,    salto: 0,     ruvido: 1,    tinta: 0,    buio: 0 },
-  { quota: 0.62, salto: 143.7, ruvido: 0.85, tinta: 0.45, buio: 0.14 },
-  { quota: 0.33, salto: 257.3, ruvido: 0.7,  tinta: 0.8,  buio: 0.26 }
+  { banda: 2, quota: 1,    salto: 0,     ruvido: 1,    tinta: 0,    buio: 0 },
+  { banda: 1, quota: 0.62, salto: 143.7, ruvido: 0.85, tinta: 0.45, buio: 0.14 },
+  { banda: 0, quota: 0.33, salto: 257.3, ruvido: 0.7,  tinta: 0.8,  buio: 0.26 }
 ];
 
 // Sotto questa altezza in pixel i piani davanti non si disegnano: una
@@ -12615,6 +12672,10 @@ function skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria) {
   // una della miscela, una proiezione); i piani poi si ricavano da queste.
   const colonne = [];
   let altezzaMax = 0;
+  // Quanto sale ogni strato, il suo massimo su tutto l'arco in vista:
+  // serve a sapere se vale ancora la pena di dargli un cappello, che su
+  // una dorsale alta quattro pixel è una riga chiara e basta.
+  const altezzeStrato = SKY_CRESTE_PIANI.map(() => 0);
   for (let d = -arco.mezzo; d <= arco.mezzo + 0.001; d += passo) {
     const az = arco.centro + d;
     const piede = skyProietta(skyVettore(az, 0), base, focale);
@@ -12631,8 +12692,16 @@ function skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria) {
       // Quanta parte del rilievo è roccia e quanta è dorso di collina
       roccia = Math.min(1, m.montagna + m.collina * 0.5);
     }
-    colonne.push({ az, h, piede, ruvido, roccia });
+    const col = { az, h, piede, ruvido, roccia };
+    // Le tre altezze da disegnare, calcolate qui una volta sola: dentro al
+    // ciclo dei piani si pagherebbero due letture di rumore per piano e per
+    // colonna, e per giunta non si potrebbe fare il taglio qui sotto.
+    col.creste = skyCresteDelleColonne(col);
+    colonne.push(col);
     if (h > altezzaMax) altezzaMax = h;
+    for (let k = 0; k < col.creste.length; k++) {
+      if (col.creste[k] > altezzeStrato[k]) altezzeStrato[k] = col.creste[k];
+    }
   }
   if (colonne.length < 2) return;
 
@@ -12642,12 +12711,12 @@ function skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria) {
   const piani = pxCresta >= SKY_CRESTE_PX_MIN ? SKY_CRESTE_PIANI : SKY_CRESTE_PIANI.slice(0, 1);
 
   ctx.save();
-  // I piani si disegnano dal più lontano al più vicino: ognuno copre la
+  // Gli strati si disegnano dal più lontano al più vicino: ognuno copre la
   // parte bassa di quello dietro, che è esattamente quello che fa una
   // dorsale davanti a un'altra.
   for (let k = 0; k < piani.length; k++) {
     const piano = piani[k];
-    const corse = skyCorseDiCresta(colonne, piano, base, focale);
+    const corse = skyCorseDiCresta(colonne, k, base, focale);
     if (!corse.length) continue;
 
     const colore = skyMescolaColore(
@@ -12662,45 +12731,62 @@ function skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria) {
     ctx.fillStyle = skyRgba(colore, 1);
     ctx.fill();
 
-    // Il cappello ce l'ha ogni piano, se no le dorsali davanti sono tre
+    // Il cappello ce l'ha ogni strato, se no le dorsali davanti sono tre
     // ritagli piatti. Il filo di luce no, solo la cresta vera: dietro a lei
     // c'è il cielo, dietro alle altre c'è la montagna di prima — e un bordo
     // luminoso lì sarebbe una luce che non viene da nessuna parte.
-    if (pxCresta * piano.quota >= 10) skyDisegnaCappello(ctx, corse, colore, piano);
+    if (altezzeStrato[k] * focale * SKY_D2R >= 10) skyDisegnaCappello(ctx, corse, colore, piano);
     if (k === 0) skyDisegnaFiloCresta(ctx, corse, aria);
   }
   ctx.restore();
 }
 
-// L'altezza disegnata di una cresta su un piano: la vera, scalata dal
-// piano e morsa dal rilievo. Il rumore aspro e quello dolce si mescolano
-// con quanta roccia c'è da quella parte — sulla stessa vista, la costa
-// resta liscia e il crinale dietro no.
-function skyMorsoCresta(col, piano) {
-  const az = col.az + piano.salto;
-  const aspro = skyRilievo(SKY_RILIEVO.aspro, az);
-  const dolce = skyRilievo(SKY_RILIEVO.dolce, az);
-  const n = dolce + (aspro - dolce) * col.roccia;
-  // I piani davanti ci sono dove c'è un rilievo. In pianura non esistono
-  // dorsali una dietro l'altra, e disegnarle lo stesso vuol dire tagliare
-  // una macchia d'alberi alta trenta pixel in tre fasce orizzontali —
-  // sembrano le curve di livello di una carta, non degli alberi. Dove non
-  // c'è montagna la loro quota va a zero e i piani si appiattiscono sulla
-  // linea dell'orizzonte, cioè spariscono da soli.
-  const quota = piano.quota === 1 ? 1 : piano.quota * col.roccia;
-  return col.h * quota * (1 - col.ruvido * piano.ruvido * n);
+// L'altezza disegnata dei tre strati in una colonna: quella vera della sua
+// banda di distanza, morsa dal rilievo. Il rumore aspro e quello dolce si
+// mescolano con quanta roccia c'è da quella parte — sulla stessa vista, la
+// costa resta liscia e il crinale dietro no.
+//
+// Il taglio finale (`tetto`) è quello che tiene in piedi l'occlusione. Le
+// tre altezze arrivano già ordinate — sono massimi accumulati su fette di
+// distanza crescenti — ma il morso del rilievo è diverso per ogni strato,
+// e una sella profonda scavata nel piano intermedio può farlo scendere
+// sotto al primo piano. Quando succede, lo strato davanti smette di
+// coprire e i due si intrecciano: due creste che si attraversano a mezza
+// costa sono la cosa che dice a colpo d'occhio «questo disegno è finto».
+function skyCresteDelleColonne(col) {
+  const bande = skyStratiOrizzonte(col.az, col.h);
+  const fuori = [];
+  let tetto = Infinity;
+  for (const piano of SKY_CRESTE_PIANI) {
+    const az = col.az + piano.salto;
+    const aspro = skyRilievo(SKY_RILIEVO.aspro, az);
+    const dolce = skyRilievo(SKY_RILIEVO.dolce, az);
+    const n = dolce + (aspro - dolce) * col.roccia;
+    // Senza il terreno vero non si sa cosa sta davanti a cosa, e restano i
+    // piani finti di prima: frazioni della cresta unica, spente dove non
+    // c'è montagna. In pianura non esistono dorsali una dietro l'altra, e
+    // disegnarle lo stesso vuol dire tagliare una macchia d'alberi alta
+    // trenta pixel in tre fasce orizzontali — sembrano le curve di livello
+    // di una carta, non degli alberi.
+    const quota = piano.quota === 1 ? 1 : piano.quota * col.roccia;
+    const alta = bande ? bande[piano.banda] : col.h * quota;
+    const v = Math.min(tetto, alta * (1 - col.ruvido * piano.ruvido * n));
+    fuori.push(v);
+    tetto = v;
+  }
+  return fuori;
 }
 
-// I tratti continui di un piano: si spezza dove la proiezione perde il
+// I tratti continui di uno strato: si spezza dove la proiezione perde il
 // punto (dietro all'occhio), se no il poligono si chiuderebbe attraverso
 // mezzo schermo.
-function skyCorseDiCresta(colonne, piano, base, focale) {
+function skyCorseDiCresta(colonne, k, base, focale) {
   const corse = [];
   let corsa = [];
   const chiudi = () => { if (corsa.length > 1) corse.push(corsa); corsa = []; };
   for (const col of colonne) {
     if (!col) { chiudi(); continue; }
-    const cresta = skyProietta(skyVettore(col.az, skyMorsoCresta(col, piano)), base, focale);
+    const cresta = skyProietta(skyVettore(col.az, col.creste[k]), base, focale);
     if (!cresta.davanti) { chiudi(); continue; }
     corsa.push({ az: col.az, cx: cresta.px, cy: cresta.py, bx: col.piede.px, by: col.piede.py });
   }
@@ -12931,6 +13017,37 @@ const SKY_CIME_INCLINA = -48 * Math.PI / 180;
 const SKY_CIME_FILO_MIN = 12;
 const SKY_CIME_FILO_TENTATIVI = 16;
 
+// Da dove parte l'etichetta, strato per strato (primo piano, intermedio,
+// sfondo).
+//
+// Il disegno dell'orizzonte è a tre strati (§ `SKY_CRESTE_PIANI`) e i nomi
+// devono stare nello stesso ordine, se no si perde l'unica cosa che quel
+// disegno racconta. Il nome di una collina qui davanti parte **rasente
+// alla sua punta**, nella fascia bassa dove sta la collina; quello di una
+// cima lontana parte più in alto, staccato dal crinale, sopra allo sfondo
+// a cui appartiene. Così, guardando un panorama di prealpi, si legge in
+// due bande: sotto i nomi di quello che si raggiunge a piedi, sopra quelli
+// della catena — che è come sono impaginate le tavole panoramiche da
+// quando le disegnavano a mano.
+//
+// Sono anche il modo in cui l'affollamento si risolve da sé: partendo da
+// altezze diverse, le tre famiglie non si contendono la stessa striscia di
+// cielo e i tentativi di allungamento finiscono quasi subito.
+const SKY_CIME_FILO_STRATO = [SKY_CIME_FILO_MIN, 30, 52];
+
+// Quanto sbiadisce un'etichetta con la distanza. È la stessa prospettiva
+// aerea delle creste: un nome appeso a una cima a settanta chilometri non
+// può essere più nitido della cima stessa.
+const SKY_CIME_VELO_STRATO = [1, 0.94, 0.86];
+
+// A quale strato appartiene una vetta. Le soglie sono quelle del disegno
+// del terreno: il nome e la sagoma devono dire la stessa cosa.
+function skyStratoDiCima(km) {
+  if (!(km > 0)) return SKY_STRATI_KM.length;
+  for (let i = 0; i < SKY_STRATI_KM.length; i++) if (km <= SKY_STRATI_KM[i]) return i;
+  return SKY_STRATI_KM.length;
+}
+
 // Un rettangolo orientato: dove sta il centro, quanto è grande e come è
 // girato. `hu` è la mezza misura lungo il testo, `hv` di traverso.
 function skyRettOrientato(cx, cy, larg, alt, ang) {
@@ -13155,12 +13272,17 @@ function skyNomiCime(ctx, base, focale, occupati) {
     const largoQuota = ctx.measureText(quotaTesto).width;
     const largo = largoNome + corpo * 0.4 + largoQuota;
 
-    // Il filo si allunga finché l'etichetta non trova posto. Chi arriva
-    // prima — la vetta più imponente — sta vicino alla sua punta; le altre
-    // salgono, ed è esattamente quello che si vede sulle tavole disegnate.
+    // Il filo si allunga finché l'etichetta non trova posto, **partendo
+    // dallo strato a cui la vetta appartiene**: rasente alla punta se è
+    // qui davanti, alta sopra al crinale se è di sfondo. Chi arriva prima
+    // — la vetta più imponente — sta vicino al suo punto di partenza; le
+    // altre salgono, ed è esattamente quello che si vede sulle tavole
+    // disegnate a mano.
+    const strato = skyStratoDiCima(c.km);
+    const partenza = SKY_CIME_FILO_STRATO[strato] || SKY_CIME_FILO_MIN;
     let messa = null;
     for (let t = 0; t < SKY_CIME_FILO_TENTATIVI; t++) {
-      const filo = SKY_CIME_FILO_MIN + t * passo;
+      const filo = partenza + t * passo;
       const ax = p.px, ay = p.py - filo;
       // Sopra il bordo non si sale: da lì in poi allungare il filo non
       // libera più niente, porta solo la scritta fuori dallo schermo
@@ -13170,7 +13292,10 @@ function skyNomiCime(ctx, base, focale, occupati) {
     }
     if (!messa) continue;
     scritte++;
-    poste.push({ p, ax: messa.ax, ay: messa.ay, nome: c.nome, quotaTesto, largoNome, largo });
+    poste.push({
+      p, ax: messa.ax, ay: messa.ay, nome: c.nome, quotaTesto, largoNome, largo,
+      velo: SKY_CIME_VELO_STRATO[strato] || 1
+    });
   }
 
   // Prima tutti i fili, poi tutte le scritte: disegnandoli man mano, il filo
@@ -13182,6 +13307,7 @@ function skyNomiCime(ctx, base, focale, occupati) {
   ctx.lineWidth = 1.2;
   const lato = Math.max(3.5, corpo * 0.32);
   for (const e of poste) {
+    ctx.globalAlpha = e.velo;
     ctx.beginPath();
     ctx.moveTo(e.p.px, e.p.py);
     ctx.lineTo(e.ax, e.ay + altoBlocco * 0.35);
@@ -13197,16 +13323,19 @@ function skyNomiCime(ctx, base, focale, occupati) {
     ctx.fill();
   }
 
+  ctx.globalAlpha = 1;
+
   for (const e of poste) {
     ctx.save();
     ctx.translate(e.ax, e.ay);
     ctx.rotate(SKY_CIME_INCLINA);
+    ctx.globalAlpha = e.velo;
     skyPillola(ctx, -bordo, -altoBlocco / 2, e.largo + bordo * 2, altoBlocco,
       altoBlocco / 2, tinta.pillola);
     ctx.font = `${SKY_NOMI_ORIZZONTE.cime.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
     skyScrittaConAlone(ctx, e.nome, 0, 0, tinta.pieno, tinta.alone, corpo * 0.24);
     ctx.font = `italic 400 ${corpoQuota}px ${SKY_FONT_ETICHETTE}`;
-    ctx.globalAlpha = 0.82;
+    ctx.globalAlpha = e.velo * 0.82;
     skyScrittaConAlone(ctx, e.quotaTesto, e.largoNome + corpo * 0.4, 0,
       tinta.pieno, tinta.alone, corpoQuota * 0.24);
     ctx.restore();
@@ -13873,18 +14002,47 @@ function skyDisegnaGuida(ctx, base, focale, o) {
   ctx.restore();
 }
 
-// Mirino al centro dello schermo: indica dove sta puntando il telefono
+// Il mirino al centro dello schermo: dove sta puntando il telefono, e —
+// quando il telefono non c'entra — il punto di cui parlano la bussola in
+// alto a destra e la lettura dell'altezza.
+//
+// È giallo, ed è l'unica cosa gialla del planetario. Il grigio di prima si
+// perdeva: al centro dello schermo ci passano il terreno, la Via Lattea, un
+// pianeta luminoso, e quattro trattini a mezza opacità sopra a uno di quelli
+// semplicemente non ci sono. Il giallo non appartiene a nessun astro e a
+// nessun paesaggio — nessuna stella lo è, né una cupola di luce, che è
+// ambra — quindi si legge come «questo è un segno dello strumento, non una
+// cosa che sta in cielo». Sotto ci va il contorno scuro, per la stessa
+// ragione per cui ce l'hanno i nomi delle montagne: su un cielo diurno un
+// giallo chiaro sparisce da solo.
+const SKY_MIRINO_COLORE = '#facc15';
+const SKY_MIRINO_ALONE = 'rgba(0, 0, 0, 0.55)';
+
 function skyDisegnaMirino(ctx) {
-  const x = sky.larghezza / 2, y = sky.altezza / 2;
+  const x = Math.round(sky.larghezza / 2) + 0.5;
+  const y = Math.round(sky.altezza / 2) + 0.5;
+  // Il buco in mezzo: lì ci sta l'astro che si vuole guardare, e un mirino
+  // che lo copre è un mirino che dà fastidio.
+  const buco = 5, braccio = 13, raggio = 3.2;
+
   ctx.save();
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(x - 12, y); ctx.lineTo(x - 4, y);
-  ctx.moveTo(x + 4, y); ctx.lineTo(x + 12, y);
-  ctx.moveTo(x, y - 12); ctx.lineTo(x, y - 4);
-  ctx.moveTo(x, y + 4); ctx.lineTo(x, y + 12);
-  ctx.stroke();
+  ctx.lineCap = 'round';
+  const tratti = () => {
+    ctx.beginPath();
+    ctx.moveTo(x - braccio, y); ctx.lineTo(x - buco, y);
+    ctx.moveTo(x + buco, y); ctx.lineTo(x + braccio, y);
+    ctx.moveTo(x, y - braccio); ctx.lineTo(x, y - buco);
+    ctx.moveTo(x, y + buco); ctx.lineTo(x, y + braccio);
+    ctx.moveTo(x + raggio, y);
+    ctx.arc(x, y, raggio, 0, Math.PI * 2);
+    ctx.stroke();
+  };
+  ctx.strokeStyle = SKY_MIRINO_ALONE;
+  ctx.lineWidth = 3.2;
+  tratti();
+  ctx.strokeStyle = SKY_MIRINO_COLORE;
+  ctx.lineWidth = 1.3;
+  tratti();
   ctx.restore();
 }
 
@@ -14079,19 +14237,66 @@ function skyCampoTesto() {
   return sky.fov >= 2 ? `${Math.round(sky.fov)}°` : skyAngoloApparente(sky.fov);
 }
 
-// Azimut e altezza verso cui punta il telefono, mostrati in alto a sinistra
+// Dove si sta guardando. L'azimut è passato alla bussola in alto a destra
+// — un numero in gradi, da solo, non dice da che parte si guarda finché non
+// lo si vede su un quadrante — e qui resta quello che una bussola non sa
+// dire: quanto si è alti sull'orizzonte e quanto cielo si ha davanti.
 function skyAggiornaHud(base) {
-  const hud = document.getElementById('skymap-hud');
-  if (!hud) return;
   const f = base.f;
   const alt = Math.asin(Math.max(-1, Math.min(1, f[2]))) * SKY_R2D;
   const az = ((Math.atan2(f[0], f[1]) * SKY_R2D) % 360 + 360) % 360;
+  skyAggiornaBussola(az);
+
+  const hud = document.getElementById('skymap-hud');
+  if (!hud) return;
   const stretta = sky.larghezza && sky.larghezza < 560;
-  const testo = `${skyNomeDirezione(az)} ${Math.round(az) % 360}° · alt ${alt.toFixed(0)}°` +
-    (stretta ? '' : ` · campo ${skyCampoTesto()}${skyCampoDaObiettivo() ? ' (obiettivo)' : ''}`);
+  const campo = `${skyCampoTesto()}${skyCampoDaObiettivo() ? ' (obiettivo)' : ''}`;
+  const testo = `alt ${alt.toFixed(0)}° · ${stretta ? '' : 'campo '}${campo}`;
   // Riscrivere il testo sessanta volte al secondo costa e non serve: quasi
   // sempre è identico a quello di prima.
   if (hud.textContent !== testo) hud.textContent = testo;
+}
+
+// I tre stati della bussola, e come si dicono senza scriverli sul cielo.
+// Il quadrante acceso vuol dire che il Nord segnato è quello geografico —
+// la correzione della declinazione magnetica è già dentro, e sapere di
+// quanti gradi è non serve a chi guarda il cielo, serve a chi allinea una
+// montatura (e lì infatti c'è, nella vista Telescopio). Spento e
+// tratteggiato vuol dire che quel Nord è indicativo.
+const SKY_BUSSOLA_MODI = {
+  vera:      'Bussola: la punta ambrata è il Nord geografico',
+  magnetica: 'Bussola da tarare: il Nord segnato è quello magnetico',
+  manuale:   'La vista la muovi col dito: il Nord è quello del cielo disegnato'
+};
+
+function skyModoBussola() {
+  if (!sky.sensori || !sky.seguiTelefono) return 'manuale';
+  return sky.assoluto ? 'vera' : 'magnetica';
+}
+
+// Il quadrante gira, l'indice sta fermo: è il verso di una bussola vera, e
+// l'unico che risponde alla domanda «da che parte devo girarmi». Il Nord
+// sta a 0° di azimut, quindi rispetto alla vista è indietro di `az`: la
+// rosa si gira di −az.
+function skyAggiornaBussola(az) {
+  const b = document.getElementById('skymap-bussola');
+  if (!b) return;
+  const rosa = document.getElementById('skymap-bussola-rosa');
+  if (rosa) rosa.setAttribute('transform', `rotate(${(-az).toFixed(1)})`);
+
+  const gradi = document.getElementById('skymap-bussola-gradi');
+  const testo = `${Math.round(az) % 360}°`;
+  if (gradi && gradi.textContent !== testo) gradi.textContent = testo;
+
+  const modo = skyModoBussola();
+  if (b.dataset.modo !== modo) {
+    b.dataset.modo = modo;
+    b.title = SKY_BUSSOLA_MODI[modo];
+  }
+  // Chi legge con lo schermo non vede né il quadrante né l'indice: a lui la
+  // stessa cosa va detta a parole, ed è l'unico posto in cui vale la pena.
+  const detto = `Vista verso ${skyNomeDirezione(az)}, ${Math.round(az) % 360} gradi`;
+  if (b.getAttribute('aria-label') !== detto) b.setAttribute('aria-label', detto);
 }
 
 // Avvisi sotto al cielo, uno per argomento (posizione, sensori):
@@ -14122,43 +14327,70 @@ function skyTasto(id, attiva, testo) {
   if (testo) b.textContent = testo;
 }
 
+// Da dove si sta guardando il cielo: **una riga sola**, e corta.
+//
+// Prima erano tre, e due dicevano cose che adesso si guardano invece di
+// leggerle: lo stato della bussola («Nord vero», la declinazione magnetica,
+// «bussola relativa: da calibrare», «modalità manuale») lo racconta il
+// quadrante in alto a destra col suo aspetto, e l'azimut sta scritto in
+// mezzo a lui. Sopra a un cielo, tre righe di gergo in un angolo sono tre
+// righe di cielo in meno — e la declinazione magnetica, in particolare, è
+// un numero che serve a chi allinea una montatura, non a chi guarda: sta
+// nella vista Telescopio, che è dove lo si cerca.
+//
+// Quello che resta è l'unica cosa che nessun disegno può dire: **da dove**
+// sono calcolate le posizioni che si stanno guardando.
 function skyAggiornaStato() {
   const el = document.getElementById('skymap-stato');
   if (!el) return;
-  const righe = [];
+  const pezzi = [];
   // Un cielo che non è quello di casa tua deve dirlo prima di ogni altra
   // cosa, sempre, e non solo nel pannello che l'ha deciso: chi torna sulla
   // mappa dieci minuti dopo non si ricorda di averlo spostato.
   if (sky.luogoVista) {
-    const nome = sky.luogoVista.nome || formattaCoordinate(sky.luogoVista.lat, sky.luogoVista.lon);
-    righe.push(`cielo visto da ${nome} · solo qui`);
+    pezzi.push(sky.luogoVista.nome || formattaCoordinate(sky.luogoVista.lat, sky.luogoVista.lon));
+    pezzi.push('solo qui');
+  } else if (sky.posizione) {
+    // Il nome del posto quando c'è: due numeri con cinque decimali sono
+    // esatti e non dicono niente a nessuno.
+    pezzi.push(sky.posizione.nome ||
+      formattaCoordinate(sky.posizione.lat, sky.posizione.lon));
+    const et = POS_ETICHETTE[sky.posizione.origine || sky.posizione.fonte];
+    if (et) pezzi.push(et.breve);
+    // La precisione non si scrive più sempre, ma **quando è larga sì**: è
+    // la prima cosa da guardare se il cielo non torna, perché un fix di
+    // rete preso per GPS può spostare l'orizzonte di mezzo grado.
+    const p = sky.posizione.precisione;
+    if (p && p >= SKY_STATO_PRECISIONE_DA) pezzi.push(precisioneTesto(p));
+  } else {
+    pezzi.push('posizione mancante');
+  }
+  const testo = pezzi.join(' · ');
+  if (el.textContent !== testo) el.textContent = testo;
+  // Il titolo tiene il dettaglio esteso per chi lo vuole: le coordinate
+  // vere, la provenienza per intero. Costa niente e non occupa cielo.
+  el.title = skyStatoEsteso();
+}
+
+// Sopra questa larghezza di lettura la precisione va detta: due chilometri
+// è già un altro orizzonte, e i fix di rete stanno di solito lì o oltre.
+const SKY_STATO_PRECISIONE_DA = 2000;
+
+function skyStatoEsteso() {
+  const righe = [];
+  if (sky.luogoVista) {
+    righe.push(`Cielo visto da ${formattaCoordinate(sky.luogoVista.lat, sky.luogoVista.lon)}` +
+      ' — vale solo nel planetario, la posizione dell\'app non cambia');
   }
   if (sky.posizione) {
-    // Dire quanto è larga la lettura evita di dare per buono un fix di rete
-    // scambiandolo per GPS: è la prima cosa da guardare se il cielo non torna.
-    const p = sky.posizione.precisione;
-    const quanto = p ? ` ${precisioneTesto(p)}` : '';
     const et = POS_ETICHETTE[sky.posizione.origine || sky.posizione.fonte];
-    righe.push(`${formattaCoordinate(sky.posizione.lat, sky.posizione.lon)}${quanto}` +
-      (et ? ` · ${et.breve}` : ''));
+    const p = sky.posizione.precisione;
+    righe.push(`Posizione: ${formattaCoordinate(sky.posizione.lat, sky.posizione.lon)}` +
+      (et ? `, ${et.provenienza}` : '') + (p ? ` (${precisioneTesto(p)})` : ''));
   } else {
-    righe.push('posizione mancante');
+    righe.push('Posizione non ancora rilevata');
   }
-  if (!sky.seguiTelefono && sky.sensori) {
-    righe.push('vista sganciata: la muovi col dito');
-  } else if (sky.sensori) {
-    if (sky.assoluto) {
-      const d = sky.declinazione;
-      righe.push(Math.abs(d) >= 0.05
-        ? `Nord vero (declinazione ${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(1)}°)`
-        : 'Nord vero');
-    } else {
-      righe.push('bussola relativa: da calibrare');
-    }
-  } else {
-    righe.push('modalità manuale');
-  }
-  el.innerHTML = righe.join('<br>');
+  return righe.join('\n');
 }
 
 // =====================================================================

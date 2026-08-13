@@ -582,22 +582,30 @@ function terrenoDisponibile() {
 // rispondere.
 const TERRENO_FRONTE_MARGINE = 0.85;
 
-// Quanto è alta la cresta che sta **davanti** a un punto in direzione `az`
-// e distante `km`. `null` quando non lo si può sapere — niente terreno, o
-// un profilo salvato di quelli vecchi senza quote grezze — e allora chi
-// chiama torni pure al profilo intero.
+// Quanto sale il terreno in direzione `az` **entro** `km`: la cresta di
+// quella fetta di paesaggio, senza niente di quello che le sta dietro.
+// `null` quando non lo si può sapere — niente terreno, o un profilo
+// salvato di quelli vecchi senza quote grezze — e allora chi chiama torni
+// pure al profilo intero.
+//
+// È la domanda che serve a due cose diverse. La prima è sapere cosa
+// nasconde una vetta (`terrenoCrestaDavanti`, qui sotto). La seconda è
+// disegnare l'orizzonte **a strati**: il primo piano è la cresta entro
+// pochi chilometri, il piano intermedio quella entro qualche decina, lo
+// sfondo è tutto. Essendo un massimo che si accumula, le tre risposte sono
+// per costruzione una sopra l'altra — ed è quello che fa sì che il primo
+// piano copra lo sfondo invece di intrecciarcisi.
 //
 // Fra due direzioni campionate si interpola con la stessa curva a S del
 // profilo: le due risposte devono essere parenti, se no una vetta cambia
 // stato passando da un settore all'altro.
-function terrenoCrestaDavanti(az, km) {
+function terrenoCrestaEntro(az, km) {
   if (!terrenoDisponibile() || !terreno.fronti) return null;
   const n = TERRENO_DISTANZE.length;
-  const limite = km * TERRENO_FRONTE_MARGINE;
-  // L'ultimo campione che le sta davvero davanti. Nessuno: niente ostacoli,
-  // e la risposta è zero — non `null`, che vuol dire un'altra cosa.
+  // L'ultimo campione che ci sta dentro. Nessuno: niente terreno in quella
+  // fetta, e la risposta è zero — non `null`, che vuol dire un'altra cosa.
   let k = -1;
-  for (let j = 0; j < n; j++) if (TERRENO_DISTANZE[j] <= limite) k = j;
+  for (let j = 0; j < n; j++) if (TERRENO_DISTANZE[j] <= km) k = j;
   if (k < 0) return 0;
 
   const dove = (((az % 360) + 360) % 360) / TERRENO_PASSO_AZ;
@@ -606,6 +614,13 @@ function terrenoCrestaDavanti(az, km) {
   const t = dove - Math.floor(dove);
   const s = t * t * (3 - 2 * t);
   return terreno.fronti[i * n + k] * (1 - s) + terreno.fronti[j * n + k] * s;
+}
+
+// Quanto è alta la cresta che sta **davanti** a un punto in direzione `az`
+// e distante `km`: la stessa cosa di qui sopra, ma fermandosi un po' prima
+// di lui — vedi `TERRENO_FRONTE_MARGINE`.
+function terrenoCrestaDavanti(az, km) {
+  return terrenoCrestaEntro(az, km * TERRENO_FRONTE_MARGINE);
 }
 
 // Che paesaggio c'è guardando da quella parte: 'mare', 'pianura',

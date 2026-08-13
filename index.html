@@ -348,10 +348,53 @@
               title="Cosa succede nel cielo all'ora mostrata: tocca per l'elenco"></button>
           </div>
 
-          <!-- Dati di puntamento e stato -->
+          <!-- Dati di puntamento e stato.
+               A sinistra due righe corte: dove si guarda in alto (altezza e
+               campo) e da dove (il luogo). A destra la bussola, che si è
+               presa l'azimut — un numero in gradi non dice da che parte si
+               sta guardando finché non lo si vede su un quadrante. Quello
+               che prima era scritto a parole ("Nord vero", la declinazione
+               magnetica, "bussola relativa") adesso lo dice il quadrante
+               stesso col suo aspetto: erano tre righe di gergo sopra al
+               cielo per un'informazione che si guarda, non si legge. -->
           <div class="cielo-letture">
-            <div id="skymap-hud" class="lettura-cielo">—</div>
-            <div id="skymap-stato" class="lettura-cielo lettura-stato">Posizione non ancora rilevata</div>
+            <div class="letture-sinistra">
+              <div id="skymap-hud" class="lettura-cielo">—</div>
+              <div id="skymap-stato" class="lettura-cielo lettura-stato">posizione mancante</div>
+            </div>
+
+            <!-- LA BUSSOLA
+                 Un quadrante che gira, come quello vero: l'indice giallo in
+                 cima è la direzione della vista (lo stesso giallo del mirino
+                 al centro del cielo, ed è di proposito: sono i due capi
+                 della stessa informazione), l'ago ambrato e la N sono il
+                 Nord. In mezzo i gradi di azimut. -->
+            <div id="skymap-bussola" class="bussola-cielo"
+              role="img" aria-label="Bussola" title="Direzione della vista">
+              <svg class="bussola-quadrante" viewBox="-50 -50 100 100" aria-hidden="true">
+                <circle class="bussola-fondo" cx="0" cy="0" r="46"></circle>
+                <g id="skymap-bussola-rosa" class="bussola-rosa">
+                  <!-- Le tacche: lunghe ai quattro punti cardinali, corte a
+                       metà strada. Sono scritte a mano e non generate,
+                       perché questo pezzo di pagina non ha JavaScript che
+                       lo costruisca: gira, e basta. -->
+                  <path class="bussola-tacca-lunga" d="M0,-46 v6 M0,46 v-6 M-46,0 h6 M46,0 h-6"/>
+                  <path class="bussola-tacca-corta" d="
+                    M32.5,-32.5 l-4,4 M32.5,32.5 l-4,-4
+                    M-32.5,32.5 l4,-4 M-32.5,-32.5 l4,4"/>
+                  <!-- Le lettere stanno in una corona, e l'ago del Nord
+                       dentro a lei: più in fuori si scontra con le tacche,
+                       più in dentro copre i gradi -->
+                  <text class="bussola-nord" x="0" y="-31">N</text>
+                  <text class="bussola-lettera" x="31" y="0">E</text>
+                  <text class="bussola-lettera" x="0" y="31">S</text>
+                  <text class="bussola-lettera" x="-31" y="0">O</text>
+                  <path class="bussola-ago" d="M0,-24 l5,9 l-5,2.5 l-5,-2.5 z"/>
+                </g>
+              </svg>
+              <span class="bussola-indice" aria-hidden="true"></span>
+              <span id="skymap-bussola-gradi" class="bussola-gradi">—</span>
+            </div>
           </div>
 
           <!-- Il pannello del gruppo aperto: uno solo per volta -->
