@@ -9,11 +9,17 @@
 // stanotte quel pianeta basso lo vedrai o no.
 //
 // Qui il profilo si prende dalla terra vera. Attorno all'osservatore si
-// campiona la quota del suolo lungo quarantotto direzioni e dodici
-// distanze, dai duecento metri ai sessanta chilometri, e per ogni
+// campiona la quota del suolo lungo centoventi direzioni e diciotto
+// distanze, dai centocinquanta metri ai sessanta chilometri, e per ogni
 // campione si calcola sotto che angolo lo si vede. Il massimo lungo una
 // direzione è l'orizzonte in quella direzione: la cresta che nasconde
 // tutto quello che le sta dietro.
+//
+// Ma il massimo **fino a una certa distanza** dice di più: dice quante
+// dorsali ci sono, e quale sta davanti a quale. Diciotto distanze sono
+// diciotto sagome incastrate una nell'altra, ed è da lì che il planetario
+// disegna la conformazione del terreno invece della sua sola sagoma — la
+// veduta a piani delle carte panoramiche, quella di PeakFinder.
 //
 // I dati sono quelli di Open-Meteo (Copernicus DEM, novanta metri di
 // passo), lo stesso servizio del meteo: niente chiave, niente account,
@@ -28,7 +34,7 @@
 //   - non conosce gli alberi. La fila di pioppi in fondo al campo la
 //     mette ancora la finzione di `app.js`, come dettaglio sopra alla
 //     forma vera del terreno.
-//   - novanta metri di passo e quarantotto direzioni non fanno un
+//   - novanta metri di passo e centoventi direzioni non fanno un
 //     panorama fotografico. Fanno la **conformazione**: dove il terreno
 //     sale, dove sprofonda la valle, da che parte c'è la montagna. Che è
 //     poi la domanda a cui serve rispondere.
@@ -44,10 +50,17 @@
 
 const CHIAVE_TERRENO = 'astrocalendario_terreno';
 
-// Quarantotto direzioni: una ogni 7°30′, cioè mezzo settore della rosa
-// dei venti. Più di così le richieste diventano tante e il DEM non ha
-// comunque il dettaglio per meritarsele.
-const TERRENO_DIREZIONI = 48;
+// Centoventi direzioni: una ogni 3°.
+//
+// Erano quarantotto, cioè una ogni 7°30′, e per rispondere «quanto è alto
+// l'orizzonte da quella parte» bastavano: la cresta è un numero solo, e fra
+// un settore e l'altro si interpola. Ma da quando il planetario disegna la
+// **forma** del terreno e non più la sua sola sagoma (§ «I gradini della
+// distanza» in `app.js`), quei settori si vedono per quello che sono: con un
+// campo di sessanta gradi ne finivano otto sullo schermo, e otto punti non
+// fanno un panorama, fanno una spezzata. A tre gradi ne finiscono venti, e a
+// quel punto il crinale è una linea.
+const TERRENO_DIREZIONI = 120;
 const TERRENO_PASSO_AZ = 360 / TERRENO_DIREZIONI;
 
 // Le distanze, in chilometri. Fitte da vicino e rade da lontano, perché
@@ -55,11 +68,32 @@ const TERRENO_PASSO_AZ = 360 / TERRENO_DIREZIONI;
 // non conta più niente. Oltre i sessanta chilometri la curvatura ha già
 // nascosto tutto quello che non è una montagna vera — e le montagne vere
 // a quella distanza le prende il campione dei sessanta.
-const TERRENO_DISTANZE = [0.2, 0.4, 0.8, 1.5, 2.5, 4, 6.5, 10, 16, 25, 40, 60];
+//
+// Diciotto passi invece di dodici, e non per precisione: sono i **piani**
+// della veduta. Ogni distanza è una dorsale che può spuntare da dietro a
+// quella prima di lei, e il numero di dorsali che si contano guardando fuori
+// è tutta la profondità che un panorama possiede. Con dodici passi le Prealpi
+// venivano fuori in tre gradini; con diciotto se ne contano sei o sette, che
+// è quello che si vede davvero.
+//
+// I due valori 4 e 16 ci sono di proposito: sono i tagli di `SKY_STRATI_KM`
+// (app.js), che separano il primo piano dal piano intermedio e dallo sfondo
+// per le **etichette** delle vette. Cadendo su due campioni della griglia,
+// quelle due risposte sono quote misurate e non interpolazioni.
+const TERRENO_DISTANZE = [
+  0.15, 0.3, 0.5, 0.8, 1.2, 1.8, 2.6, 4, 5.5, 7.5, 10, 13, 16, 20, 26, 34, 45, 60
+];
 
-// Open-Meteo accetta cento coordinate per richiesta. Novantasei sono due
+// Open-Meteo accetta cento coordinate per richiesta. Novanta sono cinque
 // direzioni intere per volta, il che rende le richieste tutte uguali.
-const TERRENO_PER_RICHIESTA = 96;
+const TERRENO_PER_RICHIESTA = 90;
+
+// Quante richieste per volta. Ventiquattro in fila indiana sono venti
+// secondi di attesa con lo schermo che dice «sto misurando»; tutte insieme
+// sono il modo più veloce di farsi rispondere «troppe richieste». Quattro
+// alla volta è la via di mezzo che si è dimostrata stabile: sei giri, e il
+// terreno c'è prima che uno abbia finito di guardarsi attorno.
+const TERRENO_RICHIESTE_INSIEME = 4;
 
 // Raggio terrestre e coefficiente di rifrazione standard. La luce che
 // rade il terreno si incurva verso il basso seguendo l'aria che si dirada
@@ -147,9 +181,10 @@ const terreno = {
   // ma fermata a metà strada — e serve a sapere che cosa nasconde che cosa
   // (§8, `terrenoCrestaDavanti`). Manca ai profili salvati vecchi, e chi la
   // usa deve sapersene fare una ragione.
-  fronti: null,           // Float32Array(48×12)
+  fronti: null,           // Float32Array(120×18)
   quando: 0,
   motivo: '',             // perché non c'è, quando non c'è
+  avanzamento: 0,         // 0…1 mentre le quote stanno arrivando
   acceso: true
 };
 
@@ -320,18 +355,30 @@ function terrenoMiscelaPerGrado(tipiPerGrado) {
 // intero — com'era prima — bastava una vetta più alta e più lontana nella
 // stessa direzione per cancellare tutte le punte davanti a lei, che è il
 // contrario di quello che succede fuori dalla finestra.
+// Il massimo parte da sotto lo zero e non da zero.
+//
+// Per anni è partito da zero, perché la domanda era una sola — «quanto copre
+// quella cresta» — e una cresta che copre meno di niente non esiste. Ma da
+// quando il planetario disegna la forma del terreno, il pezzo sotto la linea
+// dell'orizzonte è **la metà interessante**: stando su una cima, il prato a
+// centocinquanta metri sta a venti gradi sotto i piedi, e il fatto che ci
+// stia è tutto quello che distingue una vetta da un balcone in pianura. Chi
+// vuole la vecchia risposta la trova in `terrenoCrestaEntro`, che tosa a zero
+// in lettura: le due domande sono diverse e adesso hanno due risposte.
+const TERRENO_ALT_MIN = -89;
+
 function terrenoFronti(quote, occhio) {
   const n = TERRENO_DISTANZE.length;
   const f = new Float32Array(TERRENO_DIREZIONI * n);
   for (let i = 0; i < TERRENO_DIREZIONI; i++) {
-    let massimo = 0;
+    let massimo = TERRENO_ALT_MIN;
     for (let k = 0; k < n; k++) {
       const q = quote[i * n + k];
       if (typeof q === 'number') {
         const a = terrenoAngolo(q, occhio, TERRENO_DISTANZE[k]);
         if (a > massimo) massimo = a;
       }
-      f[i * n + k] = Math.min(TERRENO_ALT_MAX, massimo);
+      f[i * n + k] = Math.max(TERRENO_ALT_MIN, Math.min(TERRENO_ALT_MAX, massimo));
     }
   }
   return f;
@@ -351,15 +398,30 @@ async function terrenoCostruisci(lat, lon) {
     TERRENO_DISTANZE.forEach(km => punti.push(terrenoPuntoA(lat, lon, az, km)));
   }
 
-  const quote = [];
+  // Le richieste, tagliate a novanta punti l'una: con centoventi direzioni e
+  // diciotto distanze sono ventiquattro.
+  const pezzi = [];
   for (let i = 0; i < punti.length; i += TERRENO_PER_RICHIESTA) {
-    // Una per volta e non tutte insieme: sono sei richieste allo stesso
-    // servizio, e mandarle in parallelo è il modo più veloce di farsi
-    // rispondere «troppe richieste».
-    /* eslint-disable no-await-in-loop */
-    const pezzo = await terrenoQuote(punti.slice(i, i + TERRENO_PER_RICHIESTA));
-    quote.push(...pezzo);
+    pezzi.push(punti.slice(i, i + TERRENO_PER_RICHIESTA));
   }
+
+  // A gruppi di quattro. In fila indiana ci vorrebbero venti secondi — e in
+  // venti secondi chi ha aperto il planetario si è già fatto l'idea che
+  // l'orizzonte sia quello disegnato; tutte insieme, il servizio risponde 429
+  // e non se ne fa niente.
+  const risposte = new Array(pezzi.length);
+  terreno.avanzamento = 0;
+  for (let i = 0; i < pezzi.length; i += TERRENO_RICHIESTE_INSIEME) {
+    const giro = pezzi.slice(i, i + TERRENO_RICHIESTE_INSIEME);
+    /* eslint-disable no-await-in-loop */
+    const fatte = await Promise.all(giro.map(p => terrenoQuote(p)));
+    fatte.forEach((q, j) => { risposte[i + j] = q; });
+    terreno.avanzamento = Math.min(1, (i + giro.length) / pezzi.length);
+    terrenoAggiornaPannello();
+  }
+
+  const quote = [];
+  risposte.forEach(q => quote.push(...q));
   if (quote.length !== punti.length) throw new Error('quote incomplete');
 
   const creste = new Array(TERRENO_DIREZIONI).fill(0);
@@ -382,9 +444,10 @@ async function terrenoCostruisci(lat, lon) {
 
   // Le quote grezze si portano dietro, arrotondate al metro: sono le
   // stesse che hanno fatto le creste, ma tenerle vuol dire poter
-  // rispondere anche alla domanda più fine — «che c'è **davanti** a quel
-  // punto lì», che è quella da cui dipende se una vetta si vede (§8).
-  // Cinquecentosettantasei interi: qualche kilobyte.
+  // rispondere anche alle due domande più fini — «che c'è **davanti** a quel
+  // punto lì» (§8, da cui dipende se una vetta si vede) e «che forma ha il
+  // terreno fino a lì», che è quella che il planetario disegna. Duemilacento
+  // interi: una decina di kilobyte, e non si riscaricano mai più.
   return {
     quota: quotaCasa, creste, tipi,
     quote: quote.map(q => (typeof q === 'number' ? Math.round(q) : null))
@@ -394,10 +457,10 @@ async function terrenoCostruisci(lat, lon) {
 
 // =====================================================================
 // 6. TENERSELO
-//     Sei richieste per un profilo che non cambia mai — le colline non si
-//     spostano — sono sei richieste da fare una volta sola nella vita di
-//     quel posto. Il salvato vale finché non ci si allontana di due
-//     chilometri.
+//     Ventiquattro richieste per un profilo che non cambia mai — le colline
+//     non si spostano — sono ventiquattro richieste da fare una volta sola
+//     nella vita di quel posto. Il salvato vale finché non ci si allontana
+//     di due chilometri.
 // =====================================================================
 
 function terrenoDistanzaKm(la1, lo1, la2, lo2) {
@@ -476,6 +539,7 @@ function terrenoApplica(lat, lon, dati, sorgente) {
     : null;
   terreno.stato = 'pronto';
   terreno.motivo = '';
+  terreno.avanzamento = 0;
   terreno.quando = Date.now();
   terreno.sorgente = sorgente;
   // Non serve chiedere un ridisegno: il planetario ridisegna a ogni
@@ -524,6 +588,7 @@ function terrenoCarica(forza) {
 
   terreno.stato = 'in-corso';
   terreno.motivo = '';
+  terreno.avanzamento = 0;
   terrenoAggiornaPannello();
 
   terreno.promessa = terrenoCostruisci(lat, lon)
@@ -608,12 +673,53 @@ function terrenoCrestaEntro(az, km) {
   for (let j = 0; j < n; j++) if (TERRENO_DISTANZE[j] <= km) k = j;
   if (k < 0) return 0;
 
+  // Tosata a zero: questa è la domanda «quanto **copre** il terreno entro
+  // tot chilometri», e coprire meno di niente non vuol dire niente. La
+  // risposta grezza, che sotto la linea dell'orizzonte scende in negativo,
+  // la dà `terrenoFrontiA` — ed è quella che serve a disegnare.
+  return Math.max(0, terrenoFronteA(az, k));
+}
+
+// La cresta parziale interpolata in azimut, per un indice di distanza.
+// È il cuore di `terrenoCrestaEntro`, tirato fuori perché serve anche grezzo.
+function terrenoFronteA(az, k) {
+  const n = TERRENO_DISTANZE.length;
   const dove = (((az % 360) + 360) % 360) / TERRENO_PASSO_AZ;
   const i = Math.floor(dove) % TERRENO_DIREZIONI;
   const j = (i + 1) % TERRENO_DIREZIONI;
   const t = dove - Math.floor(dove);
   const s = t * t * (3 - 2 * t);
   return terreno.fronti[i * n + k] * (1 - s) + terreno.fronti[j * n + k] * s;
+}
+
+// Tutte le creste parziali di una direzione in un colpo solo: per ogni fetta
+// di distanza, quanto sale il terreno fino a lì. È la riga di `terreno.fronti`
+// che passa per quell'azimut, interpolata fra le due direzioni campionate.
+//
+// Esiste per una ragione di conto e una di forma. Il conto: il planetario
+// chiede questa riga per ogni colonna dello schermo e per ogni fotogramma —
+// duecentocinquanta volte — e chiamare `terrenoCrestaEntro` diciotto volte
+// vorrebbe dire rifare diciotto volte la stessa interpolazione di azimut. La
+// forma: qui i valori sono **grezzi**, cioè scendono sotto lo zero dove il
+// terreno sta più in basso dell'occhio, ed è esattamente quel pezzo che
+// disegna la conca davanti a chi guarda da una cima.
+//
+// `fuori` è un buffer da riusare: chi disegna ne tiene uno solo e lo passa
+// ogni volta, se no sono duecentocinquanta array nuovi per fotogramma.
+function terrenoFrontiA(az, fuori) {
+  if (!terrenoDisponibile() || !terreno.fronti) return null;
+  const n = TERRENO_DISTANZE.length;
+  const out = (fuori && fuori.length >= n) ? fuori : new Float32Array(n);
+  const dove = (((az % 360) + 360) % 360) / TERRENO_PASSO_AZ;
+  const i = Math.floor(dove) % TERRENO_DIREZIONI;
+  const j = (i + 1) % TERRENO_DIREZIONI;
+  const t = dove - Math.floor(dove);
+  const s = t * t * (3 - 2 * t);
+  const a = i * n, b = j * n;
+  for (let k = 0; k < n; k++) {
+    out[k] = terreno.fronti[a + k] * (1 - s) + terreno.fronti[b + k] * s;
+  }
+  return out;
 }
 
 // Quanto è alta la cresta che sta **davanti** a un punto in direzione `az`
@@ -702,7 +808,14 @@ function terrenoAlterna() {
 
 function terrenoTesto() {
   if (!terreno.acceso) return 'Orizzonte disegnato: colline finte, uguali dappertutto.';
-  if (terreno.stato === 'in-corso') return 'Sto misurando com\'è fatto il terreno attorno a te…';
+  if (terreno.stato === 'in-corso') {
+    // Ventiquattro richieste sono qualche secondo, e qualche secondo senza
+    // niente da leggere sembrano un guasto. La percentuale non serve a chi
+    // sa cosa sta succedendo: serve a chi non lo sa.
+    const q = terreno.avanzamento > 0 && terreno.avanzamento < 1
+      ? ` (${Math.round(terreno.avanzamento * 100)}%)` : '';
+    return `Sto misurando com'è fatto il terreno attorno a te${q}…`;
+  }
   if (terreno.stato === 'fallito') return terreno.motivo;
 
   const r = terrenoRiassunto();

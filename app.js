@@ -11913,7 +11913,7 @@ function skyAltezzaOrizzonte(az) {
   return Math.max(0.1, base + skyInterpolaProfilo(SKY_ALBERI, az) * quota);
 }
 
-// --- L'orizzonte diviso in tre bande di distanza ----------------------
+// --- L'orizzonte diviso in bande di distanza --------------------------
 //
 // Un panorama non è una sagoma sola. Fuori dalla finestra ci sono almeno
 // tre cose distinte: la collina dietro casa, la dorsale a un quarto d'ora
@@ -11922,7 +11922,10 @@ function skyAltezzaOrizzonte(az) {
 // indizio di profondità che un orizzonte possiede: a dieci chilometri gli
 // occhi non convergono più, e quello che resta è chi sta davanti a chi.
 //
-// I due tagli. Quattro chilometri è il paesaggio in cui si cammina — la
+// Il disegno del terreno usa **tutte** le fette di `TERRENO_DISTANZE`
+// (diciotto), che è quello che gli dà la forma; questi due tagli restano
+// per le sole **etichette** delle vette, che di famiglie ne vogliono tre e
+// non diciotto. Quattro chilometri è il paesaggio in cui si cammina — la
 // collina di fronte, il bosco, il paese —; sedici è quello che si guarda,
 // ed è anche uno dei campioni della griglia di `terreno.js`, quindi la
 // risposta è un dato misurato e non un'interpolazione. Oltre, è sfondo.
@@ -11944,22 +11947,45 @@ function skyAddossoAllOcchio(az, suoloVicino) {
   return Math.max(0, base + skyInterpolaProfilo(SKY_ALBERI, az) * quota);
 }
 
-// Le tre altezze dell'orizzonte in quella direzione — primo piano, piano
-// intermedio, sfondo — o `null` se il terreno vero non c'è, e allora chi
-// disegna torni pure ai piani finti di prima (§ `SKY_CRESTE_PIANI`).
+// Le altezze vere dell'orizzonte in quella direzione, una per ogni fetta di
+// distanza del terreno vero: quanto sale il terreno entro centocinquanta
+// metri, entro trecento, e così via fino a tutto. `null` se il terreno vero
+// non c'è, e allora chi disegna torni pure ai piani finti di prima
+// (§ `SKY_CRESTE_PIANI`).
 //
-// Sono per costruzione non decrescenti: `terrenoCrestaEntro` accumula un
-// massimo andando avanti, quindi il primo piano non può stare sopra allo
-// sfondo. Non è un dettaglio di comodo, è tutta l'occlusione: disegnando
-// le tre sagome dallo sfondo in avanti, ognuna copre la parte bassa di
-// quella dietro, che è quello che fa una dorsale davanti a un'altra.
-function skyStratiOrizzonte(az, pieno) {
-  if (typeof terrenoCrestaEntro !== 'function') return null;
-  const vicino = terrenoCrestaEntro(az, SKY_STRATI_KM[0]);
-  const medio = terrenoCrestaEntro(az, SKY_STRATI_KM[1]);
-  if (vicino === null || medio === null) return null;
-  const primo = Math.min(pieno, Math.max(vicino, skyAddossoAllOcchio(az, vicino)));
-  return [primo, Math.min(pieno, Math.max(medio, primo)), pieno];
+// Sono per costruzione non decrescenti: `terrenoFrontiA` accumula un massimo
+// andando avanti, quindi la fetta vicina non può stare sopra allo sfondo. Non
+// è un dettaglio di comodo, è tutta l'occlusione: disegnando le sagome dallo
+// sfondo in avanti, ognuna copre la parte bassa di quella dietro, che è
+// esattamente quello che fa una dorsale davanti a un'altra.
+//
+// Due cure. L'ultima vale esattamente `pieno`, cioè `skyAltezzaOrizzonte`: la
+// sagoma più esterna del disegno e la cresta che decide se un astro è sorto
+// devono essere la stessa riga, se no un pianeta spunta sopra a una montagna
+// disegnata o resta nascosto dietro al nulla. E gli alberi e gli ostacoli
+// dichiarati a mano si sommano alla fetta più vicina — un palazzo a trenta
+// metri non è sfondo — ma come **scarto**, se no un prato che sta venti gradi
+// sotto i piedi verrebbe riportato a zero e la conca sparirebbe.
+let skyVereScratch = null;
+let skyFrontiScratch = null;
+
+function skyBandeVere(az, pieno) {
+  if (typeof terrenoFrontiA !== 'function' || typeof TERRENO_DISTANZE === 'undefined') return null;
+  const n = TERRENO_DISTANZE.length;
+  if (!skyFrontiScratch || skyFrontiScratch.length < n) skyFrontiScratch = new Float32Array(n);
+  const v = terrenoFrontiA(az, skyFrontiScratch);
+  if (!v) return null;
+  if (!skyVereScratch || skyVereScratch.length < n) skyVereScratch = new Float32Array(n);
+
+  const suolo = Math.max(0, v[0]);
+  const addosso = Math.max(0, skyAddossoAllOcchio(az, suolo) - suolo);
+  let corr = v[0] + addosso;
+  for (let k = 0; k < n; k++) {
+    if (v[k] > corr) corr = v[k];
+    skyVereScratch[k] = Math.min(pieno, corr);
+  }
+  skyVereScratch[n - 1] = pieno;
+  return skyVereScratch;
 }
 
 // --- Come si disegna un punto luminoso -------------------------------
@@ -12608,7 +12634,7 @@ function skyRilievo(tavola, az) {
 // fotogramma.
 const SKY_RUVIDEZZA = { mare: 0, pianura: 0.07, collina: 0.15, montagna: 0.28 };
 
-// I tre strati della veduta.
+// --- I gradini della distanza -----------------------------------------
 //
 // Una catena non è una sagoma sola: è una fila di dorsali una dietro
 // l'altra, e quello che le racconta non è il disegno di ciascuna ma il
@@ -12616,29 +12642,162 @@ const SKY_RUVIDEZZA = { mare: 0, pianura: 0.07, collina: 0.15, montagna: 0.28 };
 // prospettiva aerea, ed è l'unico indizio di profondità che un orizzonte
 // possiede — a mille metri di distanza gli occhi non convergono più.
 //
-// `banda` dice a quale fetta di distanza appartiene lo strato: 2 è lo
-// sfondo (tutto), 1 il piano intermedio (entro `SKY_STRATI_KM[1]`), 0 il
-// primo piano (entro `SKY_STRATI_KM[0]`). Con il terreno vero quelle tre
-// altezze sono misurate, non inventate, e sono per costruzione una sopra
-// l'altra: il primo piano nasconde davvero quello che gli sta dietro.
+// Per un po' i piani sono stati tre, scelti a tavolino. Erano già veri —
+// tre distanze misurate, non tre copie rimpicciolite — ma tre sono pochi:
+// guardando le Prealpi dalla pianura le dorsali che si contano sono sei o
+// sette, e il disegno ne mostrava tre gradini larghi. Adesso i piani sono
+// **tutte** le fette di `TERRENO_DISTANZE`, diciotto, e non sono un elenco
+// deciso qui: sono le distanze a cui il terreno è stato misurato.
+//
+// Il costo non cresce con loro, e questa è la parte che conta. Ogni banda si
+// disegna come una **striscia** — dalla sua cresta giù fino alla cresta della
+// banda davanti a lei — e non come una sagoma piena fino ai piedi: le
+// strisce non si sovrappongono, quindi lo schermo si dipinge una volta sola
+// comunque siano tante. E le bande che non aggiungono niente (il terreno non
+// è salito passando dalla fetta prima a questa) non si disegnano affatto: su
+// una costa piatta ne resta una, su una catena una decina — cioè quante ne
+// vede l'occhio, che è il punto.
+//
+// `lontananza` è quanto quella fetta è «in fondo», da 0 a 1, e non è
+// l'indice diviso il totale: è la foschia, che si mangia il contrasto in
+// modo esponenziale con la distanza. Da lì escono il colore (`tinta`, quanto
+// tirare verso il terreno vicino, e `buio`), quanto è forte il filo di luce
+// sul crinale e quanto sbiadisce il rilievo.
 //
 // `quota` è il ripiego di quando il terreno vero non c'è: la vecchia
 // scaletta di frazioni della cresta unica. Faceva la stessa figura, ma per
 // finta — tre copie rimpicciolite della stessa sagoma, con la dorsale
 // davanti che era quella dietro moltiplicata per 0,62.
 //
-// Il rilievo di ognuno è suo (`salto` sposta il punto di lettura del
-// rumore), se no le tre sagome hanno gli stessi denti.
+// Il rilievo di ognuna è suo (`salto` sposta il punto di lettura del
+// rumore), se no le sagome hanno tutte gli stessi denti.
+//
+// **L'ordine è dalla più vicina alla più lontana**, come `TERRENO_DISTANZE`.
 const SKY_CRESTE_PIANI = [
-  { banda: 2, quota: 1,    salto: 0,     ruvido: 1,    tinta: 0,    buio: 0 },
-  { banda: 1, quota: 0.62, salto: 143.7, ruvido: 0.85, tinta: 0.45, buio: 0.14 },
-  { banda: 0, quota: 0.33, salto: 257.3, ruvido: 0.7,  tinta: 0.8,  buio: 0.26 }
+  { km: SKY_STRATI_KM[0], quota: 0.33, salto: 257.3, ruvido: 0.7,  tinta: 0.8,  buio: 0.26, lontananza: 0.2 },
+  { km: SKY_STRATI_KM[1], quota: 0.62, salto: 143.7, ruvido: 0.85, tinta: 0.45, buio: 0.14, lontananza: 0.55 },
+  { km: Infinity,         quota: 1,    salto: 0,     ruvido: 1,    tinta: 0,    buio: 0,    lontananza: 1 }
 ];
 
+// Quanto in fretta la foschia mangia il contrasto. Venticinque chilometri è
+// il numero che rimette le diciotto fette più o meno dove stavano i tre
+// piani decisi a mano: a 4 km si è a un sesto di strada, a 16 a metà, a 60
+// in fondo. Alzarlo appiattisce la prospettiva aerea, abbassarlo sbianca
+// tutto quello che è oltre la collina di casa.
+const SKY_FOSCHIA_KM = 25;
+
 // Sotto questa altezza in pixel i piani davanti non si disegnano: una
-// cresta di quindici pixel divisa in tre dorsali sono tre righe, non tre
-// piani.
+// cresta di quindici pixel divisa in dieci dorsali sono dieci righe, non
+// dieci piani.
 const SKY_CRESTE_PX_MIN = 16;
+
+// Quanto può mordere il rilievo fine, in gradi. Il morso è una frazione
+// dell'altezza della cresta, e finché le creste stanno sopra l'orizzonte è
+// una frazione di pochi gradi. Ma guardando da una cima il terreno vicino
+// sta *sotto* di venti o trenta gradi, e un quarto di trenta gradi sarebbe
+// una dentellatura da otto: un tetto in gradi ci vuole.
+const SKY_MORSO_MAX_GRADI = 4;
+
+// Di quanto si abbuona la discesa del terreno vicino prima di disegnare
+// anche sotto la linea dell'orizzonte.
+//
+// Il modello del suolo, a centocinquanta metri, è pieno di roba che non è
+// paesaggio: il fosso, lo scavo della strada, il campo un gradino più in
+// basso. In pianura la cresta della fetta più vicina ballonzola da sé di
+// qualche grado da una direzione all'altra, e prendendola per buona il primo
+// piano diventava una fila di lobi tondi che scendevano sotto l'orizzonte —
+// il contrario di quello che si vede fuori dalla finestra, dove sotto la
+// linea c'è il prato e basta.
+//
+// Sei gradi è la soglia di «il terreno *cade* davvero da questa parte»: dieci
+// metri persi in centocinquanta. Sotto, non succede niente e il suolo resta
+// dipinto come prima, con la sua grana. Sopra — cioè da una cresta, da un
+// balcone di valle, da una cima — il disegno prosegue giù, e i sei gradi che
+// si abbuonano restano comunque terreno pieno: sono quelli che uno ha
+// letteralmente sotto i piedi.
+//
+// Sottratti e non confrontati, così il passaggio è continuo: con un
+// confronto secco la colonna che scende da 5,9° a 6,1° farebbe un salto di
+// sei gradi, e sull'orizzonte comparirebbe uno scalino netto.
+const SKY_CONCA_MIN = 6;
+
+// Quante dorsali al massimo. Le fette del terreno sono diciotto e in
+// montagna contribuiscono quasi tutte, ma oltre una certa quantità non si
+// contano più: si vedono come una scala di grigi, e ognuna costa una
+// striscia dipinta e un giro di proiezioni. Si tengono quelle che spuntano
+// di più, che sono le dorsali che uno riconosce.
+const SKY_CRESTE_MAX_QUANTO = [6, 8, 10];
+
+// Le bande da disegnare adesso: quelle del terreno vero se c'è, i tre piani
+// finti se no. Si ricalcolano una volta sola — dipendono solo da
+// `TERRENO_DISTANZE`, che non cambia mai.
+let skyBandeMemo = null;
+
+function skyPianiOrizzonte() {
+  const c = typeof TERRENO_DISTANZE !== 'undefined' && Array.isArray(TERRENO_DISTANZE) &&
+    typeof terrenoFrontiA === 'function' && typeof terrenoDisponibile === 'function' &&
+    terrenoDisponibile() && terreno.fronti;
+  if (!c) return SKY_CRESTE_PIANI;
+  if (skyBandeMemo && skyBandeMemo.length === TERRENO_DISTANZE.length) return skyBandeMemo;
+
+  const n = TERRENO_DISTANZE.length;
+  const pieno = 1 - Math.exp(-TERRENO_DISTANZE[n - 1] / SKY_FOSCHIA_KM);
+  skyBandeMemo = TERRENO_DISTANZE.map((km, k) => {
+    const t = (1 - Math.exp(-km / SKY_FOSCHIA_KM)) / pieno;
+    return {
+      km, lontananza: t,
+      // L'angolo aureo in gradi: due bande vicine non leggono mai lo stesso
+      // pezzo di rumore, e nessuna coppia si ripete lungo tutte e diciotto.
+      salto: k * 137.508,
+      ruvido: 0.6 + 0.4 * t,
+      tinta: Math.pow(1 - t, 0.9),
+      buio: 0.3 * (1 - t)
+    };
+  });
+  return skyBandeMemo;
+}
+
+// Il buffer piatto con le creste di tutte le colonne e di tutte le bande.
+// Duecentocinquanta colonne per diciotto bande sono quattromilacinquecento
+// numeri per fotogramma: allocarli ogni volta vorrebbe dire cinquemila
+// oggettini al secondo da buttare, ed è il genere di spazzatura che si
+// misura solo quando il telefono scalda.
+let skyCresteBuf = null;
+
+function skyBuffCreste(quanti) {
+  if (!skyCresteBuf || skyCresteBuf.length < quanti) {
+    skyCresteBuf = new Float32Array(Math.max(quanti, 4096));
+  }
+  return skyCresteBuf;
+}
+
+// E lo stesso per i punti già proiettati (§ `skyDisegnaProfiloOrizzonte`).
+let skyProjBuf = null;
+
+function skyBuffProiezioni(quanti) {
+  if (!skyProjBuf || skyProjBuf.length < quanti) {
+    skyProjBuf = new Float32Array(Math.max(quanti, 4096));
+  }
+  return skyProjBuf;
+}
+
+// Quello che serve sapere di una colonna dello schermo prima di calcolarne
+// le creste: l'altezza vera dell'orizzonte lì, e che paesaggio c'è — che
+// decide quanto e come si dentella.
+function skyColonnaCresta(az, h) {
+  // Senza il terreno vero non si sa che paesaggio sia: resta la finzione
+  // di sempre, che è una collina.
+  let ruvido = SKY_RUVIDEZZA.collina;
+  let roccia = 0.45;
+  const m = typeof terrenoMiscela === 'function' ? terrenoMiscela(az) : null;
+  if (m) {
+    ruvido = SKY_RUVIDEZZA.mare * m.mare + SKY_RUVIDEZZA.pianura * m.pianura
+      + SKY_RUVIDEZZA.collina * m.collina + SKY_RUVIDEZZA.montagna * m.montagna;
+    // Quanta parte del rilievo è roccia e quanta è dorso di collina
+    roccia = Math.min(1, m.montagna + m.collina * 0.5);
+  }
+  return { az, h, ruvido, roccia };
+}
 
 // Il profilo dell'orizzonte. Si disegnano solo gli azimut che possono
 // finire sullo schermo: fare tutto il giro costerebbe sei volte tanto e
@@ -12655,143 +12814,280 @@ function skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria) {
   const arco = skyArcoOrizzonteInVista(base, focale);
   if (!arco) return;
 
+  const bande = skyPianiOrizzonte();
+  const nb = bande.length;
+
   // Il passo non è più fisso. Con due gradi la roccia non c'è: un dente di
   // cresta è largo mezzo grado, e campionando ogni due se ne perde uno su
   // quattro e gli altri diventano triangoli.
   //
   // Quanti campioni servano lo dice la **larghezza del riquadro**, non un
-  // numero deciso a tavolino: uno ogni quattro pixel. Più fitto di così il
-  // dettaglio è più fine del pixel e si paga senza vederlo — ed è un costo
-  // che si paga quattro volte, una per il piede e una per ognuno dei tre
-  // piani. Meno, e la cresta torna a essere una spezzata.
-  const campioni = Math.max(120, Math.min(quanto(220, 300, 380), Math.round(sky.larghezza / 4)));
+  // numero deciso a tavolino: uno ogni quattro pixel e mezzo. Più fitto di
+  // così il dettaglio è più fine del pixel e si paga senza vederlo — ed è un
+  // costo che si paga una volta per banda disegnata. Meno, e la cresta torna
+  // a essere una spezzata.
+  const campioni = Math.max(120, Math.min(quanto(200, 280, 340), Math.round(sky.larghezza / 4.5)));
   const passo = Math.max(0.05, Math.min(2, (2 * arco.mezzo) / campioni));
 
-  // Una passata sola di conti per tutti i piani: l'altezza vera, il piede,
+  // Una passata sola di conti per tutte le bande: l'altezza vera, il piede,
   // e che paesaggio c'è. Sono le tre cose care (una lettura del profilo,
-  // una della miscela, una proiezione); i piani poi si ricavano da queste.
+  // una della miscela, una proiezione); le bande poi si ricavano da queste.
+  const quante = Math.floor((2 * arco.mezzo) / passo) + 2;
+  const creste = skyBuffCreste(quante * nb);
   const colonne = [];
   let altezzaMax = 0;
-  // Quanto sale ogni strato, il suo massimo su tutto l'arco in vista:
-  // serve a sapere se vale ancora la pena di dargli un cappello, che su
-  // una dorsale alta quattro pixel è una riga chiara e basta.
-  const altezzeStrato = SKY_CRESTE_PIANI.map(() => 0);
-  for (let d = -arco.mezzo; d <= arco.mezzo + 0.001; d += passo) {
+  let posto = 0;
+  for (let d = -arco.mezzo; d <= arco.mezzo + 0.001 && posto < quante; d += passo, posto++) {
     const az = arco.centro + d;
     const piede = skyProietta(skyVettore(az, 0), base, focale);
     if (!piede.davanti) { colonne.push(null); continue; }
     const h = skyAltezzaOrizzonte(az);
-    // Senza il terreno vero non si sa che paesaggio sia: resta la finzione
-    // di sempre, che è una collina.
-    let ruvido = SKY_RUVIDEZZA.collina;
-    let roccia = 0.45;
-    const m = typeof terrenoMiscela === 'function' ? terrenoMiscela(az) : null;
-    if (m) {
-      ruvido = SKY_RUVIDEZZA.mare * m.mare + SKY_RUVIDEZZA.pianura * m.pianura
-        + SKY_RUVIDEZZA.collina * m.collina + SKY_RUVIDEZZA.montagna * m.montagna;
-      // Quanta parte del rilievo è roccia e quanta è dorso di collina
-      roccia = Math.min(1, m.montagna + m.collina * 0.5);
-    }
-    const col = { az, h, piede, ruvido, roccia };
-    // Le tre altezze da disegnare, calcolate qui una volta sola: dentro al
-    // ciclo dei piani si pagherebbero due letture di rumore per piano e per
-    // colonna, e per giunta non si potrebbe fare il taglio qui sotto.
-    col.creste = skyCresteDelleColonne(col);
+    const col = skyColonnaCresta(az, h);
+    col.piede = piede;
+    col.pos = posto * nb;
+    // Le altezze da disegnare, calcolate qui una volta sola: dentro al ciclo
+    // delle bande si pagherebbero due letture di rumore per banda e per
+    // colonna, e per giunta non si potrebbe fare il taglio del `tetto`.
+    skyCresteDelleColonne(col, bande, creste, col.pos);
+    // Fin dove scende il disegno **in questa colonna**, ed è qui che sta la
+    // parte di panorama che prima non c'era.
+    //
+    // Il fondo è la cresta della fetta più vicina: il terreno che si ha sotto
+    // i piedi. In pianura sta sulla linea dell'orizzonte o appena sotto — gli
+    // alberi la rialzano, l'occhio a un metro e sessanta la abbassa di mezzo
+    // grado — e allora non cambia niente rispetto a prima: sotto resta il
+    // suolo pieno, con la sua grana e la sua velatura di paesaggio.
+    //
+    // Ma da una cima è tutta un'altra cosa. Lì il terreno vicino sta dieci o
+    // venti gradi **sotto**, e in mezzo ci stanno le dorsali che scendono a
+    // valle una dietro l'altra: è metà di quello che si guarda da lassù, ed è
+    // la ragione per cui una veduta di montagna si legge a piani. Con il
+    // fondo inchiodato a zero quella metà non veniva disegnata affatto.
+    //
+    // Per colonna e non uno per tutta la vista: un fondo solo sarebbe una
+    // riga dritta a mezz'aria, e il primo piano diventerebbe un pettine.
+    col.fondo = Math.min(0, creste[col.pos] + SKY_CONCA_MIN);
     colonne.push(col);
     if (h > altezzaMax) altezzaMax = h;
-    for (let k = 0; k < col.creste.length; k++) {
-      if (col.creste[k] > altezzeStrato[k]) altezzeStrato[k] = col.creste[k];
-    }
   }
   if (colonne.length < 2) return;
 
-  // Quanto è alta la cresta più alta, in pixel, al centro della vista.
-  // Serve solo a decidere se i piani davanti hanno senso.
-  const pxCresta = altezzaMax * focale * SKY_D2R;
-  const piani = pxCresta >= SKY_CRESTE_PX_MIN ? SKY_CRESTE_PIANI : SKY_CRESTE_PIANI.slice(0, 1);
+  // Quali bande valgono la pena. Una banda è una dorsale nuova solo se da
+  // qualche parte spunta sopra a quella davanti a lei; se non spunta, la
+  // dorsale davanti la copre tutta e disegnarla sarebbe dipingere sotto a
+  // una vernice opaca. Su una costa piatta ne resta una, su una catena una
+  // decina — che è quante ne conta l'occhio.
+  //
+  // La soglia è in pixel e non in gradi: una banda che sporge di mezzo pixel
+  // non è una dorsale, è il bordo seghettato di quella davanti.
+  const soglia = Math.max(1e-4, 0.7 / Math.max(1e-6, focale * SKY_D2R));
+  let disegnate = [];
+  let spessori = [];
+  let sotto = -1;
+  for (let k = 0; k < nb; k++) {
+    let salto = 0;
+    for (const col of colonne) {
+      if (!col) continue;
+      const alto = Math.max(col.fondo, creste[col.pos + k]);
+      const giu = sotto < 0 ? col.fondo : Math.max(col.fondo, creste[col.pos + sotto]);
+      if (alto - giu > salto) salto = alto - giu;
+    }
+    if (salto > soglia) { disegnate.push(k); spessori.push(salto); sotto = k; }
+  }
+  // Se nessuna ha superato la soglia — orizzonte piatto, o ingrandimento tale
+  // che tutto sta in un pixel — resta comunque la sagoma vera, che è la sola
+  // che deve esserci sempre.
+  if (!disegnate.length) { disegnate = [nb - 1]; spessori = [altezzaMax]; }
+  // Su una cresta di quindici pixel, dieci dorsali sono dieci righe e non
+  // dieci piani: si tiene solo la sagoma vera.
+  if (altezzaMax * focale * SKY_D2R < SKY_CRESTE_PX_MIN) {
+    disegnate = [disegnate[disegnate.length - 1]];
+    spessori = [spessori[spessori.length - 1]];
+  }
+  // E se sono troppe si tengono quelle che spuntano di più: oltre una
+  // decina di dorsali non si contano più, e ognuna costa una striscia
+  // dipinta. Le scartate non lasciano buchi — le strisce si disegnano fra
+  // due bande **tenute**, quindi chi resta si allarga fino a coprire.
+  const massimo = quanto(SKY_CRESTE_MAX_QUANTO[0], SKY_CRESTE_MAX_QUANTO[1], SKY_CRESTE_MAX_QUANTO[2]);
+  if (disegnate.length > massimo) {
+    // L'ultima non si scarta mai, qualunque sia il suo spessore: è la sagoma
+    // vera, quella che deve coincidere con `skyAltezzaOrizzonte`. Una catena
+    // in fondo che spunta di tre pixel ha lo spessore più piccolo di tutte e
+    // sarebbe la prima a cadere — e allora un pianeta basso sorgerebbe sopra
+    // a una montagna che il disegno non ha messo.
+    const ultima = disegnate[disegnate.length - 1];
+    const tenute = disegnate
+      .map((k, i) => ({ k, s: k === ultima ? Infinity : spessori[i] }))
+      .sort((a, b) => b.s - a.s)
+      .slice(0, massimo)
+      .sort((a, b) => a.k - b.k);
+    spessori = tenute.map(t => (t.k === ultima ? spessori[disegnate.length - 1] : t.s));
+    disegnate = tenute.map(t => t.k);
+  }
+
+  // Un giro solo di proiezioni. Il fondo di ogni striscia è la cresta della
+  // striscia di sotto: proiettarlo due volte — una come cresta e una come
+  // fondo — era metà del lavoro di questa funzione. Il posto 0 è il fondo
+  // (la linea dell'orizzonte, o più giù), i posti da 1 in su le bande tenute.
+  const nt = disegnate.length;
+  const proj = skyBuffProiezioni(colonne.length * (nt + 1) * 2);
+  for (let c = 0; c < colonne.length; c++) {
+    const col = colonne[c];
+    const off = c * (nt + 1) * 2;
+    if (!col) { proj[off] = NaN; continue; }
+    for (let t = 0; t <= nt; t++) {
+      let p;
+      if (t === 0) {
+        p = col.fondo === 0 ? col.piede : skyProietta(skyVettore(col.az, col.fondo), base, focale);
+      } else {
+        p = skyProietta(skyVettore(col.az, Math.max(col.fondo, creste[col.pos + disegnate[t - 1]])),
+          base, focale);
+      }
+      proj[off + t * 2] = p.davanti ? p.px : NaN;
+      proj[off + t * 2 + 1] = p.py;
+    }
+  }
 
   ctx.save();
-  // Gli strati si disegnano dal più lontano al più vicino: ognuno copre la
-  // parte bassa di quello dietro, che è esattamente quello che fa una
-  // dorsale davanti a un'altra.
-  for (let k = 0; k < piani.length; k++) {
-    const piano = piani[k];
-    const corse = skyCorseDiCresta(colonne, k, base, focale);
+  // Dalla più lontana alla più vicina. Le strisce non si sovrappongono,
+  // quindi l'ordine non serve al riempimento — serve al cappello, che sfuma
+  // verso il basso e può debordare di un pelo nella striscia di sotto.
+  for (let i = nt - 1; i >= 0; i--) {
+    const k = disegnate[i];
+    const banda = bande[k];
+    const corse = skyCorseDiCresta(colonne, k, i, nt, proj, creste, nb);
     if (!corse.length) continue;
 
     const colore = skyMescolaColore(
-      skyMescolaColore(suolo.lontano, suolo.vicino, piano.tinta), [0, 0, 0], piano.buio);
+      skyMescolaColore(suolo.lontano, suolo.vicino, banda.tinta), [0, 0, 0], banda.buio);
 
     ctx.beginPath();
     corse.forEach(r => {
-      r.forEach((q, i) => (i === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
-      for (let i = r.length - 1; i >= 0; i--) ctx.lineTo(r[i].bx, r[i].by);
+      r.forEach((q, j) => (j === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
+      for (let j = r.length - 1; j >= 0; j--) ctx.lineTo(r[j].bx, r[j].by);
       ctx.closePath();
     });
     ctx.fillStyle = skyRgba(colore, 1);
     ctx.fill();
 
-    // Il cappello ce l'ha ogni strato, se no le dorsali davanti sono tre
-    // ritagli piatti. Il filo di luce no, solo la cresta vera: dietro a lei
-    // c'è il cielo, dietro alle altre c'è la montagna di prima — e un bordo
-    // luminoso lì sarebbe una luce che non viene da nessuna parte.
-    if (altezzeStrato[k] * focale * SKY_D2R >= 10) skyDisegnaCappello(ctx, corse, colore, piano);
-    if (k === 0) skyDisegnaFiloCresta(ctx, corse, aria);
+    // Il cappello ce l'ha ogni dorsale, se no sono ritagli piatti — ma solo
+    // se la striscia è abbastanza alta perché una fascia dentro di lei si
+    // veda come un volume e non come una riga di evidenziatore.
+    if (spessori[i] * focale * SKY_D2R >= 10) skyDisegnaCappello(ctx, corse, colore, banda);
+    // Il filo di luce sul crinale ce l'hanno tutte, ed è la cosa che
+    // trasforma una scala di grigi in un panorama: ogni dorsale si stacca da
+    // quella dietro con la riga sottile che si vede in qualunque fotografia
+    // di montagne. Quella più esterna ha il cielo dietro, e si stacca di più.
+    skyDisegnaFiloCresta(ctx, corse, aria, banda, i === disegnate.length - 1);
   }
   ctx.restore();
 }
 
-// L'altezza disegnata dei tre strati in una colonna: quella vera della sua
-// banda di distanza, morsa dal rilievo. Il rumore aspro e quello dolce si
+// L'altezza disegnata di ogni banda in una colonna: quella vera della sua
+// fetta di distanza, morsa dal rilievo. Il rumore aspro e quello dolce si
 // mescolano con quanta roccia c'è da quella parte — sulla stessa vista, la
 // costa resta liscia e il crinale dietro no.
 //
-// Il taglio finale (`tetto`) è quello che tiene in piedi l'occlusione. Le
-// tre altezze arrivano già ordinate — sono massimi accumulati su fette di
-// distanza crescenti — ma il morso del rilievo è diverso per ogni strato,
-// e una sella profonda scavata nel piano intermedio può farlo scendere
-// sotto al primo piano. Quando succede, lo strato davanti smette di
-// coprire e i due si intrecciano: due creste che si attraversano a mezza
-// costa sono la cosa che dice a colpo d'occhio «questo disegno è finto».
-function skyCresteDelleColonne(col) {
-  const bande = skyStratiOrizzonte(col.az, col.h);
-  const fuori = [];
+// Due tagli, e tutti e due tengono in piedi l'occlusione.
+//
+// Il primo (`tetto`): le altezze arrivano già ordinate — sono massimi
+// accumulati su fette di distanza crescenti — ma il morso del rilievo è
+// diverso per ogni banda, e una sella profonda scavata in una banda di mezzo
+// può farla scendere sotto a quella davanti. Quando succede, la dorsale
+// davanti smette di coprire e le due si intrecciano: due creste che si
+// attraversano a mezza costa sono la cosa che dice a colpo d'occhio «questo
+// disegno è finto».
+//
+// Il secondo: se una fetta non ha alzato l'orizzonte rispetto a quella prima
+// di lei, non è una dorsale nuova — è la stessa vista da un metro più in là.
+// Prende **esattamente** la sagoma di quella davanti, morso compreso, così la
+// copre al pixel e non lascia un filo di luce dove non c'è nessun crinale.
+// Senza questo, diciotto bande su una collina sola sarebbero diciotto
+// righine chiare a un pelo una dall'altra: le curve di livello di una carta.
+function skyCresteDelleColonne(col, bande, fuori, off) {
+  const vere = skyBandeVere(col.az, col.h);
+  const n = bande.length;
   let tetto = Infinity;
-  for (const piano of SKY_CRESTE_PIANI) {
-    const az = col.az + piano.salto;
-    const aspro = skyRilievo(SKY_RILIEVO.aspro, az);
-    const dolce = skyRilievo(SKY_RILIEVO.dolce, az);
-    const n = dolce + (aspro - dolce) * col.roccia;
+  for (let k = n - 1; k >= 0; k--) {
+    const banda = bande[k];
     // Senza il terreno vero non si sa cosa sta davanti a cosa, e restano i
     // piani finti di prima: frazioni della cresta unica, spente dove non
     // c'è montagna. In pianura non esistono dorsali una dietro l'altra, e
     // disegnarle lo stesso vuol dire tagliare una macchia d'alberi alta
     // trenta pixel in tre fasce orizzontali — sembrano le curve di livello
     // di una carta, non degli alberi.
-    const quota = piano.quota === 1 ? 1 : piano.quota * col.roccia;
-    const alta = bande ? bande[piano.banda] : col.h * quota;
-    const v = Math.min(tetto, alta * (1 - col.ruvido * piano.ruvido * n));
-    fuori.push(v);
+    const quota = banda.quota === 1 ? 1 : banda.quota * col.roccia;
+    const alta = vere ? vere[k] : col.h * quota;
+    if (vere && k < n - 1 && alta >= vere[k + 1] - 1e-4) { fuori[off + k] = tetto; continue; }
+
+    const az = col.az + banda.salto;
+    const aspro = skyRilievo(SKY_RILIEVO.aspro, az);
+    const dolce = skyRilievo(SKY_RILIEVO.dolce, az);
+    const rumore = dolce + (aspro - dolce) * col.roccia;
+    // Il morso è sempre verso il basso, anche sotto la linea dell'orizzonte:
+    // moltiplicare per `1 − morso` una quota negativa la tirerebbe **su**,
+    // e la conca davanti si riempirebbe invece di scavarsi.
+    const ampiezza = Math.min(Math.abs(alta), SKY_MORSO_MAX_GRADI);
+    const v = Math.min(tetto, alta - ampiezza * col.ruvido * banda.ruvido * rumore);
+    fuori[off + k] = v;
     tetto = v;
   }
-  return fuori;
 }
 
-// I tratti continui di uno strato: si spezza dove la proiezione perde il
-// punto (dietro all'occhio), se no il poligono si chiuderebbe attraverso
-// mezzo schermo.
-function skyCorseDiCresta(colonne, k, base, focale) {
+// I tratti continui di una striscia: dalla cresta della banda `k` giù fino a
+// quella della banda `sotto` (o al fondo del disegno, se `sotto` è −1). Si
+// spezza dove la proiezione perde il punto (dietro all'occhio), se no il
+// poligono si chiuderebbe attraverso mezzo schermo.
+//
+// Strisce e non sagome piene fino ai piedi: sono la stessa immagine, perché
+// la banda davanti coprirebbe comunque tutto il resto, ma dipingono lo
+// schermo una volta sola invece di diciotto. Con le sagome piene, aggiungere
+// bande costava un fotogramma pieno l'una.
+// Ogni punto si porta dietro anche `cima`: se lì quella dorsale è davvero un
+// crinale, cioè se il terreno subito **dietro** di lei è nascosto. Serve al
+// filo di luce, che senza questa distinzione diventerebbe una carta a curve
+// di livello — vedi `skyDisegnaFiloCresta`.
+function skyCorseDiCresta(colonne, k, i, nt, proj, creste, nb) {
   const corse = [];
   let corsa = [];
   const chiudi = () => { if (corsa.length > 1) corse.push(corsa); corsa = []; };
-  for (const col of colonne) {
+  const passo = (nt + 1) * 2;
+  for (let c = 0; c < colonne.length; c++) {
+    const col = colonne[c];
     if (!col) { chiudi(); continue; }
-    const cresta = skyProietta(skyVettore(col.az, col.creste[k]), base, focale);
-    if (!cresta.davanti) { chiudi(); continue; }
-    corsa.push({ az: col.az, cx: cresta.px, cy: cresta.py, bx: col.piede.px, by: col.piede.py });
+    const off = c * passo;
+    const cx = proj[off + (i + 1) * 2], bx = proj[off + i * 2];
+    if (Number.isNaN(cx) || Number.isNaN(bx)) { chiudi(); continue; }
+    // La fetta di là è nascosta dietro a questa (`skyCresteDelleColonne` le dà
+    // allora la stessa identica sagoma), oppure di là non c'è più niente ed è
+    // il crinale contro il cielo.
+    const cima = k >= nb - 1 || creste[col.pos + k] === creste[col.pos + k + 1];
+    corsa.push({
+      az: col.az, cima,
+      cx, cy: proj[off + (i + 1) * 2 + 1],
+      bx, by: proj[off + i * 2 + 1]
+    });
   }
   chiudi();
   return corse;
+}
+
+// La cresta disegnata in una direzione, per la fetta di distanza in cui cade
+// un punto lontano `km`. È la stessa identica cosa che disegna
+// `skyDisegnaProfiloOrizzonte` — stesse bande, stesso morso, stesso taglio —
+// chiesta per una colonna sola, e serve ad appendere i nomi delle montagne
+// dove la montagna è **disegnata** e non dove sarebbe in teoria.
+let skyQuotaBuf = null;
+
+function skyQuotaDisegnata(az, km) {
+  const bande = skyPianiOrizzonte();
+  const n = bande.length;
+  if (!skyQuotaBuf || skyQuotaBuf.length < n) skyQuotaBuf = new Float32Array(n);
+  const col = skyColonnaCresta(az, skyAltezzaOrizzonte(az));
+  skyCresteDelleColonne(col, bande, skyQuotaBuf, 0);
+  let k = n - 1;
+  for (let j = 0; j < n; j++) if (bande[j].km >= km) { k = j; break; }
+  return skyQuotaBuf[k];
 }
 
 // Il cappello della cresta: la fascia in cima, quella che prende la luce.
@@ -12813,38 +13109,74 @@ function skyCorseDiCresta(colonne, k, base, focale) {
 // Quanto si schiarisce dipende da quanta luce c'è: di notte quasi niente,
 // perché una cresta controluce è nera e basta, e una fascia grigia lassù
 // sarebbe una luce che non viene da nessuna parte.
-function skyDisegnaCappello(ctx, corse, colore, piano) {
+function skyDisegnaCappello(ctx, corse, colore, banda) {
   ctx.beginPath();
   for (const r of corse) {
     r.forEach((q, i) => (i === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
     for (let i = r.length - 1; i >= 0; i--) {
       const q = r[i];
-      const f = 0.1 + 0.45 * skyRilievo(SKY_RILIEVO.dolce, q.az * 2.3 + 17 + piano.salto);
+      const f = 0.1 + 0.42 * skyRilievo(SKY_RILIEVO.dolce, q.az * 2.3 + 17 + banda.salto);
       ctx.lineTo(q.cx + (q.bx - q.cx) * f, q.cy + (q.by - q.cy) * f);
     }
     ctx.closePath();
   }
+  // La schiena di una dorsale lontana la si vede attraverso trenta
+  // chilometri d'aria: il volume si appiattisce con la distanza esattamente
+  // come il contrasto, e dipingerlo uguale su tutte le bande farebbe
+  // sembrare la catena in fondo vicina quanto la collina di casa.
+  const forza = 0.55 * (0.6 + 0.4 * (1 - banda.lontananza));
   ctx.fillStyle = skyRgba(
-    skyMescolaColore(colore, [255, 255, 255], 0.05 + 0.2 * sky.luceCielo), 0.55);
+    skyMescolaColore(colore, [255, 255, 255], 0.05 + 0.2 * sky.luceCielo), forza);
   ctx.fill();
 }
 
-// Il filo di luce sul crinale. Dietro a una cresta c'è sempre del cielo, e
-// il cielo — anche di notte, anche solo per il chiarore delle città — è
-// più chiaro della roccia: il bordo si stacca con una riga sottile e
-// leggermente più chiara. È quello che si vede in qualunque fotografia di
-// montagne controluce, ed è la ragione per cui un profilo nero puro sembra
-// sempre incollato sopra al cielo invece che stare dentro alla stessa aria.
-function skyDisegnaFiloCresta(ctx, corse, aria) {
+// Il filo di luce sul crinale. Dietro a una cresta c'è sempre qualcosa di
+// più chiaro di lei — il cielo per la dorsale più esterna, l'aria che sta
+// fra lei e la dorsale dietro per tutte le altre: il bordo si stacca con una
+// riga sottile e leggermente più chiara. È quello che si vede in qualunque
+// fotografia di montagne controluce, è quello che le carte panoramiche
+// disegnano a mano da sempre, ed è la ragione per cui un profilo nero puro
+// sembra incollato sopra al cielo invece che stare dentro alla stessa aria.
+//
+// Averlo su **ogni** dorsale e non solo sulla più esterna è la differenza
+// fra una scala di grigi e un panorama: senza, le bande di distanza si
+// leggono come campiture, con, si contano come creste.
+//
+// Ma solo dove c'è davvero un crinale, ed è tutta la questione. Un pendio che
+// sale liscio verso l'orizzonte — la pianura vista da un dosso, una spiaggia
+// — attraversa comunque una decina di fette di distanza: sono superficie
+// continua, non dorsali, e appena si sono provate a segnare tutte è venuta
+// fuori una carta a curve di livello. Un crinale è un'altra cosa: è il punto
+// oltre il quale il terreno **sparisce**, cioè dove la fetta successiva non
+// alza più l'orizzonte perché è finita dietro a questa. Quella prova la porta
+// ogni punto (`q.cima`), e si disegna a tratti: sullo stesso profilo la cresta
+// segnata si accende dove la montagna scavalca la valle e si spegne dove il
+// pendio prosegue liscio, che è esattamente quello che si vede.
+function skyDisegnaFiloCresta(ctx, corse, aria, banda, controIlCielo) {
   const foschia = aria ? aria.foschia : [80, 90, 105];
+  const lontananza = banda ? banda.lontananza : 1;
+  // La sagoma più esterna non sbiadisce mai, ed è l'eccezione che conta: è la
+  // più lontana di tutte, quindi con la sola prospettiva aerea sarebbe la
+  // meno marcata — e invece è quella con il cielo dietro, cioè l'unica che si
+  // stacca su qualcosa di davvero più chiaro. Al primo tentativo il conto era
+  // uno solo per tutte, e il risultato era il crinale contro il cielo quasi
+  // invisibile e le colline di casa segnate a pennarello.
+  const forza = controIlCielo ? 1 : 0.8 * (0.45 + 0.55 * (1 - lontananza));
   ctx.beginPath();
+  let dentro = false;
   for (const r of corse) {
-    r.forEach((q, i) => (i === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
+    dentro = false;
+    for (const q of r) {
+      if (!q.cima) { dentro = false; continue; }
+      if (dentro) ctx.lineTo(q.cx, q.cy);
+      else { ctx.moveTo(q.cx, q.cy); dentro = true; }
+    }
   }
-  ctx.strokeStyle = skyRgba(skyMescolaColore(foschia, [255, 255, 255], 0.25),
-    0.1 + 0.22 * sky.luceCielo);
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = skyRgba(skyMescolaColore(foschia, [255, 255, 255], 0.42),
+    (0.26 + 0.28 * sky.luceCielo) * forza);
+  ctx.lineWidth = controIlCielo ? 1.15 : 1;
   ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
   ctx.stroke();
 }
 
@@ -13040,6 +13372,51 @@ const SKY_CIME_FILO_STRATO = [SKY_CIME_FILO_MIN, 30, 52];
 // può essere più nitido della cima stessa.
 const SKY_CIME_VELO_STRATO = [1, 0.94, 0.86];
 
+// --- Dove finisce davvero la punta ------------------------------------
+//
+// Il nome di una montagna deve **toccarla**. Se resta sospeso mezzo dito
+// sopra al crinale non è più il nome di una montagna: è il nome di una
+// stella, e basta quello a far sembrare finto tutto il resto del disegno.
+//
+// L'altezza che `cimeVisibili()` calcola è quella vera — la quota di
+// OpenStreetMap, con curvatura e rifrazione — e non è quasi mai il punto in
+// cui il crinale finisce **sullo schermo**. Ci sono tre buone ragioni, e
+// nessuna è un errore: il rilievo fine morde la cresta e non la aggiunge mai
+// (§ «Il rilievo fine delle creste»), il modello del suolo ha novanta metri
+// di passo, e la vetta cade fra due direzioni campionate. Mezzo grado di
+// scarto e il triangolino galleggia.
+//
+// Quindi il nome non si appende alla quota: si appende al **disegno**. Si
+// guarda la cresta disegnata in un fazzoletto attorno all'azimut della vetta
+// — mezzo passo della griglia, cioè quanto la punta può essersi spostata — e
+// ci si aggancia al suo massimo, che è la punta. Il confronto con l'altezza
+// vera resta come guardia: se le due si allontanano più di
+// `SKY_CIME_AGGANCIO_MAX` il disegno non sta parlando di questa vetta (una
+// cresta più vicina se l'è mangiata, o è oltre l'ultimo campione), e allora
+// meglio la quota vera che un aggancio a caso.
+const SKY_CIME_AGGANCIO_MAX = 1.5;
+const SKY_CIME_AGGANCIO_PROVE = 7;
+
+function skyPuntaDisegnata(c) {
+  const raggio = typeof TERRENO_PASSO_AZ === 'number' ? TERRENO_PASSO_AZ * 0.5 : 1.5;
+  let azMigliore = c.az;
+  let altMigliore = skyQuotaDisegnata(c.az, c.km);
+  if (!Number.isFinite(altMigliore)) return { az: c.az, alt: c.alt };
+  for (let i = 0; i < SKY_CIME_AGGANCIO_PROVE; i++) {
+    const az = c.az + raggio * (2 * i / (SKY_CIME_AGGANCIO_PROVE - 1) - 1);
+    const q = skyQuotaDisegnata(az, c.km);
+    // Strettamente meglio: a parità di altezza vince l'azimut vero della
+    // vetta, che è il dato buono. Spostarsi per un pareggio vorrebbe dire
+    // far scivolare il nome lungo una cresta piatta.
+    if (Number.isFinite(q) && q > altMigliore + 1e-4) { altMigliore = q; azMigliore = az; }
+  }
+  return {
+    az: azMigliore,
+    alt: Math.min(Math.max(altMigliore, c.alt - SKY_CIME_AGGANCIO_MAX),
+      c.alt + SKY_CIME_AGGANCIO_MAX)
+  };
+}
+
 // A quale strato appartiene una vetta. Le soglie sono quelle del disegno
 // del terreno: il nome e la sagoma devono dire la stessa cosa.
 function skyStratoDiCima(km) {
@@ -13191,8 +13568,10 @@ function skyNomiCitta(ctx, base, focale, occupati) {
   for (const c of lista) {
     if (scritte >= SKY_CITTA_MAX_NOMI) break;
     // Il nome sta appena sopra la cresta, non sopra la linea: se davanti
-    // alla città c'è una montagna, la scritta deve stare sopra la montagna
-    const alt = skyAltezzaOrizzonte(c.az);
+    // alla città c'è una montagna, la scritta deve stare sopra la montagna.
+    // E sopra la cresta **disegnata**, se no il trattino che collega il nome
+    // all'orizzonte si ferma per aria dove il rilievo ha morso una sella.
+    const alt = skyQuotaDisegnata(c.az, Infinity);
     const p = skyProietta(skyVettore(c.az, alt), base, focale);
     if (!p.davanti) continue;
     if (p.px < -60 || p.px > sky.larghezza + 60 || p.py < -20 || p.py > sky.altezza + 20) continue;
@@ -13256,7 +13635,10 @@ function skyNomiCime(ctx, base, focale, occupati) {
   let scritte = 0;
   for (const c of lista) {
     if (scritte >= massimo) break;
-    const p = skyProietta(skyVettore(c.az, c.alt), base, focale);
+    // Non `c.az`/`c.alt` ma la punta come è **disegnata**: è l'unica cosa che
+    // fa toccare il triangolino al crinale invece di lasciarlo per aria.
+    const punta = skyPuntaDisegnata(c);
+    const p = skyProietta(skyVettore(punta.az, punta.alt), base, focale);
     if (!p.davanti) continue;
     // Di traverso si è larghi di manica (la scritta parte da qui e va a
     // destra: un nome che comincia fuori dallo schermo non serve a
