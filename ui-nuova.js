@@ -244,6 +244,71 @@ function costruisciOrizzonte() {
 }
 
 
+// Fin dove cercare le montagne e i paesi, e se le montagne si nominano.
+//
+// Tre comandi soli, e stanno insieme perché rispondono alla stessa
+// domanda: quanto lontano guardi. La slitta invece della casella perché il
+// numero esatto non conta — fra 75 e 80 chilometri non cambia niente — e
+// perché una slitta si muove col pollice mentre si guarda l'orizzonte.
+//
+// Cambiare un raggio butta via l'elenco salvato e ne chiede uno nuovo
+// (`raggiImposta` in terreno.js): è una richiesta di rete, quindi si fa al
+// `change` — quando il dito si stacca — e non a ogni pixel dello scorrere.
+function costruisciRaggiOrizzonte() {
+  const box = document.getElementById('imp-raggi');
+  if (!box || typeof RAGGI_LIMITI === 'undefined') return;
+
+  const righe = [
+    { quale: 'cime', nome: 'Montagne', valore: raggioCime(),
+      aiuto: 'Fin dove cercare le vette con un nome. Più largo vuol dire più nomi, ma anche montagne che stanno dietro ad altre montagne.' },
+    { quale: 'citta', nome: 'Luci dei paesi', valore: raggioCitta(),
+      aiuto: 'Fin dove cercare i paesi che illuminano l\'orizzonte. Una città grande si vede da lontano, un paese no.' }
+  ];
+
+  const acceso = typeof cime !== 'undefined' && cime.acceso;
+  box.innerHTML = righe.map(r => {
+    const l = RAGGI_LIMITI[r.quale];
+    return `
+      <label class="riga-raggio">
+        <span class="nome-raggio">${r.nome}</span>
+        <input type="range" min="${l.min}" max="${l.max}" step="${l.passo}" value="${r.valore}"
+               data-raggio="${r.quale}" aria-label="Raggio di ricerca: ${r.nome}" title="${r.aiuto}">
+        <span class="misura-raggio" data-misura="${r.quale}">${r.valore} km</span>
+      </label>`;
+  }).join('') + `
+    <label class="riga-raggio riga-interruttore">
+      <input type="checkbox" id="imp-nomi-monti" ${acceso ? 'checked' : ''}>
+      <span>Scrivi i nomi delle montagne sull'orizzonte</span>
+    </label>`;
+
+  box.querySelectorAll('[data-raggio]').forEach(s => {
+    const misura = box.querySelector(`[data-misura="${s.dataset.raggio}"]`);
+    // Mentre la slitta scorre cambia solo il numero scritto accanto: il
+    // resto costa una richiesta a OpenStreetMap, e non si fa a ogni pixel.
+    s.addEventListener('input', () => { if (misura) misura.textContent = `${s.value} km`; });
+    s.addEventListener('change', () => {
+      raggiImposta(s.dataset.raggio, Number(s.value));
+      costruisciRaggiOrizzonte();
+    });
+  });
+
+  const spunta = document.getElementById('imp-nomi-monti');
+  if (spunta) spunta.addEventListener('change', () => {
+    // Lo stesso interruttore del tasto «Nomi dei monti» nel planetario:
+    // uno solo dei due deve esistere davvero, e quello è `cimeAlterna`.
+    if (typeof cimeAlterna === 'function' && spunta.checked !== cime.acceso) cimeAlterna();
+    costruisciRaggiOrizzonte();
+  });
+
+  const nota = document.getElementById('imp-raggi-nota');
+  if (nota) {
+    nota.textContent = acceso
+      ? 'I nomi delle montagne si scaricano da OpenStreetMap la prima volta che apri il planetario da un posto nuovo, e poi restano anche senza rete.'
+      : 'I nomi delle montagne sono spenti: l\'orizzonte resta la forma del terreno, senza scritte. Si accendono anche dal pannello Visualizzazione del planetario.';
+  }
+}
+
+
 // =====================================================================
 // 3. PLANETARIO — le lune di Giove e la curva della notte
 //
@@ -422,6 +487,7 @@ function inizializzaNuoveFunzioni() {
   if (apri) apri.addEventListener('click', () => {
     costruisciSceltaCielo();
     costruisciOrizzonte();
+    costruisciRaggiOrizzonte();
   });
 
   aggiornaStaseraNuovo();

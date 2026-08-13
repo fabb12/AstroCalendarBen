@@ -5915,6 +5915,67 @@ body.luogo-immersivo { overflow: hidden; }
   .griglia-orizzonte { grid-template-columns: repeat(8, minmax(0, 1fr)); }
 }
 
+/* ---------------------------------------- Fin dove guardare (montagne e paesi) */
+/* Due slitte e un interruttore. Il numero sta a destra e ha larghezza
+   fissa: se no, passando da 95 a 100 km la slitta si accorcia sotto al
+   dito che la sta muovendo. */
+.griglia-raggi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.riga-raggio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+  border-radius: 10px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.nome-raggio {
+  font-size: 0.78rem;
+  color: var(--testo-2);
+  font-weight: 600;
+  min-width: 108px;
+}
+
+.riga-raggio input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--blu-chiaro);
+}
+
+.misura-raggio {
+  font-size: 0.78rem;
+  color: var(--testo);
+  font-variant-numeric: tabular-nums;
+  min-width: 52px;
+  text-align: right;
+}
+
+.riga-interruttore {
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--testo-2);
+}
+.riga-interruttore input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--blu-chiaro);
+  flex: none;
+}
+
+@media (max-width: 420px) {
+  .riga-raggio { flex-wrap: wrap; }
+  .nome-raggio { min-width: 0; flex: 1; }
+  .riga-raggio input[type="range"] { flex: 1 0 100%; order: 3; }
+}
+
 /* ---------------------------------------- In coda alla scheda dell'oggetto */
 .scheda-extra {
   margin-top: 12px;

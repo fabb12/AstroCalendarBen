@@ -1415,6 +1415,130 @@ titolo('15. Le montagne che hanno un nome');
         dalMare > daiCento + 0.1,
         `${daiCento.toFixed(2)}° da cento metri, ${dalMare.toFixed(2)}° dal livello del mare`);
 
+  // --- Quello che sta DAVANTI, non quello che sta dietro ---
+  //
+  // È l'errore che il modulo ha avuto per mesi, ed è invisibile: una vetta
+  // veniva confrontata con la cresta **intera** di quella direzione, cioè
+  // col massimo su tutte le distanze — comprese le montagne che le stanno
+  // alle spalle. Ma una montagna dietro non nasconde niente: è lo sfondo su
+  // cui la si vede. Dalla pianura, guardando le Prealpi, ogni collina in
+  // primo piano spariva cancellata dalla catena più alta dietro di lei —
+  // cioè sparivano proprio le vette vicine, le uniche che uno riconosce.
+  {
+    const nd = TERRENO_DISTANZE.length;
+    // Un profilo finto: pianura fino a otto chilometri (sotto l'occhio),
+    // una punta di 900 m a dieci, e un muro di 4000 m a quaranta.
+    const quote = [];
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+      for (let k = 0; k < nd; k++) {
+        const km = TERRENO_DISTANZE[k];
+        quote.push(km <= 6.5 ? 100 : km === 10 ? 900 : km === 40 ? 4000 : 500);
+      }
+    }
+    const occhio = 101.6;
+    const fronti = terrenoFronti(quote, occhio);
+
+    prova('la cresta parziale non scende mai andando avanti',
+          (() => {
+            for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+              for (let k = 1; k < nd; k++) if (fronti[i * nd + k] < fronti[i * nd + k - 1] - 1e-6) return false;
+            }
+            return true;
+          })());
+    prova('e alla fine della riga è la cresta intera',
+          Math.abs(fronti[nd - 1] - terrenoAngolo(4000, occhio, 40)) < 0.01,
+          `${fronti[nd - 1].toFixed(2)}° contro ${terrenoAngolo(4000, occhio, 40).toFixed(2)}°`);
+
+    const primaFronti = terreno.fronti;
+    const creste = new Float32Array(TERRENO_DIREZIONI);
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) creste[i] = fronti[i * nd + nd - 1];
+    terreno.fronti = fronti;
+    terreno.profilo = terrenoInterpola(creste);
+    terreno.tipi = null;
+    terreno.stato = 'pronto';
+    terreno.acceso = true;
+    terreno.quota = 100;
+    terreno.quando = Date.now() + 1;
+
+    prova('davanti a un punto vicino non c\'è il muro che gli sta dietro',
+          terrenoCrestaDavanti(0, 10) < 0.2 && terrenoAltezza(0) > 5,
+          `davanti ${terrenoCrestaDavanti(0, 10).toFixed(2)}°, cresta intera ${terrenoAltezza(0).toFixed(2)}°`);
+    prova('e davanti a un punto lontano il muro c\'è',
+          terrenoCrestaDavanti(0, 60) > 5,
+          `${terrenoCrestaDavanti(0, 60).toFixed(2)}°`);
+
+    cime.stato = 'pronto';
+    cime.acceso = true;
+    cime.vistaChiave = null;
+    cime.elenco = [
+      { nome: 'Punta in primo piano', lat: 0, lon: 0, quota: 900, km: 10, az: 0 },
+      { nome: 'Nascosta dal muro', lat: 0, lon: 0, quota: 1000, km: 60, az: 0 }
+    ];
+    const chi = cimeVisibili().map(c => c.nome);
+    prova('la punta davanti al muro si nomina, anche se il muro è più alto',
+          chi.includes('Punta in primo piano'), chi.join(', ') || 'nessuna');
+    prova('quella dietro al muro no',
+          !chi.includes('Nascosta dal muro'), chi.join(', ') || 'nessuna');
+
+    terreno.fronti = primaFronti;
+  }
+
+  // --- I doppioni ---
+  // «Monte Alben» e «Cima Alben Ovest» sono due nodi di OpenStreetMap a
+  // trecento metri uno dall'altro: da trenta chilometri sono lo stesso
+  // dente, e due etichette sullo stesso punto fanno sembrare sbagliate
+  // anche quelle giuste. Qui il terreno si toglie di mezzo del tutto: la
+  // domanda è solo se i doppioni si riconoscono.
+  {
+    terreno.stato = 'niente';
+    terreno.profilo = null;
+    terreno.fronti = null;
+    terreno.quota = 100;
+    cime.stato = 'pronto';
+    cime.acceso = true;
+    cime.elenco = [
+      { nome: 'Monte Alben', lat: 0, lon: 0, quota: 2019, km: 30, az: 45 },
+      { nome: 'Cima Alben Ovest', lat: 0, lon: 0, quota: 1990, km: 30.2, az: 45.2 },
+      { nome: 'Un\'altra vetta', lat: 0, lon: 0, quota: 2000, km: 30, az: 60 }
+    ];
+    cime.vistaChiave = null;
+    const senzaDoppioni = cimeVisibili().map(c => c.nome);
+    prova('la stessa punta con due nomi si scrive una volta sola',
+          senzaDoppioni.length === 2 && senzaDoppioni.includes('Monte Alben') &&
+          !senzaDoppioni.includes('Cima Alben Ovest'),
+          senzaDoppioni.join(', '));
+    prova('e a restare è la più alta delle due',
+          senzaDoppioni.includes('Monte Alben'));
+  }
+
+  // --- Fin dove si guarda (il raggio scelto nelle Impostazioni) ---
+  {
+    const prima = raggioCime();
+    prova('il raggio si tosa dentro ai suoi estremi',
+          raggiTosa('cime', 5000) === RAGGI_LIMITI.cime.max &&
+          raggiTosa('cime', 1) === RAGGI_LIMITI.cime.min &&
+          raggiTosa('cime', 'boh') === RAGGI_LIMITI.cime.predefinito);
+    // Un elenco preso guardando meno lontano di quanto si sta chiedendo non
+    // risponde alla domanda: riusarlo vuol dire dare per buona una risposta
+    // che non è stata fatta. Al contrario uno più largo va benissimo.
+    prova('un salvataggio più stretto di quello che serve non vale',
+          !raggiSalvatoBuono({ raggio: prima - 10 }, 'cime', CIME_RAGGIO_KM));
+    prova('uno più largo sì',
+          raggiSalvatoBuono({ raggio: prima + 10 }, 'cime', CIME_RAGGIO_KM));
+    prova('e uno vecchio, che il raggio non lo dice, vale per quello di allora',
+          raggiSalvatoBuono({}, 'cime', CIME_RAGGIO_KM) === (CIME_RAGGIO_KM >= prima));
+
+    const dentro = cimePrepara([{ nome: 'Al limite', lat: 44.49 - (prima - 5) / 111.32, lon: 11.34, quota: 3000 }], 44.49, 11.34);
+    const fuori = cimePrepara([{ nome: 'Oltre', lat: 44.49 - (prima + 20) / 111.32, lon: 11.34, quota: 3000 }], 44.49, 11.34);
+    prova('dentro al raggio scelto si guarda, fuori no',
+          dentro.length === 1 && fuori.length === 0,
+          `raggio ${prima} km`);
+  }
+
+  // Le etichette inclinate — come si impilano senza accavallarsi — stanno
+  // in `app.js` (`skyRettiSiToccano`), che qui non è caricato: quella si
+  // guarda aprendo il planetario, ed è di quelle che a occhio si vedono.
+
   // Si rimette tutto com'era: le prove non devono lasciare tracce
   Object.assign(cime, primaStato, { vistaChiave: null, vista: [] });
   Object.assign(terreno, primaTerreno);
