@@ -576,7 +576,7 @@ titolo('9. La forma vera del terreno');
         cima > 0 && cima < Math.atan2(2000, 60000) * SKY_R2D - 0.2,
         `${cima.toFixed(2)}° invece di ${(Math.atan2(2000, 60000) * SKY_R2D).toFixed(2)}°`);
 
-  // L'interpolazione da quarantotto creste a trecentosessanta gradi
+  // L'interpolazione dalle creste campionate a trecentosessanta gradi
   const creste = new Array(TERRENO_DIREZIONI).fill(0).map((_, i) => (i % 2 ? 12 : 3));
   const profilo = terrenoInterpola(creste);
   prova('il profilo si chiude su se stesso', Math.abs(profilo[0] - profilo[360]) < 1e-6);
@@ -586,8 +586,16 @@ titolo('9. La forma vera del terreno');
     if (g) salto = Math.max(salto, Math.abs(profilo[g] - profilo[g - 1]));
     if (g < 360) alto = Math.max(alto, profilo[g]);
   }
+  // Il tetto al salto non è un numero scritto a mano: è quello che la curva
+  // a S può fare al massimo, cioè un dislivello e mezzo diviso la larghezza
+  // del settore. Scritto come costante valeva finché i settori erano larghi
+  // 7°30′; passandoli a 3° la stessa interpolazione, identica e giusta,
+  // faceva fallire la prova — che è il modo peggiore di accorgersi di aver
+  // cambiato la griglia.
+  const saltoMax = (12 - 3) * 1.55 / TERRENO_PASSO_AZ;
   prova('resta fra la cresta più bassa e la più alta, senza scalini',
-        fuori === 0 && salto < 2.5, `salto massimo ${salto.toFixed(2)}° per grado`);
+        fuori === 0 && salto < saltoMax,
+        `salto massimo ${salto.toFixed(2)}° per grado, tetto ${saltoMax.toFixed(2)}°`);
   prova('il massimo del profilo è la cresta più alta misurata',
         Math.abs(alto - 12) < 0.15, `${alto.toFixed(2)}° contro 12°`);
 
@@ -645,17 +653,21 @@ titolo('10. Che paesaggio c\'è, e chi illumina l\'orizzonte');
   prova('tre metri di quota sono terra ferma, non acqua',
         TERRENO_TIPI[olanda.tipo] !== 'mare', TERRENO_TIPI[olanda.tipo]);
 
-  // Da quarantotto settori a trecentosessantuno gradi: i tipi non si
-  // interpolano, si prende il più vicino
+  // Dai settori campionati a trecentosessantuno gradi: i tipi non si
+  // interpolano, si prende il più vicino. Gli indici si ricavano dalla
+  // larghezza del settore e non si scrivono a mano: «il settore di sud» è
+  // il ventiquattresimo con quarantotto direzioni e il sessantesimo con
+  // centoventi, ed è la stessa prova.
   const tipi = new Array(TERRENO_DIREZIONI).fill(1);
-  tipi[0] = 0; tipi[24] = 3;
+  tipi[0] = 0; tipi[Math.round(180 / TERRENO_PASSO_AZ)] = 3;
   const perGrado = terrenoTipiPerGrado(tipi);
   prova('i paesaggi si chiudono sul giro', perGrado[0] === perGrado[360]);
   prova('il settore giusto finisce nella direzione giusta',
         perGrado[0] === 0 && perGrado[180] === 3 && perGrado[90] === 1);
+  const mezzoSettore = Math.round(TERRENO_PASSO_AZ / 2);
   prova('il confine cade a metà strada fra due settori campionati',
-        perGrado[3] === 0 && perGrado[5] === 1,
-        'settori larghi 7°30′, confine a 3°45′');
+        perGrado[Math.max(0, mezzoSettore - 1)] === 0 && perGrado[mezzoSettore + 1] === 1,
+        `settori larghi ${TERRENO_PASSO_AZ}°, confine a ${(TERRENO_PASSO_AZ / 2).toFixed(2)}°`);
 
   prova('senza dati scaricati nessuno inventa un paesaggio', terrenoTipo(90) === null);
 
@@ -1426,13 +1438,18 @@ titolo('15. Le montagne che hanno un nome');
   // cioè sparivano proprio le vette vicine, le uniche che uno riconosce.
   {
     const nd = TERRENO_DISTANZE.length;
-    // Un profilo finto: pianura fino a otto chilometri (sotto l'occhio),
-    // una punta di 900 m a dieci, e un muro di 4000 m a quaranta.
+    // Un profilo finto, scritto in distanze e non in indici: pianura fino a
+    // sette chilometri (sotto l'occhio), una punta di 900 m appena dopo, e un
+    // muro di 4000 m a una trentina. I due campioni si pescano dalla griglia
+    // qualunque essa sia, se no basta ritoccare `TERRENO_DISTANZE` per
+    // trovarsi la prova che non prova più niente.
+    const kPunta = TERRENO_DISTANZE.findIndex(km => km > 7);
+    const kMuro = TERRENO_DISTANZE.findIndex(km => km >= 30);
+    const kmPunta = TERRENO_DISTANZE[kPunta], kmMuro = TERRENO_DISTANZE[kMuro];
     const quote = [];
     for (let i = 0; i < TERRENO_DIREZIONI; i++) {
       for (let k = 0; k < nd; k++) {
-        const km = TERRENO_DISTANZE[k];
-        quote.push(km <= 6.5 ? 100 : km === 10 ? 900 : km === 40 ? 4000 : 500);
+        quote.push(k < kPunta ? 100 : k === kPunta ? 900 : k === kMuro ? 4000 : 500);
       }
     }
     const occhio = 101.6;
@@ -1446,8 +1463,20 @@ titolo('15. Le montagne che hanno un nome');
             return true;
           })());
     prova('e alla fine della riga è la cresta intera',
-          Math.abs(fronti[nd - 1] - terrenoAngolo(4000, occhio, 40)) < 0.01,
-          `${fronti[nd - 1].toFixed(2)}° contro ${terrenoAngolo(4000, occhio, 40).toFixed(2)}°`);
+          Math.abs(fronti[nd - 1] - terrenoAngolo(4000, occhio, kmMuro)) < 0.01,
+          `${fronti[nd - 1].toFixed(2)}° contro ${terrenoAngolo(4000, occhio, kmMuro).toFixed(2)}°`);
+
+    // Il pezzo sotto la linea dell'orizzonte. `terrenoFronti` lo tiene
+    // (l'occhio sta un metro e sei sopra il suolo, quindi il prato a
+    // centocinquanta metri si vede **sotto**), `terrenoCrestaEntro` lo tosa a
+    // zero perché quella è un'altra domanda — «quanto copre», e coprire meno
+    // di niente non vuol dire niente. Le due risposte devono restare
+    // distinte: senza la prima il planetario non può disegnare la conca che
+    // si apre davanti a chi guarda da una cima, senza la seconda ogni astro
+    // basso risulterebbe sorto in anticipo.
+    prova('la cresta parziale scende sotto zero dove il terreno sta sotto l\'occhio',
+          fronti[0] < -0.3 && fronti[0] > -2,
+          `${fronti[0].toFixed(2)}° al primo campione`);
 
     const primaFronti = terreno.fronti;
     const creste = new Float32Array(TERRENO_DIREZIONI);
@@ -1461,8 +1490,8 @@ titolo('15. Le montagne che hanno un nome');
     terreno.quando = Date.now() + 1;
 
     prova('davanti a un punto vicino non c\'è il muro che gli sta dietro',
-          terrenoCrestaDavanti(0, 10) < 0.2 && terrenoAltezza(0) > 5,
-          `davanti ${terrenoCrestaDavanti(0, 10).toFixed(2)}°, cresta intera ${terrenoAltezza(0).toFixed(2)}°`);
+          terrenoCrestaDavanti(0, kmPunta) < 0.2 && terrenoAltezza(0) > 5,
+          `davanti ${terrenoCrestaDavanti(0, kmPunta).toFixed(2)}°, cresta intera ${terrenoAltezza(0).toFixed(2)}°`);
     prova('e davanti a un punto lontano il muro c\'è',
           terrenoCrestaDavanti(0, 60) > 5,
           `${terrenoCrestaDavanti(0, 60).toFixed(2)}°`);
@@ -1471,7 +1500,7 @@ titolo('15. Le montagne che hanno un nome');
     cime.acceso = true;
     cime.vistaChiave = null;
     cime.elenco = [
-      { nome: 'Punta in primo piano', lat: 0, lon: 0, quota: 900, km: 10, az: 0 },
+      { nome: 'Punta in primo piano', lat: 0, lon: 0, quota: 900, km: kmPunta, az: 0 },
       { nome: 'Nascosta dal muro', lat: 0, lon: 0, quota: 1000, km: 60, az: 0 }
     ];
     const chi = cimeVisibili().map(c => c.nome);
@@ -1514,6 +1543,40 @@ titolo('15. Le montagne che hanno un nome');
     prova('i due tagli fra gli strati cadono su campioni della griglia',
           TERRENO_DISTANZE.includes(4) && TERRENO_DISTANZE.includes(16),
           TERRENO_DISTANZE.join(', '));
+
+    // --- La riga intera in un colpo solo ---
+    // `terrenoFrontiA` è la stessa interpolazione di `terrenoCrestaEntro`
+    // fatta per tutte le distanze insieme, e il planetario la chiama una
+    // volta per colonna dello schermo e per fotogramma. Deve dare gli stessi
+    // numeri — a meno del taglio a zero, che è la sola differenza voluta —
+    // se no la sagoma disegnata e la cresta che decide se un astro è sorto
+    // raccontano due orizzonti diversi.
+    prova('la riga presa in blocco è la stessa presa distanza per distanza',
+          (() => {
+            const riga = new Float32Array(nd);
+            for (let az = 0; az < 360; az += 7) {
+              terrenoFrontiA(az, riga);
+              for (let k = 0; k < nd; k++) {
+                const uno = terrenoCrestaEntro(az, TERRENO_DISTANZE[k]);
+                if (Math.abs(Math.max(0, riga[k]) - uno) > 1e-4) return false;
+              }
+            }
+            return true;
+          })());
+    prova('e riusa il buffer che le si passa invece di allocarne uno nuovo',
+          (() => {
+            const mio = new Float32Array(nd);
+            return terrenoFrontiA(0, mio) === mio;
+          })());
+    prova('anche presa in blocco non scende mai andando avanti',
+          (() => {
+            const riga = new Float32Array(nd);
+            for (let az = 0; az < 360; az += 3.7) {
+              terrenoFrontiA(az, riga);
+              for (let k = 1; k < nd; k++) if (riga[k] < riga[k - 1] - 1e-5) return false;
+            }
+            return true;
+          })());
 
     terreno.fronti = primaFronti;
   }
