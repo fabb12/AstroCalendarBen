@@ -9,69 +9,87 @@ fissa: basta che dica *cosa*, *a che punto* e *cosa manca*.
 
 **Convenzione**: a inizio di un compito nuovo si riscrive da capo (non si
 accumula la storia — quella sta nei commit). A compito finito e pubblicato si
-lascia una riga sola: «Niente in corso». Le spunte `[x]`/`[ ]` sono lo stato,
+lascia una riga sola: «Niente in corso». Le spunte `[x]`/`[]` sono lo stato,
 non un verbale.
 
 ---
 
-## La conformazione del terreno, come su PeakFinder
+## 1. La conformazione del terreno, come su PeakFinder — fatto
 
-- [x] **Il terreno si misura più fitto**: da 48 direzioni × 12 distanze a
-      **120 × 18** (`TERRENO_DIREZIONI`, `TERRENO_DISTANZE`). A 7°30′ di
-      passo, con un campo di sessanta gradi finivano otto campioni sullo
-      schermo: una spezzata, non un crinale. A 3° ne finiscono venti. Le
-      richieste passano da 6 a 24, a gruppi di quattro
-      (`TERRENO_RICHIESTE_INSIEME`) con la percentuale nella riga di stato;
-      restano una volta sola per luogo, poi `localStorage`. I profili
-      salvati vecchi non passano `terrenoPostoValido` e si riscaricano da sé.
-- [x] **`terrenoFronti` tiene i valori grezzi**, cioè anche sotto zero dove il
-      terreno sta più in basso dell'occhio. `terrenoCrestaEntro` li tosa in
-      lettura, quindi per tutto il resto dell'app non cambia niente. Nuova
-      `terrenoFrontiA(az, buffer)`: la riga intera in un colpo, che è quello
-      che chiede il disegno per ogni colonna dello schermo.
-- [x] **L'orizzonte si disegna a piani veri, non a tre.** `skyPianiOrizzonte()`
-      dà una banda per ogni fetta di `TERRENO_DISTANZE`; ognuna si disegna come
-      **striscia** (dalla sua cresta alla cresta di quella davanti), quindi lo
-      schermo si dipinge una volta sola comunque siano tante. Chi non alza
-      l'orizzonte non si disegna, e oltre `SKY_CRESTE_MAX_QUANTO` si tengono le
-      più imponenti — mai l'ultima, che deve coincidere con
-      `skyAltezzaOrizzonte`.
-- [x] **Il panorama prosegue sotto la linea dell'orizzonte** (`col.fondo`,
-      `SKY_CONCA_MIN`): da una cima le dorsali che scendono a valle erano
-      semplicemente assenti, e sotto la linea c'era una campitura nera. I sei
-      gradi di franchigia sono sottratti e non confrontati, così in pianura il
-      fondo resta esattamente zero e il suolo con la sua grana è quello di
-      prima, pixel per pixel.
-- [x] **Il filo di luce solo sui crinali veri** (`q.cima`): un crinale è dove
-      la fetta successiva non alza più l'orizzonte, cioè è finita dietro.
-      Segnando il bordo di ogni banda veniva fuori una carta a curve di
-      livello — un pendio liscio attraversa comunque dieci fette. La sagoma
-      più esterna non sbiadisce mai: è l'unica con il cielo dietro.
-- [x] **I nomi delle montagne agganciati alla punta disegnata**
-      (`skyPuntaDisegnata`, `skyQuotaDisegnata`). La quota di OpenStreetMap non
-      è il punto in cui il crinale finisce sullo schermo — il rilievo fine
-      morde, il DEM ha novanta metri di passo, la vetta cade fra due
-      direzioni — e mezzo grado bastava a far galleggiare il triangolino. Ora
-      si cerca il massimo della cresta **disegnata** in mezzo passo di griglia
-      attorno alla vetta. Stessa cura per il trattino dei nomi dei paesi.
-- [x] `CACHE_NAME` → `astrocal-v93`, `CLAUDE.md` aggiornata, §10 e §15 di
-      `verifica.html` resi indipendenti dalla griglia (gli indici e le soglie
-      si ricavano da `TERRENO_PASSO_AZ`: erano scritti a mano per i settori da
-      7°30′ e fallivano su una griglia diversa pur essendo il codice giusto).
+Griglia da 48×12 a **120×18**; l'orizzonte disegnato a piani veri (una banda
+per fetta di distanza, a strisce, con il filo di luce solo sui crinali veri);
+il panorama che prosegue **sotto** la linea dell'orizzonte, che da una cima
+era una campitura nera; i nomi delle vette agganciati alla punta **disegnata**
+e non alla quota di catalogo. Dettagli in `CLAUDE.md` (§12, le voci «I piani
+della veduta», «Il panorama sotto la linea dell'orizzonte», «Il filo di luce
+su ogni crinale», «Il nome di una montagna attaccato alla sua punta»).
 
-**Banco di prova**: `verifica.html` gira tutto, **223 prove passate**,
-comprese tre nuove su `terrenoFrontiA`.
+## 2. «Non riesce mai a scaricare la forma del terreno» — fatto
 
-Il disegno è stato guardato davvero, non dedotto: Chromium headless che apre
-`index.html` con un DEM sintetico (pianura con la catena in fondo, cima con le
-dorsali che scendono, mare, campo stretto, e il caso senza terreno vero), con
-gli scatti a confronto prima/dopo. Da una cima il «prima» è una campitura nera
-e il «dopo» sono le dorsali. Costo per fotogramma misurato con e senza il
-profilo: **+0,7 ms** in pianura e **+1,5 ms** da una cima, in software
-rendering senza GPU — e da una cima il vecchio non disegnava niente.
+Il guasto è stato **riprodotto**, non dedotto: Chromium headless che apre
+`index.html` con un finto Open-Meteo pilotabile. Con **una sola** richiesta su
+venticinque che risponde 429, il vecchio codice buttava via anche le altre
+ventiquattro, non riprovava mai, e scriveva «non sono riuscito a scaricare la
+forma del terreno» senza dire perché. Con venticinque richieste anche un 2% di
+guasto per richiesta dà quasi il 45% di probabilità che almeno una vada storta:
+ecco il «mai».
 
-**Non fatto, e va detto**: sotto la linea dell'orizzonte le dorsali sono
-campiture con il loro filo di luce, ma la grana e la velatura di paesaggio
-restano quelle del suolo unico che c'era prima. Farle seguire i piani vorrebbe
-dire rifare `skyDisegnaGranaTerreno` e `skyDisegnaVeloPaesaggio` per striscia,
-ed è un compito a sé.
+- [x] **Sveglia su ogni richiesta** (`TERRENO_TIMEOUT_MS`, 15 s). Senza, una
+      richiesta che non torna più lasciava lo stato «in-corso» per sempre: la
+      riga diceva «sto misurando…» e non finiva mai.
+- [x] **Tre tentativi con attese crescenti** (`terrenoQuoteInsistendo`), e
+      `terrenoRiprovabile` distingue un 429 da un 400.
+- [x] **Una richiesta che cade non trascina le altre**: ognuna ha il suo
+      `catch`, e le direzioni che mancano si stimano dalle vicine
+      (`terrenoRiempiVuoti`, interpolazione **circolare**).
+- [x] **Due giri**: prima una direzione ogni tre (8 richieste) e si **disegna
+      subito**, poi le altre ottanta. Misurato: primo orizzonte vero a ~0,3 s,
+      completo a ~2,5 s. Se il secondo giro cade del tutto, resta il primo.
+- [x] **Si adatta al limite del servizio** (`terrenoDirezioniPerVolta`): un
+      400/413/414 su una richiesta di sole coordinate vuol dire «sono troppe»,
+      e riprovarla identica dà lo stesso errore all'infinito. Si dimezza finché
+      passa e la misura trovata vale per tutte le successive. È la difesa
+      contro l'ipotesi che non ho potuto verificare da qui — il limite vero di
+      Open-Meteo per richiesta, perché **da questo ambiente l'API è bloccata
+      dal proxy**.
+- [x] **Si dice perché** (`terrenoMotivoGuaio`): 429, codice, timeout o
+      «non c'è rete» sono quattro cose diverse e chiedono quattro reazioni
+      diverse.
+- [x] **Tre tentativi automatici** (20 s, 90 s, 5 min) e poi basta; il tasto
+      del pannello riprova subito e azzera il conto.
+- [x] **Il service worker tiene le quote del suolo** (`/v1/elevation`): sono
+      l'unica cosa di open-meteo che non invecchia, e così riprovare ripaga
+      solo il pezzo che manca invece di rifare tutto.
+- [x] `CACHE_NAME` → `astrocal-v94`, `CLAUDE.md` aggiornata.
+
+### Come è stato verificato
+
+`verifica.html`: **231 prove passate** (otto nuove sul riempimento dei buchi,
+sull'impacchettamento delle richieste e sulla scelta di riprovare).
+
+Con il finto Open-Meteo, ogni modo di rompersi finisce col terreno disegnato:
+
+| che succede | prima | adesso |
+|---|---|---|
+| tutto bene | ok (25 richieste) | ok |
+| un 429 su una richiesta | **niente terreno** | ok, 120/120 |
+| sei richieste rotte per sempre | **niente terreno** | ok, 115/120 stimate le altre |
+| tutto il giro fine cade | **niente terreno** | ok, 40/120 (il giro grosso) |
+| una richiesta appesa 40 s | **appeso per sempre** | ok in 15 s, 120/120 |
+| il servizio accetta max 40 coordinate | **niente terreno** | ok, si dimezza da solo |
+| il servizio accetta una direzione per volta | **niente terreno** | ok, 133 richieste |
+| rete giù del tutto | «non sono riuscito» | detto perché, e tre tentativi |
+| tutto 429 | «non sono riuscito» | detto perché (429), sei richieste in tutto |
+
+La logica del service worker è stata provata **a parte** (`self` finto), perché
+in questo ambiente Playwright non intercetta le richieste che partono da dentro
+un service worker: quote non in cache → rete e messe in cache; quote già in
+cache → **zero** richieste di rete; rete giù → 504, che l'app sa riprovare;
+meteo → rete e **non** messo in cache, cioè la regola di sempre è intatta.
+
+### Cosa resta da guardare in campo
+
+L'API vera non è raggiungibile da qui (`EGRESS_BLOCKED`), quindi il limite di
+coordinate per richiesta di Open-Meteo non è stato confermato: il codice se lo
+trova da sé, ma se in campo la riga di stato dovesse dire ancora qualcosa,
+adesso **dice anche il codice**, ed è quello il pezzo che serve per capire.

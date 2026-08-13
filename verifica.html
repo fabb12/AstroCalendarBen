@@ -601,6 +601,90 @@ titolo('9. La forma vera del terreno');
 
   prova('senza dati scaricati tace, e il planetario usa il profilo disegnato',
         terrenoAltezza(123) === null);
+
+  // --- Quello che arriva a metà ---
+  //
+  // Le quote sono venticinque richieste a un servizio pubblico, e una che va
+  // storta capita. Per mesi ne bastava una: `Promise.all` faceva cadere tutto
+  // e il terreno non compariva mai — la riga di stato diceva «non sono
+  // riuscito» senza nemmeno dire perché. Adesso ogni richiesta porta un
+  // numero intero di direzioni, e quelle che mancano si stimano dalle
+  // vicine: la griglia che ne esce è piena, ed è tutto quello che il resto
+  // dell'app pretende di ricevere.
+  {
+    const nd = TERRENO_DISTANZE.length;
+    // Una collina finta che dipende solo dalla direzione, così il valore
+    // stimato si può confrontare con quello vero.
+    const vero = (i, k) => 200 + 100 * Math.sin(i * TERRENO_PASSO_AZ * Math.PI / 180) + k;
+    const grezze = new Array(TERRENO_DIREZIONI * nd).fill(null);
+    const avute = [];
+    for (let i = 0; i < TERRENO_DIREZIONI; i += TERRENO_PASSO_GROSSO) {
+      avute.push(i);
+      for (let k = 0; k < nd; k++) grezze[i * nd + k] = vero(i, k);
+    }
+
+    const quote = grezze.slice();
+    terrenoRiempiVuoti(quote, avute);
+    prova('col solo giro grosso la griglia esce comunque piena',
+          quote.every(q => typeof q === 'number'),
+          `${quote.filter(q => typeof q === 'number').length} su ${quote.length}`);
+
+    let peggio = 0;
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+      for (let k = 0; k < nd; k++) peggio = Math.max(peggio, Math.abs(quote[i * nd + k] - vero(i, k)));
+    }
+    prova('e le direzioni stimate sono vicine a quelle vere',
+          peggio < 6, `scarto massimo ${peggio.toFixed(1)} m su un dislivello di 200`);
+
+    // Il buco a cavallo del nord è quello che si sbaglia sempre: chi
+    // interpola per indice crescente lì trova il capolinea dell'array invece
+    // del vicino, e l'orizzonte a nord viene fuori piatto.
+    const soloAlcune = [];
+    const g2 = new Array(TERRENO_DIREZIONI * nd).fill(null);
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+      if (i === 1 || i === TERRENO_DIREZIONI - 1) continue;
+      soloAlcune.push(i);
+      for (let k = 0; k < nd; k++) g2[i * nd + k] = vero(i, k);
+    }
+    terrenoRiempiVuoti(g2, soloAlcune);
+    prova('il buco a cavallo del nord si tappa girando, non fermandosi al capolinea',
+          Math.abs(g2[1 * nd] - vero(1, 0)) < 3 &&
+          Math.abs(g2[(TERRENO_DIREZIONI - 1) * nd] - vero(TERRENO_DIREZIONI - 1, 0)) < 3,
+          `${g2[nd].toFixed(1)} contro ${vero(1, 0).toFixed(1)}, ` +
+          `${g2[(TERRENO_DIREZIONI - 1) * nd].toFixed(1)} contro ${vero(TERRENO_DIREZIONI - 1, 0).toFixed(1)}`);
+
+    prova('senza nemmeno una direzione non si inventa niente',
+          terrenoRiempiVuoti(new Array(TERRENO_DIREZIONI * nd).fill(null), []) === false);
+
+    // Ogni richiesta deve portare direzioni intere: è quello che rende il
+    // buco tappabile. Tagliando ogni novanta punti a caso, un buco cadrebbe a
+    // metà di una direzione e quella direzione sarebbe da buttare.
+    const ric = terrenoRichieste(45, 9);
+    prova('ogni richiesta porta un numero intero di direzioni',
+          ric.every(r => r.dirs.length * nd === r.punti.length),
+          `${ric.length} richieste, ${ric[0].dirs.length} direzioni l'una`);
+    prova('e insieme coprono tutte le direzioni, una volta sola',
+          (() => {
+            const viste = ric.reduce((a, r) => a.concat(r.dirs), []).sort((a, b) => a - b);
+            return viste.length === TERRENO_DIREZIONI && viste.every((d, i) => d === i);
+          })());
+    prova('il giro grosso viene per primo e da solo fa tutto il giro dell\'orizzonte',
+          (() => {
+            const grosse = ric.filter(r => r.giro === 0).reduce((a, r) => a.concat(r.dirs), []);
+            const primaFine = ric.findIndex(r => r.giro === 1);
+            return grosse.length === Math.ceil(TERRENO_DIREZIONI / TERRENO_PASSO_GROSSO) &&
+              grosse.every(d => d % TERRENO_PASSO_GROSSO === 0) &&
+              ric.slice(0, primaFine).every(r => r.giro === 0);
+          })(),
+          `${ric.filter(r => r.giro === 0).length} richieste nel giro grosso su ${ric.length}`);
+
+    // Un 400 non si riprova: la richiesta è scritta male e riprovarla
+    // identica dà lo stesso errore tre volte. Un 429 sì, ed è il caso vero.
+    prova('si riprova quando ha senso, e non quando non ne ha',
+          terrenoRiprovabile({ stato: 429 }) && terrenoRiprovabile({ stato: 503 }) &&
+          terrenoRiprovabile(new TypeError('Failed to fetch')) &&
+          !terrenoRiprovabile({ stato: 400 }) && !terrenoRiprovabile({ stato: 404 }));
+  }
 }
 
 // =====================================================================
