@@ -722,15 +722,29 @@ function terrenoSalva(lat, lon, dati) {
   } catch (e) { /* storage pieno: pazienza, si riscarica */ }
 }
 
-// Butta via quello che c'è in memoria. Serve al ripristino di un backup,
-// che scrive direttamente in localStorage.
-function terrenoDimentica() {
-  terreno.stato = 'niente';
+// Butta via il **profilo**, non lo stato della richiesta. Sono due cose
+// diverse, e per un pezzo non lo sono state: finché «c'è una richiesta in
+// volo» voleva dire anche «non c'è nessun terreno», ogni affinamento
+// cancellava per qualche secondo l'orizzonte che si stava guardando (vedi
+// `terrenoDisponibile`). Questa si chiama quando il profilo che c'è non
+// parla più del posto in cui siamo — un trasloco, un backup ripristinato —
+// e allora sì che va buttato.
+function terrenoScordaProfilo() {
   terreno.profilo = null;
   terreno.tipi = null;
   terreno.miscela = null;
   terreno.fronti = null;
+  terreno.quota = null;
+  terreno.misurate = 0;
+  terreno.quando = 0;
   terreno.lat = terreno.lon = null;
+}
+
+// Butta via quello che c'è in memoria. Serve al ripristino di un backup,
+// che scrive direttamente in localStorage.
+function terrenoDimentica() {
+  terreno.stato = 'niente';
+  terrenoScordaProfilo();
 }
 
 
@@ -829,6 +843,18 @@ function terrenoCarica(forza) {
   terreno.provatoLat = lat;
   terreno.provatoLon = lon;
 
+  // Il profilo che c'è in mano resta buono finché si sta parlando dello
+  // stesso posto: chi affina, chi completa un salvataggio a metà e chi
+  // riprova dopo un guaio sta rifacendo *questo* orizzonte, e cancellarlo
+  // per il tempo dello scarico vuol dire mostrare l'orizzonte finto in
+  // mezzo a quello vero. Da un'altra parte invece va buttato subito: le
+  // colline di Genova disegnate a Bolzano sono peggio di nessuna collina,
+  // perché sembrano vere.
+  if (terreno.profilo && (terreno.lat === null ||
+      terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) > TERRENO_RAGGIO_VALIDO_KM)) {
+    terrenoScordaProfilo();
+  }
+
   terreno.stato = 'in-corso';
   terreno.motivo = '';
   terreno.avanzamento = 0;
@@ -893,8 +919,16 @@ function terrenoMotivoGuaio(e) {
   } else {
     che = 'non c\'è rete, o il servizio delle quote non risponde';
   }
+  // Cosa resta intanto non è sempre la stessa cosa: se in mano c'è già un
+  // profilo di questo posto — un giro grosso arrivato, un salvataggio da
+  // completare — quello resta al suo posto e l'orizzonte è vero lo stesso.
+  // Dire «resta l'orizzonte disegnato» mentre sullo schermo ci sono le
+  // colline vere è il genere di riga che fa dubitare di tutto il resto.
+  const resta = terreno.profilo
+    ? 'intanto resta l\'orizzonte che ho già, un po\' meno fine.'
+    : 'intanto resta l\'orizzonte disegnato.';
   return `Non sono riuscito a prendere la forma del terreno: ${che}. ` +
-    'Riprovo da solo fra poco; intanto resta l\'orizzonte disegnato.';
+    `Riprovo da solo fra poco; ${resta}`;
 }
 
 // Quando riprovare da soli, dopo un buco nell'acqua. Tre volte, sempre più
@@ -924,15 +958,41 @@ function terrenoRiprovaPiuTardi() {
 // =====================================================================
 
 function terrenoAltezza(az) {
-  if (!terreno.acceso || terreno.stato !== 'pronto' || !terreno.profilo) return null;
+  if (!terrenoDisponibile()) return null;
   const x = (((az % 360) + 360) % 360);
   const i = Math.floor(x);
   const t = x - i;
   return terreno.profilo[i] + (terreno.profilo[i + 1] - terreno.profilo[i]) * t;
 }
 
+// C'è un terreno vero da usare? La domanda è **se il profilo c'è**, non se
+// una richiesta sia finita: sono due cose diverse, e confonderle è costato
+// il guasto più fastidioso di questo modulo.
+//
+// Prima qui c'era `stato === 'pronto'`, e il risultato era un orizzonte a
+// singhiozzo. Lo stato torna a «in-corso» tre volte nella vita normale di un
+// posto — dopo il giro grosso (che il profilo ce l'ha già, ed è il momento
+// in cui si dovrebbe cominciare a disegnarlo), quando un salvataggio
+// parziale si completa da solo quattro secondi dopo l'apertura, e a ogni
+// tentativo automatico dopo un buco nell'acqua — e ogni volta l'app perdeva
+// per una decina di secondi un profilo che aveva già in mano: l'orizzonte
+// tornava quello finto e i nomi delle montagne, che senza terreno non hanno
+// niente che li nasconda, si riaccendevano tutti insieme per poi sparire di
+// nuovo alla fine dello scarico. Il profilo vecchio, finché parla del posto
+// in cui siamo, è la risposta migliore che abbiamo: si tiene fino a quando
+// non arriva quella nuova, e a buttarlo è solo un cambio di luogo
+// (`terrenoScordaProfilo`, chiamata da `terrenoCarica`).
 function terrenoDisponibile() {
-  return terreno.acceso && terreno.stato === 'pronto' && !!terreno.profilo;
+  return terreno.acceso && !!terreno.profilo;
+}
+
+// C'è un terreno che sta arrivando e ancora niente da mostrare. Vale solo
+// per la primissima attesa di un posto: dopo il giro grosso il profilo c'è
+// e `terrenoDisponibile` risponde di sì. Serve a chi, come i nomi delle
+// montagne, preferisce aspettare un secondo piuttosto che dare una risposta
+// che dovrà rimangiarsi.
+function terrenoInArrivo() {
+  return terreno.acceso && terreno.stato === 'in-corso' && !terreno.profilo;
 }
 
 // Quanto si può stare vicini a un punto lontano `km` e contare ancora come
@@ -1998,8 +2058,27 @@ function cimeQuotaOcchio() {
 // esattamente le vette vicine, quelle che uno riconosce.
 function cimeVisibili() {
   if (!cime.acceso || cime.stato !== 'pronto' || !cime.elenco.length) return [];
-  const chiave = `${cimeQuotaOcchio().toFixed(1)}|${terrenoDisponibile() ? terreno.quando : 0}`;
+  // Tre risposte diverse, e la chiave se ne deve accorgere: il terreno c'è
+  // (e allora vale l'istante in cui è arrivato), il terreno sta arrivando,
+  // il terreno non c'è e non arriverà.
+  const attesa = terrenoInArrivo();
+  const chiave = `${cimeQuotaOcchio().toFixed(1)}|${terrenoDisponibile() ? terreno.quando : (attesa ? 'attesa' : 0)}`;
   if (cime.vistaChiave === chiave) return cime.vista;
+
+  // Senza terreno non c'è niente che nasconda niente, e l'elenco verrebbe
+  // fuori intero: ottanta vette, comprese quelle che stanno dietro alla
+  // prima cresta. Se il terreno **sta arrivando** quella non è una risposta,
+  // è un'anteprima sbagliata che fra due secondi va rimangiata — ed è
+  // esattamente il singhiozzo che si vedeva all'apertura: tutti i nomi
+  // addosso all'orizzonte, e poi via la metà. Meglio un secondo di silenzio.
+  // Se invece il terreno non c'è e non arriva (spento, o la rete ha detto
+  // di no), si nomina quello che spunta: è la risposta migliore possibile
+  // con quello che si sa, ed è quella di sempre.
+  if (attesa) {
+    cime.vista = [];
+    cime.vistaChiave = chiave;
+    return cime.vista;
+  }
 
   const occhio = cimeQuotaOcchio();
   const spuntano = cime.elenco
@@ -2054,10 +2133,15 @@ function cimeTesto() {
   if (cime.motivo) return cime.motivo;
 
   const viste = cimeVisibili();
-  // Due silenzi diversi, e vale la pena distinguerli: «non ci sono
+  // Tre silenzi diversi, e vale la pena distinguerli: «non ci sono
   // montagne» è un fatto del posto, «ci sono ma non si vedono» è un fatto
-  // dell'orizzonte — e la seconda è la risposta a «perché non leggo niente».
+  // dell'orizzonte — ed è la risposta a «perché non leggo niente» — mentre
+  // «sto ancora aspettando il terreno» non è né l'una né l'altra, e dirla
+  // come se lo fosse sarebbe una bugia che dura due secondi.
   if (!viste.length) {
+    if (terrenoInArrivo()) {
+      return `Ho ${cime.elenco.length} vette qui attorno: aspetto la forma del terreno per sapere quali si vedono.`;
+    }
     return cime.elenco.length
       ? `Le ${cime.elenco.length} vette entro ${raggioCime()} km restano tutte dietro alla prima cresta: da qui non se ne vede nessuna.`
       : `Nessuna vetta con un nome entro ${raggioCime()} km: nelle Impostazioni puoi allargare la ricerca.`;
