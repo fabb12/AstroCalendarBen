@@ -6335,6 +6335,13 @@ body button.did-linguetta.attiva .did-linguetta-numero { background: rgba(255, 2
   touch-action: pan-y;
 }
 #did-fionda-pianeta { touch-action: none; cursor: ns-resize; }
+/* Le tre tele del tramonto su cui si prende il Sole col dito. Come per la
+   fionda, il dito lì ha già un mestiere: senza `touch-action: none` il
+   primo movimento verticale se lo prenderebbe lo scorrimento della pagina
+   e il Sole resterebbe fermo — che è il modo in cui un comando sembra
+   rotto invece che assente. */
+#did-tram-aria, #did-tram-cielo, #did-tram-marte { touch-action: none; cursor: grab; }
+#did-tram-aria:active, #did-tram-cielo:active, #did-tram-marte:active { cursor: grabbing; }
 
 .did-targhetta {
   position: absolute;
@@ -6617,6 +6624,16 @@ body button.did-play.in-marcia {
 }
 
 .did-quadri { flex: 1 1 100%; }
+
+/* Quattro schede — quelle del tramonto — su uno schermo stretto non ci
+   stanno in riga, e `white-space: nowrap` non le accorcia: le fa sbordare
+   una sull'altra, e si stampano sovrapposte. Sotto i 560px vanno a capo.
+   Due righe di schede leggibili valgono più di una riga illeggibile, e la
+   stessa regola tiene su anche le cinque del banco delle aurore. */
+@media (max-width: 560px) {
+  .did-quadri { flex-wrap: wrap; row-gap: 2px; }
+  .did-quadri .tasto-segmento { flex: 1 1 auto; padding-inline: 10px; }
+}
 
 body button.did-tasto {
   min-height: 36px;

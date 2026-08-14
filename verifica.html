@@ -2139,7 +2139,93 @@ if (typeof didProve === 'undefined' || !didProve.tram) {
           T.altezzaDaOra(0, 78, -20) < 0, `${T.altezzaDaOra(0, 78, -20).toFixed(1)}° a mezzogiorno`);
   }
 
-  // 8. Il confronto con Astronomy Engine: la formula scritta a mano contro
+  // 8. Prendere il Sole col dito vuol dire indicare un'altezza
+  //    **apparente**, e da lì bisogna tornare a quella vera per sapere
+  //    quanto è girata la Terra. È l'inversa della rifrazione, fatta a
+  //    tentativi: se non chiude, il Sole trascinato si ferma dove non
+  //    dovrebbe, e la cosa non si vede perché si ferma comunque da qualche
+  //    parte plausibile.
+  {
+    let peggio = 0;
+    for (let a = -0.3; a <= 88; a += 0.5) {
+      peggio = Math.max(peggio, Math.abs(T.altezzaApparente(T.veroDaApparente(a)) - a));
+    }
+    prova('dall\'altezza apparente si torna a quella vera', peggio < 0.01,
+          `scarto massimo ${peggio.toExponential(1)}°`);
+    // Sotto ai −34′ apparenti l'inversa non esiste: là sotto non ci arriva
+    // nessuna altezza vera, perché la rifrazione all'orizzonte vale
+    // esattamente quello. Trascinando il Sole più giù ci si deve fermare,
+    // non divergere — un NaN qui vorrebbe dire un'ora qualunque.
+    const fondo = T.veroDaApparente(-5);
+    prova('e sotto l\'orizzonte ottico si ferma invece di impazzire',
+          isFinite(fondo) && fondo > -2 && fondo < 0, `si ferma a ${fondo.toFixed(2)}°`);
+  }
+
+  // 9. Marte. È il quadro del confronto, e la sua promessa è forte: di
+  //    giorno il cielo di Marte è **color paglia** e il nostro azzurro; al
+  //    tramonto si scambiano, e attorno al Sole marziano compare il blu.
+  //    Sono quattro disuguaglianze fra numeri che escono dai conti, e o
+  //    tornano tutte e quattro o il quadro sta dicendo una bugia con
+  //    l'aria di spiegare la fisica.
+  {
+    const M = T.MARTE;
+
+    prova('su Marte di Rayleigh non resta quasi niente',
+          M.kRay > 0 && M.kRay < T.K0 / 10,
+          `${M.kRay} contro ${T.K0} di magnitudini per massa d'aria: ${(T.K0 / M.kRay).toFixed(0)} volte meno`);
+    prova('e la polvere fa ottanta volte quello che fa la sua aria',
+          M.kPolvere / M.kRay > 50 && M.kPolvere / M.kRay < 120,
+          `${(M.kPolvere / M.kRay).toFixed(0)}×`);
+    prova('l\'orizzonte di Marte è venticinque masse d\'aria, non trentotto',
+          Math.abs(T.massaAriaMarte(0) - Math.sqrt(2 * M.RE * M.ARIA_KM + M.ARIA_KM * M.ARIA_KM) / M.ARIA_KM) < 0.01
+          && T.massaAriaMarte(0) > 22 && T.massaAriaMarte(0) < 28,
+          `${T.massaAriaMarte(0).toFixed(1)}×`);
+    prova('e allo zenit vale uno come dappertutto',
+          Math.abs(T.massaAriaMarte(90) - 1) < 1e-9, T.massaAriaMarte(90).toFixed(4));
+
+    // La forma di diffusione della polvere: normalizzata (l'integrale sulla
+    // sfera fa uno), col picco in avanti, e **più stretto nel blu** — è da
+    // lì che viene l'alone azzurro attorno al Sole marziano
+    {
+      let somma = 0;
+      const passi = 2000;
+      for (let i = 0; i < passi; i++) {
+        const th = (i + 0.5) / passi * Math.PI;
+        somma += T.fase(th * 180 / Math.PI, 0.7) * Math.sin(th) * (Math.PI / passi) * 2 * Math.PI;
+      }
+      prova('la forma di diffusione della polvere è normalizzata',
+            Math.abs(somma - 1) < 0.01, `integrale sulla sfera = ${somma.toFixed(4)}`);
+    }
+    prova('e il picco in avanti è più stretto nel blu che nel rosso',
+          T.fase(2, M.bande[450].g) / T.fase(2, M.bande[650].g) > 2 &&
+          T.fase(60, M.bande[450].g) / T.fase(60, M.bande[650].g) < 1,
+          `a 2° il blu è ${(T.fase(2, M.bande[450].g) / T.fase(2, M.bande[650].g)).toFixed(1)}× il rosso, a 60° ${(T.fase(60, M.bande[450].g) / T.fase(60, M.bande[650].g)).toFixed(2)}×`);
+    prova('e la polvere si mangia il blu più del rosso',
+          M.bande[450].omega < M.bande[650].omega * 0.8,
+          `ne ridiffonde il ${(M.bande[450].omega * 100).toFixed(0)}% contro il ${(M.bande[650].omega * 100).toFixed(0)}%`);
+
+    // Le quattro risposte che il quadro esiste per dare
+    const t12 = T.coloreCielo(30, 60), m12 = T.coloreCieloMarte(30, 60);
+    prova('di giorno il nostro cielo è azzurro', t12.b > t12.r * 1.5,
+          `blu ${t12.b.toFixed(0)} contro rosso ${t12.r.toFixed(0)}`);
+    prova('e quello di Marte è color paglia', m12.r > m12.b * 1.15 && m12.g > m12.b,
+          `rosso ${m12.r.toFixed(0)}, verde ${m12.g.toFixed(0)}, blu ${m12.b.toFixed(0)}`);
+
+    const tTr = T.coloreCielo(1.5, 0), mTr = T.coloreCieloMarte(1.5, 0);
+    prova('al tramonto il nostro cielo è rosso', tTr.r > tTr.b * 3,
+          `rosso ${tTr.r.toFixed(0)} contro blu ${tTr.b.toFixed(0)}`);
+    prova('e attorno al Sole di Marte compare il blu', mTr.b > mTr.r * 1.15,
+          `blu ${mTr.b.toFixed(0)} contro rosso ${mTr.r.toFixed(0)}`);
+
+    // e lontano dal Sole, al tramonto, Marte torna terroso: è la stessa
+    // polvere, ma senza il picco in avanti che tiene insieme il blu
+    const mLontano = T.coloreCieloMarte(35, 0);
+    prova('ma lontano dal Sole marziano il blu sparisce di nuovo',
+          mLontano.b < mTr.b && mLontano.r >= mLontano.b * 0.9,
+          `blu ${mLontano.b.toFixed(0)}, rosso ${mLontano.r.toFixed(0)}`);
+  }
+
+  // 10. Il confronto con Astronomy Engine: la formula scritta a mano contro
   //    le effemeridi vere, per una data e un posto scelti a caso
   if (typeof Astronomy !== 'undefined') {
     const obs = new Astronomy.Observer(44.5, 0, 0);
