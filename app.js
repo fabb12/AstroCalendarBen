@@ -8507,6 +8507,14 @@ function skyInizializzaLuogoVista() {
     });
   }
 
+  const attuale = document.getElementById('skymap-luogo-attuale');
+  if (attuale) {
+    attuale.addEventListener('click', () => {
+      skyTornaAlLuogoDiCasa();
+      skyAvviso('luogo', 'Cielo di nuovo dalla tua posizione.', 4000);
+    });
+  }
+
   // Il mappamondo: la via per i punti che un nome non ce l'hanno (7.1-quater)
   const mappa = document.getElementById('skymap-luogo-mappa');
   if (mappa) mappa.addEventListener('click', apriMappaLuogoCielo);
@@ -26424,6 +26432,7 @@ function skyVaiAllaDataScritta() {
   skyFermaPlayback();
   sol.marcia = 0;
   skyImpostaOffsetTempo((d.getTime() - Date.now()) / 1000);
+  skyMostraGruppo('');
 }
 
 // La slitta si riadatta alla finestra scelta. Il passo è la finestra divisa
@@ -26748,6 +26757,7 @@ function inizializzaSkymapExtra() {
     skyFermaPlayback();
     sky.ancoraTempoSec = 0;
     skyImpostaOffsetTempo(0);
+    skyMostraGruppo('');
   };
   collega('skymap-tempo-ora', tornaAdesso);
   collega('skymap-tempo-adesso', tornaAdesso);
