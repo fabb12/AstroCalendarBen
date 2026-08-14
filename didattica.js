@@ -6773,6 +6773,12 @@
   //      un numero da credere sulla parola — si misura col righello sullo
   //      schermo, come gli angoli del taglio delle aurore.
   //
+  //   3-bis. «E su Marte?» — gli stessi due cieli, la stessa ora, la
+  //      stessa scala angolare, e il colore che si rovescia: di paglia di
+  //      giorno, azzurro attorno al Sole al tramonto. Non è un vezzo da
+  //      cartolina: è la prova che il colore del cielo non lo decide «il
+  //      cielo», lo decide la **misura** di quello che diffonde la luce.
+  //
   //   3. «Che colore ha» — quello che si vede da qui. Il cielo dipinto
   //      coi colori che escono dai conti (una sola diffusione di
   //      Rayleigh: la luce che illumina un pezzo di cielo si è già
@@ -6782,10 +6788,16 @@
   //      come lo è davvero, e accanto il posto in cui il Sole sarebbe
   //      senza atmosfera: sotto l'orizzonte.
   //
-  //   Il comando è uno solo per tutti e tre, ed è la rotazione della
-  //   Terra — non l'altezza del Sole. L'altezza è una conseguenza, e
-  //   prenderla per manopola era esattamente il modo in cui il banco
-  //   faceva credere che a muoversi fosse il Sole.
+  //   Il comando è uno solo per tutti, ed è la rotazione della Terra — non
+  //   l'altezza del Sole. L'altezza è una conseguenza, e prenderla per
+  //   manopola era esattamente il modo in cui il banco faceva credere che
+  //   a muoversi fosse il Sole.
+  //
+  //   Il Sole però si prende col dito lo stesso, e in tutti i quadri: nel
+  //   globo si trascina la Terra, nel quadro dell'aria si punta la
+  //   direzione del raggio, nei due del cielo lo si tira su e giù. A
+  //   muoversi resta sempre `tram.ora`, quindi non esiste un quadro che
+  //   possa raccontare un'ora diversa dagli altri.
   // ===================================================================
 
   const TRAM_RE = 6371;             // raggio della Terra, km
@@ -6803,6 +6815,13 @@
   // su una Terra piatta non finirebbe mai. Vale √(2RH), sono 327 km, ed è
   // il numero su cui è tarata la scala del quadro «Quanta aria».
   const TRAM_CAMMINO_MAX = Math.sqrt(2 * TRAM_RE * TRAM_ARIA_KM + TRAM_ARIA_KM * TRAM_ARIA_KM);
+  // Dove sta l'osservatore nel quadro dell'aria, in frazioni del riquadro.
+  // È una costante e non due numeri scritti nel disegno perché la stessa
+  // coppia serve al dito: chi trascina il Sole misura l'angolo **da lì**, e
+  // se il disegno e il gesto usassero due punti diversi il Sole si
+  // sposterebbe di un pelo a ogni presa.
+  const TRAM_ARIA_OBS = { x: 0.88, y: 0.68 };
+
   // Il raggio di curvatura di un raggio di luce rasente, in raggi terrestri:
   // è il numero da cui esce il fatto che la rifrazione all'orizzonte vale
   // mezzo grado, cioè più del diametro del Sole.
@@ -6817,7 +6836,8 @@
   const TRAM_QUADRI = {
     globo:  { chip: 'Perché tramonta' },
     aria:   { chip: 'Quanta aria' },
-    colore: { chip: 'Che colore ha' }
+    colore: { chip: 'Che colore ha' },
+    marte:  { chip: 'E su Marte?' }
   };
 
   // I punti di vista sul globo. «Di taglio» è quello di partenza, e non per
@@ -6867,28 +6887,137 @@
     [103.8, 1.35], [126.98, 37.57], [100.5, 13.75], [-70.7, -33.4]
   ];
 
-  // I continenti sono gli stessi della faccia della Terra della vista 3D del
-  // Sistema Solare (`SKY_TERRE` in app.js): la Terra dev'essere la stessa in
-  // tutta l'app. Se app.js non c'è, se ne tiene qui una copia corta.
-  const TRAM_TERRE_MIE = [
-    { lon: 20,   lat: 3,   r: 0.36, c: '#3f6b3d' },
-    { lon: 18,   lat: 24,  r: 0.26, c: '#b39a63' },
-    { lon: 45,   lat: 24,  r: 0.15, c: '#b39a63' },
-    { lon: 14,   lat: 50,  r: 0.17, c: '#4d7a45' },
-    { lon: 88,   lat: 52,  r: 0.42, c: '#4a7442' },
-    { lon: 78,   lat: 21,  r: 0.15, c: '#5c7f3e' },
-    { lon: -100, lat: 45,  r: 0.33, c: '#4a7442' },
-    { lon: -60,  lat: -14, r: 0.27, c: '#3d6f39' },
-    { lon: 134,  lat: -25, r: 0.21, c: '#a98d55' },
-    { lon: -42,  lat: 72,  r: 0.15, c: '#e8f1f7' }
+  // Il mondo, disegnato per quello che è: le coste vere, in longitudine e
+  // latitudine, seguite punto per punto.
+  //
+  // Prima erano le dieci macchie tonde di `SKY_TERRE` — quelle che nella
+  // vista 3D del Sistema Solare fanno la faccia della Terra, dove il globo
+  // è largo venti pixel e una macchia verde al posto giusto è tutto quello
+  // che serve. Qui il globo prende mezzo schermo e si può ingrandire, e
+  // dieci bolle si leggono per quello che sono: bolle. Con la sagoma vera
+  // invece si riconosce il proprio paese, e riconoscere il proprio paese è
+  // metà del motivo per cui questo quadro esiste — l'omino sta *lì*.
+  //
+  // La risoluzione è grossolana di proposito: qualche decina di vertici per
+  // continente, cioè quello che si vede da un pianeta vicino. Non è una
+  // carta geografica e non pretende di esserlo; è una silhouette.
+  //
+  // L'ordine conta: prima le terre, poi i deserti che ci stanno sopra, poi
+  // i ghiacci. Sono tutti poligoni sferici, quindi il salto della
+  // longitudine a ±180° non è un problema — i vertici diventano vettori e
+  // il vettore non sa niente dei meridiani.
+  const TRAM_MONDO = [
+    { nome: 'Africa', c: '#4a7a42', punti: [
+      [-17, 21], [-13, 28], [-9.5, 31], [-6, 36], [3, 37], [10, 37], [15, 32],
+      [20, 32], [25, 32], [31, 31], [34, 28], [36, 22], [38, 18], [39, 15],
+      [43, 11.5], [48, 11.5], [51, 11.5], [47, 5], [43, 2], [41, -2], [40, -8],
+      [40, -14], [35, -20], [33, -26], [30, -31], [27, -33.5], [22, -34],
+      [18, -34.5], [15, -28], [13, -23], [12, -18], [12, -12], [9, -6], [9, -1],
+      [9.5, 4], [5, 5], [0, 5.5], [-4, 5], [-8, 4.5], [-13, 8], [-16, 12], [-17, 14.7]] },
+
+    { nome: 'Eurasia', c: '#477542', punti: [
+      [-6, 36], [-9, 38.7], [-9, 43.5], [-4, 43.5], [-1.5, 46], [-2, 48.5],
+      [4, 51], [8, 55], [12, 54.5], [21, 56], [24, 59.5], [30, 60], [21, 63],
+      [18, 65], [24, 68], [21, 70], [28, 71], [40, 66], [44, 68], [55, 69],
+      [66, 71], [73, 68], [78, 73], [90, 76], [104, 77], [110, 74], [125, 73],
+      [133, 72], [145, 72], [160, 70], [172, 68], [179, 66], [170, 60], [163, 58],
+      [156, 51], [142, 54], [140, 46], [132, 43], [128, 38], [122, 40], [120, 36],
+      [122, 31], [113, 22], [107, 21], [105, 16], [100, 13], [104, 1], [98, 8],
+      [93, 16], [89, 22], [80, 15], [77, 8], [72, 21], [66, 25], [57, 26],
+      [51, 29], [48, 30], [50, 37], [45, 42], [36, 36], [30, 40], [26, 38],
+      [23, 39], [19, 40], [16, 39], [12, 45], [14, 45], [8, 44], [3, 43],
+      [-2, 37]] },
+
+    { nome: 'Nord America', c: '#487641', punti: [
+      [-168, 66], [-161, 70], [-156, 71], [-145, 70], [-133, 69], [-125, 70],
+      [-115, 69], [-105, 68], [-95, 68], [-85, 70], [-80, 73], [-70, 70],
+      [-65, 60], [-56, 52], [-60, 47], [-66, 45], [-70, 42], [-74, 40],
+      [-76, 35], [-81, 31], [-80, 26], [-83, 29], [-88, 30], [-94, 29],
+      [-97, 26], [-97, 21], [-92, 18], [-88, 21], [-87, 15], [-83, 9],
+      [-79, 9], [-83, 15], [-88, 14], [-95, 16], [-105, 20], [-110, 24],
+      [-114, 28], [-117, 32], [-121, 35], [-124, 40], [-124, 46], [-131, 53],
+      [-136, 58], [-145, 60], [-152, 58], [-159, 56], [-163, 60], [-166, 63]] },
+
+    { nome: 'Sud America', c: '#3f7239', punti: [
+      [-81, -4], [-79, 0], [-77, 8], [-72, 11], [-62, 11], [-52, 5], [-50, 0],
+      [-44, -2], [-38, -5], [-35, -8], [-39, -13], [-40, -20], [-48, -25],
+      [-53, -33], [-57, -38], [-62, -40], [-65, -45], [-68, -50], [-70, -54],
+      [-75, -52], [-74, -46], [-73, -40], [-71, -33], [-70, -23], [-71, -18],
+      [-76, -14]] },
+
+    { nome: 'Australia', c: '#8f7c4a', punti: [
+      [113, -22], [114, -26], [115, -34], [119, -34], [126, -32], [132, -32],
+      [138, -35], [141, -38], [147, -38], [150, -35], [153, -28], [153, -25],
+      [148, -20], [143, -14], [142, -11], [137, -12], [132, -11], [129, -15],
+      [125, -14], [122, -18], [116, -21]] },
+
+    { nome: 'Nuova Guinea', c: '#3f6b3d', punti: [
+      [131, -1], [138, -2], [144, -4], [147, -6], [151, -10], [146, -8],
+      [141, -9], [136, -8], [132, -5]] },
+
+    { nome: 'Borneo', c: '#3f6b3d', punti: [
+      [109, 2], [113, 7], [117, 7], [119, 2], [117, -3], [111, -3], [109, 0]] },
+
+    { nome: 'Sumatra', c: '#3f6b3d', punti: [
+      [95, 5], [98, 4], [104, -2], [106, -6], [102, -5], [99, 0]] },
+
+    { nome: 'Giava', c: '#3f6b3d', punti: [
+      [105, -6], [114, -7], [122, -8], [114, -8.8], [106, -7.5]] },
+
+    { nome: 'Madagascar', c: '#7f7a45', punti: [
+      [49, -12], [50, -15], [48, -21], [46, -25], [44, -22], [44, -17], [46, -13]] },
+
+    { nome: 'Giappone', c: '#487641', punti: [
+      [130, 33], [136, 34], [141, 38], [142, 43], [145, 44], [141, 41],
+      [137, 37], [131, 32]] },
+
+    { nome: 'Isole Britanniche', c: '#4d7a45', punti: [
+      [-5, 50], [1.5, 51], [0, 54], [-2, 57], [-5, 58.5], [-6, 55], [-10, 54],
+      [-10, 51.5], [-6, 50]] },
+
+    { nome: 'Nuova Zelanda', c: '#4d7a45', punti: [
+      [173, -35], [178, -38], [177, -41], [172, -41], [170, -44], [167, -46],
+      [170, -44.5], [172, -40]] },
+
+    { nome: 'Islanda', c: '#6f8f5a', punti: [
+      [-24, 65], [-18, 66.5], [-14, 65.5], [-15, 64], [-21, 63.5]] },
+
+    { nome: 'Cuba', c: '#5c7f3e', punti: [
+      [-84, 22], [-79, 23], [-75, 20], [-80, 20]] },
+
+    { nome: 'Sri Lanka', c: '#5c7f3e', punti: [
+      [80, 9.5], [82, 7], [80, 6], [79, 8]] },
+
+    // I deserti stanno sopra alle terre: si sovrappongono di proposito, e
+    // per questo vengono dopo. Sono la sola cosa che, da lontano, si
+    // riconosce sul verde — il Sahara si vede dallo spazio meglio di
+    // qualunque confine.
+    { nome: 'Sahara', c: '#b39a63', punti: [
+      [-12, 21], [0, 24], [12, 26], [24, 27], [32, 25], [33, 20], [26, 16],
+      [12, 14], [0, 15], [-9, 16]] },
+    { nome: 'Arabia', c: '#b39a63', punti: [
+      [35, 29], [43, 30], [48, 29], [57, 24], [53, 17], [45, 13], [39, 18]] },
+    { nome: 'Australia interna', c: '#a98d55', punti: [
+      [118, -23], [128, -22], [138, -24], [143, -27], [138, -31], [126, -30],
+      [119, -28]] },
+    { nome: 'Gobi', c: '#a99b6b', punti: [
+      [88, 41], [100, 44], [112, 44], [116, 40], [104, 37], [92, 37]] },
+    { nome: 'Kalahari', c: '#a98d55', punti: [
+      [16, -20], [24, -19], [26, -24], [22, -28], [17, -26]] },
+
+    // I ghiacci vengono per ultimi: sono i più chiari, e da un pianeta
+    // vicino sono la prima cosa che si vede.
+    { nome: 'Groenlandia', c: '#e6eef6', punti: [
+      [-73, 78], [-58, 82], [-40, 83], [-22, 80], [-20, 74], [-25, 70],
+      [-35, 66], [-43, 60], [-50, 62], [-54, 66], [-58, 70], [-68, 75]] },
+    // L'Antartide è un anello attorno al polo: girando tutta la longitudine
+    // a latitudine fissa si traccia un parallelo, e un parallelo sulla sfera
+    // racchiude la calotta col polo dentro. Non serve nient'altro.
+    { nome: 'Antartide', c: '#eaf2f9', punti: [
+      [-180, -78], [-150, -75], [-120, -73], [-90, -72], [-60, -73], [-45, -78],
+      [-30, -71], [0, -70], [30, -69], [60, -67], [90, -66], [120, -66],
+      [150, -72], [170, -78]] }
   ];
-  function tramTerre() {
-    if (typeof SKY_TERRE !== 'undefined' && Array.isArray(SKY_TERRE)) {
-      const isole = typeof SKY_ISOLE_TERRA !== 'undefined' && Array.isArray(SKY_ISOLE_TERRA) ? SKY_ISOLE_TERRA : [];
-      return SKY_TERRE.concat(isole);
-    }
-    return TRAM_TERRE_MIE;
-  }
 
   const tram = {
     quadro: 'globo',
@@ -7099,6 +7228,98 @@
     return { r: canale(650), g: canale(550), b: canale(450) };
   }
 
+  // -------------------------------------------------------------------
+  // 9.2-bis Marte, per confronto
+  //
+  // È la domanda che viene subito dopo «perché il cielo è azzurro»: e su
+  // Marte? Su Marte il cielo è **di paglia** di giorno e **azzurro attorno
+  // al Sole** al tramonto — l'esatto contrario del nostro — e la ragione
+  // sta tutta nella misura di quello che diffonde la luce.
+  //
+  // Da noi diffondono le molecole d'aria, mille volte più piccole della
+  // lunghezza d'onda: è il regime di Rayleigh, dove la diffusione va come
+  // λ⁻⁴ e va più o meno in tutte le direzioni. Il blu viene sparpagliato
+  // per tutto il cielo, e da qualunque parte si guardi ne arriva: cielo
+  // azzurro, e Sole rosso perché il blu che vediamo in giro è quello che
+  // al raggio è stato tolto.
+  //
+  // Su Marte l'aria è lo 0,6% della nostra: di Rayleigh non resta niente
+  // (lo spessore ottico è sedici volte più piccolo del nostro). A
+  // diffondere è la **polvere** in sospensione, granelli di un paio di
+  // micron — cioè grandi *come* la lunghezza d'onda, non mille volte meno.
+  // Da lì due cose che rovesciano tutto:
+  //
+  //   • la polvere non guarda il colore quando *estingue* (granelli
+  //     grandi: l'estinzione è grigia), ma diffonde con un **picco in
+  //     avanti** tanto più stretto quanto più corta è l'onda. Il blu
+  //     resta quindi appiccicato attorno al Sole invece di sparpagliarsi;
+  //   • è ossido di ferro, e il ferro **si mangia il blu** (l'albedo di
+  //     singola diffusione è 0,63 nel blu e 0,94 nel rosso).
+  //
+  // Lontano dal Sole vince l'assorbimento: cielo color paglia. Vicino al
+  // Sole vince il picco in avanti: alone azzurro. Ed è per questo che le
+  // fotografie dei tramonti marziani sembrano un negativo dei nostri.
+  const TRAM_MARTE = {
+    RE: 3390,              // raggio, km
+    ARIA_KM: 11.1,         // altezza di scala: gravità di un terzo, aria che si dirada più piano
+    kRay: 0.0064,          // estinzione di Rayleigh a 550 nm, magnitudini per massa d'aria
+    kPolvere: 0.543,       // la polvere: spessore ottico 0,5, e non guarda il colore
+    soleGradi: 0.35,       // il Sole visto da Marte
+    // Per ogni banda: quanta luce la polvere ridiffonde invece di
+    // assorbirla (`omega`), e quanto stretto è il picco in avanti (`g`)
+    bande: {
+      450: { omega: 0.63, g: 0.78 },
+      550: { omega: 0.86, g: 0.70 },
+      650: { omega: 0.94, g: 0.63 }
+    }
+  };
+
+  // La massa d'aria di un pianeta qualunque, col modello della fascia
+  // omogenea: è quello che serve per Marte, dove la formula empirica di
+  // Kasten & Young — tarata sull'atmosfera terrestre — non vuol dire niente.
+  function tramMassaAriaSlab(R, Hkm, hGradi) {
+    const h = Math.max(0, hGradi) * Math.PI / 180;
+    const A = R + Hkm, sn = R * Math.sin(h);
+    return (Math.sqrt(sn * sn + A * A - R * R) - sn) / Hkm;
+  }
+  function tramMassaAriaMarte(h) { return tramMassaAriaSlab(TRAM_MARTE.RE, TRAM_MARTE.ARIA_KM, h); }
+
+  // Henyey-Greenstein: la forma di diffusione di un granello grande. Con
+  // g = 0 va uguale in tutte le direzioni, con g vicino a 1 va quasi tutta
+  // in avanti. È il picco in avanti che tiene il blu attaccato al Sole.
+  function tramFaseHG(thetaGradi, g) {
+    const c = Math.cos(thetaGradi * Math.PI / 180);
+    const d = 1 + g * g - 2 * g * c;
+    return (1 - g * g) / (4 * Math.PI * Math.pow(Math.max(1e-4, d), 1.5));
+  }
+
+  // Il colore del cielo di Marte. La **tinta** esce dai conti; la
+  // luminosità no, e va detto: con mezza unità di spessore ottico di
+  // polvere e venti masse d'aria una diffusione sola darebbe, al tramonto,
+  // un cielo nero — su Marte la luce del crepuscolo arriva quasi tutta da
+  // diffusioni multiple, e questo modello non le sa contare. La
+  // compressione `^0.35` sulla trasmittanza è quella: fa da esposizione,
+  // e lascia intatto il rapporto fra le tre bande, che è l'unica cosa che
+  // questo quadro promette di far vedere.
+  const TRAM_MARTE_COMPRIMI = 0.35;
+  function tramColoreCieloMarte(alt, hSole) {
+    const M = TRAM_MARTE;
+    const Xv = tramMassaAriaMarte(Math.max(alt, 0.6));
+    const Xi = tramMassaAriaMarte(Math.max(hSole + alt * 0.85, 0.4));
+    const theta = Math.abs(alt - hSole);
+    const luce = Math.max(0.02, Math.min(1, (hSole + 6) / 10));
+    // L'estinzione della polvere è grigia, quindi la trasmittanza è la
+    // stessa per tutti: il colore viene da `omega` e dal picco in avanti
+    const T = (X) => Math.pow(10, -0.4 * (M.kPolvere + M.kRay) * X);
+    const esposizione = Math.pow(T(Xi), TRAM_MARTE_COMPRIMI);
+    const diffuso = 1 - T(Xv);
+    const canale = (nm) => {
+      const b = M.bande[nm];
+      return 255 * (1 - Math.exp(-8.5 * luce * esposizione * b.omega * tramFaseHG(theta, b.g) * diffuso));
+    };
+    return { r: canale(650), g: canale(550), b: canale(450) };
+  }
+
   function tramRGBA(c, alfa = 1) {
     return `rgba(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)}, ${alfa})`;
   }
@@ -7191,31 +7412,32 @@
     };
   }
 
-  function tramMacchia(t, w, a, cen, R) {
-    const c = tramSuGlobo(a, t.lat, tramAngoloDiLon(t.lon));
-    // `r` è la misura che quelle macchie hanno sul disco della Terra
-    // disegnata di faccia; qui serve l'apertura angolare sulla sfera, ed è
-    // il suo arcoseno. Il fattore in più è perché lì le macchie si
-    // schiacciano da sé verso il bordo e qui invece si proiettano davvero:
-    // senza, i continenti venivano tutti un terzo più piccoli del vero.
-    const rho = Math.asin(Math.max(0.02, Math.min(0.94, t.r * 1.35)));
-    if (tramDot(c, w.d) < -Math.sin(rho) - 0.1) return null;    // tutta dall'altra parte
-    let t1 = tramSub(a.n, tramScala(c, tramDot(a.n, c)));
-    if (Math.hypot(t1[0], t1[1], t1[2]) < 1e-3) t1 = tramCroce(c, w.r);
-    t1 = tramNorm(t1);
-    const t2 = tramCroce(c, t1);
-    const punti = [];
-    const n = 26;
-    for (let i = 0; i < n; i++) {
-      const th = i / n * 2 * Math.PI;
-      // il bordo appena frastagliato: una costa, non una moneta colorata
-      const k = 1 + 0.2 * Math.sin(th * 3 + t.lon * 0.7) + 0.12 * Math.sin(th * 5 - t.lat * 0.5);
-      const rr = rho * k;
-      const v = tramAdd(tramScala(c, Math.cos(rr)),
-        tramScala(tramAdd(tramScala(t1, Math.cos(th)), tramScala(t2, Math.sin(th))), Math.sin(rr)));
-      punti.push(tramAlBordo(tramPro(v, w), cen, R));
+  // Da una costa in (longitudine, latitudine) al poligono da riempire sullo
+  // schermo. Il pezzo che sta dall'altra parte del globo si appoggia sul
+  // bordo, e nel punto dove la costa lo attraversa il taglio è **esatto**:
+  // si interpola sul vettore fra i due vertici e si normalizza, così il
+  // punto cade sul cerchio massimo del limbo invece che vicino. I vertici
+  // del tutto nascosti scivolano lungo il bordo, ed è quello che fa sembrare
+  // che il continente prosegua dietro — che è quello che fa davvero.
+  function tramSagoma(punti, w, a, cen, R) {
+    const v = punti.map(q => tramSuGlobo(a, q[1], tramAngoloDiLon(q[0])));
+    const z = v.map(q => tramDot(q, w.d));
+    let visto = false;
+    for (let i = 0; i < z.length; i++) if (z[i] > -0.02) { visto = true; break; }
+    if (!visto) return null;                       // tutta dall'altra parte
+    const fuori = [];
+    for (let i = 0; i < v.length; i++) {
+      const j = (i + 1) % v.length;
+      fuori.push(tramAlBordo(tramPro(v[i], w), cen, R));
+      if ((z[i] > 0) !== (z[j] > 0)) {
+        const k = z[i] / (z[i] - z[j]);
+        fuori.push(tramPro(tramNorm([
+          v[i][0] + (v[j][0] - v[i][0]) * k,
+          v[i][1] + (v[j][1] - v[i][1]) * k,
+          v[i][2] + (v[j][2] - v[i][2]) * k]), w));
+      }
     }
-    return punti;
+    return fuori;
   }
 
   function tramDisegnaGlobo() {
@@ -7299,12 +7521,11 @@
     if (reg.giorno) { tramTraccia(ctx, reg.giorno); ctx.fillStyle = '#14559e'; ctx.fill(); }
     else if (reg.tutto === 'giorno') { ctx.fillStyle = '#14559e'; ctx.fillRect(cen.x - R, cen.y - R, R * 2, R * 2); }
 
-    const terre = tramTerre();
     const passata = (poligono, giorno) => {
       ctx.save();
       if (poligono) { tramTraccia(ctx, poligono); ctx.clip(); }
-      terre.forEach(t => {
-        const p = tramMacchia(t, w, a, cen, R);
+      TRAM_MONDO.forEach(t => {
+        const p = tramSagoma(t.punti, w, a, cen, R);
         if (!p) return;
         ctx.fillStyle = giorno ? t.c : tramScurisci(t.c, 0.82);
         tramTraccia(ctx, p); ctx.fill();
@@ -7486,7 +7707,7 @@
   // -------------------------------------------------------------------
 
   function tramDisegnaAria() {
-    const tela = didTela('did-tram-aria', 2.9, 300, { lente: true });
+    const tela = didTela('did-tram-aria', 2.9, 300, { lente: true, pieno: true, trascina: false });
     if (!tela) return;
     const { ctx, L, H } = tela;
     didSfondo(ctx, L, H);
@@ -7500,7 +7721,7 @@
     const ariaPx = TRAM_ARIA_KM * scala;
     // L'osservatore non sta in fondo alla tela: sotto ci vuole il posto per
     // il suolo e per la targhetta, che è appoggiata sopra al disegno
-    const obsX = L * 0.88, obsY = H * 0.68;
+    const obsX = L * TRAM_ARIA_OBS.x, obsY = H * TRAM_ARIA_OBS.y;
     const Rpx = TRAM_RE * scala, Cx = obsX, Cy = obsY + Rpx;
     // il punto a quota `km` sopra il suolo, alla stessa ascissa
     const quota = (x, km) => {
@@ -7611,10 +7832,54 @@
       mx - Math.sin(rad) * 16, my - Math.cos(rad) * 16,
       { colore: tramHexOf(coloreSole), misura: 12, allinea: 'center', peso: 800 });
 
-    // il Sole, in fondo al raggio
+    // --- Il blu che se ne va di lato ------------------------------------
+    //
+    // È la metà della storia che di solito non si racconta: la luce che il
+    // raggio perde non sparisce, cambia direzione. Va a finire in tutto il
+    // resto del cielo, ed è **quella** che vediamo azzurra. I trattini si
+    // spengono avvicinandosi all'osservatore perché di blu, lungo la
+    // strada, ne resta sempre meno: arrivati qui non ce n'è quasi più, e
+    // infatti il Sole è rosso.
+    const quanti = Math.max(3, Math.min(22, Math.round(s.cammino / 14)));
+    const nx = Math.sin(rad), ny = -Math.cos(rad);      // la perpendicolare al raggio, verso il cielo
+    for (let i = 1; i <= quanti; i++) {
+      const u = i / (quanti + 1);
+      const px = ex + (obsX - ex) * u, py = ey + (obsY - ey) * u;
+      const resta = tramTrasmittanza(450, s.X * u);     // quanto blu è ancora nel raggio, lì
+      const forza = Math.max(0, Math.min(1, Math.pow(resta, 0.35)));
+      if (forza < 0.06) continue;
+      const lun = 8 + 11 * forza;
+      ctx.strokeStyle = `rgba(130, 180, 255, ${(0.9 * forza).toFixed(3)})`;
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px + nx * lun - Math.cos(rad) * lun * 0.3, py + ny * lun + Math.sin(rad) * lun * 0.3);
+      ctx.stroke();
+    }
+    if (s.X > 1.4) {
+      didScritta(ctx, 'il blu esce di lato: è quello che fa il cielo azzurro',
+        ex + (obsX - ex) * 0.10 + nx * 46, ey + (obsY - ey) * 0.10 + ny * 46,
+        { colore: 'rgba(150, 190, 255, 0.95)', misura: 10.5, peso: 700 });
+    }
+
+    // Quanta ne arriva davvero, scritto dove arriva
+    didScritta(ctx, `arriva il ${num(s.bande.verde * 100, s.bande.verde > 0.1 ? 0 : 1)}%`,
+      obsX - 10, obsY + 16,
+      { colore: tramHexOf(coloreSole), misura: 11, allinea: 'right', peso: 800 });
+
+    // il Sole, in fondo al raggio, con l'anello che dice che si può prendere
     const dSole = Math.min(74, Math.hypot(ex, ey - H * 0.2));
     const px = ex - Math.cos(rad) * dSole, py = ey - Math.sin(rad) * dSole;
-    if (px > 12) didCorpoSchermo(ctx, px, py, 9, tramHexOf(coloreSole), { alone: 3 });
+    if (px > 12) {
+      didCorpoSchermo(ctx, px, py, 10, tramHexOf(coloreSole), { alone: 3 });
+      ctx.strokeStyle = 'rgba(255, 240, 200, 0.55)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.arc(px, py, 17, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      didScritta(ctx, 'trascinami', px, py - 24,
+        { colore: 'rgba(255, 226, 168, 0.9)', misura: 10, allinea: 'center', peso: 700 });
+    }
 
     // --- La misura della fascia ----------------------------------------
     const mX = obsX + Math.min(34, (L - obsX) * 0.45);
@@ -7653,8 +7918,14 @@
   // 9.5 Il quadro del colore — quello che si vede da qui
   // -------------------------------------------------------------------
 
+  // Quanto cielo si inquadra: quel tanto che basta a tenerci dentro il Sole.
+  // È una funzione e non due righe dentro al disegno perché la usa anche il
+  // dito — chi trascina il Sole si muove in gradi, e i gradi per pixel sono
+  // questi.
+  function tramCampoCielo(hApp) { return Math.max(4, Math.min(80, hApp * 1.3 + 2.4)); }
+
   function tramDisegnaCieloVisto() {
-    const tela = didTela('did-tram-cielo', 1.25, 420, { lente: true });
+    const tela = didTela('did-tram-cielo', 1.25, 420, { lente: true, pieno: true, trascina: false });
     if (!tela) return;
     const { ctx, L, H } = tela;
     const s = tramCalcola();
@@ -7665,7 +7936,7 @@
     // allarga quel tanto che basta a tenerci dentro il Sole: con un campo
     // fisso, appena il Sole si alzava un poco usciva dall'inquadratura e
     // restava un rettangolo di colore senza il suo protagonista.
-    const campo = Math.max(4, Math.min(80, s.hApp * 1.3 + 2.4));
+    const campo = tramCampoCielo(s.hApp);
     const kpx = H / campo;
     const yOriz = H * 0.80;
     const yDi = (alt) => yOriz - alt * kpx;
@@ -7762,7 +8033,7 @@
 
   // --- L'istogramma dello spettro che resta ---------------------------
   function tramDisegnaBande() {
-    const tela = didTela('did-tram-bande', 1, 420, { lente: true });
+    const tela = didTela('did-tram-bande', 1, 420, { lente: true, pieno: true });
     if (!tela) return;
     const { ctx, L, H } = tela;
     ctx.clearRect(0, 0, L, H);
@@ -7814,7 +8085,183 @@
   }
 
   // -------------------------------------------------------------------
-  // 9.6 I numeri, i comandi, il banco
+  // 9.6 Il quadro di Marte — due cieli, la stessa ora
+  // -------------------------------------------------------------------
+
+  // Un cielo visto da sotto, dentro a un riquadro: le strisce di colore, il
+  // Sole alla sua misura angolare vera, l'orizzonte, il terreno.
+  //
+  // È la stessa funzione per tutt'e due i pianeti, e non è pigrizia: se i
+  // due cieli fossero disegnati da due funzioni diverse, la differenza fra
+  // loro potrebbe venire dal disegno invece che dalla fisica, e il
+  // confronto — che è tutto quello che questo quadro è — non varrebbe più
+  // niente. Cambiano tre cose sole: la funzione che dà il colore, quanto è
+  // grande il Sole visto da lì, e il colore del suolo.
+  function tramDipingiCielo(ctx, r, p) {
+    const kpx = r.H / p.campo;
+    const yOriz = r.y + r.H * 0.78;
+    const cx = r.x + r.L / 2;
+    const yDi = (alt) => yOriz - alt * kpx;
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(r.x, r.y, r.L, r.H); ctx.clip();
+
+    ctx.fillStyle = '#05070f';
+    ctx.fillRect(r.x, r.y, r.L, r.H);
+    for (let y = r.y; y < yOriz; y += 3) {
+      ctx.fillStyle = tramRGBA(p.colore((yOriz - y) / kpx, p.hSole));
+      ctx.fillRect(r.x, y, r.L, 3.2);
+    }
+
+    const rx = p.soleGradi / 2 * kpx;
+    const ySole = yDi(p.hSole);
+    if (p.hSole > -1.2) {
+      const g = ctx.createRadialGradient(cx, ySole, rx * 0.4, cx, ySole, rx * 11);
+      g.addColorStop(0, tramRGBA(p.coloreSole, 0.5));
+      g.addColorStop(0.35, tramRGBA(p.coloreSole, 0.16));
+      g.addColorStop(1, tramRGBA(p.coloreSole, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(r.x, r.y, r.L, yOriz - r.y);
+      ctx.fillStyle = tramRGBA(p.coloreSole);
+      ctx.beginPath(); ctx.ellipse(cx, ySole, rx, rx * p.schiaccia, 0, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // il terreno
+    ctx.fillStyle = p.suolo;
+    ctx.beginPath();
+    ctx.moveTo(r.x, yOriz);
+    for (let x = 0; x <= r.L; x += 8) {
+      const d = Math.sin((x + p.onda) * 0.02) * 3 + Math.sin((x + p.onda) * 0.048 + 1.2) * 2;
+      ctx.lineTo(r.x + x, yOriz - Math.max(0, d));
+    }
+    ctx.lineTo(r.x + r.L, r.y + r.H); ctx.lineTo(r.x, r.y + r.H);
+    ctx.closePath(); ctx.fill();
+
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(148, 168, 214, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(r.x + 0.5, r.y + 0.5, r.L - 1, r.H - 1);
+    return { yOriz, kpx, cx };
+  }
+
+  function tramDisegnaMarte() {
+    // Su un telefono i due cieli non stanno affiancati: verrebbero due
+    // francobolli, e un confronto fra due francobolli non è un confronto.
+    // Si mettono uno sopra l'altro, e la tela diventa alta invece che larga
+    // — la proporzione si sceglie **prima** di chiederla, leggendo quanto è
+    // largo il riquadro, perché è quella che decide l'altezza.
+    const nodo = $('did-tram-marte');
+    const stretto = !!nodo && nodo.clientWidth > 0 && nodo.clientWidth < 520;
+    const tela = didTela('did-tram-marte', stretto ? 0.62 : 1.75, stretto ? 620 : 400,
+      { lente: true, pieno: true, trascina: false });
+    if (!tela) return;
+    const { ctx, L, H } = tela;
+    didSfondo(ctx, L, H);
+    const s = tramCalcola();
+
+    // Lo stesso campo per tutt'e due, se no i due cieli non sarebbero
+    // confrontabili: mezzo grado di Sole da una parte e mezzo grado
+    // dall'altra devono venire alla stessa misura sullo schermo.
+    const campo = tramCampoCielo(Math.max(0, s.hApp));
+    // Il fondo tiene le due righe di spiegazione **e** la targhetta, che è
+    // appoggiata sopra al disegno e su un telefono va a capo: è la stessa
+    // misura nei due casi perché il posto che serve non dipende da come
+    // sono disposti i riquadri
+    const alto = 30, basso = 108;
+    const nome = 16;              // quanto sta il nome del pianeta sopra al suo riquadro
+    const coda = 34;              // quanto stanno il colore e la sua riga sotto
+    let rTerra, rMarte;
+    if (stretto) {
+      const ph = Math.max(90, (H - alto - basso - 2 * (nome + coda)) / 2);
+      rTerra = { x: 12, y: alto + nome, L: L - 24, H: ph };
+      rMarte = { x: 12, y: alto + nome + ph + coda + nome, L: L - 24, H: ph };
+    } else {
+      const largo = (L - 30) / 2;
+      const ph = Math.max(80, H - alto - basso - nome - coda);
+      rTerra = { x: 12, y: alto + nome, L: largo, H: ph };
+      rMarte = { x: L - 12 - largo, y: alto + nome, L: largo, H: ph };
+    }
+
+    // Il Sole della Terra: quello che resta dopo Rayleigh, cioè rosso.
+    const coloreTerra = tramColoreSole(s.bande);
+    // Quello di Marte resta **bianco**: la polvere non guarda il colore
+    // quando ferma la luce, la ferma e basta. Si spegne, non si arrossa.
+    const Xm = tramMassaAriaMarte(Math.max(0, s.hVero));
+    const restaM = Math.pow(10, -0.4 * (TRAM_MARTE.kPolvere + TRAM_MARTE.kRay) * Xm);
+    const lm = 0.5 + 0.5 * Math.pow(Math.max(0, Math.min(1, restaM)), 0.25);
+    const coloreMarte = { r: 255 * lm, g: 251 * lm, b: 241 * lm };
+
+    const A = tramDipingiCielo(ctx, rTerra, {
+      campo, hSole: s.hApp, colore: tramColoreCielo, soleGradi: TRAM_SOLE_GRADI,
+      coloreSole: coloreTerra, schiaccia: 0.86, suolo: 'rgba(10, 16, 30, 0.96)', onda: 0
+    });
+    const M = tramDipingiCielo(ctx, rMarte, {
+      // Su Marte l'aria è così poca che la rifrazione non esiste: qualche
+      // primo d'arco contro i nostri trentaquattro. Il Sole tramonta quando
+      // tramonta, e non si schiaccia.
+      campo, hSole: s.hVero, colore: tramColoreCieloMarte, soleGradi: TRAM_MARTE.soleGradi,
+      coloreSole: coloreMarte, schiaccia: 1, suolo: 'rgba(52, 30, 20, 0.97)', onda: 300
+    });
+
+    // Il nome del colore che esce dai conti, sotto ognuno dei due cieli: è
+    // la riga che si legge per prima, e cambia trascinando il Sole.
+    const tintaT = tramColoreCielo(campo * 0.35, s.hVero);
+    const tintaM = tramColoreCieloMarte(campo * 0.35, s.hVero);
+    const intesta = (r, testo, colore, tinta, sottotitolo) => {
+      const cx = r.x + r.L / 2;
+      didScritta(ctx, testo, cx, r.y - 5,
+        { colore, misura: 12, allinea: 'center', peso: 800, schermo: true });
+      didScritta(ctx, `cielo ${tramNomeTinta(tinta)}`, cx, r.y + r.H + 16,
+        { colore: tramRGBA(tinta), misura: 12, allinea: 'center', peso: 800, schermo: true });
+      didScritta(ctx, sottotitolo, cx, r.y + r.H + 31,
+        { colore: C.testo3, misura: 10, allinea: 'center', peso: 600, schermo: true });
+    };
+    intesta(rTerra, 'TERRA', '#8ab4ff', tintaT, 'molecole ben più piccole della luce: Rayleigh, λ⁻⁴');
+    intesta(rMarte, 'MARTE', '#e0956a', tintaM, 'polvere grande come la luce, e ferro che mangia il blu');
+
+    const sotto = rMarte.y + rMarte.H + coda + 14;
+    didScritta(ctx, s.hVero > 6
+      ? (stretto ? 'Di giorno: noi azzurri, Marte color paglia.'
+        : 'Di giorno: da noi il blu sparpagliato in tutto il cielo, su Marte la polvere che se lo mangia e lascia il colore della sabbia.')
+      : (stretto ? 'Al tramonto si scambiano: noi rossi, Marte azzurro.'
+        : 'Al tramonto si scambiano: il nostro cielo diventa rosso, e su Marte il blu si stringe attorno al Sole invece di sparpagliarsi.'),
+      12, sotto, { colore: C.testo2, misura: 11, peso: 700, schermo: true });
+    didScritta(ctx, stretto
+      ? 'Molecole: Terra 0,097, Marte 0,006. Polvere: 0,5.'
+      : 'Spessore ottico a 550 nm — molecole: Terra 0,097, Marte 0,006 (sedici volte meno). Polvere di Marte: 0,5, cioè ottanta volte la sua aria.',
+      12, sotto + 16, { colore: C.testo3, misura: 10, peso: 600, schermo: true });
+
+    // il Sole si può prendere anche qui
+    if (s.hApp > -1.2) {
+      ctx.strokeStyle = 'rgba(255, 240, 200, 0.4)';
+      ctx.lineWidth = 1.1; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.arc(A.cx, A.yOriz - s.hApp * A.kpx, 16, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(M.cx, M.yOriz - s.hVero * M.kpx, 16, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    didScritta(ctx, stretto ? 'Trascina su e giù per muovere il Sole.'
+      : 'Trascina su e giù per muovere il Sole — si muove in tutt\'e due i cieli.',
+      12, 18, { colore: C.testo3, misura: 10.5, peso: 600, schermo: true });
+  }
+
+  // Il nome del colore, dal colore. Serve solo a scriverlo sotto ai due
+  // cieli: un cielo «rgb(191,181,139)» non lo capisce nessuno.
+  function tramNomeTinta(c) {
+    const mx = Math.max(c.r, c.g, c.b), mn = Math.min(c.r, c.g, c.b);
+    if (mx < 26) return 'quasi nero';
+    const sat = (mx - mn) / Math.max(1, mx);
+    if (sat < 0.13) return 'grigio';
+    if (c.b >= mx - 1) return c.g > c.r * 1.25 ? 'azzurro' : 'blu';
+    if (c.r >= mx - 1) {
+      if (c.g > c.r * 0.78) return c.b > c.r * 0.6 ? 'color paglia' : 'giallo ocra';
+      if (c.g > c.r * 0.45) return 'arancione';
+      return 'rosso';
+    }
+    return 'verdastro';
+  }
+
+  // -------------------------------------------------------------------
+  // 9.7 I numeri, i comandi, il banco
   // -------------------------------------------------------------------
 
   function tramOraTesto() {
@@ -7828,6 +8275,69 @@
     tram.ora = Math.max(0, Math.min(TRAM_ORA_MAX, v));
     const sl = $('did-tram-slitta');
     if (sl) sl.value = String(Math.round(tram.ora * 10));
+  }
+
+  // Da dove si **vede** il Sole a dove sta la Terra. Chi trascina il Sole
+  // col dito indica un'altezza apparente: di lì si toglie la rifrazione
+  // (tre passate bastano e avanzano — la correzione è di mezzo grado, e a
+  // ogni giro se ne sbaglia un centesimo) e si arriva all'angolo orario,
+  // che è l'unica manopola vera del banco. Muovere il Sole vuol dire
+  // quindi girare la Terra, ed è giusto che sia così: se il Sole avesse
+  // uno stato suo, i quadri finirebbero per raccontare ore diverse.
+  //
+  // Sopra il mezzogiorno del posto non si va: da una certa latitudine il
+  // Sole più in alto di così non ci arriva, e la slitta si ferma lì invece
+  // di far finta.
+  // L'inversa non esiste dappertutto, e va detto: sotto ai −34′ apparenti
+  // non c'è **nessuna** altezza vera che ci porti, perché la rifrazione
+  // all'orizzonte vale esattamente quello. Sotto quella soglia il conto si
+  // ferma al fondo invece di rincorrere un punto fisso che non c'è — che
+  // col dito vuol dire: si trascina il Sole sotto l'orizzonte e lui si
+  // ferma al tramonto, che è anche quello che succede davvero.
+  function tramVeroDaApparente(hApp) {
+    const app = Math.max(-1.2, Math.min(90, hApp));
+    let hVero = app;
+    for (let i = 0; i < 5; i++) hVero = Math.max(-1.4, app - tramRifrazione(hVero) / 60);
+    return hVero;
+  }
+  function tramImpostaAltezzaApparente(hApp) {
+    tramImpostaOra(tramOraPerAltezza(tramVeroDaApparente(hApp)));
+  }
+
+  // Il Sole si prende col dito. Chi chiama dice **come** si legge la
+  // posizione del dito, perché nei due quadri vuol dire due cose diverse:
+  // nel quadro dell'aria conta l'angolo che il raggio fa con l'orizzonte
+  // (si prende il Sole e lo si corica, e il cammino nell'aria si allunga
+  // sotto gli occhi); nei quadri del cielo conta lo **spostamento**
+  // verticale, perché lì l'inquadratura si allarga da sé man mano che il
+  // Sole sale, e un angolo assoluto si rincorrerebbe da solo.
+  function tramCollegaSole(id, leggi) {
+    const tela = $(id);
+    if (!tela) return;
+    let preso = null;
+    const dove = (e) => {
+      const r = tela.getBoundingClientRect();
+      const p = didLenteMondo(id, e.clientX - r.left, e.clientY - r.top);
+      return { x: p.x, y: p.y, L: r.width, H: r.height };
+    };
+    tela.addEventListener('pointerdown', (e) => {
+      if (!e.isPrimary) return;
+      preso = dove(e);
+      try { tela.setPointerCapture(e.pointerId); } catch (err) { /* pazienza */ }
+      if (tram.marcia) { tram.marcia = false; alterna('did-tram', false); }
+      leggi(preso, null);
+      tramAggiornaTesti();
+    });
+    tela.addEventListener('pointermove', (e) => {
+      if (!preso || !e.isPrimary) return;
+      const p = dove(e);
+      leggi(p, preso);
+      preso = p;
+      tramAggiornaTesti();
+    });
+    const su = () => { preso = null; };
+    tela.addEventListener('pointerup', su);
+    tela.addEventListener('pointercancel', su);
   }
 
   function tramLeggiPosto() {
@@ -8012,8 +8522,10 @@
     sommario: `Il Sole non scende: <em>siamo noi che giriamo</em>. <strong>Trascina la Terra col dito</strong>
       e guarda l'omino passare dalla parte in ombra — il confine fra il giorno e la notte sta fermo, lo
       attraversiamo noi. Quando il Sole è basso la sua luce entra di striscio: la stessa aria che col
-      Sole sulla testa attraverserebbe in 8 km se la deve fare per più di trecento, il blu si disperde per strada e
-      arriva solo il rosso. E la fa arrivare più a lungo di quanto dovrebbe, perché l'aria piega i raggi.`,
+      Sole sulla testa attraverserebbe in 8 km se la deve fare per più di trecento, e il blu se ne va per
+      strada — <em>di lato</em>, che è poi il motivo per cui il cielo attorno è azzurro. Al raggio resta
+      il rosso. <strong>Il Sole si prende col dito</strong> in tutti i quadri; nell'ultimo c'è Marte
+      accanto a noi, dove la stessa storia finisce al contrario.`,
 
     costruisci() {
       return `
@@ -8039,9 +8551,9 @@
         <div id="did-tram-q-aria" class="hidden">
           <figure class="did-scena did-scena-tonda">
             <canvas id="did-tram-aria" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">Scala vera, curvatura compresa. Il trattino verticale è il cammino
-              più corto possibile, col Sole sulla testa: <em>quello lungo ci sta dentro tante volte quanta è la
-              massa d'aria</em>.</figcaption>
+            <figcaption class="did-targhetta"><strong>Trascina il Sole</strong> — scala vera, curvatura compresa.
+              Il trattino verticale è il cammino più corto possibile: <em>quello lungo ci sta dentro tante volte
+              quanta è la massa d'aria</em>.</figcaption>
           </figure>
         </div>
 
@@ -8049,14 +8561,31 @@
           <div class="did-scene did-scene-due">
             <figure class="did-scena">
               <canvas id="did-tram-cielo" class="did-tela"></canvas>
-              <figcaption class="did-targhetta">Quello che si vede da qui: il disco alla misura vera, schiacciato
-                dalla rifrazione, e il posto in cui il Sole sarebbe senza aria</figcaption>
+              <figcaption class="did-targhetta"><strong>Trascina il Sole su e giù.</strong> Il disco è alla misura
+                vera, schiacciato dalla rifrazione, e accanto c'è dove sarebbe senza aria</figcaption>
             </figure>
             <figure class="did-scena">
               <canvas id="did-tram-bande" class="did-tela"></canvas>
               <figcaption class="did-targhetta">Quanta luce resta, colore per colore</figcaption>
             </figure>
           </div>
+        </div>
+
+        <div id="did-tram-q-marte" class="hidden">
+          <figure class="did-scena did-scena-tonda">
+            <canvas id="did-tram-marte" class="did-tela"></canvas>
+            <figcaption class="did-targhetta">Stessa ora, stessa scala: a cambiare è solo <em>chi</em> diffonde la luce.</figcaption>
+          </figure>
+          <p class="did-nota">Da noi diffondono le molecole d'aria, mille volte più piccole della lunghezza
+            d'onda: è il regime di <strong>Rayleigh</strong>, dove la diffusione cresce come λ⁻⁴ e va un po'
+            in tutte le direzioni. Il blu viene sparpagliato per tutto il cielo — e da qualunque parte si
+            guardi, ne arriva: <strong>cielo azzurro</strong>. Su Marte l'aria è lo 0,6% della nostra e di
+            Rayleigh non resta niente: a diffondere è la <strong>polvere</strong>, granelli di un paio di
+            micron, cioè grandi <em>come</em> la lunghezza d'onda. Una polvere così non guarda il colore
+            quando ferma la luce, ma la ridiffonde con un picco in avanti tanto più stretto quanto più corta
+            è l'onda — e per giunta è ossido di ferro, che il blu se lo mangia. Lontano dal Sole vince
+            l'assorbimento (<strong>cielo color paglia</strong>), vicino al Sole vince il picco in avanti
+            (<strong>alone azzurro al tramonto</strong>). È il nostro cielo esattamente al contrario.</p>
         </div>
 
         ${didBarra('did-tram', { min: 0, max: TRAM_ORA_MAX * 10, passo: 1, valore: 0,
@@ -8133,6 +8662,23 @@
 
       tramCollegaGlobo('did-tram-globo');
 
+      // Il quadro dell'aria: il dito **è** la direzione del raggio. Si punta
+      // dove si vuole il Sole e il cammino nell'aria si rifà da solo.
+      tramCollegaSole('did-tram-aria', (p) => {
+        tramImpostaAltezzaApparente(Math.atan2(
+          TRAM_ARIA_OBS.y * p.H - p.y,
+          Math.max(6, TRAM_ARIA_OBS.x * p.L - p.x)) * GRADI);
+      });
+      // I due quadri del cielo: conta lo spostamento, non il punto
+      const suGiu = (p, prima) => {
+        if (!prima) return;
+        const s = tramCalcola();
+        const campo = tramCampoCielo(Math.max(0, s.hApp));
+        tramImpostaAltezzaApparente(s.hApp + (prima.y - p.y) * campo / p.H);
+      };
+      tramCollegaSole('did-tram-cielo', suGiu);
+      tramCollegaSole('did-tram-marte', suGiu);
+
       collegaPonti('tramonto', (azione) => {
         if (azione === 'cielo') didVaiInCielo(tramTramontoDiStasera(), 'Sun');
         else if (azione === 'tred') didVaiInTreD(didAdesso());
@@ -8165,6 +8711,7 @@
     disegna() {
       if (tram.quadro === 'globo') tramDisegnaGlobo();
       else if (tram.quadro === 'aria') tramDisegnaAria();
+      else if (tram.quadro === 'marte') tramDisegnaMarte();
       else { tramDisegnaCieloVisto(); tramDisegnaBande(); }
     }
   });
@@ -8297,6 +8844,14 @@
         tram.lat = prima.lat; tram.decl = prima.decl;
         return v;
       },
+      veroDaApparente: tramVeroDaApparente,
+      // il cielo, e il cielo di Marte: sono le due funzioni che il quadro
+      // del confronto mette una accanto all'altra
+      coloreCielo: tramColoreCielo,
+      coloreCieloMarte: tramColoreCieloMarte,
+      massaAriaMarte: tramMassaAriaMarte,
+      fase: tramFaseHG,
+      MARTE: TRAM_MARTE, K0: TRAM_K0,
       RE: TRAM_RE, ARIA_KM: TRAM_ARIA_KM, CAMMINO_MAX: TRAM_CAMMINO_MAX
     }
   };
