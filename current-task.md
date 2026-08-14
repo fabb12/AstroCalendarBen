@@ -14,49 +14,69 @@ non un verbale.
 
 ---
 
-## L'orizzonte a singhiozzo — fatto
+## Le eclissi nella vista 3D — fatto
 
-Aprendo il planetario i nomi delle montagne comparivano, sparivano, dopo
-qualche secondo ricomparivano mentre il profilo si affinava, e sparivano di
-nuovo. Non era un problema delle vette: era il terreno.
+La vista 3D del Sistema Solare diceva dove stanno i pianeti e basta. Non
+sapeva niente della Terra (un pallino azzurro largo otto pixel, con dieci
+macchie di continente dipinte sopra), non sapeva niente delle eclissi, e
+arrivando dalla scheda di un'eclissi si apriva sulla stessa scena di sempre —
+da girare finché uno capiva cosa c'entrasse.
 
-`terrenoDisponibile()` chiedeva `stato === 'pronto'`, cioè **che non ci fosse
-una richiesta in volo**. Ma quello stato torna a «in-corso» tre volte nella
-vita normale di un posto:
+Adesso fa quattro cose, e sono quattro sezioni nuove o rifatte di `app.js`.
 
-- dopo il **giro grosso** (`terrenoApplica(..., ancoraInCorso)`) — che il
-  profilo ce l'ha già, ed è esattamente il momento in cui si dovrebbe
-  cominciare a disegnarlo. Per come stavano le cose non lo usava nessuno,
-  mentre la riga di stato diceva «l'orizzonte qui sopra è già quello vero»;
-- quattro secondi dopo l'apertura, quando un **salvataggio parziale** si
-  completa da solo (`terreno.completatoPer`);
-- a ogni **tentativo automatico** dopo un guaio (`TERRENO_RIPROVE_MS`).
+- [x] **§7.7-ter, la Terra da vicino.** Sopra ai tredici pixel di raggio il
+      globo smette di essere la faccia dipinta e diventa il pianeta vero: le
+      coste di `SKY_MONDO`, il confine del giorno in tre veli (che è una
+      fascia, non una riga), le luci delle città dentro alla notte, il puntino
+      di casa e, durante un'eclissi di Sole, la macchia dell'ombra della Luna.
+      Il telaio geografico non è inventato: `solTelaioTerra()` chiede alla
+      libreria dov'è il polo e dov'è Greenwich in quell'istante, cioè la
+      stessa catena di conti del planetario.
+- [x] **L'impronta dell'ombra non è un cerchio.** Il primo tentativo
+      disegnava una calotta tonda del raggio della sezione del cono, e per il
+      12 agosto 2026 dava una macchia larga centotrenta chilometri invece dei
+      trecento della fascia vera: la differenza è tutta obliquità, perché il
+      cono arriva di sbieco. Adesso `solImprontaSuTerra()` tira un raggio per
+      volta dal limbo della Luna e lo interseca con la sfera. La penombra si
+      disegna col solo bordo — copre un terzo del pianeta.
+- [x] **§7.7-quater, il banco «Terra e Luna».** Una scena a parte, con la
+      Terra nell'origine e i chilometri al posto delle unità astronomiche, e
+      **niente di ingrandito**: i due corpi, la distanza fra loro e i due coni
+      d'ombra sono allo stesso metro, col righello sotto per controllarlo. È
+      lì che si vede perché le eclissi non capitano tutti i mesi — cinque
+      gradi di inclinazione, a trecentottantamila chilometri, sono cinque
+      raggi terrestri fuori dal piano contro un'ombra larga meno di uno.
+      C'è l'orbita lunare vera (sopra al piano continua, sotto tratteggiata),
+      la linea dei nodi, la sezione dell'ombra alla distanza della Luna, e
+      `solStatoEclissi()` che dice a parole cosa succede — o di quanto manca.
+- [x] **I nodi e le inclinazioni delle altre orbite.** C'erano sempre state
+      (le orbite si campionano dalle posizioni vere), ma un grado e mezzo
+      disegnato è meno dello spessore della linea. Il chip «Nodi» aggiunge la
+      corda fra i due nodi, i due estremi col filo a piombo e i gradi scritti
+      accanto: Mercurio 7,0°, Venere 3,4°, Marte 1,8°, e la Terra niente,
+      perché il piano è il suo.
+- [x] **La camera si posiziona da sola sull'evento.**
+      `apriSistemaSolare({ evento: id })`: un'eclissi apre il banco Terra e
+      Luna con l'orologio già portato lì e il passo del tempo a un'ora, un
+      evento con un pianeta protagonista apre la vista d'insieme con quel
+      pianeta già scelto. Il tasto «Perché succede» sta nelle schede
+      dell'agenda e nell'elenco eventi del planetario.
+- [x] **Un mondo solo.** Le coste e le luci delle città stavano dentro al
+      banco del tramonto di `didattica.js`. Sono passate in `app.js` §7.3.2
+      (`SKY_MONDO`, `SKY_LUCI_CITTA`) e la Didattica le legge da lì: due copie
+      dello stesso mondo divergono al primo ritocco.
+- [x] **§18 di `verifica.html`**, trenta prove nuove (306 in tutto, tutte
+      passate). Le più utili: che all'equatore il telaio geografico coincida
+      con `ObserverVector` e altrove sbagli **solo** dell'ellissoide, che sei
+      ore dopo mezzogiorno UT il Sole sia a ovest e non a est (il mondo non è
+      specchiato — l'errore che a occhio non si vede), che il punto di massima
+      eclissi del 12 agosto 2026 caschi dove dice la NASA, che la fascia di
+      totalità sul terreno sia più larga della sezione del cono, e che le
+      inclinazioni ricavate dai campioni tornino col catalogo.
 
-Ogni volta l'app buttava un profilo che aveva già in mano: l'orizzonte tornava
-quello finto per una decina di secondi, e i nomi delle montagne — che senza
-terreno non hanno più niente che li nasconda — si riaccendevano tutti insieme
-(ottanta vette invece delle sei che spuntano davvero) per poi sparire di nuovo
-alla fine dello scarico.
-
-- [x] `terrenoDisponibile()` guarda **se il profilo c'è**, non lo stato della
-      richiesta. `terrenoAltezza` passa da lì invece di rifare il controllo.
-- [x] `terrenoScordaProfilo()`: a buttare il profilo è **solo** un cambio di
-      luogo, e lo fa `terrenoCarica` quando il posto nuovo è più lontano di
-      `TERRENO_RAGGIO_VALIDO_KM` — le colline di Genova disegnate a Bolzano
-      sono peggio di nessuna collina, perché sembrano vere.
-- [x] `terrenoInArrivo()` + `cimeVisibili()`: finché il terreno **sta
-      arrivando** e non c'è ancora niente, nessuna vetta si nomina. Dare
-      l'elenco intero e poi rimangiarsene metà è il singhiozzo; se invece il
-      terreno non arriverà più (spento, o la rete ha detto di no) si torna a
-      nominare quello che spunta, come sempre.
-- [x] Le righe di stato non mentono più: `cimeTesto()` distingue «aspetto la
-      forma del terreno» da «restano tutte dietro alla prima cresta», e
-      `terrenoMotivoGuaio()` non dice «resta l'orizzonte disegnato» quando
-      sullo schermo ci sono le colline vere.
-- [x] Cinque prove nuove nel §15 di `verifica.html` (tutte e 276 passano).
-      L'A/B fuori dal browser dice com'era e com'è: prima
-      `finto → finto → vero → finto → vero` con l'elenco delle vette che
-      sbatteva fra 2 e 1 a ogni passaggio, adesso una transizione sola e poi
-      fermo.
+Provato in un browser vero (Chromium headless) su tre eclissi: la totale di
+Luna del 3 marzo 2026, la totale di Sole del 12 agosto 2026 e la parziale di
+Luna del 28 agosto 2026, più una Luna piena qualunque di fine giugno che
+l'ombra manca di quattro raggi terrestri.
 
 Niente altro in corso.

@@ -1455,6 +1455,14 @@
               <button type="button" class="tasto-segmento" data-sol-quadro="tutto" title="Tutto il sistema, fino a Nettuno e alla fascia di Kuiper">Tutto</button>
               <button type="button" class="tasto-segmento" data-sol-quadro="interni" title="Solo Mercurio, Venere, Terra e Marte">Pianeti interni</button>
             </div>
+            <!-- Il banco delle eclissi: una scena a parte, con la Terra al
+                 centro, la Luna alla sua distanza vera e i due coni d'ombra.
+                 È il posto in cui si vede perché le eclissi non capitano
+                 tutti i mesi. -->
+            <div class="segmenti-cielo">
+              <button type="button" class="tasto-segmento" data-sol-quadro="eclissi"
+                title="La Terra e la Luna da vicino, a scala vera, coi due coni d'ombra: è qui che si vede perché un'eclissi non capita a ogni Luna piena — l'orbita della Luna è inclinata di 5,1°, e a quella distanza sono trentaquattromila chilometri fuori bersaglio.">Terra e Luna</button>
+            </div>
             <button id="sol-zoom-out" type="button" class="tasto-cielo tasto-passo" title="Allontanati" aria-label="Allontanati">−</button>
             <button id="sol-zoom-in" type="button" class="tasto-cielo tasto-passo" title="Avvicinati" aria-label="Avvicinati">+</button>
             <!-- Spostare la scena serve appena ci si avvicina; questo la
@@ -1467,21 +1475,26 @@
           <div class="sol-riga" role="group" aria-label="Come sono disegnate le distanze">
             <span class="sol-etichetta">Distanze</span>
             <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-distanze="compresse" title="Compresse per farceli stare tutti: gli angoli restano veri, i rapporti fra le distanze no">Compresse</button>
-              <button type="button" class="tasto-segmento" data-sol-distanze="vere" title="Distanze vere: Nettuno è settantasette volte più lontano di Mercurio, e si vede">Reali</button>
+              <button type="button" class="tasto-segmento" data-sol-distanze="compresse" data-solo-pianeti title="Compresse per farceli stare tutti: gli angoli restano veri, i rapporti fra le distanze no">Compresse</button>
+              <button type="button" class="tasto-segmento" data-sol-distanze="vere" data-solo-pianeti title="Distanze vere: Nettuno è settantasette volte più lontano di Mercurio, e si vede">Reali</button>
             </div>
             <span class="sol-etichetta">Fuori dal piano</span>
             <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-altezze="1" title="L'altezza vera sopra e sotto il piano dell'eclittica: pochi gradi">Vero</button>
-              <button type="button" class="tasto-segmento" data-sol-altezze="10" title="Altezza ingrandita dieci volte: le inclinazioni si vedono">×10</button>
+              <button type="button" class="tasto-segmento" data-sol-altezze="1" data-solo-pianeti title="L'altezza vera sopra e sotto il piano dell'eclittica: pochi gradi">Vero</button>
+              <button type="button" class="tasto-segmento" data-sol-altezze="10" data-solo-pianeti title="Altezza ingrandita dieci volte: le inclinazioni si vedono">×10</button>
+              <!-- Le inclinazioni ci sono sempre state, ma un grado e mezzo
+                   disegnato è meno dello spessore della linea: questi tre
+                   segni le rendono leggibili senza toccare la geometria. -->
+              <button type="button" class="tasto-segmento" data-sol-nodi data-solo-pianeti
+                title="I nodi: i due punti in cui ogni orbita attraversa il piano dell'eclittica, la corda che li unisce, i punti più alto e più basso col loro filo a piombo, e i gradi di inclinazione scritti accanto. Insieme al ×10 è il disegno dei libri, con otto anelli inclinati ognuno per conto suo.">Nodi</button>
             </div>
           </div>
 
           <div class="sol-riga" role="group" aria-label="Come sono disegnati i pianeti">
             <span class="sol-etichetta">Pianeti</span>
             <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-misure="grandi" title="Pallini tutti leggibili, comodi da toccare col dito">Ingranditi</button>
-              <button type="button" class="tasto-segmento" data-sol-misure="vere" title="In scala fra loro: Giove è ventinove volte Mercurio, e si vede">In scala</button>
+              <button type="button" class="tasto-segmento" data-sol-misure="grandi" data-solo-pianeti title="Pallini tutti leggibili, comodi da toccare col dito">Ingranditi</button>
+              <button type="button" class="tasto-segmento" data-sol-misure="vere" data-solo-pianeti title="In scala fra loro: Giove è ventinove volte Mercurio, e si vede">In scala</button>
             </div>
             <span class="sol-etichetta">Passo del tempo</span>
             <div id="sol-passi" class="segmenti-cielo" role="group" aria-label="Passo del tempo"></div>
@@ -1490,9 +1503,9 @@
           <div class="sol-riga" role="group" aria-label="Le fasce di sassi">
             <span class="sol-etichetta">Fasce di sassi</span>
             <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-fascia="principale" aria-pressed="true"
+              <button type="button" class="tasto-segmento" data-sol-fascia="principale" data-solo-pianeti aria-pressed="true"
                 title="La fascia principale, fra Marte e Giove: i detriti di un pianeta che Giove non ha lasciato nascere. I due anelli vuoti sono i vuoti di Kirkwood, spazzati dalle risonanze con la sua orbita.">Asteroidi</button>
-              <button type="button" class="tasto-segmento" data-sol-fascia="kuiper" aria-pressed="true"
+              <button type="button" class="tasto-segmento" data-sol-fascia="kuiper" data-solo-pianeti aria-pressed="true"
                 title="La fascia di Kuiper, oltre Nettuno: da 30 a 50 unità astronomiche, con il gruppo di Plutone a 39,4 e il precipizio a 48, dove finisce di colpo e nessuno sa perché.">Kuiper</button>
             </div>
           </div>
@@ -1504,7 +1517,13 @@
           Si entra guardando da sopra la Terra, che sta sotto al Sole: a sinistra i pianeti della sera,
           a destra quelli del mattino. La Luna è disegnata più lontana dalla Terra di quanto sia,
           o starebbe dentro al pallino; le due fasce di sassi sono nuvole di punti sorteggiati, non
-          i sassi veri — quello che è vero è dove comincia e dove finisce ognuna, e i vuoti che ci sono dentro.</p>
+          i sassi veri — quello che è vero è dove comincia e dove finisce ognuna, e i vuoti che ci sono dentro.
+          Avvicinandosi alla Terra compaiono le coste vere, il confine fra il giorno e la notte, le luci
+          delle città nella metà scura e il puntino di dove sei.
+          <strong>Terra e Luna</strong> è invece una scena a parte, e lì <em>non</em> c'è niente di
+          ingrandito: i due corpi, la distanza fra loro e i due coni d'ombra sono tutti allo stesso metro,
+          perché è l'unico modo perché il disegno risponda davvero alla domanda — se l'ombra fosse gonfiata
+          anche solo del doppio, ogni Luna piena finirebbe dentro.</p>
 
         <div class="barra-chiudi">
           <button id="btn-chiudi-sistema-basso" type="button" class="tasto-chiudi-largo">Chiudi la scheda</button>

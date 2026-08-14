@@ -2295,6 +2295,339 @@ if (typeof didProve === 'undefined' || !didProve.tram) {
 }
 
 // =====================================================================
+titolo('18. La Terra e le eclissi nella vista 3D (app.js §7.7-ter e §7.7-quater)');
+// ---------------------------------------------------------------------
+//   È il banco che serviva di più, perché qui sbagliare non si vede: un
+//   globo con la rotazione storta è un bel globo lo stesso, solo che
+//   l'Italia è a mezzogiorno quando da noi è notte; un cono d'ombra col
+//   raggio sbagliato del venti per cento disegna un'eclissi ancora più
+//   convincente, con la Luna che ci finisce dentro tutti i mesi.
+//
+//   Come per la proiezione del §8, le formule qui sotto sono **una copia**
+//   di quelle di app.js: la vista 3D vive dentro a un file che all'avvio
+//   costruisce l'interfaccia, e questa pagina l'interfaccia non ce l'ha. Il
+//   valore della prova non è quindi «il codice dell'app fa questo», ma «la
+//   geometria che l'app ha scritto è questa, e torna coi fatti»: il punto di
+//   massima eclissi del 12 agosto 2026 pubblicato dalla NASA, la larghezza
+//   della fascia di totalità, l'inclinazione vera delle orbite. Se qualcuno
+//   cambia una formula di là senza cambiarla di qua, la copia smette di
+//   valere: è il prezzo, ed è lo stesso che il §8 paga da sempre.
+// ---------------------------------------------------------------------
+{
+  const UA = 149597870.7;
+  const RE = 6378.137, RM = 1737.4, RS = 695700;
+  const versore = (v) => {
+    const n = Math.hypot(v[0], v[1], v[2]) || 1;
+    return [v[0] / n, v[1] / n, v[2] / n];
+  };
+  const croce = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const ecl = (v) => { const e = Astronomy.Ecliptic(v).vec; return [e.x, e.y, e.z]; };
+  const eclKm = (v) => ecl(v).map(q => q * UA);
+
+  // --- Le formule sotto esame, copiate da app.js -----------------------
+  const telaioTerra = (t) => {
+    const nord = versore(ecl(Astronomy.RotationAxis('Earth', t).north));
+    const pm = versore(ecl(Astronomy.ObserverVector(t, new Astronomy.Observer(0, 0, 0), false)));
+    return { nord, pm, est: versore(croce(nord, pm)) };
+  };
+  const puntoTerra = (tel, lat, lon) => {
+    const b = lat * SKY_D2R, l = lon * SKY_D2R;
+    const cb = Math.cos(b), sb = Math.sin(b), cl = Math.cos(l), sl = Math.sin(l);
+    return [0, 1, 2].map(i => cb * (tel.pm[i] * cl + tel.est[i] * sl) + sb * tel.nord[i]);
+  };
+  const apiceOmbra = (raggio, dSole) => raggio * dSole / (RS - raggio);
+  const raggioUmbra = (raggio, dSole, s) => raggio * (1 - s / apiceOmbra(raggio, dSole));
+  const raggioPenombra = (raggio, dSole, s) => raggio + s * (RS + raggio) / dSole;
+  const geocentriche = (t) => {
+    const luna = eclKm(Astronomy.GeoMoon(t));
+    const sole = eclKm(Astronomy.GeoVector('Sun', t, false));
+    return { luna, sole, dLuna: Math.hypot(...luna), dSole: Math.hypot(...sole), versoSole: versore(sole) };
+  };
+  // L'impronta del cono sulla superficie: ogni raggio del bordo parte dal
+  // limbo del corpo e si interseca con la sfera terrestre
+  const improntaSuTerra = (base, asse, raggioCorpo, pendenza, quanti) => {
+    let lato = croce(asse, [0, 0, 1]);
+    if (Math.hypot(...lato) < 1e-6) lato = croce(asse, [0, 1, 0]);
+    const e1 = versore(lato), e2 = croce(asse, e1);
+    const punti = [];
+    for (let i = 0; i < quanti; i++) {
+      const th = i / quanti * Math.PI * 2, co = Math.cos(th), si = Math.sin(th);
+      const u = [0, 1, 2].map(k => e1[k] * co + e2[k] * si);
+      const p0 = [0, 1, 2].map(k => base[k] + raggioCorpo * u[k]);
+      const d = versore([0, 1, 2].map(k => asse[k] + pendenza * u[k]));
+      const b = skyDot(p0, d), c = skyDot(p0, p0) - RE * RE;
+      const disc = b * b - c;
+      if (disc > 0) {
+        const s = -b - Math.sqrt(disc);
+        punti.push(versore([0, 1, 2].map(k => p0[k] + d[k] * s)));
+      } else {
+        const f = [0, 1, 2].map(k => p0[k] - d[k] * b);
+        const tt = skyDot(f, asse);
+        punti.push(versore([0, 1, 2].map(k => f[k] - asse[k] * tt)));
+      }
+    }
+    return punti;
+  };
+
+  // -------------------------------------------------------------------
+  // 1. Il telaio geografico: è da lì che dipende tutto il resto
+  // -------------------------------------------------------------------
+  {
+    const t = Astronomy.MakeTime(new Date(Date.UTC(2026, 7, 14, 12, 0, 0)));
+    const tel = telaioTerra(t);
+    prova('i tre assi della Terra sono ortonormali',
+      Math.abs(skyDot(tel.nord, tel.pm)) < 1e-9 && Math.abs(skyDot(tel.pm, tel.est)) < 1e-9 &&
+      Math.abs(skyDot(tel.nord, tel.est)) < 1e-9 &&
+      Math.abs(Math.hypot(...tel.est) - 1) < 1e-9,
+      `nord·pm = ${skyDot(tel.nord, tel.pm).toExponential(1)}`);
+
+    // Ogni coppia (lat, lon) deve puntare dove punta la libreria. Lo scarto
+    // che resta è l'ellissoide: `ObserverVector` usa il WGS84, e fra
+    // latitudine geodetica e geocentrica a 45° ci ballano 0,19°. Sotto c'è
+    // una palla disegnata, e su un globo da cento pixel sono un terzo di
+    // pixel — ma all'equatore devono coincidere esattamente, perché lì la
+    // differenza fra sfera ed ellissoide è zero.
+    let peggioEq = 0, peggio = 0;
+    [[0, 0], [0, 90], [0, -170], [44.5, 11.34], [-33.9, 151.2], [69.6, 19], [-77.8, 166.7]]
+      .forEach(([lat, lon]) => {
+        const mio = puntoTerra(tel, lat, lon);
+        const vero = versore(ecl(Astronomy.ObserverVector(t, new Astronomy.Observer(lat, lon, 0), false)));
+        const g = Math.acos(Math.min(1, skyDot(mio, vero))) * SKY_R2D;
+        peggio = Math.max(peggio, g);
+        if (lat === 0) peggioEq = Math.max(peggioEq, g);
+      });
+    prova('all\'equatore il punto è quello esatto della libreria',
+      peggioEq < 1e-4, `scarto ${peggioEq.toExponential(1)}°`);
+    prova('alle altre latitudini lo scarto è solo l\'ellissoide',
+      peggio < 0.25, `${peggio.toFixed(3)}° (geodetica contro geocentrica: 0,19° a 45°)`);
+
+    // Il punto sub-solare, che è il cuore del confine giorno/notte: a
+    // mezzogiorno UT deve cadere sul meridiano di Greenwich, a meno
+    // dell'equazione del tempo, e alla declinazione del Sole di quel giorno
+    const lat = Math.asin(skyDot(versore(ecl(Astronomy.GeoVector('Sun', t, false))), tel.nord)) * SKY_R2D;
+    const s = versore(ecl(Astronomy.GeoVector('Sun', t, false)));
+    const lon = Math.atan2(skyDot(s, tel.est), skyDot(s, tel.pm)) * SKY_R2D;
+    const declVera = Astronomy.Equator('Sun', t, new Astronomy.Observer(0, 0, 0), true, false).dec;
+    prova('il punto sub-solare ha la declinazione del Sole di quel giorno',
+      Math.abs(lat - declVera) < 0.05, `${lat.toFixed(2)}° contro ${declVera.toFixed(2)}°`);
+    prova('a mezzogiorno UT il Sole è quasi sul meridiano di Greenwich',
+      Math.abs(lon) < 5, `${lon.toFixed(2)}° (l\'equazione del tempo, a metà agosto, vale −4 minuti)`);
+
+    // E la prova che il mondo non è specchiato: l'errore che non si vede,
+    // perché un globo riflesso resta un bel globo. Sei ore dopo mezzogiorno
+    // UT il Sole è a picco sull'Atlantico occidentale, cioè a 90° OVEST.
+    const t6 = Astronomy.MakeTime(new Date(Date.UTC(2026, 7, 14, 18, 0, 0)));
+    const tel6 = telaioTerra(t6);
+    const s6 = versore(ecl(Astronomy.GeoVector('Sun', t6, false)));
+    const lon6 = Math.atan2(skyDot(s6, tel6.est), skyDot(s6, tel6.pm)) * SKY_R2D;
+    prova('sei ore dopo il Sole è a ovest, non a est (il mondo non è specchiato)',
+      lon6 < -80 && lon6 > -100, `${lon6.toFixed(1)}° di longitudine`);
+  }
+
+  // -------------------------------------------------------------------
+  // 2. I due coni d'ombra
+  // -------------------------------------------------------------------
+  {
+    const t = Astronomy.MakeTime(new Date(Date.UTC(2026, 2, 3, 11, 34, 0)));   // eclissi totale di Luna
+    const g = geocentriche(t);
+    const apice = apiceOmbra(RE, g.dSole);
+    prova('il cono d\'ombra della Terra si chiude a 1,4 milioni di km',
+      apice / RE > 200 && apice / RE < 230, `${(apice / 1e6).toFixed(2)} milioni di km = ${(apice / RE).toFixed(0)} raggi terrestri`);
+    prova('l\'apice sta oltre il triplo dell\'orbita lunare (se no non ci sarebbero eclissi totali di Luna)',
+      apice > g.dLuna * 3, `${(apice / g.dLuna).toFixed(1)} volte la distanza della Luna`);
+
+    const s = skyDot(g.luna, [-g.versoSole[0], -g.versoSole[1], -g.versoSole[2]]);
+    const ru = raggioUmbra(RE, g.dSole, s);
+    const rp = raggioPenombra(RE, g.dSole, s);
+    prova('l\'ombra piena, dove passa la Luna, è larga due Lune e mezzo',
+      ru / RM > 2.2 && ru / RM < 3.0, `raggio ${Math.round(ru)} km = ${(ru / RM).toFixed(2)} raggi lunari`);
+    prova('la penombra è quasi il doppio dell\'ombra',
+      rp / ru > 1.6 && rp / ru < 2.0, `${Math.round(rp)} km contro ${Math.round(ru)}`);
+
+    // Il 3 marzo 2026 la Luna deve essere DENTRO all'ombra piena: è la
+    // totale che il calendario annuncia, e se la geometria non lo dice non
+    // c'è nessun altro modo di accorgersene guardando il disegno
+    const anti = [-g.versoSole[0], -g.versoSole[1], -g.versoSole[2]];
+    const scarto = Math.hypot(...[0, 1, 2].map(k => g.luna[k] - anti[k] * s));
+    prova('il 3 marzo 2026 la Luna è dentro all\'ombra piena (eclissi totale)',
+      scarto < ru - RM, `passa a ${Math.round(scarto)} km dall\'asse, l\'ombra ne misura ${Math.round(ru)}`);
+
+    // …e a una Luna piena qualunque deve mancarla di parecchio
+    const t2 = Astronomy.MakeTime(new Date(Date.UTC(2026, 5, 29, 12, 0, 0)));
+    const g2 = geocentriche(t2);
+    const anti2 = [-g2.versoSole[0], -g2.versoSole[1], -g2.versoSole[2]];
+    const s2 = skyDot(g2.luna, anti2);
+    const scarto2 = Math.hypot(...[0, 1, 2].map(k => g2.luna[k] - anti2[k] * s2));
+    const ru2 = raggioUmbra(RE, g2.dSole, s2);
+    prova('alla Luna piena di fine giugno 2026 l\'ombra la manca di molto',
+      scarto2 > ru2 * 3, `${Math.round(scarto2)} km dall\'asse contro ${Math.round(ru2)} di ombra`);
+    prova('…e la manca perché la Luna è fuori dal piano, non per altro',
+      Math.abs(g2.luna[2]) / RE > 3, `${Math.abs(g2.luna[2] / RE).toFixed(1)} raggi terrestri fuori dal piano`);
+  }
+
+  // -------------------------------------------------------------------
+  // 3. L'ombra della Luna sulla Terra: il punto e la fascia
+  // -------------------------------------------------------------------
+  {
+    // 12 agosto 2026, eclissi totale di Sole. La NASA dà il massimo a
+    // 65,2° N, 25,2° O, con la fascia di totalità larga 294 km.
+    const t = Astronomy.MakeTime(new Date(Date.UTC(2026, 7, 12, 17, 46, 0)));
+    const g = geocentriche(t);
+    const tel = telaioTerra(t);
+    const asse = versore([0, 1, 2].map(k => g.luna[k] - g.sole[k]));
+    const dSoleLuna = Math.hypot(...[0, 1, 2].map(k => g.luna[k] - g.sole[k]));
+    const b = skyDot(g.luna, asse), c = skyDot(g.luna, g.luna) - RE * RE;
+    const disc = b * b - c;
+    prova('l\'asse dell\'ombra della Luna tocca davvero la Terra', disc > 0);
+    const s = -b - Math.sqrt(disc);
+    const centro = versore([0, 1, 2].map(k => g.luna[k] + asse[k] * s));
+    const lat = Math.asin(skyDot(centro, tel.nord)) * SKY_R2D;
+    const lon = Math.atan2(skyDot(centro, tel.est), skyDot(centro, tel.pm)) * SKY_R2D;
+    prova('il punto di massima eclissi cade dove dice la NASA',
+      Math.abs(lat - 65.2) < 1.5 && Math.abs(lon + 25.2) < 2.5,
+      `${lat.toFixed(1)}° N, ${Math.abs(lon).toFixed(1)}° O (atteso 65,2° N, 25,2° O)`);
+
+    const ru = raggioUmbra(RM, dSoleLuna, s);
+    prova('il cono, in sezione, è largo un centinaio di chilometri',
+      ru > 40 && ru < 110, `raggio ${Math.round(ru)} km`);
+
+    // …ma la fascia sul terreno è più larga, perché il cono arriva di
+    // sbieco. È il pezzo che il disegno a calotta tonda sbagliava, e la
+    // ragione per cui l'impronta si calcola raggio per raggio.
+    const impronta = improntaSuTerra(g.luna, asse, RM, -(RS - RM) / dSoleLuna, 64);
+    let largo = 0;
+    impronta.forEach(u => {
+      largo = Math.max(largo, Math.acos(Math.min(1, skyDot(u, centro))) * RE);
+    });
+    prova('la fascia di totalità sul terreno è più larga della sezione del cono',
+      largo > ru * 1.6, `${Math.round(largo * 2)} km di larghezza contro ${Math.round(ru * 2)} di sezione`);
+    prova('…ed è larga quanto quella pubblicata (294 km)',
+      largo * 2 > 200 && largo * 2 < 420, `${Math.round(largo * 2)} km`);
+
+    // La penombra deve coprire un pezzo di mondo, non una macchia: è il
+    // motivo per cui nel disegno se ne traccia solo il bordo
+    const pen = improntaSuTerra(g.luna, asse, RM, (RS + RM) / dSoleLuna, 64);
+    let lontano = 0;
+    pen.forEach(u => { lontano = Math.max(lontano, Math.acos(Math.min(1, skyDot(u, centro))) * SKY_R2D); });
+    prova('la penombra si stende su decine di gradi di superficie',
+      lontano > 40, `fino a ${Math.round(lontano)}° dal centro`);
+    prova('ogni punto dell\'impronta sta sulla sfera, nessuno vola via',
+      impronta.concat(pen).every(u => Math.abs(Math.hypot(u[0], u[1], u[2]) - 1) < 1e-9));
+  }
+
+  // -------------------------------------------------------------------
+  // 4. I nodi: perché non capita tutti i mesi
+  // -------------------------------------------------------------------
+  {
+    const quando = new Date(Date.UTC(2026, 2, 3, 11, 34, 0));
+    const punti = [];
+    for (let i = 0; i <= 144; i++) {
+      const d = new Date(quando.getTime() + (i / 144 - 0.5) * 27.321661 * 86400000);
+      punti.push(eclKm(Astronomy.GeoMoon(Astronomy.MakeTime(d))));
+    }
+    const nodi = [];
+    for (let i = 1; i < punti.length; i++) {
+      const a = punti[i - 1], b2 = punti[i];
+      if ((a[2] > 0) === (b2[2] > 0)) continue;
+      const k = a[2] / (a[2] - b2[2]);
+      nodi.push({ p: [a[0] + (b2[0] - a[0]) * k, a[1] + (b2[1] - a[1]) * k, 0], i: i - 1 + k, sale: b2[2] > a[2] });
+    }
+    prova('in un mese l\'orbita attraversa il piano esattamente due volte',
+      nodi.length === 2, `trovati ${nodi.length}`);
+    prova('i due nodi sono uno ascendente e uno discendente',
+      nodi.length === 2 && nodi[0].sale !== nodi[1].sale);
+    if (nodi.length === 2) {
+      const giorni = (nodi[1].i - nodi[0].i) / 144 * 27.321661;
+      // Mezzo mese draconitico è 13,6 giorni *in media*: l'orbita è
+      // eccentrica, e la metà che contiene il perigeo la Luna la percorre
+      // più in fretta. Nel giro di un anno lo scarto arriva al giorno, e una
+      // tolleranza più stretta di così farebbe fallire la prova a seconda
+      // della data scelta — cioè misurerebbe il calendario, non il codice.
+      prova('e distano mezzo mese draconitico (13,6 giorni in media)',
+        Math.abs(giorni - 13.606) < 1.1, `${giorni.toFixed(2)} giorni`);
+      // Sono agli antipodi: la linea dei nodi passa per la Terra
+      const u0 = versore(nodi[0].p), u1 = versore(nodi[1].p);
+      prova('i due nodi sono agli antipodi (la linea dei nodi passa per la Terra)',
+        skyDot(u0, u1) < -0.999, `angolo ${(Math.acos(Math.max(-1, skyDot(u0, u1))) * SKY_R2D).toFixed(2)}°`);
+
+      // La promessa del banco: un'eclissi succede solo quando il Sole è
+      // vicino alla linea dei nodi. Il 3 marzo 2026 deve esserlo.
+      const g = geocentriche(Astronomy.MakeTime(quando));
+      const anti = versore([-g.sole[0], -g.sole[1], 0]);
+      const vicino = Math.min(
+        Math.acos(Math.min(1, Math.abs(skyDot(anti, u0)))) * SKY_R2D,
+        Math.acos(Math.min(1, Math.abs(skyDot(anti, u1)))) * SKY_R2D);
+      prova('durante l\'eclissi il Sole è a pochi gradi dalla linea dei nodi',
+        vicino < 12, `${vicino.toFixed(1)}° (fuori dai 18° un\'eclissi non è possibile)`);
+    }
+
+    // L'inclinazione, misurata dall'orbita campionata come fa il disegno
+    let incl = 0;
+    punti.forEach(v => {
+      const r = Math.hypot(v[0], v[1], v[2]);
+      incl = Math.max(incl, Math.abs(Math.asin(v[2] / r) * SKY_R2D));
+    });
+    prova('l\'orbita della Luna è inclinata di 5,1° sull\'eclittica',
+      incl > 4.6 && incl < 5.6, `${incl.toFixed(2)}°`);
+    // …e quei cinque gradi, a quella distanza, sono il motivo di tutto
+    const fuori = Math.max(...punti.map(v => Math.abs(v[2])));
+    prova('cinque gradi valgono più di cinque raggi terrestri fuori dal piano',
+      fuori / RE > 4.5, `${(fuori / RE).toFixed(1)} raggi terrestri, contro un\'ombra larga meno di uno`);
+  }
+
+  // -------------------------------------------------------------------
+  // 5. Le inclinazioni delle orbite planetarie, ricavate dai campioni
+  // -------------------------------------------------------------------
+  {
+    const attese = { Mercury: 7.00, Venus: 3.39, Mars: 1.85, Jupiter: 1.30, Saturn: 2.49, Uranus: 0.77, Neptune: 1.77 };
+    const anni = { Mercury: 0.241, Venus: 0.615, Mars: 1.881, Jupiter: 11.86, Saturn: 29.45, Uranus: 84.01, Neptune: 164.8 };
+    const quando = new Date(Date.UTC(2026, 0, 1));
+    let peggio = 0, peggioNome = '';
+    let nodiOk = true;
+    Object.keys(attese).forEach(id => {
+      const passi = anni[id] < 3 ? 84 : 128;
+      const punti = [];
+      for (let i = 0; i <= passi; i++) {
+        const d = new Date(quando.getTime() + (i / passi - 0.5) * anni[id] * 365.25 * 86400000);
+        punti.push(ecl(Astronomy.HelioVector(id, Astronomy.MakeTime(d))));
+      }
+      let incl = 0;
+      punti.forEach(v => {
+        const r = Math.hypot(v[0], v[1], v[2]);
+        incl = Math.max(incl, Math.abs(Math.asin(v[2] / r) * SKY_R2D));
+      });
+      const scarto = Math.abs(incl - attese[id]);
+      if (scarto > peggio) { peggio = scarto; peggioNome = id; }
+      // due nodi per giro, e agli antipodi
+      const nodi = [];
+      for (let i = 1; i < punti.length; i++) {
+        const a = punti[i - 1], b2 = punti[i];
+        if ((a[2] > 0) === (b2[2] > 0)) continue;
+        const k = a[2] / (a[2] - b2[2]);
+        nodi.push(versore([a[0] + (b2[0] - a[0]) * k, a[1] + (b2[1] - a[1]) * k, 0]));
+      }
+      if (nodi.length !== 2 || skyDot(nodi[0], nodi[1]) > -0.99) nodiOk = false;
+    });
+    prova('le inclinazioni ricavate dai campioni sono quelle di catalogo',
+      peggio < 0.12, `scarto massimo ${peggio.toFixed(3)}° (${peggioNome})`);
+    prova('ogni orbita attraversa il piano due volte, in punti opposti',
+      nodiOk);
+
+    // La Terra no: il piano è il suo, per definizione, e se venisse fuori
+    // un'inclinazione vorrebbe dire che le coordinate non sono eclittiche
+    const terra = [];
+    for (let i = 0; i <= 84; i++) {
+      const d = new Date(quando.getTime() + (i / 84 - 0.5) * 365.25 * 86400000);
+      terra.push(ecl(Astronomy.HelioVector('Earth', Astronomy.MakeTime(d))));
+    }
+    const inclTerra = Math.max(...terra.map(v =>
+      Math.abs(Math.asin(v[2] / Math.hypot(v[0], v[1], v[2])) * SKY_R2D)));
+    prova('la Terra sta sul piano, e l\'inclinazione le viene zero',
+      inclTerra < 0.02, `${inclTerra.toFixed(4)}°`);
+  }
+}
+
+// =====================================================================
 const esito = document.getElementById('esito');
 esito.dataset.stato = fallite ? 'ko' : 'ok';
 esito.textContent = fallite
