@@ -1511,6 +1511,52 @@ titolo('15. Le montagne che hanno un nome');
         dalMare > daiCento + 0.1,
         `${daiCento.toFixed(2)}° da cento metri, ${dalMare.toFixed(2)}° dal livello del mare`);
 
+  // --- L'orizzonte non deve sparire mentre lo si affina ---
+  //
+  // È il guasto che si vedeva a occhio e che a leggerlo nel codice non
+  // saltava fuori: `terrenoDisponibile` chiedeva `stato === 'pronto'`, ma lo
+  // stato torna a «in-corso» tre volte nella vita normale di un posto — dopo
+  // il giro grosso, quando un salvataggio parziale si completa da solo
+  // quattro secondi dopo l'apertura, e a ogni tentativo automatico. Ogni
+  // volta l'app buttava un profilo che aveva già in mano: l'orizzonte
+  // tornava quello finto e i nomi delle montagne, senza più niente che li
+  // nascondesse, si riaccendevano tutti insieme per poi sparire di nuovo.
+  {
+    terreno.quota = 100;
+    cime.vistaChiave = null;
+    const conPronto = cimeVisibili().map(c => c.nome).join(', ');
+    terreno.stato = 'in-corso';   // il profilo però c'è ancora
+    prova('un profilo che si sta affinando è ancora un profilo',
+          terrenoDisponibile() && terrenoAltezza(0) > 5,
+          `${terrenoAltezza(0) === null ? 'niente' : terrenoAltezza(0).toFixed(2) + '°'} verso nord`);
+    cime.vistaChiave = null;
+    prova('e le vette non cambiano mentre si affina',
+          cimeVisibili().map(c => c.nome).join(', ') === conPronto,
+          conPronto || 'nessuna');
+
+    // Ma finché non è arrivato niente, meglio tacere che nominare tutto:
+    // dare l'elenco intero e poi rimangiarsene metà è il singhiozzo.
+    const profilo = terreno.profilo;
+    terreno.profilo = null;
+    prova('senza niente in mano, il terreno che sta arrivando si dichiara',
+          terrenoInArrivo() && !terrenoDisponibile());
+    cime.vistaChiave = null;
+    prova('e intanto non si nomina nessuna vetta',
+          cimeVisibili().length === 0,
+          cimeVisibili().map(c => c.nome).join(', ') || 'nessuna');
+    // Se invece non arriverà mai (spento, o la rete ha detto di no), si
+    // torna a nominare quello che spunta: è la risposta di sempre.
+    terreno.stato = 'fallito';
+    cime.vistaChiave = null;
+    prova('mentre se non arriverà più si torna a nominarle',
+          cimeVisibili().length === 2 && !terrenoInArrivo(),
+          cimeVisibili().map(c => c.nome).join(', ') || 'nessuna');
+
+    terreno.profilo = profilo;
+    terreno.stato = 'pronto';
+    cime.vistaChiave = null;
+  }
+
   // --- Quello che sta DAVANTI, non quello che sta dietro ---
   //
   // È l'errore che il modulo ha avuto per mesi, ed è invisibile: una vetta
