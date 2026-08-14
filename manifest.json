@@ -4,7 +4,7 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#04060D",
   "theme_color": "#04060D",
   "description": "App per eventi astronomici con guida, calendario e lettura vocale.",
