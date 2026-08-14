@@ -22,8 +22,15 @@
 // veduta a piani delle carte panoramiche, quella di PeakFinder.
 //
 // I dati sono quelli di Open-Meteo (Copernicus DEM, novanta metri di
-// passo), lo stesso servizio del meteo: niente chiave, niente account,
-// e già escluso dalla cache del service worker.
+// passo), lo stesso servizio del meteo: niente chiave, niente account.
+// Dietro di lui ce ne sono altri due — OpenTopoData e Open-Elevation —
+// che danno le stesse quote da modelli diversi e stanno su host diversi:
+// servono per quando il primo è carico, che è il guasto più comune di
+// questo modulo (§4).
+//
+// Le quote sono l'unica cosa di Open-Meteo che il service worker **tiene**
+// in cache: una collina è dove era, e riprovare deve costare solo il pezzo
+// che manca.
 //
 // Tre cose che non fa, e che è giusto sapere:
 //
@@ -88,11 +95,15 @@ const TERRENO_DISTANZE = [
 // direzioni intere per volta, il che rende le richieste tutte uguali.
 const TERRENO_PER_RICHIESTA = 90;
 
-// Quante richieste per volta. Ventiquattro in fila indiana sono venti
-// secondi di attesa con lo schermo che dice «sto misurando»; tutte insieme
-// sono il modo più veloce di farsi rispondere «troppe richieste». Quattro
-// alla volta è la via di mezzo che si è dimostrata stabile: sei giri, e il
-// terreno c'è prima che uno abbia finito di guardarsi attorno.
+// Quante richieste per volta, **all'inizio**. Ventiquattro in fila indiana
+// sono venti secondi di attesa con lo schermo che dice «sto misurando»;
+// tutte insieme sono il modo più veloce di farsi rispondere «troppe
+// richieste». Quattro alla volta è la via di mezzo con cui si parte.
+//
+// Non è più l'ultima parola: da qui in poi il numero è del rubinetto (§4),
+// che lo stringe a ogni no e lo riapre piano quando le risposte tornano.
+// Scritto come costante non poteva imparare niente da un 429 — ed è
+// esattamente quello che il 429 sta cercando di dire.
 const TERRENO_RICHIESTE_INSIEME = 4;
 
 // Raggio terrestre e coefficiente di rifrazione standard. La luce che
@@ -182,6 +193,8 @@ const terreno = {
   // (§8, `terrenoCrestaDavanti`). Manca ai profili salvati vecchi, e chi la
   // usa deve sapersene fare una ragione.
   fronti: null,           // Float32Array(120×18)
+  avute: [],              // quali direzioni sono misurate davvero (non stimate)
+  quotaStimata: false,    // la quota di casa non è arrivata: viene dai campioni vicini
   quando: 0,
   motivo: '',             // perché non c'è, quando non c'è
   avanzamento: 0,         // 0…1 mentre le quote stanno arrivando
@@ -235,11 +248,67 @@ function terrenoAngolo(quota, occhio, km) {
 // 4. PRENDERE LE QUOTE
 // =====================================================================
 
-function terrenoUrl(punti) {
-  const lat = punti.map(p => p.lat.toFixed(5)).join(',');
-  const lon = punti.map(p => p.lon.toFixed(5)).join(',');
-  return `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`;
-}
+// --- Chi le vende, le quote ------------------------------------------
+//
+// Per anni ce n'era una sola, Open-Meteo, ed è la migliore: stesso servizio
+// del meteo, Copernicus DEM a novanta metri, niente chiave. Ma è un servizio
+// pubblico e gratuito, e i servizi pubblici e gratuiti ogni tanto sono
+// carichi: il **429** — «troppe richieste» — è il guasto più frequente di
+// tutto questo modulo, e quando arriva non arriva da solo, perché a essere
+// carico è il servizio e non la nostra richiesta. Insistere sullo stesso
+// host è allora il modo peggiore di reagire: si continua a bussare a una
+// porta che ha appena detto che è piena.
+//
+// Le altre due danno le stesse quote da modelli diversi (SRTM e i suoi
+// derivati), hanno lo stesso identico patto — niente chiave, niente account,
+// cento coordinate per richiesta, CORS aperto — e soprattutto stanno su
+// **host diversi con quote diverse**: quando la prima è satura le altre non
+// lo sono. Si prova in ordine, e quella che risponde diventa quella di
+// adesso: non si torna alla prima a ogni richiesta, se no ogni ventiquattro
+// richieste se ne buttano ventiquattro sul muro.
+//
+// Ognuna dichiara anche il proprio ritmo di crociera — quante ne accetta
+// insieme e quanto vuole che passi fra l'una e l'altra. OpenTopoData scrive
+// nella sua documentazione «una al secondo», e chiederne quattro insieme è
+// un 429 garantito che non è colpa di nessuno.
+const TERRENO_FONTI = [
+  {
+    nome: 'Open-Meteo',
+    max: 100,
+    insieme: TERRENO_RICHIESTE_INSIEME,
+    distanza: 120,
+    url: punti => 'https://api.open-meteo.com/v1/elevation?latitude=' +
+      punti.map(p => p.lat.toFixed(5)).join(',') + '&longitude=' +
+      punti.map(p => p.lon.toFixed(5)).join(','),
+    leggi: d => (d && Array.isArray(d.elevation)) ? d.elevation : null
+  },
+  {
+    nome: 'OpenTopoData',
+    max: 100,
+    insieme: 1,
+    distanza: 1100,
+    url: punti => 'https://api.opentopodata.org/v1/mapzen?locations=' +
+      punti.map(p => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join('|'),
+    leggi: d => (d && Array.isArray(d.results))
+      ? d.results.map(r => (r && typeof r.elevation === 'number') ? r.elevation : null) : null
+  },
+  {
+    nome: 'Open-Elevation',
+    max: 100,
+    insieme: 1,
+    distanza: 400,
+    url: punti => 'https://api.open-elevation.com/api/v1/lookup?locations=' +
+      punti.map(p => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join('|'),
+    leggi: d => (d && Array.isArray(d.results))
+      ? d.results.map(r => (r && typeof r.elevation === 'number') ? r.elevation : null) : null
+  }
+];
+
+// Quella con cui si sta parlando adesso. È un indice e non un oggetto perché
+// deve poter girare: chi fallisce lo sposta avanti, chi riesce lo pianta lì.
+let terrenoFonteOra = 0;
+
+function terrenoFonte() { return TERRENO_FONTI[terrenoFonteOra % TERRENO_FONTI.length]; }
 
 // Una richiesta sola, con la sua sveglia.
 //
@@ -250,25 +319,124 @@ function terrenoUrl(punti) {
 // nemmeno un errore.
 const TERRENO_TIMEOUT_MS = 15000;
 
-async function terrenoQuote(punti) {
+async function terrenoQuoteDa(f, punti) {
   const ac = typeof AbortController === 'function' ? new AbortController() : null;
   const sveglia = ac ? setTimeout(() => ac.abort(), TERRENO_TIMEOUT_MS) : null;
   try {
-    const risposta = await fetch(terrenoUrl(punti), ac ? { signal: ac.signal } : undefined);
+    const risposta = await fetch(f.url(punti), ac ? { signal: ac.signal } : undefined);
     if (!risposta.ok) {
-      const e = new Error('il servizio delle quote ha risposto ' + risposta.status);
+      const e = new Error(`${f.nome} ha risposto ${risposta.status}`);
       e.stato = risposta.status;
-      // Quanto aspettare prima di riprovare, se è il servizio stesso a dirlo
+      // Quanto aspettare prima di riprovare, se è il servizio stesso a dirlo.
+      // Il tetto di prima era un minuto, e serviva a non restare appesi a un
+      // header assurdo; adesso il tetto vero è quello del rubinetto, e questo
+      // può stare largo — un servizio che dice «fra novanta secondi» sta
+      // dicendo una cosa vera, e ignorarla vuol dire prendersi un altro 429.
       const dopo = parseFloat(risposta.headers.get('retry-after'));
-      if (dopo > 0 && dopo < 60) e.attesa = dopo * 1000;
+      if (dopo > 0 && dopo <= 600) e.attesa = dopo * 1000;
       throw e;
     }
     const dati = await risposta.json();
-    if (!dati || !Array.isArray(dati.elevation)) throw new Error('risposta senza quote');
-    return dati.elevation;
+    const quote = f.leggi(dati);
+    if (!Array.isArray(quote)) throw new Error(`${f.nome} ha risposto senza quote`);
+    terrenoScorre(f);
+    return quote;
+  } catch (e) {
+    // Un errore di rete o un rifiuto sono due nomi della stessa cosa per chi
+    // deve decidere il ritmo: questa fonte adesso non ce la fa, e insistere
+    // allo stesso passo è il modo di continuare a non farcela.
+    if (terrenoRiprovabile(e)) terrenoFrena(f, e);
+    throw e;
   } finally {
     if (sveglia) clearTimeout(sveglia);
   }
+}
+
+// --- Il rubinetto -----------------------------------------------------
+//
+// Ventiquattro richieste partivano quattro alla volta, e le quattro
+// partivano **nello stesso istante**. Un servizio pubblico non lo legge come
+// un utente che apre il planetario: lo legge come una raffica, e risponde
+// 429. Il guaio è che nessuno dei quattro lo diceva agli altri venti: ogni
+// richiesta si riprovava per conto suo, tre volte in sette secondi, mentre
+// le altre continuavano a bussare. Da lì il messaggio che si vedeva più
+// spesso di tutti — «il servizio delle quote è sovraccarico».
+//
+// Adesso ogni fonte ha un rubinetto solo, e tutte le sue richieste ci
+// passano dentro: al massimo `insieme` in volo, e almeno `distanza`
+// millisecondi fra una partenza e l'altra. È un rubinetto che si stringe da
+// sé — a ogni no il passo raddoppia e una richiesta in volo si toglie — e
+// che si riapre piano quando le risposte tornano a essere dei sì. Così la
+// raffica non parte mai, e un 429 rallenta **tutti**, che è l'unica reazione
+// che serva a qualcosa.
+const TERRENO_DISTANZA_MAX_MS = 6000;
+// Quanto al massimo si sta fermi ad aspettare, anche se il servizio ha
+// chiesto di più. Mezzo minuto è il punto oltre il quale conviene bussare a
+// un'altra porta invece di aspettare questa: le fonti sono tre, e restare
+// fermi due minuti perché la prima ha scritto «retry-after: 120» vuol dire
+// non usare le altre due.
+const TERRENO_PAUSA_MAX_MS = 30000;
+const TERRENO_FRENA = 2.2;             // di quanto si allarga il passo a ogni no
+const TERRENO_MOLLA = 0.8;             // di quanto si stringe quando le cose vanno
+const TERRENO_SI_PER_MOLLARE = 4;      // quanti sì di fila prima di riaprire
+
+function terrenoRitmoDi(f) {
+  if (!f.ritmo) {
+    f.ritmo = {
+      insieme: f.insieme, distanza: f.distanza,
+      liberoDa: 0, inVolo: 0, coda: [], timer: null, siDiFila: 0
+    };
+  }
+  return f.ritmo;
+}
+
+function terrenoInFila(f, compito) {
+  const r = terrenoRitmoDi(f);
+  return new Promise((ok, no) => {
+    r.coda.push({ compito, ok, no });
+    terrenoRubinetto(f);
+  });
+}
+
+function terrenoRubinetto(f) {
+  const r = terrenoRitmoDi(f);
+  if (r.timer) return;
+  while (r.coda.length && r.inVolo < r.insieme) {
+    const aspetta = r.liberoDa - Date.now();
+    if (aspetta > 0) {
+      // Ci si risveglia e si riguarda: nel frattempo la pausa può essersi
+      // allungata (un altro 429) o la fonte può essere cambiata.
+      r.timer = setTimeout(() => { r.timer = null; terrenoRubinetto(f); },
+                           Math.min(aspetta, TERRENO_PAUSA_MAX_MS));
+      return;
+    }
+    const v = r.coda.shift();
+    r.inVolo++;
+    r.liberoDa = Date.now() + r.distanza;
+    Promise.resolve().then(v.compito).then(v.ok, v.no)
+      .then(() => { r.inVolo--; terrenoRubinetto(f); });
+  }
+}
+
+// Questa fonte ha detto di no: si rallenta, e si sta fermi il tempo che ha
+// chiesto lei (o quello che ci siamo dati noi, se non l'ha detto).
+function terrenoFrena(f, e) {
+  const r = terrenoRitmoDi(f);
+  r.siDiFila = 0;
+  r.distanza = Math.min(TERRENO_DISTANZA_MAX_MS, Math.round(r.distanza * TERRENO_FRENA));
+  if (r.insieme > 1) r.insieme--;
+  const pausa = Math.min(TERRENO_PAUSA_MAX_MS, (e && e.attesa) || r.distanza);
+  r.liberoDa = Math.max(r.liberoDa, Date.now() + pausa);
+}
+
+// Ha detto di sì, e non una volta sola: si può riaprire un po'. Piano, e
+// mai oltre il ritmo di crociera dichiarato dalla fonte.
+function terrenoScorre(f) {
+  const r = terrenoRitmoDi(f);
+  if (++r.siDiFila < TERRENO_SI_PER_MOLLARE) return;
+  r.siDiFila = 0;
+  r.distanza = Math.max(f.distanza, Math.round(r.distanza * TERRENO_MOLLA));
+  if (r.insieme < f.insieme) r.insieme++;
 }
 
 // Quante volte insistere su una richiesta, e quanto aspettare fra un
@@ -280,11 +448,25 @@ async function terrenoQuote(punti) {
 // una cella che cambia — la probabilità che **almeno una** vada storta è
 // quasi il quarantacinque per cento. E una sola bastava a buttare via anche
 // le altre ventitré, senza riprovare mai.
+//
+// Le attese sono più lunghe di quelle di prima (erano 0,7 / 2,2 / 5 secondi):
+// sette secondi in tutto non sono pazienza, sono la stessa raffica spalmata.
+// E hanno un pizzico di caso dentro, perché quattro richieste che si
+// riprovano tutte allo stesso millesimo sono di nuovo una raffica.
 const TERRENO_TENTATIVI = 3;
-const TERRENO_ATTESE_MS = [700, 2200, 5000];
+const TERRENO_ATTESE_MS = [1200, 4000, 11000];
 
 function terrenoAspetta(ms) {
   return new Promise(f => setTimeout(f, ms));
+}
+
+function terrenoAttesa(e, t) {
+  const base = (e && e.attesa) || TERRENO_ATTESE_MS[Math.min(t, TERRENO_ATTESE_MS.length - 1)];
+  // Anche qui vale il tetto del rubinetto: un servizio che chiede dieci
+  // minuti sta dicendo «non io, oggi», e la risposta giusta non è aspettarlo
+  // dieci minuti — è provare le altre due porte, che è quello che succede
+  // appena questi tentativi finiscono.
+  return Math.round(Math.min(base * (0.75 + Math.random() * 0.5), TERRENO_PAUSA_MAX_MS));
 }
 
 // Vale la pena riprovare? Sì per i 429 («sei andato troppo forte»), per i
@@ -296,17 +478,41 @@ function terrenoRiprovabile(e) {
   return e.stato === 429 || e.stato >= 500;
 }
 
+// Insistere, e poi cambiare porta.
+//
+// Prima si insisteva tre volte sullo stesso servizio e poi ci si arrendeva.
+// Ma un 429 non dice «questo dato non esiste», dice «non da me, non adesso»:
+// arrendersi lì vuol dire restare senza orizzonte avendo in tasca altri due
+// servizi che quel dato ce l'hanno. Si girano tutte le fonti, ognuna coi suoi
+// tentativi, e la prima che risponde diventa quella di adesso — anche per le
+// ventitré richieste che verranno dopo, che è il punto: la fonte satura si
+// paga una volta sola e non ventiquattro.
+//
+// Un errore che **non** è riprovabile (un 400 perché la richiesta è troppo
+// lunga) esce subito e non fa cambiare fonte: quello lo sa gestire chi
+// chiama, spezzando la richiesta in due.
 async function terrenoQuoteInsistendo(punti) {
   let ultimo = null;
-  for (let t = 0; t < TERRENO_TENTATIVI; t++) {
-    try {
-      return await terrenoQuote(punti);
-    } catch (e) {
-      ultimo = e;
-      if (!terrenoRiprovabile(e) || t === TERRENO_TENTATIVI - 1) break;
-      /* eslint-disable no-await-in-loop */
-      await terrenoAspetta(e.attesa || TERRENO_ATTESE_MS[t]);
+  const partenza = terrenoFonteOra;
+  for (let salto = 0; salto < TERRENO_FONTI.length; salto++) {
+    const i = (partenza + salto) % TERRENO_FONTI.length;
+    const f = TERRENO_FONTI[i];
+    for (let t = 0; t < TERRENO_TENTATIVI; t++) {
+      try {
+        /* eslint-disable no-await-in-loop */
+        const q = await terrenoInFila(f, () => terrenoQuoteDa(f, punti));
+        terrenoFonteOra = i;
+        return q;
+      } catch (e) {
+        ultimo = e;
+        if (!terrenoRiprovabile(e)) throw e;
+        if (t === TERRENO_TENTATIVI - 1) break;
+        await terrenoAspetta(terrenoAttesa(e, t));
+      }
     }
+    // Questa non ce la fa: si passa alla prossima, e ci si porta dietro il
+    // puntatore — ma solo se nessun altro l'ha già spostato nel frattempo.
+    if (terrenoFonteOra === i) terrenoFonteOra = (i + 1) % TERRENO_FONTI.length;
   }
   throw ultimo;
 }
@@ -475,9 +681,16 @@ const TERRENO_DIREZIONI_PER_RICHIESTA =
 // orizzonte vero un po' grosso che nessun orizzonte vero.
 const TERRENO_PASSO_GROSSO = 3;
 
-function terrenoRichieste(lat, lon) {
+// `sapute` sono le direzioni che si hanno già in mano — da un tentativo di
+// prima, magari di ieri, che la rete aveva lasciato a metà. Non si
+// richiedono: è quello che rende ogni tentativo più corto del precedente
+// invece che identico, e quindi che rende il terreno una cosa che **prima o
+// poi arriva** anche quando il servizio dice di no un giorno sì e uno no.
+function terrenoRichieste(lat, lon, sapute) {
+  const nota = sapute instanceof Set ? sapute : new Set(sapute || []);
   const grosse = [], fini = [];
   for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+    if (nota.has(i)) continue;
     (i % TERRENO_PASSO_GROSSO === 0 ? grosse : fini).push(i);
   }
   const richieste = [];
@@ -509,6 +722,16 @@ function terrenoRichieste(lat, lon) {
 // il tentativo una volta sola e non ventiquattro.
 let terrenoDirezioniPerVolta = TERRENO_DIREZIONI_PER_RICHIESTA;
 
+// E quante ne accetta la fonte con cui si sta parlando adesso: le tre ne
+// dichiarano cento a testa, ma sono tre servizi diversi e non c'è nessuna
+// ragione perché resti così per sempre. Il limite di chi risponde vince
+// sempre su quello che ci siamo dati noi.
+function terrenoDirezioniOra() {
+  const f = terrenoFonte();
+  const suo = Math.max(1, Math.floor((f.max || TERRENO_PER_RICHIESTA) / TERRENO_DISTANZE.length));
+  return Math.max(1, Math.min(terrenoDirezioniPerVolta, suo));
+}
+
 function terrenoTroppoLunga(e) {
   return !!e && (e.stato === 400 || e.stato === 413 || e.stato === 414);
 }
@@ -523,9 +746,9 @@ function terrenoSpezza(r, da, a) {
 // riusciti — che può essere anche solo una metà, ed è meglio di niente.
 async function terrenoChiedi(r) {
   const nd = TERRENO_DISTANZE.length;
-  if (r.dirs.length > terrenoDirezioniPerVolta) {
-    const meta = Math.max(1, Math.min(terrenoDirezioniPerVolta, r.dirs.length - 1));
-    return terrenoDueMeta(r, meta);
+  const quante = terrenoDirezioniOra();
+  if (r.dirs.length > quante) {
+    return terrenoDueMeta(r, Math.max(1, Math.min(quante, r.dirs.length - 1)));
   }
   try {
     const q = await terrenoQuoteInsistendo(r.punti);
@@ -580,14 +803,38 @@ function terrenoRiempiVuoti(quote, avute) {
   return true;
 }
 
+// La quota di casa, quando la richiesta che la chiedeva non è arrivata.
+//
+// È un punto solo, ma per un pezzo è stato **il** punto: era la prima
+// richiesta e fermava tutto, quindi un 429 preso su di lei buttava via
+// l'intero orizzonte prima ancora di cominciare a misurarlo. Eppure la
+// risposta ce l'abbiamo già in mano: il primo anello di campioni sta a
+// centocinquanta metri da qui, e la mediana di quelle centoventi quote è la
+// quota del suolo sotto i piedi a meno di qualche metro — meno dell'errore
+// del modello. Si prende la mediana e non la media perché basta un campione
+// caduto in un fosso o su un tetto per spostare la media di venti metri.
+function terrenoQuotaDaVicino(quote, avute) {
+  const nd = TERRENO_DISTANZE.length;
+  const vicine = [];
+  avute.forEach(i => {
+    const q = quote[i * nd];
+    if (typeof q === 'number') vicine.push(q);
+  });
+  if (!vicine.length) return null;
+  vicine.sort((a, b) => a - b);
+  return vicine[Math.floor(vicine.length / 2)];
+}
+
 // Dalle quote grezze al profilo: le creste, i paesaggi, e la griglia piena
 // da salvare. Si può chiamare con qualunque sottoinsieme di direzioni in
 // mano — è quello che permette di disegnare a metà strada.
-function terrenoMonta(grezze, avute, quotaCasa) {
+function terrenoMonta(grezze, avute, quotaChiesta) {
   const nd = TERRENO_DISTANZE.length;
   const quote = grezze.slice();
   terrenoRiempiVuoti(quote, avute);
 
+  const stimata = typeof quotaChiesta !== 'number';
+  const quotaCasa = stimata ? terrenoQuotaDaVicino(quote, avute) : quotaChiesta;
   const occhio = (typeof quotaCasa === 'number' ? quotaCasa : 0) + TERRENO_ALTEZZA_OCCHIO_M;
   const creste = new Array(TERRENO_DIREZIONI).fill(0);
   const tipi = new Array(TERRENO_DIREZIONI).fill(TERRENO_PIANURA);
@@ -613,52 +860,92 @@ function terrenoMonta(grezze, avute, quotaCasa) {
   // punto lì» (§8, da cui dipende se una vetta si vede) e «che forma ha il
   // terreno fino a lì», che è quella che il planetario disegna. Duemilacento
   // interi: una decina di kilobyte, e non si riscaricano mai più.
-  return { quota: quotaCasa, creste, tipi, quote, misurate: avute.length };
+  //
+  // `avute` si porta dietro **quali** direzioni sono misurate e non soltanto
+  // quante: è la lista che permette a un tentativo dopo di chiedere solo il
+  // pezzo che manca. Contando i buchi si sa che ce ne sono trenta, ma non
+  // dove sono — e quelle interpolate, nella griglia salvata, sono numeri
+  // identici a quelli veri.
+  return {
+    quota: quotaCasa, quotaStimata: stimata && typeof quotaCasa === 'number',
+    creste, tipi, quote,
+    avute: avute.slice().sort((a, b) => a - b), misurate: avute.length
+  };
 }
 
 // Scarica quello che riesce, e non si arrende per una richiesta andata male.
 //
 // `mostra` viene chiamata alla fine del giro grosso, con quello che c'è: da
 // lì in poi l'orizzonte sullo schermo è quello vero, e il resto lo affina.
-async function terrenoCostruisci(lat, lon, mostra) {
-  // Prima la quota di casa: senza sapere da che altezza si guarda, ogni
-  // angolo è sbagliato — e sbagliato tanto, perché è il termine che si
-  // sottrae a tutti gli altri. Questa sola, se non arriva, ferma tutto.
-  const [quotaCasa] = await terrenoQuoteInsistendo([{ lat, lon }]);
-
+//
+// `gia` è quello che si sa già — la griglia di un tentativo precedente,
+// finito a metà. Le sue direzioni non si richiedono: un tentativo dopo l'altro
+// il buco si stringe, e il terreno diventa una cosa che prima o poi arriva
+// invece di una lotteria che ogni volta ricomincia da zero.
+async function terrenoCostruisci(lat, lon, mostra, gia) {
   const nd = TERRENO_DISTANZE.length;
-  const richieste = terrenoRichieste(lat, lon);
   const grezze = new Array(TERRENO_DIREZIONI * nd).fill(null);
   const avute = [];
-  let guaio = null, fatte = 0;
+
+  if (gia && Array.isArray(gia.quote) && Array.isArray(gia.avute)) {
+    gia.avute.forEach(d => {
+      if (!(d >= 0 && d < TERRENO_DIREZIONI)) return;
+      for (let k = 0; k < nd; k++) {
+        const v = gia.quote[d * nd + k];
+        grezze[d * nd + k] = typeof v === 'number' ? v : null;
+      }
+      avute.push(d);
+    });
+  }
+  const sapute = new Set(avute);
+
+  // La quota di casa. Senza sapere da che altezza si guarda ogni angolo è
+  // sbagliato — è il termine che si sottrae a tutti gli altri — ma **non
+  // ferma più tutto**: se non arriva la si ricava dall'anello dei campioni
+  // più vicini (`terrenoQuotaDaVicino`), che sono quote dello stesso suolo a
+  // centocinquanta metri da qui. Un punto solo non può più costare
+  // l'orizzonte intero.
+  let quotaCasa = (gia && typeof gia.quota === 'number' && !gia.quotaStimata) ? gia.quota : null;
+  let guaio = null;
+  if (quotaCasa === null) {
+    try {
+      const [q] = await terrenoQuoteInsistendo([{ lat, lon }]);
+      if (typeof q === 'number') quotaCasa = q;
+    } catch (e) { guaio = e; }
+  }
+
+  const richieste = terrenoRichieste(lat, lon, sapute);
+  let fatte = 0;
   terreno.avanzamento = 0;
+
+  const accogli = pezzi => pezzi.forEach(pezzo => {
+    pezzo.dirs.forEach((d, j) => {
+      for (let k = 0; k < nd; k++) {
+        const v = pezzo.quote[j * nd + k];
+        grezze[d * nd + k] = typeof v === 'number' ? Math.round(v) : null;
+      }
+    });
+    avute.push(...pezzo.dirs);
+  });
 
   for (const giro of [0, 1]) {
     const daFare = richieste.filter(r => r.giro === giro);
-    for (let i = 0; i < daFare.length; i += TERRENO_RICHIESTE_INSIEME) {
-      const mazzo = daFare.slice(i, i + TERRENO_RICHIESTE_INSIEME);
-      // Ogni richiesta si porta dietro il proprio errore invece di far
-      // fallire il gruppo: è la differenza fra «ne mancano cinque
-      // direzioni» e «non c'è niente».
-      /* eslint-disable no-await-in-loop */
-      const esiti = await Promise.all(mazzo.map(r => terrenoChiedi(r)
-        .then(pezzi => ({ pezzi })).catch(e => ({ e }))));
-      for (const esito of esiti) {
+    // Le richieste partono tutte insieme, ma non **arrivano** tutte insieme:
+    // a spaziarle è il rubinetto della §4, che è l'unico posto che sa quanto
+    // il servizio sta reggendo adesso. Prima erano quattro alla volta scritte
+    // qui, e quel numero non poteva imparare niente da un 429.
+    //
+    // Ogni richiesta si porta dietro il proprio errore invece di far fallire
+    // il gruppo: è la differenza fra «ne mancano cinque direzioni» e «non c'è
+    // niente».
+    /* eslint-disable no-await-in-loop */
+    await Promise.all(daFare.map(r => terrenoChiedi(r)
+      .then(accogli, e => { guaio = e; })
+      .then(() => {
         fatte++;
-        if (esito.e) { guaio = esito.e; continue; }
-        for (const pezzo of esito.pezzi) {
-          pezzo.dirs.forEach((d, j) => {
-            for (let k = 0; k < nd; k++) {
-              const v = pezzo.quote[j * nd + k];
-              grezze[d * nd + k] = typeof v === 'number' ? Math.round(v) : null;
-            }
-          });
-          avute.push(...pezzo.dirs);
-        }
-      }
-      terreno.avanzamento = fatte / richieste.length;
-      terrenoAggiornaPannello();
-    }
+        terreno.avanzamento = richieste.length ? fatte / richieste.length : 1;
+        terrenoAggiornaPannello();
+      })));
     if (giro === 0 && avute.length && typeof mostra === 'function') {
       mostra(terrenoMonta(grezze, avute, quotaCasa));
     }
@@ -715,8 +1002,14 @@ function terrenoSalva(lat, lon, dati) {
     const posti = terrenoArchivio().filter(v => terrenoPostoValido(v) &&
       terrenoDistanzaKm(lat, lon, v.lat, v.lon) > TERRENO_RAGGIO_VALIDO_KM);
     posti.unshift({
-      lat, lon, quota: dati.quota, creste: dati.creste, tipi: dati.tipi,
-      quote: dati.quote, misurate: dati.misurate, quando: Date.now()
+      lat, lon, quota: dati.quota, quotaStimata: !!dati.quotaStimata,
+      creste: dati.creste, tipi: dati.tipi,
+      // `avute` è la lista delle direzioni misurate davvero. Senza di lei un
+      // profilo a metà è indistinguibile da uno intero — nella griglia
+      // salvata le direzioni stimate sono numeri come gli altri — e l'unico
+      // modo di completarlo sarebbe riscaricarlo tutto.
+      quote: dati.quote, avute: dati.avute, misurate: dati.misurate,
+      quando: Date.now()
     });
     localStorage.setItem(CHIAVE_TERRENO, JSON.stringify({ posti: posti.slice(0, TERRENO_POSTI_SALVATI) }));
   } catch (e) { /* storage pieno: pazienza, si riscarica */ }
@@ -735,7 +1028,9 @@ function terrenoScordaProfilo() {
   terreno.miscela = null;
   terreno.fronti = null;
   terreno.quota = null;
+  terreno.quotaStimata = false;
   terreno.misurate = 0;
+  terreno.avute = [];
   terreno.quando = 0;
   terreno.lat = terreno.lon = null;
 }
@@ -756,7 +1051,14 @@ function terrenoApplica(lat, lon, dati, sorgente, ancoraInCorso) {
   terreno.lat = lat;
   terreno.lon = lon;
   terreno.quota = dati.quota;
+  terreno.quotaStimata = !!dati.quotaStimata;
   terreno.misurate = typeof dati.misurate === 'number' ? dati.misurate : TERRENO_DIREZIONI;
+  // Quali direzioni sono misurate davvero, per chi verrà a completarle. I
+  // profili salvati prima che questa lista esistesse non ce l'hanno: se sono
+  // interi va bene lo stesso, se erano a metà si riparte da zero come prima.
+  terreno.avute = Array.isArray(dati.avute) ? dati.avute.slice()
+    : (terreno.misurate >= TERRENO_DIREZIONI
+      ? Array.from({ length: TERRENO_DIREZIONI }, (_, i) => i) : []);
   terreno.profilo = terrenoInterpola(dati.creste);
   terreno.tipi = terrenoTipiPerGrado(dati.tipi);
   terreno.miscela = terrenoMiscelaPerGrado(terreno.tipi);
@@ -793,6 +1095,27 @@ function terrenoLuogo() {
   return (casa && typeof casa.lat === 'number' && typeof casa.lon === 'number') ? casa : null;
 }
 
+// C'è ancora qualcosa da chiedere, per questo profilo? Due cose lo rendono
+// incompleto: delle direzioni stimate invece che misurate, e una quota di
+// casa ricavata dai vicini perché la sua richiesta non era arrivata.
+function terrenoDaCompletare(v) {
+  if (!v) return false;
+  const misurate = typeof v.misurate === 'number' ? v.misurate : TERRENO_DIREZIONI;
+  return misurate < TERRENO_DIREZIONI || !!v.quotaStimata;
+}
+
+// Quello che si sa già di questo posto, pronto da passare a
+// `terrenoCostruisci` perché non lo richieda. Se il salvataggio è intero non
+// serve a niente (non c'è niente da riprendere) e se è di prima della lista
+// `avute` non si sa quali direzioni siano vere: in tutt'e due i casi si
+// risponde `null` e si riparte come si è sempre fatto.
+function terrenoDaRiprendere(v) {
+  if (!v || !terrenoDaCompletare(v)) return null;
+  if (!Array.isArray(v.avute) || !Array.isArray(v.quote)) return null;
+  if (v.quote.length !== TERRENO_DIREZIONI * TERRENO_DISTANZE.length) return null;
+  return { quote: v.quote, avute: v.avute, quota: v.quota, quotaStimata: !!v.quotaStimata };
+}
+
 // Si chiama ogni volta che il luogo può essere cambiato: all'apertura del
 // planetario, dopo `skyImpostaPosizione` e a ogni cambio del luogo di
 // visita. Se il profilo che c'è vale ancora per dove siamo, non fa niente.
@@ -820,9 +1143,8 @@ function terrenoCarica(forza) {
       // completa in sottofondo, una volta per sessione. Intanto quello che
       // c'è si disegna: nessuno resta a guardare l'orizzonte finto per un
       // pomeriggio andato storto la settimana scorsa.
-      const misurate = typeof salvato.misurate === 'number' ? salvato.misurate : TERRENO_DIREZIONI;
       const qui = `${lat.toFixed(2)},${lon.toFixed(2)}`;
-      if (misurate < TERRENO_DIREZIONI * 0.9 && terreno.completatoPer !== qui) {
+      if (terrenoDaCompletare(salvato) && terreno.completatoPer !== qui) {
         terreno.completatoPer = qui;
         setTimeout(() => terrenoCarica(true), 4000);
       }
@@ -860,19 +1182,39 @@ function terrenoCarica(forza) {
   terreno.avanzamento = 0;
   terrenoAggiornaPannello();
 
+  // Quello che di questo posto si sa già, da un tentativo di prima lasciato a
+  // metà: non si richiede. E quante direzioni erano, che serve dopo per
+  // sapere se questo tentativo ha guadagnato qualcosa o ha girato a vuoto.
+  const riprendi = terrenoDaRiprendere(terrenoLeggiSalvato(lat, lon));
+  const primaSapeva = riprendi ? riprendi.avute.length : 0;
+
   terreno.promessa = terrenoCostruisci(lat, lon,
-    // Il giro grosso: si disegna subito, ma lo scarico continua.
-    dati => terrenoApplica(lat, lon, dati, 'rete', true))
+    // Il giro grosso: si disegna subito, **e si salva subito**. Salvare solo
+    // alla fine voleva dire che un tentativo interrotto a metà non lasciava
+    // niente, e quello dopo ricominciava da zero — cioè che con un servizio
+    // che dice di no un giorno sì e uno no il terreno non arrivava mai.
+    dati => {
+      terrenoSalva(lat, lon, dati);
+      terrenoApplica(lat, lon, dati, 'rete', true);
+    }, riprendi)
     .then(({ dati, guaio }) => {
       terrenoSalva(lat, lon, dati);
       terrenoApplica(lat, lon, dati, 'rete');
-      terreno.tentativi = 0;
       // Andata a metà: il terreno c'è e si disegna, ma qualche direzione è
       // stimata invece che misurata. Vale la pena riprovare più tardi a
       // completarla — non subito, che il servizio ha appena detto di no.
-      if (guaio) {
-        console.warn('Terreno: qualche direzione non è arrivata', guaio);
+      if (guaio || terrenoDaCompletare(dati)) {
+        if (guaio) console.warn('Terreno: qualche direzione non è arrivata', guaio);
+        // Il conto dei tentativi riparte **solo se si è guadagnato terreno**.
+        // Azzerarlo comunque, com'era prima, voleva dire riprovare ogni venti
+        // secondi per sempre quando le stesse direzioni non arrivavano mai;
+        // non azzerarlo mai vorrebbe dire arrendersi a tre direzioni dalla
+        // fine. La regola giusta è la terza: chi avanza ha diritto a un'altra
+        // occasione, chi gira a vuoto scala la scaletta delle attese.
+        if (dati.misurate > primaSapeva) terreno.tentativi = 0;
         terrenoRiprovaPiuTardi();
+      } else {
+        terreno.tentativi = 0;
       }
       return true;
     })
@@ -909,15 +1251,24 @@ function terrenoCarica(forza) {
 // nella richiesta». Sono tre cose che chiedono tre comportamenti diversi, e
 // chi legge non poteva sapere quale delle tre stesse capitando.
 function terrenoMotivoGuaio(e) {
+  // Arrivare qui vuol dire che le fonti sono state provate **tutte**: chi
+  // fallisce gira alla successiva (§4). Dirlo cambia la risposta di chi
+  // legge — «il servizio è carico» fa pensare di riprovare fra un minuto,
+  // «sono carichi tutti e tre» dice che quasi sempre il problema è di qua:
+  // la rete del telefono, il wi-fi dell'albergo, il portale che aspetta che
+  // si accettino le condizioni.
+  const tutte = TERRENO_FONTI.length > 1;
   let che;
   if (e && e.stato === 429) {
-    che = 'il servizio delle quote è sovraccarico (429)';
+    che = tutte
+      ? 'i servizi delle quote sono tutti sovraccarichi (429)'
+      : 'il servizio delle quote è sovraccarico (429)';
   } else if (e && typeof e.stato === 'number') {
     che = `il servizio delle quote ha risposto ${e.stato}`;
   } else if (e && e.name === 'AbortError') {
     che = 'il servizio delle quote non ha risposto in tempo';
   } else {
-    che = 'non c\'è rete, o il servizio delle quote non risponde';
+    che = 'non c\'è rete, o i servizi delle quote non rispondono';
   }
   // Cosa resta intanto non è sempre la stessa cosa: se in mano c'è già un
   // profilo di questo posto — un giro grosso arrivato, un salvataggio da
@@ -931,12 +1282,21 @@ function terrenoMotivoGuaio(e) {
     `Riprovo da solo fra poco; ${resta}`;
 }
 
-// Quando riprovare da soli, dopo un buco nell'acqua. Tre volte, sempre più
-// distanti: venti secondi coprono il singhiozzo di rete, un minuto e mezzo
-// il servizio momentaneamente carico, cinque minuti il tunnel o l'ascensore.
-// Poi si smette — riprovare all'infinito su un servizio che dice di no è il
-// modo di farsi bloccare sul serio — e resta il tasto nel pannello.
-const TERRENO_RIPROVE_MS = [20000, 90000, 300000];
+// Quando riprovare da soli, dopo un buco nell'acqua. Sempre più distanti:
+// venti secondi coprono il singhiozzo di rete, un minuto e mezzo il servizio
+// momentaneamente carico, cinque minuti il tunnel o l'ascensore, un quarto
+// d'ora e mezz'ora la giornata storta di un servizio pubblico. Poi si smette
+// — riprovare all'infinito su un servizio che dice di no è il modo di farsi
+// bloccare sul serio — e resta il tasto nel pannello.
+//
+// Erano tre e adesso sono cinque, e non è insistenza in più: adesso ogni
+// tentativo chiede **solo quello che manca** e quello che porta a casa resta
+// salvato, quindi cinque tentativi sono cinque morsi allo stesso buco e non
+// cinque volte la stessa raffica. Un tentativo che guadagna direzioni
+// riazzera per giunta il conto (vedi `terrenoCarica`): finché si avanza si
+// continua, ed è così che il terreno arriva anche nelle serate in cui il
+// servizio risponde una volta su tre.
+const TERRENO_RIPROVE_MS = [20000, 90000, 300000, 900000, 1800000];
 
 function terrenoRiprovaPiuTardi() {
   const n = terreno.tentativi || 0;
@@ -1178,10 +1538,14 @@ function terrenoTesto() {
     // sa cosa sta succedendo: serve a chi non lo sa.
     const q = terreno.avanzamento > 0 && terreno.avanzamento < 1
       ? ` (${Math.round(terreno.avanzamento * 100)}%)` : '';
+    // Se si sta parlando con la seconda o la terza fonte, va detto: vuol dire
+    // che la prima era satura, e la riga di stato è l'unico posto in cui uno
+    // può accorgersi che l'app se l'è cavata da sola invece di essere ferma.
+    const dove = terrenoFonteOra > 0 ? ` (via ${terrenoFonte().nome})` : '';
     // Dopo il giro grosso l'orizzonte disegnato è già quello vero: va detto,
     // se no chi guarda crede che quello che vede sia ancora la finzione.
-    if (terreno.profilo) return `L'orizzonte qui sopra è già quello vero: lo sto affinando${q}…`;
-    return `Sto misurando com'è fatto il terreno attorno a te${q}…`;
+    if (terreno.profilo) return `L'orizzonte qui sopra è già quello vero: lo sto affinando${q}${dove}…`;
+    return `Sto misurando com'è fatto il terreno attorno a te${q}${dove}…`;
   }
   if (terreno.stato === 'fallito') return terreno.motivo;
 
@@ -1192,7 +1556,8 @@ function terrenoTesto() {
   // Quando manca qualche direzione lo si dice, ma in coda e senza allarme:
   // il terreno c'è ed è quello vero, solo un po' meno fine da qualche parte.
   const meta = terreno.misurate && terreno.misurate < TERRENO_DIREZIONI
-    ? ` (${TERRENO_DIREZIONI - terreno.misurate} direzioni su ${TERRENO_DIREZIONI} sono stimate: la rete non le ha portate tutte)`
+    ? ` (${TERRENO_DIREZIONI - terreno.misurate} direzioni su ${TERRENO_DIREZIONI} sono stimate: la rete non le ha portate tutte, ` +
+      'e le chiedo ancora ogni tanto finché non arrivano)'
     : '';
 
   // Com'è fatto il giro. Non «l'orizzonte è alto 3,4°» — che è vero e non

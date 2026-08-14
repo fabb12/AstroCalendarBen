@@ -14,69 +14,59 @@ non un verbale.
 
 ---
 
-## Le eclissi nella vista 3D — fatto
+## «Il servizio delle quote è sovraccarico (429)» — fatto
 
-La vista 3D del Sistema Solare diceva dove stanno i pianeti e basta. Non
-sapeva niente della Terra (un pallino azzurro largo otto pixel, con dieci
-macchie di continente dipinte sopra), non sapeva niente delle eclissi, e
-arrivando dalla scheda di un'eclissi si apriva sulla stessa scena di sempre —
-da girare finché uno capiva cosa c'entrasse.
+Aprendo il planetario, spesso l'orizzonte restava quello disegnato e sotto
+c'era scritto: *«Non sono riuscito a prendere la forma del terreno: il
+servizio delle quote è sovraccarico (429)»*. Era il messaggio più frequente
+di tutta l'app.
 
-Adesso fa quattro cose, e sono quattro sezioni nuove o rifatte di `app.js`.
+Le difese c'erano già — riprovare tre volte, non far cadere le altre
+richieste, dire il perché — ma erano tutte dentro alla stessa idea: *insistere
+con lo stesso servizio, allo stesso ritmo, ricominciando da capo*. E quella è
+esattamente l'idea che un 429 sta contestando. Adesso ce ne sono quattro
+nuove, tutte in §4 di `terreno.js`.
 
-- [x] **§7.7-ter, la Terra da vicino.** Sopra ai tredici pixel di raggio il
-      globo smette di essere la faccia dipinta e diventa il pianeta vero: le
-      coste di `SKY_MONDO`, il confine del giorno in tre veli (che è una
-      fascia, non una riga), le luci delle città dentro alla notte, il puntino
-      di casa e, durante un'eclissi di Sole, la macchia dell'ombra della Luna.
-      Il telaio geografico non è inventato: `solTelaioTerra()` chiede alla
-      libreria dov'è il polo e dov'è Greenwich in quell'istante, cioè la
-      stessa catena di conti del planetario.
-- [x] **L'impronta dell'ombra non è un cerchio.** Il primo tentativo
-      disegnava una calotta tonda del raggio della sezione del cono, e per il
-      12 agosto 2026 dava una macchia larga centotrenta chilometri invece dei
-      trecento della fascia vera: la differenza è tutta obliquità, perché il
-      cono arriva di sbieco. Adesso `solImprontaSuTerra()` tira un raggio per
-      volta dal limbo della Luna e lo interseca con la sfera. La penombra si
-      disegna col solo bordo — copre un terzo del pianeta.
-- [x] **§7.7-quater, il banco «Terra e Luna».** Una scena a parte, con la
-      Terra nell'origine e i chilometri al posto delle unità astronomiche, e
-      **niente di ingrandito**: i due corpi, la distanza fra loro e i due coni
-      d'ombra sono allo stesso metro, col righello sotto per controllarlo. È
-      lì che si vede perché le eclissi non capitano tutti i mesi — cinque
-      gradi di inclinazione, a trecentottantamila chilometri, sono cinque
-      raggi terrestri fuori dal piano contro un'ombra larga meno di uno.
-      C'è l'orbita lunare vera (sopra al piano continua, sotto tratteggiata),
-      la linea dei nodi, la sezione dell'ombra alla distanza della Luna, e
-      `solStatoEclissi()` che dice a parole cosa succede — o di quanto manca.
-- [x] **I nodi e le inclinazioni delle altre orbite.** C'erano sempre state
-      (le orbite si campionano dalle posizioni vere), ma un grado e mezzo
-      disegnato è meno dello spessore della linea. Il chip «Nodi» aggiunge la
-      corda fra i due nodi, i due estremi col filo a piombo e i gradi scritti
-      accanto: Mercurio 7,0°, Venere 3,4°, Marte 1,8°, e la Terra niente,
-      perché il piano è il suo.
-- [x] **La camera si posiziona da sola sull'evento.**
-      `apriSistemaSolare({ evento: id })`: un'eclissi apre il banco Terra e
-      Luna con l'orologio già portato lì e il passo del tempo a un'ora, un
-      evento con un pianeta protagonista apre la vista d'insieme con quel
-      pianeta già scelto. Il tasto «Perché succede» sta nelle schede
-      dell'agenda e nell'elenco eventi del planetario.
-- [x] **Un mondo solo.** Le coste e le luci delle città stavano dentro al
-      banco del tramonto di `didattica.js`. Sono passate in `app.js` §7.3.2
-      (`SKY_MONDO`, `SKY_LUCI_CITTA`) e la Didattica le legge da lì: due copie
-      dello stesso mondo divergono al primo ritocco.
-- [x] **§18 di `verifica.html`**, trenta prove nuove (306 in tutto, tutte
-      passate). Le più utili: che all'equatore il telaio geografico coincida
-      con `ObserverVector` e altrove sbagli **solo** dell'ellissoide, che sei
-      ore dopo mezzogiorno UT il Sole sia a ovest e non a est (il mondo non è
-      specchiato — l'errore che a occhio non si vede), che il punto di massima
-      eclissi del 12 agosto 2026 caschi dove dice la NASA, che la fascia di
-      totalità sul terreno sia più larga della sezione del cono, e che le
-      inclinazioni ricavate dai campioni tornino col catalogo.
+- [x] **Il rubinetto** (`terrenoInFila`, `terrenoRubinetto`, `terrenoFrena`,
+      `terrenoScorre`). Quattro richieste partivano nello stesso istante:
+      una raffica. Adesso ogni fonte ha una coda sola che le spazia e conta
+      quante ne sono in volo; a ogni no il passo raddoppia e una richiesta si
+      toglie dal volo, a ogni fila di sì si riapre piano. Un 429 rallenta
+      **tutte** le richieste di quella fonte — prima le altre venti
+      continuavano a bussare mentre la prima aspettava.
+- [x] **Tre porte invece di una** (`TERRENO_FONTI`). Open-Meteo,
+      OpenTopoData, Open-Elevation: stesse colline, modelli e host diversi,
+      niente chiave per nessuno. `terrenoQuoteInsistendo` le gira tutte, e
+      quella che risponde diventa quella di adesso anche per le richieste
+      successive: la fonte satura si paga una volta sola, non ventiquattro.
+      Nel service worker i due host nuovi sono trattati come le quote di
+      casa: tenuti in cache, e fuori dal ripiego che serve `index.html`.
+- [x] **Quello che arriva si tiene** (`avute`, `terrenoDaRiprendere`,
+      `terrenoRichieste(lat, lon, sapute)`). Il giro grosso si salva appena
+      arriva, con dentro *quali* direzioni sono misurate davvero; il
+      tentativo dopo riprende da lì e chiede solo il buco. È la garanzia
+      vera: i tentativi si sommano invece di ripetersi, e un tentativo che
+      guadagna direzioni riazzera il conto delle riprove — finché si avanza
+      si continua. Le riprove automatiche sono passate da tre a cinque
+      (20 s → mezz'ora), che adesso sono cinque morsi allo stesso buco.
+- [x] **La quota di casa non ferma più tutto** (`terrenoQuotaDaVicino`). Era
+      una richiesta sola e veniva per prima: un 429 su di lei e l'orizzonte
+      non partiva nemmeno. Se non arriva si prende la mediana dell'anello di
+      campioni a centocinquanta metri — stesso suolo, e i tetti e i fossi non
+      la spostano — e il profilo si segna `quotaStimata` per farsi completare.
 
-Provato in un browser vero (Chromium headless) su tre eclissi: la totale di
-Luna del 3 marzo 2026, la totale di Sole del 12 agosto 2026 e la parziale di
-Luna del 28 agosto 2026, più una Luna piena qualunque di fine giugno che
-l'ombra manca di quattro raggi terrestri.
+Contorno: `TERRENO_PAUSA_MAX_MS` (mezzo minuto: oltre, conviene cambiare
+porta invece di aspettare), attese fra i tentativi più lunghe e con un
+pizzico di caso dentro, e la riga di stato che dice «via OpenTopoData»
+quando è la seconda fonte a rispondere.
 
-Niente altro in corso.
+Provato con un banco a parte (servizio finto): con Open-Meteo che risponde
+sempre 429 il terreno arriva **intero** sprecando tre richieste; con tutte e
+tre le fonti che rifiutano una risposta su due arriva intero lo stesso; con
+il servizio che chiude dopo tre richieste il tentativo dopo ne chiede 22
+invece di 24 e completa. Nel repo restano le prove del §9 di `verifica.html`
+(17 nuove).
+
+Da fare prima di dire che è finita: **aprire l'app in un browser vero** e
+guardare l'orizzonte del proprio posto — qui non si è potuto, la rete di
+questa sessione non lascia passare né open-meteo né gli altri due host.

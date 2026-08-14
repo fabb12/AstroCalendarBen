@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v98';
+const CACHE_NAME = 'astrocal-v99';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -123,8 +123,18 @@ self.addEventListener('fetch', (e) => {
   // niente da vedere.
   //
   // Con una sola eccezione, ed è quella qui sotto: le quote del suolo.
-  const quoteDelSuolo = url.hostname.includes('open-meteo.com') &&
-    url.pathname.indexOf('/elevation') !== -1;
+  //
+  // Che adesso non vengono più solo da open-meteo: quando è carico — il 429
+  // che si vedeva più di ogni altra cosa — terreno.js (§4) passa a
+  // OpenTopoData e a Open-Elevation, che danno le stesse colline da altri
+  // server. Vanno trattati come le quote di casa: tenuti in cache, e
+  // soprattutto **fuori** dal ripiego generico più in basso, che per una
+  // richiesta andata male serve `index.html` — una pagina HTML al posto di
+  // un JSON è il modo più confuso che ci sia di non avere le quote.
+  const HOST_QUOTE = ['api.opentopodata.org', 'api.open-elevation.com'];
+  const quoteDelSuolo =
+    (url.hostname.includes('open-meteo.com') && url.pathname.indexOf('/elevation') !== -1) ||
+    HOST_QUOTE.indexOf(url.hostname) !== -1;
 
   if (!quoteDelSuolo && (
       url.hostname.includes('open-meteo.com') ||
