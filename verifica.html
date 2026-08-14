@@ -1992,6 +1992,177 @@ titolo('16. I disegni fatti a mano (le immagini delle costellazioni)');
 }
 
 // =====================================================================
+titolo('17. Il Sole al tramonto (didattica.js)');
+// =====================================================================
+//
+// Questo banco disegna un tramonto qualunque cosa gli si dia in pasto: la
+// rifrazione sbagliata di un terzo fa un tramonto bellissimo, la massa
+// d'aria sbagliata del doppio fa un rosso ancora più convincente. Sono
+// esattamente i numeri che a occhio non si controllano — e sono anche
+// quelli che il quadro «Quanta aria» promette di poter misurare col
+// righello sullo schermo, il che vuol dire che il disegno e i conti
+// devono dire la stessa identica cosa.
+if (typeof didProve === 'undefined' || !didProve.tram) {
+  nota('didattica.js non caricato: sezione saltata.');
+} else {
+  const T = didProve.tram;
+
+  // 1. La rifrazione all'orizzonte è il numero da cui dipende tutto il
+  //    resto: vale 34 primi, cioè **più del mezzo grado che il disco del
+  //    Sole misura**. È tutta lì la ragione per cui il Sole si vede
+  //    quando è già tramontato.
+  {
+    const r0 = T.rifrazione(0);
+    prova('la rifrazione all\'orizzonte vale 34 primi', Math.abs(r0 - 34) < 1.5,
+          `${r0.toFixed(1)}′ contro i 32′ del diametro del Sole`);
+    prova('e più del diametro apparente del Sole', r0 > 32, `${r0.toFixed(1)}′ > 32′`);
+    const r45 = T.rifrazione(45);
+    prova('a 45° la rifrazione è un primo scarso', Math.abs(r45 - 1) < 0.15, `${r45.toFixed(2)}′`);
+    prova('allo zenit non c\'è rifrazione', Math.abs(T.rifrazione(90)) < 0.02,
+          `${T.rifrazione(90).toFixed(3)}′`);
+  }
+
+  // 2. Il Sole si vede ancora quando è geometricamente sotto: l'altezza
+  //    apparente di un Sole a −0,5° deve essere ancora sopra lo zero
+  {
+    const app = T.altezzaApparente(-0.5);
+    prova('un Sole mezzo grado sotto l\'orizzonte si vede ancora',
+          app > 0, `altezza apparente ${app.toFixed(3)}°`);
+  }
+
+  // 3. La massa d'aria: uno allo zenit, e trentotto rasente. Il secondo
+  //    numero non diverge come farebbe 1/sin(h): la curvatura lo ferma.
+  {
+    prova('la massa d\'aria allo zenit vale 1', Math.abs(T.massaAria(90) - 1) < 0.002,
+          T.massaAria(90).toFixed(4));
+    const X0 = T.massaAria(0);
+    prova('e all\'orizzonte si ferma attorno a 38', X0 > 36 && X0 < 40, X0.toFixed(1));
+    prova('a 30° vale il doppio dello zenit', Math.abs(T.massaAria(30) - 2) < 0.02,
+          T.massaAria(30).toFixed(3));
+  }
+
+  // 4. Il disegno e il numero devono dire la stessa cosa. Il quadro
+  //    «Quanta aria» promette che il trattino verticale ci sta dentro al
+  //    raggio tante volte quanta è la massa d'aria, e quella promessa o è
+  //    esatta o non va fatta: il righello sullo schermo non ammette il
+  //    «più o meno». Per un pezzo il quadro disegnava la corda geometrica
+  //    dentro alla fascia e scriveva accanto Kasten & Young, che è un'altra
+  //    cosa — sei per cento, invisibili a occhio e sbagliati lo stesso.
+  {
+    let peggio = 0;
+    for (let h = 0; h <= 90; h += 1) {
+      const X = T.massaAria(h);
+      peggio = Math.max(peggio, Math.abs(T.camminoKm(X) / T.ARIA_KM - X) / X);
+    }
+    prova('il cammino disegnato ci sta dentro esattamente X volte',
+          peggio < 1e-12, `scarto massimo ${peggio.toExponential(1)}`);
+    prova('allo zenit il cammino è lo spessore della fascia',
+          Math.abs(T.camminoKm(T.massaAria(90)) - T.ARIA_KM) < 0.01,
+          `${T.camminoKm(T.massaAria(90)).toFixed(2)} km`);
+    prova('e rasente sono trecento chilometri d\'aria',
+          T.camminoKm(T.massaAria(0)) > 280 && T.camminoKm(T.massaAria(0)) < 340,
+          `${T.camminoKm(T.massaAria(0)).toFixed(0)} km`);
+
+    // La scala del disegno è tarata sulla corda geometrica √(2RH): il
+    // cammino più lungo che ci si può disegnare dentro. Dev'essere un po'
+    // più lunga di quella che si disegna davvero, se no il raggio esce
+    // dalla tela proprio quando conta.
+    prova('la scala del quadro è tarata su √(2RH) = 327 km',
+          Math.abs(T.CAMMINO_MAX - Math.sqrt(2 * T.RE * T.ARIA_KM + T.ARIA_KM * T.ARIA_KM)) < 1e-9,
+          `${T.CAMMINO_MAX.toFixed(1)} km`);
+    prova('e ci sta dentro il cammino più lungo che si disegna',
+          T.camminoKm(T.massaAria(0)) <= T.CAMMINO_MAX,
+          `${T.camminoKm(T.massaAria(0)).toFixed(0)} km su ${T.CAMMINO_MAX.toFixed(0)}`);
+    prova('le due strade — geometria e Kasten & Young — restano vicine',
+          Math.abs(T.CAMMINO_MAX / T.ARIA_KM - T.massaAria(0)) / T.massaAria(0) < 0.06,
+          `${(T.CAMMINO_MAX / T.ARIA_KM).toFixed(1)} geometrici contro ${T.massaAria(0).toFixed(1)}`);
+
+    // È la curvatura a fermare il raggio: su una Terra piatta la massa
+    // d'aria rasente sarebbe 1/sin(h), che non finisce più
+    prova('senza curvatura sarebbe dieci volte tanto, con la curvatura no',
+          T.massaAria(0.1) < 45 && 1 / Math.sin(0.1 * Math.PI / 180) > 500,
+          `${T.massaAria(0.1).toFixed(1)}× invece di ${(1 / Math.sin(0.1 * Math.PI / 180)).toFixed(0)}×`);
+  }
+
+  // 5. La diffusione di Rayleigh va come λ⁻⁴: il blu se ne va per primo,
+  //    e all'orizzonte deve restarne una briciola contro un quarto di rosso
+  {
+    const X = T.massaAria(0);
+    const blu = T.trasmittanza(450, X), rosso = T.trasmittanza(650, X);
+    prova('all\'orizzonte del blu non resta quasi niente', blu < 0.01,
+          `${(blu * 100).toFixed(3)}%`);
+    prova('e del rosso resta ancora un quarto', rosso > 0.15 && rosso < 0.4,
+          `${(rosso * 100).toFixed(0)}%`);
+    prova('allo zenit invece passa quasi tutto',
+          T.trasmittanza(450, 1) > 0.75 && T.trasmittanza(650, 1) > 0.9,
+          `blu ${(T.trasmittanza(450, 1) * 100).toFixed(0)}%, rosso ${(T.trasmittanza(650, 1) * 100).toFixed(0)}%`);
+    // il rapporto fra le due estinzioni è (650/450)⁴ = 4,35: è la legge,
+    // non una scelta di colori
+    const kBlu = -Math.log10(T.trasmittanza(450, 1)), kRosso = -Math.log10(T.trasmittanza(650, 1));
+    prova('e il rapporto fra le estinzioni è (650/450)⁴',
+          Math.abs(kBlu / kRosso - Math.pow(650 / 450, 4)) < 0.01,
+          `${(kBlu / kRosso).toFixed(3)} contro ${Math.pow(650 / 450, 4).toFixed(3)}`);
+  }
+
+  // 6. La rotazione della Terra: l'altezza del Sole in funzione dell'ora
+  //    dev'essere quella vera, e la strada di ritorno (dall'altezza
+  //    all'ora, che è quella che usano i tasti «portami a») dev'essere la
+  //    sua inversa esatta. Un'inversa sbagliata non si vede: il tasto
+  //    porta da qualche parte, e quel qualche parte sembra plausibile.
+  {
+    prova('a mezzogiorno il Sole culmina a 90° − |φ − δ|',
+          Math.abs(T.altezzaDaOra(0, 44.5, 14.3) - (90 - Math.abs(44.5 - 14.3))) < 1e-9,
+          `${T.altezzaDaOra(0, 44.5, 14.3).toFixed(2)}°`);
+    prova('all\'equinozio il Sole tramonta a sei ore dal mezzogiorno',
+          Math.abs(T.altezzaDaOra(90, 44.5, 0)) < 1e-9,
+          `altezza a 90° di rotazione: ${T.altezzaDaOra(90, 44.5, 0).toExponential(1)}°`);
+    let peggio = 0;
+    [[44.5, 14.3], [0, 0], [69.65, 14.3], [-33, -20]].forEach(([lat, decl]) => {
+      const hMax = 90 - Math.abs(lat - decl), hMin = -90 + Math.abs(lat + decl);
+      for (let h = Math.ceil(hMin) + 1; h < hMax - 1; h += 3) {
+        const ora = T.oraPerAltezza(h, lat, decl);
+        peggio = Math.max(peggio, Math.abs(T.altezzaDaOra(ora, lat, decl) - h));
+      }
+    });
+    prova('e dall\'altezza si torna all\'ora giusta, a ogni latitudine',
+          peggio < 1e-6, `scarto massimo ${peggio.toExponential(1)}°`);
+  }
+
+  // 7. Il sole di mezzanotte e la notte polare: sono i due casi in cui la
+  //    slitta deve arrendersi invece di dare un'ora qualunque
+  {
+    prova('dove il Sole non tramonta, «tramonto» resta a mezzanotte',
+          T.oraPerAltezza(0, 78, 20) === 180, 'lat 78° N con il Sole a picco su 20° N');
+    prova('e dove non sorge, «mezzogiorno» resta a mezzogiorno',
+          T.oraPerAltezza(30, 78, -20) === 0, 'lat 78° N in pieno inverno');
+    prova('e in notte polare l\'altezza è negativa tutto il giro',
+          T.altezzaDaOra(0, 78, -20) < 0, `${T.altezzaDaOra(0, 78, -20).toFixed(1)}° a mezzogiorno`);
+  }
+
+  // 8. Il confronto con Astronomy Engine: la formula scritta a mano contro
+  //    le effemeridi vere, per una data e un posto scelti a caso
+  if (typeof Astronomy !== 'undefined') {
+    const obs = new Astronomy.Observer(44.5, 0, 0);
+    const t0 = Astronomy.MakeTime(new Date(Date.UTC(2026, 3, 12, 12, 0, 0)));
+    const equ = Astronomy.Equator('Sun', t0, obs, true, true);
+    let peggio = 0;
+    for (let ore = 0; ore <= 6; ore += 0.5) {
+      const t = t0.AddDays(ore / 24);
+      const e = Astronomy.Equator('Sun', t, obs, true, true);
+      const hor = Astronomy.Horizon(t, obs, e.ra, e.dec, null);
+      // l'angolo orario vero, in gradi, riportato fra 0 e 180
+      let ha = Astronomy.HourAngle('Sun', t, obs) * 15;
+      if (ha > 180) ha -= 360;
+      peggio = Math.max(peggio, Math.abs(T.altezzaDaOra(Math.abs(ha), 44.5, e.dec) - hor.altitude));
+    }
+    prova('l\'altezza del Sole ora per ora torna con le effemeridi vere',
+          peggio < 0.05, `scarto massimo ${peggio.toFixed(3)}° (declinazione ${equ.dec.toFixed(2)}°)`);
+  } else {
+    nota('Astronomy Engine non disponibile: confronto con le effemeridi saltato.');
+  }
+}
+
+// =====================================================================
 const esito = document.getElementById('esito');
 esito.dataset.stato = fallite ? 'ko' : 'ok';
 esito.textContent = fallite
