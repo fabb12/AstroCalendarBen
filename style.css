@@ -4675,6 +4675,17 @@ body.sol-immersivo { overflow: hidden; }
 .sol-riga .segmenti-cielo { flex: 0 1 auto; }
 .sol-riga .tasto-segmento { flex: 0 0 auto; }
 
+/* Nel banco delle eclissi (Terra e Luna) metà di questi comandi parla di una
+   scena che lì non c'è: le distanze compresse, le fasce di sassi, i pallini
+   in scala. Restano al loro posto ma spenti, invece di sparire — una fila di
+   tasti che cambia lunghezza a ogni tocco fa perdere il segno di dov'erano
+   gli altri, e li si va a ricercare ogni volta. */
+.tasto-segmento.spento-fuori-scena {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+.tasto-segmento.spento-fuori-scena:hover { background: transparent; color: var(--testo-2); }
+
 /* La lettura: prima il pianeta scelto per esteso, poi la fila di tutti gli
    altri — che è anche il modo più veloce per cambiarlo. */
 .sol-scheda { display: grid; gap: 10px; }

@@ -5937,6 +5937,13 @@ function costruisciAgenda() {
       scorciatoie.push(`<button onclick="apriMappaLunare('${evento.id}')" class="${stileScorciatoia}" ` +
         `title="Da dove si vede, a che ora, e con la Luna quanto alta">Dove e quando vederla</button>`);
     }
+    // La mappa dice *da dove* si vede; questa dice *perché succede*, ed è la
+    // domanda che viene subito dopo — la geometria vera, vista da fuori, con
+    // la Luna che stavolta il bersaglio lo prende (§7.7-quater).
+    if (evento.eclissi || evento.eclissiLunare) {
+      scorciatoie.push(`<button onclick="apriSistemaSolare({ evento: '${evento.id}' })" class="${stileScorciatoia}" ` +
+        `title="La Terra e la Luna viste da fuori in quell'istante, a scala vera, coi coni d'ombra: perché quella sera l'allineamento riesce">Perché succede</button>`);
+    }
     const barraScorciatoie = scorciatoie.length
       ? `<div class="flex flex-wrap gap-2 mt-3">${scorciatoie.join('')}</div>`
       : '';
@@ -11230,6 +11237,152 @@ const SKY_ISOLE_TERRA = [
   { lon: -79,  lat: 22,  r: 0.05,  c: '#5c7f3e' },   // Cuba e Caraibi
   { lon: 174,  lat: -41, r: 0.065, c: '#4d7a45' },   // Nuova Zelanda
   { lon: -19,  lat: 65,  r: 0.04,  c: '#6f8f5a' }    // Islanda
+];
+
+// --- Il mondo vero: le coste, e le luci di chi ci abita ------------------
+//   Le macchie qui sopra sono la Terra vista da lontano, dove il globo è
+//   largo venti pixel e una chiazza verde al posto giusto è tutto quello che
+//   serve. Ma nella vista 3D ci si avvicina finché il globo prende mezzo
+//   schermo (`SOL_ZOOM_MAX_TERRA`), e a quella misura dieci bolle si leggono
+//   per quello che sono: bolle. Con la sagoma vera invece si riconosce il
+//   proprio paese — e riconoscerlo è metà del motivo per cui si guarda la
+//   Terra da fuori, perché il puntino di casa sta *lì*.
+//
+//   La risoluzione è grossolana di proposito: qualche decina di vertici per
+//   continente, cioè quello che si vede da un pianeta vicino. Non è una carta
+//   geografica e non pretende di esserlo; è una silhouette.
+//
+//   L'ordine conta: prima le terre, poi i deserti che ci stanno sopra, poi i
+//   ghiacci. Sono tutti poligoni sferici, quindi il salto della longitudine a
+//   ±180° non è un problema — i vertici diventano vettori, e un vettore non
+//   sa niente dei meridiani.
+//
+//   Questi due elenchi li divide con il banco del tramonto della Didattica
+//   (`didattica.js` §9, che li legge da qui): sono lo stesso mondo, e due
+//   copie dello stesso mondo divergono al primo ritocco.
+const SKY_MONDO = [
+  { nome: 'Africa', c: '#4a7a42', punti: [
+    [-17, 21], [-13, 28], [-9.5, 31], [-6, 36], [3, 37], [10, 37], [15, 32],
+    [20, 32], [25, 32], [31, 31], [34, 28], [36, 22], [38, 18], [39, 15],
+    [43, 11.5], [48, 11.5], [51, 11.5], [47, 5], [43, 2], [41, -2], [40, -8],
+    [40, -14], [35, -20], [33, -26], [30, -31], [27, -33.5], [22, -34],
+    [18, -34.5], [15, -28], [13, -23], [12, -18], [12, -12], [9, -6], [9, -1],
+    [9.5, 4], [5, 5], [0, 5.5], [-4, 5], [-8, 4.5], [-13, 8], [-16, 12], [-17, 14.7]] },
+
+  { nome: 'Eurasia', c: '#477542', punti: [
+    [-6, 36], [-9, 38.7], [-9, 43.5], [-4, 43.5], [-1.5, 46], [-2, 48.5],
+    [4, 51], [8, 55], [12, 54.5], [21, 56], [24, 59.5], [30, 60], [21, 63],
+    [18, 65], [24, 68], [21, 70], [28, 71], [40, 66], [44, 68], [55, 69],
+    [66, 71], [73, 68], [78, 73], [90, 76], [104, 77], [110, 74], [125, 73],
+    [133, 72], [145, 72], [160, 70], [172, 68], [179, 66], [170, 60], [163, 58],
+    [156, 51], [142, 54], [140, 46], [132, 43], [128, 38], [122, 40], [120, 36],
+    [122, 31], [113, 22], [107, 21], [105, 16], [100, 13], [104, 1], [98, 8],
+    [93, 16], [89, 22], [80, 15], [77, 8], [72, 21], [66, 25], [57, 26],
+    [51, 29], [48, 30], [50, 37], [45, 42], [36, 36], [30, 40], [26, 38],
+    [23, 39], [19, 40], [16, 39], [12, 45], [14, 45], [8, 44], [3, 43],
+    [-2, 37]] },
+
+  { nome: 'Nord America', c: '#487641', punti: [
+    [-168, 66], [-161, 70], [-156, 71], [-145, 70], [-133, 69], [-125, 70],
+    [-115, 69], [-105, 68], [-95, 68], [-85, 70], [-80, 73], [-70, 70],
+    [-65, 60], [-56, 52], [-60, 47], [-66, 45], [-70, 42], [-74, 40],
+    [-76, 35], [-81, 31], [-80, 26], [-83, 29], [-88, 30], [-94, 29],
+    [-97, 26], [-97, 21], [-92, 18], [-88, 21], [-87, 15], [-83, 9],
+    [-79, 9], [-83, 15], [-88, 14], [-95, 16], [-105, 20], [-110, 24],
+    [-114, 28], [-117, 32], [-121, 35], [-124, 40], [-124, 46], [-131, 53],
+    [-136, 58], [-145, 60], [-152, 58], [-159, 56], [-163, 60], [-166, 63]] },
+
+  { nome: 'Sud America', c: '#3f7239', punti: [
+    [-81, -4], [-79, 0], [-77, 8], [-72, 11], [-62, 11], [-52, 5], [-50, 0],
+    [-44, -2], [-38, -5], [-35, -8], [-39, -13], [-40, -20], [-48, -25],
+    [-53, -33], [-57, -38], [-62, -40], [-65, -45], [-68, -50], [-70, -54],
+    [-75, -52], [-74, -46], [-73, -40], [-71, -33], [-70, -23], [-71, -18],
+    [-76, -14]] },
+
+  { nome: 'Australia', c: '#8f7c4a', punti: [
+    [113, -22], [114, -26], [115, -34], [119, -34], [126, -32], [132, -32],
+    [138, -35], [141, -38], [147, -38], [150, -35], [153, -28], [153, -25],
+    [148, -20], [143, -14], [142, -11], [137, -12], [132, -11], [129, -15],
+    [125, -14], [122, -18], [116, -21]] },
+
+  { nome: 'Nuova Guinea', c: '#3f6b3d', punti: [
+    [131, -1], [138, -2], [144, -4], [147, -6], [151, -10], [146, -8],
+    [141, -9], [136, -8], [132, -5]] },
+
+  { nome: 'Borneo', c: '#3f6b3d', punti: [
+    [109, 2], [113, 7], [117, 7], [119, 2], [117, -3], [111, -3], [109, 0]] },
+
+  { nome: 'Sumatra', c: '#3f6b3d', punti: [
+    [95, 5], [98, 4], [104, -2], [106, -6], [102, -5], [99, 0]] },
+
+  { nome: 'Giava', c: '#3f6b3d', punti: [
+    [105, -6], [114, -7], [122, -8], [114, -8.8], [106, -7.5]] },
+
+  { nome: 'Madagascar', c: '#7f7a45', punti: [
+    [49, -12], [50, -15], [48, -21], [46, -25], [44, -22], [44, -17], [46, -13]] },
+
+  { nome: 'Giappone', c: '#487641', punti: [
+    [130, 33], [136, 34], [141, 38], [142, 43], [145, 44], [141, 41],
+    [137, 37], [131, 32]] },
+
+  { nome: 'Isole Britanniche', c: '#4d7a45', punti: [
+    [-5, 50], [1.5, 51], [0, 54], [-2, 57], [-5, 58.5], [-6, 55], [-10, 54],
+    [-10, 51.5], [-6, 50]] },
+
+  { nome: 'Nuova Zelanda', c: '#4d7a45', punti: [
+    [173, -35], [178, -38], [177, -41], [172, -41], [170, -44], [167, -46],
+    [170, -44.5], [172, -40]] },
+
+  { nome: 'Islanda', c: '#6f8f5a', punti: [
+    [-24, 65], [-18, 66.5], [-14, 65.5], [-15, 64], [-21, 63.5]] },
+
+  { nome: 'Cuba', c: '#5c7f3e', punti: [
+    [-84, 22], [-79, 23], [-75, 20], [-80, 20]] },
+
+  { nome: 'Sri Lanka', c: '#5c7f3e', punti: [
+    [80, 9.5], [82, 7], [80, 6], [79, 8]] },
+
+  // I deserti stanno sopra alle terre: si sovrappongono di proposito, e
+  // per questo vengono dopo. Sono la sola cosa che, da lontano, si
+  // riconosce sul verde — il Sahara si vede dallo spazio meglio di
+  // qualunque confine.
+  { nome: 'Sahara', c: '#b39a63', punti: [
+    [-12, 21], [0, 24], [12, 26], [24, 27], [32, 25], [33, 20], [26, 16],
+    [12, 14], [0, 15], [-9, 16]] },
+  { nome: 'Arabia', c: '#b39a63', punti: [
+    [35, 29], [43, 30], [48, 29], [57, 24], [53, 17], [45, 13], [39, 18]] },
+  { nome: 'Australia interna', c: '#a98d55', punti: [
+    [118, -23], [128, -22], [138, -24], [143, -27], [138, -31], [126, -30],
+    [119, -28]] },
+  { nome: 'Gobi', c: '#a99b6b', punti: [
+    [88, 41], [100, 44], [112, 44], [116, 40], [104, 37], [92, 37]] },
+  { nome: 'Kalahari', c: '#a98d55', punti: [
+    [16, -20], [24, -19], [26, -24], [22, -28], [17, -26]] },
+
+  // I ghiacci vengono per ultimi: sono i più chiari, e da un pianeta
+  // vicino sono la prima cosa che si vede.
+  { nome: 'Groenlandia', c: '#e6eef6', punti: [
+    [-73, 78], [-58, 82], [-40, 83], [-22, 80], [-20, 74], [-25, 70],
+    [-35, 66], [-43, 60], [-50, 62], [-54, 66], [-58, 70], [-68, 75]] },
+  // L'Antartide è un anello attorno al polo: girando tutta la longitudine
+  // a latitudine fissa si traccia un parallelo, e un parallelo sulla sfera
+  // racchiude la calotta col polo dentro. Non serve nient'altro.
+  { nome: 'Antartide', c: '#eaf2f9', punti: [
+    [-180, -78], [-150, -75], [-120, -73], [-90, -72], [-60, -73], [-45, -78],
+    [-30, -71], [0, -70], [30, -69], [60, -67], [90, -66], [120, -66],
+    [150, -72], [170, -78]] }
+];
+
+// Le luci delle città sulla parte in ombra. Sono coordinate vere, e sono
+// poche di proposito: bastano a far vedere che la parte scura è abitata, e
+// non sono una carta geografica. [lon, lat], come tutto il resto di qui.
+const SKY_LUCI_CITTA = [
+  [12.5, 41.9], [9.2, 45.5], [2.35, 48.86], [-0.13, 51.5], [13.4, 52.5],
+  [37.6, 55.75], [-74, 40.7], [-87.6, 41.9], [-118.2, 34.05], [-99.1, 19.4],
+  [-46.6, -23.5], [-58.4, -34.6], [3.4, 6.5], [31.2, 30.0], [28.0, -26.2],
+  [55.3, 25.2], [77.2, 28.6], [72.9, 19.1], [116.4, 39.9], [121.5, 31.2],
+  [139.7, 35.7], [106.8, -6.2], [151.2, -33.9], [-79.4, 43.7],
+  [103.8, 1.35], [126.98, 37.57], [100.5, 13.75], [-70.7, -33.4]
 ];
 
 // Le coste vere non sono cerchi lisci, e un continente visto da vicino non è
@@ -17216,13 +17369,19 @@ function skyQuandoEventoTesto(ev, inCorso) {
 //   doveva ricordarsi di cercarla in agenda per arrivarci. Per le eclissi di
 //   Luna il gemello è la mappa di visibilità.
 function skyTastoMappaHtml(ev) {
+  // Le eclissi hanno due tasti, e dicono due cose diverse: la mappa risponde
+  // a «da dove si vede», il banco Terra e Luna (§7.7-quater) a «perché
+  // proprio stavolta». Il secondo è il posto in cui si vede che la Luna, per
+  // una volta, il cono d'ombra lo prende in pieno.
+  const perche = `<button type="button" class="tasto-evento-cielo" onclick="skyEventoInTreD('${ev.id}')" ` +
+    `title="La Terra e la Luna da fuori in quell'istante, a scala vera, coi coni d'ombra">Perché succede</button>`;
   if (ev.eclissi) {
     return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" onclick="skyApriMappaEvento('${ev.id}')" ` +
-      `title="Il percorso del cono d'ombra sulla Terra, minuto per minuto">Mappa dell'ombra</button>`;
+      `title="Il percorso del cono d'ombra sulla Terra, minuto per minuto">Mappa dell'ombra</button>${perche}`;
   }
   if (ev.eclissiLunare) {
     return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" onclick="skyApriMappaEvento('${ev.id}')" ` +
-      `title="Da dove si vede, a che ora, e con la Luna quanto alta">Dove si vede</button>`;
+      `title="Da dove si vede, a che ora, e con la Luna quanto alta">Dove si vede</button>${perche}`;
   }
   // Una cometa non ha un terzo tasto suo, e per un po' l'ha avuto: «Vai
   // sulla cometa», accanto a «Porta l'orologio qui» e «Mostra in cielo».
@@ -17249,6 +17408,14 @@ window.skyApriMappaEvento = (id) => {
   } else {
     apri();
   }
+};
+
+// La geometria dell'evento vista da fuori. A differenza della mappa
+// dell'ombra questa finestra sa stare sopra al cielo a schermo intero
+// (§7.5-bis la sposta dentro al riquadro del planetario), quindi non c'è da
+// uscire da niente: si apre e basta.
+window.skyEventoInTreD = (id) => {
+  if (typeof apriSistemaSolare === 'function') apriSistemaSolare({ evento: id });
 };
 
 // Una riga dell'elenco: cosa succede, quando, e i tasti che servono —
@@ -19716,7 +19883,12 @@ const SOL_ZOOM_MAX_TERRA = 900;
 // Il passo del tempo, e con lui quanto ne copre la slitta da un capo
 // all'altro. Il play fa tre passi al secondo, qualunque sia il passo scelto:
 // un comando solo per la velocità e per lo scatto, invece di due.
+// L'ora è il passo del banco delle eclissi (§7.7-quater): un'eclissi dura un
+// paio d'ore, e col passo di un giorno il primo tocco su + la salta tutta.
+// Nella vista d'insieme non serve — un pianeta in un'ora non si muove — e
+// infatti lì si parte dal giorno (`sol.passoIndice` nasce a 1).
 const SOL_PASSI = [
+  { nome: 'ora',    sec: 3600,           finestra: 2 * 86400 },
   { nome: 'giorno', sec: 86400,          finestra: 60 * 86400 },
   { nome: 'mese',   sec: 30 * 86400,     finestra: 2 * 365.25 * 86400 },
   { nome: 'anno',   sec: 365.25 * 86400, finestra: 30 * 365.25 * 86400 }
@@ -19752,6 +19924,18 @@ const sol = {
   // Se attivo, il perno della telecamera non è più il Sole ma la Terra: si
   // gira intorno a lei invece che intorno all'origine (vedi `solAggiornaPivotTerra`)
   centratoTerra: false,
+  // Il banco delle eclissi (§7.7-quater): quando è acceso la scena non è più
+  // il Sistema Solare ma il solo sistema Terra–Luna, con un metro suo — i
+  // chilometri invece delle unità astronomiche — e i due coni d'ombra.
+  vicino: false,
+  // I nodi e le inclinazioni delle orbite planetarie: dove ogni pianeta
+  // attraversa il piano dell'eclittica, e di quanto se ne allontana
+  nodi: false,
+  // Memorie di comodo, tutte con la loro chiave: il telaio geografico della
+  // Terra (§7.7-ter), le posizioni geocentriche di Luna e Sole e l'orbita
+  // lunare campionata (§7.7-quater). Sono conti che non cambiano dentro allo
+  // stesso istante, e rifarli a ogni fotogramma si sentirebbe.
+  telaio: null, geo: null, orbitaLuna: null,
   pianeti: [], terra: null, luna: null,
   orbite: { chiave: null, tracce: [] },
   istante: 0,            // ms dell'ultimo calcolo delle posizioni
@@ -19762,7 +19946,7 @@ const sol = {
   modoPan: false,        // il dito sposta la scena invece di girarla (Maiusc o tasto destro)
   // Il tempo: il passo scelto, il centro della finestra su cui scorre la
   // slitta, e il verso della marcia (0 fermo, +1 avanti, −1 indietro)
-  passoIndice: 0, ancoraSec: 0, marcia: 0,
+  passoIndice: 1, ancoraSec: 0, marcia: 0,
   prossimaScheda: 0, firmaScheda: '',
   skyDaRiprendere: false
 };
@@ -20022,10 +20206,106 @@ function solCalcolaOrbite(quando) {
         const d = new Date(quando.getTime() + (i / passi - 0.5) * durata);
         punti.push(solVettore(p.id, Astronomy.MakeTime(d)));
       }
-      tracce.push({ id: p.id, colore: p.colore, punti });
+      tracce.push(Object.assign({ id: p.id, nome: p.nome, colore: p.colore, punti },
+        solNodiDiOrbita(punti)));
     });
   } catch (e) { return; }
   sol.orbite = { chiave, tracce };
+}
+
+// I nodi di un'orbita e la sua inclinazione, ricavati dai punti campionati
+// invece che da elementi orbitali tabulati.
+//   Il piano dell'eclittica, in queste coordinate, è z = 0: i nodi sono
+//   letteralmente i due punti in cui la z dell'orbita cambia segno, e
+//   l'inclinazione è la latitudine massima che raggiunge — 7,0° per Mercurio,
+//   3,4° per Venere, 1,8° per Marte, e per la Terra zero, perché il piano è
+//   il suo.
+//   Prenderli dai punti già calcolati costa un giro su centoventotto vettori
+//   e ha il pregio di non poter divergere dal disegno: se un giorno l'orbita
+//   si campionasse diversamente, i nodi la seguirebbero da soli.
+function solNodiDiOrbita(punti) {
+  let incl = 0, alto = null, basso = null;
+  const nodi = [];
+  punti.forEach(v => {
+    const r = Math.hypot(v.x, v.y, v.z) || 1;
+    const lat = Math.asin(Math.max(-1, Math.min(1, v.z / r))) * SKY_R2D;
+    if (Math.abs(lat) > incl) incl = Math.abs(lat);
+    if (!alto || v.z > alto.z) alto = v;
+    if (!basso || v.z < basso.z) basso = v;
+  });
+  for (let i = 1; i < punti.length; i++) {
+    const a = punti[i - 1], b = punti[i];
+    if ((a.z > 0) === (b.z > 0)) continue;
+    const k = a.z / (a.z - b.z);
+    nodi.push({
+      x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: 0,
+      ascendente: b.z > a.z
+    });
+  }
+  return { incl, nodi: nodi.slice(0, 2), alto, basso };
+}
+
+// Dove un'orbita attraversa il piano dell'eclittica, e quanto se ne allontana.
+//   Le inclinazioni ci sono sempre state — le orbite si campionano dalle
+//   posizioni vere, quindi sono inclinate davvero — ma un grado e ottanta,
+//   disegnato, è meno dello spessore della linea: la scena diceva la verità e
+//   nessuno poteva vederla. Questi tre segni la rendono leggibile senza
+//   toccare la geometria: la corda che unisce i due nodi (l'unica retta lungo
+//   la quale il pianeta sta *sul* piano), i due punti estremi col loro filo a
+//   piombo, e l'inclinazione scritta accanto.
+//   Con l'altezza fuori dal piano al vero servono a poco per conto loro; è
+//   accendendo anche il ×10 che il disegno diventa quello dei libri, con
+//   otto anelli inclinati ognuno per conto suo. I due comandi stanno perciò
+//   nella stessa riga, ed è voluto.
+function solDisegnaNodiOrbita(ctx, traccia) {
+  if (!traccia.nodi || traccia.nodi.length < 2 || !traccia.alto) return;
+  const [n1, n2] = traccia.nodi;
+  const p1 = solProietta(solScena(n1));
+  const p2 = solProietta(solScena(n2));
+  ctx.save();
+  ctx.strokeStyle = traccia.colore;
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(p1.px, p1.py);
+  ctx.lineTo(p2.px, p2.py);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 0.85;
+  [p1, p2].forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.px, p.py, 2.4, 0, Math.PI * 2);
+    ctx.fillStyle = traccia.colore;
+    ctx.fill();
+  });
+  // I due estremi col filo a piombo: è lì che l'inclinazione si misura
+  ctx.globalAlpha = 0.45;
+  ctx.setLineDash([2, 3]);
+  [traccia.alto, traccia.basso].forEach(v => {
+    if (!v) return;
+    const s = solScena(v);
+    const su = solProietta(s);
+    const giu = solProietta({ x: s.x, y: s.y, z: 0 });
+    if (Math.abs(su.py - giu.py) < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(su.px, su.py);
+    ctx.lineTo(giu.px, giu.py);
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+// I gradi scritti accanto al punto più alto dell'orbita. Vanno per ultimi,
+// insieme a tutti gli altri nomi, perché è lì che si sa quali posti sono già
+// occupati: un'inclinazione stampata sopra al nome di un pianeta rende
+// illeggibili tutt'e due.
+function solEtichettaNodi(ctx, traccia, prese) {
+  if (!traccia.alto || traccia.incl < 0.05) return;
+  const p = solProietta(solScena(traccia.alto));
+  solEtichetta(ctx, `${traccia.nome} ${solNumero(traccia.incl, 1)}°`,
+    p.px, p.py, 4, traccia.colore, 10.5, prese);
 }
 
 // --- Pezzi di disegno ------------------------------------------------------
@@ -20379,6 +20659,17 @@ function solDisegnaCorpo(ctx, corpo, assi) {
   }
 
   const versoSole = solVersoIlSole(corpo);
+  // La Terra, da vicino, ha un disegno suo (§7.7-ter): le coste vere, il
+  // confine del giorno, le luci delle città nella metà scura, il puntino di
+  // casa e — quando c'è — la macchia dell'ombra della Luna. Sotto una certa
+  // misura non ci sta niente di tutto questo e torna la faccia dipinta, come
+  // per ogni altro pianeta.
+  if (corpo.id === 'Earth' &&
+      solDisegnaTerraVera(ctx, versoSole, r, assi, new Date(sol.istante))) {
+    ctx.restore();
+    return;
+  }
+
   const k = solFrazione(corpo, assi);
   const angLuce = versoSole ? solAngoloSchermo(versoSole, assi) : 0;
   const asse = corpo.asse || [0, 0, 1];
@@ -20563,6 +20854,12 @@ function solDisegnaSguardo(ctx, terra, corpo) {
 // passano e la Terra si muove lungo la sua orbita.
 function solDisegnaBussolaOrari(ctx, terra, prese) {
   if (!terra || !terra.schermo) return;
+  // Le due frecce sono lunghe ventisei pixel e partono dal pallino della
+  // Terra: da vicino, dove quel pallino è largo mezzo schermo, finiscono
+  // *dentro* al globo — «Sera» e «Mattina» scritte sopra all'Africa. Lì
+  // quello che si sta guardando è la Terra, non la disposizione dei pianeti
+  // attorno a lei, e queste due non hanno più niente da dire.
+  if (terra.rDisegno > 34) return;
   const p0 = terra.schermo;
   // Fuori dalla tela non c'è niente a cui appoggiarsi: succede zoomando su un
   // pianeta lontano, dove la Terra resta indietro fuori dal riquadro
@@ -20610,6 +20907,1278 @@ function solDisegnaBussolaOrari(ctx, terra, prese) {
   ctx.restore();
 }
 
+// =====================================================================
+// 7.7-ter LA TERRA DA VICINO — le coste vere, il confine del giorno
+//         e il puntino di casa
+//   Nella vista d'insieme la Terra è un pallino azzurro largo otto pixel, e
+//   la faccia dipinta di §7.3.2 — dieci macchie di continente al posto
+//   giusto — è tutto quello che ci sta. Ma da quando ci si può avvicinare a
+//   girarle intorno (`SOL_ZOOM_MAX_TERRA`, novecento ingrandimenti) quel
+//   pallino diventa mezzo schermo, e a quella misura tre cose che il disegno
+//   non diceva cominciano a pesare più di tutte le altre:
+//
+//   — **dov'è notte**. Metà pianeta è al buio sempre, e quel confine non è un
+//     dettaglio grafico: è la ragione per cui un'eclissi si vede da una parte
+//     del mondo e non dall'altra, ed è la cosa che la mappa dell'ombra
+//     (§1-ter) disegna su una carta piatta. Qui la si vede dove sta davvero,
+//     su una palla, con il Sole in fondo alla scena a fare da lampada.
+//   — **dove sei tu**. Un puntino sulla Terra vista da fuori risponde alla
+//     domanda che tiene insieme tutta l'app — «da qui, si vede?» — prima
+//     ancora di leggere un numero: se il puntino è nella metà scura è notte,
+//     se sta sul bordo è l'alba o il tramonto.
+//   — **l'ombra della Luna**, quando c'è. Durante un'eclissi di Sole la
+//     macchia di penombra attraversa il pianeta, e dentro ci sta il punto
+//     nero della totalità. È lo stesso conto della mappa dell'ombra, disegnato
+//     però sul globo vero invece che su una proiezione.
+//
+//   Il telaio geografico non si inventa: si chiede alla libreria dov'è il
+//   polo e dov'è il meridiano di Greenwich in questo istante, e da lì ogni
+//   coppia (lat, lon) diventa un versore. Sbagliare la rotazione della Terra
+//   è l'errore che non si vede — il globo resta bellissimo, solo che l'Italia
+//   è a mezzogiorno quando da noi è notte.
+// =====================================================================
+
+// Sotto questo raggio in pixel resta la faccia dipinta: una costa
+// frastagliata disegnata su dodici pixel è rumore, e un confine del giorno su
+// una capocchia di spillo non è un confine.
+const SOL_TERRA_MIN_PX = 13;
+// Da qui in su il puntino di casa si porta dietro il suo nome
+const SOL_CASA_NOME_PX = 46;
+
+// Il telaio geografico della Terra: dove vanno a finire, nelle coordinate
+// eclittiche in cui è scritta tutta questa scena, il polo nord, il punto
+// (0° N, 0° E) e quello a 90° est. Sono tre versori ortonormali, e con loro
+// qualunque coppia (lat, lon) diventa una direzione nello spazio.
+//
+// Il polo lo dà `RotationAxis`, come per tutti gli altri pianeti
+// (`solAsse`); il meridiano di Greenwich lo dà `ObserverVector`, cioè la
+// stessa funzione che l'app usa per sapere dove sei. Prenderlo da lì invece
+// di ricostruirlo dal tempo siderale ha un vantaggio che vale il giro in
+// più: è la stessa catena di conti con cui il planetario calcola le
+// posizioni degli astri, quindi il globo e il cielo non possono divergere.
+//
+// L'est esce dal prodotto vettoriale, e non è un dettaglio: con nord e
+// meridiano scambiati di verso il mondo si specchia, ed è l'errore che a
+// occhio non si vede finché non si guarda da che parte sta l'America.
+function solTelaioTerra(quando) {
+  const ms = quando instanceof Date ? quando.getTime() : (Number(quando) || 0);
+  if (sol.telaio && sol.telaio.ms === ms) return sol.telaio.buono;
+  let buono = null;
+  if (typeof Astronomy !== 'undefined') {
+    try {
+      const t = Astronomy.MakeTime(new Date(ms));
+      const versore = (v) => {
+        const e = Astronomy.Ecliptic(v).vec;
+        const d = Math.hypot(e.x, e.y, e.z) || 1;
+        return [e.x / d, e.y / d, e.z / d];
+      };
+      const nord = versore(Astronomy.RotationAxis('Earth', t).north);
+      const pm = versore(Astronomy.ObserverVector(t, new Astronomy.Observer(0, 0, 0), false));
+      const est = solCroce(nord, pm);
+      const n = Math.hypot(est[0], est[1], est[2]) || 1;
+      buono = { nord, pm, est: [est[0] / n, est[1] / n, est[2] / n] };
+    } catch (e) { buono = null; }
+  }
+  sol.telaio = { ms, buono };
+  return buono;
+}
+
+function solCroce(a, b) {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+function solVersore(v) {
+  const n = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / n, v[1] / n, v[2] / n];
+}
+
+// Da (latitudine, longitudine) al versore che punta lì, nelle coordinate
+// della scena. È la formula della sfera, non dell'ellissoide: sotto c'è una
+// palla disegnata, e i due decimi di grado di differenza fra latitudine
+// geodetica e geocentrica su un globo da cento pixel valgono un terzo di
+// pixel.
+function solPuntoTerra(telaio, lat, lon) {
+  const b = lat * SKY_D2R, l = lon * SKY_D2R;
+  const cb = Math.cos(b), sb = Math.sin(b), cl = Math.cos(l), sl = Math.sin(l);
+  const { pm, est, nord } = telaio;
+  return [
+    cb * (pm[0] * cl + est[0] * sl) + sb * nord[0],
+    cb * (pm[1] * cl + est[1] * sl) + sb * nord[1],
+    cb * (pm[2] * cl + est[2] * sl) + sb * nord[2]
+  ];
+}
+
+// Dove cade sul disegno del globo un versore dello spazio. Il globo è
+// centrato nell'origine del contesto (chi chiama ha già traslato), `z` dice
+// se il punto sta sulla faccia rivolta a noi.
+function solGloboProietta(u, assi, r) {
+  return {
+    x: skyDot(u, assi.destra) * r,
+    y: -skyDot(u, assi.alto) * r,
+    z: skyDot(u, assi.verso)
+  };
+}
+
+// La sagoma di un poligono sferico sul disco del globo. I vertici che stanno
+// dall'altra parte si appoggiano sul bordo lungo la loro direzione — è
+// l'approssimazione di sempre per una sagoma tagliata dal limbo, e su un
+// continente non si vede perché il taglio è proprio lì — e a ogni
+// attraversamento si infila il punto esatto in cui la costa passa sul filo.
+function solSagomaSuGlobo(punti, telaio, assi, r) {
+  const v = punti.map(p => solPuntoTerra(telaio, p[1], p[0]));
+  const z = v.map(u => skyDot(u, assi.verso));
+  if (!z.some(q => q > -0.02)) return null;          // tutto dall'altra parte
+  const alBordo = (p) => {
+    if (p.z >= 0) return p;
+    const n = Math.hypot(p.x, p.y) || 1;
+    return { x: p.x / n * r, y: p.y / n * r, z: 0 };
+  };
+  const fuori = [];
+  for (let i = 0; i < v.length; i++) {
+    const j = (i + 1) % v.length;
+    fuori.push(alBordo(solGloboProietta(v[i], assi, r)));
+    if ((z[i] > 0) !== (z[j] > 0)) {
+      const k = z[i] / (z[i] - z[j]);
+      const m = solVersore([
+        v[i][0] + (v[j][0] - v[i][0]) * k,
+        v[i][1] + (v[j][1] - v[i][1]) * k,
+        v[i][2] + (v[j][2] - v[i][2]) * k
+      ]);
+      fuori.push(solGloboProietta(m, assi, r));
+    }
+  }
+  return fuori;
+}
+
+function solTracciaSagoma(ctx, sagoma) {
+  ctx.beginPath();
+  sagoma.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+  ctx.closePath();
+}
+
+// Il globo vero. Chi chiama ha già traslato il contesto sul centro del
+// pianeta; qui si disegna dentro a un cerchio di raggio `r`, e si torna
+// `false` se non ci sono le condizioni per farlo — allora il chiamante
+// rimette la faccia dipinta di sempre.
+//
+// `versoSole` è il versore che dal centro della Terra punta al Sole, nelle
+// coordinate della scena: da lui vengono sia il confine del giorno sia la
+// fase, e passarlo da fuori è quello che permette a questa funzione di
+// servire tanto la vista d'insieme (dove il Sole sta nell'origine) quanto il
+// banco delle eclissi (dove la Terra è l'origine).
+function solDisegnaTerraVera(ctx, versoSole, r, assi, quando) {
+  if (r < SOL_TERRA_MIN_PX || !versoSole) return false;
+  const telaio = solTelaioTerra(quando);
+  if (!telaio) return false;
+
+  const k = Math.max(0, Math.min(1, (1 + skyDot(versoSole, assi.verso)) / 2));
+  const angLuce = solAngoloSchermo(versoSole, assi);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  // L'oceano: più chiaro al centro del disco, più cupo verso il limbo, che è
+  // il modo più corto di far sembrare tonda una palla prima ancora di
+  // metterci sopra qualcosa
+  const mare = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  mare.addColorStop(0, '#2f74bd');
+  mare.addColorStop(0.62, '#245e9d');
+  mare.addColorStop(1, '#16386b');
+  ctx.fillStyle = mare;
+  ctx.fillRect(-r, -r, r * 2, r * 2);
+
+  // Le terre, nell'ordine in cui stanno scritte: continenti, poi i deserti
+  // che ci stanno sopra, poi i ghiacci
+  if (typeof SKY_MONDO !== 'undefined') {
+    SKY_MONDO.forEach(t => {
+      const sagoma = solSagomaSuGlobo(t.punti, telaio, assi, r);
+      if (!sagoma) return;
+      ctx.fillStyle = t.c;
+      solTracciaSagoma(ctx, sagoma);
+      ctx.fill();
+    });
+  }
+
+  // L'ombra della Luna, se in questo istante ne sta attraversando una
+  solDisegnaOmbraDellaLuna(ctx, telaio, assi, r, quando);
+
+  // Il confine del giorno. Non è una riga ma una fascia: fra il tramonto e il
+  // buio vero passa quasi un'ora, e sulla palla quella è una striscia larga
+  // qualche centinaio di chilometri. Tre veli con la stessa forma e la
+  // frazione illuminata leggermente diversa la disegnano da soli — il primo
+  // copre la notte intera, gli altri due si stringono verso il cuore.
+  ctx.save();
+  ctx.rotate(angLuce);
+  [[k, 0.30], [Math.min(1, k + 0.018), 0.28], [Math.min(1, k + 0.05), 0.30]].forEach(([kk, alfa]) => {
+    skyPercorsoOmbra(ctx, r, kk);
+    ctx.fillStyle = `rgba(3, 7, 20, ${alfa})`;
+    ctx.fill();
+  });
+  // Le luci di chi ci abita, dentro alla notte e solo lì. Sono additive: una
+  // luce è luce che si somma al buio, non vernice gialla stesa sopra.
+  skyPercorsoOmbra(ctx, r, k);
+  ctx.clip();
+  ctx.rotate(-angLuce);
+  if (r > 26 && typeof SKY_LUCI_CITTA !== 'undefined') {
+    ctx.globalCompositeOperation = 'lighter';
+    const raggio = Math.max(0.7, r * 0.018);
+    SKY_LUCI_CITTA.forEach(c => {
+      const p = solGloboProietta(solPuntoTerra(telaio, c[1], c[0]), assi, r);
+      if (p.z <= 0.08) return;
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, raggio * 3);
+      g.addColorStop(0, `rgba(255, 214, 138, ${0.55 * Math.min(1, p.z * 1.6)})`);
+      g.addColorStop(1, 'rgba(255, 190, 90, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, raggio * 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.restore();
+
+  ctx.restore();
+
+  // Il velo d'aria sul bordo: quasi invisibile al centro, un filo azzurro sul
+  // limbo. È la riga sottile delle fotografie vere, e senza di lei il globo
+  // sembra ritagliato con le forbici.
+  const aria = ctx.createRadialGradient(0, 0, r * 0.86, 0, 0, r * 1.06);
+  aria.addColorStop(0, 'rgba(140, 200, 255, 0)');
+  aria.addColorStop(0.72, 'rgba(140, 200, 255, 0.20)');
+  aria.addColorStop(1, 'rgba(120, 180, 255, 0)');
+  ctx.fillStyle = aria;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 1.06, 0, Math.PI * 2);
+  ctx.fill();
+
+  solDisegnaCasaSullaTerra(ctx, telaio, assi, r);
+  return true;
+}
+
+// Il puntino di casa. Sta anche quando è dalla parte in ombra — anzi, è lì
+// che dice la cosa più utile: se sei nella metà scura è notte, e questo è
+// quello che si voleva sapere. Dall'altra parte del globo invece non si
+// disegna affatto: un segno che traspare attraverso il pianeta è peggio di
+// nessun segno, perché sembra dire che sei da questa parte.
+function solDisegnaCasaSullaTerra(ctx, telaio, assi, r) {
+  const casa = typeof luogoCorrente === 'function' ? luogoCorrente() : null;
+  if (!casa) return;
+  const p = solGloboProietta(solPuntoTerra(telaio, casa.lat, casa.lon), assi, r);
+  if (p.z <= 0.05) return;
+  const raggio = Math.max(2.2, r * 0.035);
+  ctx.save();
+  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = 'rgba(10, 14, 26, 0.85)';
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, raggio + 1.2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = SKY_MIRINO_COLORE;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, raggio, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = SKY_MIRINO_COLORE;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, Math.max(1, raggio * 0.34), 0, Math.PI * 2);
+  ctx.fill();
+  if (r >= SOL_CASA_NOME_PX) {
+    // Il nome scappa verso l'esterno del globo, se no si legge sopra al
+    // terreno che sta cercando di indicare
+    const via = Math.hypot(p.x, p.y) || 1;
+    const tx = p.x + p.x / via * (raggio + 8), ty = p.y + p.y / via * (raggio + 8);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(6, 10, 20, 0.9)';
+    if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
+    ctx.font = `11px ${SOL_CARATTERE}`;
+    ctx.textAlign = p.x >= 0 ? 'left' : 'right';
+    ctx.textBaseline = 'middle';
+    ctx.strokeText('Sei qui', tx, ty);
+    ctx.fillStyle = SKY_MIRINO_COLORE;
+    ctx.fillText('Sei qui', tx, ty);
+    ctx.textAlign = 'left';
+  }
+  ctx.restore();
+}
+
+// --- L'ombra della Luna sulla Terra ----------------------------------------
+//   È lo stesso cono della mappa dell'ombra (§1-bis), guardato però da fuori
+//   e appoggiato sulla palla vera invece che su una carta piatta. Due
+//   macchie: la penombra, larga qualche migliaio di chilometri, dove il Sole
+//   è morsicato, e dentro di lei l'umbra — poche decine di chilometri — dove
+//   è totale. Se l'asse dell'ombra non tocca la Terra (le eclissi parziali,
+//   quelle che sfiorano i poli) non si disegna niente, che è la verità.
+
+// Da dove comincia a restringersi il cono: la distanza, dal centro del corpo,
+// a cui l'ombra piena finisce in un punto. Oltre di lì c'è l'antiumbra, cioè
+// le eclissi anulari.
+function solApiceOmbra(raggioCorpo, distanzaSole) {
+  return raggioCorpo * distanzaSole / Math.max(1, RAGGIO_SOLE_KM - raggioCorpo);
+}
+function solRaggioUmbra(raggioCorpo, distanzaSole, s) {
+  return raggioCorpo * (1 - s / solApiceOmbra(raggioCorpo, distanzaSole));
+}
+function solRaggioPenombra(raggioCorpo, distanzaSole, s) {
+  return raggioCorpo + s * (RAGGIO_SOLE_KM + raggioCorpo) / Math.max(1, distanzaSole);
+}
+
+// Dove il cono d'ombra della Luna incontra la Terra, e quanto è larga la
+// macchia. Torna `null` quando l'asse passa accanto al pianeta senza
+// toccarlo: allora un'eclissi c'è lo stesso, ma solo parziale, e la macchia
+// da disegnare sul globo non esiste.
+function solOmbraLunareSuTerra(quando) {
+  const g = solGeocentriche(quando);
+  if (!g) return null;
+  const asse = solVersore([g.luna[0] - g.sole[0], g.luna[1] - g.sole[1], g.luna[2] - g.sole[2]]);
+  const b = skyDot(g.luna, asse);
+  const c = skyDot(g.luna, g.luna) - RAGGIO_TERRA_KM * RAGGIO_TERRA_KM;
+  const disc = b * b - c;
+  if (disc <= 0) return null;
+  const s = -b - Math.sqrt(disc);
+  if (s <= 0) return null;
+  const centro = [g.luna[0] + asse[0] * s, g.luna[1] + asse[1] * s, g.luna[2] + asse[2] * s];
+  const dSoleLuna = Math.hypot(
+    g.luna[0] - g.sole[0], g.luna[1] - g.sole[1], g.luna[2] - g.sole[2]);
+  return {
+    centro,
+    umbra: solRaggioUmbra(RAGGIO_LUNA_KM, dSoleLuna, s),
+    penombra: solRaggioPenombra(RAGGIO_LUNA_KM, dSoleLuna, s)
+  };
+}
+
+// L'impronta di un cono d'ombra sulla superficie terrestre. **Non è un
+// cerchio**, ed è la differenza che si vede: il cono arriva di sbieco, e più
+// il Sole è basso in quel punto più la macchia si allunga. Il 12 agosto 2026
+// il cono d'ombra della Luna, in sezione, misura centotrenta chilometri —
+// mentre la fascia di totalità che attraversa l'Islanda e la Spagna è larga
+// trecento, e quel fattore due e mezzo è tutto obliquità.
+//
+// Ogni raggio del bordo del cono è una retta che parte dal limbo della Luna:
+// la si interseca con la sfera e si tiene il punto vicino. `pendenza` è di
+// quanto il cono si allarga (penombra) o si stringe (ombra) per chilometro
+// percorso, ed è la sola cosa che distingue i due. I raggi che la Terra la
+// mancano si appoggiano al punto della sfera più vicino alla loro retta, così
+// il bordo resta chiuso invece di spezzarsi quando la macchia esce dal limbo.
+function solImprontaSuTerra(base, asse, raggioCorpo, pendenza) {
+  let lato = solCroce(asse, [0, 0, 1]);
+  if (Math.hypot(lato[0], lato[1], lato[2]) < 1e-6) lato = solCroce(asse, [0, 1, 0]);
+  const e1 = solVersore(lato);
+  const e2 = solCroce(asse, e1);
+  const punti = [];
+  const quanti = 64;
+  for (let i = 0; i < quanti; i++) {
+    const th = i / quanti * Math.PI * 2;
+    const co = Math.cos(th), si = Math.sin(th);
+    const u = [e1[0] * co + e2[0] * si, e1[1] * co + e2[1] * si, e1[2] * co + e2[2] * si];
+    const p0 = [base[0] + raggioCorpo * u[0], base[1] + raggioCorpo * u[1], base[2] + raggioCorpo * u[2]];
+    const d = solVersore([asse[0] + pendenza * u[0], asse[1] + pendenza * u[1], asse[2] + pendenza * u[2]]);
+    const b = skyDot(p0, d);
+    const c = skyDot(p0, p0) - RAGGIO_TERRA_KM * RAGGIO_TERRA_KM;
+    const disc = b * b - c;
+    if (disc > 0) {
+      const s = -b - Math.sqrt(disc);
+      punti.push(solVersore([p0[0] + d[0] * s, p0[1] + d[1] * s, p0[2] + d[2] * s]));
+      continue;
+    }
+    // Il raggio manca la Terra: succede quasi sempre a metà penombra, che è
+    // larga tremila chilometri e ne sborda da tutte le parti. Lì il bordo
+    // della macchia non è più il cono ma **l'orizzonte della Luna sulla
+    // Terra**, cioè il cerchio massimo dove i raggi d'ombra radono la
+    // superficie: si toglie al punto la componente lungo l'asse e lo si
+    // appoggia lì. Prendendo invece il punto della sfera più vicino alla
+    // retta, un raggio che passa sopra al polo finiva a nord e il suo vicino,
+    // che passava sotto, a sud: il bordo faceva un salto da un emisfero
+    // all'altro e la macchia diventava una lente storta in mezzo all'oceano.
+    const f = [p0[0] - d[0] * b, p0[1] - d[1] * b, p0[2] - d[2] * b];
+    const t = skyDot(f, asse);
+    punti.push(solVersore([f[0] - asse[0] * t, f[1] - asse[1] * t, f[2] - asse[2] * t]));
+  }
+  return punti;
+}
+
+// La stessa sagoma dei continenti, ma per un anello di versori già pronti
+function solSagomaDaVersori(punti, assi, r) {
+  const z = punti.map(u => skyDot(u, assi.verso));
+  if (!z.some(q => q > 0)) return null;
+  return punti.map(u => {
+    const p = solGloboProietta(u, assi, r);
+    if (p.z >= 0) return p;
+    const n = Math.hypot(p.x, p.y) || 1;
+    return { x: p.x / n * r, y: p.y / n * r, z: 0 };
+  });
+}
+
+function solDisegnaOmbraDellaLuna(ctx, telaio, assi, r, quando) {
+  const g = solGeocentriche(quando);
+  if (!g) return;
+  const versoS = solVersore([
+    g.sole[0] - g.luna[0], g.sole[1] - g.luna[1], g.sole[2] - g.luna[2]]);
+  const asse = [-versoS[0], -versoS[1], -versoS[2]];
+  // Se il cono passa lontano dalla Terra non c'è niente da disegnare, ed è la
+  // maggior parte del tempo: la Luna nuova, quasi sempre, ci manca
+  const dSoleLuna = Math.hypot(
+    g.sole[0] - g.luna[0], g.sole[1] - g.luna[1], g.sole[2] - g.luna[2]);
+  const u = -skyDot(g.luna, asse);
+  if (u <= 0) return;
+  const miss = Math.hypot(
+    g.luna[0] + asse[0] * u, g.luna[1] + asse[1] * u, g.luna[2] + asse[2] * u);
+  const rp = solRaggioPenombra(RAGGIO_LUNA_KM, dSoleLuna, Math.max(0, u));
+  if (miss > rp + RAGGIO_TERRA_KM) return;
+
+  // La penombra non si riempie, e non è una scorciatoia: copre un terzo del
+  // pianeta — dal Canada all'Africa — e una campitura larga così spegnerebbe
+  // il disegno senza dire niente di più di quanto dica il suo bordo, che è
+  // invece la riga che conta: **oltre di lì il Sole non è intaccato per
+  // niente**. Si disegna a tratti, spezzandola dove passa dietro al globo,
+  // perché un bordo appiattito sul limbo è un bordo che racconta una
+  // geografia che non c'è.
+  const pen = solImprontaSuTerra(
+    g.luna, asse, RAGGIO_LUNA_KM, (RAGGIO_SOLE_KM + RAGGIO_LUNA_KM) / dSoleLuna);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(191, 209, 245, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  let penna = false;
+  pen.concat([pen[0]]).forEach(u => {
+    const p = solGloboProietta(u, assi, r);
+    if (p.z <= 0.02) { penna = false; return; }
+    if (!penna) { ctx.moveTo(p.x, p.y); penna = true; } else ctx.lineTo(p.x, p.y);
+  });
+  ctx.stroke();
+  ctx.restore();
+
+  // Il velo attorno all'asse: dentro alla penombra il Sole è coperto tanto
+  // più quanto ci si avvicina alla fascia centrale, e questo lo dice senza
+  // pretendere di disegnarne il contorno. È una sfumatura tonda su un pezzo
+  // di sfera, quindi verso il limbo è approssimata — ma lì è già quasi
+  // trasparente, e l'approssimazione non si vede.
+  // Dove punta l'asse dell'ombra: il punto sulla Terra se lo tocca, e se no
+  // il punto della superficie che gli passa più vicino — che è il posto da
+  // cui il Sole si vede più morsicato, e vale lo stesso come centro del velo
+  const o = solOmbraLunareSuTerra(quando);
+  const centroVer = solVersore(o ? o.centro : [
+    g.luna[0] + asse[0] * u, g.luna[1] + asse[1] * u, g.luna[2] + asse[2] * u]);
+  const pc = solGloboProietta(centroVer, assi, r);
+  if (pc.z > 0) {
+    const largo = r * 0.5;
+    const velo = ctx.createRadialGradient(pc.x, pc.y, 0, pc.x, pc.y, largo);
+    velo.addColorStop(0, 'rgba(4, 8, 20, 0.5)');
+    velo.addColorStop(0.55, 'rgba(4, 8, 20, 0.22)');
+    velo.addColorStop(1, 'rgba(4, 8, 20, 0)');
+    ctx.save();
+    ctx.fillStyle = velo;
+    ctx.beginPath();
+    ctx.arc(pc.x, pc.y, largo, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // L'ombra piena. Quando la punta del cono si chiude prima di arrivare
+  // l'eclissi è anulare: per terra non c'è nessun punto veramente buio, resta
+  // l'anello di Sole tutt'attorno alla Luna, e la macchia si disegna ambra.
+  const umb = solSagomaDaVersori(
+    solImprontaSuTerra(g.luna, asse, RAGGIO_LUNA_KM, -(RAGGIO_SOLE_KM - RAGGIO_LUNA_KM) / dSoleLuna),
+    assi, r);
+  if (umb) {
+    ctx.save();
+    ctx.fillStyle = (o && o.umbra < 0) ? 'rgba(251, 191, 36, 0.75)' : 'rgba(2, 4, 10, 0.92)';
+    solTracciaSagoma(ctx, umb);
+    ctx.fill();
+    // Su un globo grande la macchia della totalità è un punto: un filo di
+    // contorno le dà almeno un pixel in cui esistere
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.8)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// =====================================================================
+// 7.7-quater LA TERRA E LA LUNA DA VICINO — perché le eclissi non
+//            capitano tutti i mesi
+//   Ogni mese la Luna passa fra noi e il Sole, e ogni mese ci passa dietro.
+//   Se le tre palle stessero su un piano solo, di eclissi ce ne sarebbero
+//   ventiquattro l'anno: dodici di Sole e dodici di Luna. Ce ne sono quattro
+//   o cinque, e la ragione è una sola — **l'orbita della Luna è inclinata di
+//   5,1° su quella della Terra**. Detto a parole non convince nessuno: cinque
+//   gradi sembrano niente. Disegnato, invece, si vede subito perché cambiano
+//   tutto: a trecentottantamila chilometri, cinque gradi sono trentaquattromila
+//   chilometri fuori dal piano, cioè **cinque volte e mezzo il raggio della
+//   Terra**, mentre il cono d'ombra là in fondo è largo meno di uno. La Luna
+//   piena, quasi sempre, passa larga sopra o sotto l'ombra senza sfiorarla.
+//
+//   Questo banco è quel disegno, con dentro le posizioni vere dell'istante
+//   mostrato. **Non ci sono esagerazioni**: la Terra, la Luna, la distanza fra
+//   loro e i due coni d'ombra sono tutti allo stesso metro, come il quadro del
+//   taglio delle aurore (§8 di didattica.js). È l'unico modo perché il
+//   disegno risponda davvero alla domanda invece di illustrarla: se l'ombra
+//   fosse gonfiata anche solo del doppio, ogni luna piena finirebbe dentro.
+//
+//   La conseguenza è che i corpi sono piccoli — a schermo intero la Terra è
+//   un pallino di cinque pixel — e va bene così: quello che si guarda qui non
+//   sono i corpi ma **lo scarto**, cioè quanto la Luna passa fuori bersaglio.
+//   Chi vuole vedere la Terra si avvicina, e a quel punto compaiono le coste
+//   vere, il confine del giorno e il puntino di casa (§7.7-ter).
+//
+//   I due coni sono quelli veri, calcolati dal raggio del Sole e dalle
+//   distanze di adesso: quello della Terra si chiude a 1,37 milioni di km —
+//   tre volte e mezzo l'orbita lunare — e quello della Luna arriva appena a
+//   toccarci, che è la ragione per cui la totalità di un'eclissi di Sole si
+//   vede da una striscia larga cento chilometri e non da mezzo mondo.
+// =====================================================================
+
+const SOL_VIC_KM = 500000;         // chilometri per unità di scena
+const SOL_VIC_ELEV = 4;            // quasi dentro al piano: è lì che si legge lo scarto
+const SOL_VIC_ZOOM_MAX = 400;
+const SOL_VIC_ZOOM_MIN = 0.18;
+const SOL_VIC_ORBITA_PUNTI = 144;
+const SOL_MESE_SIDEREO_G = 27.321661;
+// Quanto lontano tirare i coni: fino a un filo oltre la Luna. Il cono della
+// Terra continuerebbe per un altro milione di chilometri, ma lì non c'è più
+// niente da guardare — e il pezzo che conta, quello che la Luna attraversa o
+// manca, è tutto qui dentro.
+const SOL_VIC_CONO_OLTRE = 1.12;
+
+// I colori dei due coni. Un'ombra, per come la si pensa, è nera — ma su un
+// fondo che è già il nero dello spazio un'ombra nera semplicemente non
+// esiste: le prime prove disegnavano una macchia invisibile con un filo di
+// contorno, e la cosa che il banco esiste per far vedere non si vedeva. Qui
+// l'ombra è quindi **una regione segnata**, non un buio: indaco velato con il
+// bordo netto, come su una tavola di geometria. Le scritte «ombra» e
+// «penombra» accanto dicono cos'è, e la scala vera resta quella che è.
+const SOL_COL_OMBRA = 'rgba(79, 61, 143, 0.42)';
+const SOL_COL_OMBRA_BORDO = 'rgba(180, 156, 255, 0.85)';
+const SOL_COL_PENOMBRA = 'rgba(63, 88, 140, 0.14)';
+const SOL_COL_PENOMBRA_BORDO = 'rgba(120, 150, 215, 0.42)';
+
+// --- Le posizioni geocentriche ---------------------------------------------
+//   Tutto questo banco è scritto con la Terra nell'origine e le distanze in
+//   chilometri, che è il metro giusto per una scena larga quanto l'orbita
+//   della Luna. Le coordinate restano quelle eclittiche di sempre — le stesse
+//   di `solVettore` — così il piano dell'eclittica è semplicemente z = 0 e i
+//   nodi dell'orbita lunare sono, alla lettera, i punti dove quella z cambia
+//   segno.
+
+function solGeocentriche(quando) {
+  const ms = quando instanceof Date ? quando.getTime() : (Number(quando) || 0);
+  if (sol.geo && sol.geo.ms === ms) return sol.geo.dati;
+  let dati = null;
+  if (typeof Astronomy !== 'undefined') {
+    try {
+      const t = Astronomy.MakeTime(new Date(ms));
+      const inKm = (v) => {
+        const e = Astronomy.Ecliptic(v).vec;
+        return [e.x * UA_KM, e.y * UA_KM, e.z * UA_KM];
+      };
+      const luna = inKm(Astronomy.GeoMoon(t));
+      const sole = inKm(Astronomy.GeoVector('Sun', t, false));
+      dati = {
+        luna, sole,
+        dLuna: Math.hypot(luna[0], luna[1], luna[2]),
+        dSole: Math.hypot(sole[0], sole[1], sole[2]),
+        versoSole: solVersore(sole)
+      };
+    } catch (e) { dati = null; }
+  }
+  sol.geo = { ms, dati };
+  return dati;
+}
+
+// L'orbita della Luna attorno alla Terra, campionata su un mese siderale
+// centrato sull'istante mostrato. Non è un'ellisse inventata: sono posizioni
+// vere, quindi l'inclinazione, l'eccentricità e il fatto che i nodi
+// arretrino di un giro ogni diciotto anni e mezzo vengono da sé.
+//
+// Si rifà solo se ci si sposta di più di mezza giornata: in mezza giornata la
+// linea dei nodi si muove di tre centesimi di grado, e centoquarantaquattro
+// posizioni lunari a ogni fotogramma si sentirebbero.
+function solOrbitaLunare(quando) {
+  const giorni = Math.round((quando.getTime() / 86400000) * 2) / 2;
+  if (sol.orbitaLuna && sol.orbitaLuna.chiave === giorni) return sol.orbitaLuna;
+  if (typeof Astronomy === 'undefined') return null;
+  const punti = [];
+  try {
+    for (let i = 0; i <= SOL_VIC_ORBITA_PUNTI; i++) {
+      const d = new Date(quando.getTime() +
+        (i / SOL_VIC_ORBITA_PUNTI - 0.5) * SOL_MESE_SIDEREO_G * 86400000);
+      const e = Astronomy.Ecliptic(Astronomy.GeoMoon(Astronomy.MakeTime(d))).vec;
+      punti.push([e.x * UA_KM, e.y * UA_KM, e.z * UA_KM]);
+    }
+  } catch (e) { return null; }
+  // I nodi: dove la z cambia segno. Ascendente è quello in cui la Luna sale
+  // sopra al piano — è il nome che hanno da duemila anni, e sulle carte
+  // arabe sono la testa e la coda del dragone che si mangia il Sole.
+  const nodi = [];
+  for (let i = 1; i < punti.length; i++) {
+    const a = punti[i - 1], b = punti[i];
+    if ((a[2] > 0) === (b[2] > 0)) continue;
+    const k = a[2] / (a[2] - b[2]);
+    nodi.push({
+      p: [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, 0],
+      ascendente: b[2] > a[2]
+    });
+  }
+  sol.orbitaLuna = { chiave: giorni, punti, nodi };
+  return sol.orbitaLuna;
+}
+
+// --- La scena ---------------------------------------------------------------
+
+function solVicScena(v) {
+  return { x: v[0] / SOL_VIC_KM, y: v[1] / SOL_VIC_KM, z: v[2] / SOL_VIC_KM };
+}
+
+function solVicPunto(v) {
+  return solProietta(solVicScena(v));
+}
+
+// Quanti pixel vale un chilometro, adesso
+function solVicPx() {
+  return sol.scala / SOL_VIC_KM;
+}
+
+// Lo spostamento sullo schermo di una direzione della scena. La proiezione è
+// lineare più una traslazione, quindi la parte lineare si può chiedere da
+// sola — ed è quello che serve a un cono, che è fatto di raggi perpendicolari
+// al suo asse e non di punti.
+function solVersoSchermo(v) {
+  const a = sol.az, e = sol.elev * SKY_D2R;
+  const xr = v.x * Math.cos(a) - v.y * Math.sin(a);
+  const yr = v.x * Math.sin(a) + v.y * Math.cos(a);
+  return { dx: xr * sol.scala, dy: -(yr * Math.sin(e) + v.z * Math.cos(e)) * sol.scala };
+}
+
+// Il contorno di un cono di rotazione, in proiezione ortogonale. Il cono è
+// fatto di cerchi perpendicolari all'asse, e il contorno sono i due punti di
+// ogni cerchio più lontani dall'asse *sullo schermo*: proiettando i due
+// versori del piano del cerchio e prendendone la componente lungo la normale
+// all'asse disegnato, la larghezza esce in forma chiusa invece che
+// campionando ogni cerchio.
+//
+// `raggio(s)` è il raggio del cono a distanza `s` chilometri dalla base:
+// per l'umbra cala fino a zero (e lì il cono finisce), per la penombra
+// cresce sempre.
+function solProfiloCono(base, asse, raggio, sMax) {
+  const uno = solVersoSchermo(solVicScena(asse));
+  const na = Math.hypot(uno.dx, uno.dy);
+  if (!(na > 1e-9)) return null;                 // l'asse punta verso di noi
+  const nx = -uno.dy / na, ny = uno.dx / na;
+  let lato = solCroce(asse, [0, 0, 1]);
+  if (Math.hypot(lato[0], lato[1], lato[2]) < 1e-6) lato = solCroce(asse, [0, 1, 0]);
+  const e1 = solVersore(lato);
+  const e2 = solCroce(asse, e1);
+  const a1 = solVersoSchermo(solVicScena(e1));
+  const a2 = solVersoSchermo(solVicScena(e2));
+  const perKm = Math.hypot(a1.dx * nx + a1.dy * ny, a2.dx * nx + a2.dy * ny);
+  const passi = 34;
+  const su = [], giu = [];
+  for (let i = 0; i <= passi; i++) {
+    const s = sMax * i / passi;
+    const c = solVicPunto([base[0] + asse[0] * s, base[1] + asse[1] * s, base[2] + asse[2] * s]);
+    const w = Math.max(0, raggio(s)) * perKm;
+    su.push({ x: c.px + nx * w, y: c.py + ny * w });
+    giu.push({ x: c.px - nx * w, y: c.py - ny * w });
+  }
+  return su.concat(giu.reverse());
+}
+
+// Fin dove tirare un cono prima che finisca dentro alla Terra. Se l'asse la
+// manca del tutto — le eclissi parziali, quelle che sfiorano i poli — il cono
+// prosegue fino alla sua portata, che è la verità: passa accanto e tira via.
+function solQuantoPrimaDiTerra(base, asse, portata) {
+  const b = skyDot(base, asse);
+  const c = skyDot(base, base) - RAGGIO_TERRA_KM * RAGGIO_TERRA_KM;
+  const disc = b * b - c;
+  if (disc <= 0) return portata;
+  const s = -b - Math.sqrt(disc);
+  return s > 0 ? Math.min(portata, s) : portata;
+}
+
+function solDisegnaCono(ctx, base, asse, raggio, sMax, dentro, bordo) {
+  const contorno = solProfiloCono(base, asse, raggio, sMax);
+  if (!contorno) return;
+  // Avvicinandosi alla Terra il cono diventa più largo della tela, e allora
+  // riempirlo vuol dire velare tutto lo schermo di viola: la scena sparisce
+  // dentro alla propria ombra. Da lì in poi restano i due bordi, che sono
+  // anche l'unica cosa che a quell'ingrandimento si sta ancora cercando —
+  // dove passa il confine, non che colore ha il dentro.
+  let alto = 0, basso = 0;
+  contorno.forEach(p => { if (p.y < alto) alto = p.y; if (p.y > basso) basso = p.y; });
+  const straripa = (basso - alto) > Math.max(sol.L, sol.H) * 1.25;
+  ctx.save();
+  ctx.beginPath();
+  contorno.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+  ctx.closePath();
+  if (!straripa) {
+    ctx.fillStyle = dentro;
+    ctx.fill();
+  }
+  if (bordo) {
+    ctx.strokeStyle = bordo;
+    ctx.lineWidth = straripa ? 1.6 : 1;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Il cerchio dell'ombra alla distanza della Luna, disegnato dov'è: è il
+// bersaglio che la Luna manca undici mesi su dodici, e vederlo accanto a lei
+// è tutto il discorso di questo banco.
+function solDisegnaSezioneOmbra(ctx, base, asse, s, raggio, colore, tratteggio) {
+  if (!(raggio > 0)) return;
+  let lato = solCroce(asse, [0, 0, 1]);
+  if (Math.hypot(lato[0], lato[1], lato[2]) < 1e-6) lato = solCroce(asse, [0, 1, 0]);
+  const e1 = solVersore(lato);
+  const e2 = solCroce(asse, e1);
+  const c = [base[0] + asse[0] * s, base[1] + asse[1] * s, base[2] + asse[2] * s];
+  ctx.save();
+  ctx.strokeStyle = colore;
+  ctx.lineWidth = 1.2;
+  if (tratteggio) ctx.setLineDash(tratteggio);
+  ctx.beginPath();
+  for (let i = 0; i <= 48; i++) {
+    const th = i / 48 * Math.PI * 2;
+    const co = Math.cos(th) * raggio, si = Math.sin(th) * raggio;
+    const p = solVicPunto([
+      c[0] + e1[0] * co + e2[0] * si,
+      c[1] + e1[1] * co + e2[1] * si,
+      c[2] + e1[2] * co + e2[2] * si
+    ]);
+    if (i === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Il piano dell'eclittica attorno alla Terra: il pavimento su cui la Luna
+// dovrebbe stare e non sta. Di taglio è una riga, ed è la riga rispetto a cui
+// si misura tutto il resto.
+function solDisegnaPianoVicino(ctx, raggio) {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(148, 168, 214, 0.28)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let g = 0; g <= 360; g += 4) {
+    const a = g * SKY_D2R;
+    const p = solVicPunto([Math.cos(a) * raggio, Math.sin(a) * raggio, 0]);
+    if (g === 0) ctx.moveTo(p.px, p.py); else ctx.lineTo(p.px, p.py);
+  }
+  ctx.stroke();
+  ctx.globalAlpha = 0.5;
+  ctx.setLineDash([2, 4]);
+  for (let g = 0; g < 360; g += 30) {
+    const a = g * SKY_D2R;
+    const c = solVicPunto([0, 0, 0]);
+    const p = solVicPunto([Math.cos(a) * raggio, Math.sin(a) * raggio, 0]);
+    ctx.beginPath();
+    ctx.moveTo(c.px, c.py);
+    ctx.lineTo(p.px, p.py);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// L'orbita della Luna, in due colori: il mezzo giro sopra al piano e quello
+// sotto. È l'unico modo perché un'ellisse quasi di taglio racconti da che
+// parte sta la Luna — con un colore solo si vede una riga, e una riga non ha
+// un sopra e un sotto.
+function solDisegnaOrbitaLunare(ctx, orbita) {
+  ctx.save();
+  ctx.lineWidth = 1.3;
+  [false, true].forEach(sopra => {
+    ctx.strokeStyle = sopra ? 'rgba(226, 232, 240, 0.85)' : 'rgba(129, 140, 248, 0.7)';
+    ctx.setLineDash(sopra ? [] : [4, 3]);
+    ctx.beginPath();
+    let penna = false;
+    orbita.punti.forEach(v => {
+      if ((v[2] >= 0) !== sopra) { penna = false; return; }
+      const p = solVicPunto(v);
+      if (!penna) { ctx.moveTo(p.px, p.py); penna = true; } else ctx.lineTo(p.px, p.py);
+    });
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  // La linea dei nodi: la sola direzione lungo la quale la Luna sta *sul*
+  // piano. Le eclissi possono succedere solo qui, e solo quando è da questa
+  // parte che cade anche il Sole — due volte l'anno, ed è la «stagione delle
+  // eclissi» che le schede del calendario raccontano (§7.3-quater).
+  if (orbita.nodi.length >= 2) {
+    const a = orbita.nodi[0].p, b = orbita.nodi[1].p;
+    const pa = solVicPunto([a[0] * 1.25, a[1] * 1.25, 0]);
+    const pb = solVicPunto([b[0] * 1.25, b[1] * 1.25, 0]);
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.5)';
+    ctx.setLineDash([7, 5]);
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(pa.px, pa.py);
+    ctx.lineTo(pb.px, pb.py);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    orbita.nodi.slice(0, 2).forEach(n => {
+      const p = solVicPunto(n.p);
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.85)';
+      ctx.beginPath();
+      ctx.arc(p.px, p.py, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  ctx.restore();
+}
+
+// I raggi del Sole, che qui è lontano fuori dalla scena: paralleli, perché a
+// centocinquanta milioni di chilometri lo sono davvero — ed è proprio da
+// quel «quasi paralleli» che nasce la penombra.
+function solDisegnaRaggiVicino(ctx, versoSole, portata) {
+  const dir = solVersoRaggi(versoSole);
+  if (!dir) return;
+  const c = solVicPunto([0, 0, 0]);
+  const lungo = Math.hypot(sol.L, sol.H);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(253, 224, 71, 0.16)';
+  ctx.lineWidth = 1;
+  for (let i = -3; i <= 3; i++) {
+    const b = i * portata * 0.42 * solVicPx();
+    const bx = -dir.uy * b, by = dir.ux * b;
+    ctx.beginPath();
+    ctx.moveTo(c.px + bx + dir.ux * lungo, c.py + by + dir.uy * lungo);
+    ctx.lineTo(c.px + bx - dir.ux * lungo * 0.2, c.py + by - dir.uy * lungo * 0.2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Da che parte cade il Sole, sullo schermo: serve ai raggi e alla scritta che
+// li nomina, che però va messa insieme a tutte le altre (vedi
+// `solEtichetteVicino`) o finisce stampata sopra alla Luna
+function solVersoRaggi(versoSole) {
+  const uno = solVersoSchermo(solVicScena(versoSole));
+  const na = Math.hypot(uno.dx, uno.dy);
+  if (!(na > 1e-9)) return null;
+  return { ux: uno.dx / na, uy: uno.dy / na };
+}
+
+// --- Il disegno del banco ---------------------------------------------------
+
+function solDisegnaVicino() {
+  const ctx = sol.ctx;
+  const quando = new Date(sol.istante || skyAdesso().getTime());
+  const g = solGeocentriche(quando);
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  if (!g || !terra) {
+    solTesto(ctx, 'Le posizioni della Luna non sono disponibili',
+      sol.L / 2, sol.H / 2, '#94a3b8', 13, 'center');
+    return;
+  }
+  const assi = solAssiVista();
+  const orbita = solOrbitaLunare(quando);
+  const antiSole = [-g.versoSole[0], -g.versoSole[1], -g.versoSole[2]];
+  const px = solVicPx();
+
+  solDisegnaRaggiVicino(ctx, g.versoSole, g.dLuna);
+  solDisegnaPianoVicino(ctx, g.dLuna);
+
+  // Il cono d'ombra della Terra, sempre: è lui che spiega perché la maggior
+  // parte delle lune piene non è un'eclissi. Prima la penombra, larga e
+  // sfumata, poi l'ombra piena dentro di lei.
+  const apiceTerra = solApiceOmbra(RAGGIO_TERRA_KM, g.dSole);
+  const portataTerra = Math.min(apiceTerra, g.dLuna * SOL_VIC_CONO_OLTRE);
+  solDisegnaCono(ctx, [0, 0, 0], antiSole,
+    (s) => solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, s),
+    g.dLuna * SOL_VIC_CONO_OLTRE, SOL_COL_PENOMBRA, SOL_COL_PENOMBRA_BORDO);
+  solDisegnaCono(ctx, [0, 0, 0], antiSole,
+    (s) => solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, s),
+    portataTerra, SOL_COL_OMBRA, SOL_COL_OMBRA_BORDO);
+
+  // Il bersaglio: l'ombra alla distanza a cui sta adesso la Luna, misurata
+  // lungo l'asse — non alla sua distanza dalla Terra, che è un'altra cosa
+  // quando la Luna sta di lato
+  const sLuna = skyDot(g.luna, antiSole);
+  if (sLuna > 0) {
+    solDisegnaSezioneOmbra(ctx, [0, 0, 0], antiSole, sLuna,
+      solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, sLuna), 'rgba(129, 152, 210, 0.55)', [3, 3]);
+    solDisegnaSezioneOmbra(ctx, [0, 0, 0], antiSole, sLuna,
+      solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, sLuna), 'rgba(196, 181, 253, 0.85)');
+  }
+
+  // Il cono della Luna, quando è dalla parte del Sole: quello che, se arriva
+  // a toccarci, è un'eclissi di Sole. Si vede subito perché è così raro —
+  // finisce quasi esattamente dove siamo noi, e basta poco perché manchi.
+  const versoSoleDallaLuna = solVersore([
+    g.sole[0] - g.luna[0], g.sole[1] - g.luna[1], g.sole[2] - g.luna[2]]);
+  const dSoleLuna = Math.hypot(
+    g.sole[0] - g.luna[0], g.sole[1] - g.luna[1], g.sole[2] - g.luna[2]);
+  const luce = skyDot(solVersore(g.luna), g.versoSole);
+  if (luce > 0.9) {
+    const antiLuna = [-versoSoleDallaLuna[0], -versoSoleDallaLuna[1], -versoSoleDallaLuna[2]];
+    const apiceLuna = solApiceOmbra(RAGGIO_LUNA_KM, dSoleLuna);
+    // Il cono si ferma dove incontra la Terra, se la incontra: tirarlo dritto
+    // oltre significava disegnarne la parte che *è dentro al pianeta*, che
+    // spuntava fuori dall'altro lato come una macchia grigia in mezzo alla
+    // notte — la cosa che a colpo d'occhio dice «questo disegno è sbagliato»
+    const portata = solQuantoPrimaDiTerra(g.luna, antiLuna, g.dLuna * 1.25);
+    solDisegnaCono(ctx, g.luna, antiLuna,
+      (s) => solRaggioPenombra(RAGGIO_LUNA_KM, dSoleLuna, s),
+      portata, 'rgba(146, 116, 44, 0.14)', 'rgba(214, 176, 84, 0.34)');
+    solDisegnaCono(ctx, g.luna, antiLuna,
+      (s) => solRaggioUmbra(RAGGIO_LUNA_KM, dSoleLuna, s),
+      Math.min(apiceLuna, portata), 'rgba(126, 88, 22, 0.42)', 'rgba(251, 191, 36, 0.8)');
+  }
+
+  solDisegnaOrbitaLunare(ctx, orbita || { punti: [], nodi: [] });
+
+  // I due corpi, con la faccia e la fase vere. Si costruiscono al volo come
+  // se fossero due pianeti della scena grande, così `solDisegnaCorpo` — che
+  // sa già dipingere la faccia, tagliare la fase e mettere il lato in ombra —
+  // funziona qui senza sapere niente di questo banco.
+  const finti = [
+    {
+      id: 'Earth', nome: 'Terra', colore: '#60a5fa', asse: terra.asse,
+      pos: terra.pos, scena: solVicScena([0, 0, 0]),
+      schermo: solVicPunto([0, 0, 0]), rDisegno: Math.max(1.2, RAGGIO_TERRA_KM * px)
+    },
+    {
+      id: 'Moon', nome: 'Luna', colore: '#e2e8f0',
+      asse: solAsseLuna(quando),
+      pos: {
+        x: terra.pos.x + g.luna[0] / UA_KM,
+        y: terra.pos.y + g.luna[1] / UA_KM,
+        z: terra.pos.z + g.luna[2] / UA_KM
+      },
+      scena: solVicScena(g.luna), schermo: solVicPunto(g.luna),
+      rDisegno: Math.max(1, RAGGIO_LUNA_KM * px)
+    }
+  ];
+  finti.sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
+  finti.forEach(c => solDisegnaCorpo(ctx, c, assi));
+
+  // Il filo a piombo della Luna sul piano: dice di quanto è fuori bersaglio,
+  // e lo dice prima di qualunque numero
+  solDisegnaPiomboVicino(ctx, g.luna);
+
+  solEtichetteVicino(ctx, finti, orbita, g);
+  solRighelloVicino(ctx);
+  solRaccontoVicino(ctx, g, sLuna);
+}
+
+// Il righello. In un disegno che promette di essere a scala vera è il pezzo
+// che trasforma la promessa in qualcosa da controllare: si prende la lunghezza
+// del trattino e la si confronta col diametro della Terra, con la larghezza
+// dell'ombra, con lo scarto della Luna. La misura non è fissa — si sceglie il
+// numero tondo che sta fra un ottavo e un terzo della tela, così il trattino
+// resta della stessa lunghezza qualunque sia l'ingrandimento.
+const SOL_RIGHELLO_KM = [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000];
+function solRighelloVicino(ctx) {
+  const px = solVicPx();
+  if (!(px > 0)) return;
+  const voluto = sol.L * 0.2;
+  const km = SOL_RIGHELLO_KM.find(v => v * px >= sol.L * 0.11 && v * px <= sol.L * 0.34) ||
+    SOL_RIGHELLO_KM.reduce((a, b) => Math.abs(b * px - voluto) < Math.abs(a * px - voluto) ? b : a);
+  const lungo = km * px;
+  if (!(lungo > 12) || lungo > sol.L * 0.6) return;
+  const y = sol.H - 42 - (sol.altaBarra || 0);
+  const x = 12;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(148, 168, 214, 0.55)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4);
+  ctx.moveTo(x, y); ctx.lineTo(x + lungo, y);
+  ctx.moveTo(x + lungo, y - 4); ctx.lineTo(x + lungo, y + 4);
+  ctx.stroke();
+  ctx.restore();
+  const testo = km >= 1000000 ? `${km / 1000000} milioni di km` : `${(km / 1000).toLocaleString('it-IT')} mila km`;
+  solTesto(ctx, testo, x + lungo + 7, y + 4, 'rgba(148, 168, 214, 0.7)', 10.5);
+}
+
+// L'asse di rotazione della Luna. Non serve a molto — la faccia della Luna a
+// pochi pixel è un dischetto — ma tenerla dritta costa una chiamata e le fa
+// mostrare il mare giusto quando ci si avvicina.
+function solAsseLuna(quando) {
+  if (typeof Astronomy === 'undefined') return [0, 0, 1];
+  try {
+    const n = Astronomy.Ecliptic(Astronomy.RotationAxis('Moon', Astronomy.MakeTime(quando)).north).vec;
+    return solVersore([n.x, n.y, n.z]);
+  } catch (e) { return [0, 0, 1]; }
+}
+
+function solDisegnaPiomboVicino(ctx, luna) {
+  const alto = solVicPunto(luna);
+  const suolo = solVicPunto([luna[0], luna[1], 0]);
+  if (Math.hypot(alto.px - suolo.px, alto.py - suolo.py) < 3) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(226, 232, 240, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 3]);
+  ctx.beginPath();
+  ctx.moveTo(alto.px, alto.py);
+  ctx.lineTo(suolo.px, suolo.py);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// I nomi, tutti insieme e tutti dopo il disegno: si dividono una lista sola di
+// posti occupati, che è l'unico modo perché «verso il Sole» non finisca
+// stampato sopra alla Luna proprio quando la Luna è dalla parte del Sole —
+// cioè in tutte le eclissi di Sole, che sono metà del motivo per cui questo
+// banco esiste.
+function solEtichetteVicino(ctx, corpi, orbita, g) {
+  const prese = [];
+  corpi.forEach(c => solEtichetta(ctx, c.nome, c.schermo.px, c.schermo.py,
+    c.rDisegno + 5, c.id === 'Earth' ? '#bfdbfe' : '#e2e8f0', 12, prese, true));
+  // «Verso il Sole» si appoggia al bordo della tela dalla parte giusta, non a
+  // una distanza fissa dalla Terra: con la scena spostata di lato quella
+  // distanza finiva fuori dal riquadro e la scritta spariva — cioè proprio
+  // quando serve, perché è lo spostamento a togliere il Sole dal quadro.
+  const dir = solVersoRaggi(g.versoSole);
+  if (dir) {
+    const c = solVicPunto([0, 0, 0]);
+    const bordo = dir.ux >= 0 ? sol.L - 74 : 74;
+    const alto = Math.max(20, Math.min(sol.H - 40 - (sol.altaBarra || 0),
+      c.py + dir.uy * Math.abs(bordo - c.px) / Math.max(0.2, Math.abs(dir.ux))));
+    solEtichetta(ctx, 'verso il Sole', bordo, alto, 4, 'rgba(253, 224, 71, 0.75)', 11, prese);
+  }
+  // I nomi delle due regioni d'ombra, appoggiati a metà del cono della Terra:
+  // senza, restano due macchie viola che non dicono di essere ombre
+  const anti = [-g.versoSole[0], -g.versoSole[1], -g.versoSole[2]];
+  const meta = g.dLuna * 0.55;
+  const pMeta = solVicPunto([anti[0] * meta, anti[1] * meta, anti[2] * meta]);
+  const largoOmbra = solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, meta) * solVicPx();
+  if (largoOmbra > 5) {
+    solEtichetta(ctx, 'ombra', pMeta.px, pMeta.py, largoOmbra + 2, 'rgba(196, 181, 253, 0.8)', 10.5, prese);
+    const largoPen = solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, meta) * solVicPx();
+    solEtichetta(ctx, 'penombra', pMeta.px, pMeta.py, largoPen + 2, 'rgba(148, 175, 225, 0.7)', 10, prese);
+  }
+  if (orbita && orbita.nodi.length >= 2) {
+    orbita.nodi.slice(0, 2).forEach(n => {
+      const p = solVicPunto(n.p);
+      solEtichetta(ctx, n.ascendente ? 'nodo ascendente' : 'nodo discendente',
+        p.px, p.py, 5, 'rgba(250, 204, 21, 0.8)', 10.5, prese);
+    });
+  }
+}
+
+// La riga che dice cosa si sta guardando, in chilometri e in raggi terrestri.
+// È il numero che il disegno promette di far misurare col righello, e
+// scriverlo accanto è quello che trasforma una bella immagine in una prova.
+function solRaccontoVicino(ctx, g, sLuna) {
+  const fuori = g.luna[2];
+  const raggiTerra = fuori / RAGGIO_TERRA_KM;
+  const lat = Math.asin(Math.max(-1, Math.min(1, fuori / g.dLuna))) * SKY_R2D;
+  const ombra = sLuna > 0 ? solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, sLuna) : 0;
+  const riga = sol.H - 10 - (sol.altaBarra || 0);
+  const stretta = sol.L < 620;
+
+  const dove = Math.abs(raggiTerra) < 0.05 ? 'sul piano' :
+    `${Math.abs(raggiTerra).toFixed(1)} raggi terrestri ${fuori >= 0 ? 'sopra' : 'sotto'} il piano`;
+  const sinistra = stretta
+    ? `Luna ${dove}`
+    : `La Luna è ${dove} (${Math.abs(Math.round(fuori)).toLocaleString('it-IT')} km, ${Math.abs(lat).toFixed(1)}° di latitudine)`;
+  solTesto(ctx, sinistra, 10, riga, '#94a3b8', stretta ? 10.5 : 11);
+
+  if (!stretta && ombra > 0) {
+    solTesto(ctx, `ombra della Terra là in fondo: ${(ombra / RAGGIO_TERRA_KM).toFixed(2)} raggi terrestri di raggio · scala vera, niente ingrandito`,
+      sol.L - 10, riga, '#64748b', 11, 'right');
+  }
+}
+
+// --- «E allora, stanotte succede qualcosa?» ---------------------------------
+//   La stessa geometria del disegno, chiesta in parole. Non è una ricerca di
+//   eclissi — quella la fa Astronomy Engine per il calendario (§1) — ma la
+//   lettura dell'istante mostrato: dove passa la Luna rispetto al cono, e a
+//   che distanza dal bersaglio. Serve alla scheda e alla riga sotto al
+//   disegno, e soprattutto risponde alla domanda che il banco esiste per
+//   fare: *quanto* manca, quando non succede niente.
+function solStatoEclissi(quando) {
+  const g = solGeocentriche(quando);
+  if (!g) return null;
+  const anti = [-g.versoSole[0], -g.versoSole[1], -g.versoSole[2]];
+  const luce = skyDot(solVersore(g.luna), g.versoSole);   // +1 Luna nuova, −1 piena
+
+  // Quanto la Luna passa lontano dall'asse dell'ombra della Terra, alla sua
+  // distanza: è la sola misura che decide un'eclissi di Luna
+  const s = skyDot(g.luna, anti);
+  const scarto = Math.hypot(
+    g.luna[0] - anti[0] * s, g.luna[1] - anti[1] * s, g.luna[2] - anti[2] * s);
+  const umbra = solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, Math.max(0, s));
+  const penombra = solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, Math.max(0, s));
+
+  // Le due domande sono diverse a seconda di dove sta la Luna, e mescolarle
+  // scrive numeri che non vogliono dire niente: dalla parte del Sole l'ombra
+  // della Terra è dietro le spalle della Luna, e chiedere «quanto è larga là
+  // dove passa» dà il raggio della Terra, cioè la risposta a un'altra domanda.
+  const versante = luce > 0.9 ? 'nuova' : (luce < -0.9 ? 'piena' : 'lato');
+  let solare = null;
+  if (versante === 'nuova') {
+    const versoS = solVersore([
+      g.sole[0] - g.luna[0], g.sole[1] - g.luna[1], g.sole[2] - g.luna[2]]);
+    const asse = [-versoS[0], -versoS[1], -versoS[2]];
+    const dSoleLuna = Math.hypot(
+      g.sole[0] - g.luna[0], g.sole[1] - g.luna[1], g.sole[2] - g.luna[2]);
+    const u = -skyDot(g.luna, asse);
+    solare = {
+      // Quanto l'asse dell'ombra passa lontano dal centro della Terra
+      miss: Math.hypot(
+        g.luna[0] + asse[0] * u, g.luna[1] + asse[1] * u, g.luna[2] + asse[2] * u),
+      penombra: solRaggioPenombra(RAGGIO_LUNA_KM, dSoleLuna, Math.max(0, u)),
+      // Quanto è lunga l'ombra piena della Luna, contro quanto è lontana:
+      // è il numero che dice perché le totali sono così rare
+      apice: solApiceOmbra(RAGGIO_LUNA_KM, dSoleLuna)
+    };
+  }
+
+  let tipo = 'niente', frase = '';
+  if (s > 0 && scarto < umbra - RAGGIO_LUNA_KM) {
+    tipo = 'lunare-totale';
+    frase = 'La Luna è dentro all’ombra piena della Terra: eclissi totale di Luna. ' +
+      'Il rosso che prende è la somma di tutte le albe e i tramonti del pianeta, rifratti dall’aria.';
+  } else if (s > 0 && scarto < umbra + RAGGIO_LUNA_KM) {
+    tipo = 'lunare-parziale';
+    frase = 'Un pezzo di Luna è dentro all’ombra piena: eclissi parziale di Luna. ' +
+      'Il bordo del morso è la sagoma della Terra, ed è tondo perché la Terra è tonda.';
+  } else if (s > 0 && scarto < penombra + RAGGIO_LUNA_KM) {
+    tipo = 'lunare-penombrale';
+    frase = 'La Luna sfiora solo la penombra: eclissi penombrale. Da vedere è quasi niente — ' +
+      'un lato appena più smorto — e infatti quasi nessuno se ne accorge.';
+  } else if (solare) {
+    // Dalla parte del Sole: si guarda se il cono della Luna arriva a toccarci
+    const tocca = solOmbraLunareSuTerra(quando);
+    if (tocca) {
+      tipo = tocca.umbra < 0 ? 'solare-anulare' : 'solare-totale';
+      frase = tocca.umbra < 0
+        ? 'La punta dell’ombra si chiude prima di arrivare: eclissi anulare, con l’anello di Sole ' +
+          'tutt’attorno alla Luna. Basta che la Luna sia un po’ più lontana del solito.'
+        : 'La punta dell’ombra tocca la Terra: eclissi totale di Sole. La striscia da cui si vede ' +
+          'è larga un centinaio di chilometri — è tutto quello che il cono riesce a coprire.';
+    } else if (solare.miss < solare.penombra + RAGGIO_TERRA_KM) {
+      tipo = 'solare-parziale';
+      frase = 'Solo la penombra ci sfiora: da qualche parte, di solito verso i poli, il Sole si vede ' +
+        'morsicato, ma l’asse dell’ombra passa accanto alla Terra senza toccarla.';
+    }
+  }
+
+  if (tipo === 'niente') {
+    const fase = luce > 0.9 ? 'Luna nuova' : (luce < -0.9 ? 'Luna piena' : null);
+    const fuori = Math.abs(g.luna[2] / RAGGIO_TERRA_KM);
+    frase = fase
+      ? `È ${fase}, e non succede niente: la Luna passa ${fuori.toFixed(1)} raggi terrestri ` +
+        `${g.luna[2] >= 0 ? 'sopra' : 'sotto'} il piano dell’orbita terrestre, e l’allineamento manca per quello. ` +
+        'Perché ci sia un’eclissi la Luna deve essere anche vicina a un nodo — le due righe gialle del disegno.'
+      : 'La Luna non è né nuova né piena: sta di lato rispetto alla riga Terra–Sole, e nessuna delle due ombre la riguarda.';
+  }
+
+  return {
+    tipo, frase, luce, versante, solare,
+    fuoriPiano: g.luna[2],
+    latitudine: Math.asin(Math.max(-1, Math.min(1, g.luna[2] / g.dLuna))) * SKY_R2D,
+    scarto, umbra, penombra, distanza: g.dLuna
+  };
+}
+
+// --- Entrare e uscire -------------------------------------------------------
+
+// L'inquadratura del banco: l'occhio quasi dentro al piano dell'eclittica e
+// perpendicolare alla riga Terra–Sole. Da così il Sole sta da una parte,
+// l'ombra si allunga dall'altra in orizzontale, e lo scarto della Luna —
+// l'unica cosa che decide se ci sarà un'eclissi — cade in verticale, dove si
+// legge col righello. Guardando da qualunque altra parte quello scarto va in
+// prospettiva e il disegno smette di rispondere.
+function solInquadraVicino(opzioni = {}) {
+  const quando = new Date(sol.istante || skyAdesso().getTime());
+  const g = solGeocentriche(quando);
+  const morbido = !!opzioni.morbido;
+  if (g) {
+    const lonSole = Math.atan2(g.sole[1], g.sole[0]);
+    sol.az = Math.PI - lonSole;
+  }
+  sol.elevVoluta = SOL_VIC_ELEV;
+  if (!morbido) sol.elev = SOL_VIC_ELEV;
+  sol.panX = 0;
+  sol.panY = 0;
+  // Due inquadrature, e la differenza è la domanda che si sta facendo.
+  //   Quando un'eclissi *non* c'è, la risposta è l'orbita intera: si guarda
+  //   quanto la Luna passa larga, e per vederlo servono anche i due nodi, che
+  //   stanno agli antipodi. Quando invece l'eclissi c'è — ed è il caso di chi
+  //   arriva qui dal tasto di un evento — l'orbita non serve più a niente:
+  //   quello che si è venuti a vedere è il cono che prende in pieno il
+  //   bersaglio, e a orbita intera è largo cinque pixel. Allora si stringe
+  //   sulla coppia Terra–Luna, che in un'eclissi è anche la direzione in cui
+  //   la scena è più lunga: quel giorno i due sono per forza in fila col Sole.
+  const stato = solStatoEclissi(quando);
+  const stretto = !!(stato && stato.tipo !== 'niente');
+  const raggio = (g ? g.dLuna : 384400) * (stretto ? 0.68 : 1.15) / SOL_VIC_KM;
+  // A inquadrare questa scena è la **larghezza**, non il lato corto come per
+  // tutte le altre viste: qui il disegno è un allineamento orizzontale —
+  // Sole, Terra, Luna e il cono d'ombra in fila — e fuori dal piano ci sono
+  // solo i cinque gradi della Luna, cioè un decimo di quella lunghezza.
+  // Misurandola sull'altezza, su un monitor la scena restava un francobollo
+  // in mezzo a due palmi di nero. Il tetto sull'altezza non morde quasi mai,
+  // ma su un telefono girato — largo il triplo di quanto è alto — senza di lui
+  // l'orbita uscirebbe sopra e sotto.
+  const corto = Math.min(sol.L || 1, sol.H || 1);
+  const mezzo = Math.min((sol.L || corto) * 0.46, (sol.H || corto) * 1.9);
+  const zoom = raggio > 0 ? mezzo / (raggio * corto * 0.44) : 1;
+  solImpostaZoom(zoom, { morbido });
+  if (stretto && g) solPanFraTerraELuna(zoom, g);
+  solAggiornaTasti();
+  if (sol.aperto) solDisegna();
+}
+
+// Mette il punto di mezzo fra la Terra e la Luna in mezzo alla tela, così
+// nessuno dei due finisce sul bordo. Lo zoom si passa da fuori perché il
+// conto va fatto su quello di **arrivo**: durante il viaggio morbido
+// `sol.zoom` è ancora quello di partenza, e il quadro finirebbe calcolato per
+// un'inquadratura che sta già cambiando.
+function solPanFraTerraELuna(zoom, g) {
+  sol.panX = 0;
+  sol.panY = 0;
+  if (!sol.L || !sol.H) return;
+  const salvaZoom = sol.zoom, salvaElev = sol.elev;
+  sol.zoom = zoom || sol.zoom;
+  sol.elev = sol.elevVoluta;
+  solMisura();
+  const p = solVicPunto(g.luna);
+  sol.zoom = salvaZoom;
+  sol.elev = salvaElev;
+  solMisura();
+  sol.panX = -(p.px - sol.cx) / 2;
+  sol.panY = -(p.py - sol.cy) / 2;
+}
+
+function solEntraVicino(opzioni = {}) {
+  sol.vicino = true;
+  sol.centratoTerra = false;
+  sol.scelto = null;
+  // Un'eclissi si guarda a ore, non a mesi: il passo del tempo diventa
+  // quello giusto da solo, se no il primo tocco su + salta l'eclissi intera
+  sol.passoIndice = 0;
+  sol.ancoraSec = solOffset();
+  // L'inquadratura dipende da dove sta la Luna adesso (vedi
+  // `solInquadraVicino`), e «adesso» lo sa solo chi ha appena letto le
+  // posizioni: entrando subito dopo un salto dell'orologio, senza questa
+  // riga, il quadro verrebbe calcolato sull'istante di prima
+  solLeggiPosizioni(skyAdesso());
+  solInquadraVicino(opzioni);
+  solAggiornaTasti();
+  solAggiornaScheda(true);
+  solAggiornaBarra();
+}
+
+function solEsciVicino() {
+  sol.vicino = false;
+  sol.passoIndice = 1;
+  sol.ancoraSec = solOffset();
+  solInquadraDaTerra({ morbido: true });
+  solAggiornaTasti();
+  solAggiornaScheda(true);
+  solAggiornaBarra();
+}
+
+function solAlternaVicino() {
+  if (sol.vicino) solEsciVicino();
+  else solEntraVicino({ morbido: true });
+}
+
 function solDisegna() {
   if (!sol.ctx) return;
   const ctx = sol.ctx;
@@ -20624,6 +22193,11 @@ function solDisegna() {
 
   // Ogni corpo porta con sé il suo punto nella scena e sullo schermo: si
   // calcolano una volta e li usano il piombo, la riga dello sguardo e la Luna
+  // Il banco delle eclissi è un'altra scena: stessa telecamera, stesso
+  // orologio, ma la Terra al centro e i chilometri al posto delle unità
+  // astronomiche. Da qui in poi non c'è niente in comune, e infatti esce.
+  if (sol.vicino) { solDisegnaVicino(); return; }
+
   sol.pianeti.forEach(p => {
     p.scena = solScena(p.pos);
     p.schermo = solProietta(p.scena);
@@ -20638,6 +22212,7 @@ function solDisegna() {
   // e una riga d'orbita coperta da un pulviscolo non si segue più
   solDisegnaFasce(ctx);
   sol.orbite.tracce.forEach(t => solDisegnaOrbita(ctx, t));
+  if (sol.nodi) sol.orbite.tracce.forEach(t => solDisegnaNodiOrbita(ctx, t));
   solDisegnaAloneSole(ctx);
   solDisegnaSguardo(ctx, terra, scelto);
 
@@ -20701,6 +22276,7 @@ function solDisegna() {
     solEtichetta(ctx, p.nome, p.schermo.px, p.schermo.py, stacco(p),
       'rgba(233, 237, 247, 0.82)', 11.5, prese);
   });
+  if (sol.nodi) sol.orbite.tracce.forEach(t => solEtichettaNodi(ctx, t, prese));
   // I nomi delle fasce per ultimi: sono i soli che possono mancare senza che
   // manchi niente — la nuvola di punti si riconosce da sé
   sol.fasce.forEach(f => { if (sol.fasceAccese[f.id]) solEtichettaFascia(ctx, f, prese); });
@@ -20713,12 +22289,19 @@ function solDisegna() {
   const alto = sol.elev > 70 ? 'a picco sul piano' : (sol.elev < 8 ? 'quasi dentro al piano' : `${Math.round(sol.elev)}° sopra il piano`);
   const largo = solUaAlBordo(sol.zoom);
   const misure = sol.misureVere ? 'pianeti in scala, Sole no' : 'pianeti ingranditi';
-  const bordo = `${solNumero(largo, largo < 2 ? 2 : 1)} UA al bordo`;
+  // Avvicinandosi alla Terra il bordo scende sotto il centesimo di unità
+  // astronomica, e la scritta diceva «0,00 UA al bordo», cioè niente. Sotto
+  // quella soglia il metro giusto sono i chilometri, che è anche il modo in
+  // cui uno pensa alle distanze quando sta guardando un pianeta e non un
+  // sistema solare.
+  const bordo = largo < 0.02
+    ? `${Math.round(largo * SOL_UA_KM / 1000).toLocaleString('it-IT')} mila km al bordo`
+    : `${solNumero(largo, largo < 2 ? 2 : 1)} UA al bordo`;
   if (stretta) {
     solTesto(ctx, `${alto} · ${bordo}${sol.distanzeVere ? '' : ' (compresse)'}`, 10, riga, '#64748b', 10.5);
   } else {
     solTesto(ctx, `${alto} delle orbite · ${misure}`, 10, riga, '#64748b', 11);
-    solTesto(ctx, `dal Sole al bordo ≈ ${bordo.replace(' al bordo', '')}` +
+    solTesto(ctx, `${sol.centratoTerra ? 'dalla Terra' : 'dal Sole'} al bordo ≈ ${bordo.replace(' al bordo', '')}` +
       (sol.distanzeVere ? '' : ' · distanze compresse'), sol.L - 10, riga, '#64748b', 11, 'right');
   }
 }
@@ -20792,6 +22375,7 @@ function solSchedaHtml() {
     return '<p class="sol-vuoto">Senza la libreria di calcolo non si possono mettere i pianeti al loro posto. ' +
       'Torna quando c\'è rete: da lì in poi funziona anche offline.</p>';
   }
+  if (sol.vicino) return solSchedaVicinoHtml();
   const terra = sol.pianeti.find(p => p.id === 'Earth');
   const scelto = sol.pianeti.find(p => p.id === sol.scelto) || null;
 
@@ -20835,6 +22419,57 @@ function solSchedaHtml() {
 
   const righe = sol.pianeti.map(p => solRigaTabella(p, terra)).join('');
   return `${testa}<div class="sol-tabella">${righe}</div>`;
+}
+
+// La scheda del banco delle eclissi: i tre numeri che il disegno fa vedere,
+// scritti, più la frase che dice come sono andate a finire. Il tasto verso la
+// lezione dei nodi non è un ornamento — «vicino a un nodo» è l'unica parte
+// del discorso che questo disegno mostra senza spiegarla, e lì è spiegata.
+function solSchedaVicinoHtml() {
+  const s = solStatoEclissi(new Date(sol.istante || skyAdesso().getTime()));
+  if (!s) {
+    return '<p class="sol-vuoto">Senza la libreria di calcolo non si può mettere la Luna al suo posto.</p>';
+  }
+  const km = (v) => Math.round(Math.abs(v)).toLocaleString('it-IT');
+  const succede = s.tipo !== 'niente';
+
+  // Due misure diverse per le due metà del mese, perché sono due domande
+  // diverse: a Luna piena conta quanto la Luna manca l'ombra della Terra, a
+  // Luna nuova quanto l'ombra della Luna manca la Terra.
+  let righe;
+  if (s.versante === 'nuova' && s.solare) {
+    const scarto = s.solare.miss - RAGGIO_TERRA_KM;
+    righe = `<li><span>Ombra piena della Luna, quanto è lunga</span>
+          <strong>${km(s.solare.apice)} km</strong>
+          <em>la Terra è a ${km(s.distanza)}: ci arriva per un pelo, o non ci arriva</em></li>
+        <li><span>Dove passa l’asse dell’ombra</span>
+          <strong>${scarto <= 0 ? 'sulla Terra' : `${km(scarto)} km oltre il bordo`}</strong>
+          <em>${km(s.solare.miss)} km dal centro del pianeta</em></li>`;
+  } else {
+    const bersaglio = s.scarto < s.umbra + RAGGIO_LUNA_KM
+      ? 'dentro al bersaglio'
+      : `${km(s.scarto - s.umbra)} km fuori dal bordo dell’ombra`;
+    righe = `<li><span>Ombra piena della Terra, là dove passa la Luna</span>
+          <strong>${km(s.umbra)} km di raggio</strong>
+          <em>${(s.umbra / RAGGIO_LUNA_KM).toFixed(1)} volte la Luna</em></li>
+        <li><span>Quanto la Luna manca il bersaglio</span><strong>${bersaglio}</strong></li>`;
+  }
+
+  return `<div class="sol-testa">
+      <h4 style="color:${succede ? '#fbbf24' : '#93c5fd'}">${succede ? 'Sta succedendo' : 'Stavolta no'}</h4>
+      <ul class="sol-dati">
+        <li><span>La Luna, dal piano dell’orbita terrestre</span>
+          <strong>${km(s.fuoriPiano)} km ${s.fuoriPiano >= 0 ? 'sopra' : 'sotto'}</strong>
+          <em>${Math.abs(s.fuoriPiano / RAGGIO_TERRA_KM).toFixed(1)} raggi terrestri · ${Math.abs(s.latitudine).toFixed(2)}° di latitudine</em></li>
+        ${righe}
+        <li><span>Distanza della Luna</span><strong>${km(s.distanza)} km</strong></li>
+      </ul>
+      <p class="sol-frase">${s.frase}</p>
+      <div class="sol-azioni">
+        <button type="button" class="tasto-cielo tasto-primario" onclick="solEsciVicino()">Torna ai pianeti</button>
+        <button type="button" class="tasto-cielo" onclick="apriLezioneEclittica('nodi')">Cos’è la stagione delle eclissi</button>
+      </div>
+    </div>`;
 }
 
 function solAggiornaScheda(forza) {
@@ -21070,8 +22705,13 @@ function solImpostaVista(nome) {
 }
 
 function solImpostaZoom(z, opzioni = {}) {
-  const tetto = sol.centratoTerra ? SOL_ZOOM_MAX_TERRA : SOL_ZOOM_MAX;
-  const valore = Math.max(0.35, Math.min(tetto, z));
+  // Tre scene, tre corse dello zoom. Nel banco delle eclissi si deve poter
+  // fare tutt'e due le cose: allontanarsi finché il cono d'ombra della Terra
+  // ci sta per intero (un milione e mezzo di chilometri) e avvicinarsi alla
+  // Terra finché si riconoscono i continenti.
+  const tetto = sol.vicino ? SOL_VIC_ZOOM_MAX : (sol.centratoTerra ? SOL_ZOOM_MAX_TERRA : SOL_ZOOM_MAX);
+  const pavimento = sol.vicino ? SOL_VIC_ZOOM_MIN : 0.35;
+  const valore = Math.max(pavimento, Math.min(tetto, z));
   sol.zoomVoluto = valore;
   if (!opzioni.morbido) sol.zoom = valore;
   solAggiornaTasti();
@@ -21091,6 +22731,17 @@ function solAggiornaTasti() {
   segna('#modale-sistema [data-sol-altezze]', b => Number(b.dataset.solAltezze) === sol.esagera);
   segna('#modale-sistema [data-sol-misure]', b => (b.dataset.solMisure === 'vere') === sol.misureVere);
   segna('#modale-sistema [data-sol-fascia]', b => !!sol.fasceAccese[b.dataset.solFascia]);
+  segna('#modale-sistema [data-sol-nodi]', () => sol.nodi);
+  segna('#modale-sistema [data-sol-quadro="eclissi"]', () => sol.vicino);
+  // Nel banco delle eclissi metà dei comandi non ha niente su cui agire — le
+  // distanze compresse, le fasce di sassi, i pallini in scala parlano di una
+  // scena che lì non c'è. Restano visibili ma spenti, invece di sparire: una
+  // fila di tasti che cambia lunghezza a ogni tocco è peggio di una fila di
+  // tasti in grigio.
+  document.querySelectorAll('#modale-sistema [data-solo-pianeti]').forEach(b => {
+    b.disabled = sol.vicino;
+    b.classList.toggle('spento-fuori-scena', sol.vicino);
+  });
 }
 
 // Il gesto è il comando principale di questa vista: si gira la scena col
@@ -21152,6 +22803,9 @@ function solPanFraSoleETerra(zoom) {
 // (`solInizializzaGesti`, che cambia `az`/`elev`) diventa da solo «gira
 // intorno alla Terra», senza bisogno di una matematica di rotazione diversa.
 function solAggiornaPivotTerra() {
+  // Nel banco delle eclissi la Terra è già l'origine della scena: un secondo
+  // ricentraggio la inchioderebbe al centro anche quando la si vuole spostare
+  if (sol.vicino) return;
   if (!sol.centratoTerra) return;
   const terra = sol.pianeti.find(p => p.id === 'Earth');
   if (!terra) return;
@@ -21228,7 +22882,11 @@ function solInquadraDaTerra(opzioni = {}) {
 // L'arrivo è morbido, come per i tasti dei punti di vista: vedere la scena
 // tornare al suo posto dice cosa è successo, saltarci sopra no.
 function solRipristinaVista() {
-  solInquadraDaTerra({ morbido: true });
+  // «Com'era all'apertura» dipende da che scena si sta guardando: nel banco
+  // delle eclissi è l'allineamento visto di taglio, non la disposizione dei
+  // pianeti — che lì non c'è nemmeno disegnata.
+  if (sol.vicino) solInquadraVicino({ morbido: true });
+  else solInquadraDaTerra({ morbido: true });
 }
 
 function solSposta(dx, dy) {
@@ -21358,6 +23016,9 @@ function solInizializzaGesti() {
 }
 
 function solTocco(e) {
+  // Nel banco delle eclissi i pallini della scena grande non ci sono: un
+  // tocco sceglierebbe un pianeta che non è disegnato da nessuna parte
+  if (sol.vicino) return;
   if (!sol.canvas || !sol.pianeti.length) return;
   const r = sol.canvas.getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
@@ -21483,17 +23144,51 @@ function solAggiornaTastoSchermo() {
 
 // --- Apertura e chiusura ---------------------------------------------------
 
-window.apriSistemaSolare = () => {
+// Che scena aprire, e puntata dove: lo decide l'evento da cui si arriva.
+//   Arrivare su una scena qualunque e doverla girare finché si capisce cosa
+//   c'entra con l'eclissi di cui si stava leggendo è il modo più sicuro di
+//   non capire niente. Un'eclissi — di Sole o di Luna — apre il banco Terra e
+//   Luna (§7.7-quater), che è il posto in cui quell'evento *è* qualcosa;
+//   tutto il resto apre la vista d'insieme col protagonista già scelto, così
+//   la riga dello sguardo parte da noi e finisce su di lui.
+function solPianoDellEvento(ev) {
+  if (!ev) return null;
+  if (ev.eclissi || ev.eclissiLunare) return { vicino: true };
+  const corpo = ev.corpoCielo || (ev.congiunzione && ev.congiunzione.corpi && ev.congiunzione.corpi[0]);
+  if (corpo && SOL_PIANETI.some(p => p.id === corpo)) return { scelto: corpo };
+  return {};
+}
+
+// L'orologio dell'evento è quello del planetario, e questa finestra lo legge
+// da lì: portarcelo *prima* di aprire vuol dire che la prima immagine è già
+// quella dell'istante giusto, senza un fotogramma di scena sbagliata.
+function solVaiAllIstante(ev) {
+  if (!ev || !ev.dataObj) return;
+  skyFermaPlayback();
+  skyImpostaOffsetTempo((ev.dataObj.getTime() - Date.now()) / 1000);
+}
+
+window.apriSistemaSolare = (opzioni = {}) => {
   const modale = document.getElementById('modale-sistema');
   if (!modale) return;
   sol.canvas = document.getElementById('sol-canvas');
   if (!sol.canvas) return;
 
+  const evento = opzioni.evento
+    ? eventiCalcolati.find(e => e.id === opzioni.evento) : null;
+  if (evento) solVaiAllIstante(evento);
+  const piano = solPianoDellEvento(evento) || {};
+
   // Si entra guardando quello che si stava guardando: se nel planetario era
-  // scelto un pianeta, la riga dello sguardo parte già puntata su di lui
+  // scelto un pianeta, la riga dello sguardo parte già puntata su di lui —
+  // a meno che si arrivi da un evento, che ha un protagonista suo
   const bersaglio = SOL_PIANETI.some(p => p.id === sky.target) ? sky.target : null;
-  sol.scelto = bersaglio;
+  sol.scelto = piano.scelto || bersaglio;
   sol.marcia = 0;
+  // Il banco delle eclissi è una scelta di questo ingresso, non una
+  // preferenza da ritrovare: chi riapre la finestra riparte dai pianeti
+  sol.vicino = !!piano.vicino;
+  sol.passoIndice = sol.vicino ? 0 : 1;
   // Si riparte sempre dalla vista d'insieme: girare intorno alla Terra è una
   // scelta di questa sessione, non una preferenza da ritrovare
   sol.centratoTerra = false;
@@ -21537,7 +23232,8 @@ window.apriSistemaSolare = () => {
     // motivo per cui questa finestra esiste — si arriva dal planetario con una
     // domanda su come stanno le cose stasera, e la prima immagine deve già
     // essere la risposta, non un bersaglio da girare finché si capisce.
-    solInquadraDaTerra();
+    if (sol.vicino) solInquadraVicino();
+    else solInquadraDaTerra();
     solAggiornaBarra(quando);
     solAggiornaScheda(true);
     if (!sol.raf) sol.raf = requestAnimationFrame(solCiclo);
@@ -21595,6 +23291,9 @@ function inizializzaSistemaSolare() {
       // «Da qui» è l'inquadratura d'ingresso, quella che risponde alla domanda
       // con cui si arriva dal planetario: rifà anche il giro, non solo la
       // larghezza, e per questo passa da una funzione sua
+      // Il banco delle eclissi è una scena a parte: si entra e si esce da qui
+      if (b.dataset.solQuadro === 'eclissi') { solAlternaVicino(); return; }
+      if (sol.vicino) solEsciVicino();
       if (b.dataset.solQuadro === 'terra') { solInquadraDaTerra({ morbido: true }); return; }
       const interni = b.dataset.solQuadro === 'interni';
       // Anche questi due sono centrati sul Sole: se si stava girando intorno
@@ -21626,6 +23325,13 @@ function inizializzaSistemaSolare() {
   modale.querySelectorAll('[data-sol-altezze]').forEach(b =>
     b.addEventListener('click', () => {
       sol.esagera = Number(b.dataset.solAltezze) || 1;
+      solAggiornaTasti();
+      solDisegna();
+    }));
+
+  modale.querySelectorAll('[data-sol-nodi]').forEach(b =>
+    b.addEventListener('click', () => {
+      sol.nodi = !sol.nodi;
       solAggiornaTasti();
       solDisegna();
     }));

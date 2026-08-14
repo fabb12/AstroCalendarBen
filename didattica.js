@@ -6875,149 +6875,16 @@
     { nome: 'Notte',       ora: TRAM_ORA_MAX }
   ];
 
-  // Le luci delle città sulla parte in ombra. Sono coordinate vere, e sono
-  // poche di proposito: bastano a far vedere che la parte scura è abitata,
-  // e non sono una carta geografica.
-  const TRAM_LUCI = [
-    [12.5, 41.9], [9.2, 45.5], [2.35, 48.86], [-0.13, 51.5], [13.4, 52.5],
-    [37.6, 55.75], [-74, 40.7], [-87.6, 41.9], [-118.2, 34.05], [-99.1, 19.4],
-    [-46.6, -23.5], [-58.4, -34.6], [3.4, 6.5], [31.2, 30.0], [28.0, -26.2],
-    [55.3, 25.2], [77.2, 28.6], [72.9, 19.1], [116.4, 39.9], [121.5, 31.2],
-    [139.7, 35.7], [106.8, -6.2], [151.2, -33.9], [-79.4, 43.7],
-    [103.8, 1.35], [126.98, 37.57], [100.5, 13.75], [-70.7, -33.4]
-  ];
+  // Il mondo e le luci delle città stanno in `app.js` (§7.3.2, `SKY_MONDO` e
+  // `SKY_LUCI_CITTA`): sono lo stesso mondo che la vista 3D del Sistema
+  // Solare appoggia sulla Terra da vicino, e due copie dello stesso mondo
+  // divergono al primo ritocco — si corregge una costa e l'altra resta
+  // storta, senza che niente lo dica. Se app.js non c'è (il banco di prova
+  // carica i moduli da soli) il globo resta senza coste: il resto del quadro
+  // — il giorno, la notte, l'anello dell'aria — funziona lo stesso.
+  const TRAM_MONDO = typeof SKY_MONDO !== 'undefined' ? SKY_MONDO : [];
+  const TRAM_LUCI = typeof SKY_LUCI_CITTA !== 'undefined' ? SKY_LUCI_CITTA : [];
 
-  // Il mondo, disegnato per quello che è: le coste vere, in longitudine e
-  // latitudine, seguite punto per punto.
-  //
-  // Prima erano le dieci macchie tonde di `SKY_TERRE` — quelle che nella
-  // vista 3D del Sistema Solare fanno la faccia della Terra, dove il globo
-  // è largo venti pixel e una macchia verde al posto giusto è tutto quello
-  // che serve. Qui il globo prende mezzo schermo e si può ingrandire, e
-  // dieci bolle si leggono per quello che sono: bolle. Con la sagoma vera
-  // invece si riconosce il proprio paese, e riconoscere il proprio paese è
-  // metà del motivo per cui questo quadro esiste — l'omino sta *lì*.
-  //
-  // La risoluzione è grossolana di proposito: qualche decina di vertici per
-  // continente, cioè quello che si vede da un pianeta vicino. Non è una
-  // carta geografica e non pretende di esserlo; è una silhouette.
-  //
-  // L'ordine conta: prima le terre, poi i deserti che ci stanno sopra, poi
-  // i ghiacci. Sono tutti poligoni sferici, quindi il salto della
-  // longitudine a ±180° non è un problema — i vertici diventano vettori e
-  // il vettore non sa niente dei meridiani.
-  const TRAM_MONDO = [
-    { nome: 'Africa', c: '#4a7a42', punti: [
-      [-17, 21], [-13, 28], [-9.5, 31], [-6, 36], [3, 37], [10, 37], [15, 32],
-      [20, 32], [25, 32], [31, 31], [34, 28], [36, 22], [38, 18], [39, 15],
-      [43, 11.5], [48, 11.5], [51, 11.5], [47, 5], [43, 2], [41, -2], [40, -8],
-      [40, -14], [35, -20], [33, -26], [30, -31], [27, -33.5], [22, -34],
-      [18, -34.5], [15, -28], [13, -23], [12, -18], [12, -12], [9, -6], [9, -1],
-      [9.5, 4], [5, 5], [0, 5.5], [-4, 5], [-8, 4.5], [-13, 8], [-16, 12], [-17, 14.7]] },
-
-    { nome: 'Eurasia', c: '#477542', punti: [
-      [-6, 36], [-9, 38.7], [-9, 43.5], [-4, 43.5], [-1.5, 46], [-2, 48.5],
-      [4, 51], [8, 55], [12, 54.5], [21, 56], [24, 59.5], [30, 60], [21, 63],
-      [18, 65], [24, 68], [21, 70], [28, 71], [40, 66], [44, 68], [55, 69],
-      [66, 71], [73, 68], [78, 73], [90, 76], [104, 77], [110, 74], [125, 73],
-      [133, 72], [145, 72], [160, 70], [172, 68], [179, 66], [170, 60], [163, 58],
-      [156, 51], [142, 54], [140, 46], [132, 43], [128, 38], [122, 40], [120, 36],
-      [122, 31], [113, 22], [107, 21], [105, 16], [100, 13], [104, 1], [98, 8],
-      [93, 16], [89, 22], [80, 15], [77, 8], [72, 21], [66, 25], [57, 26],
-      [51, 29], [48, 30], [50, 37], [45, 42], [36, 36], [30, 40], [26, 38],
-      [23, 39], [19, 40], [16, 39], [12, 45], [14, 45], [8, 44], [3, 43],
-      [-2, 37]] },
-
-    { nome: 'Nord America', c: '#487641', punti: [
-      [-168, 66], [-161, 70], [-156, 71], [-145, 70], [-133, 69], [-125, 70],
-      [-115, 69], [-105, 68], [-95, 68], [-85, 70], [-80, 73], [-70, 70],
-      [-65, 60], [-56, 52], [-60, 47], [-66, 45], [-70, 42], [-74, 40],
-      [-76, 35], [-81, 31], [-80, 26], [-83, 29], [-88, 30], [-94, 29],
-      [-97, 26], [-97, 21], [-92, 18], [-88, 21], [-87, 15], [-83, 9],
-      [-79, 9], [-83, 15], [-88, 14], [-95, 16], [-105, 20], [-110, 24],
-      [-114, 28], [-117, 32], [-121, 35], [-124, 40], [-124, 46], [-131, 53],
-      [-136, 58], [-145, 60], [-152, 58], [-159, 56], [-163, 60], [-166, 63]] },
-
-    { nome: 'Sud America', c: '#3f7239', punti: [
-      [-81, -4], [-79, 0], [-77, 8], [-72, 11], [-62, 11], [-52, 5], [-50, 0],
-      [-44, -2], [-38, -5], [-35, -8], [-39, -13], [-40, -20], [-48, -25],
-      [-53, -33], [-57, -38], [-62, -40], [-65, -45], [-68, -50], [-70, -54],
-      [-75, -52], [-74, -46], [-73, -40], [-71, -33], [-70, -23], [-71, -18],
-      [-76, -14]] },
-
-    { nome: 'Australia', c: '#8f7c4a', punti: [
-      [113, -22], [114, -26], [115, -34], [119, -34], [126, -32], [132, -32],
-      [138, -35], [141, -38], [147, -38], [150, -35], [153, -28], [153, -25],
-      [148, -20], [143, -14], [142, -11], [137, -12], [132, -11], [129, -15],
-      [125, -14], [122, -18], [116, -21]] },
-
-    { nome: 'Nuova Guinea', c: '#3f6b3d', punti: [
-      [131, -1], [138, -2], [144, -4], [147, -6], [151, -10], [146, -8],
-      [141, -9], [136, -8], [132, -5]] },
-
-    { nome: 'Borneo', c: '#3f6b3d', punti: [
-      [109, 2], [113, 7], [117, 7], [119, 2], [117, -3], [111, -3], [109, 0]] },
-
-    { nome: 'Sumatra', c: '#3f6b3d', punti: [
-      [95, 5], [98, 4], [104, -2], [106, -6], [102, -5], [99, 0]] },
-
-    { nome: 'Giava', c: '#3f6b3d', punti: [
-      [105, -6], [114, -7], [122, -8], [114, -8.8], [106, -7.5]] },
-
-    { nome: 'Madagascar', c: '#7f7a45', punti: [
-      [49, -12], [50, -15], [48, -21], [46, -25], [44, -22], [44, -17], [46, -13]] },
-
-    { nome: 'Giappone', c: '#487641', punti: [
-      [130, 33], [136, 34], [141, 38], [142, 43], [145, 44], [141, 41],
-      [137, 37], [131, 32]] },
-
-    { nome: 'Isole Britanniche', c: '#4d7a45', punti: [
-      [-5, 50], [1.5, 51], [0, 54], [-2, 57], [-5, 58.5], [-6, 55], [-10, 54],
-      [-10, 51.5], [-6, 50]] },
-
-    { nome: 'Nuova Zelanda', c: '#4d7a45', punti: [
-      [173, -35], [178, -38], [177, -41], [172, -41], [170, -44], [167, -46],
-      [170, -44.5], [172, -40]] },
-
-    { nome: 'Islanda', c: '#6f8f5a', punti: [
-      [-24, 65], [-18, 66.5], [-14, 65.5], [-15, 64], [-21, 63.5]] },
-
-    { nome: 'Cuba', c: '#5c7f3e', punti: [
-      [-84, 22], [-79, 23], [-75, 20], [-80, 20]] },
-
-    { nome: 'Sri Lanka', c: '#5c7f3e', punti: [
-      [80, 9.5], [82, 7], [80, 6], [79, 8]] },
-
-    // I deserti stanno sopra alle terre: si sovrappongono di proposito, e
-    // per questo vengono dopo. Sono la sola cosa che, da lontano, si
-    // riconosce sul verde — il Sahara si vede dallo spazio meglio di
-    // qualunque confine.
-    { nome: 'Sahara', c: '#b39a63', punti: [
-      [-12, 21], [0, 24], [12, 26], [24, 27], [32, 25], [33, 20], [26, 16],
-      [12, 14], [0, 15], [-9, 16]] },
-    { nome: 'Arabia', c: '#b39a63', punti: [
-      [35, 29], [43, 30], [48, 29], [57, 24], [53, 17], [45, 13], [39, 18]] },
-    { nome: 'Australia interna', c: '#a98d55', punti: [
-      [118, -23], [128, -22], [138, -24], [143, -27], [138, -31], [126, -30],
-      [119, -28]] },
-    { nome: 'Gobi', c: '#a99b6b', punti: [
-      [88, 41], [100, 44], [112, 44], [116, 40], [104, 37], [92, 37]] },
-    { nome: 'Kalahari', c: '#a98d55', punti: [
-      [16, -20], [24, -19], [26, -24], [22, -28], [17, -26]] },
-
-    // I ghiacci vengono per ultimi: sono i più chiari, e da un pianeta
-    // vicino sono la prima cosa che si vede.
-    { nome: 'Groenlandia', c: '#e6eef6', punti: [
-      [-73, 78], [-58, 82], [-40, 83], [-22, 80], [-20, 74], [-25, 70],
-      [-35, 66], [-43, 60], [-50, 62], [-54, 66], [-58, 70], [-68, 75]] },
-    // L'Antartide è un anello attorno al polo: girando tutta la longitudine
-    // a latitudine fissa si traccia un parallelo, e un parallelo sulla sfera
-    // racchiude la calotta col polo dentro. Non serve nient'altro.
-    { nome: 'Antartide', c: '#eaf2f9', punti: [
-      [-180, -78], [-150, -75], [-120, -73], [-90, -72], [-60, -73], [-45, -78],
-      [-30, -71], [0, -70], [30, -69], [60, -67], [90, -66], [120, -66],
-      [150, -72], [170, -78]] }
-  ];
 
   const tram = {
     quadro: 'globo',
