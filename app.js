@@ -10361,6 +10361,8 @@ function skyAggiungiSatelliti(lista, quando) {
   const gd = satOsservatoreGd(luogo);
 
   SATELLITI.forEach(sat => {
+    if (quando.getTime() < sat.creazione) return;
+
     const rec = satRecDi(sat);
     if (!rec) { satPrecaricaTle(); return; }
     const p = satAltAz(rec, quando, gd);
@@ -27075,6 +27077,7 @@ const SATELLITI = [
     dimensione: '109 × 73 m, pannelli solari compresi',
     magTipica: -3,
     periodoMin: 93,
+    creazione: 911520000000,
     nota: 'Grande come un campo da calcio: è l\'oggetto artificiale più luminoso del cielo.'
   },
   {
@@ -27088,6 +27091,7 @@ const SATELLITI = [
     dimensione: 'circa 55 m fra i moduli e i pannelli',
     magTipica: -1,
     periodoMin: 92,
+    creazione: 1619654400000,
     nota: 'Più piccola della ISS: brilla circa come una stella luminosa, e passa più bassa.'
   }
 ];
