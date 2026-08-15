@@ -775,8 +775,11 @@ function assicuraIntervallo(inizio, fine) {
   let aggiunti = 0;
   const cursore = new Date(inizio.getFullYear(), inizio.getMonth(), 1);
   const ultimo = new Date(fine.getFullYear(), fine.getMonth(), 1);
-  // Un limite di sicurezza: non si calcolano secoli in un colpo solo
-  for (let i = 0; cursore <= ultimo && i < 36; i++) {
+  // Nessun tetto ai mesi: qui dentro ci arrivano finestre corte — quella che
+  // la griglia sta disegnando, che è un mese più le due code. Un intervallo
+  // lungo scelto a mano non passa di qua ma da `calcolaMesiAScaglioni`, che
+  // lo spezza in pezzi per non bloccare la pagina.
+  while (cursore <= ultimo) {
     aggiunti += assicuraMese(cursore.getFullYear(), cursore.getMonth());
     cursore.setMonth(cursore.getMonth() + 1);
   }
@@ -5708,12 +5711,66 @@ function vaiAlMeseDelSelettore(box) {
 }
 
 // --- L'intervallo di date --------------------------------------------------
-//   Quanto lontano si può chiedere in un colpo solo. Il calcolo di un mese
-//   dura un battito di ciglia, ma è sincrono e blocca il disegno: tre anni
-//   di fila sono trentasei mesi, ed è già il punto in cui il telefono resta
-//   fermo un secondo abbondante. Oltre non si va — e lo si dice, invece di
-//   restare piantati senza spiegazione.
-const INTERVALLO_MESI_MAX = 36;
+//   Non c'è un tetto ai mesi che si possono chiedere: si scrivono due date e
+//   si calcola tutto quello che ci sta in mezzo, anche dieci anni.
+//
+//   Il tetto c'era perché il calcolo di un mese costa una settantina di
+//   millisecondi su un computer e il triplo su un telefono, ed è **sincrono**:
+//   cento mesi di fila volevano dire mezzo minuto di pagina bloccata, con la
+//   rotella di sistema e la convinzione che l'app fosse morta. La risposta
+//   giusta però non era vietarlo, era non bloccare: i mesi si calcolano **a
+//   scaglioni**, lavorando per un pezzetto di fotogramma e poi cedendo il
+//   turno al browser, che così ridisegna, risponde al dito e può anche
+//   ricevere un'altra richiesta. Da fuori si vede una riga che dice a che
+//   punto è, e gli eventi che compaiono mano a mano invece che tutti in fondo.
+const INTERVALLO_MS_PER_GIRO = 60;     // quanto si lavora prima di cedere il turno
+const INTERVALLO_MS_FRA_MOSTRE = 2500; // ogni quanto si rinfrescano le viste, mentre si calcola
+
+// Chi chiede un intervallo nuovo ferma quello che si stava calcolando: senza,
+// due richieste di fila si accavallano e la riga di stato diventa una gara fra
+// due conteggi che si sovrascrivono a vicenda.
+let intervalloCalcoloId = 0;
+
+function fermaCalcoloIntervallo() { intervalloCalcoloId++; }
+
+// I mesi toccati da un intervallo, uno per uno
+function mesiDellIntervallo(inizio, fine) {
+  const elenco = [];
+  const cursore = new Date(inizio.getFullYear(), inizio.getMonth(), 1);
+  const ultimo = new Date(fine.getFullYear(), fine.getMonth(), 1);
+  while (cursore <= ultimo) {
+    elenco.push({ anno: cursore.getFullYear(), mese: cursore.getMonth() });
+    cursore.setMonth(cursore.getMonth() + 1);
+  }
+  return elenco;
+}
+
+// Il calcolo a scaglioni. `avanzamento(fatti, quanti)` viene chiamata a ogni
+// pausa, `finito()` alla fine; se nel frattempo arriva un'altra richiesta,
+// questa si spegne in silenzio e non tocca più niente.
+function calcolaMesiAScaglioni(mesi, avanzamento, finito) {
+  fermaCalcoloIntervallo();
+  const mio = intervalloCalcoloId;
+  let i = 0;
+  const giro = () => {
+    if (mio !== intervalloCalcoloId) return;
+    const t0 = performance.now();
+    // Almeno un mese per giro, sempre: con un fotogramma già in ritardo il
+    // controllo sul tempo scatterebbe subito e non si andrebbe avanti mai
+    do {
+      assicuraMese(mesi[i].anno, mesi[i].mese);
+      i++;
+    } while (i < mesi.length && performance.now() - t0 < INTERVALLO_MS_PER_GIRO);
+    if (i < mesi.length) {
+      avanzamento(i, mesi.length);
+      setTimeout(giro, 0);
+    } else {
+      finito();
+    }
+  };
+  if (!mesi.length) { finito(); return; }
+  setTimeout(giro, 0);
+}
 
 // Legge le due date scritte in un selettore e ci porta calendario e agenda
 function vaiAllIntervalloDelSelettore(box) {
@@ -5733,46 +5790,59 @@ function impostaIntervalloSelezionato(inizio, fine) {
   const dentro = (d) => new Date(
     Math.min(new Date(ANNO_MASSIMO_NAVIGABILE, 11, 31).getTime(),
       Math.max(new Date(ANNO_MINIMO_NAVIGABILE, 0, 1).getTime(), d.getTime())));
-  let da = dentro(new Date(inizio.getFullYear(), inizio.getMonth(), inizio.getDate(), 0, 0, 0));
-  let a = dentro(new Date(fine.getFullYear(), fine.getMonth(), fine.getDate(), 23, 59, 59));
-
-  // Il tetto ai mesi: si taglia la coda e lo si dice, invece di lasciare il
-  // telefono fermo per venti secondi su una richiesta di dieci anni
-  const mesi = (a.getFullYear() - da.getFullYear()) * 12 + (a.getMonth() - da.getMonth()) + 1;
-  let tagliato = false;
-  if (mesi > INTERVALLO_MESI_MAX) {
-    const ultimo = new Date(da.getFullYear(), da.getMonth() + INTERVALLO_MESI_MAX, 0, 23, 59, 59);
-    a = ultimo;
-    tagliato = true;
-  }
+  const da = dentro(new Date(inizio.getFullYear(), inizio.getMonth(), inizio.getDate(), 0, 0, 0));
+  const a = dentro(new Date(fine.getFullYear(), fine.getMonth(), fine.getDate(), 23, 59, 59));
 
   intervalloSelezionato = { inizio: da, fine: a };
   // L'intervallo e il mese sono due modi di chiedere la stessa cosa: acceso
   // uno, l'altro si spegne, se no non si sa più quale dei due si sta leggendo
   meseSelezionato = null;
-  scriviStatoIntervallo(`Calcolo gli eventi dal ${da.toLocaleDateString('it-IT')} al ${a.toLocaleDateString('it-IT')}…`);
 
-  // Come per il mese: un giro di schermo perché la scritta «sto calcolando»
-  // compaia prima che il calcolo, che è sincrono, blocchi il disegno
-  setTimeout(() => {
-    assicuraIntervallo(da, a);
-    if (fullCalendarInstance) {
-      calendarioInMovimento = true;
-      fullCalendarInstance.gotoDate(new Date(da.getFullYear(), da.getMonth(), 1));
-      calendarioInMovimento = false;
-    }
-    sincronizzaSelettoriMese();
+  // Il calendario ci va subito, prima ancora del calcolo: la prima cosa che
+  // deve succedere premendo «Calcola» è che la griglia si sposti dove hai
+  // chiesto, se no per un paio di secondi sembra che non abbia fatto niente
+  if (fullCalendarInstance) {
+    calendarioInMovimento = true;
+    fullCalendarInstance.gotoDate(new Date(da.getFullYear(), da.getMonth(), 1));
+    calendarioInMovimento = false;
+  }
+
+  const mesi = mesiDellIntervallo(da, a);
+  const mostra = () => {
     sincronizzaCalendario();
     costruisciAgenda();
-    if (tagliato) {
-      scriviStatoIntervallo(`L’intervallo è stato accorciato a ${INTERVALLO_MESI_MAX} mesi: ` +
-        `arriva al ${a.toLocaleDateString('it-IT')}. Più in là si calcola in un secondo giro.`, true);
-    }
-  }, 0);
+  };
+  scriviStatoIntervallo(mesi.length > 1
+    ? `Calcolo gli eventi dal ${da.toLocaleDateString('it-IT')} al ${a.toLocaleDateString('it-IT')}: ${mesi.length} mesi…`
+    : `Calcolo gli eventi dal ${da.toLocaleDateString('it-IT')} al ${a.toLocaleDateString('it-IT')}…`);
+  mostra();
+
+  let ultimaMostra = performance.now();
+  calcolaMesiAScaglioni(mesi,
+    (fatti, quanti) => {
+      scriviStatoIntervallo(`Calcolo gli eventi: ${fatti} mesi su ${quanti}…`);
+      // Le viste si rinfrescano ogni tanto, e il «tanto» è **tempo**, non
+      // mesi: rifare la griglia vuol dire buttare via tutti gli eventi e
+      // rimetterceli uno per uno, e l'agenda scrive una scheda per evento —
+      // su dieci anni sono diecimila, cioè molto più caro del calcolo stesso.
+      // Contando i mesi, un intervallo lungo si sarebbe ridisegnato venti
+      // volte; contando il tempo, il numero di ridisegni non cresce con la
+      // lunghezza dell'intervallo.
+      const ora = performance.now();
+      if (ora - ultimaMostra >= INTERVALLO_MS_FRA_MOSTRE) {
+        ultimaMostra = ora;
+        mostra();
+      }
+    },
+    () => {
+      sincronizzaSelettoriMese();
+      mostra();
+    });
 }
 
 function azzeraIntervalloSelezionato() {
   if (!intervalloSelezionato) return;
+  fermaCalcoloIntervallo();
   intervalloSelezionato = null;
   sincronizzaSelettoriMese();
   sincronizzaCalendario();
@@ -5791,22 +5861,21 @@ function eventiNellIntervallo(lista) {
 }
 
 // La riga di stato delle due viste, quando a parlare è l'intervallo
-function scriviStatoIntervallo(testo, tieni) {
+function scriviStatoIntervallo(testo) {
   ['calendario-stato', 'agenda-stato'].forEach(id => {
     const p = document.getElementById(id);
     if (p) p.textContent = testo;
   });
-  if (!tieni) return;
-  // Un avviso che resta appeso diventa una scritta fissa che nessuno legge
-  // più: dopo qualche secondo la riga torna a dire dove siamo
-  setTimeout(sincronizzaSelettoriMese, 6000);
 }
 
 // Porta calendario e agenda su un mese preciso, calcolandone gli eventi
 function impostaMeseSelezionato(anno, mese, opzioni = {}) {
   meseSelezionato = { anno, mese };
   // Scegliere un mese vuol dire smettere di leggere l'intervallo: sono due
-  // domande diverse, e la risposta a schermo dev'essere una sola
+  // domande diverse, e la risposta a schermo dev'essere una sola. Se
+  // l'intervallo stava ancora calcolando, si ferma qui: continuerebbe a
+  // riscrivere la riga di stato del mese che si è appena chiesto.
+  fermaCalcoloIntervallo();
   intervalloSelezionato = null;
   mostraCalcoloInCorso(anno, mese);
 
@@ -6027,11 +6096,22 @@ function contenutoEventoGriglia(arg) {
   return { domNodes: [box] };
 }
 
-// Ricarica nel calendario a griglia solo gli eventi che passano i filtri
+// Ricarica nel calendario a griglia solo gli eventi che passano i filtri.
+//
+// Il `batchRendering` non è un ornamento: `addEvent` ridisegna la griglia a
+// ogni chiamata, e con millequattrocento eventi — dieci anni di intervallo —
+// questa funzione da sola ci metteva **dodici secondi**, cioè molto più del
+// calcolo di tutti quei mesi messi insieme. Sospendendo il disegno finché la
+// lista non è finita di caricare, scende a un paio di decimi. Vale per ogni
+// chiamata, non solo per gli intervalli lunghi: la griglia si ricarica anche
+// a ogni tocco sui filtri e sulla ricerca.
 function sincronizzaCalendario() {
   if (!fullCalendarInstance) return;
-  fullCalendarInstance.removeAllEvents();
-  eventiPerGriglia(getEventiFiltrati()).forEach(ev => fullCalendarInstance.addEvent(ev));
+  const eventi = eventiPerGriglia(getEventiFiltrati());
+  fullCalendarInstance.batchRendering(() => {
+    fullCalendarInstance.removeAllEvents();
+    eventi.forEach(ev => fullCalendarInstance.addEvent(ev));
+  });
 }
 
 // Sul telefono i due blocchi di filtri (categoria e strumento) occupavano più
