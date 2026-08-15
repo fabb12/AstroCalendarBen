@@ -441,6 +441,21 @@ function sorvegliaIstruzioniCielo() {
 
 // Quello che va rifatto quando si passa, per esempio, da verticale a
 // orizzontale su un tablet: gli elenchi cambiano lunghezza e le tele misura
+
+// Se ruotiamo il telefono in orizzontale, le scene e mappe attive entrano a schermo intero
+function entraPienoSchermoSeServe() {
+  if (vistaAttuale === 'cielo' && typeof sky === 'object' && sky.aperto && typeof skyEntraSchermoIntero === 'function') {
+    // Cielo
+    skyEntraSchermoIntero();
+  } else if (typeof sol === 'object' && sol.aperto && typeof solEntraSchermoIntero === 'function') {
+    // Sistema solare
+    solEntraSchermoIntero();
+  } else if (vistaAttuale === 'didattica' && typeof window.didEntraSchermoIntero === 'function') {
+    // Laboratorio / Grafici didattici
+    window.didEntraSchermoIntero();
+  }
+}
+
 function ridisegnaPerDispositivo() {
   if (vistaAttuale === 'stasera') {
     costruisciStaseraProssimi();
@@ -527,9 +542,14 @@ function inizializzaDispositivo() {
   // quasi sempre in coppia (matchMedia e orientationchange), i timer già in
   // attesa si annullano: di ridisegni ne resta comunque uno.
   let giri = [];
+  let eraGirato = telefonoGirato();
   const suGiro = () => {
     giri.forEach(clearTimeout);
     const passata = () => {
+      const oraGirato = telefonoGirato();
+      if (!eraGirato && oraGirato) entraPienoSchermoSeServe();
+      eraGirato = oraGirato;
+
       applicaProfiloDispositivo({ forza: true });
       adattaAltezzaCalendario();
       if (fullCalendarInstance) fullCalendarInstance.updateSize();
