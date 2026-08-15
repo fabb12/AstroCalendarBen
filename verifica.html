@@ -685,6 +685,132 @@ titolo('9. La forma vera del terreno');
           terrenoRiprovabile(new TypeError('Failed to fetch')) &&
           !terrenoRiprovabile({ stato: 400 }) && !terrenoRiprovabile({ stato: 404 }));
   }
+
+  // --- Il 429, che è il guasto che si vede più di tutti ---
+  //
+  // «Il servizio delle quote è sovraccarico»: per mesi è stato il messaggio
+  // più frequente di tutta l'app. Le contromisure sono tre e vanno provate
+  // separatamente, perché ognuna copre un pezzo diverso del problema: il
+  // rubinetto (non fare la raffica), le fonti di riserva (non dipendere da
+  // un servizio solo) e la ripresa (non ributtare via quello che è arrivato).
+  {
+    const nd = TERRENO_DISTANZE.length;
+
+    // 1. Le fonti. Tre host diversi, e tutt'e tre devono saper leggere la
+    // propria risposta: una fonte che c'è ma che non si sa interpretare è
+    // peggio di una fonte che manca, perché fallisce solo quando serve.
+    const host = TERRENO_FONTI.map(f => f.url([{ lat: 1, lon: 2 }]).split('/')[2]);
+    prova('le fonti delle quote stanno su host diversi',
+          new Set(host).size === TERRENO_FONTI.length, host.join(', '));
+    prova('ogni fonte accetta almeno una direzione intera per richiesta',
+          TERRENO_FONTI.every(f => f.max >= nd),
+          `${nd} campioni per direzione, la più stretta ne accetta ${Math.min(...TERRENO_FONTI.map(f => f.max))}`);
+    {
+      const punti = [{ lat: 44.5, lon: 11.34 }, { lat: 45, lon: 11 }, { lat: -33.9, lon: 151.2 }];
+      const finte = [
+        { elevation: [10, 20, 30] },
+        { results: [{ elevation: 10 }, { elevation: 20 }, { elevation: 30 }] },
+        { results: [{ elevation: 10 }, { elevation: 20 }, { elevation: 30 }] }
+      ];
+      prova('ogni fonte legge le proprie risposte, e ne esce un numero per punto',
+            TERRENO_FONTI.every((f, i) => {
+              const q = f.leggi(finte[i]);
+              return Array.isArray(q) && q.length === 3 && q[2] === 30;
+            }));
+      prova('e una risposta di forma sbagliata la rifiuta invece di inventarsi zeri',
+            TERRENO_FONTI.every(f => f.leggi({ boh: 1 }) === null && f.leggi(null) === null));
+      prova('l\'indirizzo porta tutti i punti chiesti, e nell\'ordine',
+            TERRENO_FONTI.every(f => {
+              const u = f.url(punti);
+              return punti.every(p => u.indexOf(p.lat.toFixed(5)) !== -1) &&
+                u.indexOf('151.20000') > u.indexOf('11.34000');
+            }));
+    }
+
+    // 2. Il rubinetto. Un no deve rallentare **tutte** le richieste di quella
+    // fonte, non solo quella che l'ha preso: è il pezzo che mancava, ed è il
+    // motivo per cui un 429 ne tirava dietro altri venti.
+    {
+      const f = TERRENO_FONTI[0];
+      const r = terrenoRitmoDi(f);
+      const passo = r.distanza, insieme = r.insieme, libero = r.liberoDa;
+      terrenoFrena(f, { stato: 429 });
+      prova('un no allarga il passo fra le richieste e ne toglie una dal volo',
+            r.distanza > passo && r.insieme === Math.max(1, insieme - 1),
+            `${passo} → ${r.distanza} ms, ${insieme} → ${r.insieme} insieme`);
+      const t0 = Date.now();
+      terrenoFrena(f, { stato: 429, attesa: 9000 });
+      const fermo = r.liberoDa - t0;
+      prova('e si sta fermi il tempo che il servizio ha chiesto, fino al tetto',
+            fermo >= Math.min(9000, TERRENO_PAUSA_MAX_MS) - 50 && fermo <= TERRENO_PAUSA_MAX_MS + 50,
+            `${Math.round(fermo / 1000)} s, tetto ${TERRENO_PAUSA_MAX_MS / 1000} s`);
+      // Un Retry-After di dieci minuti non si aspetta: si cambia porta.
+      prova('un\'attesa assurda non blocca tutto per dieci minuti',
+            terrenoAttesa({ attesa: 600000 }, 0) <= TERRENO_PAUSA_MAX_MS,
+            `${Math.round(terrenoAttesa({ attesa: 600000 }, 0) / 1000)} s`);
+      for (let i = 0; i < TERRENO_SI_PER_MOLLARE * 8; i++) terrenoScorre(f);
+      prova('e una fila di sì riapre il rubinetto, ma non oltre il ritmo di crociera',
+            r.distanza === f.distanza && r.insieme === f.insieme,
+            `${r.distanza} ms, ${r.insieme} insieme`);
+      r.liberoDa = libero;
+    }
+
+    // 3. La ripresa. Questa è la garanzia vera: un tentativo che va male non
+    // riporta a zero, quindi tentativi diversi si sommano invece di
+    // ripetersi. Senza, con un servizio che risponde una volta su tre il
+    // terreno non arrivava mai — e ogni tentativo ricominciava a bussare
+    // ventiquattro volte, il che è anche il modo di prendersi il 429 dopo.
+    {
+      const sapute = [0, 3, 6, 9, 12];
+      const ric = terrenoRichieste(45, 9, sapute);
+      const chieste = ric.reduce((a, r) => a.concat(r.dirs), []);
+      prova('quello che si sa già non si richiede',
+            chieste.length === TERRENO_DIREZIONI - sapute.length &&
+            sapute.every(d => chieste.indexOf(d) === -1),
+            `${chieste.length} direzioni invece di ${TERRENO_DIREZIONI}`);
+      prova('e le richieste restano fatte di direzioni intere anche così',
+            ric.every(r => r.dirs.length * nd === r.punti.length && r.dirs.length > 0));
+
+      // Un salvataggio a metà si riconosce e si riprende; uno intero no —
+      // non c'è niente da riprendere. E uno vecchio, senza la lista delle
+      // direzioni vere, si rifiuta: le sue stimate sono numeri identici alle
+      // misurate, e riprenderlo vorrebbe dire dare per buone delle stime.
+      const griglia = new Array(TERRENO_DIREZIONI * nd).fill(100);
+      prova('un profilo a metà si riconosce, uno intero no',
+            terrenoDaCompletare({ misurate: 40 }) &&
+            terrenoDaCompletare({ misurate: TERRENO_DIREZIONI, quotaStimata: true }) &&
+            !terrenoDaCompletare({ misurate: TERRENO_DIREZIONI }));
+      prova('e si riprende solo se si sa **quali** direzioni sono vere',
+            !!terrenoDaRiprendere({ misurate: 40, avute: [0, 1], quote: griglia }) &&
+            terrenoDaRiprendere({ misurate: 40, quote: griglia }) === null &&
+            terrenoDaRiprendere({ misurate: TERRENO_DIREZIONI, avute: [], quote: griglia }) === null);
+
+      // La quota di casa era un punto solo, e fermava tutto: se quella
+      // richiesta si prendeva un 429, l'orizzonte intero non partiva
+      // nemmeno. La risposta però ce l'abbiamo in mano — il primo anello di
+      // campioni sta a centocinquanta metri da qui.
+      const vicino = new Array(TERRENO_DIREZIONI * nd).fill(null);
+      const avute2 = [];
+      for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+        avute2.push(i);
+        // Quote attorno ai 300 m, con due campioni assurdi: un tetto e un fosso
+        vicino[i * nd] = i === 5 ? 3000 : (i === 9 ? -50 : 300 + (i % 7));
+      }
+      const stima = terrenoQuotaDaVicino(vicino, avute2);
+      prova('la quota di casa si ricava dall\'anello più vicino, e i campioni assurdi non la spostano',
+            Math.abs(stima - 303) <= 4, `${stima} m contro i 300 veri`);
+      prova('e senza nemmeno un campione vicino non si inventa niente',
+            terrenoQuotaDaVicino(new Array(TERRENO_DIREZIONI * nd).fill(null), [0, 1]) === null);
+
+      const montato = terrenoMonta(vicino, avute2, undefined);
+      prova('un profilo montato senza la quota chiesta lo dichiara, e si farà completare',
+            montato.quotaStimata === true && terrenoDaCompletare(montato),
+            `quota ${montato.quota} m, stimata`);
+      prova('e ogni profilo dice quali direzioni sono misurate davvero',
+            Array.isArray(montato.avute) && montato.avute.length === montato.misurate &&
+            montato.avute.every((d, i) => i === 0 || d > montato.avute[i - 1]));
+    }
+  }
 }
 
 // =====================================================================

@@ -1,4 +1,4 @@
-# Compito in corso
+# Task Corrente
 
 Questo file non è documentazione del progetto (quella è `CLAUDE.md`): è
 l'appunto di **cosa si sta facendo adesso**. Serve a chi riprende una sessione
