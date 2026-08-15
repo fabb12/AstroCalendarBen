@@ -12,6 +12,16 @@ let destinazioneEventi = null;
 // null = nessun mese scelto: l'agenda mostra tutti gli eventi in arrivo.
 let meseSelezionato = null;
 
+// L'intervallo di date scelto a mano: `{ inizio, fine }`, oppure null.
+// È l'altra risposta alla domanda «e allora?»: un mese per volta racconta
+// marzo, un intervallo racconta le ferie, il weekend lungo, i tre mesi che
+// mancano al viaggio. Quando c'è, comanda lui — l'agenda mostra quello che ci
+// cade dentro e il calendario tinge quei giorni; il mese scelto passa in
+// secondo piano, perché sono due modi diversi di chiedere la stessa cosa e
+// tenerli accesi insieme vorrebbe dire non sapere più quale dei due si sta
+// leggendo.
+let intervalloSelezionato = null;
+
 // I mesi già calcolati, per non rifare due volte lo stesso lavoro
 const mesiCalcolati = new Set();
 
@@ -5621,7 +5631,51 @@ function inizializzaSelettoriMese() {
       });
     });
   });
+
+  // I due selettori d'intervallo (calendario e agenda): stessi campi, stesso
+  // effetto, e quello che si scrive in uno compare anche nell'altro
+  document.querySelectorAll('[data-selettore-intervallo]').forEach(box => {
+    const da = box.querySelector('[data-campo-da]');
+    const a = box.querySelector('[data-campo-a]');
+    // Si parte da oggi e dai trenta giorni dopo: è l'intervallo che quasi
+    // tutti vogliono, e trovarlo già scritto è metà del lavoro fatto
+    const fra30 = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() + 30);
+    if (da && !da.value) da.value = dataIso(oggi);
+    if (a && !a.value) a.value = dataIso(fra30);
+    [da, a].forEach(campo => {
+      if (!campo) return;
+      campo.min = `${ANNO_MINIMO_NAVIGABILE}-01-01`;
+      campo.max = `${ANNO_MASSIMO_NAVIGABILE}-12-31`;
+      campo.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); vaiAllIntervalloDelSelettore(box); }
+      });
+    });
+    box.querySelectorAll('[data-azione-intervallo]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.azioneIntervallo === 'calcola') vaiAllIntervalloDelSelettore(box);
+        else azzeraIntervalloSelezionato();
+      });
+    });
+  });
   sincronizzaSelettoriMese();
+}
+
+// La data nel formato che vuole `<input type="date">`, in ora locale. Non si
+// può usare `toISOString()`: quello passa per UTC, e a est di Greenwich alle
+// otto di sera scrive già il giorno dopo.
+function dataIso(d) {
+  const due = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}`;
+}
+
+// Legge una casella `<input type="date">` come data locale. `new Date('2026-08-15')`
+// la leggerebbe a mezzanotte UTC, cioè — da noi — le due del mattino: un
+// intervallo che comincia il 15 comincerebbe il 14 alle 22 per chi sta a ovest.
+function dataDaCasella(valore) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((valore || '').trim());
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return isNaN(d) ? null : d;
 }
 
 function oggiAnno() { return new Date().getFullYear(); }
@@ -5653,9 +5707,107 @@ function vaiAlMeseDelSelettore(box) {
   impostaMeseSelezionato(anno, mese);
 }
 
+// --- L'intervallo di date --------------------------------------------------
+//   Quanto lontano si può chiedere in un colpo solo. Il calcolo di un mese
+//   dura un battito di ciglia, ma è sincrono e blocca il disegno: tre anni
+//   di fila sono trentasei mesi, ed è già il punto in cui il telefono resta
+//   fermo un secondo abbondante. Oltre non si va — e lo si dice, invece di
+//   restare piantati senza spiegazione.
+const INTERVALLO_MESI_MAX = 36;
+
+// Legge le due date scritte in un selettore e ci porta calendario e agenda
+function vaiAllIntervalloDelSelettore(box) {
+  const inizio = dataDaCasella(box.querySelector('[data-campo-da]') && box.querySelector('[data-campo-da]').value);
+  const fine = dataDaCasella(box.querySelector('[data-campo-a]') && box.querySelector('[data-campo-a]').value);
+  if (!inizio || !fine) {
+    scriviStatoIntervallo('Scrivi due date, quella di partenza e quella di arrivo.');
+    return;
+  }
+  // Chi scrive le date al contrario intende comunque quell'intervallo: si
+  // girano invece di rispondergli che ha sbagliato
+  impostaIntervalloSelezionato(inizio <= fine ? inizio : fine, inizio <= fine ? fine : inizio);
+}
+
+// Porta calendario e agenda su un intervallo di date, calcolandone gli eventi
+function impostaIntervalloSelezionato(inizio, fine) {
+  const dentro = (d) => new Date(
+    Math.min(new Date(ANNO_MASSIMO_NAVIGABILE, 11, 31).getTime(),
+      Math.max(new Date(ANNO_MINIMO_NAVIGABILE, 0, 1).getTime(), d.getTime())));
+  let da = dentro(new Date(inizio.getFullYear(), inizio.getMonth(), inizio.getDate(), 0, 0, 0));
+  let a = dentro(new Date(fine.getFullYear(), fine.getMonth(), fine.getDate(), 23, 59, 59));
+
+  // Il tetto ai mesi: si taglia la coda e lo si dice, invece di lasciare il
+  // telefono fermo per venti secondi su una richiesta di dieci anni
+  const mesi = (a.getFullYear() - da.getFullYear()) * 12 + (a.getMonth() - da.getMonth()) + 1;
+  let tagliato = false;
+  if (mesi > INTERVALLO_MESI_MAX) {
+    const ultimo = new Date(da.getFullYear(), da.getMonth() + INTERVALLO_MESI_MAX, 0, 23, 59, 59);
+    a = ultimo;
+    tagliato = true;
+  }
+
+  intervalloSelezionato = { inizio: da, fine: a };
+  // L'intervallo e il mese sono due modi di chiedere la stessa cosa: acceso
+  // uno, l'altro si spegne, se no non si sa più quale dei due si sta leggendo
+  meseSelezionato = null;
+  scriviStatoIntervallo(`Calcolo gli eventi dal ${da.toLocaleDateString('it-IT')} al ${a.toLocaleDateString('it-IT')}…`);
+
+  // Come per il mese: un giro di schermo perché la scritta «sto calcolando»
+  // compaia prima che il calcolo, che è sincrono, blocchi il disegno
+  setTimeout(() => {
+    assicuraIntervallo(da, a);
+    if (fullCalendarInstance) {
+      calendarioInMovimento = true;
+      fullCalendarInstance.gotoDate(new Date(da.getFullYear(), da.getMonth(), 1));
+      calendarioInMovimento = false;
+    }
+    sincronizzaSelettoriMese();
+    sincronizzaCalendario();
+    costruisciAgenda();
+    if (tagliato) {
+      scriviStatoIntervallo(`L’intervallo è stato accorciato a ${INTERVALLO_MESI_MAX} mesi: ` +
+        `arriva al ${a.toLocaleDateString('it-IT')}. Più in là si calcola in un secondo giro.`, true);
+    }
+  }, 0);
+}
+
+function azzeraIntervalloSelezionato() {
+  if (!intervalloSelezionato) return;
+  intervalloSelezionato = null;
+  sincronizzaSelettoriMese();
+  sincronizzaCalendario();
+  costruisciAgenda();
+}
+
+// Gli eventi che cadono dentro all'intervallo scelto
+function eventiNellIntervallo(lista) {
+  if (!intervalloSelezionato) return lista;
+  const da = intervalloSelezionato.inizio.getTime();
+  const a = intervalloSelezionato.fine.getTime();
+  return lista.filter(ev => {
+    const t = ev.dataObj.getTime();
+    return t >= da && t <= a;
+  });
+}
+
+// La riga di stato delle due viste, quando a parlare è l'intervallo
+function scriviStatoIntervallo(testo, tieni) {
+  ['calendario-stato', 'agenda-stato'].forEach(id => {
+    const p = document.getElementById(id);
+    if (p) p.textContent = testo;
+  });
+  if (!tieni) return;
+  // Un avviso che resta appeso diventa una scritta fissa che nessuno legge
+  // più: dopo qualche secondo la riga torna a dire dove siamo
+  setTimeout(sincronizzaSelettoriMese, 6000);
+}
+
 // Porta calendario e agenda su un mese preciso, calcolandone gli eventi
 function impostaMeseSelezionato(anno, mese, opzioni = {}) {
   meseSelezionato = { anno, mese };
+  // Scegliere un mese vuol dire smettere di leggere l'intervallo: sono due
+  // domande diverse, e la risposta a schermo dev'essere una sola
+  intervalloSelezionato = null;
   mostraCalcoloInCorso(anno, mese);
 
   // Il calcolo vero è sincrono e blocca il disegno: gli lasciamo un giro di
@@ -5701,20 +5853,41 @@ function sincronizzaSelettoriMese() {
     if (campoAnno && document.activeElement !== campoAnno) campoAnno.value = String(anno);
   });
 
+  // I campi dell'intervallo, tenuti d'accordo fra le due viste. Chi ci sta
+  // scrivendo dentro non si tocca: riscrivergli il campo sotto le dita è il
+  // modo più veloce di far sbagliare una data.
+  if (intervalloSelezionato) {
+    document.querySelectorAll('[data-selettore-intervallo]').forEach(box => {
+      const da = box.querySelector('[data-campo-da]');
+      const a = box.querySelector('[data-campo-a]');
+      if (da && document.activeElement !== da) da.value = dataIso(intervalloSelezionato.inizio);
+      if (a && document.activeElement !== a) a.value = dataIso(intervalloSelezionato.fine);
+    });
+  }
+  document.querySelectorAll('[data-selettore-intervallo]').forEach(box =>
+    box.classList.toggle('intervallo-acceso', !!intervalloSelezionato));
+
   // La riga sotto la griglia segue il mese davvero disegnato: "Tutti i prossimi"
   // cambia l'agenda, non il calendario, e le due scritte non devono litigare
+  const quanti = intervalloSelezionato ? eventiNellIntervallo(getEventiFiltrati()).length : 0;
+  const testoIntervallo = intervalloSelezionato
+    ? `Intervallo dal ${intervalloSelezionato.inizio.toLocaleDateString('it-IT')} ` +
+      `al ${intervalloSelezionato.fine.toLocaleDateString('it-IT')}: ` +
+      `${quanti === 1 ? 'un evento' : `${quanti} eventi`}. I giorni dell’intervallo sono evidenziati.`
+    : null;
+
   const statoCal = document.getElementById('calendario-stato');
   if (statoCal) {
     const mostrata = meseMostratoDalCalendario();
-    statoCal.textContent = `Eventi di ${NOMI_MESI[mostrata.getMonth()]} ${mostrata.getFullYear()}, ` +
-      'calcolati per questo mese.';
+    statoCal.textContent = testoIntervallo ||
+      `Eventi di ${NOMI_MESI[mostrata.getMonth()]} ${mostrata.getFullYear()}, calcolati per questo mese.`;
   }
 
   const statoAgenda = document.getElementById('agenda-stato');
   if (statoAgenda) {
-    statoAgenda.textContent = meseSelezionato
+    statoAgenda.textContent = testoIntervallo || (meseSelezionato
       ? `Stai leggendo ${NOMI_MESI[mese]} ${anno}. Con “Tutti i prossimi” torni agli eventi in arrivo.`
-      : 'Stai leggendo tutti gli eventi in arrivo. Scegli un mese per vedere quello, anche nel passato.';
+      : 'Stai leggendo tutti gli eventi in arrivo. Scegli un mese per vedere quello, anche nel passato.');
   }
 }
 
@@ -5769,6 +5942,7 @@ function getEventiFiltrati() {
 // altrimenti tutti quelli che superano i filtri.
 function getEventiAgenda() {
   const lista = getEventiFiltrati();
+  if (intervalloSelezionato) return eventiNellIntervallo(lista);
   if (!meseSelezionato) return lista;
   const { anno, mese } = meseSelezionato;
   return lista.filter(ev =>
@@ -5782,16 +5956,75 @@ function applicaFiltri() {
   sincronizzaCalendario();
 }
 
-// Trasforma la lista di eventi nel formato richiesto da FullCalendar
+// Trasforma la lista di eventi nel formato richiesto da FullCalendar.
+// Le informazioni in più (categoria, ora, colore) viaggiano in `extendedProps`:
+// le legge `contenutoEventoGriglia()`, che è chi disegna davvero la riga.
 function eventiPerGriglia(lista) {
-  return lista.map(e => ({
+  const eventi = lista.map(e => ({
     id: e.id,
     title: e.titolo,
     start: e.dataObj,
-    backgroundColor: e.colore,
-    borderColor: e.colore,
-    allDay: true
+    allDay: true,
+    extendedProps: {
+      categoria: e.categoria,
+      colore: e.colore,
+      ora: e.dataObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+    }
   }));
+  // La fascia dell'intervallo scelto: un evento di sfondo, che FullCalendar
+  // disegna dietro alle caselle invece che dentro. È il modo di far vedere
+  // *dove* cade l'intervallo anche mentre si sfogliano i mesi — senza,
+  // scelte due date si vedeva cambiare solo l'agenda, e il calendario
+  // sembrava non aver capito.
+  if (intervalloSelezionato) {
+    const da = intervalloSelezionato.inizio;
+    const a = intervalloSelezionato.fine;
+    eventi.push({
+      id: 'intervallo-scelto',
+      start: new Date(da.getFullYear(), da.getMonth(), da.getDate()),
+      // La fine di un evento «tutto il giorno» è esclusiva: per tingere anche
+      // l'ultimo giorno si arriva alla mezzanotte di quello dopo
+      end: new Date(a.getFullYear(), a.getMonth(), a.getDate() + 1),
+      allDay: true,
+      display: 'background',
+      classNames: ['fascia-intervallo']
+    });
+  }
+  return eventi;
+}
+
+// Come si legge un evento dentro alla casella del giorno. Prima era il
+// pallino e il titolo che FullCalendar disegna di suo: dieci righe grigie
+// tutte uguali, in cui l'unico segno di cosa fosse cosa era un puntino di
+// tre pixel. Adesso ogni riga porta l'icona della sua categoria e l'ora, e
+// il colore non è più un puntino ma tutta la riga — con la tinta della
+// categoria appena accennata dietro, che è quello che permette di vedere «le
+// eclissi» come gruppo senza dover leggere una parola.
+function contenutoEventoGriglia(arg) {
+  const props = arg.event.extendedProps || {};
+  const cat = CATEGORIE[props.categoria];
+  const colore = props.colore || '#3b82f6';
+  const box = document.createElement('div');
+  box.className = 'evento-griglia';
+  box.style.setProperty('--colore-evento', colore);
+  if (cat && typeof icona === 'function') {
+    const segno = document.createElement('span');
+    segno.className = 'evento-griglia-icona';
+    segno.innerHTML = icona(cat.disegno, 13);
+    box.appendChild(segno);
+  }
+  const titolo = document.createElement('span');
+  titolo.className = 'evento-griglia-titolo';
+  titolo.textContent = arg.event.title;
+  box.appendChild(titolo);
+  if (props.ora && props.ora !== '00:00') {
+    const ora = document.createElement('span');
+    ora.className = 'evento-griglia-ora';
+    ora.textContent = props.ora;
+    box.appendChild(ora);
+  }
+  box.title = `${arg.event.title}${cat ? ` · ${cat.nome}` : ''}${props.ora ? ` · ore ${props.ora}` : ''}`;
+  return { domNodes: [box] };
 }
 
 // Ricarica nel calendario a griglia solo gli eventi che passano i filtri
@@ -6018,9 +6251,11 @@ function inizializzaCalendario() {
     ...opzioniSchermo,
     buttonText: { today: 'Oggi' },
     moreLinkContent: (arg) => `+${arg.num}`,
-    // Niente rettangoli pieni: un pallino colorato e il titolo, come su un'agenda di carta
-    eventDisplay: 'list-item',
+    // Niente rettangoli pieni: la riga la disegna `contenutoEventoGriglia`,
+    // con l'icona della categoria, il titolo e l'ora
+    eventDisplay: 'block',
     displayEventTime: false,
+    eventContent: contenutoEventoGriglia,
     // Non c'è un limite ai mesi navigabili: quelli fuori dal calcolo iniziale
     // vengono calcolati appena si arriva a guardarli
     validRange: {
@@ -6035,6 +6270,16 @@ function inizializzaCalendario() {
       const corrente = info.view.currentStart;
       const anno = corrente.getFullYear();
       const mese = corrente.getMonth();
+      // Con un intervallo acceso, sfogliare i mesi è un modo di guardarci
+      // dentro: si calcola quello che si sta mostrando e l'intervallo resta —
+      // spegnerlo perché si è premuta una freccia sarebbe buttare via una
+      // scelta che l'utente non ha disfatto
+      if (intervalloSelezionato) {
+        assicuraIntervallo(info.start, new Date(info.end.getTime() - 1));
+        sincronizzaCalendario();
+        sincronizzaSelettoriMese();
+        return;
+      }
       if (meseSelezionato && meseSelezionato.anno === anno && meseSelezionato.mese === mese) return;
       // La griglia mostra anche le code del mese prima e di quello dopo:
       // le calcoliamo tutte, così non restano caselle vuote per finta.
@@ -6044,6 +6289,9 @@ function inizializzaCalendario() {
       });
     },
     eventClick: function(info) {
+      // La fascia dell'intervallo non è un evento da aprire: è il fondo su
+      // cui gli eventi stanno
+      if (info.event.id === 'intervallo-scelto') return;
       // Se clicco su un evento nel calendario apro l'agenda sulla sua scheda.
       // La voce NON parte da sola: si attiva solo col tasto “Ascolta” o con la notifica.
       document.getElementById('btn-vista-agenda').click();
@@ -11228,36 +11476,14 @@ function skyDipingiVenere(ctx) {
 
 // La Terra. In cielo non si disegna mai — ci siamo sopra — ma nella vista
 // 3D del Sistema Solare è il pallino che si cerca per primo, ed era l'unico
-// mondo senza una faccia. Le terre sono macchie appoggiate alle coordinate
-// vere: non è una carta geografica, è quello che si riconosce da lontano —
-// la massa dell'Africa, il triangolo del Sudamerica, il bianco dei poli — e
-// da vicino, adesso che ci si può avvicinare parecchio (`SOL_ZOOM_MAX_TERRA`),
-// anche una costa frastagliata e un terreno che non è tinta piatta.
-const SKY_TERRE = [
-  { lon: 20,   lat: 3,   r: 0.36, c: '#3f6b3d' },   // Africa
-  { lon: 18,   lat: 24,  r: 0.26, c: '#b39a63' },   // Sahara
-  { lon: 45,   lat: 24,  r: 0.15, c: '#b39a63' },   // Arabia
-  { lon: 14,   lat: 50,  r: 0.17, c: '#4d7a45' },   // Europa
-  { lon: 88,   lat: 52,  r: 0.42, c: '#4a7442' },   // Asia
-  { lon: 78,   lat: 21,  r: 0.15, c: '#5c7f3e' },   // India
-  { lon: -100, lat: 45,  r: 0.33, c: '#4a7442' },   // Nord America
-  { lon: -60,  lat: -14, r: 0.27, c: '#3d6f39' },   // Sud America
-  { lon: 134,  lat: -25, r: 0.21, c: '#a98d55' },   // Australia
-  { lon: -42,  lat: 72,  r: 0.15, c: '#e8f1f7' }    // Groenlandia
-];
-
-// Le isole che si notano anche da un pianeta vicino, ma non nel disco intero:
-// senza queste, da vicino, l'oceano restava una tinta piatta e sconfinata.
-const SKY_ISOLE_TERRA = [
-  { lon: -3,   lat: 54,  r: 0.06,  c: '#4d7a45' },   // Isole Britanniche
-  { lon: 138,  lat: 37,  r: 0.055, c: '#4a7442' },   // Giappone
-  { lon: 47,   lat: -19, r: 0.09,  c: '#a98d55' },   // Madagascar
-  { lon: 113,  lat: -1,  r: 0.11,  c: '#3f6b3d' },   // Indonesia/Borneo
-  { lon: 122,  lat: 12,  r: 0.05,  c: '#4a7442' },   // Filippine
-  { lon: -79,  lat: 22,  r: 0.05,  c: '#5c7f3e' },   // Cuba e Caraibi
-  { lon: 174,  lat: -41, r: 0.065, c: '#4d7a45' },   // Nuova Zelanda
-  { lon: -19,  lat: 65,  r: 0.04,  c: '#6f8f5a' }    // Islanda
-];
+// mondo senza una faccia. Quella faccia l'ha dipinta a lungo una decina di
+// macchie tonde appoggiate alle coordinate vere (`SKY_TERRE`), e per la
+// misura di allora bastavano; ma da quando ci si può avvicinare parecchio
+// (`SOL_ZOOM_MAX_TERRA`) si leggevano per quello che erano — bolle verdi —
+// e adesso anche la faccia dipinta usa le **coste vere** di `SKY_MONDO`,
+// cioè lo stesso mondo del globo da vicino (§7.7-ter) e del banco del
+// tramonto. Un mondo solo, disegnato tre volte: se si corregge una costa, si
+// corregge dappertutto.
 
 // --- Il mondo vero: le coste, e le luci di chi ci abita ------------------
 //   Le macchie qui sopra sono la Terra vista da lontano, dove il globo è
@@ -11405,58 +11631,32 @@ const SKY_LUCI_CITTA = [
   [103.8, 1.35], [126.98, 37.57], [100.5, 13.75], [-70.7, -33.4]
 ];
 
-// Le coste vere non sono cerchi lisci, e un continente visto da vicino non è
-// un colore piatto. Il pennello lavora già nello spazio locale del
-// continente — quello che `skyMacchiaSfera` ha traslato, ruotato e
-// schiacciato verso il bordo — quindi ogni macchia che si aggiunge qui è già
-// nel posto giusto sulla sfera, senza dover cercare di nuovo dove cade.
-//
-// Prima il bordo: qualche macchia più piccola appoggiata fuori dal cerchio
-// liscio, a un angolo e una misura presi a sorte, perché sembri una costa
-// frastagliata e non una moneta colorata. Poi il rilievo: due o tre zone
-// larghe e sfumate, più scure o più chiare — non tanti granelli piccoli
-// (un primo tentativo li usava, e le trasparenze del canvas si sommano: un
-// continente pieno di granelli si legge a pois, non come un terreno).
-//
-// `caso` è la stessa fila di numeri di tutto il resto della Terra, sempre la
-// stessa: la costa e il rilievo non cambiano a ogni fotogramma.
-function skyDipingiCosta(ctx, raggio, colore, caso) {
-  skyNuvola(ctx, raggio, colore, 0.92, 0.55);
-  skyNuvola(ctx, raggio * 0.62, colore, 0.6, 0.4);
-  const quante = 5 + Math.floor(caso() * 5);
-  for (let i = 0; i < quante; i++) {
-    const ang = caso() * Math.PI * 2;
-    const dist = raggio * (0.55 + caso() * 0.55);
-    const rc = raggio * (0.14 + caso() * 0.22);
-    ctx.save();
-    ctx.translate(Math.cos(ang) * dist, Math.sin(ang) * dist);
-    skyNuvola(ctx, rc, colore, 0.75, 0.3);
-    ctx.restore();
+// La sagoma di un poligono geografico sul disco della faccia dipinta. È la
+// stessa idea di `solSagomaSuGlobo` (§7.7-ter) in miniatura: qui il globo non
+// gira — la faccia è dipinta una volta sola, col meridiano di Greenwich in
+// mezzo — quindi basta la proiezione ortografica di `skySuSfera`, coi vertici
+// dall'altra parte appoggiati sul bordo lungo la loro direzione.
+function skySagomaMondo(punti) {
+  const v = punti.map(p => skySuSfera(p[0], p[1]));
+  if (!v.some(p => p.z > -0.02)) return null;        // tutto dall'altra parte
+  const fuori = [];
+  for (let i = 0; i < v.length; i++) {
+    const a = v[i], b = v[(i + 1) % v.length];
+    if (a.z >= 0) fuori.push({ x: a.x, y: a.y });
+    else {
+      const n = Math.hypot(a.x, a.y) || 1;
+      fuori.push({ x: a.x / n, y: a.y / n });
+    }
+    if ((a.z > 0) !== (b.z > 0)) {
+      // Il punto esatto in cui la costa passa sul filo del disco: senza,
+      // un continente tagliato dal limbo scivola dentro di qualche pixel
+      const k = a.z / (a.z - b.z);
+      const m = { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+      const n = Math.hypot(m.x, m.y) || 1;
+      fuori.push({ x: m.x / n, y: m.y / n });
+    }
   }
-  // Il rilievo: non tanti granelli (coi granelli, ogni prova sembrava un
-  // continente a pois — le trasparenze del canvas si sommano, e in tanti si
-  // vedono anche se ognuno da solo non si vedrebbe), ma due o tre zone
-  // larghe e sfumate, un po' più scure o più chiare, appoggiate a caso —
-  // un altopiano, una pianura. È quel poco che basta perché da vicino un
-  // continente non sia una tinta unita, senza mai leggersi come decorazione.
-  const zone = 2 + Math.floor(caso() * 2);
-  for (let i = 0; i < zone; i++) {
-    const ang = caso() * Math.PI * 2;
-    // Mai troppo vicino al centro: appoggiate lì, col cerchio morbido della
-    // costa già concentrico, il risultato era un bersaglio — due cerchi
-    // annidati — invece di una macchia fuori asse
-    const dist = raggio * (0.18 + caso() * 0.42);
-    const rz = raggio * (0.4 + caso() * 0.3);
-    const tono = caso() > 0.5
-      ? skyMescolaEsa(colore, '#000000', 0.06 + caso() * 0.08)
-      : skyMescolaEsa(colore, '#ffffff', 0.06 + caso() * 0.08);
-    ctx.save();
-    ctx.translate(Math.cos(ang) * dist, Math.sin(ang) * dist);
-    ctx.rotate(caso() * Math.PI);
-    ctx.scale(1, 0.6 + caso() * 0.3);
-    skyNuvola(ctx, rz, tono, 0.22, 0.15);
-    ctx.restore();
-  }
+  return fuori;
 }
 
 function skyDipingiTerra(ctx) {
@@ -11465,27 +11665,86 @@ function skyDipingiTerra(ctx) {
   ctx.beginPath();
   ctx.arc(0, 0, 1, 0, Math.PI * 2);
   ctx.clip();
-  // L'oceano non è di un blu solo: verso i tropici è più chiaro
+  // L'oceano non è di un blu solo: verso i tropici è più chiaro, e verso il
+  // limbo si fa cupo — che è il modo più corto di far sembrare tonda una palla
   const g = ctx.createLinearGradient(0, -1, 0, 1);
   g.addColorStop(0, '#1b3f78');
   g.addColorStop(0.5, '#2a68b0');
   g.addColorStop(1, '#1b3f78');
   ctx.fillStyle = g;
   ctx.fillRect(-1, -1, 2, 2);
-  SKY_TERRE.forEach(t => {
-    skyMacchiaSfera(ctx, t.lon, t.lat, t.r, (c, r) => skyDipingiCosta(c, r, t.c, caso));
+  const cupola = ctx.createRadialGradient(0, 0, 0.35, 0, 0, 1);
+  cupola.addColorStop(0, 'rgba(10, 30, 66, 0)');
+  cupola.addColorStop(1, 'rgba(8, 24, 56, 0.55)');
+  ctx.fillStyle = cupola;
+  ctx.fillRect(-1, -1, 2, 2);
+  // Le terre sono le **coste vere** (`SKY_MONDO`), le stesse del globo da
+  // vicino e del banco del tramonto: prima erano dieci macchie tonde, e
+  // bastava che il pallino della Terra crescesse un po' perché si leggessero
+  // per quello che erano — bolle verdi. Con le sagome vere il continente si
+  // riconosce a qualunque misura, e il disegno smette di raccontare due Terre
+  // diverse a seconda di quanto ci si è avvicinati.
+  const mondo = typeof SKY_MONDO !== 'undefined' ? SKY_MONDO : [];
+  mondo.forEach(t => {
+    const sagoma = skySagomaMondo(t.punti);
+    if (!sagoma) return;
+    ctx.beginPath();
+    sagoma.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+    ctx.closePath();
+    // Il filo di acqua bassa attorno alla costa, come sul globo da vicino
+    ctx.save();
+    ctx.strokeStyle = 'rgba(104, 180, 208, 0.38)';
+    ctx.lineWidth = 0.02;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = t.c;
+    ctx.fill();
+    // e dentro al bordo un velo scuro, perché la terra non sembri un adesivo
+    ctx.save();
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(24, 42, 30, 0.3)';
+    ctx.lineWidth = 0.03;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
   });
-  SKY_ISOLE_TERRA.forEach(t => {
-    skyMacchiaSfera(ctx, t.lon, t.lat, t.r, (c, r) => skyNuvola(c, r, t.c, 0.85, 0.35));
-  });
+  // La banchisa artica: al polo nord non c'è terra, e senza di lei resta un
+  // buco blu in mezzo ai ghiacci
+  if (typeof SOL_BANCHISA_ARTICA !== 'undefined') {
+    const banchisa = skySagomaMondo(SOL_BANCHISA_ARTICA);
+    const polo = skySuSfera(0, 90);
+    if (banchisa && polo.z > -0.05) {
+      // Sfumata verso il bordo, come sul globo da vicino: il ghiaccio marino
+      // non ha una costa
+      let raggio = 0;
+      banchisa.forEach(p => { raggio = Math.max(raggio, Math.hypot(p.x - polo.x, p.y - polo.y)); });
+      ctx.save();
+      ctx.beginPath();
+      banchisa.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+      ctx.closePath();
+      ctx.clip();
+      const gp = ctx.createRadialGradient(polo.x, polo.y, 0, polo.x, polo.y, Math.max(0.02, raggio));
+      gp.addColorStop(0, 'rgba(228, 240, 250, 0.72)');
+      gp.addColorStop(0.55, 'rgba(220, 234, 246, 0.45)');
+      gp.addColorStop(1, 'rgba(214, 230, 244, 0)');
+      ctx.fillStyle = gp;
+      ctx.fillRect(-1, -1, 2, 2);
+      ctx.restore();
+    }
+  }
   // Le nuvole: sono la prima cosa che si vede da fuori, e sono in fasce —
-  // fitte all'equatore e ai sessanta gradi, rade sui deserti
-  for (let i = 0; i < 60; i++) {
-    const lat = [4, 4, 52, -52, 30, -28][Math.floor(caso() * 6)] + caso() * 16 - 8;
-    skyMacchiaSfera(ctx, caso() * 360 - 180, lat, 0.1 + caso() * 0.2, (c, r) => {
+  // fitte all'equatore e ai cinquanta gradi, rade sui tropici, dove infatti
+  // stanno i deserti. Adesso che sotto ci sono le coste vere sono anche più
+  // piccole e più stirate lungo i paralleli: prima erano macchie larghe un
+  // terzo del disco, e con l'Africa disegnata sotto coprivano proprio la cosa
+  // che si era appena guadagnata.
+  for (let i = 0; i < 76; i++) {
+    const lat = SOL_NUVOLE_FASCE[Math.floor(caso() * SOL_NUVOLE_FASCE.length)] + caso() * 16 - 8;
+    skyMacchiaSfera(ctx, caso() * 360 - 180, lat, 0.05 + caso() * 0.09, (c, r) => {
       c.save();
-      c.scale(1, 0.45);
-      skyNuvola(c, r, '#ffffff', 0.42, 0.1);
+      c.scale(1.6 + caso() * 1.2, 0.5);
+      skyNuvola(c, r, '#ffffff', 0.4, 0.12);
       c.restore();
     });
   }
@@ -19909,24 +20168,21 @@ const SOL_VICINO_TERRA_UA = 1.7;
 // quello zoom il Sole comincia già a mangiarsi Mercurio (vedi `solTettoSole`).
 // Girando intorno alla Terra quel problema non c'è: il Sole è lontano fuori
 // dallo schermo, e il senso della vista è proprio avvicinarsi a lei quanto
-// si vuole. `SOL_ZOOM_MAX_TERRA` vale solo mentre `sol.centratoTerra` è vero.
+// si vuole. `SOL_ZOOM_MAX_TERRA` vale mentre si sta girando attorno a un
+// corpo, cioè finché `sol.perno` non è nullo.
 const SOL_ZOOM_MAX = 60;
 const SOL_ZOOM_MAX_TERRA = 900;
 
-// Il passo del tempo, e con lui quanto ne copre la slitta da un capo
-// all'altro. Il play fa tre passi al secondo, qualunque sia il passo scelto:
-// un comando solo per la velocità e per lo scatto, invece di due.
-// L'ora è il passo del banco delle eclissi (§7.7-quater): un'eclissi dura un
-// paio d'ore, e col passo di un giorno il primo tocco su + la salta tutta.
-// Nella vista d'insieme non serve — un pianeta in un'ora non si muove — e
-// infatti lì si parte dal giorno (`sol.passoIndice` nasce a 1).
-const SOL_PASSI = [
-  { nome: 'ora',    sec: 3600,           finestra: 2 * 86400 },
-  { nome: 'giorno', sec: 86400,          finestra: 60 * 86400 },
-  { nome: 'mese',   sec: 30 * 86400,     finestra: 2 * 365.25 * 86400 },
-  { nome: 'anno',   sec: 365.25 * 86400, finestra: 30 * 365.25 * 86400 }
-];
-const SOL_PASSI_AL_SECONDO = 3;
+// Il passo del tempo **non è più roba di questa vista**: è quello del
+// planetario (`SKY_PASSI_TEMPO`), perché l'orologio è uno solo e due passi
+// diversi sullo stesso orologio sono due bugie. Qui restano solo i due passi
+// con cui questa scena si apre: l'ora per il banco delle eclissi (un'eclissi
+// dura un paio d'ore, e col passo di un giorno il primo tocco su + la salta
+// tutta) e il giorno per la vista d'insieme, dove un pianeta in un'ora non si
+// muove. Da lì in poi chi guarda sceglie, e la scelta vale anche sotto al
+// cielo.
+const SOL_PASSO_ENTRATA = 86400;         // vista d'insieme: un giorno
+const SOL_PASSO_ENTRATA_VICINO = 3600;   // banco delle eclissi: un'ora
 
 const sol = {
   aperto: false, canvas: null, ctx: null, L: 0, H: 0, raf: null, ultimoTs: 0,
@@ -19954,9 +20210,12 @@ const sol = {
   // volta sola, `fasceAccese` dice quali si vogliono vedere
   fasce: [], fasceAccese: { principale: true, kuiper: true },
   scelto: null,          // id del pianeta di cui si legge la scheda
-  // Se attivo, il perno della telecamera non è più il Sole ma la Terra: si
-  // gira intorno a lei invece che intorno all'origine (vedi `solAggiornaPivotTerra`)
-  centratoTerra: false,
+  // Il perno della telecamera. `null` vuol dire il Sole, cioè l'origine della
+  // scena; se no è l'identificativo del corpo attorno a cui si sta girando —
+  // un pianeta qualunque, oppure `'Moon'`. Toccare un corpo lo mette lì (vedi
+  // `solAggiornaPivot`): prima era una scelta della sola Terra, e girare
+  // attorno a Giove non si poteva chiedere.
+  perno: null,
   // Il banco delle eclissi (§7.7-quater): quando è acceso la scena non è più
   // il Sistema Solare ma il solo sistema Terra–Luna, con un metro suo — i
   // chilometri invece delle unità astronomiche — e i due coni d'ombra.
@@ -19969,6 +20228,10 @@ const sol = {
   // lunare campionata (§7.7-quater). Sono conti che non cambiano dentro allo
   // stesso istante, e rifarli a ogni fotogramma si sentirebbe.
   telaio: null, geo: null, orbitaLuna: null,
+  // L'anello dell'orbita lunare nella scena grande (§7.7), e dove sono finiti
+  // sullo schermo la Luna e i due corpi del banco delle eclissi: li scrive chi
+  // li disegna, li legge il dito (`solTocco`)
+  orbitaLunaGrande: null, lunaSchermo: null, vicCorpi: null,
   pianeti: [], terra: null, luna: null,
   orbite: { chiave: null, tracce: [] },
   istante: 0,            // ms dell'ultimo calcolo delle posizioni
@@ -19977,9 +20240,12 @@ const sol = {
   // Dita appoggiate sulla tela: una gira la scena, due la avvicinano
   puntatori: new Map(), pizzico: null, trascinamento: null, mosso: 0, giu: 0,
   modoPan: false,        // il dito sposta la scena invece di girarla (Maiusc o tasto destro)
-  // Il tempo: il passo scelto, il centro della finestra su cui scorre la
-  // slitta, e il verso della marcia (0 fermo, +1 avanti, −1 indietro)
-  passoIndice: 1, ancoraSec: 0, marcia: 0,
+  // Il tempo: il centro della finestra su cui scorre la slitta. Il passo e la
+  // marcia non sono più suoi — stanno in `sky`, e sono gli stessi del
+  // planetario (`sky.passoTempoSec`, `sky.playbackVerso`). `passoPrima` e
+  // `passoToccato` servono solo a sapere, chiudendo, se il passo dell'ingresso
+  // era un automatismo da disfare o una scelta da rispettare.
+  ancoraSec: 0, passoPrima: 0, passoToccato: false,
   prossimaScheda: 0, firmaScheda: '',
   skyDaRiprendere: false
 };
@@ -20130,15 +20396,28 @@ function solCrescita() {
   return Math.max(minimo, Math.min(base, tetto / soleBase));
 }
 
-// Quanto cresce SOLO la Terra, quando si gira intorno a lei da vicino
-// (`sol.centratoTerra`): stessa legge di `solCrescita` — radice quadrata
-// dello zoom, perché raddoppiare e dimezzare costino uguale — ma senza il
-// tetto pensato per il Sole, che qui non c'entra niente: a questi zoom il
-// Sole è già fuori dallo schermo. È lei che si sta avvicinando, e deve poter
-// crescere finché lo zoom lo permette (vedi `SOL_ZOOM_MAX_TERRA`).
+// Quanto cresce SOLO il corpo su cui si sta girando (`sol.perno`): stessa
+// legge di `solCrescita` — radice quadrata dello zoom, perché raddoppiare e
+// dimezzare costino uguale — ma senza il tetto pensato per il Sole, che qui
+// non c'entra niente: a questi zoom il Sole è già fuori dallo schermo. È lui
+// che si sta avvicinando, e deve poter crescere finché lo zoom lo permette
+// (vedi `SOL_ZOOM_MAX_TERRA`). Valeva per la sola Terra, e valeva perché era
+// l'unico corpo su cui ci si potesse avvicinare: adesso che il perno è di
+// tutti, questa crescita è di tutti.
 const SOL_CRESCITA_TERRA_MAX = 60;
 function solCrescitaTerra() {
   return Math.min(SOL_CRESCITA_TERRA_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
+}
+
+// Chi cresce con la crescita «da vicino»: il corpo su cui si sta girando, e
+// insieme a lui l'altro della coppia Terra–Luna. I due sono disegnati l'uno
+// accanto all'altro e a farne crescere uno solo si ottiene una Luna più
+// grossa della Terra proprio nel momento in cui le si sta guardando insieme —
+// che è l'unica cosa che quel disegno non deve mai dire.
+function solCorpoDelPerno(id) {
+  if (!sol.perno) return false;
+  if (sol.perno === id) return true;
+  return (sol.perno === 'Earth' && id === 'Moon') || (sol.perno === 'Moon' && id === 'Earth');
 }
 
 // Quanto si disegna grosso un corpo, nelle due misure: il pallino ingrandito
@@ -20148,7 +20427,7 @@ function solRaggioCorpo(p) {
   // polvere: Mercurio e Marte si fermano lì. Fra tutti gli altri il rapporto
   // è quello vero.
   const base = sol.misureVere ? Math.max(1.2, p.km * SOL_PX_PER_KM / 2) : p.raggio;
-  const crescita = (sol.centratoTerra && p.id === 'Earth') ? solCrescitaTerra() : solCrescita();
+  const crescita = solCorpoDelPerno(p.id) ? solCrescitaTerra() : solCrescita();
   // Mezzo pixel è il minimo assoluto: quando la scena si stringe i pianeti
   // rimpiccioliscono col Sole (vedi `solCrescita`), ma un pianeta che sparisce
   // del tutto lascerebbe l'orbita senza chi la percorre
@@ -20167,9 +20446,12 @@ function solRaggioSole() {
 // Terra** proprio nel modo che promette di essere in scala (è un quarto di
 // Terra, non una Terra e mezza).
 function solRaggioLuna() {
+  // Girando intorno alla Luna — o alla Terra, che le sta accanto — cresce
+  // anche lei, come cresce qualunque corpo su cui ci si avvicini
+  const crescita = solCorpoDelPerno('Moon') ? solCrescitaTerra() : solCrescita();
   return sol.misureVere
-    ? Math.max(0.55, SOL_LUNA_KM * SOL_PX_PER_KM / 2 * solCrescita())
-    : SOL_RAGGIO_LUNA * solCrescita();
+    ? Math.max(0.55, SOL_LUNA_KM * SOL_PX_PER_KM / 2 * crescita)
+    : SOL_RAGGIO_LUNA * crescita;
 }
 
 // --- Le posizioni vere -----------------------------------------------------
@@ -20799,18 +21081,104 @@ function solColoreNotte(hex) {
 // e metà dietro, e disegnarla sempre prima la faceva sparire a metà dentro
 // al pallino azzurro proprio nei giorni in cui invece dovrebbe coprirlo.
 // `davanti` dice quale delle due metà si sta disegnando adesso.
+// Quanto lontana dalla Terra si disegna la Luna, in unità di scena. Abbastanza
+// da non finirle dentro, adesso che i pallini sono più grossi — e la misura la
+// detta il pallino stesso, che con lo zoom cresce: uno stacco fisso di
+// ventitré pixel, a forte ingrandimento, lasciava la Luna sepolta dentro alla
+// Terra.
+function solStaccoLuna(terra) {
+  const r = (terra && terra.rDisegno) || SOL_RAGGIO_LUNA;
+  return (r * 2 + 8) / Math.max(1e-6, sol.scala);
+}
+
+// Il punto della scena in cui la Luna è **disegnata**. Lo chiedono in tre: il
+// disegno della Luna, quello della sua orbita e il perno della telecamera —
+// e devono chiederlo alla stessa funzione, se no l'anello dell'orbita e la
+// Luna che ci corre sopra finiscono a due distanze diverse.
+function solScenaLuna() {
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  if (!terra || !sol.luna) return null;
+  const t = terra.scena || solScena(terra.pos);
+  const passo = solStaccoLuna(terra);
+  return {
+    x: t.x + sol.luna.x * passo,
+    y: t.y + sol.luna.y * passo,
+    z: t.z + sol.luna.z * passo * sol.esagera
+  };
+}
+
+// --- L'orbita della Luna, nella scena grande -------------------------------
+//   La Luna qui è disegnata a distanza esagerata (tiene la direzione vera e
+//   perde la scala, se no sarebbe dentro al pallino della Terra): l'anello
+//   della sua orbita si disegna alla **stessa** distanza esagerata, e allora
+//   dice l'unica cosa che a questa scala si può dire onestamente — da che
+//   parte è inclinato il piano su cui gira, e dove sta la Luna lungo il giro.
+//   Le distanze vere e il piano a scala giusta sono il mestiere del banco
+//   Terra e Luna (§7.7-quater), che infatti esiste per quello.
+//
+//   I campioni sono le direzioni geocentriche lungo un mese sidereo,
+//   normalizzate: la distanza della Luna cambia del cinque per cento e a
+//   questa scala non si vedrebbe, mentre il piano inclinato di cinque gradi
+//   sì. Si rifanno una volta a settimana di calendario, non a ogni
+//   fotogramma: il piano dell'orbita gira su sé stesso in diciotto anni e
+//   mezzo, non in un pomeriggio.
+const SOL_LUNA_ORBITA_PUNTI = 72;
+
+function solOrbitaLunaGrande(quando) {
+  if (typeof Astronomy === 'undefined') return null;
+  const chiave = Math.round((quando ? quando.getTime() : Date.now()) / (7 * 86400000));
+  if (sol.orbitaLunaGrande && sol.orbitaLunaGrande.chiave === chiave) return sol.orbitaLunaGrande.punti;
+  const punti = [];
+  try {
+    const base = quando ? quando.getTime() : Date.now();
+    const durata = SOL_MESE_SIDEREO_G * 86400000;
+    for (let i = 0; i < SOL_LUNA_ORBITA_PUNTI; i++) {
+      const t = Astronomy.MakeTime(new Date(base + (i / SOL_LUNA_ORBITA_PUNTI) * durata));
+      const m = Astronomy.Ecliptic(Astronomy.GeoMoon(t)).vec;
+      const d = Math.hypot(m.x, m.y, m.z) || 1;
+      punti.push({ x: m.x / d, y: m.y / d, z: m.z / d });
+    }
+  } catch (e) { return null; }
+  sol.orbitaLunaGrande = { chiave, punti };
+  return punti;
+}
+
+// L'anello, in due metà come la Luna stessa: quella che passa dietro alla
+// Terra si disegna prima del pallino azzurro, quella che le passa davanti
+// dopo. Senza, l'orbita sarebbe un cerchio incollato sopra al pianeta e la
+// scena perderebbe l'unica profondità che ha.
+function solDisegnaOrbitaLuna(ctx, terra, davanti) {
+  if (!terra || !terra.scena || !terra.schermo) return;
+  const punti = solOrbitaLunaGrande(new Date(sol.istante || Date.now()));
+  if (!punti || punti.length < 3) return;
+  const passo = solStaccoLuna(terra);
+  const t = terra.scena;
+  const schermo = punti.map(u => solProietta({
+    x: t.x + u.x * passo, y: t.y + u.y * passo, z: t.z + u.z * passo * sol.esagera
+  }));
+  ctx.save();
+  ctx.strokeStyle = 'rgba(203, 213, 225, 0.34)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  const dietro = terra.schermo.vicinanza;
+  for (let i = 0; i < schermo.length; i++) {
+    const a = schermo[i], b = schermo[(i + 1) % schermo.length];
+    // Il tratto appartiene alla metà davanti se ci sta il suo punto di mezzo:
+    // è la stessa prova che fa la Luna, fatta segmento per segmento
+    if (((a.vicinanza + b.vicinanza) / 2 >= dietro) !== davanti) continue;
+    ctx.beginPath();
+    ctx.moveTo(a.px, a.py);
+    ctx.lineTo(b.px, b.py);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function solDisegnaLuna(ctx, terra, davanti, assi) {
   if (!sol.luna || !terra) return;
-  // Abbastanza staccata dalla Terra da non finirle dentro, adesso che i
-  // pallini sono più grossi — e la misura la detta il pallino stesso, che
-  // con lo zoom cresce: uno stacco fisso di ventitré pixel, a forte
-  // ingrandimento, lasciava la Luna sepolta dentro alla Terra
-  const passo = ((terra.rDisegno || SOL_RAGGIO_LUNA) * 2 + 8) / sol.scala;
-  const p = solProietta({
-    x: terra.scena.x + sol.luna.x * passo,
-    y: terra.scena.y + sol.luna.y * passo,
-    z: terra.scena.z + sol.luna.z * passo * sol.esagera
-  });
+  const centro = solScenaLuna();
+  if (!centro) return;
+  const p = solProietta(centro);
   if (davanti !== undefined && (p.vicinanza >= terra.schermo.vicinanza) !== davanti) return;
   ctx.save();
   ctx.strokeStyle = 'rgba(226, 232, 240, 0.28)';
@@ -20824,6 +21192,9 @@ function solDisegnaLuna(ctx, terra, davanti, assi) {
   // quando da noi è Luna Nuova, chi guardasse da Giove vedrebbe una Terra e
   // una Luna con la stessa identica falce, l'una accanto all'altra
   const r = solRaggioLuna();
+  // Dove è finita sullo schermo: lo chiede il dito (`solTocco`), che deve
+  // poterla scegliere come sceglie un pianeta
+  sol.lunaSchermo = { px: p.px, py: p.py, r };
   const k = assi ? solFrazione(terra, assi) : 1;
   const versoSole = solVersoIlSole(terra);
   const angLuce = assi && versoSole ? solAngoloSchermo(versoSole, assi) : 0;
@@ -21089,6 +21460,83 @@ function solTracciaSagoma(ctx, sagoma) {
   ctx.closePath();
 }
 
+// La banchisa artica, come parallelo: al polo nord non c'è terra ma ghiaccio
+// galleggiante, e il modello lo sa solo se glielo si dice. Settantasei gradi
+// è la banchisa che resta anche d'estate — questo disegno non pretende di
+// raccontare le stagioni del ghiaccio, pretende di non lasciare un buco blu
+// dove tutti si aspettano il bianco.
+const SOL_BANCHISA_ARTICA = (() => {
+  const punti = [];
+  for (let lon = -180; lon < 180; lon += 10) punti.push([lon, 77]);
+  return punti;
+})();
+
+// Le nuvole, sorteggiate una volta sola e sempre uguali: una fila di numeri
+// da un seme fisso, come tutte le facce degli astri (§7.3.2). Ognuna ha la
+// sua latitudine di fascia, la sua longitudine, la sua misura e un
+// allungamento in longitudine — una nuvola vera è più larga che alta, perché
+// i venti la stirano lungo i paralleli.
+const SOL_NUVOLE_FASCE = [0, 3, -3, 8, 52, -50, 58, -58, 44, -42, 28, -26];
+// Tante e piccole. Il primo tentativo ne faceva settanta larghe fino a un
+// settimo del globo, e con lo stiramento lungo il parallelo diventavano
+// lenti bianche larghe mezzo pianeta: dal vero una perturbazione è grande
+// così, ma vista da fuori non è *una* macchia — è un banco fatto di mille
+// pezzi, e a disegnarla piena si ottiene una toppa.
+const SOL_NUVOLE_QUANTE = 120;
+let solNuvoleTerra = null;
+
+function solNuvoleDellaTerra() {
+  if (solNuvoleTerra) return solNuvoleTerra;
+  const caso = skyCaso(skySeme('nuvole-terra'));
+  const elenco = [];
+  for (let i = 0; i < SOL_NUVOLE_QUANTE; i++) {
+    const fascia = SOL_NUVOLE_FASCE[Math.floor(caso() * SOL_NUVOLE_FASCE.length)];
+    elenco.push({
+      lon: caso() * 360 - 180,
+      lat: fascia + (caso() * 16 - 8),
+      r: 0.032 + caso() * 0.055,        // in frazioni del raggio del globo
+      lungo: 1.3 + caso() * 1.1,        // stirata lungo il parallelo
+      giro: (caso() - 0.5) * 1.2,       // appena storta, come un fronte
+      alfa: 0.22 + caso() * 0.3
+    });
+  }
+  solNuvoleTerra = elenco;
+  return elenco;
+}
+
+// Il velo di nuvole appoggiato sul globo. Ogni macchia si schiaccia verso il
+// limbo come tutto ciò che sta su una sfera (è la stessa algebra di
+// `skyMacchiaSfera`, qui in coordinate di globo invece che di tela dipinta),
+// e sfuma verso il bordo perché una nuvola non ha un contorno.
+function solDisegnaNuvoleTerra(ctx, telaio, assi, r) {
+  ctx.save();
+  solNuvoleDellaTerra().forEach(n => {
+    const p = solGloboProietta(solPuntoTerra(telaio, n.lat, n.lon), assi, r);
+    if (p.z <= 0.1) return;
+    const raggio = n.r * r;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(Math.atan2(p.y, p.x));
+    ctx.scale(Math.max(0.1, p.z), 1);      // lo schiacciamento verso il bordo
+    ctx.rotate(n.giro);
+    ctx.scale(n.lungo, 1);
+    const g = ctx.createRadialGradient(0, 0, raggio * 0.15, 0, 0, raggio);
+    // Sul limbo la nuvola si vede di taglio e diventa più densa, non meno:
+    // è più aria attraversata, ed è quello che nelle fotografie fa il bordo
+    // biancastro del pianeta
+    const alfa = n.alfa * (0.55 + 0.45 * Math.min(1, p.z * 1.4));
+    g.addColorStop(0, `rgba(255, 255, 255, ${alfa})`);
+    g.addColorStop(0.55, `rgba(248, 252, 255, ${alfa * 0.5})`);
+    g.addColorStop(1, 'rgba(240, 248, 255, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, raggio, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+  ctx.restore();
+}
+
 // Il globo vero. Chi chiama ha già traslato il contesto sul centro del
 // pianeta; qui si disegna dentro a un cerchio di raggio `r`, e si torna
 // `false` se non ci sono le condizioni per farlo — allora il chiamante
@@ -21122,17 +21570,89 @@ function solDisegnaTerraVera(ctx, versoSole, r, assi, quando) {
   ctx.fillStyle = mare;
   ctx.fillRect(-r, -r, r * 2, r * 2);
 
+  // Il riflesso del Sole sull'acqua. Nelle fotografie vere è la macchia
+  // chiara che segue il punto sub-solare, e non è un vezzo: è il segno che
+  // quella superficie è liquida e lucida. Sta dove il Sole batte a picco,
+  // quindi si sposta da sola col girare del pianeta e sparisce quando il
+  // punto sub-solare finisce dall'altra parte.
+  const subSole = solGloboProietta(versoSole, assi, r);
+  if (subSole.z > 0.02) {
+    const brillo = ctx.createRadialGradient(subSole.x, subSole.y, 0, subSole.x, subSole.y, r * 0.62);
+    const forza = 0.30 * Math.min(1, subSole.z * 1.6);
+    brillo.addColorStop(0, `rgba(214, 240, 255, ${forza})`);
+    brillo.addColorStop(0.45, `rgba(150, 205, 250, ${forza * 0.35})`);
+    brillo.addColorStop(1, 'rgba(120, 180, 240, 0)');
+    ctx.fillStyle = brillo;
+    ctx.fillRect(-r, -r, r * 2, r * 2);
+  }
+
   // Le terre, nell'ordine in cui stanno scritte: continenti, poi i deserti
-  // che ci stanno sopra, poi i ghiacci
+  // che ci stanno sopra, poi i ghiacci. Ogni sagoma prende prima un filo di
+  // acqua bassa attorno — il turchese che nelle fotografie orla ogni costa,
+  // dove il fondale risale — e poi un velo scuro dentro al bordo, che è
+  // l'ombra della terra sull'acqua e insieme il modo di non farla sembrare
+  // un adesivo appoggiato sul mare.
   if (typeof SKY_MONDO !== 'undefined') {
+    const fondale = Math.max(1, r * 0.018);
     SKY_MONDO.forEach(t => {
       const sagoma = solSagomaSuGlobo(t.punti, telaio, assi, r);
       if (!sagoma) return;
-      ctx.fillStyle = t.c;
       solTracciaSagoma(ctx, sagoma);
+      if (r > 30) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(104, 180, 208, 0.38)';
+        ctx.lineWidth = fondale * 2;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.fillStyle = t.c;
       ctx.fill();
+      if (r > 30) {
+        ctx.save();
+        ctx.clip();
+        ctx.strokeStyle = 'rgba(24, 42, 30, 0.32)';
+        ctx.lineWidth = fondale * 1.6;
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        ctx.restore();
+      }
     });
   }
+
+  // La banchisa artica: al polo nord non c'è terra, e senza di lei il Polo
+  // resta un buco blu in mezzo ai ghiacci — l'unico posto del disegno in cui
+  // il modello dice una cosa falsa a colpo d'occhio. È un parallelo, come
+  // l'Antartide: girando tutta la longitudine a latitudine fissa si racchiude
+  // la calotta col polo dentro.
+  const banchisa = solSagomaSuGlobo(SOL_BANCHISA_ARTICA, telaio, assi, r);
+  const polo = solGloboProietta(solPuntoTerra(telaio, 90, 0), assi, r);
+  if (banchisa && polo.z > -0.05) {
+    // Non una macchia piatta ma una che sfuma verso il bordo: il ghiaccio
+    // marino non ha una costa, si sfilaccia — e una calotta bianca a tinta
+    // unita, in proiezione ortografica, si legge come una lente incollata sul
+    // pianeta invece che come il polo
+    let raggio = 0;
+    banchisa.forEach(p => { raggio = Math.max(raggio, Math.hypot(p.x - polo.x, p.y - polo.y)); });
+    ctx.save();
+    solTracciaSagoma(ctx, banchisa);
+    ctx.clip();
+    const g = ctx.createRadialGradient(polo.x, polo.y, 0, polo.x, polo.y, Math.max(1, raggio));
+    g.addColorStop(0, 'rgba(228, 240, 250, 0.72)');
+    g.addColorStop(0.55, 'rgba(220, 234, 246, 0.45)');
+    g.addColorStop(1, 'rgba(214, 230, 244, 0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-r, -r, r * 2, r * 2);
+    ctx.restore();
+  }
+
+  // Le nuvole. Sono la prima cosa che si vede in una fotografia della Terra —
+  // più dei continenti — e sono in fasce: fitte all'equatore dove l'aria sale,
+  // fitte ai cinquanta gradi dove passano le perturbazioni, rade sui tropici
+  // dove stanno i deserti. Girano col pianeta perché sono appoggiate al suo
+  // telaio geografico, e restano sotto al confine del giorno: di notte una
+  // nuvola non si vede.
+  if (r > 20) solDisegnaNuvoleTerra(ctx, telaio, assi, r);
 
   // L'ombra della Luna, se in questo istante ne sta attraversando una
   solDisegnaOmbraDellaLuna(ctx, telaio, assi, r, quando);
@@ -21144,6 +21664,16 @@ function solDisegnaTerraVera(ctx, versoSole, r, assi, quando) {
   // copre la notte intera, gli altri due si stringono verso il cuore.
   ctx.save();
   ctx.rotate(angLuce);
+  // Il filo caldo del tramonto, appena **prima** del buio: è la fascia di
+  // pianeta in cui in questo momento il Sole sta calando, e nelle fotografie
+  // dallo spazio è arancione perché la luce lì attraversa l'atmosfera di
+  // taglio. Si stende sotto ai tre veli scuri e si vede solo dove quelli
+  // lasciano ancora passare qualcosa — cioè proprio sul confine.
+  if (r > 22) {
+    skyPercorsoOmbra(ctx, r, Math.min(1, k + 0.075));
+    ctx.fillStyle = 'rgba(255, 168, 92, 0.22)';
+    ctx.fill();
+  }
   [[k, 0.30], [Math.min(1, k + 0.018), 0.28], [Math.min(1, k + 0.05), 0.30]].forEach(([kk, alfa]) => {
     skyPercorsoOmbra(ctx, r, kk);
     ctx.fillStyle = `rgba(3, 7, 20, ${alfa})`;
@@ -21177,14 +21707,40 @@ function solDisegnaTerraVera(ctx, versoSole, r, assi, quando) {
   // Il velo d'aria sul bordo: quasi invisibile al centro, un filo azzurro sul
   // limbo. È la riga sottile delle fotografie vere, e senza di lei il globo
   // sembra ritagliato con le forbici.
-  const aria = ctx.createRadialGradient(0, 0, r * 0.86, 0, 0, r * 1.06);
-  aria.addColorStop(0, 'rgba(140, 200, 255, 0)');
-  aria.addColorStop(0.72, 'rgba(140, 200, 255, 0.20)');
-  aria.addColorStop(1, 'rgba(120, 180, 255, 0)');
-  ctx.fillStyle = aria;
+  //
+  // Ma quel filo non è tutt'attorno: l'aria si vede perché è **illuminata**,
+  // quindi è acceso sul lato del giorno e si spegne su quello della notte. La
+  // riga azzurra continua tutt'intorno era la cosa che, guardando la Terra da
+  // vicino con mezzo pianeta al buio, diceva «disegno» invece di «fotografia».
+  // Si ottiene con una sfumatura lineare messa **sopra** a quella radiale, e
+  // stesa nella direzione del Sole sullo schermo.
+  // Il velo tenue tutt'intorno, che è quel poco di aria illuminata anche di
+  // sbieco, e sopra tre spicchi sempre più stretti dalla parte del Sole: la
+  // somma è una luce che cresce verso il punto sub-solare e si spegne dentro
+  // alla notte, senza nessun bordo netto. Spicchi e non una sfumatura tolta
+  // col `destination-out`: quello cancellerebbe anche il pianeta che c'è
+  // sotto, e sul lato in ombra la Terra si ritroverebbe con un morso.
+  const anello = (dentro, fuori, colore, forza) => {
+    const g = ctx.createRadialGradient(0, 0, r * dentro, 0, 0, r * fuori);
+    g.addColorStop(0, skyColoreConAlpha(colore, 0));
+    g.addColorStop(0.62, skyColoreConAlpha(colore, forza));
+    g.addColorStop(0.9, skyColoreConAlpha(colore, forza * 0.8));
+    g.addColorStop(1, skyColoreConAlpha(colore, 0));
+    return g;
+  };
+  ctx.fillStyle = anello(0.86, 1.07, '#8cc8ff', 0.1);
   ctx.beginPath();
-  ctx.arc(0, 0, r * 1.06, 0, Math.PI * 2);
+  ctx.arc(0, 0, r * 1.07, 0, Math.PI * 2);
   ctx.fill();
+  const versoLuce = Math.atan2(subSole.y, subSole.x);
+  [[Math.PI * 0.62, 0.14], [Math.PI * 0.46, 0.14], [Math.PI * 0.3, 0.13]].forEach(([mezzo, forza]) => {
+    ctx.fillStyle = anello(0.86, 1.07, '#a5d8ff', forza);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.07, versoLuce - mezzo, versoLuce + mezzo);
+    ctx.arc(0, 0, r * 0.86, versoLuce + mezzo, versoLuce - mezzo, true);
+    ctx.closePath();
+    ctx.fill();
+  });
 
   solDisegnaCasaSullaTerra(ctx, telaio, assi, r);
   return true;
@@ -21628,6 +22184,8 @@ function solQuantoPrimaDiTerra(base, asse, portata) {
   return s > 0 ? Math.min(portata, s) : portata;
 }
 
+// `dentro` a null vuol dire «solo il bordo»: serve alla seconda passata, quella
+// che ripassa i coni **sopra** ai corpi (vedi `solDisegnaVicino`).
 function solDisegnaCono(ctx, base, asse, raggio, sMax, dentro, bordo) {
   const contorno = solProfiloCono(base, asse, raggio, sMax);
   if (!contorno) return;
@@ -21643,7 +22201,7 @@ function solDisegnaCono(ctx, base, asse, raggio, sMax, dentro, bordo) {
   ctx.beginPath();
   contorno.forEach((p, i) => { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
   ctx.closePath();
-  if (!straripa) {
+  if (dentro && !straripa) {
     ctx.fillStyle = dentro;
     ctx.fill();
   }
@@ -21808,31 +22366,32 @@ function solDisegnaVicino() {
   const antiSole = [-g.versoSole[0], -g.versoSole[1], -g.versoSole[2]];
   const px = solVicPx();
 
+  // Il perno della telecamera vale anche qui: toccando la Luna è lei a
+  // restare in mezzo alla tela, e la Terra le gira attorno (vedi `solScegli`)
+  solAggiornaPivot();
+
   solDisegnaRaggiVicino(ctx, g.versoSole, g.dLuna);
   solDisegnaPianoVicino(ctx, g.dLuna);
 
-  // Il cono d'ombra della Terra, sempre: è lui che spiega perché la maggior
-  // parte delle lune piene non è un'eclissi. Prima la penombra, larga e
-  // sfumata, poi l'ombra piena dentro di lei.
+  // I due coni d'ombra, in due passate. Il riempimento va **sotto** ai corpi —
+  // altrimenti la velatura viola coprirebbe l'Africa e le fasi della Luna — ma
+  // il contorno va **sopra**: avvicinandosi, il disco della Terra si prende
+  // mezzo schermo e si mangiava tutto l'attacco del cono, che spuntava fuori
+  // dall'altro lato come se nascesse dal nulla. Un cono d'ombra parte dal
+  // corpo che lo fa, e questo è il pezzo di disegno che lo dice.
   const apiceTerra = solApiceOmbra(RAGGIO_TERRA_KM, g.dSole);
   const portataTerra = Math.min(apiceTerra, g.dLuna * SOL_VIC_CONO_OLTRE);
-  solDisegnaCono(ctx, [0, 0, 0], antiSole,
-    (s) => solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, s),
-    g.dLuna * SOL_VIC_CONO_OLTRE, SOL_COL_PENOMBRA, SOL_COL_PENOMBRA_BORDO);
-  solDisegnaCono(ctx, [0, 0, 0], antiSole,
-    (s) => solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, s),
-    portataTerra, SOL_COL_OMBRA, SOL_COL_OMBRA_BORDO);
-
-  // Il bersaglio: l'ombra alla distanza a cui sta adesso la Luna, misurata
-  // lungo l'asse — non alla sua distanza dalla Terra, che è un'altra cosa
-  // quando la Luna sta di lato
-  const sLuna = skyDot(g.luna, antiSole);
-  if (sLuna > 0) {
-    solDisegnaSezioneOmbra(ctx, [0, 0, 0], antiSole, sLuna,
-      solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, sLuna), 'rgba(129, 152, 210, 0.55)', [3, 3]);
-    solDisegnaSezioneOmbra(ctx, [0, 0, 0], antiSole, sLuna,
-      solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, sLuna), 'rgba(196, 181, 253, 0.85)');
-  }
+  // Il cono della Terra, sempre: è lui che spiega perché la maggior parte
+  // delle lune piene non è un'eclissi. Prima la penombra, larga e sfumata,
+  // poi l'ombra piena dentro di lei.
+  const coniTerra = (soloBordo) => {
+    solDisegnaCono(ctx, [0, 0, 0], antiSole,
+      (s) => solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, s),
+      g.dLuna * SOL_VIC_CONO_OLTRE, soloBordo ? null : SOL_COL_PENOMBRA, SOL_COL_PENOMBRA_BORDO);
+    solDisegnaCono(ctx, [0, 0, 0], antiSole,
+      (s) => solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, s),
+      portataTerra, soloBordo ? null : SOL_COL_OMBRA, SOL_COL_OMBRA_BORDO);
+  };
 
   // Il cono della Luna, quando è dalla parte del Sole: quello che, se arriva
   // a toccarci, è un'eclissi di Sole. Si vede subito perché è così raro —
@@ -21842,7 +22401,8 @@ function solDisegnaVicino() {
   const dSoleLuna = Math.hypot(
     g.sole[0] - g.luna[0], g.sole[1] - g.luna[1], g.sole[2] - g.luna[2]);
   const luce = skyDot(solVersore(g.luna), g.versoSole);
-  if (luce > 0.9) {
+  const coniLuna = (soloBordo) => {
+    if (!(luce > 0.9)) return;
     const antiLuna = [-versoSoleDallaLuna[0], -versoSoleDallaLuna[1], -versoSoleDallaLuna[2]];
     const apiceLuna = solApiceOmbra(RAGGIO_LUNA_KM, dSoleLuna);
     // Il cono si ferma dove incontra la Terra, se la incontra: tirarlo dritto
@@ -21852,11 +22412,27 @@ function solDisegnaVicino() {
     const portata = solQuantoPrimaDiTerra(g.luna, antiLuna, g.dLuna * 1.25);
     solDisegnaCono(ctx, g.luna, antiLuna,
       (s) => solRaggioPenombra(RAGGIO_LUNA_KM, dSoleLuna, s),
-      portata, 'rgba(146, 116, 44, 0.14)', 'rgba(214, 176, 84, 0.34)');
+      portata, soloBordo ? null : 'rgba(146, 116, 44, 0.14)', 'rgba(214, 176, 84, 0.34)');
     solDisegnaCono(ctx, g.luna, antiLuna,
       (s) => solRaggioUmbra(RAGGIO_LUNA_KM, dSoleLuna, s),
-      Math.min(apiceLuna, portata), 'rgba(126, 88, 22, 0.42)', 'rgba(251, 191, 36, 0.8)');
-  }
+      Math.min(apiceLuna, portata), soloBordo ? null : 'rgba(126, 88, 22, 0.42)', 'rgba(251, 191, 36, 0.8)');
+  };
+
+  coniTerra(false);
+  coniLuna(false);
+
+  // Il bersaglio: l'ombra alla distanza a cui sta adesso la Luna, misurata
+  // lungo l'asse — non alla sua distanza dalla Terra, che è un'altra cosa
+  // quando la Luna sta di lato
+  const sLuna = skyDot(g.luna, antiSole);
+  const bersaglio = () => {
+    if (!(sLuna > 0)) return;
+    solDisegnaSezioneOmbra(ctx, [0, 0, 0], antiSole, sLuna,
+      solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, sLuna), 'rgba(129, 152, 210, 0.55)', [3, 3]);
+    solDisegnaSezioneOmbra(ctx, [0, 0, 0], antiSole, sLuna,
+      solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, sLuna), 'rgba(196, 181, 253, 0.85)');
+  };
+  bersaglio();
 
   solDisegnaOrbitaLunare(ctx, orbita || { punti: [], nodi: [] });
 
@@ -21884,6 +22460,16 @@ function solDisegnaVicino() {
   ];
   finti.sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
   finti.forEach(c => solDisegnaCorpo(ctx, c, assi));
+  // Chi ha appena disegnato i due corpi sa dove sono finiti sullo schermo, e
+  // il dito ha bisogno proprio di quello (`solTocco`)
+  sol.vicCorpi = finti;
+
+  // La seconda passata dei coni: solo i contorni, sopra ai corpi. È quella che
+  // tiene il cono in primo piano rispetto alla Terra — e col bersaglio ripassato
+  // sopra, perché il cerchio che la Luna manca è il punto di tutto il banco.
+  coniTerra(true);
+  coniLuna(true);
+  bersaglio();
 
   // Il filo a piombo della Luna sul piano: dice di quanto è fuori bersaglio,
   // e lo dice prima di qualunque numero
@@ -22180,11 +22766,11 @@ function solPanFraTerraELuna(zoom, g) {
 
 function solEntraVicino(opzioni = {}) {
   sol.vicino = true;
-  sol.centratoTerra = false;
+  sol.perno = null;
   sol.scelto = null;
   // Un'eclissi si guarda a ore, non a mesi: il passo del tempo diventa
   // quello giusto da solo, se no il primo tocco su + salta l'eclissi intera
-  sol.passoIndice = 0;
+  skyImpostaPassoTempo(SOL_PASSO_ENTRATA_VICINO);
   sol.ancoraSec = solOffset();
   // L'inquadratura dipende da dove sta la Luna adesso (vedi
   // `solInquadraVicino`), e «adesso» lo sa solo chi ha appena letto le
@@ -22199,7 +22785,7 @@ function solEntraVicino(opzioni = {}) {
 
 function solEsciVicino() {
   sol.vicino = false;
-  sol.passoIndice = 1;
+  skyImpostaPassoTempo(SOL_PASSO_ENTRATA);
   sol.ancoraSec = solOffset();
   solInquadraDaTerra({ morbido: true });
   solAggiornaTasti();
@@ -22216,7 +22802,6 @@ function solDisegna() {
   if (!sol.ctx) return;
   const ctx = sol.ctx;
   solMisura();
-  solAggiornaPivotTerra();
   solSfondo(ctx);
 
   if (!sol.pianeti.length) {
@@ -22231,11 +22816,16 @@ function solDisegna() {
   // astronomiche. Da qui in poi non c'è niente in comune, e infatti esce.
   if (sol.vicino) { solDisegnaVicino(); return; }
 
+  // Prima quello che non dipende da dove è puntata la telecamera (il punto
+  // nella scena, il raggio del pallino), poi il perno — che di quei punti ha
+  // bisogno per sapere dove centrarsi — e solo alla fine la proiezione sullo
+  // schermo, che dal perno dipende
   sol.pianeti.forEach(p => {
     p.scena = solScena(p.pos);
-    p.schermo = solProietta(p.scena);
     p.rDisegno = solRaggioCorpo(p);
   });
+  solAggiornaPivot();
+  sol.pianeti.forEach(p => { p.schermo = solProietta(p.scena); });
   const terra = sol.pianeti.find(p => p.id === 'Earth');
   const scelto = sol.pianeti.find(p => p.id === sol.scelto) || null;
   const assi = solAssiVista();     // gli stessi per tutti: si calcolano una volta
@@ -22286,9 +22876,9 @@ function solDisegna() {
   ordinati.forEach(p => {
     if (p.schermo.vicinanza >= dietroAlSole) soleQui();
     solDisegnaPiombo(ctx, p);
-    if (p.id === 'Earth') solDisegnaLuna(ctx, p, false, assi);
+    if (p.id === 'Earth') { solDisegnaOrbitaLuna(ctx, p, false); solDisegnaLuna(ctx, p, false, assi); }
     solDisegnaCorpo(ctx, p, assi);
-    if (p.id === 'Earth') solDisegnaLuna(ctx, p, true, assi);
+    if (p.id === 'Earth') { solDisegnaOrbitaLuna(ctx, p, true); solDisegnaLuna(ctx, p, true, assi); }
   });
   soleQui();   // tutti i pianeti sono dietro al Sole: tocca a lui chiudere
 
@@ -22334,7 +22924,7 @@ function solDisegna() {
     solTesto(ctx, `${alto} · ${bordo}${sol.distanzeVere ? '' : ' (compresse)'}`, 10, riga, '#64748b', 10.5);
   } else {
     solTesto(ctx, `${alto} delle orbite · ${misure}`, 10, riga, '#64748b', 11);
-    solTesto(ctx, `${sol.centratoTerra ? 'dalla Terra' : 'dal Sole'} al bordo ≈ ${bordo.replace(' al bordo', '')}` +
+    solTesto(ctx, `${sol.perno ? 'dal corpo scelto' : 'dal Sole'} al bordo ≈ ${bordo.replace(' al bordo', '')}` +
       (sol.distanzeVere ? '' : ' · distanze compresse'), sol.L - 10, riga, '#64748b', 11, 'right');
   }
 }
@@ -22403,6 +22993,21 @@ function solRigaTabella(p, terra) {
     </button>`;
 }
 
+// I due tasti che riguardano il perno della telecamera, uguali per ogni corpo.
+// Girare attorno a un pianeta e tornare alla vista d'insieme sono due modi di
+// guardare, non due gradi dello stesso: per questo sono due tasti e non uno
+// che si accende — chi ci sta sopra vuole poterne uscire senza indovinare
+// dove toccare.
+function solAzioniPerno(id, complemento) {
+  const sopra = sol.perno === id;
+  const guarda = id === 'Earth' ? '' :
+    '<button type="button" class="tasto-cielo tasto-primario" onclick="solGuardaNelPlanetario()">Guardalo nel planetario</button>';
+  const perno = sopra
+    ? '<button type="button" class="tasto-cielo" onclick="solLasciaPerno()">Torna alla vista d’insieme</button>'
+    : `<button type="button" class="tasto-cielo" onclick="solAvvicinaA('${id}')">Gira intorno ${complemento}</button>`;
+  return `<div class="sol-azioni">${guarda}${perno}</div>`;
+}
+
 function solSchedaHtml() {
   if (!sol.pianeti.length) {
     return '<p class="sol-vuoto">Senza la libreria di calcolo non si possono mettere i pianeti al loro posto. ' +
@@ -22428,25 +23033,21 @@ function solSchedaHtml() {
             <em>${el.gradi < 3 || el.gradi > 177 ? 'in linea' : (el.est ? 'a est del Sole' : 'a ovest del Sole')}</em></li>
         </ul>
         <p class="sol-frase">${solQuandoSiVede(el, scelto)}</p>
-        <div class="sol-azioni">
-          <button type="button" class="tasto-cielo tasto-primario" onclick="solGuardaNelPlanetario()">Guardalo nel planetario</button>
-        </div>
+        ${solAzioniPerno(scelto.id, 'a ' + scelto.nome)}
       </div>`;
   } else if (scelto) {
-    // Il tocco che ha scelto la Terra ha già avvicinato e cominciato a
-    // girarci intorno (`solScegli`): qui la scheda deve dirlo, non ripetere
+    // Il tocco che ha scelto la Terra l'ha già messa al centro della
+    // telecamera (`solScegli`): qui la scheda deve dirlo, non ripetere
     // l'invito. Il solo caso in cui si vede l'invito è arrivare qui già con
-    // la Terra scelta ma senza essersi ancora avvicinati (si apre la
-    // finestra puntati su di lei, un caso raro ma non impossibile).
-    const vicino = !!sol.centratoTerra;
+    // la Terra scelta ma senza esserci ancora sopra (si apre la finestra
+    // puntati su di lei, un caso raro ma non impossibile).
+    const sopra = sol.perno === 'Earth';
     testa = `<div class="sol-testa">
         <h4 style="color:${scelto.colore}">Terra</h4>
-        <p class="sol-frase">${vicino
+        <p class="sol-frase">${sopra
           ? 'Stai girando intorno alla Terra: trascina per guardarla da un’altra parte, e vedi dove sono finiti gli altri pianeti nello spazio qui vicino.'
           : 'Sei qui, sul pallino azzurro. La riga che parte da qui, quando scegli un pianeta, è la direzione in cui devi guardare: è la stessa che il planetario ti mostra dentro alla cupola.'}</p>
-        <div class="sol-azioni">
-          <button type="button" class="tasto-cielo tasto-primario" onclick="${vicino ? 'solEsciDaTerra()' : 'solAvvicinaTerra()'}">${vicino ? 'Torna alla vista d’insieme' : 'Avvicinati e gira intorno alla Terra'}</button>
-        </div>
+        ${solAzioniPerno('Earth', 'alla Terra')}
       </div>`;
   }
 
@@ -22520,16 +23121,14 @@ function solAggiornaScheda(forza) {
 function solScegli(id) {
   const nuovo = sol.scelto === id ? null : id;
   sol.scelto = nuovo;
-  // Toccare la Terra — sulla scena o nella riga della tabella, è lo stesso
-  // tocco — è il modo di entrare e uscire dalla vista da vicino: il primo
-  // tocco avvicina e comincia a girarci intorno, il secondo (quello che la
-  // deseleziona) torna alla vista d'insieme se ci si era entrati da lì.
-  // Scegliere un *altro* pianeta mentre si gira intorno alla Terra non
-  // sposta il perno: si resta lì, a guardare dove sta finendo quel pianeta.
-  if (id === 'Earth') {
-    if (nuovo === 'Earth') solAvvicinaTerra();
-    else if (sol.centratoTerra) solEsciDaTerra();
-  }
+  // Toccare un corpo — sulla scena o nella riga della tabella, è lo stesso
+  // tocco — lo mette al centro della telecamera e ci si comincia a girare
+  // intorno; ritoccarlo (cioè deselezionarlo) lascia il perno e torna alla
+  // vista d'insieme. Valeva per la sola Terra, e per la Luna non valeva
+  // affatto: si girava intorno al Sole guardando la Luna scappare fuori dal
+  // riquadro a ogni giro di dito.
+  if (nuovo) solAvvicinaA(nuovo);
+  else if (sol.perno === id) solLasciaPerno();
   solAggiornaScheda(true);
   solDisegna();
 }
@@ -22548,14 +23147,18 @@ window.solGuardaNelPlanetario = () => {
 //   cielo qui non deve imparare niente. L'istante è quello del planetario:
 //   quello che si sposta di qua si trova spostato anche di là.
 //
-//   Cambia solo la misura del passo, che lì sono minuti e qui sono giorni: un
-//   pianeta in dieci minuti non si muove. Il passo scelto decide tre cose
-//   insieme — quanto saltano i tasti − e +, quanto tempo copre la slitta, e
-//   quanto corre il play (tre passi al secondo) — così la velocità non è un
-//   comando in più da capire.
+//   E adesso non è più solo l'istante: sono lo stesso orologio anche il
+//   **passo** (`sky.passoTempoSec`, la scala di `SKY_PASSI_TEMPO`) e la
+//   **marcia** (il playback del planetario, con la sua velocità). Prima erano
+//   due meccanismi separati che condividevano un solo numero: il play di qui
+//   faceva tre passi al secondo con una scala tutta sua, quello di là andava a
+//   moltiplicatore del tempo vero, e passando da una finestra all'altra la
+//   stessa scena camminava a due velocità diverse — con la slitta di là tarata
+//   su una finestra che qui non esisteva. Un orologio solo vuol dire un solo
+//   passo e una sola velocità.
 
 function solPasso() {
-  return SOL_PASSI[Math.max(0, Math.min(SOL_PASSI.length - 1, sol.passoIndice || 0))];
+  return skyPassoTempo();
 }
 
 function solOffset() {
@@ -22603,23 +23206,33 @@ function solAggiornaBarra(quando) {
 
   const play = document.getElementById('sol-play');
   if (play) {
-    // Il tempo può camminare per due motivi: il play di questa barra, oppure
-    // il playback lasciato acceso nel planetario. È lo stesso orologio, e il
-    // tasto deve dire la verità su tutt'e due — se no qui si vede ❚❚ mentre
-    // la scena si muove da sola
+    // È il playback del planetario, non un secondo motore: il tasto dice la
+    // stessa cosa che dice il ▶ della barra sotto al cielo, e il verso in cui
+    // ripartirà è quello scelto lì
     const cammina = solInMarcia();
-    play.textContent = cammina ? '❚❚' : '▶';
+    const v = skyVelocitaPlayback();
+    const verso = sky.playbackVerso || sky.playbackUltimoVerso || 1;
+    play.textContent = cammina ? '❚❚' : (verso > 0 ? '▶' : '◀');
     play.classList.toggle('attiva', !!cammina);
     play.setAttribute('aria-pressed', cammina ? 'true' : 'false');
     play.title = cammina
-      ? (sky.playbackVerso ? `Ferma il tempo (playback del planetario, ${skyVelocitaPlayback().nome})` : 'Ferma il tempo')
-      : 'Fai camminare il tempo';
+      ? `Ferma il tempo (sta camminando a ${v.nome}, la stessa velocità del planetario)`
+      : `Fai camminare il tempo ${verso > 0 ? 'in avanti' : 'all’indietro'}, a ${v.nome}`;
   }
-  document.querySelectorAll('#sol-passi [data-sol-passo]').forEach(b => {
-    const attivo = Number(b.dataset.solPasso) === sol.passoIndice;
-    b.classList.toggle('attiva', attivo);
-    b.setAttribute('aria-pressed', attivo ? 'true' : 'false');
-  });
+  // La velocità, scritta accanto al play: è quella del planetario, e i due
+  // tasti la cambiano per tutt'e due le viste insieme
+  const vel = document.getElementById('sol-vel-valore');
+  if (vel) {
+    const v = skyVelocitaPlayback();
+    vel.textContent = v.nome;
+    vel.title = `In un secondo vero passa ${v.nome.replace('/s', '')} di tempo (${v.fattore.toLocaleString('it-IT')}×). ` +
+      'È la stessa velocità del playback del planetario.';
+    vel.classList.toggle('in-corso', !!sky.playbackVerso);
+  }
+  const velMeno = document.getElementById('sol-vel-meno');
+  const velPiu = document.getElementById('sol-vel-piu');
+  if (velMeno) velMeno.disabled = (sky.playbackVelIndice || 0) <= 0;
+  if (velPiu) velPiu.disabled = (sky.playbackVelIndice || 0) >= SKY_VELOCITA_PLAYBACK.length - 1;
 
   // Col pannello del tempo in prestito qui (7.5-ter) il ciclo del cielo è in
   // pausa, e nessuno rinfrescherebbe la data scritta nel campo né la lettura
@@ -22627,36 +23240,33 @@ function solAggiornaBarra(quando) {
   if (solPannelloTempoAperto()) skyAggiornaTestoTempo();
 }
 
-// Il tempo cammina, sì o no — comunque lo si sia messo in moto. Il playback
-// del planetario resta acceso anche mentre questa finestra è aperta (è lo
-// stesso orologio: chi lo fa avanzare, finché il cielo è in pausa dietro alla
-// finestra, è il ciclo di qui), quindi «in marcia» sono due cose che valgono
-// come una.
+// Il tempo cammina, sì o no. Adesso c'è un motore solo — il playback del
+// planetario — e questa è la sua lettura: finché il cielo è in pausa dietro
+// alla finestra, a farlo avanzare è il ciclo di qui (`solCiclo`).
 function solInMarcia() {
-  return sol.marcia || sky.playbackVerso || 0;
+  return sky.playbackVerso || 0;
 }
 
-// Ferma il tempo da qualunque parte lo si sia avviato
 function solFermaTempo() {
-  sol.marcia = 0;
   if (sky.playbackVerso) skyFermaPlayback();
 }
 
 function solAlternaMarcia() {
-  if (solInMarcia()) solFermaTempo();
-  else sol.marcia = 1;
+  if (solInMarcia()) skyFermaPlayback();
+  else skyAvviaPlayback(sky.playbackUltimoVerso || 1);
+  solAggiornaBarra();
+}
+
+// La velocità del playback, cambiata da qui: è la stessa manopola del
+// planetario, e infatti muove il suo indice
+function solCambiaVelocita(passo) {
+  skyCambiaVelocitaPlayback(passo);
   solAggiornaBarra();
 }
 
 function solSpostaDiUnPasso(verso) {
   solFermaTempo();
   skyImpostaOffsetTempo(solOffset() + verso * solPasso().sec);
-  solAggiornaBarra();
-}
-
-function solImpostaPasso(indice) {
-  sol.passoIndice = Math.max(0, Math.min(SOL_PASSI.length - 1, indice));
-  sol.ancoraSec = solOffset();      // la finestra nuova si centra su dove siamo
   solAggiornaBarra();
 }
 
@@ -22689,20 +23299,13 @@ function solCiclo(ts) {
   const dt = sol.ultimoTs ? Math.min((ts - sol.ultimoTs) / 1000, 0.1) : 0;
   sol.ultimoTs = ts;
 
-  // Il tempo che cammina: lo si sposta con `fluido`, cioè senza forzare a
-  // ogni fotogramma il ricalcolo di tutto il planetario che sta dietro. I
-  // conti veri li rifà questa vista, che ha bisogno solo di otto vettori.
-  if (sol.marcia) {
-    const avanti = solOffset() + sol.marcia * solPasso().sec * SOL_PASSI_AL_SECONDO * dt;
-    skyImpostaOffsetTempo(avanti, { fluido: true });
-    if (skyAlCapolineaDelTempo()) { sol.marcia = 0; }
-  } else if (sky.playbackVerso) {
-    // Il playback acceso nel planetario non si ferma perché si è aperta questa
-    // finestra: il cielo dietro è in pausa, ma l'orologio è lo stesso e a
-    // farlo camminare, adesso, è questo ciclo. Senza, la barra diceva «▶ 1 h/s»
-    // e la scena restava immobile — due orologi che dicevano cose diverse.
-    skyAvanzaPlayback();
-  }
+  // Il tempo che cammina è **quello del planetario**, anche quando a premere
+  // play è stata questa barra: il cielo dietro è in pausa, ma l'orologio è lo
+  // stesso e a farlo camminare, adesso, è questo ciclo. Lo spostamento è
+  // `fluido`, cioè senza forzare a ogni fotogramma il ricalcolo di tutto il
+  // planetario: i conti veri li rifà questa vista, che ha bisogno solo di
+  // otto vettori.
+  if (sky.playbackVerso) skyAvanzaPlayback();
 
   // La telecamera raggiunge il punto di vista chiesto scivolando. Smorzamento
   // esponenziale col `dt` del fotogramma, come i movimenti del planetario
@@ -22742,7 +23345,7 @@ function solImpostaZoom(z, opzioni = {}) {
   // fare tutt'e due le cose: allontanarsi finché il cono d'ombra della Terra
   // ci sta per intero (un milione e mezzo di chilometri) e avvicinarsi alla
   // Terra finché si riconoscono i continenti.
-  const tetto = sol.vicino ? SOL_VIC_ZOOM_MAX : (sol.centratoTerra ? SOL_ZOOM_MAX_TERRA : SOL_ZOOM_MAX);
+  const tetto = sol.vicino ? SOL_VIC_ZOOM_MAX : (sol.perno ? SOL_ZOOM_MAX_TERRA : SOL_ZOOM_MAX);
   const pavimento = sol.vicino ? SOL_VIC_ZOOM_MIN : 0.35;
   const valore = Math.max(pavimento, Math.min(tetto, z));
   sol.zoomVoluto = valore;
@@ -22821,11 +23424,33 @@ function solPanFraSoleETerra(zoom) {
   sol.panY = -(p.py - sol.cy) / 2;
 }
 
-// Il perno della telecamera, quando si è scelto di girare intorno alla Terra
-// invece che al Sole (vedi `solAvvicinaTerra`). Si chiama a ogni fotogramma,
-// prima di proiettare qualunque cosa: azzera lo spostamento e lo ricalcola da
-// zero, così da tenere la Terra incollata al centro della tela qualunque cosa
-// stiano facendo il trascinamento, lo zoom o l'orologio.
+// Dove sta, nella scena, il corpo su cui si sta girando. La Luna è l'unico
+// caso che non si legge direttamente dalle posizioni: nella scena grande è
+// disegnata a distanza esagerata dalla Terra (vedi `solDisegnaLuna`), e il
+// perno deve stare dov'è **disegnata**, se no il centro della tela cadrebbe
+// dentro al pallino azzurro mentre la Luna è mezzo schermo più in là.
+function solPuntoPerno() {
+  if (!sol.perno) return null;
+  if (sol.vicino) {
+    // Nel banco delle eclissi la scena è un'altra: la Terra è l'origine e la
+    // Luna sta ai suoi chilometri veri
+    if (sol.perno === 'Earth') return solVicScena([0, 0, 0]);
+    if (sol.perno === 'Moon') {
+      const g = solGeocentriche(new Date(sol.istante || skyAdesso().getTime()));
+      return g ? solVicScena(g.luna) : null;
+    }
+    return null;
+  }
+  if (sol.perno === 'Moon') return solScenaLuna();
+  const p = sol.pianeti.find(x => x.id === sol.perno);
+  return p ? (p.scena || solScena(p.pos)) : null;
+}
+
+// Il perno della telecamera, quando si è scelto di girare intorno a un corpo
+// invece che intorno al Sole (vedi `solAvvicinaA`). Si chiama a ogni
+// fotogramma, prima di proiettare qualunque cosa: azzera lo spostamento e lo
+// ricalcola da zero, così da tenere quel corpo incollato al centro della tela
+// qualunque cosa stiano facendo il trascinamento, lo zoom o l'orologio.
 //
 // Non è un'approssimazione. In proiezione ortogonale ruotare l'intera scena
 // intorno all'origine (il Sole) e poi traslare lo schermo per rimettere un
@@ -22834,37 +23459,55 @@ function solPanFraSoleETerra(zoom) {
 // traslazione costante, uguale per ogni punto della scena — non dipende da
 // dove sta il punto. Per questo il gesto che già gira la scena
 // (`solInizializzaGesti`, che cambia `az`/`elev`) diventa da solo «gira
-// intorno alla Terra», senza bisogno di una matematica di rotazione diversa.
-function solAggiornaPivotTerra() {
-  // Nel banco delle eclissi la Terra è già l'origine della scena: un secondo
-  // ricentraggio la inchioderebbe al centro anche quando la si vuole spostare
-  if (sol.vicino) return;
-  if (!sol.centratoTerra) return;
-  const terra = sol.pianeti.find(p => p.id === 'Earth');
-  if (!terra) return;
+// intorno a quel corpo», senza bisogno di una matematica di rotazione diversa.
+function solAggiornaPivot() {
+  if (!sol.perno) return;
+  const p = solPuntoPerno();
+  if (!p) return;
   sol.panX = 0;
   sol.panY = 0;
-  const p = solProietta(solScena(terra.pos));
-  sol.panX = sol.cx - p.px;
-  sol.panY = sol.cy - p.py;
+  const q = solProietta(p);
+  sol.panX = sol.cx - q.px;
+  sol.panY = sol.cy - q.py;
 }
 
-// Zooma sulla Terra e comincia a girarci intorno: la chiama `solScegli` al
-// primo tocco sulla Terra, dalla scena o dalla riga della tabella.
-function solAvvicinaTerra() {
-  sol.centratoTerra = true;
-  solImpostaZoom(solZoomPer(SOL_VICINO_TERRA_UA), { morbido: true });
-  solAggiornaTasti();
+// Mette un corpo al centro della telecamera e comincia a girarci intorno: la
+// chiama `solScegli` al tocco, dalla scena o dalla riga della tabella.
+//
+// Lo zoom si muove solo per **avvicinare**, mai per allontanare. Chi tocca un
+// pianeta di solito vuole leggere la sua scheda, e ritrovarsi la scena
+// riportata indietro a una cornice decisa da noi sarebbe una risposta a una
+// domanda che non ha fatto; chi invece sta guardando tutto il sistema e tocca
+// Nettuno se lo ritrova al centro e più vicino, che è quello che voleva.
+function solAvvicinaA(id) {
+  sol.perno = id;
+  // Nel banco delle eclissi lo zoom ha un metro tutto suo (i chilometri, non
+  // le unità astronomiche): lì toccare un corpo lo centra e basta — la
+  // cornice l'ha già scelta `solInquadraVicino` per far entrare l'orbita
+  const voluto = sol.vicino ? 0 : solZoomPer(SOL_VICINO_TERRA_UA);
+  if (voluto > sol.zoomVoluto) solImpostaZoom(voluto, { morbido: true });
+  else solAggiornaTasti();
   if (sol.aperto) solDisegna();
 }
 
+// Compatibilità con i tasti della scheda: la Terra è un corpo come gli altri
+function solAvvicinaTerra() { solAvvicinaA('Earth'); }
+
 // Torna alla vista d'insieme centrata sul Sole: stessa inquadratura con cui
-// ci si è entrati, non un ritorno a metà — «vicino alla Terra» e «vista
+// ci si è entrati, non un ritorno a metà — «vicino a un corpo» e «vista
 // d'insieme» sono due modi diversi di guardare, non due gradi dello stesso.
-// Spegne da sé `centratoTerra`: lo fa `solInquadraDaTerra`.
-function solEsciDaTerra() {
+// Spegne da sé il perno: lo fa `solInquadraDaTerra`.
+function solLasciaPerno() {
+  if (sol.vicino) {
+    // Nel banco delle eclissi «la vista d'insieme» è la sua: Terra e Luna con
+    // l'orbita intera dentro al riquadro
+    sol.perno = null;
+    solInquadraVicino({ morbido: true });
+    return;
+  }
   solInquadraDaTerra({ morbido: true });
 }
+function solEsciDaTerra() { solLasciaPerno(); }
 
 // L'inquadratura d'ingresso (vedi SOL_ENTRATA_ELEV): la disposizione di
 // adesso, guardata da sopra la Terra. È quella con cui si entra e quella a cui
@@ -22873,8 +23516,8 @@ function solInquadraDaTerra(opzioni = {}) {
   const morbido = !!opzioni.morbido;
   // È un'inquadratura centrata sul Sole: se si stava girando intorno alla
   // Terra, quel perno smette qui, o il ricentraggio automatico di
-  // `solAggiornaPivotTerra` la contraddirebbe a ogni fotogramma successivo.
-  sol.centratoTerra = false;
+  // `solAggiornaPivot` la contraddirebbe a ogni fotogramma successivo.
+  sol.perno = null;
   const terra = sol.pianeti.find(p => p.id === 'Earth');
   // Il giro: la Terra sotto al Sole, sulla stessa verticale. La rotazione
   // della scena somma `az` alla longitudine di tutti, quindi basta chiedere
@@ -23049,22 +23692,31 @@ function solInizializzaGesti() {
 }
 
 function solTocco(e) {
-  // Nel banco delle eclissi i pallini della scena grande non ci sono: un
-  // tocco sceglierebbe un pianeta che non è disegnato da nessuna parte
-  if (sol.vicino) return;
-  if (!sol.canvas || !sol.pianeti.length) return;
+  if (!sol.canvas) return;
   const r = sol.canvas.getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
-  // Ogni pianeta ha la sua area sensibile — almeno un polpastrello, di più se
+  // Ogni corpo ha la sua area sensibile — almeno un polpastrello, di più se
   // il pallino è grosso — ma a vincere è sempre il più vicino al dito: la
   // soglia dice *se* si può prendere, non *chi* si prende.
   let migliore = null, miglioreD = Infinity;
-  sol.pianeti.forEach(p => {
+  const prova = (id, px, py, raggio) => {
+    const d = Math.hypot(px - x, py - y);
+    if (d <= Math.max(22, raggio + 10) && d < miglioreD) { migliore = id; miglioreD = d; }
+  };
+  // Nel banco delle eclissi i pallini della scena grande non ci sono: lì i
+  // corpi da toccare sono due, la Terra e la Luna, e li ha appena disegnati
+  // `solDisegnaVicino`
+  const corpi = sol.vicino ? (sol.vicCorpi || []) : sol.pianeti;
+  corpi.forEach(p => {
     if (!p.schermo) return;
-    const d = Math.hypot(p.schermo.px - x, p.schermo.py - y);
-    if (d <= Math.max(22, (p.rDisegno || p.raggio) + 10) && d < miglioreD) { migliore = p; miglioreD = d; }
+    prova(p.id, p.schermo.px, p.schermo.py, p.rDisegno || p.raggio || 0);
   });
-  if (migliore) solScegli(migliore.id);
+  // La Luna della scena grande non è un pianeta e non sta in `sol.pianeti`:
+  // il suo posto sullo schermo lo lascia scritto chi la disegna
+  if (!sol.vicino && sol.lunaSchermo) {
+    prova('Moon', sol.lunaSchermo.px, sol.lunaSchermo.py, sol.lunaSchermo.r);
+  }
+  if (migliore) solScegli(migliore);
 }
 
 // --- A tutto schermo -------------------------------------------------------
@@ -23217,14 +23869,21 @@ window.apriSistemaSolare = (opzioni = {}) => {
   // a meno che si arrivi da un evento, che ha un protagonista suo
   const bersaglio = SOL_PIANETI.some(p => p.id === sky.target) ? sky.target : null;
   sol.scelto = piano.scelto || bersaglio;
-  sol.marcia = 0;
   // Il banco delle eclissi è una scelta di questo ingresso, non una
   // preferenza da ritrovare: chi riapre la finestra riparte dai pianeti
   sol.vicino = !!piano.vicino;
-  sol.passoIndice = sol.vicino ? 0 : 1;
-  // Si riparte sempre dalla vista d'insieme: girare intorno alla Terra è una
+  // Il passo è quello del planetario, e aprendo questa finestra si passa a
+  // una misura che qui ha senso: sotto al cielo si lavora a minuti, qui un
+  // pianeta in dieci minuti non si muove di un pixel. Ma è un automatismo, non
+  // una scelta di chi guarda: se ne segna il valore di prima e chiudendo lo si
+  // rimette, a meno che nel frattempo il passo non sia stato scelto a mano —
+  // quello è una scelta, e le scelte non si disfano (vedi `chiudiSistemaSolare`).
+  sol.passoPrima = sky.passoTempoSec || 600;
+  sol.passoToccato = false;
+  skyImpostaPassoTempo(sol.vicino ? SOL_PASSO_ENTRATA_VICINO : SOL_PASSO_ENTRATA);
+  // Si riparte sempre dalla vista d'insieme: girare intorno a un corpo è una
   // scelta di questa sessione, non una preferenza da ritrovare
-  sol.centratoTerra = false;
+  sol.perno = null;
   // La scena riparte in mezzo alla tela: lo spostamento di due dita è una
   // cosa di questa sessione, non una preferenza da ritrovare
   sol.panX = 0;
@@ -23285,15 +23944,18 @@ function chiudiSistemaSolare() {
   const modale = document.getElementById('modale-sistema');
   if (modale) modale.classList.add('hidden');
   sol.aperto = false;
-  // La marcia di questa vista finisce con lei: i suoi passi (un giorno, un
-  // mese, un anno per scatto) non hanno un corrispondente fra le velocità del
-  // playback del planetario, e farlo ripartire a caso vorrebbe dire tornare
-  // su un cielo che scappa. Il playback del planetario, invece, se era acceso
-  // resta acceso: qui dentro non si è mai fermato, l'ha solo fatto camminare
-  // il ciclo di questa finestra.
-  sol.marcia = 0;
+  // La marcia **non** finisce con la finestra: è il playback del planetario,
+  // e chiudendo si torna sul cielo che sta camminando alla stessa velocità e
+  // sullo stesso istante. Prima qui dentro c'era un secondo motore, con passi
+  // suoi che sotto al cielo non esistevano: quello sì che andava spento, o si
+  // tornava su un cielo che scappava a tre mesi al secondo.
   if (sol.raf) cancelAnimationFrame(sol.raf);
   sol.raf = null;
+
+  // Il passo: se qui dentro nessuno l'ha scelto a mano, quello dell'ingresso
+  // era un automatismo nostro e si disfa — sotto al cielo un passo da un
+  // giorno vuol dire che il tasto + salta la notte intera
+  if (!sol.passoToccato && sol.passoPrima) skyImpostaPassoTempo(sol.passoPrima);
 
   // Il tempo camminato qui dentro è quello del planetario: prima di tornarci
   // si arrotonda al secondo e si forza il ricalcolo, che durante la marcia
@@ -23330,8 +23992,8 @@ function inizializzaSistemaSolare() {
       if (b.dataset.solQuadro === 'terra') { solInquadraDaTerra({ morbido: true }); return; }
       const interni = b.dataset.solQuadro === 'interni';
       // Anche questi due sono centrati sul Sole: se si stava girando intorno
-      // alla Terra il perno smette qui, come per "Da qui"
-      sol.centratoTerra = false;
+      // a un corpo il perno smette qui, come per "Da qui"
+      sol.perno = null;
       // Gli altri due sono comandi di sola inquadratura: se la scena era stata
       // spostata di lato, "Tutto" deve tornare a farla vedere tutta
       solCentra();
@@ -23450,15 +24112,15 @@ function inizializzaSistemaSolare() {
     });
   }
 
-  const passi = document.getElementById('sol-passi');
-  if (passi && passi.dataset.pronto !== 'si') {
-    passi.innerHTML = SOL_PASSI.map((v, i) =>
-      `<button type="button" class="tasto-segmento" data-sol-passo="${i}" ` +
-      `title="I tasti − e + saltano di un ${v.nome}, e il play ne fa tre al secondo">${v.nome}</button>`).join('');
-    passi.querySelectorAll('[data-sol-passo]').forEach(b =>
-      b.addEventListener('click', () => solImpostaPasso(Number(b.dataset.solPasso))));
-    passi.dataset.pronto = 'si';
-  }
+  // I chip del passo sono gli stessi del planetario, scritti dalla stessa
+  // funzione: sceglierne uno qui lo sceglie anche sotto al cielo
+  skyScriviChipPasso(document.getElementById('sol-passi'));
+
+  // La velocità del playback, che è quella del planetario
+  const velMeno = document.getElementById('sol-vel-meno');
+  if (velMeno) velMeno.addEventListener('click', () => solCambiaVelocita(-1));
+  const velPiu = document.getElementById('sol-vel-piu');
+  if (velPiu) velPiu.addEventListener('click', () => solCambiaVelocita(1));
 
   document.addEventListener('keydown', e => {
     if (!sol.aperto) return;
@@ -28169,7 +28831,6 @@ function skyVaiAllaDataScritta() {
   // si ferma tutto ciò che sta camminando, di qua come nella finestra del
   // Sistema Solare, che è lo stesso orologio
   skyFermaPlayback();
-  sol.marcia = 0;
   skyImpostaOffsetTempo((d.getTime() - Date.now()) / 1000);
   skyMostraGruppo('');
 }
@@ -28242,23 +28903,71 @@ function skyImpostaFinestraTempo(secondi) {
 // volte — chi lavora al secondo vuole la slitta sui minuti, chi salta di
 // giorno in giorno la vuole sul mese — e prima erano due file di tasti da
 // tenere d'accordo a mano. Adesso è una scelta sola.
-const SKY_FINESTRA_DEL_PASSO = {
-  10: 600,          // dieci secondi di passo, slitta su ±10 minuti
-  60: 3600,
-  600: 43200,
-  3600: 604800,
-  86400: 2592000    // un giorno di passo, slitta su ±30 giorni
-};
+// La scala è **una sola per tutta l'app**, e comprende anche i passi lunghi
+// che prima erano solo del Sistema Solare 3D (§7.7). Le due viste sono lo
+// stesso orologio, ma finché avevano due scale diverse — minuti di qua, mesi
+// di là — "un passo avanti" voleva dire due cose a seconda della finestra che
+// si stava guardando: si spostava il tempo con il + della 3D e tornando al
+// cielo la slitta era su un'altra scala, con l'istante finito fuori finestra.
+// Adesso i chip sono generati da qui in tutt'e due i posti, e cambiarli in uno
+// li cambia nell'altro.
+const SKY_PASSI_TEMPO = [
+  { sec: 10,             nome: '10 s',   finestra: 600 },          // slitta su ±10 minuti
+  { sec: 60,             nome: '1 min',  finestra: 3600 },
+  { sec: 600,            nome: '10 min', finestra: 43200 },
+  { sec: 3600,           nome: '1 h',    finestra: 604800 },
+  { sec: 86400,          nome: '1 g',    finestra: 2592000 },      // slitta su ±30 giorni
+  { sec: 2592000,        nome: '1 mese', finestra: 2 * 365.25 * 86400 },
+  { sec: 31557600,       nome: '1 anno', finestra: 30 * 365.25 * 86400 }
+];
+
+// Il gradino della scala che vale adesso: la 3D ci legge la finestra della sua
+// slitta e il salto dei suoi tasti, esattamente come il planetario
+function skyPassoTempo() {
+  const passo = sky.passoTempoSec || 600;
+  return SKY_PASSI_TEMPO.reduce((a, b) =>
+    Math.abs(b.sec - passo) < Math.abs(a.sec - passo) ? b : a);
+}
+
+// I chip del passo: la stessa fila, scritta dove la si chiede. Il planetario
+// li tiene nel pannello Tempo, il Sistema Solare 3D nella sua riga di comandi
+// (`#sol-passi`), e siccome portano tutt'e due lo stesso `data-passo-tempo`
+// basta un giro solo per tenerli d'accordo.
+function skyScriviChipPasso(contenitore) {
+  if (!contenitore || contenitore.dataset.passiPronti === 'si') return;
+  contenitore.innerHTML = SKY_PASSI_TEMPO.map(p =>
+    `<button type="button" class="tasto-segmento" data-passo-tempo="${p.sec}" aria-pressed="false" ` +
+    `title="I tasti − e + saltano di ${p.nome}, e la slitta copre altrettanto tempo attorno">${p.nome}</button>`
+  ).join('');
+  contenitore.querySelectorAll('[data-passo-tempo]').forEach(b =>
+    b.addEventListener('click', () => {
+      // Un passo scelto a mano mentre la finestra del Sistema Solare è aperta
+      // è una scelta, non l'automatismo dell'ingresso: chiudendo la finestra
+      // resta (vedi `chiudiSistemaSolare`)
+      if (typeof sol === 'object' && sol && sol.aperto) sol.passoToccato = true;
+      skyImpostaPassoTempo(b.dataset.passoTempo);
+    }));
+  contenitore.dataset.passiPronti = 'si';
+}
 
 function skyImpostaPassoTempo(secondi) {
-  const passo = Math.max(1, parseInt(secondi, 10) || 600);
-  sky.passoTempoSec = passo;
-  document.querySelectorAll('#cielo-comandi [data-passo-tempo]').forEach(b => {
-    const scelto = parseInt(b.dataset.passoTempo, 10) === passo;
+  const voluto = Math.max(1, parseInt(secondi, 10) || 600);
+  const gradino = SKY_PASSI_TEMPO.reduce((a, b) =>
+    Math.abs(b.sec - voluto) < Math.abs(a.sec - voluto) ? b : a);
+  sky.passoTempoSec = gradino.sec;
+  // Il giro è su tutto il documento e non sul solo pannello del cielo: i chip
+  // sono in due posti, e il pannello del tempo può anche essere in prestito
+  // alla finestra del Sistema Solare (7.5-ter)
+  document.querySelectorAll('[data-passo-tempo]').forEach(b => {
+    const scelto = parseInt(b.dataset.passoTempo, 10) === gradino.sec;
     b.classList.toggle('attiva', scelto);
     b.setAttribute('aria-pressed', scelto ? 'true' : 'false');
   });
-  skyImpostaFinestraTempo(SKY_FINESTRA_DEL_PASSO[passo] || passo * 72);
+  skyImpostaFinestraTempo(gradino.finestra);
+  if (typeof sol === 'object' && sol && sol.aperto) {
+    sol.ancoraSec = sky.offsetTempoSec || 0;   // la finestra nuova si centra su dove siamo
+    solAggiornaBarra();
+  }
 }
 
 // Un passo avanti o indietro (verso +1 o −1). Non ferma il playback: è una
@@ -28508,10 +29217,9 @@ function inizializzaSkymapExtra() {
     if (sky.playbackVerso) skyFermaPlayback();
     else skyAvviaPlayback(sky.playbackUltimoVerso || 1);
   });
-  // Il passo scelto vale per i due tasti e per la slitta insieme
-  document.querySelectorAll('#cielo-comandi [data-passo-tempo]').forEach(b => {
-    b.addEventListener('click', () => skyImpostaPassoTempo(b.dataset.passoTempo));
-  });
+  // Il passo scelto vale per i due tasti e per la slitta insieme — e vale
+  // anche per il Sistema Solare 3D, che legge lo stesso gradino (§7.7)
+  skyScriviChipPasso(document.querySelector('#skymap-passi .segmenti-cielo'));
   collega('skymap-passo-meno', () => skySpostaDiUnPasso(-1));
   collega('skymap-passo-piu', () => skySpostaDiUnPasso(1));
 
