@@ -17599,6 +17599,7 @@ window.apriEventoNelPlanetario = (id) => {
   if (!ev || !ev.dataObj) return;
 
   mostraVista('cielo');
+  skyMostraGruppo('');
 
   // Prima si ferma il playback: se no il tempo, appena arrivati sull'istante
   // giusto, ricomincerebbe subito a scappare via
@@ -18641,20 +18642,22 @@ function inizializzaSkymap() {
     const voce = skyOggettoScelto();
     if (voce) skyCentraSu(voce);
     else skyAvviso('centratura', 'Prima scegli un oggetto: dall\'elenco qui sotto, o toccandolo sulla mappa.', 7000);
+    skyMostraGruppo('');
   });
-  collega('skymap-btn-insegui', skyAlternaInseguimento);
-  collega('skymap-btn-insegui-mappa', skyAlternaInseguimento);
+  collega('skymap-btn-insegui', () => { skyAlternaInseguimento(); skyMostraGruppo(''); });
+  collega('skymap-btn-insegui-mappa', () => { skyAlternaInseguimento(); skyMostraGruppo(''); });
   // Il Sistema Solare visto da fuori (sezione 7.7): sta in fondo al pannello
   // degli astri, subito sotto l'elenco da cui si sceglie il pianeta
-  collega('skymap-btn-sistema', () => apriSistemaSolare());
+  collega('skymap-btn-sistema', () => { apriSistemaSolare(); skyMostraGruppo(''); });
   skyAggiornaTastoInsegui();
   document.querySelectorAll('#cielo-comandi [data-verso]').forEach(b => {
     b.addEventListener('click', () => {
       const v = b.dataset.verso;
       skyGuardaVerso(v === 'zenit' ? 'zenit' : (parseInt(v, 10) || 0));
+      skyMostraGruppo('');
     });
   });
-  collega('skymap-btn-segui', skyAlternaSeguiTelefono);
+  collega('skymap-btn-segui', () => { skyAlternaSeguiTelefono(); skyMostraGruppo(''); });
   collega('skymap-cal-meno', () => skyImpostaOffsetBussola(sky.offsetBussola - 5));
   collega('skymap-cal-piu', () => skyImpostaOffsetBussola(sky.offsetBussola + 5));
   collega('skymap-cal-zero', () => skyImpostaOffsetBussola(0));
@@ -18672,6 +18675,7 @@ function inizializzaSkymap() {
     sky[campo] = !sky[campo];
     skyAggiornaTastiFiltri();
     skyAggiornaOggetti(true);
+    skyMostraGruppo('');
   });
   filtro('skymap-btn-pianeti', 'mostraPianeti');
   filtro('skymap-btn-solelun', 'mostraSoleLuna');
@@ -18688,11 +18692,13 @@ function inizializzaSkymap() {
   // accende la prima volta senza rete, lo dice e resta il disegnato.
   collega('skymap-btn-terreno', () => {
     if (typeof terrenoAlterna === 'function') terrenoAlterna();
+    skyMostraGruppo('');
   });
   // Le luci dei paesi: anche loro non nascondono niente, aggiungono. E si
   // possono volere spente — chi disegna una carta del cielo vuole il nero.
   collega('skymap-btn-citta', () => {
     if (typeof cittaAlterna === 'function') cittaAlterna();
+    skyMostraGruppo('');
   });
   // I nomi delle montagne: stessa famiglia dei due qui sopra — non
   // nascondono niente, dicono come si chiama quello che c'è già. Si
@@ -18700,6 +18706,7 @@ function inizializzaSkymap() {
   // conosce a memoria, sono sette scritte davanti al cielo.
   collega('skymap-btn-cime', () => {
     if (typeof cimeAlterna === 'function') cimeAlterna();
+    skyMostraGruppo('');
   });
   // L'aurora: acceso, l'ovale c'è sempre — solo che da quasi tutta Europa
   // sta sotto l'orizzonte e non si disegna niente. Il tasto serve a
@@ -18707,6 +18714,7 @@ function inizializzaSkymap() {
   // cielo di prima.
   collega('skymap-btn-aurora', () => {
     if (typeof aurAlterna === 'function') aurAlterna();
+    skyMostraGruppo('');
   });
   if (typeof terrenoAggiornaPannello === 'function') terrenoAggiornaPannello();
   // I segni degli eventi si accendono e si spengono senza rifare i conti
@@ -18714,6 +18722,7 @@ function inizializzaSkymap() {
   collega('skymap-btn-eventi', () => {
     sky.mostraEventi = !sky.mostraEventi;
     skyAggiornaTastiFiltri();
+    skyMostraGruppo('');
   });
   // Anche la traccia è solo disegno: la sua curva si ricalcola da sé al
   // prossimo fotogramma, e spegnendola sparisce senza rifare nessun conto
@@ -18722,6 +18731,7 @@ function inizializzaSkymap() {
     if (!sky.mostraTraccia) sky.traccia.punti = [];
     sky.traccia.chiave = null;
     skyAggiornaTastiFiltri();
+    skyMostraGruppo('');
   });
   // L'eclittica è una linea sola, ma quasi nessuno sa già cosa sia: la prima
   // volta che si accende conviene dirlo, altrimenti resta un tratteggio in più
@@ -18740,6 +18750,7 @@ function inizializzaSkymap() {
         'a quest\'ora ogni giorno dell\'anno.', 14000);
     }
     skyAggiornaTastiFiltri();
+    skyMostraGruppo('');
   });
   // Il promemoria sopra la mappa apre l'elenco di cosa sta succedendo
   collega('skymap-eventi-chip', () => skyMostraGruppo('eventi'));
@@ -18784,6 +18795,7 @@ function inizializzaSkymap() {
     if (!cont) return;
     const attiva = cont.classList.toggle('modalita-notte');
     skyTasto('skymap-btn-notte', attiva, attiva ? 'Colori normali' : 'Modalità notte');
+    skyMostraGruppo('');
   });
 
   // --- Trovare un astro senza scorrere tutto l'elenco ---
@@ -18814,9 +18826,10 @@ function inizializzaSkymap() {
     sky.soloAstriVisibili = !sky.soloAstriVisibili;
     skyTasto('skymap-astri-visibili', sky.soloAstriVisibili);
     skyFiltraElenco();
+    skyMostraGruppo('');
   });
 
-  collega('skymap-btn-schermo', skyAlternaSchermoIntero);
+  collega('skymap-btn-schermo', () => { skyAlternaSchermoIntero(); skyMostraGruppo(''); });
   // Lo stesso comando, ma appoggiato sull'angolo della mappa: com'è per la
   // mappa dell'ombra delle eclissi, dove il ⛶ sta lì e non dentro a un
   // pannello. Andarlo a cercare fra le opzioni della Visualizzazione,
@@ -28545,15 +28558,17 @@ function inizializzaSkymapExtra() {
     sky.mostraCostellazioni = !sky.mostraCostellazioni;
     skyAggiornaTastiFiltri();
     skyAggiornaOggetti(true);
+    skyMostraGruppo('');
   });
 
   collega('skymap-btn-deepsky', () => {
     sky.mostraProfondo = !sky.mostraProfondo;
     skyAggiornaTastiFiltri();
     skyAggiornaOggetti(true);
+    skyMostraGruppo('');
   });
 
-  collega('skymap-btn-camera', skyAttivaFotocamera);
+  collega('skymap-btn-camera', () => { skyAttivaFotocamera(); skyMostraGruppo(''); });
 
   // Uscendo dal planetario la fotocamera si spegne: batteria e privacy
   document.addEventListener('visibilitychange', () => {
