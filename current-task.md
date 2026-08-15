@@ -3,8 +3,13 @@
 Calendario e Sistema Solare 3D, sei cose in un giro solo.
 
 - **Calendario**: selettore di **intervallo di date** (vista Mese e vista Agenda), che
-  calcola gli eventi di tutti i mesi che tocca (`impostaIntervalloSelezionato`,
-  tetto di 36 mesi), filtra l'agenda e tinge i giorni nella griglia. Gli eventi
+  calcola gli eventi di tutti i mesi che tocca — **senza tetto ai mesi**: si
+  calcolano a scaglioni (`calcolaMesiAScaglioni`) cedendo il turno al browser,
+  con la riga di stato che dice a che punto è e gli eventi che compaiono mano
+  a mano; dieci anni sono nove secondi con la pagina viva. Filtra l'agenda e
+  tinge i giorni nella griglia. `sincronizzaCalendario` ricarica dentro a un
+  `batchRendering`: senza, i millequattrocento eventi di dieci anni volevano
+  dodici secondi solo per entrare nella griglia. Gli eventi
   nella griglia adesso portano l'icona della categoria e il titolo su una riga
   colorata (`contenutoEventoGriglia`), invece del pallino grigio di prima.
 - **Orbita della Luna** nella scena grande della 3D, alla stessa distanza
