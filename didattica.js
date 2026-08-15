@@ -8683,6 +8683,27 @@
     if (l && l.esce) { try { l.esce(); } catch (e) { /* niente */ } }
   };
 
+  window.didEntraSchermoIntero = function () {
+    // Cerchiamo la scena 3D attualmente visibile (quindi dentro un banco non nascosto)
+    const banco = document.querySelector('.did-lab:not(.hidden)');
+    if (banco) {
+      // In alcune scene (es. spazio, ci sono più scene e solo alcune visibili)
+      // Troviamo quella che non ha l'attributo hidden e non ha la classe hidden.
+      const sceneVisibili = Array.from(banco.querySelectorAll('.did-scena')).filter(s => {
+        // Se c'è un genitore col data-quadro, questo deve corrispondere al quadro attivo, ma per sicurezza controlliamo che sia visibile
+        // Check display style / hidden attribute
+        if (s.closest('[hidden]')) return false;
+        if (s.closest('.hidden')) return false;
+        return true;
+      });
+      if (sceneVisibili.length > 0) {
+        // Prendi la prima (o l'unica) scena visibile e mettila a tutto schermo
+        const id = sceneVisibili[0].id;
+        if (id) didPienoEntra('#' + id);
+      }
+    }
+  };
+
   window.didatticaRidimensiona = function () { cacheStelle.chiave = ''; };
   window.didProve = {
     fiondaIperbole, FIONDA_PIANETI,
