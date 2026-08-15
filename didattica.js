@@ -280,6 +280,45 @@
 
   function didPienoAttivo(id) { return !!id && pieno.id === id; }
 
+  // Qual è il disegno che si sta guardando adesso. Serve a chi arriva da
+  // fuori — girando il telefono, per esempio — e deve prendersi «questo»
+  // senza sapere che banco sia né quanti quadri abbia.
+  //
+  // La domanda non ha una risposta scritta da nessuna parte: un banco ha
+  // due tele affiancate (il retrogrado), un altro ne ha quattro di cui una
+  // sola a schermo (il tramonto), e quale sia visibile lo decide il quadro
+  // scelto, cioè una classe `hidden` messa da un'altra parte del file. La
+  // via che regge tutti i casi è guardare **come sono impaginate adesso**:
+  // una tela nascosta non ha `offsetParent` e non misura niente.
+  //
+  // Fra quelle che restano si sceglie in due tempi. Prima le **principali**,
+  // che sono quelle che il banco aveva già dichiarato tali chiedendo il ⛶
+  // (`pieno: true`, prima che il tasto lo prendessero tutte): in un banco
+  // con una scena e il suo grafico di corredo — le velocità della fionda, le
+  // distanze in scala logaritmica delle costellazioni — la scena è la prima
+  // e il grafico è il commento. Poi, a pari merito, **la prima nell'ordine
+  // della pagina**, che nei banchi scritti a mano è sempre quella che il
+  // banco esiste per mostrare.
+  //
+  // Non l'area, che era il primo tentativo e sbagliava proprio i due casi
+  // che contano: un grafico a strisce largo tutto il banco e alto duecento
+  // pixel copre più superficie della scena quadrata che gli sta sopra, e
+  // girando il telefono ci si trovava a schermo intero il commento invece
+  // del discorso.
+  function didScenaDaGirare() {
+    const banco = stato.lab && $('did-lab-' + stato.lab);
+    if (!banco || banco.classList.contains('hidden')) return null;
+    let principale = null, comunque = null;
+    banco.querySelectorAll('canvas.did-tela').forEach(c => {
+      if (!c.id || !c.offsetParent) return;
+      if (c.clientWidth < 40 || c.clientHeight < 40) return;
+      if (!comunque) comunque = c.id;
+      const l = lenti.get(c.id);
+      if (l && l.principale && !principale) principale = c.id;
+    });
+    return principale || comunque;
+  }
+
   // La barra che appartiene a questa scena: si sale di padre in padre finché
   // non se ne trova una, e ci si ferma al banco. Sembra un giro largo e
   // invece è l'unico modo che regge tutti i casi: la fionda ne ha due (il
@@ -512,8 +551,18 @@
     if (!scena) return;
     const box = document.createElement('div');
     box.className = 'did-lente';
+    // Il ⛶ ce l'hanno **tutte** le scene con la lente, non più le sole sei
+    // in tre dimensioni. La distinzione aveva un senso finché a chiedere lo
+    // schermo intero era solo chi doveva girare un piano di taglio; da
+    // quando basta mettere il telefono di traverso per prendersi lo schermo
+    // (vedi 0-bis in app.js), una scena che si allarga girando il telefono
+    // ma non ha il tasto per farlo a mano è un comando nascosto. E la
+    // ragione vale anche da sola: un grafico largo tre volte più che alto —
+    // le velocità delle Voyager, il taglio dell'aurora — dentro a duecento
+    // pixel d'altezza è proprio quello che si vorrebbe vedere più grande.
+    // Chi non lo vuole scrive `pieno: false`.
     box.innerHTML =
-      (opz && opz.pieno
+      (!opz || opz.pieno !== false
         ? '<button type="button" class="did-lente-tasto did-lente-pieno" data-lente="pieno" ' +
             'title="Guarda la scena a schermo intero, con la sua barra del tempo" ' +
             'aria-label="Schermo intero" aria-pressed="false">⛶</button>'
@@ -590,6 +639,12 @@
     c.dataset.lente = 'si';
     const l = didLente(id);
     l.tela = c;
+    // Chi aveva chiesto il ⛶ per nome è la scena principale del suo quadro:
+    // adesso il tasto ce l'hanno tutte, ma questa resta la sola cosa che
+    // distingue una scena dal grafico che le fa da commento — e serve a
+    // `didScenaDaGirare` per sapere quale delle due prendere girando il
+    // telefono
+    l.principale = !!(opz && opz.pieno === true);
     // Le tele che hanno già un gesto loro (la fionda: si trascina per
     // spostare il punto di passaggio) tengono quello, e la lente si muove
     // coi tasti e col pizzico. Due significati per lo stesso dito sarebbero
@@ -8683,26 +8738,29 @@
     if (l && l.esce) { try { l.esce(); } catch (e) { /* niente */ } }
   };
 
+  // --- Lo schermo intero chiesto da fuori (girando il telefono) ----------
+  //
+  // Le tre funzioni che il resto dell'app usa per prendersi il banco che è a
+  // schermo: c'è qualcosa da girare? è già pieno? prendilo, o restituiscilo.
+  //
+  // La prima versione di queste righe non ha mai funzionato, e vale la pena
+  // dire perché: cercava il `<figure class="did-scena">` visibile e ne
+  // passava l'`id` a `didPienoEntra`. Ma le figure un `id` non ce l'hanno —
+  // ce l'ha la tela dentro di loro — e per giunta l'id veniva passato col
+  // cancelletto davanti, mentre `didPienoEntra` fa una `getElementById`, che
+  // di selettori non sa niente. Due errori che si annullavano in silenzio:
+  // la funzione usciva senza fare niente e senza lasciare traccia, e da
+  // fuori sembrava soltanto che la Didattica «non girasse».
+  window.didScenaDaGirare = didScenaDaGirare;
+  window.didScenaGirata = function () { return !!pieno.id; };
+
   window.didEntraSchermoIntero = function () {
-    // Cerchiamo la scena 3D attualmente visibile (quindi dentro un banco non nascosto)
-    const banco = document.querySelector('.did-lab:not(.hidden)');
-    if (banco) {
-      // In alcune scene (es. spazio, ci sono più scene e solo alcune visibili)
-      // Troviamo quella che non ha l'attributo hidden e non ha la classe hidden.
-      const sceneVisibili = Array.from(banco.querySelectorAll('.did-scena')).filter(s => {
-        // Se c'è un genitore col data-quadro, questo deve corrispondere al quadro attivo, ma per sicurezza controlliamo che sia visibile
-        // Check display style / hidden attribute
-        if (s.closest('[hidden]')) return false;
-        if (s.closest('.hidden')) return false;
-        return true;
-      });
-      if (sceneVisibili.length > 0) {
-        // Prendi la prima (o l'unica) scena visibile e mettila a tutto schermo
-        const id = sceneVisibili[0].id;
-        if (id) didPienoEntra('#' + id);
-      }
-    }
+    const id = didScenaDaGirare();
+    if (id) didPienoEntra(id);
+    return !!id;
   };
+
+  window.didEsciSchermoIntero = function () { didPienoEsci(); };
 
   window.didatticaRidimensiona = function () { cacheStelle.chiave = ''; };
   window.didProve = {

@@ -449,23 +449,121 @@ function sorvegliaIstruzioniCielo() {
   });
 }
 
-// Quello che va rifatto quando si passa, per esempio, da verticale a
-// orizzontale su un tablet: gli elenchi cambiano lunghezza e le tele misura
+// =====================================================================
+// 0-bis. GIRARE IL TELEFONO
+//     Mettere lo schermo di traverso, su un telefono, vuol dire una cosa
+//     sola: «fammi vedere questo più grande». È il gesto con cui si guarda
+//     un video, ed è lo stesso con cui si guarda una carta del cielo.
+//     Quindi girando il telefono la scena che si sta guardando — il
+//     planetario, il Sistema Solare in 3D, il banco della Didattica — si
+//     prende tutto lo schermo, e rimettendolo dritto torna dov'era.
+//
+//     Tre regole, e sono quelle che rendono il gesto reversibile:
+//
+//     1. **Si disfa solo quello che abbiamo fatto noi** (`pienoDaRotazione`).
+//        Chi era già entrato a schermo intero col suo tasto e poi gira il
+//        telefono non deve ritrovarsi buttato fuori: quella era una scelta,
+//        non un effetto della rotazione.
+//     2. **Si agisce solo sul cambio di verso** (`eraOrizzontale`). Chi
+//        esce a mano mentre lo schermo è già di traverso non se lo ritrova
+//        riaperto un istante dopo: per riaprirlo bisogna girare di nuovo.
+//     3. **Vale solo per un telefono girato** (`telefonoGirato()`: schermo
+//        basso, più largo che alto, e si tocca). Su un tablet in
+//        orizzontale lo spazio c'è già, e sul computer «girare» non vuol
+//        dire niente — è solo una finestra ridimensionata.
+//
+//     Sul pieno schermo vero c'è una cosa da sapere: l'API Fullscreen vuole
+//     un gesto dell'utente, e una rotazione per il browser non lo è, quindi
+//     la richiesta può benissimo venire rifiutata. Non è un problema, ed è
+//     il motivo per cui qui non si chiama `requestFullscreen` a mano: le
+//     tre scene hanno già ognuna il suo ripiego in CSS — un riquadro
+//     incollato al viewport — e ci ripiegano da sé quando la promessa viene
+//     rifiutata. Da fuori non si vede la differenza.
+// =====================================================================
 
-// Se ruotiamo il telefono in orizzontale, le scene e mappe attive entrano a schermo intero
-function entraPienoSchermoSeServe() {
-  if (vistaAttuale === 'cielo' && typeof sky === 'object' && sky.aperto && typeof skyEntraSchermoIntero === 'function') {
-    // Cielo
-    skyEntraSchermoIntero();
-  } else if (typeof sol === 'object' && sol.aperto && typeof solEntraSchermoIntero === 'function') {
-    // Sistema solare
-    solEntraSchermoIntero();
-  } else if (vistaAttuale === 'didattica' && typeof window.didEntraSchermoIntero === 'function') {
-    // Laboratorio / Grafici didattici
-    window.didEntraSchermoIntero();
+// Chi si prende lo schermo, in ordine di precedenza: vince quello che sta
+// più in alto, perché una finestra aperta sopra al cielo è quella che si
+// sta guardando. `ce` dice se c'è, `pieno` se ci è già, `entra`/`esci`
+// sono i suoi comandi di sempre — quelli del suo tasto ⛶.
+const SCENE_DEL_GIRO = [
+  {
+    nome: 'sistema',
+    ce: () => typeof sol === 'object' && sol.aperto && typeof solEntraSchermoIntero === 'function',
+    pieno: () => typeof solSchermoIntero !== 'undefined' && solSchermoIntero,
+    entra: () => solEntraSchermoIntero(),
+    esci: () => solEsciSchermoIntero()
+  },
+  {
+    nome: 'cielo',
+    ce: () => vistaAttuale === 'cielo' && typeof sky === 'object' && sky.aperto
+      && typeof skyEntraSchermoIntero === 'function',
+    pieno: () => typeof sky === 'object' && !!sky.schermoIntero,
+    entra: () => skyEntraSchermoIntero(),
+    esci: () => skyEsciSchermoIntero()
+  },
+  {
+    nome: 'didattica',
+    ce: () => vistaAttuale === 'didattica' && typeof window.didEntraSchermoIntero === 'function'
+      && !!window.didScenaDaGirare(),
+    pieno: () => typeof window.didScenaGirata === 'function' && window.didScenaGirata(),
+    entra: () => window.didEntraSchermoIntero(),
+    esci: () => window.didEsciSchermoIntero()
   }
+];
+
+// Chi abbiamo mandato a schermo intero noi, girando il telefono, e com'era
+// lo schermo l'ultima volta che ci abbiamo guardato
+let pienoDaRotazione = null;
+let eraOrizzontale = null;
+
+function scenaDelGiro() {
+  return SCENE_DEL_GIRO.find(s => { try { return s.ce(); } catch (e) { return false; } }) || null;
 }
 
+function scenaDiNome(nome) {
+  return SCENE_DEL_GIRO.find(s => s.nome === nome) || null;
+}
+
+function qualcosaAPienoSchermo() {
+  return SCENE_DEL_GIRO.some(s => { try { return s.pieno(); } catch (e) { return false; } });
+}
+
+// Il telefono è appena finito di traverso: la scena che è a schermo si
+// prende tutto. Se ce n'è già una piena — magari aperta a mano un minuto
+// fa, o una finestra ospitata sopra al cielo a schermo intero — non si
+// tocca niente: sarebbe entrare due volte in due riquadri annidati.
+function giroPrendiLoSchermo() {
+  if (qualcosaAPienoSchermo()) return;
+  const s = scenaDelGiro();
+  if (!s) return;
+  try { s.entra(); } catch (e) { return; }
+  pienoDaRotazione = s.nome;
+}
+
+// Il telefono è tornato dritto: si restituisce lo schermo, ma solo se a
+// prenderselo eravamo stati noi e se quella scena è ancora piena — chi nel
+// frattempo è uscito col ✕ ha già fatto da sé, e chiamare `esci` una
+// seconda volta gli farebbe saltare una tappa della cronologia.
+function giroRestituisciLoSchermo() {
+  const s = pienoDaRotazione && scenaDiNome(pienoDaRotazione);
+  pienoDaRotazione = null;
+  if (!s) return;
+  try { if (s.pieno()) s.esci(); } catch (e) { /* era già tornato da sé */ }
+}
+
+// Si può chiamare quante volte si vuole: fuori dal cambio di verso non fa
+// niente. Serve, perché a ogni rotazione la passata è doppia (vedi
+// `inizializzaDispositivo`) e gli avvisi arrivano quasi sempre in coppia.
+function pienoSchermoDelGiro() {
+  const orizzontale = telefonoGirato();
+  if (orizzontale === eraOrizzontale) return;
+  eraOrizzontale = orizzontale;
+  if (orizzontale) giroPrendiLoSchermo();
+  else giroRestituisciLoSchermo();
+}
+
+// Quello che va rifatto quando si passa, per esempio, da verticale a
+// orizzontale su un tablet: gli elenchi cambiano lunghezza e le tele misura
 function ridisegnaPerDispositivo() {
   if (vistaAttuale === 'stasera') {
     costruisciStaseraProssimi();
@@ -552,19 +650,24 @@ function inizializzaDispositivo() {
   // quasi sempre in coppia (matchMedia e orientationchange), i timer già in
   // attesa si annullano: di ridisegni ne resta comunque uno.
   let giri = [];
-  let eraGirato = telefonoGirato();
+  // Da che verso si parte: senza questo, la prima rotazione non sarebbe un
+  // cambio di verso rispetto a niente e `pienoSchermoDelGiro` la lascerebbe
+  // passare o la tratterebbe come tale a seconda di come si è aperta l'app
+  eraOrizzontale = telefonoGirato();
   const suGiro = () => {
     giri.forEach(clearTimeout);
     const passata = () => {
-      const oraGirato = telefonoGirato();
-      if (!eraGirato && oraGirato) entraPienoSchermoSeServe();
-      eraGirato = oraGirato;
-
+      // Prima lo schermo intero e poi il resto: il riquadro cambia misura
+      // entrandoci, e le tele vanno rimisurate *dopo*, non prima
+      pienoSchermoDelGiro();
       applicaProfiloDispositivo({ forza: true });
       adattaAltezzaCalendario();
       if (fullCalendarInstance) fullCalendarInstance.updateSize();
     };
-    giri = [setTimeout(passata, 120), setTimeout(passata, 300)];
+    // Tre passate e non due. La terza serve allo schermo intero: entrandoci
+    // il riquadro cambia misura una seconda volta, dopo che la promessa di
+    // `requestFullscreen` si è sciolta, e quel momento non ha un avviso suo.
+    giri = [setTimeout(passata, 120), setTimeout(passata, 300), setTimeout(passata, 700)];
   };
   // matchMedia è la via che funziona ovunque, anche dove `orientationchange`
   // non arriva mai (schermi che ruotano senza avvisare, finestre affiancate)
@@ -575,6 +678,13 @@ function inizializzaDispositivo() {
     versoSchermo.addListener(suGiro);       // Safari fino alla 13
   }
   window.addEventListener('orientationchange', suGiro);
+  // La via moderna, ed è quella che conta nella PWA installata: lì la barra
+  // del browser non c'è, `orientationchange` su qualche Android arriva una
+  // volta sola e in anticipo, e `screen.orientation` è l'unico avviso che
+  // arriva sempre e a cose fatte
+  if (screen.orientation && screen.orientation.addEventListener) {
+    screen.orientation.addEventListener('change', suGiro);
+  }
 }
 
 // Barra di navigazione: sul telefono diventa la fila di icone in fondo allo
