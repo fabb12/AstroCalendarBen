@@ -274,6 +274,21 @@
         <button type="button" data-azione-mese="vai" class="selettore-mese-btn selettore-mese-btn-primario">Mostra</button>
         <button type="button" data-azione-mese="oggi" class="selettore-mese-btn">Mese corrente</button>
       </div>
+      <!-- L'intervallo: due date qualsiasi, anche a cavallo di più mesi o di
+           più anni. Un mese per volta risponde a «cosa succede a marzo»; un
+           intervallo risponde alle domande che la gente si fa davvero — le
+           due settimane di ferie, il weekend lungo, i tre mesi che mancano al
+           viaggio. Gli eventi di tutti i mesi che tocca vengono calcolati al
+           momento, come per il mese singolo. -->
+      <div class="selettore-intervallo" data-selettore-intervallo>
+        <span class="selettore-mese-etichetta">Oppure un intervallo</span>
+        <label class="etichetta-intervallo">Dal <input type="date" data-campo-da
+          class="selettore-mese-campo campo-data-intervallo" aria-label="Data di inizio"></label>
+        <label class="etichetta-intervallo">al <input type="date" data-campo-a
+          class="selettore-mese-campo campo-data-intervallo" aria-label="Data di fine"></label>
+        <button type="button" data-azione-intervallo="calcola" class="selettore-mese-btn selettore-mese-btn-primario">Calcola gli eventi</button>
+        <button type="button" data-azione-intervallo="azzera" class="selettore-mese-btn">Togli l’intervallo</button>
+      </div>
       <p id="calendario-stato" class="text-xs text-slate-400 mb-3"></p>
       <div id="calendario-griglia"></div>
     </div>
@@ -290,6 +305,16 @@
           <button type="button" data-azione-mese="vai" class="selettore-mese-btn selettore-mese-btn-primario">Mostra</button>
           <button type="button" data-azione-mese="oggi" class="selettore-mese-btn">Mese corrente</button>
           <button type="button" data-azione-mese="prossimi" class="selettore-mese-btn">Tutti i prossimi</button>
+        </div>
+        <!-- Lo stesso intervallo del calendario: le due viste restano allineate -->
+        <div class="selettore-intervallo" data-selettore-intervallo>
+          <span class="selettore-mese-etichetta">Oppure un intervallo</span>
+          <label class="etichetta-intervallo">Dal <input type="date" data-campo-da
+            class="selettore-mese-campo campo-data-intervallo" aria-label="Data di inizio"></label>
+          <label class="etichetta-intervallo">al <input type="date" data-campo-a
+            class="selettore-mese-campo campo-data-intervallo" aria-label="Data di fine"></label>
+          <button type="button" data-azione-intervallo="calcola" class="selettore-mese-btn selettore-mese-btn-primario">Calcola gli eventi</button>
+          <button type="button" data-azione-intervallo="azzera" class="selettore-mese-btn">Togli l’intervallo</button>
         </div>
         <p id="agenda-stato" class="text-xs text-slate-400"></p>
       </div>
@@ -452,22 +477,12 @@
                    alla mappa e quanto tempo copre la sua slitta. Con dieci
                    secondi un pixel di slitta vale un secondo, ed è lì che serve
                    la precisione; con un giorno si attraversa il mese. -->
-              <div class="riga-comandi" role="group" aria-label="Passo del tempo" data-solo-cielo>
-                <div class="segmenti-cielo">
-                  <button type="button" class="tasto-segmento" data-passo-tempo="10" aria-pressed="false"
-                    title="Passi da dieci secondi, slitta su ±10 minuti">10 s</button>
-                  <button type="button" class="tasto-segmento" data-passo-tempo="60" aria-pressed="false"
-                    title="Passi da un minuto, slitta su ±1 ora">1 min</button>
-                  <button type="button" class="tasto-segmento attiva" data-passo-tempo="600" aria-pressed="true"
-                    title="Passi da dieci minuti, slitta su ±12 ore">10 min</button>
-                  <button type="button" class="tasto-segmento" data-passo-tempo="3600" aria-pressed="false"
-                    title="Passi da un'ora, slitta su ±7 giorni">1 h</button>
-                  <button type="button" class="tasto-segmento" data-passo-tempo="86400" aria-pressed="false"
-                    title="Passi da un giorno, slitta su ±30 giorni">1 g</button>
-                </div>
+              <div id="skymap-passi" class="riga-comandi" role="group" aria-label="Passo del tempo">
+                <div class="segmenti-cielo"></div>
               </div>
-              <p class="etichetta-comando nota-lunga" data-solo-cielo>Il passo vale per i tasti − e + e per la slitta della barra
-                del tempo, quella in fondo alla mappa.</p>
+              <p class="etichetta-comando nota-lunga">Il passo vale per i tasti − e + e per la slitta della barra
+                del tempo, tanto quella in fondo alla mappa quanto quella del Sistema Solare in 3D: è lo stesso
+                orologio, e adesso è anche lo stesso passo.</p>
 
               <!-- PLAYBACK: il tempo che cammina da solo. I salti e la slitta
                    portano su un istante e lì si fermano; qui invece il cielo si
@@ -481,7 +496,7 @@
                    Il verso scelto qui è quello che poi userà il ▶ della barra
                    del tempo: chi guarda il cielo tornare indietro di solito
                    vuole rifarlo, e non deve riaprire il pannello per dirlo. -->
-              <div class="riga-comandi riga-playback" aria-label="Playback del tempo" data-solo-cielo>
+              <div class="riga-comandi riga-playback" aria-label="Playback del tempo">
                 <button id="skymap-play-indietro" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
                   title="Fai scorrere il cielo all'indietro (ripremi per fermarlo)"
                   aria-label="Playback all'indietro">◀◀</button>
@@ -1439,6 +1454,17 @@
               title="Avanti di un passo" aria-label="Avanti di un passo">+</button>
             <button id="sol-play" type="button" class="tasto-barra-tempo tasto-play-barra"
               aria-pressed="false" title="Fai camminare il tempo" aria-label="Avvia">▶</button>
+            <!-- La velocità con cui il tempo cammina è quella del planetario:
+                 è lo stesso orologio, e questi due tasti muovono lo stesso
+                 moltiplicatore che si trova nel pannello Tempo sotto al cielo. -->
+            <span class="sol-velocita" role="group" aria-label="Velocità del tempo">
+              <button id="sol-vel-meno" type="button" class="tasto-barra-tempo tasto-vel-barra"
+                title="Rallenta" aria-label="Rallenta il tempo">−</button>
+              <span id="sol-vel-valore" class="lettura-velocita" aria-live="polite"
+                title="Quanto tempo passa in un secondo vero">—</span>
+              <button id="sol-vel-piu" type="button" class="tasto-barra-tempo tasto-vel-barra"
+                title="Accelera" aria-label="Accelera il tempo">+</button>
+            </span>
           </div>
         </div>
 
@@ -1496,6 +1522,9 @@
               <button type="button" class="tasto-segmento" data-sol-misure="grandi" data-solo-pianeti title="Pallini tutti leggibili, comodi da toccare col dito">Ingranditi</button>
               <button type="button" class="tasto-segmento" data-sol-misure="vere" data-solo-pianeti title="In scala fra loro: Giove è ventinove volte Mercurio, e si vede">In scala</button>
             </div>
+            <!-- Il passo è lo stesso del planetario: i chip li scrive
+                 `skyScriviChipPasso`, e sceglierne uno qui lo sceglie anche
+                 sotto al cielo. Un orologio solo vuol dire anche un passo solo. -->
             <span class="sol-etichetta">Passo del tempo</span>
             <div id="sol-passi" class="segmenti-cielo" role="group" aria-label="Passo del tempo"></div>
           </div>

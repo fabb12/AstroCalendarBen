@@ -798,15 +798,84 @@ body.cielo-immersivo .nav-principale { display: none; }
 .fc-daygrid-event {
   border: none;
   background: transparent;
-  padding-left: 2px;
+  padding-left: 0;
   transition: background-color var(--transizione);
   border-radius: 6px;
 }
-.fc-daygrid-event:hover { background-color: rgba(148, 168, 214, 0.1); }
+.fc-daygrid-event:hover { background-color: transparent; }
 .fc-daygrid-event .fc-event-title { color: var(--testo-2); font-weight: 450; }
 .fc-daygrid-dot-event .fc-event-title { font-weight: 500; }
 .fc-daygrid-event-dot { border-width: 4px; border-radius: 50%; }
 .fc-h-event { background: transparent; }
+
+/* La riga di un evento dentro alla casella del giorno.
+   Prima era un puntino di quattro pixel e un titolo grigio: dieci righe
+   identiche, e per sapere cosa fosse cosa bisognava leggerle tutte. Adesso
+   ogni riga porta l'icona della sua categoria, il titolo e l'ora, e il
+   colore dell'evento non è più un puntino ma il filo verticale a sinistra
+   più un velo dietro — che è quel poco che basta perché «le eclissi» si
+   vedano come gruppo senza leggere una parola.
+
+   Il colore arriva da `--colore-evento`, scritto sul nodo da
+   `contenutoEventoGriglia()`: qui non c'è nessun elenco di categorie da
+   tenere d'accordo con quello di `app.js`. */
+/* FullCalendar, per un evento «block», stende il colore dell'evento come
+   fondo pieno del rettangolo — e lo scrive nello stile in riga, quindi un
+   foglio di stile senza `!important` non lo tocca. Qui il colore lo mettiamo
+   noi, dosato: il rettangolo pieno con dieci eventi in colonna diventava una
+   scacchiera di tinte sature in cui il testo bianco non si leggeva. */
+.fc .fc-daygrid-block-event,
+.fc .fc-h-event {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none;
+}
+.fc .fc-daygrid-block-event .fc-event-main { color: inherit; padding: 0; }
+.fc .fc-daygrid-event-harness { margin-top: 1px; }
+
+.evento-griglia {
+  --colore-evento: var(--blu);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+  padding: 2px 5px 2px 6px;
+  border-radius: 5px;
+  border-left: 3px solid var(--colore-evento);
+  background: color-mix(in srgb, var(--colore-evento) 14%, transparent);
+  transition: background-color var(--transizione);
+}
+.fc-daygrid-event:hover .evento-griglia {
+  background: color-mix(in srgb, var(--colore-evento) 26%, transparent);
+}
+.evento-griglia-icona {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--colore-evento);
+}
+.evento-griglia-icona svg { display: block; }
+.evento-griglia-titolo {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--testo);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+/* L'ora si vede solo dove la casella è larga abbastanza da non toglierla al
+   titolo (vedi il blocco dei 1440px): in una casella da centoquaranta pixel
+   «Massima elongazione» diventa «Massima El…» per far posto a un orario che
+   nell'agenda c'è già. Nel `title` invece c'è sempre. */
+.evento-griglia-ora {
+  display: none;
+  flex: 0 0 auto;
+  color: var(--testo-3);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
 .fc .fc-daygrid-day.fc-day-other { opacity: 0.35; }
 .fc-popover {
   background: var(--superficie-piena) !important;
@@ -2097,6 +2166,55 @@ figure.ecl-schema-fig {
 }
 
 .selettore-mese-btn-primario:hover { background: var(--blu-scuro); }
+
+/* ------------------------------------------- SELETTORE DELL'INTERVALLO
+   Due date qualsiasi invece di un mese. Sta sotto al selettore del mese e
+   si legge come la sua alternativa — «oppure» — non come un secondo
+   comando da capire: stessa riga, stessi campi, stessi tasti. Quando è
+   acceso si accende anche lui, perché da lì in poi è lui a comandare
+   quello che si legge nelle due viste. */
+.selettore-intervallo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--raggio-m);
+  transition: border-color var(--transizione), background-color var(--transizione);
+}
+
+.selettore-intervallo.intervallo-acceso {
+  border-color: var(--bordo);
+  background: rgba(76, 141, 255, 0.06);
+}
+
+.etichetta-intervallo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--testo-3);
+}
+
+/* Le caselle data native sono chiare di partenza, come tutti i comandi del
+   browser: qui si rimettono nel tema scuro, icona del calendario compresa */
+.campo-data-intervallo {
+  color-scheme: dark;
+  font-variant-numeric: tabular-nums;
+}
+.campo-data-intervallo::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+
+/* La fascia dei giorni scelti, dietro alle caselle del mese: si vede *dove*
+   cade l'intervallo mentre si sfogliano i mesi */
+.fc .fc-bg-event.fascia-intervallo {
+  background: rgba(76, 141, 255, 0.16);
+  opacity: 1;
+}
 
 /* -------------------------------------------------------------- RESPONSIVE */
 @media (max-width: 640px) {
@@ -4519,6 +4637,24 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
    allo stesso modo: qui serve solo dirle quanto sono alti i suoi tasti, che
    nel planetario glielo dice la vista. */
 .sol-barra-tempo { --tasto-tempo: 38px; }
+/* La velocità del tempo, appoggiata accanto al play. È la stessa manopola del
+   planetario: il tempo delle due viste cammina insieme, e chi lo fa correre da
+   qui deve poterlo anche rallentare senza aprire un pannello. I due tasti sono
+   più stretti dei fratelli della barra — non sono comandi da cercare, sono un
+   aggiustamento — e sotto ai 520px la fila va a capo come tutta la barra. */
+.sol-velocita {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+.sol-barra-tempo .tasto-vel-barra {
+  min-width: calc(var(--tasto-tempo) - 10px);
+  width: calc(var(--tasto-tempo) - 10px);
+  font-size: 0.9rem;
+}
+.sol-barra-tempo .tasto-vel-barra:disabled { opacity: 0.35; cursor: default; }
+.sol-velocita .lettura-velocita { min-width: 52px; font-size: 0.72rem; }
 .sol-suggerimento {
   position: absolute;
   top: 10px;
@@ -5334,6 +5470,9 @@ body.luogo-immersivo { overflow: hidden; }
 @media (min-width: 1440px) {
   .fc .fc-toolbar-title { font-size: 1.5rem; }
   .fc-daygrid-event .fc-event-title { font-size: 0.86rem; }
+  .evento-griglia-titolo { font-size: 0.84rem; }
+  /* Qui la casella è larga abbastanza: l'ora torna, e sta accanto al titolo */
+  .evento-griglia-ora { display: inline; font-size: 0.72rem; }
 }
 
 /* ============================================================================
@@ -5552,6 +5691,24 @@ body.luogo-immersivo { overflow: hidden; }
   .fc-daygrid-event .fc-event-title { font-size: 0.62rem; }
   .fc .fc-daygrid-more-link { font-size: 0.62rem; }
   .fc-daygrid-event-dot { border-width: 3px; }
+  /* Nella casella di un telefono ci stanno sessanta pixel di larghezza utile:
+     l'ora e l'icona cedono il posto al titolo, che è l'unica cosa che senza
+     non si capisce più di che evento si tratti. L'icona resta — è larga
+     tredici pixel e dice la categoria senza una parola — l'ora no. */
+  /* In una casella da cinquanta pixel l'icona si mangia un quarto della riga
+     e al titolo restano due lettere: «☾ C…». Meglio il contrario — il titolo
+     per intero fin dove ci sta, e la categoria detta dal colore del filo a
+     sinistra, che è l'unica cosa che a quella misura si legge comunque. */
+  .evento-griglia { gap: 3px; padding: 1px 2px 1px 3px; border-left-width: 2px; }
+  .evento-griglia-icona { display: none; }
+  .evento-griglia-titolo { font-size: 0.63rem; }
+
+  /* Il selettore dell'intervallo si stringe: etichetta e casella sulla stessa
+     riga, e i due tasti affiancati come quelli del mese */
+  .selettore-intervallo { padding: 6px 0; gap: 6px; }
+  .selettore-intervallo .selettore-mese-etichetta { flex: 1 1 100%; }
+  .etichetta-intervallo { flex: 1 1 calc(50% - 3px); min-width: 0; }
+  .campo-data-intervallo { flex: 1 1 auto; min-width: 0; }
 }
 
 /* Il sottotitolo si vede solo da 900px in su: sotto verrebbe tagliato a metà
