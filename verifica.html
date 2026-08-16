@@ -2754,6 +2754,306 @@ titolo('18. La Terra e le eclissi nella vista 3D (app.js §7.7-ter e §7.7-quate
 }
 
 // =====================================================================
+titolo('19. Il mare nel planetario (app.js, «Il mare»)');
+// ---------------------------------------------------------------------
+//   Un mare disegnato male è bello lo stesso, ed è tutto il problema. Una
+//   prospettiva sbagliata di un fattore dieci fa un mare convincente — solo
+//   che l'orizzonte è a cinquecento metri invece che a cinque chilometri, e
+//   le onde vicino alla riga sono grandi come quelle sotto i piedi. Una
+//   riflessione senza Fresnel fa un mare azzurro uniforme, che a colpo
+//   d'occhio va benissimo e non somiglia a niente. E una strada di luce
+//   messa dove pare fa una bella colonna bianca, che però con il Sole alto
+//   non dovrebbe esserci affatto.
+//
+//   Come per il §8 e il §18, le formule qui sono **una copia** di quelle di
+//   app.js: questa pagina l'interfaccia non ce l'ha. Il valore della prova
+//   non è «il codice fa questo», è «la geometria che il codice ha scritto
+//   torna coi fatti»: la distanza dell'orizzonte marino misurata dai
+//   naviganti da secoli, la legge di Fresnel, la dispersione delle onde in
+//   acqua profonda, e la forma che il luccichio del Sole ha davvero.
+{
+  const R = 6371000 / (1 - 0.13);       // raggio efficace, rifrazione compresa
+
+  const dip = h => Math.acos(Math.max(-1, Math.min(1, R / (R + h)))) * (180 / Math.PI);
+  const orizzonte = h => R * dip(h) * D2R;
+  const depressione = (s, h) => {
+    const th = Math.max(0, s) / R;
+    const x = R * Math.sin(th);
+    if (!(x > 0)) return 90;
+    return Math.atan2((R + h) - R * Math.cos(th), x) * (180 / Math.PI);
+  };
+  const distanza = (dep, h) => {
+    const s0 = orizzonte(h);
+    const d = Math.max(0, dep) * D2R;
+    const c = (1 + h / R) * Math.cos(d);
+    if (!(c < 1)) return s0;
+    return Math.max(0, Math.min(s0, R * (d - Math.acos(Math.max(-1, c)))));
+  };
+
+  // -------------------------------------------------------------------
+  // La distanza dell'orizzonte. Il numero che i naviganti usano da sempre
+  // è `3,86·√h` chilometri con l'altezza in metri (la rifrazione è già
+  // dentro): dalla battigia poco meno di cinque chilometri, dal ponte di
+  // una nave dodici, da una scogliera sessantasei.
+  // -------------------------------------------------------------------
+  [[1.6, 4.88], [10, 12.2], [300, 66.9], [3000, 211.4]].forEach(([h, km]) => {
+    const mio = orizzonte(h) / 1000;
+    prova(`da ${h} m l'orizzonte del mare è a ${km} km`,
+      Math.abs(mio - km) / km < 0.015, `${mio.toFixed(2)} km`);
+  });
+
+  // Il trabocchetto che è costato un mare invisibile: chiedere la distanza
+  // dell'orizzonte all'inversa, cioè `distanza(dip(h), h)`. A quel punto
+  // l'arcocoseno riceve un numero che vale uno meno due decimillesimi di
+  // miliardesimo, che in doppia precisione **è** uno: la funzione tornava
+  // infinito e dalla battigia il mare non si disegnava affatto. Per questo
+  // `skyMareOrizzonte` esiste e vale `R·δ`.
+  [1.6, 3.6, 10, 300].forEach(h => {
+    const s = distanza(dip(h), h);
+    prova(`la distanza dell'orizzonte da ${h} m è un numero, non infinito`,
+      Number.isFinite(s) && s > 0 && Math.abs(s - orizzonte(h)) / orizzonte(h) < 1e-6,
+      `${(s / 1000).toFixed(3)} km`);
+  });
+
+  // -------------------------------------------------------------------
+  // Andata e ritorno fra distanza e depressione. È la coppia di funzioni su
+  // cui poggia tutta la prospettiva: se non si chiudono, le fasce d'onda
+  // cadono dove non è la loro distanza e le onde hanno la scala sbagliata.
+  // -------------------------------------------------------------------
+  {
+    let peggio = 0, dove = '';
+    [1.6, 30, 300, 1400].forEach(h => {
+      [h, h * 3, 100, 1000, orizzonte(h) * 0.3, orizzonte(h) * 0.95].forEach(s => {
+        if (!(s > 0.5)) return;
+        const torna = distanza(depressione(s, h), h);
+        const err = Math.abs(torna - s) / s;
+        if (err > peggio) { peggio = err; dove = `h=${h} s=${s.toFixed(0)}`; }
+      });
+    });
+    prova('da distanza a depressione e ritorno si torna allo stesso punto',
+      peggio < 1e-6, `errore relativo massimo ${peggio.toExponential(1)} (${dove})`);
+  }
+
+  // A distanza pari all'altezza dell'occhio si guarda a quarantacinque
+  // gradi: è il caso che l'approssimazione dei piccoli angoli sbaglia del
+  // trenta per cento, ed è il motivo per cui qui c'è un arcotangente vero.
+  prova('a distanza uguale all\'altezza dell\'occhio la depressione è 45°',
+    Math.abs(depressione(1.6, 1.6) - 45) < 0.01, `${depressione(1.6, 1.6).toFixed(3)}°`);
+
+  // -------------------------------------------------------------------
+  // La compressione, che è la promessa del disegno. Dalla battigia quasi
+  // tutta la distanza del mare visibile sta nel primo grado sotto la riga
+  // dell'orizzonte; da una cima è tutta un'altra cosa, e la stessa formula
+  // deve dire tutt'e due senza aggiustamenti.
+  // -------------------------------------------------------------------
+  {
+    const dentro = h => 1 - distanza(dip(h) + 1, h) / orizzonte(h);
+    const bassa = dentro(1.6), alta = dentro(3000);
+    prova('dalla battigia il primo grado sotto l\'orizzonte contiene quasi tutto il mare',
+      bassa > 0.97, `${(bassa * 100).toFixed(1)}% della distanza`);
+    prova('da tremila metri no: là il mare si apre',
+      alta < 0.7 && alta > 0.4, `${(alta * 100).toFixed(1)}% della distanza`);
+  }
+
+  // -------------------------------------------------------------------
+  // Il colore: Fresnel. L'acqua è uno specchio di striscio e una finestra a
+  // picco, e da qui viene tutto — la fascia chiara all'orizzonte, il blu che
+  // si scurisce verso i piedi, e il mare che al tramonto si accende da sé.
+  // -------------------------------------------------------------------
+  {
+    const fresnel = dep => {
+      const uno = 1 - Math.sin(Math.max(0, Math.min(90, dep)) * D2R);
+      return Math.min(0.6, 0.02 + 0.98 * Math.pow(uno, 5));
+    };
+    prova('a picco l\'acqua riflette il due per cento: si vede dentro',
+      Math.abs(fresnel(90) - 0.02) < 0.001, `${(fresnel(90) * 100).toFixed(1)}%`);
+    prova('di striscio è uno specchio (tosato al 60%: le onde si fanno ombra)',
+      fresnel(0.05) > 0.59, `${(fresnel(0.05) * 100).toFixed(1)}%`);
+    let cala = true;
+    for (let d = 0.05; d < 90; d *= 1.3) if (fresnel(d * 1.3) > fresnel(d) + 1e-9) cala = false;
+    prova('e in mezzo scende sempre, senza gradini', cala);
+    // Il numero che si controlla a mano: a 30° di depressione (cioè a
+    // sessanta gradi dalla normale) l'acqua riflette poco meno del sei per
+    // cento, ed è la ragione per cui il mare sotto i piedi è scuro.
+    prova('a 30° sotto l\'orizzonte riflette meno del dieci per cento',
+      fresnel(30) < 0.1 && fresnel(30) > 0.03, `${(fresnel(30) * 100).toFixed(1)}%`);
+  }
+
+  // -------------------------------------------------------------------
+  // La strada di luce. La faccia d'onda che rimanda l'astro nell'occhio ha
+  // per normale la bisettrice fra la direzione dell'astro e quella opposta
+  // allo sguardo; quanto quella normale è inclinata rispetto alla verticale
+  // dice quanto è raro trovare una faccia così, e quindi quanto luccica.
+  //
+  // Le tre risposte che questo pezzo esiste per dare, e che a occhio non si
+  // controllano: con l'astro basso una colonna che arriva all'orizzonte, con
+  // l'astro alto una chiazza corta ai piedi, e in mezzo il passaggio.
+  // -------------------------------------------------------------------
+  {
+    const sigma = 9 * D2R;
+    const versore2 = (az, alt) => {
+      const a = az * D2R, h = alt * D2R;
+      return [Math.sin(a) * Math.cos(h), Math.cos(a) * Math.cos(h), Math.sin(h)];
+    };
+    const luccichio = (azVista, dep, azAstro, altAstro) => {
+      const v = versore2(azVista, -dep), s = versore2(azAstro, altAstro);
+      const n = [s[0] - v[0], s[1] - v[1], s[2] - v[2]];
+      const len = Math.hypot(n[0], n[1], n[2]);
+      if (!(len > 1e-9)) return 0;
+      return Math.exp(-2 * (1 - n[2] / len) / (sigma * sigma));
+    };
+
+    prova('sotto l\'astro, alla depressione uguale alla sua altezza, il luccichio è pieno',
+      Math.abs(luccichio(210, 12, 210, 12) - 1) < 1e-6);
+    prova('a novanta gradi di azimut dall\'astro non c\'è niente',
+      luccichio(300, 12, 210, 12) < 1e-3, luccichio(300, 12, 210, 12).toExponential(1));
+
+    // Astro basso: la colonna. Si guarda quanto scende, dalla riga
+    // dell'orizzonte in giù, prima che il luccichio si spenga.
+    const finDove = alt => {
+      let ultimo = 0;
+      for (let d = 0.2; d < 89; d += 0.2) if (luccichio(210, d, 210, alt) > 0.1) ultimo = d;
+      return ultimo;
+    };
+    const daVicino = alt => {
+      let primo = 90;
+      for (let d = 0.2; d < 89; d += 0.2) if (luccichio(210, d, 210, alt) > 0.1) { primo = d; break; }
+      return primo;
+    };
+    prova('con l\'astro a 4° la strada comincia sulla riga dell\'orizzonte',
+      daVicino(4) < 0.5, `prima traccia a ${daVicino(4).toFixed(1)}° sotto`);
+    prova('e con l\'astro a 40° no: sull\'orizzonte non c\'è niente',
+      daVicino(40) > 8 && luccichio(210, 0.3, 210, 40) < 0.02,
+      `prima traccia a ${daVicino(40).toFixed(1)}° sotto`);
+
+    // La prova che conta non è in gradi ma in **metri**: con l'astro alto
+    // tutta la strada di luce sta dentro a pochi metri dai piedi, e con
+    // l'astro basso arriva fino all'orizzonte. È la differenza fra la
+    // chiazza che si vede a mezzogiorno da uno scoglio e la colonna che
+    // arriva dal fondo del mare quando la Luna sorge.
+    // Si cerca **in distanza** e non in gradi, ed è tutto il punto: sotto
+    // la riga dell'orizzonte i gradi non sono un metro buono, e un passo di
+    // due decimi di grado — che sembra fine — dalla battigia salta da
+    // quattro chilometri e ottocento a quattrocentosessanta metri in una
+    // volta sola. È la compressione provata qui sopra, ed è la stessa
+    // ragione per cui le fasce del disegno sono distanze e non righe.
+    const finoA = (alt, h) => {
+      const s0 = orizzonte(h);
+      let lontano = 0;
+      for (let s = s0 * 0.999; s > 0.05; s *= 0.94) {
+        if (luccichio(210, depressione(s, h), 210, alt) > 0.1) { lontano = s; break; }
+      }
+      return lontano;
+    };
+    prova('con il Sole a 40° il luccichio sta tutto entro dieci metri dai piedi',
+      finoA(40, 1.6) < 10, `il punto più lontano è a ${finoA(40, 1.6).toFixed(1)} m`);
+    prova('con il Sole a 4° arriva invece fino all\'orizzonte',
+      finoA(4, 1.6) > orizzonte(1.6) * 0.9,
+      `${(finoA(4, 1.6) / 1000).toFixed(2)} km su ${(orizzonte(1.6) / 1000).toFixed(2)}`);
+    // Sulla riga dell'orizzonte la faccia d'onda che rimanda l'astro
+    // nell'occhio è inclinata **esattamente della metà** dell'altezza
+    // dell'astro: la normale è la bisettrice, e con lo sguardo orizzontale
+    // la bisettrice fra `s` e `−v` sta a metà. È il solo punto di tutta
+    // questa geometria che si scrive in chiuso, e vale la pena provarlo.
+    [4, 20, 40].forEach(a => {
+      const beta = Math.acos(Math.min(1, (() => {
+        const v = versore2(210, 0), s = versore2(210, a);
+        const n = [s[0] - v[0], s[1] - v[1], s[2] - v[2]];
+        return n[2] / Math.hypot(n[0], n[1], n[2]);
+      })())) / D2R;
+      prova(`sull'orizzonte, con l'astro a ${a}°, la faccia d'onda che serve è inclinata di ${a / 2}°`,
+        Math.abs(beta - a / 2) < 0.01, `${beta.toFixed(3)}°`);
+    });
+
+    // Da lì viene, senza che nessuno l'abbia scritta, l'altezza a cui la
+    // strada si **stacca** dall'orizzonte: la soglia di visibilità cade a
+    // 1,52 sigma (è `√ln10`, con la gaussiana della pendenza), e siccome
+    // sull'orizzonte serve metà dell'altezza, l'astro si stacca a **tre
+    // sigma**. Con un mare più mosso la strada resta attaccata più a lungo,
+    // ed è proprio quello che si vede quando si alza il vento.
+    let stacca = 90;
+    for (let a = 1; a < 89; a++) if (finoA(a, 1.6) < orizzonte(1.6) * 0.5) { stacca = a; break; }
+    prova('la strada si stacca dall\'orizzonte quando l\'astro supera tre volte la ruvidezza',
+      Math.abs(stacca - 2 * 1.517 * 9) < 3, `si stacca a ${stacca}° (tre sigma sono ${(3 * 9)}°)`);
+    prova('e più l\'astro è alto, più la strada si accorcia',
+      finoA(30, 1.6) > finoA(50, 1.6) && finoA(50, 1.6) > finoA(70, 1.6),
+      `${finoA(30, 1.6).toFixed(1)} m a 30°, ${finoA(50, 1.6).toFixed(1)} m a 50°, ${finoA(70, 1.6).toFixed(1)} m a 70°`);
+
+    // La larghezza. Vicino all'orizzonte è stretta e verso i piedi si apre:
+    // è la forma a imbuto che si riconosce in qualunque fotografia della
+    // Luna sul mare, ed è quella che si vuole provare invece che sperare.
+    const largo = dep => {
+      let dx = 0;
+      for (let a = 0; a < 90; a += 0.2) if (luccichio(210 + a, dep, 210, 5) > 0.1) dx = a;
+      return dx;
+    };
+    prova('la strada di luce si allarga venendo verso chi guarda',
+      largo(20) > largo(5) * 2 && largo(5) > largo(1),
+      `mezza larghezza: ${largo(1).toFixed(1)}° a 1°, ${largo(5).toFixed(1)}° a 5°, ${largo(20).toFixed(1)}° a 20°`);
+  }
+
+  // -------------------------------------------------------------------
+  // Le onde. La velocità non è scelta: in acqua profonda `ω = √(g·k)`,
+  // quindi le onde lunghe corrono più delle corte. È la dispersione, ed è
+  // la ragione per cui un mare vero non trasla come un disegno che scorre.
+  // -------------------------------------------------------------------
+  {
+    const onde = [[46, 250, 1], [19, 232, 0.62], [7.5, 264, 0.36], [2.8, 208, 0.22]];
+    const pronte = onde.map(([lung, verso, peso]) => {
+      const k = 2 * Math.PI / lung, a = verso * D2R;
+      return { kx: k * Math.sin(a), ky: k * Math.cos(a), w: Math.sqrt(9.81 * k), peso, lung };
+    });
+    const totale = pronte.reduce((s, o) => s + o.peso, 0);
+    const campo = (x, y, t) => pronte.reduce(
+      (v, o) => v + o.peso * Math.cos(o.kx * x + o.ky * y - o.w * t), 0) / totale;
+
+    let fuori = false, min = 1, max = -1;
+    for (let i = 0; i < 4000; i++) {
+      const v = campo((i * 37) % 5000, (i * 61) % 5000, i * 0.017);
+      if (v < min) min = v;
+      if (v > max) max = v;
+      if (v < -1.0000001 || v > 1.0000001) fuori = true;
+    }
+    prova('il campo d\'onda sta fra −1 e +1 e li usa tutti e due',
+      !fuori && min < -0.75 && max > 0.75, `da ${min.toFixed(2)} a ${max.toFixed(2)}`);
+
+    // La velocità di fase, che si controlla a mano: un'onda da 46 metri fa
+    // 8,5 m/s, una da 2,8 metri ne fa 2,1.
+    const c = o => o.w / (2 * Math.PI / o.lung);
+    prova('l\'onda lunga corre più della corta, come in acqua profonda',
+      Math.abs(c(pronte[0]) - 8.47) < 0.1 && Math.abs(c(pronte[3]) - 2.09) < 0.05,
+      `${c(pronte[0]).toFixed(2)} m/s contro ${c(pronte[3]).toFixed(2)} m/s`);
+
+    // Il filtro delle fasce: una componente più fine dei quattro pixel non
+    // si disegna. Senza, il mare lontano tremola a ogni fotogramma — è la
+    // tessitura campionata più larga di quanto sia fine, cioè valori a caso
+    // che cambiano col tempo.
+    const pesi = (s, focale) => pronte.map(o => {
+      const px = o.lung / s * focale;
+      const q = Math.max(0, Math.min(1, (px - 4) / 3));
+      return o.peso * q * q * (3 - 2 * q);
+    });
+    const vicino = pesi(20, 560), lontano = pesi(20000, 560);
+    prova('a venti metri si vedono tutte e quattro le componenti',
+      vicino.every(p => p > 0.2), vicino.map(p => p.toFixed(2)).join(' '));
+    prova('a venti chilometri non se ne vede nessuna: il mare è liscio',
+      lontano.every(p => p < 0.01), lontano.map(p => p.toFixed(3)).join(' '));
+    prova('e nel mezzo restano solo le lunghe',
+      pesi(900, 560)[0] > 0.5 && pesi(900, 560)[3] < 0.01,
+      pesi(900, 560).map(p => p.toFixed(2)).join(' '));
+    // Le componenti si spengono in ordine, dalla più corta alla più lunga:
+    // è quello che fa scendere la finezza della tessitura con la distanza
+    // invece di farla sparire tutta insieme.
+    let inOrdine = true;
+    [40, 120, 400, 1200, 3500].forEach(s => {
+      const p = pesi(s, 560);
+      for (let i = 1; i < p.length; i++) if (p[i] > p[i - 1] + 1e-6) inOrdine = false;
+    });
+    prova('e si spengono in ordine, prima le corte', inOrdine);
+  }
+}
+
+// =====================================================================
 const esito = document.getElementById('esito');
 esito.dataset.stato = fallite ? 'ko' : 'ok';
 esito.textContent = fallite

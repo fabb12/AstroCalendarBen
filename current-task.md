@@ -1,39 +1,69 @@
 # Task Corrente
 
-La scheda dell'oggetto nel planetario, girando il telefono in orizzontale:
-si sovrapponeva alla fascia dei comandi in cima (le linguette dei gruppi e,
-sotto, la riga con la bussola e le letture di puntamento).
+Il mare nel planetario: dove `terreno.js` dice che c'è acqua, adesso c'è una
+**superficie** invece di una velatura blu.
 
-**La causa.** `.pannello-dettaglio` (la scheda) è ancorata al fondo della
-mappa (`bottom`) e cresce verso l'alto fino a un `max-height`. In
-orizzontale quel tetto era `calc(100% - 74px - var(--alta-barra-tempo))` —
-un "74px" scritto a occhio che contava solo la riga delle linguette e si
-dimenticava che sotto di lei c'è un'**altra** riga intera (`.cielo-letture`:
-altezza/campo, stato della posizione, e la bussola di 64px). La riga vera è
-alta circa il doppio di quel numero, e con la mappa già bassa di suo (il
-cielo girato di lato su un telefono comprime `--altezza-cielo` a poche
-centinaia di pixel) la scheda aveva margine per crescere fin dentro alla
-bussola.
+**Com'era.** `terreno.js` sapeva da mesi che a ponente di Genova c'è mare e non
+prato, e il planetario lo diceva con un velo azzurro steso sotto la linea
+dell'orizzonte, che si spegneva venticinque gradi più giù. Era un'etichetta:
+chi apre il planetario in riva al mare non ha bisogno che gli si dica che da
+quella parte c'è il mare — lo sa — vuole ritrovarcelo.
 
-**La soluzione.** Niente più un numero indovinato: `--zona-alta-cielo`
-(definita su `.vista-cielo`, insieme a `--alta-barra-tempo`) è la misura
-vera dell'intera fascia in cima — margine + riga delle linguette + distacco
-+ riga della bussola — 132px di norma, 112px nella variante compatta sotto i
-620px di larghezza (dove pillole e bussola sono già più piccole di loro).
-Le tre regole che fissano il `max-height` della scheda (quella di base, la
-variante da telefono stretto, quella orizzontale) usano tutte
-`calc(100% - var(--zona-alta-cielo) - var(--sopra-barra-tempo))` come tetto
-— da solo nella regola orizzontale, dentro un `min(...)` insieme al vecchio
-`62%`/`420px`/`54%` nelle altre due, dove raramente stringe ma non fa mai
-male averlo. Sopra la bussola non ci arriva più, in nessuna combinazione di
-larghezza e altezza.
+**Cosa c'è adesso**, nel blocco `// --- Il mare ---` di `app.js` §7.3.2
+(prefisso `skyMare`), chiamato da `skyDisegnaTerreno` fra la grana e il profilo
+delle creste:
 
-Provato con Playwright/Chromium a 844×390 e 667×375 (orizzontale, dito
-grosso): la scheda con "Altri dati" aperto resta staccata dalla bussola di
-2px esatti, mai sovrapposta, e su schermi molto bassi si stringe (fino a
-scorrere dentro se stessa) invece di scrivere sopra ai comandi. Verificato
-anche che verticale e desktop restano identici a prima (la clausola in più
-nel `min()` non li tocca mai). `node --check app.js` pulito (nessuna
-modifica JS in questo giro, solo CSS). `CACHE_NAME` → `astrocal-v103`.
+- **La prospettiva vera.** `skyMareDepressione(s, h)` e la sua inversa
+  `skyMareDistanza(dep, h)`: Terra tonda, rifrazione di `terreno.js`. Da lì
+  viene tutto. Dalla battigia l'orizzonte è a 4,8 km e **il 98% di quella
+  distanza sta nel primo grado sotto la riga**; da una scogliera a 300 m è a
+  66 km e il primo grado ne contiene molto meno. La compressione enorme non è
+  un effetto: è la geometria, e si vede.
+- **Il colore da Fresnel** (`skyMareColore`): di striscio l'acqua è uno
+  specchio e riflette il cielo, a picco è una finestra sul blu-verde cupo. Da
+  qui viene gratis il mare che si accende di arancione al tramonto, senza che
+  ci sia una riga che parli di tramonti.
+- **Le onde** (`SKY_MARE_ONDE`, `skyMareOnda`, `skyMareCreste`): quattro
+  componenti in coordinate metriche vere attorno a chi guarda, con la
+  dispersione dell'acqua profonda (`ω = √(gk)`, le lunghe corrono più delle
+  corte). Lontano sono righe di luce sulle punte, vicino diventano campiture —
+  il tratto è spesso quanto la fascia è alta sullo schermo.
+- **La strada di luce** (`skyMareLuccichio`, `skyMareStrada`): non è dipinta.
+  La faccia d'onda che rimanda l'astro nell'occhio ha per normale `n ∝ s − d`,
+  e da quanto è inclinata esce la probabilità di trovarne una così. Le due
+  forme che tutti riconoscono vengono da sé: astro basso → colonna fino
+  all'orizzonte, astro alto → chiazza ai piedi.
+
+**Le tre cose che sono costate di più**, tutte e tre invisibili a occhio:
+
+1. `skyMareDistanza(skyMareDip(h), h)` tornava **infinito** dalla battigia —
+   l'arcocoseno di un numero che in doppia precisione vale esattamente uno — e
+   il mare non si disegnava per niente. Da lì `skyMareOrizzonte(h) = R·δ`.
+2. Il corpo dell'acqua costava **quattro millisecondi**: cinquantacinque
+   `createLinearGradient` a fotogramma. Misurato allargando il passo, il costo
+   scendeva col numero dei riempimenti e non con la superficie: non erano i
+   pixel, erano le chiamate. Adesso il gradiente è uno solo per fotogramma
+   (forma radiale attorno al cerchio dell'orizzonte, come fa già il suolo) e
+   l'opacità la mette `globalAlpha`. Il mare costa 0,3–0,5 ms.
+3. Alla riva la campitura si spezza per livello di opacità, e i pezzi lunghi
+   una colonna sola venivano saltati: al posto della sfumatura di costa
+   restava una **riga verticale netta**.
+
+Toccati anche: `skyDisegnaVeloPaesaggio` (il mare non ci passa più, resta la
+sola montagna) e `col.fondo` di `skyDisegnaProfiloOrizzonte`, moltiplicato per
+`(1 − col.mare)` — se no da una scogliera le fette di distanza dell'acqua
+venivano disegnate come terreno, cioè venti gradi di terrazze.
+
+**Provato** con Playwright/Chromium a 900×700 su un terreno finto costruito con
+la vera pipeline di `terreno.js` (mare da 200° a 340°, colline per il resto):
+battigia di giorno, al tramonto e a 120° di campo, Luna bassa sul mare, notte
+senza astri, scogliera a 300 m, monte a 1400 m, costa mista. Nessun errore in
+console. Controllato che **entroterra e terreno spento diano un fotogramma
+identico** con e senza il modulo, cioè che chi non ha mare non veda alcuna
+differenza. Nuovo §19 in `verifica.html` (30 prove: distanza dell'orizzonte
+contro la regola dei naviganti, invertibilità, compressione, Fresnel, la
+geometria del luccichio con la faccia d'onda a metà dell'altezza dell'astro,
+dispersione delle onde, filtro anti-tremolio): **tutte e 357 le prove della
+pagina passano**. `node --check app.js` pulito. `CACHE_NAME` → `astrocal-v104`.
 
 [x] Completato.
