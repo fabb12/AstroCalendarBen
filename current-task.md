@@ -1,42 +1,43 @@
 # Task Corrente
 
-Girare il telefono in orizzontale: la scena che si sta guardando si prende
-tutto lo schermo, e rimettendolo dritto lo restituisce.
+La scheda dell'oggetto nel planetario (il riquadro che si apre toccando un
+astro sulla mappa): tre lamentele, tutte vere.
 
-C'era già un abbozzo (`entraPienoSchermoSeServe`), e non funzionava per tre
-motivi distinti — tutti verificati a schermo prima di toccare il codice:
+- **Si sovrapponeva agli altri pannelli su schermo piccolo.** Il pannello di
+  un gruppo (Astri, Filtri…) e la scheda dell'oggetto stanno tutt'e due
+  ancorati in fondo alla mappa, uno sopra `top:0`/sotto la barra del tempo e
+  l'altro sopra la barra del tempo appoggiato a sinistra: su un telefono,
+  aperti insieme, si scrivevano l'uno sopra l'altro. Capitava in due modi —
+  si tocca un astro sulla mappa mentre "Astri" o "Filtri" sono aperti, o si
+  apre un gruppo mentre la scheda è già a schermo. Sistemato rendendoli
+  mutuamente esclusivi: `skyApriDettaglio()` ora chiama `skyMostraGruppo('')`
+  prima di mostrarsi, e `skyMostraGruppo()` chiude la scheda
+  (`skyChiudiDettaglio()`) quando un gruppo si apre. La selezione dell'astro
+  non si perde — solo il riquadro dei dati si nasconde.
+- **Troppe informazioni tutte insieme** — fino a dodici righe per un
+  pianeta (tipo, costellazione, distanza, dimensioni, magnitudine,
+  direzione, altezza, coordinate, eclittica, orari…). `skyRigheScheda()`
+  adesso torna `{essenziali, dettagli}`: le prime (tipo, fase/magnitudine,
+  direzione, altezza, sorge/tramonta) restano sempre in vista; le seconde
+  (coordinate, distanza, dimensioni, temperatura, eclittica…) stanno dietro
+  a un `<details>` "Altri dati", chiuso di default.
+- **Nessuna immagine.** Aggiunta una miniatura vera in testa alla scheda
+  (`skySchedaImmagineHtml()`): per Sole, Luna, pianeti e cielo profondo è la
+  stessa faccia dipinta che il planetario disegna sulla mappa
+  (`skyFacciaDi`/`skyFacciaProfondo`, già in cache), letta una volta come
+  PNG e tenuta in `skySchedaImg` così non si ridipinge a ogni giro
+  dell'orologio. Stelle, satelliti e comete restano con la sola icona: non
+  hanno una faccia dipinta da mostrare.
 
-- **Non si tornava mai indietro.** Si entrava a schermo intero girando il
-  telefono e non si usciva rimettendolo dritto: si restava col planetario
-  incollato al viewport e la barra di navigazione nascosta, in verticale.
-  È questa la cosa che si vedeva come «la rotazione è rotta».
-- **Col Sistema Solare 3D aperto andava a schermo intero il cielo**, che è
-  la finestra *sotto*: l'ordine di precedenza era rovesciato.
-- **La Didattica non faceva niente.** `didEntraSchermoIntero` cercava l'`id`
-  del `<figure class="did-scena">` — che un id non ce l'ha, ce l'ha la tela
-  dentro — e lo passava col cancelletto davanti a una `getElementById`.
-  Falliva in silenzio.
+CSS: `.scheda-testata` (la riga miniatura+titolo), `.scheda-img`,
+`.dettagli-scheda` (il `<details>`) in style.css, sezione "SCHEDA
+DELL'OGGETTO SULLA MAPPA".
 
-Adesso c'è **§0-bis di `app.js`**: una tabella (`SCENE_DEL_GIRO`) di chi può
-prendersi lo schermo in ordine di precedenza — 3D, planetario, Didattica —
-e `pienoSchermoDelGiro()`, che agisce solo sul cambio di verso, apre solo se
-non c'è già qualcosa di pieno, e chiude **solo quello che ha aperto lui**
-(chi era entrato a mano col ⛶ non viene buttato fuori da una rotazione).
-Vale solo per `telefonoGirato()`: su tablet e computer non succede niente.
-
-Nella Didattica sceglie `didScenaDaGirare()`: fra le tele impaginate adesso
-prende la principale (`pieno: true` → `l.principale`), a pari merito la
-prima della pagina. E il ⛶ ce l'hanno tutte le scene con la lente, non più
-le sole sei in 3D.
-
-Una cosa da non dimenticare: **una rotazione non è un gesto dell'utente**,
-quindi su un telefono vero `requestFullscreen` viene rifiutata e a lavorare
-è sempre il ripiego in CSS delle tre scene. Provato apposta, forzando il
-rifiuto: tutti e tre coprono lo schermo e tornano al loro posto.
-
-Provato in Chromium (390×780 ↔ 780×390, con tocco): planetario, 3D, tutti e
-otto i banchi e ognuno dei loro quadri, il ripiego in CSS, la scelta a mano
-che la rotazione non disfa, e il tablet in orizzontale che resta com'era.
-Nessun errore di pagina. `CACHE_NAME` → `astrocal-v101`.
+Provato con Playwright/Chromium (senza rete: Astronomy Engine non carica in
+sandbox, quindi verificato passando oggetti finti diretti a `skySchedaHtml`
+invece che dal tocco vero sulla mappa — la logica che legge i dati è la
+stessa). Confermato via screenshot: la miniatura di Marte si vede, "Altri
+dati" si apre, aprire "Filtri" chiude la scheda e viceversa, `node --check
+app.js` pulito. `CACHE_NAME` → `astrocal-v102`.
 
 [x] Completato.

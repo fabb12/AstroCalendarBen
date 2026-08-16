@@ -4096,17 +4096,55 @@ body input.casella-data:hover { border: 0; }
 @supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
   .pannello-dettaglio { background: rgba(6, 10, 20, 0.88); }
 }
-.pannello-dettaglio h3 {
+/* Titolo e miniatura in riga: quando c'è una faccia dipinta (Sole, Luna,
+   pianeti, cielo profondo) la scheda mostra quella invece della sola icona
+   del tipo — è la stessa tela che il planetario disegna sulla mappa, non un
+   disegno a parte da tenere aggiornato. */
+.scheda-testata {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0 0 8px;
+}
+.pannello-dettaglio h3 {
+  margin: 0;
+  /* Si restringe insieme al resto della riga invece di spingere fuori la
+     miniatura: un nome lungo di cometa o di NGC va a capo, non sborda. */
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 1rem;
   font-weight: 600;
   color: var(--testo);
+}
+.scheda-img {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px var(--bordo);
 }
 .pannello-dettaglio ul { margin: 0; padding: 0; list-style: none; }
 .pannello-dettaglio li + li { margin-top: 4px; }
 .pannello-dettaglio .voce-dato { color: var(--blu-chiaro); }
 .pannello-dettaglio .nota-dettaglio { margin: 9px 0 0; color: var(--testo-3); }
 .pannello-dettaglio .allarme-dettaglio { margin: 8px 0 0; color: var(--ambra); }
+/* "Altri dati": chiusi di default. La scheda deve stare in una striscia
+   sola su un telefono, e i numeri da strumento (coordinate, distanza,
+   temperatura…) sono quelli che quasi nessuno legge lì per lì — restano a
+   un tocco, non spariscono. */
+.dettagli-scheda { margin-top: 8px; }
+.dettagli-scheda summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--blu-chiaro);
+  list-style: none;
+}
+.dettagli-scheda summary::-webkit-details-marker { display: none; }
+.dettagli-scheda summary::before { content: '▸ '; }
+.dettagli-scheda[open] summary::before { content: '▾ '; }
+.dettagli-scheda ul { margin-top: 8px; }
 .tasto-chiudi-dettaglio {
   position: absolute;
   top: 8px;
