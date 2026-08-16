@@ -17411,28 +17411,61 @@ function skyOrariDi(o) {
   return null;
 }
 
-// Le righe della scheda, nell'ordine in cui interessano: prima cos'è e
-// quanto è lontano, poi dove guardare, infine i numeri da strumento.
+// Le righe della scheda, divise in due gruppi. `essenziali` è quello che si
+// legge sempre — cos'è, quanto brilla, dove guardare, quando c'è — e basta a
+// riconoscere l'oggetto e a puntarlo. `dettagli` sono i numeri da strumento
+// (coordinate, distanza, temperatura…): restano dietro a un "Altri dati",
+// perché una scheda con dodici righe non si legge su un telefono in mano al
+// buio, e la maggior parte di quelle righe non serve a puntare niente.
 function skyRigheScheda(o) {
-  const righe = [];
-  const dato = (etichetta, valore) => {
-    if (valore) righe.push(`<li><span class="voce-dato">${etichetta}:</span> ${valore}</li>`);
+  const essenziali = [];
+  const dettagli = [];
+  const dato = (elenco, etichetta, valore) => {
+    if (valore) elenco.push(`<li><span class="voce-dato">${etichetta}:</span> ${valore}</li>`);
   };
 
-  dato('Tipo', skyClasseTesto(o));
-  dato('Costellazione', skyCostellazioneDi(o.ra, o.dec));
-  dato('Distanza dalla Terra', skyDistanzaTesto(o));
-  dato('Dimensioni', skyDimensioniTesto(o));
-  dato('Magnitudine', skyMagnitudineTesto(o));
+  dato(essenziali, 'Tipo', skyClasseTesto(o));
+
+  // La fase si dice per la Luna sempre, e per i pianeti solo quando c'è
+  // davvero: Giove e Saturno mostrano un disco pieno tutto l'anno, e
+  // scriverlo ogni volta è una riga in più che non dice niente.
+  if (typeof o.frazione === 'number' && (o.tipo === 'luna' || o.frazione < 0.98)) {
+    dato(essenziali, 'Fase', `disco illuminato al ${Math.round(o.frazione * 100)}%`);
+  }
+  dato(essenziali, 'Magnitudine', skyMagnitudineTesto(o));
+
+  if (o.tipo === 'satellite') {
+    dato(essenziali, 'Illuminazione', o.illuminato
+      ? 'al Sole, quindi può brillare'
+      : 'dentro l\'ombra della Terra, invisibile');
+  }
+
+  if (typeof o.az === 'number') {
+    dato(essenziali, 'Direzione', `${skyNomeDirezione(o.az)} (azimut ${Math.round(o.az) % 360}°)`);
+    dato(essenziali, 'Altezza', `${skyNumero(o.alt, 1)}° ${o.alt >= 0 ? 'sopra' : 'sotto'} l'orizzonte`);
+  }
+
+  const orari = skyOrariDi(o);
+  if (orari) {
+    if (orari.sempreSopra) dato(essenziali, 'Da qui', 'è circumpolare: non tramonta mai');
+    else if (orari.maiSopra) dato(essenziali, 'Da qui', 'non sale mai sopra l\'orizzonte, a questa latitudine');
+    else if (orari.sorge || orari.tramonta) dato(essenziali, 'Sorge e tramonta', `${skyOra(orari.sorge)} → ${skyOra(orari.tramonta)}`);
+  }
+
+  // --- Da qui in giù: i numeri da strumento, dietro "Altri dati" ---------
+
+  dato(dettagli, 'Costellazione', skyCostellazioneDi(o.ra, o.dec));
+  dato(dettagli, 'Distanza dalla Terra', skyDistanzaTesto(o));
+  dato(dettagli, 'Dimensioni', skyDimensioniTesto(o));
 
   // Una stella del catalogo non ha distanza né diametro da mostrare — di
   // lei sappiamo il colore, e il colore è la temperatura. È il dato più
   // interessante che una stella abbia, ed è misurato, non stimato a occhio.
   if (typeof o.temperatura === 'number') {
-    dato('Temperatura', `circa ${skyNumero(Math.round(o.temperatura / 100) * 100)} K in superficie ` +
+    dato(dettagli, 'Temperatura', `circa ${skyNumero(Math.round(o.temperatura / 100) * 100)} K in superficie ` +
       `<span class="text-slate-500">(il Sole ne ha 5.800)</span>`);
     if (typeof o.bv === 'number') {
-      dato('Indice di colore', `B−V ${skyNumero(o.bv, 2)} ` +
+      dato(dettagli, 'Indice di colore', `B−V ${skyNumero(o.bv, 2)} ` +
         '<span class="text-slate-500">(quanto è più luminosa nel blu che nel giallo)</span>');
     }
   }
@@ -17442,36 +17475,20 @@ function skyRigheScheda(o) {
   // dalla Terra quanto la vediamo grande.
   if (o.categoria === 'corpoMinore') {
     if (typeof o.distanzaSole === 'number') {
-      dato('Distanza dal Sole', `${skyNumero(o.distanzaSole, 2)} unità astronomiche`);
+      dato(dettagli, 'Distanza dal Sole', `${skyNumero(o.distanzaSole, 2)} unità astronomiche`);
     }
     if (typeof o.distanzaTerra === 'number') {
-      dato('Distanza dalla Terra', `${skyNumero(o.distanzaTerra, 2)} unità astronomiche · ` +
+      dato(dettagli, 'Distanza dalla Terra', `${skyNumero(o.distanzaTerra, 2)} unità astronomiche · ` +
         `la luce ci mette ${skyTempoLuceTesto(o.distanzaTerra * SKY_SEC_LUCE_PER_UA)}`);
     }
     if (typeof o.elongazione === 'number') {
-      dato('Distanza dal Sole in cielo', `${Math.round(o.elongazione)}°` +
+      dato(dettagli, 'Distanza dal Sole in cielo', `${Math.round(o.elongazione)}°` +
         (o.elongazione < 30 ? ' — troppo vicino: se ne sta nella luce del crepuscolo' : ''));
     }
   }
 
-  // La fase si dice per la Luna sempre, e per i pianeti solo quando c'è
-  // davvero: Giove e Saturno mostrano un disco pieno tutto l'anno, e
-  // scriverlo ogni volta è una riga in più che non dice niente.
-  if (typeof o.frazione === 'number' && (o.tipo === 'luna' || o.frazione < 0.98)) {
-    dato('Fase', `disco illuminato al ${Math.round(o.frazione * 100)}%`);
-  }
-  if (o.tipo === 'satellite') {
-    dato('Illuminazione', o.illuminato
-      ? 'al Sole, quindi può brillare'
-      : 'dentro l\'ombra della Terra, invisibile');
-    if (typeof o.periodoMin === 'number') {
-      dato('Orbita', `un giro della Terra ogni ${o.periodoMin} minuti`);
-    }
-  }
-
-  if (typeof o.az === 'number') {
-    dato('Direzione', `${skyNomeDirezione(o.az)} (azimut ${Math.round(o.az) % 360}°)`);
-    dato('Altezza', `${skyNumero(o.alt, 1)}° ${o.alt >= 0 ? 'sopra' : 'sotto'} l'orizzonte`);
+  if (o.tipo === 'satellite' && typeof o.periodoMin === 'number') {
+    dato(dettagli, 'Orbita', `un giro della Terra ogni ${o.periodoMin} minuti`);
   }
 
   // Coordinate equatoriali: quelle dell'epoca di oggi se le abbiamo (sono
@@ -17480,7 +17497,7 @@ function skyRigheScheda(o) {
   const dec = typeof o.decOra === 'number' ? o.decOra : o.dec;
   if (typeof ra === 'number' && typeof dec === 'number') {
     const epoca = typeof o.raOra === 'number' ? 'epoca di oggi' : 'J2000';
-    dato('Coordinate', `AR ${skyAscensioneTesto(ra)} · Dec ${skyDeclinazioneTesto(dec)} <span class="text-slate-500">(${epoca})</span>`);
+    dato(dettagli, 'Coordinate', `AR ${skyAscensioneTesto(ra)} · Dec ${skyDeclinazioneTesto(dec)} <span class="text-slate-500">(${epoca})</span>`);
   }
 
   // Quanto sta fuori dal piano dell'orbita terrestre. Il numero da solo dice
@@ -17488,24 +17505,47 @@ function skyRigheScheda(o) {
   // «un grado e mezzo sotto» diventa una cosa che si vede.
   const ecl = skyScartoEclittica(o);
   if (ecl) {
-    dato('Rispetto all\'eclittica', (Math.abs(ecl.lat) < 0.1
+    dato(dettagli, 'Rispetto all\'eclittica', (Math.abs(ecl.lat) < 0.1
       ? 'praticamente sulla linea'
       : `${skyNumero(Math.abs(ecl.lat), 1)}° ${ecl.lat > 0 ? 'sopra' : 'sotto'}`) +
       ` <span class="text-slate-500">(longitudine ${Math.round(ecl.lon)}°)</span>`);
   }
 
-  const orari = skyOrariDi(o);
-  if (orari) {
-    if (orari.sempreSopra) dato('Da qui', 'è circumpolare: non tramonta mai');
-    else if (orari.maiSopra) dato('Da qui', 'non sale mai sopra l\'orizzonte, a questa latitudine');
-    else if (orari.sorge || orari.tramonta) dato('Sorge e tramonta', `${skyOra(orari.sorge)} → ${skyOra(orari.tramonta)}`);
-    if (orari.culmina) {
-      dato('Passa più alto', `${skyOra(orari.culmina)}` +
-        (typeof orari.altezzaMax === 'number' ? `, a ${Math.round(orari.altezzaMax)}° di altezza` : ''));
-    }
+  if (orari && orari.culmina) {
+    dato(dettagli, 'Passa più alto', `${skyOra(orari.culmina)}` +
+      (typeof orari.altezzaMax === 'number' ? `, a ${Math.round(orari.altezzaMax)}° di altezza` : ''));
   }
 
-  return righe;
+  return { essenziali, dettagli };
+}
+
+// Una miniatura vera per la scheda — non un'icona, la stessa faccia dipinta
+// che il planetario mette sulla mappa: i mari della Luna, le bande di
+// Giove, la nuvola di una nebulosa. Viene dalla stessa tela già in cache
+// (`skyPelle`/`skyFacciaDi`/`skyFacciaProfondo`): qui si legge una volta
+// sola come PNG e si tiene in `skySchedaImg`, così una scheda che si
+// riscrive ogni pochi secondi non la ridipinge mai due volte per lo stesso
+// oggetto. Chi non ha una faccia dipinta (stelle, satelliti, comete) resta
+// con la sola icona del titolo: non tutto quello che c'è in cielo si può
+// disegnare come una fotografia.
+const skySchedaImg = new Map();
+function skySchedaImmagineHtml(o) {
+  if (!o) return '';
+  const chiave = o.categoria === 'profondo' ? 'dso:' + o.nome : o.id;
+  if (!chiave) return '';
+  if (skySchedaImg.has(chiave)) return skySchedaImg.get(chiave);
+  const LATO = 96;
+  let tela = null;
+  try {
+    tela = o.categoria === 'profondo' ? skyFacciaProfondo(o, LATO / 2) : skyFacciaDi(o, LATO / 2);
+  } catch (e) { tela = null; }
+  let html = '';
+  if (tela) {
+    try { html = `<img class="scheda-img" src="${tela.toDataURL()}" alt="" width="${LATO}" height="${LATO}">`; }
+    catch (e) { html = ''; }
+  }
+  skySchedaImg.set(chiave, html);
+  return html;
 }
 
 // La scheda intera: titolo, righe di dati, un consiglio in parole e — per il
@@ -17547,8 +17587,13 @@ function skySchedaHtml(o) {
   }
   if (azioni) azioni = `<div class="azioni-evento">${azioni}</div>`;
 
-  return `<h3 class="flex items-center gap-2">${icona(disegno, 20)} ${titolo}</h3>
-    <ul>${skyRigheScheda(o).join('')}</ul>${coda}
+  const righe = skyRigheScheda(o);
+  const dettagliHtml = righe.dettagli.length
+    ? `<details class="dettagli-scheda"><summary>Altri dati</summary><ul>${righe.dettagli.join('')}</ul></details>`
+    : '';
+
+  return `<div class="scheda-testata">${skySchedaImmagineHtml(o)}<h3 class="flex items-center gap-2">${icona(disegno, 20)} ${titolo}</h3></div>
+    <ul>${righe.essenziali.join('')}</ul>${dettagliHtml}${coda}
     ${consiglio ? `<p class="nota-dettaglio">${consiglio}</p>` : ''}${nota}${avviso}${azioni}`;
 }
 
@@ -17626,8 +17671,12 @@ function skyJ2000AllaData(raOre, dec, t) {
   return { ra: ((s.lon / 15) + 24) % 24, dec: s.lat };
 }
 
-// Apre la scheda sopra la mappa (e aggiorna quella di fianco)
+// Apre la scheda sopra la mappa (e aggiorna quella di fianco). Se un
+// pannello di comandi era aperto (Astri, Filtri…) si chiude: sul telefono i
+// due stanno entrambi in fondo alla mappa, e aperti insieme si scrivevano
+// l'uno sopra l'altro.
 function skyApriDettaglio(sel) {
+  skyMostraGruppo('');
   sky.selezione = sel;
   const pannello = document.getElementById('skymap-dettaglio');
   if (pannello) pannello.classList.add('visibile');
@@ -19345,6 +19394,12 @@ function skyMostraGruppo(nome) {
   // Chi tocca "Astri" prima che il tempo libero arrivi le trova comunque.
   if (nome === 'astri') skyCostruisciElenco();
   const aperto = barra.dataset.gruppoAttivo === nome ? '' : (nome || '');
+  // Il pannello del gruppo e la scheda dell'oggetto stanno tutt'e due in
+  // fondo alla mappa: su un telefono, aperti insieme, si scrivevano uno
+  // sopra l'altro. Non stanno mai a schermo nello stesso momento — aprendo
+  // un gruppo la scheda si chiude (l'oggetto scelto resta comunque quello:
+  // per un pianeta o una stella il bersaglio sulla mappa non si spegne).
+  if (aperto) skyChiudiDettaglio();
   barra.dataset.gruppoAttivo = aperto;
   barra.querySelectorAll('.gruppo-comandi').forEach(s =>
     s.classList.toggle('gruppo-attivo', !!aperto && s.dataset.gruppo === aperto));
