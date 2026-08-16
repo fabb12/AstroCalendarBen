@@ -52,6 +52,7 @@ const METEO_ASTRO_CAMPI = [
   'dew_point_2m',           // per la rugiada sull'ottica
   'wind_speed_10m',         // il vento al suolo fa vibrare il tubo
   'wind_gusts_10m',
+  'wind_direction_10m',     // da dove viene: è la direzione delle onde sul mare
   'visibility',
   'precipitation_probability',
   'wind_speed_250hPa',      // la corrente a getto: il seeing nasce qui
@@ -123,6 +124,7 @@ function caricaMeteoAstro(forza) {
           rugiada: p('dew_point_2m'),
           vento: p('wind_speed_10m'),
           raffiche: p('wind_gusts_10m'),
+          ventoDa: p('wind_direction_10m'),
           visibilita: p('visibility'),
           pioggia: p('precipitation_probability'),
           getto: p('wind_speed_250hPa'),

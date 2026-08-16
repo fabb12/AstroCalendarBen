@@ -3054,6 +3054,269 @@ titolo('19. Il mare nel planetario (app.js, «Il mare»)');
 }
 
 // =====================================================================
+titolo('19-bis. Che mare c\'è stasera (app.js, «Che mare c\'è stasera»)');
+// ---------------------------------------------------------------------
+//   La ruvidezza dell'acqua e la lunghezza delle onde non sono più due
+//   numeri scritti nel codice: vengono dal vento della previsione oraria,
+//   che l'app ha già. Sono due leggi misurate, e conviene provarle contro i
+//   valori che i loro autori pubblicarono — se una delle due si sbaglia di
+//   un fattore, il mare resta bello e racconta un'altra giornata.
+{
+  const pendenza = W => Math.atan(Math.sqrt(0.003 + 0.00512 * W)) / D2R;
+  const lunghezza = W => Math.max(1.2, 9.81 * Math.pow(0.78 * W, 2) / (2 * Math.PI));
+
+  // Cox e Munk, 1954: la varianza della pendenza col vento. I due estremi
+  // che si citano sempre — mare quasi calmo e vento teso.
+  // Il fondo di 0,003 nella formula non è vento: è il mare lungo, quello
+  // che arriva da lontano e c'è anche quando qui non tira. Per questo la
+  // pendenza non scende mai sotto i tre gradi, e con la bonaccia sta poco
+  // sopra: il mare è **più liscio della metà** di quanto sia con vento teso,
+  // ed è quello che accorcia la strada di luce fino a farne un punto.
+  prova('con la bonaccia il mare è più liscio della metà che con vento teso',
+    pendenza(1.2) < pendenza(10) / 2, `${pendenza(1.2).toFixed(1)}° contro ${pendenza(10).toFixed(1)}°`);
+  prova('e senza vento del tutto resterebbe il mare lungo, tre gradi',
+    Math.abs(pendenza(0) - 3.14) < 0.1, `${pendenza(0).toFixed(2)}°`);
+  prova('con dieci metri al secondo la pendenza è di tredici gradi',
+    Math.abs(pendenza(10) - 13) < 1.5, `${pendenza(10).toFixed(1)}°`);
+  let cresce = true;
+  for (let W = 1; W < 22; W++) if (pendenza(W + 1) <= pendenza(W)) cresce = false;
+  prova('e cresce sempre col vento, senza scalini', cresce);
+
+  // Pierson e Moskowitz: il mare completamente sviluppato. Con cinque metri
+  // al secondo l'onda dominante è lunga una ventina di metri, con dieci
+  // quasi cento — ed è la differenza fra un'increspatura e un mare lungo.
+  prova('a cinque metri al secondo l\'onda dominante è lunga una ventina di metri',
+    Math.abs(lunghezza(5) - 23.7) < 3, `${lunghezza(5).toFixed(1)} m`);
+  prova('a dieci ne misura quasi cento',
+    Math.abs(lunghezza(10) - 95) < 10, `${lunghezza(10).toFixed(0)} m`);
+  prova('la lunghezza va col quadrato del vento',
+    Math.abs(lunghezza(10) / lunghezza(5) - 4) < 0.01,
+    `${(lunghezza(10) / lunghezza(5)).toFixed(3)} volte`);
+
+  // La direzione. `wind_direction_10m` dice da **dove viene** il vento,
+  // come tutte le rose dei venti: le onde vanno dall'altra parte, e
+  // sbagliare questo mezzo giro è l'errore che non si vede mai — un mare
+  // che corre al contrario è un mare uguale a guardarlo.
+  const verso = da => (da + 180) % 360;
+  prova('con la tramontana (vento da nord) le onde corrono verso sud',
+    verso(0) === 180, `${verso(0)}°`);
+  prova('con il libeccio (da 225°) corrono verso nord-est',
+    verso(225) === 45, `${verso(225)}°`);
+
+  // La schiuma: da forza 4 in su. Sotto non ce n'è, e non è prudenza —
+  // sotto i sette metri al secondo il mare non imbianca.
+  const schiuma = W => Math.max(0, Math.min(1, (W - 7) / 6));
+  prova('sotto i sette metri al secondo non c\'è schiuma', schiuma(6.5) === 0);
+  prova('e a tredici il mare è tutto bianco', schiuma(13) >= 1);
+}
+
+// =====================================================================
+titolo('20. I laghi e i fiumi (terreno.js §12)');
+// ---------------------------------------------------------------------
+//   Questo modulo, al contrario del mare, si può provare **per davvero**:
+//   `terreno.js` è caricato in questa pagina, quindi qui sotto girano le
+//   funzioni vere e non una loro copia.
+//
+//   Le cose che possono andare storte non sono di disegno, sono di
+//   geometria — e nessuna si vede a occhio. Un raggio che taglia i bordi
+//   nell'ordine sbagliato disegna un lago dove c'è la riva e la riva dove
+//   c'è il lago. Un'occlusione fatta con la cresta tosata a zero nasconde
+//   ogni lago del mondo, perché l'acqua sta sotto la linea dell'orizzonte
+//   per definizione. E una quota presa sulla riva invece che sull'acqua
+//   alza il lago di qualche metro, che a due chilometri è un decimo di
+//   grado — cioè un lago che galleggia sopra alla sua conca.
+if (typeof acqueTaglia !== 'function') {
+  nota('terreno.js non espone il modulo delle acque: prove saltate.');
+} else {
+  const LAT = 45.9, LON = 8.55;
+
+  // Un lago tondo, scritto come lo scriverebbe Overpass.
+  const cerchio = (dNord, dEst, raggioM, tags) => {
+    const g = [];
+    const mLat = 111320, mLon = 111320 * Math.cos(LAT * D2R);
+    for (let a = 0; a <= 48; a++) {
+      const th = a / 48 * 2 * Math.PI;
+      g.push({
+        lat: LAT + (dNord + raggioM * Math.cos(th)) / mLat,
+        lon: LON + (dEst + raggioM * Math.sin(th)) / mLon
+      });
+    }
+    return { type: 'way', tags, geometry: g };
+  };
+
+  // -------------------------------------------------------------------
+  // Leggere quello che risponde OpenStreetMap
+  // -------------------------------------------------------------------
+  {
+    const letti = acqueLeggiElementi([
+      cerchio(2000, 0, 300, { natural: 'water', water: 'lake', name: 'Lago' }),
+      { type: 'way', tags: { waterway: 'river', name: 'Fiume' },
+        geometry: [{ lat: LAT + 0.01, lon: LON - 0.02 }, { lat: LAT - 0.01, lon: LON - 0.02 }] },
+      { type: 'way', tags: { waterway: 'canal', width: '9' },
+        geometry: [{ lat: LAT + 0.01, lon: LON + 0.02 }, { lat: LAT - 0.01, lon: LON + 0.02 }] },
+      { type: 'relation', tags: { natural: 'water', name: 'Lago grande' },
+        members: [{ role: 'outer', geometry: cerchio(0, 5000, 900, {}).geometry }] }
+    ]);
+    prova('legge vie, relazioni, laghi e corsi d\'acqua', letti.length === 4, `${letti.length} tracciati`);
+    prova('un lago è chiuso e non è corrente', letti[0].chiuso && !letti[0].corrente);
+    prova('un fiume è corrente e ha una larghezza di serie',
+      letti[1].corrente && letti[1].largo === 45, `${letti[1].largo} m`);
+    prova('e se OpenStreetMap la scrive, si usa quella',
+      letti[2].largo === 9, `${letti[2].largo} m`);
+    prova('la geometria di una relazione arriva dai suoi pezzi',
+      letti[3].punti.length > 40 && letti[3].chiuso);
+  }
+
+  // -------------------------------------------------------------------
+  // Il raggio che taglia i bordi. È il cuore del modulo: se sbaglia,
+  // sbaglia tutto quello che viene dopo.
+  // -------------------------------------------------------------------
+  {
+    // Un lago tondo di raggio 300 m, col centro a 2 km esatti a nord.
+    const lago = cerchio(2000, 0, 300, { natural: 'water', water: 'lake' });
+    const bande = acqueBandeDaTagli(acqueTaglia(acqueLeggiElementi([lago]), LAT, LON, 25000));
+    const aNord = bande[0];
+    prova('guardando al centro del lago si entra e si esce alle due rive',
+      !!aNord && aNord.length === 1 &&
+      Math.abs(aNord[0][0] - 1700) < 25 && Math.abs(aNord[0][1] - 2300) < 25,
+      aNord ? `${aNord[0][0]}–${aNord[0][1]} m (attesi 1700–2300)` : 'niente');
+    prova('ed è acqua ferma, non corrente', !!aNord && aNord[0][2] === 0);
+
+    // Il lago è largo 300 m a 2000: si vede in ±8,5°. A venti gradi non
+    // c'è più niente, e trovarci dell'acqua vorrebbe dire che i raggi si
+    // prendono i lati di qualcun altro.
+    const lontano = bande[Math.round(20 / ACQUE_PASSO_AZ)];
+    prova('a venti gradi di lato il lago non c\'è', !lontano);
+    // Il bordo: la corda a mezzo raggio è più corta di quella al centro.
+    const meta = bande[Math.round(5 / ACQUE_PASSO_AZ)];
+    prova('e verso il bordo lo specchio si accorcia, come una corda di cerchio',
+      !!meta && (meta[0][1] - meta[0][0]) < 600 && (meta[0][1] - meta[0][0]) > 100,
+      meta ? `${meta[0][1] - meta[0][0]} m di corda contro i 600 del centro` : 'niente');
+
+    // Quante direzioni tocca: 2·arcsin(300/2000) = 17,2°, cioè 35 raggi.
+    let quante = 0;
+    for (const b of bande) if (b) quante++;
+    prova('e occupa i gradi d\'orizzonte che gli spettano',
+      Math.abs(quante * ACQUE_PASSO_AZ - 17.2) < 1.5,
+      `${(quante * ACQUE_PASSO_AZ).toFixed(1)}° contro i 17,2 della geometria`);
+  }
+
+  // Due laghi uno dietro l'altro nella stessa direzione restano due.
+  {
+    const bande = acqueBandeDaTagli(acqueTaglia(acqueLeggiElementi([
+      cerchio(1500, 0, 200, { natural: 'water' }),
+      cerchio(4000, 0, 200, { natural: 'water' })
+    ]), LAT, LON, 25000));
+    const aNord = bande[0];
+    prova('due laghi in fila nella stessa direzione restano due intervalli',
+      !!aNord && aNord.length === 2 && aNord[0][1] < aNord[1][0],
+      aNord ? aNord.map(v => `${v[0]}–${v[1]}`).join('  ') : 'niente');
+  }
+
+  // Un fiume: l'intervallo lo fa la larghezza, e si allunga quando il
+  // corso è obliquo rispetto al raggio — perché guardandolo per il verso
+  // lungo se ne vede un pezzo intero.
+  {
+    const dritto = acqueBandeDaTagli(acqueTaglia(acqueLeggiElementi([{
+      type: 'way', tags: { waterway: 'river', width: '60' },
+      geometry: [{ lat: LAT + 0.018, lon: LON - 0.03 }, { lat: LAT + 0.018, lon: LON + 0.03 }]
+    }]), LAT, LON, 25000));
+    const b = dritto[0];
+    prova('un fiume attraversato di traverso è profondo quanto è largo',
+      !!b && b[0][2] === 1 && Math.abs((b[0][1] - b[0][0]) - 60) < 6,
+      b ? `${b[0][1] - b[0][0]} m` : 'niente');
+    // Lo stesso fiume guardato di sbieco: a 45° la profondità è √2 volte.
+    const sbieco = dritto[Math.round(30 / ACQUE_PASSO_AZ)];
+    prova('e di sbieco se ne vede un pezzo più lungo',
+      !!sbieco && (sbieco[0][1] - sbieco[0][0]) > 62,
+      sbieco ? `${sbieco[0][1] - sbieco[0][0]} m a trenta gradi` : 'niente');
+  }
+
+  // -------------------------------------------------------------------
+  // La quota e l'occlusione, che sono le due cose che decidono se un lago
+  // si vede. Qui serve un terreno vero: si monta con la stessa pipeline
+  // che usa l'app.
+  // -------------------------------------------------------------------
+  {
+    // Un versante che scende da 700 m fino a una conca a 200, e poi una
+    // dorsale che risale. Verso nord invece è tutta montagna che sale.
+    const suolo = (az, km) => {
+      if (az > 340 || az < 20) return 700 + 300 * km;        // muro a nord
+      if (km < 1) return 700 - 480 * km;
+      if (km < 6) return 220;
+      return 220 + 200 * (km - 6);
+    };
+    const nd = TERRENO_DISTANZE.length;
+    const grezze = new Array(TERRENO_DIREZIONI * nd);
+    const avute = [];
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+      avute.push(i);
+      for (let k = 0; k < nd; k++) {
+        grezze[i * nd + k] = suolo(i * TERRENO_PASSO_AZ, TERRENO_DISTANZE[k]);
+      }
+    }
+    terreno.acceso = true;
+    terrenoApplica(LAT, LON, terrenoMonta(grezze, avute, 700), 'prova', false);
+
+    prova('la griglia delle quote grezze si tiene: senza, un lago non ha quota',
+      !!terreno.quote && terreno.quote.length === TERRENO_DIREZIONI * nd);
+    prova('e la quota letta dentro a uno specchio è quella del fondovalle',
+      Math.abs(acqueQuotaDi(180, 2500, 3500) - 220) < 1,
+      `${acqueQuotaDi(180, 2500, 3500)} m`);
+
+    // La cresta grezza: sotto la linea dell'orizzonte deve **restare**
+    // negativa. È l'errore che nascondeva ogni lago.
+    const davanti = acqueCrestaGrezza(180, 3);
+    prova('la cresta davanti, guardando in una conca, è un angolo negativo',
+      davanti !== null && davanti < 0, `${davanti === null ? 'niente' : davanti.toFixed(2) + '°'}`);
+    prova('e con la versione tosata a zero sarebbe zero — cioè ogni lago nascosto',
+      terrenoCrestaDavanti(180, 3) === 0);
+
+    // Il lago in conca, a 3 km verso sud: si deve vedere.
+    acque.acceso = true;
+    acqueApplica(LAT, LON, acqueLeggiElementi([
+      cerchio(-3000, 0, 700, { natural: 'water', water: 'lake', name: 'Lago in conca' })
+    ]), 'prova');
+    const viste = acqueVisibili();
+    const sud = viste ? viste[Math.round(180 / ACQUE_PASSO_AZ)] : null;
+    prova('il lago in fondo alla valle da qui si vede',
+      !!sud && sud.length === 1, sud ? `${Math.round(sud[0].vicino)}–${Math.round(sud[0].lontano)} m` : 'niente');
+    prova('sta sotto la linea dell\'orizzonte, come ogni superficie d\'acqua',
+      !!sud && sud[0].depLontano < 0 && sud[0].depVicino < sud[0].depLontano,
+      sud ? `da ${sud[0].depVicino.toFixed(1)}° a ${sud[0].depLontano.toFixed(1)}°` : '');
+    prova('e la riva vicina si vede più in basso di quella lontana',
+      !!sud && sud[0].depVicino < sud[0].depLontano);
+    prova('il nome del lago finisce nella riga di stato',
+      acque.nomi.indexOf('Lago in conca') >= 0, acque.nomi.join(', '));
+
+    // Lo stesso lago messo a nord, dietro al muro di montagna: non si vede.
+    acqueApplica(LAT, LON, acqueLeggiElementi([
+      cerchio(3000, 0, 700, { natural: 'water', water: 'lake' })
+    ]), 'prova');
+    const v2 = acqueVisibili();
+    let aNord = 0;
+    if (v2) for (let i = 0; i < v2.length; i++) {
+      const az = i * ACQUE_PASSO_AZ;
+      if ((az > 340 || az < 20) && v2[i]) aNord++;
+    }
+    prova('un lago dietro a una montagna non si vede', aNord === 0, `${aNord} direzioni`);
+
+    // E uno più in alto dell'occhio nemmeno: quello che se ne vedrebbe è
+    // la riva di taglio, non la superficie.
+    terrenoApplica(LAT, LON, terrenoMonta(grezze, avute, 100), 'prova', false);
+    acqueApplica(LAT, LON, acqueLeggiElementi([
+      cerchio(-3000, 0, 700, { natural: 'water', water: 'lake' })
+    ]), 'prova');
+    const v3 = acqueVisibili();
+    const sudAlto = v3 ? v3[Math.round(180 / ACQUE_PASSO_AZ)] : null;
+    prova('un lago più in alto dell\'occhio non si disegna', !sudAlto);
+
+    terrenoDimentica();
+    acqueDimentica();
+  }
+}
+
+// =====================================================================
 const esito = document.getElementById('esito');
 esito.dataset.stato = fallite ? 'ko' : 'ok';
 esito.textContent = fallite
