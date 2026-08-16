@@ -3112,6 +3112,15 @@ body button.pos-risultato:focus-visible {
   --alta-barra-tempo: calc(var(--tasto-tempo) + 14px);   /* + imbottitura e bordi */
   /* Quanto sta sopra al bordo basso chi deve stare sopra alla barra */
   --sopra-barra-tempo: calc(max(12px, env(safe-area-inset-bottom)) + var(--alta-barra-tempo) + 8px);
+  /* Quanto è alta, in cima, la fascia dei comandi appoggiati sul cielo —
+     sempre in vista anche a pannelli chiusi: le linguette dei gruppi e,
+     sotto di loro, la riga con la bussola. 10px di margine, la pillola
+     delle linguette (40px + 4px+4px di imbottitura del suo fondo + 2px di
+     bordo = 50px), 8px di distacco fra le due righe, la bussola (64px, la
+     cosa più alta della seconda riga). Serve alla scheda dell'oggetto, qui
+     sotto: senza saperlo, in orizzontale su un telefono basso ci finiva
+     scritta sopra — mezza scheda sotto alla bussola, mezza sopra. */
+  --zona-alta-cielo: 132px;
 }
 
 @media (min-width: 1180px) {
@@ -3980,6 +3989,10 @@ body input.casella-data:hover { border: 0; }
    entrano tutte nella larghezza dello schermo senza scorrere */
 @media (max-width: 620px) {
   .cielo-chrome { gap: 6px; padding: 8px; padding-top: max(8px, env(safe-area-inset-top)); }
+  /* La fascia si stringe insieme a tutto il resto: 8px di margine, la
+     pillola più bassa (38px + 3px+3px di imbottitura + 2px di bordo =
+     46px), 6px di distacco, la bussola più piccola (52px). */
+  .vista-cielo { --zona-alta-cielo: 112px; }
   .linguetta-gruppo .nome-lungo { display: none; }
   .linguetta-gruppo .nome-corto { display: inline; }
   .linguetta-gruppo { min-height: 38px; padding: 8px 10px; font-size: 0.78rem; }
@@ -4075,7 +4088,12 @@ body input.casella-data:hover { border: 0; }
   bottom: var(--sopra-barra-tempo);
   z-index: 6;
   width: min(340px, calc(100% - 96px));
-  max-height: min(62%, 420px);
+  /* Non sale mai più su di dove finisce la fascia dei comandi in cima: il
+     terzo termine è "quanto spazio c'è fra la bussola e la barra del
+     tempo", ed è quello che conta quando la mappa è bassa (il cielo
+     girato di lato su un telefono). Senza, il 62%/420px da soli potevano
+     arrivare più su della bussola e scriverci sopra. */
+  max-height: min(62%, 420px, calc(100% - var(--zona-alta-cielo) - var(--sopra-barra-tempo)));
   overflow-y: auto;
   padding: 14px 34px 14px 14px;
   border: 1px solid var(--bordo-forte);
@@ -5716,8 +5734,9 @@ body.luogo-immersivo { overflow: hidden; }
   .card-hover:hover { transform: none; }
 
   /* La scheda dell'oggetto non si mangia la mappa: sul telefono resta una
-     striscia in basso, e il resto del cielo si vede sopra */
-  .pannello-dettaglio { max-height: 54%; }
+     striscia in basso, e il resto del cielo si vede sopra. Anche qui non
+     sale mai sopra alla bussola (vedi --zona-alta-cielo). */
+  .pannello-dettaglio { max-height: min(54%, calc(100% - var(--zona-alta-cielo) - var(--sopra-barra-tempo))); }
 
   /* --- Calendario compatto --- */
   .fc .fc-toolbar { flex-wrap: wrap; gap: 6px; justify-content: space-between; }
@@ -5857,8 +5876,13 @@ body.luogo-immersivo { overflow: hidden; }
   .corpo-modale { padding: 12px 14px; }
 
   /* La scheda dell'oggetto sulla mappa: di lato lo spazio è largo e basso,
-     quindi si stringe in colonna invece di coprire mezzo cielo */
-  .pannello-dettaglio { max-height: calc(100% - 74px - var(--alta-barra-tempo)); width: min(300px, 44%); }
+     quindi si stringe in colonna invece di coprire mezzo cielo. Il tetto
+     era un "100% - 74px" scritto a occhio, che contava solo la riga delle
+     linguette e si dimenticava la riga sotto (bussola e letture): con la
+     mappa già bassa di suo (il cielo girato di lato), la scheda cresceva
+     abbastanza da finire scritta sopra alla bussola. `--zona-alta-cielo`
+     è la misura vera della fascia intera, e vale anche qui. */
+  .pannello-dettaglio { max-height: calc(100% - var(--zona-alta-cielo) - var(--sopra-barra-tempo)); width: min(300px, 44%); }
   .gruppo-comandi.gruppo-attivo { max-height: 100%; }
 
   /* Girato, la mappa è alta un terzo: la barra del tempo si stringe quanto
