@@ -193,6 +193,11 @@ const terreno = {
   // (§8, `terrenoCrestaDavanti`). Manca ai profili salvati vecchi, e chi la
   // usa deve sapersene fare una ragione.
   fronti: null,           // Float32Array(120×18)
+  // Le quote grezze, così come sono arrivate: 120×18 metri sul livello del
+  // mare. `fronti` ne è il massimo accumulato, che è quello che serve al
+  // disegno dell'orizzonte — ma per sapere **a che quota sta un lago** ci
+  // vuole il numero non accumulato, e ricavarlo da `fronti` non si può.
+  quote: null,            // Array(120×18)
   avute: [],              // quali direzioni sono misurate davvero (non stimate)
   quotaStimata: false,    // la quota di casa non è arrivata: viene dai campioni vicini
   quando: 0,
@@ -1027,6 +1032,7 @@ function terrenoScordaProfilo() {
   terreno.tipi = null;
   terreno.miscela = null;
   terreno.fronti = null;
+  terreno.quote = null;
   terreno.quota = null;
   terreno.quotaStimata = false;
   terreno.misurate = 0;
@@ -1066,7 +1072,10 @@ function terrenoApplica(lat, lon, dati, sorgente, ancoraInCorso) {
   // hanno: si resta senza creste parziali, e chi le usa ripiega sul
   // profilo intero come faceva prima. Si rifanno da sé al primo posto
   // nuovo, e sono sei richieste che nessuno rifà apposta.
-  terreno.fronti = Array.isArray(dati.quote) && dati.quote.length === TERRENO_DIREZIONI * TERRENO_DISTANZE.length
+  const grigliaBuona = Array.isArray(dati.quote) &&
+    dati.quote.length === TERRENO_DIREZIONI * TERRENO_DISTANZE.length;
+  terreno.quote = grigliaBuona ? dati.quote : null;
+  terreno.fronti = grigliaBuona
     ? terrenoFronti(dati.quote, (typeof dati.quota === 'number' ? dati.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M)
     : null;
   // Col giro grosso appena arrivato l'orizzonte è già quello vero e si
@@ -1599,11 +1608,12 @@ function terrenoAggiornaPannello() {
   }
   const nota = document.getElementById('skymap-terreno-nota');
   if (nota) {
-    nota.textContent = [terrenoTesto(), cittaTesto(), cimeTesto()]
+    nota.textContent = [terrenoTesto(), cittaTesto(), cimeTesto(), acqueTesto()]
       .map(t => (t || '').trim()).filter(Boolean).join(' ');
   }
   cittaAggiornaTasto();
   cimeAggiornaTasto();
+  acqueAggiornaTasto();
 }
 
 
@@ -1635,7 +1645,13 @@ const CHIAVE_RAGGI = 'astrocalendario_raggi_orizzonte';
 // di 87 km non vuol dire niente di diverso da uno di 85.
 const RAGGI_LIMITI = {
   cime: { min: 15, max: 200, passo: 5, predefinito: 80 },
-  citta: { min: 10, max: 150, passo: 5, predefinito: 90 }
+  citta: { min: 10, max: 150, passo: 5, predefinito: 90 },
+  // I laghi e i fiumi si cercano molto più vicino, e non per prudenza: un
+  // lago a cinquanta chilometri, visto da uno che sta in pianura, è sotto
+  // l'orizzonte — e quando invece si vede (da una cima) è una riga di due
+  // pixel. Venticinque chilometri sono il raggio in cui uno specchio
+  // d'acqua è ancora una superficie.
+  acque: { min: 5, max: 60, passo: 5, predefinito: 25 }
 };
 
 function raggiTosa(quale, km) {
@@ -1645,12 +1661,24 @@ function raggiTosa(quale, km) {
 }
 
 function raggiLeggiSalvati() {
-  const v = { cime: RAGGI_LIMITI.cime.predefinito, citta: RAGGI_LIMITI.citta.predefinito, nomiMonti: false };
+  const v = {
+    cime: RAGGI_LIMITI.cime.predefinito,
+    citta: RAGGI_LIMITI.citta.predefinito,
+    acque: RAGGI_LIMITI.acque.predefinito,
+    nomiMonti: false,
+    // I laghi e i fiumi nascono **accesi**, al contrario dei nomi dei
+    // monti: non aggiungono scritte davanti al cielo, sono paesaggio come
+    // le colline — e chi apre il planetario sul lago di Como vuole vedere
+    // il lago di Como.
+    acqueAccese: true
+  };
   try {
     const s = JSON.parse(localStorage.getItem(CHIAVE_RAGGI) || 'null');
     if (s && typeof s === 'object') {
       if (typeof s.cime === 'number') v.cime = raggiTosa('cime', s.cime);
       if (typeof s.citta === 'number') v.citta = raggiTosa('citta', s.citta);
+      if (typeof s.acque === 'number') v.acque = raggiTosa('acque', s.acque);
+      if (typeof s.acqueAccese === 'boolean') v.acqueAccese = s.acqueAccese;
       // I nomi dei monti nascono spenti, e restano spenti finché qualcuno
       // non li accende: sono l'unico strato di questo file che aggiunge
       // scritte sopra al cielo, e chi apre il planetario per la prima
@@ -1677,6 +1705,7 @@ function raggioCitta() { return raggi.citta; }
 function raggiRicarica() {
   Object.assign(raggi, raggiLeggiSalvati());
   cime.acceso = raggi.nomiMonti;
+  acque.acceso = raggi.acqueAccese;
   if (typeof costruisciRaggiOrizzonte === 'function') costruisciRaggiOrizzonte();
 }
 
@@ -1691,6 +1720,9 @@ function raggiImposta(quale, km) {
   if (quale === 'cime') {
     cimeDimentica();
     if (cime.acceso) cimeCarica(true);
+  } else if (quale === 'acque') {
+    acqueDimentica();
+    if (acque.acceso) acqueCarica(true);
   } else {
     cittaDimentica();
     if (citta.acceso) cittaCarica(true);
@@ -2523,4 +2555,679 @@ function cimeAggiornaTasto() {
   tasto.classList.toggle('attiva', cime.acceso);
   tasto.setAttribute('aria-pressed', cime.acceso ? 'true' : 'false');
   tasto.textContent = cime.stato === 'in-corso' ? 'Nomi dei monti…' : 'Nomi dei monti';
+}
+
+
+// =====================================================================
+// 12. LE ACQUE INTERNE — I LAGHI E I FIUMI
+//     Il mare, questo file lo sapeva già trovare da sé: una direzione in
+//     cui il modello del suolo dà zero per sessanta chilometri è acqua, e
+//     non serve chiederlo a nessuno. Un lago no. Il lago di Garda sta a
+//     sessantacinque metri sul livello del mare, il Lago Maggiore a
+//     centonovantatré, un laghetto alpino a duemila: per il modello del
+//     suolo sono terreno pianeggiante come un campo di grano, e non c'è
+//     soglia che li distingua senza prendersi mezza Pianura Padana.
+//
+//     Quindi si chiedono, e si chiedono a OpenStreetMap — che è già la
+//     fonte dei paesi e delle vette, e ha il pregio di sapere anche **la
+//     forma**: un lago è un poligono, un fiume è una linea.
+//
+//     Da lì il lavoro vero è uno solo, ed è geometrico: per ogni direzione
+//     attorno a chi guarda, **da che distanza a che distanza** c'è acqua.
+//     La risposta è quella che il planetario disegna — un lago non è una
+//     macchia sull'orizzonte, è una superficie che comincia dietro a una
+//     collina e finisce contro la riva di là — e si ottiene tirando un
+//     raggio per ogni mezzo grado e vedendo dove taglia i bordi.
+//
+//     Quello che questo modulo **non** fa è dire a che quota sta l'acqua:
+//     quello lo sa già il modello del suolo (§4), e la quota si legge da
+//     lì al momento di disegnare. È anche il motivo per cui la
+//     rasterizzazione qui è pura geometria e si può salvare così com'è:
+//     non dipende da quanto si è alti né da che cosa c'è davanti.
+// =====================================================================
+
+const CHIAVE_ACQUE = 'astrocalendario_acque';
+
+// Ogni quanti gradi si tira un raggio. Mezzo grado è più fine di quanto
+// serva al colore ma non a un fiume: a due chilometri un corso d'acqua
+// largo trenta metri copre meno di un grado, e con un passo di uno
+// sparirebbe o raddoppierebbe a seconda di dove cade.
+const ACQUE_PASSO_AZ = 0.5;
+const ACQUE_DIREZIONI = Math.round(360 / ACQUE_PASSO_AZ);
+
+// Quanto è larga un'acqua corrente quando OpenStreetMap non lo dice. Sono
+// medie oneste: un fiume italiano di pianura, un canale di bonifica.
+const ACQUE_LARGHEZZA = { river: 45, canal: 14, stream: 4 };
+
+// Un fiume che scorre quasi lungo il raggio verrebbe lungo chilometri: la
+// profondità apparente è la larghezza divisa il seno dell'angolo, e a
+// zero gradi va all'infinito. Si tosa a otto volte la larghezza.
+const ACQUE_FIUME_MAX = 8;
+
+// Sotto questa misura uno specchio d'acqua non vale la richiesta né il
+// disegno: è una piscina, una vasca di depurazione, uno stagno da
+// giardino. Il conto è sull'area del suo riquadro, in metri quadri.
+const ACQUE_AREA_MIN = 4000;
+
+const ACQUE_ATTESA_MS = 30000;
+const ACQUE_RAGGIO_VALIDO_KM = 2;
+const ACQUE_RIPROVA_DOPO_MS = 4 * 60 * 1000;
+
+const acque = {
+  stato: 'niente',        // niente | in-corso | pronto | fallito
+  lat: null,
+  lon: null,
+  // La rasterizzazione: per ogni mezzo grado, gli intervalli di distanza in
+  // cui c'è acqua. `[vicino, lontano, tipo]` in metri, tipo 0 = fermo
+  // (lago), 1 = corrente (fiume).
+  bande: null,
+  quanti: 0,              // quanti specchi d'acqua sono stati trovati
+  nomi: [],               // i più grandi, per la riga di stato
+  fonte: '',
+  motivo: '',
+  quandoFallito: 0,
+  fallitoLat: null,
+  fallitoLon: null,
+  promessa: null,
+  // Quello che serve al disegno, ricavato al volo dalle bande + il terreno:
+  // si rifà solo quando cambia il terreno o l'altezza dell'occhio.
+  vista: null,
+  vistaChiave: null,
+  acceso: raggi.acqueAccese
+};
+
+function raggioAcque() { return raggi.acque; }
+
+
+// --- Chiederle a OpenStreetMap ----------------------------------------
+
+// Laghi (poligoni) e corsi d'acqua (linee). `out geom` è la parte che
+// conta: senza, arrivano gli identificativi dei nodi e non le coordinate,
+// e servirebbe una seconda richiesta per ognuno.
+//
+// I laghi grandi in OSM sono **relazioni** (multipoligoni), non vie: il
+// Garda, il Trasimeno, la laguna di Venezia. Con `out geom` una relazione
+// porta la geometria di ogni suo pezzo, e a noi basta quella — non serve
+// ricomporre il multipoligono, perché il raggio taglia i bordi comunque.
+function acqueQueryOverpass(lat, lon) {
+  const r = terrenoRiquadro(lat, lon, raggioAcque());
+  const bb = `(${r.s.toFixed(4)},${r.o.toFixed(4)},${r.n.toFixed(4)},${r.e.toFixed(4)})`;
+  return '[out:json][timeout:25];(' +
+    `way["natural"="water"]${bb};` +
+    `relation["natural"="water"]${bb};` +
+    `way["waterway"~"^(river|canal)$"]${bb};` +
+    ');out geom 1200;';
+}
+
+// Il ripiego, per quando la richiesta larga si prende un 504: solo i laghi,
+// solo vicino, niente relazioni. È molto più corta e passa quasi sempre.
+function acqueQueryCorta(lat, lon) {
+  const r = terrenoRiquadro(lat, lon, Math.min(12, raggioAcque()));
+  const bb = `(${r.s.toFixed(4)},${r.o.toFixed(4)},${r.n.toFixed(4)},${r.e.toFixed(4)})`;
+  return '[out:json][timeout:20];(' +
+    `way["natural"="water"]${bb};` +
+    `way["waterway"="river"]${bb};` +
+    ');out geom 500;';
+}
+
+// Da quello che risponde Overpass alle sole cose che servono: una lista di
+// tracciati, ognuno con il suo tipo, se è chiuso, e la sua larghezza se è
+// un corso d'acqua.
+function acqueLeggiElementi(elementi) {
+  const fuori = [];
+  const aggiungi = (punti, tags, chiuso, nome) => {
+    if (!Array.isArray(punti) || punti.length < 2) return;
+    const corrente = tags && tags.waterway && !tags.natural;
+    let largo = 0;
+    if (corrente) {
+      const scritta = parseFloat(String(tags.width || tags['maxwidth'] || '').replace(',', '.'));
+      largo = isFinite(scritta) && scritta > 0
+        ? scritta : (ACQUE_LARGHEZZA[tags.waterway] || ACQUE_LARGHEZZA.stream);
+    }
+    fuori.push({ punti, corrente: !!corrente, largo, chiuso, nome: nome || '' });
+  };
+
+  for (const e of elementi) {
+    if (!e) continue;
+    const tags = e.tags || {};
+    // I fiumi mappati come area (`natural=water` + `water=river`) sono
+    // poligoni e vanno trattati da poligoni, non da linee: il campo
+    // `waterway` ce l'hanno lo stesso, e senza questo controllo un'ansa
+    // larga duecento metri veniva disegnata come un filo.
+    if (e.type === 'way' && Array.isArray(e.geometry)) {
+      const p = e.geometry.filter(g => g && typeof g.lat === 'number');
+      const chiuso = p.length > 3 &&
+        Math.abs(p[0].lat - p[p.length - 1].lat) < 1e-7 &&
+        Math.abs(p[0].lon - p[p.length - 1].lon) < 1e-7;
+      aggiungi(p, tags, chiuso, tags.name);
+    } else if (e.type === 'relation' && Array.isArray(e.members)) {
+      for (const mem of e.members) {
+        if (!mem || !Array.isArray(mem.geometry)) continue;
+        if (mem.role && mem.role !== 'outer') continue;
+        const p = mem.geometry.filter(g => g && typeof g.lat === 'number');
+        // Un pezzo di multipoligono quasi mai si chiude da solo: si tratta
+        // come un anello comunque, chiudendolo. Il bordo che ne esce non è
+        // quello vero al metro, ma per tagliarlo con un raggio va bene —
+        // e l'alternativa è ricomporre i multipoligoni di OSM, che è un
+        // lavoro che qui non paga.
+        aggiungi(p, tags, true, tags.name);
+      }
+    }
+  }
+  return fuori;
+}
+
+async function acqueDaOverpass(lat, lon) {
+  try {
+    return acqueLeggiElementi(await overpassChiedi(acqueQueryOverpass(lat, lon), ACQUE_ATTESA_MS));
+  } catch (e) {
+    console.warn('Acque: la richiesta larga non è passata, riprovo con quella corta —', e.message);
+    return acqueLeggiElementi(await overpassChiedi(acqueQueryCorta(lat, lon), ACQUE_ATTESA_MS));
+  }
+}
+
+
+// --- Dalla forma alle direzioni ---------------------------------------
+
+// Il tracciato in metri veri attorno a chi guarda: est e nord. Da qui in
+// poi è geometria piana, e a queste distanze la Terra è piana abbastanza
+// (a venticinque chilometri lo scarto di una proiezione locale è metri).
+function acqueInMetri(punti, lat, lon) {
+  const D2R = Math.PI / 180;
+  const mLat = 111320;
+  const mLon = 111320 * Math.cos(lat * D2R);
+  const fuori = new Float64Array(punti.length * 2);
+  for (let i = 0; i < punti.length; i++) {
+    fuori[i * 2] = (punti[i].lon - lon) * mLon;
+    fuori[i * 2 + 1] = (punti[i].lat - lat) * mLat;
+  }
+  return fuori;
+}
+
+// L'indice della direzione in cui cade un punto, come numero con la
+// virgola: serve a sapere quali raggi possono tagliare un lato.
+function acqueIndiceAz(x, y) {
+  return ((Math.atan2(x, y) * 180 / Math.PI + 360) % 360) / ACQUE_PASSO_AZ;
+}
+
+// Il cuore: si tira un raggio per ogni direzione e si segna dove taglia i
+// bordi. Non si prova ogni lato contro ogni raggio — sarebbero milioni di
+// prove — ma **solo contro i raggi che quel lato può incontrare**, che
+// sono quelli fra l'azimut di un estremo e quello dell'altro. Un lago
+// lontano occupa tre direzioni e costa tre prove.
+//
+// Per un poligono i tagli vengono a coppie (si entra e si esce), e
+// ordinandoli si hanno gli intervalli d'acqua. Per una linea — un fiume —
+// ogni taglio è un attraversamento, e l'intervallo glielo dà la larghezza:
+// tanto più lungo quanto più il fiume corre lungo il raggio, perché
+// guardandolo per il verso lungo se ne vede un pezzo intero.
+function acqueTaglia(tracciati, lat, lon, limiteM) {
+  const tagli = new Array(ACQUE_DIREZIONI);
+  for (let i = 0; i < ACQUE_DIREZIONI; i++) tagli[i] = null;
+  const seni = new Float64Array(ACQUE_DIREZIONI);
+  const coseni = new Float64Array(ACQUE_DIREZIONI);
+  for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+    const a = b * ACQUE_PASSO_AZ * Math.PI / 180;
+    seni[b] = Math.sin(a);
+    coseni[b] = Math.cos(a);
+  }
+
+  for (const tr of tracciati) {
+    const p = acqueInMetri(tr.punti, lat, lon);
+    const n = tr.punti.length;
+    // Il riquadro: uno specchio tutto fuori dal raggio di ricerca non si
+    // guarda nemmeno, e uno grande come una vasca non è uno specchio.
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let i = 0; i < n; i++) {
+      if (p[i * 2] < minX) minX = p[i * 2];
+      if (p[i * 2] > maxX) maxX = p[i * 2];
+      if (p[i * 2 + 1] < minY) minY = p[i * 2 + 1];
+      if (p[i * 2 + 1] > maxY) maxY = p[i * 2 + 1];
+    }
+    if (!tr.corrente && (maxX - minX) * (maxY - minY) < ACQUE_AREA_MIN) continue;
+    // Il punto del riquadro più vicino all'origine: se è oltre il limite,
+    // tutto lo specchio lo è, e non vale la pena provarne i lati.
+    const vx = minX > 0 ? minX : (maxX < 0 ? maxX : 0);
+    const vy = minY > 0 ? minY : (maxY < 0 ? maxY : 0);
+    if (Math.hypot(vx, vy) > limiteM) continue;
+
+    const lati = tr.chiuso ? n : n - 1;
+    for (let i = 0; i < lati; i++) {
+      const j = (i + 1) % n;
+      const ax = p[i * 2], ay = p[i * 2 + 1];
+      const bx = p[j * 2], by = p[j * 2 + 1];
+      const ex = bx - ax, ey = by - ay;
+      if (ex === 0 && ey === 0) continue;
+
+      // Quali raggi può incontrare: quelli fra i due estremi, per la via
+      // corta. Un lato visto da fuori non copre mai mezzo giro, quindi la
+      // via corta è quella giusta.
+      let i0 = acqueIndiceAz(ax, ay);
+      let i1 = acqueIndiceAz(bx, by);
+      let d = i1 - i0;
+      const mezzo = ACQUE_DIREZIONI / 2;
+      if (d > mezzo) d -= ACQUE_DIREZIONI;
+      if (d < -mezzo) d += ACQUE_DIREZIONI;
+      const passi = Math.abs(d);
+      // Un lato che si vede quasi in punta non tocca nessun raggio, e
+      // saltarlo va bene: ci pensano i suoi vicini.
+      if (passi > mezzo) continue;
+      const da = Math.ceil(Math.min(i0, i0 + d) - 1e-9);
+      const a2 = Math.floor(Math.max(i0, i0 + d) + 1e-9);
+
+      for (let q = da; q <= a2; q++) {
+        const b = ((q % ACQUE_DIREZIONI) + ACQUE_DIREZIONI) % ACQUE_DIREZIONI;
+        const dx = seni[b], dy = coseni[b];
+        const det = ex * dy - dx * ey;
+        if (Math.abs(det) < 1e-9) continue;
+        const t = (ex * ay - ey * ax) / det;
+        if (!(t > 0) || t > limiteM) continue;
+        const u = (dx * ay - dy * ax) / det;
+        if (u < 0 || u >= 1) continue;
+        if (!tagli[b]) tagli[b] = [];
+        if (tr.corrente) {
+          // Quanto è profondo l'attraversamento: la larghezza divisa il
+          // seno dell'angolo fra il raggio e la riva.
+          const len = Math.hypot(ex, ey);
+          const sen = Math.abs((ex * dy - ey * dx) / len);
+          const prof = Math.min(tr.largo * ACQUE_FIUME_MAX,
+            tr.largo / Math.max(0.12, sen));
+          tagli[b].push({ t, fiume: true, prof });
+        } else {
+          tagli[b].push({ t, fiume: false });
+        }
+      }
+    }
+  }
+  return tagli;
+}
+
+// Dai tagli agli intervalli: si ordina, si accoppia (per i poligoni) e si
+// fondono quelli che si toccano. Il risultato è la risposta alla domanda
+// «da che distanza a che distanza c'è acqua da quella parte».
+function acqueBandeDaTagli(tagli) {
+  const bande = new Array(ACQUE_DIREZIONI);
+  for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+    const lista = tagli[b];
+    if (!lista || !lista.length) { bande[b] = null; continue; }
+    lista.sort((x, y) => x.t - y.t);
+
+    const pezzi = [];
+    let dentro = null;
+    for (const c of lista) {
+      if (c.fiume) {
+        pezzi.push([Math.max(0, c.t - c.prof / 2), c.t + c.prof / 2, 1]);
+        continue;
+      }
+      // Poligono: il primo taglio entra, il secondo esce. Un taglio spaiato
+      // in fondo (capita ai bordi del riquadro scaricato, dove il poligono
+      // è tagliato a metà) si chiude sul limite invece di buttarlo: un lago
+      // che continua oltre i venticinque chilometri è comunque un lago
+      // fino a lì.
+      if (dentro === null) dentro = c.t;
+      else { pezzi.push([dentro, c.t, 0]); dentro = null; }
+    }
+    if (dentro !== null) pezzi.push([dentro, dentro + 200, 0]);
+
+    pezzi.sort((x, y) => x[0] - y[0]);
+    const uniti = [];
+    for (const p of pezzi) {
+      const ultimo = uniti[uniti.length - 1];
+      if (ultimo && p[0] <= ultimo[1] + 3) {
+        ultimo[1] = Math.max(ultimo[1], p[1]);
+        // Un lago che inghiotte un fiume resta un lago: il tipo lo decide
+        // il pezzo più lungo, che è quello che si vede.
+        if (p[1] - p[0] > ultimo[1] - ultimo[0]) ultimo[2] = p[2];
+      } else {
+        uniti.push([Math.round(p[0]), Math.round(p[1]), p[2]]);
+      }
+    }
+    bande[b] = uniti.length ? uniti : null;
+  }
+  return bande;
+}
+
+// I nomi dei tre specchi più larghi, per la riga di stato: «si vede il
+// Lago di Garda» dice molto di più di «tre specchi d'acqua».
+function acqueNomiGrandi(tracciati, lat, lon) {
+  const per = new Map();
+  for (const tr of tracciati) {
+    if (!tr.nome || tr.corrente) continue;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const q of tr.punti) {
+      const x = (q.lon - lon) * 111320 * Math.cos(lat * Math.PI / 180);
+      const y = (q.lat - lat) * 111320;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    const area = (maxX - minX) * (maxY - minY);
+    if (!(area > ACQUE_AREA_MIN)) continue;
+    per.set(tr.nome, Math.max(per.get(tr.nome) || 0, area));
+  }
+  return Array.from(per.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3).map(v => v[0]);
+}
+
+
+// --- Tenersele --------------------------------------------------------
+
+function acqueArchivio() {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHIAVE_ACQUE) || 'null');
+    if (v && Array.isArray(v.posti)) return v.posti;
+  } catch (e) { /* niente storage, o roba illeggibile */ }
+  return [];
+}
+
+function acqueSalva(lat, lon, fonte) {
+  try {
+    const posti = acqueArchivio().filter(v => v && typeof v.lat === 'number' &&
+      terrenoDistanzaKm(lat, lon, v.lat, v.lon) > ACQUE_RAGGIO_VALIDO_KM);
+    // Le direzioni vuote non si scrivono: in un posto senza acqua sono
+    // settecentoventi `null`, e con quattro posti salvati sono tremila.
+    const fitte = {};
+    (acque.bande || []).forEach((b, i) => { if (b && b.length) fitte[i] = b; });
+    posti.unshift({
+      lat, lon, fonte, quando: Date.now(), raggio: raggioAcque(),
+      quanti: acque.quanti, nomi: acque.nomi, bande: fitte
+    });
+    localStorage.setItem(CHIAVE_ACQUE, JSON.stringify({ posti: posti.slice(0, TERRENO_POSTI_SALVATI) }));
+  } catch (e) { /* storage pieno: pazienza, si riscarica */ }
+}
+
+function acqueLeggiSalvate(lat, lon) {
+  return acqueArchivio().find(v => v && typeof v.lat === 'number' &&
+    terrenoDistanzaKm(lat, lon, v.lat, v.lon) <= ACQUE_RAGGIO_VALIDO_KM &&
+    // Un elenco preso più stretto di quello chiesto non risponde alla
+    // domanda: si riscarica. Più largo va benissimo — i raggi si tagliano
+    // al momento di disegnare.
+    (v.raggio || 0) >= raggioAcque()) || null;
+}
+
+function acqueDalSalvato(v) {
+  const bande = new Array(ACQUE_DIREZIONI).fill(null);
+  Object.keys(v.bande || {}).forEach(k => {
+    const i = Number(k);
+    if (i >= 0 && i < ACQUE_DIREZIONI) bande[i] = v.bande[k];
+  });
+  return bande;
+}
+
+function acqueDimentica() {
+  acque.stato = 'niente';
+  acque.bande = null;
+  acque.vista = null;
+  acque.vistaChiave = null;
+  acque.quanti = 0;
+  acque.nomi = [];
+  acque.quandoFallito = 0;
+  acque.fallitoLat = acque.fallitoLon = null;
+  acque.lat = acque.lon = null;
+}
+
+
+// --- L'innesco --------------------------------------------------------
+
+function acqueApplica(lat, lon, tracciati, fonte) {
+  acque.lat = lat;
+  acque.lon = lon;
+  acque.bande = acqueBandeDaTagli(acqueTaglia(tracciati, lat, lon, raggioAcque() * 1000));
+  acque.quanti = acque.bande.reduce((n, b) => n + (b ? b.length : 0), 0);
+  acque.nomi = acqueNomiGrandi(tracciati, lat, lon);
+  acque.vista = null;
+  acque.vistaChiave = null;
+  acque.fonte = fonte;
+  acque.stato = 'pronto';
+  acque.motivo = '';
+  terrenoAggiornaPannello();
+}
+
+function acqueCarica(forza) {
+  if (!acque.acceso) return Promise.resolve(false);
+
+  const luogo = terrenoLuogo();
+  if (!luogo) return Promise.resolve(false);
+  const lat = luogo.lat, lon = luogo.lon;
+
+  if (!forza && acque.stato === 'pronto' && acque.lat !== null &&
+      terrenoDistanzaKm(lat, lon, acque.lat, acque.lon) <= ACQUE_RAGGIO_VALIDO_KM) {
+    return Promise.resolve(true);
+  }
+  if (acque.stato === 'in-corso') return acque.promessa || Promise.resolve(false);
+  if (!forza && acque.stato === 'fallito' &&
+      Date.now() - (acque.quandoFallito || 0) < ACQUE_RIPROVA_DOPO_MS &&
+      acque.fallitoLat !== null &&
+      terrenoDistanzaKm(lat, lon, acque.fallitoLat, acque.fallitoLon) <= ACQUE_RAGGIO_VALIDO_KM) {
+    return Promise.resolve(false);
+  }
+
+  if (!forza) {
+    const salvate = acqueLeggiSalvate(lat, lon);
+    if (salvate) {
+      acque.lat = salvate.lat;
+      acque.lon = salvate.lon;
+      acque.bande = acqueDalSalvato(salvate);
+      acque.quanti = salvate.quanti || 0;
+      acque.nomi = Array.isArray(salvate.nomi) ? salvate.nomi : [];
+      acque.vista = null;
+      acque.vistaChiave = null;
+      acque.fonte = salvate.fonte || 'salvato';
+      acque.stato = 'pronto';
+      acque.motivo = '';
+      terrenoAggiornaPannello();
+      return Promise.resolve(true);
+    }
+  }
+
+  acque.stato = 'in-corso';
+  acque.motivo = '';
+  terrenoAggiornaPannello();
+
+  // In coda alle altre due richieste a OpenStreetMap, come le vette dietro
+  // ai paesi: è lo stesso servizio pubblico, e tre colpi nello stesso
+  // istante sono il modo più rapido per prendersi un «troppe richieste».
+  acque.promessa = Promise.resolve(cime.promessa).catch(() => {})
+    .then(() => acqueDaOverpass(lat, lon))
+    .then(tracciati => {
+      acqueApplica(lat, lon, tracciati, 'osm');
+      // Zero specchi d'acqua è una risposta, non un errore — mezza Italia
+      // è così. Ma non vale la pena salvarla: basta un trasloco.
+      if (acque.quanti) acqueSalva(lat, lon, 'osm');
+      return true;
+    })
+    .catch(e => {
+      acque.stato = 'fallito';
+      acque.motivo = e && e.message ? e.message : 'non sono riuscito a scaricarle';
+      acque.quandoFallito = Date.now();
+      acque.fallitoLat = lat;
+      acque.fallitoLon = lon;
+      terrenoAggiornaPannello();
+      return false;
+    })
+    .finally(() => { acque.promessa = null; });
+
+  return acque.promessa;
+}
+
+
+// --- Quello che da qui si vede davvero --------------------------------
+
+// A che quota sta il suolo in quella direzione, a quella distanza. Si legge
+// dalla griglia grezza del §4, e per un tratto d'acqua si prende il
+// **minimo** dei campioni che ci cascano dentro: l'acqua è la cosa più
+// bassa che ci sia lì attorno, e un campione che pesca sulla riva darebbe
+// il lago qualche metro più in alto di dov'è — che a due chilometri vuol
+// dire un decimo di grado, cioè qualche pixel di troppo.
+// Quanto sale il terreno **davanti** a un punto, senza tosare a zero.
+//
+// `terrenoCrestaDavanti` non va bene qui, e per una ragione che costa mezz'ora
+// a capire: quella funzione risponde a «quanto **copre** il terreno», e
+// coprire meno di niente non vuol dire niente, quindi tosa a zero. Ma
+// l'acqua sta sotto la linea dell'orizzonte, cioè a un angolo negativo:
+// confrontata con uno zero risulterebbe nascosta **sempre**, e di laghi non
+// se ne vedrebbe mai nessuno. Serve la cresta grezza, quella che scende
+// sotto lo zero dove il terreno sta più in basso dell'occhio — la stessa che
+// disegna la conca davanti a chi guarda da una cima.
+let acqueFrontiScratch = null;
+
+function acqueCrestaGrezza(az, km) {
+  const n = TERRENO_DISTANZE.length;
+  if (!acqueFrontiScratch) acqueFrontiScratch = new Float32Array(n);
+  const v = terrenoFrontiA(az, acqueFrontiScratch);
+  if (!v) return null;
+  const limite = km * TERRENO_FRONTE_MARGINE;
+  let k = -1;
+  for (let j = 0; j < n; j++) if (TERRENO_DISTANZE[j] <= limite) k = j;
+  // La riga è un massimo accumulato, quindi l'ultimo campione che ci sta
+  // dentro **è** il massimo: non serve girarli tutti.
+  return k < 0 ? null : v[k];
+}
+
+function acqueQuotaDi(az, vicinoM, lontanoM) {
+  if (!terreno.quote) return null;
+  const nd = TERRENO_DISTANZE.length;
+  const dove = (((az % 360) + 360) % 360) / TERRENO_PASSO_AZ;
+  const i = Math.floor(dove) % TERRENO_DIREZIONI;
+  const j = (i + 1) % TERRENO_DIREZIONI;
+  const t = dove - Math.floor(dove);
+
+  let minimo = null;
+  let piuVicino = null, scartoMin = Infinity;
+  const mezzo = (vicinoM + lontanoM) / 2;
+  for (let k = 0; k < nd; k++) {
+    const m = TERRENO_DISTANZE[k] * 1000;
+    const qa = terreno.quote[i * nd + k], qb = terreno.quote[j * nd + k];
+    if (typeof qa !== 'number' || typeof qb !== 'number') continue;
+    const q = qa + (qb - qa) * t;
+    if (m >= vicinoM && m <= lontanoM) {
+      if (minimo === null || q < minimo) minimo = q;
+    }
+    const scarto = Math.abs(m - mezzo);
+    if (scarto < scartoMin) { scartoMin = scarto; piuVicino = q; }
+  }
+  // Nessun campione dentro allo specchio — capita ai laghetti e a tutti i
+  // fiumi, che sono più stretti del passo della griglia: si prende quello
+  // che gli cade più vicino.
+  return minimo !== null ? minimo : piuVicino;
+}
+
+// Gli specchi d'acqua che da qui si vedono davvero, con l'angolo sotto cui
+// si vedono. Tre cernite, e sono tutte necessarie:
+//
+//   1. **sotto la linea dell'orizzonte**: uno specchio d'acqua più in alto
+//      dell'occhio non mostra la sua superficie, mostra la riva di taglio —
+//      e disegnarlo vorrebbe dire mettere del blu sopra l'orizzonte;
+//   2. **davanti alla cresta**: un lago dietro a una collina non si vede, ed
+//      è il caso normale, non l'eccezione. Ma solo la parte **vicina** si
+//      perde: guardando oltre un crinale si vede la metà lontana del lago e
+//      non la riva di qua, che è esattamente quello che si vede dal vero;
+//   3. **dentro al raggio chiesto**, che può essere sceso nel frattempo.
+//
+// Il risultato si tiene finché non cambia il terreno o l'altezza da cui si
+// guarda: è la stessa memoria di comodo di `cimeVisibili`.
+function acqueVisibili() {
+  if (!acque.acceso || acque.stato !== 'pronto' || !acque.bande) return null;
+  if (!terrenoDisponibile()) return null;
+
+  const occhio = (typeof terreno.quota === 'number' ? terreno.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M;
+  const chiave = `${occhio.toFixed(1)}|${terreno.quando}|${raggioAcque()}`;
+  if (acque.vista && acque.vistaChiave === chiave) return acque.vista;
+
+  const limite = raggioAcque() * 1000;
+  const fuori = new Array(ACQUE_DIREZIONI).fill(null);
+  for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+    const lista = acque.bande[b];
+    if (!lista) continue;
+    const az = b * ACQUE_PASSO_AZ;
+    const tenute = [];
+    for (const [vicino, lontano, tipo] of lista) {
+      if (vicino > limite) continue;
+      const fine = Math.min(lontano, limite);
+      if (!(fine > vicino)) continue;
+      const quota = acqueQuotaDi(az, vicino, fine);
+      if (quota === null) continue;
+
+      // L'acqua si allontana verso l'orizzonte, quindi l'angolo cresce (si
+      // avvicina a zero) con la distanza: la riva vicina è il punto più in
+      // basso e quella lontana il più in alto. La cresta che sta davanti,
+      // invece, non fa che salire. Il taglio si cerca camminando dalla riva
+      // lontana verso quella vicina, e ci si ferma quando il terreno la
+      // supera: quello che resta è la parte che si vede.
+      const dep = km => terrenoAngolo(quota, occhio, km / 1000);
+      const altoFine = dep(fine);
+      if (!(altoFine < -0.02)) continue;      // sopra l'occhio: non è superficie
+      let taglio = vicino;
+      const passi = 8;
+      for (let p = 0; p <= passi; p++) {
+        const km = fine + (vicino - fine) * (p / passi);
+        const davanti = acqueCrestaGrezza(az, km / 1000);
+        if (davanti !== null && davanti > dep(km)) { taglio = km; break; }
+        taglio = km;
+      }
+      if (!(fine > taglio + 1)) continue;
+      tenute.push({
+        vicino: taglio, lontano: fine, tipo,
+        depVicino: dep(taglio), depLontano: altoFine, quota
+      });
+    }
+    if (tenute.length) fuori[b] = tenute;
+  }
+
+  acque.vista = fuori;
+  acque.vistaChiave = chiave;
+  return fuori;
+}
+
+// Che acqua c'è in quella direzione, pronta da disegnare. `null` quando non
+// ce n'è: è la domanda che il planetario fa per ogni colonna dello schermo,
+// e deve costare quanto una lettura di array.
+function acqueA(az) {
+  const v = acqueVisibili();
+  if (!v) return null;
+  const i = Math.round((((az % 360) + 360) % 360) / ACQUE_PASSO_AZ) % ACQUE_DIREZIONI;
+  return v[i];
+}
+
+// C'è dell'acqua interna, da qualche parte qui attorno?
+function acqueCiSono() {
+  return !!(acque.acceso && acque.stato === 'pronto' && acque.quanti > 0);
+}
+
+function acqueAlterna() {
+  acque.acceso = !acque.acceso;
+  raggi.acqueAccese = acque.acceso;
+  raggiSalva();
+  if (acque.acceso && acque.stato !== 'pronto') acqueCarica();
+  acqueAggiornaTasto();
+  terrenoAggiornaPannello();
+}
+
+function acqueTesto() {
+  if (!acque.acceso) return 'Laghi e fiumi spenti.';
+  if (acque.stato === 'in-corso') return 'Sto cercando laghi e fiumi qui attorno…';
+  if (acque.stato === 'fallito') {
+    return `Laghi e fiumi: ${acque.motivo}. L'orizzonte resta quello di prima.`;
+  }
+  if (acque.stato !== 'pronto') return '';
+  if (!acque.quanti) return `Nessun lago né fiume entro ${raggioAcque()} km.`;
+  const viste = acqueVisibili();
+  if (!viste) {
+    return terrenoInArrivo()
+      ? 'Ho trovato dell\'acqua qui attorno: aspetto la forma del terreno per sapere quale se ne vede.'
+      : '';
+  }
+  let direzioni = 0;
+  for (const v of viste) if (v) direzioni++;
+  if (!direzioni) {
+    return `L'acqua qui attorno c'è, ma resta tutta dietro alle creste: da qui non se ne vede.`;
+  }
+  const nomi = acque.nomi.length ? ` (${acque.nomi.join(', ')})` : '';
+  return `Si vede dell'acqua in ${Math.round(direzioni * ACQUE_PASSO_AZ)}° di orizzonte${nomi}.`;
+}
+
+function acqueAggiornaTasto() {
+  const tasto = document.getElementById('skymap-btn-acque');
+  if (!tasto) return;
+  tasto.classList.toggle('attiva', acque.acceso);
+  tasto.setAttribute('aria-pressed', acque.acceso ? 'true' : 'false');
+  tasto.textContent = acque.stato === 'in-corso' ? 'Laghi e fiumi…' : 'Laghi e fiumi';
 }

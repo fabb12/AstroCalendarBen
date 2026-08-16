@@ -262,10 +262,13 @@ function costruisciRaggiOrizzonte() {
     { quale: 'cime', nome: 'Montagne', valore: raggioCime(),
       aiuto: 'Fin dove cercare le vette con un nome. Più largo vuol dire più nomi, ma anche montagne che stanno dietro ad altre montagne.' },
     { quale: 'citta', nome: 'Luci dei paesi', valore: raggioCitta(),
-      aiuto: 'Fin dove cercare i paesi che illuminano l\'orizzonte. Una città grande si vede da lontano, un paese no.' }
+      aiuto: 'Fin dove cercare i paesi che illuminano l\'orizzonte. Una città grande si vede da lontano, un paese no.' },
+    { quale: 'acque', nome: 'Laghi e fiumi', valore: raggioAcque(),
+      aiuto: 'Fin dove cercare l\'acqua. Più in là di così un lago è sotto l\'orizzonte, o è una riga di due pixel.' }
   ];
 
   const acceso = typeof cime !== 'undefined' && cime.acceso;
+  const acquaAccesa = typeof acque !== 'undefined' && acque.acceso;
   box.innerHTML = righe.map(r => {
     const l = RAGGI_LIMITI[r.quale];
     return `
@@ -279,6 +282,10 @@ function costruisciRaggiOrizzonte() {
     <label class="riga-raggio riga-interruttore">
       <input type="checkbox" id="imp-nomi-monti" ${acceso ? 'checked' : ''}>
       <span>Scrivi i nomi delle montagne sull'orizzonte</span>
+    </label>
+    <label class="riga-raggio riga-interruttore">
+      <input type="checkbox" id="imp-acque" ${acquaAccesa ? 'checked' : ''}>
+      <span>Disegna i laghi e i fiumi</span>
     </label>`;
 
   box.querySelectorAll('[data-raggio]').forEach(s => {
@@ -297,6 +304,12 @@ function costruisciRaggiOrizzonte() {
     // Lo stesso interruttore del tasto «Nomi dei monti» nel planetario:
     // uno solo dei due deve esistere davvero, e quello è `cimeAlterna`.
     if (typeof cimeAlterna === 'function' && spunta.checked !== cime.acceso) cimeAlterna();
+    costruisciRaggiOrizzonte();
+  });
+
+  const spuntaAcque = document.getElementById('imp-acque');
+  if (spuntaAcque) spuntaAcque.addEventListener('change', () => {
+    if (typeof acqueAlterna === 'function' && spuntaAcque.checked !== acque.acceso) acqueAlterna();
     costruisciRaggiOrizzonte();
   });
 
