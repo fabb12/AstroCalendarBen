@@ -121,6 +121,38 @@ const TERRENO_ALTEZZA_OCCHIO_M = 1.6;
 // dato sbagliato.
 const TERRENO_ALT_MAX = 60;
 
+// La distanza più piccola con cui si può fare un angolo di elevazione.
+//
+// `terrenoAngolo` è una `atan2(dislivello, distanza)`, e a distanza zero
+// quella funzione non si arrende: risponde novanta gradi. È l'asintoto che
+// fa comparire gli spilli — chiesta a distanza «quasi zero» dà una parete
+// verticale anche per un dosso di due metri, e il chiamante non ha modo di
+// accorgersene perché il numero che riceve è un numero perfettamente
+// plausibile. Cinquanta metri sono la metà di una cella del modello del
+// suolo: sotto quella misura non c'è nessuna informazione da difendere, e
+// tosare lì è gratis per tutti i campioni della griglia (il primo sta a
+// centocinquanta metri) e salva chi chiede l'angolo di un punto che ha sotto
+// i piedi — cioè l'acqua in cui si sta.
+const TERRENO_DISTANZA_MIN_M = 50;
+
+// Di quanto una direzione può stare sopra a tutt'e due le sue vicine.
+//
+// La griglia è centoventi direzioni, una ogni tre gradi, e ognuna è una
+// colonna di campioni indipendente: un solo campione sbagliato — un tetto,
+// un pilone, un buco nel modello — alza la cresta di quella direzione e
+// basta. Poi `terrenoInterpola` la stira su tre gradi, e quello che si vede
+// sullo schermo è una stalagmite: alta, sottilissima, e attaccata a un
+// orizzonte per il resto giusto.
+//
+// Il rimedio non è una media — una media abbasserebbe le vette vere, che
+// sono proprio le uniche cose che uno guarda — ma un **tetto**: una
+// direzione non può superare di più di tanto la più alta delle sue due
+// vicine. Una cresta vera ce le ha alte anche loro e non viene toccata; uno
+// spillo, per definizione, non ce le ha. Un grado e due decimi è largo: a
+// tre gradi di passo, un pendio che sale davvero cambia molto meno di così
+// da una direzione all'altra.
+const TERRENO_SPILLO_GRADI = 1.2;
+
 // Quanto ci si può spostare prima che il profilo non valga più. Due
 // chilometri: dentro un paese l'orizzonte lontano è lo stesso, e non ha
 // senso riscaricarlo perché ci si è spostati di un isolato.
@@ -242,8 +274,16 @@ function terrenoPuntoA(lat, lon, az, km) {
 // duecentocinquanta: è il motivo per cui il mare finisce, e per cui una
 // collina lontana si vede più bassa di quanto sarebbe se il mondo fosse
 // un tavolo.
+// La distanza si tosa a `TERRENO_DISTANZA_MIN_M` prima di dividerci: è
+// l'unico posto in cui l'asintoto della `atan2` può entrare nell'app, e
+// fermarlo qui vuol dire fermarlo per tutti — le creste, l'occlusione, i nomi
+// delle montagne, l'acqua. L'abbassamento si sottrae alla quota **prima**
+// dell'arcotangente, e non è la formula scolastica `s²/2R`: c'è di mezzo la
+// rifrazione, che restituisce un settimo di quello che la curvatura si è
+// preso, e senza di lei una vetta a sessanta chilometri risulterebbe più
+// bassa di trentacinque metri di dov'è.
 function terrenoAngolo(quota, occhio, km) {
-  const s = km * 1000;
+  const s = Math.max(TERRENO_DISTANZA_MIN_M, km * 1000);
   const abbassa = (1 - TERRENO_RIFRAZIONE) * s * s / (2 * TERRENO_RAGGIO_KM * 1000);
   return Math.atan2(quota - occhio - abbassa, s) * 180 / Math.PI;
 }
@@ -660,6 +700,38 @@ function terrenoFronti(quote, occhio) {
       f[i * n + k] = Math.max(TERRENO_ALT_MIN, Math.min(TERRENO_ALT_MAX, massimo));
     }
   }
+  return terrenoTosaSpilli(f);
+}
+
+// Il passa-basso in azimut, che è un tetto e non una media.
+//
+// Si lavora **una distanza per volta**, sul giro chiuso delle centoventi
+// direzioni: per ogni direzione il valore non può superare di più di
+// `TERRENO_SPILLO_GRADI` la più alta delle sue due vicine a quella stessa
+// distanza. Il confronto è coi valori **di prima** (la colonna si copia)
+// perché se no il taglio si propaga: tosata la prima, la seconda si
+// ritroverebbe una vicina più bassa e verrebbe tosata anche lei, e in un
+// giro l'orizzonte diventerebbe piatto.
+//
+// Due proprietà, e servono tutt'e due. La riga resta **non decrescente** in
+// distanza — che è l'invariante su cui poggia tutta l'occlusione del
+// disegno a piani: il tetto di una fetta è al più quello della fetta dopo
+// (le vicine non decrescono neanche loro) e il valore tosato è il minimo di
+// due quantità che crescono entrambe, quindi cresce. E una cresta larga —
+// una catena, un altopiano, il fianco di una valle — non si muove di un
+// centesimo, perché le sue vicine sono alte quanto lei.
+function terrenoTosaSpilli(f) {
+  const n = TERRENO_DISTANZE.length;
+  const colonna = new Float32Array(TERRENO_DIREZIONI);
+  for (let k = 0; k < n; k++) {
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) colonna[i] = f[i * n + k];
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+      const prima = colonna[(i - 1 + TERRENO_DIREZIONI) % TERRENO_DIREZIONI];
+      const dopo = colonna[(i + 1) % TERRENO_DIREZIONI];
+      const tetto = Math.max(prima, dopo) + TERRENO_SPILLO_GRADI;
+      if (colonna[i] > tetto) f[i * n + k] = tetto;
+    }
+  }
   return f;
 }
 
@@ -841,21 +913,23 @@ function terrenoMonta(grezze, avute, quotaChiesta) {
   const stimata = typeof quotaChiesta !== 'number';
   const quotaCasa = stimata ? terrenoQuotaDaVicino(quote, avute) : quotaChiesta;
   const occhio = (typeof quotaCasa === 'number' ? quotaCasa : 0) + TERRENO_ALTEZZA_OCCHIO_M;
+  // Le creste **sono** l'ultima colonna delle creste parziali, non un secondo
+  // massimo calcolato a parte. Erano due conti gemelli, e per un pezzo hanno
+  // dato lo stesso numero; da quando `terrenoFronti` tosa gli spilli non lo
+  // darebbero più, e le due risposte divergerebbero in silenzio — la sagoma
+  // disegnata (che legge `fronti`) racconterebbe un orizzonte e la cresta che
+  // decide se un astro è sorto (che legge `profilo`) un altro. Ricavandola da
+  // qui l'accordo è per costruzione, ed è la proprietà che il §15 di
+  // `verifica.html` controlla azimut per azimut.
+  const fronti = terrenoFronti(quote, occhio);
   const creste = new Array(TERRENO_DIREZIONI).fill(0);
   const tipi = new Array(TERRENO_DIREZIONI).fill(TERRENO_PIANURA);
   for (let i = 0; i < TERRENO_DIREZIONI; i++) {
-    let massimo = 0;
-    for (let k = 0; k < nd; k++) {
-      const q = quote[i * nd + k];
-      if (typeof q !== 'number') continue;
-      const a = terrenoAngolo(q, occhio, TERRENO_DISTANZE[k]);
-      if (a > massimo) massimo = a;
-    }
     // Sotto zero non si scende: da una cima l'orizzonte vero è **sotto**
     // la linea, ma tutto il resto dell'app dà per scontato che la terra
     // cominci a zero gradi — dal riempimento del terreno alla curva della
     // notte. Meglio un orizzonte piatto che un'app che si contraddice.
-    creste[i] = Math.max(0, Math.min(TERRENO_ALT_MAX, massimo));
+    creste[i] = Math.max(0, Math.min(TERRENO_ALT_MAX, fronti[i * nd + nd - 1]));
     tipi[i] = terrenoTipoDiDirezione(quote, i, quotaCasa, creste[i]);
   }
 
@@ -871,9 +945,13 @@ function terrenoMonta(grezze, avute, quotaChiesta) {
   // pezzo che manca. Contando i buchi si sa che ce ne sono trenta, ma non
   // dove sono — e quelle interpolate, nella griglia salvata, sono numeri
   // identici a quelli veri.
+  // `fronti` viaggia con gli altri ma **non** si salva (vedi `terrenoSalva`,
+  // che sceglie i campi a mano): sono duemila e cento float che si rifanno in
+  // un millisecondo dalle quote grezze, e scriverli in `localStorage`
+  // vorrebbe dire raddoppiare il posto occupato per non guadagnare niente.
   return {
     quota: quotaCasa, quotaStimata: stimata && typeof quotaCasa === 'number',
-    creste, tipi, quote,
+    creste, tipi, quote, fronti,
     avute: avute.slice().sort((a, b) => a - b), misurate: avute.length
   };
 }
@@ -1075,9 +1153,17 @@ function terrenoApplica(lat, lon, dati, sorgente, ancoraInCorso) {
   const grigliaBuona = Array.isArray(dati.quote) &&
     dati.quote.length === TERRENO_DIREZIONI * TERRENO_DISTANZE.length;
   terreno.quote = grigliaBuona ? dati.quote : null;
-  terreno.fronti = grigliaBuona
-    ? terrenoFronti(dati.quote, (typeof dati.quota === 'number' ? dati.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M)
-    : null;
+  // Chi arriva da `terrenoMonta` le porta già calcolate (e già tosate dagli
+  // spilli): rifarle qui vorrebbe dire farle due volte, e con la tosatura in
+  // mezzo anche il rischio di farle **diverse** dalle creste. Chi arriva da
+  // `localStorage` no — lì si salvano solo le quote grezze — e allora si
+  // ricavano adesso.
+  terreno.fronti = (grigliaBuona && dati.fronti && dati.fronti.length === dati.quote.length)
+    ? dati.fronti
+    : (grigliaBuona
+      ? terrenoFronti(dati.quote, (typeof dati.quota === 'number' ? dati.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M)
+      : null);
+  terreno.quotaAcqua = false;
   // Col giro grosso appena arrivato l'orizzonte è già quello vero e si
   // disegna, ma lo scarico non è finito: lo stato resta «in-corso», se no
   // chiunque richiami `terrenoCarica` crederebbe che non ci sia più niente
@@ -1087,9 +1173,53 @@ function terrenoApplica(lat, lon, dati, sorgente, ancoraInCorso) {
   if (!ancoraInCorso) terreno.avanzamento = 0;
   terreno.quando = Date.now();
   terreno.sorgente = sorgente;
+  // Se si sta dentro all'acqua, l'occhio non sta sul suolo: sta sulla
+  // superficie. Si chiede qui perché il terreno e le acque arrivano in
+  // ordine imprevedibile — il primo da `localStorage` e le seconde dalla
+  // rete, o il contrario — e ognuno dei due, arrivando, deve poter rimettere
+  // a posto la quota. La funzione non fa niente se non c'è niente da fare.
+  acqueAllineaOcchio();
   // Non serve chiedere un ridisegno: il planetario ridisegna a ogni
   // fotogramma, e al primo utile la collina nuova è già lì.
   terrenoAggiornaPannello();
+}
+
+// Rifare il profilo con un'altra quota dell'occhio, senza chiedere niente
+// alla rete.
+//
+// La quota di casa non è un dato in più: è il termine che si **sottrae** a
+// tutti gli angoli, quindi sbagliarla di venti metri storta l'orizzonte
+// intero — le creste, le creste parziali da cui esce l'occlusione, i
+// paesaggi. Per questo non basta scrivere il numero nuovo in `terreno.quota`
+// e sperare: va rifatto tutto quello che da lei dipende. Il che si può fare
+// senza rete, perché le quote grezze ce le abbiamo già in mano.
+//
+// Serve a un caso solo, ma è un caso che prima non veniva gestito affatto:
+// chi guarda **dall'acqua**. Vedi `acqueAllineaOcchio`.
+function terrenoRimontaConQuota(quota, perche) {
+  if (typeof quota !== 'number' || !isFinite(quota)) return false;
+  if (!terreno.quote || !Array.isArray(terreno.avute) || !terreno.avute.length) return false;
+
+  const dati = terrenoMonta(terreno.quote, terreno.avute, quota);
+  terreno.quota = dati.quota;
+  // Non è più una stima da completare: è una misura, presa dalla superficie
+  // dell'acqua. Lasciarla «stimata» vorrebbe dire che `terrenoDaCompletare`
+  // continua a mandare una richiesta ogni volta per riscrivere il numero
+  // che abbiamo appena corretto.
+  terreno.quotaStimata = false;
+  terreno.quotaAcqua = perche === 'acqua';
+  terreno.profilo = terrenoInterpola(dati.creste);
+  terreno.tipi = terrenoTipiPerGrado(dati.tipi);
+  terreno.miscela = terrenoMiscelaPerGrado(terreno.tipi);
+  terreno.fronti = dati.fronti;
+  // `quando` è la chiave con cui vette e acque tengono da parte il loro
+  // «da qui cosa si vede»: cambiando l'occhio quelle due risposte non valgono
+  // più, e questo è il modo in cui l'app se lo dice già da prima.
+  terreno.quando = Date.now();
+  cime.vistaChiave = null;
+  acque.vista = null;
+  acque.vistaChiave = null;
+  return true;
 }
 
 // Da che punto si sta guardando il cielo, che non è sempre casa: nel
@@ -2609,6 +2739,28 @@ const ACQUE_FIUME_MAX = 8;
 // giardino. Il conto è sull'area del suo riquadro, in metri quadri.
 const ACQUE_AREA_MIN = 4000;
 
+// Quanto in basso può scendere il bordo vicino di uno specchio d'acqua.
+//
+// Stando **sull'**acqua, la superficie arriva ai piedi: la sua depressione
+// tende a novanta gradi, e novanta gradi esatti è il nadir — che in
+// stereografica, guardando in su, è l'antipodo del centro della vista, cioè
+// il punto che la proiezione manda all'infinito. Ottantacinque gradi
+// corrispondono a quattordici centimetri dalla punta delle scarpe: tutta
+// l'acqua che c'è da disegnare c'è, e il poligono resta un poligono.
+const ACQUE_DEP_MAX_GRADI = 85;
+
+// Di quanto la cresta davanti deve superare l'acqua per nasconderla.
+//
+// I modelli del suolo spianano gli specchi d'acqua, quindi i campioni dentro
+// a un lago **sono** la quota del lago: confrontare l'angolo dell'acqua con
+// l'angolo del terreno che le sta davanti mette a paragone due numeri che
+// alla riva vicina sono lo stesso numero, e a decidere resta l'ultimo bit
+// della doppia precisione. Il risultato era una riva che compariva e
+// spariva da un fotogramma all'altro. Un ventesimo di grado di franchigia è
+// meno di un pixel a qualunque ingrandimento e toglie di mezzo il
+// ballottaggio.
+const ACQUE_OCCLUSIONE_MARGINE_GRADI = 0.05;
+
 const ACQUE_ATTESA_MS = 30000;
 const ACQUE_RAGGIO_VALIDO_KM = 2;
 const ACQUE_RIPROVA_DOPO_MS = 4 * 60 * 1000;
@@ -2621,6 +2773,13 @@ const acque = {
   // cui c'è acqua. `[vicino, lontano, tipo]` in metri, tipo 0 = fermo
   // (lago), 1 = corrente (fiume).
   bande: null,
+  // Si sta **dentro** a uno specchio d'acqua: le coordinate cascano dentro a
+  // un poligono. È il caso che per un pezzo non esisteva affatto — l'algoritmo
+  // dava per scontato che il raggio partisse da terra — e cambia due cose: la
+  // prima banda di ogni direzione comincia ai piedi invece che alla riva, e
+  // l'occhio sta sulla superficie e non sul suolo (`acqueAllineaOcchio`).
+  sommerso: false,
+  quotaSommerso: null,    // la quota della superficie su cui si sta, in metri
   quanti: 0,              // quanti specchi d'acqua sono stati trovati
   nomi: [],               // i più grandi, per la riga di stato
   fonte: '',
@@ -2750,6 +2909,36 @@ function acqueIndiceAz(x, y) {
   return ((Math.atan2(x, y) * 180 / Math.PI + 360) % 360) / ACQUE_PASSO_AZ;
 }
 
+// L'origine — cioè chi guarda — sta dentro a questo poligono?
+//
+// È la domanda che mancava, e mancava in modo insidioso: senza di lei
+// l'algoritmo dei tagli assume sempre di partire da terra, quindi conta il
+// primo incrocio come un **ingresso** nell'acqua. Chi sta in mezzo a un lago
+// (o su un fiume, o in mare aperto dentro a un poligono di OSM) col primo
+// incrocio ci sta invece **uscendo**: tutta la parità si sposta di uno, e il
+// risultato è che l'acqua sotto i piedi non viene disegnata affatto mentre la
+// terra dietro alla riva viene disegnata come acqua. Un errore che si vede
+// per quello che è solo se si sa dove guardare, perché il disegno resta
+// plausibile — c'è dell'acqua, sta più o meno lì.
+//
+// Il test è quello di sempre (parità degli incroci di una semiretta), tirato
+// verso est perché è l'asse in cui i punti sono già scritti. Costa un giro
+// dei vertici e si fa una volta per specchio d'acqua, non una per raggio: chi
+// chiama lo fa **dopo** aver visto che il riquadro contiene l'origine, e quel
+// controllo scarta tutti i laghi tranne quello in cui si sta.
+function acquePuntoDentro(p, n) {
+  let dentro = false;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const yi = p[i * 2 + 1], yj = p[j * 2 + 1];
+    // Il lato attraversa il parallelo dell'origine?
+    if ((yi > 0) === (yj > 0)) continue;
+    const xi = p[i * 2], xj = p[j * 2];
+    // Dove lo attraversa: se a est dell'origine, la semiretta lo taglia.
+    if (xi + (0 - yi) * (xj - xi) / (yj - yi) > 0) dentro = !dentro;
+  }
+  return dentro;
+}
+
 // Il cuore: si tira un raggio per ogni direzione e si segna dove taglia i
 // bordi. Non si prova ogni lato contro ogni raggio — sarebbero milioni di
 // prove — ma **solo contro i raggi che quel lato può incontrare**, che
@@ -2764,6 +2953,13 @@ function acqueIndiceAz(x, y) {
 function acqueTaglia(tracciati, lat, lon, limiteM) {
   const tagli = new Array(ACQUE_DIREZIONI);
   for (let i = 0; i < ACQUE_DIREZIONI; i++) tagli[i] = null;
+  // Gli specchi d'acqua che contengono l'origine, e il limite oltre il quale
+  // i tagli sono stati buttati. Viaggiano appesi all'array invece che in un
+  // secondo valore di ritorno perché `acqueBandeDaTagli(acqueTaglia(…))` è
+  // scritto così in tre posti — nell'app e nelle prove — e la parità dei
+  // tagli non si può leggere senza sapere da dove parte il raggio.
+  tagli.sommersi = new Set();
+  tagli.limite = limiteM;
   const seni = new Float64Array(ACQUE_DIREZIONI);
   const coseni = new Float64Array(ACQUE_DIREZIONI);
   for (let b = 0; b < ACQUE_DIREZIONI; b++) {
@@ -2772,7 +2968,8 @@ function acqueTaglia(tracciati, lat, lon, limiteM) {
     coseni[b] = Math.cos(a);
   }
 
-  for (const tr of tracciati) {
+  for (let id = 0; id < tracciati.length; id++) {
+    const tr = tracciati[id];
     const p = acqueInMetri(tr.punti, lat, lon);
     const n = tr.punti.length;
     // Il riquadro: uno specchio tutto fuori dal raggio di ricerca non si
@@ -2790,6 +2987,18 @@ function acqueTaglia(tracciati, lat, lon, limiteM) {
     const vx = minX > 0 ? minX : (maxX < 0 ? maxX : 0);
     const vy = minY > 0 ? minY : (maxY < 0 ? maxY : 0);
     if (Math.hypot(vx, vy) > limiteM) continue;
+
+    // Ci siamo dentro? Solo se il riquadro contiene l'origine vale la pena
+    // chiederlo, e per un posto normale la risposta è no per tutti: due
+    // confronti a specchio d'acqua, e il giro dei vertici non si fa affatto.
+    // I corsi d'acqua mappati come linea sono esclusi per definizione — una
+    // polilinea non ha un dentro — mentre un fiume mappato come area arriva
+    // qui da poligono, che è giusto: in un'ansa larga duecento metri ci si
+    // sta in mezzo come in un lago.
+    if (!tr.corrente && tr.chiuso && minX <= 0 && maxX >= 0 && minY <= 0 && maxY >= 0 &&
+        acquePuntoDentro(p, n)) {
+      tagli.sommersi.add(id);
+    }
 
     const lati = tr.chiuso ? n : n - 1;
     for (let i = 0; i < lati; i++) {
@@ -2834,7 +3043,11 @@ function acqueTaglia(tracciati, lat, lon, limiteM) {
             tr.largo / Math.max(0.12, sen));
           tagli[b].push({ t, fiume: true, prof });
         } else {
-          tagli[b].push({ t, fiume: false });
+          // `id` serve alla parità: gli incroci si accoppiano **per
+          // poligono** e non tutti insieme. Con due laghi che si
+          // sovrappongono in una direzione — o con uno solo, ma con noi
+          // dentro — accoppiarli in blocco scambia l'acqua con la terra.
+          tagli[b].push({ t, fiume: false, id });
         }
       }
     }
@@ -2847,27 +3060,62 @@ function acqueTaglia(tracciati, lat, lon, limiteM) {
 // «da che distanza a che distanza c'è acqua da quella parte».
 function acqueBandeDaTagli(tagli) {
   const bande = new Array(ACQUE_DIREZIONI);
+  // Dove siamo dentro all'acqua, la parità di ogni poligono che ci contiene
+  // parte rovesciata: il primo taglio è un'uscita.
+  const sommersi = (tagli && tagli.sommersi) || null;
+  const dentroQualcosa = !!(sommersi && sommersi.size);
+  const limite = (tagli && typeof tagli.limite === 'number') ? tagli.limite : Infinity;
+
   for (let b = 0; b < ACQUE_DIREZIONI; b++) {
     const lista = tagli[b];
-    if (!lista || !lista.length) { bande[b] = null; continue; }
-    lista.sort((x, y) => x.t - y.t);
+    if ((!lista || !lista.length) && !dentroQualcosa) { bande[b] = null; continue; }
 
     const pezzi = [];
-    let dentro = null;
-    for (const c of lista) {
-      if (c.fiume) {
-        pezzi.push([Math.max(0, c.t - c.prof / 2), c.t + c.prof / 2, 1]);
-        continue;
+    // I tagli dei poligoni si tengono da parte **per poligono**: la parità è
+    // una proprietà di ogni bordo chiuso, non della direzione. Messi in un
+    // mucchio solo, due laghi che si sovrappongono in una direzione danno
+    // acqua dove c'è la lingua di terra fra i due — e il lago in cui si sta
+    // non si può leggere affatto.
+    const perPoligono = new Map();
+    if (lista && lista.length) {
+      lista.sort((x, y) => x.t - y.t);
+      for (const c of lista) {
+        if (c.fiume) {
+          pezzi.push([Math.max(0, c.t - c.prof / 2), c.t + c.prof / 2, 1]);
+          continue;
+        }
+        let ts = perPoligono.get(c.id);
+        if (!ts) { ts = []; perPoligono.set(c.id, ts); }
+        ts.push(c.t);
       }
-      // Poligono: il primo taglio entra, il secondo esce. Un taglio spaiato
-      // in fondo (capita ai bordi del riquadro scaricato, dove il poligono
-      // è tagliato a metà) si chiude sul limite invece di buttarlo: un lago
-      // che continua oltre i venticinque chilometri è comunque un lago
-      // fino a lì.
-      if (dentro === null) dentro = c.t;
-      else { pezzi.push([dentro, c.t, 0]); dentro = null; }
     }
-    if (dentro !== null) pezzi.push([dentro, dentro + 200, 0]);
+
+    perPoligono.forEach((ts, id) => {
+      let k = 0;
+      // Ci stiamo dentro: il primo taglio è la riva, e l'acqua comincia **ai
+      // piedi**. È la banda che prima non veniva generata affatto, e la sua
+      // mancanza è tutto il guasto: senza di lei chi sta in mezzo a un lago
+      // vede l'acqua cominciare dalla riva opposta.
+      if (sommersi && sommersi.has(id)) { pezzi.push([0, ts[0], 0]); k = 1; }
+      for (; k + 1 < ts.length; k += 2) pezzi.push([ts[k], ts[k + 1], 0]);
+      // Un taglio spaiato in fondo (capita ai bordi del riquadro scaricato,
+      // dove il poligono è tagliato a metà) si chiude sul limite invece di
+      // buttarlo: un lago che continua oltre i venticinque chilometri è
+      // comunque un lago fino a lì.
+      if (k < ts.length) pezzi.push([ts[k], ts[k] + 200, 0]);
+    });
+
+    // Sommersi in uno specchio che in questa direzione non ha nessun taglio:
+    // la riva opposta sta oltre il raggio di ricerca (il Garda visto da una
+    // barca in mezzo, il mare aperto) e i suoi incroci sono stati scartati.
+    // Allora l'acqua arriva fin dove si guarda, e non sapere dove finisce non
+    // è una ragione per non disegnarla.
+    if (sommersi) {
+      sommersi.forEach(id => {
+        if (!perPoligono.has(id)) pezzi.push([0, limite, 0]);
+      });
+    }
+    if (!pezzi.length) { bande[b] = null; continue; }
 
     pezzi.sort((x, y) => x[0] - y[0]);
     const uniti = [];
@@ -2928,6 +3176,11 @@ function acqueSalva(lat, lon, fonte) {
     (acque.bande || []).forEach((b, i) => { if (b && b.length) fitte[i] = b; });
     posti.unshift({
       lat, lon, fonte, quando: Date.now(), raggio: raggioAcque(),
+      // `sommerso` va salvato con le bande: è geometria pura come loro, e
+      // ricavarlo di nuovo vorrebbe dire tenersi i poligoni. Senza di lui, a
+      // ogni riapertura chi sta in mezzo a un lago si ritroverebbe l'occhio
+      // sul suolo e l'acqua che comincia dalla riva opposta.
+      sommerso: !!acque.sommerso,
       quanti: acque.quanti, nomi: acque.nomi, bande: fitte
     });
     localStorage.setItem(CHIAVE_ACQUE, JSON.stringify({ posti: posti.slice(0, TERRENO_POSTI_SALVATI) }));
@@ -2955,6 +3208,8 @@ function acqueDalSalvato(v) {
 function acqueDimentica() {
   acque.stato = 'niente';
   acque.bande = null;
+  acque.sommerso = false;
+  acque.quotaSommerso = null;
   acque.vista = null;
   acque.vistaChiave = null;
   acque.quanti = 0;
@@ -2970,7 +3225,9 @@ function acqueDimentica() {
 function acqueApplica(lat, lon, tracciati, fonte) {
   acque.lat = lat;
   acque.lon = lon;
-  acque.bande = acqueBandeDaTagli(acqueTaglia(tracciati, lat, lon, raggioAcque() * 1000));
+  const tagli = acqueTaglia(tracciati, lat, lon, raggioAcque() * 1000);
+  acque.sommerso = !!(tagli.sommersi && tagli.sommersi.size);
+  acque.bande = acqueBandeDaTagli(tagli);
   acque.quanti = acque.bande.reduce((n, b) => n + (b ? b.length : 0), 0);
   acque.nomi = acqueNomiGrandi(tracciati, lat, lon);
   acque.vista = null;
@@ -2978,6 +3235,12 @@ function acqueApplica(lat, lon, tracciati, fonte) {
   acque.fonte = fonte;
   acque.stato = 'pronto';
   acque.motivo = '';
+  // Stando sull'acqua l'occhio non è sul suolo. Va chiesto **prima** del
+  // pannello, che scrive la riga di stato, e prima del primo disegno: la
+  // quota dell'occhio è il termine da cui esce ogni angolo, quindi
+  // disegnare un fotogramma con quella sbagliata vuol dire disegnare un
+  // fotogramma di paesaggio storto.
+  acqueAllineaOcchio();
   terrenoAggiornaPannello();
 }
 
@@ -3006,6 +3269,8 @@ function acqueCarica(forza) {
       acque.lat = salvate.lat;
       acque.lon = salvate.lon;
       acque.bande = acqueDalSalvato(salvate);
+      acque.sommerso = !!salvate.sommerso;
+      acque.quotaSommerso = null;
       acque.quanti = salvate.quanti || 0;
       acque.nomi = Array.isArray(salvate.nomi) ? salvate.nomi : [];
       acque.vista = null;
@@ -3013,6 +3278,7 @@ function acqueCarica(forza) {
       acque.fonte = salvate.fonte || 'salvato';
       acque.stato = 'pronto';
       acque.motivo = '';
+      acqueAllineaOcchio();
       terrenoAggiornaPannello();
       return Promise.resolve(true);
     }
@@ -3050,6 +3316,74 @@ function acqueCarica(forza) {
 
 
 // --- Quello che da qui si vede davvero --------------------------------
+
+// Sotto che angolo si vede la superficie dell'acqua a `m` metri.
+//
+// È lo stesso conto di `terrenoAngolo` — dislivello, curvatura, rifrazione —
+// con una differenza sola, e sta nel limite vicino. Quella funzione tosa la
+// distanza a cinquanta metri, che per un campione del modello del suolo è la
+// scelta giusta (sotto quella misura non c'è nessun dato) ma per l'acqua è
+// una bugia: l'acqua **ce l'hai davvero sotto i piedi**, e tosandola a
+// cinquanta metri la riva vicina di un lago in cui si sta finirebbe disegnata
+// a due gradi sotto l'orizzonte con sotto di lei del prato. Qui si tosa
+// perciò l'**angolo** e non la distanza: la geometria resta esatta fino a
+// pochi centimetri e a fermare l'asintoto è `ACQUE_DEP_MAX_GRADI`.
+function acqueDepressione(quota, occhio, m) {
+  const s = Math.max(0.05, m);
+  const abbassa = (1 - TERRENO_RIFRAZIONE) * s * s / (2 * TERRENO_RAGGIO_KM * 1000);
+  const a = Math.atan2(quota - occhio - abbassa, s) * 180 / Math.PI;
+  return Math.max(-ACQUE_DEP_MAX_GRADI, Math.min(ACQUE_DEP_MAX_GRADI, a));
+}
+
+// A che quota sta la superficie su cui si sta, quando ci si sta dentro.
+//
+// Il modello del suolo spiana gli specchi d'acqua, quindi la risposta è già
+// nei campioni: è la **più bassa** delle quote dell'anello più vicino. Il
+// minimo e non la mediana, e non è pignoleria — con un laghetto più stretto
+// del passo della griglia (centocinquanta metri) mezzo anello pesca già sulla
+// riva, e la mediana darebbe la costa invece dell'acqua. La cosa più bassa
+// che c'è lì attorno, quella, è l'acqua per definizione.
+//
+// Se la quota misurata nel punto esatto è più bassa ancora, vince lei: è la
+// stessa superficie, misurata meglio.
+function acqueQuotaSuperficie() {
+  const nd = TERRENO_DISTANZE.length;
+  let minimo = null;
+  if (terreno.quote) {
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+      const q = terreno.quote[i * nd];
+      if (typeof q === 'number' && (minimo === null || q < minimo)) minimo = q;
+    }
+  }
+  if (typeof terreno.quota === 'number' && !terreno.quotaStimata) {
+    minimo = minimo === null ? terreno.quota : Math.min(minimo, terreno.quota);
+  }
+  return minimo;
+}
+
+// Guardando dall'acqua, l'occhio sta sulla superficie e non sul suolo.
+//
+// Sembra la stessa cosa e non lo è. La quota di casa arriva da un punto solo,
+// e quando quel punto non arriva la si ricava dalla mediana dell'anello a
+// centocinquanta metri (`terrenoQuotaDaVicino`): in mezzo a un lago quella
+// mediana è la **riva**, cioè decine di metri più in alto dell'acqua su cui
+// si sta. Da lì in poi ogni angolo è sbagliato dello stesso termine: l'acqua
+// risulta in una fossa, la sua prospettiva si comprime dove non dovrebbe, e
+// il terreno attorno sembra un anfiteatro. Forzare la quota alla superficie
+// annulla il dislivello finto in un colpo, ed è **la** cosa che si sa per
+// certo di chi guarda dall'acqua: che sta esattamente al suo livello.
+//
+// Non fa niente quando non c'è niente da fare — che è quasi sempre — e non
+// fa niente due volte: la seconda chiamata trova lo scarto già a zero.
+function acqueAllineaOcchio() {
+  if (!acque.sommerso) return false;
+  if (!terreno.quote || !terrenoDisponibile()) return false;
+  const superficie = acqueQuotaSuperficie();
+  if (superficie === null) return false;
+  acque.quotaSommerso = superficie;
+  if (typeof terreno.quota === 'number' && Math.abs(terreno.quota - superficie) < 0.5) return false;
+  return terrenoRimontaConQuota(superficie, 'acqua');
+}
 
 // A che quota sta il suolo in quella direzione, a quella distanza. Si legge
 // dalla griglia grezza del §4, e per un tratto d'acqua si prende il
@@ -3143,7 +3477,17 @@ function acqueVisibili() {
       if (vicino > limite) continue;
       const fine = Math.min(lontano, limite);
       if (!(fine > vicino)) continue;
-      const quota = acqueQuotaDi(az, vicino, fine);
+      // La quota della superficie. Per una banda che comincia **ai piedi** non
+      // si va a chiederla alla griglia: la si sa già, ed è quella su cui si
+      // sta. Chiederla comunque è il modo di sbagliarla — uno specchio d'acqua
+      // più stretto del passo della griglia (un fiume, un laghetto, la baia in
+      // cui è ancorata la barca) non ha nessun campione dentro di sé, e
+      // `acqueQuotaDi` ripiega allora sul più vicino, che è la riva. Con una
+      // riva ripida quel numero è decine di metri sopra l'occhio, e l'acqua su
+      // cui si galleggia veniva scartata come «sopra l'orizzonte».
+      const suPiedi = acque.sommerso && vicino <= 0.5;
+      const quota = (suPiedi && typeof acque.quotaSommerso === 'number')
+        ? acque.quotaSommerso : acqueQuotaDi(az, vicino, fine);
       if (quota === null) continue;
 
       // L'acqua si allontana verso l'orizzonte, quindi l'angolo cresce (si
@@ -3152,18 +3496,25 @@ function acqueVisibili() {
       // invece, non fa che salire. Il taglio si cerca camminando dalla riva
       // lontana verso quella vicina, e ci si ferma quando il terreno la
       // supera: quello che resta è la parte che si vede.
-      const dep = km => terrenoAngolo(quota, occhio, km / 1000);
+      const dep = m => acqueDepressione(quota, occhio, m);
       const altoFine = dep(fine);
       if (!(altoFine < -0.02)) continue;      // sopra l'occhio: non è superficie
       let taglio = vicino;
       const passi = 8;
       for (let p = 0; p <= passi; p++) {
-        const km = fine + (vicino - fine) * (p / passi);
-        const davanti = acqueCrestaGrezza(az, km / 1000);
-        if (davanti !== null && davanti > dep(km)) { taglio = km; break; }
-        taglio = km;
+        const m = fine + (vicino - fine) * (p / passi);
+        const davanti = acqueCrestaGrezza(az, m / 1000);
+        // Il margine è quello che tiene fermo il bordo: senza, alla riva
+        // vicina l'acqua e il terreno che le sta davanti hanno lo stesso
+        // angolo (il modello del suolo spiana i laghi) e il confronto lo
+        // decide l'arrotondamento.
+        if (davanti !== null && davanti > dep(m) + ACQUE_OCCLUSIONE_MARGINE_GRADI) { taglio = m; break; }
+        taglio = m;
       }
-      if (!(fine > taglio + 1)) continue;
+      // Un metro di striscia non è una striscia. Ma se ci si sta **dentro**,
+      // la banda comincia ai piedi e la misura non è più la sua lunghezza:
+      // è tutto il pezzo di schermo sotto l'orizzonte, e va disegnato.
+      if (!(fine > taglio + 1) && !(taglio <= 0.5 && fine > 0.5)) continue;
       tenute.push({
         vicino: taglio, lontano: fine, tipo,
         depVicino: dep(taglio), depLontano: altoFine, quota
