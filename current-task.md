@@ -1,110 +1,93 @@
 # Task Corrente
 
-Due cose, e la seconda è nuova: l'acqua del mare più vera, e **i laghi e i
-fiumi**, che prima non c'erano affatto.
+Niente in corso.
 
-## 1. Il mare che fa il vento vero
+## Ultimo lavoro finito — la geometria del terreno e dell'acqua
 
-Fin qui la ruvidezza e la direzione delle onde erano due numeri scritti nel
-codice: un mare uguale a Genova e a Trieste, uguale con la bonaccia e con la
-libecciata. Ma il vento l'app ce l'ha già — è la stessa previsione oraria che
-dice il seeing — e adesso da lì viene tutto (`skyMareStato`, `skyMareOggi`):
+Tre correzioni in `terreno.js`, tutte a errori che nei numeri non si vedono e
+sullo schermo sì. `app.js` non è stato toccato: i tre difetti nascono tutti
+nella geometria, e chi disegna legge già i valori corretti.
 
-- **la ruvidezza** con Cox e Munk (`σ² = 0,003 + 0,0051·W`): tre gradi col
-  solo mare lungo, tredici con dieci metri al secondo;
-- **la lunghezza dell'onda** con Pierson e Moskowitz (`T ≈ 0,78·W`,
-  `λ = gT²/2π`): venti metri a cinque, quasi cento a dieci;
-- **la direzione**, che è quella del vento girata di mezzo giro;
-- **le creste bianche** da sette metri al secondo in su — che è la cosa che
-  a occhio dice «oggi tira» molto prima dell'altezza delle onde.
+### 1. Il raggio che parte da dentro l'acqua (§12, `acqueTaglia`)
 
-A `meteo-astro.js` è stato aggiunto `wind_direction_10m` (due righe). Senza
-previsione si torna a una brezza da ponente di cinque metri al secondo, che
-è il mare che c'era scritto prima.
+`acqueTaglia` tira un raggio per direzione e conta gli incroci coi bordi dei
+poligoni; per accoppiarli — si entra, si esce — deve sapere **da dove parte il
+raggio**, e dava per scontato che partisse da terra. Chi mette le coordinate
+dentro a un lago, o in mare aperto dentro a un poligono di OSM, col primo
+incrocio ci sta invece *uscendo*: tutta la parità si sposta di uno, l'acqua
+sotto i piedi non si disegna e la terra oltre la riva viene disegnata come
+acqua. A occhio non si vede per quello che è, perché resta plausibile.
 
-Poi **l'aureola** (`SKY_MARE_AUREOLA`), che era il buco più grosso: attorno
-al Sole il cielo è molto più chiaro per una trentina di gradi, ed è la
-ragione per cui guardando verso il tramonto *tutto* il mare si accende e non
-solo la striscia sotto all'astro. Fin qui c'era il solo riflesso speculare e
-attorno l'acqua restava del suo blu medio. È la stessa geometria della strada
-di luce con una gaussiana più larga; a distinguerle è **quanto si sommano**:
-la strada è il Sole (non si smorza con Fresnel — anche il due per cento
-riflesso a picco resta accecante), l'aureola è cielo e si vede quanto Fresnel
-la lascia vedere, cioè tanto all'orizzonte e quasi niente ai piedi.
+- `acquePuntoDentro()` è il test di appartenenza (parità degli incroci di una
+  semiretta verso est), fatto **una volta per specchio d'acqua** e solo se il
+  suo riquadro contiene l'origine: per un posto normale sono due confronti.
+- La parità si tiene **per poligono** (`c.id` sui tagli): due laghi in fila
+  nella stessa direzione, o uno sotto i piedi e uno lontano, sono due parità
+  diverse. In un mucchio solo la lingua di terra fra i due diventava acqua.
+- Se lo specchio in cui si sta è più largo del raggio di ricerca, i suoi
+  incroci vengono scartati e la direzione resta senza tagli: allora l'acqua
+  arriva fin dove si guarda. Non sapere dove finisce il mare non è una ragione
+  per non disegnarlo.
+- `sommersi` e `limite` viaggiano appesi all'array dei tagli, perché
+  `acqueBandeDaTagli(acqueTaglia(…))` è scritto così in tre posti.
 
-## 2. I laghi e i fiumi
+### 2. La quota dell'occhio, guardando dall'acqua (§7 e §12)
 
-Il mare questo file lo sapeva già trovare da sé: una direzione in cui il
-suolo dà zero per sessanta chilometri è acqua. Un lago no — il Garda sta a
-sessantacinque metri, un laghetto alpino a duemila, e per il modello del
-suolo sono terreno pianeggiante. Quindi si chiedono a OpenStreetMap, che è
-già la fonte dei paesi e delle vette e ha il pregio di sapere **la forma**.
+La quota di casa è il termine che si **sottrae** a tutti gli angoli, quindi
+sbagliarla di venti metri storta l'orizzonte intero. E si sbaglia proprio
+sull'acqua: quando la richiesta del punto non arriva, la quota viene dalla
+mediana dell'anello di campioni a centocinquanta metri, e in mezzo a uno
+specchio più stretto di così quella mediana è la **riva** — l'acqua risulta in
+una fossa e il paesaggio attorno un anfiteatro.
 
-**`terreno.js` §12** (prefisso `acque`): `acqueDaOverpass` chiede i poligoni
-dei laghi (vie *e relazioni* — il Garda è una relazione) e le linee dei
-corsi d'acqua; `acqueTaglia` tira un raggio ogni mezzo grado e segna dove
-taglia i bordi — solo contro i lati che quel raggio può incontrare, se no
-sono milioni di prove; `acqueBandeDaTagli` ne fa gli intervalli di distanza.
-È pura geometria, e per questo si salva così com'è. `acqueVisibili` ci mette
-sopra il terreno: quota dell'acqua, occlusione, e sotto la linea
-dell'orizzonte.
+- `acqueQuotaSuperficie()` prende il **minimo** dell'anello più vicino (il
+  minimo e non la mediana: l'acqua è la cosa più bassa che c'è lì attorno), e
+  la quota misurata nel punto, se è arrivata davvero, vince su tutto — quella
+  *è* la superficie, e allora non si tocca niente.
+- `terrenoRimontaConQuota()` rifà creste, creste parziali, paesaggi e miscela
+  dalle quote grezze che sono già in mano: scrivere solo `terreno.quota` non
+  basterebbe. Nessuna richiesta in più.
+- `acqueAllineaOcchio()` è chiamata sia da `terrenoApplica` sia da
+  `acqueApplica`, perché i due arrivano in ordine imprevedibile, e non fa
+  niente due volte.
+- Una banda che comincia ai piedi prende la quota su cui si sta invece di
+  chiederla alla griglia: un fiume o un laghetto non hanno nessun campione
+  dentro di sé, e `acqueQuotaDi` ripiegherebbe sulla riva — che con una riva
+  ripida sta sopra l'occhio, e l'acqua su cui si galleggia veniva scartata.
 
-**`app.js`**, blocco `// --- I laghi e i fiumi ---`: `skyAcqueStrisce` lega
-fra loro le bande di colonne vicine (uno specchio = un poligono, non un
-riempimento per mezzo grado) e `skyAcquaStriscia` lo disegna con le **stesse**
-funzioni del mare — Fresnel per il colore, il campo d'onda per la tessitura,
-la bisettrice per il riflesso — ma con un'acqua più liscia (mezzo sigma per
-un lago, un quarto per un fiume: su tre chilometri di fetch il vento ha molto
-meno spazio) e più verde. Sotto il pixel e mezzo la striscia non si riempie,
-si traccia: è il caso normale di ogni fiume, che da lontano è una riga.
+### 3. Gli spilli e l'asintoto (§1, §3, §5)
 
-Tasto **Laghi e fiumi** nel pannello Visualizzazione, raggio (25 km di serie)
-e interruttore nelle Impostazioni, chiave `astrocalendario_acque` nel backup.
+- `TERRENO_DISTANZA_MIN_M` (50 m) dentro `terrenoAngolo`: a distanza zero una
+  `atan2` non si arrende, risponde novanta gradi — una parete verticale nata da
+  una divisione per zero, e chi la riceve non ha modo di accorgersene. È metà
+  di una cella del modello del suolo, e il primo campione della griglia sta a
+  centocinquanta metri: non morde niente di quello che si scarica.
+- `terrenoTosaSpilli()` in coda a `terrenoFronti`: un **tetto** e non una media
+  — una media abbasserebbe le vette vere, che sono le sole cose che uno guarda.
+  Una direzione non può stare più di `TERRENO_SPILLO_GRADI` (1,2°) sopra la più
+  alta delle sue due vicine alla stessa distanza, confrontata coi valori di
+  prima (se no il taglio si propaga e in un giro l'orizzonte è piatto). Una
+  catena non si muove di un centesimo; la stalagmite, che per definizione le
+  vicine alte non ce le ha, sparisce. Il taglio conserva la non-decrescenza in
+  distanza, che è l'invariante dell'occlusione.
+- Da lì viene anche che `terrenoMonta` ricavi le **creste dall'ultima colonna
+  delle creste parziali** invece di rifare il massimo per conto suo: erano due
+  conti gemelli, e con la tosatura in mezzo darebbero due orizzonti diversi —
+  la sagoma disegnata e la cresta che decide se un astro è sorto — proprio sui
+  denti, cioè dove si appendono i nomi delle montagne.
+- `acqueDepressione()` è lo stesso conto con una differenza sola: tosa
+  l'**angolo** (`ACQUE_DEP_MAX_GRADI`, 85°) e non la distanza, perché l'acqua
+  ce l'hai davvero sotto i piedi. Ottantacinque e non novanta perché il nadir
+  esatto, in stereografica, è l'antipodo del centro della vista.
 
-### Le tre cose che sono costate di più, tutte invisibili a occhio
+### Come è stato verificato
 
-1. **L'occlusione con la cresta tosata a zero.** `terrenoCrestaDavanti`
-   risponde a «quanto *copre* il terreno» e tosa i negativi. Ma l'acqua sta
-   sotto la linea dell'orizzonte per definizione: confrontata con uno zero
-   risultava nascosta **sempre**, e di laghi non se ne vedeva mai nessuno.
-   Serve la cresta grezza (`acqueCrestaGrezza`), quella che scende sotto lo
-   zero — la stessa che disegna la conca davanti a chi guarda da una cima.
-2. **L'ordine di disegno.** Il mare va *prima* del profilo delle creste (a
-   nasconderlo è un promontorio davanti); i laghi *dopo*, perché stanno
-   dentro al paesaggio e il disegno a fette di distanza dipinge la conca come
-   terreno pieno. Passando prima, il lago finiva sotto la collina che gli sta
-   dietro.
-3. **La quota del lago.** Si legge dalla griglia grezza (`terreno.quote`,
-   tenuta apposta: `fronti` è il massimo accumulato e da lì non si torna
-   indietro) prendendo il **minimo** dei campioni dentro allo specchio. Con
-   quello più vicino, un campione che pesca sulla riva alzava il lago di
-   qualche metro — a due chilometri un decimo di grado, cioè un lago che
-   galleggia sopra alla sua conca.
+`verifica.html` passa da **391 a 423 prove, tutte passate**: trentadue nuove
+in §9 (l'asintoto), §15 (gli spilli, e l'accordo fra creste e creste parziali)
+e §20 (il raggio da dentro l'acqua, e la quota dell'occhio). Nessuna prova
+esistente è stata cambiata o allentata.
 
-E una di disegno: la strada di luce su un lago, disegnata a tratti per riga,
-veniva fuori come una pila di mattoni. Adesso è a bande con il gradiente
-lungo di loro, come sul mare, e i bordi si spengono da sé.
-
-## Provato
-
-Playwright/Chromium, terreno e acque finti fatti passare per le **vere**
-pipeline (`terrenoMonta`/`terrenoApplica`, `acqueLeggiElementi`/`acqueApplica`):
-lago dal versante al tramonto, lago di notte con la Luna bassa, fiume in
-pianura e dal poggio, e un caso senza acqua — che non disegna niente e costa
-zero. Riprovate tutte le otto scene del mare, e ricontrollato che
-**entroterra e terreno spento diano un fotogramma identico** con e senza i
-moduli dell'acqua. Nessun errore in console.
-
-`verifica.html`: nuovo **§19-bis** (il mare che fa il vento: Cox e Munk,
-Pierson e Moskowitz, il mezzo giro fra «da dove viene» e «dove vanno», la
-soglia della schiuma) e **§20**, che a differenza del mare prova le funzioni
-**vere** — `terreno.js` è caricato in quella pagina: raggio al centro di un
-lago tondo, corda che si accorcia verso il bordo, gradi d'orizzonte occupati,
-due laghi in fila, fiume di traverso e di sbieco, quota come minimo, cresta
-grezza contro cresta tosata, lago dietro alla montagna, lago più alto
-dell'occhio. **Tutte e 391 le prove della pagina passano.**
-
-`node --check` pulito su `app.js`, `terreno.js`, `ui-nuova.js`,
-`meteo-astro.js`. `CACHE_NAME` → `astrocal-v105`.
-
-[x] Completato.
+Nota per chi rilancia il banco in un ambiente senza rete verso jsdelivr: la
+CDN di Astronomy Engine è l'unica dipendenza esterna di quella pagina, e si può
+reindirizzare a una copia locale (`npm i astronomy-engine@2.1.19`) con una
+`page.route` di Playwright, senza toccare `verifica.html`.
