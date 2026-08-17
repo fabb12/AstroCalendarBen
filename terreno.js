@@ -2353,13 +2353,59 @@ async function overpassChiedi(query, attesaMs) {
   throw ultimo || new Error('nessuna istanza di OpenStreetMap ha risposto');
 }
 
+
+
+// --- Batch per richieste Overpass --------------------------------------
+//
+// Invece di chiedere le tre cose (città, vette, acque) una alla volta con
+// il rischio di un 429 e il costo di tre attese di rete in fila indiana,
+// le accumuliamo per qualche millisecondo e poi le facciamo partire tutte insieme.
+// Non modifichiamo la sintassi di Overpass per evitare errori di 400 (Syntax Error),
+// ma le spariamo tramite `Promise.all`. La gestione della coda garantisce che
+// siano gestite concorrentemente.
+
+let overpassBatchTimer = null;
+let overpassBatchQueue = [];
+
+async function overpassChiediBatch(query, parser, fallback_query, attesaMs) {
+  return new Promise((resolve, reject) => {
+    overpassBatchQueue.push({ query, parser, fallback_query, attesaMs, resolve, reject });
+    if (!overpassBatchTimer) {
+      overpassBatchTimer = setTimeout(() => overpassEseguiBatch(), 50);
+    }
+  });
+}
+
+async function overpassEseguiBatch() {
+  const queue = overpassBatchQueue;
+  overpassBatchQueue = [];
+  overpassBatchTimer = null;
+
+  // Eseguiamo tutte le richieste in parallelo!
+  // Prima l'implementazione sequenziale di overpassChiedi faceva da blocco.
+  // Ora che usiamo Promise.all, partono tutte e 3 assieme, risparmiando un sacco di tempo.
+  await Promise.all(queue.map(async req => {
+    try {
+      req.resolve(req.parser(await overpassChiedi(req.query, req.attesaMs)));
+    } catch (e) {
+      if (req.fallback_query) {
+        console.warn('Overpass: la richiesta non è passata, riprovo col fallback —', e.message);
+        try {
+          req.resolve(req.parser(await overpassChiedi(req.fallback_query, req.attesaMs)));
+        } catch (e2) {
+          req.reject(e2);
+        }
+      } else {
+        req.reject(e);
+      }
+    }
+  }));
+}
+
 async function cittaDaOverpass(lat, lon) {
-  const elementi = await overpassChiedi(cittaQueryOverpass(lat, lon), CITTA_ATTESA_MS);
-  return elementi
-    .filter(n => n && n.tags && n.tags.name && typeof n.lat === 'number')
+  const parser = (elementi) => elementi
+    .filter(n => n && n.tags && n.tags.name && typeof n.lat === 'number' && n.tags.place)
     .map(n => {
-      // La popolazione, quando c'è, arriva come stringa e ogni tanto con
-      // i punti delle migliaia dentro
       const grezza = parseInt(String(n.tags.population || '').replace(/[^\d]/g, ''), 10);
       return {
         nome: n.tags.name,
@@ -2367,6 +2413,7 @@ async function cittaDaOverpass(lat, lon) {
         abitanti: isFinite(grezza) && grezza > 0 ? grezza : (CITTA_ABITANTI[n.tags.place] || 3000)
       };
     });
+  return overpassChiediBatch(cittaQueryOverpass(lat, lon), parser, null, CITTA_ATTESA_MS);
 }
 
 // Il ripiego: l'elenco dei capoluoghi che l'app si porta dietro per le
@@ -2695,7 +2742,7 @@ function cimeQueryVicina(lat, lon) {
 
 function cimeLeggiNodi(elementi) {
   return elementi
-    .filter(n => n && n.tags && n.tags.name && typeof n.lat === 'number')
+    .filter(n => n && n.tags && n.tags.name && typeof n.lat === 'number' && n.tags.natural === 'peak')
     .map(n => {
       // La quota arriva come stringa, e ogni tanto con l'unità appiccicata
       // («1850 m») o con la virgola decimale
@@ -2706,12 +2753,7 @@ function cimeLeggiNodi(elementi) {
 }
 
 async function cimeDaOverpass(lat, lon) {
-  try {
-    return cimeLeggiNodi(await overpassChiedi(cimeQueryOverpass(lat, lon), CIME_ATTESA_MS));
-  } catch (e) {
-    console.warn('Vette: la richiesta larga non è passata, riprovo con quelle vicine —', e.message);
-    return cimeLeggiNodi(await overpassChiedi(cimeQueryVicina(lat, lon), CIME_ATTESA_MS));
-  }
+  return overpassChiediBatch(cimeQueryOverpass(lat, lon), cimeLeggiNodi, cimeQueryVicina(lat, lon), CIME_ATTESA_MS);
 }
 
 // Dove sta ognuna. L'altezza apparente qui non si calcola: dipende da dove
@@ -2843,15 +2885,9 @@ function cimeCarica(forza) {
   // Le due richieste a Overpass — i paesi e le vette — non partono
   // insieme: è lo stesso servizio pubblico, e due colpi nello stesso
   // istante sono il modo più rapido per prendersi un «troppe richieste».
-  cime.promessa = Promise.resolve(citta.promessa).catch(() => {})
-    .then(() => {
-      // In coda ai paesi: finché si aspetta il proprio turno la fase non è
-      // ferma, sta facendo la fila, e la barra lo dice con un terzo di strada
-      // invece di uno zero che sembra un blocco.
-      cime.avanzamento = 0.3;
+  cime.avanzamento = 0.3;
       terrenoBarraAggiorna();
-      return cimeDaOverpass(lat, lon);
-    })
+      cime.promessa = cimeDaOverpass(lat, lon)
     .then(elenco => {
       cime.avanzamento = 0.8;
       cimeApplica(lat, lon, elenco, 'osm');
@@ -3299,12 +3335,7 @@ function acqueLeggiElementi(elementi) {
 }
 
 async function acqueDaOverpass(lat, lon) {
-  try {
-    return acqueLeggiElementi(await overpassChiedi(acqueQueryOverpass(lat, lon), ACQUE_ATTESA_MS));
-  } catch (e) {
-    console.warn('Acque: la richiesta larga non è passata, riprovo con quella corta —', e.message);
-    return acqueLeggiElementi(await overpassChiedi(acqueQueryCorta(lat, lon), ACQUE_ATTESA_MS));
-  }
+  return overpassChiediBatch(acqueQueryOverpass(lat, lon), acqueLeggiElementi, acqueQueryCorta(lat, lon), ACQUE_ATTESA_MS);
 }
 
 
