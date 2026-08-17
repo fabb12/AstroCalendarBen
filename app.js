@@ -20236,16 +20236,29 @@ function skyCaricaIlResto() {
   // sta guardando: possono aspettare qualche fotogramma.
   skyQuandoLibero(() => { if (sky.aperto) skyCostruisciElenco(); }, 120);
 
+  // L'ordine è quello dell'attesa, non quello dell'importanza: primo chi ci
+  // mette più tempo.
+  //
+  // Il terreno è **ventiquattro** richieste a un servizio pubblico più tre giri
+  // a OpenStreetMap, cioè l'unica cosa qui dentro che si misuri in secondi;
+  // comete, dati orbitali delle stazioni e Kp sono un file ciascuno. Stando
+  // dietro a loro, il paesaggio partiva un fotogramma o due dopo — poco, ma
+  // pagato dalla cosa che si aspetta di più, e per giunta pagato dalla cosa
+  // che **si vede**: l'orizzonte finto è la prima cosa che uno nota aprendo il
+  // planetario. Chi arriva presto e in fretta può stare dietro a chi arriva
+  // tardi e piano; il contrario no.
   const compiti = [
-    () => { if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica(); },
-    () => { if (typeof satPrecaricaTle === 'function') satPrecaricaTle(); },
-    // La forma vera del terreno attorno a casa (sei richieste, una volta
-    // sola per luogo: poi sta in localStorage e vale anche senza rete), i
-    // paesi che di notte lo illuminano e le montagne che gli danno un nome
+    // La forma vera del terreno attorno a casa (ventiquattro richieste, una
+    // volta sola per luogo: poi sta in localStorage e vale anche senza rete),
+    // i paesi che di notte lo illuminano, le montagne che gli danno un nome e
+    // i laghi. Le tre richieste a OpenStreetMap si spaziano da sé (§10 di
+    // `terreno.js`), quindi metterle in fila qui non serve più a niente.
     () => { if (typeof terrenoCarica === 'function') terrenoCarica(); },
     () => { if (typeof cittaCarica === 'function') cittaCarica(); },
     () => { if (typeof cimeCarica === 'function') cimeCarica(); },
     () => { if (typeof acqueCarica === 'function') acqueCarica(); },
+    () => { if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica(); },
+    () => { if (typeof satPrecaricaTle === 'function') satPrecaricaTle(); },
     // Il Kp del NOAA: serve a sapere se l'ovale aurorale, stanotte, scende
     // fin qui. Senza rete non si sa, e resta la simulazione.
     () => {

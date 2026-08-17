@@ -2,148 +2,131 @@
 
 Niente in corso.
 
-## Ultimo lavoro finito — la barra del terreno, il Lago di Como, gli spilli
+## Ultimo lavoro finito — il paesaggio che ci metteva un'eternità
 
-Tre cose chieste insieme, e due delle tre erano guasti che una sessione
-precedente credeva già chiusi. Vale la pena sapere **perché** non lo erano,
-perché in tutt'e due i casi la correzione di prima era giusta e incompleta.
+Chiesto: capire perché il caricamento dei dati ambientali (quote, laghi,
+vette, paesi) ci mette tanto, e sistemarlo. La risposta è che non era **una**
+lentezza: erano cinque attese messe in fila indiana, e nessuna delle cinque si
+vedeva leggendo il codice da vicino, perché ognuna era la cura giusta di un
+problema vero — solo pagata a un prezzo che nessuno aveva misurato.
 
-### 1. La barra di caricamento del terreno (§9-ter di `terreno.js`)
+Vale la pena tenere l'ordine in cui costavano, perché è controintuitivo.
 
-La percentuale c'era da un pezzo — `terreno.avanzamento`, scritta in
-`terrenoTesto()` — ma finiva nella riga di stato del pannello
-**Visualizzazione**, che all'apertura è chiuso: non la leggeva nessuno. Chi
-apriva il planetario vedeva l'orizzonte finto per qualche secondo senza un
-posto in cui guardare.
+### 1. Il freno del rubinetto era contato due volte (§4)
 
-- `#terreno-progress` in `index.html`, dentro `#skymap-contenitore`, stili
-  `.barra-terreno*`. In basso a sinistra sopra alla barra del tempo, quattro
-  pixel di barra e una riga di testo, `pointer-events: none` (una spia, non un
-  comando: un rettangolo che mangia i gesti per sei secondi all'apertura è il
-  modo di far sembrare l'app bloccata mentre lavora).
-- `TERRENO_FASI` sono **quattro**: quote (Open-Meteo), paesi, vette e acque
-  (OpenStreetMap). I pesi non sono uguali — 0,55 / 0,10 / 0,10 / 0,25 — perché
-  le quote sono venticinque richieste e i giri a OSM uno ciascuno; a pesi
-  uguali la barra faceva tre quarti di strada nel primo secondo e poi stava
-  ferma.
-- Contano **solo le fasi che in questo giro girano davvero**
-  (`terrenoBarra.fasi`): le vette nascono spente, un profilo può arrivare da
-  `localStorage`. Contandole comunque la barra si fermava al 40% e ci restava.
-- Il **tracciamento dei raggi** è agganciato anche lui: `acqueApplica` porta
-  `acque.avanzamento` a 0,9 *prima* di chiamare `acqueTaglia`. Dura pochi
-  millisecondi e quasi mai fa in tempo a comparire, ma il posto è quello
-  giusto e ci resta.
-- La muove `terrenoAggiornaPannello()`, che era già chiamata a ogni cambio di
-  stato e a ogni richiesta di quote: nessun gancio nuovo da nessuna parte.
+Chi si prendeva un 429 chiamava `terrenoFrena`, che sposta in avanti il
+`liberoDa` — cioè la pausa era **già imposta a tutte** le richieste di quella
+fonte — e poi dormiva *anche* per conto suo 1, 4, 11 secondi
+(`TERRENO_ATTESE_MS`) prima di rimettersi in coda. Le due si sommavano in fila
+indiana. Le attese esplicite non ci sono più: chi prende un no si rimette in
+coda subito, e a tenere il passo è il rubinetto, che è l'unico che sa quanto il
+servizio sta reggendo adesso.
 
-Provata anche nell'app vera (Chromium, servizi finti): 54% → 72% → 87% → 100%
-→ si spegne, terreno completo, nessun errore di console.
+### 2. Il freno si tirava una volta per richiesta, non per ondata
 
-### 2. Il Lago di Como (`acqueCuciAnelli`, §12)
+Sei richieste in volo si prendono sei no, che sono **la stessa notizia detta
+sei volte**. Il passo veniva moltiplicato per 2,2 sei volte di fila — per
+centoundici — e in due ondate era al tetto di sei secondi: per ventiquattro
+richieste, due minuti e mezzo di sola attesa. Misurato con un servizio che
+rifiutava una richiesta su quattro: il terreno **non arrivava mai** (28
+richieste HTTP in 90 secondi, e le 24 non finivano). Adesso `terrenoFrena`
+tiene un `frenatoFino` e i no della stessa ondata lo trovano già tirato.
 
-`acquePuntoDentro` c'era già ed era giusta. Il guasto stava un passo prima:
-**i laghi grandi in OSM sono relazioni**, con l'anello esterno spezzato in una
-decina di vie (Como, Garda, Maggiore, Trasimeno), e `acqueLeggiElementi`
-chiudeva ogni pezzo per conto suo e lo trattava da poligono. Due cose andavano
-insieme:
+### 3. Si girava la manopola sbagliata
 
-- l'arco della riva orientale, chiuso su sé stesso, è una mezzaluna schiacciata
-  che **non contiene il centro del lago**: `sommersi` restava vuoto e l'acqua
-  sotto i piedi non si disegnava;
-- la parità dei tagli si tiene per poligono (e deve: due laghi in fila sono due
-  parità diverse), quindi l'ingresso trovato sulla riva di qua e l'uscita
-  trovata sulla riva di là finivano in due conti separati e non si accoppiavano
-  con nessuno — due mozziconi da duecento metri al posto della traversata.
+Questa l'ha trovata una sonda sul rubinetto, non la lettura del codice: con un
+429 su quattro, il rubinetto si assestava a 700 ms di distanza con **cinque
+richieste concesse insieme e zero in volo**. Cioè teneva aperta una concorrenza
+che non usava, e serializzava tutto su un buco di mezzo secondo: 25 × 700 ms
+sono i 18 secondi che si misuravano, e non c'entravano né la latenza né le
+riprove. Un 429 dice «troppe **insieme**», e allargare il buco fra le partenze
+risponde a una domanda che nessuno ha fatto. Adesso è AIMD, come il TCP: la
+concorrenza si dimezza a ogni no e cresce di uno a ogni sì, il passo si allarga
+appena (1,25) e si ristringe da sé.
 
-Misurato su un ramo di lago sintetico, prima: **630 direzioni su 720
-senz'acqua**, nessuna che partisse dai piedi. Dopo: zero e settecentoventi, e
-identiche a quelle della stessa forma scritta come via chiusa — che è la prova
-che tiene insieme le due strade.
+Da qui vengono anche tre numeri più bassi di prima e uno scritto meglio:
+`TERRENO_DISTANZA_MAX_MS` a 900 ms — ricavato dal lavoro (24 richieste per un
+orizzonte che si è disposti ad aspettare una ventina di secondi) e non dal gusto
+—, il tetto che non può stare **sotto** al ritmo dichiarato dalla fonte (con
+900 ms secchi, frenare OpenTopoData la faceva andare più veloce della richiesta
+al secondo che lei stessa dichiara), e `TERRENO_NO_PER_CAMBIARE` a 5: cambiare
+porta **costa**, perché le due riserve dichiarano un decimo della portata di
+Open-Meteo, e con 3 no di fila si abbandonava anche una fonte che stava solo
+lavorando piano (provato: 31 s → 58 s e incompleto).
 
-La cucitura è quella di sempre (catene aperte, ogni arco si attacca a quella
-che condivide un estremo, all'andata o al rovescio: Overpass non promette né
-ordine né verso). Quello che non si chiude si chiude a forza: un anello
-approssimato ha comunque **un dentro e una parità sola**.
+### 4. Le due barriere di `terrenoCostruisci` (§5)
 
-In più, `acqueQuotaSuperficie` prendeva il minimo di **tutto** l'anello a
-centocinquanta metri: un fosso lì accanto, più basso del lago, mandava l'occhio
-sott'acqua — lo stesso errore col segno girato, e non si vede neanche quello.
-Adesso il minimo si chiede ai campioni che cascano dentro alla banda che
-comincia ai piedi, cioè allo specchio in cui si sta; quando nessuno ci casca (un
-laghetto più stretto del primo anello) si torna al minimo dell'anello, che è
-comunque un limite superiore onesto, e il caso si aggiusta da sé quando la
-misura del punto arriva.
+- **La quota di casa** aspettava davanti a tutte con un `await`. Un punto solo,
+  e per giunta un punto che si sa già stimare dall'anello di campioni a 150 m.
+  Adesso parte per prima ma **insieme** alle altre; se non arriva si va avanti
+  con la stima, che è quello che succedeva anche prima quando quella richiesta
+  falliva.
+- **Il giro grosso** era separato dall'affinamento da un `Promise.all`. Una sola
+  richiesta del primo giro che si riprovava teneva il rubinetto fermo — niente
+  in volo, sedici richieste pronte a partire — per tutto il tempo delle sue
+  riprove. La barriera non serviva: quello che il giro grosso deve garantire è
+  di essere **disegnato per primo**, e per quello basta contarne i pezzi.
 
-### 3. Gli spilli, per davvero (`terrenoTosaSpilliLarghi`, `terrenoLisciaAnelli`)
+### 5. Le tre richieste a Overpass una dietro l'altra (§10)
 
-`terrenoTosaSpilli` confronta una direzione con le **due accanto**, e vicino
-quelle due sono copie: la griglia è polare, quindi a centocinquanta metri due
-direzioni distano sette metri e ottanta sul terreno e leggono la stessa cella
-del modello (novanta metri). Là fuori una dozzina di direzioni di fila porta lo
-stesso numero, e un capannone o un buco nel modello le alza tutte insieme — il
-tetto non se ne accorge perché le vicine gli fanno da garanti. Provato: un dente
-da otto gradi passava intero, e in montagna uno da sessanta.
+`acqueCarica` si accodava a `cime.promessa`, e le vette ai paesi: la richiesta
+con la query più larga e la sveglia più lunga stava dietro a tutte e due, ognuna
+col suo caso peggiore. E il caso peggiore era **4× la sveglia**, perché
+`overpassChiedi` provava le due istanze in fila indiana e poi la query di
+ripiego rifaceva la stessa fila: 30+30+30+30, due minuti per le acque.
 
-Due filtri nuovi, agli angoli campione per campione e **prima** dell'accumulo
-del massimo (l'ordine è metà del rimedio: filtrando dopo, in fondo alla riga la
-finestra è larga zero direzioni e il dente dei centocinquanta metri è già stato
-ricopiato lì):
+Il punto che rende tutto questo invisibile è che un'istanza di Overpass carica
+non risponde «carico»: **tace**, e tacere consuma tutta la sveglia. Adesso c'è
+un rubinetto (`overpassInFila`, due per volta a 600 ms, ognuna da un'istanza
+diversa — la politesse che l'attesa in fila indiana comprava, senza pagarla in
+secondi) e l'**affiancamento** dentro `overpassChiedi`: dopo 3,5 s parte anche
+l'altra porta, vince chi risponde per prima, la perdente si abortisce.
 
-- **tetto a mediana** su una finestra larga `TERRENO_TETTO_LARGO_CELLE` = **due**
-  impronte di cella. Due e non una per aritmetica, non per taratura: la mediana
-  dice la verità solo se il dente occupa meno di metà finestra. Da tre in su non
-  cambia più niente.
-- **passa-basso** a campana di Hann larga una impronta, per la scaletta —
-  gruppi di direzioni uguali e poi un salto di tre gradi, cioè aliasing da
-  campionamento radiale, e sullo schermo è la dentellatura.
+### E una cosa che non era rete affatto
 
-La larghezza non è scelta a mano: è l'angolo che una cella occupa a quella
-distanza (`terrenoPassiDiCella`). Trentun gradi a 150 m, quattro a 1,2 km,
-**zero da quattro chilometri in su** — ed è quella la proprietà che conta,
-perché le vette lontane, dove si appendono i nomi, escono da qui identiche a
-come sono entrate (provato sui valori, non sulle soglie).
+Il tracciamento dei raggi delle acque (`acqueTaglia`) gira **sul filo del
+disegno**: finché non finisce, il planetario non disegna un fotogramma. In un
+posto normale sono 40 ms; col tetto di `out geom 1200` riempito sono 800 ms su
+un computer, cioè due o tre secondi di schermo fermo su un telefono — e proprio
+nell'istante in cui l'acqua stava per comparire. Adesso si lavora a scaglioni
+di 8 ms (`acqueTagliaAScaglioni`), e il conto è lo stesso: `acqueTagliaUno` è
+una funzione sola. `acqueApplica` resta **sincrona** di proposito — a cedere il
+turno è la strada di caricamento, non la posa dei risultati — e la prima
+versione che la faceva `async` ha rotto sei prove del §20, che leggono
+`acque.bande` nella riga dopo. Era il codice a dirlo, e aveva ragione.
+Micro-ottimizzazioni in coda: le tabelle di seni e coseni non si rifanno più a
+ogni chiamata (1440 funzioni trigonometriche per niente), conversione in metri e
+riquadro in una passata sola, la radice quadrata del lato dei fiumi una volta
+per lato invece di una per raggio. Fra l'11% e il 24% in meno.
 
-Misurato contro un orizzonte vero calcolato senza griglia, su un paesaggio di
-costa e su uno alpino:
+### I numeri, misurati nell'app vera con servizi finti
 
-| | eccesso prima | eccesso dopo | rms prima | rms dopo |
-|---|---|---|---|---|
-| costa, tre celle sbagliate | 16,64° | 1,86° | 2,75° | 0,38° |
-| alpi, due celle sbagliate | 60,00° | 4,61° | 15,19° | 1,38° |
-| alpi, modello pulito | 7,84° | 3,32° | 2,57° | 1,28° |
+| scenario | | prima | dopo |
+|---|---|---|---|
+| rete buona | primo orizzonte vero | 1,5 s | **0,9 s** |
+| | terreno completo | 3,5 s | **2,4 s** |
+| 429 su una richiesta su 4 | primo orizzonte vero | 3,3 s | **1,6 s** |
+| | terreno completo | **94 s** | **6,7 s** |
+| un'istanza OSM che tace 40 s | laghi e fiumi | 30,6 s | **1,1 s** |
+| | paesi | 15,7 s | **3,7 s** |
 
-Sul terreno **pulito** lo scarto quadratico medio scende: era la griglia a
-sbagliare, non i filtri a impastare.
+Una trappola in cui sono caduto e che vale la pena non ripetere: togliendo la
+barriera fra i due giri, una richiesta del giro grosso che si riprovava tornava
+in coda **in fondo**, cioè dietro alle ottanta direzioni dell'affinamento. Il
+totale migliorava e il primo orizzonte vero peggiorava (3,3 → 7,7 s): si era
+guadagnato su tutto tranne che sull'unico numero che l'utente guarda. Da lì le
+due classi di precedenza di `terrenoInFila`.
 
-**Quello che non è stato fatto, e perché.** La richiesta chiedeva un
-`Math.max(500, distanza)` nel denominatore di `terrenoAngolo`, o di scartare i
-campioni sotto i 300–500 m. Non è stato fatto: tosare la distanza a cinquecento
-metri vuol dire leggere i campioni di 150, 300, 500 e 800 metri a una distanza
-che non è la loro, cioè appiattire il terreno vicino vero — una collina a
-duecento metri copre davvero quindici gradi — e rompe l'invariante che il §9 di
-`verifica.html` controlla da tempo («il limite minimo non morde nessun campione
-della griglia»). `TERRENO_DISTANZA_MIN_M` resta a 50 m, che è metà cella e non
-morde niente. La causa vera dei picchi non era l'asintoto della `atan2` (quello
-era già stato chiuso): era la correlazione azimutale degli anelli vicini, ed è
-quella che i due filtri tolgono.
+### Verifica
 
-**Il moltiplicatore verticale**: cercato, non c'è. Fra `terrenoAltezza(az)` e i
-pixel non c'è nessun fattore di scala — la cresta in gradi va in
-`skyVettore` → `skyProietta`, la stessa catena di ogni stella — e l'unico numero
-che tocca l'altezza è il morso del rilievo fine (`SKY_RUVIDEZZA`), che sottrae e
-non aggiunge mai, tosato contro la cresta vera di proposito in
-`skyCresteDelleColonne`. È scritto in `CLAUDE.md` perché non lo cerchi più
-nessuno.
+`verifica.html`: **467 prove passate, 0 fallite** (il baseline era 463). Le
+nuove: la raffica che frena una volta e non sei, la rotazione dopo dei no di
+fila, il sì in mezzo ai no che non fa abbandonare una fonte che funziona, e nel
+§20 che il tracciamento a scaglioni dia **gli stessi numeri** di quello in un
+colpo. Il banco ha ora un `attendi()` per le prove che devono aspettare, e il
+verdetto in fondo alla pagina non si scrive più finché non sono tornate.
 
-### Come è stato verificato
-
-`verifica.html` passa da **423 a 463 prove, tutte passate** (Chromium, con la
-CDN di Astronomy Engine reindirizzata a una copia locale via `page.route` —
-la pagina non va toccata). Le quaranta nuove stanno nel §9 (la barra), nel §15
-(i due filtri, misurati contro un orizzonte calcolato senza griglia) e nel §20
-(le relazioni cucite, e la superficie che non si fa spostare da un fosso).
-Nessuna prova esistente è stata cambiata o allentata.
-
-Nota per chi rilancia il banco: serve `serviceWorkers: 'block'` nel contesto
-Playwright, se no il service worker intercetta le richieste finte e le prove
-del terreno restano appese.
+Provato anche nell'app vera (Chromium headless, servizi finti per quote e
+Overpass, service worker escluso): planetario aperto, terreno completo
+120/120 direzioni, 316 bande d'acqua, le 4 richieste Overpass spartite fra le
+due istanze, nessun errore di console.
