@@ -150,6 +150,21 @@ function nota(testo) {
   uscita.insertAdjacentHTML('beforeend', `<div class="prova nota">${testo}</div>`);
 }
 
+// Una prova che ha bisogno di aspettare.
+//
+// Quasi tutto, qui, è un conto e si può chiedere e leggere nella stessa riga.
+// Un pezzo però adesso cede il turno al browser mentre lavora — il
+// tracciamento dei raggi delle acque, che a farlo tutto insieme tiene fermo lo
+// schermo per dei secondi — e una cosa che cede il turno non si può provare
+// senza aspettarla. `promessa` deve sciogliersi in `{ esito, nota }`; il
+// riquadro in fondo alla pagina non si scrive finché non sono tutte tornate.
+const proveInVolo = [];
+function attendi(nome, promessa) {
+  proveInVolo.push(promessa.then(
+    r => prova(nome, !!(r && r.esito), r && r.nota),
+    e => prova(nome, false, 'è andata in errore: ' + (e && e.message))));
+}
+
 const D2R = Math.PI / 180;
 const UA_KM = 149597870.7;
 
@@ -749,25 +764,94 @@ titolo('9. La forma vera del terreno');
       const f = TERRENO_FONTI[0];
       const r = terrenoRitmoDi(f);
       const passo = r.distanza, insieme = r.insieme, libero = r.liberoDa;
+      const fonteVera = terrenoFonteOra;
+      // Una fonte «nuova»: ogni sotto-prova qui sotto simula un'ondata a sé, e
+      // il freno di questo rubinetto è **per ondata** (vedi `terrenoFrena`).
+      const ondataNuova = () => { r.frenatoFino = 0; r.noDiFila = 0; };
+
+      // Un no dice «troppe **insieme**»: la risposta è dimezzare la
+      // concorrenza, che è la manopola che risponde a quella domanda. Il passo
+      // si allarga appena — è quello che decide la portata quando la
+      // concorrenza è libera, e allargarlo di molto serializzava tutto lo
+      // scarico su un buco di mezzo secondo (misurato: diciotto secondi con
+      // cinque richieste concesse insieme e zero in volo).
       terrenoFrena(f, { stato: 429 });
-      prova('un no allarga il passo fra le richieste e ne toglie una dal volo',
-            r.distanza > passo && r.insieme === Math.max(1, insieme - 1),
-            `${passo} → ${r.distanza} ms, ${insieme} → ${r.insieme} insieme`);
+      prova('un no dimezza le richieste concesse insieme e allarga appena il passo',
+            r.insieme === Math.max(1, Math.floor(insieme / 2)) &&
+            r.distanza > passo && r.distanza < passo * 2,
+            `${insieme} → ${r.insieme} insieme, passo ${passo} → ${r.distanza} ms`);
+
+      // Il difetto che rendeva inutile tutto il resto del rubinetto: sei
+      // richieste in volo si prendono sei no, che sono **la stessa notizia**
+      // detta sei volte. Frenando a ogni no il passo veniva moltiplicato per
+      // 2,2 sei volte di fila — per centoundici — e in due ondate era al
+      // tetto: da lì ogni richiesta costava secondi di sola attesa, e con un
+      // servizio che rifiutava una richiesta su quattro il terreno non
+      // arrivava mai.
+      ondataNuova();
+      const primaDellOndata = r.distanza;
+      terrenoFrena(f, { stato: 429 });
+      const dopoUno = r.distanza;
+      for (let i = 0; i < 5; i++) terrenoFrena(f, { stato: 429 });
+      prova('una raffica di no della stessa ondata frena **una volta**, non sei',
+            dopoUno > primaDellOndata && r.distanza === dopoUno,
+            `${primaDellOndata} → ${dopoUno} ms, e sei no di fila la lasciano a ${r.distanza} ms`);
+
+      ondataNuova();
       const t0 = Date.now();
       terrenoFrena(f, { stato: 429, attesa: 9000 });
       const fermo = r.liberoDa - t0;
       prova('e si sta fermi il tempo che il servizio ha chiesto, fino al tetto',
             fermo >= Math.min(9000, TERRENO_PAUSA_MAX_MS) - 50 && fermo <= TERRENO_PAUSA_MAX_MS + 50,
             `${Math.round(fermo / 1000)} s, tetto ${TERRENO_PAUSA_MAX_MS / 1000} s`);
-      // Un Retry-After di dieci minuti non si aspetta: si cambia porta.
+
+      // Un Retry-After di dieci minuti non si aspetta: si cambia porta. Il
+      // tetto lo mette `terrenoFrena`, che è l'unico posto da cui la pausa
+      // entra nell'app.
+      ondataNuova();
+      const t1 = Date.now();
+      terrenoFrena(f, { stato: 429, attesa: 600000 });
       prova('un\'attesa assurda non blocca tutto per dieci minuti',
-            terrenoAttesa({ attesa: 600000 }, 0) <= TERRENO_PAUSA_MAX_MS,
-            `${Math.round(terrenoAttesa({ attesa: 600000 }, 0) / 1000)} s`);
-      for (let i = 0; i < TERRENO_SI_PER_MOLLARE * 8; i++) terrenoScorre(f);
+            r.liberoDa - t1 <= TERRENO_PAUSA_MAX_MS + 50,
+            `${Math.round((r.liberoDa - t1) / 1000)} s`);
+
+      // La rotazione: tre no **di fila** non sono la sfortuna di una
+      // richiesta, sono questa fonte. Prima la scoperta la rifaceva ognuna
+      // delle ventiquattro richieste per conto suo, sulla stessa porta chiusa.
+      ondataNuova();
+      terrenoFonteOra = TERRENO_FONTI.indexOf(f);
+      for (let i = 0; i < TERRENO_NO_PER_CAMBIARE; i++) terrenoFrena(f, { stato: 429 });
+      prova('e dopo qualche no di fila si cambia porta, per tutta la coda',
+            (terrenoFonteOra % TERRENO_FONTI.length) !== TERRENO_FONTI.indexOf(f),
+            `si passa a ${terrenoFonte().nome}`);
+      // Un sì in mezzo azzera il conto: una fonte che risponde una volta su
+      // due funziona piano, non è una porta chiusa.
+      ondataNuova();
+      terrenoFonteOra = TERRENO_FONTI.indexOf(f);
+      for (let i = 0; i < TERRENO_NO_PER_CAMBIARE * 3; i++) {
+        terrenoFrena(f, { stato: 429 });
+        terrenoScorre(f);
+        r.frenatoFino = 0;
+      }
+      prova('ma un sì in mezzo ai no non fa abbandonare una fonte che funziona',
+            (terrenoFonteOra % TERRENO_FONTI.length) === TERRENO_FONTI.indexOf(f),
+            `resta ${terrenoFonte().nome}`);
+
+      // Abbastanza sì per tornare al ritmo di crociera partendo dal tetto: il
+      // passo si stringe di un fattore per volta, quindi il numero di passi
+      // dipende da quanto è largo il tetto e da quanto è gentile la molla, e
+      // scriverlo a mano vuol dire vederlo scadere alla prima taratura.
+      const passiPerTornare = TERRENO_SI_PER_MOLLARE *
+        (Math.ceil(Math.log(TERRENO_DISTANZA_MAX_MS / f.distanza) / Math.log(1 / TERRENO_MOLLA)) + 4) +
+        f.insieme;
+      for (let i = 0; i < passiPerTornare; i++) terrenoScorre(f);
       prova('e una fila di sì riapre il rubinetto, ma non oltre il ritmo di crociera',
             r.distanza === f.distanza && r.insieme === f.insieme,
-            `${r.distanza} ms, ${r.insieme} insieme`);
+            `${r.distanza} ms, ${r.insieme} insieme, in ${passiPerTornare} sì`);
       r.liberoDa = libero;
+      r.frenatoFino = 0;
+      r.noDiFila = 0;
+      terrenoFonteOra = fonteVera;
     }
 
     // 3. La ripresa. Questa è la garanzia vera: un tentativo che va male non
@@ -3892,6 +3976,38 @@ if (typeof acqueTaglia !== 'function') {
       { lat: LAT + 0.02, lon: LON + 0.004 } ] };
     prova('un poligono che ci sta accanto — riquadro compreso — non ci contiene',
       acqueTaglia(acqueLeggiElementi([accanto]), LAT, LON, 25000).sommersi.size === 0);
+
+    // Il tracciamento a scaglioni deve dare **esattamente** gli stessi numeri
+    // di quello tutto in un colpo.
+    //
+    // È la prova che tiene insieme le due strade, ed è la stessa forma della
+    // prova sulle relazioni cucite: il conto vero lo fa `acqueTagliaUno`, che è
+    // una funzione sola, ma chi la chiama a scaglioni cede il turno al browser
+    // in mezzo al lavoro — e in mezzo al lavoro c'è uno stato condiviso (i
+    // tagli per direzione, e la parità dei sommersi). Se le due divergessero il
+    // difetto sarebbe della specie peggiore: l'acqua disegnata giusta sul
+    // computer di chi l'ha scritta e sbagliata su un telefono lento, dove gli
+    // scaglioni cadono in punti diversi.
+    if (typeof acqueTagliaAScaglioni === 'function') {
+      const tanti = [];
+      for (let i = 0; i < 60; i++) {
+        const a = i / 60 * 2 * Math.PI, d = 900 + (i % 9) * 1500;
+        tanti.push(cerchio(d * Math.sin(a), d * Math.cos(a), 200 + (i % 5) * 250,
+                           { natural: 'water', name: 'Lago ' + i }));
+      }
+      // Più uno che ci contiene: così si prova anche la parità dei sommersi.
+      tanti.push(cerchio(0, 0, 600, { natural: 'water', name: 'Lago intorno' }));
+      const tr = acqueLeggiElementi(tanti);
+      const dritto = acqueTaglia(tr, LAT, LON, 25000);
+      attendi('il tracciamento a scaglioni dà gli stessi numeri di quello in un colpo',
+        acqueTagliaAScaglioni(tr, LAT, LON, 25000).then(sped => ({
+          esito: JSON.stringify(acqueBandeDaTagli(dritto)) === JSON.stringify(acqueBandeDaTagli(sped)) &&
+                 dritto.sommersi.size === sped.sommersi.size &&
+                 [...dritto.sommersi].every(id => sped.sommersi.has(id)) &&
+                 dritto.limite === sped.limite,
+          nota: `${tr.length} tracciati, ${dritto.sommersi.size} sotto i piedi`
+        })));
+    }
   }
 
   // -------------------------------------------------------------------
@@ -4154,11 +4270,23 @@ if (typeof acqueTaglia !== 'function') {
 }
 
 // =====================================================================
+// Il verdetto si scrive **dopo** le prove che aspettano (vedi `attendi`): se lo
+// si scrivesse subito direbbe «tutte passate» un istante prima che le ultime
+// abbiano risposto, che è il modo in cui una pagina di prove smette di servire.
 const esito = document.getElementById('esito');
-esito.dataset.stato = fallite ? 'ko' : 'ok';
-esito.textContent = fallite
-  ? `${fallite} PROVE FALLITE su ${passate + fallite}`
-  : `Tutte e ${passate} le prove sono passate.`;
+function scriviEsito() {
+  esito.dataset.stato = fallite ? 'ko' : 'ok';
+  esito.textContent = fallite
+    ? `${fallite} PROVE FALLITE su ${passate + fallite}`
+    : `Tutte e ${passate} le prove sono passate.`;
+}
+if (proveInVolo.length) {
+  esito.dataset.stato = 'attesa';
+  esito.textContent = `${passate + fallite} prove fatte, ${proveInVolo.length} in corso…`;
+  Promise.all(proveInVolo).then(scriviEsito, scriviEsito);
+} else {
+  scriviEsito();
+}
 </script>
 
 </body>

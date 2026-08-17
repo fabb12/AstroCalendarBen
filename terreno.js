@@ -95,17 +95,6 @@ const TERRENO_DISTANZE = [
 // direzioni intere per volta, il che rende le richieste tutte uguali.
 const TERRENO_PER_RICHIESTA = 90;
 
-// Quante richieste per volta, **all'inizio**. Ventiquattro in fila indiana
-// sono venti secondi di attesa con lo schermo che dice «sto misurando»;
-// tutte insieme sono il modo più veloce di farsi rispondere «troppe
-// richieste». Quattro alla volta è la via di mezzo con cui si parte.
-//
-// Non è più l'ultima parola: da qui in poi il numero è del rubinetto (§4),
-// che lo stringe a ogni no e lo riapre piano quando le risposte tornano.
-// Scritto come costante non poteva imparare niente da un 429 — ed è
-// esattamente quello che il 429 sta cercando di dire.
-const TERRENO_RICHIESTE_INSIEME = 4;
-
 // Raggio terrestre e coefficiente di rifrazione standard. La luce che
 // rade il terreno si incurva verso il basso seguendo l'aria che si dirada
 // con la quota, e questo fa vedere **più lontano** di quanto la geometria
@@ -394,12 +383,39 @@ const TERRENO_FONTI = [
   {
     nome: 'Open-Meteo',
     max: 100,
-    insieme: TERRENO_RICHIESTE_INSIEME,
-    distanza: 120,
+    // Sei insieme e ottanta millesimi di distanza, contro i quattro e
+    // centoventi di prima. Il ritmo di crociera si può alzare **da quando il
+    // freno funziona per davvero** (vedi `terrenoFrena`: prima un 429 in una
+    // raffica di quattro frenava quattro volte, e in tre passate il passo era
+    // già al suo tetto). Il conto che si paga qui è tutto di spaziatura: le
+    // ventiquattro richieste non possono arrivare prima di
+    // 24 × distanza, cioè due secondi e nove decimi col passo vecchio, e
+    // quella era la metà del tempo di attesa su una rete che funzionava.
+    insieme: 6,
+    distanza: 80,
     url: punti => 'https://api.open-meteo.com/v1/elevation?latitude=' +
       punti.map(p => p.lat.toFixed(5)).join(',') + '&longitude=' +
       punti.map(p => p.lon.toFixed(5)).join(','),
     leggi: d => (d && Array.isArray(d.elevation)) ? d.elevation : null
+  },
+  // Le due di riserva sono in quest'ordine per il **ritmo che dichiarano**, non
+  // per preferenza: quando la prima porta è chiusa, le ventiquattro richieste
+  // se le prende tutte la riserva, e allora la sua portata è tutto il tempo
+  // d'attesa. Open-Elevation dice quattro decimi di secondo fra una richiesta e
+  // l'altra, OpenTopoData scrive «una al secondo» nella sua documentazione:
+  // ventiquattro richieste sono dieci secondi dalla prima e ventisette dalla
+  // seconda. Misurato con Open-Meteo del tutto chiusa, ed è la differenza fra
+  // un'attesa e una rinuncia. Quale delle due sia più affidabile non c'entra —
+  // a quello risponde la rotazione, che gira di nuovo se anche questa dice no.
+  {
+    nome: 'Open-Elevation',
+    max: 100,
+    insieme: 1,
+    distanza: 400,
+    url: punti => 'https://api.open-elevation.com/api/v1/lookup?locations=' +
+      punti.map(p => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join('|'),
+    leggi: d => (d && Array.isArray(d.results))
+      ? d.results.map(r => (r && typeof r.elevation === 'number') ? r.elevation : null) : null
   },
   {
     nome: 'OpenTopoData',
@@ -407,16 +423,6 @@ const TERRENO_FONTI = [
     insieme: 1,
     distanza: 1100,
     url: punti => 'https://api.opentopodata.org/v1/mapzen?locations=' +
-      punti.map(p => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join('|'),
-    leggi: d => (d && Array.isArray(d.results))
-      ? d.results.map(r => (r && typeof r.elevation === 'number') ? r.elevation : null) : null
-  },
-  {
-    nome: 'Open-Elevation',
-    max: 100,
-    insieme: 1,
-    distanza: 400,
-    url: punti => 'https://api.open-elevation.com/api/v1/lookup?locations=' +
       punti.map(p => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join('|'),
     leggi: d => (d && Array.isArray(d.results))
       ? d.results.map(r => (r && typeof r.elevation === 'number') ? r.elevation : null) : null
@@ -481,112 +487,278 @@ async function terrenoQuoteDa(f, punti) {
 // le altre continuavano a bussare. Da lì il messaggio che si vedeva più
 // spesso di tutti — «il servizio delle quote è sovraccarico».
 //
-// Adesso ogni fonte ha un rubinetto solo, e tutte le sue richieste ci
-// passano dentro: al massimo `insieme` in volo, e almeno `distanza`
-// millisecondi fra una partenza e l'altra. È un rubinetto che si stringe da
-// sé — a ogni no il passo raddoppia e una richiesta in volo si toglie — e
-// che si riapre piano quando le risposte tornano a essere dei sì. Così la
-// raffica non parte mai, e un 429 rallenta **tutti**, che è l'unica reazione
-// che serva a qualcosa.
-const TERRENO_DISTANZA_MAX_MS = 6000;
+// Adesso c'è un rubinetto solo e tutte le richieste ci passano dentro: al
+// massimo `insieme` in volo, e almeno `distanza` millisecondi fra una partenza
+// e l'altra. È un rubinetto che si stringe da sé — a ogni no il passo si
+// allarga e una richiesta in volo si toglie — e che si riapre quando le
+// risposte tornano a essere dei sì. Così la raffica non parte mai, e un 429
+// rallenta **tutti**, che è l'unica reazione che serva a qualcosa.
+//
+// La coda è **una**, e la fonte si decide al momento di partire e non al
+// momento di mettersi in fila. Sembra un dettaglio e non lo è: con una coda
+// per fonte, le ventiquattro richieste si mettevano in fila su Open-Meteo
+// tutte insieme nel primo istante, e da quel momento erano legate a lei. Se
+// Open-Meteo era chiusa, la rotazione della §4 scattava dopo tre no — ma le
+// ventuno richieste già in coda continuavano a essere consegnate alla porta
+// chiusa, una per una, ognuna prendendosi il suo no prima di potersi
+// riproporre altrove. Misurato con un Open-Meteo che rifiutava tutto:
+// **ventisette richieste buttate sulla porta chiusa e ventisette secondi** per
+// un orizzonte che gli altri due host avrebbero dato in due. Con una coda sola
+// il rubinetto rilegge `terrenoFonte()` a ogni partenza, quindi la rotazione
+// vale per tutta la coda nell'istante in cui accade.
+//
+// Il ritmo (`insieme`, `distanza`, `liberoDa`) resta invece **per fonte**: è
+// una proprietà di quell'host, e tornandoci si vuole ritrovare quello che si
+// era imparato su di lui. Quante ne sono in volo è un conto solo perché con un
+// host solo si parla per volta.
+// Il tetto del passo, e perché è scritto basso.
+//
+// Erano sei secondi, e sei secondi sono un tetto che non serve a nessuno: con
+// ventiquattro richieste da spaziare fanno **due minuti e mezzo** di sola
+// attesa, cioè un orizzonte che non arriva più. Il ragionamento sbagliato era
+// «se il servizio è carico si va piano»; quello giusto è che le fonti sono
+// tre, e un servizio che non regge più di una richiesta al secondo non è un
+// servizio da aspettare — è un servizio da lasciare (`terrenoFrena` gira la
+// porta da sé). Il tetto quindi è quello: oltre, si cambia.
+//
+// Il numero si ricava dal lavoro e non dal gusto: le richieste sono
+// ventiquattro, e il tempo che si è disposti a spendere per un orizzonte è
+// una ventina di secondi. Ventiquattro per nove decimi di secondo fanno
+// ventuno, e il tetto è quello. Un servizio che chiede di andare più piano di
+// così ce lo dice col `retry-after`, e quello si rispetta (fino a
+// `TERRENO_PAUSA_MAX_MS`); quello che non si fa più è **indovinare** da soli
+// una pausa che il servizio non ha chiesto e pagarla ventiquattro volte.
+const TERRENO_DISTANZA_MAX_MS = 900;
 // Quanto al massimo si sta fermi ad aspettare, anche se il servizio ha
-// chiesto di più. Mezzo minuto è il punto oltre il quale conviene bussare a
-// un'altra porta invece di aspettare questa: le fonti sono tre, e restare
-// fermi due minuti perché la prima ha scritto «retry-after: 120» vuol dire
-// non usare le altre due.
-const TERRENO_PAUSA_MAX_MS = 30000;
-const TERRENO_FRENA = 2.2;             // di quanto si allarga il passo a ogni no
-const TERRENO_MOLLA = 0.8;             // di quanto si stringe quando le cose vanno
-const TERRENO_SI_PER_MOLLARE = 4;      // quanti sì di fila prima di riaprire
+// chiesto di più. Dieci secondi: le fonti sono tre, e restare fermi mezzo
+// minuto perché la prima ha scritto «retry-after: 120» vuol dire non usare le
+// altre due. Era mezzo minuto, ed era già il ragionamento giusto scritto col
+// numero di prima che nessuno aveva più guardato.
+const TERRENO_PAUSA_MAX_MS = 10000;
+// Come si frena, e come si riparte. **Prima la concorrenza, poi il passo.**
+//
+// Questa è la lezione che il rubinetto ha imparato per ultima, e l'ha imparata
+// da una sonda: con un servizio che rifiutava una richiesta su quattro, il
+// rubinetto si assestava a settecento millesimi di distanza con **cinque o sei
+// richieste concesse insieme e zero in volo**. Cioè si teneva aperta una
+// concorrenza che non usava, e serializzava tutto lo scarico su un buco di
+// mezzo secondo: venticinque richieste per settecento millesimi fanno i
+// diciotto secondi che si misuravano, e non c'entrava niente né la latenza né
+// il numero di riprove.
+//
+// Il difetto era nel modello. Un 429 dice «troppe **insieme**», e la risposta
+// giusta è togliere richieste dal volo; allargare il buco fra una partenza e
+// l'altra risponde a una domanda che nessuno ha fatto, e siccome è il buco a
+// decidere la portata quando la concorrenza è libera, è l'unica delle due
+// manopole che costa tempo. Quindi si fa quello che fa il TCP da quarant'anni
+// (e ogni cliente di un servizio a quota da allora): **la concorrenza si
+// dimezza a ogni no e cresce di uno a ogni sì**, mentre il passo si allarga
+// appena e si ristringe da sé.
+//
+// L'asimmetria resta (un no pesa più di un sì) perché deve: sbagliare andando
+// piano costa dei secondi, sbagliare andando forte costa un altro 429.
+const TERRENO_FRENA = 1.25;            // di quanto si allarga il passo a ogni no
+const TERRENO_MOLLA = 0.85;            // di quanto si stringe quando le cose vanno
+const TERRENO_SI_PER_MOLLARE = 1;      // quanti sì di fila prima di riaprire
+
+// Quanti no di fila prima di cambiare porta.
+//
+// È la differenza fra «questa richiesta non ce la fa» e «questa **fonte** non
+// ce la fa», e per un pezzo l'app sapeva dire solo la prima: la rotazione
+// stava in fondo al giro dei tentativi di `terrenoQuoteInsistendo`, quindi
+// ogni richiesta doveva prendersi i suoi tre no sullo stesso host prima di
+// concedersi il successivo — e le altre ventitré, che erano in coda dietro di
+// lei, li prendevano tutte, uno per uno, sulla stessa porta chiusa. Dei no
+// **di fila** su una fonte sono invece un'informazione sulla fonte, e vale per
+// tutti: `terrenoFrena` sposta il puntatore e la coda che deve ancora partire
+// parte già dall'host nuovo.
+//
+// Cinque e non tre, e il numero è stato misurato: cambiare porta **costa**.
+// Open-Meteo accetta sei richieste insieme a ottanta millesimi di distanza, le
+// due di riserva dichiarano una al secondo (OpenTopoData lo scrive nella sua
+// documentazione), quindi rotolare su una di loro divide la portata per dieci.
+// Con tre no di fila si abbandonava anche una fonte che stava soltanto
+// lavorando piano: provato con tutti e tre gli host che rifiutavano una
+// richiesta su due, il terreno passava da trentun secondi a cinquantotto e
+// restava incompleto, perché si finiva a scaricare ventiquattro richieste a una
+// al secondo. Cinque no di fila con una risposta su due sono il tre per cento
+// dei casi, mentre una porta chiusa li dà subito: la soglia distingue le due
+// cose, che è tutto quello che le si chiede.
+const TERRENO_NO_PER_CAMBIARE = 5;
 
 function terrenoRitmoDi(f) {
   if (!f.ritmo) {
     f.ritmo = {
       insieme: f.insieme, distanza: f.distanza,
-      liberoDa: 0, inVolo: 0, coda: [], timer: null, siDiFila: 0
+      liberoDa: 0, siDiFila: 0,
+      // Fino a quando il freno di questa fonte è già stato tirato. Serve a
+      // frenare **una volta per ondata** e non una volta per richiesta: vedi
+      // `terrenoFrena`.
+      frenatoFino: 0, noDiFila: 0
     };
   }
   return f.ritmo;
 }
 
-function terrenoInFila(f, compito) {
-  const r = terrenoRitmoDi(f);
+// La coda unica, e quante richieste sono in volo adesso.
+const terrenoCoda = [];
+let terrenoInVolo = 0;
+let terrenoTimer = null;
+
+// La coda ha due classi di precedenza, e ce ne vogliono due.
+//
+// Il giro grosso esiste per una ragione sola: mettere in piedi un orizzonte
+// vero, anche grosso, il prima possibile (`TERRENO_PASSO_GROSSO`). Ma una
+// richiesta che si prende un no si rimette in fila, e mettendosi in fila **in
+// fondo** finisce dietro alle ottanta direzioni dell'affinamento: il giro
+// grosso non si chiude più finché non è passato tutto il resto, cioè proprio la
+// cosa che non doveva aspettare. Misurato con un servizio che rifiutava una
+// richiesta su quattro: il primo orizzonte vero passava da tre secondi e mezzo
+// a sette e mezzo, mentre il terreno *completo* arrivava molto prima di prima.
+// Cioè si era guadagnato sul totale e perso sull'unico numero che l'utente
+// guarda.
+//
+// Con due classi, una riprova del giro grosso rientra davanti all'affinamento e
+// dietro alle altre del giro grosso: l'ordine dentro a ogni classe resta quello
+// di arrivo, che è quello che rende il fallimento sopportabile.
+const TERRENO_PRI_SUBITO = 0;    // la quota di casa e il giro grosso
+const TERRENO_PRI_DOPO = 1;      // l'affinamento
+
+// `compito` riceve la fonte con cui parlare: quella di **adesso**, non quella
+// che c'era quando si è messo in fila.
+function terrenoInFila(compito, pri) {
+  const mia = pri === TERRENO_PRI_DOPO ? TERRENO_PRI_DOPO : TERRENO_PRI_SUBITO;
   return new Promise((ok, no) => {
-    r.coda.push({ compito, ok, no });
-    terrenoRubinetto(f);
+    const voce = { compito, ok, no, pri: mia };
+    // Si entra dopo l'ultimo che ha almeno la nostra precedenza. La coda è di
+    // qualche decina di voci: cercare il posto costa meno di tenere due array.
+    let dove = terrenoCoda.length;
+    while (dove > 0 && terrenoCoda[dove - 1].pri > mia) dove--;
+    terrenoCoda.splice(dove, 0, voce);
+    terrenoRubinetto();
   });
 }
 
-function terrenoRubinetto(f) {
-  const r = terrenoRitmoDi(f);
-  if (r.timer) return;
-  while (r.coda.length && r.inVolo < r.insieme) {
+function terrenoRubinetto() {
+  if (terrenoTimer) return;
+  while (terrenoCoda.length) {
+    // La fonte si rilegge a ogni giro: se è cambiata mentre questa richiesta
+    // era in coda, parte verso quella nuova. Con lei si rileggono anche il suo
+    // passo e il suo tetto di richieste insieme.
+    const f = terrenoFonte();
+    const r = terrenoRitmoDi(f);
+    if (terrenoInVolo >= r.insieme) return;
     const aspetta = r.liberoDa - Date.now();
     if (aspetta > 0) {
       // Ci si risveglia e si riguarda: nel frattempo la pausa può essersi
       // allungata (un altro 429) o la fonte può essere cambiata.
-      r.timer = setTimeout(() => { r.timer = null; terrenoRubinetto(f); },
-                           Math.min(aspetta, TERRENO_PAUSA_MAX_MS));
+      terrenoTimer = setTimeout(() => { terrenoTimer = null; terrenoRubinetto(); },
+                                Math.min(aspetta, TERRENO_PAUSA_MAX_MS));
       return;
     }
-    const v = r.coda.shift();
-    r.inVolo++;
+    const v = terrenoCoda.shift();
+    terrenoInVolo++;
     r.liberoDa = Date.now() + r.distanza;
-    Promise.resolve().then(v.compito).then(v.ok, v.no)
-      .then(() => { r.inVolo--; terrenoRubinetto(f); });
+    Promise.resolve().then(() => v.compito(f)).then(v.ok, v.no)
+      .then(() => { terrenoInVolo--; terrenoRubinetto(); });
   }
 }
 
 // Questa fonte ha detto di no: si rallenta, e si sta fermi il tempo che ha
 // chiesto lei (o quello che ci siamo dati noi, se non l'ha detto).
+//
+// **Una volta per ondata, non una per richiesta.** È il difetto che rendeva
+// inutile tutto il resto del rubinetto, ed è aritmetica: se sono in volo sei
+// richieste e il servizio è carico, i no arrivano a sei per volta — sono la
+// stessa notizia detta sei volte, non sei notizie. Frenando a ogni no il passo
+// veniva moltiplicato per 2,2 sei volte di fila, cioè per centoundici, e in
+// due ondate era già al tetto: da lì in poi ogni richiesta costava sei secondi
+// di sola attesa, ed è il motivo per cui con un servizio che rifiutava una
+// richiesta su quattro il terreno **non arrivava mai** (misurato: 28 richieste
+// HTTP in novanta secondi, e le ventiquattro non finivano). Adesso il freno si
+// tira una volta e poi resta tirato per il tempo che si è appena imposto: i no
+// della stessa ondata lo trovano già tirato e non lo stringono di nuovo.
 function terrenoFrena(f, e) {
   const r = terrenoRitmoDi(f);
+  const ora = Date.now();
   r.siDiFila = 0;
-  r.distanza = Math.min(TERRENO_DISTANZA_MAX_MS, Math.round(r.distanza * TERRENO_FRENA));
-  if (r.insieme > 1) r.insieme--;
-  const pausa = Math.min(TERRENO_PAUSA_MAX_MS, (e && e.attesa) || r.distanza);
-  r.liberoDa = Math.max(r.liberoDa, Date.now() + pausa);
+  // Il conto dei no serve alla rotazione, e quello va tenuto sempre: una
+  // fonte che dice no sei volte l'ha detto sei volte, anche se il passo si
+  // allarga una volta sola.
+  r.noDiFila++;
+  if (ora >= r.frenatoFino) {
+    // La concorrenza si dimezza — è la manopola che risponde alla domanda che
+    // il 429 ha fatto — e il passo si allarga appena.
+    r.insieme = Math.max(1, Math.floor(r.insieme / 2));
+    // Il tetto non può stare **sotto** al ritmo di crociera dichiarato dalla
+    // fonte, se no frenare la farebbe andare più veloce di quanto lei stessa
+    // ha chiesto: OpenTopoData dichiara una richiesta al secondo, e un tetto
+    // di nove decimi la porterebbe a superarla proprio nel momento in cui ha
+    // appena detto di no.
+    const tetto = Math.max(TERRENO_DISTANZA_MAX_MS, f.distanza);
+    r.distanza = Math.min(tetto, Math.round(r.distanza * TERRENO_FRENA));
+    const pausa = Math.min(TERRENO_PAUSA_MAX_MS, (e && e.attesa) || r.distanza);
+    r.liberoDa = Math.max(r.liberoDa, ora + pausa);
+    r.frenatoFino = ora + pausa;
+  }
+  // Tre no di fila non sono la sfortuna di una richiesta: sono questa fonte.
+  // Si cambia porta, e ci si porta dietro la coda che deve ancora partire —
+  // che è il punto: prima ognuna delle ventiquattro doveva sbatterci il naso
+  // per conto suo.
+  if (r.noDiFila >= TERRENO_NO_PER_CAMBIARE) {
+    r.noDiFila = 0;
+    terrenoCambiaFonte(f);
+  }
+}
+
+// Gira il puntatore, ma solo se la fonte da abbandonare è ancora quella
+// corrente: due richieste che si prendono un no nello stesso istante
+// girerebbero il puntatore due volte, e la seconda salterebbe una fonte buona
+// senza averla provata.
+function terrenoCambiaFonte(f) {
+  const i = TERRENO_FONTI.indexOf(f);
+  if (i < 0 || (terrenoFonteOra % TERRENO_FONTI.length) !== i) return;
+  terrenoFonteOra = (i + 1) % TERRENO_FONTI.length;
 }
 
 // Ha detto di sì, e non una volta sola: si può riaprire un po'. Piano, e
 // mai oltre il ritmo di crociera dichiarato dalla fonte.
 function terrenoScorre(f) {
   const r = terrenoRitmoDi(f);
+  // Un sì azzera il conto dei no: quello che conta per cambiare porta sono i
+  // no **di fila**, e una fonte che risponde una volta su due è una fonte che
+  // funziona piano, non una porta chiusa.
+  r.noDiFila = 0;
   if (++r.siDiFila < TERRENO_SI_PER_MOLLARE) return;
   r.siDiFila = 0;
   r.distanza = Math.max(f.distanza, Math.round(r.distanza * TERRENO_MOLLA));
   if (r.insieme < f.insieme) r.insieme++;
 }
 
-// Quante volte insistere su una richiesta, e quanto aspettare fra un
-// tentativo e l'altro.
+// Quante volte insistere su una richiesta, in tutto e su tutte le fonti.
 //
-// È la parte che mancava, ed è quella che faceva fallire tutto. Le richieste
-// sono ventiquattro: se ognuna ha anche solo il due per cento di probabilità
-// di andare storta — un 429 perché il servizio è carico, un pacchetto perso,
-// una cella che cambia — la probabilità che **almeno una** vada storta è
-// quasi il quarantacinque per cento. E una sola bastava a buttare via anche
-// le altre ventitré, senza riprovare mai.
+// Insistere è la parte che una volta mancava del tutto, e va tenuta: le
+// richieste sono ventiquattro, e se ognuna ha anche solo il due per cento di
+// probabilità di andare storta la probabilità che **almeno una** vada storta è
+// quasi il quarantacinque per cento — una sola bastava a buttare via anche le
+// altre ventitré.
 //
-// Le attese sono più lunghe di quelle di prima (erano 0,7 / 2,2 / 5 secondi):
-// sette secondi in tutto non sono pazienza, sono la stessa raffica spalmata.
-// E hanno un pizzico di caso dentro, perché quattro richieste che si
-// riprovano tutte allo stesso millesimo sono di nuovo una raffica.
-const TERRENO_TENTATIVI = 3;
-const TERRENO_ATTESE_MS = [1200, 4000, 11000];
-
-function terrenoAspetta(ms) {
-  return new Promise(f => setTimeout(f, ms));
-}
-
-function terrenoAttesa(e, t) {
-  const base = (e && e.attesa) || TERRENO_ATTESE_MS[Math.min(t, TERRENO_ATTESE_MS.length - 1)];
-  // Anche qui vale il tetto del rubinetto: un servizio che chiede dieci
-  // minuti sta dicendo «non io, oggi», e la risposta giusta non è aspettarlo
-  // dieci minuti — è provare le altre due porte, che è quello che succede
-  // appena questi tentativi finiscono.
-  return Math.round(Math.min(base * (0.75 + Math.random() * 0.5), TERRENO_PAUSA_MAX_MS));
-}
+// Ma le attese fra un tentativo e l'altro **non ci sono più**, e la ragione è
+// che erano contate due volte. Chi si prendeva un no chiamava `terrenoFrena`,
+// che sposta in avanti il `liberoDa` del rubinetto — cioè la pausa era già
+// imposta, a tutte le richieste di quella fonte insieme — e poi dormiva
+// *anche* per conto suo uno, quattro, undici secondi prima di rimettersi in
+// coda. Le due si sommavano in fila indiana, e sedici secondi di sonno per
+// richiesta su ventiquattro richieste sono il tempo che questo modulo passava
+// a non fare niente. Adesso chi prende un no si rimette in coda **subito**: a
+// tenere il passo è il rubinetto, che è l'unico che sa quanto il servizio sta
+// reggendo adesso, e che intanto ha già girato la porta se la fonte non
+// risponde più (`terrenoCambiaFonte`).
+//
+// Cinque tentativi in tutto, non cinque per fonte: sono i tre giri di porta
+// più due riprove: bastano a coprire il singhiozzo e non fanno di
+// ventiquattro richieste duecento.
+const TERRENO_TENTATIVI = 5;
 
 // Vale la pena riprovare? Sì per i 429 («sei andato troppo forte»), per i
 // guasti del server e per tutto quello che non è nemmeno arrivato a una
@@ -597,41 +769,37 @@ function terrenoRiprovabile(e) {
   return e.stato === 429 || e.stato >= 500;
 }
 
-// Insistere, e poi cambiare porta.
+// Insistere, e cambiare porta quando serve.
 //
-// Prima si insisteva tre volte sullo stesso servizio e poi ci si arrendeva.
-// Ma un 429 non dice «questo dato non esiste», dice «non da me, non adesso»:
+// Un 429 non dice «questo dato non esiste», dice «non da me, non adesso»:
 // arrendersi lì vuol dire restare senza orizzonte avendo in tasca altri due
-// servizi che quel dato ce l'hanno. Si girano tutte le fonti, ognuna coi suoi
-// tentativi, e la prima che risponde diventa quella di adesso — anche per le
-// ventitré richieste che verranno dopo, che è il punto: la fonte satura si
-// paga una volta sola e non ventiquattro.
+// servizi che quel dato ce l'hanno. Ma **quale** porta provare non è più una
+// decisione di questa funzione: la fonte di adesso è `terrenoFonte()`, e a
+// girarla è il rubinetto quando una fonte accumula dei no
+// (`terrenoCambiaFonte`). Il giro annidato di prima — per ogni fonte, i suoi
+// tre tentativi — faceva sì che ognuna delle ventiquattro richieste dovesse
+// rifare da sé la scoperta che la prima porta era chiusa. Rileggendo la fonte
+// a ogni tentativo, la scoperta la fa la prima e le altre ventitré partono
+// già dalla porta giusta.
 //
 // Un errore che **non** è riprovabile (un 400 perché la richiesta è troppo
-// lunga) esce subito e non fa cambiare fonte: quello lo sa gestire chi
-// chiama, spezzando la richiesta in due.
-async function terrenoQuoteInsistendo(punti) {
+// lunga) esce subito: quello lo sa gestire chi chiama, spezzando la richiesta
+// in due.
+async function terrenoQuoteInsistendo(punti, pri) {
   let ultimo = null;
-  const partenza = terrenoFonteOra;
-  for (let salto = 0; salto < TERRENO_FONTI.length; salto++) {
-    const i = (partenza + salto) % TERRENO_FONTI.length;
-    const f = TERRENO_FONTI[i];
-    for (let t = 0; t < TERRENO_TENTATIVI; t++) {
-      try {
-        /* eslint-disable no-await-in-loop */
-        const q = await terrenoInFila(f, () => terrenoQuoteDa(f, punti));
-        terrenoFonteOra = i;
-        return q;
-      } catch (e) {
-        ultimo = e;
-        if (!terrenoRiprovabile(e)) throw e;
-        if (t === TERRENO_TENTATIVI - 1) break;
-        await terrenoAspetta(terrenoAttesa(e, t));
-      }
+  for (let t = 0; t < TERRENO_TENTATIVI; t++) {
+    try {
+      /* eslint-disable no-await-in-loop */
+      // Quale fonte, lo decide il rubinetto quando arriva il turno: `f` qui
+      // dentro è già quella giusta.
+      return await terrenoInFila(f => terrenoQuoteDa(f, punti), pri);
+    } catch (e) {
+      ultimo = e;
+      if (!terrenoRiprovabile(e)) throw e;
+      // Niente sonno qui: la pausa l'ha già messa `terrenoFrena` sul
+      // rubinetto, e sommarcene una seconda è il difetto che questa riga
+      // conteneva.
     }
-    // Questa non ce la fa: si passa alla prossima, e ci si porta dietro il
-    // puntatore — ma solo se nessun altro l'ha già spostato nel frattempo.
-    if (terrenoFonteOra === i) terrenoFonteOra = (i + 1) % TERRENO_FONTI.length;
   }
   throw ultimo;
 }
@@ -965,6 +1133,11 @@ const TERRENO_DIREZIONI_PER_RICHIESTA =
 // orizzonte vero un po' grosso che nessun orizzonte vero.
 const TERRENO_PASSO_GROSSO = 3;
 
+// Quanto si concede alla quota di casa, dopo che tutto il resto è arrivato.
+// Un secondo e mezzo: è la coda di una richiesta che era partita per prima e
+// che quasi sempre ha già risposto. Oltre, si va avanti con la stima.
+const TERRENO_GRAZIA_QUOTA_MS = 1500;
+
 // `sapute` sono le direzioni che si hanno già in mano — da un tentativo di
 // prima, magari di ieri, che la rete aveva lasciato a metà. Non si
 // richiedono: è quello che rende ogni tentativo più corto del precedente
@@ -1035,7 +1208,10 @@ async function terrenoChiedi(r) {
     return terrenoDueMeta(r, Math.max(1, Math.min(quante, r.dirs.length - 1)));
   }
   try {
-    const q = await terrenoQuoteInsistendo(r.punti);
+    // Il giro grosso passa davanti all'affinamento anche quando si riprova:
+    // è tutto il motivo per cui esiste (vedi `terrenoInFila`).
+    const q = await terrenoQuoteInsistendo(r.punti,
+      r.giro === 0 ? TERRENO_PRI_SUBITO : TERRENO_PRI_DOPO);
     if (!Array.isArray(q) || q.length !== r.dirs.length * nd) {
       throw new Error(`il servizio ha risposto con ${q ? q.length : 0} quote invece di ${r.dirs.length * nd}`);
     }
@@ -1193,16 +1369,24 @@ async function terrenoCostruisci(lat, lon, mostra, gia) {
   // sbagliato — è il termine che si sottrae a tutti gli altri — ma **non
   // ferma più tutto**: se non arriva la si ricava dall'anello dei campioni
   // più vicini (`terrenoQuotaDaVicino`), che sono quote dello stesso suolo a
-  // centocinquanta metri da qui. Un punto solo non può più costare
-  // l'orizzonte intero.
+  // centocinquanta metri da qui.
+  //
+  // «Non ferma più tutto» era vero per il *risultato* e falso per il
+  // **tempo**: la sua richiesta stava davanti a tutte le altre con un `await`,
+  // quindi ventiquattro richieste aspettavano un punto solo. Su una rete che
+  // funziona è mezzo secondo buttato; su un servizio carico sono i suoi
+  // tentativi, uno dopo l'altro, prima che l'orizzonte cominci a misurarsi —
+  // ed è esattamente il momento in cui chi guarda decide che «non funziona».
+  // Adesso parte per prima ma **insieme** alle altre: è una richiesta come
+  // loro, passa dallo stesso rubinetto e prende il primo posto in coda.
   let quotaCasa = (gia && typeof gia.quota === 'number' && !gia.quotaStimata) ? gia.quota : null;
   let guaio = null;
-  if (quotaCasa === null) {
-    try {
-      const [q] = await terrenoQuoteInsistendo([{ lat, lon }]);
-      if (typeof q === 'number') quotaCasa = q;
-    } catch (e) { guaio = e; }
-  }
+  let quotaArrivata = false;
+  const quotaInVolo = quotaCasa === null
+    ? terrenoQuoteInsistendo([{ lat, lon }], TERRENO_PRI_SUBITO).then(
+      ([q]) => { if (typeof q === 'number') { quotaCasa = q; quotaArrivata = true; } },
+      e => { if (!guaio) guaio = e; })
+    : null;
 
   const richieste = terrenoRichieste(lat, lon, sapute);
   let fatte = 0;
@@ -1218,27 +1402,53 @@ async function terrenoCostruisci(lat, lon, mostra, gia) {
     avute.push(...pezzo.dirs);
   });
 
-  for (const giro of [0, 1]) {
-    const daFare = richieste.filter(r => r.giro === giro);
-    // Le richieste partono tutte insieme, ma non **arrivano** tutte insieme:
-    // a spaziarle è il rubinetto della §4, che è l'unico posto che sa quanto
-    // il servizio sta reggendo adesso. Prima erano quattro alla volta scritte
-    // qui, e quel numero non poteva imparare niente da un 429.
-    //
-    // Ogni richiesta si porta dietro il proprio errore invece di far fallire
-    // il gruppo: è la differenza fra «ne mancano cinque direzioni» e «non c'è
-    // niente».
-    /* eslint-disable no-await-in-loop */
-    await Promise.all(daFare.map(r => terrenoChiedi(r)
-      .then(accogli, e => { guaio = e; })
-      .then(() => {
-        fatte++;
-        terreno.avanzamento = richieste.length ? fatte / richieste.length : 1;
-        terrenoAggiornaPannello();
-      })));
-    if (giro === 0 && avute.length && typeof mostra === 'function') {
+  // Il giro grosso e l'affinamento vanno in coda **insieme**, e non uno dopo
+  // l'altro con un `await` in mezzo.
+  //
+  // La barriera fra i due giri sembrava gratis e non lo era: il secondo giro
+  // non poteva partire finché *ogni* richiesta del primo non aveva finito, e
+  // «finito» comprende i suoi tentativi. Una sola richiesta del giro grosso
+  // che si prendeva un no teneva il rubinetto fermo — con niente in volo e
+  // sedici richieste pronte a partire — per tutto il tempo delle sue riprove.
+  // La barriera non serviva a niente, perché quello che il giro grosso deve
+  // garantire è solo di essere **disegnato per primo**, e per quello basta
+  // contarne i pezzi: la coda del rubinetto è già in ordine (§4, `terrenoInFila`
+  // serve in ordine di arrivo), quindi le quaranta direzioni grosse partono
+  // comunque prima delle ottanta fini.
+  //
+  // Ogni richiesta si porta dietro il proprio errore invece di far fallire il
+  // gruppo: è la differenza fra «ne mancano cinque direzioni» e «non c'è
+  // niente».
+  let restaGrosso = richieste.reduce((n, r) => n + (r.giro === 0 ? 1 : 0), 0);
+  const disegnaIlGrosso = () => {
+    if (avute.length && typeof mostra === 'function') {
       mostra(terrenoMonta(grezze, avute, quotaCasa));
     }
+  };
+  // Tutto già saputo da un tentativo di prima: non c'è nessun giro grosso da
+  // aspettare, e quello che si ha in mano si disegna subito.
+  if (!restaGrosso) disegnaIlGrosso();
+
+  await Promise.all(richieste.map(r => terrenoChiedi(r)
+    .then(accogli, e => { guaio = e; })
+    .then(() => {
+      fatte++;
+      terreno.avanzamento = richieste.length ? fatte / richieste.length : 1;
+      terrenoAggiornaPannello();
+      if (r.giro === 0 && --restaGrosso === 0) disegnaIlGrosso();
+    })));
+
+  // Un istante di grazia per la quota di casa, che era partita per prima:
+  // arrivata fin qui, quasi sempre ha già risposto da un pezzo. Se non ce l'ha
+  // fatta si va avanti con la stima dell'anello — il profilo si segna
+  // `quotaStimata` e chi riprova più tardi la completa, che è quello che
+  // succedeva anche prima quando quella richiesta falliva. Quello che **non**
+  // deve succedere è che sia lei a far aspettare un orizzonte già misurato.
+  if (quotaInVolo && !quotaArrivata) {
+    await Promise.race([
+      quotaInVolo,
+      new Promise(f => setTimeout(f, TERRENO_GRAZIA_QUOTA_MS))
+    ]);
   }
 
   // Niente di niente: allora è un guasto vero, e si dice.
@@ -2329,83 +2539,173 @@ const OVERPASS_ISTANZE = [
   'https://overpass.kumi.systems/api/interpreter'
 ];
 
-async function overpassChiedi(query, attesaMs) {
-  let ultimo = null;
-  for (const istanza of OVERPASS_ISTANZE) {
-    const controllo = typeof AbortController === 'function' ? new AbortController() : null;
-    // L'attesa del client deve essere più lunga di quella scritta nella
-    // query, se no si taglia la richiesta proprio mentre il server la sta
-    // ancora onorando — e il colpevole sembra il server.
-    const timer = controllo ? setTimeout(() => controllo.abort(), attesaMs) : null;
-    try {
-      const risposta = await fetch(istanza + '?data=' + encodeURIComponent(query),
-        controllo ? { signal: controllo.signal } : undefined);
-      if (!risposta.ok) throw new Error('OpenStreetMap non risponde (' + risposta.status + ')');
-      const dati = await risposta.json();
-      if (!dati || !Array.isArray(dati.elements)) throw new Error('risposta senza elementi');
-      return dati.elements;
-    } catch (e) {
-      ultimo = e;
-    } finally {
-      if (timer) clearTimeout(timer);
-    }
-  }
-  throw ultimo || new Error('nessuna istanza di OpenStreetMap ha risposto');
-}
-
-
-
-// --- Batch per richieste Overpass --------------------------------------
+// Dopo quanto si prova **anche** l'altra istanza, invece di stare a guardare
+// la prima.
 //
-// Invece di chiedere le tre cose (città, vette, acque) una alla volta con
-// il rischio di un 429 e il costo di tre attese di rete in fila indiana,
-// le accumuliamo per qualche millisecondo e poi le facciamo partire tutte insieme.
-// Non modifichiamo la sintassi di Overpass per evitare errori di 400 (Syntax Error),
-// ma le spariamo tramite `Promise.all`. La gestione della coda garantisce che
-// siano gestite concorrentemente.
+// È la correzione che vale più di tutte, in questo pezzo, e nasce da un conto
+// che nessuno aveva fatto: le istanze si provavano in fila indiana, ognuna con
+// la sua sveglia da venti o trenta secondi, e in fondo alla fila c'era la
+// query di ripiego che rifaceva **la stessa fila**. Le acque, che hanno
+// l'attesa più lunga, potevano quindi costare 30 + 30 + 30 + 30 = **due
+// minuti** prima di arrendersi — e con le vette in coda davanti a loro (vedi
+// `acqueCarica`) si arrivava a tre e mezzo. Un'istanza di Overpass carica non
+// risponde «carico»: **tace**, e tacere è il modo in cui consumava tutta la
+// sveglia.
+//
+// Affiancare invece di aspettare cambia la forma del caso peggiore: dopo tre
+// secondi e mezzo si prova anche la seconda porta, la prima resta in corsa, e
+// quella che risponde per prima vince (l'altra si abortisce, che è il motivo
+// per cui questo non è «chiedere due volte»: la seconda richiesta parte solo
+// quando la prima ha già sforato di molto il tempo in cui una risposta buona
+// arriva).
+const OVERPASS_AFFIANCA_MS = 3500;
 
-let overpassBatchTimer = null;
-let overpassBatchQueue = [];
+// Quante richieste a Overpass insieme, e quanto le distanzia.
+//
+// Le tre richieste (paesi, vette, acque) non vanno in fila indiana — era così,
+// e le tre attese si sommavano — ma non vanno nemmeno tutte insieme nello
+// stesso istante, che è come sono finite dopo il primo tentativo di
+// parallelizzarle: è lo stesso servizio pubblico, e tre colpi contemporanei
+// sono il modo più rapido per prendersi un «troppe richieste». Due per volta,
+// distanziate di poco più di mezzo secondo: le tre partono dentro il primo
+// secondo e mezzo e nessuna aspetta che l'altra finisca.
+const OVERPASS_INSIEME = 2;
+const OVERPASS_DISTANZA_MS = 600;
 
-async function overpassChiediBatch(query, parser, fallback_query, attesaMs) {
-  return new Promise((resolve, reject) => {
-    overpassBatchQueue.push({ query, parser, fallback_query, attesaMs, resolve, reject });
-    if (!overpassBatchTimer) {
-      overpassBatchTimer = setTimeout(() => overpassEseguiBatch(), 50);
-    }
+// Da quale istanza si comincia. Gira a ogni richiesta, così le due richieste
+// che partono insieme non bussano alla stessa porta.
+let overpassIstanzaOra = 0;
+
+// Una richiesta, su tutte le istanze, con l'affiancamento.
+function overpassChiedi(query, attesaMs) {
+  const n = OVERPASS_ISTANZE.length;
+  const inizio = overpassIstanzaOra;
+  overpassIstanzaOra = (overpassIstanzaOra + 1) % n;
+
+  return new Promise((ok, no) => {
+    const controlli = [];
+    let prossima = 0, attive = 0, chiuso = false, ultimo = null, sveglia = null;
+
+    const smetti = () => {
+      chiuso = true;
+      if (sveglia) { clearTimeout(sveglia); sveglia = null; }
+      // Chi ha perso la corsa si abortisce: la sua risposta non serve più a
+      // nessuno, e lasciarla scorrere vuol dire tenere occupata una macchina
+      // pubblica per niente.
+      controlli.forEach(c => { try { c.abort(); } catch (e) { /* già chiusa */ } });
+    };
+
+    const nonCeLHaFatta = e => {
+      if (e) ultimo = e;
+      attive--;
+      if (chiuso) return;
+      // C'è ancora una porta da provare: si prova subito, senza aspettare
+      // l'affiancamento.
+      if (prossima < n) { parti(); return; }
+      if (attive <= 0) {
+        smetti();
+        no(ultimo || new Error('nessuna istanza di OpenStreetMap ha risposto'));
+      }
+    };
+
+    const parti = () => {
+      if (chiuso || prossima >= n) return;
+      const istanza = OVERPASS_ISTANZE[(inizio + prossima) % n];
+      prossima++;
+      attive++;
+      const c = typeof AbortController === 'function' ? new AbortController() : null;
+      if (c) controlli.push(c);
+      // L'attesa del client deve essere più lunga di quella scritta nella
+      // query, se no si taglia la richiesta proprio mentre il server la sta
+      // ancora onorando — e il colpevole sembra il server.
+      const timer = c ? setTimeout(() => c.abort(), attesaMs) : null;
+      fetch(istanza + '?data=' + encodeURIComponent(query), c ? { signal: c.signal } : undefined)
+        .then(risposta => {
+          if (!risposta.ok) throw new Error('OpenStreetMap non risponde (' + risposta.status + ')');
+          return risposta.json();
+        })
+        .then(dati => {
+          if (timer) clearTimeout(timer);
+          if (!dati || !Array.isArray(dati.elements)) throw new Error('risposta senza elementi');
+          if (chiuso) return;
+          attive--;
+          smetti();
+          ok(dati.elements);
+        })
+        .catch(e => {
+          if (timer) clearTimeout(timer);
+          nonCeLHaFatta(e);
+        });
+
+      // Se fra un po' questa non ha ancora risposto, si prova anche la
+      // prossima invece di stare a guardare.
+      if (prossima < n) {
+        if (sveglia) clearTimeout(sveglia);
+        sveglia = setTimeout(() => { sveglia = null; parti(); }, OVERPASS_AFFIANCA_MS);
+      }
+    };
+
+    parti();
   });
 }
 
-async function overpassEseguiBatch() {
-  const queue = overpassBatchQueue;
-  overpassBatchQueue = [];
-  overpassBatchTimer = null;
+// --- Il rubinetto di Overpass -----------------------------------------
+//
+// Stessa forma di quello delle quote (§4), e per la stessa ragione: è l'unico
+// posto che sa quante richieste stanno andando verso quel servizio adesso.
+// Qui però il ritmo è fisso e non impara — Overpass non manda un `retry-after`
+// e le richieste sono tre, non ventiquattro: non c'è niente da tarare.
+const overpassCoda = [];
+let overpassInVolo = 0;
+let overpassTimer = null;
+let overpassLiberoDa = 0;
 
-  // Eseguiamo tutte le richieste in parallelo!
-  // Prima l'implementazione sequenziale di overpassChiedi faceva da blocco.
-  // Ora che usiamo Promise.all, partono tutte e 3 assieme, risparmiando un sacco di tempo.
-  await Promise.all(queue.map(async req => {
-    try {
-      req.resolve(req.parser(await overpassChiedi(req.query, req.attesaMs)));
-    } catch (e) {
-      if (req.fallback_query) {
-        console.warn('Overpass: la richiesta non è passata, riprovo col fallback —', e.message);
-        try {
-          req.resolve(req.parser(await overpassChiedi(req.fallback_query, req.attesaMs)));
-        } catch (e2) {
-          req.reject(e2);
-        }
-      } else {
-        req.reject(e);
-      }
-    }
-  }));
+function overpassInFila(compito) {
+  return new Promise((ok, no) => {
+    overpassCoda.push({ compito, ok, no });
+    overpassRubinetto();
+  });
 }
 
-async function cittaDaOverpass(lat, lon) {
-  const parser = (elementi) => elementi
+function overpassRubinetto() {
+  if (overpassTimer) return;
+  while (overpassCoda.length && overpassInVolo < OVERPASS_INSIEME) {
+    const aspetta = overpassLiberoDa - Date.now();
+    if (aspetta > 0) {
+      overpassTimer = setTimeout(() => { overpassTimer = null; overpassRubinetto(); }, aspetta);
+      return;
+    }
+    const v = overpassCoda.shift();
+    overpassInVolo++;
+    overpassLiberoDa = Date.now() + OVERPASS_DISTANZA_MS;
+    Promise.resolve().then(v.compito).then(v.ok, v.no)
+      .then(() => { overpassInVolo--; overpassRubinetto(); });
+  }
+}
+
+// Una richiesta con la sua query di ripiego, letta e consegnata già pronta.
+//
+// Il `leggi` sta **fuori** dal turno del rubinetto: interpretare la risposta è
+// lavoro nostro, non del servizio, e tenere occupato uno dei due posti mentre
+// si contano i vertici di un lago vuol dire far aspettare la richiesta dopo per
+// niente.
+async function overpassConRipiego(query, leggi, ripiego, attesaMs) {
+  try {
+    return leggi(await overpassInFila(() => overpassChiedi(query, attesaMs)));
+  } catch (e) {
+    if (!ripiego) throw e;
+    console.warn('Overpass: la richiesta larga non è passata, riprovo con quella corta —', e.message);
+    return leggi(await overpassInFila(() => overpassChiedi(ripiego, attesaMs)));
+  }
+}
+
+
+function cittaLeggiNodi(elementi) {
+  return elementi
     .filter(n => n && n.tags && n.tags.name && typeof n.lat === 'number' && n.tags.place)
     .map(n => {
+      // La popolazione, quando c'è, arriva come stringa e ogni tanto con i
+      // punti delle migliaia dentro
       const grezza = parseInt(String(n.tags.population || '').replace(/[^\d]/g, ''), 10);
       return {
         nome: n.tags.name,
@@ -2413,7 +2713,10 @@ async function cittaDaOverpass(lat, lon) {
         abitanti: isFinite(grezza) && grezza > 0 ? grezza : (CITTA_ABITANTI[n.tags.place] || 3000)
       };
     });
-  return overpassChiediBatch(cittaQueryOverpass(lat, lon), parser, null, CITTA_ATTESA_MS);
+}
+
+function cittaDaOverpass(lat, lon) {
+  return overpassConRipiego(cittaQueryOverpass(lat, lon), cittaLeggiNodi, null, CITTA_ATTESA_MS);
 }
 
 // Il ripiego: l'elenco dei capoluoghi che l'app si porta dietro per le
@@ -2752,8 +3055,9 @@ function cimeLeggiNodi(elementi) {
     .filter(c => isFinite(c.quota));
 }
 
-async function cimeDaOverpass(lat, lon) {
-  return overpassChiediBatch(cimeQueryOverpass(lat, lon), cimeLeggiNodi, cimeQueryVicina(lat, lon), CIME_ATTESA_MS);
+function cimeDaOverpass(lat, lon) {
+  return overpassConRipiego(cimeQueryOverpass(lat, lon), cimeLeggiNodi,
+                            cimeQueryVicina(lat, lon), CIME_ATTESA_MS);
 }
 
 // Dove sta ognuna. L'altezza apparente qui non si calcola: dipende da dove
@@ -2882,12 +3186,16 @@ function cimeCarica(forza) {
   cime.avanzamento = 0;
   terrenoAggiornaPannello();
 
-  // Le due richieste a Overpass — i paesi e le vette — non partono
-  // insieme: è lo stesso servizio pubblico, e due colpi nello stesso
-  // istante sono il modo più rapido per prendersi un «troppe richieste».
+  // Le tre richieste a Overpass — i paesi, le vette, le acque — non si mettono
+  // più in fila l'una dietro l'altra: a spaziarle è il rubinetto
+  // (`overpassInFila`), che ne fa partire due per volta a mezzo secondo di
+  // distanza. Aspettare che la precedente **finisca** era la cura giusta per
+  // il problema giusto — tre colpi contemporanei su un servizio pubblico sono
+  // un 429 — pagata al prezzo sbagliato: le tre attese si sommavano, e quella
+  // delle acque è la più lunga di tutte.
   cime.avanzamento = 0.3;
-      terrenoBarraAggiorna();
-      cime.promessa = cimeDaOverpass(lat, lon)
+  terrenoBarraAggiorna();
+  cime.promessa = cimeDaOverpass(lat, lon)
     .then(elenco => {
       cime.avanzamento = 0.8;
       cimeApplica(lat, lon, elenco, 'osm');
@@ -3334,8 +3642,9 @@ function acqueLeggiElementi(elementi) {
   return fuori;
 }
 
-async function acqueDaOverpass(lat, lon) {
-  return overpassChiediBatch(acqueQueryOverpass(lat, lon), acqueLeggiElementi, acqueQueryCorta(lat, lon), ACQUE_ATTESA_MS);
+function acqueDaOverpass(lat, lon) {
+  return overpassConRipiego(acqueQueryOverpass(lat, lon), acqueLeggiElementi,
+                            acqueQueryCorta(lat, lon), ACQUE_ATTESA_MS);
 }
 
 
@@ -3354,6 +3663,33 @@ function acqueInMetri(punti, lat, lon) {
     fuori[i * 2 + 1] = (punti[i].lat - lat) * mLat;
   }
   return fuori;
+}
+
+// Il tracciato in metri **e** il suo riquadro, in un giro solo.
+//
+// Erano due passate sui vertici: una per convertire e una per il riquadro. Su
+// un posto normale sono duemila vertici e non conta niente, ma col tetto di
+// `out geom 1200` riempito sono centottantasettemila, e a quel punto una
+// passata in meno è una passata in meno. Il riquadro esce dalla conversione
+// senza costare nulla: i numeri passano da qui comunque.
+function acquePuntiEriquadro(punti, lat, lon) {
+  const n = punti.length;
+  const mLat = 111320;
+  const mLon = 111320 * Math.cos(lat * Math.PI / 180);
+  const p = new Float64Array(n * 2);
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const q = punti[i];
+    const x = (q.lon - lon) * mLon;
+    const y = (q.lat - lat) * mLat;
+    p[i * 2] = x;
+    p[i * 2 + 1] = y;
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  return { p, minX, maxX, minY, maxY };
 }
 
 // L'indice della direzione in cui cade un punto, come numero con la
@@ -3403,7 +3739,20 @@ function acquePuntoDentro(p, n) {
 // ogni taglio è un attraversamento, e l'intervallo glielo dà la larghezza:
 // tanto più lungo quanto più il fiume corre lungo il raggio, perché
 // guardandolo per il verso lungo se ne vede un pezzo intero.
-function acqueTaglia(tracciati, lat, lon, limiteM) {
+// I seni e i coseni delle settecentoventi direzioni. Sono sempre gli stessi —
+// le direzioni non dipendono da dove si è — e si calcolavano da capo a ogni
+// chiamata: millequattrocento funzioni trigonometriche per niente.
+const ACQUE_SENI = new Float64Array(ACQUE_DIREZIONI);
+const ACQUE_COSENI = new Float64Array(ACQUE_DIREZIONI);
+for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+  const a = b * ACQUE_PASSO_AZ * Math.PI / 180;
+  ACQUE_SENI[b] = Math.sin(a);
+  ACQUE_COSENI[b] = Math.cos(a);
+}
+
+// Il telaio dei tagli, vuoto: settecentoventi direzioni, più le due cose che
+// viaggiano appese all'array.
+function acqueTagliVuoti(limiteM) {
   const tagli = new Array(ACQUE_DIREZIONI);
   for (let i = 0; i < ACQUE_DIREZIONI; i++) tagli[i] = null;
   // Gli specchi d'acqua che contengono l'origine, e il limite oltre il quale
@@ -3413,99 +3762,148 @@ function acqueTaglia(tracciati, lat, lon, limiteM) {
   // tagli non si può leggere senza sapere da dove parte il raggio.
   tagli.sommersi = new Set();
   tagli.limite = limiteM;
-  const seni = new Float64Array(ACQUE_DIREZIONI);
-  const coseni = new Float64Array(ACQUE_DIREZIONI);
-  for (let b = 0; b < ACQUE_DIREZIONI; b++) {
-    const a = b * ACQUE_PASSO_AZ * Math.PI / 180;
-    seni[b] = Math.sin(a);
-    coseni[b] = Math.cos(a);
+  return tagli;
+}
+
+// Un tracciato solo contro tutti i raggi che può incontrare. È il corpo del
+// ciclo di `acqueTaglia`, tirato fuori perché lo stesso lavoro si possa fare
+// tutto in un colpo (le prove, e i posti normali) o **a scaglioni** senza
+// bloccare il disegno (`acqueTagliaAScaglioni`).
+function acqueTagliaUno(tr, id, tagli, lat, lon, limiteM) {
+  const n = tr.punti.length;
+  // Il tracciato in metri e il suo riquadro, in un giro solo.
+  const { p, minX, maxX, minY, maxY } = acquePuntiEriquadro(tr.punti, lat, lon);
+  // Uno specchio grande come una vasca non è uno specchio…
+  if (!tr.corrente && (maxX - minX) * (maxY - minY) < ACQUE_AREA_MIN) return;
+  // …e il punto del riquadro più vicino all'origine: se è oltre il limite,
+  // tutto lo specchio lo è, e non vale la pena provarne i lati.
+  const vx = minX > 0 ? minX : (maxX < 0 ? maxX : 0);
+  const vy = minY > 0 ? minY : (maxY < 0 ? maxY : 0);
+  if (Math.hypot(vx, vy) > limiteM) return;
+
+  // Ci siamo dentro? Solo se il riquadro contiene l'origine vale la pena
+  // chiederlo, e per un posto normale la risposta è no per tutti: due
+  // confronti a specchio d'acqua, e il giro dei vertici non si fa affatto.
+  // I corsi d'acqua mappati come linea sono esclusi per definizione — una
+  // polilinea non ha un dentro — mentre un fiume mappato come area arriva
+  // qui da poligono, che è giusto: in un'ansa larga duecento metri ci si
+  // sta in mezzo come in un lago.
+  if (!tr.corrente && tr.chiuso && minX <= 0 && maxX >= 0 && minY <= 0 && maxY >= 0 &&
+      acquePuntoDentro(p, n)) {
+    tagli.sommersi.add(id);
   }
 
-  for (let id = 0; id < tracciati.length; id++) {
-    const tr = tracciati[id];
-    const p = acqueInMetri(tr.punti, lat, lon);
-    const n = tr.punti.length;
-    // Il riquadro: uno specchio tutto fuori dal raggio di ricerca non si
-    // guarda nemmeno, e uno grande come una vasca non è uno specchio.
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (let i = 0; i < n; i++) {
-      if (p[i * 2] < minX) minX = p[i * 2];
-      if (p[i * 2] > maxX) maxX = p[i * 2];
-      if (p[i * 2 + 1] < minY) minY = p[i * 2 + 1];
-      if (p[i * 2 + 1] > maxY) maxY = p[i * 2 + 1];
-    }
-    if (!tr.corrente && (maxX - minX) * (maxY - minY) < ACQUE_AREA_MIN) continue;
-    // Il punto del riquadro più vicino all'origine: se è oltre il limite,
-    // tutto lo specchio lo è, e non vale la pena provarne i lati.
-    const vx = minX > 0 ? minX : (maxX < 0 ? maxX : 0);
-    const vy = minY > 0 ? minY : (maxY < 0 ? maxY : 0);
-    if (Math.hypot(vx, vy) > limiteM) continue;
+  const lati = tr.chiuso ? n : n - 1;
+  for (let i = 0; i < lati; i++) {
+    const j = (i + 1) % n;
+    const ax = p[i * 2], ay = p[i * 2 + 1];
+    const bx = p[j * 2], by = p[j * 2 + 1];
+    const ex = bx - ax, ey = by - ay;
+    if (ex === 0 && ey === 0) continue;
 
-    // Ci siamo dentro? Solo se il riquadro contiene l'origine vale la pena
-    // chiederlo, e per un posto normale la risposta è no per tutti: due
-    // confronti a specchio d'acqua, e il giro dei vertici non si fa affatto.
-    // I corsi d'acqua mappati come linea sono esclusi per definizione — una
-    // polilinea non ha un dentro — mentre un fiume mappato come area arriva
-    // qui da poligono, che è giusto: in un'ansa larga duecento metri ci si
-    // sta in mezzo come in un lago.
-    if (!tr.corrente && tr.chiuso && minX <= 0 && maxX >= 0 && minY <= 0 && maxY >= 0 &&
-        acquePuntoDentro(p, n)) {
-      tagli.sommersi.add(id);
-    }
+    // Quali raggi può incontrare: quelli fra i due estremi, per la via
+    // corta. Un lato visto da fuori non copre mai mezzo giro, quindi la
+    // via corta è quella giusta.
+    const i0 = acqueIndiceAz(ax, ay);
+    const i1 = acqueIndiceAz(bx, by);
+    let d = i1 - i0;
+    const mezzo = ACQUE_DIREZIONI / 2;
+    if (d > mezzo) d -= ACQUE_DIREZIONI;
+    if (d < -mezzo) d += ACQUE_DIREZIONI;
+    const passi = Math.abs(d);
+    // Un lato che si vede quasi in punta non tocca nessun raggio, e
+    // saltarlo va bene: ci pensano i suoi vicini.
+    if (passi > mezzo) continue;
+    const da = Math.ceil(Math.min(i0, i0 + d) - 1e-9);
+    const a2 = Math.floor(Math.max(i0, i0 + d) + 1e-9);
+    // La lunghezza del lato serve solo ai corsi d'acqua, e serve una volta per
+    // lato e non una per raggio: dentro al ciclo era una radice quadrata
+    // ricalcolata per ogni direzione attraversata.
+    const len = tr.corrente ? Math.hypot(ex, ey) : 0;
 
-    const lati = tr.chiuso ? n : n - 1;
-    for (let i = 0; i < lati; i++) {
-      const j = (i + 1) % n;
-      const ax = p[i * 2], ay = p[i * 2 + 1];
-      const bx = p[j * 2], by = p[j * 2 + 1];
-      const ex = bx - ax, ey = by - ay;
-      if (ex === 0 && ey === 0) continue;
-
-      // Quali raggi può incontrare: quelli fra i due estremi, per la via
-      // corta. Un lato visto da fuori non copre mai mezzo giro, quindi la
-      // via corta è quella giusta.
-      let i0 = acqueIndiceAz(ax, ay);
-      let i1 = acqueIndiceAz(bx, by);
-      let d = i1 - i0;
-      const mezzo = ACQUE_DIREZIONI / 2;
-      if (d > mezzo) d -= ACQUE_DIREZIONI;
-      if (d < -mezzo) d += ACQUE_DIREZIONI;
-      const passi = Math.abs(d);
-      // Un lato che si vede quasi in punta non tocca nessun raggio, e
-      // saltarlo va bene: ci pensano i suoi vicini.
-      if (passi > mezzo) continue;
-      const da = Math.ceil(Math.min(i0, i0 + d) - 1e-9);
-      const a2 = Math.floor(Math.max(i0, i0 + d) + 1e-9);
-
-      for (let q = da; q <= a2; q++) {
-        const b = ((q % ACQUE_DIREZIONI) + ACQUE_DIREZIONI) % ACQUE_DIREZIONI;
-        const dx = seni[b], dy = coseni[b];
-        const det = ex * dy - dx * ey;
-        if (Math.abs(det) < 1e-9) continue;
-        const t = (ex * ay - ey * ax) / det;
-        if (!(t > 0) || t > limiteM) continue;
-        const u = (dx * ay - dy * ax) / det;
-        if (u < 0 || u >= 1) continue;
-        if (!tagli[b]) tagli[b] = [];
-        if (tr.corrente) {
-          // Quanto è profondo l'attraversamento: la larghezza divisa il
-          // seno dell'angolo fra il raggio e la riva.
-          const len = Math.hypot(ex, ey);
-          const sen = Math.abs((ex * dy - ey * dx) / len);
-          const prof = Math.min(tr.largo * ACQUE_FIUME_MAX,
-            tr.largo / Math.max(0.12, sen));
-          tagli[b].push({ t, fiume: true, prof });
-        } else {
-          // `id` serve alla parità: gli incroci si accoppiano **per
-          // poligono** e non tutti insieme. Con due laghi che si
-          // sovrappongono in una direzione — o con uno solo, ma con noi
-          // dentro — accoppiarli in blocco scambia l'acqua con la terra.
-          tagli[b].push({ t, fiume: false, id });
-        }
+    for (let q = da; q <= a2; q++) {
+      const b = ((q % ACQUE_DIREZIONI) + ACQUE_DIREZIONI) % ACQUE_DIREZIONI;
+      const dx = ACQUE_SENI[b], dy = ACQUE_COSENI[b];
+      const det = ex * dy - dx * ey;
+      if (Math.abs(det) < 1e-9) continue;
+      const t = (ex * ay - ey * ax) / det;
+      if (!(t > 0) || t > limiteM) continue;
+      const u = (dx * ay - dy * ax) / det;
+      if (u < 0 || u >= 1) continue;
+      if (!tagli[b]) tagli[b] = [];
+      if (tr.corrente) {
+        // Quanto è profondo l'attraversamento: la larghezza divisa il
+        // seno dell'angolo fra il raggio e la riva.
+        const sen = Math.abs(det / len);
+        const prof = Math.min(tr.largo * ACQUE_FIUME_MAX,
+          tr.largo / Math.max(0.12, sen));
+        tagli[b].push({ t, fiume: true, prof });
+      } else {
+        // `id` serve alla parità: gli incroci si accoppiano **per
+        // poligono** e non tutti insieme. Con due laghi che si
+        // sovrappongono in una direzione — o con uno solo, ma con noi
+        // dentro — accoppiarli in blocco scambia l'acqua con la terra.
+        tagli[b].push({ t, fiume: false, id });
       }
     }
   }
+}
+
+function acqueTaglia(tracciati, lat, lon, limiteM) {
+  const tagli = acqueTagliVuoti(limiteM);
+  for (let id = 0; id < tracciati.length; id++) {
+    acqueTagliaUno(tracciati[id], id, tagli, lat, lon, limiteM);
+  }
   return tagli;
+}
+
+// Quanto si lavora per volta prima di ridare il turno al browser. Otto
+// millesimi sono mezzo fotogramma a sessanta al secondo: quello che resta basta
+// a disegnare il cielo.
+const ACQUE_SCAGLIONE_MS = 8;
+
+// Lo stesso lavoro, ma **a scaglioni**.
+//
+// Il tracciamento dei raggi non è una richiesta di rete e per questo era
+// rimasto fuori da ogni ragionamento sui tempi, ma è l'unico pezzo di questo
+// modulo che gira **sul filo del disegno**: finché non finisce, il planetario
+// non disegna un fotogramma. In un posto normale sono quaranta millesimi e non
+// se ne accorge nessuno; in una provincia di laghi sono due decimi; con il
+// tetto di `out geom 1200` riempito — una laguna, il delta di un fiume —
+// arrivano a settecento millesimi su un computer, che su un telefono di qualche
+// anno vogliono dire **due o tre secondi di schermo fermo**. E si fermava tutto
+// insieme, nell'istante peggiore: quello in cui l'acqua stava per comparire.
+//
+// Il rimedio non è calcolare meno, è cedere il turno: si lavora per otto
+// millesimi, si lascia disegnare un fotogramma, si riprende. Il conto è lo
+// stesso — `acqueTagliaUno` è la stessa funzione delle prove — e quello che
+// cambia è solo che nessuno resta a guardare uno schermo fermo. Il tempo totale
+// cresce di quel poco che costano i turni ceduti, ed è un cambio che si
+// **vede** solo nel verso giusto.
+function acqueTagliaAScaglioni(tracciati, lat, lon, limiteM, avanti) {
+  return new Promise(fine => {
+    const tagli = acqueTagliVuoti(limiteM);
+    let id = 0;
+    const respiro = typeof requestAnimationFrame === 'function'
+      ? (f => requestAnimationFrame(() => f()))
+      : (f => setTimeout(f, 0));
+
+    const scaglione = () => {
+      const finoA = Date.now() + ACQUE_SCAGLIONE_MS;
+      while (id < tracciati.length) {
+        acqueTagliaUno(tracciati[id], id, tagli, lat, lon, limiteM);
+        id++;
+        // Il tempo si guarda ogni otto tracciati e non a ogni tracciato: una
+        // lettura dell'orologio per un laghetto da sei vertici costa più del
+        // laghetto.
+        if ((id & 7) === 0 && Date.now() >= finoA) break;
+      }
+      if (id >= tracciati.length) { fine(tagli); return; }
+      if (typeof avanti === 'function') avanti(id / tracciati.length);
+      respiro(scaglione);
+    };
+    scaglione();
+  });
 }
 
 // Dai tagli agli intervalli: si ordina, si accoppia (per i poligoni) e si
@@ -3675,18 +4073,15 @@ function acqueDimentica() {
 
 // --- L'innesco --------------------------------------------------------
 
-function acqueApplica(lat, lon, tracciati, fonte) {
+// Installare un risultato già calcolato. È sincrona di proposito: «prendi
+// questi tagli e diventa lo stato dell'app» non è un'operazione che possa
+// aspettare, e chi la chiama vuole poter leggere `acque.bande` nella riga dopo.
+// Il tracciamento a scaglioni sta un passo prima
+// (`acqueApplicaAScaglioni`), che è il posto giusto: è la **strada** di
+// caricamento a dover cedere il turno, non la posa dei risultati.
+function acqueMonta(lat, lon, tracciati, fonte, tagli) {
   acque.lat = lat;
   acque.lon = lon;
-  // Il tracciamento dei raggi è la parte che non è una richiesta: settecento
-  // e venti raggi contro i bordi di tutto quello che è arrivato. Dura pochi
-  // millisecondi e quindi il novanta per cento non fa in tempo a comparire,
-  // ma la barra dev'essere agganciata **qui** e non solo alla rete: se un
-  // giorno arriva una laguna da diecimila poligoni, il posto in cui la barra
-  // si ferma è già quello giusto e dice già la cosa giusta.
-  acque.avanzamento = 0.9;
-  terrenoBarraAggiorna();
-  const tagli = acqueTaglia(tracciati, lat, lon, raggioAcque() * 1000);
   acque.sommerso = !!(tagli.sommersi && tagli.sommersi.size);
   acque.bande = acqueBandeDaTagli(tagli);
   acque.quanti = acque.bande.reduce((n, b) => n + (b ? b.length : 0), 0);
@@ -3703,6 +4098,30 @@ function acqueApplica(lat, lon, tracciati, fonte) {
   // fotogramma di paesaggio storto.
   acqueAllineaOcchio();
   terrenoAggiornaPannello();
+}
+
+// Tracciare e installare, tutto in un colpo. È la strada di sempre — la usano
+// le prove del §20 di `verifica.html`, che chiedono e leggono nella stessa riga
+// — e resta quella giusta per un mucchio di poligoni piccolo.
+function acqueApplica(lat, lon, tracciati, fonte) {
+  acqueMonta(lat, lon, tracciati, fonte,
+             acqueTaglia(tracciati, lat, lon, raggioAcque() * 1000));
+}
+
+// Tracciare **a scaglioni** e poi installare: è la strada del caricamento, e
+// l'unica differenza è che fra un pezzo e l'altro il browser riesce a disegnare
+// un fotogramma. La barra della §9-ter cammina insieme al lavoro, quindi fra il
+// 90 e il 99 per cento adesso dice qualcosa di vero invece di essere un numero
+// scritto un istante prima di bloccare tutto.
+function acqueApplicaAScaglioni(lat, lon, tracciati, fonte) {
+  acque.avanzamento = 0.9;
+  terrenoBarraAggiorna();
+  return acqueTagliaAScaglioni(tracciati, lat, lon, raggioAcque() * 1000,
+    fatto => {
+      acque.avanzamento = 0.9 + 0.09 * fatto;
+      terrenoBarraAggiorna();
+    })
+    .then(tagli => acqueMonta(lat, lon, tracciati, fonte, tagli));
 }
 
 function acqueCarica(forza) {
@@ -3750,17 +4169,17 @@ function acqueCarica(forza) {
   acque.avanzamento = 0;
   terrenoAggiornaPannello();
 
-  // In coda alle altre due richieste a OpenStreetMap, come le vette dietro
-  // ai paesi: è lo stesso servizio pubblico, e tre colpi nello stesso
-  // istante sono il modo più rapido per prendersi un «troppe richieste».
-  acque.promessa = Promise.resolve(cime.promessa).catch(() => {})
+  // Non più «in coda alle altre due»: ci pensa il rubinetto di Overpass a non
+  // far partire più di due richieste insieme, e questa era la più penalizzata
+  // dall'attesa in fila indiana — è quella con la query più larga e l'attesa
+  // più lunga, e si ritrovava dietro a **tutte e due** le altre, ognuna col suo
+  // caso peggiore. Il ritardo che si vedeva era sempre suo: l'acqua compariva
+  // per ultima, molto dopo il resto del paesaggio.
+  acque.avanzamento = 0.2;
+  terrenoBarraAggiorna();
+  acque.promessa = acqueDaOverpass(lat, lon)
+    .then(tracciati => acqueApplicaAScaglioni(lat, lon, tracciati, 'osm'))
     .then(() => {
-      acque.avanzamento = 0.2;
-      terrenoBarraAggiorna();
-      return acqueDaOverpass(lat, lon);
-    })
-    .then(tracciati => {
-      acqueApplica(lat, lon, tracciati, 'osm');
       // Zero specchi d'acqua è una risposta, non un errore — mezza Italia
       // è così. Ma non vale la pena salvarla: basta un trasloco.
       if (acque.quanti) acqueSalva(lat, lon, 'osm');
