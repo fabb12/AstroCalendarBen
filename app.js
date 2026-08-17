@@ -15713,21 +15713,52 @@ function skyNomiCime(ctx, base, focale, occupati) {
     // disegnate a mano.
     const strato = skyStratoDiCima(c.km);
     const partenza = SKY_CIME_FILO_STRATO[strato] || SKY_CIME_FILO_MIN;
-    let messa = null;
-    for (let t = 0; t < SKY_CIME_FILO_TENTATIVI; t++) {
-      const filo = partenza + t * passo;
-      const ax = p.px, ay = p.py - filo;
-      // Sopra il bordo non si sale: da lì in poi allungare il filo non
-      // libera più niente, porta solo la scritta fuori dallo schermo
-      if (ay + sin * largo < 4) break;
-      const rett = skyRettAppoggiato(ax, ay, largo + bordo * 2, altoBlocco, SKY_CIME_INCLINA);
-      if (skyPostoLibero(occupati, rett, 2)) { messa = { ax, ay }; break; }
-    }
+    // Sopra la punta, o sotto?
+    //
+    // Quello che serve all'etichetta non è il filo: è il cielo che occupa
+    // lei, che essendo inclinata di quasi mezzo angolo retto sale di tre
+    // quarti della propria lunghezza — per un nome qualunque sono cento
+    // pixel e passa, un sesto di uno schermo di telefono. Una vetta
+    // disegnata lassù in alto quel cielo non ce l'ha, e la vetta disegnata
+    // lassù in alto è **quella qui davanti**: è vicina, quindi è alta, e
+    // più le si sta sotto più sale. Finché il filo poteva soltanto
+    // allungarsi verso l'alto, per lei il primo tentativo sbatteva sul
+    // bordo, il ciclo usciva alla prima riga e il nome non si scriveva —
+    // in silenzio, senza che niente lo dicesse, mentre le vette lontane,
+    // che stanno rasenti all'orizzonte, restavano tutte nominate. Cioè
+    // succedeva l'esatto contrario di quello che uno vuole sapere: il
+    // monte che ha davanti agli occhi è il primo di cui chiede il nome.
+    //
+    // Quando sopra non c'è posto si appende **sotto**, ribaltando
+    // l'inclinazione. È la stessa figura specchiata, quindi le etichette
+    // di sotto restano parallele fra loro e continuano a impacchettarsi
+    // come quelle di sopra — che è tutto il motivo per cui sono inclinate.
+    const prova = (verso) => {
+      const incl = verso > 0 ? SKY_CIME_INCLINA : -SKY_CIME_INCLINA;
+      for (let t = 0; t < SKY_CIME_FILO_TENTATIVI; t++) {
+        const filo = partenza + t * passo;
+        const ax = p.px, ay = p.py - filo * verso;
+        // Contro il bordo non si insiste: da lì in poi allungare il filo non
+        // libera più niente, porta solo la scritta fuori dallo schermo
+        const cima = ay + sin * verso * largo;
+        if (verso > 0 ? cima < 4 : cima > sky.altezza - 4) return null;
+        const rett = skyRettAppoggiato(ax, ay, largo + bordo * 2, altoBlocco, incl);
+        if (skyPostoLibero(occupati, rett, 2)) return { ax, ay, verso, incl };
+      }
+      return null;
+    };
+    // Il lato buono per primo, l'altro dopo. Provarne uno solo vuol dire
+    // che una vetta a mezza altezza, col cielo sopra di sé già preso dalle
+    // etichette di quelle vicine, resta muta pur avendo mezzo schermo
+    // libero sotto: rinunciare mentre c'è ancora un posto è la stessa
+    // perdita di prima, spostata di qualche pixel.
+    const primo = (p.py - partenza + sin * largo >= 4) ? 1 : -1;
+    const messa = prova(primo) || prova(-primo);
     if (!messa) continue;
     scritte++;
     poste.push({
       p, ax: messa.ax, ay: messa.ay, nome: c.nome, quotaTesto, largoNome, largo,
-      velo: SKY_CIME_VELO_STRATO[strato] || 1
+      incl: messa.incl, verso: messa.verso, velo: SKY_CIME_VELO_STRATO[strato] || 1
     });
   }
 
@@ -15743,7 +15774,9 @@ function skyNomiCime(ctx, base, focale, occupati) {
     ctx.globalAlpha = e.velo;
     ctx.beginPath();
     ctx.moveTo(e.p.px, e.p.py);
-    ctx.lineTo(e.ax, e.ay + altoBlocco * 0.35);
+    // Il filo si ferma appena dentro alla pillola, dal lato da cui arriva:
+    // sotto se l'etichetta sta sopra alla punta, sopra se sta sotto.
+    ctx.lineTo(e.ax, e.ay + altoBlocco * 0.35 * e.verso);
     ctx.stroke();
     // Il triangolino è il segno con cui le carte dicono «montagna» da
     // sempre: qui dice *quale* punta, che con dieci denti in venti gradi è
@@ -15761,7 +15794,7 @@ function skyNomiCime(ctx, base, focale, occupati) {
   for (const e of poste) {
     ctx.save();
     ctx.translate(e.ax, e.ay);
-    ctx.rotate(SKY_CIME_INCLINA);
+    ctx.rotate(e.incl);
     ctx.globalAlpha = e.velo;
     skyPillola(ctx, -bordo, -altoBlocco / 2, e.largo + bordo * 2, altoBlocco,
       altoBlocco / 2, tinta.pillola);
