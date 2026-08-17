@@ -826,6 +826,103 @@ titolo('9. La forma vera del terreno');
             montato.avute.every((d, i) => i === 0 || d > montato.avute[i - 1]));
     }
   }
+
+  // -------------------------------------------------------------------
+  // La barra di caricamento (§9-ter)
+  //
+  // Non è decorazione: la percentuale esisteva già da un pezzo, ma scritta
+  // nella riga di stato del pannello Visualizzazione — che all'apertura è
+  // chiuso, quindi non la leggeva nessuno. Le cose da provare sono due, e
+  // sono tutt'e due sui pesi.
+  //
+  // La prima: le quattro fasi non contano uguale. Le quote sono venticinque
+  // richieste a un servizio che ogni tanto dice di no, i tre giri a
+  // OpenStreetMap sono uno ciascuno; a pesi uguali la barra faceva tre
+  // quarti di strada nel primo secondo e poi stava ferma, che è il modo in
+  // cui una barra di caricamento smette di essere creduta.
+  //
+  // La seconda, ed è quella che si sbaglia: contano solo le fasi che in
+  // questo giro **girano davvero**. Le vette nascono spente, un profilo può
+  // arrivare da `localStorage`, le acque possono essere servite dal salvato:
+  // contandole comunque la barra si fermava al quaranta per cento e ci
+  // restava.
+  // -------------------------------------------------------------------
+  if (typeof terrenoAvanzamentoTotale !== 'function') {
+    nota('terreno.js non espone la barra di caricamento: prove saltate.');
+  } else {
+    const prima = {
+      terreno: terreno.stato, avanzamento: terreno.avanzamento,
+      citta: citta.stato, cittaAv: citta.avanzamento,
+      cime: cime.stato, cimeAv: cime.avanzamento,
+      acque: acque.stato, acqueAv: acque.avanzamento,
+      fasi: new Set(terrenoBarra.fasi)
+    };
+    const metti = (t, ta, c, ca, m, ma, a, aa) => {
+      terreno.stato = t; terreno.avanzamento = ta;
+      citta.stato = c; citta.avanzamento = ca;
+      cime.stato = m; cime.avanzamento = ma;
+      acque.stato = a; acque.avanzamento = aa;
+    };
+
+    terrenoBarra.fasi.clear();
+    metti('pronto', 0, 'pronto', 1, 'niente', 0, 'pronto', 1);
+    prova('con tutto già in mano la barra non si accende affatto',
+          terrenoAvanzamentoTotale().attiva === false,
+          'un profilo salvato non deve far comparire una barra che non ha niente da dire');
+
+    terrenoBarra.fasi.clear();
+    metti('in-corso', 0, 'in-corso', 0, 'in-corso', 0, 'in-corso', 0);
+    const partenza = terrenoAvanzamentoTotale();
+    prova('appena partite, tutte e quattro le fasi valgono zero',
+          partenza.attiva && partenza.corre && Math.abs(partenza.frazione) < 1e-9,
+          `${(partenza.frazione * 100).toFixed(0)}%`);
+    prova('e la barra dice quali sono, non «caricamento»',
+          partenza.che.length === 4,
+          'sapere quale delle quattro è in ritardo è metà della risposta');
+
+    // Le quote a metà, le altre tre appena partite.
+    metti('in-corso', 0.5, 'in-corso', 0, 'in-corso', 0, 'in-corso', 0);
+    const meta = terrenoAvanzamentoTotale().frazione;
+    prova('le quote a metà pesano più delle altre tre insieme appena partite',
+          meta > 0.25 && meta < 0.32, `${(meta * 100).toFixed(0)}%`);
+
+    // Una fase finita conta uno, riuscita o no: quello che c'era da
+    // aspettare non c'è più, e una barra che resta appesa perché una
+    // richiesta è andata male è una barra che non si spegne mai.
+    metti('pronto', 0, 'fallito', 0, 'pronto', 0, 'pronto', 0);
+    const finita = terrenoAvanzamentoTotale();
+    prova('a fine corsa si arriva a cento anche se una fase è fallita',
+          Math.abs(finita.frazione - 1) < 1e-9 && finita.corre === false,
+          `${(finita.frazione * 100).toFixed(0)}%`);
+
+    // Il tracciamento dei raggi è l'ultimo pezzo delle acque, e non è una
+    // richiesta di rete: la barra deve saper stare anche lì.
+    metti('pronto', 0, 'pronto', 1, 'pronto', 1, 'in-corso', 0.9);
+    const raggi = terrenoAvanzamentoTotale();
+    prova('il tracciamento dei raggi è agganciato anche lui',
+          raggi.corre && raggi.frazione > 0.9 && raggi.frazione < 1,
+          `${(raggi.frazione * 100).toFixed(0)}%`);
+
+    // Una fase sola, perché le altre tre erano salvate: deve riempire la
+    // barra da sé invece di fermarsi alla propria fetta.
+    terrenoBarra.fasi.clear();
+    metti('pronto', 0, 'pronto', 1, 'pronto', 1, 'in-corso', 0.5);
+    const sola = terrenoAvanzamentoTotale();
+    prova('una fase sola riempie la barra da sé',
+          Math.abs(sola.frazione - 0.5) < 1e-9, `${(sola.frazione * 100).toFixed(0)}%`);
+
+    prova('i pesi delle quattro fasi sommano a uno',
+          Math.abs(TERRENO_FASI.reduce((s, f) => s + f.peso, 0) - 1) < 1e-9);
+    prova('e le quote sono la fase più pesante, perché sono venticinque richieste',
+          TERRENO_FASI[0].chiave === 'quote' &&
+          TERRENO_FASI[0].peso > TERRENO_FASI.slice(1).reduce((s, f) => s + f.peso, 0));
+
+    terreno.stato = prima.terreno; terreno.avanzamento = prima.avanzamento;
+    citta.stato = prima.citta; citta.avanzamento = prima.cittaAv;
+    cime.stato = prima.cime; cime.avanzamento = prima.cimeAv;
+    acque.stato = prima.acque; acque.avanzamento = prima.acqueAv;
+    terrenoBarra.fasi = prima.fasi;
+  }
 }
 
 // =====================================================================
@@ -1847,6 +1944,252 @@ titolo('15. Le montagne che hanno un nome');
             terrenoAltezza(70 * TERRENO_PASSO_AZ) < 4,
             `${terrenoAltezza(70 * TERRENO_PASSO_AZ).toFixed(2)}°`);
       Object.assign(terreno, prima);
+    }
+
+    // --- Gli spilli correlati, e la scaletta ---
+    //
+    // La tosatura qui sopra confronta una direzione con le due accanto, e
+    // vicino quelle due **sono copie**: la griglia è polare, quindi a
+    // centocinquanta metri due direzioni distano sette metri e ottanta sul
+    // terreno e leggono la stessa cella del modello (novanta metri). Un
+    // capannone, un pilone, un buco nel modello alza una dozzina di direzioni
+    // insieme, e il tetto delle vicine non se ne accorge: le vicine sono alte
+    // come lui e gli fanno da garanti.
+    //
+    // Da qui vengono le due cose che si vedevano sullo schermo e nei numeri no
+    // — le colline vicine a picchi altissimi e seghettati — e i due filtri
+    // della §5 che le tolgono: un tetto a **mediana** su una finestra larga due
+    // celle (`terrenoTosaSpilliLarghi`) e un passa-basso a campana larga una
+    // cella (`terrenoLisciaAnelli`), tutt'e due applicati agli angoli campione
+    // per campione **prima** dell'accumulo del massimo.
+    //
+    // L'ordine è la parte che conta, e la prova che segue è la ragione per cui
+    // esiste: filtrando dopo l'accumulo lo spillo non si toglie più, perché in
+    // fondo alla riga la finestra è larga zero direzioni — a sessanta
+    // chilometri la griglia risolve l'azimut benissimo — e il dente arrivato
+    // dai centocinquanta metri è già stato ricopiato lì.
+    {
+      // Il modello del suolo a celle di novanta metri, che è quello che c'è
+      // davvero: due direzioni vicine, da vicino, cascano nella stessa cella.
+      const CELLA = 90;
+      const grigliaDa = (suolo) => {
+        const q = new Array(TERRENO_DIREZIONI * nd);
+        for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+          const az = i * TERRENO_PASSO_AZ * Math.PI / 180;
+          for (let k = 0; k < nd; k++) {
+            const d = TERRENO_DISTANZE[k] * 1000;
+            const cx = Math.round(d * Math.sin(az) / CELLA) * CELLA;
+            const cy = Math.round(d * Math.cos(az) / CELLA) * CELLA;
+            q[i * nd + k] = Math.round(suolo(cx, cy));
+          }
+        }
+        return q;
+      };
+      // L'orizzonte vero: campionato fitto, senza celle e senza griglia. È il
+      // metro con cui si misura, e serve perché «l'orizzonte è più liscio»
+      // non vuol dire niente se non si sa se è anche più **giusto**.
+      const veroDa = (suolo, occhio) => {
+        const v = new Float64Array(TERRENO_DIREZIONI);
+        for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+          const az = i * TERRENO_PASSO_AZ * Math.PI / 180;
+          let max = -90;
+          for (let d = 150; d <= 60000; d += 60) {
+            const a = terrenoAngolo(suolo(d * Math.sin(az), d * Math.cos(az)), occhio, d / 1000);
+            if (a > max) max = a;
+          }
+          v[i] = Math.max(0, max);
+        }
+        return v;
+      };
+      const cresteDi = (f) => {
+        const c = new Float64Array(TERRENO_DIREZIONI);
+        for (let i = 0; i < TERRENO_DIREZIONI; i++) c[i] = Math.max(0, f[i * nd + nd - 1]);
+        return c;
+      };
+      // Le creste senza nessun filtro, cioè il conto di prima.
+      const senzaFiltri = (quote, occhio) => {
+        const f = new Float32Array(TERRENO_DIREZIONI * nd);
+        for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+          let max = TERRENO_ALT_MIN;
+          for (let k = 0; k < nd; k++) {
+            const q = quote[i * nd + k];
+            if (typeof q === 'number') {
+              const a = terrenoAngolo(q, occhio, TERRENO_DISTANZE[k]);
+              if (a > max) max = a;
+            }
+            f[i * nd + k] = Math.max(TERRENO_ALT_MIN, Math.min(TERRENO_ALT_MAX, max));
+          }
+        }
+        return f;
+      };
+      const voti = (creste, vero) => {
+        let dente = 0, eccesso = 0, perdita = 0, quadri = 0;
+        for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+          dente = Math.max(dente, Math.abs(creste[i] - creste[(i + 1) % TERRENO_DIREZIONI]));
+          eccesso = Math.max(eccesso, creste[i] - vero[i]);
+          perdita = Math.max(perdita, vero[i] - creste[i]);
+          quadri += (creste[i] - vero[i]) * (creste[i] - vero[i]);
+        }
+        return { dente, eccesso, perdita, rms: Math.sqrt(quadri / TERRENO_DIREZIONI) };
+      };
+
+      // --- La finestra dei filtri si stringe con la distanza ---
+      prova('vicino, una cella copre più di una direzione della griglia',
+            terrenoPassiDiCella(0.15, 90, 1) >= 8,
+            `a 150 m sono ${terrenoPassiDiCella(0.15, 90, 1)} direzioni per parte`);
+      // E da quattro chilometri in su non toccano più niente. È **la**
+      // proprietà del meccanismo, non un dettaglio: le vette lontane sono le
+      // sole cose che uno guarda, ed è a loro che si appendono i nomi delle
+      // montagne. Si prova sui valori, non sulle soglie: si filtra una griglia
+      // di angoli e si guarda che le colonne oltre i quattro chilometri
+      // escano identiche a come sono entrate, bit per bit.
+      {
+        const angoli = new Float32Array(TERRENO_DIREZIONI * nd);
+        for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+          for (let k = 0; k < nd; k++) {
+            // roba dentellata a caso, ma sempre la stessa
+            angoli[i * nd + k] = 3 + 9 * Math.sin(i * 1.7 + k) + (i % 11 === 0 ? 14 : 0);
+          }
+        }
+        const copia = angoli.slice();
+        terrenoTosaSpilliLarghi(angoli);
+        terrenoLisciaAnelli(angoli);
+        let toccatoLontano = 0, toccatoVicino = 0;
+        for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+          for (let k = 0; k < nd; k++) {
+            if (angoli[i * nd + k] === copia[i * nd + k]) continue;
+            if (TERRENO_DISTANZE[k] >= 4) toccatoLontano++; else toccatoVicino++;
+          }
+        }
+        prova('da quattro chilometri in su i filtri non toccano un solo valore',
+              toccatoLontano === 0,
+              `${toccatoLontano} campioni lontani toccati, ${toccatoVicino} vicini`);
+        prova('ma vicino lavorano, se no non servirebbero a niente',
+              toccatoVicino > 0, `${toccatoVicino} campioni vicini corretti`);
+      }
+
+      // --- Un posto di costa, con e senza celle sbagliate ---
+      // Il caso della segnalazione: mare a ponente, una dorsale costiera che
+      // sale a 260 m in un chilometro e mezzo, una catena a venticinque
+      // chilometri. L'orizzonte vero non passa i dieci gradi da nessuna parte.
+      const costa = (x, y) => {
+        const r = Math.hypot(x, y), az = Math.atan2(x, y) * 180 / Math.PI;
+        if (x < -300) return 0;
+        const versoTerra = Math.max(0, Math.min(1, (x + 300) / 600));
+        const dorsale = 260 * Math.max(0, Math.min(1, (r - 150) / 1400)) *
+                        (0.55 + 0.45 * Math.cos((az - 70) * Math.PI / 180));
+        const catena = r > 12000 ? 1500 * Math.max(0, Math.cos((az - 40) * Math.PI / 90)) : 0;
+        return versoTerra * (dorsale + catena);
+      };
+      // Tre celle sole sbagliate: un capannone, un pilone, un traliccio. Sono
+      // la cosa più comune che c'è in un modello del suolo attorno a una casa.
+      const guasti = [{ x: 180, y: 90, alto: 75 }, { x: -90, y: 450, alto: 55 },
+                      { x: 630, y: -270, alto: 150 }];
+      const costaGuasta = (x, y) => {
+        for (const g of guasti) {
+          if (Math.abs(x - g.x) < CELLA / 2 && Math.abs(y - g.y) < CELLA / 2) return g.alto;
+        }
+        return costa(x, y);
+      };
+      {
+        const occhio = costa(0, 0) + TERRENO_ALTEZZA_OCCHIO_M;
+        const vero = veroDa(costa, occhio);
+        const alto = Math.max.apply(null, Array.from(vero));
+
+        const pulito = grigliaDa(costa);
+        const vPrima = voti(cresteDi(senzaFiltri(pulito, occhio)), vero);
+        const vDopo = voti(cresteDi(terrenoFronti(grigliaDa(costa), occhio)), vero);
+        // La scaletta: il modello dà gruppi di direzioni uguali e poi salta
+        // alla cella dopo. Su una costa **pulita** erano tre gradi di gradino
+        // fra due direzioni vicine, misurati, e sullo schermo è la
+        // dentellatura che la segnalazione chiama seghettata.
+        prova('senza filtri, anche un terreno pulito fa una scaletta di gradini',
+              vPrima.dente > 1, `${vPrima.dente.toFixed(2)}° fra due direzioni vicine`);
+        prova('il passa-basso la spiana',
+              vDopo.dente < vPrima.dente,
+              `da ${vPrima.dente.toFixed(2)}° a ${vDopo.dente.toFixed(2)}°`);
+        prova('e l\'orizzonte non solo è più liscio, è anche più giusto',
+              vDopo.rms <= vPrima.rms + 1e-6,
+              `scarto quadratico medio da ${vPrima.rms.toFixed(2)}° a ${vDopo.rms.toFixed(2)}°`);
+
+        const gPrima = voti(cresteDi(senzaFiltri(grigliaDa(costaGuasta), occhio)), vero);
+        const gDopo = voti(cresteDi(terrenoFronti(grigliaDa(costaGuasta), occhio)), vero);
+        prova('tre celle sbagliate facevano un picco più alto di tutto l\'orizzonte vero',
+              gPrima.eccesso > alto,
+              `${gPrima.eccesso.toFixed(1)}° di troppo, dove il vero arriva a ${alto.toFixed(1)}°`);
+        prova('e il tetto a mediana lo riporta dentro a un paio di gradi',
+              gDopo.eccesso < 2.5, `${gDopo.eccesso.toFixed(2)}° di eccesso`);
+        prova('senza per questo perdere l\'orizzonte vero',
+              gDopo.perdita < gPrima.perdita + 0.4,
+              `perdita da ${gPrima.perdita.toFixed(2)}° a ${gDopo.perdita.toFixed(2)}°`);
+      }
+
+      // --- La stessa cosa in montagna, dove il picco finto è enorme ---
+      // Qui l'occhio sta a settecento metri e una cella sbagliata a duecento
+      // metri da casa arriva al tetto di TERRENO_ALT_MAX: sessanta gradi di
+      // parete verticale nati da un numero solo. È il caso in cui filtrare
+      // **dopo** l'accumulo non serviva a niente.
+      {
+        const alpi = (x, y) => {
+          const r = Math.hypot(x, y), az = Math.atan2(x, y) * 180 / Math.PI;
+          let h = 700;
+          h += 900 * Math.max(0, Math.cos((az - 20) * Math.PI / 120)) * Math.min(1, r / 9000);
+          h += 500 * Math.max(0, Math.cos((az + 130) * Math.PI / 90)) * Math.min(1, r / 20000);
+          h += 260 * Math.sin(az * Math.PI / 9) * Math.min(1, r / 4000);
+          h += 120 * Math.sin(az * Math.PI / 3.2) * Math.min(1, r / 2500);
+          return Math.max(400, h);
+        };
+        const dueGuasti = [{ x: 180, y: 90, alto: 1400 }, { x: 270, y: -180, alto: 1600 }];
+        const alpiGuaste = (x, y) => {
+          for (const g of dueGuasti) {
+            if (Math.abs(x - g.x) < CELLA / 2 && Math.abs(y - g.y) < CELLA / 2) return g.alto;
+          }
+          return alpi(x, y);
+        };
+        const occhio = alpi(0, 0) + TERRENO_ALTEZZA_OCCHIO_M;
+        const vero = veroDa(alpi, occhio);
+        const gPrima = voti(cresteDi(senzaFiltri(grigliaDa(alpiGuaste), occhio)), vero);
+        const gDopo = voti(cresteDi(terrenoFronti(grigliaDa(alpiGuaste), occhio)), vero);
+        prova('in montagna due celle sbagliate facevano una parete di sessanta gradi',
+              gPrima.eccesso > 40, `${gPrima.eccesso.toFixed(1)}° di troppo`);
+        prova('e i filtri la riportano a pochi gradi',
+              gDopo.eccesso < 8, `${gDopo.eccesso.toFixed(2)}°`);
+        prova('con lo scarto quadratico medio che crolla',
+              gDopo.rms < gPrima.rms / 4,
+              `da ${gPrima.rms.toFixed(2)}° a ${gDopo.rms.toFixed(2)}°`);
+        // La finestra della mediana è larga **due** celle e non una, e non è
+        // una taratura: con una sola il dente occupa la maggioranza della
+        // finestra, la mediana diventa il dente, e il tetto si autofirma.
+        prova('la finestra della mediana è larga più di una impronta di cella',
+              TERRENO_TETTO_LARGO_CELLE >= 2,
+              'con una sola, un dente largo una cella è la maggioranza e la mediana lo assolve');
+        // E il terreno pulito, che è la metà da non rovinare.
+        const pPrima = voti(cresteDi(senzaFiltri(grigliaDa(alpi), occhio)), vero);
+        const pDopo = voti(cresteDi(terrenoFronti(grigliaDa(alpi), occhio)), vero);
+        prova('e su creste alpine vere il filtro non peggiora la somiglianza',
+              pDopo.rms <= pPrima.rms,
+              `scarto quadratico medio da ${pPrima.rms.toFixed(2)}° a ${pDopo.rms.toFixed(2)}°`);
+      }
+
+      // --- Il buco: campioni che non sono arrivati ---
+      // I filtri girano su una griglia che può avere dei vuoti (una richiesta
+      // andata male), e un vuoto non è uno zero: mediato come tale
+      // tirerebbe giù le direzioni che gli stanno accanto.
+      {
+        const conBuchi = new Array(TERRENO_DIREZIONI * nd);
+        for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+          for (let k = 0; k < nd; k++) conBuchi[i * nd + k] = (i >= 20 && i < 26) ? null : 900;
+        }
+        const f = terrenoFronti(conBuchi, 301.6);
+        let finiti = true;
+        for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+          for (let k = 0; k < nd; k++) if (!isFinite(f[i * nd + k])) finiti = false;
+        }
+        prova('un buco nella griglia non produce numeri non finiti', finiti);
+        prova('e non tira giù le direzioni che gli stanno accanto',
+              Math.abs(f[19 * nd + nd - 1] - f[60 * nd + nd - 1]) < 0.01,
+              `al bordo del buco ${f[19 * nd + nd - 1].toFixed(2)}°, lontano ${f[60 * nd + nd - 1].toFixed(2)}°`);
+      }
     }
 
     const primaFronti = terreno.fronti;
@@ -3283,6 +3626,147 @@ if (typeof acqueTaglia !== 'function') {
   }
 
   // -------------------------------------------------------------------
+  // I laghi grandi: una relazione con l'anello spezzato in vie
+  //
+  // È il guasto del Lago di Como, e non toccava i laghi piccoli — quelli in
+  // OpenStreetMap sono una via chiusa e funzionavano — ma **tutti quelli
+  // grandi**, che sono relazioni con l'anello esterno spezzato in una decina
+  // di vie: il Como, il Garda, il Maggiore, il Trasimeno.
+  //
+  // Chiudendo ogni pezzo per conto suo, come si faceva prima, due cose
+  // andavano insieme. L'arco della riva orientale chiuso su sé stesso è una
+  // mezzaluna schiacciata che **non contiene il centro del lago**, quindi chi
+  // stava in mezzo non risultava dentro a niente e l'acqua sotto i piedi non
+  // si disegnava. E la parità dei tagli, che si tiene per poligono e deve,
+  // metteva l'ingresso trovato sulla riva di qua e l'uscita trovata sulla riva
+  // di là in due conti separati: due mozziconi al posto della traversata.
+  // Misurato sul ramo di Como, prima: 630 direzioni su 720 senz'acqua.
+  //
+  // Adesso i pezzi si ricuciono (`acqueCuciAnelli`), e la prova che conta è
+  // che una relazione cucita dia **le stesse bande** della via chiusa dello
+  // stesso lago: se le due strade non si chiudono, il difetto torna.
+  {
+    // Un ramo di lago: 1,5 km di larghezza, 12 di lunghezza, e noi in mezzo.
+    const ramo = (() => {
+      const p = [], W = 750, L = 6000;
+      for (let i = 0; i <= 40; i++) p.push([W, -L + 2 * L * i / 40]);
+      for (let i = 1; i <= 6; i++) p.push([W - 2 * W * i / 6, L]);
+      for (let i = 1; i <= 40; i++) p.push([-W, L - 2 * L * i / 40]);
+      for (let i = 1; i < 6; i++) p.push([-W + 2 * W * i / 6, -L]);
+      p.push([W, -L]);
+      return p;
+    })();
+    const mLat = 111320, mLon = 111320 * Math.cos(LAT * D2R);
+    const punto = ([x, y]) => ({ lat: LAT + y / mLat, lon: LON + x / mLon });
+    // L'anello spezzato in `quanti` archi aperti, come lo manda Overpass.
+    const inArchi = (an, quanti) => {
+      const archi = [], per = Math.ceil((an.length - 1) / quanti);
+      for (let k = 0; k < quanti; k++) {
+        const a = an.slice(k * per, Math.min(an.length, k * per + per + 1));
+        if (a.length > 1) archi.push(a.map(punto));
+      }
+      return archi;
+    };
+    const relazione = (archi, nome) => ({
+      type: 'relation', tags: { natural: 'water', name: nome, type: 'multipolygon' },
+      members: archi.map(g => ({ role: 'outer', geometry: g }))
+    });
+    const conta = (bande) => {
+      let vuote = 0, daiPiedi = 0;
+      for (let i = 0; i < ACQUE_DIREZIONI; i++) {
+        if (!bande[i]) vuote++;
+        else if (bande[i][0][0] === 0) daiPiedi++;
+      }
+      return { vuote, daiPiedi };
+    };
+
+    {
+      const tr = acqueLeggiElementi([relazione(inArchi(ramo, 5), 'Lago di Como')]);
+      prova('i pezzi di una relazione si ricuciono in un anello solo',
+        tr.length === 1 && tr[0].chiuso, `${tr.length} tracciati invece di 5`);
+      const tagli = acqueTaglia(tr, LAT, LON, 25000);
+      prova('e allora il centro del lago risulta dentro all\'acqua',
+        tagli.sommersi.size === 1);
+      const c = conta(acqueBandeDaTagli(tagli));
+      prova('l\'acqua c\'è in tutte le direzioni e in tutte comincia ai piedi',
+        c.vuote === 0 && c.daiPiedi === ACQUE_DIREZIONI,
+        `${c.vuote} direzioni senz'acqua, ${c.daiPiedi}/${ACQUE_DIREZIONI} dai piedi`);
+    }
+    {
+      // Overpass non promette né l'ordine né il verso dei membri, e non c'è
+      // ragione perché li rispetti: la cucitura deve reggere comunque.
+      const a = inArchi(ramo, 7);
+      const misti = [a[3], a[0].slice().reverse(), a[5], a[1],
+                     a[6].slice().reverse(), a[2], a[4]];
+      const tr = acqueLeggiElementi([relazione(misti, 'Lago di Como')]);
+      prova('mescolati e con qualche pezzo al rovescio si cuciono lo stesso',
+        tr.length === 1 && tr[0].chiuso, `${tr.length} tracciati`);
+      const c = conta(acqueBandeDaTagli(acqueTaglia(tr, LAT, LON, 25000)));
+      prova('e il risultato è lo stesso', c.vuote === 0 && c.daiPiedi === ACQUE_DIREZIONI,
+        `${c.vuote} senz'acqua`);
+    }
+    {
+      // La prova che tiene insieme le due strade: lo stesso lago, guardato da
+      // fuori, letto una volta come relazione spezzata e una come via chiusa.
+      const laghetto = (() => {
+        const p = [];
+        for (let i = 0; i <= 32; i++) {
+          const t = 2 * Math.PI * i / 32;
+          p.push([300 * Math.sin(t), 5000 + 300 * Math.cos(t)]);
+        }
+        return p;
+      })();
+      const daRel = acqueLeggiElementi([relazione(inArchi(laghetto, 4), 'Tondo')]);
+      const daVia = acqueLeggiElementi([{ type: 'way', tags: { natural: 'water', name: 'Tondo' },
+        geometry: laghetto.map(punto) }]);
+      const bR = acqueBandeDaTagli(acqueTaglia(daRel, LAT, LON, 25000));
+      const bV = acqueBandeDaTagli(acqueTaglia(daVia, LAT, LON, 25000));
+      let uguali = true;
+      for (let i = 0; i < ACQUE_DIREZIONI; i++) {
+        if (JSON.stringify(bR[i]) !== JSON.stringify(bV[i])) uguali = false;
+      }
+      prova('una relazione cucita dà le stesse bande della via chiusa, direzione per direzione',
+        uguali, `a nord: ${JSON.stringify(bR[0])} contro ${JSON.stringify(bV[0])}`);
+      prova('e da fuori non ci si crede sommersi',
+        acqueTaglia(daRel, LAT, LON, 25000).sommersi.size === 0);
+    }
+    {
+      // Due specchi in una relazione sola (capita: un sistema di laghi) devono
+      // restare due poligoni, se no la lingua di terra fra i due diventa acqua.
+      const secondo = (() => {
+        const p = [];
+        for (let i = 0; i <= 24; i++) {
+          const t = 2 * Math.PI * i / 24;
+          p.push([400 * Math.sin(t), 14000 + 400 * Math.cos(t)]);
+        }
+        return p;
+      })();
+      const tr = acqueLeggiElementi([relazione(
+        inArchi(ramo, 4).concat(inArchi(secondo, 3)), 'Due specchi')]);
+      prova('due anelli in una relazione restano due poligoni',
+        tr.length === 2 && tr.every(t => t.chiuso), `${tr.length} tracciati`);
+      prova('e sommerso lo è solo quello che ci contiene',
+        acqueTaglia(tr, LAT, LON, 25000).sommersi.size === 1);
+    }
+    {
+      // Una relazione a cui manca un pezzo (dati incompleti, o il limite di
+      // `out geom`): non deve far saltare niente, e un anello approssimato è
+      // comunque meglio di dieci mezzelune — ha un dentro e una parità sola.
+      const a = inArchi(ramo, 6);
+      a.splice(2, 1);
+      const tr = acqueLeggiElementi([relazione(a, 'Rotta')]);
+      prova('una relazione incompleta non fa saltare la lettura',
+        tr.length >= 1 && tr.every(t => Array.isArray(t.punti) && t.punti.length > 1),
+        `${tr.length} tracciati`);
+      let qualcosa = 0;
+      const b = acqueBandeDaTagli(acqueTaglia(tr, LAT, LON, 25000));
+      for (let i = 0; i < ACQUE_DIREZIONI; i++) if (b[i]) qualcosa++;
+      prova('e l\'acqua la disegna comunque', qualcosa > ACQUE_DIREZIONI / 2,
+        `${qualcosa}/${ACQUE_DIREZIONI} direzioni`);
+    }
+  }
+
+  // -------------------------------------------------------------------
   // Il raggio che taglia i bordi. È il cuore del modulo: se sbaglia,
   // sbaglia tutto quello che viene dopo.
   // -------------------------------------------------------------------
@@ -3592,6 +4076,77 @@ if (typeof acqueTaglia !== 'function') {
     prova('la prospettiva regge: la riva lontana a un decimo di grado, i piedi al nadir',
       Math.abs(grandi[0][0].depLontano + 0.115) < 0.05,
       `${grandi[0][0].depLontano.toFixed(3)}° … ${grandi[0][0].depVicino.toFixed(1)}°`);
+
+    terrenoDimentica();
+    acqueDimentica();
+  }
+
+  // -------------------------------------------------------------------
+  // «Il minimo dell'acqua», non «il minimo di quello che c'è intorno»
+  //
+  // La superficie si ricava dal più basso dei campioni vicini, e finché
+  // quel minimo veniva preso su **tutto** l'anello bastava un fosso, uno
+  // scavo, il fondo di una valletta accanto per portarlo sotto il livello
+  // del lago: l'occhio finiva sott'acqua, che è lo stesso errore di prima
+  // col segno girato — e come quello non si vede, perché il disegno resta
+  // plausibile. Adesso il minimo si chiede ai campioni che cadono dentro
+  // alla banda che comincia ai piedi, cioè allo specchio in cui si sta.
+  // -------------------------------------------------------------------
+  {
+    const nd = TERRENO_DISTANZE.length;
+    const mLat = 111320, mLon = 111320 * Math.cos(LAT * D2R);
+    const ACQUA = 198, MEZZA = 30, LUNGO = 6000, FOSSO = ACQUA - 14;
+
+    // Un corso d'acqua largo sessanta metri e lungo dodici chilometri, con noi
+    // sopra: verso nord e verso sud i campioni della griglia cascano
+    // nell'acqua, di traverso no — cascano sulla riva. È lì che si mette il
+    // fosso, sul primo anello, appena fuori dall'acqua.
+    const rettangolo = (semiX, semiY) => {
+      const g = [];
+      const spigoli = [[semiX, -semiY], [semiX, semiY], [-semiX, semiY], [-semiX, -semiY]];
+      for (let s = 0; s < 4; s++) {
+        const [ax, ay] = spigoli[s], [bx, by] = spigoli[(s + 1) % 4];
+        for (let t = 0; t < 40; t++) {
+          const f = t / 40;
+          g.push({ lat: LAT + (ay + (by - ay) * f) / mLat, lon: LON + (ax + (bx - ax) * f) / mLon });
+        }
+      }
+      g.push({ lat: LAT + spigoli[0][1] / mLat, lon: LON + spigoli[0][0] / mLon });
+      return { type: 'way', tags: { natural: 'water', name: 'Fiume col fosso' }, geometry: g };
+    };
+
+    const grezze = new Array(TERRENO_DIREZIONI * nd);
+    const avute = [];
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+      avute.push(i);
+      const az = i * TERRENO_PASSO_AZ * D2R;
+      for (let k = 0; k < nd; k++) {
+        const m = TERRENO_DISTANZE[k] * 1000;
+        const x = Math.abs(m * Math.sin(az)), y = Math.abs(m * Math.cos(az));
+        const dentro = x <= MEZZA && y <= LUNGO;
+        grezze[i * nd + k] = dentro ? ACQUA : Math.min(1400, ACQUA + (x - MEZZA) * 0.5);
+        // il fosso: sul primo anello, verso levante, fuori dall'acqua
+        if (k === 0 && x > MEZZA && Math.abs(i * TERRENO_PASSO_AZ - 90) < 12) {
+          grezze[i * nd + k] = FOSSO;
+        }
+      }
+    }
+    terreno.acceso = true;
+    acque.acceso = true;
+    terrenoApplica(LAT, LON, terrenoMonta(grezze, avute, undefined), 'prova', false);
+    const stimata = terreno.quota;
+    acqueApplica(LAT, LON, acqueLeggiElementi([rettangolo(MEZZA, LUNGO)]), 'prova');
+
+    prova('l\'app si accorge di essere sull\'acqua', acque.sommerso === true);
+    prova('la superficie è la quota dell\'acqua',
+      Math.abs(acque.quotaSommerso - ACQUA) < 0.6,
+      `${acque.quotaSommerso} m, l'acqua sta a ${ACQUA}`);
+    prova('e non quella del fosso che le sta accanto, che è più basso',
+      acque.quotaSommerso > FOSSO,
+      `il fosso è a ${FOSSO} m: preso per superficie manderebbe l'occhio sott'acqua`);
+    prova('l\'occhio finisce al livello dell\'acqua e non sulla riva',
+      Math.abs(terreno.quota - ACQUA) < 0.6,
+      `${terreno.quota} m, la mediana dell'anello diceva ${stimata}`);
 
     terrenoDimentica();
     acqueDimentica();

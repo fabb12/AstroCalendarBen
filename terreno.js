@@ -151,7 +151,81 @@ const TERRENO_DISTANZA_MIN_M = 50;
 // spillo, per definizione, non ce le ha. Un grado e due decimi è largo: a
 // tre gradi di passo, un pendio che sale davvero cambia molto meno di così
 // da una direzione all'altra.
+//
+// Da sola questa tosatura non basta, e la ragione è nella riga qui sotto:
+// vicino, due direzioni confinanti leggono la **stessa** cella del modello,
+// quindi portano lo stesso errore e si fanno da garanti a vicenda.
 const TERRENO_SPILLO_GRADI = 1.2;
+
+// Quanto è larga una cella del modello del suolo. Copernicus DEM sta a un
+// arcosecondo, cioè trenta metri all'equatore e novanta nella versione che
+// Open-Meteo serve: è la misura sotto la quale il terreno non ha dettaglio,
+// e da lei dipende **quanto** di quello che c'è nella griglia sia
+// informazione e quanto sia rumore ricopiato.
+const TERRENO_CELLA_M = 90;
+
+// I due filtri sugli anelli vicini, e perché ce ne vogliono due.
+//
+// La griglia è polare: centoventi direzioni per diciotto distanze. A sessanta
+// chilometri due direzioni vicine distano tre chilometri sul terreno e sono
+// campioni indipendenti; **a centocinquanta metri distano sette metri e
+// ottanta**, cioè un dodicesimo di cella. Là fuori, dodici direzioni di fila
+// leggono lo stesso numero.
+//
+// Da qui vengono le due cose che si vedono sullo schermo e che nei numeri
+// non saltavano fuori:
+//
+//   - la **scaletta**. Le quote arrivano a gruppi di uguali e poi saltano di
+//     colpo alla cella dopo: sull'orizzonte disegnato erano gradini di tre
+//     gradi, misurati, con un profilo di costa pulito. È aliasing da
+//     campionamento radiale, e la cura è un passa-basso.
+//   - lo **spillo correlato**. `TERRENO_SPILLO_GRADI` confronta una
+//     direzione con le due accanto, e vicino quelle due sono copie: un
+//     capannone, un pilone, un buco nel modello alza sei direzioni insieme e
+//     il tetto non se ne accorge — provato, un dente da otto gradi passava
+//     intero. Serve un tetto che guardi **fuori** dalla cella.
+//
+// La larghezza dei due filtri non è un numero scelto a mano: è l'angolo che
+// una cella occupa a quella distanza (`terrenoPassiDiCella`). A
+// centocinquanta metri sono trentaquattro gradi, a un chilometro e due
+// quattro, a quattro chilometri meno di un passo della griglia — e da lì in
+// poi i filtri **non toccano niente**. È la proprietà che conta: le vette
+// lontane, che sono le sole cose che uno guarda e a cui si appendono i nomi,
+// escono da qui identiche a come sono entrate.
+//
+// Le due larghezze non sono la stessa, e la differenza è tutta nel mestiere
+// che fanno.
+//
+// Il passa-basso lavora su **una** impronta di cella: deve sciogliere il
+// gradino fra una cella e la successiva, e per farlo gli basta arrivare a
+// toccarla. Il tetto a mediana ne vuole **due**, ed è una necessità
+// aritmetica, non una taratura: la mediana dice la verità solo se il dente
+// occupa meno di metà finestra, e un dente largo una cella dentro a una
+// finestra larga una cella *è* la maggioranza. Con una sola impronta un
+// guasto da sessanta gradi in mezzo alle Alpi passava intero; con due scende a
+// quattro e mezzo. Da tre in su non cambia più niente, e si tiene la più
+// stretta che funziona.
+//
+// I due tetti in gradi limitano quelle larghezze, se no a centocinquanta
+// metri — dove una cella copre trentun gradi — si medierebbe su mezzo
+// orizzonte. Misurati contro un orizzonte vero calcolato senza griglia, su un
+// paesaggio di costa e su uno alpino: con le celle sbagliate l'eccesso passa
+// da 16,6° a 1,9° sulla costa e da 60° a 4,6° in montagna, e sul terreno
+// pulito lo scarto quadratico medio **scende** (2,57° → 1,28° in montagna:
+// era la griglia a sbagliare, non i filtri a impastare).
+const TERRENO_TETTO_LARGO_GRADI = 18;
+const TERRENO_TETTO_LARGO_CELLE = 2;
+const TERRENO_LISCIA_GRADI = 4.5;
+
+// Di quanto un campione può stare sopra alla mediana della sua finestra.
+//
+// È lo stesso budget della tosatura vicina — un grado e due decimi — e non è
+// un caso: la domanda è la stessa, «di quanto il terreno può cambiare da una
+// direzione all'altra», solo chiesta a un vicinato più largo. La mediana e
+// non il massimo, perché quello che si vuole sapere è a che quota sta il
+// paesaggio lì attorno, e il massimo di una finestra che contiene lo spillo
+// **è** lo spillo.
+const TERRENO_SPILLO_LARGO_GRADI = 1.2;
 
 // Quanto ci si può spostare prima che il profilo non valga più. Due
 // chilometri: dentro un paese l'orizzonte lontano è lo stesso, e non ha
@@ -686,21 +760,154 @@ function terrenoMiscelaPerGrado(tipiPerGrado) {
 // in lettura: le due domande sono diverse e adesso hanno due risposte.
 const TERRENO_ALT_MIN = -89;
 
+// Le creste parziali, in quattro passaggi.
+//
+// L'ordine conta, ed è il punto di tutta questa parte. I due filtri vanno
+// **prima** dell'accumulo del massimo, sugli angoli campione per campione: un
+// dente che arriva dall'anello dei centocinquanta metri, una volta accumulato,
+// si ritrova copiato in tutte e diciotto le caselle della sua riga — compresa
+// l'ultima, che è la cresta vera — e in fondo alla riga la finestra dei filtri
+// è larga zero direzioni, perché a sessanta chilometri la griglia risolve
+// l'azimut benissimo. Filtrando dopo, lo spillo non si toglie più: provato,
+// il dente da otto gradi restava intero.
+//
+// Filtrando prima, invece, l'accumulo porta avanti valori già puliti, e in
+// regalo dà la **non-decrescenza in distanza** — l'invariante su cui poggia
+// tutta l'occlusione del disegno a piani — senza doverla rimettere a posto.
 function terrenoFronti(quote, occhio) {
+  const a = terrenoAngoliCampione(quote, occhio);
+  terrenoTosaSpilliLarghi(a);
+  terrenoLisciaAnelli(a);
+  return terrenoTosaSpilli(terrenoAccumulaFronti(a));
+}
+
+// Quanti passi di azimut copre una cella del modello del suolo a quella
+// distanza — o `celle` volte tanto, per chi ha bisogno di guardare oltre.
+// Zero vuol dire «la griglia qui risolve meglio del modello»: e allora non
+// c'è niente da filtrare.
+function terrenoPassiDiCella(km, tettoGradi, celle) {
+  const gradi = Math.atan2(TERRENO_CELLA_M, Math.max(1, km * 1000)) * 180 / Math.PI;
+  return Math.min(Math.round(tettoGradi / TERRENO_PASSO_AZ),
+    Math.round((celle || 1) * gradi / TERRENO_PASSO_AZ));
+}
+
+// L'angolo di ogni singolo campione, senza accumulare niente. Un campione che
+// non è arrivato resta `-Infinity`: è il modo di dire «di qui non si sa
+// nulla» che i filtri e l'accumulo sanno saltare, mentre uno zero o un
+// `TERRENO_ALT_MIN` sarebbero due numeri e verrebbero mediati come tali.
+function terrenoAngoliCampione(quote, occhio) {
+  const n = TERRENO_DISTANZE.length;
+  const a = new Float32Array(TERRENO_DIREZIONI * n);
+  for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+    for (let k = 0; k < n; k++) {
+      const q = quote[i * n + k];
+      a[i * n + k] = typeof q === 'number'
+        ? terrenoAngolo(q, occhio, TERRENO_DISTANZE[k]) : -Infinity;
+    }
+  }
+  return a;
+}
+
+// Il tetto a mediana, anello per anello: un campione non può stare più di
+// `TERRENO_SPILLO_LARGO_GRADI` sopra alla mediana della sua finestra.
+//
+// È la tosatura degli spilli chiesta a un vicinato **più largo di una cella**,
+// che è l'unico modo di accorgersi di un errore che sei direzioni si sono
+// ricopiate a vicenda. La mediana e non il massimo: il massimo di una
+// finestra che contiene il dente è il dente stesso, e il tetto diventa una
+// promessa che si autofirma.
+//
+// Cosa lascia in pace, e perché è la metà che conta: una costa, il fianco di
+// una valle, un altopiano occupano molto più di una finestra, quindi la loro
+// mediana **sono loro** e il tetto non morde. Sparisce solo quello che è più
+// stretto di metà finestra, cioè più stretto di quanto il modello sappia
+// disegnare.
+function terrenoTosaSpilliLarghi(a) {
+  const n = TERRENO_DISTANZE.length;
+  const colonna = new Float32Array(TERRENO_DIREZIONI);
+  const finestra = [];
+  for (let k = 0; k < n; k++) {
+    const m = terrenoPassiDiCella(TERRENO_DISTANZE[k], TERRENO_TETTO_LARGO_GRADI,
+      TERRENO_TETTO_LARGO_CELLE);
+    // Con meno di due direzioni per parte il lavoro l'ha già fatto
+    // `terrenoTosaSpilli`, che guarda le due vicine e costa niente.
+    if (m < 2) continue;
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) colonna[i] = a[i * n + k];
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+      if (!isFinite(colonna[i])) continue;
+      finestra.length = 0;
+      for (let d = -m; d <= m; d++) {
+        const v = colonna[((i + d) % TERRENO_DIREZIONI + TERRENO_DIREZIONI) % TERRENO_DIREZIONI];
+        if (isFinite(v)) finestra.push(v);
+      }
+      if (finestra.length < 3) continue;
+      finestra.sort((x, y) => x - y);
+      const mediana = finestra[(finestra.length - 1) >> 1];
+      const tetto = mediana + TERRENO_SPILLO_LARGO_GRADI;
+      if (colonna[i] > tetto) a[i * n + k] = tetto;
+    }
+  }
+  return a;
+}
+
+// Il passa-basso vero e proprio: una media mobile pesata a campana (finestra
+// di Hann) sui raggi vicini, anello per anello.
+//
+// Serve alla scaletta, che è una cosa diversa dallo spillo: là c'è un
+// campione sbagliato, qui sono tutti giusti e il difetto sta nel modo in cui
+// li abbiamo chiesti. Vicino, gruppi di direzioni leggono la stessa cella e
+// poi si salta di colpo a quella dopo — misurato su un profilo di costa
+// pulito, gradini di tre gradi da una direzione all'altra. Una campana e non
+// una finestra secca perché una media a pesi uguali sposta gli spigoli invece
+// di scioglierli.
+//
+// Qui una media è lecita — e altrove no, come dice `terrenoTosaSpilli` — per
+// una ragione sola: la finestra è larga quanto la cella, quindi si media su
+// un pezzo di cielo in cui il modello del suolo **non ha niente da dire**.
+// Dove ha qualcosa da dire (da quattro chilometri in su) la finestra è larga
+// zero e questa funzione esce senza toccare un valore.
+function terrenoLisciaAnelli(a) {
+  const n = TERRENO_DISTANZE.length;
+  const colonna = new Float32Array(TERRENO_DIREZIONI);
+  for (let k = 0; k < n; k++) {
+    const m = terrenoPassiDiCella(TERRENO_DISTANZE[k], TERRENO_LISCIA_GRADI);
+    if (m < 1) continue;
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) colonna[i] = a[i * n + k];
+    const pesi = [];
+    for (let d = -m; d <= m; d++) pesi.push(0.5 * (1 + Math.cos(Math.PI * d / (m + 1))));
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+      if (!isFinite(colonna[i])) continue;
+      let somma = 0, peso = 0;
+      for (let j = 0, d = -m; d <= m; d++, j++) {
+        const v = colonna[((i + d) % TERRENO_DIREZIONI + TERRENO_DIREZIONI) % TERRENO_DIREZIONI];
+        // I campioni che non sono arrivati non contano, e non contano nemmeno
+        // il loro peso: se no una direzione al bordo di un buco verrebbe
+        // tirata verso il basso dal niente che le sta accanto.
+        if (!isFinite(v)) continue;
+        somma += v * pesi[j];
+        peso += pesi[j];
+      }
+      if (peso > 0) a[i * n + k] = somma / peso;
+    }
+  }
+  return a;
+}
+
+// Da un angolo per campione alla cresta parziale: il massimo che si accumula
+// andando avanti. È quello che faceva `terrenoFronti` da sé, tirato fuori
+// perché adesso in mezzo ci sono i filtri.
+function terrenoAccumulaFronti(a) {
   const n = TERRENO_DISTANZE.length;
   const f = new Float32Array(TERRENO_DIREZIONI * n);
   for (let i = 0; i < TERRENO_DIREZIONI; i++) {
     let massimo = TERRENO_ALT_MIN;
     for (let k = 0; k < n; k++) {
-      const q = quote[i * n + k];
-      if (typeof q === 'number') {
-        const a = terrenoAngolo(q, occhio, TERRENO_DISTANZE[k]);
-        if (a > massimo) massimo = a;
-      }
+      const v = a[i * n + k];
+      if (v > massimo) massimo = v;
       f[i * n + k] = Math.max(TERRENO_ALT_MIN, Math.min(TERRENO_ALT_MAX, massimo));
     }
   }
-  return terrenoTosaSpilli(f);
+  return f;
 }
 
 // Il passa-basso in azimut, che è un tetto e non una media.
@@ -1744,6 +1951,125 @@ function terrenoAggiornaPannello() {
   cittaAggiornaTasto();
   cimeAggiornaTasto();
   acqueAggiornaTasto();
+  terrenoBarraAggiorna();
+}
+
+
+// =====================================================================
+// 9-ter. LA BARRA CHE DICE A CHE PUNTO È
+//
+//     La riga di stato del pannello (§9) dice tutto, ma sta **dentro a un
+//     pannello**, e il pannello all'apertura è chiuso: chi apre il
+//     planetario e vede l'orizzonte finto per otto secondi non ha nessun
+//     posto in cui guardare per sapere che sta arrivando quello vero. La
+//     percentuale c'era già ed era scritta dove non la leggeva nessuno.
+//
+//     Quindi una barra appoggiata sopra al cielo, che si accende quando lo
+//     scarico comincia e si spegne quando è finito — scarico **e**
+//     tracciamento dei raggi, che sono due cose diverse e la seconda non è
+//     una richiesta di rete.
+//
+//     Le quattro fasi non pesano uguale, e non è un'opinione: le quote sono
+//     ventiquattro richieste a un servizio che ogni tanto dice di no, i tre
+//     giri a OpenStreetMap sono uno ciascuno. Dando a tutte lo stesso peso la
+//     barra faceva tre quarti di strada nel primo secondo e poi stava ferma,
+//     che è il modo in cui una barra di caricamento smette di essere creduta.
+// =====================================================================
+
+const TERRENO_FASI = [
+  { chiave: 'quote', peso: 0.55, che: 'la forma del terreno',
+    stato: () => terreno.stato, quanto: () => terreno.avanzamento },
+  { chiave: 'citta', peso: 0.10, che: 'le luci dei paesi',
+    stato: () => citta.stato, quanto: () => citta.avanzamento },
+  { chiave: 'cime', peso: 0.10, che: 'i nomi delle montagne',
+    stato: () => cime.stato, quanto: () => cime.avanzamento },
+  { chiave: 'acque', peso: 0.25, che: 'i laghi e i fiumi',
+    stato: () => acque.stato, quanto: () => acque.avanzamento }
+];
+
+// Quanto resta a schermo dopo il cento per cento. Sparire nell'istante in cui
+// finisce vuol dire che chi ha guardato per un attimo non ha visto niente
+// arrivare in fondo, e una barra che scompare a metà sembra un errore.
+const TERRENO_BARRA_CODA_MS = 700;
+
+const terrenoBarra = {
+  // Le fasi che in questa sessione di scarico hanno davvero girato. Serve a
+  // non contare quelle che non partiranno affatto: le vette spente, un
+  // profilo che era già in `localStorage`, le acque servite dal salvato.
+  // Contandole comunque la barra si fermava al quaranta per cento e ci
+  // restava, che è peggio di non averla.
+  fasi: new Set(),
+  spegni: null,
+  vista: false
+};
+
+// A che punto è tutto quanto, e cosa si sta aspettando adesso.
+function terrenoAvanzamentoTotale() {
+  let peso = 0, fatto = 0, corre = false;
+  const che = [];
+  for (const f of TERRENO_FASI) {
+    const stato = f.stato();
+    if (stato === 'in-corso') terrenoBarra.fasi.add(f.chiave);
+    if (!terrenoBarra.fasi.has(f.chiave)) continue;
+    peso += f.peso;
+    if (stato === 'in-corso') {
+      const q = f.quanto();
+      fatto += f.peso * Math.max(0, Math.min(1, typeof q === 'number' ? q : 0));
+      corre = true;
+      che.push(f.che);
+    } else {
+      // Finita, riuscita o no: quello che c'era da aspettare non c'è più.
+      fatto += f.peso;
+    }
+  }
+  return { frazione: peso > 0 ? fatto / peso : 0, corre, che, attiva: peso > 0 };
+}
+
+function terrenoBarraAggiorna() {
+  const el = document.getElementById('terreno-progress');
+  if (!el) return;
+  const v = terrenoAvanzamentoTotale();
+  if (!v.attiva) return;
+
+  const per = Math.round(v.frazione * 100);
+  const barra = el.querySelector('[data-barra-terreno]');
+  const testo = el.querySelector('[data-testo-terreno]');
+  if (barra) barra.style.width = `${per}%`;
+  if (testo) {
+    // Cosa si sta aspettando, non «caricamento»: sono quattro cose diverse e
+    // sapere quale è in ritardo è metà della risposta quando una non arriva.
+    testo.textContent = v.corre
+      ? `Sto misurando ${terrenoElencoAParole(v.che)}… ${per}%`
+      : 'Il terreno attorno a te è pronto.';
+  }
+  el.setAttribute('aria-valuenow', String(per));
+
+  if (v.corre) {
+    if (terrenoBarra.spegni) { clearTimeout(terrenoBarra.spegni); terrenoBarra.spegni = null; }
+    if (!terrenoBarra.vista) {
+      terrenoBarra.vista = true;
+      el.classList.remove('hidden');
+      el.classList.remove('barra-terreno-via');
+    }
+  } else if (terrenoBarra.vista && !terrenoBarra.spegni) {
+    // Il cento per cento si fa vedere, poi la barra se ne va. Le fasi si
+    // scordano qui e non prima: se se ne scordasse subito, il primo giro di
+    // pannello dopo la fine le riaggiungerebbe e la barra tornerebbe.
+    terrenoBarra.spegni = setTimeout(() => {
+      terrenoBarra.spegni = null;
+      terrenoBarra.vista = false;
+      terrenoBarra.fasi.clear();
+      el.classList.add('barra-terreno-via');
+      el.classList.add('hidden');
+    }, TERRENO_BARRA_CODA_MS);
+  }
+}
+
+// «le quote», «le quote e i laghi», «le quote, i paesi e i laghi».
+function terrenoElencoAParole(v) {
+  if (!v || !v.length) return 'il terreno';
+  if (v.length === 1) return v[0];
+  return `${v.slice(0, -1).join(', ')} e ${v[v.length - 1]}`;
 }
 
 
@@ -1916,6 +2242,7 @@ const citta = {
   elenco: [],             // { nome, az, km, abitanti, forza, alto, mezzo, alfa }
   fonte: '',
   motivo: '',
+  avanzamento: 0,         // 0…1 per la barra della §9-ter
   acceso: true
 };
 
@@ -2127,10 +2454,13 @@ function cittaCarica(forza) {
 
   citta.stato = 'in-corso';
   citta.motivo = '';
+  citta.avanzamento = 0;
   terrenoAggiornaPannello();
 
   citta.promessa = cittaDaOverpass(lat, lon)
     .then(elenco => {
+      citta.avanzamento = 0.7;
+      terrenoBarraAggiorna();
       if (!elenco.length) throw new Error('nessun luogo abitato qui attorno');
       cittaApplica(lat, lon, elenco, 'osm');
       // Si salva quello che è rimasto dopo la potatura, non i quattrocento
@@ -2288,6 +2618,7 @@ const cime = {
   elenco: [],             // { nome, lat, lon, quota, az, km }
   fonte: '',
   motivo: '',
+  avanzamento: 0,         // 0…1 per la barra della §9-ter
   // Spente di partenza, e la scelta si ricorda (§9-bis): i nomi delle
   // montagne sono l'unica cosa di questo file che scrive sopra al cielo, e
   // chi apre il planetario la prima volta è venuto a vedere le stelle.
@@ -2506,14 +2837,23 @@ function cimeCarica(forza) {
 
   cime.stato = 'in-corso';
   cime.motivo = '';
+  cime.avanzamento = 0;
   terrenoAggiornaPannello();
 
   // Le due richieste a Overpass — i paesi e le vette — non partono
   // insieme: è lo stesso servizio pubblico, e due colpi nello stesso
   // istante sono il modo più rapido per prendersi un «troppe richieste».
   cime.promessa = Promise.resolve(citta.promessa).catch(() => {})
-    .then(() => cimeDaOverpass(lat, lon))
+    .then(() => {
+      // In coda ai paesi: finché si aspetta il proprio turno la fase non è
+      // ferma, sta facendo la fila, e la barra lo dice con un terzo di strada
+      // invece di uno zero che sembra un blocco.
+      cime.avanzamento = 0.3;
+      terrenoBarraAggiorna();
+      return cimeDaOverpass(lat, lon);
+    })
     .then(elenco => {
+      cime.avanzamento = 0.8;
       cimeApplica(lat, lon, elenco, 'osm');
       if (!cime.elenco.length) {
         // Non è un errore: in mezzo alla pianura o in mezzo al mare le
@@ -2780,6 +3120,7 @@ const acque = {
   // l'occhio sta sulla superficie e non sul suolo (`acqueAllineaOcchio`).
   sommerso: false,
   quotaSommerso: null,    // la quota della superficie su cui si sta, in metri
+  avanzamento: 0,         // 0…1 per la barra della §9-ter: richiesta, poi raggi
   quanti: 0,              // quanti specchi d'acqua sono stati trovati
   nomi: [],               // i più grandi, per la riga di stato
   fonte: '',
@@ -2805,9 +3146,10 @@ function raggioAcque() { return raggi.acque; }
 // e servirebbe una seconda richiesta per ognuno.
 //
 // I laghi grandi in OSM sono **relazioni** (multipoligoni), non vie: il
-// Garda, il Trasimeno, la laguna di Venezia. Con `out geom` una relazione
-// porta la geometria di ogni suo pezzo, e a noi basta quella — non serve
-// ricomporre il multipoligono, perché il raggio taglia i bordi comunque.
+// Garda, il Trasimeno, il Lago di Como, la laguna di Venezia. Con `out geom`
+// una relazione porta la geometria di ogni suo pezzo, e i pezzi vanno
+// **ricuciti** in anelli prima di poterli usare (`acqueCuciAnelli`): un arco
+// di riva, da solo, non ha un dentro.
 function acqueQueryOverpass(lat, lon) {
   const r = terrenoRiquadro(lat, lon, raggioAcque());
   const bb = `(${r.s.toFixed(4)},${r.o.toFixed(4)},${r.n.toFixed(4)},${r.e.toFixed(4)})`;
@@ -2827,6 +3169,81 @@ function acqueQueryCorta(lat, lon) {
     `way["natural"="water"]${bb};` +
     `way["waterway"="river"]${bb};` +
     ');out geom 500;';
+}
+
+// Due punti che sono lo stesso punto. Le vie di una relazione **condividono
+// il nodo** agli estremi, quindi le coordinate che arrivano sono identiche
+// cifra per cifra: la tolleranza serve solo a non dipendere dal fatto che
+// restino identiche anche dopo un arrotondamento di Overpass. Un decimo di
+// milionesimo di grado è un centimetro.
+function acqueStessoPunto(a, b) {
+  return Math.abs(a.lat - b.lat) < 1e-7 && Math.abs(a.lon - b.lon) < 1e-7;
+}
+
+// Ricucire i pezzi di una relazione in anelli chiusi.
+//
+// È la funzione che mancava, ed è mancata in modo particolarmente sgradevole:
+// non faceva sbagliare i laghi piccoli — quelli sono una via chiusa e
+// funzionavano — ma **tutti quelli grandi**, che in OpenStreetMap sono
+// relazioni con l'anello esterno spezzato in una decina di vie. Il Lago di
+// Como, il Garda, il Maggiore, il Trasimeno.
+//
+// Prima ogni pezzo veniva chiuso per conto suo e trattato da poligono, e da lì
+// nascevano due guasti che si sommavano:
+//
+//   - l'arco della riva orientale, chiuso su sé stesso, è una mezzaluna
+//     schiacciata che **non contiene il centro del lago**: chi stava in mezzo
+//     al Como non risultava dentro a nessun poligono, `sommersi` restava vuoto
+//     e l'acqua sotto i piedi non si disegnava.
+//   - la parità dei tagli si tiene per poligono (e deve: due laghi in fila
+//     sono due parità diverse), quindi l'ingresso trovato sulla riva ovest e
+//     l'uscita trovata sulla riva est finivano in due conti separati e non si
+//     accoppiavano con nessuno: due mozziconi da duecento metri al posto della
+//     traversata. Misurato sul ramo di Como, prima: **630 direzioni su 720
+//     senz'acqua**, e nessuna che partisse dai piedi.
+//
+// L'algoritmo è quello di sempre: si tengono le catene aperte, e ogni arco
+// nuovo si attacca a quella che condivide un estremo — dalla testa o dalla
+// coda, all'andata o al rovescio. Quando una catena si chiude diventa un
+// anello. Le relazioni hanno decine di membri, non migliaia, quindi la
+// scansione quadratica sta in un millesimo di secondo e non vale la pena
+// indicizzare gli estremi.
+function acqueCuciAnelli(archi) {
+  const aperti = [];
+  const anelli = [];
+
+  for (const arco of archi) {
+    if (!Array.isArray(arco) || arco.length < 2) continue;
+    let pezzo = arco.slice();
+    // Un membro che è già un anello per conto suo (capita: un'isola, o un
+    // laghetto tenuto dentro alla stessa relazione) non ha niente da cucire.
+    let unito = true;
+    while (unito) {
+      if (pezzo.length > 3 && acqueStessoPunto(pezzo[0], pezzo[pezzo.length - 1])) break;
+      unito = false;
+      for (let i = 0; i < aperti.length; i++) {
+        const c = aperti[i];
+        const cTesta = c[0], cCoda = c[c.length - 1];
+        const pTesta = pezzo[0], pCoda = pezzo[pezzo.length - 1];
+        if (acqueStessoPunto(cCoda, pTesta)) pezzo = c.concat(pezzo.slice(1));
+        else if (acqueStessoPunto(cCoda, pCoda)) pezzo = c.concat(pezzo.slice(0, -1).reverse());
+        else if (acqueStessoPunto(cTesta, pCoda)) pezzo = pezzo.concat(c.slice(1));
+        else if (acqueStessoPunto(cTesta, pTesta)) pezzo = pezzo.slice(1).reverse().concat(c);
+        else continue;
+        aperti.splice(i, 1);
+        unito = true;
+        break;
+      }
+    }
+    if (pezzo.length > 3 && acqueStessoPunto(pezzo[0], pezzo[pezzo.length - 1])) anelli.push(pezzo);
+    else aperti.push(pezzo);
+  }
+  // Quello che non si è chiuso si chiude a forza, come si faceva prima con
+  // ogni singolo membro. Capita quando la relazione è incompleta o quando
+  // Overpass ne ha tagliato dei pezzi (il limite di `out geom`): un anello
+  // approssimato è comunque molto meglio di dieci mezzelune, perché ha un
+  // dentro e una parità sola.
+  return { anelli, aperti };
 }
 
 // Da quello che risponde Overpass alle sole cose che servono: una lista di
@@ -2860,17 +3277,22 @@ function acqueLeggiElementi(elementi) {
         Math.abs(p[0].lon - p[p.length - 1].lon) < 1e-7;
       aggiungi(p, tags, chiuso, tags.name);
     } else if (e.type === 'relation' && Array.isArray(e.members)) {
+      // I pezzi dell'anello esterno, ricuciti in anelli veri: un arco di riva
+      // non ha un dentro, e trattarlo da poligono è il guasto del Lago di
+      // Como (vedi `acqueCuciAnelli`). Le isole (`role: inner`) restano fuori
+      // come prima: disegnare l'acqua dove c'è un'isola è un'imprecisione da
+      // qualche grado d'orizzonte, mentre non disegnare il lago è il lago che
+      // manca.
+      const archi = [];
       for (const mem of e.members) {
         if (!mem || !Array.isArray(mem.geometry)) continue;
         if (mem.role && mem.role !== 'outer') continue;
         const p = mem.geometry.filter(g => g && typeof g.lat === 'number');
-        // Un pezzo di multipoligono quasi mai si chiude da solo: si tratta
-        // come un anello comunque, chiudendolo. Il bordo che ne esce non è
-        // quello vero al metro, ma per tagliarlo con un raggio va bene —
-        // e l'alternativa è ricomporre i multipoligoni di OSM, che è un
-        // lavoro che qui non paga.
-        aggiungi(p, tags, true, tags.name);
+        if (p.length > 1) archi.push(p);
       }
+      const cuciti = acqueCuciAnelli(archi);
+      cuciti.anelli.forEach(a => aggiungi(a, tags, true, tags.name));
+      cuciti.aperti.forEach(a => aggiungi(a, tags, true, tags.name));
     }
   }
   return fuori;
@@ -3225,6 +3647,14 @@ function acqueDimentica() {
 function acqueApplica(lat, lon, tracciati, fonte) {
   acque.lat = lat;
   acque.lon = lon;
+  // Il tracciamento dei raggi è la parte che non è una richiesta: settecento
+  // e venti raggi contro i bordi di tutto quello che è arrivato. Dura pochi
+  // millisecondi e quindi il novanta per cento non fa in tempo a comparire,
+  // ma la barra dev'essere agganciata **qui** e non solo alla rete: se un
+  // giorno arriva una laguna da diecimila poligoni, il posto in cui la barra
+  // si ferma è già quello giusto e dice già la cosa giusta.
+  acque.avanzamento = 0.9;
+  terrenoBarraAggiorna();
   const tagli = acqueTaglia(tracciati, lat, lon, raggioAcque() * 1000);
   acque.sommerso = !!(tagli.sommersi && tagli.sommersi.size);
   acque.bande = acqueBandeDaTagli(tagli);
@@ -3286,13 +3716,18 @@ function acqueCarica(forza) {
 
   acque.stato = 'in-corso';
   acque.motivo = '';
+  acque.avanzamento = 0;
   terrenoAggiornaPannello();
 
   // In coda alle altre due richieste a OpenStreetMap, come le vette dietro
   // ai paesi: è lo stesso servizio pubblico, e tre colpi nello stesso
   // istante sono il modo più rapido per prendersi un «troppe richieste».
   acque.promessa = Promise.resolve(cime.promessa).catch(() => {})
-    .then(() => acqueDaOverpass(lat, lon))
+    .then(() => {
+      acque.avanzamento = 0.2;
+      terrenoBarraAggiorna();
+      return acqueDaOverpass(lat, lon);
+    })
     .then(tracciati => {
       acqueApplica(lat, lon, tracciati, 'osm');
       // Zero specchi d'acqua è una risposta, non un errore — mezza Italia
@@ -3346,15 +3781,41 @@ function acqueDepressione(quota, occhio, m) {
 //
 // Se la quota misurata nel punto esatto è più bassa ancora, vince lei: è la
 // stessa superficie, misurata meglio.
+//
+// Ma «il più basso dell'anello» va chiesto ai campioni che stanno **davvero
+// sull'acqua in cui si sta**, non a tutti. Su un anello di centocinquanta
+// metri ci può cascare un fosso, uno scavo, il fondo di una valletta accanto:
+// tutta roba più bassa dell'acqua, e presa per la superficie manda l'occhio
+// sotto il livello del lago — che è lo stesso errore di prima col segno
+// girato. Quali campioni sono acqua nostra lo dicono le bande: la prima banda
+// di una direzione, quando comincia **ai piedi**, è lo specchio in cui si sta,
+// e i campioni che ci cadono dentro sono la sua superficie.
+//
+// Quando nessun campione ci casca — un laghetto o un fiume più stretti del
+// primo anello — si torna al minimo dell'anello, che è comunque un limite
+// superiore onesto (la riva sta sopra l'acqua, non sotto). Quel caso si
+// aggiusta da sé: la quota resta segnata come stimata, `terrenoDaCompletare`
+// la richiede, e quando la misura del punto arriva vince lei.
 function acqueQuotaSuperficie() {
   const nd = TERRENO_DISTANZE.length;
-  let minimo = null;
+  let acquaMin = null, anelloMin = null;
   if (terreno.quote) {
     for (let i = 0; i < TERRENO_DIREZIONI; i++) {
-      const q = terreno.quote[i * nd];
-      if (typeof q === 'number' && (minimo === null || q < minimo)) minimo = q;
+      const q0 = terreno.quote[i * nd];
+      if (typeof q0 === 'number' && (anelloMin === null || q0 < anelloMin)) anelloMin = q0;
+      // Fin dove arriva, in questa direzione, l'acqua che comincia ai piedi.
+      const banda = acque.bande
+        ? acque.bande[Math.round(i * TERRENO_PASSO_AZ / ACQUE_PASSO_AZ) % ACQUE_DIREZIONI] : null;
+      if (!banda || !banda.length || banda[0][0] > 0) continue;
+      const fin = banda[0][1];
+      for (let k = 0; k < nd; k++) {
+        if (TERRENO_DISTANZE[k] * 1000 > fin) break;
+        const q = terreno.quote[i * nd + k];
+        if (typeof q === 'number' && (acquaMin === null || q < acquaMin)) acquaMin = q;
+      }
     }
   }
+  let minimo = acquaMin !== null ? acquaMin : anelloMin;
   if (typeof terreno.quota === 'number' && !terreno.quotaStimata) {
     minimo = minimo === null ? terreno.quota : Math.min(minimo, terreno.quota);
   }
