@@ -934,7 +934,11 @@ function aurCollega() {
     slitta.addEventListener('input', () => aurImpostaKpSimulato(parseFloat(slitta.value)));
   }
   const torna = document.getElementById('skymap-aurora-vero');
-  if (torna) torna.addEventListener('click', () => aurImpostaKpSimulato(null));
+  if (torna) torna.addEventListener('click', () => {
+    aurImpostaKpSimulato(null);
+    // Un tasto vero e proprio, non la slitta: chiude come ogni altro comando
+    if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
+  });
   aurAggiornaPannello();
 }
 
