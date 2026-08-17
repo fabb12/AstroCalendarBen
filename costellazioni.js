@@ -2929,6 +2929,9 @@ function costTornaAllElenco() {
 window.costAlternaArte = function () {
   cost.arte = !cost.arte;
   costAggiornaTastoArte();
+  // È un comando effettivo come gli altri tasti del pannello Filtri: si
+  // chiude subito, e la mappa torna visibile per guardare il risultato.
+  if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
 };
 
 function costAggiornaTastoArte() {

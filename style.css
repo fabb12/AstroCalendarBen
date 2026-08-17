@@ -4024,6 +4024,27 @@ body input.casella-data:hover { border: 0; }
   .tasto-segmento { min-height: 34px; padding: 7px 4px; font-size: 0.74rem; }
   .riga-comandi { gap: 6px; }
 
+  /* I bottoni di comando delle schede Visualizzazione, Filtri e Navigazione:
+     in colonna singola erano tredici righe per aprire un solo pannello, e
+     coprivano la mappa più a lungo di quanto serva a leggerli. Affiancati a
+     due per riga si dimezza l'altezza del pannello; il nome che non ci sta
+     si taglia con i puntini invece di spingere il vicino fuori dalla
+     colonna, o di andare a capo dentro al bottone stesso. */
+  .riga-tasti-griglia {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .riga-tasti-griglia .tasto-cielo {
+    min-width: 0;
+    min-height: 40px;
+    padding: 7px 10px;
+    font-size: 0.76rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   /* --- La barra del tempo su uno schermo stretto ---
      Il conto, su un telefono da 360 pixel: 16 di margini, 16 di imbottitura,
      5 spazi da 5, e in fila 36 (⟲) + 36 (−) + 36 (+) + 36 (play) più la

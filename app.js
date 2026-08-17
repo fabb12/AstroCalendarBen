@@ -18497,7 +18497,13 @@ function skyCostruisciElenco() {
       `<div class="astri-famiglia">${chip}</div></div>`;
   }).join('');
   cont.querySelectorAll('.chip-astro').forEach(btn => {
-    btn.addEventListener('click', () => skyImpostaTarget(btn.dataset.astro));
+    // Scegliere un astro è l'azione, non la navigazione: il pannello si
+    // chiude subito, come per ogni altro comando effettivo, così la mappa
+    // torna visibile per guardare l'oggetto appena scelto.
+    btn.addEventListener('click', () => {
+      skyImpostaTarget(btn.dataset.astro);
+      skyMostraGruppo('');
+    });
   });
   cont.dataset.pronto = 'si';
   skyAggiornaStileElenco();
@@ -20551,12 +20557,14 @@ function inizializzaSkymap() {
       try { localStorage.removeItem(CHIAVE_SKY_CAMERA); } catch (e) { /* niente storage */ }
       skySincronizzaCampoFotocamera();
       skyAvviso('camera-taratura', 'Taratura della fotocamera azzerata.', 3000);
+      skyMostraGruppo('');
       return;
     }
     // Tornare al campo normale da un quarto di grado è un balzo di duecento
     // volte: fatto di colpo si perde ogni riferimento, fatto scivolando si
     // vede il cielo allargarsi e si capisce da dove si stava venendo
     skyImpostaFov(55, { morbido: true });
+    skyMostraGruppo('');
   });
   collega('skymap-btn-centra', () => {
     const voce = skyOggettoScelto();
