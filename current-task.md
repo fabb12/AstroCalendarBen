@@ -2,131 +2,81 @@
 
 Niente in corso.
 
-## Ultimo lavoro finito — il paesaggio che ci metteva un'eternità
+## Ultimo lavoro finito — i nomi delle vette vicine
 
-Chiesto: capire perché il caricamento dei dati ambientali (quote, laghi,
-vette, paesi) ci mette tanto, e sistemarlo. La risposta è che non era **una**
-lentezza: erano cinque attese messe in fila indiana, e nessuna delle cinque si
-vedeva leggendo il codice da vicino, perché ognuna era la cura giusta di un
-problema vero — solo pagata a un prezzo che nessuno aveva misurato.
+Chiesto: verificare perché i nomi delle cime non compaiono quando le cime
+sono molto vicine alla posizione attuale.
 
-Vale la pena tenere l'ordine in cui costavano, perché è controintuitivo.
+### La risposta
 
-### 1. Il freno del rubinetto era contato due volte (§4)
+Non è un problema di dati e non è la cernita di `cimeVisibili()`. Le vette
+vicine arrivano da Overpass (l'anello dei 25 km le prende tutte, senza filtro
+sulla quota), passano l'occlusione senza fatica — `terrenoCrestaDavanti` si
+ferma all'85% della loro distanza, e per un pendio che sale il fianco davanti
+sta sempre sotto alla punta — e finiscono in cima all'elenco, perché
+`cimeVisibili` lo ordina per altezza apparente decrescente.
 
-Chi si prendeva un 429 chiamava `terrenoFrena`, che sposta in avanti il
-`liberoDa` — cioè la pausa era **già imposta a tutte** le richieste di quella
-fonte — e poi dormiva *anche* per conto suo 1, 4, 11 secondi
-(`TERRENO_ATTESE_MS`) prima di rimettersi in coda. Le due si sommavano in fila
-indiana. Le attese esplicite non ci sono più: chi prende un no si rimette in
-coda subito, e a tenere il passo è il rubinetto, che è l'unico che sa quanto il
-servizio sta reggendo adesso.
+Si perdevano **nell'impaginazione**, in `skyNomiCime` (app.js §, blocco «I nomi
+delle montagne»). L'etichetta è una striscia inclinata di 48°, e il cielo che
+le serve sopra non è il filo — dodici pixel — ma tre quarti della propria
+lunghezza. Misurato con le metriche vere di Chromium sul carattere dell'app:
+«Monte Bianco 4808 m» a corpo 12 è larga 121 px, cioè vuole **106 px di
+franchigia** sopra la punta; «Grigna Settentrionale» ne vuole 141.
 
-### 2. Il freno si tirava una volta per richiesta, non per ondata
+Il ciclo che allungava il filo poteva andare in una direzione sola:
 
-Sei richieste in volo si prendono sei no, che sono **la stessa notizia detta
-sei volte**. Il passo veniva moltiplicato per 2,2 sei volte di fila — per
-centoundici — e in due ondate era al tetto di sei secondi: per ventiquattro
-richieste, due minuti e mezzo di sola attesa. Misurato con un servizio che
-rifiutava una richiesta su quattro: il terreno **non arrivava mai** (28
-richieste HTTP in 90 secondi, e le 24 non finivano). Adesso `terrenoFrena`
-tiene un `frenatoFino` e i no della stessa ondata lo trovano già tirato.
+```js
+if (ay + sin * largo < 4) break;   // sin = sin(-48°) = -0,743
+```
 
-### 3. Si girava la manopola sbagliata
+Per una punta disegnata in quella fascia la condizione era vera già al primo
+tentativo (`t = 0`), il ciclo usciva, e il `if (!messa) continue;` buttava via
+la vetta — senza consumare nemmeno uno dei posti di `skyCimeMaxNomi()`, quindi
+senza lasciare traccia da nessuna parte.
 
-Questa l'ha trovata una sonda sul rubinetto, non la lettura del codice: con un
-429 su quattro, il rubinetto si assestava a 700 ms di distanza con **cinque
-richieste concesse insieme e zero in volo**. Cioè teneva aperta una concorrenza
-che non usava, e serializzava tutto su un buco di mezzo secondo: 25 × 700 ms
-sono i 18 secondi che si misuravano, e non c'entravano né la latenza né le
-riprove. Un 429 dice «troppe **insieme**», e allargare il buco fra le partenze
-risponde a una domanda che nessuno ha fatto. Adesso è AIMD, come il TCP: la
-concorrenza si dimezza a ogni no e cresce di uno a ogni sì, il passo si allarga
-appena (1,25) e si ristringe da sé.
+E la punta disegnata in cima allo schermo è sempre **quella qui davanti**: è
+vicina, quindi è alta. Restavano nominate le lontane, che stanno rasenti
+all'orizzonte. Cioè spariva esattamente il monte di cui uno chiede il nome.
 
-Da qui vengono anche tre numeri più bassi di prima e uno scritto meglio:
-`TERRENO_DISTANZA_MAX_MS` a 900 ms — ricavato dal lavoro (24 richieste per un
-orizzonte che si è disposti ad aspettare una ventina di secondi) e non dal gusto
-—, il tetto che non può stare **sotto** al ritmo dichiarato dalla fonte (con
-900 ms secchi, frenare OpenTopoData la faceva andare più veloce della richiesta
-al secondo che lei stessa dichiara), e `TERRENO_NO_PER_CAMBIARE` a 5: cambiare
-porta **costa**, perché le due riserve dichiarano un decimo della portata di
-Open-Meteo, e con 3 no di fila si abbandonava anche una fonte che stava solo
-lavorando piano (provato: 31 s → 58 s e incompleto).
+Quanto costava, misurato facendo girare la funzione vera in Chromium con
+vette finte e la terna di `skyBase()`:
 
-### 4. Le due barriere di `terrenoCostruisci` (§5)
-
-- **La quota di casa** aspettava davanti a tutte con un `await`. Un punto solo,
-  e per giunta un punto che si sa già stimare dall'anello di campioni a 150 m.
-  Adesso parte per prima ma **insieme** alle altre; se non arriva si va avanti
-  con la stima, che è quello che succedeva anche prima quando quella richiesta
-  falliva.
-- **Il giro grosso** era separato dall'affinamento da un `Promise.all`. Una sola
-  richiesta del primo giro che si riprovava teneva il rubinetto fermo — niente
-  in volo, sedici richieste pronte a partire — per tutto il tempo delle sue
-  riprove. La barriera non serviva: quello che il giro grosso deve garantire è
-  di essere **disegnato per primo**, e per quello basta contarne i pezzi.
-
-### 5. Le tre richieste a Overpass una dietro l'altra (§10)
-
-`acqueCarica` si accodava a `cime.promessa`, e le vette ai paesi: la richiesta
-con la query più larga e la sveglia più lunga stava dietro a tutte e due, ognuna
-col suo caso peggiore. E il caso peggiore era **4× la sveglia**, perché
-`overpassChiedi` provava le due istanze in fila indiana e poi la query di
-ripiego rifaceva la stessa fila: 30+30+30+30, due minuti per le acque.
-
-Il punto che rende tutto questo invisibile è che un'istanza di Overpass carica
-non risponde «carico»: **tace**, e tacere consuma tutta la sveglia. Adesso c'è
-un rubinetto (`overpassInFila`, due per volta a 600 ms, ognuna da un'istanza
-diversa — la politesse che l'attesa in fila indiana comprava, senza pagarla in
-secondi) e l'**affiancamento** dentro `overpassChiedi`: dopo 3,5 s parte anche
-l'altra porta, vince chi risponde per prima, la perdente si abortisce.
-
-### E una cosa che non era rete affatto
-
-Il tracciamento dei raggi delle acque (`acqueTaglia`) gira **sul filo del
-disegno**: finché non finisce, il planetario non disegna un fotogramma. In un
-posto normale sono 40 ms; col tetto di `out geom 1200` riempito sono 800 ms su
-un computer, cioè due o tre secondi di schermo fermo su un telefono — e proprio
-nell'istante in cui l'acqua stava per comparire. Adesso si lavora a scaglioni
-di 8 ms (`acqueTagliaAScaglioni`), e il conto è lo stesso: `acqueTagliaUno` è
-una funzione sola. `acqueApplica` resta **sincrona** di proposito — a cedere il
-turno è la strada di caricamento, non la posa dei risultati — e la prima
-versione che la faceva `async` ha rotto sei prove del §20, che leggono
-`acque.bande` nella riga dopo. Era il codice a dirlo, e aveva ragione.
-Micro-ottimizzazioni in coda: le tabelle di seni e coseni non si rifanno più a
-ogni chiamata (1440 funzioni trigonometriche per niente), conversione in metri e
-riquadro in una passata sola, la radice quadrata del lato dei fiumi una volta
-per lato invece di una per raggio. Fra l'11% e il 24% in meno.
-
-### I numeri, misurati nell'app vera con servizi finti
-
-| scenario | | prima | dopo |
+| schermo | campo | vista su | sparivano |
 |---|---|---|---|
-| rete buona | primo orizzonte vero | 1,5 s | **0,9 s** |
-| | terreno completo | 3,5 s | **2,4 s** |
-| 429 su una richiesta su 4 | primo orizzonte vero | 3,3 s | **1,6 s** |
-| | terreno completo | **94 s** | **6,7 s** |
-| un'istanza OSM che tace 40 s | laghi e fiumi | 30,6 s | **1,1 s** |
-| | paesi | 15,7 s | **3,7 s** |
+| telefono in piedi (360×625) | 60° | orizzonte | tutte sopra i **20°** apparenti |
+| telefono in piedi | 30° | +10° | tutte sopra i ~**17°** |
+| telefono girato (740×280) | 60° | +8° | tutte sopra i ~**7°** |
 
-Una trappola in cui sono caduto e che vale la pena non ripetere: togliendo la
-barriera fra i due giri, una richiesta del giro grosso che si riprovava tornava
-in coda **in fondo**, cioè dietro alle ottanta direzioni dell'affinamento. Il
-totale migliorava e il primo orizzonte vero peggiorava (3,3 → 7,7 s): si era
-guadagnato su tutto tranne che sull'unico numero che l'utente guarda. Da lì le
-due classi di precedenza di `terrenoInFila`.
+Venti gradi apparenti sono un monte settecento metri più alto a due
+chilometri: la collina dietro casa.
 
-### Verifica
+### La cura
 
-`verifica.html`: **467 prove passate, 0 fallite** (il baseline era 463). Le
-nuove: la raffica che frena una volta e non sei, la rotazione dopo dei no di
-fila, il sì in mezzo ai no che non fa abbandonare una fonte che funziona, e nel
-§20 che il tracciamento a scaglioni dia **gli stessi numeri** di quello in un
-colpo. Il banco ha ora un `attendi()` per le prove che devono aspettare, e il
-verdetto in fondo alla pagina non si scrive più finché non sono tornate.
+`prova(verso)` in `skyNomiCime`: si prova il lato buono e poi l'altro. Quando
+sopra non c'è posto l'etichetta si appende **sotto** la punta, con
+l'inclinazione ribaltata — è la stessa figura specchiata, quindi le etichette
+di sotto restano parallele fra loro e continuano a impacchettarsi come quelle
+di sopra, che è tutto il motivo per cui sono inclinate.
 
-Provato anche nell'app vera (Chromium headless, servizi finti per quote e
-Overpass, service worker escluso): planetario aperto, terreno completo
-120/120 direzioni, 316 bande d'acqua, le 4 richieste Overpass spartite fra le
-due istanze, nessun errore di console.
+Provare **tutti e due** i lati e non solo quello preferito non è un di più: col
+solo ribaltamento le vette vicine si prendevano il cielo che prima era di
+quelle di mezza distanza, e nella prova a 60° sull'orizzonte «Punta Media»
+perdeva il nome che aveva. Sarebbe stata la stessa perdita di prima, spostata
+di qualche pixel.
+
+`verso` e `incl` viaggiano dentro a `poste`: li usano il filo (che si ferma
+dentro alla pillola dal lato da cui arriva) e la `ctx.rotate` finale.
+
+Dopo: ogni vetta che ha la punta dentro alla tela prende il suo nome, in tutte
+e nove le combinazioni di campo e inclinazione provate. Le sole che restano
+mute sono quelle con la punta fuori dallo schermo, che è come dev'essere.
+
+### Quello che non è stato fatto, e perché
+
+Nessuna prova in `verifica.html`: quella pagina non carica `app.js` (§16 e §15
+provano `costellazioni.js` e `terreno.js`), e questa è geometria di
+impaginazione che vive tutta lì. Aggiungercelo vorrebbe dire mettere `app.js`
+in quella pagina accanto agli altri moduli, che è un cambio di struttura più
+grande della correzione. La verifica è stata fatta caricando `app.js` in una
+pagina vuota con Playwright e chiamando `skyNomiCime` per davvero — funziona
+senza errori, quindi la strada esiste, se un giorno vale la pena aprirla.
