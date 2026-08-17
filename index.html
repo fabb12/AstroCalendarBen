@@ -877,6 +877,23 @@
           <span class="rotella-cielo" aria-hidden="true"></span>
           <span>Sto preparando il cielo: 5.044 stelle in arrivo…</span>
         </div>
+
+        <!-- La barra del terreno. La percentuale c'era già, ma scritta nella
+             riga di stato del pannello Visualizzazione — che all'apertura è
+             chiuso, quindi non la leggeva nessuno: chi apriva il planetario
+             vedeva l'orizzonte finto per qualche secondo senza un posto in cui
+             guardare per sapere che quello vero stava arrivando. Copre tutte e
+             quattro le fasi (quote, paesi, vette, acque) e anche il
+             tracciamento dei raggi, che non è una richiesta di rete. La
+             riempie `terrenoBarraAggiorna()`, §9-ter di terreno.js. -->
+        <div id="terreno-progress" class="barra-terreno hidden" role="progressbar"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+             aria-label="Quanto manca alla forma vera del terreno">
+          <div class="barra-terreno-guscio" aria-hidden="true">
+            <i data-barra-terreno></i>
+          </div>
+          <span class="barra-terreno-testo" data-testo-terreno></span>
+        </div>
       </div>
 
       <!-- Avvisi su permessi mancanti (posizione, bussola) -->
