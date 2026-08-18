@@ -3790,7 +3790,7 @@ function acqueTagliaUno(tr, id, tagli, lat, lon, limiteM) {
   // sta in mezzo come in un lago.
   if (!tr.corrente && tr.chiuso && minX <= 0 && maxX >= 0 && minY <= 0 && maxY >= 0 &&
       acquePuntoDentro(p, n)) {
-    tagli.sommersi.add(id);
+    tagli.sommersi.add(id); if (!tagli.nomiSommersi) tagli.nomiSommersi = new Map(); tagli.nomiSommersi.set(id, tr.nome);
   }
 
   const lati = tr.chiuso ? n : n - 1;
@@ -3932,28 +3932,28 @@ function acqueBandeDaTagli(tagli) {
       lista.sort((x, y) => x.t - y.t);
       for (const c of lista) {
         if (c.fiume) {
-          pezzi.push([Math.max(0, c.t - c.prof / 2), c.t + c.prof / 2, 1]);
+          pezzi.push([Math.max(0, c.t - c.prof / 2), c.t + c.prof / 2, 1, c.nome]);
           continue;
         }
-        let ts = perPoligono.get(c.id);
-        if (!ts) { ts = []; perPoligono.set(c.id, ts); }
-        ts.push(c.t);
+        let p = perPoligono.get(c.id); if (!p) { p = { ts: [], nome: c.nome }; perPoligono.set(c.id, p); } p.ts.push(c.t);
       }
     }
 
-    perPoligono.forEach((ts, id) => {
+    perPoligono.forEach((p, id) => {
+      let ts = p.ts;
+      let nome = p.nome;
       let k = 0;
       // Ci stiamo dentro: il primo taglio è la riva, e l'acqua comincia **ai
       // piedi**. È la banda che prima non veniva generata affatto, e la sua
       // mancanza è tutto il guasto: senza di lei chi sta in mezzo a un lago
       // vede l'acqua cominciare dalla riva opposta.
-      if (sommersi && sommersi.has(id)) { pezzi.push([0, ts[0], 0]); k = 1; }
-      for (; k + 1 < ts.length; k += 2) pezzi.push([ts[k], ts[k + 1], 0]);
+      if (sommersi && sommersi.has(id)) { pezzi.push([0, ts[0], 0, nome]); k = 1; }
+      for (; k + 1 < ts.length; k += 2) pezzi.push([ts[k], ts[k + 1], 0, nome]);
       // Un taglio spaiato in fondo (capita ai bordi del riquadro scaricato,
       // dove il poligono è tagliato a metà) si chiude sul limite invece di
       // buttarlo: un lago che continua oltre i venticinque chilometri è
       // comunque un lago fino a lì.
-      if (k < ts.length) pezzi.push([ts[k], ts[k] + 200, 0]);
+      if (k < ts.length) pezzi.push([ts[k], ts[k] + 200, 0, nome]);
     });
 
     // Sommersi in uno specchio che in questa direzione non ha nessun taglio:
@@ -3963,7 +3963,7 @@ function acqueBandeDaTagli(tagli) {
     // è una ragione per non disegnarla.
     if (sommersi) {
       sommersi.forEach(id => {
-        if (!perPoligono.has(id)) pezzi.push([0, limite, 0]);
+        if (!perPoligono.has(id)) pezzi.push([0, limite, 0, (tagli.nomiSommersi && tagli.nomiSommersi.get(id)) || '']);
       });
     }
     if (!pezzi.length) { bande[b] = null; continue; }
@@ -3976,9 +3976,9 @@ function acqueBandeDaTagli(tagli) {
         ultimo[1] = Math.max(ultimo[1], p[1]);
         // Un lago che inghiotte un fiume resta un lago: il tipo lo decide
         // il pezzo più lungo, che è quello che si vede.
-        if (p[1] - p[0] > ultimo[1] - ultimo[0]) ultimo[2] = p[2];
+        if (p[1] - p[0] > ultimo[1] - ultimo[0]) { ultimo[2] = p[2]; ultimo[3] = p[3]; } else if (!ultimo[3] && p[3]) { ultimo[3] = p[3]; }
       } else {
-        uniti.push([Math.round(p[0]), Math.round(p[1]), p[2]]);
+        uniti.push([Math.round(p[0]), Math.round(p[1]), p[2], p[3]]);
       }
     }
     bande[b] = uniti.length ? uniti : null;
@@ -4384,7 +4384,7 @@ function acqueVisibili() {
     if (!lista) continue;
     const az = b * ACQUE_PASSO_AZ;
     const tenute = [];
-    for (const [vicino, lontano, tipo] of lista) {
+    for (const [vicino, lontano, tipo, nome] of lista) {
       if (vicino > limite) continue;
       const fine = Math.min(lontano, limite);
       if (!(fine > vicino)) continue;
@@ -4427,7 +4427,7 @@ function acqueVisibili() {
       // è tutto il pezzo di schermo sotto l'orizzonte, e va disegnato.
       if (!(fine > taglio + 1) && !(taglio <= 0.5 && fine > 0.5)) continue;
       tenute.push({
-        vicino: taglio, lontano: fine, tipo,
+        vicino: taglio, lontano: fine, tipo, nome,
         depVicino: dep(taglio), depLontano: altoFine, quota
       });
     }
@@ -4442,6 +4442,100 @@ function acqueVisibili() {
 // Che acqua c'è in quella direzione, pronta da disegnare. `null` quando non
 // ce n'è: è la domanda che il planetario fa per ogni colonna dello schermo,
 // e deve costare quanto una lettura di array.
+
+// Raggruppa i segmenti d'acqua visibili per nome, per poterci mettere le etichette.
+function acqueDaDisegnare() {
+  const viste = acqueVisibili();
+  if (!viste) return [];
+
+  const perNome = new Map();
+  for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+    const lista = viste[b];
+    if (!lista) continue;
+    const az = b * ACQUE_PASSO_AZ;
+    for (const v of lista) {
+      if (!v.nome) continue;
+      let record = perNome.get(v.nome);
+      if (!record) {
+        record = {
+          nome: v.nome,
+          // accumula i vari segmenti per trovare un centro
+          azMin: az, azMax: az,
+          migliorVicino: v.vicino,
+          migliorLontano: v.lontano,
+          migliorDepVicino: v.depVicino,
+          migliorQuota: v.quota,
+          tipo: v.tipo,
+          pezzi: []
+        };
+        perNome.set(v.nome, record);
+      }
+
+            // Handle wrapping correctly
+      let inRange = false;
+      if (record.azMin <= record.azMax) {
+         if (az >= record.azMin && az <= record.azMax) inRange = true;
+      } else {
+         if (az >= record.azMin || az <= record.azMax) inRange = true;
+      }
+
+      if (!inRange) {
+         // Need to expand bounds
+         let distToMin = record.azMin >= az ? record.azMin - az : (360 - az) + record.azMin;
+         let distToMax = az >= record.azMax ? az - record.azMax : az + (360 - record.azMax);
+         if (distToMin < distToMax) {
+            record.azMin = az;
+         } else {
+            record.azMax = az;
+         }
+      }
+
+      record.pezzi.push({ az, vicino: v.vicino, lontano: v.lontano, depVicino: v.depVicino, quota: v.quota });
+
+      if (v.lontano - v.vicino > record.migliorLontano - record.migliorVicino) {
+         record.migliorVicino = v.vicino;
+         record.migliorLontano = v.lontano;
+         record.migliorDepVicino = v.depVicino;
+         record.migliorQuota = v.quota;
+      }
+    }
+  }
+
+  const finali = [];
+  for (const record of perNome.values()) {
+     // troviamo un azimut "centrale" basato sul baricentro
+     let azCentro = record.azMin + (record.azMax - record.azMin) / 2;
+     if (record.azMin > record.azMax) { // wrapped around 0
+        azCentro = record.azMin + ((record.azMax + 360) - record.azMin) / 2;
+        if (azCentro >= 360) azCentro -= 360;
+     }
+
+     // Cerchiamo il pezzo più vicino a questo azimut
+     let pezzoMigliore = record.pezzi[0];
+     let bestDist = Infinity;
+     for (const p of record.pezzi) {
+        let dist = Math.abs(p.az - azCentro);
+        if (dist > 180) dist = 360 - dist;
+        if (dist < bestDist) {
+           bestDist = dist;
+           pezzoMigliore = p;
+        }
+     }
+
+     finali.push({
+        nome: record.nome,
+        az: pezzoMigliore.az,
+        // The label should be near the water but not exactly at the nearest shore if it's too close.
+        // It's usually good to put it somewhere on the water surface.
+        alt: pezzoMigliore.depVicino,
+        quota: pezzoMigliore.quota,
+        km: pezzoMigliore.vicino / 1000,
+        tipo: record.tipo
+     });
+  }
+  return finali;
+}
+
 function acqueA(az) {
   const v = acqueVisibili();
   if (!v) return null;
