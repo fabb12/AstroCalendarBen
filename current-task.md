@@ -2,81 +2,79 @@
 
 Niente in corso.
 
-## Ultimo lavoro finito — i nomi delle vette vicine
+## Ultimo lavoro finito — i laghi e i fiumi del planetario
 
-Chiesto: verificare perché i nomi delle cime non compaiono quando le cime
-sono molto vicine alla posizione attuale.
+Chiesto: nel planetario i laghi e i fiumi sono rappresentati male, non sono
+realistici, e i nomi non si vedono.
 
-### La risposta
+Guardati **davvero**, non solo letti: un banco di prova apre la PWA in
+Chromium con un mondo finto (un lago grande in una conca, uno a ponente per il
+tramonto, un laghetto vicino, un fiume, e un modello del suolo che li
+circonda), intercetta Open-Meteo e Overpass e fa le istantanee del planetario.
+Senza quello, metà di quello che segue non si sarebbe visto.
 
-Non è un problema di dati e non è la cernita di `cimeVisibili()`. Le vette
-vicine arrivano da Overpass (l'anello dei 25 km le prende tutte, senza filtro
-sulla quota), passano l'occlusione senza fatica — `terrenoCrestaDavanti` si
-ferma all'85% della loro distanza, e per un pendio che sale il fianco davanti
-sta sempre sotto alla punta — e finiscono in cima all'elenco, perché
-`cimeVisibili` lo ordina per altezza apparente decrescente.
+### I nomi: si perdevano al terzo passo
 
-Si perdevano **nell'impaginazione**, in `skyNomiCime` (app.js §, blocco «I nomi
-delle montagne»). L'etichetta è una striscia inclinata di 48°, e il cielo che
-le serve sopra non è il filo — dodici pixel — ma tre quarti della propria
-lunghezza. Misurato con le metriche vere di Chromium sul carattere dell'app:
-«Monte Bianco 4808 m» a corpo 12 è larga 121 px, cioè vuole **106 px di
-franchigia** sopra la punta; «Grigna Settentrionale» ne vuole 141.
+Non era il disegno. Il nome di uno specchio d'acqua fa un viaggio lungo —
+Overpass → tracciato → incroci del raggio → banda → vista → etichetta — e
+`acqueTagliaUno` **non lo appendeva agli incroci**, mentre `acqueBandeDaTagli`
+lo andava a cercare lì (`c.nome`, sempre `undefined`). Misurato sul banco:
+286 bande con un nome dopo, **zero** prima.
 
-Il ciclo che allungava il filo poteva andare in una direzione sola:
+È un guasto dei peggiori da vedere, perché non rompe niente: i laghi si
+disegnavano uguali, e sullo schermo semplicemente non compariva nessuna
+etichetta — cosa che a un posto senza laghi nominati capita davvero.
 
-```js
-if (ay + sin * largo < 4) break;   // sin = sin(-48°) = -0,743
-```
+Adesso il nome viaggia appeso all'array dei tagli (`tagli.nomi`: una voce per
+specchio, non una per incrocio) e si legge nell'unico punto in cui una banda
+nasce. Le bande salvate in `localStorage` sono una tupla, e una tupla corta si
+rilegge benissimo restando senza la cosa nuova: perciò il salvataggio adesso è
+numerato (`ACQUE_VERSIONE`), se no chi aveva già aperto il planetario in un
+posto si teneva dei laghi senza etichetta per sempre.
 
-Per una punta disegnata in quella fascia la condizione era vera già al primo
-tentativo (`t = 0`), il ciclo usciva, e il `if (!messa) continue;` buttava via
-la vetta — senza consumare nemmeno uno dei posti di `skyCimeMaxNomi()`, quindi
-senza lasciare traccia da nessuna parte.
+### Dove si scrive il nome
 
-E la punta disegnata in cima allo schermo è sempre **quella qui davanti**: è
-vicina, quindi è alta. Restavano nominate le lontane, che stanno rasenti
-all'orizzonte. Cioè spariva esattamente il monte di cui uno chiede il nome.
+`acqueDaDisegnare` era rimasta a metà (commenti in inglese, direzione centrale
+presa con min/max invece che con la media circolare, etichetta agganciata alla
+riva vicina) e `skyNomiAcque` copiava il modo delle **montagne**: filo,
+pillola inclinata di 48°, pallino al posto del triangolino. Non è sbagliato di
+poco, è la domanda sbagliata — una vetta è un punto da indicare in mezzo a
+dieci punte, uno specchio d'acqua è una superficie e il posto per il suo nome
+ce l'ha dentro. Adesso il nome si scrive **sull'acqua**, orizzontale e in
+corsivo come su una carta geografica, e se non ci sta non si scrive.
 
-Quanto costava, misurato facendo girare la funzione vera in Chromium con
-vette finte e la terna di `skyBase()`:
+### Il disegno: quattro cose mancavano
 
-| schermo | campo | vista su | sparivano |
-|---|---|---|---|
-| telefono in piedi (360×625) | 60° | orizzonte | tutte sopra i **20°** apparenti |
-| telefono in piedi | 30° | +10° | tutte sopra i ~**17°** |
-| telefono girato (740×280) | 60° | +8° | tutte sopra i ~**7°** |
+1. **Il colore era piatto.** Il gradiente si costruiva fra i due *baricentri*
+   dei bordi della striscia: su una striscia larga trenta gradi quei due punti
+   cadono quasi nello stesso posto, e lì il canvas non dipinge niente. Adesso
+   la rampa è **una per fotogramma** e vive sul cerchio dell'orizzonte come
+   quella del mare.
+2. **Non c'era l'aureola.** Il mare ce l'ha da un pezzo; senza, un lago col
+   Sole appena sopra restava del suo grigio medio. Era la cosa più lontana dal
+   vero che ci fosse in questa vista.
+3. **Non c'erano le onde.** `SKY_ACQUA_CALMA` accorciava la lunghezza d'onda
+   al 22%, cioè sotto ai quattro pixel apparenti sotto i quali
+   `skyMarePesiDiFascia` spegne tutto. E siccome le onde di un lago restano
+   comunque sotto al pixel a qualunque distanza utile, quello che si vede da
+   lontano non sono le onde ma le **chiazze increspate** che il vento sposta —
+   larghe centinaia di metri, cioè gradi interi: `skyAcquaVentate`.
+4. **Il bordo di sotto era una riga dritta sospesa sopra la collina.**
+   L'occlusione tagliava l'acqua all'angolo della cresta *misurata*, ma sullo
+   schermo il dosso è disegnato più basso (il rilievo fine morde e non aggiunge
+   mai). Adesso l'acqua scende fino alla cresta **disegnata**, letta da
+   `skyCresteUltime` — i numeri che `skyDisegnaProfiloOrizzonte` ha appena
+   finito di calcolare per il panorama, nella stessa passata.
 
-Venti gradi apparenti sono un monte settecento metri più alto a due
-chilometri: la collina dietro casa.
+E una cosa che non c'era affatto: il **riflesso della montagna**. Guardando
+l'acqua a `dep` gradi sotto l'orizzonte si vede quello che sta a `dep` gradi
+sopra — sul mare il cielo, su un lago il monte dietro. Il confine è il profilo
+dei monti ribaltato, e disegnarlo come tale è la cosa che si riconosce a colpo
+d'occhio in qualunque fotografia di lago.
 
-### La cura
+### Costo e prove
 
-`prova(verso)` in `skyNomiCime`: si prova il lato buono e poi l'altro. Quando
-sopra non c'è posto l'etichetta si appende **sotto** la punta, con
-l'inclinazione ribaltata — è la stessa figura specchiata, quindi le etichette
-di sotto restano parallele fra loro e continuano a impacchettarsi come quelle
-di sopra, che è tutto il motivo per cui sono inclinate.
-
-Provare **tutti e due** i lati e non solo quello preferito non è un di più: col
-solo ribaltamento le vette vicine si prendevano il cielo che prima era di
-quelle di mezza distanza, e nella prova a 60° sull'orizzonte «Punta Media»
-perdeva il nome che aveva. Sarebbe stata la stessa perdita di prima, spostata
-di qualche pixel.
-
-`verso` e `incl` viaggiano dentro a `poste`: li usano il filo (che si ferma
-dentro alla pillola dal lato da cui arriva) e la `ctx.rotate` finale.
-
-Dopo: ogni vetta che ha la punta dentro alla tela prende il suo nome, in tutte
-e nove le combinazioni di campo e inclinazione provate. Le sole che restano
-mute sono quelle con la punta fuori dallo schermo, che è come dev'essere.
-
-### Quello che non è stato fatto, e perché
-
-Nessuna prova in `verifica.html`: quella pagina non carica `app.js` (§16 e §15
-provano `costellazioni.js` e `terreno.js`), e questa è geometria di
-impaginazione che vive tutta lì. Aggiungercelo vorrebbe dire mettere `app.js`
-in quella pagina accanto agli altri moduli, che è un cambio di struttura più
-grande della correzione. La verifica è stata fatta caricando `app.js` in una
-pagina vuota con Playwright e chiamando `skyNomiCime` per davvero — funziona
-senza errori, quindi la strada esiste, se un giorno vale la pena aprirla.
+Il disegno dell'acqua passa da 0,25 a ~0,6 ms per fotogramma (il profilo
+dell'orizzonte, accanto, ne costa 1,2). Il §20 di `verifica.html` ha nove
+prove in più sui nomi e sulle etichette: sul codice di prima ne falliscono
+cinque.

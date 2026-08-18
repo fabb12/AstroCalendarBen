@@ -4267,6 +4267,97 @@ if (typeof acqueTaglia !== 'function') {
     terrenoDimentica();
     acqueDimentica();
   }
+
+  // -------------------------------------------------------------------
+  // I nomi
+  //
+  // Il nome di uno specchio d'acqua fa un viaggio lungo — Overpass, il
+  // tracciato, gli incroci del raggio, la banda, la vista, l'etichetta — e
+  // per un pezzo si perdeva al terzo passo: `acqueTagliaUno` non lo appendeva
+  // agli incroci, e `acqueBandeDaTagli` lo andava a cercare lì. Il guasto è
+  // dei peggiori da vedere, perché **non rompe niente**: i laghi si
+  // disegnavano uguali, e sullo schermo semplicemente non compariva nessuna
+  // etichetta — cosa che a un posto senza laghi nominati capita davvero.
+  // Queste prove guardano il viaggio, non il disegno.
+  {
+    const tagli = acqueTaglia(acqueLeggiElementi([
+      cerchio(2500, 0, 400, { natural: 'water', water: 'lake', name: 'Lago Nominato' }),
+      cerchio(2500, 4000, 400, { natural: 'water', water: 'lake' }),
+      { type: 'way', tags: { waterway: 'river', name: 'Fiume Nominato', width: '40' },
+        geometry: [{ lat: LAT + 0.03, lon: LON - 0.03 }, { lat: LAT + 0.03, lon: LON + 0.03 }] }
+    ]), LAT, LON, 20000);
+    const bande = acqueBandeDaTagli(tagli);
+    const nomi = new Set();
+    let senzaNome = 0, fiumi = 0;
+    for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+      if (!bande[b]) continue;
+      for (const [, , tipo, nome] of bande[b]) {
+        if (nome) nomi.add(nome); else senzaNome++;
+        if (tipo === 1) fiumi++;
+      }
+    }
+    prova('il nome di un lago arriva fino alla banda', nomi.has('Lago Nominato'),
+      `nomi arrivati: ${Array.from(nomi).join(', ') || 'nessuno'}`);
+    prova('e anche quello di un fiume', nomi.has('Fiume Nominato'), `${fiumi} bande di corrente`);
+    prova('uno specchio senza nome resta senza nome', senzaNome > 0,
+      `${senzaNome} bande anonime, come dev'essere`);
+    prova('ogni banda porta una tupla di quattro',
+      bande.some(b => b && b.length && b[0].length === 4));
+
+    // Il salvataggio: una tupla di tre è di una forma vecchia e non va
+    // riletta, se no i laghi restano senza etichetta per sempre.
+    prova('la forma delle bande salvate è numerata', typeof ACQUE_VERSIONE === 'number' && ACQUE_VERSIONE >= 2,
+      `versione ${typeof ACQUE_VERSIONE === 'number' ? ACQUE_VERSIONE : '?'}`);
+  }
+
+  // -------------------------------------------------------------------
+  // Dove si appende l'etichetta
+  //
+  // `acqueDaDisegnare` mette insieme i pezzi di uno stesso specchio e dice
+  // dove scriverne il nome. Due cose sole, e tutt'e due sbagliano in
+  // silenzio: la direzione di mezzo, che per un lago a cavallo del nord va
+  // presa con la media **circolare** (con quella aritmetica il nome finisce a
+  // sud, cioè dalla parte opposta), e l'altezza, che va presa in mezzo alla
+  // banda e non su una riva — sulla riva l'etichetta esce dallo specchio.
+  {
+    const provaEtichette = (dNord, dEst, nome) => {
+      const nd = TERRENO_DISTANZE.length;
+      const grezze = new Array(TERRENO_DIREZIONI * nd).fill(200);
+      const avute = [];
+      for (let i = 0; i < TERRENO_DIREZIONI; i++) avute.push(i);
+      terreno.acceso = true;
+      acque.acceso = true;
+      // Chi guarda sta trecento metri più in alto dell'acqua, se no lo
+      // specchio è alla quota dell'occhio e viene scartato.
+      terrenoApplica(LAT, LON, terrenoMonta(grezze, avute, 500), 'prova', false);
+      acqueApplica(LAT, LON, acqueLeggiElementi([
+        cerchio(dNord, dEst, 600, { natural: 'water', water: 'lake', name: nome })
+      ]), 'prova');
+      return acqueDaDisegnare();
+    };
+
+    const nord = provaEtichette(3000, 0, 'Lago a Nord');
+    const uno = nord.find(e => e.nome === 'Lago a Nord');
+    prova('un lago nominato compare fra le etichette', !!uno, `${nord.length} etichette`);
+    if (uno) {
+      prova('la direzione è quella dello specchio', Math.abs(uno.az) < 6 || Math.abs(uno.az - 360) < 6,
+        `${uno.az.toFixed(1)}°`);
+      prova('l\'etichetta sta **dentro** alla banda e non su una riva',
+        uno.alt < 0 && uno.largoGradi > 1 && uno.altoGradi > 0,
+        `alt ${uno.alt.toFixed(2)}°, larga ${uno.largoGradi.toFixed(1)}°, alta ${uno.altoGradi.toFixed(2)}°`);
+    }
+
+    // Lo stesso lago messo **a cavallo del nord**: è il caso che la media
+    // aritmetica sbaglia di mezzo giro.
+    const cavallo = provaEtichette(2400, 0, 'Lago a Cavallo');
+    const due = cavallo.find(e => e.nome === 'Lago a Cavallo');
+    prova('un lago a cavallo del nord non finisce a sud',
+      !!due && (due.az < 30 || due.az > 330),
+      due ? `${due.az.toFixed(1)}°` : 'etichetta mancante');
+
+    terrenoDimentica();
+    acqueDimentica();
+  }
 }
 
 // =====================================================================

@@ -3761,6 +3761,14 @@ function acqueTagliVuoti(limiteM) {
   // scritto così in tre posti — nell'app e nelle prove — e la parità dei
   // tagli non si può leggere senza sapere da dove parte il raggio.
   tagli.sommersi = new Set();
+  // Come si chiama ogni specchio d'acqua, per numero. Il nome sta qui e non
+  // dentro a ogni incrocio perché gli incroci sono migliaia e il nome è uno:
+  // appenderlo a ognuno vorrebbe dire migliaia di stringhe ripetute, e —
+  // peggio — vorrebbe dire ricordarsi di appenderlo in tutti e due i punti
+  // in cui un incrocio nasce. È esattamente quello che non era stato fatto:
+  // i nomi arrivavano fino a qui e poi sparivano, e sullo schermo i laghi
+  // restavano senza etichetta (vedi `acqueBandeDaTagli`).
+  tagli.nomi = new Map();
   tagli.limite = limiteM;
   return tagli;
 }
@@ -3790,8 +3798,12 @@ function acqueTagliaUno(tr, id, tagli, lat, lon, limiteM) {
   // sta in mezzo come in un lago.
   if (!tr.corrente && tr.chiuso && minX <= 0 && maxX >= 0 && minY <= 0 && maxY >= 0 &&
       acquePuntoDentro(p, n)) {
-    tagli.sommersi.add(id); if (!tagli.nomiSommersi) tagli.nomiSommersi = new Map(); tagli.nomiSommersi.set(id, tr.nome);
+    tagli.sommersi.add(id);
   }
+
+  // Il nome si segna qui, una volta per specchio d'acqua: da qui in poi un
+  // incrocio è un numero e una distanza, e il numero basta a ritrovarlo.
+  if (tr.nome && tagli.nomi && !tagli.nomi.has(id)) tagli.nomi.set(id, tr.nome);
 
   const lati = tr.chiuso ? n : n - 1;
   for (let i = 0; i < lati; i++) {
@@ -3837,7 +3849,7 @@ function acqueTagliaUno(tr, id, tagli, lat, lon, limiteM) {
         const sen = Math.abs(det / len);
         const prof = Math.min(tr.largo * ACQUE_FIUME_MAX,
           tr.largo / Math.max(0.12, sen));
-        tagli[b].push({ t, fiume: true, prof });
+        tagli[b].push({ t, fiume: true, prof, id });
       } else {
         // `id` serve alla parità: gli incroci si accoppiano **per
         // poligono** e non tutti insieme. Con due laghi che si
@@ -3916,6 +3928,12 @@ function acqueBandeDaTagli(tagli) {
   const sommersi = (tagli && tagli.sommersi) || null;
   const dentroQualcosa = !!(sommersi && sommersi.size);
   const limite = (tagli && typeof tagli.limite === 'number') ? tagli.limite : Infinity;
+  // Come si chiama lo specchio numero `id`. Il nome viaggia appeso ai tagli
+  // (§ `acqueTagliVuoti`) e non a ogni incrocio, e si legge qui: è l'unico
+  // punto in cui una banda nasce, quindi è l'unico in cui il nome si può
+  // dimenticare una volta sola invece che in quattro.
+  const nomi = (tagli && tagli.nomi) || null;
+  const nomeDi = id => (nomi && nomi.get(id)) || '';
 
   for (let b = 0; b < ACQUE_DIREZIONI; b++) {
     const lista = tagli[b];
@@ -3932,16 +3950,18 @@ function acqueBandeDaTagli(tagli) {
       lista.sort((x, y) => x.t - y.t);
       for (const c of lista) {
         if (c.fiume) {
-          pezzi.push([Math.max(0, c.t - c.prof / 2), c.t + c.prof / 2, 1, c.nome]);
+          pezzi.push([Math.max(0, c.t - c.prof / 2), c.t + c.prof / 2, 1, nomeDi(c.id)]);
           continue;
         }
-        let p = perPoligono.get(c.id); if (!p) { p = { ts: [], nome: c.nome }; perPoligono.set(c.id, p); } p.ts.push(c.t);
+        let p = perPoligono.get(c.id);
+        if (!p) { p = { ts: [] }; perPoligono.set(c.id, p); }
+        p.ts.push(c.t);
       }
     }
 
     perPoligono.forEach((p, id) => {
-      let ts = p.ts;
-      let nome = p.nome;
+      const ts = p.ts;
+      const nome = nomeDi(id);
       let k = 0;
       // Ci stiamo dentro: il primo taglio è la riva, e l'acqua comincia **ai
       // piedi**. È la banda che prima non veniva generata affatto, e la sua
@@ -3963,7 +3983,7 @@ function acqueBandeDaTagli(tagli) {
     // è una ragione per non disegnarla.
     if (sommersi) {
       sommersi.forEach(id => {
-        if (!perPoligono.has(id)) pezzi.push([0, limite, 0, (tagli.nomiSommersi && tagli.nomiSommersi.get(id)) || '']);
+        if (!perPoligono.has(id)) pezzi.push([0, limite, 0, nomeDi(id)]);
       });
     }
     if (!pezzi.length) { bande[b] = null; continue; }
@@ -4009,6 +4029,16 @@ function acqueNomiGrandi(tracciati, lat, lon) {
 
 // --- Tenersele --------------------------------------------------------
 
+// Che forma hanno le bande salvate. Serve perché una banda salvata è una
+// **tupla** — `[vicino, lontano, tipo, nome]` — e il giorno in cui le si
+// aggiunge un posto, quelle già in `localStorage` non ce l'hanno: chi le
+// rilegge non se ne accorge, perché una tupla corta si legge benissimo, e
+// resta soltanto senza la cosa nuova. È successo esattamente con il nome:
+// chi aveva già aperto il planetario in un posto si teneva per sempre dei
+// laghi senza etichetta, e non c'era modo di distinguerli da un posto in cui
+// i laghi un nome non ce l'hanno davvero.
+const ACQUE_VERSIONE = 2;
+
 function acqueArchivio() {
   try {
     const v = JSON.parse(localStorage.getItem(CHIAVE_ACQUE) || 'null');
@@ -4026,7 +4056,7 @@ function acqueSalva(lat, lon, fonte) {
     const fitte = {};
     (acque.bande || []).forEach((b, i) => { if (b && b.length) fitte[i] = b; });
     posti.unshift({
-      lat, lon, fonte, quando: Date.now(), raggio: raggioAcque(),
+      lat, lon, fonte, quando: Date.now(), raggio: raggioAcque(), versione: ACQUE_VERSIONE,
       // `sommerso` va salvato con le bande: è geometria pura come loro, e
       // ricavarlo di nuovo vorrebbe dire tenersi i poligoni. Senza di lui, a
       // ogni riapertura chi sta in mezzo a un lago si ritroverebbe l'occhio
@@ -4044,7 +4074,10 @@ function acqueLeggiSalvate(lat, lon) {
     // Un elenco preso più stretto di quello chiesto non risponde alla
     // domanda: si riscarica. Più largo va benissimo — i raggi si tagliano
     // al momento di disegnare.
-    (v.raggio || 0) >= raggioAcque()) || null;
+    (v.raggio || 0) >= raggioAcque() &&
+    // E un elenco di una forma più vecchia si riscarica anche lui: sono tre
+    // richieste a Overpass, si pagano una volta.
+    (v.versione || 0) >= ACQUE_VERSIONE) || null;
 }
 
 function acqueDalSalvato(v) {
@@ -4428,7 +4461,14 @@ function acqueVisibili() {
       if (!(fine > taglio + 1) && !(taglio <= 0.5 && fine > 0.5)) continue;
       tenute.push({
         vicino: taglio, lontano: fine, tipo, nome,
-        depVicino: dep(taglio), depLontano: altoFine, quota
+        depVicino: dep(taglio), depLontano: altoFine, quota,
+        // Se la riva vicina è stata **tagliata** dal terreno o è la riva
+        // vera. Le due si disegnano diverse, ed è la differenza fra un lago
+        // che sta in una conca e un lago incollato sopra al prato: un bordo
+        // tagliato va portato giù fino alla cresta *disegnata* (il rilievo
+        // fine morde e non aggiunge, quindi la sagoma dipinta sta più in
+        // basso del numero del modello), una riva vera è dove è.
+        tagliata: taglio > vicino + 1
       });
     }
     if (tenute.length) fuori[b] = tenute;
@@ -4439,103 +4479,108 @@ function acqueVisibili() {
   return fuori;
 }
 
-// Che acqua c'è in quella direzione, pronta da disegnare. `null` quando non
-// ce n'è: è la domanda che il planetario fa per ogni colonna dello schermo,
-// e deve costare quanto una lettura di array.
+// Gli specchi d'acqua da **nominare**, uno per nome, con dove appendere
+// l'etichetta.
+//
+// Il nome di un lago non si appende dove si appende quello di una montagna,
+// e non è una scelta di gusto: una vetta è un punto — la punta — mentre un
+// lago è una **superficie**, e le carte geografiche il nome di uno specchio
+// d'acqua lo scrivono da sempre *dentro* allo specchio, non accanto. Quindi
+// qui non serve un punto e basta: serve sapere dove l'acqua è **larga**, per
+// poterci scrivere sopra.
+//
+// Uno stesso lago arriva qui a pezzi: settecentoventi direzioni, ognuna con
+// la sua banda, e in mezzo i tagli dell'occlusione. Si rimettono insieme per
+// nome, e di ognuno si tiene:
+//
+//   * `az` — la direzione **centrale**, che si trova con la media circolare
+//     (somma dei seni e dei coseni) e non con un minimo e un massimo: un lago
+//     a cavallo del nord ha direzioni a 359° e a 1°, e la media aritmetica le
+//     mette a sud;
+//   * `alt` — l'altezza a cui scrivere, che è **in mezzo** alla banda e non
+//     su una riva: scritta sulla riva vicina l'etichetta finisce sul bordo
+//     di sotto dello specchio, cioè metà dentro e metà sul prato;
+//   * `largo` — quanti gradi d'orizzonte occupa, e `alto` quanti ne occupa la
+//     banda al centro: sono le due misure che dicono se un nome ci sta.
+//
+// Le direzioni si guardano una ogni `ACQUE_ETICHETTA_PASSO`: per una misura
+// che poi si arrotonda a un grado, leggerle tutte e settecentoventi è
+// lavoro buttato — e questa gira a ogni fotogramma.
+const ACQUE_ETICHETTA_PASSO = 3;
 
-// Raggruppa i segmenti d'acqua visibili per nome, per poterci mettere le etichette.
+// Sotto questa larghezza apparente uno specchio non si nomina: è un
+// laghetto di tre direzioni, e il suo nome coprirebbe sé stesso e i vicini.
+const ACQUE_ETICHETTA_MIN_GRADI = 0.8;
+
 function acqueDaDisegnare() {
   const viste = acqueVisibili();
   if (!viste) return [];
 
-  const perNome = new Map();
-  for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+  const per = new Map();
+  for (let b = 0; b < ACQUE_DIREZIONI; b += ACQUE_ETICHETTA_PASSO) {
     const lista = viste[b];
     if (!lista) continue;
     const az = b * ACQUE_PASSO_AZ;
+    const a = az * Math.PI / 180;
+    const sen = Math.sin(a), cos = Math.cos(a);
     for (const v of lista) {
       if (!v.nome) continue;
-      let record = perNome.get(v.nome);
-      if (!record) {
-        record = {
-          nome: v.nome,
-          // accumula i vari segmenti per trovare un centro
-          azMin: az, azMax: az,
-          migliorVicino: v.vicino,
-          migliorLontano: v.lontano,
-          migliorDepVicino: v.depVicino,
-          migliorQuota: v.quota,
-          tipo: v.tipo,
-          pezzi: []
-        };
-        perNome.set(v.nome, record);
+      let s = per.get(v.nome);
+      if (!s) {
+        s = { nome: v.nome, tipo: v.tipo, sen: 0, cos: 0, peso: 0, quante: 0, dir: [] };
+        per.set(v.nome, s);
       }
-
-            // Handle wrapping correctly
-      let inRange = false;
-      if (record.azMin <= record.azMax) {
-         if (az >= record.azMin && az <= record.azMax) inRange = true;
-      } else {
-         if (az >= record.azMin || az <= record.azMax) inRange = true;
-      }
-
-      if (!inRange) {
-         // Need to expand bounds
-         let distToMin = record.azMin >= az ? record.azMin - az : (360 - az) + record.azMin;
-         let distToMax = az >= record.azMax ? az - record.azMax : az + (360 - record.azMax);
-         if (distToMin < distToMax) {
-            record.azMin = az;
-         } else {
-            record.azMax = az;
-         }
-      }
-
-      record.pezzi.push({ az, vicino: v.vicino, lontano: v.lontano, depVicino: v.depVicino, quota: v.quota });
-
-      if (v.lontano - v.vicino > record.migliorLontano - record.migliorVicino) {
-         record.migliorVicino = v.vicino;
-         record.migliorLontano = v.lontano;
-         record.migliorDepVicino = v.depVicino;
-         record.migliorQuota = v.quota;
-      }
+      // La media circolare è pesata sulla **larghezza** della banda: il
+      // centro di un lago è dove il lago è largo, non dove la sua punta
+      // sfiora un'altra direzione.
+      const largo = Math.max(1, v.lontano - v.vicino);
+      s.sen += sen * largo;
+      s.cos += cos * largo;
+      s.peso += largo;
+      s.quante++;
+      s.dir.push({ az, v });
     }
   }
 
-  const finali = [];
-  for (const record of perNome.values()) {
-     // troviamo un azimut "centrale" basato sul baricentro
-     let azCentro = record.azMin + (record.azMax - record.azMin) / 2;
-     if (record.azMin > record.azMax) { // wrapped around 0
-        azCentro = record.azMin + ((record.azMax + 360) - record.azMin) / 2;
-        if (azCentro >= 360) azCentro -= 360;
-     }
+  const fuori = [];
+  per.forEach(s => {
+    if (!s.quante) return;
+    let az = Math.atan2(s.sen, s.cos) * 180 / Math.PI;
+    if (az < 0) az += 360;
+    // La banda che si scriverà è quella della direzione **più vicina al
+    // centro**, non la più larga di tutte: il nome deve stare dove uno
+    // guarda quando guarda quel lago.
+    let scelta = null, scartoMin = Infinity;
+    for (const d of s.dir) {
+      const scarto = Math.abs(((d.az - az) % 360 + 540) % 360 - 180);
+      if (scarto < scartoMin) { scartoMin = scarto; scelta = d; }
+    }
+    if (!scelta) return;
+    const largo = s.quante * ACQUE_ETICHETTA_PASSO * ACQUE_PASSO_AZ;
+    if (largo < ACQUE_ETICHETTA_MIN_GRADI) return;
+    const v = scelta.v;
+    fuori.push({
+      nome: s.nome,
+      tipo: s.tipo,
+      az: scelta.az,
+      // In mezzo alla banda, non su una riva.
+      alt: (v.depVicino + v.depLontano) / 2,
+      altoGradi: Math.abs(v.depVicino - v.depLontano),
+      largoGradi: largo,
+      quota: v.quota,
+      km: (v.vicino + v.lontano) / 2000
+    });
+  });
 
-     // Cerchiamo il pezzo più vicino a questo azimut
-     let pezzoMigliore = record.pezzi[0];
-     let bestDist = Infinity;
-     for (const p of record.pezzi) {
-        let dist = Math.abs(p.az - azCentro);
-        if (dist > 180) dist = 360 - dist;
-        if (dist < bestDist) {
-           bestDist = dist;
-           pezzoMigliore = p;
-        }
-     }
-
-     finali.push({
-        nome: record.nome,
-        az: pezzoMigliore.az,
-        // The label should be near the water but not exactly at the nearest shore if it's too close.
-        // It's usually good to put it somewhere on the water surface.
-        alt: pezzoMigliore.depVicino,
-        quota: pezzoMigliore.quota,
-        km: pezzoMigliore.vicino / 1000,
-        tipo: record.tipo
-     });
-  }
-  return finali;
+  // Il più largo per primo: quando il posto è poco, a vincere dev'essere il
+  // lago che si sta guardando, non quello che capita prima nell'elenco.
+  fuori.sort((a, b) => b.largoGradi - a.largoGradi);
+  return fuori;
 }
 
+// Che acqua c'è in quella direzione, pronta da disegnare. `null` quando non
+// ce n'è: è la domanda che il planetario fa per ogni colonna dello schermo,
+// e deve costare quanto una lettura di array.
 function acqueA(az) {
   const v = acqueVisibili();
   if (!v) return null;
