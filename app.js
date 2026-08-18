@@ -14219,21 +14219,76 @@ function skyDisegnaMare(ctx, base, focale, aria) {
 // **Sono acqua dolce.** Il colore proprio è più verde e più torbido di
 // quello del mare — ma conta poco, perché a quegli angoli di striscio si
 // vede quasi solo il cielo riflesso.
+//
+// Per un pezzo però «con le stesse funzioni» era scritto qui e basta: le
+// funzioni erano altre, e più povere. Quattro cose mancavano, ed erano
+// esattamente le quattro che fanno leggere una macchia come acqua.
+//
+//   1. **Il colore era piatto.** Il gradiente si costruiva fra i due
+//      *baricentri* dei bordi della striscia, con i due colori presi dalla
+//      depressione **media**: su una striscia larga trenta gradi quei due
+//      punti cadono quasi nello stesso posto, e il canvas, quando i due
+//      capi di un gradiente lineare coincidono, non dipinge niente. Dove
+//      dipingeva, dipingeva un colore solo. Adesso il gradiente è **uno per
+//      fotogramma** e vive sul cerchio dell'orizzonte, come quello del mare
+//      (`skyAcqueGradiente`): il colore dipende dalla depressione e da
+//      nient'altro, quindi una rampa sola vale per tutti gli specchi
+//      d'acqua in vista, di qualunque forma siano.
+//   2. **Non c'era l'aureola.** Il mare ce l'ha da un pezzo — attorno al
+//      Sole il cielo è molto più chiaro per una trentina di gradi, ed è la
+//      ragione per cui guardando verso il tramonto *tutta* l'acqua si
+//      accende. Senza, un lago col Sole appena sopra restava del suo grigio
+//      medio: la cosa più lontana dal vero che ci fosse in questa vista.
+//   3. **Non c'erano le onde.** `SKY_ACQUA_CALMA` accorciava la lunghezza
+//      d'onda al 22%, cioè a quattro o cinque metri: sotto ai quattro pixel
+//      apparenti `skyMarePesiDiFascia` spegne tutto, e a qualunque distanza
+//      utile un lago restava una campitura liscia. Un lago è più liscio del
+//      mare, non è una lastra.
+//   4. **Il bordo di sotto era una riga dritta.** Quando la riva vicina sta
+//      dietro a un dosso, `acqueVisibili` taglia l'acqua all'angolo della
+//      cresta — ma quella cresta è la cresta **misurata**, e sullo schermo
+//      il dosso è disegnato più basso, perché il rilievo fine morde e non
+//      aggiunge mai. Fra i due restava una riga netta, lunga mezzo schermo,
+//      sospesa sopra alla collina: il difetto che più di ogni altro faceva
+//      sembrare il lago un ritaglio incollato. Adesso l'acqua scende fino
+//      alla cresta **disegnata** (`skyCrestaDisegnataEntro`), cioè si
+//      infila dietro al dosso esattamente dove il dosso è dipinto.
 const SKY_ACQUA_DOLCE = { notte: [4, 7, 9], giorno: [24, 36, 32] };
 
 // Quanto è più liscia l'acqua ferma di quella di mare, e quanto più corte
-// sono le sue onde. Un lago: mezza pendenza e un quarto di lunghezza. Un
-// fiume ancora meno — un corso d'acqua largo trenta metri è uno specchio.
+// sono le sue onde. Un lago: mezza pendenza e mezza lunghezza. Un fiume
+// ancora meno — un corso d'acqua largo trenta metri è quasi uno specchio.
+//
+// Le lunghezze non scendono più sotto la metà, e la ragione è di pixel e
+// non di fisica: `skyMarePesiDiFascia` spegne ogni componente più fine di
+// quattro pixel apparenti, quindi un'onda di quattro metri a due chilometri
+// **non esiste** per nessuno schermo. Tagliandole a un quinto si otteneva
+// una cosa sola: che i laghi non avessero mai nessuna tessitura.
 const SKY_ACQUA_CALMA = [
-  { pendenza: 0.5, lunghezza: 0.22 },    // 0 = lago
-  { pendenza: 0.28, lunghezza: 0.1 }     // 1 = fiume
+  { pendenza: 0.5, lunghezza: 0.5 },     // 0 = lago
+  { pendenza: 0.3, lunghezza: 0.32 }     // 1 = fiume
 ];
 
 // Sotto questa altezza in pixel una striscia d'acqua non si riempie: si
 // traccia. Un poligono alto mezzo pixel non copre nessun pixel intero e
 // sullo schermo non compare affatto — ed è il caso normale dei fiumi, che
 // visti da lontano sono una riga e nient'altro.
-const SKY_ACQUA_FILO_PX = 1.4;
+const SKY_ACQUA_FILO_PX = 1.6;
+
+// Sotto questa altezza in pixel non si mettono onde né riflessi a bande:
+// una striscia di tre pixel divisa in fasce sono tre righe, non delle onde.
+const SKY_ACQUA_ALTA_PX = 6;
+
+// Quanto fitte le colonne della tessitura, in pixel, e quante fasce di
+// distanza dentro a una striscia. Sono le stesse misure del mare, ridotte:
+// una striscia è alta una frazione dello schermo, non tutto.
+const SKY_ACQUA_PASSO_PX = 7;
+const SKY_ACQUA_FASCE = [4, 6, 8];
+
+// Le depressioni a cui si ferma la rampa del colore. Non sono equidistanti:
+// Fresnel cambia quasi tutto nel primo grado sotto l'orizzonte e poi si
+// calma, quindi le fermate stanno dove il colore si muove.
+const SKY_ACQUA_TAPPE = [0, 0.7, 2.5, 8, 25];
 
 // Le onde dell'acqua ferma, una volta per tipo e per stato del mare: senza
 // la memoria sarebbero quattro oggetti nuovi per striscia e per fotogramma.
@@ -14254,7 +14309,7 @@ function skyAcqueStato(stato, tipo) {
   return {
     vento: stato.vento, vero: stato.vero, verso: stato.verso,
     pendenza: stato.pendenza * q.pendenza,
-    lunghezza: Math.max(0.5, stato.lunghezza * q.lunghezza),
+    lunghezza: Math.max(3, stato.lunghezza * q.lunghezza),
     // La schiuma su un lago non c'è quasi mai, e su un fiume mai.
     schiuma: tipo === 0 ? stato.schiuma * 0.3 : 0
   };
@@ -14264,6 +14319,200 @@ function skyAcquaColore(dep, aria) {
   const d = Math.max(0, Math.min(90, dep));
   const acqua = skyMescolaColore(SKY_ACQUA_DOLCE.notte, SKY_ACQUA_DOLCE.giorno, sky.luceCielo);
   return skyMescolaColore(acqua, skyColoreCielo(aria, d + SKY_MARE_RIFLESSO_ALZA), skyMareFresnel(d));
+}
+
+// La rampa del colore dell'acqua interna: **una sola per fotogramma**.
+//
+// È la stessa idea del gradiente del mare, e per la stessa ragione. Il
+// colore di una superficie d'acqua dipende dalla sola depressione — Fresnel
+// non sa niente di azimut — quindi non serve un gradiente per specchio
+// d'acqua: ne basta uno steso sul cerchio dell'orizzonte, e ogni striscia
+// ci si ritaglia dentro il suo pezzo. Da lì viene gratis la cosa che prima
+// mancava: la riva lontana di un lago e quella vicina hanno colori diversi
+// **perché stanno a depressioni diverse**, non perché qualcuno ha calcolato
+// una media.
+//
+// La forma è quella che il suolo usa già: in stereografica l'orizzonte è un
+// cerchio (o una retta guardando dritto), e scendere verso i piedi vuol dire
+// allontanarsi da quel cerchio verso il nadir.
+function skyAcqueRampa(ctx, base, focale, azCentro, depFine, o, tinta) {
+  const dove = dep => {
+    const p = skyProietta(skyVettore(azCentro, -dep), base, focale);
+    if (!p.davanti) return null;
+    if (o.retta) return -(o.nx * (p.px - o.cx) + o.ny * (o.cy - p.py)) / focale;
+    return Math.hypot(p.px - o.px, p.py - o.py);
+  };
+
+  const fine = Math.max(1.5, Math.min(85, depFine));
+  const uOrlo = dove(0);
+  const uPiedi = dove(fine);
+  if (uOrlo === null || uPiedi === null) return null;
+  const corsa = uPiedi - uOrlo;
+  if (!(Math.abs(corsa) > 1e-6)) return null;
+
+  let g;
+  if (o.retta) {
+    const k = focale / (o.nx * o.nx + o.ny * o.ny);
+    g = ctx.createLinearGradient(
+      o.cx - o.nx * uOrlo * k, o.cy + o.ny * uOrlo * k,
+      o.cx - o.nx * uPiedi * k, o.cy + o.ny * uPiedi * k);
+  } else {
+    g = ctx.createRadialGradient(o.px, o.py, Math.max(0, uOrlo), o.px, o.py, Math.max(0.5, uPiedi));
+  }
+
+  let ultima = -1;
+  for (const tappa of SKY_ACQUA_TAPPE) {
+    const dep = Math.min(tappa, fine);
+    const u = dove(dep);
+    if (u === null) continue;
+    // Le fermate devono essere crescenti: `addColorStop` con una posizione
+    // che torna indietro solleva un errore e porta via il fotogramma.
+    const t = Math.max(ultima + 1e-4, Math.min(1, (u - uOrlo) / corsa));
+    if (t > 1) break;
+    ultima = t;
+    g.addColorStop(t, tinta(dep));
+    if (dep >= fine) break;
+  }
+  if (ultima < 1) g.addColorStop(1, tinta(fine));
+  return g;
+}
+
+function skyAcqueGradiente(ctx, base, focale, aria, arco, depMax, o) {
+  return skyAcqueRampa(ctx, base, focale, arco.centro, depMax, o,
+    dep => skyRgba(skyAcquaColore(dep, aria), 1));
+}
+
+// Il riflesso della riva lontana: la montagna capovolta dentro all'acqua.
+//
+// È la cosa che manca a ogni lago dipinto e c'è in ogni lago fotografato, ed
+// è pura geometria dello specchio. Guardando l'acqua a `dep` gradi sotto
+// l'orizzonte, quello che si vede riflesso è ciò che sta a `dep` gradi
+// **sopra**: sul mare a quell'altezza c'è il cielo, e per questo la riga
+// dell'orizzonte marino è chiara. Su un lago no — dietro c'è la costa, e a
+// due gradi sopra l'orizzonte quasi sempre c'è la montagna. Quindi il lago,
+// verso la riva lontana, rimanda **il fianco scuro del monte** e non il
+// cielo, e più ci si avvicina ai propri piedi — dove `dep` cresce e la
+// direzione specchiata sale — più torna a essere cielo.
+//
+// Il confine fra le due cose è dove `dep` uguaglia l'altezza della cresta, e
+// **quella cresta ha una forma**: il confine è quindi il profilo dei monti
+// ribaltato sotto l'orizzonte. Disegnarlo come tale costa un poligono e dà
+// la cosa che si riconosce a colpo d'occhio in qualunque fotografia di lago —
+// la sagoma della montagna capovolta nell'acqua. Con una sfumatura uniforme
+// (il primo tentativo) si otteneva invece una lastra grigia: giusta nei
+// numeri, e a vedersi una lastra.
+//
+// La forza è Fresnel e basta: la geometria la fa il poligono.
+const SKY_ACQUA_RIVA_FORZA = 0.85;
+
+// In quante passate sfalsate si stende il riflesso, per sfrangiarne il bordo.
+const SKY_ACQUA_RIVA_PASSATE = 3;
+
+// Quante volte si chiede l'altezza della cresta lungo una striscia. Il
+// profilo dietro a un lago non cambia ogni mezzo grado, e ogni lettura è una
+// `skyAltezzaOrizzonte`: ottanta campioni bastano a qualunque striscia, e in
+// mezzo si interpola.
+const SKY_ACQUA_RIVA_CAMPIONI = 80;
+
+function skyAcqueRiflessoRiva(ctx, base, focale, pezzi, depFine, o, suolo) {
+  const colore = skyMescolaColore(suolo.lontano, [0, 0, 0], 0.4);
+  return skyAcqueRampa(ctx, base, focale, pezzi[Math.floor(pezzi.length / 2)].az, depFine, o,
+    dep => skyRgba(colore, SKY_ACQUA_RIVA_FORZA * skyMareFresnel(dep)));
+}
+
+// Il contorno della parte di striscia che specchia la montagna: in cima la
+// riva lontana, in fondo la cresta **ribaltata** sotto l'orizzonte.
+//
+// Restituisce `false` quando non c'è niente da riempire — cresta troppo
+// bassa (dietro c'è cielo davvero) oppure specchio tutto più in basso della
+// cresta ribaltata, che è il caso di un lago guardato quasi a picco.
+// Le creste che stanno dietro a una striscia, una per colonna. Si chiedono
+// **una volta per striscia** e non una per passata: `skyAltezzaOrizzonte` è
+// la funzione più cara di questa vista (legge il terreno, gli ostacoli
+// dichiarati e gli alberi), e le tre passate sfumate del riflesso la
+// chiamavano tre volte per lo stesso identico numero.
+function skyAcqueCresteDietro(pezzi) {
+  const n = pezzi.length;
+  const salto = Math.max(1, Math.ceil(n / SKY_ACQUA_RIVA_CAMPIONI));
+  const creste = new Float64Array(n);
+  let alta = 0;
+  for (let i = 0; i < n; i += salto) {
+    const h = skyAltezzaOrizzonte(pezzi[i].az);
+    const v = (typeof h === 'number' && h > 0) ? h : 0;
+    if (v > alta) alta = v;
+    for (let j = i; j < Math.min(n, i + salto); j++) creste[j] = v;
+  }
+  return alta > 0.15 ? creste : null;
+}
+
+// Due vettori di comodo per il contorno del riflesso, riusati striscia dopo
+// striscia: tre passate per striscia vorrebbero dire tre array nuovi ognuna.
+let skyAcquaGiuBuf = [];
+let skyAcquaSuBuf = [];
+
+function skyAcquaTracciaRiflesso(ctx, base, focale, pezzi, alto, depAlto, depBasso, creste, scarto) {
+  const n = pezzi.length;
+  // Il bordo del riflesso non ha bisogno di una colonna ogni mezzo grado: è
+  // la cresta ribaltata, e la cresta è già campionata a passo largo. Con una
+  // striscia da duecento colonne, e tre passate, sarebbero milleduecento
+  // proiezioni per uno spigolo che non si vede.
+  const passo = Math.max(1, Math.round(n / SKY_ACQUA_RIVA_CAMPIONI));
+  const quanti = Math.floor((n - 1) / passo) + 1;
+  if (skyAcquaGiuBuf.length < quanti) {
+    skyAcquaGiuBuf = new Array(quanti);
+    skyAcquaSuBuf = new Array(quanti);
+  }
+  const giu = skyAcquaGiuBuf, su = skyAcquaSuBuf;
+  let qualcosa = false;
+  for (let k = 0; k < quanti; k++) {
+    const i = Math.min(n - 1, k * passo);
+    giu[k] = su[k] = null;
+    if (!alto[i]) continue;
+    // Il fondo del riflesso: la cresta ribaltata, o la riva vicina se lo
+    // specchio finisce prima.
+    const fondo = Math.max(depBasso[i], -creste[i] + scarto);
+    if (!(fondo < depAlto[i] - 1e-3)) continue;
+    const p = skyProietta(skyVettore(pezzi[i].az, fondo), base, focale);
+    if (!p.davanti) continue;
+    giu[k] = p;
+    su[k] = alto[i];
+    qualcosa = true;
+  }
+  if (!qualcosa) return false;
+  skyAcquaTracciaStriscia(ctx, su, giu, quanti);
+  return true;
+}
+
+// Fin dove sale la cresta **disegnata** in quella direzione, entro `km`.
+//
+// Non è `terrenoCrestaEntro`: quella è la cresta **misurata**, e sullo
+// schermo il terreno non è disegnato lì. Il rilievo fine morde la cresta
+// (`skyCresteDelleColonne`) e la abbassa fino a quattro gradi, quindi fra la
+// sagoma dipinta e il numero del modello ci sta un dislivello che a occhio
+// si vede benissimo: era la riga dritta sospesa sopra alla collina, il bordo
+// di sotto di ogni lago tagliato dall'occlusione.
+//
+// I numeri non si ricalcolano: `skyDisegnaProfiloOrizzonte` li ha appena
+// finiti di calcolare colonna per colonna e banda per banda, per disegnare
+// il panorama, e li lascia lì (`skyCresteUltime`). L'acqua si disegna subito
+// dopo, nella stessa passata e con la stessa telecamera, quindi legge quelli:
+// costa due indici e nessun conto.
+let skyCresteUltime = null;
+
+function skyCrestaDisegnataEntro(az, km) {
+  const u = skyCresteUltime;
+  if (!u) return null;
+  const scarto = ((az - u.arco.centro) % 360 + 540) % 360 - 180;
+  const i = Math.round((scarto + u.arco.mezzo) / u.passo);
+  if (i < 0 || i >= u.colonne.length) return null;
+  const col = u.colonne[i];
+  if (!col) return null;
+  const limite = km * TERRENO_FRONTE_MARGINE;
+  let k = -1;
+  for (let j = 0; j < u.bande.length; j++) if (u.bande[j].km <= limite) k = j;
+  // Le creste sono massimi accumulati: l'ultima fetta che ci sta dentro **è**
+  // il massimo, e più vicino della prima non c'è niente che copra.
+  return k < 0 ? null : u.creste[col.pos + k];
 }
 
 // Le strisce: si cammina lungo l'arco in vista e si legano fra loro le
@@ -14309,7 +14558,10 @@ function skyAcqueStrisce(viste, arco) {
         pezzi.push(meglio);
         corrente = meglio;
       }
-      if (pezzi.length >= 2) strisce.push(pezzi);
+      // Anche una colonna sola è una striscia: un laghetto largo mezzo grado
+      // esiste, e scartarlo perché non ne occupa due vuol dire che a certe
+      // distanze sparisce e a certe altre no. Si disegna come filo.
+      strisce.push(pezzi);
     }
   }
   return strisce;
@@ -14324,103 +14576,211 @@ function skyDisegnaAcqueInterne(ctx, base, focale, aria) {
   const strisce = skyAcqueStrisce(viste, arco);
   if (!strisce.length) return;
 
+  // Fin dove scende l'acqua in vista: serve alla rampa del colore, che deve
+  // arrivare fin lì e non oltre — una rampa tarata su novanta gradi userebbe
+  // il primo decimo di sé stessa per tutto quello che si vede.
+  let depMax = 1;
+  for (const s of strisce) {
+    for (const p of s) {
+      const d = -p.b.depVicino;
+      if (d > depMax) depMax = d;
+    }
+  }
+
   const stato = skyMareOggi();
   const astri = skyMareAstriRiflessi();
   const t = (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) / 1000;
+  const o = skyCerchioOrizzonte(base, focale);
+  const fine = depMax + 2;
+  const gradiente = skyAcqueGradiente(ctx, base, focale, aria, arco, fine, o);
+  const suolo = skyColoriPaesaggio('suolo', aria);
   ctx.save();
-  for (const s of strisce) skyAcquaStriscia(ctx, base, focale, aria, stato, astri, s, t);
+  for (const s of strisce) {
+    skyAcquaStriscia(ctx, base, focale, aria, stato, astri, s, t, gradiente,
+      skyAcqueRiflessoRiva(ctx, base, focale, s, fine, o, suolo));
+  }
   ctx.restore();
 }
 
 // Una striscia d'acqua: il bordo lontano in cima, quello vicino in fondo, e
-// in mezzo il colore, l'onda e il riflesso.
-function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t) {
+// in mezzo il colore, la foschia, le rive, l'onda e il riflesso.
+function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, gradiente, riva) {
   const tipo = pezzi[0].b.tipo === 1 ? 1 : 0;
-  const stato = skyAcqueStato(statoMare, tipo);
-  const onde = skyAcqueOnde(statoMare, tipo);
-
-  // I due bordi proiettati, e quanto è alta la striscia sullo schermo.
-  const alto = [], basso = [];
-  let px = 0, quanti = 0;
-  let depAlto = 0, depBasso = 0, dist = 0;
-  for (const p of pezzi) {
+  const n = pezzi.length;
+  const alto = new Array(n), basso = new Array(n);
+  const depAlto = new Float64Array(n), depBasso = new Float64Array(n);
+  let px = 0, cima = 0, quanti = 0, dist = 0, depMedia = 0;
+  for (let i = 0; i < n; i++) {
+    alto[i] = basso[i] = null;
+    const p = pezzi[i];
+    let giu = p.b.depVicino;
+    // La riva vicina che l'occlusione ha tagliato scende fino alla cresta
+    // **disegnata**, non a quella misurata: l'acqua si infila dietro al
+    // dosso dove il dosso è dipinto. Solo quando è tagliata, però — una riva
+    // vera è dove è, e portarla giù vorrebbe dire stendere l'acqua sopra al
+    // prato che sta davanti.
+    if (p.b.tagliata) {
+      const cr = skyCrestaDisegnataEntro(p.az, p.b.vicino / 1000);
+      if (cr !== null && cr < giu) giu = cr;
+    }
     const a = skyProietta(skyVettore(p.az, p.b.depLontano), base, focale);
-    const b = skyProietta(skyVettore(p.az, p.b.depVicino), base, focale);
-    if (!a.davanti || !b.davanti) { alto.push(null); basso.push(null); continue; }
-    alto.push(a); basso.push(b);
-    px += Math.hypot(a.px - b.px, a.py - b.py);
-    depAlto += p.b.depLontano;
-    depBasso += p.b.depVicino;
+    const b = skyProietta(skyVettore(p.az, giu), base, focale);
+    if (!a.davanti || !b.davanti) continue;
+    alto[i] = a; basso[i] = b;
+    depAlto[i] = p.b.depLontano;
+    depBasso[i] = giu;
+    const h = Math.hypot(a.px - b.px, a.py - b.py);
+    px += h;
+    if (h > cima) cima = h;
     dist += (p.b.vicino + p.b.lontano) / 2;
+    depMedia += (p.b.depLontano + giu) / 2;
     quanti++;
   }
-  if (quanti < 2) return;
+  if (!quanti) return;
   px /= quanti;
-  depAlto /= quanti;
-  depBasso /= quanti;
   dist /= quanti;
+  depMedia /= quanti;
 
-  const cAlto = skyAcquaColore(-depAlto, aria);
-  const cBasso = skyAcquaColore(-depBasso, aria);
+  const colore = skyAcquaColore(-depMedia, aria);
+  // La foschia, come per le creste: a venticinque chilometri metà del
+  // contrasto se n'è andata. Senza, un lago in fondo alla valle è nitido
+  // quanto la pozza qui davanti, ed è il modo più veloce di far sembrare
+  // finta una veduta.
+  const velo = 1 - Math.exp(-(dist / 1000) / SKY_FOSCHIA_KM);
+  const aria0 = skyColoreCielo(aria, 1.2);
 
-  // Il filo: una striscia più sottile di un pixel e mezzo non si riempie,
-  // si traccia. È il caso normale di ogni fiume — e di un lago guardato da
-  // lontano e da poco più in alto di lui.
-  if (px < SKY_ACQUA_FILO_PX) {
+  if (cima < SKY_ACQUA_FILO_PX) {
+    // Il filo: una striscia più sottile di un pixel e mezzo non si riempie,
+    // si traccia. È il caso normale di ogni fiume — e di un lago guardato da
+    // lontano e da poco più in alto di lui. L'opacità segue lo spessore vero
+    // invece di essere piena: un tratto opaco alto mezzo pixel è un filo di
+    // vernice azzurra, e a occhio è più falso di nessun fiume.
     ctx.beginPath();
     let giu = false;
-    for (let i = 0; i < alto.length; i++) {
+    for (let i = 0; i < n; i++) {
       if (!alto[i]) { giu = false; continue; }
       const x = (alto[i].px + basso[i].px) / 2, y = (alto[i].py + basso[i].py) / 2;
       if (giu) ctx.lineTo(x, y); else { ctx.moveTo(x, y); giu = true; }
     }
-    ctx.lineWidth = Math.max(1, px);
+    ctx.lineWidth = 1;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = skyRgba(skyMescolaColore(cAlto, cBasso, 0.5), 0.92);
+    ctx.strokeStyle = skyRgba(skyMescolaColore(colore, aria0, velo * 0.6),
+      Math.max(0.18, Math.min(0.85, cima / SKY_ACQUA_FILO_PX)) * (1 - velo * 0.4));
     ctx.stroke();
-  } else {
-    // Il corpo. Il gradiente va dal bordo lontano a quello vicino, che è la
-    // direzione in cui il colore cambia: sopra è quasi cielo, sotto è acqua.
-    const mediaAlto = skyAcquaMedia(alto), mediaBasso = skyAcquaMedia(basso);
-    const g = ctx.createLinearGradient(mediaAlto[0], mediaAlto[1], mediaBasso[0], mediaBasso[1]);
-    g.addColorStop(0, skyRgba(cAlto, 1));
-    g.addColorStop(1, skyRgba(cBasso, 1));
-    ctx.fillStyle = g;
+    return;
+  }
+
+  // Il corpo, riempito con la rampa unica del fotogramma. Se per qualche
+  // ragione la rampa non c'è (la vista guarda dritto in su, e allora
+  // l'orizzonte non è in vista) resta il colore medio, che è quello che
+  // c'era prima.
+  skyAcquaTracciaStriscia(ctx, alto, basso);
+  ctx.fillStyle = gradiente || skyRgba(colore, 1);
+  ctx.fill();
+
+  // Il fianco della montagna che si specchia: scuro verso la riva lontana e
+  // con la forma della cresta ribaltata, che è la faccia vera di ogni lago
+  // di conca.
+  //
+  // In tre passate sfalsate invece che in una. Il bordo di un riflesso non è
+  // mai netto: le facce d'onda lo sfrangiano di un angolo che vale più o meno
+  // due volte la loro pendenza — pochi decimi di grado su un lago calmo,
+  // qualche grado quando tira. Con una passata sola veniva una riga netta a
+  // mezz'acqua, che è il segno di un disegno fatto col righello; tre passate
+  // a un terzo di forza l'una sono una rampa, e costano tre riempimenti di
+  // un poligono che lo schermo ha già.
+  const creste = riva ? skyAcqueCresteDietro(pezzi) : null;
+  if (creste) {
+    const sfuma = Math.max(0.12, Math.min(2.5, skyAcqueStato(statoMare, tipo).pendenza * SKY_R2D * 2));
+    ctx.save();
+    // Moltiplicato, non scritto: qui dentro `globalAlpha` è già il velo del
+    // terreno (`skyOpacitaTerreno`), e riscriverlo vorrebbe dire disegnare
+    // l'acqua opaca sopra a un paesaggio che a forte ingrandimento è
+    // trasparente.
+    ctx.globalAlpha *= 1 / SKY_ACQUA_RIVA_PASSATE;
+    ctx.fillStyle = riva;
+    for (let k = 0; k < SKY_ACQUA_RIVA_PASSATE; k++) {
+      const scarto = sfuma * (k / (SKY_ACQUA_RIVA_PASSATE - 1) - 0.5);
+      if (skyAcquaTracciaRiflesso(ctx, base, focale, pezzi, alto, depAlto, depBasso, creste, scarto)) {
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // La foschia stesa sopra: è aria fra l'occhio e l'acqua, quindi va sopra
+  // e non mescolata nel colore — così vale anche per le onde e per il
+  // riflesso, che si disegnano dopo di lei e non prima. Il contorno si
+  // ridisegna: quello nel canvas adesso è il poligono del riflesso.
+  if (velo > 0.02) {
     skyAcquaTracciaStriscia(ctx, alto, basso);
+    ctx.fillStyle = skyRgba(aria0, velo * 0.55);
     ctx.fill();
   }
 
-  // La riva lontana: la riga sottile e appena più chiara dove l'acqua
-  // finisce e comincia la terra. È lo stesso filo di luce dei crinali, per
-  // la stessa ragione — un bordo netto fra due campiture sembra un ritaglio,
-  // e un lago senza riva sembra una macchia di vernice.
-  ctx.beginPath();
-  let giu = false;
-  for (const p of alto) {
-    if (!p) { giu = false; continue; }
-    if (giu) ctx.lineTo(p.px, p.py); else { ctx.moveTo(p.px, p.py); giu = true; }
-  }
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = skyRgba(skyMescolaColore(cAlto, [255, 255, 255], 0.3), 0.45);
-  ctx.stroke();
+  skyAcquaRive(ctx, aria, alto, basso, colore, velo);
 
   // Onde e riflessi: solo se la striscia è abbastanza alta perché ci stiano.
-  if (px >= 4) {
-    skyAcquaTessitura(ctx, base, focale, aria, stato, onde, astri, pezzi, alto, basso, px, dist, t);
+  if (cima >= SKY_ACQUA_ALTA_PX) {
+    skyAcquaTessitura(ctx, base, focale, aria, statoMare, astri, pezzi,
+      alto, basso, depAlto, depBasso, px, velo, t);
   }
 }
 
-function skyAcquaMedia(punti) {
-  let x = 0, y = 0, n = 0;
-  for (const p of punti) if (p) { x += p.px; y += p.py; n++; }
-  return n ? [x / n, y / n] : [0, 0];
+// Le due rive.
+//
+// Un bordo netto fra due campiture si legge come un ritaglio, e finché
+// l'acqua era un poligono opaco con una riga bianca in cima era esattamente
+// quello che sembrava. Le rive vere sono due cose diverse e vanno disegnate
+// diverse:
+//
+//   * quella **lontana** è dove l'acqua finisce e comincia la terra, e
+//     controluce è la riga sottile e appena più chiara di qualunque
+//     fotografia — la stessa cosa del filo di luce sui crinali. Sbiadisce
+//     con la foschia, se no un lago a venti chilometri ha il bordo più netto
+//     della montagna che gli sta dietro;
+//   * quella **vicina** è quasi sempre un dosso che ci sta davanti, e un
+//     dosso controluce è **scuro**. Una riga scura sotto all'acqua è quello
+//     che stacca la superficie dal prato senza inventare niente.
+// E prima delle due c'è una terza cosa, che non è una riva ed è quella che
+// più di tutte toglieva il sapore di ritaglio: la **sfumatura**. Un poligono
+// riempito ha un bordo di un pixel, netto come una forbice; una riva vera,
+// vista attraverso qualche chilometro d'aria, ha un paio di pixel di
+// passaggio — sono i canneti, la battigia, il pulviscolo. Si ottiene
+// ripassando il contorno con l'acqua stessa, appena accennata: il colore
+// deborda di un pelo e il taglio sparisce.
+function skyAcquaRive(ctx, aria, alto, basso, colore, velo) {
+  const traccia = (punti) => {
+    ctx.beginPath();
+    let giu = false;
+    for (const p of punti) {
+      if (!p) { giu = false; continue; }
+      if (giu) ctx.lineTo(p.px, p.py); else { ctx.moveTo(p.px, p.py); giu = true; }
+    }
+    ctx.stroke();
+  };
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = skyRgba(colore, 0.3);
+  traccia(alto);
+  traccia(basso);
+
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = skyRgba(skyMescolaColore(colore, skyColoreCielo(aria, 2.5), 0.55),
+    (0.16 + 0.34 * (1 - velo)));
+  traccia(alto);
+  ctx.strokeStyle = skyRgba(skyMescolaColore(colore, [0, 0, 0], 0.55), 0.34 * (1 - velo * 0.7));
+  traccia(basso);
 }
 
 // Il contorno di una striscia: il bordo lontano da sinistra a destra, quello
 // vicino al ritorno. Si spezza dove la proiezione perde un punto, se no il
 // poligono si chiuderebbe attraverso mezzo schermo.
-function skyAcquaTracciaStriscia(ctx, alto, basso) {
+function skyAcquaTracciaStriscia(ctx, alto, basso, quanti) {
+  const n = (typeof quanti === 'number') ? quanti : alto.length;
   ctx.beginPath();
   let inizio = -1;
   const chiudi = (fine) => {
@@ -14431,112 +14791,271 @@ function skyAcquaTracciaStriscia(ctx, alto, basso) {
     ctx.closePath();
     inizio = -1;
   };
-  for (let i = 0; i < alto.length; i++) {
+  for (let i = 0; i < n; i++) {
     if (!alto[i]) { chiudi(i - 1); continue; }
     if (inizio < 0) inizio = i;
   }
-  chiudi(alto.length - 1);
+  chiudi(n - 1);
 }
 
-// L'onda e il riflesso dentro a una striscia. Poche righe di distanza —
-// quante ne stanno in altezza — e per ognuna si cammina lungo la striscia
-// come si fa sul mare, con le stesse funzioni.
-function skyAcquaTessitura(ctx, base, focale, aria, stato, onde, astri, pezzi, alto, basso, px, dist, t) {
-  const righe = Math.max(1, Math.min(9, Math.round(px / 9)));
-  const pesi = new Float32Array(SKY_MARE_ONDE.length);
-  const q = skyMarePesiDiFascia(dist, focale, onde.pronte, pesi);
-  const colore = skyAcquaColore(-((pezzi[0].b.depVicino + pezzi[0].b.depLontano) / 2), aria);
-  const chiaro = skyMescolaColore(colore, skyColoreCielo(aria, 30), 0.5);
 
+// L'onda e il riflesso dentro a una striscia.
+//
+// È la griglia del mare, ritagliata su una striscia: qualche riga di
+// distanza per quante ne stanno in altezza, e per ogni riga si cammina lungo
+// l'acqua leggendo il campo d'onda e il luccichio negli stessi punti in cui
+// il mare li legge. Da lì in poi la strada di luce la disegna **lo stesso
+// codice** (`skyMareStrada`), e non per risparmiare righe: il riflesso del
+// Sole su un lago e quello sul mare sono la stessa cosa, e due funzioni
+// gemelle avrebbero cominciato a divergere alla prima messa a punto.
+//
+// La differenza vera con il mare è che qui ogni **colonna** ha i suoi due
+// bordi: il mare va dalla riga dell'orizzonte in giù, uguale dappertutto,
+// mentre un lago comincia e finisce a distanze diverse in ogni direzione. La
+// riga `j` della griglia non è quindi una distanza sola: è la frazione `j/nf`
+// del cammino fra la riva lontana e quella vicina, e la distanza che le si
+// attribuisce — quella che decide quali onde si vedono ancora — è la media
+// lungo la striscia.
+function skyAcquaTessitura(ctx, base, focale, aria, statoMare, astri, pezzi,
+                           alto, basso, depAlto, depBasso, px, velo, t) {
+  const tipo = pezzi[0].b.tipo === 1 ? 1 : 0;
+  const stato = skyAcqueStato(statoMare, tipo);
+  const onde = skyAcqueOnde(statoMare, tipo);
+
+  // Le colonne campionate: una ogni sette pixel di striscia, non una per
+  // ogni mezzo grado di dati. Più fitto di così si pagano campioni che
+  // cadono tutti nello stesso pixel.
+  const dritte = [];
+  for (let i = 0; i < pezzi.length; i++) if (alto[i]) dritte.push(i);
+  if (dritte.length < 2) return;
+  let xMin = Infinity, xMax = -Infinity;
+  for (const i of dritte) {
+    if (alto[i].px < xMin) xMin = alto[i].px;
+    if (alto[i].px > xMax) xMax = alto[i].px;
+  }
+  const nc = Math.max(2, Math.min(dritte.length,
+    Math.round((xMax - xMin) / SKY_ACQUA_PASSO_PX) + 1));
+  if (nc < 2) return;
+  const salto = dritte.length / nc;
+  const colonne = new Int32Array(nc);
+  for (let c = 0; c < nc; c++) colonne[c] = dritte[Math.min(dritte.length - 1, Math.floor(c * salto))];
+
+  const nf = Math.max(1, Math.min(quanto(SKY_ACQUA_FASCE[0], SKY_ACQUA_FASCE[1], SKY_ACQUA_FASCE[2]),
+    Math.round(px / 14)));
+
+  // Le fasce: per ognuna la distanza media, la depressione media, e da lì
+  // quali componenti d'onda si vedono ancora e quanto conta l'aureola.
+  const pesi = new Float32Array(SKY_MARE_ONDE.length);
+  const fasce = [];
+  for (let j = 0; j <= nf; j++) {
+    const f = j / nf;
+    let s = 0, dep = 0;
+    for (let c = 0; c < nc; c++) {
+      const i = colonne[c];
+      const b = pezzi[i].b;
+      s += b.lontano + (b.vicino - b.lontano) * f;
+      dep += -(depAlto[i] + (depBasso[i] - depAlto[i]) * f);
+    }
+    s = Math.max(1, s / nc);
+    dep = dep / nc;
+    const q = skyMarePesiDiFascia(s, focale, onde.pronte, pesi);
+    fasce.push({
+      s, dep, f, pesi: pesi.slice(), totale: q.totale, fine: q.fine,
+      // L'aureola è cielo riflesso: si vede quanto Fresnel la lascia
+      // vedere, e la foschia se ne mangia la sua parte come di tutto il
+      // resto. Ai piedi quasi niente, verso la riva lontana molto.
+      aureola: SKY_MARE_AUREOLA_PESO * skyMareFresnel(dep) * (1 - velo * 0.5)
+    });
+  }
+
+  // La proiezione, srotolata come nella tessitura del mare e in
+  // `catalogo.js`: sono qualche migliaio di campioni per fotogramma, e
+  // costruire altrettanti oggetti è il genere di spazzatura che non si vede
+  // in nessun profilo e si sente solo quando il telefono scalda. Se la
+  // formula di `skyProietta` cambia, va cambiata anche qui.
+  const buf = skyMareBuffer((nf + 1) * nc);
+  const visti = skyMareVisti;
+  const raffiche = skyAcquaRaffiche((nf + 1) * nc);
+  const rx = base.r[0], ry = base.r[1], rz = base.r[2];
+  const ux = base.u[0], uy = base.u[1], uz = base.u[2];
+  const fx = base.f[0], fy = base.f[1], fz = base.f[2];
+  const cx = sky.larghezza / 2, cy = sky.altezza / 2;
+
+  for (let j = 0; j <= nf; j++) {
+    const fa = fasce[j];
+    const conOnda = fa.totale > 0.02;
+    for (let c = 0; c < nc; c++) {
+      const i = colonne[c];
+      const k = j * nc + c;
+      const az = pezzi[i].az;
+      const b = pezzi[i].b;
+      const alt = depAlto[i] + (depBasso[i] - depAlto[i]) * fa.f;
+      const km = b.lontano + (b.vicino - b.lontano) * fa.f;
+      const a = az * SKY_D2R;
+      const sa = Math.sin(a), ca = Math.cos(a);
+      const sin = Math.sin(alt * SKY_D2R), cos = Math.cos(alt * SKY_D2R);
+      const vx = sa * cos, vy = ca * cos, vz = sin;
+      const dd = vx * fx + vy * fy + vz * fz;
+      if (!(dd > SKY_D_MIN)) { visti[k] = 0; continue; }
+      const den = (1 + dd) * 0.5;
+      buf[k * 5] = cx + focale * ((vx * rx + vy * ry + vz * rz) / den);
+      buf[k * 5 + 1] = cy - focale * ((vx * ux + vy * uy + vz * uz) / den);
+      buf[k * 5 + 2] = conOnda
+        ? skyMareOnda(km * sa, km * ca, t, onde.pronte, fa.pesi, fa.totale) : 0;
+      raffiche[k] = skyAcquaRaffica(km * sa, km * ca, t, statoMare.verso);
+      let punta = 0, largo = 0;
+      for (let m = 0; m < astri.length; m++) {
+        const astro = astri[m];
+        if (Math.abs(((az - astro.az) % 360 + 540) % 360 - 180) > SKY_MARE_LUCE_ARCO) continue;
+        const uno = skyMareLuccichio(vx, vy, vz, astro.v);
+        punta += astro.forza * Math.exp(-2 * uno / (stato.pendenza * stato.pendenza));
+        largo += astro.forza * Math.exp(-2 * uno / (SKY_MARE_AUREOLA * SKY_MARE_AUREOLA));
+      }
+      buf[k * 5 + 3] = Math.min(1, punta);
+      buf[k * 5 + 4] = Math.min(1, largo * fa.aureola);
+      visti[k] = 1;
+    }
+  }
+
+  skyAcquaVentate(ctx, aria, fasce, nf, nc, buf, visti, raffiche, velo, statoMare);
+  skyAcquaOnde(ctx, aria, stato, fasce, nf, nc, buf, visti, velo);
+  if (astri.length) skyMareStrada(ctx, aria, astri, fasce, nf, nc, buf, visti);
+}
+
+// Le ventate: le chiazze di acqua increspata che il vento sposta sopra allo
+// specchio. Sono quelle che i marinai chiamano «zampe di gatto», e su un
+// lago sono **la** cosa che si vede.
+//
+// Perché esistono qui e non nel mare: sul mare le onde vere si vedono, e la
+// tessitura è quella. Su un lago no — una raffica alza onde di pochi metri, e
+// a due chilometri qualunque onda di un lago è più fine di un pixel: la
+// tessitura delle creste si spegne per intero (`skyMarePesiDiFascia`) e resta
+// una lastra liscia. Ma quello che si vede davvero, da lontano, non sono le
+// singole onde: sono le **chiazze** in cui l'acqua è increspata e in cui non
+// lo è, larghe centinaia di metri, cioè gradi interi di orizzonte. Quelle un
+// pixel lo occupano eccome.
+//
+// L'acqua increspata rimanda un pezzo di cielo più ampio di quella liscia, e
+// quindi è più chiara dove lo specchio è scuro (la riva lontana che riflette
+// il monte) e più scura dove è chiaro. Qui si disegna il caso normale — la
+// chiazza appena più chiara — perché è quello che si vede in una fotografia,
+// e si disegna a tratti lunghi orizzontali, che è la forma che le ventate
+// hanno: il vento le stira nella sua direzione.
+const SKY_ACQUA_RAFFICHE = [
+  { lung: 420, ang: 0, peso: 0.6, deriva: 1.6 },
+  { lung: 190, ang: 24, peso: 0.4, deriva: 2.4 }
+];
+
+let skyAcquaRaffBuf = null;
+
+function skyAcquaRaffiche(quanti) {
+  if (!skyAcquaRaffBuf || skyAcquaRaffBuf.length < quanti) {
+    skyAcquaRaffBuf = new Float32Array(Math.max(quanti, 2048));
+  }
+  return skyAcquaRaffBuf;
+}
+
+// Quanto è increspata l'acqua in quel punto, da −1 a 1. Due sole componenti
+// lunghe centinaia di metri, che derivano col vento: non è un campo d'onda,
+// è una macchia che passa.
+function skyAcquaRaffica(x, y, t, verso) {
+  let v = 0, peso = 0;
+  const base = ((verso || 0) + 180) * SKY_D2R;
+  for (const r of SKY_ACQUA_RAFFICHE) {
+    const a = base + r.ang * SKY_D2R;
+    const k = 2 * Math.PI / r.lung;
+    v += r.peso * Math.cos(k * (Math.sin(a) * x + Math.cos(a) * y) - r.deriva * k * 12 * t);
+    peso += r.peso;
+  }
+  return v / peso;
+}
+
+function skyAcquaVentate(ctx, aria, fasce, nf, nc, buf, visti, raffiche, velo, statoMare) {
+  // Con l'aria ferma non ce ne sono, ed è giusto: uno specchio d'acqua senza
+  // un filo di vento è **liscio**, e quello è il modo in cui si riconosce
+  // una giornata di bonaccia.
+  const forza = Math.min(1, Math.max(0, (statoMare.vento - SKY_MARE_VENTO_MIN) / 5));
+  if (forza < 0.05) return;
+
+  ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  for (let r = 0; r < righe; r++) {
-    const f = (r + 0.5) / righe;                 // 0 = riva lontana, 1 = vicina
-    ctx.lineCap = 'round';
-    ctx.lineWidth = Math.max(0.8, Math.min(3, px / righe * 0.7));
+  for (let j = 0; j <= nf; j++) {
+    const f = fasce[j];
+    const mezzo = Math.floor(nc / 2);
+    const k0 = j * nc + mezzo, k1 = (j === nf ? j - 1 : j + 1) * nc + mezzo;
+    const spaziatura = (visti[k0] && visti[k1])
+      ? Math.abs(buf[k1 * 5 + 1] - buf[k0 * 5 + 1]) : 2;
+    ctx.lineWidth = Math.max(1.2, spaziatura * 1.05);
+    // Verso la riva lontana l'acqua si guarda di striscio e la chiazza si
+    // vede di più: è lo stesso Fresnel di tutto il resto.
+    const alfa = 0.1 * forza * (0.35 + 0.65 * skyMareFresnel(f.dep)) * (1 - velo * 0.6);
+    if (alfa < 0.008) continue;
+    const acqua = skyAcquaColore(f.dep, aria);
+    ctx.strokeStyle = skyRgba(skyMescolaColore(acqua, skyColoreCielo(aria, 28), 0.45), alfa);
+    ctx.beginPath();
+    let giu = false;
+    for (let i = 0; i < nc; i++) {
+      const k = j * nc + i;
+      const ok = visti[k] && raffiche[k] > 0.18;
+      if (!ok) { giu = false; continue; }
+      if (giu) ctx.lineTo(buf[k * 5], buf[k * 5 + 1]);
+      else { ctx.moveTo(buf[k * 5], buf[k * 5 + 1]); giu = true; }
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 
-    // Le creste: una passata sola, e solo se l'onda si vede ancora.
-    if (q.totale > 0.05) {
+// Le creste dentro a una striscia.
+//
+// È la passata delle creste del mare senza la schiuma e senza la campitura
+// dei fianchi: su un lago le onde non arrivano mai a essere larghe mezzo
+// schermo, e le creste bianche non ci sono quasi mai (`skyAcqueStato` le
+// riduce a un terzo e sui fiumi le spegne). Quello che resta è la riga di
+// luce sulla punta e il cavo appena accennato sotto di lei — senza il cavo
+// le creste sembrano graffi su una campitura liscia invece che la parte in
+// luce di una superficie.
+function skyAcquaOnde(ctx, aria, stato, fasce, nf, nc, buf, visti, velo) {
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const mezzo = Math.floor(nc / 2);
+  for (let j = 0; j <= nf; j++) {
+    const f = fasce[j];
+    if (f.totale < 0.05 || !Number.isFinite(f.fine)) continue;
+    const k0 = j * nc + mezzo, k1 = (j === nf ? j - 1 : j + 1) * nc + mezzo;
+    const spaziatura = (visti[k0] && visti[k1])
+      ? Math.abs(buf[k1 * 5 + 1] - buf[k0 * 5 + 1]) : 1;
+    const spessore = Math.max(0.7, Math.min(f.fine * 0.35, spaziatura * 0.95));
+    // Il contrasto cala con la distanza come per tutto il resto, e la
+    // foschia se ne prende la sua parte: un'onda a venti chilometri non si
+    // vede, e disegnarla lo stesso è il modo di far sembrare vicino un lago
+    // che è lontano.
+    const vicinanza = Math.max(0, 1 - f.s / 9000) * (1 - velo);
+    const alfa = (0.05 + 0.2 * vicinanza) * Math.min(1, f.fine / 9);
+    if (alfa < 0.012) continue;
+    const acqua = skyAcquaColore(f.dep, aria);
+    const chiaro = skyMescolaColore(acqua, skyColoreCielo(aria, 22 + 20 * vicinanza), 0.5);
+    const scuro = skyMescolaColore(acqua, [0, 0, 0], 0.4);
+    ctx.lineWidth = spessore;
+
+    for (let mano = 0; mano < 2; mano++) {
       ctx.beginPath();
       let giu = false;
-      for (let i = 0; i < pezzi.length; i++) {
-        if (!alto[i]) { giu = false; continue; }
-        const p = pezzi[i];
-        const km = p.b.lontano + (p.b.vicino - p.b.lontano) * f;
-        const a = p.az * SKY_D2R;
-        const v = skyMareOnda(km * Math.sin(a), km * Math.cos(a), t, onde.pronte, pesi, q.totale);
-        if (!(v > SKY_MARE_CRESTA)) { giu = false; continue; }
-        const x = alto[i].px + (basso[i].px - alto[i].px) * f;
-        const y = alto[i].py + (basso[i].py - alto[i].py) * f;
-        if (giu) ctx.lineTo(x, y); else { ctx.moveTo(x, y); giu = true; }
+      for (let c = 0; c < nc; c++) {
+        const k = j * nc + c;
+        const v = buf[k * 5 + 2];
+        const ok = visti[k] && (mano === 0 ? v > SKY_MARE_CRESTA : v < SKY_MARE_CAVO);
+        if (!ok) { giu = false; continue; }
+        if (giu) ctx.lineTo(buf[k * 5], buf[k * 5 + 1]);
+        else { ctx.moveTo(buf[k * 5], buf[k * 5 + 1]); giu = true; }
       }
-      ctx.strokeStyle = skyRgba(chiaro, 0.3);
+      ctx.strokeStyle = mano === 0 ? skyRgba(chiaro, alfa) : skyRgba(scuro, alfa * 0.7);
       ctx.stroke();
     }
-
   }
-
-  // Il riflesso del Sole o della Luna. Su uno specchio d'acqua è **il**
-  // motivo per disegnarlo: un lago liscio rimanda la Luna come uno specchio
-  // vero, e da un chilometro di distanza è quello che si vede — anche
-  // quando il lago, di suo, è una macchia scura.
-  //
-  // Si disegna a bande, come sul mare, e non a tratti: un tratto ha due
-  // estremi netti, e con una banda per riga ne venivano fuori dei mattoni
-  // impilati. Una banda con il gradiente lungo di lei si spegne ai lati da
-  // sé, e le bande sovrapposte si fondono l'una nell'altra.
-  for (const astro of astri) {
-    for (let r = 0; r < righe; r++) {
-      const f0 = r / righe, f1 = (r + 1) / righe;
-      let primo = -1, ultimo = -1, cima = 0, iCima = -1;
-      for (let i = 0; i < pezzi.length; i++) {
-        if (!alto[i]) continue;
-        const p = pezzi[i];
-        const dep = p.b.depLontano + (p.b.depVicino - p.b.depLontano) * (f0 + f1) / 2;
-        const v = skyVettore(p.az, dep);
-        const uno = skyMareLuccichio(v[0], v[1], v[2], astro.v);
-        const forza = astro.forza * Math.exp(-2 * uno / (stato.pendenza * stato.pendenza));
-        if (forza < 0.04) continue;
-        if (primo < 0) primo = i;
-        ultimo = i;
-        if (forza > cima) { cima = forza; iCima = i; }
-      }
-      if (primo < 0 || ultimo <= primo || cima < 0.06) continue;
-
-      const punto = (i, f) => [
-        alto[i].px + (basso[i].px - alto[i].px) * f,
-        alto[i].py + (basso[i].py - alto[i].py) * f
-      ];
-      const [x0, y0] = punto(primo, (f0 + f1) / 2);
-      const [x1, y1] = punto(ultimo, (f0 + f1) / 2);
-      const g = ctx.createLinearGradient(x0, y0, x1, y1);
-      const tC = Math.max(0.02, Math.min(0.98, (iCima - primo) / (ultimo - primo)));
-      const forte = Math.min(0.7, cima * 0.75);
-      g.addColorStop(0, skyRgba(astro.colore, 0));
-      g.addColorStop(Math.max(0.01, tC * 0.5), skyRgba(astro.colore, forte * 0.35));
-      g.addColorStop(tC, skyRgba(astro.colore, forte));
-      g.addColorStop(Math.min(0.99, tC + (1 - tC) * 0.5), skyRgba(astro.colore, forte * 0.35));
-      g.addColorStop(1, skyRgba(astro.colore, 0));
-
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      for (let i = primo; i <= ultimo; i++) {
-        if (!alto[i]) continue;
-        const [x, y] = punto(i, f0);
-        if (i === primo) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      for (let i = ultimo; i >= primo; i--) {
-        if (!alto[i]) continue;
-        const [x, y] = punto(i, f1);
-        ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
-  }
+  ctx.restore();
 }
 
 // --- La grana del terreno ---------------------------------------------
@@ -14921,6 +15440,10 @@ function skyColonnaCresta(az, h) {
 // da quanto è alta e da **com'è fatta**, non da come è dipinta: qui
 // cambiano il morso del rilievo e i piani, non la tinta.
 function skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria) {
+  // Quello che era rimasto dal fotogramma prima non vale più: la telecamera
+  // può essersi mossa, e una cresta letta dall'inquadratura di prima è
+  // peggio di nessuna cresta.
+  skyCresteUltime = null;
   const arco = skyArcoOrizzonteInVista(base, focale);
   if (!arco) return;
 
@@ -14990,6 +15513,12 @@ function skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria) {
     if (h > altezzaMax) altezzaMax = h;
   }
   if (colonne.length < 2) return;
+
+  // Le creste appena calcolate restano a disposizione di chi disegna subito
+  // dopo, nella stessa passata e con la stessa telecamera: sono i laghi, che
+  // devono sapere **dove il terreno è dipinto** e non dove il modello dice
+  // che sta (vedi `skyCrestaDisegnataEntro`).
+  skyCresteUltime = { arco, passo, colonne, creste, bande };
 
   // Quali bande valgono la pena. Una banda è una dorsale nuova solo se da
   // qualche parte spunta sopra a quella davanti a lei; se non spunta, la
@@ -15890,89 +16419,114 @@ function skyNomiCime(ctx, base, focale, occupati) {
 }
 
 
+// I nomi dei laghi e dei fiumi, scritti **sull'acqua**.
+//
+// La prima versione li appendeva come si appendono quelli delle montagne: un
+// filo che sale dalla riva, una pillola inclinata di quasi mezzo angolo
+// retto, il triangolino sostituito da un pallino. Non era una scelta
+// sbagliata di poco, era la domanda sbagliata. Una vetta è un **punto** —
+// una punta su un crinale affollato, e il nome deve dire *quale* punta,
+// quindi ci vuole un filo che la indichi e un'inclinazione che permetta a
+// dieci nomi di impilarsi in venti gradi. Uno specchio d'acqua è una
+// **superficie**: non c'è nessun punto da indicare, e le carte geografiche
+// il nome di un lago lo scrivono da sempre dentro allo specchio, in corsivo,
+// disteso. Nessun filo, nessuna pillola: la pillola serve a staccare una
+// scritta dal cielo, e qui sotto la scritta c'è l'acqua, che è già il suo
+// fondo.
+//
+// Da questo vengono le tre regole che seguono.
+//
+//   * Il nome sta **in mezzo alla banda**, non su una riva: `acqueDaDisegnare`
+//     dà già l'altezza di mezzo. Su una riva finirebbe metà dentro l'acqua e
+//     metà sul prato, ed è dove stava prima.
+//   * Se non ci sta, **non si scrive**. Il posto lo dicono le due misure
+//     dello specchio (quanti gradi occupa in larghezza e quanti in altezza):
+//     un nome più largo del lago è un nome appoggiato sul paesaggio attorno,
+//     e chi lo legge non sa più a cosa si riferisce. Il corpo del carattere
+//     si stringe fino a `SKY_ACQUE_CORPO_MIN` per provarci; sotto, si rinuncia.
+//   * Le zone occupate sono **le stesse** dei paesi e delle vette. L'acqua
+//     arriva per ultima di proposito: un nome di paese dice dove non puntare
+//     il telescopio, quello di un lago no.
+const SKY_ACQUE_CORPO_MIN = 9;
+
+// Quanti pixel ci sono fra un punto già proiettato e un altro punto del
+// cielo. Serve a misurare quanto è grande **lì** uno specchio d'acqua, e a
+// misurarlo invece di stimarlo: in stereografica il metro cambia da un
+// punto all'altro dello schermo, e a campo largo cambia parecchio.
+function skyQuantiPixel(base, focale, p, az, alt) {
+  const q = skyProietta(skyVettore(az, alt), base, focale);
+  if (!q.davanti) return 0;
+  return Math.hypot(q.px - p.px, q.py - p.py);
+}
+
+// Quanto margine vuole il nome dentro allo specchio, in frazione della sua
+// larghezza. Un nome che tocca le due rive è illeggibile anche se ci sta.
+const SKY_ACQUE_MARGINE = 1.25;
+
+// Quanti se ne scrivono. Sono pochi di proposito: in una provincia di laghi
+// se ne vedono tre o quattro, e il quinto è sempre una pozza.
+const SKY_ACQUE_MAX_NOMI = [3, 4, 5];
+
 function skyNomiAcque(ctx, base, focale, occupati) {
   if (typeof acqueDaDisegnare !== 'function') return;
   const lista = acqueDaDisegnare();
   if (!lista.length) return;
 
-  const corpo = quanto(12, 13, 14);
+  const massimo = quanto(SKY_ACQUE_MAX_NOMI[0], SKY_ACQUE_MAX_NOMI[1], SKY_ACQUE_MAX_NOMI[2]);
+  const corpoPieno = quanto(12, 13, 14);
   const giorno = sky.luceCielo > 0.45;
   const tinta = SKY_NOMI_ORIZZONTE.acque[giorno ? 'giorno' : 'notte'];
-  const massimo = skyCimeMaxNomi(); // possiamo usare lo stesso limite delle cime o meno
-
-  const sin = Math.sin(SKY_CIME_INCLINA);
-  const altoBlocco = corpo * 1.45;
-  const passo = Math.round(altoBlocco * 0.92);
-  const bordo = Math.round(corpo * 0.42);
 
   ctx.save();
   ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  const poste = [];
+  ctx.textAlign = 'center';
   let scritte = 0;
   for (const c of lista) {
     if (scritte >= massimo) break;
-    // Per i laghi non calcoliamo rifrazione complessa se non serve, ma l'alt è già la depressione misurata
-    const alt = c.alt;
-    const p = skyProietta(skyVettore(c.az, alt), base, focale);
+    const p = skyProietta(skyVettore(c.az, c.alt), base, focale);
     if (!p.davanti) continue;
-    if (p.px < -20 || p.px > sky.larghezza + 20 || p.py < -20 || p.py > sky.altezza + 20) continue;
+    if (p.px < 0 || p.px > sky.larghezza || p.py < 0 || p.py > sky.altezza) continue;
 
+    // Quanto spazio c'è **in pixel**, misurato e non stimato: si proiettano
+    // due punti veri dello specchio e si guarda dove finiscono. A campo largo
+    // un grado vale molti meno pixel ai bordi che al centro, e una scala
+    // presa al centro della vista farebbe scrivere nomi che escono dal loro
+    // lago proprio dove il lago è più deformato.
+    const largoPx = skyQuantiPixel(base, focale, p, c.az + c.largoGradi / 2, c.alt) * 2;
+    const altoPx = Math.max(2,
+      skyQuantiPixel(base, focale, p, c.az, c.alt + Math.abs(c.altoGradi) / 2) * 2);
+
+    let corpo = corpoPieno;
     ctx.font = `${SKY_NOMI_ORIZZONTE.acque.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
-    const largo = ctx.measureText(c.nome).width;
+    let largo = ctx.measureText(c.nome).width;
+    // Si stringe finché ci sta, e poi si arrende: un nome più stretto di
+    // nove pixel non è un nome, è una macchia.
+    while (largo * SKY_ACQUE_MARGINE > largoPx && corpo > SKY_ACQUE_CORPO_MIN) {
+      corpo -= 1;
+      ctx.font = `${SKY_NOMI_ORIZZONTE.acque.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
+      largo = ctx.measureText(c.nome).width;
+    }
+    if (largo * SKY_ACQUE_MARGINE > largoPx) continue;
+    // Tutta dentro allo schermo, o niente. Il nome si appende al **centro**
+    // dello specchio, e ingrandendo su una sponda quel centro finisce contro
+    // il bordo: mezza scritta tagliata dalla cornice si legge peggio di
+    // nessuna scritta, e non c'è dove spostarla — fuori dallo specchio non
+    // vuol più dire niente.
+    if (p.px - largo / 2 < 4 || p.px + largo / 2 > sky.larghezza - 4) continue;
 
-    const strato = skyStratoDiCima(c.km);
-    const partenza = SKY_CIME_FILO_STRATO[strato] || SKY_CIME_FILO_MIN;
+    const alta = corpo * 1.25;
+    // Su una striscia più bassa della scritta il nome sborda sulle due rive
+    // e si legge peggio che non scriverlo. I fiumi finiscono quasi sempre
+    // qui, ed è giusto così: un fiume largo trenta metri visto da tre
+    // chilometri è una riga, e una riga non porta un'etichetta.
+    if (altoPx < alta * 0.75) continue;
 
-    const prova = (verso) => {
-      const incl = verso > 0 ? SKY_CIME_INCLINA : -SKY_CIME_INCLINA;
-      for (let t = 0; t < SKY_CIME_FILO_TENTATIVI; t++) {
-        const filo = partenza + t * passo;
-        const ax = p.px, ay = p.py - filo * verso;
-        const cima = ay + sin * verso * largo;
-        if (verso > 0 ? cima < 4 : cima > sky.altezza - 4) return null;
-        const rett = skyRettAppoggiato(ax, ay, largo + bordo * 2, altoBlocco, incl);
-        if (skyPostoLibero(occupati, rett, 2)) return { ax, ay, verso, incl };
-      }
-      return null;
-    };
-    const primo = (p.py - partenza + sin * largo >= 4) ? 1 : -1;
-    const messa = prova(primo) || prova(-primo);
-    if (!messa) continue;
+    const rett = skyRettOrientato(p.px, p.py, largo + corpo * 0.6, alta, 0);
+    if (!skyPostoLibero(occupati, rett, 2)) continue;
     scritte++;
-    poste.push({
-      p, ax: messa.ax, ay: messa.ay, nome: c.nome, largo,
-      incl: messa.incl, verso: messa.verso, velo: SKY_CIME_VELO_STRATO[strato] || 1
-    });
-  }
 
-  ctx.strokeStyle = tinta.segno;
-  ctx.fillStyle = tinta.segno;
-  ctx.lineWidth = 1.2;
-  const lato = Math.max(3.5, corpo * 0.32);
-  for (const e of poste) {
-    ctx.globalAlpha = e.velo;
-    ctx.beginPath();
-    ctx.moveTo(e.p.px, e.p.py);
-    ctx.lineTo(e.ax, e.ay + altoBlocco * 0.35 * e.verso);
-    ctx.stroke();
-    // Segno per le acque (invece del triangolo) - magari un piccolo rombo o cerchietto
-    ctx.beginPath();
-    ctx.arc(e.p.px, e.p.py, lato * 0.6, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  ctx.globalAlpha = 1;
-
-  for (const e of poste) {
-    ctx.save();
-    ctx.translate(e.ax, e.ay);
-    ctx.rotate(e.incl);
-    ctx.globalAlpha = e.velo;
-    skyPillola(ctx, -bordo, -altoBlocco / 2, e.largo + bordo * 2, altoBlocco, altoBlocco / 2, tinta.pillola);
-    ctx.font = `${SKY_NOMI_ORIZZONTE.acque.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
-    skyScrittaConAlone(ctx, e.nome, 0, 0, tinta.pieno, tinta.alone, corpo * 0.24);
-    ctx.restore();
+    ctx.globalAlpha = 0.92;
+    skyScrittaConAlone(ctx, c.nome, p.px, p.py, tinta.pieno, tinta.alone, corpo * 0.26);
   }
   ctx.restore();
 }
