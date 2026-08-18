@@ -8912,6 +8912,7 @@ function skyUsaLuogoVista(lat, lon, nome) {
   if (campo) campo.value = '';
   const l = skyLuogoDelCielo();
   skyAvviso('luogo', `Cielo visto da ${l && l.nome ? l.nome : formattaCoordinate(lat, lon)}: solo qui nel planetario.`, 7000);
+  skyMostraGruppo('');
 }
 
 function skyMostraRisultatiLuogo(elenco, nota) {
