@@ -1,7 +1,7 @@
 {
   "name": "AstroCalendario di Ben",
   "short_name": "AstroCal",
-  "start_url": "./index.html",
+  "start_url": "./index.html?vista=cielo",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
