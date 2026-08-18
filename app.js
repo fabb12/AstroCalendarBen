@@ -15635,6 +15635,17 @@ const SKY_NOMI_ORIZZONTE = {
       pieno: 'rgba(20, 38, 68, 0.97)', alone: 'rgba(255, 255, 255, 0.85)',
       segno: 'rgba(42, 62, 96, 0.62)', pillola: 'rgba(255, 255, 255, 0.5)'
     }
+  },
+  acque: {
+    stile: 'italic 500',
+    notte: {
+      pieno: 'rgba(176, 216, 244, 0.95)', alone: 'rgba(0, 0, 0, 0.8)',
+      segno: 'rgba(146, 186, 214, 0.6)', pillola: 'rgba(8, 12, 22, 0.52)'
+    },
+    giorno: {
+      pieno: 'rgba(30, 88, 148, 0.97)', alone: 'rgba(255, 255, 255, 0.85)',
+      segno: 'rgba(52, 112, 176, 0.62)', pillola: 'rgba(255, 255, 255, 0.5)'
+    }
   }
 };
 
@@ -15654,6 +15665,7 @@ function skyDisegnaNomiOrizzonte(ctx, base, focale) {
   // quello, ed è quello che si fa con un binocolo in mano.
   if (sky.fov >= SKY_CITTA_FOV_MIN) skyNomiCitta(ctx, base, focale, occupati);
   skyNomiCime(ctx, base, focale, occupati);
+  skyNomiAcque(ctx, base, focale, occupati);
 }
 
 // I nomi dei paesi, appoggiati sopra il loro crinale. Sono l'altra metà del
@@ -15876,6 +15888,95 @@ function skyNomiCime(ctx, base, focale, occupati) {
   }
   ctx.restore();
 }
+
+
+function skyNomiAcque(ctx, base, focale, occupati) {
+  if (typeof acqueDaDisegnare !== 'function') return;
+  const lista = acqueDaDisegnare();
+  if (!lista.length) return;
+
+  const corpo = quanto(12, 13, 14);
+  const giorno = sky.luceCielo > 0.45;
+  const tinta = SKY_NOMI_ORIZZONTE.acque[giorno ? 'giorno' : 'notte'];
+  const massimo = skyCimeMaxNomi(); // possiamo usare lo stesso limite delle cime o meno
+
+  const sin = Math.sin(SKY_CIME_INCLINA);
+  const altoBlocco = corpo * 1.45;
+  const passo = Math.round(altoBlocco * 0.92);
+  const bordo = Math.round(corpo * 0.42);
+
+  ctx.save();
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  const poste = [];
+  let scritte = 0;
+  for (const c of lista) {
+    if (scritte >= massimo) break;
+    // Per i laghi non calcoliamo rifrazione complessa se non serve, ma l'alt è già la depressione misurata
+    const alt = c.alt;
+    const p = skyProietta(skyVettore(c.az, alt), base, focale);
+    if (!p.davanti) continue;
+    if (p.px < -20 || p.px > sky.larghezza + 20 || p.py < -20 || p.py > sky.altezza + 20) continue;
+
+    ctx.font = `${SKY_NOMI_ORIZZONTE.acque.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
+    const largo = ctx.measureText(c.nome).width;
+
+    const strato = skyStratoDiCima(c.km);
+    const partenza = SKY_CIME_FILO_STRATO[strato] || SKY_CIME_FILO_MIN;
+
+    const prova = (verso) => {
+      const incl = verso > 0 ? SKY_CIME_INCLINA : -SKY_CIME_INCLINA;
+      for (let t = 0; t < SKY_CIME_FILO_TENTATIVI; t++) {
+        const filo = partenza + t * passo;
+        const ax = p.px, ay = p.py - filo * verso;
+        const cima = ay + sin * verso * largo;
+        if (verso > 0 ? cima < 4 : cima > sky.altezza - 4) return null;
+        const rett = skyRettAppoggiato(ax, ay, largo + bordo * 2, altoBlocco, incl);
+        if (skyPostoLibero(occupati, rett, 2)) return { ax, ay, verso, incl };
+      }
+      return null;
+    };
+    const primo = (p.py - partenza + sin * largo >= 4) ? 1 : -1;
+    const messa = prova(primo) || prova(-primo);
+    if (!messa) continue;
+    scritte++;
+    poste.push({
+      p, ax: messa.ax, ay: messa.ay, nome: c.nome, largo,
+      incl: messa.incl, verso: messa.verso, velo: SKY_CIME_VELO_STRATO[strato] || 1
+    });
+  }
+
+  ctx.strokeStyle = tinta.segno;
+  ctx.fillStyle = tinta.segno;
+  ctx.lineWidth = 1.2;
+  const lato = Math.max(3.5, corpo * 0.32);
+  for (const e of poste) {
+    ctx.globalAlpha = e.velo;
+    ctx.beginPath();
+    ctx.moveTo(e.p.px, e.p.py);
+    ctx.lineTo(e.ax, e.ay + altoBlocco * 0.35 * e.verso);
+    ctx.stroke();
+    // Segno per le acque (invece del triangolo) - magari un piccolo rombo o cerchietto
+    ctx.beginPath();
+    ctx.arc(e.p.px, e.p.py, lato * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+
+  for (const e of poste) {
+    ctx.save();
+    ctx.translate(e.ax, e.ay);
+    ctx.rotate(e.incl);
+    ctx.globalAlpha = e.velo;
+    skyPillola(ctx, -bordo, -altoBlocco / 2, e.largo + bordo * 2, altoBlocco, altoBlocco / 2, tinta.pillola);
+    ctx.font = `${SKY_NOMI_ORIZZONTE.acque.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
+    skyScrittaConAlone(ctx, e.nome, 0, 0, tinta.pieno, tinta.alone, corpo * 0.24);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
 
 // Reticolo di riferimento: meridiani di azimut e paralleli di altezza
 function skyDisegnaGriglia(ctx, base, focale) {
