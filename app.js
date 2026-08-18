@@ -12795,7 +12795,10 @@ const SKY_PAESAGGI = {
   // Il mare è l'unico che non è terra: di giorno è blu, di notte è più
   // scuro del cielo ma non nero — un po' di cielo lo rispecchia sempre
   mare:     { vicinoNotte: [4, 7, 14],  vicinoGiorno: [34, 62, 88],
-              lontanoNotte: [8, 13, 24], lontanoGiorno: [72, 106, 138] }
+              lontanoNotte: [8, 13, 24], lontanoGiorno: [72, 106, 138] },
+  // La spiaggia, per velare di sabbia il prato nei punti vicini al mare
+  spiaggia: { vicinoNotte: [10, 9, 7],  vicinoGiorno: [194, 178, 128],
+              lontanoNotte: [14, 13, 11], lontanoGiorno: [180, 168, 130] }
 };
 
 // Quanto è opaco il terreno adesso.
@@ -12940,6 +12943,10 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // essere una sola, uguale dappertutto.
   skyDisegnaVeloPaesaggio(ctx, base, focale, aria);
 
+  // Le spiagge, velate sopra il fondo ma sotto le colline: la sabbia appare ai
+  // bordi dell'acqua.
+  skyDisegnaSpiagge(ctx, base, focale, aria);
+
   // Le colline e gli alberi, appoggiati sopra la linea. Sono dello stesso
   // colore del terreno che gli sta subito sotto — se no fra il profilo e il
   // suolo si vede una cucitura, ed era il secondo artefatto della prima
@@ -13081,6 +13088,66 @@ function skyDisegnaVeloPaesaggio(ctx, base, focale, aria) {
     g.addColorStop(0, skyRgba(colore, alfa));
     g.addColorStop(0.45, skyRgba(colore, alfa * 0.42));
     g.addColorStop(1, skyRgba(colore, 0));
+    ctx.fillStyle = g;
+
+    ctx.beginPath();
+    ctx.moveTo(sinistra.orlo.px, sinistra.orlo.py);
+    ctx.lineTo(dopo.orlo.px, dopo.orlo.py);
+    ctx.lineTo(dopo.giu.px, dopo.giu.py);
+    ctx.lineTo(sinistra.giu.px, sinistra.giu.py);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// --- La spiaggia --------------------------------------------------------
+//
+// Dove c'è mare la terra finisce: il prato verde lascia il posto alla sabbia
+// (o agli scogli, ma per semplicità assumiamo sabbia). Questa funzione prende
+// i colori della spiaggia e vela il terreno sottostante (già dipinto da
+// `skyDisegnaTerreno`) nei punti dove la frazione di mare è superiore a zero.
+// Va chiamata dopo `skyDisegnaVeloPaesaggio` e prima di `skyDisegnaMare`.
+// È identica a `skyDisegnaVeloPaesaggio`, ma colora di sabbia.
+function skyDisegnaSpiagge(ctx, base, focale, aria) {
+  if (typeof terrenoMiscela !== 'function' || !terrenoDisponibile()) return;
+  const arco = skyArcoOrizzonteInVista(base, focale);
+  if (!arco) return;
+
+  const passo = arco.mezzo > 60 ? 2 : 1.5;
+  const sabbia = skyColoriPaesaggio('spiaggia', aria);
+
+  const punto = az => {
+    const m = terrenoMiscela(az);
+    if (!m || m.mare <= 0.05) return null;
+    const orlo = skyProietta(skyVettore(az, 0), base, focale);
+    const giu = skyProietta(skyVettore(az, -SKY_VELO_PROFONDITA), base, focale);
+    if (!orlo.davanti || !giu.davanti) return null;
+    return { m, forza: m.mare, orlo, giu };
+  };
+
+  ctx.save();
+  let prima = punto(arco.centro - arco.mezzo);
+  for (let d = -arco.mezzo + passo; d <= arco.mezzo + 0.001; d += passo) {
+    const dopo = punto(arco.centro + d);
+    const sinistra = prima;
+    prima = dopo;
+    if (!sinistra || !dopo) continue;
+
+    const forza = (sinistra.forza + dopo.forza) / 2;
+    if (forza < 0.05) continue;
+
+    // Per far apparire la costa e sfumarla sotto l'acqua, il velo di sabbia
+    // può essere opaco in cima all'orizzonte (o quasi).
+    const alfa = Math.min(1, SKY_VELO_ALFA * forza * 1.5);
+
+    const g = ctx.createLinearGradient(
+      (sinistra.orlo.px + dopo.orlo.px) / 2, (sinistra.orlo.py + dopo.orlo.py) / 2,
+      (sinistra.giu.px + dopo.giu.px) / 2, (sinistra.giu.py + dopo.giu.py) / 2);
+    // Vogliamo che la spiaggia si veda bene all'orizzonte
+    g.addColorStop(0, skyRgba(sabbia.lontano, alfa));
+    g.addColorStop(0.45, skyRgba(skyMescolaColore(sabbia.lontano, sabbia.vicino, 0.7), alfa * 0.8));
+    g.addColorStop(1, skyRgba(sabbia.vicino, 0));
     ctx.fillStyle = g;
 
     ctx.beginPath();
