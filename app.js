@@ -7167,8 +7167,8 @@ const sky = {
   offsetBussola: 0,      // correzione manuale della bussola, in gradi
   calibrazione: false,   // il trascinamento sta ritoccando la bussola
   salvaBussola: null,    // timer per salvare la calibrazione a fine trascinamento
-  fov: 55,               // campo visivo verticale, in gradi (quello disegnato adesso)
-  fovVoluto: 55,         // dove lo zoom sta andando: ci arriva scivolando (vedi 7.4-ter)
+  fov: 80,               // campo visivo verticale, in gradi (quello disegnato adesso)
+  fovVoluto: 80,         // dove lo zoom sta andando: ci arriva scivolando (vedi 7.4-ter)
   manuale: { az: 180, alt: 25 },
   puntatori: new Map(),  // dita appoggiate sul canvas (per trascinamento e pizzico)
   pizzico: null,
@@ -7350,7 +7350,7 @@ function skyAngoloSchermo() {
 
 // --- Filtro anti-tremolio della bussola ---
 // I sensori non danno un angolo, danno una misura: fra una lettura e l'altra
-// ballano di qualche grado. Con un campo di 55° su trecento pixel un grado
+// ballano di qualche grado. Con un campo di 80° su trecento pixel un grado
 // vale quasi sei pixel, quindi quel ballo si vede tutto. E c'è un punto in
 // cui peggiora: con il telefono tenuto dritto davanti a sé (beta vicino a
 // 90°) la terna alpha/beta/gamma perde un grado di libertà — alpha e gamma
@@ -7582,7 +7582,7 @@ function skyScalaLocale(d) {
 // sbagliarlo è il motivo per cui gli astri "scivolano" sul video.
 //
 // Il conto è questo. Un telefono tenuto dritto inquadra in altezza una
-// sessantina di gradi di mondo; la mappa ne disegnava 55 sulla stessa
+// sessantina di gradi di mondo; la mappa ne disegnava 80 sulla stessa
 // altezza, cioè disegnava il cielo ingrandito di quasi un quinto. Al centro
 // le due immagini combaciano lo stesso — il centro è il centro per tutti e
 // due — ma già a un quarto di schermo dal centro il segno disegnato cade
@@ -10621,7 +10621,7 @@ function skyAria(altSole) {
 // si scalda e si schiarisce, e negli ultimi gradi entra la foschia — di
 // giorno la polvere, di notte le luci dei paesi.
 function skyColoreCielo(aria, alt) {
-  const t = Math.pow(Math.max(0, Math.min(1, alt / 55)), 0.75);
+  const t = Math.pow(Math.max(0, Math.min(1, alt / 80)), 0.75);
   let c = skyMescolaColore(aria.orizzonte, aria.zenit, t);
   const foschia = Math.max(0, 1 - Math.max(0, alt) / 12);
   return skyMescolaColore(c, aria.foschia, 0.4 * foschia * foschia);
