@@ -13313,7 +13313,7 @@ function skyMareOggi() {
 // L'acqua in sé, quella che si vede guardandoci dentro: verde-blu cupo di
 // giorno, quasi nera di notte. Non è il colore del mare — quello è
 // soprattutto cielo riflesso — è quello che resta togliendo il riflesso.
-const SKY_MARE_ACQUA = { notte: [3, 6, 11], giorno: [11, 40, 55] };
+const SKY_MARE_ACQUA = { notte: [3, 6, 11], giorno: [20, 70, 95] };
 
 // Il riflesso non arriva mai al cento per cento, e il cielo che si specchia
 // non è quello esattamente all'altezza dello sguardo.
@@ -14253,7 +14253,7 @@ function skyDisegnaMare(ctx, base, focale, aria) {
 //      sembrare il lago un ritaglio incollato. Adesso l'acqua scende fino
 //      alla cresta **disegnata** (`skyCrestaDisegnataEntro`), cioè si
 //      infila dietro al dosso esattamente dove il dosso è dipinto.
-const SKY_ACQUA_DOLCE = { notte: [4, 7, 9], giorno: [24, 36, 32] };
+const SKY_ACQUA_DOLCE = { notte: [4, 7, 9], giorno: [30, 60, 55] };
 
 // Quanto è più liscia l'acqua ferma di quella di mare, e quanto più corte
 // sono le sue onde. Un lago: mezza pendenza e mezza lunghezza. Un fiume
