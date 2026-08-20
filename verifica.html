@@ -4689,6 +4689,260 @@ if (typeof acqueTaglia !== 'function') {
 }
 
 // =====================================================================
+titolo('21. L\'eclissi di Luna nel planetario (app.js §7.3.2)');
+// =====================================================================
+//
+// È il posto dove sbagliare non si vede: un'ombra ramata addosso alla Luna
+// è un'immagine convincente comunque, anche se il gradiente va dalla parte
+// sbagliata — ed è quello che faceva, con la fascia più chiara al centro
+// invece che sull'orlo. A campo largo, con la Luna disegnata quattordici
+// pixel, non se ne accorgeva nessuno; ingrandendo diventava tutta l'immagine.
+//
+// Le prove sono di due famiglie. La **geometria** si controlla contro
+// Astronomy Engine, che le eclissi di Luna le cerca per conto suo con un
+// codice che non ha niente in comune con questo: se i due conti si
+// accordano sulla durata al quarto di minuto e sulla frazione di disco
+// coperta al millesimo, il nostro non è sbagliato. Il **profilo dell'ombra**
+// si controlla invece per quello che deve promettere: nessun anello scuro,
+// l'orlo più chiaro del cuore, e il turchese dell'ozono dove va.
+//
+// Come per il §8, il §18 e il §19: questa pagina non carica `app.js` (che
+// all'avvio costruisce l'interfaccia, e qui l'interfaccia non c'è), quindi
+// le funzioni qui sotto sono una **copia**. Ricopiandole va ricopiato tutto
+// il blocco, costanti comprese.
+{
+  const ECL_R2D = 180 / Math.PI;
+  const ECL_RT = 6378.14, ECL_RS = 696000, ECL_RL = 1737.4;
+
+  function eclNorma(v) { const n = Math.hypot(v[0], v[1], v[2]); return [v[0] / n, v[1] / n, v[2] / n]; }
+  function eclDot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+
+  // skyOmbraDellaTerra, ridotta a quello che serve qui
+  function eclOmbra(t) {
+    const gl = Astronomy.GeoVector('Moon', t, true), gs = Astronomy.GeoVector('Sun', t, true);
+    const dL = Math.hypot(gl.x, gl.y, gl.z) * UA_KM, dS = Math.hypot(gs.x, gs.y, gs.z) * UA_KM;
+    const piL = Math.asin(ECL_RT / dL) * ECL_R2D, piS = Math.asin(ECL_RT / dS) * ECL_R2D;
+    const sS = Math.asin(ECL_RS / dS) * ECL_R2D, rL = Math.asin(ECL_RL / dL) * ECL_R2D;
+    const u = eclNorma([gl.x, gl.y, gl.z]), a = eclNorma([-gs.x, -gs.y, -gs.z]);
+    return {
+      gamma: Math.acos(Math.max(-1, Math.min(1, eclDot(u, a)))) * ECL_R2D,
+      umbra: 1.02 * (piL + piS - sS), penombra: 1.02 * (piL + piS + sS), rL
+    };
+  }
+
+  // skyCoperturaDischi
+  function eclCopertura(sep, rS, rL) {
+    if (sep >= rS + rL) return 0;
+    if (sep <= Math.abs(rL - rS)) return rL >= rS ? 1 : (rL * rL) / (rS * rS);
+    const a1 = Math.acos((sep * sep + rS * rS - rL * rL) / (2 * sep * rS));
+    const a2 = Math.acos((sep * sep + rL * rL - rS * rS) / (2 * sep * rL));
+    const area = rS * rS * (a1 - Math.sin(2 * a1) / 2) + rL * rL * (a2 - Math.sin(2 * a2) / 2);
+    return Math.max(0, Math.min(1, area / (Math.PI * rS * rS)));
+  }
+
+  // SKY_ECL_TONI, SKY_ECL_OMBRA_LUCE, SKY_ECL_PENOMBRA_ESPONENTE
+  const ECL_TONI = [
+    { d: 0.00, luce: 1.00, colore: [0.84, 0.94, 1.00] },
+    { d: 0.04, luce: 0.90, colore: [1.00, 0.86, 0.74] },
+    { d: 0.12, luce: 0.75, colore: [1.00, 0.58, 0.32] },
+    { d: 0.30, luce: 0.61, colore: [1.00, 0.45, 0.25] },
+    { d: 0.60, luce: 0.50, colore: [1.00, 0.37, 0.22] },
+    { d: 1.00, luce: 0.42, colore: [1.00, 0.32, 0.21] }
+  ];
+  const ECL_OMBRA_LUCE = 0.72, ECL_PENOMBRA_ESP = 1.5;
+
+  function eclTono(d) {
+    const t = Math.max(0, Math.min(1, d));
+    let i = 1;
+    while (i < ECL_TONI.length - 1 && t > ECL_TONI[i].d) i++;
+    const a = ECL_TONI[i - 1], b = ECL_TONI[i];
+    const k = b.d > a.d ? Math.max(0, Math.min(1, (t - a.d) / (b.d - a.d))) : 0;
+    return {
+      luce: a.luce + (b.luce - a.luce) * k,
+      colore: [0, 1, 2].map(c => a.colore[c] + (b.colore[c] - a.colore[c]) * k)
+    };
+  }
+
+  // skyEclisseColore
+  function eclColore(s, rho) {
+    if (rho < s.umbra) {
+      const t = eclTono(1 - rho / s.umbra);
+      const l = ECL_OMBRA_LUCE * t.luce;
+      return t.colore.map(c => l * c);
+    }
+    const terra = (s.penombra + s.umbra) / 2, sole = (s.penombra - s.umbra) / 2;
+    const cop = sole > 0 ? eclCopertura(rho, sole, terra) : (rho < terra ? 1 : 0);
+    const diretta = Math.max(0, Math.min(1, 1 - cop));
+    const l = ECL_OMBRA_LUCE + (1 - ECL_OMBRA_LUCE) * Math.pow(diretta, ECL_PENOMBRA_ESP);
+    const orlo = ECL_TONI[0].colore, k = Math.sqrt(diretta);
+    return orlo.map(c => l * (c + (1 - c) * k));
+  }
+
+  const eclLum = (c) => c[0] * 0.3 + c[1] * 0.5 + c[2] * 0.2;
+
+  // --- La geometria, contro le eclissi che Astronomy Engine trova da sé ---
+  //
+  // Il contatto è l'istante in cui la distanza dall'asse dell'ombra vale
+  // `umbra + rL` (inizio della parziale) oppure `umbra − rL` (inizio della
+  // totalità). Cercandolo per bisezione si ottiene la semidurata, che è
+  // esattamente quello che la libreria pubblica nei suoi `sd_partial` e
+  // `sd_total` — calcolati però per un'altra strada. Se le due si accordano
+  // al quarto di minuto su otto eclissi di fila, il nostro conto è giusto.
+  function eclSemidurata(picco, soglia) {
+    const g = (m) => { const s = eclOmbra(new Date(picco.getTime() + m * 60000)); return s.gamma - soglia(s); };
+    if (g(0) > 0 || g(300) < 0) return 0;
+    let lo = 0, hi = 300;
+    for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (g(m) < 0) lo = m; else hi = m; }
+    return (lo + hi) / 2;
+  }
+
+  let e = Astronomy.SearchLunarEclipse(new Date('2025-01-01'));
+  let generi = 0, durate = 0, oscura = 0, peggioDurata = 0, peggioOscura = 0;
+  const righe = [];
+  for (let i = 0; i < 8; i++) {
+    const t = e.peak.date, s = eclOmbra(t);
+    const magU = (s.umbra + s.rL - s.gamma) / (2 * s.rL);
+    const genere = magU >= 1 ? 'total' : (magU > 0 ? 'partial' : 'penumbral');
+    if (genere === e.kind) generi++;
+    const obsc = eclCopertura(s.gamma, s.rL, s.umbra);
+    const dObsc = Math.abs(obsc - e.obscuration);
+    if (dObsc < 0.01) oscura++;
+    peggioOscura = Math.max(peggioOscura, dObsc);
+    const sdP = eclSemidurata(t, x => x.umbra + x.rL);
+    const sdT = eclSemidurata(t, x => x.umbra - x.rL);
+    const dD = Math.max(Math.abs(sdP - e.sd_partial), Math.abs(sdT - e.sd_total));
+    if (dD < 1) durate++;
+    peggioDurata = Math.max(peggioDurata, dD);
+    if (i < 3) righe.push(`${t.toISOString().slice(0, 10)} ${e.kind} magU ${magU.toFixed(3)}`);
+    e = Astronomy.NextLunarEclipse(e.peak);
+  }
+  prova('totale, parziale o di penombra: lo stesso verdetto della libreria',
+    generi === 8, `8 eclissi di fila — ${righe.join(', ')}`);
+  prova('quanto disco è dentro l\'ombra piena: lo stesso numero della libreria',
+    oscura === 8, `scarto massimo ${peggioOscura.toFixed(4)}`);
+  // Il minuto di tolleranza se lo prende tutto la parziale radente del 12
+  // gennaio 2028, che sfiora l'ombra con un quattordicesimo di disco: lì il
+  // contatto è quasi tangente, e mezzo primo d'arco di convenzione
+  // sull'ingrossamento del cono sposta l'istante di un minuto. Le altre
+  // sette stanno tutte sotto i venti secondi.
+  prova('le semidurate della parziale e della totalità tornano al minuto',
+    durate === 8, `scarto massimo ${(peggioDurata * 60).toFixed(0)} s`);
+
+  // La magnitudine umbrale delle due totali del 2025 e del 2026, contro i
+  // valori pubblicati. Non è un doppione della prova qui sopra: quella dice
+  // che la geometria è coerente, questa che è tarata giusta — cioè che
+  // l'ingrossamento dell'un per cento del cono, che è una convenzione e non
+  // un teorema, non ci porta fuori strada.
+  [['2025-09-07T18:11:41Z', 1.3651], ['2026-03-03T11:33:40Z', 1.1513]].forEach(([iso, atteso]) => {
+    const s = eclOmbra(new Date(iso));
+    const magU = (s.umbra + s.rL - s.gamma) / (2 * s.rL);
+    prova(`magnitudine umbrale del ${iso.slice(0, 10)}`, Math.abs(magU - atteso) < 0.02,
+      `${magU.toFixed(4)} contro ${atteso} pubblicato`);
+  });
+
+  // --- Il profilo dell'ombra ---
+  const sTot = eclOmbra(new Date('2025-09-07T18:11:41Z'));
+
+  // Nessun anello scuro. È il difetto che c'era: la penombra si fermava a un
+  // terzo all'orlo dell'ombra, l'ombra ripartiva più scura del suo stesso
+  // centro, e in mezzo restava una riga. Il conto giusto non può averla,
+  // perché più ci si allontana dall'asse più Sole si vede.
+  let monotona = true, ultima = -1, dove = 0;
+  for (let i = 0; i <= 600; i++) {
+    const rho = sTot.penombra * 1.3 * (i / 600);
+    const l = eclLum(eclColore(sTot, rho));
+    if (l < ultima - 1e-9) { monotona = false; dove = rho / sTot.umbra; }
+    ultima = l;
+  }
+  prova('dall\'asse in fuori la Luna si schiarisce sempre: nessun anello scuro',
+    monotona, monotona ? '600 campioni fino a 1,3 penombre' : `scende a ${dove.toFixed(3)} raggi d'ombra`);
+
+  // L'errore che a occhio non si vede, ed era quello che c'era: l'orlo
+  // dell'ombra piena è la sua parte **più chiara**, non la più scura.
+  const orlo = eclColore(sTot, sTot.umbra * 0.999);
+  const cuore = eclColore(sTot, 0);
+  prova('l\'orlo dell\'ombra piena è più chiaro del suo cuore',
+    eclLum(orlo) > eclLum(cuore) * 1.8,
+    `${(eclLum(orlo) * 100).toFixed(0)}% contro ${(eclLum(cuore) * 100).toFixed(0)}%`);
+
+  // Il turchese dell'ozono, e il rame appena più dentro. Sono la ragione per
+  // cui questo disegno esiste, e valgono la pena di essere provati.
+  prova('sull\'orlo il blu batte il rosso: è l\'ozono che si mangia il rosso',
+    orlo[2] > orlo[0] * 1.1, `blu ${(orlo[2] * 255).toFixed(0)}, rosso ${(orlo[0] * 255).toFixed(0)}`);
+  const rame = eclColore(sTot, sTot.umbra * 0.86);
+  prova('un decimo più dentro è già rame: il rosso batte il blu di tre volte',
+    rame[0] > rame[2] * 3, `rosso ${(rame[0] * 255).toFixed(0)}, blu ${(rame[2] * 255).toFixed(0)}`);
+  prova('e il passaggio dura poco: sta dentro un quinto del raggio dell\'ombra',
+    eclLum(eclColore(sTot, sTot.umbra * 0.80)) < eclLum(orlo) * 0.75,
+    'se durasse di più il turchese si spalmerebbe su mezza ombra');
+
+  // Le due metà si devono incontrare senza gradino sull'orlo, dove il Sole è
+  // coperto per intero: di là la luce che resta del disco solare, di qua
+  // quella che l'atmosfera fa passare.
+  const dentro = eclColore(sTot, sTot.umbra * 0.9999);
+  const fuori = eclColore(sTot, sTot.umbra * 1.0001);
+  const gradino = Math.max(...[0, 1, 2].map(c => Math.abs(dentro[c] - fuori[c])));
+  prova('ombra e penombra si incontrano senza gradino',
+    gradino < 0.002 && Math.abs(eclLum(dentro) - ECL_OMBRA_LUCE * eclLum(ECL_TONI[0].colore)) < 0.005,
+    `scarto ${(gradino * 255).toFixed(2)} livelli su 255`);
+
+  // Fuori dalla penombra non c'è nessuna ombra. Sembra ovvio, e non lo è:
+  // il gradiente arriva fin lì e l'ultima fermata deve valere bianco pieno,
+  // se no la Luna piena di una notte qualunque risulta appena velata.
+  const netto = eclColore(sTot, sTot.penombra * 1.2);
+  prova('fuori dalla penombra la Luna non è toccata',
+    netto.every(c => c > 0.9999), netto.map(c => c.toFixed(5)).join(' '));
+
+  // La penombra come la vede l'occhio: a metà strada non ci si accorge
+  // quasi di niente. È il contrario di quello che faceva la rampa lineare
+  // di prima, che a metà penombra aveva già grigiato la Luna del quaranta
+  // per cento — ore prima che l'ombra vera la toccasse.
+  const mezza = eclLum(eclColore(sTot, (sTot.umbra + sTot.penombra) / 2));
+  prova('a metà penombra la Luna è ancora quasi piena',
+    mezza > 0.75 && mezza < 0.95, `${(mezza * 100).toFixed(0)}% della sua luce`);
+
+  // Il bagliore attorno al disco: durante una totale se ne deve andare
+  // quasi tutto, durante una di sola penombra deve restare.
+  function eclLuceMedia(s) {
+    let somma = 0, n = 0;
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+      const x = i / 2, y = j / 2;
+      if (x * x + y * y > 1) continue;
+      somma += eclLum(eclColore(s, Math.hypot(s.gamma + x * s.rL, y * s.rL)));
+      n++;
+    }
+    return somma / n;
+  }
+  const luceTot = eclLuceMedia(sTot);
+  const sPen = eclOmbra(new Date('2027-02-20T23:12:00Z'));   // solo penombra
+  const lucePen = eclLuceMedia(sPen);
+  prova('in totalità il bagliore della Luna se ne va quasi tutto',
+    luceTot < 0.3, `resta il ${(luceTot * 100).toFixed(0)}% della luce`);
+  prova('in un\'eclissi di sola penombra il bagliore resta',
+    lucePen > 0.75, `resta il ${(lucePen * 100).toFixed(0)}%`);
+
+  // Le fermate del gradiente: il canvas le vuole in ordine, e la prima e
+  // l'ultima devono essere il centro dell'ombra e il pieno Sole.
+  const stop = [];
+  const spingi = (rho) => stop.push({ t: Math.max(0, Math.min(1, rho / sTot.penombra)), c: eclColore(sTot, rho) });
+  const bordo = sTot.umbra * 1.06;
+  for (let i = 0; i <= 10; i++) spingi(sTot.umbra * 0.86 * (i / 10));
+  for (let i = 1; i <= 22; i++) spingi(sTot.umbra * 0.86 + (bordo - sTot.umbra * 0.86) * (i / 22));
+  for (let i = 1; i <= 16; i++) spingi(bordo + (sTot.penombra - bordo) * (i / 16));
+  let ordinate = true;
+  for (let i = 1; i < stop.length; i++) if (stop[i].t < stop[i - 1].t) ordinate = false;
+  prova('le fermate del gradiente sono in ordine, da 0 a 1',
+    ordinate && stop[0].t === 0 && stop[stop.length - 1].t === 1 &&
+    stop[stop.length - 1].c.every(c => c > 0.9999),
+    `${stop.length} fermate, l'ultima bianca`);
+  // Metà delle fermate stanno a cavallo dell'orlo, dove il colore cambia in
+  // fretta: con fermate equidistanti il turchese si leggerebbe a scalini.
+  const vicine = stop.filter(p => p.t * sTot.penombra > sTot.umbra * 0.86 && p.t * sTot.penombra <= bordo).length;
+  prova('quasi metà delle fermate stanno a cavallo dell\'orlo dell\'ombra',
+    vicine >= stop.length * 0.4, `${vicine} su ${stop.length}, nel 12% del raggio`);
+}
+
+// =====================================================================
 // Il verdetto si scrive **dopo** le prove che aspettano (vedi `attendi`): se lo
 // si scrivesse subito direbbe «tutte passate» un istante prima che le ultime
 // abbiano risposto, che è il modo in cui una pagina di prove smette di servire.
