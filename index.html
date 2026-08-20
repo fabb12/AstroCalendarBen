@@ -9,6 +9,13 @@
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#04060d">
   <meta name="color-scheme" content="dark">
+  <script>
+    // Prima che il body esista: evita un lampo della vista Stasera quando la
+    // PWA nasce direttamente nel planetario.
+    if (new URLSearchParams(location.search).get('vista') === 'cielo') {
+      document.documentElement.classList.add('avvio-planetario');
+    }
+  </script>
 
   <!-- Icone e supporto installazione PWA -->
   <link rel="icon" type="image/png" href="icon-192.png">
@@ -46,6 +53,29 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="min-h-screen">
+
+  <!-- Resta davanti alla pagina solo durante l'apertura diretta del
+       planetario; il catalogo delle stelle lo congeda quando è pronto. -->
+  <div id="splash-planetario" class="splash-planetario" role="status" aria-live="polite" aria-label="Caricamento del planetario">
+    <div class="splash-cielo" aria-hidden="true">
+      <span class="splash-orbita splash-orbita-esterna"></span>
+      <span class="splash-orbita splash-orbita-interna"></span>
+      <span class="splash-pianeta"></span>
+      <span class="splash-stella splash-stella-uno"></span>
+      <span class="splash-stella splash-stella-due"></span>
+      <span class="splash-stella splash-stella-tre"></span>
+    </div>
+    <div class="splash-contenuto">
+      <p class="splash-sovratitolo">AstroCalendario di Ben</p>
+      <h2>Prepariamo il planetario</h2>
+      <blockquote>
+        <p>«Siamo un modo per il cosmo di conoscere se stesso.»</p>
+        <cite>— Carl Sagan</cite>
+      </blockquote>
+      <div class="splash-attesa" aria-hidden="true"><i></i></div>
+      <p class="splash-stato">Allineamento delle stelle in corso…</p>
+    </div>
+  </div>
 
   <!-- LA TESTATA
        Una barra sola, uguale a se stessa su ogni schermo: marchio e nome a
