@@ -2366,7 +2366,10 @@ function raggiLeggiSalvati() {
     cime: RAGGI_LIMITI.cime.predefinito,
     citta: RAGGI_LIMITI.citta.predefinito,
     acque: RAGGI_LIMITI.acque.predefinito,
-    nomiMonti: false,
+    // I nomi sono parte del panorama, quindi al primo avvio devono essere
+    // visibili. Restano comunque indipendenti dalle etichette astronomiche
+    // e chi non li desidera può spegnerli dal loro interruttore.
+    nomiMonti: true,
     // I laghi e i fiumi nascono **accesi**, al contrario dei nomi dei
     // monti: non aggiungono scritte davanti al cielo, sono paesaggio come
     // le colline — e chi apre il planetario sul lago di Como vuole vedere
@@ -2380,10 +2383,9 @@ function raggiLeggiSalvati() {
       if (typeof s.citta === 'number') v.citta = raggiTosa('citta', s.citta);
       if (typeof s.acque === 'number') v.acque = raggiTosa('acque', s.acque);
       if (typeof s.acqueAccese === 'boolean') v.acqueAccese = s.acqueAccese;
-      // I nomi dei monti nascono spenti, e restano spenti finché qualcuno
-      // non li accende: sono l'unico strato di questo file che aggiunge
-      // scritte sopra al cielo, e chi apre il planetario per la prima
-      // volta vuole vedere il cielo.
+      // Una scelta già salvata prevale sul valore iniziale: in questo modo
+      // accenderli di default non riaccende le scritte a chi le ha spente
+      // esplicitamente.
       if (typeof s.nomiMonti === 'boolean') v.nomiMonti = s.nomiMonti;
     }
   } catch (e) { /* niente storage, o roba illeggibile */ }
@@ -3005,9 +3007,9 @@ const cime = {
   fonte: '',
   motivo: '',
   avanzamento: 0,         // 0…1 per la barra della §9-ter
-  // Spente di partenza, e la scelta si ricorda (§9-bis): i nomi delle
-  // montagne sono l'unica cosa di questo file che scrive sopra al cielo, e
-  // chi apre il planetario la prima volta è venuto a vedere le stelle.
+  // Accese di partenza, e la scelta si ricorda (§9-bis): il panorama deve
+  // presentarsi già riconoscibile senza costringere a scoprire un secondo
+  // interruttore oltre a quello generale delle etichette.
   acceso: raggi.nomiMonti,
   quandoFallito: 0,       // per non ritentare a raffica dopo un buco nell'acqua
   fallitoLat: null, fallitoLon: null,   // e dove era andata male: altrove si riprova subito
