@@ -21126,6 +21126,8 @@ function apriSkymap() {
   if (typeof catCarica === 'function') {
     skyCaricamentoMostra(!catProntoOMancante());
     catCarica().then(skyCaricamentoNascondi, skyCaricamentoNascondi);
+  } else {
+    splashPlanetarioNascondi();
   }
 
   skyRidimensiona();
@@ -21236,6 +21238,22 @@ function skyCaricamentoMostra(mostra) {
 
 function skyCaricamentoNascondi() {
   skyCaricamentoMostra(false);
+  splashPlanetarioNascondi();
+}
+
+// Lo splash appartiene solo all'apertura diretta del planetario (PWA o link
+// con ?vista=cielo). Due fotogrammi lasciano dipingere il cielo prima della
+// dissolvenza, così sotto non compare mai una superficie ancora vuota.
+function splashPlanetarioNascondi() {
+  const splash = document.getElementById('splash-planetario');
+  if (!splash || !document.documentElement.classList.contains('avvio-planetario')) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    splash.classList.add('in-uscita');
+    setTimeout(() => {
+      document.documentElement.classList.remove('avvio-planetario');
+      splash.remove();
+    }, 700);
+  }));
 }
 
 function chiudiSkymap() {

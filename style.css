@@ -140,6 +140,80 @@ body::after {
   to   { opacity: 1; }
 }
 
+/* ------------------------------------------------ SPLASH PLANETARIO  */
+.splash-planetario {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  padding: max(28px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  background:
+    radial-gradient(circle at 50% 38%, rgba(76, 141, 255, 0.18), transparent 25%),
+    radial-gradient(circle at 18% 12%, rgba(139, 92, 246, 0.14), transparent 32%),
+    #04060d;
+  opacity: 1;
+  transition: opacity 600ms ease, visibility 600ms ease;
+}
+.avvio-planetario .splash-planetario { display: flex; }
+.splash-planetario.in-uscita { opacity: 0; visibility: hidden; }
+.splash-planetario::before,
+.splash-planetario::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.splash-planetario::before {
+  opacity: 0.55;
+  background-image:
+    radial-gradient(circle at 14% 23%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 78% 17%, #cfe0ff 0 1px, transparent 1.6px),
+    radial-gradient(circle at 62% 76%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 27% 84%, #b79cff 0 1px, transparent 1.6px);
+  background-size: 230px 230px, 310px 310px, 270px 270px, 390px 390px;
+  animation: splash-respiro 3.5s ease-in-out infinite alternate;
+}
+.splash-planetario::after { background: linear-gradient(180deg, transparent 55%, rgba(4, 6, 13, 0.72)); }
+.splash-contenuto { position: relative; z-index: 2; width: min(560px, 100%); text-align: center; }
+.splash-sovratitolo {
+  margin: 0 0 10px;
+  color: var(--blu-chiaro);
+  font-family: var(--titolo);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.splash-contenuto h2 { margin: 0; font-size: clamp(1.8rem, 7vw, 3.2rem); line-height: 1.05; color: #fff; }
+.splash-contenuto blockquote { margin: clamp(26px, 6vh, 48px) auto 28px; }
+.splash-contenuto blockquote p {
+  margin: 0 auto 10px;
+  max-width: 500px;
+  color: #dce6fa;
+  font-family: var(--titolo);
+  font-size: clamp(1.05rem, 3.4vw, 1.38rem);
+  font-weight: 500;
+  line-height: 1.5;
+}
+.splash-contenuto cite { color: var(--testo-2); font-size: 0.86rem; font-style: normal; }
+.splash-cielo { position: absolute; top: max(6vh, 42px); width: 220px; height: 220px; opacity: 0.48; }
+.splash-orbita, .splash-pianeta, .splash-stella { position: absolute; display: block; }
+.splash-orbita { inset: 50%; border: 1px solid rgba(138, 180, 255, 0.28); border-radius: 50%; transform: translate(-50%, -50%) rotate(-22deg); }
+.splash-orbita-esterna { width: 210px; height: 76px; }
+.splash-orbita-interna { width: 148px; height: 148px; border-color: rgba(183, 156, 255, 0.18); }
+.splash-pianeta { left: 92px; top: 92px; width: 36px; height: 36px; border-radius: 50%; background: radial-gradient(circle at 35% 28%, #bcd3ff, #4c8dff 42%, #172b61 78%); box-shadow: 0 0 34px rgba(76, 141, 255, 0.55); }
+.splash-stella { width: 4px; height: 4px; border-radius: 50%; background: #fff; box-shadow: 0 0 9px #8ab4ff; }
+.splash-stella-uno { left: 4px; top: 89px; }
+.splash-stella-due { right: 14px; top: 55px; }
+.splash-stella-tre { right: 46px; bottom: 11px; }
+.splash-attesa { width: min(230px, 66vw); height: 2px; margin: 0 auto 14px; overflow: hidden; border-radius: 99px; background: rgba(148, 168, 214, 0.15); }
+.splash-attesa i { display: block; width: 42%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, transparent, var(--blu-chiaro), var(--viola-chiaro), transparent); animation: splash-attesa 1.5s ease-in-out infinite; }
+.splash-stato { margin: 0; color: var(--testo-3); font-size: 0.78rem; letter-spacing: 0.025em; }
+@keyframes splash-attesa { from { transform: translateX(-105%); } to { transform: translateX(240%); } }
+@keyframes splash-respiro { from { opacity: 0.38; } to { opacity: 0.68; } }
+@media (prefers-reduced-motion: reduce) {
+  .splash-planetario, .splash-attesa i, .splash-planetario::before { animation: none; transition: none; }
+  .splash-attesa i { width: 100%; opacity: 0.7; }
+}
+
 /* Rete di sicurezza: se Tailwind non si carica (CDN irraggiungibile) tutte le
    viste e i modali resterebbero visibili insieme. Questa regola basta a tenere
    l'app usabile, sia pure senza grafica. */
