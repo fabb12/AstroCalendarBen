@@ -8975,14 +8975,6 @@ function skyInizializzaLuogoVista() {
     });
   }
 
-  const attuale = document.getElementById('skymap-luogo-attuale');
-  if (attuale) {
-    attuale.addEventListener('click', () => {
-      skyTornaAlLuogoDiCasa();
-      skyAvviso('luogo', 'Cielo di nuovo dalla tua posizione.', 4000);
-    });
-  }
-
   // Il mappamondo: la via per i punti che un nome non ce l'hanno (7.1-quater)
   const mappa = document.getElementById('skymap-luogo-mappa');
   if (mappa) mappa.addEventListener('click', apriMappaLuogoCielo);
@@ -31674,7 +31666,6 @@ function inizializzaSkymapExtra() {
     skyImpostaOffsetTempo(0);
     skyMostraGruppo('');
   };
-  collega('skymap-tempo-ora', tornaAdesso);
   collega('skymap-tempo-adesso', tornaAdesso);
   // La lettura della barra è anche la porta del pannello: il posto dove uno
   // si accorge che l'ora è sbagliata è lo stesso dove vuole aggiustarla
@@ -31690,10 +31681,9 @@ function inizializzaSkymapExtra() {
   collega('skymap-passo-meno', () => skySpostaDiUnPasso(-1));
   collega('skymap-passo-piu', () => skySpostaDiUnPasso(1));
 
-  // --- Il playback: il verso, lo stop e il moltiplicatore di velocità ---
+  // --- Il playback: verso e moltiplicatore di velocità ---
   collega('skymap-play-indietro', () => skyAvviaPlayback(-1));
   collega('skymap-play-avanti', () => skyAvviaPlayback(1));
-  collega('skymap-play-ferma', () => skyFermaPlayback());
   collega('skymap-vel-meno', () => skyCambiaVelocitaPlayback(-1));
   collega('skymap-vel-piu', () => skyCambiaVelocitaPlayback(1));
 

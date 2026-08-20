@@ -3472,8 +3472,11 @@ body button.pos-risultato:focus-visible {
 .gruppo-comandi.gruppo-astri.gruppo-attivo { max-height: 66%; }
 /* Anche quello degli eventi: ogni voce è tre righe più i suoi tasti */
 .gruppo-comandi.gruppo-eventi.gruppo-attivo { max-height: 66%; }
-/* E quello del tempo, che adesso dice due cose: quando, e da dove (7.1-ter) */
-.gruppo-comandi.gruppo-tempo.gruppo-attivo { max-height: 66%; }
+/* Tempo e luogo deve restare leggero: pochi comandi, niente note visibili. */
+.gruppo-comandi.gruppo-tempo.gruppo-attivo {
+  max-height: 58%;
+  padding-bottom: 12px;
+}
 
 .riga-comandi {
   display: flex;
@@ -3694,13 +3697,11 @@ body .gruppo-astri.ricerca-attiva .chip-astro {
 .tasto-cielo:disabled { opacity: 0.35; cursor: default; }
 .tasto-cielo:disabled:hover { border-color: var(--bordo); background: var(--superficie-alta); }
 
-/* Il playback: i tre tasti del verso sono simboli da lettore, quindi larghi
-   uguali e senza parole — sono quelli che si cercano col pollice mentre si
-   guarda la mappa */
-.riga-playback { margin-top: 10px; }
+/* Il playback: i due versi restano compatti; lo stop è già nel play della barra. */
+.riga-playback { margin-top: 8px; }
 .tasto-cielo.tasto-play {
   flex: 1 1 auto;
-  max-width: 88px;
+  max-width: 74px;
   min-height: 42px;
   padding: 9px 14px;
   font-family: var(--mono);
@@ -3786,7 +3787,7 @@ body input.casella-data:hover { border: 0; }
    stretto: serve a separare, non a occupare. */
 .stacco-pannello {
   height: 1px;
-  margin: 10px 0 8px;
+  margin: 8px 0 7px;
   background: var(--bordo);
 }
 
@@ -3795,7 +3796,7 @@ body input.casella-data:hover { border: 0; }
    in fila e il tasto "Torna a casa" chiude la riga; quando il cielo è
    spostato la lettura si accende, ed è l'unica cosa che spiega perché quello
    disegnato non è il cielo che si vede dalla finestra. */
-.riga-luogo { gap: 6px; }
+.riga-luogo { gap: 6px; margin-top: 0; }
 .etichetta-luogo { flex: 0 0 auto; }
 .lettura-luogo {
   flex: 1 1 auto;
@@ -3814,7 +3815,7 @@ body input.casella-data:hover { border: 0; }
    la riga: sono le due risposte alla stessa domanda — "da dove?" — e la
    seconda serve quando la prima non ha un nome da offrire. Il campo cede
    spazio per primo, il tasto resta leggibile. */
-.riga-cerca-luogo .campo-cielo { flex: 1 1 150px; }
+.riga-cerca-luogo .campo-cielo { flex: 1 1 190px; }
 .tasto-luogo-mappa { flex: 0 0 auto; }
 .risultati-luogo { max-height: 168px; margin-top: 6px; }
 .nota-luogo {
@@ -4970,8 +4971,6 @@ body.sol-immersivo { overflow: hidden; }
 }
 /* Quello che fuori dal planetario non vuol dire niente tace (vedi 7.5-ter) */
 .gruppo-ospite [data-solo-cielo] { display: none; }
-.nota-solo-sistema { display: none; }
-.gruppo-ospite .nota-solo-sistema { display: block; }
 .sol-comandi { display: grid; gap: 8px; }
 .sol-riga { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
 .sol-etichetta {
