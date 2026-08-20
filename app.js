@@ -22559,7 +22559,7 @@ function skyRegSalva() {
 
 // Quale durata è scelta, e il titolo del tasto sulla mappa che la annuncia
 function skyRegAggiornaComandi() {
-  document.querySelectorAll('#cielo-comandi [data-durata-reg]').forEach(b => {
+  document.querySelectorAll('[data-durata-reg]').forEach(b => {
     const attiva = parseInt(b.dataset.durataReg, 10) === sky.reg.durataSec;
     b.classList.toggle('attiva', attiva);
     b.setAttribute('aria-pressed', attiva ? 'true' : 'false');
@@ -22575,7 +22575,7 @@ function skyRegInizializza() {
 
   // La durata si sceglie prima: cambiarla a registrazione avviata vorrebbe
   // dire fermare una cosa e consegnarne un'altra
-  document.querySelectorAll('#cielo-comandi [data-durata-reg]').forEach(b => {
+  document.querySelectorAll('[data-durata-reg]').forEach(b => {
     b.addEventListener('click', () => {
       if (sky.reg.attiva) {
         skyAvviso('registra', 'Sto registrando: ferma prima, poi cambia la durata.', 4000);
@@ -30767,6 +30767,30 @@ function inizializzaImpostazioni() {
   const btnChiudi = document.getElementById('btn-chiudi-impostazioni');
   if (btnChiudi) btnChiudi.addEventListener('click', chiudi);
   if (modale) modale.addEventListener('click', (e) => { if (e.target === modale) chiudi(); });
+
+  const tab = Array.from(document.querySelectorAll('[data-imp-tab]'));
+  const mostraTab = (nome, portaFocus) => {
+    tab.forEach(tasto => {
+      const attivo = tasto.dataset.impTab === nome;
+      tasto.classList.toggle('attiva', attivo);
+      tasto.setAttribute('aria-selected', attivo ? 'true' : 'false');
+      tasto.tabIndex = attivo ? 0 : -1;
+      if (attivo && portaFocus) tasto.focus();
+    });
+    document.querySelectorAll('[data-imp-pannello]').forEach(pannello => {
+      pannello.classList.toggle('hidden', pannello.dataset.impPannello !== nome);
+    });
+  };
+  tab.forEach((tasto, indice) => {
+    tasto.addEventListener('click', () => mostraTab(tasto.dataset.impTab, false));
+    tasto.addEventListener('keydown', e => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const passo = e.key === 'ArrowRight' ? 1 : -1;
+      const prossimo = tab[(indice + passo + tab.length) % tab.length];
+      mostraTab(prossimo.dataset.impTab, true);
+    });
+  });
 
   // La posizione si gestisce in un posto solo: qui c'è la porta per arrivarci
   const btnPos = document.getElementById('imp-btn-posizione');
