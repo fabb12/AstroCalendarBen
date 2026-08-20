@@ -19256,14 +19256,23 @@ function skyCostruisciElenco() {
     // Scegliere un astro è l'azione, non la navigazione: il pannello si
     // chiude subito, come per ogni altro comando effettivo, così la mappa
     // torna visibile per guardare l'oggetto appena scelto.
-    btn.addEventListener('click', () => {
-      skyImpostaTarget(btn.dataset.astro);
-      skyMostraGruppo('');
-    });
+    btn.addEventListener('click', () => skyScegliAstroDaElenco(btn.dataset.astro));
   });
   cont.dataset.pronto = 'si';
   skyAggiornaStileElenco();
   skyFiltraElenco();
+}
+
+function skyScegliAstroDaElenco(id, opzioni = {}) {
+  if (!id) return;
+  // Sul telefono, dopo una ricerca, la tastiera virtuale può restare sopra
+  // proprio ai risultati. Prima togliamo il fuoco dal campo e poi chiudiamo
+  // il pannello: il tocco sul risultato porta subito l'astro al centro e
+  // restituisce tutto lo schermo alla mappa.
+  const campo = document.getElementById('skymap-astri-cerca');
+  if (campo && document.activeElement === campo) campo.blur();
+  skyImpostaTarget(id, opzioni);
+  skyMostraGruppo('');
 }
 
 // Il colore di una pillola dice il suo stato: scelta, su adesso, tramontata.
@@ -19308,6 +19317,8 @@ function skyFiltraElenco() {
   const parole = cercato ? cercato.split(/\s+/) : [];
   const famiglia = sky.famigliaAstri || 'tutte';
   let trovati = 0;
+  const pannello = document.querySelector('.gruppo-comandi.gruppo-astri');
+  if (pannello) pannello.classList.toggle('ricerca-attiva', !!cercato);
 
   document.querySelectorAll('#skymap-oggetti .chip-astro').forEach(btn => {
     const nome = btn.dataset.nome || '';
@@ -21513,7 +21524,7 @@ function inizializzaSkymap() {
         const primo = document.querySelector('#skymap-oggetti .chip-astro[data-fuori="no"]');
         if (primo) {
           e.preventDefault();
-          skyImpostaTarget(primo.dataset.astro, { mantieni: true });
+          skyScegliAstroDaElenco(primo.dataset.astro, { mantieni: true });
         }
         return;
       }
