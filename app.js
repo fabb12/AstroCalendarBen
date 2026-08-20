@@ -13051,6 +13051,45 @@ function skyArcoOrizzonteInVista(base, focale) {
   };
 }
 
+// Lo stesso giro di azimut, ma per **l'acqua**, che non sta sulla linea
+// dell'orizzonte: ci sta sotto.
+//
+// La funzione qui sopra risponde «l'orizzonte non è in vista» e chi la chiama
+// esce. Per il profilo delle colline è giusto — se la riga non si vede non
+// c'è niente da disegnare — per l'acqua no, ed è il difetto che si vede
+// guardando in giù stando su una riva: con un campo di sessanta gradi basta
+// abbassare la vista di una cinquantina e l'orizzonte esce dallo schermo,
+// eppure lo schermo è pieno d'acqua fino ai piedi. Il mare e i laghi
+// sparivano tutti insieme, e proprio nell'inquadratura in cui sono l'unica
+// cosa che c'è.
+//
+// Quello che serve qui è il giro di azimut che il **cono** della vista può
+// contenere, orizzonte o no. È un'altra misura, e più larga: la funzione qui
+// sopra dà la larghezza del cono **sulla riga** dell'orizzonte, che è quello
+// che serve a un profilo di colline, mentre scendendo verso il nadir i
+// meridiani si stringono e uno schermo largo si mangia molti più azimut. Al
+// nadir, tutti. Presa quella misura per questa, guardando in giù dentro a un
+// lago restavano due spicchi di prato negli angoli in basso dello schermo,
+// dove l'acqua c'era e non veniva disegnata.
+//
+// Il massimo scarto di azimut di un cono di semiapertura `σ` attorno a una
+// direzione alta `a` è `asin(sin σ / cos a)`, e quando quel rapporto supera
+// l'unità vuol dire che dentro al cono ci casca il polo: allora sono tutti e
+// trecentosessanta gradi.
+function skyArcoAcquaInVista(base, focale) {
+  const semi = skyAngoloDiRaggio(Math.hypot(sky.larghezza, sky.altezza) / 2, focale) * SKY_D2R;
+  const altF = Math.asin(Math.max(-1, Math.min(1, base.f[2])));
+  const centro = Math.atan2(base.f[0], base.f[1]) * SKY_R2D;
+  // Guardando in su, sotto la linea dell'orizzonte non c'è più niente in
+  // vista: l'acqua non si disegna, ed è la sola risposta «no» che questa
+  // funzione dà. Senza, guardando lo zenit si proietterebbe tutto il mare del
+  // mondo fuori dallo schermo.
+  if (altF - semi >= 0) return null;
+  const seno = Math.sin(semi) / Math.cos(altF);
+  if (!(seno < 1)) return { mezzo: 180, centro };
+  return { mezzo: Math.min(180, Math.asin(seno) * SKY_R2D + 6), centro };
+}
+
 // Quanto scende la velatura del paesaggio sotto la linea dell'orizzonte, e
 // quanto è forte dove è più forte.
 //
@@ -14301,7 +14340,7 @@ function skyMareChiudiBanda(ctx, buf, visti, sotto, nc, inizio, fine) {
 // chiama dal disegno del terreno, fra la grana e il profilo delle creste.
 function skyDisegnaMare(ctx, base, focale, aria) {
   if (typeof terrenoDisponibile !== 'function' || !terrenoDisponibile()) return;
-  const arco = skyArcoOrizzonteInVista(base, focale);
+  const arco = skyArcoAcquaInVista(base, focale);
   if (!arco) return;
 
   // Fin dove scende lo schermo: la depressione dell'angolo più basso in
@@ -14713,7 +14752,7 @@ function skyDisegnaAcqueInterne(ctx, base, focale, aria) {
   if (typeof acqueVisibili !== 'function') return;
   const viste = acqueVisibili();
   if (!viste) return;
-  const arco = skyArcoOrizzonteInVista(base, focale);
+  const arco = skyArcoAcquaInVista(base, focale);
   if (!arco) return;
   const strisce = skyAcqueStrisce(viste, arco);
   if (!strisce.length) return;
