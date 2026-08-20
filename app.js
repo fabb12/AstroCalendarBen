@@ -7202,6 +7202,14 @@ const sky = {
   // e riparte da dove si era rimasti. Chi guarda un pianeta tornare indietro
   // vuole rivederlo tornare indietro, non ricominciare in avanti.
   playbackUltimoVerso: 1,
+  // Durante il trascinamento la slitta e' la sorgente del valore: riscriverla
+  // dal modello nello stesso gesto fa litigare il pollice col cursore nativo
+  // (soprattutto WebKit). Gli eventi `input` vengono inoltre accorpati a un
+  // solo aggiornamento per fotogramma, cosi' i calcoli del cielo non possono
+  // mettersi in coda dietro agli eventi touch.
+  slittaTempoAttiva: false,
+  slittaTempoValore: null,
+  slittaTempoRaf: 0,
   // Figure delle costellazioni e oggetti del deep sky
   mostraCostellazioni: true,
   mostraProfondo: false,
@@ -31462,7 +31470,37 @@ function skyAggiornaSlittaTempo() {
   slitta.max = String(f);
   slitta.step = String(Math.max(1, Math.round(f / 720)));
   const valore = Math.max(-f, Math.min(f, (sky.offsetTempoSec || 0) - sky.ancoraTempoSec));
-  if (parseFloat(slitta.value) !== valore) slitta.value = String(valore);
+  // Mentre il dito e' giu' il browser aggiorna gia' il cursore. Riscriverne
+  // il valore qui puo' riportarlo per un istante al campione precedente e
+  // produrre il caratteristico salto avanti-indietro sui telefoni.
+  if (!sky.slittaTempoAttiva && parseFloat(slitta.value) !== valore) {
+    slitta.value = String(valore);
+  }
+}
+
+// Applica soltanto l'ultimo campione ricevuto dalla slitta nel fotogramma.
+// I touchmove possono arrivare molto piu' spesso dello schermo (e a raffiche):
+// elaborarli tutti non aggiunge precisione visiva, ma sottrae tempo al canvas.
+function skyAccodaSlittaTempo(slitta) {
+  sky.slittaTempoValore = parseFloat(slitta.value) || 0;
+  if (sky.slittaTempoRaf) return;
+  sky.slittaTempoRaf = requestAnimationFrame(() => {
+    sky.slittaTempoRaf = 0;
+    const valore = sky.slittaTempoValore;
+    sky.slittaTempoValore = null;
+    if (valore === null) return;
+    skyImpostaOffsetTempo(sky.ancoraTempoSec + valore, { daSlitta: true });
+  });
+}
+
+function skyConcludiSlittaTempo(slitta) {
+  // `change` chiude anche i trascinamenti per i quali il browser non manda un
+  // pointerup (per esempio se il dito esce dal controllo).
+  skyAccodaSlittaTempo(slitta);
+  requestAnimationFrame(() => {
+    sky.slittaTempoAttiva = false;
+    skyAggiornaSlittaTempo();
+  });
 }
 
 // `daSlitta`: il valore arriva dalla slitta, quindi è già dentro la finestra
@@ -31808,14 +31846,24 @@ function inizializzaSkymapExtra() {
   // --- Il tempo: la slitta, i salti, la data scritta a mano ---
   const slitta = document.getElementById('skymap-tempo');
   if (slitta) {
+    const comincia = () => {
+      sky.slittaTempoAttiva = true;
+      // Fermarlo una volta all'inizio evita lavoro e impedisce che il playback
+      // sposti l'orologio fra due campioni dello stesso gesto.
+      skyFermaPlayback();
+    };
+    slitta.addEventListener('pointerdown', comincia);
     slitta.addEventListener('input', () => {
       // Scorrendo a mano il playback si ferma: se no il cursore scapperebbe
-      // da sotto il pollice mentre lo si tiene. La posizione del dito però si
-      // legge prima di fermarlo: fermandolo la slitta si riallinea all'istante
-      // raggiunto, e il primo scatto del trascinamento andrebbe perso.
-      const valore = parseFloat(slitta.value) || 0;
-      skyFermaPlayback();
-      skyImpostaOffsetTempo(sky.ancoraTempoSec + valore, { daSlitta: true });
+      // da sotto il pollice mentre lo si tiene. Ogni campione sostituisce il
+      // precedente finche' il prossimo fotogramma non e' pronto.
+      if (!sky.slittaTempoAttiva) comincia(); // tastiera e tecnologie assistive
+      skyAccodaSlittaTempo(slitta);
+    });
+    slitta.addEventListener('change', () => skyConcludiSlittaTempo(slitta));
+    slitta.addEventListener('pointercancel', () => skyConcludiSlittaTempo(slitta));
+    slitta.addEventListener('blur', () => {
+      if (sky.slittaTempoAttiva) skyConcludiSlittaTempo(slitta);
     });
   }
   const tornaAdesso = () => {
