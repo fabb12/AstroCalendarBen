@@ -10369,6 +10369,9 @@ function skyOmbraDellaTerra(lista, t) {
     const versoOmbra = skyNormalizza([a[0] - p * u[0], a[1] - p * u[1], a[2] - p * u[2]]);
     const pa = Math.atan2(skyDot(versoOmbra, est), skyDot(versoOmbra, nord));
     luna.ombraTerra = { gamma, umbra, penombra, rL, pa };
+    // Quanto le resta di luce: la usa il bagliore attorno al disco, che
+    // altrimenti resterebbe quello di una Luna piena mentre la Luna è ramata
+    luna.ombraTerra.luce = skyEclisseLuceLuna(luna.ombraTerra);
   } catch (e) { /* niente ombra: la Luna resta piena, e pazienza */ }
 }
 
@@ -16924,15 +16927,177 @@ function skyDisegnaLuna(ctx, x, y, r, o, ang, estinzione, morso) {
   ctx.restore();
 }
 
-// L'eclissi di Luna vista da vicino. L'ombra della Terra è un cerchio quasi
-// tre volte più grande del disco lunare: sulla Luna si vede come un morso
-// dal bordo curvo — fu quella curva a far capire agli antichi che la Terra
-// è una palla. Dentro l'ombra la Luna non sparisce: diventa ramata, perché
-// l'unica luce che le arriva è quella filtrata da tutti i tramonti del
-// mondo insieme.
+// --- L'eclissi di Luna: l'ombra della Terra è fatta di aria -----------
+//
+// L'ombra della Terra è un cerchio quasi tre volte più grande del disco
+// lunare, e sulla Luna si vede come un morso dal bordo curvo — fu quella
+// curva a far capire agli antichi che la Terra è una palla. Ma non è un
+// disco grigio con un bordo netto: è la proiezione di un'atmosfera, e
+// tutto quello che si guarda in un'eclissi totale viene da lì.
+//
+// Il disegno di prima era una penombra a rampa lineare più un'ombra ramata
+// a tre fermate, e sbagliava tre cose. A campo largo, con la Luna grande
+// quattordici pixel, non si vedevano; avvicinandosi diventavano tutta
+// l'immagine — ed è per questo che il difetto si notava proprio ingrandendo.
+//
+// **La penombra non è un velo uniforme.** Un punto lì dentro non è al buio:
+// vede ancora una parte del disco del Sole, e la frazione che ne vede è
+// l'area comune fra due cerchi — la Terra e il Sole visti da lassù. È lo
+// stesso conto della copertura di un'eclissi di Sole (`skyCoperturaDischi`),
+// fatto dall'altra parte. La rampa lineare di prima grigiava metà Luna
+// un'ora prima del tempo, e all'orlo dell'ombra piena si fermava a un terzo
+// invece che a zero.
+//
+// **Dentro l'ombra piena la Luna non è di un colore solo, e non è più scura
+// al bordo.** Vale l'esatto contrario: la fascia vicina al bordo dell'ombra
+// è la più chiara — è la luce che ha rasentato solo l'alta atmosfera — e il
+// centro è il più cupo, perché lì arrivano solo i raggi che hanno
+// attraversato tutto lo spessore d'aria. Il gradiente di prima andava dal
+// rosso acceso al centro al grigio scuro al bordo: un'eclissi al rovescio,
+// con per giunta un anello scuro proprio sull'orlo.
+//
+// **L'orlo dell'ombra è azzurrino.** I raggi che ci arrivano hanno rasentato
+// l'atmosfera a trenta-quaranta chilometri, dove c'è l'ozono: la banda di
+// Chappuis si mangia il rosso e lascia passare il blu. Più in basso i raggi
+// passano nella troposfera densa, si arrossano come al tramonto e dipingono
+// di rame tutto il resto dell'ombra. È la fascia turchese che si vede in
+// ogni fotografia di eclissi totale, e che nessuno si aspetta.
+//
+// La geometria invece era giusta e non è stata toccata: `gamma` e `rL` sono
+// due angoli geocentrici, e il loro rapporto è una distanza in raggi lunari,
+// cioè il numero che moltiplicato per il raggio disegnato dà i pixel — a
+// qualunque ingrandimento. Provata contro Astronomy Engine, che le eclissi di
+// Luna le cerca per conto suo: su otto di fila tornano il verdetto, la
+// frazione di disco dentro l'ombra al millesimo e le semidurate al quarto di
+// minuto, e la magnitudine umbrale sta sotto il centesimo da quella
+// pubblicata (§21 di `verifica.html`).
+
+// I toni dell'ombra piena, dall'orlo (profondità 0) all'asse (profondità 1).
+// `luce` non è fotometria: una totale è diecimila volte più debole di una
+// Luna piena, e disegnata così sarebbe un disco nero. È la scala compressa
+// con cui la vede l'occhio, che si adatta — dall'orlo al centro resta un
+// fattore quattro, che è quello che si legge in una fotografia esposta per
+// l'eclissi. Il **colore** invece è quello vero, ed è l'unica cosa che
+// questo disegno abbia da raccontare.
+const SKY_ECL_TONI = [
+  { d: 0.00, luce: 1.00, colore: [0.84, 0.94, 1.00] },  // ozono: l'orlo turchese
+  { d: 0.04, luce: 0.90, colore: [1.00, 0.86, 0.74] },  // il passaggio, in pochi primi d'arco
+  { d: 0.12, luce: 0.75, colore: [1.00, 0.58, 0.32] },  // rame
+  { d: 0.30, luce: 0.61, colore: [1.00, 0.45, 0.25] },
+  { d: 0.60, luce: 0.50, colore: [1.00, 0.37, 0.22] },
+  { d: 1.00, luce: 0.42, colore: [1.00, 0.32, 0.21] }   // il cuore dell'ombra
+];
+const SKY_ECL_OMBRA_LUCE = 0.72;      // quanto resta della faccia, sull'orlo dell'ombra piena
+// La penombra, in fotometria, si mangia metà della luce a metà strada. A
+// occhio non è così: non ci si accorge di niente finché non si è dentro per
+// due terzi, e poi crolla. L'esponente è quella curva — e tiene insieme il
+// fondo dell'ombra, che qui è stato alzato, con il pieno Sole, che deve
+// restare esattamente uno.
+const SKY_ECL_PENOMBRA_ESPONENTE = 1.5;
+
+// Il disco della Terra e quello del Sole visti da un punto della Luna, ma
+// misurati col metro geocentrico dell'ombra: i raggi dell'ombra piena e
+// della penombra sono la loro differenza e la loro somma, quindi le due
+// misure si ricavano da lì senza rifare nessun conto — e restano d'accordo
+// con l'ingrossamento dell'un per cento che l'aria mette sul cono.
+function skyEclisseDischi(s) {
+  return { terra: (s.penombra + s.umbra) / 2, sole: (s.penombra - s.umbra) / 2 };
+}
+
+function skyEclisseTono(d) {
+  const t = Math.max(0, Math.min(1, d));
+  let i = 1;
+  while (i < SKY_ECL_TONI.length - 1 && t > SKY_ECL_TONI[i].d) i++;
+  const a = SKY_ECL_TONI[i - 1], b = SKY_ECL_TONI[i];
+  const k = b.d > a.d ? Math.max(0, Math.min(1, (t - a.d) / (b.d - a.d))) : 0;
+  return {
+    luce: a.luce + (b.luce - a.luce) * k,
+    colore: [
+      a.colore[0] + (b.colore[0] - a.colore[0]) * k,
+      a.colore[1] + (b.colore[1] - a.colore[1]) * k,
+      a.colore[2] + (b.colore[2] - a.colore[2]) * k
+    ]
+  };
+}
+
+// Quanta luce, e di che colore, arriva su un punto della Luna che sta a
+// `rho` gradi dall'asse dell'ombra. Torna i tre fattori per cui si
+// moltiplica la faccia della Luna: uno vuol dire "niente ombra".
+//
+// Le due metà si incontrano senza gradino sull'orlo dell'ombra piena, dove
+// il Sole è coperto per intero: di là la luce è quella che resta del disco
+// solare, di qua quella che l'atmosfera fa passare, e tutte e due valgono
+// `SKY_ECL_OMBRA_LUCE` esattamente lì.
+function skyEclisseColore(s, rho) {
+  if (rho < s.umbra) {
+    const t = skyEclisseTono(1 - rho / s.umbra);
+    const l = SKY_ECL_OMBRA_LUCE * t.luce;
+    return [l * t.colore[0], l * t.colore[1], l * t.colore[2]];
+  }
+  const dischi = skyEclisseDischi(s);
+  const coperto = dischi.sole > 0
+    ? skyCoperturaDischi(rho, dischi.sole, dischi.terra)
+    : (rho < dischi.terra ? 1 : 0);
+  const diretta = Math.max(0, Math.min(1, 1 - coperto));
+  const l = SKY_ECL_OMBRA_LUCE + (1 - SKY_ECL_OMBRA_LUCE) * Math.pow(diretta, SKY_ECL_PENOMBRA_ESPONENTE);
+  // Il turchese dell'orlo non si spegne di colpo: sfuma mentre il Sole
+  // torna a scoprirsi, se no fuori dall'ombra piena resterebbe un anello
+  const orlo = SKY_ECL_TONI[0].colore, k = Math.sqrt(diretta);
+  return [
+    l * (orlo[0] + (1 - orlo[0]) * k),
+    l * (orlo[1] + (1 - orlo[1]) * k),
+    l * (orlo[2] + (1 - orlo[2]) * k)
+  ];
+}
+
+// Le fermate del gradiente, in frazioni del raggio della penombra. Non sono
+// equidistanti di proposito: quasi metà stanno a cavallo dell'orlo
+// dell'ombra piena, che è dove in pochi primi d'arco si passa dal turchese
+// al rame e dove qualunque campionamento grossolano si vede come una riga.
+// Sono in scala del raggio dell'ombra e non dello schermo, quindi la stessa
+// tavolozza vale a ogni ingrandimento; si rifà solo quando la geometria
+// dell'eclissi cambia davvero, cioè qualche volta al minuto.
+let skyEclisseFerm = null;
+function skyEclisseFermate(s) {
+  const chiave = s.umbra.toFixed(4) + '|' + s.penombra.toFixed(4);
+  if (skyEclisseFerm && skyEclisseFerm.chiave === chiave) return skyEclisseFerm.stop;
+  const stop = [];
+  const spingi = (rho) => {
+    const c = skyEclisseColore(s, rho);
+    stop.push({
+      t: Math.max(0, Math.min(1, rho / s.penombra)),
+      colore: `rgb(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)})`
+    });
+  };
+  const orlo = s.umbra * 1.06;
+  for (let i = 0; i <= 10; i++) spingi(s.umbra * 0.86 * (i / 10));
+  for (let i = 1; i <= 22; i++) spingi(s.umbra * 0.86 + (orlo - s.umbra * 0.86) * (i / 22));
+  for (let i = 1; i <= 16; i++) spingi(orlo + (s.penombra - orlo) * (i / 16));
+  skyEclisseFerm = { chiave, stop };
+  return stop;
+}
+
+// Quanto resta della luce della Luna piena, per chi la guarda da qui: la
+// media della faccia, pesata come la vede l'occhio. Serve al bagliore —
+// una Luna eclissata non illumina più niente, e lasciarle attorno l'alone
+// di una Luna piena è la cosa che si nota per prima, molto prima del colore.
+function skyEclisseLuceLuna(s) {
+  let somma = 0, n = 0;
+  for (let i = -2; i <= 2; i++) {
+    for (let j = -2; j <= 2; j++) {
+      const x = i / 2, y = j / 2;
+      if (x * x + y * y > 1) continue;
+      const c = skyEclisseColore(s, Math.hypot(s.gamma + x * s.rL, y * s.rL));
+      somma += c[0] * 0.3 + c[1] * 0.5 + c[2] * 0.2;
+      n++;
+    }
+  }
+  return n ? somma / n : 1;
+}
+
 function skyDisegnaOmbraLunare(ctx, r, o, ang) {
   const s = o.ombraTerra;
-  if (!s || !s.rL) return;
+  if (!s || !s.rL || !(s.umbra > 0) || !(s.penombra > s.umbra)) return;
   // Dove sta il centro dell'ombra rispetto alla Luna, sullo schermo: la
   // direzione si costruisce dall'angolo di posizione (nord verso est)
   const c = Math.cos(s.pa), q = Math.sin(s.pa);
@@ -16942,31 +17107,23 @@ function skyDisegnaOmbraLunare(ctx, r, o, ang) {
     ang.nord[2] * c + ang.est[2] * q
   ];
   const angolo = ang.schermo(d);
-  const dist = (s.gamma / s.rL) * r;
-  const cx = Math.cos(angolo) * dist, cy = Math.sin(angolo) * dist;
+  // Pixel per grado d'ombra: `gamma`, `umbra` e `penombra` sono angoli
+  // geocentrici come `rL`, quindi diviso `rL` diventano raggi lunari e
+  // moltiplicati per `r` diventano pixel. Vale a qualunque campo, anche
+  // quando la Luna è disegnata più grande del vero dall'icona.
+  const perGrado = r / s.rL;
+  const cx = Math.cos(angolo) * s.gamma * perGrado;
+  const cy = Math.sin(angolo) * s.gamma * perGrado;
+  const rp = s.penombra * perGrado;
 
   ctx.save();
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.clip();
   ctx.globalCompositeOperation = 'multiply';
-
-  // La penombra: un velo grigio che si stringe verso l'ombra vera
-  const rp = (s.penombra / s.rL) * r;
-  const gp = ctx.createRadialGradient(cx, cy, rp * 0.25, cx, cy, rp);
-  gp.addColorStop(0, 'rgba(120, 122, 130, 1)');
-  gp.addColorStop(1, 'rgba(255, 255, 255, 1)');
-  ctx.fillStyle = gp;
-  ctx.fillRect(-r, -r, r * 2, r * 2);
-
-  // L'ombra vera, ramata, con il bordo sfumato di un paio di centesimi
-  const ru = (s.umbra / s.rL) * r;
-  const gu = ctx.createRadialGradient(cx, cy, ru * 0.2, cx, cy, ru * 1.06);
-  gu.addColorStop(0, 'rgba(150, 52, 30, 1)');
-  gu.addColorStop(0.72, 'rgba(120, 46, 32, 1)');
-  gu.addColorStop(0.95, 'rgba(96, 60, 62, 1)');
-  gu.addColorStop(1, 'rgba(255, 255, 255, 1)');
-  ctx.fillStyle = gu;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rp);
+  skyEclisseFermate(s).forEach(p => g.addColorStop(p.t, p.colore));
+  ctx.fillStyle = g;
   ctx.fillRect(-r, -r, r * 2, r * 2);
   ctx.restore();
 }
@@ -17311,6 +17468,12 @@ function skyDisegnaAstro(ctx, base, focale, o) {
       // restava in cielo un disco pallido grande come la Luna — l'alone di
       // un astro che in quel momento non sta illuminando niente.
       scoperto = Math.pow(Math.max(0, Math.min(1, typeof o.frazione === 'number' ? o.frazione : 1)), 0.7);
+      // E un'eclissi di Luna è esattamente lo stesso caso letto dall'altra
+      // parte: la Luna è piena — quindi la frazione non se ne accorge — ma
+      // dentro l'ombra della Terra è diecimila volte più debole. Il bagliore
+      // di una Luna piena attorno a un disco ramato è la cosa che si nota
+      // per prima, prima ancora del colore.
+      if (o.ombraTerra && typeof o.ombraTerra.luce === 'number') scoperto *= o.ombraTerra.luce;
     }
     if (scoperto > 0.03) {
       ctx.save();
