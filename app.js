@@ -6890,6 +6890,7 @@ const CHIAVE_SKY_BUSSOLA = 'astrocalendario_bussola_offset_v2';
 // Taratura dell'obiettivo per la realtà aumentata: quanti gradi di mondo
 // entrano nel lato lungo dell'inquadratura (vedi skyCampoFotocamera)
 const CHIAVE_SKY_CAMERA = 'astrocalendario_camera_campo';
+const CHIAVE_SKY_TASTI_ZOOM = 'astrocalendario_tasti_zoom';
 
 // Corpi del Sistema Solare mostrati nel cielo.
 // Gli id sono i valori di Astronomy.Body (semplici stringhe): li scriviamo
@@ -17610,7 +17611,7 @@ function skyAggiornaHud(base) {
   if (!hud) return;
   const stretta = sky.larghezza && sky.larghezza < 560;
   const campo = `${skyCampoTesto()}${skyCampoDaObiettivo() ? ' (obiettivo)' : ''}`;
-  const testo = `alt ${alt.toFixed(0)}° · ${stretta ? '' : 'campo '}${campo}`;
+  const testo = `Altitudine ${alt.toFixed(0)}° · ${stretta ? '' : 'campo '}${campo}`;
   // Riscrivere il testo sessanta volte al secondo costa e non serve: quasi
   // sempre è identico a quello di prima.
   if (hud.textContent !== testo) hud.textContent = testo;
@@ -21288,6 +21289,24 @@ function skyZoom(fattore, opzioni = {}) {
   skyImpostaFov((opzioni.morbido ? sky.fovVoluto || sky.fov : sky.fov) * fattore, opzioni);
 }
 
+function skyImpostaVistaPulita(attiva) {
+  const contenitore = document.getElementById('skymap-contenitore');
+  if (!contenitore) return;
+  contenitore.classList.toggle('vista-pulita', !!attiva);
+  const tasto = document.getElementById('skymap-btn-pulito');
+  if (tasto) {
+    tasto.classList.toggle('attiva', !!attiva);
+    tasto.setAttribute('aria-pressed', attiva ? 'true' : 'false');
+  }
+  if (attiva) {
+    skyMostraGruppo('');
+    skyChiudiDettaglio();
+    contenitore.title = 'Vista pulita: tocca il cielo per ripristinare le informazioni';
+  } else {
+    contenitore.removeAttribute('title');
+  }
+}
+
 // Trascinamento: in manuale ci si guarda intorno, con i sensori si calibra la
 // bussola. Un tocco secco, invece, apre la scheda dell'oggetto che sta lì
 // sotto; e con il mouse il doppio clic entra ed esce dallo schermo intero.
@@ -21301,6 +21320,11 @@ function skyInizializzaGesti() {
   };
 
   c.addEventListener('pointerdown', (e) => {
+    if (document.getElementById('skymap-contenitore')?.classList.contains('vista-pulita')) {
+      skyImpostaVistaPulita(false);
+      e.preventDefault();
+      return;
+    }
     c.setPointerCapture(e.pointerId);
     sky.puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
     // Il pizzico parte dal campo che si ha davanti adesso, e ferma sul posto
@@ -21480,6 +21504,11 @@ function inizializzaSkymap() {
     sky.cameraCampoLato = Math.max(SKY_CAMERA_LATO_MIN, Math.min(SKY_CAMERA_LATO_MAX, camera));
   }
 
+  const mostraZoom = localStorage.getItem(CHIAVE_SKY_TASTI_ZOOM) === '1';
+  document.getElementById('skymap-contenitore')?.classList.toggle('mostra-tasti-zoom', mostraZoom);
+  const impZoom = document.getElementById('imp-skymap-zoom');
+  if (impZoom) impZoom.checked = mostraZoom;
+
   // Costellazioni, deep sky, macchina del tempo e fotocamera
   inizializzaSkymapExtra();
   // I comandi della registrazione (vedi 7.6)
@@ -21499,6 +21528,7 @@ function inizializzaSkymap() {
   // pizzico restano più fini, che lì la precisione è del polso.
   collega('skymap-zoom-in', () => skyZoom(1 / 1.4, { morbido: true }));
   collega('skymap-zoom-out', () => skyZoom(1.4, { morbido: true }));
+  collega('skymap-btn-pulito', () => skyImpostaVistaPulita(true));
   collega('skymap-btn-campo', () => {
     // Con la fotocamera accesa "campo normale" vuol dire togliere la taratura
     // fatta a mano e tornare all'obiettivo tipico
@@ -30767,6 +30797,16 @@ function inizializzaImpostazioni() {
   const btnChiudi = document.getElementById('btn-chiudi-impostazioni');
   if (btnChiudi) btnChiudi.addEventListener('click', chiudi);
   if (modale) modale.addEventListener('click', (e) => { if (e.target === modale) chiudi(); });
+
+  const impZoom = document.getElementById('imp-skymap-zoom');
+  if (impZoom) {
+    impZoom.checked = localStorage.getItem(CHIAVE_SKY_TASTI_ZOOM) === '1';
+    impZoom.addEventListener('change', () => {
+      const mostra = impZoom.checked;
+      document.getElementById('skymap-contenitore')?.classList.toggle('mostra-tasti-zoom', mostra);
+      try { localStorage.setItem(CHIAVE_SKY_TASTI_ZOOM, mostra ? '1' : '0'); } catch (e) { /* niente storage */ }
+    });
+  }
 
   const tab = Array.from(document.querySelectorAll('[data-imp-tab]'));
   const mostraTab = (nome, portaFocus) => {

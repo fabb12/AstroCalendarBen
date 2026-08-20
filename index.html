@@ -610,16 +610,15 @@
               </div>
             </section>
 
-            <!-- NAVIGAZIONE: dove si guarda.
-                 Ingrandisci e Riduci non stanno più qui: sono i due tasti +
-                 e − appoggiati sull'angolo della mappa, sempre a portata, e
-                 tenerli anche dentro al pannello era solo un doppione. I
+            <!-- NAVIGAZIONE: dove si guarda. I
                  quattro punti cardinali diventano quattro lettere in una
                  pillola sola, e la bussola — che si tocca una volta in tutta
                  la serata, e solo se punta storto — sta ripiegata insieme
                  alle sue istruzioni. -->
             <section class="gruppo-comandi" data-gruppo="navigazione" aria-label="Navigazione">
               <div class="riga-comandi riga-tasti-griglia">
+                <button id="skymap-btn-pulito" type="button" class="tasto-cielo"
+                  aria-pressed="false" title="Nasconde tutte le informazioni e i comandi in sovrimpressione; resta solo il pulsante di registrazione. Tocca il cielo per farli ricomparire">Vista pulita</button>
                 <button id="skymap-btn-segui" type="button" class="tasto-cielo attiva"
                   title="Con bussola e giroscopio accesi il cielo lo punta il telefono. Spegnendolo la mappa la muovi tu col dito, e i tasti Centra e i punti cardinali tornano a funzionare">Segui il telefono</button>
                 <button id="skymap-btn-centra" type="button" class="tasto-cielo" title="Porta al centro della mappa l'oggetto selezionato">Centra</button>
@@ -783,7 +782,7 @@
                in blu mentre il cielo è a tutto schermo;
              · il tondo rosso della registrazione, che deve stare lì sempre —
                la si fa partire dopo aver preparato la vista, non prima;
-             · lo zoom, che adesso arriva fino a un quarto di grado. -->
+             · lo zoom, se è stato abilitato nelle Impostazioni. -->
         <div class="comandi-mappa-cielo">
           <!-- Sopra alla registrazione, in colonna con lei e con lo zoom: una
                fila sola di comandi sul bordo destro, nell'ordine in cui si
@@ -1865,6 +1864,15 @@
           <p class="text-xs text-slate-500">Nel planetario l'orizzonte porta i nomi dei paesi che lo illuminano e, se vuoi, quelli delle montagne che ci spuntano sopra. Fin dove andarli a cercare lo decidi qui: dalla pianura le Alpi si vedono a centoventi chilometri e vale la pena andare larghi, in mezzo alle valli oltre i venti c'è solo il versante di fronte.</p>
           <div id="imp-raggi" class="griglia-raggi"></div>
           <p id="imp-raggi-nota" class="text-xs text-slate-400"></p>
+        </section>
+
+        <section class="space-y-2 border-t border-slate-700 pt-4">
+          <h3 class="font-bold text-white">Comandi del planetario</h3>
+          <label class="flex items-center gap-3 text-sm text-slate-300">
+            <input id="imp-skymap-zoom" type="checkbox" class="accent-blue-500">
+            Mostra i pulsanti + e − sulla mappa
+          </label>
+          <p class="text-xs text-slate-500">Lo zoom con due dita, rotellina o trackpad resta sempre disponibile.</p>
         </section>
 
         <section class="space-y-2 border-t border-slate-700 pt-4">
