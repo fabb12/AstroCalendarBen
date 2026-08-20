@@ -378,20 +378,56 @@
              letture di puntamento e il pannello del gruppo aperto. -->
         <div id="cielo-comandi" class="cielo-chrome" data-gruppo-attivo="">
 
+          <!-- LE LINGUETTE, SOLO SEGNI
+               Sopra a un cielo ogni parola è un pezzo di cielo in meno: sei
+               nomi scritti per esteso facevano una striscia larga mezzo
+               schermo, che sul telefono bisognava anche far scorrere. Adesso
+               ogni gruppo è la sua icona e nient'altro — orologio, calendario,
+               occhio, cursori, bussola, stella — e il nome resta dove serve
+               davvero: nel `title` per chi ha il mouse, e in una scritta
+               nascosta (`.nome-gruppo`) per chi legge con lo schermo. Sei
+               tondi entrano senza scorrere anche su un telefono da 320px. -->
           <div class="cielo-barra">
             <div class="linguette-gruppi" aria-label="Gruppi di comandi">
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="tempo" aria-pressed="false"
-                title="Quando e da dove: data, ora, playback del cielo e il luogo da cui lo stai guardando"><span class="nome-lungo">Tempo e luogo</span><span class="nome-corto">Tempo</span></button>
+                title="Quando e da dove: data, ora, playback del cielo e il luogo da cui lo stai guardando">
+                <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8.4"/><path d="M12 7.2V12l3.4 2"/>
+                </svg><span class="nome-gruppo">Tempo e luogo</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="eventi" aria-pressed="false"
-                title="Cosa succede nel cielo all'istante che stai guardando: eclissi, sciami meteorici, fasi lunari, congiunzioni">Eventi</button>
+                title="Cosa succede nel cielo all'istante che stai guardando: eclissi, sciami meteorici, fasi lunari, congiunzioni">
+                <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3.6" y="5.4" width="16.8" height="15" rx="2.4"/>
+                  <path d="M3.6 10h16.8M8.4 3.6v3.4M15.6 3.6v3.4"/>
+                </svg><span class="nome-gruppo">Eventi</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="vista" aria-pressed="false"
-                title="Schermo intero, modalità notte, fotocamera"><span class="nome-lungo">Visualizzazione</span><span class="nome-corto">Vista</span></button>
+                title="Schermo intero, modalità notte, fotocamera">
+                <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M2.6 12S6.4 6.4 12 6.4 21.4 12 21.4 12 17.6 17.6 12 17.6 2.6 12 2.6 12z"/>
+                  <circle cx="12" cy="12" r="2.8"/>
+                </svg><span class="nome-gruppo">Visualizzazione</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="filtri" aria-pressed="false"
-                title="Cosa compare sulla mappa">Filtri</button>
+                title="Cosa compare sulla mappa">
+                <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 7.4h16M4 12h16M4 16.6h16"/>
+                  <circle cx="9.2" cy="7.4" r="2"/><circle cx="15.2" cy="12" r="2"/><circle cx="8" cy="16.6" r="2"/>
+                </svg><span class="nome-gruppo">Filtri</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="navigazione" aria-pressed="false"
-                title="Dove si guarda, zoom e bussola"><span class="nome-lungo">Navigazione</span><span class="nome-corto">Naviga</span></button>
+                title="Dove si guarda, zoom e bussola">
+                <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8.6"/><path d="M15.6 8.4l-2 5.2-5.2 2 2-5.2z"/>
+                </svg><span class="nome-gruppo">Navigazione</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="astri" aria-pressed="false"
-                title="Scegli l'astro da cercare">Astri</button>
+                title="Scegli l'astro da cercare">
+                <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 3.2l2.5 5.7 6.2.6-4.7 4.1 1.4 6.1L12 16.5l-5.4 3.2 1.4-6.1-4.7-4.1 6.2-.6z"/>
+                </svg><span class="nome-gruppo">Astri</span></button>
             </div>
             <!-- Il promemoria che l'orologio è spostato non sta più qui: adesso
                  c'è la barra del tempo in fondo alla mappa, che l'istante lo
@@ -399,17 +435,17 @@
           </div>
 
           <!-- Dati di puntamento e stato.
-               A sinistra resta soltanto il luogo corrente. A destra la
-               bussola riunisce azimut e campo visivo — un numero in gradi
-               non dice da che parte si sta guardando finché non lo si vede
-               su un quadrante. Quello
-               che prima era scritto a parole ("Nord vero", la declinazione
-               magnetica, "bussola relativa") adesso lo dice il quadrante
-               stesso col suo aspetto: erano tre righe di gergo sopra al
-               cielo per un'informazione che si guarda, non si legge. -->
+               A sinistra **solo il nome del posto**: «Milano», e basta. La
+               provenienza del dato (GPS, rete, scelta a mano), la precisione
+               e il promemoria che il cielo è di sola visita erano quattro
+               parole di gergo sopra al cielo per rispondere a una domanda
+               che nessuno fa mentre guarda in su; restano tutte nel `title`,
+               e la posizione per esteso sta nel pannello Tempo e luogo.
+               A destra la bussola, che dice da che parte si guarda e —
+               col cono azzurro — quanto cielo si sta inquadrando: nessuna
+               delle due cose ha più bisogno di essere scritta. -->
           <div class="cielo-letture">
             <div class="letture-sinistra" aria-label="Posizione attuale">
-              <span class="lettura-posizione-label">Posizione attuale</span>
               <div id="skymap-stato" class="lettura-cielo lettura-stato">posizione mancante</div>
             </div>
 
@@ -418,10 +454,29 @@
                  cima è la direzione della vista (lo stesso giallo del mirino
                  al centro del cielo, ed è di proposito: sono i due capi
                  della stessa informazione), l'ago ambrato e la N sono il
-                 Nord. In mezzo i gradi di azimut. -->
+                 Nord. In mezzo i gradi di azimut.
+
+                 Il **cono azzurro** è quanto cielo entra nell'inquadratura
+                 adesso: si apre a grandangolo e si chiude a uno spicchio
+                 quando si ingrandisce sulla Luna. Prende il posto della
+                 scritta col campo visivo in gradi — un numero che per
+                 dire qualcosa va comunque immaginato come un'apertura, e
+                 che disegnato non ha bisogno di nessuna etichetta. Sfuma
+                 dal centro verso il bordo perché è un fascio di sguardo,
+                 non una fetta di torta. -->
             <div id="skymap-bussola" class="bussola-cielo"
               role="img" aria-label="Bussola" title="Direzione della vista">
               <svg class="bussola-quadrante" viewBox="-50 -50 100 100" aria-hidden="true">
+                <defs>
+                  <!-- Il centro resta chiaro di proposito: lì sotto ci sono
+                       i gradi dell'azimut, e un fascio pieno proprio nel
+                       vertice li renderebbe illeggibili. -->
+                  <radialGradient id="bussola-cono-sfuma" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="rgb(125, 211, 252)" stop-opacity="0.12"/>
+                    <stop offset="55%" stop-color="rgb(56, 189, 248)" stop-opacity="0.30"/>
+                    <stop offset="100%" stop-color="rgb(56, 189, 248)" stop-opacity="0.10"/>
+                  </radialGradient>
+                </defs>
                 <circle class="bussola-fondo" cx="0" cy="0" r="46"></circle>
                 <path id="skymap-bussola-fov" class="bussola-fov" d="M0,0 L-18,-38 A42,42 0 0 1 18,-38 Z"></path>
                 <g id="skymap-bussola-rosa" class="bussola-rosa">
@@ -446,7 +501,6 @@
               <span class="bussola-indice" aria-hidden="true"></span>
               <span class="bussola-valori">
                 <span id="skymap-bussola-gradi" class="bussola-gradi">—</span>
-                <span id="skymap-bussola-campo" class="bussola-campo">FOV —</span>
               </span>
             </div>
           </div>
