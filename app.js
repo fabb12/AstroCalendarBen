@@ -12964,15 +12964,6 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // l'informazione che si legge.
   skyDisegnaGranaTerreno(ctx, o, focale, velo);
 
-  // L'acqua, dove c'è acqua. Va **dopo** la grana — che è la trama di un
-  // prato e sull'acqua non ci ha niente da fare, e infatti il mare la copre
-  // — e **prima** del profilo, perché un promontorio davanti al mare lo
-  // deve nascondere. Da qui vengono la prospettiva vera della superficie, il
-  // colore che segue Fresnel, le onde e la strada di luce del Sole o della
-  // Luna: sono tutte cose che stanno sulla superficie dell'acqua, e la
-  // superficie comincia qui.
-  skyDisegnaMare(ctx, base, focale, aria);
-
   // Il paesaggio, velato sopra al fondo: la montagna a nord. Non è più un
   // ventaglio fino ai piedi — quello disegnava dei
   // triangoli enormi che convergevano sotto di te, con i bordi netti, e a
@@ -12982,9 +12973,20 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // essere una sola, uguale dappertutto.
   skyDisegnaVeloPaesaggio(ctx, base, focale, aria);
 
-  // Le spiagge, velate sopra il fondo ma sotto le colline: la sabbia appare ai
-  // bordi dell'acqua.
+  // La battigia: la riga chiara dove la terra finisce. È **terra**, quindi
+  // sta qui, fra le velature del suolo e l'acqua — non dopo, com'era
+  // finita per un po': stesa sopra al mare, la sabbia lo tingeva di kaki
+  // fino all'orizzonte (vedi il commento di `skyDisegnaSpiagge`).
   skyDisegnaSpiagge(ctx, base, focale, aria);
+
+  // L'acqua, dove c'è acqua. Va **dopo** la grana e le velature del suolo —
+  // che sono la trama e il colore di un prato, e sull'acqua non ci hanno
+  // niente da fare — e **prima** del profilo, perché un promontorio davanti
+  // al mare lo deve nascondere. Da qui vengono la prospettiva vera della
+  // superficie, il colore che segue Fresnel, le onde e la strada di luce del
+  // Sole o della Luna: sono tutte cose che stanno sulla superficie
+  // dell'acqua, e la superficie comincia qui.
+  skyDisegnaMare(ctx, base, focale, aria);
 
   // Le colline e gli alberi, appoggiati sopra la linea. Sono dello stesso
   // colore del terreno che gli sta subito sotto — se no fra il profilo e il
@@ -13142,60 +13144,120 @@ function skyDisegnaVeloPaesaggio(ctx, base, focale, aria) {
 
 // --- La spiaggia --------------------------------------------------------
 //
-// Dove c'è mare la terra finisce: il prato verde lascia il posto alla sabbia
-// (o agli scogli, ma per semplicità assumiamo sabbia). Questa funzione prende
-// i colori della spiaggia e vela il terreno sottostante (già dipinto da
-// `skyDisegnaTerreno`) nei punti dove la frazione di mare è superiore a zero.
-// Va chiamata dopo `skyDisegnaVeloPaesaggio` e prima di `skyDisegnaMare`.
-// È identica a `skyDisegnaVeloPaesaggio`, ma colora di sabbia.
+// Dove la terra finisce e comincia l'acqua c'è una riga chiara: sabbia,
+// ghiaia, scogli sbiancati dal sale. È una **riga**, e sta dalla parte
+// della terra — questo è tutto quello che la funzione deve sapere, ed è
+// esattamente quello che la prima versione non sapeva.
+//
+// Il guaio era uno solo ma fatto di due metà che si tenevano su a vicenda.
+// La forza del velo era la frazione di mare (`m.mare`), che **in mare
+// aperto vale uno**; e il velo si disegnava dopo `skyDisegnaMare`, contro
+// le sue stesse istruzioni scritte due righe più sopra. Messe insieme: la
+// sabbia veniva stesa al novanta per cento sopra all'acqua invece che
+// accanto, e il mare verso l'orizzonte risultava color kaki. Siccome ogni
+// trapezio ha una sua opacità sola, quel kaki si leggeva **a spicchi**, con
+// gli spigoli netti, come i ventagli di paesaggio dei primi tentativi — e a
+// occhio sembrava un difetto del programma, che è precisamente quello che
+// era. Il colore del mare, calcolato da Fresnel, non c'entrava niente: sotto
+// alla sabbia era blu come è sempre stato.
+//
+// Le due regole che lo rimettono a posto sono l'una il rovescio dell'altra.
+// La spiaggia si disegna **prima** del mare, così l'acqua le passa sopra
+// esattamente per quanta ce n'è; e la sua forza è una **campana sulla
+// costa** — zero dove è tutta acqua, zero dove è tutta terra, massima dove
+// le due si toccano. Quello che resta visibile dopo il passaggio del mare è
+// quindi `α · 4m(1−m) · (1−m)`: una striscia chiara appoggiata sulla riva,
+// che è quello che si vede davvero da una scogliera.
+//
+// Il velo scende poco sotto la linea, e non è un ritocco di gusto: con i
+// venticinque gradi della velatura di montagna una battigia diventa una
+// campitura di sabbia larga mezzo schermo.
+const SKY_SPIAGGIA_PROFONDITA = 8;
+const SKY_SPIAGGIA_ALFA = 0.55;
+
+// Sotto questa forza non si disegna niente — ed è anche la soglia sotto la
+// quale non si proietta nemmeno: chi sta in pianura padana non deve pagare
+// settecento proiezioni a fotogramma per una battigia che non c'è.
+const SKY_SPIAGGIA_SOGLIA = 0.04;
+
+// La campana della costa: `4·m·(1−m)`, cioè la parabola che vale uno a
+// metà strada e zero ai due capi. Vale la pena averla per nome — è la riga
+// che tiene la sabbia fuori dall'acqua, e il §19 di `verifica.html` la
+// interroga (con una copia: quella pagina `app.js` non lo carica).
+function skyForzaSpiaggia(mare) {
+  const m = Math.max(0, Math.min(1, mare));
+  return 4 * m * (1 - m);
+}
+
 function skyDisegnaSpiagge(ctx, base, focale, aria) {
   if (typeof terrenoMiscela !== 'function' || !terrenoDisponibile()) return;
   const arco = skyArcoOrizzonteInVista(base, focale);
   if (!arco) return;
 
-  const passo = arco.mezzo > 60 ? 2 : 1.5;
+  // Il passo è la metà di quello della velatura di montagna. La sabbia è
+  // chiara sopra un fondo scuro, e su quel contrasto due trapezi contigui
+  // con due opacità diverse si leggono come due spicchi; la roccia è grigia
+  // su grigio e un grado e mezzo le basta da sempre. Costa poco: con la
+  // campana qui sopra i trapezi che si disegnano davvero sono solo quelli
+  // della fascia di costa, una ventina di gradi in tutto.
+  const passo = arco.mezzo > 60 ? 1 : 0.5;
   const sabbia = skyColoriPaesaggio('spiaggia', aria);
 
-  const punto = az => {
+  // La forza si legge sempre — è una lettura di array — e si proietta solo
+  // dove serve. Le due cose vanno tenute separate, ed è la lezione del
+  // codice di prima: là il taglio sulla frazione di mare stava dentro alla
+  // funzione che proiettava, quindi risparmiare lavoro e spegnere il velo
+  // erano la stessa riga. Risparmiare va benissimo; spegnere un velo di
+  // netto no, perché a sparire non è il colore ma il **trapezio**, e sulla
+  // riva resta un gradino verticale.
+  const forzaDi = az => {
     const m = terrenoMiscela(az);
-    if (!m || m.mare <= 0.05) return null;
+    return m ? skyForzaSpiaggia(m.mare) : 0;
+  };
+  const bordo = az => {
     const orlo = skyProietta(skyVettore(az, 0), base, focale);
-    const giu = skyProietta(skyVettore(az, -SKY_VELO_PROFONDITA), base, focale);
-    if (!orlo.davanti || !giu.davanti) return null;
-    return { m, forza: m.mare, orlo, giu };
+    const giu = skyProietta(skyVettore(az, -SKY_SPIAGGIA_PROFONDITA), base, focale);
+    return (orlo.davanti && giu.davanti) ? { orlo, giu } : null;
   };
 
   ctx.save();
-  let prima = punto(arco.centro - arco.mezzo);
+  let azSinistra = arco.centro - arco.mezzo;
+  let forzaSinistra = forzaDi(azSinistra);
+  let sinistra = null;                 // proiettata solo se è servita
   for (let d = -arco.mezzo + passo; d <= arco.mezzo + 0.001; d += passo) {
-    const dopo = punto(arco.centro + d);
-    const sinistra = prima;
-    prima = dopo;
-    if (!sinistra || !dopo) continue;
+    const azDopo = arco.centro + d;
+    const forzaDopo = forzaDi(azDopo);
+    const forza = (forzaSinistra + forzaDopo) / 2;
+    let dopo = null;
 
-    const forza = (sinistra.forza + dopo.forza) / 2;
-    if (forza < 0.05) continue;
+    if (forza >= SKY_SPIAGGIA_SOGLIA) {
+      if (!sinistra) sinistra = bordo(azSinistra);
+      dopo = bordo(azDopo);
+      if (sinistra && dopo) {
+        const alfa = SKY_SPIAGGIA_ALFA * forza;
+        const g = ctx.createLinearGradient(
+          (sinistra.orlo.px + dopo.orlo.px) / 2, (sinistra.orlo.py + dopo.orlo.py) / 2,
+          (sinistra.giu.px + dopo.giu.px) / 2, (sinistra.giu.py + dopo.giu.py) / 2);
+        // Piena sulla riga della riva, spenta poco sotto: una battigia si
+        // vede dove la terra tocca l'acqua, non da lì ai propri piedi.
+        g.addColorStop(0, skyRgba(sabbia.lontano, alfa));
+        g.addColorStop(0.45, skyRgba(skyMescolaColore(sabbia.lontano, sabbia.vicino, 0.7), alfa * 0.55));
+        g.addColorStop(1, skyRgba(sabbia.vicino, 0));
+        ctx.fillStyle = g;
 
-    // Per far apparire la costa e sfumarla sotto l'acqua, il velo di sabbia
-    // può essere opaco in cima all'orizzonte (o quasi).
-    const alfa = Math.min(1, SKY_VELO_ALFA * forza * 1.5);
+        ctx.beginPath();
+        ctx.moveTo(sinistra.orlo.px, sinistra.orlo.py);
+        ctx.lineTo(dopo.orlo.px, dopo.orlo.py);
+        ctx.lineTo(dopo.giu.px, dopo.giu.py);
+        ctx.lineTo(sinistra.giu.px, sinistra.giu.py);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
 
-    const g = ctx.createLinearGradient(
-      (sinistra.orlo.px + dopo.orlo.px) / 2, (sinistra.orlo.py + dopo.orlo.py) / 2,
-      (sinistra.giu.px + dopo.giu.px) / 2, (sinistra.giu.py + dopo.giu.py) / 2);
-    // Vogliamo che la spiaggia si veda bene all'orizzonte
-    g.addColorStop(0, skyRgba(sabbia.lontano, alfa));
-    g.addColorStop(0.45, skyRgba(skyMescolaColore(sabbia.lontano, sabbia.vicino, 0.7), alfa * 0.8));
-    g.addColorStop(1, skyRgba(sabbia.vicino, 0));
-    ctx.fillStyle = g;
-
-    ctx.beginPath();
-    ctx.moveTo(sinistra.orlo.px, sinistra.orlo.py);
-    ctx.lineTo(dopo.orlo.px, dopo.orlo.py);
-    ctx.lineTo(dopo.giu.px, dopo.giu.py);
-    ctx.lineTo(sinistra.giu.px, sinistra.giu.py);
-    ctx.closePath();
-    ctx.fill();
+    azSinistra = azDopo;
+    forzaSinistra = forzaDopo;
+    sinistra = dopo;                   // la colonna già proiettata si riusa
   }
   ctx.restore();
 }
@@ -13351,11 +13413,18 @@ function skyMareOggi() {
 // L'acqua in sé, quella che si vede guardandoci dentro: blu cupo di
 // giorno, quasi nera di notte. Non è il colore del mare — quello è
 // soprattutto cielo riflesso — è quello che resta togliendo il riflesso.
-// Il verde deve restare al paesaggio. Con la vecchia base [6, 48, 68], la
-// velatura atmosferica e il terreno sottostante portavano il canale verde a
-// dominare proprio nella parte vicina del mare: sul telefono compariva una
-// larga macchia oliva. La base ora mantiene il blu nettamente sopra il verde
-// anche prima che venga aggiunto il riflesso del cielo.
+// Il verde deve restare al paesaggio, e il motivo è fisico prima che di
+// gusto: l'acqua assorbe il rosso un centinaio di volte più del blu, quindi
+// quello che torna su da sotto la superficie è blu con appena una spalla di
+// verde — la vecchia base [6, 48, 68] aveva più verde che blu e non è mai
+// esistita in mare. Il blu resta il canale dominante a ogni ora **anche
+// prima** del riflesso del cielo: provato a tappeto nel §19 di
+// `verifica.html`, dal crepuscolo astronomico al mezzogiorno e da zero a
+// novanta gradi di depressione.
+//
+// (La macchia oliva che si vedeva sul telefono non veniva da qui: veniva dal
+// velo di sabbia della battigia, steso sopra all'acqua invece che accanto.
+// Vedi `skyDisegnaSpiagge`.)
 const SKY_MARE_ACQUA = { notte: [2, 7, 20], giorno: [5, 35, 92] };
 
 // Il riflesso non arriva mai al cento per cento, e il cielo che si specchia
@@ -13568,42 +13637,42 @@ function skyMarePesiDiFascia(s, focale, onde, fuori) {
 // mare che si accende di arancione al tramonto **senza** che ci sia scritto
 // da nessuna parte che al tramonto il mare è arancione.
 // Quanta parte della luce l'acqua rimanda, guardandola sotto una
-// depressione `dep`. Schlick, tosato: la riga da cui viene tutto.
+// depressione `dep`. Schlick, e poi il tetto — ma il tetto **non** è un
+// `Math.min`, e la differenza si vede.
+//
+// Schlick supera il sessanta per cento già cinque gradi e mezzo sotto la
+// riga dell'orizzonte. Tosandolo di netto, tutta quella fascia — che è la
+// più lontana, cioè quella che si guarda per prima e che contiene i nove
+// decimi del mare visibile — usciva di **un colore solo**, senza rampa, con
+// uno spigolo là dove il taglio smetteva di mordere: una banda piatta
+// appoggiata sull'orizzonte. La compressione qui sotto è l'identità per i
+// valori piccoli (ai piedi non cambia niente di niente), tende al tetto
+// senza mai toccarlo prima dell'orizzonte, e vale esattamente
+// `SKY_MARE_RIFLESSO_MAX` quando la riflettività di Schlick arriva a uno.
+// La fascia lontana torna così ad avere il suo gradiente.
 function skyMareFresnel(dep) {
   const uno = 1 - Math.sin(Math.max(0, Math.min(90, dep)) * SKY_D2R);
-  return Math.min(SKY_MARE_RIFLESSO_MAX, 0.02 + 0.98 * uno * uno * uno * uno * uno);
+  const f = 0.02 + 0.98 * uno * uno * uno * uno * uno;
+  return f / (1 + f * (1 / SKY_MARE_RIFLESSO_MAX - 1));
 }
 
-function skyMareAzzurraOrizzonte(colore, dep) {
-  // La foschia del cielo basso può avere più verde che blu. Riflessa al
-  // sessanta per cento proprio dove Fresnel pesa di più, trasformava la
-  // fascia lontana del mare in una striscia verde, nonostante la base
-  // dell'acqua fosse già blu. In natura quella luce attraversa e viene
-  // filtrata anche dall'acqua: il rosso di un tramonto deve restare rosso,
-  // ma una dominante verde/ciano diventa azzurra. La correzione svanisce
-  // entro diciotto gradi di depressione, quindi riguarda soltanto il mare
-  // verso l'orizzonte e non quello profondo visto vicino ai piedi.
-  const versoOrizzonte = Math.max(0, 1 - dep / 18);
-  // Non basta cercare il verde rispetto al rosso: con una foschia quasi
-  // grigia il rosso può essere appena più alto, pur lasciando G nettamente
-  // sopra B. È proprio quel caso che continuava a produrre una riga oliva.
-  // Si guarda quindi la dominante che conta davvero (G contro B), lasciando
-  // intatti soltanto i riflessi caldi in cui R domina chiaramente G.
-  const riflessoCaldo = colore[0] > colore[1] * 1.12;
-  if (versoOrizzonte > 0 && !riflessoCaldo && colore[1] >= colore[2] * 0.92) {
-    const bluMancante = Math.max(0, colore[1] * 1.22 - colore[2]);
-    const sposta = bluMancante * versoOrizzonte;
-    colore[1] = Math.max(colore[0] * 0.82, colore[1] - sposta * 0.28);
-    colore[2] = Math.min(255, colore[2] + sposta);
-  }
-  return colore;
-}
-
+// Il colore dell'acqua è questa riga e nient'altro: il corpo dell'acqua e
+// il cielo che ci si specchia, mescolati da Fresnel.
+//
+// Per un po' qui c'è stata anche una correzione che spostava il verde verso
+// il blu vicino all'orizzonte, messa a rincorrere la sfumatura oliva che si
+// vedeva sul telefono. Non serviva e non era mai servita: passando in
+// rassegna l'altezza del Sole da −18° a +45° e la depressione da 0° a 20°,
+// quella correzione non è mai entrata in funzione nemmeno una volta — il
+// blu è già il canale dominante a ogni ora, anche prima del riflesso. Il
+// kaki veniva dal velo di sabbia steso sopra all'acqua (vedi
+// `skyDisegnaSpiagge`), e a curare il sintomo nel posto sbagliato si
+// rischiava solo di spegnere il rosso di un tramonto vero.
 function skyMareColore(dep, aria) {
   const d = Math.max(0, Math.min(90, dep));
   const acqua = skyMescolaColore(SKY_MARE_ACQUA.notte, SKY_MARE_ACQUA.giorno, sky.luceCielo);
   const specchio = skyColoreCielo(aria, d + SKY_MARE_RIFLESSO_ALZA);
-  return skyMareAzzurraOrizzonte(skyMescolaColore(acqua, specchio, skyMareFresnel(d)), d);
+  return skyMescolaColore(acqua, specchio, skyMareFresnel(d));
 }
 
 // Quanto luccica l'acqua in quella direzione, per un astro che sta in
