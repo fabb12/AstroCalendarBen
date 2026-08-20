@@ -9809,6 +9809,56 @@ function luogoMappaUsa() {
   skyUsaLuogoVista(s.lat, s.lon, nome);
 }
 
+// Porta il punto della mappa dove si trova il dispositivo *adesso*. Non si
+// limita alla posizione salvata dell'app: questo comando è un gesto esplicito,
+// quindi getCurrentPosition fa comparire la richiesta del permesso quando il
+// browser non l'ha ancora ottenuto. La lettura serve solo al luogo di visita e
+// non cambia, di nascosto, meteo e orari della posizione principale.
+async function luogoMappaUsaPosizioneAttuale() {
+  const tasto = document.getElementById('luogo-btn-casa');
+  if (!navigator.geolocation) {
+    luogoAvviso('Questo browser non offre la posizione del dispositivo. Scegli un punto sulla mappa.');
+    return;
+  }
+
+  if (tasto) {
+    tasto.disabled = true;
+    tasto.setAttribute('aria-busy', 'true');
+    tasto.textContent = 'Cerco la posizione…';
+  }
+  luogoAvviso('Consenti l’accesso alla posizione, se il browser lo chiede.');
+
+  try {
+    const posizione = await new Promise((risolvi, rifiuta) => {
+      navigator.geolocation.getCurrentPosition(risolvi, rifiuta, {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      });
+    });
+    const lat = posizione.coords.latitude;
+    const lon = posizione.coords.longitude;
+    luogoAvviso('');
+    luogoMappaScegli(lat, lon, {
+      centra: true,
+      zoom: Math.max(luogoMappa.mappa ? luogoMappa.mappa.getZoom() : 0, LUOGO_ZOOM_APERTURA)
+    });
+  } catch (errore) {
+    const messaggio = errore && errore.code === 1
+      ? 'Permesso per la posizione negato. Puoi abilitarlo dal lucchetto accanto all’indirizzo del browser.'
+      : errore && errore.code === 3
+        ? 'Il dispositivo non ha trovato la posizione in tempo. Riprova all’aperto.'
+        : 'Il dispositivo non è riuscito a trovare la posizione attuale. Riprova o scegli un punto sulla mappa.';
+    luogoAvviso(messaggio);
+  } finally {
+    if (tasto) {
+      tasto.disabled = false;
+      tasto.removeAttribute('aria-busy');
+      tasto.textContent = 'Posizione attuale';
+    }
+  }
+}
+
 // Collega i comandi della finestra. Una volta sola, da skyInizializzaLuogoVista.
 function inizializzaMappaLuogo() {
   const modale = document.getElementById('modale-luogo-cielo');
@@ -9842,16 +9892,7 @@ function inizializzaMappaLuogo() {
   if (usa) usa.addEventListener('click', luogoMappaUsa);
 
   const casa = document.getElementById('luogo-btn-casa');
-  if (casa) {
-    casa.addEventListener('click', () => {
-      const mio = luogoCorrente();
-      if (!mio) { luogoAvviso('Non so ancora dove sei: la posizione si sceglie dalle Impostazioni.'); return; }
-      luogoMappaScegli(mio.lat, mio.lon, {
-        centra: true, zoom: Math.max(luogoMappa.mappa ? luogoMappa.mappa.getZoom() : 0, LUOGO_ZOOM_APERTURA),
-        nome: (sky.posizione && sky.posizione.nome) || null
-      });
-    });
-  }
+  if (casa) casa.addEventListener('click', luogoMappaUsaPosizioneAttuale);
 
   // I tre fondi della mappa
   modale.querySelectorAll('[data-luogo-sfondo]').forEach(b =>
