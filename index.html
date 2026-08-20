@@ -466,12 +466,7 @@
                 </div>
                 <button id="skymap-data-vai" type="button" class="tasto-cielo"
                   title="Porta il cielo alla data scritta qui accanto (o premi Invio)">Vai</button>
-                <button id="skymap-tempo-ora" type="button" class="tasto-cielo tasto-primario"
-                  title="Torna al cielo di adesso">Adesso</button>
               </div>
-              <p id="skymap-data-nota" class="etichetta-comando nota-lunga">Giorno, mese, anno e ora:
-                dal 1600 al 3000. Il cielo del planetario e il Sistema Solare in 3D vanno insieme,
-                mostrano sempre lo stesso istante.</p>
 
               <!-- Il passo: comanda insieme i tasti − e + della barra in fondo
                    alla mappa e quanto tempo copre la sua slitta. Con dieci
@@ -480,9 +475,6 @@
               <div id="skymap-passi" class="riga-comandi" role="group" aria-label="Passo del tempo">
                 <div class="segmenti-cielo"></div>
               </div>
-              <p class="etichetta-comando nota-lunga">Il passo vale per i tasti − e + e per la slitta della barra
-                del tempo, tanto quella in fondo alla mappa quanto quella del Sistema Solare in 3D: è lo stesso
-                orologio, e adesso è anche lo stesso passo.</p>
 
               <!-- PLAYBACK: il tempo che cammina da solo. I salti e la slitta
                    portano su un istante e lì si fermano; qui invece il cielo si
@@ -500,9 +492,6 @@
                 <button id="skymap-play-indietro" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
                   title="Fai scorrere il cielo all'indietro (ripremi per fermarlo)"
                   aria-label="Playback all'indietro">◀◀</button>
-                <button id="skymap-play-ferma" type="button" class="tasto-cielo tasto-play"
-                  title="Ferma il playback e lascia il cielo sull'istante raggiunto"
-                  aria-label="Ferma il playback">■</button>
                 <button id="skymap-play-avanti" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
                   title="Fai scorrere il cielo in avanti (ripremi per fermarlo)"
                   aria-label="Playback in avanti">▶▶</button>
@@ -546,20 +535,17 @@
                   placeholder="Guarda il cielo da un'altra città…"
                   aria-label="Cerca la città da cui guardare il cielo"
                   title="Scrivi il nome di una città: il cielo si sposta lì, ma solo qui nel planetario">
-                <button id="skymap-luogo-attuale" type="button" class="tasto-cielo tasto-luogo-mappa"
-                  title="Torna alla tua posizione attuale">Posizione attuale</button>
                 <button id="skymap-luogo-mappa" type="button" class="tasto-cielo tasto-luogo-mappa"
                   title="Scegli il punto sul mappamondo: va bene anche un posto che non ha un nome da cercare">Sulla mappa</button>
               </div>
               <div id="skymap-luogo-risultati" class="pos-risultati risultati-luogo" role="listbox" aria-label="Città trovate" data-solo-cielo></div>
-              <p id="skymap-luogo-nota" class="nota-luogo" data-solo-cielo>Vale solo per il planetario: il resto dell'app resta sulla tua posizione.</p>
+
               <!-- Quando il pannello è ospite della finestra del Sistema Solare
                    (7.5-ter) le righe qui sopra sono spente: il passo e il play
                    lì sono quelli della scena, che stanno sotto di lei, e da
                    dove guardi il cielo a un disegno eliocentrico non serve.
                    Resta quello che vale in tutt'e due: che istante è. -->
-              <p class="nota-luogo nota-solo-sistema">Sposta l'istante, e con lui il cielo del planetario.
-                Il passo e il play della scena stanno sotto, nei suoi comandi.</p>
+
             </section>
 
             <!-- EVENTI: cosa succede nel cielo all'istante mostrato. La vista
