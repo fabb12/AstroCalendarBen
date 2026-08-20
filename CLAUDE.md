@@ -54,7 +54,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `verifica.html` | ~4.290 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~7.480 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v118`). |
+| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v119`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -321,7 +321,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v118`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v119`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` e le immagini di `arte-costellazioni/` no**: restano fuori di
@@ -367,6 +367,21 @@ famose, il motore del cielo contro `Astronomy.Horizon()`, il raggio orbitale
 delle quattro lune di Giove, il propagatore di Keplero contro le posizioni vere
 dei pianeti, l'eclissi del 2027, il transito di Mercurio del 2032, la geometria della fionda gravitazionale (§12: la formula della deviazione contro l'integrazione vera del moto, e il massimo guadagno contro una ricerca a forza bruta), la classificazione dei paesaggi, la forza delle luci delle città e la geometria dell'ovale aurorale (§11: il dipolo, la curvatura della Terra, le tre risposte che il modulo esiste per dare — dall'Italia il rosso, dalla Norvegia il verde alto, dalla Tasmania a sud — la forma della magnetopausa di Shue, e il fatto che da Tromsø con Kp 4 l'ovale è addosso e non lontano). **Va aperto da
 un server**: i cataloghi si caricano come `<script>` e `file://` non lo permette.
+
+**§3-bis** guarda fin dove è giusto che il cielo si svuoti ingrandendo. Nasce
+dalla segnalazione «ogni tanto, se cambio il campo, spariscono tutte le
+stelle»: che il limite non prometta magnitudini che il catalogo non ha (la
+profondità si **misura** sulle magnitudini vere, non si dichiara), che a campo
+largo non si tosi niente, che una stella cresca ingrandendo invece di
+rimpicciolire, e — la prova che tiene insieme le due metà — che la tosatura
+del limite **non cambi di un pixel** il raggio di nessuna stella disegnata, su
+undici campi visivi e trentaquattro magnitudini. Poi le tre trappole: che le
+140 stelle che stanno *esattamente* sul limite si disegnino ancora (le
+magnitudini sono arrotondate al decimo, e l'ultima riga del catalogo è la più
+affollata), che lo zoom continui a chiedere il file delle stelle deboli anche
+col limite già tosato — se no il cane si morde la coda e quel file non arriva
+mai — e che il cielo profondo non venga tosato insieme alle stelle, che
+sarebbe lo stesso difetto spostato sulle nebuline.
 
 **§13** guarda i disegni delle costellazioni: che ogni ancora sia davvero una
 stella della sua figura, che nessun tratto esca dal gruppo di stelle a cui
@@ -665,7 +680,8 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Calcoli ottici del telescopio | `telescopio.js:243` |
 | Impaginazione su telefono | `PUNTI_ROTTURA` `app.js:211` + i `@media` di `style.css` |
 | Nuova icona | `DISEGNI` `app.js:53` |
-| Le stelle del cielo (quante, quali, di che colore) | `catalogo.js`: i dati in `dati-stelle.js` (mag ≤ 6) e `dati-stelle-deboli.js` (fino a 7, caricato solo se serve); il motore in `catAggiornaPosizioni()`, il disegno in `catDisegnaStelle()`. Quante se ne vedono lo decide `catMagnitudineLimite()`, che somma il cielo di casa (Bortle) e lo zoom |
+| Le stelle del cielo (quante, quali, di che colore) | `catalogo.js`: i dati in `dati-stelle.js` (mag ≤ 6) e `dati-stelle-deboli.js` (fino a 7, caricato solo se serve); il motore in `catAggiornaPosizioni()`, il disegno in `catDisegnaStelle()`. Quante se ne vedono lo decide `catMagnitudineLimite()`, che somma il cielo di casa (Bortle) e lo zoom (`catGuadagnoZoom()`) e poi **si ferma dove finisce il catalogo** (riga qui sotto) |
+| **Ingrandisco e spariscono tutte le stelle** | `catMagnitudineVoluta()` / `catProfonditaCatalogo()` / `catMagnitudineLimite()` / `catOltreIlCatalogo()` in `catalogo.js` §5. Il guadagno dello zoom vale fino a tre magnitudini, quindi da un cielo di periferia il limite saliva a **8,6** — ma la stella più debole che questo catalogo conosce è la **7,0**. Chiedere l'ottava non faceva comparire nessuna stella: faceva solo credere al disegno di avere tre magnitudini di margine, mentre lo schermo si svuotava **per geometria** — sotto i due gradi di campo un ritaglio di cielo contiene in media mezza stella più luminosa della settima, a 0,25° nessuna. Adesso il limite si ferma alla profondità vera del catalogo e l'avanzo (`catOltreIlCatalogo()`) va al **raggio**: senza di lui la tosatura avrebbe *rimpicciolito* le poche superstiti proprio dove restano sole, e — perché le magnitudini sono arrotondate al decimo — avrebbe azzerato il raggio delle **140 stelle che stanno esattamente alla 7,00**, cioè si sarebbe mangiata l'ultima riga del catalogo, la più affollata. Sotto `CAT_FOV_OCULARE` (6°) le stelle si disegnano **tutte a una a una**, con alone e nome: sullo schermo ce ne sono cinque, e un puntino da un pixel in mezzo al nero si legge come polvere sul vetro. E una volta per sessione lo si **dice** (`catDilloCheIlCatalogoFinisce()`, come lo `skyAvviso` del tremolio della mano): un cielo che si svuota ingrandendo sembra un guasto, e non lo è. Attenzione a due trappole scritte in chiaro nei commenti: `catServeSecondoLivello()` deve guardare la magnitudine **voluta** (col limite già tosato il file delle deboli non si chiederebbe mai), e `catLimiteProfondo()` pure — il cielo profondo è un altro catalogo, e legandolo alla settima magnitudine delle stelle sparivano le nebuline fra la 10,5 e la 11. Prove nel §3-bis di `verifica.html` |
 | **La forma della Via Lattea** (dov'è larga, dov'è chiara, dov'è tagliata) | `skyVLDensita(l, b)` in `app.js` (sezione 7.3, «La Via Lattea»): mette insieme lo spessore della banda (`skyVLSemiSpessore`, il rigonfiamento centrale), la luce lungo il giro (`skyVLLuceGiro`) e due tabelle di nubi con un nome — `SKY_VL_CHIARE` (Sagittario, Scudo, Cigno, Carena…) e `SKY_VL_SCURE` (la **Fenditura del Cigno**, il Sacco di Carbone). Da quella densità `SKY_VIA_LATTEA` sorteggia una volta sola milleseicento fiocchi, che è quello che si disegna: non più una linea ripassata con tratti larghi, ma una nuvola. Per vedere la mappa (l, b) senza aprire il planetario basta stampare `skyVLDensita` su una griglia |
 | **La Fenditura del Cigno non si vede, o è una collana di buchi** | la catena di `SKY_VL_SCURE` ha passo 6° e raggio 4°: le macchie **si devono toccare**, se no fra una e l'altra la densità risale e la fenditura si sgrana. È un buco vero, non una vernice scura sopra al chiaro — con `lighter` una vernice scura non esisterebbe, e quindi dove c'è polvere semplicemente non si mettono fiocchi |
 | **La Via Lattea è quasi sparita** | quasi sempre non è un guasto: è `skyForzaViaLattea()`. La banda è la prima cosa che il cielo perde, e adesso il disegno lo dice — `SKY_VL_PER_CIELO` la smorza col Bortle di casa (da 1 in montagna a 0,12 in città), la Luna alta e piena la cancella quasi del tutto, e sotto i 12° di campo si ritira perché a quell'ingrandimento al suo posto ci sono le stelle vere del catalogo. Si cambia il cielo di casa da `impostaCieloDiCasa()` (Impostazioni, o il profilo del telescopio) |
