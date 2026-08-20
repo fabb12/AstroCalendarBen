@@ -4525,14 +4525,37 @@ body input.casella-data:hover { border: 0; }
 #skymap-contenitore.finto-schermo-intero .cielo-barra { padding-right: 104px; }
 
 /* ------------------------------------------- REGISTRARE UN MOMENTO         */
-/* Quanto dura la registrazione: sta in fondo al pannello Visualizzazione,
-   staccato da una riga. È una preferenza, si sceglie una volta; il tasto che
-   fa partire la registrazione sta invece sulla mappa, sempre a portata */
-.blocco-registra {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--bordo);
+/* La durata della registrazione è una preferenza e vive nelle Impostazioni;
+   sulla mappa resta soltanto il comando immediato per avviarla. */
+.impostazioni-durata { max-width: 260px; }
+
+.impostazioni-tab {
+  display: flex;
+  gap: 4px;
+  padding: 10px 16px 0;
+  border-bottom: 1px solid var(--bordo);
+  overflow-x: auto;
 }
+.impostazioni-tab-tasto {
+  min-height: 40px;
+  padding: 8px 14px;
+  border-bottom: 2px solid transparent;
+  color: var(--testo-2);
+  font-size: 0.84rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.impostazioni-tab-tasto:hover { color: var(--testo); }
+.impostazioni-tab-tasto.attiva {
+  border-color: var(--accento);
+  color: var(--testo);
+}
+.impostazioni-tab-tasto:focus-visible {
+  outline: 2px solid var(--accento);
+  outline-offset: -2px;
+  border-radius: 6px 6px 0 0;
+}
+.impostazioni-corpo { min-height: 340px; }
 
 /* ------------------------------------------- L'AURORA                      */
 /* Sta in fondo ai Filtri, sotto al suo tasto: una riga che dice cosa si
