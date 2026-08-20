@@ -3297,6 +3297,33 @@ titolo('18. La Terra e le eclissi nella vista 3D (app.js §7.7-ter e §7.7-quate
 
 // =====================================================================
 titolo('19. Il mare nel planetario (app.js, «Il mare»)');
+
+// Il nome non può essere la categoria generica «mare»: la costa italiana è
+// il caso più facile da riconoscere a occhio e quindi quello in cui un nome
+// sbagliato si nota subito. La direzione conta quanto la posizione: dalle due
+// coste della penisola si guardano bacini diversi.
+if (typeof skyNomeMareVero === 'function') {
+  prova('da Gabicce guardando a levante si nomina il Mare Adriatico',
+    skyNomeMareVero(43.97, 12.76, 90) === 'Mare Adriatico',
+    skyNomeMareVero(43.97, 12.76, 90));
+  prova('da Roma guardando a ponente si nomina il Mar Tirreno',
+    skyNomeMareVero(41.90, 12.50, 260) === 'Mar Tirreno',
+    skyNomeMareVero(41.90, 12.50, 260));
+  prova('i nomi oceanici non ricadono nella scritta generica Mare',
+    skyNomeMareVero(40.7, -74, 110) === 'Oceano Atlantico',
+    skyNomeMareVero(40.7, -74, 110));
+} else {
+  prova('è disponibile il risolutore dei nomi veri del mare', false);
+}
+
+// Anche prima del riflesso del cielo, il blu deve essere il canale dominante:
+// è la garanzia semplice contro la sfumatura oliva segnalata sul telefono.
+prova('la base diurna del mare è blu, non verde',
+  SKY_MARE_ACQUA.giorno[2] > SKY_MARE_ACQUA.giorno[1] * 2 &&
+  SKY_MARE_ACQUA.giorno[2] > SKY_MARE_ACQUA.giorno[0]);
+prova('anche laghi e fiumi hanno una base blu, non verde',
+  SKY_ACQUA_DOLCE.giorno[2] > SKY_ACQUA_DOLCE.giorno[1] * 2 &&
+  SKY_ACQUA_DOLCE.giorno[2] > SKY_ACQUA_DOLCE.giorno[0]);
 // ---------------------------------------------------------------------
 //   Un mare disegnato male è bello lo stesso, ed è tutto il problema. Una
 //   prospettiva sbagliata di un fattore dieci fa un mare convincente — solo
