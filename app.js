@@ -13339,10 +13339,15 @@ function skyMareOggi() {
   return skyMareStatoOra;
 }
 
-// L'acqua in sé, quella che si vede guardandoci dentro: verde-blu cupo di
+// L'acqua in sé, quella che si vede guardandoci dentro: blu cupo di
 // giorno, quasi nera di notte. Non è il colore del mare — quello è
 // soprattutto cielo riflesso — è quello che resta togliendo il riflesso.
-const SKY_MARE_ACQUA = { notte: [2, 8, 14], giorno: [6, 48, 68] };
+// Il verde deve restare al paesaggio. Con la vecchia base [6, 48, 68], la
+// velatura atmosferica e il terreno sottostante portavano il canale verde a
+// dominare proprio nella parte vicina del mare: sul telefono compariva una
+// larga macchia oliva. La base ora mantiene il blu nettamente sopra il verde
+// anche prima che venga aggiunto il riflesso del cielo.
+const SKY_MARE_ACQUA = { notte: [2, 7, 20], giorno: [5, 35, 92] };
 
 // Il riflesso non arriva mai al cento per cento, e il cielo che si specchia
 // non è quello esattamente all'altezza dello sguardo.
@@ -14245,9 +14250,8 @@ function skyDisegnaMare(ctx, base, focale, aria) {
 // riflesso della Luna su un lago è una striscia netta e sul mare una
 // colonna sfrangiata: stessa formula, sigma diverso.
 //
-// **Sono acqua dolce.** Il colore proprio è più verde e più torbido di
-// quello del mare — ma conta poco, perché a quegli angoli di striscio si
-// vede quasi solo il cielo riflesso.
+// **Sono acqua dolce.** Hanno una base appena meno satura di quella marina,
+// ma restano blu: lago e fiume non devono trasformarsi in vernice verde.
 //
 // Per un pezzo però «con le stesse funzioni» era scritto qui e basta: le
 // funzioni erano altre, e più povere. Quattro cose mancavano, ed erano
@@ -14284,11 +14288,11 @@ function skyDisegnaMare(ctx, base, focale, aria) {
 //      infila dietro al dosso esattamente dove il dosso è dipinto.
 // Il verde oliva usato prima faceva sembrare laghi e fiumi una lastra di
 // fango anche sotto un cielo limpido. L'acqua dolce profonda assorbe il
-// rosso come il mare, ma particelle e fondale le restituiscono un poco più
-// di verde: resta quindi distinta dal mare senza diventare vernice verde.
+// rosso come il mare; particelle e fondale la rendono appena meno satura,
+// senza però far prevalere il verde e trasformarla in vernice verde.
 // Il riflesso del cielo, calcolato in `skyAcquaColore`, continua a essere la
 // parte dominante verso la riva lontana.
-const SKY_ACQUA_DOLCE = { notte: [3, 10, 13], giorno: [9, 55, 61] };
+const SKY_ACQUA_DOLCE = { notte: [3, 9, 22], giorno: [7, 43, 91] };
 
 // Quanto è più liscia l'acqua ferma di quella di mare, e quanto più corte
 // sono le sue onde. Un lago: mezza pendenza e mezza lunghezza. Un fiume
@@ -16506,9 +16510,48 @@ const SKY_ACQUE_MAX_NOMI = [3, 4, 5];
 // devono dire subito *che* acqua sono. Il nome da solo non basta ("Adda" o
 // "Garda" non sono necessariamente riconoscibili a chi visita il luogo),
 // quindi sopra al toponimo compare una piccola categoria. Per il mare, che
-// non arriva dalla query OSM dei laghi e dei fiumi, si usa un'unica
-// etichetta generica nel tratto più centrale effettivamente visibile.
+// non arriva dalla query OSM dei laghi e dei fiumi, si risolve il nome del
+// bacino nel tratto più centrale effettivamente visibile.
 const SKY_ACQUE_TIPI = ['LAGO', 'FIUME'];
+
+// Il DEM sa distinguere il mare dalla terra, ma non contiene toponimi. Per
+// questo l'etichetta precedente poteva dire soltanto «MARE», anche davanti
+// all'Adriatico. Il punto qui classificato non è la posizione dell'utente:
+// viene spostato di trenta chilometri nella direzione effettivamente visibile,
+// così dalle due coste della stessa penisola si ottengono nomi diversi.
+//
+// Le regioni più specifiche vengono prima del Mediterraneo; fuori da esso si
+// usano i nomi dei tre oceani. È un ripiego geografico locale e deterministico
+// (quindi funziona anche senza rete), mentre laghi e fiumi continuano a usare
+// i nomi esatti ricevuti da OpenStreetMap.
+function skyNomeMareVero(lat, lon, az) {
+  if (![lat, lon, az].every(Number.isFinite)) return 'Mare';
+  const distanza = 30 / 6371;
+  const fi = lat * SKY_D2R, lambda = lon * SKY_D2R, rotta = az * SKY_D2R;
+  const fi2 = Math.asin(Math.sin(fi) * Math.cos(distanza) +
+    Math.cos(fi) * Math.sin(distanza) * Math.cos(rotta));
+  const lambda2 = lambda + Math.atan2(Math.sin(rotta) * Math.sin(distanza) * Math.cos(fi),
+    Math.cos(distanza) - Math.sin(fi) * Math.sin(fi2));
+  const y = fi2 * SKY_R2D;
+  const x = ((lambda2 * SKY_R2D + 540) % 360) - 180;
+
+  // Mari italiani. I limiti seguono gli stretti e l'asse delle penisole,
+  // non semplici rettangoli, per non chiamare Adriatico il Tirreno visto da
+  // Roma o Ionio il mare davanti alla Puglia settentrionale.
+  if (y >= 39.4 && y <= 46.2 && x >= 11.7 + Math.max(0, 43.8 - y) * 0.72 && x <= 20.2)
+    return 'Mare Adriatico';
+  if (y >= 42.0 && y <= 44.8 && x >= 6.5 && x <= 11.3) return 'Mar Ligure';
+  if (y >= 36.2 && y < 40.7 && x >= 14.0 && x <= 21.8) return 'Mar Ionio';
+  if (y >= 36.5 && y < 44.0 && x >= 7.0 && x < 16.2) return 'Mar Tirreno';
+  if (y >= 30 && y <= 46.5 && x >= -6.2 && x <= 37) return 'Mar Mediterraneo';
+
+  if (x >= 20 && x <= 147 && y >= -60 && y <= 67) return 'Oceano Indiano';
+  // A est delle Americhe è Atlantico; il solo test x <= -67 lo scambiava
+  // per Pacifico proprio davanti a New York e ai Caraibi.
+  if (x > -100 && x < 20 && y >= -60 && y <= 67) return 'Oceano Atlantico';
+  if ((x >= 147 || x <= -100) && y >= -60 && y <= 67) return 'Oceano Pacifico';
+  return 'Oceano Atlantico';
+}
 
 function skyNomeMare(ctx, base, focale, occupati, tinta) {
   if (typeof terrenoMiscela !== 'function') return;
@@ -16524,13 +16567,15 @@ function skyNomeMare(ctx, base, focale, occupati, tinta) {
     const p = skyProietta(skyVettore(az, -Math.max(0.8, skyMareDip(skyMareOcchioM()) + 0.45)), base, focale);
     if (!p.davanti || p.px < 30 || p.px > sky.larghezza - 30 || p.py < 10 || p.py > sky.altezza - 10) continue;
     const voto = miscela.mare - Math.abs(d) / 300;
-    if (!migliore || voto > migliore.voto) migliore = { p, voto };
+    if (!migliore || voto > migliore.voto) migliore = { p, voto, az };
   }
   if (!migliore) return;
 
   const corpo = quanto(10, 11, 12);
+  const luogo = typeof terrenoLuogo === 'function' ? terrenoLuogo() : null;
+  const nome = luogo ? skyNomeMareVero(luogo.lat, luogo.lon, migliore.az) : 'Mare';
   ctx.font = `600 ${corpo}px ${SKY_FONT_ETICHETTE}`;
-  const largo = ctx.measureText('MARE').width;
+  const largo = ctx.measureText(nome).width;
   const rett = skyRettOrientato(migliore.p.px, migliore.p.py, largo + corpo, corpo * 1.6, 0);
   if (!skyPostoLibero(occupati, rett, 3)) return;
   ctx.save();
@@ -16538,7 +16583,7 @@ function skyNomeMare(ctx, base, focale, occupati, tinta) {
   ctx.textBaseline = 'middle';
   ctx.font = `600 ${corpo}px ${SKY_FONT_ETICHETTE}`;
   ctx.globalAlpha = 0.88;
-  skyScrittaConAlone(ctx, 'MARE', migliore.p.px, migliore.p.py,
+  skyScrittaConAlone(ctx, nome, migliore.p.px, migliore.p.py,
     tinta.pieno, tinta.alone, corpo * 0.25);
   ctx.restore();
 }
