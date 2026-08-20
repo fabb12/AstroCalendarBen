@@ -3315,23 +3315,23 @@ body button.pos-risultato:focus-visible {
   /* Sono numeri da leggere, non comandi: il dito ci passa attraverso */
   pointer-events: none;
 }
-/* Le due righe di sinistra, incolonnate e strette: sono due letture, non
-   due riquadri, e ognuna è larga quanto il suo testo */
+/* Le informazioni condividono una sola pillola compatta. */
 .letture-sinistra {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  align-items: center;
+  gap: 0;
   min-width: 0;
   max-width: calc(100% - 82px);   /* quanto lascia libero la bussola */
-}
-.lettura-cielo {
-  padding: 5px 9px;
   border: 1px solid var(--bordo);
   border-radius: var(--raggio-s);
   background: rgba(6, 10, 20, 0.74);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+}
+.lettura-cielo {
+  padding: 5px 9px;
+  border: 0;
+  background: transparent;
   font-family: var(--mono);
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
@@ -3342,6 +3342,7 @@ body button.pos-risultato:focus-visible {
   text-overflow: ellipsis;
 }
 .lettura-stato { color: var(--testo-2); font-size: 0.68rem; }
+.lettura-stato::before { content: "·"; margin-right: 9px; color: var(--testo-3); }
 
 
 /* ------------------------------------------------- LA BUSSOLA DEL CIELO */
@@ -4380,7 +4381,22 @@ body input.casella-data:hover { border: 0; }
   line-height: 1;
   cursor: pointer;
 }
+.tasto-zoom-cielo { display: none; }
+.mostra-tasti-zoom .tasto-zoom-cielo { display: inline-flex; }
 .tasto-zoom-cielo:hover { background: rgba(28, 36, 60, 0.92); }
+
+/* La modalità pulita toglie ogni sovraimpressione. Il comando rosso resta
+   volutamente l'unico elemento sulla mappa; un tocco sul cielo ripristina
+   l'interfaccia completa. */
+#skymap-contenitore.vista-pulita .cielo-chrome,
+#skymap-contenitore.vista-pulita .barra-tempo,
+#skymap-contenitore.vista-pulita .pannello-dettaglio,
+#skymap-contenitore.vista-pulita .pannello-clip,
+#skymap-contenitore.vista-pulita .tasto-esci-cielo,
+#skymap-contenitore.vista-pulita .barra-terreno,
+#skymap-contenitore.vista-pulita .caricamento-cielo,
+#skymap-contenitore.vista-pulita .comandi-mappa-cielo > :not(.riga-registra-cielo) { display: none !important; }
+#skymap-contenitore.vista-pulita .comandi-mappa-cielo { bottom: max(12px, env(safe-area-inset-bottom)); }
 
 /* Lo schermo intero appoggiato sulla mappa, come sulla mappa dell'ombra
    delle eclissi: stessa famiglia dei tasti dello zoom (stessa taglia, stessa
