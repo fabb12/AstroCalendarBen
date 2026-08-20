@@ -13583,10 +13583,16 @@ function skyMareAzzurraOrizzonte(colore, dep) {
   // entro diciotto gradi di depressione, quindi riguarda soltanto il mare
   // verso l'orizzonte e non quello profondo visto vicino ai piedi.
   const versoOrizzonte = Math.max(0, 1 - dep / 18);
-  if (versoOrizzonte > 0 && colore[1] > colore[0] * 1.08) {
-    const bluMancante = Math.max(0, colore[1] * 1.15 - colore[2]);
+  // Non basta cercare il verde rispetto al rosso: con una foschia quasi
+  // grigia il rosso può essere appena più alto, pur lasciando G nettamente
+  // sopra B. È proprio quel caso che continuava a produrre una riga oliva.
+  // Si guarda quindi la dominante che conta davvero (G contro B), lasciando
+  // intatti soltanto i riflessi caldi in cui R domina chiaramente G.
+  const riflessoCaldo = colore[0] > colore[1] * 1.12;
+  if (versoOrizzonte > 0 && !riflessoCaldo && colore[1] >= colore[2] * 0.92) {
+    const bluMancante = Math.max(0, colore[1] * 1.22 - colore[2]);
     const sposta = bluMancante * versoOrizzonte;
-    colore[1] = Math.max(colore[0], colore[1] - sposta * 0.18);
+    colore[1] = Math.max(colore[0] * 0.82, colore[1] - sposta * 0.28);
     colore[2] = Math.min(255, colore[2] + sposta);
   }
   return colore;
@@ -16251,16 +16257,22 @@ const SKY_NOMI_ORIZZONTE = {
 //
 // Vanno **dopo** il terreno, se no li coprirebbe.
 function skyDisegnaNomiOrizzonte(ctx, base, focale) {
-  if (!sky.mostraNomi) return;
+  // «Etichette» governa i nomi astronomici e i toponimi ordinari, mentre
+  // «Nomi dei monti» ha un interruttore proprio. Il vecchio ritorno qui
+  // sopra annullava quell'interruttore: risultava acceso, scaricava le
+  // vette, ma non disegnava nulla se le etichette generali erano spente.
+  // Le montagne devono quindi poter arrivare alla loro passata autonoma.
+  const mostraCime = typeof cime !== 'undefined' && cime.acceso;
+  if (!sky.mostraNomi && !mostraCime) return;
   const occupati = [];
   // I paesi si nominano solo a campo largo, come i loro aloni: sotto i
   // dieci gradi la cupola è più larga dello schermo e nominarla vuol dire
   // scrivere un nome in mezzo al nulla arancione. Le vette no: ingrandire
   // sull'orizzonte è **il** momento in cui si vuole sapere che monte è
   // quello, ed è quello che si fa con un binocolo in mano.
-  if (sky.fov >= SKY_CITTA_FOV_MIN) skyNomiCitta(ctx, base, focale, occupati);
-  skyNomiCime(ctx, base, focale, occupati);
-  skyNomiAcque(ctx, base, focale, occupati);
+  if (sky.mostraNomi && sky.fov >= SKY_CITTA_FOV_MIN) skyNomiCitta(ctx, base, focale, occupati);
+  if (mostraCime) skyNomiCime(ctx, base, focale, occupati);
+  if (sky.mostraNomi) skyNomiAcque(ctx, base, focale, occupati);
 }
 
 // I nomi dei paesi, appoggiati sopra il loro crinale. Sono l'altra metà del
