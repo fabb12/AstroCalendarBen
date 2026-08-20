@@ -13565,11 +13565,30 @@ function skyMareFresnel(dep) {
   return Math.min(SKY_MARE_RIFLESSO_MAX, 0.02 + 0.98 * uno * uno * uno * uno * uno);
 }
 
+function skyMareAzzurraOrizzonte(colore, dep) {
+  // La foschia del cielo basso può avere più verde che blu. Riflessa al
+  // sessanta per cento proprio dove Fresnel pesa di più, trasformava la
+  // fascia lontana del mare in una striscia verde, nonostante la base
+  // dell'acqua fosse già blu. In natura quella luce attraversa e viene
+  // filtrata anche dall'acqua: il rosso di un tramonto deve restare rosso,
+  // ma una dominante verde/ciano diventa azzurra. La correzione svanisce
+  // entro diciotto gradi di depressione, quindi riguarda soltanto il mare
+  // verso l'orizzonte e non quello profondo visto vicino ai piedi.
+  const versoOrizzonte = Math.max(0, 1 - dep / 18);
+  if (versoOrizzonte > 0 && colore[1] > colore[0] * 1.08) {
+    const bluMancante = Math.max(0, colore[1] * 1.15 - colore[2]);
+    const sposta = bluMancante * versoOrizzonte;
+    colore[1] = Math.max(colore[0], colore[1] - sposta * 0.18);
+    colore[2] = Math.min(255, colore[2] + sposta);
+  }
+  return colore;
+}
+
 function skyMareColore(dep, aria) {
   const d = Math.max(0, Math.min(90, dep));
   const acqua = skyMescolaColore(SKY_MARE_ACQUA.notte, SKY_MARE_ACQUA.giorno, sky.luceCielo);
   const specchio = skyColoreCielo(aria, d + SKY_MARE_RIFLESSO_ALZA);
-  return skyMescolaColore(acqua, specchio, skyMareFresnel(d));
+  return skyMareAzzurraOrizzonte(skyMescolaColore(acqua, specchio, skyMareFresnel(d)), d);
 }
 
 // Quanto luccica l'acqua in quella direzione, per un astro che sta in
