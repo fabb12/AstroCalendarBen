@@ -13342,7 +13342,7 @@ function skyMareOggi() {
 // L'acqua in sé, quella che si vede guardandoci dentro: verde-blu cupo di
 // giorno, quasi nera di notte. Non è il colore del mare — quello è
 // soprattutto cielo riflesso — è quello che resta togliendo il riflesso.
-const SKY_MARE_ACQUA = { notte: [3, 6, 11], giorno: [11, 40, 55] };
+const SKY_MARE_ACQUA = { notte: [2, 8, 14], giorno: [6, 48, 68] };
 
 // Il riflesso non arriva mai al cento per cento, e il cielo che si specchia
 // non è quello esattamente all'altezza dello sguardo.
@@ -14282,7 +14282,13 @@ function skyDisegnaMare(ctx, base, focale, aria) {
 //      sembrare il lago un ritaglio incollato. Adesso l'acqua scende fino
 //      alla cresta **disegnata** (`skyCrestaDisegnataEntro`), cioè si
 //      infila dietro al dosso esattamente dove il dosso è dipinto.
-const SKY_ACQUA_DOLCE = { notte: [4, 7, 9], giorno: [24, 36, 32] };
+// Il verde oliva usato prima faceva sembrare laghi e fiumi una lastra di
+// fango anche sotto un cielo limpido. L'acqua dolce profonda assorbe il
+// rosso come il mare, ma particelle e fondale le restituiscono un poco più
+// di verde: resta quindi distinta dal mare senza diventare vernice verde.
+// Il riflesso del cielo, calcolato in `skyAcquaColore`, continua a essere la
+// parte dominante verso la riva lontana.
+const SKY_ACQUA_DOLCE = { notte: [3, 10, 13], giorno: [9, 55, 61] };
 
 // Quanto è più liscia l'acqua ferma di quella di mare, e quanto più corte
 // sono le sue onde. Un lago: mezza pendenza e mezza lunghezza. Un fiume
@@ -16496,16 +16502,57 @@ const SKY_ACQUE_MARGINE = 1.25;
 // se ne vedono tre o quattro, e il quinto è sempre una pozza.
 const SKY_ACQUE_MAX_NOMI = [3, 4, 5];
 
+// Le superfici d'acqua usano tutte la stessa grammatica cartografica, ma
+// devono dire subito *che* acqua sono. Il nome da solo non basta ("Adda" o
+// "Garda" non sono necessariamente riconoscibili a chi visita il luogo),
+// quindi sopra al toponimo compare una piccola categoria. Per il mare, che
+// non arriva dalla query OSM dei laghi e dei fiumi, si usa un'unica
+// etichetta generica nel tratto più centrale effettivamente visibile.
+const SKY_ACQUE_TIPI = ['LAGO', 'FIUME'];
+
+function skyNomeMare(ctx, base, focale, occupati, tinta) {
+  if (typeof terrenoMiscela !== 'function') return;
+  const arco = skyArcoOrizzonteInVista(base, focale);
+  if (!arco) return;
+
+  let migliore = null;
+  const mezzo = Math.min(80, arco.mezzo);
+  for (let d = -mezzo; d <= mezzo; d += 4) {
+    const az = arco.centro + d;
+    const miscela = terrenoMiscela(az);
+    if (!miscela || miscela.mare < 0.72) continue;
+    const p = skyProietta(skyVettore(az, -Math.max(0.8, skyMareDip(skyMareOcchioM()) + 0.45)), base, focale);
+    if (!p.davanti || p.px < 30 || p.px > sky.larghezza - 30 || p.py < 10 || p.py > sky.altezza - 10) continue;
+    const voto = miscela.mare - Math.abs(d) / 300;
+    if (!migliore || voto > migliore.voto) migliore = { p, voto };
+  }
+  if (!migliore) return;
+
+  const corpo = quanto(10, 11, 12);
+  ctx.font = `600 ${corpo}px ${SKY_FONT_ETICHETTE}`;
+  const largo = ctx.measureText('MARE').width;
+  const rett = skyRettOrientato(migliore.p.px, migliore.p.py, largo + corpo, corpo * 1.6, 0);
+  if (!skyPostoLibero(occupati, rett, 3)) return;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `600 ${corpo}px ${SKY_FONT_ETICHETTE}`;
+  ctx.globalAlpha = 0.88;
+  skyScrittaConAlone(ctx, 'MARE', migliore.p.px, migliore.p.py,
+    tinta.pieno, tinta.alone, corpo * 0.25);
+  ctx.restore();
+}
+
 function skyNomiAcque(ctx, base, focale, occupati) {
+  const giorno = sky.luceCielo > 0.45;
+  const tinta = SKY_NOMI_ORIZZONTE.acque[giorno ? 'giorno' : 'notte'];
+  skyNomeMare(ctx, base, focale, occupati, tinta);
   if (typeof acqueDaDisegnare !== 'function') return;
   const lista = acqueDaDisegnare();
   if (!lista.length) return;
 
   const massimo = quanto(SKY_ACQUE_MAX_NOMI[0], SKY_ACQUE_MAX_NOMI[1], SKY_ACQUE_MAX_NOMI[2]);
   const corpoPieno = quanto(12, 13, 14);
-  const giorno = sky.luceCielo > 0.45;
-  const tinta = SKY_NOMI_ORIZZONTE.acque[giorno ? 'giorno' : 'notte'];
-
   ctx.save();
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
@@ -16525,6 +16572,7 @@ function skyNomiAcque(ctx, base, focale, occupati) {
     const altoPx = Math.max(2,
       skyQuantiPixel(base, focale, p, c.az, c.alt + Math.abs(c.altoGradi) / 2) * 2);
 
+    const categoria = SKY_ACQUE_TIPI[c.tipo] || 'ACQUA';
     let corpo = corpoPieno;
     ctx.font = `${SKY_NOMI_ORIZZONTE.acque.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
     let largo = ctx.measureText(c.nome).width;
@@ -16543,7 +16591,10 @@ function skyNomiAcque(ctx, base, focale, occupati) {
     // vuol più dire niente.
     if (p.px - largo / 2 < 4 || p.px + largo / 2 > sky.larghezza - 4) continue;
 
-    const alta = corpo * 1.25;
+    const corpoTipo = Math.max(7, corpo - 4);
+    ctx.font = `600 ${corpoTipo}px ${SKY_FONT_ETICHETTE}`;
+    largo = Math.max(largo, ctx.measureText(categoria).width);
+    const alta = corpo * 2.05;
     // Su una striscia più bassa della scritta il nome sborda sulle due rive
     // e si legge peggio che non scriverlo. I fiumi finiscono quasi sempre
     // qui, ed è giusto così: un fiume largo trenta metri visto da tre
@@ -16554,8 +16605,14 @@ function skyNomiAcque(ctx, base, focale, occupati) {
     if (!skyPostoLibero(occupati, rett, 2)) continue;
     scritte++;
 
-    ctx.globalAlpha = 0.92;
-    skyScrittaConAlone(ctx, c.nome, p.px, p.py, tinta.pieno, tinta.alone, corpo * 0.26);
+    ctx.globalAlpha = 0.78;
+    ctx.font = `600 ${corpoTipo}px ${SKY_FONT_ETICHETTE}`;
+    skyScrittaConAlone(ctx, categoria, p.px, p.py - corpo * 0.55,
+      tinta.pieno, tinta.alone, corpoTipo * 0.24);
+    ctx.globalAlpha = 0.94;
+    ctx.font = `${SKY_NOMI_ORIZZONTE.acque.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
+    skyScrittaConAlone(ctx, c.nome, p.px, p.py + corpo * 0.35,
+      tinta.pieno, tinta.alone, corpo * 0.26);
   }
   ctx.restore();
 }
