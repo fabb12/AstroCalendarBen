@@ -3568,6 +3568,38 @@ body .chip-astro {
 
 .nota-lunga { margin: 6px 0 0; font-size: 0.76rem; color: var(--testo-3); }
 
+/* Quando si sta cercando per nome, su telefoni piccoli l'azione principale
+   non sono più categorie e viste esterne: è toccare il risultato trovato.
+   Il pannello diventa quindi più "lista": meno comandi appiccicati sopra,
+   bottoni larghi quanto il dito e nessun testo tagliato. */
+.gruppo-astri.ricerca-attiva .riga-categorie-astri,
+.gruppo-astri.ricerca-attiva .riga-viste-astri,
+.gruppo-astri.ricerca-attiva > .etichetta-comando {
+  display: none;
+}
+.gruppo-astri.ricerca-attiva .astri-famiglia {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+body .gruppo-astri.ricerca-attiva .chip-astro {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  touch-action: manipulation;
+}
+.gruppo-astri.ricerca-attiva .chip-astro .nome-astro {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gruppo-astri.ricerca-attiva .chip-astro .sky-alt {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
 /* Un comando a segmenti: scelte che si escludono, incollate in una pillola
    sola. Occupa meno di altrettanti tasti staccati, non manda mai a capo, e
    si legge come una scala — che è quello che sono il passo del tempo e i
@@ -4004,6 +4036,7 @@ body input.casella-data:hover { border: 0; }
   .bussola-gradi { font-size: 0.6rem; }
   .bussola-indice { border-left-width: 4px; border-right-width: 4px; border-top-width: 7px; }
   .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
+  .gruppo-comandi.gruppo-astri.gruppo-attivo.ricerca-attiva { max-height: min(78%, 520px); }
   /* Il rientro del pannello qui è più stretto, e il filtro appiccicato in
      cima deve arrivare lo stesso ai suoi bordi */
   .cerca-astri { margin: -10px -12px 8px; padding: 8px 12px; }
