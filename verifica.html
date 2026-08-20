@@ -4571,6 +4571,121 @@ if (typeof acqueTaglia !== 'function') {
     terrenoDimentica();
     acqueDimentica();
   }
+
+  // -------------------------------------------------------------------
+  // L'acqua **vicina**, e quella sotto i piedi
+  //
+  // È il gruppo di difetti per cui, standosene sulla riva di un fiume o su un
+  // ponte, il planetario non disegnava acqua affatto. Tre cause diverse che
+  // davano tutte lo stesso sintomo — e nessuna lasciava traccia, perché
+  // un'acqua che non si disegna non fallisce: semplicemente non c'è.
+  //
+  //   1. La **quota** di uno specchio più stretto del passo della griglia si
+  //      ripiegava sul campione più vicino, che non è sull'acqua: è la riva.
+  //      Con una riva che sale, quel numero sta sopra l'occhio e la banda
+  //      veniva scartata come «non è superficie».
+  //   2. Un corso d'acqua che **passa sotto i piedi** non produceva nessun
+  //      taglio: i raggi partono dall'origine, e una retta che passa per
+  //      l'origine non la si incontra a distanza positiva.
+  //   3. L'occlusione teneva un tratto solo, e lo cercava dando per scontato
+  //      che a essere coperta fosse la riva **vicina**. Da vicino è il
+  //      contrario, e la banda intera se ne andava per colpa di qualcosa che
+  //      le sta dietro.
+  // -------------------------------------------------------------------
+  {
+    const nd = TERRENO_DISTANZE.length;
+    const mLatP = 111320, mLonP = 111320 * Math.cos(LAT * D2R);
+    const puntoP = (x, y) => ({ lat: LAT + y / mLatP, lon: LON + x / mLonP });
+    const corso = (x0, largo, nome) => ({
+      type: 'way', tags: { waterway: 'river', width: String(largo), name: nome },
+      geometry: [puntoP(x0, -6000), puntoP(x0, 6000)]
+    });
+    const montaSuolo = (suolo, quotaCasa) => {
+      const grezze = new Array(TERRENO_DIREZIONI * nd);
+      const avute = [];
+      for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+        avute.push(i);
+        for (let k = 0; k < nd; k++) {
+          grezze[i * nd + k] = suolo(i * TERRENO_PASSO_AZ, TERRENO_DISTANZE[k]);
+        }
+      }
+      terreno.acceso = true;
+      acque.acceso = true;
+      terrenoApplica(LAT, LON, terrenoMonta(grezze, avute, quotaCasa), 'prova', false);
+    };
+    const conta = viste => {
+      let quante = 0, daiPiedi = 0;
+      if (viste) for (const v of viste) {
+        if (!v) continue;
+        quante++;
+        if (v[0].vicino === 0) daiPiedi++;
+      }
+      return { quante, daiPiedi };
+    };
+
+    // --- Un fiume a quaranta metri, con la sponda di là che sale ---
+    montaSuolo((az, km) => 200 + km * 60, 200);
+    prova('senza campioni dentro allo specchio, la quota non è quella della riva',
+      acqueQuotaDi(270, 10, 70) <= 200.001,
+      `${acqueQuotaDi(270, 10, 70)} m, con la riva a ${Math.round(200 + 0.15 * 60)} e l'occhio a 201,6`);
+    acqueApplica(LAT, LON, acqueLeggiElementi([corso(-40, 60, 'Fiume')]), 'prova');
+    const vFiume = acqueVisibili() || [];
+    const ovest = vFiume[Math.round(270 / ACQUE_PASSO_AZ)];
+    prova('un fiume a quaranta metri si vede',
+      !!ovest && ovest[0].vicino < 20 && ovest[0].lontano > 60,
+      ovest ? `${Math.round(ovest[0].vicino)}–${Math.round(ovest[0].lontano)} m` : 'niente');
+    prova('e sta sotto la linea dell\'orizzonte, non sopra',
+      !!ovest && ovest[0].depLontano < 0 && ovest[0].depVicino < ovest[0].depLontano,
+      ovest ? `da ${ovest[0].depVicino.toFixed(1)}° a ${ovest[0].depLontano.toFixed(2)}°` : '');
+
+    // --- Lo stesso fiume, ma ci passa sotto ---
+    acqueApplica(LAT, LON, acqueLeggiElementi([corso(0, 60, 'Fiume')]), 'prova');
+    const cF = conta(acqueVisibili());
+    prova('un fiume che passa sotto i piedi si vede in tutte le direzioni',
+      cF.quante === ACQUE_DIREZIONI, `${cF.quante} direzioni su ${ACQUE_DIREZIONI}`);
+    prova('e in tutte l\'acqua comincia dalle scarpe',
+      cF.daiPiedi === ACQUE_DIREZIONI, `${cF.daiPiedi}`);
+    const vDentro = acqueVisibili();
+    const traverso = vDentro[Math.round(90 / ACQUE_PASSO_AZ)];
+    prova('di traverso l\'acqua finisce alla riva, cioè a mezza larghezza',
+      !!traverso && Math.abs(traverso[0].lontano - 30) < 2,
+      traverso ? `${Math.round(traverso[0].lontano)} m invece di 30` : 'niente');
+    const lungo = vDentro[0];
+    prova('lungo il corso invece si vede molto più in là',
+      !!lungo && lungo[0].lontano > 100, lungo ? `${Math.round(lungo[0].lontano)} m` : 'niente');
+    // Un ponte non è una barca: l'occhio sta alto quanto il ponte, e portarlo
+    // al pelo dell'acqua storterebbe tutti gli angoli dell'orizzonte.
+    prova('ma non ci si segna «sommersi»: quello è dei laghi, e sposta l\'occhio',
+      acque.sommerso === false);
+
+    // --- Un lago ai piedi con un dosso in mezzo ---
+    // La parte lontana è coperta, la vicina no: prima se ne andava tutta.
+    montaSuolo((az, km) => (km >= 1.2 && km <= 1.8) ? 208 : 200, 200);
+    acqueApplica(LAT, LON, acqueLeggiElementi([
+      cerchio(-2000, 0, 1900, { natural: 'water', water: 'lake', name: 'Lago col dosso' })
+    ]), 'prova');
+    const vDosso = acqueVisibili() || [];
+    const sud = vDosso[Math.round(180 / ACQUE_PASSO_AZ)];
+    prova('un dosso in mezzo al lago non porta via anche l\'acqua che ho davanti',
+      !!sud && sud[0].vicino < 200 && sud[0].lontano > 500 && sud[0].lontano < 1600,
+      sud ? `${Math.round(sud[0].vicino)}–${Math.round(sud[0].lontano)} m, il lago arriva a 3900` : 'niente');
+
+    // --- E il caso di sempre, che deve continuare a funzionare ---
+    // Dall'alto, la riva di qua nascosta dalla cresta e la metà lontana in
+    // vista: è quello che il conto di prima sapeva già fare.
+    montaSuolo((az, km) => km < 1.5 ? 294 : 194, 394);
+    acqueApplica(LAT, LON, acqueLeggiElementi([
+      cerchio(-4000, 0, 2000, { natural: 'water', water: 'lake', name: 'Lago in conca' })
+    ]), 'prova');
+    const vConca = acqueVisibili() || [];
+    const giu = vConca[Math.round(180 / ACQUE_PASSO_AZ)];
+    prova('la riva vicina nascosta da una cresta resta nascosta',
+      !!giu && giu[0].tagliata === true && giu[0].vicino > 2200,
+      giu ? `${Math.round(giu[0].vicino)}–${Math.round(giu[0].lontano)} m, il lago comincia a 2000` : 'niente');
+
+    terrenoDimentica();
+    acqueDimentica();
+  }
 }
 
 // =====================================================================

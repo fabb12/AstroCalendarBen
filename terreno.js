@@ -3484,6 +3484,13 @@ const ACQUE_DEP_MAX_GRADI = 85;
 // ballottaggio.
 const ACQUE_OCCLUSIONE_MARGINE_GRADI = 0.05;
 
+// In quanti punti si guarda una banda per sapere quali suoi tratti si vedono.
+// Erano otto quando il conto cercava un taglio solo; adesso che si tengono
+// tutti i tratti scoperti conta anche **dove** cominciano, e dodici passi su
+// una banda di un chilometro sono ottanta metri di grana. Gira una volta per
+// terreno e per altezza dell'occhio, non a ogni fotogramma.
+const ACQUE_OCCLUSIONE_PASSI = 12;
+
 const ACQUE_ATTESA_MS = 30000;
 const ACQUE_RAGGIO_VALIDO_KM = 2;
 const ACQUE_RIPROVA_DOPO_MS = 4 * 60 * 1000;
@@ -3812,6 +3819,68 @@ function acqueTagliVuoti(limiteM) {
   return tagli;
 }
 
+// Ci si sta **sopra**, a questo corso d'acqua?
+//
+// Un fiume è una polilinea, quindi il test di appartenenza dei poligoni non
+// gli si può fare: quello che ha è una larghezza, e «starci dentro» vuol dire
+// che la distanza dalla sua linea è meno di mezza larghezza. Il caso non è
+// esotico — un ponte, una passerella, la riva di un fiume di città largo
+// quaranta metri — e prima non veniva disegnato affatto, per due motivi che
+// si sommavano: i raggi partono dall'origine e una retta che passa per
+// l'origine non la si taglia mai a distanza positiva, e i lati si provano
+// solo contro i raggi compresi fra i loro estremi, che stando in mezzo sono
+// mezzo giro e non tutto.
+//
+// Quello che **non** si fa qui è segnarlo fra i `sommersi`: quelli servono
+// alla parità dei poligoni e a spostare l'occhio sul pelo dell'acqua
+// (`acqueAllineaOcchio`), e nessuna delle due cose vale per un fiume. La
+// parità di una polilinea non esiste, e chi sta su un ponte è alto quanto il
+// ponte, non quanto il fiume.
+//
+// Quando ci si sta sopra il conto giusto è un altro, ed è più semplice: a
+// trenta metri un fiume è **dritto**, quindi basta il suo asse e la sua
+// larghezza. Per ogni direzione l'acqua comincia ai piedi e finisce dove il
+// raggio esce dalla striscia, che è una divisione. Guardando lungo il corso
+// il raggio non esce mai, e lì vale lo stesso tetto degli attraversamenti di
+// sbieco (`ACQUE_FIUME_MAX`): un fiume non si vede fino all'orizzonte.
+function acqueFiumeAddosso(p, n, largo, tagli, id) {
+  const mezzo = largo / 2;
+  let dist2 = Infinity, nx = 0, ny = 0, perp = 0;
+  for (let i = 0; i + 1 < n; i++) {
+    const ax = p[i * 2], ay = p[i * 2 + 1];
+    const ex = p[i * 2 + 2] - ax, ey = p[i * 2 + 3] - ay;
+    const L2 = ex * ex + ey * ey;
+    if (L2 === 0) continue;
+    // Il punto del lato più vicino all'origine: la proiezione, tosata agli
+    // estremi (se no un lato che passa lontano ma la cui *retta* passa vicino
+    // farebbe risultare bagnati i piedi).
+    const u = Math.max(0, Math.min(1, -(ax * ex + ay * ey) / L2));
+    const qx = ax + ex * u, qy = ay + ey * u;
+    const d2 = qx * qx + qy * qy;
+    if (d2 >= dist2) continue;
+    dist2 = d2;
+    const L = Math.sqrt(L2);
+    nx = -ey / L; ny = ex / L;
+    perp = -(qx * nx + qy * ny);
+  }
+  if (!(dist2 < mezzo * mezzo)) return false;
+
+  const tetto = largo * ACQUE_FIUME_MAX;
+  for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+    const den = ACQUE_SENI[b] * nx + ACQUE_COSENI[b] * ny;
+    // Lungo il corso non si esce mai: la striscia è parallela al raggio.
+    const t = Math.abs(den) < 1e-6
+      ? tetto
+      : Math.min(tetto, ((den > 0 ? mezzo : -mezzo) - perp) / den);
+    if (!(t > 0.5)) continue;
+    if (!tagli[b]) tagli[b] = [];
+    // Un attraversamento centrato sui piedi e profondo il doppio dell'uscita:
+    // `acqueBandeDaTagli` lo tosa a zero da sé e ne fa la banda [0, t].
+    tagli[b].push({ t: 0, fiume: true, prof: 2 * t, id });
+  }
+  return true;
+}
+
 // Un tracciato solo contro tutti i raggi che può incontrare. È il corpo del
 // ciclo di `acqueTaglia`, tirato fuori perché lo stesso lavoro si possa fare
 // tutto in un colpo (le prove, e i posti normali) o **a scaglioni** senza
@@ -3843,6 +3912,18 @@ function acqueTagliaUno(tr, id, tagli, lat, lon, limiteM) {
   // Il nome si segna qui, una volta per specchio d'acqua: da qui in poi un
   // incrocio è un numero e una distanza, e il numero basta a ritrovarlo.
   if (tr.nome && tagli.nomi && !tagli.nomi.has(id)) tagli.nomi.set(id, tr.nome);
+
+  // Un corso d'acqua che ci passa sotto i piedi: la sua acqua non nasce da
+  // nessun attraversamento, e va disegnata a parte (vedi `acqueFiumeAddosso`).
+  // Il riquadro deve contenere l'origine allargato di mezza larghezza, se no
+  // il giro dei lati non vale la pena di farlo: per un posto normale sono
+  // quattro confronti e nient'altro.
+  if (tr.corrente) {
+    const m = tr.largo / 2;
+    if (minX - m <= 0 && maxX + m >= 0 && minY - m <= 0 && maxY + m >= 0) {
+      acqueFiumeAddosso(p, n, tr.largo, tagli, id);
+    }
+  }
 
   const lati = tr.chiuso ? n : n - 1;
   for (let i = 0; i < lati; i++) {
@@ -4076,7 +4157,11 @@ function acqueNomiGrandi(tracciati, lat, lon) {
 // chi aveva già aperto il planetario in un posto si teneva per sempre dei
 // laghi senza etichetta, e non c'era modo di distinguerli da un posto in cui
 // i laghi un nome non ce l'hanno davvero.
-const ACQUE_VERSIONE = 2;
+//
+// La 3 è la volta del **fiume sotto i piedi**: chi aveva già delle bande
+// salvate in un posto attraversato da un corso d'acqua se le teneva senza la
+// banda che comincia dalle scarpe, che è proprio quella che mancava.
+const ACQUE_VERSIONE = 3;
 
 function acqueArchivio() {
   try {
@@ -4409,8 +4494,9 @@ function acqueQuotaDi(az, vicinoM, lontanoM) {
   const t = dove - Math.floor(dove);
 
   let minimo = null;
-  let piuVicino = null, scartoMin = Infinity;
-  const mezzo = (vicinoM + lontanoM) / 2;
+  // I due campioni che **abbracciano** lo specchio: l'ultimo prima della riva
+  // vicina e il primo dopo quella lontana.
+  let prima = null, dopo = null;
   for (let k = 0; k < nd; k++) {
     const m = TERRENO_DISTANZE[k] * 1000;
     const qa = terreno.quote[i * nd + k], qb = terreno.quote[j * nd + k];
@@ -4418,14 +4504,42 @@ function acqueQuotaDi(az, vicinoM, lontanoM) {
     const q = qa + (qb - qa) * t;
     if (m >= vicinoM && m <= lontanoM) {
       if (minimo === null || q < minimo) minimo = q;
+    } else if (m < vicinoM) {
+      prima = q;
+    } else if (dopo === null) {
+      dopo = q;
     }
-    const scarto = Math.abs(m - mezzo);
-    if (scarto < scartoMin) { scartoMin = scarto; piuVicino = q; }
   }
-  // Nessun campione dentro allo specchio — capita ai laghetti e a tutti i
-  // fiumi, che sono più stretti del passo della griglia: si prende quello
-  // che gli cade più vicino.
-  return minimo !== null ? minimo : piuVicino;
+  if (minimo !== null) return minimo;
+
+  // Nessun campione dentro allo specchio: capita a tutti i fiumi e a ogni
+  // laghetto, che sono più stretti dei centocinquanta metri della griglia — e
+  // capita **sempre** allo specchio che si ha davanti alle scarpe, che è
+  // tutto dentro al primo anello.
+  //
+  // Qui prima si prendeva il campione più vicino, ed è la riga per cui un
+  // fiume a quaranta metri non si disegnava. Quel campione non è sull'acqua:
+  // è la riva di là, il terrapieno, il primo pezzo di collina — e su una riva
+  // che sale sta **sopra** l'occhio. Da lì la banda veniva scartata come
+  // «acqua più in alto di chi guarda», che è il modo peggiore di sbagliare:
+  // il difetto non lascia traccia, semplicemente l'acqua non c'è.
+  //
+  // Di vero, di uno specchio d'acqua, si sa una cosa sola: che è la cosa più
+  // bassa che ci sia lì attorno. Quindi il ripiego è il **minimo** dei due
+  // campioni che lo abbracciano — non quello che gli capita più vicino — e,
+  // per l'acqua che comincia dentro al primo anello, anche il suolo sotto i
+  // piedi: un fiume che si guarda dalla sua sponda non può essere più in alto
+  // della sponda, se no ci scorrerebbe addosso.
+  let ripiego = null;
+  const conta = q => {
+    if (typeof q === 'number' && (ripiego === null || q < ripiego)) ripiego = q;
+  };
+  conta(prima);
+  conta(dopo);
+  if (vicinoM < TERRENO_DISTANZE[0] * 1000 && typeof terreno.quota === 'number') {
+    conta(terreno.quota);
+  }
+  return ripiego;
 }
 
 // Gli specchi d'acqua che da qui si vedono davvero, con l'angolo sotto cui
@@ -4435,9 +4549,11 @@ function acqueQuotaDi(az, vicinoM, lontanoM) {
 //      dell'occhio non mostra la sua superficie, mostra la riva di taglio —
 //      e disegnarlo vorrebbe dire mettere del blu sopra l'orizzonte;
 //   2. **davanti alla cresta**: un lago dietro a una collina non si vede, ed
-//      è il caso normale, non l'eccezione. Ma solo la parte **vicina** si
-//      perde: guardando oltre un crinale si vede la metà lontana del lago e
-//      non la riva di qua, che è esattamente quello che si vede dal vero;
+//      è il caso normale, non l'eccezione. Ma se ne perde solo il pezzo che
+//      il terreno copre davvero — guardando oltre un crinale si vede la metà
+//      lontana e non la riva di qua, e stando su una riva si vede l'acqua qui
+//      davanti e non quella oltre il promontorio: sono lo stesso conto, e per
+//      questo si tengono **tutti** i tratti scoperti e non uno;
 //   3. **dentro al raggio chiesto**, che può essere sceso nel frattempo.
 //
 // Il risultato si tiene finché non cambia il terreno o l'altezza da cui si
@@ -4461,55 +4577,85 @@ function acqueVisibili() {
       if (vicino > limite) continue;
       const fine = Math.min(lontano, limite);
       if (!(fine > vicino)) continue;
-      // La quota della superficie. Per una banda che comincia **ai piedi** non
-      // si va a chiederla alla griglia: la si sa già, ed è quella su cui si
-      // sta. Chiederla comunque è il modo di sbagliarla — uno specchio d'acqua
-      // più stretto del passo della griglia (un fiume, un laghetto, la baia in
-      // cui è ancorata la barca) non ha nessun campione dentro di sé, e
-      // `acqueQuotaDi` ripiega allora sul più vicino, che è la riva. Con una
-      // riva ripida quel numero è decine di metri sopra l'occhio, e l'acqua su
-      // cui si galleggia veniva scartata come «sopra l'orizzonte».
-      const suPiedi = acque.sommerso && vicino <= 0.5;
-      const quota = (suPiedi && typeof acque.quotaSommerso === 'number')
-        ? acque.quotaSommerso : acqueQuotaDi(az, vicino, fine);
+      // La quota della superficie. Una banda che comincia **ai piedi** non la
+      // va a chiedere alla griglia: la si sa già. Se ci si sta dentro è la
+      // superficie su cui si galleggia (`acqueAllineaOcchio` l'ha già messa
+      // anche in `terreno.quota`); se no — un fiume che passa sotto il ponte,
+      // la riva su cui si sta — è il suolo sotto le scarpe.
+      //
+      // Chiederla comunque alla griglia è il modo di sbagliarla, ed era il
+      // guasto: uno specchio d'acqua più stretto del passo della griglia non
+      // ha nessun campione dentro di sé, e il ripiego pescava sulla riva. Con
+      // una riva che sale quel numero sta **sopra** l'occhio, e l'acqua veniva
+      // scartata come «sopra l'orizzonte» — cioè spariva senza lasciare
+      // traccia.
+      const suPiedi = vicino <= 0.5;
+      const quota = suPiedi && typeof terreno.quota === 'number'
+        ? terreno.quota : acqueQuotaDi(az, vicino, fine);
       if (quota === null) continue;
 
       // L'acqua si allontana verso l'orizzonte, quindi l'angolo cresce (si
       // avvicina a zero) con la distanza: la riva vicina è il punto più in
       // basso e quella lontana il più in alto. La cresta che sta davanti,
-      // invece, non fa che salire. Il taglio si cerca camminando dalla riva
-      // lontana verso quella vicina, e ci si ferma quando il terreno la
-      // supera: quello che resta è la parte che si vede.
+      // invece, non fa che salire.
       const dep = m => acqueDepressione(quota, occhio, m);
       const altoFine = dep(fine);
       if (!(altoFine < -0.02)) continue;      // sopra l'occhio: non è superficie
-      let taglio = vicino;
-      const passi = 8;
+
+      // Dove il terreno davanti la copre, e dove no.
+      //
+      // Prima si camminava dalla riva lontana verso quella vicina fermandosi
+      // al primo punto coperto, e si teneva quello che restava. È il caso
+      // normale — il lago in una conca, di cui si vede la metà lontana — ma è
+      // **solo** quel caso: se a essere coperta era la riva lontana, il primo
+      // passo trovava terreno e la banda intera se ne andava. Sulla carta non
+      // capita (la cresta sale, l'acqua sale), nei numeri sì, e proprio da
+      // vicino: un promontorio a metà lago, il dosso oltre l'ansa del fiume,
+      // e in genere qualunque conca guardata da dentro, dove i primi metri
+      // d'acqua stanno sotto di noi di parecchi gradi e la riva di là è a
+      // filo d'orizzonte. Il risultato era che l'acqua ai piedi spariva per
+      // colpa di qualcosa che le sta **dietro**.
+      //
+      // Adesso la striscia si campiona e si tengono **tutti** i tratti
+      // scoperti, non uno: un lago diviso in due da un promontorio sono due
+      // strisce, che è quello che si vede davvero. Il campionamento è più
+      // fitto di prima perché adesso conta anche dove i tratti cominciano.
+      const passi = ACQUE_OCCLUSIONE_PASSI;
+      let daM = null, aM = null;
+      const chiudi = () => {
+        if (daM === null) return;
+        const inizio = daM, finePezzo = aM;
+        daM = aM = null;
+        // Un metro di striscia non è una striscia. Ma se comincia ai piedi la
+        // misura non è più la sua lunghezza: è tutto il pezzo di schermo sotto
+        // l'orizzonte, e va disegnato.
+        if (!(finePezzo > inizio + 1) && !(inizio <= 0.5 && finePezzo > 0.5)) return;
+        tenute.push({
+          vicino: inizio, lontano: finePezzo, tipo, nome,
+          depVicino: dep(inizio), depLontano: dep(finePezzo), quota,
+          // Se la riva vicina è stata **tagliata** dal terreno o è la riva
+          // vera. Le due si disegnano diverse, ed è la differenza fra un lago
+          // che sta in una conca e un lago incollato sopra al prato: un bordo
+          // tagliato va portato giù fino alla cresta *disegnata* (il rilievo
+          // fine morde e non aggiunge, quindi la sagoma dipinta sta più in
+          // basso del numero del modello), una riva vera è dove è.
+          tagliata: inizio > vicino + 1
+        });
+      };
       for (let p = 0; p <= passi; p++) {
-        const m = fine + (vicino - fine) * (p / passi);
+        const m = vicino + (fine - vicino) * (p / passi);
         const davanti = acqueCrestaGrezza(az, m / 1000);
         // Il margine è quello che tiene fermo il bordo: senza, alla riva
         // vicina l'acqua e il terreno che le sta davanti hanno lo stesso
         // angolo (il modello del suolo spiana i laghi) e il confronto lo
         // decide l'arrotondamento.
-        if (davanti !== null && davanti > dep(m) + ACQUE_OCCLUSIONE_MARGINE_GRADI) { taglio = m; break; }
-        taglio = m;
+        const coperta = davanti !== null &&
+                        davanti > dep(m) + ACQUE_OCCLUSIONE_MARGINE_GRADI;
+        if (coperta) { chiudi(); continue; }
+        if (daM === null) daM = m;
+        aM = m;
       }
-      // Un metro di striscia non è una striscia. Ma se ci si sta **dentro**,
-      // la banda comincia ai piedi e la misura non è più la sua lunghezza:
-      // è tutto il pezzo di schermo sotto l'orizzonte, e va disegnato.
-      if (!(fine > taglio + 1) && !(taglio <= 0.5 && fine > 0.5)) continue;
-      tenute.push({
-        vicino: taglio, lontano: fine, tipo, nome,
-        depVicino: dep(taglio), depLontano: altoFine, quota,
-        // Se la riva vicina è stata **tagliata** dal terreno o è la riva
-        // vera. Le due si disegnano diverse, ed è la differenza fra un lago
-        // che sta in una conca e un lago incollato sopra al prato: un bordo
-        // tagliato va portato giù fino alla cresta *disegnata* (il rilievo
-        // fine morde e non aggiunge, quindi la sagoma dipinta sta più in
-        // basso del numero del modello), una riva vera è dove è.
-        tagliata: taglio > vicino + 1
-      });
+      chiudi();
     }
     if (tenute.length) fuori[b] = tenute;
   }
