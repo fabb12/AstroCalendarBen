@@ -1,103 +1,75 @@
 # Task Corrente
 
-L'eclissi di Luna nel planetario — **fatto**, niente in sospeso.
+«Ingrandendo, nel planetario spariscono tutte le stelle» — **fatto**, niente
+in sospeso.
 
-Branch `claude/lunar-eclipse-planetarium-5a2vox`.
+Branch `claude/planetario-stelle-fov-bug-jtvht9`.
 
 ## Cos'era
 
-«Controlla l'eclissi di Luna nel planetario, mi sembra sbagliato soprattutto
-quando mi avvicino alla Luna. Aggiungi anche le sfumature realistiche sulla
-Luna dovute all'atmosfera della Terra.»
+«Ogni tanto, nella sezione planetario, se modifico il fov scompaiono tutte le
+stelle. Verifica.»
 
-Prima cosa: **la geometria era giusta e non è stata toccata.** Vale la pena
-scriverlo, perché è il primo posto in cui si va a guardare. `gamma`, `umbra`,
-`penombra` e `rL` sono quattro angoli **geocentrici** — il conto va fatto dal
-centro della Terra, la parallasse lunare vale un grado, cioè quanto tutta
-l'ombra — e il loro rapporto è una distanza in raggi lunari: moltiplicata per
-il raggio disegnato dà i pixel giusti a qualunque campo, anche quando la Luna
-è disegnata più grande del vero dall'icona dei quattordici pixel. Controllata
-contro Astronomy Engine, che le eclissi di Luna le cerca per conto suo: su
-otto eclissi di fila tornano il verdetto, la frazione di disco dentro l'ombra
-(al millesimo) e le semidurate (al quarto di minuto).
+Verificato per davvero, guidando il planetario vero in un browser (Chromium
+via Playwright, l'app servita in locale con Astronomy Engine preso da npm
+perché in quella rete il CDN non risponde): rotellina, pizzico a due dita,
+tasti + e −, telefono girato, qualche centinaio di gesti a caso, contando a
+ogni passo quante stelle finiscono **davvero** dentro allo schermo.
 
-Sbagliato era il **disegno**, e per questo si vedeva ingrandendo: a campo
-largo la Luna è quattordici pixel e le due rampe di prima non si leggevano;
-avvicinandosi diventavano tutta l'immagine.
+Nessun NaN, nessuna eccezione, `cat.versoriOra` mai azzerato: il difetto non
+era un guasto di stato. Era il conto della magnitudine limite, e si vede tutto
+in questa tabella (cielo di periferia, sei direzioni diverse):
 
-## Cosa c'era di sbagliato (tre cose, `app.js` §7.3.2)
+```
+campo 60°   → 649, 671, 616, 538, 717, 399 stelle
+campo 15°   → 124, 143, 116, 152, 233,  87
+campo  4°   →   6,  14,   6,  17,  19,   5
+campo  2°   →   1,   5,   3,   6,   6,   0
+campo  1°   →   0,   1,   2,   0,   1,   0
+campo 0,25° →   0,   0,   0,   0,   0,   0
+```
 
-1. **La penombra era una rampa lineare.** Un punto nella penombra non è al
-   buio: vede ancora una parte del disco del Sole, e la frazione che ne vede
-   è l'area comune fra due cerchi — lo stesso conto di un'eclissi di Sole
-   (`skyCoperturaDischi`) fatto dall'altra parte. La rampa lineare grigiava
-   metà Luna un'ora prima del tempo, e all'orlo dell'ombra piena si fermava a
-   un terzo invece che a zero: fra le due restava un **anello scuro**.
-2. **Dentro l'ombra piena il gradiente andava al rovescio.** Rosso acceso al
-   centro `rgb(150,52,30)` e grigio scuro sull'orlo `rgb(96,60,62)`. In cielo
-   è l'esatto contrario: l'orlo è la parte **più chiara** dell'ombra — è la
-   luce che ha rasentato solo l'alta atmosfera — e il cuore è il più cupo,
-   perché lì arrivano solo i raggi che hanno attraversato tutto lo spessore
-   d'aria. Un'eclissi al rovescio, che a occhio resta comunque credibile.
-3. **Mancava il turchese.** I raggi che arrivano sull'orlo passano a
-   trenta-quaranta chilometri di quota, dove c'è l'**ozono**: la banda di
-   Chappuis si mangia il rosso e lascia passare il blu. È la fascia azzurrina
-   che si vede in ogni fotografia di totale, ed è la risposta alla richiesta
-   delle «sfumature dovute all'atmosfera della Terra».
+Il guadagno dello zoom vale fino a **tre** magnitudini, quindi il limite
+saliva a 8,6 — ma la stella più debole di questo catalogo è la **7,0**.
+Chiedere l'ottava non faceva comparire nessuna stella: faceva solo credere al
+disegno di avere tre magnitudini di margine (quindi di disegnare stelle
+«molto sopra la soglia», cioè piccole e anonime) mentre lo schermo si svuotava
+per geometria. Il «ogni tanto» è la sesta colonna: dipende da dove si punta.
 
-E una quarta, fuori dall'ombra: **il bagliore**. L'alone attorno alla Luna si
-spegneva con la frazione illuminata, che per un'eclissi di Luna è il numero
-sbagliato — la Luna è piena, quindi la frazione vale uno, e attorno a un disco
-ramato restava il bagliore di un plenilunio. È la cosa che si nota per prima,
-prima ancora del colore.
+## Cosa si è fatto (`catalogo.js` §5 e §6)
 
-## Com'è adesso
+1. **Il limite si ferma dove finisce il catalogo.** `catMagnitudineVoluta()`
+   è quella che si vorrebbe, `catProfonditaCatalogo()` fin dove si arriva,
+   `catMagnitudineLimite()` il minimo dei due e `catOltreIlCatalogo()` la
+   differenza.
+2. **L'avanzo va al raggio.** Senza, tosare il limite avrebbe *rimpicciolito*
+   le poche superstiti proprio dove restano sole: `limite + oltre` è di nuovo
+   la magnitudine che lo zoom aveva chiesto, e il disegno non si accorge della
+   tosatura (provato a tappeto, scarto 0,0 px).
+3. **Sotto i 6° si è dentro all'oculare**: le stelle si disegnano tutte a una
+   a una, con l'alone e il nome. Cinque puntini da un pixel in mezzo al nero
+   si leggono come polvere sul vetro.
+4. **Lo si dice**, una volta per sessione (`catDilloCheIlCatalogoFinisce`,
+   come lo `skyAvviso` del tremolio della mano).
 
-Blocco `// --- L'eclissi di Luna` in `app.js` §7.3.2:
+Tre trappole trovate strada facendo, tutte con la loro prova nel §3-bis:
+le **140 stelle esattamente alla magnitudine 7,00** (arrotondamento al
+decimo: l'ultima riga del catalogo è la più affollata, e con l'avanzo sommato
+dopo il confronto con lo zero sparivano tutte); `catServeSecondoLivello()`,
+che deve guardare la magnitudine *voluta*, se no il file delle stelle deboli
+non si chiede più; e `catLimiteProfondo()`, che non va tosato alla settima
+magnitudine delle stelle — sarebbe stato lo stesso difetto spostato sulle
+nebuline fra la 10,5 e la 11.
 
-- `SKY_ECL_TONI` — i toni dall'orlo (profondità 0) all'asse (1). La `luce`
-  non è fotometria: una totale è diecimila volte più debole di una Luna
-  piena, e disegnata così sarebbe un disco nero. È la scala compressa
-  dell'occhio, che si adatta — dall'orlo al cuore resta un fattore due e
-  mezzo. Il **colore** invece è quello vero.
-- `SKY_ECL_OMBRA_LUCE` (0,72) — quanto resta della faccia sull'orlo
-  dell'ombra piena. È il punto in cui le due metà si incontrano, e la
-  continuità è provata a 0,17 livelli su 255.
-- `SKY_ECL_PENOMBRA_ESPONENTE` (1,5) — la penombra come la vede l'occhio: a
-  metà strada non ci si accorge quasi di niente (81% della luce), poi crolla.
-- `skyEclisseColore(s, rho)` — le due metà: dentro l'ombra i toni, fuori la
-  luce che resta del disco solare, col turchese che sfuma mentre il Sole
-  torna a scoprirsi (se no fuori dall'ombra piena restava un anello).
-- `skyEclisseFermate(s)` — 49 fermate del gradiente, **non equidistanti**:
-  22 stanno nel 12% del raggio a cavallo dell'orlo, dove in pochi primi
-  d'arco si passa dal turchese al rame. In scala del raggio dell'ombra e non
-  dello schermo, quindi valgono a ogni ingrandimento; una memoria a un posto
-  solo le rifà quando la geometria cambia, cioè qualche volta al minuto.
-- `skyEclisseLuceLuna(s)` — la media della faccia pesata come la vede
-  l'occhio, calcolata con lo stesso `skyEclisseColore` del disegno. Finisce
-  in `ombraTerra.luce` e la legge il bagliore: in totalità scende al 20%, in
-  un'eclissi di sola penombra resta all'84%.
+## Quello che resta vero, e non è un difetto
 
-## Le prove
+A un quarto di grado di campo il cielo **è** vuoto, e non c'è codice che possa
+riempirlo: di stelle più luminose della settima, in un ritaglio così, non ce
+n'è. Per averne servirebbe un catalogo più profondo (HYG arriva alla nona:
+centoventimila stelle, due megabyte e passa) — è una scelta di prodotto, non
+una correzione, e non è stata fatta.
 
-**§21 di `verifica.html`**, 17 prove, tutte passate. Come per il §8, il §18 e
-il §19 le formule sono una **copia**: quella pagina non carica `app.js`.
-Ricopiando va ricopiato tutto il blocco, `ECL_TONI` e le due costanti
-comprese.
+## Prove
 
-Sono di due famiglie. La geometria contro Astronomy Engine (verdetto,
-oscuramento, semidurate su otto eclissi di fila, più le magnitudini umbrali
-del 2025 e del 2026 contro i valori pubblicati). Il profilo per quello che
-deve promettere: nessun anello scuro su 600 campioni, l'orlo più chiaro del
-cuore, il blu che batte il rosso sull'orlo e il rosso che batte il blu di tre
-volte un decimo più dentro, l'incontro senza gradino, il bianco pieno fuori
-dalla penombra, e il bagliore che se ne va in totalità ma resta in una di
-sola penombra.
-
-## Cosa NON è stato toccato
-
-- La geometria di `skyOmbraDellaTerra` (§7.2): è giusta, provata.
-- La simulazione dell'evento (§8) e la vista «Le eclissi lunari» (§1-quinquies):
-  hanno un disegno loro, e la richiesta era sul planetario.
-- Il banco Terra e Luna della vista 3D (§7.7-quater): lì i coni d'ombra sono
-  già a scala vera e li guarda il §18.
+`verifica.html` §3-bis, nove prove nuove. Tutto il banco: **528 passate, 0
+fallite**.

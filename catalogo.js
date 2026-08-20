@@ -144,9 +144,14 @@ function catCaricaScript(file) {
 // Il secondo livello si chiede da sé, la prima volta che serve: quando il
 // cielo impostato è così scuro, o lo zoom così stretto, che il primo
 // livello finisce e il cielo comincia a svuotarsi invece di riempirsi.
+// Qui si guarda la magnitudine **voluta**, non quella concessa: quella
+// concessa è già tosata alla profondità del catalogo (`catMagnitudineLimite`)
+// e a chiederle di superare la soglia che fa scattare lo scarico si finirebbe
+// col cane che si morde la coda — il file non si chiede perché non è
+// arrivato, e non arriva perché non lo si chiede.
 function catServeSecondoLivello() {
   if (!catPronto() || cat.secondoLivello !== 'niente') return;
-  if (catMagnitudineLimite() <= CAT_MAG_PRIMO_LIVELLO) return;
+  if (catMagnitudineVoluta() <= CAT_MAG_PRIMO_LIVELLO) return;
 
   cat.secondoLivello = 'in-corso';
   cat.promessaDeboli = catCaricaScript(CAT_FILE_DEBOLI)
@@ -249,6 +254,14 @@ function catIndiciDaSaltare() {
 // con l'alone e il nome; sotto, finisce nel mucchio del suo colore. Sono
 // un centinaio scarse, e sono quelle che si cercano davvero.
 const CAT_MAG_LUMINOSE = 2.2;
+
+// Sotto questo campo si è dentro all'oculare: sullo schermo restano poche
+// decine di stelle, e allora le prendono tutte, il trattamento singolo —
+// alone e nome. Il mucchio per famiglia di colore esiste per non fare
+// cinquemila `fill()` a fotogramma; con trenta stelle non serve a niente, e
+// un puntino grigio da un pixel in mezzo a uno schermo nero non si legge
+// come una stella: si legge come polvere sul vetro.
+const CAT_FOV_OCULARE = 6;
 
 function catPreparaStelle() {
   const salta = catIndiciDaSaltare();
@@ -628,17 +641,36 @@ function impostaCieloDiCasa(bortle) {
   // impostazione a ogni fotogramma, e il ciclo del planetario gira già.
 }
 
-// Fin dove si arriva a vedere, adesso, su questa mappa.
-//
-// Due cose la spostano. La prima è il cielo di casa. La seconda è lo
-// zoom: avvicinarsi con le dita è la stessa cosa che alzare un binocolo,
-// e come col binocolo compaiono stelle che a occhio nudo non c'erano.
-// Senza questo, ingrandire dava un cielo sempre più vuoto — le stesse
-// poche stelle sempre più distanti fra loro.
-function catMagnitudineLimite() {
-  const cielo = CAT_CIELI[cieloDiCasa()] || CAT_CIELI[CAT_CIELO_PREDEFINITO];
+// Quanto lo zoom fa da strumento: avvicinarsi con le dita è la stessa cosa
+// che alzare un binocolo, e come col binocolo compaiono stelle che a occhio
+// nudo non c'erano. Senza questo, ingrandire dava un cielo sempre più vuoto
+// — le stesse poche stelle sempre più distanti fra loro.
+function catGuadagnoZoom() {
   const fov = sky && sky.fov ? sky.fov : 55;
-  const guadagno = Math.max(0, Math.min(3, Math.log2(55 / Math.max(0.2, fov)) * 0.8));
+  return Math.max(0, Math.min(3, Math.log2(55 / Math.max(0.2, fov)) * 0.8));
+}
+
+// La magnitudine più debole che questo catalogo contiene: sesta col solo
+// primo livello, settima quando sono arrivate anche le deboli.
+const CAT_MAG_SECONDO_LIVELLO = 7.0;
+
+// Fin dove il catalogo può arrivare. **Il "può" non è una sfumatura**: qui
+// va risposto con la profondità raggiungibile, non con quella già in
+// memoria. Il secondo livello si scarica solo quando qualcuno chiede più
+// della sesta magnitudine (`catServeSecondoLivello`), e rispondere 6,0
+// finché non è arrivato vorrebbe dire tosare il limite proprio alla soglia
+// che deve superarlo: le stelle deboli non si chiederebbero mai, e il
+// livello in più non si vedrebbe mai. Si scende a 6,0 solo quando quel file
+// non arriverà più.
+function catProfonditaCatalogo() {
+  return cat.secondoLivello === 'fallito' ? CAT_MAG_PRIMO_LIVELLO : CAT_MAG_SECONDO_LIVELLO;
+}
+
+// La magnitudine che si *vorrebbe* vedere: il cielo di casa più il guadagno
+// dello zoom, meno quello che si mangia la luce del giorno. Può superare il
+// catalogo, ed è lei a dire di quanto (`catOltreIlCatalogo`).
+function catMagnitudineVoluta() {
+  const cielo = CAT_CIELI[cieloDiCasa()] || CAT_CIELI[CAT_CIELO_PREDEFINITO];
 
   // Di giorno e al crepuscolo restano solo le più luminose, e il conto lo
   // fa già `skyVelo()` sull'opacità: qui si taglia più in basso per non
@@ -647,14 +679,57 @@ function catMagnitudineLimite() {
   if (luce < 0.02) return -99;
   const scalino = luce < 0.35 ? (1 - luce / 0.35) * 4 : 0;
 
-  return cielo.magLimite + guadagno - scalino;
+  return cielo.magLimite + catGuadagnoZoom() - scalino;
+}
+
+// Fin dove si arriva a vedere, adesso, su questa mappa.
+//
+// Il limite si ferma dove finisce il catalogo, e questa riga esiste per una
+// segnalazione precisa: «ogni tanto, se cambio il campo, spariscono tutte le
+// stelle». Sparivano davvero, e ingrandendo. Il guadagno dello zoom vale
+// fino a tre magnitudini, quindi da un cielo di periferia il limite saliva a
+// 8,6 — ma la stella più debole che questo catalogo conosce è la 7,0, e
+// stelle fra la settima e l'ottava e sei non ne esistono qui. Chiederle non
+// ne faceva comparire nessuna: faceva solo credere al disegno di avere tre
+// magnitudini di margine (e quindi di disegnare stelle "molto sopra la
+// soglia", cioè piccole e anonime) mentre lo schermo si svuotava per
+// geometria — sotto i due gradi di campo un ritaglio di cielo contiene in
+// media mezza stella più luminosa della settima, e quasi sempre nessuna.
+//
+// Tosarlo qui non fa comparire le stelle che non abbiamo — quelle nessuno
+// può inventarle — ma rimette d'accordo il disegno con i dati: da lì in poi
+// `catOltreIlCatalogo()` dice di quanto si è andati oltre, e chi disegna se
+// ne serve per **ingrandire quello che resta** invece di rimpicciolirlo.
+function catMagnitudineLimite() {
+  const voluta = catMagnitudineVoluta();
+  if (voluta < -50) return voluta;                 // giorno pieno: niente stelle
+  return Math.min(voluta, catProfonditaCatalogo());
+}
+
+// Di quante magnitudini lo zoom ha superato il catalogo. Zero a campo largo,
+// dove le stelle da mostrare ci sono ancora tutte; cresce da lì in poi, ed è
+// la misura di quanto l'oculare sta ingrandendo un cielo che non ha più
+// niente di nuovo da tirare fuori.
+function catOltreIlCatalogo() {
+  const voluta = catMagnitudineVoluta();
+  if (voluta < -50) return 0;
+  return Math.max(0, voluta - catProfonditaCatalogo());
 }
 
 // Per gli oggetti estesi il limite è più basso: la magnitudine totale di
 // una galassia larga mezzo grado non dice quasi niente di quanto sia
 // facile vederla, e disegnarne cento invisibili non aiuta nessuno.
+//
+// Qui si parte dalla magnitudine **voluta** e non da quella tosata: la
+// settima magnitudine è dove finisce il catalogo delle *stelle*, e il cielo
+// profondo è un altro catalogo, con un altro fondo. Legandolo a quello
+// tosato, ingrandendo al massimo sparivano gli oggetti fra la 10,5 e la 11 —
+// cioè si sarebbe curato «ingrandisco e spariscono le stelle» facendo
+// sparire le nebuline, che è lo stesso difetto spostato di là.
 function catLimiteProfondo() {
-  return Math.min(11, catMagnitudineLimite() + 3.5);
+  const voluta = catMagnitudineVoluta();
+  if (voluta < -50) return voluta;
+  return Math.min(11, voluta + 3.5);
 }
 
 // Con che strumento si vede questo oggetto, da QUESTO cielo.
@@ -713,10 +788,45 @@ function catFamigliaDi(bv) {
 // telescopio del mondo): è quanta luce arriva, che l'occhio legge come
 // un disco più grosso. La radice tiene le più luminose dal diventare
 // palle da biliardo.
-function catRaggioStella(m, limite) {
-  const sopra = limite - m;                       // quanto è sopra la soglia
+//
+// `oltre` è di quanto lo zoom ha superato il catalogo (`catOltreIlCatalogo`)
+// e serve a una cosa sola, ma è la cosa che l'utente ha segnalato: quando il
+// campo si stringe oltre la settima magnitudine non compaiono stelle nuove,
+// e quelle che restano devono diventare più grosse — che è quello che fa un
+// oculare, e l'unico modo onesto di dire «ti sei avvicinato» a un cielo che
+// non ha più niente da tirare fuori. Senza di lui, tosare il limite alla
+// profondità vera del catalogo avrebbe *rimpicciolito* le poche superstiti
+// proprio nel momento in cui restano sole — la cura avrebbe peggiorato
+// esattamente il sintomo che doveva curare. Sommato così, `limite + oltre` è
+// di nuovo la magnitudine che lo zoom aveva chiesto: le stelle restano
+// grosse come prima, e a cambiare è solo quante se ne cercano.
+//
+// L'avanzo va sommato **prima** del confronto con lo zero, e non è un
+// dettaglio: le magnitudini del catalogo sono arrotondate al decimo, quindi
+// di stelle esattamente alla 7,00 — cioè esattamente sul limite tosato — ce
+// ne sono a centinaia. Contandolo dopo, quelle avrebbero raggio zero e
+// sparirebbero: la tosatura si sarebbe mangiata proprio l'ultima riga del
+// catalogo, che è la più affollata di tutte.
+function catRaggioStella(m, limite, oltre = 0) {
+  const sopra = limite - m + oltre;               // quanto è sopra la soglia
   if (sopra <= 0) return 0;
   return Math.min(4.2, 0.55 + Math.sqrt(sopra) * 0.62);
+}
+
+// Un cielo che si svuota ingrandendo sembra un guasto, e per chi l'ha
+// segnalato lo era. Non lo è: è dove finisce il catalogo. Lo si dice una
+// volta per sessione, come per il tremolio della mano — è il tipo di cosa
+// che va spiegata al momento in cui capita, non nascosta in una scheda.
+let catDettoDelCatalogo = false;
+
+function catDilloCheIlCatalogoFinisce() {
+  if (catDettoDelCatalogo || typeof skyAvviso !== 'function') return;
+  catDettoDelCatalogo = true;
+  skyAvviso('catalogo-finito',
+    `A questo ingrandimento il cielo si dirada davvero: il catalogo arriva alla ` +
+    `magnitudine ${catProfonditaCatalogo().toFixed(1).replace('.', ',')}, cioè le stelle che si ` +
+    `vedono a occhio nudo da un cielo buio. Quelle più deboli le mostra un telescopio vero, ` +
+    `non questa mappa.`, 9000);
 }
 
 function catDisegnaStelle(ctx, base, focale) {
@@ -731,6 +841,16 @@ function catDisegnaStelle(ctx, base, focale) {
   // Se il limite è sceso sotto il primo livello, è il momento di chiedere
   // le stelle deboli. Non blocca niente: arrivano quando arrivano.
   catServeSecondoLivello();
+
+  // Di quanto l'ingrandimento ha superato la profondità del catalogo, e
+  // quindi da che punto in poi il cielo si dirada per forza. Da qui escono
+  // le due risposte a «ingrandisco e spariscono tutte le stelle»: quelle
+  // che restano si disegnano più grosse, e sotto al campo di un oculare si
+  // disegnano tutte a una a una, con l'alone e il nome.
+  const oltre = catOltreIlCatalogo();
+  const oculare = sky.fov <= CAT_FOV_OCULARE;
+  const magSingole = oculare ? limite : CAT_MAG_LUMINOSE;
+  if (oltre > 0 && oculare) catDilloCheIlCatalogoFinisce();
 
   const n = cat.quante;
   const ora = cat.versoriOra;
@@ -780,10 +900,10 @@ function catDisegnaStelle(ctx, base, focale) {
     const py = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / den);
     if (py < -4 || py > A + 4) continue;
 
-    const r = catRaggioStella(m, limite);
+    const r = catRaggioStella(m, limite, oltre);
     if (r <= 0) continue;
 
-    if (m <= CAT_MAG_LUMINOSE) { luminose.push(k, px, py, r, z); continue; }
+    if (m <= magSingole) { luminose.push(k, px, py, r, z); continue; }
 
     const f = fam[k];
     const t = tracciati[f];
@@ -828,8 +948,13 @@ function catDisegnaStelle(ctx, base, focale) {
     ctx.arc(px, py, r, 0, Math.PI * 2);
     ctx.fill();
 
+    // A campo largo si nominano solo le primissime: ottantotto figure di
+    // stelle con l'etichetta attaccata sarebbero un elenco, non un cielo.
+    // Dentro all'oculare invece di stelle sullo schermo ce ne sono cinque, e
+    // sapere come si chiama quella che si sta guardando è **il** motivo per
+    // cui uno ci si è avvicinato.
     const nome = cat.nomiPerIndice.get(k);
-    if (sky.mostraNomi && nome && cat.magnitudini[k] <= 1.9) {
+    if (sky.mostraNomi && nome && (oculare || cat.magnitudini[k] <= 1.9)) {
       ctx.globalAlpha = opacita * 0.8;
       ctx.font = '11px system-ui, sans-serif';
       ctx.textAlign = 'left';
@@ -1051,7 +1176,7 @@ function catStellaNelPunto(px, py, base, focale) {
     // per il dito: una di prima grandezza si prende facile, una al limite
     // della vista bisogna centrarla. È lo stesso criterio con cui l'occhio
     // decide di averla "colpita".
-    const soglia = Math.max(10, catRaggioStella(m, limite) * 2 + 9);
+    const soglia = Math.max(10, catRaggioStella(m, limite, catOltreIlCatalogo()) * 2 + 9);
     const dist = Math.hypot(sx - px, sy - py);
     if (dist > soglia) continue;
 
