@@ -17597,24 +17597,13 @@ function skyCampoTesto() {
   return sky.fov >= 2 ? `${Math.round(sky.fov)}°` : skyAngoloApparente(sky.fov);
 }
 
-// Dove si sta guardando. L'azimut è passato alla bussola in alto a destra
-// — un numero in gradi, da solo, non dice da che parte si guarda finché non
-// lo si vede su un quadrante — e qui resta quello che una bussola non sa
-// dire: quanto si è alti sull'orizzonte e quanto cielo si ha davanti.
+// Dove si sta guardando. Direzione e campo visivo vivono entrambi nella
+// bussola: il secondo è anche disegnato come un cono, invece di occupare
+// un'altra pillola sopra al cielo.
 function skyAggiornaHud(base) {
   const f = base.f;
-  const alt = Math.asin(Math.max(-1, Math.min(1, f[2]))) * SKY_R2D;
   const az = ((Math.atan2(f[0], f[1]) * SKY_R2D) % 360 + 360) % 360;
   skyAggiornaBussola(az);
-
-  const hud = document.getElementById('skymap-hud');
-  if (!hud) return;
-  const stretta = sky.larghezza && sky.larghezza < 560;
-  const campo = `${skyCampoTesto()}${skyCampoDaObiettivo() ? ' (obiettivo)' : ''}`;
-  const testo = `Altitudine ${alt.toFixed(0)}° · ${stretta ? '' : 'campo '}${campo}`;
-  // Riscrivere il testo sessanta volte al secondo costa e non serve: quasi
-  // sempre è identico a quello di prima.
-  if (hud.textContent !== testo) hud.textContent = testo;
 }
 
 // I tre stati della bussola, e come si dicono senza scriverli sul cielo.
@@ -17647,6 +17636,23 @@ function skyAggiornaBussola(az) {
   const gradi = document.getElementById('skymap-bussola-gradi');
   const testo = `${Math.round(az) % 360}°`;
   if (gradi && gradi.textContent !== testo) gradi.textContent = testo;
+
+  const campo = document.getElementById('skymap-bussola-campo');
+  const testoCampo = `FOV ${skyCampoTesto()}`;
+  if (campo && campo.textContent !== testoCampo) campo.textContent = testoCampo;
+
+  // Il cono è centrato sulla direzione della vista. Per campi molto larghi
+  // resta un piccolo margine sul quadrante, così continua a leggersi come
+  // apertura e non come un disco pieno.
+  const cono = document.getElementById('skymap-bussola-fov');
+  if (cono) {
+    const apertura = Math.max(4, Math.min(160, sky.fov));
+    const mezzo = apertura * Math.PI / 360;
+    const r = 42;
+    const x = r * Math.sin(mezzo);
+    const y = -r * Math.cos(mezzo);
+    cono.setAttribute('d', `M0,0 L${(-x).toFixed(2)},${y.toFixed(2)} A${r},${r} 0 0 1 ${x.toFixed(2)},${y.toFixed(2)} Z`);
+  }
 
   const modo = skyModoBussola();
   if (b.dataset.modo !== modo) {
@@ -20363,19 +20369,6 @@ function skyEventoSettimanaHtml(ev) {
 function skyAggiornaEventi() {
   const dati = skyEventiVicini();
   const elenco = document.getElementById('skymap-eventi-elenco');
-  const chip = document.getElementById('skymap-eventi-chip');
-
-  if (chip) {
-    const n = dati.inCorso.length;
-    chip.classList.toggle('visibile', n > 0);
-    if (n) {
-      const testo = n === 1 ? dati.inCorso[0].titolo : `${n} eventi nel cielo mostrato`;
-      // Su una mappa stretta il titolo intero non ci sta: si accorcia
-      const stretta = sky.larghezza && sky.larghezza < 560;
-      const mostrato = stretta && testo.length > 26 ? testo.slice(0, 24) + '…' : testo;
-      if (chip.textContent !== mostrato) chip.textContent = mostrato;
-    }
-  }
 
   if (!elenco) return;
   const settimana = dati.settimana || [];
@@ -21686,7 +21679,6 @@ function inizializzaSkymap() {
     skyMostraGruppo('');
   });
   // Il promemoria sopra la mappa apre l'elenco di cosa sta succedendo
-  collega('skymap-eventi-chip', () => skyMostraGruppo('eventi'));
   skyAggiornaTastiFiltri();
 
   // Le linguette dei gruppi di comandi (telefono e tablet)
