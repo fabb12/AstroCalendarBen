@@ -1799,6 +1799,41 @@ function terrenoCarica(forza) {
   return terreno.promessa;
 }
 
+// Avvia il paesaggio senza mettere quattro scaricamenti sulla strada del
+// primo fotogramma. Le copie sul dispositivo vengono applicate subito (è
+// lavoro sincrono e costa pochissimo); soltanto ciò che manca viene chiesto
+// quando il browser ha avuto modo di disegnare e la prima sagoma del terreno
+// è già disponibile. Chiamarla più volte durante l'avvio non crea altre
+// sveglie: l'ultima posizione scelta vince.
+let terrenoPaesaggioTurno = 0;
+function terrenoCaricaPaesaggio() {
+  const turno = ++terrenoPaesaggioTurno;
+  const principale = terrenoCarica();
+
+  // Prima la cache locale: tornando in un posto già visto luci, vette e acqua
+  // compaiono nello stesso fotogramma, senza aspettare il periodo di riposo.
+  if (typeof cittaCarica === 'function') cittaCarica(false, true);
+  if (typeof cimeCarica === 'function') cimeCarica(false, true);
+  if (typeof acqueCarica === 'function') acqueCarica(false, true);
+
+  const completa = () => {
+    if (turno !== terrenoPaesaggioTurno) return;
+    if (typeof cittaCarica === 'function') cittaCarica();
+    if (typeof cimeCarica === 'function') cimeCarica();
+    if (typeof acqueCarica === 'function') acqueCarica();
+  };
+  const dopoTerreno = () => {
+    if (turno !== terrenoPaesaggioTurno) return;
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(completa, { timeout: 1800 });
+    } else {
+      setTimeout(completa, 250);
+    }
+  };
+  Promise.resolve(principale).then(dopoTerreno, dopoTerreno);
+  return principale;
+}
+
 // Perché non ce l'ha fatta, detto a chi guarda.
 //
 // Il messaggio di prima era sempre lo stesso — «non sono riuscito a
@@ -2783,7 +2818,7 @@ function cittaApplica(lat, lon, grezze, fonte) {
   terrenoAggiornaPannello();
 }
 
-function cittaCarica(forza) {
+function cittaCarica(forza, soloCache) {
   const luogo = terrenoLuogo();
   if (!luogo) return Promise.resolve(false);
   const lat = luogo.lat, lon = luogo.lon;
@@ -2801,6 +2836,7 @@ function cittaCarica(forza) {
       return Promise.resolve(true);
     }
   }
+  if (soloCache) return Promise.resolve(false);
 
   citta.stato = 'in-corso';
   citta.motivo = '';
@@ -3144,7 +3180,7 @@ function cimeApplica(lat, lon, grezze, fonte) {
   terrenoAggiornaPannello();
 }
 
-function cimeCarica(forza) {
+function cimeCarica(forza, soloCache) {
   // Spente vuol dire spente anche in rete: la richiesta a Overpass è la
   // parte cara di questo modulo, e chi non ha chiesto i nomi delle
   // montagne non deve pagarla. Ad accenderle si riparte da qui.
@@ -3180,6 +3216,7 @@ function cimeCarica(forza) {
       return Promise.resolve(true);
     }
   }
+  if (soloCache) return Promise.resolve(false);
 
   cime.stato = 'in-corso';
   cime.motivo = '';
@@ -4157,7 +4194,7 @@ function acqueApplicaAScaglioni(lat, lon, tracciati, fonte) {
     .then(tagli => acqueMonta(lat, lon, tracciati, fonte, tagli));
 }
 
-function acqueCarica(forza) {
+function acqueCarica(forza, soloCache) {
   if (!acque.acceso) return Promise.resolve(false);
 
   const luogo = terrenoLuogo();
@@ -4196,6 +4233,7 @@ function acqueCarica(forza) {
       return Promise.resolve(true);
     }
   }
+  if (soloCache) return Promise.resolve(false);
 
   acque.stato = 'in-corso';
   acque.motivo = '';

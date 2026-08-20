@@ -8129,10 +8129,8 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   // sono i paesi che illuminano l'orizzonte. I moduli decidono da sé se
   // vale la pena rifare i conti: sotto i due chilometri l'orizzonte
   // lontano è lo stesso e non tocca niente.
-  if (typeof terrenoCarica === 'function') terrenoCarica();
-  if (typeof cittaCarica === 'function') cittaCarica();
-  if (typeof cimeCarica === 'function') cimeCarica();
-  if (typeof acqueCarica === 'function') acqueCarica();
+  if (typeof terrenoCaricaPaesaggio === 'function') terrenoCaricaPaesaggio();
+  else if (typeof terrenoCarica === 'function') terrenoCarica();
   return true;
 }
 
@@ -8842,10 +8840,8 @@ function skyAggiornaOsservatore() {
   // sopra. I tre moduli decidono da sé se vale la pena rifare i conti — e i
   // posti già visti se li tengono da parte, quindi tornare a casa è
   // immediato.
-  if (typeof terrenoCarica === 'function') terrenoCarica();
-  if (typeof cittaCarica === 'function') cittaCarica();
-  if (typeof cimeCarica === 'function') cimeCarica();
-  if (typeof acqueCarica === 'function') acqueCarica();
+  if (typeof terrenoCaricaPaesaggio === 'function') terrenoCaricaPaesaggio();
+  else if (typeof terrenoCarica === 'function') terrenoCarica();
   skyAggiornaStato();
   skyAggiornaLuogoVistaUI();
 }
@@ -21053,10 +21049,10 @@ function skyCaricaIlResto() {
     // i paesi che di notte lo illuminano, le montagne che gli danno un nome e
     // i laghi. Le tre richieste a OpenStreetMap si spaziano da sé (§10 di
     // `terreno.js`), quindi metterle in fila qui non serve più a niente.
-    () => { if (typeof terrenoCarica === 'function') terrenoCarica(); },
-    () => { if (typeof cittaCarica === 'function') cittaCarica(); },
-    () => { if (typeof cimeCarica === 'function') cimeCarica(); },
-    () => { if (typeof acqueCarica === 'function') acqueCarica(); },
+    () => {
+      if (typeof terrenoCaricaPaesaggio === 'function') terrenoCaricaPaesaggio();
+      else if (typeof terrenoCarica === 'function') terrenoCarica();
+    },
     () => { if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica(); },
     () => { if (typeof satPrecaricaTle === 'function') satPrecaricaTle(); },
     // Il Kp del NOAA: serve a sapere se l'ovale aurorale, stanotte, scende
