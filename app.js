@@ -17637,21 +17637,31 @@ function skyAggiornaBussola(az) {
   const testo = `${Math.round(az) % 360}°`;
   if (gradi && gradi.textContent !== testo) gradi.textContent = testo;
 
-  const campo = document.getElementById('skymap-bussola-campo');
-  const testoCampo = `FOV ${skyCampoTesto()}`;
-  if (campo && campo.textContent !== testoCampo) campo.textContent = testoCampo;
-
-  // Il cono è centrato sulla direzione della vista. Per campi molto larghi
-  // resta un piccolo margine sul quadrante, così continua a leggersi come
-  // apertura e non come un disco pieno.
+  // IL CONO DELL'INQUADRATURA
+  // Quanto cielo sta entrando nella vista, disegnato invece che scritto: il
+  // campo visivo in gradi è un numero che per dire qualcosa va comunque
+  // immaginato come un'apertura, e allora tanto vale aprirla. È centrato
+  // sulla direzione della vista (cioè in cima, sotto all'indice giallo:
+  // qui è la rosa a girare, non l'indice).
+  //
+  // Il minimo di quattro gradi non è un ritocco estetico: a forte
+  // ingrandimento il campo scende a un quarto di grado, e un cono largo un
+  // quarto di grado su un quadrante da 64 pixel è meno di un pixel — cioè
+  // niente, e la bussola sembrerebbe rotta proprio quando si sta guardando
+  // la cosa più interessante. Il massimo lascia un margine sul quadrante,
+  // così a 180° continua a leggersi come un'apertura e non come un disco.
   const cono = document.getElementById('skymap-bussola-fov');
   if (cono) {
-    const apertura = Math.max(4, Math.min(160, sky.fov));
+    const apertura = Math.max(4, Math.min(168, sky.fov));
     const mezzo = apertura * Math.PI / 360;
-    const r = 42;
+    const r = 43;
     const x = r * Math.sin(mezzo);
     const y = -r * Math.cos(mezzo);
-    cono.setAttribute('d', `M0,0 L${(-x).toFixed(2)},${y.toFixed(2)} A${r},${r} 0 0 1 ${x.toFixed(2)},${y.toFixed(2)} Z`);
+    // `large-arc` va acceso oltre il mezzo giro, se no l'arco torna indietro
+    // dalla parte sbagliata e il cono si rovescia in una fetta di poppa
+    const grande = apertura > 180 ? 1 : 0;
+    cono.setAttribute('d',
+      `M0,0 L${(-x).toFixed(2)},${y.toFixed(2)} A${r},${r} 0 ${grande} 1 ${x.toFixed(2)},${y.toFixed(2)} Z`);
   }
 
   const modo = skyModoBussola();
@@ -17659,9 +17669,11 @@ function skyAggiornaBussola(az) {
     b.dataset.modo = modo;
     b.title = SKY_BUSSOLA_MODI[modo];
   }
-  // Chi legge con lo schermo non vede né il quadrante né l'indice: a lui la
-  // stessa cosa va detta a parole, ed è l'unico posto in cui vale la pena.
-  const detto = `Vista verso ${skyNomeDirezione(az)}, ${Math.round(az) % 360} gradi`;
+  // Chi legge con lo schermo non vede né il quadrante né l'indice né il cono:
+  // a lui le stesse cose vanno dette a parole, ed è l'unico posto in cui vale
+  // la pena — sul cielo l'apertura si guarda, non si legge.
+  const detto = `Vista verso ${skyNomeDirezione(az)}, ${Math.round(az) % 360} gradi, ` +
+    `campo inquadrato ${skyCampoTesto()}`;
   if (b.getAttribute('aria-label') !== detto) b.setAttribute('aria-label', detto);
 }
 
@@ -17705,43 +17717,40 @@ function skyTasto(id, attiva, testo) {
 // nella vista Telescopio, che è dove lo si cerca.
 //
 // Quello che resta è l'unica cosa che nessun disegno può dire: **da dove**
-// sono calcolate le posizioni che si stanno guardando.
+// sono calcolate le posizioni che si stanno guardando. E si dice con una
+// parola sola — «Milano» — perché è così che uno se lo dice in testa.
+//
+// Sono cadute anche le ultime tre appendici, ed erano tutte risposte a
+// domande che nessuno fa mentre guarda in su: la provenienza del dato
+// (GPS/rete/scelta a mano), la precisione quando è larga, e il «solo qui»
+// del luogo di sola visita. Non sono perse: stanno nel `title` (qui sotto,
+// `skyStatoEsteso`) e per esteso nel pannello Tempo e luogo, che è il posto
+// da cui quelle cose si cambiano. Sopra al cielo restava solo il nome.
 function skyAggiornaStato() {
   const el = document.getElementById('skymap-stato');
   if (!el) return;
-  const pezzi = [];
-  // Un cielo che non è quello di casa tua deve dirlo prima di ogni altra
-  // cosa, sempre, e non solo nel pannello che l'ha deciso: chi torna sulla
-  // mappa dieci minuti dopo non si ricorda di averlo spostato.
-  if (sky.luogoVista) {
-    pezzi.push(sky.luogoVista.nome || formattaCoordinate(sky.luogoVista.lat, sky.luogoVista.lon));
-    pezzi.push('solo qui');
-  } else if (sky.posizione) {
-    // Il nome del posto quando c'è: due numeri con cinque decimali sono
-    // esatti e non dicono niente a nessuno.
-    pezzi.push(sky.posizione.nome ||
-      formattaCoordinate(sky.posizione.lat, sky.posizione.lon));
-    const et = POS_ETICHETTE[sky.posizione.origine || sky.posizione.fonte];
-    if (et) pezzi.push(et.breve);
-    // La precisione non si scrive più sempre, ma **quando è larga sì**: è
-    // la prima cosa da guardare se il cielo non torna, perché un fix di
-    // rete preso per GPS può spostare l'orizzonte di mezzo grado.
-    const p = sky.posizione.precisione;
-    if (p && p >= SKY_STATO_PRECISIONE_DA) pezzi.push(precisioneTesto(p));
-  } else {
-    pezzi.push('posizione mancante');
-  }
-  const testo = pezzi.join(' · ');
+  // Il luogo di sola visita del planetario viene prima della posizione
+  // dell'app: è quello da cui il cielo è davvero calcolato.
+  const luogo = sky.luogoVista || sky.posizione;
+  // Il nome del posto quando c'è: due numeri con cinque decimali sono
+  // esatti e non dicono niente a nessuno.
+  const testo = luogo
+    ? (luogo.nome || formattaCoordinate(luogo.lat, luogo.lon))
+    : 'posizione mancante';
   if (el.textContent !== testo) el.textContent = testo;
+  // Il cielo spostato altrove lo dice comunque, ma con l'aspetto e non con
+  // una parola in più: vedi `.lettura-stato.altrove` in style.css.
+  el.classList.toggle('altrove', !!sky.luogoVista);
   // Il titolo tiene il dettaglio esteso per chi lo vuole: le coordinate
   // vere, la provenienza per intero. Costa niente e non occupa cielo.
   el.title = skyStatoEsteso();
 }
 
-// Sopra questa larghezza di lettura la precisione va detta: due chilometri
-// è già un altro orizzonte, e i fix di rete stanno di solito lì o oltre.
-const SKY_STATO_PRECISIONE_DA = 2000;
-
+// Il dettaglio per chi lo va a cercare: col mouse è il `title` della riga
+// del luogo, e con lo schermo che legge è quello che viene detto. Qui ci
+// sta tutto quello che sopra al cielo non si scrive più — le coordinate
+// vere, la provenienza del dato, la precisione, e l'avvertimento che il
+// cielo è di sola visita.
 function skyStatoEsteso() {
   const righe = [];
   if (sky.luogoVista) {

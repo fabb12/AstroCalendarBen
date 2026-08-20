@@ -732,13 +732,16 @@ body .bg-slate-950\/90 {
   color: var(--testo);
 }
 
-/* Le letture di puntamento: numeri da strumento, allineati e stabili */
-#skymap-hud, #skymap-stato, #sim-ora, #skymap-tempo-testo, #skymap-cal-valore {
+/* Le letture di puntamento: numeri da strumento, allineati e stabili.
+   `#skymap-stato` è uscito da questo elenco: da quando dice solo il nome del
+   posto — «Milano» — non è più un numero, e il monospazio faceva sembrare un
+   nome di città la matricola di un apparecchio. Il suo carattere lo decide
+   `.lettura-cielo`, che è la classe con cui è disegnato. */
+#sim-ora, #skymap-tempo-testo, #skymap-cal-valore {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
-#skymap-hud { color: var(--testo); }
 
 /* I comandi del cielo stanno appoggiati dentro a questo riquadro: se il suo
    `position: relative` arrivasse solo dalla classe di Tailwind, con il CDN
@@ -3189,12 +3192,12 @@ body button.pos-risultato:focus-visible {
   /* Quanto è alta, in cima, la fascia dei comandi appoggiati sul cielo —
      sempre in vista anche a pannelli chiusi: le linguette dei gruppi e,
      sotto di loro, la riga con la bussola. 10px di margine, la pillola
-     delle linguette (40px + 4px+4px di imbottitura del suo fondo + 2px di
-     bordo = 50px), 8px di distacco fra le due righe, la bussola (64px, la
+     delle linguette (36px + 4px+4px di imbottitura del suo fondo + 2px di
+     bordo = 46px), 8px di distacco fra le due righe, la bussola (64px, la
      cosa più alta della seconda riga). Serve alla scheda dell'oggetto, qui
      sotto: senza saperlo, in orizzontale su un telefono basso ci finiva
      scritta sopra — mezza scheda sotto alla bussola, mezza sopra. */
-  --zona-alta-cielo: 132px;
+  --zona-alta-cielo: 128px;
 }
 
 @media (min-width: 1180px) {
@@ -3262,20 +3265,43 @@ body button.pos-risultato:focus-visible {
 }
 .linguette-gruppi::-webkit-scrollbar { display: none; }
 
+/* Ogni gruppo è un tondo con dentro il suo segno, e nient'altro: sei nomi
+   scritti per esteso facevano una striscia larga mezzo schermo sopra al
+   cielo, e sul telefono bisognava pure farla scorrere per arrivare ad
+   «Astri». Il nome non è sparito — sta nel `title` per chi ha il mouse e
+   in `.nome-gruppo` per chi legge con lo schermo — ma non occupa più cielo.
+   Il tondo resta largo 36px, che è la misura sotto la quale un dito comincia
+   a sbagliare bersaglio. */
 .linguetta-gruppo {
   flex: 0 0 auto;
-  min-height: 40px;
-  padding: 9px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
   color: var(--testo-2);
   font-family: inherit;
-  font-size: 0.86rem;
-  font-weight: 550;
   cursor: pointer;
-  white-space: nowrap;
   transition: background-color var(--transizione), color var(--transizione);
+}
+.icona-linguetta { display: block; width: 20px; height: 20px; }
+/* Il nome resta nel documento per chi legge con lo schermo, ma non si vede
+   e non occupa spazio (la ricetta di sempre per il testo solo-vocale) */
+.nome-gruppo {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 .linguetta-gruppo:hover { color: var(--testo); background: rgba(148, 168, 214, 0.1); }
 .linguetta-gruppo.attiva {
@@ -3366,44 +3392,41 @@ body button.pos-risultato:focus-visible {
   /* Sono numeri da leggere, non comandi: il dito ci passa attraverso */
   pointer-events: none;
 }
-/* In alto resta una sola informazione: il luogo usato per calcolare il
-   cielo. Direzione e campo sono riuniti nella bussola. */
+/* In alto resta una sola informazione, e una sola parola: il nome del posto
+   da cui il cielo è calcolato. «Milano», e basta — l'etichetta "Posizione
+   attuale" diceva quello che il nome di una città dice già da sé, e la
+   provenienza del dato è finita nel `title`. Direzione e campo visivo sono
+   riuniti nella bussola, che li disegna invece di scriverli. */
 .letture-sinistra {
   display: flex;
   align-items: center;
-  gap: 0;
   min-width: 0;
   max-width: calc(100% - 82px);   /* quanto lascia libero la bussola */
   border: 1px solid var(--bordo);
-  border-radius: var(--raggio-s);
+  border-radius: 999px;
   background: rgba(6, 10, 20, 0.74);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
-.lettura-posizione-label {
-  padding-left: 9px;
-  color: var(--testo-3);
-  font-size: 0.61rem;
-  font-weight: 700;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
 .lettura-cielo {
-  padding: 5px 9px;
+  padding: 5px 11px;
   border: 0;
   background: transparent;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  font-variant-numeric: tabular-nums;
+  font-family: var(--sans);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   color: var(--testo);
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.lettura-stato { color: var(--testo); font-size: 0.68rem; }
-.lettura-stato::before { content: "·"; margin-right: 7px; color: var(--testo-3); }
+.lettura-stato { color: var(--testo); }
+/* Il cielo guardato da un altro luogo (pannello Tempo e luogo) lo diceva
+   un «solo qui» appiccicato al nome. Adesso lo dice il colore: la stessa
+   informazione, zero parole. Il perché per esteso sta nel `title`. */
+.lettura-stato.altrove { color: var(--blu-chiaro); }
 
 
 /* ------------------------------------------------- LA BUSSOLA DEL CIELO */
@@ -3433,10 +3456,19 @@ body button.pos-risultato:focus-visible {
 }
 .bussola-quadrante { display: block; width: 100%; height: 100%; }
 .bussola-fondo { fill: rgba(10, 16, 30, 0.35); stroke: none; }
+
+/* IL CONO DELL'INQUADRATURA
+   Quanto cielo entra nella vista adesso, aperto sul quadrante a partire
+   dall'occhio (il centro) verso la direzione guardata (l'alto). Azzurro
+   perché è l'unica cosa qui dentro che non parla della Terra: il Nord è
+   ambra, l'indice della vista giallo come il mirino, e questo è il fascio
+   di sguardo. Sfuma verso il bordo — un fascio si allarga e si perde, non
+   finisce con un taglio netto — e il filo di contorno serve a leggerne
+   l'apertura quando è stretta, che è proprio quando la si vorrebbe sapere. */
 .bussola-fov {
-  fill: rgba(250, 204, 21, 0.14);
-  stroke: rgba(250, 204, 21, 0.78);
-  stroke-width: 1.4;
+  fill: url(#bussola-cono-sfuma);
+  stroke: rgba(125, 211, 252, 0.72);
+  stroke-width: 1.2;
   stroke-linejoin: round;
 }
 
@@ -3492,18 +3524,11 @@ body button.pos-risultato:focus-visible {
 }
 .bussola-gradi {
   font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: 0.66rem;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--testo);
-}
-.bussola-campo {
-  font-family: var(--mono);
-  font-size: 0.48rem;
-  font-weight: 700;
-  color: #fde047;
-  white-space: nowrap;
 }
 
 /* Quando la bussola non sa dov'è il Nord vero — sensori spenti, vista
@@ -4102,20 +4127,16 @@ body input.casella-data:hover { border: 0; }
 @media (max-width: 620px) {
   .cielo-chrome { gap: 6px; padding: 8px; padding-top: max(8px, env(safe-area-inset-top)); }
   /* La fascia si stringe insieme a tutto il resto: 8px di margine, la
-     pillola più bassa (38px + 3px+3px di imbottitura + 2px di bordo =
-     46px), 6px di distacco, la bussola più piccola (52px). */
-  .vista-cielo { --zona-alta-cielo: 112px; }
-  .linguetta-gruppo .nome-lungo { display: none; }
-  .linguetta-gruppo .nome-corto { display: inline; }
-  .linguetta-gruppo { min-height: 38px; padding: 8px 10px; font-size: 0.78rem; }
+     pillola più bassa (34px + 3px+3px di imbottitura + 2px di bordo =
+     42px), 6px di distacco, la bussola più piccola (52px). */
+  .vista-cielo { --zona-alta-cielo: 108px; }
+  .linguetta-gruppo { width: 34px; height: 34px; }
+  .icona-linguetta { width: 19px; height: 19px; }
   .linguette-gruppi { padding: 3px; gap: 2px; }
-  .lettura-cielo { font-size: 0.62rem; padding: 4px 7px; }
-  .lettura-stato { font-size: 0.6rem; }
-  .lettura-posizione-label { padding-left: 7px; font-size: 0.52rem; }
-  .letture-sinistra { max-width: calc(100% - 66px); gap: 3px; }
+  .lettura-cielo { font-size: 0.7rem; padding: 4px 9px; }
+  .letture-sinistra { max-width: calc(100% - 66px); }
   .bussola-cielo { width: 52px; height: 52px; }
   .bussola-gradi { font-size: 0.6rem; }
-  .bussola-campo { font-size: 0.43rem; }
   .bussola-indice { border-left-width: 4px; border-right-width: 4px; border-top-width: 7px; }
   .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
   .gruppo-comandi.gruppo-astri.gruppo-attivo.ricerca-attiva { max-height: min(78%, 520px); }
