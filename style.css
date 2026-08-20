@@ -3285,29 +3285,6 @@ body button.pos-risultato:focus-visible {
   box-shadow: var(--alone-blu);
 }
 
-/* Il promemoria che nel cielo mostrato sta succedendo qualcosa: la stessa
-   pillola delle linguette, colore diverso — questo invita */
-.chip-eventi { display: none; }
-.chip-eventi.visibile { display: inline-flex; align-items: center; }
-.chip-eventi {
-  min-height: 40px;
-  max-width: min(320px, 60vw);
-  padding: 8px 14px;
-  border: 1px solid rgba(96, 165, 250, 0.5);
-  border-radius: 999px;
-  background: rgba(12, 32, 66, 0.82);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: var(--blu-chiaro);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.chip-eventi:hover { background: rgba(20, 48, 96, 0.9); }
-
 /* L'elenco di cosa succede nel cielo mostrato */
 .elenco-eventi-cielo { display: flex; flex-direction: column; gap: 8px; }
 .titolo-elenco-eventi {
@@ -3389,7 +3366,8 @@ body button.pos-risultato:focus-visible {
   /* Sono numeri da leggere, non comandi: il dito ci passa attraverso */
   pointer-events: none;
 }
-/* Le informazioni condividono una sola pillola compatta. */
+/* In alto resta una sola informazione: il luogo usato per calcolare il
+   cielo. Direzione e campo sono riuniti nella bussola. */
 .letture-sinistra {
   display: flex;
   align-items: center;
@@ -3401,6 +3379,15 @@ body button.pos-risultato:focus-visible {
   background: rgba(6, 10, 20, 0.74);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+}
+.lettura-posizione-label {
+  padding-left: 9px;
+  color: var(--testo-3);
+  font-size: 0.61rem;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 .lettura-cielo {
   padding: 5px 9px;
@@ -3415,8 +3402,8 @@ body button.pos-risultato:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.lettura-stato { color: var(--testo-2); font-size: 0.68rem; }
-.lettura-stato::before { content: "·"; margin-right: 9px; color: var(--testo-3); }
+.lettura-stato { color: var(--testo); font-size: 0.68rem; }
+.lettura-stato::before { content: "·"; margin-right: 7px; color: var(--testo-3); }
 
 
 /* ------------------------------------------------- LA BUSSOLA DEL CIELO */
@@ -3446,6 +3433,12 @@ body button.pos-risultato:focus-visible {
 }
 .bussola-quadrante { display: block; width: 100%; height: 100%; }
 .bussola-fondo { fill: rgba(10, 16, 30, 0.35); stroke: none; }
+.bussola-fov {
+  fill: rgba(250, 204, 21, 0.14);
+  stroke: rgba(250, 204, 21, 0.78);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
 
 /* Il quadrante che gira lo ruota `skyAggiornaBussola()` scrivendogli
    l'attributo `transform` (che in SVG gira attorno all'origine del
@@ -3487,19 +3480,30 @@ body button.pos-risultato:focus-visible {
 
 /* I gradi, in mezzo al quadrante: è il numero che si legge a voce ("sono
    a 51 gradi"), e sta fermo mentre tutto il resto gira */
-.bussola-gradi {
+.bussola-valori {
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 6px rgba(6, 10, 20, 0.9);
+}
+.bussola-gradi {
   font-family: var(--mono);
   font-size: 0.64rem;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--testo);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 6px rgba(6, 10, 20, 0.9);
+}
+.bussola-campo {
+  font-family: var(--mono);
+  font-size: 0.48rem;
+  font-weight: 700;
+  color: #fde047;
+  white-space: nowrap;
 }
 
 /* Quando la bussola non sa dov'è il Nord vero — sensori spenti, vista
@@ -4107,9 +4111,11 @@ body input.casella-data:hover { border: 0; }
   .linguette-gruppi { padding: 3px; gap: 2px; }
   .lettura-cielo { font-size: 0.62rem; padding: 4px 7px; }
   .lettura-stato { font-size: 0.6rem; }
+  .lettura-posizione-label { padding-left: 7px; font-size: 0.52rem; }
   .letture-sinistra { max-width: calc(100% - 66px); gap: 3px; }
   .bussola-cielo { width: 52px; height: 52px; }
   .bussola-gradi { font-size: 0.6rem; }
+  .bussola-campo { font-size: 0.43rem; }
   .bussola-indice { border-left-width: 4px; border-right-width: 4px; border-top-width: 7px; }
   .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
   .gruppo-comandi.gruppo-astri.gruppo-attivo.ricerca-attiva { max-height: min(78%, 520px); }

@@ -396,25 +396,20 @@
             <!-- Il promemoria che l'orologio è spostato non sta più qui: adesso
                  c'è la barra del tempo in fondo alla mappa, che l'istante lo
                  dice sempre — non solo quando è già andato storto qualcosa. -->
-            <!-- Compare quando all'ora mostrata sta succedendo qualcosa: un
-                 cielo che ospita un'eclissi o uno sciame deve dirlo da solo,
-                 senza costringere a controllare il calendario -->
-            <button id="skymap-eventi-chip" type="button" class="chip-eventi"
-              title="Cosa succede nel cielo all'ora mostrata: tocca per l'elenco"></button>
           </div>
 
           <!-- Dati di puntamento e stato.
-               A sinistra due righe corte: dove si guarda in alto (altezza e
-               campo) e da dove (il luogo). A destra la bussola, che si è
-               presa l'azimut — un numero in gradi non dice da che parte si
-               sta guardando finché non lo si vede su un quadrante. Quello
+               A sinistra resta soltanto il luogo corrente. A destra la
+               bussola riunisce azimut e campo visivo — un numero in gradi
+               non dice da che parte si sta guardando finché non lo si vede
+               su un quadrante. Quello
                che prima era scritto a parole ("Nord vero", la declinazione
                magnetica, "bussola relativa") adesso lo dice il quadrante
                stesso col suo aspetto: erano tre righe di gergo sopra al
                cielo per un'informazione che si guarda, non si legge. -->
           <div class="cielo-letture">
-            <div class="letture-sinistra">
-              <div id="skymap-hud" class="lettura-cielo">—</div>
+            <div class="letture-sinistra" aria-label="Posizione attuale">
+              <span class="lettura-posizione-label">Posizione attuale</span>
               <div id="skymap-stato" class="lettura-cielo lettura-stato">posizione mancante</div>
             </div>
 
@@ -428,6 +423,7 @@
               role="img" aria-label="Bussola" title="Direzione della vista">
               <svg class="bussola-quadrante" viewBox="-50 -50 100 100" aria-hidden="true">
                 <circle class="bussola-fondo" cx="0" cy="0" r="46"></circle>
+                <path id="skymap-bussola-fov" class="bussola-fov" d="M0,0 L-18,-38 A42,42 0 0 1 18,-38 Z"></path>
                 <g id="skymap-bussola-rosa" class="bussola-rosa">
                   <!-- Le tacche: lunghe ai quattro punti cardinali, corte a
                        metà strada. Sono scritte a mano e non generate,
@@ -448,7 +444,10 @@
                 </g>
               </svg>
               <span class="bussola-indice" aria-hidden="true"></span>
-              <span id="skymap-bussola-gradi" class="bussola-gradi">—</span>
+              <span class="bussola-valori">
+                <span id="skymap-bussola-gradi" class="bussola-gradi">—</span>
+                <span id="skymap-bussola-campo" class="bussola-campo">FOV —</span>
+              </span>
             </div>
           </div>
 
