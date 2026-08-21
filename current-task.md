@@ -58,13 +58,14 @@ Blocco `// --- L'eclissi di Luna` in `app.js` §7.3.2:
 - `SKY_ECL_TONI` — i toni dall'orlo (profondità 0) all'asse (1). La `luce`
   non è fotometria: una totale è diecimila volte più debole di una Luna
   piena, e disegnata così sarebbe un disco nero. È la scala compressa
-  dell'occhio, che si adatta — dall'orlo al cuore resta un fattore due e
-  mezzo. Il **colore** invece è quello vero.
-- `SKY_ECL_OMBRA_LUCE` (0,72) — quanto resta della faccia sull'orlo
+  dell'occhio, che si adatta — dall'orlo al cuore resta un fattore tre. Il **colore** invece è quello vero.
+- `SKY_ECL_OMBRA_LUCE` (0,44) — quanto resta della faccia sull'orlo
   dell'ombra piena. È il punto in cui le due metà si incontrano, e la
-  continuità è provata a 0,17 livelli su 255.
-- `SKY_ECL_PENOMBRA_ESPONENTE` (1,5) — la penombra come la vede l'occhio: a
-  metà strada non ci si accorge quasi di niente (81% della luce), poi crolla.
+  continuità è provata a 0,08 livelli su 255. **Era 0,72 nel primo giro, ed
+  è stato il difetto della riga qui sotto.**
+- `SKY_ECL_PENOMBRA_ESPONENTE` (1,5) — la penombra come la vede l'occhio:
+  col 10% di Sole coperto non si è ancora perso un decimo di luce (91%), poi
+  cala in fretta (64% a metà penombra, dove il Sole è coperto per metà).
 - `skyEclisseColore(s, rho)` — le due metà: dentro l'ombra i toni, fuori la
   luce che resta del disco solare, col turchese che sfuma mentre il Sole
   torna a scoprirsi (se no fuori dall'ombra piena restava un anello).
@@ -75,12 +76,43 @@ Blocco `// --- L'eclissi di Luna` in `app.js` §7.3.2:
   solo le rifà quando la geometria cambia, cioè qualche volta al minuto.
 - `skyEclisseLuceLuna(s)` — la media della faccia pesata come la vede
   l'occhio, calcolata con lo stesso `skyEclisseColore` del disegno. Finisce
-  in `ombraTerra.luce` e la legge il bagliore: in totalità scende al 20%, in
-  un'eclissi di sola penombra resta all'84%.
+  in `ombraTerra.luce` e la legge il bagliore: in totalità scende al 17%, in
+  un'eclissi di sola penombra resta al 70%.
+
+## Il secondo giro: «zummando molto vicino l'ombra scompare»
+
+Segnalato dopo il primo commit. Prima cosa, perché è quella che ha risolto
+il dubbio: **il disegno è invariante di scala e non sparisce**. Provato in
+due modi. Su tela vera (`@napi-rs/canvas`), `skyDisegnaOmbraLunare` chiamata
+con raggi da 14 a 20.000 pixel dà lo stesso identico colore nello stesso
+punto della Luna, senza eccezioni. E nell'**app vera** in Chromium — servita
+da un server locale, con Astronomy Engine copiato in casa perché il CDN qui
+non passa — pilotata da `skyImpostaFov`/`skyCentraSu` e leggendo i pixel
+della tela: da 40° a 0,25° di campo `ombraTerra` c'è sempre e il colore
+campionato a metà raggio non cambia di un livello.
+
+A sparire non era l'ombra: era il **gradino**. `SKY_ECL_OMBRA_LUCE` l'avevo
+messo a 0,72 per non avere una totalità troppo cupa, e quel numero non è la
+cupezza della totalità — è quanto la Luna si scurisce **attraversando
+l'orlo**. Con 0,72 il passaggio vale un terzo, e a campo pieno si legge
+lo stesso perché accanto c'è tutto il resto dell'ombra; ingrandendo, sotto
+gli occhi resta **solo** la fascia attorno all'orlo, che dell'ombra è la
+parte più chiara, e un terzo di dimming lì non è più un'ombra: è una Luna
+un po' velata. Misurato nell'app: sui pixel della Luna il minimo passava da
+18 (codice vecchio) a 30–63 (mio primo giro), cioè l'ombra si schiariva del
+triplo proprio dove si va a guardare quando si ingrandisce.
+
+Le due manopole fanno due cose diverse, e questo è il punto da ricordare:
+`SKY_ECL_OMBRA_LUCE` è il **gradino** (quanto si vede *che* un'ombra c'è),
+la curva `luce` di `SKY_ECL_TONI` è il rilievo **dentro** l'ombra (quanto si
+vede *com'è fatta*). Alzando la prima per aggiustare la seconda si perde il
+gradino. Adesso: gradino basso (0,44 — passando l'orlo la Luna perde più di
+metà della luce) e curva piatta (1,00 → 0,60, un fattore tre dall'orlo al
+cuore), col resto del contrasto affidato al **colore**, che è quello vero.
 
 ## Le prove
 
-**§21 di `verifica.html`**, 17 prove, tutte passate. Come per il §8, il §18 e
+**§21 di `verifica.html`**, 19 prove, tutte passate. Come per il §8, il §18 e
 il §19 le formule sono una **copia**: quella pagina non carica `app.js`.
 Ricopiando va ricopiato tutto il blocco, `ECL_TONI` e le due costanti
 comprese.
@@ -90,9 +122,14 @@ oscuramento, semidurate su otto eclissi di fila, più le magnitudini umbrali
 del 2025 e del 2026 contro i valori pubblicati). Il profilo per quello che
 deve promettere: nessun anello scuro su 600 campioni, l'orlo più chiaro del
 cuore, il blu che batte il rosso sull'orlo e il rosso che batte il blu di tre
-volte un decimo più dentro, l'incontro senza gradino, il bianco pieno fuori
-dalla penombra, e il bagliore che se ne va in totalità ma resta in una di
-sola penombra.
+volte un decimo più dentro, l'incontro senza gradino fra ombra e penombra, il
+bianco pieno fuori dalla penombra, e il bagliore che se ne va in totalità ma
+resta in una di sola penombra.
+
+Le tre prove aggiunte dopo la segnalazione dello zoom: che **passando l'orlo
+dell'ombra la Luna perda più di metà della luce** (è quella che tiene fermo
+il gradino), che col 10% di Sole coperto non ne abbia ancora perso un decimo,
+e che a metà penombra sia velata ma non in ombra.
 
 ## Cosa NON è stato toccato
 

@@ -16975,19 +16975,27 @@ function skyDisegnaLuna(ctx, x, y, r, o, ang, estinzione, morso) {
 // I toni dell'ombra piena, dall'orlo (profondità 0) all'asse (profondità 1).
 // `luce` non è fotometria: una totale è diecimila volte più debole di una
 // Luna piena, e disegnata così sarebbe un disco nero. È la scala compressa
-// con cui la vede l'occhio, che si adatta — dall'orlo al centro resta un
-// fattore quattro, che è quello che si legge in una fotografia esposta per
+// con cui la vede l'occhio, che si adatta — dall'orlo al cuore resta un
+// fattore tre, che è quello che si legge in una fotografia esposta per
 // l'eclissi. Il **colore** invece è quello vero, ed è l'unica cosa che
 // questo disegno abbia da raccontare.
+//
+// I due numeri non si tarano insieme, e sapere quale fa cosa è tutto:
+// `SKY_ECL_OMBRA_LUCE` è il **gradino** fra il Sole pieno e l'ombra, cioè
+// quanto si vede che un'ombra c'è; la curva `luce` è il rilievo **dentro**
+// l'ombra, cioè quanto si vede com'è fatta. Alzando il primo per non avere
+// una totalità troppo cupa si spegne il gradino, e ingrandendo — dove sotto
+// gli occhi resta solo la fascia vicina all'orlo — l'ombra smette di
+// sembrare un'ombra. Quindi: gradino basso e curva piatta.
 const SKY_ECL_TONI = [
   { d: 0.00, luce: 1.00, colore: [0.84, 0.94, 1.00] },  // ozono: l'orlo turchese
-  { d: 0.04, luce: 0.90, colore: [1.00, 0.86, 0.74] },  // il passaggio, in pochi primi d'arco
-  { d: 0.12, luce: 0.75, colore: [1.00, 0.58, 0.32] },  // rame
-  { d: 0.30, luce: 0.61, colore: [1.00, 0.45, 0.25] },
-  { d: 0.60, luce: 0.50, colore: [1.00, 0.37, 0.22] },
-  { d: 1.00, luce: 0.42, colore: [1.00, 0.32, 0.21] }   // il cuore dell'ombra
+  { d: 0.04, luce: 0.96, colore: [1.00, 0.86, 0.74] },  // il passaggio, in pochi primi d'arco
+  { d: 0.12, luce: 0.90, colore: [1.00, 0.58, 0.32] },  // rame
+  { d: 0.30, luce: 0.80, colore: [1.00, 0.45, 0.25] },
+  { d: 0.60, luce: 0.70, colore: [1.00, 0.37, 0.22] },
+  { d: 1.00, luce: 0.60, colore: [1.00, 0.32, 0.21] }   // il cuore dell'ombra
 ];
-const SKY_ECL_OMBRA_LUCE = 0.72;      // quanto resta della faccia, sull'orlo dell'ombra piena
+const SKY_ECL_OMBRA_LUCE = 0.44;      // quanto resta della faccia, sull'orlo dell'ombra piena
 // La penombra, in fotometria, si mangia metà della luce a metà strada. A
 // occhio non è così: non ci si accorge di niente finché non si è dentro per
 // due terzi, e poi crolla. L'esponente è quella curva — e tiene insieme il

@@ -4743,13 +4743,13 @@ titolo('21. L\'eclissi di Luna nel planetario (app.js §7.3.2)');
   // SKY_ECL_TONI, SKY_ECL_OMBRA_LUCE, SKY_ECL_PENOMBRA_ESPONENTE
   const ECL_TONI = [
     { d: 0.00, luce: 1.00, colore: [0.84, 0.94, 1.00] },
-    { d: 0.04, luce: 0.90, colore: [1.00, 0.86, 0.74] },
-    { d: 0.12, luce: 0.75, colore: [1.00, 0.58, 0.32] },
-    { d: 0.30, luce: 0.61, colore: [1.00, 0.45, 0.25] },
-    { d: 0.60, luce: 0.50, colore: [1.00, 0.37, 0.22] },
-    { d: 1.00, luce: 0.42, colore: [1.00, 0.32, 0.21] }
+    { d: 0.04, luce: 0.96, colore: [1.00, 0.86, 0.74] },
+    { d: 0.12, luce: 0.90, colore: [1.00, 0.58, 0.32] },
+    { d: 0.30, luce: 0.80, colore: [1.00, 0.45, 0.25] },
+    { d: 0.60, luce: 0.70, colore: [1.00, 0.37, 0.22] },
+    { d: 1.00, luce: 0.60, colore: [1.00, 0.32, 0.21] }
   ];
-  const ECL_OMBRA_LUCE = 0.72, ECL_PENOMBRA_ESP = 1.5;
+  const ECL_OMBRA_LUCE = 0.44, ECL_PENOMBRA_ESP = 1.5;
 
   function eclTono(d) {
     const t = Math.max(0, Math.min(1, d));
@@ -4763,6 +4763,11 @@ titolo('21. L\'eclissi di Luna nel planetario (app.js §7.3.2)');
     };
   }
 
+  // skyEclisseDischi
+  function eclDischi(s) {
+    return { terra: (s.penombra + s.umbra) / 2, sole: (s.penombra - s.umbra) / 2 };
+  }
+
   // skyEclisseColore
   function eclColore(s, rho) {
     if (rho < s.umbra) {
@@ -4770,7 +4775,7 @@ titolo('21. L\'eclissi di Luna nel planetario (app.js §7.3.2)');
       const l = ECL_OMBRA_LUCE * t.luce;
       return t.colore.map(c => l * c);
     }
-    const terra = (s.penombra + s.umbra) / 2, sole = (s.penombra - s.umbra) / 2;
+    const { terra, sole } = eclDischi(s);
     const cop = sole > 0 ? eclCopertura(rho, sole, terra) : (rho < terra ? 1 : 0);
     const diretta = Math.max(0, Math.min(1, 1 - cop));
     const l = ECL_OMBRA_LUCE + (1 - ECL_OMBRA_LUCE) * Math.pow(diretta, ECL_PENOMBRA_ESP);
@@ -4893,13 +4898,35 @@ titolo('21. L\'eclissi di Luna nel planetario (app.js §7.3.2)');
   prova('fuori dalla penombra la Luna non è toccata',
     netto.every(c => c > 0.9999), netto.map(c => c.toFixed(5)).join(' '));
 
-  // La penombra come la vede l'occhio: a metà strada non ci si accorge
-  // quasi di niente. È il contrario di quello che faceva la rampa lineare
-  // di prima, che a metà penombra aveva già grigiato la Luna del quaranta
-  // per cento — ore prima che l'ombra vera la toccasse.
+  // **Il gradino.** È la prova che risponde a «zummando molto vicino
+  // l'ombra scompare»: ingrandendo, sotto gli occhi resta solo la fascia
+  // attorno all'orlo, e se lì l'ombra è appena più scura del Sole pieno
+  // smette di sembrare un'ombra. Dev'essere meno di metà.
+  prova('passando l\'orlo dell\'ombra la Luna perde più di metà della luce',
+    eclLum(orlo) < 0.5, `resta il ${(eclLum(orlo) * 100).toFixed(0)}% contro il 100% al sole pieno`);
+
+  // La penombra come la vede l'occhio: nella sua metà esterna non ci si
+  // accorge quasi di niente. È il contrario di quello che faceva la rampa
+  // lineare di prima, che appena la penombra sfiorava la Luna l'aveva già
+  // grigiata — ore prima che l'ombra vera la toccasse.
+  // «Il 10% di Sole coperto» è una frazione d'area, non una frazione di
+  // raggio: il punto dove cade si cerca, non si interpola.
+  const dischi = eclDischi(sTot);
+  function eclDoveCoperto(quota) {
+    let lo = sTot.umbra, hi = sTot.penombra;
+    for (let i = 0; i < 50; i++) {
+      const m = (lo + hi) / 2;
+      if (eclCopertura(m, dischi.sole, dischi.terra) > quota) lo = m; else hi = m;
+    }
+    return (lo + hi) / 2;
+  }
+  const appena = eclLum(eclColore(sTot, eclDoveCoperto(0.1)));
+  prova('col 10% di Sole coperto la Luna non ha ancora perso un decimo di luce',
+    appena > 0.9, `ne resta il ${(appena * 100).toFixed(0)}%`);
   const mezza = eclLum(eclColore(sTot, (sTot.umbra + sTot.penombra) / 2));
-  prova('a metà penombra la Luna è ancora quasi piena',
-    mezza > 0.75 && mezza < 0.95, `${(mezza * 100).toFixed(0)}% della sua luce`);
+  prova('a metà penombra è velata, ma non è ombra',
+    mezza > eclLum(orlo) * 1.3 && mezza < 0.85,
+    `${(mezza * 100).toFixed(0)}%, fra il ${(eclLum(orlo) * 100).toFixed(0)}% dell'orlo e il 100% del Sole pieno`);
 
   // Il bagliore attorno al disco: durante una totale se ne deve andare
   // quasi tutto, durante una di sola penombra deve restare.
@@ -4918,8 +4945,9 @@ titolo('21. L\'eclissi di Luna nel planetario (app.js §7.3.2)');
   const lucePen = eclLuceMedia(sPen);
   prova('in totalità il bagliore della Luna se ne va quasi tutto',
     luceTot < 0.3, `resta il ${(luceTot * 100).toFixed(0)}% della luce`);
-  prova('in un\'eclissi di sola penombra il bagliore resta',
-    lucePen > 0.75, `resta il ${(lucePen * 100).toFixed(0)}%`);
+  prova('in un\'eclissi di sola penombra il bagliore resta, e resta molto di più',
+    lucePen > 0.6 && lucePen > luceTot * 3,
+    `${(lucePen * 100).toFixed(0)}% contro il ${(luceTot * 100).toFixed(0)}% della totale`);
 
   // Le fermate del gradiente: il canvas le vuole in ordine, e la prima e
   // l'ultima devono essere il centro dell'ombra e il pieno Sole.
