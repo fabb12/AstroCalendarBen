@@ -5208,6 +5208,228 @@ titolo('21-bis. La faccia della Luna ingrandita (app.js §7.3.2)');
 }
 
 // =====================================================================
+titolo('22. Il paesaggio: il suolo, la luce e i nomi dell\'acqua (app.js §7.3.2)');
+// =====================================================================
+//
+// Tre cose che a occhio si giudicano male, e che è per questo che vale la
+// pena scrivere qui. Un suolo piatto è un suolo *plausibile* — nessuno,
+// guardando lo schermo, dice «questo gradiente ha le fermate nel posto
+// sbagliato»: dice «boh, sembra finto». Una velatura di luce stesa dalla
+// parte opposta al Sole è ancora più insidiosa, perché un panorama caldo da
+// un lato e freddo dall'altro è bello comunque, anche col verso girato. E
+// un'etichetta che non si scrive **non fallisce**: semplicemente non compare,
+// che è il modo in cui i nomi dei laghi sono mancati per mesi senza che
+// niente lo dicesse.
+//
+// Come per il §19 e il §21, questa pagina non carica `app.js`: le costanti e
+// le leggi qui sotto sono una **copia**.
+{
+  // --- Il colore del suolo, depressione per depressione -----------------
+  const SUOLO_TAU = 0.35;                // SKY_SUOLO_TAU
+  const SUOLO_TAU_BUIO = 26;             // SKY_SUOLO_TAU_BUIO
+  const SUOLO_NADIR_BUIO = 0.32;         // SKY_SUOLO_NADIR_BUIO
+  const FERMATE = [0, 0.08, 0.2, 0.4, 0.75, 1.4, 3, 7, 16, 35, 90];   // SKY_SUOLO_FERMATE
+
+  const mescola = (a, b, t) => a.map((v, i) => v + (b[i] - v) * Math.max(0, Math.min(1, t)));
+  const luminanza = c => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+
+  // I due colori veri di `SKY_PAESAGGI.suolo`, col lontano già velato d'aria
+  // come lo consegna `skyColoriPaesaggio`. Di notte sono tutt'e due quasi
+  // neri, ed è il motivo per cui laggiù non c'è niente da scurire.
+  const LONTANO = [116, 128, 121];
+  const VICINO = [38, 46, 32];
+  const LONTANO_NOTTE = [12, 16, 20];
+  const VICINO_NOTTE = [5, 8, 10];
+
+  function suolo(dep, luceCielo, lontano, vicino) {
+    const a = lontano || LONTANO, b = vicino || VICINO;
+    const buio = SUOLO_NADIR_BUIO * (0.25 + 0.75 * luceCielo);
+    const vicinanza = 1 - Math.exp(-dep / SUOLO_TAU);
+    const ombra = buio * (1 - Math.exp(-dep / SUOLO_TAU_BUIO));
+    return mescola(mescola(a, b, vicinanza), [0, 0, 0], ombra);
+  }
+
+  // La prova che risponde alla segnalazione: sotto l'orizzonte non ci deve
+  // essere un colore solo. Si misura sull'**altezza dello schermo**, cioè
+  // sui gradi che una vista normale contiene davvero — non fino al nadir,
+  // che sullo schermo non c'è quasi mai (ed era il difetto: le fermate erano
+  // scritte in frazioni della rampa fino a novanta gradi, e nel riquadro ne
+  // cadeva solo il primo terzo).
+  const inVista = [0, 25].map(d => luminanza(suolo(d, 1)));
+  prova('il suolo cambia davvero nei venticinque gradi che si vedono',
+    inVista[0] - inVista[1] > 45,
+    `da ${inVista[0].toFixed(0)} a ${inVista[1].toFixed(0)} livelli di luminanza`);
+  // E il contro-esempio, misurato nel browser vero sulla stessa vista (campo
+  // 45°, occhio due gradi sotto l'orizzonte): con le fermate scritte in
+  // frazioni della rampa, il fondo dello schermo non arrivava mai al colore
+  // del terreno vicino — restava più vicino a quello lontano che a quello
+  // ai piedi, cioè il gradiente raccontava una cosa che sullo schermo non
+  // succedeva.
+  const primaFrazione = 0.29;            // quanta rampa cadeva nel riquadro, misurata
+  const primaColore = luminanza(mescola(LONTANO, mescola(LONTANO, VICINO, 0.7),
+    primaFrazione / 0.35));
+  prova('col conto di prima il fondo dello schermo non arrivava al terreno vicino',
+    primaColore > luminanza(VICINO) + 25,
+    `si fermava a ${primaColore.toFixed(0)} livelli, con ${luminanza(VICINO).toFixed(0)} da raggiungere ` +
+    '— e senza nemmeno cominciare a scurirsi');
+  prova('adesso ci arriva, e prosegue',
+    luminanza(suolo(25, 1)) < luminanza(VICINO),
+    `${luminanza(suolo(25, 1)).toFixed(0)} livelli in fondo al riquadro`);
+
+  // Monotòna: scendendo si scurisce sempre, mai il contrario. Una risalita
+  // sarebbe una banda chiara a mezz'aria, che è il difetto che le fermate
+  // fitte esistono per evitare.
+  let scende = true, saltoMax = 0;
+  for (let i = 1; i < FERMATE.length; i++) {
+    const a = luminanza(suolo(FERMATE[i - 1], 1)), b = luminanza(suolo(FERMATE[i], 1));
+    if (b > a + 1e-9) scende = false;
+    saltoMax = Math.max(saltoMax, a - b);
+  }
+  prova('il suolo si scurisce sempre scendendo, mai il contrario', scende);
+  prova('nessuna fermata fa un gradino da riga netta', saltoMax < 24,
+    `il salto più grosso fra due fermate è ${saltoMax.toFixed(0)} livelli`);
+
+  // La foschia sul suolo vive in una striscia sottilissima appoggiata alla
+  // riga dell'orizzonte, e il conto lo dice: con l'occhio a un metro e
+  // sessanta, un decimo di grado sotto l'orizzonte il suolo è a novecento
+  // metri, e novecento metri d'aria (su venticinque chilometri di
+  // `SKY_FOSCHIA_KM`) velano il quattro per cento. Cioè niente. È la ragione
+  // per cui le fermate non sono equispaziate, e il motivo per cui il primo
+  // valore provato — un grado e mezzo — lasciava sotto la linea una fascia
+  // chiara alta un decimo di schermo, che a occhio si legge come un muro.
+  const dist = dep => 1.6 / Math.tan(dep * D2R);       // metri, occhio a 1,60 m
+  prova('a un grado sotto l\'orizzonte il terreno è a novanta metri',
+    dist(1) > 80 && dist(1) < 100, `${dist(1).toFixed(0)} m`);
+  prova('e novanta metri d\'aria non velano niente',
+    1 - Math.exp(-dist(1) / 25000) < 0.005, 'la foschia là sotto non esiste');
+  const meta = 1 - Math.exp(-1 / SUOLO_TAU);
+  prova('quindi in un grado il colore ha già fatto quasi tutta la strada',
+    meta > 0.9, `${(meta * 100).toFixed(0)}% del passaggio`);
+  prova('col valore largo del primo tentativo ci arrivava a metà',
+    1 - Math.exp(-1 / 1.6) < 0.6,
+    'e la fascia chiara restava alta un decimo di schermo');
+  prova('l\'ombra d\'ambiente invece ci mette decine di gradi',
+    1 - Math.exp(-1 / SUOLO_TAU_BUIO) < 0.05,
+    'a un grado ne ha fatto meno del cinque per cento');
+
+  // Di notte non si scurisce niente: la terra è già nera, e togliere un
+  // terzo di niente lascia una banda in mezzo e nient'altro.
+  const notte = luminanza(suolo(0, 0, LONTANO_NOTTE, VICINO_NOTTE)) -
+    luminanza(suolo(60, 0, LONTANO_NOTTE, VICINO_NOTTE));
+  const giorno = luminanza(suolo(0, 1)) - luminanza(suolo(60, 1));
+  prova('di notte il fondo non si scurisce quasi per niente', notte < giorno * 0.2,
+    `${notte.toFixed(0)} livelli di notte contro ${giorno.toFixed(0)} di giorno`);
+
+  // --- Da che parte viene la luce ---------------------------------------
+  const LUCE_ESPONENTE = 2.2;            // SKY_LUCE_ESPONENTE
+  const LUCE_ALFA = 0.5;                 // SKY_LUCE_ALFA
+  const LUCE_FREDDA_ALFA = 0.2;          // SKY_LUCE_FREDDA_ALFA
+
+  // La forza della velatura secondo `skyLucePaesaggio`, per il Sole.
+  const forzaSole = alt => (alt > -10)
+    ? Math.min(1, (alt + 10) / 6) * Math.max(0.28, Math.min(1, (24 - alt) / 22))
+    : 0;
+
+  prova('col Sole sotto i dieci gradi negativi il paesaggio non ha più un verso',
+    forzaSole(-11) === 0 && forzaSole(-10.01) === 0,
+    'finito il crepuscolo, la direzione della luce non si legge più a terra');
+  prova('la velatura è più forte col Sole basso che a mezzogiorno',
+    forzaSole(2) > forzaSole(60) * 2,
+    `${forzaSole(2).toFixed(2)} a due gradi contro ${forzaSole(60).toFixed(2)} a sessanta`);
+  prova('e non si spegne mai del tutto con il Sole alto',
+    forzaSole(80) >= 0.28, 'a mezzogiorno resta la foschia, appena meno marcata');
+
+  // L'esponente è quello che tiene la cosa un effetto e non una vernice: il
+  // chiarore attorno al Sole sta in una trentina di gradi e poi cala.
+  const lobo = d => Math.pow(Math.abs(Math.cos(d * D2R)), LUCE_ESPONENTE);
+  prova('il chiarore verso il Sole è un lobo stretto, non mezzo orizzonte',
+    lobo(30) > 0.7 && lobo(60) < 0.25,
+    `${(lobo(30) * 100).toFixed(0)}% a trenta gradi, ${(lobo(60) * 100).toFixed(0)}% a sessanta`);
+  prova('a novanta gradi dall\'astro non c\'è né caldo né freddo',
+    lobo(90) < 1e-6, 'il passaggio fra le due metà è continuo, senza gradino');
+  prova('il lato freddo pesa meno della metà del caldo',
+    LUCE_FREDDA_ALFA < LUCE_ALFA * 0.5,
+    'caricandolo, il panorama diventa lunare');
+
+  // Le passate della velatura: sono sei perché nessuno dei loro scalini si
+  // veda. Con due, il gradino di mezzo si leggeva come una riga orizzontale.
+  const PASSATE = [42, 28, 18, 11, 6, 3].map(giu => [giu, 1 / 6]);   // SKY_LUCE_PASSATE
+  const somma = PASSATE.reduce((s, [, p]) => s + p, 0);
+  prova('le passate della luce sommano esattamente l\'opacità piena',
+    Math.abs(somma - 1) < 1e-9, 'sull\'orizzonte la velatura vale SKY_LUCE_ALFA e non di più');
+  prova('le passate scendono, e nessuna ripete la precedente',
+    PASSATE.every(([g], i) => i === 0 || g < PASSATE[i - 1][0]));
+  const scalino = Math.max(...PASSATE.map(([, p]) => p)) * LUCE_ALFA * 255;
+  prova('nessuno scalino della velatura arriva a farsi vedere',
+    scalino < 24, `il più grosso vale ${scalino.toFixed(0)} livelli su 255, sul colore pieno`);
+
+  // --- Il nome di un lago, e quello di un fiume -------------------------
+  //
+  // Qui stava il difetto per cui laghi e fiumi non hanno avuto nome per
+  // mesi. La regola chiedeva che la **banda d'acqua** fosse alta almeno
+  // quanto l'etichetta, e da quando l'etichetta è di due righe quell'altezza
+  // è una trentina di pixel. Ma uno specchio d'acqua guardato da riva è
+  // schiacciato per geometria: la sua altezza apparente è la differenza fra
+  // la depressione della riva vicina e quella della riva lontana.
+  const ACQUE_MARGINE = 1.25;            // SKY_ACQUE_MARGINE
+  const ACQUE_ALTO_MIN = 3;              // SKY_ACQUE_ALTO_MIN
+
+  // La regola di adesso, copiata da `skyNomiAcque`.
+  function siNomina(tipo, largoTesto, largoPx, altoPx, corpo) {
+    if (largoTesto * ACQUE_MARGINE > largoPx) return false;
+    if (tipo !== 1 && altoPx < ACQUE_ALTO_MIN) return false;
+    return { dueRighe: altoPx >= corpo * 2.05 * 0.75 };
+  }
+  // E quella di prima, per far vedere che il caso vero cadeva lì.
+  const siNominavaPrima = (largoTesto, largoPx, altoPx, corpo) =>
+    largoTesto * ACQUE_MARGINE <= largoPx && altoPx >= corpo * 2.05 * 0.75;
+
+  // I numeri sono misurati nel browser vero, sul caso che ha fatto nascere
+  // la correzione: un lago di due chilometri e mezzo a quattro e mezzo di
+  // distanza, guardato da trenta metri più in alto, con un campo di 45°.
+  const LAGO = { largoPx: 420, altoPx: 11, testo: 107, corpo: 13 };
+  prova('il lago del caso vero adesso si nomina',
+    !!siNomina(0, LAGO.testo, LAGO.largoPx, LAGO.altoPx, LAGO.corpo),
+    `${LAGO.largoPx}×${LAGO.altoPx} pixel per un nome largo ${LAGO.testo}`);
+  prova('con la regola di prima non si nominava',
+    !siNominavaPrima(LAGO.testo, LAGO.largoPx, LAGO.altoPx, LAGO.corpo),
+    `servivano ${(LAGO.corpo * 2.05 * 0.75).toFixed(0)} pixel di spessore, ce n'erano ${LAGO.altoPx}`);
+  prova('e non era un caso limite: da riva nessun lago li avrebbe mai avuti',
+    !siNominavaPrima(LAGO.testo, LAGO.largoPx, 15, LAGO.corpo),
+    `ci vorrebbero ${(LAGO.corpo * 2.05 * 0.75).toFixed(0)} pixel di banda, cioè guardare da una cima`);
+
+  // La prova che tiene in piedi la regola: la larghezza resta l'unica cosa
+  // che conta davvero, e un nome più largo dello specchio non si scrive.
+  prova('un nome più largo del lago non si scrive lo stesso',
+    !siNomina(0, 400, LAGO.largoPx, LAGO.altoPx, LAGO.corpo),
+    'sarebbe un nome appoggiato sul paesaggio attorno, non sull\'acqua');
+  prova('con il posto per due righe torna anche la categoria',
+    siNomina(0, LAGO.testo, LAGO.largoPx, 40, LAGO.corpo).dueRighe,
+    'guardando dall\'alto lo specchio si apre, e «LAGO» ci sta sopra al nome');
+  prova('sulla banda sottile resta il solo nome, su una riga',
+    siNomina(0, LAGO.testo, LAGO.largoPx, LAGO.altoPx, LAGO.corpo).dueRighe === false);
+
+  // Il fiume: la sottigliezza è la sua forma, non un difetto. Le carte
+  // geografiche il nome di un fiume lo scrivono lungo la riga da sempre.
+  prova('un fiume si nomina anche se è una riga',
+    !!siNomina(1, 97, 1387, 2, LAGO.corpo), 'due pixel di spessore, e il nome ci va sopra');
+  prova('una pozza di due pixel invece no',
+    !siNomina(0, 40, 200, 2, LAGO.corpo),
+    'per uno specchio la sottigliezza vuol dire che non lo si vede');
+
+  // Lo scivolamento lungo lo specchio, che è quello che fa convivere il nome
+  // del lago con la lettera del punto cardinale piantata sull'orizzonte.
+  const SCARTI = [0, 0.22, -0.22, 0.44, -0.44, 0.66, -0.66];   // SKY_ACQUE_SCARTI
+  prova('il centro dello specchio resta il primo posto che si prova', SCARTI[0] === 0);
+  prova('si scivola a destra e a sinistra, a passi crescenti',
+    SCARTI.every((v, i) => i === 0 || Math.abs(v) >= Math.abs(SCARTI[i - 1])) &&
+    SCARTI.filter(v => v > 0).length === SCARTI.filter(v => v < 0).length);
+  prova('non si arriva mai alla riva',
+    Math.max(...SCARTI.map(Math.abs)) <= 0.7,
+    'oltre i tre quarti si è più vicini alla sponda che al centro');
+}
+
+// =====================================================================
 // Il verdetto si scrive **dopo** le prove che aspettano (vedi `attendi`): se lo
 // si scrivesse subito direbbe «tutte passate» un istante prima che le ultime
 // abbiano risposto, che è il modo in cui una pagina di prove smette di servire.
