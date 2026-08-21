@@ -174,6 +174,44 @@ const server = http.createServer((req, res) => {
   }));
   ok('il cielo gira fluido', fps > 30, `${fps.toFixed(0)} fotogrammi al secondo con tutto acceso`);
 
+  // --- l'ombra lunare non cambia quando si ingrandisce ---
+  // Questa prova usa il disegno vero di app.js su tele reali. Il difetto che
+  // ha motivato la correzione si vedeva soltanto avvicinandosi alla Luna:
+  // quindi non basta controllare la formula del colore, bisogna anche
+  // verificare che la conversione angoli → pixel e il gradiente del canvas
+  // conservino gli stessi toni a raggi molto diversi.
+  const ombraLunare = await pagina.evaluate(() => {
+    const s = { gamma: 0.62, umbra: 0.70, penombra: 1.25, rL: 0.25, pa: 0 };
+    const ang = {
+      nord: [1, 0, 0], est: [0, 1, 0],
+      schermo: () => 0
+    };
+    const punti = [-0.75, 0, 0.75];
+    const dipingi = (r) => {
+      const margine = 3, lato = Math.ceil(r * 2 + margine * 2);
+      const tela = document.createElement('canvas');
+      tela.width = tela.height = lato;
+      const ctx = tela.getContext('2d', { willReadFrequently: true });
+      ctx.translate(r + margine, r + margine);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      skyDisegnaOmbraLunare(ctx, r, { ombraTerra: s }, ang);
+      return punti.map(x => Array.from(ctx.getImageData(
+        Math.round(r + margine + x * r), Math.round(r + margine), 1, 1).data.slice(0, 3)));
+    };
+    const raggi = [28, 160, 1000], campioni = raggi.map(dipingi);
+    let scarto = 0;
+    for (let i = 1; i < campioni.length; i++) {
+      for (let p = 0; p < punti.length; p++) {
+        for (let c = 0; c < 3; c++) scarto = Math.max(scarto, Math.abs(campioni[i][p][c] - campioni[0][p][c]));
+      }
+    }
+    return { raggi, campioni, scarto };
+  });
+  ok('sfumature dell’eclissi invarianti ingrandendo la Luna',
+    ombraLunare.scarto <= 4,
+    `raggi ${ombraLunare.raggi.join(' → ')} px, scarto massimo ${ombraLunare.scarto}/255`);
+
   // --- le lune di Giove ---
   const giove = await pagina.evaluate(() => {
     const r = luneDiGioveRacconto(new Date());
