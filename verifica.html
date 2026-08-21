@@ -281,6 +281,121 @@ if (primaBortle) localStorage.setItem('astrocalendario_cielo_casa', primaBortle)
 else localStorage.removeItem('astrocalendario_cielo_casa');
 
 // =====================================================================
+titolo('3-bis. Ingrandendo, il cielo si svuota — fin dove è giusto');
+// =====================================================================
+// La segnalazione era «ogni tanto, se cambio il campo, spariscono tutte le
+// stelle», e sparivano davvero: il guadagno dello zoom vale fino a tre
+// magnitudini, ma la stella più debole di questo catalogo è la 7,0. Da
+// qualche parte fra i due gradi e il quarto di grado lo schermo si svuota
+// **per geometria** — un ritaglio di cielo così piccolo, di stelle più
+// luminose della settima, non ne contiene quasi mai —, e chiedere la nona
+// non ne fa comparire nessuna: fa solo credere al disegno di avere tre
+// magnitudini di margine.
+//
+// Le prove qui sotto guardano le due metà: che il limite non prometta più di
+// quello che c'è, e che quello che resta si disegni **più grosso** e non più
+// piccolo — perché tosare il limite, da solo, avrebbe rimpicciolito le poche
+// superstiti proprio nel momento in cui restano sole.
+const fovPrima = sky.fov;
+const bortlePrima = localStorage.getItem('astrocalendario_cielo_casa');
+localStorage.setItem('astrocalendario_cielo_casa', '4');       // periferia: limite 6,0
+
+// La profondità vera del catalogo, misurata invece che dichiarata.
+let magPiuDebole = -99;
+for (let i = 0; i < cat.quante; i++) {
+  const m = cat.magnitudini[i];
+  if (m < 90 && m > magPiuDebole) magPiuDebole = m;             // il 99 sono le saltate
+}
+prova('la stella più debole del catalogo è quella che il codice dichiara',
+      Math.abs(magPiuDebole - catProfonditaCatalogo()) < 0.01,
+      `misurata ${magPiuDebole.toFixed(2)}, dichiarata ${catProfonditaCatalogo().toFixed(2)}`);
+
+sky.fov = 0.25;
+prova('il limite non promette magnitudini che il catalogo non ha',
+      catMagnitudineLimite() <= magPiuDebole + 0.001,
+      `a ${sky.fov}° di campo: voluta ${catMagnitudineVoluta().toFixed(2)}, ` +
+      `concessa ${catMagnitudineLimite().toFixed(2)}`);
+prova('e dice di quanto lo zoom l\'ha superato',
+      Math.abs(catOltreIlCatalogo() - (catMagnitudineVoluta() - catProfonditaCatalogo())) < 1e-9 &&
+      catOltreIlCatalogo() > 1,
+      `${catOltreIlCatalogo().toFixed(2)} magnitudini oltre il catalogo`);
+
+sky.fov = 55;
+prova('a campo largo non si tosa niente: il catalogo basta e avanza',
+      catOltreIlCatalogo() === 0 && Math.abs(catMagnitudineLimite() - catMagnitudineVoluta()) < 1e-9,
+      `limite ${catMagnitudineLimite().toFixed(2)}, oltre ${catOltreIlCatalogo().toFixed(2)}`);
+
+// Una stella deve continuare a crescere con l'ingrandimento.
+const raggioDi = (m) => catRaggioStella(m, catMagnitudineLimite(), catOltreIlCatalogo());
+sky.fov = 55;
+const rLargo = raggioDi(5.0);
+sky.fov = 0.25;
+const rStretto = raggioDi(5.0);
+prova('una stella cresce con l\'ingrandimento invece di rimpicciolire',
+      rStretto > rLargo,
+      `magnitudine 5,0: ${rLargo.toFixed(2)} px a 55° di campo, ${rStretto.toFixed(2)} px a 0,25°`);
+
+// **La prova che tiene insieme le due metà.** Tosare il limite senza
+// restituire l'avanzo al raggio avrebbe rimpicciolito ogni stella proprio
+// dentro all'oculare, dove restano sole: il disegno non deve accorgersi
+// della tosatura, e `limite + oltre` deve tornare a essere la magnitudine
+// che lo zoom aveva chiesto.
+let identici = true, peggiore = 0;
+[0.25, 0.5, 1, 2, 4, 8, 15, 30, 55, 120, 180].forEach(f => {
+  sky.fov = f;
+  const lim = catMagnitudineLimite(), oltre = catOltreIlCatalogo(), voluta = catMagnitudineVoluta();
+  for (let m = -1.5; m <= 7; m += 0.25) {
+    if (m > lim) continue;                                   // non disegnata: non c'è raggio da confrontare
+    const d = Math.abs(catRaggioStella(m, lim, oltre) - catRaggioStella(m, voluta, 0));
+    if (d > peggiore) peggiore = d;
+    if (d > 1e-9) identici = false;
+  }
+});
+prova('tosare il limite non rimpicciolisce nessuna stella disegnata',
+      identici, `scarto massimo ${peggiore.toExponential(1)} px su undici campi visivi`);
+
+// L'ultima riga del catalogo è la più affollata, e con le magnitudini
+// arrotondate al decimo cade **esattamente** sul limite tosato: se il raggio
+// si azzerasse lì, la cura si porterebbe via un centinaio di stelle vere.
+let allUltimaRiga = 0;
+for (let i = 0; i < cat.quante; i++) {
+  if (Math.abs(cat.magnitudini[i] - catProfonditaCatalogo()) < 1e-6) allUltimaRiga++;
+}
+sky.fov = 0.25;
+prova('le stelle esattamente sul limite si disegnano ancora',
+      raggioDi(catProfonditaCatalogo()) > 0,
+      `${allUltimaRiga} stelle stanno esattamente alla magnitudine ` +
+      `${catProfonditaCatalogo().toFixed(2)}: raggio ${raggioDi(catProfonditaCatalogo()).toFixed(2)} px`);
+
+// La trappola del cane che si morde la coda: il secondo livello si scarica
+// solo se qualcuno chiede più della sesta magnitudine. Se quella domanda
+// passasse dal limite già tosato, il file non si chiederebbe mai — e le
+// diecimilacinquecento stelle deboli non arriverebbero mai.
+const livelloPrima = cat.secondoLivello;
+cat.secondoLivello = 'niente';
+sky.fov = 20;
+prova('lo zoom chiede le stelle deboli anche col limite tosato',
+      catMagnitudineVoluta() > CAT_MAG_PRIMO_LIVELLO,
+      `a 20° di campo la magnitudine voluta è ${catMagnitudineVoluta().toFixed(2)}`);
+cat.secondoLivello = 'fallito';
+prova('se le deboli non arrivano, il limite si ferma alla sesta',
+      catProfonditaCatalogo() === CAT_MAG_PRIMO_LIVELLO && catMagnitudineLimite() <= 6.0001,
+      `senza il secondo livello: limite ${catMagnitudineLimite().toFixed(2)}`);
+cat.secondoLivello = livelloPrima;
+
+// Il rovescio della medaglia, ed è il difetto che una cura frettolosa
+// avrebbe introdotto: il cielo profondo ha un altro catalogo e un altro
+// fondo, e non va tosato alla settima magnitudine delle stelle.
+sky.fov = 0.25;
+prova('al massimo ingrandimento gli oggetti profondi ci sono ancora tutti',
+      catLimiteProfondo() >= 11 - 1e-9,
+      `limite del profondo ${catLimiteProfondo().toFixed(2)} (il catalogo arriva alla 11)`);
+
+sky.fov = fovPrima;
+if (bortlePrima) localStorage.setItem('astrocalendario_cielo_casa', bortlePrima);
+else localStorage.removeItem('astrocalendario_cielo_casa');
+
+// =====================================================================
 titolo('4. Toccare una stella');
 // =====================================================================
 // Il colore di una stella è una misura, e da quella si ricava la

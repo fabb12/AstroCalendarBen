@@ -2,7 +2,10 @@
 
 L'eclissi di Luna nel planetario — **fatto**, niente in sospeso.
 
-Branch `claude/lunar-eclipse-planetarium-5a2vox`.
+Branch `claude/lunar-eclipse-planetarium-5a2vox`, con dentro `main` (il
+Sistema Solare 3D del PR #175). **Il primo giro è già in `main`** — quello
+che questo branch aggiunge è il secondo, cioè `SKY_ECL_OMBRA_LUCE` da 0,72
+a 0,44 e le tre prove nuove.
 
 ## Cos'era
 
