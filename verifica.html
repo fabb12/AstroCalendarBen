@@ -5083,6 +5083,128 @@ titolo('21. L\'eclissi di Luna nel planetario (app.js §7.3.2)');
   const vicine = stop.filter(p => p.t * sTot.penombra > sTot.umbra * 0.86 && p.t * sTot.penombra <= bordo).length;
   prova('quasi metà delle fermate stanno a cavallo dell\'orlo dell\'ombra',
     vicine >= stop.length * 0.4, `${vicine} su ${stop.length}, nel 12% del raggio`);
+
+  // ------------------------------------------------------------------
+  // L'ombra è la stessa a qualunque ingrandimento — e questo, misurato,
+  // era già vero. La segnalazione «ingrandendo troppo sulla Luna le
+  // sfumature e l'eclissi scompaiono» non veniva da qui: `gamma`, `umbra`
+  // e `penombra` sono angoli, e diviso `rL` diventano raggi lunari, cioè
+  // un numero puro. Vale la pena scriverlo nero su bianco, perché è il
+  // primo posto in cui si va a guardare e ci si perde del tempo.
+  // Il conto è quello vero di `skyDisegnaOmbraLunare`: `perGrado` è `r / rL`,
+  // il gradiente ha raggio `penombra * perGrado` e la sua fermata a `t` vale
+  // `rho = t * penombra`. Il pixel a `f` raggi lunari dal centro della Luna,
+  // lungo l'asse dell'ombra, deve tornare sempre lo stesso colore.
+  function eclColorePixel(s, r, f) {
+    const perGrado = r / s.rL;
+    const centro = s.gamma * perGrado;            // dov'è il centro dell'ombra, in pixel
+    const rp = s.penombra * perGrado;             // raggio del gradiente, in pixel
+    const distanza = Math.abs(centro - f * r);    // quanto dista il pixel dal centro
+    const t = Math.max(0, Math.min(1, distanza / rp));
+    return eclColore(s, t * s.penombra);
+  }
+  let invariante = true, scartoMax = 0;
+  const atteso = [-1, -0.5, 0, 0.5, 1].map(f => eclColorePixel(sTot, 14, f));
+  for (const r of [14, 37, 163, 651, 20000]) {
+    [-1, -0.5, 0, 0.5, 1].forEach((f, i) => {
+      const c = eclColorePixel(sTot, r, f);
+      for (let k = 0; k < 3; k++) {
+        scartoMax = Math.max(scartoMax, Math.abs(c[k] - atteso[i][k]));
+        if (Math.abs(c[k] - atteso[i][k]) > 0.5 / 255) invariante = false;
+      }
+    });
+  }
+  prova('l\'ombra è la stessa a qualunque ingrandimento (il difetto NON è qui)',
+    invariante,
+    `dischi da 14 a 20.000 px di raggio, scarto massimo ${(scartoMax * 255).toFixed(3)} livelli su 255`);
+}
+
+// =====================================================================
+titolo('21-bis. La faccia della Luna ingrandita (app.js §7.3.2)');
+// =====================================================================
+//
+// Il difetto vero della segnalazione stava qui, e non nell'ombra. Al campo
+// minimo (0,25°) la Luna è disegnata **più larga dello schermo**: su un
+// telefono da 420 punti con due pixel per punto sono duemilaseicento pixel
+// veri. La faccia veniva dipinta su una tela con il tetto a 256 — dieci
+// volte più piccola — e ricopiata grande: una sfocatura da cui non torna
+// indietro niente. Sotto l'ombra della Terra, che moltiplica la faccia per
+// un terzo, di quel poco contrasto non restava niente, e lo schermo era un
+// campo marrone uniforme.
+//
+// Come per il §19 e il §21, questa pagina non carica `app.js`: le due
+// funzioni qui sotto sono una **copia**.
+{
+  const TELA_MAX = 1024;                 // SKY_TELA_LATO_MAX
+  const TELA_BASE = 256;                 // SKY_LUNA_TELA_BASE
+  const GIRI_MAX = 2;                    // SKY_LUNA_GIRI_MAX
+
+  function latoTela(rPixel, dpr) {
+    const d = Math.min(dpr || 1, 2);
+    let lato = 64;
+    while (lato < rPixel * 2 * d && lato < TELA_MAX) lato *= 2;
+    return lato;
+  }
+  function giriDettaglio(lato) {
+    return Math.min(GIRI_MAX, Math.round(Math.log2(Math.max(1, (lato || 0) / TELA_BASE))));
+  }
+
+  // Il caso vero: telefono, campo minimo. Il raggio disegnato della Luna a
+  // 0,25° di campo su uno schermo alto 700 punti è ~650 punti (mezzo grado
+  // di disco contro un quarto di grado di campo).
+  const rMax = 650, dpr = 2;
+  const lato = latoTela(rMax, dpr);
+  const ingrandimento = (rMax * 2 * dpr) / lato;
+  prova('al campo minimo la faccia non è ingrandita più di tre volte',
+    ingrandimento < 3, `tela ${lato}, disco ${rMax * 2 * dpr} px veri: ×${ingrandimento.toFixed(1)} (era ×10,2 col tetto a 256)`);
+  prova('e la tela non supera mai il tetto',
+    latoTela(100000, 2) === TELA_MAX, `${TELA_MAX} px di lato, quattro megabyte`);
+
+  // La Luna a campo largo non deve cambiare di un pixel: è la promessa che
+  // rende sicuro aggiungere dettaglio. A 14 px di raggio (l'icona) la tela
+  // resta quella di sempre e le generazioni fini sono zero.
+  prova('a campo largo la tela è quella di sempre, e il dettaglio fine non c\'è',
+    latoTela(14, 2) === 64 && giriDettaglio(64) === 0 && giriDettaglio(256) === 0,
+    'fino a 256 px di tela il disegno è identico a prima');
+  prova('il dettaglio fine entra raddoppiando la tela, una generazione per volta',
+    giriDettaglio(512) === 1 && giriDettaglio(1024) === 2,
+    '512 → una generazione, 1024 → due');
+  prova('e si ferma a due generazioni',
+    giriDettaglio(4096) === GIRI_MAX && giriDettaglio(65536) === GIRI_MAX,
+    'la terza avrebbe crateri di due pixel e costerebbe più delle prime due insieme');
+
+  // La legge di potenza dei crateri: dimezzando la taglia se ne trovano tre
+  // volte tanti. Con un numero fisso, a forte ingrandimento sotto gli occhi
+  // ne restava una quindicina — ed è il conto che si vedeva sullo schermo.
+  const quanti = g => Math.round(260 * Math.pow(3, g - 1));
+  // quanti se ne vedono guardando un quinto del diametro del disco (il campo
+  // minimo): l'area vista è (1/5)² della sezione del disco
+  const inVista = g => quanti(g) * Math.pow(0.2, 2);
+  prova('a forte ingrandimento sotto gli occhi restano crateri a sufficienza',
+    inVista(1) + inVista(2) > 40,
+    `${Math.round(inVista(1) + inVista(2))} nel quadro, contro i ${Math.round(260 * 0.04 * 2)} di un numero fisso`);
+  // Il primo giro ha la taglia dei crateri di sempre, non la metà: sono loro
+  // la misura che riempie lo schermo quando la Luna è più larga dello schermo.
+  const scala = g => Math.pow(0.5, g - 1);
+  prova('il primo giro ha la taglia dei crateri di sempre, non la metà',
+    scala(1) === 1 && scala(2) === 0.5,
+    'con la metà, al campo minimo restavano puntini e la superficie sembrava liscia');
+
+  // Il bilancio della memoria: salendo di zoom si attraversano tutte le
+  // taglie dello stesso astro, e senza un tetto in pixel resterebbero tutte.
+  const budget = 6e6;                    // skyTelePixelMax() sul telefono
+  const scalaIntera = [64, 128, 256, 512, 1024].reduce((s, l) => s + l * l, 0);
+  prova('la scala intera delle taglie di un astro sta larga dentro al bilancio',
+    scalaIntera * 4 < budget,
+    `${(scalaIntera / 1e6).toFixed(2)} milioni di pixel a testa, quattro astri su ${(budget / 1e6)} concessi`);
+  prova('il bilancio è una rete, non una strozzatura: morde al quinto astro',
+    scalaIntera * 5 > budget,
+    'ingrandendo di astri sullo schermo ce n\'è uno, ma la memoria non si lascia aperta');
+  // Il caso che il tetto in pixel esiste per evitare: centottanta tele
+  // grandi come il tetto sarebbero settecento megabyte.
+  prova('senza bilancio le sole tele grandi sfonderebbero la memoria',
+    180 * TELA_MAX * TELA_MAX * 4 > 700e6,
+    `${Math.round(180 * TELA_MAX * TELA_MAX * 4 / 1e6)} MB con il solo tetto sul numero`);
 }
 
 // =====================================================================

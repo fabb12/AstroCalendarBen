@@ -11227,25 +11227,58 @@ const skyTele = new Map();
 // evitare, fatto sessanta volte al secondo.
 //
 // La fila dev'essere quindi almeno larga quanto un fotogramma pieno. Le
-// tele sono piccole (64 o 128 pixel di lato quasi sempre, 256 al massimo
-// sul telefono) e chi ha il cielo profondo spento non ne crea nessuna: si
-// paga solo quando serve.
+// tele sono piccole (64 o 128 pixel di lato quasi sempre) e chi ha il cielo
+// profondo spento non ne crea nessuna: si paga solo quando serve. Le poche
+// grandi — quelle di un astro ingrandito — le tiene a bada il bilancio in
+// pixel della riga qui sotto, che il conto sul numero da solo non basta.
 function skyTeleMax() {
   return quanto(96, 140, 180);
 }
 
+// Il numero delle tele non basta a tenere a bada la memoria, e da quando la
+// faccia segue il disco disegnato (`skyLatoTela`) non basta proprio più: sul
+// telefono il tetto era 256 pixel di lato, cioè un quarto di megabyte a tela,
+// e centottanta di quelle erano quarantasette megabyte — un conto che si
+// poteva fare a occhio. Adesso una sola tela può essere 1024×1024, cioè
+// quattro megabyte da sé, e centottanta sarebbero settecento.
+//
+// Quindi si tiene anche un **bilancio in pixel**, e si butta la più vecchia
+// finché tutt'e due i conti tornano. Le tele grosse ne esistono poche per
+// forza — ci si arriva solo ingrandendo, e ingrandendo di astri sullo schermo
+// ce n'è uno — ma salendo di zoom si attraversano tutte le taglie della scala
+// (256, 512, 1024 dello stesso astro), ed è quella la fila che va potata.
+function skyTelePixelMax() {
+  return quanto(6, 16, 24) * 1e6;
+}
+
 // Quanto grande dipingere una faccia: la potenza di due che copre il
 // diametro sullo schermo, tenendo conto dei pixel veri del display. Più
-// grande di così non si vedrebbe, e su un telefono si sentirebbe — per questo
-// il tetto resta basso lì, ma sale su tablet e computer: da quando ci si può
-// avvicinare alla Terra molto più di prima (`SOL_ZOOM_MAX_TERRA`), un tetto
-// di 512 px veniva superato dal disco vero e la tela usciva sgranata,
-// ricopiata più grande di quanto fosse stata dipinta.
+// grande di così non si vedrebbe, e su un telefono si sentirebbe.
+//
+// Il tetto era `quanto(256, 512, 1024)`, ed era la ragione per cui **la Luna
+// ingrandita diventava una macchia**. Al campo minimo (0,25°) il disco lunare
+// è disegnato più largo dello schermo: su un telefono da 420 punti con due
+// pixel per punto sono duemilaseicento pixel veri, dipinti a partire da una
+// tela di duecentocinquantasei — un ingrandimento di dieci volte, cioè una
+// sfocatura da cui non torna indietro niente. È lo stesso guasto già trovato
+// sulla Terra della vista 3D (`SOL_ZOOM_MAX_TERRA`), e la cura è la stessa:
+// la tela deve seguire il disco.
+//
+// Il tetto adesso è **1024 per tutti**, e i due numeri che lo scelgono sono
+// il tempo e la memoria, non il tipo di apparecchio. Il tempo: dipingere una
+// faccia costa in proporzione all'area, e si misura — 1024 sono un decimo di
+// secondo, 2048 quattro decimi. Quella pausa capita una volta sola per taglia,
+// ma capita **mentre si sta ingrandendo**, che è l'unico istante in cui si
+// vede. La memoria: 1024×1024 sono quattro megabyte a tela. In cambio, al
+// campo minimo, il disco resta ingrandito due volte e mezzo invece di dieci —
+// e il resto lo fa il dettaglio fine di `skyLunaDettaglioFine`, che a parità
+// di tela mette sulla superficie cose da guardare.
+const SKY_TELA_LATO_MAX = 1024;
+
 function skyLatoTela(rPixel) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const tetto = quanto(256, 512, 1024);
   let lato = 64;
-  while (lato < rPixel * 2 * dpr && lato < tetto) lato *= 2;
+  while (lato < rPixel * 2 * dpr && lato < SKY_TELA_LATO_MAX) lato *= 2;
   return lato;
 }
 
@@ -11269,13 +11302,26 @@ function skyPelle(chiave, lato, pennello) {
     c.translate(lato / 2, lato / 2);
     c.scale(lato / 2, lato / 2);
     c.lineWidth = 0.008;
-    pennello(c);
+    // Il lato arriva anche al pennello, ed è l'unico modo che ha di sapere
+    // quanto grande sarà guardato: chi ha dettaglio fine da aggiungere lo
+    // aggiunge solo sulle tele grandi (vedi `skyDipingiLuna`), così la Luna
+    // a campo largo resta esattamente quella di sempre.
+    pennello(c, lato);
   } catch (e) {
     tela = null;                  // niente tela: si ripiega sul disco sfumato
   }
   skyTele.set(k, tela);
-  const tetto = skyTeleMax();
-  while (skyTele.size > tetto) skyTele.delete(skyTele.keys().next().value);
+  const tetto = skyTeleMax(), pixelMax = skyTelePixelMax();
+  // Si buttano le più vecchie finché tornano tutt'e due i conti — il numero e
+  // i pixel — ma mai quella appena dipinta: è quella che si sta guardando.
+  let pixel = 0;
+  skyTele.forEach(t => { if (t) pixel += t.width * t.height; });
+  while (skyTele.size > 1 && (skyTele.size > tetto || pixel > pixelMax)) {
+    const vecchia = skyTele.keys().next().value;
+    const via = skyTele.get(vecchia);
+    if (via) pixel -= via.width * via.height;
+    skyTele.delete(vecchia);
+  }
   return tela;
 }
 
@@ -11442,7 +11488,77 @@ function skyDipingiMare(ctx, m) {
   }
 }
 
-function skyDipingiLuna(ctx) {
+// Il dettaglio che si vede solo da vicino.
+//
+// Il disegno della Luna qui sotto è tarato sul disco che si vede a occhio:
+// i mari, una grana larga il due per cento del disco, i crateri con un nome.
+// Basta e avanza finché la Luna è un dischetto di quattordici pixel. Ma il
+// planetario si stringe fino a un quarto di grado, e lì il disco è disegnato
+// più largo dello schermo: sotto gli occhi resta un pezzo di superficie che
+// nel disegno **non ha niente scritto sopra**, e quello che si vede è una
+// campitura liscia. Durante un'eclissi il difetto raddoppia, perché l'ombra
+// moltiplica la faccia per un terzo e schiaccia insieme a lei il poco
+// contrasto rimasto: la Luna diventa un campo marrone uniforme, ed è la
+// segnalazione «ingrandendo le sfumature e l'eclissi scompaiono».
+//
+// Il rimedio non è disegnare più roba: è disegnarne di più **quando la tela
+// è grande**. Ogni raddoppio del lato aggiunge una generazione di crateri e
+// di grana — la prima alla taglia di quelli di sempre, le altre dimezzando —
+// che è come è fatta davvero una superficie battuta dai meteoriti, e ha il
+// pregio di non toccare di un pixel la Luna a campo largo, dove la tela
+// resta quella di sempre.
+//
+// Il seme è un altro (`luna-fine`): pescando dal generatore di sopra si
+// sposterebbero i crateri con un nome e le raggiere, che stanno dove stanno.
+const SKY_LUNA_TELA_BASE = 256;      // fin qui, la Luna di sempre
+// Due generazioni e non di più, e il tetto non è prudenza: la terza avrebbe
+// crateri larghi due pixel della tela, cioè sotto la misura che il disegno
+// sa tenere, e costerebbe da sola più delle due di prima messe insieme (i
+// crateri triplicano a ogni giro). La tela si dipinge una volta sola, ma
+// quella volta capita mentre si sta ingrandendo, ed è l'unico istante in cui
+// una pausa si vede.
+const SKY_LUNA_GIRI_MAX = 2;
+
+function skyLunaDettaglioFine(ctx, lato) {
+  const giri = Math.min(SKY_LUNA_GIRI_MAX,
+    Math.round(Math.log2(Math.max(1, (lato || 0) / SKY_LUNA_TELA_BASE))));
+  if (giri < 1) return;
+  const caso = skyCaso(skySeme('luna-fine'));
+  for (let g = 1; g <= giri; g++) {
+    // La prima generazione ha la stessa taglia dei crateri di sempre, non la
+    // metà: sono loro la misura che riempie lo schermo quando la Luna è
+    // disegnata più larga dello schermo, e nel disegno di sempre ci sono ma
+    // con un rilievo appena accennato, che sotto l'ombra della Terra sparisce.
+    // Le generazioni dopo dimezzano, e servono a chi ingrandisce ancora.
+    const scala = Math.pow(0.5, g - 1);
+    // Quanti. Non lo stesso numero a ogni generazione: sulla Luna vera i
+    // crateri seguono una legge di potenza — dimezzando il diametro se ne
+    // trovano tre volte tanti — ed è quella legge a fare la differenza fra
+    // una superficie e una spolverata di puntini. Con un numero fisso, a
+    // forte ingrandimento sotto gli occhi ne restavano una quindicina.
+    const quanti = Math.round(260 * Math.pow(3, g - 1));
+    // Il contrasto è più alto di quello dei fratelli grandi (0,5 contro
+    // 0,16), e non è un vezzo: qui sotto ci passa l'ombra della Terra, che
+    // moltiplica tutto per un terzo — un rilievo appena accennato,
+    // moltiplicato per un terzo, non esiste più.
+    skyCrateriSfera(ctx, caso, quanti, {
+      min: 0.007 * scala, max: 0.03 * scala,
+      fondo: 'rgba(96, 92, 88, 0.50)', orlo: 'rgba(248, 244, 236, 0.45)'
+    });
+    // e la grana fra un cratere e l'altro: chiazze chiare e scure, che è
+    // quello che distingue una superficie da una campitura
+    for (let i = 0; i < quanti * 0.6; i++) {
+      const lon = caso() * 360 - 180;
+      const lat = Math.asin(caso() * 2 - 1) * SKY_R2D;
+      const chiaro = caso() > 0.5;
+      skyMacchiaSfera(ctx, lon, lat, (0.016 + caso() * 0.06) * scala, (c, r) => {
+        skyNuvola(c, r, chiaro ? '#f2ede2' : '#75726c', 0.2, 0.1);
+      });
+    }
+  }
+}
+
+function skyDipingiLuna(ctx, lato) {
   const caso = skyCaso(skySeme('luna'));
   ctx.save();
   ctx.beginPath();
@@ -11472,6 +11588,11 @@ function skyDipingiLuna(ctx) {
     evita: skyDentroUnMare, min: 0.005, max: 0.038,
     fondo: 'rgba(120, 116, 110, 0.16)', orlo: 'rgba(233, 228, 218, 0.15)'
   });
+
+  // Il dettaglio che compare solo sulle tele grandi, cioè solo quando la
+  // Luna è disegnata da vicino. Va qui e non in fondo: i crateri con un nome
+  // e le loro raggiere devono restare sopra a tutto.
+  skyLunaDettaglioFine(ctx, lato);
 
   // Quelli grandi, con nome: attorno hanno il mantello di detriti chiari
   // lanciati dall'impatto, che è ciò che li rende riconoscibili
