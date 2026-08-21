@@ -889,6 +889,29 @@
               <circle cx="12" cy="12" r="1.8"/>
             </svg>
           </button>
+          <!-- La stessa scena, guardata da fuori. Il tasto c'era già, ma in
+               fondo al pannello Astri — cioè dietro a un elenco che su un
+               telefono corre per due schermate, e dentro a un pannello che a
+               schermo intero non si apre nemmeno. Qui sta sulla mappa, in
+               colonna con gli altri comandi del guardare, e da un tocco solo
+               si è già dentro alla scena a tutto schermo puntata sulla Terra.
+               Il segno è l'orbita di Lucide — il Sole in mezzo, due corpi che
+               gli girano intorno e l'anello aperto — e non un'ellisse con un
+               puntino dentro, che alla misura di questi tasti si legge come
+               un occhio (provato: accanto al bersaglio dell'inseguimento
+               sembravano due comandi della stessa famiglia). -->
+          <button id="skymap-btn-sistema-mappa" type="button" class="tasto-sistema-cielo"
+            title="Il Sistema Solare visto da fuori, nello stesso istante: si apre a tutto schermo, puntato sulla Terra"
+            aria-label="Il Sistema Solare in 3D">
+            <svg class="icona-disegnata" width="22" height="22" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/>
+              <circle cx="19" cy="5" r="2"/>
+              <circle cx="5" cy="19" r="2"/>
+              <path d="M10.4 21.9a10 10 0 0 0 9.941-15.416"/>
+              <path d="M13.5 2.1a10 10 0 0 0-9.841 15.416"/>
+            </svg>
+          </button>
           <div class="riga-registra-cielo">
             <!-- Compare solo mentre si registra: quanto manca alla fine -->
             <span id="skymap-reg-tempo" class="tempo-reg" aria-live="polite"></span>
@@ -1466,7 +1489,15 @@
       <div class="corpo-modale spazio-verticale">
         <div id="sol-guscio" class="sol-guscio">
           <canvas id="sol-canvas" class="block w-full tela-sistema"></canvas>
-          <p class="sol-suggerimento">Trascina per girare · due dita per spostare e avvicinare · tocca un pianeta</p>
+          <p class="sol-suggerimento">Trascina per girare · tocca un pianeta</p>
+
+          <!-- La scheda del corpo scelto. Sta **dentro** al guscio, appoggiata
+               sulla scena come la scheda dell'oggetto nel planetario, e non
+               più giù nella finestra: da quando si entra già a tutto schermo,
+               una scheda fuori dal guscio è una scheda che non si vede mai.
+               Compare toccando un corpo e se ne va col suo ✕: a riposo sulla
+               scena non c'è niente. -->
+          <aside id="sol-scheda" class="sol-scheda hidden" aria-live="polite"></aside>
 
           <!-- I comandi appoggiati sulla scena, come quelli sulla mappa del
                planetario. Stanno qui e non nella fila di sotto perché servono
@@ -1606,22 +1637,17 @@
           </div>
         </div>
 
-        <div id="sol-scheda" class="sol-scheda"></div>
-
-        <p class="sol-nota">Stesso istante del planetario: se lo sposti qui, si sposta anche là.
-          Si entra guardando da sopra la Terra, che sta sotto al Sole: a sinistra i pianeti della sera,
-          a destra quelli del mattino. La Luna è disegnata più lontana dalla Terra di quanto sia,
-          o starebbe dentro al pallino; le due fasce di sassi sono nuvole di punti sorteggiati, non
-          i sassi veri — quello che è vero è dove comincia e dove finisce ognuna, e i vuoti che ci sono dentro.
-          Avvicinandosi alla Terra compaiono le coste vere, il confine fra il giorno e la notte, le luci
-          delle città nella metà scura e il puntino di dove sei.
-          <strong>Terra e Luna</strong> è invece una scena a parte, e lì <em>non</em> c'è niente di
-          ingrandito: i due corpi, la distanza fra loro e i due coni d'ombra sono tutti allo stesso metro,
-          perché è l'unico modo perché il disegno risponda davvero alla domanda — se l'ombra fosse gonfiata
-          anche solo del doppio, ogni Luna piena finirebbe dentro.</p>
+        <!-- L'elenco dei pianeti: è il modo più veloce per sceglierne uno
+             senza cercarlo sulla scena. Resta qui sotto, fuori dal guscio —
+             a tutto schermo si sceglie toccando il corpo, che è il gesto
+             naturale, e questa fila sarebbe una tabella davanti a un
+             panorama. Qui c'era anche una nota di dodici righe che spiegava
+             la scena: quello che il disegno dice già da sé non ha bisogno di
+             essere scritto sotto. -->
+        <div id="sol-elenco" class="sol-tabella"></div>
 
         <div class="barra-chiudi">
-          <button id="btn-chiudi-sistema-basso" type="button" class="tasto-chiudi-largo">Chiudi la scheda</button>
+          <button id="btn-chiudi-sistema-basso" type="button" class="tasto-chiudi-largo">Chiudi</button>
         </div>
       </div>
     </div>

@@ -21845,9 +21845,13 @@ function inizializzaSkymap() {
   });
   collega('skymap-btn-insegui', () => { skyAlternaInseguimento(); skyMostraGruppo(''); });
   collega('skymap-btn-insegui-mappa', () => { skyAlternaInseguimento(); skyMostraGruppo(''); });
-  // Il Sistema Solare visto da fuori (sezione 7.7): sta in fondo al pannello
-  // degli astri, subito sotto l'elenco da cui si sceglie il pianeta
+  // Il Sistema Solare visto da fuori (sezione 7.7). Due tasti per la stessa
+  // finestra, e non è un doppione: quello del pannello Astri sta accanto ai
+  // pianeti, che è dove nasce la domanda, ma vive dentro a un pannello — e a
+  // schermo intero i pannelli non si aprono. Quello sulla mappa è il comando
+  // vero e proprio, in colonna con lo schermo intero e l'inseguimento.
   collega('skymap-btn-sistema', () => { apriSistemaSolare(); skyMostraGruppo(''); });
+  collega('skymap-btn-sistema-mappa', () => { apriSistemaSolare(); skyMostraGruppo(''); });
   skyAggiornaTastoInsegui();
   document.querySelectorAll('#cielo-comandi [data-verso]').forEach(b => {
     b.addEventListener('click', () => {
@@ -22954,7 +22958,6 @@ window.cercaNelCielo = (idCorpo) => {
 // =====================================================================
 
 const SOL_UA_KM = 149597870.7;
-const SOL_LUCE_MIN_UA = 8.3167;     // minuti che la luce impiega per un'unità astronomica
 const SOL_RIF_UA = 30.07;           // Nettuno: il metro con cui si normalizza tutto il disegno
 
 // I pianeti, col loro colore del planetario (chi arriva qui riconosce le
@@ -25903,6 +25906,17 @@ function solElongazione(corpo, terra) {
   return { gradi, est: d < 180, distanza: nb };
 }
 
+// Le stesse parole, in tre sillabe: è quello che sta scritto in coda a ogni
+// riga dell'elenco e accanto all'angolo nella scheda. Sta qui, in una
+// funzione sola, perché le due letture dello stesso numero dicessero la
+// stessa cosa — erano due copie della stessa catena di ternari.
+function solQuandoBreve(el) {
+  if (!el) return '';
+  if (el.gradi < 15) return 'nella luce del Sole';
+  if (el.gradi > 150) return 'tutta la notte';
+  return el.est ? 'la sera' : 'la mattina';
+}
+
 // Che cosa vuol dire, per chi stanotte esce a guardare
 function solQuandoSiVede(el, corpo) {
   if (!el) return '';
@@ -25934,8 +25948,7 @@ function solRigaTabella(p, terra) {
         <span class="sol-dato">${solNumero(p.r, 3)} UA dal Sole</span>
       </button>`;
   }
-  const breve = el.gradi < 15 ? 'nella luce del Sole'
-    : (el.gradi > 150 ? 'tutta la notte' : (el.est ? 'la sera' : 'la mattina'));
+  const breve = solQuandoBreve(el);
   return `<button type="button" class="sol-riga-pianeta${scelto}" data-sol-pianeta="${p.id}">
       <span class="sol-pallino" style="background:${p.colore}"></span>
       <span class="sol-nome">${p.nome}</span>
@@ -25960,57 +25973,91 @@ function solAzioniPerno(id, complemento) {
   return `<div class="sol-azioni">${guarda}${perno}</div>`;
 }
 
-function solSchedaHtml() {
-  if (!sol.pianeti.length) {
-    return '<p class="sol-vuoto">Senza la libreria di calcolo non si possono mettere i pianeti al loro posto. ' +
-      'Torna quando c\'è rete: da lì in poi funziona anche offline.</p>';
-  }
-  if (sol.vicino) return solSchedaVicinoHtml();
-  const terra = sol.pianeti.find(p => p.id === 'Earth');
-  const scelto = sol.pianeti.find(p => p.id === sol.scelto) || null;
-
-  let testa = '';
-  if (scelto && scelto.id !== 'Earth') {
-    const el = solElongazione(scelto, terra);
-    const luce = el.distanza * SOL_LUCE_MIN_UA;
-    const luceTesto = luce < 60 ? `${Math.round(luce)} minuti` : `${solNumero(luce / 60, 1)} ore`;
-    testa = `<div class="sol-testa">
-        <h4 style="color:${scelto.colore}">${scelto.nome}</h4>
-        <ul class="sol-dati">
-          <li><span>Dal Sole</span><strong>${solNumero(scelto.r, 3)} UA</strong></li>
-          <li><span>Da noi</span><strong>${solNumero(el.distanza, 3)} UA</strong>
-            <em>${solNumero(el.distanza * SOL_UA_KM / 1e6, 0)} milioni di km</em></li>
-          <li><span>La sua luce ci mette</span><strong>${luceTesto}</strong></li>
-          <li><span>Angolo dal Sole in cielo</span><strong>${Math.round(el.gradi)}°</strong>
-            <em>${el.gradi < 3 || el.gradi > 177 ? 'in linea' : (el.est ? 'a est del Sole' : 'a ovest del Sole')}</em></li>
-        </ul>
-        <p class="sol-frase">${solQuandoSiVede(el, scelto)}</p>
-        ${solAzioniPerno(scelto.id, 'a ' + scelto.nome)}
-      </div>`;
-  } else if (scelto) {
-    // Il tocco che ha scelto la Terra l'ha già messa al centro della
-    // telecamera (`solScegli`): qui la scheda deve dirlo, non ripetere
-    // l'invito. Il solo caso in cui si vede l'invito è arrivare qui già con
-    // la Terra scelta ma senza esserci ancora sopra (si apre la finestra
-    // puntati su di lei, un caso raro ma non impossibile).
-    const sopra = sol.perno === 'Earth';
-    testa = `<div class="sol-testa">
-        <h4 style="color:${scelto.colore}">Terra</h4>
-        <p class="sol-frase">${sopra
-          ? 'Stai girando intorno alla Terra: trascina per guardarla da un’altra parte, e vedi dove sono finiti gli altri pianeti nello spazio qui vicino.'
-          : 'Sei qui, sul pallino azzurro. La riga che parte da qui, quando scegli un pianeta, è la direzione in cui devi guardare: è la stessa che il planetario ti mostra dentro alla cupola.'}</p>
-        ${solAzioniPerno('Earth', 'alla Terra')}
-      </div>`;
-  }
-
-  const righe = sol.pianeti.map(p => solRigaTabella(p, terra)).join('');
-  return `${testa}<div class="sol-tabella">${righe}</div>`;
+// La testata della scheda: il nome del corpo e il ✕ per mandarla via. La
+// scheda sta appoggiata sulla scena, quindi deve poter sparire: senza il ✕
+// l'unico modo di toglierla di mezzo sarebbe ritoccare il corpo, che è un
+// gesto che nessuno indovina.
+function solTestaScheda(nome, colore, chiudibile = true) {
+  const chiudi = chiudibile
+    ? '<button type="button" class="tasto-chiudi-dettaglio" onclick="solChiudiScheda()" ' +
+      'title="Chiudi la scheda" aria-label="Chiudi la scheda">✕</button>'
+    : '';
+  return `<div class="sol-scheda-testa"><h4 style="color:${colore}">${nome}</h4>${chiudi}</div>`;
 }
 
-// La scheda del banco delle eclissi: i tre numeri che il disegno fa vedere,
+// La scheda del corpo scelto, ridotta all'osso.
+//
+//   Prima erano due cose in una: la lettura del pianeta scelto *e* la tabella
+//   di tutti e otto, una sotto l'altra, in fondo a una finestra che adesso si
+//   apre a tutto schermo — cioè in un posto che non si vede mai. Adesso la
+//   scheda è solo la lettura, appoggiata sulla scena, e la tabella è
+//   `solElencoHtml()`, che resta giù nella finestra.
+//
+//   Cosa ci resta dentro: i due numeri che dicono dov'è il pianeta (dal Sole
+//   e da noi) e quello che dice quando lo si vede. Sono usciti il tempo di
+//   volo della luce, i milioni di chilometri e le due frasi lunghe: erano
+//   spiegazioni, e una spiegazione appoggiata sopra al disegno che la
+//   illustra copre proprio la cosa da guardare.
+function solSchedaHtml() {
+  if (!sol.pianeti.length) {
+    return '<p class="sol-vuoto">Senza la libreria di calcolo non si possono mettere i pianeti al loro posto.</p>';
+  }
+  if (sol.vicino) return solSchedaVicinoHtml();
+  const scelto = sol.pianeti.find(p => p.id === sol.scelto) || null;
+  // Niente scelto, niente scheda: a riposo sulla scena non c'è nessun
+  // pannello, ed è tutto il senso di questa vista.
+  if (!scelto) return '';
+
+  if (scelto.id === 'Earth') {
+    return `${solTestaScheda('Terra', scelto.colore)}
+      <ul class="sol-dati">
+        <li><span>Dal Sole</span><strong>${solNumero(scelto.r, 3)} UA</strong></li>
+        <li><span>Sei qui</span><strong>${sol.perno === 'Earth' ? 'ci stai girando intorno' : 'il pallino azzurro'}</strong></li>
+      </ul>
+      ${solAzioniPerno('Earth', 'alla Terra')}`;
+  }
+
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  const el = solElongazione(scelto, terra);
+  if (!el) return '';
+  return `${solTestaScheda(scelto.nome, scelto.colore)}
+      <ul class="sol-dati">
+        <li><span>Dal Sole</span><strong>${solNumero(scelto.r, 3)} UA</strong></li>
+        <li><span>Da noi</span><strong>${solNumero(el.distanza, 3)} UA</strong></li>
+        <li><span>Angolo dal Sole</span><strong>${Math.round(el.gradi)}°</strong></li>
+        <li><span>Si vede</span><strong>${solQuandoBreve(el)}</strong></li>
+      </ul>
+      ${solAzioniPerno(scelto.id, 'a ' + scelto.nome)}`;
+}
+
+// L'elenco dei pianeti, che è anche il modo più veloce per sceglierne uno.
+// Sta giù nella finestra e non sulla scena: a tutto schermo si sceglie
+// toccando il corpo, e una tabella di otto righe davanti a un panorama è la
+// definizione di quello che questa finestra non deve essere.
+function solElencoHtml() {
+  if (!sol.pianeti.length || sol.vicino) return '';
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  return sol.pianeti.map(p => solRigaTabella(p, terra)).join('');
+}
+
+// Mandare via la scheda senza cambiare quello che si sta guardando: la
+// telecamera resta dov'è (perno compreso), va via solo la lettura.
+window.solChiudiScheda = () => {
+  sol.scelto = null;
+  solAggiornaScheda(true);
+  solDisegna();
+};
+
+// La scheda del banco delle eclissi: i numeri che il disegno fa vedere,
 // scritti, più la frase che dice come sono andate a finire. Il tasto verso la
 // lezione dei nodi non è un ornamento — «vicino a un nodo» è l'unica parte
 // del discorso che questo disegno mostra senza spiegarla, e lì è spiegata.
+//
+// Anche qui sono uscite le note in corsivo sotto a ogni numero (i raggi
+// terrestri, le volte la Luna, il «ci arriva per un pelo»): la scheda adesso
+// sta appoggiata sulla scena, e ogni riga in più è un pezzo di scena in meno.
+// Qui il ✕ non c'è: questa scheda **è** il banco, e il modo di andarsene è
+// «Torna ai pianeti», che è scritto sotto.
 function solSchedaVicinoHtml() {
   const s = solStatoEclissi(new Date(sol.istante || skyAdesso().getTime()));
   if (!s) {
@@ -26025,49 +26072,60 @@ function solSchedaVicinoHtml() {
   let righe;
   if (s.versante === 'nuova' && s.solare) {
     const scarto = s.solare.miss - RAGGIO_TERRA_KM;
-    righe = `<li><span>Ombra piena della Luna, quanto è lunga</span>
-          <strong>${km(s.solare.apice)} km</strong>
-          <em>la Terra è a ${km(s.distanza)}: ci arriva per un pelo, o non ci arriva</em></li>
-        <li><span>Dove passa l’asse dell’ombra</span>
-          <strong>${scarto <= 0 ? 'sulla Terra' : `${km(scarto)} km oltre il bordo`}</strong>
-          <em>${km(s.solare.miss)} km dal centro del pianeta</em></li>`;
+    righe = `<li><span>Ombra della Luna</span><strong>${km(s.solare.apice)} km</strong></li>
+        <li><span>L’asse passa</span>
+          <strong>${scarto <= 0 ? 'sulla Terra' : `${km(scarto)} km oltre`}</strong></li>`;
   } else {
     const bersaglio = s.scarto < s.umbra + RAGGIO_LUNA_KM
-      ? 'dentro al bersaglio'
-      : `${km(s.scarto - s.umbra)} km fuori dal bordo dell’ombra`;
-    righe = `<li><span>Ombra piena della Terra, là dove passa la Luna</span>
-          <strong>${km(s.umbra)} km di raggio</strong>
-          <em>${(s.umbra / RAGGIO_LUNA_KM).toFixed(1)} volte la Luna</em></li>
-        <li><span>Quanto la Luna manca il bersaglio</span><strong>${bersaglio}</strong></li>`;
+      ? 'dentro'
+      : `${km(s.scarto - s.umbra)} km fuori`;
+    righe = `<li><span>Ombra della Terra</span><strong>${km(s.umbra)} km</strong></li>
+        <li><span>Bersaglio</span><strong>${bersaglio}</strong></li>`;
   }
 
-  return `<div class="sol-testa">
-      <h4 style="color:${succede ? '#fbbf24' : '#93c5fd'}">${succede ? 'Sta succedendo' : 'Stavolta no'}</h4>
+  // Le etichette sono corte perché il pannello è largo duecentosessanta
+  // pixel: una che non ci sta manda a capo il suo numero, e quattro numeri
+  // che vanno a capo raddoppiano l'altezza della scheda — cioè si prendono
+  // la scena che dovrebbero commentare.
+  return `${solTestaScheda(succede ? 'Sta succedendo' : 'Stavolta no',
+      succede ? '#fbbf24' : '#93c5fd', false)}
       <ul class="sol-dati">
-        <li><span>La Luna, dal piano dell’orbita terrestre</span>
-          <strong>${km(s.fuoriPiano)} km ${s.fuoriPiano >= 0 ? 'sopra' : 'sotto'}</strong>
-          <em>${Math.abs(s.fuoriPiano / RAGGIO_TERRA_KM).toFixed(1)} raggi terrestri · ${Math.abs(s.latitudine).toFixed(2)}° di latitudine</em></li>
+        <li><span>Fuori dal piano</span>
+          <strong>${km(s.fuoriPiano)} km ${s.fuoriPiano >= 0 ? 'sopra' : 'sotto'}</strong></li>
         ${righe}
-        <li><span>Distanza della Luna</span><strong>${km(s.distanza)} km</strong></li>
+        <li><span>Distanza</span><strong>${km(s.distanza)} km</strong></li>
       </ul>
       <p class="sol-frase">${s.frase}</p>
       <div class="sol-azioni">
         <button type="button" class="tasto-cielo tasto-primario" onclick="solEsciVicino()">Torna ai pianeti</button>
-        <button type="button" class="tasto-cielo" onclick="apriLezioneEclittica('nodi')">Cos’è la stagione delle eclissi</button>
-      </div>
-    </div>`;
+        <button type="button" class="tasto-cielo" onclick="apriLezioneEclittica('nodi')">La stagione delle eclissi</button>
+      </div>`;
 }
 
+// Due letture della stessa cosa, in due posti: la scheda appoggiata sulla
+// scena (che a riposo non c'è) e l'elenco dei pianeti giù nella finestra.
+// La firma tiene dentro anche il perno, perché la riga «sei qui» della Terra
+// cambia quando ci si comincia a girare intorno.
 function solAggiornaScheda(forza) {
   const box = document.getElementById('sol-scheda');
-  if (!box) return;
-  const html = solSchedaHtml();
-  const firma = `${sol.scelto}|${Math.round(sol.istante / 60000)}|${html.length}`;
+  const elenco = document.getElementById('sol-elenco');
+  if (!box && !elenco) return;
+  const html = box ? solSchedaHtml() : '';
+  const lista = elenco ? solElencoHtml() : '';
+  const firma = `${sol.scelto}|${sol.perno}|${sol.vicino ? 1 : 0}|${Math.round(sol.istante / 60000)}|${html.length}|${lista.length}`;
   if (!forza && firma === sol.firmaScheda) return;
   sol.firmaScheda = firma;
-  box.innerHTML = html;
-  box.querySelectorAll('[data-sol-pianeta]').forEach(b =>
-    b.addEventListener('click', () => solScegli(b.dataset.solPianeta)));
+  if (box) {
+    box.innerHTML = html;
+    // Vuota non si nasconde da sé: un pannello col vetro e il bordo, alto
+    // venti pixel e senza niente dentro, è peggio di nessun pannello
+    box.classList.toggle('hidden', !html);
+  }
+  if (elenco) {
+    elenco.innerHTML = lista;
+    elenco.querySelectorAll('[data-sol-pianeta]').forEach(b =>
+      b.addEventListener('click', () => solScegli(b.dataset.solPianeta)));
+  }
 }
 
 function solScegli(id) {
@@ -26244,6 +26302,26 @@ function solRidimensiona() {
   // sopra: le scritte in fondo devono restarle sopra, e la misura la dà lei
   const barra = document.getElementById('sol-tempo');
   sol.altaBarra = barra ? barra.offsetHeight + 20 : 0;
+  solAssestaScheda();
+}
+
+// Da dove comincia la scheda appoggiata sulla scena, contando dal fondo del
+// guscio. Si **misura** invece di scriverla, perché la barra del tempo non è
+// alta sempre uguale: sotto ai 520 pixel la slitta va a capo e la barra
+// cresce di una riga, e a tutto schermo si stacca dal flusso e si appoggia in
+// fondo con un margine suo. Con un numero fisso funzionava sul computer di
+// chi l'ha scritto e sul telefono la barra si mangiava l'ultimo tasto della
+// scheda — che è quello per tornare alla vista d'insieme, cioè il modo di
+// uscire da dove si è finiti.
+function solAssestaScheda() {
+  const guscio = solGuscio();
+  const barra = document.getElementById('sol-tempo');
+  if (!guscio || !barra) return;
+  const rg = guscio.getBoundingClientRect();
+  const rb = barra.getBoundingClientRect();
+  if (!rg.height || !rb.height) return;
+  const fondo = Math.max(0, rg.bottom - rb.top) + 10;
+  guscio.style.setProperty('--sol-fondo-scheda', `${Math.round(fondo)}px`);
 }
 
 function solCiclo(ts) {
@@ -26500,6 +26578,59 @@ function solInquadraDaTerra(opzioni = {}) {
   if (sol.aperto) solDisegna();
 }
 
+// --- Il tuffo sulla Terra, all'apertura ------------------------------------
+//
+//   Quanto si vuole grande la Terra appena entrati, in pixel di raggio. È una
+//   misura in **pixel** e non una frazione dello schermo, e non è pigrizia:
+//   in questa scena la misura dei corpi dipende solo dallo zoom
+//   (`solRaggioCorpo`: raggio di base per la radice dello zoom) e non da
+//   quanto è larga la tela, quindi un bersaglio in pixel non ha bisogno di
+//   essere rifatto quando il riquadro cambia sotto ai piedi — e all'apertura
+//   il riquadro cambia due volte, perché si entra a tutto schermo e la misura
+//   vera arriva un paio di decimi di secondo dopo.
+//
+//   Sessantadue pixel sono molto sopra ai tredici di `SOL_TERRA_MIN_PX`, che
+//   è la soglia oltre la quale la Terra smette di essere la faccia dipinta e
+//   diventa il pianeta vero: si entra già vedendo le coste, il confine fra il
+//   giorno e la notte e le luci delle città nella metà scura.
+const SOL_ENTRATA_TERRA_PX = 62;
+
+function solZoomSullaTerra() {
+  const terra = sol.pianeti.find(p => p.id === 'Earth');
+  if (!terra) return null;
+  // La stessa base di `solRaggioCorpo`, nelle due misure: chiedere «quanti
+  // pixel voglio» a un conto diverso da quello che poi disegna vorrebbe dire
+  // arrivare alla misura sbagliata proprio con i pallini in scala.
+  const base = sol.misureVere ? Math.max(1.2, terra.km * SOL_PX_PER_KM / 2) : terra.raggio;
+  if (!(base > 0)) return null;
+  return Math.min(SOL_ZOOM_MAX_TERRA, Math.pow(SOL_ENTRATA_TERRA_PX / base, 2));
+}
+
+// L'ingresso: il quadro d'insieme per un fotogramma — la disposizione di
+// stasera, la Terra sotto al Sole — e poi il tuffo su di lei.
+//
+//   Lo zoom è **morbido** di proposito, e non è un vezzo: partire già addosso
+//   alla Terra vorrebbe dire aprire una finestra chiamata «Sistema Solare» su
+//   un pianeta solo, senza aver mai fatto vedere il sistema. Con la scivolata
+//   si vede da dove si sta arrivando, che è mezzo secondo e vale il discorso.
+//
+//   Il ⟲ non torna qui: quello rimette la vista d'insieme (`solInquadraDaTerra`),
+//   che è il paracadute giusto — a tutto schermo i chip «Tutto» e «Pianeti
+//   interni» non ci sono, e da addosso alla Terra il modo di rivedere il
+//   sistema dev'essere a portata di un tasto.
+function solEntraSullaTerra() {
+  solInquadraDaTerra();
+  const zoom = solZoomSullaTerra();
+  if (zoom === null) return;
+  // Il perno prima dello zoom: è lui a scegliere il tetto dentro a
+  // `solImpostaZoom` (SOL_ZOOM_MAX_TERRA invece di SOL_ZOOM_MAX), e senza
+  // questa riga il tuffo si fermerebbe a un sessantesimo della strada.
+  sol.perno = 'Earth';
+  solImpostaZoom(zoom, { morbido: true });
+  solAggiornaTasti();
+  if (sol.aperto) solDisegna();
+}
+
 // Il paracadute. Girare, spostare e ingrandire sono tre gesti che si sommano,
 // e dopo qualche mossa non si sa più da dove si sta guardando: la scena è
 // tutta uguale a sé stessa da ogni parte, e senza il Sole in mezzo non c'è
@@ -26706,7 +26837,13 @@ function solEntraSchermoIntero() {
   solSchermoIntero = true;
   document.body.classList.add('sol-immersivo');
 
-  const chiedi = guscio.requestFullscreen || guscio.webkitRequestFullscreen;
+  // Col planetario già a schermo intero non si chiede l'API: la finestra sta
+  // per essere traslocata dentro al guscio del cielo (7.5-bis), e spostare
+  // nel DOM un elemento a schermo intero vuol dire farlo uscire — si
+  // entrerebbe e si uscirebbe nello stesso fotogramma. Il ripiego in CSS fa
+  // la stessa cosa e non teme i traslochi.
+  const dentroAlCielo = typeof skyGuscioSchermoIntero === 'function' && skyGuscioSchermoIntero();
+  const chiedi = dentroAlCielo ? null : (guscio.requestFullscreen || guscio.webkitRequestFullscreen);
   if (chiedi) {
     try {
       const esito = chiedi.call(guscio);
@@ -26726,7 +26863,11 @@ function solRipiegoSchermo(guscio) {
   if (!solSchermoIntero || solSegnaposto) return;
   solSegnaposto = document.createComment('guscio-sistema-solare');
   guscio.parentNode.insertBefore(solSegnaposto, guscio);
-  document.body.appendChild(guscio);
+  // Col cielo a schermo intero il `position: fixed` del ripiego lo porterebbe
+  // fuori dal riquadro che il browser sta disegnando: là dentro si appende al
+  // guscio del cielo, come fa la mappa del luogo (`luogoRipiegoSchermo`)
+  const ospite = (typeof skyGuscioSchermoIntero === 'function' && skyGuscioSchermoIntero()) || document.body;
+  ospite.appendChild(guscio);
   guscio.classList.add('sol-schermo-pieno');
   solAggiornaTastoSchermo();
   solRimisura();
@@ -26744,9 +26885,16 @@ function solEsciSchermoIntero() {
   }
   solSegnaposto = null;
 
+  // Si esce dal pieno schermo **solo se quello a schermo intero è il nostro
+  // guscio**. Il confronto non è una precauzione teorica: aprendo questa
+  // finestra col planetario già a tutto schermo si entra col ripiego in CSS
+  // (vedi `solEntraSchermoIntero`), quindi a schermo intero c'è ancora il
+  // cielo — e un `exitFullscreen` secco buttava fuori lui. Chiudendo il
+  // Sistema Solare ci si ritrovava il planetario rimpicciolito dentro alla
+  // pagina, senza aver toccato niente di suo.
   const esci = document.exitFullscreen || document.webkitExitFullscreen;
   const attivo = document.fullscreenElement || document.webkitFullscreenElement;
-  if (attivo && esci) {
+  if (attivo && attivo === guscio && esci) {
     try {
       const esito = esci.call(document);
       if (esito && typeof esito.catch === 'function') esito.catch(() => {});
@@ -26860,6 +27008,18 @@ window.apriSistemaSolare = (opzioni = {}) => {
   modale.classList.remove('hidden');
   sol.aperto = true;
 
+  // Si entra già a tutto schermo, con la barra del tempo appoggiata sopra la
+  // scena. Questa finestra è un'immagine, non un modulo: quello che ha da
+  // dire lo dice il disegno, e i comandi della fila di sotto — le distanze,
+  // le misure, le fasce — si scelgono una volta e poi si dimenticano.
+  //
+  // La richiesta va fatta **qui**, dentro allo stesso gesto che ha aperto la
+  // finestra: fuori da un gesto dell'utente il browser la rifiuta (e ci si
+  // arriva davvero, aprendo da un link `?evento=` o da una notifica). Quando
+  // succede non si perde niente: entra da sé il ripiego in CSS di
+  // `solRipiegoSchermo`, che fa la stessa cosa senza l'API Fullscreen.
+  if (!solSchermoIntero) solEntraSchermoIntero();
+
   // Due tele che si ridisegnano insieme su un telefono si sentono, e il
   // planetario dietro alla finestra non lo guarda nessuno: si mette in pausa
   // (com'è per la lezione dell'eclittica, sezione 7.3-quater)
@@ -26877,7 +27037,12 @@ window.apriSistemaSolare = (opzioni = {}) => {
     // domanda su come stanno le cose stasera, e la prima immagine deve già
     // essere la risposta, non un bersaglio da girare finché si capisce.
     if (sol.vicino) solInquadraVicino();
-    else solInquadraDaTerra();
+    // Chi arriva con un protagonista — un evento, o il pianeta che era scelto
+    // nel planetario — resta nel quadro d'insieme: si è venuti a vedere dove
+    // sta *quello*, e tuffarsi sulla Terra vorrebbe dire lasciarlo fuori
+    // dallo schermo proprio mentre lo si stava cercando.
+    else if (sol.scelto && sol.scelto !== 'Earth') solInquadraDaTerra();
+    else solEntraSullaTerra();
     solAggiornaBarra(quando);
     solAggiornaScheda(true);
     if (!sol.raf) sol.raf = requestAnimationFrame(solCiclo);

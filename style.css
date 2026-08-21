@@ -4543,6 +4543,27 @@ body input.casella-data:hover { border: 0; }
 .tasto-insegui-cielo.attiva { background: var(--blu); border-color: transparent; color: #fff; }
 .tasto-insegui-cielo .icona-disegnata { display: block; }
 
+/* Il Sistema Solare da fuori: stessa famiglia degli altri comandi appoggiati
+   sulla mappa, perché è un comando del guardare — «e questo pianeta, perché
+   sta proprio lì?» è una domanda che nasce guardando il cielo, non aprendo un
+   pannello. Non ha stato acceso: apre una finestra e basta. */
+.tasto-sistema-cielo {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  color: var(--testo);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transizione), color var(--transizione);
+}
+.tasto-sistema-cielo:hover { background: rgba(28, 36, 60, 0.92); color: #fff; }
+.tasto-sistema-cielo .icona-disegnata { display: block; }
+
 /* Il tasto della registrazione: stessa taglia e stessa pelle dei tasti dello
    zoom, perché è della stessa famiglia — comandi della mappa, non di un
    pannello. Dentro c'è solo un tondo rosso, che tutti sanno già cosa vuol
@@ -5138,30 +5159,60 @@ body.sol-immersivo { overflow: hidden; }
 }
 .tasto-segmento.spento-fuori-scena:hover { background: transparent; color: var(--testo-2); }
 
-/* La lettura: prima il pianeta scelto per esteso, poi la fila di tutti gli
-   altri — che è anche il modo più veloce per cambiarlo. */
-.sol-scheda { display: grid; gap: 10px; }
-.sol-testa {
-  padding: 14px 16px;
-  border: 1px solid var(--bordo);
+/* La scheda del corpo scelto, appoggiata sulla scena in basso a sinistra:
+   sopra alla barra del tempo, sotto ai tasti della colonna di destra. È
+   piccola di proposito — tre numeri e due tasti — perché quello che si sta
+   guardando è il disegno, non lei: se prende mezzo schermo, la scena che
+   dovrebbe commentare non si vede più. Il `bottom` lo misura
+   `solAssestaScheda()` sulla barra del tempo vera: quella cambia altezza fra
+   la finestra e il tutto schermo, e sotto ai 520px la slitta va a capo. */
+.sol-scheda {
+  position: absolute;
+  z-index: 5;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: var(--sol-fondo-scheda, 88px);
+  width: min(300px, calc(100% - 110px));
+  max-height: min(50%, 320px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 11px 13px 12px;
+  border: 1px solid var(--bordo-forte);
   border-radius: var(--raggio-m);
-  background: var(--superficie);
+  background: rgba(6, 10, 20, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--ombra-3);
 }
-.sol-testa h4 { margin: 0 0 8px; font-size: 1.04rem; font-weight: 700; }
+.sol-scheda.hidden { display: none; }
+.sol-scheda-testa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.sol-scheda-testa h4 { margin: 0; font-size: 0.98rem; font-weight: 700; }
+/* Dentro a un pannello largo trecento pixel, un'etichetta con undici rem di
+   larghezza minima manda a capo ogni riga: qui le due colonne si dividono lo
+   spazio invece di andare a gara. */
 .sol-dati { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
 .sol-dati li {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   color: var(--testo-2);
 }
-.sol-dati li span { min-width: 11rem; color: var(--testo-3); }
+.sol-dati li span { color: var(--testo-3); }
 .sol-dati li strong { color: var(--testo); font-variant-numeric: tabular-nums; }
-.sol-dati li em { font-style: normal; font-size: 0.78rem; color: var(--testo-3); }
-.sol-frase { margin: 10px 0 0; font-size: 0.88rem; line-height: 1.6; color: var(--testo-2); }
+.sol-dati li em { font-style: normal; font-size: 0.76rem; color: var(--testo-3); }
+.sol-frase { margin: 9px 0 0; font-size: 0.82rem; line-height: 1.5; color: var(--testo-2); }
 .sol-azioni { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 7px; }
+/* I tasti della scheda, dentro a un pannello stretto: più piccoli dei
+   fratelli dei pannelli, e ognuno sulla sua riga se il nome è lungo. */
+.sol-scheda .sol-azioni .tasto-cielo { font-size: 0.76rem; padding: 5px 10px; }
 
 .sol-tabella { display: grid; gap: 4px; }
 body button.sol-riga-pianeta {
@@ -5188,12 +5239,18 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
 .sol-nome { font-weight: 600; color: var(--testo); }
 .sol-dato { font-variant-numeric: tabular-nums; color: var(--testo-3); }
 .sol-quando-breve { color: var(--testo-2); text-align: right; }
-.sol-nota { margin: 0; font-size: 0.74rem; line-height: 1.55; color: var(--testo-3); }
 .sol-vuoto { margin: 0; font-size: 0.85rem; color: var(--testo-2); }
 
 @media (max-width: 640px) {
   .sol-barra-tempo { --tasto-tempo: 34px; gap: 5px; }
-  .sol-dati li span { min-width: 100%; }
+  /* Su un telefono la scheda si stringe: i tasti della colonna di destra sono
+     gli stessi, e quello che si restringe è lo schermo. Il fondo no, quello
+     lo misura `solAssestaScheda()` — lì sotto la barra del tempo va a capo. */
+  .sol-scheda {
+    width: min(272px, calc(100% - 72px));
+    max-height: min(52%, 300px);
+    padding: 10px 11px 11px;
+  }
   body button.sol-riga-pianeta {
     grid-template-columns: 14px 1fr auto;
     row-gap: 2px;
