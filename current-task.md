@@ -1,75 +1,106 @@
 # Task Corrente
 
-«Ingrandendo, nel planetario spariscono tutte le stelle» — **fatto**, niente
-in sospeso.
+«Sistema grafico Sistema Solare 3D» — **fatto**, niente in sospeso.
 
-Branch `claude/planetario-stelle-fov-bug-jtvht9`.
+Branch `claude/solar-system-3d-graphic-hfrw24`.
 
-## Cos'era
+## Cos'era chiesto
 
-«Ogni tanto, nella sezione planetario, se modifico il fov scompaiono tutte le
-stelle. Verifica.»
+Quattro cose, tutte sulla vista 3D (§7.7 di `app.js`):
 
-Verificato per davvero, guidando il planetario vero in un browser (Chromium
-via Playwright, l'app servita in locale con Astronomy Engine preso da npm
-perché in quella rete il CDN non risponde): rotellina, pizzico a due dita,
-tasti + e −, telefono girato, qualche centinaio di gesti a caso, contando a
-ogni passo quante stelle finiscono **davvero** dentro allo schermo.
+1. scheda più minimale, senza note, solo l'essenziale;
+2. all'apertura, subito a tutto schermo con la barra del tempo;
+3. all'apertura, zoom subito sulla Terra;
+4. un tasto minimale nell'interfaccia del planetario per aprirla.
 
-Nessun NaN, nessuna eccezione, `cat.versoriOra` mai azzerato: il difetto non
-era un guasto di stato. Era il conto della magnitudine limite, e si vede tutto
-in questa tabella (cielo di periferia, sei direzioni diverse):
+## Cos'è cambiato
 
-```
-campo 60°   → 649, 671, 616, 538, 717, 399 stelle
-campo 15°   → 124, 143, 116, 152, 233,  87
-campo  4°   →   6,  14,   6,  17,  19,   5
-campo  2°   →   1,   5,   3,   6,   6,   0
-campo  1°   →   0,   1,   2,   0,   1,   0
-campo 0,25° →   0,   0,   0,   0,   0,   0
-```
+**La scheda si è divisa in due, e ha cambiato posto.** Prima era un blocco
+solo in fondo alla finestra — la lettura del corpo scelto *più* la tabella di
+tutti e otto — e sotto ancora una nota di dodici righe. Da quando la finestra
+si apre a tutto schermo, tutto quello che sta fuori dal guscio non lo vede
+più nessuno. Adesso:
 
-Il guadagno dello zoom vale fino a **tre** magnitudini, quindi il limite
-saliva a 8,6 — ma la stella più debole di questo catalogo è la **7,0**.
-Chiedere l'ottava non faceva comparire nessuna stella: faceva solo credere al
-disegno di avere tre magnitudini di margine (quindi di disegnare stelle
-«molto sopra la soglia», cioè piccole e anonime) mentre lo schermo si svuotava
-per geometria. Il «ogni tanto» è la sesta colonna: dipende da dove si punta.
+- `#sol-scheda` è un pannello appoggiato **sulla scena**, dentro al guscio, in
+  basso a sinistra sopra alla barra del tempo. Compare toccando un corpo, se
+  ne va col suo ✕ (`solChiudiScheda`, che non tocca la telecamera), e a riposo
+  non c'è affatto;
+- `#sol-elenco` è la fila dei pianeti, che resta giù nella finestra;
+- la nota lunga non c'è più.
 
-## Cosa si è fatto (`catalogo.js` §5 e §6)
+Dentro la scheda sono rimasti quattro numeri (dal Sole, da noi, angolo dal
+Sole, quando si vede) e i due tasti. Sono usciti il tempo di volo della luce,
+i milioni di chilometri e le due frasi lunghe. Stessa cura al banco Terra e
+Luna: via le note in corsivo sotto ai numeri, etichette corte perché in
+duecentosettanta pixel una lunga manda a capo il suo numero e raddoppia
+l'altezza del pannello.
 
-1. **Il limite si ferma dove finisce il catalogo.** `catMagnitudineVoluta()`
-   è quella che si vorrebbe, `catProfonditaCatalogo()` fin dove si arriva,
-   `catMagnitudineLimite()` il minimo dei due e `catOltreIlCatalogo()` la
-   differenza.
-2. **L'avanzo va al raggio.** Senza, tosare il limite avrebbe *rimpicciolito*
-   le poche superstiti proprio dove restano sole: `limite + oltre` è di nuovo
-   la magnitudine che lo zoom aveva chiesto, e il disegno non si accorge della
-   tosatura (provato a tappeto, scarto 0,0 px).
-3. **Sotto i 6° si è dentro all'oculare**: le stelle si disegnano tutte a una
-   a una, con l'alone e il nome. Cinque puntini da un pixel in mezzo al nero
-   si leggono come polvere sul vetro.
-4. **Lo si dice**, una volta per sessione (`catDilloCheIlCatalogoFinisce`,
-   come lo `skyAvviso` del tremolio della mano).
+Il `bottom` della scheda **si misura** (`solAssestaScheda`, variabile
+`--sol-fondo-scheda`) sulla barra del tempo vera: quella è alta diversamente
+dentro alla finestra e a tutto schermo, e sotto ai 520px la slitta va a capo.
+Col numero scritto a mano che avevo messo prima, sul telefono la barra si
+mangiava l'ultimo tasto della scheda — quello per tornare alla vista
+d'insieme, cioè il modo di uscire da dove si era finiti.
 
-Tre trappole trovate strada facendo, tutte con la loro prova nel §3-bis:
-le **140 stelle esattamente alla magnitudine 7,00** (arrotondamento al
-decimo: l'ultima riga del catalogo è la più affollata, e con l'avanzo sommato
-dopo il confronto con lo zero sparivano tutte); `catServeSecondoLivello()`,
-che deve guardare la magnitudine *voluta*, se no il file delle stelle deboli
-non si chiede più; e `catLimiteProfondo()`, che non va tosato alla settima
-magnitudine delle stelle — sarebbe stato lo stesso difetto spostato sulle
-nebuline fra la 10,5 e la 11.
+**L'apertura.** `apriSistemaSolare` chiama `solEntraSchermoIntero()` dentro
+allo stesso gesto che ha aperto la finestra (fuori da un gesto il browser
+rifiuta, e allora entra da sé il ripiego in CSS). Poi `solEntraSullaTerra()`:
+il quadro d'insieme per un fotogramma e da lì lo zoom morbido fino a
+`SOL_ENTRATA_TERRA_PX` (62 px di raggio della Terra — molto sopra ai 13 di
+`SOL_TERRA_MIN_PX`, quindi si entra già vedendo le coste e le luci delle
+città). Il bersaglio è in pixel e non in frazioni di schermo apposta: qui la
+misura dei corpi dipende solo dallo zoom, non dalla tela, e all'apertura la
+tela cambia misura due volte.
 
-## Quello che resta vero, e non è un difetto
+Chi arriva **con un protagonista** — un evento, o il pianeta che era scelto
+nel planetario — resta nel quadro d'insieme: si è venuti a vedere dove sta
+quello, e tuffarsi sulla Terra lo lascerebbe fuori dallo schermo. Il ⟲ non
+torna al tuffo ma alla vista d'insieme: a tutto schermo i chip «Tutto» e
+«Pianeti interni» non ci sono, e da addosso alla Terra il modo di rivedere il
+sistema dev'essere a portata di un tasto.
 
-A un quarto di grado di campo il cielo **è** vuoto, e non c'è codice che possa
-riempirlo: di stelle più luminose della settima, in un ritaglio così, non ce
-n'è. Per averne servirebbe un catalogo più profondo (HYG arriva alla nona:
-centoventimila stelle, due megabyte e passa) — è una scelta di prodotto, non
-una correzione, e non è stata fatta.
+**Il tasto nel planetario.** `#skymap-btn-sistema-mappa`, sulla mappa, in
+colonna con lo schermo intero e l'inseguimento. Quello che c'era stava in
+cima al pannello Astri — e a cielo pieno schermo i pannelli non si aprono, ed
+è proprio lì che si vuole. Resta anche quello, non è un doppione: uno è il
+comando, l'altro sta accanto ai pianeti, che è dove nasce la domanda. Il
+segno è l'orbita di Lucide; la prima versione era un'ellisse con un puntino
+dentro e alla misura di quei tasti si leggeva come un occhio, indistinguibile
+dal bersaglio dell'inseguimento che ha sopra.
 
-## Prove
+## Un difetto trovato per strada
 
-`verifica.html` §3-bis, nove prove nuove. Tutto il banco: **528 passate, 0
-fallite**.
+`solEsciSchermoIntero` chiamava `document.exitFullscreen()` ogni volta che
+c'era *qualcosa* a schermo intero, senza guardare cosa. Aprendo il Sistema
+Solare col planetario già a tutto schermo si entra col ripiego in CSS (il
+trasloco della finestra dentro al guscio del cielo, §7.5-bis, farebbe uscire
+dal pieno schermo un elemento che ci è appena entrato), quindi a schermo
+intero c'è ancora il **cielo**: chiudendo la finestra si buttava fuori lui, e
+ci si ritrovava il planetario rimpicciolito dentro alla pagina senza aver
+toccato niente di suo. Adesso il confronto è `attivo === guscio`.
+
+## Come l'ho provato
+
+Chromium via Playwright, l'app servita in locale con Astronomy Engine preso
+da npm (in questa rete il CDN non risponde). Telefono 420×860 e computer
+1280×820:
+
+- il tasto sulla mappa c'è, è visibile, apre la finestra;
+- all'apertura: `perno: 'Earth'`, zoom 67, raggio della Terra disegnato 62 px
+  esatti, pieno schermo attivo, barra del tempo visibile, scheda assente,
+  elenco con otto righe, nessuna nota;
+- toccando Marte la scheda compare 11 px sopra alla barra, col ✕ che la manda
+  via;
+- banco Terra e Luna: scheda con quattro numeri e i due tasti, tutta dentro
+  allo schermo;
+- da un evento con pianeta (Venere): quadro d'insieme, nessun tuffo;
+- da un'eclissi: banco Terra e Luna;
+- col cielo già a schermo intero: ripiego in CSS, guscio appeso a
+  `#skymap-contenitore`, 1280×820 — e chiudendo il cielo resta pieno schermo;
+- chiusura: guscio tornato al suo posto, nessun errore in console.
+
+Attenzione, per chi rifà queste prove: in quella rete il CDN di Tailwind è
+bloccato, quindi le utility `fixed inset-0 z-50` dei modali non esistono e la
+finestra si impagina in fondo alla pagina invece che sopra. Non è un difetto
+dell'app — per le prove visive va iniettato un foglio di stile che rimetta
+quelle tre regole.
