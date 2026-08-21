@@ -71,11 +71,13 @@ esattamente dove sarebbe andato il suo nome.
    (a un grado sotto l'orizzonte il terreno è a novanta metri, e novanta metri
    d'aria non velano niente) e la luce d'ambiente si spegne in decine di gradi
    (`SKY_SUOLO_NADIR_BUIO`). Di notte non si scurisce niente, che è giusto.
-3. **La grana è a due scale.** `skyTelaGrana` fa due tele con due semi diversi:
-   la fine com'era (fondo grigio, `overlay`), le chiazze **senza fondo** e in
-   normale — perché l'overlay sotto la metà vale `2·base·velo` e sul terreno
-   vicino, che adesso è scuro, non morde. La fine è rimasta identica pixel per
-   pixel a prima.
+3. **La grana è a due scale, e di rumore vero.** Due tele con due semi
+   diversi: la fine col fondo grigio in `overlay`, le chiazze **senza fondo**
+   e in normale — perché l'overlay sotto la metà vale `2·base·velo` e sul
+   terreno vicino, che adesso è scuro, non morde. La forma la dà
+   `skyRumore2D` (ottave di rumore di valore, ripetibile per costruzione) con
+   deformazione del dominio e posterizzazione morbida: vedi il ripasso qui
+   sotto.
 4. **La luce ha una direzione.** `skyLucePaesaggio` dice qual è l'astro che
    illumina (il Sole finché sta sopra ai −10°, se no la Luna), e la velatura si
    stende sul suolo e sulle creste: calda verso di lui, azzurra dall'altra
@@ -96,16 +98,39 @@ azimut veri (`skyRampaLuce`). La discesa verso i piedi, che un gradiente
 unidimensionale non può portare insieme all'azimut, la fanno sei passate
 sovrapposte sempre più corte.
 
+### Ripasso dopo la prima segnalazione
+
+Due cose arrivate dal vero, sulla stessa passata:
+
+- **`IndexSizeError: addColorStop … (1.0001) is outside the range`**, con lo
+  schermo che smetteva di disegnarsi. Era mio, in `skyFermateSuolo`: tosavo
+  nell'intervallo *dopo* aver spinto ogni fermata un pelo oltre la precedente,
+  e con l'occhio esatto sulla riga dell'orizzonte (il caso `retta`) nove
+  fermate su undici finiscono su 1, quindi la decima chiedeva 1,0001. Le due
+  regole vanno nell'ordine opposto. Provato nel browser su settantadue
+  inquadrature (altezza da −89° a +89°, campo da 1° a 179°): zero errori.
+- **La grana**, rifatta perché sembrava fatta di bolle. Erano dischi sfumati
+  sorteggiati e impilati: da lontano funzionavano, da vicino restavano dei
+  cerchi. Adesso è rumore a più ottave ripetibile (`skyRumore2D`) con
+  deformazione del dominio e posterizzazione morbida — le chiazze si stirano e
+  hanno il bordo netto, come campi e boschi. Attenzione a non alzare la scala
+  grande: si passa dalle bolle alla mimetica militare, e la prima prova l'ha
+  fatto.
+- Via anche le due righe `[Intervention] Blocked call to navigator.vibrate`
+  della console: venivano da un `telVibra(0)` che spegneva un battito mai
+  partito.
+
 ### Come è stato provato
 
-- `verifica.html`: **572 prove passate**, comprese le 31 nuove del §22 (il
+- `verifica.html`: **576 prove passate**, comprese le 35 nuove del §22 (il
   colore del suolo depressione per depressione, la legge della luce, e i nomi
   dell'acqua col caso vero misurato — 420 × 11 pixel — che adesso passa e con
-  la regola di prima non passava).
+  la regola di prima non passava, e la tosatura delle fermate del gradiente
+  che non deve uscire da [0, 1]).
 - Nel browser vero, otto inquadrature (notte, giorno, campo largo, lago,
   tramonto, vista in giù, forte zoom, telefono in verticale) prima e dopo.
 - Costo per fotogramma nella vista più cara (tramonto con terreno, acqua e
-  nomi): **da 4,1 a 4,6 ms** di mediana.
+  nomi): **da 4,1 a 4,4 ms** di mediana.
 
 `sw.js` a `astrocal-v123`.
 

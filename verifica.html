@@ -5320,6 +5320,53 @@ titolo('22. Il paesaggio: il suolo, la luce e i nomi dell\'acqua (app.js §7.3.2
   prova('di notte il fondo non si scurisce quasi per niente', notte < giorno * 0.2,
     `${notte.toFixed(0)} livelli di notte contro ${giorno.toFixed(0)} di giorno`);
 
+  // Le fermate del gradiente, tosate come le tosa `skyFermateSuolo`.
+  //
+  // Questa è la prova di un guasto segnalato dal vero: con l'occhio esatto
+  // sulla riga dell'orizzonte lo schermo smetteva di disegnarsi e la console
+  // diceva `IndexSizeError: The provided value (1.0001) is outside the range`.
+  // Le fermate di un gradiente non possono tornare indietro **e** non possono
+  // uscire da [0, 1], e le due regole vanno applicate in quest'ordine: prima
+  // si tosa nell'intervallo, poi si impedisce di scendere. Al contrario —
+  // cioè spingendo ogni fermata un pelo oltre la precedente e *poi* tosando —
+  // basta che una cada su 1, e ci cade sempre appena la vista non contiene il
+  // nadir, perché la successiva chieda 1,0001.
+  function tosaFermate(grezze) {
+    const fuori = [];
+    let ultimo = -Infinity;
+    for (const g of grezze) {
+      let t = Math.max(0, Math.min(1, g));
+      if (t < ultimo) t = ultimo;
+      ultimo = t;
+      fuori.push(t);
+    }
+    return fuori;
+  }
+  const buone = t => t.every(v => v >= 0 && v <= 1) &&
+    t.every((v, i) => i === 0 || v >= t[i - 1]);
+
+  // Il caso vero: l'occhio sulla riga dell'orizzonte, e quasi tutte le
+  // fermate che finiscono oltre il fondo della rampa.
+  const tutteFuori = tosaFermate([0, 0.3, 1, 1.4, 2.2, 3, 5, 9, 20, 44, 120]);
+  prova('con le fermate tutte oltre il fondo il gradiente resta valido',
+    buone(tutteFuori), `ultima a ${tutteFuori[tutteFuori.length - 1]}`);
+  // E il conto di prima, che è quello che si rompeva.
+  const prima = (() => {
+    const fuori = []; let ultimo = -Infinity;
+    for (const g of [0, 0.3, 1, 1.4, 2.2, 3, 5, 9, 20, 44, 120]) {
+      const t = Math.max(ultimo + 1e-4, Math.max(0, Math.min(1, g)));
+      ultimo = t; fuori.push(t);
+    }
+    return fuori;
+  })();
+  prova('col conto di prima ne usciva fuori, ed è l\'errore segnalato',
+    !buone(prima), `arrivava a ${prima[prima.length - 1].toFixed(4)}`);
+  prova('due fermate uguali vanno benissimo: sono un passaggio netto',
+    buone(tosaFermate([0, 0.5, 0.5, 0.5, 1])));
+  prova('e una fermata che tornerebbe indietro viene tenuta ferma',
+    buone(tosaFermate([0, 0.4, 0.1, 0.9, 0.2, 1])),
+    'due depressioni che cadono nello stesso pixel non devono rompere niente');
+
   // --- Da che parte viene la luce ---------------------------------------
   const LUCE_ESPONENTE = 2.2;            // SKY_LUCE_ESPONENTE
   const LUCE_ALFA = 0.5;                 // SKY_LUCE_ALFA

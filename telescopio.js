@@ -5119,9 +5119,44 @@ function telBattitoPushTo(separazione, campoOculare) {
   if (p.pushtoSuono) telBip(420 + Math.max(0, 880 - separazione * 55), 0.05);
 }
 
+// Vibrare, quando ha senso vibrare.
+//
+// Due guardie, e tutt'e due esistono per la stessa riga che compariva nella
+// console del browser a ogni avvio:
+//
+//     [Intervention] Blocked call to navigator.vibrate because user hasn't
+//     tapped on the frame or any embedded frame yet
+//
+// Non è un errore ed è giusto che il browser lo faccia — una pagina non deve
+// poter far vibrare il telefono di chi ci è appena capitato — ma la chiamata
+// bloccata era comunque **inutile**, e una console che parla quando non è
+// successo niente è una console che poi non si legge più.
+//
+// La prima guardia è l'attivazione: prima che l'utente abbia toccato lo
+// schermo la vibrazione è rifiutata per certo, quindi non si chiede.
+// `userActivation` non c'è dappertutto e allora si prova lo stesso: un no in
+// più non fa danno, mentre non vibrare mai su un browser che l'avrebbe
+// permesso sì.
+//
+// La seconda è il **fermo a vuoto**: `telFermaTubo` chiama `telVibra(0)` per
+// spegnere un battito lasciato in coda, e la chiama anche quando il push-to
+// non è mai partito — cioè alla costruzione del pannello, due volte, ed è
+// esattamente da lì che venivano le due righe di prima. Fermare qualcosa che
+// non è mai cominciato non serve a niente: si tiene il conto.
+let telVibraInCorso = false;
+
+function telVibraPermessa() {
+  const a = typeof navigator !== 'undefined' && navigator.userActivation;
+  return a && typeof a.hasBeenActive === 'boolean' ? a.hasBeenActive : true;
+}
+
 function telVibra(schema) {
+  const ferma = schema === 0 || (Array.isArray(schema) && !schema.some(v => v > 0));
+  if (ferma && !telVibraInCorso) return;
   try {
-    if (navigator.vibrate) navigator.vibrate(schema);
+    if (!navigator.vibrate || !telVibraPermessa()) return;
+    navigator.vibrate(schema);
+    telVibraInCorso = !ferma;
   } catch (e) { /* niente vibrazione: pazienza */ }
 }
 

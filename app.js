@@ -13108,8 +13108,23 @@ function skyFermateSuolo(o, base, focale, azCentro) {
     if (!p.davanti) t = ultimo > -Infinity ? ultimo : 0;
     else if (o.retta) t = ((p.px - ax) * dx + (p.py - ay) * dy) / lungo;
     else t = (Math.hypot(p.px - ax, p.py - ay) - o.r) / lungo;
-    // Le fermate di un gradiente devono crescere, se no il canvas le rifiuta.
-    t = Math.max(ultimo + 1e-4, Math.max(0, Math.min(1, t)));
+    // Le fermate di un gradiente non possono tornare indietro, e non possono
+    // uscire da [0, 1]: il canvas rifiuta l'una e l'altra cosa con un
+    // `IndexSizeError`, che porta via il fotogramma intero.
+    //
+    // Le due regole vanno applicate **in quest'ordine**, e sbagliarlo costa
+    // caro: prima si tosa dentro all'intervallo, poi si impedisce di
+    // scendere. Al contrario — cioè spingendo ogni fermata un pelo oltre la
+    // precedente e *poi* tosando — basta che una fermata cada su 1 (e ci cade
+    // sempre, appena la vista non contiene il nadir: sono nove fermate su
+    // undici) perché la successiva chieda 1,0001 e il canvas si arrenda.
+    // Segnalato dal vero, con lo schermo che smetteva di disegnarsi.
+    //
+    // Due fermate **uguali** invece vanno benissimo: sono un passaggio netto
+    // invece di una rampa, ed è esattamente quello che si vuole dire quando
+    // due depressioni finiscono nello stesso pixel.
+    t = Math.max(0, Math.min(1, t));
+    if (t < ultimo) t = ultimo;
     ultimo = t;
     fuori.push(t);
   }
@@ -15736,72 +15751,172 @@ function skyAcquaOnde(ctx, aria, stato, fasce, nf, nc, buf, visti, velo) {
 // scale sono sempre almeno due: le zolle e i campi, i cespugli e i boschi,
 // e quello che si legge da lontano è la scala grande. Quindi la tela è due:
 // `SKY_GRANA_LATO` per la grana vera e `SKY_GRANA_LATO_LARGA` per le
-// chiazze, stese con lo stesso motivo ma a fattori di scala diversi. Costa
-// un riempimento in più, e i due passi non sono multipli fra loro perché
-// non vadano a tempo (è la stessa ragione delle ottave di `SKY_RILIEVO`).
+// chiazze, stese a fattori di scala diversi. Costa un riempimento in più, e
+// i due passi non sono multipli fra loro perché non vadano a tempo (è la
+// stessa ragione delle ottave di `SKY_RILIEVO`).
+//
+// **E rumore, non macchie tonde.** La prima versione sorteggiava dei dischi
+// sfumati e li impilava. Da lontano funzionava, da vicino no: dei cerchi
+// restano dei cerchi, e sul terreno si leggevano come bolle — la stessa
+// impressione delle macchie di umidità su un muro. Un pezzo di campagna non
+// è fatto così. È fatto di **chiazze irregolari con i bordi frastagliati**,
+// perché sono campi, boschi, radure: forme che seguono il terreno. Quella
+// forma la dà il rumore a più ottave (`skyRumore2D`), che di suo fa colline
+// tonde, più due cose che gliela rompono — la **deformazione del dominio**
+// (si legge il rumore in un punto spostato da un altro rumore: le chiazze si
+// stirano e si allungano invece di restare rotonde) e una **posterizzazione
+// morbida**, che ne appiattisce l'interno e ne indurisce il bordo, che è
+// quello che distingue un campo arato dal prato accanto.
 const SKY_GRANA_LATO = 112;
-const SKY_GRANA_LATO_LARGA = 176;
+const SKY_GRANA_LATO_LARGA = 224;
 let skyGranaMotivo = null;
 let skyGranaLarga = null;
 let skyGranaProvata = false;
 
-// Una tela di macchie tonde, ripetibile, con la taglia e il numero che le si
-// chiedono. `larghe` è la frazione di macchie della misura grande — quelle
-// che si leggono da lontano — e `forza` quanto pesano tutte insieme.
+// Rumore di valore a due dimensioni, **ripetibile**, sommato su più ottave.
 //
-// `fondo` decide come la tela si potrà stendere, e sono due mestieri diversi.
-// Con il grigio sotto si stende in `overlay`, che non aggiunge un colore suo
-// ma **non morde sul buio**: la formula dell'overlay sotto la metà è
-// `2·base·velo`, quindi su un terreno a un decimo di luce una macchia al
-// quattordici per cento sposta il colore di due livelli — cioè di niente.
-// Senza fondo, cioè con le sole macchie bianche e nere su trasparente, la
-// tela si stende normalmente e funziona a qualunque luminosità: le chiare
-// schiariscono, le scure scuriscono, e dove non c'è niente non cambia
-// niente. È quello che serve al terreno vicino, che da quando si scurisce
-// verso il nadir sta proprio dove l'overlay non arriva.
-function skyTelaGrana(ctx, lato, quante, larghe, forza, seme, fondo) {
+// Ogni ottava è una griglia di `celle × celle` valori a caso interpolati
+// morbidi. Si chiude su sé stessa per costruzione: il passo è `celle / lato`,
+// quindi il pixel dopo l'ultimo cade esattamente sul primo nodo della
+// griglia. È la stessa idea di `skyRumoreCircolare`, che chiude il giro
+// dell'orizzonte, con una dimensione in più.
+//
+// Alla fine si stira su [0, 1] e si **centra sulla propria media**: una tela
+// che va stesa in `overlay` deve avere media un mezzo esatto, se no sposta la
+// luminosità di tutto il terreno invece di dargli una trama.
+function skyRumore2D(lato, ottave, seme) {
+  const out = new Float32Array(lato * lato);
+  const caso = skyCaso(seme);
+  let somma = 0;
+  for (const [celle, amp] of ottave) {
+    const v = new Float32Array(celle * celle);
+    for (let i = 0; i < v.length; i++) v[i] = caso();
+    somma += amp;
+    const passo = celle / lato;
+    for (let y = 0; y < lato; y++) {
+      const fy = y * passo;
+      const gy = Math.floor(fy);
+      const y0 = gy % celle, y1 = (y0 + 1) % celle;
+      const ty = fy - gy;
+      const sy = ty * ty * (3 - 2 * ty);
+      for (let x = 0; x < lato; x++) {
+        const fx = x * passo;
+        const gx = Math.floor(fx);
+        const x0 = gx % celle, x1 = (x0 + 1) % celle;
+        const tx = fx - gx;
+        const sx = tx * tx * (3 - 2 * tx);
+        const a = v[y0 * celle + x0] + (v[y0 * celle + x1] - v[y0 * celle + x0]) * sx;
+        const b = v[y1 * celle + x0] + (v[y1 * celle + x1] - v[y1 * celle + x0]) * sx;
+        out[y * lato + x] += amp * (a + (b - a) * sy);
+      }
+    }
+  }
+  let min = Infinity, max = -Infinity, media = 0;
+  for (let i = 0; i < out.length; i++) {
+    out[i] /= somma;
+    if (out[i] < min) min = out[i];
+    if (out[i] > max) max = out[i];
+  }
+  const ampiezza = max - min || 1;
+  for (let i = 0; i < out.length; i++) {
+    out[i] = (out[i] - min) / ampiezza;
+    media += out[i];
+  }
+  media /= out.length;
+  const scarto = 0.5 - media;
+  for (let i = 0; i < out.length; i++) out[i] = Math.max(0, Math.min(1, out[i] + scarto));
+  return out;
+}
+
+// Leggere un campo di rumore in un punto qualunque, avvolgendo i bordi. Serve
+// alla deformazione del dominio: il campo che sposta è periodico come quello
+// spostato, quindi la tela resta ripetibile anche dopo lo spostamento.
+function skyCampionaAvvolto(campo, lato, x, y) {
+  let fx = x % lato; if (fx < 0) fx += lato;
+  let fy = y % lato; if (fy < 0) fy += lato;
+  const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  const x1 = (x0 + 1) % lato, y1 = (y0 + 1) % lato;
+  const tx = fx - x0, ty = fy - y0;
+  const a = campo[y0 * lato + x0] + (campo[y0 * lato + x1] - campo[y0 * lato + x0]) * tx;
+  const b = campo[y1 * lato + x0] + (campo[y1 * lato + x1] - campo[y1 * lato + x0]) * tx;
+  return a + (b - a) * ty;
+}
+
+// Appiattire l'interno di una chiazza e indurirne il bordo.
+//
+// Il rumore grezzo è tutto pendenze: un paesaggio di collinette tonde. Un
+// campo invece è **piatto dentro** e finisce di colpo dove comincia il
+// prossimo, e sono i bordi a raccontare che lì c'è un paesaggio coltivato e
+// non una macchia di muffa. Si tira quindi ogni valore verso il gradino più
+// vicino di una scala a `gradini` livelli, ma solo per la frazione `quanto`:
+// tutto, e verrebbe una carta a zone; niente, e restano le collinette.
+function skyPosterizza(v, gradini, quanto) {
+  return v + (Math.round(v * gradini) / gradini - v) * quanto;
+}
+
+// La tela della grana **fine**: quella che si sente e non si guarda. Ha il
+// fondo grigio e si stende in `overlay`, che non aggiunge un colore suo ma
+// **non morde sul buio** — la formula dell'overlay sotto la metà è
+// `2·base·velo`, quindi su un terreno a un decimo di luce sposta il colore di
+// due livelli, cioè di niente.
+function skyTelaGranaFine(ctx, lato, forza, seme) {
   const tela = document.createElement('canvas');
   tela.width = tela.height = lato;
   const g = tela.getContext('2d');
   if (!g) return null;
-  if (fondo) {
-    g.fillStyle = '#808080';
-    g.fillRect(0, 0, lato, lato);
+  const n = skyRumore2D(lato, [[14, 1], [28, 0.52], [56, 0.26]], seme);
+  const dati = g.createImageData(lato, lato);
+  const p = dati.data;
+  for (let i = 0; i < n.length; i++) {
+    const v = 128 + (n[i] - 0.5) * 2 * forza * 255;
+    const c = Math.max(0, Math.min(255, Math.round(v)));
+    p[i * 4] = p[i * 4 + 1] = p[i * 4 + 2] = c;
+    p[i * 4 + 3] = 255;
   }
-  // Macchie tonde e sfumate, di due misure: poche larghe per i campi e le
-  // radure, tante strette per il grosso della grana. Le proporzioni sono
-  // state rifatte una volta: con quaranta macchie larghe e opache il
-  // terreno diventava una mimetica militare — chiazze da mezzo palmo che
-  // si vedevano prima del paesaggio. Una grana si deve sentire e non
-  // guardare, quindi tante e piccole.
-  //
-  // Ognuna si ridisegna anche oltre i bordi (i nove riquadri attorno)
-  // perché la tela sia **ripetibile**: senza, si vedrebbe la griglia delle
-  // piastrelle, che è il difetto per cui una texture si nota invece di
-  // funzionare.
-  const caso = skyCaso(seme);
-  const soglia = Math.round(quante * larghe);
-  for (let i = 0; i < quante; i++) {
-    const x = caso() * lato, y = caso() * lato;
-    const grande = i < soglia;
-    const r = (grande ? lato * 0.09 + caso() * lato * 0.13 : lato * 0.014 + caso() * lato * 0.045);
-    const chiaro = caso() < 0.5;
-    const a = forza * (grande ? 0.36 : 1) * (0.35 + caso() * 0.65);
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        const cx = x + dx * lato, cy = y + dy * lato;
-        if (cx < -r || cx > lato + r || cy < -r || cy > lato + r) continue;
-        const rad = g.createRadialGradient(cx, cy, 0, cx, cy, r);
-        const tinta = chiaro ? '255, 255, 255' : '0, 0, 0';
-        rad.addColorStop(0, `rgba(${tinta}, ${a.toFixed(3)})`);
-        rad.addColorStop(1, `rgba(${tinta}, 0)`);
-        g.fillStyle = rad;
-        g.beginPath();
-        g.arc(cx, cy, r, 0, Math.PI * 2);
-        g.fill();
-      }
+  g.putImageData(dati, 0, 0);
+  return ctx.createPattern(tela, 'repeat');
+}
+
+// Quanto si stira una chiazza (in frazioni del lato della tela), su quanti
+// livelli si appiattisce e per quanta parte. Sono i tre numeri che separano
+// «campi e boschi» da «macchie di muffa»: azzerando la deformazione tornano
+// dei cerchi, azzerando la posterizzazione tornano delle collinette sfumate.
+const SKY_GRANA_DEFORMA = 0.09;
+const SKY_GRANA_GRADINI = 4;
+const SKY_GRANA_POSTER = 0.35;
+
+// La tela delle **chiazze**: quella che si legge da lontano. Non ha fondo —
+// sono macchie chiare e scure su trasparente — quindi si stende normalmente e
+// funziona a qualunque luminosità: le chiare schiariscono, le scure
+// scuriscono, e dove non c'è niente non cambia niente. È quello che serve al
+// terreno vicino, che da quando si scurisce verso il nadir sta proprio dove
+// l'overlay non arriva.
+function skyTelaGranaLarga(ctx, lato, forza, seme) {
+  const tela = document.createElement('canvas');
+  tela.width = tela.height = lato;
+  const g = tela.getContext('2d');
+  if (!g) return null;
+  const base = skyRumore2D(lato, [[7, 1], [14, 0.55], [28, 0.3], [56, 0.16]], seme);
+  // I due campi che spostano il punto di lettura. Sono grossi e lenti: quello
+  // che deve venire fuori è una chiazza stirata, non un tremolio.
+  const spostaX = skyRumore2D(lato, [[5, 1], [11, 0.5]], seme ^ 0x9e3779b9);
+  const spostaY = skyRumore2D(lato, [[6, 1], [13, 0.5]], seme ^ 0x85ebca6b);
+  const quanto = lato * SKY_GRANA_DEFORMA;
+  const dati = g.createImageData(lato, lato);
+  const p = dati.data;
+  for (let y = 0; y < lato; y++) {
+    for (let x = 0; x < lato; x++) {
+      const i = y * lato + x;
+      const v = skyPosterizza(skyCampionaAvvolto(base, lato,
+        x + (spostaX[i] - 0.5) * quanto,
+        y + (spostaY[i] - 0.5) * quanto), SKY_GRANA_GRADINI, SKY_GRANA_POSTER);
+      const d = (v - 0.5) * 2;
+      const chiaro = d >= 0;
+      p[i * 4] = p[i * 4 + 1] = p[i * 4 + 2] = chiaro ? 255 : 0;
+      p[i * 4 + 3] = Math.max(0, Math.min(255, Math.round(Math.abs(d) * forza * 255)));
     }
   }
+  g.putImageData(dati, 0, 0);
   return ctx.createPattern(tela, 'repeat');
 }
 
@@ -15809,15 +15924,12 @@ function skyGrana(ctx) {
   if (skyGranaProvata) return skyGranaMotivo;
   skyGranaProvata = true;
   try {
-    skyGranaMotivo = skyTelaGrana(ctx, SKY_GRANA_LATO, 260, 0.054, 0.14,
-      skySeme('grana-terreno'), true);
-    // La scala grande: poche macchie, larghe, tenui, e **senza fondo** (vedi
-    // il commento di `skyTelaGrana`). Non è «la stessa grana ingrandita» — è
-    // un'altra tela, con un altro seme, se no stendendo due volte lo stesso
+    skyGranaMotivo = skyTelaGranaFine(ctx, SKY_GRANA_LATO, 0.15, skySeme('grana-terreno'));
+    // La scala grande. Non è «la stessa grana ingrandita» — è un'altra tela,
+    // con un altro seme e altre ottave, se no stendendo due volte lo stesso
     // motivo a due scale i massimi cadono negli stessi posti e si vede una
     // griglia.
-    skyGranaLarga = skyTelaGrana(ctx, SKY_GRANA_LATO_LARGA, 200, 0.12, 0.1,
-      skySeme('chiazze-terreno'), false);
+    skyGranaLarga = skyTelaGranaLarga(ctx, SKY_GRANA_LATO_LARGA, 0.16, skySeme('chiazze-terreno'));
   } catch (e) {
     skyGranaMotivo = null;
     skyGranaLarga = null;
@@ -15856,7 +15968,7 @@ function skyDisegnaGranaTerreno(ctx, o, focale, velo) {
   // passo fra due scale in natura: le zolle e i campi, i cespugli e i
   // boschi. Più larghe di così smettono di essere una trama e diventano
   // macchie — la mimetica militare del commento qui sopra, in grande.
-  skyAncoraMotivo(skyGranaLarga, o, SKY_GRANA_LATO_LARGA, scala * 2.4);
+  skyAncoraMotivo(skyGranaLarga, o, SKY_GRANA_LATO_LARGA, scala * 1.8);
 
   ctx.save();
   const regola = skyTracciaSuolo(ctx, o);
@@ -15865,7 +15977,7 @@ function skyDisegnaGranaTerreno(ctx, o, focale, velo) {
   // trasparente, quindi mordono anche sul terreno vicino, che adesso è la
   // parte più scura del disegno.
   if (skyGranaLarga) {
-    ctx.globalAlpha = velo * 0.42 * luce;
+    ctx.globalAlpha = velo * 0.38 * luce;
     ctx.fillStyle = skyGranaLarga;
     ctx.fill(regola);
   }
