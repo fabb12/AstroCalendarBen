@@ -2,85 +2,87 @@
 
 Niente in corso.
 
-## Ultimo lavoro chiuso — il planetario fermo al ritorno, e la grana che scivolava
+## Ultimo lavoro chiuso — la distanza dei paesi sull'orizzonte
 
-Due segnalazioni da telefono, tutt'e due nel planetario.
+Richiesta: far vedere «in modo semplice e immediato» quanto è lontano ogni
+paese nominato sull'orizzonte del planetario.
 
-### 1. «Esco dall'app, torno, e il planetario è bloccato»
+### Il ragionamento
 
-**La causa.** Non era un'eccezione (per quella c'è già il `try` di
-`skyCiclo`, §12 di CLAUDE.md): è che la `requestAnimationFrame` chiesta prima
-di uscire **non viene mai chiamata**. Un browser da telefono, quando la
-pagina va in secondo piano, la congela e ne butta le rAF in attesa; al
-ritorno la pagina riprende dov'era, ma quella chiamata non arriva più.
-`sky.raf` continua a tenere il suo numero, quindi da dentro il codice il
-ciclo *risulta acceso*: è morto e si dichiara vivo, e nessuno lo riaccende.
-Il `visibilitychange` che c'era non bastava, e non poteva: su iOS, passando a
-un'altra app o bloccando lo schermo, al ritorno spesso non arriva affatto.
+Un nome sull'orizzonte risponde a metà della domanda. «Rimini» dice cos'è quel
+chiarore a sud-est; non dice se sono sei chilometri o quaranta, che è il numero
+da cui dipende tutto il resto — se conviene spostarsi di mezz'ora per
+lasciarselo dietro, o se è la cupola con cui bisogna convivere.
 
-**La cura** — nuova §**7.4-quinquies** in `app.js`. Non si aspettano più gli
-avvisi, si guardano i fatti: un **battito** (`sky.battito`) scritto a ogni
-fotogramma e una **sentinella** che ogni secondo controlla che non sia
-vecchio (`skyVigilaCicli`, `SKY_BATTITO_MS` 1000, `SKY_CICLO_FERMO_MS` 1500).
-`pageshow`, `focus`, `resume` e la visibilità restano agganciati, ma solo per
-ripartire *subito* invece che entro un secondo. Tre cose che non sono
-dettagli:
+Scrivere la distanza accanto a ogni nome sarebbe finita lì, ma **sette numeri
+appesi al crinale sono sette numeri da leggere uno per uno**, e nessuno lo fa:
+a colpo d'occhio non si vuole la misura, si vuole *l'ordine* — chi sta davanti
+e chi sta in fondo. E l'ordine lo racconta l'aria.
 
-- chi non ha mai battuto **non** si accende: una finestra segna `aperto`
-  prima di misurare la tela, e partirle davanti vuol dire disegnare su misure
-  che non ci sono ancora;
-- chi ha **prestato** il ciclo a un'altra vista si segna `sky.cicloPrestato`
-  (`skyPrestaIlCiclo`/`skyRestituisciIlCiclo`, che hanno preso il posto dei
-  due `!!sky.raf` copiati in `apriSistemaSolare` e nella lezione), se no la
-  sentinella riaccenderebbe il cielo sotto al Sistema Solare;
-- ripartendo, `dt` e playback ripartono da zero, e si richiede il wake lock
-  che il sistema aveva rilasciato.
+Da lì la decisione che tiene insieme tutto il resto: **non si inventa nessuna
+scala nuova**. Il disegno dell'orizzonte una legge della foschia ce l'ha già
+(`SKY_FOSCHIA_KM`, e le diciotto fette di `skyPianiOrizzonte` che ne escono),
+e il nome di un paese si vela **esattamente quanto la fetta di terreno alla sua
+distanza**. `skyLontananzaCitta` è la stessa riga, e il §23 di `verifica.html`
+controlla che le due non divergano di una cifra. Se divergessero si vedrebbe,
+e si vedrebbe come un difetto: un nome nitido appoggiato a una montagna
+sbiadita è un'etichetta incollata sul paesaggio, non un paese che sta là in
+fondo.
 
-La stessa rete vale per le altre tele che si animano da sole: vista 3D,
-lezione dell'eclittica, simulazione, e i banchi della Didattica attraverso
-`didatticaVigila()` (in `didattica.js`, che ha il ciclo in un altro file).
+### Cosa c'è adesso — `app.js`, blocco «Quanto è lontano quel paese»
 
-**Provata nell'app vera** con Chromium: aperto il planetario, simulato il
-guasto esatto (`cancelAnimationFrame(sky.raf)` lasciando `sky.raf` col suo
-numero) e verificato che entro due secondi il ciclo riparte e continua a
-battere.
+Da quel numero solo (`skyProspettivaCitta`) escono **insieme** tutti i segnali
+della distanza: il corpo del carattere (14 → 10 px), l'opacità (1 → 0,4), lo
+spessore del filo di richiamo (1,5 → 0,55 px) e **l'ombra scura**, che se ne va
+molto prima del nome — un nome lontano non è un nome piccolo, è un nome *senza
+ombra*, ed è lì che sta quasi tutto il contrasto netto di un'etichetta.
 
-### 2. «Zummando, la texture del terreno scivola sopra al paesaggio»
+La tinta scivola verso la foschia di adesso, ma **pesata sulla sua luminosità**:
+di giorno la foschia è chiara e il nome lontano si scolora verso il
+grigio-azzurro (che è quello che si vede in fondo a una valle), di notte è
+quasi nera e mescolarcisi vorrebbe dire **cancellare** il nome invece di
+allontanarlo. Il contro-esempio è nelle prove: senza quel peso, di notte
+l'ambra finisce a un grigio da 141 livelli.
 
-**La causa.** La grana era scritta in funzione della focale: misura
-`focale/900` e fase `azimut × focale`. Sulla carta è giusto — una trama
-agganciata al terreno deve ingrandirsi con lui — ma qui il campo va da 180° a
-un quarto di grado, cioè la focale cambia di settecento volte. Guardando a
-sud-ovest (azimut 225°, quasi quattro radianti) bastano trenta pixel di
-focale per spostare la fase di una piastrella intera: a ogni pizzicata la
-trama strisciava di traverso mentre il paesaggio sotto stava fermo.
+Il **numero** resta, ma smette di essere il soggetto: `Bologna · 9 km`, due
+punti più piccolo, peso normale, il 62% dell'opacità del nome, intero e mai
+zero. E non su tutti insieme: su quello che il **mirino** sta indicando — che è
+il modo in cui la domanda viene fatta davvero — e su tutti sotto i 40° di
+campo. Il paese indicato torna leggibile (`SKY_CITTA_INDICATO_VELO`) ma **non**
+cambia corpo né tinta: dov'è non cambia perché lo si sta guardando.
 
-**La cura.** La fase non si ricalcola dall'angolo assoluto, si **segue**:
-`skyGranaScorrimento` somma a ogni fotogramma di quanto il terreno è
-scivolato sullo schermo (`Δangolo × focale`, col giro del nord normalizzato).
-Girandosi la grana si muove insieme al terreno esattamente come prima;
-zummando l'angolo non cambia, quindi lo spostamento è **zero**. La misura non
-segue più l'ingrandimento (`SKY_GRANA_SCALA`). Prove nel §22 di
-`verifica.html`, e misurato anche nell'app vera: da 45° a 2° la fase si
-sposta di 0,0000 pixel.
+Il posto lo prenota **il più vicino per primo**. Chi entra in scena lo decide
+l'importanza (la lista arriva da `terreno.js` ordinata per forza, cioè abitanti
+diviso distanza al quadrato); chi sta *davanti* lo decide la distanza, e sono
+due domande diverse. Il disegno va poi dal fondo verso di qui, così a passare
+sopra è quello davanti. Quanti se ne nominano lo dice `skyCittaMaxNomi()`:
+sette a grandangolo, fino a dodici ingrandendo.
 
-## Da sapere — `verifica.html` si ferma al §15, e non per colpa di questo lavoro
+I colori dei paesi in `SKY_NOMI_ORIZZONTE` sono diventati **numerici** (era
+l'unico modo di mescolarli alla foschia); cime e acque restano stringhe.
 
-Sul commit di partenza (015321b), aprendo `verifica.html` il blocco «Chi si
-vede e chi no» del §15 fallisce e poi solleva un `TypeError`, che essendo in
-uno `<script>` unico porta via **tutto quello che viene dopo**: i §16–§22 non
-girano affatto e la pagina resta a «In corso…».
+Una trappola su cui si è già inciampato una volta, scritta anche in
+funzione: il tetto dei nomi si conta sui paesi **in vista**, non sui primi
+della lista. Guardando a sud, i primi sette per importanza possono stare tutti
+alle spalle, e tagliare lì vuol dire un orizzonte senza un nome pur avendo
+mezza provincia davanti. Il ciclo scorre finché non ne ha raccolti abbastanza,
+che è quello che faceva da sempre.
 
-La causa è che `cimeVisibili()` a un certo punto ha cominciato a **rifare**
-azimut e distanza di ogni vetta da `lat`/`lon` (per far scorrere le etichette
-col paesaggio senza riscaricare niente), mentre quel pezzo di prova dà alle
-vette `lat: 0, lon: 0` con `km`/`az` scritti a mano — e per giunta la pagina
-non definisce `luogoCorrente`, quindi `terrenoLuogo()` torna `null` e
-`cimeVisibili()` esce subito con un elenco vuoto: `viste[0].nome` esplode.
+### Com'è stato provato
 
-Per rimetterlo in piedi servono due cose: uno stub di `luogoCorrente` (da
-togliere in fondo al blocco, come già si fa con `primaStato`/`primaTerreno`) e
-delle `lat`/`lon` vere per le vette finte, calcolate dal luogo di prova. Sono
-quattro elenchi di vette da rifare, tutti dentro al §15. **Non è stato fatto
-qui**: le prove di questo lavoro sono state verificate su una copia con il
-§15 saltato, e lì passano tutte e 527.
+- **§23 di `verifica.html`**, 24 prove nuove (la pagina non carica `app.js`: le
+  formule sono una copia, come per il §19 e il §21).
+- Un **banco a parte** che fa girare la `skyNomiCitta` **vera**, estratta da
+  `app.js`, sotto un finto contesto 2D che registra cosa le viene chiesto di
+  disegnare: chi vince il posto fra un paese vicino e una città lontana sullo
+  stesso azimut, l'ordine dal fondo verso di qui, il numero solo su quello
+  indicato, il tetto dei nomi, e i casi limite (lista vuota, paese fuori campo,
+  `sky.ariaOra` non ancora calcolata, pieno giorno).
+- Il disegno vero su un canvas di Chromium, di notte e di giorno, con cinque
+  paesi da 3 a 58 km.
+
+**Quello che NON è stato provato**: l'app intera in un browser. In questo
+ambiente la rete verso le CDN è chiusa dalla policy, Astronomy Engine non si
+carica e `verifica.html` si ferma da sola al §2 — per lo stesso motivo. Vale la
+pena riaprire il planetario vero su un orizzonte con dei paesi prima di
+considerare chiusa la cosa.
