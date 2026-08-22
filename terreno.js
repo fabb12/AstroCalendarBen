@@ -2545,10 +2545,30 @@ function cittaRaggioAbitatoKm(abitanti) {
   return 0.5 * Math.sqrt(Math.max(200, abitanti) / 10000);
 }
 
-function cittaPrepara(grezze, lat, lon) {
+// Il geocodificatore inverso sa anche **come si chiama** il punto da cui si
+// guarda. È un'informazione più affidabile della distanza dal nodo OSM: quel
+// nodo è il centro convenzionale del paese, e in un abitato lungo o sparso può
+// stare a diversi chilometri da casa. In quel caso il solo raggio qui sopra
+// faceva ricomparire il paese dell'osservatore sull'orizzonte, con un azimut
+// privo di significato.
+function cittaNomeConfrontabile(nome) {
+  return String(nome || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('it')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function cittaEPostoOsservatore(c, nomeLuogo) {
+  const luogo = cittaNomeConfrontabile(nomeLuogo);
+  return !!luogo && cittaNomeConfrontabile(c && c.nome) === luogo;
+}
+
+function cittaPrepara(grezze, lat, lon, nomeLuogo) {
   return grezze.map(c => {
     const km = terrenoDistanzaKm(lat, lon, c.lat, c.lon);
-    if (km <= Math.max(0.8, cittaRaggioAbitatoKm(c.abitanti))) return null;
+    if (cittaEPostoOsservatore(c, nomeLuogo) ||
+        km <= Math.max(0.8, cittaRaggioAbitatoKm(c.abitanti))) return null;
     const az = cittaAzimut(lat, lon, c.lat, c.lon);
     const forza = cittaForza(c.abitanti, km);
     // Il raggio dell'abitato, in chilometri: una città di un milione di
@@ -2838,9 +2858,10 @@ function cittaDimentica() {
 // --- L'innesco --------------------------------------------------------
 
 function cittaApplica(lat, lon, grezze, fonte) {
+  const luogo = terrenoLuogo();
   citta.lat = lat;
   citta.lon = lon;
-  citta.elenco = cittaPrepara(grezze, lat, lon);
+  citta.elenco = cittaPrepara(grezze, lat, lon, luogo && luogo.nome);
   citta.fonte = fonte;
   citta.stato = 'pronto';
   citta.motivo = '';
@@ -2918,7 +2939,12 @@ function cittaCarica(forza, soloCache) {
 // non come finiscono sullo schermo.
 function cittaVicine() {
   if (!citta.acceso || citta.stato !== 'pronto') return [];
-  return citta.elenco;
+  // Il nome preciso può arrivare dopo le città (il GPS e il geocodificatore
+  // lavorano in parallelo). La seconda potatura evita che, per alcuni secondi
+  // o fino al prossimo caricamento, resti visibile il nome appena riconosciuto
+  // del luogo in cui ci si trova.
+  const luogo = terrenoLuogo();
+  return citta.elenco.filter(c => !cittaEPostoOsservatore(c, luogo && luogo.nome));
 }
 
 function cittaAlterna() {
