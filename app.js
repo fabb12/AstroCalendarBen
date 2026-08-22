@@ -9859,13 +9859,30 @@ async function luogoMappaUsaPosizioneAttuale() {
   luogoAvviso('Consenti l’accesso alla posizione, se il browser lo chiede.');
 
   try {
-    const posizione = await new Promise((risolvi, rifiuta) => {
-      navigator.geolocation.getCurrentPosition(risolvi, rifiuta, {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0
-      });
-    });
+    // Se l'app ha appena ricevuto un fix GPS, quello *è* già la posizione
+    // attuale: usarlo subito evita una seconda richiesta che su alcuni telefoni
+    // resta muta finché il ricevitore non produce un altro fix. Se invece la
+    // lettura è vecchia (o viene dalla rete) si chiede il dispositivo. Come
+    // nella ricerca principale, dopo il tentativo preciso se ne fa uno meno
+    // esigente: sui computer e al chiuso è spesso l'unico che risponde.
+    const giaLetta = sky.posizione &&
+      (sky.posizione.fonte === 'gps' || sky.posizione.origine === 'gps') &&
+      sky.posizione.tempo && Date.now() - sky.posizione.tempo <= 5 * 60 * 1000
+      ? { coords: { latitude: sky.posizione.lat, longitude: sky.posizione.lon } }
+      : null;
+    const chiedi = (opzioni) => new Promise((risolvi, rifiuta) =>
+      navigator.geolocation.getCurrentPosition(risolvi, rifiuta, opzioni));
+    let posizione = giaLetta;
+    if (!posizione) {
+      try {
+        posizione = await chiedi({ enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+      } catch (primoErrore) {
+        // Un permesso negato non migliora chiedendolo di nuovo; timeout e
+        // posizione indisponibile, invece, possono riuscire col fix di rete.
+        if (primoErrore && primoErrore.code === 1) throw primoErrore;
+        posizione = await chiedi({ enableHighAccuracy: false, timeout: 7000, maximumAge: 300000 });
+      }
+    }
     const lat = posizione.coords.latitude;
     const lon = posizione.coords.longitude;
     luogoAvviso('');
