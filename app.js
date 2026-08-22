@@ -734,8 +734,9 @@ window.addEventListener('DOMContentLoaded', () => {
   inizializzaImpostazioni();
   inizializzaPosizioneUI();
   inizializzaStasera();
-  // La vista d'apertura è "Stasera": è la domanda che ci si fa davvero
-  mostraVista('stasera');
+  // Il planetario è la porta d'ingresso dell'app su ogni dispositivo; un
+  // link condiviso può subito dopo scegliere una vista o una scheda diversa.
+  mostraVista('cielo');
   // Un link condiviso (?evento=…) porta direttamente sulla scheda giusta
   gestisciLinkCondiviso();
   // E, appena la prima schermata è disegnata, si cerca da soli dove siamo:
@@ -6522,6 +6523,7 @@ function mostraVista(nome) {
   const inattivo = "voce-menu";
   // Serve a chi ridisegna dopo un cambio di schermo: sa cosa c'è davanti
   vistaAttuale = nome;
+  document.body.classList.toggle('vista-planetario-attiva', nome === 'cielo');
 
   VISTE.forEach(v => {
     const btn = document.getElementById(v.btn);
@@ -8892,7 +8894,7 @@ function skyAggiornaLuogoVistaUI() {
   // Il nome basta: le coordinate stanno già nella lettura di stato in alto a
   // destra, e ripeterle qui allungava la riga senza dire niente di nuovo.
   if (nomeEl) {
-    nomeEl.textContent = l ? (l.nome || formattaCoordinate(l.lat, l.lon)) : 'nessuna posizione';
+    nomeEl.textContent = l ? skyNomeLuogoConAltitudine(l) : 'nessuna posizione';
     nomeEl.title = l ? formattaCoordinate(l.lat, l.lon) : '';
     nomeEl.dataset.visita = l && l.proprio ? 'si' : 'no';
   }
@@ -8905,6 +8907,16 @@ function skyAggiornaLuogoVistaUI() {
       ? 'Solo qui: orari, meteo, satelliti e telescopio restano sulla tua posizione.'
       : 'Vale solo per il planetario: il resto dell\'app resta sulla tua posizione.';
   }
+}
+
+// Nome e quota formano una sola lettura, con lo stesso corpo tipografico.
+// La quota compare appena il profilo del terreno del punto corrente è
+// disponibile; durante un cambio di luogo non mostriamo mai quella vecchia.
+function skyNomeLuogoConAltitudine(luogo) {
+  const nome = luogo.nome || formattaCoordinate(luogo.lat, luogo.lon);
+  const quota = typeof terrenoQuotaDelLuogo === 'function'
+    ? terrenoQuotaDelLuogo(luogo.lat, luogo.lon) : null;
+  return typeof quota === 'number' ? `${nome} · ${Math.round(quota)} m` : nome;
 }
 
 // Applica una città o un punto scelto nel pannello e lo racconta
@@ -18826,7 +18838,7 @@ function skyAggiornaStato() {
   // Il nome del posto quando c'è: due numeri con cinque decimali sono
   // esatti e non dicono niente a nessuno.
   const testo = luogo
-    ? (luogo.nome || formattaCoordinate(luogo.lat, luogo.lon))
+    ? skyNomeLuogoConAltitudine(luogo)
     : 'posizione mancante';
   if (el.textContent !== testo) el.textContent = testo;
   // Il cielo spostato altrove lo dice comunque, ma con l'aspetto e non con
