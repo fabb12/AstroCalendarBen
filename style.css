@@ -4971,6 +4971,14 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   border-radius: var(--raggio-m);
   overflow: hidden;
   background: var(--spazio);
+  /* La pelle dei comandi appoggiati sulla scena. Sono più marcati dei
+     fratelli che stanno dentro ai pannelli, e non è un vezzo: qui sotto non
+     c'è il grigio di un pannello, c'è il nero del vuoto con dentro le stelle,
+     e il bordo di serie — un grigio azzurrino al 26% — su quel fondo non si
+     vede. Un tasto che non si vede è un tasto che non c'è, ed è così che le
+     tre viste sono state segnalate come mancanti. */
+  --fondo-scena: rgba(10, 16, 30, 0.9);
+  --bordo-scena: rgba(148, 168, 214, 0.44);
 }
 .tela-sistema {
   display: block;
@@ -5005,11 +5013,13 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
 .sol-velocita .lettura-velocita { min-width: 52px; font-size: 0.72rem; }
 .sol-suggerimento {
   position: absolute;
-  top: 16px;
-  /* Fra le due colonne di tasti appoggiati sulla scena: a sinistra le tre
-     viste, a destra i comandi del guardare. In mezzo ci sta una riga di
-     istruzioni, e ci sta senza finire sotto a nessuno dei due. */
-  left: 62px;
+  /* **Sotto** alla colonna delle viste, non fra le due colonne: da quando le
+     tre viste hanno il nome scritto accanto al segno quella colonna è larga
+     centoventi pixel, e una riga di istruzioni che partisse da sessanta
+     finirebbe sotto di loro. Qui invece ha tutta la larghezza che vuole, e
+     comunque se ne va al primo dito appoggiato sulla scena. */
+  top: 146px;
+  left: max(12px, env(safe-area-inset-left));
   right: 60px;
   margin: 0;
   font-size: 0.7rem;
@@ -5039,25 +5049,31 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--bordo-forte);
+  border: 1px solid var(--bordo-scena);
   border-radius: 999px;
-  background: rgba(6, 10, 20, 0.82);
+  background: var(--fondo-scena);
   color: var(--testo);
   font-size: 1.05rem;
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   transition: background-color var(--transizione), border-color var(--transizione);
 }
-.tasto-mappa-sistema:hover { background: rgba(28, 36, 60, 0.92); }
+.tasto-mappa-sistema:hover { background: rgba(28, 36, 60, 0.94); }
 .tasto-mappa-sistema.attiva { border-color: var(--blu); color: var(--blu-chiaro); }
 
 /* --- Le tre viste, in colonna a sinistra ---
    Stessa pelle dei comandi di destra, perché sono la stessa famiglia di cose:
    segni appoggiati sulla scena. Cambia solo cosa dicono — quelli a destra
    sono il *come* si guarda (schermo, giro, ingrandimento), questi il *cosa*.
-   Il nome per esteso c'è, ma solo per chi legge con lo schermo e nel `title`:
-   tre parole sopra al disegno sono tre parole di disegno in meno. */
+   **Col nome scritto**, e vale la pena sapere perché: per un po' erano tre
+   tondi con la sola icona, e sono stati segnalati come mancanti. Un segno
+   senza parola, sopra a un cielo nero, con un bordo che è un grigio
+   azzurrino al 26%, non è un comando discreto: è un comando che non c'è. Il nome costa
+   ottanta pixel in un angolo dove non c'è disegno, e in cambio le tre
+   risposte alla domanda «cosa sto guardando» si leggono da ferme. */
 .sol-viste {
   position: absolute;
   top: 10px;
@@ -5067,39 +5083,37 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
+  max-width: calc(100% - 108px);   /* la colonna dei comandi resta libera */
 }
 .tasto-vista-sistema {
-  width: 38px;
-  height: 38px;
+  min-width: 38px;
+  height: 36px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  border: 1px solid var(--bordo-forte);
+  gap: 7px;
+  padding: 0 12px 0 9px;
+  border: 1px solid var(--bordo-scena);
   border-radius: 999px;
-  background: rgba(6, 10, 20, 0.82);
+  background: var(--fondo-scena);
   color: var(--testo);
   line-height: 1;
   cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   transition: background-color var(--transizione), border-color var(--transizione), color var(--transizione);
 }
-.tasto-vista-sistema:hover { background: rgba(28, 36, 60, 0.92); }
+.tasto-vista-sistema svg { flex: 0 0 auto; }
+.tasto-vista-sistema:hover { background: rgba(28, 36, 60, 0.94); }
 .tasto-vista-sistema.attiva {
   border-color: var(--blu);
   color: var(--blu-chiaro);
-  background: rgba(30, 58, 110, 0.9);
+  background: rgba(30, 58, 110, 0.92);
 }
-/* Nascosto alla vista, non a chi legge con lo schermo */
 .sol-vista-nome {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
+  font-size: 0.76rem;
+  font-weight: 600;
   white-space: nowrap;
-  border: 0;
+  letter-spacing: 0.01em;
 }
 
 /* --- Le due manopole di secondo piano ---
@@ -5107,13 +5121,20 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
    scelgono una volta. Stanno quindi dietro a un tasto della colonna di
    destra, e il pannellino si apre appeso a lui. */
 .sol-opzioni-guscio { position: relative; }
+/* Si apre **di fianco** al suo tasto, non sotto: sotto ci sono il − e il +
+   dello zoom, e un pannellino che si stende sopra a due tasti fa sembrare
+   rotto anche quello che si è appena toccato — si tocca il ⚙, spariscono i
+   comandi che si conoscevano, e la lettura più naturale è «non funziona».
+   Verso sinistra perché la colonna sta appoggiata al bordo destro: da quella
+   parte c'è tutto il disegno. */
 .sol-opzioni {
   position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
+  top: 0;
+  right: calc(100% + 8px);
   z-index: 9;
   width: max-content;
   min-width: 190px;
+  max-width: min(240px, 62vw);
   display: grid;
   gap: 9px;
   padding: 10px 11px 11px;
@@ -5125,8 +5146,21 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   box-shadow: var(--ombra-3);
 }
 .sol-opzioni.hidden { display: none; }
+.sol-opzioni-titolo {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
 .sol-opzione { display: grid; gap: 5px; justify-items: start; }
 .sol-opzione .segmenti-cielo { width: 100%; }
+/* Le due parole non sono lunghe uguale — «Ingrandite» e «Reali» —, e con le
+   fette larghe uguali (`flex: 1 1 0`) la più lunga sbordava dalla sua
+   pillola: la scritta restava bianca sopra al fondo del pannello e sembrava
+   un segmento acceso a metà. Qui ognuna è larga quanto la sua parola. */
+.sol-opzione .tasto-segmento { flex: 0 1 auto; padding: 7px 11px; }
 
 /* --- Il Sistema Solare a tutto schermo ---
    Va a schermo intero il guscio, non la finestra: dentro ha già la tela, la
@@ -5168,28 +5202,43 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
 .sol-guscio.sol-schermo-pieno .comandi-mappa-sistema {
   top: max(12px, env(safe-area-inset-top));
 }
-/* Il pannello del tempo, a tutto schermo, lascia scoperta la barra da cui si
-   apre: qui lo spazio in fondo è quello della barra staccata */
-.sol-guscio:fullscreen .sol-pannello-tempo,
-.sol-guscio.sol-schermo-pieno .sol-pannello-tempo {
-  max-height: calc(100% - 120px);
-}
 body.sol-immersivo { overflow: hidden; }
 
 /* Il pannello del tempo in prestito dal planetario (7.5-ter in app.js): si
    appoggia sulla scena come i pannelli del cielo si appoggiano sul cielo, e
    lascia scoperta la barra del tempo in fondo — è da lì che l'hanno chiamato,
-   e ritoccando la data si vuole vedere la lettura cambiare. */
+   e ritoccando la data si vuole vedere la lettura cambiare.
+   **Cresce dalla barra verso l'alto**, e questa è la correzione di un difetto
+   che si vedeva in tutt'e tre le forme in cui questa vista si apre: appeso in
+   cima com'era, largo da un bordo all'altro e alto tre quarti di schermo,
+   copriva per intero le due colonne di comandi — le tre viste a sinistra e i
+   cinque tondi a destra, ⚙ compreso. Chi apriva l'orologio si ritrovava senza
+   comandi e senza nessun segnale del perché: toccava dov'era il ⚙ e a
+   rispondere era il tasto «Vai» del pannello. Da qui le due segnalazioni,
+   «il tasto impostazioni non funziona» e «non vedo le viste». E nella
+   finestra non a tutto schermo, dove la scena è alta la metà, arrivava a
+   stamparsi anche sopra alla barra da cui era stato chiamato.
+   Il fondo è la stessa misura della scheda, che la barra la misura davvero
+   (`solAssestaScheda`): sotto ai 520px va a capo e diventa più alta. */
 .sol-pannello-tempo {
   position: absolute;
   z-index: 7;
-  top: 10px;
+  top: auto;
+  bottom: var(--sol-fondo-scheda, 88px);
   left: max(10px, env(safe-area-inset-left));
   right: max(10px, env(safe-area-inset-right));
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: calc(100% - 86px);
+  /* E si ferma prima dei comandi: centocinquanta pixel in cima alla scena
+     sono le tre viste e i primi tre tondi della colonna di destra, cioè le
+     cose che devono restare toccabili anche con l'orologio aperto. Dove la
+     scena è troppo bassa perché ce ne stiano dentro tutt'e due — la finestra
+     non a tutto schermo su un telefono — vince il pannello con un minimo
+     leggibile, e a scorrere è il suo contenuto. */
+  max-height: max(180px, calc(100% - var(--sol-fondo-scheda, 88px) - 150px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 10px 12px 12px;
   border: 1px solid var(--bordo-forte);
   border-radius: var(--raggio-m);
@@ -5302,10 +5351,11 @@ body.sol-immersivo { overflow: hidden; }
     max-height: min(52%, 300px);
     padding: 10px 11px 11px;
   }
-  /* Su un telefono i due tondi in colonna si stringono appena: quello che
-     conta è che fra le due colonne resti spazio per il disegno */
-  .tasto-vista-sistema { width: 36px; height: 36px; }
-  .sol-suggerimento { left: 58px; }
+  /* Su un telefono le tre viste si stringono appena — il nome resta, che è
+     tutto il punto: quello che si toglie è il contorno, non la parola */
+  .tasto-vista-sistema { height: 34px; padding: 0 10px 0 8px; gap: 6px; }
+  .sol-vista-nome { font-size: 0.72rem; }
+  .sol-suggerimento { top: 142px; }
 }
 
 /* ------------------------------------------- MAPPA ECLISSI SU DUE COLONNE   */

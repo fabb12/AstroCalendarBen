@@ -23281,6 +23281,11 @@ function solApriPannelloTempo() {
   // E sotto, nel planetario, non resta un pannello aperto a metà con dentro
   // un buco al posto della sezione che ci siamo appena presi
   skyMostraGruppo('');
+  // E qui sopra non restano aperti due pannelli sulla stessa scena
+  if (typeof solChiudiOpzioni === 'function') solChiudiOpzioni();
+  // Quanto spazio lasciargli in fondo lo dice la barra, misurata adesso: è la
+  // stessa misura su cui poggia la scheda, e il pannello ci si appende sopra
+  if (typeof solAssestaScheda === 'function') solAssestaScheda();
 
   skyRicordaPosto(skyPostoDelTempo, sezione);
   corpo.appendChild(sezione);
@@ -27267,6 +27272,9 @@ function solOpzioniAperte() {
 function solApriOpzioni() {
   const s = document.getElementById('sol-opzioni');
   if (!s) return;
+  // Uno per volta: sono due pannelli appoggiati sulla stessa scena, e il
+  // secondo che si apre finirebbe per coprire il primo
+  if (solPannelloTempoAperto()) solChiudiPannelloTempo();
   s.classList.remove('hidden');
   const b = document.getElementById('sol-btn-opzioni');
   if (b) { b.setAttribute('aria-expanded', 'true'); b.classList.add('attiva'); }
@@ -28090,6 +28098,23 @@ function inizializzaSistemaSolare() {
   if (meno) meno.addEventListener('click', () => solSpostaDiUnPasso(-1));
   const piu = document.getElementById('sol-passo-piu');
   if (piu) piu.addEventListener('click', () => solSpostaDiUnPasso(1));
+
+  // La barra non è alta sempre uguale, e da lei dipendono due cose: dove
+  // finiscono le scritte in fondo alla scena (`sol.altaBarra`) e dove
+  // comincia il fondo dei pannelli appoggiati sopra di lei (la scheda e
+  // l'orologio, che leggono `--sol-fondo-scheda`). Cresce di una riga quando
+  // la slitta va a capo, e cambia anche quando la lettura della velocità
+  // passa da «—» a «5 min/s»: momenti che non sono un ridimensionamento della
+  // finestra, e che quindi nessuno andava a raccontare. Misurata una volta
+  // sola all'apertura, la riga in fondo alla scena finiva sotto alla barra.
+  const barraTempo = document.getElementById('sol-tempo');
+  if (barraTempo && typeof ResizeObserver === 'function') {
+    new ResizeObserver(() => {
+      if (!sol.aperto) return;
+      sol.altaBarra = barraTempo.offsetHeight + 20;
+      solAssestaScheda();
+    }).observe(barraTempo);
+  }
 
   const slitta = document.getElementById('sol-slitta');
   if (slitta) {
