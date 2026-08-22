@@ -1599,6 +1599,19 @@ function terrenoApplica(lat, lon, dati, sorgente, ancoraInCorso) {
   // Non serve chiedere un ridisegno: il planetario ridisegna a ogni
   // fotogramma, e al primo utile la collina nuova è già lì.
   terrenoAggiornaPannello();
+  if (typeof skyAggiornaStato === 'function') skyAggiornaStato();
+  if (typeof skyAggiornaLuogoVistaUI === 'function') skyAggiornaLuogoVistaUI();
+}
+
+// Espone al planetario soltanto la quota che appartiene davvero al luogo
+// mostrato. Il controllo evita che, mentre ci si sposta, accanto alla nuova
+// città rimanga per qualche secondo l'altitudine di quella precedente.
+function terrenoQuotaDelLuogo(lat, lon) {
+  if (typeof terreno.quota !== 'number' || !isFinite(lat) || !isFinite(lon) ||
+      !isFinite(terreno.lat) || !isFinite(terreno.lon)) return null;
+  const dLat = lat - terreno.lat;
+  const dLon = (lon - terreno.lon) * Math.cos(lat * Math.PI / 180);
+  return Math.hypot(dLat, dLon) <= (2 / 111) ? terreno.quota : null;
 }
 
 // Rifare il profilo con un'altra quota dell'occhio, senza chiedere niente
@@ -1636,6 +1649,8 @@ function terrenoRimontaConQuota(quota, perche) {
   cime.vistaChiave = null;
   acque.vista = null;
   acque.vistaChiave = null;
+  if (typeof skyAggiornaStato === 'function') skyAggiornaStato();
+  if (typeof skyAggiornaLuogoVistaUI === 'function') skyAggiornaLuogoVistaUI();
   return true;
 }
 

@@ -3211,6 +3211,17 @@ body button.pos-risultato:focus-visible {
 
 @media (min-width: 1180px) {
   .tela-cielo { min-height: 520px; }
+
+  /* Sul computer il planetario usa tutta la finestra disponibile senza
+     entrare nel Fullscreen del browser: restano testata e navigazione, ma il
+     cielo non è più limitato alla larghezza editoriale delle altre viste. */
+  body.vista-planetario-attiva main.contenitore {
+    max-width: none;
+  }
+  body.vista-planetario-attiva .tela-cielo {
+    height: calc(100vh - 150px);
+    height: calc(100dvh - 150px);
+  }
 }
 
 /* --------------------------------------- I COMANDI APPOGGIATI SULLA MAPPA */

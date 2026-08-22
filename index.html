@@ -10,9 +10,12 @@
   <meta name="theme-color" content="#04060d">
   <meta name="color-scheme" content="dark">
   <script>
-    // Prima che il body esista: evita un lampo della vista Stasera quando la
-    // PWA nasce direttamente nel planetario.
-    if (new URLSearchParams(location.search).get('vista') === 'cielo') {
+    // Prima che il body esista: evita un lampo della vista Stasera quando
+    // l'app nasce nel planetario, che e' la sua vista predefinita. Un link a
+    // un'altra vista o alla scheda di un evento conserva invece la sua meta.
+    const parametriAvvio = new URLSearchParams(location.search);
+    if ((!parametriAvvio.get('vista') && !parametriAvvio.get('evento')) ||
+        parametriAvvio.get('vista') === 'cielo') {
       document.documentElement.classList.add('avvio-planetario');
     }
   </script>
