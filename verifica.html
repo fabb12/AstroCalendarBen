@@ -1254,6 +1254,18 @@ titolo('10. Che paesaggio c\'è, e chi illumina l\'orizzonte');
         !daDentro.some(c => c.nome === 'Paese in cui sono') &&
           daDentro.some(c => c.nome === 'Paese all\'orizzonte'),
         daDentro.map(c => c.nome).join(', '));
+  const paeseLungo = cittaPrepara([
+    // Il nodo OSM è abbastanza lontano da superare la vecchia soglia di
+    // 800 metri, ma il nome del geocodificatore dice che siamo ancora qui.
+    { nome: 'San Fermo della Battaglia', lat: 45.820, lon: 9.050, abitanti: 4500 },
+    { nome: 'Cavallasca', lat: 45.805, lon: 9.025, abitanti: 3000 }
+  ], 45.810, 9.050, 'San Fermo della Battaglia');
+  prova('il nome del luogo esclude il proprio paese anche lontano dal centro OSM',
+        !paeseLungo.some(c => c.nome === 'San Fermo della Battaglia') &&
+          paeseLungo.some(c => c.nome === 'Cavallasca'),
+        paeseLungo.map(c => c.nome).join(', '));
+  prova('il confronto del nome ignora accenti, maiuscole e punteggiatura',
+        cittaEPostoOsservatore({ nome: 'Sant’Agata' }, 'SANT AGATA'));
   prova('la più luminosa è la prima della lista',
         pronte.length && pronte[0].nome === 'Capoluogo',
         pronte.map(c => c.nome).join(' > '));
