@@ -2986,6 +2986,13 @@ const CIME_RAGGIO_RIPIEGO_KM = 35;
 // che stanno lì, non fra le sei più grosse del giro intero.
 const CIME_MAX = 80;
 const CIME_RAGGIO_VALIDO_KM = 5;
+// In viaggio il GPS può consegnare un punto nuovo a ogni curva. Una ricerca
+// Overpass per ciascun punto non riuscirebbe comunque a raggiungere il
+// telefono e terrebbe occupato il servizio con risposte già vecchie. Le
+// copie locali si usano sempre; la rete parte soltanto quando il luogo resta
+// fermo per questo intervallo.
+const CIME_FERMO_PRIMA_DI_CARICARE_MS = 12000;
+const CIME_VELOCITA_VIAGGIO_M_S = 2.5;
 // Più lunga del `timeout` scritto nella query (25 s): il client non deve
 // mai essere lui ad arrendersi per primo.
 const CIME_ATTESA_MS = 32000;
@@ -3028,7 +3035,9 @@ const cime = {
   // Le altezze apparenti si rifanno solo quando cambia qualcosa: la quota
   // dell'occhio o il profilo del terreno. Fra un fotogramma e l'altro no.
   vistaChiave: null,
-  vista: []
+  vista: [],
+  timerViaggio: null,
+  ultimoLuogo: null
 };
 
 
@@ -3170,6 +3179,7 @@ function cimeDalSalvato(v) {
 }
 
 function cimeDimentica() {
+  if (cime.timerViaggio) clearTimeout(cime.timerViaggio);
   cime.stato = 'niente';
   cime.quandoFallito = 0;
   cime.fallitoLat = cime.fallitoLon = null;
@@ -3177,6 +3187,8 @@ function cimeDimentica() {
   cime.vista = [];
   cime.vistaChiave = null;
   cime.lat = cime.lon = null;
+  cime.timerViaggio = null;
+  cime.ultimoLuogo = null;
 }
 
 
@@ -3192,6 +3204,32 @@ function cimeApplica(lat, lon, grezze, fonte) {
   cime.stato = 'pronto';
   cime.motivo = '';
   terrenoAggiornaPannello();
+}
+
+// Dice se il punto sta ancora correndo. `coords.speed` non è disponibile su
+// tutti i browser, quindi si affianca una misura fra le letture che arrivano
+// qui. Il limite temporale evita di scambiare per un viaggio il salto fra la
+// posizione salvata ieri e il primo fix di oggi.
+function cimeLuogoInViaggio(luogo) {
+  const ora = Date.now();
+  const prima = cime.ultimoLuogo;
+  cime.ultimoLuogo = { lat: luogo.lat, lon: luogo.lon, quando: ora };
+  const velocitaGps = typeof sky !== 'undefined' && sky.posizione &&
+    isFinite(sky.posizione.velocita) ? sky.posizione.velocita : null;
+  if (velocitaGps !== null && velocitaGps >= CIME_VELOCITA_VIAGGIO_M_S) return true;
+  if (!prima) return false;
+  const secondi = (ora - prima.quando) / 1000;
+  if (secondi <= 0 || secondi > 120) return false;
+  return terrenoDistanzaKm(prima.lat, prima.lon, luogo.lat, luogo.lon) * 1000 / secondi >=
+    CIME_VELOCITA_VIAGGIO_M_S;
+}
+
+function cimeRimandaDopoViaggio() {
+  if (cime.timerViaggio) clearTimeout(cime.timerViaggio);
+  cime.timerViaggio = setTimeout(() => {
+    cime.timerViaggio = null;
+    cimeCarica();
+  }, CIME_FERMO_PRIMA_DI_CARICARE_MS);
 }
 
 function cimeCarica(forza, soloCache) {
@@ -3231,6 +3269,15 @@ function cimeCarica(forza, soloCache) {
     }
   }
   if (soloCache) return Promise.resolve(false);
+
+  // Durante uno spostamento rapido non accodiamo una richiesta destinata a
+  // diventare vecchia prima della risposta. Il timer viene spostato avanti
+  // da ogni nuovo fix: appena ci si ferma, una sola ricerca serve il punto
+  // effettivo d'arrivo.
+  if (!forza && cimeLuogoInViaggio(luogo)) {
+    cimeRimandaDopoViaggio();
+    return Promise.resolve(false);
+  }
 
   cime.stato = 'in-corso';
   cime.motivo = '';
@@ -3320,11 +3367,19 @@ function cimeQuotaOcchio() {
 // esattamente le vette vicine, quelle che uno riconosce.
 function cimeVisibili() {
   if (!cime.acceso || cime.stato !== 'pronto' || !cime.elenco.length) return [];
+  const luogo = terrenoLuogo();
+  if (!luogo || cime.lat === null ||
+      terrenoDistanzaKm(luogo.lat, luogo.lon, cime.lat, cime.lon) > CIME_RAGGIO_VALIDO_KM) {
+    // Mai lasciare sul parabrezza i nomi del tratto precedente mentre la
+    // nuova ricerca è rinviata o in volo.
+    return [];
+  }
   // Tre risposte diverse, e la chiave se ne deve accorgere: il terreno c'è
   // (e allora vale l'istante in cui è arrivato), il terreno sta arrivando,
   // il terreno non c'è e non arriverà.
   const attesa = terrenoInArrivo();
-  const chiave = `${cimeQuotaOcchio().toFixed(1)}|${terrenoDisponibile() ? terreno.quando : (attesa ? 'attesa' : 0)}`;
+  const chiave = `${luogo.lat.toFixed(4)},${luogo.lon.toFixed(4)}|${cimeQuotaOcchio().toFixed(1)}|` +
+    `${terrenoDisponibile() ? terreno.quando : (attesa ? 'attesa' : 0)}`;
   if (cime.vistaChiave === chiave) return cime.vista;
 
   // Senza terreno non c'è niente che nasconda niente, e l'elenco verrebbe
@@ -3344,7 +3399,17 @@ function cimeVisibili() {
 
   const occhio = cimeQuotaOcchio();
   const spuntano = cime.elenco
-    .map(c => Object.assign({}, c, { alt: terrenoAngolo(c.quota, occhio, c.km) }))
+    // Entro il raggio di validità l'elenco OSM è ancora buono, ma azimut e
+    // distanza cambiano continuamente: rifarli costa poche moltiplicazioni
+    // e fa scorrere le etichette insieme al paesaggio, senza scaricare dati.
+    .map(c => {
+      const km = terrenoDistanzaKm(luogo.lat, luogo.lon, c.lat, c.lon);
+      return Object.assign({}, c, {
+        km,
+        az: cittaAzimut(luogo.lat, luogo.lon, c.lat, c.lon),
+        alt: terrenoAngolo(c.quota, occhio, km)
+      });
+    })
     .filter(c => {
       if (c.alt < CIME_ALT_MIN_GRADI) return false;
       const davanti = terrenoCrestaDavanti(c.az, c.km);

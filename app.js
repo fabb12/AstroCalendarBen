@@ -8063,6 +8063,7 @@ function posizioneSceltaDaUtente() {
 function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   const precisione = dettagli && isFinite(dettagli.precisione) ? dettagli.precisione : null;
   const tempo = dettagli && dettagli.tempo ? dettagli.tempo : null;
+  const velocita = dettagli && isFinite(dettagli.velocita) ? Math.max(0, dettagli.velocita) : null;
   // Da dove viene davvero il punto. `fonte` dice come è arrivato adesso
   // ('salvata' quando lo rileggiamo dal browser), `origine` dice chi l'ha
   // prodotto la prima volta: senza, dopo un riavvio non sapremmo più
@@ -8105,7 +8106,7 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   // riferimento più vicina. Serve a dire "Roma" invece di "41,9° N, 12,5° E",
   // che a colpo d'occhio non dice niente a nessuno.
   sky.posizione = {
-    lat, lon, fonte, origine, precisione, tempo,
+    lat, lon, fonte, origine, precisione, tempo, velocita,
     nome: nome || nomeLuogoSalvato(lat, lon) || nomeLuogoVicino(lat, lon)
   };
   // ...e intanto si chiede il nome vero a chi ha la mappa. Solo per i punti
@@ -8195,7 +8196,8 @@ function skyRichiediPosizione() {
       // il filtro qui sopra decide se è meglio di quella che abbiamo già.
       skyImpostaPosizione(pos.coords.latitude, pos.coords.longitude, 'gps', {
         precisione: pos.coords.accuracy,
-        tempo: pos.timestamp
+        tempo: pos.timestamp,
+        velocita: pos.coords.speed
       });
       skyAggiornaOggetti(true);
       // Il dispositivo ha risposto: resta da dire se la sua risposta è stata
@@ -8306,7 +8308,8 @@ function skySorvegliaPosizione(autorizzata, modo) {
       (pos) => {
         const cambiata = skyImpostaPosizione(pos.coords.latitude, pos.coords.longitude, 'gps', {
           precisione: pos.coords.accuracy,
-          tempo: pos.timestamp
+          tempo: pos.timestamp,
+          velocita: pos.coords.speed
         });
         if (cambiata) {
           if (sky.aperto) skyAggiornaOggetti(true);
