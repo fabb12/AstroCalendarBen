@@ -1246,6 +1246,14 @@ titolo('10. Che paesaggio c\'è, e chi illumina l\'orizzonte');
   ], 45, 9);
   prova('le città oltre il raggio utile non entrano',
         !pronte.some(c => c.nome === 'Oltremare'), `${pronte.length} su 4`);
+  const daDentro = cittaPrepara([
+    { nome: 'Paese in cui sono', lat: 45.0005, lon: 9.0005, abitanti: 3000 },
+    { nome: 'Paese all\'orizzonte', lat: 45.02, lon: 9.00, abitanti: 3000 }
+  ], 45, 9);
+  prova('il paese in cui si è non ricompare con una direzione sull\'orizzonte',
+        !daDentro.some(c => c.nome === 'Paese in cui sono') &&
+          daDentro.some(c => c.nome === 'Paese all\'orizzonte'),
+        daDentro.map(c => c.nome).join(', '));
   prova('la più luminosa è la prima della lista',
         pronte.length && pronte[0].nome === 'Capoluogo',
         pronte.map(c => c.nome).join(' > '));
