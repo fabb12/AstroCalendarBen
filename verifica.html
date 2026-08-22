@@ -5618,6 +5618,219 @@ titolo('22. Il paesaggio: il suolo, la luce e i nomi dell\'acqua (app.js §7.3.2
 }
 
 // =====================================================================
+titolo('23. Quanto è lontano quel paese (app.js, «Quanto è lontano quel paese»)');
+// =====================================================================
+//
+// La distanza di un paese si legge in due modi, e tutti e due si giudicano
+// male a occhio. Il numero in coda al nome si vede e si controlla da soli; la
+// **prospettiva aerea** — il nome che si vela, si rimpicciolisce e perde
+// l'ombra man mano che il paese si allontana — no, perché qualunque scala di
+// sbiadimento produce uno schermo *plausibile*. Nessuno, guardando
+// l'orizzonte, dice «questi nomi sbiadiscono con la curva sbagliata»: dice
+// «boh, sembrano tutti uguali», che è il modo in cui una prospettiva sbagliata
+// del doppio non fallisce mai.
+//
+// C'è però un giudice, ed è la ragione per cui questa scala non è stata
+// inventata: le **fette del terreno** dietro ai nomi si velano già, e si
+// velano con `SKY_FOSCHIA_KM`. La prima prova è quella — che le due leggi
+// siano la stessa riga, cifra per cifra — perché è l'unica che, se salta, si
+// vede sullo schermo come un difetto invece che come una scelta: un nome
+// nitido appoggiato a una montagna sbiadita.
+//
+// Come per il §19, il §21 e il §22 questa pagina **non carica `app.js`**: le
+// costanti e le due funzioni qui sotto sono una copia.
+{
+  const FOSCHIA_KM = 25;                 // SKY_FOSCHIA_KM
+  const VICINO  = { corpo: 1,    velo: 1,   tratto: 1.5,  alone: 1 };
+  const LONTANO = { corpo: 0.72, velo: 0.4, tratto: 0.55, alone: 0.16 };
+  const FOSCHIA_TINTA = 0.5;
+  const INDICATO_VELO = 0.95, INDICATO_ALONE = 0.85;
+  const MAX_NOMI = 7, MAX_NOMI_ZOOM = 12, ZOOM_FOV = [60, 15];
+
+  const mescola = (a, b, t) => {
+    const k = Math.max(0, Math.min(1, t));
+    return [0, 1, 2].map(i => Math.round(a[i] + (b[i] - a[i]) * k));
+  };
+
+  function lontananza(km) {
+    const D = TERRENO_DISTANZE[TERRENO_DISTANZE.length - 1];
+    const pieno = 1 - Math.exp(-D / FOSCHIA_KM);
+    return Math.min(1, Math.max(0, (1 - Math.exp(-Math.max(0, km) / FOSCHIA_KM)) / pieno));
+  }
+
+  function prospettiva(km, corpoBase, tinta, aria, indicato) {
+    const t = lontananza(km);
+    const fra = (a, b) => a + (b - a) * t;
+    const f = aria && aria.foschia ? aria.foschia : null;
+    const chiara = f ? (0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]) / 255 : 0;
+    const velo = Math.max(fra(VICINO.velo, LONTANO.velo), indicato ? INDICATO_VELO : 0);
+    const resta = Math.max(fra(VICINO.alone, LONTANO.alone), indicato ? INDICATO_ALONE : 0);
+    return {
+      lontananza: t,
+      corpo: corpoBase * fra(VICINO.corpo, LONTANO.corpo),
+      tratto: fra(VICINO.tratto, LONTANO.tratto),
+      tinta: f ? mescola(tinta.pieno, f, FOSCHIA_TINTA * t * chiara) : tinta.pieno,
+      alfaNome: tinta.alfa * velo,
+      alfaAlone: tinta.aloneAlfa * velo * resta
+    };
+  }
+
+  function maxNomi(fov) {
+    const [largo, stretto] = ZOOM_FOV;
+    const t = Math.min(1, Math.max(0, (largo - fov) / (largo - stretto)));
+    return Math.round(MAX_NOMI + t * (MAX_NOMI_ZOOM - MAX_NOMI));
+  }
+
+  const AMBRA  = { pieno: [255, 219, 158], alfa: 0.97, alone: [0, 0, 0],       aloneAlfa: 0.78 };
+  const SCURO  = { pieno: [92, 46, 4],     alfa: 0.97, alone: [255, 255, 255], aloneAlfa: 0.88 };
+  const NOTTE  = { foschia: [26, 30, 48] };    // SKY_TAPPE_CIELO, Sole a −18°
+  const GIORNO = { foschia: [214, 230, 246] }; // Sole a +45°
+  const scarto = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+
+  // --- La scala è quella del terreno, non una seconda ------------------
+  //
+  // La prova che tiene insieme le due metà del disegno. `skyPianiOrizzonte`
+  // calcola il velo di ogni fetta così: `(1 − e^(−km/25)) / (1 − e^(−60/25))`.
+  // Se questa riga e quella dei nomi divergono, il difetto non è un numero
+  // sbagliato — è un'etichetta che smette di appartenere al paesaggio.
+  const pienoFetta = 1 - Math.exp(-TERRENO_DISTANZE[TERRENO_DISTANZE.length - 1] / FOSCHIA_KM);
+  let scartoMax = 0;
+  for (const km of TERRENO_DISTANZE) {
+    const fetta = (1 - Math.exp(-km / FOSCHIA_KM)) / pienoFetta;
+    scartoMax = Math.max(scartoMax, Math.abs(fetta - lontananza(km)));
+  }
+  prova('un nome si vela quanto la fetta di terreno alla sua distanza',
+    scartoMax < 1e-12,
+    `diciotto distanze, dallo 0,15 ai 60 km: scarto massimo ${scartoMax.toExponential(1)}`);
+
+  prova('ai propri piedi non è velato affatto', lontananza(0) === 0);
+  prova('a sessanta chilometri è in fondo alla scala', Math.abs(lontananza(60) - 1) < 1e-12);
+  prova('e oltre non sbiadisce più', lontananza(300) === 1,
+    'se no i paesi fuori dal raggio del terreno sparirebbero del tutto');
+
+  // Che la curva non torni mai indietro: due paesi, e quello più lontano più
+  // nitido, è il difetto che rovescia il senso di tutto il disegno.
+  let cresce = true, prima = -1;
+  for (let km = 0; km <= 120; km += 0.1) { const t = lontananza(km); if (t < prima - 1e-15) cresce = false; prima = t; }
+  prova('e non torna mai indietro', cresce);
+
+  // Metà del cambiamento sta nei primi quindici chilometri, ed è quello che
+  // rende la scala leggibile: i paesi che contano sono lì, e su una curva
+  // lineare starebbero tutti nello stesso quarto di sbiadimento.
+  prova('metà della sbiadita sta dentro ai primi quindici chilometri',
+    lontananza(15) > 0.45 && lontananza(15) < 0.55,
+    `a 15 km si è al ${(lontananza(15) * 100).toFixed(0)}%, a 3 km al ${(lontananza(3) * 100).toFixed(0)}%`);
+
+  // --- I quattro segnali della distanza -------------------------------
+  const vic = prospettiva(1, 14, AMBRA, NOTTE, false);
+  const lon = prospettiva(60, 14, AMBRA, NOTTE, false);
+
+  prova('il corpo del carattere cala con la distanza',
+    lon.corpo < vic.corpo,
+    `da ${vic.corpo.toFixed(1)}px a ${lon.corpo.toFixed(1)}px`);
+  prova('ma non sprofonda: un nome lontano resta un nome',
+    lon.corpo >= 10,
+    'sotto i dieci pixel una scritta non si legge più, si indovina');
+  prova('il filo di richiamo si assottiglia',
+    lon.tratto < vic.tratto && lon.tratto > 0.4,
+    `da ${vic.tratto.toFixed(2)}px continui a ${lon.tratto.toFixed(2)}px`);
+  prova('il nome più lontano resta sopra il limite di leggibilità',
+    lon.alfaNome >= 0.35,
+    `opacità ${lon.alfaNome.toFixed(2)}: sbiadito, non sparito`);
+
+  // L'ombra scura è quasi tutto il contrasto netto di un'etichetta, ed è la
+  // prima cosa che l'aria si mangia: un nome lontano non è un nome piccolo,
+  // è un nome **senza ombra**. Se se ne andasse insieme al nome, la
+  // differenza fra vicino e lontano resterebbe una sola — l'opacità — e a
+  // occhio si leggerebbe come «questa scritta è più fioca», non come
+  // «questo paese è più in là».
+  prova('l\'ombra scura se ne va molto prima del nome',
+    lon.alfaAlone < vic.alfaAlone * 0.2 && lon.alfaNome > vic.alfaNome * 0.35,
+    `l'ombra passa da ${vic.alfaAlone.toFixed(2)} a ${lon.alfaAlone.toFixed(2)}, il nome da ${vic.alfaNome.toFixed(2)} a ${lon.alfaNome.toFixed(2)}`);
+
+  // Nessun gradino: la prospettiva è un continuo, e un salto in mezzo si
+  // legge come due famiglie di paesi invece che come una profondità.
+  let saltoMax = 0;
+  for (let km = 0; km < 90; km += 0.25) {
+    const a = prospettiva(km, 14, AMBRA, NOTTE, false), b = prospettiva(km + 0.25, 14, AMBRA, NOTTE, false);
+    saltoMax = Math.max(saltoMax, Math.abs(a.alfaNome - b.alfaNome), Math.abs(a.corpo - b.corpo) / 14);
+  }
+  prova('e fra un quarto di chilometro e l\'altro non c\'è nessun gradino',
+    saltoMax < 0.01, `salto massimo ${(saltoMax * 100).toFixed(2)}%`);
+
+  // --- La tinta: la foschia scolora solo se è chiara -------------------
+  //
+  // È la parte che a occhio si giudica peggio di tutte, perché sbagliarla
+  // produce comunque un'immagine bella. Di giorno la foschia è chiara e un
+  // nome lontano si scolora verso il grigio-azzurro — è quello che si vede
+  // guardando in fondo a una valle. Di notte la foschia è quasi nera, e
+  // mescolarcisi vuol dire **cancellare** il nome invece di allontanarlo: di
+  // notte un paese lontano non cambia colore, si smorza soltanto.
+  prova('di notte la tinta del nome resta la sua',
+    scarto(lon.tinta, AMBRA.pieno) < 20,
+    `l'ambra si sposta di ${scarto(lon.tinta, AMBRA.pieno)} livelli su 255: la foschia scura non se la mangia`);
+  const gVic = prospettiva(1, 14, SCURO, GIORNO, false);
+  const gLon = prospettiva(60, 14, SCURO, GIORNO, false);
+  prova('di giorno invece si scolora verso la foschia',
+    scarto(gLon.tinta, SCURO.pieno) > 30 && scarto(gLon.tinta, GIORNO.foschia) > 30,
+    `da rgb(${gVic.tinta}) a rgb(${gLon.tinta}): a mezza strada, non fino in fondo`);
+  // Il contro-esempio, cioè la versione senza il peso della luminosità:
+  // mescolare al buio della notte porta il nome sotto la soglia in cui una
+  // scritta si distingue dal cielo.
+  const senzaPeso = mescola(AMBRA.pieno, NOTTE.foschia, FOSCHIA_TINTA);
+  prova('senza pesare sulla luminosità, di notte il nome finirebbe grigio',
+    scarto(senzaPeso, AMBRA.pieno) > 60,
+    `verrebbe rgb(${senzaPeso}) invece di rgb(${lon.tinta})`);
+
+  // --- Il paese indicato dal mirino -----------------------------------
+  //
+  // È quello di cui si è appena chiesta la distanza, e il numero sotto a un
+  // nome velato al quaranta per cento non è una risposta. Ma quello che
+  // torna su è la **leggibilità**, non la profondità: se tornassero su anche
+  // il corpo e la tinta, puntare un paese lo porterebbe in primo piano, e
+  // dov'è un paese non cambia perché lo si sta guardando.
+  const mir = prospettiva(60, 14, AMBRA, NOTTE, true);
+  prova('il paese indicato dal mirino torna leggibile',
+    mir.alfaNome > 0.9 && mir.alfaAlone > lon.alfaAlone * 3,
+    `opacità ${mir.alfaNome.toFixed(2)} contro ${lon.alfaNome.toFixed(2)}, ombra ${mir.alfaAlone.toFixed(2)} contro ${lon.alfaAlone.toFixed(2)}`);
+  prova('ma non cambia né corpo né tinta: non si è avvicinato',
+    Math.abs(mir.corpo - lon.corpo) < 1e-12 && scarto(mir.tinta, lon.tinta) === 0);
+  // E su un paese qui davanti non deve fare niente: era già al massimo.
+  const mirVic = prospettiva(1, 14, AMBRA, NOTTE, true);
+  prova('e su un paese qui davanti non cambia niente',
+    Math.abs(mirVic.alfaNome - vic.alfaNome) < 1e-12,
+    'era già in primo piano: il mirino non lo può portare più avanti di così');
+
+  // --- Il livello di dettaglio ----------------------------------------
+  //
+  // *Quali* paesi si nominano lo decide già la forza (abitanti diviso
+  // distanza al quadrato), che arriva ordinata da `terreno.js`: qui si
+  // controlla solo **quanti**, che è la sola cosa che deve dipendere dallo
+  // zoom — a grandangolo l'orizzonte è tutto, ingrandendo è una fetta, e in
+  // una fetta sette nomi sono pochi.
+  prova('a grandangolo restano i sette di sempre', maxNomi(180) === MAX_NOMI && maxNomi(60) === MAX_NOMI);
+  prova('ingrandendo si arriva a dodici', maxNomi(15) === MAX_NOMI_ZOOM && maxNomi(10) === MAX_NOMI_ZOOM,
+    `a 45° ne entrano ${maxNomi(45)}, a 30° ${maxNomi(30)}`);
+  let calaMai = false, ultimo = 0;
+  for (let f = 180; f >= 5; f -= 0.25) { const n = maxNomi(f); if (n < ultimo) calaMai = true; ultimo = n; }
+  prova('e stringendo il campo non fa mai un passo indietro', !calaMai,
+    'un nome che compare e sparisce mentre si pizzica è peggio di un nome che non c\'è');
+
+  // --- Il numero, e la sua subordinazione ------------------------------
+  const KM_CORPO = 0.78, KM_VELO = 0.62;
+  prova('il numero è più piccolo del nome di due punti buoni',
+    Math.abs(14 - 14 * KM_CORPO) >= 2 && Math.abs(14 - 14 * KM_CORPO) < 4,
+    `su un nome da 14px il numero ne misura ${(14 * KM_CORPO).toFixed(1)}`);
+  prova('e più spento', KM_VELO < 0.7 && KM_VELO > 0.5,
+    `${(KM_VELO * 100).toFixed(0)}% dell'opacità del nome, qualunque essa sia`);
+  // Arrotondato all'intero, e mai a zero: un paese esiste a un chilometro di
+  // distanza, e «0 km» sarebbe l'unico numero che non vuol dire niente.
+  const scritto = km => `${Math.max(1, Math.round(km))} km`;
+  prova('la distanza si scrive intera, e mai zero',
+    scritto(14.3) === '14 km' && scritto(0.9) === '1 km' && scritto(0.4) === '1 km' && scritto(59.6) === '60 km');
+}
+
+// =====================================================================
 // Il verdetto si scrive **dopo** le prove che aspettano (vedi `attendi`): se lo
 // si scrivesse subito direbbe «tutte passate» un istante prima che le ultime
 // abbiano risposto, che è il modo in cui una pagina di prove smette di servire.

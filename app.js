@@ -16855,7 +16855,25 @@ const SKY_CITTA_FOV_PIENO = 28;
 // Quante se ne disegnano al massimo. Sono ordinate dalla più luminosa, e
 // oltre la decina si sovrappongono tutte in una fascia sola.
 const SKY_CITTA_MAX_ALONI = 12;
+
+// Quanti nomi. Sette a campo largo — oltre, la fascia sopra al crinale
+// diventa una parete di scritte — ma ingrandendo si sta guardando un pezzo
+// solo di orizzonte, e lì sette sono pochi: è il «a meno che l'utente non
+// ingrandisca» del livello di dettaglio, ed è l'unica manopola che ci
+// vuole. *Quali* sette lo decide già l'ordine della lista, che arriva
+// ordinata per forza — abitanti diviso distanza al quadrato — cioè per
+// importanza diviso distanza, che è il filtro vero.
 const SKY_CITTA_MAX_NOMI = 7;
+const SKY_CITTA_MAX_NOMI_ZOOM = 12;
+// Fra questi due campi si scivola dall'uno all'altro: sopra i sessanta
+// gradi si guarda un panorama, sotto i quindici una fetta di crinale.
+const SKY_CITTA_ZOOM_FOV = [60, 15];
+
+function skyCittaMaxNomi() {
+  const [largo, stretto] = SKY_CITTA_ZOOM_FOV;
+  const t = Math.min(1, Math.max(0, (largo - sky.fov) / (largo - stretto)));
+  return Math.round(SKY_CITTA_MAX_NOMI + t * (SKY_CITTA_MAX_NOMI_ZOOM - SKY_CITTA_MAX_NOMI));
+}
 
 function skyCittaDaDisegnare() {
   if (typeof cittaVicine !== 'function') return [];
@@ -17140,10 +17158,25 @@ function skyPillola(ctx, x, y, l, h, r, colore) {
 // appoggiate alla stessa cresta — ma appena si confrontano si vede subito
 // che dicono due cose diverse.
 const SKY_NOMI_ORIZZONTE = {
+  // I paesi sono l'unica famiglia scritta in numeri invece che in stringhe,
+  // ed è il prezzo della prospettiva aerea (vedi «Quanto è lontano quel
+  // paese», più sotto): il loro colore non è più uno, è una funzione della
+  // distanza — a quaranta chilometri l'ambra si è già mescolata alla
+  // foschia — e per mescolare due colori bisogna saperli sommare. Le altre
+  // due famiglie una distanza da raccontare non ce l'hanno, e restano
+  // scritte come si leggono.
   citta: {
     stile: '600',
-    notte: { pieno: 'rgba(255, 219, 158, 0.97)', alone: 'rgba(0, 0, 0, 0.78)', segno: 'rgba(253, 199, 132, 0.55)' },
-    giorno: { pieno: 'rgba(92, 46, 4, 0.97)', alone: 'rgba(255, 255, 255, 0.88)', segno: 'rgba(120, 72, 20, 0.55)' }
+    notte: {
+      pieno: [255, 219, 158], alfa: 0.97,
+      alone: [0, 0, 0], aloneAlfa: 0.78,
+      segno: [253, 199, 132], segnoAlfa: 0.6
+    },
+    giorno: {
+      pieno: [92, 46, 4], alfa: 0.97,
+      alone: [255, 255, 255], aloneAlfa: 0.88,
+      segno: [120, 72, 20], segnoAlfa: 0.6
+    }
   },
   cime: {
     stile: 'italic 500',
@@ -17204,30 +17237,155 @@ function skyDisegnaNomiOrizzonte(ctx, base, focale) {
 // leggerlo: undici pixel di grigio ambrato al 0,82 sopra a una cupola
 // arancione erano una scritta che c'era ma non si leggeva, che è il modo
 // peggiore di occupare un pezzo di cielo.
+
+// --- Quanto è lontano quel paese --------------------------------------
+//
+// Un nome sull'orizzonte risponde a metà della domanda. «Rimini» dice cos'è
+// quel chiarore a sud-est; non dice se sono sei chilometri o quaranta, che è
+// il numero da cui dipende tutto il resto — se conviene spostarsi di
+// mezz'ora per lasciarselo dietro le spalle, o se è la cupola con cui
+// bisogna convivere.
+//
+// La distanza si potrebbe scrivere accanto a ogni nome e sarebbe finita lì.
+// Sette numeri appesi al crinale, però, sono sette numeri da leggere uno per
+// uno, e nessuno lo fa: quello che si vuole a colpo d'occhio non è la
+// misura, è **l'ordine** — chi sta davanti e chi sta in fondo. E l'ordine lo
+// racconta l'aria, come lo racconta da sé in qualunque fotografia di
+// paesaggio: quello che è lontano è più pallido, più piccolo, più sfumato.
+//
+// Quella legge il disegno dell'orizzonte ce l'ha già — `SKY_FOSCHIA_KM`, e
+// le diciotto fette di `skyPianiOrizzonte` che ne escono — quindi qui non se
+// ne inventa una seconda: **il nome di un paese si vela esattamente quanto
+// si vela la cresta su cui è appoggiato**. Se le due leggi fossero diverse
+// si vedrebbe subito, e si vedrebbe come un difetto: un nome nitido sopra a
+// una montagna sbiadita è un'etichetta incollata sul paesaggio, non un paese
+// che sta là in fondo.
+//
+// Il numero resta, ma smette di essere il soggetto: sta in coda al nome, più
+// piccolo, più leggero e più spento, e **non su tutti insieme**. Compare su
+// quello che il mirino sta indicando — che è il modo in cui la domanda viene
+// fatta davvero, si punta il telefono verso quel chiarore e si vuole sapere
+// che roba è — e su tutti quando si è ingrandito abbastanza da guardare un
+// pezzo solo di orizzonte, dove i nomi sono pochi e li si è chiesti.
+
+// I due capi della prospettiva: com'è un nome ai propri piedi e com'è
+// all'orizzonte. `corpo` è una frazione del corpo del carattere, gli altri
+// tre sono frazioni di quello che l'etichetta sarebbe da vicino. In mezzo
+// non si scivola linearmente ma con la curva della foschia, che è quella a
+// decidere dove sta il grosso del cambiamento — nei primi venticinque
+// chilometri.
+//
+// L'alone se ne va molto prima del nome, ed è voluto: il contrasto netto di
+// un'etichetta è quasi tutto lì dentro, ed è la prima cosa che l'aria si
+// mangia. Un nome lontano non è un nome piccolo, è un nome **senza ombra**.
+const SKY_CITTA_VICINO  = { corpo: 1,    velo: 1,   tratto: 1.5,  alone: 1 };
+const SKY_CITTA_LONTANO = { corpo: 0.72, velo: 0.4, tratto: 0.55, alone: 0.16 };
+
+// Quanto la tinta del nome scivola verso la foschia di adesso, in fondo alla
+// scala. È **pesata dalla luminosità della foschia**, e non è un dettaglio
+// di taratura: di giorno la foschia è chiara e un nome lontano si scolora
+// verso il grigio-azzurro, che è quello che si vede guardando una valle; di
+// notte la foschia è quasi nera, e mescolarcisi vorrebbe dire cancellare il
+// nome invece di allontanarlo. Di notte, infatti, un paese lontano non
+// cambia colore — si smorza soltanto, e a smorzarlo c'è già il velo.
+const SKY_CITTA_FOSCHIA_TINTA = 0.5;
+
+// Il paese che il mirino sta indicando torna in primo piano quanto basta a
+// leggerlo. Non è una manopola estetica: è quello di cui si è appena chiesta
+// la distanza, e un numero scritto al sessanta per cento sotto a un nome già
+// velato al quaranta non è una risposta. Il corpo e la tinta però non si
+// toccano — quelli dicono *dov'è*, e dov'è non cambia perché lo si guarda.
+const SKY_CITTA_INDICATO_VELO = 0.95;
+const SKY_CITTA_INDICATO_ALONE = 0.85;
+// Quanto è largo il mirino: il paese più vicino al centro dello schermo
+// entro questo raggio in pixel è quello che si sta indicando.
+const SKY_CITTA_MIRINO_QUANTO = [120, 150, 180];
+
+// Il numero, e quanto è subordinato al nome: due punti di corpo in meno,
+// peso normale invece del semigrassetto, e sei decimi della sua opacità.
+// Deve leggersi *dopo*, sempre.
+const SKY_CITTA_KM_CORPO = 0.78;
+const SKY_CITTA_KM_VELO = 0.62;
+const SKY_CITTA_KM_SEP = ' · ';
+// Sotto questo campo il numero si scrive su tutti i paesi, non solo su
+// quello indicato: a quaranta gradi si sta guardando una fetta di orizzonte
+// e non un panorama, i nomi in vista sono due o tre, e riempirli di cifre
+// non riempie più niente.
+const SKY_CITTA_KM_FOV = 40;
+
+// Quanto è «in fondo» un paese a `km` di distanza, da 0 (ai propri piedi) a
+// 1 (all'orizzonte). È la stessa riga di `skyPianiOrizzonte`, normalizzata
+// sulla stessa distanza: così un paese a quaranta chilometri e la fetta di
+// terreno a quaranta chilometri portano lo stesso identico velo.
+function skyLontananzaCitta(km) {
+  const D = typeof TERRENO_DISTANZE !== 'undefined' && Array.isArray(TERRENO_DISTANZE) && TERRENO_DISTANZE.length
+    ? TERRENO_DISTANZE[TERRENO_DISTANZE.length - 1] : 60;
+  const pieno = 1 - Math.exp(-D / SKY_FOSCHIA_KM);
+  const t = (1 - Math.exp(-Math.max(0, km) / SKY_FOSCHIA_KM)) / pieno;
+  return Math.min(1, Math.max(0, t));
+}
+
+// Tutta la prospettiva aerea di un nome in un colpo solo: da un numero — la
+// distanza — escono il corpo del carattere, l'opacità, lo spessore del filo
+// di richiamo e i tre colori. Una funzione sola perché sono un discorso
+// solo: se il corpo scendesse per conto suo e il colore per un altro, la
+// prima distanza in cui i due non si accordano si vedrebbe.
+function skyProspettivaCitta(km, corpoBase, tinta, aria, indicato) {
+  const t = skyLontananzaCitta(km);
+  const fra = (a, b) => a + (b - a) * t;
+
+  // La foschia scolora solo se è chiara: vedi SKY_CITTA_FOSCHIA_TINTA.
+  const f = aria && aria.foschia ? aria.foschia : null;
+  const chiara = f ? (0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]) / 255 : 0;
+  const pieno = f
+    ? skyMescolaColore(tinta.pieno, f, SKY_CITTA_FOSCHIA_TINTA * t * chiara)
+    : tinta.pieno;
+
+  const velo = Math.max(fra(SKY_CITTA_VICINO.velo, SKY_CITTA_LONTANO.velo),
+    indicato ? SKY_CITTA_INDICATO_VELO : 0);
+  const resta = Math.max(fra(SKY_CITTA_VICINO.alone, SKY_CITTA_LONTANO.alone),
+    indicato ? SKY_CITTA_INDICATO_ALONE : 0);
+
+  return {
+    lontananza: t,
+    corpo: corpoBase * fra(SKY_CITTA_VICINO.corpo, SKY_CITTA_LONTANO.corpo),
+    tratto: fra(SKY_CITTA_VICINO.tratto, SKY_CITTA_LONTANO.tratto),
+    pieno: skyRgba(pieno, (tinta.alfa * velo).toFixed(3)),
+    alone: skyRgba(tinta.alone, (tinta.aloneAlfa * velo * resta).toFixed(3)),
+    segno: skyRgba(tinta.segno, (tinta.segnoAlfa * velo).toFixed(3))
+  };
+}
+
 function skyNomiCitta(ctx, base, focale, occupati) {
   const lista = skyCittaDaDisegnare();
   if (!lista.length) return;
 
   // Sul telefono lo schermo è piccolo ma si guarda da vicino, sul monitor
   // il contrario: la misura giusta non è la stessa, come per tutto il resto
-  // di quello che passa da `quanto()`.
-  const corpo = quanto(13, 14, 15);
+  // di quello che passa da `quanto()`. Questo è il corpo di un paese **qui
+  // davanti**; quelli in fondo lo ricevono già ridotto da `skyProspettivaCitta`.
+  const corpoBase = quanto(13, 14, 15);
   const giorno = sky.luceCielo > 0.45;
   const tinta = SKY_NOMI_ORIZZONTE.citta[giorno ? 'giorno' : 'notte'];
+  const aria = sky.ariaOra;
 
-  ctx.save();
-  // Il semigrassetto non è un vezzo: sopra a un fondo che cambia, le aste
-  // sottili del peso normale si mangiano proprio dove il fondo è chiaro.
-  // Dritto, che è il modo in cui le carte scrivono i luoghi abitati.
-  ctx.font = `${SKY_NOMI_ORIZZONTE.citta.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'bottom';
-
-  const stacco = Math.round(corpo * 0.85);   // quanto sta sopra la cresta
-  const riga = corpo + 6;                    // altezza di riga, per le sovrapposizioni
-  let scritte = 0;
+  // Prima passata: chi è in vista, e dove finisce sullo schermo. Serve tutta
+  // prima di cominciare a prenotare, perché il paese indicato dal mirino è
+  // quello che si porta dietro il numero, il numero allarga la sua etichetta,
+  // e la larghezza è proprio il posto da prenotare. Prenotandolo sempre col
+  // numero dentro si sprecherebbe cielo su sei etichette per farlo stare a
+  // una; prenotandolo sempre senza, il numero finirebbe stampato sopra al
+  // nome del paese accanto.
+  //
+  // Il tetto si conta sui paesi **in vista**, e non sui primi della lista:
+  // guardando a sud, i primi sette per importanza possono stare tutti alle
+  // spalle, e tagliare lì vorrebbe dire un orizzonte senza un nome pur
+  // avendo mezza provincia davanti. Si scorre quindi finché non se ne sono
+  // raccolti abbastanza — che è quello che il ciclo faceva da sempre.
+  const massimo = skyCittaMaxNomi();
+  const candidati = [];
   for (const c of lista) {
-    if (scritte >= SKY_CITTA_MAX_NOMI) break;
+    if (candidati.length >= massimo) break;
     // Il nome sta appena sopra la cresta, non sopra la linea: se davanti
     // alla città c'è una montagna, la scritta deve stare sopra la montagna.
     // E sopra la cresta **disegnata**, se no il trattino che collega il nome
@@ -17236,23 +17394,101 @@ function skyNomiCitta(ctx, base, focale, occupati) {
     const p = skyProietta(skyVettore(c.az, alt), base, focale);
     if (!p.davanti) continue;
     if (p.px < -60 || p.px > sky.larghezza + 60 || p.py < -20 || p.py > sky.altezza + 20) continue;
+    candidati.push({ c, p });
+  }
+  if (!candidati.length) return;
+
+  // Chi entra in scena l'ha appena deciso l'**importanza** (la lista arriva
+  // ordinata per forza, cioè abitanti diviso distanza al quadrato); chi sta
+  // **davanti** lo decide la **distanza**, e sono due domande diverse. Da qui
+  // in poi si va dal più vicino in giù: se un paese qui davanti e una città
+  // lontana si contendono la stessa fascia di cielo vince quella davanti, e
+  // l'altra resta nascosta dietro — che è esattamente quello che fanno due
+  // cose messe una dietro l'altra.
+  candidati.sort((a, b) => a.c.km - b.c.km);
+
+  // Quello indicato dal mirino, che sta sempre al centro dello schermo.
+  const cx = sky.larghezza / 2, cy = sky.altezza / 2;
+  let mirato = null;
+  let piuVicino = Math.pow(quanto(SKY_CITTA_MIRINO_QUANTO[0], SKY_CITTA_MIRINO_QUANTO[1],
+    SKY_CITTA_MIRINO_QUANTO[2]), 2);
+  for (const v of candidati) {
+    const dx = v.p.px - cx, dy = v.p.py - cy;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < piuVicino) { piuVicino = d2; mirato = v; }
+  }
+
+  // A campo stretto il numero ce l'hanno tutti; a campo largo solo quello
+  // indicato. Il mirino però vale sempre, anche a campo stretto: è lui a
+  // riportare in primo piano l'etichetta che si sta leggendo.
+  const tutti = sky.fov <= SKY_CITTA_KM_FOV;
+
+  ctx.save();
+  ctx.textBaseline = 'bottom';
+  ctx.textAlign = 'left';
+
+  const poste = [];
+  for (const v of candidati) {
+    const { c, p } = v;
+    const pro = skyProspettivaCitta(c.km, corpoBase, tinta, aria, v === mirato);
+
+    // Il semigrassetto non è un vezzo: sopra a un fondo che cambia, le aste
+    // sottili del peso normale si mangiano proprio dove il fondo è chiaro.
+    // Dritto, che è il modo in cui le carte scrivono i luoghi abitati.
+    ctx.font = `${SKY_NOMI_ORIZZONTE.citta.stile} ${pro.corpo.toFixed(1)}px ${SKY_FONT_ETICHETTE}`;
+    const largoNome = ctx.measureText(c.nome).width;
+
+    // Intero e basta: un paese a 14,3 km è a quattordici chilometri, e il
+    // decimo di chilometro non ha mai cambiato la decisione di nessuno.
+    const kmTesto = (tutti || v === mirato)
+      ? `${SKY_CITTA_KM_SEP}${Math.max(1, Math.round(c.km))} km` : '';
+    const corpoKm = pro.corpo * SKY_CITTA_KM_CORPO;
+    let largoKm = 0;
+    if (kmTesto) {
+      ctx.font = `400 ${corpoKm.toFixed(1)}px ${SKY_FONT_ETICHETTE}`;
+      largoKm = ctx.measureText(kmTesto).width;
+    }
+
+    const stacco = Math.round(pro.corpo * 0.85);   // quanto sta sopra la cresta
+    const riga = pro.corpo + 6;                    // altezza di riga, per le sovrapposizioni
+    const largo = largoNome + largoKm;
     // Il posto occupato è la scritta più un margine: le città si nominano
     // orizzontali, quindi il rettangolo non è girato.
     if (!skyPostoLibero(occupati, skyRettOrientato(
-      p.px, p.py - stacco - corpo * 0.35, ctx.measureText(c.nome).width + 12, riga, 0), 4)) continue;
-    scritte++;
+      p.px, p.py - stacco - pro.corpo * 0.35, largo + 12, riga, 0), 4)) continue;
+    poste.push({ c, p, pro, largoNome, kmTesto, corpoKm, stacco, largo });
+  }
+
+  // Dal fondo verso di qui. Due etichette non si sovrappongono mai — il
+  // posto è prenotato — ma i loro aloni si sfiorano, e a passare sopra
+  // dev'essere quella davanti.
+  for (let i = poste.length - 1; i >= 0; i--) {
+    const e = poste[i];
+    const p = e.p, pro = e.pro;
 
     // Un trattino verticale che collega il nome al punto dell'orizzonte:
     // senza, una scritta sospesa sopra le colline sembra il nome di una
-    // stella. Cresce con la scritta, se no una resta appesa all'altra.
-    ctx.strokeStyle = tinta.segno;
-    ctx.lineWidth = 1.4;
+    // stella. Cresce con la scritta, se no una resta appesa all'altra — e
+    // si assottiglia con la distanza, che è la stessa cosa che fa il nome.
+    ctx.strokeStyle = pro.segno;
+    ctx.lineWidth = pro.tratto;
     ctx.beginPath();
     ctx.moveTo(p.px, p.py);
-    ctx.lineTo(p.px, p.py - stacco + 2);
+    ctx.lineTo(p.px, p.py - e.stacco + 2);
     ctx.stroke();
 
-    skyScrittaConAlone(ctx, c.nome, p.px, p.py - stacco, tinta.pieno, tinta.alone, corpo * 0.26);
+    // Nome e numero sono due pezzi con due corpi diversi, quindi la riga si
+    // centra a mano: si parte da sinistra e si va avanti.
+    const x = p.px - e.largo / 2;
+    const y = p.py - e.stacco;
+    ctx.font = `${SKY_NOMI_ORIZZONTE.citta.stile} ${pro.corpo.toFixed(1)}px ${SKY_FONT_ETICHETTE}`;
+    skyScrittaConAlone(ctx, e.c.nome, x, y, pro.pieno, pro.alone, pro.corpo * 0.26);
+    if (e.kmTesto) {
+      ctx.font = `400 ${e.corpoKm.toFixed(1)}px ${SKY_FONT_ETICHETTE}`;
+      ctx.globalAlpha = SKY_CITTA_KM_VELO;
+      skyScrittaConAlone(ctx, e.kmTesto, x + e.largoNome, y, pro.pieno, pro.alone, e.corpoKm * 0.22);
+      ctx.globalAlpha = 1;
+    }
   }
   ctx.restore();
 }
