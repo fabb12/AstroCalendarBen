@@ -1250,7 +1250,7 @@ const COST_BUIO = [
 // =====================================================================
 
 const cost = {
-  arte: true,             // il disegno è acceso
+  arte: false,            // i disegni si accendono solo quando vengono richiesti
   quando: 0,              // per quale aggiornamento del catalogo sono buoni i telai
   telai: null,            // sigla → { a, b, c } versori delle ancore nel cielo di adesso
   terze: null,            // sigla → la terza ancora scelta da sé, con le sue coordinate nel telaio
