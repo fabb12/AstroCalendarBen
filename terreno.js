@@ -1839,12 +1839,6 @@ function terrenoCaricaPaesaggio() {
   };
   const dopoTerreno = () => {
     if (turno !== terrenoPaesaggioTurno) return;
-    // Il rilievo parte appena la griglia grossa c'è — gli serve per lo
-    // sfondo oltre il raggio delle tessere — e **non** aspetta il periodo di
-    // riposo insieme agli altri tre: è quello che cambia di più il disegno,
-    // e sta su un altro host, quindi non toglie banda a OpenStreetMap.
-    // A rifarlo quando serve ci pensa poi `rilControlla`, a ogni fotogramma.
-    if (typeof rilCarica === 'function') rilCarica();
     if (typeof requestIdleCallback === 'function') {
       requestIdleCallback(completa, { timeout: 1800 });
     } else {
@@ -1931,16 +1925,6 @@ function terrenoRiprovaPiuTardi() {
 
 function terrenoAltezza(az) {
   if (!terrenoDisponibile()) return null;
-  // La maglia del rilievo, quando c'è, è **la stessa superficie che si
-  // vede**: mezzo grado di passo invece di tre, e nessuna interpolazione
-  // fra settori larghi. Preferirla non è un'ottimizzazione, è un vincolo —
-  // se la cresta che decide se un astro è sorto non fosse quella disegnata,
-  // le due divergerebbero proprio sui denti, cioè dove si appendono i nomi
-  // delle montagne (vedi `rilievo.js`, e la stessa lezione in `terrenoMonta`).
-  if (typeof rilAltezza === 'function') {
-    const v = rilAltezza(az);
-    if (v !== null) return v;
-  }
   const x = (((az % 360) + 360) % 360);
   const i = Math.floor(x);
   const t = x - i;
@@ -2021,10 +2005,6 @@ function terrenoCrestaEntro(az, km) {
 // La cresta parziale interpolata in azimut, per un indice di distanza.
 // È il cuore di `terrenoCrestaEntro`, tirato fuori perché serve anche grezzo.
 function terrenoFronteA(az, k) {
-  if (typeof rilFronteA === 'function') {
-    const v = rilFronteA(az, k);
-    if (v !== null) return v;
-  }
   const n = TERRENO_DISTANZE.length;
   const dove = (((az % 360) + 360) % 360) / TERRENO_PASSO_AZ;
   const i = Math.floor(dove) % TERRENO_DIREZIONI;
@@ -2049,10 +2029,6 @@ function terrenoFronteA(az, k) {
 // `fuori` è un buffer da riusare: chi disegna ne tiene uno solo e lo passa
 // ogni volta, se no sono duecentocinquanta array nuovi per fotogramma.
 function terrenoFrontiA(az, fuori) {
-  if (typeof rilFrontiA === 'function') {
-    const v = rilFrontiA(az, fuori);
-    if (v !== null) return v;
-  }
   if (!terrenoDisponibile() || !terreno.fronti) return null;
   const n = TERRENO_DISTANZE.length;
   const out = (fuori && fuori.length >= n) ? fuori : new Float32Array(n);
@@ -2229,14 +2205,12 @@ function terrenoAggiornaPannello() {
   }
   const nota = document.getElementById('skymap-terreno-nota');
   if (nota) {
-    const ril = typeof rilTesto === 'function' ? rilTesto() : '';
-    nota.textContent = [terrenoTesto(), ril, cittaTesto(), cimeTesto(), acqueTesto()]
+    nota.textContent = [terrenoTesto(), cittaTesto(), cimeTesto(), acqueTesto()]
       .map(t => (t || '').trim()).filter(Boolean).join(' ');
   }
   cittaAggiornaTasto();
   cimeAggiornaTasto();
   acqueAggiornaTasto();
-  if (typeof rilAggiornaTasto === 'function') rilAggiornaTasto();
   terrenoBarraAggiorna();
 }
 
@@ -2263,22 +2237,14 @@ function terrenoAggiornaPannello() {
 // =====================================================================
 
 const TERRENO_FASI = [
-  { chiave: 'quote', peso: 0.34, che: 'la forma del terreno',
+  { chiave: 'quote', peso: 0.55, che: 'la forma del terreno',
     stato: () => terreno.stato, quanto: () => terreno.avanzamento },
-  { chiave: 'citta', peso: 0.07, che: 'le luci dei paesi',
+  { chiave: 'citta', peso: 0.10, che: 'le luci dei paesi',
     stato: () => citta.stato, quanto: () => citta.avanzamento },
-  { chiave: 'cime', peso: 0.07, che: 'i nomi delle montagne',
+  { chiave: 'cime', peso: 0.10, che: 'i nomi delle montagne',
     stato: () => cime.stato, quanto: () => cime.avanzamento },
-  { chiave: 'acque', peso: 0.18, che: 'i laghi e i fiumi',
-    stato: () => acque.stato, quanto: () => acque.avanzamento },
-  // Il rilievo fine (`rilievo.js`). Pesa quanto le quote a punti, e non è
-  // generosità: sono da quattro a nove tessere da un centinaio di kilobyte
-  // l'una, cioè il grosso di quello che si scarica per un luogo nuovo. Il
-  // `typeof` c'è perché questo file può non esserci — chi lo toglie
-  // dall'`index.html` deve ritrovare l'app di prima, barra compresa.
-  { chiave: 'rilievo', peso: 0.34, che: 'il rilievo del terreno',
-    stato: () => (typeof rilievo === 'undefined' ? 'spento' : rilievo.stato),
-    quanto: () => (typeof rilievo === 'undefined' ? 0 : rilievo.avanzamento) }
+  { chiave: 'acque', peso: 0.25, che: 'i laghi e i fiumi',
+    stato: () => acque.stato, quanto: () => acque.avanzamento }
 ];
 
 // Quanto resta a schermo dopo il cento per cento. Sparire nell'istante in cui
@@ -2423,14 +2389,7 @@ function raggiLeggiSalvati() {
     // monti: non aggiungono scritte davanti al cielo, sono paesaggio come
     // le colline — e chi apre il planetario sul lago di Como vuole vedere
     // il lago di Como.
-    acqueAccese: true,
-    // Il rilievo in tre dimensioni (`rilievo.js`). Nasce **acceso**: è la
-    // forma vera del terreno, cioè quello che questo modulo esiste per
-    // raccontare, e chi apre il planetario in montagna vuole vedere la
-    // montagna. Si spegne per chi ha la rete a consumo — sono da quattro a
-    // nove tessere, una volta sola per luogo — o per chi vuole l'orizzonte
-    // ridotto alla sua sagoma.
-    rilievo: true
+    acqueAccese: true
   };
   try {
     const s = JSON.parse(localStorage.getItem(CHIAVE_RAGGI) || 'null');
@@ -2443,7 +2402,6 @@ function raggiLeggiSalvati() {
       // accenderli di default non riaccende le scritte a chi le ha spente
       // esplicitamente.
       if (typeof s.nomiMonti === 'boolean') v.nomiMonti = s.nomiMonti;
-      if (typeof s.rilievo === 'boolean') v.rilievo = s.rilievo;
     }
   } catch (e) { /* niente storage, o roba illeggibile */ }
   return v;
