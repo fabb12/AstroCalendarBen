@@ -7180,6 +7180,16 @@ const sky = {
   trascinamento: null,
   inerzia: null,
   ultimoFotogramma: 0,   // performance.now() del fotogramma precedente, per il dt
+  // Il ciclo respira? `battito` è l'istante dell'ultimo fotogramma e
+  // `cicloPrestato` dice che a disegnare è un'altra vista (il Sistema Solare,
+  // la lezione): sono i due numeri che guarda la sentinella di 7.4-quinquies,
+  // l'unica cosa capace di accorgersi di una rAF che non tornerà più.
+  battito: 0,
+  cicloPrestato: false,
+  // La fase della grana del terreno, che si **segue** invece di ricalcolarla
+  // dall'angolo: { az, alt, x, y }. È così che lo zoom non la sposta (§7.3.2,
+  // `skyGranaScorrimento`).
+  grana: null,
   target: null,          // id dell'astro da cercare
   oggetti: [],           // posizioni calcolate (az/alt) degli astri
   prossimoCalcolo: 0,
@@ -15883,10 +15893,11 @@ function skyGrana(ctx) {
 // Sotto questa luce del cielo la grana non si disegna: la terra è già nera.
 const SKY_GRANA_LUCE_MIN = 0.12;
 
-// Ancorare un motivo al terreno invece che allo schermo. Il resto della
-// divisione tiene i numeri piccoli: con l'occhio quasi all'orizzonte il
-// centro del cerchio se ne va a centomila pixel da qui, e una traslazione
-// così grande in un `DOMMatrix` perde la precisione proprio sul passo.
+// Ancorare un motivo al terreno invece che allo schermo. La fase arriva già
+// ridotta dentro a un passo (`skyFaseMotivo`), e il resto della divisione qui
+// è la rete per chi passasse un punto in coordinate di schermo: una
+// traslazione di centomila pixel in un `DOMMatrix` perde la precisione
+// proprio sul passo.
 function skyAncoraMotivo(motivo, o, lato, scala) {
   if (!motivo || typeof DOMMatrix === 'undefined' || typeof motivo.setTransform !== 'function') return;
   const ax = o.retta ? o.cx : o.px;
@@ -15897,35 +15908,87 @@ function skyAncoraMotivo(motivo, o, lato, scala) {
   motivo.setTransform(new DOMMatrix([scala, 0, 0, scala, tx, ty]));
 }
 
+// --- La grana ferma sotto lo zoom -------------------------------------
+//
+// La grana era scritta in funzione della focale: la misura era `focale/900`
+// (tosata fra 0,45 e 1,8) e la fase era `azimut × focale`. Sulla carta è la
+// cosa giusta — una trama agganciata al terreno deve ingrandirsi insieme a
+// lui — ma qui il campo visivo va da 180° a un quarto di grado, cioè la
+// focale cambia di settecento volte. Il risultato è che a ogni pizzicata la
+// trama **strisciava** sopra al paesaggio, di traverso, mentre il paesaggio
+// sotto stava fermo: la fase è `azimut × focale`, e guardando a sud-ovest
+// (azimut 225°, cioè quasi quattro radianti) bastava un cambio di focale di
+// trenta pixel per spostarla di centoventi — una piastrella intera. Zummando
+// su una collina si vedeva la sua superficie scivolare via, che è l'opposto
+// di quello che una texture deve fare, e peggiorava proprio ingrandendo,
+// cioè quando la si guarda da vicino.
+//
+// La cura è **non ricalcolare la fase dall'angolo assoluto, ma seguirla**: a
+// ogni fotogramma si somma lo spostamento del terreno sullo schermo da quello
+// prima (`Δangolo × focale`, che è di quanti pixel il paesaggio è scivolato).
+// Girandosi la grana si muove esattamente insieme al terreno come prima;
+// zummando l'angolo non cambia, quindi lo spostamento è **zero** e la trama
+// non si muove di un pixel — che è quello che le si chiede.
+//
+// La misura, per la stessa ragione, non segue più l'ingrandimento: resta
+// quella. Quello che si perde è la profondità di campo della grana (da vicino
+// non diventa più grossa), ed è un prezzo piccolo — sotto i trenta gradi di
+// campo il terreno comincia comunque a farsi trasparente
+// (`skyOpacitaTerreno`) e la grana sbiadisce con lui.
+const SKY_GRANA_SCALA = 1;
+// Le chiazze stanno su una scala due volte e mezzo più larga, che è il passo
+// fra due scale in natura: le zolle e i campi, i cespugli e i boschi. Più
+// larghe di così smettono di essere una trama e diventano macchie — la
+// mimetica militare del commento qui sopra, in grande.
+const SKY_GRANA_SCALA_LARGA = 2.4;
+
+// La fase di un motivo lungo un asse: il resto della divisione tiene i numeri
+// piccoli e positivi. Un accumulatore che cammina per ore arriva a milioni di
+// pixel, e una traslazione così grande in un `DOMMatrix` perde la precisione
+// proprio sul passo.
+function skyFaseMotivo(scorrimento, passo) {
+  return ((scorrimento % passo) + passo) % passo;
+}
+
+// Di quanto è scivolato il terreno sullo schermo dal fotogramma prima, e la
+// fase della grana che se lo porta dietro. I versi sono quelli di ciò che si
+// guarda: girandosi a destra il paesaggio va a sinistra, alzando lo sguardo
+// scende.
+function skyGranaScorrimento(azCentro, altCentro, focale) {
+  const g = sky.grana || (sky.grana = { az: azCentro, alt: altCentro, x: 0, y: 0 });
+  // Il giro dell'azimut: da 359° a 1° sono due gradi, non trecentocinquantotto.
+  // Senza questa riga, attraversando il nord la grana farebbe un salto.
+  let daz = azCentro - g.az;
+  if (daz > Math.PI) daz -= 2 * Math.PI;
+  else if (daz < -Math.PI) daz += 2 * Math.PI;
+  g.x -= daz * focale;
+  g.y += (altCentro - g.alt) * focale;
+  g.az = azCentro;
+  g.alt = altCentro;
+  return g;
+}
+
 function skyDisegnaGranaTerreno(ctx, o, base, focale, velo) {
   if (!sky.atmosfera || sky.luceCielo < SKY_GRANA_LUCE_MIN) return;
   const motivo = skyGrana(ctx);
   if (!motivo) return;
 
-  // La grana cresce con l'ingrandimento, come tutto il resto: se restasse
-  // della stessa misura in pixel, avvicinandosi a una collina diventerebbe
-  // sabbia e allontanandosi un rumore.
-  const scala = Math.max(0.45, Math.min(1.8, focale / 900));
-  // La fase orizzontale appartiene all'azimut del terreno, non al centro del
-  // cerchio proiettato. Prima il motivo era agganciato a `o.px`: ruotando la
-  // camera quel punto spesso non cambiava e la montagna scorreva sotto una
-  // trama ferma sul vetro. Un giro intero torna alla stessa fase, mentre il
-  // fattore focale fa muovere la grana insieme al paesaggio.
-  const azCentro = Math.atan2(base.f[0], base.f[1]) * SKY_R2D;
-  const passoFine = SKY_GRANA_LATO * scala;
-  const faseX = ((-azCentro * focale * SKY_D2R) % passoFine + passoFine) % passoFine;
-  const ancora = { retta: true, cx: faseX, cy: o.retta ? o.cy : o.py };
-  skyAncoraMotivo(motivo, ancora, SKY_GRANA_LATO, scala);
-  // Le chiazze stanno su una scala due volte e mezzo più larga, che è il
-  // passo fra due scale in natura: le zolle e i campi, i cespugli e i
-  // boschi. Più larghe di così smettono di essere una trama e diventano
-  // macchie — la mimetica militare del commento qui sopra, in grande.
-  const scalaLarga = scala * 2.4;
-  const passoLargo = SKY_GRANA_LATO_LARGA * scalaLarga;
-  const faseXLarga = ((-azCentro * focale * SKY_D2R) % passoLargo + passoLargo) % passoLargo;
-  skyAncoraMotivo(skyGranaLarga,
-    { retta: true, cx: faseXLarga, cy: o.retta ? o.cy : o.py },
-    SKY_GRANA_LATO_LARGA, scalaLarga);
+  const azCentro = Math.atan2(base.f[0], base.f[1]);
+  const altCentro = Math.asin(Math.max(-1, Math.min(1, base.f[2])));
+  const scorri = skyGranaScorrimento(azCentro, altCentro, focale);
+
+  const passoFine = SKY_GRANA_LATO * SKY_GRANA_SCALA;
+  skyAncoraMotivo(motivo, {
+    retta: true,
+    cx: skyFaseMotivo(scorri.x, passoFine),
+    cy: skyFaseMotivo(scorri.y, passoFine)
+  }, SKY_GRANA_LATO, SKY_GRANA_SCALA);
+  const passoLargo = SKY_GRANA_LATO_LARGA * SKY_GRANA_SCALA_LARGA;
+  skyAncoraMotivo(skyGranaLarga, {
+    retta: true,
+    cx: skyFaseMotivo(scorri.x, passoLargo),
+    cy: skyFaseMotivo(scorri.y, passoLargo)
+  }, SKY_GRANA_LATO_LARGA, SKY_GRANA_SCALA_LARGA);
 
   ctx.save();
   const regola = skyTracciaSuolo(ctx, o);
@@ -20215,6 +20278,7 @@ function lezDisegna() {
 
 function lezCiclo(ts) {
   if (!lez.aperto) return;
+  lez.battito = performance.now();   // vedi la sentinella dei cicli, 7.4-quinquies
   const dt = lez.ultimoTs ? Math.min((ts - lez.ultimoTs) / 1000, 0.1) : 0;
   lez.ultimoTs = ts;
   const cap = LEZ_CAPITOLI[lez.capitolo];
@@ -20291,8 +20355,7 @@ window.apriLezioneEclittica = (da) => {
 
   // Il planetario dietro alla finestra non serve a nessuno, e due tele che
   // si ridisegnano insieme su un telefono si sentono: si mette in pausa.
-  lez.skyDaRiprendere = !!sky.raf;
-  if (sky.raf) { cancelAnimationFrame(sky.raf); sky.raf = null; }
+  lez.skyDaRiprendere = skyPrestaIlCiclo();
 
   requestAnimationFrame(() => {
     lezRidimensiona();
@@ -20306,9 +20369,7 @@ function chiudiLezioneEclittica() {
   lez.aperto = false;
   if (lez.raf) cancelAnimationFrame(lez.raf);
   lez.raf = null;
-  if (lez.skyDaRiprendere && sky.aperto && !sky.raf) {
-    sky.raf = requestAnimationFrame(skyCiclo);
-  }
+  skyRestituisciIlCiclo(lez.skyDaRiprendere);
   lez.skyDaRiprendere = false;
 }
 
@@ -22213,6 +22274,10 @@ function skyGuastoFotogramma(e) {
 // va detto una volta sola.
 function skyCiclo() {
   if (!sky.aperto) return;
+  // Il battito: dice che questo ciclo è vivo. Lo legge la sentinella qui
+  // sotto, che è l'unica cosa capace di accorgersi di una rAF che non
+  // tornerà più (vedi `skyVigilaCicli`).
+  sky.battito = performance.now();
   try {
     // Quanto è durato il fotogramma precedente: lo chiedono lo zoom morbido e
     // l'inerzia, che devono comportarsi uguale a qualunque cadenza (vedi 7.4-ter)
@@ -22233,6 +22298,149 @@ function skyCiclo() {
     skyGuastoFotogramma(e);
   }
   sky.raf = requestAnimationFrame(skyCiclo);
+}
+
+// --- 7.4-quinquies. Il ciclo che riprende da solo ----------------------
+//
+// Il planetario si guarda col telefono in mano, e col telefono in mano si
+// esce dall'app in continuazione: arriva un messaggio, si va a vedere il
+// meteo, si guarda l'ora. Tornando, il cielo restava **fermo** — l'immagine
+// c'era, ma non rispondeva più niente: né il dito, né la barra del tempo.
+//
+// La causa non è un'eccezione (per quella c'è il `try` di `skyCiclo`): è che
+// la `requestAnimationFrame` chiesta prima di uscire **non viene mai
+// chiamata**. Un browser da telefono, quando la pagina va in secondo piano,
+// la congela e ne butta le rAF in attesa; al ritorno la pagina riprende dove
+// stava, ma quella chiamata non arriverà più. `sky.raf` continua a tenere il
+// suo numero, quindi da dentro il codice il ciclo *risulta* acceso: è morto e
+// si dichiara vivo, che è il modo peggiore di fermarsi.
+//
+// L'unica difesa che copre anche i casi che non abbiamo previsto è
+// **guardare se il ciclo respira** invece di credere agli eventi:
+//
+// - il `visibilitychange` non è affidabile su iOS — quando si passa a
+//   un'altra app, o si blocca lo schermo, spesso al ritorno non arriva
+//   affatto (arriva `pageshow`, o niente); e a volte arriva *prima* che la
+//   pagina torni a disegnare davvero;
+// - `sky.raf` non dice se il ciclo gira, dice solo che qualcuno l'ha chiesto.
+//
+// Quindi: un battito scritto a ogni fotogramma, una sentinella che ogni
+// secondo controlla che non sia vecchio, e la ripartenza agganciata a tutti
+// gli avvisi che potrebbero arrivare (visibilità, `pageshow`, `focus`,
+// `resume`) — se ne arriva uno si riparte subito, se non ne arriva nessuno
+// ci pensa la sentinella entro un secondo.
+const SKY_BATTITO_MS = 1000;      // ogni quanto la sentinella si guarda intorno
+const SKY_CICLO_FERMO_MS = 1500;  // oltre questo un ciclo "acceso" è un ciclo morto
+
+// Il ciclo del cielo si spegne in tre casi soli: la vista si chiude, l'app va
+// in secondo piano, oppure una finestra che disegna a tutto schermo (il
+// Sistema Solare, la lezione dell'eclittica) se lo fa prestare. Il terzo caso
+// è l'unico che la sentinella non deve toccare, e per questo si segna.
+function skySpegniCiclo() {
+  if (sky.raf) cancelAnimationFrame(sky.raf);
+  sky.raf = null;
+}
+
+function skyAccendiCiclo() {
+  // Il battito si segna anche se poi non si parte (l'app è in secondo piano,
+  // il ciclo è in prestito): è il modo in cui la sentinella distingue un
+  // ciclo che *deve* girare e non gira da uno che non è mai partito — e un
+  // planetario aperto mentre lo schermo è spento è il primo dei due.
+  sky.battito = performance.now();
+  if (!sky.aperto || sky.cicloPrestato || document.hidden) return;
+  // Si annulla comunque quella vecchia: se il numero è di una rAF che non
+  // arriverà più, annullarlo non costa niente; se invece il ciclo stava
+  // davvero girando, non annullarlo vorrebbe dire due cicli sullo stesso
+  // cielo — cioè tutto il doppio della velocità.
+  skySpegniCiclo();
+  // Il primo fotogramma non eredita né il tempo né la corsa dei minuti
+  // passati in tasca: il playback riprende da adesso e il `dt` riparte da
+  // zero, se no un'assenza di dieci minuti diventerebbe un balzo di anni.
+  sky.ultimoFotogramma = 0;
+  sky.playbackUltimo = 0;
+  sky.battito = performance.now();
+  sky.raf = requestAnimationFrame(skyCiclo);
+}
+
+// Il prestito del ciclo a una finestra che si prende lo schermo. Torna se il
+// cielo stava girando davvero, che è quello che il chiamante deve ricordarsi
+// per sapere se al ritorno va riacceso.
+function skyPrestaIlCiclo() {
+  const acceso = !!sky.raf;
+  sky.cicloPrestato = true;
+  skySpegniCiclo();
+  return acceso;
+}
+
+function skyRestituisciIlCiclo(riaccendi) {
+  sky.cicloPrestato = false;
+  if (riaccendi) skyAccendiCiclo();
+}
+
+// Un ciclo che dovrebbe respirare e non respira. Chi non ha mai battuto non
+// è fermo: è **non ancora partito**, e non tocca alla sentinella accenderlo —
+// una finestra che si apre segna `aperto` prima di misurare la tela, e
+// partirle davanti vorrebbe dire disegnare su misure che non ci sono ancora.
+function skyCicloFermo(stato) {
+  if (!stato || !stato.battito) return false;
+  if (!stato.raf) return true;
+  return (performance.now() - stato.battito) > SKY_CICLO_FERMO_MS;
+}
+
+function skyRianimaCiclo(stato, ciclo) {
+  if (stato.raf) cancelAnimationFrame(stato.raf);
+  // Il `dt` riparte da zero: fra il fotogramma di prima e questo ci sta il
+  // tempo passato in un'altra app, e darlo in pasto a una scena che cammina
+  // vorrebbe dire farle saltare mezz'ora in un colpo.
+  stato.ultimoTs = 0;
+  stato.battito = performance.now();
+  stato.raf = requestAnimationFrame(ciclo);
+}
+
+// La sentinella. Gira sempre, anche a planetario chiuso: è un confronto fra
+// due numeri una volta al secondo, e vale la pena pagarlo per non dover
+// indovinare da quale evento arriverà il risveglio.
+function skyVigilaCicli() {
+  // Fuori schermo i cicli sono fermi apposta, e riaccenderli lì vorrebbe dire
+  // consumare batteria per disegnare a nessuno. La *proprietà* `hidden` è
+  // sempre giusta, anche quando l'evento non arriva: è la ragione per cui qui
+  // si guarda lei e non si aspetta un avviso.
+  if (document.hidden) return;
+
+  // Le altre tele che si animano da sole. Il Sistema Solare in 3D e la
+  // lezione dell'eclittica, mentre sono aperti, si fanno prestare il ciclo
+  // del cielo: se si ferma il loro si ferma anche l'orologio del planetario.
+  // La simulazione invece corre per conto suo, sopra a un cielo che continua.
+  [[sol, solCiclo], [lez, lezCiclo], [sim, simCiclo]].forEach(([stato, ciclo]) => {
+    if (stato && stato.aperto && skyCicloFermo(stato)) skyRianimaCiclo(stato, ciclo);
+  });
+  // Il laboratorio della Didattica ha il suo ciclo in un altro file, e si
+  // sorveglia da sé: qui gli si dà solo la sveglia.
+  if (typeof didatticaVigila === 'function') didatticaVigila();
+
+  if (!sky.aperto || sky.cicloPrestato) return;
+  if (!skyCicloFermo(sky)) return;
+  // Tornando da un'altra app il blocco dello schermo è stato rilasciato dal
+  // sistema: si richiede insieme al ciclo, se no il telefono si spegne in
+  // mano a chi sta guardando il cielo.
+  skyTieniSchermoAcceso();
+  skyAccendiCiclo();
+}
+
+let skySentinella = null;
+
+function skyAvviaSentinella() {
+  if (skySentinella) return;
+  skySentinella = setInterval(skyVigilaCicli, SKY_BATTITO_MS);
+  // I quattro avvisi che *potrebbero* dire «sei tornato». Nessuno di loro è
+  // garantito da solo — su iOS il `visibilitychange` al ritorno spesso non
+  // arriva, dentro a una PWA installata arriva `pageshow`, con la tastiera di
+  // sistema aperta arriva solo `focus` — e insieme non coprono comunque tutto:
+  // servono a ripartire *subito* invece che entro un secondo, mentre a
+  // garantire la ripartenza è la sentinella qui sopra.
+  ['pageshow', 'focus', 'resume'].forEach(ev => {
+    window.addEventListener(ev, () => skyVigilaCicli());
+  });
 }
 
 function apriSkymap() {
@@ -22281,7 +22489,7 @@ function apriSkymap() {
   sky.inerzia = null;
   sky.trascinamento = null;
   sky.fovVoluto = sky.fov;
-  sky.raf = requestAnimationFrame(skyCiclo);
+  skyAccendiCiclo();
   skyCaricaIlResto();
 }
 
@@ -22396,8 +22604,7 @@ function splashPlanetarioNascondi() {
 function chiudiSkymap() {
   if (!sky.aperto) return;
   sky.aperto = false;
-  if (sky.raf) cancelAnimationFrame(sky.raf);
-  sky.raf = null;
+  skySpegniCiclo();
   // Il playback non deve sopravvivere alla vista: tornando qui domani il
   // cielo ripartirebbe da un istante che nessuno ha più in mente
   skyFermaPlayback();
@@ -22916,23 +23123,25 @@ function inizializzaSkymap() {
   }
   skyInizializzaSchermoIntero();
 
-  // Fuori schermo il ciclo di disegno si ferma; al ritorno riparte
+  // Fuori schermo il ciclo di disegno si ferma; al ritorno riparte.
+  //
+  // Il ritorno però **non si aspetta da qui**: questo evento, su un telefono,
+  // è il meno affidabile di tutti (vedi 7.4-quinquies). Qui si fa la sola
+  // cosa che questo avviso sa fare bene — spegnere quando si esce — e per
+  // riaccendere si passa dalla sentinella, che guarda i fatti invece degli
+  // avvisi.
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      if (sky.raf) cancelAnimationFrame(sky.raf);
-      sky.raf = null;
+      skySpegniCiclo();
       skyRilasciaSchermo();
       // Il disegno si ferma, quindi nel filmato non entrerebbe più niente:
       // la registrazione si chiude qui e si tiene quello che ha ripreso
       skyRegFerma();
-    } else if (sky.aperto && !sky.raf) {
-      skyTieniSchermoAcceso();
-      // Il playback riprende da adesso: i minuti passati con l'app in tasca
-      // non devono trasformarsi in un balzo di anni
-      sky.playbackUltimo = 0;
-      sky.raf = requestAnimationFrame(skyCiclo);
+    } else {
+      skyVigilaCicli();
     }
   });
+  skyAvviaSentinella();
 }
 
 // Lo stato acceso/spento dei tasti dei filtri e della visualizzazione
@@ -27199,6 +27408,10 @@ function solAssestaScheda() {
 // eccezione qui dentro, senza la rete, congela tutt'e due le viste.
 function solCiclo(ts) {
   if (!sol.aperto) return;
+  // Il battito, come per il cielo: mentre questa finestra è aperta è questo
+  // ciclo a far camminare anche l'orologio del planetario, quindi è lui che
+  // la sentinella deve sorvegliare (7.4-quinquies).
+  sol.battito = performance.now();
   try {
     solPassoCiclo(ts);
     skyUltimoGuasto = null;
@@ -27945,8 +28158,7 @@ window.apriSistemaSolare = (opzioni = {}) => {
   // Due tele che si ridisegnano insieme su un telefono si sentono, e il
   // planetario dietro alla finestra non lo guarda nessuno: si mette in pausa
   // (com'è per la lezione dell'eclittica, sezione 7.3-quater)
-  sol.skyDaRiprendere = !!sky.raf;
-  if (sky.raf) { cancelAnimationFrame(sky.raf); sky.raf = null; }
+  sol.skyDaRiprendere = skyPrestaIlCiclo();
 
   requestAnimationFrame(() => {
     solRidimensiona();
@@ -27967,7 +28179,10 @@ window.apriSistemaSolare = (opzioni = {}) => {
     else solEntraSullaTerra();
     solAggiornaBarra(quando);
     solAggiornaScheda(true);
-    if (!sol.raf) sol.raf = requestAnimationFrame(solCiclo);
+    if (!sol.raf) {
+      sol.battito = performance.now();
+      sol.raf = requestAnimationFrame(solCiclo);
+    }
   });
 };
 
@@ -28002,9 +28217,7 @@ function chiudiSistemaSolare() {
   // fluida era stato saltato apposta
   skyImpostaOffsetTempo(Math.round(sky.offsetTempoSec || 0));
 
-  if (sol.skyDaRiprendere && sky.aperto && !sky.raf) {
-    sky.raf = requestAnimationFrame(skyCiclo);
-  }
+  skyRestituisciIlCiclo(sol.skyDaRiprendere);
   sol.skyDaRiprendere = false;
 }
 
@@ -29675,6 +29888,7 @@ function simDisegna(dtReale) {
 
 function simCiclo(ts) {
   if (!sim.aperto) return;
+  sim.battito = performance.now();   // vedi la sentinella dei cicli, 7.4-quinquies
   const dt = sim.ultimoTs ? Math.min((ts - sim.ultimoTs) / 1000, 0.1) : 0;
   sim.ultimoTs = ts;
 
