@@ -2,118 +2,81 @@
 
 Niente in corso.
 
-## Ultimo lavoro chiuso — «il terreno sembra vettoriale, e i nomi non compaiono»
+## Ultimo lavoro chiuso — «il planetario si blocca, il terreno scompare e non funziona più nulla»
 
-Branch `claude/terrain-planetarium-visuals-1u7rxc`.
+Branch `claude/planetario-unlock-terrain-bug-6y9ny2`.
 
-La segnalazione era in tre pezzi: il terreno sembra disegnato al computer
-(piani separati da linee troppo evidenti, niente profondità), sotto
-l'orizzonte c'è un'ampia campitura piatta e monocromatica, e non si vedono le
-etichette delle cime né i nomi dei laghi e dei fiumi.
+Non era un blocco dell'app: era **un fotogramma che non finiva**. La riga che
+rimette il ciclo in coda è l'ultima di `skyCiclo()`, quindi un'eccezione
+sollevata mentre si disegna non salta un fotogramma — li salta tutti, per
+sempre. Sullo schermo resta il disegno interrotto a metà (il cielo sì, il
+terreno no, perché il conto si ferma lì in mezzo) e non risponde più niente:
+né il dito, né la barra del tempo, né i tasti, che ridisegnano tutti dal
+ciclo. Sembra esattamente quello che è stato segnalato, e guardando lo schermo
+non c'è modo di capirlo.
 
-### Il banco di prova, prima di tutto
+### Il banco di prova
 
-Da qui la rete verso Open-Meteo e Overpass è chiusa, quindi il terreno vero
-non arriva e il difetto non si riproduce affatto. Il lavoro è cominciato
-costruendo un **mondo finto ma coerente** e servendolo al browser vero
-(Playwright + Chromium, `index.html` da un server locale, service worker
-bloccato, Astronomy Engine servita da un file): la stessa funzione di quota
-alimenta il DEM, i poligoni dei laghi e le vette di Overpass, così l'orizzonte
-disegnato e le etichette parlano dello stesso posto. Osservatore su un balcone
-di valle a 230 m, montagne a nord fino a 2.300, un lago a sud-ovest e un fiume
-che gli passa accanto. Con quello in mano tutti e tre i difetti si vedono al
-primo scatto.
+Da qui la rete verso Open-Meteo e Overpass è chiusa, e **senza terreno vero il
+difetto non esiste**. Rifatto il mondo finto della sessione scorsa (Playwright
++ Chromium, `index.html` da un server locale, Astronomy Engine da un file,
+quote e Overpass serviti da una sola funzione di quota): valle a 500 m,
+montagne a nord fino a 2.300, un lago e un fiume a ovest, **il mare a sud** — è
+servito ad avere anche l'acqua salata nel giro. Poi un setaccio: si spegne il
+ciclo e si chiama `skyDisegna` a mano su **31.552 viste** (17 campi × 29
+altezze × 8 azimut × 8 ore), raccogliendo le eccezioni per messaggio. Prima
+delle correzioni ne uscivano due famiglie; dopo, zero.
 
-### I nomi — dov'era, e non era dove sembrava
+### Le due eccezioni
 
-**Le cime funzionavano.** Provate a campo largo e stretto, di giorno e di
-notte, su schermo grande e su telefono in verticale: dieci vette nominate su
-dieci visibili, il triangolino attaccato al crinale. Se sullo schermo non
-compaiono, il motivo sta a monte — l'interruttore «Nomi dei monti» spento, il
-terreno non ancora arrivato (finché sta arrivando `cimeVisibili` non ne nomina
-nessuna, di proposito), Overpass che non risponde, o nessuna vetta che spunti
-sopra la prima cresta. La riga di stato `#skymap-terreno-nota` dice quale dei
-quattro.
+1. **A forte zoom sull'orizzonte** (`skyFermateSuolo`, nuova della scorsa
+   sessione). Le fermate del gradiente del suolo si misurano proiettandole, e
+   a 0,25° di campo la rampa disegnata è un quarto di schermo: da 0,2° di
+   depressione in giù ci finiscono oltre tutte. La riga che le teneva crescenti
+   — `Math.max(ultimo + 1e-4, tosato)` — stava **sopra** alla tosatura: la
+   prima fuori rampa usciva a 1, la seconda a 1,0001, e `addColorStop` fuori
+   dallo zero-uno non sistema niente, solleva un'eccezione. Adesso si tosa per
+   ultimo e fermate uguali si accettano: sono depressioni che cadono fuori dal
+   riquadro, e un gradino lì non lo vede nessuno.
+2. **Guardando dritto in su** (`skyCerchioOrizzonte`, difetto vecchio quanto la
+   proiezione stereografica e visibile solo col terreno acceso). Il nadir è
+   l'antipodo del centro della vista, e l'antipodo va all'infinito: allo zenit
+   `c` vale uno tondo e la formula divide per zero. Basta trascinare il cielo
+   fino in cima, dove l'altezza si ferma a novanta esatti, e
+   `createRadialGradient` con un raggio infinito solleva un'eccezione. Adesso
+   il nadir si tosa a `SKY_NADIR_SCHERMI` (otto) schermate: provato pixel per
+   pixel, fino a settanta gradi di elevazione la tosatura non morde affatto, e
+   sopra cambia solo in meglio — col nadir vero le fermate misurate finivano
+   tutte sotto lo 0,02 e il gradiente ripiegava sulle frazioni.
 
-**I laghi e i fiumi no, ed era un difetto vero.** `skyNomiAcque` chiedeva che
-la banda d'acqua fosse alta almeno quanto l'etichetta, e da quando l'etichetta
-è di due righe quell'altezza è una trentina di pixel. Ma uno specchio d'acqua
-guardato da riva è schiacciato per geometria. Misurato nel browser: il lago
-occupava **420 pixel di larghezza e 11 di altezza**, e ne servivano 22. Non era
-un caso limite: era sempre, e per passare quella prova bisognerebbe guardare il
-lago da una cima. Adesso la larghezza resta l'unica prova che conta (un nome
-più largo del lago è un nome appoggiato sul paesaggio) e l'altezza decide
-soltanto *come*: due righe con la categoria se c'è posto, il solo nome se no.
-Per un fiume la sottigliezza è la sua forma e non un difetto — le carte il nome
-di un fiume lo scrivono lungo la riga da sempre — quindi lo spessore minimo non
-gli si applica. E due contorni: il nome **scivola lungo lo specchio**
-(`skyPostoSuAcqua`) se il centro è occupato, e le lettere dei punti cardinali
-si **prenotano** il loro posto prima di tutti (`skyPrenotaCardinali`), perché
-si disegnano dopo e passano sopra: «SO» finiva stampato in mezzo al lago,
-esattamente dove sarebbe andato il suo nome.
+### E la rete, che è la parte che conta
 
-### Il paesaggio — quattro cose
-
-1. **Le dorsali non hanno più contorni.** Il riempimento di ogni striscia è un
-   gradiente dal crinale al piede (`skyRiempimentoBanda`, `SKY_BANDA_FOSCHIA`):
-   dentro a una striscia il bordo di sopra è più lontano di quello di sotto,
-   quindi la prospettiva aerea vive già dentro a ogni banda e il passaggio a
-   quella dietro non ha più nessun gradino da nascondere. Da lì il filo di luce
-   fra i piani si è potuto **togliere** invece di ammorbidire: resta solo quello
-   contro il cielo. Il cappello si fa in due passate a profondità diverse ed è
-   schiarito verso la foschia di adesso e non verso il bianco.
-2. **Il suolo sotto l'orizzonte.** Le fermate del gradiente erano scritte in
-   frazioni della rampa, e la rampa va fino al nadir: nel riquadro ne cadeva il
-   primo terzo, e il suolo passava da 122 a 86 livelli in tutta l'altezza dello
-   schermo senza mai arrivare al colore del terreno vicino. Adesso sono scritte
-   in **gradi di depressione** e dove cadano si misura proiettandole
-   (`skyFermateSuolo`), con due leggi: la foschia se ne va in un terzo di grado
-   (a un grado sotto l'orizzonte il terreno è a novanta metri, e novanta metri
-   d'aria non velano niente) e la luce d'ambiente si spegne in decine di gradi
-   (`SKY_SUOLO_NADIR_BUIO`). Di notte non si scurisce niente, che è giusto.
-3. **La grana è a due scale.** `skyTelaGrana` fa due tele con due semi diversi:
-   la fine com'era (fondo grigio, `overlay`), le chiazze **senza fondo** e in
-   normale — perché l'overlay sotto la metà vale `2·base·velo` e sul terreno
-   vicino, che adesso è scuro, non morde. La fine è rimasta identica pixel per
-   pixel a prima.
-4. **La luce ha una direzione.** `skyLucePaesaggio` dice qual è l'astro che
-   illumina (il Sole finché sta sopra ai −10°, se no la Luna), e la velatura si
-   stende sul suolo e sulle creste: calda verso di lui, azzurra dall'altra
-   parte. Il velo del paesaggio è stato ristretto da 25° a 10° e alleggerito,
-   perché con un suolo che adesso ha il suo gradiente quella vernice grigia
-   chiara sotto la riga dell'orizzonte si leggeva come un muro.
-
-### Una cosa da non rifare
-
-Il velo della luce, alla prima versione, camminava per azimut disegnando un
-trapezio per passo. Non funziona: due riempimenti semitrasparenti che
-condividono un lato vengono antialiasati ognuno per conto suo e sulla giunta
-resta una **riga verticale**, ogni passo, per tutta l'altezza — una tenda a
-righe. Sovrapporre i trapezi peggiora (le opacità si sommano e la riga diventa
-chiarissima). La cura è non avere la giunta: una figura sola, e la variazione
-con l'azimut la porta il gradiente, con le fermate **misurate** proiettando gli
-azimut veri (`skyRampaLuce`). La discesa verso i piedi, che un gradiente
-unidimensionale non può portare insieme all'azimut, la fanno sei passate
-sovrapposte sempre più corte.
+Il corpo di `skyCiclo` sta dentro a un `try` e la rAF si rimette in coda
+comunque; `skyGuastoFotogramma` lo scrive nella console **una volta sola** per
+messaggio (un errore di disegno si ripete sessanta volte al secondo) e il
+conto si azzera al primo fotogramma che riesce. Stessa rete in `solCiclo`, che
+mentre la vista 3D è aperta è quello che fa camminare l'orologio del
+planetario. Provato: con trenta fotogrammi di fila che sollevano
+un'eccezione, il ciclo continua e riprende da solo appena il guasto finisce.
+Il `try` non sostituisce le correzioni — rende un difetto un fotogramma
+sbagliato invece che una vista morta.
 
 ### Come è stato provato
 
-- `verifica.html`: **572 prove passate**, comprese le 31 nuove del §22 (il
-  colore del suolo depressione per depressione, la legge della luce, e i nomi
-  dell'acqua col caso vero misurato — 420 × 11 pixel — che adesso passa e con
-  la regola di prima non passava).
-- Nel browser vero, otto inquadrature (notte, giorno, campo largo, lago,
-  tramonto, vista in giù, forte zoom, telefono in verticale) prima e dopo.
-- Costo per fotogramma nella vista più cara (tramonto con terreno, acqua e
-  nomi): **da 4,1 a 4,6 ms** di mediana.
+- Il setaccio delle 31.552 viste: zero eccezioni (prima, due famiglie, la
+  seconda in 1.088 viste).
+- `verifica.html`: **582 prove passate**, comprese le 10 nuove in coda al §22
+  (le fermate del suolo col caso vero misurato, i casi degeneri, il nadir allo
+  zenit e la tosatura che non morde dove si guarda il paesaggio).
+- Nel browser vero: le sei viste che rompevano il fotogramma disegnano tutte,
+  e il panorama normale è pixel per pixel quello di prima.
 
-`sw.js` a `astrocal-v123`.
+`sw.js` a `astrocal-v124`.
 
 ### Quello che resta, e che non era nel compito
 
-Alla riga dell'orizzonte c'è un salto di tono fra le dorsali (terreno vicino,
-scuro) e il suolo appena sotto: viene dal fatto che il suolo si dipinge con un
-gradiente che dipende dalla sola depressione, mentre le dorsali sanno la
-distanza vera per ogni direzione. C'era già prima ed è molto meno marcato di
-allora, ma per toglierlo del tutto il suolo dovrebbe essere dipinto per azimut
-come il paesaggio.
+`simCiclo` (la simulazione) e il ciclo dei banchi della Didattica hanno la
+stessa forma — la rAF rimessa in coda per ultima — e quindi la stessa
+fragilità. Non sono stati toccati: lì non risulta nessun guasto, e il compito
+era il planetario. Se un giorno una di quelle viste «si blocca», il primo
+posto da guardare è questo.
