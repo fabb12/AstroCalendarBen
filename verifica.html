@@ -5530,6 +5530,79 @@ titolo('22. Il paesaggio: il suolo, la luce e i nomi dell\'acqua (app.js §7.3.2
   prova('la tosatura non tocca le viste in cui si guarda il paesaggio',
     [0, 10, 30, 45, 60, 70].every(alt => !morde(Math.sin(alt * D2R))),
     'morde solo puntando quasi dritti in su, dove di terreno sullo schermo non ce n\'è');
+
+  // --- La grana che non si muove con lo zoom ---------------------------
+  //
+  // Segnalazione: «zummando, la texture del terreno scivola sopra al
+  // paesaggio». Non era un'impressione ed è un conto, quindi si scrive.
+  // La fase della grana era `azimut × focale`: l'azimut resta lì mentre si
+  // pizzica, ma la focale cambia di settecento volte fra 180° e un quarto di
+  // grado, e guardando a sud-ovest (quasi quattro radianti) bastano trenta
+  // pixel di focale per spostare la trama di una piastrella intera.
+  //
+  // Adesso la fase si **segue** invece di ricalcolarla: si somma di quanto il
+  // terreno è scivolato sullo schermo, `Δangolo × focale`. Le due prove che
+  // contano sono l'una il rovescio dell'altra — con lo zoom non si deve
+  // muovere di niente, girandosi si deve muovere di tutto.
+  const GRANA_LATO = 112, GRANA_LATO_LARGA = 176;
+  const GRANA_SCALA = 1, GRANA_SCALA_LARGA = 2.4;
+  const faseMotivo = (s, p) => ((s % p) + p) % p;
+  function scorrimento(g, az, alt, focale) {
+    if (!g) g = { az, alt, x: 0, y: 0 };
+    let daz = az - g.az;
+    if (daz > Math.PI) daz -= 2 * Math.PI;
+    else if (daz < -Math.PI) daz += 2 * Math.PI;
+    g.x -= daz * focale;
+    g.y += (alt - g.alt) * focale;
+    g.az = az; g.alt = alt;
+    return g;
+  }
+  // La focale della vista, dalla stessa formula di `skyFocale` su uno schermo
+  // da 600 pixel di altezza.
+  const focaleDi = fov => (600 / 2) / (2 * Math.tan(fov / 4 * D2R));
+  const SUD_OVEST = 225 * D2R, GIU = -5 * D2R;
+
+  // 1. Zoom puro: cento passi da 60° a 0,25°, sempre nella stessa direzione.
+  let g = scorrimento(null, SUD_OVEST, GIU, focaleDi(60));
+  const partenza = { x: g.x, y: g.y };
+  for (let i = 1; i <= 100; i++) g = scorrimento(g, SUD_OVEST, GIU, focaleDi(60 * Math.pow(0.25 / 60, i / 100)));
+  prova('zummando, la grana non si sposta di un pixel',
+    Math.abs(g.x - partenza.x) < 1e-9 && Math.abs(g.y - partenza.y) < 1e-9,
+    'da 60° a 0,25° in cento passi: lo spostamento è esattamente zero');
+  // Il contro-esempio, cioè il conto di prima: la stessa pizzicata.
+  const faseVecchia = f => faseMotivo(-SUD_OVEST * f, GRANA_LATO);
+  prova('col conto di prima la stessa pizzicata la spostava di piastrelle intere',
+    Math.abs(faseVecchia(focaleDi(60)) - faseVecchia(focaleDi(0.25))) > 1,
+    'la fase era l\'azimut moltiplicato per la focale, e la focale cambia di settecento volte');
+
+  // 2. Panoramica a campo fisso: la grana deve seguire il terreno pixel per
+  //    pixel, se no è una texture inchiodata al vetro.
+  const f45 = focaleDi(45);
+  const dopoPan = scorrimento(scorrimento(null, SUD_OVEST, GIU, f45), SUD_OVEST + 3 * D2R, GIU, f45);
+  prova('girandosi, la grana scorre insieme al terreno',
+    Math.abs(dopoPan.x - (-3 * D2R * f45)) < 1e-9,
+    `tre gradi valgono ${(3 * D2R * f45).toFixed(1)} pixel, e la grana si sposta di quelli`);
+  const dopoAlza = scorrimento(scorrimento(null, SUD_OVEST, GIU, f45), SUD_OVEST, GIU + 2 * D2R, f45);
+  prova('alzando lo sguardo la grana scende',
+    dopoAlza.y > 0 && Math.abs(dopoAlza.y - 2 * D2R * f45) < 1e-9);
+
+  // 3. Il giro del nord, che è l'errore che si fa sempre: da 359° a 1° sono
+  //    due gradi, non trecentocinquantotto.
+  const nord = scorrimento(scorrimento(null, 359 * D2R, GIU, f45), 1 * D2R, GIU, f45);
+  prova('attraversando il nord la grana non fa un salto',
+    Math.abs(nord.x - (-2 * D2R * f45)) < 1e-9,
+    'due gradi di scorrimento, non trecentocinquantotto');
+
+  // 4. L'accumulatore cammina per ore: le due fasi devono restare dentro al
+  //    loro passo, che è la condizione perché il `DOMMatrix` non perda la
+  //    precisione proprio sulla piastrella.
+  let lungo = scorrimento(null, 0, 0, f45);
+  for (let i = 0; i < 5000; i++) lungo = scorrimento(lungo, ((i * 7) % 360) * D2R, 0, f45);
+  const pf = GRANA_LATO * GRANA_SCALA, pl = GRANA_LATO_LARGA * GRANA_SCALA_LARGA;
+  prova('dopo cinquemila giri le fasi stanno ancora dentro al loro passo',
+    faseMotivo(lungo.x, pf) >= 0 && faseMotivo(lungo.x, pf) < pf &&
+    faseMotivo(lungo.x, pl) >= 0 && faseMotivo(lungo.x, pl) < pl,
+    `l'accumulatore è a ${lungo.x.toExponential(1)} pixel, le fasi a ${faseMotivo(lungo.x, pf).toFixed(1)} e ${faseMotivo(lungo.x, pl).toFixed(1)}`);
 }
 
 // =====================================================================
