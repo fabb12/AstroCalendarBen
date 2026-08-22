@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v135';
+const CACHE_NAME = 'astrocal-v134';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -12,7 +12,6 @@ const ASSETS = [
   './corpi-minori.js',
   './pianifica.js',
   './terreno.js',
-  './rilievo.js',
   './meteo-astro.js',
   './aurora-polare.js',
   './eventi-extra.js',
@@ -133,18 +132,9 @@ self.addEventListener('fetch', (e) => {
   // richiesta andata male serve `index.html` — una pagina HTML al posto di
   // un JSON è il modo più confuso che ci sia di non avere le quote.
   const HOST_QUOTE = ['api.opentopodata.org', 'api.open-elevation.com'];
-  // E le **tessere** del rilievo (`rilievo.js`), che sono quote anche loro:
-  // un PNG in cui ogni pixel è un metro sul livello del mare. Stessa
-  // ragione delle altre — una collina è dove era — e per queste vale il
-  // doppio, perché sono l'unica cosa pesante che l'app scarichi: da quattro
-  // a nove tessere da un centinaio di kilobyte per ogni luogo nuovo.
-  // Tenerle vuol dire che il posto da cui si osserva sempre si ridisegna
-  // senza rete, in campo, che è dove serve.
   const quoteDelSuolo =
     (url.hostname.includes('open-meteo.com') && url.pathname.indexOf('/elevation') !== -1) ||
-    HOST_QUOTE.indexOf(url.hostname) !== -1 ||
-    (url.hostname.indexOf('elevation-tiles-prod') !== -1 &&
-      url.pathname.indexOf('/terrarium/') !== -1);
+    HOST_QUOTE.indexOf(url.hostname) !== -1;
 
   if (!quoteDelSuolo && (
       url.hostname.includes('open-meteo.com') ||
