@@ -785,6 +785,15 @@ body .bg-slate-950\/90 {
   z-index: 1400;
 }
 
+/* Il guscio del Sistema Solare, quando il cielo è a schermo intero, si appende
+   qui dentro anche lui (`solRipiegoSchermo`) — e diventa fratello della sua
+   stessa finestra. Col suo z-index di sempre (80) finiva **sotto** al velo
+   della finestra ospitata, che è a 1400: aprendo la vista 3D dal planetario a
+   tutto schermo si vedeva la finestra e non si vedeva il disegno, che è
+   esattamente il difetto segnalato. Qui il guscio torna sopra: è lui la vista,
+   e la finestra dietro non ha più niente da mostrare. */
+#skymap-contenitore > .sol-guscio.sol-schermo-pieno { z-index: 1500; }
+
 /* Mentre il cielo è a schermo intero la pagina sotto non scorre e la barra di
    navigazione in fondo si toglie di mezzo: rubava il pollice all'uscita */
 body.cielo-immersivo { overflow: hidden; }
@@ -4996,10 +5005,11 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
 .sol-velocita .lettura-velocita { min-width: 52px; font-size: 0.72rem; }
 .sol-suggerimento {
   position: absolute;
-  top: 10px;
-  left: 12px;
-  /* A destra si ferma prima: lì sta la colonna dei tasti appoggiati sulla
-     scena, e la riga delle istruzioni ci finiva sotto */
+  top: 16px;
+  /* Fra le due colonne di tasti appoggiati sulla scena: a sinistra le tre
+     viste, a destra i comandi del guardare. In mezzo ci sta una riga di
+     istruzioni, e ci sta senza finire sotto a nessuno dei due. */
+  left: 62px;
   right: 60px;
   margin: 0;
   font-size: 0.7rem;
@@ -5041,6 +5051,82 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
 }
 .tasto-mappa-sistema:hover { background: rgba(28, 36, 60, 0.92); }
 .tasto-mappa-sistema.attiva { border-color: var(--blu); color: var(--blu-chiaro); }
+
+/* --- Le tre viste, in colonna a sinistra ---
+   Stessa pelle dei comandi di destra, perché sono la stessa famiglia di cose:
+   segni appoggiati sulla scena. Cambia solo cosa dicono — quelli a destra
+   sono il *come* si guarda (schermo, giro, ingrandimento), questi il *cosa*.
+   Il nome per esteso c'è, ma solo per chi legge con lo schermo e nel `title`:
+   tre parole sopra al disegno sono tre parole di disegno in meno. */
+.sol-viste {
+  position: absolute;
+  top: 10px;
+  left: max(10px, env(safe-area-inset-left));
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.tasto-vista-sistema {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  color: var(--testo);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--transizione), border-color var(--transizione), color var(--transizione);
+}
+.tasto-vista-sistema:hover { background: rgba(28, 36, 60, 0.92); }
+.tasto-vista-sistema.attiva {
+  border-color: var(--blu);
+  color: var(--blu-chiaro);
+  background: rgba(30, 58, 110, 0.9);
+}
+/* Nascosto alla vista, non a chi legge con lo schermo */
+.sol-vista-nome {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Le due manopole di secondo piano ---
+   Distanze e dimensioni non sono una domanda che ci si fa guardando: si
+   scelgono una volta. Stanno quindi dietro a un tasto della colonna di
+   destra, e il pannellino si apre appeso a lui. */
+.sol-opzioni-guscio { position: relative; }
+.sol-opzioni {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 9;
+  width: max-content;
+  min-width: 190px;
+  display: grid;
+  gap: 9px;
+  padding: 10px 11px 11px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: var(--raggio-m);
+  background: rgba(6, 10, 20, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--ombra-3);
+}
+.sol-opzioni.hidden { display: none; }
+.sol-opzione { display: grid; gap: 5px; justify-items: start; }
+.sol-opzione .segmenti-cielo { width: 100%; }
 
 /* --- Il Sistema Solare a tutto schermo ---
    Va a schermo intero il guscio, non la finestra: dentro ha già la tela, la
@@ -5132,8 +5218,6 @@ body.sol-immersivo { overflow: hidden; }
 }
 /* Quello che fuori dal planetario non vuol dire niente tace (vedi 7.5-ter) */
 .gruppo-ospite [data-solo-cielo] { display: none; }
-.sol-comandi { display: grid; gap: 8px; }
-.sol-riga { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
 .sol-etichetta {
   font-size: 0.72rem;
   font-weight: 700;
@@ -5141,18 +5225,10 @@ body.sol-immersivo { overflow: hidden; }
   text-transform: uppercase;
   color: var(--testo-3);
 }
-/* Nei pannelli del planetario un gruppo di segmenti si prende tutta la riga
-   e si divide in parti uguali. Qui invece sulla stessa riga ce ne stanno due
-   o tre, e allora ognuno tiene la larghezza delle sue parole: se non ci
-   stanno, va a capo il gruppo intero — meglio che vedere «Pianeti inter…». */
-.sol-riga .segmenti-cielo { flex: 0 1 auto; }
-.sol-riga .tasto-segmento { flex: 0 0 auto; }
-
-/* Nel banco delle eclissi (Terra e Luna) metà di questi comandi parla di una
-   scena che lì non c'è: le distanze compresse, le fasce di sassi, i pallini
-   in scala. Restano al loro posto ma spenti, invece di sparire — una fila di
-   tasti che cambia lunghezza a ogni tocco fa perdere il segno di dov'erano
-   gli altri, e li si va a ricercare ogni volta. */
+/* Nel banco delle eclissi (Terra e Luna) le distanze compresse parlano di una
+   scena che lì non c'è: quel comando resta al suo posto ma spento, invece di
+   sparire — una fila di tasti che cambia lunghezza a ogni tocco fa perdere il
+   segno di dov'erano gli altri, e li si va a ricercare ogni volta. */
 .tasto-segmento.spento-fuori-scena {
   opacity: 0.32;
   cursor: not-allowed;
@@ -5214,31 +5290,6 @@ body.sol-immersivo { overflow: hidden; }
    fratelli dei pannelli, e ognuno sulla sua riga se il nome è lungo. */
 .sol-scheda .sol-azioni .tasto-cielo { font-size: 0.76rem; padding: 5px 10px; }
 
-.sol-tabella { display: grid; gap: 4px; }
-body button.sol-riga-pianeta {
-  display: grid;
-  grid-template-columns: 14px minmax(5rem, 1fr) auto auto minmax(6rem, auto);
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--raggio-s);
-  background: var(--incassato);
-  color: var(--testo-2);
-  font-family: inherit;
-  font-size: 0.8rem;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color var(--transizione), background-color var(--transizione);
-}
-body button.sol-riga-pianeta:hover { border-color: var(--bordo-forte); }
-body button.sol-riga-pianeta.attiva { border-color: var(--blu); background: var(--blu-velo); }
-body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
-.sol-pallino { width: 11px; height: 11px; border-radius: 50%; }
-.sol-nome { font-weight: 600; color: var(--testo); }
-.sol-dato { font-variant-numeric: tabular-nums; color: var(--testo-3); }
-.sol-quando-breve { color: var(--testo-2); text-align: right; }
 .sol-vuoto { margin: 0; font-size: 0.85rem; color: var(--testo-2); }
 
 @media (max-width: 640px) {
@@ -5251,11 +5302,10 @@ body button.sol-riga-pianeta.sei-qui { opacity: 0.82; }
     max-height: min(52%, 300px);
     padding: 10px 11px 11px;
   }
-  body button.sol-riga-pianeta {
-    grid-template-columns: 14px 1fr auto;
-    row-gap: 2px;
-  }
-  .sol-quando-breve { grid-column: 2 / -1; text-align: left; }
+  /* Su un telefono i due tondi in colonna si stringono appena: quello che
+     conta è che fra le due colonne resti spazio per il disegno */
+  .tasto-vista-sistema { width: 36px; height: 36px; }
+  .sol-suggerimento { left: 58px; }
 }
 
 /* ------------------------------------------- MAPPA ECLISSI SU DUE COLONNE   */

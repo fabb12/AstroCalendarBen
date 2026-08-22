@@ -2,81 +2,84 @@
 
 Niente in corso.
 
-## Ultimo lavoro chiuso — «il planetario si blocca, il terreno scompare e non funziona più nulla»
+## Ultimo lavoro chiuso — la vista 3D del Sistema Solare: il disegno che non si vedeva, e l'interfaccia ridotta all'osso
 
-Branch `claude/planetario-unlock-terrain-bug-6y9ny2`.
+Branch `claude/solar-system-3d-planetarium-gqp2au`.
 
-Non era un blocco dell'app: era **un fotogramma che non finiva**. La riga che
-rimette il ciclo in coda è l'ultima di `skyCiclo()`, quindi un'eccezione
-sollevata mentre si disegna non salta un fotogramma — li salta tutti, per
-sempre. Sullo schermo resta il disegno interrotto a metà (il cielo sì, il
-terreno no, perché il conto si ferma lì in mezzo) e non risponde più niente:
-né il dito, né la barra del tempo, né i tasti, che ridisegnano tutti dal
-ciclo. Sembra esattamente quello che è stato segnalato, e guardando lo schermo
-non c'è modo di capirlo.
+### 1. «Aperta dal planetario a tutto schermo non si vede il grafico, solo la scheda»
 
-### Il banco di prova
+Non era il disegno: era l'ordine di impilamento, e i due pezzi erano stati
+scritti in due momenti diversi senza sapere l'uno dell'altro. Col cielo a tutto
+schermo la **finestra** viene traslocata dentro `#skymap-contenitore` (§7.5-bis)
+e ci sta a `z-index: 1400`; il **guscio** ci si appende anche lui
+(`solRipiegoSchermo`, §7.7-bis) ma col suo z-index di sempre, **80**. Diventati
+fratelli nello stesso contesto, vinceva il velo della finestra: restavano il
+pannello coi comandi e il buio, e la tela stava sotto — cioè si vedeva tutto
+tranne la cosa per cui la finestra si era aperta.
 
-Da qui la rete verso Open-Meteo e Overpass è chiusa, e **senza terreno vero il
-difetto non esiste**. Rifatto il mondo finto della sessione scorsa (Playwright
-+ Chromium, `index.html` da un server locale, Astronomy Engine da un file,
-quote e Overpass serviti da una sola funzione di quota): valle a 500 m,
-montagne a nord fino a 2.300, un lago e un fiume a ovest, **il mare a sud** — è
-servito ad avere anche l'acqua salata nel giro. Poi un setaccio: si spegne il
-ciclo e si chiama `skyDisegna` a mano su **31.552 viste** (17 campi × 29
-altezze × 8 azimut × 8 ore), raccogliendo le eccezioni per messaggio. Prima
-delle correzioni ne uscivano due famiglie; dopo, zero.
+Una riga di CSS: `#skymap-contenitore > .sol-guscio.sol-schermo-pieno { z-index: 1500 }`.
 
-### Le due eccezioni
+Provato nel browser vero (Playwright + Chromium, con Astronomy Engine servito da
+un file perché da qui i CDN sono chiusi): `elementFromPoint` al centro della tela
+adesso risponde `sol-canvas`, e la tela è disegnata.
 
-1. **A forte zoom sull'orizzonte** (`skyFermateSuolo`, nuova della scorsa
-   sessione). Le fermate del gradiente del suolo si misurano proiettandole, e
-   a 0,25° di campo la rampa disegnata è un quarto di schermo: da 0,2° di
-   depressione in giù ci finiscono oltre tutte. La riga che le teneva crescenti
-   — `Math.max(ultimo + 1e-4, tosato)` — stava **sopra** alla tosatura: la
-   prima fuori rampa usciva a 1, la seconda a 1,0001, e `addColorStop` fuori
-   dallo zero-uno non sistema niente, solleva un'eccezione. Adesso si tosa per
-   ultimo e fermate uguali si accettano: sono depressioni che cadono fuori dal
-   riquadro, e un gradino lì non lo vede nessuno.
-2. **Guardando dritto in su** (`skyCerchioOrizzonte`, difetto vecchio quanto la
-   proiezione stereografica e visibile solo col terreno acceso). Il nadir è
-   l'antipodo del centro della vista, e l'antipodo va all'infinito: allo zenit
-   `c` vale uno tondo e la formula divide per zero. Basta trascinare il cielo
-   fino in cima, dove l'altezza si ferma a novanta esatti, e
-   `createRadialGradient` con un raggio infinito solleva un'eccezione. Adesso
-   il nadir si tosa a `SKY_NADIR_SCHERMI` (otto) schermate: provato pixel per
-   pixel, fino a settanta gradi di elevazione la tosatura non morde affatto, e
-   sopra cambia solo in meglio — col nadir vero le fermate misurate finivano
-   tutte sotto lo 0,02 e il gradiente ripiegava sulle frazioni.
+### 2. L'interfaccia, ridotta a tre segni
 
-### E la rete, che è la parte che conta
+Da quando la finestra si apre a tutto schermo, la fila di comandi sotto alla
+tela è un posto che non si vede mai. È andata via tutta, e con lei la tabella
+degli otto pianeti. Restano:
 
-Il corpo di `skyCiclo` sta dentro a un `try` e la rAF si rimette in coda
-comunque; `skyGuastoFotogramma` lo scrive nella console **una volta sola** per
-messaggio (un errore di disegno si ripete sessanta volte al secondo) e il
-conto si azzera al primo fotogramma che riesce. Stessa rete in `solCiclo`, che
-mentre la vista 3D è aperta è quello che fa camminare l'orologio del
-planetario. Provato: con trenta fotogrammi di fila che sollevano
-un'eccezione, il ciclo continua e riprende da solo appena il guasto finisce.
-Il `try` non sostituisce le correzioni — rende un difetto un fotogramma
-sbagliato invece che una vista morta.
+- a sinistra `.sol-viste`, **tre tondi con la sola icona** (`[data-sol-quadro]`):
+  Da qui, Tutto, Terra e Luna. Non sono impostazioni, sono tre risposte a «cosa
+  sto guardando», e per questo sono l'unica cosa sempre in vista;
+- a destra i comandi del guardare (⛶, ⟲, ⚙, −, +), e dietro al ⚙ il pannellino
+  `#sol-opzioni` con le due manopole di secondo piano: **Distanze**
+  (compresse/reali) e **Dimensioni** (ingrandite/reali).
 
-### Come è stato provato
+Usciti: i tre punti di vista (la scena si gira col dito, ed è *il* gesto di
+questa vista), «Pianeti interni», le altezze ×10, i nodi, le due fasce di sassi
+(restano accese, che è come le si vuole quasi sempre), i chip del passo (stanno
+nel pannello del tempo, che è quello del planetario in prestito) e l'elenco dei
+pianeti. Con loro sono spariti `SOL_VISTE`, `solImpostaVista`, `solElencoHtml`,
+`solRigaTabella`.
 
-- Il setaccio delle 31.552 viste: zero eccezioni (prima, due famiglie, la
-  seconda in 1.088 viste).
-- `verifica.html`: **582 prove passate**, comprese le 10 nuove in coda al §22
-  (le fermate del suolo col caso vero misurato, i casi degeneri, il nadir allo
-  zenit e la tosatura che non morde dove si guarda il paesaggio).
-- Nel browser vero: le sei viste che rompevano il fotogramma disegnano tutte,
-  e il panorama normale è pixel per pixel quello di prima.
+Da sapere per chi ci rimette mano: `solAggiornaTasti` **non cerca più dentro a
+`#modale-sistema`**. Col planetario a tutto schermo il guscio esce dalla
+finestra, quindi i tasti appoggiati sulla scena — che sono ormai tutti quelli
+che contano — non sono più dentro al modale, e con la selezione di prima
+sarebbero rimasti spenti per sempre. Stessa cura per `.sol-suggerimento`.
 
-`sw.js` a `astrocal-v124`.
+### 3. Il banco Terra e Luna: niente scheda, e i due corpi che si vedono
 
-### Quello che resta, e che non era nel compito
+La scheda che compariva entrando nel banco è via: lì il disegno **è** il
+discorso, e un pannello appoggiato sopra copriva proprio la Luna accanto al
+bersaglio. Quello che diceva sta adesso in fondo alla scena, in due righe
+(`solRaccontoVicino` + `SOL_VIC_VERDETTI`): il verdetto («Eclissi totale di
+Luna», oppure «Stavolta niente · il bersaglio è mancato di N km») e la misura di
+sempre. Per uscire dal banco ci sono i tre tondi.
 
-`simCiclo` (la simulazione) e il ciclo dei banchi della Didattica hanno la
-stessa forma — la rAF rimessa in coda per ultima — e quindi la stessa
-fragilità. Non sono stati toccati: lì non risulta nessun guasto, e il compito
-era il planetario. Se un giorno una di quelle viste «si blocca», il primo
-posto da guardare è questo.
+E i due corpi si vedono: `SOL_VIC_INGRANDIMENTO = 3`. A scala vera, con l'orbita
+intera nel quadro, la Terra è un dischetto di otto pixel di raggio e la Luna un
+puntino di due — la scena è esatta e non si legge. L'ingrandimento è
+**trasversale e basta**: `k` moltiplica il raggio che `solRaggioUmbra` e
+`solRaggioPenombra` *restituiscono*, non quello che ricevono, quindi le distanze
+lungo l'asse — e con esse gli apici, cioè il punto in cui ogni cono si chiude —
+restano vere. Ingrandendo anche la lunghezza, l'ombra della Terra diventerebbe
+un tubo che non si chiude più e quella della Luna arriverebbe quaggiù ogni mese:
+sparirebbe la ragione per cui le eclissi totali di Sole sono rare.
+
+Cosa resta storto, ed è scritto anche nel commento: con l'ombra tre volte più
+larga qualche Luna piena la sfiora sul disegno pur restandone fuori davvero
+(ombra piena da 4.600 a 13.800 km di raggio, contro i 34.000 km di scarto
+massimo). Per questo il **verdetto** resta calcolato sui raggi veri
+(`solStatoEclissi`), e chi vuole il disegno esatto ha «Dimensioni reali» dietro
+al ⚙.
+
+### Quello che non si è potuto fare
+
+Su un telefono in verticale il banco resta una striscia sottile in mezzo a molto
+nero: l'orbita intera sta in trecento pixel, e lì nemmeno il ×3 fa una Luna
+grande — per farla grande davvero servirebbe un ingrandimento che coprirebbe
+buona parte dello scarto della Luna, cioè direbbe che le eclissi capitano molto
+più spesso di così. Chi ha bisogno di vedere meglio gira il telefono (la scena
+si prende lo schermo da sé, §0-bis) o si avvicina col pizzico.

@@ -1491,6 +1491,58 @@
           <canvas id="sol-canvas" class="block w-full tela-sistema"></canvas>
           <p class="sol-suggerimento">Trascina per girare · tocca un pianeta</p>
 
+          <!-- Le tre viste, in colonna a sinistra. Sono l'unico comando che
+               questa finestra ha bisogno di avere sempre sotto gli occhi:
+               non sono impostazioni, sono le tre risposte alla domanda «cosa
+               sto guardando» — la disposizione di stasera vista da sopra
+               casa nostra, tutto il sistema, e il solo sistema Terra–Luna.
+               Solo icone: a tutto schermo una fila di parole sopra al
+               disegno è la cosa che copre proprio quello che si è venuti a
+               vedere, e tre segni si imparano al primo tocco. -->
+          <div class="sol-viste" role="group" aria-label="Cosa guardare">
+            <button type="button" class="tasto-vista-sistema" data-sol-quadro="terra"
+              title="Da qui: la Terra in basso e il Sole davanti a lei, cioè la disposizione di stasera vista da sopra casa nostra. A sinistra i pianeti della sera, a destra quelli del mattino."
+              aria-label="Da qui">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 21.2s6.4-6 6.4-10.4a6.4 6.4 0 1 0-12.8 0C5.6 15.2 12 21.2 12 21.2z"/>
+                <circle cx="12" cy="10.4" r="2.3" fill="currentColor" stroke="none"/>
+              </svg>
+              <span class="sol-vista-nome">Da qui</span>
+            </button>
+            <button type="button" class="tasto-vista-sistema" data-sol-quadro="tutto"
+              title="Tutto il sistema, fino a Nettuno e alla fascia di Kuiper"
+              aria-label="Tutto il sistema">
+              <!-- Lo stesso segno dell'orbita che porta qui dal planetario: due
+                   ellissi concentriche, alla misura di questi tondi, si leggono
+                   come un occhio (provato) -->
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/>
+                <circle cx="19" cy="5" r="2"/>
+                <circle cx="5" cy="19" r="2"/>
+                <path d="M10.4 21.9a10 10 0 0 0 9.941-15.416"/>
+                <path d="M13.5 2.1a10 10 0 0 0-9.841 15.416"/>
+              </svg>
+              <span class="sol-vista-nome">Tutto</span>
+            </button>
+            <button type="button" class="tasto-vista-sistema" data-sol-quadro="eclissi"
+              title="La Terra e la Luna da vicino, coi due coni d'ombra: è qui che si vede perché un'eclissi non capita a ogni Luna piena — l'orbita della Luna è inclinata di 5,1°, e a quella distanza sono trentaquattromila chilometri fuori bersaglio."
+              aria-label="Terra e Luna">
+              <!-- Un corpo grosso e uno piccolo, con la falce: due cerchi soli
+                   si leggerebbero come due pianeti qualunque, la fase dice che
+                   quello piccolo è la Luna -->
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+                <circle cx="9" cy="13.6" r="6.8"/>
+                <path d="M2.6 11.2h12.8M4.2 16.6h9.6" opacity="0.55"/>
+                <circle cx="19" cy="5.6" r="3"/>
+                <path d="M19 2.6a3 3 0 0 1 0 6z" fill="currentColor" stroke="none"/>
+              </svg>
+              <span class="sol-vista-nome">Terra e Luna</span>
+            </button>
+          </div>
+
           <!-- La scheda del corpo scelto. Sta **dentro** al guscio, appoggiata
                sulla scena come la scheda dell'oggetto nel planetario, e non
                più giù nella finestra: da quando si entra già a tutto schermo,
@@ -1512,6 +1564,45 @@
             <button id="sol-reset" type="button" class="tasto-mappa-sistema"
               title="Rimetti la vista com'era all'apertura: stessa inquadratura, stesso ingrandimento (o premi R)"
               aria-label="Rimetti la vista come all'apertura">⟲</button>
+            <!-- Le due manopole di secondo piano: come sono disegnate le
+                 distanze e come sono disegnate le misure dei corpi. Non
+                 stanno in vista perché non sono una domanda che ci si fa
+                 guardando — sono una cosa che si sceglie una volta, e che
+                 però cambia di molto quello che il disegno dice. -->
+            <div class="sol-opzioni-guscio">
+              <button id="sol-btn-opzioni" type="button" class="tasto-mappa-sistema"
+                aria-expanded="false" aria-controls="sol-opzioni"
+                title="Distanze e dimensioni: compresse per farci stare tutto, o quelle vere"
+                aria-label="Distanze e dimensioni">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+                  <path d="M4 7.5h8M17.5 7.5H20M4 16.5h2.5M12 16.5h8"/>
+                  <circle cx="14.6" cy="7.5" r="2.3"/>
+                  <circle cx="9.1" cy="16.5" r="2.3"/>
+                </svg>
+              </button>
+              <div id="sol-opzioni" class="sol-opzioni hidden" role="group"
+                   aria-label="Distanze e dimensioni">
+                <div class="sol-opzione">
+                  <span class="sol-etichetta">Distanze</span>
+                  <div class="segmenti-cielo">
+                    <button type="button" class="tasto-segmento" data-sol-distanze="compresse" data-solo-pianeti
+                      title="Compresse per farceli stare tutti: gli angoli restano veri, i rapporti fra le distanze no">Compresse</button>
+                    <button type="button" class="tasto-segmento" data-sol-distanze="vere" data-solo-pianeti
+                      title="Distanze vere: Nettuno è settantasette volte più lontano di Mercurio, e si vede">Reali</button>
+                  </div>
+                </div>
+                <div class="sol-opzione">
+                  <span class="sol-etichetta">Dimensioni</span>
+                  <div class="segmenti-cielo">
+                    <button type="button" class="tasto-segmento" data-sol-misure="grandi"
+                      title="Corpi ingranditi: pallini leggibili e comodi da toccare col dito. Nel banco Terra e Luna ingrandisce anche le ombre, così la geometria resta quella di due corpi tre volte più grandi.">Ingrandite</button>
+                    <button type="button" class="tasto-segmento" data-sol-misure="vere"
+                      title="Misure vere: Giove è ventinove volte Mercurio, e nel banco Terra e Luna tutto — corpi e ombre — è alla scala esatta">Reali</button>
+                  </div>
+                </div>
+              </div>
+            </div>
             <button id="sol-zoom-meno" type="button" class="tasto-mappa-sistema"
               title="Allontanati" aria-label="Allontanati">−</button>
             <button id="sol-zoom-piu" type="button" class="tasto-mappa-sistema"
@@ -1565,86 +1656,19 @@
           </div>
         </div>
 
-        <div class="sol-comandi">
-          <div class="sol-riga" role="group" aria-label="Punto di vista">
-            <span class="sol-etichetta">Guarda</span>
-            <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-vista="alto" title="A picco sul Sole: la figura dei libri di scuola">Dall'alto</button>
-              <button type="button" class="tasto-segmento" data-sol-vista="obliqua" title="Da trentaquattro gradi sopra il piano">Di sbieco</button>
-              <button type="button" class="tasto-segmento" data-sol-vista="taglio" title="Quasi dentro al piano delle orbite: è così che lo vediamo da qui, ed è da qui che nasce l'eclittica">Di taglio</button>
-            </div>
-            <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-quadro="terra" title="L'inquadratura con cui si entra: la Terra in basso e il Sole davanti a lei, cioè la disposizione di stasera vista da sopra casa nostra. A sinistra i pianeti della sera, a destra quelli del mattino.">Da qui</button>
-              <button type="button" class="tasto-segmento" data-sol-quadro="tutto" title="Tutto il sistema, fino a Nettuno e alla fascia di Kuiper">Tutto</button>
-              <button type="button" class="tasto-segmento" data-sol-quadro="interni" title="Solo Mercurio, Venere, Terra e Marte">Pianeti interni</button>
-            </div>
-            <!-- Il banco delle eclissi: una scena a parte, con la Terra al
-                 centro, la Luna alla sua distanza vera e i due coni d'ombra.
-                 È il posto in cui si vede perché le eclissi non capitano
-                 tutti i mesi. -->
-            <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-quadro="eclissi"
-                title="La Terra e la Luna da vicino, a scala vera, coi due coni d'ombra: è qui che si vede perché un'eclissi non capita a ogni Luna piena — l'orbita della Luna è inclinata di 5,1°, e a quella distanza sono trentaquattromila chilometri fuori bersaglio.">Terra e Luna</button>
-            </div>
-            <button id="sol-zoom-out" type="button" class="tasto-cielo tasto-passo" title="Allontanati" aria-label="Allontanati">−</button>
-            <button id="sol-zoom-in" type="button" class="tasto-cielo tasto-passo" title="Avvicinati" aria-label="Avvicinati">+</button>
-            <!-- Spostare la scena serve appena ci si avvicina; questo la
-                 rimette in mezzo, che è l'unico modo per non perdersi -->
-            <button id="sol-centra" type="button" class="tasto-cielo tasto-passo"
-              title="Rimetti il Sole al centro, lasciando il giro e l'ingrandimento come stanno (o premi C). Per rimettere tutto com'era, il ⟲ sulla scena."
-              aria-label="Rimetti la scena al centro">⌖</button>
-          </div>
+        <!-- Qui sotto c'erano quattro file di comandi e la tabella degli otto
+             pianeti. Sono andate via tutte: da quando la finestra si apre a
+             tutto schermo, la fila di sotto è un posto che non si vede mai —
+             e quello che non si vede mai o non serve, o va messo dove si
+             guarda. Le tre viste sono adesso i tre segni appoggiati sulla
+             scena, il passo del tempo sta nel pannello del tempo (che è
+             quello del planetario, in prestito), e le due manopole che
+             restano — distanze e dimensioni — stanno dietro al ⚙ della
+             colonna di destra. Il resto (punto di vista, pianeti interni,
+             altezze ×10, nodi, fasce di sassi, elenco dei pianeti) non
+             c'è più: la scena si gira col dito, e un pianeta si sceglie
+             toccandolo. -->
 
-          <div class="sol-riga" role="group" aria-label="Come sono disegnate le distanze">
-            <span class="sol-etichetta">Distanze</span>
-            <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-distanze="compresse" data-solo-pianeti title="Compresse per farceli stare tutti: gli angoli restano veri, i rapporti fra le distanze no">Compresse</button>
-              <button type="button" class="tasto-segmento" data-sol-distanze="vere" data-solo-pianeti title="Distanze vere: Nettuno è settantasette volte più lontano di Mercurio, e si vede">Reali</button>
-            </div>
-            <span class="sol-etichetta">Fuori dal piano</span>
-            <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-altezze="1" data-solo-pianeti title="L'altezza vera sopra e sotto il piano dell'eclittica: pochi gradi">Vero</button>
-              <button type="button" class="tasto-segmento" data-sol-altezze="10" data-solo-pianeti title="Altezza ingrandita dieci volte: le inclinazioni si vedono">×10</button>
-              <!-- Le inclinazioni ci sono sempre state, ma un grado e mezzo
-                   disegnato è meno dello spessore della linea: questi tre
-                   segni le rendono leggibili senza toccare la geometria. -->
-              <button type="button" class="tasto-segmento" data-sol-nodi data-solo-pianeti
-                title="I nodi: i due punti in cui ogni orbita attraversa il piano dell'eclittica, la corda che li unisce, i punti più alto e più basso col loro filo a piombo, e i gradi di inclinazione scritti accanto. Insieme al ×10 è il disegno dei libri, con otto anelli inclinati ognuno per conto suo.">Nodi</button>
-            </div>
-          </div>
-
-          <div class="sol-riga" role="group" aria-label="Come sono disegnati i pianeti">
-            <span class="sol-etichetta">Pianeti</span>
-            <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-misure="grandi" data-solo-pianeti title="Pallini tutti leggibili, comodi da toccare col dito">Ingranditi</button>
-              <button type="button" class="tasto-segmento" data-sol-misure="vere" data-solo-pianeti title="In scala fra loro: Giove è ventinove volte Mercurio, e si vede">In scala</button>
-            </div>
-            <!-- Il passo è lo stesso del planetario: i chip li scrive
-                 `skyScriviChipPasso`, e sceglierne uno qui lo sceglie anche
-                 sotto al cielo. Un orologio solo vuol dire anche un passo solo. -->
-            <span class="sol-etichetta">Passo del tempo</span>
-            <div id="sol-passi" class="segmenti-cielo" role="group" aria-label="Passo del tempo"></div>
-          </div>
-
-          <div class="sol-riga" role="group" aria-label="Le fasce di sassi">
-            <span class="sol-etichetta">Fasce di sassi</span>
-            <div class="segmenti-cielo">
-              <button type="button" class="tasto-segmento" data-sol-fascia="principale" data-solo-pianeti aria-pressed="true"
-                title="La fascia principale, fra Marte e Giove: i detriti di un pianeta che Giove non ha lasciato nascere. I due anelli vuoti sono i vuoti di Kirkwood, spazzati dalle risonanze con la sua orbita.">Asteroidi</button>
-              <button type="button" class="tasto-segmento" data-sol-fascia="kuiper" data-solo-pianeti aria-pressed="true"
-                title="La fascia di Kuiper, oltre Nettuno: da 30 a 50 unità astronomiche, con il gruppo di Plutone a 39,4 e il precipizio a 48, dove finisce di colpo e nessuno sa perché.">Kuiper</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- L'elenco dei pianeti: è il modo più veloce per sceglierne uno
-             senza cercarlo sulla scena. Resta qui sotto, fuori dal guscio —
-             a tutto schermo si sceglie toccando il corpo, che è il gesto
-             naturale, e questa fila sarebbe una tabella davanti a un
-             panorama. Qui c'era anche una nota di dodici righe che spiegava
-             la scena: quello che il disegno dice già da sé non ha bisogno di
-             essere scritto sotto. -->
-        <div id="sol-elenco" class="sol-tabella"></div>
 
         <div class="barra-chiudi">
           <button id="btn-chiudi-sistema-basso" type="button" class="tasto-chiudi-largo">Chiudi</button>
