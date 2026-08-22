@@ -2519,15 +2519,27 @@ function cittaForza(abitanti, km) {
   return Math.pow(Math.max(200, abitanti), 1.2) / (d * d + 4);
 }
 
+// Il nodo di OpenStreetMap indica il centro dell'abitato, non un punto luce
+// lontano. Se chi guarda si trova dentro quel centro, proiettarne il nome
+// sull'orizzonte gli assegna una direzione casuale (a coordinate uguali
+// `atan2(0, 0)` diventa nord) e racconta che il paese in cui si è è davanti a
+// noi. Il raggio è la stessa stima già usata per la larghezza della cupola;
+// il minimo copre anche i piccoli paesi, il cui nodo può stare a qualche
+// centinaio di metri dalla casa dell'osservatore.
+function cittaRaggioAbitatoKm(abitanti) {
+  return 0.5 * Math.sqrt(Math.max(200, abitanti) / 10000);
+}
+
 function cittaPrepara(grezze, lat, lon) {
   return grezze.map(c => {
     const km = terrenoDistanzaKm(lat, lon, c.lat, c.lon);
+    if (km <= Math.max(0.8, cittaRaggioAbitatoKm(c.abitanti))) return null;
     const az = cittaAzimut(lat, lon, c.lat, c.lon);
     const forza = cittaForza(c.abitanti, km);
     // Il raggio dell'abitato, in chilometri: una città di un milione di
     // abitanti è larga una decina di chilometri, un paese di duemila
     // qualche centinaio di metri. Da lì quanto la si vede larga.
-    const raggioKm = 0.5 * Math.sqrt(Math.max(200, c.abitanti) / 10000);
+    const raggioKm = cittaRaggioAbitatoKm(c.abitanti);
     const largoVero = Math.atan2(raggioKm, Math.max(0.4, km)) * 180 / Math.PI;
     const alto = Math.max(0.5, Math.min(22, 0.9 * Math.pow(forza, 0.30)));
     return {
@@ -2540,7 +2552,7 @@ function cittaPrepara(grezze, lat, lon) {
       alfa: Math.max(0.03, Math.min(0.30, 0.03 * Math.pow(forza, 0.22)))
     };
   })
-    .filter(c => c.km <= raggioCitta() + 5 && c.forza > 12)
+    .filter(c => c && c.km <= raggioCitta() + 5 && c.forza > 12)
     .sort((a, b) => b.forza - a.forza)
     .slice(0, CITTA_MAX);
 }
