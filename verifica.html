@@ -5427,6 +5427,101 @@ titolo('22. Il paesaggio: il suolo, la luce e i nomi dell\'acqua (app.js §7.3.2
   prova('non si arriva mai alla riva',
     Math.max(...SCARTI.map(Math.abs)) <= 0.7,
     'oltre i tre quarti si è più vicini alla sponda che al centro');
+
+  // --- Dove cadono le fermate, e il fotogramma che non finiva -----------
+  //
+  // Le fermate si **misurano** proiettandole (`skyFermateSuolo`), e una
+  // misura può cadere fuori dalla rampa: a forte zoom con la vista
+  // sull'orizzonte la rampa disegnata è corta e più di una depressione ci
+  // finisce oltre. Il canvas su un `addColorStop` fuori dallo zero-uno non
+  // sistema niente: solleva un'eccezione. E un'eccezione lì dentro non salta
+  // un fotogramma — salta tutti quelli dopo, perché la riga che rimette il
+  // ciclo in coda è l'ultima di `skyCiclo`: il planetario resta congelato a
+  // metà disegno (cielo sì, terreno no) e non risponde più a niente.
+  //
+  // La legge, copiata dal codice: si tosa allo zero-uno e non si torna
+  // indietro. Fermate uguali il canvas le accetta, e sono quello che si
+  // vuole — quelle depressioni cadono tutte fuori dal riquadro.
+  function fermate(misure) {
+    const fuori = [];
+    let ultimo = 0;
+    for (const t of misure) {
+      const v = Math.min(1, Math.max(ultimo, Number.isFinite(t) ? t : ultimo));
+      ultimo = v;
+      fuori.push(v);
+    }
+    return fuori;
+  }
+  // E quella di prima, che è il difetto: una separazione forzata di un
+  // decimillesimo *sopra* alla tosatura.
+  function fermatePrima(misure) {
+    const fuori = [];
+    let ultimo = -Infinity;
+    for (const t of misure) {
+      const v = Math.max(ultimo + 1e-4, Math.max(0, Math.min(1, t)));
+      ultimo = v;
+      fuori.push(v);
+    }
+    return fuori;
+  }
+
+  // Il caso vero, misurato nel browser: campo 0,25° con la vista mezzo grado
+  // sopra l'orizzonte. La rampa disegnata è lunga un quarto di schermo, e da
+  // 0,2° in giù ogni depressione ci finisce oltre.
+  const misurate = [0, 0.53, 4.1, 9.7, 22, 41, 88, 205, 470, 1030, 2600];
+  const ora = fermate(misurate), prima = fermatePrima(misurate);
+  prova('nessuna fermata esce dallo zero-uno, neanche a forte zoom',
+    ora.every(t => t >= 0 && t <= 1),
+    `l'ultima vale ${ora[ora.length - 1]}, e il canvas la accetta`);
+  prova('col conto di prima la seconda fuori rampa usciva a 1,0001',
+    prima.some(t => t > 1),
+    `la più grande valeva ${Math.max(...prima).toFixed(4)}, e sollevava un'eccezione`);
+  prova('le fermate non tornano mai indietro',
+    ora.every((t, i) => i === 0 || t >= ora[i - 1]),
+    'se no il colore si legge nell\'ordine sbagliato');
+  prova('finché la rampa c\'è, le fermate restano distinte',
+    ora[1] > ora[0] && ora[1] < 1,
+    `dentro al riquadro il gradiente ha ancora la sua strada (${ora[1]})`);
+  // Anche i casi degeneri: una misura che non è un numero (il punto cade
+  // dietro all'occhio, i due capi della rampa coincidono) non deve poter
+  // sporcare la fermata.
+  prova('una misura che non è un numero non sfonda la fermata',
+    fermate([0, NaN, 0.4, Infinity, 0.9]).every(t => Number.isFinite(t) && t >= 0 && t <= 1),
+    'si resta dov\'era la fermata precedente');
+
+  // --- Il nadir, guardando dritto in su --------------------------------
+  //
+  // L'altro capo della stessa rampa, e l'altro modo di fermare il
+  // fotogramma. Il nadir è l'antipodo del centro della vista, e in
+  // stereografica l'antipodo va all'infinito: puntando esattamente allo
+  // zenit il conto di `skyCerchioOrizzonte` divide per zero. Basta
+  // trascinare il cielo fino in cima, dove l'altezza si ferma a novanta
+  // esatti — e `createRadialGradient` con un raggio non finito solleva
+  // un'eccezione, cioè il planetario congelato.
+  const NADIR_SCHERMI = 8;               // SKY_NADIR_SCHERMI
+  const L = 900, H = 600, F = 700;       // schermo e focale di comodo
+  const nadirGrezzo = c => (F * 2 / Math.abs(c)) * Math.sqrt(Math.max(0, (1 + c) / (1 - c)));
+  const nadirTosato = c => {
+    const r = F * 2 / Math.abs(c);
+    return Math.min(nadirGrezzo(c), r + NADIR_SCHERMI * (L + H));
+  };
+  prova('allo zenit esatto il nadir grezzo è infinito',
+    !Number.isFinite(nadirGrezzo(1)), 'ed è il numero che il canvas rifiuta');
+  prova('tosato, resta un numero anche allo zenit',
+    Number.isFinite(nadirTosato(1)) && nadirTosato(1) > L + H,
+    `${nadirTosato(1).toFixed(0)} pixel, largamente fuori dal riquadro`);
+  prova('la tosatura non sposta mai il nadir più in là di dov\'è',
+    [1, 0.999, 0.9, 0.5, 0.1, -0.1, -0.5, -1].every(c => nadirTosato(c) <= nadirGrezzo(c) + 1e-9));
+  prova('guardando in su il nadir sta fuori dall\'orizzonte, guardando in giù ci sta dentro',
+    [1, 0.9, 0.5, 0.1].every(c => nadirTosato(c) > F * 2 / Math.abs(c)) &&
+    [-0.1, -0.5, -1].every(c => nadirTosato(c) < F * 2 / Math.abs(c)),
+    'è il verso della rampa del gradiente, e cambia con il verso dello sguardo');
+  // E la tosatura non deve mordere dove il terreno si guarda davvero: fino a
+  // una settantina di gradi di elevazione il nadir vero ci sta dentro.
+  const morde = c => nadirGrezzo(c) > nadirTosato(c) + 1e-6;
+  prova('la tosatura non tocca le viste in cui si guarda il paesaggio',
+    [0, 10, 30, 45, 60, 70].every(alt => !morde(Math.sin(alt * D2R))),
+    'morde solo puntando quasi dritti in su, dove di terreno sullo schermo non ce n\'è');
 }
 
 // =====================================================================

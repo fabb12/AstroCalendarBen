@@ -12911,6 +12911,27 @@ function skyDisegnaAnelli(ctx, r, apertura, davanti) {
 //
 // Il caso `c ≈ 0` è quello di chi guarda dritto all'orizzonte: lì il
 // cerchio ha raggio infinito ed è davvero una retta. Si tiene a parte.
+//
+// E c'è il caso opposto, che è quello di chi guarda **esattamente in su**:
+// vedi `SKY_NADIR_SCHERMI` qui sotto.
+
+// Quanto lontano si lascia andare il nadir, in schermate.
+//
+// Il nadir è l'antipodo del centro della vista, e in stereografica
+// l'antipodo va all'infinito: con la vista puntata dritta allo zenit `c`
+// vale uno tondo e la formula del nadir divide per zero. Non è un caso di
+// scuola — basta trascinare il cielo fino in cima, dove l'altezza si ferma a
+// novanta esatti, e capita anche col telefono tenuto in su — e il numero che
+// ne esce non si può disegnare: `createRadialGradient` rifiuta un raggio non
+// finito e solleva un'eccezione. Nel ciclo del cielo un'eccezione vuol dire
+// il fotogramma che non finisce, cioè il planetario congelato con le stelle
+// disegnate e il terreno no (vedi `skyCiclo`).
+//
+// Oltre a qualche schermata di distanza, però, dove esattamente cada il
+// nadir non cambia un pixel di quello che si vede: quello che conta è che
+// stia largamente fuori dal riquadro. Si tosa, e resta un numero.
+const SKY_NADIR_SCHERMI = 8;
+
 function skyCerchioOrizzonte(base, focale) {
   const a = base.r[2], b = base.u[2], c = base.f[2];
   const cx = sky.larghezza / 2, cy = sky.altezza / 2;
@@ -12919,17 +12940,19 @@ function skyCerchioOrizzonte(base, focale) {
     // verso "sotto" è quello in cui `a·X + b·Y` diventa negativo.
     return { retta: true, nx: a, ny: b, cx, cy };
   }
+  const r = focale * 2 / Math.abs(c);
+  // Guardando in su (c > 0) la terra è **fuori** dal cerchio; guardando
+  // in giù ci sta dentro. Il nadir dice chi ha ragione, e sta a
+  // `sqrt((1+c)/(1−c))` volte il raggio.
+  const nadir = r * Math.sqrt(Math.max(0, (1 + c) / (1 - c)));
   return {
     retta: false,
     // In pixel: X è verso destra, Y verso l'alto, e py cresce verso il basso
     px: cx + focale * (2 * a / c),
     py: cy - focale * (2 * b / c),
-    r: focale * 2 / Math.abs(c),
-    // Guardando in su (c > 0) la terra è **fuori** dal cerchio; guardando
-    // in giù ci sta dentro. Il nadir dice chi ha ragione, e sta a
-    // `sqrt((1+c)/(1−c))` volte il raggio.
+    r,
     fuori: c > 0,
-    nadir: 2 / Math.abs(c) * Math.sqrt(Math.max(0, (1 + c) / (1 - c))) * focale
+    nadir: Math.min(nadir, r + SKY_NADIR_SCHERMI * (sky.larghezza + sky.altezza))
   };
 }
 
@@ -13101,15 +13124,29 @@ function skyFermateSuolo(o, base, focale, azCentro) {
   }
   if (!(Math.abs(lungo) > 1)) return ripiego;
   const fuori = [];
-  let ultimo = -Infinity;
+  let ultimo = 0;
   for (const dep of SKY_SUOLO_FERMATE) {
     const p = skyProietta(skyVettore(azCentro, -dep), base, focale);
     let t;
-    if (!p.davanti) t = ultimo > -Infinity ? ultimo : 0;
+    if (!p.davanti || !Number.isFinite(p.px) || !Number.isFinite(p.py)) t = ultimo;
     else if (o.retta) t = ((p.px - ax) * dx + (p.py - ay) * dy) / lungo;
     else t = (Math.hypot(p.px - ax, p.py - ay) - o.r) / lungo;
-    // Le fermate di un gradiente devono crescere, se no il canvas le rifiuta.
-    t = Math.max(ultimo + 1e-4, Math.max(0, Math.min(1, t)));
+    // Le fermate di un gradiente devono stare **dentro** allo zero-uno: fuori
+    // di lì il canvas non le sistema, solleva un'eccezione — e un'eccezione
+    // qui dentro è il fotogramma intero che non finisce (vedi `skyCiclo`).
+    // Devono anche non tornare indietro, se no il colore si legge nell'ordine
+    // sbagliato. Le due cose insieme vogliono un limite superiore, e il limite
+    // è l'uno: chi arriva in fondo alla rampa ci **resta**, non prosegue di un
+    // decimillesimo per volta. Era così, ed è il difetto: a forte zoom con la
+    // vista sull'orizzonte la rampa disegnata è corta e più di una depressione
+    // ci finisce oltre — la seconda usciva a 1,0001, il canvas la rifiutava, e
+    // con lei se ne andava tutto il fotogramma: terreno, nomi, astri, e il
+    // ciclo di disegno che non veniva più rimesso in coda.
+    //
+    // Fermate uguali non sono un problema: il canvas le accetta e ne fa un
+    // gradino — che è esattamente quello che si vuole, perché quelle
+    // depressioni cadono tutte fuori dal riquadro.
+    t = Math.min(1, Math.max(ultimo, Number.isFinite(t) ? t : ultimo));
     ultimo = t;
     fuori.push(t);
   }
@@ -22109,23 +22146,60 @@ async function skyAvvia() {
   else aggiornaTastiPosizione();
 }
 
-// Ciclo di disegno: gira solo quando il planetario è a schermo
+// Un fotogramma andato storto: si dice una volta sola e si tira avanti.
+//
+// Una volta sola perché un errore di disegno si ripete a ogni fotogramma —
+// sessanta righe al secondo nella console sono il modo di rendere illeggibile
+// proprio la riga che serve — e chi torna a una vista buona lo deve poter
+// rivedere, quindi il conto si azzera al primo fotogramma che riesce.
+let skyUltimoGuasto = null;
+
+function skyGuastoFotogramma(e) {
+  const chi = String((e && e.message) || e);
+  if (chi === skyUltimoGuasto) return;
+  skyUltimoGuasto = chi;
+  console.error('Planetario: fotogramma non riuscito —', e);
+}
+
+// Ciclo di disegno: gira solo quando il planetario è a schermo.
+//
+// **Il `try` non è prudenza generica, è la cosa che tiene in vita la vista.**
+// La riga che rimette il ciclo in coda è l'ultima, quindi qualunque
+// eccezione sollevata qui dentro non salta un fotogramma: li salta **tutti**,
+// per sempre. Quello che si vede è il cielo congelato a metà disegno — le
+// stelle sì, il terreno no, perché il conto si è fermato lì in mezzo — e
+// niente che risponda più: né il dito, né la barra del tempo, né i tasti che
+// ridisegnano. Sembra un blocco dell'app e non lo è: è un fotogramma che non
+// è finito. È successo per davvero (le fermate del gradiente del suolo, che a
+// forte zoom sull'orizzonte uscivano dallo zero-uno: § `skyFermateSuolo`), ed
+// era impossibile da capire guardando lo schermo.
+//
+// Il difetto vero va corretto dov'è — e quello lo era —, ma il ciclo di
+// disegno di una vista che si guarda per ore non deve dipendere dal fatto che
+// nessuno sbagli mai un conto: al più si perde un fotogramma, e la vista resta
+// viva e governabile. Un errore che si ripete lo si legge nella console, dove
+// va detto una volta sola.
 function skyCiclo() {
   if (!sky.aperto) return;
-  // Quanto è durato il fotogramma precedente: lo chiedono lo zoom morbido e
-  // l'inerzia, che devono comportarsi uguale a qualunque cadenza (vedi 7.4-ter)
-  const dt = skyDeltaFotogramma();
-  skyAvanzaPlayback();
-  skyAggiornaOggetti(false);
-  skyAffinaEclisse();
-  skyMuoviSatelliti();
-  skyMuoviZoom(dt);
-  skyScorriPerInerzia(dt);
-  skyMuoviVista();
-  // L'inseguimento parla per ultimo: qualunque cosa abbiano deciso il
-  // playback o lo spostamento morbido, l'oggetto scelto torna al centro
-  skyInsegui();
-  skyDisegna();
+  try {
+    // Quanto è durato il fotogramma precedente: lo chiedono lo zoom morbido e
+    // l'inerzia, che devono comportarsi uguale a qualunque cadenza (vedi 7.4-ter)
+    const dt = skyDeltaFotogramma();
+    skyAvanzaPlayback();
+    skyAggiornaOggetti(false);
+    skyAffinaEclisse();
+    skyMuoviSatelliti();
+    skyMuoviZoom(dt);
+    skyScorriPerInerzia(dt);
+    skyMuoviVista();
+    // L'inseguimento parla per ultimo: qualunque cosa abbiano deciso il
+    // playback o lo spostamento morbido, l'oggetto scelto torna al centro
+    skyInsegui();
+    skyDisegna();
+    skyUltimoGuasto = null;
+  } catch (e) {
+    skyGuastoFotogramma(e);
+  }
   sky.raf = requestAnimationFrame(skyCiclo);
 }
 
@@ -27082,8 +27156,22 @@ function solAssestaScheda() {
   guscio.style.setProperty('--sol-fondo-scheda', `${Math.round(fondo)}px`);
 }
 
+// La stessa rete del ciclo del cielo, e per la stessa ragione: la riga che
+// rimette il ciclo in coda è l'ultima, e mentre questa finestra è aperta il
+// planetario è in pausa — a far camminare l'orologio è questo ciclo. Un'
+// eccezione qui dentro, senza la rete, congela tutt'e due le viste.
 function solCiclo(ts) {
   if (!sol.aperto) return;
+  try {
+    solPassoCiclo(ts);
+    skyUltimoGuasto = null;
+  } catch (e) {
+    skyGuastoFotogramma(e);
+  }
+  sol.raf = requestAnimationFrame(solCiclo);
+}
+
+function solPassoCiclo(ts) {
   const dt = sol.ultimoTs ? Math.min((ts - sol.ultimoTs) / 1000, 0.1) : 0;
   sol.ultimoTs = ts;
 
@@ -27118,8 +27206,6 @@ function solCiclo(ts) {
     solAggiornaBarra(quando);
     solAggiornaScheda(false);
   }
-
-  sol.raf = requestAnimationFrame(solCiclo);
 }
 
 function solImpostaVista(nome) {
