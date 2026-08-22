@@ -1,88 +1,74 @@
 # Task Corrente
 
-Niente in corso.
+## In corso — il rilievo del terreno in 3D (`rilievo.js`)
 
-## Ultimo lavoro chiuso — la distanza dei paesi sull'orizzonte
-
-Richiesta: far vedere «in modo semplice e immediato» quanto è lontano ogni
-paese nominato sull'orizzonte del planetario.
+Richiesta: che il planetario disegni la **conformazione** vera del terreno —
+le valli che scendono, il solco del fiume, i fianchi — invece della sola
+sagoma a piani, come nello screenshot di PeakFinder che l'utente ha allegato
+(Como, 45,868 N 9,109 E, guardando a sud-ovest).
 
 ### Il ragionamento
 
-Un nome sull'orizzonte risponde a metà della domanda. «Rimini» dice cos'è quel
-chiarore a sud-est; non dice se sono sei chilometri o quaranta, che è il numero
-da cui dipende tutto il resto — se conviene spostarsi di mezz'ora per
-lasciarselo dietro, o se è la cupola con cui bisogna convivere.
+Il profilo a bande di `skyDisegnaProfiloOrizzonte` legge `terreno.fronti`, che
+è un **massimo accumulato**. Un massimo non scende: la conca davanti, il
+fianco che cala, il taglio del fiume in quel numero non ci sono più — se li è
+mangiati il massimo del bordo. È la ragione per cui quel disegno viene a
+ritagli di carta impilati, e non è un difetto del disegno: è la forma del
+dato.
 
-Scrivere la distanza accanto a ogni nome sarebbe finita lì, ma **sette numeri
-appesi al crinale sono sette numeri da leggere uno per uno**, e nessuno lo fa:
-a colpo d'occhio non si vuole la misura, si vuole *l'ordine* — chi sta davanti
-e chi sta in fondo. E l'ordine lo racconta l'aria.
+Quindi una **superficie** al posto di una sagoma: una maglia polare centrata
+sull'occhio (720 direzioni × 106 anelli), di cui si conosce la quota in ogni
+nodo, disegnata dagli anelli lontani verso i vicini. In una parametrizzazione
+per (azimut, distanza) *a partire dall'occhio*, l'ordine degli anelli **è**
+l'ordine di profondità: il pittore basta, niente z-buffer.
 
-Da lì la decisione che tiene insieme tutto il resto: **non si inventa nessuna
-scala nuova**. Il disegno dell'orizzonte una legge della foschia ce l'ha già
-(`SKY_FOSCHIA_KM`, e le diciotto fette di `skyPianiOrizzonte` che ne escono),
-e il nome di un paese si vela **esattamente quanto la fetta di terreno alla sua
-distanza**. `skyLontananzaCitta` è la stessa riga, e il §23 di `verifica.html`
-controlla che le due non divergano di una cifra. Se divergessero si vedrebbe,
-e si vedrebbe come un difetto: un nome nitido appoggiato a una montagna
-sbiadita è un'etichetta incollata sul paesaggio, non un paese che sta là in
-fondo.
+E le quote non si possono più chiedere a punti — per un fiume ne servono
+decine di migliaia, cioè centinaia di richieste, cioè il 429 di §4
+moltiplicato per dieci. Si prendono a **tessere raster**: AWS Terrain Tiles,
+formato terrarium, un PNG in cui ogni pixel è una quota. Nessuna chiave, CORS
+aperto (senza il quale il canvas si contamina e i pixel non si leggono),
+65.536 quote in una richiesta sola, 27 m di passo a zoom 12.
 
-### Cosa c'è adesso — `app.js`, blocco «Quanto è lontano quel paese»
+### Cosa c'è adesso
 
-Da quel numero solo (`skyProspettivaCitta`) escono **insieme** tutti i segnali
-della distanza: il corpo del carattere (14 → 10 px), l'opacità (1 → 0,4), lo
-spessore del filo di richiamo (1,5 → 0,55 px) e **l'ombra scura**, che se ne va
-molto prima del nome — un nome lontano non è un nome piccolo, è un nome *senza
-ombra*, ed è lì che sta quasi tutto il contrasto netto di un'etichetta.
+`rilievo.js` (~1.150 righe, prefisso `ril`): tessere, maglia, creste,
+disegno. Gli agganci sono tre e tutti guardati da un `typeof`:
+`skyDisegnaTerreno` prova `rilDisegna` prima del profilo a bande (e quando
+disegna lui saltano anche la velatura del paesaggio e quella della luce, che
+dicevano con la vernice quello che adesso dice la forma); `terrenoAltezza` /
+`terrenoFronteA` / `terrenoFrontiA` preferiscono la maglia; `terrenoCarica`
+la innesca. Tasto `#skymap-btn-rilievo`, interruttore in `raggi.rilievo`.
 
-La tinta scivola verso la foschia di adesso, ma **pesata sulla sua luminosità**:
-di giorno la foschia è chiara e il nome lontano si scolora verso il
-grigio-azzurro (che è quello che si vede in fondo a una valle), di notte è
-quasi nera e mescolarcisi vorrebbe dire **cancellare** il nome invece di
-allontanarlo. Il contro-esempio è nelle prove: senza quel peso, di notte
-l'ambra finisce a un grigio da 141 livelli.
+### I cinque difetti trovati misurando, e cosa erano
 
-Il **numero** resta, ma smette di essere il soggetto: `Bologna · 9 km`, due
-punti più piccolo, peso normale, il 62% dell'opacità del nome, intero e mai
-zero. E non su tutti insieme: su quello che il **mirino** sta indicando — che è
-il modo in cui la domanda viene fatta davvero — e su tutti sotto i 40° di
-campo. Il paese indicato torna leggibile (`SKY_CITTA_INDICATO_VELO`) ma **non**
-cambia corpo né tinta: dov'è non cambia perché lo si sta guardando.
+Tutti e cinque si vedevano come «terreno sbagliato» e nei numeri erano conti
+sensati. Stanno scritti per esteso nei commenti, e le prove sono nel §24 di
+`verifica.html`.
 
-Il posto lo prenota **il più vicino per primo**. Chi entra in scena lo decide
-l'importanza (la lista arriva da `terreno.js` ordinata per forza, cioè abitanti
-diviso distanza al quadrato); chi sta *davanti* lo decide la distanza, e sono
-due domande diverse. Il disegno va poi dal fondo verso di qui, così a passare
-sopra è quello davanti. Quanti se ne nominano lo dice `skyCittaMaxNomi()`:
-sette a grandangolo, fino a dodici ingrandendo.
+1. **La parete dal niente.** La griglia grossa estrapolata all'indietro: gli
+   anelli fra 25 e 150 m leggevano la quota misurata a 150 m e la
+   appoggiavano a 50. Orizzonte a sud-ovest: 60°, cioè il tetto.
+2. **I due riferimenti che litigano.** Tessere (SRTM 30 m) e griglia
+   (Copernicus 90 m) sullo stesso punto non danno lo stesso metro, e l'occhio
+   viene da una sola delle due. Quindici metri di scarto a venticinque metri
+   di distanza sono trentun gradi. Si allineano al punto in cui si sta.
+3. **Il buco ai piedi.** La maglia partiva dai 25 m, cioè si fermava a 12°
+   sotto l'orizzonte: sotto restava il gradiente del suolo, di un altro
+   colore. Da lì il **grembiule**, dieci anelli fino a 15 cm dalle scarpe.
+4. **Il reticolo di righe chiare.** Cuciture fra poligoni confinanti: due
+   antialiasing che non fanno un pieno. Si ripassa il contorno col proprio
+   colore.
+5. **Il chiaroscuro piatto.** Le due sorgenti sommate e scalate invece che
+   pesate: i coseni veri (0,3–0,95) finivano compressi in metà tavolozza. E
+   al tramonto il Sole radente non illuminava niente — adesso l'azimut è
+   quello vero ma l'altezza non scende sotto i 35°, che è la regola delle
+   carte panoramiche.
 
-I colori dei paesi in `SKY_NOMI_ORIZZONTE` sono diventati **numerici** (era
-l'unico modo di mescolarli alla foschia); cime e acque restano stringhe.
+### Cosa resta da fare
 
-Una trappola su cui si è già inciampato una volta, scritta anche in
-funzione: il tetto dei nomi si conta sui paesi **in vista**, non sui primi
-della lista. Guardando a sud, i primi sette per importanza possono stare tutti
-alle spalle, e tagliare lì vuol dire un orizzonte senza un nome pur avendo
-mezza provincia davanti. Il ciclo scorre finché non ne ha raccolti abbastanza,
-che è quello che faceva da sempre.
-
-### Com'è stato provato
-
-- **§23 di `verifica.html`**, 24 prove nuove (la pagina non carica `app.js`: le
-  formule sono una copia, come per il §19 e il §21).
-- Un **banco a parte** che fa girare la `skyNomiCitta` **vera**, estratta da
-  `app.js`, sotto un finto contesto 2D che registra cosa le viene chiesto di
-  disegnare: chi vince il posto fra un paese vicino e una città lontana sullo
-  stesso azimut, l'ordine dal fondo verso di qui, il numero solo su quello
-  indicato, il tetto dei nomi, e i casi limite (lista vuota, paese fuori campo,
-  `sky.ariaOra` non ancora calcolata, pieno giorno).
-- Il disegno vero su un canvas di Chromium, di notte e di giorno, con cinque
-  paesi da 3 a 58 km.
-
-**Quello che NON è stato provato**: l'app intera in un browser. In questo
-ambiente la rete verso le CDN è chiusa dalla policy, Astronomy Engine non si
-carica e `verifica.html` si ferma da sola al §2 — per lo stesso motivo. Vale la
-pena riaprire il planetario vero su un orizzonte con dei paesi prima di
-considerare chiusa la cosa.
+- Oltre i 6 km (il raggio delle tessere) lo sfondo è ancora la griglia a 3°:
+  liscio. Alzarlo vorrebbe dire un secondo livello di tessere (z=9), cioè
+  raddoppiare il peso scaricato — vedi il commento in cima a `rilievo.js`.
+- Il costo misurato è 4-5 ms per fotogramma in software rendering
+  (`rilievo.ultimo` lo dice). Su GPU vera è molto meno, ma vale la pena
+  rimisurarlo su un telefono.
