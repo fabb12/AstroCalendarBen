@@ -1496,13 +1496,17 @@
                non sono impostazioni, sono le tre risposte alla domanda «cosa
                sto guardando» — la disposizione di stasera vista da sopra
                casa nostra, tutto il sistema, e il solo sistema Terra–Luna.
-               Solo icone: a tutto schermo una fila di parole sopra al
-               disegno è la cosa che copre proprio quello che si è venuti a
-               vedere, e tre segni si imparano al primo tocco. -->
+               **Col nome scritto accanto al segno**, ed è la correzione di un
+               errore vero: per un po' erano tre tondi con la sola icona, e
+               tre icone senza nome, appoggiate su un cielo nero con un bordo
+               che è un decimo di grigio, non si vedono affatto — sono state
+               segnalate come «mancanti». In colonna e non in fila perché una
+               fila di tre parole in cima al disegno attraversa lo schermo e
+               copre quello che si è venuti a vedere, mentre una colonna
+               larga centoventi pixel sta nell'angolo dove non c'è niente. -->
           <div class="sol-viste" role="group" aria-label="Cosa guardare">
             <button type="button" class="tasto-vista-sistema" data-sol-quadro="terra"
-              title="Da qui: la Terra in basso e il Sole davanti a lei, cioè la disposizione di stasera vista da sopra casa nostra. A sinistra i pianeti della sera, a destra quelli del mattino."
-              aria-label="Da qui">
+              title="Da qui: la Terra in basso e il Sole davanti a lei, cioè la disposizione di stasera vista da sopra casa nostra. A sinistra i pianeti della sera, a destra quelli del mattino.">
               <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 21.2s6.4-6 6.4-10.4a6.4 6.4 0 1 0-12.8 0C5.6 15.2 12 21.2 12 21.2z"/>
@@ -1511,8 +1515,7 @@
               <span class="sol-vista-nome">Da qui</span>
             </button>
             <button type="button" class="tasto-vista-sistema" data-sol-quadro="tutto"
-              title="Tutto il sistema, fino a Nettuno e alla fascia di Kuiper"
-              aria-label="Tutto il sistema">
+              title="Tutto il sistema, fino a Nettuno e alla fascia di Kuiper">
               <!-- Lo stesso segno dell'orbita che porta qui dal planetario: due
                    ellissi concentriche, alla misura di questi tondi, si leggono
                    come un occhio (provato) -->
@@ -1527,8 +1530,7 @@
               <span class="sol-vista-nome">Tutto</span>
             </button>
             <button type="button" class="tasto-vista-sistema" data-sol-quadro="eclissi"
-              title="La Terra e la Luna da vicino, coi due coni d'ombra: è qui che si vede perché un'eclissi non capita a ogni Luna piena — l'orbita della Luna è inclinata di 5,1°, e a quella distanza sono trentaquattromila chilometri fuori bersaglio."
-              aria-label="Terra e Luna">
+              title="La Terra e la Luna da vicino, coi due coni d'ombra: è qui che si vede perché un'eclissi non capita a ogni Luna piena — l'orbita della Luna è inclinata di 5,1°, e a quella distanza sono trentaquattromila chilometri fuori bersaglio.">
               <!-- Un corpo grosso e uno piccolo, con la falce: due cerchi soli
                    si leggerebbero come due pianeti qualunque, la fase dice che
                    quello piccolo è la Luna -->
@@ -1583,6 +1585,11 @@
               </button>
               <div id="sol-opzioni" class="sol-opzioni hidden" role="group"
                    aria-label="Distanze e dimensioni">
+                <!-- Un titolo, perché un pannellino che si apre da un segno
+                     senza parole ha bisogno di dire di cosa parla: chi tocca
+                     il ⚙ si aspetta «impostazioni», e queste sono le due
+                     sole che ci sono. -->
+                <p class="sol-opzioni-titolo">Come è disegnato</p>
                 <div class="sol-opzione">
                   <span class="sol-etichetta">Distanze</span>
                   <div class="segmenti-cielo">
