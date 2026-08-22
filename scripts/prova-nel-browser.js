@@ -158,12 +158,24 @@ const server = http.createServer((req, res) => {
     corpiMinori: typeof corpiMinori !== 'undefined' ? corpiMinori.stato : 'niente',
     limite: typeof catMagnitudineLimite === 'function' ? catMagnitudineLimite() : null
   }));
+  const disegniCostellazioni = await pagina.evaluate(() => {
+    const tasto = document.getElementById('skymap-btn-arte');
+    return {
+      attivi: typeof cost !== 'undefined' ? cost.arte : null,
+      tastoAttivo: tasto ? tasto.classList.contains('attiva') : null,
+      premuto: tasto ? tasto.getAttribute('aria-pressed') : null
+    };
+  });
   ok('i cataloghi sono arrivati', cielo.stato === 'pronto', cielo.stato);
   ok('cinquemila stelle', cielo.stelle >= 5044, `${cielo.stelle}`);
   ok('ottantanove figure', cielo.figure === 89);
   ok('centoquarantadue oggetti profondi', cielo.profondo === 142);
   ok('i corpi minori sono arrivati', cielo.corpiMinori === 'pronto', cielo.corpiMinori);
   ok("l'elenco degli astri si è arricchito", cielo.elenco > 150, `${cielo.elenco} voci`);
+  ok('i disegni delle costellazioni partono spenti',
+    disegniCostellazioni.attivi === false &&
+      disegniCostellazioni.tastoAttivo === false &&
+      disegniCostellazioni.premuto === 'false');
   console.log(`              magnitudine limite adesso: ${cielo.limite && cielo.limite.toFixed(1)}`);
 
   // --- il ciclo di disegno regge? ---
