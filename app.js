@@ -13176,14 +13176,22 @@ function skyGradienteTerreno(ctx, o, vicino, lontano, base, focale, azCentro) {
   });
   const dove = skyFermateSuolo(o, base, focale, azCentro);
   const passaggi = colori.map((c, i) => [dove[i], c]);
-  let gr;
-  if (o.retta) {
-    const lungo = sky.larghezza + sky.altezza;
-    gr = ctx.createLinearGradient(o.cx, o.cy,
-      o.cx - o.nx * lungo * 0.25, o.cy + o.ny * lungo * 0.25);
-  } else {
-    gr = ctx.createRadialGradient(o.px, o.py, o.r, o.px, o.py, Math.max(1, o.nadir));
+  // Anche quando l'orizzonte stereografico e' un arco, la luce sul terreno
+  // non arriva per anelli dal nadir. Il vecchio gradiente radiale rendeva
+  // visibili le fermate come grandi cerchi concentrici, soprattutto con la
+  // camera inclinata. Misuriamo invece la direzione locale del "giu" con
+  // due punti del terreno nel centro dell'inquadratura.
+  const p0 = skyProietta(skyVettore(azCentro, 0), base, focale);
+  const p90 = skyProietta(skyVettore(azCentro, -89.5), base, focale);
+  let ax = p0.davanti ? p0.px : o.cx;
+  let ay = p0.davanti ? p0.py : o.cy;
+  let bx = p90.davanti ? p90.px : ax - o.nx * (sky.larghezza + sky.altezza) * 0.25;
+  let by = p90.davanti ? p90.py : ay + o.ny * (sky.larghezza + sky.altezza) * 0.25;
+  if (Math.hypot(bx - ax, by - ay) < 2) {
+    bx = ax - o.nx * Math.max(sky.larghezza, sky.altezza);
+    by = ay + o.ny * Math.max(sky.larghezza, sky.altezza);
   }
+  const gr = ctx.createLinearGradient(ax, ay, bx, by);
   passaggi.forEach(([t, c]) => gr.addColorStop(t, c));
   return gr;
 }
@@ -13247,7 +13255,7 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // campitura. Solo di giorno — di notte la terra è nera e non c'è niente
   // da texturizzare — e sotto al velo del paesaggio, che deve restare
   // l'informazione che si legge.
-  skyDisegnaGranaTerreno(ctx, o, focale, velo);
+  skyDisegnaGranaTerreno(ctx, o, base, focale, velo);
 
   // Il paesaggio, velato sopra al fondo: la montagna a nord. Non è più un
   // ventaglio fino ai piedi — quello disegnava dei
@@ -15879,7 +15887,7 @@ function skyAncoraMotivo(motivo, o, lato, scala) {
   motivo.setTransform(new DOMMatrix([scala, 0, 0, scala, tx, ty]));
 }
 
-function skyDisegnaGranaTerreno(ctx, o, focale, velo) {
+function skyDisegnaGranaTerreno(ctx, o, base, focale, velo) {
   if (!sky.atmosfera || sky.luceCielo < SKY_GRANA_LUCE_MIN) return;
   const motivo = skyGrana(ctx);
   if (!motivo) return;
@@ -15888,12 +15896,26 @@ function skyDisegnaGranaTerreno(ctx, o, focale, velo) {
   // della stessa misura in pixel, avvicinandosi a una collina diventerebbe
   // sabbia e allontanandosi un rumore.
   const scala = Math.max(0.45, Math.min(1.8, focale / 900));
-  skyAncoraMotivo(motivo, o, SKY_GRANA_LATO, scala);
+  // La fase orizzontale appartiene all'azimut del terreno, non al centro del
+  // cerchio proiettato. Prima il motivo era agganciato a `o.px`: ruotando la
+  // camera quel punto spesso non cambiava e la montagna scorreva sotto una
+  // trama ferma sul vetro. Un giro intero torna alla stessa fase, mentre il
+  // fattore focale fa muovere la grana insieme al paesaggio.
+  const azCentro = Math.atan2(base.f[0], base.f[1]) * SKY_R2D;
+  const passoFine = SKY_GRANA_LATO * scala;
+  const faseX = ((-azCentro * focale * SKY_D2R) % passoFine + passoFine) % passoFine;
+  const ancora = { retta: true, cx: faseX, cy: o.retta ? o.cy : o.py };
+  skyAncoraMotivo(motivo, ancora, SKY_GRANA_LATO, scala);
   // Le chiazze stanno su una scala due volte e mezzo più larga, che è il
   // passo fra due scale in natura: le zolle e i campi, i cespugli e i
   // boschi. Più larghe di così smettono di essere una trama e diventano
   // macchie — la mimetica militare del commento qui sopra, in grande.
-  skyAncoraMotivo(skyGranaLarga, o, SKY_GRANA_LATO_LARGA, scala * 2.4);
+  const scalaLarga = scala * 2.4;
+  const passoLargo = SKY_GRANA_LATO_LARGA * scalaLarga;
+  const faseXLarga = ((-azCentro * focale * SKY_D2R) % passoLargo + passoLargo) % passoLargo;
+  skyAncoraMotivo(skyGranaLarga,
+    { retta: true, cx: faseXLarga, cy: o.retta ? o.cy : o.py },
+    SKY_GRANA_LATO_LARGA, scalaLarga);
 
   ctx.save();
   const regola = skyTracciaSuolo(ctx, o);
