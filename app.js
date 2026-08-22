@@ -13261,11 +13261,11 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   ctx.fillStyle = skyGradienteTerreno(ctx, o, suolo.vicino, suolo.lontano, base, focale, azCentro);
   ctx.fill(regola);
 
-  // Il suolo resta una superficie uniforme. La vecchia grana procedurale
-  // aggiungeva zolle e chiazze che non arrivavano dal modello altimetrico:
-  // potevano essere gradevoli, ma facevano sembrare inventata anche la
-  // conformazione vera. Profondità e volume restano affidati alle dorsali
-  // misurate e alla prospettiva aerea, non a una texture decorativa.
+  // La grana: quel tanto di irregolarità che distingue un prato da una
+  // campitura. Solo di giorno — di notte la terra è nera e non c'è niente
+  // da texturizzare — e sotto al velo del paesaggio, che deve restare
+  // l'informazione che si legge.
+  skyDisegnaGranaTerreno(ctx, o, base, focale, velo);
 
   // Il paesaggio, velato sopra al fondo: la montagna a nord. Non è più un
   // ventaglio fino ai piedi — quello disegnava dei
@@ -15766,8 +15766,285 @@ function skyAcquaOnde(ctx, aria, stato, fasce, nf, nc, buf, visti, velo) {
   ctx.restore();
 }
 
-// Il terreno non riceve texture procedurali: la superficie uniforme lascia
-// leggere senza ambiguità i piani altimetrici reali disegnati qui sotto.
+// --- La grana del terreno ---------------------------------------------
+//
+// Il suolo era un gradiente liscio, ed è la cosa che più di ogni altra fa
+// sembrare disegnato un paesaggio: in natura non esiste una superficie
+// senza grana. Di notte non importa — la terra è quasi nera e una texture
+// su un nero è un nero — ma al crepuscolo e di giorno quella campitura
+// verde uniforme si vede per quello che è.
+//
+// La grana è una tela sola di poco più di cento pixel, dipinta una volta e
+// ripetuta: costa un riempimento, che è quello che costava anche prima. La
+// si sposta insieme all'orizzonte (`setTransform` sul motivo) perché una
+// texture inchiodata allo schermo è peggio di nessuna texture — girando il
+// telefono si vedrebbe il terreno scorrere sotto una grana ferma.
+//
+// Si stende in `overlay`: schiarisce dove il fondo è chiaro e scurisce
+// dove è scuro, cioè non aggiunge un colore suo. Un velo grigio steso
+// normalmente avrebbe slavato il prato.
+//
+// **Due scale e non una.** Con la sola grana fine il terreno resta
+// uniforme a guardarlo da lontano: le macchie sono di pochi pixel, e a un
+// palmo dallo schermo si mediano fra loro fino a tornare un colore solo —
+// che è esattamente il difetto che la grana doveva togliere. In natura le
+// scale sono sempre almeno due: le zolle e i campi, i cespugli e i boschi,
+// e quello che si legge da lontano è la scala grande. Quindi la tela è due:
+// `SKY_GRANA_LATO` per la grana vera e `SKY_GRANA_LATO_LARGA` per le
+// chiazze, stese con lo stesso motivo ma a fattori di scala diversi. Costa
+// un riempimento in più, e i due passi non sono multipli fra loro perché
+// non vadano a tempo (è la stessa ragione delle ottave di `SKY_RILIEVO`).
+const SKY_GRANA_LATO = 112;
+const SKY_GRANA_LATO_LARGA = 176;
+let skyGranaMotivo = null;
+let skyGranaLarga = null;
+let skyGranaProvata = false;
+
+// Una tela di macchie tonde, ripetibile, con la taglia e il numero che le si
+// chiedono. `larghe` è la frazione di macchie della misura grande — quelle
+// che si leggono da lontano — e `forza` quanto pesano tutte insieme.
+//
+// `fondo` decide come la tela si potrà stendere, e sono due mestieri diversi.
+// Con il grigio sotto si stende in `overlay`, che non aggiunge un colore suo
+// ma **non morde sul buio**: la formula dell'overlay sotto la metà è
+// `2·base·velo`, quindi su un terreno a un decimo di luce una macchia al
+// quattordici per cento sposta il colore di due livelli — cioè di niente.
+// Senza fondo, cioè con le sole macchie bianche e nere su trasparente, la
+// tela si stende normalmente e funziona a qualunque luminosità: le chiare
+// schiariscono, le scure scuriscono, e dove non c'è niente non cambia
+// niente. È quello che serve al terreno vicino, che da quando si scurisce
+// verso il nadir sta proprio dove l'overlay non arriva.
+function skyTelaGrana(ctx, lato, quante, larghe, forza, seme, fondo) {
+  const tela = document.createElement('canvas');
+  tela.width = tela.height = lato;
+  const g = tela.getContext('2d');
+  if (!g) return null;
+  if (fondo) {
+    g.fillStyle = '#808080';
+    g.fillRect(0, 0, lato, lato);
+  }
+  // Macchie tonde e sfumate, di due misure: poche larghe per i campi e le
+  // radure, tante strette per il grosso della grana. Le proporzioni sono
+  // state rifatte una volta: con quaranta macchie larghe e opache il
+  // terreno diventava una mimetica militare — chiazze da mezzo palmo che
+  // si vedevano prima del paesaggio. Una grana si deve sentire e non
+  // guardare, quindi tante e piccole.
+  //
+  // Ognuna si ridisegna anche oltre i bordi (i nove riquadri attorno)
+  // perché la tela sia **ripetibile**: senza, si vedrebbe la griglia delle
+  // piastrelle, che è il difetto per cui una texture si nota invece di
+  // funzionare.
+  const caso = skyCaso(seme);
+  const soglia = Math.round(quante * larghe);
+  for (let i = 0; i < quante; i++) {
+    const x = caso() * lato, y = caso() * lato;
+    const grande = i < soglia;
+    const r = (grande ? lato * 0.09 + caso() * lato * 0.13 : lato * 0.014 + caso() * lato * 0.045);
+    const chiaro = caso() < 0.5;
+    const a = forza * (grande ? 0.36 : 1) * (0.35 + caso() * 0.65);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const cx = x + dx * lato, cy = y + dy * lato;
+        if (cx < -r || cx > lato + r || cy < -r || cy > lato + r) continue;
+        const rad = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+        const tinta = chiaro ? '255, 255, 255' : '0, 0, 0';
+        rad.addColorStop(0, `rgba(${tinta}, ${a.toFixed(3)})`);
+        rad.addColorStop(1, `rgba(${tinta}, 0)`);
+        g.fillStyle = rad;
+        g.beginPath();
+        g.arc(cx, cy, r, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+  }
+  return ctx.createPattern(tela, 'repeat');
+}
+
+function skyGrana(ctx) {
+  if (skyGranaProvata) return skyGranaMotivo;
+  skyGranaProvata = true;
+  try {
+    skyGranaMotivo = skyTelaGrana(ctx, SKY_GRANA_LATO, 260, 0.054, 0.14,
+      skySeme('grana-terreno'), true);
+    // La scala grande: poche macchie, larghe, tenui, e **senza fondo** (vedi
+    // il commento di `skyTelaGrana`). Non è «la stessa grana ingrandita» — è
+    // un'altra tela, con un altro seme, se no stendendo due volte lo stesso
+    // motivo a due scale i massimi cadono negli stessi posti e si vede una
+    // griglia.
+    skyGranaLarga = skyTelaGrana(ctx, SKY_GRANA_LATO_LARGA, 200, 0.12, 0.1,
+      skySeme('chiazze-terreno'), false);
+  } catch (e) {
+    skyGranaMotivo = null;
+    skyGranaLarga = null;
+  }
+  return skyGranaMotivo;
+}
+
+// Sotto questa luce del cielo la grana non si disegna: la terra è già nera.
+const SKY_GRANA_LUCE_MIN = 0.12;
+
+// Ancorare un motivo al terreno invece che allo schermo. Il resto della
+// divisione tiene i numeri piccoli: con l'occhio quasi all'orizzonte il
+// centro del cerchio se ne va a centomila pixel da qui, e una traslazione
+// così grande in un `DOMMatrix` perde la precisione proprio sul passo.
+function skyAncoraMotivo(motivo, o, lato, scala) {
+  if (!motivo || typeof DOMMatrix === 'undefined' || typeof motivo.setTransform !== 'function') return;
+  const ax = o.retta ? o.cx : o.px;
+  const ay = o.retta ? o.cy : o.py;
+  const giro = lato * scala;
+  const tx = Number.isFinite(ax) ? ax % giro : 0;
+  const ty = Number.isFinite(ay) ? ay % giro : 0;
+  motivo.setTransform(new DOMMatrix([scala, 0, 0, scala, tx, ty]));
+}
+
+function skyDisegnaGranaTerreno(ctx, o, base, focale, velo) {
+  if (!sky.atmosfera || sky.luceCielo < SKY_GRANA_LUCE_MIN) return;
+  const motivo = skyGrana(ctx);
+  if (!motivo) return;
+
+  // La grana cresce con l'ingrandimento, come tutto il resto: se restasse
+  // della stessa misura in pixel, avvicinandosi a una collina diventerebbe
+  // sabbia e allontanandosi un rumore.
+  const scala = Math.max(0.45, Math.min(1.8, focale / 900));
+  // La fase orizzontale appartiene all'azimut del terreno, non al centro del
+  // cerchio proiettato. Prima il motivo era agganciato a `o.px`: ruotando la
+  // camera quel punto spesso non cambiava e la montagna scorreva sotto una
+  // trama ferma sul vetro. Un giro intero torna alla stessa fase, mentre il
+  // fattore focale fa muovere la grana insieme al paesaggio.
+  const azCentro = Math.atan2(base.f[0], base.f[1]) * SKY_R2D;
+  const passoFine = SKY_GRANA_LATO * scala;
+  const faseX = ((-azCentro * focale * SKY_D2R) % passoFine + passoFine) % passoFine;
+  const ancora = { retta: true, cx: faseX, cy: o.retta ? o.cy : o.py };
+  skyAncoraMotivo(motivo, ancora, SKY_GRANA_LATO, scala);
+  // Le chiazze stanno su una scala due volte e mezzo più larga, che è il
+  // passo fra due scale in natura: le zolle e i campi, i cespugli e i
+  // boschi. Più larghe di così smettono di essere una trama e diventano
+  // macchie — la mimetica militare del commento qui sopra, in grande.
+  const scalaLarga = scala * 2.4;
+  const passoLargo = SKY_GRANA_LATO_LARGA * scalaLarga;
+  const faseXLarga = ((-azCentro * focale * SKY_D2R) % passoLargo + passoLargo) % passoLargo;
+  skyAncoraMotivo(skyGranaLarga,
+    { retta: true, cx: faseXLarga, cy: o.retta ? o.cy : o.py },
+    SKY_GRANA_LATO_LARGA, scalaLarga);
+
+  ctx.save();
+  const regola = skyTracciaSuolo(ctx, o);
+  const luce = Math.min(1, (sky.luceCielo - SKY_GRANA_LUCE_MIN) / 0.28);
+  // Le chiazze prima e in normale: sono macchie chiare e scure su
+  // trasparente, quindi mordono anche sul terreno vicino, che adesso è la
+  // parte più scura del disegno.
+  if (skyGranaLarga) {
+    ctx.globalAlpha = velo * 0.42 * luce;
+    ctx.fillStyle = skyGranaLarga;
+    ctx.fill(regola);
+  }
+  // La grana fine sopra, in `overlay`: schiarisce dove il fondo è chiaro e
+  // scurisce dove è scuro, cioè non aggiunge un colore suo.
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = velo * 0.3 * luce;
+  ctx.fillStyle = motivo;
+  ctx.fill(regola);
+  ctx.restore();
+}
+
+// --- Il rilievo fine delle creste -------------------------------------
+//
+// Il terreno vero di `terreno.js` è esatto ma liscio: quarantotto
+// direzioni interpolate a un grado fanno un crinale che sale e scende come
+// una duna. Una montagna vera non è così — è fatta di punte, di selle, di
+// canaloni — e la differenza fra un profilo di montagna e uno di collina
+// sta quasi tutta lì, non nell'altezza. Due creste alte uguali, una liscia
+// e una dentata, si leggono come due posti diversi del mondo.
+//
+// Il dettaglio non si somma: si **morde**. La cresta disegnata non sale
+// mai sopra a quella vera, perché quella è la stessa che decide se un
+// astro è sorto (`skyAltezzaOrizzonte`) e se una vetta si vede
+// (`cimeVisibili`): un disegno che aggiungesse un grado di roccia
+// racconterebbe una cosa che poi nessun conto conferma — e il nome di una
+// vetta finirebbe appeso nel vuoto accanto alla punta inventata. Togliere
+// invece è onesto: è la sella fra due cime, ed è quanto basta a fare la
+// forma.
+const SKY_RILIEVO_PUNTI = 4096;          // un campione ogni 0,088°
+
+// Un rumore periodico sul giro dell'orizzonte: somma di ottave, ognuna con
+// i suoi nodi sparsi a caso e interpolati morbidi. Il giro si chiude da sé
+// perché i nodi sono un anello — è il motivo per cui non c'è una cucitura
+// a nord.
+//
+// Con `piega` ogni ottava viene ribaltata attorno alla sua metà
+// (`1 − |2v − 1|`): dove il valore attraversava la metà con una pendenza
+// nasce uno spigolo invece di un colmo tondo. È il *ridged multifractal*
+// dei generatori di terreno in una riga, ed è tutta la differenza fra una
+// duna e una cresta di roccia.
+//
+// Alla fine il rumore si stira su tutto [0, 1] e si alza a potenza. Non è
+// un ritocco estetico, è la cosa che tiene onesto il disegno: un rumore
+// grezzo ha media un mezzo, quindi morderebbe *dappertutto* — la cresta
+// disegnata starebbe un sesto sotto a quella vera per tutto il giro, e i
+// nomi delle vette, che stanno alla loro altezza vera, resterebbero
+// sospesi un grado sopra al crinale. Con l'esponente il valore sta quasi
+// sempre vicino a zero e sale solo di rado: il profilo segue la quota
+// misurata e si apre soltanto nelle selle, che è quello che fa una cresta.
+function skyRumoreCircolare(seme, ottave, piega, forma) {
+  const N = SKY_RILIEVO_PUNTI;
+  const out = new Float32Array(N + 1);
+  const caso = skyCaso(seme);
+  let somma = 0;
+  ottave.forEach(([nodi, amp]) => {
+    const v = new Float32Array(nodi);
+    for (let i = 0; i < nodi; i++) v[i] = caso();
+    somma += amp;
+    const passo = nodi / N;
+    for (let i = 0; i < N; i++) {
+      const x = i * passo;
+      const k = Math.floor(x);
+      const t = x - k;
+      const s = t * t * (3 - 2 * t);       // morbido sui nodi, o si vedrebbero
+      const a = v[k % nodi], b = v[(k + 1) % nodi];
+      let u = a + (b - a) * s;
+      if (piega) u = 1 - Math.abs(2 * u - 1);
+      out[i] += amp * u;
+    }
+  });
+  let min = Infinity, max = -Infinity;
+  for (let i = 0; i < N; i++) {
+    out[i] /= somma;
+    if (out[i] < min) min = out[i];
+    if (out[i] > max) max = out[i];
+  }
+  const ampiezza = max - min || 1;
+  for (let i = 0; i < N; i++) out[i] = Math.pow((out[i] - min) / ampiezza, forma);
+  out[N] = out[0];
+  return out;
+}
+
+// Due caratteri, e si mescolano grado per grado con quanta montagna c'è da
+// quella parte. Le frequenze non sono multiple fra loro di proposito: con
+// 8, 16, 32 le ottave vanno tutte a tempo e il profilo si ripete.
+//
+// L'esponente della roccia è più alto di quello delle colline: una cresta
+// di montagna è fatta di punte con poche selle profonde, un dorso di
+// collina di gobbe che si somigliano tutte.
+const SKY_RILIEVO = {
+  aspro: skyRumoreCircolare(skySeme('creste-roccia'),
+    [[11, 1], [26, 0.62], [59, 0.4], [137, 0.26], [311, 0.16], [701, 0.09]], true, 2.4),
+  dolce: skyRumoreCircolare(skySeme('creste-colline'),
+    [[9, 1], [21, 0.5], [47, 0.24], [113, 0.11]], false, 1.8)
+};
+
+function skyRilievo(tavola, az) {
+  const x = (((az % 360) + 360) % 360) / 360 * SKY_RILIEVO_PUNTI;
+  const i = Math.floor(x);
+  const t = x - i;
+  return tavola[i] + (tavola[i + 1] - tavola[i]) * t;
+}
+
+// Quanto si morde la cresta, paesaggio per paesaggio: è il numero che
+// distingue una montagna da una collina a colpo d'occhio. Sul mare zero, e
+// non per prudenza — un orizzonte marino è una riga, l'unica riga davvero
+// dritta che esista in natura, ed è il motivo per cui si riconosce da un
+// fotogramma.
+const SKY_RUVIDEZZA = { mare: 0, pianura: 0.07, collina: 0.15, montagna: 0.28 };
 
 // --- I gradini della distanza -----------------------------------------
 //
@@ -15825,6 +16102,13 @@ const SKY_FOSCHIA_KM = 25;
 // cresta di quindici pixel divisa in dieci dorsali sono dieci righe, non
 // dieci piani.
 const SKY_CRESTE_PX_MIN = 16;
+
+// Quanto può mordere il rilievo fine, in gradi. Il morso è una frazione
+// dell'altezza della cresta, e finché le creste stanno sopra l'orizzonte è
+// una frazione di pochi gradi. Ma guardando da una cima il terreno vicino
+// sta *sotto* di venti o trenta gradi, e un quarto di trenta gradi sarebbe
+// una dentellatura da otto: un tetto in gradi ci vuole.
+const SKY_MORSO_MAX_GRADI = 4;
 
 // Di quanto si abbuona la discesa del terreno vicino prima di disegnare
 // anche sotto la linea dell'orizzonte.
@@ -16242,10 +16526,9 @@ function skyDisegnaLuceCreste(ctx, colonne, proj, nt, luce, base, focale) {
 }
 
 // L'altezza disegnata di ogni banda in una colonna: quella vera della sua
-// fetta di distanza. Non aggiungiamo più un rilievo procedurale: punte e
-// selle inventate rendevano il profilo più spettacolare, ma potevano anche
-// spostare visivamente una cresta rispetto ai dati altimetrici. Il volume
-// nasce dai piani di distanza misurati e dalla prospettiva aerea.
+// fetta di distanza, morsa dal rilievo. Il rumore aspro e quello dolce si
+// mescolano con quanta roccia c'è da quella parte — sulla stessa vista, la
+// costa resta liscia e il crinale dietro no.
 //
 // Due tagli, e tutti e due tengono in piedi l'occlusione.
 //
@@ -16279,10 +16562,15 @@ function skyCresteDelleColonne(col, bande, fuori, off) {
     const alta = vere ? vere[k] : col.h * quota;
     if (vere && k < n - 1 && alta >= vere[k + 1] - 1e-4) { fuori[off + k] = tetto; continue; }
 
-    // `tetto` conserva l'occlusione anche nel raro caso in cui due valori
-    // interpolati differiscano di pochi decimillesimi. A parte questo limite,
-    // il punto disegnato coincide con la quota restituita dal DEM.
-    const v = Math.min(tetto, alta);
+    const az = col.az + banda.salto;
+    const aspro = skyRilievo(SKY_RILIEVO.aspro, az);
+    const dolce = skyRilievo(SKY_RILIEVO.dolce, az);
+    const rumore = dolce + (aspro - dolce) * col.roccia;
+    // Il morso è sempre verso il basso, anche sotto la linea dell'orizzonte:
+    // moltiplicare per `1 − morso` una quota negativa la tirerebbe **su**,
+    // e la conca davanti si riempirebbe invece di scavarsi.
+    const ampiezza = Math.min(Math.abs(alta), SKY_MORSO_MAX_GRADI);
+    const v = Math.min(tetto, alta - ampiezza * col.ruvido * banda.ruvido * rumore);
     fuori[off + k] = v;
     tetto = v;
   }
@@ -16348,8 +16636,10 @@ function skyQuotaDisegnata(az, km) {
 //
 // Una dorsale non è un ritaglio di cartone: ha una schiena, e la schiena è
 // rivolta al cielo mentre il fianco no. La fascia in cima si schiarisce, e
-// È una fascia uniforme e discreta: il volume viene dalla sovrapposizione
-// delle dorsali vere, senza chiazze o variazioni procedurali sulla superficie.
+// **quanto è profonda cambia da punto a punto** — larga sulle spalle
+// tondeggianti, sottile dove la cresta è affilata. È quella larghezza
+// irregolare a raccontare il volume: una fascia di spessore costante
+// sarebbe una riga di evidenziatore.
 //
 // Il primo tentativo erano i canaloni, righe verticali che scendevano dalla
 // cresta. Sulla carta erano i fianchi della montagna; sullo schermo erano
@@ -16389,7 +16679,7 @@ function skyDisegnaCappello(ctx, corse, colore, banda, foschia) {
       r.forEach((q, i) => (i === 0 ? ctx.moveTo(q.cx, q.cy) : ctx.lineTo(q.cx, q.cy)));
       for (let i = r.length - 1; i >= 0; i--) {
         const q = r[i];
-        const f = 0.28 * quanto;
+        const f = (0.1 + 0.42 * skyRilievo(SKY_RILIEVO.dolce, q.az * 2.3 + 17 + banda.salto)) * quanto;
         ctx.lineTo(q.cx + (q.bx - q.cx) * f, q.cy + (q.by - q.cy) * f);
       }
       ctx.closePath();
