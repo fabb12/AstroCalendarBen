@@ -13178,24 +13178,18 @@ function skyGradienteTerreno(ctx, o, vicino, lontano, base, focale, azCentro) {
   // per la ragione scritta sopra: quello che si sta togliendo è luce
   // d'ambiente, e di notte non ce n'è.
   const buio = SKY_SUOLO_NADIR_BUIO * (0.25 + 0.75 * sky.luceCielo);
-  // Il colore a una data depressione: due leggi che si sommano, e nessuna
-  // delle due è una tabella di colori scelti a mano. La prima porta dal
-  // terreno lontano (velato d'aria) a quello ai piedi, e si spegne in un
-  // grado e mezzo; la seconda toglie luce d'ambiente scendendo, e ci mette
-  // decine di gradi.
-  const colori = SKY_SUOLO_FERMATE.map(dep => {
-    const vicinanza = 1 - Math.exp(-dep / SKY_SUOLO_TAU);
-    const ombra = buio * (1 - Math.exp(-dep / SKY_SUOLO_TAU_BUIO));
-    return skyRgba(skyMescolaColore(skyMescolaColore(lontano, vicino, vicinanza), [0, 0, 0], ombra),
-      dep > 0 ? 1 : 0.98);
-  });
-  const dove = skyFermateSuolo(o, base, focale, azCentro);
-  const passaggi = colori.map((c, i) => [dove[i], c]);
+  // Il colore ai piedi conserva l'occlusione ambientale calcolata dalla
+  // luce del cielo; quello all'orizzonte resta il terreno velato d'aria.
+  // Una sola sfumatura continua: le fermate associate alle depressioni del
+  // terreno, anche usando un gradiente lineare, restavano leggibili come
+  // larghe fasce parallele all'orizzonte. Il suolo non ha davvero quei
+  // confini. Manteniamo quindi soltanto i colori fisici ai due estremi e
+  // lasciamo che Canvas li mescoli senza cambi di pendenza intermedi.
+  const aiPiedi = skyMescolaColore(vicino, [0, 0, 0], buio);
+
   // Anche quando l'orizzonte stereografico e' un arco, la luce sul terreno
-  // non arriva per anelli dal nadir. Il vecchio gradiente radiale rendeva
-  // visibili le fermate come grandi cerchi concentrici, soprattutto con la
-  // camera inclinata. Misuriamo invece la direzione locale del "giu" con
-  // due punti del terreno nel centro dell'inquadratura.
+  // non arriva per anelli dal nadir. Misuriamo la direzione locale del
+  // "giu" con due punti del terreno nel centro dell'inquadratura.
   const p0 = skyProietta(skyVettore(azCentro, 0), base, focale);
   const p90 = skyProietta(skyVettore(azCentro, -89.5), base, focale);
   let ax = p0.davanti ? p0.px : o.cx;
@@ -13207,7 +13201,8 @@ function skyGradienteTerreno(ctx, o, vicino, lontano, base, focale, azCentro) {
     by = ay + o.ny * Math.max(sky.larghezza, sky.altezza);
   }
   const gr = ctx.createLinearGradient(ax, ay, bx, by);
-  passaggi.forEach(([t, c]) => gr.addColorStop(t, c));
+  gr.addColorStop(0, skyRgba(lontano, 0.98));
+  gr.addColorStop(1, skyRgba(aiPiedi, 1));
   return gr;
 }
 
