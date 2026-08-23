@@ -13515,6 +13515,14 @@ function skyArcoAcquaInVista(base, focale) {
   // funzione dà. Senza, guardando lo zenit si proietterebbe tutto il mare del
   // mondo fuori dallo schermo.
   if (altF - semi >= 0) return null;
+  // Oltre i novanta gradi il cono contiene il polo della sfera e quindi
+  // attraversa **tutti** gli azimut. Non si può più usare `sin(semi)` per
+  // ricavarne la larghezza: il seno torna a diminuire dopo 90° e farebbe
+  // restringere di nuovo l'arco proprio mentre si allarga il campo. Il
+  // rilievo 3D usa questo stesso arco per scegliere le colonne da disegnare;
+  // a campo molto largo finiva così con troppo poche colonne (fino a
+  // sparire), benché il suolo di fondo restasse correttamente visibile.
+  if (semi >= Math.PI / 2) return { mezzo: 180, centro };
   const seno = Math.sin(semi) / Math.cos(altF);
   if (!(seno < 1)) return { mezzo: 180, centro };
   return { mezzo: Math.min(180, Math.asin(seno) * SKY_R2D + 6), centro };

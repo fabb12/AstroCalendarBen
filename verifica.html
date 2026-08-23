@@ -622,6 +622,19 @@ titolo('8. La proiezione del cielo');
   prova('l\'orizzonte proiettato sta sul cerchio che usa il terreno',
         scartoCerchio < 1e-6, `scarto massimo ${scartoCerchio.toExponential(1)} px`);
 
+  // Il rilievo 3D prende da questo arco le colonne da disegnare. Superati
+  // 90° di semi-campo il seno torna a diminuire: usarlo senza distinguere
+  // il caso avrebbe fatto restringere (e poi sparire) il terreno aumentando
+  // il FOV. Un cono più largo di un emisfero contiene invece tutti gli
+  // azimut, su qualunque formato dello schermo.
+  const larghezzaPrima = sky.larghezza, altezzaPrima = sky.altezza, fovPrima = sky.fov;
+  sky.larghezza = 1200; sky.altezza = 500; sky.fov = 180;
+  const arcoLarghissimo = skyArcoAcquaInVista(skyBaseVerso(0, 0), skyFocale());
+  sky.larghezza = larghezzaPrima; sky.altezza = altezzaPrima; sky.fov = fovPrima;
+  prova('a campo oltre l\'emisfero il terreno 3D copre ancora tutti gli azimut',
+        arcoLarghissimo && arcoLarghissimo.mezzo === 180,
+        arcoLarghissimo ? `${arcoLarghissimo.mezzo}° per lato` : 'nessun arco');
+
   // A campo stretto deve coincidere con la prospettiva di prima: è la
   // garanzia che nessuna vista ingrandita è cambiata.
   const vecchio = sky.fov;
