@@ -6431,6 +6431,188 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
 }
 
 // =====================================================================
+titolo('26. I nomi dell\'orizzonte quando OpenStreetMap fa i capricci (terreno.js)');
+// =====================================================================
+//
+// È il guasto che si vede peggio di tutti, perché non lascia traccia: dal
+// planetario sparisce **ogni** nome — paesi, vette e laghi insieme — e in
+// console ci sono solo dei rifiuti di rete che parlano di un host di cui
+// nessuno ha mai sentito il nome. Le prove qui sotto guardano le tre cose che
+// quella sera erano tutt'e tre sbagliate: quante porte c'erano a cui bussare,
+// chi si arrendeva per primo fra noi e il server, e come veniva raccontato il
+// guasto a chi stava guardando il cielo.
+
+// --- Le porte --------------------------------------------------------
+{
+  const host = OVERPASS_ISTANZE.map(u => new URL(u).hostname);
+  prova('a cui bussare ce n\'è più di una coppia', OVERPASS_ISTANZE.length >= 3,
+    `${OVERPASS_ISTANZE.length} istanze`);
+  prova('sono tutte host diversi', new Set(host).size === host.length, host.join(', '));
+  prova('tutte in https', OVERPASS_ISTANZE.every(u => u.indexOf('https://') === 0));
+  prova('tutte sullo stesso percorso, quello che le pagine statiche possono usare',
+    OVERPASS_ISTANZE.every(u => /\/api\/interpreter$/.test(u)));
+}
+
+// --- Chi si arrende per primo ----------------------------------------
+//
+// La regola è scritta nei commenti da sempre e vale per tutt'e tre le
+// famiglie: **il client non deve arrendersi prima del server**. Se lo fa,
+// taglia la richiesta mentre Overpass la sta ancora onorando e nel pannello
+// finisce scritto che il colpevole è lui. Era rispettata dalle vette e dalle
+// acque, e non dai paesi — cioè proprio dall'unica delle tre di cui ci si
+// accorge, perché è quella che porta i nomi dei paesi. Quindici secondi di
+// attesa contro venti scritti nella query.
+{
+  const dove = [45.8124, 9.0295];
+  const casi = [
+    ['i paesi',            cittaQueryOverpass(...dove), CITTA_ATTESA_MS],
+    ['i paesi (ripiego)',  cittaQueryVicina(...dove),   CITTA_ATTESA_MS],
+    ['le vette',           cimeQueryOverpass(...dove),  CIME_ATTESA_MS],
+    ['le vette (ripiego)', cimeQueryVicina(...dove),    CIME_ATTESA_MS],
+    ['le acque',           acqueQueryOverpass(...dove), ACQUE_ATTESA_MS],
+    ['le acque (ripiego)', acqueQueryCorta(...dove),    ACQUE_ATTESA_MS]
+  ];
+  for (const [nome, query, attesa] of casi) {
+    const m = /\[timeout:(\d+)\]/.exec(query);
+    prova(`${nome}: aspettiamo più di quanto il server si sia preso`,
+      !!m && attesa > Number(m[1]) * 1000,
+      m ? `query ${m[1]} s, noi ${(attesa / 1000).toFixed(0)} s` : 'nella query non c\'è nessun timeout');
+  }
+}
+
+// --- La corsa fra le istanze -----------------------------------------
+//
+// `fetch` si sostituisce solo per le nostre query finte: la pagina intanto sta
+// scaricando terreno e tessere per davvero, e una sostituzione a tappeto le
+// porterebbe via.
+const OVER_MARCA = 'PROVAOVERPASS';
+const overVero = window.fetch;
+let overCopione = [], overChiamate = [];
+window.fetch = function (url, opz) {
+  if (String(url).indexOf(OVER_MARCA) === -1) return overVero.apply(this, arguments);
+  const c = overCopione[overChiamate.length] || overCopione[overCopione.length - 1] || { tipo: 'muto' };
+  overChiamate.push(new URL(String(url)).hostname);
+  return new Promise((ok, no) => {
+    const sig = opz && opz.signal;
+    if (sig) sig.addEventListener('abort', () => {
+      const e = new Error('signal is aborted without reason'); e.name = 'AbortError'; no(e);
+    });
+    if (c.tipo === 'ok') setTimeout(() => ok({ ok: true, status: 200, json: () => Promise.resolve({ elements: [{}, {}] }) }), c.ms || 0);
+    else if (c.tipo === 'cors') setTimeout(() => no(new TypeError('Failed to fetch')), c.ms || 0);
+    else if (c.tipo === 'stato') setTimeout(() => ok({ ok: false, status: c.stato }), c.ms || 0);
+    // 'muto': non risponde mai, che è come si comporta davvero un'istanza carica
+  });
+};
+
+// Le prove che seguono si dividono lo stesso copione e lo stesso contatore di
+// chiamate, quindi vanno **una alla volta**: `attendi` lancia subito la
+// funzione che le viene passata, e sei corse contemporanee si mescolerebbero
+// le risposte a vicenda. La coda le mette in fila senza far aspettare il resto
+// della pagina.
+let overCoda = Promise.resolve();
+function overAttendi(nome, fai) {
+  const p = overCoda.then(fai);
+  overCoda = p.catch(() => {});   // una caduta non porta via anche le successive
+  attendi(nome, p);
+}
+
+async function overCorsa(copione, attesaMs) {
+  overCopione = copione; overChiamate = [];
+  const partito = performance.now();
+  try {
+    const r = await overpassChiedi('[out:json];' + OVER_MARCA + ';out;', attesaMs);
+    return { esito: 'ok', quanti: r.length, ms: performance.now() - partito, n: overChiamate.length };
+  } catch (e) {
+    return { esito: e.message, ms: performance.now() - partito, n: overChiamate.length };
+  }
+}
+
+overAttendi('una porta che cade lascia subito il posto alla prossima', async () => {
+  // Due CORS di fila e la terza buona: è il caso della segnalazione, dove
+  // `overpass-api.de` non si apriva nemmeno e `kumi.systems` rispondeva senza
+  // intestazione CORS. Deve costare millisecondi, non due affiancamenti.
+  const r = await overCorsa([{ tipo: 'cors' }, { tipo: 'cors' }, { tipo: 'ok' }], 6000);
+  return { esito: r.esito === 'ok' && r.n === 3 && r.ms < OVERPASS_AFFIANCA_MS,
+           nota: `${r.n} porte provate in ${r.ms.toFixed(0)} ms` };
+});
+
+overAttendi('nessuna porta risponde: si prova ognuna una volta e ci si arrende', async () => {
+  const r = await overCorsa([{ tipo: 'cors' }], 6000);
+  return { esito: r.esito !== 'ok' && r.n === OVERPASS_ISTANZE.length && r.ms < 2000,
+           nota: `${r.n} porte, poi «${r.esito}» dopo ${r.ms.toFixed(0)} ms` };
+});
+
+overAttendi('la scadenza è di tutta la corsa, non di ogni porta', async () => {
+  // È la proprietà che rende **gratis** le istanze in più. Con una sveglia per
+  // tentativo, passare da due porte a cinque avrebbe voluto dire passare da un
+  // minuto a due minuti e mezzo di silenzio prima di dire «non ce l'ho fatta»
+  // — e con la query di ripiego dietro, il doppio.
+  const attesa = 900;
+  const r = await overCorsa([{ tipo: 'muto' }], attesa);
+  return { esito: r.esito !== 'ok' && r.ms >= attesa * 0.8 && r.ms < attesa * 2.5,
+           nota: `arresa dopo ${r.ms.toFixed(0)} ms su ${attesa} di scadenza` };
+});
+
+
+overAttendi('un 429 vero si racconta meglio dell\'abort arrivato dopo', async () => {
+  // L'ultimo guasto non è il più informativo: quasi sempre è la sveglia che
+  // abbiamo messo noi. Un 429 il servizio l'ha *risposto*, quindi la strada
+  // c'era — ed è quello che chi guarda ha bisogno di sapere.
+  const r = await overCorsa([{ tipo: 'stato', stato: 429 }, { tipo: 'muto' }], 900);
+  return { esito: /429/.test(r.esito), nota: `«${r.esito}»` };
+});
+
+// --- Come si racconta il guasto --------------------------------------
+{
+  const abort = new Error('signal is aborted without reason'); abort.name = 'AbortError';
+  prova('«signal is aborted without reason» non arriva mai al pannello',
+    !/signal is aborted/.test(overpassMotivo(abort)), `diventa «${overpassMotivo(abort)}»`);
+  prova('un guasto di rete si dice a parole',
+    /OpenStreetMap/.test(overpassMotivo(new TypeError('Failed to fetch'))),
+    `«${overpassMotivo(new TypeError('Failed to fetch'))}»`);
+  prova('un codice di stato lo si tiene com\'è',
+    overpassMotivo(new Error('OpenStreetMap non risponde (504)')) === 'OpenStreetMap non risponde (504)');
+  prova('un no del servizio pesa più di un abort',
+    overpassPeso(new Error('OpenStreetMap non risponde (429)')) > overpassPeso(abort));
+}
+
+// --- Il ripiego non si spaccia per la risposta larga -----------------
+overAttendi('la query corta si marca, se no il salvataggio mente sul raggio', async () => {
+  // `raggiSalvatoBuono` guarda il raggio scritto nel salvataggio: un elenco
+  // preso a trenta chilometri etichettato novanta è il modo di non riscaricare
+  // mai più quello vero.
+  overCopione = [{ tipo: 'cors' }]; overChiamate = [];
+  let visto = '';
+  const primaFetch = window.fetch;
+  window.fetch = function (url, opz) {
+    const u = String(url);
+    if (u.indexOf('CORTA') !== -1) {
+      visto = 'corta';
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ elements: [{}, {}, {}] }) });
+    }
+    return primaFetch.call(this, url, opz);
+  };
+  let r;
+  try {
+    r = await overpassConRipiego('[out:json];' + OVER_MARCA + ';LARGA;', e => e.map(x => x),
+                                 '[out:json];CORTA;', 4000);
+  } finally { window.fetch = primaFetch; }
+  return { esito: visto === 'corta' && r.daRipiego === true && r.length === 3,
+           nota: `${r.length} elementi, marcata ${r.daRipiego === true}` };
+});
+
+prova('il ripiego dei paesi guarda meno lontano di quello che si era chiesto',
+  CITTA_RAGGIO_RIPIEGO_KM > 0 && CITTA_RAGGIO_RIPIEGO_KM <= RAGGI_LIMITI.citta.predefinito,
+  `${CITTA_RAGGIO_RIPIEGO_KM} km contro ${RAGGI_LIMITI.citta.predefinito}`);
+prova('e i paesi un ripiego ce l\'hanno (per un pezzo erano l\'unica famiglia senza)',
+  /place/.test(cittaQueryVicina(45.8124, 9.0295)));
+
+// Rimettere a posto la `fetch` vera: da qui in giù la pagina torna a parlare
+// col mondo, e le prove che aspettano hanno già catturato quella finta.
+Promise.all(proveInVolo).then(() => { window.fetch = overVero; },
+                              () => { window.fetch = overVero; });
+
+// =====================================================================
 // Il verdetto si scrive **dopo** le prove che aspettano (vedi `attendi`): se lo
 // si scrivesse subito direbbe «tutte passate» un istante prima che le ultime
 // abbiano risposto, che è il modo in cui una pagina di prove smette di servire.

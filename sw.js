@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v143';
+const CACHE_NAME = 'astrocal-v144';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -111,6 +111,31 @@ self.addEventListener('fetch', (e) => {
 
   let url;
   try { url = new URL(req.url); } catch (err) { return; }
+
+  // OpenStreetMap (Overpass e i geocodificatori inversi) passa **senza che ci
+  // mettiamo in mezzo**, ed è una correzione, non un'ottimizzazione.
+  //
+  // Il ripiego generico in fondo a questo file trasforma un guasto di rete in
+  // una risposta finta: `504 Non disponibile senza rete`. Per una libreria è
+  // la cosa giusta (meglio di `index.html` interpretato come JavaScript), per
+  // Overpass è una bugia con due conseguenze vere. La prima è nel messaggio:
+  // una connessione che non si apre e una risposta senza intestazione CORS
+  // finiscono scritte tutte e due come «OpenStreetMap non risponde (504)»,
+  // cioè come se il servizio avesse risposto — ed è quello che si leggeva in
+  // console mentre l'orizzonte restava senza nomi. La seconda è peggio:
+  // `terreno.js` mette le istanze in corsa e **abortisce le perdenti**
+  // (`overpassChiedi`), ma l'abort della pagina non tocca la `fetch` che sta
+  // girando qui dentro. Con il service worker in mezzo, ogni richiesta persa
+  // continuava a occupare una macchina pubblica fino in fondo — cioè l'esatto
+  // contrario di quello che la corsa vuole ottenere.
+  //
+  // In cache non ci finiscono comunque (non sono `HOST_DA_CONSERVARE`), quindi
+  // qui non si perde niente: si toglie solo un intermediario che mentiva.
+  if (url.hostname.indexOf('overpass') !== -1 ||
+      url.hostname === 'nominatim.openstreetmap.org' ||
+      url.hostname === 'api.bigdatacloud.net') {
+    return;
+  }
 
   // Meteo, dati orbitali dei satelliti e servizi di posizione devono essere
   // freschi: mai dalla cache. Se la rete non c'è, l'app mostra il valore
