@@ -1330,7 +1330,33 @@ function rilArcoInVista(base, focale) {
   const orizzonte = typeof skyArcoOrizzonteInVista === 'function'
     ? skyArcoOrizzonteInVista(base, focale)
     : null;
-  return orizzonte || skyArcoAcquaInVista(base, focale);
+  if (!orizzonte) return skyArcoAcquaInVista(base, focale);
+  if (orizzonte.mezzo < 175) return orizzonte;
+
+  // Il cerchio che `skyArcoOrizzonteInVista` usa per circoscrivere il
+  // riquadro e' intenzionalmente prudente. A 180°, pero', il cerchio passa
+  // ben oltre gli angoli del canvas: alzando la camera sopra una quarantina
+  // di gradi finisce per comprendere anche il meridiano opposto, sebbene il
+  // suo punto d'orizzonte sia migliaia di pixel fuori dallo schermo. Quella
+  // sola colonna sta accanto alla prima per il giro modulare della maglia e
+  // chiude il tracciato attraversando il canvas: il terreno copre il cielo.
+  //
+  // Per il rilievo possiamo stringere la stima guardando il rettangolo vero.
+  // Campioniamo soltanto la riga dell'orizzonte (le montagne hanno poi il
+  // consueto margine di sei gradi) e teniamo lo scarto piu' lontano che cade
+  // nel canvas. Non cerchiamo un unico intervallo: con la riga curva il
+  // centro puo' stare sotto il bordo mentre i due lati sono ancora visibili.
+  const centro = orizzonte.centro;
+  const margine = Math.max(12, focale * Math.tan(6 * Math.PI / 180));
+  let ultimo = 0;
+  for (let delta = 0; delta < 180; delta += 0.5) {
+    for (const segno of [-1, 1]) {
+      const p = skyProietta(skyVettore(centro + segno * delta, 0), base, focale);
+      if (p.davanti && p.px >= -margine && p.px <= sky.larghezza + margine &&
+          p.py >= -margine && p.py <= sky.altezza + margine) ultimo = delta;
+    }
+  }
+  return { centro, mezzo: Math.min(orizzonte.mezzo, ultimo + 6, 174) };
 }
 
 function rilDisegna(ctx, base, focale, suolo, aria) {
