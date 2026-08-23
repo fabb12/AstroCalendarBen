@@ -8898,29 +8898,19 @@ function skyTornaAlLuogoDiCasa() {
 let skyLuogoTimerCitta = null;
 let skyLuogoRichiesta = 0;
 
-// La riga di lettura: da dove si guarda, e se è casa o una visita.
+// Da dove si guarda: qui resta il solo tasto del ritorno a casa.
 function skyAggiornaLuogoVistaUI() {
-  const nomeEl = document.getElementById('skymap-luogo-nome');
   const casa = document.getElementById('skymap-luogo-casa');
-  const nota = document.getElementById('skymap-luogo-nota');
   const l = skyLuogoDelCielo();
 
-  // Il nome basta: le coordinate stanno già nella lettura di stato in alto a
-  // destra, e ripeterle qui allungava la riga senza dire niente di nuovo.
-  if (nomeEl) {
-    nomeEl.textContent = l ? skyNomeLuogoConAltitudine(l) : 'nessuna posizione';
-    nomeEl.title = l ? formattaCoordinate(l.lat, l.lon) : '';
-    nomeEl.dataset.visita = l && l.proprio ? 'si' : 'no';
-  }
+  // Il nome del posto qui non si scrive: è la stessa identica riga che sta
+  // in alto a sinistra sopra al cielo (`skyAggiornaStato`, stessa funzione e
+  // stesso luogo), e con il pannello aperto si leggevano tutt'e due nella
+  // stessa schermata. Che il cielo sia spostato altrove lo dicono quella
+  // riga — che diventa azzurra — e la comparsa di questo tasto, che è anche
+  // l'unico modo per disfare lo spostamento: finché non c'è niente da
+  // disfare non serve, e sta nascosto.
   if (casa) casa.classList.toggle('hidden', !(l && l.proprio));
-  // Una riga sola, e diversa nei due casi: quando il cielo è spostato la nota
-  // deve rassicurare (il resto dell'app non si è mosso), quando è a casa deve
-  // solo dire cosa succede se si cerca una città.
-  if (nota) {
-    nota.textContent = l && l.proprio
-      ? 'Solo qui: orari, meteo, satelliti e telescopio restano sulla tua posizione.'
-      : 'Vale solo per il planetario: il resto dell\'app resta sulla tua posizione.';
-  }
 }
 
 // Nome e quota formano una sola lettura, con lo stesso corpo tipografico.
@@ -33390,6 +33380,11 @@ function skyAggiornaTestoTempo() {
     : '';
   const spostato = scarto !== 0 || !!sky.playbackVerso;
 
+  // La lettura in testa al blocco "Quando" non ripete l'istante: quello sta
+  // già scritto cifra per cifra nelle sei caselle subito sotto, e ripeterlo
+  // per esteso costava una riga intera che a metà finiva coi puntini. Qui va
+  // quello che le caselle non sanno dire — di quanto ci si è spostati dal
+  // tempo reale, e a che passo il cielo sta camminando.
   const el = document.getElementById('skymap-tempo-testo');
   if (el) {
     const istante = quando.toLocaleString('it-IT', {
@@ -33397,7 +33392,8 @@ function skyAggiornaTestoTempo() {
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     });
     const scartoTesto = scarto === 0 ? 'in tempo reale' : skyScartoTempoTesto(scarto);
-    el.textContent = [istante, scartoTesto, marcia].filter(Boolean).join(' · ');
+    el.textContent = [scartoTesto, marcia].filter(Boolean).join(' · ');
+    el.title = `${istante} · ${scartoTesto}`;
     el.classList.toggle('spostata', spostato);
   }
 

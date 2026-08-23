@@ -3596,15 +3596,68 @@ body button.pos-risultato:focus-visible {
 .gruppo-comandi.gruppo-astri.gruppo-attivo { max-height: 66%; }
 /* Anche quello degli eventi: ogni voce è tre righe più i suoi tasti */
 .gruppo-comandi.gruppo-eventi.gruppo-attivo { max-height: 66%; }
-/* Tempo e luogo deve restare leggero: pochi comandi, niente note visibili. */
+/* Tempo e luogo deve restare leggero: pochi comandi, niente note visibili.
+   Dentro sono due blocchi (`.blocco-tempo`) col loro titolo, separati da un
+   filo: le due domande — quando, e da dove — si riconoscono prima di essere
+   lette. Lo stacco fra i due blocchi è più largo di quello fra le righe di
+   uno stesso blocco, e quella differenza è tutto il raggruppamento. */
 .gruppo-comandi.gruppo-tempo.gruppo-attivo {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   max-height: 58%;
   padding: 10px 12px 12px;
 }
-.gruppo-tempo > .riga-comandi,
+.gruppo-tempo > .blocco-tempo,
 .gruppo-tempo > .stacco-pannello { margin-top: 0; }
+
+/* Un blocco: il titolo, e sotto le sue righe, più vicine fra loro di quanto
+   i blocchi lo siano fra loro. `min-width: 0` non è un dettaglio di stile:
+   senza, una riga che non manda a capo — la data, il playback — allarga la
+   griglia oltre il pannello e il pannello oltre lo schermo, ed è così che
+   "Vai" e "Mappa" finivano tagliati fuori dal bordo destro. */
+.blocco-tempo { display: grid; gap: 7px; min-width: 0; }
+.blocco-tempo > .riga-comandi { margin-top: 0; }
+
+/* La testata di un blocco: a sinistra di cosa parla, a destra la lettura
+   corta (di quanto ci si è spostati nel tempo) o il tasto del ritorno a
+   casa. Due cose sulla stessa riga invece di due righe. */
+.testa-blocco-tempo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 20px;
+}
+.titolo-blocco-tempo {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+
+/* Una riga con davanti la parola che dice cosa comanda. Su schermo largo la
+   parola sta a sinistra e i comandi si prendono tutto il resto; su un
+   telefono va sopra (media query in fondo al file), perché sette segmenti
+   più una parola in trecentosessanta pixel non ci stanno. */
+.riga-etichettata {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.etichetta-riga {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--testo-3);
+}
+.corpo-riga { display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* Dentro a una riga etichettata i segmenti non pretendono più tutta la
+   larghezza per sé: si prendono quella che avanza dopo l'etichetta */
+.riga-etichettata .segmenti-cielo { flex: 1 1 auto; }
 
 .riga-comandi {
   display: flex;
@@ -3825,12 +3878,17 @@ body .gruppo-astri.ricerca-attiva .chip-astro {
 .tasto-cielo:disabled { opacity: 0.35; cursor: default; }
 .tasto-cielo:disabled:hover { border-color: var(--bordo); background: var(--superficie-alta); }
 
-/* Il playback: i due versi restano compatti; lo stop è già nel play della barra. */
+/* Il playback: i due versi restano compatti a sinistra e la velocità si
+   appoggia al bordo destro (è il margine automatico dello stacco a spingerla
+   là). Senza, i due tasti del verso si prendevano tutto lo spazio avanzato e
+   su una riga larga diventavano due lastre. Lo stop è già nel play della
+   barra in fondo alla mappa, e qui non si ripete. */
 .riga-playback {
   flex-wrap: nowrap;
   gap: 5px;
   margin-top: 0;
 }
+.riga-playback .stacco-comandi { margin-left: auto; }
 .tasto-cielo.tasto-play {
   flex: 1 1 auto;
   max-width: 74px;
@@ -3874,7 +3932,7 @@ body .gruppo-astri.ricerca-attiva .chip-astro {
 .campo-data {
   display: flex;
   align-items: center;
-  flex: 1 1 240px;
+  flex: 1 1 200px;
   min-width: 0;
   gap: 1px;
   padding: 3px 6px;
@@ -3916,69 +3974,58 @@ body input.casella-data:hover { border: 0; }
 .sep-larga { padding: 0 4px; }
 /* Uno stacco dentro a un pannello: il pannello Tempo dice due cose (quando,
    e da dove), e senza una riga fra loro sembravano la stessa cosa. Sottile e
-   stretto: serve a separare, non a occupare. */
+   stretto: serve a separare, non a occupare — l'aria attorno gliela dà già
+   il `gap` della griglia, e sommarci un margine faceva due stacchi. */
 .stacco-pannello {
   height: 1px;
-  margin: 8px 0 7px;
+  margin: 0;
   background: var(--bordo);
 }
 
-/* Da dove si guarda il cielo: tre righe in tutto, appoggiate sopra al cielo,
-   quindi ogni pixel di altezza è cielo coperto. L'etichetta e il nome stanno
-   in fila e il tasto "Torna a casa" chiude la riga; quando il cielo è
-   spostato la lettura si accende, ed è l'unica cosa che spiega perché quello
-   disegnato non è il cielo che si vede dalla finestra. */
-.riga-luogo { gap: 6px; margin-top: 0; }
-.etichetta-luogo { flex: 0 0 auto; }
-.lettura-luogo {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--mono);
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--testo-2);
-}
-.lettura-luogo[data-visita="si"] { color: var(--blu-chiaro); font-weight: 600; }
-.riga-luogo .tasto-cielo { flex: 0 0 auto; }
-/* Il campo del nome e il tasto del mappamondo stanno in fila e si dividono
-   la riga: sono le due risposte alla stessa domanda — "da dove?" — e la
-   seconda serve quando la prima non ha un nome da offrire. Il campo cede
-   spazio per primo, il tasto resta leggibile. */
-.riga-cerca-luogo .campo-cielo { flex: 1 1 190px; }
+/* Da dove si guarda il cielo: due righe in tutto, appoggiate sopra al cielo,
+   quindi ogni pixel di altezza è cielo coperto. Il nome del posto qui non
+   c'è: sta già in alto a sinistra sopra al cielo, e in azzurro quando è una
+   visita. Il campo del nome e il tasto del mappamondo stanno in fila e si
+   dividono la riga: sono le due risposte alla stessa domanda — "da dove?" —
+   e la seconda serve quando la prima non ha un nome da offrire. Il campo
+   cede spazio per primo, il tasto resta leggibile. */
+.riga-cerca-luogo .campo-cielo { flex: 1 1 150px; }
 .tasto-luogo-mappa { flex: 0 0 auto; }
-.risultati-luogo { max-height: 168px; margin-top: 6px; }
-.nota-luogo {
-  margin: 6px 0 0;
-  font-size: 0.72rem;
-  line-height: 1.35;
-  color: var(--testo-3);
-}
+.risultati-luogo { max-height: 168px; }
 
+/* La lettura corta nella testata di "Quando": non l'istante — quello lo
+   dicono le sei caselle qui sotto — ma di quanto si è spostato l'orologio e
+   a che passo sta camminando. Fuori dal tempo reale si accende d'ambra,
+   come la barra in fondo alla mappa. */
 .lettura-tempo {
-  flex: 1 1 130px;
   min-width: 0;
-  margin: 0 0 0 3px;
+  margin: 0;
   overflow: hidden;
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--mono);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-variant-numeric: tabular-nums;
-  color: var(--testo-2);
+  color: var(--testo-3);
 }
 .lettura-tempo.spostata { color: var(--ambra); }
 
 /* Tempo e luogo è un pannello operativo: i comandi conservano lo stesso
-   linguaggio visivo dell'app, ma qui stanno più vicini e bassi. La lettura
-   dell'istante completa la riga del playback invece di consumarne una nuova. */
+   linguaggio visivo dell'app, ma qui stanno più vicini e bassi. */
 .gruppo-tempo .tasto-cielo { min-height: 38px; padding: 8px 12px; }
 .gruppo-tempo .tasto-cielo.tasto-passo { min-height: 38px; padding: 7px 10px; }
+.gruppo-tempo .tasto-cielo.tasto-play { min-height: 38px; padding: 8px 12px; }
 .gruppo-tempo .tasto-segmento { min-height: 32px; padding-block: 6px; }
 .gruppo-tempo .campo-cielo { min-height: 38px; padding-block: 7px; }
+/* Il tasto appeso a una testata ("Torna a casa") è un ripensamento, non un
+   comando che si usa ogni volta: sta più basso degli altri, così non alza la
+   riga del titolo e non si prende l'occhio prima dei comandi veri. */
+.gruppo-tempo .testa-blocco-tempo .tasto-cielo {
+  min-height: 30px;
+  padding: 5px 10px;
+  font-size: 0.74rem;
+}
 
 .lettura-bussola {
   min-width: 52px;
@@ -4187,20 +4234,50 @@ body input.casella-data:hover { border: 0; }
   .cerca-astri { margin: -10px -12px 8px; padding: 8px 12px; }
   body .chip-astro { padding: 5px 8px; font-size: 0.76rem; }
   .titolo-famiglia { font-size: 0.65rem; }
-  /* Su un telefono le sei caselle della data si prendono tutta la riga, e i
-     due tasti stanno insieme in quella dopo: "Vai" da solo in fondo a una
-     riga, con "Adesso" a capo, sembrava che appartenessero a due comandi */
-  .campo-data { flex: 1 1 100%; }
-  .riga-data .tasto-cielo { flex: 1 1 auto; }
+  /* Su un telefono la parola che etichetta una riga va sopra i comandi
+     invece che accanto: sette segmenti più "Passo" in trecentosessanta pixel
+     vorrebbero dire trentotto pixel a segmento, meno di quanto "1 mese"
+     occupa da solo. Sopra costa tredici pixel; accanto costava la
+     leggibilità di tutta la fila. */
+  .riga-etichettata { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .etichetta-riga { font-size: 0.68rem; }
+  /* Le sei caselle della data e il tasto che le conferma restano in fila:
+     insieme non arrivano a trecento pixel, e "Vai" a capo da solo sembrava
+     un comando a sé invece della conferma di quello che ha accanto */
+  .campo-data { flex: 1 1 auto; padding-inline: 4px; }
+  body input.casella-data { font-size: 0.82rem; }
+  .sep-data { font-size: 0.8rem; }
+  .riga-data .tasto-cielo { flex: 0 0 auto; }
   /* Tutta la riga del playback — verso e velocità — deve restare in fila
      come su un lettore: i tasti si stringono, ma nessuno va a capo */
   .riga-playback { flex-wrap: nowrap; gap: 5px; }
-  .tasto-cielo.tasto-play { padding: 9px 8px; max-width: none; }
+  .tasto-cielo.tasto-play { padding: 9px 10px; }
   .riga-playback .tasto-cielo.tasto-passo { padding: 8px 9px; }
   .lettura-velocita { min-width: 54px; font-size: 0.74rem; }
   .stacco-comandi { margin: 0 1px; }
-  .tasto-segmento { min-height: 34px; padding: 7px 4px; font-size: 0.74rem; }
+  /* Sette gradini in trecentoventi pixel: la pillola si stringe fino al
+     filo (un pixel di stacco, due di rientro) e il corpo scende, se no
+     "1 mese" e "1 anno" escono dal loro segmento e si toccano — e il
+     segmento acceso, più largo del testo che contiene, diventa un pallino */
+  .segmenti-cielo { gap: 1px; padding: 2px; }
+  .tasto-segmento { min-height: 34px; padding: 7px 2px; font-size: 0.68rem; letter-spacing: -0.01em; }
   .riga-comandi { gap: 6px; }
+
+  /* Sotto i trecentottanta pixel (i telefoni piccoli, e ogni telefono
+     girato con la tastiera aperta) nemmeno così i sette gradini ci stanno:
+     il pannello si stringe di un paio di pixel per lato e il corpo scende
+     ancora. È l'ultima riga di difesa, e vale solo lì. */
+  @media (max-width: 380px) {
+    .gruppo-comandi.gruppo-tempo.gruppo-attivo { padding-inline: 10px; }
+    .tasto-segmento { padding-inline: 1px; font-size: 0.62rem; }
+    /* La stessa aritmetica sulla riga della data: le sei caselle più "Vai"
+       sforavano di meno di un pixel, e un pixel manda il tasto a capo da
+       solo in fondo al pannello — dove non sembra più la conferma di quello
+       che ha sopra. Si stringono i rientri e il corpo, e ci sta. */
+    .campo-data { padding-inline: 3px; }
+    .sep-larga { padding-inline: 2px; }
+    body input.casella-data { font-size: 0.78rem; }
+  }
 
   /* I bottoni di comando delle schede Visualizzazione, Filtri e Navigazione:
      in colonna singola erano tredici righe per aprire un solo pannello, e

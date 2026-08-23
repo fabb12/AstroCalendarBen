@@ -511,88 +511,115 @@
           <!-- Il pannello del gruppo aperto: uno solo per volta -->
           <div class="pannelli-gruppi">
 
-            <!-- TEMPO: le regolazioni dell'orologio.
+            <!-- TEMPO E LUOGO: quando, e da dove.
                  Quello che si usa di continuo — dove sei nel tempo, il passo
                  avanti e indietro, la slitta e il play — è uscito di qui e
                  sta sulla barra in fondo alla mappa, sempre in vista. Qui
                  resta quello che si sceglie una volta e poi si dimentica: la
                  data scritta a mano, quanto è lungo un passo, il verso e la
-                 velocità del playback. Così il pannello si apre di rado, e
-                 quando si apre non copre il cielo per mezzo minuto. -->
+                 velocità del playback, e da che punto della Terra si guarda.
+
+                 Sono due domande, e adesso sono due blocchi con il loro
+                 titolo — «Quando» e «Da dove» — invece di sei righe di
+                 comandi tutte uguali una sotto l'altra: un pannello
+                 appoggiato sopra al cielo si legge a colpo d'occhio o non si
+                 legge affatto. Ogni riga che ha bisogno di una parola per
+                 dire cosa comanda ce l'ha davanti (`.riga-etichettata`), e su
+                 un telefono quella parola va sopra invece che accanto,
+                 perché di larghezza non ce n'è. -->
             <section class="gruppo-comandi gruppo-tempo" data-gruppo="tempo" aria-label="Tempo e luogo">
-              <!-- LA DATA, SCRITTA A MANO
-                   Prima qui c'era un <input type="datetime-local">: comodo da
-                   programmare, ma è il browser a decidere che faccia ha — su
-                   alcuni l'ordine dei campi non è quello italiano, su altri
-                   l'anno si può solo far salire di uno alla volta col
-                   pulsantino, e arrivare al 2900 voleva dire novecento clic.
-                   Adesso sono caselle vere, nell'ordine in cui una data si
-                   dice: giorno, mese, anno — e poi l'ora. L'anno si scrive e
-                   basta, fino al 3000. -->
-              <div class="riga-comandi riga-data">
-                <div id="skymap-data" class="campo-data" role="group" aria-label="Data e ora mostrate">
-                  <input id="skymap-data-giorno" type="number" min="1" max="31" step="1" inputmode="numeric"
-                    class="casella-data casella-2" placeholder="gg" aria-label="Giorno" title="Giorno del mese">
-                  <span class="sep-data" aria-hidden="true">/</span>
-                  <input id="skymap-data-mese" type="number" min="1" max="12" step="1" inputmode="numeric"
-                    class="casella-data casella-2" placeholder="mm" aria-label="Mese" title="Mese (1–12)">
-                  <span class="sep-data" aria-hidden="true">/</span>
-                  <input id="skymap-data-anno" type="number" step="1" inputmode="numeric"
-                    class="casella-data casella-4" placeholder="aaaa" aria-label="Anno"
-                    title="Anno: si può scrivere, fino al 3000">
-                  <span class="sep-data sep-larga" aria-hidden="true">·</span>
-                  <input id="skymap-data-ore" type="number" min="0" max="23" step="1" inputmode="numeric"
-                    class="casella-data casella-2" placeholder="hh" aria-label="Ore" title="Ore (0–23)">
-                  <span class="sep-data" aria-hidden="true">:</span>
-                  <input id="skymap-data-minuti" type="number" min="0" max="59" step="1" inputmode="numeric"
-                    class="casella-data casella-2" placeholder="mm" aria-label="Minuti" title="Minuti">
-                  <span class="sep-data" aria-hidden="true">:</span>
-                  <input id="skymap-data-secondi" type="number" min="0" max="59" step="1" inputmode="numeric"
-                    class="casella-data casella-2" placeholder="ss" aria-label="Secondi" title="Secondi">
+
+              <!-- QUANDO ------------------------------------------------ -->
+              <div class="blocco-tempo" role="group" aria-labelledby="skymap-titolo-quando">
+                <!-- La testata dice di cosa parla il blocco, e a destra tiene
+                     la lettura corta: non l'istante — quello lo dicono le sei
+                     caselle qui sotto, cifra per cifra — ma di quanto ci si è
+                     spostati e a che passo il cielo sta camminando. -->
+                <div class="testa-blocco-tempo">
+                  <span id="skymap-titolo-quando" class="titolo-blocco-tempo">Quando</span>
+                  <p id="skymap-tempo-testo" class="lettura-tempo">in tempo reale</p>
                 </div>
-                <button id="skymap-data-vai" type="button" class="tasto-cielo"
-                  title="Porta il cielo alla data scritta qui accanto (o premi Invio)">Vai</button>
+
+                <!-- LA DATA, SCRITTA A MANO
+                     Prima qui c'era un <input type="datetime-local">: comodo da
+                     programmare, ma è il browser a decidere che faccia ha — su
+                     alcuni l'ordine dei campi non è quello italiano, su altri
+                     l'anno si può solo far salire di uno alla volta col
+                     pulsantino, e arrivare al 2900 voleva dire novecento clic.
+                     Adesso sono caselle vere, nell'ordine in cui una data si
+                     dice: giorno, mese, anno — e poi l'ora. L'anno si scrive e
+                     basta, fino al 3000. Il tasto che le conferma sta accanto e
+                     non a capo: sono un comando solo. -->
+                <div class="riga-comandi riga-data">
+                  <div id="skymap-data" class="campo-data" role="group" aria-label="Data e ora mostrate">
+                    <input id="skymap-data-giorno" type="number" min="1" max="31" step="1" inputmode="numeric"
+                      class="casella-data casella-2" placeholder="gg" aria-label="Giorno" title="Giorno del mese">
+                    <span class="sep-data" aria-hidden="true">/</span>
+                    <input id="skymap-data-mese" type="number" min="1" max="12" step="1" inputmode="numeric"
+                      class="casella-data casella-2" placeholder="mm" aria-label="Mese" title="Mese (1–12)">
+                    <span class="sep-data" aria-hidden="true">/</span>
+                    <input id="skymap-data-anno" type="number" step="1" inputmode="numeric"
+                      class="casella-data casella-4" placeholder="aaaa" aria-label="Anno"
+                      title="Anno: si può scrivere, fino al 3000">
+                    <span class="sep-data sep-larga" aria-hidden="true">·</span>
+                    <input id="skymap-data-ore" type="number" min="0" max="23" step="1" inputmode="numeric"
+                      class="casella-data casella-2" placeholder="hh" aria-label="Ore" title="Ore (0–23)">
+                    <span class="sep-data" aria-hidden="true">:</span>
+                    <input id="skymap-data-minuti" type="number" min="0" max="59" step="1" inputmode="numeric"
+                      class="casella-data casella-2" placeholder="mm" aria-label="Minuti" title="Minuti">
+                    <span class="sep-data" aria-hidden="true">:</span>
+                    <input id="skymap-data-secondi" type="number" min="0" max="59" step="1" inputmode="numeric"
+                      class="casella-data casella-2" placeholder="ss" aria-label="Secondi" title="Secondi">
+                  </div>
+                  <button id="skymap-data-vai" type="button" class="tasto-cielo tasto-passo tasto-primario"
+                    title="Porta il cielo alla data scritta qui accanto (o premi Invio)">Vai</button>
+                </div>
+
+                <!-- Il passo: comanda insieme i tasti − e + della barra in fondo
+                     alla mappa e quanto tempo copre la sua slitta. Con dieci
+                     secondi un pixel di slitta vale un secondo, ed è lì che serve
+                     la precisione; con un giorno si attraversa il mese. -->
+                <div class="riga-etichettata">
+                  <span class="etichetta-riga" id="skymap-et-passo">Passo</span>
+                  <div id="skymap-passi" class="corpo-riga" role="group" aria-labelledby="skymap-et-passo">
+                    <div class="segmenti-cielo"></div>
+                  </div>
+                </div>
+
+                <!-- PLAYBACK: il tempo che cammina da solo. I salti e la slitta
+                     portano su un istante e lì si fermano; qui invece il cielo si
+                     muove sotto gli occhi, ed è l'unico modo per vedere quello
+                     che un fermo immagine non racconta: il cielo che ruota
+                     attorno alla Polare, la Luna che scivola fra le stelle, un
+                     pianeta che rallenta e torna indietro. Accanto ai due tasti
+                     del verso c'è il moltiplicatore, che dice quanto tempo di
+                     cielo passa in un secondo vero.
+
+                     Il verso scelto qui è quello che poi userà il ▶ della barra
+                     del tempo: chi guarda il cielo tornare indietro di solito
+                     vuole rifarlo, e non deve riaprire il pannello per dirlo. -->
+                <div class="riga-etichettata">
+                  <span class="etichetta-riga" id="skymap-et-marcia">Marcia</span>
+                  <div class="corpo-riga riga-playback" role="group" aria-labelledby="skymap-et-marcia">
+                    <button id="skymap-play-indietro" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
+                      title="Fai scorrere il cielo all'indietro (ripremi per fermarlo)"
+                      aria-label="Playback all'indietro">◀◀</button>
+                    <button id="skymap-play-avanti" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
+                      title="Fai scorrere il cielo in avanti (ripremi per fermarlo)"
+                      aria-label="Playback in avanti">▶▶</button>
+                    <span class="stacco-comandi" aria-hidden="true"></span>
+                    <button id="skymap-vel-meno" type="button" class="tasto-cielo tasto-passo"
+                      title="Rallenta il playback" aria-label="Rallenta il playback">−</button>
+                    <span id="skymap-vel-valore" class="lettura-velocita" aria-live="polite"
+                      title="Quanto tempo del cielo passa in un secondo vero">—</span>
+                    <button id="skymap-vel-piu" type="button" class="tasto-cielo tasto-passo"
+                      title="Accelera il playback" aria-label="Accelera il playback">+</button>
+                  </div>
+                </div>
               </div>
 
-              <!-- Il passo: comanda insieme i tasti − e + della barra in fondo
-                   alla mappa e quanto tempo copre la sua slitta. Con dieci
-                   secondi un pixel di slitta vale un secondo, ed è lì che serve
-                   la precisione; con un giorno si attraversa il mese. -->
-              <div id="skymap-passi" class="riga-comandi" role="group" aria-label="Passo del tempo">
-                <div class="segmenti-cielo"></div>
-              </div>
-
-              <!-- PLAYBACK: il tempo che cammina da solo. I salti e la slitta
-                   portano su un istante e lì si fermano; qui invece il cielo si
-                   muove sotto gli occhi, ed è l'unico modo per vedere quello
-                   che un fermo immagine non racconta: il cielo che ruota
-                   attorno alla Polare, la Luna che scivola fra le stelle, un
-                   pianeta che rallenta e torna indietro. Accanto ai tre tasti
-                   del verso c'è il moltiplicatore, che dice quanto tempo di
-                   cielo passa in un secondo vero.
-
-                   Il verso scelto qui è quello che poi userà il ▶ della barra
-                   del tempo: chi guarda il cielo tornare indietro di solito
-                   vuole rifarlo, e non deve riaprire il pannello per dirlo. -->
-              <div class="riga-comandi riga-playback" aria-label="Playback del tempo">
-                <button id="skymap-play-indietro" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
-                  title="Fai scorrere il cielo all'indietro (ripremi per fermarlo)"
-                  aria-label="Playback all'indietro">◀◀</button>
-                <button id="skymap-play-avanti" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
-                  title="Fai scorrere il cielo in avanti (ripremi per fermarlo)"
-                  aria-label="Playback in avanti">▶▶</button>
-                <span class="stacco-comandi" aria-hidden="true"></span>
-                <button id="skymap-vel-meno" type="button" class="tasto-cielo tasto-passo"
-                  title="Rallenta il playback" aria-label="Rallenta il playback">−</button>
-                <span id="skymap-vel-valore" class="lettura-velocita" aria-live="polite"
-                  title="Quanto tempo del cielo passa in un secondo vero">—</span>
-                <button id="skymap-vel-piu" type="button" class="tasto-cielo tasto-passo"
-                  title="Accelera il playback" aria-label="Accelera il playback">+</button>
-                <p id="skymap-tempo-testo" class="lettura-tempo">In tempo reale</p>
-              </div>
-
-              <!-- DA DOVE SI GUARDA
-                   Il tempo dice *quando*, questo dice *da dove*: sono le due
+              <!-- DA DOVE SI GUARDA -------------------------------------- -->
+              <!-- Il tempo dice *quando*, questo dice *da dove*: sono le due
                    coordinate dello stesso cielo, e chi apre questo pannello
                    sta già chiedendo "e se guardassi da un'altra parte?".
                    La posizione dell'app — quella che comanda orari, meteo,
@@ -601,34 +628,41 @@
                    e solo nel planetario. Il tasto "Torna a casa" rimette tutto
                    a posto, e comunque alla riapertura si riparte da casa.
 
-                   Tre righe in tutto: dove sei, il campo per cercare (col
-                   tasto del mappamondo accanto), e una nota corta. Il nome di
-                   una città basta quasi sempre, e quando non basta — un passo
-                   di montagna, una spiaggia, un punto in mezzo all'oceano —
-                   c'è la mappa, che è anche il posto in cui sono tornate le
-                   coordinate scritte a mano: là hanno spazio, in una riga di
-                   pannello appoggiata sopra al cielo no. -->
+                   Due righe in tutto: la testata (col tasto del ritorno, che
+                   compare solo se si è altrove) e il campo per cercare, col
+                   tasto del mappamondo accanto. Il nome del posto **non** si
+                   ripete qui: sta già scritto sopra al cielo, in alto a
+                   sinistra, e in azzurro quando è una visita — leggerlo due
+                   volte nella stessa schermata non lo rendeva più vero, e
+                   costava una riga di cielo coperto.
+
+                   Il nome di una città basta quasi sempre, e quando non basta
+                   — un passo di montagna, una spiaggia, un punto in mezzo
+                   all'oceano — c'è la mappa, che è anche il posto in cui sono
+                   tornate le coordinate scritte a mano: là hanno spazio, in
+                   una riga di pannello appoggiata sopra al cielo no. -->
               <div class="stacco-pannello" role="separator" data-solo-cielo></div>
-              <div class="riga-comandi riga-luogo" data-solo-cielo>
-                <span id="skymap-luogo-nome" class="lettura-luogo" data-visita="no">—</span>
-                <button id="skymap-luogo-casa" type="button" class="tasto-cielo tasto-passo hidden"
-                  title="Rimetti il cielo sulla tua posizione, quella delle Impostazioni">Torna a casa</button>
+              <div class="blocco-tempo" data-solo-cielo role="group" aria-labelledby="skymap-titolo-luogo">
+                <div class="testa-blocco-tempo">
+                  <span id="skymap-titolo-luogo" class="titolo-blocco-tempo">Da dove</span>
+                  <button id="skymap-luogo-casa" type="button" class="tasto-cielo tasto-passo hidden"
+                    title="Rimetti il cielo sulla tua posizione, quella delle Impostazioni">Torna a casa</button>
+                </div>
+                <div class="riga-comandi riga-cerca-luogo">
+                  <input id="skymap-luogo-cerca" type="search" class="campo-cielo" autocomplete="off"
+                    placeholder="Città…"
+                    aria-label="Cerca la città da cui guardare il cielo"
+                    title="Scrivi il nome di una città: il cielo si sposta lì, ma solo qui nel planetario">
+                  <button id="skymap-luogo-mappa" type="button" class="tasto-cielo tasto-luogo-mappa"
+                    title="Scegli un punto direttamente sul mappamondo">Mappa</button>
+                </div>
+                <div id="skymap-luogo-risultati" class="pos-risultati risultati-luogo" role="listbox" aria-label="Città trovate"></div>
               </div>
-              <div class="riga-comandi riga-cerca-luogo" data-solo-cielo>
-                <input id="skymap-luogo-cerca" type="search" class="campo-cielo" autocomplete="off"
-                  placeholder="Città…"
-                  aria-label="Cerca la città da cui guardare il cielo"
-                  title="Scrivi il nome di una città: il cielo si sposta lì, ma solo qui nel planetario">
-                <button id="skymap-luogo-mappa" type="button" class="tasto-cielo tasto-luogo-mappa"
-                  title="Scegli un punto direttamente sul mappamondo">Mappa</button>
-              </div>
-              <div id="skymap-luogo-risultati" class="pos-risultati risultati-luogo" role="listbox" aria-label="Città trovate" data-solo-cielo></div>
 
               <!-- Quando il pannello è ospite della finestra del Sistema Solare
-                   (7.5-ter) le righe qui sopra sono spente: il passo e il play
-                   lì sono quelli della scena, che stanno sotto di lei, e da
-                   dove guardi il cielo a un disegno eliocentrico non serve.
-                   Resta quello che vale in tutt'e due: che istante è. -->
+                   (7.5-ter) il blocco del luogo è spento: da dove guardi il
+                   cielo, a un disegno eliocentrico, non serve. Resta quello che
+                   vale in tutt'e due: che istante è, e come lo si muove. -->
 
             </section>
 
