@@ -33407,11 +33407,17 @@ function skyAggiornaTestoTempo() {
   // solo quando è già andato storto qualcosa. Fuori dal tempo reale si
   // accende d'ambra e tira fuori il ⟲, che è l'unica via di ritorno che serva
   // avere sempre sotto il pollice.
+  // Durante un trascinamento touch la geometria della barra deve restare
+  // immobile. Al primo scarto `spostata` fa comparire il tasto ⟲ e la
+  // lettura cambia larghezza: entrambe le cose accorcerebbero il range sotto
+  // un dito ancora fermo, facendo saltare il cursore e generando altri
+  // `input` nella direzione opposta. Le letture vengono riallineate appena il
+  // gesto finisce (vedi `skyConcludiSlittaTempo`).
   const barra = document.getElementById('cielo-tempo');
-  if (barra) barra.classList.toggle('spostata', spostato);
+  if (barra && !sky.slittaTempoAttiva) barra.classList.toggle('spostata', spostato);
 
   const lettura = document.getElementById('skymap-tempo-quando');
-  if (lettura) {
+  if (lettura && !sky.slittaTempoAttiva) {
     lettura.textContent = skyTestoBarraTempo(quando, scarto, marcia);
     const esteso = quando.toLocaleString('it-IT', {
       weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
@@ -33550,15 +33556,17 @@ function skyVaiAllaDataScritta() {
 function skyAggiornaSlittaTempo() {
   const slitta = document.getElementById('skymap-tempo');
   if (!slitta) return;
+  // Anche riscrivere min/max/step con gli stessi valori fa ricostruire il
+  // controllo nativo in alcune versioni di WebKit. Finche' il puntatore e'
+  // giu', il range appartiene interamente al browser: modello e attributi si
+  // riallineano alla fine del gesto.
+  if (sky.slittaTempoAttiva) return;
   const f = sky.finestraTempoSec;
   slitta.min = String(-f);
   slitta.max = String(f);
   slitta.step = String(Math.max(1, Math.round(f / 720)));
   const valore = Math.max(-f, Math.min(f, (sky.offsetTempoSec || 0) - sky.ancoraTempoSec));
-  // Mentre il dito e' giu' il browser aggiorna gia' il cursore. Riscriverne
-  // il valore qui puo' riportarlo per un istante al campione precedente e
-  // produrre il caratteristico salto avanti-indietro sui telefoni.
-  if (!sky.slittaTempoAttiva && parseFloat(slitta.value) !== valore) {
+  if (parseFloat(slitta.value) !== valore) {
     slitta.value = String(valore);
   }
 }
@@ -33585,6 +33593,7 @@ function skyConcludiSlittaTempo(slitta) {
   requestAnimationFrame(() => {
     sky.slittaTempoAttiva = false;
     skyAggiornaSlittaTempo();
+    skyAggiornaTestoTempo();
   });
 }
 
