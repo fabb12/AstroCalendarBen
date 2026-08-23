@@ -5119,10 +5119,24 @@ function telBattitoPushTo(separazione, campoOculare) {
   if (p.pushtoSuono) telBip(420 + Math.max(0, 880 - separazione * 55), 0.05);
 }
 
+// Il battito, e la sola regola che ha: **non si annulla una vibrazione che
+// non è mai cominciata**. `telFermaTubo` chiama `telVibra(0)` per non
+// lasciare un battito in coda a pannello chiuso, ed è giusto — ma passa
+// anche all'avvio dell'app (`mostraVista` chiude le viste che non sono a
+// schermo), cioè prima che l'utente abbia toccato niente. Chrome allora
+// rifiuta la chiamata e scrive in console un [Intervention] che sembra un
+// guasto e non lo è: la pagina non ha ancora ricevuto un gesto, e senza
+// gesto `navigator.vibrate` non si può usare. Tenendo il conto di chi ha
+// davvero acceso il battito, lo spegnimento a vuoto non parte affatto.
+let telVibrando = false;
+
 function telVibra(schema) {
+  const spegne = schema === 0 || (Array.isArray(schema) && !schema.length);
+  if (spegne && !telVibrando) return;
   try {
     if (navigator.vibrate) navigator.vibrate(schema);
   } catch (e) { /* niente vibrazione: pazienza */ }
+  telVibrando = !spegne;
 }
 
 // Il contesto audio si può creare solo durante un gesto dell'utente, e si

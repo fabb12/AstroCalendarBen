@@ -6794,15 +6794,121 @@ body.luogo-immersivo { overflow: hidden; }
   .griglia-orizzonte { grid-template-columns: repeat(8, minmax(0, 1fr)); }
 }
 
-/* ---------------------------------------- Fin dove guardare (montagne e paesi) */
-/* Due slitte e un interruttore. Il numero sta a destra e ha larghezza
-   fissa: se no, passando da 95 a 100 km la slitta si accorcia sotto al
-   dito che la sta muovendo. */
+/* ---------------------------------------- Fin dove guardare (montagne, paesi, acque) */
+/* Una mappa, tre voci di legenda e una slitta. La mappa è il comando vero —
+   si trascina il bordo di un cerchio o si tocca fin dove si vuole arrivare —
+   e la slitta è il numero esatto, per la tastiera e per quando la mappa non
+   c'è. Il numero sta a destra e ha larghezza fissa: se no, passando da 95 a
+   100 km la slitta si accorcia sotto al dito che la sta muovendo. */
 .griglia-raggi {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-top: 6px;
+}
+
+.raggi-mappa-guscio { position: relative; }
+
+.raggi-mappa {
+  width: 100%;
+  height: 260px;
+  border-radius: var(--raggio-l);
+  overflow: hidden;
+  border: 1px solid var(--bordo-forte);
+  /* Il colore dell'acqua, finché le tessere arrivano. */
+  background-color: #cfe0ef;
+  box-shadow: var(--ombra-3);
+}
+
+/* Qui la domanda è geografica — dove cadono i cerchi, che cosa ci sta dentro
+   — quindi vale la stessa eccezione della mappa del luogo: niente negativo,
+   solo il filtro leggero. Su una carta invertita non si riconosce più una
+   valle da un lago proprio mentre li si sta cercando. */
+#imp-raggi-mappa .leaflet-tile-pane { filter: saturate(0.94) contrast(1.03); }
+#imp-raggi-mappa .leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.25);
+}
+#imp-raggi-mappa .leaflet-control-zoom a:hover { background: #fff; color: #000; }
+#imp-raggi-mappa .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.8) !important;
+  color: #334155 !important;
+  font-size: 9px;
+}
+#imp-raggi-mappa .leaflet-control-attribution a { color: #1d4ed8 !important; }
+
+/* Il pallino che si trascina. Bianco col bordo scuro perché deve staccarsi
+   da qualunque cosa ci sia sotto — un bosco, un lago, una città — e non dal
+   colore del cerchio a cui appartiene. */
+.maniglia-raggio {
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96);
+  border: 2px solid #0f172a;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+}
+.maniglia-raggio:active { cursor: grabbing; }
+
+.raggi-assente {
+  font-size: 0.76rem;
+  color: var(--testo-3);
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-l);
+  padding: 12px;
+}
+
+.raggi-legenda {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.voce-raggio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+  border-radius: 10px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.voce-raggio.attiva {
+  border-color: var(--blu-chiaro);
+  background: color-mix(in srgb, var(--blu-chiaro) 12%, var(--incassato));
+}
+.voce-raggio.spenta { opacity: 0.62; }
+
+/* La pastiglia è il cerchio della mappa in miniatura: è l'unica cosa che
+   lega una riga di legenda al suo anello, e per questo prende il colore da
+   una variabile scritta nel markup invece che da una classe per famiglia —
+   la tavolozza vera sta in `SKY_NOMI_ORIZZONTE`, in app.js, e qui non se ne
+   tiene una seconda copia. */
+.pastiglia-raggio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: none;
+  border: 2px solid var(--tinta, var(--blu-chiaro));
+  background: color-mix(in srgb, var(--tinta, var(--blu-chiaro)) 22%, transparent);
+}
+
+.voce-raggio-testo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.conta-raggio {
+  font-size: 0.68rem;
+  color: var(--testo-3);
+  opacity: 0.85;
 }
 
 .riga-raggio {
@@ -6820,8 +6926,8 @@ body.luogo-immersivo { overflow: hidden; }
   font-size: 0.78rem;
   color: var(--testo-2);
   font-weight: 600;
-  min-width: 108px;
 }
+.riga-raggio .nome-raggio { min-width: 108px; }
 
 .riga-raggio input[type="range"] {
   flex: 1;
@@ -6835,6 +6941,14 @@ body.luogo-immersivo { overflow: hidden; }
   font-variant-numeric: tabular-nums;
   min-width: 52px;
   text-align: right;
+  flex: none;
+}
+
+.raggi-spiega {
+  font-size: 0.72rem;
+  color: var(--testo-3);
+  line-height: 1.45;
+  margin: -2px 2px 0;
 }
 
 .riga-interruttore {
@@ -6850,8 +6964,11 @@ body.luogo-immersivo { overflow: hidden; }
 }
 
 @media (max-width: 420px) {
+  /* Su un telefono la mappa non può prendersi metà finestra: sotto ci sono
+     ancora tre voci, una slitta e due interruttori. */
+  .raggi-mappa { height: 210px; }
   .riga-raggio { flex-wrap: wrap; }
-  .nome-raggio { min-width: 0; flex: 1; }
+  .riga-raggio .nome-raggio { min-width: 0; flex: 1; }
   .riga-raggio input[type="range"] { flex: 1 0 100%; order: 3; }
 }
 

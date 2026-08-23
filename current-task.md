@@ -4,39 +4,66 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Rifatto il pannello **Tempo e luogo** del planetario (linguetta dell'orologio).
-Era una fila di sei righe di comandi tutte uguali, alta più di quanto il cielo
-possa permettersi: ora sono **due blocchi col loro titolo** — «Quando» e «Da
-dove» — separati da un filo, e le righe che hanno bisogno di una parola per
-dire cosa comandano ce l'hanno davanti («Passo», «Marcia»).
+I nomi dei paesi e delle montagne che non comparivano nel planetario, e i
+raggi di ricerca che adesso si scelgono su una mappa.
 
-Cosa è cambiato, in concreto:
+### 1. Perché i nomi non comparivano (ed era colpa dei 429 sulle quote)
 
-- **Un doppione in meno.** Il nome del posto era scritto due volte nella stessa
-  schermata: in alto a sinistra sopra al cielo (`skyAggiornaStato`) e nel
-  pannello (`#skymap-luogo-nome`). Il secondo è uscito, e con lui una riga:
-  che il cielo sia spostato altrove lo dicono l'azzurro della lettura in alto
-  e la comparsa del tasto «Torna a casa», che adesso sta nella testata del
-  blocco invece che su una riga sua.
-- **La lettura lunga non ripete l'istante.** `skyAggiornaTestoTempo` scriveva
-  «dom 23 ago 2026, 12:09:41 · in tempo reale» accanto ai tasti del playback,
-  cioè lo stesso istante che le sei caselle dicono cifra per cifra due righe
-  sopra — e a metà finiva coi puntini. Ora scrive solo lo scarto e la marcia
-  («fra 3 g 4 h · ▶ 1 h/s»); l'istante per esteso è nel `title`.
-- **Niente più righe che sfondano.** `min-width: 0` sui blocchi e sulle testate:
-  la riga della data e quella del playback non mandano a capo, e senza quello
-  allargavano la griglia oltre il pannello e il pannello oltre lo schermo.
-- **Su telefono** l'etichetta della riga va sopra invece che accanto (sette
-  segmenti più «Passo» in 360 pixel non ci stanno), «Vai» resta in fila con le
-  caselle della data invece di andare a capo da solo, e sotto i 380 pixel c'è
-  l'ultima stretta (rientri e corpo) perché i sette gradini del passo entrino
-  senza toccarsi.
+`terrenoCaricaPaesaggio()` appendeva le tre richieste a Overpass — paesi,
+vette, acque — alla **promessa di `terrenoCarica`**: partivano solo quando
+tutte e ventiquattro le richieste delle quote avevano finito, bene o male. Con
+Open-Meteo che risponde 429 quelle ventiquattro diventano fino a centoventi
+tentativi passati per un rubinetto che frena a ogni no, cioè minuti — e in
+quei minuti sull'orizzonte non compariva **nessun nome**, mentre in console si
+vedevano solo dei 429 che parlavano di un altro host.
 
-Misurato nel browser (Chromium, `pointer: fine`): il pannello passa da 356 a
-332 pixel di altezza su un telefono da 360, e da 306 a 296 su schermo largo,
-senza perdere un comando.
+Sono due servizi diversi, su host diversi, con rubinetti diversi: l'unica
+ragione per metterli in fila indiana era la banda del primo fotogramma, e a
+quella basta il `requestIdleCallback`. Misurato con un servizio delle quote che
+non risponde mai (Chromium, servizi finti): prima partiva solo il giro della
+cache locale (`citta/cache`, `cime/cache`, `acque/cache`), adesso partono anche
+le tre richieste di rete.
 
-File toccati: `index.html` (§ pannello `gruppo-tempo`), `style.css`
-(`.blocco-tempo`, `.testa-blocco-tempo`, `.riga-etichettata`, media query dei
-620 e dei 380 pixel), `app.js` (`skyAggiornaTestoTempo`,
-`skyAggiornaLuogoVistaUI`), `sw.js` (`astrocal-v142`).
+### 2. Perché comparivano e sparivano da soli
+
+`cimeVisibili` tace finché il terreno **sta arrivando** — dare l'elenco intero
+e poi rimangiarsene metà è peggio — ma «sta arrivando» era `stato ===
+'in-corso'`, e le riprese automatiche (20 s, 90 s, 5 min, 15 min, mezz'ora)
+rimettono lo stato lì. Quindi: primo tentativo fallito → i nomi compaiono →
+venti secondi dopo spariscono → poi tornano, per quasi un'ora. Adesso c'è
+`terreno.arreso`: aspettare in silenzio ha senso finché non si sa ancora
+niente, non quando si sa già che qui il terreno non arriva.
+
+### 3. `[Intervention] Blocked call to navigator.vibrate`
+
+Non era un guasto e non era del planetario: `telFermaTubo` chiama
+`telVibra(0)`, e all'avvio ci passa comunque perché `mostraVista` chiude le
+viste che non sono a schermo. Non si annulla una vibrazione che non è mai
+cominciata (`telVibrando`).
+
+### 4. I raggi di ricerca su una mappa
+
+Erano tre slitte, cioè tre numeri chiesti al buio: «ottanta chilometri» non
+vuol dire niente finché non si sa cosa ci sta dentro. Adesso il pannello
+(Impostazioni → Planetario) è una carta col centro sul luogo da cui il
+planetario guarda (`terrenoLuogo()`, la stessa funzione che decide dove
+cercare) e tre cerchi colorati come i nomi che scrivono sull'orizzonte. Si
+trascina la maniglia sul bordo del cerchio scelto, o si tocca il punto fin dove
+si vuole arrivare.
+
+La coerenza col planetario è fatta vedere in due modi: l'**anello
+tratteggiato** dentro a due dei tre cerchi è l'anello vero delle richieste
+(`CITTA_RAGGIO_PAESI_KM`, `CIME_RAGGIO_VICINE_KM`), e la riga sotto a ogni nome
+dice quanto si è trovato **e quanto di quello il planetario sta disegnando
+adesso** — un raggio da centocinquanta chilometri con quaranta vette di cui
+zero in vista è un raggio da stringere. La slitta resta sotto la mappa, per il
+numero esatto e per chi la mappa non ce l'ha.
+
+Provato in Chromium con un Leaflet finto: costruzione, slitta (input muove solo
+il numero, change salva), tocco sulla mappa, cambio di famiglia, trascinamento
+della maniglia, anelli interni, e le cinque risposte della riga del conteggio.
+
+File toccati: `terreno.js` (`terrenoCaricaPaesaggio`, `terrenoInArrivo`,
+`terreno.arreso`), `telescopio.js` (`telVibra`), `ui-nuova.js` (§2, blocco
+`raggi*` riscritto), `app.js` (`mostraTab` delle Impostazioni), `index.html`,
+`style.css`, `sw.js` (`astrocal-v143`), `CLAUDE.md`.
