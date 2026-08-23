@@ -1313,12 +1313,32 @@ function rilTavolozzaTratti(luce) {
   return fuori;
 }
 
+// Il rilievo segue i meridiani che incontrano l'orizzonte visibile, non
+// l'intero cono che puo' incontrare il suolo. La distinzione conta al FOV
+// massimo: gli angoli inferiori del riquadro vedono quasi fino al nadir e
+// `skyArcoAcquaInVista` restituisce percio' tutti i 360 gradi. Fra quelle
+// colonne c'e' anche il meridiano opposto allo sguardo, vicino al polo della
+// stereografica: le sue coordinate diventano enormi e il tracciato del
+// crinale si richiude attraversando il riquadro. Il risultato era la grande
+// montagna bianca e, quando quel tracciato veniva usato come clip, il cielo
+// tinto col colore verde del terreno appena si cambiava il pitch.
+//
+// Se l'orizzonte e' davvero fuori vista (inquadratura stretta verso i piedi)
+// resta invece giusto usare l'arco del suolo: li' il rilievo deve continuare
+// a dare forma al primo piano, proprio come fanno mare e laghi.
+function rilArcoInVista(base, focale) {
+  const orizzonte = typeof skyArcoOrizzonteInVista === 'function'
+    ? skyArcoOrizzonteInVista(base, focale)
+    : null;
+  return orizzonte || skyArcoAcquaInVista(base, focale);
+}
+
 function rilDisegna(ctx, base, focale, suolo, aria) {
   rilievo.hoDisegnato = false;
   rilControlla();
   if (!rilPronto()) return false;
   if (typeof skyArcoAcquaInVista !== 'function') return false;
-  const arco = skyArcoAcquaInVista(base, focale);
+  const arco = rilArcoInVista(base, focale);
   if (!arco) return false;
 
   const na = RIL_AZIMUT, nr = RIL_ANELLI;
