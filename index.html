@@ -588,9 +588,8 @@
                   title="Quanto tempo del cielo passa in un secondo vero">—</span>
                 <button id="skymap-vel-piu" type="button" class="tasto-cielo tasto-passo"
                   title="Accelera il playback" aria-label="Accelera il playback">+</button>
+                <p id="skymap-tempo-testo" class="lettura-tempo">In tempo reale</p>
               </div>
-
-              <p id="skymap-tempo-testo" class="lettura-tempo">In tempo reale</p>
 
               <!-- DA DOVE SI GUARDA
                    Il tempo dice *quando*, questo dice *da dove*: sono le due
@@ -611,18 +610,17 @@
                    pannello appoggiata sopra al cielo no. -->
               <div class="stacco-pannello" role="separator" data-solo-cielo></div>
               <div class="riga-comandi riga-luogo" data-solo-cielo>
-                <span class="etichetta-comando etichetta-luogo">Cielo da</span>
                 <span id="skymap-luogo-nome" class="lettura-luogo" data-visita="no">—</span>
                 <button id="skymap-luogo-casa" type="button" class="tasto-cielo tasto-passo hidden"
                   title="Rimetti il cielo sulla tua posizione, quella delle Impostazioni">Torna a casa</button>
               </div>
               <div class="riga-comandi riga-cerca-luogo" data-solo-cielo>
                 <input id="skymap-luogo-cerca" type="search" class="campo-cielo" autocomplete="off"
-                  placeholder="Guarda il cielo da un'altra città…"
+                  placeholder="Città…"
                   aria-label="Cerca la città da cui guardare il cielo"
                   title="Scrivi il nome di una città: il cielo si sposta lì, ma solo qui nel planetario">
                 <button id="skymap-luogo-mappa" type="button" class="tasto-cielo tasto-luogo-mappa"
-                  title="Scegli il punto sul mappamondo: va bene anche un posto che non ha un nome da cercare">Sulla mappa</button>
+                  title="Scegli un punto direttamente sul mappamondo">Mappa</button>
               </div>
               <div id="skymap-luogo-risultati" class="pos-risultati risultati-luogo" role="listbox" aria-label="Città trovate" data-solo-cielo></div>
 

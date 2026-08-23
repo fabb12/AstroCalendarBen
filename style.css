@@ -3598,9 +3598,13 @@ body button.pos-risultato:focus-visible {
 .gruppo-comandi.gruppo-eventi.gruppo-attivo { max-height: 66%; }
 /* Tempo e luogo deve restare leggero: pochi comandi, niente note visibili. */
 .gruppo-comandi.gruppo-tempo.gruppo-attivo {
+  display: grid;
+  gap: 8px;
   max-height: 58%;
-  padding-bottom: 12px;
+  padding: 10px 12px 12px;
 }
+.gruppo-tempo > .riga-comandi,
+.gruppo-tempo > .stacco-pannello { margin-top: 0; }
 
 .riga-comandi {
   display: flex;
@@ -3822,7 +3826,11 @@ body .gruppo-astri.ricerca-attiva .chip-astro {
 .tasto-cielo:disabled:hover { border-color: var(--bordo); background: var(--superficie-alta); }
 
 /* Il playback: i due versi restano compatti; lo stop è già nel play della barra. */
-.riga-playback { margin-top: 8px; }
+.riga-playback {
+  flex-wrap: nowrap;
+  gap: 5px;
+  margin-top: 0;
+}
 .tasto-cielo.tasto-play {
   flex: 1 1 auto;
   max-width: 74px;
@@ -3950,13 +3958,27 @@ body input.casella-data:hover { border: 0; }
 }
 
 .lettura-tempo {
-  margin: 10px 0 0;
+  flex: 1 1 130px;
+  min-width: 0;
+  margin: 0 0 0 3px;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--mono);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
   color: var(--testo-2);
 }
 .lettura-tempo.spostata { color: var(--ambra); }
+
+/* Tempo e luogo è un pannello operativo: i comandi conservano lo stesso
+   linguaggio visivo dell'app, ma qui stanno più vicini e bassi. La lettura
+   dell'istante completa la riga del playback invece di consumarne una nuova. */
+.gruppo-tempo .tasto-cielo { min-height: 38px; padding: 8px 12px; }
+.gruppo-tempo .tasto-cielo.tasto-passo { min-height: 38px; padding: 7px 10px; }
+.gruppo-tempo .tasto-segmento { min-height: 32px; padding-block: 6px; }
+.gruppo-tempo .campo-cielo { min-height: 38px; padding-block: 7px; }
 
 .lettura-bussola {
   min-width: 52px;
