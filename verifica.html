@@ -1919,17 +1919,39 @@ titolo('15. Le montagne che hanno un nome');
         terrenoAngolo(2000, 55, 200) < 0, `${terrenoAngolo(2000, 55, 200).toFixed(2)}°`);
 
   // --- Chi si vede e chi no ---
-  const primaStato = { stato: cime.stato, elenco: cime.elenco, acceso: cime.acceso };
+  const primaStato = { stato: cime.stato, elenco: cime.elenco, acceso: cime.acceso,
+                       lat: cime.lat, lon: cime.lon };
   const primaTerreno = { stato: terreno.stato, profilo: terreno.profilo, quota: terreno.quota, acceso: terreno.acceso };
+
+  // Un posto da cui guardare, che qui non c'è: `terrenoLuogo()` lo chiede a
+  // `skyLuogoDelCielo` e a `luogoCorrente`, che stanno in `app.js` e questa
+  // pagina non lo carica. Senza, `cimeVisibili()` esce alla prima riga e
+  // risponde sempre l'elenco vuoto — cioè **tutto questo pezzo di §15 non
+  // provava niente**, e siccome poi leggeva `viste[0].nome` sollevava
+  // un'eccezione che si portava via in silenzio anche i §16 e seguenti (in
+  // uno `<script>` unico un errore mangia tutto quello che viene dopo, ed è
+  // la stessa lezione del §19).
+  const primaLuogo = window.luogoCorrente;
+  window.luogoCorrente = () => ({ lat: 45, lon: 9 });
+
   prova('senza elenco scaricato non si nomina niente', cimeVisibili().length === 0);
 
   cime.stato = 'pronto';
   cime.acceso = true;
+  cime.lat = 45;
+  cime.lon = 9;
   cime.vistaChiave = null;
+  // Le vette si mettono dove servono con le loro **coordinate**, non con un
+  // `km` e un `az` scritti a mano: `cimeVisibili` quei due numeri li rifà da
+  // sé a ogni chiamata (è così che le etichette scorrono insieme al
+  // paesaggio senza riscaricare niente), quindi tre vette messe tutte a
+  // (0,0) finivano tutte a distanza zero dall'osservatore.
+  const vetta = (nome, quota, az, km) =>
+    Object.assign({ nome, quota }, terrenoPuntoA(45, 9, az, km));
   cime.elenco = [
-    { nome: 'Alta e vicina', lat: 0, lon: 0, quota: 1800, km: 30, az: 180 },
-    { nome: 'Dietro la collina', lat: 0, lon: 0, quota: 700, km: 40, az: 0 },
-    { nome: 'Rasoterra', lat: 0, lon: 0, quota: 60, km: 50, az: 90 }
+    vetta('Alta e vicina', 1800, 180, 30),
+    vetta('Dietro la collina', 700, 0, 40),
+    vetta('Rasoterra', 60, 90, 50)
   ];
   terreno.stato = 'niente';
   terreno.profilo = null;
@@ -2433,8 +2455,8 @@ titolo('15. Le montagne che hanno un nome');
     cime.acceso = true;
     cime.vistaChiave = null;
     cime.elenco = [
-      { nome: 'Punta in primo piano', lat: 0, lon: 0, quota: 900, km: kmPunta, az: 0 },
-      { nome: 'Nascosta dal muro', lat: 0, lon: 0, quota: 1000, km: 60, az: 0 }
+      vetta('Punta in primo piano', 900, 0, kmPunta),
+      vetta('Nascosta dal muro', 1000, 0, 60)
     ];
     const chi = cimeVisibili().map(c => c.nome);
     prova('la punta davanti al muro si nomina, anche se il muro è più alto',
@@ -2528,9 +2550,9 @@ titolo('15. Le montagne che hanno un nome');
     cime.stato = 'pronto';
     cime.acceso = true;
     cime.elenco = [
-      { nome: 'Monte Alben', lat: 0, lon: 0, quota: 2019, km: 30, az: 45 },
-      { nome: 'Cima Alben Ovest', lat: 0, lon: 0, quota: 1990, km: 30.2, az: 45.2 },
-      { nome: 'Un\'altra vetta', lat: 0, lon: 0, quota: 2000, km: 30, az: 60 }
+      vetta('Monte Alben', 2019, 45, 30),
+      vetta('Cima Alben Ovest', 1990, 45.2, 30.2),
+      vetta('Un\'altra vetta', 2000, 60, 30)
     ];
     cime.vistaChiave = null;
     const senzaDoppioni = cimeVisibili().map(c => c.nome);
@@ -2573,6 +2595,8 @@ titolo('15. Le montagne che hanno un nome');
   // Si rimette tutto com'era: le prove non devono lasciare tracce
   Object.assign(cime, primaStato, { vistaChiave: null, vista: [] });
   Object.assign(terreno, primaTerreno);
+  if (primaLuogo === undefined) delete window.luogoCorrente;
+  else window.luogoCorrente = primaLuogo;
 }
 
 // =====================================================================
@@ -5828,6 +5852,112 @@ titolo('23. Quanto è lontano quel paese (app.js, «Quanto è lontano quel paese
   const scritto = km => `${Math.max(1, Math.round(km))} km`;
   prova('la distanza si scrive intera, e mai zero',
     scritto(14.3) === '14 km' && scritto(0.9) === '1 km' && scritto(0.4) === '1 km' && scritto(59.6) === '60 km');
+}
+
+// =====================================================================
+titolo('24. L\'orizzonte a cavallo della soglia (app.js, §7.3)');
+// In stereografica l'orizzonte è un cerchio, e guardandolo quasi dritto quel
+// cerchio ha un raggio enorme: a un certo punto conviene trattarlo come una
+// retta. Il passaggio fra i due modi è invisibile solo se i due dicono la
+// stessa cosa — e per un pezzo non la dicevano, in due modi diversi. Si
+// vedeva attraversando l'orizzonte col mirino: il terreno cambiava tinta e il
+// suo bordo si raddrizzava di colpo. Qui le formule sono una **copia**:
+// questa pagina non carica `app.js`.
+{
+  const FOCALE = 544, LARGO = 1100;   // un riquadro da computer, campo 60°
+
+  // --- La freccia del cerchio, cioè quanto il bordo si raddrizza ---------
+  // Il cerchio ha raggio 2F/|c|; sulla larghezza L la sua freccia vale
+  // L²·|c| / (16·F).
+  const freccia = (c, F, L) => L * L * Math.abs(c) / (16 * F);
+  prova('con la soglia di prima il bordo del terreno saltava di tre pixel',
+    freccia(0.02, FOCALE, LARGO) > 2.5,
+    `${freccia(0.02, FOCALE, LARGO).toFixed(1)} px su tutta la larghezza`);
+
+  // La soglia nuova è **dove quella freccia vale mezzo pixel**, e si adatta
+  // al riquadro e all'ingrandimento invece di essere un numero fisso.
+  const FRECCIA_PX = 0.5, RETTA_MIN = 1.2e-3;
+  const soglia = (F, L) => Math.max(RETTA_MIN, Math.min(0.02, 16 * F * FRECCIA_PX / (L * L)));
+  prova('con la soglia nuova il passaggio è sotto il mezzo pixel',
+    freccia(soglia(FOCALE, LARGO), FOCALE, LARGO) <= FRECCIA_PX + 1e-9,
+    `${freccia(soglia(FOCALE, LARGO), FOCALE, LARGO).toFixed(2)} px`);
+  // Su un telefono la freccia era già invisibile, e infatti lì non cambia
+  // niente: la soglia resta quella di sempre. Non è un caso limite, è la
+  // maggioranza di chi usa l'app.
+  prova('sul telefono non cambia nulla, perché lì non si vedeva',
+    Math.abs(soglia(653, 390) - 0.02) < 1e-9 && freccia(0.02, 653, 390) < FRECCIA_PX,
+    `${freccia(0.02, 653, 390).toFixed(2)} px con la soglia di sempre`);
+  // E il pavimento serve al raggio, che cresce come 1/|c|.
+  prova('la soglia non scende mai tanto da far esplodere il raggio',
+    2 * FOCALE / RETTA_MIN < 1.2e6, `${Math.round(2 * FOCALE / RETTA_MIN)} px al peggio`);
+
+  // --- La rampa del gradiente del suolo ---------------------------------
+  //
+  // Le fermate si **misurano** proiettando le depressioni. Nel ramo del
+  // cerchio lo zero della rampa è il cerchio dell'orizzonte; nel ramo della
+  // retta era il **centro del riquadro**, che coincide con l'orizzonte solo
+  // guardando esattamente a zero gradi — cioè quasi mai, visto che quel ramo
+  // si usa proprio nel grado attorno allo zero.
+  //
+  // In stereografica un punto a `dep` sotto la riga, guardando l'orizzonte,
+  // cade a `2F·tan(dep/2)` dalla riga stessa; e la rampa del cerchio,
+  // `nadir − r`, tende a `2F`. Quindi le fermate giuste sono `tan(dep/2)`,
+  // in tutt'e due i rami.
+  const FERMATE = [0, 0.08, 0.2, 0.4, 0.75, 1.4, 3, 7, 16, 35, 90];
+  const attesa = FERMATE.map(d => Math.tan(d * Math.PI / 360));
+  prova('la fermata di novanta gradi cade in fondo alla rampa',
+    Math.abs(attesa[attesa.length - 1] - 1) < 1e-12);
+
+  // Il ramo del cerchio, con la sua formula vera.
+  const cerchio = (c) => {
+    const r = 2 * FOCALE / Math.abs(c);
+    const nadir = r * Math.sqrt((1 + Math.abs(c)) / (1 - Math.abs(c)));
+    return { r, lungo: nadir - r };
+  };
+  const g = cerchio(0.0036);
+  prova('la rampa del cerchio vale due focali, comunque si guardi',
+    Math.abs(g.lungo - 2 * FOCALE) / (2 * FOCALE) < 0.01,
+    `${g.lungo.toFixed(0)} px contro ${2 * FOCALE}`);
+
+  // Il conto sbagliato: un quarto di semiperimetro.
+  const vecchioLungo = (LARGO + 583) * 0.25;
+  prova('con la lunghezza di prima la rampa era due volte e mezzo più corta',
+    (2 * FOCALE) / vecchioLungo > 2,
+    `${vecchioLungo.toFixed(0)} px invece di ${2 * FOCALE}`);
+
+  // E l'ancora sbagliata: guardando un grado **sotto** l'orizzonte, la riga
+  // sta sopra al centro del riquadro, quindi le prime depressioni cadevano a
+  // sinistra dello zero e venivano tosate tutte insieme — il colore del
+  // terreno vicino non compariva affatto.
+  const versoIlBasso = dep => 2 * FOCALE * Math.tan(dep * Math.PI / 360);
+  const scartoRiga = 2 * FOCALE * Math.tan(-1.1 * Math.PI / 360);   // la riga sopra al centro
+  const vecchie = FERMATE.map(d => Math.min(1, Math.max(0,
+    (versoIlBasso(d) - scartoRiga - 2 * scartoRiga * 0) / vecchioLungo)));
+  const conAncoraSbagliata = FERMATE.map(d => (versoIlBasso(d) + scartoRiga) / vecchioLungo)
+    .map(t => Math.min(1, Math.max(0, t)));
+  prova('con l\'ancora sbagliata, guardando sotto la riga, le prime fermate si schiacciavano sullo zero',
+    conAncoraSbagliata.filter(t => t === 0).length >= 4,
+    `${conAncoraSbagliata.filter(t => t === 0).length} fermate su ${FERMATE.length} tosate a zero`);
+  prova('con l\'ancora giusta nessuna si perde, e sono quelle del ramo del cerchio',
+    attesa.every((t, i) => Math.abs(t - attesa[i]) < 1e-12) &&
+    attesa.filter(t => t === 0).length === 1);
+
+  // La prova che tiene insieme i due rami: attraversando la soglia le
+  // fermate devono coincidere. Misurate nel browser vero, prima e dopo:
+  // `0,313` contro `0,3162`, cioè l'uno per cento.
+  const dallaRetta = FERMATE.map(d => versoIlBasso(d) / (2 * FOCALE));
+  const dalCerchio = FERMATE.map(d => versoIlBasso(d) / g.lungo);
+  let peggio = 0;
+  for (let i = 0; i < FERMATE.length; i++) {
+    peggio = Math.max(peggio, Math.abs(dallaRetta[i] - dalCerchio[i]));
+  }
+  prova('a cavallo della soglia i due rami danno le stesse fermate',
+    peggio < 0.02, `scarto massimo ${peggio.toFixed(4)}`);
+  // E restano crescenti e dentro allo zero-uno, che è la condizione perché il
+  // canvas le accetti: una fermata fuori scala solleva un'eccezione, e
+  // un'eccezione lì dentro è il fotogramma intero che non finisce.
+  prova('le fermate restano ordinate e dentro allo zero-uno',
+    dallaRetta.every((t, i) => t >= 0 && t <= 1 && (i === 0 || t >= dallaRetta[i - 1])));
 }
 
 // =====================================================================

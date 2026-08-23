@@ -12974,10 +12974,30 @@ function skyDisegnaAnelli(ctx, r, apertura, davanti) {
 // stia largamente fuori dal riquadro. Si tosa, e resta un numero.
 const SKY_NADIR_SCHERMI = 8;
 
+// Sotto quanto, guardando quasi dritto all'orizzonte, il cerchio si tratta
+// come una retta. È una soglia di **forma**: il cerchio dell'orizzonte ha
+// raggio `2·focale/|c|`, e la sua freccia sulla larghezza del riquadro vale
+// `L²·|c| / (16·focale)`. Con lo 0,02 di prima, su un riquadro da mille
+// pixel, sono tre pixel — cioè attraversando la soglia il bordo del terreno
+// si raddrizzava di tre pixel di colpo, per tutta la larghezza dello schermo.
+// Scritta così invece la soglia è dove quella freccia vale mezzo pixel, e il
+// passaggio non si vede più. Il pavimento serve al raggio, che cresce come
+// `1/|c|`: sotto, si arriva a milioni di pixel e la precisione del canvas
+// comincia a contare.
+const SKY_ORIZZONTE_FRECCIA_PX = 0.5;
+const SKY_ORIZZONTE_RETTA_MIN = 1.2e-3;
+
+function skyOrizzonteQuasiRetto(c, focale) {
+  const L = Math.max(1, sky.larghezza);
+  const soglia = Math.max(SKY_ORIZZONTE_RETTA_MIN,
+    Math.min(0.02, 16 * focale * SKY_ORIZZONTE_FRECCIA_PX / (L * L)));
+  return Math.abs(c) < soglia;
+}
+
 function skyCerchioOrizzonte(base, focale) {
   const a = base.r[2], b = base.u[2], c = base.f[2];
   const cx = sky.larghezza / 2, cy = sky.altezza / 2;
-  if (Math.abs(c) < 0.02) {
+  if (skyOrizzonteQuasiRetto(c, focale)) {
     // Retta per il centro dello schermo, perpendicolare a (a, b). Il
     // verso "sotto" è quello in cui `a·X + b·Y` diventa negativo.
     return { retta: true, nx: a, ny: b, cx, cy };
@@ -13157,9 +13177,39 @@ function skyFermateSuolo(o, base, focale, azCentro) {
   if (!base || !Number.isFinite(azCentro)) return ripiego;
   let ax, ay, dx, dy, lungo;
   if (o.retta) {
-    ax = o.cx; ay = o.cy;
-    lungo = (sky.larghezza + sky.altezza) * 0.25;
+    // La rampa parte **dalla riga dell'orizzonte**, non dal centro dello
+    // schermo, e questa è la riga che il difetto aveva sbagliata.
+    //
+    // I due rami di `skyCerchioOrizzonte` devono misurare la stessa cosa: nel
+    // ramo del cerchio lo zero della rampa è il cerchio dell'orizzonte
+    // (`dist − r`), qui era il centro del riquadro. I due coincidono solo
+    // guardando esattamente a zero gradi — e il ramo della retta si usa
+    // dentro a un grado e passa da lì, quindi non coincidono quasi mai.
+    //
+    // Cosa si vedeva: attraversando l'orizzonte col mirino, il terreno
+    // cambiava tinta di colpo. A un grado sopra la riga le fermate uscivano
+    // tutte spostate in avanti (`0,025 0,027 0,030 …`), a un grado sotto le
+    // prime cinque finivano **dietro** allo zero e venivano tosate tutte
+    // insieme (`0 0 0 0 0 0,007 …`), cioè il colore del terreno vicino non
+    // compariva affatto; e nel ramo del cerchio, appena oltre la soglia,
+    // tornavano quelle giuste (`0 0,0007 0,0017 …`). Misurato: undicimila
+    // pixel che cambiano da un fotogramma al successivo, il doppio di un
+    // passo qualunque, tutti in una fascia appoggiata all'orizzonte.
+    //
+    // Il punto giusto lo dà la proiezione, come già fa `skyAcqueRampa` per
+    // l'acqua: si proietta la depressione zero e si misura da lì.
+    const p0 = skyProietta(skyVettore(azCentro, 0), base, focale);
+    if (!p0.davanti) return ripiego;
+    ax = p0.px; ay = p0.py;
     dx = -o.nx; dy = o.ny;                       // il verso «sotto»
+    // E la lunghezza della rampa è quella del ramo del cerchio, presa al
+    // limite. Non è una taratura: `nadir − r` vale `r·(√((1+c)/(1−c)) − 1)`,
+    // che per `c` piccolo tende a `r·c = 2·focale`. Con il quarto di
+    // semiperimetro che c'era prima la rampa era due volte e mezzo più
+    // corta, ed era la seconda metà dello stesso salto. Il tetto è lo stesso
+    // di `skyCerchioOrizzonte`, se no i due rami si separano di nuovo quando
+    // quello morde (a fortissimo ingrandimento).
+    lungo = Math.min(2 * focale, SKY_NADIR_SCHERMI * (sky.larghezza + sky.altezza));
   } else {
     ax = o.px; ay = o.py;
     lungo = o.nadir - o.r;                       // la rampa, in pixel di raggio
@@ -17653,6 +17703,15 @@ function skyNomiCime(ctx, base, focale, occupati) {
     ctx.restore();
   }
   ctx.restore();
+
+  // Quante se ne sono scritte davvero, e quante erano da scrivere.
+  //
+  // Non è una curiosità: un nome che non trova posto **non fallisce**, non
+  // scrive niente e non lo dice a nessuno — ed è esattamente il modo in cui
+  // i nomi delle montagne sono mancati senza che si potesse indagare, perché
+  // «a volte non si vedono» non è una cosa che si possa cercare in un
+  // fotogramma fermo. Con questi due numeri lo si misura.
+  sky.cimeScritte = { scritte, viste: lista.length, tetto: massimo };
 }
 
 
