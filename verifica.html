@@ -648,6 +648,17 @@ titolo('8. La proiezione del cielo');
         arcoRilievo && arcoRilievo.mezzo < 175,
         arcoRilievo ? `${arcoRilievo.mezzo.toFixed(1)}° per lato` : 'nessun arco');
 
+  // Alzando la camera il cerchio che circoscrive il riquadro arriva a
+  // comprendere matematicamente il meridiano opposto, anche se la sua
+  // proiezione e' molto fuori dal rettangolo vero. E' proprio il gesto che
+  // faceva richiudere il rilievo attraverso il cielo.
+  sky.larghezza = 1630; sky.altezza = 690; sky.fov = 180;
+  const arcoRilievoAlto = rilArcoInVista(skyBaseVerso(134, 55), skyFocale());
+  sky.larghezza = larghezzaRilievo; sky.altezza = altezzaRilievo; sky.fov = fovRilievo;
+  prova('alzando molto la camera il rilievo non richiude il giro nel cielo',
+        arcoRilievoAlto && arcoRilievoAlto.mezzo < 175,
+        arcoRilievoAlto ? `${arcoRilievoAlto.mezzo.toFixed(1)}° per lato` : 'nessun arco');
+
   // A campo stretto deve coincidere con la prospettiva di prima: è la
   // garanzia che nessuna vista ingrandita è cambiata.
   const vecchio = sky.fov;
