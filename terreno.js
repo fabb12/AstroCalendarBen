@@ -2161,7 +2161,7 @@ function terrenoAlterna() {
 // =====================================================================
 
 function terrenoTesto() {
-  if (!terreno.acceso) return 'Orizzonte disegnato: colline finte, uguali dappertutto.';
+  if (!terreno.acceso) return 'Terreno nascosto.';
   if (terreno.stato === 'in-corso') {
     // Ventiquattro richieste sono qualche secondo, e qualche secondo senza
     // niente da leggere sembrano un guasto. La percentuale non serve a chi

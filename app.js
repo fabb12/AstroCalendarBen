@@ -13342,6 +13342,10 @@ function skyTracciaSuolo(ctx, o) {
 // e di montagna dove ci sono, ci appoggia sopra il profilo delle colline e
 // ne traccia la linea vera.
 function skyDisegnaTerreno(ctx, base, focale, aria) {
+  // Il comando «Terreno vero» è un interruttore di visibilità: spento,
+  // lascia libero anche lo spazio sotto l'orizzonte invece di sostituire il
+  // paesaggio reale con il vecchio profilo inventato.
+  if (typeof terreno !== 'undefined' && !terreno.acceso) return;
   const o = skyCerchioOrizzonte(base, focale);
   const velo = skyOpacitaTerreno();
 
@@ -23337,7 +23341,6 @@ function inizializzaSkymap() {
     sky[campo] = !sky[campo];
     skyAggiornaTastiFiltri();
     skyAggiornaOggetti(true);
-    skyMostraGruppo('');
   });
   filtro('skymap-btn-pianeti', 'mostraPianeti');
   filtro('skymap-btn-solelun', 'mostraSoleLuna');
@@ -23354,13 +23357,11 @@ function inizializzaSkymap() {
   // accende la prima volta senza rete, lo dice e resta il disegnato.
   collega('skymap-btn-terreno', () => {
     if (typeof terrenoAlterna === 'function') terrenoAlterna();
-    skyMostraGruppo('');
   });
   // Le luci dei paesi: anche loro non nascondono niente, aggiungono. E si
   // possono volere spente — chi disegna una carta del cielo vuole il nero.
   collega('skymap-btn-citta', () => {
     if (typeof cittaAlterna === 'function') cittaAlterna();
-    skyMostraGruppo('');
   });
   // I nomi delle montagne: stessa famiglia dei due qui sopra — non
   // nascondono niente, dicono come si chiama quello che c'è già. Si
@@ -23368,7 +23369,6 @@ function inizializzaSkymap() {
   // conosce a memoria, sono sette scritte davanti al cielo.
   collega('skymap-btn-cime', () => {
     if (typeof cimeAlterna === 'function') cimeAlterna();
-    skyMostraGruppo('');
   });
   // Il rilievo: la forma vera del terreno al posto della sua sagoma. Si
   // spegne per chi ha la rete a consumo — sono da quattro a sei tessere, una
@@ -23376,14 +23376,12 @@ function inizializzaSkymap() {
   // prima.
   collega('skymap-btn-rilievo', () => {
     if (typeof rilAlterna === 'function') rilAlterna();
-    skyMostraGruppo('');
   });
   // I laghi e i fiumi: come il terreno vero, cambiano il paesaggio invece
   // di aggiungerci sopra qualcosa. Si spengono per chi vuole l'orizzonte
   // nudo, o per chi sa che nella sua valle OpenStreetMap sbaglia.
   collega('skymap-btn-acque', () => {
     if (typeof acqueAlterna === 'function') acqueAlterna();
-    skyMostraGruppo('');
   });
   // L'aurora: acceso, l'ovale c'è sempre — solo che da quasi tutta Europa
   // sta sotto l'orizzonte e non si disegna niente. Il tasto serve a
@@ -23391,7 +23389,6 @@ function inizializzaSkymap() {
   // cielo di prima.
   collega('skymap-btn-aurora', () => {
     if (typeof aurAlterna === 'function') aurAlterna();
-    skyMostraGruppo('');
   });
   if (typeof terrenoAggiornaPannello === 'function') terrenoAggiornaPannello();
   // I segni degli eventi si accendono e si spengono senza rifare i conti
@@ -23399,7 +23396,6 @@ function inizializzaSkymap() {
   collega('skymap-btn-eventi', () => {
     sky.mostraEventi = !sky.mostraEventi;
     skyAggiornaTastiFiltri();
-    skyMostraGruppo('');
   });
   // Anche la traccia è solo disegno: la sua curva si ricalcola da sé al
   // prossimo fotogramma, e spegnendola sparisce senza rifare nessun conto
@@ -23408,7 +23404,6 @@ function inizializzaSkymap() {
     if (!sky.mostraTraccia) sky.traccia.punti = [];
     sky.traccia.chiave = null;
     skyAggiornaTastiFiltri();
-    skyMostraGruppo('');
   });
   // L'eclittica è una linea sola, ma quasi nessuno sa già cosa sia: la prima
   // volta che si accende conviene dirlo, altrimenti resta un tratteggio in più
@@ -23427,7 +23422,6 @@ function inizializzaSkymap() {
         'a quest\'ora ogni giorno dell\'anno.', 14000);
     }
     skyAggiornaTastiFiltri();
-    skyMostraGruppo('');
   });
   // Il promemoria sopra la mappa apre l'elenco di cosa sta succedendo
   skyAggiornaTastiFiltri();
@@ -23471,7 +23465,6 @@ function inizializzaSkymap() {
     if (!cont) return;
     const attiva = cont.classList.toggle('modalita-notte');
     skyTasto('skymap-btn-notte', attiva, attiva ? 'Colori normali' : 'Modalità notte');
-    skyMostraGruppo('');
   });
 
   // --- Trovare un astro senza scorrere tutto l'elenco ---
@@ -23505,7 +23498,7 @@ function inizializzaSkymap() {
     skyMostraGruppo('');
   });
 
-  collega('skymap-btn-schermo', () => { skyAlternaSchermoIntero(); skyMostraGruppo(''); });
+  collega('skymap-btn-schermo', skyAlternaSchermoIntero);
   // Lo stesso comando, ma appoggiato sull'angolo della mappa: com'è per la
   // mappa dell'ombra delle eclissi, dove il ⛶ sta lì e non dentro a un
   // pannello. Andarlo a cercare fra le opzioni della Visualizzazione,
@@ -34010,17 +34003,15 @@ function inizializzaSkymapExtra() {
     sky.mostraCostellazioni = !sky.mostraCostellazioni;
     skyAggiornaTastiFiltri();
     skyAggiornaOggetti(true);
-    skyMostraGruppo('');
   });
 
   collega('skymap-btn-deepsky', () => {
     sky.mostraProfondo = !sky.mostraProfondo;
     skyAggiornaTastiFiltri();
     skyAggiornaOggetti(true);
-    skyMostraGruppo('');
   });
 
-  collega('skymap-btn-camera', () => { skyAttivaFotocamera(); skyMostraGruppo(''); });
+  collega('skymap-btn-camera', skyAttivaFotocamera);
 
   // Uscendo dal planetario la fotocamera si spegne: batteria e privacy
   document.addEventListener('visibilitychange', () => {

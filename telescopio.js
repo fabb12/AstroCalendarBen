@@ -5514,7 +5514,6 @@ function telInizializza() {
   if (btnPolo) btnPolo.addEventListener('click', () => {
     sky.mostraPolo = !sky.mostraPolo;
     if (typeof skyTasto === 'function') skyTasto('skymap-btn-polo', sky.mostraPolo);
-    if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
   });
 
   // Il ridisegno delle tele quando cambia la misura dello schermo
