@@ -32817,6 +32817,12 @@ function inizializzaImpostazioni() {
     document.querySelectorAll('[data-imp-pannello]').forEach(pannello => {
       pannello.classList.toggle('hidden', pannello.dataset.impPannello !== nome);
     });
+    // La mappa dei raggi di ricerca vive qui dentro, e una mappa Leaflet
+    // costruita mentre il suo riquadro è largo zero resta grigia: si
+    // costruisce (o si rimisura) nel momento in cui la linguetta compare.
+    if (nome === 'planetario' && typeof costruisciRaggiOrizzonte === 'function') {
+      costruisciRaggiOrizzonte();
+    }
   };
   tab.forEach((tasto, indice) => {
     tasto.addEventListener('click', () => mostraTab(tasto.dataset.impTab, false));

@@ -304,6 +304,13 @@ const terreno = {
   provatoLat: null,       // per quale posto valgono i tentativi qui sopra
   provatoLon: null,
   completatoPer: null,    // per quale posto si è già tentato di completare un salvataggio parziale
+  // Qui abbiamo già provato e non ce l'abbiamo fatta, e in mano non è
+  // rimasto niente. Serve a `terrenoInArrivo`: le riprese automatiche
+  // (§7, `TERRENO_RIPROVE_MS`) rimettono lo stato a «in-corso», e senza
+  // questo campo ogni ripresa era indistinguibile dalla prima attesa —
+  // cioè i nomi delle montagne sparivano di nuovo, per mezz'ora, a
+  // ondate. Si azzera cambiando posto, o appena un profilo arriva.
+  arreso: false,
   acceso: true
 };
 
@@ -1523,6 +1530,7 @@ function terrenoSalva(lat, lon, dati) {
 // parla più del posto in cui siamo — un trasloco, un backup ripristinato —
 // e allora sì che va buttato.
 function terrenoScordaProfilo() {
+  terreno.arreso = false;
   terreno.profilo = null;
   terreno.tipi = null;
   terreno.miscela = null;
@@ -1732,6 +1740,9 @@ function terrenoCarica(forza) {
   if (terreno.provatoLat === null || terreno.provatoLat === undefined ||
       terrenoDistanzaKm(lat, lon, terreno.provatoLat, terreno.provatoLon) > TERRENO_RAGGIO_VALIDO_KM) {
     terreno.tentativi = 0;
+    // Posto nuovo, domanda nuova: qui non ci si è ancora arresi, e chi
+    // aspetta il terreno prima di parlare ha ragione ad aspettare.
+    terreno.arreso = false;
   }
   terreno.provatoLat = lat;
   terreno.provatoLon = lon;
@@ -1796,6 +1807,10 @@ function terrenoCarica(forza) {
       // aspettare, riprovare o smettere.
       console.warn('Terreno vero non disponibile:', e);
       terreno.stato = 'fallito';
+      // Da adesso in poi le riprese automatiche sono un di più, non
+      // un'attesa: chi ha bisogno di sapere se aspettare (i nomi delle
+      // montagne) ha già la sua risposta, ed è «no».
+      terreno.arreso = true;
       terreno.motivo = terrenoMotivoGuaio(e);
       terrenoRiprovaPiuTardi();
       terrenoAggiornaPannello();
@@ -1817,9 +1832,30 @@ function terrenoCarica(forza) {
 // Avvia il paesaggio senza mettere quattro scaricamenti sulla strada del
 // primo fotogramma. Le copie sul dispositivo vengono applicate subito (è
 // lavoro sincrono e costa pochissimo); soltanto ciò che manca viene chiesto
-// quando il browser ha avuto modo di disegnare e la prima sagoma del terreno
-// è già disponibile. Chiamarla più volte durante l'avvio non crea altre
-// sveglie: l'ultima posizione scelta vince.
+// quando il browser ha avuto modo di disegnare. Chiamarla più volte durante
+// l'avvio non crea altre sveglie: l'ultima posizione scelta vince.
+//
+// **Le quote e OpenStreetMap non si aspettano**, e questa è la riga che vale
+// tutta la funzione. Le tre richieste a Overpass — i paesi, le vette, le
+// acque — erano appese alla promessa di `terrenoCarica`, cioè partivano solo
+// quando *tutte* le ventiquattro richieste delle quote avevano finito, bene o
+// male. Con Open-Meteo che risponde 429 quelle ventiquattro diventano fino a
+// centoventi tentativi passati per un rubinetto che frena a ogni no: minuti.
+// E in quei minuti non compariva **nessun nome** sull'orizzonte, né di paese
+// né di montagna — non perché OpenStreetMap avesse qualcosa che non andava,
+// ma perché non gli si era ancora chiesto niente. È il difetto peggiore di
+// tutti, quello in cui il sintomo (i nomi mancano) e la causa (il servizio
+// delle *quote* è carico) non hanno niente a che vedere l'uno con l'altro, e
+// dalla console si vedono solo dei 429 che parlano di un altro host.
+//
+// Sono due servizi diversi, su host diversi, con rubinetti diversi
+// (`terrenoInFila` e `overpassInFila`): l'unica ragione per metterli in fila
+// indiana sarebbe la banda del primo fotogramma, e a quella basta l'attesa
+// del `requestIdleCallback`. Il rilievo invece la griglia grossa la vuole per
+// davvero — gli serve per lo sfondo oltre il raggio delle tessere — ma non ha
+// bisogno di aspettarla qui: `rilCarica` esce da sé finché
+// `terrenoDisponibile()` dice di no, e `rilControlla` lo richiama a ogni
+// fotogramma appena il terreno c'è.
 let terrenoPaesaggioTurno = 0;
 function terrenoCaricaPaesaggio() {
   const turno = ++terrenoPaesaggioTurno;
@@ -1836,22 +1872,13 @@ function terrenoCaricaPaesaggio() {
     if (typeof cittaCarica === 'function') cittaCarica();
     if (typeof cimeCarica === 'function') cimeCarica();
     if (typeof acqueCarica === 'function') acqueCarica();
-  };
-  const dopoTerreno = () => {
-    if (turno !== terrenoPaesaggioTurno) return;
-    // Il rilievo parte appena la griglia grossa c'è — gli serve per lo
-    // sfondo oltre il raggio delle tessere — e **non** aspetta il periodo di
-    // riposo insieme agli altri tre: è quello che cambia di più il disegno,
-    // e sta su un altro host, quindi non toglie banda a OpenStreetMap.
-    // A rifarlo quando serve ci pensa poi `rilControlla`, a ogni fotogramma.
     if (typeof rilCarica === 'function') rilCarica();
-    if (typeof requestIdleCallback === 'function') {
-      requestIdleCallback(completa, { timeout: 1800 });
-    } else {
-      setTimeout(completa, 250);
-    }
   };
-  Promise.resolve(principale).then(dopoTerreno, dopoTerreno);
+  if (typeof requestIdleCallback === 'function') {
+    requestIdleCallback(completa, { timeout: 1800 });
+  } else {
+    setTimeout(completa, 250);
+  }
   return principale;
 }
 
@@ -1973,8 +2000,21 @@ function terrenoDisponibile() {
 // e `terrenoDisponibile` risponde di sì. Serve a chi, come i nomi delle
 // montagne, preferisce aspettare un secondo piuttosto che dare una risposta
 // che dovrà rimangiarsi.
+//
+// **La primissima**, e non ogni tentativo. È la seconda metà del singhiozzo,
+// e si vedeva solo quando le quote non arrivavano affatto: il primo
+// tentativo fallisce, lo stato passa a «fallito», `cimeVisibili` torna a
+// nominare quello che spunta — è la risposta giusta, quella di sempre — e
+// venti secondi dopo la ripresa automatica rimette lo stato a «in-corso»
+// e i nomi spariscono di nuovo. Poi novanta secondi, poi cinque minuti,
+// poi un quarto d'ora: per quasi un'ora i nomi delle montagne comparivano
+// e sparivano da soli, che è il modo in cui questo difetto è arrivato
+// come «non riesco a visualizzarli». Aspettare in silenzio ha senso finché
+// non si sa ancora niente; quando si sa già che qui il terreno non arriva,
+// aspettare di nuovo non è prudenza, è cancellare una risposta buona.
 function terrenoInArrivo() {
-  return terreno.acceso && terreno.stato === 'in-corso' && !terreno.profilo;
+  return terreno.acceso && terreno.stato === 'in-corso' &&
+    !terreno.profilo && !terreno.arreso;
 }
 
 // Quanto si può stare vicini a un punto lontano `km` e contare ancora come
