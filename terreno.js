@@ -3329,6 +3329,18 @@ function cimeCarica(forza, soloCache) {
     return Promise.resolve(true);
   }
   if (cime.stato === 'in-corso') return cime.promessa || Promise.resolve(false);
+
+  // Prima di decidere se ritentare la rete, guarda sempre quello che il
+  // browser ha già in mano. `forza` significa «non rispettare l'attesa dopo
+  // un errore», non «butta via una risposta buona»: prima, spegnendo e
+  // riaccendendo dopo un tentativo fallito, si saltava proprio questa copia
+  // e si vedeva ripartire Overpass anche se le vette erano già state
+  // scaricate in una visita precedente.
+  const salvate = cimeLeggiSalvate(lat, lon);
+  if (salvate) {
+    cimeApplica(salvate.lat, salvate.lon, cimeDalSalvato(salvate), salvate.fonte || 'salvato');
+    return Promise.resolve(true);
+  }
   // Ha appena fallito *per questo posto*: si aspetta prima di ridare
   // fastidio al servizio. Senza, ogni giro di `skyAggiornaOsservatore` (e
   // ce n'è più d'uno all'avvio) rilanciava la richiesta, e a un'istanza che
@@ -3343,13 +3355,6 @@ function cimeCarica(forza, soloCache) {
     return Promise.resolve(false);
   }
 
-  if (!forza) {
-    const salvate = cimeLeggiSalvate(lat, lon);
-    if (salvate) {
-      cimeApplica(salvate.lat, salvate.lon, cimeDalSalvato(salvate), salvate.fonte || 'salvato');
-      return Promise.resolve(true);
-    }
-  }
   if (soloCache) return Promise.resolve(false);
 
   // Durante uno spostamento rapido non accodiamo una richiesta destinata a
@@ -3494,7 +3499,17 @@ function cimeVisibili() {
     })
     .filter(c => {
       if (c.alt < CIME_ALT_MIN_GRADI) return false;
-      const davanti = terrenoCrestaDavanti(c.az, c.km);
+      // Se il rilievo fine è pronto, anche l'occlusione deve leggere quella
+      // stessa superficie. Usare ancora la griglia grossa (7,5 gradi) poteva
+      // attribuire alla direzione della vetta il fianco più alto di una cima
+      // vicina e scartare tutti i nomi, benché le punte fossero disegnate.
+      // Ci fermiamo prima della vetta come fa `terrenoCrestaDavanti`: la sua
+      // cella DEM contiene la vetta stessa e non può essere il suo ostacolo.
+      const davantiFine = typeof rilPronto === 'function' && rilPronto() &&
+        typeof rilCrestaEntroM === 'function'
+        ? rilCrestaEntroM(c.az, c.km * 1000 * TERRENO_FRONTE_MARGINE)
+        : null;
+      const davanti = davantiFine === null ? terrenoCrestaDavanti(c.az, c.km) : davantiFine;
       // Senza le quote grezze non si sa cosa c'è davanti: si torna al
       // confronto con la cresta intera, che è severo ma non inventa niente.
       const cresta = davanti === null ? terrenoAltezza(c.az) : davanti;
@@ -3525,11 +3540,10 @@ function cimeAlterna() {
   raggi.nomiMonti = cime.acceso;
   raggiSalva();
   if (typeof costruisciRaggiOrizzonte === 'function') costruisciRaggiOrizzonte();
-  // Accendendolo a mano si riprova subito, anche se la volta prima era
-  // andata male: un tasto premuto è una richiesta esplicita, e l'attesa di
-  // cortesia verso il servizio vale per i tentativi automatici, non per
-  // quello di chi sta lì a guardare.
-  if (cime.acceso && cime.stato !== 'pronto') cimeCarica(cime.stato === 'fallito');
+  // Riaccendere non deve equivalere a riscaricare: `cimeCarica` recupera
+  // prima la copia locale e conserva anche l'attesa di cortesia dopo un
+  // errore. Un nuovo tentativo esplicito resta disponibile nel pannello.
+  if (cime.acceso && cime.stato !== 'pronto') cimeCarica(false);
   terrenoAggiornaPannello();
 }
 
