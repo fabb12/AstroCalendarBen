@@ -936,8 +936,8 @@ function aurCollega() {
   const torna = document.getElementById('skymap-aurora-vero');
   if (torna) torna.addEventListener('click', () => {
     aurImpostaKpSimulato(null);
-    // Un tasto vero e proprio, non la slitta: chiude come ogni altro comando
-    if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
+    // Anche questo comando lascia aperti i Filtri, così si possono regolare
+    // più elementi prima di richiudere il pannello dalla sua linguetta.
   });
   aurAggiornaPannello();
 }
