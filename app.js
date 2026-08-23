@@ -7262,6 +7262,10 @@ const sky = {
   // affolla niente.
   mostraCorpiMinori: true,
   mostraSottoOrizzonte: true,
+  // Normalmente il profilo del terreno copre anche gli astri con un nome.
+  // Questo interruttore ripristina la vista didattica che li disegna davanti
+  // alle montagne, utile per sapere dove si trovano anche quando non si vedono.
+  mostraAstriDietroMonti: false,
   // Il filtro "Su ora" del pannello Astri: restringe l'elenco a chi in questo
   // momento sta sopra l'orizzonte. È un filtro dell'*elenco*, non della mappa —
   // il cielo continua a disegnare quello che gli dicono i `mostra…` qui sopra
@@ -19072,16 +19076,34 @@ function skyDisegna() {
   // **dopo** le stelle, perché è esattamente quello che fanno — sbiadire
   // le stelle basse sopra la città.
   if (!conCamera) skyDisegnaAloniCitta(ctx, base, focale);
+
+  // Gli astri riconoscibili possono essere usati anche come carta, facendoli
+  // comparire davanti al paesaggio. La vista normale, invece, li dipinge qui:
+  // il terreno tracciato subito dopo li copre davvero quando sono dietro una
+  // cresta. Con la fotocamera non c'è terreno disegnato e l'ordine è neutro.
+  const ordineAstri = { stella: 0, pianeta: 1, sole: 2, luna: 3, satellite: 4 };
+  const daDisegnare = skyOggettiDaDisegnare();
+  const disegnaAstriPrincipali = () => daDisegnare
+    .slice()
+    .sort((a, b) => (ordineAstri[a.tipo] || 0) - (ordineAstri[b.tipo] || 0))
+    .forEach(o => skyDisegnaAstro(ctx, base, focale, o));
+  const disegnaAstriSecondari = () => {
+    skyDisegnaCostellazioni(ctx, base, focale);
+    skyDisegnaProfondo(ctx, base, focale);
+    if (typeof corpiMinoriDisegna === 'function') corpiMinoriDisegna(ctx, base, focale);
+  };
+  if (!sky.mostraAstriDietroMonti) {
+    disegnaAstriSecondari();
+    disegnaAstriPrincipali();
+  }
+
   if (!conCamera) skyDisegnaTerreno(ctx, base, focale, aria);
   // I nomi — paesi e montagne insieme, in una passata sola perché il posto
   // se lo devono dividere (vedi `skyDisegnaNomiOrizzonte`)
   if (!conCamera) skyDisegnaNomiOrizzonte(ctx, base, focale);
   skyDisegnaCardinali(ctx, base, focale);
 
-  skyDisegnaCostellazioni(ctx, base, focale);
-  skyDisegnaProfondo(ctx, base, focale);
-  // Comete e asteroidi: dopo il terreno, come gli altri astri con un nome
-  if (typeof corpiMinoriDisegna === 'function') corpiMinoriDisegna(ctx, base, focale);
+  if (sky.mostraAstriDietroMonti) disegnaAstriSecondari();
 
   // Il binario del Sistema Solare: sotto a tutto il resto, perché è lo
   // sfondo su cui si leggono i pianeti, non uno degli attori
@@ -19098,12 +19120,7 @@ function skyDisegna() {
   // sopra il resto). L'ordine fra Sole e Luna non è un dettaglio: la Luna
   // passa **davanti** al Sole, e finché il Sole veniva disegnato per ultimo
   // un'eclissi non si vedeva affatto — la Luna gli finiva sotto.
-  const ordine = { stella: 0, pianeta: 1, sole: 2, luna: 3, satellite: 4 };
-  const daDisegnare = skyOggettiDaDisegnare();
-  daDisegnare
-    .slice()
-    .sort((a, b) => (ordine[a.tipo] || 0) - (ordine[b.tipo] || 0))
-    .forEach(o => skyDisegnaAstro(ctx, base, focale, o));
+  if (sky.mostraAstriDietroMonti) disegnaAstriPrincipali();
 
   // Gli eventi in corso all'ora mostrata: il radiante di uno sciame, l'anello
   // attorno all'astro eclissato. Sopra agli astri, sotto alle guide.
@@ -19593,13 +19610,6 @@ function skyCalcolaEclittica() {
   } catch (e) { mesi.length = 0; }
   sky.eclittica.mesi = mesi;
 
-  // L'analemma dipende solo dall'ora mostrata e dal luogo: non lo si rifà
-  // quando cambia soltanto l'oggetto selezionato
-  const chiaveAnalemma = [t0, Math.round(sky.observer.latitude * 100), Math.round(sky.observer.longitude * 100)].join('|');
-  if (sky.eclittica.analemma.chiave !== chiaveAnalemma) {
-    skyCalcolaAnalemma(t0, chiaveAnalemma);
-  }
-
   // Il filo a piombo: dall'oggetto scelto giù (o su) fino alla linea, nel
   // punto che ha la sua stessa longitudine eclittica. È la misura dello
   // scarto resa visibile, che è poi il motivo per cui questa linea esiste.
@@ -19696,7 +19706,6 @@ function skyDisegnaEclittica(ctx, base, focale) {
     }
   }
 
-  skyDisegnaAnalemma(ctx, base, focale);
   skyDisegnaScartoEclittica(ctx, base, focale);
   ctx.restore();
 }
@@ -23348,6 +23357,7 @@ function inizializzaSkymap() {
   filtro('skymap-btn-satelliti', 'mostraSatelliti');
   filtro('skymap-btn-corpiminori', 'mostraCorpiMinori');
   filtro('skymap-btn-sotto', 'mostraSottoOrizzonte');
+  filtro('skymap-btn-dietro-monti', 'mostraAstriDietroMonti');
   filtro('skymap-btn-griglia', 'mostraGriglia');
   filtro('skymap-btn-etichette', 'mostraNomi');
   filtro('skymap-btn-vialattea', 'mostraViaLattea');
@@ -23418,8 +23428,7 @@ function inizializzaSkymap() {
     } else {
       skyAvviso('eclittica', 'L\'eclittica è la strada che il Sole percorre in un anno fra le stelle: ' +
         'i puntini sono i primi del mese. I pianeti stanno sempre a pochi gradi da questa linea, ' +
-        'e il filo a piombo dice quanti. L\'otto in oro pallido è l\'analemma: dov\'è il Sole ' +
-        'a quest\'ora ogni giorno dell\'anno.', 14000);
+        'e il filo a piombo dice quanti.', 14000);
     }
     skyAggiornaTastiFiltri();
   });
@@ -23541,6 +23550,7 @@ function skyAggiornaTastiFiltri() {
   skyTasto('skymap-btn-satelliti', sky.mostraSatelliti);
   skyTasto('skymap-btn-corpiminori', sky.mostraCorpiMinori);
   skyTasto('skymap-btn-sotto', sky.mostraSottoOrizzonte);
+  skyTasto('skymap-btn-dietro-monti', sky.mostraAstriDietroMonti);
   skyTasto('skymap-btn-griglia', sky.mostraGriglia);
   skyTasto('skymap-btn-etichette', sky.mostraNomi);
   skyTasto('skymap-btn-costellazioni', sky.mostraCostellazioni);
