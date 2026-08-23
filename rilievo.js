@@ -1179,51 +1179,42 @@ function rilMagazzino(nCol) {
   }
 }
 
-// Una striscia di ombreggiatura: **un rettangolo allineato agli assi**, e
-// questa è la riga da cui dipende che tutto il resto sia possibile.
-//
-// Misurato nel browser, quattordicimila facce raggruppate in ventiquattro
-// tracciati: con `rect()` costano 2,6 ms, con `moveTo`/`lineTo` obliqui ne
-// costano 43. Diciassette volte tanto — non è il numero delle operazioni, è
-// che un rettangolo allineato ha una strada veloce nel rasterizzatore e un
-// quadrilatero storto no. Quindi l'ombreggiatura si disegna a strisce
-// verticali larghe una colonna, non a facce.
-//
-// Il prezzo è che una colonna di azimut costante, in stereografica, è una
-// curva e non una riga verticale: la striscia la approssima. Lo scarto è di
-// qualche pixel e non si vede, perché queste strisce sono una **velatura**
-// sopra a un corpo che è già del colore giusto — e perché il crinale, dove
-// lo scarto si vedrebbe, è ritagliato via (vedi il `clip` in `rilDisegna`).
-function rilMettiStriscia(liv, x, y, w, h) {
+// Una striscia di ombreggiatura: un segmento largo una colonna. Non e' un
+// quadrilatero per ogni faccia (quello costava 43 ms): tutte le strisce dello
+// stesso livello restano in un solo tracciato e richiedono una sola stroke.
+// I due estremi, pero', sono quelli proiettati davvero. A campo largo una
+// colonna di azimut costante e' obliqua ai lati dello schermo; forzarla dentro
+// un rettangolo verticale produceva proprio i tasselli che comparivano nel
+// cielo e sul terreno durante lo zoom.
+function rilMettiStriscia(liv, x0, y0, x1, y1) {
   const t = rilTratti[liv];
   if (t.n + 4 > t.v.length) {
     const piu = new Float32Array(t.v.length * 2);
     piu.set(t.v);
     t.v = piu;
   }
-  t.v[t.n++] = x; t.v[t.n++] = y; t.v[t.n++] = w; t.v[t.n++] = h;
+  t.v[t.n++] = x0; t.v[t.n++] = y0; t.v[t.n++] = x1; t.v[t.n++] = y1;
 }
 
-// Chiude la striscia corrente: un rettangolo alto quanto la corsa dei livelli
-// uguali, largo una colonna. Mezzo pixel di margine sopra e sotto perché due
-// strisce contigue non lascino la cucitura dell'antialiasing.
-// Chiude la striscia corrente: un rettangolo alto quanto la corsa dei livelli
-// uguali, largo una colonna.
-//
-// Sopra e sotto sborda di un pixel e mezzo, e non è per coprire una
-// cucitura. Una cella della maglia, proiettata, è un quadrilatero **storto**:
-// il suo bordo di sopra sta a un'altezza in una colonna e a un'altra nella
-// colonna accanto. Approssimandolo con un rettangolo dritto quel dislivello
-// diventa uno scalino, e una fila di scalini si legge come una scala — è il
-// difetto che si vede peggio in questo disegno. Sbordando, e siccome il
-// colore è semitrasparente, i bordi di due colonne vicine si mescolano
-// invece di accavallarsi, e la scala torna a essere un pendio.
+// Il segmento sborda di un pixel e mezzo ai due capi: le corse consecutive
+// si sovrappongono appena e non lasciano la cucitura dell'antialiasing.
 const RIL_STRISCIA_SBORDO = 1.5;
 
-function rilChiudiRun(liv, x, w, y0, y1) {
-  const h = y1 - y0;
-  rilMettiStriscia(liv, x, y0 - RIL_STRISCIA_SBORDO, w,
-    (h > 0.6 ? h : 0.6) + RIL_STRISCIA_SBORDO * 2);
+function rilChiudiRun(liv, x0, y0, x1, y1) {
+  // A campo largo un meridiano non e' verticale: nella stereografica e' un
+  // arco, e ai lati del riquadro puo' correre parecchi pixel anche in x.
+  // Conservare solo min/max y e dipingere un rettangolo verticale trasformava
+  // quel tratto obliquo in una colonna sospesa, visibile alternativamente nel
+  // cielo o nel primo piano mentre cambiava il FOV. La striscia segue invece
+  // i due estremi proiettati; il piccolo prolungamento copre ancora le
+  // cuciture fra due corse consecutive.
+  let dx = x1 - x0, dy = y1 - y0;
+  const m = Math.hypot(dx, dy);
+  if (m < 0.01) { dy = 1; dx = 0; }
+  else { dx /= m; dy /= m; }
+  rilMettiStriscia(liv,
+    x0 - dx * RIL_STRISCIA_SBORDO, y0 - dy * RIL_STRISCIA_SBORDO,
+    x1 + dx * RIL_STRISCIA_SBORDO, y1 + dy * RIL_STRISCIA_SBORDO);
   return 1;
 }
 
@@ -1391,9 +1382,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     let px = 0, py = 0, ok = false;      // il nodo visibile precedente
     let nRott = 0;
     // La corsa di livelli uguali in questa colonna, e la striscia che ne esce.
-    let runN = -1, runLiv = -1, runY0 = 0, runY1 = 0;
-    const colW = larghezzaColonna;
-
+    let runN = -1, runLiv = -1, runX0 = 0, runY0 = 0, runX1 = 0, runY1 = 0;
     for (let k = 0; k < nr; k++) {
       const a = rilievo.alt[baseQ + k];
       if (!(a > massimo)) {
@@ -1426,7 +1415,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
         const fuori = (px < -M && nx2 < -M) || (px > W + M && nx2 > W + M) ||
                       (py < -M && ny2 < -M) || (py > H + M && ny2 > H + M);
         if (fuori) {
-          if (runN >= 0) { strisce += rilChiudiRun(runLiv, px - colW * 0.5, colW, runY0, runY1); runN = -1; }
+          if (runN >= 0) { strisce += rilChiudiRun(runLiv, runX0, runY0, runX1, runY1); runN = -1; }
         } else {
           // La normale della faccia: la tangente lungo l'azimut per quella
           // lungo la distanza.
@@ -1509,17 +1498,17 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // sola**: il chiaroscuro lungo un raggio cambia piano, quindi le
           // strisce sono lunghe e sono poche.
           if (runN >= 0 && liv === runLiv) {
-            if (ny2 < runY0) runY0 = ny2; else if (ny2 > runY1) runY1 = ny2;
+            runX1 = nx2; runY1 = ny2;
           } else {
-            if (runN >= 0) strisce += rilChiudiRun(runLiv, nx2 - colW * 0.5, colW, runY0, runY1);
+            if (runN >= 0) strisce += rilChiudiRun(runLiv, runX0, runY0, runX1, runY1);
             runLiv = liv; runN = k;
-            runY0 = Math.min(py, ny2); runY1 = Math.max(py, ny2);
+            runX0 = px; runY0 = py; runX1 = nx2; runY1 = ny2;
           }
         }
       }
       px = nx2; py = ny2; ok = true;
     }
-    if (runN >= 0) { strisce += rilChiudiRun(runLiv, px - colW * 0.5, colW, runY0, runY1); runN = -1; }
+    if (runN >= 0) { strisce += rilChiudiRun(runLiv, runX0, runY0, runX1, runY1); runN = -1; }
 
     rilCrestaA[c] = massimo === -Infinity ? 0 : massimo;
     rilCrestaK[c] = kMax;
@@ -1597,12 +1586,10 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
 
   // --- L'ombreggiatura --------------------------------------------------
   //
-  // Un tracciato per livello, un `fill()` per tracciato: migliaia di strisce
-  // in ventiquattro chiamate. E tutto **ritagliato alla sagoma del terreno**,
-  // che è quello che permette alle strisce di essere rettangoli allineati
-  // invece di quadrilateri storti: quello che deborda oltre il crinale — il
-  // pixel o due di scarto fra una colonna curva e una striscia dritta — se lo
-  // mangia il ritaglio, e contro il cielo la sagoma resta esatta.
+  // Un tracciato per livello, una `stroke()` per tracciato: migliaia di
+  // strisce in quaranta chiamate. E tutto **ritagliato alla sagoma del
+  // terreno**, così la lieve larghezza extra che chiude le cuciture non può
+  // sporcare il cielo lungo il crinale.
   ctx.save();
   ctx.beginPath();
   {
@@ -1627,9 +1614,14 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     const t = rilTratti[l];
     if (!t.n) continue;
     ctx.beginPath();
-    for (let i = 0; i < t.n; i += 4) ctx.rect(t.v[i], t.v[i + 1], t.v[i + 2], t.v[i + 3]);
-    ctx.fillStyle = tav[l];
-    ctx.fill();
+    for (let i = 0; i < t.n; i += 4) {
+      ctx.moveTo(t.v[i], t.v[i + 1]);
+      ctx.lineTo(t.v[i + 2], t.v[i + 3]);
+    }
+    ctx.strokeStyle = tav[l];
+    ctx.lineWidth = larghezzaColonna;
+    ctx.lineCap = 'butt';
+    ctx.stroke();
     chiamate++;
   }
   ctx.restore();
