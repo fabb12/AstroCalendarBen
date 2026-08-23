@@ -2570,9 +2570,25 @@ const CITTA_RAGGIO_KM = 90;
 // I paesi piccoli si prendono solo da vicino: a venti chilometri un paese
 // di duemila anime non illumina niente, e ce ne sono a centinaia.
 const CITTA_RAGGIO_PAESI_KM = 20;
+// Fin dove arriva la query di ripiego (`cittaQueryVicina`), quando quella
+// larga non passa. Trenta chilometri sono il raggio in cui un paese la sua
+// cupola di luce ce l'ha ancora, e una richiesta così corta la serve anche
+// un'istanza che sta annaspando.
+const CITTA_RAGGIO_RIPIEGO_KM = 30;
 const CITTA_MAX = 60;
 const CITTA_RAGGIO_VALIDO_KM = 5;
-const CITTA_ATTESA_MS = 15000;
+// Più lunga del `timeout` scritto nella query dei paesi (20 s), come per le
+// vette e per le acque. Era **quindici** secondi, cioè cinque meno di quelli
+// che il server si era preso: la richiesta veniva tagliata mentre Overpass ci
+// stava ancora lavorando, e nel pannello finiva scritto che il colpevole era
+// lui. Di tutte e tre le famiglie era l'unica a sbagliare il verso della
+// disuguaglianza — ed è anche l'unica di cui l'utente si è accorto, perché è
+// quella che porta i nomi dei paesi.
+const CITTA_ATTESA_MS = 26000;
+// Un buco nell'acqua non si ritenta a ogni respiro (stessa ragione delle
+// vette): il servizio pubblico che risponde 429 lo fa perché lo stiamo
+// chiamando troppo.
+const CITTA_RIPROVA_DOPO_MS = 3 * 60 * 1000;
 
 // Quando OpenStreetMap non dice quanti abitanti ha, si va per categoria.
 // Sono numeri all'ingrosso, e vanno benissimo: la differenza fra una città
@@ -2586,6 +2602,11 @@ const citta = {
   fonte: '',
   motivo: '',
   avanzamento: 0,         // 0…1 per la barra della §9-ter
+  // Quando e dove è andata male. Le vette ce li avevano da sempre, i paesi
+  // no — e senza di loro non c'era modo né di distanziare i tentativi né di
+  // riprovarne uno: la supplenza dei capoluoghi diventava definitiva.
+  quandoFallito: 0,
+  fallitoLat: null, fallitoLon: null,
   acceso: true
 };
 
@@ -2699,9 +2720,31 @@ function cittaQueryOverpass(lat, lon) {
 // senza nomi — non perché i dati non ci fossero, ma perché era martedì
 // sera. Le richieste vanno quindi provate su più istanze, e l'errore va
 // detto com'è: «429» e «non c'è rete» sono due guai diversi.
+//
+// Le istanze sono cinque, e non è abbondanza: è la lezione della sera in cui
+// dall'orizzonte sono spariti **tutti** i nomi insieme — paesi, vette e laghi
+// — con in console due guasti che non si somigliavano per niente.
+// `overpass-api.de` non rispondeva affatto (`ERR_CONNECTION_TIMED_OUT`: la
+// connessione non si apriva nemmeno, quindi non era il servizio a essere
+// carico, era la strada per arrivarci), e `overpass.kumi.systems` rispondeva
+// **senza l'intestazione CORS**, che dal browser è un no secco anche quando i
+// dati ci sarebbero. Due porte, tutt'e due chiuse, e l'app senza una terza a
+// cui bussare.
+//
+// Con due sole istanze quella sera era un caso peggiore garantito; con cinque
+// è un inconveniente. Sono tutte pubbliche, senza chiave, con il planeta
+// intero e con `Access-Control-Allow-Origin: *` — che qui è la condizione
+// necessaria, perché una pagina statica su GitHub Pages non ha un server
+// proprio da mettere in mezzo. L'ordine è quello della probabilità di
+// rispondere bene, ma conta poco: `overpassIstanzaOra` lo fa girare a ogni
+// richiesta, e l'affiancamento qui sotto le mette in corsa una dopo l'altra
+// senza aspettare che la precedente si arrenda.
 const OVERPASS_ISTANZE = [
   'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter'
+  'https://overpass.private.coffee/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.osm.jp/api/interpreter',
+  'https://overpass.openstreetmap.fr/api/interpreter'
 ];
 
 // Dopo quanto si prova **anche** l'altra istanza, invece di stare a guardare
@@ -2741,49 +2784,104 @@ const OVERPASS_DISTANZA_MS = 600;
 // che partono insieme non bussano alla stessa porta.
 let overpassIstanzaOra = 0;
 
+// Come si racconta un guasto di rete.
+//
+// «signal is aborted without reason» è il messaggio che il browser dà a una
+// `fetch` interrotta da noi, e per un pezzo è finito **dritto nel pannello**
+// del planetario: «Non ho i nomi delle montagne: signal is aborted without
+// reason». Non è una frase, è un rumore — e per giunta dice la cosa meno
+// utile fra quelle che sappiamo, perché l'abort è l'ultimo anello, non la
+// causa. Qui si traduce, e la causa la si tiene da parte (`overpassPeso`).
+function overpassMotivo(e) {
+  if (!e) return 'OpenStreetMap non ha risposto';
+  if (e.name === 'AbortError') return 'OpenStreetMap non ha risposto in tempo';
+  const m = e.message || '';
+  // `TypeError: Failed to fetch` è quello che il browser dice sia quando non
+  // c'è rete, sia quando la risposta arriva senza intestazione CORS. Dal
+  // codice le due non si distinguono, ma il consiglio è lo stesso.
+  if (e.name === 'TypeError' || /failed to fetch|networkerror|load failed/i.test(m)) {
+    return 'non riesco a raggiungere OpenStreetMap';
+  }
+  return m || 'OpenStreetMap non ha risposto';
+}
+
+// Quale dei guasti raccontare, quando falliscono tutti.
+//
+// L'ultimo che arriva non è il più informativo: quasi sempre è l'abort della
+// scadenza, cioè la sveglia che abbiamo messo noi. Un «429» o un «504»
+// dicono molto di più — quelli il servizio li ha *risposti*, quindi la strada
+// c'era — e vanno preferiti.
+function overpassPeso(e) {
+  if (!e) return 0;
+  if (e.name === 'AbortError') return 1;
+  if (e.name === 'TypeError') return 2;
+  return 3;
+}
+
 // Una richiesta, su tutte le istanze, con l'affiancamento.
+//
+// `attesaMs` è il tempo che ha **tutta** la corsa, non ogni singola porta, ed
+// è la differenza che ha reso possibile allungare l'elenco delle istanze.
+// Prima ogni tentativo si prendeva la sveglia intera: con due istanze e la
+// query di ripiego dietro erano già 4 × 30 s nel caso peggiore, e passando a
+// cinque porte sarebbero diventati **cinque minuti** di silenzio prima di
+// dire «non ce l'ho fatta». Con una scadenza sola le porte in più non
+// costano tempo: costano solo altre possibilità di essere serviti dentro
+// quello stesso minuto.
 function overpassChiedi(query, attesaMs) {
   const n = OVERPASS_ISTANZE.length;
   const inizio = overpassIstanzaOra;
   overpassIstanzaOra = (overpassIstanzaOra + 1) % n;
+  const scadenza = Date.now() + attesaMs;
 
   return new Promise((ok, no) => {
     const controlli = [];
-    let prossima = 0, attive = 0, chiuso = false, ultimo = null, sveglia = null;
+    let prossima = 0, attive = 0, chiuso = false, ultimo = null, sveglia = null, fine = null;
 
     const smetti = () => {
       chiuso = true;
       if (sveglia) { clearTimeout(sveglia); sveglia = null; }
+      if (fine) { clearTimeout(fine); fine = null; }
       // Chi ha perso la corsa si abortisce: la sua risposta non serve più a
       // nessuno, e lasciarla scorrere vuol dire tenere occupata una macchina
       // pubblica per niente.
       controlli.forEach(c => { try { c.abort(); } catch (e) { /* già chiusa */ } });
     };
 
+    const arrenditi = () => {
+      if (chiuso) return;
+      smetti();
+      // Senza nemmeno un no da riferire, il guasto è il tempo finito: dirlo
+      // così è più onesto che inventarsi un errore che nessuno ha dato.
+      no(new Error(ultimo ? overpassMotivo(ultimo) : 'OpenStreetMap non ha risposto in tempo'));
+    };
+
     const nonCeLHaFatta = e => {
-      if (e) ultimo = e;
+      if (e && overpassPeso(e) >= overpassPeso(ultimo)) ultimo = e;
       attive--;
       if (chiuso) return;
-      // C'è ancora una porta da provare: si prova subito, senza aspettare
-      // l'affiancamento.
-      if (prossima < n) { parti(); return; }
-      if (attive <= 0) {
-        smetti();
-        no(ultimo || new Error('nessuna istanza di OpenStreetMap ha risposto'));
-      }
+      // C'è ancora una porta da provare, e c'è ancora tempo: si prova subito,
+      // senza aspettare l'affiancamento.
+      if (prossima < n && Date.now() < scadenza) { parti(); return; }
+      if (attive <= 0) arrenditi();
     };
 
     const parti = () => {
       if (chiuso || prossima >= n) return;
+      const resta = scadenza - Date.now();
+      if (resta <= 0) { if (attive <= 0) arrenditi(); return; }
       const istanza = OVERPASS_ISTANZE[(inizio + prossima) % n];
       prossima++;
       attive++;
       const c = typeof AbortController === 'function' ? new AbortController() : null;
       if (c) controlli.push(c);
-      // L'attesa del client deve essere più lunga di quella scritta nella
-      // query, se no si taglia la richiesta proprio mentre il server la sta
-      // ancora onorando — e il colpevole sembra il server.
-      const timer = c ? setTimeout(() => c.abort(), attesaMs) : null;
+      // Ogni tentativo muore alla scadenza comune, non dopo un'attesa sua: la
+      // regola che conta resta quella di sempre — il client non deve
+      // arrendersi prima del `timeout` scritto nella query, se no si taglia la
+      // richiesta mentre il server la sta ancora onorando e il colpevole
+      // sembra lui — ed è rispettata perché `attesaMs` quel timeout lo supera
+      // già per tutt'e tre le famiglie.
+      const timer = c ? setTimeout(() => c.abort(), resta) : null;
       // GET è intenzionale. Il POST, pur essendo formalmente una richiesta
       // CORS semplice, viene rifiutato da alcuni proxy davanti alle istanze
       // pubbliche con un 500 privo di header CORS: dal browser sembra quindi
@@ -2816,6 +2914,13 @@ function overpassChiedi(query, attesaMs) {
         sveglia = setTimeout(() => { sveglia = null; parti(); }, OVERPASS_AFFIANCA_MS);
       }
     };
+
+    // La rete di sicurezza: senza `AbortController` nessun tentativo si
+    // interrompe da sé, e una porta che tace terrebbe la promessa appesa per
+    // sempre — cioè lo stato «sto cercando» che non diventa mai «non ci sono
+    // riuscito», che è il modo peggiore di fallire perché non sembra un
+    // errore.
+    fine = setTimeout(() => { fine = null; arrenditi(); }, attesaMs);
 
     parti();
   });
@@ -2867,8 +2972,56 @@ async function overpassConRipiego(query, leggi, ripiego, attesaMs) {
   } catch (e) {
     if (!ripiego) throw e;
     console.warn('Overpass: la richiesta larga non è passata, riprovo con quella corta —', e.message);
-    return leggi(await overpassInFila(() => overpassChiedi(ripiego, attesaMs)));
+    const esito = leggi(await overpassInFila(() => overpassChiedi(ripiego, attesaMs)));
+    // Chi riceve deve sapere che questa risposta è **più corta** di quella che
+    // aveva chiesto, se no la salva col raggio grande e da domani se la tiene
+    // per buona: `raggiSalvatoBuono` guarda quel numero, e un elenco preso a
+    // trenta chilometri spacciato per novanta è il modo di non riscaricare
+    // mai più quello vero.
+    if (esito && typeof esito === 'object') esito.daRipiego = true;
+    return esito;
   }
+}
+
+
+// --- Riprovare da soli ------------------------------------------------
+//
+// «Si riprova da sé fra qualche minuto» era scritto nel messaggio delle
+// vette, e non era vero. A rimettere in moto le tre richieste era soltanto un
+// nuovo giro di `terrenoCaricaPaesaggio`, cioè un cambio di luogo o una
+// riapertura della vista: chi apriva il planetario nel minuto sbagliato —
+// e il minuto sbagliato capita eccome, perché Overpass è pubblico e la sera
+// è quando lo usano tutti — restava senza un nome sull'orizzonte finché non
+// ricaricava la pagina a mano. È il difetto che non si vede leggendo il
+// codice, perché la frase giusta c'era: mancava solo chi la mantenesse.
+//
+// La scala dei tentativi è quella delle quote (§7): pochi, sempre più
+// distanti, e poi basta. Insistere ogni minuto su un servizio che risponde
+// 429 è il modo migliore per continuare a prendere 429.
+const OVERPASS_RIPROVE_MS = [45000, 240000, 900000];
+const overpassRiprove = {};
+
+function overpassRiprovaPiuTardi(chi, lat, lon, cosa) {
+  // I tentativi si contano **per posto**: chi si sposta sta facendo una
+  // domanda nuova, e ha diritto alla scala intera anche se qui la aveva già
+  // esaurita. È la stessa regola dell'attesa dopo un guasto (`fallitoLat`).
+  const dove = lat.toFixed(2) + ',' + lon.toFixed(2);
+  let v = overpassRiprove[chi];
+  if (!v || v.dove !== dove) {
+    if (v && v.sveglia) clearTimeout(v.sveglia);
+    v = overpassRiprove[chi] = { n: 0, sveglia: null, dove };
+  }
+  if (v.sveglia || v.n >= OVERPASS_RIPROVE_MS.length) return;
+  const attesa = OVERPASS_RIPROVE_MS[v.n++];
+  v.sveglia = setTimeout(() => { v.sveglia = null; cosa(); }, attesa);
+}
+
+// Il conto riparte da zero anche quando ce l'abbiamo fatta, o quando il raggio
+// cambia: sono due domande nuove come lo è un altro posto.
+function overpassRiprovaAzzera(chi) {
+  const v = overpassRiprove[chi];
+  if (v && v.sveglia) clearTimeout(v.sveglia);
+  overpassRiprove[chi] = { n: 0, sveglia: null, dove: '' };
 }
 
 
@@ -2887,8 +3040,29 @@ function cittaLeggiNodi(elementi) {
     });
 }
 
+// Il ripiego: le sole città e i soli paesi, senza frazioni e senza quartieri,
+// dentro a un raggio più corto.
+//
+// È lo stesso mestiere di `cimeQueryVicina`, e per un pezzo qui non c'era: la
+// richiesta dei paesi era l'unica delle tre a non averne uno, quindi un 504 —
+// che su Overpass vuol dire «adesso non ce la faccio», non «non ho i dati» —
+// mandava direttamente all'elenco dei capoluoghi che l'app si porta dietro.
+// Che è un ripiego onesto per l'orizzonte di una città grande e non dice
+// niente a chi sta in provincia: da Como, con il raggio stretto a venti
+// chilometri, dentro `ECL_CITTA` non c'è **nulla** — e l'orizzonte restava
+// senza un solo nome. Una query corta, invece, di paesi ne trova sempre:
+// sono i vicini, cioè quelli che illuminano davvero.
+function cittaQueryVicina(lat, lon) {
+  const la = lat.toFixed(4), lo = lon.toFixed(4);
+  const km = Math.min(CITTA_RAGGIO_RIPIEGO_KM, raggioCitta());
+  return '[out:json][timeout:20];' +
+    `node["place"~"^(city|town|village)$"](around:${Math.round(km * 1000)},${la},${lo});` +
+    'out body 300;';
+}
+
 function cittaDaOverpass(lat, lon) {
-  return overpassConRipiego(cittaQueryOverpass(lat, lon), cittaLeggiNodi, null, CITTA_ATTESA_MS);
+  return overpassConRipiego(cittaQueryOverpass(lat, lon), cittaLeggiNodi,
+                            cittaQueryVicina(lat, lon), CITTA_ATTESA_MS);
 }
 
 // Il ripiego: l'elenco dei capoluoghi che l'app si porta dietro per le
@@ -2918,12 +3092,12 @@ function cittaLeggiSalvate(lat, lon) {
     terrenoDistanzaKm(lat, lon, v.lat, v.lon) <= CITTA_RAGGIO_VALIDO_KM) || null;
 }
 
-function cittaSalva(lat, lon, grezze, fonte) {
+function cittaSalva(lat, lon, grezze, fonte, raggio) {
   try {
     const posti = cittaArchivio().filter(v => v && typeof v.lat === 'number' &&
       terrenoDistanzaKm(lat, lon, v.lat, v.lon) > CITTA_RAGGIO_VALIDO_KM);
     posti.unshift({
-      lat, lon, fonte, quando: Date.now(), raggio: raggioCitta(),
+      lat, lon, fonte, quando: Date.now(), raggio: isFinite(raggio) ? raggio : raggioCitta(),
       // Nomi corti e coordinate a quattro decimali: un centinaio di paesi
       // stanno in una decina di kilobyte
       elenco: grezze.map(c => ({ n: c.nome, a: +c.lat.toFixed(4), o: +c.lon.toFixed(4), p: c.abitanti }))
@@ -2940,6 +3114,10 @@ function cittaDimentica() {
   citta.stato = 'niente';
   citta.elenco = [];
   citta.lat = citta.lon = null;
+  citta.fonte = '';
+  citta.quandoFallito = 0;
+  citta.fallitoLat = citta.fallitoLon = null;
+  overpassRiprovaAzzera('citta');
 }
 
 
@@ -2961,11 +3139,29 @@ function cittaCarica(forza, soloCache) {
   if (!luogo) return Promise.resolve(false);
   const lat = luogo.lat, lon = luogo.lon;
 
-  if (!forza && citta.stato === 'pronto' && citta.lat !== null &&
+  // Il ripiego interno (i capoluoghi di `ECL_CITTA`) è una **supplenza**, non
+  // una risposta: dice «Milano» a chi sta a Como e non dice niente a chi sta
+  // in un posto che quell'elenco non conosce. Contarla come «pronto» voleva
+  // dire che il primo minuto storto di Overpass decideva l'orizzonte per
+  // tutta la sessione — nessuno sarebbe più tornato a chiedere i paesi veri.
+  const supplenza = citta.fonte === 'interno';
+  if (!forza && citta.stato === 'pronto' && !supplenza && citta.lat !== null &&
       terrenoDistanzaKm(lat, lon, citta.lat, citta.lon) <= CITTA_RAGGIO_VALIDO_KM) {
     return Promise.resolve(true);
   }
   if (citta.stato === 'in-corso') return citta.promessa || Promise.resolve(false);
+
+  // Ha appena fallito *per questo posto*: si aspetta prima di ridare fastidio
+  // al servizio. È la stessa guardia delle vette, e serve per la stessa
+  // ragione — senza, ogni giro di `skyAggiornaOsservatore` rilanciava la
+  // richiesta, e a un'istanza che risponde 429 si finisce per chiedere sempre
+  // più spesso proprio quando andrebbe lasciata in pace.
+  if (!forza && citta.quandoFallito &&
+      Date.now() - citta.quandoFallito < CITTA_RIPROVA_DOPO_MS &&
+      citta.fallitoLat !== null &&
+      terrenoDistanzaKm(lat, lon, citta.fallitoLat, citta.fallitoLon) <= CITTA_RAGGIO_VALIDO_KM) {
+    return Promise.resolve(citta.stato === 'pronto');
+  }
 
   if (!forza) {
     const salvate = cittaLeggiSalvate(lat, lon);
@@ -2991,20 +3187,30 @@ function cittaCarica(forza, soloCache) {
       // nodi grezzi: in una provincia densa Overpass risponde con ogni
       // frazione, e in localStorage ci vanno solo quelle che illuminano.
       if (!citta.elenco.length) throw new Error('nessun luogo abbastanza illuminato');
-      cittaSalva(lat, lon, citta.elenco, 'osm');
+      cittaSalva(lat, lon, citta.elenco, 'osm',
+                elenco.daRipiego ? Math.min(CITTA_RAGGIO_RIPIEGO_KM, raggioCitta()) : raggioCitta());
+      citta.quandoFallito = 0;
+      overpassRiprovaAzzera('citta');
       return true;
     })
     .catch(e => {
-      console.warn('Città da OpenStreetMap non disponibili:', e);
-      // Il ripiego non si salva: è una supplenza, e alla prossima apertura
-      // con la rete vera vale la pena riprovare con i paesi veri.
+      console.warn('Città da OpenStreetMap non disponibili:', e && e.message ? e.message : e);
+      citta.quandoFallito = Date.now();
+      citta.fallitoLat = lat;
+      citta.fallitoLon = lon;
+      // Non è finita qui: fra qualche minuto si riprova da soli, e questa
+      // volta per davvero.
+      overpassRiprovaPiuTardi('citta', lat, lon, () => cittaCarica(true));
+      // Il ripiego non si salva: è una supplenza, e al prossimo tentativo
+      // con la rete che risponde vale la pena riavere i paesi veri.
       const interne = cittaDaElencoInterno(lat, lon);
       if (interne.length) {
         cittaApplica(lat, lon, interne, 'interno');
         return true;
       }
       citta.stato = 'fallito';
-      citta.motivo = 'Non conosco i paesi qui attorno: l\'orizzonte resta senza luci.';
+      citta.motivo = 'Non conosco i paesi qui attorno (' + (e && e.message ? e.message : 'OpenStreetMap non risponde') +
+        '): l\'orizzonte resta senza luci. Si riprova da sé fra qualche minuto.';
       terrenoAggiornaPannello();
       return false;
     })
@@ -3037,7 +3243,11 @@ function cittaVicine() {
 
 function cittaAlterna() {
   citta.acceso = !citta.acceso;
-  if (citta.acceso && citta.stato !== 'pronto') cittaCarica();
+  // La supplenza dei capoluoghi conta come «non pronto»: riaccendere le luci
+  // è il gesto di chi le sta cercando, e se OpenStreetMap nel frattempo è
+  // tornato vale la pena riprovare. A non farne un martello ci pensa
+  // l'attesa dopo un guasto, dentro `cittaCarica`.
+  if (citta.acceso && (citta.stato !== 'pronto' || citta.fonte === 'interno')) cittaCarica();
   terrenoAggiornaPannello();
 }
 
@@ -3049,9 +3259,15 @@ function cittaTesto() {
 
   const prima = citta.elenco[0];
   const dove = typeof skyNomeDirezione === 'function' ? skyNomeDirezione(prima.az) : '';
+  // La supplenza va detta: un orizzonte con tre capoluoghi e nessun paese
+  // sembra un orizzonte, e chi lo guarda non ha modo di sapere che i nomi
+  // veri non sono mai arrivati.
+  const nota = citta.fonte === 'interno'
+    ? ' Per ora però ci sono solo le città grandi: OpenStreetMap non ha risposto, si riprova da sé fra qualche minuto.'
+    : '';
   return `Sull'orizzonte ci sono le luci di ${citta.elenco.length} centri abitati: ` +
     `il chiarore più forte è quello di ${prima.nome}, a ${prima.km.toFixed(0)} km verso ${dove}. ` +
-    'È la direzione in cui conviene NON cercare le cose deboli.';
+    'È la direzione in cui conviene NON cercare le cose deboli.' + nota;
 }
 
 function cittaAggiornaTasto() {
@@ -3291,12 +3507,12 @@ function cimeLeggiSalvate(lat, lon) {
     terrenoDistanzaKm(lat, lon, v.lat, v.lon) <= CIME_RAGGIO_VALIDO_KM) || null;
 }
 
-function cimeSalva(lat, lon, elenco, fonte) {
+function cimeSalva(lat, lon, elenco, fonte, raggio) {
   try {
     const posti = cimeArchivio().filter(v => v && typeof v.lat === 'number' &&
       terrenoDistanzaKm(lat, lon, v.lat, v.lon) > CIME_RAGGIO_VALIDO_KM);
     posti.unshift({
-      lat, lon, fonte, quando: Date.now(), raggio: raggioCime(),
+      lat, lon, fonte, quando: Date.now(), raggio: isFinite(raggio) ? raggio : raggioCime(),
       elenco: elenco.map(c => ({ n: c.nome, a: +c.lat.toFixed(4), o: +c.lon.toFixed(4), q: Math.round(c.quota) }))
     });
     localStorage.setItem(CHIAVE_CIME, JSON.stringify({ posti: posti.slice(0, TERRENO_POSTI_SALVATI) }));
@@ -3318,6 +3534,7 @@ function cimeDimentica() {
   cime.lat = cime.lon = null;
   cime.timerViaggio = null;
   cime.ultimoLuogo = null;
+  overpassRiprovaAzzera('cime');
 }
 
 
@@ -3437,14 +3654,20 @@ function cimeCarica(forza, soloCache) {
         // elenco. Ma non vale la pena salvarla — basta un trasloco.
         cime.stato = 'pronto';
         cime.motivo = 'Qui attorno non ci sono vette con un nome.';
+        overpassRiprovaAzzera('cime');
         terrenoAggiornaPannello();
         return true;
       }
-      cimeSalva(lat, lon, cime.elenco, 'osm');
+      cimeSalva(lat, lon, cime.elenco, 'osm',
+               elenco.daRipiego ? Math.min(CIME_RAGGIO_RIPIEGO_KM, raggioCime()) : raggioCime());
+      overpassRiprovaAzzera('cime');
       return true;
     })
     .catch(e => {
-      console.warn('Vette da OpenStreetMap non disponibili:', e);
+      console.warn('Vette da OpenStreetMap non disponibili:', e && e.message ? e.message : e);
+      // «Si riprova da sé fra qualche minuto» adesso è vero: prima lo diceva
+      // il messaggio e non lo faceva nessuno.
+      overpassRiprovaPiuTardi('cime', lat, lon, () => cimeCarica(true));
       cime.stato = 'fallito';
       cime.quandoFallito = Date.now();
       cime.fallitoLat = lat;
@@ -3712,6 +3935,10 @@ const ACQUE_OCCLUSIONE_MARGINE_GRADI = 0.05;
 const ACQUE_OCCLUSIONE_PASSI = 12;
 
 const ACQUE_ATTESA_MS = 30000;
+// Fin dove arriva la query corta di ripiego. Era un 12 scritto a mano dentro
+// `acqueQueryCorta`, e serve anche fuori: quello che si salva va etichettato
+// col raggio con cui è stato **preso**, non con quello che si era chiesto.
+const ACQUE_RAGGIO_RIPIEGO_KM = 12;
 const ACQUE_RAGGIO_VALIDO_KM = 2;
 const ACQUE_RIPROVA_DOPO_MS = 4 * 60 * 1000;
 
@@ -3773,7 +4000,7 @@ function acqueQueryOverpass(lat, lon) {
 // Il ripiego, per quando la richiesta larga si prende un 504: solo i laghi,
 // solo vicino, niente relazioni. È molto più corta e passa quasi sempre.
 function acqueQueryCorta(lat, lon) {
-  const r = terrenoRiquadro(lat, lon, Math.min(12, raggioAcque()));
+  const r = terrenoRiquadro(lat, lon, Math.min(ACQUE_RAGGIO_RIPIEGO_KM, raggioAcque()));
   const bb = `(${r.s.toFixed(4)},${r.o.toFixed(4)},${r.n.toFixed(4)},${r.e.toFixed(4)})`;
   return '[out:json][timeout:20];(' +
     `way["natural"="water"]${bb};` +
@@ -4391,7 +4618,7 @@ function acqueArchivio() {
   return [];
 }
 
-function acqueSalva(lat, lon, fonte) {
+function acqueSalva(lat, lon, fonte, raggio) {
   try {
     const posti = acqueArchivio().filter(v => v && typeof v.lat === 'number' &&
       terrenoDistanzaKm(lat, lon, v.lat, v.lon) > ACQUE_RAGGIO_VALIDO_KM);
@@ -4400,7 +4627,7 @@ function acqueSalva(lat, lon, fonte) {
     const fitte = {};
     (acque.bande || []).forEach((b, i) => { if (b && b.length) fitte[i] = b; });
     posti.unshift({
-      lat, lon, fonte, quando: Date.now(), raggio: raggioAcque(), versione: ACQUE_VERSIONE,
+      lat, lon, fonte, quando: Date.now(), raggio: isFinite(raggio) ? raggio : raggioAcque(), versione: ACQUE_VERSIONE,
       // `sommerso` va salvato con le bande: è geometria pura come loro, e
       // ricavarlo di nuovo vorrebbe dire tenersi i poligoni. Senza di lui, a
       // ogni riapertura chi sta in mezzo a un lago si ritroverebbe l'occhio
@@ -4445,6 +4672,7 @@ function acqueDimentica() {
   acque.quandoFallito = 0;
   acque.fallitoLat = acque.fallitoLon = null;
   acque.lat = acque.lon = null;
+  overpassRiprovaAzzera('acque');
 }
 
 
@@ -4556,14 +4784,18 @@ function acqueCarica(forza, soloCache) {
   acque.avanzamento = 0.2;
   terrenoBarraAggiorna();
   acque.promessa = acqueDaOverpass(lat, lon)
-    .then(tracciati => acqueApplicaAScaglioni(lat, lon, tracciati, 'osm'))
-    .then(() => {
+    .then(tracciati => acqueApplicaAScaglioni(lat, lon, tracciati, 'osm')
+      .then(() => tracciati && tracciati.daRipiego ? Math.min(ACQUE_RAGGIO_RIPIEGO_KM, raggioAcque()) : raggioAcque()))
+    .then(raggioPreso => {
       // Zero specchi d'acqua è una risposta, non un errore — mezza Italia
       // è così. Ma non vale la pena salvarla: basta un trasloco.
-      if (acque.quanti) acqueSalva(lat, lon, 'osm');
+      if (acque.quanti) acqueSalva(lat, lon, 'osm', raggioPreso);
+      overpassRiprovaAzzera('acque');
       return true;
     })
     .catch(e => {
+      console.warn('Laghi e fiumi da OpenStreetMap non disponibili:', e && e.message ? e.message : e);
+      overpassRiprovaPiuTardi('acque', lat, lon, () => acqueCarica(true));
       acque.stato = 'fallito';
       acque.motivo = e && e.message ? e.message : 'non sono riuscito a scaricarle';
       acque.quandoFallito = Date.now();

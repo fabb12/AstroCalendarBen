@@ -4,66 +4,84 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-I nomi dei paesi e delle montagne che non comparivano nel planetario, e i
-raggi di ricerca che adesso si scelgono su una mappa.
+I nomi dei paesi e delle città che non comparivano più sull'orizzonte, con in
+console un muro di errori di rete su OpenStreetMap.
 
-### 1. Perché i nomi non comparivano (ed era colpa dei 429 sulle quote)
+### Cos'era davvero
 
-`terrenoCaricaPaesaggio()` appendeva le tre richieste a Overpass — paesi,
-vette, acque — alla **promessa di `terrenoCarica`**: partivano solo quando
-tutte e ventiquattro le richieste delle quote avevano finito, bene o male. Con
-Open-Meteo che risponde 429 quelle ventiquattro diventano fino a centoventi
-tentativi passati per un rubinetto che frena a ogni no, cioè minuti — e in
-quei minuti sull'orizzonte non compariva **nessun nome**, mentre in console si
-vedevano solo dei 429 che parlavano di un altro host.
+Non era un bug di disegno e non era la posizione: era che **le porte a cui
+bussare erano due, ed erano chiuse tutt'e due**. Nella segnalazione si
+leggevano due guasti che non si somigliano per niente:
 
-Sono due servizi diversi, su host diversi, con rubinetti diversi: l'unica
-ragione per metterli in fila indiana era la banda del primo fotogramma, e a
-quella basta il `requestIdleCallback`. Misurato con un servizio delle quote che
-non risponde mai (Chromium, servizi finti): prima partiva solo il giro della
-cache locale (`citta/cache`, `cime/cache`, `acque/cache`), adesso partono anche
-le tre richieste di rete.
+- `overpass-api.de` → `ERR_CONNECTION_TIMED_OUT`, cioè la connessione non si
+  apriva nemmeno: non era il servizio a essere carico, era la strada per
+  arrivarci;
+- `overpass.kumi.systems` → *No 'Access-Control-Allow-Origin' header*, cioè
+  rispondeva **senza intestazione CORS**, che dal browser è un no secco anche
+  quando i dati ci sarebbero.
 
-### 2. Perché comparivano e sparivano da soli
+Con due sole istanze quello era un caso peggiore garantito, e sotto ci stavano
+altri tre difetti che lo rendevano definitivo invece che passeggero.
 
-`cimeVisibili` tace finché il terreno **sta arrivando** — dare l'elenco intero
-e poi rimangiarsene metà è peggio — ma «sta arrivando» era `stato ===
-'in-corso'`, e le riprese automatiche (20 s, 90 s, 5 min, 15 min, mezz'ora)
-rimettono lo stato lì. Quindi: primo tentativo fallito → i nomi compaiono →
-venti secondi dopo spariscono → poi tornano, per quasi un'ora. Adesso c'è
-`terreno.arreso`: aspettare in silenzio ha senso finché non si sa ancora
-niente, non quando si sa già che qui il terreno non arriva.
+### 1. Cinque porte al posto di due (`terreno.js`, `OVERPASS_ISTANZE`)
 
-### 3. `[Intervention] Blocked call to navigator.vibrate`
+Aggiunte `overpass.private.coffee`, `overpass.osm.jp` e
+`overpass.openstreetmap.fr`: pubbliche, senza chiave, planeta intero e
+`Access-Control-Allow-Origin: *` — che qui è la condizione necessaria, perché
+una pagina statica su GitHub Pages non ha un server proprio da mettere in
+mezzo.
 
-Non era un guasto e non era del planetario: `telFermaTubo` chiama
-`telVibra(0)`, e all'avvio ci passa comunque perché `mostraVista` chiude le
-viste che non sono a schermo. Non si annulla una vibrazione che non è mai
-cominciata (`telVibrando`).
+### 2. La scadenza è di tutta la corsa, non di ogni porta (`overpassChiedi`)
 
-### 4. I raggi di ricerca su una mappa
+È la riga che rende **gratis** le istanze in più. Prima ogni tentativo si
+prendeva la sveglia intera: con due porte e la query di ripiego dietro erano
+già 4 × 30 s nel caso peggiore, e passando a cinque sarebbero diventati cinque
+minuti di silenzio prima di dire «non ce l'ho fatta». Adesso `attesaMs` è il
+budget di tutta la corsa, e c'è anche la rete di sicurezza per chi non ha
+`AbortController`: una porta muta non lascia più la promessa appesa.
 
-Erano tre slitte, cioè tre numeri chiesti al buio: «ottanta chilometri» non
-vuol dire niente finché non si sa cosa ci sta dentro. Adesso il pannello
-(Impostazioni → Planetario) è una carta col centro sul luogo da cui il
-planetario guarda (`terrenoLuogo()`, la stessa funzione che decide dove
-cercare) e tre cerchi colorati come i nomi che scrivono sull'orizzonte. Si
-trascina la maniglia sul bordo del cerchio scelto, o si tocca il punto fin dove
-si vuole arrivare.
+### 3. I paesi si arrendevano cinque secondi prima del server
 
-La coerenza col planetario è fatta vedere in due modi: l'**anello
-tratteggiato** dentro a due dei tre cerchi è l'anello vero delle richieste
-(`CITTA_RAGGIO_PAESI_KM`, `CIME_RAGGIO_VICINE_KM`), e la riga sotto a ogni nome
-dice quanto si è trovato **e quanto di quello il planetario sta disegnando
-adesso** — un raggio da centocinquanta chilometri con quaranta vette di cui
-zero in vista è un raggio da stringere. La slitta resta sotto la mappa, per il
-numero esatto e per chi la mappa non ce l'ha.
+`CITTA_ATTESA_MS` era **15 s** contro i `[timeout:20]` scritti nella loro
+query. La regola («il client non deve mai arrendersi per primo, se no taglia
+la richiesta mentre il server la sta ancora onorando e il colpevole sembra
+lui») era rispettata dalle vette e dalle acque, e non dai paesi — cioè proprio
+dall'unica delle tre di cui uno si accorge. Adesso 26 s.
 
-Provato in Chromium con un Leaflet finto: costruzione, slitta (input muove solo
-il numero, change salva), tocco sulla mappa, cambio di famiglia, trascinamento
-della maniglia, anelli interni, e le cinque risposte della riga del conteggio.
+### 4. La supplenza dei capoluoghi non è più definitiva
 
-File toccati: `terreno.js` (`terrenoCaricaPaesaggio`, `terrenoInArrivo`,
-`terreno.arreso`), `telescopio.js` (`telVibra`), `ui-nuova.js` (§2, blocco
-`raggi*` riscritto), `app.js` (`mostraTab` delle Impostazioni), `index.html`,
-`style.css`, `sw.js` (`astrocal-v143`), `CLAUDE.md`.
+Con Overpass giù i paesi ripiegavano su `ECL_CITTA`, si segnavano `pronto`, e
+**nessuno tornava più a chiedere quelli veri**: il primo minuto storto decideva
+l'orizzonte per tutta la sessione. Da Como col raggio stretto a venti
+chilometri, poi, dentro `ECL_CITTA` non c'è nulla — e l'orizzonte restava senza
+un solo nome. Adesso: `citta.fonte === 'interno'` non vale come risposta, c'è
+la query corta di ripiego che le altre due famiglie avevano già
+(`cittaQueryVicina`), e il pannello dice che sta facendo la supplenza.
+
+### 5. «Si riprova da sé fra qualche minuto» adesso è vero
+
+Lo diceva il messaggio delle vette e non lo faceva nessuno: a rimettere in moto
+le tre richieste era solo un cambio di luogo. C'è la scala
+`OVERPASS_RIPROVE_MS` (45 s, 4 min, 15 min), contata **per posto**.
+
+### 6. Il service worker non traveste più i guasti da 504
+
+Overpass e i geocodificatori inversi passano senza intermediari. Il ripiego
+generico trasformava un guasto di rete in un finto `504 Non disponibile senza
+rete` — ed è quello che si leggeva in console mentre l'orizzonte restava senza
+nomi — e soprattutto teneva viva la `fetch` delle istanze **perdenti**, che
+`overpassChiedi` crede di abortire: l'esatto contrario di quello che la corsa
+serve a ottenere.
+
+### Prove
+
+`verifica.html` §26, ventuno prove: le porte (quante, host diversi, https), la
+disuguaglianza client/server su tutte e sei le query, la corsa (una porta che
+cade lascia subito il posto, si prova ognuna una volta, la scadenza è di tutta
+la corsa, un 429 vero si racconta meglio dell'abort arrivato dopo) e il marchio
+`daRipiego`. Girate in Chromium con `terreno.js` caricato per davvero, insieme
+a una prova a parte dell'intero giro dei paesi: guasto → supplenza → nessuna
+ribussata → attesa passata → paesi veri → salvataggio.
+
+File toccati: `terreno.js` (§ Overpass, § 10 le città vere, § 11 le cime, § 12
+le acque), `sw.js` (`astrocal-v144`), `verifica.html` (§26), `CLAUDE.md`.
