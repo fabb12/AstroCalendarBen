@@ -333,9 +333,11 @@ const RIL_VICINO_NIENTE_M = 70;
 // una fotografia non è la pendenza, sono i **valloni**: la piega di traverso.
 
 // La riga del crinale contro il cielo, e quelle interne dove un piano si
-// stacca da quello dietro. Sono le due che danno la lettura a strati.
-const RIL_FILO_CIELO = 0.62;
-const RIL_FILO_DENTRO = 0.26;
+// stacca da quello dietro. Il filo resta bianco (invece di prendere il colore
+// della foschia): sottile ma riconoscibile, mette in evidenza tanto le cime
+// quanto le colline dei piani davanti senza appiattire il chiaroscuro 3D.
+const RIL_FILO_CIELO = 0.68;
+const RIL_FILO_DENTRO = 0.30;
 
 // Di quanti anelli possono differire due punti di rottura di colonne vicine
 // perché si considerino lo stesso crinale. Tre: più stretto e i contorni si
@@ -1679,8 +1681,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // panoramiche separa un piano dall'altro. Si cuciono fra colonne vicine
   // solo se il punto di rottura sta più o meno allo stesso anello — se no si
   // legherebbero creste che non hanno niente a che vedere fra loro.
-  const foschia = aria ? aria.foschia : [80, 90, 105];
-  const chiaro = skyMescolaColore(foschia, [255, 255, 255], 0.5);
+  const biancoProfilo = [255, 255, 255];
   {
     ctx.beginPath();
     let segmenti = 0;
@@ -1701,7 +1702,8 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
       }
     }
     if (segmenti) {
-      ctx.strokeStyle = skyRgba(chiaro, RIL_FILO_DENTRO * (0.45 + 0.55 * sky.luceCielo));
+      ctx.strokeStyle = skyRgba(biancoProfilo,
+        RIL_FILO_DENTRO * (0.55 + 0.45 * sky.luceCielo));
       ctx.lineWidth = 1;
       ctx.stroke();
       chiamate++;
@@ -1718,9 +1720,9 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
       else { ctx.moveTo(rilCrestaX[c], rilCrestaY[c]); dentro = true; }
     }
   }
-  ctx.strokeStyle = skyRgba(skyMescolaColore(foschia, [255, 255, 255], 0.62),
-    RIL_FILO_CIELO * (0.4 + 0.6 * Math.max(0, Math.min(1, sky.luceCielo))));
-  ctx.lineWidth = 1.15;
+  ctx.strokeStyle = skyRgba(biancoProfilo,
+    RIL_FILO_CIELO * (0.5 + 0.5 * Math.max(0, Math.min(1, sky.luceCielo))));
+  ctx.lineWidth = 1;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.stroke();
