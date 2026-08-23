@@ -3998,22 +3998,6 @@ body input.casella-data:hover { border: 0; }
 }
 /* Fra la data e l'ora ci vuole più aria che fra due numeri della stessa data */
 .sep-larga { padding: 0 4px; }
-/* Uno stacco dentro a un pannello: il pannello Tempo dice due cose (quando,
-   e da dove), e senza una riga fra loro sembravano la stessa cosa. Sottile e
-   stretto: serve a separare, non a occupare — l'aria attorno gliela dà già
-   il `gap` della griglia, e sommarci un margine faceva due stacchi. */
-.stacco-pannello {
-  height: 1px;
-  margin: 0;
-  background: var(--bordo);
-}
-
-/* Da dove si guarda il cielo: il nome del posto è già in alto a sinistra e
-   qui resta la ricerca per città. La scelta sulla mappa è sempre disponibile
-   nel segnaposto accanto alle linguette, senza aprire questo pannello. */
-.riga-cerca-luogo .campo-cielo { flex: 1 1 150px; }
-.risultati-luogo { max-height: 168px; }
-
 /* La lettura corta nella testata di "Quando": non l'istante — quello lo
    dicono le sei caselle qui sotto — ma di quanto si è spostato l'orologio e
    a che passo sta camminando. Fuori dal tempo reale si accende d'ambra,
