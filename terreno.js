@@ -2661,9 +2661,7 @@ function cittaQueryOverpass(lat, lon) {
 // detto com'è: «429» e «non c'è rete» sono due guai diversi.
 const OVERPASS_ISTANZE = [
   'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-  'https://overpass.nchc.org.tw/api/interpreter'
+  'https://overpass.kumi.systems/api/interpreter'
 ];
 
 // Dopo quanto si prova **anche** l'altra istanza, invece di stare a guardare
@@ -2746,21 +2744,14 @@ function overpassChiedi(query, attesaMs) {
       // query, se no si taglia la richiesta proprio mentre il server la sta
       // ancora onorando — e il colpevole sembra il server.
       const timer = c ? setTimeout(() => c.abort(), attesaMs) : null;
-      // La query non va nell'URL. Quelle larghe di vette e acque possono
-      // superare i limiti di proxy e CDN e tornare con una pagina d'errore
-      // che, non avendo gli header CORS di Overpass, il browser descrive
-      // soltanto come «bloccata da CORS». Il POST urlencoded è una richiesta
-      // CORS semplice (quindi niente preflight) ed è il formato accettato
-      // dall'interprete Overpass. Le istanze in più sono importanti quanto
-      // il formato: un servizio pubblico occupato non deve lasciare senza
-      // nomi l'orizzonte quando un altro mirror è disponibile.
-      const opzioni = {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-        body: 'data=' + encodeURIComponent(query)
-      };
-      if (c) opzioni.signal = c.signal;
-      fetch(istanza, opzioni)
+      // GET è intenzionale. Il POST, pur essendo formalmente una richiesta
+      // CORS semplice, viene rifiutato da alcuni proxy davanti alle istanze
+      // pubbliche con un 500 privo di header CORS: dal browser sembra quindi
+      // un errore CORS e spariscono insieme paesi, cime e acque. Le query qui
+      // sono tenute corte e hanno un limite esplicito, perciò entrano senza
+      // problemi nell'URL e conservano il percorso che le istanze espongono
+      // davvero alle pagine statiche come GitHub Pages.
+      fetch(istanza + '?data=' + encodeURIComponent(query), c ? { signal: c.signal } : undefined)
         .then(risposta => {
           if (!risposta.ok) throw new Error('OpenStreetMap non risponde (' + risposta.status + ')');
           return risposta.json();
