@@ -389,7 +389,10 @@
                occhio, cursori, bussola, stella — e il nome resta dove serve
                davvero: nel `title` per chi ha il mouse, e in una scritta
                nascosta (`.nome-gruppo`) per chi legge con lo schermo. Sei
-               tondi entrano senza scorrere anche su un telefono da 320px. -->
+               tondi entrano senza scorrere anche su un telefono da 320px.
+               Il segnaposto resta subito accanto: scegliere il punto di
+               osservazione è un'azione diretta, non un'impostazione da
+               cercare dentro al pannello Tempo. -->
           <div class="cielo-barra">
             <div class="linguette-gruppi" aria-label="Gruppi di comandi">
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="tempo" aria-pressed="false"
@@ -432,6 +435,15 @@
                   <path d="M12 3.2l2.5 5.7 6.2.6-4.7 4.1 1.4 6.1L12 16.5l-5.4 3.2 1.4-6.1-4.7-4.1 6.2-.6z"/>
                 </svg><span class="nome-gruppo">Astri</span></button>
             </div>
+            <button id="skymap-luogo-mappa" type="button" class="tasto-mappa-luogo-cielo"
+              title="Scegli sulla mappa il punto da cui guardare il cielo"
+              aria-label="Scegli sulla mappa il punto da cui guardare il cielo">
+              <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 21s6.4-6.1 6.4-11.8A6.4 6.4 0 0 0 5.6 9.2C5.6 14.9 12 21 12 21z"/>
+                <circle cx="12" cy="9.2" r="2.2"/>
+              </svg>
+            </button>
             <!-- Il promemoria che l'orologio è spostato non sta più qui: adesso
                  c'è la barra del tempo in fondo alla mappa, che l'istante lo
                  dice sempre — non solo quando è già andato storto qualcosa. -->
@@ -629,8 +641,9 @@
                    a posto, e comunque alla riapertura si riparte da casa.
 
                    Due righe in tutto: la testata (col tasto del ritorno, che
-                   compare solo se si è altrove) e il campo per cercare, col
-                   tasto del mappamondo accanto. Il nome del posto **non** si
+                   compare solo se si è altrove) e il campo per cercare una
+                   città. La mappa ha un tasto sempre visibile accanto alle
+                   linguette principali. Il nome del posto **non** si
                    ripete qui: sta già scritto sopra al cielo, in alto a
                    sinistra, e in azzurro quando è una visita — leggerlo due
                    volte nella stessa schermata non lo rendeva più vero, e
@@ -653,8 +666,6 @@
                     placeholder="Città…"
                     aria-label="Cerca la città da cui guardare il cielo"
                     title="Scrivi il nome di una città: il cielo si sposta lì, ma solo qui nel planetario">
-                  <button id="skymap-luogo-mappa" type="button" class="tasto-cielo tasto-luogo-mappa"
-                    title="Scegli un punto direttamente sul mappamondo">Mappa</button>
                 </div>
                 <div id="skymap-luogo-risultati" class="pos-risultati risultati-luogo" role="listbox" aria-label="Città trovate"></div>
               </div>
