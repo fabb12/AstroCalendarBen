@@ -3285,6 +3285,32 @@ body button.pos-risultato:focus-visible {
 }
 .linguette-gruppi::-webkit-scrollbar { display: none; }
 
+/* Il segnaposto apre direttamente la scelta del punto di osservazione. Sta
+   accanto al menu, con una sagoma propria per non sembrare un settimo gruppo. */
+.tasto-mappa-luogo-cielo {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  color: var(--blu-chiaro);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background-color var(--transizione), color var(--transizione), border-color var(--transizione);
+}
+.tasto-mappa-luogo-cielo:hover,
+.tasto-mappa-luogo-cielo:focus-visible {
+  color: #fff;
+  border-color: rgba(125, 211, 252, 0.72);
+  background: rgba(14, 116, 144, 0.72);
+}
+
 /* Ogni gruppo è un tondo con dentro il suo segno, e nient'altro: sei nomi
    scritti per esteso facevano una striscia larga mezzo schermo sopra al
    cielo, e sul telefono bisognava pure farla scorrere per arrivare ad
@@ -3982,15 +4008,10 @@ body input.casella-data:hover { border: 0; }
   background: var(--bordo);
 }
 
-/* Da dove si guarda il cielo: due righe in tutto, appoggiate sopra al cielo,
-   quindi ogni pixel di altezza è cielo coperto. Il nome del posto qui non
-   c'è: sta già in alto a sinistra sopra al cielo, e in azzurro quando è una
-   visita. Il campo del nome e il tasto del mappamondo stanno in fila e si
-   dividono la riga: sono le due risposte alla stessa domanda — "da dove?" —
-   e la seconda serve quando la prima non ha un nome da offrire. Il campo
-   cede spazio per primo, il tasto resta leggibile. */
+/* Da dove si guarda il cielo: il nome del posto è già in alto a sinistra e
+   qui resta la ricerca per città. La scelta sulla mappa è sempre disponibile
+   nel segnaposto accanto alle linguette, senza aprire questo pannello. */
 .riga-cerca-luogo .campo-cielo { flex: 1 1 150px; }
-.tasto-luogo-mappa { flex: 0 0 auto; }
 .risultati-luogo { max-height: 168px; }
 
 /* La lettura corta nella testata di "Quando": non l'istante — quello lo
@@ -4222,6 +4243,7 @@ body input.casella-data:hover { border: 0; }
   .linguetta-gruppo { width: 34px; height: 34px; }
   .icona-linguetta { width: 19px; height: 19px; }
   .linguette-gruppi { padding: 3px; gap: 2px; }
+  .tasto-mappa-luogo-cielo { width: 42px; height: 42px; }
   .lettura-cielo { font-size: 0.7rem; padding: 4px 9px; }
   .letture-sinistra { max-width: calc(100% - 66px); }
   .bussola-cielo { width: 52px; height: 52px; }
