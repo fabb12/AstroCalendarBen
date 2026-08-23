@@ -635,6 +635,19 @@ titolo('8. La proiezione del cielo');
         arcoLarghissimo && arcoLarghissimo.mezzo === 180,
         arcoLarghissimo ? `${arcoLarghissimo.mezzo}° per lato` : 'nessun arco');
 
+  // Il suolo puo' comprendere tutti gli azimut perche' negli angoli in basso
+  // si arriva quasi al nadir; il crinale 3D no. Disegnarne ugualmente il giro
+  // completo include il meridiano opposto alla camera, dove la stereografica
+  // diverge, e il poligono si richiude attraverso cielo e montagne. E' il
+  // salto verde/bianco che compariva al FOV massimo cambiando appena pitch.
+  const larghezzaRilievo = sky.larghezza, altezzaRilievo = sky.altezza, fovRilievo = sky.fov;
+  sky.larghezza = 1630; sky.altezza = 690; sky.fov = 180;
+  const arcoRilievo = rilArcoInVista(skyBaseVerso(134, 3), skyFocale());
+  sky.larghezza = larghezzaRilievo; sky.altezza = altezzaRilievo; sky.fov = fovRilievo;
+  prova('al FOV massimo il rilievo esclude il meridiano opposto alla camera',
+        arcoRilievo && arcoRilievo.mezzo < 175,
+        arcoRilievo ? `${arcoRilievo.mezzo.toFixed(1)}° per lato` : 'nessun arco');
+
   // A campo stretto deve coincidere con la prospettiva di prima: è la
   // garanzia che nessuna vista ingrandita è cambiata.
   const vecchio = sky.fov;
