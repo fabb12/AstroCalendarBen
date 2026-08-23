@@ -13278,8 +13278,31 @@ function skyGradienteTerreno(ctx, o, vicino, lontano, base, focale, azCentro) {
     by = ay + o.ny * Math.max(sky.larghezza, sky.altezza);
   }
   const gr = ctx.createLinearGradient(ax, ay, bx, by);
-  gr.addColorStop(0, skyRgba(lontano, 0.98));
-  gr.addColorStop(1, skyRgba(aiPiedi, 1));
+
+  // E in mezzo ci vanno le fermate, misurate: senza, quel gradiente va dalla
+  // riga dell'orizzonte fino a novanta gradi sotto, e **lo schermo ne
+  // contiene il primo quarto**. Il colore del terreno vicino non compariva
+  // mai: sotto la riga restava mezza schermata di un grigio-verde pallido,
+  // uguale dappertutto, che è esattamente il difetto che `skyFermateSuolo`
+  // era stata scritta per togliere — e che è tornato quando il gradiente è
+  // stato ridotto a due sole fermate. (Quella funzione era rimasta lì,
+  // definita e non chiamata da nessuno: il difetto e la sua cura convivevano
+  // nello stesso file.)
+  //
+  // Le due leggi sono quelle dei commenti di `SKY_SUOLO_TAU`: la foschia se
+  // ne va in un grado scarso — sotto la riga il terreno è **vicino** quasi
+  // subito — mentre la luce d'ambiente cala su decine di gradi, ed è quella
+  // che scurisce il suolo verso i propri piedi. Il gradiente resta continuo
+  // perché la legge è continua: le fasce parallele che si vedevano prima
+  // venivano da fermate messe a occhio, non dal fatto di averne più di due.
+  const fermate = skyFermateSuolo(o, base, focale, azCentro);
+  for (let i = 0; i < SKY_SUOLO_FERMATE.length; i++) {
+    const dep = SKY_SUOLO_FERMATE[i];
+    const velo = Math.exp(-dep / SKY_SUOLO_TAU);
+    const ombra = 1 - Math.exp(-dep / SKY_SUOLO_TAU_BUIO);
+    const c = skyMescolaColore(skyMescolaColore(vicino, lontano, velo), aiPiedi, ombra);
+    gr.addColorStop(Math.max(0, Math.min(1, fermate[i])), skyRgba(c, i === 0 ? 0.98 : 1));
+  }
   return gr;
 }
 
@@ -13338,6 +13361,28 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   ctx.fillStyle = skyGradienteTerreno(ctx, o, suolo.vicino, suolo.lontano, base, focale, azCentro);
   ctx.fill(regola);
 
+  // Il rilievo (`rilievo.js`): la **forma** del terreno al posto della sua
+  // sagoma, disegnata a tratti come una tavola panoramica. Quando c'è
+  // disegna lui, e prende il posto di tre cose — il profilo a bande, la
+  // velatura del paesaggio e quella della luce.
+  //
+  // Che le prenda tutte e tre non è una semplificazione: quelle due velature
+  // dicevano con la vernice quello che il disegno non sapeva dire con la
+  // forma («da quella parte c'è la montagna», «da quella parte viene la
+  // luce»). Con una pettinatura che segue la pendenza vera sono la stessa
+  // cosa detta due volte, e la seconda spiana la prima.
+  //
+  // Il fondo del suolo qui sopra **resta**: il rilievo aggiunge quello che
+  // spunta sopra la riga e la pettinatura, non ridipinge la terra da capo.
+  // Così non può lasciare buchi, che è la ragione per cui l'ordine è questo.
+  const rilievoFatto = typeof rilDisegna === 'function' &&
+    rilDisegna(ctx, base, focale, suolo, aria);
+  // Quello che era rimasto dal profilo a bande non vale più: chi legge
+  // `skyCresteUltime` (i laghi) si prenderebbe la telecamera del fotogramma
+  // prima. Con il rilievo la risposta la dà `rilCrestaDisegnata`, che viene
+  // dalla stessa camminata che ha disegnato.
+  if (rilievoFatto) skyCresteUltime = null;
+
   // La grana: quel tanto di irregolarità che distingue un prato da una
   // campitura. Solo di giorno — di notte la terra è nera e non c'è niente
   // da texturizzare — e sotto al velo del paesaggio, che deve restare
@@ -13351,12 +13396,12 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // che si spegne a una ventina di gradi sotto la linea: il paesaggio si
   // legge dov'è vero — vicino all'orizzonte — e ai piedi la terra torna a
   // essere una sola, uguale dappertutto.
-  skyDisegnaVeloPaesaggio(ctx, base, focale, aria);
+  if (!rilievoFatto) skyDisegnaVeloPaesaggio(ctx, base, focale, aria);
 
   // Da che parte viene la luce. Sta qui, fra il paesaggio e l'acqua, perché
   // è aria illuminata fra noi e la terra: la terra la deve avere addosso,
   // l'acqua no — quella ha già la sua aureola e la sua strada di luce.
-  skyDisegnaLucePaesaggio(ctx, base, focale);
+  if (!rilievoFatto) skyDisegnaLucePaesaggio(ctx, base, focale);
 
   // La battigia: la riga chiara dove la terra finisce. È **terra**, quindi
   // sta qui, fra le velature del suolo e l'acqua — non dopo, com'era
@@ -13379,7 +13424,7 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // versione: le creste di montagna dipinte di grigio chiaro sopra un
   // terreno verde, con una riga netta in mezzo. Che sia una montagna lo
   // dice la sua forma, non il suo colore.
-  skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria);
+  if (!rilievoFatto) skyDisegnaProfiloOrizzonte(ctx, base, focale, suolo, aria);
 
   // I laghi e i fiumi, **dopo** il profilo e non prima come il mare.
   //
@@ -15285,6 +15330,18 @@ function skyAcquaTracciaRiflesso(ctx, base, focale, pezzi, alto, depAlto, depBas
 let skyCresteUltime = null;
 
 function skyCrestaDisegnataEntro(az, km) {
+  // Col rilievo la domanda ha una risposta esatta, e per una ragione che
+  // vale la pena scrivere: quella superficie **non ha rilievo finto
+  // addosso**. Il profilo a bande morde la cresta con un rumore inventato
+  // (`SKY_RUVIDEZZA`), e da lì nasce tutta questa funzione — il dislivello
+  // fra la cresta misurata e quella dipinta, che sotto un lago lasciava una
+  // riga netta sospesa sopra la collina. Il rilievo disegna quello che
+  // misura, quindi le due cose sono lo stesso numero.
+  if (typeof rilievo !== 'undefined' && rilievo.hoDisegnato &&
+      typeof rilCrestaEntroM === 'function') {
+    const v = rilCrestaEntroM(az, km * TERRENO_FRONTE_MARGINE * 1000);
+    if (v !== null) return v;
+  }
   const u = skyCresteUltime;
   if (!u) return null;
   const scarto = ((az - u.arco.centro) % 360 + 540) % 360 - 180;
@@ -16752,6 +16809,17 @@ function skyCorseDiCresta(colonne, k, i, nt, proj, creste, nb) {
 let skyQuotaBuf = null;
 
 function skyQuotaDisegnata(az, km) {
+  // Come sopra. E attenzione alla **convenzione**, che è il difetto che ha
+  // fatto sparire i nomi delle montagne al primo tentativo: qui serve la
+  // cresta fino alla distanza della vetta **compresa** — cioè quella che
+  // contiene la punta — e non quella della fetta prima. Con il confronto
+  // girato l'aggancio cadeva sistematicamente troppo in basso, superava
+  // `SKY_CIME_AGGANCIO_MAX` e l'etichetta veniva scartata in silenzio.
+  if (typeof rilievo !== 'undefined' && rilievo.hoDisegnato &&
+      typeof rilCrestaEntroM === 'function') {
+    const v = rilCrestaEntroM(az, km * 1000);
+    if (v !== null) return v;
+  }
   const bande = skyPianiOrizzonte();
   const n = bande.length;
   if (!skyQuotaBuf || skyQuotaBuf.length < n) skyQuotaBuf = new Float32Array(n);
@@ -23292,6 +23360,14 @@ function inizializzaSkymap() {
   // conosce a memoria, sono sette scritte davanti al cielo.
   collega('skymap-btn-cime', () => {
     if (typeof cimeAlterna === 'function') cimeAlterna();
+    skyMostraGruppo('');
+  });
+  // Il rilievo: la forma vera del terreno al posto della sua sagoma. Si
+  // spegne per chi ha la rete a consumo — sono da quattro a sei tessere, una
+  // volta sola per luogo — e allora torna il profilo a bande, che è l'app di
+  // prima.
+  collega('skymap-btn-rilievo', () => {
+    if (typeof rilAlterna === 'function') rilAlterna();
     skyMostraGruppo('');
   });
   // I laghi e i fiumi: come il terreno vero, cambiano il paesaggio invece
