@@ -396,11 +396,11 @@
           <div class="cielo-barra">
             <div class="linguette-gruppi" aria-label="Gruppi di comandi">
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="tempo" aria-pressed="false"
-                title="Quando e da dove: data, ora, playback del cielo e il luogo da cui lo stai guardando">
+                title="Data, ora e playback del cielo">
                 <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                   stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <circle cx="12" cy="12" r="8.4"/><path d="M12 7.2V12l3.4 2"/>
-                </svg><span class="nome-gruppo">Tempo e luogo</span></button>
+                </svg><span class="nome-gruppo">Tempo</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="eventi" aria-pressed="false"
                 title="Cosa succede nel cielo all'istante che stai guardando: eclissi, sciami meteorici, fasi lunari, congiunzioni">
                 <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -523,23 +523,19 @@
           <!-- Il pannello del gruppo aperto: uno solo per volta -->
           <div class="pannelli-gruppi">
 
-            <!-- TEMPO E LUOGO: quando, e da dove.
+            <!-- TEMPO: quando osservare il cielo.
                  Quello che si usa di continuo — dove sei nel tempo, il passo
                  avanti e indietro, la slitta e il play — è uscito di qui e
                  sta sulla barra in fondo alla mappa, sempre in vista. Qui
                  resta quello che si sceglie una volta e poi si dimentica: la
                  data scritta a mano, quanto è lungo un passo, il verso e la
-                 velocità del playback, e da che punto della Terra si guarda.
-
-                 Sono due domande, e adesso sono due blocchi con il loro
-                 titolo — «Quando» e «Da dove» — invece di sei righe di
-                 comandi tutte uguali una sotto l'altra: un pannello
-                 appoggiato sopra al cielo si legge a colpo d'occhio o non si
-                 legge affatto. Ogni riga che ha bisogno di una parola per
+                 velocità del playback. Il luogo si sceglie dal segnaposto
+                 sempre visibile accanto alle linguette. Ogni riga che ha
+                 bisogno di una parola per
                  dire cosa comanda ce l'ha davanti (`.riga-etichettata`), e su
                  un telefono quella parola va sopra invece che accanto,
                  perché di larghezza non ce n'è. -->
-            <section class="gruppo-comandi gruppo-tempo" data-gruppo="tempo" aria-label="Tempo e luogo">
+            <section class="gruppo-comandi gruppo-tempo" data-gruppo="tempo" aria-label="Tempo">
 
               <!-- QUANDO ------------------------------------------------ -->
               <div class="blocco-tempo" role="group" aria-labelledby="skymap-titolo-quando">
@@ -629,51 +625,6 @@
                   </div>
                 </div>
               </div>
-
-              <!-- DA DOVE SI GUARDA -------------------------------------- -->
-              <!-- Il tempo dice *quando*, questo dice *da dove*: sono le due
-                   coordinate dello stesso cielo, e chi apre questo pannello
-                   sta già chiedendo "e se guardassi da un'altra parte?".
-                   La posizione dell'app — quella che comanda orari, meteo,
-                   passaggi dei satelliti e telescopio — resta quella delle
-                   Impostazioni e da qui non si tocca: si sposta solo l'occhio,
-                   e solo nel planetario. Il tasto "Torna a casa" rimette tutto
-                   a posto, e comunque alla riapertura si riparte da casa.
-
-                   Due righe in tutto: la testata (col tasto del ritorno, che
-                   compare solo se si è altrove) e il campo per cercare una
-                   città. La mappa ha un tasto sempre visibile accanto alle
-                   linguette principali. Il nome del posto **non** si
-                   ripete qui: sta già scritto sopra al cielo, in alto a
-                   sinistra, e in azzurro quando è una visita — leggerlo due
-                   volte nella stessa schermata non lo rendeva più vero, e
-                   costava una riga di cielo coperto.
-
-                   Il nome di una città basta quasi sempre, e quando non basta
-                   — un passo di montagna, una spiaggia, un punto in mezzo
-                   all'oceano — c'è la mappa, che è anche il posto in cui sono
-                   tornate le coordinate scritte a mano: là hanno spazio, in
-                   una riga di pannello appoggiata sopra al cielo no. -->
-              <div class="stacco-pannello" role="separator" data-solo-cielo></div>
-              <div class="blocco-tempo" data-solo-cielo role="group" aria-labelledby="skymap-titolo-luogo">
-                <div class="testa-blocco-tempo">
-                  <span id="skymap-titolo-luogo" class="titolo-blocco-tempo">Da dove</span>
-                  <button id="skymap-luogo-casa" type="button" class="tasto-cielo tasto-passo hidden"
-                    title="Rimetti il cielo sulla tua posizione, quella delle Impostazioni">Torna a casa</button>
-                </div>
-                <div class="riga-comandi riga-cerca-luogo">
-                  <input id="skymap-luogo-cerca" type="search" class="campo-cielo" autocomplete="off"
-                    placeholder="Città…"
-                    aria-label="Cerca la città da cui guardare il cielo"
-                    title="Scrivi il nome di una città: il cielo si sposta lì, ma solo qui nel planetario">
-                </div>
-                <div id="skymap-luogo-risultati" class="pos-risultati risultati-luogo" role="listbox" aria-label="Città trovate"></div>
-              </div>
-
-              <!-- Quando il pannello è ospite della finestra del Sistema Solare
-                   (7.5-ter) il blocco del luogo è spento: da dove guardi il
-                   cielo, a un disegno eliocentrico, non serve. Resta quello che
-                   vale in tutt'e due: che istante è, e come lo si muove. -->
 
             </section>
 
