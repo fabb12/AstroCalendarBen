@@ -1,8 +1,8 @@
 // Aerei nel Planetario — dati ADS-B in tempo reale.
 //
-// Il provider e tutto il trasporto stanno in AEREI_PROVIDER: per passare a un
-// altro servizio basta sostituire questo oggetto prima di caricare il file.
-// Disegno, geometria, cache e interfaccia non conoscono il formato OpenSky.
+// I provider e tutto il trasporto stanno qui: GitHub Pages non puo fare da
+// proxy e OpenSky non autorizza le richieste CORS provenienti dal sito. Usiamo
+// quindi endpoint ADS-B pensati anche per i browser, con ripiego automatico.
 (function () {
   'use strict';
 
@@ -13,25 +13,68 @@
   const SOGLIA_ALLINEAMENTO = 1;
   const TERRA_KM = 6371;
 
-  const providerPredefinito = {
-    nome: 'OpenSky Network',
+  function numero(valore) {
+    const n = Number(valore);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function interpretaAdsbExchange(risposta) {
+    return (risposta.ac || []).map(a => {
+      const quotaPiedi = numero(a.alt_baro) ?? numero(a.alt_geom);
+      const vistoSecondiFa = numero(a.seen);
+      return {
+        id: a.hex, callsign: (a.flight || '').trim() || String(a.hex || '').toUpperCase(),
+        lon: numero(a.lon), lat: numero(a.lat),
+        quotaM: quotaPiedi === null ? null : quotaPiedi * 0.3048,
+        aTerra: a.alt_baro === 'ground', velocitaMs: (numero(a.gs) || 0) * 0.514444,
+        direzione: numero(a.track), salitaMs: (numero(a.baro_rate) || 0) * 0.00508,
+        ultimaLettura: Math.floor(Date.now() / 1000 - (vistoSecondiFa || 0))
+      };
+    }).filter(a => Number.isFinite(a.lat) && Number.isFinite(a.lon));
+  }
+
+  function urlAdsbExchange(host, posizione, raggioKm) {
+    // Questi endpoint esprimono il raggio in miglia nautiche. Arrotondare in
+    // alto evita di perdere gli aerei sul bordo; arricchisci() applica poi il
+    // raggio esatto in chilometri.
+    const migliaNautiche = Math.max(1, Math.min(250, Math.ceil(raggioKm / 1.852)));
+    return `https://${host}/v2/point/${posizione.lat.toFixed(4)}/${posizione.lon.toFixed(4)}/${migliaNautiche}`;
+  }
+
+  const providersPredefiniti = [{
+    nome: 'Airplanes.live',
     url(posizione, raggioKm) {
-      const dLat = raggioKm / 111.32;
-      const dLon = raggioKm / (111.32 * Math.max(.15, Math.cos(posizione.lat * Math.PI / 180)));
-      const q = new URLSearchParams({
-        lamin: (posizione.lat - dLat).toFixed(4), lamax: (posizione.lat + dLat).toFixed(4),
-        lomin: (posizione.lon - dLon).toFixed(4), lomax: (posizione.lon + dLon).toFixed(4)
-      });
-      return `https://opensky-network.org/api/states/all?${q}`;
+      return urlAdsbExchange('api.airplanes.live', posizione, raggioKm);
     },
-    interpreta(risposta) {
-      return (risposta.states || []).map(s => ({
-        id: s[0], callsign: (s[1] || '').trim() || s[0].toUpperCase(),
-        lon: s[5], lat: s[6], quotaM: s[7], aTerra: !!s[8],
-        velocitaMs: s[9], direzione: s[10], salitaMs: s[11], ultimaLettura: s[4]
-      })).filter(a => Number.isFinite(a.lat) && Number.isFinite(a.lon));
+    interpreta: interpretaAdsbExchange
+  }, {
+    nome: 'adsb.lol',
+    url(posizione, raggioKm) {
+      return urlAdsbExchange('api.adsb.lol', posizione, raggioKm);
+    },
+    interpreta: interpretaAdsbExchange
+  }];
+
+  async function scarica(provider, obs, raggio, signal) {
+    const risposta = await fetch(provider.url(obs, raggio), { signal, cache: 'no-store' });
+    if (risposta.status === 429) {
+      const errore = new Error('limite di richieste raggiunto'); errore.rateLimit = true; throw errore;
     }
-  };
+    if (!risposta.ok) throw new Error(`risposta ${risposta.status}`);
+    return provider.interpreta(await risposta.json());
+  }
+
+  async function scaricaConRipiego(providers, obs, raggio, signal) {
+    let ultimoErrore;
+    for (const provider of providers) {
+      try { return { provider, aerei: await scarica(provider, obs, raggio, signal) }; }
+      catch (errore) {
+        if (errore.name === 'AbortError') throw errore;
+        ultimoErrore = errore;
+      }
+    }
+    throw ultimoErrore || new Error('nessun servizio disponibile');
+  }
 
   const stato = { aerei: [], timer: null, richiesta: null, controller: null, ultimoCentro: null,
     ultimoSuccesso: 0, prossimoTentativo: 0, errore: '', avviato: false, ricaricaDopo: false };
@@ -142,19 +185,15 @@
     if (!forza && (ora < stato.prossimoTentativo || ora - stato.ultimoSuccesso < CACHE_MS)) return;
     if (stato.richiesta) return stato.richiesta;
     testoStato('Aggiornamento ADS-B…');
-    const provider = window.AEREI_PROVIDER || providerPredefinito;
+    const providers = window.AEREI_PROVIDER ? [window.AEREI_PROVIDER] : providersPredefiniti;
     const controller = new AbortController();
     stato.controller = controller;
     const sveglia = setTimeout(() => controller.abort(), 10000);
-    stato.richiesta = fetch(provider.url(obs, raggioKm()), { signal: controller.signal, cache: 'no-store' })
-      .then(r => {
-        if (r.status === 429) { const e = new Error('limite di richieste raggiunto'); e.rateLimit = true; throw e; }
-        if (!r.ok) throw new Error(`risposta ${r.status}`);
-        return r.json();
-      }).then(dati => {
-        stato.aerei = arricchisci(provider.interpreta(dati), obs);
+    stato.richiesta = scaricaConRipiego(providers, obs, raggioKm(), controller.signal)
+      .then(risultato => {
+        stato.aerei = arricchisci(risultato.aerei, obs);
         stato.ultimoCentro = obs; stato.ultimoSuccesso = Date.now(); stato.prossimoTentativo = 0; stato.errore = '';
-        testoStato(`${stato.aerei.length} aerei · ${provider.nome} · aggiornato adesso`); render();
+        testoStato(`${stato.aerei.length} aerei · ${risultato.provider.nome} · aggiornato adesso`); render();
       }).catch(e => {
         if (e.name === 'AbortError' && stato.ricaricaDopo) return;
         stato.errore = e.message; stato.prossimoTentativo = Date.now() + ERRORE_ATTESA_MS;
@@ -211,5 +250,6 @@
   window.aereiFerma = aereiFerma;
   window.aereiDisegna = aereiDisegna;
   window.aereiRaggioCambiato = aereiRaggioCambiato;
-  window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci, stato };
+  window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
+    interpretaAdsbExchange, urlAdsbExchange, scaricaConRipiego, stato };
 }());
