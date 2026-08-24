@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v155';
+const CACHE_NAME = 'astrocal-v156';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -64,7 +64,12 @@ const SERVIZI_POSIZIONE = ['ipapi.co', 'ipwho.is', 'get.geojs.io'];
 // Response sintetica priva delle sue intestazioni CORS viene rifiutata dal
 // browser come errore di rete (il poco utile "Failed to fetch") e impedisce
 // ad aerei.js di provare correttamente il provider successivo.
-const SERVIZI_ADSB = ['api.airplanes.live', 'api.adsb.lol'];
+const SERVIZI_ADSB = [
+  'api.airplanes.live',
+  'api.adsb.lol',
+  'opendata.adsb.fi',
+  'api.adsb.one'
+];
 
 // Host le cui risposte salviamo man mano che arrivano (librerie, tessere mappa)
 const HOST_DA_CONSERVARE = [
