@@ -345,6 +345,75 @@ const RIL_FILO_DENTRO = 0.30;
 // niente a che vedere fra loro.
 const RIL_CONTORNO_SALTO = 3;
 
+// --- Il fondo del terreno, fetta di distanza per fetta di distanza -----
+//
+// È la correzione al difetto che si vede **solo dall'alto**, e che dall'alto
+// si vede subito: da una cima il panorama era una campitura verde scuro
+// tagliata in due da una riga netta, e la riga si spostava con il pitch.
+//
+// La causa non era il rilievo, era quello che gli stava sotto. Per un pezzo
+// questo modulo ha dipinto un fondo opaco **solo dove il terreno spunta
+// sopra la riga dell'orizzonte** (la vecchia `chiudi()`, dalla cresta giù
+// fino al piede), lasciando tutto il resto al gradiente del suolo di
+// `skyGradienteTerreno`. A livello del mare quel patto funziona: sotto la
+// riga c'è il prato davanti a casa, e il gradiente lo dipinge bene, perché è
+// scritto sulla legge «un grado sotto l'orizzonte è a novanta metri» — vera
+// con l'occhio a un metro e sessanta da terra.
+//
+// Da duemilaseicento metri quella legge è falsa di tre ordini di grandezza:
+// tre gradi sotto l'orizzonte non sono quindici metri, sono venti chilometri
+// di valle. Il gradiente dipingeva quindi **tutto il panorama** — creste
+// comprese, fino a sessanta chilometri — col colore del terreno che si ha
+// sotto le scarpe: scuro, senza un filo di foschia, senza profondità. E
+// siccome le sue fermate sono orizzontali sullo schermo mentre l'orizzonte
+// stereografico è un arco, il passaggio fra il colore lontano e quello
+// vicino cadeva su una riga dritta che non seguiva niente di quello che si
+// vedeva: l'artefatto che scorreva sul paesaggio muovendo la camera.
+//
+// La cura è togliere il patto: il rilievo si dipinge il **suo** fondo, sopra
+// e sotto la riga, a fette di distanza. Sono le stesse fette del profilo a
+// bande di `app.js` (`skyPianiOrizzonte`) e la stessa idea: la cresta
+// parziale `fronte` — quanto sale il terreno **entro** una distanza — è non
+// decrescente per costruzione, quindi le fette non si scavalcano mai e si
+// possono dipingere come strisce che si toccano senza sovrapporsi. Lo
+// schermo si paga una volta sola, come prima.
+//
+// Le distanze non sono scelte a occhio: sono quelle che dividono in parti
+// uguali la **foschia**, cioè `rilLontananza`. Dividere i chilometri
+// darebbe fette tutte uguali di colore in fondo e un salto secco davanti;
+// dividere la foschia dà passi di colore della stessa taglia, che è quello
+// che l'occhio misura. Quattordici bastano: fra una fetta e l'altra restano
+// due livelli su 255, sotto la soglia in cui una banda si legge come tale.
+const RIL_FONDI = 14;
+
+// Gli anelli su cui cadono quelle fette. `fronte[k]` è il massimo fino
+// all'anello k **compreso**, quindi la fetta b è il terreno che sta fra
+// l'anello della fetta b−1 e il suo: l'ultima è la sagoma intera.
+//
+// Si calcolano alla prima passata di disegno e non al caricamento del file:
+// la legge della foschia sta in `app.js` (`SKY_FOSCHIA_KM`, letta da
+// `rilLontananza`) e questo modulo lo carica anche `verifica.html`, che
+// `app.js` non lo carica affatto. Un conto fatto in cima al file lì
+// solleverebbe un ReferenceError, e in uno `<script>` unico un errore porta
+// via tutto quello che viene dopo.
+let rilFondoK = null;
+
+function rilFondoAnelli() {
+  if (rilFondoK) return rilFondoK;
+  rilFondoK = new Int32Array(RIL_FONDI);
+  for (let b = 0; b < RIL_FONDI; b++) {
+    if (b === RIL_FONDI - 1) { rilFondoK[b] = RIL_ANELLI - 1; break; }
+    // La fetta b è quella che si prende `(b+1)/RIL_FONDI` della foschia
+    // totale: si cerca l'anello che ci arriva, e la ricerca è una scansione
+    // perché gli anelli sono centosei e questo si fa una volta sola.
+    const voluto = (b + 1) / RIL_FONDI;
+    let k = 0;
+    while (k + 1 < RIL_ANELLI && rilLontananza(RIL_DIST[k + 1] / 1000) <= voluto) k++;
+    rilFondoK[b] = Math.max(b, k);
+  }
+  return rilFondoK;
+}
+
 
 // =====================================================================
 // 2. LO STATO
@@ -1152,8 +1221,9 @@ let rilCrestaX = null;     // la sagoma disegnata, in pixel
 let rilCrestaY = null;
 let rilCrestaA = null;     // e in gradi, per chi la chiede dopo
 let rilCrestaK = null;     // a che anello sta il massimo (serve alla foschia)
-let rilPiedeX = null;      // il punto della riga d'orizzonte, colonna per colonna
-let rilPiedeY = null;
+let rilFondoX = null;      // le creste parziali delle fette di fondo
+let rilFondoY = null;      // (RIL_FONDI curve, una sopra l'altra)
+let rilColonneUltime = 0;  // quante colonne vale la sagoma appena disegnata
 let rilRottX = null;       // i punti di rottura: fino a RIL_ROTTURE per colonna
 let rilRottY = null;
 let rilRottK = null;
@@ -1172,8 +1242,8 @@ function rilMagazzino(nCol) {
     rilCrestaY = new Float32Array(n);
     rilCrestaA = new Float32Array(n);
     rilCrestaK = new Int32Array(n);
-    rilPiedeX = new Float32Array(n);
-    rilPiedeY = new Float32Array(n);
+    rilFondoX = new Float32Array(n * RIL_FONDI);
+    rilFondoY = new Float32Array(n * RIL_FONDI);
     rilRottX = new Float32Array(n * RIL_ROTTURE);
     rilRottY = new Float32Array(n * RIL_ROTTURE);
     rilRottK = new Int32Array(n * RIL_ROTTURE);
@@ -1218,6 +1288,33 @@ function rilChiudiRun(liv, x0, y0, x1, y1) {
     x0 - dx * RIL_STRISCIA_SBORDO, y0 - dy * RIL_STRISCIA_SBORDO,
     x1 + dx * RIL_STRISCIA_SBORDO, y1 + dy * RIL_STRISCIA_SBORDO);
   return 1;
+}
+
+// La sagoma del terreno disegnato: il crinale, chiuso giù fino a fuori dal
+// riquadro. Serve al ritaglio dell'ombreggiatura e — fuori di qui — a chi
+// deve appoggiare qualcosa **sul terreno e non sotto la riga
+// dell'orizzonte**: la grana di `skyDisegnaGranaTerreno`, che senza questa
+// si fermava a zero gradi e da una cima lasciava una cucitura di trama in
+// mezzo al panorama.
+function rilTracciaSagoma(ctx) {
+  const nCol = rilColonneUltime;
+  ctx.beginPath();
+  if (nCol < 2 || !rilCrestaX) return false;
+  let dentro = false, primo = -1, ultimo = -1;
+  for (let c = 0; c < nCol; c++) {
+    if (Number.isNaN(rilCrestaX[c])) continue;
+    if (dentro) ctx.lineTo(rilCrestaX[c], rilCrestaY[c]);
+    else { ctx.moveTo(rilCrestaX[c], rilCrestaY[c]); dentro = true; primo = c; }
+    ultimo = c;
+  }
+  if (!dentro) return false;
+  // Giù fino a fuori dal riquadro, da tutt'e due i lati: il terreno arriva
+  // ai piedi, e il ritaglio deve arrivarci con lui.
+  const giu = sky.altezza + Math.max(sky.larghezza, sky.altezza);
+  ctx.lineTo(rilCrestaX[ultimo] + sky.larghezza, giu);
+  ctx.lineTo(rilCrestaX[primo] - sky.larghezza, giu);
+  ctx.closePath();
+  return true;
 }
 
 // Il passo delle colonne, con l'isteresi.
@@ -1283,10 +1380,21 @@ function rilLontananza(km) {
   return (1 - Math.exp(-km / SKY_FOSCHIA_KM)) / pieno;
 }
 
+// Il colore di una fetta di distanza: la prospettiva aerea e nient'altro.
+//
+// C'era anche un annerimento delle fette vicine (`0,3 · (1 − t)`), e non è
+// stato tolto per gusto: da quando questo colore vale **anche sotto la riga
+// dell'orizzonte** (§ `RIL_FONDI`) si sommava al velo dell'occlusione
+// d'ambiente di `app.js`, e il terreno ai piedi usciva un terzo più scuro di
+// prima. Sono due nomi della stessa cosa contati due volte — quel `0,3`
+// faceva le veci del velo, che allora sopra la riga non c'era — e la
+// divisione giusta è quella: la **distanza** la racconta la foschia, l'**angolo
+// con cui si guarda il suolo** lo racconta il velo. Il contrasto fra un
+// crinale davanti e uno in fondo resta tutto, ed è quello fra `vicino` e
+// `lontano`: un fattore due.
 function rilColoreDiFetta(t, suolo) {
   const tinta = Math.pow(1 - t, 0.9);
-  const buio = 0.3 * (1 - t);
-  return skyMescolaColore(skyMescolaColore(suolo.lontano, suolo.vicino, tinta), [0, 0, 0], buio);
+  return skyMescolaColore(suolo.lontano, suolo.vicino, tinta);
 }
 
 // La tavolozza del tratteggio: un colore per livello di chiaroscuro.
@@ -1363,6 +1471,7 @@ function rilArcoInVista(base, focale) {
 
 function rilDisegna(ctx, base, focale, suolo, aria) {
   rilievo.hoDisegnato = false;
+  rilColonneUltime = 0;
   rilControlla();
   if (!rilPronto()) return false;
   if (typeof skyArcoAcquaInVista !== 'function') return false;
@@ -1383,6 +1492,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
 
   const luce = rilLuce(base);
   const tav = rilTavolozzaTratti(luce);
+  const fondoK = rilFondoAnelli();
   const occhio = rilievo.occhio;
   const fx = base.f[0], fy = base.f[1], fz = base.f[2];
   const rx = base.r[0], ry = base.r[1], rz = base.r[2];
@@ -1414,24 +1524,24 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     const sinAz = Math.sin(azRad), cosAz = Math.cos(azRad);
     const baseQ = idx * nr;
 
-    // Il punto sulla riga dell'orizzonte: serve a chiudere il riempimento
-    // della parte che sta sopra.
-    {
-      const vx = sinAz, vy = cosAz, vz = 0;
-      const d = vx * fx + vy * fy + vz * fz;
-      if (d > SKY_D_MIN) {
-        const den = (1 + d) * 0.5;
-        rilPiedeX[c] = mezzaL + focale * (vx * rx + vy * ry + vz * rz) / den;
-        rilPiedeY[c] = mezzaH - focale * (vx * ux + vy * uy + vz * uz) / den;
-      } else { rilPiedeX[c] = NaN; rilPiedeY[c] = NaN; }
-    }
-
     let massimo = -Infinity, kMax = 0;
     let px = 0, py = 0, ok = false;      // il nodo visibile precedente
+    let haVisto = false;                 // px/py dicono qualcosa
+    let fetta = 0;                       // la prossima curva di fondo da chiudere
     let nRott = 0;
     // La corsa di livelli uguali in questa colonna, e la striscia che ne esce.
     let runN = -1, runLiv = -1, runX0 = 0, runY0 = 0, runX1 = 0, runY1 = 0;
     for (let k = 0; k < nr; k++) {
+      // Le fette di fondo che questo anello si è appena lasciato indietro:
+      // la loro cresta parziale è l'ultimo nodo **visto**, che è per
+      // definizione il massimo fino a lì. Non costa una proiezione — il
+      // punto è già calcolato.
+      while (fetta < RIL_FONDI - 1 && k > fondoK[fetta]) {
+        const o = fetta * nCol + c;
+        rilFondoX[o] = haVisto ? px : NaN;
+        rilFondoY[o] = haVisto ? py : NaN;
+        fetta++;
+      }
       const a = rilievo.alt[baseQ + k];
       if (!(a > massimo)) {
         // Nascosto: se veniamo da un tratto visibile, qui il terreno
@@ -1554,9 +1664,16 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           }
         }
       }
-      px = nx2; py = ny2; ok = true;
+      px = nx2; py = ny2; ok = true; haVisto = true;
     }
     if (runN >= 0) { strisce += rilChiudiRun(runLiv, runX0, runY0, runX1, runY1); runN = -1; }
+    // Le fette che restano — e la più esterna, che è la sagoma intera.
+    while (fetta < RIL_FONDI - 1) {
+      const o = fetta * nCol + c;
+      rilFondoX[o] = haVisto ? px : NaN;
+      rilFondoY[o] = haVisto ? py : NaN;
+      fetta++;
+    }
 
     rilCrestaA[c] = massimo === -Infinity ? 0 : massimo;
     rilCrestaK[c] = kMax;
@@ -1575,61 +1692,69 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
         rilCrestaY[c] = mezzaH - focale * (vx * ux + vy * uy + vz * uz) / den;
       } else { rilCrestaX[c] = NaN; rilCrestaY[c] = NaN; }
     }
+    // La fetta più esterna **è** la sagoma: la stessa riga, non una copia
+    // ricalcolata — se le due divergessero il fondo si staccherebbe dal
+    // crinale proprio contro il cielo.
+    const oUltima = (RIL_FONDI - 1) * nCol + c;
+    rilFondoX[oUltima] = rilCrestaX[c];
+    rilFondoY[oUltima] = rilCrestaY[c];
   }
 
-  // --- Il corpo della montagna, sopra la riga dell'orizzonte ------------
+  // La sagoma è pronta: da qui in poi `rilTracciaSagoma` sa cosa disegnare.
+  rilColonneUltime = nCol;
+
+  // --- Il corpo della montagna, a fette di distanza ---------------------
   //
-  // Sotto la riga il suolo l'ha già dipinto `skyDisegnaTerreno` col suo
-  // gradiente; qui si aggiunge solo quello che **spunta**. E lo si dipinge a
-  // gruppi di colonne che stanno nella stessa fetta di foschia: la distanza
-  // lungo l'orizzonte cambia piano, quindi i gruppi sono lunghi e i
-  // riempimenti sono una manciata — ma il primo piano resta più scuro dello
-  // sfondo, che è quello che dà la profondità.
+  // Non è più «quello che spunta sopra la riga» (vedi `RIL_FONDI`): è tutto
+  // il terreno, dalla sagoma fino ai piedi, dipinto a strisce che stanno una
+  // sopra l'altra. Ogni striscia va dalla cresta parziale della sua fetta
+  // giù fino a quella della fetta davanti — e la prima arriva fuori dal
+  // riquadro, perché sotto di lei non c'è più niente da raccontare.
+  //
+  // Le creste parziali sono massimi accumulati, quindi non si scavalcano
+  // mai: le strisce si toccano senza sovrapporsi e lo schermo si dipinge una
+  // volta sola comunque siano tante. È la stessa geometria del profilo a
+  // bande di `app.js`, e per la stessa ragione.
   let chiamate = 0;
   {
-    const LIV = 10;
-    let inizio = -1, fetta = -1;
-    const chiudi = (fine) => {
-      if (inizio < 0 || fine < inizio) { inizio = -1; return; }
-      const km = RIL_DIST[rilCrestaK[(inizio + fine) >> 1]] / 1000;
+    const giu = H + Math.max(W, H);
+    for (let b = RIL_FONDI - 1; b >= 0; b--) {
+      const col = rilColoreDiFetta(rilLontananza(RIL_DIST[fondoK[b]] / 1000), suolo);
+      const sopra = b * nCol, sotto = (b - 1) * nCol;
       ctx.beginPath();
-      let dentro = false;
-      for (let c = inizio; c <= fine; c++) {
-        if (Number.isNaN(rilCrestaX[c])) { dentro = false; continue; }
-        if (dentro) ctx.lineTo(rilCrestaX[c], rilCrestaY[c]);
-        else { ctx.moveTo(rilCrestaX[c], rilCrestaY[c]); dentro = true; }
+      let inizio = -1;
+      const chiudi = (fine) => {
+        if (inizio < 0 || fine < inizio) { inizio = -1; return; }
+        for (let c = inizio; c <= fine; c++) ctx.lineTo(rilFondoX[sopra + c], rilFondoY[sopra + c]);
+        // Il bordo di sotto, all'indietro: la fetta davanti, o il fondo del
+        // riquadro per la prima. Se la fetta davanti non si proietta (capita
+        // solo ai capi, dove il punto finisce dietro all'occhio) si scende
+        // comunque fuori dal riquadro: meglio un pelo di terreno in più che
+        // un buco da cui si vede il cielo.
+        for (let c = fine; c >= inizio; c--) {
+          const x = b > 0 ? rilFondoX[sotto + c] : rilFondoX[sopra + c];
+          const y = b > 0 ? rilFondoY[sotto + c] : giu;
+          if (Number.isNaN(x) || Number.isNaN(y)) ctx.lineTo(rilFondoX[sopra + c], giu);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        inizio = -1;
+      };
+      for (let c = 0; c < nCol; c++) {
+        if (Number.isNaN(rilFondoX[sopra + c])) { chiudi(c - 1); continue; }
+        if (inizio < 0) { inizio = c; ctx.moveTo(rilFondoX[sopra + c], rilFondoY[sopra + c]); }
       }
-      if (!dentro && inizio === fine) { inizio = -1; return; }
-      for (let c = fine; c >= inizio; c--) {
-        if (Number.isNaN(rilPiedeX[c])) continue;
-        ctx.lineTo(rilPiedeX[c], rilPiedeY[c]);
-      }
-      ctx.closePath();
-      const col = rilColoreDiFetta(rilLontananza(km), suolo);
+      chiudi(nCol - 1);
       ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
       ctx.strokeStyle = ctx.fillStyle;
       ctx.lineWidth = 1;
       ctx.fill();
-      // Il contorno col proprio colore chiude la cucitura fra due gruppi
-      // vicini: due riempimenti che condividono un lato vengono antialiasati
-      // ognuno per conto suo e sul lato in comune restano due mezze coperture
-      // che non fanno un pieno.
+      // Il contorno col proprio colore chiude la cucitura fra due strisce
+      // che condividono un lato: due riempimenti antialiasati per conto loro
+      // lasciano lì due mezze coperture che non fanno un pieno.
       ctx.stroke();
       chiamate += 2;
-      inizio = -1;
-    };
-    for (let c = 0; c < nCol; c++) {
-      // Solo dove il terreno sta **sopra** la riga: sotto ci pensa il suolo,
-      // e un poligono che si rovescia si dipingerebbe due volte.
-      const su = rilCrestaA[c] > 0.004 && !Number.isNaN(rilCrestaX[c]) && !Number.isNaN(rilPiedeX[c]);
-      const f = su ? Math.min(LIV - 1, Math.round(rilLontananza(RIL_DIST[rilCrestaK[c]] / 1000) * (LIV - 1))) : -1;
-      if (f < 0) { chiudi(c - 1); continue; }
-      if (inizio < 0) { inizio = c; fetta = f; }
-      // Il gruppo si chiude **sulla colonna dopo**, condivisa, se no fra due
-      // gruppi resta una fessura larga una colonna.
-      else if (f !== fetta) { chiudi(c); inizio = c; fetta = f; }
     }
-    chiudi(nCol - 1);
   }
 
   // --- L'ombreggiatura --------------------------------------------------
@@ -1639,24 +1764,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // terreno**, così la lieve larghezza extra che chiude le cuciture non può
   // sporcare il cielo lungo il crinale.
   ctx.save();
-  ctx.beginPath();
-  {
-    let dentro = false, primo = -1, ultimo = -1;
-    for (let c = 0; c < nCol; c++) {
-      if (Number.isNaN(rilCrestaX[c])) continue;
-      if (dentro) ctx.lineTo(rilCrestaX[c], rilCrestaY[c]);
-      else { ctx.moveTo(rilCrestaX[c], rilCrestaY[c]); dentro = true; primo = c; }
-      ultimo = c;
-    }
-    if (dentro) {
-      // Giù fino a fuori dal riquadro, da tutt'e due i lati: il terreno
-      // arriva ai piedi, e il ritaglio deve arrivarci con lui.
-      const giu = H + Math.max(W, H);
-      ctx.lineTo(rilCrestaX[ultimo] + W, giu);
-      ctx.lineTo(rilCrestaX[primo] - W, giu);
-      ctx.closePath();
-    }
-  }
+  rilTracciaSagoma(ctx);
   ctx.clip();
   for (let l = 0; l < RIL_LIVELLI; l++) {
     const t = rilTratti[l];

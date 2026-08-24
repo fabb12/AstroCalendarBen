@@ -111,6 +111,40 @@ function skyBaseVerso(az, alt) {
   const r = [Math.cos(a), -Math.sin(a), 0];
   return { f, r, u: [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]] };
 }
+
+// I due archi in vista, ricopiati anche loro da app.js — e non per scelta.
+//
+// `rilArcoInVista` (§25) li chiama per davvero, e il §8 li mette alla prova
+// per conto suo: senza, `skyArcoAcquaInVista` è un nome che non esiste e
+// l'eccezione, in uno `<script>` unico, si porta via **tutto quello che
+// viene dopo**. È successo: dal §9 in giù, per un po', in questa pagina non
+// girava più niente — e una prova sparita non fallisce, semplicemente non
+// compare. Se un giorno app.js si potrà caricare qui, queste tre spariscono.
+function skyAngoloDiRaggio(pixel, focale) {
+  return 2 * Math.atan(pixel / (2 * focale)) * SKY_R2D;
+}
+function skyArcoOrizzonteInVista(base, focale) {
+  const semi = skyAngoloDiRaggio(Math.hypot(sky.larghezza, sky.altezza) / 2, focale) * SKY_D2R;
+  const altF = Math.asin(Math.max(-1, Math.min(1, base.f[2])));
+  const cosAlt = Math.cos(altF);
+  if (cosAlt < 1e-4) return null;
+  const rapporto = Math.cos(semi) / cosAlt;
+  if (rapporto >= 1) return null;
+  return {
+    mezzo: Math.min(180, Math.acos(Math.max(-1, rapporto)) * SKY_R2D + 6),
+    centro: Math.atan2(base.f[0], base.f[1]) * SKY_R2D
+  };
+}
+function skyArcoAcquaInVista(base, focale) {
+  const semi = skyAngoloDiRaggio(Math.hypot(sky.larghezza, sky.altezza) / 2, focale) * SKY_D2R;
+  const altF = Math.asin(Math.max(-1, Math.min(1, base.f[2])));
+  const centro = Math.atan2(base.f[0], base.f[1]) * SKY_R2D;
+  if (altF - semi >= 0) return null;
+  if (semi >= Math.PI / 2) return { mezzo: 180, centro };
+  const seno = Math.sin(semi) / Math.cos(altF);
+  if (!(seno < 1)) return { mezzo: 180, centro };
+  return { mezzo: Math.min(180, Math.asin(seno) * SKY_R2D + 6), centro };
+}
 </script>
 
 <script src="catalogo.js"></script>
@@ -6438,6 +6472,126 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
     else window.SKY_FOSCHIA_KM = primaF;
     prova('la foschia del rilievo è cifra per cifra quella delle bande',
       peggio < 1e-12, `scarto ${peggio.toExponential(1)}`);
+  }
+
+  // --- Il fondo a fette di distanza, e perché non può essere a gradi ----
+  //
+  // È il difetto che si vede solo dall'alto, e dall'alto si vede subito: il
+  // rilievo dipingeva un fondo opaco **solo sopra la riga dell'orizzonte** e
+  // lasciava il resto al gradiente del suolo, che è scritto in gradi di
+  // depressione. Quella legge dice «un grado sotto la riga è a novanta
+  // metri», ed è vera con l'occhio a un metro e sessanta da terra: da una
+  // cima sbaglia di tre ordini di grandezza, e tutto il panorama — creste a
+  // sessanta chilometri comprese — veniva dipinto col colore del prato che
+  // si ha sotto le scarpe.
+  {
+    const F = 25;                       // `SKY_FOSCHIA_KM` di `app.js`
+    const primaF = window.SKY_FOSCHIA_KM;
+    window.SKY_FOSCHIA_KM = F;
+    const K = rilFondoAnelli();
+
+    prova('le fette sono quante dice RIL_FONDI', K.length === RIL_FONDI);
+    prova('gli anelli delle fette crescono sempre',
+      K.every((k, i) => i === 0 || k > K[i - 1]), Array.from(K).join(' '));
+    // L'ultima **è** la sagoma: se non lo fosse, sopra all'ultima striscia
+    // resterebbe una fascia di terreno non dipinta contro il cielo.
+    prova('l\'ultima fetta arriva all\'anello più lontano',
+      K[RIL_FONDI - 1] === RIL_ANELLI - 1);
+
+    // I passi di foschia devono essere della stessa taglia: fette uguali in
+    // chilometri darebbero un salto secco davanti e nessuna differenza in
+    // fondo, che è come si ottiene una scala di terrazze.
+    let piuStretto = 1, piuLargo = 0;
+    for (let b = 1; b < RIL_FONDI; b++) {
+      const d = rilLontananza(RIL_DIST[K[b]] / 1000) - rilLontananza(RIL_DIST[K[b - 1]] / 1000);
+      piuStretto = Math.min(piuStretto, d);
+      piuLargo = Math.max(piuLargo, d);
+    }
+    prova('e dividono la foschia in parti quasi uguali',
+      piuLargo < 2.2 * piuStretto,
+      `dal ${(piuStretto * 100).toFixed(1)}% al ${(piuLargo * 100).toFixed(1)}%`);
+
+    // Il colore di una fetta: due fette vicine non devono staccarsi, se no
+    // le strisce si leggono come terrazze invece che come distanza.
+    const primaMescola = window.skyMescolaColore;
+    window.skyMescolaColore = (a, b, t) => {
+      const k = Math.max(0, Math.min(1, t));
+      return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+    };
+    const suolo = { vicino: [38, 46, 32], lontano: [74, 84, 62] };
+    const tinta = b => rilColoreDiFetta(rilLontananza(RIL_DIST[K[b]] / 1000), suolo);
+    let salto = 0;
+    for (let b = 1; b < RIL_FONDI; b++) {
+      const a = tinta(b - 1), c = tinta(b);
+      salto = Math.max(salto, Math.abs(a[0] - c[0]), Math.abs(a[1] - c[1]), Math.abs(a[2] - c[2]));
+    }
+    prova('fra una fetta e l\'altra non c\'è un gradino visibile',
+      salto < 6, `al massimo ${salto.toFixed(1)} livelli su 255`);
+
+    // E il punto di tutto: la fetta lontana **deve** essere un altro colore
+    // da quella vicina. È la prova che il panorama ha una profondità, ed è
+    // quella che il conto di prima falliva: col gradiente a gradi, una
+    // cresta a quaranta chilometri vista tre gradi sotto la riga da una cima
+    // usciva col colore del terreno ai piedi.
+    const vicina = tinta(0), lontana = tinta(RIL_FONDI - 1);
+    prova('la fetta in fondo è ben più chiara di quella davanti',
+      lontana[1] - vicina[1] > 25,
+      `${vicina.map(Math.round).join(',')} contro ${lontana.map(Math.round).join(',')}`);
+
+    // Il contro-esempio, cioè la legge di prima: `SKY_SUOLO_TAU` è di un
+    // terzo di grado, quindi a tre gradi sotto la riga la foschia è già
+    // finita e restava il colore del terreno vicino — dovunque fosse quel
+    // terreno.
+    const veloVecchio = Math.exp(-3 / 0.35);
+    prova('col conto di prima, tre gradi sotto la riga erano già terreno ai piedi',
+      veloVecchio < 0.001, `${(veloVecchio * 100).toFixed(4)}% di foschia rimasta`);
+
+    if (primaMescola === undefined) delete window.skyMescolaColore;
+    else window.skyMescolaColore = primaMescola;
+    if (primaF === undefined) delete window.SKY_FOSCHIA_KM;
+    else window.SKY_FOSCHIA_KM = primaF;
+  }
+
+  // --- Le strisce non si scavalcano mai ---------------------------------
+  //
+  // È l'invariante da cui dipende tutto: le creste parziali sono massimi
+  // accumulati, quindi la curva di una fetta non può stare sotto a quella
+  // della fetta davanti. Se potesse, due strisce si sovrapporrebbero e la
+  // più vicina finirebbe dipinta **sopra** la sagoma — cioè del terreno
+  // stampato nel cielo.
+  {
+    const salva = { fronte: rilievo.fronte, alt: rilievo.alt, acceso: rilievo.acceso };
+    const nr = RIL_ANELLI, K = rilFondoAnelli();
+    rilievo.acceso = true;
+    rilievo.alt = new Float32Array(1);
+    rilievo.fronte = new Float32Array(RIL_AZIMUT * nr);
+    // Un panorama da una cima: tutto sotto la riga dell'orizzonte, che sale
+    // piano allontanandosi. È il caso in cui il vecchio fondo non dipingeva
+    // **niente**, perché niente spuntava sopra lo zero.
+    for (let i = 0; i < RIL_AZIMUT; i++) {
+      let massimo = -60;
+      for (let k = 0; k < nr; k++) {
+        massimo = Math.max(massimo, -60 + 59 * (k / (nr - 1)));
+        rilievo.fronte[i * nr + k] = massimo;
+      }
+    }
+    let ordinate = true, sopraZero = false;
+    for (let b = 1; b < RIL_FONDI; b++) {
+      const alto = rilievo.fronte[K[b]], basso = rilievo.fronte[K[b - 1]];
+      if (!(alto >= basso)) ordinate = false;
+      if (alto > 0) sopraZero = true;
+    }
+    prova('da una cima le fette restano in ordine, dalla più vicina alla sagoma',
+      ordinate,
+      Array.from(K).map(k => rilievo.fronte[k].toFixed(1)).join(' '));
+    prova('e nessuna di loro spunta sopra la riga: il vecchio fondo non ne dipingeva una',
+      !sopraZero);
+    // La striscia più vicina deve avere altezza vera, se no il panorama
+    // torna a essere di un colore solo.
+    prova('fra la fetta davanti e la sagoma ci sono decine di gradi',
+      rilievo.fronte[K[RIL_FONDI - 1]] - rilievo.fronte[K[0]] > 20,
+      `${(rilievo.fronte[K[RIL_FONDI - 1]] - rilievo.fronte[K[0]]).toFixed(1)}°`);
+    rilievo.fronte = salva.fronte; rilievo.alt = salva.alt; rilievo.acceso = salva.acceso;
   }
 }
 
