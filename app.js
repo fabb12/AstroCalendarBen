@@ -13241,6 +13241,77 @@ function skyFermateSuolo(o, base, focale, azCentro) {
   return fuori[fuori.length - 1] > 0.02 ? fuori : ripiego;
 }
 
+// I due capi della rampa che scende dalla riga dell'orizzonte verso i propri
+// piedi. Anche quando l'orizzonte stereografico e' un arco, la luce sul
+// terreno non arriva per anelli dal nadir: la direzione locale del "giu" si
+// misura con due punti del terreno nel centro dell'inquadratura.
+//
+// La usano in due — il gradiente del suolo e il velo dell'occlusione — e
+// devono misurare la stessa rampa: due conti gemelli qui vorrebbero dire due
+// leggi che si separano al primo ritocco.
+function skyRampaSuolo(o, base, focale, azCentro) {
+  const p0 = skyProietta(skyVettore(azCentro, 0), base, focale);
+  const p90 = skyProietta(skyVettore(azCentro, -89.5), base, focale);
+  const ax = p0.davanti ? p0.px : o.cx;
+  const ay = p0.davanti ? p0.py : o.cy;
+  let bx = p90.davanti ? p90.px : ax - o.nx * (sky.larghezza + sky.altezza) * 0.25;
+  let by = p90.davanti ? p90.py : ay + o.ny * (sky.larghezza + sky.altezza) * 0.25;
+  if (Math.hypot(bx - ax, by - ay) < 2) {
+    bx = ax - o.nx * Math.max(sky.larghezza, sky.altezza);
+    by = ay + o.ny * Math.max(sky.larghezza, sky.altezza);
+  }
+  return { ax, ay, bx, by };
+}
+
+// Il velo dell'occlusione d'ambiente: quanto si spegne la luce scendendo
+// verso i propri piedi.
+//
+// È la seconda delle due leggi che `skyGradienteTerreno` mette insieme, e
+// l'unica delle due che si possa ancora scrivere in **gradi di
+// depressione**. La foschia dipende da quanto è lontano il terreno, e sotto
+// la riga dell'orizzonte la depressione non lo dice — lo dice soltanto a chi
+// sta in piedi su terreno piatto, e da una cima sbaglia di tre ordini di
+// grandezza (vedi `RIL_FONDI` in `rilievo.js`). Questa invece dipende da
+// **quanto di traverso** si guarda il suolo, che è la depressione e basta:
+// il prato sotto i piedi lo si vede dentro, quello in fondo di striscio.
+//
+// Serve al rilievo, che da quando si dipinge il fondo a fette di distanza
+// copre il gradiente del suolo: senza questo velo il terreno vicino
+// tornerebbe la campitura piatta che `SKY_SUOLO_NADIR_BUIO` esiste per
+// togliere. La legge è la stessa cifra per cifra — nero all'alfa
+// `buio · ombra`, che su un fondo qualunque vale `× (1 − buio·ombra)`,
+// esattamente la miscela verso `aiPiedi` del gradiente — quindi a livello
+// del mare non cambia un pixel.
+function skyVeloOcclusione(ctx, o, base, focale, azCentro) {
+  const buio = SKY_SUOLO_NADIR_BUIO * (0.25 + 0.75 * sky.luceCielo);
+  if (!(buio > 0.002)) return null;
+  const r = skyRampaSuolo(o, base, focale, azCentro);
+  const gr = ctx.createLinearGradient(r.ax, r.ay, r.bx, r.by);
+  const fermate = skyFermateSuolo(o, base, focale, azCentro);
+  for (let i = 0; i < SKY_SUOLO_FERMATE.length; i++) {
+    const ombra = 1 - Math.exp(-SKY_SUOLO_FERMATE[i] / SKY_SUOLO_TAU_BUIO);
+    gr.addColorStop(Math.max(0, Math.min(1, fermate[i])),
+      `rgba(0,0,0,${(buio * ombra).toFixed(4)})`);
+  }
+  return gr;
+}
+
+// E la sua stesura, ritagliata alla sagoma del terreno disegnato: sotto la
+// riga dell'orizzonte, dove il rilievo non arriva, c'è cielo — e un velo
+// nero sul cielo si vede per la vernice che è.
+function skyDisegnaOcclusioneSuolo(ctx, o, base, focale, azCentro) {
+  if (typeof rilTracciaSagoma !== 'function') return;
+  const gr = skyVeloOcclusione(ctx, o, base, focale, azCentro);
+  if (!gr) return;
+  ctx.save();
+  if (rilTracciaSagoma(ctx)) {
+    ctx.clip();
+    ctx.fillStyle = gr;
+    ctx.fillRect(0, 0, sky.larghezza, sky.altezza);
+  }
+  ctx.restore();
+}
+
 // Il gradiente che va dalla linea dell'orizzonte verso i propri piedi.
 // Vale sia per il riempimento di tutto il suolo sia per le fette di un
 // paesaggio diverso: cambiano solo i due colori.
@@ -13258,20 +13329,8 @@ function skyGradienteTerreno(ctx, o, vicino, lontano, base, focale, azCentro) {
   // lasciamo che Canvas li mescoli senza cambi di pendenza intermedi.
   const aiPiedi = skyMescolaColore(vicino, [0, 0, 0], buio);
 
-  // Anche quando l'orizzonte stereografico e' un arco, la luce sul terreno
-  // non arriva per anelli dal nadir. Misuriamo la direzione locale del
-  // "giu" con due punti del terreno nel centro dell'inquadratura.
-  const p0 = skyProietta(skyVettore(azCentro, 0), base, focale);
-  const p90 = skyProietta(skyVettore(azCentro, -89.5), base, focale);
-  let ax = p0.davanti ? p0.px : o.cx;
-  let ay = p0.davanti ? p0.py : o.cy;
-  let bx = p90.davanti ? p90.px : ax - o.nx * (sky.larghezza + sky.altezza) * 0.25;
-  let by = p90.davanti ? p90.py : ay + o.ny * (sky.larghezza + sky.altezza) * 0.25;
-  if (Math.hypot(bx - ax, by - ay) < 2) {
-    bx = ax - o.nx * Math.max(sky.larghezza, sky.altezza);
-    by = ay + o.ny * Math.max(sky.larghezza, sky.altezza);
-  }
-  const gr = ctx.createLinearGradient(ax, ay, bx, by);
+  const r = skyRampaSuolo(o, base, focale, azCentro);
+  const gr = ctx.createLinearGradient(r.ax, r.ay, r.bx, r.by);
 
   // E in mezzo ci vanno le fermate, misurate: senza, quel gradiente va dalla
   // riga dell'orizzonte fino a novanta gradi sotto, e **lo schermo ne
@@ -13370,9 +13429,11 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // luce»). Con una pettinatura che segue la pendenza vera sono la stessa
   // cosa detta due volte, e la seconda spiana la prima.
   //
-  // Il fondo del suolo qui sopra **resta**: il rilievo aggiunge quello che
-  // spunta sopra la riga e la pettinatura, non ridipinge la terra da capo.
-  // Così non può lasciare buchi, che è la ragione per cui l'ordine è questo.
+  // Il fondo del suolo qui sopra resta **sotto**, come rete: da quando il
+  // rilievo si dipinge il suo fondo a fette di distanza (§ `RIL_FONDI` in
+  // `rilievo.js`) non lo si vede più dove il rilievo arriva, ma un buco nel
+  // disegno lascerebbe vedere la terra e non il cielo — ed è la ragione per
+  // cui l'ordine è questo.
   const rilievoFatto = typeof rilDisegna === 'function' &&
     rilDisegna(ctx, base, focale, suolo, aria);
   // Quello che era rimasto dal profilo a bande non vale più: chi legge
@@ -13380,6 +13441,11 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // prima. Con il rilievo la risposta la dà `rilCrestaDisegnata`, che viene
   // dalla stessa camminata che ha disegnato.
   if (rilievoFatto) skyCresteUltime = null;
+
+  // L'occlusione d'ambiente, che il rilievo si è appena coperto col suo
+  // fondo. Va qui e non dentro `rilievo.js`: è la legge del suolo di questo
+  // file, e deve restare una sola (vedi `skyVeloOcclusione`).
+  if (rilievoFatto) skyDisegnaOcclusioneSuolo(ctx, o, base, focale, azCentro);
 
   // La grana: quel tanto di irregolarità che distingue un prato da una
   // campitura. Solo di giorno — di notte la terra è nera e non c'è niente
@@ -13441,24 +13507,99 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   }
   ctx.restore();
 
-  // La linea d'orizzonte vero resta, sotto al profilo: è il riferimento —
+  // La linea d'orizzonte vero resta, sopra al profilo: è il riferimento —
   // zero gradi di altezza — e serve a capire quanto le colline coprono. Non
   // sbiadisce con il terreno: a forte ingrandimento è l'ultima cosa che
   // resta, ed è quella che dice se l'astro che si sta guardando è ancora su.
+  skyDisegnaLineaOrizzonte(ctx, o, base, focale);
+}
+
+// Quanto resta di quella riga dove il terreno le passa davanti.
+//
+// Non zero, e non uno. Zero vorrebbe dire buttare via il riferimento proprio
+// dove serve — la domanda «quanto mi copre quella collina» si fa guardando
+// la collina — e uno è il difetto: da una cima l'orizzonte vero taglia il
+// panorama a metà, e una riga chiara tirata col righello attraverso le
+// montagne è la cosa che più di tutte dice «questo è un disegno». Restando a
+// un terzo si legge ancora contro il verde scuro del terreno, e non compete
+// più con la forma delle creste.
+const SKY_ORIZZONTE_COPERTO = 0.34;
+
+// La riga si spezza dove le montagne le passano davanti.
+//
+// La cresta da confrontare è quella **disegnata** e non quella misurata
+// (`skyCrestaDisegnataEntro`): sono la stessa cosa col rilievo, non lo sono
+// col profilo a bande, che morde la cresta con il suo rumore — e mezzo grado
+// di scarto, a forte ingrandimento, è la riga che si accende e si spegne
+// mentre si pizzica. Se non si sa che cosa c'è davanti (terreno non ancora
+// arrivato, vista tutta in su) resta la riga di sempre, intera.
+function skyDisegnaLineaOrizzonte(ctx, o, base, focale) {
+  const intera = () => {
+    ctx.beginPath();
+    if (o.retta) {
+      const lungo = sky.larghezza + sky.altezza;
+      const tx = -o.ny, ty = -o.nx;
+      ctx.moveTo(o.cx - tx * lungo, o.cy - ty * lungo);
+      ctx.lineTo(o.cx + tx * lungo, o.cy + ty * lungo);
+    } else {
+      ctx.arc(o.px, o.py, o.r, 0, Math.PI * 2);
+    }
+  };
+
   ctx.save();
-  ctx.beginPath();
-  if (o.retta) {
-    const lungo = sky.larghezza + sky.altezza;
-    const tx = -o.ny, ty = -o.nx;
-    ctx.moveTo(o.cx - tx * lungo, o.cy - ty * lungo);
-    ctx.lineTo(o.cx + tx * lungo, o.cy + ty * lungo);
-  } else {
-    ctx.arc(o.px, o.py, o.r, 0, Math.PI * 2);
-  }
   ctx.strokeStyle = sky.luceCielo > 0.4 ? '#e8f2ff' : '#5eb8e8';
   ctx.lineWidth = 1.2;
+
+  const arco = skyArcoOrizzonteInVista(base, focale);
+  // Solo col terreno **vero**. Il profilo inventato di `SKY_PROFILO` sta
+  // sopra lo zero in tutte le direzioni — sono onde e alberi, non un
+  // paesaggio — quindi con lui la riga risulterebbe coperta dappertutto e
+  // sempre: si spegnerebbe un riferimento vero per via di un disegno che non
+  // afferma niente.
+  const vero = typeof terrenoDisponibile === 'function' && terrenoDisponibile();
+  // «Entro tutto»: la cresta piena, quella che decide la sagoma. Il numero è
+  // grezzo, cioè scende sotto zero dove il terreno sta più in basso
+  // dell'occhio — ed è proprio quel segno la domanda che si sta facendo.
+  const crestaDi = az => (typeof skyCrestaDisegnataEntro === 'function')
+    ? skyCrestaDisegnataEntro(az, 1e5) : null;
+  if (!vero || !arco || crestaDi(arco.centro) === null) {
+    ctx.globalAlpha = 0.3;
+    intera();
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
+  // Si cammina lungo l'arco in vista e si tiene da parte, per ogni campione,
+  // se lì il terreno copre la riga oppure no. Poi due passate: prima quella
+  // coperta, sotto, e sopra quella libera — così nei punti in cui la
+  // classificazione oscilla di un campione vince la riga piena, che è la
+  // meno peggio delle due da guardare.
+  const campioni = Math.max(90, Math.min(quanto(180, 240, 300), Math.round(sky.larghezza / 5)));
+  const passo = Math.max(0.02, (2 * arco.mezzo) / campioni);
+  const px = [], py = [], coperto = [];
+  for (let d = -arco.mezzo; d <= arco.mezzo + 1e-6; d += passo) {
+    const az = arco.centro + d;
+    const p = skyProietta(skyVettore(az, 0), base, focale);
+    if (!p.davanti) { px.push(NaN); py.push(NaN); coperto.push(false); continue; }
+    px.push(p.px); py.push(p.py);
+    const cresta = crestaDi(az);
+    coperto.push(cresta !== null && cresta > 0);
+  }
+  const traccia = quali => {
+    ctx.beginPath();
+    let dentro = false;
+    for (let i = 0; i < px.length; i++) {
+      if (Number.isNaN(px[i]) || coperto[i] !== quali) { dentro = false; continue; }
+      if (dentro) ctx.lineTo(px[i], py[i]);
+      else { ctx.moveTo(px[i], py[i]); dentro = true; }
+    }
+    ctx.stroke();
+  };
+  ctx.globalAlpha = 0.3 * SKY_ORIZZONTE_COPERTO;
+  traccia(true);
   ctx.globalAlpha = 0.3;
-  ctx.stroke();
+  traccia(false);
   ctx.restore();
 }
 
@@ -16121,7 +16262,17 @@ function skyDisegnaGranaTerreno(ctx, o, base, focale, velo) {
   }, SKY_GRANA_LATO_LARGA, SKY_GRANA_SCALA_LARGA);
 
   ctx.save();
-  const regola = skyTracciaSuolo(ctx, o);
+  // Dove si stende: sul **terreno disegnato**, non sotto la riga
+  // dell'orizzonte.
+  //
+  // Le due cose coincidono a livello del mare e non coincidono affatto da una
+  // cima, dove metà del panorama sta sopra la riga e l'altra metà sotto: la
+  // trama si fermava a zero gradi esatti e lasciava una cucitura orizzontale
+  // in mezzo alle montagne, che è lo stesso difetto — e la stessa causa — del
+  // fondo del rilievo (§ `RIL_FONDI` in `rilievo.js`).
+  const conRilievo = typeof rilievo !== 'undefined' && rilievo.hoDisegnato &&
+    typeof rilTracciaSagoma === 'function' && rilTracciaSagoma(ctx);
+  const regola = conRilievo ? 'nonzero' : skyTracciaSuolo(ctx, o);
   const luce = Math.min(1, (sky.luceCielo - SKY_GRANA_LUCE_MIN) / 0.28);
   // Le chiazze prima e in normale: sono macchie chiare e scure su
   // trasparente, quindi mordono anche sul terreno vicino, che adesso è la
