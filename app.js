@@ -19216,6 +19216,7 @@ function skyDisegna() {
   // chilometri di quota ma spesso a mille di distanza: quello che le
   // finisce sotto la cresta, sotto la cresta deve restare.
   if (typeof aurDisegna === 'function') aurDisegna(ctx, base, focale);
+  if (typeof aereiDisegna === 'function') aereiDisegna(ctx, base, focale);
   // Le cupole di luce dei paesi: **prima** del terreno, così la collina le
   // taglia come fa dal vero (la luce viene da dietro il crinale), e
   // **dopo** le stelle, perché è esattamente quello che fanno — sbiadire
@@ -23090,6 +23091,7 @@ function skyCaricaIlResto() {
     },
     () => { if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica(); },
     () => { if (typeof satPrecaricaTle === 'function') satPrecaricaTle(); },
+    () => { if (typeof aereiAvvia === 'function') aereiAvvia(); },
     // Il Kp del NOAA: serve a sapere se l'ovale aurorale, stanotte, scende
     // fin qui. Senza rete non si sa, e resta la simulazione.
     () => {
@@ -23150,6 +23152,7 @@ function splashPlanetarioNascondi() {
 function chiudiSkymap() {
   if (!sky.aperto) return;
   sky.aperto = false;
+  if (typeof aereiFerma === 'function') aereiFerma();
   skySpegniCiclo();
   // Il playback non deve sopravvivere alla vista: tornando qui domani il
   // cielo ripartirebbe da un istante che nessuno ha più in mente
