@@ -434,6 +434,12 @@
                   stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M12 3.2l2.5 5.7 6.2.6-4.7 4.1 1.4 6.1L12 16.5l-5.4 3.2 1.4-6.1-4.7-4.1 6.2-.6z"/>
                 </svg><span class="nome-gruppo">Astri</span></button>
+              <button type="button" class="linguetta-gruppo" data-vai-gruppo="aerei" aria-pressed="false"
+                title="Aerei ADS-B vicini in tempo reale">
+                <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 13l7-2 3-7 2 1-1 6 6 2v2l-6 1-2 5-2-1v-4l-7-1z"/>
+                </svg><span class="nome-gruppo">Aerei</span></button>
             </div>
             <button id="skymap-luogo-mappa" type="button" class="tasto-mappa-luogo-cielo"
               title="Scegli sulla mappa il punto da cui guardare il cielo"
@@ -779,6 +785,18 @@
               <p class="etichetta-comando">Toccane uno: la mappa lo porta al centro e una freccia ti guida. Per la scheda dei dati, toccalo sulla mappa.</p>
               <div id="skymap-oggetti" class="elenco-astri"></div>
               <p id="skymap-astri-vuoto" class="etichetta-comando nota-lunga hidden">Nessun astro con questo nome.</p>
+            </section>
+
+            <section class="gruppo-comandi gruppo-aerei" data-gruppo="aerei" aria-label="Aerei ADS-B">
+              <div class="aerei-testata">
+                <div>
+                  <strong>Aerei in tempo reale</strong>
+                  <p id="aerei-stato" class="etichetta-comando" role="status" aria-live="polite">Apri il pannello per cercare gli aerei vicini.</p>
+                </div>
+                <button id="aerei-aggiorna" type="button" class="tasto-cielo">Aggiorna</button>
+              </div>
+              <p class="etichetta-comando">Posizioni ADS-B entro 100 km. La linea tratteggiata mostra i prossimi 5 minuti; gli allineamenti sono segnalati sotto 1°.</p>
+              <div id="aerei-elenco" class="aerei-elenco"></div>
             </section>
 
           </div>
@@ -2129,6 +2147,7 @@
   <script src="rilievo.js"></script>
   <script src="meteo-astro.js"></script>
   <script src="aurora-polare.js"></script>
+  <script src="aerei.js"></script>
   <script src="eventi-extra.js"></script>
   <script src="ui-nuova.js"></script>
   <script src="didattica.js"></script>
