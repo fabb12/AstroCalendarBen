@@ -2,7 +2,7 @@
 //
 // I provider e tutto il trasporto stanno qui: GitHub Pages non puo fare da
 // proxy e OpenSky non autorizza le richieste CORS provenienti dal sito. Usiamo
-// quindi endpoint ADS-B pensati anche per i browser, con ripiego automatico.
+// quindi un ponte CORS pubblico davanti ai feed ADS-B, con ripiego automatico.
 (function () {
   'use strict';
 
@@ -48,32 +48,40 @@
       `/lon/${posizione.lon.toFixed(4)}/dist/${migliaNautiche}`;
   }
 
-  const providersPredefiniti = [{
-    nome: 'Airplanes.live',
-    url(posizione, raggioKm) {
-      return urlAdsbExchange('api.airplanes.live', posizione, raggioKm);
-    },
-    interpreta: interpretaAdsbExchange
-  }, {
-    nome: 'adsb.lol',
-    url(posizione, raggioKm) {
-      return urlAdsbExchange('api.adsb.lol', posizione, raggioKm);
-    },
-    interpreta: interpretaAdsbExchange
-  }, {
-    // Stesso formato readsb dei primi due, ma infrastruttura indipendente.
-    // Tenerlo qui evita che un blocco DNS/CORS o un limite condiviso fra i
-    // due endpoint principali lasci il planetario senza traffico.
-    nome: 'ADSB.fi',
-    url: urlAdsbFi,
-    interpreta: interpretaAdsbExchange
-  }, {
-    nome: 'ADSB.one',
-    url(posizione, raggioKm) {
-      return urlAdsbExchange('api.adsb.one', posizione, raggioKm);
-    },
-    interpreta: interpretaAdsbExchange
-  }];
+  function urlAttraverso(ponte, destinazione) {
+    // Il browser deve parlare con il ponte, non con `destinazione`: aggiungere
+    // soltanto un'intestazione alla fetch non può correggere il CORS del server
+    // remoto. encodeURIComponent impedisce inoltre che i parametri del feed
+    // vengano interpretati come parametri del ponte.
+    return ponte + encodeURIComponent(destinazione);
+  }
+
+  function providerConPonte(nome, ponte, urlFeed) {
+    return {
+      nome: `${nome} via ${ponte.indexOf('allorigins') !== -1 ? 'AllOrigins' : 'CorsProxy.io'}`,
+      url(posizione, raggioKm) {
+        return urlAttraverso(ponte, urlFeed(posizione, raggioKm));
+      },
+      interpreta: interpretaAdsbExchange
+    };
+  }
+
+  const feedAirplanesLive = (posizione, raggioKm) =>
+    urlAdsbExchange('api.airplanes.live', posizione, raggioKm);
+  const feedAdsbLol = (posizione, raggioKm) =>
+    urlAdsbExchange('api.adsb.lol', posizione, raggioKm);
+
+  // I feed non inviano Access-Control-Allow-Origin a GitHub Pages. Interrogarli
+  // direttamente produce esattamente l'errore CORS visto in console e nessun
+  // ripiego JavaScript può leggere quella risposta. Due ponti indipendenti
+  // evitano sia quel blocco sia un singolo punto di guasto; ciascuno prova due
+  // reti ADS-B indipendenti.
+  const providersPredefiniti = [
+    providerConPonte('adsb.lol', 'https://api.allorigins.win/raw?url=', feedAdsbLol),
+    providerConPonte('Airplanes.live', 'https://api.allorigins.win/raw?url=', feedAirplanesLive),
+    providerConPonte('adsb.lol', 'https://corsproxy.io/?url=', feedAdsbLol),
+    providerConPonte('Airplanes.live', 'https://corsproxy.io/?url=', feedAirplanesLive)
+  ];
 
   async function scarica(provider, obs, raggio, signal) {
     const risposta = await fetch(provider.url(obs, raggio), { signal, cache: 'no-store' });
@@ -307,5 +315,6 @@
   window.aereiDisegna = aereiDisegna;
   window.aereiRaggioCambiato = aereiRaggioCambiato;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
-    interpretaAdsbExchange, urlAdsbExchange, urlAdsbFi, scaricaConRipiego, providersPredefiniti, stato };
+    interpretaAdsbExchange, urlAdsbExchange, urlAdsbFi, urlAttraverso,
+    scaricaConRipiego, providersPredefiniti, stato };
 }());

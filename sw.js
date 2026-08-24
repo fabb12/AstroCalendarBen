@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v156';
+const CACHE_NAME = 'astrocal-v157';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -68,7 +68,9 @@ const SERVIZI_ADSB = [
   'api.airplanes.live',
   'api.adsb.lol',
   'opendata.adsb.fi',
-  'api.adsb.one'
+  'api.adsb.one',
+  'api.allorigins.win',
+  'corsproxy.io'
 ];
 
 // Host le cui risposte salviamo man mano che arrivano (librerie, tessere mappa)
