@@ -4,8 +4,9 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Le richieste ADS-B attraverso i ponti CORS non partono più tutte insieme ogni
-15 secondi: i provider vengono provati uno alla volta, ciascuno con una propria
-scadenza, e l'aggiornamento avviene una volta al minuto. In questo modo basta la
-prima risposta disponibile e non si esaurisce il limite dei ponti pubblici.
-Portata inoltre la cache PWA a `astrocal-v158`.
+Il feed ADS-B usa ora direttamente l'API geografica di OpenSky Network: niente
+più ADSB.fi privo di CORS e niente proxy pubblici soggetti a 403/429. La query è
+limitata al rettangolo attorno all'osservatore e viene ripetuta ogni cinque
+minuti per rispettare la quota anonima; fra due letture l'app continua a
+proiettare localmente le traiettorie. Aggiunto il relativo interprete e portata
+la cache PWA a `astrocal-v159`.
