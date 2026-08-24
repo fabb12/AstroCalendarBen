@@ -2658,6 +2658,10 @@ titolo('15. Le montagne che hanno un nome');
           raggiTosa('cime', 5000) === RAGGI_LIMITI.cime.max &&
           raggiTosa('cime', 1) === RAGGI_LIMITI.cime.min &&
           raggiTosa('cime', 'boh') === RAGGI_LIMITI.cime.predefinito);
+    prova('anche il raggio degli aerei è configurabile e tosato',
+          raggiTosa('aerei', 999) === RAGGI_LIMITI.aerei.max &&
+          raggiTosa('aerei', 1) === RAGGI_LIMITI.aerei.min &&
+          raggiTosa('aerei', 103) === 105);
     // Un elenco preso guardando meno lontano di quanto si sta chiedendo non
     // risponde alla domanda: riusarlo vuol dire dare per buona una risposta
     // che non è stata fatta. Al contrario uno più largo va benissimo.

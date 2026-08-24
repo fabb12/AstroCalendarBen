@@ -2436,6 +2436,10 @@ const CHIAVE_RAGGI = 'astrocalendario_raggi_orizzonte';
 const RAGGI_LIMITI = {
   cime: { min: 15, max: 200, passo: 5, predefinito: 80 },
   citta: { min: 10, max: 150, passo: 5, predefinito: 90 },
+  // Gli aerei arrivano da ADS-B e cambiano continuamente: un raggio più
+  // largo è utile in pianura, uno stretto evita traffico lontano e richieste
+  // inutilmente grandi quando interessa solo ciò che passa sopra casa.
+  aerei: { min: 10, max: 250, passo: 5, predefinito: 100 },
   // I laghi e i fiumi si cercano molto più vicino, e non per prudenza: un
   // lago a cinquanta chilometri, visto da uno che sta in pianura, è sotto
   // l'orizzonte — e quando invece si vede (da una cima) è una riga di due
@@ -2455,6 +2459,7 @@ function raggiLeggiSalvati() {
     cime: RAGGI_LIMITI.cime.predefinito,
     citta: RAGGI_LIMITI.citta.predefinito,
     acque: RAGGI_LIMITI.acque.predefinito,
+    aerei: RAGGI_LIMITI.aerei.predefinito,
     // I nomi sono parte del panorama, quindi al primo avvio devono essere
     // visibili. Restano comunque indipendenti dalle etichette astronomiche
     // e chi non li desidera può spegnerli dal loro interruttore.
@@ -2477,6 +2482,7 @@ function raggiLeggiSalvati() {
       if (typeof s.cime === 'number') v.cime = raggiTosa('cime', s.cime);
       if (typeof s.citta === 'number') v.citta = raggiTosa('citta', s.citta);
       if (typeof s.acque === 'number') v.acque = raggiTosa('acque', s.acque);
+      if (typeof s.aerei === 'number') v.aerei = raggiTosa('aerei', s.aerei);
       if (typeof s.acqueAccese === 'boolean') v.acqueAccese = s.acqueAccese;
       // Una scelta già salvata prevale sul valore iniziale: in questo modo
       // accenderli di default non riaccende le scritte a chi le ha spente
@@ -2496,6 +2502,7 @@ function raggiSalva() {
 
 function raggioCime() { return raggi.cime; }
 function raggioCitta() { return raggi.citta; }
+function raggioAerei() { return raggi.aerei; }
 
 // Rileggere da capo quello che c'è in `localStorage`. Serve al ripristino
 // di un backup, che in localStorage ci scrive direttamente: senza questa,
@@ -2522,9 +2529,11 @@ function raggiImposta(quale, km) {
   } else if (quale === 'acque') {
     acqueDimentica();
     if (acque.acceso) acqueCarica(true);
-  } else {
+  } else if (quale === 'citta') {
     cittaDimentica();
     if (citta.acceso) cittaCarica(true);
+  } else if (typeof aereiRaggioCambiato === 'function') {
+    aereiRaggioCambiato();
   }
   terrenoAggiornaPannello();
   return true;
