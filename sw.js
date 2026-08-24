@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v158';
+const CACHE_NAME = 'astrocal-v159';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -46,7 +46,10 @@ const ASSETS = [
 // Librerie esterne: vanno messe in cache anche loro, altrimenti l'app
 // installata si apre "rotta" quando non c'è rete (proprio di notte, in campo).
 const LIBRERIE = [
-  'https://cdn.tailwindcss.com',
+  // Il compilatore Tailwind è uno script classico `no-cors`: forzarne qui il
+  // download in modalità CORS fa fallire l'installazione in console perché il
+  // CDN non invia ACAO. style.css contiene già la rete di sicurezza offline,
+  // quindi lo lasciamo caricare normalmente dalla pagina senza precache.
   'https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js',
   'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js',
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css',
@@ -69,6 +72,7 @@ const SERVIZI_ADSB = [
   'api.adsb.lol',
   'opendata.adsb.fi',
   'api.adsb.one',
+  'opensky-network.org',
   'api.allorigins.win',
   'corsproxy.io'
 ];

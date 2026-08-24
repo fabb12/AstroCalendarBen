@@ -6,12 +6,15 @@
 (function () {
   'use strict';
 
-  // I ponti CORS sono servizi condivisi: quattro richieste parallele ogni 15
-  // secondi fanno scattare il loro limite anche se una sola sarebbe bastata.
-  // Un aggiornamento al minuto e il ripiego in sequenza rispettano i servizi
-  // e sono comunque molto più rapidi del normale ritardo di un feed ADS-B.
-  const CACHE_MS = 55000;
-  const INTERVALLO_MS = 60000;
+  // I ponti CORS condivisi non sono adatti a un aggiornamento periodico: il
+  // provider diretto sotto evita sia i loro limiti sia un intermediario che
+  // riceverebbe la posizione dell'osservatore.
+  // OpenSky consente l'accesso anonimo, ma assegna una quota giornaliera per
+  // indirizzo IP. Cinque minuti tengono il planetario aggiornato senza
+  // consumarla in poche ore (la traiettoria fra due letture viene proiettata
+  // localmente qui sotto).
+  const CACHE_MS = 290000;
+  const INTERVALLO_MS = 300000;
   const ERRORE_ATTESA_MS = 60000;
   const PROVIDER_ATTESA_MS = 12000;
   const PREVISIONE_MINUTI = 5;
@@ -38,6 +41,31 @@
         ultimaLettura: Math.floor(Date.now() / 1000 - (vistoSecondiFa || 0))
       };
     }).filter(a => Number.isFinite(a.lat) && Number.isFinite(a.lon));
+  }
+
+  function interpretaOpenSky(risposta) {
+    // https://openskynetwork.github.io/opensky-api/rest.html#response
+    // Lo schema è un array posizionale; `geo_altitude` (13) è preferibile a
+    // `baro_altitude` (7) per disegnare l'altezza geometrica nel cielo.
+    return (risposta.states || []).map(a => ({
+      id: a[0], callsign: String(a[1] || '').trim() || String(a[0] || '').toUpperCase(),
+      lon: numero(a[5]), lat: numero(a[6]), quotaM: numero(a[13]) ?? numero(a[7]),
+      aTerra: !!a[8], velocitaMs: numero(a[9]) || 0, direzione: numero(a[10]),
+      salitaMs: numero(a[11]) || 0, ultimaLettura: numero(a[4]) || numero(a[3])
+    })).filter(a => Number.isFinite(a.lat) && Number.isFinite(a.lon));
+  }
+
+  function urlOpenSky(posizione, raggioKm) {
+    // Il riquadro circoscritto evita la costosissima richiesta mondiale. La
+    // correzione del coseno mantiene il raggio giusto anche alle alte latitudini;
+    // il filtro circolare esatto resta comunque in arricchisci().
+    const dLat = raggioKm / 111.32;
+    const dLon = raggioKm / (111.32 * Math.max(.08, Math.cos(radianti(posizione.lat))));
+    const q = new URLSearchParams({
+      lamin: (posizione.lat - dLat).toFixed(4), lamax: (posizione.lat + dLat).toFixed(4),
+      lomin: (posizione.lon - dLon).toFixed(4), lomax: (posizione.lon + dLon).toFixed(4)
+    });
+    return `https://opensky-network.org/api/states/all?${q}`;
   }
 
   function urlAdsbExchange(host, posizione, raggioKm) {
@@ -77,20 +105,17 @@
   const feedAdsbLol = (posizione, raggioKm) =>
     urlAdsbExchange('api.adsb.lol', posizione, raggioKm);
 
-  // ADSB.fi è interrogabile direttamente dal browser e non condivide i limiti
-  // di corsproxy.io (403/429). Provarlo per primo evita di affidare il normale
-  // funzionamento dell'app a un proxy pubblico. I ponti rimangono in coda per
-  // coprire un'eventuale indisponibilità temporanea del feed principale.
+  // Un proxy CORS pubblico non è un'infrastruttura: CorsProxy.io limita o
+  // vieta le API (429/403), mentre AllOrigins può scadere. OpenSky espone
+  // direttamente l'API al browser e diventa quindi il percorso normale. Il
+  // provider configurabile resta il modo per usare un eventuale proxy proprio,
+  // senza spedire i dati di posizione a ponti pubblici di terzi.
   const providersPredefiniti = [
     {
-      nome: 'ADSB.fi',
-      url: urlAdsbFi,
-      interpreta: interpretaAdsbExchange
-    },
-    providerConPonte('adsb.lol', 'https://api.allorigins.win/raw?url=', feedAdsbLol),
-    providerConPonte('Airplanes.live', 'https://api.allorigins.win/raw?url=', feedAirplanesLive),
-    providerConPonte('adsb.lol', 'https://corsproxy.io/?url=', feedAdsbLol),
-    providerConPonte('Airplanes.live', 'https://corsproxy.io/?url=', feedAirplanesLive)
+      nome: 'OpenSky Network',
+      url: urlOpenSky,
+      interpreta: interpretaOpenSky
+    }
   ];
 
   async function scarica(provider, obs, raggio, signal) {
@@ -315,6 +340,6 @@
   window.aereiDisegna = aereiDisegna;
   window.aereiRaggioCambiato = aereiRaggioCambiato;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
-    interpretaAdsbExchange, urlAdsbExchange, urlAdsbFi, urlAttraverso,
+    interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky, urlAttraverso,
     scaricaConRipiego, providersPredefiniti, stato };
 }());
