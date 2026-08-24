@@ -42,6 +42,12 @@
     return `https://${host}/v2/point/${posizione.lat.toFixed(4)}/${posizione.lon.toFixed(4)}/${migliaNautiche}`;
   }
 
+  function urlAdsbFi(posizione, raggioKm) {
+    const migliaNautiche = Math.max(1, Math.min(250, Math.ceil(raggioKm / 1.852)));
+    return `https://opendata.adsb.fi/api/v2/lat/${posizione.lat.toFixed(4)}` +
+      `/lon/${posizione.lon.toFixed(4)}/dist/${migliaNautiche}`;
+  }
+
   const providersPredefiniti = [{
     nome: 'Airplanes.live',
     url(posizione, raggioKm) {
@@ -52,6 +58,19 @@
     nome: 'adsb.lol',
     url(posizione, raggioKm) {
       return urlAdsbExchange('api.adsb.lol', posizione, raggioKm);
+    },
+    interpreta: interpretaAdsbExchange
+  }, {
+    // Stesso formato readsb dei primi due, ma infrastruttura indipendente.
+    // Tenerlo qui evita che un blocco DNS/CORS o un limite condiviso fra i
+    // due endpoint principali lasci il planetario senza traffico.
+    nome: 'ADSB.fi',
+    url: urlAdsbFi,
+    interpreta: interpretaAdsbExchange
+  }, {
+    nome: 'ADSB.one',
+    url(posizione, raggioKm) {
+      return urlAdsbExchange('api.adsb.one', posizione, raggioKm);
     },
     interpreta: interpretaAdsbExchange
   }];
@@ -288,5 +307,5 @@
   window.aereiDisegna = aereiDisegna;
   window.aereiRaggioCambiato = aereiRaggioCambiato;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
-    interpretaAdsbExchange, urlAdsbExchange, scaricaConRipiego, stato };
+    interpretaAdsbExchange, urlAdsbExchange, urlAdsbFi, scaricaConRipiego, providersPredefiniti, stato };
 }());
