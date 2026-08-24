@@ -434,12 +434,6 @@
                   stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M12 3.2l2.5 5.7 6.2.6-4.7 4.1 1.4 6.1L12 16.5l-5.4 3.2 1.4-6.1-4.7-4.1 6.2-.6z"/>
                 </svg><span class="nome-gruppo">Astri</span></button>
-              <button type="button" class="linguetta-gruppo" data-vai-gruppo="aerei" aria-pressed="false"
-                title="Aerei ADS-B vicini in tempo reale">
-                <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M3 13l7-2 3-7 2 1-1 6 6 2v2l-6 1-2 5-2-1v-4l-7-1z"/>
-                </svg><span class="nome-gruppo">Aerei</span></button>
             </div>
             <button id="skymap-luogo-mappa" type="button" class="tasto-mappa-luogo-cielo"
               title="Scegli sulla mappa il punto da cui guardare il cielo"
@@ -678,6 +672,8 @@
               <button id="skymap-btn-traccia" type="button" class="tasto-cielo attiva" title="La strada che l'oggetto scelto percorre nel cielo nelle ore attorno a questo istante: tratteggiata dove è già passato, piena dove sta andando, con l'ora segnata di ora in ora">Traccia</button>
               <button id="skymap-btn-eclittica" type="button" class="tasto-cielo" title="Il cerchio che il Sole percorre in un anno fra le stelle: il piano dell'orbita terrestre visto di taglio. I pianeti stanno sempre a pochi gradi da questa linea, e il filo a piombo misura quanti. Resta accesa qualunque oggetto si scelga, finché non la si spegne">Eclittica</button>
               <button id="skymap-btn-aurora" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'ovale aurorale — boreale o australe, secondo l'emisfero — messo in cielo dove sta davvero: se da qui si vede, e quanto se ne affaccia sopra l'orizzonte, lo decide la curvatura della Terra">Aurora</button>
+              <button type="button" class="tasto-cielo" data-vai-gruppo="aerei" aria-pressed="false"
+                title="Mostra gli aerei ADS-B vicini in tempo reale">Aerei</button>
               </div>
 
               <!-- L'aurora vera, da queste latitudini, capita una volta ogni
