@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v153';
+const CACHE_NAME = 'astrocal-v154';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -58,6 +58,13 @@ const LIBRERIE = [
 // ripiego quando il GPS non risponde, e una risposta vecchia di cache
 // racconterebbe dove eri, non dove sei.
 const SERVIZI_POSIZIONE = ['ipapi.co', 'ipwho.is', 'get.geojs.io'];
+
+// Feed ADS-B in tempo reale. Queste richieste CORS non devono passare dal
+// ripiego generico del service worker: se un provider non risponde, una
+// Response sintetica priva delle sue intestazioni CORS viene rifiutata dal
+// browser come errore di rete (il poco utile "Failed to fetch") e impedisce
+// ad aerei.js di provare correttamente il provider successivo.
+const SERVIZI_ADSB = ['api.airplanes.live', 'api.adsb.lol'];
 
 // Host le cui risposte salviamo man mano che arrivano (librerie, tessere mappa)
 const HOST_DA_CONSERVARE = [
@@ -134,7 +141,8 @@ self.addEventListener('fetch', (e) => {
   // qui non si perde niente: si toglie solo un intermediario che mentiva.
   if (url.hostname.indexOf('overpass') !== -1 ||
       url.hostname === 'nominatim.openstreetmap.org' ||
-      url.hostname === 'api.bigdatacloud.net') {
+      url.hostname === 'api.bigdatacloud.net' ||
+      SERVIZI_ADSB.indexOf(url.hostname) !== -1) {
     return;
   }
 
