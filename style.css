@@ -6129,7 +6129,13 @@ body.luogo-immersivo { overflow: hidden; }
     color: var(--blu-chiaro);
     box-shadow: none;
   }
-  .voce-menu-icona { display: block; opacity: 0.95; }
+  .voce-menu-icona {
+    display: block;
+    opacity: 0.95;
+    transform: scale(1);
+    transition: transform var(--transizione);
+  }
+  .voce-menu.attiva .voce-menu-icona { transform: scale(1.18); }
   .voce-menu-testo { display: block; line-height: 1.1; }
 
   /* Su un tablet la barra non si spalma per tutta la larghezza: le voci
