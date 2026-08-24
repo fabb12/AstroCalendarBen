@@ -1,8 +1,8 @@
 // Aerei nel Planetario — dati ADS-B in tempo reale.
 //
 // I provider e tutto il trasporto stanno qui: GitHub Pages non puo fare da
-// proxy e OpenSky non autorizza le richieste CORS provenienti dal sito. Usiamo
-// quindi un ponte CORS pubblico davanti ai feed ADS-B, con ripiego automatico.
+// proxy. Il percorso principale usa un feed open-data che autorizza le
+// richieste dal browser; i ponti CORS pubblici restano soltanto come ripiego.
 (function () {
   'use strict';
 
@@ -24,7 +24,9 @@
   }
 
   function interpretaAdsbExchange(risposta) {
-    return (risposta.ac || []).map(a => {
+    // I mirror readsb usano normalmente `ac`; alcuni rilasciano lo stesso
+    // elenco come `aircraft`. Accettare entrambi evita falsi "zero aerei".
+    return (risposta.ac || risposta.aircraft || []).map(a => {
       const quotaPiedi = numero(a.alt_baro) ?? numero(a.alt_geom);
       const vistoSecondiFa = numero(a.seen);
       return {
@@ -75,12 +77,16 @@
   const feedAdsbLol = (posizione, raggioKm) =>
     urlAdsbExchange('api.adsb.lol', posizione, raggioKm);
 
-  // I feed non inviano Access-Control-Allow-Origin a GitHub Pages. Interrogarli
-  // direttamente produce esattamente l'errore CORS visto in console e nessun
-  // ripiego JavaScript può leggere quella risposta. Due ponti indipendenti
-  // evitano sia quel blocco sia un singolo punto di guasto; ciascuno prova due
-  // reti ADS-B indipendenti.
+  // ADSB.fi è interrogabile direttamente dal browser e non condivide i limiti
+  // di corsproxy.io (403/429). Provarlo per primo evita di affidare il normale
+  // funzionamento dell'app a un proxy pubblico. I ponti rimangono in coda per
+  // coprire un'eventuale indisponibilità temporanea del feed principale.
   const providersPredefiniti = [
+    {
+      nome: 'ADSB.fi',
+      url: urlAdsbFi,
+      interpreta: interpretaAdsbExchange
+    },
     providerConPonte('adsb.lol', 'https://api.allorigins.win/raw?url=', feedAdsbLol),
     providerConPonte('Airplanes.live', 'https://api.allorigins.win/raw?url=', feedAirplanesLive),
     providerConPonte('adsb.lol', 'https://corsproxy.io/?url=', feedAdsbLol),
