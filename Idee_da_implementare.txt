@@ -1,8 +1,4 @@
-1. visualizzazione realistica delle aurore boreali e australi nel planetario
-2. sezione didattica possibilita di ingrandire la visualizzazione 3D e correggegere eventuali bug di calcolo, (es. moto retrogrado venere) e migliorare la selezione tra schede in modo che posso essere selezionate facilmente anche con schremi piccoli
-3. rendere piu chiara come si calcola la fioda gravitazionale cosa devi considerare e come si calcola
-3. sistemare dimensione degli oggetto della dashboard per i piccoli schermi 
-4. mettere voce del menu principale didattica prima di diario nel menu principale
-5. sistemare nel sistema solare 3d la dimensione del sole quando ingrandisci o diminuisci
-6. migliorare il box di informazione dello oggetto del planetario inserendo anche una foto dell oggetto . e rendilo tutto visibile senza scroll bar se scrhemi grandi
 
+SkyScore — “vale la pena uscire stasera?”
+Perfect Spot — “dove devo mettermi per vedere l'evento dietro quella montagna?”
+Discover — l'app trova automaticamente i migliori eventi nelle vicinanze.
