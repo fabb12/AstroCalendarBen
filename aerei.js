@@ -6,8 +6,12 @@
 (function () {
   'use strict';
 
-  const CACHE_MS = 10000;
-  const INTERVALLO_MS = 15000;
+  // I ponti CORS sono servizi condivisi: quattro richieste parallele ogni 15
+  // secondi fanno scattare il loro limite anche se una sola sarebbe bastata.
+  // Un aggiornamento al minuto e il ripiego in sequenza rispettano i servizi
+  // e sono comunque molto più rapidi del normale ritardo di un feed ADS-B.
+  const CACHE_MS = 55000;
+  const INTERVALLO_MS = 60000;
   const ERRORE_ATTESA_MS = 60000;
   const PROVIDER_ATTESA_MS = 12000;
   const PREVISIONE_MINUTI = 5;
@@ -92,53 +96,43 @@
     return provider.interpreta(await risposta.json());
   }
 
-  function scaricaConRipiego(providers, obs, raggio, signal, attesaMs = PROVIDER_ATTESA_MS) {
+  async function scaricaConRipiego(providers, obs, raggio, signal, attesaMs = PROVIDER_ATTESA_MS) {
     if (!providers.length) return Promise.reject(new Error('nessun servizio disponibile'));
+    const errori = [];
 
-    // Non mettere i provider in fila dietro a un'unica sveglia: se il primo
-    // accetta la connessione ma non manda mai una risposta, consumerebbe tutta
-    // l'attesa e il ripiego non verrebbe neppure interrogato. Le due richieste
-    // indipendenti partono insieme; la prima risposta valida vince e spegne le
-    // altre. Ogni host ha comunque il proprio limite, così nessuna fetch resta
-    // appesa dopo la chiusura del planetario.
-    return new Promise((risolvi, rifiuta) => {
-      const controllori = providers.map(() => new AbortController());
-      const errori = [];
-      let rimasti = providers.length;
-      let conclusa = false;
-
-      function annullaTutti() { controllori.forEach(c => c.abort()); }
-      function annullataDaFuori() {
-        if (conclusa) return;
-        conclusa = true; annullaTutti();
-        const e = new Error('richiesta annullata'); e.name = 'AbortError'; rifiuta(e);
+    // Ogni tentativo ha una propria scadenza: così un ponte fermo non blocca
+    // il successivo, ma non bombardiamo più entrambi i ponti e tutti i feed
+    // nello stesso istante. Un 429 passa immediatamente al provider seguente.
+    for (const provider of providers) {
+      if (signal && signal.aborted) {
+        const e = new Error('richiesta annullata'); e.name = 'AbortError'; throw e;
       }
-      if (signal && signal.aborted) { annullataDaFuori(); return; }
-      if (signal) signal.addEventListener('abort', annullataDaFuori, { once: true });
+      const controller = new AbortController();
+      const annulla = () => controller.abort();
+      if (signal) signal.addEventListener('abort', annulla, { once: true });
+      const sveglia = setTimeout(annulla, attesaMs);
+      try {
+        const aerei = await scarica(provider, obs, raggio, controller.signal);
+        return { provider, aerei };
+      } catch (errore) {
+        if (signal && signal.aborted) {
+          const e = new Error('richiesta annullata'); e.name = 'AbortError'; throw e;
+        }
+        if (errore.name === 'AbortError') {
+          const e = new Error(`tempo scaduto per ${provider.nome}`); e.name = 'TimeoutError';
+          errori.push(e);
+        } else errori.push(errore);
+      } finally {
+        clearTimeout(sveglia);
+        if (signal) signal.removeEventListener('abort', annulla);
+      }
+    }
 
-      providers.forEach((provider, indice) => {
-        const controller = controllori[indice];
-        const sveglia = setTimeout(() => controller.abort(), attesaMs);
-        scarica(provider, obs, raggio, controller.signal).then(aerei => {
-          if (conclusa) return;
-          conclusa = true;
-          clearTimeout(sveglia); annullaTutti();
-          risolvi({ provider, aerei });
-        }).catch(errore => {
-          clearTimeout(sveglia);
-          if (conclusa) return;
-          errori[indice] = errore;
-          rimasti--;
-          if (!rimasti) {
-            conclusa = true;
-            const utile = errori.find(e => e && e.name !== 'AbortError');
-            const e = utile || new Error('tempo scaduto');
-            if (!utile) e.name = 'TimeoutError';
-            rifiuta(e);
-          }
-        });
-      });
-    });
+    // Non attribuire l'intero guasto al primo 429 se un altro servizio ha
+    // risposto con un errore differente. Il messaggio resta così attendibile.
+    throw errori.find(e => !e.rateLimit && e.name !== 'TimeoutError') ||
+      errori.find(e => e.name === 'TimeoutError') || errori[0] ||
+      new Error('nessun servizio disponibile');
   }
 
   const stato = { aerei: [], timer: null, richiesta: null, controller: null, ultimoCentro: null,
