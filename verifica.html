@@ -6593,6 +6593,125 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
       `${(rilievo.fronte[K[RIL_FONDI - 1]] - rilievo.fronte[K[0]]).toFixed(1)}°`);
     rilievo.fronte = salva.fronte; rilievo.alt = salva.alt; rilievo.acceso = salva.acceso;
   }
+
+  // --- Quando le curve si chiudono attorno al cielo ---------------------
+  //
+  // Alzando la camera a campo larghissimo l'orizzonte non attraversa più lo
+  // schermo: ci sta tutto dentro, e ogni curva del terreno diventa un
+  // anello. Lì «sotto la curva» non è «giù fino al fondo del riquadro», è
+  // **fuori dalla curva** — e la differenza non è una sfumatura: chiudere un
+  // anello che gira attorno al centro dello schermo fino al bordo di sotto fa
+  // un poligono che si attraversa da solo, e con la regola `nonzero` metà
+  // della volta celeste si dipinge di terra, con dei bordi verticali netti.
+  // È il difetto che si vedeva puntando allo zenit a 180°.
+  //
+  // Il tracciato si registra invece di disegnarlo, e poi gli si fa la
+  // domanda che conta: **il cielo è dentro o fuori?**
+  {
+    const finto = () => {
+      // La spia del riquadro si chiama `rettangolo` e non `rect`: `rect` è già
+      // il nome del metodo, e un oggetto che ha le due cose con lo stesso
+      // nome tiene solo la seconda — la spia risulterebbe sempre accesa e la
+      // prova non proverebbe niente.
+      return { sub: [], corrente: null, rettangolo: null,
+        beginPath() { this.sub = []; this.corrente = null; },
+        moveTo(x, y) { this.corrente = [[x, y]]; this.sub.push(this.corrente); },
+        lineTo(x, y) { if (this.corrente) this.corrente.push([x, y]); },
+        closePath() { this.corrente = null; },
+        rect(x, y, w, h) {
+          this.rettangolo = [x, y, w, h];
+          this.sub.push([[x, y], [x + w, y], [x + w, y + h], [x, y + h]]);
+          this.corrente = null;
+        } };
+    };
+    // Dentro o fuori, con le due regole del canvas: incroci per `evenodd`,
+    // giri per `nonzero`. Sono venti righe e sono quelle che rendono la
+    // prova una misura invece di un'ispezione del tracciato.
+    const dentro = (sub, px, py, regola) => {
+      let incroci = 0, giri = 0;
+      for (const s of sub) {
+        for (let i = 0; i < s.length; i++) {
+          const [x0, y0] = s[i], [x1, y1] = s[(i + 1) % s.length];
+          if ((y0 > py) === (y1 > py)) continue;
+          const t = (py - y0) / (y1 - y0);
+          if (x0 + t * (x1 - x0) <= px) continue;
+          incroci++;
+          giri += (y1 > y0) ? 1 : -1;
+        }
+      }
+      return regola === 'evenodd' ? (incroci % 2 === 1) : (giri !== 0);
+    };
+
+    const W = sky.larghezza, H = sky.altezza;
+    const cx = W / 2, cy = H / 2, raggio = Math.min(W, H) * 0.35;
+    const salva = { cx: rilCrestaX, cy: rilCrestaY, n: rilColonneUltime, a: rilAnelloUltimo };
+    const nCol = 180;
+    rilCrestaX = new Float32Array(nCol);
+    rilCrestaY = new Float32Array(nCol);
+    rilColonneUltime = nCol;
+    for (let c = 0; c < nCol; c++) {
+      // 348°: l'arco che `rilArcoInVista` concede al massimo, non il giro
+      // intero — la curva è un anello con una fessura, come nel disegno vero.
+      const a = (-174 + c * (348 / (nCol - 1))) * Math.PI / 180;
+      rilCrestaX[c] = cx + raggio * Math.sin(a);
+      rilCrestaY[c] = cy - raggio * Math.cos(a);
+    }
+
+    rilAnelloUltimo = 'fuori';
+    let ctx = finto();
+    const regolaAnello = rilTracciaSagoma(ctx);
+    prova('col crinale ad anello la sagoma si chiude col riquadro, pari-dispari',
+      regolaAnello === 'evenodd' && !!ctx.rettangolo, `regola ${regolaAnello}`);
+    prova('e allora il cielo, dentro all\'anello, **non** è terra',
+      !dentro(ctx.sub, cx, cy, regolaAnello));
+    prova('mentre gli angoli del riquadro lo sono',
+      dentro(ctx.sub, 4, 4, regolaAnello) && dentro(ctx.sub, W - 4, H - 4, regolaAnello));
+
+    // Il contro-esempio: la chiusura di prima, quella al bordo di sotto,
+    // applicata allo stesso anello. È il conto che dipingeva il cielo.
+    {
+      const c2 = finto();
+      c2.beginPath();
+      for (let c = 0; c < nCol; c++) {
+        if (c === 0) c2.moveTo(rilCrestaX[c], rilCrestaY[c]);
+        else c2.lineTo(rilCrestaX[c], rilCrestaY[c]);
+      }
+      const giu = H + Math.max(W, H);
+      c2.lineTo(rilCrestaX[nCol - 1] + W, giu);
+      c2.lineTo(rilCrestaX[0] - W, giu);
+      c2.closePath();
+      prova('col conto di prima lo stesso cielo risultava terra',
+        dentro(c2.sub, cx, cy, 'nonzero'));
+    }
+
+    // E il caso di sempre — l'orizzonte che attraversa lo schermo — non deve
+    // cambiare di un pixel: lì la chiusura al fondo del riquadro è giusta.
+    // Guardando in giù la terra è **dentro** all'anello: al centro dello
+    // schermo c'è il nadir, e le curve gli girano attorno.
+    rilAnelloUltimo = 'dentro';
+    ctx = finto();
+    const regolaGiu = rilTracciaSagoma(ctx);
+    prova('guardando in giù la terra è dentro all\'anello, e il riquadro non serve',
+      regolaGiu === 'nonzero' && !ctx.rettangolo);
+    prova('e allora è il centro dello schermo a essere terra, non il bordo',
+      dentro(ctx.sub, cx, cy, regolaGiu) && !dentro(ctx.sub, 4, 4, regolaGiu));
+
+    rilAnelloUltimo = null;
+    for (let c = 0; c < nCol; c++) {
+      rilCrestaX[c] = c * (W / (nCol - 1));
+      rilCrestaY[c] = cy + 20 * Math.sin(c * 0.3);
+    }
+    ctx = finto();
+    const regolaRiga = rilTracciaSagoma(ctx);
+    prova('col crinale che attraversa lo schermo si chiude in giù, come prima',
+      regolaRiga === 'nonzero' && !ctx.rettangolo);
+    prova('e allora sopra al crinale c\'è cielo e sotto c\'è terra',
+      !dentro(ctx.sub, cx, 20, regolaRiga) && dentro(ctx.sub, cx, H - 20, regolaRiga));
+
+    rilCrestaX = salva.cx; rilCrestaY = salva.cy;
+    rilColonneUltime = salva.n; rilAnelloUltimo = salva.a;
+
+  }
 }
 
 // =====================================================================

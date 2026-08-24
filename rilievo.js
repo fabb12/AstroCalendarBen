@@ -386,6 +386,33 @@ const RIL_CONTORNO_SALTO = 3;
 // due livelli su 255, sotto la soglia in cui una banda si legge come tale.
 const RIL_FONDI = 14;
 
+// Quando le curve del terreno **si chiudono attorno al cielo**.
+//
+// Alzando la camera a campo larghissimo l'orizzonte non attraversa più lo
+// schermo: ci sta tutto dentro, e con lui ogni curva del terreno diventa un
+// anello. Lì «sotto la curva» non vuol più dire «giù fino al fondo del
+// riquadro» — vuol dire **dall'altra parte** della curva, e chiudere un
+// anello che gira attorno al centro dello schermo tirandogli una riga fino
+// al bordo di sotto fa un poligono che si attraversa da solo: con la regola
+// `nonzero` una parte si riempie e una no, e sul cielo compaiono strisce
+// verticali di terreno coi bordi netti. È il difetto che si vedeva puntando
+// in alto a 180°.
+//
+// Da che parte stia la terra lo dice il cerchio dell'orizzonte, che è lo
+// stesso di `skyTracciaSuolo`: guardando **in su** la terra è fuori
+// dall'anello, guardando **in giù** ci sta dentro — lì al centro dello
+// schermo c'è il nadir, e le curve gli stanno attorno in ordine di
+// depressione.
+//
+// La soglia è sull'arco disegnato, che è la stessa cosa del giro che le
+// curve fanno attorno al centro del cerchio: gli azimut ci girano intorno in
+// ordine. Duecentosettanta gradi e non trecentotrenta perché a quel punto le
+// due chiusure devono già dare lo stesso disegno — e infatti nella fascia di
+// mezzo lo danno, perché i due capi dell'arco cascano fuori dal riquadro ai
+// lati. Sopra i sessanta gradi di elevazione, invece, l'anello circonda lo
+// schermo per davvero, e lì solo questa chiusura è giusta.
+const RIL_ANELLO_GRADI = 270;
+
 // Gli anelli su cui cadono quelle fette. `fronte[k]` è il massimo fino
 // all'anello k **compreso**, quindi la fetta b è il terreno che sta fra
 // l'anello della fetta b−1 e il suo: l'ultima è la sagoma intera.
@@ -1224,6 +1251,7 @@ let rilCrestaK = null;     // a che anello sta il massimo (serve alla foschia)
 let rilFondoX = null;      // le creste parziali delle fette di fondo
 let rilFondoY = null;      // (RIL_FONDI curve, una sopra l'altra)
 let rilColonneUltime = 0;  // quante colonne vale la sagoma appena disegnata
+let rilAnelloUltimo = null;    // e da che parte sta la terra: 'fuori', 'dentro' o niente
 let rilRottX = null;       // i punti di rottura: fino a RIL_ROTTURE per colonna
 let rilRottY = null;
 let rilRottK = null;
@@ -1296,10 +1324,14 @@ function rilChiudiRun(liv, x0, y0, x1, y1) {
 // dell'orizzonte**: la grana di `skyDisegnaGranaTerreno`, che senza questa
 // si fermava a zero gradi e da una cima lasciava una cucitura di trama in
 // mezzo al panorama.
+// Torna la regola di riempimento da usare (`'nonzero'` o `'evenodd'`), oppure
+// `null` se non c'è niente da ritagliare — come fa `skyTracciaSuolo` in
+// `app.js`, e per la stessa ragione: la forma della terra sullo schermo non è
+// sempre la stessa, e chi la usa deve saperlo.
 function rilTracciaSagoma(ctx) {
   const nCol = rilColonneUltime;
   ctx.beginPath();
-  if (nCol < 2 || !rilCrestaX) return false;
+  if (nCol < 2 || !rilCrestaX) return null;
   let dentro = false, primo = -1, ultimo = -1;
   for (let c = 0; c < nCol; c++) {
     if (Number.isNaN(rilCrestaX[c])) continue;
@@ -1307,14 +1339,25 @@ function rilTracciaSagoma(ctx) {
     else { ctx.moveTo(rilCrestaX[c], rilCrestaY[c]); dentro = true; primo = c; }
     ultimo = c;
   }
-  if (!dentro) return false;
+  if (!dentro) return null;
+  if (rilAnelloUltimo) {
+    // Il crinale gira attorno al cielo (vedi `RIL_ANELLO_GRADI`). Guardando
+    // in su la terra è tutto quello che gli sta **fuori** — il riquadro meno
+    // l'anello, con la regola pari-dispari, la stessa cosa che
+    // `skyTracciaSuolo` fa col cerchio dell'orizzonte; guardando in giù ci
+    // sta **dentro**, e allora l'anello basta da solo.
+    ctx.closePath();
+    if (rilAnelloUltimo === 'dentro') return 'nonzero';
+    ctx.rect(0, 0, sky.larghezza, sky.altezza);
+    return 'evenodd';
+  }
   // Giù fino a fuori dal riquadro, da tutt'e due i lati: il terreno arriva
   // ai piedi, e il ritaglio deve arrivarci con lui.
   const giu = sky.altezza + Math.max(sky.larghezza, sky.altezza);
   ctx.lineTo(rilCrestaX[ultimo] + sky.larghezza, giu);
   ctx.lineTo(rilCrestaX[primo] - sky.larghezza, giu);
   ctx.closePath();
-  return true;
+  return 'nonzero';
 }
 
 // Il passo delle colonne, con l'isteresi.
@@ -1700,8 +1743,18 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     rilFondoY[oUltima] = rilCrestaY[c];
   }
 
-  // La sagoma è pronta: da qui in poi `rilTracciaSagoma` sa cosa disegnare.
+  // La sagoma è pronta: da qui in poi `rilTracciaSagoma` sa cosa disegnare —
+  // e sa anche **che forma ha**, che è la cosa che cambia tutto (vedi
+  // `RIL_ANELLO_GRADI`).
   rilColonneUltime = nCol;
+  rilAnelloUltimo = null;
+  if (2 * arco.mezzo >= RIL_ANELLO_GRADI && typeof skyCerchioOrizzonte === 'function') {
+    const o = skyCerchioOrizzonte(base, focale);
+    // Con l'orizzonte dritto non c'è nessun anello, per largo che sia l'arco:
+    // quella è la vista di chi guarda davanti a sé, e la chiusura in giù è la
+    // sua.
+    if (!o.retta) rilAnelloUltimo = o.fuori ? 'fuori' : 'dentro';
+  }
 
   // --- Il corpo della montagna, a fette di distanza ---------------------
   //
@@ -1721,6 +1774,42 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     for (let b = RIL_FONDI - 1; b >= 0; b--) {
       const col = rilColoreDiFetta(rilLontananza(RIL_DIST[fondoK[b]] / 1000), suolo);
       const sopra = b * nCol, sotto = (b - 1) * nCol;
+      ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = 1;
+
+      // La fetta più vicina, quando le curve si chiudono attorno al cielo.
+      //
+      // Le altre sono anelli fra due curve e si disegnano come tali; questa
+      // no, perché al di là di lei non c'è un'altra curva — c'è **tutto il
+      // resto**. Chiuderla al fondo del riquadro, come si fa quando
+      // l'orizzonte attraversa lo schermo da parte a parte, vuol dire
+      // prendere un anello che gira attorno al centro e tirargli una riga
+      // fino al bordo di sotto: il poligono si attraversa da solo e metà
+      // della volta celeste si dipinge di terra (vedi `RIL_ANELLO_GRADI`).
+      if (b === 0 && rilAnelloUltimo) {
+        ctx.beginPath();
+        let dentro = false;
+        for (let c = 0; c < nCol; c++) {
+          if (Number.isNaN(rilFondoX[sopra + c])) continue;
+          if (dentro) ctx.lineTo(rilFondoX[sopra + c], rilFondoY[sopra + c]);
+          else { ctx.moveTo(rilFondoX[sopra + c], rilFondoY[sopra + c]); dentro = true; }
+        }
+        if (!dentro) continue;
+        ctx.closePath();
+        // Il filo va sulla sola curva: aggiungendo il riquadro al tracciato
+        // e stampandolo si disegnerebbe una cornice attorno allo schermo.
+        ctx.stroke();
+        if (rilAnelloUltimo === 'dentro') {
+          ctx.fill();
+        } else {
+          ctx.rect(0, 0, W, H);
+          ctx.fill('evenodd');
+        }
+        chiamate += 2;
+        continue;
+      }
+
       ctx.beginPath();
       let inizio = -1;
       const chiudi = (fine) => {
@@ -1745,9 +1834,6 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
         if (inizio < 0) { inizio = c; ctx.moveTo(rilFondoX[sopra + c], rilFondoY[sopra + c]); }
       }
       chiudi(nCol - 1);
-      ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
-      ctx.strokeStyle = ctx.fillStyle;
-      ctx.lineWidth = 1;
       ctx.fill();
       // Il contorno col proprio colore chiude la cucitura fra due strisce
       // che condividono un lato: due riempimenti antialiasati per conto loro
@@ -1764,8 +1850,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // terreno**, così la lieve larghezza extra che chiude le cuciture non può
   // sporcare il cielo lungo il crinale.
   ctx.save();
-  rilTracciaSagoma(ctx);
-  ctx.clip();
+  ctx.clip(rilTracciaSagoma(ctx) || 'nonzero');
   for (let l = 0; l < RIL_LIVELLI; l++) {
     const t = rilTratti[l];
     if (!t.n) continue;

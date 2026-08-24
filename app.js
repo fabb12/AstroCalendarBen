@@ -13304,8 +13304,9 @@ function skyDisegnaOcclusioneSuolo(ctx, o, base, focale, azCentro) {
   const gr = skyVeloOcclusione(ctx, o, base, focale, azCentro);
   if (!gr) return;
   ctx.save();
-  if (rilTracciaSagoma(ctx)) {
-    ctx.clip();
+  const regola = rilTracciaSagoma(ctx);
+  if (regola) {
+    ctx.clip(regola);
     ctx.fillStyle = gr;
     ctx.fillRect(0, 0, sky.larghezza, sky.altezza);
   }
@@ -16270,9 +16271,12 @@ function skyDisegnaGranaTerreno(ctx, o, base, focale, velo) {
   // trama si fermava a zero gradi esatti e lasciava una cucitura orizzontale
   // in mezzo alle montagne, che è lo stesso difetto — e la stessa causa — del
   // fondo del rilievo (§ `RIL_FONDI` in `rilievo.js`).
-  const conRilievo = typeof rilievo !== 'undefined' && rilievo.hoDisegnato &&
-    typeof rilTracciaSagoma === 'function' && rilTracciaSagoma(ctx);
-  const regola = conRilievo ? 'nonzero' : skyTracciaSuolo(ctx, o);
+  const delRilievo = (typeof rilievo !== 'undefined' && rilievo.hoDisegnato &&
+    typeof rilTracciaSagoma === 'function') ? rilTracciaSagoma(ctx) : null;
+  // La regola la dice la sagoma, non chi la usa: guardando in su la terra è
+  // il **fuori** di un anello, e darla per scontata `nonzero` vuol dire
+  // stendere la trama sopra al cielo.
+  const regola = delRilievo || skyTracciaSuolo(ctx, o);
   const luce = Math.min(1, (sky.luceCielo - SKY_GRANA_LUCE_MIN) / 0.28);
   // Le chiazze prima e in normale: sono macchie chiare e scure su
   // trasparente, quindi mordono anche sul terreno vicino, che adesso è la
