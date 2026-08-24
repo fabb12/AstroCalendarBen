@@ -2,3 +2,4 @@
 SkyScore — “vale la pena uscire stasera?”
 Perfect Spot — “dove devo mettermi per vedere l'evento dietro quella montagna?”
 Discover — l'app trova automaticamente i migliori eventi nelle vicinanze.
+rispondere a questa domanda:“Dimmi quale evento astronomico spettacolare posso vedere sopra quale montagna, da dove e quando.”
