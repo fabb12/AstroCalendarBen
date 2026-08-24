@@ -1,18 +1,14 @@
 // Aerei nel Planetario — dati ADS-B in tempo reale.
 //
 // I provider e tutto il trasporto stanno qui: GitHub Pages non puo fare da
-// proxy. Il percorso principale usa un feed open-data che autorizza le
-// richieste dal browser; i ponti CORS pubblici restano soltanto come ripiego.
+// proxy. I feed ADS-B non autorizzano l'origine della PWA, quindi le richieste
+// predefinite passano da ponti CORS e provano automaticamente piu strade.
 (function () {
   'use strict';
 
-  // I ponti CORS condivisi non sono adatti a un aggiornamento periodico: il
-  // provider diretto sotto evita sia i loro limiti sia un intermediario che
-  // riceverebbe la posizione dell'osservatore.
-  // OpenSky consente l'accesso anonimo, ma assegna una quota giornaliera per
-  // indirizzo IP. Cinque minuti tengono il planetario aggiornato senza
-  // consumarla in poche ore (la traiettoria fra due letture viene proiettata
-  // localmente qui sotto).
+  // I ponti CORS sono servizi condivisi: cinque minuti fra le letture evitano
+  // di consumarne la quota in poche ore. Nel frattempo la traiettoria viene
+  // proiettata localmente qui sotto.
   const CACHE_MS = 290000;
   const INTERVALLO_MS = 300000;
   const ERRORE_ATTESA_MS = 60000;
@@ -90,13 +86,13 @@
     return ponte + encodeURIComponent(destinazione);
   }
 
-  function providerConPonte(nome, ponte, urlFeed) {
+  function providerConPonte(nome, ponte, urlFeed, interpreta = interpretaAdsbExchange) {
     return {
       nome: `${nome} via ${ponte.indexOf('allorigins') !== -1 ? 'AllOrigins' : 'CorsProxy.io'}`,
       url(posizione, raggioKm) {
         return urlAttraverso(ponte, urlFeed(posizione, raggioKm));
       },
-      interpreta: interpretaAdsbExchange
+      interpreta
     };
   }
 
@@ -105,17 +101,17 @@
   const feedAdsbLol = (posizione, raggioKm) =>
     urlAdsbExchange('api.adsb.lol', posizione, raggioKm);
 
-  // Un proxy CORS pubblico non è un'infrastruttura: CorsProxy.io limita o
-  // vieta le API (429/403), mentre AllOrigins può scadere. OpenSky espone
-  // direttamente l'API al browser e diventa quindi il percorso normale. Il
-  // provider configurabile resta il modo per usare un eventuale proxy proprio,
-  // senza spedire i dati di posizione a ponti pubblici di terzi.
+  // OpenSky restituisce Access-Control-Allow-Origin per il proprio sito, non
+  // per GitHub Pages: una fetch diretta viene quindi bloccata dal browser prima
+  // che il codice possa leggerne la risposta. Anche i feed readsb non offrono
+  // CORS in modo uniforme. Due ponti e due reti ADS-B indipendenti evitano il
+  // blocco e non lasciano un singolo punto di guasto. Un eventuale proxy proprio
+  // puo sempre essere fornito con window.AEREI_PROVIDER.
   const providersPredefiniti = [
-    {
-      nome: 'OpenSky Network',
-      url: urlOpenSky,
-      interpreta: interpretaOpenSky
-    }
+    providerConPonte('adsb.lol', 'https://api.allorigins.win/raw?url=', feedAdsbLol),
+    providerConPonte('Airplanes.live', 'https://api.allorigins.win/raw?url=', feedAirplanesLive),
+    providerConPonte('adsb.lol', 'https://corsproxy.io/?url=', feedAdsbLol),
+    providerConPonte('Airplanes.live', 'https://corsproxy.io/?url=', feedAirplanesLive)
   ];
 
   async function scarica(provider, obs, raggio, signal) {

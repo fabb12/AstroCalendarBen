@@ -2752,7 +2752,6 @@ const OVERPASS_ISTANZE = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.osm.jp/api/interpreter',
   'https://overpass.openstreetmap.fr/api/interpreter'
 ];
 
