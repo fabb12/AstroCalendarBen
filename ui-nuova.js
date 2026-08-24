@@ -277,7 +277,7 @@ function costruisciOrizzonte() {
 // quando il dito si stacca — al `change` della slitta, al `dragend` della
 // maniglia — e non a ogni pixel dello scorrere.
 
-// Le tre famiglie, coi colori con cui il planetario le scrive
+// Le quattro famiglie, coi colori con cui il planetario le scrive
 // sull'orizzonte (§ `SKY_NOMI_ORIZZONTE`): il cerchio grigio-azzurro è
 // quello dei nomi grigio-azzurri, e non c'è una seconda tavolozza da tenere
 // d'accordo con la prima.
@@ -321,6 +321,18 @@ const RAGGI_VOCI = [
     inVista: () => (typeof acqueDaDisegnare === 'function') ? acqueDaDisegnare().length : null,
     unita: ['specchio d\'acqua', 'specchi d\'acqua'],
     spento: () => typeof acque !== 'undefined' && !acque.acceso
+  },
+  {
+    quale: 'aerei', nome: 'Aerei', tinta: '#22d3ee',
+    aiuto: 'Fin dove cercare gli aerei ADS-B in tempo reale. Un raggio più stretto mostra solo il traffico davvero vicino.',
+    dentro: () => null,
+    stato: () => (typeof AereiADS_B !== 'undefined' && AereiADS_B.stato)
+      ? (AereiADS_B.stato.richiesta ? 'in-corso' : (AereiADS_B.stato.ultimoSuccesso ? 'pronto' : null)) : null,
+    trovate: () => (typeof AereiADS_B !== 'undefined' && AereiADS_B.stato)
+      ? AereiADS_B.stato.aerei.length : null,
+    inVista: () => null,
+    unita: ['aereo', 'aerei'],
+    spento: () => false
   }
 ];
 
@@ -355,6 +367,7 @@ function raggiVoce(quale) {
 function raggiValore(quale) {
   if (quale === 'cime') return raggioCime();
   if (quale === 'acque') return raggioAcque();
+  if (quale === 'aerei') return raggioAerei();
   return raggioCitta();
 }
 
@@ -413,6 +426,7 @@ function raggiPannelloCostruisci(box) {
   box.innerHTML = `
     <div class="raggi-mappa-guscio">
       <div id="imp-raggi-mappa" class="raggi-mappa"></div>
+      <button type="button" id="imp-raggi-pieno" class="raggi-pieno" aria-label="Apri la mappa a tutto schermo" title="Mappa a tutto schermo">⛶</button>
       <p id="imp-raggi-assente" class="raggi-assente hidden"></p>
     </div>
     <div class="raggi-legenda" role="radiogroup" aria-label="Quale raggio stai regolando">
@@ -457,6 +471,23 @@ function raggiPannelloCostruisci(box) {
       raggiApplica(raggiPannello.scelto, Number(slitta.value));
     });
   }
+
+  const pieno = document.getElementById('imp-raggi-pieno');
+  const guscio = box.querySelector('.raggi-mappa-guscio');
+  if (pieno && guscio) pieno.addEventListener('click', () => {
+    const attivo = document.fullscreenElement === guscio || guscio.classList.contains('raggi-schermo-pieno');
+    if (attivo) {
+      if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+      else guscio.classList.remove('raggi-schermo-pieno');
+    } else if (guscio.requestFullscreen) {
+      guscio.requestFullscreen().catch(() => guscio.classList.add('raggi-schermo-pieno'));
+    } else guscio.classList.add('raggi-schermo-pieno');
+    setTimeout(() => { if (raggiPannello.mappa) raggiPannello.mappa.invalidateSize(); }, 80);
+  });
+  document.addEventListener('fullscreenchange', () => {
+    if (pieno) pieno.textContent = document.fullscreenElement === guscio ? '✕' : '⛶';
+    setTimeout(() => { if (raggiPannello.mappa) raggiPannello.mappa.invalidateSize(); }, 80);
+  });
 
   const spunta = document.getElementById('imp-nomi-monti');
   if (spunta) spunta.addEventListener('change', () => {
@@ -600,11 +631,11 @@ function raggiMappaDisegna(prova) {
     const km = (scelto && prova !== undefined && prova !== null) ? prova : raggiValore(v.quale);
     piuLargo = Math.max(piuLargo, km);
     const stile = {
-      color: v.tinta, weight: scelto ? 2.6 : 1.4, opacity: v.spento() ? 0.35 : 0.95,
+      color: v.tinta, weight: scelto ? 5 : 3, opacity: v.spento() ? 0.45 : 1,
       // Riempire tutt'e tre vorrebbe dire tre veli sovrapposti al centro e
       // niente ai bordi, cioè il contrario di quello che si vuole leggere.
       // Si riempie solo quello che si sta regolando.
-      fillColor: v.tinta, fillOpacity: scelto ? 0.1 : 0,
+      fillColor: v.tinta, fillOpacity: scelto ? 0.16 : 0.025,
       dashArray: v.spento() ? '4 5' : null, interactive: false
     };
     if (raggiPannello.cerchi[v.quale]) {
@@ -621,7 +652,7 @@ function raggiMappaDisegna(prova) {
     const anello = raggiPannello.anelli[v.quale];
     if (dentro && dentro < km - 0.5) {
       const s = {
-        color: v.tinta, weight: 1, opacity: 0.5, dashArray: '2 4',
+        color: v.tinta, weight: 2.5, opacity: 0.8, dashArray: '5 6',
         fill: false, interactive: false
       };
       if (anello) { anello.setLatLng([centro.lat, centro.lon]); anello.setRadius(dentro * 1000); anello.setStyle(s); }
@@ -736,7 +767,7 @@ function costruisciRaggiOrizzonte() {
   const nota = document.getElementById('imp-raggi-nota');
   if (nota) {
     nota.textContent = (typeof cime !== 'undefined' && cime.acceso)
-      ? 'Montagne, paesi e acque si scaricano da OpenStreetMap la prima volta che apri il planetario da un posto nuovo, e poi restano anche senza rete.'
+      ? 'Montagne, paesi e acque arrivano da OpenStreetMap; gli aerei sono aggiornati in tempo reale tramite ADS-B.'
       : 'I nomi delle montagne sono spenti: l\'orizzonte resta la forma del terreno, senza scritte. Si accendono anche dal pannello Visualizzazione del planetario.';
   }
 }

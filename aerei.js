@@ -6,7 +6,6 @@
 (function () {
   'use strict';
 
-  const RAGGIO_KM = 100;
   const CACHE_MS = 10000;
   const INTERVALLO_MS = 15000;
   const ERRORE_ATTESA_MS = 60000;
@@ -34,8 +33,12 @@
     }
   };
 
-  const stato = { aerei: [], timer: null, richiesta: null, ultimoCentro: null,
-    ultimoSuccesso: 0, prossimoTentativo: 0, errore: '', avviato: false };
+  const stato = { aerei: [], timer: null, richiesta: null, controller: null, ultimoCentro: null,
+    ultimoSuccesso: 0, prossimoTentativo: 0, errore: '', avviato: false, ricaricaDopo: false };
+
+  function raggioKm() {
+    return typeof raggioAerei === 'function' ? raggioAerei() : 100;
+  }
 
   function radianti(g) { return g * Math.PI / 180; }
   function gradi(r) { return r * 180 / Math.PI; }
@@ -93,7 +96,7 @@
         traiettoria.push({ minuti, ...coordinateCielo(futuro, obs) });
       }
       return { ...a, ...cielo, traiettoria, allineamenti: [] };
-    }).filter(a => a.distanzaKm <= RAGGIO_KM).sort((a, b) => a.distanzaKm - b.distanzaKm);
+    }).filter(a => a.distanzaKm <= raggioKm()).sort((a, b) => a.distanzaKm - b.distanzaKm);
   }
 
   function aggiornaAllineamenti() {
@@ -141,8 +144,9 @@
     testoStato('Aggiornamento ADS-B…');
     const provider = window.AEREI_PROVIDER || providerPredefinito;
     const controller = new AbortController();
+    stato.controller = controller;
     const sveglia = setTimeout(() => controller.abort(), 10000);
-    stato.richiesta = fetch(provider.url(obs, RAGGIO_KM), { signal: controller.signal, cache: 'no-store' })
+    stato.richiesta = fetch(provider.url(obs, raggioKm()), { signal: controller.signal, cache: 'no-store' })
       .then(r => {
         if (r.status === 429) { const e = new Error('limite di richieste raggiunto'); e.rateLimit = true; throw e; }
         if (!r.ok) throw new Error(`risposta ${r.status}`);
@@ -152,9 +156,13 @@
         stato.ultimoCentro = obs; stato.ultimoSuccesso = Date.now(); stato.prossimoTentativo = 0; stato.errore = '';
         testoStato(`${stato.aerei.length} aerei · ${provider.nome} · aggiornato adesso`); render();
       }).catch(e => {
+        if (e.name === 'AbortError' && stato.ricaricaDopo) return;
         stato.errore = e.message; stato.prossimoTentativo = Date.now() + ERRORE_ATTESA_MS;
         testoStato(`Dati ADS-B non disponibili (${e.name === 'AbortError' ? 'tempo scaduto' : e.message}). Riprovo fra un minuto.`, true);
-      }).finally(() => { clearTimeout(sveglia); stato.richiesta = null; });
+      }).finally(() => {
+        clearTimeout(sveglia); stato.richiesta = null; stato.controller = null;
+        if (stato.ricaricaDopo) { stato.ricaricaDopo = false; carica(true); }
+      });
     return stato.richiesta;
   }
 
@@ -181,6 +189,17 @@
   }
   function aereiFerma() { clearInterval(stato.timer); stato.timer = null; stato.avviato = false; }
 
+  // Il raggio delle Impostazioni cambia sia il rettangolo chiesto al provider
+  // sia il filtro finale. La vecchia risposta non è quindi riutilizzabile.
+  function aereiRaggioCambiato() {
+    if (stato.controller) { stato.ricaricaDopo = stato.avviato; stato.controller.abort(); }
+    stato.aerei = [];
+    stato.ultimoSuccesso = 0;
+    stato.prossimoTentativo = 0;
+    render();
+    if (stato.avviato && !stato.richiesta) carica(true);
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const aggiorna = document.getElementById('aerei-aggiorna');
     if (aggiorna) aggiorna.addEventListener('click', () => carica(true));
@@ -191,5 +210,6 @@
   window.aereiAvvia = aereiAvvia;
   window.aereiFerma = aereiFerma;
   window.aereiDisegna = aereiDisegna;
+  window.aereiRaggioCambiato = aereiRaggioCambiato;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci, stato };
 }());
