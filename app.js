@@ -1178,12 +1178,19 @@ function formattaCoordinate(lat, lon) {
 //   Accanto all'ora locale mostriamo sempre UTC: così un appuntamento resta
 //   inequivocabile anche se viene condiviso con chi si trova altrove.
 // =====================================================================
-const CHIAVE_FUSI_ORARI = 'astrocalendario_fusi_orari_v1';
+const CHIAVE_FUSI_ORARI = 'astrocalendario_fusi_orari_v2';
 const fusiOrari = new Map();
 let fusiOrariCaricati = false;
 
 function fusoChiave(lat, lon) {
-  return `${Math.round(Number(lat) * 20) / 20},${Math.round(Number(lon) * 20) / 20}`;
+  // Il fuso è un dato politico, non geografico: due punti distanti pochi
+  // metri possono stare ai lati opposti di un confine. La vecchia griglia da
+  // 0,05° faceva quindi condividere la stessa voce a località con fusi
+  // diversi, e tornando dall'una all'altra l'orologio restava su quello già
+  // in cache. Usiamo la stessa precisione delle coordinate inviate al
+  // servizio: abbastanza per distinguere il punto senza moltiplicare chiavi
+  // a causa del rumore infinitesimo dei numeri in virgola mobile.
+  return `${Number(lat).toFixed(4)},${Number(lon).toFixed(4)}`;
 }
 
 function fusiCarica() {
@@ -8283,6 +8290,7 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   const origine = (dettagli && dettagli.origine) ||
     (SKY_FONTI_RIPIEGO.includes(fonte) ? null : fonte);
   const nome = dettagli && dettagli.nome ? dettagli.nome : null;
+  const fuso = dettagli && dettagli.fuso ? dettagli.fuso : null;
 
   // Prima di ogni altro giudizio: una lettura automatica non tocca la
   // posizione che l'utente ha scelto. Lo scarto viene annotato, perché chi
@@ -8317,6 +8325,11 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   // in una sessione precedente, e in mancanza di quello la città di
   // riferimento più vicina. Serve a dire "Roma" invece di "41,9° N, 12,5° E",
   // che a colpo d'occhio non dice niente a nessuno.
+  // Una città scelta dalla ricerca porta già con sé il fuso IANA restituito
+  // dal geocoder. Va registrato prima di aggiornare l'osservatore: altrimenti
+  // il primo fotogramma (e tutta la sessione senza una seconda risposta di
+  // rete) continua a mostrare l'ora del luogo precedente.
+  if (fuso) fusoRicorda(lat, lon, fuso);
   sky.posizione = {
     lat, lon, fonte, origine, precisione, tempo, velocita,
     nome: nome || nomeLuogoSalvato(lat, lon) || nomeLuogoVicino(lat, lon)
@@ -31959,7 +31972,7 @@ function posMostraRisultati(elenco, nota) {
   box.querySelectorAll('[data-citta]').forEach(btn => {
     btn.addEventListener('click', () => {
       const c = elenco[parseInt(btn.dataset.citta, 10)];
-      if (c) posUsaLuogo(c.lat, c.lon, c.nome, 'citta');
+      if (c) posUsaLuogo(c.lat, c.lon, c.nome, 'citta', c.fuso);
     });
   });
   // Sul telefono la tastiera copre metà schermo: senza questo le città
@@ -31968,8 +31981,10 @@ function posMostraRisultati(elenco, nota) {
 }
 
 // Applica un luogo scelto a mano e aggiorna tutta l'app
-async function posUsaLuogo(lat, lon, nome, fonte) {
-  skyImpostaPosizione(lat, lon, fonte, { nome: nome || null, tempo: Date.now() });
+async function posUsaLuogo(lat, lon, nome, fonte, fuso) {
+  skyImpostaPosizione(lat, lon, fonte, {
+    nome: nome || null, tempo: Date.now(), fuso: fuso || null
+  });
   const manuale = document.getElementById('pos-manuale');
   if (manuale) manuale.classList.remove('in-evidenza');
   posImpostaStrato('manuale', 'fatto', `Stai usando ${nome || formattaCoordinate(lat, lon)}.`);
