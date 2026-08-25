@@ -456,6 +456,12 @@
       stato.ricaricaDopo = false;
       if (stato.controller) stato.controller.abort();
       stato.aerei = [];
+      // La fotografia e il suo timestamp sono una cosa sola. Lasciare valido
+      // il timestamp dopo avere vuotato la fotografia faceva saltare la
+      // richiesta alla riaccensione e mostrava, per quasi cinque minuti,
+      // un falso "nessun aereo".
+      stato.ultimoSuccesso = 0;
+      stato.prossimoTentativo = 0;
       stato.ultimoRenderSecondo = null;
       render();
       if (typeof skyChiudiDettaglio === 'function' && typeof sky !== 'undefined' &&
@@ -619,9 +625,30 @@
     if (stato.avviato && !stato.richiesta) carica(true);
   }
 
+  function aereiAggiornaAdesso() {
+    if (!stato.acceso) aereiImpostaAccesi(true);
+    // Un secondo tocco durante una richiesta non deve andare perso: annulla
+    // la fotografia in corso e ne programma subito una nuova.
+    if (stato.richiesta && stato.controller) {
+      stato.ricaricaDopo = true;
+      stato.controller.abort();
+      return stato.richiesta;
+    }
+    return carica(true);
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     const aggiorna = document.getElementById('aerei-aggiorna');
-    if (aggiorna) aggiorna.addEventListener('click', () => carica(true));
+    const aggiornaRapido = document.getElementById('aerei-aggiorna-rapido');
+    const chiudiPannello = document.getElementById('aerei-pannello-chiudi');
+    if (aggiorna) aggiorna.addEventListener('click', aereiAggiornaAdesso);
+    if (aggiornaRapido) aggiornaRapido.addEventListener('click', e => {
+      e.stopPropagation();
+      aereiAggiornaAdesso();
+    });
+    if (chiudiPannello) chiudiPannello.addEventListener('click', () => {
+      if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
+    });
     document.addEventListener('click', e => {
       const tracking = e.target.closest && e.target.closest('.aereo-tracking');
       const mappa = e.target.closest && e.target.closest('.aereo-mappa');
@@ -639,6 +666,7 @@
   window.aereiSchedaHtml = aereiSchedaHtml;
   window.aereiCaricaFoto = aereiCaricaFoto;
   window.aereiRaggioCambiato = aereiRaggioCambiato;
+  window.aereiAggiornaAdesso = aereiAggiornaAdesso;
   window.aereiTrova = aereiTrova;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
     interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky, urlAttraverso,

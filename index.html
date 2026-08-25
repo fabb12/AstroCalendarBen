@@ -690,6 +690,8 @@
               <button id="skymap-btn-aurora" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'ovale aurorale — boreale o australe, secondo l'emisfero — messo in cielo dove sta davvero: se da qui si vede, e quanto se ne affaccia sopra l'orizzonte, lo decide la curvatura della Terra">Aurora</button>
               <button id="skymap-btn-aerei" type="button" class="tasto-cielo" data-vai-gruppo="aerei" aria-pressed="false"
                 title="Mostra gli aerei ADS-B vicini in tempo reale">Aerei</button>
+              <button id="aerei-aggiorna-rapido" type="button" class="tasto-cielo tasto-aerei-aggiorna-rapido"
+                aria-label="Aggiorna adesso i dati ADS-B" title="Aggiorna adesso i dati ADS-B">↻</button>
               </div>
 
               <!-- L'aurora vera, da queste latitudini, capita una volta ogni
@@ -813,9 +815,13 @@
                   <strong>Aerei in tempo reale</strong>
                   <p id="aerei-stato" class="etichetta-comando" role="status" aria-live="polite">Apri il pannello per cercare gli aerei vicini.</p>
                 </div>
-                <button id="aerei-aggiorna" type="button" class="tasto-cielo">Aggiorna</button>
+                <div class="aerei-testata-azioni">
+                  <button id="aerei-aggiorna" type="button" class="tasto-cielo">Aggiorna</button>
+                  <button id="aerei-pannello-chiudi" type="button" class="tasto-chiudi-dettaglio"
+                    aria-label="Chiudi l’informativa ADS-B" title="Chiudi">✕</button>
+                </div>
               </div>
-              <p class="etichetta-comando">Posizioni ADS-B entro il raggio scelto (10 km alla prima apertura). Adesso sono dati in tempo reale; spostando il tempo, aereo e rotta diventano stime coerenti con l'istante mostrato. La linea tratteggiata mostra i 5 minuti successivi.</p>
+              <p class="etichetta-comando">Posizioni ADS-B entro il raggio scelto (50 km alla prima apertura). Adesso sono dati in tempo reale; spostando il tempo, aereo e rotta diventano stime coerenti con l'istante mostrato. La linea tratteggiata mostra i 5 minuti successivi.</p>
               <div id="aerei-elenco" class="aerei-elenco"></div>
             </section>
 
