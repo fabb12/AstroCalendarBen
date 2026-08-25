@@ -28974,6 +28974,25 @@ function solInizializzaGesti() {
   if (!c || c.dataset.gestiPronti === 'si') return;
   c.dataset.gestiPronti = 'si';
 
+  // Il primo rilascio fa parte anche di un doppio clic: se scegliessimo il
+  // corpo subito, la telecamera si aggancerebbe alla Terra prima che il
+  // `dblclick` possa usare lo stesso gesto per impostare il luogo. Aspettiamo
+  // quindi il tempo massimo gia' concesso a un tocco secco; il secondo clic
+  // sostituisce il primo e, se cade sul globo, `dblclick` annulla tutto.
+  let toccoInAttesa = null;
+  const annullaToccoInAttesa = () => {
+    if (toccoInAttesa !== null) clearTimeout(toccoInAttesa);
+    toccoInAttesa = null;
+  };
+  const rimandaTocco = (e) => {
+    annullaToccoInAttesa();
+    const punto = { clientX: e.clientX, clientY: e.clientY };
+    toccoInAttesa = setTimeout(() => {
+      toccoInAttesa = null;
+      solTocco(punto);
+    }, 500);
+  };
+
   const distanzaDita = () => {
     const p = [...sol.puntatori.values()];
     return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
@@ -29014,6 +29033,10 @@ function solInizializzaGesti() {
   };
 
   c.addEventListener('pointerdown', (e) => {
+    // Un eventuale secondo clic deve avere il tempo di dichiararsi tale. Se
+    // poi non completa il doppio clic, il suo `pointerup` rimettera' in coda
+    // la normale scelta del corpo.
+    annullaToccoInAttesa();
     c.setPointerCapture(e.pointerId);
     sol.puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
     sol.mosso = 0;
@@ -29069,7 +29092,7 @@ function solInizializzaGesti() {
     // continua da lì senza doverlo staccare e riappoggiare
     riancora();
     // Un tocco secco, senza trascinamento: sceglie il pianeta più vicino
-    if (era === 1 && sol.mosso < 8 && performance.now() - sol.giu < 500 && !sol.modoPan) solTocco(e);
+    if (era === 1 && sol.mosso < 8 && performance.now() - sol.giu < 500 && !sol.modoPan) rimandaTocco(e);
     if (!sol.puntatori.size) sol.modoPan = false;
   };
   c.addEventListener('pointerup', fine);
@@ -29097,6 +29120,9 @@ function solInizializzaGesti() {
   // tornando al cielo si ritrova subito lo stesso osservatore.
   c.addEventListener('dblclick', (e) => {
     if (solImpostaPuntoDalGlobo(e)) {
+      // Il doppio clic ha un significato proprio: non deve anche scegliere la
+      // Terra e cambiare il perno della telecamera.
+      annullaToccoInAttesa();
       e.preventDefault();
       e.stopPropagation();
     }
