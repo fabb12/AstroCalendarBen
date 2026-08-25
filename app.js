@@ -21287,6 +21287,128 @@ function skyScegliAstroDaElenco(id, opzioni = {}) {
   skyMostraGruppo('');
 }
 
+// La stessa barra cerca anche punti sulla Terra. Non cambia il luogo da cui
+// si osserva: calcola invece la direzione dal punto dell'osservatore e gira
+// il panorama verso la città o la vetta scelta, proprio come fa con un astro.
+let skyTipoRicerca = 'astri';
+let skyLuoghiTimer = null;
+let skyLuoghiRichiesta = 0;
+
+function skyTipoLuogo(r) {
+  const codice = (r.feature_code || '').toUpperCase();
+  if (codice === 'MT' || codice === 'PK' || codice === 'MTS' || codice === 'HLL') return 'Montagna';
+  return 'Città';
+}
+
+function skyAzimutGeografico(a, b) {
+  const f1 = a.lat * SKY_D2R, f2 = b.lat * SKY_D2R;
+  const dl = (b.lon - a.lon) * SKY_D2R;
+  const y = Math.sin(dl) * Math.cos(f2);
+  const x = Math.cos(f1) * Math.sin(f2) - Math.sin(f1) * Math.cos(f2) * Math.cos(dl);
+  return (Math.atan2(y, x) * SKY_R2D + 360) % 360;
+}
+
+function skyMostraLuoghiTrovati(elenco, nota) {
+  const box = document.getElementById('skymap-luoghi-risultati');
+  if (!box) return;
+  box.replaceChildren();
+  box.classList.remove('hidden');
+  elenco.forEach(luogo => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'risultato-luogo-cielo';
+    b.setAttribute('role', 'option');
+    const nome = document.createElement('span');
+    nome.className = 'risultato-luogo-cielo-nome';
+    nome.textContent = luogo.nome;
+    const tipo = document.createElement('span');
+    tipo.className = 'risultato-luogo-cielo-tipo';
+    tipo.textContent = luogo.tipo;
+    const dove = document.createElement('span');
+    dove.className = 'risultato-luogo-cielo-dove';
+    dove.textContent = luogo.paese || formattaCoordinate(luogo.lat, luogo.lon);
+    b.append(nome, tipo, dove);
+    b.addEventListener('click', () => skyScegliLuogoDaRicerca(luogo));
+    box.appendChild(b);
+  });
+  if (nota) {
+    const p = document.createElement('p');
+    p.className = 'risultati-luoghi-nota';
+    p.textContent = nota;
+    box.appendChild(p);
+  }
+}
+
+async function skyCercaLuoghiOnline(testo, richiesta) {
+  try {
+    const url = 'https://geocoding-api.open-meteo.com/v1/search' +
+      `?name=${encodeURIComponent(testo.trim())}&count=10&language=it&format=json`;
+    const risposta = await fetchConScadenza(url, 5000);
+    if (!risposta.ok || richiesta !== skyLuoghiRichiesta) return;
+    const dati = await risposta.json();
+    const elenco = (dati.results || []).filter(r => isFinite(r.latitude) && isFinite(r.longitude)).map(r => ({
+      nome: r.name,
+      paese: [r.admin1, r.country].filter(Boolean).join(', '),
+      lat: r.latitude,
+      lon: r.longitude,
+      quota: Number.isFinite(r.elevation) ? r.elevation : null,
+      tipo: skyTipoLuogo(r)
+    }));
+    skyMostraLuoghiTrovati(elenco, elenco.length ? null : 'Nessuna città o montagna trovata.');
+  } catch (e) {
+    if (richiesta === skyLuoghiRichiesta)
+      skyMostraLuoghiTrovati([], 'Ricerca online non disponibile. Controlla la connessione.');
+  }
+}
+
+function skyCercaLuoghi(testo) {
+  if (skyLuoghiTimer) clearTimeout(skyLuoghiTimer);
+  if ((testo || '').trim().length < 2) {
+    skyMostraLuoghiTrovati([], 'Scrivi almeno due lettere.');
+    return;
+  }
+  const richiesta = ++skyLuoghiRichiesta;
+  skyMostraLuoghiTrovati([], 'Sto cercando…');
+  skyLuoghiTimer = setTimeout(() => skyCercaLuoghiOnline(testo, richiesta), 350);
+}
+
+function skyScegliLuogoDaRicerca(luogo) {
+  const osservatore = skyLuogoDelCielo();
+  if (!osservatore) {
+    skyAvviso('luogo-cercato', 'Prima scegli o rileva la tua posizione: serve per sapere in che direzione guardare.', 7000);
+    return;
+  }
+  const km = skyDistanzaGeograficaKm(osservatore, luogo);
+  const az = skyAzimutGeografico(osservatore, luogo);
+  sky.target = null;
+  skyCentraSu({ nome: luogo.nome, az, alt: 0 });
+  const quota = luogo.quota !== null ? ` · quota ${Math.round(luogo.quota)} m` : '';
+  skyAvviso('luogo-cercato', `${luogo.nome} è verso ${skyNomeDirezione(az)} (${Math.round(az)}°), ` +
+    `a ${luogoDistanzaTesto(km)}${quota}. La mappa guarda ora in quella direzione.`, 10000);
+  const campo = document.getElementById('skymap-astri-cerca');
+  if (campo) campo.blur();
+  skyMostraGruppo('');
+}
+
+function skyImpostaTipoRicerca(tipo) {
+  skyTipoRicerca = tipo === 'luoghi' ? 'luoghi' : 'astri';
+  const pannello = document.querySelector('.gruppo-comandi.gruppo-astri');
+  if (pannello) pannello.classList.toggle('ricerca-luoghi', skyTipoRicerca === 'luoghi');
+  document.querySelectorAll('[data-tipo-ricerca]').forEach(b => {
+    const attivo = b.dataset.tipoRicerca === skyTipoRicerca;
+    b.classList.toggle('attiva', attivo);
+    b.setAttribute('aria-selected', attivo ? 'true' : 'false');
+  });
+  const campo = document.getElementById('skymap-astri-cerca');
+  if (campo) {
+    campo.value = '';
+    campo.placeholder = skyTipoRicerca === 'luoghi' ? 'Es. Roma o Monte Bianco…' : 'Cerca per nome…';
+    campo.setAttribute('aria-label', skyTipoRicerca === 'luoghi' ? 'Cerca una città o una montagna' : 'Cerca un astro per nome');
+  }
+  document.getElementById('skymap-luoghi-risultati')?.classList.toggle('hidden', skyTipoRicerca !== 'luoghi');
+  skyFiltraElenco();
+}
+
 // Il colore di una pillola dice il suo stato: scelta, su adesso, tramontata.
 // Misure e spaziature stanno in style.css (`.chip-astro`), che le sa
 // stringere sui telefoni: qui restano solo i colori.
@@ -23940,13 +24062,23 @@ function inizializzaSkymap() {
   });
 
   // --- Trovare un astro senza scorrere tutto l'elenco ---
+  document.querySelectorAll('[data-tipo-ricerca]').forEach(b =>
+    b.addEventListener('click', () => skyImpostaTipoRicerca(b.dataset.tipoRicerca)));
   const cercaAstri = document.getElementById('skymap-astri-cerca');
   if (cercaAstri) {
-    cercaAstri.addEventListener('input', skyFiltraElenco);
+    cercaAstri.addEventListener('input', () => {
+      if (skyTipoRicerca === 'luoghi') skyCercaLuoghi(cercaAstri.value);
+      else skyFiltraElenco();
+    });
     cercaAstri.addEventListener('keydown', (e) => {
       // Invio sceglie il primo rimasto: scritto "sat", il gesto dopo è
       // sempre quello, e farglielo cercare col dito è una tappa di troppo
       if (e.key === 'Enter') {
+        if (skyTipoRicerca === 'luoghi') {
+          const primoLuogo = document.querySelector('#skymap-luoghi-risultati .risultato-luogo-cielo');
+          if (primoLuogo) { e.preventDefault(); primoLuogo.click(); }
+          return;
+        }
         const primo = document.querySelector('#skymap-oggetti .chip-astro[data-fuori="no"]');
         if (primo) {
           e.preventDefault();
@@ -23959,7 +24091,8 @@ function inizializzaSkymap() {
       if (e.key === 'Escape' && cercaAstri.value) {
         e.stopPropagation();
         cercaAstri.value = '';
-        skyFiltraElenco();
+        if (skyTipoRicerca === 'luoghi') skyMostraLuoghiTrovati([], 'Scrivi almeno due lettere.');
+        else skyFiltraElenco();
       }
     });
   }
@@ -28798,7 +28931,15 @@ function solTocco(e) {
   if (!sol.vicino && sol.lunaSchermo) {
     prova('Moon', sol.lunaSchermo.px, sol.lunaSchermo.py, sol.lunaSchermo.r);
   }
-  if (migliore) solScegli(migliore);
+  if (migliore) {
+    solScegli(migliore);
+  } else if (sol.scelto) {
+    // Lo spazio vuoto si comporta come un secondo tocco sul corpo scelto:
+    // chiude la scheda e lascia il suo perno, tornando alla vista d'insieme.
+    // Prima non succedeva nulla e, dopo aver aperto un'orbita, la selezione
+    // rimaneva attiva finché non si centrava di nuovo il piccolo pianeta.
+    solScegli(sol.scelto);
+  }
 }
 
 // --- A tutto schermo -------------------------------------------------------
