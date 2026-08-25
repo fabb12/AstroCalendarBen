@@ -22586,6 +22586,14 @@ function skyOggettoNelPunto(px, py) {
     if (aereo) return { categoria: 'aereo', dati: aereo };
   }
 
+  // Il nome di una costellazione e' gia' una scelta precisa, non fondo del
+  // cielo: deve vincere anche se una stella capita dietro alle sue lettere.
+  // Le linee, molto piu' estese, restano invece per ultime qui sotto.
+  if (typeof costNomeNelPunto === 'function') {
+    const siglaNome = costNomeNelPunto(px, py, base, focale);
+    if (siglaNome) return { categoria: 'costellazione', sigla: siglaNome };
+  }
+
   skyOggettiDaDisegnare().forEach(o =>
     guarda(o.az, o.alt, Math.max(24, skyRaggio(o, focale) + 16), () => ({ categoria: 'astro', id: o.id })));
   if (scelto) return scelto.sel;
