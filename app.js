@@ -11411,7 +11411,7 @@ function skyTelePixelMax() {
 // pixel per punto sono duemilaseicento pixel veri, dipinti a partire da una
 // tela di duecentocinquantasei — un ingrandimento di dieci volte, cioè una
 // sfocatura da cui non torna indietro niente. È lo stesso guasto già trovato
-// sulla Terra della vista 3D (`SOL_ZOOM_MAX_TERRA`), e la cura è la stessa:
+// sulla Terra della vista 3D (`SOL_ZOOM_MAX_CORPO`), e la cura è la stessa:
 // la tela deve seguire il disco.
 //
 // Il tetto adesso è **1024 per tutti**, e i due numeri che lo scelgono sono
@@ -11986,7 +11986,7 @@ function skyDipingiVenere(ctx) {
 // mondo senza una faccia. Quella faccia l'ha dipinta a lungo una decina di
 // macchie tonde appoggiate alle coordinate vere (`SKY_TERRE`), e per la
 // misura di allora bastavano; ma da quando ci si può avvicinare parecchio
-// (`SOL_ZOOM_MAX_TERRA`) si leggevano per quello che erano — bolle verdi —
+// (`SOL_ZOOM_MAX_CORPO`) si leggevano per quello che erano — bolle verdi —
 // e adesso anche la faccia dipinta usa le **coste vere** di `SKY_MONDO`,
 // cioè lo stesso mondo del globo da vicino (§7.7-ter) e del banco del
 // tramonto. Un mondo solo, disegnato tre volte: se si corregge una costa, si
@@ -11996,7 +11996,7 @@ function skyDipingiVenere(ctx) {
 //   Le macchie qui sopra sono la Terra vista da lontano, dove il globo è
 //   largo venti pixel e una chiazza verde al posto giusto è tutto quello che
 //   serve. Ma nella vista 3D ci si avvicina finché il globo prende mezzo
-//   schermo (`SOL_ZOOM_MAX_TERRA`), e a quella misura dieci bolle si leggono
+//   schermo (`SOL_ZOOM_MAX_CORPO`), e a quella misura dieci bolle si leggono
 //   per quello che sono: bolle. Con la sagoma vera invece si riconosce il
 //   proprio paese — e riconoscerlo è metà del motivo per cui si guarda la
 //   Terra da fuori, perché il puntino di casa sta *lì*.
@@ -25185,8 +25185,12 @@ const SOL_PIANETI = [
 // alla scala di partenza (zoom 1): da lì in poi crescono col disegno, vedi
 // `solCrescita()`.
 const SOL_RAGGIO_SOLE = 17;
-const SOL_RAGGIO_LUNA = 3.4;
-const SOL_LUNA_KM = 3474;     // serve ai pallini in scala: la Luna è un quarto della Terra
+// Anche fra i pallini facilitati la Luna conserva il rapporto col diametro
+// terrestre: 3.474 / 12.742 = 0,273. Prima aveva raggio 3,4 contro i 7,6
+// della Terra (quasi la meta), e nella coppia sembrava molto più grande di
+// quanto sia davvero. Il minimo resta comunque abbastanza largo da toccarla.
+const SOL_LUNA_KM = 3474;
+const SOL_RAGGIO_LUNA = 7.6 * SOL_LUNA_KM / 12742;
 
 // --- Le due fasce di sassi ---------------------------------------------------
 //   Non sono un ornamento. Sono la ragione per cui questo disegno si legge in
@@ -25321,12 +25325,14 @@ const SOL_VICINO_TERRA_UA = 1.7;
 // Quanto ci si può avvicinare con lo zoom. Il tetto normale (`SOL_ZOOM_MAX`)
 // è pensato per la vista d'insieme, dove non ha senso spingersi oltre — a
 // quello zoom il Sole comincia già a mangiarsi Mercurio (vedi `solTettoSole`).
-// Girando intorno alla Terra quel problema non c'è: il Sole è lontano fuori
-// dallo schermo, e il senso della vista è proprio avvicinarsi a lei quanto
-// si vuole. `SOL_ZOOM_MAX_TERRA` vale mentre si sta girando attorno a un
-// corpo, cioè finché `sol.perno` non è nullo.
+// Girando intorno a un corpo quel problema non c'è: il Sole è lontano fuori
+// dallo schermo e il pianeta scelto è il centro della scena. Il limite alto
+// vale quindi per Terra, Luna e tutti gli altri pianeti, finché `sol.perno`
+// non è nullo. Venticinquemila ingrandimenti permettono di attraversare il
+// disco e guardarne davvero la superficie, senza rendere inutilizzabile lo
+// zoom della vista d'insieme.
 const SOL_ZOOM_MAX = 60;
-const SOL_ZOOM_MAX_TERRA = 900;
+const SOL_ZOOM_MAX_CORPO = 25000;
 
 // Il passo del tempo **non è più roba di questa vista**: è quello del
 // planetario (`SKY_PASSI_TEMPO`), perché l'orologio è uno solo e due passi
@@ -25561,12 +25567,15 @@ function solCrescita() {
 // dimezzare costino uguale — ma senza il tetto pensato per il Sole, che qui
 // non c'entra niente: a questi zoom il Sole è già fuori dallo schermo. È lui
 // che si sta avvicinando, e deve poter crescere finché lo zoom lo permette
-// (vedi `SOL_ZOOM_MAX_TERRA`). Valeva per la sola Terra, e valeva perché era
+// (vedi `SOL_ZOOM_MAX_CORPO`). Valeva per la sola Terra, e valeva perché era
 // l'unico corpo su cui ci si potesse avvicinare: adesso che il perno è di
 // tutti, questa crescita è di tutti.
-const SOL_CRESCITA_TERRA_MAX = 60;
-function solCrescitaTerra() {
-  return Math.min(SOL_CRESCITA_TERRA_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
+// Il vecchio tetto di 60 fermava il diametro anche se la telecamera
+// continuava ad avanzare: oltre quel punto aumentava solo il vuoto fra le
+// orbite. A 160 anche i mondi più piccoli possono riempire lo schermo.
+const SOL_CRESCITA_CORPO_MAX = 160;
+function solCrescitaCorpo() {
+  return Math.min(SOL_CRESCITA_CORPO_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
 }
 
 // Chi cresce con la crescita «da vicino»: il corpo su cui si sta girando, e
@@ -25587,7 +25596,7 @@ function solRaggioCorpo(p) {
   // polvere: Mercurio e Marte si fermano lì. Fra tutti gli altri il rapporto
   // è quello vero.
   const base = sol.misureVere ? Math.max(1.2, p.km * SOL_PX_PER_KM / 2) : p.raggio;
-  const crescita = solCorpoDelPerno(p.id) ? solCrescitaTerra() : solCrescita();
+  const crescita = solCorpoDelPerno(p.id) ? solCrescitaCorpo() : solCrescita();
   // Mezzo pixel è il minimo assoluto: quando la scena si stringe i pianeti
   // rimpiccioliscono col Sole (vedi `solCrescita`), ma un pianeta che sparisce
   // del tutto lascerebbe l'orbita senza chi la percorre
@@ -25608,7 +25617,7 @@ function solRaggioSole() {
 function solRaggioLuna() {
   // Girando intorno alla Luna — o alla Terra, che le sta accanto — cresce
   // anche lei, come cresce qualunque corpo su cui ci si avvicini
-  const crescita = solCorpoDelPerno('Moon') ? solCrescitaTerra() : solCrescita();
+  const crescita = solCorpoDelPerno('Moon') ? solCrescitaCorpo() : solCrescita();
   return sol.misureVere
     ? Math.max(0.55, SOL_LUNA_KM * SOL_PX_PER_KM / 2 * crescita)
     : SOL_RAGGIO_LUNA * crescita;
@@ -26359,20 +26368,42 @@ function solDisegnaLuna(ctx, terra, davanti, assi) {
   const versoSole = solVersoIlSole(terra);
   const angLuce = assi && versoSole ? solAngoloSchermo(versoSole, assi) : 0;
   ctx.translate(p.px, p.py);
-  ctx.fillStyle = '#22262f';
+  // Prima si chiudeva con una tinta grigia uniforme: avvicinandosi alla
+  // coppia Terra-Luna diventava una biglia liscia, benché il planetario
+  // disponga già della pelle selenografica con mari e crateri. La stessa
+  // tela viene ora orientata secondo il polo lunare e ritagliata dalla fase.
+  ctx.fillStyle = solColoreNotte('#e2e8f0');
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.fill();
+  ctx.save();
   if (k < 0.985) {
     ctx.rotate(angLuce);
     skyPercorsoIlluminato(ctx, r, k);
+    ctx.clip();
     ctx.rotate(-angLuce);
   } else {
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.clip();
   }
-  ctx.fillStyle = '#e2e8f0';
-  ctx.fill();
+  const faccia = skyFacciaDi({ id: 'Moon' }, r);
+  if (faccia) {
+    const asseLuna = solAsseLuna(new Date(sol.istante || Date.now()));
+    const polo = assi ? solAngoloPolo(asseLuna, assi) : 0;
+    ctx.rotate(polo);
+    ctx.drawImage(faccia, -r, -r, r * 2, r * 2);
+    ctx.rotate(-polo);
+  } else {
+    const luce = ctx.createRadialGradient(-r * 0.28, -r * 0.28, 0, 0, 0, r);
+    luce.addColorStop(0, '#f4f1e9');
+    luce.addColorStop(0.72, '#c4bfb5');
+    luce.addColorStop(1, '#817e79');
+    ctx.fillStyle = luce;
+    ctx.fillRect(-r, -r, r * 2, r * 2);
+  }
+  skyRilievoSfera(ctx, r, angLuce, { brillante: 0.06, bordo: 0.62 });
+  ctx.restore();
   ctx.restore();
 }
 
@@ -26477,7 +26508,7 @@ function solDisegnaBussolaOrari(ctx, terra, prese) {
 //   Nella vista d'insieme la Terra è un pallino azzurro largo otto pixel, e
 //   la faccia dipinta di §7.3.2 — dieci macchie di continente al posto
 //   giusto — è tutto quello che ci sta. Ma da quando ci si può avvicinare a
-//   girarle intorno (`SOL_ZOOM_MAX_TERRA`, novecento ingrandimenti) quel
+//   girarle intorno (`SOL_ZOOM_MAX_CORPO`, venticinquemila ingrandimenti) quel
 //   pallino diventa mezzo schermo, e a quella misura tre cose che il disegno
 //   non diceva cominciano a pesare più di tutte le altre:
 //
@@ -28587,7 +28618,7 @@ function solImpostaZoom(z, opzioni = {}) {
   // fare tutt'e due le cose: allontanarsi finché il cono d'ombra della Terra
   // ci sta per intero (un milione e mezzo di chilometri) e avvicinarsi alla
   // Terra finché si riconoscono i continenti.
-  const tetto = sol.vicino ? SOL_VIC_ZOOM_MAX : (sol.perno ? SOL_ZOOM_MAX_TERRA : SOL_ZOOM_MAX);
+  const tetto = sol.vicino ? SOL_VIC_ZOOM_MAX : (sol.perno ? SOL_ZOOM_MAX_CORPO : SOL_ZOOM_MAX);
   const pavimento = sol.vicino ? SOL_VIC_ZOOM_MIN : 0.35;
   const valore = Math.max(pavimento, Math.min(tetto, z));
   sol.zoomVoluto = valore;
@@ -28857,7 +28888,7 @@ function solZoomSullaTerra() {
   // arrivare alla misura sbagliata proprio con i pallini in scala.
   const base = sol.misureVere ? Math.max(1.2, terra.km * SOL_PX_PER_KM / 2) : terra.raggio;
   if (!(base > 0)) return null;
-  return Math.min(SOL_ZOOM_MAX_TERRA, Math.pow(SOL_ENTRATA_TERRA_PX / base, 2));
+  return Math.min(SOL_ZOOM_MAX_CORPO, Math.pow(SOL_ENTRATA_TERRA_PX / base, 2));
 }
 
 // L'ingresso: il quadro d'insieme per un fotogramma — la disposizione di
@@ -28877,7 +28908,7 @@ function solEntraSullaTerra() {
   const zoom = solZoomSullaTerra();
   if (zoom === null) return;
   // Il perno prima dello zoom: è lui a scegliere il tetto dentro a
-  // `solImpostaZoom` (SOL_ZOOM_MAX_TERRA invece di SOL_ZOOM_MAX), e senza
+  // `solImpostaZoom` (SOL_ZOOM_MAX_CORPO invece di SOL_ZOOM_MAX), e senza
   // questa riga il tuffo si fermerebbe a un sessantesimo della strada.
   sol.perno = 'Earth';
   solImpostaZoom(zoom, { morbido: true });
