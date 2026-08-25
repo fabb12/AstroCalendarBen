@@ -25029,6 +25029,7 @@ const sol = {
   // era un automatismo da disfare o una scelta da rispettare.
   ancoraSec: 0, passoPrima: 0, passoToccato: false,
   prossimaScheda: 0, firmaScheda: '',
+  percorso: [], percorsoVisibile: false,
   skyDaRiprendere: false
 };
 
@@ -27794,6 +27795,9 @@ function solDisegna() {
     solTesto(ctx, `${sol.perno ? 'dal corpo scelto' : 'dal Sole'} al bordo ≈ ${bordo.replace(' al bordo', '')}` +
       (sol.distanzeVere ? '' : ' · distanze compresse'), sol.L - 10, riga, '#64748b', 11, 'right');
   }
+  // Durante il playback i pianeti si spostano: anche la carta di rotta deve
+  // seguire le tappe, non restare congelata all'istante dell'ultimo tocco.
+  if (sol.percorsoVisibile) solDisegnaPercorso();
 }
 
 // --- I numeri sotto al disegno ---------------------------------------------
@@ -27934,6 +27938,64 @@ window.solChiudiScheda = () => {
   solDisegna();
 };
 
+// La carta di rotta è volutamente indipendente dalla telecamera: mentre la
+// scena viene girata, conserva il nord dell'eclittica in alto e rende leggibile
+// il tragitto fra i corpi toccati. Le distanze usano la stessa compressione
+// della vista d'insieme, così anche i pianeti interni restano distinguibili.
+function solDisegnaPercorso() {
+  const pannello = document.getElementById('sol-percorso');
+  const tela = document.getElementById('sol-percorso-canvas');
+  const guscio = solGuscio();
+  const visibile = sol.percorsoVisibile && sol.percorso.length > 0 && !sol.vicino;
+  if (pannello) pannello.classList.toggle('hidden', !visibile);
+  if (guscio) guscio.classList.toggle('sol-percorso-aperto', visibile);
+  if (!visibile || !tela) return;
+
+  const ctx = tela.getContext('2d');
+  const w = tela.width, h = tela.height, cx = w / 2, cy = h / 2;
+  ctx.clearRect(0, 0, w, h);
+  const tappe = sol.percorso.map(id => sol.pianeti.find(p => p.id === id)).filter(Boolean);
+  const rMax = Math.max(1, ...tappe.map(p => solRaggio(p.r)));
+  const scala = Math.min(w, h) * 0.39 / rMax;
+
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.18)';
+  ctx.lineWidth = 1;
+  [...new Set(tappe.map(p => solRaggio(p.r).toFixed(5)))].forEach(r => {
+    ctx.beginPath(); ctx.arc(cx, cy, Number(r) * scala, 0, Math.PI * 2); ctx.stroke();
+  });
+  ctx.fillStyle = '#fde68a';
+  ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
+
+  const punti = tappe.map(p => {
+    const scena = solScena(p.pos);
+    return { p, x: cx + scena.x * scala, y: cy - scena.y * scala };
+  });
+  if (punti.length > 1) {
+    ctx.strokeStyle = '#60a5fa';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.setLineDash([7, 5]);
+    ctx.beginPath();
+    punti.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  punti.forEach((q, i) => {
+    ctx.fillStyle = q.p.colore;
+    ctx.beginPath(); ctx.arc(q.x, q.y, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#05070f';
+    ctx.font = '700 9px Inter, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(i + 1), q.x, q.y + 0.5);
+  });
+  tela.setAttribute('aria-label', `Percorso: ${tappe.map(p => p.nome).join(', ')}`);
+}
+
+function solNascondiPercorso() {
+  sol.percorsoVisibile = false;
+  solDisegnaPercorso();
+}
+
 // La sola lettura rimasta: la scheda appoggiata sulla scena, che a riposo non
 // c'è. L'elenco dei pianeti giù nella finestra è andato via con la fila dei
 // comandi — a tutto schermo era una tabella che nessuno vedeva mai, e un
@@ -27955,6 +28017,12 @@ function solAggiornaScheda(forza) {
 function solScegli(id) {
   const nuovo = sol.scelto === id ? null : id;
   sol.scelto = nuovo;
+  if (nuovo && !sol.vicino) {
+    // Due tappe uguali consecutive non aggiungono strada, ma ritoccando lo
+    // stesso corpo si continua a usare il gesto esistente di deselezione.
+    if (sol.percorso[sol.percorso.length - 1] !== nuovo) sol.percorso.push(nuovo);
+    sol.percorsoVisibile = true;
+  } else if (!nuovo) solNascondiPercorso();
   // Toccare un corpo sulla scena lo mette al centro della telecamera e ci si
   // comincia a girare
   // intorno; ritoccarlo (cioè deselezionarlo) lascia il perno e torna alla
@@ -27964,6 +28032,7 @@ function solScegli(id) {
   if (nuovo) solAvvicinaA(nuovo);
   else if (sol.perno === id) solLasciaPerno();
   solAggiornaScheda(true);
+  solDisegnaPercorso();
   solDisegna();
 }
 
@@ -28678,6 +28747,7 @@ function solTocco(e) {
     prova('Moon', sol.lunaSchermo.px, sol.lunaSchermo.py, sol.lunaSchermo.r);
   }
   if (migliore) solScegli(migliore);
+  else solNascondiPercorso();
 }
 
 // --- A tutto schermo -------------------------------------------------------
@@ -28872,6 +28942,9 @@ window.apriSistemaSolare = (opzioni = {}) => {
   sol.ancoraSec = sky.offsetTempoSec || 0;
   sol.firmaScheda = '';
   sol.prossimaScheda = 0;
+  sol.percorso = [];
+  sol.percorsoVisibile = false;
+  solDisegnaPercorso();
   sol.ultimoTs = 0;
   sol.istante = 0;
   solGeneraStelle(110);

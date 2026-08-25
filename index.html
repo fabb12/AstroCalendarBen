@@ -1569,6 +1569,18 @@
                scena non c'è niente. -->
           <aside id="sol-scheda" class="sol-scheda hidden" aria-live="polite"></aside>
 
+          <!-- La piccola carta di rotta compare quando si toccano i corpi:
+               conserva l'ordine delle tappe e le unisce viste dall'alto. Un
+               altro tocco sullo spazio vuoto della scena la congeda. -->
+          <aside id="sol-percorso" class="sol-percorso hidden" aria-live="polite">
+            <div class="sol-percorso-testa">
+              <span>Percorso</span>
+              <small>Tocca lo spazio per chiudere</small>
+            </div>
+            <canvas id="sol-percorso-canvas" width="360" height="220"
+              role="img" aria-label="Mappa dall'alto del percorso fra i corpi selezionati"></canvas>
+          </aside>
+
           <!-- I comandi appoggiati sulla scena, come quelli sulla mappa del
                planetario. Stanno qui e non nella fila di sotto perché servono
                mentre si sta guardando — e perché a tutto schermo la fila di
