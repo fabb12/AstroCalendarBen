@@ -4,7 +4,8 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Ai FOV estremi il fondo del rilievo usa una sola sagoma invece delle quattordici
-fette di distanza: la proiezione non può più far incrociare e sovrapporre i
-poligoni. Pettinatura e contorni mantengono la forma 3D del terreno; ai campi
-normali le fette restano invariate. Cache PWA portata ad `astrocal-v175`.
+Il tasto «adesso» del Planetario e del Sistema Solare non azzera soltanto la
+macchina del tempo: ricalcola l'ora civile dalle coordinate del luogo osservato,
+applica subito il fuso già noto e aggiorna ancora la lettura quando arriva il
+fuso dalla rete. Una risposta tardiva non può sovrascrivere l'ora di un luogo
+scelto nel frattempo. Cache PWA portata ad `astrocal-v183`.

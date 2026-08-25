@@ -1253,6 +1253,44 @@ function dataOraDelLuogo(data, luogo, opzioni = {}) {
   return `${locale} (${oraUTC(data, opzioni.secondi)} UTC)`;
 }
 
+// I pezzi civili di un istante nel fuso del luogo. Non usiamo i getDate() e
+// getHours() di Date: quelli descrivono il fuso del telefono, che può essere
+// diverso da quello del cielo quando ci si sposta sulla mappa.
+function partiDataDelLuogo(data, luogo) {
+  const fuso = fusoDelLuogo(luogo);
+  const parti = new Intl.DateTimeFormat('en-GB', {
+    timeZone: fuso.nome, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+  }).formatToParts(data);
+  const risultato = {};
+  parti.forEach(p => {
+    if (p.type !== 'literal') risultato[p.type] = Number(p.value);
+  });
+  return risultato;
+}
+
+// Trasforma un'ora scritta "come sull'orologio del posto" nell'istante UTC
+// corrispondente. L'offset non si ricava dalla longitudine: cambia ai confini
+// politici e con l'ora legale. Le correzioni coprono anche un cambio d'ora;
+// il controllo finale respinge le ore civili inesistenti nel salto primaverile.
+function dataDalTempoDelLuogo(valori, luogo) {
+  const desideratoUTC = Date.UTC(valori.year, valori.month - 1, valori.day,
+    valori.hour, valori.minute, valori.second, 0);
+  let ms = desideratoUTC;
+  for (let i = 0; i < 3; i++) {
+    const p = partiDataDelLuogo(new Date(ms), luogo);
+    const lettoComeUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second, 0);
+    const correzione = desideratoUTC - lettoComeUTC;
+    if (!correzione) break;
+    ms += correzione;
+  }
+  const data = new Date(ms);
+  const p = partiDataDelLuogo(data, luogo);
+  return p.year === valori.year && p.month === valori.month && p.day === valori.day &&
+    p.hour === valori.hour && p.minute === valori.minute && p.second === valori.second
+    ? data : null;
+}
+
 let fusoRichieste = new Map();
 function caricaFusoOrario(lat, lon) {
   if (!isFinite(lat) || !isFinite(lon)) return Promise.resolve(null);
@@ -9035,12 +9073,22 @@ function skyAggiornaOsservatore() {
   else if (typeof terrenoCarica === 'function') terrenoCarica();
   skyAggiornaStato();
   skyAggiornaLuogoVistaUI();
+  // Luogo e istante sono le due coordinate dello stesso cielo. Aggiornare
+  // soltanto stelle e paesaggio lasciava la barra e le sei caselle nel fuso
+  // del posto precedente finché non terminava una richiesta di rete (e, se
+  // quella falliva, per tutta la visita). Il fuso già noto viene applicato
+  // qui, nello stesso passaggio sincrono che cambia l'osservatore.
+  if (typeof skyAggiornaTestoTempo === 'function') skyAggiornaTestoTempo();
 }
 
 // Sposta l'occhio altrove. Restituisce false se il punto non ha senso: le
 // coordinate scritte a mano possono essere qualsiasi cosa.
-function skyImpostaLuogoVista(lat, lon, nome) {
+function skyImpostaLuogoVista(lat, lon, nome, fuso) {
   if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return false;
+  // Open-Meteo restituisce già il fuso IANA insieme alle città cercate: non
+  // buttiamolo via per richiederlo subito dopo. Così l'orologio cambia nello
+  // stesso fotogramma del luogo, anche con una rete lenta.
+  if (fuso) fusoRicorda(lat, lon, fuso);
   sky.luogoVista = { lat, lon, nome: nome || nomeLuogoVicino(lat, lon) };
   caricaFusoOrario(lat, lon).then(() => {
     if (sky.luogoVista && fusoChiave(sky.luogoVista.lat, sky.luogoVista.lon) === fusoChiave(lat, lon)) {
@@ -9099,7 +9147,7 @@ function skyUsaLuogoVista(lat, lon, nome, opzioni = {}) {
   const partenza = skyLuogoDelCielo();
   // Le coordinate arrivano da un elenco di città, quindi sono buone: il
   // controllo resta come rete di sicurezza per chi chiamasse da altrove.
-  if (!skyImpostaLuogoVista(lat, lon, nome)) {
+  if (!skyImpostaLuogoVista(lat, lon, nome, opzioni.fuso)) {
     skyAvviso('luogo', 'Quel punto non sta sulla Terra: riprova con un\'altra città.', 6000);
     return;
   }
@@ -9132,7 +9180,7 @@ function skyMostraRisultatiLuogo(elenco, nota) {
   box.querySelectorAll('[data-luogo]').forEach(btn => {
     btn.addEventListener('click', () => {
       const c = elenco[parseInt(btn.dataset.luogo, 10)];
-      if (c) skyUsaLuogoVista(c.lat, c.lon, c.nome);
+      if (c) skyUsaLuogoVista(c.lat, c.lon, c.nome, { fuso: c.fuso });
     });
   });
 }
@@ -28667,6 +28715,7 @@ function solTornaAdesso() {
   solFermaTempo();
   sol.ancoraSec = 0;
   skyImpostaOffsetTempo(0);
+  skyRicalcolaOraAttuale();
   solAggiornaBarra();
 }
 
@@ -31887,7 +31936,8 @@ async function posCittaOnline(testo) {
         nome: r.name,
         paese: [r.admin1, r.country].filter(Boolean).join(', '),
         lat: r.latitude,
-        lon: r.longitude
+        lon: r.longitude,
+        fuso: r.timezone || null
       }));
   } catch (e) {
     return []; // offline: restano le città a bordo, che bastano
@@ -34110,6 +34160,26 @@ function skyAdesso() {
   return new Date(Date.now() + (sky.offsetTempoSec || 0) * 1000);
 }
 
+// Il tasto «adesso» non deve limitarsi ad azzerare lo scarto: chi lo preme
+// sta chiedendo che ora è *qui*, nel luogo da cui il planetario sta guardando.
+// Applichiamo subito il fuso già noto e, se serve, lo ricaviamo di nuovo dalle
+// coordinate; al ritorno della risposta aggiorniamo soltanto se nel frattempo
+// l'utente non si è spostato ancora.
+function skyRicalcolaOraAttuale() {
+  const luogo = skyLuogoDelCielo();
+  skyAggiornaTestoTempo();
+  if (!luogo) return Promise.resolve(null);
+  const chiave = fusoChiave(luogo.lat, luogo.lon);
+  return caricaFusoOrario(luogo.lat, luogo.lon).then(fuso => {
+    const corrente = skyLuogoDelCielo();
+    if (corrente && fusoChiave(corrente.lat, corrente.lon) === chiave) {
+      skyAggiornaTestoTempo();
+      if (typeof solAggiornaBarra === 'function') solAggiornaBarra();
+    }
+    return fuso;
+  });
+}
+
 // Posizioni delle stelle delle costellazioni e degli oggetti profondi
 function skyAggiornaCatalogo(data) {
   if (!sky.observer || typeof Astronomy === 'undefined') {
@@ -34378,10 +34448,8 @@ function skyAggiornaTestoTempo() {
   // tempo reale, e a che passo il cielo sta camminando.
   const el = document.getElementById('skymap-tempo-testo');
   if (el) {
-    const istante = quando.toLocaleString('it-IT', {
-      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
-    });
+    const istante = dataOraDelLuogo(quando, skyLuogoDelCielo(),
+      { weekday: 'short', secondi: true });
     const scartoTesto = scarto === 0 ? 'in tempo reale' : skyScartoTempoTesto(scarto);
     el.textContent = [scartoTesto, marcia].filter(Boolean).join(' · ');
     el.title = `${istante} · ${scartoTesto}`;
@@ -34404,10 +34472,7 @@ function skyAggiornaTestoTempo() {
   const lettura = document.getElementById('skymap-tempo-quando');
   if (lettura && !sky.slittaTempoAttiva) {
     lettura.textContent = skyTestoBarraTempo(quando, scarto, marcia);
-    const esteso = quando.toLocaleString('it-IT', {
-      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
+    const esteso = dataOraDelLuogo(quando, skyLuogoDelCielo(), { weekday: 'short' });
     lettura.title = `${esteso}${scarto === 0 ? ' (tempo reale)' : ' · ' + skyScartoTempoTesto(scarto)}` +
       ' — tocca per data, passo e velocità del playback';
   }
@@ -34471,12 +34536,12 @@ function skyTestoBarraTempo(quando, scarto, marcia) {
 // intero — è l'unico modo di arrivare al 3000 senza mille clic su una
 // freccetta.
 const SKY_CASELLE_DATA = [
-  { id: 'skymap-data-giorno',  leggi: d => d.getDate() },
-  { id: 'skymap-data-mese',    leggi: d => d.getMonth() + 1 },
-  { id: 'skymap-data-anno',    leggi: d => d.getFullYear(), cifre: 4 },
-  { id: 'skymap-data-ore',     leggi: d => d.getHours() },
-  { id: 'skymap-data-minuti',  leggi: d => d.getMinutes() },
-  { id: 'skymap-data-secondi', leggi: d => d.getSeconds() }
+  { id: 'skymap-data-giorno',  parte: 'day' },
+  { id: 'skymap-data-mese',    parte: 'month' },
+  { id: 'skymap-data-anno',    parte: 'year', cifre: 4 },
+  { id: 'skymap-data-ore',     parte: 'hour' },
+  { id: 'skymap-data-minuti',  parte: 'minute' },
+  { id: 'skymap-data-secondi', parte: 'second' }
 ];
 
 // Il campo della data segue l'istante mostrato, ma non mentre ci si scrive
@@ -34488,10 +34553,11 @@ const SKY_CASELLE_DATA = [
 function skyAggiornaCampoData(quando) {
   const gruppo = document.getElementById('skymap-data');
   if (!gruppo || gruppo.contains(document.activeElement)) return;
+  const parti = partiDataDelLuogo(quando, skyLuogoDelCielo());
   SKY_CASELLE_DATA.forEach(c => {
     const campo = document.getElementById(c.id);
     if (!campo) return;
-    const valore = String(c.leggi(quando)).padStart(c.cifre || 2, '0');
+    const valore = String(parti[c.parte]).padStart(c.cifre || 2, '0');
     if (campo.value !== valore) campo.value = valore;
   });
 }
@@ -34514,13 +34580,11 @@ function skyDataDalleCaselle() {
   const giorno = n['skymap-data-giorno'];
   if (anno < ANNO_MINIMO_NAVIGABILE || anno > ANNO_MASSIMO_NAVIGABILE) return null;
   if (mese < 1 || mese > 12 || giorno < 1 || giorno > 31) return null;
-  const d = new Date(anno, mese - 1, giorno,
-    n['skymap-data-ore'], n['skymap-data-minuti'], n['skymap-data-secondi'], 0);
-  if (isNaN(d.getTime())) return null;
-  // Il 31 di febbraio, scritto in un campo, diventerebbe il 3 di marzo senza
-  // che nessuno lo dica: se la data si è "sistemata" da sola non era una data
-  if (d.getFullYear() !== anno || d.getMonth() !== mese - 1 || d.getDate() !== giorno) return null;
-  return d;
+  return dataDalTempoDelLuogo({
+    year: anno, month: mese, day: giorno,
+    hour: n['skymap-data-ore'], minute: n['skymap-data-minuti'],
+    second: n['skymap-data-secondi']
+  }, skyLuogoDelCielo());
 }
 
 // "Vai": porta il cielo alla data scritta. Se non è una data, le caselle
@@ -34956,6 +35020,7 @@ function inizializzaSkymapExtra() {
     skyFermaPlayback();
     sky.ancoraTempoSec = 0;
     skyImpostaOffsetTempo(0);
+    skyRicalcolaOraAttuale();
     skyMostraGruppo('');
   };
   collega('skymap-tempo-adesso', tornaAdesso);
