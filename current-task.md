@@ -4,8 +4,8 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Il tasto «adesso» del Planetario e del Sistema Solare non azzera soltanto la
-macchina del tempo: ricalcola l'ora civile dalle coordinate del luogo osservato,
-applica subito il fuso già noto e aggiorna ancora la lettura quando arriva il
-fuso dalla rete. Una risposta tardiva non può sovrascrivere l'ora di un luogo
-scelto nel frattempo. Cache PWA portata ad `astrocal-v183`.
+Il fuso restituito dalla ricerca città ora arriva fino alla posizione globale e
+viene applicato prima di ridisegnare il Planetario. La cache dei fusi usa le
+coordinate a quattro decimali invece di una griglia da 0,05°, che poteva
+confondere due località ai lati opposti di un confine. Cache PWA portata ad
+`astrocal-v184`.
