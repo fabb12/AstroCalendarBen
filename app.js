@@ -9095,8 +9095,33 @@ const luogoMappa = {
   zoomUltimo: LUOGO_ZOOM_APERTURA,  // com'era stretta l'ultima volta che si è chiusa
   sfondo: 'strade',// quale dei tre fondi è acceso
   strato: null,    // il tileLayer di adesso
-  occhio: null     // ResizeObserver: la mappa va rimisurata a ogni cambio di forma
+  occhio: null,    // ResizeObserver: la mappa va rimisurata a ogni cambio di forma
+  tocco: null,     // partenza dell'ultimo dito: distingue il doppio tocco dal trascinamento
+  ultimoTocco: null, // primo dei due tocchi brevi ({ x, y, quando })
+  applicazioneRapida: 0 // evita che dblclick e pointerup applichino due volte lo stesso punto
 };
+
+const LUOGO_DOPPIO_TOCCO_MS = 380;
+const LUOGO_DOPPIO_TOCCO_PX = 30;
+
+// Due pressioni sul terreno sono la scorciatoia per partire subito da lì.
+// Prima il mappamondo porta dolcemente il punto al centro, così il gesto ha
+// una risposta visibile; appena finisce il breve movimento cambia
+// l'osservatore del planetario. Il blocco serve perché alcuni browser touch,
+// dopo i due pointerup, emettono anche un dblclick sintetico.
+function luogoMappaUsaConDoppio(lat, lon) {
+  if (!luogoMappa.mappa || performance.now() < luogoMappa.applicazioneRapida) return;
+  luogoMappa.applicazioneRapida = performance.now() + 900;
+  luogoMappaScegli(lat, lon);
+
+  const punto = [luogoMappa.scelto.lat, luogoMappa.scelto.lon];
+  luogoMappa.mappa.flyTo(punto, luogoMappa.mappa.getZoom(), {
+    animate: true, duration: 0.38
+  });
+  // Si lascia vedere l'arrivo della camera, ma non si obbliga ad aspettare
+  // un moveend che, quando il punto è già al centro, Leaflet non emette.
+  setTimeout(() => luogoMappaUsa(), 400);
+}
 
 // Longitudine riportata fra −180 e +180: Leaflet, con `worldCopyJump`, per un
 // tocco sulla copia del mondo a destra restituisce 200 o 380, che a Astronomy
@@ -9189,7 +9214,10 @@ function luogoMappaCostruisci() {
     // del telefono, e la rotellina lo è sul computer: qui la mappa è dentro a
     // una finestra che scorre, e senza queste due righe la rotellina scorreva
     // il foglio invece di avvicinare il terreno.
-    scrollWheelZoom: true, touchZoom: true, tap: true
+    scrollWheelZoom: true, touchZoom: true, tap: true,
+    // Il doppio gesto qui sceglie il luogo; lo zoom resta comodamente
+    // disponibile con rotella, pulsanti e pizzico a due dita.
+    doubleClickZoom: false
   }).setView([41.9, 12.5], LUOGO_ZOOM_APERTURA);
   luogoMappaSfondo(luogoMappa.sfondo, { zitto: true });
   // Lo zoom a destra, come sulla mappa dell'ombra: le due mappe dell'app si
@@ -9203,6 +9231,45 @@ function luogoMappaCostruisci() {
     // guardando.
     luogoMostraRisultati([], null);
     luogoMappaScegli(e.latlng.lat, e.latlng.lng);
+  });
+
+  // Mouse e trackpad hanno un dblclick affidabile.
+  luogoMappa.mappa.on('dblclick', (e) => {
+    L.DomEvent.preventDefault(e.originalEvent);
+    luogoMappaUsaConDoppio(e.latlng.lat, e.latlng.lng);
+  });
+
+  // Sul telefono il dblclick non è uniforme (e a volte arriva molto tardi),
+  // quindi si contano direttamente due tocchi brevi e vicini. Un trascinamento,
+  // un pizzico o un colpo sui comandi Leaflet non possono attivare la scelta.
+  riquadro.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+    if (e.target.closest('.leaflet-control')) return;
+    luogoMappa.tocco = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  });
+  riquadro.addEventListener('pointerup', (e) => {
+    const partenza = luogoMappa.tocco;
+    luogoMappa.tocco = null;
+    if (!partenza || partenza.id !== e.pointerId) return;
+    if (Math.hypot(e.clientX - partenza.x, e.clientY - partenza.y) > 10) {
+      luogoMappa.ultimoTocco = null;
+      return;
+    }
+    const ora = performance.now();
+    const prima = luogoMappa.ultimoTocco;
+    if (prima && ora - prima.quando <= LUOGO_DOPPIO_TOCCO_MS &&
+        Math.hypot(e.clientX - prima.x, e.clientY - prima.y) <= LUOGO_DOPPIO_TOCCO_PX) {
+      luogoMappa.ultimoTocco = null;
+      const punto = luogoMappa.mappa.mouseEventToLatLng(e);
+      luogoMappaUsaConDoppio(punto.lat, punto.lng);
+      e.preventDefault();
+      return;
+    }
+    luogoMappa.ultimoTocco = { x: e.clientX, y: e.clientY, quando: ora };
+  });
+  riquadro.addEventListener('pointercancel', () => {
+    luogoMappa.tocco = null;
+    luogoMappa.ultimoTocco = null;
   });
 
   // Quanto si era stretto se lo ricorda: chi ha appena scelto un prato a
