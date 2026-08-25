@@ -9073,12 +9073,22 @@ function skyAggiornaOsservatore() {
   else if (typeof terrenoCarica === 'function') terrenoCarica();
   skyAggiornaStato();
   skyAggiornaLuogoVistaUI();
+  // Luogo e istante sono le due coordinate dello stesso cielo. Aggiornare
+  // soltanto stelle e paesaggio lasciava la barra e le sei caselle nel fuso
+  // del posto precedente finché non terminava una richiesta di rete (e, se
+  // quella falliva, per tutta la visita). Il fuso già noto viene applicato
+  // qui, nello stesso passaggio sincrono che cambia l'osservatore.
+  if (typeof skyAggiornaTestoTempo === 'function') skyAggiornaTestoTempo();
 }
 
 // Sposta l'occhio altrove. Restituisce false se il punto non ha senso: le
 // coordinate scritte a mano possono essere qualsiasi cosa.
-function skyImpostaLuogoVista(lat, lon, nome) {
+function skyImpostaLuogoVista(lat, lon, nome, fuso) {
   if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return false;
+  // Open-Meteo restituisce già il fuso IANA insieme alle città cercate: non
+  // buttiamolo via per richiederlo subito dopo. Così l'orologio cambia nello
+  // stesso fotogramma del luogo, anche con una rete lenta.
+  if (fuso) fusoRicorda(lat, lon, fuso);
   sky.luogoVista = { lat, lon, nome: nome || nomeLuogoVicino(lat, lon) };
   caricaFusoOrario(lat, lon).then(() => {
     if (sky.luogoVista && fusoChiave(sky.luogoVista.lat, sky.luogoVista.lon) === fusoChiave(lat, lon)) {
@@ -9137,7 +9147,7 @@ function skyUsaLuogoVista(lat, lon, nome, opzioni = {}) {
   const partenza = skyLuogoDelCielo();
   // Le coordinate arrivano da un elenco di città, quindi sono buone: il
   // controllo resta come rete di sicurezza per chi chiamasse da altrove.
-  if (!skyImpostaLuogoVista(lat, lon, nome)) {
+  if (!skyImpostaLuogoVista(lat, lon, nome, opzioni.fuso)) {
     skyAvviso('luogo', 'Quel punto non sta sulla Terra: riprova con un\'altra città.', 6000);
     return;
   }
@@ -9170,7 +9180,7 @@ function skyMostraRisultatiLuogo(elenco, nota) {
   box.querySelectorAll('[data-luogo]').forEach(btn => {
     btn.addEventListener('click', () => {
       const c = elenco[parseInt(btn.dataset.luogo, 10)];
-      if (c) skyUsaLuogoVista(c.lat, c.lon, c.nome);
+      if (c) skyUsaLuogoVista(c.lat, c.lon, c.nome, { fuso: c.fuso });
     });
   });
 }
@@ -28705,6 +28715,7 @@ function solTornaAdesso() {
   solFermaTempo();
   sol.ancoraSec = 0;
   skyImpostaOffsetTempo(0);
+  skyRicalcolaOraAttuale();
   solAggiornaBarra();
 }
 
@@ -31925,7 +31936,8 @@ async function posCittaOnline(testo) {
         nome: r.name,
         paese: [r.admin1, r.country].filter(Boolean).join(', '),
         lat: r.latitude,
-        lon: r.longitude
+        lon: r.longitude,
+        fuso: r.timezone || null
       }));
   } catch (e) {
     return []; // offline: restano le città a bordo, che bastano
@@ -34148,6 +34160,26 @@ function skyAdesso() {
   return new Date(Date.now() + (sky.offsetTempoSec || 0) * 1000);
 }
 
+// Il tasto «adesso» non deve limitarsi ad azzerare lo scarto: chi lo preme
+// sta chiedendo che ora è *qui*, nel luogo da cui il planetario sta guardando.
+// Applichiamo subito il fuso già noto e, se serve, lo ricaviamo di nuovo dalle
+// coordinate; al ritorno della risposta aggiorniamo soltanto se nel frattempo
+// l'utente non si è spostato ancora.
+function skyRicalcolaOraAttuale() {
+  const luogo = skyLuogoDelCielo();
+  skyAggiornaTestoTempo();
+  if (!luogo) return Promise.resolve(null);
+  const chiave = fusoChiave(luogo.lat, luogo.lon);
+  return caricaFusoOrario(luogo.lat, luogo.lon).then(fuso => {
+    const corrente = skyLuogoDelCielo();
+    if (corrente && fusoChiave(corrente.lat, corrente.lon) === chiave) {
+      skyAggiornaTestoTempo();
+      if (typeof solAggiornaBarra === 'function') solAggiornaBarra();
+    }
+    return fuso;
+  });
+}
+
 // Posizioni delle stelle delle costellazioni e degli oggetti profondi
 function skyAggiornaCatalogo(data) {
   if (!sky.observer || typeof Astronomy === 'undefined') {
@@ -34988,6 +35020,7 @@ function inizializzaSkymapExtra() {
     skyFermaPlayback();
     sky.ancoraTempoSec = 0;
     skyImpostaOffsetTempo(0);
+    skyRicalcolaOraAttuale();
     skyMostraGruppo('');
   };
   collega('skymap-tempo-adesso', tornaAdesso);

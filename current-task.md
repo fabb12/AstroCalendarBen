@@ -4,7 +4,8 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-L'orologio e le sei caselle del planetario seguono il fuso del luogo osservato,
-anche quando è diverso da quello del dispositivo. L'ora civile digitata viene
-convertita nell'istante UTC corretto, con ora legale e controllo delle ore
-inesistenti nei cambi stagionali. Cache PWA portata ad `astrocal-v181`.
+Il tasto «adesso» del Planetario e del Sistema Solare non azzera soltanto la
+macchina del tempo: ricalcola l'ora civile dalle coordinate del luogo osservato,
+applica subito il fuso già noto e aggiorna ancora la lettura quando arriva il
+fuso dalla rete. Una risposta tardiva non può sovrascrivere l'ora di un luogo
+scelto nel frattempo. Cache PWA portata ad `astrocal-v183`.
