@@ -10165,7 +10165,9 @@ function skyEventoOrientamento(e) {
   if (cambioSorgente) sky.baseFiltrata = null;
 
   const primaLettura = !sky.sensori;
-  sky.orient = { alpha, beta, gamma };
+  const orientamento = { alpha, beta, gamma };
+  skyChiudiVaiQuaSeOrientamentoCambiato(orientamento);
+  sky.orient = orientamento;
   sky.assoluto = assoluto;
   sky.sensori = true;
   // La prima lettura è anche la sola occasione buona per dire com'è che
@@ -22684,6 +22686,27 @@ function skyChiudiVaiQua() {
   if (popup) popup.remove();
 }
 
+// Il tasto conferma un punto calcolato per l'inquadratura che si aveva nel
+// momento del tocco. Con i sensori arrivano letture anche a telefono fermo,
+// quindi non basta chiuderlo a ogni evento: si conserva l'orientamento di
+// partenza e si aspetta uno spostamento più grande del normale tremolio.
+function skyChiudiVaiQuaSeOrientamentoCambiato(orientamento) {
+  const popup = document.getElementById('sky-vai-qua');
+  if (!popup || !orientamento) return;
+  if (!popup.orientamentoIniziale) {
+    popup.orientamentoIniziale = { ...orientamento };
+    return;
+  }
+  const iniziale = popup.orientamentoIniziale;
+  const distanzaCircolare = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+  const spostamento = Math.max(
+    distanzaCircolare(orientamento.alpha, iniziale.alpha),
+    Math.abs(orientamento.beta - iniziale.beta),
+    Math.abs(orientamento.gamma - iniziale.gamma)
+  );
+  if (spostamento > 1.5) skyChiudiVaiQua();
+}
+
 // La corsa verso un punto del rilievo e' soltanto una transizione visiva, ma
 // deve rispettare la stessa regola di una telecamera vera: davanti al terreno
 // resta uno spazio di sicurezza. Il rapporto prospettico D/(D-cammino)
@@ -22708,6 +22731,7 @@ function skyMostraVaiQua(punto, px, py) {
   const popup = document.createElement('div');
   popup.id = 'sky-vai-qua';
   popup.className = 'sky-popup-vai';
+  popup.orientamentoIniziale = sky.orient ? { ...sky.orient } : null;
   popup.style.left = `${Math.max(12, Math.min(sky.larghezza - 12, px))}px`;
   popup.style.top = `${Math.max(12, Math.min(sky.altezza - 12, py))}px`;
   const distanza = punto.km < 1 ? Math.round(punto.km * 1000) + ' m' : punto.km.toFixed(1) + ' km';
@@ -23739,6 +23763,9 @@ function skyInizializzaGesti() {
     if (sky.tocco && sky.tocco.id === e.pointerId &&
         Math.hypot(e.clientX - sky.tocco.x, e.clientY - sky.tocco.y) > 8) {
       sky.tocco.mosso = true;
+      // Il punto del terreno era legato alla vecchia inquadratura: appena il
+      // dito muove davvero la camera, la sua conferma non e' più coerente.
+      skyChiudiVaiQua();
     }
 
     if (sky.puntatori.size === 2 && sky.pizzico) {
