@@ -22850,9 +22850,61 @@ function skyDistanzaGeograficaKm(a, b) {
 
 function skyNascondiMappaSpostamento() {
   const m = sky.mappaSpostamento;
+  skyChiudiMappaSpostamento();
   m.partenza = null;
   m.arrivo = null;
   document.getElementById('skymap-mappa-spostamento')?.classList.add('hidden');
+}
+
+function skyInterazioneMappaSpostamento(attiva) {
+  const mappa = sky.mappaSpostamento.mappa;
+  if (!mappa) return;
+  ['dragging', 'touchZoom', 'doubleClickZoom', 'scrollWheelZoom', 'boxZoom', 'keyboard'].forEach(nome => {
+    const comando = mappa[nome];
+    if (comando && typeof comando[attiva ? 'enable' : 'disable'] === 'function') comando[attiva ? 'enable' : 'disable']();
+  });
+}
+
+// Leaflet conserva il centro in pixel: quando il riquadro passa da miniatura
+// a tutto schermo, limitarsi a rimisurarlo lascerebbe il percorso in un angolo.
+// Dopo ogni cambio di misura lo inquadriamo di nuovo per intero.
+function skyInquadraMappaSpostamento() {
+  const m = sky.mappaSpostamento;
+  if (!m.mappa || !m.partenza || !m.arrivo) return;
+  const da = [m.partenza.lat, m.partenza.lon];
+  const a = [m.arrivo.lat, m.arrivo.lon];
+  const distanza = skyDistanzaGeograficaKm(m.partenza, m.arrivo);
+  if (distanza < 0.05) m.mappa.setView(a, 16, { animate: false });
+  else m.mappa.fitBounds(L.latLngBounds([da, a]).pad(0.45), { animate: false, maxZoom: 15 });
+}
+
+function skyApriMappaSpostamento() {
+  const box = document.getElementById('skymap-mappa-spostamento');
+  if (!box || box.classList.contains('hidden') || box.classList.contains('mappa-spostamento-aperta')) return;
+  box.classList.add('mappa-spostamento-aperta');
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-label', 'Mappa interattiva dello spostamento geografico');
+  document.body.classList.add('mappa-spostamento-immersiva');
+  skyInterazioneMappaSpostamento(true);
+  setTimeout(() => {
+    sky.mappaSpostamento.mappa?.invalidateSize({ pan: false });
+    skyInquadraMappaSpostamento();
+  }, 0);
+  document.getElementById('skymap-mappa-spostamento-esci')?.focus();
+}
+
+function skyChiudiMappaSpostamento() {
+  const box = document.getElementById('skymap-mappa-spostamento');
+  if (!box || !box.classList.contains('mappa-spostamento-aperta')) return;
+  box.classList.remove('mappa-spostamento-aperta');
+  box.setAttribute('role', 'button');
+  box.removeAttribute('aria-modal');
+  box.setAttribute('aria-label', 'Spostamento geografico della vista. Apri la mappa interattiva a tutto schermo');
+  document.body.classList.remove('mappa-spostamento-immersiva');
+  skyInterazioneMappaSpostamento(false);
+  setTimeout(() => sky.mappaSpostamento.mappa?.invalidateSize({ pan: false }), 0);
+  box.focus({ preventScroll: true });
 }
 
 function skyMostraMappaSpostamentoGeografico(partenza, arrivo) {
@@ -22880,15 +22932,14 @@ function skyMostraMappaSpostamentoGeografico(partenza, arrivo) {
     fillColor: '#facc15', fillOpacity: 1 }).addTo(m.mappa);
   m.strati = [filo, origine, destinazione];
   const distanza = skyDistanzaGeograficaKm(partenza, arrivo);
-  if (distanza < 0.05) m.mappa.setView(a, 16, { animate: false });
-  else m.mappa.fitBounds(L.latLngBounds([da, a]).pad(0.45), { animate: false, maxZoom: 15 });
+  skyInquadraMappaSpostamento();
   setTimeout(() => m.mappa && m.mappa.invalidateSize({ pan: false }), 0);
   const misura = distanza < 1 ? `${Math.round(distanza * 1000)} m` : `${distanza.toFixed(distanza < 10 ? 1 : 0)} km`;
   const nomeArrivo = arrivo.nome || formattaCoordinate(arrivo.lat, arrivo.lon);
   const testo = `Spostamento: ${misura} · ${nomeArrivo}`;
   const label = document.getElementById('skymap-mappa-spostamento-testo');
   if (label) label.textContent = testo;
-  box.setAttribute('aria-label', `${testo}. Il punto bianco indica la partenza, quello giallo l'arrivo. Tocca il planetario per chiudere.`);
+  box.setAttribute('aria-label', `${testo}. Il punto bianco indica la partenza, quello giallo l'arrivo. Tocca per aprire la mappa interattiva a tutto schermo.`);
 }
 
 // Il dito si stacca: se stava ancora correndo, la vista prosegue da sola.
@@ -24310,6 +24361,31 @@ function skyAggiornaTastiSchermo() {
 }
 
 function skyInizializzaSchermoIntero() {
+  const mappaSpostamento = document.getElementById('skymap-mappa-spostamento');
+  const esciMappaSpostamento = document.getElementById('skymap-mappa-spostamento-esci');
+  if (mappaSpostamento) {
+    mappaSpostamento.addEventListener('click', e => {
+      if (!mappaSpostamento.classList.contains('mappa-spostamento-aperta')) skyApriMappaSpostamento();
+    });
+    mappaSpostamento.addEventListener('keydown', e => {
+      if (!mappaSpostamento.classList.contains('mappa-spostamento-aperta') && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        skyApriMappaSpostamento();
+      }
+    });
+  }
+  if (esciMappaSpostamento) esciMappaSpostamento.addEventListener('click', e => {
+    e.stopPropagation();
+    skyChiudiMappaSpostamento();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && mappaSpostamento?.classList.contains('mappa-spostamento-aperta')) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      skyChiudiMappaSpostamento();
+    }
+  }, true);
+
   // Uscita dal pieno schermo decisa dal browser (Esc, gesto di sistema):
   // qui si rimette in ordine anche il resto
   const cambio = () => {

@@ -379,9 +379,12 @@
         <!-- Dopo un viaggio nel paesaggio mostra su una vera carta geografica
              da dove siamo partiti e dove e' arrivata la camera. -->
         <div id="skymap-mappa-spostamento" class="mappa-spostamento-cielo hidden"
-          role="group" aria-label="Spostamento geografico della vista">
-          <div id="skymap-mappa-spostamento-carta" class="mappa-spostamento-carta" aria-hidden="true"></div>
+          role="button" tabindex="0" aria-label="Spostamento geografico della vista. Apri la mappa interattiva a tutto schermo">
+          <div id="skymap-mappa-spostamento-carta" class="mappa-spostamento-carta"></div>
           <span id="skymap-mappa-spostamento-testo" class="mappa-spostamento-testo" aria-live="polite"></span>
+          <span class="mappa-spostamento-invito" aria-hidden="true">Tocca per esplorare</span>
+          <button type="button" id="skymap-mappa-spostamento-esci" class="mappa-spostamento-esci"
+            aria-label="Chiudi la mappa e torna al planetario" title="Torna al planetario">✕ <span>Torna al planetario</span></button>
         </div>
 
         <!-- ================================================= COMANDI E LETTURE

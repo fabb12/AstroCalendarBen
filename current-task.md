@@ -4,7 +4,7 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-La carta del percorso compare ora in basso a sinistra nel Planetario quando si
-scelgono punti diversi del cielo e scompare toccando nuovamente lo spazio vuoto.
-È stata rimossa dal Sistema Solare 3D, dove non era utile. Cache PWA portata ad
-`astrocal-v168`.
+La carta del percorso nel Planetario è più grande e si può toccare per aprirla
+a tutto schermo. All'apertura la carta inquadra e centra di nuovo l'intero
+percorso; poi resta interattiva (trascinamento, zoom e tastiera). Un tasto ben
+visibile, oppure Esc, riporta al Planetario. Cache PWA portata ad `astrocal-v170`.
