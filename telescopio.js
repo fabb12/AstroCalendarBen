@@ -5177,7 +5177,7 @@ function telBip(frequenza, durata) {
 
 function telOraTesto(data) {
   if (!data) return '—';
-  return data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  return typeof oraDelLuogo === 'function' ? oraDelLuogo(data, null) : data.toISOString().slice(11, 16) + ' UTC';
 }
 
 function telPannelloSerata() {

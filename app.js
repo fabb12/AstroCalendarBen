@@ -1168,6 +1168,112 @@ function formattaCoordinate(lat, lon) {
   return `${Math.abs(lat).toFixed(1)}° ${ns}, ${Math.abs(lon).toFixed(1)}° ${ew}`;
 }
 
+
+// =====================================================================
+// 1-bis. ORA DEL LUOGO (non quella del dispositivo)
+//   Un istante astronomico è assoluto, ma l'ora civile dipende dal punto
+//   della Terra da cui lo si osserva. Intl sa applicare anche ora legale e
+//   cambi storici, purché gli si dia il nome IANA del fuso. Open-Meteo lo
+//   ricava dalle coordinate; lo conserviamo perché continui a valere offline.
+//   Accanto all'ora locale mostriamo sempre UTC: così un appuntamento resta
+//   inequivocabile anche se viene condiviso con chi si trova altrove.
+// =====================================================================
+const CHIAVE_FUSI_ORARI = 'astrocalendario_fusi_orari_v1';
+const fusiOrari = new Map();
+let fusiOrariCaricati = false;
+
+function fusoChiave(lat, lon) {
+  return `${Math.round(Number(lat) * 20) / 20},${Math.round(Number(lon) * 20) / 20}`;
+}
+
+function fusiCarica() {
+  if (fusiOrariCaricati) return;
+  fusiOrariCaricati = true;
+  try {
+    const dati = JSON.parse(localStorage.getItem(CHIAVE_FUSI_ORARI) || '{}');
+    Object.keys(dati).forEach(k => fusiOrari.set(k, dati[k]));
+  } catch (e) { /* storage negato o dato vecchio corrotto */ }
+}
+
+function fusoRicorda(lat, lon, nome, abbreviazione) {
+  if (!isFinite(lat) || !isFinite(lon) || !nome) return;
+  // Verifica che il browser conosca davvero questo identificatore IANA.
+  try { new Intl.DateTimeFormat('it-IT', { timeZone: nome }).format(new Date()); }
+  catch (e) { return; }
+  fusiCarica();
+  fusiOrari.set(fusoChiave(lat, lon), { nome, abbreviazione: abbreviazione || '' });
+  try {
+    const dati = Object.fromEntries(Array.from(fusiOrari.entries()).slice(-80));
+    localStorage.setItem(CHIAVE_FUSI_ORARI, JSON.stringify(dati));
+  } catch (e) { /* il valore resta valido per questa sessione */ }
+}
+
+function fusoDelLuogo(luogo) {
+  fusiCarica();
+  const l = luogo || (typeof luogoCorrente === 'function' ? luogoCorrente() : null);
+  if (l && isFinite(l.lat) && isFinite(l.lon)) {
+    const noto = fusiOrari.get(fusoChiave(l.lat, l.lon));
+    if (noto) return noto;
+  }
+  // Prima risposta, o funzionamento offline: il fuso del dispositivo è più
+  // onesto di un offset inventato dalla longitudine (confini e ora legale non
+  // seguono i meridiani). Appena arriva la rete la lettura viene aggiornata.
+  return { nome: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', abbreviazione: '' };
+}
+
+function oraUTC(data, secondi) {
+  if (!data) return '—';
+  return new Intl.DateTimeFormat('it-IT', {
+    timeZone: 'UTC', hour: '2-digit', minute: '2-digit',
+    ...(secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
+  }).format(data);
+}
+
+function oraDelLuogo(data, luogo, opzioni = {}) {
+  if (!data) return '—';
+  const fuso = fusoDelLuogo(luogo);
+  const locale = new Intl.DateTimeFormat('it-IT', {
+    timeZone: fuso.nome, hour: '2-digit', minute: '2-digit',
+    ...(opzioni.secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
+  }).format(data);
+  return opzioni.soloLocale ? locale : `${locale} (${oraUTC(data, opzioni.secondi)} UTC)`;
+}
+
+function dataOraDelLuogo(data, luogo, opzioni = {}) {
+  if (!data) return '—';
+  const fuso = fusoDelLuogo(luogo);
+  const locale = new Intl.DateTimeFormat('it-IT', {
+    timeZone: fuso.nome,
+    ...(opzioni.weekday ? { weekday: opzioni.weekday } : {}),
+    day: 'numeric', month: opzioni.month || 'short',
+    ...(opzioni.year === false ? {} : { year: 'numeric' }),
+    hour: '2-digit', minute: '2-digit',
+    ...(opzioni.secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
+  }).format(data);
+  return `${locale} (${oraUTC(data, opzioni.secondi)} UTC)`;
+}
+
+let fusoRichieste = new Map();
+function caricaFusoOrario(lat, lon) {
+  if (!isFinite(lat) || !isFinite(lon)) return Promise.resolve(null);
+  fusiCarica();
+  const chiave = fusoChiave(lat, lon);
+  if (fusiOrari.has(chiave)) return Promise.resolve(fusiOrari.get(chiave));
+  if (fusoRichieste.has(chiave)) return fusoRichieste.get(chiave);
+  const url = 'https://api.open-meteo.com/v1/forecast' +
+    `?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}` +
+    '&current=temperature_2m&timezone=auto&forecast_days=1';
+  const richiesta = fetch(url).then(r => {
+    if (!r.ok) throw new Error('fuso non disponibile');
+    return r.json();
+  }).then(d => {
+    fusoRicorda(lat, lon, d.timezone, d.timezone_abbreviation);
+    return fusiOrari.get(chiave) || null;
+  }).catch(() => null).finally(() => fusoRichieste.delete(chiave));
+  fusoRichieste.set(chiave, richiesta);
+  return richiesta;
+}
+
 // =====================================================================
 // 1-bis. MAPPA DI VISIBILITÀ DELLE ECLISSI SOLARI
 //   Tutto quello che compare sulla mappa nasce da una sola domanda,
@@ -2118,7 +2224,8 @@ function _eclUtSelezionato() {
   return _eclissiEventoInCorso.eclissi.peakUt + _eclissiOffsetTempoMin / 1440;
 }
 function _eclOra(data) {
-  return data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const luogo = _eclissiPosizioneTemporanea || (typeof luogoCorrente === 'function' ? luogoCorrente() : null);
+  return oraDelLuogo(data, luogo);
 }
 function _eclOraUTC(data) {
   return `${String(data.getUTCHours()).padStart(2, '0')}:${String(data.getUTCMinutes()).padStart(2, '0')}`;
@@ -2138,7 +2245,8 @@ function _eclNomeCentrale(kind) {
 // Un contatto si annota al secondo: al bordo della fascia la totalità può
 // durarne una decina, e i minuti tondi non basterebbero a dire quando.
 function _eclOraSec(data) {
-  return data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const luogo = _eclissiPosizioneTemporanea || (typeof luogoCorrente === 'function' ? luogoCorrente() : null);
+  return oraDelLuogo(data, luogo, { secondi: true });
 }
 // Durata della fase centrale: sotto l'ora si legge meglio in minuti e secondi.
 function _eclDurataSec(sec) {
@@ -4068,7 +4176,7 @@ function _eclAggiornaHud(quadro) {
   const faseEl = document.getElementById('eclissi-hud-fase');
   const tempo = _eclissiTempoSelezionato();
   if (oraEl) {
-    oraEl.innerHTML = `<b>${_eclOra(tempo)}</b><span class="ecl-hud-utc">${_eclOraUTC(tempo)} UTC</span>`;
+    oraEl.innerHTML = `<b>${_eclOra(tempo)}</b>`;
   }
   if (faseEl) {
     let testo = 'Eclissi non ancora iniziata', classe = 'attesa';
@@ -5422,7 +5530,7 @@ function mostraErrore(msg) {
 }
 
 function formattData(data) {
-  return data.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return dataOraDelLuogo(data, null, { month: 'long' });
 }
 
 // =====================================================================
@@ -6148,7 +6256,7 @@ function eventiPerGriglia(lista) {
     extendedProps: {
       categoria: e.categoria,
       colore: e.colore,
-      ora: e.dataObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+      ora: oraDelLuogo(e.dataObj, null)
     }
   }));
   // La fascia dell'intervallo scelto: un evento di sfondo, che FullCalendar
@@ -8191,6 +8299,11 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   skyAggiornaDeclinazione();
   // Cambiando luogo cambiano orari, altezze e giudizi: la memoria va svuotata
   svuotaCacheLocali();
+  caricaFusoOrario(lat, lon).then(() => {
+    if (typeof aggiornaStaseraNuovo === 'function') aggiornaStaseraNuovo();
+    if (typeof costruisciAgenda === 'function') costruisciAgenda();
+    if (typeof skyAggiornaTestoTempo === 'function') skyAggiornaTestoTempo();
+  });
   try {
     localStorage.setItem(CHIAVE_SKY_POSIZIONE, JSON.stringify({
       lat, lon, precisione, tempo,
@@ -8929,6 +9042,12 @@ function skyAggiornaOsservatore() {
 function skyImpostaLuogoVista(lat, lon, nome) {
   if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return false;
   sky.luogoVista = { lat, lon, nome: nome || nomeLuogoVicino(lat, lon) };
+  caricaFusoOrario(lat, lon).then(() => {
+    if (sky.luogoVista && fusoChiave(sky.luogoVista.lat, sky.luogoVista.lon) === fusoChiave(lat, lon)) {
+      skyAggiornaTestoTempo();
+      skyAggiornaStato();
+    }
+  });
   skyAggiornaOsservatore();
   return true;
 }
@@ -10687,7 +10806,7 @@ function skyOrariPuntoFisso(ra, dec) {
 }
 
 function skyOra(data) {
-  return data ? data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '—';
+  return oraDelLuogo(data, typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null);
 }
 
 // =====================================================================
@@ -22315,8 +22434,8 @@ function skyEventoHtml(ev, inCorso) {
 // cui uscire, invece, sì.
 function skyGiornoEventoTesto(ev) {
   const d = ev.dataObj;
-  return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }) +
-    ' · ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  return dataOraDelLuogo(d, typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null,
+    { weekday: 'short', year: false });
 }
 
 // Una riga dell'elenco della settimana. Qui il tasto è uno solo, ed è quello
@@ -29752,10 +29871,8 @@ function simOsservatore() {
 // copre quello che c'è sotto (la N della cupola, il bordo della Luna). L'anno
 // intanto è già scritto nel titolo della finestra.
 function simOraTesto(data, compatto) {
-  return data.toLocaleString('it-IT', Object.assign(
-    { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' },
-    compatto ? {} : { year: 'numeric' }
-  ));
+  const o = simOsservatore();
+  return dataOraDelLuogo(data, o, { year: !compatto });
 }
 
 // Durata in forma leggibile, a partire dai minuti
@@ -30933,7 +31050,7 @@ function simScenaSciame(ctx, tempo, dtReale) {
     simEtichetta(ctx, 'radiante', pr.x, pr.y - 24, '#67e8f9', 'center', true);
   }
 
-  const ora = tempo.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const ora = oraDelLuogo(tempo, simOsservatore());
   const righe = [
     `<p><strong>Ore ${ora}</strong> · radiante ${radiante.alt > 0
       ? `a <strong>${radiante.alt.toFixed(0)}°</strong> sopra l’orizzonte`
@@ -32149,11 +32266,11 @@ function circostanzeLocali(evento) {
 }
 
 function oraBreve(data) {
-  return data ? data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '—';
+  return oraDelLuogo(data, null);
 }
 
 function dataOraBreve(data) {
-  return data ? data.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+  return dataOraDelLuogo(data, null, { year: false });
 }
 
 // =====================================================================
@@ -32199,7 +32316,7 @@ async function caricaMeteo(forza) {
   const url = 'https://api.open-meteo.com/v1/forecast' +
     `?latitude=${luogo.lat.toFixed(4)}&longitude=${luogo.lon.toFixed(4)}` +
     '&hourly=cloud_cover,temperature_2m,relative_humidity_2m,wind_speed_10m' +
-    `&forecast_days=${METEO_GIORNI}&timezone=auto`;
+    `&forecast_days=${METEO_GIORNI}&timezone=auto&timeformat=unixtime`;
 
   meteoInCorso = fetch(url)
     .then(r => {
@@ -32208,10 +32325,11 @@ async function caricaMeteo(forza) {
     })
     .then(dati => {
       const h = dati.hourly || {};
+      fusoRicorda(luogo.lat, luogo.lon, dati.timezone, dati.timezone_abbreviation);
       const ore = (h.time || []).map((t, i) => ({
-        // Open-Meteo con timezone=auto restituisce l'ora locale senza fuso:
-        // interpretata dal browser come ora locale, che è esattamente ciò che serve.
-        ms: new Date(t).getTime(),
+        // Con timeformat=unixtime ogni campione è un istante UTC assoluto:
+        // non dipende dal fuso del telefono che sta eseguendo l'app.
+        ms: Number(t) * 1000,
         nuvole: h.cloud_cover ? h.cloud_cover[i] : null,
         temp: h.temperature_2m ? h.temperature_2m[i] : null,
         umidita: h.relative_humidity_2m ? h.relative_humidity_2m[i] : null,
@@ -34324,11 +34442,17 @@ function skyScartoBreve(secondi) {
 // L'ultima riga è quella che cambia con la larghezza: sulla mappa larga si
 // dice per esteso ("fra 20 min"), su quella stretta in targhetta ("+20 min").
 function skyTestoBarraTempo(quando, scarto, marcia) {
-  const ora = quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-  const oggi = new Date();
-  const giorno = quando.toDateString() === oggi.toDateString()
+  const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
+  const fuso = fusoDelLuogo(luogo);
+  const ora = oraDelLuogo(quando, luogo);
+  const giornoLocale = d => new Intl.DateTimeFormat('en-CA', {
+    timeZone: fuso.nome, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(d);
+  const giorno = giornoLocale(quando) === giornoLocale(new Date())
     ? ''
-    : quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ' ';
+    : new Intl.DateTimeFormat('it-IT', {
+        timeZone: fuso.nome, day: 'numeric', month: 'short'
+      }).format(quando) + ' ';
   const testa = giorno + ora;
   if (scarto === 0 && !marcia) return testa;
 
