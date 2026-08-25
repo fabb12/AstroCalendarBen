@@ -4,8 +4,8 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Il mirino giallo del Planetario apre automaticamente la scheda dell'oggetto che
-resta al centro per il tempo scelto. Un anello mostra l'avanzamento della sosta;
-nelle Impostazioni del Planetario si può scegliere da 0,5 a 10 secondi (1,2 per
-impostazione predefinita). Quando la scheda informativa è aperta, la sosta del
-mirino non seleziona altri oggetti. Cache PWA portata ad `astrocal-v186`.
+Nel menu Visualizzazione del Planetario c'è il tasto «Modalità hover»: accende
+e spegne l'apertura automatica della scheda quando il mirino resta fermo su un
+oggetto. La scelta viene ricordata nel browser e, per non cambiare il
+comportamento delle versioni precedenti, parte accesa. Cache PWA portata ad
+`astrocal-v188`.
