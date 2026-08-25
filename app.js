@@ -9307,6 +9307,16 @@ function luogoMappaCostruisci() {
     luogoMappaMostraVaiQua();
   });
 
+  // «Vai qua» serve a confermare il punto appena indicato. Se nel frattempo
+  // si trascina o si ingrandisce la carta, quel punto non è più il centro
+  // dell'attenzione: lasciare il fumetto appeso al terreno lo faceva sembrare
+  // ancora la scelta corrente. `dragstart` (invece di `movestart`) evita anche
+  // di chiuderlo durante l'eventuale auto-pan con cui Leaflet lo porta in
+  // vista appena aperto.
+  luogoMappa.mappa.on('dragstart zoomstart', () => {
+    luogoMappa.mappa.closePopup();
+  });
+
   // Quanto si era stretto se lo ricorda: chi ha appena scelto un prato a
   // zoom 17 e riapre la finestra vuole ritrovarsi lì, non sul continente.
   luogoMappa.mappa.on('zoomend', () => {
