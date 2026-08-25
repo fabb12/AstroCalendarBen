@@ -4,7 +4,7 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Il terreno del planetario è più chiaro grazie a una piccola componente di luce
-diffusa che cresce durante il giorno. L'ombreggiatura dei versanti opposti alla
-luce è più profonda e fredda, così valli e pendenze risultano più realistiche
-senza perdere la leggibilità notturna. Cache PWA portata ad `astrocal-v174`.
+Ai FOV estremi il fondo del rilievo usa una sola sagoma invece delle quattordici
+fette di distanza: la proiezione non può più far incrociare e sovrapporre i
+poligoni. Pettinatura e contorni mantengono la forma 3D del terreno; ai campi
+normali le fette restano invariate. Cache PWA portata ad `astrocal-v175`.

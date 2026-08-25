@@ -6599,6 +6599,18 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
   }
 
   // --- Quando le curve si chiudono attorno al cielo ---------------------
+  {
+    const fov = sky.fov;
+    sky.fov = RIL_FOV_FONDI_SEPARATI_MAX;
+    const alLimite = rilFondiSeparati();
+    sky.fov = RIL_FOV_FONDI_SEPARATI_MAX + 0.1;
+    const oltre = rilFondiSeparati();
+    sky.fov = fov;
+    prova('al FOV estremo le fette diventano una sola sagoma e non si sovrappongono',
+      alLimite && !oltre,
+      `limite ${RIL_FOV_FONDI_SEPARATI_MAX}°`);
+  }
+
   //
   // Alzando la camera a campo larghissimo l'orizzonte non attraversa più lo
   // schermo: ci sta tutto dentro, e ogni curva del terreno diventa un
