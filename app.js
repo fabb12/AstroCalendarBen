@@ -24232,11 +24232,16 @@ function skyMostraGruppo(nome) {
   // mentre il cielo cerca di comparire era il pezzo più caro dell'apertura.
   // Chi tocca "Astri" prima che il tempo libero arrivi le trova comunque.
   if (nome === 'astri') skyCostruisciElenco();
-  const aperto = barra.dataset.gruppoAttivo === nome ? '' : (nome || '');
+  let aperto = barra.dataset.gruppoAttivo === nome ? '' : (nome || '');
   // «Aerei» è insieme pannello e interruttore: solo un gesto esplicito fa
   // partire il feed e solo mentre è acceso i dati ADS-B compaiono in mappa.
   if (nome === 'aerei' && typeof aereiImpostaAccesi === 'function') {
-    aereiImpostaAccesi(aperto === 'aerei');
+    // Il pannello puo essere stato chiuso automaticamente aprendo la scheda
+    // di un oggetto. In quel caso lo stato vero e' quello del feed, non
+    // `gruppoAttivo`: il tocco successivo deve spegnerlo e ripulire la mappa.
+    const accendi = !(typeof AereiADS_B !== 'undefined' && AereiADS_B.stato.acceso);
+    aereiImpostaAccesi(accendi);
+    aperto = accendi ? 'aerei' : '';
   }
   // Il pannello del gruppo e la scheda dell'oggetto stanno tutt'e due in
   // fondo alla mappa: su un telefono, aperti insieme, si scrivevano uno
@@ -24248,7 +24253,12 @@ function skyMostraGruppo(nome) {
   barra.querySelectorAll('.gruppo-comandi').forEach(s =>
     s.classList.toggle('gruppo-attivo', !!aperto && s.dataset.gruppo === aperto));
   barra.querySelectorAll('[data-vai-gruppo]').forEach(b => {
-    const attiva = !!aperto && b.dataset.vaiGruppo === aperto;
+    // Aerei rimane evidenziato finche il feed e' acceso, anche quando un'altra
+    // azione chiude il suo pannello. Le altre linguette indicano invece il
+    // solo gruppo attualmente aperto.
+    const attiva = b.dataset.vaiGruppo === 'aerei'
+      ? !!(typeof AereiADS_B !== 'undefined' && AereiADS_B.stato.acceso)
+      : !!aperto && b.dataset.vaiGruppo === aperto;
     b.classList.toggle('attiva', attiva);
     b.setAttribute('aria-pressed', attiva ? 'true' : 'false');
   });
