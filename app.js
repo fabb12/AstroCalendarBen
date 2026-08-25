@@ -19352,6 +19352,9 @@ function skyAggiornaBussola(az) {
   const gradi = document.getElementById('skymap-bussola-gradi');
   const testo = `${Math.round(az) % 360}°`;
   if (gradi && gradi.textContent !== testo) gradi.textContent = testo;
+  const direzione = document.getElementById('skymap-bussola-direzione');
+  const nomeDirezione = skyNomeDirezione(az);
+  if (direzione && direzione.textContent !== nomeDirezione) direzione.textContent = nomeDirezione;
 
   // IL CONO DELL'INQUADRATURA
   // Quanto cielo sta entrando nella vista, disegnato invece che scritto: il
@@ -19362,7 +19365,7 @@ function skyAggiornaBussola(az) {
   //
   // Il minimo di quattro gradi non è un ritocco estetico: a forte
   // ingrandimento il campo scende a un quarto di grado, e un cono largo un
-  // quarto di grado su un quadrante da 64 pixel è meno di un pixel — cioè
+  // quarto di grado su un quadrante di pochi pixel è meno di un pixel — cioè
   // niente, e la bussola sembrerebbe rotta proprio quando si sta guardando
   // la cosa più interessante. Il massimo lascia un margine sul quadrante,
   // così a 180° continua a leggersi come un'apertura e non come un disco.
@@ -19388,7 +19391,7 @@ function skyAggiornaBussola(az) {
   // Chi legge con lo schermo non vede né il quadrante né l'indice né il cono:
   // a lui le stesse cose vanno dette a parole, ed è l'unico posto in cui vale
   // la pena — sul cielo l'apertura si guarda, non si legge.
-  const detto = `Vista verso ${skyNomeDirezione(az)}, ${Math.round(az) % 360} gradi, ` +
+  const detto = `Vista verso ${nomeDirezione}, ${Math.round(az) % 360} gradi, ` +
     `campo inquadrato ${skyCampoTesto()}`;
   if (b.getAttribute('aria-label') !== detto) b.setAttribute('aria-label', detto);
 }

@@ -493,6 +493,8 @@
                   </radialGradient>
                 </defs>
                 <circle class="bussola-fondo" cx="0" cy="0" r="46"></circle>
+                <circle class="bussola-anello-esterno" cx="0" cy="0" r="45"></circle>
+                <circle class="bussola-anello-interno" cx="0" cy="0" r="27"></circle>
                 <path id="skymap-bussola-fov" class="bussola-fov" d="M0,0 L-18,-38 A42,42 0 0 1 18,-38 Z"></path>
                 <g id="skymap-bussola-rosa" class="bussola-rosa">
                   <!-- Le tacche: lunghe ai quattro punti cardinali, corte a
@@ -510,12 +512,15 @@
                   <text class="bussola-lettera" x="31" y="0">E</text>
                   <text class="bussola-lettera" x="0" y="31">S</text>
                   <text class="bussola-lettera" x="-31" y="0">O</text>
-                  <path class="bussola-ago" d="M0,-24 l5,9 l-5,2.5 l-5,-2.5 z"/>
+                  <path class="bussola-ago-sud" d="M0,24 l-4.5,-12 l4.5,2 l4.5,-2 z"/>
+                  <path class="bussola-ago" d="M0,-25 l5.5,14 l-5.5,-2.5 l-5.5,2.5 z"/>
+                  <circle class="bussola-perno" cx="0" cy="0" r="2.3"/>
                 </g>
               </svg>
               <span class="bussola-indice" aria-hidden="true"></span>
               <span class="bussola-valori">
                 <span id="skymap-bussola-gradi" class="bussola-gradi">—</span>
+                <span id="skymap-bussola-direzione" class="bussola-direzione">direzione</span>
               </span>
             </div>
           </div>
