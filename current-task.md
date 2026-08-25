@@ -4,7 +4,7 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Nel Planetario, toccare un punto vuoto dopo aver selezionato un astro ora
-rimuove tutta la selezione: oltre alla scheda spegne anche il bersaglio, la
-guida e la traccia dell'orbita. Il Sistema Solare 3D non è stato modificato.
-Cache PWA portata ad `astrocal-v169`.
+La carta del percorso nel Planetario è più grande e si può toccare per aprirla
+a tutto schermo. Nella vista estesa la mappa è interattiva (trascinamento, zoom
+e tastiera) e un tasto ben visibile, oppure Esc, riporta al Planetario. Cache
+PWA portata ad `astrocal-v169`.
