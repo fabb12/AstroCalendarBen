@@ -22497,6 +22497,21 @@ function skyChiudiVaiQua() {
   if (popup) popup.remove();
 }
 
+// La corsa verso un punto del rilievo e' soltanto una transizione visiva, ma
+// deve rispettare la stessa regola di una telecamera vera: davanti al terreno
+// resta uno spazio di sicurezza. Il rapporto prospettico D/(D-cammino)
+// traduce la parte percorsa nello `scale()` del canvas; il cammino viene
+// fermato molto prima del campione scelto, cosi' una cima vicina non puo'
+// attraversare il piano della camera e mostrare il retro dei poligoni.
+function skyScalaVoloSicura(punto) {
+  const distanzaM = Math.max(0, Number(punto && punto.km) * 1000 || 0);
+  const margineM = Math.max(35, Math.min(180, distanzaM * 0.12));
+  const camminoVolutoM = distanzaM * 0.15;
+  const camminoM = Math.min(camminoVolutoM, Math.max(0, distanzaM - margineM));
+  if (!distanzaM || !camminoM) return 1;
+  return Math.min(1.18, distanzaM / (distanzaM - camminoM));
+}
+
 // La conferma resta attaccata al punto indicato, come sulla mappa Leaflet:
 // prima si sceglie, poi si decide esplicitamente di spostare l'osservatore.
 function skyMostraVaiQua(punto, px, py) {
@@ -22523,6 +22538,7 @@ function skyMostraVaiQua(punto, px, py) {
     // paese/la cima toccati prima che il nuovo paesaggio venga calcolato.
     contenitore.style.setProperty('--sky-volo-x', `${px}px`);
     contenitore.style.setProperty('--sky-volo-y', `${py}px`);
+    contenitore.style.setProperty('--sky-volo-scala', skyScalaVoloSicura(punto).toFixed(4));
     contenitore.classList.add('sky-volo-luogo');
     skyAvviso('luogo', 'Mi sposto nel punto scelto e ricalcolo il paesaggio…', 5000);
     // Una breve corsa della camera rende leggibile il cambio di punto; il
