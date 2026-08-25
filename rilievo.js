@@ -395,6 +395,20 @@ const RIL_CONTORNO_SALTO = 3;
 // due livelli su 255, sotto la soglia in cui una banda si legge come tale.
 const RIL_FONDI = 14;
 
+// A campo molto largo le curve delle fette non sono piu' figure annidate sul
+// piano dello schermo. La stereografica conserva gli angoli, non l'ordine
+// planare: vicino ai bordi due creste che sul terreno sono una davanti
+// all'altra possono incrociarsi, e i quattordici poligoni finiscono per
+// sovrapporsi in grandi tasselli. Oltre questa apertura la profondita' delle
+// singole fette e' comunque compressa in pochi pixel: si dipinge percio' un
+// solo fondo, ritagliato con la sagoma esatta, e si lascia che pettinatura e
+// contorni raccontino ancora la forma 3D. Sotto la soglia non cambia nulla.
+const RIL_FOV_FONDI_SEPARATI_MAX = 125;
+
+function rilFondiSeparati() {
+  return !Number.isFinite(sky.fov) || sky.fov <= RIL_FOV_FONDI_SEPARATI_MAX;
+}
+
 // Quando le curve del terreno **si chiudono attorno al cielo**.
 //
 // Alzando la camera a campo larghissimo l'orizzonte non attraversa più lo
@@ -1816,76 +1830,91 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // bande di `app.js`, e per la stessa ragione.
   let chiamate = 0;
   {
-    const giu = H + Math.max(W, H);
-    for (let b = RIL_FONDI - 1; b >= 0; b--) {
-      const col = rilColoreDiFetta(rilLontananza(RIL_DIST[fondoK[b]] / 1000), suolo);
-      const sopra = b * nCol, sotto = (b - 1) * nCol;
+    // Al FOV estremo un'unica campitura evita alla radice le intersezioni
+    // fra i poligoni delle distanze. La sagoma conosce gia' i casi difficili
+    // (terra dentro/fuori da un anello), quindi non puo' richiudersi nel
+    // cielo; l'ombreggiatura dettagliata viene aggiunta subito dopo.
+    if (!rilFondiSeparati()) {
+      const kMedio = fondoK[Math.floor(RIL_FONDI * 0.45)];
+      const col = rilColoreDiFetta(rilLontananza(RIL_DIST[kMedio] / 1000), suolo);
       ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
-      ctx.strokeStyle = ctx.fillStyle;
-      ctx.lineWidth = 1;
+      const regola = rilTracciaSagoma(ctx);
+      if (regola) {
+        ctx.fill(regola);
+        chiamate++;
+      }
+    } else {
+      const giu = H + Math.max(W, H);
+      for (let b = RIL_FONDI - 1; b >= 0; b--) {
+        const col = rilColoreDiFetta(rilLontananza(RIL_DIST[fondoK[b]] / 1000), suolo);
+        const sopra = b * nCol, sotto = (b - 1) * nCol;
+        ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
+        ctx.strokeStyle = ctx.fillStyle;
+        ctx.lineWidth = 1;
 
-      // La fetta più vicina, quando le curve si chiudono attorno al cielo.
-      //
-      // Le altre sono anelli fra due curve e si disegnano come tali; questa
-      // no, perché al di là di lei non c'è un'altra curva — c'è **tutto il
-      // resto**. Chiuderla al fondo del riquadro, come si fa quando
-      // l'orizzonte attraversa lo schermo da parte a parte, vuol dire
-      // prendere un anello che gira attorno al centro e tirargli una riga
-      // fino al bordo di sotto: il poligono si attraversa da solo e metà
-      // della volta celeste si dipinge di terra (vedi `RIL_ANELLO_GRADI`).
-      if (b === 0 && rilAnelloUltimo) {
+        // La fetta più vicina, quando le curve si chiudono attorno al cielo.
+        //
+        // Le altre sono anelli fra due curve e si disegnano come tali; questa
+        // no, perché al di là di lei non c'è un'altra curva — c'è **tutto il
+        // resto**. Chiuderla al fondo del riquadro, come si fa quando
+        // l'orizzonte attraversa lo schermo da parte a parte, vuol dire
+        // prendere un anello che gira attorno al centro e tirargli una riga
+        // fino al bordo di sotto: il poligono si attraversa da solo e metà
+        // della volta celeste si dipinge di terra (vedi `RIL_ANELLO_GRADI`).
+        if (b === 0 && rilAnelloUltimo) {
+          ctx.beginPath();
+          let dentro = false;
+          for (let c = 0; c < nCol; c++) {
+            if (Number.isNaN(rilFondoX[sopra + c])) continue;
+            if (dentro) ctx.lineTo(rilFondoX[sopra + c], rilFondoY[sopra + c]);
+            else { ctx.moveTo(rilFondoX[sopra + c], rilFondoY[sopra + c]); dentro = true; }
+          }
+          if (!dentro) continue;
+          ctx.closePath();
+          // Il filo va sulla sola curva: aggiungendo il riquadro al tracciato
+          // e stampandolo si disegnerebbe una cornice attorno allo schermo.
+          ctx.stroke();
+          if (rilAnelloUltimo === 'dentro') {
+            ctx.fill();
+          } else {
+            ctx.rect(0, 0, W, H);
+            ctx.fill('evenodd');
+          }
+          chiamate += 2;
+          continue;
+        }
+
         ctx.beginPath();
-        let dentro = false;
+        let inizio = -1;
+        const chiudi = (fine) => {
+          if (inizio < 0 || fine < inizio) { inizio = -1; return; }
+          for (let c = inizio; c <= fine; c++) ctx.lineTo(rilFondoX[sopra + c], rilFondoY[sopra + c]);
+          // Il bordo di sotto, all'indietro: la fetta davanti, o il fondo del
+          // riquadro per la prima. Se la fetta davanti non si proietta (capita
+          // solo ai capi, dove il punto finisce dietro all'occhio) si scende
+          // comunque fuori dal riquadro: meglio un pelo di terreno in più che
+          // un buco da cui si vede il cielo.
+          for (let c = fine; c >= inizio; c--) {
+            const x = b > 0 ? rilFondoX[sotto + c] : rilFondoX[sopra + c];
+            const y = b > 0 ? rilFondoY[sotto + c] : giu;
+            if (Number.isNaN(x) || Number.isNaN(y)) ctx.lineTo(rilFondoX[sopra + c], giu);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          inizio = -1;
+        };
         for (let c = 0; c < nCol; c++) {
-          if (Number.isNaN(rilFondoX[sopra + c])) continue;
-          if (dentro) ctx.lineTo(rilFondoX[sopra + c], rilFondoY[sopra + c]);
-          else { ctx.moveTo(rilFondoX[sopra + c], rilFondoY[sopra + c]); dentro = true; }
+          if (Number.isNaN(rilFondoX[sopra + c])) { chiudi(c - 1); continue; }
+          if (inizio < 0) { inizio = c; ctx.moveTo(rilFondoX[sopra + c], rilFondoY[sopra + c]); }
         }
-        if (!dentro) continue;
-        ctx.closePath();
-        // Il filo va sulla sola curva: aggiungendo il riquadro al tracciato
-        // e stampandolo si disegnerebbe una cornice attorno allo schermo.
+        chiudi(nCol - 1);
+        ctx.fill();
+        // Il contorno col proprio colore chiude la cucitura fra due strisce
+        // che condividono un lato: due riempimenti antialiasati per conto loro
+        // lasciano lì due mezze coperture che non fanno un pieno.
         ctx.stroke();
-        if (rilAnelloUltimo === 'dentro') {
-          ctx.fill();
-        } else {
-          ctx.rect(0, 0, W, H);
-          ctx.fill('evenodd');
-        }
         chiamate += 2;
-        continue;
       }
-
-      ctx.beginPath();
-      let inizio = -1;
-      const chiudi = (fine) => {
-        if (inizio < 0 || fine < inizio) { inizio = -1; return; }
-        for (let c = inizio; c <= fine; c++) ctx.lineTo(rilFondoX[sopra + c], rilFondoY[sopra + c]);
-        // Il bordo di sotto, all'indietro: la fetta davanti, o il fondo del
-        // riquadro per la prima. Se la fetta davanti non si proietta (capita
-        // solo ai capi, dove il punto finisce dietro all'occhio) si scende
-        // comunque fuori dal riquadro: meglio un pelo di terreno in più che
-        // un buco da cui si vede il cielo.
-        for (let c = fine; c >= inizio; c--) {
-          const x = b > 0 ? rilFondoX[sotto + c] : rilFondoX[sopra + c];
-          const y = b > 0 ? rilFondoY[sotto + c] : giu;
-          if (Number.isNaN(x) || Number.isNaN(y)) ctx.lineTo(rilFondoX[sopra + c], giu);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        inizio = -1;
-      };
-      for (let c = 0; c < nCol; c++) {
-        if (Number.isNaN(rilFondoX[sopra + c])) { chiudi(c - 1); continue; }
-        if (inizio < 0) { inizio = c; ctx.moveTo(rilFondoX[sopra + c], rilFondoY[sopra + c]); }
-      }
-      chiudi(nCol - 1);
-      ctx.fill();
-      // Il contorno col proprio colore chiude la cucitura fra due strisce
-      // che condividono un lato: due riempimenti antialiasati per conto loro
-      // lasciano lì due mezze coperture che non fanno un pieno.
-      ctx.stroke();
-      chiamate += 2;
     }
   }
 
