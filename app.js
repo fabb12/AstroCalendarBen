@@ -26158,6 +26158,10 @@ function solDisegnaCorpo(ctx, corpo, assi) {
   // per ogni altro pianeta.
   if (corpo.id === 'Earth' &&
       solDisegnaTerraVera(ctx, versoSole, r, assi, new Date(sol.istante))) {
+    if (sol.globoTerra) {
+      sol.globoTerra.px = p.px;
+      sol.globoTerra.py = p.py;
+    }
     ctx.restore();
     return;
   }
@@ -26751,6 +26755,12 @@ function solDisegnaTerraVera(ctx, versoSole, r, assi, quando) {
   const telaio = solTelaioTerra(quando);
   if (!telaio) return false;
 
+  // Geometria dell'ultimo globo disegnato. Il contesto e' gia' traslato sul
+  // centro della Terra: il centro assoluto viene aggiunto da
+  // `solDisegnaCorpo`. Serve a trasformare un doppio tocco sul disco nelle
+  // coordinate geografiche dello stesso punto visibile.
+  sol.globoTerra = { telaio, assi, r, quando };
+
   const k = Math.max(0, Math.min(1, (1 + skyDot(versoSole, assi.verso)) / 2));
   const angLuce = solAngoloSchermo(versoSole, assi);
 
@@ -26951,7 +26961,12 @@ function solDisegnaTerraVera(ctx, versoSole, r, assi, quando) {
 // disegna affatto: un segno che traspare attraverso il pianeta è peggio di
 // nessun segno, perché sembra dire che sei da questa parte.
 function solDisegnaCasaSullaTerra(ctx, telaio, assi, r) {
-  const casa = typeof luogoCorrente === 'function' ? luogoCorrente() : null;
+  // E' il punto del planetario, non necessariamente la posizione principale
+  // dell'app: se si sta visitando un altro luogo i due grafici devono avere
+  // lo stesso osservatore.
+  const casa = typeof skyLuogoDelCielo === 'function'
+    ? skyLuogoDelCielo()
+    : (typeof luogoCorrente === 'function' ? luogoCorrente() : null);
   if (!casa) return;
   const p = solGloboProietta(solPuntoTerra(telaio, casa.lat, casa.lon), assi, r);
   if (p.z <= 0.05) return;
@@ -28085,6 +28100,9 @@ function solAlternaVicino() {
 function solDisegna() {
   if (!sol.ctx) return;
   const ctx = sol.ctx;
+  // Sara' valorizzato di nuovo solo se in questo fotogramma la Terra e'
+  // abbastanza grande da mostrare (e quindi scegliere) la sua superficie.
+  sol.globoTerra = null;
   solMisura();
   solSfondo(ctx);
 
@@ -29067,6 +29085,42 @@ function solInizializzaGesti() {
     const scatti = Math.max(-4, Math.min(4, pixel / 100));
     if (scatti) solImpostaZoom(sol.zoomVoluto * Math.exp(-scatti * 0.12), { morbido: true });
   }, { passive: false });
+
+  // Sul globo terrestre il doppio clic/doppio tocco imposta direttamente il
+  // punto giallo. Non cambia la posizione principale salvata: esattamente
+  // come il mappamondo del planetario, cambia il suo luogo di visita; percio'
+  // tornando al cielo si ritrova subito lo stesso osservatore.
+  c.addEventListener('dblclick', (e) => {
+    if (solImpostaPuntoDalGlobo(e)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+}
+
+function solImpostaPuntoDalGlobo(e) {
+  const g = sol.globoTerra;
+  if (!g || !sol.canvas || !isFinite(g.px) || !isFinite(g.py) || g.r < 18) return false;
+  const rett = sol.canvas.getBoundingClientRect();
+  // Le coordinate della scena sono in CSS pixel: `solRidimensiona` usa il
+  // DPR soltanto nella trasformazione del contesto.
+  const x = e.clientX - rett.left - g.px;
+  const y = e.clientY - rett.top - g.py;
+  const q = (x * x + y * y) / (g.r * g.r);
+  if (q > 1) return false;
+
+  // Inversa della proiezione ortografica di `solGloboProietta`. Si prende la
+  // radice positiva: soltanto la faccia rivolta alla camera e' cliccabile.
+  const z = Math.sqrt(Math.max(0, 1 - q));
+  const u = [0, 1, 2].map(i =>
+    g.assi.destra[i] * (x / g.r) + g.assi.alto[i] * (-y / g.r) + g.assi.verso[i] * z);
+  const lat = Math.asin(Math.max(-1, Math.min(1, skyDot(u, g.telaio.nord)))) / SKY_D2R;
+  const lon = Math.atan2(skyDot(u, g.telaio.est), skyDot(u, g.telaio.pm)) / SKY_D2R;
+  const nome = nomeLuogoVicino(lat, lon);
+  if (!skyImpostaLuogoVista(lat, lon, nome)) return false;
+  solDisegna();
+  skyAvviso('luogo', `Punto impostato dal Sistema Solare 3D: ${nome || formattaCoordinate(lat, lon)}.`, 7000);
+  return true;
 }
 
 function solTocco(e) {
