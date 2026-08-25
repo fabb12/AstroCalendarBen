@@ -1016,6 +1016,33 @@ function rilFronteA(az, k) {
   return rilCrestaEntroM(az, d * 1000);
 }
 
+// Il punto del rilievo che sta sotto un tocco del planetario. Non basta
+// restituire la cresta: nella veduta 3D si possono indicare anche un fianco o
+// il fondo della valle. Percorriamo lo stesso raggio usato dal disegno e
+// teniamo soltanto i campioni realmente visibili (ogni campione deve superare
+// il massimo incontrato prima). Fra questi scegliamo quello più vicino
+// all'altezza indicata dal dito.
+function rilPuntoVisibileA(az, alt) {
+  if (!rilPronto() || !isFinite(az) || !isFinite(alt)) return null;
+  const nr = RIL_ANELLI;
+  const dove = (((az % 360) + 360) % 360) / RIL_PASSO_AZ;
+  const i = Math.floor(dove) % RIL_AZIMUT;
+  const j = (i + 1) % RIL_AZIMUT;
+  const t = dove - Math.floor(dove);
+  const s = t * t * (3 - 2 * t);
+  const a = i * nr, b = j * nr;
+  let fronte = -90, migliore = -1, altezzaMigliore = null, scarto = Infinity;
+  for (let k = 0; k < nr; k++) {
+    const altezza = rilievo.alt[a + k] * (1 - s) + rilievo.alt[b + k] * s;
+    if (altezza + 1e-4 < fronte) continue;
+    fronte = Math.max(fronte, altezza);
+    const d = Math.abs(altezza - alt);
+    if (d < scarto) { scarto = d; migliore = k; altezzaMigliore = altezza; }
+  }
+  if (migliore < 0) return null;
+  return { km: RIL_DIST[migliore] / 1000, alt: altezzaMigliore, scarto };
+}
+
 function rilFrontiA(az, fuori) {
   if (!rilPronto()) return null;
   const nd = TERRENO_DISTANZE.length;

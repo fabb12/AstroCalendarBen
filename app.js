@@ -22428,6 +22428,60 @@ function skyOggettoNelPunto(px, py) {
   return scelto ? scelto.sel : null;
 }
 
+// Traduce un punto dello schermo in un punto del paesaggio. La proiezione
+// inversa dà azimut e altezza; `rilievo.js` riconosce poi quale campione 3D
+// visibile sta sotto il dito. Il controllo sulla cresta impedisce che un
+// tocco nel cielo vuoto venga scambiato per una montagna lontana.
+function skyLuogoNelPunto(px, py) {
+  const base = sky.ultimaBase, focale = sky.ultimaFocale;
+  if (!base || !focale || typeof rilPuntoVisibileA !== 'function' ||
+      typeof terrenoPuntoA !== 'function') return null;
+  const v = skyDirezione(px, py, base, focale);
+  const az = ((Math.atan2(v[0], v[1]) * SKY_R2D) % 360 + 360) % 360;
+  const alt = Math.asin(Math.max(-1, Math.min(1, v[2]))) * SKY_R2D;
+  const cresta = skyAltezzaOrizzonte(az);
+  if (alt > cresta + 0.35 || alt < -45) return null;
+  const campione = rilPuntoVisibileA(az, alt);
+  const partenza = skyLuogoDelCielo();
+  if (!campione || !partenza) return null;
+  const punto = terrenoPuntoA(partenza.lat, partenza.lon, az, campione.km);
+  return { ...punto, az, alt: campione.alt, km: campione.km };
+}
+
+function skyChiudiVaiQua() {
+  const popup = document.getElementById('sky-vai-qua');
+  if (popup) popup.remove();
+}
+
+// La conferma resta attaccata al punto indicato, come sulla mappa Leaflet:
+// prima si sceglie, poi si decide esplicitamente di spostare l'osservatore.
+function skyMostraVaiQua(punto, px, py) {
+  skyChiudiVaiQua();
+  const contenitore = document.getElementById('skymap-contenitore');
+  if (!contenitore) return;
+  const popup = document.createElement('div');
+  popup.id = 'sky-vai-qua';
+  popup.className = 'sky-popup-vai';
+  popup.style.left = `${Math.max(12, Math.min(sky.larghezza - 12, px))}px`;
+  popup.style.top = `${Math.max(12, Math.min(sky.altezza - 12, py))}px`;
+  popup.innerHTML = `<span>${punto.km < 1 ? Math.round(punto.km * 1000) + ' m' : punto.km.toFixed(1) + ' km'}</span>` +
+    '<button type="button">Vai qua</button>';
+  popup.querySelector('button').addEventListener('click', (e) => {
+    e.stopPropagation();
+    skyChiudiVaiQua();
+    contenitore.classList.add('sky-volo-luogo');
+    skyAvviso('luogo', 'Mi sposto nel punto scelto e ricalcolo il paesaggio…', 5000);
+    // Una breve corsa della camera rende leggibile il cambio di punto; il
+    // caricamento del nuovo terreno parte soltanto all'arrivo, non decine di
+    // volte durante l'animazione.
+    setTimeout(() => {
+      contenitore.classList.remove('sky-volo-luogo');
+      skyUsaLuogoVista(punto.lat, punto.lon, formattaCoordinate(punto.lat, punto.lon));
+    }, 650);
+  }, { once: true });
+  contenitore.appendChild(popup);
+}
+
 // =====================================================================
 // 7.4-ter MOVIMENTI MORBIDI
 //   Il cielo vero non fa scatti. Un planetario che invece li fa — il campo
@@ -23371,7 +23425,14 @@ function skyInizializzaGesti() {
 
     const r = c.getBoundingClientRect();
     const sel = skyOggettoNelPunto(e.clientX - r.left, e.clientY - r.top);
-    if (!sel) { skyChiudiDettaglio(); return; }
+    if (!sel) {
+      const luogo = skyLuogoNelPunto(e.clientX - r.left, e.clientY - r.top);
+      if (luogo) { skyChiudiDettaglio(); skyMostraVaiQua(luogo, e.clientX - r.left, e.clientY - r.top); return; }
+      skyChiudiVaiQua();
+      skyChiudiDettaglio();
+      return;
+    }
+    skyChiudiVaiQua();
     // Una figura non ha una scheda da aprire sopra la mappa: ha una
     // pagina, con il disegno, i nomi delle altre culture e il tasto per
     // andarci sotto. Si apre quella, e la scheda dell'oggetto resta com'era.
