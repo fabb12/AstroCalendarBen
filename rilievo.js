@@ -272,8 +272,17 @@ const RIL_LUCE_ALT_MIN = 35;
 // non uno perché di notte il terreno vale una dozzina di livelli su 255: un
 // tratto che ne aggiunge tre non esiste, e uno che ne aggiunge sessanta
 // diventa più chiaro del cielo.
-const RIL_TRATTO_NOTTE = 0.22;
-const RIL_TRATTO_GIORNO = 0.32;
+const RIL_TRATTO_NOTTE = 0.24;
+const RIL_TRATTO_GIORNO = 0.38;
+
+// Il fondo resta un poco più chiaro del colore base del suolo. Il rilievo
+// prima era corretto nei rapporti fra i piani, ma nelle ore diurne le mezze
+// tinte si chiudevano troppo presto e i valloni finivano in una sola massa
+// scura. Questa è luce diffusa del cielo, non luce diretta: perciò cresce col
+// giorno, resta appena presente di notte e, soprattutto, non cancella le
+// ombre direzionali che vengono applicate dopo.
+const RIL_DIFFUSA_NOTTE = 0.025;
+const RIL_DIFFUSA_GIORNO = 0.12;
 
 // Da quanta **piega** in su il tratto si vede pieno.
 //
@@ -1464,7 +1473,13 @@ function rilLontananza(km) {
 // `lontano`: un fattore due.
 function rilColoreDiFetta(t, suolo) {
   const tinta = Math.pow(1 - t, 0.9);
-  return skyMescolaColore(suolo.lontano, suolo.vicino, tinta);
+  const base = skyMescolaColore(suolo.lontano, suolo.vicino, tinta);
+  const giorno = Math.max(0, Math.min(1, sky.luceCielo));
+  const diffusa = RIL_DIFFUSA_NOTTE + (RIL_DIFFUSA_GIORNO - RIL_DIFFUSA_NOTTE) * giorno;
+  // Una diffusa appena calda mantiene il terreno naturale senza lavarlo di
+  // bianco; la foschia continua a stabilire da sola il colore dei piani
+  // lontani.
+  return skyMescolaColore(base, [238, 231, 205], diffusa);
 }
 
 // La tavolozza del tratteggio: un colore per livello di chiaroscuro.
@@ -1487,7 +1502,11 @@ function rilTavolozzaTratti(luce) {
     const k = b / (RIL_LIVELLI - 1);
     const q = (k - 0.45) / 0.55;
     const c = q >= 0 ? L : O;
-    const a = forte * Math.abs(q) * (q >= 0 ? 1 : 0.75);
+    // Le ombre hanno quasi la stessa forza delle luci. Erano ridotte a tre
+    // quarti e sui versanti opposti al Sole restava soltanto una velatura;
+    // il tono freddo e la maggiore profondità fanno ora leggere davvero la
+    // direzione della luce, senza annerire il colore di fondo più chiaro.
+    const a = forte * Math.abs(q) * (q >= 0 ? 1 : 0.92);
     fuori[b] = `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
   }
   return fuori;
