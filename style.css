@@ -8676,6 +8676,11 @@ body button.did-ponte:active { transform: translateY(1px); }
 .aerei-testata { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .aerei-testata-azioni { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
 .tasto-aerei-aggiorna-rapido { min-width:30px; width:30px; padding:5px; font-size:1rem; line-height:1; }
+.tasto-aerei-aggiorna-rapido[data-esito="caricamento"] { color:#bae6fd; }
+.tasto-aerei-aggiorna-rapido[data-esito="successo"] { color:#86efac; border-color:#22c55e; }
+.tasto-aerei-aggiorna-rapido[data-esito="errore"] { color:#fca5a5; border-color:#ef4444; }
+#aerei-aggiorna[data-esito="successo"] { color:#86efac; border-color:#22c55e; }
+#aerei-aggiorna[data-esito="errore"] { color:#fca5a5; border-color:#ef4444; }
 .aerei-elenco { display:grid; gap:7px; margin-top:9px; }
 .aereo-riga { border:1px solid rgba(251,146,60,.5); border-radius:9px; padding:6px 9px; background:rgba(8,25,45,.92); }
 .aereo-riga strong { color:#fff7ed; letter-spacing:.04em; }

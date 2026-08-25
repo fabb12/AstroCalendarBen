@@ -180,7 +180,7 @@
   const stato = { aerei: [], timer: null, richiesta: null, controller: null, ultimoCentro: null,
     acceso: false,
     ultimoSuccesso: 0, prossimoTentativo: 0, errore: '', avviato: false, ricaricaDopo: false,
-    ultimoRenderSecondo: null };
+    ultimoRenderSecondo: null, feedbackRichiesto: false, feedbackTimer: null };
   // Le risposte dei provider sono fotografie, non una rotta. Conservare i
   // punti successivi per ICAO permette di ricostruire il tratto realmente
   // osservato senza confonderlo con la previsione tratteggiata dei 5 minuti.
@@ -334,6 +334,36 @@
     if (el) { el.textContent = testo; el.dataset.errore = errore ? 'true' : 'false'; }
   }
 
+  // Il tasto rapido resta visibile anche quando il pannello ADS-B e' chiuso:
+  // stato, esito e problemi devono quindi comparire anche sul cielo, non solo
+  // nella riga aerei-stato nascosta dentro al pannello.
+  function feedbackAggiornamento(testo, concluso, errore) {
+    const normale = document.getElementById('aerei-aggiorna');
+    const rapido = document.getElementById('aerei-aggiorna-rapido');
+    clearTimeout(stato.feedbackTimer);
+    [normale, rapido].forEach(b => {
+      if (!b) return;
+      b.disabled = !concluso;
+      b.setAttribute('aria-busy', concluso ? 'false' : 'true');
+      b.dataset.esito = concluso ? (errore ? 'errore' : 'successo') : 'caricamento';
+    });
+    if (normale) normale.textContent = concluso ? (errore ? 'Non riuscito' : 'Aggiornato ✓') : 'Aggiornamento…';
+    if (rapido) {
+      rapido.textContent = concluso ? (errore ? '!' : '✓') : '…';
+      rapido.setAttribute('aria-label', testo);
+    }
+    if (typeof skyAvviso === 'function') skyAvviso('adsb', testo, concluso ? 6000 : undefined);
+    if (concluso) {
+      stato.feedbackTimer = setTimeout(() => {
+        if (normale) { normale.textContent = 'Aggiorna'; delete normale.dataset.esito; }
+        if (rapido) {
+          rapido.textContent = '↻'; delete rapido.dataset.esito;
+          rapido.setAttribute('aria-label', 'Aggiorna adesso i dati ADS-B');
+        }
+      }, 2500);
+    }
+  }
+
   function render() {
     aggiornaAllineamenti();
     const box = document.getElementById('aerei-elenco');
@@ -353,15 +383,30 @@
 
   function sicuro(s) { const e = document.createElement('span'); e.textContent = String(s); return e.innerHTML; }
 
-  async function carica(forza) {
+  async function carica(forza, mostraFeedback) {
+    if (mostraFeedback) {
+      stato.feedbackRichiesto = true;
+      feedbackAggiornamento('Aggiornamento dei dati ADS-B in corso…', false);
+    }
     const obs = osservatore();
-    if (!obs) { testoStato('Serve una posizione per cercare gli aerei.', true); return; }
+    if (!obs) {
+      testoStato('Serve una posizione per cercare gli aerei.', true);
+      if (stato.feedbackRichiesto) {
+        stato.feedbackRichiesto = false;
+        feedbackAggiornamento('Aggiornamento ADS-B non riuscito: serve una posizione.', true, true);
+      }
+      return;
+    }
     const ora = Date.now();
     // I provider descrivono soltanto il presente. Lontano dall'ora reale si
     // conserva l'ultima fotografia e la si propaga, senza spacciare per dato
     // storico una nuova lettura appena ricevuta.
     if (!tempoReale()) {
       testoStato('Macchina del tempo: posizioni stimate dall’ultima lettura ADS-B. Torna ad Adesso per i dati in tempo reale.');
+      if (stato.feedbackRichiesto) {
+        stato.feedbackRichiesto = false;
+        feedbackAggiornamento('Dati ADS-B non aggiornati: torna ad Adesso per caricare le posizioni in tempo reale.', true, true);
+      }
       aggiornaPosizioni(); render(); return;
     }
     if (!forza && (ora < stato.prossimoTentativo || ora - stato.ultimoSuccesso < CACHE_MS)) return;
@@ -377,10 +422,18 @@
         stato.aerei = arricchisci(risultato.aerei, obs);
         stato.ultimoCentro = obs; stato.ultimoSuccesso = Date.now(); stato.prossimoTentativo = 0; stato.errore = '';
         testoStato(`${stato.aerei.length} aerei · ${risultato.provider.nome} · aggiornato adesso`); render();
+        if (stato.feedbackRichiesto) {
+          stato.feedbackRichiesto = false;
+          feedbackAggiornamento(`Dati ADS-B aggiornati: ${stato.aerei.length} ${stato.aerei.length === 1 ? 'aereo trovato' : 'aerei trovati'}.`, true, false);
+        }
       }).catch(e => {
         if (e.name === 'AbortError' && (!stato.acceso || stato.ricaricaDopo)) return;
         stato.errore = e.message; stato.prossimoTentativo = Date.now() + ERRORE_ATTESA_MS;
         testoStato(`Dati ADS-B non disponibili (${e.name === 'TimeoutError' ? 'tempo scaduto' : e.message}). Riprovo fra un minuto.`, true);
+        if (stato.feedbackRichiesto) {
+          stato.feedbackRichiesto = false;
+          feedbackAggiornamento(`Aggiornamento ADS-B non riuscito: ${e.name === 'TimeoutError' ? 'tempo scaduto' : e.message}.`, true, true);
+        }
       }).finally(() => {
         stato.richiesta = null; stato.controller = null;
         if (stato.ricaricaDopo) { stato.ricaricaDopo = false; carica(true); }
@@ -626,6 +679,8 @@
   }
 
   function aereiAggiornaAdesso() {
+    stato.feedbackRichiesto = true;
+    feedbackAggiornamento('Aggiornamento dei dati ADS-B in corso…', false);
     if (!stato.acceso) aereiImpostaAccesi(true);
     // Un secondo tocco durante una richiesta non deve andare perso: annulla
     // la fotografia in corso e ne programma subito una nuova.
@@ -634,7 +689,7 @@
       stato.controller.abort();
       return stato.richiesta;
     }
-    return carica(true);
+    return carica(true, true);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
