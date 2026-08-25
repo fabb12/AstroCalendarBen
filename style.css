@@ -3872,6 +3872,41 @@ body .chip-astro {
   background: rgba(6, 10, 20, 0.97);
   border-bottom: 1px solid var(--bordo);
 }
+.selettore-ricerca-cielo {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: 2px;
+  margin-bottom: 7px;
+  padding: 2px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.1);
+}
+.selettore-ricerca-cielo .tasto-segmento { min-height: 32px; border-radius: 8px; }
+.gruppo-astri.ricerca-luoghi .riga-categorie-astri,
+.gruppo-astri.ricerca-luoghi .riga-viste-astri,
+.gruppo-astri.ricerca-luoghi .istruzione-ricerca-cielo,
+.gruppo-astri.ricerca-luoghi #skymap-oggetti,
+.gruppo-astri.ricerca-luoghi #skymap-astri-vuoto,
+.gruppo-astri.ricerca-luoghi #skymap-astri-visibili { display: none; }
+.risultati-luoghi-cielo { display: grid; gap: 5px; margin-top: 7px; }
+.risultati-luoghi-cielo.hidden { display: none; }
+body .risultato-luogo-cielo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 7px 10px;
+  text-align: left;
+  border: 1px solid var(--bordo);
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.82);
+}
+.risultato-luogo-cielo:hover { background: rgba(51, 65, 85, 0.95); }
+.risultato-luogo-cielo-nome { overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.risultato-luogo-cielo-tipo { color: var(--testo-3); font-size: 0.7rem; text-transform: uppercase; }
+.risultato-luogo-cielo-dove { grid-column: 1 / -1; color: var(--testo-3); font-size: 0.72rem; }
+.risultati-luoghi-nota { margin: 3px 2px; color: var(--testo-3); font-size: 0.76rem; }
 .riga-cerca-astri { flex-wrap: nowrap; gap: 6px; }
 .riga-cerca-astri .campo-cielo { flex: 1 1 auto; min-width: 0; }
 .riga-cerca-astri .tasto-cielo { flex: 0 0 auto; }
