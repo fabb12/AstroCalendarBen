@@ -940,6 +940,17 @@
           <button id="skymap-zoom-out" type="button" class="tasto-zoom-cielo" title="Riduci" aria-label="Riduci">−</button>
         </div>
 
+        <!-- Carta compatta delle tappe scelte nel planetario. È distinta
+             dalla traccia oraria di un astro e resta ancorata alla mappa. -->
+        <aside id="skymap-percorso" class="skymap-percorso hidden" aria-live="polite">
+          <div class="skymap-percorso-testa">
+            <strong>Percorso</strong>
+            <small>Tocca il cielo per chiudere</small>
+          </div>
+          <canvas id="skymap-percorso-canvas" width="360" height="190" role="img"
+            aria-label="Mappa del percorso fra i punti scelti nel planetario"></canvas>
+        </aside>
+
         <!-- Scheda dell'oggetto toccato sulla mappa: sta dentro al riquadro
              del cielo, così funziona anche a schermo intero -->
         <aside id="skymap-dettaglio" class="pannello-dettaglio" aria-live="polite">
@@ -1568,18 +1579,6 @@
                Compare toccando un corpo e se ne va col suo ✕: a riposo sulla
                scena non c'è niente. -->
           <aside id="sol-scheda" class="sol-scheda hidden" aria-live="polite"></aside>
-
-          <!-- La piccola carta di rotta compare quando si toccano i corpi:
-               conserva l'ordine delle tappe e le unisce viste dall'alto. Un
-               altro tocco sullo spazio vuoto della scena la congeda. -->
-          <aside id="sol-percorso" class="sol-percorso hidden" aria-live="polite">
-            <div class="sol-percorso-testa">
-              <span>Percorso</span>
-              <small>Tocca lo spazio per chiudere</small>
-            </div>
-            <canvas id="sol-percorso-canvas" width="360" height="220"
-              role="img" aria-label="Mappa dall'alto del percorso fra i corpi selezionati"></canvas>
-          </aside>
 
           <!-- I comandi appoggiati sulla scena, come quelli sulla mappa del
                planetario. Stanno qui e non nella fila di sotto perché servono
