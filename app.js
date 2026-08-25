@@ -23749,6 +23749,11 @@ function skyInizializzaGesti() {
       const luogo = skyLuogoNelPunto(px, py);
       if (luogo) { skyChiudiDettaglio(); skyMostraVaiQua(luogo, px, py); return; }
       skyChiudiVaiQua();
+      // La scheda e il bersaglio sono due parti della stessa selezione: la
+      // prima era già chiusa dal tocco nel vuoto, mentre il secondo restava
+      // acceso con guida e traccia dell'orbita. Spegnerlo tramite la stessa
+      // funzione usata dall'elenco aggiorna anche pillole e dati collegati.
+      if (sky.target) skyImpostaTarget(sky.target);
       skyChiudiDettaglio();
       return;
     }

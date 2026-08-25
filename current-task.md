@@ -4,6 +4,7 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Nel Sistema Solare 3D, toccare un punto vuoto dopo aver selezionato un astro ora
-rimuove la selezione, chiude la scheda e torna alla vista d'insieme, come un
-secondo tocco sull'astro. Cache PWA portata ad `astrocal-v169`.
+Nel Planetario, toccare un punto vuoto dopo aver selezionato un astro ora
+rimuove tutta la selezione: oltre alla scheda spegne anche il bersaglio, la
+guida e la traccia dell'orbita. Il Sistema Solare 3D non è stato modificato.
+Cache PWA portata ad `astrocal-v169`.
