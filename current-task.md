@@ -4,8 +4,7 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-La scelta del punto di osservazione funziona ora anche direttamente sul
-paesaggio 3D del planetario: un tocco su cima, fianco o terreno visibile mostra
-la distanza e chiede conferma con «Vai qua»; dopo una breve corsa della camera
-sposta l'osservatore e avvia il ricalcolo del paesaggio dal nuovo punto. Cache
-PWA portata ad `astrocal-v163`.
+Nel paesaggio 3D del planetario sono selezionabili anche le etichette dei paesi
+e delle cime. Il tocco mostra nome, distanza e «Vai qua»; alla conferma la
+camera corre verso il punto selezionato prima di spostare l'osservatore e
+ricalcolare il paesaggio. Cache PWA portata ad `astrocal-v164`.
