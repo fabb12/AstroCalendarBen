@@ -4,7 +4,8 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-La carta del percorso nel Planetario è più grande e si può toccare per aprirla
-a tutto schermo. Nella vista estesa la mappa è interattiva (trascinamento, zoom
-e tastiera) e un tasto ben visibile, oppure Esc, riporta al Planetario. Cache
-PWA portata ad `astrocal-v169`.
+Gli aerei ADS-B seguono anche la macchina del tempo: vicino ad Adesso mostrano
+il dato in tempo reale, negli altri istanti propagano in entrambe le direzioni
+l'ultima posizione nota e marcano chiaramente la stima. La scheda cerca inoltre
+aeroporti di partenza e arrivo, con gli orari quando il servizio li fornisce.
+Cache PWA portata ad `astrocal-v170`.
