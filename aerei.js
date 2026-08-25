@@ -1,8 +1,9 @@
 // Aerei nel Planetario — dati ADS-B in tempo reale.
 //
 // I provider e tutto il trasporto stanno qui: GitHub Pages non puo fare da
-// proxy. I feed ADS-B non autorizzano l'origine della PWA, quindi le richieste
-// predefinite passano da ponti CORS e provano automaticamente piu strade.
+// proxy. Alcuni feed ADS-B autorizzano le richieste del browser solo in modo
+// intermittente o differente secondo la rete: si provano prima i feed diretti
+// e poi, se il CORS li blocca, due ponti indipendenti.
 (function () {
   'use strict';
 
@@ -100,18 +101,26 @@
     };
   }
 
+  function providerDiretto(nome, urlFeed, interpreta = interpretaAdsbExchange) {
+    return { nome, url: urlFeed, interpreta };
+  }
+
   const feedAirplanesLive = (posizione, raggioKm) =>
     urlAdsbExchange('api.airplanes.live', posizione, raggioKm);
   const feedAdsbLol = (posizione, raggioKm) =>
     urlAdsbExchange('api.adsb.lol', posizione, raggioKm);
 
-  // OpenSky restituisce Access-Control-Allow-Origin per il proprio sito, non
-  // per GitHub Pages: una fetch diretta viene quindi bloccata dal browser prima
-  // che il codice possa leggerne la risposta. Anche i feed readsb non offrono
-  // CORS in modo uniforme. Due ponti e due reti ADS-B indipendenti evitano il
-  // blocco e non lasciano un singolo punto di guasto. Un eventuale proxy proprio
-  // puo sempre essere fornito con window.AEREI_PROVIDER.
+  // Non affidare il percorso normale soltanto a un proxy CORS pubblico. I
+  // filtri anti-tracciamento usati soprattutto sui browser desktop possono
+  // bloccare AllOrigins o CorsProxy.io anche quando il feed ADS-B è
+  // raggiungibile. I feed diretti vengono quindi tentati per primi: se il
+  // browser ne rifiuta il CORS, fetch fallisce e scaricaConRipiego passa subito
+  // ai ponti. ADSB.fi aggiunge anche una terza rete indipendente. Un eventuale
+  // proxy proprio può sempre essere fornito con window.AEREI_PROVIDER.
   const providersPredefiniti = [
+    providerDiretto('ADSB.fi', urlAdsbFi),
+    providerDiretto('adsb.lol', feedAdsbLol),
+    providerDiretto('Airplanes.live', feedAirplanesLive),
     providerConPonte('adsb.lol', 'https://api.allorigins.win/raw?url=', feedAdsbLol),
     providerConPonte('Airplanes.live', 'https://api.allorigins.win/raw?url=', feedAirplanesLive),
     providerConPonte('adsb.lol', 'https://corsproxy.io/?url=', feedAdsbLol),
