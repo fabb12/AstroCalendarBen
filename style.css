@@ -3370,7 +3370,10 @@ body button.pos-risultato:focus-visible {
 }
 #skymap-contenitore.sky-volo-luogo canvas {
   transform-origin: var(--sky-volo-x, 50%) var(--sky-volo-y, 50%);
-  transform: scale(1.18);
+  /* Il valore arriva dal controllo di collisione del rilievo: non usare qui
+     una scala fissa, perche' con un ostacolo vicino porterebbe la camera
+     virtuale dentro la montagna. */
+  transform: scale(var(--sky-volo-scala, 1));
   filter: brightness(0.62) blur(1.6px);
   transition: transform 900ms cubic-bezier(.2,.72,.25,1), filter 900ms ease-in;
 }
