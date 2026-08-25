@@ -22865,6 +22865,20 @@ function skyInterazioneMappaSpostamento(attiva) {
   });
 }
 
+// Ricalcola l'inquadratura dopo che il riquadro ha cambiato misura. Leaflet
+// conserva il vecchio centro quando la mini-mappa diventa grande: il percorso
+// finirebbe quindi spostato verso un angolo, pur avendo molto più spazio a
+// disposizione. Partenza e arrivo sono la vera inquadratura di questa carta.
+function skyInquadraMappaSpostamento() {
+  const m = sky.mappaSpostamento;
+  if (!m.mappa || !m.partenza || !m.arrivo) return;
+  const da = [m.partenza.lat, m.partenza.lon];
+  const a = [m.arrivo.lat, m.arrivo.lon];
+  const distanza = skyDistanzaGeograficaKm(m.partenza, m.arrivo);
+  if (distanza < 0.05) m.mappa.setView(a, 16, { animate: false });
+  else m.mappa.fitBounds(L.latLngBounds([da, a]).pad(0.45), { animate: false, maxZoom: 15 });
+}
+
 function skyApriMappaSpostamento() {
   const box = document.getElementById('skymap-mappa-spostamento');
   if (!box || box.classList.contains('hidden') || box.classList.contains('mappa-spostamento-aperta')) return;
@@ -22874,7 +22888,10 @@ function skyApriMappaSpostamento() {
   box.setAttribute('aria-label', 'Mappa interattiva dello spostamento geografico');
   document.body.classList.add('mappa-spostamento-immersiva');
   skyInterazioneMappaSpostamento(true);
-  setTimeout(() => sky.mappaSpostamento.mappa?.invalidateSize({ pan: false }), 0);
+  setTimeout(() => {
+    sky.mappaSpostamento.mappa?.invalidateSize({ pan: false });
+    skyInquadraMappaSpostamento();
+  }, 0);
   document.getElementById('skymap-mappa-spostamento-esci')?.focus();
 }
 
@@ -22916,8 +22933,7 @@ function skyMostraMappaSpostamentoGeografico(partenza, arrivo) {
     fillColor: '#facc15', fillOpacity: 1 }).addTo(m.mappa);
   m.strati = [filo, origine, destinazione];
   const distanza = skyDistanzaGeograficaKm(partenza, arrivo);
-  if (distanza < 0.05) m.mappa.setView(a, 16, { animate: false });
-  else m.mappa.fitBounds(L.latLngBounds([da, a]).pad(0.45), { animate: false, maxZoom: 15 });
+  skyInquadraMappaSpostamento();
   setTimeout(() => m.mappa && m.mappa.invalidateSize({ pan: false }), 0);
   const misura = distanza < 1 ? `${Math.round(distanza * 1000)} m` : `${distanza.toFixed(distanza < 10 ? 1 : 0)} km`;
   const nomeArrivo = arrivo.nome || formattaCoordinate(arrivo.lat, arrivo.lon);
