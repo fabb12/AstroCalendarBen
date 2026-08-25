@@ -21838,7 +21838,9 @@ function skyAggiornaScheda() {
 
   if (!pannello.classList.contains('visibile')) return;
   const scorrimento = pannello.scrollTop;
-  corpo.innerHTML = voce ? skySchedaHtml(voce) : skyAttesaSchedaHtml();
+  corpo.innerHTML = voce ? (voce.categoria === 'aereo' && typeof aereiSchedaHtml === 'function'
+    ? aereiSchedaHtml(voce) : skySchedaHtml(voce)) : skyAttesaSchedaHtml();
+  if (voce && voce.categoria === 'aereo' && typeof aereiCaricaFoto === 'function') aereiCaricaFoto(voce);
 
   // In coda alla scheda: le lune di Giove (solo per Giove) e la curva
   // dell'altezza di stanotte. Sono due canvas, e vanno disegnati DOPO
@@ -22368,6 +22370,13 @@ function skyOggettoNelPunto(px, py) {
     if (d > soglia) return;
     if (!scelto || d < scelto.d) scelto = { d, sel: crea() };
   };
+
+  // Gli aerei sono oggetti veri della mappa, non soltanto etichette: hanno
+  // la precedenza sui puntini del catalogo e al tocco aprono i dati ADS-B.
+  if (typeof aereoNelPunto === 'function') {
+    const aereo = aereoNelPunto(px, py, base, focale);
+    if (aereo) return { categoria: 'aereo', dati: aereo };
+  }
 
   skyOggettiDaDisegnare().forEach(o =>
     guarda(o.az, o.alt, Math.max(24, skyRaggio(o, focale) + 16), () => ({ categoria: 'astro', id: o.id })));
@@ -23142,6 +23151,8 @@ function skyCaricaIlResto() {
     },
     () => { if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica(); },
     () => { if (typeof satPrecaricaTle === 'function') satPrecaricaTle(); },
+    // Non scarica nulla finché l'interruttore Aerei non è stato acceso; se
+    // lo era già, riavvia soltanto il timer fermato uscendo dal planetario.
     () => { if (typeof aereiAvvia === 'function') aereiAvvia(); },
     // Il Kp del NOAA: serve a sapere se l'ovale aurorale, stanotte, scende
     // fin qui. Senza rete non si sa, e resta la simulazione.
@@ -23774,6 +23785,11 @@ function skyMostraGruppo(nome) {
   // Chi tocca "Astri" prima che il tempo libero arrivi le trova comunque.
   if (nome === 'astri') skyCostruisciElenco();
   const aperto = barra.dataset.gruppoAttivo === nome ? '' : (nome || '');
+  // «Aerei» è insieme pannello e interruttore: solo un gesto esplicito fa
+  // partire il feed e solo mentre è acceso i dati ADS-B compaiono in mappa.
+  if (nome === 'aerei' && typeof aereiImpostaAccesi === 'function') {
+    aereiImpostaAccesi(aperto === 'aerei');
+  }
   // Il pannello del gruppo e la scheda dell'oggetto stanno tutt'e due in
   // fondo alla mappa: su un telefono, aperti insieme, si scrivevano uno
   // sopra l'altro. Non stanno mai a schermo nello stesso momento — aprendo
