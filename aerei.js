@@ -14,6 +14,7 @@
   const ERRORE_ATTESA_MS = 60000;
   const PROVIDER_ATTESA_MS = 12000;
   const PREVISIONE_MINUTI = 5;
+  const SOGLIA_TEMPO_REALE_MS = 30000;
   const SOGLIA_ALLINEAMENTO = 1;
   const TERRA_KM = 6371;
 
@@ -167,7 +168,8 @@
 
   const stato = { aerei: [], timer: null, richiesta: null, controller: null, ultimoCentro: null,
     acceso: false,
-    ultimoSuccesso: 0, prossimoTentativo: 0, errore: '', avviato: false, ricaricaDopo: false };
+    ultimoSuccesso: 0, prossimoTentativo: 0, errore: '', avviato: false, ricaricaDopo: false,
+    ultimoRenderSecondo: null };
 
   function raggioKm() {
     return typeof raggioAerei === 'function' ? raggioAerei() : 10;
@@ -233,12 +235,25 @@
     }).filter(a => a.distanzaKm <= raggioKm()).sort((a, b) => a.distanzaKm - b.distanzaKm);
   }
 
+  function istanteMostratoMs() {
+    if (typeof skyAdesso === 'function') return skyAdesso().getTime();
+    const scarto = typeof sky !== 'undefined' ? (sky.offsetTempoSec || 0) : 0;
+    return Date.now() + scarto * 1000;
+  }
+
+  function tempoReale(istanteMs = istanteMostratoMs(), oraMs = Date.now()) {
+    return Math.abs(istanteMs - oraMs) <= SOGLIA_TEMPO_REALE_MS;
+  }
+
   // Il feed è una fotografia di alcuni secondi fa. A ogni fotogramma si
   // riparte da quell'istante e si propaga velocità, rotta e salita fino ad
   // adesso: il simbolo e la linea non restano congelati per cinque minuti.
-  function aereoAdesso(a, obs, oraMs = Date.now()) {
+  function aereoAdesso(a, obs, oraMs = istanteMostratoMs()) {
     const origine = a.posizioneFeed || a;
-    const secondi = Math.max(0, Math.min(360, oraMs / 1000 - (origine.ultimaLettura || oraMs / 1000)));
+    // Lo scarto e' volutamente firmato: nella macchina del tempo una lettura
+    // ADS-B diventa il punto noto dal quale ricostruire sia il passato sia il
+    // futuro. Limitare a zero, come prima, congelava l'aereo tornando indietro.
+    const secondi = oraMs / 1000 - (origine.ultimaLettura || Date.now() / 1000);
     const corrente = posizioneFutura(origine, secondi);
     const cielo = coordinateCielo(corrente, obs);
     const traiettoria = [];
@@ -246,7 +261,8 @@
       const futuro = posizioneFutura(corrente, minuti * 60);
       traiettoria.push({ minuti, ...coordinateCielo(futuro, obs) });
     }
-    return { ...a, ...corrente, ...cielo, traiettoria, allineamenti: a.allineamenti || [], posizioneFeed: origine };
+    return { ...a, ...corrente, ...cielo, traiettoria, allineamenti: a.allineamenti || [],
+      posizioneFeed: origine, stimato: !tempoReale(oraMs), istanteMostrato: oraMs };
   }
 
   function aggiornaPosizioni() {
@@ -280,12 +296,13 @@
     const box = document.getElementById('aerei-elenco');
     if (!box) return;
     if (!stato.aerei.length) { box.innerHTML = '<p class="etichetta-comando">Nessun aereo ADS-B rilevato nel raggio scelto.</p>'; return; }
+    const inDiretta = tempoReale();
     box.innerHTML = stato.aerei.map(a => {
       const all = a.allineamenti[0];
       return `<article class="aereo-riga"><strong>${sicuro(a.callsign)}</strong>` +
         `<p class="aereo-dati">${Math.round(a.quotaM || 0).toLocaleString('it-IT')} m · ` +
         `${Math.round((a.velocitaMs || 0) * 3.6)} km/h · ${Math.round(a.direzione || 0)}° · ` +
-        `${a.distanzaKm.toFixed(1)} km</p>` +
+        `${a.distanzaKm.toFixed(1)} km · ${inDiretta ? 'posizione in tempo reale' : 'posizione stimata'}</p>` +
         (all ? `<p class="aereo-allineamento">Possibile allineamento con ${sicuro(all.nome)} ` +
           `${all.minuti ? `fra ${all.minuti} min` : 'adesso'} (${all.scarto.toFixed(1)}°)</p>` : '') + '</article>';
     }).join('');
@@ -297,6 +314,13 @@
     const obs = osservatore();
     if (!obs) { testoStato('Serve una posizione per cercare gli aerei.', true); return; }
     const ora = Date.now();
+    // I provider descrivono soltanto il presente. Lontano dall'ora reale si
+    // conserva l'ultima fotografia e la si propaga, senza spacciare per dato
+    // storico una nuova lettura appena ricevuta.
+    if (!tempoReale()) {
+      testoStato('Macchina del tempo: posizioni stimate dall’ultima lettura ADS-B. Torna ad Adesso per i dati in tempo reale.');
+      aggiornaPosizioni(); render(); return;
+    }
     if (!forza && (ora < stato.prossimoTentativo || ora - stato.ultimoSuccesso < CACHE_MS)) return;
     if (stato.richiesta) return stato.richiesta;
     testoStato('Aggiornamento ADS-B…');
@@ -323,6 +347,11 @@
     if (!stato.acceso || !stato.aerei.length || typeof skyProietta !== 'function') return;
     aggiornaPosizioni();
     aggiornaAllineamenti();
+    const secondo = Math.floor(istanteMostratoMs() / 1000);
+    if (secondo !== stato.ultimoRenderSecondo) {
+      stato.ultimoRenderSecondo = secondo;
+      render();
+    }
     ctx.save();
     stato.aerei.forEach(a => {
       const punti = a.traiettoria.map(t => skyProietta(skyVettore(t.az, t.alt), base, focale)).filter(p => p.davanti);
@@ -373,12 +402,62 @@
       dato('Operatore', a.operatore) + dato('Quota', quota) + dato('Velocità', velocita) +
       dato('Rotta', Number.isFinite(a.direzione) ? `${Math.round(a.direzione)}°` : '') +
       dato('Distanza', Number.isFinite(a.distanzaKm) ? `${a.distanzaKm.toFixed(1)} km` : '') +
+      `<li id="aereo-rotta-${sicuro(a.id)}"><span class="voce-dato">Itinerario:</span> ricerca in corso…</li>` +
       dato('Codice ICAO', String(a.id || '').toUpperCase()) + dato('Squawk', a.squawk) + '</ul>' +
-      '<p class="nota-dettaglio">Posizione e movimento provengono dal feed ADS-B in tempo reale.</p>';
+      `<p class="nota-dettaglio">${a.stimato ? 'Posizione stimata dalla rotta, velocità e salita dell’ultima lettura ADS-B.' :
+        'Posizione allineata al feed ADS-B in tempo reale.'}</p>`;
+  }
+
+  const rottaCache = new Map();
+
+  function aeroportoTesto(aeroporto) {
+    if (!aeroporto) return '';
+    const codice = aeroporto.iata_code || aeroporto.iata || aeroporto.icao_code || aeroporto.icao || '';
+    const luogo = aeroporto.municipality || aeroporto.city || aeroporto.name || '';
+    return [luogo, codice && `(${codice})`].filter(Boolean).join(' ');
+  }
+
+  function orarioRotta(rotta, prefisso) {
+    const valore = rotta[`${prefisso}_time`] || rotta[`scheduled_${prefisso}`] ||
+      rotta[`${prefisso}_scheduled`] || rotta[prefisso] && rotta[prefisso].scheduled_time;
+    if (!valore) return '';
+    const data = new Date(valore);
+    return isNaN(data.getTime()) ? String(valore) : data.toLocaleString('it-IT', {
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  function interpretaRotta(risposta) {
+    const rotta = risposta && risposta.response && risposta.response.flightroute;
+    if (!rotta) return null;
+    return {
+      partenza: aeroportoTesto(rotta.origin), arrivo: aeroportoTesto(rotta.destination),
+      oraPartenza: orarioRotta(rotta, 'departure'), oraArrivo: orarioRotta(rotta, 'arrival')
+    };
+  }
+
+  async function aereiCaricaRotta(a) {
+    const callsign = String(a.callsign || '').trim().replace(/\s+/g, '');
+    const box = document.getElementById(`aereo-rotta-${a.id}`);
+    if (!box || !callsign) return;
+    if (!rottaCache.has(callsign)) {
+      rottaCache.set(callsign, fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(callsign)}`,
+        { cache: 'force-cache' }).then(r => r.ok ? r.json() : null).then(interpretaRotta).catch(() => null));
+    }
+    const rotta = await rottaCache.get(callsign);
+    if (!box.isConnected) return;
+    if (!rotta || (!rotta.partenza && !rotta.arrivo)) {
+      box.innerHTML = '<span class="voce-dato">Itinerario:</span> non disponibile'; return;
+    }
+    const riga = (nome, luogo, ora) => luogo
+      ? `<div><span class="voce-dato">${nome}:</span> ${sicuro(luogo)}${ora ? ` · ${sicuro(ora)}` : ''}</div>` : '';
+    box.innerHTML = riga('Partenza', rotta.partenza, rotta.oraPartenza) +
+      riga('Arrivo', rotta.arrivo, rotta.oraArrivo);
   }
 
   const fotoCache = new Map();
   async function aereiCaricaFoto(a) {
+    aereiCaricaRotta(a);
     const id = String(a.id || '').toLowerCase();
     const box = document.getElementById(`aereo-foto-${id}`) || document.getElementById(`aereo-foto-${a.id}`);
     if (!box || !id) return;
@@ -420,5 +499,6 @@
   window.aereiRaggioCambiato = aereiRaggioCambiato;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
     interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky, urlAttraverso,
-    scaricaConRipiego, providersPredefiniti, aereoAdesso, stato };
+    scaricaConRipiego, providersPredefiniti, aereoAdesso, istanteMostratoMs, tempoReale,
+    interpretaRotta, aeroportoTesto, stato };
 }());
