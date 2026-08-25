@@ -7046,6 +7046,8 @@ const CHIAVE_SKY_BUSSOLA = 'astrocalendario_bussola_offset_v2';
 // entrano nel lato lungo dell'inquadratura (vedi skyCampoFotocamera)
 const CHIAVE_SKY_CAMERA = 'astrocalendario_camera_campo';
 const CHIAVE_SKY_TASTI_ZOOM = 'astrocalendario_tasti_zoom';
+const CHIAVE_SKY_SOSTA = 'astrocalendario_sosta_mirino';
+const SKY_SOSTA_PREDEFINITA_SEC = 3;
 
 // Corpi del Sistema Solare mostrati nel cielo.
 // Gli id sono i valori di Astronomy.Body (semplici stringhe): li scriviamo
@@ -7351,6 +7353,11 @@ const sky = {
   // `skyGranaScorrimento`).
   grana: null,
   target: null,          // id dell'astro da cercare
+  // Oggetto rimasto sotto il mirino e avanzamento dell'apertura automatica
+  // della sua scheda. La verifica gira a intervalli, non a ogni fotogramma.
+  sostaMirinoSec: SKY_SOSTA_PREDEFINITA_SEC,
+  sostaMirino: null,
+  prossimoControlloSosta: 0,
   oggetti: [],           // posizioni calcolate (az/alt) degli astri
   prossimoCalcolo: 0,
   prossimoAggiornoUI: 0, // i numeri attorno alla mappa vanno più piano del cielo
@@ -19597,7 +19604,9 @@ function skyDisegna() {
   // equatoriale: lo disegna il modulo Telescopio, se è acceso.
   if (typeof telDisegnaPoloSuCielo === 'function') telDisegnaPoloSuCielo(ctx, base, focale);
 
+  skyControllaSostaMirino();
   skyDisegnaMirino(ctx);
+  skyDisegnaAvanzamentoSosta(ctx);
 
   // Se manca la posizione non c'è nulla da calcolare: spieghiamo il perché
   if (!sky.observer) {
@@ -22838,6 +22847,65 @@ function skyOggettoNelPunto(px, py) {
   return scelto ? scelto.sel : null;
 }
 
+// Lasciando il mirino giallo sullo stesso oggetto, la sua scheda si apre da
+// sola. È il gesto naturale quando il telefono si usa come un cercatore: si
+// punta, si tiene fermo e si legge, senza dover poi toccare lo schermo e
+// perdere l'inquadratura. La chiave descrive l'oggetto, non l'istanza del dato
+// (che per satelliti e cataloghi viene ricreata durante gli aggiornamenti).
+function skyChiaveSelezione(sel) {
+  if (!sel) return '';
+  if (sel.categoria === 'astro') return `astro:${sel.id}`;
+  if (sel.categoria === 'costellazione') return `costellazione:${sel.sigla}`;
+  const d = sel.dati || {};
+  return `${sel.categoria}:${d.id || d.nome || d.sigla || ''}`;
+}
+
+function skyControllaSostaMirino() {
+  const ora = performance.now();
+  if (ora < sky.prossimoControlloSosta) return;
+  sky.prossimoControlloSosta = ora + 100;
+
+  // Una costellazione apre l'atlante intero: far sparire il planetario senza
+  // un tocco sarebbe sorprendente. La sosta riguarda le schede degli oggetti
+  // celesti; inoltre si ferma mentre un dito sta governando la mappa.
+  const sel = sky.puntatori.size || !sky.ultimaBase
+    ? null
+    : skyOggettoNelPunto(sky.larghezza / 2, sky.altezza / 2);
+  const valido = sel && sel.categoria !== 'costellazione' ? sel : null;
+  const chiave = skyChiaveSelezione(valido);
+  if (!chiave) { sky.sostaMirino = null; return; }
+  if (!sky.sostaMirino || sky.sostaMirino.chiave !== chiave) {
+    sky.sostaMirino = { chiave, dal: ora, aperto: false, selezione: valido };
+    return;
+  }
+  sky.sostaMirino.selezione = valido;
+  if (sky.sostaMirino.aperto || ora - sky.sostaMirino.dal < sky.sostaMirinoSec * 1000) return;
+  sky.sostaMirino.aperto = true;
+  if (valido.categoria === 'astro') {
+    sky.target = valido.id;
+    sky.cacheOrari = { chiave: null, valore: null };
+    skyAggiornaStileElenco();
+  }
+  skyApriDettaglio(valido);
+}
+
+function skyDisegnaAvanzamentoSosta(ctx) {
+  const s = sky.sostaMirino;
+  if (!s || s.aperto) return;
+  const progresso = Math.max(0, Math.min(1,
+    (performance.now() - s.dal) / (sky.sostaMirinoSec * 1000)));
+  if (!progresso) return;
+  ctx.save();
+  ctx.strokeStyle = SKY_MIRINO_COLORE;
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(sky.larghezza / 2, sky.altezza / 2, 18, -Math.PI / 2,
+    -Math.PI / 2 + progresso * Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 // Traduce un punto dello schermo in un punto del paesaggio. La proiezione
 // inversa dà azimut e altezza; `rilievo.js` riconosce poi quale campione 3D
 // visibile sta sotto il dito. Il controllo sulla cresta impedisce che un
@@ -23723,6 +23791,8 @@ function apriSkymap() {
   sky.ultimoFotogramma = 0;
   sky.inerzia = null;
   sky.trascinamento = null;
+  sky.sostaMirino = null;
+  sky.prossimoControlloSosta = 0;
   sky.fovVoluto = sky.fov;
   skyAccendiCiclo();
   skyCaricaIlResto();
@@ -23842,6 +23912,7 @@ function splashPlanetarioNascondi() {
 function chiudiSkymap() {
   if (!sky.aperto) return;
   sky.aperto = false;
+  sky.sostaMirino = null;
   if (typeof aereiFerma === 'function') aereiFerma();
   skySpegniCiclo();
   // Il playback non deve sopravvivere alla vista: tornando qui domani il
@@ -33852,6 +33923,22 @@ function inizializzaImpostazioni() {
       const mostra = impZoom.checked;
       document.getElementById('skymap-contenitore')?.classList.toggle('mostra-tasti-zoom', mostra);
       try { localStorage.setItem(CHIAVE_SKY_TASTI_ZOOM, mostra ? '1' : '0'); } catch (e) { /* niente storage */ }
+    });
+  }
+
+  const impSosta = document.getElementById('imp-skymap-sosta');
+  if (impSosta) {
+    const salvata = parseInt(localStorage.getItem(CHIAVE_SKY_SOSTA), 10);
+    sky.sostaMirinoSec = isNaN(salvata)
+      ? SKY_SOSTA_PREDEFINITA_SEC
+      : Math.max(1, Math.min(10, salvata));
+    impSosta.value = String(sky.sostaMirinoSec);
+    impSosta.addEventListener('change', () => {
+      const secondi = Math.max(1, Math.min(10, parseInt(impSosta.value, 10) || SKY_SOSTA_PREDEFINITA_SEC));
+      sky.sostaMirinoSec = secondi;
+      sky.sostaMirino = null;
+      impSosta.value = String(secondi);
+      try { localStorage.setItem(CHIAVE_SKY_SOSTA, String(secondi)); } catch (e) { /* niente storage */ }
     });
   }
 

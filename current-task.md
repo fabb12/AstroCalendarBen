@@ -4,8 +4,7 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Il fuso restituito dalla ricerca città ora arriva fino alla posizione globale e
-viene applicato prima di ridisegnare il Planetario. La cache dei fusi usa le
-coordinate a quattro decimali invece di una griglia da 0,05°, che poteva
-confondere due località ai lati opposti di un confine. Cache PWA portata ad
-`astrocal-v184`.
+Il mirino giallo del Planetario apre automaticamente la scheda dell'oggetto che
+resta al centro per il tempo scelto. Un anello mostra l'avanzamento della sosta;
+nelle Impostazioni del Planetario si può scegliere da 1 a 10 secondi (3 per
+impostazione predefinita). Cache PWA portata ad `astrocal-v185`.
