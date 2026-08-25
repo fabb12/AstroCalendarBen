@@ -22850,9 +22850,45 @@ function skyDistanzaGeograficaKm(a, b) {
 
 function skyNascondiMappaSpostamento() {
   const m = sky.mappaSpostamento;
+  skyChiudiMappaSpostamento();
   m.partenza = null;
   m.arrivo = null;
   document.getElementById('skymap-mappa-spostamento')?.classList.add('hidden');
+}
+
+function skyInterazioneMappaSpostamento(attiva) {
+  const mappa = sky.mappaSpostamento.mappa;
+  if (!mappa) return;
+  ['dragging', 'touchZoom', 'doubleClickZoom', 'scrollWheelZoom', 'boxZoom', 'keyboard'].forEach(nome => {
+    const comando = mappa[nome];
+    if (comando && typeof comando[attiva ? 'enable' : 'disable'] === 'function') comando[attiva ? 'enable' : 'disable']();
+  });
+}
+
+function skyApriMappaSpostamento() {
+  const box = document.getElementById('skymap-mappa-spostamento');
+  if (!box || box.classList.contains('hidden') || box.classList.contains('mappa-spostamento-aperta')) return;
+  box.classList.add('mappa-spostamento-aperta');
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-label', 'Mappa interattiva dello spostamento geografico');
+  document.body.classList.add('mappa-spostamento-immersiva');
+  skyInterazioneMappaSpostamento(true);
+  setTimeout(() => sky.mappaSpostamento.mappa?.invalidateSize({ pan: false }), 0);
+  document.getElementById('skymap-mappa-spostamento-esci')?.focus();
+}
+
+function skyChiudiMappaSpostamento() {
+  const box = document.getElementById('skymap-mappa-spostamento');
+  if (!box || !box.classList.contains('mappa-spostamento-aperta')) return;
+  box.classList.remove('mappa-spostamento-aperta');
+  box.setAttribute('role', 'button');
+  box.removeAttribute('aria-modal');
+  box.setAttribute('aria-label', 'Spostamento geografico della vista. Apri la mappa interattiva a tutto schermo');
+  document.body.classList.remove('mappa-spostamento-immersiva');
+  skyInterazioneMappaSpostamento(false);
+  setTimeout(() => sky.mappaSpostamento.mappa?.invalidateSize({ pan: false }), 0);
+  box.focus({ preventScroll: true });
 }
 
 function skyMostraMappaSpostamentoGeografico(partenza, arrivo) {
@@ -22888,7 +22924,7 @@ function skyMostraMappaSpostamentoGeografico(partenza, arrivo) {
   const testo = `Spostamento: ${misura} · ${nomeArrivo}`;
   const label = document.getElementById('skymap-mappa-spostamento-testo');
   if (label) label.textContent = testo;
-  box.setAttribute('aria-label', `${testo}. Il punto bianco indica la partenza, quello giallo l'arrivo. Tocca il planetario per chiudere.`);
+  box.setAttribute('aria-label', `${testo}. Il punto bianco indica la partenza, quello giallo l'arrivo. Tocca per aprire la mappa interattiva a tutto schermo.`);
 }
 
 // Il dito si stacca: se stava ancora correndo, la vista prosegue da sola.
@@ -24310,6 +24346,31 @@ function skyAggiornaTastiSchermo() {
 }
 
 function skyInizializzaSchermoIntero() {
+  const mappaSpostamento = document.getElementById('skymap-mappa-spostamento');
+  const esciMappaSpostamento = document.getElementById('skymap-mappa-spostamento-esci');
+  if (mappaSpostamento) {
+    mappaSpostamento.addEventListener('click', e => {
+      if (!mappaSpostamento.classList.contains('mappa-spostamento-aperta')) skyApriMappaSpostamento();
+    });
+    mappaSpostamento.addEventListener('keydown', e => {
+      if (!mappaSpostamento.classList.contains('mappa-spostamento-aperta') && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        skyApriMappaSpostamento();
+      }
+    });
+  }
+  if (esciMappaSpostamento) esciMappaSpostamento.addEventListener('click', e => {
+    e.stopPropagation();
+    skyChiudiMappaSpostamento();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && mappaSpostamento?.classList.contains('mappa-spostamento-aperta')) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      skyChiudiMappaSpostamento();
+    }
+  }, true);
+
   // Uscita dal pieno schermo decisa dal browser (Esc, gesto di sistema):
   // qui si rimette in ordine anche il resto
   const cambio = () => {
