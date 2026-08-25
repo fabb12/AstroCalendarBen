@@ -21978,6 +21978,11 @@ function skyVoceSelezionata() {
     return o ? Object.assign({ categoria: 'astro' }, o) : null;
   }
 
+  if (sel.categoria === 'aereo' && typeof aereiTrova === 'function') {
+    const corrente = aereiTrova(sel.dati && sel.dati.id);
+    if (corrente) return Object.assign({ categoria: 'aereo' }, corrente);
+  }
+
   const voce = Object.assign({ categoria: sel.categoria }, sel.dati);
   if (sky.observer && typeof Astronomy !== 'undefined' && typeof voce.ra === 'number') {
     try {

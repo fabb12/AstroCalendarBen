@@ -18,6 +18,8 @@
   const SOGLIA_TEMPO_REALE_MS = 30000;
   const SOGLIA_ALLINEAMENTO = 1;
   const TERRA_KM = 6371;
+  const TRACCIA_MASSIMO_PUNTI = 120;
+  const TRACCIA_DURATA_MS = 2 * 60 * 60 * 1000;
 
   function numero(valore) {
     const n = Number(valore);
@@ -179,6 +181,12 @@
     acceso: false,
     ultimoSuccesso: 0, prossimoTentativo: 0, errore: '', avviato: false, ricaricaDopo: false,
     ultimoRenderSecondo: null };
+  // Le risposte dei provider sono fotografie, non una rotta. Conservare i
+  // punti successivi per ICAO permette di ricostruire il tratto realmente
+  // osservato senza confonderlo con la previsione tratteggiata dei 5 minuti.
+  const tracce = new Map();
+  let mappaRotta = null;
+  let stratiRotta = [];
 
   function raggioKm() {
     return typeof raggioAerei === 'function' ? raggioAerei() : 10;
@@ -232,7 +240,14 @@
   }
 
   function arricchisci(aerei, obs) {
-    return aerei.map(a => {
+    const unici = new Map();
+    aerei.forEach(a => {
+      const id = String(a.id || '').toLowerCase();
+      if (!id || !Number.isFinite(a.lat) || !Number.isFinite(a.lon)) return;
+      const prima = unici.get(id);
+      if (!prima || (a.ultimaLettura || 0) > (prima.ultimaLettura || 0)) unici.set(id, { ...a, id });
+    });
+    return Array.from(unici.values()).map(a => {
       const cielo = coordinateCielo(a, obs);
       const traiettoria = [];
       for (let minuti = 0; minuti <= PREVISIONE_MINUTI; minuti++) {
@@ -242,6 +257,25 @@
       return { ...a, ...cielo, traiettoria, allineamenti: [],
         posizioneFeed: { ...a } };
     }).filter(a => a.distanzaKm <= raggioKm()).sort((a, b) => a.distanzaKm - b.distanzaKm);
+  }
+
+  function registraTracce(aerei, ora = Date.now()) {
+    aerei.forEach(a => {
+      const id = String(a.id || '').toLowerCase();
+      if (!id) return;
+      const punti = tracce.get(id) || [];
+      const tempo = Number.isFinite(a.ultimaLettura) ? a.ultimaLettura * 1000 : ora;
+      const ultimo = punti[punti.length - 1];
+      // Più provider possono restituire la stessa fotografia: un punto con
+      // lo stesso istante e quasi le stesse coordinate non va duplicato.
+      if (!ultimo || Math.abs(ultimo.tempo - tempo) > 1000 ||
+        Math.abs(ultimo.lat - a.lat) + Math.abs(ultimo.lon - a.lon) > 0.0001) {
+        punti.push({ lat: a.lat, lon: a.lon, quotaM: a.quotaM, tempo });
+      }
+      const limite = ora - TRACCIA_DURATA_MS;
+      while (punti.length > TRACCIA_MASSIMO_PUNTI || (punti[0] && punti[0].tempo < limite)) punti.shift();
+      tracce.set(id, punti);
+    });
   }
 
   function istanteMostratoMs() {
@@ -339,6 +373,7 @@
     stato.richiesta = scaricaConRipiego(providers, obs, raggioKm(), controller.signal)
       .then(risultato => {
         if (!stato.acceso) return;
+        registraTracce(risultato.aerei);
         stato.aerei = arricchisci(risultato.aerei, obs);
         stato.ultimoCentro = obs; stato.ultimoSuccesso = Date.now(); stato.prossimoTentativo = 0; stato.errore = '';
         testoStato(`${stato.aerei.length} aerei · ${risultato.provider.nome} · aggiornato adesso`); render();
@@ -443,8 +478,59 @@
       dato('Distanza', Number.isFinite(a.distanzaKm) ? `${a.distanzaKm.toFixed(1)} km` : '') +
       `<li id="aereo-rotta-${sicuro(a.id)}"><span class="voce-dato">Itinerario:</span> ricerca in corso…</li>` +
       dato('Codice ICAO', String(a.id || '').toUpperCase()) + dato('Squawk', a.squawk) + '</ul>' +
+      `<div class="aereo-azioni"><button type="button" class="tasto-cielo aereo-tracking" data-aereo-id="${sicuro(a.id)}">` +
+      `${typeof sky !== 'undefined' && sky.inseguimento ? 'Smetti di seguire' : 'Segui e centra'}</button>` +
+      `<button type="button" class="tasto-cielo aereo-mappa" data-aereo-id="${sicuro(a.id)}">Rotta sulla mappa</button></div>` +
       `<p class="nota-dettaglio">${a.stimato ? 'Posizione stimata dalla rotta, velocità e salita dell’ultima lettura ADS-B.' :
         'Posizione allineata al feed ADS-B in tempo reale.'}</p>`;
+  }
+
+  function aereiTrova(id) {
+    return stato.aerei.find(a => String(a.id) === String(id)) || null;
+  }
+
+  function aereiAlternaTracking(id) {
+    const aereo = aereiTrova(id);
+    if (!aereo || typeof sky === 'undefined') return;
+    // La selezione deve puntare alla fotografia più recente, non all'oggetto
+    // del tocco iniziale: così l'inseguimento generico del planetario legge
+    // azimut e altezza aggiornati a ogni fotogramma.
+    sky.selezione = { categoria: 'aereo', dati: aereo };
+    if (sky.sensori && sky.seguiTelefono) sky.seguiTelefono = false;
+    if (typeof skyAlternaInseguimento === 'function') skyAlternaInseguimento();
+    if (typeof skyAggiornaScheda === 'function') skyAggiornaScheda();
+  }
+
+  function chiudiMappaRotta() {
+    const modale = document.getElementById('aereo-rotta-modale');
+    if (modale) { modale.classList.remove('visibile'); modale.setAttribute('aria-hidden', 'true'); }
+  }
+
+  function aereiMostraMappa(id) {
+    const a = aereiTrova(id);
+    const modale = document.getElementById('aereo-rotta-modale');
+    const carta = document.getElementById('aereo-rotta-mappa');
+    const titolo = document.getElementById('aereo-rotta-titolo');
+    if (!a || !modale || !carta) return;
+    if (typeof L === 'undefined') { if (typeof skyAvviso === 'function') skyAvviso('aereo-mappa', 'La carta geografica richiede la rete al primo utilizzo.', 6000); return; }
+    if (titolo) titolo.textContent = `Rotta di ${a.callsign || String(a.id).toUpperCase()}`;
+    modale.classList.add('visibile'); modale.setAttribute('aria-hidden', 'false');
+    if (!mappaRotta) {
+      mappaRotta = L.map(carta, { zoomControl: true, maxZoom: 16 });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 16, attribution: '&copy; OpenStreetMap'
+      }).addTo(mappaRotta);
+    }
+    stratiRotta.forEach(s => mappaRotta.removeLayer(s)); stratiRotta = [];
+    const osservati = (tracce.get(String(a.id).toLowerCase()) || []).map(p => [p.lat, p.lon]);
+    if (!osservati.length) osservati.push([a.lat, a.lon]);
+    const previsti = [a, ...[1, 2, 3, 4, 5].map(m => posizioneFutura(a, m * 60))].map(p => [p.lat, p.lon]);
+    stratiRotta.push(L.polyline(osservati, { color: '#22d3ee', weight: 4 }).addTo(mappaRotta));
+    stratiRotta.push(L.polyline(previsti, { color: '#fb923c', weight: 3, dashArray: '7 7' }).addTo(mappaRotta));
+    stratiRotta.push(L.circleMarker([a.lat, a.lon], { radius: 8, color: '#fff', weight: 2,
+      fillColor: '#fb923c', fillOpacity: 1 }).bindTooltip('Posizione attuale').addTo(mappaRotta));
+    const tutti = osservati.concat(previsti);
+    requestAnimationFrame(() => { mappaRotta.invalidateSize(); mappaRotta.fitBounds(L.latLngBounds(tutti).pad(.25), { maxZoom: 13 }); });
   }
 
   const rottaCache = new Map();
@@ -526,6 +612,13 @@
   document.addEventListener('DOMContentLoaded', () => {
     const aggiorna = document.getElementById('aerei-aggiorna');
     if (aggiorna) aggiorna.addEventListener('click', () => carica(true));
+    document.addEventListener('click', e => {
+      const tracking = e.target.closest && e.target.closest('.aereo-tracking');
+      const mappa = e.target.closest && e.target.closest('.aereo-mappa');
+      if (tracking) aereiAlternaTracking(tracking.dataset.aereoId);
+      if (mappa) aereiMostraMappa(mappa.dataset.aereoId);
+      if (e.target.closest && e.target.closest('[data-chiudi-rotta-aereo]')) chiudiMappaRotta();
+    });
   });
 
   window.aereiAvvia = aereiAvvia;
@@ -536,8 +629,9 @@
   window.aereiSchedaHtml = aereiSchedaHtml;
   window.aereiCaricaFoto = aereiCaricaFoto;
   window.aereiRaggioCambiato = aereiRaggioCambiato;
+  window.aereiTrova = aereiTrova;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
     interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky, urlAttraverso,
     scaricaConRipiego, providersPredefiniti, aereoAdesso, istanteMostratoMs, tempoReale,
-    interpretaRotta, aeroportoTesto, stato };
+    interpretaRotta, aeroportoTesto, registraTracce, tracce, stato };
 }());
