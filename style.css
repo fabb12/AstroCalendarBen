@@ -8652,3 +8652,15 @@ body button.did-ponte:active { transform: translateY(1px); }
 .aereo-allineamento { color:#fde68a; font-size:.73rem; margin-top:3px; }
 .aereo-foto { width:100%; max-height:190px; object-fit:cover; border-radius:10px; margin:8px 0 10px; background:#0f172a; }
 .aereo-foto-credito { color:#64748b; font-size:.68rem; margin-top:-7px; margin-bottom:9px; }
+.aereo-azioni { display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }
+.aereo-azioni .tasto-cielo { flex:1 1 130px; }
+.aereo-rotta-modale { display:none; position:absolute; inset:0; z-index:80; align-items:center; justify-content:center; padding:18px; }
+.aereo-rotta-modale.visibile { display:flex; }
+.aereo-rotta-sfondo { position:absolute; inset:0; border:0; background:rgba(2,6,23,.78); }
+.aereo-rotta-carta { position:relative; width:min(760px,100%); background:#07111f; border:1px solid rgba(148,163,184,.45); border-radius:14px; padding:12px; box-shadow:0 20px 60px #000; }
+.aereo-rotta-carta header { display:flex; align-items:center; justify-content:space-between; min-height:34px; }
+.aereo-rotta-carta h3 { color:#f8fafc; font-size:1rem; font-weight:700; }
+#aereo-rotta-mappa { height:min(62vh,480px); min-height:280px; border-radius:10px; background:#172033; }
+.aereo-rotta-carta > p { margin:8px 2px 0; color:#cbd5e1; font-size:.75rem; }
+.aereo-leggenda { display:inline-block; width:22px; border-top:3px solid #22d3ee; vertical-align:middle; }
+.aereo-leggenda.prevista { border-color:#fb923c; border-top-style:dashed; }
