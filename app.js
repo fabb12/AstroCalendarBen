@@ -7148,6 +7148,10 @@ const sky = {
   // non viene salvato: la posizione vera resta quella delle Impostazioni
   // (vedi 7.1-ter). { lat, lon, nome }
   luogoVista: null,
+  // Zone cliccabili dei nomi geografici disegnati nell'ultimo fotogramma.
+  // Il canvas non ha elementi DOM: conservare qui geometria e coordinate
+  // rende paesi e vette dei veri punti di partenza, non semplici scritte.
+  etichetteLuogo: [],
   scartoPerScelta: false, // l'ultima lettura automatica è stata rifiutata perché comanda la posizione scelta
   attesaPosizione: null, // richiesta di geolocalizzazione in corso (una sola per volta)
   erroreGps: null,       // ultimo errore del navigatore: { codice, quando }
@@ -17531,6 +17535,9 @@ const SKY_NOMI_ORIZZONTE = {
 //
 // Vanno **dopo** il terreno, se no li coprirebbe.
 function skyDisegnaNomiOrizzonte(ctx, base, focale) {
+  // Si ricostruisce a ogni fotogramma: trascinamento e zoom spostano le
+  // etichette, quindi una hit-area del fotogramma precedente mentirebbe.
+  sky.etichetteLuogo = [];
   // «Etichette» governa i nomi astronomici e i toponimi ordinari, mentre
   // «Nomi dei monti» ha un interruttore proprio. Il vecchio ritorno qui
   // sopra annullava quell'interruttore: risultava acceso, scaricava le
@@ -17803,6 +17810,12 @@ function skyNomiCitta(ctx, base, focale, occupati) {
     // centra a mano: si parte da sinistra e si va avanti.
     const x = p.px - e.largo / 2;
     const y = p.py - e.stacco;
+    sky.etichetteLuogo.push({
+      rett: skyRettOrientato(p.px, y - pro.corpo * 0.42,
+        e.largo + 18, pro.corpo + 14, 0),
+      punto: { lat: e.c.lat, lon: e.c.lon, nome: e.c.nome,
+        az: e.c.az, alt: skyQuotaDisegnata(e.c.az, Infinity), km: e.c.km }
+    });
     ctx.font = `${SKY_NOMI_ORIZZONTE.citta.stile} ${pro.corpo.toFixed(1)}px ${SKY_FONT_ETICHETTE}`;
     skyScrittaConAlone(ctx, e.c.nome, x, y, pro.pieno, pro.alone, pro.corpo * 0.26);
     if (e.kmTesto) {
@@ -17925,7 +17938,7 @@ function skyNomiCime(ctx, base, focale, occupati) {
     if (!messa) continue;
     scritte++;
     poste.push({
-      p, ax: messa.ax, ay: messa.ay, nome: c.nome, quotaTesto, largoNome, largo,
+      c, p, ax: messa.ax, ay: messa.ay, nome: c.nome, quotaTesto, largoNome, largo,
       incl: messa.incl, verso: messa.verso, velo: SKY_CIME_VELO_STRATO[strato] || 1
     });
   }
@@ -17966,6 +17979,12 @@ function skyNomiCime(ctx, base, focale, occupati) {
     ctx.globalAlpha = e.velo;
     skyPillola(ctx, -bordo, -altoBlocco / 2, e.largo + bordo * 2, altoBlocco,
       altoBlocco / 2, tinta.pillola);
+    sky.etichetteLuogo.push({
+      rett: skyRettAppoggiato(e.ax - Math.cos(e.incl) * bordo,
+        e.ay - Math.sin(e.incl) * bordo, e.largo + bordo * 2, altoBlocco + 10, e.incl),
+      punto: { lat: e.c.lat, lon: e.c.lon, nome: e.c.nome,
+        az: e.c.az, alt: e.c.alt, km: e.c.km }
+    });
     ctx.font = `${SKY_NOMI_ORIZZONTE.cime.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
     skyScrittaConAlone(ctx, e.nome, 0, 0, tinta.pieno, tinta.alone, corpo * 0.24);
     ctx.font = `italic 400 ${corpoQuota}px ${SKY_FONT_ETICHETTE}`;
@@ -22457,6 +22476,22 @@ function skyLuogoNelPunto(px, py) {
   return { ...punto, az, alt: campione.alt, km: campione.km };
 }
 
+// Un nome geografico è una scorciatoia più precisa del terreno sotto di lui:
+// porta le coordinate OSM del paese o della vetta. Le etichette delle cime
+// sono inclinate, perciò il punto viene riportato negli assi del rettangolo
+// invece di usare un riquadro esterno enorme e ambiguo.
+function skyEtichettaLuogoNelPunto(px, py) {
+  const etichette = sky.etichetteLuogo || [];
+  for (let i = etichette.length - 1; i >= 0; i--) {
+    const e = etichette[i], r = e.rett;
+    const dx = px - r.cx, dy = py - r.cy;
+    const u = dx * r.ux + dy * r.uy;
+    const v = dx * r.vx + dy * r.vy;
+    if (Math.abs(u) <= r.hu + 6 && Math.abs(v) <= r.hv + 6) return e.punto;
+  }
+  return null;
+}
+
 function skyChiudiVaiQua() {
   const popup = document.getElementById('sky-vai-qua');
   if (popup) popup.remove();
@@ -22473,11 +22508,21 @@ function skyMostraVaiQua(punto, px, py) {
   popup.className = 'sky-popup-vai';
   popup.style.left = `${Math.max(12, Math.min(sky.larghezza - 12, px))}px`;
   popup.style.top = `${Math.max(12, Math.min(sky.altezza - 12, py))}px`;
-  popup.innerHTML = `<span>${punto.km < 1 ? Math.round(punto.km * 1000) + ' m' : punto.km.toFixed(1) + ' km'}</span>` +
-    '<button type="button">Vai qua</button>';
-  popup.querySelector('button').addEventListener('click', (e) => {
+  const distanza = punto.km < 1 ? Math.round(punto.km * 1000) + ' m' : punto.km.toFixed(1) + ' km';
+  const didascalia = document.createElement('span');
+  didascalia.textContent = `${punto.nome ? `${punto.nome} · ` : ''}${distanza}`;
+  const tasto = document.createElement('button');
+  tasto.type = 'button';
+  tasto.textContent = 'Vai qua';
+  popup.append(didascalia, tasto);
+  tasto.addEventListener('click', (e) => {
     e.stopPropagation();
     skyChiudiVaiQua();
+    // Il punto scelto è il fuoco del viaggio: lo zoom parte proprio da lì,
+    // non dal centro dello schermo, così la camera sembra correre verso il
+    // paese/la cima toccati prima che il nuovo paesaggio venga calcolato.
+    contenitore.style.setProperty('--sky-volo-x', `${px}px`);
+    contenitore.style.setProperty('--sky-volo-y', `${py}px`);
     contenitore.classList.add('sky-volo-luogo');
     skyAvviso('luogo', 'Mi sposto nel punto scelto e ricalcolo il paesaggio…', 5000);
     // Una breve corsa della camera rende leggibile il cambio di punto; il
@@ -22485,8 +22530,9 @@ function skyMostraVaiQua(punto, px, py) {
     // volte durante l'animazione.
     setTimeout(() => {
       contenitore.classList.remove('sky-volo-luogo');
-      skyUsaLuogoVista(punto.lat, punto.lon, formattaCoordinate(punto.lat, punto.lon));
-    }, 650);
+      skyUsaLuogoVista(punto.lat, punto.lon,
+        punto.nome || formattaCoordinate(punto.lat, punto.lon));
+    }, 900);
   }, { once: true });
   contenitore.appendChild(popup);
 }
@@ -23435,10 +23481,19 @@ function skyInizializzaGesti() {
     if (performance.now() - t.quando > 600) return;
 
     const r = c.getBoundingClientRect();
-    const sel = skyOggettoNelPunto(e.clientX - r.left, e.clientY - r.top);
+    const px = e.clientX - r.left, py = e.clientY - r.top;
+    // I nomi di paesi e vette sono comandi visibili: hanno precedenza sugli
+    // astri che, per caso, possono essere proiettati dietro la loro pillola.
+    const etichettaLuogo = skyEtichettaLuogoNelPunto(px, py);
+    if (etichettaLuogo) {
+      skyChiudiDettaglio();
+      skyMostraVaiQua(etichettaLuogo, px, py);
+      return;
+    }
+    const sel = skyOggettoNelPunto(px, py);
     if (!sel) {
-      const luogo = skyLuogoNelPunto(e.clientX - r.left, e.clientY - r.top);
-      if (luogo) { skyChiudiDettaglio(); skyMostraVaiQua(luogo, e.clientX - r.left, e.clientY - r.top); return; }
+      const luogo = skyLuogoNelPunto(px, py);
+      if (luogo) { skyChiudiDettaglio(); skyMostraVaiQua(luogo, px, py); return; }
       skyChiudiVaiQua();
       skyChiudiDettaglio();
       return;

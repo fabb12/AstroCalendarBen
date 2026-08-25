@@ -3355,9 +3355,10 @@ body button.pos-risultato:focus-visible {
   cursor: pointer;
 }
 #skymap-contenitore.sky-volo-luogo canvas {
-  transform: scale(1.035);
-  filter: brightness(0.72) blur(1px);
-  transition: transform 650ms ease-in, filter 650ms ease-in;
+  transform-origin: var(--sky-volo-x, 50%) var(--sky-volo-y, 50%);
+  transform: scale(1.18);
+  filter: brightness(0.62) blur(1.6px);
+  transition: transform 900ms cubic-bezier(.2,.72,.25,1), filter 900ms ease-in;
 }
 
 /* Ogni gruppo è un tondo con dentro il suo segno, e nient'altro: sei nomi
