@@ -4,7 +4,7 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-La carta del percorso compare ora in basso a sinistra nel Planetario quando si
-scelgono punti diversi del cielo e scompare toccando nuovamente lo spazio vuoto.
-È stata rimossa dal Sistema Solare 3D, dove non era utile. Cache PWA portata ad
-`astrocal-v168`.
+Nel Planetario, toccare un punto vuoto dopo aver selezionato un astro ora
+rimuove tutta la selezione: oltre alla scheda spegne anche il bersaglio, la
+guida e la traccia dell'orbita. Il Sistema Solare 3D non è stato modificato.
+Cache PWA portata ad `astrocal-v169`.
