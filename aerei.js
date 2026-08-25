@@ -329,11 +329,12 @@
     stato.controller = controller;
     stato.richiesta = scaricaConRipiego(providers, obs, raggioKm(), controller.signal)
       .then(risultato => {
+        if (!stato.acceso) return;
         stato.aerei = arricchisci(risultato.aerei, obs);
         stato.ultimoCentro = obs; stato.ultimoSuccesso = Date.now(); stato.prossimoTentativo = 0; stato.errore = '';
         testoStato(`${stato.aerei.length} aerei · ${risultato.provider.nome} · aggiornato adesso`); render();
       }).catch(e => {
-        if (e.name === 'AbortError' && stato.ricaricaDopo) return;
+        if (e.name === 'AbortError' && (!stato.acceso || stato.ricaricaDopo)) return;
         stato.errore = e.message; stato.prossimoTentativo = Date.now() + ERRORE_ATTESA_MS;
         testoStato(`Dati ADS-B non disponibili (${e.name === 'TimeoutError' ? 'tempo scaduto' : e.message}). Riprovo fra un minuto.`, true);
       }).finally(() => {
@@ -374,9 +375,27 @@
 
   function aereiImpostaAccesi(accesi) {
     stato.acceso = !!accesi;
-    if (stato.acceso) { aereiAvvia(); render(); }
-    else { aereiFerma(); if (typeof skyChiudiDettaglio === 'function' && typeof sky !== 'undefined' &&
-      sky.selezione && sky.selezione.categoria === 'aereo') skyChiudiDettaglio(); }
+    // Il colore del tasto descrive il feed, non soltanto il pannello aperto:
+    // una scheda puo chiudere il pannello mentre gli aerei restano accesi.
+    if (typeof skyTasto === 'function') skyTasto('skymap-btn-aerei', stato.acceso);
+    if (stato.acceso) {
+      // Se il feed e' stato riacceso mentre la richiesta dello spegnimento
+      // sta terminando, riparti appena il suo finally ha liberato il posto.
+      if (stato.richiesta && stato.controller && stato.controller.signal.aborted) stato.ricaricaDopo = true;
+      aereiAvvia(); render();
+    } else {
+      aereiFerma();
+      // Una risposta gia in volo non deve ripopolare la mappa dopo lo
+      // spegnimento. Svuotare anche la fotografia rende immediato il nuovo
+      // fotogramma senza aerei e impedisce che dati ADS-B spenti riappaiano.
+      stato.ricaricaDopo = false;
+      if (stato.controller) stato.controller.abort();
+      stato.aerei = [];
+      stato.ultimoRenderSecondo = null;
+      render();
+      if (typeof skyChiudiDettaglio === 'function' && typeof sky !== 'undefined' &&
+        sky.selezione && sky.selezione.categoria === 'aereo') skyChiudiDettaglio();
+    }
   }
 
   function aereoNelPunto(px, py, base, focale) {
