@@ -7057,7 +7057,7 @@ const CHIAVE_SKY_BUSSOLA = 'astrocalendario_bussola_offset_v2';
 const CHIAVE_SKY_CAMERA = 'astrocalendario_camera_campo';
 const CHIAVE_SKY_TASTI_ZOOM = 'astrocalendario_tasti_zoom';
 const CHIAVE_SKY_SOSTA = 'astrocalendario_sosta_mirino';
-const SKY_SOSTA_PREDEFINITA_SEC = 3;
+const SKY_SOSTA_PREDEFINITA_SEC = 1.2;
 
 // Corpi del Sistema Solare mostrati nel cielo.
 // Gli id sono i valori di Astronomy.Body (semplici stringhe): li scriviamo
@@ -22898,6 +22898,15 @@ function skyControllaSostaMirino() {
   if (ora < sky.prossimoControlloSosta) return;
   sky.prossimoControlloSosta = ora + 100;
 
+  // Una scheda già aperta deve restare legata all'oggetto che l'ha aperta:
+  // spostare il cielo (o il telefono) dietro al pannello non deve sostituirne
+  // il contenuto con un nuovo oggetto rimasto per caso sotto al mirino.
+  const pannello = document.getElementById('skymap-dettaglio');
+  if (pannello && pannello.classList.contains('visibile')) {
+    sky.sostaMirino = null;
+    return;
+  }
+
   // Una costellazione apre l'atlante intero: far sparire il planetario senza
   // un tocco sarebbe sorprendente. La sosta riguarda le schede degli oggetti
   // celesti; inoltre si ferma mentre un dito sta governando la mappa.
@@ -33961,13 +33970,14 @@ function inizializzaImpostazioni() {
 
   const impSosta = document.getElementById('imp-skymap-sosta');
   if (impSosta) {
-    const salvata = parseInt(localStorage.getItem(CHIAVE_SKY_SOSTA), 10);
+    const salvata = parseFloat(localStorage.getItem(CHIAVE_SKY_SOSTA));
     sky.sostaMirinoSec = isNaN(salvata)
       ? SKY_SOSTA_PREDEFINITA_SEC
-      : Math.max(1, Math.min(10, salvata));
+      : Math.max(0.5, Math.min(10, salvata));
     impSosta.value = String(sky.sostaMirinoSec);
     impSosta.addEventListener('change', () => {
-      const secondi = Math.max(1, Math.min(10, parseInt(impSosta.value, 10) || SKY_SOSTA_PREDEFINITA_SEC));
+      const secondi = Math.max(0.5, Math.min(10,
+        parseFloat(impSosta.value) || SKY_SOSTA_PREDEFINITA_SEC));
       sky.sostaMirinoSec = secondi;
       sky.sostaMirino = null;
       impSosta.value = String(secondi);

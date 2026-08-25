@@ -4,8 +4,8 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-La barra del tempo del Planetario mostra soltanto l'ora civile del luogo da cui
-si sta osservando, non quella del dispositivo affiancata a UTC. Il fuso IANA ora
-viaggia con la posizione, viene salvato per l'uso offline e si aggiorna quando
-arriva la risposta per un punto scelto sulla mappa. Cache PWA portata ad
-`astrocal-v186`.
+Il mirino giallo del Planetario apre automaticamente la scheda dell'oggetto che
+resta al centro per il tempo scelto. Un anello mostra l'avanzamento della sosta;
+nelle Impostazioni del Planetario si può scegliere da 0,5 a 10 secondi (1,2 per
+impostazione predefinita). Quando la scheda informativa è aperta, la sosta del
+mirino non seleziona altri oggetti. Cache PWA portata ad `astrocal-v186`.
