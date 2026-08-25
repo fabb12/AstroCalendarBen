@@ -3489,19 +3489,24 @@ body button.pos-risultato:focus-visible {
 .bussola-cielo {
   position: relative;
   flex: 0 0 auto;
-  width: 64px;
-  height: 64px;
+  width: 82px;
+  height: 82px;
   border-radius: 999px;
-  border: 1px solid var(--bordo-forte);
-  background: rgba(6, 10, 20, 0.74);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(148, 163, 184, 0.62);
+  background: radial-gradient(circle at 50% 42%, rgba(25, 39, 66, 0.88), rgba(5, 9, 19, 0.94));
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.38), inset 0 0 0 2px rgba(125, 211, 252, 0.07);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
   /* È una lettura, non un comando: il dito ci passa attraverso e trascina
      il cielo che le sta sotto */
   pointer-events: none;
 }
 .bussola-quadrante { display: block; width: 100%; height: 100%; }
 .bussola-fondo { fill: rgba(10, 16, 30, 0.35); stroke: none; }
+.bussola-anello-esterno,
+.bussola-anello-interno { fill: none; }
+.bussola-anello-esterno { stroke: rgba(203, 213, 225, 0.28); stroke-width: 1; }
+.bussola-anello-interno { stroke: rgba(125, 211, 252, 0.16); stroke-width: 0.8; }
 
 /* IL CONO DELL'INQUADRATURA
    Quanto cielo entra nella vista adesso, aperto sul quadrante a partire
@@ -3531,7 +3536,9 @@ body button.pos-risultato:focus-visible {
   stroke-linecap: round;
 }
 .bussola-tacca-corta { stroke: rgba(169, 180, 204, 0.4); stroke-width: 2.5; }
-.bussola-ago { fill: var(--ambra); }
+.bussola-ago { fill: #fb923c; filter: drop-shadow(0 0 3px rgba(251, 146, 60, 0.72)); }
+.bussola-ago-sud { fill: rgba(148, 163, 184, 0.72); }
+.bussola-perno { fill: #f8fafc; stroke: rgba(15, 23, 42, 0.9); stroke-width: 1; }
 .bussola-nord,
 .bussola-lettera {
   font-family: var(--sans);
@@ -3539,8 +3546,8 @@ body button.pos-risultato:focus-visible {
   text-anchor: middle;
   dominant-baseline: central;
 }
-.bussola-nord { font-size: 13px; fill: var(--ambra); }
-.bussola-lettera { font-size: 11px; fill: rgba(200, 210, 232, 0.82); }
+.bussola-nord { font-size: 14px; fill: #fb923c; }
+.bussola-lettera { font-size: 11px; fill: rgba(226, 232, 240, 0.9); }
 
 /* L'indice della vista: una punta gialla appoggiata sul bordo alto, che
    guarda in dentro */
@@ -3570,11 +3577,24 @@ body button.pos-risultato:focus-visible {
 }
 .bussola-gradi {
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--testo);
+}
+.bussola-direzione {
+  max-width: 42px;
+  overflow: hidden;
+  font-family: var(--sans);
+  font-size: 0.45rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--blu-chiaro);
 }
 
 /* Quando la bussola non sa dov'è il Nord vero — sensori spenti, vista
@@ -3583,7 +3603,7 @@ body button.pos-risultato:focus-visible {
    chi ha bisogno del dettaglio lo trova nel titolo. */
 .bussola-cielo[data-modo="manuale"] { opacity: 0.78; }
 .bussola-cielo[data-modo="manuale"] .bussola-ago,
-.bussola-cielo[data-modo="magnetica"] .bussola-ago { fill: rgba(245, 181, 68, 0.5); }
+.bussola-cielo[data-modo="magnetica"] .bussola-ago { fill: rgba(245, 181, 68, 0.5); filter: none; }
 .bussola-cielo[data-modo="manuale"] .bussola-nord,
 .bussola-cielo[data-modo="magnetica"] .bussola-nord { fill: rgba(245, 181, 68, 0.6); }
 
@@ -4222,16 +4242,17 @@ body input.casella-data:hover { border: 0; }
   .cielo-chrome { gap: 6px; padding: 8px; padding-top: max(8px, env(safe-area-inset-top)); }
   /* La fascia si stringe insieme a tutto il resto: 8px di margine, la
      pillola più bassa (34px + 3px+3px di imbottitura + 2px di bordo =
-     42px), 6px di distacco, la bussola più piccola (52px). */
-  .vista-cielo { --zona-alta-cielo: 108px; }
+     42px), 6px di distacco, la bussola più piccola (68px). */
+  .vista-cielo { --zona-alta-cielo: 124px; }
   .linguetta-gruppo { width: 34px; height: 34px; }
   .icona-linguetta { width: 19px; height: 19px; }
   .linguette-gruppi { padding: 3px; gap: 2px; }
   .tasto-mappa-luogo-cielo { width: 42px; height: 42px; }
   .lettura-cielo { font-size: 0.7rem; padding: 4px 9px; }
-  .letture-sinistra { max-width: calc(100% - 66px); }
-  .bussola-cielo { width: 52px; height: 52px; }
-  .bussola-gradi { font-size: 0.6rem; }
+  .letture-sinistra { max-width: calc(100% - 82px); }
+  .bussola-cielo { width: 68px; height: 68px; }
+  .bussola-gradi { font-size: 0.65rem; }
+  .bussola-direzione { max-width: 36px; font-size: 0.4rem; }
   .bussola-indice { border-left-width: 4px; border-right-width: 4px; border-top-width: 7px; }
   .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
   .gruppo-comandi.gruppo-astri.gruppo-attivo.ricerca-attiva { max-height: min(78%, 520px); }
