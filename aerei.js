@@ -407,7 +407,17 @@
       ctx.strokeStyle = 'rgba(251,146,60,.88)'; ctx.setLineDash([4, 5]); ctx.lineWidth = 1.4;
       ctx.beginPath(); punti.forEach((p, i) => i ? ctx.lineTo(p.px, p.py) : ctx.moveTo(p.px, p.py)); ctx.stroke();
       const p = punti[0]; ctx.setLineDash([]); ctx.fillStyle = a.allineamenti.length ? '#facc15' : '#fb923c';
-      ctx.beginPath(); ctx.moveTo(p.px, p.py - 7); ctx.lineTo(p.px + 6, p.py + 5); ctx.lineTo(p.px, p.py + 2); ctx.lineTo(p.px - 6, p.py + 5); ctx.closePath(); ctx.fill();
+      // Il muso segue la rotta proiettata sullo schermo. Il triangolo di base
+      // guarda verso l'alto, quindi l'angolo della prima porzione visibile
+      // della previsione va aumentato di 90 gradi. Usare la traiettoria, e non
+      // direttamente l'heading in gradi, tiene conto anche della prospettiva
+      // del planetario e dell'inclinazione del telefono.
+      const avanti = punti.slice(1).find(q => Math.hypot(q.px - p.px, q.py - p.py) > .5);
+      const angolo = avanti ? Math.atan2(avanti.py - p.py, avanti.px - p.px) + Math.PI / 2 : 0;
+      ctx.save();
+      ctx.translate(p.px, p.py); ctx.rotate(angolo);
+      ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(6, 5); ctx.lineTo(0, 2); ctx.lineTo(-6, 5); ctx.closePath(); ctx.fill();
+      ctx.restore();
       const etichetta = `${a.callsign} · ${a.distanzaKm.toFixed(1)} km`;
       ctx.font = '700 11px system-ui';
       const x = p.px + 9, y = p.py - 7, larghezza = ctx.measureText(etichetta).width + 10;

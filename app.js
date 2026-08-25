@@ -25052,7 +25052,8 @@ function skyRegPreparaTela() {
   return !!sky.reg.ctx;
 }
 
-// Un fotogramma: fotocamera sotto, cielo sopra, firma in fondo. Le due
+// Un fotogramma: fotocamera sotto, cielo sopra, eventuale scheda informativa
+// e firma in fondo. Le due
 // immagini si ritagliano come fa il riquadro sullo schermo (`object-fit:
 // cover`), così quello che si registra è quello che si sta guardando.
 function skyRegComponi() {
@@ -25078,10 +25079,74 @@ function skyRegComponi() {
     skyRegDisegnaCoprendo(ctx, sky.canvas, sky.canvas.width, sky.canvas.height, L, H);
   }
 
+  // La scheda è un elemento HTML sovrapposto al canvas, perciò drawImage non
+  // può prenderla insieme al cielo. Se l'utente l'ha lasciata aperta la
+  // ridisegniamo sulla tela del filmato, nella stessa posizione e misura.
+  skyRegDisegnaScheda(ctx, L, H);
+
   // La firma passa sotto lo stesso filtro di tutto il resto: una scritta
   // bianca su un filmato rosso si vedrebbe subito che è stata appiccicata dopo
   skyRegFirma(ctx, L, H);
   ctx.filter = 'none';
+}
+
+function skyRegDisegnaScheda(ctx, L, H) {
+  const pannello = document.getElementById('skymap-dettaglio');
+  const corpo = document.getElementById('skymap-dettaglio-corpo');
+  if (!pannello || !corpo || !pannello.classList.contains('visibile')) return;
+
+  const area = sky.canvas && sky.canvas.getBoundingClientRect();
+  const box = pannello.getBoundingClientRect();
+  if (!area || !area.width || !area.height || !box.width || !box.height) return;
+  const sx = L / area.width, sy = H / area.height;
+  const x = Math.max(0, (box.left - area.left) * sx);
+  const y = Math.max(0, (box.top - area.top) * sy);
+  const w = Math.min(L - x, box.width * sx);
+  const h = Math.min(H - y, box.height * sy);
+  if (w < 20 || h < 20) return;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(6, 10, 20, .92)';
+  ctx.strokeStyle = 'rgba(100, 116, 139, .75)';
+  ctx.lineWidth = Math.max(1, sx);
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, Math.max(8, 12 * sx));
+  else ctx.rect(x, y, w, h);
+  ctx.fill(); ctx.stroke(); ctx.clip();
+
+  const righe = Array.from(corpo.querySelectorAll('h2, h3, h4, li, p'))
+    .filter(el => el.offsetParent !== null)
+    .map(el => ({ testo: (el.innerText || el.textContent || '').trim(), titolo: /^H[234]$/.test(el.tagName) }))
+    .filter(r => r.testo);
+  const margine = Math.max(12, 14 * sx);
+  const larghezza = Math.max(20, w - margine * 2);
+  let cy = y + margine;
+  for (const riga of righe) {
+    const misura = Math.max(11, (riga.titolo ? 16 : 12) * Math.min(sx, sy));
+    const passo = misura * 1.32;
+    ctx.font = `${riga.titolo ? '700' : '400'} ${misura}px system-ui, sans-serif`;
+    ctx.fillStyle = riga.titolo ? '#f8fafc' : '#cbd5e1';
+    for (const linea of skyRegSpezzaTesto(ctx, riga.testo, larghezza)) {
+      if (cy + passo > y + h - margine) { ctx.restore(); return; }
+      ctx.fillText(linea, x + margine, cy + misura);
+      cy += passo;
+    }
+    cy += passo * .28;
+  }
+  ctx.restore();
+}
+
+function skyRegSpezzaTesto(ctx, testo, larghezza) {
+  const parole = testo.replace(/\s+/g, ' ').split(' ');
+  const righe = [];
+  let riga = '';
+  parole.forEach(parola => {
+    const prova = riga ? `${riga} ${parola}` : parola;
+    if (riga && ctx.measureText(prova).width > larghezza) { righe.push(riga); riga = parola; }
+    else riga = prova;
+  });
+  if (riga) righe.push(riga);
+  return righe;
 }
 
 function skyRegDisegnaCoprendo(ctx, sorgente, sl, sh, L, H) {
