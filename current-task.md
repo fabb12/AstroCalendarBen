@@ -4,8 +4,7 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Gli aerei ADS-B seguono anche la macchina del tempo: vicino ad Adesso mostrano
-il dato in tempo reale, negli altri istanti propagano in entrambe le direzioni
-l'ultima posizione nota e marcano chiaramente la stima. La scheda cerca inoltre
-aeroporti di partenza e arrivo, con gli orari quando il servizio li fornisce.
-Cache PWA portata ad `astrocal-v170`.
+Il terreno del planetario è più chiaro grazie a una piccola componente di luce
+diffusa che cresce durante il giorno. L'ombreggiatura dei versanti opposti alla
+luce è più profonda e fredda, così valli e pendenze risultano più realistiche
+senza perdere la leggibilità notturna. Cache PWA portata ad `astrocal-v174`.
