@@ -7246,6 +7246,10 @@ const sky = {
   // da dove è salito, dove sarà fra un'ora, quando tramonta (vedi 7.3-bis)
   mostraTraccia: true,
   traccia: { chiave: null, punti: [], nome: '', colore: '#93c5fd', prossimo: 0 },
+  // Le tappe scelte una dopo l'altra nel planetario. La mini-mappa resta
+  // separata dalla traccia temporale del singolo astro: qui conta il percorso
+  // dell'utente fra punti diversi del cielo.
+  percorso: { punti: [], visibile: false },
   // L'eclittica: la strada che il Sole percorre in un anno fra le stelle, e
   // il binario attorno a cui stanno tutti i pianeti (vedi 7.3-ter). Resta
   // accesa finché non la si spegne, qualunque oggetto si stia guardando.
@@ -21263,6 +21267,84 @@ function skyCostruisciElenco() {
   skyFiltraElenco();
 }
 
+// Aggiunge alla carta del percorso un punto del cielo scelto dall'utente.
+// Azimut e altezza vengono fotografati al momento della scelta: facendo
+// scorrere il tempo, la carta continua così a raccontare il tragitto compiuto
+// fra le selezioni invece di trasformarsi sotto gli occhi.
+function skyAggiungiAlPercorso(o, id) {
+  if (!o || typeof o.az !== 'number' || typeof o.alt !== 'number') return;
+  const chiave = id || o.id || o.nome || `${o.az},${o.alt}`;
+  const ultimo = sky.percorso.punti[sky.percorso.punti.length - 1];
+  if (!ultimo || ultimo.id !== chiave) {
+    sky.percorso.punti.push({
+      id: chiave, nome: o.nome || 'Punto', az: o.az, alt: o.alt,
+      colore: o.colore || '#93c5fd'
+    });
+  }
+  sky.percorso.visibile = true;
+  skyDisegnaPercorso();
+}
+
+function skyNascondiPercorso() {
+  sky.percorso.visibile = false;
+  skyDisegnaPercorso();
+}
+
+// La carta usa tutto il cielo (azimut 0–360°, altezza +90/−90°), perciò non
+// dipende da dove la camera è girata. I segmenti che attraversano il Nord si
+// spezzano ai bordi invece di tagliare tutta la carta nel verso sbagliato.
+function skyDisegnaPercorso() {
+  const pannello = document.getElementById('skymap-percorso');
+  const tela = document.getElementById('skymap-percorso-canvas');
+  const punti = sky.percorso.punti;
+  const visibile = sky.percorso.visibile && punti.length > 0;
+  if (pannello) pannello.classList.toggle('hidden', !visibile);
+  if (!visibile || !tela) return;
+
+  const ctx = tela.getContext('2d');
+  const w = tela.width, h = tela.height;
+  const margineX = 12, alto = 12, basso = h - 17;
+  const x = p => margineX + (((p.az % 360) + 360) % 360) / 360 * (w - margineX * 2);
+  const y = p => alto + (90 - Math.max(-90, Math.min(90, p.alt))) / 180 * (basso - alto);
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+  ctx.lineWidth = 1;
+  [-45, 0, 45].forEach(alt => {
+    const py = alto + (90 - alt) / 180 * (basso - alto);
+    ctx.beginPath(); ctx.moveTo(margineX, py); ctx.lineTo(w - margineX, py); ctx.stroke();
+  });
+  [0, 90, 180, 270, 360].forEach(az => {
+    const px = margineX + az / 360 * (w - margineX * 2);
+    ctx.beginPath(); ctx.moveTo(px, alto); ctx.lineTo(px, basso); ctx.stroke();
+  });
+
+  ctx.strokeStyle = '#60a5fa';
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([7, 5]);
+  for (let i = 1; i < punti.length; i++) {
+    const a = punti[i - 1], b = punti[i];
+    if (Math.abs(x(a) - x(b)) > (w - margineX * 2) / 2) continue;
+    ctx.beginPath(); ctx.moveTo(x(a), y(a)); ctx.lineTo(x(b), y(b)); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  punti.forEach((p, i) => {
+    ctx.fillStyle = p.colore;
+    ctx.beginPath(); ctx.arc(x(p), y(p), 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#05070f';
+    ctx.font = '700 9px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(i + 1), x(p), y(p) + 0.5);
+  });
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.textBaseline = 'bottom';
+  [['N', margineX], ['E', margineX + (w - margineX * 2) * .25],
+   ['S', margineX + (w - margineX * 2) * .5], ['O', margineX + (w - margineX * 2) * .75],
+   ['N', w - margineX]].forEach(([t, px]) => { ctx.textAlign = 'center'; ctx.fillText(t, px, h - 2); });
+  tela.setAttribute('aria-label', `Percorso: ${punti.map(p => p.nome).join(', ')}`);
+}
+
 function skyScegliAstroDaElenco(id, opzioni = {}) {
   if (!id) return;
   // Sul telefono, dopo una ricerca, la tastiera virtuale può restare sopra
@@ -21385,6 +21467,8 @@ function skyAggiornaEtichette() {
 function skyImpostaTarget(id, opzioni = {}) {
   const spegni = sky.target === id && !opzioni.mantieni;
   sky.target = spegni ? null : id;
+  if (spegni) skyNascondiPercorso();
+  else skyAggiungiAlPercorso(skyVoceDiId(id), id);
   sky.cacheOrari = { chiave: null, valore: null };
 
   if (spegni) {
@@ -23554,6 +23638,7 @@ function skyInizializzaGesti() {
     }
     const sel = skyOggettoNelPunto(px, py);
     if (!sel) {
+      skyNascondiPercorso();
       const luogo = skyLuogoNelPunto(px, py);
       if (luogo) { skyChiudiDettaglio(); skyMostraVaiQua(luogo, px, py); return; }
       skyChiudiVaiQua();
@@ -23575,6 +23660,9 @@ function skyInizializzaGesti() {
       sky.cacheOrari = { chiave: null, valore: null };
       skyAggiornaStileElenco();
     }
+    const puntoPercorso = sel.categoria === 'astro' ? skyVoceDiId(sel.id) : sel.dati;
+    if (puntoPercorso) skyAggiungiAlPercorso(puntoPercorso,
+      sel.categoria === 'astro' ? sel.id : `${sel.categoria}:${puntoPercorso.id || puntoPercorso.nome}`);
     skyApriDettaglio(sel);
   };
 
@@ -25075,7 +25163,6 @@ const sol = {
   // era un automatismo da disfare o una scelta da rispettare.
   ancoraSec: 0, passoPrima: 0, passoToccato: false,
   prossimaScheda: 0, firmaScheda: '',
-  percorso: [], percorsoVisibile: false,
   skyDaRiprendere: false
 };
 
@@ -27841,9 +27928,6 @@ function solDisegna() {
     solTesto(ctx, `${sol.perno ? 'dal corpo scelto' : 'dal Sole'} al bordo ≈ ${bordo.replace(' al bordo', '')}` +
       (sol.distanzeVere ? '' : ' · distanze compresse'), sol.L - 10, riga, '#64748b', 11, 'right');
   }
-  // Durante il playback i pianeti si spostano: anche la carta di rotta deve
-  // seguire le tappe, non restare congelata all'istante dell'ultimo tocco.
-  if (sol.percorsoVisibile) solDisegnaPercorso();
 }
 
 // --- I numeri sotto al disegno ---------------------------------------------
@@ -27984,64 +28068,6 @@ window.solChiudiScheda = () => {
   solDisegna();
 };
 
-// La carta di rotta è volutamente indipendente dalla telecamera: mentre la
-// scena viene girata, conserva il nord dell'eclittica in alto e rende leggibile
-// il tragitto fra i corpi toccati. Le distanze usano la stessa compressione
-// della vista d'insieme, così anche i pianeti interni restano distinguibili.
-function solDisegnaPercorso() {
-  const pannello = document.getElementById('sol-percorso');
-  const tela = document.getElementById('sol-percorso-canvas');
-  const guscio = solGuscio();
-  const visibile = sol.percorsoVisibile && sol.percorso.length > 0 && !sol.vicino;
-  if (pannello) pannello.classList.toggle('hidden', !visibile);
-  if (guscio) guscio.classList.toggle('sol-percorso-aperto', visibile);
-  if (!visibile || !tela) return;
-
-  const ctx = tela.getContext('2d');
-  const w = tela.width, h = tela.height, cx = w / 2, cy = h / 2;
-  ctx.clearRect(0, 0, w, h);
-  const tappe = sol.percorso.map(id => sol.pianeti.find(p => p.id === id)).filter(Boolean);
-  const rMax = Math.max(1, ...tappe.map(p => solRaggio(p.r)));
-  const scala = Math.min(w, h) * 0.39 / rMax;
-
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.18)';
-  ctx.lineWidth = 1;
-  [...new Set(tappe.map(p => solRaggio(p.r).toFixed(5)))].forEach(r => {
-    ctx.beginPath(); ctx.arc(cx, cy, Number(r) * scala, 0, Math.PI * 2); ctx.stroke();
-  });
-  ctx.fillStyle = '#fde68a';
-  ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fill();
-
-  const punti = tappe.map(p => {
-    const scena = solScena(p.pos);
-    return { p, x: cx + scena.x * scala, y: cy - scena.y * scala };
-  });
-  if (punti.length > 1) {
-    ctx.strokeStyle = '#60a5fa';
-    ctx.lineWidth = 3;
-    ctx.lineJoin = 'round';
-    ctx.setLineDash([7, 5]);
-    ctx.beginPath();
-    punti.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y));
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-  punti.forEach((q, i) => {
-    ctx.fillStyle = q.p.colore;
-    ctx.beginPath(); ctx.arc(q.x, q.y, 6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#05070f';
-    ctx.font = '700 9px Inter, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(String(i + 1), q.x, q.y + 0.5);
-  });
-  tela.setAttribute('aria-label', `Percorso: ${tappe.map(p => p.nome).join(', ')}`);
-}
-
-function solNascondiPercorso() {
-  sol.percorsoVisibile = false;
-  solDisegnaPercorso();
-}
-
 // La sola lettura rimasta: la scheda appoggiata sulla scena, che a riposo non
 // c'è. L'elenco dei pianeti giù nella finestra è andato via con la fila dei
 // comandi — a tutto schermo era una tabella che nessuno vedeva mai, e un
@@ -28063,12 +28089,6 @@ function solAggiornaScheda(forza) {
 function solScegli(id) {
   const nuovo = sol.scelto === id ? null : id;
   sol.scelto = nuovo;
-  if (nuovo && !sol.vicino) {
-    // Due tappe uguali consecutive non aggiungono strada, ma ritoccando lo
-    // stesso corpo si continua a usare il gesto esistente di deselezione.
-    if (sol.percorso[sol.percorso.length - 1] !== nuovo) sol.percorso.push(nuovo);
-    sol.percorsoVisibile = true;
-  } else if (!nuovo) solNascondiPercorso();
   // Toccare un corpo sulla scena lo mette al centro della telecamera e ci si
   // comincia a girare
   // intorno; ritoccarlo (cioè deselezionarlo) lascia il perno e torna alla
@@ -28078,7 +28098,6 @@ function solScegli(id) {
   if (nuovo) solAvvicinaA(nuovo);
   else if (sol.perno === id) solLasciaPerno();
   solAggiornaScheda(true);
-  solDisegnaPercorso();
   solDisegna();
 }
 
@@ -28793,7 +28812,6 @@ function solTocco(e) {
     prova('Moon', sol.lunaSchermo.px, sol.lunaSchermo.py, sol.lunaSchermo.r);
   }
   if (migliore) solScegli(migliore);
-  else solNascondiPercorso();
 }
 
 // --- A tutto schermo -------------------------------------------------------
@@ -28988,9 +29006,6 @@ window.apriSistemaSolare = (opzioni = {}) => {
   sol.ancoraSec = sky.offsetTempoSec || 0;
   sol.firmaScheda = '';
   sol.prossimaScheda = 0;
-  sol.percorso = [];
-  sol.percorsoVisibile = false;
-  solDisegnaPercorso();
   sol.ultimoTs = 0;
   sol.istante = 0;
   solGeneraStelle(110);

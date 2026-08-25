@@ -4,7 +4,7 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Nel Sistema Solare 3D, ogni nuovo corpo selezionato viene aggiunto a una
-piccola carta di rotta in basso a sinistra. La carta unisce in ordine le tappe
-e scompare al tocco successivo sullo spazio vuoto della scena. Cache PWA
-portata ad `astrocal-v166`.
+La carta del percorso compare ora in basso a sinistra nel Planetario quando si
+scelgono punti diversi del cielo e scompare toccando nuovamente lo spazio vuoto.
+È stata rimossa dal Sistema Solare 3D, dove non era utile. Cache PWA portata ad
+`astrocal-v168`.
