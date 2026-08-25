@@ -3311,6 +3311,55 @@ body button.pos-risultato:focus-visible {
   background: rgba(14, 116, 144, 0.72);
 }
 
+/* Conferma del punto scelto direttamente sul paesaggio 3D. Come il popup
+   della mappa, nasce sopra il punto e non cambia luogo finché non si preme
+   esplicitamente «Vai qua». */
+.sky-popup-vai {
+  position: absolute;
+  z-index: 38;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(-50%, calc(-100% - 12px));
+  padding: 6px 7px 6px 10px;
+  border: 1px solid rgba(250, 204, 21, 0.7);
+  border-radius: 12px;
+  background: rgba(6, 10, 20, 0.94);
+  color: #fde68a;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.sky-popup-vai::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%) rotate(45deg);
+  border-right: 1px solid rgba(250, 204, 21, 0.7);
+  border-bottom: 1px solid rgba(250, 204, 21, 0.7);
+  background: rgba(6, 10, 20, 0.94);
+}
+.sky-popup-vai button {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 11px;
+  background: #facc15;
+  color: #172033;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+#skymap-contenitore.sky-volo-luogo canvas {
+  transform: scale(1.035);
+  filter: brightness(0.72) blur(1px);
+  transition: transform 650ms ease-in, filter 650ms ease-in;
+}
+
 /* Ogni gruppo è un tondo con dentro il suo segno, e nient'altro: sei nomi
    scritti per esteso facevano una striscia larga mezzo schermo sopra al
    cielo, e sul telefono bisognava pure farla scorrere per arrivare ad
