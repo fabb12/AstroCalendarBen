@@ -357,11 +357,22 @@
     stato.aerei.forEach(a => {
       const punti = a.traiettoria.map(t => skyProietta(skyVettore(t.az, t.alt), base, focale)).filter(p => p.davanti);
       if (!punti.length) return;
-      ctx.strokeStyle = 'rgba(125,211,252,.72)'; ctx.setLineDash([4, 5]); ctx.lineWidth = 1.2;
+      // Arancio e blu notte restano distinguibili sia sul cielo azzurro del
+      // giorno sia sul fondo scuro notturno. La distanza sta accanto al volo:
+      // non serve aprire la scheda e l'etichetta rimane su una sola riga.
+      ctx.strokeStyle = 'rgba(251,146,60,.88)'; ctx.setLineDash([4, 5]); ctx.lineWidth = 1.4;
       ctx.beginPath(); punti.forEach((p, i) => i ? ctx.lineTo(p.px, p.py) : ctx.moveTo(p.px, p.py)); ctx.stroke();
-      const p = punti[0]; ctx.setLineDash([]); ctx.fillStyle = a.allineamenti.length ? '#fbbf24' : '#7dd3fc';
+      const p = punti[0]; ctx.setLineDash([]); ctx.fillStyle = a.allineamenti.length ? '#facc15' : '#fb923c';
       ctx.beginPath(); ctx.moveTo(p.px, p.py - 7); ctx.lineTo(p.px + 6, p.py + 5); ctx.lineTo(p.px, p.py + 2); ctx.lineTo(p.px - 6, p.py + 5); ctx.closePath(); ctx.fill();
-      ctx.font = '600 11px system-ui'; ctx.fillText(a.callsign, p.px + 9, p.py + 4);
+      const etichetta = `${a.callsign} · ${a.distanzaKm.toFixed(1)} km`;
+      ctx.font = '700 11px system-ui';
+      const x = p.px + 9, y = p.py - 7, larghezza = ctx.measureText(etichetta).width + 10;
+      ctx.fillStyle = 'rgba(8,25,45,.90)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, y, larghezza, 18, 5);
+      else ctx.rect(x, y, larghezza, 18);
+      ctx.fill();
+      ctx.fillStyle = '#fff7ed'; ctx.fillText(etichetta, x + 5, y + 12.5);
     });
     ctx.restore();
   }
