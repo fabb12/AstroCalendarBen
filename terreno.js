@@ -2439,7 +2439,7 @@ const RAGGI_LIMITI = {
   // Gli aerei arrivano da ADS-B e cambiano continuamente: un raggio più
   // largo è utile in pianura, uno stretto evita traffico lontano e richieste
   // inutilmente grandi quando interessa solo ciò che passa sopra casa.
-  aerei: { min: 10, max: 250, passo: 5, predefinito: 10 },
+  aerei: { min: 10, max: 250, passo: 5, predefinito: 50 },
   // I laghi e i fiumi si cercano molto più vicino, e non per prudenza: un
   // lago a cinquanta chilometri, visto da uno che sta in pianura, è sotto
   // l'orizzonte — e quando invece si vede (da una cima) è una riga di due

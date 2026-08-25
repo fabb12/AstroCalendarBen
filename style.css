@@ -8674,6 +8674,8 @@ body button.did-ponte:active { transform: translateY(1px); }
 /* Aerei ADS-B: elenco compatto sopra il cielo, leggibile anche con una mano. */
 .gruppo-aerei { max-height: min(62vh, 430px); overflow-y: auto; }
 .aerei-testata { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.aerei-testata-azioni { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+.tasto-aerei-aggiorna-rapido { min-width:30px; width:30px; padding:5px; font-size:1rem; line-height:1; }
 .aerei-elenco { display:grid; gap:7px; margin-top:9px; }
 .aereo-riga { border:1px solid rgba(251,146,60,.5); border-radius:9px; padding:6px 9px; background:rgba(8,25,45,.92); }
 .aereo-riga strong { color:#fff7ed; letter-spacing:.04em; }
