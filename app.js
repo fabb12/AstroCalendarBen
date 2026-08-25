@@ -1218,6 +1218,16 @@ function fusoRicorda(lat, lon, nome, abbreviazione) {
 function fusoDelLuogo(luogo) {
   fusiCarica();
   const l = luogo || (typeof luogoCorrente === 'function' ? luogoCorrente() : null);
+  // Quando il luogo porta gia' con se' il fuso (citta' scelta o posizione
+  // salvata), quello e' il dato piu' diretto e non deve dipendere dalla cache
+  // separata. Questo rende corretta la barra anche al primo fotogramma e al
+  // riavvio offline.
+  if (l && l.fuso) {
+    try {
+      new Intl.DateTimeFormat('it-IT', { timeZone: l.fuso }).format(new Date());
+      return { nome: l.fuso, abbreviazione: l.abbreviazioneFuso || '' };
+    } catch (e) { /* identificatore vecchio o non supportato: prova la cache */ }
+  }
   if (l && isFinite(l.lat) && isFinite(l.lon)) {
     const noto = fusiOrari.get(fusoChiave(l.lat, l.lon));
     if (noto) return noto;
@@ -8339,7 +8349,8 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   if (fuso) fusoRicorda(lat, lon, fuso);
   sky.posizione = {
     lat, lon, fonte, origine, precisione, tempo, velocita,
-    nome: nome || nomeLuogoSalvato(lat, lon) || nomeLuogoVicino(lat, lon)
+    nome: nome || nomeLuogoSalvato(lat, lon) || nomeLuogoVicino(lat, lon),
+    fuso: fuso || null, abbreviazioneFuso: ''
   };
   // ...e intanto si chiede il nome vero a chi ha la mappa. Solo per i punti
   // che un nome non ce l'hanno: una città scelta in elenco è già il nome che
@@ -8358,6 +8369,12 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   // Cambiando luogo cambiano orari, altezze e giudizi: la memoria va svuotata
   svuotaCacheLocali();
   caricaFusoOrario(lat, lon).then(() => {
+    const trovato = fusiOrari.get(fusoChiave(lat, lon));
+    if (trovato && sky.posizione &&
+        fusoChiave(sky.posizione.lat, sky.posizione.lon) === fusoChiave(lat, lon)) {
+      sky.posizione.fuso = trovato.nome;
+      sky.posizione.abbreviazioneFuso = trovato.abbreviazione || '';
+    }
     if (typeof aggiornaStaseraNuovo === 'function') aggiornaStaseraNuovo();
     if (typeof costruisciAgenda === 'function') costruisciAgenda();
     if (typeof skyAggiornaTestoTempo === 'function') skyAggiornaTestoTempo();
@@ -8366,7 +8383,8 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
     localStorage.setItem(CHIAVE_SKY_POSIZIONE, JSON.stringify({
       lat, lon, precisione, tempo,
       origine: sky.posizione.origine,
-      nome: sky.posizione.nome
+      nome: sky.posizione.nome,
+      fuso: sky.posizione.fuso || fuso || null
     }));
   } catch (e) { /* storage pieno o non disponibile: pazienza */ }
   skyAvviso('posizione', ''); // la posizione c'è: via l'eventuale avviso
@@ -8393,7 +8411,8 @@ function skyCaricaPosizioneSalvata() {
         precisione: dati.precisione,
         tempo: dati.tempo,
         origine: dati.origine || null,
-        nome: dati.nome || null
+        nome: dati.nome || null,
+        fuso: dati.fuso || null
       });
       return true;
     }
@@ -9061,13 +9080,19 @@ async function avviaPosizioneAllAvvio() {
 // posizione vera. `proprio` distingue i due casi per chi deve raccontarlo.
 function skyLuogoDelCielo() {
   if (sky.luogoVista) {
-    return { lat: sky.luogoVista.lat, lon: sky.luogoVista.lon, nome: sky.luogoVista.nome || null, proprio: true };
+    return {
+      lat: sky.luogoVista.lat, lon: sky.luogoVista.lon,
+      nome: sky.luogoVista.nome || null, fuso: sky.luogoVista.fuso || null,
+      abbreviazioneFuso: sky.luogoVista.abbreviazioneFuso || '', proprio: true
+    };
   }
   const l = luogoCorrente();
   if (!l) return null;
   return {
     lat: l.lat, lon: l.lon,
     nome: (sky.posizione && sky.posizione.nome) || null,
+    fuso: (sky.posizione && sky.posizione.fuso) || null,
+    abbreviazioneFuso: (sky.posizione && sky.posizione.abbreviazioneFuso) || '',
     proprio: false
   };
 }
@@ -9109,9 +9134,17 @@ function skyImpostaLuogoVista(lat, lon, nome, fuso) {
   // buttiamolo via per richiederlo subito dopo. Così l'orologio cambia nello
   // stesso fotogramma del luogo, anche con una rete lenta.
   if (fuso) fusoRicorda(lat, lon, fuso);
-  sky.luogoVista = { lat, lon, nome: nome || nomeLuogoVicino(lat, lon) };
+  sky.luogoVista = {
+    lat, lon, nome: nome || nomeLuogoVicino(lat, lon),
+    fuso: fuso || null, abbreviazioneFuso: ''
+  };
   caricaFusoOrario(lat, lon).then(() => {
     if (sky.luogoVista && fusoChiave(sky.luogoVista.lat, sky.luogoVista.lon) === fusoChiave(lat, lon)) {
+      const trovato = fusiOrari.get(fusoChiave(lat, lon));
+      if (trovato) {
+        sky.luogoVista.fuso = trovato.nome;
+        sky.luogoVista.abbreviazioneFuso = trovato.abbreviazione || '';
+      }
       skyAggiornaTestoTempo();
       skyAggiornaStato();
     }
@@ -34611,7 +34644,10 @@ function skyScartoBreve(secondi) {
 function skyTestoBarraTempo(quando, scarto, marcia) {
   const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
   const fuso = fusoDelLuogo(luogo);
-  const ora = oraDelLuogo(quando, luogo);
+  // Nella pillola si mostra una sola ora: quella civile del luogo osservato.
+  // L'UTC resta nel titolo esteso, ma affiancarlo qui faceva sembrare che la
+  // barra stesse ancora usando il fuso del dispositivo.
+  const ora = oraDelLuogo(quando, luogo, { soloLocale: true });
   const giornoLocale = d => new Intl.DateTimeFormat('en-CA', {
     timeZone: fuso.nome, year: 'numeric', month: '2-digit', day: '2-digit'
   }).format(d);
