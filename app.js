@@ -7182,6 +7182,9 @@ const sky = {
   // Trascinamento e sua inerzia: quanto correva il dito quando ha lasciato il
   // cielo, e la vista che continua da sola e si spegne (vedi 7.4-ter)
   trascinamento: null,
+  // La carta geografica che compare dopo un viaggio della camera nel
+  // paesaggio. Leaflet nasce soltanto al primo spostamento.
+  mappaSpostamento: { mappa: null, partenza: null, arrivo: null, strati: [] },
   inerzia: null,
   ultimoFotogramma: 0,   // performance.now() del fotogramma precedente, per il dt
   // Il ciclo respira? `battito` è l'istante dell'ultimo fotogramma e
@@ -7246,10 +7249,6 @@ const sky = {
   // da dove è salito, dove sarà fra un'ora, quando tramonta (vedi 7.3-bis)
   mostraTraccia: true,
   traccia: { chiave: null, punti: [], nome: '', colore: '#93c5fd', prossimo: 0 },
-  // Le tappe scelte una dopo l'altra nel planetario. La mini-mappa resta
-  // separata dalla traccia temporale del singolo astro: qui conta il percorso
-  // dell'utente fra punti diversi del cielo.
-  percorso: { punti: [], visibile: false },
   // L'eclittica: la strada che il Sole percorre in un anno fra le stelle, e
   // il binario attorno a cui stanno tutti i pianeti (vedi 7.3-ter). Resta
   // accesa finché non la si spegne, qualunque oggetto si stia guardando.
@@ -8975,7 +8974,10 @@ function skyNomeLuogoConAltitudine(luogo) {
 }
 
 // Applica una città o un punto scelto nel pannello e lo racconta
-function skyUsaLuogoVista(lat, lon, nome) {
+function skyUsaLuogoVista(lat, lon, nome, opzioni = {}) {
+  // Questo e' il punto da cui parte la camera. Va letto prima di cambiare
+  // l'osservatore, altrimenti sulla carta partenza e arrivo coinciderebbero.
+  const partenza = skyLuogoDelCielo();
   // Le coordinate arrivano da un elenco di città, quindi sono buone: il
   // controllo resta come rete di sicurezza per chi chiamasse da altrove.
   if (!skyImpostaLuogoVista(lat, lon, nome)) {
@@ -8986,6 +8988,12 @@ function skyUsaLuogoVista(lat, lon, nome) {
   const campo = document.getElementById('skymap-luogo-cerca');
   if (campo) campo.value = '';
   const l = skyLuogoDelCielo();
+  // La mini-mappa racconta il viaggio compiuto dentro al paesaggio. Cercare
+  // una città o scegliere un punto dal mappamondo cambia l'osservatore, ma
+  // non è uno spostamento della camera sul terreno e non deve farla apparire.
+  if (opzioni.mostraSpostamentoTerreno && partenza && l) {
+    skyMostraMappaSpostamentoGeografico(partenza, l);
+  }
   skyAvviso('luogo', `Cielo visto da ${l && l.nome ? l.nome : formattaCoordinate(lat, lon)}: solo qui nel planetario.`, 7000);
   skyMostraGruppo('');
 }
@@ -21267,84 +21275,6 @@ function skyCostruisciElenco() {
   skyFiltraElenco();
 }
 
-// Aggiunge alla carta del percorso un punto del cielo scelto dall'utente.
-// Azimut e altezza vengono fotografati al momento della scelta: facendo
-// scorrere il tempo, la carta continua così a raccontare il tragitto compiuto
-// fra le selezioni invece di trasformarsi sotto gli occhi.
-function skyAggiungiAlPercorso(o, id) {
-  if (!o || typeof o.az !== 'number' || typeof o.alt !== 'number') return;
-  const chiave = id || o.id || o.nome || `${o.az},${o.alt}`;
-  const ultimo = sky.percorso.punti[sky.percorso.punti.length - 1];
-  if (!ultimo || ultimo.id !== chiave) {
-    sky.percorso.punti.push({
-      id: chiave, nome: o.nome || 'Punto', az: o.az, alt: o.alt,
-      colore: o.colore || '#93c5fd'
-    });
-  }
-  sky.percorso.visibile = true;
-  skyDisegnaPercorso();
-}
-
-function skyNascondiPercorso() {
-  sky.percorso.visibile = false;
-  skyDisegnaPercorso();
-}
-
-// La carta usa tutto il cielo (azimut 0–360°, altezza +90/−90°), perciò non
-// dipende da dove la camera è girata. I segmenti che attraversano il Nord si
-// spezzano ai bordi invece di tagliare tutta la carta nel verso sbagliato.
-function skyDisegnaPercorso() {
-  const pannello = document.getElementById('skymap-percorso');
-  const tela = document.getElementById('skymap-percorso-canvas');
-  const punti = sky.percorso.punti;
-  const visibile = sky.percorso.visibile && punti.length > 0;
-  if (pannello) pannello.classList.toggle('hidden', !visibile);
-  if (!visibile || !tela) return;
-
-  const ctx = tela.getContext('2d');
-  const w = tela.width, h = tela.height;
-  const margineX = 12, alto = 12, basso = h - 17;
-  const x = p => margineX + (((p.az % 360) + 360) % 360) / 360 * (w - margineX * 2);
-  const y = p => alto + (90 - Math.max(-90, Math.min(90, p.alt))) / 180 * (basso - alto);
-  ctx.clearRect(0, 0, w, h);
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
-  ctx.lineWidth = 1;
-  [-45, 0, 45].forEach(alt => {
-    const py = alto + (90 - alt) / 180 * (basso - alto);
-    ctx.beginPath(); ctx.moveTo(margineX, py); ctx.lineTo(w - margineX, py); ctx.stroke();
-  });
-  [0, 90, 180, 270, 360].forEach(az => {
-    const px = margineX + az / 360 * (w - margineX * 2);
-    ctx.beginPath(); ctx.moveTo(px, alto); ctx.lineTo(px, basso); ctx.stroke();
-  });
-
-  ctx.strokeStyle = '#60a5fa';
-  ctx.lineWidth = 3;
-  ctx.lineJoin = 'round';
-  ctx.setLineDash([7, 5]);
-  for (let i = 1; i < punti.length; i++) {
-    const a = punti[i - 1], b = punti[i];
-    if (Math.abs(x(a) - x(b)) > (w - margineX * 2) / 2) continue;
-    ctx.beginPath(); ctx.moveTo(x(a), y(a)); ctx.lineTo(x(b), y(b)); ctx.stroke();
-  }
-  ctx.setLineDash([]);
-  punti.forEach((p, i) => {
-    ctx.fillStyle = p.colore;
-    ctx.beginPath(); ctx.arc(x(p), y(p), 6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#05070f';
-    ctx.font = '700 9px system-ui, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(String(i + 1), x(p), y(p) + 0.5);
-  });
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '10px system-ui, sans-serif';
-  ctx.textBaseline = 'bottom';
-  [['N', margineX], ['E', margineX + (w - margineX * 2) * .25],
-   ['S', margineX + (w - margineX * 2) * .5], ['O', margineX + (w - margineX * 2) * .75],
-   ['N', w - margineX]].forEach(([t, px]) => { ctx.textAlign = 'center'; ctx.fillText(t, px, h - 2); });
-  tela.setAttribute('aria-label', `Percorso: ${punti.map(p => p.nome).join(', ')}`);
-}
-
 function skyScegliAstroDaElenco(id, opzioni = {}) {
   if (!id) return;
   // Sul telefono, dopo una ricerca, la tastiera virtuale può restare sopra
@@ -21467,8 +21397,6 @@ function skyAggiornaEtichette() {
 function skyImpostaTarget(id, opzioni = {}) {
   const spegni = sky.target === id && !opzioni.mantieni;
   sky.target = spegni ? null : id;
-  if (spegni) skyNascondiPercorso();
-  else skyAggiungiAlPercorso(skyVoceDiId(id), id);
   sky.cacheOrari = { chiave: null, valore: null };
 
   if (spegni) {
@@ -22674,7 +22602,8 @@ function skyMostraVaiQua(punto, px, py) {
     setTimeout(() => {
       contenitore.classList.remove('sky-volo-luogo');
       skyUsaLuogoVista(punto.lat, punto.lon,
-        punto.nome || formattaCoordinate(punto.lat, punto.lon));
+        punto.nome || formattaCoordinate(punto.lat, punto.lon),
+        { mostraSpostamentoTerreno: true });
     }, 900);
   }, { once: true });
   contenitore.appendChild(popup);
@@ -22786,6 +22715,58 @@ function skyRicordaTrascinamento(dAz, dAlt) {
     vAlt: prec.vAlt + (dAlt / dt - prec.vAlt) * k,
     quando: ora
   };
+}
+
+// La distanza fra i due punti serve alla didascalia. La carta invece usa
+// direttamente le coordinate, così mostra strade, paesi e forma del luogo.
+function skyDistanzaGeograficaKm(a, b) {
+  const p1 = a.lat * SKY_D2R, p2 = b.lat * SKY_D2R;
+  const dp = (b.lat - a.lat) * SKY_D2R, dl = (b.lon - a.lon) * SKY_D2R;
+  const h = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
+}
+
+function skyNascondiMappaSpostamento() {
+  const m = sky.mappaSpostamento;
+  m.partenza = null;
+  m.arrivo = null;
+  document.getElementById('skymap-mappa-spostamento')?.classList.add('hidden');
+}
+
+function skyMostraMappaSpostamentoGeografico(partenza, arrivo) {
+  const m = sky.mappaSpostamento;
+  const box = document.getElementById('skymap-mappa-spostamento');
+  const carta = document.getElementById('skymap-mappa-spostamento-carta');
+  if (!box || !carta || typeof L === 'undefined') return;
+  m.partenza = { lat: partenza.lat, lon: partenza.lon, nome: partenza.nome };
+  m.arrivo = { lat: arrivo.lat, lon: arrivo.lon, nome: arrivo.nome };
+  box.classList.remove('hidden');
+  if (!m.mappa) {
+    m.mappa = L.map(carta, { zoomControl: false, dragging: false, touchZoom: false,
+      doubleClickZoom: false, scrollWheelZoom: false, boxZoom: false, keyboard: false,
+      attributionControl: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    }).addTo(m.mappa);
+  }
+  m.strati.forEach(strato => m.mappa.removeLayer(strato));
+  const da = [partenza.lat, partenza.lon], a = [arrivo.lat, arrivo.lon];
+  const filo = L.polyline([da, a], { color: '#38bdf8', weight: 4, dashArray: '7 6' }).addTo(m.mappa);
+  const origine = L.circleMarker(da, { radius: 6, color: '#f8fafc', weight: 3,
+    fillColor: '#0f172a', fillOpacity: 1 }).addTo(m.mappa);
+  const destinazione = L.circleMarker(a, { radius: 7, color: '#111827', weight: 2,
+    fillColor: '#facc15', fillOpacity: 1 }).addTo(m.mappa);
+  m.strati = [filo, origine, destinazione];
+  const distanza = skyDistanzaGeograficaKm(partenza, arrivo);
+  if (distanza < 0.05) m.mappa.setView(a, 16, { animate: false });
+  else m.mappa.fitBounds(L.latLngBounds([da, a]).pad(0.45), { animate: false, maxZoom: 15 });
+  setTimeout(() => m.mappa && m.mappa.invalidateSize({ pan: false }), 0);
+  const misura = distanza < 1 ? `${Math.round(distanza * 1000)} m` : `${distanza.toFixed(distanza < 10 ? 1 : 0)} km`;
+  const nomeArrivo = arrivo.nome || formattaCoordinate(arrivo.lat, arrivo.lon);
+  const testo = `Spostamento: ${misura} · ${nomeArrivo}`;
+  const label = document.getElementById('skymap-mappa-spostamento-testo');
+  if (label) label.textContent = testo;
+  box.setAttribute('aria-label', `${testo}. Il punto bianco indica la partenza, quello giallo l'arrivo. Tocca il planetario per chiudere.`);
 }
 
 // Il dito si stacca: se stava ancora correndo, la vista prosegue da sola.
@@ -23626,6 +23607,11 @@ function skyInizializzaGesti() {
     if (t.mosso || sky.puntatori.size > 1) return;
     if (performance.now() - t.quando > 600) return;
 
+    // Dopo aver mostrato quanto ci si e' spostati, il tocco successivo sul
+    // planetario libera il cielo dalla carta (senza rubare il normale tocco
+    // che apre una scheda o sceglie un luogo).
+    skyNascondiMappaSpostamento();
+
     const r = c.getBoundingClientRect();
     const px = e.clientX - r.left, py = e.clientY - r.top;
     // I nomi di paesi e vette sono comandi visibili: hanno precedenza sugli
@@ -23638,7 +23624,6 @@ function skyInizializzaGesti() {
     }
     const sel = skyOggettoNelPunto(px, py);
     if (!sel) {
-      skyNascondiPercorso();
       const luogo = skyLuogoNelPunto(px, py);
       if (luogo) { skyChiudiDettaglio(); skyMostraVaiQua(luogo, px, py); return; }
       skyChiudiVaiQua();
@@ -23660,9 +23645,6 @@ function skyInizializzaGesti() {
       sky.cacheOrari = { chiave: null, valore: null };
       skyAggiornaStileElenco();
     }
-    const puntoPercorso = sel.categoria === 'astro' ? skyVoceDiId(sel.id) : sel.dati;
-    if (puntoPercorso) skyAggiungiAlPercorso(puntoPercorso,
-      sel.categoria === 'astro' ? sel.id : `${sel.categoria}:${puntoPercorso.id || puntoPercorso.nome}`);
     skyApriDettaglio(sel);
   };
 
