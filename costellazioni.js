@@ -1250,7 +1250,7 @@ const COST_BUIO = [
 // =====================================================================
 
 const cost = {
-  arte: true,             // il disegno è acceso
+  arte: false,            // i disegni si accendono solo quando vengono richiesti
   quando: 0,              // per quale aggiornamento del catalogo sono buoni i telai
   telai: null,            // sigla → { a, b, c } versori delle ancore nel cielo di adesso
   terze: null,            // sigla → la terza ancora scelta da sé, con le sue coordinate nel telaio
@@ -2929,9 +2929,8 @@ function costTornaAllElenco() {
 window.costAlternaArte = function () {
   cost.arte = !cost.arte;
   costAggiornaTastoArte();
-  // È un comando effettivo come gli altri tasti del pannello Filtri: si
-  // chiude subito, e la mappa torna visibile per guardare il risultato.
-  if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
+  // Il pannello resta aperto per permettere di combinare più filtri; si
+  // richiude dalla sua linguetta quando si è finito.
 };
 
 function costAggiornaTastoArte() {

@@ -3285,6 +3285,32 @@ body button.pos-risultato:focus-visible {
 }
 .linguette-gruppi::-webkit-scrollbar { display: none; }
 
+/* Il segnaposto apre direttamente la scelta del punto di osservazione. Sta
+   accanto al menu, con una sagoma propria per non sembrare un settimo gruppo. */
+.tasto-mappa-luogo-cielo {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  color: var(--blu-chiaro);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background-color var(--transizione), color var(--transizione), border-color var(--transizione);
+}
+.tasto-mappa-luogo-cielo:hover,
+.tasto-mappa-luogo-cielo:focus-visible {
+  color: #fff;
+  border-color: rgba(125, 211, 252, 0.72);
+  background: rgba(14, 116, 144, 0.72);
+}
+
 /* Ogni gruppo è un tondo con dentro il suo segno, e nient'altro: sei nomi
    scritti per esteso facevano una striscia larga mezzo schermo sopra al
    cielo, e sul telefono bisognava pure farla scorrere per arrivare ad
@@ -3596,11 +3622,68 @@ body button.pos-risultato:focus-visible {
 .gruppo-comandi.gruppo-astri.gruppo-attivo { max-height: 66%; }
 /* Anche quello degli eventi: ogni voce è tre righe più i suoi tasti */
 .gruppo-comandi.gruppo-eventi.gruppo-attivo { max-height: 66%; }
-/* Tempo e luogo deve restare leggero: pochi comandi, niente note visibili. */
+/* Tempo e luogo deve restare leggero: pochi comandi, niente note visibili.
+   Dentro sono due blocchi (`.blocco-tempo`) col loro titolo, separati da un
+   filo: le due domande — quando, e da dove — si riconoscono prima di essere
+   lette. Lo stacco fra i due blocchi è più largo di quello fra le righe di
+   uno stesso blocco, e quella differenza è tutto il raggruppamento. */
 .gruppo-comandi.gruppo-tempo.gruppo-attivo {
+  display: grid;
+  gap: 10px;
   max-height: 58%;
-  padding-bottom: 12px;
+  padding: 10px 12px 12px;
 }
+.gruppo-tempo > .blocco-tempo,
+.gruppo-tempo > .stacco-pannello { margin-top: 0; }
+
+/* Un blocco: il titolo, e sotto le sue righe, più vicine fra loro di quanto
+   i blocchi lo siano fra loro. `min-width: 0` non è un dettaglio di stile:
+   senza, una riga che non manda a capo — la data, il playback — allarga la
+   griglia oltre il pannello e il pannello oltre lo schermo, ed è così che
+   "Vai" e "Mappa" finivano tagliati fuori dal bordo destro. */
+.blocco-tempo { display: grid; gap: 7px; min-width: 0; }
+.blocco-tempo > .riga-comandi { margin-top: 0; }
+
+/* La testata di un blocco: a sinistra di cosa parla, a destra la lettura
+   corta (di quanto ci si è spostati nel tempo) o il tasto del ritorno a
+   casa. Due cose sulla stessa riga invece di due righe. */
+.testa-blocco-tempo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 20px;
+}
+.titolo-blocco-tempo {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+
+/* Una riga con davanti la parola che dice cosa comanda. Su schermo largo la
+   parola sta a sinistra e i comandi si prendono tutto il resto; su un
+   telefono va sopra (media query in fondo al file), perché sette segmenti
+   più una parola in trecentosessanta pixel non ci stanno. */
+.riga-etichettata {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.etichetta-riga {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--testo-3);
+}
+.corpo-riga { display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* Dentro a una riga etichettata i segmenti non pretendono più tutta la
+   larghezza per sé: si prendono quella che avanza dopo l'etichetta */
+.riga-etichettata .segmenti-cielo { flex: 1 1 auto; }
 
 .riga-comandi {
   display: flex;
@@ -3821,8 +3904,17 @@ body .gruppo-astri.ricerca-attiva .chip-astro {
 .tasto-cielo:disabled { opacity: 0.35; cursor: default; }
 .tasto-cielo:disabled:hover { border-color: var(--bordo); background: var(--superficie-alta); }
 
-/* Il playback: i due versi restano compatti; lo stop è già nel play della barra. */
-.riga-playback { margin-top: 8px; }
+/* Il playback: i due versi restano compatti a sinistra e la velocità si
+   appoggia al bordo destro (è il margine automatico dello stacco a spingerla
+   là). Senza, i due tasti del verso si prendevano tutto lo spazio avanzato e
+   su una riga larga diventavano due lastre. Lo stop è già nel play della
+   barra in fondo alla mappa, e qui non si ripete. */
+.riga-playback {
+  flex-wrap: nowrap;
+  gap: 5px;
+  margin-top: 0;
+}
+.riga-playback .stacco-comandi { margin-left: auto; }
 .tasto-cielo.tasto-play {
   flex: 1 1 auto;
   max-width: 74px;
@@ -3866,7 +3958,7 @@ body .gruppo-astri.ricerca-attiva .chip-astro {
 .campo-data {
   display: flex;
   align-items: center;
-  flex: 1 1 240px;
+  flex: 1 1 200px;
   min-width: 0;
   gap: 1px;
   padding: 3px 6px;
@@ -3906,57 +3998,39 @@ body input.casella-data:hover { border: 0; }
 }
 /* Fra la data e l'ora ci vuole più aria che fra due numeri della stessa data */
 .sep-larga { padding: 0 4px; }
-/* Uno stacco dentro a un pannello: il pannello Tempo dice due cose (quando,
-   e da dove), e senza una riga fra loro sembravano la stessa cosa. Sottile e
-   stretto: serve a separare, non a occupare. */
-.stacco-pannello {
-  height: 1px;
-  margin: 8px 0 7px;
-  background: var(--bordo);
-}
-
-/* Da dove si guarda il cielo: tre righe in tutto, appoggiate sopra al cielo,
-   quindi ogni pixel di altezza è cielo coperto. L'etichetta e il nome stanno
-   in fila e il tasto "Torna a casa" chiude la riga; quando il cielo è
-   spostato la lettura si accende, ed è l'unica cosa che spiega perché quello
-   disegnato non è il cielo che si vede dalla finestra. */
-.riga-luogo { gap: 6px; margin-top: 0; }
-.etichetta-luogo { flex: 0 0 auto; }
-.lettura-luogo {
-  flex: 1 1 auto;
+/* La lettura corta nella testata di "Quando": non l'istante — quello lo
+   dicono le sei caselle qui sotto — ma di quanto si è spostato l'orologio e
+   a che passo sta camminando. Fuori dal tempo reale si accende d'ambra,
+   come la barra in fondo alla mappa. */
+.lettura-tempo {
   min-width: 0;
+  margin: 0;
   overflow: hidden;
+  text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--mono);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-variant-numeric: tabular-nums;
-  color: var(--testo-2);
-}
-.lettura-luogo[data-visita="si"] { color: var(--blu-chiaro); font-weight: 600; }
-.riga-luogo .tasto-cielo { flex: 0 0 auto; }
-/* Il campo del nome e il tasto del mappamondo stanno in fila e si dividono
-   la riga: sono le due risposte alla stessa domanda — "da dove?" — e la
-   seconda serve quando la prima non ha un nome da offrire. Il campo cede
-   spazio per primo, il tasto resta leggibile. */
-.riga-cerca-luogo .campo-cielo { flex: 1 1 190px; }
-.tasto-luogo-mappa { flex: 0 0 auto; }
-.risultati-luogo { max-height: 168px; margin-top: 6px; }
-.nota-luogo {
-  margin: 6px 0 0;
-  font-size: 0.72rem;
-  line-height: 1.35;
   color: var(--testo-3);
 }
-
-.lettura-tempo {
-  margin: 10px 0 0;
-  font-family: var(--mono);
-  font-size: 0.82rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--testo-2);
-}
 .lettura-tempo.spostata { color: var(--ambra); }
+
+/* Tempo e luogo è un pannello operativo: i comandi conservano lo stesso
+   linguaggio visivo dell'app, ma qui stanno più vicini e bassi. */
+.gruppo-tempo .tasto-cielo { min-height: 38px; padding: 8px 12px; }
+.gruppo-tempo .tasto-cielo.tasto-passo { min-height: 38px; padding: 7px 10px; }
+.gruppo-tempo .tasto-cielo.tasto-play { min-height: 38px; padding: 8px 12px; }
+.gruppo-tempo .tasto-segmento { min-height: 32px; padding-block: 6px; }
+.gruppo-tempo .campo-cielo { min-height: 38px; padding-block: 7px; }
+/* Il tasto appeso a una testata ("Torna a casa") è un ripensamento, non un
+   comando che si usa ogni volta: sta più basso degli altri, così non alza la
+   riga del titolo e non si prende l'occhio prima dei comandi veri. */
+.gruppo-tempo .testa-blocco-tempo .tasto-cielo {
+  min-height: 30px;
+  padding: 5px 10px;
+  font-size: 0.74rem;
+}
 
 .lettura-bussola {
   min-width: 52px;
@@ -4153,6 +4227,7 @@ body input.casella-data:hover { border: 0; }
   .linguetta-gruppo { width: 34px; height: 34px; }
   .icona-linguetta { width: 19px; height: 19px; }
   .linguette-gruppi { padding: 3px; gap: 2px; }
+  .tasto-mappa-luogo-cielo { width: 42px; height: 42px; }
   .lettura-cielo { font-size: 0.7rem; padding: 4px 9px; }
   .letture-sinistra { max-width: calc(100% - 66px); }
   .bussola-cielo { width: 52px; height: 52px; }
@@ -4165,20 +4240,50 @@ body input.casella-data:hover { border: 0; }
   .cerca-astri { margin: -10px -12px 8px; padding: 8px 12px; }
   body .chip-astro { padding: 5px 8px; font-size: 0.76rem; }
   .titolo-famiglia { font-size: 0.65rem; }
-  /* Su un telefono le sei caselle della data si prendono tutta la riga, e i
-     due tasti stanno insieme in quella dopo: "Vai" da solo in fondo a una
-     riga, con "Adesso" a capo, sembrava che appartenessero a due comandi */
-  .campo-data { flex: 1 1 100%; }
-  .riga-data .tasto-cielo { flex: 1 1 auto; }
+  /* Su un telefono la parola che etichetta una riga va sopra i comandi
+     invece che accanto: sette segmenti più "Passo" in trecentosessanta pixel
+     vorrebbero dire trentotto pixel a segmento, meno di quanto "1 mese"
+     occupa da solo. Sopra costa tredici pixel; accanto costava la
+     leggibilità di tutta la fila. */
+  .riga-etichettata { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .etichetta-riga { font-size: 0.68rem; }
+  /* Le sei caselle della data e il tasto che le conferma restano in fila:
+     insieme non arrivano a trecento pixel, e "Vai" a capo da solo sembrava
+     un comando a sé invece della conferma di quello che ha accanto */
+  .campo-data { flex: 1 1 auto; padding-inline: 4px; }
+  body input.casella-data { font-size: 0.82rem; }
+  .sep-data { font-size: 0.8rem; }
+  .riga-data .tasto-cielo { flex: 0 0 auto; }
   /* Tutta la riga del playback — verso e velocità — deve restare in fila
      come su un lettore: i tasti si stringono, ma nessuno va a capo */
   .riga-playback { flex-wrap: nowrap; gap: 5px; }
-  .tasto-cielo.tasto-play { padding: 9px 8px; max-width: none; }
+  .tasto-cielo.tasto-play { padding: 9px 10px; }
   .riga-playback .tasto-cielo.tasto-passo { padding: 8px 9px; }
   .lettura-velocita { min-width: 54px; font-size: 0.74rem; }
   .stacco-comandi { margin: 0 1px; }
-  .tasto-segmento { min-height: 34px; padding: 7px 4px; font-size: 0.74rem; }
+  /* Sette gradini in trecentoventi pixel: la pillola si stringe fino al
+     filo (un pixel di stacco, due di rientro) e il corpo scende, se no
+     "1 mese" e "1 anno" escono dal loro segmento e si toccano — e il
+     segmento acceso, più largo del testo che contiene, diventa un pallino */
+  .segmenti-cielo { gap: 1px; padding: 2px; }
+  .tasto-segmento { min-height: 34px; padding: 7px 2px; font-size: 0.68rem; letter-spacing: -0.01em; }
   .riga-comandi { gap: 6px; }
+
+  /* Sotto i trecentottanta pixel (i telefoni piccoli, e ogni telefono
+     girato con la tastiera aperta) nemmeno così i sette gradini ci stanno:
+     il pannello si stringe di un paio di pixel per lato e il corpo scende
+     ancora. È l'ultima riga di difesa, e vale solo lì. */
+  @media (max-width: 380px) {
+    .gruppo-comandi.gruppo-tempo.gruppo-attivo { padding-inline: 10px; }
+    .tasto-segmento { padding-inline: 1px; font-size: 0.62rem; }
+    /* La stessa aritmetica sulla riga della data: le sei caselle più "Vai"
+       sforavano di meno di un pixel, e un pixel manda il tasto a capo da
+       solo in fondo al pannello — dove non sembra più la conferma di quello
+       che ha sopra. Si stringono i rientri e il corpo, e ci sta. */
+    .campo-data { padding-inline: 3px; }
+    .sep-larga { padding-inline: 2px; }
+    body input.casella-data { font-size: 0.78rem; }
+  }
 
   /* I bottoni di comando delle schede Visualizzazione, Filtri e Navigazione:
      in colonna singola erano tredici righe per aprire un solo pannello, e
@@ -6024,7 +6129,13 @@ body.luogo-immersivo { overflow: hidden; }
     color: var(--blu-chiaro);
     box-shadow: none;
   }
-  .voce-menu-icona { display: block; opacity: 0.95; }
+  .voce-menu-icona {
+    display: block;
+    opacity: 0.95;
+    transform: scale(1);
+    transition: transform var(--transizione);
+  }
+  .voce-menu.attiva .voce-menu-icona { transform: scale(1.18); }
   .voce-menu-testo { display: block; line-height: 1.1; }
 
   /* Su un tablet la barra non si spalma per tutta la larghezza: le voci
@@ -6695,15 +6806,152 @@ body.luogo-immersivo { overflow: hidden; }
   .griglia-orizzonte { grid-template-columns: repeat(8, minmax(0, 1fr)); }
 }
 
-/* ---------------------------------------- Fin dove guardare (montagne e paesi) */
-/* Due slitte e un interruttore. Il numero sta a destra e ha larghezza
-   fissa: se no, passando da 95 a 100 km la slitta si accorcia sotto al
-   dito che la sta muovendo. */
+/* ---------------------------------------- Fin dove guardare (montagne, paesi, acque) */
+/* Una mappa, tre voci di legenda e una slitta. La mappa è il comando vero —
+   si trascina il bordo di un cerchio o si tocca fin dove si vuole arrivare —
+   e la slitta è il numero esatto, per la tastiera e per quando la mappa non
+   c'è. Il numero sta a destra e ha larghezza fissa: se no, passando da 95 a
+   100 km la slitta si accorcia sotto al dito che la sta muovendo. */
 .griglia-raggi {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-top: 6px;
+}
+
+.raggi-mappa-guscio { position: relative; }
+
+.raggi-mappa {
+  width: 100%;
+  height: clamp(340px, 48vh, 520px);
+  border-radius: var(--raggio-l);
+  overflow: hidden;
+  border: 1px solid var(--bordo-forte);
+  /* Il colore dell'acqua, finché le tessere arrivano. */
+  background-color: #cfe0ef;
+  box-shadow: var(--ombra-3);
+}
+
+.raggi-pieno {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  width: 42px;
+  height: 42px;
+  border-radius: 9px;
+  border: 2px solid rgba(15, 23, 42, 0.35);
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  font-size: 1.45rem;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+.raggi-mappa-guscio:fullscreen,
+.raggi-mappa-guscio.raggi-schermo-pieno {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  width: 100vw;
+  height: 100dvh;
+  background: #08111f;
+}
+.raggi-mappa-guscio:fullscreen .raggi-mappa,
+.raggi-mappa-guscio.raggi-schermo-pieno .raggi-mappa {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+/* Qui la domanda è geografica — dove cadono i cerchi, che cosa ci sta dentro
+   — quindi vale la stessa eccezione della mappa del luogo: niente negativo,
+   solo il filtro leggero. Su una carta invertita non si riconosce più una
+   valle da un lago proprio mentre li si sta cercando. */
+#imp-raggi-mappa .leaflet-tile-pane { filter: saturate(0.94) contrast(1.03); }
+#imp-raggi-mappa .leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.25);
+}
+#imp-raggi-mappa .leaflet-control-zoom a:hover { background: #fff; color: #000; }
+#imp-raggi-mappa .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.8) !important;
+  color: #334155 !important;
+  font-size: 9px;
+}
+#imp-raggi-mappa .leaflet-control-attribution a { color: #1d4ed8 !important; }
+
+/* Il pallino che si trascina. Bianco col bordo scuro perché deve staccarsi
+   da qualunque cosa ci sia sotto — un bosco, un lago, una città — e non dal
+   colore del cerchio a cui appartiene. */
+.maniglia-raggio {
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96);
+  border: 2px solid #0f172a;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+}
+.maniglia-raggio:active { cursor: grabbing; }
+
+.raggi-assente {
+  font-size: 0.76rem;
+  color: var(--testo-3);
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-l);
+  padding: 12px;
+}
+
+.raggi-legenda {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.voce-raggio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: var(--incassato);
+  border: 1px solid var(--bordo);
+  border-radius: 10px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+.voce-raggio.attiva {
+  border-color: var(--blu-chiaro);
+  background: color-mix(in srgb, var(--blu-chiaro) 12%, var(--incassato));
+}
+.voce-raggio.spenta { opacity: 0.62; }
+
+/* La pastiglia è il cerchio della mappa in miniatura: è l'unica cosa che
+   lega una riga di legenda al suo anello, e per questo prende il colore da
+   una variabile scritta nel markup invece che da una classe per famiglia —
+   la tavolozza vera sta in `SKY_NOMI_ORIZZONTE`, in app.js, e qui non se ne
+   tiene una seconda copia. */
+.pastiglia-raggio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: none;
+  border: 2px solid var(--tinta, var(--blu-chiaro));
+  background: color-mix(in srgb, var(--tinta, var(--blu-chiaro)) 22%, transparent);
+}
+
+.voce-raggio-testo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.conta-raggio {
+  font-size: 0.68rem;
+  color: var(--testo-3);
+  opacity: 0.85;
 }
 
 .riga-raggio {
@@ -6721,8 +6969,8 @@ body.luogo-immersivo { overflow: hidden; }
   font-size: 0.78rem;
   color: var(--testo-2);
   font-weight: 600;
-  min-width: 108px;
 }
+.riga-raggio .nome-raggio { min-width: 108px; }
 
 .riga-raggio input[type="range"] {
   flex: 1;
@@ -6736,6 +6984,14 @@ body.luogo-immersivo { overflow: hidden; }
   font-variant-numeric: tabular-nums;
   min-width: 52px;
   text-align: right;
+  flex: none;
+}
+
+.raggi-spiega {
+  font-size: 0.72rem;
+  color: var(--testo-3);
+  line-height: 1.45;
+  margin: -2px 2px 0;
 }
 
 .riga-interruttore {
@@ -6751,8 +7007,11 @@ body.luogo-immersivo { overflow: hidden; }
 }
 
 @media (max-width: 420px) {
+  /* Su un telefono resta spazio sotto per le quattro voci, la slitta e gli
+     interruttori, ma la carta è abbastanza alta da leggere i cerchi. */
+  .raggi-mappa { height: 300px; }
   .riga-raggio { flex-wrap: wrap; }
-  .nome-raggio { min-width: 0; flex: 1; }
+  .riga-raggio .nome-raggio { min-width: 0; flex: 1; }
   .riga-raggio input[type="range"] { flex: 1 0 100%; order: 3; }
 }
 
@@ -8125,3 +8384,11 @@ body button.did-ponte:active { transform: translateY(1px); }
     height: calc(92dvh - 100px);
   }
 }
+/* Aerei ADS-B: elenco compatto sopra il cielo, leggibile anche con una mano. */
+.gruppo-aerei { max-height: min(62vh, 430px); overflow-y: auto; }
+.aerei-testata { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.aerei-elenco { display:grid; gap:7px; margin-top:9px; }
+.aereo-riga { border:1px solid rgba(148,163,184,.24); border-radius:10px; padding:8px 10px; background:rgba(15,23,42,.84); }
+.aereo-riga strong { color:#e0f2fe; letter-spacing:.04em; }
+.aereo-dati { color:#cbd5e1; font-size:.76rem; margin-top:2px; }
+.aereo-allineamento { color:#fde68a; font-size:.73rem; margin-top:3px; }

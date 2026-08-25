@@ -244,59 +244,249 @@ function costruisciOrizzonte() {
 }
 
 
-// Fin dove cercare le montagne e i paesi, e se le montagne si nominano.
+// Fin dove cercare montagne, luci e acqua — su una mappa.
 //
-// Tre comandi soli, e stanno insieme perché rispondono alla stessa
-// domanda: quanto lontano guardi. La slitta invece della casella perché il
-// numero esatto non conta — fra 75 e 80 chilometri non cambia niente — e
-// perché una slitta si muove col pollice mentre si guarda l'orizzonte.
+// Erano tre slitte, ed erano tre numeri chiesti al buio: «ottanta
+// chilometri» non vuol dire niente finché non si sa cosa ci sta dentro, e
+// da un posto qualunque nessuno lo sa. Dalla pianura padana ottanta
+// chilometri arrivano alle Alpi e sono pochi; in mezzo all'Appennino ne
+// bastano venti e il resto è il versante di fronte. Chi apriva le
+// Impostazioni doveva quindi indovinare, cambiare, tornare nel planetario,
+// guardare, e ricominciare.
+//
+// La domanda però è geografica, e su una carta si risponde da sé: al centro
+// c'è dove sei, e i tre cerchi sono esattamente i tre raggi di ricerca.
+// Si trascina il bordo di un cerchio, o si tocca il punto fin dove si vuole
+// arrivare, e il numero viene dietro invece di venire prima.
+//
+// Sono i **cerchi veri**, e su questo non si bara: dentro a ognuno c'è
+// scritto anche l'anello interno che le richieste usano davvero — le
+// frazioni e i villaggi si cercano solo entro `CITTA_RAGGIO_PAESI_KM`, le
+// vette senza filtro di quota solo entro `CIME_RAGGIO_VICINE_KM` — e
+// accanto al nome c'è quanto si è trovato e quanto di quello il planetario
+// sta disegnando adesso. Quel secondo numero è la coerenza fatta vedere: un
+// raggio da centocinquanta chilometri che porta quaranta vette di cui zero
+// visibili non è un raggio da allargare, è un raggio da stringere.
+//
+// La slitta resta, sotto la mappa, per il raggio scelto: serve al numero
+// esatto, a chi naviga con la tastiera e a chi la mappa non ce l'ha (senza
+// Leaflet, o senza una posizione).
 //
 // Cambiare un raggio butta via l'elenco salvato e ne chiede uno nuovo
-// (`raggiImposta` in terreno.js): è una richiesta di rete, quindi si fa al
-// `change` — quando il dito si stacca — e non a ogni pixel dello scorrere.
-function costruisciRaggiOrizzonte() {
-  const box = document.getElementById('imp-raggi');
-  if (!box || typeof RAGGI_LIMITI === 'undefined') return;
+// (`raggiImposta` in terreno.js): è una richiesta di rete, quindi si fa
+// quando il dito si stacca — al `change` della slitta, al `dragend` della
+// maniglia — e non a ogni pixel dello scorrere.
 
-  const righe = [
-    { quale: 'cime', nome: 'Montagne', valore: raggioCime(),
-      aiuto: 'Fin dove cercare le vette con un nome. Più largo vuol dire più nomi, ma anche montagne che stanno dietro ad altre montagne.' },
-    { quale: 'citta', nome: 'Luci dei paesi', valore: raggioCitta(),
-      aiuto: 'Fin dove cercare i paesi che illuminano l\'orizzonte. Una città grande si vede da lontano, un paese no.' },
-    { quale: 'acque', nome: 'Laghi e fiumi', valore: raggioAcque(),
-      aiuto: 'Fin dove cercare l\'acqua. Più in là di così un lago è sotto l\'orizzonte, o è una riga di due pixel.' }
-  ];
+// Le quattro famiglie, coi colori con cui il planetario le scrive
+// sull'orizzonte (§ `SKY_NOMI_ORIZZONTE`): il cerchio grigio-azzurro è
+// quello dei nomi grigio-azzurri, e non c'è una seconda tavolozza da tenere
+// d'accordo con la prima.
+const RAGGI_VOCI = [
+  {
+    quale: 'cime', nome: 'Montagne', tinta: '#c4d8f4',
+    aiuto: 'Fin dove cercare le vette con un nome. Più largo vuol dire più nomi, ma anche montagne che stanno dietro ad altre montagne.',
+    // L'anello interno: dentro si prende tutto quello che ha un nome, fuori
+    // solo quello che è abbastanza alto da vedersi da lontano.
+    dentro: () => (typeof CIME_RAGGIO_VICINE_KM === 'number'
+      ? Math.min(CIME_RAGGIO_VICINE_KM, raggioCime()) : null),
+    dentroChe: () => 'ci sono tutte le vette con un nome',
+    fuoriChe: () => `solo quelle sopra i ${Math.round(Math.min(
+      typeof CIME_QUOTA_LONTANE_M === 'number' ? CIME_QUOTA_LONTANE_M : 1500,
+      raggioCime() * 12))} m`,
+    stato: () => (typeof cime !== 'undefined') ? cime.stato : null,
+    trovate: () => (typeof cime !== 'undefined' && cime.elenco) ? cime.elenco.length : null,
+    inVista: () => (typeof cimeVisibili === 'function') ? cimeVisibili().length : null,
+    unita: ['vetta', 'vette'],
+    spento: () => typeof cime !== 'undefined' && !cime.acceso
+  },
+  {
+    quale: 'citta', nome: 'Luci dei paesi', tinta: '#fdc784',
+    aiuto: 'Fin dove cercare i paesi che illuminano l\'orizzonte. Una città grande si vede da lontano, un paese no.',
+    dentro: () => (typeof CITTA_RAGGIO_PAESI_KM === 'number'
+      ? Math.min(CITTA_RAGGIO_PAESI_KM, raggioCitta()) : null),
+    dentroChe: () => 'ci sono anche frazioni e villaggi',
+    fuoriChe: () => 'solo città e paesi',
+    stato: () => (typeof citta !== 'undefined') ? citta.stato : null,
+    trovate: () => (typeof citta !== 'undefined' && citta.elenco) ? citta.elenco.length : null,
+    inVista: () => (typeof cittaVicine === 'function') ? cittaVicine().length : null,
+    unita: ['paese', 'paesi'],
+    spento: () => typeof citta !== 'undefined' && !citta.acceso
+  },
+  {
+    quale: 'acque', nome: 'Laghi e fiumi', tinta: '#92bad6',
+    aiuto: 'Fin dove cercare l\'acqua. Più in là di così un lago è sotto l\'orizzonte, o è una riga di due pixel.',
+    dentro: () => null,
+    stato: () => (typeof acque !== 'undefined') ? acque.stato : null,
+    trovate: () => (typeof acque !== 'undefined') ? (acque.quanti || 0) : null,
+    inVista: () => (typeof acqueDaDisegnare === 'function') ? acqueDaDisegnare().length : null,
+    unita: ['specchio d\'acqua', 'specchi d\'acqua'],
+    spento: () => typeof acque !== 'undefined' && !acque.acceso
+  },
+  {
+    quale: 'aerei', nome: 'Aerei', tinta: '#22d3ee',
+    aiuto: 'Fin dove cercare gli aerei ADS-B in tempo reale. Un raggio più stretto mostra solo il traffico davvero vicino.',
+    dentro: () => null,
+    stato: () => (typeof AereiADS_B !== 'undefined' && AereiADS_B.stato)
+      ? (AereiADS_B.stato.richiesta ? 'in-corso' : (AereiADS_B.stato.ultimoSuccesso ? 'pronto' : null)) : null,
+    trovate: () => (typeof AereiADS_B !== 'undefined' && AereiADS_B.stato)
+      ? AereiADS_B.stato.aerei.length : null,
+    inVista: () => null,
+    unita: ['aereo', 'aerei'],
+    spento: () => false
+  }
+];
 
-  const acceso = typeof cime !== 'undefined' && cime.acceso;
-  const acquaAccesa = typeof acque !== 'undefined' && acque.acceso;
-  box.innerHTML = righe.map(r => {
-    const l = RAGGI_LIMITI[r.quale];
-    return `
-      <label class="riga-raggio">
-        <span class="nome-raggio">${r.nome}</span>
-        <input type="range" min="${l.min}" max="${l.max}" step="${l.passo}" value="${r.valore}"
-               data-raggio="${r.quale}" aria-label="Raggio di ricerca: ${r.nome}" title="${r.aiuto}">
-        <span class="misura-raggio" data-misura="${r.quale}">${r.valore} km</span>
-      </label>`;
-  }).join('') + `
+// Quanto si vede attorno al cerchio più largo, quando la mappa si inquadra
+// da sé: un cerchio che tocca i bordi sembra tagliato.
+const RAGGI_MAPPA_MARGINE = 0.18;
+
+const raggiPannello = {
+  costruito: false,
+  mappa: null,        // la mappa Leaflet, costruita alla prima apertura
+  strato: null,       // il tileLayer
+  cerchi: {},         // un L.circle per famiglia
+  anelli: {},         // l'anello interno, dove c'è
+  maniglia: null,     // il pallino che si trascina, solo sul raggio scelto
+  casa: null,         // il puntino di dove sei
+  centro: null,       // { lat, lon } su cui è disegnato adesso
+  scelto: 'cime',     // quale raggio stanno regolando le mani
+  trascinando: false,
+  // L'inquadratura è rinviata finché il riquadro non ha una misura vera. La
+  // mappa nasce dentro a un modale chiuso **dentro** a una linguetta
+  // nascosta, cioè larga zero: un `fitBounds` lì dentro non sceglie uno
+  // zoom sbagliato, ne sceglie uno impossibile, e quando il pannello si
+  // apre resta quello.
+  daInquadrare: true,
+  occhio: null        // ResizeObserver: la mappa nasce dentro a un pannello nascosto
+};
+
+function raggiVoce(quale) {
+  return RAGGI_VOCI.find(v => v.quale === quale) || RAGGI_VOCI[0];
+}
+
+function raggiValore(quale) {
+  if (quale === 'cime') return raggioCime();
+  if (quale === 'acque') return raggioAcque();
+  if (quale === 'aerei') return raggioAerei();
+  return raggioCitta();
+}
+
+// Dove sta il centro dei cerchi: **lo stesso punto da cui il planetario
+// guarda**. `terrenoLuogo()` mette in fila il luogo di sola visita del
+// planetario e poi la posizione dell'app, ed è la stessa funzione che
+// decide dove andare a cercare vette e paesi: chiedere qui la posizione
+// per conto nostro vorrebbe dire disegnare dei cerchi centrati su un
+// posto e scaricarne i dati di un altro.
+function raggiCentro() {
+  if (typeof terrenoLuogo === 'function') {
+    const l = terrenoLuogo();
+    if (l && isFinite(l.lat) && isFinite(l.lon)) return { lat: l.lat, lon: l.lon };
+  }
+  if (typeof luogoCorrente === 'function') {
+    const l = luogoCorrente();
+    if (l && isFinite(l.lat) && isFinite(l.lon)) return { lat: l.lat, lon: l.lon };
+  }
+  return null;
+}
+
+function raggiConta(n, unita) {
+  if (n === null || n === undefined) return '';
+  return `${n} ${n === 1 ? unita[0] : unita[1]}`;
+}
+
+// La riga sotto al nome: quanto si è trovato dentro a quel cerchio, e
+// quanto di quello il planetario sta disegnando **adesso**.
+//
+// Il secondo numero è il motivo per cui questa riga esiste. Un raggio da
+// centocinquanta chilometri che porta quaranta vette di cui zero in vista
+// non è un raggio da allargare — è un raggio da stringere, e senza quel
+// numero non c'è modo di saperlo se non tornando nel planetario a
+// guardare. Zero e zero però vogliono dire cose diverse a seconda di dove
+// si è arrivati: «qui attorno non c'è niente» è una risposta, «sto ancora
+// cercando» no, e dirle con la stessa frase è il modo di far credere che
+// un elenco vuoto sia definitivo.
+function raggiRiga(v) {
+  if (v.spento()) return 'spenti';
+  const stato = v.stato ? v.stato() : null;
+  if (stato === 'in-corso') return 'sto cercando…';
+  if (stato === 'fallito') return 'non sono riuscito a cercare';
+  const trovate = v.trovate ? v.trovate() : null;
+  if (trovate === null) return '';
+  if (stato !== 'pronto') return 'apri il planetario per cercare';
+  if (!trovate) return 'niente qui attorno';
+  const viste = v.inVista ? v.inVista() : null;
+  return raggiConta(trovate, v.unita) + (viste === null ? '' : ` · ${viste} in vista`);
+}
+
+// L'impaginato, scritto una volta sola. Rifarlo a ogni cambiamento
+// vorrebbe dire buttare via la mappa Leaflet insieme al resto — e
+// ricostruirla a ogni scatto della slitta è mezzo secondo di tessere
+// grigie. Da qui in poi si aggiornano i numeri e i cerchi, non il markup.
+function raggiPannelloCostruisci(box) {
+  box.innerHTML = `
+    <div class="raggi-mappa-guscio">
+      <div id="imp-raggi-mappa" class="raggi-mappa"></div>
+      <button type="button" id="imp-raggi-pieno" class="raggi-pieno" aria-label="Apri la mappa a tutto schermo" title="Mappa a tutto schermo">⛶</button>
+      <p id="imp-raggi-assente" class="raggi-assente hidden"></p>
+    </div>
+    <div class="raggi-legenda" role="radiogroup" aria-label="Quale raggio stai regolando">
+      ${RAGGI_VOCI.map(v => `
+        <button type="button" class="voce-raggio" data-raggio-scelto="${v.quale}"
+                role="radio" aria-checked="false" title="${v.aiuto}">
+          <span class="pastiglia-raggio" style="--tinta:${v.tinta}"></span>
+          <span class="voce-raggio-testo">
+            <span class="nome-raggio">${v.nome}</span>
+            <span class="conta-raggio" data-conta="${v.quale}"></span>
+          </span>
+          <span class="misura-raggio" data-misura="${v.quale}"></span>
+        </button>`).join('')}
+    </div>
+    <label class="riga-raggio riga-slitta">
+      <span class="nome-raggio" id="imp-raggi-etichetta"></span>
+      <input type="range" id="imp-raggi-slitta" aria-label="Raggio di ricerca">
+      <span class="misura-raggio" id="imp-raggi-slitta-misura"></span>
+    </label>
+    <p class="raggi-spiega" id="imp-raggi-spiega"></p>
     <label class="riga-raggio riga-interruttore">
-      <input type="checkbox" id="imp-nomi-monti" ${acceso ? 'checked' : ''}>
+      <input type="checkbox" id="imp-nomi-monti">
       <span>Scrivi i nomi delle montagne sull'orizzonte</span>
     </label>
     <label class="riga-raggio riga-interruttore">
-      <input type="checkbox" id="imp-acque" ${acquaAccesa ? 'checked' : ''}>
+      <input type="checkbox" id="imp-acque">
       <span>Disegna i laghi e i fiumi</span>
     </label>`;
 
-  box.querySelectorAll('[data-raggio]').forEach(s => {
-    const misura = box.querySelector(`[data-misura="${s.dataset.raggio}"]`);
-    // Mentre la slitta scorre cambia solo il numero scritto accanto: il
+  box.querySelectorAll('[data-raggio-scelto]').forEach(t => {
+    t.addEventListener('click', () => raggiScegli(t.dataset.raggioScelto));
+  });
+
+  const slitta = document.getElementById('imp-raggi-slitta');
+  if (slitta) {
+    // Mentre la slitta scorre si muovono solo il numero e il cerchio: il
     // resto costa una richiesta a OpenStreetMap, e non si fa a ogni pixel.
-    s.addEventListener('input', () => { if (misura) misura.textContent = `${s.value} km`; });
-    s.addEventListener('change', () => {
-      raggiImposta(s.dataset.raggio, Number(s.value));
-      costruisciRaggiOrizzonte();
+    slitta.addEventListener('input', () => {
+      raggiMostraProva(raggiPannello.scelto, Number(slitta.value));
     });
+    slitta.addEventListener('change', () => {
+      raggiApplica(raggiPannello.scelto, Number(slitta.value));
+    });
+  }
+
+  const pieno = document.getElementById('imp-raggi-pieno');
+  const guscio = box.querySelector('.raggi-mappa-guscio');
+  if (pieno && guscio) pieno.addEventListener('click', () => {
+    const attivo = document.fullscreenElement === guscio || guscio.classList.contains('raggi-schermo-pieno');
+    if (attivo) {
+      if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+      else guscio.classList.remove('raggi-schermo-pieno');
+    } else if (guscio.requestFullscreen) {
+      guscio.requestFullscreen().catch(() => guscio.classList.add('raggi-schermo-pieno'));
+    } else guscio.classList.add('raggi-schermo-pieno');
+    setTimeout(() => { if (raggiPannello.mappa) raggiPannello.mappa.invalidateSize(); }, 80);
+  });
+  document.addEventListener('fullscreenchange', () => {
+    if (pieno) pieno.textContent = document.fullscreenElement === guscio ? '✕' : '⛶';
+    setTimeout(() => { if (raggiPannello.mappa) raggiPannello.mappa.invalidateSize(); }, 80);
   });
 
   const spunta = document.getElementById('imp-nomi-monti');
@@ -313,10 +503,271 @@ function costruisciRaggiOrizzonte() {
     costruisciRaggiOrizzonte();
   });
 
+  raggiPannello.costruito = true;
+}
+
+// La mappa, costruita alla prima apertura del pannello. Senza Leaflet o
+// senza una posizione non si costruisce affatto e restano la legenda e la
+// slitta, che da sole fanno tutto quello che facevano prima.
+function raggiMappaCostruisci() {
+  const riquadro = document.getElementById('imp-raggi-mappa');
+  const assente = document.getElementById('imp-raggi-assente');
+  if (!riquadro || raggiPannello.mappa) return;
+  // Finché il pannello non è a schermo non si costruisce niente, ed è una
+  // questione di banda e non di pulizia: `costruisciRaggiOrizzonte` la
+  // chiamano anche i due tasti del planetario («Nomi dei monti», «Laghi e
+  // fiumi»), e costruire lì una mappa vorrebbe dire scaricare una ventina
+  // di tessere per una finestra che nessuno ha aperto. A richiamarla
+  // quando la linguetta «Planetario» delle Impostazioni compare davvero ci
+  // pensa `mostraTab` (app.js, `inizializzaImpostazioni`).
+  if (!riquadro.offsetParent && riquadro.getClientRects().length === 0) return;
+  const centro = raggiCentro();
+  const perche = (typeof L === 'undefined')
+    ? 'La mappa non si è caricata (serve la rete la prima volta). I raggi si regolano con la slitta qui sotto.'
+    : (!centro ? 'Non so ancora dove sei: scegli una posizione e la mappa comparirà. Intanto i raggi si regolano con la slitta.' : null);
+  if (perche) {
+    riquadro.classList.add('hidden');
+    if (assente) { assente.textContent = perche; assente.classList.remove('hidden'); }
+    return;
+  }
+  riquadro.classList.remove('hidden');
+  if (assente) assente.classList.add('hidden');
+
+  raggiPannello.mappa = L.map('imp-raggi-mappa', {
+    zoomControl: true, attributionControl: true,
+    scrollWheelZoom: true, touchZoom: true, tap: true,
+    minZoom: 4, maxZoom: 14
+  }).setView([centro.lat, centro.lon], 9);
+
+  const fondo = (typeof LUOGO_SFONDI !== 'undefined' && LUOGO_SFONDI.strade)
+    ? LUOGO_SFONDI.strade
+    : { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', nativo: 19, attribuzione: '&copy; OpenStreetMap' };
+  raggiPannello.strato = L.tileLayer(fondo.url, {
+    maxZoom: 14, maxNativeZoom: Math.min(14, fondo.nativo), attribution: fondo.attribuzione
+  }).addTo(raggiPannello.mappa);
+
+  // Toccare la mappa vuol dire «fin lì»: la distanza dal centro è il raggio,
+  // e il cerchio scelto ci va. È il gesto per cui questa mappa esiste — non
+  // si sceglie un numero, si indica un posto.
+  raggiPannello.mappa.on('click', e => {
+    if (raggiPannello.trascinando) return;
+    const c = raggiPannello.centro;
+    if (!c || typeof terrenoDistanzaKm !== 'function') return;
+    raggiApplica(raggiPannello.scelto, terrenoDistanzaKm(c.lat, c.lon, e.latlng.lat, e.latlng.lng));
+  });
+
+  // La mappa nasce dentro a un pannello nascosto (la linguetta «Planetario»
+  // delle Impostazioni), quindi alta zero: senza una rimisurata resta grigia
+  // per metà. Stessa cura di `luogoMappaCostruisci`.
+  if (typeof ResizeObserver === 'function') {
+    raggiPannello.occhio = new ResizeObserver(() => {
+      if (!raggiPannello.mappa) return;
+      raggiPannello.mappa.invalidateSize();
+      // Appena il riquadro ha una misura vera, l'inquadratura che si era
+      // dovuta rinviare si fa qui.
+      raggiMappaDisegna();
+    });
+    raggiPannello.occhio.observe(riquadro);
+  }
+}
+
+// Il pallino da trascinare, sul bordo del cerchio scelto. Sta a est perché
+// da qualche parte doveva stare, e a est il cerchio non finisce mai sotto
+// alla legenda.
+function raggiMappaManiglia(km) {
+  const c = raggiPannello.centro;
+  if (!raggiPannello.mappa || !c || typeof terrenoPuntoA !== 'function') return;
+  const p = terrenoPuntoA(c.lat, c.lon, 90, km);
+  if (raggiPannello.maniglia) { raggiPannello.maniglia.setLatLng([p.lat, p.lon]); return; }
+
+  raggiPannello.maniglia = L.marker([p.lat, p.lon], {
+    draggable: true, keyboard: false, zIndexOffset: 500,
+    icon: L.divIcon({ className: 'maniglia-raggio', iconSize: [22, 22], iconAnchor: [11, 11] })
+  }).addTo(raggiPannello.mappa);
+
+  raggiPannello.maniglia.on('dragstart', () => { raggiPannello.trascinando = true; });
+  raggiPannello.maniglia.on('drag', e => {
+    const q = raggiPannello.centro;
+    if (!q || typeof terrenoDistanzaKm !== 'function') return;
+    const ll = e.target.getLatLng();
+    raggiMostraProva(raggiPannello.scelto, terrenoDistanzaKm(q.lat, q.lon, ll.lat, ll.lng));
+  });
+  raggiPannello.maniglia.on('dragend', e => {
+    const q = raggiPannello.centro;
+    // Il turno si chiude sempre, anche se il conto non si può fare: lasciato
+    // acceso, il tocco successivo sulla mappa verrebbe scambiato per la coda
+    // di un trascinamento e non farebbe niente.
+    raggiPannello.trascinando = false;
+    if (!q || typeof terrenoDistanzaKm !== 'function') return;
+    const ll = e.target.getLatLng();
+    raggiApplica(raggiPannello.scelto, terrenoDistanzaKm(q.lat, q.lon, ll.lat, ll.lng));
+  });
+}
+
+// I tre cerchi e i loro anelli interni. `prova` è il raggio che il dito sta
+// dettando in questo istante: si disegna quello, ma non si salva niente.
+function raggiMappaDisegna(prova) {
+  const mappa = raggiPannello.mappa;
+  if (!mappa) return;
+  const centro = raggiCentro();
+  if (!centro) return;
+  const spostato = !raggiPannello.centro ||
+    (typeof terrenoDistanzaKm === 'function' &&
+      terrenoDistanzaKm(raggiPannello.centro.lat, raggiPannello.centro.lon, centro.lat, centro.lon) > 0.3);
+  raggiPannello.centro = centro;
+
+  if (!raggiPannello.casa) {
+    raggiPannello.casa = L.circleMarker([centro.lat, centro.lon], {
+      radius: 5, color: '#0f172a', weight: 2, fillColor: '#fef08a', fillOpacity: 1
+    }).addTo(mappa);
+    raggiPannello.casa.bindTooltip('Da qui guardi il cielo', { direction: 'top' });
+  } else if (spostato) {
+    raggiPannello.casa.setLatLng([centro.lat, centro.lon]);
+  }
+
+  let piuLargo = 0;
+  for (const v of RAGGI_VOCI) {
+    const scelto = v.quale === raggiPannello.scelto;
+    const km = (scelto && prova !== undefined && prova !== null) ? prova : raggiValore(v.quale);
+    piuLargo = Math.max(piuLargo, km);
+    const stile = {
+      color: v.tinta, weight: scelto ? 5 : 3, opacity: v.spento() ? 0.45 : 1,
+      // Riempire tutt'e tre vorrebbe dire tre veli sovrapposti al centro e
+      // niente ai bordi, cioè il contrario di quello che si vuole leggere.
+      // Si riempie solo quello che si sta regolando.
+      fillColor: v.tinta, fillOpacity: scelto ? 0.16 : 0.025,
+      dashArray: v.spento() ? '4 5' : null, interactive: false
+    };
+    if (raggiPannello.cerchi[v.quale]) {
+      raggiPannello.cerchi[v.quale].setLatLng([centro.lat, centro.lon]);
+      raggiPannello.cerchi[v.quale].setRadius(km * 1000);
+      raggiPannello.cerchi[v.quale].setStyle(stile);
+    } else {
+      raggiPannello.cerchi[v.quale] = L.circle([centro.lat, centro.lon], km * 1000, stile).addTo(mappa);
+    }
+
+    // L'anello interno, dove la richiesta ne ha uno: è la parte di verità
+    // che una slitta sola non poteva dire.
+    const dentro = v.dentro ? v.dentro() : null;
+    const anello = raggiPannello.anelli[v.quale];
+    if (dentro && dentro < km - 0.5) {
+      const s = {
+        color: v.tinta, weight: 2.5, opacity: 0.8, dashArray: '5 6',
+        fill: false, interactive: false
+      };
+      if (anello) { anello.setLatLng([centro.lat, centro.lon]); anello.setRadius(dentro * 1000); anello.setStyle(s); }
+      else raggiPannello.anelli[v.quale] = L.circle([centro.lat, centro.lon], dentro * 1000, s).addTo(mappa);
+    } else if (anello) {
+      mappa.removeLayer(anello);
+      raggiPannello.anelli[v.quale] = null;
+    }
+  }
+
+  raggiMappaManiglia((prova !== undefined && prova !== null) ? prova : raggiValore(raggiPannello.scelto));
+
+  // Ci si inquadra da sé quando serve e non a ogni giro: chi si è
+  // avvicinato per vedere dove cade il bordo non deve ritrovarsi
+  // allontanato al primo aggiornamento. Serve alla prima apertura, quando
+  // ci si sposta e quando il cerchio più largo esce dallo schermo.
+  const grande = raggiPannello.cerchi[RAGGI_VOCI.reduce(
+    (a, b) => (raggiValore(a.quale) >= raggiValore(b.quale) ? a : b)).quale];
+  if (spostato) raggiPannello.daInquadrare = true;
+  const misura = mappa.getSize();
+  if (!grande || misura.x < 40 || misura.y < 40) return;
+  if (raggiPannello.daInquadrare || !mappa.getBounds().contains(grande.getBounds())) {
+    mappa.fitBounds(grande.getBounds().pad(RAGGI_MAPPA_MARGINE), { animate: false });
+    raggiPannello.daInquadrare = false;
+  }
+}
+
+// Il raggio che si sta regolando adesso.
+function raggiScegli(quale) {
+  if (!RAGGI_VOCI.some(v => v.quale === quale)) return;
+  raggiPannello.scelto = quale;
+  costruisciRaggiOrizzonte();
+}
+
+// Il dito sta dettando un raggio: si muovono il numero e il cerchio, e
+// nient'altro. Nessuna richiesta di rete finché il dito non si stacca.
+function raggiMostraProva(quale, km) {
+  const l = RAGGI_LIMITI[quale];
+  const v = Math.max(l.min, Math.min(l.max, Math.round(Number(km) / l.passo) * l.passo));
+  const misura = document.querySelector(`[data-misura="${quale}"]`);
+  if (misura) misura.textContent = `${v} km`;
+  const suSlitta = document.getElementById('imp-raggi-slitta-misura');
+  if (suSlitta && quale === raggiPannello.scelto) suSlitta.textContent = `${v} km`;
+  const slitta = document.getElementById('imp-raggi-slitta');
+  if (slitta && quale === raggiPannello.scelto && Number(slitta.value) !== v) slitta.value = String(v);
+  raggiMappaDisegna(v);
+}
+
+// Il dito si è staccato: adesso sì che si salva e si riscarica.
+function raggiApplica(quale, km) {
+  if (typeof raggiImposta !== 'function') return;
+  raggiImposta(quale, km);
+  costruisciRaggiOrizzonte();
+}
+
+function costruisciRaggiOrizzonte() {
+  const box = document.getElementById('imp-raggi');
+  if (!box || typeof RAGGI_LIMITI === 'undefined') return;
+  if (!raggiPannello.costruito) raggiPannelloCostruisci(box);
+  raggiMappaCostruisci();
+
+  const scelta = raggiVoce(raggiPannello.scelto);
+
+  for (const v of RAGGI_VOCI) {
+    const km = raggiValore(v.quale);
+    const tasto = box.querySelector(`[data-raggio-scelto="${v.quale}"]`);
+    if (tasto) {
+      const attivo = v.quale === raggiPannello.scelto;
+      tasto.classList.toggle('attiva', attivo);
+      tasto.classList.toggle('spenta', !!v.spento());
+      tasto.setAttribute('aria-checked', attivo ? 'true' : 'false');
+    }
+    const misura = box.querySelector(`[data-misura="${v.quale}"]`);
+    if (misura) misura.textContent = `${km} km`;
+    const conta = box.querySelector(`[data-conta="${v.quale}"]`);
+    if (conta) conta.textContent = raggiRiga(v);
+  }
+
+  const l = RAGGI_LIMITI[scelta.quale];
+  const valore = raggiValore(scelta.quale);
+  const slitta = document.getElementById('imp-raggi-slitta');
+  if (slitta) {
+    slitta.min = l.min; slitta.max = l.max; slitta.step = l.passo;
+    slitta.value = String(valore);
+    slitta.setAttribute('aria-label', `Raggio di ricerca: ${scelta.nome}`);
+  }
+  const etichetta = document.getElementById('imp-raggi-etichetta');
+  if (etichetta) etichetta.textContent = scelta.nome;
+  const suSlitta = document.getElementById('imp-raggi-slitta-misura');
+  if (suSlitta) suSlitta.textContent = `${valore} km`;
+
+  const spiega = document.getElementById('imp-raggi-spiega');
+  if (spiega) {
+    const dentro = scelta.dentro ? scelta.dentro() : null;
+    spiega.textContent = scelta.aiuto +
+      (dentro && dentro < valore - 0.5
+        ? ` Entro ${Math.round(dentro)} km ${scelta.dentroChe()}; oltre, ${scelta.fuoriChe()} — è l'anello tratteggiato.`
+        : '');
+  }
+
+  const spunta = document.getElementById('imp-nomi-monti');
+  if (spunta) spunta.checked = typeof cime !== 'undefined' && cime.acceso;
+  const spuntaAcque = document.getElementById('imp-acque');
+  if (spuntaAcque) spuntaAcque.checked = typeof acque !== 'undefined' && acque.acceso;
+
+  raggiMappaDisegna();
+  // Il pannello può essere appena tornato in vista (linguetta «Planetario»,
+  // o la finestra riaperta): una mappa Leaflet misurata mentre era nascosta
+  // ha le tessere della misura di prima.
+  if (raggiPannello.mappa) setTimeout(() => raggiPannello.mappa.invalidateSize(), 60);
+
   const nota = document.getElementById('imp-raggi-nota');
   if (nota) {
-    nota.textContent = acceso
-      ? 'I nomi delle montagne si scaricano da OpenStreetMap la prima volta che apri il planetario da un posto nuovo, e poi restano anche senza rete.'
+    nota.textContent = (typeof cime !== 'undefined' && cime.acceso)
+      ? 'Montagne, paesi e acque arrivano da OpenStreetMap; gli aerei sono aggiornati in tempo reale tramite ADS-B.'
       : 'I nomi delle montagne sono spenti: l\'orizzonte resta la forma del terreno, senza scritte. Si accendono anche dal pannello Visualizzazione del planetario.';
   }
 }

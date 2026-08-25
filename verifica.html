@@ -111,11 +111,50 @@ function skyBaseVerso(az, alt) {
   const r = [Math.cos(a), -Math.sin(a), 0];
   return { f, r, u: [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]] };
 }
+
+// I due archi in vista, ricopiati anche loro da app.js — e non per scelta.
+//
+// `rilArcoInVista` (§25) li chiama per davvero, e il §8 li mette alla prova
+// per conto suo: senza, `skyArcoAcquaInVista` è un nome che non esiste e
+// l'eccezione, in uno `<script>` unico, si porta via **tutto quello che
+// viene dopo**. È successo: dal §9 in giù, per un po', in questa pagina non
+// girava più niente — e una prova sparita non fallisce, semplicemente non
+// compare. Se un giorno app.js si potrà caricare qui, queste tre spariscono.
+function skyAngoloDiRaggio(pixel, focale) {
+  return 2 * Math.atan(pixel / (2 * focale)) * SKY_R2D;
+}
+function skyArcoOrizzonteInVista(base, focale) {
+  const semi = skyAngoloDiRaggio(Math.hypot(sky.larghezza, sky.altezza) / 2, focale) * SKY_D2R;
+  const altF = Math.asin(Math.max(-1, Math.min(1, base.f[2])));
+  const cosAlt = Math.cos(altF);
+  if (cosAlt < 1e-4) return null;
+  const rapporto = Math.cos(semi) / cosAlt;
+  if (rapporto >= 1) return null;
+  return {
+    mezzo: Math.min(180, Math.acos(Math.max(-1, rapporto)) * SKY_R2D + 6),
+    centro: Math.atan2(base.f[0], base.f[1]) * SKY_R2D
+  };
+}
+function skyArcoAcquaInVista(base, focale) {
+  const semi = skyAngoloDiRaggio(Math.hypot(sky.larghezza, sky.altezza) / 2, focale) * SKY_D2R;
+  const altF = Math.asin(Math.max(-1, Math.min(1, base.f[2])));
+  const centro = Math.atan2(base.f[0], base.f[1]) * SKY_R2D;
+  if (altF - semi >= 0) return null;
+  if (semi >= Math.PI / 2) return { mezzo: 180, centro };
+  const seno = Math.sin(semi) / Math.cos(altF);
+  if (!(seno < 1)) return { mezzo: 180, centro };
+  return { mezzo: Math.min(180, Math.asin(seno) * SKY_R2D + 6), centro };
+}
 </script>
 
 <script src="catalogo.js"></script>
 <script src="corpi-minori.js"></script>
 <script src="terreno.js"></script>
+<!-- Il rilievo (§25). Come `terreno.js`, qui gira per davvero: le funzioni
+     provate sono quelle vere, non una copia. Al caricamento non fa niente —
+     costruisce l'elenco delle distanze e nient'altro — quindi si può tenere
+     in una pagina che il planetario non lo apre mai. -->
+<script src="rilievo.js"></script>
 <!-- meteo-astro.js serve solo per una prova: che la sua latitudine
      geomagnetica e quella dell'aurora siano lo stesso numero. Non fa
      niente all'avvio, quindi caricarlo qui non costa nulla. -->
@@ -617,6 +656,43 @@ titolo('8. La proiezione del cielo');
   prova('l\'orizzonte proiettato sta sul cerchio che usa il terreno',
         scartoCerchio < 1e-6, `scarto massimo ${scartoCerchio.toExponential(1)} px`);
 
+  // Il rilievo 3D prende da questo arco le colonne da disegnare. Superati
+  // 90° di semi-campo il seno torna a diminuire: usarlo senza distinguere
+  // il caso avrebbe fatto restringere (e poi sparire) il terreno aumentando
+  // il FOV. Un cono più largo di un emisfero contiene invece tutti gli
+  // azimut, su qualunque formato dello schermo.
+  const larghezzaPrima = sky.larghezza, altezzaPrima = sky.altezza, fovPrima = sky.fov;
+  sky.larghezza = 1200; sky.altezza = 500; sky.fov = 180;
+  const arcoLarghissimo = skyArcoAcquaInVista(skyBaseVerso(0, 0), skyFocale());
+  sky.larghezza = larghezzaPrima; sky.altezza = altezzaPrima; sky.fov = fovPrima;
+  prova('a campo oltre l\'emisfero il terreno 3D copre ancora tutti gli azimut',
+        arcoLarghissimo && arcoLarghissimo.mezzo === 180,
+        arcoLarghissimo ? `${arcoLarghissimo.mezzo}° per lato` : 'nessun arco');
+
+  // Il suolo puo' comprendere tutti gli azimut perche' negli angoli in basso
+  // si arriva quasi al nadir; il crinale 3D no. Disegnarne ugualmente il giro
+  // completo include il meridiano opposto alla camera, dove la stereografica
+  // diverge, e il poligono si richiude attraverso cielo e montagne. E' il
+  // salto verde/bianco che compariva al FOV massimo cambiando appena pitch.
+  const larghezzaRilievo = sky.larghezza, altezzaRilievo = sky.altezza, fovRilievo = sky.fov;
+  sky.larghezza = 1630; sky.altezza = 690; sky.fov = 180;
+  const arcoRilievo = rilArcoInVista(skyBaseVerso(134, 3), skyFocale());
+  sky.larghezza = larghezzaRilievo; sky.altezza = altezzaRilievo; sky.fov = fovRilievo;
+  prova('al FOV massimo il rilievo esclude il meridiano opposto alla camera',
+        arcoRilievo && arcoRilievo.mezzo < 175,
+        arcoRilievo ? `${arcoRilievo.mezzo.toFixed(1)}° per lato` : 'nessun arco');
+
+  // Alzando la camera il cerchio che circoscrive il riquadro arriva a
+  // comprendere matematicamente il meridiano opposto, anche se la sua
+  // proiezione e' molto fuori dal rettangolo vero. E' proprio il gesto che
+  // faceva richiudere il rilievo attraverso il cielo.
+  sky.larghezza = 1630; sky.altezza = 690; sky.fov = 180;
+  const arcoRilievoAlto = rilArcoInVista(skyBaseVerso(134, 55), skyFocale());
+  sky.larghezza = larghezzaRilievo; sky.altezza = altezzaRilievo; sky.fov = fovRilievo;
+  prova('alzando molto la camera il rilievo non richiude il giro nel cielo',
+        arcoRilievoAlto && arcoRilievoAlto.mezzo < 175,
+        arcoRilievoAlto ? `${arcoRilievoAlto.mezzo.toFixed(1)}° per lato` : 'nessun arco');
+
   // A campo stretto deve coincidere con la prospettiva di prima: è la
   // garanzia che nessuna vista ingrandita è cambiata.
   const vecchio = sky.fov;
@@ -1110,11 +1186,22 @@ titolo('9. La forma vera del terreno');
     prova('una fase sola riempie la barra da sé',
           Math.abs(sola.frazione - 0.5) < 1e-9, `${(sola.frazione * 100).toFixed(0)}%`);
 
-    prova('i pesi delle quattro fasi sommano a uno',
-          Math.abs(TERRENO_FASI.reduce((s, f) => s + f.peso, 0) - 1) < 1e-9);
-    prova('e le quote sono la fase più pesante, perché sono venticinque richieste',
-          TERRENO_FASI[0].chiave === 'quote' &&
-          TERRENO_FASI[0].peso > TERRENO_FASI.slice(1).reduce((s, f) => s + f.peso, 0));
+    prova('i pesi delle cinque fasi sommano a uno',
+          Math.abs(TERRENO_FASI.reduce((s, f) => s + f.peso, 0) - 1) < 1e-9,
+          TERRENO_FASI.map(f => `${f.chiave} ${f.peso}`).join(', '));
+    // Le due fasi che scaricano davvero pesano più delle tre di OpenStreetMap
+    // messe insieme: le quote sono venticinque richieste, il rilievo da
+    // quattro a sei tessere da un centinaio di kilobyte l'una — cioè il grosso
+    // di tutto quello che si scarica per un luogo nuovo — e i tre giri a OSM
+    // sono una richiesta ciascuno. A pesi uguali la barra faceva tre quarti di
+    // strada nel primo secondo e poi stava ferma, che è il modo in cui una
+    // barra di caricamento smette di essere creduta.
+    const pesanti = TERRENO_FASI.filter(f => f.chiave === 'quote' || f.chiave === 'rilievo');
+    const leggere = TERRENO_FASI.filter(f => f.chiave !== 'quote' && f.chiave !== 'rilievo');
+    prova('le due fasi che scaricano pesano più delle tre di OpenStreetMap',
+          pesanti.length === 2 &&
+          pesanti.reduce((s, f) => s + f.peso, 0) > leggere.reduce((s, f) => s + f.peso, 0),
+          `${pesanti.reduce((s, f) => s + f.peso, 0).toFixed(2)} contro ${leggere.reduce((s, f) => s + f.peso, 0).toFixed(2)}`);
 
     terreno.stato = prima.terreno; terreno.avanzamento = prima.avanzamento;
     citta.stato = prima.citta; citta.avanzamento = prima.cittaAv;
@@ -1254,6 +1341,18 @@ titolo('10. Che paesaggio c\'è, e chi illumina l\'orizzonte');
         !daDentro.some(c => c.nome === 'Paese in cui sono') &&
           daDentro.some(c => c.nome === 'Paese all\'orizzonte'),
         daDentro.map(c => c.nome).join(', '));
+  const paeseLungo = cittaPrepara([
+    // Il nodo OSM è abbastanza lontano da superare la vecchia soglia di
+    // 800 metri, ma il nome del geocodificatore dice che siamo ancora qui.
+    { nome: 'San Fermo della Battaglia', lat: 45.820, lon: 9.050, abitanti: 4500 },
+    { nome: 'Cavallasca', lat: 45.805, lon: 9.025, abitanti: 3000 }
+  ], 45.810, 9.050, 'San Fermo della Battaglia');
+  prova('il nome del luogo esclude il proprio paese anche lontano dal centro OSM',
+        !paeseLungo.some(c => c.nome === 'San Fermo della Battaglia') &&
+          paeseLungo.some(c => c.nome === 'Cavallasca'),
+        paeseLungo.map(c => c.nome).join(', '));
+  prova('il confronto del nome ignora accenti, maiuscole e punteggiatura',
+        cittaEPostoOsservatore({ nome: 'Sant’Agata' }, 'SANT AGATA'));
   prova('la più luminosa è la prima della lista',
         pronte.length && pronte[0].nome === 'Capoluogo',
         pronte.map(c => c.nome).join(' > '));
@@ -1907,17 +2006,39 @@ titolo('15. Le montagne che hanno un nome');
         terrenoAngolo(2000, 55, 200) < 0, `${terrenoAngolo(2000, 55, 200).toFixed(2)}°`);
 
   // --- Chi si vede e chi no ---
-  const primaStato = { stato: cime.stato, elenco: cime.elenco, acceso: cime.acceso };
+  const primaStato = { stato: cime.stato, elenco: cime.elenco, acceso: cime.acceso,
+                       lat: cime.lat, lon: cime.lon };
   const primaTerreno = { stato: terreno.stato, profilo: terreno.profilo, quota: terreno.quota, acceso: terreno.acceso };
+
+  // Un posto da cui guardare, che qui non c'è: `terrenoLuogo()` lo chiede a
+  // `skyLuogoDelCielo` e a `luogoCorrente`, che stanno in `app.js` e questa
+  // pagina non lo carica. Senza, `cimeVisibili()` esce alla prima riga e
+  // risponde sempre l'elenco vuoto — cioè **tutto questo pezzo di §15 non
+  // provava niente**, e siccome poi leggeva `viste[0].nome` sollevava
+  // un'eccezione che si portava via in silenzio anche i §16 e seguenti (in
+  // uno `<script>` unico un errore mangia tutto quello che viene dopo, ed è
+  // la stessa lezione del §19).
+  const primaLuogo = window.luogoCorrente;
+  window.luogoCorrente = () => ({ lat: 45, lon: 9 });
+
   prova('senza elenco scaricato non si nomina niente', cimeVisibili().length === 0);
 
   cime.stato = 'pronto';
   cime.acceso = true;
+  cime.lat = 45;
+  cime.lon = 9;
   cime.vistaChiave = null;
+  // Le vette si mettono dove servono con le loro **coordinate**, non con un
+  // `km` e un `az` scritti a mano: `cimeVisibili` quei due numeri li rifà da
+  // sé a ogni chiamata (è così che le etichette scorrono insieme al
+  // paesaggio senza riscaricare niente), quindi tre vette messe tutte a
+  // (0,0) finivano tutte a distanza zero dall'osservatore.
+  const vetta = (nome, quota, az, km) =>
+    Object.assign({ nome, quota }, terrenoPuntoA(45, 9, az, km));
   cime.elenco = [
-    { nome: 'Alta e vicina', lat: 0, lon: 0, quota: 1800, km: 30, az: 180 },
-    { nome: 'Dietro la collina', lat: 0, lon: 0, quota: 700, km: 40, az: 0 },
-    { nome: 'Rasoterra', lat: 0, lon: 0, quota: 60, km: 50, az: 90 }
+    vetta('Alta e vicina', 1800, 180, 30),
+    vetta('Dietro la collina', 700, 0, 40),
+    vetta('Rasoterra', 60, 90, 50)
   ];
   terreno.stato = 'niente';
   terreno.profilo = null;
@@ -2421,8 +2542,8 @@ titolo('15. Le montagne che hanno un nome');
     cime.acceso = true;
     cime.vistaChiave = null;
     cime.elenco = [
-      { nome: 'Punta in primo piano', lat: 0, lon: 0, quota: 900, km: kmPunta, az: 0 },
-      { nome: 'Nascosta dal muro', lat: 0, lon: 0, quota: 1000, km: 60, az: 0 }
+      vetta('Punta in primo piano', 900, 0, kmPunta),
+      vetta('Nascosta dal muro', 1000, 0, 60)
     ];
     const chi = cimeVisibili().map(c => c.nome);
     prova('la punta davanti al muro si nomina, anche se il muro è più alto',
@@ -2516,9 +2637,9 @@ titolo('15. Le montagne che hanno un nome');
     cime.stato = 'pronto';
     cime.acceso = true;
     cime.elenco = [
-      { nome: 'Monte Alben', lat: 0, lon: 0, quota: 2019, km: 30, az: 45 },
-      { nome: 'Cima Alben Ovest', lat: 0, lon: 0, quota: 1990, km: 30.2, az: 45.2 },
-      { nome: 'Un\'altra vetta', lat: 0, lon: 0, quota: 2000, km: 30, az: 60 }
+      vetta('Monte Alben', 2019, 45, 30),
+      vetta('Cima Alben Ovest', 1990, 45.2, 30.2),
+      vetta('Un\'altra vetta', 2000, 60, 30)
     ];
     cime.vistaChiave = null;
     const senzaDoppioni = cimeVisibili().map(c => c.nome);
@@ -2537,6 +2658,10 @@ titolo('15. Le montagne che hanno un nome');
           raggiTosa('cime', 5000) === RAGGI_LIMITI.cime.max &&
           raggiTosa('cime', 1) === RAGGI_LIMITI.cime.min &&
           raggiTosa('cime', 'boh') === RAGGI_LIMITI.cime.predefinito);
+    prova('anche il raggio degli aerei è configurabile e tosato',
+          raggiTosa('aerei', 999) === RAGGI_LIMITI.aerei.max &&
+          raggiTosa('aerei', 1) === RAGGI_LIMITI.aerei.min &&
+          raggiTosa('aerei', 103) === 105);
     // Un elenco preso guardando meno lontano di quanto si sta chiedendo non
     // risponde alla domanda: riusarlo vuol dire dare per buona una risposta
     // che non è stata fatta. Al contrario uno più largo va benissimo.
@@ -2561,6 +2686,8 @@ titolo('15. Le montagne che hanno un nome');
   // Si rimette tutto com'era: le prove non devono lasciare tracce
   Object.assign(cime, primaStato, { vistaChiave: null, vista: [] });
   Object.assign(terreno, primaTerreno);
+  if (primaLuogo === undefined) delete window.luogoCorrente;
+  else window.luogoCorrente = primaLuogo;
 }
 
 // =====================================================================
@@ -5530,7 +5657,1248 @@ titolo('22. Il paesaggio: il suolo, la luce e i nomi dell\'acqua (app.js §7.3.2
   prova('la tosatura non tocca le viste in cui si guarda il paesaggio',
     [0, 10, 30, 45, 60, 70].every(alt => !morde(Math.sin(alt * D2R))),
     'morde solo puntando quasi dritti in su, dove di terreno sullo schermo non ce n\'è');
+
+  // --- La grana che non si muove con lo zoom ---------------------------
+  //
+  // Segnalazione: «zummando, la texture del terreno scivola sopra al
+  // paesaggio». Non era un'impressione ed è un conto, quindi si scrive.
+  // La fase della grana era `azimut × focale`: l'azimut resta lì mentre si
+  // pizzica, ma la focale cambia di settecento volte fra 180° e un quarto di
+  // grado, e guardando a sud-ovest (quasi quattro radianti) bastano trenta
+  // pixel di focale per spostare la trama di una piastrella intera.
+  //
+  // Adesso la fase si **segue** invece di ricalcolarla: si somma di quanto il
+  // terreno è scivolato sullo schermo, `Δangolo × focale`. Le due prove che
+  // contano sono l'una il rovescio dell'altra — con lo zoom non si deve
+  // muovere di niente, girandosi si deve muovere di tutto.
+  const GRANA_LATO = 112, GRANA_LATO_LARGA = 176;
+  const GRANA_SCALA = 1, GRANA_SCALA_LARGA = 2.4;
+  const faseMotivo = (s, p) => ((s % p) + p) % p;
+  function scorrimento(g, az, alt, focale) {
+    if (!g) g = { az, alt, x: 0, y: 0 };
+    let daz = az - g.az;
+    if (daz > Math.PI) daz -= 2 * Math.PI;
+    else if (daz < -Math.PI) daz += 2 * Math.PI;
+    g.x -= daz * focale;
+    g.y += (alt - g.alt) * focale;
+    g.az = az; g.alt = alt;
+    return g;
+  }
+  // La focale della vista, dalla stessa formula di `skyFocale` su uno schermo
+  // da 600 pixel di altezza.
+  const focaleDi = fov => (600 / 2) / (2 * Math.tan(fov / 4 * D2R));
+  const SUD_OVEST = 225 * D2R, GIU = -5 * D2R;
+
+  // 1. Zoom puro: cento passi da 60° a 0,25°, sempre nella stessa direzione.
+  let g = scorrimento(null, SUD_OVEST, GIU, focaleDi(60));
+  const partenza = { x: g.x, y: g.y };
+  for (let i = 1; i <= 100; i++) g = scorrimento(g, SUD_OVEST, GIU, focaleDi(60 * Math.pow(0.25 / 60, i / 100)));
+  prova('zummando, la grana non si sposta di un pixel',
+    Math.abs(g.x - partenza.x) < 1e-9 && Math.abs(g.y - partenza.y) < 1e-9,
+    'da 60° a 0,25° in cento passi: lo spostamento è esattamente zero');
+  // Il contro-esempio, cioè il conto di prima: la stessa pizzicata.
+  const faseVecchia = f => faseMotivo(-SUD_OVEST * f, GRANA_LATO);
+  prova('col conto di prima la stessa pizzicata la spostava di piastrelle intere',
+    Math.abs(faseVecchia(focaleDi(60)) - faseVecchia(focaleDi(0.25))) > 1,
+    'la fase era l\'azimut moltiplicato per la focale, e la focale cambia di settecento volte');
+
+  // 2. Panoramica a campo fisso: la grana deve seguire il terreno pixel per
+  //    pixel, se no è una texture inchiodata al vetro.
+  const f45 = focaleDi(45);
+  const dopoPan = scorrimento(scorrimento(null, SUD_OVEST, GIU, f45), SUD_OVEST + 3 * D2R, GIU, f45);
+  prova('girandosi, la grana scorre insieme al terreno',
+    Math.abs(dopoPan.x - (-3 * D2R * f45)) < 1e-9,
+    `tre gradi valgono ${(3 * D2R * f45).toFixed(1)} pixel, e la grana si sposta di quelli`);
+  const dopoAlza = scorrimento(scorrimento(null, SUD_OVEST, GIU, f45), SUD_OVEST, GIU + 2 * D2R, f45);
+  prova('alzando lo sguardo la grana scende',
+    dopoAlza.y > 0 && Math.abs(dopoAlza.y - 2 * D2R * f45) < 1e-9);
+
+  // 3. Il giro del nord, che è l'errore che si fa sempre: da 359° a 1° sono
+  //    due gradi, non trecentocinquantotto.
+  const nord = scorrimento(scorrimento(null, 359 * D2R, GIU, f45), 1 * D2R, GIU, f45);
+  prova('attraversando il nord la grana non fa un salto',
+    Math.abs(nord.x - (-2 * D2R * f45)) < 1e-9,
+    'due gradi di scorrimento, non trecentocinquantotto');
+
+  // 4. L'accumulatore cammina per ore: le due fasi devono restare dentro al
+  //    loro passo, che è la condizione perché il `DOMMatrix` non perda la
+  //    precisione proprio sulla piastrella.
+  let lungo = scorrimento(null, 0, 0, f45);
+  for (let i = 0; i < 5000; i++) lungo = scorrimento(lungo, ((i * 7) % 360) * D2R, 0, f45);
+  const pf = GRANA_LATO * GRANA_SCALA, pl = GRANA_LATO_LARGA * GRANA_SCALA_LARGA;
+  prova('dopo cinquemila giri le fasi stanno ancora dentro al loro passo',
+    faseMotivo(lungo.x, pf) >= 0 && faseMotivo(lungo.x, pf) < pf &&
+    faseMotivo(lungo.x, pl) >= 0 && faseMotivo(lungo.x, pl) < pl,
+    `l'accumulatore è a ${lungo.x.toExponential(1)} pixel, le fasi a ${faseMotivo(lungo.x, pf).toFixed(1)} e ${faseMotivo(lungo.x, pl).toFixed(1)}`);
 }
+
+// =====================================================================
+titolo('23. Quanto è lontano quel paese (app.js, «Quanto è lontano quel paese»)');
+// =====================================================================
+//
+// La distanza di un paese si legge in due modi, e tutti e due si giudicano
+// male a occhio. Il numero in coda al nome si vede e si controlla da soli; la
+// **prospettiva aerea** — il nome che si vela, si rimpicciolisce e perde
+// l'ombra man mano che il paese si allontana — no, perché qualunque scala di
+// sbiadimento produce uno schermo *plausibile*. Nessuno, guardando
+// l'orizzonte, dice «questi nomi sbiadiscono con la curva sbagliata»: dice
+// «boh, sembrano tutti uguali», che è il modo in cui una prospettiva sbagliata
+// del doppio non fallisce mai.
+//
+// C'è però un giudice, ed è la ragione per cui questa scala non è stata
+// inventata: le **fette del terreno** dietro ai nomi si velano già, e si
+// velano con `SKY_FOSCHIA_KM`. La prima prova è quella — che le due leggi
+// siano la stessa riga, cifra per cifra — perché è l'unica che, se salta, si
+// vede sullo schermo come un difetto invece che come una scelta: un nome
+// nitido appoggiato a una montagna sbiadita.
+//
+// Come per il §19, il §21 e il §22 questa pagina **non carica `app.js`**: le
+// costanti e le due funzioni qui sotto sono una copia.
+{
+  const FOSCHIA_KM = 25;                 // SKY_FOSCHIA_KM
+  const VICINO  = { corpo: 1,    velo: 1,   tratto: 1.5,  alone: 1 };
+  const LONTANO = { corpo: 0.72, velo: 0.4, tratto: 0.55, alone: 0.16 };
+  const FOSCHIA_TINTA = 0.5;
+  const INDICATO_VELO = 0.95, INDICATO_ALONE = 0.85;
+  const MAX_NOMI = 7, MAX_NOMI_ZOOM = 12, ZOOM_FOV = [60, 15];
+
+  const mescola = (a, b, t) => {
+    const k = Math.max(0, Math.min(1, t));
+    return [0, 1, 2].map(i => Math.round(a[i] + (b[i] - a[i]) * k));
+  };
+
+  function lontananza(km) {
+    const D = TERRENO_DISTANZE[TERRENO_DISTANZE.length - 1];
+    const pieno = 1 - Math.exp(-D / FOSCHIA_KM);
+    return Math.min(1, Math.max(0, (1 - Math.exp(-Math.max(0, km) / FOSCHIA_KM)) / pieno));
+  }
+
+  function prospettiva(km, corpoBase, tinta, aria, indicato) {
+    const t = lontananza(km);
+    const fra = (a, b) => a + (b - a) * t;
+    const f = aria && aria.foschia ? aria.foschia : null;
+    const chiara = f ? (0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]) / 255 : 0;
+    const velo = Math.max(fra(VICINO.velo, LONTANO.velo), indicato ? INDICATO_VELO : 0);
+    const resta = Math.max(fra(VICINO.alone, LONTANO.alone), indicato ? INDICATO_ALONE : 0);
+    return {
+      lontananza: t,
+      corpo: corpoBase * fra(VICINO.corpo, LONTANO.corpo),
+      tratto: fra(VICINO.tratto, LONTANO.tratto),
+      tinta: f ? mescola(tinta.pieno, f, FOSCHIA_TINTA * t * chiara) : tinta.pieno,
+      alfaNome: tinta.alfa * velo,
+      alfaAlone: tinta.aloneAlfa * velo * resta
+    };
+  }
+
+  function maxNomi(fov) {
+    const [largo, stretto] = ZOOM_FOV;
+    const t = Math.min(1, Math.max(0, (largo - fov) / (largo - stretto)));
+    return Math.round(MAX_NOMI + t * (MAX_NOMI_ZOOM - MAX_NOMI));
+  }
+
+  const AMBRA  = { pieno: [255, 219, 158], alfa: 0.97, alone: [0, 0, 0],       aloneAlfa: 0.78 };
+  const SCURO  = { pieno: [92, 46, 4],     alfa: 0.97, alone: [255, 255, 255], aloneAlfa: 0.88 };
+  const NOTTE  = { foschia: [26, 30, 48] };    // SKY_TAPPE_CIELO, Sole a −18°
+  const GIORNO = { foschia: [214, 230, 246] }; // Sole a +45°
+  const scarto = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+
+  // --- La scala è quella del terreno, non una seconda ------------------
+  //
+  // La prova che tiene insieme le due metà del disegno. `skyPianiOrizzonte`
+  // calcola il velo di ogni fetta così: `(1 − e^(−km/25)) / (1 − e^(−60/25))`.
+  // Se questa riga e quella dei nomi divergono, il difetto non è un numero
+  // sbagliato — è un'etichetta che smette di appartenere al paesaggio.
+  const pienoFetta = 1 - Math.exp(-TERRENO_DISTANZE[TERRENO_DISTANZE.length - 1] / FOSCHIA_KM);
+  let scartoMax = 0;
+  for (const km of TERRENO_DISTANZE) {
+    const fetta = (1 - Math.exp(-km / FOSCHIA_KM)) / pienoFetta;
+    scartoMax = Math.max(scartoMax, Math.abs(fetta - lontananza(km)));
+  }
+  prova('un nome si vela quanto la fetta di terreno alla sua distanza',
+    scartoMax < 1e-12,
+    `diciotto distanze, dallo 0,15 ai 60 km: scarto massimo ${scartoMax.toExponential(1)}`);
+
+  prova('ai propri piedi non è velato affatto', lontananza(0) === 0);
+  prova('a sessanta chilometri è in fondo alla scala', Math.abs(lontananza(60) - 1) < 1e-12);
+  prova('e oltre non sbiadisce più', lontananza(300) === 1,
+    'se no i paesi fuori dal raggio del terreno sparirebbero del tutto');
+
+  // Che la curva non torni mai indietro: due paesi, e quello più lontano più
+  // nitido, è il difetto che rovescia il senso di tutto il disegno.
+  let cresce = true, prima = -1;
+  for (let km = 0; km <= 120; km += 0.1) { const t = lontananza(km); if (t < prima - 1e-15) cresce = false; prima = t; }
+  prova('e non torna mai indietro', cresce);
+
+  // Metà del cambiamento sta nei primi quindici chilometri, ed è quello che
+  // rende la scala leggibile: i paesi che contano sono lì, e su una curva
+  // lineare starebbero tutti nello stesso quarto di sbiadimento.
+  prova('metà della sbiadita sta dentro ai primi quindici chilometri',
+    lontananza(15) > 0.45 && lontananza(15) < 0.55,
+    `a 15 km si è al ${(lontananza(15) * 100).toFixed(0)}%, a 3 km al ${(lontananza(3) * 100).toFixed(0)}%`);
+
+  // --- I quattro segnali della distanza -------------------------------
+  const vic = prospettiva(1, 14, AMBRA, NOTTE, false);
+  const lon = prospettiva(60, 14, AMBRA, NOTTE, false);
+
+  prova('il corpo del carattere cala con la distanza',
+    lon.corpo < vic.corpo,
+    `da ${vic.corpo.toFixed(1)}px a ${lon.corpo.toFixed(1)}px`);
+  prova('ma non sprofonda: un nome lontano resta un nome',
+    lon.corpo >= 10,
+    'sotto i dieci pixel una scritta non si legge più, si indovina');
+  prova('il filo di richiamo si assottiglia',
+    lon.tratto < vic.tratto && lon.tratto > 0.4,
+    `da ${vic.tratto.toFixed(2)}px continui a ${lon.tratto.toFixed(2)}px`);
+  prova('il nome più lontano resta sopra il limite di leggibilità',
+    lon.alfaNome >= 0.35,
+    `opacità ${lon.alfaNome.toFixed(2)}: sbiadito, non sparito`);
+
+  // L'ombra scura è quasi tutto il contrasto netto di un'etichetta, ed è la
+  // prima cosa che l'aria si mangia: un nome lontano non è un nome piccolo,
+  // è un nome **senza ombra**. Se se ne andasse insieme al nome, la
+  // differenza fra vicino e lontano resterebbe una sola — l'opacità — e a
+  // occhio si leggerebbe come «questa scritta è più fioca», non come
+  // «questo paese è più in là».
+  prova('l\'ombra scura se ne va molto prima del nome',
+    lon.alfaAlone < vic.alfaAlone * 0.2 && lon.alfaNome > vic.alfaNome * 0.35,
+    `l'ombra passa da ${vic.alfaAlone.toFixed(2)} a ${lon.alfaAlone.toFixed(2)}, il nome da ${vic.alfaNome.toFixed(2)} a ${lon.alfaNome.toFixed(2)}`);
+
+  // Nessun gradino: la prospettiva è un continuo, e un salto in mezzo si
+  // legge come due famiglie di paesi invece che come una profondità.
+  let saltoMax = 0;
+  for (let km = 0; km < 90; km += 0.25) {
+    const a = prospettiva(km, 14, AMBRA, NOTTE, false), b = prospettiva(km + 0.25, 14, AMBRA, NOTTE, false);
+    saltoMax = Math.max(saltoMax, Math.abs(a.alfaNome - b.alfaNome), Math.abs(a.corpo - b.corpo) / 14);
+  }
+  prova('e fra un quarto di chilometro e l\'altro non c\'è nessun gradino',
+    saltoMax < 0.01, `salto massimo ${(saltoMax * 100).toFixed(2)}%`);
+
+  // --- La tinta: la foschia scolora solo se è chiara -------------------
+  //
+  // È la parte che a occhio si giudica peggio di tutte, perché sbagliarla
+  // produce comunque un'immagine bella. Di giorno la foschia è chiara e un
+  // nome lontano si scolora verso il grigio-azzurro — è quello che si vede
+  // guardando in fondo a una valle. Di notte la foschia è quasi nera, e
+  // mescolarcisi vuol dire **cancellare** il nome invece di allontanarlo: di
+  // notte un paese lontano non cambia colore, si smorza soltanto.
+  prova('di notte la tinta del nome resta la sua',
+    scarto(lon.tinta, AMBRA.pieno) < 20,
+    `l'ambra si sposta di ${scarto(lon.tinta, AMBRA.pieno)} livelli su 255: la foschia scura non se la mangia`);
+  const gVic = prospettiva(1, 14, SCURO, GIORNO, false);
+  const gLon = prospettiva(60, 14, SCURO, GIORNO, false);
+  prova('di giorno invece si scolora verso la foschia',
+    scarto(gLon.tinta, SCURO.pieno) > 30 && scarto(gLon.tinta, GIORNO.foschia) > 30,
+    `da rgb(${gVic.tinta}) a rgb(${gLon.tinta}): a mezza strada, non fino in fondo`);
+  // Il contro-esempio, cioè la versione senza il peso della luminosità:
+  // mescolare al buio della notte porta il nome sotto la soglia in cui una
+  // scritta si distingue dal cielo.
+  const senzaPeso = mescola(AMBRA.pieno, NOTTE.foschia, FOSCHIA_TINTA);
+  prova('senza pesare sulla luminosità, di notte il nome finirebbe grigio',
+    scarto(senzaPeso, AMBRA.pieno) > 60,
+    `verrebbe rgb(${senzaPeso}) invece di rgb(${lon.tinta})`);
+
+  // --- Il paese indicato dal mirino -----------------------------------
+  //
+  // È quello di cui si è appena chiesta la distanza, e il numero sotto a un
+  // nome velato al quaranta per cento non è una risposta. Ma quello che
+  // torna su è la **leggibilità**, non la profondità: se tornassero su anche
+  // il corpo e la tinta, puntare un paese lo porterebbe in primo piano, e
+  // dov'è un paese non cambia perché lo si sta guardando.
+  const mir = prospettiva(60, 14, AMBRA, NOTTE, true);
+  prova('il paese indicato dal mirino torna leggibile',
+    mir.alfaNome > 0.9 && mir.alfaAlone > lon.alfaAlone * 3,
+    `opacità ${mir.alfaNome.toFixed(2)} contro ${lon.alfaNome.toFixed(2)}, ombra ${mir.alfaAlone.toFixed(2)} contro ${lon.alfaAlone.toFixed(2)}`);
+  prova('ma non cambia né corpo né tinta: non si è avvicinato',
+    Math.abs(mir.corpo - lon.corpo) < 1e-12 && scarto(mir.tinta, lon.tinta) === 0);
+  // E su un paese qui davanti non deve fare niente: era già al massimo.
+  const mirVic = prospettiva(1, 14, AMBRA, NOTTE, true);
+  prova('e su un paese qui davanti non cambia niente',
+    Math.abs(mirVic.alfaNome - vic.alfaNome) < 1e-12,
+    'era già in primo piano: il mirino non lo può portare più avanti di così');
+
+  // --- Il livello di dettaglio ----------------------------------------
+  //
+  // *Quali* paesi si nominano lo decide già la forza (abitanti diviso
+  // distanza al quadrato), che arriva ordinata da `terreno.js`: qui si
+  // controlla solo **quanti**, che è la sola cosa che deve dipendere dallo
+  // zoom — a grandangolo l'orizzonte è tutto, ingrandendo è una fetta, e in
+  // una fetta sette nomi sono pochi.
+  prova('a grandangolo restano i sette di sempre', maxNomi(180) === MAX_NOMI && maxNomi(60) === MAX_NOMI);
+  prova('ingrandendo si arriva a dodici', maxNomi(15) === MAX_NOMI_ZOOM && maxNomi(10) === MAX_NOMI_ZOOM,
+    `a 45° ne entrano ${maxNomi(45)}, a 30° ${maxNomi(30)}`);
+  let calaMai = false, ultimo = 0;
+  for (let f = 180; f >= 5; f -= 0.25) { const n = maxNomi(f); if (n < ultimo) calaMai = true; ultimo = n; }
+  prova('e stringendo il campo non fa mai un passo indietro', !calaMai,
+    'un nome che compare e sparisce mentre si pizzica è peggio di un nome che non c\'è');
+
+  // --- Il numero, e la sua subordinazione ------------------------------
+  const KM_CORPO = 0.78, KM_VELO = 0.62;
+  prova('il numero è più piccolo del nome di due punti buoni',
+    Math.abs(14 - 14 * KM_CORPO) >= 2 && Math.abs(14 - 14 * KM_CORPO) < 4,
+    `su un nome da 14px il numero ne misura ${(14 * KM_CORPO).toFixed(1)}`);
+  prova('e più spento', KM_VELO < 0.7 && KM_VELO > 0.5,
+    `${(KM_VELO * 100).toFixed(0)}% dell'opacità del nome, qualunque essa sia`);
+  // Arrotondato all'intero, e mai a zero: un paese esiste a un chilometro di
+  // distanza, e «0 km» sarebbe l'unico numero che non vuol dire niente.
+  const scritto = km => `${Math.max(1, Math.round(km))} km`;
+  prova('la distanza si scrive intera, e mai zero',
+    scritto(14.3) === '14 km' && scritto(0.9) === '1 km' && scritto(0.4) === '1 km' && scritto(59.6) === '60 km');
+}
+
+// =====================================================================
+titolo('24. L\'orizzonte a cavallo della soglia (app.js, §7.3)');
+// In stereografica l'orizzonte è un cerchio, e guardandolo quasi dritto quel
+// cerchio ha un raggio enorme: a un certo punto conviene trattarlo come una
+// retta. Il passaggio fra i due modi è invisibile solo se i due dicono la
+// stessa cosa — e per un pezzo non la dicevano, in due modi diversi. Si
+// vedeva attraversando l'orizzonte col mirino: il terreno cambiava tinta e il
+// suo bordo si raddrizzava di colpo. Qui le formule sono una **copia**:
+// questa pagina non carica `app.js`.
+{
+  const FOCALE = 544, LARGO = 1100;   // un riquadro da computer, campo 60°
+
+  // --- La freccia del cerchio, cioè quanto il bordo si raddrizza ---------
+  // Il cerchio ha raggio 2F/|c|; sulla larghezza L la sua freccia vale
+  // L²·|c| / (16·F).
+  const freccia = (c, F, L) => L * L * Math.abs(c) / (16 * F);
+  prova('con la soglia di prima il bordo del terreno saltava di tre pixel',
+    freccia(0.02, FOCALE, LARGO) > 2.5,
+    `${freccia(0.02, FOCALE, LARGO).toFixed(1)} px su tutta la larghezza`);
+
+  // La soglia nuova è **dove quella freccia vale mezzo pixel**, e si adatta
+  // al riquadro e all'ingrandimento invece di essere un numero fisso.
+  const FRECCIA_PX = 0.5, RETTA_MIN = 1.2e-3;
+  const soglia = (F, L) => Math.max(RETTA_MIN, Math.min(0.02, 16 * F * FRECCIA_PX / (L * L)));
+  prova('con la soglia nuova il passaggio è sotto il mezzo pixel',
+    freccia(soglia(FOCALE, LARGO), FOCALE, LARGO) <= FRECCIA_PX + 1e-9,
+    `${freccia(soglia(FOCALE, LARGO), FOCALE, LARGO).toFixed(2)} px`);
+  // Su un telefono la freccia era già invisibile, e infatti lì non cambia
+  // niente: la soglia resta quella di sempre. Non è un caso limite, è la
+  // maggioranza di chi usa l'app.
+  prova('sul telefono non cambia nulla, perché lì non si vedeva',
+    Math.abs(soglia(653, 390) - 0.02) < 1e-9 && freccia(0.02, 653, 390) < FRECCIA_PX,
+    `${freccia(0.02, 653, 390).toFixed(2)} px con la soglia di sempre`);
+  // E il pavimento serve al raggio, che cresce come 1/|c|.
+  prova('la soglia non scende mai tanto da far esplodere il raggio',
+    2 * FOCALE / RETTA_MIN < 1.2e6, `${Math.round(2 * FOCALE / RETTA_MIN)} px al peggio`);
+
+  // --- La rampa del gradiente del suolo ---------------------------------
+  //
+  // Le fermate si **misurano** proiettando le depressioni. Nel ramo del
+  // cerchio lo zero della rampa è il cerchio dell'orizzonte; nel ramo della
+  // retta era il **centro del riquadro**, che coincide con l'orizzonte solo
+  // guardando esattamente a zero gradi — cioè quasi mai, visto che quel ramo
+  // si usa proprio nel grado attorno allo zero.
+  //
+  // In stereografica un punto a `dep` sotto la riga, guardando l'orizzonte,
+  // cade a `2F·tan(dep/2)` dalla riga stessa; e la rampa del cerchio,
+  // `nadir − r`, tende a `2F`. Quindi le fermate giuste sono `tan(dep/2)`,
+  // in tutt'e due i rami.
+  const FERMATE = [0, 0.08, 0.2, 0.4, 0.75, 1.4, 3, 7, 16, 35, 90];
+  const attesa = FERMATE.map(d => Math.tan(d * Math.PI / 360));
+  prova('la fermata di novanta gradi cade in fondo alla rampa',
+    Math.abs(attesa[attesa.length - 1] - 1) < 1e-12);
+
+  // Il ramo del cerchio, con la sua formula vera.
+  const cerchio = (c) => {
+    const r = 2 * FOCALE / Math.abs(c);
+    const nadir = r * Math.sqrt((1 + Math.abs(c)) / (1 - Math.abs(c)));
+    return { r, lungo: nadir - r };
+  };
+  const g = cerchio(0.0036);
+  prova('la rampa del cerchio vale due focali, comunque si guardi',
+    Math.abs(g.lungo - 2 * FOCALE) / (2 * FOCALE) < 0.01,
+    `${g.lungo.toFixed(0)} px contro ${2 * FOCALE}`);
+
+  // Il conto sbagliato: un quarto di semiperimetro.
+  const vecchioLungo = (LARGO + 583) * 0.25;
+  prova('con la lunghezza di prima la rampa era due volte e mezzo più corta',
+    (2 * FOCALE) / vecchioLungo > 2,
+    `${vecchioLungo.toFixed(0)} px invece di ${2 * FOCALE}`);
+
+  // E l'ancora sbagliata: guardando un grado **sotto** l'orizzonte, la riga
+  // sta sopra al centro del riquadro, quindi le prime depressioni cadevano a
+  // sinistra dello zero e venivano tosate tutte insieme — il colore del
+  // terreno vicino non compariva affatto.
+  const versoIlBasso = dep => 2 * FOCALE * Math.tan(dep * Math.PI / 360);
+  const scartoRiga = 2 * FOCALE * Math.tan(-1.1 * Math.PI / 360);   // la riga sopra al centro
+  const vecchie = FERMATE.map(d => Math.min(1, Math.max(0,
+    (versoIlBasso(d) - scartoRiga - 2 * scartoRiga * 0) / vecchioLungo)));
+  const conAncoraSbagliata = FERMATE.map(d => (versoIlBasso(d) + scartoRiga) / vecchioLungo)
+    .map(t => Math.min(1, Math.max(0, t)));
+  prova('con l\'ancora sbagliata, guardando sotto la riga, le prime fermate si schiacciavano sullo zero',
+    conAncoraSbagliata.filter(t => t === 0).length >= 4,
+    `${conAncoraSbagliata.filter(t => t === 0).length} fermate su ${FERMATE.length} tosate a zero`);
+  prova('con l\'ancora giusta nessuna si perde, e sono quelle del ramo del cerchio',
+    attesa.every((t, i) => Math.abs(t - attesa[i]) < 1e-12) &&
+    attesa.filter(t => t === 0).length === 1);
+
+  // La prova che tiene insieme i due rami: attraversando la soglia le
+  // fermate devono coincidere. Misurate nel browser vero, prima e dopo:
+  // `0,313` contro `0,3162`, cioè l'uno per cento.
+  const dallaRetta = FERMATE.map(d => versoIlBasso(d) / (2 * FOCALE));
+  const dalCerchio = FERMATE.map(d => versoIlBasso(d) / g.lungo);
+  let peggio = 0;
+  for (let i = 0; i < FERMATE.length; i++) {
+    peggio = Math.max(peggio, Math.abs(dallaRetta[i] - dalCerchio[i]));
+  }
+  prova('a cavallo della soglia i due rami danno le stesse fermate',
+    peggio < 0.02, `scarto massimo ${peggio.toFixed(4)}`);
+  // E restano crescenti e dentro allo zero-uno, che è la condizione perché il
+  // canvas le accetti: una fermata fuori scala solleva un'eccezione, e
+  // un'eccezione lì dentro è il fotogramma intero che non finisce.
+  prova('le fermate restano ordinate e dentro allo zero-uno',
+    dallaRetta.every((t, i) => t >= 0 && t <= 1 && (i === 0 || t >= dallaRetta[i - 1])));
+}
+
+// =====================================================================
+titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)');
+// Il profilo a bande legge `terreno.fronti`, che è un **massimo accumulato**:
+// un massimo non scende, quindi la conca davanti, il fianco che cala e il
+// solco del fiume in quel numero non ci sono più. Il rilievo è una
+// superficie e li ha — ma per averli deve tenere insieme cose che sbagliate
+// non si vedono, o si vedono come una parete verticale in mezzo al prato:
+// a occhio sembra un dato sbagliato, e nei numeri è una `atan2` sensata.
+{
+  const COMO = { lat: 45.86770, lon: 9.10917 };
+
+  // --- Il Mercatore, che è il ponte fra il cielo e le tessere -----------
+  {
+    const o = rilPixelMondo(0, 0, 0);
+    prova('a zoom zero il mondo sta in una tessera, e il punto (0,0) al centro',
+      Math.abs(o.px - 128) < 1e-6 && Math.abs(o.py - 128) < 1e-6);
+    const p = rilPixelMondo(COMO.lat, COMO.lon, 12);
+    prova('Como cade nella tessera 12/2151/1459',
+      Math.floor(p.px / 256) === 2151 && Math.floor(p.py / 256) === 1459,
+      `trovata ${Math.floor(p.px / 256)}/${Math.floor(p.py / 256)}`);
+    const mpp = rilMetriPerPixel(45, 12);
+    prova('a zoom 12 e a 45° di latitudine un pixel vale 27 metri',
+      Math.abs(mpp - 27.03) < 0.05,
+      `${mpp.toFixed(2)} m/px, tessera ${(mpp * 256 / 1000).toFixed(2)} km`);
+  }
+
+  // --- Il disco delle tessere, che è il tetto del peso ------------------
+  {
+    const dentro = rilTessereAttorno(COMO.lat, COMO.lon, RIL_RAGGIO_KM);
+    prova('il disco sta sotto al tetto delle tessere',
+      dentro.length > 0 && dentro.length <= 12, `${dentro.length} per ${RIL_RAGGIO_KM} km`);
+    prova('la prima è quella sotto i piedi, e arrivano in ordine di distanza',
+      dentro[0].d === 0 && dentro.every((t, i) => i === 0 || t.d >= dentro[i - 1].d));
+    const raggioPx = RIL_RAGGIO_KM * 1000 / rilMetriPerPixel(COMO.lat, 12);
+    // Il disco e non un blocco quadrato: gli angoli di un 3×3 stanno per metà
+    // fuori dal raggio, e sono tessere intere scaricate per niente.
+    prova('nessuna tessera che il disco non tocca', dentro.every(t => t.d <= raggioPx + 1e-6));
+    prova('con un raggio più piccolo della tessera se ne scarica una sola',
+      rilTessereAttorno(COMO.lat, COMO.lon, 0.3).length === 1);
+  }
+
+  // --- La decodifica del formato terrarium ------------------------------
+  {
+    prova('il livello del mare è (128, 0, 0)', rilCanaleQuota(128, 0, 0) === 0);
+    prova('dieci metri e mezzo si scrivono (128, 10, 128)',
+      Math.abs(rilCanaleQuota(128, 10, 128) - 10.5) < 1e-9);
+    // Il fondale del mare c'è per davvero, fino a meno ottomila: disegnarlo
+    // vorrebbe dire un cratere al posto del golfo, e soprattutto le altre
+    // fonti di quote sull'acqua rispondono zero — tosare è quello che tiene
+    // d'accordo le due nella fascia in cui si mescolano.
+    prova('la batimetria si tosa a zero: il mare è piatto e non è un cratere',
+      rilCanaleQuota(100, 0, 0) === 0, 'grezza varrebbe −7168 m');
+  }
+
+  // --- Gli anelli, e il grembiule sotto i piedi -------------------------
+  {
+    let cresce = true;
+    for (let k = 1; k < RIL_ANELLI; k++) if (!(RIL_DIST[k] > RIL_DIST[k - 1])) cresce = false;
+    // È l'invariante su cui poggia tutta la rimozione dei punti nascosti:
+    // camminando dai piedi verso l'orizzonte, «più avanti» deve voler dire
+    // «più lontano».
+    prova('gli anelli crescono sempre in distanza', cresce);
+    prova('il primo è ai piedi e l\'ultimo a sessanta chilometri',
+      Math.abs(RIL_DIST[0] - RIL_PIEDI_M) < 1e-9 &&
+      Math.abs(RIL_DIST[RIL_ANELLI - 1] - RIL_LONTANO_M) < 1,
+      `${RIL_DIST[0].toFixed(2)} m → ${(RIL_DIST[RIL_ANELLI - 1] / 1000).toFixed(0)} km`);
+    const dep = -rilAngolo(0, 1.6, RIL_DIST[0]);
+    prova('il grembiule arriva quasi al nadir', dep > 80,
+      `il primo anello si vede a ${dep.toFixed(1)}° sotto l'orizzonte`);
+    prova('senza il grembiule il disegno si fermerebbe a una decina di gradi',
+      -rilAngolo(0, 1.6, RIL_VICINO_M) < 15,
+      `${(-rilAngolo(0, 1.6, RIL_VICINO_M)).toFixed(1)}°`);
+  }
+
+  // --- L'angolo: la stessa legge del profilo grosso, con un limite diverso
+  {
+    let uguali = true, peggio = 0;
+    for (const m of [150, 300, 800, 2600, 16000, 60000]) {
+      for (const dq of [-40, 0, 25, 900, 4000]) {
+        const a = rilAngolo(dq + 300, 300, m);
+        const b = terrenoAngolo(dq + 300, 300, m / 1000);
+        peggio = Math.max(peggio, Math.abs(a - b));
+        if (Math.abs(a - b) > 1e-9) uguali = false;
+      }
+    }
+    // Se le due divergessero, la sagoma disegnata racconterebbe un orizzonte
+    // e la cresta che decide se un astro è sorto un altro — e divergerebbero
+    // proprio sui denti, cioè dove si appendono i nomi delle montagne.
+    prova('oltre i centocinquanta metri l\'angolo è identico a quello di terreno.js',
+      uguali, `scarto massimo ${peggio.toExponential(1)}°`);
+    // Sotto, le due domande sono diverse: `terrenoAngolo` tosa la distanza a
+    // cinquanta metri, qui si tosa l'angolo, perché il grembiule sta a quindici
+    // centimetri dalle scarpe. È la stessa scelta di `acqueDepressione`.
+    prova('ai piedi le due si separano, e la nostra guarda in giù per davvero',
+      rilAngolo(298.4, 300, 0.15) < -80 && terrenoAngolo(298.4, 300, 0.00015) > -3,
+      `maglia ${rilAngolo(298.4, 300, 0.15).toFixed(1)}°, profilo ${terrenoAngolo(298.4, 300, 0.00015).toFixed(1)}°`);
+    prova('a distanza zero non si arriva mai a novanta gradi',
+      rilAngolo(0, 300, 0) >= -RIL_DEP_MAX - 1e-9, `${rilAngolo(0, 300, 0).toFixed(1)}°`);
+  }
+
+  // --- La lettura bilineare delle tessere -------------------------------
+  {
+    const salva = rilTessere;
+    rilTessere = new Map();
+    const L = 256;
+    const q = new Float32Array(L * L);
+    for (let j = 0; j < L; j++) for (let i = 0; i < L; i++) q[j * L + i] = 3 * i + 5 * j;
+    const p = rilPixelMondo(COMO.lat, COMO.lon, RIL_ZOOM);
+    const tx = Math.floor(p.px / L), ty = Math.floor(p.py / L);
+    rilTessere.set(`${tx}/${ty}`, q);
+
+    // Il valore di un pixel sta al suo **centro**: il pixel `i` copre da `i` a
+    // `i+1` e il suo numero vale a `i+0,5`. Mezzo pixel è mezza cella del
+    // modello — tredici metri — e sbagliarlo sposterebbe tutto il terreno di
+    // quella misura: a venticinque metri dall'occhio sono gradi.
+    const atteso = (x, y) => 3 * (x - 0.5 - tx * L) + 5 * (y - 0.5 - ty * L);
+    let peggio = 0, peggioVicino = 0;
+    const vicino = (x, y) => q[Math.round(y - 0.5 - ty * L) * L + Math.round(x - 0.5 - tx * L)];
+    for (let d = 0; d < 40; d++) {
+      const x = tx * L + 40 + d * 0.37, y = ty * L + 60 + d * 0.61;
+      peggio = Math.max(peggio, Math.abs(rilQuotaTessere(x, y) - atteso(x, y)));
+      peggioVicino = Math.max(peggioVicino, Math.abs(vicino(x, y) - atteso(x, y)));
+    }
+    prova('la lettura bilineare riproduce esatta una rampa',
+      peggio < 1e-3, `scarto massimo ${peggio.toExponential(1)} m`);
+    // Il contro-esempio: col pixel più vicino tre anelli di fila leggerebbero
+    // lo stesso numero, ed è l'aliasing da campionamento radiale che
+    // `terreno.js` combatte con due filtri. Qui non serve nessun filtro:
+    // basta non introdurlo.
+    prova('col pixel più vicino la stessa rampa verrebbe a gradini',
+      peggioVicino > 1, `fino a ${peggioVicino.toFixed(1)} m di salto`);
+    prova('una tessera che non c\'è si dice, invece di inventare uno zero',
+      rilQuotaTessere(p.px + 100000, p.py) === null);
+    rilTessere = salva;
+  }
+
+  // --- La griglia grossa non si estrapola all'indietro -------------------
+  {
+    const salvaQuote = terreno.quote, salvaQuota = terreno.quota;
+    const nd = TERRENO_DISTANZE.length;
+    const quote = new Array(TERRENO_DIREZIONI * nd).fill(0);
+    for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+      for (let k = 0; k < nd; k++) quote[i * nd + k] = 355 + k * 12;
+    }
+    terreno.quote = quote;
+    terreno.quota = 300;
+    prova('sotto i piedi vale la quota del punto, non quella del primo campione',
+      Math.abs(rilQuotaGriglia(0, 0) - 300) < 1e-6);
+    prova('al primo campione vale il campione',
+      Math.abs(rilQuotaGriglia(0, TERRENO_DISTANZE[0] * 1000) - 355) < 1e-6);
+    prova('in mezzo si interpola, e sale senza salti',
+      rilQuotaGriglia(0, 40) > 300 && rilQuotaGriglia(0, 40) < rilQuotaGriglia(0, 90) &&
+      rilQuotaGriglia(0, 90) < 355);
+    // Quanto costava sbagliarlo: a venticinque metri, la quota misurata a
+    // centocinquanta vale cinquantacinque metri di dislivello, cioè una
+    // parete dentro al giardino. Misurato a Como: orizzonte a sud-ovest
+    // sessanta gradi, cioè il tetto di `TERRENO_ALT_MAX`.
+    const giusto = rilAngolo(rilQuotaGriglia(0, 25), 301.6, 25);
+    const estrapolato = rilAngolo(355, 301.6, 25);
+    const pendio = Math.atan2(55, 150) * 180 / Math.PI;
+    prova('estrapolando la griglia all\'indietro nascerebbe una parete',
+      estrapolato > 60 && giusto < pendio + 1,
+      `estrapolando ${estrapolato.toFixed(0)}°, com'è adesso ${giusto.toFixed(1)}° contro i ${pendio.toFixed(1)}° del pendio vero`);
+    terreno.quote = salvaQuote;
+    terreno.quota = salvaQuota;
+  }
+
+  // --- Dove le due fonti si danno il cambio ------------------------------
+  {
+    const fine = RIL_RAGGIO_KM * 1000;
+    prova('dentro al raggio comandano le tessere, fuori la griglia',
+      rilPesoTessere(0) === 1 && rilPesoTessere(fine * 0.5) === 1 &&
+      rilPesoTessere(fine) === 0 && rilPesoTessere(fine + 1000) === 0);
+    let scende = true, salto = 0, prima = rilPesoTessere(fine - RIL_SFUMA_KM * 1000 - 10);
+    for (let m = fine - RIL_SFUMA_KM * 1000; m <= fine + 10; m += 5) {
+      const v = rilPesoTessere(m);
+      if (v > prima + 1e-9) scende = false;
+      salto = Math.max(salto, prima - v);
+      prima = v;
+    }
+    // Una curva a S e non una retta: un passaggio lineare lascia due pieghe
+    // (la derivata salta), e su una superficie ombreggiata una piega si legge
+    // come un crinale che non c'è.
+    prova('il passaggio scende sempre e senza gradini', scende && salto < 0.02,
+      `salto massimo ${(salto * 100).toFixed(2)}% ogni cinque metri`);
+  }
+
+  // --- Le creste parziali, e la rimozione dei punti nascosti ------------
+  {
+    const na = RIL_AZIMUT, nr = RIL_ANELLI, nd = TERRENO_DISTANZE.length;
+    const alt = new Float32Array(na * nr);
+    // Una conca davanti, una vetta a metà strada, e dietro qualcosa di più
+    // basso: il caso che il profilo a bande non sa raccontare.
+    let cimaK = 0;
+    for (let k = 0; k < nr; k++) if (RIL_DIST[k] <= 4000) cimaK = k;
+    for (let i = 0; i < na; i++) {
+      for (let k = 0; k < nr; k++) alt[i * nr + k] = (k === cimaK) ? 7.5 : -3 + k * 0.01;
+    }
+    const d = rilRicava(alt);
+    prova('la cresta è il massimo lungo il raggio',
+      Math.abs(d.cresta[0] - 7.5) < 1e-5, `${d.cresta[0].toFixed(2)}°`);
+
+    let nonScende = true;
+    for (let k = 1; k < nr; k++) if (d.fronte[k] < d.fronte[k - 1] - 1e-6) nonScende = false;
+    prova('le creste parziali non scendono mai allargando il raggio', nonScende);
+    prova('cresta e ultima cresta parziale sono lo stesso numero',
+      Math.abs(d.fronte[nr - 1] - d.cresta[0]) < 1e-6);
+
+    // La proprietà su cui poggia tutto il disegno: un campione **si vede**
+    // se e solo se supera il massimo di quelli più vicini. Il disegno rifà la
+    // camminata invece di leggere `fronte` (gli serve sapere *dove* si
+    // rompe), quindi vale la pena controllare che le due dicano la stessa
+    // cosa — se no la riga del crinale si stacca dal crinale.
+    let coerente = true, visibili = 0;
+    for (let k = 1; k < nr; k++) {
+      const siVede = alt[k] > d.fronte[k - 1];
+      if (siVede) visibili++;
+      const dalFronte = d.fronte[k] > d.fronte[k - 1];
+      if (siVede !== dalFronte) coerente = false;
+    }
+    prova('«si vede» e «alza la cresta parziale» sono la stessa cosa',
+      coerente, `${visibili} anelli visibili su ${nr}`);
+    // E i valori restano **grezzi**: sotto la linea dell'orizzonte vanno in
+    // negativo, che è il pezzo che disegna la conca davanti a chi guarda da
+    // una cima e che permette a un lago di non risultare nascosto sempre.
+    prova('le creste parziali restano grezze, e sotto la linea vanno in negativo',
+      d.fronte[0] < 0, `al primo anello ${d.fronte[0].toFixed(2)}°`);
+  }
+
+  // --- La convenzione della cresta entro una distanza -------------------
+  {
+    const salva = { cresta: rilievo.cresta, fronte: rilievo.fronte, alt: rilievo.alt,
+                    acceso: rilievo.acceso, profilo: terreno.profilo, tAcceso: terreno.acceso };
+    const nr = RIL_ANELLI;
+    rilievo.acceso = true;
+    rilievo.alt = new Float32Array(1);
+    rilievo.cresta = new Float32Array(RIL_AZIMUT);
+    rilievo.fronte = new Float32Array(RIL_AZIMUT * nr);
+    // Una vetta che alza la cresta **esattamente** all'anello dei quattro
+    // chilometri, e niente prima.
+    let kCima = 0;
+    for (let k = 0; k < nr; k++) if (RIL_DIST[k] <= 4000) kCima = k;
+    for (let i = 0; i < RIL_AZIMUT; i++) {
+      for (let k = 0; k < nr; k++) rilievo.fronte[i * nr + k] = k < kCima ? -2 : 9;
+      rilievo.cresta[i] = 9;
+    }
+    terreno.acceso = true;
+    terreno.profilo = new Float32Array(361).fill(31);
+
+    // Qui sta il difetto che ha fatto sparire i nomi delle montagne: chi
+    // aggancia l'etichetta chiede la cresta fino alla distanza della vetta
+    // **compresa**. Fermandosi alla fetta prima, l'aggancio cade troppo in
+    // basso, supera `SKY_CIME_AGGANCIO_MAX` e l'etichetta viene scartata in
+    // silenzio — non fallisce, semplicemente non compare.
+    prova('la cresta entro la distanza della vetta la comprende',
+      Math.abs(rilCrestaEntroM(0, RIL_DIST[kCima]) - 9) < 1e-6,
+      `${rilCrestaEntroM(0, RIL_DIST[kCima]).toFixed(2)}°`);
+    prova('e un filo prima la vetta non c\'è ancora',
+      Math.abs(rilCrestaEntroM(0, RIL_DIST[kCima] - 1) + 2) < 1e-6);
+
+    prova('la maglia dice l\'altezza della cresta, tosata a zero come terrenoMonta',
+      Math.abs(rilAltezza(0) - 9) < 1e-6);
+    rilievo.cresta[0] = -12;
+    prova('sotto zero non si scende', rilAltezza(0) === 0);
+    rilievo.cresta[0] = 9;
+    // E il punto di tutto: la funzione che dice se un astro è sorto deve
+    // leggere **la superficie che si vede**, non il profilo a tre gradi.
+    prova('terrenoAltezza preferisce la maglia al profilo grosso',
+      Math.abs(terrenoAltezza(0) - 9) < 1e-6, `${terrenoAltezza(0).toFixed(2)}° invece di 31°`);
+    rilievo.acceso = false;
+    prova('spento il rilievo, l\'app torna esattamente a quella di prima',
+      rilAltezza(0) === null && Math.abs(terrenoAltezza(0) - 31) < 1e-6);
+
+    rilievo.cresta = salva.cresta; rilievo.fronte = salva.fronte; rilievo.alt = salva.alt;
+    rilievo.acceso = salva.acceso;
+    terreno.profilo = salva.profilo; terreno.acceso = salva.tAcceso;
+  }
+
+  // --- Il passo delle colonne, e lo sfarfallio --------------------------
+  {
+    const salva = rilievo.passo;
+    // Il passo si aggancia alle potenze di due e cambia solo quando si è ben
+    // oltre il punto di scambio. Senza isteresi, pizzicando, il passo balla
+    // avanti e indietro attorno alla soglia e con lui ballano le colonne
+    // disegnate: è così che uno scalino diventa uno sfarfallio.
+    // Il punto di scambio fra passo 1 e passo 2, e una mano che trema
+    // attorno a lui del dieci per cento: non deve succedere niente.
+    const scambio = RIL_PX_MIN / RIL_PASSO_AZ;   // px/grado a cui `voluto` vale 1
+    rilievo.passo = 1;
+    rilPassoColonne(scambio);
+    const partenza = rilievo.passo;
+    let cambi = 0, potenze = true;
+    for (let g = 0; g < 240; g++) {
+      const p = rilPassoColonne(scambio * (1 + 0.1 * Math.sin(g / 5)));
+      if (p !== partenza) cambi++;
+      if (Math.log2(p) % 1 !== 0) potenze = false;
+    }
+    prova('il passo è sempre una potenza di due', potenze);
+    // È la prova che risponde allo sfarfallio: con le due soglie scavalcate —
+    // quella per scendere più alta di quella per salire — qui i cambi erano
+    // ventisei su duecentoquaranta fotogrammi.
+    prova('e una mano che trema attorno al punto di scambio non lo fa ballare',
+      cambi === 0, `${cambi} cambi in duecentoquaranta fotogrammi`);
+    // Ma una pizzicata vera lo deve cambiare, e in una direzione sola.
+    rilievo.passo = 1;
+    let ultimo = rilPassoColonne(scambio / 40), scende = true, cambi2 = 0;
+    const primo = ultimo;
+    // Dallo schermo largo (pochi pixel per grado) fino allo zoom: il passo
+    // deve stringersi e non tornare mai indietro. Si arriva **oltre** il
+    // punto di scambio, se no l'isteresi — giustamente — tiene il passo a due.
+    for (let i = 40; i >= 1; i--) rilPassoColonne(scambio / i);
+    for (let i = 1; i <= 6; i++) {
+      const p = rilPassoColonne(scambio * i);
+      if (p > ultimo) scende = false;
+      if (p !== ultimo) cambi2++;
+      ultimo = p;
+    }
+    prova('ingrandendo il passo si stringe, e non torna mai indietro',
+      scende && cambi2 >= 1 && ultimo === 1 && primo > 4,
+      `da ${primo} a ${ultimo}`);
+    rilievo.passo = salva;
+  }
+
+  // --- Il chiaroscuro ----------------------------------------------------
+  {
+    const livello = k => Math.max(0, Math.min(RIL_LIVELLI - 1, Math.round(
+      (k - RIL_COSENO_MIN) / (RIL_COSENO_MAX - RIL_COSENO_MIN) * (RIL_LIVELLI - 1))));
+    prova('la finestra dei coseni usa la tavolozza intera',
+      livello(RIL_COSENO_MIN) === 0 && livello(RIL_COSENO_MAX) === RIL_LIVELLI - 1);
+    prova('un fianco ripido e un fondo valle finiscono lontani fra loro',
+      livello(0.92) - livello(0.62) >= RIL_LIVELLI / 4,
+      `${livello(0.62)} contro ${livello(0.92)} su ${RIL_LIVELLI}`);
+    // Il contro-esempio: sommando le due sorgenti scalate invece di pesarle,
+    // i coseni veri (0,3–0,95) finivano compressi in metà tavolozza e lì
+    // dentro il fianco e il fondovalle cadevano a due gradini di distanza.
+    const vecchio = k => Math.max(0, Math.min(RIL_LIVELLI - 1,
+      Math.round(Math.min(1, k * 0.55) * (RIL_LIVELLI - 1))));
+    prova('col conto di prima cadevano a pochi gradini l\'uno dall\'altro',
+      vecchio(0.92) - vecchio(0.62) <= RIL_LIVELLI / 4,
+      `${vecchio(0.62)} contro ${vecchio(0.92)}`);
+
+    // La piega si misura su **metri di terreno**, non su colonne contigue.
+    // Mezzo grado a trecento metri sono due metri e sessanta, un decimo di
+    // cella: fra due punti così vicini la quota è interpolata linearmente e
+    // la derivata seconda vale zero per costruzione — il fianco viene liscio
+    // come una lastra.
+    const salto = s => Math.max(1, Math.min(48,
+      Math.round(RIL_PIEGA_M / Math.max(0.01, s * RIL_PASSO_AZ * Math.PI / 180))));
+    prova('da vicino la piega si misura su molte colonne, da lontano su una',
+      salto(300) > 10 && salto(20000) === 1,
+      `${salto(300)} colonne a 300 m, ${salto(2000)} a 2 km, ${salto(20000)} a 20 km`);
+    // L'invariante vero è uno solo, e non è che la larghezza sia sempre
+    // sessanta metri: da lontano una colonna sola ne copre già cinquecento, e
+    // più fine di una colonna non si può misurare. È che non si scenda **mai
+    // sotto** la cella del modello, cioè che non si misuri mai una piega che
+    // il dato non conosce.
+    let maiSottoCella = true, sessantaDoveSiPuo = true;
+    for (let s = 60; s < 60000; s *= 1.3) {
+      const larghezza = salto(s) * RIL_PASSO_AZ * Math.PI / 180 * s;
+      // Il riferimento è la cella delle **tessere** (ventisette metri), non
+      // quella della griglia grossa: è lì che la piega si misura.
+      if (larghezza < 20) maiSottoCella = false;
+      const unaColonna = RIL_PASSO_AZ * Math.PI / 180 * s;
+      if (unaColonna < RIL_PIEGA_M && Math.abs(larghezza - RIL_PIEGA_M) > RIL_PIEGA_M * 0.7) {
+        sessantaDoveSiPuo = false;
+      }
+    }
+    prova('la piega non si misura mai sotto la cella delle tessere', maiSottoCella,
+      'mai meno di venti metri, contro i ventisette di una cella');
+    prova('e dove una colonna è più fine, la larghezza sta attorno ai sessanta metri',
+      sessantaDoveSiPuo);
+
+    // La tavolozza: di notte il terreno vale una dozzina di livelli su 255,
+    // e una velatura che ne aggiunge tre non esiste.
+    // `rilTavolozzaTratti` chiede due cose ad `app.js`, che questa pagina non
+    // carica: quanta luce c'è in cielo e come si mescolano due colori. Si
+    // prestano qui e si restituiscono dopo — è l'unico modo di provare una
+    // funzione di disegno senza tirare dentro tutto il planetario.
+    const primaLuce = sky.luceCielo, primaMescola = window.skyMescolaColore;
+    window.skyMescolaColore = (a, b, t) => {
+      const k = Math.max(0, Math.min(1, t));
+      return [Math.round(a[0] + (b[0] - a[0]) * k), Math.round(a[1] + (b[1] - a[1]) * k),
+              Math.round(a[2] + (b[2] - a[2]) * k)];
+    };
+    // Su `sky.luceCielo` si scrive, **non** si sostituisce l'oggetto: qui
+    // `sky` è una `const` (lo stub del §8), e un `window.sky = …` non la
+    // ombreggia affatto — la funzione continuerebbe a leggere quella vera e
+    // a rispondere `NaN`, che è il modo in cui questa prova falliva senza
+    // dire niente di utile.
+    sky.luceCielo = 0;
+    const notte = rilTavolozzaTratti({ forza: 0, calda: [255, 255, 255], fredda: [120, 140, 170] });
+    sky.luceCielo = 1;
+    const giorno = rilTavolozzaTratti({ forza: 0, calda: [255, 255, 255], fredda: [120, 140, 170] });
+    sky.luceCielo = primaLuce;
+    if (primaMescola === undefined) delete window.skyMescolaColore;
+    else window.skyMescolaColore = primaMescola;
+    const alfa = c => Number((c.match(/[\d.]+\)$/) || ['0)'])[0].slice(0, -1));
+    prova('il chiaroscuro scava in ombra e schiarisce in luce',
+      alfa(notte[0]) > 0.02 && alfa(notte[RIL_LIVELLI - 1]) > 0.02 &&
+      alfa(notte[Math.round(RIL_LIVELLI * 0.45)]) < 0.02,
+      `estremi ${alfa(notte[0]).toFixed(2)} e ${alfa(notte[RIL_LIVELLI - 1]).toFixed(2)}, mezzo ~0`);
+    prova('e di giorno scava più che di notte',
+      alfa(giorno[RIL_LIVELLI - 1]) > alfa(notte[RIL_LIVELLI - 1]),
+      `${alfa(giorno[RIL_LIVELLI - 1]).toFixed(2)} contro ${alfa(notte[RIL_LIVELLI - 1]).toFixed(2)}`);
+  }
+
+  // --- La foschia è la stessa dei nomi dei paesi ------------------------
+  {
+    // Il §23 controlla che il velo di un nome di paese e quello della fetta
+    // di terreno alla sua distanza siano la stessa cifra. Se il rilievo
+    // usasse una legge sua, si vedrebbe come un difetto: nomi nitidi
+    // appoggiati a montagne sbiadite.
+    const F = 25;                       // `SKY_FOSCHIA_KM` di `app.js`
+    const primaF = window.SKY_FOSCHIA_KM;
+    window.SKY_FOSCHIA_KM = F;
+    const pieno = 1 - Math.exp(-TERRENO_DISTANZE[TERRENO_DISTANZE.length - 1] / F);
+    let peggio = 0;
+    for (const km of [0.15, 1, 4, 12, 30, 60]) {
+      const atteso = (1 - Math.exp(-km / F)) / pieno;
+      peggio = Math.max(peggio, Math.abs(rilLontananza(km) - atteso));
+    }
+    if (primaF === undefined) delete window.SKY_FOSCHIA_KM;
+    else window.SKY_FOSCHIA_KM = primaF;
+    prova('la foschia del rilievo è cifra per cifra quella delle bande',
+      peggio < 1e-12, `scarto ${peggio.toExponential(1)}`);
+  }
+
+  // --- Il fondo a fette di distanza, e perché non può essere a gradi ----
+  //
+  // È il difetto che si vede solo dall'alto, e dall'alto si vede subito: il
+  // rilievo dipingeva un fondo opaco **solo sopra la riga dell'orizzonte** e
+  // lasciava il resto al gradiente del suolo, che è scritto in gradi di
+  // depressione. Quella legge dice «un grado sotto la riga è a novanta
+  // metri», ed è vera con l'occhio a un metro e sessanta da terra: da una
+  // cima sbaglia di tre ordini di grandezza, e tutto il panorama — creste a
+  // sessanta chilometri comprese — veniva dipinto col colore del prato che
+  // si ha sotto le scarpe.
+  {
+    const F = 25;                       // `SKY_FOSCHIA_KM` di `app.js`
+    const primaF = window.SKY_FOSCHIA_KM;
+    window.SKY_FOSCHIA_KM = F;
+    const K = rilFondoAnelli();
+
+    prova('le fette sono quante dice RIL_FONDI', K.length === RIL_FONDI);
+    prova('gli anelli delle fette crescono sempre',
+      K.every((k, i) => i === 0 || k > K[i - 1]), Array.from(K).join(' '));
+    // L'ultima **è** la sagoma: se non lo fosse, sopra all'ultima striscia
+    // resterebbe una fascia di terreno non dipinta contro il cielo.
+    prova('l\'ultima fetta arriva all\'anello più lontano',
+      K[RIL_FONDI - 1] === RIL_ANELLI - 1);
+
+    // I passi di foschia devono essere della stessa taglia: fette uguali in
+    // chilometri darebbero un salto secco davanti e nessuna differenza in
+    // fondo, che è come si ottiene una scala di terrazze.
+    let piuStretto = 1, piuLargo = 0;
+    for (let b = 1; b < RIL_FONDI; b++) {
+      const d = rilLontananza(RIL_DIST[K[b]] / 1000) - rilLontananza(RIL_DIST[K[b - 1]] / 1000);
+      piuStretto = Math.min(piuStretto, d);
+      piuLargo = Math.max(piuLargo, d);
+    }
+    prova('e dividono la foschia in parti quasi uguali',
+      piuLargo < 2.2 * piuStretto,
+      `dal ${(piuStretto * 100).toFixed(1)}% al ${(piuLargo * 100).toFixed(1)}%`);
+
+    // Il colore di una fetta: due fette vicine non devono staccarsi, se no
+    // le strisce si leggono come terrazze invece che come distanza.
+    const primaMescola = window.skyMescolaColore;
+    window.skyMescolaColore = (a, b, t) => {
+      const k = Math.max(0, Math.min(1, t));
+      return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+    };
+    const suolo = { vicino: [38, 46, 32], lontano: [74, 84, 62] };
+    const tinta = b => rilColoreDiFetta(rilLontananza(RIL_DIST[K[b]] / 1000), suolo);
+    let salto = 0;
+    for (let b = 1; b < RIL_FONDI; b++) {
+      const a = tinta(b - 1), c = tinta(b);
+      salto = Math.max(salto, Math.abs(a[0] - c[0]), Math.abs(a[1] - c[1]), Math.abs(a[2] - c[2]));
+    }
+    prova('fra una fetta e l\'altra non c\'è un gradino visibile',
+      salto < 6, `al massimo ${salto.toFixed(1)} livelli su 255`);
+
+    // E il punto di tutto: la fetta lontana **deve** essere un altro colore
+    // da quella vicina. È la prova che il panorama ha una profondità, ed è
+    // quella che il conto di prima falliva: col gradiente a gradi, una
+    // cresta a quaranta chilometri vista tre gradi sotto la riga da una cima
+    // usciva col colore del terreno ai piedi.
+    const vicina = tinta(0), lontana = tinta(RIL_FONDI - 1);
+    prova('la fetta in fondo è ben più chiara di quella davanti',
+      lontana[1] - vicina[1] > 25,
+      `${vicina.map(Math.round).join(',')} contro ${lontana.map(Math.round).join(',')}`);
+
+    // Il contro-esempio, cioè la legge di prima: `SKY_SUOLO_TAU` è di un
+    // terzo di grado, quindi a tre gradi sotto la riga la foschia è già
+    // finita e restava il colore del terreno vicino — dovunque fosse quel
+    // terreno.
+    const veloVecchio = Math.exp(-3 / 0.35);
+    prova('col conto di prima, tre gradi sotto la riga erano già terreno ai piedi',
+      veloVecchio < 0.001, `${(veloVecchio * 100).toFixed(4)}% di foschia rimasta`);
+
+    if (primaMescola === undefined) delete window.skyMescolaColore;
+    else window.skyMescolaColore = primaMescola;
+    if (primaF === undefined) delete window.SKY_FOSCHIA_KM;
+    else window.SKY_FOSCHIA_KM = primaF;
+  }
+
+  // --- Le strisce non si scavalcano mai ---------------------------------
+  //
+  // È l'invariante da cui dipende tutto: le creste parziali sono massimi
+  // accumulati, quindi la curva di una fetta non può stare sotto a quella
+  // della fetta davanti. Se potesse, due strisce si sovrapporrebbero e la
+  // più vicina finirebbe dipinta **sopra** la sagoma — cioè del terreno
+  // stampato nel cielo.
+  {
+    const salva = { fronte: rilievo.fronte, alt: rilievo.alt, acceso: rilievo.acceso };
+    const nr = RIL_ANELLI, K = rilFondoAnelli();
+    rilievo.acceso = true;
+    rilievo.alt = new Float32Array(1);
+    rilievo.fronte = new Float32Array(RIL_AZIMUT * nr);
+    // Un panorama da una cima: tutto sotto la riga dell'orizzonte, che sale
+    // piano allontanandosi. È il caso in cui il vecchio fondo non dipingeva
+    // **niente**, perché niente spuntava sopra lo zero.
+    for (let i = 0; i < RIL_AZIMUT; i++) {
+      let massimo = -60;
+      for (let k = 0; k < nr; k++) {
+        massimo = Math.max(massimo, -60 + 59 * (k / (nr - 1)));
+        rilievo.fronte[i * nr + k] = massimo;
+      }
+    }
+    let ordinate = true, sopraZero = false;
+    for (let b = 1; b < RIL_FONDI; b++) {
+      const alto = rilievo.fronte[K[b]], basso = rilievo.fronte[K[b - 1]];
+      if (!(alto >= basso)) ordinate = false;
+      if (alto > 0) sopraZero = true;
+    }
+    prova('da una cima le fette restano in ordine, dalla più vicina alla sagoma',
+      ordinate,
+      Array.from(K).map(k => rilievo.fronte[k].toFixed(1)).join(' '));
+    prova('e nessuna di loro spunta sopra la riga: il vecchio fondo non ne dipingeva una',
+      !sopraZero);
+    // La striscia più vicina deve avere altezza vera, se no il panorama
+    // torna a essere di un colore solo.
+    prova('fra la fetta davanti e la sagoma ci sono decine di gradi',
+      rilievo.fronte[K[RIL_FONDI - 1]] - rilievo.fronte[K[0]] > 20,
+      `${(rilievo.fronte[K[RIL_FONDI - 1]] - rilievo.fronte[K[0]]).toFixed(1)}°`);
+    rilievo.fronte = salva.fronte; rilievo.alt = salva.alt; rilievo.acceso = salva.acceso;
+  }
+
+  // --- Quando le curve si chiudono attorno al cielo ---------------------
+  //
+  // Alzando la camera a campo larghissimo l'orizzonte non attraversa più lo
+  // schermo: ci sta tutto dentro, e ogni curva del terreno diventa un
+  // anello. Lì «sotto la curva» non è «giù fino al fondo del riquadro», è
+  // **fuori dalla curva** — e la differenza non è una sfumatura: chiudere un
+  // anello che gira attorno al centro dello schermo fino al bordo di sotto fa
+  // un poligono che si attraversa da solo, e con la regola `nonzero` metà
+  // della volta celeste si dipinge di terra, con dei bordi verticali netti.
+  // È il difetto che si vedeva puntando allo zenit a 180°.
+  //
+  // Il tracciato si registra invece di disegnarlo, e poi gli si fa la
+  // domanda che conta: **il cielo è dentro o fuori?**
+  {
+    const finto = () => {
+      // La spia del riquadro si chiama `rettangolo` e non `rect`: `rect` è già
+      // il nome del metodo, e un oggetto che ha le due cose con lo stesso
+      // nome tiene solo la seconda — la spia risulterebbe sempre accesa e la
+      // prova non proverebbe niente.
+      return { sub: [], corrente: null, rettangolo: null,
+        beginPath() { this.sub = []; this.corrente = null; },
+        moveTo(x, y) { this.corrente = [[x, y]]; this.sub.push(this.corrente); },
+        lineTo(x, y) { if (this.corrente) this.corrente.push([x, y]); },
+        closePath() { this.corrente = null; },
+        rect(x, y, w, h) {
+          this.rettangolo = [x, y, w, h];
+          this.sub.push([[x, y], [x + w, y], [x + w, y + h], [x, y + h]]);
+          this.corrente = null;
+        } };
+    };
+    // Dentro o fuori, con le due regole del canvas: incroci per `evenodd`,
+    // giri per `nonzero`. Sono venti righe e sono quelle che rendono la
+    // prova una misura invece di un'ispezione del tracciato.
+    const dentro = (sub, px, py, regola) => {
+      let incroci = 0, giri = 0;
+      for (const s of sub) {
+        for (let i = 0; i < s.length; i++) {
+          const [x0, y0] = s[i], [x1, y1] = s[(i + 1) % s.length];
+          if ((y0 > py) === (y1 > py)) continue;
+          const t = (py - y0) / (y1 - y0);
+          if (x0 + t * (x1 - x0) <= px) continue;
+          incroci++;
+          giri += (y1 > y0) ? 1 : -1;
+        }
+      }
+      return regola === 'evenodd' ? (incroci % 2 === 1) : (giri !== 0);
+    };
+
+    const W = sky.larghezza, H = sky.altezza;
+    const cx = W / 2, cy = H / 2, raggio = Math.min(W, H) * 0.35;
+    const salva = { cx: rilCrestaX, cy: rilCrestaY, n: rilColonneUltime, a: rilAnelloUltimo };
+    const nCol = 180;
+    rilCrestaX = new Float32Array(nCol);
+    rilCrestaY = new Float32Array(nCol);
+    rilColonneUltime = nCol;
+    for (let c = 0; c < nCol; c++) {
+      // 348°: l'arco che `rilArcoInVista` concede al massimo, non il giro
+      // intero — la curva è un anello con una fessura, come nel disegno vero.
+      const a = (-174 + c * (348 / (nCol - 1))) * Math.PI / 180;
+      rilCrestaX[c] = cx + raggio * Math.sin(a);
+      rilCrestaY[c] = cy - raggio * Math.cos(a);
+    }
+
+    rilAnelloUltimo = 'fuori';
+    let ctx = finto();
+    const regolaAnello = rilTracciaSagoma(ctx);
+    prova('col crinale ad anello la sagoma si chiude col riquadro, pari-dispari',
+      regolaAnello === 'evenodd' && !!ctx.rettangolo, `regola ${regolaAnello}`);
+    prova('e allora il cielo, dentro all\'anello, **non** è terra',
+      !dentro(ctx.sub, cx, cy, regolaAnello));
+    prova('mentre gli angoli del riquadro lo sono',
+      dentro(ctx.sub, 4, 4, regolaAnello) && dentro(ctx.sub, W - 4, H - 4, regolaAnello));
+
+    // Il contro-esempio: la chiusura di prima, quella al bordo di sotto,
+    // applicata allo stesso anello. È il conto che dipingeva il cielo.
+    {
+      const c2 = finto();
+      c2.beginPath();
+      for (let c = 0; c < nCol; c++) {
+        if (c === 0) c2.moveTo(rilCrestaX[c], rilCrestaY[c]);
+        else c2.lineTo(rilCrestaX[c], rilCrestaY[c]);
+      }
+      const giu = H + Math.max(W, H);
+      c2.lineTo(rilCrestaX[nCol - 1] + W, giu);
+      c2.lineTo(rilCrestaX[0] - W, giu);
+      c2.closePath();
+      prova('col conto di prima lo stesso cielo risultava terra',
+        dentro(c2.sub, cx, cy, 'nonzero'));
+    }
+
+    // E il caso di sempre — l'orizzonte che attraversa lo schermo — non deve
+    // cambiare di un pixel: lì la chiusura al fondo del riquadro è giusta.
+    // Guardando in giù la terra è **dentro** all'anello: al centro dello
+    // schermo c'è il nadir, e le curve gli girano attorno.
+    rilAnelloUltimo = 'dentro';
+    ctx = finto();
+    const regolaGiu = rilTracciaSagoma(ctx);
+    prova('guardando in giù la terra è dentro all\'anello, e il riquadro non serve',
+      regolaGiu === 'nonzero' && !ctx.rettangolo);
+    prova('e allora è il centro dello schermo a essere terra, non il bordo',
+      dentro(ctx.sub, cx, cy, regolaGiu) && !dentro(ctx.sub, 4, 4, regolaGiu));
+
+    rilAnelloUltimo = null;
+    for (let c = 0; c < nCol; c++) {
+      rilCrestaX[c] = c * (W / (nCol - 1));
+      rilCrestaY[c] = cy + 20 * Math.sin(c * 0.3);
+    }
+    ctx = finto();
+    const regolaRiga = rilTracciaSagoma(ctx);
+    prova('col crinale che attraversa lo schermo si chiude in giù, come prima',
+      regolaRiga === 'nonzero' && !ctx.rettangolo);
+    prova('e allora sopra al crinale c\'è cielo e sotto c\'è terra',
+      !dentro(ctx.sub, cx, 20, regolaRiga) && dentro(ctx.sub, cx, H - 20, regolaRiga));
+
+    rilCrestaX = salva.cx; rilCrestaY = salva.cy;
+    rilColonneUltime = salva.n; rilAnelloUltimo = salva.a;
+
+  }
+}
+
+// =====================================================================
+titolo('26. I nomi dell\'orizzonte quando OpenStreetMap fa i capricci (terreno.js)');
+// =====================================================================
+//
+// È il guasto che si vede peggio di tutti, perché non lascia traccia: dal
+// planetario sparisce **ogni** nome — paesi, vette e laghi insieme — e in
+// console ci sono solo dei rifiuti di rete che parlano di un host di cui
+// nessuno ha mai sentito il nome. Le prove qui sotto guardano le tre cose che
+// quella sera erano tutt'e tre sbagliate: quante porte c'erano a cui bussare,
+// chi si arrendeva per primo fra noi e il server, e come veniva raccontato il
+// guasto a chi stava guardando il cielo.
+
+// --- Le porte --------------------------------------------------------
+{
+  const host = OVERPASS_ISTANZE.map(u => new URL(u).hostname);
+  prova('a cui bussare ce n\'è più di una coppia', OVERPASS_ISTANZE.length >= 3,
+    `${OVERPASS_ISTANZE.length} istanze`);
+  prova('sono tutte host diversi', new Set(host).size === host.length, host.join(', '));
+  prova('tutte in https', OVERPASS_ISTANZE.every(u => u.indexOf('https://') === 0));
+  prova('tutte sullo stesso percorso, quello che le pagine statiche possono usare',
+    OVERPASS_ISTANZE.every(u => /\/api\/interpreter$/.test(u)));
+}
+
+// --- Chi si arrende per primo ----------------------------------------
+//
+// La regola è scritta nei commenti da sempre e vale per tutt'e tre le
+// famiglie: **il client non deve arrendersi prima del server**. Se lo fa,
+// taglia la richiesta mentre Overpass la sta ancora onorando e nel pannello
+// finisce scritto che il colpevole è lui. Era rispettata dalle vette e dalle
+// acque, e non dai paesi — cioè proprio dall'unica delle tre di cui ci si
+// accorge, perché è quella che porta i nomi dei paesi. Quindici secondi di
+// attesa contro venti scritti nella query.
+{
+  const dove = [45.8124, 9.0295];
+  const casi = [
+    ['i paesi',            cittaQueryOverpass(...dove), CITTA_ATTESA_MS],
+    ['i paesi (ripiego)',  cittaQueryVicina(...dove),   CITTA_ATTESA_MS],
+    ['le vette',           cimeQueryOverpass(...dove),  CIME_ATTESA_MS],
+    ['le vette (ripiego)', cimeQueryVicina(...dove),    CIME_ATTESA_MS],
+    ['le acque',           acqueQueryOverpass(...dove), ACQUE_ATTESA_MS],
+    ['le acque (ripiego)', acqueQueryCorta(...dove),    ACQUE_ATTESA_MS]
+  ];
+  for (const [nome, query, attesa] of casi) {
+    const m = /\[timeout:(\d+)\]/.exec(query);
+    prova(`${nome}: aspettiamo più di quanto il server si sia preso`,
+      !!m && attesa > Number(m[1]) * 1000,
+      m ? `query ${m[1]} s, noi ${(attesa / 1000).toFixed(0)} s` : 'nella query non c\'è nessun timeout');
+  }
+}
+
+// --- La corsa fra le istanze -----------------------------------------
+//
+// `fetch` si sostituisce solo per le nostre query finte: la pagina intanto sta
+// scaricando terreno e tessere per davvero, e una sostituzione a tappeto le
+// porterebbe via.
+const OVER_MARCA = 'PROVAOVERPASS';
+const overVero = window.fetch;
+let overCopione = [], overChiamate = [];
+window.fetch = function (url, opz) {
+  if (String(url).indexOf(OVER_MARCA) === -1) return overVero.apply(this, arguments);
+  const c = overCopione[overChiamate.length] || overCopione[overCopione.length - 1] || { tipo: 'muto' };
+  overChiamate.push(new URL(String(url)).hostname);
+  return new Promise((ok, no) => {
+    const sig = opz && opz.signal;
+    if (sig) sig.addEventListener('abort', () => {
+      const e = new Error('signal is aborted without reason'); e.name = 'AbortError'; no(e);
+    });
+    if (c.tipo === 'ok') setTimeout(() => ok({ ok: true, status: 200, json: () => Promise.resolve({ elements: [{}, {}] }) }), c.ms || 0);
+    else if (c.tipo === 'cors') setTimeout(() => no(new TypeError('Failed to fetch')), c.ms || 0);
+    else if (c.tipo === 'stato') setTimeout(() => ok({ ok: false, status: c.stato }), c.ms || 0);
+    // 'muto': non risponde mai, che è come si comporta davvero un'istanza carica
+  });
+};
+
+// Le prove che seguono si dividono lo stesso copione e lo stesso contatore di
+// chiamate, quindi vanno **una alla volta**: `attendi` lancia subito la
+// funzione che le viene passata, e sei corse contemporanee si mescolerebbero
+// le risposte a vicenda. La coda le mette in fila senza far aspettare il resto
+// della pagina.
+let overCoda = Promise.resolve();
+function overAttendi(nome, fai) {
+  const p = overCoda.then(fai);
+  overCoda = p.catch(() => {});   // una caduta non porta via anche le successive
+  attendi(nome, p);
+}
+
+async function overCorsa(copione, attesaMs) {
+  overCopione = copione; overChiamate = [];
+  const partito = performance.now();
+  try {
+    const r = await overpassChiedi('[out:json];' + OVER_MARCA + ';out;', attesaMs);
+    return { esito: 'ok', quanti: r.length, ms: performance.now() - partito, n: overChiamate.length };
+  } catch (e) {
+    return { esito: e.message, ms: performance.now() - partito, n: overChiamate.length };
+  }
+}
+
+overAttendi('una porta che cade lascia subito il posto alla prossima', async () => {
+  // Due CORS di fila e la terza buona: è il caso della segnalazione, dove
+  // `overpass-api.de` non si apriva nemmeno e `kumi.systems` rispondeva senza
+  // intestazione CORS. Deve costare millisecondi, non due affiancamenti.
+  const r = await overCorsa([{ tipo: 'cors' }, { tipo: 'cors' }, { tipo: 'ok' }], 6000);
+  return { esito: r.esito === 'ok' && r.n === 3 && r.ms < OVERPASS_AFFIANCA_MS,
+           nota: `${r.n} porte provate in ${r.ms.toFixed(0)} ms` };
+});
+
+overAttendi('nessuna porta risponde: si prova ognuna una volta e ci si arrende', async () => {
+  const r = await overCorsa([{ tipo: 'cors' }], 6000);
+  return { esito: r.esito !== 'ok' && r.n === OVERPASS_ISTANZE.length && r.ms < 2000,
+           nota: `${r.n} porte, poi «${r.esito}» dopo ${r.ms.toFixed(0)} ms` };
+});
+
+overAttendi('la scadenza è di tutta la corsa, non di ogni porta', async () => {
+  // È la proprietà che rende **gratis** le istanze in più. Con una sveglia per
+  // tentativo, passare da due porte a cinque avrebbe voluto dire passare da un
+  // minuto a due minuti e mezzo di silenzio prima di dire «non ce l'ho fatta»
+  // — e con la query di ripiego dietro, il doppio.
+  const attesa = 900;
+  const r = await overCorsa([{ tipo: 'muto' }], attesa);
+  return { esito: r.esito !== 'ok' && r.ms >= attesa * 0.8 && r.ms < attesa * 2.5,
+           nota: `arresa dopo ${r.ms.toFixed(0)} ms su ${attesa} di scadenza` };
+});
+
+
+overAttendi('un 429 vero si racconta meglio dell\'abort arrivato dopo', async () => {
+  // L'ultimo guasto non è il più informativo: quasi sempre è la sveglia che
+  // abbiamo messo noi. Un 429 il servizio l'ha *risposto*, quindi la strada
+  // c'era — ed è quello che chi guarda ha bisogno di sapere.
+  const r = await overCorsa([{ tipo: 'stato', stato: 429 }, { tipo: 'muto' }], 900);
+  return { esito: /429/.test(r.esito), nota: `«${r.esito}»` };
+});
+
+// --- Come si racconta il guasto --------------------------------------
+{
+  const abort = new Error('signal is aborted without reason'); abort.name = 'AbortError';
+  prova('«signal is aborted without reason» non arriva mai al pannello',
+    !/signal is aborted/.test(overpassMotivo(abort)), `diventa «${overpassMotivo(abort)}»`);
+  prova('un guasto di rete si dice a parole',
+    /OpenStreetMap/.test(overpassMotivo(new TypeError('Failed to fetch'))),
+    `«${overpassMotivo(new TypeError('Failed to fetch'))}»`);
+  prova('un codice di stato lo si tiene com\'è',
+    overpassMotivo(new Error('OpenStreetMap non risponde (504)')) === 'OpenStreetMap non risponde (504)');
+  prova('un no del servizio pesa più di un abort',
+    overpassPeso(new Error('OpenStreetMap non risponde (429)')) > overpassPeso(abort));
+}
+
+// --- Il ripiego non si spaccia per la risposta larga -----------------
+overAttendi('la query corta si marca, se no il salvataggio mente sul raggio', async () => {
+  // `raggiSalvatoBuono` guarda il raggio scritto nel salvataggio: un elenco
+  // preso a trenta chilometri etichettato novanta è il modo di non riscaricare
+  // mai più quello vero.
+  overCopione = [{ tipo: 'cors' }]; overChiamate = [];
+  let visto = '';
+  const primaFetch = window.fetch;
+  window.fetch = function (url, opz) {
+    const u = String(url);
+    if (u.indexOf('CORTA') !== -1) {
+      visto = 'corta';
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ elements: [{}, {}, {}] }) });
+    }
+    return primaFetch.call(this, url, opz);
+  };
+  let r;
+  try {
+    r = await overpassConRipiego('[out:json];' + OVER_MARCA + ';LARGA;', e => e.map(x => x),
+                                 '[out:json];CORTA;', 4000);
+  } finally { window.fetch = primaFetch; }
+  return { esito: visto === 'corta' && r.daRipiego === true && r.length === 3,
+           nota: `${r.length} elementi, marcata ${r.daRipiego === true}` };
+});
+
+prova('il ripiego dei paesi guarda meno lontano di quello che si era chiesto',
+  CITTA_RAGGIO_RIPIEGO_KM > 0 && CITTA_RAGGIO_RIPIEGO_KM <= RAGGI_LIMITI.citta.predefinito,
+  `${CITTA_RAGGIO_RIPIEGO_KM} km contro ${RAGGI_LIMITI.citta.predefinito}`);
+prova('e i paesi un ripiego ce l\'hanno (per un pezzo erano l\'unica famiglia senza)',
+  /place/.test(cittaQueryVicina(45.8124, 9.0295)));
+
+// Rimettere a posto la `fetch` vera: da qui in giù la pagina torna a parlare
+// col mondo, e le prove che aspettano hanno già catturato quella finta.
+Promise.all(proveInVolo).then(() => { window.fetch = overVero; },
+                              () => { window.fetch = overVero; });
 
 // =====================================================================
 // Il verdetto si scrive **dopo** le prove che aspettano (vedi `attendi`): se lo

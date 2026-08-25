@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v131';
+const CACHE_NAME = 'astrocal-v160';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -12,8 +12,10 @@ const ASSETS = [
   './corpi-minori.js',
   './pianifica.js',
   './terreno.js',
+  './rilievo.js',
   './meteo-astro.js',
   './aurora-polare.js',
+  './aerei.js',
   './eventi-extra.js',
   './ui-nuova.js',
   './didattica.js',
@@ -44,7 +46,10 @@ const ASSETS = [
 // Librerie esterne: vanno messe in cache anche loro, altrimenti l'app
 // installata si apre "rotta" quando non c'è rete (proprio di notte, in campo).
 const LIBRERIE = [
-  'https://cdn.tailwindcss.com',
+  // Il compilatore Tailwind è uno script classico `no-cors`: forzarne qui il
+  // download in modalità CORS fa fallire l'installazione in console perché il
+  // CDN non invia ACAO. style.css contiene già la rete di sicurezza offline,
+  // quindi lo lasciamo caricare normalmente dalla pagina senza precache.
   'https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js',
   'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js',
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css',
@@ -56,6 +61,21 @@ const LIBRERIE = [
 // ripiego quando il GPS non risponde, e una risposta vecchia di cache
 // racconterebbe dove eri, non dove sei.
 const SERVIZI_POSIZIONE = ['ipapi.co', 'ipwho.is', 'get.geojs.io'];
+
+// Feed ADS-B in tempo reale. Queste richieste CORS non devono passare dal
+// ripiego generico del service worker: se un provider non risponde, una
+// Response sintetica priva delle sue intestazioni CORS viene rifiutata dal
+// browser come errore di rete (il poco utile "Failed to fetch") e impedisce
+// ad aerei.js di provare correttamente il provider successivo.
+const SERVIZI_ADSB = [
+  'api.airplanes.live',
+  'api.adsb.lol',
+  'opendata.adsb.fi',
+  'api.adsb.one',
+  'opensky-network.org',
+  'api.allorigins.win',
+  'corsproxy.io'
+];
 
 // Host le cui risposte salviamo man mano che arrivano (librerie, tessere mappa)
 const HOST_DA_CONSERVARE = [
@@ -111,6 +131,32 @@ self.addEventListener('fetch', (e) => {
   let url;
   try { url = new URL(req.url); } catch (err) { return; }
 
+  // OpenStreetMap (Overpass e i geocodificatori inversi) passa **senza che ci
+  // mettiamo in mezzo**, ed è una correzione, non un'ottimizzazione.
+  //
+  // Il ripiego generico in fondo a questo file trasforma un guasto di rete in
+  // una risposta finta: `504 Non disponibile senza rete`. Per una libreria è
+  // la cosa giusta (meglio di `index.html` interpretato come JavaScript), per
+  // Overpass è una bugia con due conseguenze vere. La prima è nel messaggio:
+  // una connessione che non si apre e una risposta senza intestazione CORS
+  // finiscono scritte tutte e due come «OpenStreetMap non risponde (504)»,
+  // cioè come se il servizio avesse risposto — ed è quello che si leggeva in
+  // console mentre l'orizzonte restava senza nomi. La seconda è peggio:
+  // `terreno.js` mette le istanze in corsa e **abortisce le perdenti**
+  // (`overpassChiedi`), ma l'abort della pagina non tocca la `fetch` che sta
+  // girando qui dentro. Con il service worker in mezzo, ogni richiesta persa
+  // continuava a occupare una macchina pubblica fino in fondo — cioè l'esatto
+  // contrario di quello che la corsa vuole ottenere.
+  //
+  // In cache non ci finiscono comunque (non sono `HOST_DA_CONSERVARE`), quindi
+  // qui non si perde niente: si toglie solo un intermediario che mentiva.
+  if (url.hostname.indexOf('overpass') !== -1 ||
+      url.hostname === 'nominatim.openstreetmap.org' ||
+      url.hostname === 'api.bigdatacloud.net' ||
+      SERVIZI_ADSB.indexOf(url.hostname) !== -1) {
+    return;
+  }
+
   // Meteo, dati orbitali dei satelliti e servizi di posizione devono essere
   // freschi: mai dalla cache. Se la rete non c'è, l'app mostra il valore
   // salvato in localStorage — e per la posizione resta la scelta a mano.
@@ -132,9 +178,17 @@ self.addEventListener('fetch', (e) => {
   // richiesta andata male serve `index.html` — una pagina HTML al posto di
   // un JSON è il modo più confuso che ci sia di non avere le quote.
   const HOST_QUOTE = ['api.opentopodata.org', 'api.open-elevation.com'];
+  // E le **tessere** del rilievo (`rilievo.js`), che sono quote anche loro:
+  // un PNG in cui ogni pixel è un metro sul livello del mare. Stessa ragione
+  // delle altre — una collina è dove era — e per queste vale il doppio,
+  // perché sono l'unica cosa pesante che l'app scarichi. Tenerle vuol dire
+  // che il posto da cui si osserva sempre si ridisegna senza rete, in campo,
+  // che è dove serve.
   const quoteDelSuolo =
     (url.hostname.includes('open-meteo.com') && url.pathname.indexOf('/elevation') !== -1) ||
-    HOST_QUOTE.indexOf(url.hostname) !== -1;
+    HOST_QUOTE.indexOf(url.hostname) !== -1 ||
+    (url.hostname.indexOf('elevation-tiles-prod') !== -1 &&
+      url.pathname.indexOf('/terrarium/') !== -1);
 
   if (!quoteDelSuolo && (
       url.hostname.includes('open-meteo.com') ||

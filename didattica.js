@@ -8706,6 +8706,8 @@
 
   function ciclo(ts) {
     if (!stato.acceso) return;
+    // Il battito che legge `didatticaVigila`: dice che questo ciclo è vivo.
+    stato.battito = performance.now();
     const dt = Math.min(0.1, (ts - stato.ultimoTs) / 1000) || 0;
     stato.ultimoTs = ts;
     const l = labAttivo();
@@ -8727,6 +8729,26 @@
     const l = labAttivo();
     if (l && l.entra) { try { l.entra(); } catch (e) { console.warn('Didattica:', e); } }
     stato.ultimoTs = performance.now();
+    stato.battito = performance.now();
+    stato.raf = requestAnimationFrame(ciclo);
+  };
+
+  // La stessa cura del planetario, per la stessa ragione (app.js,
+  // 7.4-quinquies): un telefono che manda l'app in secondo piano butta la
+  // `requestAnimationFrame` in attesa, e al ritorno quella chiamata non arriva
+  // più — `stato.raf` tiene il suo numero e il banco resta fermo, con
+  // l'immagine ferma addosso e i comandi che non rispondono. Non c'è nessun
+  // avviso su cui si possa contare, quindi qui non si aspettano avvisi: la
+  // sentinella del cielo passa una volta al secondo e si guarda il battito.
+  window.didatticaVigila = function () {
+    if (!stato.acceso || document.hidden) return;
+    const vivo = stato.battito && (performance.now() - stato.battito) < 1500;
+    if (stato.raf && vivo) return;
+    if (stato.raf) cancelAnimationFrame(stato.raf);
+    // Il tempo passato fuori non è tempo di scena: il `dt` riparte da zero,
+    // se no il banco salterebbe in avanti di tutta l'assenza.
+    stato.ultimoTs = performance.now();
+    stato.battito = performance.now();
     stato.raf = requestAnimationFrame(ciclo);
   };
 
