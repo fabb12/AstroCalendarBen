@@ -7057,6 +7057,7 @@ const CHIAVE_SKY_BUSSOLA = 'astrocalendario_bussola_offset_v2';
 const CHIAVE_SKY_CAMERA = 'astrocalendario_camera_campo';
 const CHIAVE_SKY_TASTI_ZOOM = 'astrocalendario_tasti_zoom';
 const CHIAVE_SKY_SOSTA = 'astrocalendario_sosta_mirino';
+const CHIAVE_SKY_HOVER = 'astrocalendario_modalita_hover';
 const SKY_SOSTA_PREDEFINITA_SEC = 1.2;
 
 // Corpi del Sistema Solare mostrati nel cielo.
@@ -7365,6 +7366,7 @@ const sky = {
   target: null,          // id dell'astro da cercare
   // Oggetto rimasto sotto il mirino e avanzamento dell'apertura automatica
   // della sua scheda. La verifica gira a intervalli, non a ogni fotogramma.
+  modalitaHover: true,
   sostaMirinoSec: SKY_SOSTA_PREDEFINITA_SEC,
   sostaMirino: null,
   prossimoControlloSosta: 0,
@@ -22894,6 +22896,10 @@ function skyChiaveSelezione(sel) {
 }
 
 function skyControllaSostaMirino() {
+  if (!sky.modalitaHover) {
+    sky.sostaMirino = null;
+    return;
+  }
   const ora = performance.now();
   if (ora < sky.prossimoControlloSosta) return;
   sky.prossimoControlloSosta = ora + 100;
@@ -24252,6 +24258,11 @@ function inizializzaSkymap() {
   const impZoom = document.getElementById('imp-skymap-zoom');
   if (impZoom) impZoom.checked = mostraZoom;
 
+  // La modalità hover nasce accesa, come nelle versioni che precedono il
+  // suo interruttore. Da qui in poi la scelta resta memorizzata nel browser.
+  sky.modalitaHover = localStorage.getItem(CHIAVE_SKY_HOVER) !== '0';
+  skyTasto('skymap-btn-hover', sky.modalitaHover);
+
   // Costellazioni, deep sky, macchina del tempo e fotocamera
   inizializzaSkymapExtra();
   // I comandi della registrazione (vedi 7.6)
@@ -24454,6 +24465,12 @@ function inizializzaSkymap() {
     if (!cont) return;
     const attiva = cont.classList.toggle('modalita-notte');
     skyTasto('skymap-btn-notte', attiva, attiva ? 'Colori normali' : 'Modalità notte');
+  });
+  collega('skymap-btn-hover', () => {
+    sky.modalitaHover = !sky.modalitaHover;
+    sky.sostaMirino = null;
+    skyTasto('skymap-btn-hover', sky.modalitaHover);
+    try { localStorage.setItem(CHIAVE_SKY_HOVER, sky.modalitaHover ? '1' : '0'); } catch (e) { /* niente storage */ }
   });
 
   // --- Trovare un astro senza scorrere tutto l'elenco ---
