@@ -5826,6 +5826,32 @@ body .luogo-tasto-mappa.attiva { background: var(--blu); border-color: transpare
   background: rgba(245, 158, 11, 0.22);
   animation: luogo-pulsa 2.2s ease-out infinite;
 }
+
+/* La conferma resta attaccata al pallino scelto: non bisogna cercare il tasto
+   nel piede della finestra dopo avere indicato un prato sulla mappa. */
+.luogo-popup-vai .leaflet-popup-content-wrapper,
+.luogo-popup-vai .leaflet-popup-tip {
+  background: rgba(6, 10, 20, 0.96);
+  color: #fff;
+}
+.luogo-popup-vai .leaflet-popup-content { margin: 7px; }
+.luogo-vai-qua {
+  min-width: 92px;
+  min-height: 42px;
+  padding: 8px 16px;
+  border: 1px solid rgba(251, 191, 36, 0.75);
+  border-radius: 10px;
+  background: #d97706;
+  color: #fff;
+  font: 700 0.92rem/1 inherit;
+  cursor: pointer;
+}
+.luogo-vai-qua:hover,
+.luogo-vai-qua:focus-visible {
+  background: #f59e0b;
+  outline: 2px solid #fde68a;
+  outline-offset: 2px;
+}
 @keyframes luogo-pulsa {
   0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
   70%  { box-shadow: 0 0 0 14px rgba(245, 158, 11, 0); }

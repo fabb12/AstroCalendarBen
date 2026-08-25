@@ -9096,31 +9096,21 @@ const luogoMappa = {
   sfondo: 'strade',// quale dei tre fondi è acceso
   strato: null,    // il tileLayer di adesso
   occhio: null,    // ResizeObserver: la mappa va rimisurata a ogni cambio di forma
-  tocco: null,     // partenza dell'ultimo dito: distingue il doppio tocco dal trascinamento
-  ultimoTocco: null, // primo dei due tocchi brevi ({ x, y, quando })
-  applicazioneRapida: 0 // evita che dblclick e pointerup applichino due volte lo stesso punto
+  tocco: null      // partenza dell'ultimo dito sulla mappa
 };
 
-const LUOGO_DOPPIO_TOCCO_MS = 380;
-const LUOGO_DOPPIO_TOCCO_PX = 30;
-
-// Due pressioni sul terreno sono la scorciatoia per partire subito da lì.
-// Prima il mappamondo porta dolcemente il punto al centro, così il gesto ha
-// una risposta visibile; appena finisce il breve movimento cambia
-// l'osservatore del planetario. Il blocco serve perché alcuni browser touch,
-// dopo i due pointerup, emettono anche un dblclick sintetico.
-function luogoMappaUsaConDoppio(lat, lon) {
-  if (!luogoMappa.mappa || performance.now() < luogoMappa.applicazioneRapida) return;
-  luogoMappa.applicazioneRapida = performance.now() + 900;
-  luogoMappaScegli(lat, lon);
-
-  const punto = [luogoMappa.scelto.lat, luogoMappa.scelto.lon];
-  luogoMappa.mappa.flyTo(punto, luogoMappa.mappa.getZoom(), {
-    animate: true, duration: 0.38
-  });
-  // Si lascia vedere l'arrivo della camera, ma non si obbliga ad aspettare
-  // un moveend che, quando il punto è già al centro, Leaflet non emette.
-  setTimeout(() => luogoMappaUsa(), 400);
+// Dopo avere indicato il terreno non si cambia osservatore per sbaglio: il
+// pallino giallo offre la conferma proprio nel punto appena scelto.
+function luogoMappaMostraVaiQua() {
+  if (!luogoMappa.segno) return;
+  luogoMappa.segno.bindPopup(
+    '<button type="button" class="luogo-vai-qua">Vai qua</button>',
+    { closeButton: false, className: 'luogo-popup-vai', offset: [0, -10] }
+  ).openPopup();
+  const popup = luogoMappa.segno.getPopup();
+  const nodo = popup && popup.getElement();
+  const vai = nodo && nodo.querySelector('.luogo-vai-qua');
+  if (vai) vai.addEventListener('click', luogoMappaUsa, { once: true });
 }
 
 // Longitudine riportata fra −180 e +180: Leaflet, con `worldCopyJump`, per un
@@ -9225,51 +9215,37 @@ function luogoMappaCostruisci() {
   L.control.zoom({ position: 'topright' }).addTo(luogoMappa.mappa);
   luogoMappaConsegnaTasti();
 
+  // Leaflet su alcuni browser trasforma il tocco in un click senza
+  // conservarne pointerType. Lo annotiamo prima, così telefono e PC non
+  // vengono confusi nemmeno sui dispositivi ibridi.
+  riquadro.addEventListener('pointerdown', (e) => {
+    luogoMappa.tocco = e.pointerType || 'mouse';
+  }, { passive: true });
+
   luogoMappa.mappa.on('click', (e) => {
     // Toccare la mappa è anche il modo di dire "ho finito di cercare": se
     // l'elenco dei nomi resta aperto copre proprio la parte che si sta
     // guardando.
     luogoMostraRisultati([], null);
+    // Mouse e trackpad scelgono soltanto col doppio clic. Sul telefono un
+    // tocco deve invece rispondere subito: il doppio tocco appartiene allo
+    // zoom e non va requisito per cambiare punto di osservazione.
+    const originale = e.originalEvent;
+    const puntatore = originale && originale.pointerType;
+    const tocco = puntatore === 'touch' || puntatore === 'pen' ||
+      luogoMappa.tocco === 'touch' || luogoMappa.tocco === 'pen' ||
+      (originale && /^touch/.test(originale.type));
+    luogoMappa.tocco = null;
+    if (!tocco) return;
     luogoMappaScegli(e.latlng.lat, e.latlng.lng);
+    luogoMappaMostraVaiQua();
   });
 
   // Mouse e trackpad hanno un dblclick affidabile.
   luogoMappa.mappa.on('dblclick', (e) => {
     L.DomEvent.preventDefault(e.originalEvent);
-    luogoMappaUsaConDoppio(e.latlng.lat, e.latlng.lng);
-  });
-
-  // Sul telefono il dblclick non è uniforme (e a volte arriva molto tardi),
-  // quindi si contano direttamente due tocchi brevi e vicini. Un trascinamento,
-  // un pizzico o un colpo sui comandi Leaflet non possono attivare la scelta.
-  riquadro.addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
-    if (e.target.closest('.leaflet-control')) return;
-    luogoMappa.tocco = { id: e.pointerId, x: e.clientX, y: e.clientY };
-  });
-  riquadro.addEventListener('pointerup', (e) => {
-    const partenza = luogoMappa.tocco;
-    luogoMappa.tocco = null;
-    if (!partenza || partenza.id !== e.pointerId) return;
-    if (Math.hypot(e.clientX - partenza.x, e.clientY - partenza.y) > 10) {
-      luogoMappa.ultimoTocco = null;
-      return;
-    }
-    const ora = performance.now();
-    const prima = luogoMappa.ultimoTocco;
-    if (prima && ora - prima.quando <= LUOGO_DOPPIO_TOCCO_MS &&
-        Math.hypot(e.clientX - prima.x, e.clientY - prima.y) <= LUOGO_DOPPIO_TOCCO_PX) {
-      luogoMappa.ultimoTocco = null;
-      const punto = luogoMappa.mappa.mouseEventToLatLng(e);
-      luogoMappaUsaConDoppio(punto.lat, punto.lng);
-      e.preventDefault();
-      return;
-    }
-    luogoMappa.ultimoTocco = { x: e.clientX, y: e.clientY, quando: ora };
-  });
-  riquadro.addEventListener('pointercancel', () => {
-    luogoMappa.tocco = null;
-    luogoMappa.ultimoTocco = null;
+    luogoMappaScegli(e.latlng.lat, e.latlng.lng);
+    luogoMappaMostraVaiQua();
   });
 
   // Quanto si era stretto se lo ricorda: chi ha appena scelto un prato a
@@ -22440,6 +22416,11 @@ function skyOggettoNelPunto(px, py) {
   // ultimo perché una figura è larga venti gradi: messa prima, si
   // mangerebbe ogni altro tocco.
   if (typeof costFiguraNelPunto === 'function') {
+    // Di giorno le figure sono invisibili: non si apre una pagina per una
+    // linea che il cielo non sta mostrando. La posizione del Sole vale anche
+    // quando l'utente ha disattivato la resa dell'atmosfera.
+    const sole = sky.oggetti.find(o => o.id === 'Sun');
+    if (sole && sole.alt >= 0) return null;
     const sigla = costFiguraNelPunto(px, py, base, focale);
     if (sigla) return { categoria: 'costellazione', sigla };
   }
