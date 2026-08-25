@@ -677,7 +677,7 @@
               <button id="skymap-btn-traccia" type="button" class="tasto-cielo attiva" title="La strada che l'oggetto scelto percorre nel cielo nelle ore attorno a questo istante: tratteggiata dove è già passato, piena dove sta andando, con l'ora segnata di ora in ora">Traccia</button>
               <button id="skymap-btn-eclittica" type="button" class="tasto-cielo" title="Il cerchio che il Sole percorre in un anno fra le stelle: il piano dell'orbita terrestre visto di taglio. I pianeti stanno sempre a pochi gradi da questa linea, e il filo a piombo misura quanti. Resta accesa qualunque oggetto si scelga, finché non la si spegne">Eclittica</button>
               <button id="skymap-btn-aurora" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'ovale aurorale — boreale o australe, secondo l'emisfero — messo in cielo dove sta davvero: se da qui si vede, e quanto se ne affaccia sopra l'orizzonte, lo decide la curvatura della Terra">Aurora</button>
-              <button type="button" class="tasto-cielo" data-vai-gruppo="aerei" aria-pressed="false"
+              <button id="skymap-btn-aerei" type="button" class="tasto-cielo" data-vai-gruppo="aerei" aria-pressed="false"
                 title="Mostra gli aerei ADS-B vicini in tempo reale">Aerei</button>
               </div>
 
@@ -796,7 +796,7 @@
                 </div>
                 <button id="aerei-aggiorna" type="button" class="tasto-cielo">Aggiorna</button>
               </div>
-              <p class="etichetta-comando">Posizioni ADS-B entro 100 km. La linea tratteggiata mostra i prossimi 5 minuti; gli allineamenti sono segnalati sotto 1°.</p>
+              <p class="etichetta-comando">Posizioni ADS-B entro il raggio scelto (10 km alla prima apertura). La linea tratteggiata si muove con l'aereo e mostra i prossimi 5 minuti.</p>
               <div id="aerei-elenco" class="aerei-elenco"></div>
             </section>
 

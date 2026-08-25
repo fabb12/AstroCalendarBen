@@ -30,6 +30,8 @@
       const vistoSecondiFa = numero(a.seen);
       return {
         id: a.hex, callsign: (a.flight || '').trim() || String(a.hex || '').toUpperCase(),
+        registrazione: a.r || '', tipoIcao: a.t || '', descrizione: a.desc || '',
+        operatore: a.ownOp || '', squawk: a.squawk || '',
         lon: numero(a.lon), lat: numero(a.lat),
         quotaM: quotaPiedi === null ? null : quotaPiedi * 0.3048,
         aTerra: a.alt_baro === 'ground', velocitaMs: (numero(a.gs) || 0) * 0.514444,
@@ -45,6 +47,7 @@
     // `baro_altitude` (7) per disegnare l'altezza geometrica nel cielo.
     return (risposta.states || []).map(a => ({
       id: a[0], callsign: String(a[1] || '').trim() || String(a[0] || '').toUpperCase(),
+      registrazione: '', tipoIcao: '', descrizione: '', operatore: '', squawk: String(a[14] || ''),
       lon: numero(a[5]), lat: numero(a[6]), quotaM: numero(a[13]) ?? numero(a[7]),
       aTerra: !!a[8], velocitaMs: numero(a[9]) || 0, direzione: numero(a[10]),
       salitaMs: numero(a[11]) || 0, ultimaLettura: numero(a[4]) || numero(a[3])
@@ -163,10 +166,11 @@
   }
 
   const stato = { aerei: [], timer: null, richiesta: null, controller: null, ultimoCentro: null,
+    acceso: false,
     ultimoSuccesso: 0, prossimoTentativo: 0, errore: '', avviato: false, ricaricaDopo: false };
 
   function raggioKm() {
-    return typeof raggioAerei === 'function' ? raggioAerei() : 100;
+    return typeof raggioAerei === 'function' ? raggioAerei() : 10;
   }
 
   function radianti(g) { return g * Math.PI / 180; }
@@ -224,8 +228,33 @@
         const futuro = posizioneFutura(a, minuti * 60);
         traiettoria.push({ minuti, ...coordinateCielo(futuro, obs) });
       }
-      return { ...a, ...cielo, traiettoria, allineamenti: [] };
+      return { ...a, ...cielo, traiettoria, allineamenti: [],
+        posizioneFeed: { ...a } };
     }).filter(a => a.distanzaKm <= raggioKm()).sort((a, b) => a.distanzaKm - b.distanzaKm);
+  }
+
+  // Il feed è una fotografia di alcuni secondi fa. A ogni fotogramma si
+  // riparte da quell'istante e si propaga velocità, rotta e salita fino ad
+  // adesso: il simbolo e la linea non restano congelati per cinque minuti.
+  function aereoAdesso(a, obs, oraMs = Date.now()) {
+    const origine = a.posizioneFeed || a;
+    const secondi = Math.max(0, Math.min(360, oraMs / 1000 - (origine.ultimaLettura || oraMs / 1000)));
+    const corrente = posizioneFutura(origine, secondi);
+    const cielo = coordinateCielo(corrente, obs);
+    const traiettoria = [];
+    for (let minuti = 0; minuti <= PREVISIONE_MINUTI; minuti++) {
+      const futuro = posizioneFutura(corrente, minuti * 60);
+      traiettoria.push({ minuti, ...coordinateCielo(futuro, obs) });
+    }
+    return { ...a, ...corrente, ...cielo, traiettoria, allineamenti: a.allineamenti || [], posizioneFeed: origine };
+  }
+
+  function aggiornaPosizioni() {
+    if (!stato.acceso) return [];
+    const obs = osservatore();
+    if (!obs) return [];
+    stato.aerei = stato.aerei.map(a => aereoAdesso(a, obs));
+    return stato.aerei;
   }
 
   function aggiornaAllineamenti() {
@@ -291,7 +320,8 @@
   }
 
   function aereiDisegna(ctx, base, focale) {
-    if (!stato.aerei.length || typeof skyProietta !== 'function') return;
+    if (!stato.acceso || !stato.aerei.length || typeof skyProietta !== 'function') return;
+    aggiornaPosizioni();
     aggiornaAllineamenti();
     ctx.save();
     stato.aerei.forEach(a => {
@@ -307,11 +337,62 @@
   }
 
   function aereiAvvia() {
-    if (stato.avviato) return;
+    if (!stato.acceso || stato.avviato) return;
     stato.avviato = true; carica(false);
     stato.timer = setInterval(() => { if (typeof sky !== 'undefined' && sky.aperto) carica(false); }, INTERVALLO_MS);
   }
   function aereiFerma() { clearInterval(stato.timer); stato.timer = null; stato.avviato = false; }
+
+  function aereiImpostaAccesi(accesi) {
+    stato.acceso = !!accesi;
+    if (stato.acceso) { aereiAvvia(); render(); }
+    else { aereiFerma(); if (typeof skyChiudiDettaglio === 'function' && typeof sky !== 'undefined' &&
+      sky.selezione && sky.selezione.categoria === 'aereo') skyChiudiDettaglio(); }
+  }
+
+  function aereoNelPunto(px, py, base, focale) {
+    if (!stato.acceso || typeof skyProietta !== 'function') return null;
+    aggiornaPosizioni();
+    let migliore = null;
+    stato.aerei.forEach(a => {
+      const p = skyProietta(skyVettore(a.az, a.alt), base, focale);
+      if (!p.davanti) return;
+      const distanza = Math.hypot(p.px - px, p.py - py);
+      if (distanza <= 24 && (!migliore || distanza < migliore.distanza)) migliore = { distanza, aereo: a };
+    });
+    return migliore && migliore.aereo;
+  }
+
+  function aereiSchedaHtml(a) {
+    const dato = (nome, valore) => valore ? `<li><span class="voce-dato">${nome}:</span> ${sicuro(valore)}</li>` : '';
+    const quota = Number.isFinite(a.quotaM) ? `${Math.round(a.quotaM).toLocaleString('it-IT')} m` : 'non comunicata';
+    const velocita = Number.isFinite(a.velocitaMs) ? `${Math.round(a.velocitaMs * 3.6)} km/h` : 'non comunicata';
+    return `<div class="scheda-testata"><h3>✈ ${sicuro(a.callsign || a.id)}</h3></div>` +
+      `<div id="aereo-foto-${sicuro(a.id)}"></div><ul>` +
+      dato('Volo', a.callsign) + dato('Registrazione', a.registrazione) + dato('Aeromobile', a.descrizione || a.tipoIcao) +
+      dato('Operatore', a.operatore) + dato('Quota', quota) + dato('Velocità', velocita) +
+      dato('Rotta', Number.isFinite(a.direzione) ? `${Math.round(a.direzione)}°` : '') +
+      dato('Distanza', Number.isFinite(a.distanzaKm) ? `${a.distanzaKm.toFixed(1)} km` : '') +
+      dato('Codice ICAO', String(a.id || '').toUpperCase()) + dato('Squawk', a.squawk) + '</ul>' +
+      '<p class="nota-dettaglio">Posizione e movimento provengono dal feed ADS-B in tempo reale.</p>';
+  }
+
+  const fotoCache = new Map();
+  async function aereiCaricaFoto(a) {
+    const id = String(a.id || '').toLowerCase();
+    const box = document.getElementById(`aereo-foto-${id}`) || document.getElementById(`aereo-foto-${a.id}`);
+    if (!box || !id) return;
+    if (!fotoCache.has(id)) {
+      fotoCache.set(id, fetch(`https://api.planespotters.net/pub/photos/hex/${encodeURIComponent(id)}`, { cache: 'force-cache' })
+        .then(r => r.ok ? r.json() : null).then(d => d && d.photos && d.photos[0]).catch(() => null));
+    }
+    const foto = await fotoCache.get(id);
+    if (!foto || !box.isConnected) return;
+    const img = foto.thumbnail_large || foto.thumbnail;
+    if (!img || !img.src) return;
+    box.innerHTML = `<img class="aereo-foto" src="${sicuro(img.src)}" alt="Foto dell'aereo ${sicuro(a.callsign || id)}">` +
+      (foto.photographer ? `<p class="aereo-foto-credito">Foto: ${sicuro(foto.photographer)}</p>` : '');
+  }
 
   // Il raggio delle Impostazioni cambia sia il rettangolo chiesto al provider
   // sia il filtro finale. La vecchia risposta non è quindi riutilizzabile.
@@ -327,15 +408,17 @@
   document.addEventListener('DOMContentLoaded', () => {
     const aggiorna = document.getElementById('aerei-aggiorna');
     if (aggiorna) aggiorna.addEventListener('click', () => carica(true));
-    const linguetta = document.querySelector('[data-vai-gruppo="aerei"]');
-    if (linguetta) linguetta.addEventListener('click', () => { aereiAvvia(); render(); });
   });
 
   window.aereiAvvia = aereiAvvia;
   window.aereiFerma = aereiFerma;
   window.aereiDisegna = aereiDisegna;
+  window.aereiImpostaAccesi = aereiImpostaAccesi;
+  window.aereoNelPunto = aereoNelPunto;
+  window.aereiSchedaHtml = aereiSchedaHtml;
+  window.aereiCaricaFoto = aereiCaricaFoto;
   window.aereiRaggioCambiato = aereiRaggioCambiato;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
     interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky, urlAttraverso,
-    scaricaConRipiego, providersPredefiniti, stato };
+    scaricaConRipiego, providersPredefiniti, aereoAdesso, stato };
 }());
