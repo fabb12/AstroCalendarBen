@@ -22895,6 +22895,21 @@ function skyChiaveSelezione(sel) {
   return `${sel.categoria}:${d.id || d.nome || d.sigla || ''}`;
 }
 
+// Il mirino puo' avere un astro proiettato dietro una collina: la ricerca
+// degli oggetti lo trova comunque (serve al tocco quando si e' scelto di
+// mostrare gli astri dietro i monti), ma la sosta automatica non deve
+// attraversare il paesaggio. Prima di avviare l'hover controlliamo quindi la
+// direzione esatta del mirino contro lo stesso profilo usato per disegnare il
+// terreno, compresi gli ostacoli dichiarati dall'utente.
+function skyPuntoSulTerreno(px, py) {
+  const base = sky.ultimaBase, focale = sky.ultimaFocale;
+  if (!base || !focale) return false;
+  const v = skyDirezione(px, py, base, focale);
+  const az = ((Math.atan2(v[0], v[1]) * SKY_R2D) % 360 + 360) % 360;
+  const alt = Math.asin(Math.max(-1, Math.min(1, v[2]))) * SKY_R2D;
+  return alt <= skyAltezzaOrizzonte(az);
+}
+
 function skyControllaSostaMirino() {
   if (!sky.modalitaHover) {
     sky.sostaMirino = null;
@@ -22909,6 +22924,14 @@ function skyControllaSostaMirino() {
   // il contenuto con un nuovo oggetto rimasto per caso sotto al mirino.
   const pannello = document.getElementById('skymap-dettaglio');
   if (pannello && pannello.classList.contains('visibile')) {
+    sky.sostaMirino = null;
+    return;
+  }
+
+  // Sul terreno l'hover resta completamente inattivo, anche se dietro la
+  // cresta passa un astro selezionabile. Appena il mirino torna nel cielo il
+  // tempo di sosta riparte da zero, evitando aperture immediate al confine.
+  if (skyPuntoSulTerreno(sky.larghezza / 2, sky.altezza / 2)) {
     sky.sostaMirino = null;
     return;
   }
