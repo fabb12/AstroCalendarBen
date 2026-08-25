@@ -754,6 +754,12 @@
                    resta appiccicato al bordo mentre l'elenco scorre — e sotto
                    l'elenco è diviso per famiglie, con i tasti più stretti. -->
               <div class="cerca-astri">
+                <div class="selettore-ricerca-cielo" role="tablist" aria-label="Che cosa cercare">
+                  <button id="skymap-cerca-tipo-astri" type="button" class="tasto-segmento attiva"
+                    role="tab" aria-selected="true" data-tipo-ricerca="astri">Astri</button>
+                  <button id="skymap-cerca-tipo-luoghi" type="button" class="tasto-segmento"
+                    role="tab" aria-selected="false" data-tipo-ricerca="luoghi">Città e montagne</button>
+                </div>
                 <div class="riga-comandi riga-cerca-astri">
                   <input id="skymap-astri-cerca" type="search" class="campo-cielo" autocomplete="off"
                     placeholder="Cerca per nome…" aria-label="Cerca un astro per nome"
@@ -761,6 +767,8 @@
                   <button id="skymap-astri-visibili" type="button" class="tasto-cielo tasto-passo" aria-pressed="false"
                     title="Lascia solo gli astri che adesso stanno sopra l'orizzonte">Su ora</button>
                 </div>
+                <div id="skymap-luoghi-risultati" class="risultati-luoghi-cielo hidden" role="listbox"
+                  aria-label="Città e montagne trovate" aria-live="polite"></div>
                 <!-- Le categorie: Sole e Luna, pianeti, stelle, cielo
                      profondo, stazioni spaziali. Sono le stesse famiglie in
                      cui l'elenco qui sotto è diviso, ma usate nell'altro
@@ -791,7 +799,7 @@
                     title="Le ottantotto costellazioni: la figura, il disegno, i nomi che le hanno dato le altre culture, e da qui si vede o no. Metà sono australi e dall'Italia non sorgono mai: da lì si può andare.">Atlante costellazioni</button>
                 </div>
               </div>
-              <p class="etichetta-comando">Toccane uno: la mappa lo porta al centro e una freccia ti guida. Per la scheda dei dati, toccalo sulla mappa.</p>
+              <p class="etichetta-comando istruzione-ricerca-cielo">Toccane uno: la mappa lo porta al centro e una freccia ti guida. Per la scheda dei dati, toccalo sulla mappa.</p>
               <div id="skymap-oggetti" class="elenco-astri"></div>
               <p id="skymap-astri-vuoto" class="etichetta-comando nota-lunga hidden">Nessun astro con questo nome.</p>
             </section>
