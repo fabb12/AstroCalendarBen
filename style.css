@@ -3269,6 +3269,20 @@ body button.pos-risultato:focus-visible {
 }
 .cielo-letture { flex: 0 0 auto; }
 
+/* Fuori dallo schermo intero la bussola occupa l'angolo alto a destra,
+   accanto alle linguette, invece di scendere con la riga delle letture.
+   Riserviamo lo stesso spazio nella barra, così l'ultimo comando non le
+   finisce sotto. In Fullscreen torna nel flusso: il tasto Esci prende
+   l'angolo e la bussola rimane subito sotto, come prima. */
+#skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .cielo-barra {
+  padding-right: 92px;
+}
+#skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .bussola-cielo {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  right: 10px;
+}
+
 /* Le linguette: una striscia di pillole sopra al cielo */
 .linguette-gruppi {
   display: flex;
@@ -4300,6 +4314,11 @@ body input.casella-data:hover { border: 0; }
   .lettura-cielo { font-size: 0.7rem; padding: 4px 9px; }
   .letture-sinistra { max-width: calc(100% - 82px); }
   .bussola-cielo { width: 68px; height: 68px; }
+  #skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .cielo-barra { padding-right: 76px; }
+  #skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .bussola-cielo {
+    top: max(8px, env(safe-area-inset-top));
+    right: 8px;
+  }
   .bussola-gradi { font-size: 0.65rem; }
   .bussola-direzione { max-width: 36px; font-size: 0.4rem; }
   .bussola-indice { border-left-width: 4px; border-right-width: 4px; border-top-width: 7px; }
@@ -4855,7 +4874,16 @@ body input.casella-data:hover { border: 0; }
 /* A schermo intero l'angolo in alto a destra è del tasto Esci: le linguette
    dei gruppi si fermano prima, per non finirgli sotto */
 #skymap-contenitore:fullscreen .cielo-barra,
-#skymap-contenitore.finto-schermo-intero .cielo-barra { padding-right: 104px; }
+#skymap-contenitore:-webkit-full-screen .cielo-barra,
+#skymap-contenitore.finto-schermo-intero .cielo-barra { padding-right: 104px !important; }
+
+/* WebKit meno recente non abbina `:fullscreen`: annulla esplicitamente il
+   posizionamento da vista normale anche nel suo schermo intero nativo. */
+#skymap-contenitore:-webkit-full-screen .bussola-cielo {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+}
 
 /* ------------------------------------------- REGISTRARE UN MOMENTO         */
 /* La durata della registrazione è una preferenza e vive nelle Impostazioni;
