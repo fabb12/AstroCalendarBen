@@ -23785,6 +23785,11 @@ function skyInizializzaGesti() {
       const luogo = skyLuogoNelPunto(px, py);
       if (luogo) { skyChiudiDettaglio(); skyMostraVaiQua(luogo, px, py); return; }
       skyChiudiVaiQua();
+      // La scheda e il bersaglio sono due parti della stessa selezione: la
+      // prima era già chiusa dal tocco nel vuoto, mentre il secondo restava
+      // acceso con guida e traccia dell'orbita. Spegnerlo tramite la stessa
+      // funzione usata dall'elenco aggiorna anche pillole e dati collegati.
+      if (sky.target) skyImpostaTarget(sky.target);
       skyChiudiDettaglio();
       return;
     }
@@ -28987,7 +28992,15 @@ function solTocco(e) {
   if (!sol.vicino && sol.lunaSchermo) {
     prova('Moon', sol.lunaSchermo.px, sol.lunaSchermo.py, sol.lunaSchermo.r);
   }
-  if (migliore) solScegli(migliore);
+  if (migliore) {
+    solScegli(migliore);
+  } else if (sol.scelto) {
+    // Lo spazio vuoto si comporta come un secondo tocco sul corpo scelto:
+    // chiude la scheda e lascia il suo perno, tornando alla vista d'insieme.
+    // Prima non succedeva nulla e, dopo aver aperto un'orbita, la selezione
+    // rimaneva attiva finché non si centrava di nuovo il piccolo pianeta.
+    solScegli(sol.scelto);
+  }
 }
 
 // --- A tutto schermo -------------------------------------------------------
