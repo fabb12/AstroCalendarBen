@@ -7557,6 +7557,14 @@ let skyDettoDelTremolio = false;
 // modo dei tasti + e −, della rotellina e del "campo normale", dove il salto
 // secco fa perdere il filo di cosa si stava guardando.
 function skyImpostaFov(gradi, opzioni = {}) {
+  // Un gesto interrotto dal browser (succede soprattutto passando da due
+  // dita a una) può consegnare per un solo evento una distanza non valida.
+  // `Math.min/max` non riparano NaN: lo propagano, la focale diventa NaN e
+  // da quel momento Canvas non riesce più a proiettare niente. Non si deve
+  // quindi lasciare che una lettura guasta avveleni lo stato persistente
+  // della vista: si ignora quel singolo campione e il gesto successivo
+  // continua dal campo ancora valido.
+  if (!Number.isFinite(gradi) || gradi <= 0) return;
   sky.fovVoluto = Math.max(SKY_FOV_MIN, Math.min(SKY_FOV_MAX, gradi));
   if (!opzioni.morbido) sky.fov = sky.fovVoluto;
   if (!skyDettoDelTremolio && sky.fovVoluto <= 6 && skyUsaSensori()) {
@@ -7564,6 +7572,41 @@ function skyImpostaFov(gradi, opzioni = {}) {
     skyAvviso('ingrandimento', 'A questo ingrandimento il tremolio della mano si vede tutto: ' +
       'spegni “Segui il telefono” e muovi la mappa col dito, oppure scegli l’astro e accendi “Insegui”.', 12000);
   }
+}
+
+// Ultima rete prima della proiezione. Le coordinate della vista vengono da
+// puntatori, inerzia, animazioni e sensori: basta che uno solo di quei flussi
+// produca una volta NaN perché i resti e i confronti successivi continuino a
+// restituire NaN per sempre. Il risultato sullo schermo è caratteristico:
+// resta soltanto una striscia dell'ultimo fotogramma e tutto il resto è
+// vuoto. Conserviamo l'ultima navigazione completa e, se un campione guasto
+// supera le difese locali, torniamo lì invece di rendere inutilizzabile il
+// planetario fino al riavvio.
+function skyRiparaNavigazione() {
+  const valida = Number.isFinite(sky.manuale.az) && Number.isFinite(sky.manuale.alt) &&
+    Number.isFinite(sky.fov) && sky.fov > 0 &&
+    Number.isFinite(sky.fovVoluto) && sky.fovVoluto > 0;
+  if (valida) {
+    sky.manuale.az = ((sky.manuale.az % 360) + 360) % 360;
+    sky.manuale.alt = Math.max(-89, Math.min(89, sky.manuale.alt));
+    sky.fov = Math.max(SKY_FOV_MIN, Math.min(SKY_FOV_MAX, sky.fov));
+    sky.fovVoluto = Math.max(SKY_FOV_MIN, Math.min(SKY_FOV_MAX, sky.fovVoluto));
+    sky.ultimaNavigazioneBuona = {
+      az: sky.manuale.az, alt: sky.manuale.alt, fov: sky.fov, fovVoluto: sky.fovVoluto
+    };
+    return false;
+  }
+
+  const buona = sky.ultimaNavigazioneBuona || { az: 180, alt: 20, fov: 55, fovVoluto: 55 };
+  sky.manuale.az = buona.az;
+  sky.manuale.alt = buona.alt;
+  sky.fov = buona.fov;
+  sky.fovVoluto = buona.fovVoluto;
+  sky.inerzia = null;
+  sky.animazioneVista = null;
+  sky.trascinamento = null;
+  sky.pizzico = null;
+  return true;
 }
 
 // Distanza focale in pixel corrispondente al campo visivo verticale scelto.
@@ -23002,6 +23045,9 @@ function skyCiclo() {
   // tornerà più (vedi `skyVigilaCicli`).
   sky.battito = performance.now();
   try {
+    // Prima di qualunque conto: una coordinata non finita non deve arrivare
+    // alla proiezione e lasciare sul canvas un fotogramma disegnato a metà.
+    skyRiparaNavigazione();
     // Quanto è durato il fotogramma precedente: lo chiedono lo zoom morbido e
     // l'inerzia, che devono comportarsi uguale a qualunque cadenza (vedi 7.4-ter)
     const dt = skyDeltaFotogramma();
