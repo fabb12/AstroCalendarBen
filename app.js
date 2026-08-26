@@ -23150,8 +23150,15 @@ function skyMostraVaiQua(punto, px, py) {
   popup.style.left = `${Math.max(12, Math.min(sky.larghezza - 12, px))}px`;
   popup.style.top = `${Math.max(12, Math.min(sky.altezza - 12, py))}px`;
   const distanza = punto.km < 1 ? Math.round(punto.km * 1000) + ' m' : punto.km.toFixed(1) + ' km';
+  // Il fumetto resta sul paesaggio anche dopo che l'avviso scompare: per un
+  // luogo cercato deve quindi conservare non soltanto nome e distanza, ma
+  // anche la direzione in cui il planetario si è girato. I gradi tolgono
+  // ogni ambiguità tra due settori cardinali vicini.
+  const direzione = Number.isFinite(punto.az)
+    ? `${skyNomeDirezione(punto.az)} · ${Math.round(punto.az)}°`
+    : '';
   const didascalia = document.createElement('span');
-  didascalia.textContent = `${punto.nome ? `${punto.nome} · ` : ''}${distanza}`;
+  didascalia.textContent = [punto.nome, distanza, direzione].filter(Boolean).join(' · ');
   const tasto = document.createElement('button');
   tasto.type = 'button';
   tasto.textContent = 'Vai qua';
