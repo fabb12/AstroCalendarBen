@@ -4,8 +4,8 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Il terreno del Planetario mantiene la stessa luminosità a ogni FOV: anche le
-fette vicine ricevono una quantità minima di luce diffusa e non diventano più
-improvvisamente chiare soltanto quando, oltre 125°, il fondo passa alla sagoma
-unica. La foschia continua a distinguere e schiarire ulteriormente i piani
-lontani. Cache PWA portata ad `astrocal-v198`.
+Il rilievo 3D del Planetario segue gli spostamenti GPS con parallasse: il primo
+piano scorre più del fondo mentre ci si muove a piedi, in auto o in aereo. La
+maglia viene ricentrata solo oltre soglie adattate alla velocità e con un freno
+temporale, continuando a mostrare quella traslata durante il caricamento. Cache
+PWA portata ad `astrocal-v200`.

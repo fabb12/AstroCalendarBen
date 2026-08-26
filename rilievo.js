@@ -97,6 +97,17 @@ const RIL_RAGGIO_KM = 6;
 // quel numero il raggio si stringe invece di scaricare di più.
 const RIL_TESSERE_MAX = 9;
 
+// Una maglia 3D non si riscarica a ogni fix del GPS. Fra un centro e il
+// successivo la si trasla geometricamente (vedi `rilCampioneInMovimento`):
+// così alberi, coste e pendii scorrono mentre si cammina o si viaggia, ma le
+// tessere vengono cambiate soltanto quando il vecchio disco non è più una
+// buona finestra sul posto. La soglia cresce con la velocità: in aereo un
+// rilievo nuovo ogni duecento metri sarebbe già vecchio prima di arrivare.
+const RIL_RICARICA_PIEDI_M = 450;
+const RIL_RICARICA_AUTO_M = 1600;
+const RIL_RICARICA_AEREO_M = 8000;
+const RIL_RICARICA_MIN_MS = 20000;
+
 // Dove le due fonti si danno il cambio. La griglia grossa e le tessere
 // vengono da due modelli del suolo diversi e sullo stesso punto non danno
 // lo stesso metro: passando di netto si vedrebbe un gradino ad anello tutto
@@ -513,6 +524,7 @@ const rilievo = {
   tessereAvute: 0,
   inCostruzione: false,
   daRifare: false,
+  ultimoCaricamento: 0,
 
   // Ha disegnato lui questo fotogramma? Lo chiedono i laghi e i nomi delle
   // montagne, che devono sapere **dove il terreno è dipinto** e non dove il
@@ -538,6 +550,45 @@ const rilievo = {
 // arrivata — che è un'informazione anche quella: dice di non richiederla e
 // di ripiegare sulla griglia grossa.
 let rilTessere = new Map();
+
+function rilSogliaRicarica() {
+  const v = typeof sky !== 'undefined' && sky.posizione &&
+    isFinite(sky.posizione.velocita) ? sky.posizione.velocita : 0;
+  if (v >= 45) return RIL_RICARICA_AEREO_M;
+  if (v >= 3) return RIL_RICARICA_AUTO_M;
+  return RIL_RICARICA_PIEDI_M;
+}
+
+function rilDistanzaDalCentro(luogo) {
+  if (!luogo || rilievo.lat === null || typeof terrenoDistanzaKm !== 'function') return Infinity;
+  return terrenoDistanzaKm(luogo.lat, luogo.lon, rilievo.lat, rilievo.lon) * 1000;
+}
+
+// Riporta un nodo della maglia centrata sul vecchio fix nel sistema polare
+// del fix corrente. Non interpola il paesaggio fra due fotografie: sposta i
+// punti del terreno nello spazio, perciò il primo piano scorre più del fondo
+// (la parallasse che si vede davvero dal finestrino).
+function rilCampioneInMovimento(idx, k, luogo) {
+  if (!luogo || rilievo.lat === null || rilievo.lon === null) {
+    return { idx, k, alt: rilievo.alt[idx * RIL_ANELLI + k] };
+  }
+  const latMedia = (luogo.lat + rilievo.lat) * Math.PI / 360;
+  const nord = (luogo.lat - rilievo.lat) * 111195;
+  const est = (luogo.lon - rilievo.lon) * 111195 * Math.cos(latMedia);
+  const az = idx * RIL_PASSO_AZ * Math.PI / 180;
+  const s = RIL_DIST[k];
+  const eVecchio = est + Math.sin(az) * s;
+  const nVecchio = nord + Math.cos(az) * s;
+  const distanza = Math.hypot(eVecchio, nVecchio);
+  const azVecchio = (Math.atan2(eVecchio, nVecchio) * 180 / Math.PI + 360) % 360;
+  const ii = Math.round(azVecchio / RIL_PASSO_AZ) % RIL_AZIMUT;
+  let kk = 0;
+  while (kk + 1 < RIL_ANELLI && Math.abs(RIL_DIST[kk + 1] - distanza) < Math.abs(RIL_DIST[kk] - distanza)) kk++;
+  const q = rilievo.quota[ii * RIL_ANELLI + kk];
+  const alt = typeof rilAngolo === 'function' ? rilAngolo(q, rilievo.occhio, Math.max(1, s))
+    : rilievo.alt[ii * RIL_ANELLI + kk];
+  return { idx: ii, k: kk, alt };
+}
 
 
 // =====================================================================
@@ -1177,6 +1228,7 @@ async function rilCarica() {
     rilievo.lon = lon;
     rilievo.occhio = occhio;
     rilievo.chiave = chiave;
+    rilievo.ultimoCaricamento = Date.now();
     rilievo.stato = 'pronto';
     // Quante tessere hanno risposto davvero: se nessuna, la maglia c'è
     // comunque (legge la griglia grossa) ma non è il rilievo fine, e la riga
@@ -1217,19 +1269,15 @@ function rilControlla() {
   const occhio = (typeof terreno.quota === 'number' ? terreno.quota : 0) +
     TERRENO_ALTEZZA_OCCHIO_M;
   if (rilChiaveDi(luogo.lat, luogo.lon, occhio) === rilievo.chiave) return;
-  // Basta che cambi il punto da cui si guarda: gli angoli della maglia sono
-  // calcolati rispetto al suo vecchio occhio e non si possono traslare sotto
-  // quello nuovo. Tenerla finché il nuovo rilievo arriva non mostrava soltanto
-  // le colline sbagliate: negli spostamenti brevi le due origini quasi
-  // coincidevano e la superficie degenerava talvolta in una sola striscia
-  // verticale, lasciando il resto del paesaggio vuoto. Le tessere raster si
-  // possono ancora riusare entro duecento metri dentro `rilCarica`;
-  // la maglia proiettata, invece, va dimenticata appena il suo centro non è
-  // più valido.
-  if (rilievo.lat !== null && typeof terrenoDistanzaKm === 'function' &&
-      terrenoDistanzaKm(luogo.lat, luogo.lon, rilievo.lat, rilievo.lon) > 0.008) {
-    rilScorda();
-  }
+  const spostamento = rilDistanzaDalCentro(luogo);
+  // Finché la maglia contiene ancora bene il posto, il disegno la trasla a
+  // ogni fotogramma. Niente rete, niente ricostruzione e nessun lampeggio.
+  if (spostamento < rilSogliaRicarica()) return;
+  if (Date.now() - rilievo.ultimoCaricamento < RIL_RICARICA_MIN_MS) return;
+  // Il vecchio disco è ormai troppo decentrato: si prepara un centro nuovo.
+  // Anche oltre soglia la maglia vecchia resta visibile durante lo scarico:
+  // è già traslata verso il punto nuovo ed è un fondale migliore di un
+  // fotogramma vuoto. `rilCarica` la sostituisce tutta insieme a fine lavoro.
   rilCarica();
 }
 
@@ -1610,6 +1658,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   for (let i = 0; i < RIL_LIVELLI; i++) rilTratti[i].n = 0;
 
   const luce = rilLuce(base);
+  const luogo = rilLuogo();
   const tav = rilTavolozzaTratti(luce);
   const fondoK = rilFondoAnelli();
   const occhio = rilievo.occhio;
@@ -1641,7 +1690,6 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     const idx = (((i0 + c * passo) % na) + na) % na;
     const azRad = idx * RIL_PASSO_AZ * D2R;
     const sinAz = Math.sin(azRad), cosAz = Math.cos(azRad);
-    const baseQ = idx * nr;
 
     let massimo = -Infinity, kMax = 0;
     let px = 0, py = 0, ok = false;      // il nodo visibile precedente
@@ -1661,7 +1709,10 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
         rilFondoY[o] = haVisto ? py : NaN;
         fetta++;
       }
-      const a = rilievo.alt[baseQ + k];
+      const campione = rilCampioneInMovimento(idx, k, luogo);
+      const baseQ = campione.idx * nr;
+      const kQ = campione.k;
+      const a = campione.alt;
       if (!(a > massimo)) {
         // Nascosto: se veniamo da un tratto visibile, qui il terreno
         // **sparisce dietro** a quello che abbiamo davanti — ed è un contorno.
@@ -1707,11 +1758,11 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // in colonne, il chiaroscuro **non cambia** quando cambia il passo
           // di disegno: è l'altra metà del rimedio allo sfarfallio.
           const s = RIL_DIST[k], sPrec = RIL_DIST[k - 1];
-          const q = rilievo.quota[baseQ + k];
+          const q = rilievo.quota[baseQ + kQ];
           const salto = Math.max(1, Math.min(48,
             Math.round(RIL_PIEGA_M / Math.max(0.01, s * RIL_PASSO_AZ * D2R))));
-          const iPiu = (idx + salto) % na, iMeno = (idx - salto + na * 2) % na;
-          const qPiu = rilievo.quota[iPiu * nr + k], qMeno = rilievo.quota[iMeno * nr + k];
+          const iPiu = (campione.idx + salto) % na, iMeno = (campione.idx - salto + na * 2) % na;
+          const qPiu = rilievo.quota[iPiu * nr + kQ], qMeno = rilievo.quota[iMeno * nr + kQ];
           const dAz = salto * RIL_PASSO_AZ * D2R;
           const ex = s * (Math.sin(azRad + dAz) - sinAz), ey = s * (Math.cos(azRad + dAz) - cosAz);
           const ez = qPiu - q;
@@ -1727,11 +1778,11 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // legge come un mosaico di rettangoli, uno per cella della maglia.
           // Con lo stesso passo nelle due direzioni la normale è quella di un
           // fazzoletto di terreno vero.
-          const saltoK = Math.max(1, Math.min(k,
+          const saltoK = Math.min(kQ, Math.max(1,
             Math.round(RIL_PIEGA_M / Math.max(1, s - sPrec))));
-          const sIndietro = RIL_DIST[k - saltoK];
+          const sIndietro = RIL_DIST[Math.max(0, kQ - saltoK)];
           const tx = (s - sIndietro) * sinAz, ty = (s - sIndietro) * cosAz;
-          const tz = q - rilievo.quota[baseQ + k - saltoK];
+          const tz = q - rilievo.quota[baseQ + kQ - saltoK];
           let ax = ey * tz - ez * ty;
           let ay = ez * tx - ex * tz;
           let az2 = ex * ty - ey * tx;
