@@ -1208,11 +1208,17 @@ function rilControlla() {
   const occhio = (typeof terreno.quota === 'number' ? terreno.quota : 0) +
     TERRENO_ALTEZZA_OCCHIO_M;
   if (rilChiaveDi(luogo.lat, luogo.lon, occhio) === rilievo.chiave) return;
-  // Un luogo del tutto diverso: la maglia vecchia non parla più di qui, e le
-  // colline di Genova disegnate a Bolzano sono peggio di nessuna collina
-  // perché sembrano vere.
+  // Basta che cambi il punto da cui si guarda: gli angoli della maglia sono
+  // calcolati rispetto al suo vecchio occhio e non si possono traslare sotto
+  // quello nuovo. Tenerla finché il nuovo rilievo arriva non mostrava soltanto
+  // le colline sbagliate: negli spostamenti brevi le due origini quasi
+  // coincidevano e la superficie degenerava talvolta in una sola striscia
+  // verticale, lasciando il resto del paesaggio vuoto. Le tessere raster si
+  // possono ancora riusare entro duecento metri dentro `rilCarica`;
+  // la maglia proiettata, invece, va dimenticata appena il suo centro non è
+  // più valido.
   if (rilievo.lat !== null && typeof terrenoDistanzaKm === 'function' &&
-      terrenoDistanzaKm(luogo.lat, luogo.lon, rilievo.lat, rilievo.lon) > RIL_RAGGIO_KM) {
+      terrenoDistanzaKm(luogo.lat, luogo.lon, rilievo.lat, rilievo.lon) > 0.008) {
     rilScorda();
   }
   rilCarica();
