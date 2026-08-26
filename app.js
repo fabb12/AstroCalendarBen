@@ -21653,14 +21653,23 @@ function skyScegliLuogoDaRicerca(luogo) {
   }
   const km = skyDistanzaGeograficaKm(osservatore, luogo);
   const az = skyAzimutGeografico(osservatore, luogo);
+  // Il risultato non deve sparire insieme al pannello di ricerca: lo
+  // lasciamo scritto sul paesaggio, con la distanza da dove si osserva e lo
+  // stesso comando esplicito usato quando si tocca direttamente il terreno.
+  // Si appoggia alla cresta in quella direzione: a quota zero finirebbe
+  // dietro una collina proprio nei luoghi in cui il terreno è più utile.
+  const punto = { ...luogo, az, alt: Math.max(0, skyAltezzaOrizzonte(az)), km };
   sky.target = null;
-  skyCentraSu({ nome: luogo.nome, az, alt: 0 });
+  skyCentraSu(punto);
   const quota = luogo.quota !== null ? ` · quota ${Math.round(luogo.quota)} m` : '';
   skyAvviso('luogo-cercato', `${luogo.nome} è verso ${skyNomeDirezione(az)} (${Math.round(az)}°), ` +
     `a ${luogoDistanzaTesto(km)}${quota}. La mappa guarda ora in quella direzione.`, 10000);
   const campo = document.getElementById('skymap-astri-cerca');
   if (campo) campo.blur();
+  // Prima liberiamo il cielo dal pannello dei risultati, poi mettiamo nome,
+  // distanza e «Vai qua» esattamente al centro della direzione scelta.
   skyMostraGruppo('');
+  skyMostraVaiQua(punto, sky.larghezza / 2, sky.altezza / 2);
 }
 
 function skyImpostaTipoRicerca(tipo) {
