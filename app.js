@@ -10394,7 +10394,6 @@ function skyEventoOrientamento(e) {
 
   const primaLettura = !sky.sensori;
   const orientamento = { alpha, beta, gamma };
-  skyChiudiVaiQuaSeOrientamentoCambiato(orientamento);
   sky.orient = orientamento;
   sky.assoluto = assoluto;
   sky.sensori = true;
@@ -19685,6 +19684,9 @@ function skyDisegna() {
   }
 
   skyAggiornaHud(base);
+  // E' HTML sopra al canvas, ma appartiene al terreno: segue percio' la
+  // proiezione a ogni fotogramma insieme a cime, paesi e orizzonte.
+  skyAggiornaVaiQua(base, focale);
 
   // Se si sta registrando, questo fotogramma finisce anche nel filmato: il
   // montaggio si fa qui, appena il cielo è finito (vedi 7.6)
@@ -23086,25 +23088,26 @@ function skyChiudiVaiQua() {
   if (popup) popup.remove();
 }
 
-// Il tasto conferma un punto calcolato per l'inquadratura che si aveva nel
-// momento del tocco. Con i sensori arrivano letture anche a telefono fermo,
-// quindi non basta chiuderlo a ogni evento: si conserva l'orientamento di
-// partenza e si aspetta uno spostamento più grande del normale tremolio.
-function skyChiudiVaiQuaSeOrientamentoCambiato(orientamento) {
+// Il tasto conferma un punto del terreno, non un pixel dello schermo. Anche
+// se nel frattempo cambia l'inquadratura, azimut e altezza permettono di
+// proiettarlo di nuovo e di ritrovarlo nello stesso luogo reale.
+// Riposiziona la conferma con la stessa proiezione usata dal terreno. Il
+// fumetto e' un elemento HTML sopra al canvas, quindi senza questo passaggio
+// resterebbe incollato al pixel del primo tocco (oppure, in passato, veniva
+// tolto appena la camera si muoveva). Il suo riferimento invece e' un punto
+// del mondo: azimut e altezza non cambiano quando gira la camera.
+function skyAggiornaVaiQua(base, focale) {
   const popup = document.getElementById('sky-vai-qua');
-  if (!popup || !orientamento) return;
-  if (!popup.orientamentoIniziale) {
-    popup.orientamentoIniziale = { ...orientamento };
-    return;
-  }
-  const iniziale = popup.orientamentoIniziale;
-  const distanzaCircolare = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
-  const spostamento = Math.max(
-    distanzaCircolare(orientamento.alpha, iniziale.alpha),
-    Math.abs(orientamento.beta - iniziale.beta),
-    Math.abs(orientamento.gamma - iniziale.gamma)
-  );
-  if (spostamento > 1.5) skyChiudiVaiQua();
+  const punto = popup && popup.punto;
+  if (!popup || !punto || typeof punto.az !== 'number' || typeof punto.alt !== 'number') return;
+  const p = skyProietta(skyVettore(punto.az, punto.alt), base, focale);
+  const inVista = p.davanti && p.px > -popup.offsetWidth && p.px < sky.larghezza + popup.offsetWidth &&
+    p.py > -popup.offsetHeight && p.py < sky.altezza + popup.offsetHeight;
+  popup.style.visibility = inVista ? 'visible' : 'hidden';
+  if (!inVista) return;
+  popup.style.left = `${p.px}px`;
+  popup.style.top = `${p.py}px`;
+  popup.anchor = { px: p.px, py: p.py };
 }
 
 // La corsa verso un punto del rilievo e' soltanto una transizione visiva, ma
@@ -23131,7 +23134,8 @@ function skyMostraVaiQua(punto, px, py) {
   const popup = document.createElement('div');
   popup.id = 'sky-vai-qua';
   popup.className = 'sky-popup-vai';
-  popup.orientamentoIniziale = sky.orient ? { ...sky.orient } : null;
+  popup.punto = { ...punto };
+  popup.anchor = { px, py };
   popup.style.left = `${Math.max(12, Math.min(sky.larghezza - 12, px))}px`;
   popup.style.top = `${Math.max(12, Math.min(sky.altezza - 12, py))}px`;
   const distanza = punto.km < 1 ? Math.round(punto.km * 1000) + ' m' : punto.km.toFixed(1) + ' km';
@@ -23147,8 +23151,9 @@ function skyMostraVaiQua(punto, px, py) {
     // Il punto scelto è il fuoco del viaggio: lo zoom parte proprio da lì,
     // non dal centro dello schermo, così la camera sembra correre verso il
     // paese/la cima toccati prima che il nuovo paesaggio venga calcolato.
-    contenitore.style.setProperty('--sky-volo-x', `${px}px`);
-    contenitore.style.setProperty('--sky-volo-y', `${py}px`);
+    const ancora = popup.anchor || { px, py };
+    contenitore.style.setProperty('--sky-volo-x', `${ancora.px}px`);
+    contenitore.style.setProperty('--sky-volo-y', `${ancora.py}px`);
     contenitore.style.setProperty('--sky-volo-scala', skyScalaVoloSicura(punto).toFixed(4));
     contenitore.classList.add('sky-volo-luogo');
     skyAvviso('luogo', 'Mi sposto nel punto scelto e ricalcolo il paesaggio…', 5000);
