@@ -21653,8 +21653,15 @@ function skyScegliLuogoDaRicerca(luogo) {
   }
   const km = skyDistanzaGeograficaKm(osservatore, luogo);
   const az = skyAzimutGeografico(osservatore, luogo);
+  // Il risultato non deve sparire insieme al pannello di ricerca: lo
+  // lasciamo scritto sul paesaggio, con la distanza da dove si osserva e lo
+  // stesso comando esplicito usato quando si tocca direttamente il terreno.
+  // A quota zero la targhetta indica la direzione geografica anche per un
+  // luogo lontano, fuori dalla porzione di rilievo che abbiamo scaricato.
+  const punto = { ...luogo, az, alt: 0, km };
   sky.target = null;
-  skyCentraSu({ nome: luogo.nome, az, alt: 0 });
+  skyCentraSu(punto);
+  skyMostraVaiQua(punto, sky.larghezza / 2, sky.altezza / 2);
   const quota = luogo.quota !== null ? ` · quota ${Math.round(luogo.quota)} m` : '';
   skyAvviso('luogo-cercato', `${luogo.nome} è verso ${skyNomeDirezione(az)} (${Math.round(az)}°), ` +
     `a ${luogoDistanzaTesto(km)}${quota}. La mappa guarda ora in quella direzione.`, 10000);
