@@ -4,7 +4,8 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Nel Planetario, scegliendo una città o una montagna dalla ricerca sotto
-«Astri», il fumetto fissato sul paesaggio conserva il nome, la distanza e la
-direzione cardinale con i gradi. La direzione resta quindi leggibile anche dopo
-la scomparsa dell'avviso temporaneo. Cache PWA portata ad `astrocal-v197`.
+Il terreno del Planetario mantiene la stessa luminosità a ogni FOV: anche le
+fette vicine ricevono una quantità minima di luce diffusa e non diventano più
+improvvisamente chiare soltanto quando, oltre 125°, il fondo passa alla sagoma
+unica. La foschia continua a distinguere e schiarire ulteriormente i piani
+lontani. Cache PWA portata ad `astrocal-v198`.

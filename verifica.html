@@ -6609,6 +6609,16 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
     prova('al FOV estremo le fette diventano una sola sagoma e non si sovrappongono',
       alLimite && !oltre,
       `limite ${RIL_FOV_FONDI_SEPARATI_MAX}°`);
+
+    // Il cambio di geometria non deve essere anche un interruttore della
+    // luminosità: il primo piano usa lo stesso tono minimo della fetta media
+    // scelta dalla sagoma unica oltre il limite.
+    const suolo = { vicino: [18, 32, 20], lontano: [112, 126, 132] };
+    const vicino = rilColoreDiFetta(0, suolo);
+    const medio = rilColoreDiFetta(RIL_LONTANANZA_MINIMA, suolo);
+    prova('la chiarezza minima del terreno non dipende dal FOV',
+      vicino.every((v, i) => v === medio[i]),
+      `minimo ${(RIL_LONTANANZA_MINIMA * 100).toFixed(0)}%`);
   }
 
   //
