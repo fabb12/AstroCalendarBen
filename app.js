@@ -612,6 +612,12 @@ function applicaProfiloDispositivo(opzioni = {}) {
   dispositivoAttuale = profilo;
   radice.dataset.dispositivo = profilo;
 
+  // L'apertura automatica delle schede serve quando il planetario viene
+  // usato come cercatore, seguendo i sensori di un telefono o di un tablet.
+  // Se una finestra viene allargata fino al profilo computer, il comando e
+  // la sosta del mirino devono spegnersi subito, senza aspettare un riavvio.
+  if (typeof skyAggiornaStatoHover === 'function') skyAggiornaStatoHover();
+
   adattaFiltri();
   adattaIstruzioniCielo();
   adattaCalendario();
@@ -22895,6 +22901,33 @@ function skyChiaveSelezione(sel) {
   return `${sel.categoria}:${d.id || d.nome || d.sigla || ''}`;
 }
 
+// L'hover non è un sostituto del mouse: apre la scheda del corpo rimasto
+// sotto al mirino mentre si punta fisicamente il dispositivo. Per questo il
+// comando ha senso soltanto se "Segui il telefono" è acceso e il profilo
+// corrente non è quello di un computer.
+function skyHoverDisponibile() {
+  return sky.seguiTelefono && (dispositivoAttuale || profiloDispositivo()) !== 'computer';
+}
+
+function skyHoverAttivo() {
+  return sky.modalitaHover && skyHoverDisponibile();
+}
+
+function skyAggiornaStatoHover() {
+  const tasto = document.getElementById('skymap-btn-hover');
+  if (!tasto) return;
+  const disponibile = skyHoverDisponibile();
+  const attivo = disponibile && sky.modalitaHover;
+  skyTasto('skymap-btn-hover', attivo);
+  tasto.disabled = !disponibile;
+  tasto.title = disponibile
+    ? 'Apre automaticamente la scheda dell\'oggetto quando il mirino giallo resta fermo su di esso'
+    : ((dispositivoAttuale || profiloDispositivo()) === 'computer'
+      ? 'La modalità hover è disponibile solo su telefono o tablet'
+      : 'Per usare la modalità hover attiva “Segui il telefono”');
+  if (!attivo) sky.sostaMirino = null;
+}
+
 // Il mirino puo' avere un astro proiettato dietro una collina: la ricerca
 // degli oggetti lo trova comunque (serve al tocco quando si e' scelto di
 // mostrare gli astri dietro i monti), ma la sosta automatica non deve
@@ -22911,7 +22944,7 @@ function skyPuntoSulTerreno(px, py) {
 }
 
 function skyControllaSostaMirino() {
-  if (!sky.modalitaHover) {
+  if (!skyHoverAttivo()) {
     sky.sostaMirino = null;
     return;
   }
@@ -23516,6 +23549,7 @@ function skyAlternaSeguiTelefono() {
   // guidare: meglio spegnerlo che lasciare acceso un tasto che non fa nulla
   if (nuovo && sky.sensori) skySpegniInseguimento();
   skyTasto('skymap-btn-segui', nuovo);
+  skyAggiornaStatoHover();
   skyAggiornaStato();
 
   // Con la fotocamera accesa sganciare la vista stacca il cielo dall'immagine:
@@ -24281,10 +24315,11 @@ function inizializzaSkymap() {
   const impZoom = document.getElementById('imp-skymap-zoom');
   if (impZoom) impZoom.checked = mostraZoom;
 
-  // La modalità hover nasce accesa, come nelle versioni che precedono il
-  // suo interruttore. Da qui in poi la scelta resta memorizzata nel browser.
+  // La preferenza hover nasce accesa, come nelle versioni che precedono il
+  // suo interruttore. Diventa effettiva solo mentre la vista segue il
+  // telefono/tablet e non viene mai applicata sul profilo computer.
   sky.modalitaHover = localStorage.getItem(CHIAVE_SKY_HOVER) !== '0';
-  skyTasto('skymap-btn-hover', sky.modalitaHover);
+  skyAggiornaStatoHover();
 
   // Costellazioni, deep sky, macchina del tempo e fotocamera
   inizializzaSkymapExtra();
@@ -24490,9 +24525,10 @@ function inizializzaSkymap() {
     skyTasto('skymap-btn-notte', attiva, attiva ? 'Colori normali' : 'Modalità notte');
   });
   collega('skymap-btn-hover', () => {
+    if (!skyHoverDisponibile()) return;
     sky.modalitaHover = !sky.modalitaHover;
     sky.sostaMirino = null;
-    skyTasto('skymap-btn-hover', sky.modalitaHover);
+    skyAggiornaStatoHover();
     try { localStorage.setItem(CHIAVE_SKY_HOVER, sky.modalitaHover ? '1' : '0'); } catch (e) { /* niente storage */ }
   });
 
