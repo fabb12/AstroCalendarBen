@@ -34907,12 +34907,14 @@ function skyTestoBarraTempo(quando, scarto, marcia) {
         timeZone: fuso.nome, day: 'numeric', month: 'short'
       }).format(quando) + ' ';
   // L'ora del luogo puo' essere diversa da quella dell'apparecchio quando si
-  // visita un'altra citta'. Affiancare sempre l'orologio reale del dispositivo
-  // rende evidente la differenza senza farlo dipendere dalla macchina del tempo.
+  // visita un'altra citta'. L'orologio reale del dispositivo serve soltanto in
+  // quel caso: se le due letture coincidono, ripeterle appesantisce la barra
+  // senza aggiungere alcuna informazione.
   const oraDispositivo = new Intl.DateTimeFormat('it-IT', {
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
   }).format(new Date());
-  const testa = `${giorno}${ora} · dispositivo ${oraDispositivo}`;
+  const testa = `${giorno}${ora}` +
+    (oraDispositivo === ora ? '' : ` · dispositivo ${oraDispositivo}`);
   if (scarto === 0 && !marcia) return testa;
 
   const stretta = !sky.larghezza || sky.larghezza < 500;
