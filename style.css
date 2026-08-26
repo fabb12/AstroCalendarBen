@@ -4587,10 +4587,10 @@ body input.casella-data:hover { border: 0; }
 .pannello-dettaglio {
   position: absolute;
   left: max(12px, env(safe-area-inset-left));
-  /* Sopra alla barra del tempo, come lo zoom: in fondo alla mappa la barra
-     c'è sempre, e una scheda che ci finisce sotto nasconde proprio l'ora a
-     cui valgono i dati che sta mostrando */
-  bottom: var(--sopra-barra-tempo);
+  /* La scheda comincia subito sotto al nome del paese: la lettura e i dati
+     dell'oggetto formano così un solo blocco nell'angolo alto sinistro e
+     lasciano libero il cielo sopra alla barra del tempo. */
+  top: var(--zona-alta-cielo);
   z-index: 6;
   width: min(340px, calc(100% - 96px));
   /* Non sale mai più su di dove finisce la fascia dei comandi in cima: il
@@ -4600,7 +4600,7 @@ body input.casella-data:hover { border: 0; }
      arrivare più su della bussola e scriverci sopra. */
   max-height: min(62%, 420px, calc(100% - var(--zona-alta-cielo) - var(--sopra-barra-tempo)));
   overflow-y: auto;
-  padding: 14px 34px 14px 14px;
+  padding: 14px;
   border: 1px solid var(--bordo-forte);
   border-radius: var(--raggio-m);
   /* Leggermente trasparente: la scheda sta sopra al cielo, e sotto ci sono
@@ -4652,6 +4652,12 @@ body input.casella-data:hover { border: 0; }
 .pannello-dettaglio .voce-dato { color: var(--blu-chiaro); }
 .pannello-dettaglio .nota-dettaglio { margin: 9px 0 0; color: var(--testo-3); }
 .pannello-dettaglio .allarme-dettaglio { margin: 8px 0 0; color: var(--ambra); }
+.pannello-dettaglio-azioni {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.tasto-chiudi-dettaglio.tasto-chiudi-dettaglio-fondo { position: static; }
 /* "Altri dati": chiusi di default. La scheda deve stare in una striscia
    sola su un telefono, e i numeri da strumento (coordinate, distanza,
    temperatura…) sono quelli che quasi nessuno legge lì per lì — restano a
@@ -6560,8 +6566,8 @@ body.luogo-immersivo { overflow: hidden; }
   .card-hover:hover { transform: none; }
 
   /* La scheda dell'oggetto non si mangia la mappa: sul telefono resta una
-     striscia in basso, e il resto del cielo si vede sopra. Anche qui non
-     sale mai sopra alla bussola (vedi --zona-alta-cielo). */
+     striscia compatta sotto al paese, e il resto del cielo rimane libero.
+     Anche qui rispetta la fascia della bussola (vedi --zona-alta-cielo). */
   .pannello-dettaglio { max-height: min(54%, calc(100% - var(--zona-alta-cielo) - var(--sopra-barra-tempo))); }
 
   /* --- Calendario compatto --- */
@@ -8673,8 +8679,8 @@ body button.did-ponte:active { transform: translateY(1px); }
 }
 /* Aerei ADS-B: elenco compatto sopra il cielo, leggibile anche con una mano. */
 .gruppo-aerei { max-height: min(62vh, 430px); overflow-y: auto; }
-.aerei-testata { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-.aerei-testata-azioni { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+.aerei-testata { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding-right:34px; }
+.aerei-azioni-pannello { display:flex; justify-content:flex-end; margin-top:10px; }
 .tasto-aerei-aggiorna-rapido { min-width:30px; width:30px; padding:5px; font-size:1rem; line-height:1; }
 .tasto-aerei-aggiorna-rapido[data-esito="caricamento"] { color:#bae6fd; }
 .tasto-aerei-aggiorna-rapido[data-esito="successo"] { color:#86efac; border-color:#22c55e; }
