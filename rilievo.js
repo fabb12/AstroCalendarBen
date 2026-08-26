@@ -284,6 +284,15 @@ const RIL_TRATTO_GIORNO = 0.38;
 const RIL_DIFFUSA_NOTTE = 0.025;
 const RIL_DIFFUSA_GIORNO = 0.12;
 
+// Anche il primo piano riceve almeno metà della luce diffusa dall'aria.
+// Senza questo pavimento le fette vicine restavano quasi del colore grezzo
+// del suolo, mentre oltre `RIL_FOV_FONDI_SEPARATI_MAX` la campitura unica
+// usa per forza una fetta media e diventava di colpo molto più chiara. La
+// luminosità del terreno non deve dipendere dallo zoom: la distanza continua
+// a schiarire ulteriormente i piani lontani, ma nessun piano torna alla
+// vecchia massa scura.
+const RIL_LONTANANZA_MINIMA = 0.5;
+
 // Da quanta **piega** in su il tratto si vede pieno.
 //
 // È la riga che distingue una pettinatura da un pettine, e ci sono voluti due
@@ -1492,6 +1501,7 @@ function rilLontananza(km) {
 // crinale davanti e uno in fondo resta tutto, ed è quello fra `vicino` e
 // `lontano`: un fattore due.
 function rilColoreDiFetta(t, suolo) {
+  t = Math.max(RIL_LONTANANZA_MINIMA, Math.min(1, t));
   const tinta = Math.pow(1 - t, 0.9);
   const base = skyMescolaColore(suolo.lontano, suolo.vicino, tinta);
   const giorno = Math.max(0, Math.min(1, sky.luceCielo));
