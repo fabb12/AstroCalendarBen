@@ -8718,6 +8718,8 @@ body button.did-ponte:active { transform: translateY(1px); }
 #aereo-rotta-mappa .leaflet-tile-pane { filter:none; }
 #aereo-rotta-mappa .leaflet-control-attribution { background:rgba(255,255,255,.88); color:#334155; }
 #aereo-rotta-mappa .leaflet-control-attribution a { color:#1d4ed8 !important; }
-.pannello-dettaglio { position:relative; }
+/* Il pannello e' gia' assoluto nella regola principale. Non trasformarlo in
+   un elemento del flusso: la scheda degli aerei finirebbe sotto al canvas e
+   sembrerebbe non aprirsi. L'assoluto fa anche da riferimento al tasto X. */
 .tasto-chiudi-dettaglio-alto { position:absolute; top:10px; right:10px; z-index:3; }
 .scheda-testata { padding-right:42px; }
