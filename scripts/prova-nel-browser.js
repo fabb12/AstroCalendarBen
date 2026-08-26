@@ -178,6 +178,26 @@ const server = http.createServer((req, res) => {
       disegniCostellazioni.premuto === 'false');
   console.log(`              magnitudine limite adesso: ${cielo.limite && cielo.limite.toFixed(1)}`);
 
+  // La X aggiunta alla scheda degli aerei aveva ridefinito il pannello come
+  // `position: relative`: dentro al planetario entrava così nel flusso sotto
+  // al canvas e pareva non aprirsi. Proviamo la posizione calcolata, non solo
+  // la presenza della classe, per intercettare anche future regole tardive.
+  const schedaAereo = await pagina.evaluate(() => {
+    const pannello = document.getElementById('skymap-dettaglio');
+    pannello.classList.add('visibile');
+    const stile = getComputedStyle(pannello);
+    const risultato = {
+      posizione: stile.position,
+      visibile: stile.display !== 'none',
+      scorrevole: ['auto', 'scroll'].includes(stile.overflowY)
+    };
+    pannello.classList.remove('visibile');
+    return risultato;
+  });
+  ok('la scheda degli aerei si apre sopra al planetario',
+    schedaAereo.visibile && schedaAereo.posizione === 'absolute' && schedaAereo.scorrevole,
+    `${schedaAereo.posizione}, scorrimento ${schedaAereo.scorrevole ? 'attivo' : 'spento'}`);
+
   // --- il ciclo di disegno regge? ---
   const fps = await pagina.evaluate(() => new Promise(risolvi => {
     let n = 0; const t0 = performance.now();
