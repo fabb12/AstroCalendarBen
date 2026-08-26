@@ -4,9 +4,7 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Nel Planetario, cambiando punto di osservazione, la vecchia maglia del rilievo
-viene scartata appena non appartiene più allo stesso centro: non può quindi
-degenerare nella striscia verticale che lasciava vuoto il paesaggio durante il
-ricalcolo. Il tocco sul rilievo usa ora una tolleranza espressa in pixel e
-raggiunge anche la punta delle cime strette. Cache PWA portata ad
-`astrocal-v192`.
+Nel Planetario, scegliendo una città o una montagna dalla ricerca sotto
+«Astri», il fumetto fissato sul paesaggio conserva il nome, la distanza e la
+direzione cardinale con i gradi. La direzione resta quindi leggibile anche dopo
+la scomparsa dell'avviso temporaneo. Cache PWA portata ad `astrocal-v197`.
