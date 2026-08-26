@@ -3183,14 +3183,20 @@ body button.pos-risultato:focus-visible {
   bottom: var(--sopra-barra-tempo);
   width: min(220px, 54vw);
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.62);
+  border: 1px solid rgba(14, 116, 144, 0.42);
   border-radius: 13px;
-  background: rgba(5, 12, 28, 0.94);
+  background: rgba(248, 250, 252, 0.97);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   cursor: pointer;
   animation: mappa-spostamento-entra 160ms ease-out;
 }
-.mappa-spostamento-carta { width: 100%; height: 152px; background: #dbe3ea; }
+.mappa-spostamento-carta { width: 100%; height: 152px; background: #dff3fb; }
+/* La regola Leaflet generale porta le carte nel tema notturno. Questa e'
+   una carta geografica: strade, boschi e acqua restano nei colori chiari
+   originali, appena ravvivati per essere leggibili nel riquadro piccolo. */
+.mappa-spostamento-carta .leaflet-tile-pane {
+  filter: saturate(0.86) brightness(1.08) contrast(0.96);
+}
 .mappa-spostamento-carta .leaflet-control-attribution {
   font-size: 7px;
   line-height: 10px;
@@ -3199,8 +3205,8 @@ body button.pos-risultato:focus-visible {
 .mappa-spostamento-testo {
   display: block;
   padding: 6px 8px 7px;
-  color: #f8fafc;
-  border-top: 1px solid rgba(148, 163, 184, 0.28);
+  color: #0f3d4c;
+  border-top: 1px solid rgba(14, 116, 144, 0.2);
   font-size: 0.68rem;
   font-weight: 650;
   line-height: 1.25;
@@ -3212,8 +3218,8 @@ body button.pos-risultato:focus-visible {
   z-index: 500;
   padding: 4px 7px;
   border-radius: 999px;
-  background: rgba(5, 12, 28, 0.82);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.9);
+  color: #075985;
   font-size: 0.62rem;
   font-weight: 700;
   pointer-events: none;
@@ -3240,7 +3246,8 @@ body button.pos-risultato:focus-visible {
   max-width: calc(100% - 24px);
   border: 0;
   border-radius: 10px;
-  background: rgba(5, 12, 28, 0.88);
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f3d4c;
   font-size: 0.8rem;
 }
 .mappa-spostamento-cielo.mappa-spostamento-aperta .mappa-spostamento-invito { display: none; }
@@ -3254,10 +3261,10 @@ body button.pos-risultato:focus-visible {
   gap: 7px;
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(14, 116, 144, 0.35);
   border-radius: 999px;
-  background: rgba(5, 12, 28, 0.9);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.94);
+  color: #075985;
   font-size: 0.78rem;
   font-weight: 750;
   cursor: pointer;

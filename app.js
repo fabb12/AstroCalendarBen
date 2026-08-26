@@ -13848,6 +13848,10 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   if (typeof skyDisegnaAcqueInterne === 'function') {
     skyDisegnaAcqueInterne(ctx, base, focale, aria);
   }
+
+  // Il riferimento del viaggio va sopra al suolo e all'acqua, come un
+  // piccolo picchetto piantato nel punto da cui la camera e' partita.
+  skyDisegnaPuntoPartenza(ctx, base, focale);
   ctx.restore();
 
   // La linea d'orizzonte vero resta, sopra al profilo: è il riferimento —
@@ -23247,6 +23251,61 @@ function skyDistanzaGeograficaKm(a, b) {
   return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
 }
 
+// Direzione iniziale del tratto geografico a -> b. La mini-mappa usa le
+// coordinate direttamente; il segno nel paesaggio, invece, deve sapere in
+// quale azimut si trova il vecchio punto rispetto alla nuova camera.
+function skyAzimutGeografico(a, b) {
+  const p1 = a.lat * SKY_D2R, p2 = b.lat * SKY_D2R;
+  const dl = (b.lon - a.lon) * SKY_D2R;
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return ((Math.atan2(y, x) * SKY_R2D) % 360 + 360) % 360;
+}
+
+// Dopo essere arrivati, il pallino giallo resta sul terreno nella direzione
+// del luogo lasciato. Non e' un elemento dello schermo: viene riproiettato a
+// ogni fotogramma, quindi resta davvero appoggiato al panorama mentre si gira
+// o si ingrandisce. Aprendo la carta geografica a tutto schermo scompare: li'
+// la stessa informazione e' gia' raccontata dai due marcatori della mappa.
+function skyDisegnaPuntoPartenza(ctx, base, focale) {
+  const m = sky.mappaSpostamento;
+  const box = document.getElementById('skymap-mappa-spostamento');
+  if (!m.partenza || !m.arrivo || !box ||
+      box.classList.contains('mappa-spostamento-aperta')) return;
+
+  const km = skyDistanzaGeograficaKm(m.arrivo, m.partenza);
+  if (!(km > 0.005)) return;
+  const az = skyAzimutGeografico(m.arrivo, m.partenza);
+  let alt = skyAltezzaOrizzonte(az);
+  if (typeof terrenoFronteA === 'function' && typeof terrenoDisponibile === 'function' &&
+      terrenoDisponibile() && typeof TERRENO_DISTANZE !== 'undefined') {
+    let k = 0;
+    while (k + 1 < TERRENO_DISTANZE.length &&
+           Math.abs(TERRENO_DISTANZE[k + 1] - km) < Math.abs(TERRENO_DISTANZE[k] - km)) k++;
+    const precisa = terrenoFronteA(az, k);
+    if (Number.isFinite(precisa)) alt = precisa;
+  }
+  const p = skyProietta(skyVettore(az, alt), base, focale);
+  if (!p.davanti || p.px < -20 || p.px > sky.larghezza + 20 ||
+      p.py < -28 || p.py > sky.altezza + 20) return;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.72)';
+  ctx.shadowBlur = 5;
+  ctx.strokeStyle = '#422006';
+  ctx.fillStyle = '#fde047';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(p.px, p.py + 1);
+  ctx.lineTo(p.px, p.py - 12);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(p.px, p.py - 15, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
 function skyNascondiMappaSpostamento() {
   const m = sky.mappaSpostamento;
   skyChiudiMappaSpostamento();
@@ -23325,11 +23384,11 @@ function skyMostraMappaSpostamentoGeografico(partenza, arrivo) {
   }
   m.strati.forEach(strato => m.mappa.removeLayer(strato));
   const da = [partenza.lat, partenza.lon], a = [arrivo.lat, arrivo.lon];
-  const filo = L.polyline([da, a], { color: '#38bdf8', weight: 4, dashArray: '7 6' }).addTo(m.mappa);
-  const origine = L.circleMarker(da, { radius: 6, color: '#f8fafc', weight: 3,
-    fillColor: '#0f172a', fillOpacity: 1 }).addTo(m.mappa);
-  const destinazione = L.circleMarker(a, { radius: 7, color: '#111827', weight: 2,
-    fillColor: '#facc15', fillOpacity: 1 }).addTo(m.mappa);
+  const filo = L.polyline([da, a], { color: '#0284c7', weight: 4, dashArray: '7 6' }).addTo(m.mappa);
+  const origine = L.circleMarker(da, { radius: 7, color: '#713f12', weight: 2,
+    fillColor: '#fde047', fillOpacity: 1 }).addTo(m.mappa);
+  const destinazione = L.circleMarker(a, { radius: 7, color: '#075985', weight: 2,
+    fillColor: '#7dd3fc', fillOpacity: 1 }).addTo(m.mappa);
   m.strati = [filo, origine, destinazione];
   const distanza = skyDistanzaGeograficaKm(partenza, arrivo);
   skyInquadraMappaSpostamento();
@@ -23339,7 +23398,7 @@ function skyMostraMappaSpostamentoGeografico(partenza, arrivo) {
   const testo = `Spostamento: ${misura} · ${nomeArrivo}`;
   const label = document.getElementById('skymap-mappa-spostamento-testo');
   if (label) label.textContent = testo;
-  box.setAttribute('aria-label', `${testo}. Il punto bianco indica la partenza, quello giallo l'arrivo. Tocca per aprire la mappa interattiva a tutto schermo.`);
+  box.setAttribute('aria-label', `${testo}. Il punto giallo indica la partenza, quello azzurro l'arrivo. Tocca per aprire la mappa interattiva a tutto schermo.`);
 }
 
 // Il dito si stacca: se stava ancora correndo, la vista prosegue da sola.
