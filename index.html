@@ -816,14 +816,14 @@
                   <strong>Aerei in tempo reale</strong>
                   <p id="aerei-stato" class="etichetta-comando" role="status" aria-live="polite">Apri il pannello per cercare gli aerei vicini.</p>
                 </div>
-                <div class="aerei-testata-azioni">
-                  <button id="aerei-aggiorna" type="button" class="tasto-cielo">Aggiorna</button>
-                  <button id="aerei-pannello-chiudi" type="button" class="tasto-chiudi-dettaglio"
-                    aria-label="Chiudi l’informativa ADS-B" title="Chiudi">✕</button>
-                </div>
+                <button id="aerei-pannello-chiudi" type="button" class="tasto-chiudi-dettaglio"
+                  aria-label="Chiudi l’informativa ADS-B" title="Chiudi">✕</button>
               </div>
               <p class="etichetta-comando">Posizioni ADS-B entro il raggio scelto (50 km alla prima apertura). Adesso sono dati in tempo reale; spostando il tempo, aereo e rotta diventano stime coerenti con l'istante mostrato. La linea tratteggiata mostra i 5 minuti successivi.</p>
               <div id="aerei-elenco" class="aerei-elenco"></div>
+              <div class="aerei-azioni-pannello">
+                <button id="aerei-aggiorna" type="button" class="tasto-cielo">Aggiorna</button>
+              </div>
             </section>
 
           </div>
@@ -969,9 +969,11 @@
         <!-- Scheda dell'oggetto toccato sulla mappa: sta dentro al riquadro
              del cielo, così funziona anche a schermo intero -->
         <aside id="skymap-dettaglio" class="pannello-dettaglio" aria-live="polite">
-          <button id="skymap-dettaglio-chiudi" type="button" class="tasto-chiudi-dettaglio"
-            title="Chiudi la scheda" aria-label="Chiudi la scheda">✕</button>
           <div id="skymap-dettaglio-corpo"></div>
+          <div class="pannello-dettaglio-azioni">
+            <button id="skymap-dettaglio-chiudi" type="button" class="tasto-chiudi-dettaglio tasto-chiudi-dettaglio-fondo"
+              title="Chiudi la scheda" aria-label="Chiudi la scheda">✕</button>
+          </div>
         </aside>
 
         <section id="aereo-rotta-modale" class="aereo-rotta-modale" aria-hidden="true"
