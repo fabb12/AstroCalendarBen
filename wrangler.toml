@@ -1,0 +1,4 @@
+name = "astrocalendarben-adsb"
+main = "worker-adsb.js"
+compatibility_date = "2026-08-26"
+
