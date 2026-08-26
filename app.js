@@ -9116,6 +9116,10 @@ function skyAggiornaOsservatore() {
   // Cambiando luogo cambiano altezze, orari e giudizi: la memoria va svuotata
   sky.prossimoCalcolo = 0;
   sky.cacheOrari = { chiave: null, valore: null };
+  // Anche il feed ADS-B e' centrato sull'osservatore del planetario. Il
+  // modulo elimina immediatamente la fotografia del luogo precedente e
+  // carica quella nuova, senza mostrarla nel frattempo con coordinate rifatte.
+  if (typeof aereiPosizioneCambiata === 'function') aereiPosizioneCambiata();
   if (sky.aperto && typeof skyAggiornaOggetti === 'function') skyAggiornaOggetti(true);
   // Cambiando luogo cambia anche l'orizzonte: le colline sono altre, altri
   // i paesi che di notte lo illuminano e altre le montagne che ci spuntano
@@ -34902,7 +34906,13 @@ function skyTestoBarraTempo(quando, scarto, marcia) {
     : new Intl.DateTimeFormat('it-IT', {
         timeZone: fuso.nome, day: 'numeric', month: 'short'
       }).format(quando) + ' ';
-  const testa = giorno + ora;
+  // L'ora del luogo puo' essere diversa da quella dell'apparecchio quando si
+  // visita un'altra citta'. Affiancare sempre l'orologio reale del dispositivo
+  // rende evidente la differenza senza farlo dipendere dalla macchina del tempo.
+  const oraDispositivo = new Intl.DateTimeFormat('it-IT', {
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).format(new Date());
+  const testa = `${giorno}${ora} · dispositivo ${oraDispositivo}`;
   if (scarto === 0 && !marcia) return testa;
 
   const stretta = !sky.larghezza || sky.larghezza < 500;
