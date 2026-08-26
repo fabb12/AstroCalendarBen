@@ -2749,11 +2749,25 @@ function cittaQueryOverpass(lat, lon) {
 // richiesta, e l'affiancamento qui sotto le mette in corsa una dopo l'altra
 // senza aspettare che la precedente si arrenda.
 const OVERPASS_ISTANZE = [
+  // L'istanza svizzera viene per prima: oltre a essere vicina al punto del
+  // problema segnalato, evita che una visita nelle Alpi dipenda sempre dal
+  // nodo tedesco, che quando scadeva lasciava in console soltanto un
+  // ERR_CONNECTION_TIMED_OUT. La rotazione continua a distribuire il resto.
+  'https://overpass.osm.ch/api/interpreter',
   'https://overpass-api.de/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.openstreetmap.fr/api/interpreter'
 ];
+
+// Una porta che ha appena taciuto non va rimessa subito davanti alle altre
+// due richieste del paesaggio e poi, di nuovo, davanti alle loro query corte.
+// Era esattamente ciò che faceva comparire più timeout uguali per un solo
+// caricamento. Il ricordo è breve e vive soltanto nella scheda: abbastanza
+// per far passare città, cime e acque dalla porta successiva, non abbastanza
+// per dichiarare guasta un'istanza pubblica per tutta la giornata.
+const OVERPASS_PAUSA_GUASTA_MS = 120000;
+const overpassGuastaFino = new Map();
 
 // Dopo quanto si prova **anche** l'altra istanza, invece di stare a guardare
 // la prima.
@@ -2837,10 +2851,25 @@ function overpassPeso(e) {
 // costano tempo: costano solo altre possibilità di essere serviti dentro
 // quello stesso minuto.
 function overpassChiedi(query, attesaMs) {
-  const n = OVERPASS_ISTANZE.length;
+  const totale = OVERPASS_ISTANZE.length;
   const inizio = overpassIstanzaOra;
-  overpassIstanzaOra = (overpassIstanzaOra + 1) % n;
+  overpassIstanzaOra = (overpassIstanzaOra + 1) % totale;
   const scadenza = Date.now() + attesaMs;
+
+  // Prima le porte che non hanno appena fallito. Se fossero tutte in pausa
+  // non si resta però senza tentare: si ordinano per quella che torna
+  // disponibile prima. È un circuito aperto, non una lista nera.
+  const ora = Date.now();
+  const tutte = Array.from({ length: totale }, (_, i) => OVERPASS_ISTANZE[(inizio + i) % totale])
+    .sort((a, b) => {
+      const fa = overpassGuastaFino.get(a) || 0;
+      const fb = overpassGuastaFino.get(b) || 0;
+      const aa = fa > ora, bb = fb > ora;
+      return aa === bb ? (aa ? fa - fb : 0) : (aa ? 1 : -1);
+    });
+  const disponibili = tutte.filter(i => (overpassGuastaFino.get(i) || 0) <= ora);
+  const istanze = disponibili.length ? disponibili : tutte;
+  const n = istanze.length;
 
   return new Promise((ok, no) => {
     const controlli = [];
@@ -2878,7 +2907,7 @@ function overpassChiedi(query, attesaMs) {
       if (chiuso || prossima >= n) return;
       const resta = scadenza - Date.now();
       if (resta <= 0) { if (attive <= 0) arrenditi(); return; }
-      const istanza = OVERPASS_ISTANZE[(inizio + prossima) % n];
+      const istanza = istanze[prossima];
       prossima++;
       attive++;
       const c = typeof AbortController === 'function' ? new AbortController() : null;
@@ -2906,12 +2935,18 @@ function overpassChiedi(query, attesaMs) {
           if (timer) clearTimeout(timer);
           if (!dati || !Array.isArray(dati.elements)) throw new Error('risposta senza elementi');
           if (chiuso) return;
+          overpassGuastaFino.delete(istanza);
           attive--;
           smetti();
           ok(dati.elements);
         })
         .catch(e => {
           if (timer) clearTimeout(timer);
+          // Un aborto provocato da `smetti` significa soltanto che un'altra
+          // porta ha vinto: non è un guasto. Tutti gli altri errori di rete,
+          // timeout e risposte HTTP fanno invece saltare questa istanza nel
+          // resto del caricamento.
+          if (!chiuso) overpassGuastaFino.set(istanza, Date.now() + OVERPASS_PAUSA_GUASTA_MS);
           nonCeLHaFatta(e);
         });
 
