@@ -969,6 +969,8 @@
         <!-- Scheda dell'oggetto toccato sulla mappa: sta dentro al riquadro
              del cielo, così funziona anche a schermo intero -->
         <aside id="skymap-dettaglio" class="pannello-dettaglio" aria-live="polite">
+          <button id="skymap-dettaglio-chiudi-alto" type="button" class="tasto-chiudi-dettaglio tasto-chiudi-dettaglio-alto"
+            title="Chiudi la scheda" aria-label="Chiudi la scheda">✕</button>
           <div id="skymap-dettaglio-corpo"></div>
           <div class="pannello-dettaglio-azioni">
             <button id="skymap-dettaglio-chiudi" type="button" class="tasto-chiudi-dettaglio tasto-chiudi-dettaglio-fondo"
@@ -983,7 +985,7 @@
             <header><h3 id="aereo-rotta-titolo">Rotta dell’aereo</h3>
               <button type="button" class="tasto-chiudi-dettaglio" data-chiudi-rotta-aereo aria-label="Chiudi">✕</button></header>
             <div id="aereo-rotta-mappa" aria-label="Carta geografica della rotta dell’aereo"></div>
-            <p><span class="aereo-leggenda osservata"></span> percorso rilevato · <span class="aereo-leggenda prevista"></span> previsione 5 minuti</p>
+            <p><span class="aereo-leggenda completa"></span> rotta completa · <span class="aereo-leggenda osservata"></span> percorso rilevato · <span class="aereo-leggenda prevista"></span> previsione 5 minuti</p>
           </div>
         </section>
 
@@ -2198,6 +2200,7 @@
   <script src="rilievo.js"></script>
   <script src="meteo-astro.js"></script>
   <script src="aurora-polare.js"></script>
+  <script src="config.js"></script>
   <script src="aerei.js"></script>
   <script src="eventi-extra.js"></script>
   <script src="ui-nuova.js"></script>

@@ -20,6 +20,7 @@
   const TERRA_KM = 6371;
   const TRACCIA_MASSIMO_PUNTI = 120;
   const TRACCIA_DURATA_MS = 2 * 60 * 60 * 1000;
+  const hitEtichette = [];
 
   function numero(valore) {
     const n = Number(valore);
@@ -128,6 +129,20 @@
     providerConPonte('adsb.lol', 'https://corsproxy.io/?url=', feedAdsbLol),
     providerConPonte('Airplanes.live', 'https://corsproxy.io/?url=', feedAirplanesLive)
   ];
+
+  function providersDisponibili() {
+    const proxy = String(window.ADSB_PROXY_URL || '').trim().replace(/\/$/, '');
+    const propri = proxy ? [{
+      nome: 'proxy ADS-B del sito',
+      url(posizione, raggioKm) {
+        const q = new URLSearchParams({ lat: posizione.lat.toFixed(4), lon: posizione.lon.toFixed(4),
+          dist: String(Math.max(1, Math.ceil(raggioKm / 1.852))) });
+        return `${proxy}/api/adsb?${q}`;
+      },
+      interpreta: interpretaAdsbExchange
+    }] : [];
+    return propri.concat(providersPredefiniti);
+  }
 
   async function scarica(provider, obs, raggio, signal) {
     const risposta = await fetch(provider.url(obs, raggio), { signal, cache: 'no-store' });
@@ -449,7 +464,7 @@
     if (!forza && (ora < stato.prossimoTentativo || ora - stato.ultimoSuccesso < CACHE_MS)) return;
     if (stato.richiesta) return stato.richiesta;
     testoStato('Aggiornamento ADS-B…');
-    const providers = window.AEREI_PROVIDER ? [window.AEREI_PROVIDER] : providersPredefiniti;
+    const providers = window.AEREI_PROVIDER ? [window.AEREI_PROVIDER] : providersDisponibili();
     const controller = new AbortController();
     stato.controller = controller;
     stato.richiesta = scaricaConRipiego(providers, obs, raggioKm(), controller.signal)
@@ -482,6 +497,7 @@
   }
 
   function aereiDisegna(ctx, base, focale) {
+    hitEtichette.length = 0;
     if (!stato.acceso || !stato.aerei.length || typeof skyProietta !== 'function') return;
     if (!datiDelCentroCorrente()) { aereiPosizioneCambiata(); return; }
     aggiornaPosizioni();
@@ -521,6 +537,7 @@
       else ctx.rect(x, y, larghezza, 18);
       ctx.fill();
       ctx.fillStyle = '#fff7ed'; ctx.fillText(etichetta, x + 5, y + 12.5);
+      hitEtichette.push({ x, y, larghezza, altezza: 18, aereo: a });
     });
     ctx.restore();
   }
@@ -566,6 +583,9 @@
   function aereoNelPunto(px, py, base, focale) {
     if (!stato.acceso || typeof skyProietta !== 'function') return null;
     aggiornaPosizioni();
+    const etichetta = hitEtichette.slice().reverse().find(h =>
+      px >= h.x - 4 && px <= h.x + h.larghezza + 4 && py >= h.y - 5 && py <= h.y + h.altezza + 5);
+    if (etichetta) return etichetta.aereo;
     let migliore = null;
     stato.aerei.forEach(a => {
       const p = skyProietta(skyVettore(a.az, a.alt), base, focale);
@@ -588,9 +608,7 @@
       dato('Distanza', Number.isFinite(a.distanzaKm) ? `${a.distanzaKm.toFixed(1)} km` : '') +
       `<li id="aereo-rotta-${sicuro(a.id)}"><span class="voce-dato">Itinerario:</span> ricerca in corso…</li>` +
       dato('Codice ICAO', String(a.id || '').toUpperCase()) + dato('Squawk', a.squawk) + '</ul>' +
-      `<div class="aereo-azioni"><button type="button" class="tasto-cielo aereo-tracking" data-aereo-id="${sicuro(a.id)}">` +
-      `${typeof sky !== 'undefined' && sky.inseguimento ? 'Smetti di seguire' : 'Segui e centra'}</button>` +
-      `<button type="button" class="tasto-cielo aereo-mappa" data-aereo-id="${sicuro(a.id)}">Rotta sulla mappa</button></div>` +
+      `<div class="aereo-azioni"><button type="button" class="tasto-cielo aereo-mappa" data-aereo-id="${sicuro(a.id)}">Rotta sulla mappa</button></div>` +
       `<p class="nota-dettaglio">${a.stimato ? 'Posizione stimata dalla rotta, velocità e salita dell’ultima lettura ADS-B.' :
         'Posizione allineata al feed ADS-B in tempo reale.'}</p>`;
   }
@@ -616,7 +634,7 @@
     if (modale) { modale.classList.remove('visibile'); modale.setAttribute('aria-hidden', 'true'); }
   }
 
-  function aereiMostraMappa(id) {
+  async function aereiMostraMappa(id) {
     const a = aereiTrova(id);
     const modale = document.getElementById('aereo-rotta-modale');
     const carta = document.getElementById('aereo-rotta-mappa');
@@ -632,6 +650,10 @@
       }).addTo(mappaRotta);
     }
     stratiRotta.forEach(s => mappaRotta.removeLayer(s)); stratiRotta = [];
+    const chiaveRotta = String(a.callsign || '').trim().replace(/\s+/g, '');
+    const rotta = rottaCache.get(chiaveRotta);
+    if (rotta && rotta.promessa && !rotta.valore) await rotta.promessa;
+    const dettagli = rotta && rotta.valore;
     const osservati = (tracce.get(String(a.id).toLowerCase()) || []).map(p => [p.lat, p.lon]);
     if (!osservati.length) osservati.push([a.lat, a.lon]);
     const previsti = [a, ...[1, 2, 3, 4, 5].map(m => posizioneFutura(a, m * 60))].map(p => [p.lat, p.lon]);
@@ -639,7 +661,16 @@
     stratiRotta.push(L.polyline(previsti, { color: '#fb923c', weight: 3, dashArray: '7 7' }).addTo(mappaRotta));
     stratiRotta.push(L.circleMarker([a.lat, a.lon], { radius: 8, color: '#fff', weight: 2,
       fillColor: '#fb923c', fillOpacity: 1 }).bindTooltip('Posizione attuale').addTo(mappaRotta));
-    const tutti = osservati.concat(previsti);
+    const itinerario = dettagli && dettagli.coordinatePartenza && dettagli.coordinateArrivo
+      ? [dettagli.coordinatePartenza, dettagli.coordinateArrivo] : [];
+    if (itinerario.length) {
+      stratiRotta.push(L.polyline(itinerario, { color: '#2563eb', weight: 4, opacity: .8 }).addTo(mappaRotta));
+      stratiRotta.push(L.circleMarker(itinerario[0], { radius: 6, color: '#166534', fillColor: '#22c55e', fillOpacity: 1 })
+        .bindTooltip(`Partenza: ${dettagli.partenza}`).addTo(mappaRotta));
+      stratiRotta.push(L.circleMarker(itinerario[1], { radius: 6, color: '#991b1b', fillColor: '#ef4444', fillOpacity: 1 })
+        .bindTooltip(`Arrivo: ${dettagli.arrivo}`).addTo(mappaRotta));
+    }
+    const tutti = itinerario.concat(osservati, previsti);
     requestAnimationFrame(() => { mappaRotta.invalidateSize(); mappaRotta.fitBounds(L.latLngBounds(tutti).pad(.25), { maxZoom: 13 }); });
   }
 
@@ -650,6 +681,13 @@
     const codice = aeroporto.iata_code || aeroporto.iata || aeroporto.icao_code || aeroporto.icao || '';
     const luogo = aeroporto.municipality || aeroporto.city || aeroporto.name || '';
     return [luogo, codice && `(${codice})`].filter(Boolean).join(' ');
+  }
+
+  function aeroportoCoordinate(aeroporto) {
+    if (!aeroporto) return null;
+    const lat = numero(aeroporto.latitude ?? aeroporto.lat);
+    const lon = numero(aeroporto.longitude ?? aeroporto.lon ?? aeroporto.lng);
+    return lat === null || lon === null ? null : [lat, lon];
   }
 
   function orarioRotta(rotta, prefisso) {
@@ -667,6 +705,7 @@
     if (!rotta) return null;
     return {
       partenza: aeroportoTesto(rotta.origin), arrivo: aeroportoTesto(rotta.destination),
+      coordinatePartenza: aeroportoCoordinate(rotta.origin), coordinateArrivo: aeroportoCoordinate(rotta.destination),
       oraPartenza: orarioRotta(rotta, 'departure'), oraArrivo: orarioRotta(rotta, 'arrival')
     };
   }
@@ -676,10 +715,13 @@
     const box = document.getElementById(`aereo-rotta-${a.id}`);
     if (!box || !callsign) return;
     if (!rottaCache.has(callsign)) {
-      rottaCache.set(callsign, fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(callsign)}`,
-        { cache: 'force-cache' }).then(r => r.ok ? r.json() : null).then(interpretaRotta).catch(() => null));
+      const voce = { valore: null, promessa: null };
+      voce.promessa = fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(callsign)}`,
+        { cache: 'force-cache' }).then(r => r.ok ? r.json() : null).then(interpretaRotta).catch(() => null)
+        .then(rotta => (voce.valore = rotta));
+      rottaCache.set(callsign, voce);
     }
-    const rotta = await rottaCache.get(callsign);
+    const rotta = await rottaCache.get(callsign).promessa;
     if (!box.isConnected) return;
     if (!rotta || (!rotta.partenza && !rotta.arrivo)) {
       box.innerHTML = '<span class="voce-dato">Itinerario:</span> non disponibile'; return;
@@ -768,5 +810,5 @@
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
     interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky, urlAttraverso,
     scaricaConRipiego, providersPredefiniti, aereoAdesso, istanteMostratoMs, tempoReale,
-    interpretaRotta, aeroportoTesto, registraTracce, tracce, stato };
+    interpretaRotta, aeroportoTesto, aeroportoCoordinate, registraTracce, tracce, stato, providersDisponibili };
 }());

@@ -24506,6 +24506,7 @@ function inizializzaSkymap() {
 
   // La scheda dell'oggetto si chiude col suo ✕
   collega('skymap-dettaglio-chiudi', skyChiudiDettaglio);
+  collega('skymap-dettaglio-chiudi-alto', skyChiudiDettaglio);
 
   // I filtri della mappa
   const filtro = (id, campo) => collega(id, () => {

@@ -8713,3 +8713,11 @@ body button.did-ponte:active { transform: translateY(1px); }
 .aereo-rotta-carta > p { margin:8px 2px 0; color:#cbd5e1; font-size:.75rem; }
 .aereo-leggenda { display:inline-block; width:22px; border-top:3px solid #22d3ee; vertical-align:middle; }
 .aereo-leggenda.prevista { border-color:#fb923c; border-top-style:dashed; }
+.aereo-leggenda.completa { border-color:#2563eb; }
+#aereo-rotta-mappa { background:#dbeafe; }
+#aereo-rotta-mappa .leaflet-tile-pane { filter:none; }
+#aereo-rotta-mappa .leaflet-control-attribution { background:rgba(255,255,255,.88); color:#334155; }
+#aereo-rotta-mappa .leaflet-control-attribution a { color:#1d4ed8 !important; }
+.pannello-dettaglio { position:relative; }
+.tasto-chiudi-dettaglio-alto { position:absolute; top:10px; right:10px; z-index:3; }
+.scheda-testata { padding-right:42px; }
