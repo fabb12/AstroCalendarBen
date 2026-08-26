@@ -15061,31 +15061,39 @@ function skyMareCorpo(ctx, base, focale, aria, m) {
   ctx.save();
   const velo = ctx.globalAlpha;
   ctx.fillStyle = g;
-  let i = 0;
-  while (i < n - 1) {
-    if (!col[i] || col[i].liv <= 0) { i++; continue; }
-    const liv = col[i].liv;
-    let fine = i;
-    while (fine + 1 < n && col[fine + 1] && col[fine + 1].liv === liv) fine++;
-    // Un pezzo arriva **sempre** almeno alla colonna dopo. Alla riva il
-    // livello cambia a ogni colonna, quindi ogni pezzo sarebbe lungo una
-    // colonna sola, cioè un poligono senza area: saltandoli si lasciava
-    // scoperta tutta la fascia di costa, e sullo schermo il mare cominciava
-    // di netto dove la sfumatura era finita — una riga verticale al posto
-    // della riva. Due pezzi contigui condividono una colonna e si toccano.
-    const chiusura = (fine === i && col[i + 1]) ? i + 1 : fine;
-    if (chiusura > i) {
-      ctx.globalAlpha = velo * liv / SKY_MARE_GRADINI;
-      ctx.beginPath();
-      ctx.moveTo(col[i].orlo.px, col[i].orlo.py);
-      for (let k = i + 1; k <= chiusura; k++) ctx.lineTo(col[k].orlo.px, col[k].orlo.py);
-      for (let k = chiusura; k >= i; k--) ctx.lineTo(col[k].giu.px, col[k].giu.py);
+
+  // La costa e' una maschera continua, non una fila di pezzi con opacita'
+  // diverse. Disegnare separatamente ogni livello faceva sovrapporre il
+  // triangolo di chiusura di un pezzo a quello successivo: con campi larghi
+  // quei triangoli convergono verso i piedi e il mare diventava una
+  // girandola di spicchi chiari e scuri.
+  //
+  // Si stendono invece 24 veli **annidati**: il velo q contiene tutte le
+  // colonne che hanno almeno q parti d'acqua. La trasparenza di ogni passata
+  // e' quella che porta esattamente da (q-1)/N a q/N con source-over. Cosi'
+  // due colonne vicine condividono sempre la stessa vernice e il passaggio
+  // terra-acqua resta morbido senza triangoli sovrapposti.
+  for (let q = 1; q <= SKY_MARE_GRADINI; q++) {
+    ctx.globalAlpha = velo / (SKY_MARE_GRADINI - q + 1);
+    ctx.beginPath();
+    let inizio = -1;
+    const chiudi = fine => {
+      if (inizio < 0 || fine <= inizio) { inizio = -1; return; }
+      ctx.moveTo(col[inizio].orlo.px, col[inizio].orlo.py);
+      for (let k = inizio + 1; k <= fine; k++) ctx.lineTo(col[k].orlo.px, col[k].orlo.py);
+      for (let k = fine; k >= inizio; k--) ctx.lineTo(col[k].giu.px, col[k].giu.py);
       ctx.closePath();
-      ctx.fill();
+      inizio = -1;
+    };
+    for (let i = 0; i < n; i++) {
+      if (col[i] && col[i].liv >= q) {
+        if (inizio < 0) inizio = i;
+      } else if (inizio >= 0) {
+        chiudi(i - 1);
+      }
     }
-    // Il pezzo dopo riparte dall'ultima colonna di questo, non dalla
-    // successiva: la colonna in comune è la cerniera.
-    i = Math.max(fine, i + 1);
+    if (inizio >= 0) chiudi(n - 1);
+    ctx.fill();
   }
   ctx.restore();
 }
@@ -15941,6 +15949,19 @@ function skyDisegnaAcqueInterne(ctx, base, focale, aria) {
 // Una striscia d'acqua: il bordo lontano in cima, quello vicino in fondo, e
 // in mezzo il colore, la foschia, le rive, l'onda e il riflesso.
 function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, gradiente, riva) {
+  // Una superficie larga un solo raggio (mezzo grado) ha comunque area.
+  // Con un unico punto, pero', il contorno si chiudeva su se stesso e anche
+  // il ripiego a filo tracciava un segmento lungo zero: i laghetti stretti
+  // sparivano del tutto. Si ricostruiscono i due bordi angolari della
+  // colonna, la stessa cella che quel campione rappresenta nella griglia.
+  if (pezzi.length === 1) {
+    const p = pezzi[0];
+    const mezzo = (typeof ACQUE_PASSO_AZ === 'number' ? ACQUE_PASSO_AZ : 0.5) / 2;
+    pezzi = [
+      { az: p.az - mezzo, b: p.b },
+      { az: p.az + mezzo, b: p.b }
+    ];
+  }
   const tipo = pezzi[0].b.tipo === 1 ? 1 : 0;
   const n = pezzi.length;
   const alto = new Array(n), basso = new Array(n);
