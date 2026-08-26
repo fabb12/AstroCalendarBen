@@ -23026,10 +23026,20 @@ function skyLuogoNelPunto(px, py) {
   const az = ((Math.atan2(v[0], v[1]) * SKY_R2D) % 360 + 360) % 360;
   const alt = Math.asin(Math.max(-1, Math.min(1, v[2]))) * SKY_R2D;
   const cresta = skyAltezzaOrizzonte(az);
-  if (alt > cresta + 0.35 || alt < -45) return null;
   const campione = rilPuntoVisibileA(az, alt);
+  // Il bordo disegnato e la cresta interpolata non coincidono necessariamente
+  // al decimo di grado: proprio sulla punta stretta di una vetta il tocco può
+  // cadere qualche pixel sopra `cresta`, pur essendo sul poligono visibile.
+  // Accettiamo quindi la distanza dal campione realmente disegnato, tradotta
+  // in pixel alla scala corrente. Il limite angolare resta anche come rete
+  // contro un tocco nel cielo vuoto e non trasforma tutta la colonna sotto una
+  // cima in un bersaglio.
+  const gradiPerPixel = sky.fov / Math.max(1, sky.altezza);
+  const tolleranza = Math.max(0.35, Math.min(2.5, gradiPerPixel * 14));
+  if (alt < -45 || !campione || campione.scarto > tolleranza ||
+      alt > cresta + tolleranza) return null;
   const partenza = skyLuogoDelCielo();
-  if (!campione || !partenza) return null;
+  if (!partenza) return null;
   const punto = terrenoPuntoA(partenza.lat, partenza.lon, az, campione.km);
   return { ...punto, az, alt: campione.alt, km: campione.km };
 }
