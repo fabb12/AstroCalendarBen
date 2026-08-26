@@ -234,9 +234,46 @@
   }
 
   function osservatore() {
-    const p = typeof sky !== 'undefined' && sky.posizione;
+    // Gli aerei appartengono al cielo che si sta guardando, non sempre alla
+    // posizione principale dell'app: durante una visita il centro e'
+    // `sky.luogoVista` (esposto da skyLuogoDelCielo()).
+    const p = typeof skyLuogoDelCielo === 'function'
+      ? skyLuogoDelCielo()
+      : (typeof sky !== 'undefined' && (sky.luogoVista || sky.posizione));
     if (!p || !Number.isFinite(p.lat) || !Number.isFinite(p.lon)) return null;
     return { lat: p.lat, lon: p.lon, quotaM: p.altitudine || p.quota || 0 };
+  }
+
+  function chiaveCentro(p) {
+    return p && Number.isFinite(p.lat) && Number.isFinite(p.lon)
+      ? `${p.lat.toFixed(4)},${p.lon.toFixed(4)}` : null;
+  }
+
+  function datiDelCentroCorrente(obs = osservatore()) {
+    return !!(stato.ultimoCentro && chiaveCentro(stato.ultimoCentro) === chiaveCentro(obs));
+  }
+
+  // Il cambio del punto di vista e' sincrono, mentre il feed e' asincrono.
+  // Svuotare subito evita anche un solo fotogramma con gli aerei del luogo
+  // precedente; la risposta vecchia viene abortita e non puo' ripopolare il
+  // cielo nuovo.
+  function aereiPosizioneCambiata() {
+    const obs = osservatore();
+    if (datiDelCentroCorrente(obs)) return;
+    stato.aerei = [];
+    stato.ultimoCentro = null;
+    stato.ultimoSuccesso = 0;
+    stato.prossimoTentativo = 0;
+    stato.ultimoRenderSecondo = null;
+    if (stato.controller) {
+      stato.ricaricaDopo = stato.acceso;
+      stato.controller.abort();
+    } else if (stato.acceso && tempoReale()) {
+      carica(true);
+    }
+    testoStato(obs ? 'Nuova posizione: caricamento dati ADS-B…' :
+      'Serve una posizione per cercare gli aerei.', !obs);
+    render();
   }
 
   function arricchisci(aerei, obs) {
@@ -418,6 +455,9 @@
     stato.richiesta = scaricaConRipiego(providers, obs, raggioKm(), controller.signal)
       .then(risultato => {
         if (!stato.acceso) return;
+        // Nel frattempo il planetario potrebbe essersi spostato. Una risposta
+        // valida per il vecchio centro non deve mai apparire nel nuovo cielo.
+        if (chiaveCentro(obs) !== chiaveCentro(osservatore())) return;
         registraTracce(risultato.aerei);
         stato.aerei = arricchisci(risultato.aerei, obs);
         stato.ultimoCentro = obs; stato.ultimoSuccesso = Date.now(); stato.prossimoTentativo = 0; stato.errore = '';
@@ -443,6 +483,7 @@
 
   function aereiDisegna(ctx, base, focale) {
     if (!stato.acceso || !stato.aerei.length || typeof skyProietta !== 'function') return;
+    if (!datiDelCentroCorrente()) { aereiPosizioneCambiata(); return; }
     aggiornaPosizioni();
     aggiornaAllineamenti();
     const secondo = Math.floor(istanteMostratoMs() / 1000);
@@ -722,6 +763,7 @@
   window.aereiCaricaFoto = aereiCaricaFoto;
   window.aereiRaggioCambiato = aereiRaggioCambiato;
   window.aereiAggiornaAdesso = aereiAggiornaAdesso;
+  window.aereiPosizioneCambiata = aereiPosizioneCambiata;
   window.aereiTrova = aereiTrova;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
     interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky, urlAttraverso,
