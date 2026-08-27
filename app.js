@@ -22529,33 +22529,14 @@ function skyQuandoEventoTesto(ev, inCorso) {
   return inCorso ? `in corso · ${picco}` : skyScartoTempoTesto(scarto);
 }
 
-// Il tasto della mappa, per gli eventi che ne hanno una.
-//   Un'eclissi di Sole non si capisce dalla sola posizione in cielo: la
-//   domanda vera è da dove la si vede e quanto — e la risposta è il percorso
-//   del cono d'ombra. Chi la incontra qui, nell'elenco del planetario, prima
-//   doveva ricordarsi di cercarla in agenda per arrivarci. Per le eclissi di
-//   Luna il gemello è la mappa di visibilità.
-function skyTastoMappaHtml(ev) {
-  // Le eclissi hanno due tasti, e dicono due cose diverse: la mappa risponde
-  // a «da dove si vede», il banco Terra e Luna (§7.7-quater) a «perché
-  // proprio stavolta». Il secondo è il posto in cui si vede che la Luna, per
-  // una volta, il cono d'ombra lo prende in pieno.
-  const perche = `<button type="button" class="tasto-evento-cielo" onclick="skyEventoInTreD('${ev.id}')" ` +
-    `title="La Terra e la Luna da fuori in quell'istante, a scala vera, coi coni d'ombra">Perché succede</button>`;
-  if (ev.eclissi) {
-    return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" onclick="skyApriMappaEvento('${ev.id}')" ` +
-      `title="Il percorso del cono d'ombra sulla Terra, minuto per minuto">Mappa dell'ombra</button>${perche}`;
+// Nel planetario conserviamo solo la spiegazione della geometria delle
+// eclissi. Le mappe «Dove si vede» e «Mappa dell'ombra» restano nelle schede
+// dell'Agenda, dove c'è lo spazio per leggerle senza affollare ogni evento.
+function skyTastoPercheHtml(ev) {
+  if (ev.eclissi || ev.eclissiLunare) {
+    return `<button type="button" class="tasto-evento-cielo" onclick="skyEventoInTreD('${ev.id}')" ` +
+      `title="La Terra e la Luna da fuori in quell'istante, a scala vera, coi coni d'ombra">Perché succede</button>`;
   }
-  if (ev.eclissiLunare) {
-    return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" onclick="skyApriMappaEvento('${ev.id}')" ` +
-      `title="Da dove si vede, a che ora, e con la Luna quanto alta">Dove si vede</button>${perche}`;
-  }
-  // Una cometa non ha un terzo tasto suo, e per un po' l'ha avuto: «Vai
-  // sulla cometa», accanto a «Porta l'orologio qui» e «Mostra in cielo».
-  // Tre tasti in fila su una riga di elenco sono due di troppo, e quel
-  // terzo faceva esattamente quello che fa il secondo. Adesso a
-  // selezionare la cometa ci pensa «Mostra in cielo», che è dove uno la
-  // cerca.
   return '';
 }
 
@@ -22585,28 +22566,21 @@ window.skyEventoInTreD = (id) => {
   if (typeof apriSistemaSolare === 'function') apriSistemaSolare({ evento: id });
 };
 
-// Una riga dell'elenco: cosa succede, quando, e i tasti che servono —
-// portarci sopra l'orologio, cercarlo in cielo e, per le eclissi, aprire
-// la mappa di dove si vede.
+// Una riga dell'elenco: cosa succede, quando, e le tre risposte utili —
+// andare all'istante dell'evento, cercare il posto ideale e, quando la
+// geometria lo permette, capire perché succede. La direzione e «Mostra in
+// cielo» duplicavano ciò che il planetario fa già dopo «Vai all'evento».
 function skyEventoHtml(ev, inCorso) {
   const cat = CATEGORIE[ev.categoria] || CATEGORIE.personali;
-  const posizione = skyPosizioneEvento(ev, skyAdesso());
-  const dove = posizione
-    ? `<span class="dove-evento">${skyNomeDirezione(posizione.az)}, ${Math.round(posizione.alt)}°` +
-      `${posizione.alt < 0 ? ' (sotto l\'orizzonte)' : ''}</span>`
-    : '';
-  const cerca = posizione
-    ? `<button type="button" class="tasto-evento-cielo" onclick="skyEventoNelCielo('${ev.id}')">Mostra in cielo</button>`
-    : '';
   return `<div class="voce-evento-cielo${inCorso ? ' in-corso' : ''}" style="--colore-evento:${ev.colore || '#60a5fa'}">
     <span class="segno-evento">${icona(cat.disegno, 18)}</span>
     <div class="corpo-evento">
       <p class="titolo-evento">${ev.titolo}</p>
-      <p class="quando-evento">${skyQuandoEventoTesto(ev, inCorso)}${dove ? ' · ' + dove : ''}</p>
+      <p class="quando-evento">${skyQuandoEventoTesto(ev, inCorso)}</p>
       <div class="azioni-evento">
-        <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Porta l'orologio qui</button>
-        ${cerca}
-        ${skyTastoMappaHtml(ev)}
+        <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Vai all'evento</button>
+        <button type="button" class="tasto-evento-cielo" onclick="apriMigliorPosto('${ev.id}')">Posto ideale</button>
+        ${skyTastoPercheHtml(ev)}
       </div>
     </div>
   </div>`;
@@ -22621,10 +22595,8 @@ function skyGiornoEventoTesto(ev) {
     { weekday: 'short', year: false });
 }
 
-// Una riga dell'elenco della settimana. Qui il tasto è uno solo, ed è quello
-// che serve: portare il planetario su quella sera e puntarlo dove guardare.
-// "Mostra in cielo" non avrebbe senso — al cielo di adesso quell'evento non
-// c'è ancora.
+// Una riga dell'elenco della settimana offre le stesse azioni essenziali delle
+// righe vicine, così non cambia vocabolario in base alla distanza temporale.
 function skyEventoSettimanaHtml(ev) {
   const cat = CATEGORIE[ev.categoria] || CATEGORIE.personali;
   const scarto = Math.round((ev.dataObj.getTime() - skyAdesso().getTime()) / 1000);
@@ -22634,8 +22606,9 @@ function skyEventoSettimanaHtml(ev) {
       <p class="titolo-evento">${ev.titolo}</p>
       <p class="quando-evento">${skyGiornoEventoTesto(ev)} · ${skyScartoTempoTesto(scarto)}</p>
       <div class="azioni-evento">
-        <button type="button" class="tasto-evento-cielo" onclick="apriEventoNelPlanetario('${ev.id}')">Vedi nel planetario</button>
-        ${skyTastoMappaHtml(ev)}
+        <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Vai all'evento</button>
+        <button type="button" class="tasto-evento-cielo" onclick="apriMigliorPosto('${ev.id}')">Posto ideale</button>
+        ${skyTastoPercheHtml(ev)}
       </div>
     </div>
   </div>`;
