@@ -719,6 +719,11 @@ function inizializzaNavigazione() {
 
 // Avvio al caricamento della pagina
 window.addEventListener('DOMContentLoaded', () => {
+  // Le schede di Visualizzazione sono navigazione HTML, non dipendono dal
+  // canvas: rendiamole operative prima degli inizializzatori del planetario.
+  // In questo modo un errore (o un browser senza una delle API usate dal
+  // cielo) non lascia Schermo/Oggetti/Cielo/Paesaggio come tasti inerti.
+  skyInizializzaSchedeVista();
   registraSW();
   inizializzaDispositivo();
   inizializzaNavigazione();
@@ -24664,8 +24669,6 @@ function inizializzaSkymap() {
   document.querySelectorAll('#cielo-comandi [data-vai-gruppo]').forEach(b => {
     b.addEventListener('click', () => skyMostraGruppo(b.dataset.vaiGruppo));
   });
-  // Le quattro schede dentro al pannello Visualizzazione
-  skyInizializzaSchedeVista();
   // Gli aerei: il tasto disegna o non disegna i triangoli, esattamente come
   // Pianeti o Satelliti. Il feed è un'altra cosa e vive nel suo pannello —
   // ma chi chiede di vedere gli aerei mentre i dati sono in pausa li
@@ -24876,6 +24879,7 @@ function skyMostraSchedaVista(nome, ricorda = true) {
     const attiva = b.dataset.schedaVista === scelta;
     b.classList.toggle('attiva', attiva);
     b.setAttribute('aria-selected', attiva ? 'true' : 'false');
+    b.tabIndex = attiva ? 0 : -1;
   });
   // `hidden` e non una classe: un foglio nascosto non deve nemmeno essere
   // raggiungibile col tabulatore, se no si finisce a premere invio su un
@@ -24890,8 +24894,26 @@ function skyMostraSchedaVista(nome, ricorda = true) {
 }
 
 function skyInizializzaSchedeVista() {
-  document.querySelectorAll('[data-scheda-vista]').forEach(b =>
-    b.addEventListener('click', () => skyMostraSchedaVista(b.dataset.schedaVista)));
+  const schede = Array.from(document.querySelectorAll('[data-scheda-vista]'));
+  schede.forEach(b => {
+    b.addEventListener('click', () => skyMostraSchedaVista(b.dataset.schedaVista));
+    // Un tablist deve poter essere percorso anche con le frecce. Oltre a
+    // completare il comportamento accessibile, questo evita di affidarsi al
+    // click sintetico dei browser mobili quando il pannello sta scorrendo.
+    b.addEventListener('keydown', e => {
+      const avanti = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+      const indietro = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+      if (!avanti && !indietro && e.key !== 'Home' && e.key !== 'End') return;
+      e.preventDefault();
+      const corrente = Math.max(0, schede.indexOf(b));
+      const indice = e.key === 'Home' ? 0
+        : e.key === 'End' ? schede.length - 1
+          : (corrente + (avanti ? 1 : -1) + schede.length) % schede.length;
+      const prossima = schede[indice];
+      skyMostraSchedaVista(prossima.dataset.schedaVista);
+      prossima.focus();
+    });
+  });
   let salvata = '';
   try { salvata = localStorage.getItem(CHIAVE_SKY_SCHEDA_VISTA) || ''; } catch (e) { /* niente storage */ }
   skyMostraSchedaVista(salvata, false);
