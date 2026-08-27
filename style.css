@@ -3420,6 +3420,7 @@ body.mappa-spostamento-immersiva { overflow: hidden; }
 
 /* Il segnaposto apre direttamente la scelta del punto di osservazione. Sta
    accanto al menu, con una sagoma propria per non sembrare un settimo gruppo. */
+.azioni-dirette-cielo { display: flex; flex: 0 0 auto; gap: 8px; }
 .tasto-mappa-luogo-cielo {
   flex: 0 0 auto;
   display: flex;
@@ -3440,6 +3441,30 @@ body.mappa-spostamento-immersiva { overflow: hidden; }
 .tasto-mappa-luogo-cielo:hover,
 .tasto-mappa-luogo-cielo:focus-visible {
   color: #fff;
+  border-color: rgba(125, 211, 252, 0.72);
+  background: rgba(14, 116, 144, 0.72);
+}
+
+/* La spia ADS-B è un comando principale accanto alla scelta del luogo e
+   porta al pannello dove si può chiedere subito un nuovo aggiornamento. */
+.tasto-adsb-cielo {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background-color var(--transizione), border-color var(--transizione);
+}
+.tasto-adsb-cielo:hover,
+.tasto-adsb-cielo:focus-visible {
   border-color: rgba(125, 211, 252, 0.72);
   background: rgba(14, 116, 144, 0.72);
 }
@@ -4515,7 +4540,8 @@ body input.casella-data:hover { border: 0; }
   .linguetta-gruppo { width: 34px; height: 34px; }
   .icona-linguetta { width: 19px; height: 19px; }
   .linguette-gruppi { padding: 3px; gap: 2px; }
-  .tasto-mappa-luogo-cielo { width: 42px; height: 42px; }
+  .tasto-mappa-luogo-cielo,
+  .tasto-adsb-cielo { width: 42px; height: 42px; }
   .lettura-cielo { font-size: 0.7rem; padding: 4px 9px; }
   .letture-sinistra { max-width: calc(100% - 82px); }
   .bussola-cielo { width: 68px; height: 68px; }
@@ -8790,18 +8816,6 @@ body button.did-ponte:active { transform: translateY(1px); }
 #aerei-aggiorna[data-esito="successo"] { color:#86efac; border-color:#22c55e; }
 #aerei-aggiorna[data-esito="errore"] { color:#fca5a5; border-color:#ef4444; }
 
-/* La coppia del pannello Visualizzazione: l'interruttore, e accanto la spia
-   che apre il pannello. Occupa **una** casella della griglia dei tasti, così
-   su un telefono resta allineata con Pianeti e Satelliti invece di sfondare
-   la colonna. */
-.tasto-aerei-coppia { display:flex; min-width:0; gap:4px; }
-.tasto-aerei-coppia .tasto-aerei-mostra { flex:1 1 auto; min-width:0; }
-.tasto-aerei-pannello {
-  flex: 0 0 auto;
-  width: 38px;
-  min-width: 38px;
-  padding: 0;
-}
 /* La spia: verde freschi, azzurra in arrivo, ambra vecchi, rossa guasto,
    grigia in pausa. È l'unica parte di questo modulo sempre in vista, ed è
    quella che risponde alla domanda per cui il pannello esiste — «i dati ci
