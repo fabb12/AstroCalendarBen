@@ -403,7 +403,8 @@
                tondi entrano senza scorrere anche su un telefono da 320px.
                Il segnaposto resta subito accanto: scegliere il punto di
                osservazione è un'azione diretta, non un'impostazione da
-               cercare dentro al pannello Tempo. -->
+               cercare dentro al pannello Tempo. La spia ADS-B gli sta a
+               fianco, sempre raggiungibile dalla schermata principale. -->
           <div class="cielo-barra">
             <div class="linguette-gruppi" aria-label="Gruppi di comandi">
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="tempo" aria-pressed="false"
@@ -439,15 +440,22 @@
                   <path d="M12 3.2l2.5 5.7 6.2.6-4.7 4.1 1.4 6.1L12 16.5l-5.4 3.2 1.4-6.1-4.7-4.1 6.2-.6z"/>
                 </svg><span class="nome-gruppo">Astri</span></button>
             </div>
-            <button id="skymap-luogo-mappa" type="button" class="tasto-mappa-luogo-cielo"
-              title="Scegli sulla mappa il punto da cui guardare il cielo"
-              aria-label="Scegli sulla mappa il punto da cui guardare il cielo">
-              <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 21s6.4-6.1 6.4-11.8A6.4 6.4 0 0 0 5.6 9.2C5.6 14.9 12 21 12 21z"/>
-                <circle cx="12" cy="9.2" r="2.2"/>
-              </svg>
-            </button>
+            <div class="azioni-dirette-cielo">
+              <button id="skymap-luogo-mappa" type="button" class="tasto-mappa-luogo-cielo"
+                title="Scegli sulla mappa il punto da cui guardare il cielo"
+                aria-label="Scegli sulla mappa il punto da cui guardare il cielo">
+                <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 21s6.4-6.1 6.4-11.8A6.4 6.4 0 0 0 5.6 9.2C5.6 14.9 12 21 12 21z"/>
+                  <circle cx="12" cy="9.2" r="2.2"/>
+                </svg>
+              </button>
+              <button id="skymap-btn-aerei-pannello" type="button" class="tasto-adsb-cielo"
+                data-vai-gruppo="aerei" aria-label="Apri il pannello degli aerei ADS-B"
+                title="Apri il pannello degli aerei ADS-B">
+                <span id="aerei-spia" class="aerei-spia" data-fase="attesa"></span>
+              </button>
+            </div>
             <!-- Il promemoria che l'orologio è spostato non sta più qui: adesso
                  c'è la barra del tempo in fondo alla mappa, che l'istante lo
                  dice sempre — non solo quando è già andato storto qualcosa. -->
@@ -724,21 +732,8 @@
                   <button id="skymap-btn-deepsky" type="button" class="tasto-cielo" title="Galassie, nebulose e ammassi">Deep Sky</button>
                   <button id="skymap-btn-satelliti" type="button" class="tasto-cielo attiva" title="ISS e Tiangong">Satelliti</button>
                   <button id="skymap-btn-corpiminori" type="button" class="tasto-cielo attiva" title="Comete e asteroidi abbastanza luminosi da vedersi stanotte: quasi sempre non ce n'è nessuno, e quando c'è è il motivo per uscire">Comete e asteroidi</button>
-                  <!-- Gli aerei sono l'unico oggetto di questo elenco che
-                       arriva da una rete che può non rispondere, e per
-                       questo il tasto è doppio: a sinistra l'interruttore
-                       come tutti gli altri, a destra una **spia** che dice
-                       come stanno i dati (verde freschi, ambra vecchi, rossa
-                       guasto) e che apre il pannello ADS-B. Prima, quando il
-                       feed taceva, il cielo restava semplicemente senza
-                       triangoli — cioè identico a un cielo senza aerei. -->
-                  <span class="tasto-aerei-coppia">
-                    <button id="skymap-btn-aerei" type="button" class="tasto-cielo tasto-aerei-mostra" aria-pressed="false"
-                      title="Disegna in cielo gli aerei ADS-B entro il raggio scelto, colorati per distanza">Aerei</button>
-                    <button id="skymap-btn-aerei-pannello" type="button" class="tasto-cielo tasto-aerei-pannello"
-                      data-vai-gruppo="aerei" aria-label="Apri il pannello degli aerei ADS-B"
-                      title="Apri il pannello degli aerei ADS-B"><span id="aerei-spia" class="aerei-spia" data-fase="attesa"></span></button>
-                  </span>
+                  <button id="skymap-btn-aerei" type="button" class="tasto-cielo" aria-pressed="false"
+                    title="Disegna in cielo gli aerei ADS-B entro il raggio scelto, colorati per distanza">Aerei</button>
                 </div>
                 <p class="titolo-foglio-vista">Segni e aiuti</p>
                 <div class="riga-comandi riga-tasti-griglia">
