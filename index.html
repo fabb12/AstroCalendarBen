@@ -2084,6 +2084,21 @@
             </span>
           </label>
           <p id="imp-skymap-sosta-nota" class="text-xs text-slate-500">Da 0,5 a 10 secondi. Il conto riparte se il mirino lascia l’oggetto.</p>
+          <label class="impostazione-sosta-mirino text-sm text-slate-300" for="imp-skymap-durata-mappa">
+            <span>
+              <b class="text-white">Mini-mappa di “Vai qua”</b>
+              <small>Nascondi automaticamente la carta del tragitto dopo questo tempo.</small>
+            </span>
+            <span class="impostazione-sosta-controllo">
+              <input id="imp-skymap-durata-mappa" type="number" min="1" max="60" step="1" value="5" inputmode="numeric" aria-describedby="imp-skymap-durata-mappa-nota">
+              <span>secondi</span>
+            </span>
+          </label>
+          <label class="flex items-center gap-3 text-sm text-slate-300">
+            <input id="imp-skymap-mappa-sempre" type="checkbox" class="accent-blue-500">
+            Tienila visibile fino al prossimo punto premuto nel planetario
+          </label>
+          <p id="imp-skymap-durata-mappa-nota" class="text-xs text-slate-500">Il valore predefinito è 5 secondi; puoi scegliere da 1 a 60 secondi.</p>
         </section>
 
         <section class="space-y-2 border-t border-slate-700 pt-4">

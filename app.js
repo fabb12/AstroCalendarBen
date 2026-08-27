@@ -7063,8 +7063,10 @@ const CHIAVE_SKY_BUSSOLA = 'astrocalendario_bussola_offset_v2';
 const CHIAVE_SKY_CAMERA = 'astrocalendario_camera_campo';
 const CHIAVE_SKY_TASTI_ZOOM = 'astrocalendario_tasti_zoom';
 const CHIAVE_SKY_SOSTA = 'astrocalendario_sosta_mirino';
+const CHIAVE_SKY_DURATA_MAPPA_SPOSTAMENTO = 'astrocalendario_durata_mappa_spostamento';
 const CHIAVE_SKY_HOVER = 'astrocalendario_modalita_hover';
 const SKY_SOSTA_PREDEFINITA_SEC = 1.2;
+const SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC = 5;
 
 // Corpi del Sistema Solare mostrati nel cielo.
 // Gli id sono i valori di Astronomy.Body (semplici stringhe): li scriviamo
@@ -7356,7 +7358,8 @@ const sky = {
   trascinamento: null,
   // La carta geografica che compare dopo un viaggio della camera nel
   // paesaggio. Leaflet nasce soltanto al primo spostamento.
-  mappaSpostamento: { mappa: null, partenza: null, arrivo: null, strati: [] },
+  mappaSpostamento: { mappa: null, partenza: null, arrivo: null, strati: [],
+    durataSec: SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC, timer: null },
   inerzia: null,
   ultimoFotogramma: 0,   // performance.now() del fotogramma precedente, per il dt
   // Il ciclo respira? `battito` è l'istante dell'ultimo fotogramma e
@@ -23362,6 +23365,7 @@ function skyDisegnaPuntoPartenza(ctx, base, focale) {
 
 function skyNascondiMappaSpostamento() {
   const m = sky.mappaSpostamento;
+  if (m.timer) { clearTimeout(m.timer); m.timer = null; }
   skyChiudiMappaSpostamento();
   m.partenza = null;
   m.arrivo = null;
@@ -23391,19 +23395,46 @@ function skyInquadraMappaSpostamento() {
   else m.mappa.fitBounds(L.latLngBounds([da, a]).pad(0.45), { animate: false, maxZoom: 15 });
 }
 
+// Leaflet deve conoscere la misura visibile del riquadro prima di calcolare
+// il centro. Farlo subito dopo aver tolto `hidden` usa a volte la misura del
+// fotogramma precedente e lascia il tragitto fuori centro.
+function skyAggiornaInquadraturaMappaSpostamento() {
+  const m = sky.mappaSpostamento;
+  if (!m.mappa) return;
+  requestAnimationFrame(() => {
+    if (!m.mappa) return;
+    m.mappa.invalidateSize({ pan: false });
+    skyInquadraMappaSpostamento();
+    requestAnimationFrame(() => {
+      if (!m.mappa) return;
+      m.mappa.invalidateSize({ pan: false });
+      skyInquadraMappaSpostamento();
+    });
+  });
+}
+
+function skyProgrammaChiusuraMappaSpostamento() {
+  const m = sky.mappaSpostamento;
+  if (m.timer) clearTimeout(m.timer);
+  m.timer = null;
+  if (!(m.durataSec > 0)) return; // zero significa «fino al prossimo tocco»
+  m.timer = setTimeout(() => skyNascondiMappaSpostamento(), m.durataSec * 1000);
+}
+
 function skyApriMappaSpostamento() {
   const box = document.getElementById('skymap-mappa-spostamento');
   if (!box || box.classList.contains('hidden') || box.classList.contains('mappa-spostamento-aperta')) return;
+  if (sky.mappaSpostamento.timer) {
+    clearTimeout(sky.mappaSpostamento.timer);
+    sky.mappaSpostamento.timer = null;
+  }
   box.classList.add('mappa-spostamento-aperta');
   box.setAttribute('role', 'dialog');
   box.setAttribute('aria-modal', 'true');
   box.setAttribute('aria-label', 'Mappa interattiva dello spostamento geografico');
   document.body.classList.add('mappa-spostamento-immersiva');
   skyInterazioneMappaSpostamento(true);
-  setTimeout(() => {
-    sky.mappaSpostamento.mappa?.invalidateSize({ pan: false });
-    skyInquadraMappaSpostamento();
-  }, 0);
+  skyAggiornaInquadraturaMappaSpostamento();
   document.getElementById('skymap-mappa-spostamento-esci')?.focus();
 }
 
@@ -23416,7 +23447,8 @@ function skyChiudiMappaSpostamento() {
   box.setAttribute('aria-label', 'Spostamento geografico della vista. Apri la mappa interattiva a tutto schermo');
   document.body.classList.remove('mappa-spostamento-immersiva');
   skyInterazioneMappaSpostamento(false);
-  setTimeout(() => sky.mappaSpostamento.mappa?.invalidateSize({ pan: false }), 0);
+  skyAggiornaInquadraturaMappaSpostamento();
+  skyProgrammaChiusuraMappaSpostamento();
   box.focus({ preventScroll: true });
 }
 
@@ -23445,14 +23477,14 @@ function skyMostraMappaSpostamentoGeografico(partenza, arrivo) {
     fillColor: '#7dd3fc', fillOpacity: 1 }).addTo(m.mappa);
   m.strati = [filo, origine, destinazione];
   const distanza = skyDistanzaGeograficaKm(partenza, arrivo);
-  skyInquadraMappaSpostamento();
-  setTimeout(() => m.mappa && m.mappa.invalidateSize({ pan: false }), 0);
+  skyAggiornaInquadraturaMappaSpostamento();
   const misura = distanza < 1 ? `${Math.round(distanza * 1000)} m` : `${distanza.toFixed(distanza < 10 ? 1 : 0)} km`;
   const nomeArrivo = arrivo.nome || formattaCoordinate(arrivo.lat, arrivo.lon);
   const testo = `Spostamento: ${misura} · ${nomeArrivo}`;
   const label = document.getElementById('skymap-mappa-spostamento-testo');
   if (label) label.textContent = testo;
   box.setAttribute('aria-label', `${testo}. Il punto giallo indica la partenza, quello azzurro l'arrivo. Tocca per aprire la mappa interattiva a tutto schermo.`);
+  skyProgrammaChiusuraMappaSpostamento();
 }
 
 // Il dito si stacca: se stava ancora correndo, la vista prosegue da sola.
@@ -34238,6 +34270,33 @@ function inizializzaImpostazioni() {
       impSosta.value = String(secondi);
       try { localStorage.setItem(CHIAVE_SKY_SOSTA, String(secondi)); } catch (e) { /* niente storage */ }
     });
+  }
+
+  const impDurataMappa = document.getElementById('imp-skymap-durata-mappa');
+  const impMappaSempre = document.getElementById('imp-skymap-mappa-sempre');
+  if (impDurataMappa && impMappaSempre) {
+    const salvata = localStorage.getItem(CHIAVE_SKY_DURATA_MAPPA_SPOSTAMENTO);
+    const valore = salvata === 'sempre' ? 0 : parseFloat(salvata);
+    sky.mappaSpostamento.durataSec = Number.isFinite(valore)
+      ? Math.max(0, Math.min(60, valore))
+      : SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC;
+    impMappaSempre.checked = sky.mappaSpostamento.durataSec === 0;
+    impDurataMappa.value = String(sky.mappaSpostamento.durataSec || SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC);
+    impDurataMappa.disabled = impMappaSempre.checked;
+    const salvaDurataMappa = () => {
+      const sempre = impMappaSempre.checked;
+      const secondi = Math.max(1, Math.min(60,
+        parseFloat(impDurataMappa.value) || SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC));
+      impDurataMappa.value = String(secondi);
+      impDurataMappa.disabled = sempre;
+      sky.mappaSpostamento.durataSec = sempre ? 0 : secondi;
+      try { localStorage.setItem(CHIAVE_SKY_DURATA_MAPPA_SPOSTAMENTO, sempre ? 'sempre' : String(secondi)); } catch (e) { /* niente storage */ }
+      if (!document.getElementById('skymap-mappa-spostamento')?.classList.contains('hidden')) {
+        skyProgrammaChiusuraMappaSpostamento();
+      }
+    };
+    impDurataMappa.addEventListener('change', salvaDurataMappa);
+    impMappaSempre.addEventListener('change', salvaDurataMappa);
   }
 
   const tab = Array.from(document.querySelectorAll('[data-imp-tab]'));
