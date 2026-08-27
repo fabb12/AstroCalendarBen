@@ -17708,15 +17708,25 @@ const SKY_CIME_VELO_STRATO = [1, 0.94, 0.86];
 // vera resta come guardia: se le due si allontanano più di
 // `SKY_CIME_AGGANCIO_MAX` il disegno non sta parlando di questa vetta (una
 // cresta più vicina se l'è mangiata, o è oltre l'ultimo campione), e allora
-// meglio la quota vera che un aggancio a caso.
+// il nome non va disegnato: appenderlo alla quota teorica è precisamente ciò
+// che lo farebbe galleggiare nel cielo.
 const SKY_CIME_AGGANCIO_MAX = 1.5;
 const SKY_CIME_AGGANCIO_PROVE = 7;
 
 function skyPuntaDisegnata(c) {
-  const raggio = typeof TERRENO_PASSO_AZ === 'number' ? TERRENO_PASSO_AZ * 0.5 : 1.5;
+  // Col rilievo fine la punta può cadere al massimo fra due raggi della sua
+  // maglia (mezzo grado), non fra due campioni della vecchia griglia grossa
+  // (7,5°). Usare sempre quest'ultima faceva cercare per quasi quattro gradi
+  // per lato: bastava una cima più alta lì accanto e il nome scivolava su di
+  // lei, lasciando la propria punta senza etichetta.
+  const fine = typeof rilPronto === 'function' && rilPronto() &&
+    typeof RIL_PASSO_AZ === 'number';
+  const passo = fine ? RIL_PASSO_AZ
+    : (typeof TERRENO_PASSO_AZ === 'number' ? TERRENO_PASSO_AZ : 3);
+  const raggio = passo * 0.5;
   let azMigliore = c.az;
   let altMigliore = skyQuotaDisegnata(c.az, c.km);
-  if (!Number.isFinite(altMigliore)) return { az: c.az, alt: c.alt };
+  if (!Number.isFinite(altMigliore)) return null;
   for (let i = 0; i < SKY_CIME_AGGANCIO_PROVE; i++) {
     const az = c.az + raggio * (2 * i / (SKY_CIME_AGGANCIO_PROVE - 1) - 1);
     const q = skyQuotaDisegnata(az, c.km);
@@ -17725,11 +17735,11 @@ function skyPuntaDisegnata(c) {
     // far scivolare il nome lungo una cresta piatta.
     if (Number.isFinite(q) && q > altMigliore + 1e-4) { altMigliore = q; azMigliore = az; }
   }
-  return {
-    az: azMigliore,
-    alt: Math.min(Math.max(altMigliore, c.alt - SKY_CIME_AGGANCIO_MAX),
-      c.alt + SKY_CIME_AGGANCIO_MAX)
-  };
+  // La quota OSM serve soltanto da guardia d'identità. La posizione da
+  // proiettare resta *esattamente* quella del crinale dipinto: tosarla verso
+  // `c.alt` lasciava ancora fino a 1,5° di aria fra triangolino e montagna.
+  if (Math.abs(altMigliore - c.alt) > SKY_CIME_AGGANCIO_MAX) return null;
+  return { az: azMigliore, alt: altMigliore };
 }
 
 // A quale strato appartiene una vetta. Le soglie sono quelle del disegno
@@ -18202,6 +18212,7 @@ function skyNomiCime(ctx, base, focale, occupati) {
     // Non `c.az`/`c.alt` ma la punta come è **disegnata**: è l'unica cosa che
     // fa toccare il triangolino al crinale invece di lasciarlo per aria.
     const punta = skyPuntaDisegnata(c);
+    if (!punta) continue;
     const p = skyProietta(skyVettore(punta.az, punta.alt), base, focale);
     if (!p.davanti) continue;
     // Di traverso si è larghi di manica (la scritta parte da qui e va a
