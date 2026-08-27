@@ -24664,6 +24664,16 @@ function inizializzaSkymap() {
   document.querySelectorAll('#cielo-comandi [data-vai-gruppo]').forEach(b => {
     b.addEventListener('click', () => skyMostraGruppo(b.dataset.vaiGruppo));
   });
+  // Le quattro schede dentro al pannello Visualizzazione
+  skyInizializzaSchedeVista();
+  // Gli aerei: il tasto disegna o non disegna i triangoli, esattamente come
+  // Pianeti o Satelliti. Il feed è un'altra cosa e vive nel suo pannello —
+  // ma chi chiede di vedere gli aerei mentre i dati sono in pausa li
+  // riaccende, perché un cielo vuoto non è la risposta a quella domanda.
+  collega('skymap-btn-aerei', () => {
+    if (typeof aereiImpostaAccesi === 'function') aereiImpostaAccesi(
+      !(typeof AereiADS_B !== 'undefined' && AereiADS_B.stato.visibile));
+  });
   // Sotto il cielo il tasto deve fare qualcosa al primo tocco, non aprire
   // una finestra: si prova la cascata sul posto. Solo se resta senza
   // risposta si apre la finestra, dove la posizione si può scegliere a mano.
@@ -24818,17 +24828,14 @@ function skyMostraGruppo(nome) {
   // mentre il cielo cerca di comparire era il pezzo più caro dell'apertura.
   // Chi tocca "Astri" prima che il tempo libero arrivi le trova comunque.
   if (nome === 'astri') skyCostruisciElenco();
-  let aperto = barra.dataset.gruppoAttivo === nome ? '' : (nome || '');
-  // «Aerei» è insieme pannello e interruttore: solo un gesto esplicito fa
-  // partire il feed e solo mentre è acceso i dati ADS-B compaiono in mappa.
-  if (nome === 'aerei' && typeof aereiImpostaAccesi === 'function') {
-    // Il pannello puo essere stato chiuso automaticamente aprendo la scheda
-    // di un oggetto. In quel caso lo stato vero e' quello del feed, non
-    // `gruppoAttivo`: il tocco successivo deve spegnerlo e ripulire la mappa.
-    const accendi = !(typeof AereiADS_B !== 'undefined' && AereiADS_B.stato.acceso);
-    aereiImpostaAccesi(accendi);
-    aperto = accendi ? 'aerei' : '';
-  }
+  const aperto = barra.dataset.gruppoAttivo === nome ? '' : (nome || '');
+  // «Aerei» non è più insieme pannello e interruttore, ed è la correzione di
+  // un equivoco che costava caro: aprire il pannello per *guardare* lo stato
+  // dei dati accendeva anche i triangoli sul cielo, e richiuderlo li spegneva
+  // insieme al feed. Adesso questa linguetta apre e chiude una finestra e
+  // basta; a decidere se gli aerei si disegnano è il tasto «Aerei» del
+  // pannello Visualizzazione (o «Mostra in cielo» qui dentro), e a decidere
+  // se i dati arrivano è «Dati ADS-B».
   // Il pannello del gruppo e la scheda dell'oggetto stanno tutt'e due in
   // fondo alla mappa: su un telefono, aperti insieme, si scrivevano uno
   // sopra l'altro. Non stanno mai a schermo nello stesso momento — aprendo
@@ -24839,20 +24846,55 @@ function skyMostraGruppo(nome) {
   barra.querySelectorAll('.gruppo-comandi').forEach(s =>
     s.classList.toggle('gruppo-attivo', !!aperto && s.dataset.gruppo === aperto));
   barra.querySelectorAll('[data-vai-gruppo]').forEach(b => {
-    // Aerei rimane evidenziato finche il feed e' acceso, anche quando un'altra
-    // azione chiude il suo pannello. Le altre linguette indicano invece il
-    // solo gruppo attualmente aperto.
-    const attiva = b.dataset.vaiGruppo === 'aerei'
-      ? !!(typeof AereiADS_B !== 'undefined' && AereiADS_B.stato.acceso)
-      : !!aperto && b.dataset.vaiGruppo === aperto;
+    const attiva = !!aperto && b.dataset.vaiGruppo === aperto;
     b.classList.toggle('attiva', attiva);
     b.setAttribute('aria-pressed', attiva ? 'true' : 'false');
   });
+  // Il tasto degli aerei nel pannello Visualizzazione dice se i triangoli
+  // sono accesi, non se questo pannello è aperto: è un interruttore come
+  // Pianeti o Stelle, e la spia accanto a lui parla dei dati.
+  if (typeof aereiAggiornaUI === 'function') aereiAggiornaUI();
   // Le altezze accanto ai nomi si aggiornano solo a pannello aperto (vedi
   // `skyElencoInVista`): aprendolo adesso sarebbero quelle di quando lo si è
   // chiuso, e mezzo minuto in cielo si vede. Una passata subito, prima che
   // il primo battito da mezzo secondo arrivi.
   if (aperto === 'astri') skyAggiornaEtichette();
+}
+
+// --- Le quattro schede del pannello Visualizzazione ------------------
+// Un pannello solo al posto di due, e dentro quattro fogli che si danno il
+// cambio. La scelta si ricorda fra una sessione e l'altra: chi ha passato la
+// serata a sistemare il paesaggio non se lo ritrova su «Schermo» ogni volta
+// che riapre il planetario — ed è la ragione per cui questa funzione esiste
+// invece di essere tre righe dentro a un ascoltatore.
+const CHIAVE_SKY_SCHEDA_VISTA = 'astrocalendario_scheda_vista';
+const SKY_SCHEDE_VISTA = ['schermo', 'oggetti', 'cielo', 'paesaggio'];
+
+function skyMostraSchedaVista(nome, ricorda = true) {
+  const scelta = SKY_SCHEDE_VISTA.includes(nome) ? nome : SKY_SCHEDE_VISTA[0];
+  document.querySelectorAll('[data-scheda-vista]').forEach(b => {
+    const attiva = b.dataset.schedaVista === scelta;
+    b.classList.toggle('attiva', attiva);
+    b.setAttribute('aria-selected', attiva ? 'true' : 'false');
+  });
+  // `hidden` e non una classe: un foglio nascosto non deve nemmeno essere
+  // raggiungibile col tabulatore, se no si finisce a premere invio su un
+  // tasto che non si vede.
+  document.querySelectorAll('.foglio-vista').forEach(f => {
+    f.hidden = f.dataset.scheda !== scelta;
+    f.classList.toggle('foglio-attivo', f.dataset.scheda === scelta);
+  });
+  if (ricorda) {
+    try { localStorage.setItem(CHIAVE_SKY_SCHEDA_VISTA, scelta); } catch (e) { /* niente storage */ }
+  }
+}
+
+function skyInizializzaSchedeVista() {
+  document.querySelectorAll('[data-scheda-vista]').forEach(b =>
+    b.addEventListener('click', () => skyMostraSchedaVista(b.dataset.schedaVista)));
+  let salvata = '';
+  try { salvata = localStorage.getItem(CHIAVE_SKY_SCHEDA_VISTA) || ''; } catch (e) { /* niente storage */ }
+  skyMostraSchedaVista(salvata, false);
 }
 
 // =====================================================================

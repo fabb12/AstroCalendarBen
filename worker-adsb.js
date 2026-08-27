@@ -4,7 +4,8 @@
 const FEED = [
   (lat, lon, dist) => `https://opendata.adsb.fi/api/v2/lat/${lat}/lon/${lon}/dist/${dist}`,
   (lat, lon, dist) => `https://api.adsb.lol/v2/point/${lat}/${lon}/${dist}`,
-  (lat, lon, dist) => `https://api.airplanes.live/v2/point/${lat}/${lon}/${dist}`
+  (lat, lon, dist) => `https://api.airplanes.live/v2/point/${lat}/${lon}/${dist}`,
+  (lat, lon, dist) => `https://api.adsb.one/v2/point/${lat}/${lon}/${dist}`
 ];
 
 function cors(request) {
@@ -34,7 +35,16 @@ export default {
           headers: { 'Accept': 'application/json', 'User-Agent': 'AstroCalendarBen/1.0' },
           cf: { cacheEverything: true, cacheTtl: 20 }
         });
-        if (risposta.ok) return new Response(risposta.body, { status: 200,
+        if (!risposta.ok) continue;
+        // Un 200 con dentro una pagina d'errore non e' una risposta: passata
+        // cosi' com'e', il browser la leggerebbe come «zero aerei» e non
+        // proverebbe la rete successiva. Riconoscere lo schema qui costa una
+        // lettura e fa la stessa cernita di aerei.js §1.
+        const testo = await risposta.text();
+        let dati;
+        try { dati = JSON.parse(testo); } catch (_) { continue; }
+        if (!Array.isArray(dati && (dati.ac || dati.aircraft))) continue;
+        return new Response(testo, { status: 200,
           headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=20' } });
       } catch (_) { /* il feed seguente e' una rete indipendente */ }
     }
