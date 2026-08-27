@@ -293,8 +293,73 @@ function meteoNuvoleAllOra(dati, ms) {
     pioggia: mix('pioggia'), faseOra: (ms / 3600000) % 1 };
 }
 
+// Un generatore piccolo e deterministico: la stessa previsione non cambia
+// forma a ogni fotogramma. I quattro richiami successivi danno posizione,
+// altezza e trasparenza diverse ai fiocchi dello stesso banco.
+function meteoNuvolaCaso(seme) {
+  let stato = (seme | 0) || 1;
+  return () => {
+    stato = Math.imul(stato ^ (stato >>> 16), 0x45d9f3b);
+    stato = Math.imul(stato ^ (stato >>> 16), 0x45d9f3b);
+    return ((stato ^ (stato >>> 16)) >>> 0) / 4294967296;
+  };
+}
+
+// Un banco non è un'ellisse uniforme: ha una base più scura e quasi piatta,
+// torri illuminate irregolari e lembi trasparenti. La sovrapposizione dei
+// gradienti conserva volume anche sul cielo chiaro senza bordi da fumetto.
+function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto) {
+  const caso = meteoNuvolaCaso(seme);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((caso() - .5) * (alto ? .34 : .16));
+
+  if (alto) {
+    // I cirri sono filamenti di ghiaccio stirati dal vento, non batuffoli.
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      const yy = (caso() - .5) * r * .65;
+      ctx.strokeStyle = `rgba(${colore},${alpha * (.22 + caso() * .30)})`;
+      ctx.lineWidth = r * (.07 + caso() * .08);
+      ctx.beginPath();
+      ctx.moveTo(-r * (1.15 + caso() * .25), yy);
+      ctx.bezierCurveTo(-r * .35, yy - r * (.45 + caso() * .25),
+        r * .15, yy + r * (.35 + caso() * .22), r * (1.2 + caso() * .35), yy - r * .12);
+      ctx.stroke();
+    }
+    ctx.restore();
+    return;
+  }
+
+  // Ombra comune sotto il banco: lega i fiocchi e suggerisce lo spessore.
+  let g = ctx.createRadialGradient(0, r * .18, r * .08, 0, r * .2, r * 1.35);
+  g.addColorStop(0, `rgba(55,65,81,${alpha * .50})`);
+  g.addColorStop(.58, `rgba(72,82,96,${alpha * .25})`);
+  g.addColorStop(1, 'rgba(55,65,81,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(0, r * .22, r * 1.48, r * .48, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const fiocchi = 7 + Math.round(caso() * 3);
+  for (let i = 0; i < fiocchi; i++) {
+    const fx = (caso() - .5) * r * 2.15;
+    const fy = (caso() - .62) * r * .70;
+    const fr = r * (.28 + caso() * .40);
+    g = ctx.createRadialGradient(fx - fr * .24, fy - fr * .30, fr * .06, fx, fy, fr);
+    g.addColorStop(0, `rgba(${colore},${Math.min(.9, alpha * (.82 + caso() * .28))})`);
+    g.addColorStop(.55, `rgba(${colore},${alpha * .60})`);
+    g.addColorStop(1, `rgba(${colore},0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(fx, fy, fr * (1.05 + caso() * .45), fr, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function meteoDisegnaNuvole(ctx, base, focale, aria) {
-  if (typeof sky === 'undefined' || !sky.atmosfera || sky.camera) return;
+  if (typeof sky === 'undefined' || !sky.nuvole || sky.camera) return;
   const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
   if (!luogo) return;
   const chiave = meteoNuvoleChiave(luogo);
@@ -340,15 +405,10 @@ function meteoDisegnaNuvole(ctx, base, focale, aria) {
       const p = skyProietta(skyVettore(az, alt), base, focale);
       if (!p.davanti || p.px < -300 || p.px > sky.larghezza + 300 || p.py < -180 || p.py > sky.altezza + 180) continue;
       const r = Math.max(32, focale * (0.12 + cop / 900) * s.scala);
-      const colore = luce > 0.18 ? (n.pioggia > 55 ? '92,102,115' : '218,225,232') : '112,126,148';
-      const grad = ctx.createRadialGradient(p.px - r * .18, p.py - r * .12, r * .08, p.px, p.py, r);
-      grad.addColorStop(0, `rgba(${colore},${Math.min(.78, s.alpha + cop / 260)})`);
-      grad.addColorStop(.55, `rgba(${colore},${s.alpha * .72})`);
-      grad.addColorStop(1, `rgba(${colore},0)`);
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.ellipse(p.px, p.py, r * 1.7, r * .72, rumore * .22, 0, Math.PI * 2);
-      ctx.fill();
+      const colore = luce > 0.18 ? (n.pioggia > 55 ? '130,139,150' : '226,232,238') : '126,139,160';
+      meteoDipingiBancoNuvoloso(ctx, p.px, p.py, r, colore,
+        Math.min(.82, s.alpha + cop / 280), seme * 101 + livello * 1009 + i * 7919,
+        livello === 0);
     }
   });
   ctx.restore();

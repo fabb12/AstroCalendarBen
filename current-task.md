@@ -4,8 +4,8 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Il rilievo 3D del Planetario segue gli spostamenti GPS con parallasse: il primo
-piano scorre più del fondo mentre ci si muove a piedi, in auto o in aereo. La
-maglia viene ricentrata solo oltre soglie adattate alla velocità e con un freno
-temporale, continuando a mostrare quella traslata durante il caricamento. Cache
-PWA portata ad `astrocal-v200`.
+Nel Planetario atmosfera e nuvole sono ora due modalità separate ed esclusive:
+il primo tasto mostra colore del cielo, foschia e aloni, il secondo soltanto la
+copertura prevista. Le nuvole non sono più ellissi uniformi: gli strati bassi e
+medi hanno ombre, fiocchi e volume, mentre i cirri sono filamenti stirati dal
+vento. Cache PWA portata ad `astrocal-v203`.
