@@ -4,11 +4,11 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Le nuvole del planetario non sono più composte da batuffoli rotondi separati.
-Ogni banco ha ora una sagoma continua e irregolare, una base larga e scura,
-una massa sfumata e una luce diffusa sulla sommità. I cirri sono più fini e
-formano ciuffi di filamenti piegati nella stessa direzione, invece di cinque
-righe spesse. La forma resta deterministica e continua quindi a non tremare
-tra un fotogramma e l'altro.
+Le nuvole del planetario hanno ora volumi interni morbidi racchiusi in una
+sagoma continua, con zone dense e fredde e gobbe illuminate che danno
+profondità senza tornare all'effetto «fila di batuffoli». La direzione del
+riflesso è calcolata dalla posizione reale del Sole nel planetario: il lato
+esposto si accende, quello opposto resta in ombra e al tramonto la luce assume
+una tinta appena dorata. La forma resta deterministica e non trema fra i frame.
 
-Cache PWA portata ad `astrocal-v206`.
+Cache PWA portata ad `astrocal-v208`.
