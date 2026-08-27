@@ -19631,6 +19631,16 @@ function skyDisegna() {
     disegnaAstriPrincipali();
   }
 
+  // Le nuvole appartengono al luogo e all'ora mostrati, non a una generica
+  // decorazione del planetario. Si dipingono sopra alla luce del cielo e a
+  // tutti gli astri (che devono davvero sparire dietro uno strato coperto),
+  // ma prima del terreno, perché una cresta vicina le taglia all'orizzonte.
+  // Il modulo meteo le scarica e interpola; senza rete questo gancio non fa
+  // nulla e il planetario continua a funzionare come prima.
+  if (!conCamera && typeof meteoDisegnaNuvole === 'function') {
+    meteoDisegnaNuvole(ctx, base, focale, aria);
+  }
+
   if (!conCamera) skyDisegnaTerreno(ctx, base, focale, aria);
   // I nomi — paesi e montagne insieme, in una passata sola perché il posto
   // se lo devono dividere (vedi `skyDisegnaNomiOrizzonte`)
@@ -24099,6 +24109,10 @@ function skyCaricaIlResto() {
     },
     () => { if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica(); },
     () => { if (typeof satPrecaricaTle === 'function') satPrecaricaTle(); },
+    // Copertura nuvolosa del luogo e dell'ora mostrati. È separata dal
+    // meteo della scheda Stasera: il planetario può essere in visita in
+    // un'altra città senza cambiare la posizione dell'app.
+    () => { if (typeof meteoCaricaNuvoleCielo === 'function') meteoCaricaNuvoleCielo(); },
     // Non scarica nulla finché l'interruttore Aerei non è stato acceso; se
     // lo era già, riavvia soltanto il timer fermato uscendo dal planetario.
     () => { if (typeof aereiAvvia === 'function') aereiAvvia(); },
