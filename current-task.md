@@ -4,10 +4,10 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Le geometrie multipoligono dei laghi vengono ricucite con una tolleranza adatta
-alle risposte Overpass, conservando il profilo originale. I membri incompleti
-non vengono più chiusi artificialmente con una corda: così non generano falsi
-spicchi d'acqua sulla terra accanto alla riva (in particolare sui grandi laghi,
-come il Lago di Como).
+L'agenda offre «Trova il posto migliore» per gli eventi con una posizione in
+cielo. La ricerca confronta 37 punti entro un raggio regolabile, calcola altezza
+e direzione dell'astro all'istante dell'evento, misura le creste davanti con le
+quote reali e mostra le cinque alternative migliori su una mappa, con accesso
+alle indicazioni e al planetario visto dal punto scelto.
 
-Cache PWA portata ad `astrocal-v211`.
+Cache PWA portata ad `astrocal-v212`.
