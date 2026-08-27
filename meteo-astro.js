@@ -219,6 +219,141 @@ function meteoTrasparenza(o) {
   return Math.max(1, Math.min(5, t));
 }
 
+
+// =====================================================================
+// 2-bis. LE NUVOLE NEL PLANETARIO
+// =====================================================================
+//
+// Non sono una texture ornamentale: ogni fotogramma cerca la previsione
+// più vicina al luogo visitato e interpola le due ore attorno all'orologio
+// del planetario. Basse, medie e alte restano tre strati distinti; il vento
+// al suolo le fa scorrere senza il salto che altrimenti si vedrebbe allo
+// scoccare dell'ora. Oltre l'intervallo della previsione non si inventa
+// niente: il cielo resta pulito.
+
+const METEO_NUVOLE_VALIDO_MS = 60 * 60 * 1000;
+const meteoNuvoleCache = new Map();
+const meteoNuvoleInCorso = new Map();
+let meteoNuvoleUltimoTentativo = 0;
+
+function meteoNuvoleChiave(luogo) {
+  return `${Number(luogo.lat).toFixed(2)},${Number(luogo.lon).toFixed(2)}`;
+}
+
+function meteoCaricaNuvoleCielo(forza) {
+  const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() :
+    (typeof luogoCorrente === 'function' ? luogoCorrente() : null);
+  if (!luogo) return Promise.resolve(null);
+  const chiave = meteoNuvoleChiave(luogo);
+  const gia = meteoNuvoleCache.get(chiave);
+  if (!forza && gia && Date.now() - gia.quando < METEO_NUVOLE_VALIDO_MS) return Promise.resolve(gia);
+  if (meteoNuvoleInCorso.has(chiave)) return meteoNuvoleInCorso.get(chiave);
+
+  const campi = 'cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,' +
+    'wind_speed_10m,wind_direction_10m,precipitation_probability';
+  const url = 'https://api.open-meteo.com/v1/forecast' +
+    `?latitude=${Number(luogo.lat).toFixed(4)}&longitude=${Number(luogo.lon).toFixed(4)}` +
+    `&hourly=${campi}&forecast_days=${METEO_ASTRO_GIORNI}&timezone=UTC`;
+  const corsa = fetch(url)
+    .then(r => { if (!r.ok) throw new Error('nuvole non disponibili'); return r.json(); })
+    .then(d => {
+      const h = d.hourly || {};
+      const p = (nome, i) => h[nome] && h[nome][i] !== null ? Number(h[nome][i]) : null;
+      const ore = (h.time || []).map((t, i) => ({
+        // La richiesta è in UTC, ma Open-Meteo omette la Z: senza
+        // aggiungerla il browser leggerebbe l'ora nel fuso del telefono.
+        ms: new Date(/[zZ]|[+-]\d\d:\d\d$/.test(t) ? t : t + 'Z').getTime(), totale: p('cloud_cover', i),
+        basse: p('cloud_cover_low', i), medie: p('cloud_cover_mid', i),
+        alte: p('cloud_cover_high', i), vento: p('wind_speed_10m', i),
+        ventoDa: p('wind_direction_10m', i), pioggia: p('precipitation_probability', i)
+      })).filter(o => isFinite(o.ms));
+      const dati = { lat: luogo.lat, lon: luogo.lon, quando: Date.now(), ore };
+      meteoNuvoleCache.set(chiave, dati);
+      return dati;
+    })
+    .catch(() => gia || null)
+    .finally(() => meteoNuvoleInCorso.delete(chiave));
+  meteoNuvoleInCorso.set(chiave, corsa);
+  return corsa;
+}
+
+function meteoNuvoleAllOra(dati, ms) {
+  if (!dati || !dati.ore || !dati.ore.length || ms < dati.ore[0].ms || ms > dati.ore[dati.ore.length - 1].ms) return null;
+  let i = 0;
+  while (i + 1 < dati.ore.length && dati.ore[i + 1].ms <= ms) i++;
+  const a = dati.ore[i], b = dati.ore[Math.min(i + 1, dati.ore.length - 1)];
+  const t = b.ms === a.ms ? 0 : (ms - a.ms) / (b.ms - a.ms);
+  const mix = nome => {
+    const x = a[nome], y = b[nome];
+    if (!isFinite(x)) return isFinite(y) ? y : 0;
+    return isFinite(y) ? x + (y - x) * t : x;
+  };
+  return { totale: mix('totale'), basse: mix('basse'), medie: mix('medie'),
+    alte: mix('alte'), vento: mix('vento'), ventoDa: mix('ventoDa'),
+    pioggia: mix('pioggia'), faseOra: (ms / 3600000) % 1 };
+}
+
+function meteoDisegnaNuvole(ctx, base, focale, aria) {
+  if (typeof sky === 'undefined' || !sky.atmosfera || sky.camera) return;
+  const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
+  if (!luogo) return;
+  const chiave = meteoNuvoleChiave(luogo);
+  let dati = meteoNuvoleCache.get(chiave);
+
+  // Se si viaggia sulla mappa, la prima passata avvia da sola la previsione
+  // del posto nuovo. Il limite evita una richiesta per fotogramma quando il
+  // servizio o la connessione non rispondono.
+  if (!dati && !meteoNuvoleInCorso.has(chiave) && Date.now() - meteoNuvoleUltimoTentativo > 30000) {
+    meteoNuvoleUltimoTentativo = Date.now();
+    meteoCaricaNuvoleCielo();
+  }
+  // Per casa riusiamo subito i dati già scaricati dalla scheda Stasera.
+  if (!dati && meteoAstro && Math.abs(meteoAstro.lat - luogo.lat) < 0.3 && Math.abs(meteoAstro.lon - luogo.lon) < 0.3) {
+    dati = { ore: meteoAstro.ore.map(o => ({ ms: o.ms, totale: o.nuvole,
+      basse: o.nuvoleBasse, medie: o.nuvoleMedie, alte: o.nuvoleAlte,
+      vento: o.vento, ventoDa: o.ventoDa, pioggia: o.pioggia })) };
+  }
+  const adesso = typeof skyAdesso === 'function' ? skyAdesso().getTime() : Date.now();
+  const n = meteoNuvoleAllOra(dati, adesso);
+  if (!n || n.totale < 3) return;
+
+  const luce = aria && isFinite(aria.luce) ? aria.luce : 0;
+  const strati = [
+    { cop: n.alte, alt: 64, passo: 26, scala: 1.35, alpha: 0.24 },
+    { cop: n.medie, alt: 42, passo: 22, scala: 1.05, alpha: 0.34 },
+    { cop: n.basse, alt: 24, passo: 18, scala: 0.86, alpha: 0.48 }
+  ];
+  const seme = Math.round(luogo.lat * 37 + luogo.lon * 71);
+  const deriva = (isFinite(n.vento) ? n.vento : 8) * n.faseOra * 0.34;
+  const verso = isFinite(n.ventoDa) ? n.ventoDa + 180 : 90;
+
+  ctx.save();
+  strati.forEach((s, livello) => {
+    const cop = Math.max(0, Math.min(100, isFinite(s.cop) ? s.cop : n.totale));
+    if (cop < 4) return;
+    const quanti = Math.ceil(360 / s.passo);
+    for (let i = 0; i < quanti; i++) {
+      const rumore = Math.sin((i + 1) * 12.9898 + seme * 0.017 + livello * 4.1);
+      if (((rumore + 1) * 50) > cop + 24) continue;
+      const az = (i * s.passo + seme + deriva * Math.sin((verso - i * s.passo) * Math.PI / 180) + 720) % 360;
+      const alt = Math.max(5, Math.min(82, s.alt + 15 * Math.sin(i * 2.17 + seme)));
+      const p = skyProietta(skyVettore(az, alt), base, focale);
+      if (!p.davanti || p.px < -300 || p.px > sky.larghezza + 300 || p.py < -180 || p.py > sky.altezza + 180) continue;
+      const r = Math.max(32, focale * (0.12 + cop / 900) * s.scala);
+      const colore = luce > 0.18 ? (n.pioggia > 55 ? '92,102,115' : '218,225,232') : '112,126,148';
+      const grad = ctx.createRadialGradient(p.px - r * .18, p.py - r * .12, r * .08, p.px, p.py, r);
+      grad.addColorStop(0, `rgba(${colore},${Math.min(.78, s.alpha + cop / 260)})`);
+      grad.addColorStop(.55, `rgba(${colore},${s.alpha * .72})`);
+      grad.addColorStop(1, `rgba(${colore},0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(p.px, p.py, r * 1.7, r * .72, rumore * .22, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  ctx.restore();
+}
+
 const METEO_PAROLE = ['', 'ottimo', 'buono', 'discreto', 'scarso', 'pessimo'];
 function meteoParola(v) {
   return METEO_PAROLE[Math.max(1, Math.min(5, Math.round(v)))];
