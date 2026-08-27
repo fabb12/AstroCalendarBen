@@ -3,6 +3,7 @@ SkyScore — “vale la pena uscire stasera?”
 Perfect Spot — “dove devo mettermi per vedere l'evento dietro quella montagna?”
 Discover — l'app trova automaticamente i migliori eventi nelle vicinanze.
 rispondere a questa domanda:“Dimmi quale evento astronomico spettacolare posso vedere sopra quale montagna, da dove e quando.”
-sistemare gli spicchi che vengono visualizzati quando c'è un lago 
-sistemare il recuper dei dati adsb ,
+sistemare gli spicchi di acqua che vengono visualizzati quando c'è un lago , sistemare la gestieone delle acque dei lago , attualemnte i laghi non vengono rappresentato correttamente nel loro profilo originale. vedi es. lago lugano .
+sistemare il recuper dei dati adsb , caricamento di default . caricametno periodico per aggioranre i dati . distringure con dei colori gli aerei entro una cerca distanza rispetto ad altri . es. entro 10 km , rosso , entro 20 km .giallo .ecc...
 sismteare il caricamenteo dei dati del terreno quando il gps si muove costantemente .ora contina a caricare e mostrare un constatente re redering del terreno creando un fastidioso effetto visivo . inolte quando è in questa modalita non vengon visualizzate i nomi dei monti 
+metti le nuvole
