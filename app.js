@@ -24571,21 +24571,21 @@ function inizializzaSkymap() {
   filtro('skymap-btn-griglia', 'mostraGriglia');
   filtro('skymap-btn-etichette', 'mostraNomi');
   filtro('skymap-btn-vialattea', 'mostraViaLattea');
-  // Atmosfera e nuvole sono due modi alternativi: così si può leggere la
-  // copertura prevista senza il chiarore del cielo, oppure studiare il solo
-  // velo atmosferico senza che le nuvole nascondano gli astri.
+  // Le nuvole sono uno strato dell'atmosfera, non una modalità alternativa.
+  // Spegnere l'atmosfera toglie quindi anche le nuvole; accendere le nuvole
+  // riaccende l'atmosfera, se necessario, e le sovrappone al cielo dipinto.
   collega('skymap-btn-atmosfera', () => {
-    sky.atmosfera = true;
-    sky.nuvole = false;
+    sky.atmosfera = !sky.atmosfera;
+    if (!sky.atmosfera) sky.nuvole = false;
     skyAggiornaTastiFiltri();
     skyAggiornaOggetti(true);
   });
   collega('skymap-btn-nuvole', () => {
-    sky.atmosfera = false;
-    sky.nuvole = true;
+    sky.nuvole = !sky.nuvole;
+    if (sky.nuvole) sky.atmosfera = true;
     skyAggiornaTastiFiltri();
     skyAggiornaOggetti(true);
-    if (typeof meteoCaricaNuvoleCielo === 'function') meteoCaricaNuvoleCielo();
+    if (sky.nuvole && typeof meteoCaricaNuvoleCielo === 'function') meteoCaricaNuvoleCielo();
   });
   // Il terreno vero non è un filtro come gli altri: non nasconde
   // qualcosa che c'è già, cambia la forma dell'orizzonte. Se lo si
