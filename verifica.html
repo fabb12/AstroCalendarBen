@@ -4276,6 +4276,17 @@ if (typeof acqueTaglia !== 'function') {
         `${c.vuote} senz'acqua`);
     }
     {
+      // Alcuni endpoint Overpass arrotondano due copie dello stesso nodo a
+      // precisioni appena diverse. Mezzo milionesimo di grado è pochi
+      // centimetri: deve restare lo stesso anello, non diventare cinque
+      // archi incompleti (o cinque spicchi richiusi artificialmente).
+      const a = inArchi(ramo, 5).map(g => g.map(p => ({ lat: p.lat, lon: p.lon })));
+      for (let i = 1; i < a.length; i++) a[i][0].lat += 5e-7;
+      const tr = acqueLeggiElementi([relazione(a, 'Lago arrotondato')]);
+      prova('gli arrotondamenti Overpass non spezzano il profilo del lago',
+        tr.length === 1 && tr[0].chiuso, `${tr.length} tracciati`);
+    }
+    {
       // La prova che tiene insieme le due strade: lo stesso lago, guardato da
       // fuori, letto una volta come relazione spezzata e una come via chiusa.
       const laghetto = (() => {
@@ -4319,20 +4330,19 @@ if (typeof acqueTaglia !== 'function') {
         acqueTaglia(tr, LAT, LON, 25000).sommersi.size === 1);
     }
     {
-      // Una relazione a cui manca un pezzo (dati incompleti, o il limite di
-      // `out geom`): non deve far saltare niente, e un anello approssimato è
-      // comunque meglio di dieci mezzelune — ha un dentro e una parità sola.
+      // Una relazione a cui manca un pezzo (dati incompleti) non è un
+      // poligono. Chiuderla con una corda inventerebbe una riva e produrrebbe
+      // proprio gli spicchi d'acqua osservati accanto ai laghi.
       const a = inArchi(ramo, 6);
       a.splice(2, 1);
       const tr = acqueLeggiElementi([relazione(a, 'Rotta')]);
-      prova('una relazione incompleta non fa saltare la lettura',
-        tr.length >= 1 && tr.every(t => Array.isArray(t.punti) && t.punti.length > 1),
-        `${tr.length} tracciati`);
+      prova('una relazione incompleta non viene trasformata in un falso lago',
+        tr.length === 0, `${tr.length} falsi poligoni`);
       let qualcosa = 0;
       const b = acqueBandeDaTagli(acqueTaglia(tr, LAT, LON, 25000));
       for (let i = 0; i < ACQUE_DIREZIONI; i++) if (b[i]) qualcosa++;
-      prova('e l\'acqua la disegna comunque', qualcosa > ACQUE_DIREZIONI / 2,
-        `${qualcosa}/${ACQUE_DIREZIONI} direzioni`);
+      prova('e quindi non crea spicchi d\'acqua', qualcosa === 0,
+        `${qualcosa}/${ACQUE_DIREZIONI} direzioni spurie`);
     }
   }
 
