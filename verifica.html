@@ -78,9 +78,28 @@ const sky = {
   observer: new Astronomy.Observer(45.4642, 9.19, 120),
   fov: 55, larghezza: 900, altezza: 600,
   mostraStelle: true, mostraCostellazioni: true, mostraProfondo: true,
-  mostraSottoOrizzonte: false, mostraNomi: true, mostraViaLattea: false, atmosfera: true
+  mostraSottoOrizzonte: false, mostraNomi: true, mostraViaLattea: false, atmosfera: true,
+  // Quanto è chiaro il cielo adesso: 0 notte, 1 giorno — lo stesso valore di
+  // partenza di app.js. Senza, `rilColoreDiFetta` (§25) faceva
+  // `Math.min(1, undefined)` e restituiva una terna di NaN, cioè due prove
+  // che fallivano dicendo «NaN livelli su 255» invece di dire cosa mancava.
+  luceCielo: 0
 };
 function skyVelo() { return 1; }
+// Due colori mescolati, ricopiata da app.js per la stessa ragione dei due
+// archi qui sotto: `rilColoreDiFetta` e `rilTavolozzaTratti` la chiamano per
+// davvero, e in uno `<script>` unico un nome che non esiste si porta via
+// **tutto quello che viene dopo**. È successo: il §26 e il §27 non giravano
+// affatto, e una prova sparita non fallisce — semplicemente non compare. Tre
+// blocchi del §25 se la prestavano a mano, un quarto se n'era dimenticato.
+function skyMescolaColore(a, b, t) {
+  const k = Math.max(0, Math.min(1, t));
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * k),
+    Math.round(a[1] + (b[1] - a[1]) * k),
+    Math.round(a[2] + (b[2] - a[2]) * k)
+  ];
+}
 function skyEstinzione(alt) { return alt >= 22 ? 1 : alt <= 0 ? 0.4 : 0.4 + 0.6 * (alt / 22); }
 function skyAdesso() { return new Date(); }
 
@@ -168,6 +187,10 @@ function skyArcoAcquaInVista(base, focale) {
      e non trova nulla: esce subito. Le tabelle dei disegni e dei nomi,
      e la geometria dei telai, restano a disposizione del §13. -->
 <script src="costellazioni.js"></script>
+
+<!-- Gli aerei ADS-B (§27). Il modulo non scarica niente da solo: il suo
+     battito parte da `aereiAvvia()`, che qui non chiama nessuno. -->
+<script src="aerei.js"></script>
 
 <script>
 // ---------------------------------------------------------------------
@@ -6537,9 +6560,24 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
     // quella che il conto di prima falliva: col gradiente a gradi, una
     // cresta a quaranta chilometri vista tre gradi sotto la riga da una cima
     // usciva col colore del terreno ai piedi.
+    //
+    // La soglia non è a occhio, ed è cambiata: `rilColoreDiFetta` **tosa** la
+    // lontananza a `RIL_LONTANANZA_MINIMA` (0,5), quindi la fetta davanti non
+    // parte mai dal colore del terreno ai piedi — parte da mezza foschia. Il
+    // salto disponibile su questo banco è `(84 − 46) · 0,5^0,9 · (1 − diffusa)`,
+    // cioè una ventina di livelli e non trentotto: chiederne più di
+    // venticinque voleva dire chiedere una cosa impossibile. Che la prova non
+    // lo dicesse dipende dal fatto che qui `sky.luceCielo` non c'era e il
+    // conto usciva `NaN` — falliva, sì, ma per il motivo sbagliato, e
+    // portandosi via §26 e §27 con l'eccezione della riga dopo.
+    //
+    // Quindici livelli restano una richiesta vera: la prova qui sopra
+    // considera **visibile** un gradino da sei, quindi si sta chiedendo che
+    // fra la prima fetta e l'ultima ci siano almeno due gradini e mezzo
+    // netti. Se un giorno la rampa si appiattisse, questa fallirebbe ancora.
     const vicina = tinta(0), lontana = tinta(RIL_FONDI - 1);
     prova('la fetta in fondo è ben più chiara di quella davanti',
-      lontana[1] - vicina[1] > 25,
+      lontana[1] - vicina[1] > 15,
       `${vicina.map(Math.round).join(',')} contro ${lontana.map(Math.round).join(',')}`);
 
     // Il contro-esempio, cioè la legge di prima: `SKY_SUOLO_TAU` è di un
@@ -6827,6 +6865,13 @@ function overAttendi(nome, fai) {
 }
 
 async function overCorsa(copione, attesaMs) {
+  // `overpassGuastaFino` è la penale di due minuti che una porta si prende
+  // dopo un guasto, e vive per tutta la scheda: senza azzerarla, una prova
+  // eredita le porte che la precedente ha mandato in castigo e ne trova tre
+  // dove ne aveva chieste cinque. È il classico banco che passa da solo e
+  // fallisce in compagnia — e qui falliva in silenzio, perché fino a poco fa
+  // dal §25 in giù non girava niente (vedi `skyMescolaColore` fra gli stub).
+  overpassGuastaFino.clear();
   overCopione = copione; overChiamate = [];
   const partito = performance.now();
   try {
@@ -6916,6 +6961,316 @@ prova('il ripiego dei paesi guarda meno lontano di quello che si era chiesto',
   `${CITTA_RAGGIO_RIPIEGO_KM} km contro ${RAGGI_LIMITI.citta.predefinito}`);
 prova('e i paesi un ripiego ce l\'hanno (per un pezzo erano l\'unica famiglia senza)',
   /place/.test(cittaQueryVicina(45.8124, 9.0295)));
+
+
+// =====================================================================
+titolo('27. Gli aerei ADS-B: perché «a volte si caricano e a volte no» (aerei.js)');
+// =====================================================================
+//
+// È la segnalazione più difficile da inseguire che questo modulo abbia avuto,
+// perché il sintomo — un cielo senza triangoli — è **identico** a una
+// risposta legittima: un cielo senza aerei. Nessuno, guardando lo schermo,
+// può dire quale dei due sta vedendo, e per questo il difetto è rimasto in
+// piedi per mesi cambiando faccia ogni volta.
+//
+// Le cause erano tre, e sono tre famiglie di prove:
+//
+//   1. **La fila indiana.** Sette porte provate una per volta, dodici secondi
+//      a testa. Una porta ADS-B carica non risponde «carico»: **tace**, e
+//      tacere consuma tutta la sveglia. Nel caso peggiore erano ottantaquattro
+//      secondi di niente, cioè molto più della pazienza di chiunque.
+//   2. **La risposta che arriva e non è una risposta.** Un ponte CORS in
+//      difficoltà restituisce 200 con dentro una pagina HTML, e il vecchio
+//      `(risposta.ac || [])` la leggeva come un allegro «zero aerei». La corsa
+//      si fermava lì, con la spia verde, sopra un cielo vuoto.
+//   3. **La memoria assente.** Quale feed funziona *qui* dipende dal paese,
+//      dal fornitore di rete e dai filtri anti-tracciamento del browser.
+//      Ricominciando ogni volta dal primo dell'elenco si ripagava ogni volta
+//      lo stesso scotto: la porta chiusa da ieri stava ancora in cima.
+//
+// In coda ci sono le **fasce di distanza** e il **ritmo**, che sono le due
+// cose che uno vede senza saperle nominare.
+
+const adsb = window.AereiADS_B;
+const adsbDove = { lat: 45.8124, lon: 9.0295, quotaM: 200 };
+
+// Le prove che aspettano passano da `overAttendi`, cioè dalla **stessa coda**
+// del §26. Non è pigrizia nel riusare un nome: tutt'e due le sezioni si
+// prestano `window.fetch`, e due prestiti in volo insieme si restituiscono a
+// vicenda la finta dell'altro — il §26 si ritrovava a interrogare le porte
+// ADS-B e falliva con un messaggio che parlava di OpenStreetMap.
+const adsbAttendi = overAttendi;
+
+// Una `fetch` finta guidata da un copione: per ogni pezzo di URL si dice come
+// deve comportarsi la porta. `muto` è il caso che questo modulo esiste per
+// sopportare — e l'unico che una prova sincrona non saprebbe distinguere da
+// una porta lenta.
+function adsbFinta(copione) {
+  const toccate = [];
+  return {
+    toccate,
+    fetch(url, opz) {
+      // Il confronto va fatto sull'**host** della richiesta, non su un pezzo
+      // qualunque dell'URL: un ponte porta il feed dentro di sé, quindi
+      // `…allorigins.win/raw?url=https%3A%2F%2Fapi.adsb.lol%2F…` contiene sia
+      // il nome del ponte sia quello del feed, e cercando nella stringa
+      // intera il ponte si comportava come il feed che sta trasportando.
+      const u = String(url), host = u.split('/')[2] || '';
+      const voce = Object.keys(copione).find(k => host.indexOf(k) !== -1);
+      const modo = voce ? copione[voce] : { tipo: 'giu' };
+      toccate.push((voce || 'ignota') + ':' + modo.tipo);
+      if (modo.tipo === 'muto') {
+        return new Promise((_, rifiuta) => {
+          if (opz && opz.signal) opz.signal.addEventListener('abort', () => {
+            const e = new Error('abort'); e.name = 'AbortError'; rifiuta(e);
+          });
+        });
+      }
+      if (modo.tipo === 'giu') return Promise.reject(new TypeError('Failed to fetch'));
+      if (modo.tipo === 'stato') return Promise.resolve({ ok: false, status: modo.stato, text: () => Promise.resolve('') });
+      if (modo.tipo === 'html') return Promise.resolve({ ok: true, status: 200,
+        text: () => Promise.resolve('<html><body>429 Too Many Requests</body></html>') });
+      const ac = [];
+      for (let i = 0; i < (modo.quanti || 1); i++) {
+        ac.push({ hex: 'ab' + i, flight: 'AZ' + i + ' ', lat: 45.83 + i * 0.05, lon: 9.05,
+                  alt_baro: 30000, gs: 420, track: 180, seen: 3 });
+      }
+      return Promise.resolve({ ok: true, status: 200,
+        text: () => Promise.resolve(JSON.stringify({ ac, total: ac.length, now: Date.now() / 1000 })) });
+    }
+  };
+}
+
+// La corsa gira con la `fetch` finta e la rimette a posto comunque vada: da
+// qui in giù la §26 può ancora avere la sua.
+async function adsbCorsa(copione, opz) {
+  const finta = adsbFinta(copione);
+  const prima = window.fetch;
+  window.fetch = finta.fetch;
+  const t0 = performance.now();
+  let esito = null, guaio = null;
+  try {
+    esito = await adsb.corsaProvider(adsb.providersPredefiniti, adsbDove, 50, null,
+      Object.assign({ affiancaMs: 120, attesaMs: 900, corsaMs: 3000 }, opz || {}));
+  } catch (e) { guaio = e; } finally { window.fetch = prima; }
+  return { esito, guaio, ms: performance.now() - t0, toccate: finta.toccate };
+}
+
+// --- 1. La porta che tace ---------------------------------------------
+adsbAttendi('una porta che tace non si porta via tutta la corsa', async () => {
+  // adsb.fi è la prima dell'elenco e non risponde mai. Con la fila indiana
+  // questo era il caso peggiore: la sua sveglia intera prima di provare la
+  // seconda. Con l'affiancamento la seconda parte lo stesso, e vince lei.
+  const r = await adsbCorsa({ 'adsb.fi': { tipo: 'muto' }, 'adsb.lol': { tipo: 'ok', quanti: 3 } },
+    { affiancaMs: 150, attesaMs: 4000 });
+  return { esito: !!r.esito && r.esito.aerei.length === 3 && r.ms < 1500,
+           nota: `${r.esito ? r.esito.aerei.length : 0} aerei da ${r.esito && r.esito.provider.nome} in ${r.ms.toFixed(0)} ms` };
+});
+
+adsbAttendi('la porta muta viene comunque tentata, non saltata', async () => {
+  // L'affiancamento non è un abbandono: se la porta muta si sveglia mentre la
+  // seconda è ancora in volo, va bene lo stesso. Escluderla a priori vorrebbe
+  // dire non riprovarla mai più.
+  const r = await adsbCorsa({ 'adsb.fi': { tipo: 'muto' }, 'adsb.lol': { tipo: 'ok' } },
+    { affiancaMs: 150, attesaMs: 4000 });
+  return { esito: r.toccate.some(t => t.indexOf('adsb.fi') === 0), nota: r.toccate.join(', ') };
+});
+
+adsbAttendi('una porta caduta lascia SUBITO il posto, senza aspettare l\'affiancamento', async () => {
+  // L'affiancamento serve a chi tace. Chi ha già detto di no non deve costare
+  // anche l'attesa: con un affiancamento da mezzo secondo e otto porte giù,
+  // aspettarlo a ognuna sarebbero quattro secondi di niente.
+  const r = await adsbCorsa({ 'adsb.lol': { tipo: 'ok' } }, { affiancaMs: 2000, attesaMs: 3000 });
+  return { esito: !!r.esito && r.ms < 1200,
+           nota: `adsb.fi giù, poi adsb.lol dopo ${r.ms.toFixed(0)} ms (affiancamento a 2000)` };
+});
+
+adsbAttendi('la sveglia è di tutta la corsa, non di ogni porta', async () => {
+  // È la proprietà che rende **gratis** le porte in più: con una sveglia per
+  // tentativo, passare da tre reti a nove vorrebbe dire passare da mezzo
+  // minuto a due di silenzio prima di dire «non ce l'ho fatta».
+  const corsaMs = 700;
+  const r = await adsbCorsa({ 'adsb': { tipo: 'muto' }, 'airplanes': { tipo: 'muto' },
+                              'origins': { tipo: 'muto' }, 'corsproxy': { tipo: 'muto' },
+                              'codetabs': { tipo: 'muto' } },
+    { affiancaMs: 60, attesaMs: 5000, corsaMs });
+  return { esito: !!r.guaio && r.ms >= corsaMs * 0.7 && r.ms < corsaMs * 3,
+           nota: `arresa dopo ${r.ms.toFixed(0)} ms su ${corsaMs} di scadenza` };
+});
+
+adsbAttendi('il guasto raccontato è quello del servizio, non la nostra sveglia', async () => {
+  // Un 503 il server l'ha *risposto*: la strada c'era, ed è quello che chi
+  // guarda ha bisogno di sapere. Un «Failed to fetch» o un abort dicono solo
+  // che ci siamo arresi noi.
+  const r = await adsbCorsa({ 'adsb.lol': { tipo: 'stato', stato: 503 } },
+    { affiancaMs: 40, attesaMs: 400, corsaMs: 2500 });
+  return { esito: !!r.guaio && /503/.test(r.guaio.message), nota: `«${r.guaio && r.guaio.message}»` };
+});
+
+// --- 2. La risposta che arriva e non è una risposta --------------------
+{
+  // Il contro-esempio prima di tutto: **la regola di prima**. Serve a
+  // ricordare che non era una svista, era una riga scritta apposta per
+  // tollerare due nomi di campo diversi — e che tollerando tutto tollerava
+  // anche una pagina di errore.
+  const paginaErrore = { message: 'rate limited', status: 429 };
+  const comePrima = r => (r.ac || r.aircraft || []);
+  prova('CONTRO-ESEMPIO: la regola di prima leggeva una pagina d\'errore come «zero aerei»',
+    comePrima(paginaErrore).length === 0);
+
+  let sollevato = false;
+  try { adsb.interpretaAdsbExchange(paginaErrore); } catch (e) { sollevato = !!e.schema; }
+  prova('adesso invece solleva, e la corsa passa alla porta dopo', sollevato);
+
+  prova('ma `ac` va bene…', adsb.interpretaAdsbExchange(
+    { ac: [{ hex: 'a1', lat: 45, lon: 9, alt_baro: 1000 }] }).length === 1);
+  prova('…e `aircraft` pure, che è come lo chiamano alcuni mirror readsb',
+    adsb.interpretaAdsbExchange({ aircraft: [{ hex: 'a1', lat: 45, lon: 9, alt_baro: 1000 }] }).length === 1);
+  prova('un cielo davvero sgombro resta un cielo sgombro, non un guasto',
+    adsb.interpretaAdsbExchange({ ac: [], total: 0 }).length === 0);
+
+  // OpenSky ha lo stesso problema al rovescio: `states: null` è la risposta
+  // legittima quando nel riquadro non vola nessuno, quindi il segno di
+  // riconoscimento dev'essere la **chiave**, non il suo contenuto.
+  prova('OpenSky: `states: null` è un cielo sgombro, non uno schema sbagliato',
+    adsb.interpretaOpenSky({ time: 1, states: null }).length === 0);
+  let openskySollevato = false;
+  try { adsb.interpretaOpenSky({ errore: 'quota' }); } catch (e) { openskySollevato = !!e.schema; }
+  prova('OpenSky: una risposta senza `states` viene rifiutata', openskySollevato);
+}
+
+adsbAttendi('una pagina HTML restituita con 200 non ferma la corsa', async () => {
+  // È il caso vero: i feed diretti passano da un ponte in difficoltà che
+  // risponde 200 con dentro il proprio messaggio d'errore. Prima la corsa si
+  // fermava lì con «zero aerei»; adesso arriva fino al ponte che funziona.
+  const r = await adsbCorsa({ 'adsb.fi': { tipo: 'html' }, 'adsb.lol': { tipo: 'html' },
+                              'airplanes.live': { tipo: 'html' }, 'adsb.one': { tipo: 'html' },
+                              'allorigins': { tipo: 'ok', quanti: 4 } },
+    { affiancaMs: 40, attesaMs: 800, corsaMs: 3000 });
+  return { esito: !!r.esito && r.esito.aerei.length === 4 && /AllOrigins/.test(r.esito.provider.nome),
+           nota: r.esito ? `${r.esito.aerei.length} aerei da ${r.esito.provider.nome}` : 'nessuno' };
+});
+
+// --- 3. La pagella delle porte ----------------------------------------
+{
+  const porte = adsb.providersPredefiniti;
+  const rete = porte.map(p => p.rete);
+  prova('le reti indipendenti sono più di una coppia',
+    new Set(rete).size >= 3, `${new Set(rete).size} reti in ${porte.length} porte`);
+  prova('gli URL diretti sono tutti in https',
+    porte.every(p => /^https:\/\//.test(p.url(adsbDove, 50))));
+  prova('e chiedono tutti lo stesso raggio, tosato alle 250 miglia dei feed',
+    /\/250(\/|$|\?)/.test(adsb.urlAdsbExchange('x', adsbDove, 9999)),
+    adsb.urlAdsbExchange('x', adsbDove, 9999));
+
+  adsb.salute.clear();
+  adsb.segnaEsito(porte[3], true);                        // adsb.one ha appena risposto
+  adsb.segnaEsito(porte[0], false, new Error('boom'));    // adsb.fi ha appena sbagliato
+  const ordine = adsb.ordinaPerSalute(porte);
+  prova('davanti va chi ha risposto per ultimo, non il primo dell\'elenco',
+    ordine[0].nome === porte[3].nome, ordine[0].nome);
+  prova('e in fondo chi è in penale', ordine[ordine.length - 1].nome === porte[0].nome,
+    ordine[ordine.length - 1].nome);
+  prova('nessuna porta viene esclusa: una in penale torna in gioco da sola',
+    ordine.length === porte.length, `${ordine.length} su ${porte.length}`);
+
+  const v = adsb.salute.get(porte[0].nome);
+  const penalePrima = v.penaleFino;
+  adsb.segnaEsito(porte[0], false, new Error('ancora'));
+  prova('due no di fila pesano più di uno', adsb.salute.get(porte[0].nome).penaleFino > penalePrima);
+  adsb.segnaEsito(porte[0], true);
+  prova('ma un sì cancella la penale: un guasto è quasi sempre temporaneo',
+    adsb.salute.get(porte[0].nome).penaleFino === 0 &&
+    adsb.salute.get(porte[0].nome).noDiFila === 0);
+  prova('la penale non cresce all\'infinito: dieci minuti e basta',
+    (() => { adsb.salute.clear();
+             for (let i = 0; i < 12; i++) adsb.segnaEsito(porte[0], false, new Error('x'));
+             return adsb.salute.get(porte[0].nome).penaleFino - Date.now() <= 600001; })());
+  adsb.salute.clear();
+  try { localStorage.removeItem('astrocalendario_adsb_salute'); } catch (e) { /* niente storage */ }
+}
+
+// --- 4. Le fasce di distanza ------------------------------------------
+{
+  const f = adsb.FASCE_DISTANZA;
+  prova('le fasce sono in ordine crescente e finiscono all\'infinito',
+    f.every((v, i) => i === 0 || v.max > f[i - 1].max) && f[f.length - 1].max === Infinity,
+    f.map(v => v.max).join(' < '));
+  prova('ogni fascia ha un colore suo', new Set(f.map(v => v.colore)).size === f.length);
+  prova('entro 10 km è la prima', adsb.fasciaDi(9.9).max === 10);
+  prova('il bordo appartiene alla sua fascia (10,0 km è ancora la prima)', adsb.fasciaDi(10).max === 10);
+  prova('un filo oltre passa alla seconda', adsb.fasciaDi(10.0001).max === 20);
+  prova('a cinquanta chilometri si è ancora nella terza', adsb.fasciaDi(50).max === 50);
+  prova('più in là c\'è l\'ultima', adsb.fasciaDi(240).max === Infinity);
+  // Una distanza che non è un numero deve dare la fascia più lontana, non
+  // sfondare: `find` senza rete tornerebbe `undefined` e il disegno morirebbe
+  // dentro al ciclo del planetario, che è il modo peggiore di sbagliare.
+  prova('e una distanza che non è un numero non fa cadere il fotogramma',
+    adsb.fasciaDi(NaN).max === Infinity && adsb.fasciaDi(undefined).max === Infinity);
+}
+
+// --- 5. Il ritmo -------------------------------------------------------
+{
+  prova('col disegno spento si aggiorna piano, col disegno acceso si stringe',
+    adsb.AGGIORNA_SFONDO_MS > adsb.AGGIORNA_VISIBILE_MS,
+    `${adsb.AGGIORNA_VISIBILE_MS / 1000} s contro ${adsb.AGGIORNA_SFONDO_MS / 1000} s`);
+  // Il numero che conta davvero: un aereo di linea fa 250 m/s, quindi il
+  // ritmo «visibile» non deve lasciare invecchiare la fotografia più del
+  // raggio di ricerca. Quarantacinque secondi sono undici chilometri.
+  prova('e il ritmo fitto non lascia invecchiare la foto più di una decina di km',
+    adsb.AGGIORNA_VISIBILE_MS / 1000 * 250 / 1000 < 15,
+    `${(adsb.AGGIORNA_VISIBILE_MS / 1000 * 250 / 1000).toFixed(0)} km di volo fra due letture`);
+  prova('«vecchia» arriva dopo il ritmo fitto, se no sarebbe vecchia appena nata',
+    adsb.DATI_VECCHI_MS > adsb.AGGIORNA_VISIBILE_MS);
+  prova('e «scaduta» molto dopo ancora: mezz\'ora di rotta stimata non è un aereo',
+    adsb.DATI_SCADUTI_MS > adsb.DATI_VECCHI_MS * 5);
+
+  const r = adsb.RIPROVE_MS;
+  prova('le riprove crescono', r.every((v, i) => i === 0 || v > r[i - 1]), r.join(' → '));
+  // La prima riprova corta è tutta la differenza fra «un pacchetto perso» e
+  // «un minuto di cielo senza aerei»: il caso comune non è che il servizio
+  // sia giù, è che *questa* richiesta sia andata storta.
+  prova('la prima è corta: un pacchetto perso non deve costare un minuto',
+    r[0] <= 5000, `${r[0] / 1000} s`);
+  prova('e l\'ultima si ferma a qualche minuto, senza arrendersi mai del tutto',
+    r[r.length - 1] >= 120000 && r[r.length - 1] <= 600000, `${r[r.length - 1] / 60000} min`);
+
+  const s = adsb.stato;
+  const primaProssimo = s.prossimoAggiornamento, primaTentativo = s.prossimoTentativo,
+        primaFalliti = s.tentativiFalliti;
+  s.tentativiFalliti = 0; adsb.pianificaProssimo(false);
+  const uno = s.prossimoTentativo - Date.now();
+  s.tentativiFalliti = 3; adsb.pianificaProssimo(false);
+  const quattro = s.prossimoTentativo - Date.now();
+  prova('il quarto tentativo aspetta molto più del primo', quattro > uno * 3,
+    `${(uno / 1000).toFixed(1)} s → ${(quattro / 1000).toFixed(1)} s`);
+  adsb.pianificaProssimo(true);
+  prova('e un successo azzera il conto invece di lasciarlo in castigo',
+    s.tentativiFalliti === 0 && s.prossimoTentativo === 0);
+  s.prossimoAggiornamento = primaProssimo; s.prossimoTentativo = primaTentativo;
+  s.tentativiFalliti = primaFalliti;
+}
+
+// --- 6. I due interruttori --------------------------------------------
+{
+  // È la correzione dell'equivoco che stava in cima a tutto: «Aerei» era
+  // insieme il pannello e l'interruttore, quindi aprire la finestra per
+  // *guardare* lo stato dei dati accendeva anche i triangoli, e richiuderla
+  // spegneva il feed. Adesso sono due domande separate, e i dati nascono
+  // accesi mentre il disegno nasce spento.
+  const s = adsb.stato;
+  prova('lo stato tiene due interruttori distinti, non uno',
+    typeof s.dati === 'boolean' && typeof s.visibile === 'boolean' && !('acceso' in s));
+  prova('e un terzo per l\'aggiornamento automatico', typeof s.auto === 'boolean');
+  prova('la fotografia e il suo orologio sono una cosa sola',
+    !s.ultimoSuccesso || s.aerei.length >= 0);
+  prova('«fase» sa dire che non c\'è una posizione prima ancora di provarci',
+    adsb.fase() === 'senzaPosizione' || adsb.fase() === 'spento' || adsb.fase() === 'attesa',
+    adsb.fase());
+  prova('e il racconto dello stato è sempre una frase, mai vuoto',
+    typeof adsb.testoDiStato() === 'string' && adsb.testoDiStato().length > 10,
+    `«${adsb.testoDiStato()}»`);
+}
 
 // Rimettere a posto la `fetch` vera: da qui in giù la pagina torna a parlare
 // col mondo, e le prove che aspettano hanno già catturato quella finta.

@@ -420,19 +420,12 @@
                   <path d="M3.6 10h16.8M8.4 3.6v3.4M15.6 3.6v3.4"/>
                 </svg><span class="nome-gruppo">Eventi</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="vista" aria-pressed="false"
-                title="Schermo intero, modalità notte, fotocamera">
+                title="Come guardare il cielo e cosa disegnarci: schermo, oggetti, aria, paesaggio">
                 <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                   stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M2.6 12S6.4 6.4 12 6.4 21.4 12 21.4 12 17.6 17.6 12 17.6 2.6 12 2.6 12z"/>
                   <circle cx="12" cy="12" r="2.8"/>
                 </svg><span class="nome-gruppo">Visualizzazione</span></button>
-              <button type="button" class="linguetta-gruppo" data-vai-gruppo="filtri" aria-pressed="false"
-                title="Cosa compare sulla mappa">
-                <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M4 7.4h16M4 12h16M4 16.6h16"/>
-                  <circle cx="9.2" cy="7.4" r="2"/><circle cx="15.2" cy="12" r="2"/><circle cx="8" cy="16.6" r="2"/>
-                </svg><span class="nome-gruppo">Filtri</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="navigazione" aria-pressed="false"
                 title="Dove si guarda, zoom e bussola">
                 <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -654,61 +647,139 @@
               <div id="skymap-eventi-elenco" class="elenco-eventi-cielo" aria-live="polite"></div>
             </section>
 
-            <!-- VISUALIZZAZIONE: come si vede il cielo -->
-            <section class="gruppo-comandi" data-gruppo="vista" aria-label="Visualizzazione">
-              <div class="riga-comandi riga-tasti-griglia">
-                <button id="skymap-btn-schermo" type="button" class="tasto-cielo" title="Il cielo occupa tutto lo schermo (anche con un doppio clic sulla mappa)">Schermo intero</button>
-                <button id="skymap-btn-notte" type="button" class="tasto-cielo" title="Filtro rosso: protegge la vista notturna">Modalità notte</button>
-                <button id="skymap-btn-hover" type="button" class="tasto-cielo" aria-pressed="false" title="La modalità hover è disponibile quando la vista segue il telefono">Modalità hover</button>
-                <button id="skymap-btn-camera" type="button" class="tasto-cielo" title="Sovrapponi il cielo all'immagine della fotocamera: il campo visivo diventa quello dell'obiettivo, e il pizzico lo tara">Fotocamera</button>
-                <button id="skymap-btn-griglia" type="button" class="tasto-cielo attiva" title="Reticolo di azimut e altezza">Reticolo</button>
-                <button id="skymap-btn-etichette" type="button" class="tasto-cielo attiva" title="Nomi accanto agli astri disegnati">Nomi astri</button>
-                <button id="skymap-btn-atmosfera" type="button" class="tasto-cielo attiva" aria-pressed="true" title="Mostra il colore del cielo, la foschia e gli aloni. Spegnendola si spengono anche le nuvole">Atmosfera</button>
-                <button id="skymap-btn-nuvole" type="button" class="tasto-cielo" aria-pressed="false" title="Aggiunge le nuvole previste per questo luogo e quest'ora all'atmosfera">Nuvole</button>
-                <button id="skymap-btn-terreno" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'orizzonte prende la forma vera del terreno attorno a te: colline, montagne, mare, pianura — ognuno col suo colore. Si scarica una volta sola e poi resta anche senza rete. Spento, il terreno non viene disegnato. Ingrandendo molto su un astro il terreno diventa trasparente da sé, come in Stellarium">Terreno vero</button>
-                <button id="skymap-btn-rilievo" type="button" class="tasto-cielo attiva" aria-pressed="true" title="La forma vera del terreno, non solo la sua sagoma: le valli che scendono, i fianchi delle colline, il solco del fiume, disegnati a tratti come su una tavola panoramica. Attorno a te il passo è di ventisette metri, contro i tre gradi del profilo a bande. Si scarica una volta sola per luogo (da quattro a sei tessere) e poi resta anche senza rete. Spento, torna il profilo a bande">Rilievo</button>
-                <button id="skymap-btn-citta" type="button" class="tasto-cielo attiva" aria-pressed="true" title="Le cupole di luce dei paesi veri attorno a te, col loro nome sull'orizzonte: dicono da che parte NON cercare le cose deboli. Di giorno non si vedono">Luci delle città</button>
-                <button id="skymap-btn-cime" type="button" class="tasto-cielo" aria-pressed="false" title="I nomi delle montagne che spuntano sopra l'orizzonte, con la loro quota, agganciati alla vetta vera da un filo: si nominano solo quelle che da qui si vedono davvero, non quelle nascoste dietro a una cresta più vicina. Nascono spenti; una volta accesi si scaricano una volta sola e la scelta si ricorda. Fin dove cercarle si decide nelle Impostazioni">Nomi dei monti</button>
-                <button id="skymap-btn-acque" type="button" class="tasto-cielo attiva" aria-pressed="true" title="I laghi e i fiumi veri attorno a te, disegnati dove sono e alla distanza a cui sono: l'acqua ferma riflette il cielo come uno specchio, e la Luna ci fa la sua strada di luce. Si vedono solo quelli che non restano dietro a una cresta. Si scaricano da OpenStreetMap una volta sola e poi restano anche senza rete; fin dove cercarli si decide nelle Impostazioni">Laghi e fiumi</button>
-              </div>
-            </section>
+            <!-- VISUALIZZAZIONE: come si guarda il cielo, e cosa ci si vede
+                 dentro.
 
-            <!-- FILTRI: cosa compare sulla mappa -->
-            <section class="gruppo-comandi" data-gruppo="filtri" aria-label="Filtri">
-              <div class="riga-comandi riga-tasti-griglia">
-                <button id="skymap-btn-pianeti" type="button" class="tasto-cielo attiva" title="Mercurio, Venere, Marte, Giove, Saturno, Urano e Nettuno">Pianeti</button>
-                <button id="skymap-btn-solelun" type="button" class="tasto-cielo attiva" title="Sole e Luna">Sole e Luna</button>
-                <button id="skymap-btn-stelle" type="button" class="tasto-cielo attiva" title="Le stelle luminose di riferimento">Stelle</button>
-                <button id="skymap-btn-costellazioni" type="button" class="tasto-cielo attiva" title="Le figure delle costellazioni">Costellazioni</button>
-                <button id="skymap-btn-arte" type="button" class="tasto-cielo" aria-pressed="false" title="Sopra le linee, la figura: il cacciatore, il leone, la nave. È un velo leggero, appoggiato sulle stelle vere — a campo largo si accenna appena, ingrandendo molto sparisce da sé. Tocca una figura sulla mappa per aprire la sua pagina">Disegni</button>
-                <button id="skymap-btn-deepsky" type="button" class="tasto-cielo" title="Galassie, nebulose e ammassi">Deep Sky</button>
-                <button id="skymap-btn-satelliti" type="button" class="tasto-cielo attiva" title="ISS e Tiangong">Satelliti</button>
-                <button id="skymap-btn-corpiminori" type="button" class="tasto-cielo attiva" title="Comete e asteroidi abbastanza luminosi da vedersi stanotte: quasi sempre non ce n'è nessuno, e quando c'è è il motivo per uscire">Comete e asteroidi</button>
-                <button id="skymap-btn-sotto" type="button" class="tasto-cielo attiva" title="Mostra anche ciò che in questo momento è sotto l'orizzonte">Sotto l'orizzonte</button>
-                <button id="skymap-btn-dietro-monti" type="button" class="tasto-cielo" aria-pressed="false" title="Mostra gli astri anche quando si trovano dietro il profilo di colline e montagne. Spento, il terreno li nasconde come avviene nella realtà">Astri dietro i monti</button>
-                <button id="skymap-btn-eventi" type="button" class="tasto-cielo attiva" title="Segna sulla mappa gli eventi in corso all'ora mostrata: il radiante di uno sciame, l'astro eclissato, i corpi di una congiunzione">Eventi in cielo</button>
-              <button id="skymap-btn-traccia" type="button" class="tasto-cielo attiva" title="La strada che l'oggetto scelto percorre nel cielo nelle ore attorno a questo istante: tratteggiata dove è già passato, piena dove sta andando, con l'ora segnata di ora in ora">Traccia</button>
-              <button id="skymap-btn-eclittica" type="button" class="tasto-cielo" title="Il cerchio che il Sole percorre in un anno fra le stelle: il piano dell'orbita terrestre visto di taglio. I pianeti stanno sempre a pochi gradi da questa linea, e il filo a piombo misura quanti. Resta accesa qualunque oggetto si scelga, finché non la si spegne">Eclittica</button>
-              <button id="skymap-btn-aurora" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'ovale aurorale — boreale o australe, secondo l'emisfero — messo in cielo dove sta davvero: se da qui si vede, e quanto se ne affaccia sopra l'orizzonte, lo decide la curvatura della Terra">Aurora</button>
-              <button id="skymap-btn-aerei" type="button" class="tasto-cielo" data-vai-gruppo="aerei" aria-pressed="false"
-                title="Mostra gli aerei ADS-B vicini in tempo reale">Aerei</button>
-              <button id="aerei-aggiorna-rapido" type="button" class="tasto-cielo tasto-aerei-aggiorna-rapido"
-                aria-label="Aggiorna adesso i dati ADS-B" title="Aggiorna adesso i dati ADS-B">↻</button>
-              </div>
+                 Erano **due** pannelli — «Visualizzazione» e «Filtri» — e il
+                 confine fra i due non l'ha mai indovinato nessuno: il
+                 reticolo e i nomi degli astri sono un modo di guardare o
+                 sono cose disegnate? L'atmosfera è una cosa o è un filtro?
+                 Chi cercava «Nuvole» le trovava nel primo, chi cercava
+                 «Aurora» nel secondo, e per accendere prima il terreno e poi
+                 i pianeti bisognava aprire e chiudere due pannelli. In più
+                 il secondo era diventato una fila di quattordici pillole
+                 tutte uguali, che su un telefono sono tre schermate da
+                 leggere una per una.
 
-              <!-- L'aurora vera, da queste latitudini, capita una volta ogni
-                   dieci anni. La slitta serve a vederla lo stesso: si alza
-                   la tempesta e si guarda da che Kp comincia ad affacciarsi
-                   sopra le colline di casa. -->
-              <div class="blocco-aurora">
-                <p id="skymap-aurora-nota" class="etichetta-comando nota-lunga"></p>
-                <div class="riga-comandi riga-aurora">
-                  <label class="etichetta-comando" for="skymap-aurora-kp">Simula una tempesta</label>
-                  <input id="skymap-aurora-kp" type="range" min="0" max="9" step="0.5" value="0"
-                         aria-label="Indice Kp simulato">
-                  <span id="skymap-aurora-kp-valore" class="lettura-aurora"></span>
-                  <button id="skymap-aurora-vero" type="button" class="tasto-cielo" title="Torna al Kp misurato dal NOAA per quest'ora">Kp vero</button>
+                 Adesso è un pannello solo, diviso in quattro schede che
+                 rispondono a quattro domande diverse — e la domanda è
+                 scritta in cima a ognuna, perché una scheda senza una frase
+                 che la spieghi è un'etichetta, non un ordinamento:
+                 · **Schermo**    come guardo (pieno schermo, notte, camera,
+                                  e i due aiuti disegnati sopra al cielo);
+                 · **Oggetti**    cosa disegno (i corpi, e i segni che li
+                                  accompagnano);
+                 · **Cielo**      com'è fatta l'aria sopra di me;
+                 · **Paesaggio**  com'è fatta la terra sotto.
+
+                 Le schede sono la stessa pillola segmentata dei punti
+                 cardinali — non una grafica nuova da imparare — e la scelta
+                 si ricorda: chi passa la serata a sistemare il paesaggio non
+                 se lo ritrova su «Schermo» ogni volta che riapre. -->
+            <section class="gruppo-comandi gruppo-vista" data-gruppo="vista" aria-label="Visualizzazione">
+              <div class="schede-vista-guscio">
+                <div class="segmenti-cielo schede-vista" role="tablist" aria-label="Che cosa regolare">
+                  <button type="button" class="tasto-segmento attiva" role="tab" aria-selected="true"
+                    data-scheda-vista="schermo" aria-controls="foglio-vista-schermo"
+                    title="Come guardare: pieno schermo, colori notturni, fotocamera, reticolo">Schermo</button>
+                  <button type="button" class="tasto-segmento" role="tab" aria-selected="false"
+                    data-scheda-vista="oggetti" aria-controls="foglio-vista-oggetti"
+                    title="Cosa disegnare sulla mappa: pianeti, stelle, satelliti, aerei">Oggetti</button>
+                  <button type="button" class="tasto-segmento" role="tab" aria-selected="false"
+                    data-scheda-vista="cielo" aria-controls="foglio-vista-cielo"
+                    title="L'aria sopra di te: colore del cielo, nuvole, aurora">Cielo</button>
+                  <button type="button" class="tasto-segmento" role="tab" aria-selected="false"
+                    data-scheda-vista="paesaggio" aria-controls="foglio-vista-paesaggio"
+                    title="La terra sotto di te: terreno, rilievo, luci, acque">Paesaggio</button>
                 </div>
+              </div>
+
+              <!-- SCHERMO: come guardare -->
+              <div id="foglio-vista-schermo" class="foglio-vista foglio-attivo" role="tabpanel" data-scheda="schermo">
+                <div class="riga-comandi riga-tasti-griglia">
+                  <button id="skymap-btn-schermo" type="button" class="tasto-cielo" title="Il cielo occupa tutto lo schermo (anche con un doppio clic sulla mappa)">Schermo intero</button>
+                  <button id="skymap-btn-notte" type="button" class="tasto-cielo" title="Filtro rosso: protegge la vista notturna">Modalità notte</button>
+                  <button id="skymap-btn-hover" type="button" class="tasto-cielo" aria-pressed="false" title="La modalità hover è disponibile quando la vista segue il telefono">Modalità hover</button>
+                  <button id="skymap-btn-camera" type="button" class="tasto-cielo" title="Sovrapponi il cielo all'immagine della fotocamera: il campo visivo diventa quello dell'obiettivo, e il pizzico lo tara">Fotocamera</button>
+                </div>
+                <p class="titolo-foglio-vista">Aiuti disegnati sopra al cielo</p>
+                <div class="riga-comandi riga-tasti-griglia">
+                  <button id="skymap-btn-griglia" type="button" class="tasto-cielo attiva" title="Reticolo di azimut e altezza">Reticolo</button>
+                  <button id="skymap-btn-etichette" type="button" class="tasto-cielo attiva" title="Nomi accanto agli astri disegnati">Nomi astri</button>
+                </div>
+              </div>
+
+              <!-- OGGETTI: cosa compare sulla mappa -->
+              <div id="foglio-vista-oggetti" class="foglio-vista" role="tabpanel" data-scheda="oggetti" hidden>
+                <div class="riga-comandi riga-tasti-griglia">
+                  <button id="skymap-btn-solelun" type="button" class="tasto-cielo attiva" title="Sole e Luna">Sole e Luna</button>
+                  <button id="skymap-btn-pianeti" type="button" class="tasto-cielo attiva" title="Mercurio, Venere, Marte, Giove, Saturno, Urano e Nettuno">Pianeti</button>
+                  <button id="skymap-btn-stelle" type="button" class="tasto-cielo attiva" title="Le stelle luminose di riferimento">Stelle</button>
+                  <button id="skymap-btn-costellazioni" type="button" class="tasto-cielo attiva" title="Le figure delle costellazioni">Costellazioni</button>
+                  <button id="skymap-btn-arte" type="button" class="tasto-cielo" aria-pressed="false" title="Sopra le linee, la figura: il cacciatore, il leone, la nave. È un velo leggero, appoggiato sulle stelle vere — a campo largo si accenna appena, ingrandendo molto sparisce da sé. Tocca una figura sulla mappa per aprire la sua pagina">Disegni</button>
+                  <button id="skymap-btn-deepsky" type="button" class="tasto-cielo" title="Galassie, nebulose e ammassi">Deep Sky</button>
+                  <button id="skymap-btn-satelliti" type="button" class="tasto-cielo attiva" title="ISS e Tiangong">Satelliti</button>
+                  <button id="skymap-btn-corpiminori" type="button" class="tasto-cielo attiva" title="Comete e asteroidi abbastanza luminosi da vedersi stanotte: quasi sempre non ce n'è nessuno, e quando c'è è il motivo per uscire">Comete e asteroidi</button>
+                  <!-- Gli aerei sono l'unico oggetto di questo elenco che
+                       arriva da una rete che può non rispondere, e per
+                       questo il tasto è doppio: a sinistra l'interruttore
+                       come tutti gli altri, a destra una **spia** che dice
+                       come stanno i dati (verde freschi, ambra vecchi, rossa
+                       guasto) e che apre il pannello ADS-B. Prima, quando il
+                       feed taceva, il cielo restava semplicemente senza
+                       triangoli — cioè identico a un cielo senza aerei. -->
+                  <span class="tasto-aerei-coppia">
+                    <button id="skymap-btn-aerei" type="button" class="tasto-cielo tasto-aerei-mostra" aria-pressed="false"
+                      title="Disegna in cielo gli aerei ADS-B entro il raggio scelto, colorati per distanza">Aerei</button>
+                    <button id="skymap-btn-aerei-pannello" type="button" class="tasto-cielo tasto-aerei-pannello"
+                      data-vai-gruppo="aerei" aria-label="Apri il pannello degli aerei ADS-B"
+                      title="Apri il pannello degli aerei ADS-B"><span id="aerei-spia" class="aerei-spia" data-fase="attesa"></span></button>
+                  </span>
+                </div>
+                <p class="titolo-foglio-vista">Segni e aiuti</p>
+                <div class="riga-comandi riga-tasti-griglia">
+                  <button id="skymap-btn-eventi" type="button" class="tasto-cielo attiva" title="Segna sulla mappa gli eventi in corso all'ora mostrata: il radiante di uno sciame, l'astro eclissato, i corpi di una congiunzione">Eventi in cielo</button>
+                  <button id="skymap-btn-traccia" type="button" class="tasto-cielo attiva" title="La strada che l'oggetto scelto percorre nel cielo nelle ore attorno a questo istante: tratteggiata dove è già passato, piena dove sta andando, con l'ora segnata di ora in ora">Traccia</button>
+                  <button id="skymap-btn-eclittica" type="button" class="tasto-cielo" title="Il cerchio che il Sole percorre in un anno fra le stelle: il piano dell'orbita terrestre visto di taglio. I pianeti stanno sempre a pochi gradi da questa linea, e il filo a piombo misura quanti. Resta accesa qualunque oggetto si scelga, finché non la si spegne">Eclittica</button>
+                  <button id="skymap-btn-sotto" type="button" class="tasto-cielo attiva" title="Mostra anche ciò che in questo momento è sotto l'orizzonte">Sotto l'orizzonte</button>
+                  <button id="skymap-btn-dietro-monti" type="button" class="tasto-cielo" aria-pressed="false" title="Mostra gli astri anche quando si trovano dietro il profilo di colline e montagne. Spento, il terreno li nasconde come avviene nella realtà">Astri dietro i monti</button>
+                </div>
+              </div>
+
+              <!-- CIELO: l'aria sopra di te -->
+              <div id="foglio-vista-cielo" class="foglio-vista" role="tabpanel" data-scheda="cielo" hidden>
+                <div class="riga-comandi riga-tasti-griglia">
+                  <button id="skymap-btn-atmosfera" type="button" class="tasto-cielo attiva" aria-pressed="true" title="Mostra il colore del cielo, la foschia e gli aloni. Spegnendola si spengono anche le nuvole">Atmosfera</button>
+                  <button id="skymap-btn-nuvole" type="button" class="tasto-cielo" aria-pressed="false" title="Aggiunge le nuvole previste per questo luogo e quest'ora all'atmosfera">Nuvole</button>
+                  <button id="skymap-btn-aurora" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'ovale aurorale — boreale o australe, secondo l'emisfero — messo in cielo dove sta davvero: se da qui si vede, e quanto se ne affaccia sopra l'orizzonte, lo decide la curvatura della Terra">Aurora</button>
+                </div>
+
+                <!-- L'aurora vera, da queste latitudini, capita una volta ogni
+                     dieci anni. La slitta serve a vederla lo stesso: si alza
+                     la tempesta e si guarda da che Kp comincia ad affacciarsi
+                     sopra le colline di casa. -->
+                <div class="blocco-aurora">
+                  <p id="skymap-aurora-nota" class="etichetta-comando nota-lunga"></p>
+                  <div class="riga-comandi riga-aurora">
+                    <label class="etichetta-comando" for="skymap-aurora-kp">Simula una tempesta</label>
+                    <input id="skymap-aurora-kp" type="range" min="0" max="9" step="0.5" value="0"
+                           aria-label="Indice Kp simulato">
+                    <span id="skymap-aurora-kp-valore" class="lettura-aurora"></span>
+                    <button id="skymap-aurora-vero" type="button" class="tasto-cielo" title="Torna al Kp misurato dal NOAA per quest'ora">Kp vero</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- PAESAGGIO: la terra sotto di te -->
+              <div id="foglio-vista-paesaggio" class="foglio-vista" role="tabpanel" data-scheda="paesaggio" hidden>
+                <div class="riga-comandi riga-tasti-griglia">
+                  <button id="skymap-btn-terreno" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'orizzonte prende la forma vera del terreno attorno a te: colline, montagne, mare, pianura — ognuno col suo colore. Si scarica una volta sola e poi resta anche senza rete. Spento, il terreno non viene disegnato. Ingrandendo molto su un astro il terreno diventa trasparente da sé, come in Stellarium">Terreno vero</button>
+                  <button id="skymap-btn-rilievo" type="button" class="tasto-cielo attiva" aria-pressed="true" title="La forma vera del terreno, non solo la sua sagoma: le valli che scendono, i fianchi delle colline, il solco del fiume, disegnati a tratti come su una tavola panoramica. Attorno a te il passo è di ventisette metri, contro i tre gradi del profilo a bande. Si scarica una volta sola per luogo (da quattro a sei tessere) e poi resta anche senza rete. Spento, torna il profilo a bande">Rilievo</button>
+                  <button id="skymap-btn-citta" type="button" class="tasto-cielo attiva" aria-pressed="true" title="Le cupole di luce dei paesi veri attorno a te, col loro nome sull'orizzonte: dicono da che parte NON cercare le cose deboli. Di giorno non si vedono">Luci delle città</button>
+                  <button id="skymap-btn-cime" type="button" class="tasto-cielo" aria-pressed="false" title="I nomi delle montagne che spuntano sopra l'orizzonte, con la loro quota, agganciati alla vetta vera da un filo: si nominano solo quelle che da qui si vedono davvero, non quelle nascoste dietro a una cresta più vicina. Nascono spenti; una volta accesi si scaricano una volta sola e la scelta si ricorda. Fin dove cercarle si decide nelle Impostazioni">Nomi dei monti</button>
+                  <button id="skymap-btn-acque" type="button" class="tasto-cielo attiva" aria-pressed="true" title="I laghi e i fiumi veri attorno a te, disegnati dove sono e alla distanza a cui sono: l'acqua ferma riflette il cielo come uno specchio, e la Luna ci fa la sua strada di luce. Si vedono solo quelli che non restano dietro a una cresta. Si scaricano da OpenStreetMap una volta sola e poi restano anche senza rete; fin dove cercarli si decide nelle Impostazioni">Laghi e fiumi</button>
+                </div>
+                <p id="skymap-terreno-nota" class="etichetta-comando nota-lunga"></p>
               </div>
             </section>
 
@@ -811,20 +882,49 @@
               <p id="skymap-astri-vuoto" class="etichetta-comando nota-lunga hidden">Nessun astro con questo nome.</p>
             </section>
 
+            <!-- AEREI ADS-B: il pannello che dice **come stanno i dati**.
+                 Prima qui c'era un elenco e un tasto «Aggiorna», e quando il
+                 feed non rispondeva il cielo restava senza triangoli — cioè
+                 identico a un cielo senza aerei. Adesso la prima cosa che si
+                 legge è lo stato: quanti aerei, da quale rete, di quando è
+                 la lettura, e — se qualcosa non va — che cosa e quando si
+                 riprova.
+
+                 I due interruttori sono due, e non uno, perché sono due
+                 domande diverse: **Dati ADS-B** tiene vivo il feed (acceso
+                 di serie: quando si decide di guardare, gli aerei ci sono
+                 già), **Mostra in cielo** disegna i triangoli sopra le
+                 stelle (spento di serie: un cielo stellato con dieci
+                 etichette arancioni sopra non è quello che uno apre alle
+                 undici di sera). Il terzo, **Auto**, è il battito che
+                 rinfresca la fotografia quando invecchia. -->
             <section class="gruppo-comandi gruppo-aerei" data-gruppo="aerei" aria-label="Aerei ADS-B">
               <div class="aerei-testata">
-                <div>
-                  <strong>Aerei in tempo reale</strong>
-                  <p id="aerei-stato" class="etichetta-comando" role="status" aria-live="polite">Apri il pannello per cercare gli aerei vicini.</p>
+                <div class="aerei-titolo">
+                  <strong>Aerei ADS-B</strong>
+                  <span class="aerei-contatore"><span id="aerei-conteggio">—</span> nel raggio</span>
                 </div>
                 <button id="aerei-pannello-chiudi" type="button" class="tasto-chiudi-dettaglio"
-                  aria-label="Chiudi l’informativa ADS-B" title="Chiudi">✕</button>
+                  aria-label="Chiudi il pannello ADS-B" title="Chiudi">✕</button>
               </div>
-              <p class="etichetta-comando">Posizioni ADS-B entro il raggio scelto (50 km alla prima apertura). Adesso sono dati in tempo reale; spostando il tempo, aereo e rotta diventano stime coerenti con l'istante mostrato. La linea tratteggiata mostra i 5 minuti successivi.</p>
+              <p id="aerei-stato" class="aerei-stato" role="status" aria-live="polite"
+                 data-fase="attesa">In attesa dei dati ADS-B…</p>
+              <div class="riga-comandi riga-tasti-griglia aerei-interruttori">
+                <button id="aerei-btn-mostra" type="button" class="tasto-cielo" aria-pressed="false"
+                  title="Disegna i triangoli sopra il cielo, colorati per distanza. Non tocca il feed: spegnendolo i dati continuano ad arrivare">Mostra in cielo</button>
+                <button id="aerei-btn-dati" type="button" class="tasto-cielo attiva" aria-pressed="true"
+                  title="Tiene vivo il feed ADS-B. Spegnendolo si fermano le richieste e la fotografia viene buttata">Dati ADS-B</button>
+                <button id="aerei-btn-auto" type="button" class="tasto-cielo attiva" aria-pressed="true"
+                  title="Rinfresca la fotografia da solo quando invecchia: ogni 45 secondi col disegno acceso, ogni tre minuti quando i dati stanno solo in memoria">Aggiornamento automatico</button>
+                <button id="aerei-aggiorna" type="button" class="tasto-cielo"
+                  title="Chiedi adesso una nuova fotografia, senza aspettare il prossimo giro">Aggiorna adesso</button>
+              </div>
+              <!-- La leggenda la scrive aerei.js da FASCE_DISTANZA: una copia
+                   qui divergerebbe al primo ritocco delle soglie senza che
+                   niente lo dica. -->
+              <ul id="aerei-leggenda" class="aerei-leggenda" aria-label="Come si leggono i colori"></ul>
               <div id="aerei-elenco" class="aerei-elenco"></div>
-              <div class="aerei-azioni-pannello">
-                <button id="aerei-aggiorna" type="button" class="tasto-cielo">Aggiorna</button>
-              </div>
+              <p class="etichetta-comando nota-lunga">Posizioni ADS-B entro il raggio scelto (50 km di serie; si cambia nelle Impostazioni). Il colore dice quanto è vicino; la linea tratteggiata è la rotta dei 5 minuti successivi. Spostando l'orologio, aereo e rotta diventano stime coerenti con l'istante mostrato.</p>
             </section>
 
           </div>

@@ -42,6 +42,9 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `terreno.js` | ~5.270 | **La forma vera del terreno attorno a casa**: quote del suolo da Open-Meteo (con due servizi di riserva quando è carico), orizzonte per ogni direzione (**ripulito dagli spilli**: i due filtri sugli anelli vicini, §5), che paesaggio c'è (mare/pianura/collina/montagna), le **luci dei paesi veri**, i **nomi delle montagne** che ci spuntano sopra e **i laghi e i fiumi** (dove sono e a che distanza, tagliati raggio per raggio), tutt'e tre da OpenStreetMap, più **fin dove cercarli** (i tre raggi delle Impostazioni) e la **barra che dice a che punto è** (§9-ter). Prefissi `terreno`, `citta`, `cime`, `acque` e `raggi`. |
 | `rilievo.js` | ~1.650 | **La forma vera del terreno, non la sua sagoma**: una superficie a 720 direzioni × 106 anelli, con le quote prese a **tessere raster** (un PNG in cui ogni pixel è una quota, 27 m di passo entro 5 km) invece che a punti. Si disegna con una camminata sola per raggio, che dà insieme l'ombreggiatura, la sagoma, i contorni e il **fondo a fette di distanza** — la prospettiva aerea, sopra **e sotto** la riga dell'orizzonte. È lei a far vedere la valle che scende e il solco del fiume, che una cresta accumulata non può dire. Prefisso `ril`. |
 | `meteo-astro.js` | ~515 | **Meteo da astronomo**: seeing, trasparenza, griglia Clear Sky Chart, avviso di aurora. Prefisso `meteo`/`aurora`. |
+| `aerei.js` | ~1.475 | **Gli aerei ADS-B nel planetario**: il traffico vero entro il raggio scelto, disegnato in cielo e colorato per **fascia di distanza** (rosso entro 10 km, poi arancio, giallo, azzurro). Il trasporto è tutto qui — nove porte fra reti dirette e ponti CORS, provate a **corsa con affiancamento** e non in fila indiana, con una **pagella** salvata che ricorda quale funziona da qui. I **dati** nascono accesi e il **disegno** spento: sono due interruttori, non uno. Prefisso `aerei`. |
+| `config.js` | 3 | L'URL del Worker ADS-B proprio (`window.ADSB_PROXY_URL`), iniettato dal deploy. Vuoto, restano i ripieghi pubblici. |
+| `worker-adsb.js` | ~52 | Il Cloudflare Worker del progetto: interroga quattro reti ADS-B dal server, aggiunge il CORS e tiene la fotografia 20 secondi. Non fa parte della PWA — si distribuisce a mano, vedi `ADSB-PROXY.md`. |
 | `aurora-polare.js` | ~1.015 | **Le aurore polari nel planetario**: l'ovale aurorale attorno al polo geomagnetico, boreale e australe, disegnato dove sta davvero, più la **forma dello scudo** (magnetopausa e onda d'urto) che serve al banco della Didattica. Prefisso `aur`. |
 | `eventi-extra.js` | ~720 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete e **aurore** (previsione del Kp a tre giorni + stagione degli equinozi). |
 | `ui-nuova.js` | ~350 | L'interfaccia di tutto quanto sopra. |
@@ -65,7 +68,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 ```
 app.js → telescopio.js → catalogo.js → costellazioni.js → corpi-minori.js
        → pianifica.js → terreno.js → rilievo.js → meteo-astro.js → aurora-polare.js
-       → eventi-extra.js → ui-nuova.js
+       → config.js → aerei.js → eventi-extra.js → ui-nuova.js
        → didattica.js
 ```
 
@@ -79,7 +82,10 @@ carica `catalogo.js` da sé alla prima apertura del planetario (`apriSkymap()`).
 |---|---|
 | `apriSkymap()` | avvia `catCarica()`, `corpiMinoriCarica()`, `terrenoCarica()`, `cittaCarica()` e `caricaAurora()` |
 | `skyAggiornaCatalogo()` | se `catAggiornaPosizioni()` risponde, esce subito |
-| `skyDisegna()` | chiama `catDisegnaStelle()`, `catDisegnaFigure()`, `costDisegnaArte()` e `aurDisegna()` |
+| `skyDisegna()` | chiama `catDisegnaStelle()`, `catDisegnaFigure()`, `costDisegnaArte()`, `aurDisegna()` e `aereiDisegna()` |
+| `apriSkymap()` / `chiudiSkymap()` | accendono e spengono il battito degli aerei (`aereiAvvia()` / `aereiFerma()`): i **dati** partono da soli, il **disegno** no |
+| `skyOggettoNelPunto()` / `skyAggiornaScheda()` | chiedono ad `aereoNelPunto()` e ad `aereiSchedaHtml()` — un aereo è un oggetto della mappa come un pianeta |
+| `skyAggiornaOsservatore()` | avvisa `aereiPosizioneCambiata()`: una fotografia del vecchio centro non deve comparire nel cielo nuovo |
 | `skyOggettoNelPunto()` | in fondo a tutto chiede a `costFiguraNelPunto()` che figura c'è lì |
 | `skyElenco()` / `skyProfondoDiId()` | pescano anche da `catVociElenco()` e `corpiMinoriVociElenco()` |
 | `calcolaEventiIntervallo()` | chiama `aggiungiEventiExtra()` |
@@ -111,6 +117,7 @@ Se i moduli nuovi non ci sono, l'app resta esattamente quella di prima.
 | `s3.amazonaws.com/elevation-tiles-prod/terrarium` | **Le tessere del rilievo** (`rilievo.js`): un PNG in cui ogni pixel è una quota, `(R·256 + G + B/256) − 32768`. Da quattro a sei per luogo, una volta sola, e ognuna ne porta 65.536 — è il rovesciamento che rende possibile un terreno a 27 m di passo, che a cento coordinate per richiesta sarebbero centinaia di richieste. Niente chiave; **il CORS aperto è la condizione**, se no il canvas si contamina e i pixel non si possono leggere | La maglia si costruisce lo stesso, leggendo le quote dalla griglia grossa di `terreno.js`: il primo piano viene liscio, ma il disegno c'è. Che non sia arrivata nessuna tessera lo dice la riga di stato |
 | `geocoding-api.open-meteo.com/v1/search` | Ricerca città | Elenco città locale (offline) |
 | `tile.opentopomap.org` e `server.arcgisonline.com` (World_Imagery) | I due fondi in più della mappa del luogo: le curve di livello e la fotografia dall'alto. Servono a scegliere *dove* osservare — quanto si sale, dove finisce il bosco — non a disegnare il cielo | Tessere grigie e basta: si torna a «Mappa» con un tocco, e il resto della finestra funziona uguale. Le curve di livello passano dalla cache del service worker come quelle di OSM, la fotografia dall'alto **no**, di proposito (a zoom 18 una sola tessera pesa quanto l'app) |
+| **Nove porte ADS-B**: quattro reti dirette (`opendata.adsb.fi`, `api.adsb.lol`, `api.airplanes.live`, `api.adsb.one`) più i ponti CORS (`api.allorigins.win`, `corsproxy.io`, `api.codetabs.com`), e davanti a tutte il Worker proprio se `ADSB_PROXY_URL` è configurato | Gli aerei in tempo reale entro il raggio scelto. Non si provano in fila indiana: si lancia la prima e dopo 2,6 s si affianca la seconda, vince chi risponde — una porta ADS-B carica **tace**, e tacere consuma tutta la sveglia. La sveglia grossa è di tutta la corsa (22 s), ed è quello che rende gratis le porte in più. Chi risponde e chi no si **salva** (`CHIAVE_SALUTE`): il giro dopo comincia da chi ha funzionato per ultimo | Resta l'ultima fotografia, propagata dalla rotta, con scritto **da quanto** e cosa non va; si riprova da sé a 3 s, 9, 25, 60, 150 e 300 |
 | `celestrak.org/NORAD/elements/gp.php` | TLE dei satelliti | Niente passaggi |
 | `ipapi.co` / `ipwho.is` / `get.geojs.io` | Posizione da IP (ripiego del GPS) | Si chiede a mano |
 | `api.bigdatacloud.net/data/reverse-geocode-client` e `nominatim.openstreetmap.org/reverse` | **Come si chiama il posto in cui sei**: il nome vero del comune o della frazione a partire dalle coordinate. Una richiesta per punto, e il nome trovato resta in `localStorage` | L'elenco a bordo `ECL_CITTA` (il capoluogo entro 60 km), come prima; se non c'è nemmeno quello, le coordinate |
@@ -141,6 +148,18 @@ i testi — ma resta `cielo` nel codice, nelle classi CSS (`vista-cielo`,
 | **Telescopio** | Allineamento polare, puntamento, programma della serata, manutenzione. |
 | **Diario** | Osservazioni registrate e traguardi. |
 | **Didattica** | Il laboratorio: otto banchi di prova con dentro le posizioni vere dei pianeti, uno a schermo per volta. Ogni scena in tre dimensioni si gira col dito e si prende tutto lo schermo col ⛶, barra del tempo compresa. Perché i pianeti tornano indietro, le tre leggi di Keplero, la fionda gravitazionale (col banco di prova, i **conti passo per passo** e il Grand Tour delle Voyager in 3D, con le due sonde che escono dal piano dei pianeti), le finestre di lancio, gli allineamenti, **come si accende un'aurora** (il vento solare, la magnetosfera in 3D, la coda che si rompe, l'ovale attorno al polo, e perché da qui è rossa), **perché le costellazioni non esistono** (le stelle di una figura messe nello spazio vero, ognuna alla sua distanza misurata: si gira intorno alla nuvola, ci si allontana fino a duemila anni luce finché la figura si disfa, e ci si va a stare su una delle sue stelle — su un pianeta di Betelgeuse, di Rigel — col cielo rifatto da lì accanto alla scena in 3D che dice perché), e **il Sole al tramonto**, che è in quattro quadri: la **Terra che gira** (il Sole sta fermo, e si prende il globo col dito e lo si fa girare finché l'omino non passa dalla parte in ombra — con il giorno e la notte, le coste vere dei continenti, le luci delle città e l'anello arancione dell'aria di taglio), **quanta aria** attraversa la luce (a scala vera, curvatura compresa: otto chilometri e mezzo di aria contro i più di trecento che la luce percorre dentro alla stessa fascia quando il Sole è sull'orizzonte, col blu che se ne va di lato lungo la strada — ed è quello a fare il cielo azzurro), **che colore ne esce** (il cielo dipinto coi colori che escono dai conti, il disco alla sua misura vera schiacciato dalla rifrazione, e accanto il posto in cui il Sole sarebbe senza atmosfera: sotto l'orizzonte) e **lo stesso cielo su Marte**, dove tutto si rovescia: color paglia di giorno e azzurro attorno al Sole al tramonto, perché lì a diffondere non sono le molecole ma la polvere. **Il Sole si prende col dito** in tutti i quadri. Ogni banco finisce con i tasti che portano la stessa cosa nel planetario e nella vista 3D — quello delle aurore ci porta anche in un altro luogo e in un'altra notte, dove l'aurora c'è stata davvero. |
+
+I **pannelli** sopra la mappa erano sei e adesso sono cinque: «Visualizzazione»
+e «Filtri» erano due nomi per la stessa domanda — il reticolo è un modo di
+guardare o è una cosa disegnata? l'atmosfera è un filtro o è un oggetto? — e
+chi cercava «Nuvole» le trovava nel primo, chi cercava «Aurora» nel secondo.
+Adesso è un pannello solo diviso in quattro schede: **Schermo** (come guardo:
+pieno schermo, notte, fotocamera, reticolo e nomi), **Oggetti** (cosa disegno,
+gli aerei compresi, più i segni che li accompagnano), **Cielo** (l'aria sopra
+di me: atmosfera, nuvole, aurora con la sua slitta) e **Paesaggio** (la terra
+sotto: terreno, rilievo, luci, vette, acque). La scheda scelta si ricorda
+(`skyMostraSchedaVista`, `CHIAVE_SKY_SCHEDA_VISTA`) e la striscia delle quattro
+pillole resta appiccicata in cima mentre il foglio scorre.
 
 Modali (in `index.html`): `modale-aggiungi`, `modale-costellazioni` (l'atlante), `modale-mappa` (eclissi),
 `modale-simulazione`, `modale-lezione` (che cos'è l'eclittica),
@@ -262,6 +281,7 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `aur` | `aurora-polare.js` | Le aurore. `acceso` se le si vuole, `kpSimulato` il Kp della slitta (`null` = quello vero del NOAA), `geo` la geometria dell'ovale già calcolata per l'istante mostrato (`chiave` dice per quale), `tela`/`sfocata` le due tele di servizio. |
 | `cime` | `terreno.js` | Le montagne con un nome, da OpenStreetMap: `elenco` sono le vette del posto (`nome`, `quota`, `az`, `km`), `vista` quelle che da qui si vedono davvero, con la loro altezza apparente — rifatta solo quando cambia la quota dell'occhio o il profilo del terreno (`vistaChiave`). `acceso` se le si vuole. |
 | `acque` | `terreno.js` | **I laghi e i fiumi**. `bande` è la rasterizzazione: per ogni mezzo grado di azimut, gli intervalli `[vicino, lontano, tipo, nome]` in metri in cui c'è acqua — il **nome** è il quarto posto della tupla, ed è la ragione per cui il salvataggio è numerato (`ACQUE_VERSIONE`: una tupla di tre è di una forma vecchia, si legge benissimo e resta senza etichetta per sempre) — — pura geometria, e per questo si salva così com'è. `vista` è quella stessa cosa già passata al vaglio del terreno (quota dell'acqua, occlusione, sotto la linea dell'orizzonte), rifatta solo quando cambia il terreno o l'altezza dell'occhio (`vistaChiave`). `nomi` sono i tre specchi più grandi, per la riga di stato (le etichette sul cielo invece le prepara `acqueDaDisegnare`, che rimette insieme i pezzi di uno stesso specchio e dice dove scriverne il nome). `sommerso` dice che le coordinate cascano **dentro** a un poligono d'acqua — si salva con le bande, perché è geometria come loro — e `quotaSommerso` a che quota sta quella superficie: da quei due dipende la quota dell'occhio (`acqueAllineaOcchio`). È dei soli **poligoni**, di proposito: un fiume che passa sotto i piedi la sua acqua ai piedi ce l'ha lo stesso (`acqueFiumeAddosso`), ma chi ci sta sopra è su un ponte e non in acqua, e l'occhio non va portato al pelo del fiume. `acceso` se li si vuole (di serie **sì**). |
+| `stato` (dentro `aerei.js`) | `aerei.js` | Gli aerei ADS-B. **Tre interruttori e non uno**: `dati` tiene vivo il feed (di serie **acceso**), `visibile` disegna i triangoli sopra le stelle (di serie **spento**), `auto` è il battito che rinfresca la fotografia quando invecchia — tutt'e tre salvati in `CHIAVE_AEREI`. `aerei` è la fotografia arricchita, `ultimoSuccesso` il suo orologio (i due sono una cosa sola: svuotare l'una senza azzerare l'altro faceva saltare la richiesta successiva e mostrava per minuti un falso «nessun aereo»), `ultimaFonte` la porta che ha risposto, `errore`/`errNome` l'ultimo guasto, `tentativiFalliti` quante volte di fila — è lui a scegliere la riprova in `RIPROVE_MS`. `prossimoAggiornamento` è quando tocca di nuovo, e lo guarda il battito da cinque secondi. `salute` (una Map a parte) è la pagella delle porte. |
 | `citta` | `terreno.js` | I paesi attorno a casa, già pronti per il disegno: per ognuno `az`, `km`, `abitanti`, `forza` (quanto illumina), `alto` e `mezzo` (quanto è grande la cupola di luce), `alfa`. Ordinati dal più luminoso. |
 
 ## 9. Persistenza (`localStorage`, tutte le chiavi)
@@ -287,6 +307,9 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `CHIAVE_CIME` | `astrocalendario_cime` (le vette con un nome attorno a casa: stessa forma a più posti) |
 | `CHIAVE_ACQUE` | `astrocalendario_acque` (i laghi e i fiumi rasterizzati per direzione: stessa forma a più posti) |
 | `CHIAVE_RAGGI` | `astrocalendario_raggi_orizzonte` (fin dove cercare montagne, paesi e acque, e i due interruttori: `{cime, citta, acque, nomiMonti, acqueAccese, rilievo}`) |
+| `CHIAVE_AEREI` | `astrocalendario_aerei` (i tre interruttori degli aerei ADS-B: `{dati, visibile, auto}`) |
+| `CHIAVE_SALUTE` | `astrocalendario_adsb_salute` (la pagella delle porte ADS-B: per ognuna quanti sì, quanti no, quando ha risposto l'ultima volta e fino a quando è in penale). Come `CHIAVE_NOMI_LUOGO` **non** va nel backup: è una misura di questa rete e di questo posto, e portarla altrove vorrebbe dire cominciare dalla porta sbagliata |
+| `CHIAVE_SKY_SCHEDA_VISTA` | `astrocalendario_scheda_vista` (quale delle quattro schede del pannello Visualizzazione era aperta) |
 | `CHIAVE_NOMI_LUOGO` | `astrocalendario_nomi_luogo` (i nomi dei posti già chiesti alla mappa, `{"lat,lon": "nome"}` con le coordinate a tre decimali). È l'unica di queste chiavi che **non** va nel backup: è una memoria di comodo, si rifà da sé con una richiesta |
 
 Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
@@ -305,6 +328,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
   `_ecl*` = interni della mappa eclissi, `lez*` = la lezione animata
   dell'eclittica, `terreno*` = la forma vera del terreno attorno a casa, `citta*` = i paesi che la illuminano, `cime*` = le montagne che ci spuntano sopra, `acque*` = i laghi e i fiumi,
   `ril*` = il rilievo del terreno (le tessere, la maglia, il suo disegno),
+  `aerei*` = gli aerei ADS-B (il trasporto, le fasce di distanza e il loro pannello),
   `did*` = il laboratorio della vista Didattica (`aurL*` il suo banco delle
   aurore), `aur*` = le aurore polari nel planetario e la forma della
   magnetosfera, `cost*` = i disegni delle costellazioni, i loro nomi nelle
@@ -410,8 +434,50 @@ Il §15 invece è stato **rimesso in piedi**, e vale la pena saperlo: `cimeVisib
 
 Da sapere prima di aggiungere prove qui: fino a poco fa **dal §9 in giù non girava più niente**. Il §8 chiama `skyArcoAcquaInVista` e `rilArcoInVista` per davvero, e la prima sta in `app.js`, che questa pagina non carica: un `ReferenceError` in uno `<script>` unico porta via tutto quello che viene dopo, e una prova sparita non fallisce — semplicemente non compare. Le tre funzioni degli archi adesso sono **copiate** nel blocco degli stub in cima, accanto a `skyProietta`, con lo stesso avvertimento: sono copie, e il giorno che divergono da `app.js` non lo dice nessuno.
 
+**§27** guarda gli aerei ADS-B, che è la segnalazione più difficile da
+inseguire che questo modulo abbia avuto: il sintomo — un cielo senza triangoli
+— è **identico** a una risposta legittima, cioè un cielo senza aerei, e
+nessuno guardando lo schermo può dire quale dei due sta vedendo. Le cause
+erano tre e sono tre famiglie di prove. **La fila indiana**: che una porta che
+tace non si porti via la corsa (con l'affiancamento vince la seconda in un
+secondo, in fila indiana costava la sveglia intera), che la porta muta venga
+comunque tentata e non esclusa, che una porta *caduta* lasci subito il posto
+senza aspettare l'affiancamento — che serve a chi tace, non a chi ha già detto
+di no — e che la sveglia sia di **tutta la corsa**, che è quello che rende
+gratis le porte in più. **La risposta che arriva e non è una risposta**: col
+contro-esempio scritto in chiaro, cioè la regola di prima (`risposta.ac || []`)
+che leggeva una pagina d'errore HTML come un allegro «zero aerei» e fermava lì
+la corsa, con la spia verde sopra un cielo vuoto; adesso ogni interprete
+pretende di riconoscere lo schema e **solleva**, ma un cielo davvero sgombro
+resta un cielo sgombro (e per OpenSky il segno è la *chiave* `states`, non il
+suo contenuto, che vale legittimamente `null`). **La pagella**: che davanti
+vada chi ha risposto per ultimo e non il primo dell'elenco, che chi è in
+penale finisca in fondo senza però essere escluso, che due no di fila pesino
+più di uno, che un sì cancelli la penale e che la penale non cresca
+all'infinito. In coda le **fasce di distanza** (le soglie, il bordo che
+appartiene alla sua fascia, e che una distanza che non è un numero non faccia
+cadere il fotogramma dentro al ciclo del planetario) e il **ritmo**, con il
+numero che conta davvero: un aereo di linea fa 250 m/s, quindi il ritmo fitto
+non deve lasciare invecchiare la fotografia più di una decina di chilometri.
+
+Da sapere prima di aggiungere prove qui, ed è la stessa trappola di sempre in
+un'altra veste: fino a poco fa **dal §26 in giù non girava niente**. Il §25
+chiama `rilColoreDiFetta` per davvero, che chiama `skyMescolaColore`, che sta
+in `app.js` — e questa pagina non lo carica: tre blocchi se la prestavano a
+mano, un quarto se n'era dimenticato, e il `ReferenceError` in uno `<script>`
+unico portava via §26 e §27 interi. Adesso `skyMescolaColore` sta fra gli stub
+in cima accanto a `skyProietta`, con lo stesso avvertimento (è una copia, e il
+giorno che diverge da `app.js` non lo dice nessuno), e `sky.luceCielo` c'è, se
+no lo stesso conto restituiva una terna di `NaN` — cioè una prova che falliva
+per il motivo sbagliato. Nella stessa passata è venuto fuori che le prove di
+Overpass del §26 si passavano di mano la **penale** delle porte
+(`overpassGuastaFino`, due minuti, viva per tutta la scheda): una prova
+chiedeva cinque istanze e ne trovava tre, perché la precedente ne aveva mandate
+due in castigo. `overCorsa` adesso la azzera, ed è il genere di dipendenza fra
+prove che si scopre solo il giorno in cui la sezione ricomincia a girare.
+
 Se tocchi qualcosa in `catalogo.js`, `costellazioni.js`, `corpi-minori.js`,
-`terreno.js`, `rilievo.js`, `aurora-polare.js`, l'acqua (mare, laghi, fiumi), **i nomi
+`terreno.js`, `rilievo.js`, `aurora-polare.js`, `aerei.js`, l'acqua (mare, laghi, fiumi), **i nomi
 sull'orizzonte e la loro distanza**, l'eclissi di
 Luna, **le tele delle facce** (`skyLatoTela`, `skyPelle`, `skyDipingiLuna`) o
 la vista 3D di `app.js`, o i banchi della fionda e del tramonto di
@@ -751,6 +817,12 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | La linea del tempo del Grand Tour (le tappe cliccabili) | `voyCostruisciLinea()` / `voyAggiornaLinea()`, riquadro `#did-voy-linea`. Si costruisce in `entra()` e non in `collega()`: ha bisogno delle posizioni dei pianeti, e Astronomy Engine alla costruzione del banco può non esserci ancora. Stili `.did-linea-tempo`, `.did-tappa*` |
 | Una scritta o due etichette che si accavallano in una scena girata | `didScritta(..., { dx, dy })` e `{ schermo: true }`. Gli scostamenti dentro alla matrice si schiacciano col piano: dodici pixel fra due righe, con la scena di taglio, diventano due e le scritte si stampano una sull'altra. `dx`/`dy` scostano **dopo** la proiezione; `schermo` salta la proiezione del tutto, e serve alle etichette appoggiate a un angolo della tela (l'anno del Grand Tour, le due righe delle velocità della fionda) che girando la scena andavano a spasso |
 | «Nessun allineamento trovato» | `allinConcludi()`: la ricerca guarda **ogni coppia** di pianeti, non solo il gruppo intero — cinque pianeti dentro a pochi gradi non capita quasi mai, e cercando solo quello la risposta era sempre «niente». La riga di riepilogo (`did-riassunto`) dice comunque qual è la fila più stretta del periodo, che è la risposta vera alla domanda |
+| **Gli aerei ADS-B «a volte si caricano e a volte no»** | `aerei.js` §1–§3, e la risposta non è una: erano tre difetti che davano lo stesso sintomo — un cielo senza triangoli, che è identico a un cielo senza aerei. **(1) La fila indiana.** Nove porte provate una per volta, dodici secondi a testa: nel caso peggiore un minuto e mezzo di silenzio. Il punto che rende tutto questo invisibile è che una porta ADS-B carica non risponde «carico», **tace**, e tacere consuma tutta la sveglia. Adesso c'è la **corsa** (`corsaProvider`, §3): si lancia la prima e dopo `AFFIANCA_MS` (2,6 s) parte anche la seconda, vince chi risponde per prima e le altre si abortiscono; una porta *caduta* lascia subito il posto senza aspettare l'affiancamento, e la sveglia grossa è di **tutta la corsa** — è quello che rende gratis le porte in più. **(2) La risposta che arriva e non è una risposta.** Un ponte CORS in difficoltà restituisce 200 con dentro una pagina HTML, e `(risposta.ac || [])` la leggeva come «zero aerei»: la corsa si fermava lì, con la spia verde, sopra un cielo vuoto. Adesso ogni interprete pretende di riconoscere lo schema e **solleva** (§1), così la corsa passa alla porta dopo. **(3) La memoria assente.** Quale feed funzioni *qui* dipende dal paese, dal fornitore di rete e dai filtri anti-tracciamento: ricominciando ogni volta dal primo dell'elenco si ripagava ogni volta lo stesso scotto. La **pagella** (§2, `ordinaPerSalute`, salvata in `CHIAVE_SALUTE`) mette davanti chi ha risposto per ultimo e in fondo chi è in penale — mai fuori, perché chi si esclude da solo non torna più. Prove nel §27 di `verifica.html` |
+| **I dati degli aerei ci sono ma non si vedono (o il contrario)** | sono **due interruttori** e non uno, ed è la correzione di un equivoco che costava caro: «Aerei» era insieme il pannello e l'interruttore, quindi aprire la finestra per *guardare* lo stato dei dati accendeva anche i triangoli, e richiuderla spegneva il feed. `stato.dati` tiene vivo il feed (di serie **acceso**: quando si decide di guardare, gli aerei ci sono già), `stato.visibile` disegna (di serie **spento**: un cielo stellato con dieci etichette arancioni sopra non è quello che uno apre alle undici di sera). Il terzo, `stato.auto`, è il battito. `aereiImpostaAccesi()` resta il nome storico e adesso è il solo disegno — ma accende anche i dati se erano in pausa, perché chiedere di vedere gli aerei e ottenere un cielo vuoto è la risposta sbagliata alla domanda giusta |
+| **Ogni quanto si aggiornano gli aerei** | `intervalloAggiornamento()` + il **battito** da cinque secondi (`BATTITO_MS`). Non è un `setInterval` lungo, ed è voluto: un telefono che manda l'app in secondo piano strozza o salta i timer lunghi, e al ritorno il prossimo scarico sarebbe fra un'era. Il battito è un confronto fra due numeri e costa meno di niente. Il ritmo cambia col disegno: `AGGIORNA_VISIBILE_MS` (45 s) quando i triangoli sono accesi, `AGGIORNA_SFONDO_MS` (3 min) quando i dati stanno solo in memoria — e il primo non è scelto a caso, un aereo di linea in 45 s fa undici chilometri. Oltre `DATI_VECCHI_MS` la fotografia si dichiara vecchia (spia ambra, mezzo velo sul disegno) ma le posizioni continuano a essere **propagate** dalla rotta; oltre `DATI_SCADUTI_MS` (mezz'ora) si smette, perché mezz'ora di rotta stimata non è un aereo. Il ritorno da un'altra app (`visibilitychange`) e la rete che torna (`online`) fanno ripartire subito invece di aspettare |
+| **Quale aereo mi passa sopra la testa** | `FASCE_DISTANZA` in `aerei.js`: rosso entro 10 km, arancio entro 20, giallo entro 50, azzurro oltre. Il colore non è decorazione — prima erano tutti arancioni, e per sapere quale fosse vicino bisognava leggere i chilometri di ogni etichetta uno per uno, cioè fare a mente il lavoro che un colore fa da solo. Vale dappertutto: simbolo, traiettoria tratteggiata, filo lungo il bordo dell'etichetta, riga dell'elenco e scheda dell'oggetto, così quello che si tocca in cielo si ritrova nella lista senza cercarlo per nome. L'**allineamento** con un astro resta un segnale a parte (un anello bianco attorno al simbolo) proprio perché il colore ha già un mestiere: tingerlo di giallo, come si faceva, voleva dire dichiarare che quell'aereo è a venti chilometri quando magari è a due. La leggenda la scrive `aereiScriviLeggenda()` dalla tabella — una copia in `index.html` divergerebbe al primo ritocco senza che niente lo dica |
+| **Come stanno i dati ADS-B (e dove si legge)** | tre forme, dalla più corta alla più lunga. La **spia** (`#aerei-spia`, sempre in vista accanto al tasto Aerei nella scheda Oggetti): verde freschi, azzurra pulsante in arrivo, ambra vecchi, rossa guasto, grigia in pausa — un colore fermo su «sto scaricando» sarebbe indistinguibile da un colore fermo su «sono fermo». La **riga parlante** del pannello (`#aerei-stato`, `testoDiStato()`): quanti aerei, da quale rete, di quando è la lettura e — se qualcosa non va — che cosa e fra quanto si riprova, col filo colorato a sinistra sulla stessa scala della spia. E l'**avviso sopra al cielo**, che parla solo per i gesti espliciti e per i guasti che durano mentre i triangoli sono accesi: un pannello che si accende di rosso perché una rete pubblica ha starnutito addestra a ignorare il rosso. Le fasi stanno in `fase()`, e comprendono anche `senzaPosizione`, `senzaRete` e `passato` (la macchina del tempo) |
+| **Le quattro schede del pannello Visualizzazione** | `skyMostraSchedaVista(nome)` in `app.js` (subito dopo `skyMostraGruppo`), le pillole sono `[data-scheda-vista]` e i fogli `.foglio-vista` con `data-scheda`. Un foglio nascosto usa `hidden` e non una classe, di proposito: non deve essere raggiungibile nemmeno col tabulatore, se no si finisce a premere invio su un tasto che non si vede. La scelta si ricorda (`CHIAVE_SKY_SCHEDA_VISTA`). Nel CSS il pezzo da conoscere è `.schede-vista-guscio`: è il **guscio** a essere appiccicato, non la pillola, e prende tutta la larghezza del pannello con margini negativi ridandosi da sé l'imbottitura che `.gruppo-vista.gruppo-attivo` ha smesso di avere in cima — rendendo appiccicata la sola pillola restava scoperta la fascia sopra di lei, e i tasti che scorrevano ci passavano dietro a metà, visibili e tagliati |
 | Meteo o semaforo di osservabilità | `app.js:18248` |
 | Calcoli ottici del telescopio | `telescopio.js:243` |
 | Impaginazione su telefono | `PUNTI_ROTTURA` `app.js:211` + i `@media` di `style.css` |

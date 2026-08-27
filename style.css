@@ -3811,6 +3811,53 @@ body.mappa-spostamento-immersiva { overflow: hidden; }
 .gruppo-comandi.gruppo-astri.gruppo-attivo { max-height: 66%; }
 /* Anche quello degli eventi: ogni voce è tre righe più i suoi tasti */
 .gruppo-comandi.gruppo-eventi.gruppo-attivo { max-height: 66%; }
+
+/* --- Le quattro schede del pannello Visualizzazione ---------------------
+   Un pannello solo al posto di due, e dentro quattro fogli che si danno il
+   cambio. Le pillole in cima sono le stesse dei punti cardinali
+   (`.segmenti-cielo`): non c'era ragione di inventare una grafica nuova per
+   una cosa che si comporta uguale, e riusandola si eredita anche il
+   comportamento su schermo stretto.
+
+   La striscia resta **appiccicata in cima** mentre il foglio scorre: con
+   quattordici pillole sotto, scorrendo fino in fondo si perdeva di vista
+   proprio la cosa che dice dove si è. */
+.gruppo-comandi.gruppo-vista.gruppo-attivo { max-height: 62%; padding-top: 0; }
+/* Il guscio, non la striscia, è la parte appiccicata: prende tutta la
+   larghezza del pannello (margini negativi) e si ridà da sé l'imbottitura
+   che il pannello ha smesso di avere in cima. Rendendo appiccicata la sola
+   pillola restava scoperta la fascia di imbottitura sopra di lei, e i tasti
+   che scorrevano ci passavano dietro a metà — visibili, tagliati, sopra le
+   schede. */
+.schede-vista-guscio {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 -14px 10px;
+  padding: 12px 14px 9px;
+  background: rgba(6, 10, 20, 0.97);
+  border-bottom: 1px solid var(--bordo);
+}
+.schede-vista .tasto-segmento {
+  font-family: inherit;
+  font-size: 0.79rem;
+  font-weight: 550;
+  letter-spacing: -0.005em;
+}
+.foglio-vista[hidden] { display: none; }
+/* Il titolino dentro a un foglio: due gruppi che nella stessa scheda
+   rispondono a due domande diverse — i corpi e i segni che li accompagnano —
+   e una riga di testo li separa meglio di un filo, perché dice *quale* è
+   quale invece di limitarsi a dividerli. */
+.titolo-foglio-vista {
+  margin: 12px 0 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+.foglio-vista > .riga-comandi:first-child { margin-top: 0; }
 /* Tempo e luogo deve restare leggero: pochi comandi, niente note visibili.
    Dentro sono due blocchi (`.blocco-tempo`) col loro titolo, separati da un
    filo: le due domande — quando, e da dove — si riconoscono prima di essere
@@ -8684,21 +8731,145 @@ body button.did-ponte:active { transform: translateY(1px); }
     height: calc(92dvh - 100px);
   }
 }
-/* Aerei ADS-B: elenco compatto sopra il cielo, leggibile anche con una mano. */
-.gruppo-aerei { max-height: min(62vh, 430px); overflow-y: auto; }
+/* --- AEREI ADS-B -------------------------------------------------------
+   Il pannello è un elenco compatto sopra il cielo, leggibile con una mano
+   sola — ma la prima cosa che deve dire non sono gli aerei: è **come stanno
+   i dati**. Da qui la riga di stato con la sua tinta, la spia accanto al
+   tasto e la leggenda dei colori, che sono i tre modi (corto, medio, lungo)
+   di raccontare la stessa cosa. */
+.gruppo-aerei { max-height: min(62vh, 470px); overflow-y: auto; }
 .aerei-testata { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding-right:34px; }
-.aerei-azioni-pannello { display:flex; justify-content:flex-end; margin-top:10px; }
-.tasto-aerei-aggiorna-rapido { min-width:30px; width:30px; padding:5px; font-size:1rem; line-height:1; }
-.tasto-aerei-aggiorna-rapido[data-esito="caricamento"] { color:#bae6fd; }
-.tasto-aerei-aggiorna-rapido[data-esito="successo"] { color:#86efac; border-color:#22c55e; }
-.tasto-aerei-aggiorna-rapido[data-esito="errore"] { color:#fca5a5; border-color:#ef4444; }
+.aerei-titolo { display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
+.aerei-titolo strong { color:var(--testo); letter-spacing:.01em; }
+.aerei-contatore { color:var(--testo-3); font-size:.72rem; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+.aerei-contatore #aerei-conteggio { color:var(--testo-2); font-weight:700; }
+
+/* La riga di stato: dice quanti aerei, da quale rete, di quando è la
+   lettura e — se qualcosa non va — che cosa e quando si riprova. Il filo
+   colorato a sinistra è la stessa scala della spia, così si riconosce prima
+   di essere letta. Un guasto **non** diventa una riga rossa urlata: gli
+   aerei sono un di più, e un pannello che si accende di rosso perché una
+   rete pubblica ha starnutito addestra a ignorare il rosso. */
+.aerei-stato {
+  margin-top: 6px;
+  padding: 7px 10px 7px 12px;
+  border-radius: 8px;
+  border-left: 3px solid var(--bordo-forte);
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--testo-2);
+  font-size: .75rem;
+  line-height: 1.35;
+}
+.aerei-stato[data-fase="ok"] { border-left-color:#22c55e; color:#dcfce7; }
+.aerei-stato[data-fase="carico"] { border-left-color:#38bdf8; color:#e0f2fe; }
+.aerei-stato[data-fase="vecchio"],
+.aerei-stato[data-fase="passato"] { border-left-color:#f59e0b; color:#fef3c7; }
+.aerei-stato[data-fase="errore"],
+.aerei-stato[data-fase="senzaRete"],
+.aerei-stato[data-fase="senzaPosizione"] { border-left-color:#ef4444; color:#fecaca; }
+.aerei-stato[data-fase="spento"] { border-left-color:var(--bordo-forte); color:var(--testo-3); }
+
+.aerei-interruttori { margin-top: 10px; }
 #aerei-aggiorna[data-esito="successo"] { color:#86efac; border-color:#22c55e; }
 #aerei-aggiorna[data-esito="errore"] { color:#fca5a5; border-color:#ef4444; }
+
+/* La coppia del pannello Visualizzazione: l'interruttore, e accanto la spia
+   che apre il pannello. Occupa **una** casella della griglia dei tasti, così
+   su un telefono resta allineata con Pianeti e Satelliti invece di sfondare
+   la colonna. */
+.tasto-aerei-coppia { display:flex; min-width:0; gap:4px; }
+.tasto-aerei-coppia .tasto-aerei-mostra { flex:1 1 auto; min-width:0; }
+.tasto-aerei-pannello {
+  flex: 0 0 auto;
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+}
+/* La spia: verde freschi, azzurra in arrivo, ambra vecchi, rossa guasto,
+   grigia in pausa. È l'unica parte di questo modulo sempre in vista, ed è
+   quella che risponde alla domanda per cui il pannello esiste — «i dati ci
+   sono?» — senza aprire niente. Il pulsare dell'azzurro non è un vezzo: un
+   colore fermo su «sto scaricando» è indistinguibile da un colore fermo su
+   «sono fermo». */
+.aerei-spia {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--testo-3);
+  box-shadow: 0 0 0 1px rgba(2, 6, 23, .6);
+}
+.aerei-spia[data-fase="ok"] { background:#22c55e; box-shadow:0 0 7px rgba(34,197,94,.75); }
+.aerei-spia[data-fase="vecchio"] { background:#f59e0b; box-shadow:0 0 7px rgba(245,158,11,.7); }
+.aerei-spia[data-fase="errore"] { background:#ef4444; box-shadow:0 0 7px rgba(239,68,68,.75); }
+.aerei-spia[data-fase="spento"] { background:#475569; }
+.aerei-spia[data-fase="carico"],
+.aerei-spia[data-fase="attesa"] { background:#38bdf8; animation: aerei-battito 1.1s ease-in-out infinite; }
+@keyframes aerei-battito { 0%,100% { opacity:1; } 50% { opacity:.28; } }
+@media (prefers-reduced-motion: reduce) {
+  .aerei-spia[data-fase="carico"], .aerei-spia[data-fase="attesa"] { animation:none; }
+}
+
+/* La leggenda dei colori: quattro pallini e quattro etichette su una riga
+   sola. La scrive `aereiScriviLeggenda()` da FASCE_DISTANZA — qui c'è solo
+   la forma, mai le soglie. */
+.aerei-leggenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 10px 0 2px;
+  padding: 7px 10px;
+  border: 1px solid var(--bordo);
+  border-radius: 8px;
+  background: var(--incassato);
+  list-style: none;
+}
+.aerei-fascia {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--testo-2);
+  font-size: .7rem;
+  font-variant-numeric: tabular-nums;
+}
+.aereo-pallino {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--fascia, #fb923c);
+  box-shadow: 0 0 0 1px rgba(2, 6, 23, .55);
+}
+
 .aerei-elenco { display:grid; gap:7px; margin-top:9px; }
-.aereo-riga { border:1px solid rgba(251,146,60,.5); border-radius:9px; padding:6px 9px; background:rgba(8,25,45,.92); }
-.aereo-riga strong { color:#fff7ed; letter-spacing:.04em; }
-.aereo-dati { color:#e2e8f0; font-size:.74rem; line-height:1.25; margin-top:1px; }
+/* La riga dell'elenco porta la stessa tinta del triangolo in cielo: quello
+   che si tocca sulla mappa si ritrova qui senza cercarlo per nome. Il colore
+   sta sul bordo e sul pallino, non sul fondo — quattro rettangoli pieni di
+   rosso, arancio, giallo e azzurro sarebbero una cartella colori, non un
+   elenco. */
+.aereo-riga {
+  border:1px solid var(--bordo);
+  border-left:3px solid var(--fascia, #fb923c);
+  border-radius:9px; padding:6px 9px; background:rgba(8,25,45,.92);
+}
+.aereo-riga-testa { display:flex; align-items:center; gap:7px; }
+.aereo-riga strong { color:#f8fafc; letter-spacing:.04em; }
+.aereo-distanza {
+  margin-left:auto;
+  color:var(--fascia, #fb923c);
+  font-family:var(--mono); font-size:.74rem; font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.aereo-dati { color:#cbd5e1; font-size:.74rem; line-height:1.25; margin-top:2px; }
 .aereo-allineamento { color:#fde68a; font-size:.73rem; margin-top:3px; }
+/* La fascia scritta in chiaro nella scheda dell'oggetto: sul cielo il colore
+   basta, ma la scheda la si apre proprio per leggere i dati. */
+.aereo-fascia {
+  display:flex; align-items:center; gap:6px;
+  margin:2px 0 8px;
+  color:var(--fascia, #fb923c);
+  font-size:.75rem; font-weight:600;
+}
 .aereo-foto { width:100%; max-height:190px; object-fit:cover; border-radius:10px; margin:8px 0 10px; background:#0f172a; }
 .aereo-foto-credito { color:#64748b; font-size:.68rem; margin-top:-7px; margin-bottom:9px; }
 .aereo-azioni { display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v204';
+const CACHE_NAME = 'astrocal-v205';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -75,7 +75,8 @@ const SERVIZI_ADSB = [
   'api.adsb.one',
   'opensky-network.org',
   'api.allorigins.win',
-  'corsproxy.io'
+  'corsproxy.io',
+  'api.codetabs.com'
 ];
 
 // Host le cui risposte salviamo man mano che arrivano (librerie, tessere mappa)
