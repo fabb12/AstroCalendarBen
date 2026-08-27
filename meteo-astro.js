@@ -305,9 +305,34 @@ function meteoNuvolaCaso(seme) {
   };
 }
 
-// Un banco non è un'ellisse uniforme: ha una base più scura e quasi piatta,
-// torri illuminate irregolari e lembi trasparenti. La sovrapposizione dei
-// gradienti conserva volume anche sul cielo chiaro senza bordi da fumetto.
+// Il profilo di una nube vera non è una collana di cerchi: il bordo superiore
+// ribolle, quello inferiore è largo e quasi piatto. Costruiamo una sagoma chiusa
+// con curve morbide, sempre uguale per lo stesso seme. La sfocatura è fatta dal
+// canvas stesso: così non rimane il contorno netto da illustrazione.
+function meteoSagomaNuvola(ctx, r, caso, gonfia) {
+  const punti = [];
+  const quanti = gonfia ? 10 : 8;
+  for (let i = 0; i <= quanti; i++) {
+    const t = i / quanti;
+    const x = (-1.35 + t * 2.7) * r;
+    const arco = Math.sin(t * Math.PI);
+    punti.push({ x, y: r * (.12 - arco * (.42 + caso() * .34) + (caso() - .5) * .16) });
+  }
+  ctx.beginPath();
+  ctx.moveTo(-r * 1.42, r * .24);
+  ctx.lineTo(punti[0].x, punti[0].y);
+  for (let i = 1; i < punti.length; i++) {
+    const a = punti[i - 1], b = punti[i];
+    ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
+  }
+  ctx.lineTo(r * 1.42, r * .24);
+  ctx.bezierCurveTo(r * .72, r * (.43 + caso() * .08), -r * .75, r * .43, -r * 1.42, r * .24);
+  ctx.closePath();
+}
+
+// Un banco ha una massa continua, una base fredda e piatta, torri illuminate
+// dal lato del cielo e veli semitrasparenti ai margini. Tre passate della stessa
+// sagoma danno volume senza trasformarlo in una fila di batuffoli separati.
 function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto) {
   const caso = meteoNuvolaCaso(seme);
   ctx.save();
@@ -315,46 +340,54 @@ function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto) {
   ctx.rotate((caso() - .5) * (alto ? .34 : .16));
 
   if (alto) {
-    // I cirri sono filamenti di ghiaccio stirati dal vento, non batuffoli.
+    // I cirri sono ciuffi di cristalli: una testa sottile si apre in filamenti
+    // paralleli, tutti piegati dallo stesso vento.
     ctx.lineCap = 'round';
-    for (let i = 0; i < 5; i++) {
+    ctx.filter = `blur(${Math.max(0.7, r * .018)}px)`;
+    for (let i = 0; i < 7; i++) {
       const yy = (caso() - .5) * r * .65;
-      ctx.strokeStyle = `rgba(${colore},${alpha * (.22 + caso() * .30)})`;
-      ctx.lineWidth = r * (.07 + caso() * .08);
+      ctx.strokeStyle = `rgba(${colore},${alpha * (.13 + caso() * .25)})`;
+      ctx.lineWidth = r * (.025 + caso() * .055);
       ctx.beginPath();
-      ctx.moveTo(-r * (1.15 + caso() * .25), yy);
-      ctx.bezierCurveTo(-r * .35, yy - r * (.45 + caso() * .25),
-        r * .15, yy + r * (.35 + caso() * .22), r * (1.2 + caso() * .35), yy - r * .12);
+      ctx.moveTo(-r * (1.35 + caso() * .3), yy + r * .2);
+      ctx.bezierCurveTo(-r * .45, yy - r * (.52 + caso() * .22),
+        r * .18, yy + r * (.24 + caso() * .18), r * (1.45 + caso() * .45), yy - r * .18);
       ctx.stroke();
     }
+    ctx.filter = 'none';
     ctx.restore();
     return;
   }
 
-  // Ombra comune sotto il banco: lega i fiocchi e suggerisce lo spessore.
-  let g = ctx.createRadialGradient(0, r * .18, r * .08, 0, r * .2, r * 1.35);
-  g.addColorStop(0, `rgba(55,65,81,${alpha * .50})`);
-  g.addColorStop(.58, `rgba(72,82,96,${alpha * .25})`);
-  g.addColorStop(1, 'rgba(55,65,81,0)');
+  // Massa diffusa: deborda appena dalla sagoma e fonde i banchi vicini.
+  ctx.filter = `blur(${Math.max(1.2, r * .035)}px)`;
+  let g = ctx.createLinearGradient(0, -r, 0, r * .5);
+  g.addColorStop(0, `rgba(${colore},${alpha * .48})`);
+  g.addColorStop(.62, `rgba(${colore},${alpha * .72})`);
+  g.addColorStop(1, `rgba(58,68,82,${alpha * .58})`);
   ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.ellipse(0, r * .22, r * 1.48, r * .48, 0, 0, Math.PI * 2);
+  meteoSagomaNuvola(ctx, r, caso, true);
   ctx.fill();
 
-  const fiocchi = 7 + Math.round(caso() * 3);
-  for (let i = 0; i < fiocchi; i++) {
-    const fx = (caso() - .5) * r * 2.15;
-    const fy = (caso() - .62) * r * .70;
-    const fr = r * (.28 + caso() * .40);
-    g = ctx.createRadialGradient(fx - fr * .24, fy - fr * .30, fr * .06, fx, fy, fr);
-    g.addColorStop(0, `rgba(${colore},${Math.min(.9, alpha * (.82 + caso() * .28))})`);
-    g.addColorStop(.55, `rgba(${colore},${alpha * .60})`);
-    g.addColorStop(1, `rgba(${colore},0)`);
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(fx, fy, fr * (1.05 + caso() * .45), fr, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  // Luce larga e irregolare sulla sommità, non un riflesso per ogni fiocco.
+  ctx.globalCompositeOperation = 'screen';
+  g = ctx.createRadialGradient(-r * .28, -r * .48, r * .04, -r * .12, -r * .25, r * 1.15);
+  g.addColorStop(0, `rgba(255,255,255,${alpha * .48})`);
+  g.addColorStop(.42, `rgba(${colore},${alpha * .22})`);
+  g.addColorStop(1, `rgba(${colore},0)`);
+  ctx.fillStyle = g;
+  meteoSagomaNuvola(ctx, r * .94, caso, true);
+  ctx.fill();
+
+  // La base piatta è la parte più opaca: una fascia sfumata, mai una riga.
+  ctx.globalCompositeOperation = 'source-over';
+  g = ctx.createLinearGradient(0, r * .02, 0, r * .5);
+  g.addColorStop(0, 'rgba(45,55,70,0)');
+  g.addColorStop(.62, `rgba(45,55,70,${alpha * .36})`);
+  g.addColorStop(1, 'rgba(45,55,70,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(-r * 1.3, 0, r * 2.6, r * .52);
+  ctx.filter = 'none';
   ctx.restore();
 }
 
