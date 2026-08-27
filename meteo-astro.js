@@ -330,10 +330,44 @@ function meteoSagomaNuvola(ctx, r, caso, gonfia) {
   ctx.closePath();
 }
 
+// Le sfocature e i gradienti sono la parte costosa del disegno. Il cielo viene
+// ridisegnato anche sessanta volte al secondo, ma la forma di una nube e la luce
+// del Sole cambiano molto più lentamente: conserviamo quindi piccoli sprite già
+// rasterizzati. Sul frame successivo il browser fa un solo drawImage, operazione
+// economica anche sulle GPU dei telefoni. Quantizzare raggio e luce impedisce di
+// creare una nuova copia per variazioni invisibili di un pixel o di un grado.
+const meteoNuvoleSprite = new Map();
+const METEO_NUVOLE_SPRITE_MAX = 64;
+const METEO_NUVOLE_SPRITE_PIXEL_MAX = 8 * 1000 * 1000; // circa 32 MB RGBA nel caso peggiore
+const METEO_NUVOLE_SPRITE_NUOVI_FRAME = 2;
+let meteoNuvoleSpriteNuovi = 0;
+let meteoNuvoleSpritePixel = 0;
+
+function meteoNuvolaRaggioSprite(r) {
+  // A zoom estremi ingrandiamo lo sprite esistente: creare tele di migliaia
+  // di pixel sarebbe molto più costoso e il dettaglio extra non è percepibile.
+  return Math.min(144, Math.max(24, Math.round(r / 8) * 8));
+}
+
+function meteoNuvolaSpriteCanvas(larghezza, altezza) {
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(larghezza, altezza);
+  const canvas = document.createElement('canvas');
+  canvas.width = larghezza;
+  canvas.height = altezza;
+  return canvas;
+}
+
+function meteoNuvolaChiaveSprite(r, colore, alpha, seme, alto, sole) {
+  const angolo = Math.atan2(sole.dy, sole.dx);
+  const direzione = Math.round(angolo / (Math.PI / 8)); // sedici direzioni sono più che sufficienti
+  return [meteoNuvolaRaggioSprite(r), colore, Math.round(alpha * 20),
+    seme, alto ? 1 : 0, direzione, Math.round(sole.forza * 8), Math.round(sole.calda * 6)].join('|');
+}
+
 // Un banco ha una massa continua, una base fredda e piatta, torri illuminate
 // dal lato del cielo e veli semitrasparenti ai margini. Tre passate della stessa
 // sagoma danno volume senza trasformarlo in una fila di batuffoli separati.
-function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illuminazione) {
+function meteoRenderBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illuminazione) {
   const caso = meteoNuvolaCaso(seme);
   const angolo = (caso() - .5) * (alto ? .34 : .16);
   ctx.save();
@@ -432,6 +466,57 @@ function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illu
   ctx.restore();
 }
 
+function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illuminazione) {
+  const sole = illuminazione || { dx: -.65, dy: -.76, forza: .35, calda: 0 };
+  const chiave = meteoNuvolaChiaveSprite(r, colore, alpha, seme, alto, sole);
+  let sprite = meteoNuvoleSprite.get(chiave);
+
+  if (!sprite) {
+    // Non rasterizziamo cinquanta blur nello stesso frame quando si apre il
+    // planetario. I primi istanti usano una sagoma economica e la cache si
+    // completa due banchi alla volta, senza il singhiozzo percepibile sui
+    // dispositivi mobili più lenti.
+    if (meteoNuvoleSpriteNuovi >= METEO_NUVOLE_SPRITE_NUOVI_FRAME) {
+      const caso = meteoNuvolaCaso(seme);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate((caso() - .5) * (alto ? .34 : .16));
+      ctx.fillStyle = `rgba(${colore},${alpha * (alto ? .28 : .62)})`;
+      meteoSagomaNuvola(ctx, r, caso, !alto);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    meteoNuvoleSpriteNuovi++;
+    const rq = meteoNuvolaRaggioSprite(r);
+    // Margine abbondante per blur, inclinazione e filamenti dei cirri.
+    const larghezza = Math.ceil(rq * 4.1), altezza = Math.ceil(rq * 2.8);
+    const canvas = meteoNuvolaSpriteCanvas(larghezza, altezza);
+    const sctx = canvas.getContext('2d', { alpha: true });
+    const ax = larghezza / 2, ay = altezza * .54;
+    meteoRenderBancoNuvoloso(sctx, ax, ay, rq, colore, alpha, seme, alto, sole);
+    sprite = { canvas, rq, ax, ay, larghezza, altezza, pixel: larghezza * altezza };
+    meteoNuvoleSprite.set(chiave, sprite);
+    meteoNuvoleSpritePixel += sprite.pixel;
+
+    // FIFO intenzionale: ogni banco torna a essere usato a ogni frame, quindi
+    // una LRU richiederebbe delete/set continui. Sessantaquattro posti coprono
+    // anche un cielo interamente nuvoloso senza ricreazioni cicliche; il tetto
+    // mantiene comunque prevedibile la memoria dopo lunghi viaggi.
+    while (meteoNuvoleSprite.size > METEO_NUVOLE_SPRITE_MAX ||
+           meteoNuvoleSpritePixel > METEO_NUVOLE_SPRITE_PIXEL_MAX) {
+      const primaChiave = meteoNuvoleSprite.keys().next().value;
+      const prima = meteoNuvoleSprite.get(primaChiave);
+      meteoNuvoleSpritePixel -= prima.pixel;
+      meteoNuvoleSprite.delete(primaChiave);
+    }
+  }
+
+  const scala = r / sprite.rq;
+  ctx.drawImage(sprite.canvas, x - sprite.ax * scala, y - sprite.ay * scala,
+    sprite.larghezza * scala, sprite.altezza * scala);
+}
+
 function meteoDisegnaNuvole(ctx, base, focale, aria) {
   if (typeof sky === 'undefined' || !sky.nuvole || sky.camera) return;
   const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
@@ -457,6 +542,7 @@ function meteoDisegnaNuvole(ctx, base, focale, aria) {
   if (!n || n.totale < 3) return;
 
   const luce = aria && isFinite(aria.luce) ? aria.luce : 0;
+  meteoNuvoleSpriteNuovi = 0;
   // Direzione e colore della luce diretta. Quando il Sole è fuori campo la
   // sua proiezione rimane comunque utile: alle nubi interessa da quale lato
   // arriva la luce, non se il disco è visibile sullo schermo.
