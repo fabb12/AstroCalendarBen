@@ -330,14 +330,49 @@ function meteoSagomaNuvola(ctx, r, caso, gonfia) {
   ctx.closePath();
 }
 
+// Le sfocature e i gradienti sono la parte costosa del disegno. Il cielo viene
+// ridisegnato anche sessanta volte al secondo, ma la forma di una nube e la luce
+// del Sole cambiano molto più lentamente: conserviamo quindi piccoli sprite già
+// rasterizzati. Sul frame successivo il browser fa un solo drawImage, operazione
+// economica anche sulle GPU dei telefoni. Quantizzare raggio e luce impedisce di
+// creare una nuova copia per variazioni invisibili di un pixel o di un grado.
+const meteoNuvoleSprite = new Map();
+const METEO_NUVOLE_SPRITE_MAX = 64;
+const METEO_NUVOLE_SPRITE_PIXEL_MAX = 8 * 1000 * 1000; // circa 32 MB RGBA nel caso peggiore
+const METEO_NUVOLE_SPRITE_NUOVI_FRAME = 2;
+let meteoNuvoleSpriteNuovi = 0;
+let meteoNuvoleSpritePixel = 0;
+
+function meteoNuvolaRaggioSprite(r) {
+  // A zoom estremi ingrandiamo lo sprite esistente: creare tele di migliaia
+  // di pixel sarebbe molto più costoso e il dettaglio extra non è percepibile.
+  return Math.min(144, Math.max(24, Math.round(r / 8) * 8));
+}
+
+function meteoNuvolaSpriteCanvas(larghezza, altezza) {
+  if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(larghezza, altezza);
+  const canvas = document.createElement('canvas');
+  canvas.width = larghezza;
+  canvas.height = altezza;
+  return canvas;
+}
+
+function meteoNuvolaChiaveSprite(r, colore, alpha, seme, alto, sole) {
+  const angolo = Math.atan2(sole.dy, sole.dx);
+  const direzione = Math.round(angolo / (Math.PI / 8)); // sedici direzioni sono più che sufficienti
+  return [meteoNuvolaRaggioSprite(r), colore, Math.round(alpha * 20),
+    seme, alto ? 1 : 0, direzione, Math.round(sole.forza * 8), Math.round(sole.calda * 6)].join('|');
+}
+
 // Un banco ha una massa continua, una base fredda e piatta, torri illuminate
 // dal lato del cielo e veli semitrasparenti ai margini. Tre passate della stessa
 // sagoma danno volume senza trasformarlo in una fila di batuffoli separati.
-function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto) {
+function meteoRenderBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illuminazione) {
   const caso = meteoNuvolaCaso(seme);
+  const angolo = (caso() - .5) * (alto ? .34 : .16);
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate((caso() - .5) * (alto ? .34 : .16));
+  ctx.rotate(angolo);
 
   if (alto) {
     // I cirri sono ciuffi di cristalli: una testa sottile si apre in filamenti
@@ -359,21 +394,61 @@ function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto) {
     return;
   }
 
+  // Il Sole non illumina una nube "dall'alto" per convenzione grafica:
+  // proiettiamo la sua vera direzione sul canvas. Ruotiamo il vettore nel
+  // sistema locale del banco, così il bordo rivolto al Sole resta chiaro
+  // anche quando la nube è inclinata o il Sole è basso sull'orizzonte.
+  const sole = illuminazione || { dx: -.65, dy: -.76, forza: .35, calda: 0 };
+  const cos = Math.cos(-angolo), sin = Math.sin(-angolo);
+  const sx = sole.dx * cos - sole.dy * sin;
+  const sy = sole.dx * sin + sole.dy * cos;
+
   // Massa diffusa: deborda appena dalla sagoma e fonde i banchi vicini.
-  ctx.filter = `blur(${Math.max(1.2, r * .035)}px)`;
+  // La parte opposta al Sole è più densa e fredda: è lo spessore ottico
+  // della nube, non una fascia grigia appoggiata sotto.
+  ctx.filter = `blur(${Math.max(1.2, r * .032)}px)`;
   let g = ctx.createLinearGradient(0, -r, 0, r * .5);
-  g.addColorStop(0, `rgba(${colore},${alpha * .48})`);
-  g.addColorStop(.62, `rgba(${colore},${alpha * .72})`);
-  g.addColorStop(1, `rgba(58,68,82,${alpha * .58})`);
+  g.addColorStop(0, `rgba(${colore},${alpha * .58})`);
+  g.addColorStop(.58, `rgba(${colore},${alpha * .78})`);
+  g.addColorStop(1, `rgba(48,58,73,${alpha * .68})`);
   ctx.fillStyle = g;
   meteoSagomaNuvola(ctx, r, caso, true);
   ctx.fill();
 
-  // Luce larga e irregolare sulla sommità, non un riflesso per ogni fiocco.
+  // Dentro una sola sagoma continua sovrapponiamo volumi sfumati. Il clip
+  // impedisce che tornino a sembrare batuffoli separati, mentre le diverse
+  // profondità producono la morbida tridimensionalità dei cumuli reali.
+  ctx.save();
+  meteoSagomaNuvola(ctx, r * .98, caso, true);
+  ctx.clip();
+  ctx.filter = `blur(${Math.max(2, r * .055)}px)`;
+  for (let i = 0; i < 5; i++) {
+    const vx = (-.82 + i * .4 + (caso() - .5) * .18) * r;
+    const vy = (-.18 - Math.sin((i + 1) * 1.7) * .18) * r;
+    const vr = r * (.38 + caso() * .17);
+    const luceX = vx + sx * vr * .42;
+    const luceY = vy + sy * vr * .42;
+    const caldo = sole.calda || 0;
+    const rosso = 255, verde = Math.round(255 - caldo * 23), blu = Math.round(255 - caldo * 55);
+    g = ctx.createRadialGradient(luceX, luceY, vr * .04, vx, vy, vr);
+    g.addColorStop(0, `rgba(${rosso},${verde},${blu},${alpha * (.22 + sole.forza * .34)})`);
+    g.addColorStop(.48, `rgba(${colore},${alpha * .12})`);
+    g.addColorStop(1, `rgba(38,48,64,${alpha * .2})`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(vx, vy, vr * 1.15, vr, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Riflesso largo sul lato esposto: vicino al tramonto diventa appena
+  // dorato, di giorno resta bianco. Screen conserva la luminosità del cielo.
   ctx.globalCompositeOperation = 'screen';
-  g = ctx.createRadialGradient(-r * .28, -r * .48, r * .04, -r * .12, -r * .25, r * 1.15);
-  g.addColorStop(0, `rgba(255,255,255,${alpha * .48})`);
-  g.addColorStop(.42, `rgba(${colore},${alpha * .22})`);
+  const hx = sx * r * .5, hy = sy * r * .5;
+  const caldo = sole.calda || 0;
+  g = ctx.createRadialGradient(hx, hy, r * .03, hx * .38, hy * .38, r * 1.18);
+  g.addColorStop(0, `rgba(255,${Math.round(252 - caldo * 24)},${Math.round(246 - caldo * 62)},${alpha * (.3 + sole.forza * .34)})`);
+  g.addColorStop(.4, `rgba(${colore},${alpha * (.12 + sole.forza * .14)})`);
   g.addColorStop(1, `rgba(${colore},0)`);
   ctx.fillStyle = g;
   meteoSagomaNuvola(ctx, r * .94, caso, true);
@@ -389,6 +464,57 @@ function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto) {
   ctx.fillRect(-r * 1.3, 0, r * 2.6, r * .52);
   ctx.filter = 'none';
   ctx.restore();
+}
+
+function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illuminazione) {
+  const sole = illuminazione || { dx: -.65, dy: -.76, forza: .35, calda: 0 };
+  const chiave = meteoNuvolaChiaveSprite(r, colore, alpha, seme, alto, sole);
+  let sprite = meteoNuvoleSprite.get(chiave);
+
+  if (!sprite) {
+    // Non rasterizziamo cinquanta blur nello stesso frame quando si apre il
+    // planetario. I primi istanti usano una sagoma economica e la cache si
+    // completa due banchi alla volta, senza il singhiozzo percepibile sui
+    // dispositivi mobili più lenti.
+    if (meteoNuvoleSpriteNuovi >= METEO_NUVOLE_SPRITE_NUOVI_FRAME) {
+      const caso = meteoNuvolaCaso(seme);
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate((caso() - .5) * (alto ? .34 : .16));
+      ctx.fillStyle = `rgba(${colore},${alpha * (alto ? .28 : .62)})`;
+      meteoSagomaNuvola(ctx, r, caso, !alto);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    meteoNuvoleSpriteNuovi++;
+    const rq = meteoNuvolaRaggioSprite(r);
+    // Margine abbondante per blur, inclinazione e filamenti dei cirri.
+    const larghezza = Math.ceil(rq * 4.1), altezza = Math.ceil(rq * 2.8);
+    const canvas = meteoNuvolaSpriteCanvas(larghezza, altezza);
+    const sctx = canvas.getContext('2d', { alpha: true });
+    const ax = larghezza / 2, ay = altezza * .54;
+    meteoRenderBancoNuvoloso(sctx, ax, ay, rq, colore, alpha, seme, alto, sole);
+    sprite = { canvas, rq, ax, ay, larghezza, altezza, pixel: larghezza * altezza };
+    meteoNuvoleSprite.set(chiave, sprite);
+    meteoNuvoleSpritePixel += sprite.pixel;
+
+    // FIFO intenzionale: ogni banco torna a essere usato a ogni frame, quindi
+    // una LRU richiederebbe delete/set continui. Sessantaquattro posti coprono
+    // anche un cielo interamente nuvoloso senza ricreazioni cicliche; il tetto
+    // mantiene comunque prevedibile la memoria dopo lunghi viaggi.
+    while (meteoNuvoleSprite.size > METEO_NUVOLE_SPRITE_MAX ||
+           meteoNuvoleSpritePixel > METEO_NUVOLE_SPRITE_PIXEL_MAX) {
+      const primaChiave = meteoNuvoleSprite.keys().next().value;
+      const prima = meteoNuvoleSprite.get(primaChiave);
+      meteoNuvoleSpritePixel -= prima.pixel;
+      meteoNuvoleSprite.delete(primaChiave);
+    }
+  }
+
+  const scala = r / sprite.rq;
+  ctx.drawImage(sprite.canvas, x - sprite.ax * scala, y - sprite.ay * scala,
+    sprite.larghezza * scala, sprite.altezza * scala);
 }
 
 function meteoDisegnaNuvole(ctx, base, focale, aria) {
@@ -416,6 +542,23 @@ function meteoDisegnaNuvole(ctx, base, focale, aria) {
   if (!n || n.totale < 3) return;
 
   const luce = aria && isFinite(aria.luce) ? aria.luce : 0;
+  meteoNuvoleSpriteNuovi = 0;
+  // Direzione e colore della luce diretta. Quando il Sole è fuori campo la
+  // sua proiezione rimane comunque utile: alle nubi interessa da quale lato
+  // arriva la luce, non se il disco è visibile sullo schermo.
+  let illuminazione = { dx: -.65, dy: -.76, forza: Math.max(.12, luce), calda: 0 };
+  const sole = sky.oggetti && sky.oggetti.find(o => o.id === 'Sun');
+  if (sole && isFinite(sole.az) && isFinite(sole.alt)) {
+    const ps = skyProietta(skyVettore(sole.az, sole.alt), base, focale);
+    const cx = sky.larghezza / 2, cy = sky.altezza / 2;
+    const lunghezza = Math.hypot(ps.px - cx, ps.py - cy) || 1;
+    illuminazione = {
+      dx: (ps.px - cx) / lunghezza,
+      dy: (ps.py - cy) / lunghezza,
+      forza: Math.max(.1, Math.min(1, (sole.alt + 8) / 35)) * Math.max(.28, luce),
+      calda: Math.max(0, Math.min(1, (14 - sole.alt) / 18))
+    };
+  }
   const strati = [
     { cop: n.alte, alt: 64, passo: 26, scala: 1.35, alpha: 0.24 },
     { cop: n.medie, alt: 42, passo: 22, scala: 1.05, alpha: 0.34 },
@@ -441,7 +584,7 @@ function meteoDisegnaNuvole(ctx, base, focale, aria) {
       const colore = luce > 0.18 ? (n.pioggia > 55 ? '130,139,150' : '226,232,238') : '126,139,160';
       meteoDipingiBancoNuvoloso(ctx, p.px, p.py, r, colore,
         Math.min(.82, s.alpha + cop / 280), seme * 101 + livello * 1009 + i * 7919,
-        livello === 0);
+        livello === 0, illuminazione);
     }
   });
   ctx.restore();
