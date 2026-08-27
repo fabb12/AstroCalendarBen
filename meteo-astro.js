@@ -364,6 +364,24 @@ function meteoNuvolaChiaveSprite(r, colore, alpha, seme, alto, sole) {
     seme, alto ? 1 : 0, direzione, Math.round(sole.forza * 8), Math.round(sole.calda * 6)].join('|');
 }
 
+// La parte iniziale della chiave identifica la nube; gli ultimi tre campi
+// descrivono soltanto la luce che riceve. Quando la camera gira quella luce
+// cambia settore e la variante esatta deve essere ricostruita, ma nel frattempo
+// possiamo continuare a mostrare la variante dettagliata del settore vicino.
+// Tornare alla sagoma economica in quel breve intervallo faceva invece perdere
+// visibilmente definizione a tutte le nuvole durante ogni spostamento.
+function meteoNuvolaPrefissoSprite(r, colore, alpha, seme, alto) {
+  return [meteoNuvolaRaggioSprite(r), colore, Math.round(alpha * 20),
+    seme, alto ? 1 : 0].join('|') + '|';
+}
+
+function meteoNuvolaSpriteVicino(prefisso) {
+  for (const [chiave, sprite] of meteoNuvoleSprite) {
+    if (chiave.startsWith(prefisso)) return sprite;
+  }
+  return null;
+}
+
 // Un banco ha una massa continua, una base fredda e piatta, torri illuminate
 // dal lato del cielo e veli semitrasparenti ai margini. Tre passate della stessa
 // sagoma danno volume senza trasformarlo in una fila di batuffoli separati.
@@ -515,40 +533,48 @@ function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illu
     // Non rasterizziamo cinquanta blur nello stesso frame quando si apre il
     // planetario. I primi istanti usano una sagoma economica e la cache si
     // completa due banchi alla volta, senza il singhiozzo percepibile sui
-    // dispositivi mobili più lenti.
+    // dispositivi mobili più lenti. Durante un movimento, però, conserviamo
+    // la precisione usando la variante dettagliata illuminata dal settore
+    // precedente finché quella nuova non è pronta.
     if (meteoNuvoleSpriteNuovi >= METEO_NUVOLE_SPRITE_NUOVI_FRAME) {
-      const caso = meteoNuvolaCaso(seme);
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate((caso() - .5) * (alto ? .34 : .16));
-      ctx.fillStyle = `rgba(${colore},${alpha * (alto ? .28 : .62)})`;
-      meteoSagomaNuvola(ctx, r, caso, !alto);
-      ctx.fill();
-      ctx.restore();
-      return;
-    }
-    meteoNuvoleSpriteNuovi++;
-    const rq = meteoNuvolaRaggioSprite(r);
-    // Margine abbondante per blur, inclinazione e margini dei veli alti.
-    const larghezza = Math.ceil(rq * 4.1), altezza = Math.ceil(rq * 2.8);
-    const canvas = meteoNuvolaSpriteCanvas(larghezza, altezza);
-    const sctx = canvas.getContext('2d', { alpha: true });
-    const ax = larghezza / 2, ay = altezza * .54;
-    meteoRenderBancoNuvoloso(sctx, ax, ay, rq, colore, alpha, seme, alto, sole);
-    sprite = { canvas, rq, ax, ay, larghezza, altezza, pixel: larghezza * altezza };
-    meteoNuvoleSprite.set(chiave, sprite);
-    meteoNuvoleSpritePixel += sprite.pixel;
+      sprite = meteoNuvolaSpriteVicino(meteoNuvolaPrefissoSprite(r, colore, alpha, seme, alto));
+      if (!sprite) {
+        // Solo al primissimo caricamento non esiste ancora una versione
+        // precisa da riusare: questa sagoma evita di bloccare il telefono.
+        const caso = meteoNuvolaCaso(seme);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((caso() - .5) * (alto ? .34 : .16));
+        ctx.fillStyle = `rgba(${colore},${alpha * (alto ? .28 : .62)})`;
+        meteoSagomaNuvola(ctx, r, caso, !alto);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+    } else {
+      meteoNuvoleSpriteNuovi++;
+      const rq = meteoNuvolaRaggioSprite(r);
+      // Margine abbondante per blur, inclinazione e margini dei veli alti.
+      const larghezza = Math.ceil(rq * 4.1), altezza = Math.ceil(rq * 2.8);
+      const canvas = meteoNuvolaSpriteCanvas(larghezza, altezza);
+      const sctx = canvas.getContext('2d', { alpha: true });
+      const ax = larghezza / 2, ay = altezza * .54;
+      meteoRenderBancoNuvoloso(sctx, ax, ay, rq, colore, alpha, seme, alto, sole);
+      sprite = { canvas, rq, ax, ay, larghezza, altezza, pixel: larghezza * altezza };
+      meteoNuvoleSprite.set(chiave, sprite);
+      meteoNuvoleSpritePixel += sprite.pixel;
 
-    // FIFO intenzionale: ogni banco torna a essere usato a ogni frame, quindi
-    // una LRU richiederebbe delete/set continui. Sessantaquattro posti coprono
-    // anche un cielo interamente nuvoloso senza ricreazioni cicliche; il tetto
-    // mantiene comunque prevedibile la memoria dopo lunghi viaggi.
-    while (meteoNuvoleSprite.size > METEO_NUVOLE_SPRITE_MAX ||
-           meteoNuvoleSpritePixel > METEO_NUVOLE_SPRITE_PIXEL_MAX) {
-      const primaChiave = meteoNuvoleSprite.keys().next().value;
-      const prima = meteoNuvoleSprite.get(primaChiave);
-      meteoNuvoleSpritePixel -= prima.pixel;
-      meteoNuvoleSprite.delete(primaChiave);
+      // FIFO intenzionale: ogni banco torna a essere usato a ogni frame, quindi
+      // una LRU richiederebbe delete/set continui. Sessantaquattro posti coprono
+      // anche un cielo interamente nuvoloso senza ricreazioni cicliche; il tetto
+      // mantiene comunque prevedibile la memoria dopo lunghi viaggi.
+      while (meteoNuvoleSprite.size > METEO_NUVOLE_SPRITE_MAX ||
+             meteoNuvoleSpritePixel > METEO_NUVOLE_SPRITE_PIXEL_MAX) {
+        const primaChiave = meteoNuvoleSprite.keys().next().value;
+        const prima = meteoNuvoleSprite.get(primaChiave);
+        meteoNuvoleSpritePixel -= prima.pixel;
+        meteoNuvoleSprite.delete(primaChiave);
+      }
     }
   }
 
