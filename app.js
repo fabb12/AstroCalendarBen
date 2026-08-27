@@ -6547,6 +6547,10 @@ function costruisciAgenda() {
     // l'evento segnato dove bisogna guardare.
     scorciatoie.push(`<button onclick="apriEventoNelPlanetario('${evento.id}')" class="${stileScorciatoia}" ` +
       `title="Apre il planetario sull'istante dell'evento, puntato dove guardare">Vedi nel planetario</button>`);
+    if (!evento.manuale && (evento.corpoCielo || (evento.simul && typeof evento.simul.ra === 'number'))) {
+      scorciatoie.push(`<button onclick="apriMigliorPosto('${evento.id}')" class="${stileScorciatoia}" ` +
+        `title="Cerca entro il raggio scelto un punto in cui montagne e colline non coprono l'evento">Trova il posto migliore</button>`);
+    }
     if (evento.eclissi) {
       scorciatoie.push(`<button onclick="apriMappaEclissi('${evento.id}')" class="${stileScorciatoia}" ` +
         `title="Il percorso del cono d'ombra, minuto per minuto">Mappa dell'ombra</button>`);

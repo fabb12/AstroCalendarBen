@@ -2107,6 +2107,30 @@
     </div>
   </div>
 
+  <!-- MODALE: MIGLIORE PUNTO DI OSSERVAZIONE -->
+  <div id="modale-posto-evento" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
+    <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="grande">
+      <div class="testata-modale flex justify-between items-start gap-3 p-5 border-b border-slate-700">
+        <div>
+          <h2 id="posto-evento-titolo" class="text-xl md:text-2xl font-bold text-white">Dove vedere l'evento</h2>
+          <p class="text-xs text-slate-400 mt-1">Confronta il terreno attorno a te e cerca un punto con l'evento libero sopra montagne e colline.</p>
+        </div>
+        <button id="btn-chiudi-posto-evento" class="tasto-chiudi con-etichetta" aria-label="Chiudi la finestra"><span aria-hidden="true">×</span><span>Chiudi</span></button>
+      </div>
+      <div class="corpo-modale posto-evento-corpo">
+        <div class="posto-evento-comandi">
+          <label for="posto-evento-raggio"><b>Raggio di ricerca</b><span id="posto-evento-raggio-testo">15 km</span></label>
+          <input id="posto-evento-raggio" type="range" min="2" max="50" step="1" value="15">
+          <button id="posto-evento-cerca" type="button" class="luogo-tasto-azione forte">Trova il punto migliore</button>
+        </div>
+        <p id="posto-evento-stato" class="posto-evento-stato" role="status" aria-live="polite"></p>
+        <div id="posto-evento-mappa" class="posto-evento-mappa" role="application" aria-label="Mappa dei punti di osservazione"></div>
+        <div id="posto-evento-risultati" class="posto-evento-risultati"></div>
+        <p class="posto-evento-avvertenza">La classifica valuta quota e profilo del terreno nella direzione dell'astro. Prima di partire verifica accesso, strade, proprietà private, meteo e sicurezza del luogo.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- MODALE: IMPOSTAZIONI, BACKUP E CALENDARIO -->
   <div id="modale-impostazioni" class="velo-modale hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center overflow-y-auto">
     <div class="pannello-modale bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="media">
@@ -2317,6 +2341,7 @@
   <script src="corpi-minori.js"></script>
   <script src="pianifica.js"></script>
   <script src="terreno.js"></script>
+  <script src="miglior-posto.js"></script>
   <script src="rilievo.js"></script>
   <script src="meteo-astro.js"></script>
   <script src="aurora-polare.js"></script>

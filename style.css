@@ -398,6 +398,23 @@ body .rounded-xl  { border-radius: var(--raggio-l); }
 body .rounded-lg  { border-radius: var(--raggio-m); }
 body .rounded     { border-radius: var(--raggio-s); }
 
+/* Ricerca del punto da cui un evento resta libero sopra il terreno. */
+.posto-evento-corpo { display: grid; gap: 14px; }
+.posto-evento-comandi { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 2fr) auto; gap: 12px; align-items: center; }
+.posto-evento-comandi label { display: flex; justify-content: space-between; gap: 12px; color: var(--testo-2); font-size: .88rem; }
+.posto-evento-comandi label span { color: var(--blu-chiaro); white-space: nowrap; }
+.posto-evento-stato { min-height: 1.4em; color: var(--testo-2); font-size: .86rem; }
+.posto-evento-mappa { height: min(42vh, 370px); min-height: 260px; border-radius: var(--raggio-l); overflow: hidden; background: #111827; border: 1px solid var(--bordo); }
+.posto-evento-risultati { display: grid; gap: 9px; }
+.posto-risultato { display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 13px; background: rgba(15,23,42,.72); border: 1px solid var(--bordo); border-radius: var(--raggio-m); }
+.posto-risultato.migliore { border-color: rgba(52,211,153,.65); background: rgba(6,78,59,.2); }
+.posto-numero { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--blu); color: #fff; font-weight: 800; }
+.posto-risultato h3 { color: #fff; font-weight: 700; }
+.posto-risultato p, .posto-evento-avvertenza { color: var(--testo-3); font-size: .8rem; margin-top: 3px; }
+.posto-azioni { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
+.posto-azioni a, .posto-azioni button { padding: 6px 11px; border-radius: 999px; background: #334155; color: #fff; font-size: .76rem; font-weight: 650; }
+@media (max-width: 650px) { .posto-evento-comandi { grid-template-columns: 1fr; } .posto-evento-mappa { min-height: 230px; } }
+
 body .shadow,
 body .shadow-lg  { box-shadow: var(--ombra-2), var(--luce-interna); }
 body .shadow-xl,

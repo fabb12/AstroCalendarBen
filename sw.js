@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v211';
+const CACHE_NAME = 'astrocal-v212';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -12,6 +12,7 @@ const ASSETS = [
   './corpi-minori.js',
   './pianifica.js',
   './terreno.js',
+  './miglior-posto.js',
   './rilievo.js',
   './meteo-astro.js',
   './aurora-polare.js',
