@@ -505,11 +505,18 @@ function meteoDipingiCieloCoperto(ctx, n, luce, seme, deriva, verso) {
   const radVento = verso * Math.PI / 180;
   const scorreX = Math.cos(radVento) * deriva * 9;
   const scorreY = Math.sin(radVento) * deriva * 4;
-  const quanti = Math.round(18 + pieno * 20);
+  // Poche celle molto larghe leggono come un unico sistema nuvoloso. Tante
+  // macchie minute, anche se sfumate, facevano invece sembrare il soffitto un
+  // motivo decorativo e lasciavano intuire i singoli elementi del pennello.
+  const quanti = Math.round(7 + pieno * 6);
   for (let i = 0; i < quanti; i++) {
-    const x = ((caso() * (sky.larghezza + 360) + scorreX) % (sky.larghezza + 360)) - 180;
-    const y = ((caso() * (sky.altezza + 260) + scorreY) % (sky.altezza + 260)) - 130;
-    const r = Math.max(90, Math.min(sky.larghezza, sky.altezza) * (.13 + caso() * .24));
+    const margineX = Math.max(260, sky.larghezza * .24);
+    const margineY = Math.max(190, sky.altezza * .24);
+    const x = ((caso() * (sky.larghezza + margineX * 2) + scorreX) %
+      (sky.larghezza + margineX * 2)) - margineX;
+    const y = ((caso() * (sky.altezza + margineY * 2) + scorreY) %
+      (sky.altezza + margineY * 2)) - margineY;
+    const r = Math.max(150, Math.min(sky.larghezza, sky.altezza) * (.25 + caso() * .27));
     const scura = caso() < .62;
     const tono = scura ? Math.max(28, chiaro - 68 - caso() * 32) : Math.min(246, chiaro + 34);
     const g = ctx.createRadialGradient(x, y, r * .08, x, y, r);
@@ -626,9 +633,12 @@ function meteoDisegnaNuvole(ctx, base, focale, aria) {
     };
   }
   const strati = [
-    { cop: n.alte, alt: 64, passo: 26, scala: 1.35, alpha: 0.24 },
-    { cop: n.medie, alt: 42, passo: 22, scala: 1.05, alpha: 0.34 },
-    { cop: n.basse, alt: 24, passo: 18, scala: 0.86, alpha: 0.48 }
+    // I passi larghi limitano ogni strato a pochi banchi. La scala maggiore
+    // conserva la copertura prevista attraverso masse estese, non sommando
+    // una folla di nuvolette tutte uguali.
+    { cop: n.alte, alt: 64, passo: 48, scala: 1.72, alpha: 0.24 },
+    { cop: n.medie, alt: 42, passo: 42, scala: 1.48, alpha: 0.34 },
+    { cop: n.basse, alt: 24, passo: 36, scala: 1.28, alpha: 0.48 }
   ];
   const seme = Math.round(luogo.lat * 37 + luogo.lon * 71);
   const deriva = (isFinite(n.vento) ? n.vento : 8) * n.faseOra * 0.34;
@@ -647,7 +657,7 @@ function meteoDisegnaNuvole(ctx, base, focale, aria) {
       const alt = Math.max(5, Math.min(82, s.alt + 15 * Math.sin(i * 2.17 + seme)));
       const p = skyProietta(skyVettore(az, alt), base, focale);
       if (!p.davanti || p.px < -300 || p.px > sky.larghezza + 300 || p.py < -180 || p.py > sky.altezza + 180) continue;
-      const r = Math.max(32, focale * (0.12 + cop / 900) * s.scala);
+      const r = Math.max(58, focale * (0.16 + cop / 720) * s.scala);
       const colore = luce > 0.18 ? (n.pioggia > 55 ? '130,139,150' : '226,232,238') : '126,139,160';
       meteoDipingiBancoNuvoloso(ctx, p.px, p.py, r, colore,
         Math.min(.82, s.alpha + cop / 280), seme * 101 + livello * 1009 + i * 7919,
