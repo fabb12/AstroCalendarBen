@@ -4052,12 +4052,12 @@ function acqueQueryCorta(lat, lon) {
 }
 
 // Due punti che sono lo stesso punto. Le vie di una relazione **condividono
-// il nodo** agli estremi, quindi le coordinate che arrivano sono identiche
-// cifra per cifra: la tolleranza serve solo a non dipendere dal fatto che
-// restino identiche anche dopo un arrotondamento di Overpass. Un decimo di
-// milionesimo di grado è un centimetro.
+// il nodo** agli estremi, quindi normalmente le coordinate sono identiche.
+// Alcune istanze Overpass, però, serializzano i membri con precisioni appena
+// diverse: un milionesimo di grado è circa un decimetro e basta a ricucire
+// lo stesso nodo senza saldare rive realmente separate.
 function acqueStessoPunto(a, b) {
-  return Math.abs(a.lat - b.lat) < 1e-7 && Math.abs(a.lon - b.lon) < 1e-7;
+  return Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lon - b.lon) < 1e-6;
 }
 
 // Ricucire i pezzi di una relazione in anelli chiusi.
@@ -4118,11 +4118,11 @@ function acqueCuciAnelli(archi) {
     if (pezzo.length > 3 && acqueStessoPunto(pezzo[0], pezzo[pezzo.length - 1])) anelli.push(pezzo);
     else aperti.push(pezzo);
   }
-  // Quello che non si è chiuso si chiude a forza, come si faceva prima con
-  // ogni singolo membro. Capita quando la relazione è incompleta o quando
-  // Overpass ne ha tagliato dei pezzi (il limite di `out geom`): un anello
-  // approssimato è comunque molto meglio di dieci mezzelune, perché ha un
-  // dentro e una parità sola.
+  // Gli archi rimasti aperti NON sono superfici. Chiuderli con una retta fra
+  // i due estremi inventerebbe una costa e riempirebbe il settore compreso
+  // fra quella corda e la riva: sono gli «spicchi d'acqua» che comparivano
+  // accanto ai laghi quando Overpass restituiva una relazione incompleta.
+  // Meglio omettere quel contorno incompleto che alterare il profilo reale.
   return { anelli, aperti };
 }
 
@@ -4172,7 +4172,9 @@ function acqueLeggiElementi(elementi) {
       }
       const cuciti = acqueCuciAnelli(archi);
       cuciti.anelli.forEach(a => aggiungi(a, tags, true, tags.name));
-      cuciti.aperti.forEach(a => aggiungi(a, tags, true, tags.name));
+      // Un membro aperto non viene mai promosso a poligono: la corda di
+      // chiusura produrrebbe acqua su terra. Una successiva lettura dalla
+      // cache o da un altro endpoint potrà fornire l'anello completo.
     }
   }
   return fuori;
@@ -4651,7 +4653,11 @@ function acqueNomiGrandi(tracciati, lat, lon) {
 // La 3 è la volta del **fiume sotto i piedi**: chi aveva già delle bande
 // salvate in un posto attraversato da un corso d'acqua se le teneva senza la
 // banda che comincia dalle scarpe, che è proprio quella che mancava.
-const ACQUE_VERSIONE = 3;
+//
+// La 4 invalida le bande ricavate chiudendo artificialmente i membri aperti
+// delle relazioni: senza, chi aveva già visitato il Lago di Como continuava
+// a vedere gli spicchi sbagliati anche dopo la correzione della geometria.
+const ACQUE_VERSIONE = 4;
 
 function acqueArchivio() {
   try {
