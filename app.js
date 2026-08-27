@@ -7467,6 +7467,7 @@ const sky = {
   // Cielo dipinto come lo si vede davvero a quell'ora: colore che cambia col
   // Sole, foschia sull'orizzonte, stelle che sbiadiscono di giorno
   atmosfera: true,
+  nuvole: false,
   luceCielo: 0,          // quanto è chiaro il cielo adesso: 0 notte, 1 giorno
   ariaOra: null,         // i colori dell'aria dell'ultimo fotogramma
   // Eclissi di Sole in corso all'ora mostrata: quanto la Luna copre il disco
@@ -24570,7 +24571,22 @@ function inizializzaSkymap() {
   filtro('skymap-btn-griglia', 'mostraGriglia');
   filtro('skymap-btn-etichette', 'mostraNomi');
   filtro('skymap-btn-vialattea', 'mostraViaLattea');
-  filtro('skymap-btn-atmosfera', 'atmosfera');
+  // Atmosfera e nuvole sono due modi alternativi: così si può leggere la
+  // copertura prevista senza il chiarore del cielo, oppure studiare il solo
+  // velo atmosferico senza che le nuvole nascondano gli astri.
+  collega('skymap-btn-atmosfera', () => {
+    sky.atmosfera = true;
+    sky.nuvole = false;
+    skyAggiornaTastiFiltri();
+    skyAggiornaOggetti(true);
+  });
+  collega('skymap-btn-nuvole', () => {
+    sky.atmosfera = false;
+    sky.nuvole = true;
+    skyAggiornaTastiFiltri();
+    skyAggiornaOggetti(true);
+    if (typeof meteoCaricaNuvoleCielo === 'function') meteoCaricaNuvoleCielo();
+  });
   // Il terreno vero non è un filtro come gli altri: non nasconde
   // qualcosa che c'è già, cambia la forma dell'orizzonte. Se lo si
   // accende la prima volta senza rete, lo dice e resta il disegnato.
@@ -24785,6 +24801,7 @@ function skyAggiornaTastiFiltri() {
   skyTasto('skymap-btn-deepsky', sky.mostraProfondo);
   skyTasto('skymap-btn-polo', sky.mostraPolo);
   skyTasto('skymap-btn-atmosfera', sky.atmosfera);
+  skyTasto('skymap-btn-nuvole', sky.nuvole);
   skyTasto('skymap-btn-eventi', sky.mostraEventi);
   skyTasto('skymap-btn-traccia', sky.mostraTraccia);
   skyTasto('skymap-btn-eclittica', sky.mostraEclittica);
