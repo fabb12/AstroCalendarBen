@@ -375,20 +375,18 @@ function meteoRenderBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illum
   ctx.rotate(angolo);
 
   if (alto) {
-    // I cirri sono ciuffi di cristalli: una testa sottile si apre in filamenti
-    // paralleli, tutti piegati dallo stesso vento.
-    ctx.lineCap = 'round';
-    ctx.filter = `blur(${Math.max(0.7, r * .018)}px)`;
-    for (let i = 0; i < 7; i++) {
-      const yy = (caso() - .5) * r * .65;
-      ctx.strokeStyle = `rgba(${colore},${alpha * (.13 + caso() * .25)})`;
-      ctx.lineWidth = r * (.025 + caso() * .055);
-      ctx.beginPath();
-      ctx.moveTo(-r * (1.35 + caso() * .3), yy + r * .2);
-      ctx.bezierCurveTo(-r * .45, yy - r * (.52 + caso() * .22),
-        r * .18, yy + r * (.24 + caso() * .18), r * (1.45 + caso() * .45), yy - r * .18);
-      ctx.stroke();
-    }
+    // Anche lo strato alto viene mostrato come un velo esteso e irregolare.
+    // Le vecchie onde parallele erano leggibili come il simbolo dei cirri e,
+    // soprattutto con molta copertura, lasciavano un cielo artificiosamente
+    // vuoto fra una pennellata e l'altra.
+    ctx.filter = `blur(${Math.max(2, r * .07)}px)`;
+    const velo = ctx.createRadialGradient(-r * .25, -r * .15, r * .08, 0, 0, r * 1.45);
+    velo.addColorStop(0, `rgba(${colore},${alpha * .68})`);
+    velo.addColorStop(.58, `rgba(${colore},${alpha * .42})`);
+    velo.addColorStop(1, `rgba(${colore},0)`);
+    ctx.fillStyle = velo;
+    meteoSagomaNuvola(ctx, r * 1.2, caso, true);
+    ctx.fill();
     ctx.filter = 'none';
     ctx.restore();
     return;
@@ -466,6 +464,48 @@ function meteoRenderBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illum
   ctx.restore();
 }
 
+// Con cielo molto nuvoloso i singoli banchi non bastano: una volta celeste
+// coperta è un soffitto continuo, come in una fotografia di stratocumuli. Lo
+// strato uniforme nasconde davvero stelle e blu del cielo; macchie morbide di
+// scale diverse suggeriscono le celle e le profondità senza ricorrere a onde o
+// icone ripetute. Copertura, pioggia, luce, luogo, ora e vento vengono tutti
+// dalla previsione interpolata, quindi il risultato cambia assieme al meteo.
+function meteoDipingiCieloCoperto(ctx, n, luce, seme, deriva, verso) {
+  const cop = Math.max(0, Math.min(100, isFinite(n.totale) ? n.totale : 0));
+  if (cop < 38) return;
+
+  const pieno = Math.max(0, Math.min(1, (cop - 38) / 50));
+  const temporale = Math.max(pieno, isFinite(n.pioggia) ? n.pioggia / 100 : 0);
+  const giorno = luce > .18;
+  const chiaro = giorno ? 202 - temporale * 54 : 72 - temporale * 20;
+  const opacita = .12 + pieno * .8;
+  ctx.save();
+  ctx.fillStyle = `rgba(${Math.round(chiaro)},${Math.round(chiaro + 5)},${Math.round(chiaro + 11)},${opacita})`;
+  ctx.fillRect(0, 0, sky.larghezza, sky.altezza);
+
+  const caso = meteoNuvolaCaso(seme * 811 + Math.floor((n.faseOra || 0) * 12));
+  const radVento = verso * Math.PI / 180;
+  const scorreX = Math.cos(radVento) * deriva * 9;
+  const scorreY = Math.sin(radVento) * deriva * 4;
+  const quanti = Math.round(18 + pieno * 20);
+  for (let i = 0; i < quanti; i++) {
+    const x = ((caso() * (sky.larghezza + 360) + scorreX) % (sky.larghezza + 360)) - 180;
+    const y = ((caso() * (sky.altezza + 260) + scorreY) % (sky.altezza + 260)) - 130;
+    const r = Math.max(90, Math.min(sky.larghezza, sky.altezza) * (.13 + caso() * .24));
+    const scura = caso() < .62;
+    const tono = scura ? Math.max(28, chiaro - 68 - caso() * 32) : Math.min(246, chiaro + 34);
+    const g = ctx.createRadialGradient(x, y, r * .08, x, y, r);
+    g.addColorStop(0, `rgba(${Math.round(tono)},${Math.round(tono + 5)},${Math.round(tono + 12)},${(.08 + pieno * .2).toFixed(3)})`);
+    g.addColorStop(.62, `rgba(${Math.round(tono)},${Math.round(tono + 4)},${Math.round(tono + 9)},${(.035 + pieno * .09).toFixed(3)})`);
+    g.addColorStop(1, `rgba(${Math.round(tono)},${Math.round(tono + 4)},${Math.round(tono + 9)},0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(x, y, r * (1.25 + caso() * .65), r * (.62 + caso() * .32), (caso() - .5) * .45, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illuminazione) {
   const sole = illuminazione || { dx: -.65, dy: -.76, forza: .35, calda: 0 };
   const chiave = meteoNuvolaChiaveSprite(r, colore, alpha, seme, alto, sole);
@@ -489,7 +529,7 @@ function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illu
     }
     meteoNuvoleSpriteNuovi++;
     const rq = meteoNuvolaRaggioSprite(r);
-    // Margine abbondante per blur, inclinazione e filamenti dei cirri.
+    // Margine abbondante per blur, inclinazione e margini dei veli alti.
     const larghezza = Math.ceil(rq * 4.1), altezza = Math.ceil(rq * 2.8);
     const canvas = meteoNuvolaSpriteCanvas(larghezza, altezza);
     const sctx = canvas.getContext('2d', { alpha: true });
@@ -569,6 +609,7 @@ function meteoDisegnaNuvole(ctx, base, focale, aria) {
   const verso = isFinite(n.ventoDa) ? n.ventoDa + 180 : 90;
 
   ctx.save();
+  meteoDipingiCieloCoperto(ctx, n, luce, seme, deriva, verso);
   strati.forEach((s, livello) => {
     const cop = Math.max(0, Math.min(100, isFinite(s.cop) ? s.cop : n.totale));
     if (cop < 4) return;
