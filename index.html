@@ -680,22 +680,26 @@
               <div class="schede-vista-guscio">
                 <div class="segmenti-cielo schede-vista" role="tablist" aria-label="Che cosa regolare">
                   <button type="button" class="tasto-segmento attiva" role="tab" aria-selected="true"
+                    id="scheda-vista-schermo"
                     data-scheda-vista="schermo" aria-controls="foglio-vista-schermo"
                     title="Come guardare: pieno schermo, colori notturni, fotocamera, reticolo">Schermo</button>
                   <button type="button" class="tasto-segmento" role="tab" aria-selected="false"
+                    id="scheda-vista-oggetti" tabindex="-1"
                     data-scheda-vista="oggetti" aria-controls="foglio-vista-oggetti"
                     title="Cosa disegnare sulla mappa: pianeti, stelle, satelliti, aerei">Oggetti</button>
                   <button type="button" class="tasto-segmento" role="tab" aria-selected="false"
+                    id="scheda-vista-cielo" tabindex="-1"
                     data-scheda-vista="cielo" aria-controls="foglio-vista-cielo"
                     title="L'aria sopra di te: colore del cielo, nuvole, aurora">Cielo</button>
                   <button type="button" class="tasto-segmento" role="tab" aria-selected="false"
+                    id="scheda-vista-paesaggio" tabindex="-1"
                     data-scheda-vista="paesaggio" aria-controls="foglio-vista-paesaggio"
                     title="La terra sotto di te: terreno, rilievo, luci, acque">Paesaggio</button>
                 </div>
               </div>
 
               <!-- SCHERMO: come guardare -->
-              <div id="foglio-vista-schermo" class="foglio-vista foglio-attivo" role="tabpanel" data-scheda="schermo">
+              <div id="foglio-vista-schermo" class="foglio-vista foglio-attivo" role="tabpanel" data-scheda="schermo" aria-labelledby="scheda-vista-schermo">
                 <div class="riga-comandi riga-tasti-griglia">
                   <button id="skymap-btn-schermo" type="button" class="tasto-cielo" title="Il cielo occupa tutto lo schermo (anche con un doppio clic sulla mappa)">Schermo intero</button>
                   <button id="skymap-btn-notte" type="button" class="tasto-cielo" title="Filtro rosso: protegge la vista notturna">Modalità notte</button>
@@ -710,7 +714,7 @@
               </div>
 
               <!-- OGGETTI: cosa compare sulla mappa -->
-              <div id="foglio-vista-oggetti" class="foglio-vista" role="tabpanel" data-scheda="oggetti" hidden>
+              <div id="foglio-vista-oggetti" class="foglio-vista" role="tabpanel" data-scheda="oggetti" aria-labelledby="scheda-vista-oggetti" hidden>
                 <div class="riga-comandi riga-tasti-griglia">
                   <button id="skymap-btn-solelun" type="button" class="tasto-cielo attiva" title="Sole e Luna">Sole e Luna</button>
                   <button id="skymap-btn-pianeti" type="button" class="tasto-cielo attiva" title="Mercurio, Venere, Marte, Giove, Saturno, Urano e Nettuno">Pianeti</button>
@@ -747,7 +751,7 @@
               </div>
 
               <!-- CIELO: l'aria sopra di te -->
-              <div id="foglio-vista-cielo" class="foglio-vista" role="tabpanel" data-scheda="cielo" hidden>
+              <div id="foglio-vista-cielo" class="foglio-vista" role="tabpanel" data-scheda="cielo" aria-labelledby="scheda-vista-cielo" hidden>
                 <div class="riga-comandi riga-tasti-griglia">
                   <button id="skymap-btn-atmosfera" type="button" class="tasto-cielo attiva" aria-pressed="true" title="Mostra il colore del cielo, la foschia e gli aloni. Spegnendola si spengono anche le nuvole">Atmosfera</button>
                   <button id="skymap-btn-nuvole" type="button" class="tasto-cielo" aria-pressed="false" title="Aggiunge le nuvole previste per questo luogo e quest'ora all'atmosfera">Nuvole</button>
@@ -771,7 +775,7 @@
               </div>
 
               <!-- PAESAGGIO: la terra sotto di te -->
-              <div id="foglio-vista-paesaggio" class="foglio-vista" role="tabpanel" data-scheda="paesaggio" hidden>
+              <div id="foglio-vista-paesaggio" class="foglio-vista" role="tabpanel" data-scheda="paesaggio" aria-labelledby="scheda-vista-paesaggio" hidden>
                 <div class="riga-comandi riga-tasti-griglia">
                   <button id="skymap-btn-terreno" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'orizzonte prende la forma vera del terreno attorno a te: colline, montagne, mare, pianura — ognuno col suo colore. Si scarica una volta sola e poi resta anche senza rete. Spento, il terreno non viene disegnato. Ingrandendo molto su un astro il terreno diventa trasparente da sé, come in Stellarium">Terreno vero</button>
                   <button id="skymap-btn-rilievo" type="button" class="tasto-cielo attiva" aria-pressed="true" title="La forma vera del terreno, non solo la sua sagoma: le valli che scendono, i fianchi delle colline, il solco del fiume, disegnati a tratti come su una tavola panoramica. Attorno a te il passo è di ventisette metri, contro i tre gradi del profilo a bande. Si scarica una volta sola per luogo (da quattro a sei tessere) e poi resta anche senza rete. Spento, torna il profilo a bande">Rilievo</button>
