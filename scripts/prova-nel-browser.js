@@ -197,6 +197,8 @@ const server = http.createServer((req, res) => {
   ok('la scheda degli aerei si apre sopra al planetario',
     schedaAereo.visibile && schedaAereo.posizione === 'absolute' && schedaAereo.scorrevole,
     `${schedaAereo.posizione}, scorrimento ${schedaAereo.scorrevole ? 'attivo' : 'spento'}`);
+  const extraAereo = await pagina.evaluate(() => schedaExtraHtml({ categoria: 'aereo', id: 'test' }));
+  ok('la scheda degli aerei non mostra il grafico di stanotte', extraAereo === '');
 
   // --- il ciclo di disegno regge? ---
   const fps = await pagina.evaluate(() => new Promise(risolvi => {

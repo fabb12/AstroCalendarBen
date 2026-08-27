@@ -852,6 +852,9 @@ function disegnaLuneDiGiove(canvas, data) {
 // Il pezzo che si attacca in fondo alla scheda dell'oggetto
 function schedaExtraHtml(voce) {
   if (!voce) return '';
+  // La curva di visibilità notturna descrive gli astri, non un velivolo che
+  // si sposta in tempo reale: nella scheda degli aerei sarebbe priva di senso.
+  if (voce.categoria === 'aereo') return '';
   const pezzi = [];
 
   if (voce.id === 'Jupiter' && typeof luneDiGioveRacconto === 'function') {
