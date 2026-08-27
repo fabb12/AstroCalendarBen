@@ -8583,6 +8583,15 @@ function skySorvegliaPosizione(autorizzata, modo) {
     posModoSorveglianza = voluto;
     sky.sorveglianza = navigator.geolocation.watchPosition(
       (pos) => {
+        // Ogni lettura conta per capire se ci si sta muovendo, **anche**
+        // quelle che il filtro qui sotto scarta: sono proprio loro a dire
+        // che si sta camminando piano invece che stando fermi, ed è da
+        // quella risposta che il paesaggio decide se vale la pena
+        // riscaricarsi (`terrenoInMoto`, §6-bis di `terreno.js`).
+        if (typeof terrenoSegnaFix === 'function') {
+          terrenoSegnaFix(pos.coords.latitude, pos.coords.longitude,
+                          pos.coords.speed, pos.timestamp);
+        }
         const cambiata = skyImpostaPosizione(pos.coords.latitude, pos.coords.longitude, 'gps', {
           precisione: pos.coords.accuracy,
           tempo: pos.timestamp,

@@ -97,16 +97,60 @@ const RIL_RAGGIO_KM = 6;
 // quel numero il raggio si stringe invece di scaricare di più.
 const RIL_TESSERE_MAX = 9;
 
-// Una maglia 3D non si riscarica a ogni fix del GPS. Fra un centro e il
-// successivo la si trasla geometricamente (vedi `rilCampioneInMovimento`):
-// così alberi, coste e pendii scorrono mentre si cammina o si viaggia, ma le
-// tessere vengono cambiate soltanto quando il vecchio disco non è più una
-// buona finestra sul posto. La soglia cresce con la velocità: in aereo un
-// rilievo nuovo ogni duecento metri sarebbe già vecchio prima di arrivare.
-const RIL_RICARICA_PIEDI_M = 450;
-const RIL_RICARICA_AUTO_M = 1600;
-const RIL_RICARICA_AEREO_M = 8000;
-const RIL_RICARICA_MIN_MS = 20000;
+// Rifare la maglia e riscaricare le tessere sono **due cose diverse**, e per
+// un pezzo sono state la stessa: si ricostruiva solo quando conveniva
+// ripagare il megabyte, cioè ogni quattrocentocinquanta metri a piedi e ogni
+// chilometro e mezzo in macchina. In mezzo la maglia veniva traslata a ogni
+// fotogramma (`rilCampioneInMovimento`) — il che teneva il disegno vivo, ma
+// lasciava scoperta la metà che non si disegna: `rilievo.cresta` e
+// `rilievo.fronte` continuavano a raccontare il posto di partenza. Sono loro
+// a dire se un astro è sorto, quale vetta si vede e dove finisce un lago:
+// per un chilometro e mezzo l'orizzonte disegnato e quello calcolato
+// parlavano di due punti diversi, e i nomi delle montagne finivano appesi a
+// creste che sullo schermo non c'erano più.
+//
+// Rifare la maglia però **non costa rete**: le tessere sono già decodificate
+// in memoria e coprono sei chilometri, quindi ricostruire è aritmetica —
+// settantaseimila `atan2` a scaglioni di otto millesimi, cioè qualche
+// fotogramma di lavoro spalmato, mentre quella vecchia resta disegnata. Si
+// rifà allora spesso (sotto, `RIL_RICENTRA_M`) e si scarica solo quando le
+// tessere che servono non ci sono più.
+const RIL_RICENTRA_M = 60;
+const RIL_RICENTRA_MIN_MS = 3000;
+// Fra due giri di tessere: sotto questo tempo si ricostruisce con quello che
+// c'è, che è sempre meglio di una maglia ferma.
+const RIL_TESSERE_MIN_MS = 8000;
+// Quante tessere decodificate si tengono in memoria. Nove coprono il disco;
+// le altre sono quelle che ci si lascia dietro viaggiando, e tenerne un po'
+// vuol dire che tornare indietro (o girare attorno a un isolato) non ricompra
+// niente. Ognuna è un quarto di megabyte.
+const RIL_TESSERE_TENUTE = 18;
+
+// Sotto questo scostamento la maglia si legge così com'è: mezzo metro non
+// sposta nessun nodo di un pixel, e pagare una bilineare per nodo per non
+// spostare niente sarebbe il modo più caro di non cambiare il disegno.
+const RIL_TRASLA_MIN_M = 0.5;
+
+// Quanto in fretta la quota dell'occhio insegue il terreno sotto i piedi.
+// Non ci si arriva di colpo, e non è morbidezza gratuita: il modello del
+// suolo dice un valore ogni ventisette metri, e due fix vicini possono
+// pescare due celle diverse che differiscono di qualche metro. Cinque metri
+// a venticinque di distanza sono undici gradi — cioè tutto l'orizzonte
+// vicino che sobbalza. Un secondo e mezzo di costante di tempo li spalma,
+// e a passo d'uomo o in macchina la salita vera si segue lo stesso.
+const RIL_OCCHIO_TAU_MS = 1500;
+// ...ma un salto vero (si è scelta un'altra città, si è scesi da un aereo)
+// non si insegue: ci si va.
+const RIL_OCCHIO_SALTO_M = 120;
+// Fin dove attorno al centro della griglia grossa comanda la quota misurata
+// da `terreno.js` invece di quella letta dalle tessere. Il passaggio è
+// continuo per costruzione: lo scarto fra i due modelli è tarato proprio
+// perché nel centro diano lo stesso numero.
+const RIL_OCCHIO_GRIGLIA_KM = 0.3;
+// Sotto questo scarto fra la camera di adesso e quella con cui la maglia è
+// stata costruita si legge la maglia così com'è. Cinque centimetri: meno
+// di così non sposta un pixel nemmeno sotto i piedi.
+const RIL_OCCHIO_RIFAI_M = 0.05;
 
 // Dove le due fonti si danno il cambio. La griglia grossa e le tessere
 // vengono da due modelli del suolo diversi e sullo stesso punto non danno
@@ -165,11 +209,19 @@ const RIL_ANELLI = RIL_ANELLI_PIEDI + RIL_ANELLI_LONTANI;
 // piatto la depressione di un anello vale circa h/s, quindi una progressione
 // geometrica in distanza è una progressione geometrica in **angolo** — passi
 // sempre della stessa taglia relativa, che è come li vede l'occhio.
+//
+// Le due ragioni stanno a parte perché servono anche fuori di qui: sono
+// quello che permette di trovare **l'anello di una distanza qualunque con
+// un logaritmo** invece che cercandolo (`rilAnelloDi`), e quel conto sta
+// dentro al ciclo di disegno.
+const RIL_RAGIONE_PIEDI = Math.pow(RIL_VICINO_M / RIL_PIEDI_M, 1 / RIL_ANELLI_PIEDI);
+const RIL_RAGIONE_LONTANI = Math.pow(RIL_LONTANO_M / RIL_VICINO_M, 1 / (RIL_ANELLI_LONTANI - 1));
+
 const RIL_DIST = (() => {
   const a = new Float64Array(RIL_ANELLI);
-  const rp = Math.pow(RIL_VICINO_M / RIL_PIEDI_M, 1 / RIL_ANELLI_PIEDI);
+  const rp = RIL_RAGIONE_PIEDI;
   for (let k = 0; k < RIL_ANELLI_PIEDI; k++) a[k] = RIL_PIEDI_M * Math.pow(rp, k);
-  const r = Math.pow(RIL_LONTANO_M / RIL_VICINO_M, 1 / (RIL_ANELLI_LONTANI - 1));
+  const r = RIL_RAGIONE_LONTANI;
   for (let k = 0; k < RIL_ANELLI_LONTANI; k++) {
     a[RIL_ANELLI_PIEDI + k] = RIL_VICINO_M * Math.pow(r, k);
   }
@@ -513,6 +565,11 @@ const rilievo = {
   lat: null,
   lon: null,
   occhio: 0,
+  // La camera di adesso, che fra una ricostruzione e l'altra insegue il
+  // suolo sotto i piedi (§8-bis). `null` finché non c'è una maglia.
+  occhioOra: null,
+  occhioQuando: 0,
+  ultimeTessere: 0,   // quando si è chiesto l'ultimo giro di tessere
   fini: 0,            // quante direzioni hanno davvero letto una tessera
   scarto: 0,          // di quanto si sono spostate le tessere per accordarsi
                       // alla griglia grossa, in metri
@@ -551,43 +608,93 @@ const rilievo = {
 // di ripiegare sulla griglia grossa.
 let rilTessere = new Map();
 
-function rilSogliaRicarica() {
-  const v = typeof sky !== 'undefined' && sky.posizione &&
-    isFinite(sky.posizione.velocita) ? sky.posizione.velocita : 0;
-  if (v >= 45) return RIL_RICARICA_AEREO_M;
-  if (v >= 3) return RIL_RICARICA_AUTO_M;
-  return RIL_RICARICA_PIEDI_M;
-}
-
 function rilDistanzaDalCentro(luogo) {
   if (!luogo || rilievo.lat === null || typeof terrenoDistanzaKm !== 'function') return Infinity;
   return terrenoDistanzaKm(luogo.lat, luogo.lon, rilievo.lat, rilievo.lon) * 1000;
+}
+
+// Lo scostamento fra il centro della maglia e il punto in cui si è adesso,
+// in metri di Est e di Nord. Si calcola una volta per fotogramma e non una
+// per nodo: sono settecentoventi colonne per un centinaio di anelli, e due
+// seni per nodo si sentono.
+function rilScostamento(luogo) {
+  if (!luogo || rilievo.lat === null || rilievo.lon === null) return null;
+  const latMedia = (luogo.lat + rilievo.lat) * Math.PI / 360;
+  const nord = (luogo.lat - rilievo.lat) * 111195;
+  const est = (luogo.lon - rilievo.lon) * 111195 * Math.cos(latMedia);
+  if (Math.abs(est) < RIL_TRASLA_MIN_M && Math.abs(nord) < RIL_TRASLA_MIN_M) return null;
+  return { est, nord };
+}
+
+// L'anello di una distanza, come numero **con la virgola**: la parte intera
+// è l'indice, la frazione dice quanto si sta fra lui e il successivo.
+//
+// Con un logaritmo e non cercandolo, e non è micro-ottimizzazione: questa
+// riga sta dentro al ciclo di disegno, cioè gira ventimila volte per
+// fotogramma, e una ricerca lineare su centosei anelli lì dentro si sente.
+// Si può fare perché le distanze sono due progressioni geometriche di
+// ragione nota (`RIL_RAGIONE_*`), che è il motivo per cui sono state
+// scelte così.
+function rilAnelloDi(metri) {
+  const m = Math.max(1e-3, metri);
+  if (m <= RIL_VICINO_M) {
+    return Math.log(m / RIL_PIEDI_M) / Math.log(RIL_RAGIONE_PIEDI);
+  }
+  return RIL_ANELLI_PIEDI +
+    Math.log(m / RIL_VICINO_M) / Math.log(RIL_RAGIONE_LONTANI);
+}
+
+// La quota della maglia in un punto qualunque del suo disco, dato in
+// coordinate polari **della maglia**. Bilineare nelle due direzioni: in
+// azimut fra due colonne, in distanza fra due anelli.
+//
+// Bilineare e non «il nodo più vicino», ed è la differenza fra una
+// traslazione e uno scivolamento a scatti. Gli anelli stanno fra loro
+// all'otto per cento e le colonne a mezzo grado: prendendo il nodo più
+// vicino, muovendosi il terreno si ricampiona a quantoni — un pendio
+// continuo diventa una scaletta che salta di un gradino a ogni fix, ed è
+// esattamente il tremolio che si vede dal finestrino. È la stessa lezione
+// di `rilQuotaTessere`, che per la stessa ragione non prende il pixel più
+// vicino.
+function rilQuotaMaglia(azGradi, metri) {
+  const nr = RIL_ANELLI;
+  const dove = (((azGradi % 360) + 360) % 360) / RIL_PASSO_AZ;
+  const i = Math.floor(dove) % RIL_AZIMUT;
+  const j = (i + 1) % RIL_AZIMUT;
+  const u = dove - Math.floor(dove);
+
+  const anello = Math.max(0, Math.min(nr - 1.0001, rilAnelloDi(metri)));
+  const k = Math.floor(anello);
+  const v = anello - k;
+
+  const q = rilievo.quota;
+  const a = q[i * nr + k],     b = q[j * nr + k];
+  const c = q[i * nr + k + 1], e = q[j * nr + k + 1];
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + e * u) * v;
 }
 
 // Riporta un nodo della maglia centrata sul vecchio fix nel sistema polare
 // del fix corrente. Non interpola il paesaggio fra due fotografie: sposta i
 // punti del terreno nello spazio, perciò il primo piano scorre più del fondo
 // (la parallasse che si vede davvero dal finestrino).
-function rilCampioneInMovimento(idx, k, luogo) {
-  if (!luogo || rilievo.lat === null || rilievo.lon === null) {
-    return { idx, k, alt: rilievo.alt[idx * RIL_ANELLI + k] };
-  }
-  const latMedia = (luogo.lat + rilievo.lat) * Math.PI / 360;
-  const nord = (luogo.lat - rilievo.lat) * 111195;
-  const est = (luogo.lon - rilievo.lon) * 111195 * Math.cos(latMedia);
-  const az = idx * RIL_PASSO_AZ * Math.PI / 180;
+//
+// L'angolo si rifà con la distanza **nuova** e con l'occhio **di adesso**
+// (`rilievo.occhioOra`, §8-bis): è quello che fa salire e scendere la
+// camera insieme al terreno che si sta percorrendo — in salita si comincia
+// a vedere oltre la cresta, scendendo in una conca l'orizzonte si alza.
+// Con la quota dell'occhio ferma al punto di partenza, invece, il paesaggio
+// scorreva ma il punto di vista restava sospeso a mezz'aria.
+function rilCampioneInMovimento(sinAz, cosAz, k, scostamento, occhio) {
   const s = RIL_DIST[k];
-  const eVecchio = est + Math.sin(az) * s;
-  const nVecchio = nord + Math.cos(az) * s;
-  const distanza = Math.hypot(eVecchio, nVecchio);
-  const azVecchio = (Math.atan2(eVecchio, nVecchio) * 180 / Math.PI + 360) % 360;
-  const ii = Math.round(azVecchio / RIL_PASSO_AZ) % RIL_AZIMUT;
-  let kk = 0;
-  while (kk + 1 < RIL_ANELLI && Math.abs(RIL_DIST[kk + 1] - distanza) < Math.abs(RIL_DIST[kk] - distanza)) kk++;
-  const q = rilievo.quota[ii * RIL_ANELLI + kk];
-  const alt = typeof rilAngolo === 'function' ? rilAngolo(q, rilievo.occhio, Math.max(1, s))
-    : rilievo.alt[ii * RIL_ANELLI + kk];
-  return { idx: ii, k: kk, alt };
+  const eVecchio = scostamento.est + sinAz * s;
+  const nVecchio = scostamento.nord + cosAz * s;
+  const distanza = Math.sqrt(eVecchio * eVecchio + nVecchio * nVecchio);
+  // Il punto è finito **dietro** al centro della maglia, più vicino del
+  // primo anello: lì non c'è niente da leggere e l'unica cosa onesta è il
+  // suolo sotto i piedi.
+  if (distanza < RIL_DIST[0]) return rilAngolo(occhio - TERRENO_ALTEZZA_OCCHIO_M, occhio, s);
+  const azVecchio = Math.atan2(eVecchio, nVecchio) * 180 / Math.PI;
+  return rilAngolo(rilQuotaMaglia(azVecchio, distanza), occhio, s);
 }
 
 
@@ -853,6 +960,26 @@ function rilQuotaGriglia(azGradi, metri) {
 }
 
 
+// Di quanto il centro di questa maglia è spostato rispetto a quello della
+// griglia grossa, in metri di Est e di Nord. `null` quando coincidono, che
+// è il caso di sempre da fermo — e allora non si paga niente.
+function rilScostoGriglia(lat, lon) {
+  if (typeof terreno === 'undefined' || terreno.lat === null || terreno.lon === null) return null;
+  const nord = (lat - terreno.lat) * 111195;
+  const est = (lon - terreno.lon) * 111195 * Math.cos((lat + terreno.lat) * Math.PI / 360);
+  if (Math.abs(est) < RIL_TRASLA_MIN_M && Math.abs(nord) < RIL_TRASLA_MIN_M) return null;
+  return { est, nord };
+}
+
+// La quota della griglia grossa nel punto che sta a `(az, s)` da **qui**,
+// tenendo conto che lei parla da un centro diverso.
+function rilQuotaGrigliaDa(scosto, sinAz, cosAz, az, s) {
+  if (!scosto) return rilQuotaGriglia(az, s);
+  const e = scosto.est + sinAz * s;
+  const n = scosto.nord + cosAz * s;
+  return rilQuotaGriglia(Math.atan2(e, n) * 180 / Math.PI, Math.hypot(e, n));
+}
+
 // La quota della griglia grossa a un indice di distanza esatto, interpolata
 // nel solo azimut. È il mattone di `rilQuotaGriglia`, tirato fuori perché
 // serve anche da solo — al primo campione, dove la distanza non si interpola
@@ -942,6 +1069,15 @@ async function rilCostruisciMaglia(lat, lon, occhio) {
   // fonti si mescolano non c'è più nessun gradino ad anello.
   const sottoTessera = rilQuotaTessere(o.px, o.py);
   const sottoGriglia = occhio - TERRENO_ALTEZZA_OCCHIO_M;
+
+  // La griglia grossa è centrata dove `terreno.js` l'ha chiesta, che dal
+  // giorno in cui il profilo si tiene anche muovendosi (§6-bis di
+  // `terreno.js`) non è più per forza qui. Lo sfondo oltre il raggio delle
+  // tessere va allora chiesto **nel riferimento di lei**: senza, guidando
+  // per dieci chilometri le montagne lontane restavano ferme agli azimut
+  // della partenza mentre il primo piano scorreva — cioè il paesaggio si
+  // strappava in due a metà distanza.
+  const scostoGriglia = rilScostoGriglia(lat, lon);
   let scarto = 0;
   if (sottoTessera !== null) {
     // Tosato: uno scarto enorme non è un disaccordo fra due modelli, è una
@@ -967,7 +1103,7 @@ async function rilCostruisciMaglia(lat, lon, occhio) {
         if (qt !== null) { q = qt + scarto; toccataUnaTessera = true; }
       }
       if (peso < 1 || q === null) {
-        const qg = rilQuotaGriglia(az, s);
+        const qg = rilQuotaGrigliaDa(scostoGriglia, sinAz, cosAz, az, s);
         if (qg !== null) q = (q === null) ? qg : q * peso + qg * (1 - peso);
       }
       // Nessuna delle due fonti sa niente di quel punto: si tiene l'anello
@@ -1152,8 +1288,14 @@ function rilFrontiA(az, fuori) {
 // =====================================================================
 
 // Il posto da cui si guarda è lo stesso di `terreno.js`: il luogo di sola
-// visita del planetario se c'è, se no la posizione dell'app.
+// visita del planetario se c'è, se no la posizione dell'app — e in
+// movimento il **punto vivo**, cioè l'ultimo fix grezzo portato avanti
+// dalla corsa (§6-bis di `terreno.js`). La differenza si vede tutta: la
+// posizione dell'app avanza a scatti di centocinquanta metri, che è la
+// soglia sotto la quale un fix è respiro del sensore, e il paesaggio
+// disegnato con quella saltava da un fermo all'altro.
 function rilLuogo() {
+  if (typeof terrenoPuntoDaDisegnare === 'function') return terrenoPuntoDaDisegnare();
   return typeof terrenoLuogo === 'function' ? terrenoLuogo() : null;
 }
 
@@ -1166,7 +1308,115 @@ function rilScorda() {
   rilievo.maxAlt = null;
   rilievo.chiave = null;
   rilievo.fini = 0;
+  rilievo.occhioOra = null;
   rilTessere = new Map();
+}
+
+
+// --- 8-bis. La camera che cammina dentro al paesaggio -----------------
+//
+// La quota dell'occhio è il termine che si **sottrae a tutti gli angoli**:
+// alzarla di dieci metri abbassa di dieci metri tutto l'orizzonte, vicino e
+// lontano. Da fermo la si prende una volta e lì resta. Muovendosi no — ed è
+// la differenza fra una fotografia che scorre e una camera che percorre il
+// terreno: passando un valico si comincia a vedere oltre la cresta *perché
+// si è saliti*, e scendendo in una conca l'orizzonte si chiude addosso.
+// Prima quel numero restava quello del punto di partenza, e il paesaggio
+// scorreva sotto un punto di vista appeso a mezz'aria.
+//
+// Il suolo lo dicono le tessere, che sono già in memoria: una lettura
+// bilineare per fotogramma, e nient'altro. Lo `scarto` è lo stesso che
+// `rilCostruisciMaglia` ha misurato per mettere d'accordo tessere e griglia
+// grossa — senza di lui l'occhio si troverebbe su un'altra superficie da
+// quella disegnata, che è il difetto che quello scarto esiste per curare.
+
+// Le tessere che servono a questo punto ci sono già tutte? È la domanda che
+// separa il calcolo dalla rete.
+function rilTessereBastano(lat, lon) {
+  if (!rilTessere.size) return false;
+  let elenco = rilTessereAttorno(lat, lon, RIL_RAGGIO_KM);
+  if (elenco.length > RIL_TESSERE_MAX) elenco = elenco.slice(0, RIL_TESSERE_MAX);
+  return elenco.every(t => rilTessere.has(`${t.x}/${t.y}`));
+}
+
+// Quelle che ci si è lasciati dietro. Non si buttano subito — tornare sui
+// propri passi è la cosa più normale del mondo — ma nemmeno si tengono
+// tutte: viaggiando, un quarto di megabyte a tessera diventa presto un
+// conto vero.
+function rilPotaTessere(lat, lon) {
+  if (rilTessere.size <= RIL_TESSERE_TENUTE) return;
+  const o = rilPixelMondo(lat, lon, RIL_ZOOM);
+  const L = rilLatoTessera;
+  const ordinate = [...rilTessere.keys()].map(chiave => {
+    const [x, y] = chiave.split('/').map(Number);
+    const dx = (x + 0.5) * L - o.px, dy = (y + 0.5) * L - o.py;
+    return { chiave, d: dx * dx + dy * dy };
+  }).sort((a, b) => a.d - b.d);
+  for (let i = RIL_TESSERE_TENUTE; i < ordinate.length; i++) rilTessere.delete(ordinate[i].chiave);
+}
+
+// La quota del suolo sotto un punto, nel riferimento della griglia grossa
+// (cioè lo stesso in cui è scritta `terreno.quota`). `null` se lì le
+// tessere non ci sono.
+function rilQuotaSuolo(lat, lon) {
+  if (!rilTessere.size) return null;
+  const o = rilPixelMondo(lat, lon, RIL_ZOOM);
+  const q = rilQuotaTessere(o.px, o.py);
+  return q === null ? null : q + (rilievo.scarto || 0);
+}
+
+// Dove dovrebbe stare la camera in un punto: il suolo che c'è lì sotto più
+// l'altezza di una persona. Quando le tessere non sanno rispondere resta la
+// quota misurata a punti, che è quella di sempre.
+function rilOcchioMeta(lat, lon) {
+  const misurata = typeof terreno !== 'undefined' && typeof terreno.quota === 'number';
+  const fermo = (misurata ? terreno.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M;
+  // Stando sull'acqua la quota non è quella del suolo ma quella della
+  // superficie, e a stabilirlo è `acqueAllineaOcchio` in `terreno.js`: lì
+  // comanda lei, e le tessere — che il pelo dell'acqua non lo conoscono —
+  // non devono rimetterci mano.
+  if (typeof terreno !== 'undefined' && terreno.quotaAcqua) return fermo;
+  // Vicino al centro della griglia comanda la misura di lì. È il punto di
+  // cui `terreno.js` ha chiesto la quota per davvero, ed è quel numero il
+  // riferimento di tutta l'app — le creste, l'acqua, le vette. Usarlo qui
+  // è anche il modo in cui `rilCostruisciMaglia` torna a **misurare** lo
+  // scarto fra i due modelli del suolo invece di riportarselo dietro: le
+  // due cose combaciano di sicuro, perché quello scarto è definito
+  // esattamente come «quanto le tessere sbagliano in questo punto».
+  if (misurata && typeof terrenoDistanzaKm === 'function' &&
+      terreno.lat !== null && terreno.lon !== null &&
+      terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) <= RIL_OCCHIO_GRIGLIA_KM) {
+    return fermo;
+  }
+  const suolo = rilQuotaSuolo(lat, lon);
+  return suolo === null ? fermo : suolo + TERRENO_ALTEZZA_OCCHIO_M;
+}
+
+// La quota dell'occhio adesso, inseguita con dolcezza. Da usare nel disegno
+// e nella ricostruzione della maglia: sono la stessa camera.
+function rilOcchioOra() {
+  const luogo = rilLuogo();
+  if (!rilPronto() || !luogo) {
+    rilievo.occhioOra = null;
+    return luogo ? rilOcchioMeta(luogo.lat, luogo.lon) : TERRENO_ALTEZZA_OCCHIO_M;
+  }
+  const meta = rilOcchioMeta(luogo.lat, luogo.lon);
+
+  const ora = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  if (rilievo.occhioOra === null || !isFinite(rilievo.occhioOra) ||
+      Math.abs(meta - rilievo.occhioOra) > RIL_OCCHIO_SALTO_M) {
+    rilievo.occhioOra = meta;
+    rilievo.occhioQuando = ora;
+    return meta;
+  }
+  // Smorzamento esponenziale col `dt` del fotogramma, come tutti i
+  // movimenti morbidi dell'app: a trenta o a centoventi fotogrammi al
+  // secondo la salita dura lo stesso.
+  const dt = Math.max(0, Math.min(1000, ora - (rilievo.occhioQuando || ora)));
+  rilievo.occhioQuando = ora;
+  const a = 1 - Math.exp(-dt / RIL_OCCHIO_TAU_MS);
+  rilievo.occhioOra += (meta - rilievo.occhioOra) * a;
+  return rilievo.occhioOra;
 }
 
 // Costruire la maglia. Non si chiama a mano: la chiama `rilControlla`,
@@ -1184,8 +1434,11 @@ async function rilCarica() {
   if (typeof terrenoDisponibile !== 'function' || !terrenoDisponibile()) return false;
 
   const lat = luogo.lat, lon = luogo.lon;
-  const occhio = (typeof terreno.quota === 'number' ? terreno.quota : 0) +
-    TERRENO_ALTEZZA_OCCHIO_M;
+  // L'occhio della maglia nuova è quello **di adesso**, cioè il suolo sotto
+  // i piedi in questo punto (§8-bis) e non la quota del centro precedente:
+  // ricostruire la superficie con la camera di dieci chilometri fa vorrebbe
+  // dire raddrizzare a mano tutto quello che si era appena inclinato.
+  const occhio = rilOcchioMeta(lat, lon);
   const chiave = rilChiaveDi(lat, lon, occhio);
   if (chiave === rilievo.chiave) return true;
 
@@ -1196,22 +1449,29 @@ async function rilCarica() {
   if (typeof terrenoAggiornaPannello === 'function') terrenoAggiornaPannello();
 
   try {
-    // Le tessere si riscaricano solo se il posto è cambiato davvero: un
-    // affinamento della griglia grossa, o la quota dell'occhio che si
-    // assesta quando si scopre di essere sull'acqua, non spostano di un
-    // metro le colline — e riscaricare un megabyte per rifare lo stesso
-    // conto sarebbe il modo più caro di non cambiare niente.
-    const lontano = rilievo.lat === null ||
-      (typeof terrenoDistanzaKm === 'function' &&
-        terrenoDistanzaKm(lat, lon, rilievo.lat, rilievo.lon) > 0.2);
-    if (lontano || !rilTessere.size) {
-      rilTessere = new Map();
+    // Le tessere si riscaricano solo se quelle che servono non ci sono più.
+    // È la separazione che rende possibile tutto il resto: **ricostruire la
+    // maglia non costa rete**, quindi la si può rifare ogni sessanta metri
+    // (`rilControlla`) senza che nessuno paghi niente, mentre il megabyte di
+    // tessere si ricompra solo attraversando il bordo del disco coperto —
+    // che a questo zoom è un affare di chilometri. Prima le due cose erano
+    // legate da una soglia sola, e la soglia era per forza quella cara.
+    if (!rilTessereBastano(lat, lon) &&
+        Date.now() - (rilievo.ultimeTessere || 0) >= RIL_TESSERE_MIN_MS) {
       let elenco = rilTessereAttorno(lat, lon, RIL_RAGGIO_KM);
       // Più di quante se ne possono permettere: si tengono le più vicine,
       // che è come dire che il raggio si stringe. Meglio un primo piano
       // fine e uno sfondo grosso che il contrario.
       if (elenco.length > RIL_TESSERE_MAX) elenco = elenco.slice(0, RIL_TESSERE_MAX);
-      rilLatoTessera = await rilPrendiTessere(elenco);
+      // Solo quelle che mancano: quelle che si hanno già sono le stesse
+      // colline, e ricomprarle attraversando un confine di tessera sarebbe
+      // un megabyte per non cambiare niente.
+      const mancanti = elenco.filter(t => !rilTessere.has(`${t.x}/${t.y}`));
+      if (mancanti.length) {
+        rilievo.ultimeTessere = Date.now();
+        rilLatoTessera = await rilPrendiTessere(mancanti);
+        rilPotaTessere(lat, lon);
+      }
     }
 
     const maglia = await rilCostruisciMaglia(lat, lon, occhio);
@@ -1266,18 +1526,18 @@ function rilControlla() {
   if (typeof terrenoDisponibile !== 'function' || !terrenoDisponibile()) return;
   const luogo = rilLuogo();
   if (!luogo) return;
-  const occhio = (typeof terreno.quota === 'number' ? terreno.quota : 0) +
-    TERRENO_ALTEZZA_OCCHIO_M;
-  if (rilChiaveDi(luogo.lat, luogo.lon, occhio) === rilievo.chiave) return;
-  const spostamento = rilDistanzaDalCentro(luogo);
-  // Finché la maglia contiene ancora bene il posto, il disegno la trasla a
-  // ogni fotogramma. Niente rete, niente ricostruzione e nessun lampeggio.
-  if (spostamento < rilSogliaRicarica()) return;
-  if (Date.now() - rilievo.ultimoCaricamento < RIL_RICARICA_MIN_MS) return;
-  // Il vecchio disco è ormai troppo decentrato: si prepara un centro nuovo.
-  // Anche oltre soglia la maglia vecchia resta visibile durante lo scarico:
-  // è già traslata verso il punto nuovo ed è un fondale migliore di un
-  // fotogramma vuoto. `rilCarica` la sostituisce tutta insieme a fine lavoro.
+  if (rilChiaveDi(luogo.lat, luogo.lon, rilOcchioMeta(luogo.lat, luogo.lon)) === rilievo.chiave) return;
+  // Il centro nuovo si prepara presto e spesso: sessanta metri, non
+  // quattrocentocinquanta. Ricostruire è aritmetica a scaglioni, e mentre
+  // gira resta disegnata quella vecchia — già traslata verso il punto nuovo,
+  // quindi non si vede nessun salto. Quello che si guadagna è che
+  // `rilievo.cresta` e `rilievo.fronte` — cioè le risposte a «quell'astro è
+  // sorto?», «quella vetta si vede?», «dove finisce quel lago?» — restano
+  // agganciate al terreno che si sta davvero disegnando.
+  if (rilievo.cresta) {
+    if (rilDistanzaDalCentro(luogo) < RIL_RICENTRA_M) return;
+    if (Date.now() - rilievo.ultimoCaricamento < RIL_RICENTRA_MIN_MS) return;
+  }
   rilCarica();
 }
 
@@ -1661,7 +1921,22 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   const luogo = rilLuogo();
   const tav = rilTavolozzaTratti(luce);
   const fondoK = rilFondoAnelli();
-  const occhio = rilievo.occhio;
+  // Di quanto la maglia è decentrata rispetto a dove si è adesso, e a che
+  // quota è l'occhio in questo momento. Due numeri per fotogramma, non due
+  // per nodo: sotto la soglia di traslazione il primo è `null` e la
+  // camminata legge `rilievo.alt` così com'è, senza pagare niente.
+  const scostamento = rilScostamento(luogo);
+  const occhio = rilOcchioOra();
+  // Gli angoli si rifanno anche quando a muoversi è **solo la camera**: la
+  // maglia è stata costruita con l'occhio che c'era allora, e quello di
+  // adesso lo insegue con qualche decimo di secondo di ritardo (§8-bis).
+  // Senza questa riga il ritardo si scaricherebbe tutto insieme sulla
+  // ricostruzione successiva — cioè uno scatto ogni tre secondi, che è
+  // proprio quello che si sta togliendo di mezzo.
+  const scostoFermo = { est: 0, nord: 0 };
+  const rifaiAngoli = !!scostamento ||
+    Math.abs(occhio - rilievo.occhio) > RIL_OCCHIO_RIFAI_M;
+  const scosto = scostamento || scostoFermo;
   const fx = base.f[0], fy = base.f[1], fz = base.f[2];
   const rx = base.r[0], ry = base.r[1], rz = base.r[2];
   const ux = base.u[0], uy = base.u[1], uz = base.u[2];
@@ -1690,6 +1965,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     const idx = (((i0 + c * passo) % na) + na) % na;
     const azRad = idx * RIL_PASSO_AZ * D2R;
     const sinAz = Math.sin(azRad), cosAz = Math.cos(azRad);
+    const baseQ = idx * nr;
 
     let massimo = -Infinity, kMax = 0;
     let px = 0, py = 0, ok = false;      // il nodo visibile precedente
@@ -1709,10 +1985,15 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
         rilFondoY[o] = haVisto ? py : NaN;
         fetta++;
       }
-      const campione = rilCampioneInMovimento(idx, k, luogo);
-      const baseQ = campione.idx * nr;
-      const kQ = campione.k;
-      const a = campione.alt;
+      // In movimento l'angolo si rifà dal punto in cui si è adesso e con
+      // l'occhio di adesso; da fermo si legge quello che la maglia ha già
+      // calcolato. La **pendenza** invece si prende sempre nel riferimento
+      // della maglia (`baseQ`), ed è una scelta: ricampionare anche le due
+      // vicine costerebbe tre bilineari per nodo, e da quando il centro si
+      // rifà ogni sessanta metri lo scostamento è una correzione piccola —
+      // sul chiaroscuro, che è una derivata locale, non si vede.
+      const a = rifaiAngoli ? rilCampioneInMovimento(sinAz, cosAz, k, scosto, occhio)
+                            : rilievo.alt[baseQ + k];
       if (!(a > massimo)) {
         // Nascosto: se veniamo da un tratto visibile, qui il terreno
         // **sparisce dietro** a quello che abbiamo davanti — ed è un contorno.
@@ -1758,11 +2039,11 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // in colonne, il chiaroscuro **non cambia** quando cambia il passo
           // di disegno: è l'altra metà del rimedio allo sfarfallio.
           const s = RIL_DIST[k], sPrec = RIL_DIST[k - 1];
-          const q = rilievo.quota[baseQ + kQ];
+          const q = rilievo.quota[baseQ + k];
           const salto = Math.max(1, Math.min(48,
             Math.round(RIL_PIEGA_M / Math.max(0.01, s * RIL_PASSO_AZ * D2R))));
-          const iPiu = (campione.idx + salto) % na, iMeno = (campione.idx - salto + na * 2) % na;
-          const qPiu = rilievo.quota[iPiu * nr + kQ], qMeno = rilievo.quota[iMeno * nr + kQ];
+          const iPiu = (idx + salto) % na, iMeno = (idx - salto + na * 2) % na;
+          const qPiu = rilievo.quota[iPiu * nr + k], qMeno = rilievo.quota[iMeno * nr + k];
           const dAz = salto * RIL_PASSO_AZ * D2R;
           const ex = s * (Math.sin(azRad + dAz) - sinAz), ey = s * (Math.cos(azRad + dAz) - cosAz);
           const ez = qPiu - q;
@@ -1778,11 +2059,11 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // legge come un mosaico di rettangoli, uno per cella della maglia.
           // Con lo stesso passo nelle due direzioni la normale è quella di un
           // fazzoletto di terreno vero.
-          const saltoK = Math.min(kQ, Math.max(1,
+          const saltoK = Math.min(k, Math.max(1,
             Math.round(RIL_PIEGA_M / Math.max(1, s - sPrec))));
-          const sIndietro = RIL_DIST[Math.max(0, kQ - saltoK)];
+          const sIndietro = RIL_DIST[Math.max(0, k - saltoK)];
           const tx = (s - sIndietro) * sinAz, ty = (s - sIndietro) * cosAz;
-          const tz = q - rilievo.quota[baseQ + kQ - saltoK];
+          const tz = q - rilievo.quota[baseQ + k - saltoK];
           let ax = ey * tz - ez * ty;
           let ay = ez * tx - ex * tz;
           let az2 = ex * ty - ey * tx;
