@@ -15884,8 +15884,28 @@ function skyCrestaDisegnataEntro(az, km) {
   return k < 0 ? null : u.creste[col.pos + k];
 }
 
+// Quanto può saltare il bordo di una striscia da una colonna alla successiva
+// prima che non sia più la stessa superficie continua.
+//
+// Il metro è la **striscia stessa**: fra due colonne contigue (mezzo grado)
+// una riva può spostarsi di parecchio se il lago è messo di sbieco, ma non
+// può saltare di più di quanto la banda sia lunga senza che in mezzo ci sia
+// qualcosa — un promontorio, un'altra riva, la fine del lago. Sotto quella
+// soglia si sta seguendo la stessa superficie che si allontana, sopra si sta
+// cucendo insieme due cose diverse.
+//
+// Il caso che conta è la **biforcazione**: una colonna in cui si vede tutto
+// il lago (poniamo da uno a nove chilometri) e quella accanto in cui un
+// promontorio lo taglia in due (uno-tre e sei-nove). Nessuno dei due tratti
+// è «lo stesso» della banda intera, e legarcene uno vuol dire trascinare un
+// bordo di cinque chilometri in mezzo grado: un gradino netto lungo mezzo
+// schermo, con sotto l'altro tratto disegnato per conto suo. La risposta
+// giusta è che lì la striscia **finisce**, e i due tratti ne cominciano due
+// nuove: due poligoni, e in mezzo il promontorio.
+const SKY_ACQUA_SALTO = 1;
+
 // Le strisce: si cammina lungo l'arco in vista e si legano fra loro le
-// bande di colonne vicine che si sovrappongono in distanza.
+// bande di colonne vicine che sono lo **stesso specchio d'acqua**.
 //
 // Serve perché lo stesso lago, in due direzioni contigue, è due bande
 // diverse — e disegnarle una per una vorrebbe dire un riempimento con
@@ -15893,9 +15913,33 @@ function skyCrestaDisegnataEntro(az, km) {
 // una volta e non vale la pena rifare. Legandole si ottiene un poligono
 // solo per specchio d'acqua, che è anche il modo giusto di pensarlo.
 //
-// Il legame è «quale banda della colonna dopo si sovrappone di più a
-// questa»: con due laghi uno dietro l'altro nella stessa direzione, ognuno
-// resta suo.
+// Il legame era «quale banda della colonna dopo si sovrappone di più a
+// questa», e per un lago in mezzo alla pianura andava benissimo. Va a pezzi
+// appena il terreno entra in gioco, ed è da lì che vengono gli spicchi.
+// L'occlusione **spezza** una colonna in più tratti — il lago in conca di cui
+// si vede la metà lontana, il promontorio che taglia in due la veduta — e la
+// massima sovrapposizione, che non sa niente di *chi* è cosa, sceglie il
+// tratto sbagliato: la striscia salta dalla riva vicina di questa colonna a
+// quella lontana della prossima, il poligono si attraversa da solo, e con la
+// regola di riempimento `nonzero` quello che ne esce è un cuneo. Il tratto
+// scavalcato, intanto, comincia una striscia sua che parte a metà del lago:
+// il secondo cuneo, quello che sembra un ritaglio appoggiato sopra all'acqua.
+//
+// Adesso il legame chiede tre cose, e sono tre cose diverse:
+//
+//   1. **lo stesso specchio d'acqua** (`corpo`, da `terreno.js` §12): due
+//      laghi che in una direzione si accavallano non si cuciono mai fra loro,
+//      per quanto le loro distanze si sovrappongano;
+//   2. **una sovrapposizione vera**, e non la meno peggio: metà della banda
+//      più corta. Due tratti che si sfiorano per cento metri su tre
+//      chilometri non sono la stessa superficie vista da mezzo grado più in
+//      là, sono due superfici;
+//   3. **nessun salto** dei bordi oltre `SKY_ACQUA_SALTO` (qui sopra).
+//
+// Quando nessuno passa l'esame la striscia finisce lì, e il tratto rimasto ne
+// comincia una sua: due strisce disegnate ognuna con le sue rive, che è
+// esattamente quello che si vede guardando un lago tagliato da un
+// promontorio.
 function skyAcqueStrisce(viste, arco) {
   const passo = ACQUE_PASSO_AZ;
   const n = Math.min(ACQUE_DIREZIONI, Math.round(2 * arco.mezzo / passo) + 1);
@@ -15918,9 +15962,22 @@ function skyAcqueStrisce(viste, arco) {
         let meglio = null, quanto = 0;
         for (const w of colonne[j]) {
           if (w.usata) continue;
+          // `null` vuol dire «non si sa di che specchio è» — bande salvate da
+          // una versione precedente — e allora questa cernita non si applica:
+          // meglio la regola di prima che nessuna striscia.
+          if (w.b.corpo !== null && corrente.b.corpo !== null &&
+              w.b.corpo !== corrente.b.corpo) continue;
           const da = Math.max(corrente.b.vicino, w.b.vicino);
           const a = Math.min(corrente.b.lontano, w.b.lontano);
-          if (a - da > quanto) { quanto = a - da; meglio = w; }
+          const insieme = a - da;
+          if (!(insieme > quanto)) continue;
+          const corta = Math.min(corrente.b.lontano - corrente.b.vicino,
+                                 w.b.lontano - w.b.vicino);
+          if (!(insieme >= corta / 2)) continue;
+          const salto = Math.max(Math.abs(w.b.vicino - corrente.b.vicino),
+                                 Math.abs(w.b.lontano - corrente.b.lontano));
+          if (salto > corta * SKY_ACQUA_SALTO) continue;
+          quanto = insieme; meglio = w;
         }
         if (!meglio) break;
         meglio.usata = true;
@@ -15974,19 +16031,28 @@ function skyDisegnaAcqueInterne(ctx, base, focale, aria) {
 // Una striscia d'acqua: il bordo lontano in cima, quello vicino in fondo, e
 // in mezzo il colore, la foschia, le rive, l'onda e il riflesso.
 function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, gradiente, riva) {
-  // Una superficie larga un solo raggio (mezzo grado) ha comunque area.
-  // Con un unico punto, pero', il contorno si chiudeva su se stesso e anche
-  // il ripiego a filo tracciava un segmento lungo zero: i laghetti stretti
-  // sparivano del tutto. Si ricostruiscono i due bordi angolari della
-  // colonna, la stessa cella che quel campione rappresenta nella griglia.
-  if (pezzi.length === 1) {
-    const p = pezzi[0];
-    const mezzo = (typeof ACQUE_PASSO_AZ === 'number' ? ACQUE_PASSO_AZ : 0.5) / 2;
-    pezzi = [
-      { az: p.az - mezzo, b: p.b },
-      { az: p.az + mezzo, b: p.b }
-    ];
-  }
+  // Una colonna non è una linea: è la **cella** di mezzo grado che quel
+  // campione rappresenta. Quindi la striscia si allarga di un quarto di grado
+  // da una parte e dall'altra, e sono due cose diverse a chiederlo.
+  //
+  // La prima è il laghetto largo un raggio solo: con un unico punto il
+  // contorno si chiudeva su sé stesso e anche il ripiego a filo tracciava un
+  // segmento lungo zero, cioè spariva del tutto.
+  //
+  // La seconda è quello che succede **fra due strisce**. Da quando una
+  // striscia finisce dove la superficie si biforca (vedi `SKY_ACQUA_SALTO`),
+  // le interruzioni non sono più un'eccezione: e disegnando ogni striscia da
+  // azimut a azimut, fra l'ultima colonna di una e la prima della successiva
+  // resterebbe mezzo grado di niente — una fessura verticale in mezzo
+  // all'acqua a ogni biforcazione. Allargando ognuna di un quarto di grado
+  // per parte i due bordi **coincidono**: le strisce si toccano senza
+  // sovrapporsi, che è la stessa proprietà su cui poggia il disegno a bande
+  // del terreno.
+  const mezzo = (typeof ACQUE_PASSO_AZ === 'number' ? ACQUE_PASSO_AZ : 0.5) / 2;
+  const primo = pezzi[0], ultimo = pezzi[pezzi.length - 1];
+  pezzi = [{ az: primo.az - mezzo, b: primo.b }]
+    .concat(pezzi.length > 1 ? pezzi : [])
+    .concat([{ az: ultimo.az + mezzo, b: ultimo.b }]);
   const tipo = pezzi[0].b.tipo === 1 ? 1 : 0;
   const n = pezzi.length;
   const alto = new Array(n), basso = new Array(n);
