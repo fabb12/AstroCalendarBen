@@ -43,7 +43,7 @@ const ATTESA_FEED_MS = 6500;
 const ATTESA_TOTALE_MS = 12000;
 // La diagnostica puo' aspettare piu' a lungo: non c'e' nessuno schermo fermo
 // dall'altra parte, e una porta lenta e' un'informazione da avere.
-const DIAGNOSTICA_ATTESA_MS = 12000;
+const DIAGNOSTICA_ATTESA_MS = 20000;
 
 // =====================================================================
 // OPENSKY — la fonte con le credenziali
@@ -58,8 +58,19 @@ const DIAGNOSTICA_ATTESA_MS = 12000;
 //   il Worker si comporta come prima.
 // =====================================================================
 
-const OPENSKY_TOKEN_URL =
-  'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token';
+// Due indirizzi e non uno: Keycloak ha tolto il prefisso `/auth` dalla
+// versione 17 in poi, e a seconda di quando l'installazione e' stata
+// aggiornata vale l'uno o l'altro. Provarli in fila costa un 404 la prima
+// volta e niente le successive, perche' il token si tiene per mezz'ora.
+const OPENSKY_TOKEN_URLS = [
+  'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token',
+  'https://auth.opensky-network.org/realms/opensky-network/protocol/openid-connect/token'
+];
+const OPENSKY_DATI_URL = 'https://opensky-network.org/api/states/all';
+// Ogni passo ha la sua sveglia, piu' corta di quella della corsa: se
+// l'autenticazione si pianta deve restare tempo per dirlo, non per consumare
+// tutto il budget e rispondere «scaduto» senza dire dove.
+const OPENSKY_PASSO_MS = 5500;
 
 // Il token dura mezz'ora e chiederne uno a ogni fotografia sarebbe una
 // richiesta in piu' ogni quarantacinque secondi, cioe' il doppio del traffico
@@ -73,26 +84,72 @@ function openSkyConfigurato(env) {
     (env.OPENSKY_USER && env.OPENSKY_PASS)));
 }
 
-async function autorizzazioneOpenSky(env, signal) {
+// Una sveglia per passo, con il suo nome: cosi' un guasto dice **dove** e non
+// solo «scaduto».
+async function conSveglia(nome, ms, fai) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fai(controller.signal);
+  } catch (errore) {
+    const e = new Error(`${nome}: ${motivo(errore)}`);
+    e.passo = nome;
+    // Il codice HTTP e il corpo vanno **riportati** sull'errore nuovo: senza,
+    // chi sta sopra vede solo un messaggio e perde il 404 su cui deve
+    // decidere se provare l'altro indirizzo. Un involucro che butta via il
+    // motivo e' peggio di nessun involucro.
+    if (errore && errore.http !== undefined) e.http = errore.http;
+    if (errore && errore.corpo !== undefined) e.corpo = errore.corpo;
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function tokenDaUrl(url, env, signal) {
+  const risposta = await fetch(url, {
+    method: 'POST', signal,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: env.OPENSKY_CLIENT_ID,
+      client_secret: env.OPENSKY_CLIENT_SECRET
+    })
+  });
+  const testo = await risposta.text();
+  if (!risposta.ok) {
+    const e = new Error(`HTTP ${risposta.status}`);
+    e.http = risposta.status;
+    e.corpo = testo.slice(0, 200);
+    throw e;
+  }
+  let dati;
+  try { dati = JSON.parse(testo); } catch (_) { throw new Error('risposta del token non JSON'); }
+  if (!dati || !dati.access_token) throw new Error('risposta senza access_token');
+  return dati;
+}
+
+async function autorizzazioneOpenSky(env) {
   if (env.OPENSKY_CLIENT_ID && env.OPENSKY_CLIENT_SECRET) {
     const ora = Date.now();
     // Trenta secondi di margine: un token che scade mentre la richiesta e' in
     // volo si presenta come un 401 inspiegabile.
     if (tokenOpenSky.valore && tokenOpenSky.scade > ora + 30000) return `Bearer ${tokenOpenSky.valore}`;
-    const risposta = await fetch(OPENSKY_TOKEN_URL, {
-      method: 'POST', signal,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: env.OPENSKY_CLIENT_ID,
-        client_secret: env.OPENSKY_CLIENT_SECRET
-      })
-    });
-    if (!risposta.ok) throw new Error(`token OpenSky: HTTP ${risposta.status}`);
-    const dati = await risposta.json();
-    if (!dati || !dati.access_token) throw new Error('token OpenSky: risposta senza access_token');
-    tokenOpenSky = { valore: dati.access_token, scade: ora + (Number(dati.expires_in) || 1800) * 1000 };
-    return `Bearer ${tokenOpenSky.valore}`;
+    let ultimo = null;
+    for (const url of OPENSKY_TOKEN_URLS) {
+      try {
+        const dati = await conSveglia('token', OPENSKY_PASSO_MS, s => tokenDaUrl(url, env, s));
+        tokenOpenSky = { valore: dati.access_token, scade: ora + (Number(dati.expires_in) || 1800) * 1000, url };
+        return `Bearer ${tokenOpenSky.valore}`;
+      } catch (errore) {
+        ultimo = errore;
+        // Un 404 o un 405 vuol dire «indirizzo sbagliato»: si prova l'altro.
+        // Qualunque altra cosa e' una risposta vera e non la si ripete.
+        const http = errore && errore.http;
+        if (http !== 404 && http !== 405) throw errore;
+      }
+    }
+    throw ultimo || new Error('token: nessun indirizzo ha risposto');
   }
   return 'Basic ' + btoa(`${env.OPENSKY_USER}:${env.OPENSKY_PASS}`);
 }
@@ -155,19 +212,25 @@ function daOpenSky(dati) {
 function feedOpenSky(env) {
   return {
     nome: 'OpenSky',
-    async chiedi(lat, lon, dist, signal) {
-      const autorizzazione = await autorizzazioneOpenSky(env, signal);
-      const risposta = await fetch(
-        `https://opensky-network.org/api/states/all?${riquadroOpenSky(Number(lat), Number(lon), dist)}`,
-        { signal, headers: { 'Accept': 'application/json', 'Authorization': autorizzazione } }
-      );
-      if (risposta.status === 401 || risposta.status === 403) {
-        // Un token rifiutato non si riusa: buttarlo qui vuol dire che la
-        // riprova successiva ne chiede uno nuovo invece di ripetere il no.
-        tokenOpenSky = { valore: '', scade: 0 };
-      }
-      if (!risposta.ok) throw new Error(`HTTP ${risposta.status}`);
-      return daOpenSky(await risposta.json());
+    async chiedi(lat, lon, dist) {
+      const autorizzazione = await autorizzazioneOpenSky(env);
+      return conSveglia('dati', OPENSKY_PASSO_MS, async signal => {
+        const risposta = await fetch(
+          `${OPENSKY_DATI_URL}?${riquadroOpenSky(Number(lat), Number(lon), dist)}`,
+          { signal, headers: { 'Accept': 'application/json', 'Authorization': autorizzazione } }
+        );
+        if (risposta.status === 401 || risposta.status === 403) {
+          // Un token rifiutato non si riusa: buttarlo qui vuol dire che la
+          // riprova successiva ne chiede uno nuovo invece di ripetere il no.
+          tokenOpenSky = { valore: '', scade: 0 };
+        }
+        if (!risposta.ok) {
+          const e = new Error(`HTTP ${risposta.status}`);
+          e.corpo = (await risposta.text()).slice(0, 200);
+          throw e;
+        }
+        return daOpenSky(await risposta.json());
+      });
     }
   };
 }
@@ -261,6 +324,51 @@ function primaFotografia(fonti, lat, lon, dist) {
 // ci ha messo in castigo — e sono quattro cose che si riparano in quattro
 // modi diversi. Qui non si corre e non si abortisce niente: si aspetta ogni
 // porta e si scrive cosa ha detto.
+// OpenSky in tre passi separati, perche' «scaduto» non dice dove. Il primo
+// passo e' il piu' importante e non usa credenziali: serve a distinguere «il
+// Worker non riesce proprio a parlare con OpenSky» da «ci parla, ma
+// l'autenticazione non va» — due guasti che si riparano in due posti diversi
+// e che un timeout solo confonde.
+async function diagnosticaOpenSky(env) {
+  const passi = [];
+  const prova = async (nome, fai) => {
+    const inizio = Date.now();
+    try {
+      const esito = await conSveglia(nome, OPENSKY_PASSO_MS, fai);
+      passi.push(Object.assign({ passo: nome, ms: Date.now() - inizio, esito: 'ok' }, esito || {}));
+      return true;
+    } catch (errore) {
+      passi.push({ passo: nome, ms: Date.now() - inizio, esito: 'no',
+        guasto: motivo(errore), corpo: errore && errore.corpo });
+      return false;
+    }
+  };
+
+  // 1. Ci arriviamo? Un riquadro minuscolo e nessuna credenziale: qualunque
+  //    risposta HTTP — anche un 401 o un 429 — dimostra che la strada c'e'.
+  await prova('raggiungibile', async signal => {
+    const r = await fetch(`${OPENSKY_DATI_URL}?lamin=45.4&lamax=45.5&lomin=9.1&lomax=9.2`,
+      { signal, headers: { 'Accept': 'application/json' } });
+    return { http: r.status };
+  });
+
+  // 2. Il token, indirizzo per indirizzo.
+  if (env.OPENSKY_CLIENT_ID && env.OPENSKY_CLIENT_SECRET) {
+    for (const url of OPENSKY_TOKEN_URLS) {
+      const corto = url.replace('https://auth.opensky-network.org', '');
+      const riuscito = await prova(`token ${corto}`, async signal => {
+        const dati = await tokenDaUrl(url, env, signal);
+        return { http: 200, scadeFra: Number(dati.expires_in) || null };
+      });
+      if (riuscito) break;
+    }
+  } else {
+    passi.push({ passo: 'token', esito: 'saltato', guasto: 'autenticazione di base: nessun token da chiedere' });
+  }
+
+  return passi;
+}
+
 async function diagnostica(url, env) {
   const lat = Number(url.searchParams.get('lat'));
   const lon = Number(url.searchParams.get('lon'));
@@ -276,9 +384,16 @@ async function diagnostica(url, env) {
     const timer = setTimeout(() => controller.abort(), DIAGNOSTICA_ATTESA_MS);
     try {
       if (fonte.chiedi) {
-        const testo = await fonte.chiedi(la, lo, di, controller.signal);
-        const dati = JSON.parse(testo);
-        return { feed: fonte.nome, esito: 'ok', ms: Date.now() - inizio, aerei: dati.ac.length };
+        try {
+          const testo = await fonte.chiedi(la, lo, di, controller.signal);
+          const dati = JSON.parse(testo);
+          return { feed: fonte.nome, esito: 'ok', ms: Date.now() - inizio, aerei: dati.ac.length };
+        } catch (errore) {
+          // Fallendo, OpenSky non si limita a dire di no: dice a che passo.
+          return { feed: fonte.nome, esito: 'no', ms: Date.now() - inizio,
+            guasto: motivo(errore), corpo: errore && errore.corpo,
+            passi: await diagnosticaOpenSky(env) };
+        }
       }
       const risposta = await fetch(fonte.url(la, lo, di), {
         signal: controller.signal,
