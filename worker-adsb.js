@@ -79,18 +79,56 @@ function primaFotografia(lat, lon, dist) {
   });
 }
 
-function cors(request) {
-  return {
-    'Access-Control-Allow-Origin': request.headers.get('Origin') || '*',
+// --- Chi puo' bussare -------------------------------------------------
+// Rimandare indietro qualunque `Origin` (com'era) vuol dire pubblicare un
+// proxy ADS-B gratuito per chiunque ne trovi l'indirizzo: la quota
+// Cloudflare e i limiti dei quattro feed li paga chi ha creato il Worker, e
+// il giorno che una rete mette in castigo questo indirizzo il cielo si
+// svuota per il sito vero. L'elenco sta qui in chiaro e si allarga con la
+// variabile d'ambiente `ORIGINI_AMMESSE` (nomi separati da virgola), cosi'
+// chi rilancia il progetto altrove non deve toccare il codice.
+//
+// Due permessi non sono una svista. Le richieste **senza** `Origin` passano:
+// sono quelle della barra degli indirizzi e di curl, cioe' l'unico modo di
+// provare il Worker appena distribuito — e non sono richieste cross-site, che
+// e' l'unica cosa da cui il CORS difenda. E `localhost` passa a qualunque
+// porta, se no lo sviluppo in locale non vedrebbe mai un aereo.
+const ORIGINI_AMMESSE = [
+  'https://fabb12.github.io'
+];
+
+function elencoOrigini(env) {
+  const extra = String((env && env.ORIGINI_AMMESSE) || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  return ORIGINI_AMMESSE.concat(extra);
+}
+
+function originePermessa(origine, env) {
+  if (!origine) return true;
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origine)) return true;
+  return elencoOrigini(env).indexOf(origine) !== -1;
+}
+
+function cors(request, env) {
+  const origine = request.headers.get('Origin');
+  const testa = {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Vary': 'Origin'
   };
+  // L'intestazione si scrive solo per chi e' ammesso: negarla e' proprio il
+  // modo in cui il browser rifiuta la risposta.
+  if (origine && originePermessa(origine, env)) testa['Access-Control-Allow-Origin'] = origine;
+  else if (!origine) testa['Access-Control-Allow-Origin'] = '*';
+  return testa;
 }
 
 export default {
-  async fetch(request) {
-    const headers = cors(request);
+  async fetch(request, env) {
+    const headers = cors(request, env);
+    if (!originePermessa(request.headers.get('Origin'), env)) {
+      return Response.json({ error: 'origine non ammessa' }, { status: 403, headers });
+    }
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
     const url = new URL(request.url);
     if (url.pathname !== '/api/adsb') return new Response('Not found', { status: 404, headers });
