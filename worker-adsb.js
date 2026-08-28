@@ -25,6 +25,45 @@
 // Le quattro reti restano in coda: costano una trentina di millisecondi a
 // testa, e il giorno che una cambia politica torna a funzionare da sola.
 
+// --- Dove gira, e da dove legge i segreti ------------------------------
+// Questo file gira **uguale su Cloudflare Workers e su Deno Deploy**: tutt'e
+// due chiamano `export default { fetch }` e parlano di Request e Response
+// standard. L'unica differenza sta in dove tiene i segreti la piattaforma —
+// il secondo argomento su Cloudflare, `Deno.env` su Deno — e si appiana qui.
+//
+// Che sia portabile non e' eleganza: e' la risposta a una misura. Da un
+// Cloudflare Worker **tutte e cinque le fonti sono irraggiungibili** — le
+// quattro reti di comunita' rispondono 403 e 429, e OpenSky non risponde
+// affatto (la prova senza credenziali va in scadenza a quindici secondi,
+// mentre dal browser lo stesso indirizzo risponde 200 in un attimo). Un
+// Worker non ha un IP proprio, ne divide un pugno con migliaia di altri, e
+// questi servizi si difendono guardando li'. Spostarlo su un fornitore che
+// esce da altri indirizzi e' l'unica cura, e con un file solo si prova senza
+// riscrivere niente.
+const CHIAVI_AMBIENTE = [
+  'OPENSKY_CLIENT_ID', 'OPENSKY_CLIENT_SECRET',
+  'OPENSKY_USER', 'OPENSKY_PASS', 'ORIGINI_AMMESSE'
+];
+
+function nomePiattaforma() {
+  return (typeof Deno !== 'undefined' && Deno.env) ? 'Deno' : 'Cloudflare Workers';
+}
+
+function ambiente(env) {
+  const dentro = {};
+  for (const chiave of CHIAVI_AMBIENTE) {
+    let valore = (env && typeof env === 'object') ? env[chiave] : undefined;
+    if (valore === undefined && typeof Deno !== 'undefined' && Deno.env) {
+      // Deno Deploy da' le variabili solo a chi ha il permesso: se manca,
+      // `get` solleva invece di rispondere, e una voce assente e' una
+      // risposta buona quanto un'altra.
+      try { valore = Deno.env.get(chiave); } catch (_) { /* permesso negato */ }
+    }
+    if (valore !== undefined) dentro[chiave] = valore;
+  }
+  return dentro;
+}
+
 // --- Le fonti ---------------------------------------------------------
 // Ogni fonte ha un **nome**, e non e' cosmesi: quando falliscono tutte,
 // «feed non disponibili» e' la stessa frase per un servizio spento, per un
@@ -473,6 +512,7 @@ async function diagnostica(url, env) {
     // nome con un refuso, da una voce che c'e' ma e' vuota. L'elenco dei nomi
     // le separa tutte e tre in un colpo, e non svela niente: il valore di un
     // secret non compare qui e non deve comparire da nessuna parte.
+    piattaforma: nomePiattaforma(),
     variabiliViste: Object.keys(env || {}).sort(),
     openSkyDettaglio: {
       OPENSKY_CLIENT_ID: descriviVoce(env && env.OPENSKY_CLIENT_ID),
@@ -528,8 +568,9 @@ function cors(request, env) {
   return testa;
 }
 
-export default {
-  async fetch(request, env) {
+const proxy = {
+  async fetch(request, envPiattaforma) {
+    const env = ambiente(envPiattaforma);
     const headers = cors(request, env);
     if (!originePermessa(request.headers.get('Origin'), env)) {
       return Response.json({ error: 'origine non ammessa' }, { status: 403, headers });
@@ -563,3 +604,15 @@ export default {
     }
   }
 };
+
+export default proxy;
+
+// Deno Deploy: a seconda della versione la piattaforma prende l'export di
+// sopra oppure vuole un server avviato a mano. Avviarlo qui copre il secondo
+// caso e non disturba il primo — se la porta e' gia' servita, l'eccezione si
+// ignora. Su Cloudflare questo blocco non esiste nemmeno: `Deno` e'
+// `undefined` e la guardia non lo lascia entrare.
+if (typeof Deno !== 'undefined' && typeof Deno.serve === 'function') {
+  try { Deno.serve(richiesta => proxy.fetch(richiesta)); }
+  catch (_) { /* la piattaforma sta gia' usando l'export */ }
+}
