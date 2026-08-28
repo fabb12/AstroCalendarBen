@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v216';
+const CACHE_NAME = 'astrocal-v217';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -75,9 +75,8 @@ const SERVIZI_ADSB = [
   'opendata.adsb.fi',
   'api.adsb.one',
   'opensky-network.org',
-  'api.allorigins.win',
-  'corsproxy.io',
-  'api.codetabs.com'
+  // I ponti CORS pubblici sono volutamente esclusi: i loro 401/408 non sono
+  // un ripiego affidabile. Il percorso normale e' il Worker configurato.
 ];
 
 // Host le cui risposte salviamo man mano che arrivano (librerie, tessere mappa)
