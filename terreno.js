@@ -221,6 +221,18 @@ const TERRENO_SPILLO_LARGO_GRADI = 1.2;
 // senso riscaricarlo perché ci si è spostati di un isolato.
 const TERRENO_RAGGIO_VALIDO_KM = 2;
 
+// ...e quanto ci si può spostare **mentre ci si sta spostando**, che è
+// un'altra domanda (§6-bis, `terrenoRaggioValidoKm`). Sotto i due
+// chilometri fissi, col GPS acceso in macchina, il profilo si butta e si
+// riscarica ogni minuto e mezzo: e siccome scaricarlo costa dei secondi,
+// per una buona parte del viaggio l'orizzonte è quello finto. Le tre
+// misure sono i tre modi di muoversi, e sono tarate su quanto cambia
+// **quello che si guarda**: a piedi il paesaggio vicino conta, in
+// macchina si guarda la catena in fondo, in aereo si guarda la regione.
+const TERRENO_RAGGIO_MOTO_PIEDI_KM = 3;
+const TERRENO_RAGGIO_MOTO_AUTO_KM = 9;
+const TERRENO_RAGGIO_MOTO_AEREO_KM = 30;
+
 // Quanti posti si tengono da parte. Uno solo non basta più da quando il
 // planetario può andare a guardare il cielo di un'altra città: si va a
 // vedere Bolzano, si torna a casa, e casa andrebbe riscaricata da capo —
@@ -311,6 +323,11 @@ const terreno = {
   // cioè i nomi delle montagne sparivano di nuovo, per mezz'ora, a
   // ondate. Si azzera cambiando posto, o appena un profilo arriva.
   arreso: false,
+  // Quando è finito l'ultimo scarico dalla rete, e il timer del prossimo
+  // mentre ci si muove (§6-bis): servono a non chiedere le stesse
+  // ventiquattro richieste a ogni curva.
+  quandoRete: 0,
+  timerMoto: null,
   acceso: true
 };
 
@@ -1553,6 +1570,244 @@ function terrenoDimentica() {
 
 
 // =====================================================================
+// 6-bis. IL MOVIMENTO
+//
+//   Tutto questo file è scritto per chi sta fermo: si arriva in un posto,
+//   si scarica la forma del terreno, la si tiene. Il GPS acceso in
+//   macchina è un'altra storia — un punto nuovo ogni secondo, e ogni
+//   punto è una domanda diversa. Presa alla lettera, quella domanda
+//   voleva dire buttare il profilo e riscaricarlo ogni due chilometri:
+//   l'orizzonte tornava quello finto per qualche secondo, i nomi delle
+//   montagne sparivano, e poi tutto ricompariva di colpo — a ogni
+//   ricarica, per tutto il viaggio. È il singhiozzo di sempre, in una
+//   veste nuova: la differenza è che qui non capita una volta
+//   all'apertura, capita **continuamente**.
+//
+//   La cura non è scaricare di più, è cambiare la domanda. Andando a
+//   quaranta all'ora il paesaggio a sessanta chilometri non cambia
+//   affatto, quello a cinque cambia piano, e quello sotto i piedi cambia
+//   in fretta — ed è il solo che il rilievo sa già ridisegnare da sé
+//   traslando la maglia, senza chiedere niente a nessuno (`rilievo.js`
+//   §8). Quindi: il profilo grosso lo si tiene molto più a lungo, la
+//   soglia per rifarlo cresce con la velocità, e quello che si ha in
+//   mano non si butta mai prima di avere il sostituto.
+//
+//   Da qui la velocità la leggono in tre — le quote, le vette, i paesi —
+//   e per questo sta qui e non dentro a uno di loro: tre stime della
+//   stessa cosa, calcolate su tre storie diverse, sarebbero tre risposte
+//   diverse alla domanda «ci stiamo muovendo?».
+// =====================================================================
+
+// `coords.speed` non c'è su tutti i browser (e su molti vale `null` da
+// fermo e anche in movimento), quindi la velocità si misura anche fra i
+// fix che arrivano. Due letture bastano; se ne tengono alcune per non
+// farsi ingannare da un salto isolato del sensore.
+const TERRENO_MOTO_FIX = 5;
+// Oltre questa età un fix non racconta più niente del movimento di
+// adesso: è il salto fra la posizione salvata ieri e la prima di oggi.
+const TERRENO_MOTO_FINESTRA_MS = 60000;
+// Sotto un metro al secondo si è fermi: è il respiro del GPS, che a
+// telefono appoggiato sul tavolo sposta il punto di qualche metro.
+const TERRENO_MOTO_V_MIN = 1.0;
+// Ci si ferma a un semaforo e si riparte: dichiarare «fermo» al primo
+// fix lento vorrebbe dire far ripartire tutta la macchina delle
+// ricariche in mezzo al viaggio. Si resta «in moto» per un po' dopo
+// l'ultimo fix veloce.
+const TERRENO_MOTO_CODA_MS = 20000;
+
+const terrenoMoto = {
+  fix: [],            // { lat, lon, quando }
+  velocita: 0,        // m/s, la migliore stima di adesso
+  ultimoMoto: 0       // quando si è visto muoversi l'ultima volta
+};
+
+// Da chiamare a ogni lettura del GPS, comprese quelle che il filtro di
+// `skyLetturaAttendibile` scarta: proprio quelle dicono che ci si sta
+// muovendo piano, ed è l'informazione che serve.
+function terrenoSegnaFix(lat, lon, velocitaGps, quando) {
+  if (!isFinite(lat) || !isFinite(lon)) return;
+  // Quando la lettura è stata **presa**, non quando è arrivata qui: fra le
+  // due può passare qualche decimo di secondo, e la velocità si misura
+  // dividendo per quel tempo. Il numero però va guardato prima di crederci
+  // — qualche browser mette lì un orologio suo, che con l'epoca non ha
+  // niente a che vedere — e se non ha senso vale l'ora di adesso.
+  const adesso = Date.now();
+  const ora = (isFinite(quando) && Math.abs(adesso - quando) < 5 * 60 * 1000)
+    ? quando : adesso;
+  const fix = terrenoMoto.fix;
+  fix.push({ lat, lon, quando: ora });
+  while (fix.length > TERRENO_MOTO_FIX) fix.shift();
+  fix.sort((a, b) => a.quando - b.quando);
+  while (fix.length > 2 && ora - fix[0].quando > TERRENO_MOTO_FINESTRA_MS) fix.shift();
+
+  // La misura dichiarata dal sensore quando c'è, se no quella fra il fix
+  // più vecchio ancora buono e questo. Si prende la **maggiore**: un GPS
+  // che dichiara zero mentre il punto corre di trecento metri sta
+  // sbagliando lui, e credergli vorrebbe dire rimettersi a scaricare.
+  let stimata = 0;
+  const primo = fix[0];
+  const dt = (ora - primo.quando) / 1000;
+  if (fix.length > 1 && dt > 0.5 && dt <= TERRENO_MOTO_FINESTRA_MS / 1000) {
+    stimata = terrenoDistanzaKm(primo.lat, primo.lon, lat, lon) * 1000 / dt;
+  }
+  const dichiarata = isFinite(velocitaGps) && velocitaGps >= 0 ? velocitaGps : 0;
+  terrenoMoto.velocita = Math.max(stimata, dichiarata);
+  if (terrenoMoto.velocita >= TERRENO_MOTO_V_MIN) terrenoMoto.ultimoMoto = ora;
+}
+
+// Quanto si sta correndo, in metri al secondo. Zero quando le letture
+// sono vecchie: un viaggio finito mezz'ora fa non è un viaggio.
+function terrenoVelocita() {
+  const fix = terrenoMoto.fix;
+  if (!fix.length) return 0;
+  if (Date.now() - fix[fix.length - 1].quando > TERRENO_MOTO_FINESTRA_MS) return 0;
+  return terrenoMoto.velocita;
+}
+
+function terrenoInMoto() {
+  if (terrenoVelocita() >= TERRENO_MOTO_V_MIN) return true;
+  return terrenoMoto.ultimoMoto > 0 &&
+    Date.now() - terrenoMoto.ultimoMoto < TERRENO_MOTO_CODA_MS;
+}
+
+// --- Il punto vivo ----------------------------------------------------
+//
+// Il GPS consegna un fix al secondo, e il filtro dell'app ne accetta uno
+// ogni centocinquanta metri: sotto quella soglia è respiro del sensore, non
+// movimento (`skyLetturaAttendibile`). È la regola giusta per il **cielo**,
+// dove centocinquanta metri non spostano una stella di un pixel, ed è la
+// regola sbagliata per il **terreno**: lì centocinquanta metri sono un
+// balzo, e in macchina il paesaggio avanzava a scatti — fermo, salto,
+// fermo, salto. È l'effetto fastidioso di cui si sta parlando, e non ha
+// niente a che vedere con lo scarico dei dati: è la posizione stessa che
+// arriva a gradini.
+//
+// Il paesaggio quindi non guarda la posizione dell'app: guarda il punto
+// vivo, che è l'ultimo fix grezzo — tutti, anche quelli scartati — portato
+// avanti dalla velocità nel tempo passato da allora, e poi inseguito con
+// dolcezza perché l'arrivo del fix successivo non si veda come uno strappo.
+// Costa due sottrazioni per fotogramma e rende continuo quello che il
+// sensore dà a scatti; se il GPS smette di parlare, l'estrapolazione si
+// ferma dopo pochi secondi invece di continuare a inventare strada.
+const TERRENO_VIVO_MAX_MS = 4000;
+const TERRENO_VIVO_TAU_MS = 350;
+// Più lontano di così dal punto dell'app, il fix non parla dello stesso
+// posto: la posizione è stata scelta a mano, o siamo appena stati spostati
+// altrove. Il punto vivo si spegne.
+const TERRENO_VIVO_STACCO_KM = 3;
+
+const terrenoVivo = { lat: null, lon: null, quando: 0 };
+
+// Dove si è **adesso**, per chi disegna. `null` quando non ha senso: fermi,
+// senza fix, o col planetario spostato a guardare il cielo di un'altra
+// città — lì il punto è quello scelto e non si muove di un metro.
+function terrenoPuntoVivo() {
+  const luogo = terrenoLuogo();
+  if (!luogo || luogo.proprio) return null;
+  const fix = terrenoMoto.fix;
+  if (!fix.length || !terrenoInMoto()) { terrenoVivo.lat = null; return null; }
+  const ultimo = fix[fix.length - 1];
+  if (terrenoDistanzaKm(ultimo.lat, ultimo.lon, luogo.lat, luogo.lon) > TERRENO_VIVO_STACCO_KM) {
+    terrenoVivo.lat = null;
+    return null;
+  }
+
+  // Dove porta la corsa, se il fix di prima dice da che parte si sta
+  // andando. Il tempo si tosa: un GPS che tace non autorizza a inventare
+  // chilometri di strada.
+  const ora = Date.now();
+  let lat = ultimo.lat, lon = ultimo.lon;
+  const prima = fix.length > 1 ? fix[fix.length - 2] : null;
+  if (prima) {
+    const dt = (ultimo.quando - prima.quando) / 1000;
+    if (dt > 0.2 && dt < 30) {
+      const avanti = Math.min(TERRENO_VIVO_MAX_MS, ora - ultimo.quando) / 1000;
+      lat += (ultimo.lat - prima.lat) / dt * avanti;
+      lon += (ultimo.lon - prima.lon) / dt * avanti;
+    }
+  }
+
+  // E ci si arriva scivolando. Senza, l'istante in cui arriva un fix nuovo
+  // si vedrebbe: l'estrapolazione sbaglia sempre di qualcosa, e correggerla
+  // di colpo è uno scatto per ogni secondo di viaggio.
+  if (terrenoVivo.lat === null ||
+      terrenoDistanzaKm(terrenoVivo.lat, terrenoVivo.lon, lat, lon) > TERRENO_VIVO_STACCO_KM) {
+    terrenoVivo.lat = lat; terrenoVivo.lon = lon;
+  } else {
+    const dt = Math.max(0, Math.min(1000, ora - (terrenoVivo.quando || ora)));
+    const a = 1 - Math.exp(-dt / TERRENO_VIVO_TAU_MS);
+    terrenoVivo.lat += (lat - terrenoVivo.lat) * a;
+    terrenoVivo.lon += (lon - terrenoVivo.lon) * a;
+  }
+  terrenoVivo.quando = ora;
+  return { lat: terrenoVivo.lat, lon: terrenoVivo.lon, nome: luogo.nome, proprio: false };
+}
+
+// Il punto da cui **disegnare**: quello vivo se c'è, se no quello dell'app.
+// Chi decide se scaricare qualcosa usa invece `terrenoLuogo`, che è fermo
+// fra un fix accettato e l'altro — una richiesta di rete non si fa partire
+// da un punto estrapolato.
+function terrenoPuntoDaDisegnare() {
+  return terrenoPuntoVivo() || terrenoLuogo();
+}
+
+// Quanto lontano dal suo centro un profilo resta una risposta buona.
+//
+// Da fermo sono i due chilometri di sempre. In movimento il numero cambia
+// perché cambia la domanda: chi va in macchina non sta guardando il fosso
+// a cento metri, sta guardando la catena all'orizzonte, e quella a otto
+// chilometri di distanza è la stessa identica catena. Il primo piano —
+// che invece cambia — lo rifà il rilievo traslando la maglia, senza rete
+// (`rilievo.js` §8). Tenere qui la soglia stretta non renderebbe il
+// paesaggio più giusto: lo farebbe **sparire** per il tempo di ogni
+// scarico, che è la cosa peggiore delle due.
+function terrenoRaggioValidoKm() {
+  const v = terrenoVelocita();
+  if (v >= 45) return TERRENO_RAGGIO_MOTO_AEREO_KM;
+  if (v >= 8)  return TERRENO_RAGGIO_MOTO_AUTO_KM;
+  if (terrenoInMoto()) return TERRENO_RAGGIO_MOTO_PIEDI_KM;
+  return TERRENO_RAGGIO_VALIDO_KM;
+}
+
+// Oltre questa distanza il profilo che si ha in mano non parla più del
+// posto in cui si è, e va buttato subito: le colline di Genova disegnate
+// a Bolzano sono peggio di nessuna collina, perché sembrano vere. Sotto,
+// **si tiene** finché non arriva il sostituto — anche quando si sta già
+// scaricando il profilo nuovo. È la stessa regola che `terrenoDisponibile`
+// ha imparato a caro prezzo, applicata allo spazio invece che al tempo.
+const TERRENO_TIENI_PROFILO_KM = 60;
+
+// Che frazione del raggio di ricerca resta buona allontanandosi dal centro,
+// e fin dove. Un elenco preso su ottanta chilometri, guardato da venti più
+// in là, ne copre ancora sessanta nella direzione in cui si va: è meno di
+// prima, non è niente. Il tetto serve al caso opposto — un raggio da
+// duecento chilometri non autorizza a nominare le vette di un'altra
+// regione perché una volta si è passati di lì.
+const TERRENO_MOTO_VALIDO_QUOTA = 0.35;
+const TERRENO_MOTO_VALIDO_MAX_KM = 35;
+
+// Ogni quanto, al massimo, si rifà lo scarico mentre ci si muove.
+// Ventiquattro richieste a un servizio pubblico ogni novanta secondi non
+// sono un aggiornamento, sono una raffica: il rubinetto della §4 frena, i
+// 429 arrivano, e il profilo «nuovo» finisce per arrivare più tardi di
+// quello che si sarebbe tenuto stando zitti.
+const TERRENO_RICARICA_MOTO_MS = 120000;
+
+// Il rinvio non è una rinuncia: appena scade, si riparte dal punto in cui
+// si è **allora**, che è quello che serve. Un timer solo, spostato in
+// avanti da ogni chiamata, come fa `cimeRimandaDopoViaggio`.
+function terrenoRimandaInMoto() {
+  if (terreno.timerMoto) return;
+  const attesa = Math.max(2000,
+    TERRENO_RICARICA_MOTO_MS - (Date.now() - (terreno.quandoRete || 0)));
+  terreno.timerMoto = setTimeout(() => {
+    terreno.timerMoto = null;
+    terrenoCarica();
+  }, attesa);
+}
+
+
+// =====================================================================
 // 7. L'INNESCO
 // =====================================================================
 
@@ -1597,6 +1852,7 @@ function terrenoApplica(lat, lon, dati, sorgente, ancoraInCorso) {
   terreno.motivo = '';
   if (!ancoraInCorso) terreno.avanzamento = 0;
   terreno.quando = Date.now();
+  if (sorgente === 'rete' && !ancoraInCorso) terreno.quandoRete = terreno.quando;
   terreno.sorgente = sorgente;
   // Se si sta dentro all'acqua, l'occhio non sta sul suolo: sta sulla
   // superficie. Si chiede qui perché il terreno e le acque arrivano in
@@ -1615,6 +1871,21 @@ function terrenoApplica(lat, lon, dati, sorgente, ancoraInCorso) {
 // mostrato. Il controllo evita che, mentre ci si sposta, accanto alla nuova
 // città rimanga per qualche secondo l'altitudine di quella precedente.
 function terrenoQuotaDelLuogo(lat, lon) {
+  // Col rilievo acceso la quota del punto in cui si è la sanno le tessere,
+  // e la sanno **adesso**: muovendosi la si legge dove si è arrivati invece
+  // di sparire appena ci si allontana di due chilometri dal centro della
+  // griglia. È la stessa camera che disegna il paesaggio (`rilOcchioMeta`).
+  //
+  // Si chiede però al pezzo che risponde `null` quando non sa: se le
+  // tessere quel punto non lo coprono, la camera ripiega su
+  // `terreno.quota` — che è la quota del **centro della griglia**, cioè
+  // proprio il numero che questa funzione esiste per non mostrare accanto
+  // al nome di un altro posto.
+  if (typeof rilQuotaSuolo === 'function' && typeof rilPronto === 'function' &&
+      rilPronto() && isFinite(lat) && isFinite(lon) && !terreno.quotaAcqua) {
+    const q = rilQuotaSuolo(lat, lon);
+    if (q !== null && isFinite(q)) return q;
+  }
   if (typeof terreno.quota !== 'number' || !isFinite(lat) || !isFinite(lon) ||
       !isFinite(terreno.lat) || !isFinite(terreno.lon)) return null;
   const dLat = lat - terreno.lat;
@@ -1705,14 +1976,34 @@ function terrenoCarica(forza) {
   if (!luogo) return Promise.resolve(false);
   const lat = luogo.lat, lon = luogo.lon;
 
+  const raggioBuono = terrenoRaggioValidoKm();
   if (!forza && terreno.stato === 'pronto' && terreno.lat !== null &&
-      terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) <= TERRENO_RAGGIO_VALIDO_KM) {
+      terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) <= raggioBuono) {
     return Promise.resolve(true);
   }
   // C'è già una richiesta in volo. Se è per questo stesso posto, si aspetta
   // quella; se nel frattempo il luogo è cambiato di nuovo (due città scelte
   // in fretta), la si lascia finire e si riparte dopo — nel `finally`.
   if (terreno.stato === 'in-corso') return terreno.promessa || Promise.resolve(false);
+
+  // In movimento, due scarichi ravvicinati sono due volte lo stesso
+  // paesaggio: si aspetta il tempo minimo e poi si riparte da dove si è
+  // arrivati, non da dove si era quando è scattata la soglia. Il rinvio
+  // non lascia lo schermo scoperto — quello che c'è resta disegnato — ed è
+  // la stessa cura di `cimeRimandaDopoViaggio`, applicata alle quote.
+  //
+  // Il rinvio vale per un passo del viaggio, non per un salto: se il punto
+  // è più lontano di quanto si possa averlo raggiunto camminando o
+  // guidando, allora non ci si è arrivati — lo si è **scelto**, ed è una
+  // domanda nuova che ha diritto a una risposta subito.
+  const passoDelViaggio = terreno.lat !== null &&
+    terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) <=
+      raggioBuono + terrenoVelocita() * TERRENO_RICARICA_MOTO_MS / 1000000;
+  if (!forza && terreno.profilo && passoDelViaggio && terrenoInMoto() &&
+      Date.now() - (terreno.quandoRete || 0) < TERRENO_RICARICA_MOTO_MS) {
+    terrenoRimandaInMoto();
+    return Promise.resolve(true);
+  }
 
   if (!forza) {
     const salvato = terrenoLeggiSalvato(lat, lon);
@@ -1737,8 +2028,10 @@ function terrenoCarica(forza) {
   // quando cambia il posto: il servizio che ha detto di no per Bolzano non
   // ha detto niente su Genova.
   if (terreno.sveglia) { clearTimeout(terreno.sveglia); terreno.sveglia = null; }
+  // E nemmeno il rinvio del viaggio: si sta partendo adesso, e da qui.
+  if (terreno.timerMoto) { clearTimeout(terreno.timerMoto); terreno.timerMoto = null; }
   if (terreno.provatoLat === null || terreno.provatoLat === undefined ||
-      terrenoDistanzaKm(lat, lon, terreno.provatoLat, terreno.provatoLon) > TERRENO_RAGGIO_VALIDO_KM) {
+      terrenoDistanzaKm(lat, lon, terreno.provatoLat, terreno.provatoLon) > raggioBuono) {
     terreno.tentativi = 0;
     // Posto nuovo, domanda nuova: qui non ci si è ancora arresi, e chi
     // aspetta il terreno prima di parlare ha ragione ad aspettare.
@@ -1754,8 +2047,17 @@ function terrenoCarica(forza) {
   // mezzo a quello vero. Da un'altra parte invece va buttato subito: le
   // colline di Genova disegnate a Bolzano sono peggio di nessuna collina,
   // perché sembrano vere.
+  //
+  // «Da un'altra parte» però non vuol dire «due chilometri più in là». Col
+  // GPS acceso in macchina quella soglia si supera ogni minuto e mezzo, e
+  // ogni volta il profilo veniva buttato *prima* di avere il sostituto:
+  // per i secondi dello scarico l'orizzonte tornava finto e i nomi delle
+  // montagne sparivano — a ripetizione, per tutto il viaggio. Adesso a
+  // buttarlo è solo un salto vero (`TERRENO_TIENI_PROFILO_KM`): il
+  // paesaggio a sessanta chilometri visto da nove più in là è lo stesso
+  // paesaggio, e tenerlo è meglio che non averne nessuno.
   if (terreno.profilo && (terreno.lat === null ||
-      terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) > TERRENO_RAGGIO_VALIDO_KM)) {
+      terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) > TERRENO_TIENI_PROFILO_KM)) {
     terrenoScordaProfilo();
   }
 
@@ -1777,7 +2079,17 @@ function terrenoCarica(forza) {
     // che dice di no un giorno sì e uno no il terreno non arrivava mai.
     dati => {
       terrenoSalva(lat, lon, dati);
-      terrenoApplica(lat, lon, dati, 'rete', true);
+      // Il giro grosso è una direzione su tre: un orizzonte vero, ma più
+      // grosso di quello intero. Mostrarlo subito è la cosa giusta quando
+      // in mano non c'è niente — meglio l'orizzonte vero a passo largo che
+      // quello inventato — ed è la cosa sbagliata quando un profilo intero
+      // c'è già e parla di qui vicino: sarebbe un peggioramento visibile,
+      // e sullo schermo un peggioramento seguito da un miglioramento sono
+      // **due** scatti invece di uno.
+      const meglioAspettare = terreno.profilo &&
+        terreno.misurate >= TERRENO_DIREZIONI && terreno.lat !== null &&
+        terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) <= TERRENO_TIENI_PROFILO_KM;
+      if (!meglioAspettare) terrenoApplica(lat, lon, dati, 'rete', true);
     }, riprendi)
     .then(({ dati, guaio }) => {
       terrenoSalva(lat, lon, dati);
@@ -2362,6 +2674,15 @@ function terrenoAvanzamentoTotale() {
 function terrenoBarraAggiorna() {
   const el = document.getElementById('terreno-progress');
   if (!el) return;
+  // In viaggio la barra non si accende, e la ragione è la stessa per cui
+  // esiste: dice «sto misurando il terreno attorno a te» a chi ha davanti
+  // l'orizzonte finto e ha bisogno di sapere che quello vero sta arrivando.
+  // Guidando l'orizzonte vero c'è già — è quello di poco fa, che si tiene
+  // apposta (§6-bis) — e quella pillola diventa una spia che si riaccende
+  // ogni due minuti sopra a un paesaggio che nel frattempo non è mai
+  // sparito: cioè rumore, e per giunta rumore che dice il contrario di
+  // quello che si vede.
+  if (terrenoDisponibile() && terrenoInMoto() && !terrenoBarra.vista) return;
   const v = terrenoAvanzamentoTotale();
   if (!v.attiva) return;
 
@@ -2586,6 +2907,16 @@ const CITTA_RAGGIO_PAESI_KM = 20;
 const CITTA_RAGGIO_RIPIEGO_KM = 30;
 const CITTA_MAX = 60;
 const CITTA_RAGGIO_VALIDO_KM = 5;
+// In movimento vale la stessa regola delle vette (qui sotto,
+// `cimeRaggioValidoKm`): l'elenco copre novanta chilometri attorno al punto
+// in cui è stato chiesto, e spostandosi di venti se ne perdono venti da una
+// parte — non tutti. Buttarlo via per intero vorrebbe dire un orizzonte
+// senza un nome per tutto il viaggio.
+function cittaRaggioValidoKm() {
+  if (!terrenoInMoto()) return CITTA_RAGGIO_VALIDO_KM;
+  return Math.max(CITTA_RAGGIO_VALIDO_KM,
+    Math.min(TERRENO_MOTO_VALIDO_MAX_KM, raggioCitta() * TERRENO_MOTO_VALIDO_QUOTA));
+}
 // Più lunga del `timeout` scritto nella query dei paesi (20 s), come per le
 // vette e per le acque. Era **quindici** secondi, cioè cinque meno di quelli
 // che il server si era preso: la richiesta veniva tagliata mentre Overpass ci
@@ -2608,6 +2939,15 @@ const citta = {
   stato: 'niente',        // niente | in-corso | pronto | fallito
   lat: null, lon: null,
   elenco: [],             // { nome, az, km, abitanti, forza, alto, mezzo, alfa }
+  // I paesi come sono arrivati, senza geometria: nome, coordinate,
+  // abitanti. Servono a rifare azimut, distanza e forza della cupola da un
+  // punto diverso da quello in cui sono stati cercati — cioè a farli
+  // scorrere mentre ci si sposta, invece di lasciarli inchiodati a dove
+  // erano quando è partita la richiesta (§6-bis).
+  grezze: [],
+  // Per quale punto vale `elenco` adesso: la geometria si rifà solo quando
+  // il punto cambia davvero, non a ogni fotogramma.
+  vistaChiave: null,
   fonte: '',
   motivo: '',
   avanzamento: 0,         // 0…1 per la barra della §9-ter
@@ -3156,6 +3496,8 @@ function cittaDalSalvato(v) {
 function cittaDimentica() {
   citta.stato = 'niente';
   citta.elenco = [];
+  citta.grezze = [];
+  citta.vistaChiave = null;
   citta.lat = citta.lon = null;
   citta.fonte = '';
   citta.quandoFallito = 0;
@@ -3170,11 +3512,22 @@ function cittaApplica(lat, lon, grezze, fonte) {
   const luogo = terrenoLuogo();
   citta.lat = lat;
   citta.lon = lon;
+  citta.grezze = grezze;
   citta.elenco = cittaPrepara(grezze, lat, lon, luogo && luogo.nome);
+  citta.vistaChiave = cittaChiaveVista(lat, lon);
   citta.fonte = fonte;
   citta.stato = 'pronto';
   citta.motivo = '';
   terrenoAggiornaPannello();
+}
+
+// La chiave dice per quale punto vale la geometria dei paesi. Undici metri
+// di risoluzione, che è la stessa delle vette: un paese a dieci chilometri
+// si sposta allora di sei centesimi di grado per volta, cioè di niente.
+// Con la risoluzione più larga di cento metri il salto era mezzo grado, e
+// mezzo grado su un nome appeso all'orizzonte si vede.
+function cittaChiaveVista(lat, lon) {
+  return `${lat.toFixed(4)},${lon.toFixed(4)}`;
 }
 
 function cittaCarica(forza, soloCache) {
@@ -3189,7 +3542,7 @@ function cittaCarica(forza, soloCache) {
   // tutta la sessione — nessuno sarebbe più tornato a chiedere i paesi veri.
   const supplenza = citta.fonte === 'interno';
   if (!forza && citta.stato === 'pronto' && !supplenza && citta.lat !== null &&
-      terrenoDistanzaKm(lat, lon, citta.lat, citta.lon) <= CITTA_RAGGIO_VALIDO_KM) {
+      terrenoDistanzaKm(lat, lon, citta.lat, citta.lon) <= cittaRaggioValidoKm()) {
     return Promise.resolve(true);
   }
   if (citta.stato === 'in-corso') return citta.promessa || Promise.resolve(false);
@@ -3260,7 +3613,7 @@ function cittaCarica(forza, soloCache) {
     .finally(() => {
       citta.promessa = null;
       const ora = terrenoLuogo();
-      if (ora && terrenoDistanzaKm(ora.lat, ora.lon, lat, lon) > CITTA_RAGGIO_VALIDO_KM) {
+      if (ora && terrenoDistanzaKm(ora.lat, ora.lon, lat, lon) > cittaRaggioValidoKm()) {
         cittaCarica();
       }
     });
@@ -3275,12 +3628,30 @@ function cittaCarica(forza, soloCache) {
 // planetario le proietta da sé: qui si sa dove stanno e quanto illuminano,
 // non come finiscono sullo schermo.
 function cittaVicine() {
-  if (!citta.acceso || citta.stato !== 'pronto') return [];
+  // Come per le vette (`cimeVisibili`): conta avere un elenco, non che
+  // l'ultima richiesta sia riuscita. Un tentativo fallito mentre si guida
+  // spegneva tutte le luci dell'orizzonte insieme.
+  if (!citta.acceso || !citta.elenco.length) return [];
+  const luogo = terrenoPuntoDaDisegnare();
+  // Spostandosi, i paesi non si spostano — ma la loro **direzione** e la
+  // loro **distanza** sì, e con esse quanto la cupola è larga e quanto
+  // illumina. L'elenco era calcolato una volta sola, nel punto in cui la
+  // ricerca era partita: in macchina i nomi restavano inchiodati agli
+  // azimut di dieci chilometri prima, cioè indicavano il posto sbagliato
+  // dell'orizzonte. Rifare la geometria non costa una richiesta e nemmeno
+  // un fotogramma: sono un centinaio di voci, e si rifà solo quando il
+  // punto cambia davvero (`cittaChiaveVista`, undici metri).
+  if (luogo && citta.grezze.length) {
+    const chiave = cittaChiaveVista(luogo.lat, luogo.lon);
+    if (chiave !== citta.vistaChiave) {
+      citta.elenco = cittaPrepara(citta.grezze, luogo.lat, luogo.lon, luogo.nome);
+      citta.vistaChiave = chiave;
+    }
+  }
   // Il nome preciso può arrivare dopo le città (il GPS e il geocodificatore
   // lavorano in parallelo). La seconda potatura evita che, per alcuni secondi
   // o fino al prossimo caricamento, resti visibile il nome appena riconosciuto
   // del luogo in cui ci si trova.
-  const luogo = terrenoLuogo();
   return citta.elenco.filter(c => !cittaEPostoOsservatore(c, luogo && luogo.nome));
 }
 
@@ -3374,13 +3745,32 @@ const CIME_RAGGIO_RIPIEGO_KM = 35;
 // che stanno lì, non fra le sei più grosse del giro intero.
 const CIME_MAX = 80;
 const CIME_RAGGIO_VALIDO_KM = 5;
+// Quanto ci si può allontanare dal centro della ricerca e continuare a
+// nominare quello che si è trovato. Da fermo cinque chilometri, perché più
+// in là si è in un altro posto e conviene rifare la domanda. In movimento
+// no: la ricerca copre ottanta chilometri, `cimeVisibili` rifà comunque
+// azimut, distanza e altezza apparente dal punto in cui si è adesso, e
+// quindi le vette che restano nell'elenco sono ancora **giuste** — manca
+// solo quello che è entrato in scena davanti. Con la soglia stretta,
+// invece, dopo cinque chilometri di strada non compariva più nessun nome
+// finché non ci si fermava: è così che i nomi dei monti sono spariti in
+// modalità GPS.
+function cimeRaggioValidoKm() {
+  if (!terrenoInMoto()) return CIME_RAGGIO_VALIDO_KM;
+  return Math.max(CIME_RAGGIO_VALIDO_KM,
+    Math.min(TERRENO_MOTO_VALIDO_MAX_KM, raggioCime() * TERRENO_MOTO_VALIDO_QUOTA));
+}
 // In viaggio il GPS può consegnare un punto nuovo a ogni curva. Una ricerca
 // Overpass per ciascun punto non riuscirebbe comunque a raggiungere il
 // telefono e terrebbe occupato il servizio con risposte già vecchie. Le
 // copie locali si usano sempre; la rete parte soltanto quando il luogo resta
 // fermo per questo intervallo.
 const CIME_FERMO_PRIMA_DI_CARICARE_MS = 12000;
-const CIME_VELOCITA_VIAGGIO_M_S = 2.5;
+// ...e comunque non si sta in viaggio per sempre senza rinfrescare
+// l'elenco: dopo questo tempo la ricerca parte anche correndo. È più lunga
+// dell'attesa delle quote perché una richiesta a Overpass costa più di una
+// a Open-Meteo, e perché ottanta chilometri di vette invecchiano piano.
+const CIME_RICARICA_MOTO_MS = 4 * 60 * 1000;
 // Più lunga del `timeout` scritto nella query (25 s): il client non deve
 // mai essere lui ad arrendersi per primo.
 const CIME_ATTESA_MS = 32000;
@@ -3425,7 +3815,10 @@ const cime = {
   vistaChiave: null,
   vista: [],
   timerViaggio: null,
-  ultimoLuogo: null
+  // Quando l'elenco è stato preso davvero. In viaggio è lui a decidere se
+  // vale la pena rifare la domanda (§6-bis): il posto cambia in
+  // continuazione, il tempo no.
+  quandoPreso: 0
 };
 
 
@@ -3576,7 +3969,6 @@ function cimeDimentica() {
   cime.vistaChiave = null;
   cime.lat = cime.lon = null;
   cime.timerViaggio = null;
-  cime.ultimoLuogo = null;
   overpassRiprovaAzzera('cime');
 }
 
@@ -3592,25 +3984,26 @@ function cimeApplica(lat, lon, grezze, fonte) {
   cime.fonte = fonte;
   cime.stato = 'pronto';
   cime.motivo = '';
+  cime.quandoPreso = Date.now();
   terrenoAggiornaPannello();
 }
 
-// Dice se il punto sta ancora correndo. `coords.speed` non è disponibile su
-// tutti i browser, quindi si affianca una misura fra le letture che arrivano
-// qui. Il limite temporale evita di scambiare per un viaggio il salto fra la
-// posizione salvata ieri e il primo fix di oggi.
-function cimeLuogoInViaggio(luogo) {
-  const ora = Date.now();
-  const prima = cime.ultimoLuogo;
-  cime.ultimoLuogo = { lat: luogo.lat, lon: luogo.lon, quando: ora };
-  const velocitaGps = typeof sky !== 'undefined' && sky.posizione &&
-    isFinite(sky.posizione.velocita) ? sky.posizione.velocita : null;
-  if (velocitaGps !== null && velocitaGps >= CIME_VELOCITA_VIAGGIO_M_S) return true;
-  if (!prima) return false;
-  const secondi = (ora - prima.quando) / 1000;
-  if (secondi <= 0 || secondi > 120) return false;
-  return terrenoDistanzaKm(prima.lat, prima.lon, luogo.lat, luogo.lon) * 1000 / secondi >=
-    CIME_VELOCITA_VIAGGIO_M_S;
+// Dice se il punto sta ancora correndo. La misura è quella condivisa di
+// §6-bis: `coords.speed` quando c'è, se no lo spostamento fra le letture.
+// Stava qui, con una storia sua, e ne è uscita per una ragione precisa —
+// tre moduli che stimano la stessa velocità su tre storie diverse danno
+// tre risposte diverse alla stessa domanda, e allora uno dei tre riscarica
+// mentre gli altri due aspettano.
+//
+// Una ricerca rinviata però non è una ricerca annullata: appena si smette
+// di correre — o appena scade l'attesa lunga, se si corre da un pezzo —
+// riparte da dove si è arrivati.
+function cimeLuogoInViaggio() {
+  if (!terrenoInMoto()) return false;
+  // In viaggio da tanto: a un certo punto l'elenco va rinfrescato lo
+  // stesso, se no dopo mezz'ora di autostrada si stanno ancora nominando
+  // le vette del casello di partenza.
+  return Date.now() - (cime.quandoPreso || 0) < CIME_RICARICA_MOTO_MS;
 }
 
 function cimeRimandaDopoViaggio() {
@@ -3632,7 +4025,7 @@ function cimeCarica(forza, soloCache) {
   const lat = luogo.lat, lon = luogo.lon;
 
   if (!forza && cime.stato === 'pronto' && cime.lat !== null &&
-      terrenoDistanzaKm(lat, lon, cime.lat, cime.lon) <= CIME_RAGGIO_VALIDO_KM) {
+      terrenoDistanzaKm(lat, lon, cime.lat, cime.lon) <= cimeRaggioValidoKm()) {
     return Promise.resolve(true);
   }
   if (cime.stato === 'in-corso') return cime.promessa || Promise.resolve(false);
@@ -3668,7 +4061,7 @@ function cimeCarica(forza, soloCache) {
   // diventare vecchia prima della risposta. Il timer viene spostato avanti
   // da ogni nuovo fix: appena ci si ferma, una sola ricerca serve il punto
   // effettivo d'arrivo.
-  if (!forza && cimeLuogoInViaggio(luogo)) {
+  if (!forza && cimeLuogoInViaggio()) {
     cimeRimandaDopoViaggio();
     return Promise.resolve(false);
   }
@@ -3726,7 +4119,7 @@ function cimeCarica(forza, soloCache) {
     .finally(() => {
       cime.promessa = null;
       const ora = terrenoLuogo();
-      if (ora && terrenoDistanzaKm(ora.lat, ora.lon, lat, lon) > CIME_RAGGIO_VALIDO_KM) {
+      if (ora && terrenoDistanzaKm(ora.lat, ora.lon, lat, lon) > cimeRaggioValidoKm()) {
         cimeCarica();
       }
     });
@@ -3742,6 +4135,16 @@ function cimeCarica(forza, soloCache) {
 // mare, che per chi sta in pianura è quasi giusto e per chi sta in
 // montagna sbaglia dalla parte prudente (le vette sembrano più alte).
 function cimeQuotaOcchio() {
+  // Col rilievo acceso la camera non sta più dove la griglia grossa è stata
+  // chiesta: cammina sul terreno (`rilievo.js` §8-bis). Chiedere l'occhio a
+  // lui non è un dettaglio — l'occhio è il termine che si sottrae a tutti
+  // gli angoli, e la cresta con cui queste vette vengono confrontate
+  // (`rilCrestaEntroM`) è costruita **con quello lì**. Prendendone due
+  // diversi, salendo un passo le vette risultavano tutte nascoste o tutte
+  // scoperte a seconda del verso della salita.
+  if (typeof rilievo !== 'undefined' && rilievo.cresta && isFinite(rilievo.occhio)) {
+    return rilievo.occhio;
+  }
   const suolo = typeof terreno.quota === 'number' ? terreno.quota : 0;
   return suolo + TERRENO_ALTEZZA_OCCHIO_M;
 }
@@ -3766,19 +4169,30 @@ function cimeQuotaOcchio() {
 // cancellata dalla cresta più alta che le stava alle spalle: sparivano
 // esattamente le vette vicine, quelle che uno riconosce.
 function cimeVisibili() {
-  if (!cime.acceso || cime.stato !== 'pronto' || !cime.elenco.length) return [];
-  const luogo = terrenoLuogo();
+  // La domanda è **se un elenco c'è**, non se l'ultima richiesta è andata
+  // bene. Sono due cose diverse, ed è la stessa lezione che
+  // `terrenoDisponibile` ha imparato a caro prezzo per il profilo: in
+  // viaggio le richieste a Overpass ripartono di continuo e ogni tanto una
+  // fallisce — un tunnel, un 429 — e con lo stato a «fallito» sparivano
+  // tutti i nomi insieme, benché l'elenco fosse ancora in mano e ancora
+  // buono. Che valga per questo posto lo dice il raggio, tre righe più giù;
+  // che ci sia lo dice `elenco`.
+  if (!cime.acceso || !cime.elenco.length) return [];
+  // Il punto da cui si disegna, non quello da cui si scarica: in movimento
+  // è quello vivo, e le etichette scorrono insieme alle creste invece di
+  // fare un salto a ogni fix accettato.
+  const luogo = terrenoPuntoDaDisegnare();
   if (!luogo || cime.lat === null ||
-      terrenoDistanzaKm(luogo.lat, luogo.lon, cime.lat, cime.lon) > CIME_RAGGIO_VALIDO_KM) {
-    // Mai lasciare sul parabrezza i nomi del tratto precedente mentre la
-    // nuova ricerca è rinviata o in volo.
+      terrenoDistanzaKm(luogo.lat, luogo.lon, cime.lat, cime.lon) > cimeRaggioValidoKm()) {
+    // Fuori dal raggio in cui l'elenco vale ancora qualcosa: meglio nessun
+    // nome che i nomi di un'altra valle.
     return [];
   }
   // Tre risposte diverse, e la chiave se ne deve accorgere: il terreno c'è
   // (e allora vale l'istante in cui è arrivato), il terreno sta arrivando,
   // il terreno non c'è e non arriverà.
   const attesa = terrenoInArrivo();
-  const chiave = `${luogo.lat.toFixed(4)},${luogo.lon.toFixed(4)}|${cimeQuotaOcchio().toFixed(1)}|` +
+  const chiave = `${luogo.lat.toFixed(4)},${luogo.lon.toFixed(4)}|${cimeQuotaOcchio().toFixed(0)}|` +
     `${terrenoDisponibile() ? terreno.quando : (attesa ? 'attesa' : 0)}`;
   if (cime.vistaChiave === chiave) return cime.vista;
 
@@ -3983,12 +4397,26 @@ const ACQUE_ATTESA_MS = 30000;
 // col raggio con cui è stato **preso**, non con quello che si era chiesto.
 const ACQUE_RAGGIO_RIPIEGO_KM = 12;
 const ACQUE_RAGGIO_VALIDO_KM = 2;
+// Fin dove ci si può allontanare e rifare comunque le bande con i bordi
+// che si hanno già (§6-bis). Non è generosità: un lago disegnato con le
+// distanze di dieci chilometri fa è un lago appoggiato sul prato, e qui
+// — a differenza delle vette, che si ricalcolano una per una — la
+// geometria è tutta nelle bande.
+const ACQUE_RITAGLIO_MAX_KM = 8;
 const ACQUE_RIPROVA_DOPO_MS = 4 * 60 * 1000;
 
 const acque = {
   stato: 'niente',        // niente | in-corso | pronto | fallito
   lat: null,
   lon: null,
+  // I poligoni e le linee come sono arrivati da OpenStreetMap, e da quale
+  // punto sono stati chiesti. Servono a rifare le bande spostandosi, senza
+  // rete (§6-bis, `acqueRitaglia`). Non si salvano in `localStorage`: lì
+  // vanno le bande, che pesano un centesimo.
+  tracciati: null,
+  tracciatiLat: null,
+  tracciatiLon: null,
+  ritaglio: null,         // il ritaglio in corso, per non farne due insieme
   // La rasterizzazione: per ogni mezzo grado, gli intervalli di distanza in
   // cui c'è acqua. `[vicino, lontano, tipo]` in metri, tipo 0 = fermo
   // (lago), 1 = corrente (fiume).
@@ -4721,6 +5149,8 @@ function acqueDimentica() {
   acque.quandoFallito = 0;
   acque.fallitoLat = acque.fallitoLon = null;
   acque.lat = acque.lon = null;
+  acque.tracciati = null;
+  acque.tracciatiLat = acque.tracciatiLon = null;
   overpassRiprovaAzzera('acque');
 }
 
@@ -4736,6 +5166,22 @@ function acqueDimentica() {
 function acqueMonta(lat, lon, tracciati, fonte, tagli) {
   acque.lat = lat;
   acque.lon = lon;
+  // I bordi grezzi si tengono, e non è memoria sprecata: sono la sola cosa
+  // che permetta di rifare le bande da un punto diverso **senza chiedere
+  // niente a nessuno**. Muovendosi serve di continuo — le bande sono
+  // distanze misurate dal centro della ricerca, quindi invecchiano di un
+  // metro per ogni metro percorso — e senza di loro l'unica alternativa era
+  // una richiesta a Overpass ogni due chilometri (§6-bis).
+  // Il centro però è quello da cui i bordi sono stati **chiesti**, e resta
+  // fermo anche quando le bande si rifanno da un punto diverso: se
+  // scivolasse insieme a loro, un ritaglio dopo l'altro ci si allontanerebbe
+  // senza limite dai dati che si hanno davvero (`acqueRitagliabile` misura
+  // da lì). Per questo si aggiorna solo quando i bordi sono nuovi.
+  if (tracciati && tracciati !== acque.tracciati) {
+    acque.tracciati = tracciati;
+    acque.tracciatiLat = lat;
+    acque.tracciatiLon = lon;
+  }
   acque.sommerso = !!(tagli.sommersi && tagli.sommersi.size);
   acque.bande = acqueBandeDaTagli(tagli);
   acque.quanti = acque.bande.reduce((n, b) => n + (b ? b.length : 0), 0);
@@ -4778,6 +5224,40 @@ function acqueApplicaAScaglioni(lat, lon, tracciati, fonte) {
     .then(tagli => acqueMonta(lat, lon, tracciati, fonte, tagli));
 }
 
+// Si può rifare la rasterizzazione da qui con quello che si ha già?
+// Serve che i bordi ci siano, che siano stati presi abbastanza vicino e
+// che quello che resta da raccontare sia ancora un paesaggio e non un
+// ritaglio: spostandosi di venti chilometri su una ricerca da venticinque,
+// del lago di partenza resterebbe la riva sbagliata.
+function acqueRitagliabile(lat, lon) {
+  if (!acque.tracciati || acque.tracciatiLat === null) return false;
+  const d = terrenoDistanzaKm(lat, lon, acque.tracciatiLat, acque.tracciatiLon);
+  if (d <= ACQUE_RAGGIO_VALIDO_KM) return false;   // le bande vanno ancora bene così
+  return d <= Math.min(ACQUE_RITAGLIO_MAX_KM, raggioAcque() * TERRENO_MOTO_VALIDO_QUOTA);
+}
+
+// E rifarla. Il raggio si accorcia di quanto ci si è allontanati: oltre
+// quella distanza i bordi non ci sono, e disegnare una riva che finisce
+// perché finiscono i dati è peggio che non disegnarla.
+function acqueRitaglia(lat, lon) {
+  if (acque.ritaglio) return acque.ritaglio;
+  const d = terrenoDistanzaKm(lat, lon, acque.tracciatiLat, acque.tracciatiLon);
+  const limite = Math.max(1000, (raggioAcque() - d) * 1000);
+  // Lo stato **non** passa a «in-corso», ed è la riga che conta: quelle
+  // vecchie sono bande buone fino a due chilometri fa, e `acqueVisibili`
+  // tace appena lo stato non è «pronto». Dichiararsi occupati per il tempo
+  // del ritaglio vorrebbe dire spegnere i laghi ogni due chilometri per
+  // rifarli — cioè il singhiozzo che questa funzione esiste per togliere.
+  acque.ritaglio = acqueTagliaAScaglioni(acque.tracciati, lat, lon, limite)
+    .then(tagli => {
+      acqueMonta(lat, lon, acque.tracciati, acque.fonte || 'osm', tagli);
+      return true;
+    })
+    .catch(() => false)
+    .finally(() => { acque.ritaglio = null; });
+  return acque.ritaglio;
+}
+
 function acqueCarica(forza, soloCache) {
   if (!acque.acceso) return Promise.resolve(false);
 
@@ -4790,6 +5270,14 @@ function acqueCarica(forza, soloCache) {
     return Promise.resolve(true);
   }
   if (acque.stato === 'in-corso') return acque.promessa || Promise.resolve(false);
+  if (acque.ritaglio) return acque.ritaglio;
+
+  // Ci si è spostati, ma i bordi che si hanno in mano coprono ancora questo
+  // punto: le bande si rifanno **da qui**, senza rete. È il pezzo che fa
+  // scorrere i laghi insieme al paesaggio invece di farli sparire e
+  // ricomparire altrove a ogni ricarica.
+  if (!forza && acqueRitagliabile(lat, lon)) return acqueRitaglia(lat, lon);
+
   if (!forza && acque.stato === 'fallito' &&
       Date.now() - (acque.quandoFallito || 0) < ACQUE_RIPROVA_DOPO_MS &&
       acque.fallitoLat !== null &&

@@ -7282,6 +7282,456 @@ adsbAttendi('una pagina HTML restituita con 200 non ferma la corsa', async () =>
     `«${adsb.testoDiStato()}»`);
 }
 
+// =====================================================================
+titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-bis)');
+// =====================================================================
+// Col GPS acceso in macchina questo modulo cambia mestiere: non risponde più
+// alla domanda «com'è fatto il posto in cui sono», ma a «com'è fatto il posto
+// per cui sto passando». Sono due domande diverse, e per un pezzo alla
+// seconda si è risposto con la macchina della prima — buttare il profilo e
+// riscaricarlo ogni due chilometri. Il risultato non era un paesaggio
+// sbagliato: era un paesaggio che spariva e ricompariva, coi nomi dei monti
+// che se ne andavano per interi tratti di strada.
+//
+// È materia da banco di prova come poche altre, e per la ragione di sempre:
+// **a occhio, mentre si guida, non si giudica niente**. Un orizzonte che
+// scorre a scatti di centocinquanta metri sembra un telefono lento; una
+// camera che resta appesa alla quota di partenza mentre si sale un passo
+// disegna un panorama bellissimo, solo che è quello di più in basso.
+{
+  const salva = {
+    fix: terrenoMoto.fix.slice(), velocita: terrenoMoto.velocita, ultimoMoto: terrenoMoto.ultimoMoto,
+    vivoLat: terrenoVivo.lat, vivoLon: terrenoVivo.lon, vivoQuando: terrenoVivo.quando,
+    tLat: terreno.lat, tLon: terreno.lon, tQuota: terreno.quota, tAcqua: terreno.quotaAcqua,
+    rQuota: rilievo.quota, rAlt: rilievo.alt, rCresta: rilievo.cresta, rFronte: rilievo.fronte,
+    rLat: rilievo.lat, rLon: rilievo.lon, rOcchio: rilievo.occhio, rScarto: rilievo.scarto,
+    rOcchioOra: rilievo.occhioOra, rAcceso: rilievo.acceso,
+    tessere: rilTessere, lato: rilLatoTessera,
+    cimeLat: cime.lat, cimeLon: cime.lon,
+    luogo: window.luogoCorrente, vista: window.skyLuogoDelCielo
+  };
+  const fermaMoto = () => {
+    terrenoMoto.fix.length = 0;
+    terrenoMoto.velocita = 0;
+    terrenoMoto.ultimoMoto = 0;
+    terrenoVivo.lat = terrenoVivo.lon = null;
+    terrenoVivo.quando = 0;
+  };
+  // Correre «per finta»: la velocità si dichiara, l'ultimo movimento è
+  // adesso, e il fix più recente è fresco. È lo stato in cui il modulo si
+  // trova davvero dopo dieci secondi di strada.
+  const corri = (v, fix) => {
+    terrenoMoto.fix.length = 0;
+    // Un fix fresco ci vuole comunque: `terrenoVelocita` risponde zero
+    // quando l'ultima lettura è vecchia, ed è giusto così — un viaggio
+    // finito mezz'ora fa non è un viaggio.
+    (fix || [{ lat: 45, lon: 9, quando: Date.now() }]).forEach(f => terrenoMoto.fix.push(f));
+    terrenoMoto.velocita = v;
+    terrenoMoto.ultimoMoto = Date.now();
+  };
+
+  // --- La stima della velocità ----------------------------------------
+  //
+  // `coords.speed` non c'è su tutti i browser, e dove c'è vale spesso `null`
+  // anche mentre si corre. Fidarsi solo di lui vuol dire non accorgersi mai
+  // di essere in viaggio; fidarsi solo delle distanze vuol dire scambiare
+  // per movimento il salto di un fix impreciso. Si prendono tutt'e due e si
+  // tiene il maggiore.
+  {
+    fermaMoto();
+    prova('senza letture non ci si sta muovendo',
+      !terrenoInMoto() && terrenoVelocita() === 0);
+
+    // Venti metri al secondo verso nord, un fix al secondo, e il sensore che
+    // non dichiara niente: la velocità la devono dire le distanze.
+    const t0 = Date.now() - 4000;
+    for (let i = 0; i < 5; i++) {
+      terrenoSegnaFix(45 + (i * 20) / 111195, 9, null, t0 + i * 1000);
+    }
+    prova('la velocità si misura anche se il sensore non la dichiara',
+      Math.abs(terrenoVelocita() - 20) < 1.5, `${terrenoVelocita().toFixed(1)} m/s`);
+    prova('e allora si è in viaggio', terrenoInMoto());
+
+    // Il caso opposto, che è quello che inganna: il punto è fermo — è il
+    // telefono appoggiato sul cruscotto in coda — ma il sensore dichiara
+    // trenta metri al secondo. Si crede al maggiore dei due, quindi si
+    // resta in viaggio: fermarsi al primo semaforo e rimettersi a
+    // scaricare tutto è il difetto che questa regola esiste per evitare.
+    fermaMoto();
+    const t1 = Date.now() - 2000;
+    terrenoSegnaFix(45, 9, 30, t1);
+    terrenoSegnaFix(45, 9, 30, t1 + 1000);
+    prova('un sensore che dichiara la corsa vale quanto la corsa misurata',
+      terrenoVelocita() >= 30 && terrenoInMoto(), `${terrenoVelocita().toFixed(1)} m/s`);
+
+    // E il contro-esempio: due letture a un metro di distanza in un secondo
+    // sono il respiro del GPS, non un movimento.
+    fermaMoto();
+    const t2 = Date.now() - 3000;
+    for (let i = 0; i < 4; i++) terrenoSegnaFix(45 + (i * 1) / 111195, 9, 0, t2 + i * 1000);
+    prova('un metro al secondo di tremolio non è un viaggio',
+      !terrenoInMoto(), `${terrenoVelocita().toFixed(2)} m/s`);
+
+    // Un fix vecchio non racconta il movimento di adesso: la posizione
+    // salvata ieri e il primo fix di oggi distano cento chilometri, e senza
+    // il limite temporale si «viaggerebbe» a mille all'ora.
+    fermaMoto();
+    terrenoMoto.fix.push({ lat: 45, lon: 9, quando: Date.now() - 10 * 60 * 1000 });
+    terrenoMoto.velocita = 40;
+    prova('una lettura vecchia non fa velocità', terrenoVelocita() === 0);
+  }
+
+  // --- Fin dove un profilo resta buono --------------------------------
+  //
+  // La domanda cambia con la velocità perché cambia **quello che si
+  // guarda**. A piedi conta il fosso a duecento metri; in macchina si
+  // guarda la catena in fondo, e quella vista da nove chilometri più in là
+  // è la stessa identica catena. La soglia stretta non rendeva il paesaggio
+  // più giusto: lo faceva sparire per il tempo di ogni scarico.
+  {
+    fermaMoto();
+    prova('da fermo il raggio è quello di sempre',
+      terrenoRaggioValidoKm() === TERRENO_RAGGIO_VALIDO_KM, `${terrenoRaggioValidoKm()} km`);
+
+    const scala = [1.5, 15, 60].map(v => { corri(v); return terrenoRaggioValidoKm(); });
+    prova('e cresce con la velocità, senza mai scendere',
+      scala.every((r, i) => i === 0 || r >= scala[i - 1]),
+      `a piedi ${scala[0]}, in macchina ${scala[1]}, in aereo ${scala[2]} km`);
+    corri(15);
+    prova('in macchina copre un tratto di strada, non un isolato',
+      terrenoRaggioValidoKm() === TERRENO_RAGGIO_MOTO_AUTO_KM);
+
+    // L'invariante che risponde alla segnalazione. Il profilo si **butta**
+    // solo per un salto vero; se la soglia del salto fosse dentro a quella
+    // del viaggio, ogni tratto di strada tornerebbe a cancellare
+    // l'orizzonte che si sta guardando — cioè il difetto di partenza.
+    prova('un passo del viaggio non fa mai buttare il profilo',
+      TERRENO_TIENI_PROFILO_KM > TERRENO_RAGGIO_MOTO_AEREO_KM,
+      `si tiene fino a ${TERRENO_TIENI_PROFILO_KM} km, si viaggia entro ${TERRENO_RAGGIO_MOTO_AEREO_KM}`);
+  }
+
+  // --- I nomi dei monti in viaggio ------------------------------------
+  //
+  // È la seconda metà della segnalazione, ed è la più facile da non capire:
+  // le vette non sparivano perché OpenStreetMap taceva, sparivano perché
+  // l'elenco valeva solo entro cinque chilometri dal punto in cui era stato
+  // chiesto. Dopo cinque chilometri di strada, silenzio — e la ricerca
+  // nuova era per giunta rinviata a quando ci si fosse fermati.
+  {
+    fermaMoto();
+    prova('da fermo l\'elenco delle vette vale cinque chilometri',
+      cimeRaggioValidoKm() === CIME_RAGGIO_VALIDO_KM);
+    corri(15);
+    prova('in viaggio vale un buon pezzo del raggio di ricerca',
+      cimeRaggioValidoKm() > CIME_RAGGIO_VALIDO_KM &&
+      cimeRaggioValidoKm() <= TERRENO_MOTO_VALIDO_MAX_KM,
+      `${cimeRaggioValidoKm().toFixed(1)} km su ${raggioCime()} di ricerca`);
+    // E non oltre: un raggio da duecento chilometri non autorizza a nominare
+    // le vette di un'altra regione perché una volta si è passati di lì.
+    prova('ma non più del tetto', cimeRaggioValidoKm() <= TERRENO_MOTO_VALIDO_MAX_KM);
+    prova('e i paesi seguono la stessa regola',
+      cittaRaggioValidoKm() > CITTA_RAGGIO_VALIDO_KM);
+    fermaMoto();
+  }
+
+  // --- L'anello di una distanza, con un logaritmo ----------------------
+  //
+  // Sta dentro al ciclo di disegno, cioè gira ventimila volte per
+  // fotogramma: cercarlo scorrendo centosei anelli si sente. Si può fare in
+  // un colpo perché le distanze sono due progressioni geometriche di
+  // ragione nota — che è la ragione per cui erano state scelte così.
+  {
+    let peggio = 0;
+    for (let k = 0; k < RIL_ANELLI; k++) peggio = Math.max(peggio, Math.abs(rilAnelloDi(RIL_DIST[k]) - k));
+    prova('sui nodi l\'indice è esatto', peggio < 1e-9, `scarto massimo ${peggio.toExponential(1)}`);
+
+    let cresce = true;
+    for (let m = 0.2; m < 60000; m *= 1.03) if (rilAnelloDi(m * 1.03) <= rilAnelloDi(m)) cresce = false;
+    prova('e cresce sempre con la distanza', cresce);
+
+    // Fra due anelli la frazione è quella geometrica, che è la scala in cui
+    // gli anelli sono equispaziati: a metà strada in logaritmo si è a metà
+    // fra i due indici.
+    const meta = Math.sqrt(RIL_DIST[40] * RIL_DIST[41]);
+    prova('a metà geometrica fra due anelli l\'indice è a metà',
+      Math.abs(rilAnelloDi(meta) - 40.5) < 1e-6, rilAnelloDi(meta).toFixed(4));
+
+    // Il salto fra le due progressioni non deve lasciare un gradino: è il
+    // punto in cui il grembiule sotto i piedi cede il passo agli anelli
+    // lontani, e un gradino lì sarebbe un anello di terreno duplicato.
+    prova('il passaggio fra grembiule e anelli lontani è continuo',
+      Math.abs(rilAnelloDi(RIL_VICINO_M - 1e-6) - rilAnelloDi(RIL_VICINO_M)) < 1e-3);
+  }
+
+  // --- La maglia letta fuori dai suoi nodi -----------------------------
+  //
+  // È il pezzo su cui si regge tutto lo scorrimento: muovendosi, ogni nodo
+  // della maglia va letto in un punto che non è più un nodo. Farlo col nodo
+  // più vicino — com'era — vuol dire ricampionare a quantoni, e sullo
+  // schermo è la scaletta che salta di un gradino a ogni fix.
+  {
+    const na = RIL_AZIMUT, nr = RIL_ANELLI;
+    // Un terreno che si sa a memoria: un piano inclinato, cento metri di
+    // salita ogni chilometro verso nord e cinquanta verso est.
+    const PEND_N = 0.10, PEND_E = 0.05, Q0 = 200;
+    const vera = (est, nord) => Q0 + PEND_E * est + PEND_N * nord;
+    rilievo.quota = new Float32Array(na * nr);
+    rilievo.alt = new Float32Array(na * nr);
+    for (let i = 0; i < na; i++) {
+      const a = i * RIL_PASSO_AZ * D2R, sn = Math.sin(a), cs = Math.cos(a);
+      for (let k = 0; k < nr; k++) {
+        const s = RIL_DIST[k];
+        rilievo.quota[i * nr + k] = vera(sn * s, cs * s);
+        rilievo.alt[i * nr + k] = rilAngolo(rilievo.quota[i * nr + k], Q0 + TERRENO_ALTEZZA_OCCHIO_M, s);
+      }
+    }
+
+    // Sui nodi la lettura deve restituire il nodo, cifra per cifra.
+    let peggioNodi = 0;
+    for (let i = 0; i < na; i += 37) {
+      for (let k = 2; k < nr - 1; k += 7) {
+        const v = rilQuotaMaglia(i * RIL_PASSO_AZ, RIL_DIST[k]);
+        peggioNodi = Math.max(peggioNodi, Math.abs(v - rilievo.quota[i * nr + k]));
+      }
+    }
+    prova('sui nodi la maglia si rilegge identica', peggioNodi < 0.01,
+      `scarto massimo ${peggioNodi.toFixed(4)} m`);
+
+    // E in mezzo deve dire il piano, non il nodo accanto.
+    let peggioMezzo = 0;
+    for (let az = 3; az < 360; az += 11) {
+      for (let s = 40; s < 5000; s *= 1.7) {
+        const v = rilQuotaMaglia(az, s);
+        const t = vera(Math.sin(az * D2R) * s, Math.cos(az * D2R) * s);
+        peggioMezzo = Math.max(peggioMezzo, Math.abs(v - t));
+      }
+    }
+    prova('e fra i nodi dice il terreno, non il nodo più vicino',
+      peggioMezzo < 1.0, `scarto massimo ${peggioMezzo.toFixed(3)} m su un piano al 10%`);
+
+    // --- La traslazione, che è il cuore ------------------------------
+    //
+    // Spostando l'occhio di sessanta metri, l'angolo sotto cui si vede il
+    // terreno a una data distanza deve essere quello vero **dal punto
+    // nuovo**, non quello vecchio. È la differenza fra una fotografia che
+    // scorre e una camera che percorre il paesaggio.
+    rilievo.lat = 45; rilievo.lon = 9; rilievo.occhio = Q0 + TERRENO_ALTEZZA_OCCHIO_M;
+    const scosto = { est: 40, nord: 30 };   // ci si è spostati di cinquanta metri
+    const occhioNuovo = vera(scosto.est, scosto.nord) + TERRENO_ALTEZZA_OCCHIO_M;
+    let peggioTrasla = 0, peggioGrembiule = 0;
+    for (let i = 0; i < na; i += 29) {
+      const a = i * RIL_PASSO_AZ * D2R, sn = Math.sin(a), cs = Math.cos(a);
+      for (let k = 1; k < nr - 6; k += 3) {
+        const s = RIL_DIST[k];
+        const letto = rilCampioneInMovimento(sn, cs, k, scosto, occhioNuovo);
+        const atteso = rilAngolo(vera(scosto.est + sn * s, scosto.nord + cs * s), occhioNuovo, s);
+        const e = Math.abs(letto - atteso);
+        if (s >= RIL_VICINO_PIENO_M) peggioTrasla = Math.max(peggioTrasla, e);
+        else peggioGrembiule = Math.max(peggioGrembiule, e);
+      }
+    }
+    prova('traslando, ogni nodo dice il terreno visto dal punto nuovo',
+      peggioTrasla < 0.02, `scarto massimo ${peggioTrasla.toFixed(4)}° da ${RIL_VICINO_PIENO_M} m in là`);
+    // Sotto i duecentocinquanta metri gli anelli del grembiule stanno fra
+    // loro a fattore uno e sei — sono dieci passi per coprire da quindici
+    // centimetri a venticinque metri — e una lettura interpolata fra due
+    // anelli così distanti ha per forza qualche centesimo di grado di
+    // scarto. Non conta, e non per indulgenza: proprio lì il modello del
+    // suolo non ha più niente da dire e il disegno si spegne da sé
+    // (`RIL_VICINO_PIENO_M`, `RIL_VICINO_NIENTE_M`). Basta che resti
+    // piccolo, cioè che non diventi un gradino.
+    prova('e nel grembiule sotto i piedi lo scarto resta comunque piccolo',
+      peggioGrembiule < 0.3, `scarto massimo ${peggioGrembiule.toFixed(3)}°`);
+
+    // --- Il contro-esempio: il nodo più vicino ------------------------
+    //
+    // La regola di prima. Camminando, lo scostamento cresce con continuità:
+    // il terreno letto deve seguirlo con continuità. Col nodo più vicino
+    // invece resta fermo e poi salta di un anello intero, ed è esattamente
+    // il tremolio che si vede dal finestrino.
+    const vecchio = (sn, cs, k, sc, occhio) => {
+      const s = RIL_DIST[k];
+      const e = sc.est + sn * s, n = sc.nord + cs * s;
+      const d = Math.hypot(e, n);
+      const azV = (Math.atan2(e, n) * 180 / Math.PI + 360) % 360;
+      const ii = Math.round(azV / RIL_PASSO_AZ) % RIL_AZIMUT;
+      let kk = 0;
+      while (kk + 1 < RIL_ANELLI && Math.abs(RIL_DIST[kk + 1] - d) < Math.abs(RIL_DIST[kk] - d)) kk++;
+      return rilAngolo(rilievo.quota[ii * RIL_ANELLI + kk], occhio, s);
+    };
+    const kProva = RIL_ANELLI_PIEDI + 20;   // qualche centinaio di metri
+    let saltoNuovo = 0, saltoVecchio = 0;
+    let primaN = null, primaV = null;
+    for (let d = 0; d <= 60; d += 0.5) {
+      const sc = { est: d, nord: 0 };
+      const occ = vera(d, 0) + TERRENO_ALTEZZA_OCCHIO_M;
+      const n = rilCampioneInMovimento(0, 1, kProva, sc, occ);   // si guarda a nord
+      const v = vecchio(0, 1, kProva, sc, occ);
+      if (primaN !== null) {
+        saltoNuovo = Math.max(saltoNuovo, Math.abs(n - primaN));
+        saltoVecchio = Math.max(saltoVecchio, Math.abs(v - primaV));
+      }
+      primaN = n; primaV = v;
+    }
+    prova('camminando, il terreno letto scorre invece di saltare',
+      saltoNuovo < 0.01, `salto massimo ${saltoNuovo.toFixed(4)}° per mezzo metro di strada`);
+    prova('col nodo più vicino invece saltava, ed è il contro-esempio',
+      saltoVecchio > saltoNuovo * 5,
+      `${saltoVecchio.toFixed(3)}° contro ${saltoNuovo.toFixed(4)}°`);
+
+    // Sotto la soglia non si trasla affatto: mezzo metro non sposta nessun
+    // nodo di un pixel, e pagare una bilineare per nodo per non cambiare
+    // niente sarebbe il modo più caro di disegnare la stessa cosa.
+    prova('sotto mezzo metro non si trasla nemmeno',
+      rilScostamento({ lat: 45 + 0.2 / 111195, lon: 9 }) === null);
+    prova('e sopra sì', rilScostamento({ lat: 45 + 30 / 111195, lon: 9 }) !== null);
+  }
+
+  // --- La camera che cammina sul terreno ------------------------------
+  //
+  // La quota dell'occhio è il termine che si sottrae a **tutti** gli
+  // angoli: alzarla di dieci metri abbassa di dieci metri tutto
+  // l'orizzonte, vicino e lontano. Tenendola ferma al punto di partenza, il
+  // paesaggio scorreva sotto un punto di vista appeso a mezz'aria — e in
+  // salita si continuava a non vedere oltre la cresta che si stava
+  // scavalcando.
+  {
+    const L = 256;
+    const QT = 500;              // le tessere dicono cinquecento metri…
+    const QG = 512;              // …e la griglia grossa, nel punto, cinquecentododici
+    rilLatoTessera = L;
+    rilTessere = new Map();
+    const centro = rilPixelMondo(45, 9, RIL_ZOOM);
+    const tx0 = Math.floor(centro.px / L), ty0 = Math.floor(centro.py / L);
+    // Un terreno che sale verso nord: mezzo metro per pixel di tessera,
+    // cioè una ventina di metri per chilometro. La rampa è riferita al
+    // **punto in cui si osserva** e non al centro della tessera: è lì che
+    // le due fonti si devono accordare, ed è lì che lo scarto è tarato.
+    const quotaDiRiga = gy => QT + 0.5 * (centro.py - gy);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const q = new Float32Array(L * L);
+        for (let iy = 0; iy < L; iy++) {
+          const v = quotaDiRiga((ty0 + dy) * L + iy);
+          for (let ix = 0; ix < L; ix++) q[iy * L + ix] = v;
+        }
+        rilTessere.set(`${tx0 + dx}/${ty0 + dy}`, q);
+      }
+    }
+    terreno.lat = 45; terreno.lon = 9; terreno.quota = QG; terreno.quotaAcqua = false;
+    rilievo.scarto = QG - QT;    // com'è definito: quanto le tessere sbagliano qui
+
+    prova('nel punto misurato comanda la quota della griglia',
+      Math.abs(rilOcchioMeta(45, 9) - (QG + TERRENO_ALTEZZA_OCCHIO_M)) < 1e-6);
+    // E il passaggio è continuo per costruzione: lo scarto è tarato proprio
+    // perché nel centro le due fonti diano lo stesso numero. Se non lo
+    // fosse, uscendo dal raggio della griglia l'orizzonte farebbe uno
+    // scalino di parecchi metri — cioè di parecchi gradi, da vicino.
+    // Quanto sale davvero il terreno di prova, in metri per metro: mezzo
+    // metro per pixel di tessera, e a questa latitudine un pixel vale
+    // ventisette metri.
+    const pendenza = 0.5 / rilMetriPerPixel(45, RIL_ZOOM);
+    const poco = RIL_OCCHIO_GRIGLIA_KM * 1.02;
+    const fuori = rilOcchioMeta(45 + poco / 111.195, 9);
+    const salitaAttesa = poco * 1000 * pendenza;
+    prova('e uscendo dal suo raggio non c\'è nessuno scalino, solo la salita vera',
+      Math.abs((fuori - (QG + TERRENO_ALTEZZA_OCCHIO_M)) - salitaAttesa) < 1,
+      `${(fuori - QG - TERRENO_ALTEZZA_OCCHIO_M).toFixed(2)} m contro ${salitaAttesa.toFixed(2)} attesi`);
+
+    // La cosa che il pezzo esiste per fare: salendo, la camera sale.
+    const giu = rilOcchioMeta(45 - 2 / 111.195, 9);
+    const su = rilOcchioMeta(45 + 2 / 111.195, 9);
+    prova('salendo verso nord la camera sale con il terreno',
+      Math.abs((su - giu) - 4000 * pendenza) < 3,
+      `${(su - giu).toFixed(0)} m in quattro chilometri, ${(4000 * pendenza).toFixed(0)} attesi`);
+    // La quota scritta accanto al nome del luogo è la stessa camera meno
+    // l'altezza di una persona: se le due divergessero, si leggerebbe una
+    // quota mentre se ne sta disegnando un'altra.
+    rilievo.acceso = true;
+    rilievo.cresta = new Float32Array(RIL_AZIMUT);
+    rilievo.fronte = new Float32Array(RIL_AZIMUT * RIL_ANELLI);
+    prova('e la quota mostrata accanto al nome del luogo la segue',
+      Math.abs(terrenoQuotaDelLuogo(45 + 2 / 111.195, 9) - (su - TERRENO_ALTEZZA_OCCHIO_M)) < 1e-6,
+      `${terrenoQuotaDelLuogo(45 + 2 / 111.195, 9).toFixed(0)} m`);
+
+    // Sull'acqua no: lì la superficie la stabilisce `acqueAllineaOcchio`, e
+    // le tessere il pelo dell'acqua non lo conoscono.
+    terreno.quotaAcqua = true;
+    prova('ma sull\'acqua comanda la superficie, non il suolo delle tessere',
+      Math.abs(rilOcchioMeta(45 + 2 / 111.195, 9) - (QG + TERRENO_ALTEZZA_OCCHIO_M)) < 1e-6);
+    terreno.quotaAcqua = false;
+  }
+
+  // --- Il punto vivo ---------------------------------------------------
+  //
+  // Il filtro dell'app accetta un fix ogni centocinquanta metri, ed è la
+  // regola giusta per il cielo — centocinquanta metri non spostano una
+  // stella di un pixel. Per il terreno è un balzo, e il paesaggio avanzava
+  // a scatti: fermo, salto, fermo, salto. È l'effetto fastidioso, e non ha
+  // niente a che vedere con lo scarico dei dati.
+  {
+    window.luogoCorrente = () => ({ lat: 45, lon: 9 });
+    delete window.skyLuogoDelCielo;
+    fermaMoto();
+    prova('da fermo non c\'è nessun punto vivo, e si disegna dove dice l\'app',
+      terrenoPuntoVivo() === null &&
+      Math.abs(terrenoPuntoDaDisegnare().lat - 45) < 1e-12);
+
+    // Venti metri al secondo verso nord, ultimo fix un secondo fa.
+    const ora = Date.now();
+    corri(20, [{ lat: 45 - 20 / 111195, lon: 9, quando: ora - 2000 },
+               { lat: 45, lon: 9, quando: ora - 1000 }]);
+    terrenoVivo.lat = null;
+    const p = terrenoPuntoVivo();
+    prova('in viaggio il punto vivo porta avanti l\'ultimo fix',
+      p !== null && (p.lat - 45) * 111195 > 12 && (p.lat - 45) * 111195 < 30,
+      p ? `${((p.lat - 45) * 111195).toFixed(1)} m più avanti` : 'nessuno');
+
+    // Se il GPS tace, l'estrapolazione si ferma: non si inventa strada.
+    corri(20, [{ lat: 45 - 20 / 111195, lon: 9, quando: ora - 31000 },
+               { lat: 45, lon: 9, quando: ora - 30000 }]);
+    terrenoVivo.lat = null;
+    const fermo = terrenoPuntoVivo();
+    prova('un GPS che tace non autorizza a inventare chilometri di strada',
+      fermo !== null && (fermo.lat - 45) * 111195 <= 20 * TERRENO_VIVO_MAX_MS / 1000 + 1,
+      `${((fermo.lat - 45) * 111195).toFixed(0)} m di estrapolazione`);
+
+    // La posizione scelta a mano: il fix parla di un altro posto, e il punto
+    // vivo si spegne invece di trascinare il paesaggio a duecento chilometri
+    // da dove l'utente ha detto di essere.
+    window.luogoCorrente = () => ({ lat: 44, lon: 11 });
+    terrenoVivo.lat = null;
+    prova('un fix che parla di un altro posto non muove niente',
+      terrenoPuntoVivo() === null);
+
+    // E il planetario spostato a guardare il cielo di un'altra città: lì il
+    // punto è quello scelto, e non si muove di un metro per quanto si corra.
+    window.luogoCorrente = () => ({ lat: 45, lon: 9 });
+    window.skyLuogoDelCielo = () => ({ lat: 45, lon: 9, proprio: true });
+    terrenoVivo.lat = null;
+    prova('e col cielo spostato altrove il punto vivo tace del tutto',
+      terrenoPuntoVivo() === null &&
+      Math.abs(terrenoPuntoDaDisegnare().lat - 45) < 1e-12);
+  }
+
+  fermaMoto();
+  terrenoMoto.fix.length = 0;
+  salva.fix.forEach(f => terrenoMoto.fix.push(f));
+  terrenoMoto.velocita = salva.velocita; terrenoMoto.ultimoMoto = salva.ultimoMoto;
+  terrenoVivo.lat = salva.vivoLat; terrenoVivo.lon = salva.vivoLon; terrenoVivo.quando = salva.vivoQuando;
+  terreno.lat = salva.tLat; terreno.lon = salva.tLon;
+  terreno.quota = salva.tQuota; terreno.quotaAcqua = salva.tAcqua;
+  rilievo.quota = salva.rQuota; rilievo.alt = salva.rAlt;
+  rilievo.cresta = salva.rCresta; rilievo.fronte = salva.rFronte;
+  rilievo.lat = salva.rLat; rilievo.lon = salva.rLon;
+  rilievo.occhio = salva.rOcchio; rilievo.scarto = salva.rScarto;
+  rilievo.occhioOra = salva.rOcchioOra; rilievo.acceso = salva.rAcceso;
+  rilTessere = salva.tessere; rilLatoTessera = salva.lato;
+  cime.lat = salva.cimeLat; cime.lon = salva.cimeLon;
+  if (salva.luogo === undefined) delete window.luogoCorrente; else window.luogoCorrente = salva.luogo;
+  if (salva.vista === undefined) delete window.skyLuogoDelCielo; else window.skyLuogoDelCielo = salva.vista;
+}
+
 // Rimettere a posto la `fetch` vera: da qui in giù la pagina torna a parlare
 // col mondo, e le prove che aspettano hanno già catturato quella finta.
 Promise.all(proveInVolo).then(() => { window.fetch = overVero; },
