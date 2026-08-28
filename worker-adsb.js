@@ -435,7 +435,10 @@ async function diagnosticaOpenSky(env) {
       if (riuscito) break;
     }
   } else {
-    passi.push({ passo: 'token', esito: 'saltato', guasto: 'autenticazione di base: nessun token da chiedere' });
+    passi.push({ passo: 'token', esito: 'saltato',
+      guasto: (pieno(env && env.OPENSKY_USER) && pieno(env && env.OPENSKY_PASS))
+        ? 'autenticazione di base: nessun token da chiedere'
+        : 'nessuna credenziale configurata: niente da autenticare' });
   }
 
   return passi;
@@ -450,6 +453,15 @@ async function diagnostica(url, env) {
   const di = Math.max(1, Math.min(250, Math.ceil(Number.isFinite(dist) ? dist : 50)));
   const fonti = fontiDi(env);
 
+  // La prova dei passi di OpenSky si fa **sempre**, anche senza credenziali —
+  // ed e' proprio allora che serve di piu'. Il primo passo non ne usa: dice
+  // se da questa piattaforma si arriva a OpenSky, che e' la domanda da fare
+  // quando si sta provando un fornitore nuovo, cioe' quando le credenziali
+  // non sono ancora state messe. Legandola alla presenza delle credenziali,
+  // come faceva prima, la risposta arrivava solo dopo averle configurate: il
+  // giro piu' lungo per sapere se valeva la pena configurarle.
+  const openSkyPassi = await diagnosticaOpenSky(env);
+
   const prove = await Promise.all(fonti.map(async fonte => {
     const inizio = Date.now();
     const controller = new AbortController();
@@ -461,10 +473,11 @@ async function diagnostica(url, env) {
           const dati = JSON.parse(testo);
           return { feed: fonte.nome, esito: 'ok', ms: Date.now() - inizio, aerei: dati.ac.length };
         } catch (errore) {
-          // Fallendo, OpenSky non si limita a dire di no: dice a che passo.
+          // I passi non si rifanno qui: girano una volta sola in cima (vedi
+          // `openSkyPassi`), e ripeterli costerebbe un'altra manciata di
+          // secondi per dire la stessa cosa.
           return { feed: fonte.nome, esito: 'no', ms: Date.now() - inizio,
-            guasto: motivo(errore), corpo: errore && errore.corpo,
-            passi: await diagnosticaOpenSky(env) };
+            guasto: motivo(errore), corpo: errore && errore.corpo };
         }
       }
       const risposta = await fetch(fonte.url(la, lo, di), {
@@ -514,6 +527,7 @@ async function diagnostica(url, env) {
     // secret non compare qui e non deve comparire da nessuna parte.
     piattaforma: nomePiattaforma(),
     variabiliViste: Object.keys(env || {}).sort(),
+    openSkyPassi,
     openSkyDettaglio: {
       OPENSKY_CLIENT_ID: descriviVoce(env && env.OPENSKY_CLIENT_ID),
       OPENSKY_CLIENT_SECRET: descriviVoce(env && env.OPENSKY_CLIENT_SECRET),
