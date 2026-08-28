@@ -103,47 +103,46 @@ e l'app continua a provare i feed diretti come prima. Cambiare `CACHE_NAME`
 
 ---
 
-## Cloudflare non va bene, ed è una misura
+## Su Cloudflare non funziona, su Deno sì — ed è tutto qui
 
-Da un Cloudflare Worker **tutte e cinque le fonti sono inutilizzabili**:
+La stessa identica quarantina di righe, la stessa ora, le stesse fonti:
 
-| | dal browser (IP di casa) | dal Worker (IP Cloudflare) |
-|---|---|---|
-| ADSB.fi | nessun header CORS | 403 (pagina Cloudflare) |
-| adsb.lol | nessun header CORS | 429 (nginx) |
-| Airplanes.live | nessun header CORS | 403 «scrivici una mail» |
-| adsb.one | nessun header CORS | 403 (pagina Cloudflare) |
-| OpenSky | **200**, ma CORS legato al loro dominio | **nessuna risposta** (15 s) |
+| | dal browser (IP di casa) | da Cloudflare Workers | da Deno Deploy |
+|---|---|---|---|
+| ADSB.fi | nessun header CORS | 403 | **200, 22 aerei, 32 ms** |
+| adsb.lol | nessun header CORS | 429 | **200, 21 aerei, 115 ms** |
+| Airplanes.live | nessun header CORS | 403 «scrivici» | 403 «scrivici» |
+| adsb.one | nessun header CORS | 403 | 403 |
+| OpenSky | 200, ma CORS legato al loro dominio | **nessuna risposta** (15 s) | **200 in 189 ms** |
 
-La riga di OpenSky è quella che decide: la prova senza credenziali va in
-scadenza a quindici secondi, mentre dal browser lo stesso identico indirizzo
-risponde `200 (OK)` in un attimo. Non è lentezza, è un blocco.
+Non era il codice, non erano le credenziali, non era OpenSky: era l'indirizzo
+IP. Un Cloudflare Worker non ne ha uno proprio — ne divide un pugno con
+migliaia di altri — e questi servizi si difendono guardando lì. Da Deno la
+stessa richiesta passa senza che nulla cambi nel file.
 
-La causa è sempre la stessa: un Worker non ha un IP proprio, ne divide un
-pugno con migliaia di altri, e questi servizi si difendono guardando lì.
-Nessuna riga di codice lo aggira, e nemmeno ci si deve provare.
+**La conclusione pratica: il proxy va distribuito su Deno Deploy, non su
+Cloudflare.** `worker-adsb.js` gira su entrambi — è scritto in Web standard,
+`export default { fetch }` con Request e Response — e il nome è rimasto quello
+per non rompere i riferimenti, ma il posto giusto è Deno.
 
-**La cura è cambiare fornitore di proxy**, non codice: `worker-adsb.js` è
-scritto in Web standard (`export default { fetch }`, Request e Response) e
-gira **uguale su Deno Deploy**, che esce da altri indirizzi.
+Le credenziali OpenSky non sono nemmeno necessarie per partire: da Deno due
+reti di comunità rispondono da sole, e OpenSky risponde 200 anche senza. Restano
+consigliate come **terza fonte**, per non dipendere da chi può cambiare
+politica domani.
 
 ### Distribuirlo su Deno Deploy
 
 1. [dash.deno.com](https://dash.deno.com), accesso con GitHub (gratuito, niente carta).
-2. **New Playground** è la via più rapida per provare: incolla `worker-adsb.js`
-   e premi Save & Deploy. Per la versione definitiva conviene invece **New
-   Project → collega il repository**, con `worker-adsb.js` come punto di
-   ingresso: così si aggiorna da solo a ogni push, come faceva Cloudflare.
-3. **Settings → Environment Variables**: `OPENSKY_CLIENT_ID` e
-   `OPENSKY_CLIENT_SECRET`.
-4. Apri `https://IL-TUO-PROGETTO.deno.dev/api/diagnostica?lat=45.4642&lon=9.1900&dist=50`.
-   Il campo `piattaforma` deve dire `Deno`, e il passo `raggiungibile` di
-   OpenSky deve rispondere `http: 200` invece di scadere.
-5. Se risponde, aggiorna la variabile `ADSB_PROXY_URL` su GitHub col nuovo
-   indirizzo e rilancia **Pubblica il sito**.
-
-Se anche da lì OpenSky tace, il fornitore successivo da provare è Vercel (che
-esce da AWS invece che da Google Cloud). Il file non cambia.
+2. **New Playground** per provare in trenta secondi: incolla `worker-adsb.js`,
+   Save & Deploy. Per la versione definitiva conviene **New Project → collega
+   il repository** con `worker-adsb.js` come punto di ingresso, così si
+   aggiorna da solo a ogni push.
+3. Aprendo l'indirizzo nudo, la radice si presenta e stampa il link della
+   diagnostica già pronto. Il campo `piattaforma` deve dire `Deno`.
+4. Facoltativo ma consigliato: **Settings → Environment Variables**,
+   `OPENSKY_CLIENT_ID` e `OPENSKY_CLIENT_SECRET`.
+5. Metti quell'indirizzo in `ADSB_PROXY_URL` fra le *Variables* del repository
+   e rilancia **Pubblica il sito**.
 
 ## OpenSky, cioè la fonte che funziona davvero
 
