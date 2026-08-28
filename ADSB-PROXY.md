@@ -103,6 +103,48 @@ e l'app continua a provare i feed diretti come prima. Cambiare `CACHE_NAME`
 
 ---
 
+## Cloudflare non va bene, ed è una misura
+
+Da un Cloudflare Worker **tutte e cinque le fonti sono inutilizzabili**:
+
+| | dal browser (IP di casa) | dal Worker (IP Cloudflare) |
+|---|---|---|
+| ADSB.fi | nessun header CORS | 403 (pagina Cloudflare) |
+| adsb.lol | nessun header CORS | 429 (nginx) |
+| Airplanes.live | nessun header CORS | 403 «scrivici una mail» |
+| adsb.one | nessun header CORS | 403 (pagina Cloudflare) |
+| OpenSky | **200**, ma CORS legato al loro dominio | **nessuna risposta** (15 s) |
+
+La riga di OpenSky è quella che decide: la prova senza credenziali va in
+scadenza a quindici secondi, mentre dal browser lo stesso identico indirizzo
+risponde `200 (OK)` in un attimo. Non è lentezza, è un blocco.
+
+La causa è sempre la stessa: un Worker non ha un IP proprio, ne divide un
+pugno con migliaia di altri, e questi servizi si difendono guardando lì.
+Nessuna riga di codice lo aggira, e nemmeno ci si deve provare.
+
+**La cura è cambiare fornitore di proxy**, non codice: `worker-adsb.js` è
+scritto in Web standard (`export default { fetch }`, Request e Response) e
+gira **uguale su Deno Deploy**, che esce da altri indirizzi.
+
+### Distribuirlo su Deno Deploy
+
+1. [dash.deno.com](https://dash.deno.com), accesso con GitHub (gratuito, niente carta).
+2. **New Playground** è la via più rapida per provare: incolla `worker-adsb.js`
+   e premi Save & Deploy. Per la versione definitiva conviene invece **New
+   Project → collega il repository**, con `worker-adsb.js` come punto di
+   ingresso: così si aggiorna da solo a ogni push, come faceva Cloudflare.
+3. **Settings → Environment Variables**: `OPENSKY_CLIENT_ID` e
+   `OPENSKY_CLIENT_SECRET`.
+4. Apri `https://IL-TUO-PROGETTO.deno.dev/api/diagnostica?lat=45.4642&lon=9.1900&dist=50`.
+   Il campo `piattaforma` deve dire `Deno`, e il passo `raggiungibile` di
+   OpenSky deve rispondere `http: 200` invece di scadere.
+5. Se risponde, aggiorna la variabile `ADSB_PROXY_URL` su GitHub col nuovo
+   indirizzo e rilancia **Pubblica il sito**.
+
+Se anche da lì OpenSky tace, il fornitore successivo da provare è Vercel (che
+esce da AWS invece che da Google Cloud). Il file non cambia.
+
 ## OpenSky, cioè la fonte che funziona davvero
 
 Le quattro reti di comunità (`ADSB.fi`, `adsb.lol`, `Airplanes.live`,
