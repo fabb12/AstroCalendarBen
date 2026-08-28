@@ -7495,12 +7495,10 @@ adsbAttendi('una porta caduta lascia SUBITO il posto, senza aspettare l\'affianc
 
 adsbAttendi('la sveglia è di tutta la corsa, non di ogni porta', async () => {
   // È la proprietà che rende **gratis** le porte in più: con una sveglia per
-  // tentativo, passare da tre reti a nove vorrebbe dire passare da mezzo
+  // tentativo, aggiungere reti vorrebbe dire passare da mezzo
   // minuto a due di silenzio prima di dire «non ce l'ho fatta».
   const corsaMs = 700;
-  const r = await adsbCorsa({ 'adsb': { tipo: 'muto' }, 'airplanes': { tipo: 'muto' },
-                              'origins': { tipo: 'muto' }, 'corsproxy': { tipo: 'muto' },
-                              'codetabs': { tipo: 'muto' } },
+  const r = await adsbCorsa({ 'adsb': { tipo: 'muto' }, 'airplanes': { tipo: 'muto' } },
     { affiancaMs: 60, attesaMs: 5000, corsaMs });
   return { esito: !!r.guaio && r.ms >= corsaMs * 0.7 && r.ms < corsaMs * 3,
            nota: `arresa dopo ${r.ms.toFixed(0)} ms su ${corsaMs} di scadenza` };
@@ -7548,14 +7546,13 @@ adsbAttendi('il guasto raccontato è quello del servizio, non la nostra sveglia'
 }
 
 adsbAttendi('una pagina HTML restituita con 200 non ferma la corsa', async () => {
-  // È il caso vero: i feed diretti passano da un ponte in difficoltà che
-  // risponde 200 con dentro il proprio messaggio d'errore. Prima la corsa si
-  // fermava lì con «zero aerei»; adesso arriva fino al ponte che funziona.
+  // È il caso vero: una rete in difficoltà può rispondere 200 con dentro il
+  // proprio messaggio d'errore. Prima la corsa si
+  // fermava lì con «zero aerei»; adesso arriva fino alla rete che funziona.
   const r = await adsbCorsa({ 'adsb.fi': { tipo: 'html' }, 'adsb.lol': { tipo: 'html' },
-                              'airplanes.live': { tipo: 'html' }, 'adsb.one': { tipo: 'html' },
-                              'allorigins': { tipo: 'ok', quanti: 4 } },
+                              'airplanes.live': { tipo: 'html' }, 'adsb.one': { tipo: 'ok', quanti: 4 } },
     { affiancaMs: 40, attesaMs: 800, corsaMs: 3000 });
-  return { esito: !!r.esito && r.esito.aerei.length === 4 && /AllOrigins/.test(r.esito.provider.nome),
+  return { esito: !!r.esito && r.esito.aerei.length === 4 && r.esito.provider.nome === 'adsb.one',
            nota: r.esito ? `${r.esito.aerei.length} aerei da ${r.esito.provider.nome}` : 'nessuno' };
 });
 

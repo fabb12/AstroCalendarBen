@@ -2,8 +2,10 @@
 //
 // I provider e tutto il trasporto stanno qui: GitHub Pages non puo fare da
 // proxy. Alcuni feed ADS-B autorizzano le richieste del browser solo in modo
-// intermittente o differente secondo la rete: si provano prima i feed diretti
-// e poi, se il CORS li blocca, i ponti indipendenti.
+// intermittente o differente secondo la rete. Il percorso affidabile e' il
+// Worker del progetto; i feed diretti restano come emergenza. I proxy CORS
+// pubblici non sono provider ADS-B: applicano limiti e autenticazione propri
+// (401/408) e percio' non fanno piu' parte della corsa.
 //
 // LA LEZIONE DI QUESTO FILE, in una riga: **una porta ADS-B carica non
 // risponde «carico», tace** — e tacere consuma tutta la sveglia. Provandole in
@@ -196,32 +198,6 @@
       `/lon/${posizione.lon.toFixed(4)}/dist/${migliaNautiche}`;
   }
 
-  function urlAttraverso(ponte, destinazione) {
-    // Il browser deve parlare con il ponte, non con `destinazione`: aggiungere
-    // soltanto un'intestazione alla fetch non può correggere il CORS del server
-    // remoto. encodeURIComponent impedisce inoltre che i parametri del feed
-    // vengano interpretati come parametri del ponte.
-    return ponte + encodeURIComponent(destinazione);
-  }
-
-  function nomeDelPonte(ponte) {
-    if (ponte.indexOf('allorigins') !== -1) return 'AllOrigins';
-    if (ponte.indexOf('corsproxy') !== -1) return 'CorsProxy.io';
-    if (ponte.indexOf('codetabs') !== -1) return 'CodeTabs';
-    return 'ponte';
-  }
-
-  function providerConPonte(nome, ponte, urlFeed, interpreta = interpretaAdsbExchange) {
-    return {
-      nome: `${nome} via ${nomeDelPonte(ponte)}`,
-      rete: nome,
-      url(posizione, raggioKm) {
-        return urlAttraverso(ponte, urlFeed(posizione, raggioKm));
-      },
-      interpreta
-    };
-  }
-
   function providerDiretto(nome, urlFeed, interpreta = interpretaAdsbExchange) {
     return { nome, rete: nome, url: urlFeed, interpreta };
   }
@@ -233,12 +209,9 @@
   const feedAdsbOne = (posizione, raggioKm) =>
     urlAdsbExchange('api.adsb.one', posizione, raggioKm);
 
-  // Non affidare il percorso normale soltanto a un proxy CORS pubblico. I
-  // filtri anti-tracciamento usati soprattutto sui browser desktop possono
-  // bloccare AllOrigins o CorsProxy.io anche quando il feed ADS-B è
-  // raggiungibile. I feed diretti vengono quindi tentati per primi: se il
-  // browser ne rifiuta il CORS, fetch fallisce e la corsa passa subito ai
-  // ponti. Le reti dirette sono **quattro** e non una, e non è ridondanza
+  // Non affidare il percorso normale a un proxy CORS pubblico: quei servizi
+  // oggi chiedono autenticazione o scadono con 401/408. Le reti dirette sono
+  // **quattro** e non una, e non è ridondanza
   // decorativa: la sera in cui adsb.fi era in manutenzione, con una porta
   // sola il modulo non aveva niente da dire. Un eventuale proxy proprio può
   // sempre essere fornito con window.AEREI_PROVIDER o con ADSB_PROXY_URL.
@@ -246,12 +219,7 @@
     providerDiretto('ADSB.fi', urlAdsbFi),
     providerDiretto('adsb.lol', feedAdsbLol),
     providerDiretto('Airplanes.live', feedAirplanesLive),
-    providerDiretto('adsb.one', feedAdsbOne),
-    providerConPonte('adsb.lol', 'https://api.allorigins.win/raw?url=', feedAdsbLol),
-    providerConPonte('Airplanes.live', 'https://api.allorigins.win/raw?url=', feedAirplanesLive),
-    providerConPonte('adsb.lol', 'https://corsproxy.io/?url=', feedAdsbLol),
-    providerConPonte('ADSB.fi', 'https://corsproxy.io/?url=', urlAdsbFi),
-    providerConPonte('adsb.one', 'https://api.codetabs.com/v1/proxy?quest=', feedAdsbOne)
+    providerDiretto('adsb.one', feedAdsbOne)
   ];
 
   function providersDisponibili() {
@@ -354,7 +322,7 @@
   //    l'affiancamento serve a chi tace, non a chi ha già detto di no — e la
   //    sveglia grossa è di **tutta la corsa**: è quello che rende gratis le
   //    porte in più, perché con una sveglia per tentativo passare da tre a
-  //    nove porte vorrebbe dire passare da mezzo minuto a due di silenzio.
+  //    molte porte vorrebbe dire passare da mezzo minuto a due di silenzio.
   // =====================================================================
 
   function errNome(nome, messaggio) {
@@ -1466,7 +1434,7 @@
   window.aereiPosizioneCambiata = aereiPosizioneCambiata;
   window.aereiTrova = aereiTrova;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
-    interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky, urlAttraverso,
+    interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky,
     scaricaConRipiego, corsaProvider, providersPredefiniti, aereoAdesso, istanteMostratoMs, tempoReale,
     interpretaRotta, aeroportoTesto, aeroportoCoordinate, registraTracce, tracce, stato, providersDisponibili,
     FASCE_DISTANZA, fasciaDi, ordinaPerSalute, salute, segnaEsito, peggiore, fase, testoDiStato,
