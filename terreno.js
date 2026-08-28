@@ -4384,12 +4384,29 @@ const ACQUE_DEP_MAX_GRADI = 85;
 // ballottaggio.
 const ACQUE_OCCLUSIONE_MARGINE_GRADI = 0.05;
 
-// In quanti punti si guarda una banda per sapere quali suoi tratti si vedono.
-// Erano otto quando il conto cercava un taglio solo; adesso che si tengono
-// tutti i tratti scoperti conta anche **dove** cominciano, e dodici passi su
-// una banda di un chilometro sono ottanta metri di grana. Gira una volta per
-// terreno e per altezza dell'occhio, non a ogni fotogramma.
-const ACQUE_OCCLUSIONE_PASSI = 12;
+// Di quanto ci si scosta da una soglia per leggere la cresta di **prima**.
+// La cresta davanti è una scala a diciotto gradini (uno per distanza
+// campionata), e per sapere quanto è alto un gradino bisogna guardare da
+// tutt'e due le parti dello scalino: un metro basta e avanza.
+const ACQUE_SOGLIA_SCARTO_M = 1;
+
+// Quanto stretto si cerca il punto in cui l'acqua esce da dietro la cresta.
+// Dieci metri a un chilometro sono sei decimi di grado di depressione: sotto
+// quella misura il bordo non si muove più di un pixel a nessun ingrandimento
+// utile, e ogni dimezzamento in più è una valutazione della cresta in più.
+const ACQUE_OCCLUSIONE_FINE_M = 10;
+
+// Sotto questa lunghezza un tratto scoperto non è un tratto: è la grana del
+// modello del suolo. L'occlusione si calcola contro una griglia che ha
+// novanta metri di cella e diciotto distanze campionate, quindi un pezzo
+// d'acqua che spunta per sessanta metri fra due creste non è un pezzo
+// d'acqua — è il modo in cui quella griglia arrotonda. Tenerli vuol dire
+// riempire il bordo dei laghi di schegge larghe mezzo grado, ognuna
+// disegnata come una striscia a sé con le sue rive: gli spicchi.
+//
+// L'acqua che comincia **ai piedi** non passa di qui: lì la misura non è la
+// sua lunghezza, è tutto il pezzo di schermo sotto l'orizzonte.
+const ACQUE_TRATTO_MIN_M = 60;
 
 const ACQUE_ATTESA_MS = 30000;
 // Fin dove arriva la query corta di ripiego. Era un 12 scritto a mano dentro
@@ -4458,25 +4475,52 @@ function raggioAcque() { return raggi.acque; }
 // una relazione porta la geometria di ogni suo pezzo, e i pezzi vanno
 // **ricuciti** in anelli prima di poterli usare (`acqueCuciAnelli`): un arco
 // di riva, da solo, non ha un dentro.
+//
+// Due `out` e non uno, e non è pignoleria: è il motivo per cui i laghi
+// grandi potevano sparire del tutto.
+//
+// Un `out` con un tetto stampa gli elementi nell'ordine in cui il server li
+// tiene, cioè **prima tutte le vie e poi le relazioni**. Con un'unione sola e
+// un tetto di 1200, in una provincia di laghi il tetto se lo prendono le vie
+// — ogni stagno, ogni vasca, ogni tronco di fiume mappato come area, e i
+// corsi d'acqua sono spezzati in decine di vie a testa — e le relazioni non
+// vengono stampate affatto. Ma le relazioni **sono** i laghi grandi: il
+// Ceresio, il Lario, il Verbano, il Garda. Il sintomo è quello peggiore di
+// tutti, perché non è un errore ma un'assenza: il lago semplicemente non c'è,
+// e attorno restano le pozze e i fiumiciattoli che ci stavano nel tetto.
+//
+// Con due `out` ognuno ha il suo tetto: alle relazioni ne bastano poche —
+// dentro a venticinque chilometri i laghi con un multipoligono si contano
+// sulle dita — e non se le può mangiare nessuno.
 function acqueQueryOverpass(lat, lon) {
   const r = terrenoRiquadro(lat, lon, raggioAcque());
   const bb = `(${r.s.toFixed(4)},${r.o.toFixed(4)},${r.n.toFixed(4)},${r.e.toFixed(4)})`;
-  return '[out:json][timeout:25];(' +
+  return '[out:json][timeout:25];' +
+    `relation["natural"="water"]${bb};out geom 200;` +
+    '(' +
     `way["natural"="water"]${bb};` +
-    `relation["natural"="water"]${bb};` +
     `way["waterway"~"^(river|canal)$"]${bb};` +
-    ');out geom 1200;';
+    ');out geom 1000;';
 }
 
 // Il ripiego, per quando la richiesta larga si prende un 504: solo i laghi,
-// solo vicino, niente relazioni. È molto più corta e passa quasi sempre.
+// solo vicino. È molto più corta e passa quasi sempre.
+//
+// Le relazioni ci sono anche qui, e prima no. Erano state lasciate fuori
+// perché costano, ed è vero — ma dentro a dodici chilometri sono una manciata,
+// e sono proprio i laghi che uno guarda: rinunciarci vuol dire che quando la
+// richiesta larga non passa il ripiego restituisce le pozze e non il lago,
+// cioè la risposta che sembra funzionare ed è quella sbagliata. Anche qui
+// hanno il loro `out`, per la ragione della funzione qui sopra.
 function acqueQueryCorta(lat, lon) {
   const r = terrenoRiquadro(lat, lon, Math.min(ACQUE_RAGGIO_RIPIEGO_KM, raggioAcque()));
   const bb = `(${r.s.toFixed(4)},${r.o.toFixed(4)},${r.n.toFixed(4)},${r.e.toFixed(4)})`;
-  return '[out:json][timeout:20];(' +
+  return '[out:json][timeout:20];' +
+    `relation["natural"="water"]${bb};out geom 60;` +
+    '(' +
     `way["natural"="water"]${bb};` +
     `way["waterway"="river"]${bb};` +
-    ');out geom 500;';
+    ');out geom 400;';
 }
 
 // Due punti che sono lo stesso punto. Le vie di una relazione **condividono
@@ -4557,8 +4601,26 @@ function acqueCuciAnelli(archi) {
 // Da quello che risponde Overpass alle sole cose che servono: una lista di
 // tracciati, ognuno con il suo tipo, se è chiuso, e la sua larghezza se è
 // un corso d'acqua.
+//
+// Ogni tracciato si porta dietro due numeri e non uno, ed è una distinzione
+// che costa una riga e ne risolve parecchie più in là. `id` è **l'anello**,
+// ed è quello che serve alla parità dei tagli: un bordo chiuso ha un dentro
+// e un fuori suoi, e due anelli non si possono accoppiare fra loro. `corpo`
+// è **lo specchio d'acqua**, cioè l'elemento di OpenStreetMap da cui gli
+// anelli vengono: una relazione con due anelli esterni — il ramo di qua e il
+// ramo di là dello stesso lago — è un corpo solo.
+//
+// La differenza conta perché di uno specchio d'acqua ci sono due cose che
+// valgono per **tutto** lo specchio e non per un suo pezzo: il nome, e —
+// soprattutto — la quota della superficie. Un lago ha un livello solo, e
+// senza un modo di dire «questa banda e quella sono lo stesso lago» quella
+// quota si finisce per chiederla banda per banda a una griglia che ha
+// centocinquanta metri di passo: due colonne contigue leggono campioni
+// diversi, rispondono con qualche metro di scarto, e la superficie viene
+// disegnata a terrazze.
 function acqueLeggiElementi(elementi) {
   const fuori = [];
+  let corpo = -1;
   const aggiungi = (punti, tags, chiuso, nome) => {
     if (!Array.isArray(punti) || punti.length < 2) return;
     const corrente = tags && tags.waterway && !tags.natural;
@@ -4568,12 +4630,13 @@ function acqueLeggiElementi(elementi) {
       largo = isFinite(scritta) && scritta > 0
         ? scritta : (ACQUE_LARGHEZZA[tags.waterway] || ACQUE_LARGHEZZA.stream);
     }
-    fuori.push({ punti, corrente: !!corrente, largo, chiuso, nome: nome || '' });
+    fuori.push({ punti, corrente: !!corrente, largo, chiuso, nome: nome || '', corpo });
   };
 
   for (const e of elementi) {
     if (!e) continue;
     const tags = e.tags || {};
+    corpo++;
     // I fiumi mappati come area (`natural=water` + `water=river`) sono
     // poligoni e vanno trattati da poligoni, non da linee: il campo
     // `waterway` ce l'hanno lo stesso, e senza questo controllo un'ansa
@@ -4735,6 +4798,13 @@ function acqueTagliVuoti(limiteM) {
   // i nomi arrivavano fino a qui e poi sparivano, e sullo schermo i laghi
   // restavano senza etichetta (vedi `acqueBandeDaTagli`).
   tagli.nomi = new Map();
+  // E a che **specchio d'acqua** appartiene ogni anello. Sta qui accanto ai
+  // nomi e per la stessa ragione: è una proprietà del bordo e non
+  // dell'incrocio, e da qui la legge l'unico punto in cui una banda nasce.
+  // Serve poi a tutto quello che di uno specchio va detto una volta sola —
+  // la quota della superficie, e il fatto che due bande di colonne contigue
+  // siano lo stesso lago.
+  tagli.corpi = new Map();
   tagli.limite = limiteM;
   return tagli;
 }
@@ -4794,9 +4864,8 @@ function acqueFiumeAddosso(p, n, largo, tagli, id) {
       : Math.min(tetto, ((den > 0 ? mezzo : -mezzo) - perp) / den);
     if (!(t > 0.5)) continue;
     if (!tagli[b]) tagli[b] = [];
-    // Un attraversamento centrato sui piedi e profondo il doppio dell'uscita:
-    // `acqueBandeDaTagli` lo tosa a zero da sé e ne fa la banda [0, t].
-    tagli[b].push({ t: 0, fiume: true, prof: 2 * t, id });
+    // L'acqua comincia ai piedi e finisce dove il raggio esce dalla striscia.
+    tagli[b].push({ t: 0, fine: t, fiume: true, id });
   }
   return true;
 }
@@ -4832,6 +4901,13 @@ function acqueTagliaUno(tr, id, tagli, lat, lon, limiteM) {
   // Il nome si segna qui, una volta per specchio d'acqua: da qui in poi un
   // incrocio è un numero e una distanza, e il numero basta a ritrovarlo.
   if (tr.nome && tagli.nomi && !tagli.nomi.has(id)) tagli.nomi.set(id, tr.nome);
+  // E a che specchio appartiene questo anello. Senza un'entrata sua — un
+  // tracciato che arriva da un salvataggio vecchio, o dalle prove — l'anello
+  // fa specchio per conto suo, che è la risposta di prima e non sbaglia mai
+  // in modo pericoloso: al più tiene separate due metà dello stesso lago.
+  if (tagli.corpi && !tagli.corpi.has(id)) {
+    tagli.corpi.set(id, typeof tr.corpo === 'number' ? tr.corpo : id);
+  }
 
   // Un corso d'acqua che ci passa sotto i piedi: la sua acqua non nasce da
   // nessun attraversamento, e va disegnata a parte (vedi `acqueFiumeAddosso`).
@@ -4884,12 +4960,32 @@ function acqueTagliaUno(tr, id, tagli, lat, lon, limiteM) {
       if (u < 0 || u >= 1) continue;
       if (!tagli[b]) tagli[b] = [];
       if (tr.corrente) {
-        // Quanto è profondo l'attraversamento: la larghezza divisa il
-        // seno dell'angolo fra il raggio e la riva.
+        // Dove il raggio entra nella striscia del corso d'acqua e dove ne
+        // esce. Il conto è esatto e vale la pena scriverlo, perché la forma
+        // che se ne ricava è **la** forma di un fiume disegnato di sbieco:
+        // il raggio taglia l'asse a distanza `t`, e la mezza corda è
+        // `largo / (2·sen)` con `sen` il seno dell'angolo fra il raggio e la
+        // riva. Da lì viene anche il fatto che entrata e uscita non sono mai
+        // simmetriche attorno ai piedi: `t·sen` **è** la distanza
+        // perpendicolare dall'asse, quindi l'entrata cade a distanza
+        // negativa esattamente quando ci si sta dentro — e in quel caso
+        // l'acqua comincia davvero dalle scarpe.
+        //
+        // Prima il seno aveva un pavimento a 0,12 e la corda era tosata
+        // simmetricamente attorno a `t`. Il pavimento è quello che faceva
+        // danno: su un lato quasi parallelo al raggio gonfiava la corda fino
+        // a otto larghezze, e la sua metà si mangiava tutta la distanza —
+        // così un fiume a centocinquanta metri risultava cominciare **ai
+        // piedi**, cioè disegnato dal nadir in su, mentre la direzione
+        // accanto lo teneva dov'era. Sono gli spicchi che si vedevano
+        // accanto ai corsi d'acqua di sbieco. Il tetto resta, ma tosa il
+        // solo capo lontano: un fiume guardato per il verso lungo non si
+        // vede fino all'orizzonte, ma comincia dove comincia.
         const sen = Math.abs(det / len);
-        const prof = Math.min(tr.largo * ACQUE_FIUME_MAX,
-          tr.largo / Math.max(0.12, sen));
-        tagli[b].push({ t, fiume: true, prof, id });
+        const mezzaCorda = sen > 1e-6 ? tr.largo / (2 * sen) : Infinity;
+        const dentro = Math.max(0, t - mezzaCorda);
+        const fine = Math.min(t + mezzaCorda, dentro + tr.largo * ACQUE_FIUME_MAX);
+        tagli[b].push({ t: dentro, fine, fiume: true, id });
       } else {
         // `id` serve alla parità: gli incroci si accoppiano **per
         // poligono** e non tutti insieme. Con due laghi che si
@@ -4974,6 +5070,10 @@ function acqueBandeDaTagli(tagli) {
   // dimenticare una volta sola invece che in quattro.
   const nomi = (tagli && tagli.nomi) || null;
   const nomeDi = id => (nomi && nomi.get(id)) || '';
+  // E di che specchio d'acqua è, che è la stessa storia del nome: si legge
+  // qui perché qui è l'unico posto in cui una banda nasce.
+  const corpi = (tagli && tagli.corpi) || null;
+  const corpoDi = id => (corpi && corpi.has(id)) ? corpi.get(id) : id;
 
   for (let b = 0; b < ACQUE_DIREZIONI; b++) {
     const lista = tagli[b];
@@ -4990,7 +5090,7 @@ function acqueBandeDaTagli(tagli) {
       lista.sort((x, y) => x.t - y.t);
       for (const c of lista) {
         if (c.fiume) {
-          pezzi.push([Math.max(0, c.t - c.prof / 2), c.t + c.prof / 2, 1, nomeDi(c.id)]);
+          pezzi.push([Math.max(0, c.t), c.fine, 1, nomeDi(c.id), corpoDi(c.id)]);
           continue;
         }
         let p = perPoligono.get(c.id);
@@ -5002,18 +5102,34 @@ function acqueBandeDaTagli(tagli) {
     perPoligono.forEach((p, id) => {
       const ts = p.ts;
       const nome = nomeDi(id);
+      const corpo = corpoDi(id);
       let k = 0;
       // Ci stiamo dentro: il primo taglio è la riva, e l'acqua comincia **ai
       // piedi**. È la banda che prima non veniva generata affatto, e la sua
       // mancanza è tutto il guasto: senza di lei chi sta in mezzo a un lago
       // vede l'acqua cominciare dalla riva opposta.
-      if (sommersi && sommersi.has(id)) { pezzi.push([0, ts[0], 0, nome]); k = 1; }
-      for (; k + 1 < ts.length; k += 2) pezzi.push([ts[k], ts[k + 1], 0, nome]);
-      // Un taglio spaiato in fondo (capita ai bordi del riquadro scaricato,
-      // dove il poligono è tagliato a metà) si chiude sul limite invece di
-      // buttarlo: un lago che continua oltre i venticinque chilometri è
-      // comunque un lago fino a lì.
-      if (k < ts.length) pezzi.push([ts[k], ts[k] + 200, 0, nome]);
+      if (sommersi && sommersi.has(id)) { pezzi.push([0, ts[0], 0, nome, corpo]); k = 1; }
+      for (; k + 1 < ts.length; k += 2) pezzi.push([ts[k], ts[k + 1], 0, nome, corpo]);
+      // Un taglio spaiato in fondo: la riva di là sta oltre il raggio di
+      // ricerca, quindi il suo incrocio è stato scartato e l'ingresso resta
+      // senza uscita. Si chiude **sul limite**, che è la sola risposta onesta:
+      // un lago che continua oltre i venticinque chilometri è comunque un lago
+      // fino a lì.
+      //
+      // Il codice però aggiungeva duecento metri e basta, contro quello che
+      // il suo stesso commento diceva — e duecento metri, accanto a una
+      // direzione in cui la riva di là ci sta dentro e la banda è lunga sei
+      // chilometri, non sono un lago: sono una scheggia. È il ritaglio a
+      // punta che si vedeva sul bordo dei laghi grandi, ed è per costruzione
+      // che compariva sempre e solo dove il lago esce dal raggio.
+      //
+      // Senza un limite dichiarato (tagli costruiti a mano) si torna alla
+      // vecchia coda di duecento metri: una banda lunga infinito finirebbe in
+      // `localStorage` come `null`, che è un modo di rompere il salvataggio.
+      if (k < ts.length) {
+        pezzi.push([ts[k], isFinite(limite) ? Math.max(ts[k] + 1, limite) : ts[k] + 200,
+                    0, nome, corpo]);
+      }
     });
 
     // Sommersi in uno specchio che in questa direzione non ha nessun taglio:
@@ -5023,7 +5139,7 @@ function acqueBandeDaTagli(tagli) {
     // è una ragione per non disegnarla.
     if (sommersi) {
       sommersi.forEach(id => {
-        if (!perPoligono.has(id)) pezzi.push([0, limite, 0, nomeDi(id)]);
+        if (!perPoligono.has(id)) pezzi.push([0, limite, 0, nomeDi(id), corpoDi(id)]);
       });
     }
     if (!pezzi.length) { bande[b] = null; continue; }
@@ -5033,12 +5149,18 @@ function acqueBandeDaTagli(tagli) {
     for (const p of pezzi) {
       const ultimo = uniti[uniti.length - 1];
       if (ultimo && p[0] <= ultimo[1] + 3) {
+        // Un lago che inghiotte un fiume resta un lago: tipo, nome e specchio
+        // li decide il pezzo più lungo, che è quello che si vede. Le due
+        // lunghezze vanno confrontate **prima** di allungare la banda, se no
+        // si mette a paragone il pezzo nuovo con l'unione dei due e a vincere
+        // è sempre chi c'era già.
+        const eraLungo = ultimo[1] - ultimo[0];
+        const nuovoLungo = p[1] - p[0];
         ultimo[1] = Math.max(ultimo[1], p[1]);
-        // Un lago che inghiotte un fiume resta un lago: il tipo lo decide
-        // il pezzo più lungo, che è quello che si vede.
-        if (p[1] - p[0] > ultimo[1] - ultimo[0]) { ultimo[2] = p[2]; ultimo[3] = p[3]; } else if (!ultimo[3] && p[3]) { ultimo[3] = p[3]; }
+        if (nuovoLungo > eraLungo) { ultimo[2] = p[2]; ultimo[3] = p[3]; ultimo[4] = p[4]; }
+        else if (!ultimo[3] && p[3]) { ultimo[3] = p[3]; }
       } else {
-        uniti.push([Math.round(p[0]), Math.round(p[1]), p[2], p[3]]);
+        uniti.push([Math.round(p[0]), Math.round(p[1]), p[2], p[3], p[4]]);
       }
     }
     bande[b] = uniti.length ? uniti : null;
@@ -5085,7 +5207,14 @@ function acqueNomiGrandi(tracciati, lat, lon) {
 // La 4 invalida le bande ricavate chiudendo artificialmente i membri aperti
 // delle relazioni: senza, chi aveva già visitato il Lago di Como continuava
 // a vedere gli spicchi sbagliati anche dopo la correzione della geometria.
-const ACQUE_VERSIONE = 4;
+//
+// La 5 aggiunge il quinto posto, cioè **di che specchio d'acqua** è la banda.
+// Da lì dipende la quota della superficie — un livello per lago invece di uno
+// per banda — e il fatto che due bande di colonne contigue si riconoscano
+// come lo stesso lago al momento di disegnarle. Senza, si legge benissimo e
+// ogni banda fa lago per conto suo: la superficie torna a terrazze e le
+// strisce a spicchi, che è esattamente la cosa che si sta togliendo.
+const ACQUE_VERSIONE = 5;
 
 function acqueArchivio() {
   try {
@@ -5367,6 +5496,106 @@ function acqueDepressione(quota, occhio, m) {
   return Math.max(-ACQUE_DEP_MAX_GRADI, Math.min(ACQUE_DEP_MAX_GRADI, a));
 }
 
+// Di che specchio d'acqua è questa banda. Le bande salvate da una versione
+// precedente non ce l'hanno, e allora ognuna fa specchio per conto suo: è la
+// risposta di prima, e non sbaglia mai in modo pericoloso.
+function acqueCorpoDiBanda(banda, b, k) {
+  return typeof banda[4] === 'number' ? banda[4] : `~${b}.${k}`;
+}
+
+// A che quota sta la superficie di ogni specchio d'acqua in vista.
+//
+// **Una quota per lago, non una per banda**, ed è la correzione da cui
+// dipende tutto il resto di questa sezione. Un lago ha un livello solo: il
+// Ceresio sta a 271 metri dalla punta di Porlezza a quella di Ponte Tresa, e
+// il fatto che lo si guardi verso nord o verso nord-nordest non lo cambia di
+// un centimetro.
+//
+// Chiedere quella quota **banda per banda**, com'era, vuol dire chiederla a
+// una griglia che ha centocinquanta metri di passo nel primo anello e
+// chilometri più in là: due colonne contigue prendono campioni diversi, e
+// dove una banda è corta — la punta di un ramo, il tratto che spunta da
+// dietro un promontorio — dentro non ci casca nessun campione e si finisce
+// sul ripiego, che pesca sulla **riva**. Misurato su una scena di prova:
+// 271 metri in una direzione e 290 in quella accanto, cioè lo stesso lago
+// disegnato a due altezze diverse a mezzo grado di distanza. Sullo schermo
+// sono terrazze, gradini e — quando la riva risulta più in alto dell'occhio —
+// bande che spariscono del tutto, lasciando dei buchi a spicchio in mezzo
+// all'acqua.
+//
+// Qui invece i campioni si mettono insieme: **tutti** quelli che cascano
+// dentro a **una qualunque** banda di quello specchio, in qualunque
+// direzione, e di quelli si prende il minimo. Il minimo e non la mediana per
+// la ragione di sempre — un modello del suolo spiana i laghi, quindi i
+// campioni che stanno davvero sull'acqua sono tutti uguali fra loro e gli
+// unici a sballare sono quelli che sbordano sulla riva, che stanno **sopra**.
+//
+// Chi non ha nemmeno un campione dentro — un fiume, un laghetto, lo specchio
+// che si ha davanti alle scarpe — ripiega su quello che si sa comunque: il
+// suolo sotto i piedi se l'acqua comincia da lì, e in ogni caso il più basso
+// dei campioni che abbracciano le sue bande. Anche il ripiego, però, si
+// decide **una volta per specchio**: è quello che tiene la superficie piatta.
+function acqueQuoteDeiCorpi(bande) {
+  const quote = new Map();
+  if (!bande || !terreno.quote) return quote;
+  const nd = TERRENO_DISTANZE.length;
+  const conta = (corpo, campo, q) => {
+    if (typeof q !== 'number') return;
+    let v = quote.get(corpo);
+    if (!v) { v = { dentro: null, attorno: null }; quote.set(corpo, v); }
+    if (v[campo] === null || q < v[campo]) v[campo] = q;
+  };
+
+  for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+    const lista = bande[b];
+    if (!lista) continue;
+    const az = b * ACQUE_PASSO_AZ;
+    const dove = (((az % 360) + 360) % 360) / TERRENO_PASSO_AZ;
+    const i = Math.floor(dove) % TERRENO_DIREZIONI;
+    const j = (i + 1) % TERRENO_DIREZIONI;
+    const t = dove - Math.floor(dove);
+    for (let k = 0; k < lista.length; k++) {
+      const banda = lista[k];
+      const corpo = acqueCorpoDiBanda(banda, b, k);
+      const vicino = banda[0], lontano = banda[1];
+      // Un corso d'acqua è **sempre** più stretto del passo della griglia, e
+      // per lui «i campioni che cascano dentro alla banda» non vuol dire
+      // niente: guardato di sbieco un fiume largo sessanta metri fa una banda
+      // lunga mezzo chilometro, e i campioni che ci cascano dentro stanno
+      // sulla riva, non nell'acqua. Prendendoli per la superficie si ottiene
+      // un fiume alto quanto la sponda di là — cioè, dove la sponda sale,
+      // sopra l'occhio: la banda viene scartata come «non è superficie» e il
+      // fiume non si disegna affatto. Per lui contano solo i campioni che lo
+      // abbracciano e il suolo sotto i piedi.
+      const stretto = banda[2] === 1;
+      // Un'acqua che comincia **dentro al primo anello** non può stare più in
+      // alto del suolo su cui si sta: se no ci scorrerebbe addosso.
+      if (vicino < TERRENO_DISTANZE[0] * 1000 && typeof terreno.quota === 'number') {
+        conta(corpo, 'attorno', terreno.quota);
+      }
+      let prima = null, dopo = null;
+      for (let d = 0; d < nd; d++) {
+        const m = TERRENO_DISTANZE[d] * 1000;
+        const qa = terreno.quote[i * nd + d], qb = terreno.quote[j * nd + d];
+        if (typeof qa !== 'number' || typeof qb !== 'number') continue;
+        const q = qa + (qb - qa) * t;
+        if (m >= vicino && m <= lontano) { if (!stretto) conta(corpo, 'dentro', q); }
+        else if (m < vicino) prima = q;
+        else if (dopo === null) dopo = q;
+      }
+      conta(corpo, 'attorno', prima);
+      conta(corpo, 'attorno', dopo);
+    }
+  }
+
+  const fuori = new Map();
+  quote.forEach((v, corpo) => {
+    const q = v.dentro !== null ? v.dentro : v.attorno;
+    if (q !== null) fuori.set(corpo, q);
+  });
+  return fuori;
+}
+
 // A che quota sta la superficie su cui si sta, quando ci si sta dentro.
 //
 // Il modello del suolo spiana gli specchi d'acqua, quindi la risposta è già
@@ -5393,6 +5622,13 @@ function acqueDepressione(quota, occhio, m) {
 // superiore onesto (la riva sta sopra l'acqua, non sotto). Quel caso si
 // aggiusta da sé: la quota resta segnata come stimata, `terrenoDaCompletare`
 // la richiede, e quando la misura del punto arriva vince lei.
+//
+// Quali campioni sono acqua nostra lo dice adesso lo stesso conto che serve
+// al disegno (`acqueQuoteDeiCorpi`): lo specchio in cui si sta è quello le
+// cui bande cominciano **ai piedi**, e la sua superficie è il minimo dei
+// campioni che cascano dentro a una qualunque delle sue bande — non solo di
+// quelle davanti alle scarpe. È la stessa acqua, e guardarla tutta vuol dire
+// avere qualche campione buono anche quando qui vicino non ce n'è nessuno.
 function acqueQuotaSuperficie() {
   const nd = TERRENO_DISTANZE.length;
   let acquaMin = null, anelloMin = null;
@@ -5400,14 +5636,15 @@ function acqueQuotaSuperficie() {
     for (let i = 0; i < TERRENO_DIREZIONI; i++) {
       const q0 = terreno.quote[i * nd];
       if (typeof q0 === 'number' && (anelloMin === null || q0 < anelloMin)) anelloMin = q0;
-      // Fin dove arriva, in questa direzione, l'acqua che comincia ai piedi.
-      const banda = acque.bande
-        ? acque.bande[Math.round(i * TERRENO_PASSO_AZ / ACQUE_PASSO_AZ) % ACQUE_DIREZIONI] : null;
-      if (!banda || !banda.length || banda[0][0] > 0) continue;
-      const fin = banda[0][1];
-      for (let k = 0; k < nd; k++) {
-        if (TERRENO_DISTANZE[k] * 1000 > fin) break;
-        const q = terreno.quote[i * nd + k];
+    }
+    if (acque.bande) {
+      const quoteCorpi = acqueQuoteDeiCorpi(acque.bande);
+      // Gli specchi che ci contengono: quelli che in qualche direzione
+      // cominciano dai piedi.
+      for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+        const lista = acque.bande[b];
+        if (!lista || !lista.length || lista[0][0] > 0) continue;
+        const q = quoteCorpi.get(acqueCorpoDiBanda(lista[0], b, 0));
         if (typeof q === 'number' && (acquaMin === null || q < acquaMin)) acquaMin = q;
       }
     }
@@ -5556,31 +5793,44 @@ function acqueVisibili() {
   if (acque.vista && acque.vistaChiave === chiave) return acque.vista;
 
   const limite = raggioAcque() * 1000;
+  // La quota di ogni specchio d'acqua, decisa una volta per tutte prima di
+  // cominciare: è quella che tiene la superficie piatta da una colonna
+  // all'altra (vedi `acqueQuoteDeiCorpi`).
+  const quoteCorpi = acqueQuoteDeiCorpi(acque.bande);
   const fuori = new Array(ACQUE_DIREZIONI).fill(null);
   for (let b = 0; b < ACQUE_DIREZIONI; b++) {
     const lista = acque.bande[b];
     if (!lista) continue;
     const az = b * ACQUE_PASSO_AZ;
     const tenute = [];
-    for (const [vicino, lontano, tipo, nome] of lista) {
+    for (let iBanda = 0; iBanda < lista.length; iBanda++) {
+      const [vicino, lontano, tipo, nome] = lista[iBanda];
+      const chiaveCorpo = acqueCorpoDiBanda(lista[iBanda], b, iBanda);
+      // Quello che esce di qui è il numero dello specchio **oppure `null`**,
+      // e la differenza conta per chi disegna: `null` vuol dire «non lo so»
+      // (bande di una forma precedente), non «uno specchio diverso da tutti
+      // gli altri». Con la chiave di comodo al suo posto, chi lega le strisce
+      // troverebbe ogni banda diversa da ogni altra e non ne legherebbe più
+      // nessuna: un lago disegnato a mezzo grado per volta.
+      const corpo = typeof lista[iBanda][4] === 'number' ? lista[iBanda][4] : null;
       if (vicino > limite) continue;
       const fine = Math.min(lontano, limite);
       if (!(fine > vicino)) continue;
       // La quota della superficie. Una banda che comincia **ai piedi** non la
-      // va a chiedere alla griglia: la si sa già. Se ci si sta dentro è la
+      // va a chiedere a nessuno: la si sa già. Se ci si sta dentro è la
       // superficie su cui si galleggia (`acqueAllineaOcchio` l'ha già messa
       // anche in `terreno.quota`); se no — un fiume che passa sotto il ponte,
       // la riva su cui si sta — è il suolo sotto le scarpe.
       //
-      // Chiederla comunque alla griglia è il modo di sbagliarla, ed era il
-      // guasto: uno specchio d'acqua più stretto del passo della griglia non
-      // ha nessun campione dentro di sé, e il ripiego pescava sulla riva. Con
-      // una riva che sale quel numero sta **sopra** l'occhio, e l'acqua veniva
-      // scartata come «sopra l'orizzonte» — cioè spariva senza lasciare
-      // traccia.
+      // Per tutte le altre è la quota del **suo specchio**, non quella che si
+      // ricava dai campioni che cascano dentro a questa banda: un lago ha un
+      // livello solo, e chiederlo banda per banda è il modo di ottenerne uno
+      // diverso a ogni mezzo grado. L'ultimo ripiego resta quello di sempre,
+      // per le bande che arrivano da un salvataggio senza specchio.
       const suPiedi = vicino <= 0.5;
-      const quota = suPiedi && typeof terreno.quota === 'number'
-        ? terreno.quota : acqueQuotaDi(az, vicino, fine);
+      let quota = suPiedi && typeof terreno.quota === 'number' ? terreno.quota : null;
+      if (quota === null && quoteCorpi.has(chiaveCorpo)) quota = quoteCorpi.get(chiaveCorpo);
+      if (quota === null) quota = acqueQuotaDi(az, vicino, fine);
       if (quota === null) continue;
 
       // L'acqua si allontana verso l'orizzonte, quindi l'angolo cresce (si
@@ -5607,20 +5857,82 @@ function acqueVisibili() {
       //
       // Adesso la striscia si campiona e si tengono **tutti** i tratti
       // scoperti, non uno: un lago diviso in due da un promontorio sono due
-      // strisce, che è quello che si vede davvero. Il campionamento è più
-      // fitto di prima perché adesso conta anche dove i tratti cominciano.
-      const passi = ACQUE_OCCLUSIONE_PASSI;
+      // strisce, che è quello che si vede davvero.
+      //
+      // E il passaggio si **cerca**, non si prende dov'era il campione. Erano
+      // dodici campioni equispaziati fra le due rive, cioè un passo che
+      // dipende da quanto è lunga la banda: su una banda di sei chilometri
+      // sono cinquecento metri, e siccome le due rive cambiano a ogni mezzo
+      // grado i dodici campioni cadono ogni volta in punti diversi. Il bordo
+      // dell'acqua ne usciva quantizzato in modo **diverso per ogni colonna**:
+      // misurato su una scena di prova, settantacinque metri di errore medio
+      // e quattrocentoquaranta al peggio. Sullo schermo non è un errore di
+      // posizione, è una seghettatura — la riva vicina che avanza e arretra
+      // di mezzo chilometro a ogni colonna, che è il modo in cui un lago
+      // smette di sembrare un lago e diventa una fila di cunei.
+      //
+      // Adesso i campioni si mettono **dove il dato cambia**, e da nessun'altra
+      // parte. La cresta davanti la dà `acqueCrestaGrezza`, che legge la riga
+      // delle creste parziali e tiene l'ultima distanza campionata che ci sta
+      // dentro: è una **scala a diciotto gradini**, costante fra un gradino e
+      // l'altro. Dentro a un gradino, allora, la cresta è ferma e l'angolo
+      // dell'acqua sale (l'acqua si allontana), quindi il confronto può
+      // cambiare risposta **una volta sola** — e una bisezione lo trova
+      // esatto. Guardare più fitto di così non aggiunge niente: si
+      // ricalcolerebbe due volte lo stesso numero.
+      //
+      // Ne viene una cosa che il passo fisso non poteva dare: il bordo non
+      // dipende più da quanto è lunga la banda, quindi due colonne contigue
+      // lo trovano nello stesso posto. E costa **meno** di prima, non di più:
+      // una ventina di valutazioni al massimo invece di dodici, ma senza mai
+      // sbagliare.
+      const passiM = [vicino];
+      for (let k = 0; k < TERRENO_DISTANZE.length; k++) {
+        // Da che distanza in poi l'anello `k` entra nel conto della cresta:
+        // `acqueCrestaGrezza` confronta con `m · TERRENO_FRONTE_MARGINE`.
+        const soglia = TERRENO_DISTANZE[k] * 1000 / TERRENO_FRONTE_MARGINE;
+        if (soglia <= vicino + ACQUE_SOGLIA_SCARTO_M) continue;
+        if (soglia >= fine) break;
+        passiM.push(soglia - ACQUE_SOGLIA_SCARTO_M, soglia);
+      }
+      passiM.push(fine);
+      const coperta = m => {
+        const davanti = acqueCrestaGrezza(az, m / 1000);
+        // Il margine è quello che tiene fermo il bordo: senza, alla riva
+        // vicina l'acqua e il terreno che le sta davanti hanno lo stesso
+        // angolo (il modello del suolo spiana i laghi) e il confronto lo
+        // decide l'arrotondamento.
+        return davanti !== null && davanti > dep(m) + ACQUE_OCCLUSIONE_MARGINE_GRADI;
+      };
+      // Dove sta il passaggio fra `a`, che è **scoperto**, e `b`, che è
+      // **coperto**. Restituisce sempre il punto scoperto più vicino al
+      // confine, mai quello coperto: un bordo che sborda di un metro sul
+      // terreno è una riga d'acqua appoggiata sulla riva, e si vede.
+      const confine = (a, b) => {
+        let dentro = a, fuoriDa = b;
+        while (Math.abs(dentro - fuoriDa) > ACQUE_OCCLUSIONE_FINE_M) {
+          const mezzo = (dentro + fuoriDa) / 2;
+          if (coperta(mezzo)) fuoriDa = mezzo; else dentro = mezzo;
+        }
+        return dentro;
+      };
+
       let daM = null, aM = null;
       const chiudi = () => {
         if (daM === null) return;
         const inizio = daM, finePezzo = aM;
         daM = aM = null;
-        // Un metro di striscia non è una striscia. Ma se comincia ai piedi la
-        // misura non è più la sua lunghezza: è tutto il pezzo di schermo sotto
-        // l'orizzonte, e va disegnato.
-        if (!(finePezzo > inizio + 1) && !(inizio <= 0.5 && finePezzo > 0.5)) return;
+        // Una scheggia non è una striscia (vedi `ACQUE_TRATTO_MIN_M`). Ma se
+        // comincia ai piedi la misura non è più la sua lunghezza: è tutto il
+        // pezzo di schermo sotto l'orizzonte, e va disegnato. E un tratto che
+        // arriva fino alla riva vera non si scarta mai per la sua lunghezza:
+        // un laghetto di quaranta metri è piccolo, non è rumore.
+        const aiPiedi = inizio <= 0.5 && finePezzo > 0.5;
+        const tuttaLaBanda = inizio <= vicino + 1 && finePezzo >= fine - 1;
+        if (!(finePezzo > inizio + 1)) return;
+        if (!aiPiedi && !tuttaLaBanda && finePezzo - inizio < ACQUE_TRATTO_MIN_M) return;
         tenute.push({
-          vicino: inizio, lontano: finePezzo, tipo, nome,
+          vicino: inizio, lontano: finePezzo, tipo, nome, corpo,
           depVicino: dep(inizio), depLontano: dep(finePezzo), quota,
           // Se la riva vicina è stata **tagliata** dal terreno o è la riva
           // vera. Le due si disegnano diverse, ed è la differenza fra un lago
@@ -5631,18 +5943,23 @@ function acqueVisibili() {
           tagliata: inizio > vicino + 1
         });
       };
-      for (let p = 0; p <= passi; p++) {
-        const m = vicino + (fine - vicino) * (p / passi);
-        const davanti = acqueCrestaGrezza(az, m / 1000);
-        // Il margine è quello che tiene fermo il bordo: senza, alla riva
-        // vicina l'acqua e il terreno che le sta davanti hanno lo stesso
-        // angolo (il modello del suolo spiana i laghi) e il confronto lo
-        // decide l'arrotondamento.
-        const coperta = davanti !== null &&
-                        davanti > dep(m) + ACQUE_OCCLUSIONE_MARGINE_GRADI;
-        if (coperta) { chiudi(); continue; }
-        if (daM === null) daM = m;
-        aM = m;
+
+      let primaCoperta = null, primaM = vicino;
+      for (let p = 0; p < passiM.length; p++) {
+        const m = passiM[p];
+        const c = coperta(m);
+        if (primaCoperta !== null && c !== primaCoperta) {
+          // Il campione ha cambiato risposta fra `primaM` e `m`: il bordo sta
+          // lì in mezzo, e lo si stringe invece di accontentarsi del passo.
+          const bordo = c ? confine(primaM, m) : confine(m, primaM);
+          if (c) { aM = bordo; chiudi(); }
+          else { daM = bordo; aM = m; }
+        } else if (!c) {
+          if (daM === null) daM = m;
+          aM = m;
+        }
+        primaCoperta = c;
+        primaM = m;
       }
       chiudi();
     }

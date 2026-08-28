@@ -164,6 +164,61 @@ function skyArcoAcquaInVista(base, focale) {
   if (!(seno < 1)) return { mezzo: 180, centro };
   return { mezzo: Math.min(180, Math.asin(seno) * SKY_R2D + 6), centro };
 }
+
+// Come si legano fra loro le bande d'acqua di colonne contigue: anche
+// questa è una **copia** di app.js, con lo stesso avvertimento delle
+// precedenti — il giorno che le due divergono non lo dice nessuno.
+//
+// Ci sta perché è il pezzo che decide se un lago viene disegnato come una
+// superficie o come una fila di cunei, e non lo si può giudicare a occhio:
+// un cuneo è un poligono perfettamente valido, il canvas lo disegna senza
+// lamentarsi, e chi guarda vede «un lago fatto un po' strano».
+const SKY_ACQUA_SALTO = 1;
+function skyAcqueStrisce(viste, arco) {
+  const passo = ACQUE_PASSO_AZ;
+  const n = Math.min(ACQUE_DIREZIONI, Math.round(2 * arco.mezzo / passo) + 1);
+  const colonne = [];
+  for (let i = 0; i < n; i++) {
+    const az = arco.centro - arco.mezzo + i * passo;
+    const idx = Math.round((((az % 360) + 360) % 360) / passo) % ACQUE_DIREZIONI;
+    const lista = viste[idx];
+    colonne.push(lista ? lista.map(b => ({ az, b, usata: false })) : []);
+  }
+  const strisce = [];
+  for (let i = 0; i < n; i++) {
+    for (const v of colonne[i]) {
+      if (v.usata) continue;
+      v.usata = true;
+      const pezzi = [v];
+      let corrente = v;
+      for (let j = i + 1; j < n; j++) {
+        let meglio = null, quanto = 0;
+        for (const w of colonne[j]) {
+          if (w.usata) continue;
+          if (w.b.corpo !== null && corrente.b.corpo !== null &&
+              w.b.corpo !== corrente.b.corpo) continue;
+          const da = Math.max(corrente.b.vicino, w.b.vicino);
+          const a = Math.min(corrente.b.lontano, w.b.lontano);
+          const insieme = a - da;
+          if (!(insieme > quanto)) continue;
+          const corta = Math.min(corrente.b.lontano - corrente.b.vicino,
+                                 w.b.lontano - w.b.vicino);
+          if (!(insieme >= corta / 2)) continue;
+          const salto = Math.max(Math.abs(w.b.vicino - corrente.b.vicino),
+                                 Math.abs(w.b.lontano - corrente.b.lontano));
+          if (salto > corta * SKY_ACQUA_SALTO) continue;
+          quanto = insieme; meglio = w;
+        }
+        if (!meglio) break;
+        meglio.usata = true;
+        pezzi.push(meglio);
+        corrente = meglio;
+      }
+      strisce.push(pezzi);
+    }
+  }
+  return strisce;
+}
 </script>
 
 <script src="catalogo.js"></script>
@@ -4797,8 +4852,29 @@ if (typeof acqueTaglia !== 'function') {
     prova('e anche quello di un fiume', nomi.has('Fiume Nominato'), `${fiumi} bande di corrente`);
     prova('uno specchio senza nome resta senza nome', senzaNome > 0,
       `${senzaNome} bande anonime, come dev'essere`);
-    prova('ogni banda porta una tupla di quattro',
-      bande.some(b => b && b.length && b[0].length === 4));
+    prova('ogni banda porta una tupla di cinque',
+      bande.some(b => b && b.length && b[0].length === 5));
+    // Il quinto posto è **di che specchio d'acqua è la banda**, ed è quello
+    // che permette di dire una cosa sola per lago invece di una per banda:
+    // la quota della superficie, e il fatto che due bande di colonne
+    // contigue siano da cucire insieme o no.
+    {
+      const perNome = new Map();
+      for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+        if (!bande[b]) continue;
+        for (const banda of bande[b]) {
+          if (!banda[3]) continue;
+          if (!perNome.has(banda[3])) perNome.set(banda[3], new Set());
+          perNome.get(banda[3]).add(banda[4]);
+        }
+      }
+      const lago = perNome.get('Lago Nominato');
+      prova('tutte le bande di uno stesso lago portano lo stesso specchio',
+        !!lago && lago.size === 1, lago ? `${lago.size} specchi per un lago solo` : 'nessuna banda');
+      const fiume = perNome.get('Fiume Nominato');
+      prova('e due specchi diversi portano numeri diversi',
+        !!lago && !!fiume && lago.values().next().value !== fiume.values().next().value);
+    }
 
     // Il salvataggio: una tupla di tre è di una forma vecchia e non va
     // riletta, se no i laghi restano senza etichetta per sempre.
@@ -4965,6 +5041,303 @@ if (typeof acqueTaglia !== 'function') {
     prova('la riva vicina nascosta da una cresta resta nascosta',
       !!giu && giu[0].tagliata === true && giu[0].vicino > 2200,
       giu ? `${Math.round(giu[0].vicino)}–${Math.round(giu[0].lontano)} m, il lago comincia a 2000` : 'niente');
+
+    // -----------------------------------------------------------------
+    // Una superficie sola, non una per colonna
+    //
+    // È il gruppo di prove degli **spicchi**, cioè della segnalazione da cui
+    // tutto questo è partito: accanto a un lago comparivano dei cunei, e il
+    // lago non aveva la forma che ha sulla carta.
+    //
+    // Nessuno dei difetti si vedeva nei numeri, e tutti e tre avevano lo
+    // stesso rimedio — smettere di rispondere «per banda» a domande che sono
+    // dello specchio d'acqua:
+    //
+    //   1. la **quota della superficie** si chiedeva alla griglia banda per
+    //      banda, e la griglia ha centocinquanta metri di passo: due colonne
+    //      contigue prendevano campioni diversi e rispondevano con metri di
+    //      scarto. Un lago ha un livello solo;
+    //   2. il **bordo dell'occlusione** si prendeva dov'era caduto uno di
+    //      dodici campioni equispaziati fra le due rive — e le rive cambiano a
+    //      ogni mezzo grado, quindi la quantizzazione cambiava a ogni colonna;
+    //   3. un **taglio spaiato** (la riva di là oltre il raggio di ricerca)
+    //      diventava una banda di duecento metri invece di arrivare al limite:
+    //      una scheggia accanto a bande lunghe chilometri.
+    // -----------------------------------------------------------------
+    {
+      // Un ramo di lago stretto e lungo — la forma del Ceresio, del Como, di
+      // ogni lago alpino: trecento metri di larghezza e dodici chilometri di
+      // sviluppo, a un paio di chilometri da qui. È la forma che mette in
+      // crisi il conto per banda, perché una banda larga trecento metri
+      // dentro non ha quasi mai un campione della griglia (che di passo ne ha
+      // centocinquanta qui vicino, e chilometri più in là): quando ce l'ha
+      // dice la quota del lago, quando non ce l'ha ripiega sulla riva.
+      const QLAGO = 200, QRIVA = 260;
+      const W = 150, L = 6000, CY = 2150;
+      const ramo = [];
+      for (let i = 0; i <= 60; i++) ramo.push([W, CY - L + 2 * L * i / 60]);
+      for (let i = 1; i <= 4; i++) ramo.push([W - 2 * W * i / 4, CY + L]);
+      for (let i = 1; i <= 60; i++) ramo.push([-W, CY + L - 2 * L * i / 60]);
+      for (let i = 1; i < 4; i++) ramo.push([-W + 2 * W * i / 4, CY - L]);
+      ramo.push([W, CY - L]);
+      const dentroRamo = (x, y) => {
+        let d = false;
+        for (let i = 0, j = ramo.length - 1; i < ramo.length; j = i++) {
+          const [xi, yi] = ramo[i], [xj, yj] = ramo[j];
+          if ((yi > y) !== (yj > y) && x < xi + (y - yi) * (xj - xi) / (yj - yi)) d = !d;
+        }
+        return d;
+      };
+      // Il suolo dice la stessa cosa della carta: dentro all'acqua il livello
+      // del lago, fuori la riva. È come si comporta un modello del suolo
+      // vero, che gli specchi d'acqua li spiana.
+      montaSuolo((az, km) => {
+        const a = az * D2R, m = km * 1000;
+        return dentroRamo(m * Math.sin(a), m * Math.cos(a)) ? QLAGO : QRIVA;
+      }, 320);
+      acqueApplica(LAT, LON, acqueLeggiElementi([{
+        type: 'way', tags: { natural: 'water', water: 'lake', name: 'Ramo del lago' },
+        geometry: ramo.map(p => puntoP(p[0], p[1]))
+      }]), 'prova');
+
+      const viste = acqueVisibili() || [];
+      const quoteViste = new Set();
+      let colonne = 0;
+      for (const lista of viste) {
+        if (!lista) continue;
+        for (const v of lista) { quoteViste.add(Math.round(v.quota * 10)); colonne++; }
+      }
+      prova('lo stesso lago ha una quota sola in tutte le direzioni',
+        colonne > 100 && quoteViste.size === 1,
+        `${quoteViste.size} quote diverse su ${colonne} bande`);
+      prova('ed è quella dell\'acqua, non quella della riva',
+        quoteViste.size === 1 && Math.abs(Array.from(quoteViste)[0] / 10 - QLAGO) < 1,
+        `${(Array.from(quoteViste)[0] / 10).toFixed(1)} m invece di ${QLAGO}`);
+
+      // Il contro-esempio, cioè il conto di prima: la quota chiesta banda per
+      // banda. Dove la banda non contiene nessun campione ripiega sui due che
+      // la abbracciano, che stanno sulla riva — e il lago viene disegnato
+      // qualche metro più in alto **solo in quelle colonne**. Sono le
+      // terrazze.
+      const quotePrima = new Set();
+      for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+        const lista = acque.bande[b];
+        if (!lista) continue;
+        for (const [vic, lon] of lista) {
+          const q = acqueQuotaDi(b * ACQUE_PASSO_AZ, vic, lon);
+          if (q !== null) quotePrima.add(Math.round(q));
+        }
+      }
+      prova('col conto di prima lo stesso lago aveva quote diverse a ogni colonna',
+        quotePrima.size > 1,
+        `${quotePrima.size} quote: ${Array.from(quotePrima).sort((a, b) => a - b).join(', ')} m`);
+    }
+
+    // --- Il bordo dell'occlusione si cerca, non si prende dov'era il passo ---
+    //
+    // Un lago in conca guardato dall'alto: la riva vicina sta dietro alla
+    // cresta e il bordo dell'acqua è dove l'una scavalca l'altra. Quel punto
+    // ha una posizione vera, e il disegno deve caderci sopra — se no il bordo
+    // avanza e arretra a ogni colonna, e un lago diventa una fila di cunei.
+    {
+      // L'acqua di prima si scorda **prima** di cambiare il suolo: il ramo
+      // qui sopra ci teneva dentro (`sommerso`), e `terrenoApplica` chiama
+      // `acqueAllineaOcchio`, che con un'acqua vecchia e un terreno nuovo
+      // porterebbe l'occhio al livello di un lago che non c'è più.
+      acqueDimentica();
+      montaSuolo((az, km) => km < 1.5 ? 294 : 194, 394);
+      acqueApplica(LAT, LON, acqueLeggiElementi([
+        cerchio(-4000, 0, 2400, { natural: 'water', water: 'lake', name: 'Lago in conca' })
+      ]), 'prova');
+      const occhio = terreno.quota + TERRENO_ALTEZZA_OCCHIO_M;
+      const viste = acqueVisibili() || [];
+      let quanti = 0, peggio = 0, peggioPrima = 0;
+      for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+        const lista = viste[b];
+        if (!lista || !lista.length || !lista[0].tagliata) continue;
+        const v = lista[0];
+        const grezza = acque.bande[b][0];
+        const dep = m => acqueDepressione(v.quota, occhio, m);
+        const coperta = m => {
+          const d = acqueCrestaGrezza(b * ACQUE_PASSO_AZ, m / 1000);
+          return d !== null && d > dep(m) + ACQUE_OCCLUSIONE_MARGINE_GRADI;
+        };
+        // Il bordo vero, cercato fitto.
+        let vero = null;
+        for (let m = grezza[0]; m <= grezza[1]; m += 2) { if (!coperta(m)) { vero = m; break; } }
+        if (vero === null) continue;
+        quanti++;
+        peggio = Math.max(peggio, Math.abs(v.vicino - vero));
+        // E dove sarebbe caduto col conto di prima: dodici campioni
+        // equispaziati fra le due rive, e si teneva il primo scoperto.
+        const fine = Math.min(grezza[1], raggioAcque() * 1000);
+        for (let p = 0; p <= 12; p++) {
+          const m = grezza[0] + (fine - grezza[0]) * (p / 12);
+          if (!coperta(m)) { peggioPrima = Math.max(peggioPrima, Math.abs(m - vero)); break; }
+        }
+      }
+      prova('il bordo disegnato è il bordo vero, a una decina di metri',
+        quanti > 40 && peggio < 25,
+        `${quanti} tratti tagliati, scarto peggiore ${peggio.toFixed(0)} m`);
+      prova('col passo di prima lo stesso bordo era quantizzato molto più grosso',
+        peggioPrima > peggio * 3, `scarto peggiore di prima ${peggioPrima.toFixed(0)} m`);
+    }
+
+    // --- Il taglio spaiato: la riva di là oltre il raggio di ricerca ---
+    {
+      montaSuolo(() => 200, 200);
+      // Un lago largo quaranta chilometri: dentro a un raggio di dieci, la
+      // riva di là non c'è.
+      const grande = acqueLeggiElementi([
+        cerchio(0, 0, 20000, { natural: 'water', water: 'lake', name: 'Lago grande' })
+      ]);
+      const tagli = acqueTaglia(grande, LAT, LON, 10000);
+      const bande = acqueBandeDaTagli(tagli);
+      let schegge = 0, finoAlLimite = 0, quante = 0;
+      for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+        if (!bande[b]) continue;
+        for (const [vic, lon] of bande[b]) {
+          quante++;
+          if (lon - vic <= 250) schegge++;
+          if (lon >= 9990) finoAlLimite++;
+        }
+      }
+      prova('un lago che esce dal raggio di ricerca arriva fino al limite',
+        quante > 0 && finoAlLimite === quante,
+        `${finoAlLimite} bande su ${quante} arrivano a ${Math.round(tagli.limite)} m`);
+      prova('e non lascia schegge di duecento metri, che è il conto di prima',
+        schegge === 0, `${schegge} bande più corte di 250 m`);
+    }
+
+    // --- La corda di un corso d'acqua guardato di sbieco ---
+    //
+    // Un fiume dritto: il raggio ne taglia l'asse a distanza `t` e la mezza
+    // corda vale `largo / (2·sen)`. Il conto è esatto, e da lì viene la
+    // proprietà che conta: l'entrata cade a distanza negativa **solo** se ci
+    // si sta dentro, cioè se la distanza perpendicolare è meno di mezza
+    // larghezza. Col pavimento di prima sul seno la corda si gonfiava fino a
+    // otto larghezze, e un fiume a un centinaio di metri risultava cominciare
+    // dalle scarpe: uno spicchio disegnato dal nadir in su.
+    {
+      const largo = 60, dist = 200;      // ben più di mezza larghezza
+      const fiume = { type: 'way', tags: { waterway: 'river', width: String(largo), name: 'Fiume' },
+        geometry: [puntoP(-dist, -9000), puntoP(-dist, 9000)] };
+      const tagli = acqueTaglia(acqueLeggiElementi([fiume]), LAT, LON, 25000);
+      const bande = acqueBandeDaTagli(tagli);
+      let aiPiedi = 0, quante = 0, erroreMax = 0;
+      for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+        if (!bande[b]) continue;
+        for (const [vic, lon] of bande[b]) {
+          quante++;
+          if (vic < 1) aiPiedi++;
+          // La corda vera, per un fiume dritto che corre nord-sud: il raggio
+          // ne incontra la riva vicina a `(dist − largo/2) / |sin(az)|`, dove
+          // il seno è quello dell'angolo fra il raggio e la riva. È il conto
+          // esatto, e quello che dice è che l'entrata cade a distanza
+          // negativa **solo** se ci si sta dentro.
+          const sen = Math.abs(Math.sin(b * ACQUE_PASSO_AZ * D2R));
+          if (sen < 0.2) continue;       // di striscio la corda è tosata, ed è giusto
+          const atteso = (dist - largo / 2) / sen;
+          if (atteso < 20000) erroreMax = Math.max(erroreMax, Math.abs(vic - atteso));
+        }
+      }
+      prova('un fiume che non passa sotto i piedi non comincia dai piedi',
+        quante > 100 && aiPiedi === 0, `${aiPiedi} bande cominciano a zero su ${quante}`);
+      prova('e la sua riva vicina è quella della geometria, al metro',
+        erroreMax < 2, `scarto peggiore ${erroreMax.toFixed(1)} m`);
+    }
+
+    // -----------------------------------------------------------------
+    // Le strisce: dove un lago si biforca, la striscia finisce
+    //
+    // È l'altra metà degli spicchi, e sta nel disegno (`skyAcqueStrisce` di
+    // app.js, ricopiata negli stub in cima). Le bande di colonne contigue si
+    // cuciono in un poligono solo, e la regola era «quale banda della colonna
+    // dopo si sovrappone di più a questa». Va benissimo per un lago in mezzo
+    // alla pianura e va a pezzi appena il terreno entra in gioco: dove un
+    // promontorio taglia in due la veduta, una colonna ha una banda sola e
+    // quella accanto ne ha due, e la massima sovrapposizione — che non sa
+    // niente di *chi* è cosa — ne prende una e trascina il bordo di
+    // chilometri in mezzo grado. Sullo schermo è un gradino netto lungo mezzo
+    // schermo, con sotto l'altro tratto disegnato per conto suo.
+    // -----------------------------------------------------------------
+    {
+      const banda = (v, l, corpo) => ({ vicino: v, lontano: l, tipo: 0, nome: 'Lago', corpo,
+        depVicino: -8, depLontano: -1, quota: 200, tagliata: false });
+      const viste = new Array(ACQUE_DIREZIONI).fill(null);
+      // Dieci colonne con tutto il lago in vista, dieci in cui un promontorio
+      // lo taglia in due, dieci di nuovo intere.
+      for (let i = 0; i < 30; i++) {
+        viste[100 + i] = (i < 10 || i >= 20)
+          ? [banda(1000, 9000, 7)]
+          : [banda(1000, 3000, 7), banda(6000, 9000, 7)];
+      }
+      const arco = { centro: 50 + 7.25, mezzo: 7.5 };
+      const strisce = skyAcqueStrisce(viste, arco);
+      const gradino = ss => {
+        let peggio = 0;
+        for (const s of ss) {
+          for (let i = 0; i + 1 < s.length; i++) {
+            peggio = Math.max(peggio,
+              Math.abs(s[i].b.vicino - s[i + 1].b.vicino),
+              Math.abs(s[i].b.lontano - s[i + 1].b.lontano));
+          }
+        }
+        return peggio;
+      };
+      prova('dove il lago si biforca la striscia finisce, e ne cominciano due',
+        strisce.length === 4, `${strisce.length} strisce invece di 4`);
+      prova('e dentro a nessuna striscia il bordo fa un gradino',
+        gradino(strisce) < 10, `gradino peggiore ${gradino(strisce)} m`);
+
+      // Il contro-esempio, cioè la regola di prima: massima sovrapposizione e
+      // basta. Cuce insieme la banda intera e il tratto lontano, e il bordo
+      // vicino salta di cinque chilometri da una colonna a quella accanto.
+      const primaRegola = (viste, arco) => {
+        const passo = ACQUE_PASSO_AZ;
+        const n = Math.min(ACQUE_DIREZIONI, Math.round(2 * arco.mezzo / passo) + 1);
+        const colonne = [];
+        for (let i = 0; i < n; i++) {
+          const az = arco.centro - arco.mezzo + i * passo;
+          const idx = Math.round((((az % 360) + 360) % 360) / passo) % ACQUE_DIREZIONI;
+          const lista = viste[idx];
+          colonne.push(lista ? lista.map(b => ({ az, b, usata: false })) : []);
+        }
+        const ss = [];
+        for (let i = 0; i < n; i++) for (const v of colonne[i]) {
+          if (v.usata) continue;
+          v.usata = true;
+          const pezzi = [v];
+          let cur = v;
+          for (let j = i + 1; j < n; j++) {
+            let meglio = null, quanto = 0;
+            for (const w of colonne[j]) {
+              if (w.usata) continue;
+              const da = Math.max(cur.b.vicino, w.b.vicino);
+              const a = Math.min(cur.b.lontano, w.b.lontano);
+              if (a - da > quanto) { quanto = a - da; meglio = w; }
+            }
+            if (!meglio) break;
+            meglio.usata = true; pezzi.push(meglio); cur = meglio;
+          }
+          ss.push(pezzi);
+        }
+        return ss;
+      };
+      prova('con la regola di prima il bordo saltava di chilometri dentro a una striscia',
+        gradino(primaRegola(viste, arco)) > 3000,
+        `gradino peggiore ${gradino(primaRegola(viste, arco))} m`);
+
+      // E due laghi diversi che in una direzione si accavallano non si
+      // cuciono mai fra loro, per quanto le loro distanze si sovrappongano.
+      const due = new Array(ACQUE_DIREZIONI).fill(null);
+      for (let i = 0; i < 20; i++) due[200 + i] = [banda(1000, 5000, 1), banda(1200, 5200, 2)];
+      const ss2 = skyAcqueStrisce(due, { centro: 100 + 4.75, mezzo: 5 });
+      const corpiPerStriscia = ss2.map(s => new Set(s.map(p => p.b.corpo)).size);
+      prova('due specchi diversi non si cuciono mai in una striscia sola',
+        corpiPerStriscia.every(v => v === 1) && ss2.length === 2,
+        `${ss2.length} strisce, specchi per striscia: ${corpiPerStriscia.join(', ')}`);
+    }
 
     terrenoDimentica();
     acqueDimentica();
@@ -6835,6 +7208,28 @@ titolo('26. I nomi dell\'orizzonte quando OpenStreetMap fa i capricci (terreno.j
     prova(`${nome}: aspettiamo più di quanto il server si sia preso`,
       !!m && attesa > Number(m[1]) * 1000,
       m ? `query ${m[1]} s, noi ${(attesa / 1000).toFixed(0)} s` : 'nella query non c\'è nessun timeout');
+  }
+
+  // E i **laghi grandi** hanno un `out` tutto loro.
+  //
+  // Un `out` con un tetto stampa gli elementi nell'ordine del server, cioè
+  // prima tutte le vie e poi le relazioni. Con un'unione sola, in una
+  // provincia di laghi il tetto se lo prendono le vie — ogni stagno, ogni
+  // vasca, e i corsi d'acqua sono spezzati in decine di vie a testa — e le
+  // relazioni non vengono stampate affatto. Ma le relazioni **sono** i laghi
+  // grandi: il Ceresio, il Lario, il Verbano, il Garda. Il guasto non lascia
+  // traccia — sullo schermo restano le pozze che ci stavano nel tetto e il
+  // lago no — ed è la ragione per cui questa prova legge il testo della query
+  // invece di una risposta.
+  for (const [nome, query] of [['le acque', acqueQueryOverpass(...dove)],
+                               ['le acque (ripiego)', acqueQueryCorta(...dove)]]) {
+    const primaOut = query.indexOf('out ');
+    const doveRel = query.indexOf('relation[');
+    prova(`${nome}: le relazioni si chiedono, e i laghi grandi lo sono`,
+      doveRel >= 0, 'nella query non ci sono relazioni');
+    prova(`${nome}: e hanno un «out» loro, che le vie non se lo possono mangiare`,
+      doveRel >= 0 && primaOut > doveRel && (query.match(/out geom/g) || []).length >= 2,
+      `${(query.match(/out geom/g) || []).length} «out geom» nella query`);
   }
 }
 
