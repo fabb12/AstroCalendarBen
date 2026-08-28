@@ -1,13 +1,14 @@
 // Aerei nel Planetario — dati ADS-B in tempo reale.
 //
 // I provider e tutto il trasporto stanno qui: GitHub Pages non puo fare da
-// proxy. Alcuni feed ADS-B autorizzano le richieste del browser solo in modo
-// intermittente o differente secondo la rete. Il percorso affidabile e' il
-// Worker del progetto. Se non e' configurato, i feed diretti restano una
-// via di emergenza: il CORS cambia da rete a rete e almeno uno può essere
-// leggibile dal browser. I proxy CORS
-// pubblici non sono provider ADS-B: applicano limiti e autenticazione propri
-// (401/408) e percio' non fanno piu' parte della corsa.
+// proxy. I proxy CORS pubblici non sono provider ADS-B: applicano limiti e
+// autenticazione propri (401/408) e percio' non fanno parte della corsa.
+//
+// L'ordine e' **reti dirette prima, Worker del progetto come rete di
+// sicurezza**, ed e' una lezione pagata: un proxy sembra la scelta piu' solida
+// perche' toglie di mezzo il CORS, ma ci mette di mezzo l'indirizzo IP. Vedi
+// il commento esteso in `providersDisponibili()` — misurato nello stesso
+// istante, dal Worker tre 403 e un 429, dal browser di casa i dati.
 //
 // LA LEZIONE DI QUESTO FILE, in una riga: **una porta ADS-B carica non
 // risponde «carico», tace** — e tacere consuma tutta la sveglia. Provandole in
@@ -236,12 +237,26 @@
       },
       interpreta: interpretaAdsbExchange
     }] : [];
-    // Il Worker resta la prima scelta, ma la sua assenza non deve spegnere
-    // l'intero modulo. I feed cambiano periodicamente politica CORS: la corsa
-    // misura quelli realmente leggibili da questo browser e ricorda il
-    // vincitore. Se nessuno espone CORS si ottiene un normale errore di rete,
-    // non il ConfigurationError definitivo che impediva perfino di provarli.
-    return propri.concat(providersPredefiniti);
+    // L'ordine: **prima le reti dirette, il proxy come rete di sicurezza** —
+    // ed è il rovescio di com'era, cambiato dopo averlo misurato invece che
+    // ragionato. Un proxy sembra la scelta più solida perché toglie di mezzo
+    // il CORS, ma di mezzo ci mette un'altra cosa: l'indirizzo IP da cui la
+    // richiesta parte. Un Cloudflare Worker non ha un IP proprio, ne divide
+    // un pugno con migliaia di altri Worker, e questi feed sono progetti di
+    // comunità che si difendono proprio guardando lì. Misurato dal Worker,
+    // lo stesso istante in cui dal browser di casa i dati arrivavano:
+    // ADSB.fi 403, Airplanes.live 403, adsb.one 403, adsb.lol **429** — cioè
+    // «quota finita» per una richiesta sola, che è la firma di una quota
+    // consumata da qualcun altro sullo stesso indirizzo.
+    //
+    // Dal browser invece la richiesta parte dall'IP di casa, che è esattamente
+    // quello che quei servizi vogliono servire. Il proxy resta ultimo e non
+    // sparisce: a chi ha una rete che blocca i feed diretti serve davvero, e
+    // la pagella (§2) lo promuove da sé al primo giro in cui è lui a
+    // rispondere. Il posto in cui il Worker vale sempre la pena è un altro:
+    // è l'unico dove una credenziale può stare senza finire nel browser di
+    // chiunque apra il sito.
+    return providersPredefiniti.concat(propri);
   }
 
   // =====================================================================
