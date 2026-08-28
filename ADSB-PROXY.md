@@ -17,9 +17,10 @@ in serie una rete muta. Per attivarlo:
 Il workflow scrive l'URL in `config.js` soltanto nell'artefatto pubblicato: non
 servono credenziali nel browser e la configurazione locale resta portabile.
 
-Il Worker non è un miglioramento facoltativo in produzione: i feed diretti non
-espongono CORS a GitHub Pages e sono usati soltanto in sviluppo locale. Se la
-variabile manca, il workflow ora ferma la pubblicazione invece di mettere
-online un'app che tenta richieste destinate a essere bloccate dal browser. I
-proxy CORS pubblici non vengono usati perché rispondono con 401/408 e possono
-cambiare regole senza preavviso.
+Il Worker è il percorso raccomandato in produzione, perché non dipende dalle
+politiche CORS dei singoli feed. La sua configurazione però non è più un punto
+di arresto: se la variabile manca, il workflow pubblica ugualmente e il browser
+prova in parallelo le quattro reti dirette di emergenza. In questo modo almeno
+una rete che espone CORS può fornire i dati, anziché mostrare subito «proxy non
+configurato». I proxy CORS pubblici non vengono usati perché rispondono con
+401/408 e possono cambiare regole senza preavviso.

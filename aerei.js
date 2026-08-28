@@ -3,9 +3,9 @@
 // I provider e tutto il trasporto stanno qui: GitHub Pages non puo fare da
 // proxy. Alcuni feed ADS-B autorizzano le richieste del browser solo in modo
 // intermittente o differente secondo la rete. Il percorso affidabile e' il
-// Worker del progetto. I feed diretti restano disponibili soltanto per lo
-// sviluppo locale: da un sito HTTPS di un altro dominio il browser li blocca
-// prima che il codice possa leggerne la risposta. I proxy CORS
+// Worker del progetto. Se non e' configurato, i feed diretti restano una
+// via di emergenza: il CORS cambia da rete a rete e almeno uno può essere
+// leggibile dal browser. I proxy CORS
 // pubblici non sono provider ADS-B: applicano limiti e autenticazione propri
 // (401/408) e percio' non fanno piu' parte della corsa.
 //
@@ -236,16 +236,12 @@
       },
       interpreta: interpretaAdsbExchange
     }] : [];
-    if (propri.length) return propri;
-
-    // Una risposta HTTP 200 senza Access-Control-Allow-Origin e' comunque
-    // illeggibile dal browser: provarne quattro produce quattro falsi errori
-    // di rete in console e non può mai essere un ripiego per GitHub Pages.
-    // Su localhost/file: i feed diretti restano utili per sviluppo e diagnosi
-    // (per esempio con un browser avviato appositamente senza controllo CORS).
-    const host = String(window.location && window.location.hostname || '').toLowerCase();
-    const locale = !host || host === 'localhost' || host === '127.0.0.1' || host === '::1';
-    return locale ? providersPredefiniti : [];
+    // Il Worker resta la prima scelta, ma la sua assenza non deve spegnere
+    // l'intero modulo. I feed cambiano periodicamente politica CORS: la corsa
+    // misura quelli realmente leggibili da questo browser e ricorda il
+    // vincitore. Se nessuno espone CORS si ottiene un normale errore di rete,
+    // non il ConfigurationError definitivo che impediva perfino di provarli.
+    return propri.concat(providersPredefiniti);
   }
 
   // =====================================================================
@@ -952,14 +948,6 @@
     stato.ultimoTentativo = ora;
     const providers = window.AEREI_PROVIDER ? [window.AEREI_PROVIDER]
       : ordinaPerSalute(providersDisponibili());
-    if (!providers.length) {
-      stato.errore = 'proxy ADS-B del sito non configurato'; stato.errNome = 'ConfigurationError';
-      stato.tentativiFalliti++;
-      pianificaProssimo(false);
-      concludiFeedback('Aggiornamento ADS-B non riuscito: il proxy del sito non è configurato.', true);
-      aggiornaUI();
-      return;
-    }
     const controller = new AbortController();
     stato.controller = controller;
     aggiornaUI();
