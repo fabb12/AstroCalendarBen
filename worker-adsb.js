@@ -581,7 +581,27 @@ const proxy = {
       return Response.json(await diagnostica(url, env), { status: 200,
         headers: { ...headers, 'Cache-Control': 'no-store' } });
     }
-    if (url.pathname !== '/api/adsb') return new Response('Not found', { status: 404, headers });
+    // La radice non e' un errore: e' il posto in cui si atterra aprendo
+    // l'indirizzo del proxy per vedere se e' vivo — dal playground di Deno,
+    // dal pannello di Cloudflare, o incollandolo nella barra. Rispondere
+    // «Not found» li' e' esatto e inutile: sembra che la distribuzione sia
+    // andata storta, mentre il proxy sta funzionando benissimo e manca solo
+    // il percorso. Quindi si presenta e dice dove bussare.
+    if (url.pathname === '/' || url.pathname === '') {
+      return Response.json({
+        servizio: 'proxy ADS-B di AstroCalendarBen',
+        piattaforma: nomePiattaforma(),
+        percorsi: {
+          '/api/adsb': 'la fotografia degli aerei — parametri lat, lon, dist (miglia nautiche)',
+          '/api/diagnostica': 'cosa ha risposto ogni fonte, e perche'
+        },
+        esempio: `${url.origin}/api/diagnostica?lat=45.4642&lon=9.1900&dist=50`
+      }, { status: 200, headers: { ...headers, 'Cache-Control': 'no-store' } });
+    }
+    if (url.pathname !== '/api/adsb') {
+      return Response.json({ error: 'percorso sconosciuto',
+        percorsiValidi: ['/api/adsb', '/api/diagnostica'] }, { status: 404, headers });
+    }
     const lat = Number(url.searchParams.get('lat'));
     const lon = Number(url.searchParams.get('lon'));
     const dist = Math.max(1, Math.min(250, Math.ceil(Number(url.searchParams.get('dist')))));
