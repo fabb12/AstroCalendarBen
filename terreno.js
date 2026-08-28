@@ -779,10 +779,15 @@ function terrenoScorre(f) {
 // reggendo adesso, e che intanto ha già girato la porta se la fonte non
 // risponde più (`terrenoCambiaFonte`).
 //
-// Cinque tentativi in tutto, non cinque per fonte: sono i tre giri di porta
-// più due riprove: bastano a coprire il singhiozzo e non fanno di
-// ventiquattro richieste duecento.
-const TERRENO_TENTATIVI = 5;
+// Sei tentativi in tutto, non sei per fonte. Il sesto non è una riprova
+// casuale: `terrenoFrena` cambia porta dopo cinque no di fila, quindi con
+// cinque tentativi la richiesta che scopriva una Open-Meteo chiusa girava la
+// porta proprio nell'ultimo `catch` e poi si arrendeva. Le richieste dietro di
+// lei usavano la riserva, ma quella pioniera lasciava una direzione stimata e
+// il messaggio «qualche direzione non è arrivata». Serve un tentativo **dopo**
+// la soglia di rotazione; sei è il minimo che lo garantisce e non trasforma le
+// ventiquattro richieste in duecento.
+const TERRENO_TENTATIVI = TERRENO_NO_PER_CAMBIARE + 1;
 
 // Vale la pena riprovare? Sì per i 429 («sei andato troppo forte»), per i
 // guasti del server e per tutto quello che non è nemmeno arrivato a una
