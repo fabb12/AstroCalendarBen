@@ -45,7 +45,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `meteo-astro.js` | ~515 | **Meteo da astronomo**: seeing, trasparenza, griglia Clear Sky Chart, avviso di aurora. Prefisso `meteo`/`aurora`. |
 | `aerei.js` | ~1.475 | **Gli aerei ADS-B nel planetario**: il traffico vero entro il raggio scelto, disegnato in cielo e colorato per **fascia di distanza** (rosso entro 10 km, poi arancio, giallo, azzurro). Il trasporto usa il Worker del progetto e quattro reti dirette di emergenza, provate a **corsa con affiancamento** e non in fila indiana, con una **pagella** salvata che ricorda quale funziona da qui. I proxy CORS pubblici non sono usati: i loro 401/408 non sono un trasporto affidabile. I **dati** nascono accesi e il **disegno** spento: sono due interruttori, non uno. Prefisso `aerei`. |
 | `config.js` | 3 | L'URL del Worker ADS-B proprio (`window.ADSB_PROXY_URL`), iniettato dal deploy. Vuoto, restano i ripieghi pubblici. |
-| `worker-adsb.js` | ~52 | Il Cloudflare Worker del progetto: interroga quattro reti ADS-B dal server, aggiunge il CORS e tiene la fotografia 20 secondi. Non fa parte della PWA — si distribuisce a mano, vedi `ADSB-PROXY.md`. |
+| `worker-adsb.js` | ~95 | Il Cloudflare Worker del progetto: interroga quattro reti ADS-B dal server, aggiunge il CORS e tiene la fotografia 20 secondi. Il CORS lo dà **solo alle origini ammesse** (`ORIGINI_AMMESSE`, allargabile con la variabile d'ambiente omonima): rimandare indietro qualunque `Origin` vuol dire regalare un proxy ADS-B a chiunque ne trovi l'indirizzo. Non fa parte della PWA — si distribuisce a mano, vedi `ADSB-PROXY.md`, che tiene la procedura dall'inizio alla fine. |
 | `aurora-polare.js` | ~1.015 | **Le aurore polari nel planetario**: l'ovale aurorale attorno al polo geomagnetico, boreale e australe, disegnato dove sta davvero, più la **forma dello scudo** (magnetopausa e onda d'urto) che serve al banco della Didattica. Prefisso `aur`. |
 | `eventi-extra.js` | ~720 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete e **aurore** (previsione del Kp a tre giorni + stagione degli equinozi). |
 | `ui-nuova.js` | ~350 | L'interfaccia di tutto quanto sopra. |
@@ -59,7 +59,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `verifica.html` | ~6.640 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~7.480 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v218`). |
+| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v219`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -355,7 +355,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v218`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v219`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` e le immagini di `arte-costellazioni/` no**: restano fuori di
