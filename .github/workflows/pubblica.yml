@@ -74,13 +74,13 @@ jobs:
           # cartelle e i file che cominciano per underscore. Qui non ce ne sono,
           # ma il giorno che ci fossero il guasto sarebbe silenzioso.
           touch _sito/.nojekyll
-          # I feed non espongono CORS a GitHub Pages: pubblicare senza Worker
-          # produce risposte 200 che il browser deve comunque bloccare.
+          # Il Worker è il percorso più stabile. Se non è ancora configurato,
+          # pubblichiamo comunque: l'app proverà direttamente le reti ADS-B
+          # che in quel momento espongono CORS, invece di disattivare il feed.
           if [ -z "$ADSB_PROXY_URL" ]; then
-            echo "::error::Manca la variabile Actions ADSB_PROXY_URL (vedi ADSB-PROXY.md)"
-            exit 1
+            echo "::warning::Manca ADSB_PROXY_URL: uso i feed ADS-B diretti di emergenza"
           fi
-          case "$ADSB_PROXY_URL" in https://*) ;; *) echo "::error::ADSB_PROXY_URL deve iniziare con https://"; exit 1;; esac
+          case "$ADSB_PROXY_URL" in ''|https://*) ;; *) echo "::error::ADSB_PROXY_URL deve iniziare con https://"; exit 1;; esac
           printf "window.ADSB_PROXY_URL = %s;\n" "$(printf %s "$ADSB_PROXY_URL" | jq -Rs .)" > _sito/config.js
 
       - name: Controlla che ci sia tutto
