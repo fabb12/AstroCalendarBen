@@ -103,6 +103,65 @@ e l'app continua a provare i feed diretti come prima. Cambiare `CACHE_NAME`
 
 ---
 
+## OpenSky, cioè la fonte che funziona davvero
+
+Le quattro reti di comunità (`ADSB.fi`, `adsb.lol`, `Airplanes.live`,
+`adsb.one`) **non servono questa app da nessuna delle due strade**, ed è una
+misura, non un'impressione:
+
+| | dal browser (IP di casa) | dal Worker (IP Cloudflare) |
+|---|---|---|
+| ADSB.fi | nessun header CORS | HTTP 403 |
+| adsb.lol | nessun header CORS | HTTP 429 |
+| Airplanes.live | nessun header CORS | HTTP 403 |
+| adsb.one | nessun header CORS | HTTP 403 |
+
+Gli endpoint sono vivi — aperti in una scheda restituiscono i dati — ma non
+mandano `Access-Control-Allow-Origin`, quindi il browser non può leggerli; e
+dal Worker rifiutano l'indirizzo, perché un Worker non ha un IP proprio e ne
+divide un pugno con migliaia di altri. Il 429 per una richiesta sola è la
+firma di una quota consumata da qualcun altro sullo stesso indirizzo.
+
+**OpenSky Network** non ha nessuno dei due problemi: ha un'API ufficiale per
+uso non commerciale con credenziali proprie, quindi l'identità è l'account e
+non l'indirizzo da cui si esce. Ed è la ragione vera per cui questo Worker
+esiste: è l'unico posto in cui una credenziale può stare senza finire nel
+browser di chiunque apra il sito.
+
+### Come si configura
+
+1. Registrati su [opensky-network.org](https://opensky-network.org) (account
+   gratuito, uso non commerciale).
+2. Nel tuo profilo crea un **API client**: ottieni un `client_id` e un
+   `client_secret`.
+3. Nel pannello Cloudflare, pagina del Worker → **Settings → Variables and
+   Secrets** → aggiungi due **Secret** (non variabili in chiaro):
+
+   | Nome | Valore |
+   |---|---|
+   | `OPENSKY_CLIENT_ID` | il client id |
+   | `OPENSKY_CLIENT_SECRET` | il client secret |
+
+4. Ridistribuisci il Worker (o aspetta la build successiva).
+
+Per gli account che usano ancora l'autenticazione di base valgono in
+alternativa `OPENSKY_USER` e `OPENSKY_PASS`. Senza nessuna delle due coppie
+OpenSky non entra nella corsa e il Worker si comporta come prima.
+
+Verifica con `/api/diagnostica`: il campo `openSky` dice se le credenziali
+sono state viste, e `funzionanti` deve contenere `OpenSky`.
+
+### I conti
+
+OpenSky concede agli utenti registrati un budget giornaliero di richieste, e
+una richiesta con un riquadro piccolo è la più economica che ci sia. Con
+l'aggiornamento ogni 45 secondi a planetario aperto e ogni 3 minuti a disegno
+spento si resta largamente dentro, perché l'app interroga solo mentre è
+aperta. Il token OAuth2 dura mezz'ora e il Worker se lo tiene: non si paga una
+richiesta di autenticazione per ogni fotografia.
+
+---
+
 ## Quando risponde «feed ADS-B temporaneamente non disponibili»
 
 Il 503 adesso porta con sé i dettagli, uno per feed:
