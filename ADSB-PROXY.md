@@ -103,6 +103,34 @@ e l'app continua a provare i feed diretti come prima. Cambiare `CACHE_NAME`
 
 ---
 
+## Quando risponde «feed ADS-B temporaneamente non disponibili»
+
+Il 503 adesso porta con sé i dettagli, uno per feed:
+
+```json
+{"error":"feed ADS-B temporaneamente non disponibili",
+ "dettagli":[{"feed":"ADSB.fi","guasto":"HTTP 429"}, ...]}
+```
+
+Se serve la fotografia completa c'è **`/api/diagnostica`**, che interroga
+tutti e quattro invece di correre e aspetta ognuno fino in fondo:
+
+```
+https://IL-TUO-WORKER.workers.dev/api/diagnostica?lat=45.4642&lon=9.1900&dist=50
+```
+
+Restituisce per ogni feed il codice HTTP, i millisecondi, il numero di aerei
+se ha risposto, e i primi 200 caratteri del corpo quando ha risposto male —
+che è quasi sempre dove sta scritta la cosa che serve («rate limited», «api
+key required», una pagina di manutenzione). `funzionanti` è l'elenco corto di
+chi ha risposto bene.
+
+Esiste perché «nessun feed disponibile» è la stessa frase per quattro guasti
+che si riparano in quattro modi diversi: un servizio spento (si aspetta), un
+429 (si aspetta di più, o si cambia porta), uno schema cambiato (va aggiornato
+l'interprete) e un endpoint ritirato (va sostituito il feed). Senza i dettagli
+si va a tentoni.
+
 ## Chi può bussare
 
 Un Worker che rimanda indietro qualunque `Origin` è un proxy ADS-B gratuito
