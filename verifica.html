@@ -983,6 +983,9 @@ titolo('9. La forma vera del terreno');
           terrenoRiprovabile({ stato: 429 }) && terrenoRiprovabile({ stato: 503 }) &&
           terrenoRiprovabile(new TypeError('Failed to fetch')) &&
           !terrenoRiprovabile({ stato: 400 }) && !terrenoRiprovabile({ stato: 404 }));
+    prova('dopo i no che cambiano fonte resta un tentativo per la fonte di riserva',
+          TERRENO_TENTATIVI > TERRENO_NO_PER_CAMBIARE,
+          `${TERRENO_NO_PER_CAMBIARE} no per cambiare, ${TERRENO_TENTATIVI} tentativi`);
   }
 
   // --- Il 429, che è il guasto che si vede più di tutti ---
