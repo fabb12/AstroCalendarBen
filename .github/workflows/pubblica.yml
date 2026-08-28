@@ -74,12 +74,14 @@ jobs:
           # cartelle e i file che cominciano per underscore. Qui non ce ne sono,
           # ma il giorno che ci fossero il guasto sarebbe silenzioso.
           touch _sito/.nojekyll
-          # Il proxy proprio risolve il CORS in modo stabile. La variabile e'
-          # facoltativa: senza, l'app conserva i ripieghi pubblici.
-          if [ -n "$ADSB_PROXY_URL" ]; then
-            case "$ADSB_PROXY_URL" in https://*) ;; *) echo "::error::ADSB_PROXY_URL deve iniziare con https://"; exit 1;; esac
-            printf "window.ADSB_PROXY_URL = %s;\n" "$(printf %s "$ADSB_PROXY_URL" | jq -Rs .)" > _sito/config.js
+          # I feed non espongono CORS a GitHub Pages: pubblicare senza Worker
+          # produce risposte 200 che il browser deve comunque bloccare.
+          if [ -z "$ADSB_PROXY_URL" ]; then
+            echo "::error::Manca la variabile Actions ADSB_PROXY_URL (vedi ADSB-PROXY.md)"
+            exit 1
           fi
+          case "$ADSB_PROXY_URL" in https://*) ;; *) echo "::error::ADSB_PROXY_URL deve iniziare con https://"; exit 1;; esac
+          printf "window.ADSB_PROXY_URL = %s;\n" "$(printf %s "$ADSB_PROXY_URL" | jq -Rs .)" > _sito/config.js
 
       - name: Controlla che ci sia tutto
         # Una pubblicazione a metà è peggio di una fallita: il service worker

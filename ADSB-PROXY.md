@@ -17,6 +17,9 @@ in serie una rete muta. Per attivarlo:
 Il workflow scrive l'URL in `config.js` soltanto nell'artefatto pubblicato: non
 servono credenziali nel browser e la configurazione locale resta portabile.
 
-Il Worker non è un miglioramento facoltativo in produzione: i feed diretti
-restano un ripiego, mentre i proxy CORS pubblici non vengono usati perché
-rispondono con 401/408 e possono cambiare regole senza preavviso.
+Il Worker non è un miglioramento facoltativo in produzione: i feed diretti non
+espongono CORS a GitHub Pages e sono usati soltanto in sviluppo locale. Se la
+variabile manca, il workflow ora ferma la pubblicazione invece di mettere
+online un'app che tenta richieste destinate a essere bloccate dal browser. I
+proxy CORS pubblici non vengono usati perché rispondono con 401/408 e possono
+cambiare regole senza preavviso.
