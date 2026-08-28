@@ -7595,6 +7595,160 @@ adsbAttendi('una pagina HTML restituita con 200 non ferma la corsa', async () =>
   try { localStorage.removeItem('astrocalendario_adsb_salute'); } catch (e) { /* niente storage */ }
 }
 
+// --- 3-bis. I ponti, e la sera in cui erano chiusi tutti ---------------
+//
+// La segnalazione: dal sito pubblicato, nove porte su nove hanno detto di no
+// nella stessa serata, e per **tre** motivi diversi — le quattro reti dirette
+// senza intestazione CORS, `corsproxy.io` con un 401 (ha cominciato a
+// pretendere una chiave e un'origine registrata: da un sito pubblico non
+// funzionerà mai più), `allorigins` con un 408. Da lì tre famiglie di prove.
+{
+  const porte = adsb.providersPredefiniti;
+  const dove = adsbDove;
+
+  // Una porta che non può aprirsi non è una riserva: è un tentativo buttato a
+  // ogni giro, e finché sta nell'elenco ruba il posto — e la sveglia — a una
+  // che potrebbe funzionare.
+  prova('la porta che pretende una chiave non sta più nell\'elenco',
+    porte.every(p => p.url(dove, 50).indexOf('corsproxy.io') === -1));
+
+  // Il mazzo dei ponti deve stare su infrastrutture diverse: due ponti sulla
+  // stessa macchina cadono insieme, e la ridondanza è solo apparente.
+  {
+    const host = adsb.PONTI.map(p => new URL(p.url('https://api.adsb.lol/v2/point/45/9/27')).hostname);
+    prova('i ponti stanno su più di un\'infrastruttura',
+      new Set(host.map(h => h.split('.').slice(-2).join('.'))).size >= 3,
+      host.join(', '));
+    prova('e parlano tutti in https', adsb.PONTI.every(p =>
+      /^https:\/\//.test(p.url('https://api.adsb.lol/v2/point/45/9/27'))));
+  }
+
+  // L'errore che fa sembrare rotto un ponte che funziona: codificare
+  // l'indirizzo a chi lo vuole in chiaro (risponde 404) e viceversa. Ogni
+  // ponte lo dichiara scrivendolo lui, e qui si controlla che quello che
+  // scrive sia poi rileggibile — cioè che il feed ci sia dentro, in una delle
+  // due forme e non in una terza.
+  {
+    const dentro = 'https://api.adsb.lol/v2/point/45.0000/9.0000/15';
+    const male = adsb.PONTI.filter(p => {
+      const u = p.url(dentro);
+      return u.indexOf(dentro) === -1 && u.indexOf(encodeURIComponent(dentro)) === -1;
+    });
+    prova('ogni ponte porta il feed dentro di sé, in chiaro o codificato',
+      male.length === 0, male.map(p => p.nome).join(', ') || 'tutti');
+    // E che nessuno lo codifichi due volte, che è il modo silenzioso di
+    // chiedere a un feed che non esiste: `%253A` invece di `%3A`.
+    prova('e nessuno lo codifica due volte',
+      adsb.PONTI.every(p => p.url(dentro).indexOf('%253A') === -1));
+  }
+
+  // La busta. Alcuni ponti non consegnano la risposta nuda ma imbustata in un
+  // JSON che parla di sé: senza toglierla, l'interprete del feed vede uno
+  // schema che non conosce e la porta viene scartata **pur avendo risposto
+  // bene**, che è il difetto più beffardo di tutti.
+  {
+    const busta = adsb.PONTI.filter(p => typeof p.sbusta === 'function');
+    prova('c\'è almeno un ponte che imbusta, e sa scartarsi da sé',
+      busta.length >= 1, `${busta.length} su ${adsb.PONTI.length}`);
+    const dentro = { ac: [{ hex: 'aa', lat: 45.8, lon: 9.03 }] };
+    prova('la busta tolta restituisce la risposta del feed',
+      JSON.stringify(busta[0].sbusta({ contents: JSON.stringify(dentro) })) === JSON.stringify(dentro));
+    // E una busta con dentro una pagina d'errore deve **sollevare**, se no
+    // torniamo al difetto della §1: un guasto letto come cielo sgombro.
+    let sollevato = false;
+    try { busta[0].sbusta({ contents: '<html>429</html>' }); } catch (e) { sollevato = true; }
+    prova('una busta con dentro dell\'HTML solleva invece di dire «zero aerei»', sollevato);
+    let senzaBusta = false;
+    try { busta[0].sbusta({ status: { http_code: 500 } }); } catch (e) { senzaBusta = true; }
+    prova('e una risposta che la busta non ce l\'ha nemmeno, pure', senzaBusta);
+  }
+
+  // OpenSky: l'interprete c'era da sempre in §1 e non era agganciato a
+  // nessuna porta — codice scritto, provato, e mai chiamato. È l'unica porta
+  // diretta di un'altra famiglia, cioè la sola riserva che non dipenda né dai
+  // quattro mirror readsb né da un ponte pubblico.
+  prova('OpenSky è fra le porte, non solo fra gli interpreti',
+    porte.some(p => /opensky-network\.org/.test(p.url(dove, 50))));
+  prova('e i mirror readsb non sono l\'unica famiglia in campo',
+    new Set(porte.map(p => p.rete)).size >= 5, `${new Set(porte.map(p => p.rete)).size} reti`);
+
+  // Appaiare tutti i ponti allo stesso feed vorrebbe dire buttare metà della
+  // ridondanza appena pagata: il giorno in cui quel feed è in manutenzione,
+  // cadono anche i ponti che funzionano benissimo.
+  {
+    const conPonte = porte.filter(p => p.ponte);
+    const feed = new Set(conPonte.map(p => p.rete));
+    prova('i ponti non guardano tutti lo stesso feed', feed.size >= 3,
+      `${feed.size} feed dietro a ${conPonte.length} ponti`);
+  }
+}
+
+// --- 3-ter. Il proxy proprio, e il guasto che si racconta --------------
+//
+// Il proxy proprio è la sola porta che si possa garantire, e per questo si
+// può scrivere dal pannello invece che solo nel deploy: chi resta col cielo
+// senza aerei vuole rimediare stasera.
+{
+  const dove = adsbDove;
+
+  // Forma «Worker del progetto». Il percorso si aggiunge se manca e **non** si
+  // raddoppia se c'è già: chi incolla l'indirizzo completo, altrimenti, si
+  // ritrova un 404 che sembra un Worker rotto.
+  {
+    const a = adsb.providerDalProxy('https://mio.workers.dev');
+    const b = adsb.providerDalProxy('https://mio.workers.dev/');
+    const c = adsb.providerDalProxy('https://mio.workers.dev/api/adsb');
+    const url = p => p[0].url(dove, 50);
+    prova('il Worker prende la sua rotta anche senza scriverla',
+      /\/api\/adsb\?/.test(url(a)), url(a));
+    prova('la barra finale non la raddoppia', url(b) === url(a));
+    prova('e chi incolla la rotta intera non se la ritrova due volte',
+      url(c) === url(a) && (url(c).match(/api\/adsb/g) || []).length === 1, url(c));
+    prova('il raggio arriva in miglia nautiche, tosato alle 250 del feed',
+      /dist=250(&|$)/.test(adsb.providerDalProxy('https://mio.workers.dev')[0].url(dove, 9999)));
+  }
+
+  // Forma «ponte»: qualunque proxy CORS scritto come modello. Vale anche per
+  // chi se ne tiene uno suo su un dominio qualunque.
+  {
+    const p = adsb.providerDalProxy('https://mio.example/?target={url}');
+    prova('un modello con {url} diventa un ponte, e su più di un feed',
+      p.length >= 2 && new Set(p.map(v => v.rete)).size === p.length);
+    prova('e il feed ci finisce dentro codificato',
+      p[0].url(dove, 50).indexOf(encodeURIComponent('https://api.adsb.lol/')) !== -1,
+      p[0].url(dove, 50));
+  }
+
+  prova('un indirizzo che non è https viene ignorato invece di essere provato',
+    adsb.providerDalProxy('http://mio.example/?target={url}').length === 0 &&
+    adsb.providerDalProxy('ciao').length === 0);
+  prova('e senza proxy restano le porte pubbliche, nessuna in meno',
+    adsb.providerDalProxy('').length === 0);
+
+  // La forma d'insieme del guasto. Nove rifiuti di CORS di fila non sono nove
+  // guasti: sono un fatto solo — «da questa rete non passiamo» — e la cura è
+  // un'altra, non riprovare fra tre secondi. Senza questo conto, in faccia a
+  // chi guarda il cielo finiva «Failed to fetch», che è la stessa frase con
+  // cui il browser racconta un cavo staccato.
+  {
+    const cors = () => { const e = new Error('niente'); e.cors = true; return e; };
+    const tutte = adsb.riassumi(new Error('x'), [cors(), cors(), cors()]);
+    prova('tre porte bloccate di fila si raccontano come un fatto solo',
+      tutte.tutteBloccate === true && tutte.provate === 3);
+    const mista = adsb.riassumi(new Error('x'), [cors(), Object.assign(new Error('429'), { stato: 429 })]);
+    prova('ma se una ha risposto davvero, non è il CORS: la strada c\'era',
+      mista.tutteBloccate === false && mista.bloccate === 1);
+    // Un 401 e un 403 sono bloccati anche loro, ed è il caso vero di
+    // `corsproxy.io`: il server risponde, ma a noi non apre.
+    const chiavi = adsb.riassumi(new Error('x'), [Object.assign(new Error('401'), { stato: 401 }),
+      Object.assign(new Error('403'), { stato: 403 })]);
+    prova('e chi pretende una chiave conta come porta chiusa, non come guasto',
+      chiavi.tutteBloccate === true);
+    prova('una porta sola che cade non basta a dichiarare la rete chiusa',
+      adsb.riassumi(new Error('x'), [cors()]).tutteBloccate === false);
+  }
+}
+
 // --- 4. Le fasce di distanza ------------------------------------------
 {
   const f = adsb.FASCE_DISTANZA;

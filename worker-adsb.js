@@ -13,6 +13,9 @@ function cors(request) {
     'Access-Control-Allow-Origin': request.headers.get('Origin') || '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    // Senza questa riga l'intestazione qui sotto esiste ma il browser non la
+    // lascia leggere: una diagnostica cross-origin va esposta per nome.
+    'Access-Control-Expose-Headers': 'X-Feed-ADSB',
     'Vary': 'Origin'
   };
 }
@@ -22,7 +25,12 @@ export default {
     const headers = cors(request);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
     const url = new URL(request.url);
-    if (url.pathname !== '/api/adsb') return new Response('Not found', { status: 404, headers });
+    // La rotta e' `/api/adsb`, ma la radice risponde uguale: chi incolla nel
+    // pannello il solo indirizzo del Worker — che e' quello che Wrangler
+    // stampa — deve vedere gli aerei, non un 404 che sembra un Worker rotto.
+    if (url.pathname !== '/api/adsb' && url.pathname !== '/') {
+      return new Response('Not found', { status: 404, headers });
+    }
     const lat = Number(url.searchParams.get('lat'));
     const lon = Number(url.searchParams.get('lon'));
     const dist = Math.max(1, Math.min(250, Math.ceil(Number(url.searchParams.get('dist')))));
@@ -44,8 +52,13 @@ export default {
         let dati;
         try { dati = JSON.parse(testo); } catch (_) { continue; }
         if (!Array.isArray(dati && (dati.ac || dati.aircraft))) continue;
+        // Quale rete ha risposto viaggia in un'intestazione: dal browser il
+        // Worker e' una porta sola, e senza questa riga non c'e' modo di
+        // sapere se dietro sta rispondendo adsb.fi o l'ultima delle quattro.
         return new Response(testo, { status: 200,
-          headers: { ...headers, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=20' } });
+          headers: { ...headers, 'Content-Type': 'application/json',
+            'X-Feed-ADSB': new URL(creaUrl(0, 0, 1)).hostname,
+            'Cache-Control': 'public, max-age=20' } });
       } catch (_) { /* il feed seguente e' una rete indipendente */ }
     }
     return Response.json({ error: 'feed ADS-B temporaneamente non disponibili' }, { status: 503, headers });

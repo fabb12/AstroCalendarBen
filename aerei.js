@@ -26,6 +26,17 @@
 //      trovati». Ogni interprete pretende quindi di riconoscere lo schema, e
 //      se non lo riconosce **solleva**, così la corsa passa alla porta dopo.
 //
+// E c'è una quarta cosa, che le tre di sopra non possono dare: **una porta
+// propria** (§2-bis). Tutto quello che sta nell'elenco è un prestito — reti
+// pubbliche che possono smettere di autorizzare i browser, ponti gratuiti che
+// smettono a turno — e il giorno in cui cadono tutti insieme non c'è
+// affiancamento né pagella che tenga: dal sito pubblicato su GitHub Pages
+// nove porte hanno risposto «no» per tre motivi diversi nella stessa serata.
+// Il Worker del progetto (`worker-adsb.js`) risolve la cosa alla radice,
+// perché il CORS lo aggiunge lui; e adesso lo si può indicare **dal
+// pannello**, senza ripubblicare il sito, perché chi resta senza aerei vuole
+// rimediare stasera.
+//
 // I dati si scaricano da soli all'apertura del planetario; il **disegno** è
 // un'altra cosa e nasce spento (§5). Sono due interruttori perché sono due
 // domande diverse: «voglio sapere cosa c'è in cielo» e «voglio vederlo
@@ -59,9 +70,15 @@
   // con cui si affianca la porta successiva. `AFFIANCA_MS` è la manopola che
   // conta: troppo corto e si bussa a tutte le porte insieme (che è come si
   // consuma una quota), troppo lungo e si torna alla fila indiana.
-  const PROVIDER_ATTESA_MS = 9000;
-  const CORSA_ATTESA_MS = 22000;
-  const AFFIANCA_MS = 2600;
+  // La sveglia di una singola porta è più lunga di prima (erano nove
+  // secondi) perché adesso in fondo alla scala ci sono i **ponti**, che fanno
+  // due viaggi invece di uno: il nostro fino a loro, e il loro fino al feed.
+  // Nove secondi tagliavano la corda mentre il ponte stava ancora lavorando —
+  // e un ponte abortito a metà si segna un no in pagella, cioè viene messo in
+  // castigo per una colpa che non ha.
+  const PROVIDER_ATTESA_MS = 12000;
+  const CORSA_ATTESA_MS = 26000;
+  const AFFIANCA_MS = 2400;
   // Le riprove dopo un guasto. La prima è corta di proposito: il caso più
   // comune non è «il servizio è giù», è «questa richiesta è andata storta».
   // Aspettare un minuto pieno, come si faceva prima, trasformava un singolo
@@ -204,20 +221,61 @@
     return ponte + encodeURIComponent(destinazione);
   }
 
-  function nomeDelPonte(ponte) {
-    if (ponte.indexOf('allorigins') !== -1) return 'AllOrigins';
-    if (ponte.indexOf('corsproxy') !== -1) return 'CorsProxy.io';
-    if (ponte.indexOf('codetabs') !== -1) return 'CodeTabs';
-    return 'ponte';
-  }
+  // --- I ponti CORS ---------------------------------------------------
+  // Un ponte è un server che rifà la richiesta al posto nostro e rimanda la
+  // risposta con l'intestazione che manca. Sono servizi gratuiti di terzi:
+  // nessuno di loro promette niente, e smettono di funzionare a turno. Il
+  // giorno in cui questa riga è stata scritta, dal sito pubblicato su GitHub
+  // Pages **tutte** le porte di prima erano chiuse insieme, e per tre motivi
+  // diversi — che è la ragione per cui il mazzo qui sotto è fatto così:
+  //
+  //   · le quattro reti dirette rispondevano **senza `Access-Control-Allow-Origin`**
+  //     (in console: «has been blocked by CORS policy»);
+  //   · `corsproxy.io` rispondeva **401** a tutti: ha cominciato a pretendere
+  //     una chiave e un'origine registrata, quindi da qui non funzionerà mai
+  //     più e non sta più nell'elenco — una porta che non può aprirsi non è
+  //     una riserva, è un tentativo buttato a ogni giro;
+  //   · `allorigins` rispondeva **408**, cioè era in piedi ma sotto carico.
+  //
+  // Da lì le due regole di questo elenco. La prima: **infrastrutture
+  // diverse**, perché due ponti sulla stessa macchina cadono insieme. La
+  // seconda: di ogni ponte vanno dichiarate le due cose che si sbagliano —
+  // come vuole l'indirizzo (codificato dentro a un parametro, oppure in
+  // chiaro appeso al percorso: codificarlo a chi lo vuole in chiaro dà un 404,
+  // ed è l'errore che fa sembrare rotto un ponte che funziona) e se la
+  // risposta arriva **dentro a una busta** invece che nuda.
+  //
+  // E resta il fatto che nessuno di questi è garantito. La sola porta che si
+  // possa garantire è quella propria: §2-bis.
+  const PONTI = [
+    // Passa la risposta così com'è, senza chiave, con CORS aperto: è il più
+    // solido del mazzo, ed è per questo che sta davanti.
+    { nome: 'CodeTabs', url: d => urlAttraverso('https://api.codetabs.com/v1/proxy?quest=', d) },
+    { nome: 'AllOrigins', url: d => urlAttraverso('https://api.allorigins.win/raw?url=', d) },
+    { nome: 'Cors.lol', url: d => urlAttraverso('https://api.cors.lol/?url=', d) },
+    // Stesso host di AllOrigins, altra porta. Non è un doppione: `/raw` fa da
+    // tramite in diretta e va in 408 quando il feed è lento, mentre `/get`
+    // serve dalla sua cache e in quel caso risponde lo stesso. La risposta
+    // però arriva imbustata in un JSON che parla di sé, e la busta va tolta
+    // prima di darla all'interprete.
+    { nome: 'AllOrigins (busta)',
+      url: d => urlAttraverso('https://api.allorigins.win/get?url=', d),
+      sbusta: busta => {
+        if (!busta || typeof busta.contents !== 'string') throw schemaSconosciuto('busta AllOrigins');
+        return JSON.parse(busta.contents);
+      } },
+    // Questi due vogliono l'indirizzo **in chiaro**, appeso al loro percorso.
+    { nome: 'Worker CORS', url: d => 'https://test.cors.workers.dev/?' + d },
+    { nome: 'ThingProxy', url: d => 'https://thingproxy.freeboard.io/fetch/' + d }
+  ];
 
-  function providerConPonte(nome, ponte, urlFeed, interpreta = interpretaAdsbExchange) {
+  function providerConPonte(rete, ponte, urlFeed, interpreta = interpretaAdsbExchange) {
     return {
-      nome: `${nome} via ${nomeDelPonte(ponte)}`,
-      rete: nome,
-      url(posizione, raggioKm) {
-        return urlAttraverso(ponte, urlFeed(posizione, raggioKm));
-      },
+      nome: `${rete} via ${ponte.nome}`,
+      rete,
+      ponte: ponte.nome,
+      url(posizione, raggioKm) { return ponte.url(urlFeed(posizione, raggioKm)); },
+      sbusta: ponte.sbusta,
       interpreta
     };
   }
@@ -233,40 +291,103 @@
   const feedAdsbOne = (posizione, raggioKm) =>
     urlAdsbExchange('api.adsb.one', posizione, raggioKm);
 
-  // Non affidare il percorso normale soltanto a un proxy CORS pubblico. I
-  // filtri anti-tracciamento usati soprattutto sui browser desktop possono
-  // bloccare AllOrigins o CorsProxy.io anche quando il feed ADS-B è
-  // raggiungibile. I feed diretti vengono quindi tentati per primi: se il
-  // browser ne rifiuta il CORS, fetch fallisce e la corsa passa subito ai
-  // ponti. Le reti dirette sono **quattro** e non una, e non è ridondanza
-  // decorativa: la sera in cui adsb.fi era in manutenzione, con una porta
-  // sola il modulo non aveva niente da dire. Un eventuale proxy proprio può
-  // sempre essere fornito con window.AEREI_PROVIDER o con ADSB_PROXY_URL.
+  // La scala delle porte, dalla più diretta alla più mediata.
+  //
+  // Prima le quattro reti dirette: quando il browser le lascia passare sono
+  // la strada più breve e più fresca, e costano niente quando non passano —
+  // un CORS rifiutato fallisce nell'istante, quindi la corsa scende subito.
+  //
+  // Poi **OpenSky**, che è la sola porta diretta di un'altra famiglia: non è
+  // un mirror readsb come le altre quattro, sta su un'altra infrastruttura e
+  // manda il CORS aperto. Ha un contingente giornaliero stretto per chi non
+  // si autentica — e quindi risponde 429 volentieri — ma è l'unica riserva
+  // che non dipenda dal buon cuore di un ponte pubblico, e il giorno in cui
+  // i quattro mirror sono chiusi insieme è quella che salva il cielo. Il suo
+  // interprete c'era da sempre in §1 e non era agganciato a nessuna porta:
+  // codice scritto, provato, e mai chiamato.
+  //
+  // Infine i ponti, **ognuno con un feed diverso**: appaiare tutti i ponti
+  // allo stesso feed vorrebbe dire che il giorno in cui quel feed è in
+  // manutenzione cadono anche loro, cioè rinunciare alla metà della
+  // ridondanza che si è appena pagata.
   const providersPredefiniti = [
     providerDiretto('ADSB.fi', urlAdsbFi),
     providerDiretto('adsb.lol', feedAdsbLol),
     providerDiretto('Airplanes.live', feedAirplanesLive),
     providerDiretto('adsb.one', feedAdsbOne),
-    providerConPonte('adsb.lol', 'https://api.allorigins.win/raw?url=', feedAdsbLol),
-    providerConPonte('Airplanes.live', 'https://api.allorigins.win/raw?url=', feedAirplanesLive),
-    providerConPonte('adsb.lol', 'https://corsproxy.io/?url=', feedAdsbLol),
-    providerConPonte('ADSB.fi', 'https://corsproxy.io/?url=', urlAdsbFi),
-    providerConPonte('adsb.one', 'https://api.codetabs.com/v1/proxy?quest=', feedAdsbOne)
+    providerDiretto('OpenSky', urlOpenSky, interpretaOpenSky),
+    providerConPonte('adsb.lol', PONTI[0], feedAdsbLol),
+    providerConPonte('ADSB.fi', PONTI[1], urlAdsbFi),
+    providerConPonte('Airplanes.live', PONTI[2], feedAirplanesLive),
+    providerConPonte('adsb.lol', PONTI[3], feedAdsbLol),
+    providerConPonte('adsb.one', PONTI[4], feedAdsbOne),
+    providerConPonte('ADSB.fi', PONTI[5], urlAdsbFi),
+    providerConPonte('adsb.one', PONTI[0], feedAdsbOne),
+    providerConPonte('Airplanes.live', PONTI[1], feedAirplanesLive)
   ];
 
-  function providersDisponibili() {
-    const proxy = String(window.ADSB_PROXY_URL || '').trim().replace(/\/$/, '');
-    const propri = proxy ? [{
-      nome: 'proxy ADS-B del sito',
-      rete: 'proxy del sito',
+  // =====================================================================
+  // 2-bis. IL PROXY PROPRIO — la sola porta che si possa garantire
+  //    Tutto quello che sta sopra è un prestito: gratuito, senza contratto,
+  //    e ognuno smette a turno. Un proxy proprio invece risponde sempre,
+  //    perché è nostro — è un server che rifà la richiesta e aggiunge
+  //    l'intestazione che a GitHub Pages, che serve solo file, non si può
+  //    chiedere. Il progetto ne porta uno pronto: `worker-adsb.js`, una
+  //    cinquantina di righe di Cloudflare Worker, gratuito fino a centomila
+  //    richieste al giorno (vedi ADSB-PROXY.md).
+  //
+  //    Si può indicare in tre modi, e che siano tre è voluto: `config.js`
+  //    (lo scrive il deploy), `window.ADSB_PROXY_URL` (una riga in console) e
+  //    il campo del pannello, che scrive in `localStorage` e vale **subito**,
+  //    senza ripubblicare il sito. L'ultimo è quello che conta di più: chi si
+  //    ritrova il cielo senza aerei vuole rimediare stasera, non al prossimo
+  //    rilascio.
+  //
+  //    Sono ammesse due forme, e si riconoscono da sole: l'indirizzo del
+  //    Worker del progetto, e qualunque altro ponte CORS scritto come modello
+  //    con `{url}` dentro (`https://mio-ponte.example/?target={url}`).
+  // =====================================================================
+
+  const CHIAVE_PROXY = 'astrocalendario_adsb_proxy';
+
+  function proxyProprio() {
+    let salvato = '';
+    try { salvato = String(localStorage.getItem(CHIAVE_PROXY) || '').trim(); }
+    catch (e) { /* niente storage: resta quello scritto dal deploy */ }
+    return salvato || String(window.ADSB_PROXY_URL || '').trim();
+  }
+
+  function providerDalProxy(indirizzo = proxyProprio()) {
+    if (!indirizzo || !/^https:\/\//i.test(indirizzo)) return [];
+    // Forma «ponte»: un modello con {url} dentro. Vale per qualunque proxy
+    // CORS, compresi quelli che uno si tiene su un dominio suo. Anche qui due
+    // feed e non uno: un proxy che funziona non rende buono il feed che c'è
+    // dall'altra parte.
+    if (indirizzo.indexOf('{url}') !== -1) {
+      const ponte = { nome: 'proxy del sito',
+        url: d => indirizzo.replace('{url}', encodeURIComponent(d)) };
+      return [providerConPonte('adsb.lol', ponte, feedAdsbLol),
+              providerConPonte('ADSB.fi', ponte, urlAdsbFi)];
+    }
+    // Forma «Worker del progetto»: parla la lingua di worker-adsb.js. Il
+    // percorso si aggiunge solo se non c'è già — chi incolla l'indirizzo
+    // completo non deve ritrovarsi due volte `/api/adsb`, che è un 404 e
+    // sembra un Worker rotto.
+    const base = indirizzo.replace(/\/+$/, '');
+    const conRotta = /\/api\/adsb$/.test(base) ? base : base + '/api/adsb';
+    return [{
+      nome: 'proxy ADS-B del sito', rete: 'proxy del sito',
       url(posizione, raggioKm) {
         const q = new URLSearchParams({ lat: posizione.lat.toFixed(4), lon: posizione.lon.toFixed(4),
-          dist: String(Math.max(1, Math.ceil(raggioKm / 1.852))) });
-        return `${proxy}/api/adsb?${q}`;
+          dist: String(Math.max(1, Math.min(250, Math.ceil(raggioKm / 1.852)))) });
+        return `${conRotta}?${q}`;
       },
       interpreta: interpretaAdsbExchange
-    }] : [];
-    return propri.concat(providersPredefiniti);
+    }];
+  }
+
+  function providersDisponibili() {
+    return providerDalProxy().concat(providersPredefiniti);
   }
 
   // =====================================================================
@@ -373,8 +494,38 @@
     return errori.slice().sort((a, b) => peso(b) - peso(a))[0];
   }
 
+  // Quando cadono **tutte**, il guasto più informativo non è quello di una
+  // porta: è la loro forma d'insieme. Nove rifiuti di CORS di fila non sono
+  // nove guasti, sono un fatto solo — «da questa rete, verso questi server,
+  // il browser non ci lascia passare» — e la cura è un'altra (§2-bis), non
+  // riprovare fra tre secondi. Il conto viaggia appeso all'errore perché §6
+  // possa dirlo a parole invece di scrivere «Failed to fetch», che è la
+  // stessa frase con cui il browser racconta un cavo staccato.
+  function riassumi(errore, errori) {
+    if (!errore) return errore;
+    const bloccate = errori.filter(e => e.cors || e.stato === 401 || e.stato === 403).length;
+    errore.provate = errori.length;
+    errore.bloccate = bloccate;
+    errore.tutteBloccate = errori.length >= 2 && bloccate === errori.length;
+    return errore;
+  }
+
   async function scarica(provider, obs, raggio, signal) {
-    const risposta = await fetch(provider.url(obs, raggio), { signal, cache: 'no-store' });
+    let risposta;
+    try {
+      risposta = await fetch(provider.url(obs, raggio), { signal, cache: 'no-store' });
+    } catch (e) {
+      // Il browser non racconta mai un CORS a chi lo subisce: la fetch
+      // fallisce con un `TypeError: Failed to fetch` **identico** a quello di
+      // un cavo staccato, e il motivo vero resta soltanto in console, dove
+      // nessuno guarda. Da qui non si può sapere quale dei due sia, ma si può
+      // dire l'unica cosa che conta e che è vera in tutt'e due i casi: quella
+      // porta non ha nemmeno risposto. È il segno che `riassumi` conta.
+      if (e && (e.name === 'AbortError' || e.schema)) throw e;
+      const guaio = new Error(`${provider.nome}: nessuna risposta (CORS o rete)`);
+      guaio.cors = true;
+      throw guaio;
+    }
     if (risposta.status === 429) {
       const errore = new Error('limite di richieste raggiunto');
       errore.rateLimit = true; errore.stato = 429; throw errore;
@@ -389,6 +540,14 @@
     const testo = await risposta.text();
     let dati;
     try { dati = JSON.parse(testo); } catch (e) { throw schemaSconosciuto(provider.rete || provider.nome); }
+    // Alcuni ponti non consegnano la risposta nuda: la imbustano in un JSON
+    // che parla di sé (`{contents: "…"}`). La busta va tolta **qui** e non
+    // nell'interprete, che è quello del feed e non deve sapere niente della
+    // strada che la risposta ha fatto per arrivare.
+    if (typeof provider.sbusta === 'function') {
+      try { dati = provider.sbusta(dati); }
+      catch (e) { throw e && e.schema ? e : schemaSconosciuto(provider.ponte || provider.nome); }
+    }
     return provider.interpreta(dati);
   }
 
@@ -416,7 +575,7 @@
         if (signalEsterno) signalEsterno.removeEventListener('abort', annullaEsterno);
         regia.abort();
         if (vincitore) risolvi(vincitore);
-        else rifiuta(errore || peggiore(errori));
+        else rifiuta(riassumi(errore || peggiore(errori), errori));
       }
 
       function pianifica(ritardo) {
@@ -490,7 +649,7 @@
     ultimoSuccesso: 0, ultimoTentativo: 0, prossimoAggiornamento: 0, prossimoTentativo: 0,
     tentativiFalliti: 0, errore: '', errNome: '', ultimaFonte: '', avviato: false,
     ricaricaDopo: false, ultimoRenderSecondo: null, feedbackRichiesto: false, feedbackTimer: null,
-    ultimaFase: ''
+    ultimaFase: '', tutteBloccate: false
   };
 
   function preferenzeCarica() {
@@ -746,9 +905,24 @@
   }
 
   function guaioLeggibile() {
+    // Il caso che va nominato per primo, perché è l'unico che non si cura da
+    // solo aspettando: se **nessuna** porta ha risposto, non è una giornata
+    // storta di un servizio pubblico — è questa rete, o questo browser, che
+    // verso quei server non ci lascia passare. Riprovare non serve, e dirlo
+    // «Failed to fetch» manda a cercare nel posto sbagliato.
+    if (stato.tutteBloccate) return 'nessuna porta ADS-B raggiungibile da qui (CORS o rete)';
     if (stato.errNome === 'TimeoutError') return 'nessuna rete ADS-B ha risposto in tempo';
     if (stato.errNome === 'AbortError') return 'richiesta interrotta';
     return stato.errore || 'guasto sconosciuto';
+  }
+
+  // Il consiglio che chiude il discorso, e solo quando è vero: se le porte
+  // sono chiuse tutte e un proxy proprio non c'è, quella è la cura — e sta
+  // due dita più in basso, nello stesso pannello che si sta leggendo.
+  function consiglioProxy() {
+    return stato.tutteBloccate && !proxyProprio()
+      ? ' Un proxy proprio è la sola porta che non dipenda da servizi altrui: apri «Proxy ADS-B» qui sotto.'
+      : '';
   }
 
   // La riga del pannello: **cosa c'è**, poi **quanto è fresco**, poi — solo
@@ -785,8 +959,8 @@
       const riprova = stato.prossimoTentativo
         ? ` Riprovo ${fraQuanto(stato.prossimoTentativo - Date.now())}.` : '';
       return stato.ultimoSuccesso
-        ? `Aggiornamento non riuscito (${guaioLeggibile()}): resta l'ultima lettura di ${eta} (${quanti}).${riprova}`
-        : `Dati ADS-B non disponibili (${guaioLeggibile()}).${riprova}`;
+        ? `Aggiornamento non riuscito (${guaioLeggibile()}): resta l'ultima lettura di ${eta} (${quanti}).${riprova}${consiglioProxy()}`
+        : `Dati ADS-B non disponibili (${guaioLeggibile()}).${riprova}${consiglioProxy()}`;
     }
     if (f === 'vecchio') {
       return `${quanti} · ultima lettura ${eta}: posizioni propagate dalla rotta.${prossimo}`;
@@ -832,6 +1006,7 @@
       }
     }
     scriviTesto('aerei-conteggio', stato.aerei.length ? String(stato.aerei.length) : '—');
+    aggiornaProxyUI();
     accendiTasto('aerei-btn-mostra', stato.visibile);
     accendiTasto('aerei-btn-dati', stato.dati);
     accendiTasto('aerei-btn-auto', stato.auto);
@@ -986,7 +1161,7 @@
         stato.ultimoCentro = obs;
         stato.ultimoSuccesso = Date.now();
         stato.ultimaFonte = risultato.provider.nome;
-        stato.errore = ''; stato.errNome = '';
+        stato.errore = ''; stato.errNome = ''; stato.tutteBloccate = false;
         pianificaProssimo(true);
         render();
         concludiFeedback(`Dati ADS-B aggiornati: ${stato.aerei.length} ` +
@@ -995,7 +1170,16 @@
         if (e.name === 'AbortError' && (!stato.dati || stato.ricaricaDopo)) return;
         stato.errore = e.message || 'guasto';
         stato.errNome = e.name || '';
+        stato.tutteBloccate = !!e.tutteBloccate;
         stato.tentativiFalliti++;
+        // Se sono cadute **tutte** e nessuna ha nemmeno risposto, riprovare
+        // fra tre secondi non è insistenza: è bussare tredici volte a tredici
+        // porte chiuse ogni tre secondi. La prima riprova corta esiste per il
+        // caso comune — *questa* richiesta andata storta — e qui quel caso è
+        // escluso per costruzione. Si salta quindi avanti nella scala, senza
+        // arrendersi: un filtro anti-tracciamento si spegne, una rete si
+        // cambia, e il tasto «Aggiorna adesso» azzera comunque il conto.
+        if (e.tutteBloccate) stato.tentativiFalliti = Math.max(stato.tentativiFalliti, 4);
         pianificaProssimo(false);
         concludiFeedback(`Aggiornamento ADS-B non riuscito: ${guaioLeggibile()}.`, true);
       }).finally(() => {
@@ -1109,6 +1293,54 @@
   function aereiImpostaAccesi(accesi) {
     if (accesi && !stato.dati) aereiImpostaDati(true);
     aereiImpostaVisibili(accesi);
+  }
+
+  // --- Il proxy proprio, dal pannello ---------------------------------
+  // Perché si possa scrivere qui e non solo nel deploy: chi si ritrova il
+  // cielo senza aerei vuole rimediare stasera. E perché scriverlo azzera la
+  // pagella: le penali di prima parlano delle porte di prima, e tenerle
+  // vorrebbe dire far cominciare la porta nuova dal fondo della fila che ha
+  // appena reso inutile.
+  function aereiImpostaProxy(indirizzo) {
+    const pulito = String(indirizzo || '').trim();
+    try {
+      if (pulito) localStorage.setItem(CHIAVE_PROXY, pulito);
+      else localStorage.removeItem(CHIAVE_PROXY);
+    } catch (e) { /* niente storage: la scelta vale per questa sessione */ }
+    salute.clear(); saluteSalva();
+    stato.tentativiFalliti = 0;
+    stato.errore = ''; stato.errNome = ''; stato.tutteBloccate = false;
+    stato.prossimoAggiornamento = 0; stato.prossimoTentativo = 0;
+    aggiornaProxyUI();
+    if (stato.dati) carica(true, true); else aggiornaUI();
+    return proxyProprio();
+  }
+
+  function proxyRacconto() {
+    const indirizzo = proxyProprio();
+    if (!indirizzo) {
+      return 'Nessun proxy: si usano le reti dirette e i ponti pubblici, che nessuno garantisce.';
+    }
+    if (!/^https:\/\//i.test(indirizzo)) {
+      return 'Indirizzo ignorato: deve cominciare con https:// — un proxy in chiaro non lo carica una pagina sicura.';
+    }
+    return indirizzo.indexOf('{url}') !== -1
+      ? 'Ponte proprio in uso (modello con {url}): viene provato per primo, davanti a tutte le altre porte.'
+      : 'Worker proprio in uso: viene provato per primo, davanti a tutte le altre porte.';
+  }
+
+  function aggiornaProxyUI() {
+    const campo = document.getElementById('aerei-proxy-url');
+    // Non si riscrive il campo mentre ci si sta scrivendo dentro: il pannello
+    // si aggiorna a ogni battito, e un `value` riscritto sotto le dita
+    // riporterebbe il cursore in fondo a ogni cinque secondi.
+    if (campo && document.activeElement !== campo) {
+      let salvato = '';
+      try { salvato = localStorage.getItem(CHIAVE_PROXY) || ''; } catch (e) { /* niente storage */ }
+      const mostrato = salvato || String(window.ADSB_PROXY_URL || '');
+      if (campo.value !== mostrato) campo.value = mostrato;
+    }
+    scriviTesto('aerei-proxy-stato', proxyRacconto());
   }
 
   function aereiAggiornaAdesso() {
@@ -1415,6 +1647,19 @@
     collega('aerei-btn-mostra', () => aereiAlternaVisibili());
     collega('aerei-btn-dati', () => aereiAlternaDati());
     collega('aerei-btn-auto', () => aereiAlternaAuto());
+    collega('aerei-proxy-salva', () => {
+      const campo = document.getElementById('aerei-proxy-url');
+      aereiImpostaProxy(campo ? campo.value : '');
+    });
+    collega('aerei-proxy-pulisci', () => {
+      const campo = document.getElementById('aerei-proxy-url');
+      if (campo) campo.value = '';
+      aereiImpostaProxy('');
+    });
+    const campoProxy = document.getElementById('aerei-proxy-url');
+    if (campoProxy) campoProxy.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); aereiImpostaProxy(campoProxy.value); }
+    });
     collega('aerei-pannello-chiudi', () => {
       if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
     });
@@ -1463,6 +1708,7 @@
   window.aereiCaricaFoto = aereiCaricaFoto;
   window.aereiRaggioCambiato = aereiRaggioCambiato;
   window.aereiAggiornaAdesso = aereiAggiornaAdesso;
+  window.aereiImpostaProxy = aereiImpostaProxy;
   window.aereiPosizioneCambiata = aereiPosizioneCambiata;
   window.aereiTrova = aereiTrova;
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
@@ -1471,5 +1717,6 @@
     interpretaRotta, aeroportoTesto, aeroportoCoordinate, registraTracce, tracce, stato, providersDisponibili,
     FASCE_DISTANZA, fasciaDi, ordinaPerSalute, salute, segnaEsito, peggiore, fase, testoDiStato,
     intervalloAggiornamento, pianificaProssimo, RIPROVE_MS, DATI_VECCHI_MS, DATI_SCADUTI_MS,
-    AGGIORNA_VISIBILE_MS, AGGIORNA_SFONDO_MS };
+    AGGIORNA_VISIBILE_MS, AGGIORNA_SFONDO_MS, PONTI, providerDalProxy, proxyProprio, riassumi,
+    scarica, CHIAVE_PROXY };
 }());

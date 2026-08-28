@@ -918,6 +918,28 @@
                 <button id="aerei-aggiorna" type="button" class="tasto-cielo"
                   title="Chiedi adesso una nuova fotografia, senza aspettare il prossimo giro">Aggiorna adesso</button>
               </div>
+              <!-- Il proxy proprio (§2-bis di aerei.js). Sta dentro a un
+                   <details> perché è la risposta a una domanda che quasi
+                   nessuno si fa — finché non gli capita il giorno in cui
+                   nessuna porta pubblica risponde, e allora è l'unica cosa
+                   che risolve. Sopra ci arriva da solo il testo della riga di
+                   stato, che quando le porte sono chiuse tutte dice di
+                   aprirlo. -->
+              <details class="aerei-proxy">
+                <summary>Proxy ADS-B proprio</summary>
+                <p class="etichetta-comando nota-lunga">Le reti ADS-B non autorizzano sempre le richieste dei browser, e i ponti pubblici sono servizi gratuiti che smettono a turno: quando cadono tutti insieme il cielo resta senza aerei. Un proxy proprio no. Il progetto ne porta uno pronto — <code>worker-adsb.js</code>, un Cloudflare Worker che si distribuisce con <code>npx wrangler deploy</code> (istruzioni in <code>ADSB-PROXY.md</code>) — e qui basta incollare l'indirizzo che stampa: vale subito, resta salvato su questo dispositivo e viene provato prima di tutte le altre porte. Va bene anche un altro ponte CORS qualunque, scritto come modello con <code>{url}</code> al posto dell'indirizzo da chiamare.</p>
+                <div class="riga-comandi riga-proxy-adsb">
+                  <input id="aerei-proxy-url" type="url" class="campo-proxy" spellcheck="false"
+                    autocomplete="off" inputmode="url"
+                    placeholder="https://…workers.dev  oppure  https://…/?target={url}"
+                    aria-label="Indirizzo del proxy ADS-B proprio">
+                  <button id="aerei-proxy-salva" type="button" class="tasto-cielo"
+                    title="Usa questo proxy da adesso, davanti a tutte le altre porte">Usa</button>
+                  <button id="aerei-proxy-pulisci" type="button" class="tasto-cielo"
+                    title="Torna alle reti dirette e ai ponti pubblici">Togli</button>
+                </div>
+                <p id="aerei-proxy-stato" class="etichetta-comando"></p>
+              </details>
               <!-- La leggenda la scrive aerei.js da FASCE_DISTANZA: una copia
                    qui divergerebbe al primo ritocco delle soglie senza che
                    niente lo dica. -->

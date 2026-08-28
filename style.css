@@ -8816,6 +8816,44 @@ body button.did-ponte:active { transform: translateY(1px); }
 #aerei-aggiorna[data-esito="successo"] { color:#86efac; border-color:#22c55e; }
 #aerei-aggiorna[data-esito="errore"] { color:#fca5a5; border-color:#ef4444; }
 
+/* Il proxy proprio. Sta chiuso di serie perché è la risposta a una domanda
+   che quasi nessuno si fa — finché non gli capita la sera in cui nessuna
+   porta pubblica risponde. Il campo va a capo da solo sotto ai tasti quando
+   il pannello è stretto: un `type="url"` con dentro un indirizzo di Worker
+   più due tasti in riga, su un telefono, lascia al campo una dozzina di
+   caratteri. */
+.aerei-proxy { margin-top: 10px; }
+.aerei-proxy > summary {
+  cursor: pointer;
+  font-size: .8rem;
+  color: var(--testo-2);
+  padding: 4px 0;
+}
+.aerei-proxy > summary:hover { color: var(--testo); }
+.riga-proxy-adsb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+}
+.campo-proxy {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 7px 9px;
+  font-size: .78rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--testo);
+  background: var(--incassato);
+  border: 1px solid var(--bordo-forte);
+  border-radius: 8px;
+}
+.campo-proxy:focus {
+  outline: none;
+  border-color: var(--blu);
+}
+.aerei-proxy #aerei-proxy-stato { margin-top: 6px; }
+
 /* La spia: verde freschi, azzurra in arrivo, ambra vecchi, rossa guasto,
    grigia in pausa. È l'unica parte di questo modulo sempre in vista, ed è
    quella che risponde alla domanda per cui il pannello esiste — «i dati ci

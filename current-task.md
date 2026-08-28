@@ -4,47 +4,51 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Gli **spicchi d'acqua** accanto ai laghi, e i laghi che non avevano la forma
-che hanno sulla carta (segnalato sul Lago di Lugano). Le cause erano sei, e
-tutte della stessa famiglia: si rispondeva «per banda» a domande che sono
-dello **specchio d'acqua**.
+Gli **aerei ADS-B che non arrivano più**, segnalato dal sito pubblicato con la
+console piena di errori di CORS. Non era una porta guasta: erano **tutte**, in
+una sera sola e per tre motivi diversi — le quattro reti dirette rispondevano
+senza `Access-Control-Allow-Origin`, `corsproxy.io` con un **401** (ha
+cominciato a pretendere una chiave e un'origine registrata) e `allorigins` con
+un **408**. La corsa con affiancamento e la pagella non potevano niente: sono
+il modo di *scegliere* fra le porte, e qui non ce n'era nessuna da scegliere.
 
-- `terreno.js` §12 — ogni banda si porta dietro il **corpo**, cioè di che
-  specchio è (`ACQUE_VERSIONE` 5: la tupla passa da quattro posti a cinque, e
-  chi aveva bande salvate se le riscarica). Da lì:
-  - `acqueQuoteDeiCorpi()`: **una quota per lago**, non una per banda. Con la
-    griglia a centocinquanta metri di passo, due colonne contigue prendevano
-    campioni diversi — misurato su un ramo largo trecento metri, sette quote
-    per un lago solo — e dove la banda era corta il ripiego pescava sulla
-    riva, che può risultare sopra l'occhio: quella colonna spariva del tutto,
-    lasciando un buco a spicchio in mezzo all'acqua. I **corsi d'acqua** non
-    hanno un dentro a cui chiedere, e infatti per loro contano solo i campioni
-    che li abbracciano e il suolo sotto i piedi.
-  - il **taglio dell'occlusione** si cerca invece di prenderlo dov'era caduto
-    uno di dodici campioni equispaziati: i campioni si mettono dove il dato
-    cambia (la cresta davanti è una scala a diciotto gradini) e il passaggio
-    si stringe per bisezione. Da 75 m di errore medio a 0,8, e costa **meno**
-    di prima (4,7 ms contro 6,0 su una scena di laghi).
-  - il **taglio spaiato** — la riva di là oltre il raggio di ricerca — si
-    chiude sul limite invece che a `+200 m`, contro quello che il suo stesso
-    commento diceva. Era la scheggia a punta sul bordo dei laghi grandi.
-  - la **corda dei corsi d'acqua** è quella esatta (`largo / (2·sen)`, senza
-    il pavimento a 0,12 sul seno): l'entrata cade a distanza negativa solo se
-    ci si sta davvero dentro. Prima un fiume di sbieco a un centinaio di metri
-    risultava cominciare ai piedi, cioè disegnato dal nadir in su.
-  - `acqueQueryOverpass` dà alle **relazioni** un `out` e un tetto propri.
-    Con un `out` solo si stampano prima tutte le vie, e in una provincia di
-    laghi il tetto se lo prendono loro: i laghi grandi — che sono relazioni —
-    non arrivavano affatto. Le relazioni ci sono adesso anche nella query
-    corta di ripiego.
-- `app.js` — `skyAcqueStrisce` lega le bande **per specchio**, pretende una
-  sovrapposizione vera e rompe la striscia sulle discontinuità
-  (`SKY_ACQUA_SALTO`): dove un promontorio biforca la veduta la striscia
-  finisce e ne cominciano due, invece di trascinare un bordo di chilometri in
-  mezzo grado. E `skyAcquaStriscia` allarga ogni striscia di un quarto di
-  grado per parte — una colonna è una **cella** — se no fra due strisce
-  contigue resterebbe mezzo grado di fessura.
-- Prove nuove nel §20 di `verifica.html`, ognuna col suo contro-esempio sul
-  conto di prima (95 in quella sezione).
+Quattro cambiamenti, in ordine di quanto risolvono.
 
-Cache PWA portata ad `astrocal-v216`.
+- **Il proxy proprio si incolla dal pannello** (`aerei.js` §2-bis, nuovo). È
+  la sola porta che si possa garantire, e prima si poteva indicare solo dal
+  deploy: chi resta senza aerei vuole rimediare stasera. `CHIAVE_PROXY`
+  (`astrocalendario_adsb_proxy`) vince su `ADSB_PROXY_URL`, e
+  `providerDalProxy` riconosce due forme da sé — l'indirizzo del Worker (la
+  rotta `/api/adsb` la aggiunge se manca e non la raddoppia a chi l'ha già
+  scritta) e qualunque altro ponte scritto come modello con `{url}`.
+  Scriverlo azzera la pagella.
+- **Il mazzo dei ponti** (`PONTI`, §1): sei porte su infrastrutture diverse al
+  posto di tre, `corsproxy.io` **fuori** — una porta che non può aprirsi non è
+  una riserva, è un tentativo buttato a ogni giro — e di ogni ponte sono
+  dichiarate le due cose che si sbagliano: se vuole l'indirizzo codificato o
+  in chiaro, e se la risposta arriva **imbustata** (`sbusta`, tolta prima
+  dell'interprete del feed). Ognuno è appaiato a un feed diverso: appaiarli
+  tutti allo stesso vuol dire buttare metà della ridondanza appena pagata.
+- **OpenSky è una porta e non solo un interprete.** `interpretaOpenSky` e
+  `urlOpenSky` c'erano da sempre e non erano agganciati a niente: codice
+  scritto, provato in `verifica.html`, e mai chiamato. È l'unica riserva
+  diretta che non sia un mirror readsb.
+- **Il guasto si racconta** (`riassumi`, `stato.tutteBloccate`). Tredici
+  rifiuti di CORS non sono tredici guasti: sono un fatto solo — «da questa
+  rete non passiamo» — e la cura è un'altra, non riprovare fra tre secondi. Il
+  pannello adesso lo scrive e indica il campo del proxy due dita più in basso,
+  e la scala delle riprove salta avanti invece di bussare a tredici porte
+  chiuse ogni tre secondi.
+
+Attorno: `PROVIDER_ATTESA_MS` da 9 a 12 s (un ponte fa due viaggi, e la
+sveglia corta lo mandava in castigo per una colpa che non aveva), `sw.js` che
+lascia passare i ponti nuovi **e** il proxy proprio riconoscendolo dalla forma
+della richiesta (`.workers.dev`, la rotta `/api/adsb`), il Worker che risponde
+anche sulla radice e dice in `X-Feed-ADSB` quale rete ha risposto,
+`ADSB-PROXY.md` riscritto.
+
+Prove nuove nel §27 di `verifica.html` (24 in più, 844 in tutto, zero
+fallite), fra cui il contro-esempio della doppia codifica (`%253A`) e quello
+della busta con dentro dell'HTML, che è il difetto di §1 travestito da ponte.
+
+Cache PWA portata ad `astrocal-v217`.

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v216';
+const CACHE_NAME = 'astrocal-v217';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -75,10 +75,31 @@ const SERVIZI_ADSB = [
   'opendata.adsb.fi',
   'api.adsb.one',
   'opensky-network.org',
+  // I ponti CORS di aerei.js §1. Vanno tenuti d'accordo con `PONTI` là
+  // dentro: un ponte nuovo che non compaia qui non si rompe — fa di peggio,
+  // racconta un guasto che non è il suo. Il `ripiego()` generico in fondo a
+  // questo file trasforma infatti un rifiuto di rete in un finto
+  // «504 Non disponibile senza rete», e da quel momento la corsa smette di
+  // sapere se una porta è chiusa o soltanto lenta.
   'api.allorigins.win',
-  'corsproxy.io',
-  'api.codetabs.com'
+  'api.codetabs.com',
+  'api.cors.lol',
+  'thingproxy.freeboard.io'
 ];
+
+// Il proxy proprio, che può stare su qualunque dominio: il service worker
+// `localStorage` non lo può leggere, quindi lo si riconosce da come è fatta
+// la richiesta invece che da chi la riceve. Due segni bastano: i Worker di
+// Cloudflare stanno tutti sotto `workers.dev`, e la rotta che `worker-adsb.js`
+// espone — quella che aerei.js compone da sé — è `/api/adsb`. Chi si tiene un
+// ponte proprio con un'altra forma passa comunque dal ramo generico, che per
+// una richiesta cross-origin non conserva niente: perde solo la traduzione
+// onesta del guasto.
+function servizioAdsb(url) {
+  return SERVIZI_ADSB.indexOf(url.hostname) !== -1 ||
+    url.hostname.endsWith('.workers.dev') ||
+    url.pathname === '/api/adsb';
+}
 
 // Host le cui risposte salviamo man mano che arrivano (librerie, tessere mappa)
 const HOST_DA_CONSERVARE = [
@@ -156,7 +177,7 @@ self.addEventListener('fetch', (e) => {
   if (url.hostname.indexOf('overpass') !== -1 ||
       url.hostname === 'nominatim.openstreetmap.org' ||
       url.hostname === 'api.bigdatacloud.net' ||
-      SERVIZI_ADSB.indexOf(url.hostname) !== -1) {
+      servizioAdsb(url)) {
     return;
   }
 
