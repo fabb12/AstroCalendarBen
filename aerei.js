@@ -4,11 +4,12 @@
 // proxy. I proxy CORS pubblici non sono provider ADS-B: applicano limiti e
 // autenticazione propri (401/408) e percio' non fanno parte della corsa.
 //
-// L'ordine e' **reti dirette prima, Worker del progetto come rete di
-// sicurezza**, ed e' una lezione pagata: un proxy sembra la scelta piu' solida
-// perche' toglie di mezzo il CORS, ma ci mette di mezzo l'indirizzo IP. Vedi
-// il commento esteso in `providersDisponibili()` — misurato nello stesso
-// istante, dal Worker tre 403 e un 429, dal browser di casa i dati.
+// L'ordine e' **Worker del progetto prima, reti dirette in coda**, ed e' una
+// lezione pagata due volte. Le quattro reti di comunita' non mandano il CORS,
+// quindi da un browser non funzionano mai; dal Worker il CORS non c'entra ma
+// rifiutano l'IP condiviso di Cloudflare. La via d'uscita e' una fonte con
+// credenziali, che solo il Worker puo' tenere. Vedi il commento esteso in
+// `providersDisponibili()` e l'intestazione di `worker-adsb.js`.
 //
 // LA LEZIONE DI QUESTO FILE, in una riga: **una porta ADS-B carica non
 // risponde «carico», tace** — e tacere consuma tutta la sveglia. Provandole in
@@ -104,6 +105,13 @@
   }
 
   function numero(valore) {
+    // `null` e la stringa vuota vanno respinti **prima** di `Number()`, che
+    // per tutti e due risponde **zero**: un valore finito, che passa il
+    // controllo e si porta via il ripiego di chi scrive
+    // `numero(a.alt_baro) ?? numero(a.alt_geom)`. Un feed che scrive
+    // `alt_baro: null` invece di ometterlo metterebbe cosi' ogni aereo a
+    // quota zero — cioe' sull'orizzonte, disegnati fra le case.
+    if (valore === null || valore === undefined || valore === '') return null;
     const n = Number(valore);
     return Number.isFinite(n) ? n : null;
   }
@@ -237,26 +245,26 @@
       },
       interpreta: interpretaAdsbExchange
     }] : [];
-    // L'ordine: **prima le reti dirette, il proxy come rete di sicurezza** —
-    // ed è il rovescio di com'era, cambiato dopo averlo misurato invece che
-    // ragionato. Un proxy sembra la scelta più solida perché toglie di mezzo
-    // il CORS, ma di mezzo ci mette un'altra cosa: l'indirizzo IP da cui la
-    // richiesta parte. Un Cloudflare Worker non ha un IP proprio, ne divide
-    // un pugno con migliaia di altri Worker, e questi feed sono progetti di
-    // comunità che si difendono proprio guardando lì. Misurato dal Worker,
-    // lo stesso istante in cui dal browser di casa i dati arrivavano:
-    // ADSB.fi 403, Airplanes.live 403, adsb.one 403, adsb.lol **429** — cioè
-    // «quota finita» per una richiesta sola, che è la firma di una quota
-    // consumata da qualcun altro sullo stesso indirizzo.
+    // L'ordine: **il Worker davanti, le reti dirette dietro** — e stavolta
+    // il numero c'e'. Le quattro reti di comunita' non possono servire un
+    // browser, e non «a volte»: misurato dall'origine del sito pubblicato,
+    // tutte e quattro rispondono senza `Access-Control-Allow-Origin`, quindi
+    // il browser le rifiuta prima ancora di guardarne il contenuto. Aperte in
+    // una scheda i dati ci sono — ed e' quello che ha tenuto in piedi per
+    // mesi la convinzione che fossero «una via di emergenza»: una scheda non
+    // e' una richiesta cross-site, e non prova niente sul CORS.
     //
-    // Dal browser invece la richiesta parte dall'IP di casa, che è esattamente
-    // quello che quei servizi vogliono servire. Il proxy resta ultimo e non
-    // sparisce: a chi ha una rete che blocca i feed diretti serve davvero, e
-    // la pagella (§2) lo promuove da sé al primo giro in cui è lui a
-    // rispondere. Il posto in cui il Worker vale sempre la pena è un altro:
-    // è l'unico dove una credenziale può stare senza finire nel browser di
-    // chiunque apra il sito.
-    return providersPredefiniti.concat(propri);
+    // Dal Worker invece il CORS non c'entra, ma quelle stesse reti rispondono
+    // 403, 429, 403, 403: un Worker non ha un IP proprio e ne divide un pugno
+    // con migliaia di altri. La via d'uscita e' una fonte con **credenziali**
+    // (OpenSky), che il Worker puo' tenere e il browser no — vedi
+    // `worker-adsb.js`.
+    //
+    // Le quattro restano in coda, e non e' sentimentalismo: costano una
+    // trentina di millisecondi a testa (un rifiuto CORS e' immediato), e il
+    // giorno che una cambia politica la pagella (§2) la promuove da se' senza
+    // che nessuno debba accorgersene.
+    return propri.concat(providersPredefiniti);
   }
 
   // =====================================================================
