@@ -40,10 +40,10 @@ const RETI_COMUNITA = [
 
 const AFFIANCA_MS = 650;
 const ATTESA_FEED_MS = 6500;
-const ATTESA_TOTALE_MS = 12000;
+const ATTESA_TOTALE_MS = 11000;
 // La diagnostica puo' aspettare piu' a lungo: non c'e' nessuno schermo fermo
 // dall'altra parte, e una porta lenta e' un'informazione da avere.
-const DIAGNOSTICA_ATTESA_MS = 20000;
+const DIAGNOSTICA_ATTESA_MS = 60000;
 
 // =====================================================================
 // OPENSKY — la fonte con le credenziali
@@ -70,7 +70,13 @@ const OPENSKY_DATI_URL = 'https://opensky-network.org/api/states/all';
 // Ogni passo ha la sua sveglia, piu' corta di quella della corsa: se
 // l'autenticazione si pianta deve restare tempo per dirlo, non per consumare
 // tutto il budget e rispondere «scaduto» senza dire dove.
-const OPENSKY_PASSO_MS = 5500;
+const OPENSKY_PASSO_MS = 7000;
+// La diagnostica puo' aspettare molto di piu', ed e' il punto: cinque secondi
+// e mezzo non bastano a distinguere «bloccato» da «lento», e OpenSky sotto
+// carico e' noto per prendersi i suoi. Un numero grosso qui non costa niente
+// a nessuno — non c'e' uno schermo fermo dall'altra parte — e dice quale dei
+// due guasti si sta guardando.
+const OPENSKY_DIAG_MS = 15000;
 
 // Il token dura mezz'ora e chiederne uno a ogni fotografia sarebbe una
 // richiesta in piu' ogni quarantacinque secondi, cioe' il doppio del traffico
@@ -334,7 +340,7 @@ async function diagnosticaOpenSky(env) {
   const prova = async (nome, fai) => {
     const inizio = Date.now();
     try {
-      const esito = await conSveglia(nome, OPENSKY_PASSO_MS, fai);
+      const esito = await conSveglia(nome, OPENSKY_DIAG_MS, fai);
       passi.push(Object.assign({ passo: nome, ms: Date.now() - inizio, esito: 'ok' }, esito || {}));
       return true;
     } catch (errore) {
@@ -346,11 +352,20 @@ async function diagnosticaOpenSky(env) {
 
   // 1. Ci arriviamo? Un riquadro minuscolo e nessuna credenziale: qualunque
   //    risposta HTTP — anche un 401 o un 429 — dimostra che la strada c'e'.
-  await prova('raggiungibile', async signal => {
+  const arriva = await prova('raggiungibile', async signal => {
     const r = await fetch(`${OPENSKY_DATI_URL}?lamin=45.4&lamax=45.5&lomin=9.1&lomax=9.2`,
       { signal, headers: { 'Accept': 'application/json' } });
     return { http: r.status };
   });
+
+  // Se non ci si arriva, provare il token e' tempo buttato: sta sullo stesso
+  // dominio e darebbe lo stesso silenzio, tre volte, facendo aspettare chi
+  // legge quasi un minuto per una notizia che si ha gia'.
+  if (!arriva) {
+    passi.push({ passo: 'token', esito: 'saltato',
+      guasto: 'non si arriva a OpenSky: il token e\' sullo stesso dominio' });
+    return passi;
+  }
 
   // 2. Il token, indirizzo per indirizzo.
   if (env.OPENSKY_CLIENT_ID && env.OPENSKY_CLIENT_SECRET) {
