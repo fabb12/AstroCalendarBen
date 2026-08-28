@@ -85,9 +85,17 @@ const OPENSKY_DIAG_MS = 15000;
 // stato su cui contare.
 let tokenOpenSky = { valore: '', scade: 0 };
 
+// Una voce incollata a meta' — spazi, o un valore rimasto vuoto — e' `truthy`
+// e passerebbe: il Worker direbbe «credenziali presenti» e poi prenderebbe un
+// 401, cioe' il guasto peggiore, quello che manda a cercare dalla parte
+// sbagliata. Qui vale solo una stringa con dentro qualcosa.
+function pieno(valore) {
+  return typeof valore === 'string' && valore.trim().length > 0;
+}
+
 function openSkyConfigurato(env) {
-  return !!(env && ((env.OPENSKY_CLIENT_ID && env.OPENSKY_CLIENT_SECRET) ||
-    (env.OPENSKY_USER && env.OPENSKY_PASS)));
+  return !!(env && ((pieno(env.OPENSKY_CLIENT_ID) && pieno(env.OPENSKY_CLIENT_SECRET)) ||
+    (pieno(env.OPENSKY_USER) && pieno(env.OPENSKY_PASS))));
 }
 
 // Una sveglia per passo, con il suo nome: cosi' un guasto dice **dove** e non
@@ -330,6 +338,16 @@ function primaFotografia(fonti, lat, lon, dist) {
 // ci ha messo in castigo — e sono quattro cose che si riparano in quattro
 // modi diversi. Qui non si corre e non si abortisce niente: si aspetta ogni
 // porta e si scrive cosa ha detto.
+// Di una voce si dice se c'e' e quanto e' lunga, mai cosa vale: la lunghezza
+// basta a riconoscere una voce vuota o incollata a meta', e non e' un
+// indizio utile a nessun altro.
+function descriviVoce(valore) {
+  if (valore === undefined) return 'assente';
+  if (typeof valore !== 'string') return `presente (tipo ${typeof valore})`;
+  if (!valore.trim()) return 'presente ma vuota';
+  return `presente (${valore.length} caratteri)`;
+}
+
 // OpenSky in tre passi separati, perche' «scaduto» non dice dove. Il primo
 // passo e' il piu' importante e non usa credenziali: serve a distinguere «il
 // Worker non riesce proprio a parlare con OpenSky» da «ci parla, ma
@@ -449,6 +467,19 @@ async function diagnostica(url, env) {
   return {
     chiesto: { lat: la, lon: lo, dist: di, unita: 'miglia nautiche' },
     openSky: openSkyConfigurato(env) ? 'credenziali presenti' : 'nessuna credenziale configurata',
+    // I **nomi** delle associazioni che il Worker vede davvero — mai i valori.
+    // «Nessuna credenziale configurata» e' una risposta che non aiuta: non
+    // distingue una voce mancante da una scritta in un'altra sezione, da un
+    // nome con un refuso, da una voce che c'e' ma e' vuota. L'elenco dei nomi
+    // le separa tutte e tre in un colpo, e non svela niente: il valore di un
+    // secret non compare qui e non deve comparire da nessuna parte.
+    variabiliViste: Object.keys(env || {}).sort(),
+    openSkyDettaglio: {
+      OPENSKY_CLIENT_ID: descriviVoce(env && env.OPENSKY_CLIENT_ID),
+      OPENSKY_CLIENT_SECRET: descriviVoce(env && env.OPENSKY_CLIENT_SECRET),
+      OPENSKY_USER: descriviVoce(env && env.OPENSKY_USER),
+      OPENSKY_PASS: descriviVoce(env && env.OPENSKY_PASS)
+    },
     funzionanti: prove.filter(p => p.esito === 'ok').map(p => p.feed),
     feed: prove
   };
