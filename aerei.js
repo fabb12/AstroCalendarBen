@@ -233,8 +233,29 @@
     providerDiretto('adsb.one', feedAdsbOne)
   ];
 
+  function urlProxy() {
+    return String((typeof window !== 'undefined' && window.ADSB_PROXY_URL) || '').trim().replace(/\/$/, '');
+  }
+
+  // Detto una volta sola, e detto forte. Senza proxy le quattro reti dirette
+  // producono quattro rifiuti CORS di fila, che nella console sembrano un
+  // guasto dell'app e non lo sono: quelle reti **non possono** servire un
+  // browser, non mandano l'intestazione e non la manderanno domani. Il muro
+  // di righe rosse ha gia' fatto perdere un pomeriggio a chi credeva di avere
+  // un problema di codice.
+  let dettoDelProxy = false;
+  function avvisaSeManca() {
+    if (dettoDelProxy || urlProxy()) return;
+    dettoDelProxy = true;
+    console.warn('[aerei] ADSB_PROXY_URL non e\' configurato: gli aerei non arriveranno. ' +
+      'Le quattro reti dirette qui sotto falliranno tutte per CORS — non mandano ' +
+      'l\'intestazione Access-Control-Allow-Origin e da un browser non si leggono mai. ' +
+      'Serve il proxy del progetto: vedi ADSB-PROXY.md.');
+  }
+
   function providersDisponibili() {
-    const proxy = String(window.ADSB_PROXY_URL || '').trim().replace(/\/$/, '');
+    avvisaSeManca();
+    const proxy = urlProxy();
     const propri = proxy ? [{
       nome: 'proxy ADS-B del sito',
       rete: 'proxy del sito',
@@ -725,6 +746,7 @@
     errore: { spia: 'errore', nota: 'Dati ADS-B non disponibili' },
     senzaRete: { spia: 'errore', nota: 'Senza rete: dati ADS-B fermi' },
     senzaPosizione: { spia: 'errore', nota: 'Serve una posizione' },
+    proxyMancante: { spia: 'errore', nota: 'Proxy ADS-B non configurato' },
     passato: { spia: 'vecchio', nota: 'Posizioni stimate: il cielo mostrato non è adesso' }
   };
 
@@ -734,6 +756,11 @@
     if (stato.richiesta) return 'carico';
     if (!tempoReale()) return 'passato';
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'senzaRete';
+    // Prima di «errore»: senza proxy non e' andata storta una richiesta, manca
+    // una configurazione — e sono due cose che chiedono due gesti diversi.
+    // Chiamarlo «errore» mandava a cercare un guasto che non c'e', e a
+    // aspettare una riprova che non potra' mai riuscire.
+    if ((stato.errore || !stato.ultimoSuccesso) && !urlProxy()) return 'proxyMancante';
     if (stato.errore) return 'errore';
     if (!stato.ultimoSuccesso) return 'attesa';
     return Date.now() - stato.ultimoSuccesso > DATI_VECCHI_MS ? 'vecchio' : 'ok';
@@ -772,6 +799,11 @@
     const prossimo = stato.dati && stato.auto && stato.prossimoAggiornamento
       ? ` · nuovo scarico ${fraQuanto(stato.prossimoAggiornamento - Date.now())}` : '';
     if (f === 'senzaPosizione') return 'Serve una posizione per cercare gli aerei.';
+    if (f === 'proxyMancante') {
+      return 'Il proxy ADS-B non e\u2019 configurato, e senza di lui gli aerei non possono ' +
+        'arrivare: le reti pubbliche non autorizzano le richieste dei browser. ' +
+        'Va impostato ADSB_PROXY_URL al momento della pubblicazione (vedi ADSB-PROXY.md).';
+    }
     if (f === 'spento') {
       return stato.ultimoSuccesso
         ? `Dati in pausa · ultima lettura ${eta} (${quanti}).`
@@ -830,7 +862,8 @@
       riga.dataset.fase = f;
       // La riga resta anche il posto dove uno screen reader legge il guasto:
       // `data-errore` la teneva rossa, e serve ancora al foglio di stile.
-      riga.dataset.errore = (f === 'errore' || f === 'senzaRete' || f === 'senzaPosizione') ? 'true' : 'false';
+      riga.dataset.errore = (f === 'errore' || f === 'senzaRete' || f === 'senzaPosizione' ||
+        f === 'proxyMancante') ? 'true' : 'false';
     }
     const spia = document.getElementById('aerei-spia');
     if (spia) {
