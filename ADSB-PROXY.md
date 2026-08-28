@@ -148,6 +148,31 @@ Per gli account che usano ancora l'autenticazione di base valgono in
 alternativa `OPENSKY_USER` e `OPENSKY_PASS`. Senza nessuna delle due coppie
 OpenSky non entra nella corsa e il Worker si comporta come prima.
 
+### Secret, non Variable — e non e' un dettaglio
+
+Nella pagina delle impostazioni del Worker ci sono **due sezioni dal nome
+quasi uguale**, e solo una delle due serve:
+
+| Sezione | Quando esiste | Il Worker la legge? |
+|---|---|---|
+| **Runtime variables and secrets** (in cima) | mentre il Worker gira | **si'** |
+| **Builds → Variables and secrets** | solo durante `npx wrangler deploy` | no |
+
+E dentro alla prima, il **tipo** conta. Con il Worker collegato al repository,
+ogni push su `main` rilancia `npx wrangler deploy`, che riallinea le
+associazioni del Worker a quelle dichiarate in `wrangler.toml` — dove di
+`[vars]` non ce n'e' nessuna. Le voci di tipo **Variable** aggiunte a mano dal
+pannello rischiano quindi di sparire alla distribuzione successiva; i
+**Secret**, che sono cifrati e vivono fuori dalla configurazione, restano.
+
+Il sintomo e' insidioso perche' non somiglia a un guasto: la diagnostica torna
+a dire `"openSky": "nessuna credenziale configurata"` e OpenSky sparisce
+dall'elenco delle fonti — come se non lo si fosse mai configurato. Se capita
+dopo un merge, e' quasi certamente questo.
+
+Non metterle mai in `wrangler.toml`: quel file sta nel repository, ed e'
+pubblico.
+
 Verifica con `/api/diagnostica`: il campo `openSky` dice se le credenziali
 sono state viste, e `funzionanti` deve contenere `OpenSky`.
 
