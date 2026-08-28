@@ -238,6 +238,11 @@
     const propri = proxy ? [{
       nome: 'proxy ADS-B del sito',
       rete: 'proxy del sito',
+      // Piu' lunga della sveglia di una rete diretta, e piu' lunga di quella
+      // che il Worker si da' per la sua corsa interna: chi aspetta deve
+      // aspettare piu' di chi lavora, se no si perde la risposta proprio
+      // quando stava per arrivare.
+      attesaMs: 14000,
       url(posizione, raggioKm) {
         const q = new URLSearchParams({ lat: posizione.lat.toFixed(4), lon: posizione.lon.toFixed(4),
           dist: String(Math.max(1, Math.ceil(raggioKm / 1.852))) });
@@ -431,7 +436,14 @@
         const suo = new AbortController();
         const propaga = () => suo.abort();
         regia.signal.addEventListener('abort', propaga, { once: true });
-        const scadenzaSua = setTimeout(propaga, attesaMs);
+        // Una porta puo' chiedere piu' tempo delle altre, e il proxy del sito
+        // lo fa: dietro a quell'unico indirizzo c'e' una corsa fra piu' fonti
+        // fatta dal server. Dandogli la stessa sveglia di una rete diretta lo
+        // si interrompe **mentre sta ancora correndo**, e al posto del suo
+        // racconto — quale fonte ha detto cosa — arriva un abort nostro, che
+        // non spiega niente.
+        const scadenzaSua = setTimeout(propaga,
+          Number.isFinite(provider.attesaMs) ? provider.attesaMs : attesaMs);
         scarica(provider, obs, raggio, suo.signal).then(aerei => {
           if (chiuso) return;
           segnaEsito(provider, true);
