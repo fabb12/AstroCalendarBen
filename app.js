@@ -9138,9 +9138,11 @@ function skyAggiornaOsservatore() {
   // Cambiando luogo cambiano altezze, orari e giudizi: la memoria va svuotata
   sky.prossimoCalcolo = 0;
   sky.cacheOrari = { chiave: null, valore: null };
-  // Anche il feed ADS-B e' centrato sull'osservatore del planetario. Il
-  // modulo elimina immediatamente la fotografia del luogo precedente e
-  // carica quella nuova, senza mostrarla nel frattempo con coordinate rifatte.
+  // Anche il feed ADS-B e' centrato sull'osservatore del planetario, ma
+  // spostarsi non e' cambiare cielo: il modulo decide da se' (aerei.js
+  // §4-bis) se questo e' un passo del viaggio — e allora tiene la fotografia
+  // e rifa' le coordinate dal punto di adesso — oppure un salto in un altro
+  // posto, che e' l'unico caso in cui la butta e ricarica.
   if (typeof aereiPosizioneCambiata === 'function') aereiPosizioneCambiata();
   if (sky.aperto && typeof skyAggiornaOggetti === 'function') skyAggiornaOggetti(true);
   // Cambiando luogo cambia anche l'orizzonte: le colline sono altre, altri
