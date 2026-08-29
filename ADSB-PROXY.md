@@ -103,6 +103,30 @@ e l'app continua a provare i feed diretti come prima. Cambiare `CACHE_NAME`
 
 ---
 
+## Prima di tutto: serve davvero un proxy?
+
+Sì, ed è il browser a imporlo. Misurato dall'origine del sito pubblicato,
+**nessuna delle quattro reti manda `Access-Control-Allow-Origin`**: gli
+endpoint sono vivi (aperti in una scheda restituiscono i dati) ma il browser
+rifiuta la risposta prima di consegnarla al codice. Non è intermittente e non
+si aggira lato client.
+
+L'app ha quindi tre gradini, e il primo che risponde vince:
+
+1. **Il proxy proprio** (`ADSB_PROXY_URL`) — il più solido: risponde sempre,
+   con i limiti che decidi tu. Va distribuito una volta, vedi sotto.
+2. **Le quattro reti dirette** — falliranno per CORS, ma costano trenta
+   millisecondi e restano in lista nel caso una cambi politica.
+3. **I ponti CORS pubblici** (`PONTI_CORS` in `aerei.js`) — servizi di terzi
+   che leggono l'indirizzo dal loro server e rimandano la risposta col CORS
+   aperto. **Non richiedono nessuna configurazione**: il sito funziona appena
+   pubblicato. Il prezzo è che hanno limiti loro e possono sparire senza
+   avvisare, ed è per questo che sono tre e ognuno è abbinato a una rete
+   diversa.
+
+Chi vuole che gli aerei ci siano sempre configura il punto 1. Chi vuole solo
+aprire il sito si affida al punto 3 e non fa niente.
+
 ## Su Cloudflare non funziona, su Deno sì — ed è tutto qui
 
 La stessa identica quarantina di righe, la stessa ora, le stesse fonti:
