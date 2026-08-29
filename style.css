@@ -4710,6 +4710,9 @@ body input.casella-data:hover { border: 0; }
   font-size: 0.84rem;
   color: var(--testo-2);
   overscroll-behavior: contain;
+  /* La foto dell'aereo e l'itinerario arrivano dopo il testo. Il browser non
+     deve scegliere da solo un nuovo punto di ancoraggio mentre si sta leggendo. */
+  overflow-anchor: none;
 }
 /* Dove la sfocatura non esiste (qualche browser la ignora) la trasparenza da
    sola renderebbe illeggibile la scheda sopra una Via Lattea: lì si scurisce */

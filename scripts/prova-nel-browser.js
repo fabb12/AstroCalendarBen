@@ -197,6 +197,33 @@ const server = http.createServer((req, res) => {
   ok('la scheda degli aerei si apre sopra al planetario',
     schedaAereo.visibile && schedaAereo.posizione === 'absolute' && schedaAereo.scorrevole,
     `${schedaAereo.posizione}, scorrimento ${schedaAereo.scorrevole ? 'attivo' : 'spento'}`);
+  const scorrimentoSchedaAereo = await pagina.evaluate(async () => {
+    const pannello = document.getElementById('skymap-dettaglio');
+    const corpo = document.getElementById('skymap-dettaglio-corpo');
+    const trovaOriginale = window.aereiTrova;
+    const htmlOriginale = window.aereiSchedaHtml;
+    const caricaOriginale = window.aereiCaricaFoto;
+    const selezioneOriginale = sky.selezione;
+    window.aereiTrova = () => ({ id: 'test-scroll', callsign: 'TEST', az: 90, alt: 30 });
+    window.aereiSchedaHtml = () => `<div style="height:900px">Scheda aereo di prova</div>`;
+    window.aereiCaricaFoto = () => {};
+    sky.selezione = { categoria: 'aereo', dati: { id: 'test-scroll' } };
+    pannello.classList.add('visibile');
+    skyAggiornaScheda();
+    pannello.scrollTop = 220;
+    skyAggiornaScheda();
+    await new Promise(risolvi => requestAnimationFrame(() => requestAnimationFrame(risolvi)));
+    const posizione = pannello.scrollTop;
+    window.aereiTrova = trovaOriginale;
+    window.aereiSchedaHtml = htmlOriginale;
+    window.aereiCaricaFoto = caricaOriginale;
+    sky.selezione = selezioneOriginale;
+    corpo.innerHTML = '';
+    pannello.classList.remove('visibile');
+    return posizione;
+  });
+  ok('aggiornare i dati non riporta in cima la scheda dell’aereo',
+    scorrimentoSchedaAereo === 220, `${scorrimentoSchedaAereo}px`);
   const extraAereo = await pagina.evaluate(() => schedaExtraHtml({ categoria: 'aereo', id: 'test' }));
   ok('la scheda degli aerei non mostra il grafico di stanotte', extraAereo === '');
 
