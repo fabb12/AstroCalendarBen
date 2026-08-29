@@ -3980,6 +3980,43 @@ function _lunContatti(dati) {
   return v;
 }
 
+// Aggiunge a ogni carta geografica lo stesso comando giorno/notte. Le mappe
+// partono sempre chiare; il tema scuro resta una scelta della singola carta.
+function aggiungiControlloTemaMappa(mappa, contenitore) {
+  if (!mappa || typeof L === 'undefined') return null;
+  const nodo = typeof contenitore === 'string' ? document.getElementById(contenitore) : contenitore;
+  if (!nodo || nodo.dataset.controlloTemaMappa === 'pronto') return null;
+  nodo.dataset.controlloTemaMappa = 'pronto';
+  nodo.classList.add('mappa-chiara');
+
+  const Tema = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd() {
+      const guscio = L.DomUtil.create('div', 'leaflet-bar controllo-tema-mappa');
+      const tasto = L.DomUtil.create('button', 'controllo-tema-mappa-tasto', guscio);
+      tasto.type = 'button';
+      L.DomEvent.disableClickPropagation(guscio);
+      L.DomEvent.disableScrollPropagation(guscio);
+      const aggiorna = () => {
+        const chiara = nodo.classList.contains('mappa-chiara');
+        tasto.textContent = chiara ? '☾' : '☀';
+        tasto.title = chiara ? 'Passa alla mappa scura' : 'Passa alla mappa chiara';
+        tasto.setAttribute('aria-label', tasto.title);
+        tasto.setAttribute('aria-pressed', chiara ? 'false' : 'true');
+      };
+      L.DomEvent.on(tasto, 'click', () => {
+        const rendiScura = nodo.classList.contains('mappa-chiara');
+        nodo.classList.toggle('mappa-chiara', !rendiScura);
+        nodo.classList.toggle('mappa-scura', rendiScura);
+        aggiorna();
+      });
+      aggiorna();
+      return guscio;
+    }
+  });
+  return new Tema().addTo(mappa);
+}
+
 let _lunMappa = null;
 let _lunStrati = [];
 let _lunEventoInCorso = null;
@@ -4018,6 +4055,7 @@ function apriMappaLunare(id) {
       maxZoom: 6, attribution: '&copy; OpenStreetMap'
     }).addTo(_lunMappa);
     L.control.zoom({ position: 'topright' }).addTo(_lunMappa);
+    aggiungiControlloTemaMappa(_lunMappa, 'mappa-lunare');
   }
 
   _lunStrati.forEach(s => _lunMappa.removeLayer(s));
@@ -9528,6 +9566,7 @@ function luogoMappaCostruisci() {
   // Lo zoom a destra, come sulla mappa dell'ombra: le due mappe dell'app si
   // devono comandare allo stesso modo.
   L.control.zoom({ position: 'topright' }).addTo(luogoMappa.mappa);
+  aggiungiControlloTemaMappa(luogoMappa.mappa, riquadro);
   luogoMappaConsegnaTasti();
 
   // Leaflet su alcuni browser trasforma il tocco in un click senza
@@ -23561,6 +23600,7 @@ function skyMostraMappaSpostamentoGeografico(partenza, arrivo) {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '&copy; OpenStreetMap'
     }).addTo(m.mappa);
+    aggiungiControlloTemaMappa(m.mappa, carta);
   }
   m.strati.forEach(strato => m.mappa.removeLayer(strato));
   const da = [partenza.lat, partenza.lon], a = [arrivo.lat, arrivo.lon];

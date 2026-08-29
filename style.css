@@ -503,7 +503,7 @@ button {
   letter-spacing: -0.008em;
 }
 
-body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.leaflet-control-zoom a) {
+body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.leaflet-control-zoom a):not(.controllo-tema-mappa-tasto) {
   font-weight: 500;
   cursor: pointer;
   border-width: 1px;
@@ -990,15 +990,49 @@ body.cielo-immersivo .nav-principale { display: none; }
 .fc-popover-header { background: rgba(148, 168, 214, 0.08) !important; color: var(--testo); }
 
 /* ------------------------------------------------------------- LEAFLET     */
-.leaflet-container { background: #03050c; font-family: var(--sans); }
+.leaflet-container { background: #cfe0ef; font-family: var(--sans); }
 .leaflet-control-zoom a {
   background: var(--superficie-piena);
   color: var(--testo);
   border-color: var(--bordo);
 }
 .leaflet-control-zoom a:hover { background: var(--superficie-alta); color: #fff; }
-/* Le mappe di base sono chiare: le portiamo nella notte */
-.leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(0.86) saturate(0.6) contrast(0.95); }
+/* Le carte geografiche nascono chiare. Ogni mappa e mini-mappa offre il
+   proprio tasto per passare al fondo scuro senza cambiare le altre. */
+.leaflet-tile-pane,
+.leaflet-container.mappa-chiara .leaflet-tile-pane { filter: saturate(0.94) contrast(1.03); }
+.leaflet-container.mappa-scura { background: #03050c !important; }
+.leaflet-container.mappa-scura .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(185deg) brightness(0.86) saturate(0.6) contrast(0.95) !important;
+}
+
+.controllo-tema-mappa-tasto {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  font-size: 19px;
+  line-height: 30px;
+  cursor: pointer;
+}
+.controllo-tema-mappa-tasto:hover { background: #fff; }
+.mappa-scura .controllo-tema-mappa-tasto {
+  background: rgba(15, 23, 42, 0.94);
+  color: #fff;
+}
+.mappa-scura .leaflet-control-zoom a {
+  background: var(--superficie-piena);
+  color: var(--testo);
+  border-color: var(--bordo);
+}
+.mappa-scura .leaflet-control-attribution {
+  background: rgba(6, 10, 20, 0.7) !important;
+  color: var(--testo-3) !important;
+}
+.mappa-scura .leaflet-control-attribution a { color: var(--testo-2) !important; }
 
 /* …tranne la mappa del cono d'ombra, che di partenza resta chiara. Lì la
    domanda è geografica — «l'ombra passa sopra casa mia? quanto devo guidare
@@ -8928,3 +8962,19 @@ body button.did-ponte:active { transform: translateY(1px); }
    sembrerebbe non aprirsi. L'assoluto fa anche da riferimento al tasto X. */
 .tasto-chiudi-dettaglio-alto { position:absolute; top:10px; right:10px; z-index:3; }
 .scheda-testata { padding-right:42px; }
+
+/* Le vecchie eccezioni chiare delle singole carte hanno selettori molto
+   specifici. In tema notte il comando comune deve vincere anche su quelle. */
+:is(#mappa-eclissi, #mappa-lunare, #mappa-luogo, #imp-raggi-mappa,
+    #aereo-rotta-mappa, #posto-evento-mappa, #skymap-mappa-spostamento-carta).mappa-scura {
+  background: #03050c !important;
+}
+:is(#mappa-eclissi, #mappa-lunare, #mappa-luogo, #imp-raggi-mappa,
+    #aereo-rotta-mappa, #posto-evento-mappa, #skymap-mappa-spostamento-carta).mappa-scura .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(185deg) brightness(0.86) saturate(0.6) contrast(0.95) !important;
+}
+:is(#mappa-eclissi, #mappa-lunare, #mappa-luogo, #imp-raggi-mappa,
+    #aereo-rotta-mappa, #posto-evento-mappa, #skymap-mappa-spostamento-carta).mappa-scura .leaflet-control-attribution {
+  background: rgba(6, 10, 20, 0.7) !important;
+  color: var(--testo-3) !important;
+}

@@ -545,6 +545,9 @@ function raggiMappaCostruisci() {
   raggiPannello.strato = L.tileLayer(fondo.url, {
     maxZoom: 14, maxNativeZoom: Math.min(14, fondo.nativo), attribution: fondo.attribuzione
   }).addTo(raggiPannello.mappa);
+  if (typeof aggiungiControlloTemaMappa === 'function') {
+    aggiungiControlloTemaMappa(raggiPannello.mappa, 'imp-raggi-mappa');
+  }
 
   // Toccare la mappa vuol dire «fin lì»: la distanza dal centro è il raggio,
   // e il cerchio scelto ci va. È il gesto per cui questa mappa esiste — non
