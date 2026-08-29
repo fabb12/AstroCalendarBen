@@ -1620,6 +1620,9 @@
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 16, attribution: '&copy; OpenStreetMap'
       }).addTo(mappaRotta);
+      if (typeof aggiungiControlloTemaMappa === 'function') {
+        aggiungiControlloTemaMappa(mappaRotta, carta);
+      }
     }
     stratiRotta.forEach(s => mappaRotta.removeLayer(s)); stratiRotta = [];
     const chiaveRotta = String(a.callsign || '').trim().replace(/\s+/g, '');

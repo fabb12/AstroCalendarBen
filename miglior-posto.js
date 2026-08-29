@@ -87,6 +87,9 @@ function postoDisegnaMappa(centro, raggio, risultati, azAstro) {
   if (!postoMappa) {
     postoMappa = L.map(box).setView([centro.lat, centro.lon], 10);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' }).addTo(postoMappa);
+    if (typeof aggiungiControlloTemaMappa === 'function') {
+      aggiungiControlloTemaMappa(postoMappa, box);
+    }
   }
   postoStrati.forEach(s => postoMappa.removeLayer(s)); postoStrati = [];
   postoStrati.push(L.circle([centro.lat, centro.lon], { radius: raggio * 1000, color: '#60a5fa', fillOpacity: 0.03 }).addTo(postoMappa));
