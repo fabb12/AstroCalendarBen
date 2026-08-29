@@ -15,8 +15,8 @@
 // risponde «carico», tace** — e tacere consuma tutta la sveglia. Provandole in
 // fila indiana con dodici secondi a testa, sette porte fanno un minuto e
 // mezzo di silenzio, e nel frattempo chi guarda il cielo conclude che gli
-// aerei «a volte ci sono e a volte no». Da qui le tre scelte che tengono in
-// piedi il modulo:
+// aerei «a volte ci sono e a volte no». Da qui le quattro scelte che tengono
+// in piedi il modulo:
 //
 //   1. **La corsa** (§3). Le porte non si provano una per volta: si lancia la
 //      prima, e dopo `AFFIANCA_MS` parte anche la seconda. Vince chi risponde
@@ -31,6 +31,16 @@
 //      errore, e `(risposta.ac || [])` la trasforma in un allegro «zero aerei
 //      trovati». Ogni interprete pretende quindi di riconoscere lo schema, e
 //      se non lo riconosce **solleva**, così la corsa passa alla porta dopo.
+//   4. **La tolleranza** (§4-bis). Muoversi non è cambiare cielo: le posizioni
+//      degli aerei sono latitudini e longitudini, e da dove le si guarda si
+//      rifà a ogni fotogramma. Col GPS acceso l'osservatore si sposta ogni
+//      centocinquanta metri, e prima ognuno di quei passi buttava la
+//      fotografia e **interrompeva la richiesta in volo**: in macchina
+//      nessuna risposta faceva in tempo ad arrivare. Adesso si riscarica per
+//      lo spostamento solo oltre una tolleranza, mai prima di
+//      `AEREI_MOTO_MIN_MS`, e ogni lettura si **somma** alla precedente
+//      invece di sostituirla — se i dati arrivano di rado, quando arrivano
+//      vanno sfruttati fino in fondo.
 //
 // I dati si scaricano da soli all'apertura del planetario; il **disegno** è
 // un'altra cosa e nasce spento (§5). Sono due interruttori perché sono due
@@ -74,6 +84,38 @@
   // pacchetto perso in un minuto di cielo senza aerei.
   const RIPROVE_MS = [3000, 9000, 25000, 60000, 150000, 300000];
   const PREVISIONE_MINUTI = 5;
+
+  // --- Muoversi non è cambiare cielo ----------------------------------
+  // Le tre misure che rendono questo modulo sopportabile in macchina. Il
+  // discorso per esteso sta in §6-bis; qui bastano i numeri.
+  //
+  // La **tolleranza** è quanto ci si può allontanare dal punto in cui la
+  // fotografia è stata chiesta prima che il suo riquadro conti come rimasto
+  // indietro. È una frazione del raggio di ricerca perché è di quello che si
+  // sta parlando: un chilometro dentro a cinquanta non sposta niente, lo
+  // stesso chilometro dentro a dieci è un decimo della scena.
+  const AEREI_CENTRO_QUOTA = 0.2;
+  const AEREI_CENTRO_MIN_KM = 1.5;
+  const AEREI_CENTRO_MAX_KM = 12;
+  // Il **salto**: oltre questo, non ci si è spostati, si è altrove — un'altra
+  // città scelta nel pannello Tempo e luogo. Lì la fotografia va buttata
+  // davvero, perché parla di un cielo che non è più quello.
+  const AEREI_SALTO_MIN_KM = 25;
+  // Il **passo minimo** fra due scarichi chiesti dallo spostamento. In
+  // macchina «adesso» vuol dire ogni pochi secondi, ed è la raffica che i
+  // servizi pubblici rifiutano con un 429: si aspetta, e intanto si disegna
+  // quello che si ha.
+  const AEREI_MOTO_MIN_MS = 30000;
+  // Quanto si tiene un aereo che il feed non ha riconfermato. Le reti ADS-B
+  // sono fatte di riceventi volontari: una fotografia può avere un buco che
+  // la successiva non ha, e buttare a ogni giro quello che non è stato
+  // ripetuto vuol dire vedere gli aerei lampeggiare. Due minuti sono molto
+  // meno dei trenta che questo modulo già propaga quando una richiesta
+  // fallisce del tutto.
+  const AEREI_MEMORIA_MS = 120000;
+  // Fin dove il punto vivo di `terreno.js` può scostarsi dalla posizione
+  // dell'app prima di non parlare più dello stesso posto.
+  const AEREI_VIVO_MAX_KM = 3;
   // Quanto deve essere lunga la traiettoria **sullo schermo** perche' le tacche
   // dei minuti si distinguano. A campo largo un aereo lontano percorre pochi
   // pixel in cinque minuti, e sei pallini appiccicati non sono una previsione:
@@ -674,22 +716,100 @@
     return { lat: p.lat, lon: p.lon, quotaM: p.altitudine || p.quota || 0 };
   }
 
-  function chiaveCentro(p) {
-    return p && Number.isFinite(p.lat) && Number.isFinite(p.lon)
-      ? `${p.lat.toFixed(4)},${p.lon.toFixed(4)}` : null;
+  // Da dove **disegnare**. La posizione dell'app avanza a gradini di
+  // centocinquanta metri, ed è la stessa ragione per cui il paesaggio ha il
+  // suo punto vivo (`terreno.js` §6-bis): centocinquanta metri non spostano
+  // una stella, ma un aereo a due chilometri sì — sono quattro gradi, cioè
+  // uno scatto visibile a ogni fix. Chi **scarica** continua a usare
+  // `osservatore()`: una richiesta di rete non si fa partire da un punto
+  // estrapolato.
+  function osservatoreDisegno() {
+    const base = osservatore();
+    if (!base || typeof terrenoPuntoDaDisegnare !== 'function') return base;
+    let vivo = null;
+    try { vivo = terrenoPuntoDaDisegnare(); } catch (e) { return base; }
+    if (!vivo || vivo.proprio || !Number.isFinite(vivo.lat) || !Number.isFinite(vivo.lon)) return base;
+    // Il punto vivo parla della posizione dell'app; col planetario spostato a
+    // guardare il cielo di un'altra città non c'entra niente, e la distanza
+    // lo dice senza doverlo chiedere.
+    return distanzaDirezione(base, vivo).km <= AEREI_VIVO_MAX_KM
+      ? { lat: vivo.lat, lon: vivo.lon, quotaM: base.quotaM } : base;
   }
 
-  function datiDelCentroCorrente(obs = osservatore()) {
-    return !!(stato.ultimoCentro && chiaveCentro(stato.ultimoCentro) === chiaveCentro(obs));
+  // =====================================================================
+  // 4-bis. MUOVERSI NON È CAMBIARE CIELO
+  //
+  //   Il centro di questo modulo è l'osservatore del planetario, e col GPS
+  //   acceso quell'osservatore si sposta ogni centocinquanta metri (è il
+  //   filtro di `skyLetturaAttendibile`, e per il cielo è la soglia giusta:
+  //   centocinquanta metri non spostano una stella di un pixel). Prima ogni
+  //   passo di quel filtro faceva quattro cose insieme: buttava la
+  //   fotografia, azzerava il suo orologio, **abortiva la richiesta in volo**
+  //   e ne faceva partire subito un'altra. In macchina, a novanta all'ora,
+  //   quel passo cade ogni sei secondi — meno del tempo che una porta ADS-B
+  //   ci mette a rispondere. Il risultato non era un cielo con gli aerei un
+  //   po' spostati: era un cielo **senza aerei per tutto il viaggio**, con
+  //   una richiesta interrotta ogni sei secondi e il conto delle riprove
+  //   azzerato ogni volta, cioè senza nemmeno il freno che dovrebbe
+  //   proteggere dai 429.
+  //
+  //   Eppure spostandosi la fotografia resta buona quasi tutta, e per una
+  //   ragione di fondo: le posizioni degli aerei sono **latitudini e
+  //   longitudini**, non angoli visti da qui. Azimut, altezza e distanza si
+  //   rifanno da capo a ogni fotogramma dal punto in cui si è adesso
+  //   (`aggiornaPosizioni`), quindi muovendosi non diventano sbagliate: si
+  //   aggiornano. L'unica cosa legata al centro è **quali** aerei sono stati
+  //   chiesti, cioè il riquadro della richiesta — e un chilometro dentro a un
+  //   raggio di cinquanta cambia il bordo di un cinquantesimo.
+  //
+  //   Da qui le tre soglie, ed è tutta la differenza fra «riscaricare» e
+  //   «riscaricare quando serve»:
+  //     · sotto la **tolleranza** non succede niente di niente;
+  //     · sopra, il prossimo scarico si anticipa — non si fa: si anticipa, e
+  //       mai prima di `AEREI_MOTO_MIN_MS` dall'ultimo riuscito;
+  //     · sopra il **salto** si è altrove, e allora sì, si butta tutto.
+  //
+  //   Misurato col modulo vero, una porta che risponde in otto secondi e un
+  //   fix ogni centocinquanta metri (novanta all'ora): dieci chilometri di
+  //   strada costavano **67 richieste, 67 abortite, zero risposte e zero
+  //   aerei**; adesso sono 4 richieste — una corsa sola — una risposta e
+  //   quattro aerei in cielo per tutto il viaggio.
+  // =====================================================================
+
+  function scartoDalCentroKm(obs = osservatore()) {
+    if (!obs || !stato.ultimoCentro) return Infinity;
+    return distanzaDirezione(stato.ultimoCentro, obs).km;
   }
 
-  // Il cambio del punto di vista e' sincrono, mentre il feed e' asincrono.
-  // Svuotare subito evita anche un solo fotogramma con gli aerei del luogo
-  // precedente; la risposta vecchia viene abortita e non puo' ripopolare il
-  // cielo nuovo.
-  function aereiPosizioneCambiata() {
-    const obs = osservatore();
-    if (datiDelCentroCorrente(obs)) return;
+  function tolleranzaCentroKm() {
+    return Math.max(AEREI_CENTRO_MIN_KM,
+      Math.min(AEREI_CENTRO_MAX_KM, raggioKm() * AEREI_CENTRO_QUOTA));
+  }
+
+  // Il salto non scende mai sotto i venticinque chilometri nemmeno con un
+  // raggio stretto: con dieci chilometri di ricerca, buttare tutto ogni dieci
+  // di strada vorrebbe dire rifare in autostrada il difetto di prima, solo
+  // più di rado.
+  function saltoCentroKm() { return Math.max(AEREI_SALTO_MIN_KM, raggioKm()); }
+
+  function centroAltrove(obs = osservatore()) {
+    return scartoDalCentroKm(obs) > saltoCentroKm();
+  }
+
+  // Il riquadro della richiesta è rimasto indietro. Si anticipa il prossimo
+  // scarico e non si tocca **nient'altro**: niente abort, niente
+  // svuotamento, niente conto delle riprove azzerato. E mai prima di quello
+  // che il freno degli errori aveva già deciso, se no un guasto sommato a un
+  // viaggio diventa una raffica.
+  function ricentraPresto() {
+    const prima = Math.max(Date.now(), (stato.ultimoSuccesso || 0) + AEREI_MOTO_MIN_MS,
+      stato.prossimoTentativo || 0);
+    if (!stato.prossimoAggiornamento || prima < stato.prossimoAggiornamento) {
+      stato.prossimoAggiornamento = prima;
+    }
+  }
+
+  function butta() {
     stato.aerei = [];
     stato.ultimoCentro = null;
     stato.ultimoSuccesso = 0;
@@ -698,13 +818,37 @@
     stato.tentativiFalliti = 0;
     stato.errore = '';
     stato.ultimoRenderSecondo = null;
-    if (stato.controller) {
-      stato.ricaricaDopo = stato.dati;
-      stato.controller.abort();
-    } else if (stato.dati && tempoReale()) {
-      carica(true);
+  }
+
+  function aereiPosizioneCambiata() {
+    const obs = osservatore();
+    if (!obs) { aggiornaUI(); return; }
+    const scarto = scartoDalCentroKm(obs);
+    // Niente in mano: non c'è nulla da conservare e nulla da buttare. Si
+    // chiede senza forzare, cioè rispettando il ritmo — se una richiesta è
+    // già in volo questa non fa niente, ed è quello che serve.
+    if (!Number.isFinite(scarto)) {
+      if (stato.dati && !stato.richiesta && tempoReale()) carica(false);
+      aggiornaUI();
+      return;
     }
-    render();
+    if (scarto > saltoCentroKm()) {
+      // Un altro posto davvero. Qui il cambio del punto di vista è sincrono
+      // mentre il feed è asincrono: svuotare subito evita anche un solo
+      // fotogramma con gli aerei del luogo precedente, e la risposta vecchia
+      // viene abortita perché non ripopoli il cielo nuovo.
+      butta();
+      if (stato.controller) {
+        stato.ricaricaDopo = stato.dati;
+        stato.controller.abort();
+      } else if (stato.dati && tempoReale()) {
+        carica(true);
+      }
+      render();
+      aggiornaUI();
+      return;
+    }
+    if (scarto > tolleranzaCentroKm()) ricentraPresto();
     aggiornaUI();
   }
 
@@ -726,6 +870,34 @@
       return { ...a, ...cielo, traiettoria, allineamenti: [],
         posizioneFeed: { ...a } };
     }).filter(a => a.distanzaKm <= raggioKm()).sort((a, b) => a.distanzaKm - b.distanzaKm);
+  }
+
+  // Quello che il feed non ha riconfermato non è per forza sparito dal cielo.
+  // Una rete ADS-B è fatta di riceventi volontari: due letture di fila della
+  // stessa porta possono avere buchi diversi, e un aereo sul bordo del
+  // riquadro entra ed esce dall'elenco a ogni giro. Sostituendo la
+  // fotografia in blocco — com'era — quei buchi diventano triangoli che
+  // lampeggiano, e un giro andato male a metà **cancella** dati buoni appena
+  // ricevuti. Adesso ogni lettura si somma a quella di prima: chi è stato
+  // visto da poco resta e continua a essere propagato dalla sua rotta, e a
+  // toglierlo è solo il tempo. È la stessa idea del terreno, che i tentativi
+  // li somma invece di ripeterli — e vale doppio qui, dove i dati arrivano
+  // di rado e quando arrivano vanno sfruttati fino in fondo.
+  function unisciConLaMemoria(nuovi, ora = Date.now()) {
+    const elenco = Array.isArray(nuovi) ? nuovi.slice() : [];
+    const visti = new Set(elenco.map(a => String(a && a.id || '').toLowerCase()));
+    stato.aerei.forEach(a => {
+      const id = String(a.id || '').toLowerCase();
+      if (!id || visti.has(id)) return;
+      // La lettura grezza, non quella propagata: propagare una propagazione
+      // vorrebbe dire ricalcolare l'errore sopra all'errore, e in mezz'ora
+      // farebbe un aereo inventato.
+      const origine = a.posizioneFeed || a;
+      const letto = Number.isFinite(origine.ultimaLettura) ? origine.ultimaLettura * 1000 : 0;
+      if (!letto || ora - letto > AEREI_MEMORIA_MS) return;
+      elenco.push(origine);
+    });
+    return elenco;
   }
 
   function registraTracce(aerei, ora = Date.now()) {
@@ -778,7 +950,7 @@
   }
 
   function aggiornaPosizioni() {
-    const obs = osservatore();
+    const obs = osservatoreDisegno();
     if (!obs) return [];
     stato.aerei = stato.aerei.map(a => aereoAdesso(a, obs));
     return stato.aerei;
@@ -1094,11 +1266,16 @@
     aggiornaUI();
     stato.richiesta = corsaProvider(providers, obs, raggioKm(), controller.signal)
       .then(risultato => {
-        // Nel frattempo il planetario potrebbe essersi spostato. Una risposta
-        // valida per il vecchio centro non deve mai apparire nel nuovo cielo.
-        if (chiaveCentro(obs) !== chiaveCentro(osservatore())) return;
+        // Nel frattempo il planetario potrebbe essersi spostato. Solo un
+        // **salto** però rende inutile la risposta: prima bastava un cambio
+        // qualunque, e in macchina quel cambio arriva ogni sei secondi — cioè
+        // ogni risposta che riusciva ad arrivare veniva buttata sul traguardo,
+        // dopo aver pagato per intero il tempo di scaricarla. Muovendosi la
+        // risposta si tiene: le coordinate si rifanno dal punto di adesso.
+        const adesso = osservatore();
+        if (!adesso || distanzaDirezione(obs, adesso).km > saltoCentroKm()) return;
         registraTracce(risultato.aerei);
-        stato.aerei = arricchisci(risultato.aerei, obs);
+        stato.aerei = arricchisci(unisciConLaMemoria(risultato.aerei), obs);
         stato.ultimoCentro = obs;
         stato.ultimoSuccesso = Date.now();
         stato.ultimaFonte = risultato.provider.nome;
@@ -1260,7 +1437,11 @@
   function aereiDisegna(ctx, base, focale) {
     hitEtichette.length = 0;
     if (!stato.visibile || !stato.aerei.length || typeof skyProietta !== 'function') return;
-    if (!datiDelCentroCorrente()) { aereiPosizioneCambiata(); return; }
+    // Muovendosi non si smette di disegnare: le coordinate si rifanno da capo
+    // dal punto in cui si è adesso, e sono quelle giuste. Solo un salto vero
+    // — un'altra città scelta nel pannello Tempo e luogo — butta la
+    // fotografia, e allora per un fotogramma non c'è niente da disegnare.
+    if (centroAltrove()) { aereiPosizioneCambiata(); return; }
     aggiornaPosizioni();
     aggiornaAllineamenti();
     const secondo = Math.floor(istanteMostratoMs() / 1000);
@@ -1542,17 +1723,25 @@
   }
 
   // Il raggio delle Impostazioni cambia sia il rettangolo chiesto al provider
-  // sia il filtro finale. La vecchia risposta non è quindi riutilizzabile.
+  // sia il filtro finale, quindi è un gesto che merita una richiesta subito.
+  // Quello che si ha in mano però non è da buttare: stringendo il raggio la
+  // risposta di prima **contiene** quella nuova e basta tagliarla, allargando
+  // ne è un pezzo giusto in attesa del resto. Svuotare qui voleva dire un
+  // cielo vuoto e la riga «ancora nessuna lettura» per tutto il tempo dello
+  // scarico, con i dati buoni gettati un istante prima.
   function aereiRaggioCambiato() {
-    if (stato.controller) { stato.ricaricaDopo = stato.dati; stato.controller.abort(); }
-    stato.aerei = [];
-    stato.ultimoSuccesso = 0;
+    stato.aerei = stato.aerei.filter(a => a.distanzaKm <= raggioKm());
     stato.prossimoAggiornamento = 0;
     stato.prossimoTentativo = 0;
     stato.tentativiFalliti = 0;
     render();
     aggiornaUI();
-    if (stato.dati && !stato.richiesta) carica(true);
+    // Una richiesta in volo non si abortisce: è già a metà strada, e la sua
+    // risposta — presa con il raggio di prima — resta comunque roba buona da
+    // cui ripartire. Se ne fa partire un'altra appena quella finisce.
+    if (!stato.dati) return;
+    if (stato.richiesta) stato.ricaricaDopo = true;
+    else carica(true);
   }
 
   // La leggenda delle fasce: si scrive da JavaScript perché le soglie e i
@@ -1632,5 +1821,10 @@
     interpretaRotta, aeroportoTesto, aeroportoCoordinate, registraTracce, tracce, stato, providersDisponibili,
     FASCE_DISTANZA, fasciaDi, ordinaPerSalute, salute, segnaEsito, peggiore, fase, testoDiStato,
     intervalloAggiornamento, pianificaProssimo, RIPROVE_MS, DATI_VECCHI_MS, DATI_SCADUTI_MS,
-    AGGIORNA_VISIBILE_MS, AGGIORNA_SFONDO_MS };
+    AGGIORNA_VISIBILE_MS, AGGIORNA_SFONDO_MS,
+    // Muoversi (§4-bis)
+    scartoDalCentroKm, tolleranzaCentroKm, saltoCentroKm, centroAltrove, ricentraPresto,
+    unisciConLaMemoria, osservatoreDisegno, osservatore,
+    AEREI_CENTRO_QUOTA, AEREI_CENTRO_MIN_KM, AEREI_CENTRO_MAX_KM, AEREI_SALTO_MIN_KM,
+    AEREI_MOTO_MIN_MS, AEREI_MEMORIA_MS, AEREI_VIVO_MAX_KM };
 }());

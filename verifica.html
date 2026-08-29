@@ -7729,6 +7729,203 @@ adsbAttendi('una pagina HTML restituita con 200 non ferma la corsa', async () =>
     `minuti rimasti: ${scartati.map(p => p.minuti).join(',')}`);
 }
 
+// --- 8. In macchina: muoversi non è cambiare cielo ---------------------
+{
+  // È l'altra faccia del difetto di questa sezione — «gli aerei a volte ci
+  // sono e a volte no» — ed è quella che col GPS acceso capitava **sempre**.
+  //
+  // Il centro del modulo è l'osservatore del planetario, che in viaggio si
+  // sposta a ogni passo del filtro dell'app: centocinquanta metri, cioè sei
+  // secondi a novanta all'ora. Ognuno di quei passi buttava la fotografia,
+  // azzerava il suo orologio, **abortiva la richiesta in volo** e ne faceva
+  // partire una nuova. Sei secondi sono meno del tempo che una porta ADS-B
+  // ci mette a rispondere: in macchina non arrivava mai niente, e il conto
+  // delle riprove — che dovrebbe frenare dopo un guasto — ripartiva da zero
+  // a ogni fix.
+  //
+  // A occhio non si giudica niente, ed è per questo che la prova sta qui: un
+  // cielo senza triangoli mentre si guida sembra semplicemente un posto
+  // senza aerei, o una rete che non prende. La domanda vera è un'altra, e si
+  // risponde coi numeri: **quello che si ha in mano è ancora buono?** Sì, e
+  // per una ragione di fondo — le posizioni degli aerei sono latitudini e
+  // longitudini, non angoli visti da qui, e da dove le si guarda si rifà a
+  // ogni fotogramma. Muovendosi non diventano sbagliate: si aggiornano.
+  //
+  // Il numero che dice quanto costava, misurato col modulo vero, una porta
+  // che risponde in otto secondi e un fix ogni centocinquanta metri: dieci
+  // chilometri di strada erano **67 richieste, 67 abortite, zero risposte,
+  // zero aerei**. Adesso: 4 richieste (una corsa sola), una risposta, quattro
+  // aerei in cielo per tutto il viaggio.
+  const s = adsb.stato;
+  const salva = {
+    aerei: s.aerei, ultimoCentro: s.ultimoCentro, ultimoSuccesso: s.ultimoSuccesso,
+    prossimoAggiornamento: s.prossimoAggiornamento, prossimoTentativo: s.prossimoTentativo,
+    tentativiFalliti: s.tentativiFalliti, dati: s.dati, errore: s.errore,
+    vista: window.skyLuogoDelCielo, raggio: raggi.aerei
+  };
+  // Con i dati in pausa nessuna richiesta vera parte da qui: si sta provando
+  // la macchina delle decisioni, non la rete.
+  s.dati = false;
+  s.errore = '';
+
+  const dove = { lat: 45, lon: 9 };
+  window.skyLuogoDelCielo = () => ({ lat: dove.lat, lon: dove.lon });
+  // Tanti chilometri di strada verso nord dal punto in cui la fotografia è
+  // stata chiesta.
+  const metti = km => { dove.lat = 45 + km / 111.195; };
+  const finto = id => ({ id, callsign: id.toUpperCase(), lat: 45.2, lon: 9, quotaM: 9000,
+    velocitaMs: 230, direzione: 90, salitaMs: 0, distanzaKm: 22,
+    ultimaLettura: Math.floor(Date.now() / 1000) - 5 });
+  const apparecchia = (ok, prossimo) => {
+    s.aerei = [{ ...finto('aa'), posizioneFeed: finto('aa') }];
+    s.ultimoCentro = { lat: 45, lon: 9, quotaM: 0 };
+    s.ultimoSuccesso = ok;
+    s.prossimoAggiornamento = prossimo;
+    s.prossimoTentativo = 0;
+    s.tentativiFalliti = 2;
+  };
+
+  // --- Le due soglie ---------------------------------------------------
+  const tol = r => { raggi.aerei = r; return adsb.tolleranzaCentroKm(); };
+  prova('la tolleranza è una frazione del raggio, fra un pavimento e un tetto',
+    tol(10) === 2 && tol(50) === 10 && tol(250) === adsb.AEREI_CENTRO_MAX_KM,
+    `raggio 10 → ${tol(10)} km, 50 → ${tol(50)} km, 250 → ${tol(250)} km`);
+  // Con un raggio stretto il salto non deve scendere con lui: buttare tutto
+  // ogni dieci chilometri di strada sarebbe il difetto di prima, solo più di
+  // rado.
+  prova('e il salto sta sempre molto più in là della tolleranza, anche col raggio stretto',
+    [10, 50, 150, 250].every(r => { raggi.aerei = r; return adsb.saltoCentroKm() >= adsb.tolleranzaCentroKm() * 2; }),
+    [10, 50, 250].map(r => { raggi.aerei = r; return `${r}: ${adsb.tolleranzaCentroKm()}/${adsb.saltoCentroKm()}`; }).join(' · '));
+
+  raggi.aerei = 50;
+
+  // --- Il passo del GPS non è un viaggio -------------------------------
+  {
+    const nato = Date.now() - 20000;
+    const prossimo = nato + adsb.AGGIORNA_VISIBILE_MS;
+    apparecchia(nato, prossimo);
+    metti(0.15);                       // centocinquanta metri: un passo del filtro
+    aereiPosizioneCambiata();
+    prova('centocinquanta metri di strada non buttano la fotografia',
+      s.aerei.length === 1 && s.ultimoSuccesso === nato && !!s.ultimoCentro);
+    prova('e non chiedono niente: il ritmo resta quello che era',
+      s.prossimoAggiornamento === prossimo);
+    // Il contro-esempio, cioè la regola di prima: le coordinate arrotondate a
+    // quattro decimali, confrontate come stringhe. Quattro decimali sono
+    // **undici metri**, quindi qualunque passo del GPS era «un altro cielo».
+    const chiaveVecchia = p => `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`;
+    prova('col confronto di prima quegli stessi metri erano «un altro cielo»',
+      chiaveVecchia({ lat: 45, lon: 9 }) !== chiaveVecchia(dove),
+      `${chiaveVecchia({ lat: 45, lon: 9 })} contro ${chiaveVecchia(dove)}`);
+    // Azzerare il conto delle riprove a ogni fix vuol dire togliere il freno
+    // proprio a chi ne ha più bisogno: in macchina la rete cade a ogni
+    // cambio di cella, e senza freno si bussa ogni tre secondi.
+    prova('e il conto delle riprove non riparte da zero a ogni fix',
+      s.tentativiFalliti === 2, `${s.tentativiFalliti} tentativi falliti`);
+  }
+
+  // --- Oltre la tolleranza: si anticipa, non si scarica ----------------
+  {
+    const nato = Date.now();
+    apparecchia(nato, nato + adsb.AGGIORNA_SFONDO_MS);
+    metti(20);                         // venti chilometri: oltre i dieci di tolleranza
+    aereiPosizioneCambiata();
+    prova('oltre la tolleranza il prossimo scarico si anticipa…',
+      s.prossimoAggiornamento < nato + adsb.AGGIORNA_SFONDO_MS,
+      `fra ${((s.prossimoAggiornamento - Date.now()) / 1000).toFixed(0)} s invece di ${adsb.AGGIORNA_SFONDO_MS / 1000}`);
+    prova('…ma mai prima del passo minimo, se no in autostrada sarebbe una raffica',
+      s.prossimoAggiornamento >= nato + adsb.AEREI_MOTO_MIN_MS,
+      `passo minimo ${adsb.AEREI_MOTO_MIN_MS / 1000} s`);
+    prova('e intanto la fotografia resta in mano, disegnabile',
+      s.aerei.length === 1 && s.ultimoSuccesso === nato);
+  }
+
+  // --- Un guasto in corso non si scavalca muovendosi -------------------
+  {
+    const nato = Date.now() - 60000;
+    apparecchia(nato, 0);
+    s.prossimoTentativo = Date.now() + 120000;
+    s.prossimoAggiornamento = s.prossimoTentativo;
+    metti(20);
+    aereiPosizioneCambiata();
+    prova('un viaggio non scavalca il freno degli errori: la riprova resta dov\'era',
+      s.prossimoAggiornamento === s.prossimoTentativo);
+  }
+
+  // --- Il salto, che è l'unico caso in cui si butta --------------------
+  {
+    apparecchia(Date.now(), Date.now() + adsb.AGGIORNA_VISIBILE_MS);
+    metti(2);
+    prova('due chilometri di strada: il disegno continua senza interruzioni',
+      !adsb.centroAltrove());
+    metti(300);
+    prova('trecento chilometri — un\'altra città nel pannello Tempo e luogo — sono un altro cielo',
+      adsb.centroAltrove());
+    aereiPosizioneCambiata();
+    prova('e allora sì, la fotografia si butta: quella parlava di un altro posto',
+      s.aerei.length === 0 && !s.ultimoSuccesso && !s.ultimoCentro);
+  }
+
+  // --- La risposta che arriva mentre ci si muove ------------------------
+  {
+    // Il difetto peggiore dei quattro, perché costava una richiesta **già
+    // pagata**: la risposta veniva scartata sul traguardo se il centro era
+    // cambiato di un metro nel frattempo. Il conto che lo dimostra: alla
+    // velocità di un'auto, nei secondi di una richiesta ADS-B non ci si
+    // sposta neanche lontanamente quanto il salto.
+    raggi.aerei = 50;
+    const strada = 25 * 8 / 1000;      // 90 km/h per otto secondi, in km
+    prova('otto secondi di autostrada non sono un salto: la risposta si tiene',
+      strada < adsb.saltoCentroKm() / 10,
+      `${strada.toFixed(1)} km contro un salto di ${adsb.saltoCentroKm()} km`);
+  }
+
+  // --- La memoria: una lettura si somma, non sostituisce ---------------
+  {
+    // Una rete ADS-B è fatta di riceventi volontari, e due letture di fila
+    // possono avere buchi diversi: un aereo sul bordo del riquadro entra ed
+    // esce dall'elenco a ogni giro. Sostituendo la fotografia in blocco quei
+    // buchi diventano triangoli che lampeggiano, e un giro andato male a
+    // metà **cancella** dati buoni appena ricevuti. Se i dati arrivano di
+    // rado, quando arrivano vanno sfruttati fino in fondo.
+    const ora = Date.now();
+    const grezzo = (id, secondiFa, extra) => ({ id, callsign: id.toUpperCase(),
+      lat: 45.1, lon: 9, quotaM: 9000, velocitaMs: 200, direzione: 90, salitaMs: 0,
+      ultimaLettura: Math.floor(ora / 1000) - secondiFa, ...(extra || {}) });
+    s.aerei = [
+      { ...grezzo('aa', 10), posizioneFeed: grezzo('aa', 10) },
+      { ...grezzo('bb', 600), posizioneFeed: grezzo('bb', 600) },
+      { ...grezzo('cc', 10), posizioneFeed: grezzo('cc', 10, { vecchio: true }) }
+    ];
+    const uniti = adsb.unisciConLaMemoria([grezzo('cc', 0), grezzo('dd', 0)], ora);
+    const quali = n => uniti.filter(a => a.id === n);
+    prova('un aereo che il feed non ha riconfermato resta, se è stato letto da poco',
+      quali('aa').length === 1);
+    prova('e uno letto dieci minuti fa no: la memoria è corta apposta',
+      quali('bb').length === 0, `memoria ${adsb.AEREI_MEMORIA_MS / 1000} s`);
+    prova('chi c\'è in tutt\'e due compare una volta sola, e nella versione nuova',
+      quali('cc').length === 1 && !quali('cc')[0].vecchio);
+    prova('e i nuovi ci sono tutti', quali('dd').length === 1 && uniti.length === 3,
+      uniti.map(a => a.id).join(','));
+    // Il tetto conta: propagare per mezz'ora un aereo che nessuno vede più
+    // non è tenerlo, è inventarlo. Deve restare molto sotto alla soglia
+    // oltre la quale l'intera fotografia si dichiara scaduta.
+    prova('la memoria di un singolo aereo è molto più corta della scadenza della fotografia',
+      adsb.AEREI_MEMORIA_MS < adsb.DATI_SCADUTI_MS / 5,
+      `${adsb.AEREI_MEMORIA_MS / 60000} min contro ${adsb.DATI_SCADUTI_MS / 60000}`);
+  }
+
+  s.aerei = salva.aerei; s.ultimoCentro = salva.ultimoCentro;
+  s.ultimoSuccesso = salva.ultimoSuccesso;
+  s.prossimoAggiornamento = salva.prossimoAggiornamento;
+  s.prossimoTentativo = salva.prossimoTentativo;
+  s.tentativiFalliti = salva.tentativiFalliti;
+  s.dati = salva.dati; s.errore = salva.errore;
+  raggi.aerei = salva.raggio;
+  if (salva.vista === undefined) delete window.skyLuogoDelCielo;
+  else window.skyLuogoDelCielo = salva.vista;
+}
+
 // =====================================================================
 titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-bis)');
 // =====================================================================

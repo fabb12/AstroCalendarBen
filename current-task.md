@@ -4,47 +4,46 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-Gli **spicchi d'acqua** accanto ai laghi, e i laghi che non avevano la forma
-che hanno sulla carta (segnalato sul Lago di Lugano). Le cause erano sei, e
-tutte della stessa famiglia: si rispondeva «per banda» a domande che sono
-dello **specchio d'acqua**.
+Gli **aerei ADS-B in macchina**: col GPS acceso non comparivano mai, e la
+ragione non era la rete. Il centro del modulo è l'osservatore del planetario,
+che si sposta a ogni passo del filtro dell'app — centocinquanta metri, cioè
+**sei secondi** a novanta all'ora — e ognuno di quei passi faceva quattro cose
+insieme: buttava la fotografia, azzerava il suo orologio, **abortiva la
+richiesta in volo** e ne faceva partire un'altra. Sei secondi sono meno del
+tempo che una porta ADS-B ci mette a rispondere. Misurato col modulo vero e
+una porta che risponde in otto secondi, dieci chilometri di strada:
+**67 richieste, 67 abortite, zero risposte, zero aerei**; adesso **4 richieste
+(una corsa sola), una risposta, quattro aerei in cielo per tutto il viaggio**.
 
-- `terreno.js` §12 — ogni banda si porta dietro il **corpo**, cioè di che
-  specchio è (`ACQUE_VERSIONE` 5: la tupla passa da quattro posti a cinque, e
-  chi aveva bande salvate se le riscarica). Da lì:
-  - `acqueQuoteDeiCorpi()`: **una quota per lago**, non una per banda. Con la
-    griglia a centocinquanta metri di passo, due colonne contigue prendevano
-    campioni diversi — misurato su un ramo largo trecento metri, sette quote
-    per un lago solo — e dove la banda era corta il ripiego pescava sulla
-    riva, che può risultare sopra l'occhio: quella colonna spariva del tutto,
-    lasciando un buco a spicchio in mezzo all'acqua. I **corsi d'acqua** non
-    hanno un dentro a cui chiedere, e infatti per loro contano solo i campioni
-    che li abbracciano e il suolo sotto i piedi.
-  - il **taglio dell'occlusione** si cerca invece di prenderlo dov'era caduto
-    uno di dodici campioni equispaziati: i campioni si mettono dove il dato
-    cambia (la cresta davanti è una scala a diciotto gradini) e il passaggio
-    si stringe per bisezione. Da 75 m di errore medio a 0,8, e costa **meno**
-    di prima (4,7 ms contro 6,0 su una scena di laghi).
-  - il **taglio spaiato** — la riva di là oltre il raggio di ricerca — si
-    chiude sul limite invece che a `+200 m`, contro quello che il suo stesso
-    commento diceva. Era la scheggia a punta sul bordo dei laghi grandi.
-  - la **corda dei corsi d'acqua** è quella esatta (`largo / (2·sen)`, senza
-    il pavimento a 0,12 sul seno): l'entrata cade a distanza negativa solo se
-    ci si sta davvero dentro. Prima un fiume di sbieco a un centinaio di metri
-    risultava cominciare ai piedi, cioè disegnato dal nadir in su.
-  - `acqueQueryOverpass` dà alle **relazioni** un `out` e un tetto propri.
-    Con un `out` solo si stampano prima tutte le vie, e in una provincia di
-    laghi il tetto se lo prendono loro: i laghi grandi — che sono relazioni —
-    non arrivavano affatto. Le relazioni ci sono adesso anche nella query
-    corta di ripiego.
-- `app.js` — `skyAcqueStrisce` lega le bande **per specchio**, pretende una
-  sovrapposizione vera e rompe la striscia sulle discontinuità
-  (`SKY_ACQUA_SALTO`): dove un promontorio biforca la veduta la striscia
-  finisce e ne cominciano due, invece di trascinare un bordo di chilometri in
-  mezzo grado. E `skyAcquaStriscia` allarga ogni striscia di un quarto di
-  grado per parte — una colonna è una **cella** — se no fra due strisce
-  contigue resterebbe mezzo grado di fessura.
-- Prove nuove nel §20 di `verifica.html`, ognuna col suo contro-esempio sul
-  conto di prima (95 in quella sezione).
+La cura sta in una cosa che si sapeva e non si usava: le posizioni degli aerei
+sono **latitudini e longitudini**, e azimut, altezza e distanza si rifanno da
+capo a ogni fotogramma. Muovendosi non diventano sbagliate: si aggiornano.
 
-Cache PWA portata ad `astrocal-v216`.
+- `aerei.js` §**4-bis** (nuova): il centro non si confronta più per uguaglianza
+  ma per **distanza**. Sotto `tolleranzaCentroKm()` (un quinto del raggio, fra
+  1,5 e 12 km) non succede niente di niente; sopra si chiama `ricentraPresto()`,
+  che **anticipa** il prossimo scarico senza mai scendere sotto
+  `AEREI_MOTO_MIN_MS` (mezzo minuto) né scavalcare il freno degli errori; solo
+  oltre `saltoCentroKm()` (mai meno di 25 km) si è altrove — un'altra città nel
+  pannello Tempo e luogo — e allora sì, si butta. Il conto delle riprove non si
+  azzera più a ogni fix: era il freno dei 429, tolto proprio a chi ne ha più
+  bisogno.
+- La **risposta che arriva mentre ci si muove** non si scarta più sul traguardo
+  (era `chiaveCentro(obs) !== chiaveCentro(osservatore())`, cioè undici metri):
+  adesso solo un salto la rende inutile.
+- `unisciConLaMemoria()`: ogni lettura si **somma** alla precedente invece di
+  sostituirla. Chi è stato visto da meno di `AEREI_MEMORIA_MS` (2 min) resta e
+  continua a essere propagato, anche se il feed non l'ha riconfermato — le reti
+  ADS-B sono fatte di riceventi volontari e due letture di fila hanno buchi
+  diversi. Due minuti e non trenta: propagare mezz'ora un aereo che nessuno
+  vede più non è tenerlo, è inventarlo.
+- `aereiRaggioCambiato()` non svuota più: stringendo il raggio la risposta di
+  prima **contiene** quella nuova e basta tagliarla, allargando ne è un pezzo
+  giusto in attesa del resto. E non abortisce la richiesta in volo.
+- `osservatoreDisegno()`: chi **disegna** usa il punto vivo di `terreno.js`
+  §6-bis (centocinquanta metri non spostano una stella, ma un aereo a due
+  chilometri di quattro gradi); chi **scarica** continua a usare `osservatore()`.
+- Prove nuove nel §27 di `verifica.html` (22), col contro-esempio del confronto
+  a quattro decimali. 849 in tutto, tutte passate.
+
+Cache PWA portata ad `astrocal-v225`.
