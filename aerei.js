@@ -1695,13 +1695,18 @@
     }
     const rotta = await rottaCache.get(callsign).promessa;
     if (!box.isConnected) return;
+    const pannello = box.closest('.pannello-dettaglio');
+    const scorrimento = pannello && pannello.scrollTop;
     if (!rotta || (!rotta.partenza && !rotta.arrivo)) {
-      box.innerHTML = '<span class="voce-dato">Itinerario:</span> non disponibile'; return;
+      box.innerHTML = '<span class="voce-dato">Itinerario:</span> non disponibile';
+      if (pannello) pannello.scrollTop = scorrimento;
+      return;
     }
     const riga = (nome, luogo, ora) => luogo
       ? `<div><span class="voce-dato">${nome}:</span> ${sicuro(luogo)}${ora ? ` · ${sicuro(ora)}` : ''}</div>` : '';
     box.innerHTML = riga('Partenza', rotta.partenza, rotta.oraPartenza) +
       riga('Arrivo', rotta.arrivo, rotta.oraArrivo);
+    if (pannello) pannello.scrollTop = scorrimento;
   }
 
   const fotoCache = new Map();
@@ -1718,8 +1723,20 @@
     if (!foto || !box.isConnected) return;
     const img = foto.thumbnail_large || foto.thumbnail;
     if (!img || !img.src) return;
+    const pannello = box.closest('.pannello-dettaglio');
+    const scorrimento = pannello && pannello.scrollTop;
     box.innerHTML = `<img class="aereo-foto" src="${sicuro(img.src)}" alt="Foto dell'aereo ${sicuro(a.callsign || id)}">` +
       (foto.photographer ? `<p class="aereo-foto-credito">Foto: ${sicuro(foto.photographer)}</p>` : '');
+    if (pannello) {
+      pannello.scrollTop = scorrimento;
+      // L'immagine acquista la sua altezza solo dopo il caricamento. Disabilitare
+      // l'ancoraggio automatico e ripristinare la posizione dopo quel layout
+      // evita il salto, particolarmente evidente su Safari mobile.
+      const immagine = box.querySelector('img');
+      if (immagine) immagine.addEventListener('load', () => {
+        if (pannello.isConnected && pannello.scrollTop < scorrimento) pannello.scrollTop = scorrimento;
+      }, { once: true });
+    }
   }
 
   // Il raggio delle Impostazioni cambia sia il rettangolo chiesto al provider

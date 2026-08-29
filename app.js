@@ -22446,6 +22446,19 @@ function skyAggiornaScheda() {
   }
 
   pannello.scrollTop = scorrimento;
+  // Le informazioni dell'aereo arrivano anche in modo asincrono (foto e
+  // itinerario). Su WebKit, inoltre, il ricalcolo dell'altezza viene fatto
+  // soltanto al fotogramma successivo: il valore appena rimesso qui sopra
+  // può quindi essere limitato a zero mentre il corpo è ancora considerato
+  // vuoto. Ripeterlo dopo il layout impedisce alla scheda di tornare in cima
+  // da sola, senza interferire con un eventuale nuovo gesto dell'utente.
+  const selezioneAllaScrittura = sky.selezione;
+  requestAnimationFrame(() => {
+    if (sky.selezione === selezioneAllaScrittura && pannello.isConnected &&
+        pannello.classList.contains('visibile') && pannello.scrollTop < scorrimento) {
+      pannello.scrollTop = scorrimento;
+    }
+  });
 }
 
 // Cosa scrivere quando non c'è (ancora) nulla da mostrare
