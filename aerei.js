@@ -233,8 +233,89 @@
     providerDiretto('adsb.one', feedAdsbOne)
   ];
 
+  function urlProxy() {
+    return String((typeof window !== 'undefined' && window.ADSB_PROXY_URL) || '').trim().replace(/\/$/, '');
+  }
+
+  // =====================================================================
+  //  I PONTI CORS PUBBLICI — la strada che non chiede di installare niente
+  //
+  //  Il fatto da cui parte tutto, misurato dall'origine del sito pubblicato:
+  //  **nessuna delle quattro reti manda `Access-Control-Allow-Origin`**. Gli
+  //  endpoint sono vivi (aperti in una scheda restituiscono i dati) ma il
+  //  browser rifiuta la risposta prima di consegnarla al codice. Non e' un
+  //  guasto e non e' intermittente: da un browser quelle reti non si leggono
+  //  mai, e nessun trucco lato client lo aggira — e' il browser che decide.
+  //
+  //  Restano due strade, e non si escludono. Un **proxy proprio** (vedi
+  //  `ADSB-PROXY.md`) e' la piu' solida: risponde sempre, con i limiti che
+  //  decidi tu. Ma va distribuito, e chi vuole solo aprire il sito non ha
+  //  voglia di distribuire niente. Per lui ci sono questi **ponti pubblici**:
+  //  servizi che qualcun altro tiene su, che prendono un indirizzo, lo vanno
+  //  a leggere dal loro server e rimandano indietro la risposta col CORS
+  //  aperto. Zero configurazione.
+  //
+  //  Il prezzo, ed e' giusto saperlo: sono di terzi, hanno limiti loro e
+  //  possono sparire senza avvisare. Per questo sono **tre e non uno**, per
+  //  questo ognuno e' abbinato a una rete diversa, e per questo stanno dietro
+  //  al proxy proprio quando c'e'. La pagella (§2) fa il resto: misura quale
+  //  combinazione funziona da qui e il giro dopo comincia da quella.
+  //
+  //  Perche' proprio ADSB.fi e adsb.lol: sono le due che, interrogate **da un
+  //  server**, hanno risposto 200 con i dati (22 e 21 aerei). Airplanes.live e
+  //  adsb.one rispondono 403 anche da li' — servirebbe il loro permesso, che
+  //  si chiede scrivendo a contact@airplanes.live.
+  // =====================================================================
+
+  const PONTI_CORS = [
+    { nome: 'allorigins', avvolgi: u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}` },
+    { nome: 'codetabs', avvolgi: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}` },
+    { nome: 'corsproxy.io', avvolgi: u => `https://corsproxy.io/?url=${encodeURIComponent(u)}` }
+  ];
+
+  // Ogni ponte con una rete diversa: se un ponte cade, non porta giu' con se'
+  // anche l'unica rete che stava servendo.
+  const ABBINAMENTI = [
+    { ponte: PONTI_CORS[0], rete: 'ADSB.fi', feed: urlAdsbFi },
+    { ponte: PONTI_CORS[1], rete: 'adsb.lol', feed: feedAdsbLol },
+    { ponte: PONTI_CORS[2], rete: 'ADSB.fi', feed: urlAdsbFi },
+    { ponte: PONTI_CORS[0], rete: 'adsb.lol', feed: feedAdsbLol }
+  ];
+
+  function providersPonte() {
+    return ABBINAMENTI.map(a => ({
+      nome: `${a.rete} via ${a.ponte.nome}`,
+      rete: `${a.rete} (ponte ${a.ponte.nome})`,
+      url: (posizione, raggioKm) => a.ponte.avvolgi(a.feed(posizione, raggioKm)),
+      // L'interprete e' quello di sempre, e la sua severita' e' quello che
+      // rende sicuri i ponti: un servizio in difficolta' risponde 200 con
+      // dentro una pagina d'errore, e `interpretaAdsbExchange` **solleva**
+      // invece di leggerla come «zero aerei». Senza quella severita' un ponte
+      // rotto sarebbe indistinguibile da un cielo sgombro.
+      interpreta: interpretaAdsbExchange,
+      // Un ponte fa due salti invece di uno: chiede tempo.
+      attesaMs: 12000
+    }));
+  }
+
+  // Detto una volta sola, e detto forte. Le quattro reti dirette producono
+  // quattro rifiuti CORS di fila, che nella console sembrano un guasto
+  // dell'app e non lo sono. Il muro di righe rosse ha gia' fatto perdere un
+  // pomeriggio a chi credeva di avere un problema di codice.
+  let dettoDelProxy = false;
+  function avvisaSeManca() {
+    if (dettoDelProxy || urlProxy()) return;
+    dettoDelProxy = true;
+    console.info('[aerei] Nessun proxy proprio configurato (ADSB_PROXY_URL). ' +
+      'Le richieste dirette qui sotto falliranno tutte per CORS — quelle reti non ' +
+      'mandano Access-Control-Allow-Origin e da un browser non si leggono mai: ' +
+      'le righe rosse che seguono sono attese, non un difetto. Si passa poi ai ' +
+      'ponti CORS pubblici. Per la strada solida vedi ADSB-PROXY.md.');
+  }
+
   function providersDisponibili() {
-    const proxy = String(window.ADSB_PROXY_URL || '').trim().replace(/\/$/, '');
+    avvisaSeManca();
+    const proxy = urlProxy();
     const propri = proxy ? [{
       nome: 'proxy ADS-B del sito',
       rete: 'proxy del sito',
@@ -269,7 +350,11 @@
     // trentina di millisecondi a testa (un rifiuto CORS e' immediato), e il
     // giorno che una cambia politica la pagella (§2) la promuove da se' senza
     // che nessuno debba accorgersene.
-    return propri.concat(providersPredefiniti);
+    // L'ordine: il proxy proprio se c'e' (risponde sempre), poi le reti
+    // dirette (falliscono per CORS, ma costano trenta millisecondi e un
+    // giorno potrebbero cambiare politica), poi i ponti pubblici, che sono
+    // l'unica strada che funziona senza aver distribuito niente.
+    return propri.concat(providersPredefiniti, providersPonte());
   }
 
   // =====================================================================
@@ -725,6 +810,7 @@
     errore: { spia: 'errore', nota: 'Dati ADS-B non disponibili' },
     senzaRete: { spia: 'errore', nota: 'Senza rete: dati ADS-B fermi' },
     senzaPosizione: { spia: 'errore', nota: 'Serve una posizione' },
+    proxyMancante: { spia: 'errore', nota: 'Nessuna fonte ADS-B raggiungibile' },
     passato: { spia: 'vecchio', nota: 'Posizioni stimate: il cielo mostrato non è adesso' }
   };
 
@@ -734,6 +820,11 @@
     if (stato.richiesta) return 'carico';
     if (!tempoReale()) return 'passato';
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'senzaRete';
+    // Prima di «errore»: senza proxy non e' andata storta una richiesta, manca
+    // una configurazione — e sono due cose che chiedono due gesti diversi.
+    // Chiamarlo «errore» mandava a cercare un guasto che non c'e', e a
+    // aspettare una riprova che non potra' mai riuscire.
+    if ((stato.errore || !stato.ultimoSuccesso) && !urlProxy()) return 'proxyMancante';
     if (stato.errore) return 'errore';
     if (!stato.ultimoSuccesso) return 'attesa';
     return Date.now() - stato.ultimoSuccesso > DATI_VECCHI_MS ? 'vecchio' : 'ok';
@@ -772,6 +863,12 @@
     const prossimo = stato.dati && stato.auto && stato.prossimoAggiornamento
       ? ` · nuovo scarico ${fraQuanto(stato.prossimoAggiornamento - Date.now())}` : '';
     if (f === 'senzaPosizione') return 'Serve una posizione per cercare gli aerei.';
+    if (f === 'proxyMancante') {
+      return 'Nessun dato: le reti ADS-B non autorizzano le richieste dei browser e in ' +
+        'questo momento non risponde nemmeno un ponte CORS pubblico. Per una strada ' +
+        'che non dipende da servizi di terzi si configura un proxy proprio ' +
+        '(ADSB_PROXY_URL, vedi ADSB-PROXY.md).';
+    }
     if (f === 'spento') {
       return stato.ultimoSuccesso
         ? `Dati in pausa · ultima lettura ${eta} (${quanti}).`
@@ -830,7 +927,8 @@
       riga.dataset.fase = f;
       // La riga resta anche il posto dove uno screen reader legge il guasto:
       // `data-errore` la teneva rossa, e serve ancora al foglio di stile.
-      riga.dataset.errore = (f === 'errore' || f === 'senzaRete' || f === 'senzaPosizione') ? 'true' : 'false';
+      riga.dataset.errore = (f === 'errore' || f === 'senzaRete' || f === 'senzaPosizione' ||
+        f === 'proxyMancante') ? 'true' : 'false';
     }
     const spia = document.getElementById('aerei-spia');
     if (spia) {

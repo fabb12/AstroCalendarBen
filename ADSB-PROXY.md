@@ -103,47 +103,70 @@ e l'app continua a provare i feed diretti come prima. Cambiare `CACHE_NAME`
 
 ---
 
-## Cloudflare non va bene, ed è una misura
+## Prima di tutto: serve davvero un proxy?
 
-Da un Cloudflare Worker **tutte e cinque le fonti sono inutilizzabili**:
+Sì, ed è il browser a imporlo. Misurato dall'origine del sito pubblicato,
+**nessuna delle quattro reti manda `Access-Control-Allow-Origin`**: gli
+endpoint sono vivi (aperti in una scheda restituiscono i dati) ma il browser
+rifiuta la risposta prima di consegnarla al codice. Non è intermittente e non
+si aggira lato client.
 
-| | dal browser (IP di casa) | dal Worker (IP Cloudflare) |
-|---|---|---|
-| ADSB.fi | nessun header CORS | 403 (pagina Cloudflare) |
-| adsb.lol | nessun header CORS | 429 (nginx) |
-| Airplanes.live | nessun header CORS | 403 «scrivici una mail» |
-| adsb.one | nessun header CORS | 403 (pagina Cloudflare) |
-| OpenSky | **200**, ma CORS legato al loro dominio | **nessuna risposta** (15 s) |
+L'app ha quindi tre gradini, e il primo che risponde vince:
 
-La riga di OpenSky è quella che decide: la prova senza credenziali va in
-scadenza a quindici secondi, mentre dal browser lo stesso identico indirizzo
-risponde `200 (OK)` in un attimo. Non è lentezza, è un blocco.
+1. **Il proxy proprio** (`ADSB_PROXY_URL`) — il più solido: risponde sempre,
+   con i limiti che decidi tu. Va distribuito una volta, vedi sotto.
+2. **Le quattro reti dirette** — falliranno per CORS, ma costano trenta
+   millisecondi e restano in lista nel caso una cambi politica.
+3. **I ponti CORS pubblici** (`PONTI_CORS` in `aerei.js`) — servizi di terzi
+   che leggono l'indirizzo dal loro server e rimandano la risposta col CORS
+   aperto. **Non richiedono nessuna configurazione**: il sito funziona appena
+   pubblicato. Il prezzo è che hanno limiti loro e possono sparire senza
+   avvisare, ed è per questo che sono tre e ognuno è abbinato a una rete
+   diversa.
 
-La causa è sempre la stessa: un Worker non ha un IP proprio, ne divide un
-pugno con migliaia di altri, e questi servizi si difendono guardando lì.
-Nessuna riga di codice lo aggira, e nemmeno ci si deve provare.
+Chi vuole che gli aerei ci siano sempre configura il punto 1. Chi vuole solo
+aprire il sito si affida al punto 3 e non fa niente.
 
-**La cura è cambiare fornitore di proxy**, non codice: `worker-adsb.js` è
-scritto in Web standard (`export default { fetch }`, Request e Response) e
-gira **uguale su Deno Deploy**, che esce da altri indirizzi.
+## Su Cloudflare non funziona, su Deno sì — ed è tutto qui
+
+La stessa identica quarantina di righe, la stessa ora, le stesse fonti:
+
+| | dal browser (IP di casa) | da Cloudflare Workers | da Deno Deploy |
+|---|---|---|---|
+| ADSB.fi | nessun header CORS | 403 | **200, 22 aerei, 32 ms** |
+| adsb.lol | nessun header CORS | 429 | **200, 21 aerei, 115 ms** |
+| Airplanes.live | nessun header CORS | 403 «scrivici» | 403 «scrivici» |
+| adsb.one | nessun header CORS | 403 | 403 |
+| OpenSky | 200, ma CORS legato al loro dominio | **nessuna risposta** (15 s) | **200 in 189 ms** |
+
+Non era il codice, non erano le credenziali, non era OpenSky: era l'indirizzo
+IP. Un Cloudflare Worker non ne ha uno proprio — ne divide un pugno con
+migliaia di altri — e questi servizi si difendono guardando lì. Da Deno la
+stessa richiesta passa senza che nulla cambi nel file.
+
+**La conclusione pratica: il proxy va distribuito su Deno Deploy, non su
+Cloudflare.** `worker-adsb.js` gira su entrambi — è scritto in Web standard,
+`export default { fetch }` con Request e Response — e il nome è rimasto quello
+per non rompere i riferimenti, ma il posto giusto è Deno.
+
+Le credenziali OpenSky non sono nemmeno necessarie per partire: da Deno due
+reti di comunità rispondono da sole, e OpenSky risponde 200 anche senza. Restano
+consigliate come **terza fonte**, per non dipendere da chi può cambiare
+politica domani.
 
 ### Distribuirlo su Deno Deploy
 
 1. [dash.deno.com](https://dash.deno.com), accesso con GitHub (gratuito, niente carta).
-2. **New Playground** è la via più rapida per provare: incolla `worker-adsb.js`
-   e premi Save & Deploy. Per la versione definitiva conviene invece **New
-   Project → collega il repository**, con `worker-adsb.js` come punto di
-   ingresso: così si aggiorna da solo a ogni push, come faceva Cloudflare.
-3. **Settings → Environment Variables**: `OPENSKY_CLIENT_ID` e
-   `OPENSKY_CLIENT_SECRET`.
-4. Apri `https://IL-TUO-PROGETTO.deno.dev/api/diagnostica?lat=45.4642&lon=9.1900&dist=50`.
-   Il campo `piattaforma` deve dire `Deno`, e il passo `raggiungibile` di
-   OpenSky deve rispondere `http: 200` invece di scadere.
-5. Se risponde, aggiorna la variabile `ADSB_PROXY_URL` su GitHub col nuovo
-   indirizzo e rilancia **Pubblica il sito**.
-
-Se anche da lì OpenSky tace, il fornitore successivo da provare è Vercel (che
-esce da AWS invece che da Google Cloud). Il file non cambia.
+2. **New Playground** per provare in trenta secondi: incolla `worker-adsb.js`,
+   Save & Deploy. Per la versione definitiva conviene **New Project → collega
+   il repository** con `worker-adsb.js` come punto di ingresso, così si
+   aggiorna da solo a ogni push.
+3. Aprendo l'indirizzo nudo, la radice si presenta e stampa il link della
+   diagnostica già pronto. Il campo `piattaforma` deve dire `Deno`.
+4. Facoltativo ma consigliato: **Settings → Environment Variables**,
+   `OPENSKY_CLIENT_ID` e `OPENSKY_CLIENT_SECRET`.
+5. Metti quell'indirizzo in `ADSB_PROXY_URL` fra le *Variables* del repository
+   e rilancia **Pubblica il sito**.
 
 ## OpenSky, cioè la fonte che funziona davvero
 
