@@ -35161,7 +35161,7 @@ function skyTestoBarraTempo(quando, scarto, marcia) {
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
   }).format(new Date());
   const testa = `${giorno}${ora}` +
-    (oraDispositivo === ora ? '' : ` · dispositivo ${oraDispositivo}`);
+    (oraDispositivo === ora ? '' : ` · adesso ${oraDispositivo}`);
   if (scarto === 0 && !marcia) return testa;
 
   const stretta = !sky.larghezza || sky.larghezza < 500;
