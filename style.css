@@ -4471,9 +4471,10 @@ body input.casella-data:hover { border: 0; }
   box-shadow: var(--alone-blu);
 }
 
-/* La lettura: è anche il tasto che apre il pannello "Tempo". Un numero che si
-   può toccare deve sembrare toccabile, quindi ha la sua cornice; ma resta
-   scritto in tono minore, perché è una lettura e non un comando. */
+/* La lettura: è anche il tasto che apre il pannello "Tempo". L'orario è il
+   dato principale della barra: Inter lo rende più nitido del monospace anche
+   sui display piccoli, mentre peso, contrasto e una lieve luce interna lo
+   tengono leggibile sopra qualunque zona del cielo. */
 .lettura-barra-tempo {
   flex: 0 1 auto;
   box-sizing: border-box;
@@ -4488,11 +4489,15 @@ body input.casella-data:hover { border: 0; }
   text-align: center;
   border: 1px solid var(--bordo);
   border-radius: 999px;
-  background: var(--incassato);
-  color: var(--testo);
-  font-family: var(--mono);
-  font-size: 0.78rem;
+  background: rgba(12, 18, 32, 0.94);
+  color: #f7f9ff;
+  font-family: var(--sans);
+  font-size: 0.96rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4671,7 +4676,7 @@ body input.casella-data:hover { border: 0; }
      Sotto ai 36 non si scende: un bersaglio più piccolo si sbaglia. */
   .vista-cielo { --tasto-tempo: 36px; --alta-barra-tempo: calc(var(--tasto-tempo) + 12px); }
   .barra-tempo { gap: 5px; padding: 5px 6px; left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); }
-  .lettura-barra-tempo { padding: 0 9px; font-size: 0.72rem; }
+  .lettura-barra-tempo { padding: 0 9px; font-size: 0.88rem; }
   .tasto-barra-tempo { font-size: 0.94rem; }
 }
 
