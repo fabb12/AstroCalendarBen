@@ -7677,6 +7677,58 @@ adsbAttendi('una pagina HTML restituita con 200 non ferma la corsa', async () =>
     `«${adsb.testoDiStato()}»`);
 }
 
+// --- 7. La previsione a cinque minuti ---------------------------------
+{
+  // La traiettoria e' l'unica cosa del modulo che parli del **futuro**, e per
+  // questo e' anche l'unica che a occhio non si possa giudicare: una linea
+  // tratteggiata che parte dal muso di un aereo sembra giusta comunque, e se
+  // la propagazione sbagliasse del doppio nessuno, guardando il cielo, se ne
+  // accorgerebbe. Qui si controlla contro i numeri: un aereo di linea fa
+  // duecentocinquanta metri al secondo, quindi in cinque minuti
+  // **settantacinque chilometri** e non uno di piu'.
+  const aereo = { lat: 45, lon: 9, quotaM: 10000, velocitaMs: 250, direzione: 0,
+    salitaMs: 5, callsign: 'PROVA', id: 'p' };
+
+  const dopo = adsb.posizioneFutura(aereo, 300);
+  const d = adsb.distanzaDirezione({ lat: 45, lon: 9 }, dopo);
+  prova('cinque minuti a 250 m/s fanno 75 km', Math.abs(d.km - 75) < 0.05,
+    `${d.km.toFixed(2)} km`);
+  prova('e con rotta zero si va verso nord', Math.abs(d.az) < 0.2 || Math.abs(d.az - 360) < 0.2,
+    `azimut ${d.az.toFixed(1)}`);
+  prova('la rotta a 90 porta a est', (() => {
+    const e = adsb.posizioneFutura({ ...aereo, direzione: 90 }, 300);
+    return Math.abs(adsb.distanzaDirezione({ lat: 45, lon: 9 }, e).az - 90) < 0.5;
+  })());
+  prova('la quota segue il rateo di salita', Math.abs(dopo.quotaM - 11500) < 1,
+    `${dopo.quotaM} m`);
+  // Un aereo in discesa ripida, propagato per cinque minuti, finirebbe sotto
+  // il livello del mare: disegnato, sarebbe un aereo sepolto.
+  prova('e in discesa non scende mai sotto zero',
+    adsb.posizioneFutura({ ...aereo, quotaM: 300, salitaMs: -20 }, 300).quotaM === 0);
+
+  const ric = adsb.arricchisci([aereo], { lat: 45, lon: 9, quotaM: 100 }, 400);
+  const t = ric[0].traiettoria;
+  prova('la traiettoria ha un punto per minuto, dal presente al quinto',
+    t.length === 6 && t.every((p, i) => p.minuti === i), t.map(p => p.minuti).join(','));
+  prova('ogni punto sa dire dove guardare e quanto e\' lontano',
+    t.every(p => Number.isFinite(p.az) && Number.isFinite(p.alt) && Number.isFinite(p.distanzaKm)));
+  prova('e allontanandosi le distanze crescono, minuto per minuto',
+    t.every((p, i) => i === 0 || p.distanzaKm > t[i - 1].distanzaKm),
+    t.map(p => p.distanzaKm.toFixed(0)).join(' → '));
+
+  // La trappola del disegno, ed e' quella per cui il minuto viaggia **col
+  // punto** e non con l'indice: i punti dietro all'osservatore vengono
+  // scartati prima di disegnare, quindi dopo il filtro la posizione
+  // nell'array non dice piu' a che minuto corrisponde. Una tacca appesa
+  // all'indice direbbe un'ora falsa con la stessa faccia con cui direbbe
+  // quella giusta — che e' il difetto che questo modulo ha gia' avuto in
+  // altre vesti.
+  const scartati = t.filter((p, i) => i !== 1 && i !== 2);
+  prova('scartando dei punti, il minuto resta attaccato a quello giusto',
+    scartati[1].minuti === 3 && scartati[scartati.length - 1].minuti === 5,
+    `minuti rimasti: ${scartati.map(p => p.minuti).join(',')}`);
+}
+
 // =====================================================================
 titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-bis)');
 // =====================================================================

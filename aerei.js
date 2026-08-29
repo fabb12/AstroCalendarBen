@@ -74,6 +74,14 @@
   // pacchetto perso in un minuto di cielo senza aerei.
   const RIPROVE_MS = [3000, 9000, 25000, 60000, 150000, 300000];
   const PREVISIONE_MINUTI = 5;
+  // Quanto deve essere lunga la traiettoria **sullo schermo** perche' le tacche
+  // dei minuti si distinguano. A campo largo un aereo lontano percorre pochi
+  // pixel in cinque minuti, e sei pallini appiccicati non sono una previsione:
+  // sono un tratto piu' spesso, cioe' un dettaglio che sporca senza dire
+  // niente. La soglia del numero e' piu' alta perche' una scritta occupa molto
+  // piu' spazio di un pallino.
+  const AEREI_TACCHE_PX_MIN = 34;
+  const AEREI_ETICHETTA_PX_MIN = 70;
   const SOGLIA_TEMPO_REALE_MS = 30000;
   const SOGLIA_ALLINEAMENTO = 1;
   const TERRA_KM = 6371;
@@ -1268,12 +1276,57 @@
     ctx.save();
     if (!fresco) ctx.globalAlpha = 0.62;
     stato.aerei.forEach(a => {
-      const punti = a.traiettoria.map(t => skyProietta(skyVettore(t.az, t.alt), base, focale)).filter(p => p.davanti);
+      // Il minuto viaggia col punto e non con l'indice: i punti dietro
+      // all'osservatore vengono scartati, quindi dopo il filtro la posizione
+      // nell'array non dice piu' a che minuto corrisponde. Una tacca appesa
+      // all'indice sbagliato e' peggio di nessuna tacca — dice un'ora falsa
+      // con la stessa faccia con cui direbbe quella giusta.
+      const punti = a.traiettoria.map(t => ({
+        ...skyProietta(skyVettore(t.az, t.alt), base, focale), minuti: t.minuti
+      })).filter(p => p.davanti);
       if (!punti.length) return;
       const fascia = fasciaDi(a.distanzaKm);
       ctx.strokeStyle = fascia.colore; ctx.globalAlpha = (fresco ? 0.85 : 0.55);
       ctx.setLineDash([4, 5]); ctx.lineWidth = 1.4;
       ctx.beginPath(); punti.forEach((p, i) => i ? ctx.lineTo(p.px, p.py) : ctx.moveTo(p.px, p.py)); ctx.stroke();
+
+      // Le tacche dei minuti. Un tratteggio uniforme dice «va di la'», e basta:
+      // per leggerlo come una **previsione** serve sapere dove sara' fra
+      // quanto, ed e' la stessa scelta che la traccia degli astri fa gia'
+      // segnando le ore (SKY_TRACCIA_ORE in app.js). Da qui si vede a colpo
+      // d'occhio anche la velocita': tacche fitte, aereo lento; tacche larghe,
+      // aereo veloce — senza leggere nessun numero.
+      //
+      // Si disegnano solo se la corsa sullo schermo e' abbastanza lunga da
+      // separarle: sotto quella soglia sei pallini a un pixel l'uno dall'altro
+      // non sono cinque minuti, sono un tratto piu' spesso.
+      const testa = punti[0], coda = punti[punti.length - 1];
+      const corsaPx = Math.hypot(coda.px - testa.px, coda.py - testa.py);
+      if (corsaPx >= AEREI_TACCHE_PX_MIN) {
+        ctx.setLineDash([]);
+        punti.forEach(p => {
+          if (!p.minuti) return;                       // lo zero ce l'ha gia' il simbolo
+          const ultimo = p.minuti === PREVISIONE_MINUTI;
+          ctx.beginPath();
+          ctx.arc(p.px, p.py, ultimo ? 2.6 : 1.6, 0, Math.PI * 2);
+          ctx.fillStyle = fascia.colore;
+          ctx.globalAlpha = (fresco ? 0.9 : 0.5) * (ultimo ? 1 : 0.75);
+          ctx.fill();
+        });
+        // Il numero solo in coda, e solo quando c'e' spazio davvero: cinque
+        // etichette su una traiettoria sono cinque cose da leggere, e quello
+        // che serve e' un capolinea a cui riferire le tacche in mezzo.
+        if (corsaPx >= AEREI_ETICHETTA_PX_MIN && coda.minuti === PREVISIONE_MINUTI) {
+          ctx.globalAlpha = fresco ? 0.85 : 0.5;
+          ctx.font = '600 9px system-ui';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.lineWidth = 2.4; ctx.lineJoin = 'round';
+          ctx.strokeStyle = 'rgba(2,6,23,.85)';
+          ctx.strokeText(`+${PREVISIONE_MINUTI}′`, coda.px, coda.py - 8);
+          ctx.fillText(`+${PREVISIONE_MINUTI}′`, coda.px, coda.py - 8);
+          ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+        }
+      }
       ctx.globalAlpha = fresco ? 1 : 0.62;
       const p = punti[0]; ctx.setLineDash([]);
       // Il muso segue la rotta proiettata sullo schermo. Il triangolo di base
