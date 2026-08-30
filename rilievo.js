@@ -139,6 +139,14 @@ const RIL_TRASLA_MIN_M = 0.5;
 // vicino che sobbalza. Un secondo e mezzo di costante di tempo li spalma,
 // e a passo d'uomo o in macchina la salita vera si segue lo stesso.
 const RIL_OCCHIO_TAU_MS = 1500;
+// Un dato che arriva dalla rete può correggere la quota anche di centinaia
+// di metri. La sola esponenziale è continua, ma all'inizio percorre una
+// frazione dello scarto: con 300 m di correzione sono ancora più di 180 m/s,
+// percepiti come un colpo di camera. Questo tetto trasforma la correzione in
+// una salita regolare. Otto metri al secondo lasciano seguire anche una
+// strada di montagna veloce, senza permettere al caricamento di sollevare il
+// punto di vista in un paio di fotogrammi.
+const RIL_OCCHIO_V_MAX_M_S = 8;
 // Fin dove attorno al centro della griglia grossa comanda la quota misurata
 // da `terreno.js` invece di quella letta dalle tessere. Il passaggio è
 // continuo per costruzione: lo scarto fra i due modelli è tarato proprio
@@ -1399,7 +1407,10 @@ function rilOcchioMeta(lat, lon) {
 function rilSmussaOcchio(attuale, meta, dt) {
   const tempo = Math.max(0, Math.min(1000, dt));
   const a = 1 - Math.exp(-tempo / RIL_OCCHIO_TAU_MS);
-  return attuale + (meta - attuale) * a;
+  const passoMorbido = (meta - attuale) * a;
+  const passoMassimo = RIL_OCCHIO_V_MAX_M_S * tempo / 1000;
+  const passo = Math.max(-passoMassimo, Math.min(passoMassimo, passoMorbido));
+  return attuale + passo;
 }
 
 // La quota dell'occhio adesso, inseguita con dolcezza. Da usare nel disegno
