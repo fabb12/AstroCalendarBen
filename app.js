@@ -22468,6 +22468,17 @@ function skyAggiornaScheda() {
     : null;
 
   if (!pannello.classList.contains('visibile')) return;
+
+  // La scheda di un aereo cambia una volta al secondo, ma quello che cambia
+  // sono cinque numeri. Riscriverla tutta voleva dire buttare via anche la
+  // foto e l'itinerario, che vengono dalla rete e ricompaiono un istante
+  // dopo: la scheda si accorciava e si riallungava a ogni battito, e nel
+  // frattempo lo scorrimento veniva tosato dall'altezza calata. Finché è lo
+  // stesso aereo e la scheda ha la stessa forma, si riscrivono i soli valori
+  // e non c'è più niente da ripristinare.
+  if (voce && voce.categoria === 'aereo' && typeof aereiAggiornaSchedaViva === 'function' &&
+      aereiAggiornaSchedaViva(voce)) return;
+
   const scorrimento = pannello.scrollTop;
   corpo.innerHTML = voce ? (voce.categoria === 'aereo' && typeof aereiSchedaHtml === 'function'
     ? aereiSchedaHtml(voce) : skySchedaHtml(voce)) : skyAttesaSchedaHtml();
