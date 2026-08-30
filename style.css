@@ -4502,11 +4502,12 @@ body input.casella-data:hover { border: 0; }
   min-width: 0;
   height: var(--tasto-tempo);
   padding: 0 12px;
-  /* Riga di testo e non scatola flessibile: così, quando lo spazio manca
-     davvero, si perde la coda con tre puntini invece di tagliare la scritta
-     da tutte e due le parti e restare con "o 10:01 · +3 g" */
-  display: block;
-  line-height: calc(var(--tasto-tempo) - 2px);
+  /* Due colonne indipendenti: anche quando lo spazio manca ciascun orologio
+     conserva metà della lettura e nessuno dei due finisce nei puntini. */
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  line-height: 1;
   text-align: center;
   border: 1px solid var(--bordo);
   border-radius: 999px;
@@ -4519,10 +4520,34 @@ body input.casella-data:hover { border: 0; }
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 5px rgba(0, 0, 0, 0.9);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   cursor: pointer;
+}
+.orologio-barra-tempo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding-inline: clamp(2px, 1.5cqi, 9px);
+}
+.orologio-barra-tempo + .orologio-barra-tempo {
+  border-left: 1px solid var(--bordo);
+}
+.etichetta-orologio-tempo {
+  max-width: 100%;
+  color: var(--testo-3);
+  font-size: clamp(0.48rem, 2.3cqi, 0.62rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.valore-orologio-tempo {
+  font-size: clamp(0.78rem, 4.2cqi, 1rem);
+  font-weight: 800;
+  white-space: nowrap;
 }
 .lettura-barra-tempo:hover { border-color: var(--bordo-forte); color: var(--testo); }
 /* Fuori dal tempo reale la lettura si accende d'ambra: è lo stesso colore di
@@ -4741,9 +4766,10 @@ body input.casella-data:hover { border: 0; }
    le misure compatte definite sopra. */
 @media (orientation: portrait) {
   .lettura-barra-tempo {
-    font-size: clamp(1rem, 5.2cqi, 1.25rem);
-    font-weight: 800;
-    letter-spacing: 0.015em;
+    padding-inline: clamp(2px, 1.5cqi, 8px);
+  }
+  .valore-orologio-tempo {
+    font-size: clamp(0.82rem, 5.2cqi, 1.18rem);
   }
 }
 

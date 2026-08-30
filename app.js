@@ -35673,75 +35673,66 @@ function skyAggiornaTestoTempo() {
   if (barra && !sky.slittaTempoAttiva) barra.classList.toggle('spostata', spostato);
 
   const lettura = document.getElementById('skymap-tempo-quando');
-  if (lettura && !sky.slittaTempoAttiva) {
-    lettura.textContent = skyTestoBarraTempo(quando, scarto, marcia);
+  if (lettura) {
+    const orari = skyOrariBarraTempo(quando);
+    // I due orologi hanno ciascuno una casella propria: in questo modo il
+    // browser puo' ridimensionarli senza troncare l'intera lettura e senza
+    // farne sparire uno sugli schermi verticali piu' stretti.
+    const creaOrologio = (etichetta, valore, classe) => {
+      const orologio = document.createElement('span');
+      orologio.className = `orologio-barra-tempo ${classe}`;
+      const nome = document.createElement('span');
+      nome.className = 'etichetta-orologio-tempo';
+      nome.textContent = etichetta;
+      const ora = document.createElement('span');
+      ora.className = 'valore-orologio-tempo';
+      ora.textContent = valore;
+      orologio.append(nome, ora);
+      return orologio;
+    };
+    // Durante il trascinamento questa funzione gira una volta per fotogramma:
+    // si aggiornano soltanto i numeri già presenti, senza ricostruire il DOM
+    // sotto al dito. Al primo aggiornamento, invece, si creano le due caselle.
+    let valoreLuogo = lettura.querySelector('.orologio-luogo .valore-orologio-tempo');
+    let valoreDispositivo = lettura.querySelector('.orologio-dispositivo .valore-orologio-tempo');
+    if (!valoreLuogo || !valoreDispositivo) {
+      lettura.replaceChildren(
+        creaOrologio('Località', orari.luogo, 'orologio-luogo'),
+        creaOrologio('Qui', orari.dispositivo, 'orologio-dispositivo')
+      );
+      valoreLuogo = lettura.querySelector('.orologio-luogo .valore-orologio-tempo');
+      valoreDispositivo = lettura.querySelector('.orologio-dispositivo .valore-orologio-tempo');
+    }
+    if (valoreLuogo.textContent !== orari.luogo) valoreLuogo.textContent = orari.luogo;
+    if (valoreDispositivo.textContent !== orari.dispositivo) {
+      valoreDispositivo.textContent = orari.dispositivo;
+    }
     const esteso = dataOraDelLuogo(quando, skyLuogoDelCielo(), { weekday: 'short' });
-    lettura.title = `${esteso}${scarto === 0 ? ' (tempo reale)' : ' · ' + skyScartoTempoTesto(scarto)}` +
+    lettura.setAttribute('aria-label',
+      `Ora della località ${orari.luogo}; ora del dispositivo ${orari.dispositivo}`);
+    lettura.title = `${esteso} · dispositivo ${orari.dispositivo}` +
+      `${scarto === 0 ? ' (tempo reale)' : ' · ' + skyScartoTempoTesto(scarto)}` +
       ' — tocca per data, passo e velocità del playback';
   }
 
   skyAggiornaCampoData(quando);
 }
 
-// Lo stesso scarto in forma di targhetta: "+20 min", "+7h46", "−3g 4h". Serve
-// dove lo spazio si conta a lettere — la barra del tempo su un telefono — e
-// dove "3 g 4 h fa" non ci starebbe mai.
-function skyScartoBreve(secondi) {
-  const a = Math.abs(secondi);
-  const segno = secondi > 0 ? '+' : '−';
-  const g = Math.floor(a / 86400);
-  const h = Math.floor((a % 86400) / 3600);
-  const m = Math.floor((a % 3600) / 60);
-  // Le ore si scrivono all'orologiaia — "+7h46" — perché "+7 h 46" lascia
-  // quel 46 senza unità, e chi legge di sfuggita capisce quarantasei ore
-  if (g) return `${segno}${g}g${h ? ' ' + h + 'h' : ''}`;
-  if (h) return `${segno}${h}h${m ? String(m).padStart(2, '0') : ''}`;
-  if (m) return `${segno}${m} min`;
-  return `${segno}${Math.floor(a)} s`;
-}
-
-// Che cosa scrive la barra del tempo. Deve stare in una pillola stretta senza
-// rubare spazio alla slitta, quindi dice il minimo che serve a non sbagliarsi:
-//   · l'ora, sempre;
-//   · il giorno, solo se non è oggi (spostarsi di tre ore è un conto,
-//     spostarsi di tre giorni e vedere solo "22:41" è una trappola);
-//   · di quanto ci si è spostati — o, se il cielo sta camminando, a che passo,
-//     perché lì lo scarto cambia a ogni fotogramma ed è illeggibile.
-// L'ultima riga è quella che cambia con la larghezza: sulla mappa larga si
-// dice per esteso ("fra 20 min"), su quella stretta in targhetta ("+20 min").
-function skyTestoBarraTempo(quando, scarto, marcia) {
+// I due orari sempre visibili nella barra: il fuso del luogo osservato e il
+// fuso del dispositivo. Il resto del contesto temporale rimane nel titolo e
+// nel pannello "Tempo", così nessuno dei due orologi viene mai troncato.
+function skyOrariBarraTempo(quando) {
   const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
-  const fuso = fusoDelLuogo(luogo);
-  // Nella pillola si mostra una sola ora: quella civile del luogo osservato.
-  // L'UTC resta nel titolo esteso, ma affiancarlo qui faceva sembrare che la
-  // barra stesse ancora usando il fuso del dispositivo.
-  const ora = oraDelLuogo(quando, luogo, { soloLocale: true });
-  const giornoLocale = d => new Intl.DateTimeFormat('en-CA', {
-    timeZone: fuso.nome, year: 'numeric', month: '2-digit', day: '2-digit'
-  }).format(d);
-  const giorno = giornoLocale(quando) === giornoLocale(new Date())
-    ? ''
-    : new Intl.DateTimeFormat('it-IT', {
-        timeZone: fuso.nome, day: 'numeric', month: 'short'
-      }).format(quando) + ' ';
-  // L'ora del luogo puo' essere diversa da quella dell'apparecchio quando si
-  // visita un'altra citta'. L'orologio reale del dispositivo serve soltanto in
-  // quel caso: se le due letture coincidono, ripeterle appesantisce la barra
-  // senza aggiungere alcuna informazione.
-  const oraDispositivo = new Intl.DateTimeFormat('it-IT', {
+  // Entrambi descrivono lo stesso istante della linea del tempo. Prima il
+  // secondo orologio usava sempre `new Date()`: appena si spostava il cielo,
+  // quindi, le due letture smettevano di essere confrontabili.
+  const dispositivo = new Intl.DateTimeFormat('it-IT', {
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-  }).format(new Date());
-  const testa = `${giorno}${ora}` +
-    (oraDispositivo === ora ? '' : ` · adesso ${oraDispositivo}`);
-  if (scarto === 0 && !marcia) return testa;
-
-  const stretta = !sky.larghezza || sky.larghezza < 500;
-  // Su una mappa stretta, quando c'è già la data non si aggiunge anche di
-  // quanto: "5 ago 10:01" dice dove sei meglio di "5 ago 10:01 · +3 g" tagliato
-  if (stretta && giorno && !marcia) return testa;
-
-  const coda = marcia || (stretta ? skyScartoBreve(scarto) : skyScartoTempoTesto(scarto));
-  return `${testa} · ${coda}`;
+  }).format(quando);
+  return {
+    luogo: oraDelLuogo(quando, luogo, { soloLocale: true }),
+    dispositivo
+  };
 }
 
 // --- Le sei caselle della data ---
