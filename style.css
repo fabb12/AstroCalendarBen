@@ -4414,6 +4414,9 @@ body input.casella-data:hover { border: 0; }
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--ombra-2);
+  /* La lettura dell'ora si misura sulla barra vera, non sull'intera
+     finestra: margini e safe area possono togliere parecchio spazio. */
+  container-type: inline-size;
 }
 /* Senza sfocatura la sola trasparenza non basta a tenere leggibili dei numeri
    sopra a un cielo stellato: lì la barra si scurisce */
@@ -4711,6 +4714,19 @@ body input.casella-data:hover { border: 0; }
      proprio non ci sta, sono i puntini di sospensione a cedere, non il
      comando. */
   .lettura-barra-tempo { flex: 1 1 0; }
+}
+
+/* In verticale la barra ha più altezza disponibile e l'istante deve potersi
+   leggere al primo colpo. La misura cresce con il suo contenitore (non con
+   un modello di telefono), restando entro limiti che non spingono i comandi
+   fuori riga. In orizzontale questa regola non entra: lì rimangono identiche
+   le misure compatte definite sopra. */
+@media (orientation: portrait) {
+  .lettura-barra-tempo {
+    font-size: clamp(1rem, 5.2cqi, 1.25rem);
+    font-weight: 800;
+    letter-spacing: 0.015em;
+  }
 }
 
 /* ------------------------------------------ SCHEDA DELL'OGGETTO SULLA MAPPA */
