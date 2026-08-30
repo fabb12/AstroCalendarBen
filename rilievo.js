@@ -139,9 +139,6 @@ const RIL_TRASLA_MIN_M = 0.5;
 // vicino che sobbalza. Un secondo e mezzo di costante di tempo li spalma,
 // e a passo d'uomo o in macchina la salita vera si segue lo stesso.
 const RIL_OCCHIO_TAU_MS = 1500;
-// ...ma un salto vero (si è scelta un'altra città, si è scesi da un aereo)
-// non si insegue: ci si va.
-const RIL_OCCHIO_SALTO_M = 120;
 // Fin dove attorno al centro della griglia grossa comanda la quota misurata
 // da `terreno.js` invece di quella letta dalle tessere. Il passaggio è
 // continuo per costruzione: lo scarto fra i due modelli è tarato proprio
@@ -1392,6 +1389,19 @@ function rilOcchioMeta(lat, lon) {
   return suolo === null ? fermo : suolo + TERRENO_ALTEZZA_OCCHIO_M;
 }
 
+// Un nuovo dato altimetrico non deve mai diventare un teletrasporto della
+// camera. In viaggio può arrivare dopo il fix che l'ha richiesto e correggere
+// anche di centinaia di metri la stima precedente: proprio nell'istante in
+// cui finiscono di caricarsi le tessere, saltare direttamente alla nuova
+// quota produce il colpo verso l'alto che si vede dal finestrino. I cambi di
+// luogo veri passano invece da `rilScorda`, che azzera `occhioOra`, quindi non
+// c'è bisogno di dedurli (male) dalla sola differenza di quota.
+function rilSmussaOcchio(attuale, meta, dt) {
+  const tempo = Math.max(0, Math.min(1000, dt));
+  const a = 1 - Math.exp(-tempo / RIL_OCCHIO_TAU_MS);
+  return attuale + (meta - attuale) * a;
+}
+
 // La quota dell'occhio adesso, inseguita con dolcezza. Da usare nel disegno
 // e nella ricostruzione della maglia: sono la stessa camera.
 function rilOcchioOra() {
@@ -1403,8 +1413,7 @@ function rilOcchioOra() {
   const meta = rilOcchioMeta(luogo.lat, luogo.lon);
 
   const ora = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-  if (rilievo.occhioOra === null || !isFinite(rilievo.occhioOra) ||
-      Math.abs(meta - rilievo.occhioOra) > RIL_OCCHIO_SALTO_M) {
+  if (rilievo.occhioOra === null || !isFinite(rilievo.occhioOra)) {
     rilievo.occhioOra = meta;
     rilievo.occhioQuando = ora;
     return meta;
@@ -1412,10 +1421,9 @@ function rilOcchioOra() {
   // Smorzamento esponenziale col `dt` del fotogramma, come tutti i
   // movimenti morbidi dell'app: a trenta o a centoventi fotogrammi al
   // secondo la salita dura lo stesso.
-  const dt = Math.max(0, Math.min(1000, ora - (rilievo.occhioQuando || ora)));
+  const dt = ora - (rilievo.occhioQuando || ora);
   rilievo.occhioQuando = ora;
-  const a = 1 - Math.exp(-dt / RIL_OCCHIO_TAU_MS);
-  rilievo.occhioOra += (meta - rilievo.occhioOra) * a;
+  rilievo.occhioOra = rilSmussaOcchio(rilievo.occhioOra, meta, dt);
   return rilievo.occhioOra;
 }
 

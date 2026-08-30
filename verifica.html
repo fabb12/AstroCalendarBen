@@ -8288,6 +8288,13 @@ titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-
     prova('salendo verso nord la camera sale con il terreno',
       Math.abs((su - giu) - 4000 * pendenza) < 3,
       `${(su - giu).toFixed(0)} m in quattro chilometri, ${(4000 * pendenza).toFixed(0)} attesi`);
+    // Anche una correzione molto grande può essere semplicemente il dato
+    // fine che arriva in ritardo mentre si viaggia. Prima, oltre 120 metri,
+    // veniva scambiata per un cambio di città e applicata in un fotogramma.
+    const corretta = rilSmussaOcchio(200, 500, 16);
+    prova('quando il terreno finisce di caricare la camera non salta di quota',
+      corretta > 200 && corretta < 500,
+      `${corretta.toFixed(2)} m al primo fotogramma, invece di 500 m`);
     // La quota scritta accanto al nome del luogo è la stessa camera meno
     // l'altezza di una persona: se le due divergessero, si leggerebbe una
     // quota mentre se ne sta disegnando un'altra.
