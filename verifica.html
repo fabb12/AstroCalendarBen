@@ -8299,6 +8299,15 @@ titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-
     prova('anche una correzione verso il basso conserva la stessa velocità regolare',
       correttaGiu < 500 && correttaGiu >= 500 - RIL_OCCHIO_V_MAX_M_S * 0.016 - 1e-9,
       `${correttaGiu.toFixed(2)} m al primo fotogramma`);
+    // Mentre quella correzione viene assorbita la nuova maglia può essere
+    // già più alta della camera. Il suo primo lembo deve restare sotto i
+    // piedi, altrimenti i poligoni circondano il punto di vista; fuori dal
+    // grembiule invisibile, però, non si deve abbassare una montagna vera.
+    const occhioProvvisorio = 201.6;
+    prova('durante il caricamento il terreno sotto i piedi non ingloba la camera',
+      rilLasciaSpazioCamera(500, occhioProvvisorio, 1) < occhioProvvisorio);
+    prova('il raccordo anti-attraversamento finisce prima del terreno visibile',
+      rilLasciaSpazioCamera(500, occhioProvvisorio, RIL_SPAZIO_CAMERA_M) === 500);
     // La quota scritta accanto al nome del luogo è la stessa camera meno
     // l'altezza di una persona: se le due divergessero, si leggerebbe una
     // quota mentre se ne sta disegnando un'altra.

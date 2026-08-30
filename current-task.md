@@ -4,6 +4,16 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
+La **camera GPS durante il caricamento del rilievo** ora assorbe le grandi
+correzioni di quota a non più di 4 m/s. Nel frattempo il solo grembiule
+invisibile sotto i piedi viene raccordato alla quota corrente dell'occhio:
+la camera non deve più saltare verso l'alto e non può finire dentro i
+poligoni della montagna appena caricata. Il raccordo termina a 70 metri,
+prima dell'inizio del terreno visibile, quindi non abbassa le montagne vere.
+Cache PWA portata ad `astrocal-v228`.
+
+## Intervento precedente
+
 Gli **aerei ADS-B in macchina**: col GPS acceso non comparivano mai, e la
 ragione non era la rete. Il centro del modulo è l'osservatore del planetario,
 che si sposta a ogni passo del filtro dell'app — centocinquanta metri, cioè

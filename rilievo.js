@@ -143,10 +143,16 @@ const RIL_OCCHIO_TAU_MS = 1500;
 // di metri. La sola esponenziale è continua, ma all'inizio percorre una
 // frazione dello scarto: con 300 m di correzione sono ancora più di 180 m/s,
 // percepiti come un colpo di camera. Questo tetto trasforma la correzione in
-// una salita regolare. Otto metri al secondo lasciano seguire anche una
-// strada di montagna veloce, senza permettere al caricamento di sollevare il
-// punto di vista in un paio di fotogrammi.
-const RIL_OCCHIO_V_MAX_M_S = 8;
+// una salita regolare. Quattro metri al secondo lasciano seguire anche una
+// strada di montagna, senza permettere al caricamento di sollevare il punto
+// di vista in un paio di fotogrammi.
+const RIL_OCCHIO_V_MAX_M_S = 4;
+// Finché l'occhio sta ancora recuperando una correzione altimetrica, il
+// primissimo lembo della maglia non deve poterlo avvolgere. Non si alza la
+// camera per evitarlo (sarebbe proprio il salto che vogliamo eliminare): si
+// raccorda invece soltanto il terreno sotto i piedi alla quota corrente e si
+// esaurisce il raccordo prima che il dettaglio diventi visibile.
+const RIL_SPAZIO_CAMERA_M = 70;
 // Fin dove attorno al centro della griglia grossa comanda la quota misurata
 // da `terreno.js` invece di quella letta dalle tessere. Il passaggio è
 // continuo per costruzione: lo scarto fra i due modelli è tarato proprio
@@ -699,7 +705,8 @@ function rilCampioneInMovimento(sinAz, cosAz, k, scostamento, occhio) {
   // suolo sotto i piedi.
   if (distanza < RIL_DIST[0]) return rilAngolo(occhio - TERRENO_ALTEZZA_OCCHIO_M, occhio, s);
   const azVecchio = Math.atan2(eVecchio, nVecchio) * 180 / Math.PI;
-  return rilAngolo(rilQuotaMaglia(azVecchio, distanza), occhio, s);
+  const quota = rilLasciaSpazioCamera(rilQuotaMaglia(azVecchio, distanza), occhio, s);
+  return rilAngolo(quota, occhio, s);
 }
 
 
@@ -1411,6 +1418,20 @@ function rilSmussaOcchio(attuale, meta, dt) {
   const passoMassimo = RIL_OCCHIO_V_MAX_M_S * tempo / 1000;
   const passo = Math.max(-passoMassimo, Math.min(passoMassimo, passoMorbido));
   return attuale + passo;
+}
+
+// Garantisce lo spazio fisico attorno alla camera mentre una quota arrivata
+// dalla rete viene assorbita. Il limite vale solo nel grembiule invisibile
+// sotto i piedi: oltre `RIL_SPAZIO_CAMERA_M` la montagna resta esattamente
+// quella misurata, anche quando sale davvero davanti all'osservatore.
+function rilLasciaSpazioCamera(quota, occhio, metri) {
+  if (metri >= RIL_SPAZIO_CAMERA_M) return quota;
+  const suoloCamera = occhio - TERRENO_ALTEZZA_OCCHIO_M;
+  if (quota <= suoloCamera) return quota;
+  const t = Math.max(0, metri / RIL_SPAZIO_CAMERA_M);
+  // Smoothstep: nessuna piega né sotto i piedi né al termine del raccordo.
+  const peso = t * t * (3 - 2 * t);
+  return suoloCamera + (quota - suoloCamera) * peso;
 }
 
 // La quota dell'occhio adesso, inseguita con dolcezza. Da usare nel disegno
