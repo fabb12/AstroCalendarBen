@@ -4,56 +4,78 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-La **camera GPS durante il caricamento del rilievo** ora assorbe le grandi
-correzioni di quota a non più di 4 m/s. Nel frattempo il solo grembiule
-invisibile sotto i piedi viene raccordato alla quota corrente dell'occhio:
-la camera non deve più saltare verso l'alto e non può finire dentro i
-poligoni della montagna appena caricata. Il raccordo termina a 70 metri,
-prima dell'inizio del terreno visibile, quindi non abbassa le montagne vere.
-Cache PWA portata ad `astrocal-v228`.
+**La bussola** (`app.js` §7.1-quinquies, nuova). La segnalazione: «i punti
+cardinali sono imprecisi, come se il magnetometro a un certo punto
+impazzisse — eppure Google Maps, sullo stesso telefono, è preciso».
 
-## Intervento precedente
+Sono vere tutt'e due le cose, e il magnetometro non c'entra: c'entra **la
+posa**. Una bussola di sistema (`CLHeading` su iOS, il canale «heading» di
+Android) misura la direzione del bordo superiore del telefono **proiettato
+sull'orizzonte**, e quella proiezione è lunga `|cos β|`. Chi guarda una mappa
+il telefono lo tiene quasi piatto: la proiezione è lunga quanto il telefono e
+la risposta è ottima. Chi guarda il cielo lo punta in su: la proiezione si
+accorcia e verso lo zenit si annulla. Misurato nel §29: mezzo grado di errore
+d'assetto vale **mezzo grado in piano e trenta gradi col telefono ritto**. La
+stessa cosa capita alla terna alpha/beta/gamma, che a β = 90° perde un grado
+di libertà — due terne con alpha lontane quaranta gradi descrivono lo stesso
+identico assetto — ed è la posa normale di un planetario.
 
-Gli **aerei ADS-B in macchina**: col GPS acceso non comparivano mai, e la
-ragione non era la rete. Il centro del modulo è l'osservatore del planetario,
-che si sposta a ogni passo del filtro dell'app — centocinquanta metri, cioè
-**sei secondi** a novanta all'ora — e ognuno di quei passi faceva quattro cose
-insieme: buttava la fotografia, azzerava il suo orologio, **abortiva la
-richiesta in volo** e ne faceva partire un'altra. Sei secondi sono meno del
-tempo che una porta ADS-B ci mette a rispondere. Misurato col modulo vero e
-una porta che risponde in otto secondi, dieci chilometri di strada:
-**67 richieste, 67 abortite, zero risposte, zero aerei**; adesso **4 richieste
-(una corsa sola), una risposta, quattro aerei in cielo per tutto il viaggio**.
+Tre cure, in ordine di quanto pesano.
 
-La cura sta in una cosa che si sapeva e non si usava: le posizioni degli aerei
-sono **latitudini e longitudini**, e azimut, altezza e distanza si rifanno da
-capo a ogni fotogramma. Muovendosi non diventano sbagliate: si aggiornano.
+1. **Il quaternione al posto degli angoli di Eulero.** Dove c'è
+   (`AbsoluteOrientationSensor`, Android/Chrome) si legge direttamente la
+   fusione del sistema — lo stesso `TYPE_ROTATION_VECTOR` che usa Maps —
+   senza il giro per gli angoli: gravità e campo insieme determinano
+   l'assetto completo, e pose degeneri non ce ne sono. `skyAvviaSensoreAssetto()`,
+   `skyMatriceDaQuaternione()`.
+2. **Il ponte del giroscopio.** Dove il quaternione non c'è (iOS: niente
+   Generic Sensor API, e `webkitCompassHeading` è proprio la bussola che si
+   accorcia) si misura lo scarto fra l'assetto stabile del giroscopio e il
+   Nord magnetico **mentre il telefono è in una posa in cui la bussola è
+   affidabile**, e lo si tiene: da lì in poi il Nord lo porta il giroscopio.
+   Il peso di ogni correzione è il **quadrato** della bontà della posa
+   (`skyPonteAggiorna`), quindi una lettura presa col telefono ritto conta
+   ventitré volte meno di una presa in piano invece di contare uguale. Si
+   legge anche `webkitCompassAccuracy`, che iOS dichiara e che nessuno
+   guardava.
+3. **La taratura su un astro** (`skyTaraSuAstro`, tasto «Tara su un astro» in
+   «Bussola e posizione»). Le prime due tolgono l'errore della geometria, non
+   quello del ferro: una custodia con la calamita o il cruscotto dell'auto
+   spostano il campo di gradi, e nessun software li può indovinare — Maps, lì,
+   chiede l'otto in aria e spera. Ma un planetario ha un riferimento che una
+   mappa non ha: **sa dov'è il Sole**. Si punta la Luna, il Sole, un pianeta o
+   una stella luminosa e si tocca il tasto: la correzione diventa **esatta per
+   costruzione**. Quale astro sia lo dice l'altezza (±8°, la dà la gravità e
+   non sbaglia mai), non l'azimut (±60°, che è proprio l'errore che stiamo
+   cercando). Dopo, il ponte rallenta di più di venti volte, se no il
+   magnetometro se la rimangerebbe in pochi secondi.
 
-- `aerei.js` §**4-bis** (nuova): il centro non si confronta più per uguaglianza
-  ma per **distanza**. Sotto `tolleranzaCentroKm()` (un quinto del raggio, fra
-  1,5 e 12 km) non succede niente di niente; sopra si chiama `ricentraPresto()`,
-  che **anticipa** il prossimo scarico senza mai scendere sotto
-  `AEREI_MOTO_MIN_MS` (mezzo minuto) né scavalcare il freno degli errori; solo
-  oltre `saltoCentroKm()` (mai meno di 25 km) si è altrove — un'altra città nel
-  pannello Tempo e luogo — e allora sì, si butta. Il conto delle riprove non si
-  azzera più a ogni fix: era il freno dei 429, tolto proprio a chi ne ha più
-  bisogno.
-- La **risposta che arriva mentre ci si muove** non si scarta più sul traguardo
-  (era `chiaveCentro(obs) !== chiaveCentro(osservatore())`, cioè undici metri):
-  adesso solo un salto la rende inutile.
-- `unisciConLaMemoria()`: ogni lettura si **somma** alla precedente invece di
-  sostituirla. Chi è stato visto da meno di `AEREI_MEMORIA_MS` (2 min) resta e
-  continua a essere propagato, anche se il feed non l'ha riconfermato — le reti
-  ADS-B sono fatte di riceventi volontari e due letture di fila hanno buchi
-  diversi. Due minuti e non trenta: propagare mezz'ora un aereo che nessuno
-  vede più non è tenerlo, è inventarlo.
-- `aereiRaggioCambiato()` non svuota più: stringendo il raggio la risposta di
-  prima **contiene** quella nuova e basta tagliarla, allargando ne è un pezzo
-  giusto in attesa del resto. E non abortisce la richiesta in volo.
-- `osservatoreDisegno()`: chi **disegna** usa il punto vivo di `terreno.js`
-  §6-bis (centocinquanta metri non spostano una stella, ma un aereo a due
-  chilometri di quattro gradi); chi **scarica** continua a usare `osservatore()`.
-- Prove nuove nel §27 di `verifica.html` (22), col contro-esempio del confronto
-  a quattro decimali. 849 in tutto, tutte passate.
+Nella stessa passata, tre cose collegate:
 
-Cache PWA portata ad `astrocal-v225`.
+- **Il cielo non gira più di colpo «a un certo punto».** `deviceorientation`
+  (relativo su Android, alpha da un punto qualunque) subentrava a
+  `deviceorientationabsolute` dopo tre secondi di silenzio, e quel cambio
+  della guardia girava tutto insieme. Adesso non si sostituiscono: il
+  relativo è la metà stabile del ponte.
+- **La bussola disturbata si dice.** Il disaccordo fra magnetometro e
+  giroscopio è la sola misura di quanto stia mentendo: sopra i 12° il
+  quadrante si smorza (`data-modo="dubbia"`) e l'avviso compare al massimo
+  una volta ogni due minuti — mezzo secondo di ferro non lo fa scattare, due
+  secondi sì.
+- **Il push-to del telescopio** (`telMatriceTelefono`) usa la stessa matrice
+  del planetario: prima rifaceva i conti dagli angoli di Eulero e si
+  ritrovava una bussola peggiore di quella che gli stava accanto, con
+  l'aggravante che lì i gradi si pagano in oculari mancati.
+
+**§29 di `verifica.html`**, nuovo: 35 prove, tutte passate. Le due strade
+dell'assetto che devono dare la stessa matrice, il contro-esempio della posa
+(i trenta gradi contro il mezzo grado), l'invariante del ponte, il
+contro-esempio del disturbo (settanta gradi col vecchio «comanda l'ultima
+lettura», otto col ponte), il World Magnetic Model contro il calcolatore del
+NOAA in sei posti del mondo — cento righe di ricorsione di Legendre mai
+provate prima, e il **verso** della declinazione, che sbagliato raddoppia
+l'errore invece di toglierlo — e la taratura sull'astro. Suite intera: 888
+prove, l'unica rossa è quella del grembiule del rilievo (§25), che falliva
+già prima di questo lavoro.
+
+Cache PWA portata ad `astrocal-v229`.

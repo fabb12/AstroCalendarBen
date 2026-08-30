@@ -7723,29 +7723,28 @@ function skyLevigaBase(nuova) {
 // potrebbe portare al centro della mappa un oggetto scelto dall'elenco, che
 // è proprio quello che si vuole quando si cerca qualcosa.
 function skyUsaSensori() {
-  return !!(sky.sensori && sky.seguiTelefono && sky.orient);
+  return !!(sky.sensori && sky.seguiTelefono && skyAssettoDisponibile());
 }
 
 // Terna di riferimento della "telecamera": f = dove punta il telefono,
 // r = destra dello schermo, u = alto dello schermo (tutti in Est/Nord/Alto).
 function skyBase() {
   if (skyUsaSensori()) {
-    // alpha arriva riferito al Nord magnetico: skyCorrezioneNord lo porta al
-    // Nord vero, l'unico rispetto al quale sono calcolati gli astri.
-    const R = skyMatriceDispositivo(
-      (sky.orient.alpha + skyCorrezioneNord() + sky.offsetBussola) * SKY_D2R,
-      sky.orient.beta * SKY_D2R,
-      sky.orient.gamma * SKY_D2R
-    );
-    // Assi dello schermo espressi negli assi del telefono (ruotati se è in orizzontale)
-    const o = skyAngoloSchermo() * SKY_D2R;
-    const co = Math.cos(o), so = Math.sin(o);
-    return skyLevigaBase({
-      // Si guarda attraverso il retro del telefono: asse -Z del dispositivo
-      f: skyApplica(R, [0, 0, -1]),
-      r: skyApplica(R, [co, -so, 0]),
-      u: skyApplica(R, [so, co, 0])
-    });
+    // La matrice arriva dalla §7.1-quinquies, che sceglie da sé la strada
+    // migliore fra quelle che questo telefono offre e ci ha già dentro la
+    // declinazione magnetica e la correzione manuale.
+    const R = skyMatriceBussola();
+    if (R) {
+      // Assi dello schermo espressi negli assi del telefono (ruotati se è in orizzontale)
+      const o = skyAngoloSchermo() * SKY_D2R;
+      const co = Math.cos(o), so = Math.sin(o);
+      return skyLevigaBase({
+        // Si guarda attraverso il retro del telefono: asse -Z del dispositivo
+        f: skyApplica(R, [0, 0, -1]),
+        r: skyApplica(R, [co, -so, 0]),
+        u: skyApplica(R, [so, co, 0])
+      });
+    }
   }
   // Modalità manuale: la direzione di sguardo la decide il dito, ed è esatta
   sky.baseFiltrata = null;
@@ -10420,61 +10419,526 @@ function inizializzaMappaLuogo() {
   luogoAggiornaTastoSchermo();
 }
 
-// Il telefono può mandare DUE flussi di orientamento, e sono flussi diversi:
-// "deviceorientationabsolute" è riferito al Nord vero (usa il magnetometro),
-// mentre "deviceorientation" su Android è relativo, cioè la sua alpha parte
-// da dove si trovava il telefono quando il sensore si è acceso. Ascoltandoli
-// tutti e due, sessanta volte al secondo ciascuno, si sovrascrivevano a
-// vicenda: le loro alpha differiscono di un angolo qualunque, e il cielo
-// rimbalzava di continuo fra due orientamenti. Comanda l'assoluto; il
-// relativo si usa solo finché l'assoluto non arriva, o se smette di arrivare.
-const SKY_ATTESA_ASSOLUTO_MS = 3000;
+// =====================================================================
+// 7.1-quinquies LA BUSSOLA
+//   Perché sullo stesso telefono Google Maps punta il Nord e un planetario
+//   no — e cosa si può fare via software.
+//
+//   La segnalazione è sempre la stessa: «i punti cardinali sono imprecisi,
+//   come se il magnetometro a un certo punto impazzisse; eppure Maps, qui
+//   accanto, è preciso». Sono vere tutt'e due le cose, e non è il
+//   magnetometro: è **la posa**.
+//
+//   Una bussola di sistema (`CLHeading` su iOS, il canale «heading» di
+//   Android) risponde a una domanda sola: da che parte punta il bordo
+//   superiore del telefono, misurato sulla sua **proiezione orizzontale**.
+//   Chi guarda una mappa il telefono lo tiene quasi piatto: quella
+//   proiezione è lunga quanto il telefono e la risposta è ottima. Chi guarda
+//   il cielo lo punta in su: la proiezione si accorcia, e quando il bordo
+//   superiore arriva verso lo zenit si annulla del tutto. Dividere per una
+//   lunghezza che tende a zero non dà un errore, dà un numero — sempre
+//   plausibile e sempre più sbagliato. La stessa cosa capita alla terna
+//   alpha/beta/gamma, che a beta = ±90° perde un grado di libertà (alpha e
+//   gamma diventano intercambiabili): ed è la posa normale di questa app.
+//   Il magnetometro, nel frattempo, sta misurando benissimo.
+//
+//   Da qui le tre cure, in ordine di quanto pesano.
+//
+//   1. **Il quaternione al posto degli angoli di Eulero.** Dove c'è
+//      (`AbsoluteOrientationSensor`: Android/Chrome) si legge direttamente la
+//      fusione del sistema — lo stesso `TYPE_ROTATION_VECTOR` che usa Maps —
+//      come quaternione: niente giro per gli angoli, niente arrotondamento e
+//      **nessuna posa degenere**, perché gravità e campo magnetico insieme
+//      determinano l'assetto completo da qualunque parte si punti.
+//
+//   2. **Il ponte del giroscopio.** Dove il quaternione non c'è (iOS: la
+//      Generic Sensor API non esiste, e `webkitCompassHeading` è proprio la
+//      bussola che si accorcia) il telefono dà comunque due cose: un assetto
+//      stabile dal giroscopio, col Nord però in un punto qualunque, e un Nord
+//      magnetico, buono solo da quasi piatti. Si misura allora lo **scarto
+//      fra i due mentre il telefono sta in una posa in cui la bussola è
+//      affidabile**, e lo si tiene: da lì in poi il Nord lo porta il
+//      giroscopio, che pose degeneri non ne ha. È il modo in cui si tara
+//      guardando la mappa e si punta guardando il cielo — e il peso di ogni
+//      correzione è il quadrato della bontà della posa, quindi una lettura
+//      presa col telefono ritto conta venticinque volte meno di una presa in
+//      piano invece di contare uguale.
+//
+//   3. **La taratura su un astro.** Le prime due tolgono l'errore della
+//      geometria, non quello del ferro: una custodia con la calamita, il
+//      cruscotto dell'auto, un tetto armato spostano il campo di gradi, e
+//      nessun software li può indovinare — Maps, lì, chiede l'otto in aria e
+//      spera. Ma un planetario ha un riferimento che una mappa non ha: **sa
+//      dov'è il Sole**. Si punta la Luna, il Sole o una stella luminosa, si
+//      tocca «Tara», e la correzione diventa esatta per costruzione — non
+//      «migliore»: esatta, perché l'azimut vero di quell'astro lo calcoliamo
+//      noi al primo d'arco. Da lì in poi è il giroscopio a portarla in giro.
+//
+//   Le prove stanno nel §29 di `verifica.html`.
+// =====================================================================
 
-// Riceve alpha/beta/gamma dal telefono. Su iOS webkitCompassHeading dà
-// direttamente la direzione rispetto al Nord vero: è la più affidabile.
+const SKY_SENSORE_HZ = 60;           // quanto spesso chiedere l'assetto al sistema
+const SKY_ASSETTO_SCADENZA_MS = 1500; // oltre questo silenzio, una sorgente è muta
+const SKY_PONTE_TAU_S = 4;           // con che calma il Nord magnetico corregge il giroscopio
+const SKY_PONTE_TAU_TARATO_S = 90;   // …e con che calma dopo una taratura su un astro
+const SKY_PONTE_PESO_MIN = 0.08;     // sotto questa bontà di posa la bussola non si ascolta
+const SKY_MAG_ACCURATEZZA_MAX = 30;  // ± gradi dichiarati da iOS oltre i quali non si crede
+const SKY_SCARTO_TAU_S = 3;          // con che calma si stima il disaccordo
+const SKY_SCARTO_ALLARME = 12;       // gradi di disaccordo persistente: bussola da tarare
+const SKY_DISTURBO_RIPETI_MS = 120000; // l'avviso del disturbo non più spesso di così
+
+// Tutto quello che si sa della direzione del Nord, in un posto solo.
+const skyBussola = {
+  sensore: null, sensoreRel: null, sensoreProvato: false,
+  q: null, quandoQ: 0,             // assetto completo dal sistema (telefono → Est/Nord/Alto)
+  qRel: null, quandoRel: 0,        // assetto stabile del giroscopio, col Nord in un punto qualunque
+  euleri: null, quandoE: 0,        // alpha/beta/gamma dell'ultimo evento
+  eulAssoluti: false,              // quegli angoli sono già riferiti al Nord magnetico
+  magAzimut: null, quandoMag: 0,   // il Nord magnetico dichiarato dal sistema, come alpha
+  magPeso: 0,                      // quanto quella dichiarazione è ben condizionata (0…1)
+  accuratezza: null,               // ± gradi dichiarati (solo iOS); −1 = da tarare
+  ponte: null,                     // gradi da sommare all'assetto stabile per avere il Nord
+  ponteVisto: 0,                   // quanto ci si è potuti fidare finora, al meglio
+  scarto: 0,                       // disaccordo fra magnetico e giroscopio, in gradi
+  fonte: 'nessuna',                // 'quaternione' | 'evento' | 'ponte'
+  tarata: null,                    // { astro, gradi, quando } dopo una taratura su un astro
+  avvisoDisturbo: 0
+};
+
+// --- Angoli e quaternioni ---------------------------------------------
+
+function skyGradiTondi(g) { return ((g % 360) + 360) % 360; }
+
+// Differenza fra due angoli riportata in (−180, 180]: è l'unica che non
+// racconta mezzo giro di errore quando si passa da 359° a 1°.
+function skyScartoAngoli(a, b) {
+  let d = (a - b) % 360;
+  if (d > 180) d -= 360;
+  if (d <= -180) d += 360;
+  return d;
+}
+
+// Quaternione [x, y, z, w] → matrice che porta gli assi del telefono in
+// quelli del mondo (Est, Nord, Alto). È esattamente la stessa convenzione
+// della terna alpha/beta/gamma — lo controlla il §29 di `verifica.html`,
+// che le confronta su un centinaio di assetti sorteggiati: se le due
+// divergessero, il cielo si sposterebbe cambiando telefono, che è il modo
+// peggiore di sbagliare perché nessuno dei due sembra rotto.
+function skyMatriceDaQuaternione(q) {
+  const n = Math.hypot(q[0], q[1], q[2], q[3]);
+  if (!(n > 1e-9)) return null;
+  const x = q[0] / n, y = q[1] / n, z = q[2] / n, w = q[3] / n;
+  return [
+    [1 - 2 * (y * y + z * z), 2 * (x * y - z * w),     2 * (x * z + y * w)],
+    [2 * (x * y + z * w),     1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+    [2 * (x * z - y * w),     2 * (y * z + x * w),     1 - 2 * (x * x + y * y)]
+  ];
+}
+
+// Di quanto un assetto è girato attorno alla verticale del posto. Non si
+// passa dagli angoli di Eulero — sarebbe tornare al problema — ma dalla
+// decomposizione «twist e swing»: scritto l'assetto come Rz(giro) seguito
+// dal resto, la parte attorno a Z è il quaternione (0, 0, z, w) normalizzato.
+//
+// Il numero che ne esce **non** è l'alpha di Eulero (differisce di un
+// termine che dipende da beta e gamma), e non importa: qui serve solo a
+// confrontare due assetti che differiscono per un giro attorno alla
+// verticale, e su quella differenza i due coincidono cifra per cifra. È
+// l'invariante da cui dipende tutto il ponte, e il §29 lo prova.
+//
+// Il `peso` è la lunghezza di quella parte prima di normalizzarla, cioè
+// quanto la domanda ha senso: vale uno col telefono in piano e cade a zero
+// solo col telefono capovolto esatto — una posa molto più rara di quella in
+// cui Eulero si arrende, che è invece la posa normale di un planetario.
+function skyAzimutDiAssetto(q) {
+  const z = q[2], w = q[3];
+  const peso = Math.hypot(z, w);
+  if (!(peso > 1e-9)) return { azimut: 0, peso: 0 };
+  return { azimut: skyGradiTondi(2 * Math.atan2(z, w) * SKY_R2D), peso };
+}
+
+// Girare un vettore del mondo attorno alla verticale. Sommare gradi ad alpha
+// è la stessa cosa (Rz sta a sinistra di tutto, nella terna di Eulero), ma
+// con il quaternione gli angoli di Eulero non ci sono più: la correzione va
+// applicata dove è sempre stata, cioè sul mondo.
+function skyGiraAzimut(v, gradi) {
+  const a = gradi * SKY_D2R, c = Math.cos(a), s = Math.sin(a);
+  return [c * v[0] - s * v[1], s * v[0] + c * v[1], v[2]];
+}
+
+function skyGiraMatriceAzimut(R, gradi) {
+  if (!gradi) return R;
+  const a = gradi * SKY_D2R, c = Math.cos(a), s = Math.sin(a);
+  return [
+    [c * R[0][0] - s * R[1][0], c * R[0][1] - s * R[1][1], c * R[0][2] - s * R[1][2]],
+    [s * R[0][0] + c * R[1][0], s * R[0][1] + c * R[1][1], s * R[0][2] + c * R[1][2]],
+    R[2]
+  ];
+}
+
+// --- Il ponte fra il giroscopio e il Nord magnetico -------------------
+// `stabile` è l'azimut dell'assetto che il giroscopio tiene fermo ma con il
+// Nord in un punto qualunque; `magnetico` è quello che dichiara la bussola
+// di sistema, giusto solo in certe pose. Il ponte è la loro differenza, e
+// si aggiorna con un peso che è il **quadrato** della bontà della posa: una
+// lettura presa col telefono ritto non va buttata, ma non deve nemmeno
+// pesare quanto una presa in piano.
+function skyPonteAggiorna(stabile, magnetico, peso, dt) {
+  if (!(peso > 0)) return;
+  const voluto = skyScartoAngoli(magnetico, stabile);
+  // Il primo aggancio si fa comunque, anche con una posa mediocre: è quello
+  // che l'app faceva da sempre, e non c'è ragione di partire peggio. Da lì in
+  // poi vale la regola del peso, e appena il telefono passa per una posa
+  // buona il ponte ci si assesta sopra.
+  if (skyBussola.ponte === null) {
+    skyBussola.ponte = voluto;
+    skyBussola.ponteVisto = peso;
+    return;
+  }
+  if (!(peso > SKY_PONTE_PESO_MIN)) return;
+  const errore = skyScartoAngoli(voluto, skyBussola.ponte);
+  // Il disaccordo che resta è la sola misura che abbiamo di quanto la
+  // bussola stia mentendo: un campo pulito lo tiene sotto il grado, un
+  // cruscotto d'auto o una custodia con la calamita lo tengono a decine.
+  const kScarto = 1 - Math.exp(-dt / SKY_SCARTO_TAU_S);
+  skyBussola.scarto += (Math.abs(errore) * peso - skyBussola.scarto) * kScarto;
+
+  const tau = skyBussola.tarata ? SKY_PONTE_TAU_TARATO_S : SKY_PONTE_TAU_S;
+  const k = (1 - Math.exp(-dt / tau)) * peso * peso;
+  skyBussola.ponte = skyScartoAngoli(skyBussola.ponte + errore * Math.min(1, k), 0);
+  if (peso > skyBussola.ponteVisto) skyBussola.ponteVisto = peso;
+}
+
+// --- La lettura dal sistema -------------------------------------------
+
+// Il quaternione arriva dalla Generic Sensor API. Due sensori: quello
+// assoluto è la risposta, quello relativo serve da testimone — è lo stesso
+// assetto senza magnetometro, e il disaccordo fra i due dice quanto il ferro
+// lì intorno sta disturbando.
+function skyBussolaQuaternione(quale, quat) {
+  if (!quat || quat.length < 4) return;
+  const adesso = performance.now();
+  if (quale === 'assoluto') {
+    skyBussola.q = [quat[0], quat[1], quat[2], quat[3]];
+    skyBussola.quandoQ = adesso;
+    skyBussola.fonte = 'quaternione';
+    skyBussolaPrimaLettura(true);
+  } else {
+    skyBussola.qRel = [quat[0], quat[1], quat[2], quat[3]];
+    skyBussola.quandoRel = adesso;
+  }
+  // Il ponte si tiene aggiornato anche quando non serve a disegnare: è lui
+  // che sa dire se la bussola è disturbata, e il giorno che il sensore
+  // assoluto tace è già pronto a prenderne il posto.
+  if (skyBussola.q && skyBussola.qRel &&
+      Math.abs(skyBussola.quandoQ - skyBussola.quandoRel) < SKY_ASSETTO_SCADENZA_MS) {
+    const mag = skyAzimutDiAssetto(skyBussola.q);
+    const gyr = skyAzimutDiAssetto(skyBussola.qRel);
+    const dt = Math.min(1, Math.max(0.001, (adesso - (skyBussola.quandoPonte || adesso)) / 1000));
+    skyBussola.quandoPonte = adesso;
+    skyPonteAggiorna(gyr.azimut, mag.azimut, Math.min(mag.peso, gyr.peso), dt);
+  }
+}
+
+async function skyAvviaSensoreAssetto() {
+  if (skyBussola.sensoreProvato) return;
+  skyBussola.sensoreProvato = true;
+  if (typeof AbsoluteOrientationSensor !== 'function') return;
+  // I permessi della Generic Sensor API non aprono nessun pannello: o sono
+  // già concessi (è il caso normale in cima a una pagina https) o rispondono
+  // no, e allora si resta agli eventi, che ci sono comunque.
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      const esiti = await Promise.all(['accelerometer', 'gyroscope', 'magnetometer'].map(
+        name => navigator.permissions.query({ name }).catch(() => ({ state: 'granted' }))));
+      if (esiti.some(e => e && e.state === 'denied')) return;
+    }
+  } catch (e) { /* nomi sconosciuti al browser: si prova lo stesso */ }
+
+  const avvia = (Classe, quale) => {
+    if (typeof Classe !== 'function') return null;
+    try {
+      const s = new Classe({ frequency: SKY_SENSORE_HZ, referenceFrame: 'device' });
+      s.addEventListener('reading', () => skyBussolaQuaternione(quale, s.quaternion || []));
+      // NotReadableError, NotAllowedError: il sensore non c'è, o è occupato.
+      // Non è un guasto — è il caso di tutti i computer — e la rete sotto
+      // sono gli eventi, che restano attaccati comunque.
+      s.addEventListener('error', () => { try { s.stop(); } catch (e2) { /* già ferma */ } });
+      s.start();
+      return s;
+    } catch (e) { return null; }
+  };
+  skyBussola.sensore = avvia(AbsoluteOrientationSensor, 'assoluto');
+  skyBussola.sensoreRel = avvia(typeof RelativeOrientationSensor === 'function'
+    ? RelativeOrientationSensor : null, 'relativo');
+}
+
+// Riceve alpha/beta/gamma dal telefono. Su iOS `webkitCompassHeading` è la
+// bussola di CoreLocation — quella che si accorcia col telefono ritto — e
+// alpha invece viene dal giroscopio, stabile ma col Nord in un punto
+// qualunque: sono esattamente le due metà del ponte.
 function skyEventoOrientamento(e) {
   const bussolaIOS = typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading);
-  const assoluto = bussolaIOS || e.absolute === true || e.type === 'deviceorientationabsolute';
-  const adesso = Date.now();
-
-  if (assoluto) {
-    sky.ultimoAssoluto = adesso;
-  } else if (adesso - sky.ultimoAssoluto < SKY_ATTESA_ASSOLUTO_MS) {
-    return; // c'è di meglio in arrivo: questa lettura non serve
-  }
+  const assoluto = e.absolute === true || e.type === 'deviceorientationabsolute';
+  const adesso = performance.now();
 
   // Un valore mancante non è "zero": prenderlo alla lettera faceva scattare
   // il cielo verso Nord. Se manca, si tiene l'ultimo valore buono.
-  const prec = sky.orient;
+  const prec = skyBussola.euleri;
   const numero = (v, difetto) => (typeof v === 'number' && isFinite(v) ? v : difetto);
-  const alpha = bussolaIOS
-    ? 360 - e.webkitCompassHeading            // bussola di iOS -> alpha assoluto
-    : numero(e.alpha, prec ? prec.alpha : null);
+  const alpha = numero(e.alpha, prec ? prec.alpha : null);
   const beta = numero(e.beta, prec ? prec.beta : null);
   const gamma = numero(e.gamma, prec ? prec.gamma : null);
   if (alpha === null || beta === null || gamma === null) return;
 
-  // Cambiando sorgente l'alpha cambia di scatto: il filtro riparte da capo,
-  // altrimenti il cielo ci arriverebbe scivolando per mezzo secondo.
-  const cambioSorgente = assoluto !== sky.assoluto;
-  if (cambioSorgente) sky.baseFiltrata = null;
+  // Prima la metà magnetica, se questo evento ce l'ha: così il ponte trova
+  // già il Nord di *questo* istante invece di quello di sedici millisecondi
+  // fa, e soprattutto si aggancia al primo evento invece che al secondo.
+  if (bussolaIOS) {
+    // `webkitCompassHeading` è la direzione del bordo superiore del telefono
+    // proiettato sull'orizzonte, e vale 360 − alpha finché quella proiezione
+    // esiste: la sua lunghezza è |cos β|, ed è quella la bontà della posa.
+    // Col telefono ritto verso il cielo tende a zero, ed è lì che questa
+    // bussola — la stessa di Maps — comincia a dire numeri a caso. Sotto
+    // l'orizzonte del piano (cos β < 0, telefono rovesciato all'indietro) il
+    // bordo superiore punta dall'altra parte e la relazione si ribalta: quelle
+    // letture si lasciano fuori invece di indovinare di quanto.
+    const cB = Math.cos(beta * SKY_D2R);
+    skyBussola.magAzimut = skyGradiTondi(360 - e.webkitCompassHeading);
+    skyBussola.quandoMag = adesso;
+    // iOS dichiara anche di quanto potrebbe sbagliare. Un −1 vuol dire
+    // «non fidarti», ed è esattamente il momento in cui Maps chiede l'otto
+    // in aria: noi lo diciamo e offriamo la taratura su un astro, che è meglio.
+    const acc = typeof e.webkitCompassAccuracy === 'number' ? e.webkitCompassAccuracy : null;
+    skyBussola.accuratezza = acc;
+    const credibile = acc === null || (acc >= 0 && acc <= SKY_MAG_ACCURATEZZA_MAX);
+    skyBussola.magPeso = credibile ? Math.max(0, cB) : 0;
+    if (acc !== null && !credibile) skyBussola.scarto = Math.max(skyBussola.scarto, acc < 0 ? 25 : acc);
+  }
 
+  // Due flussi diversi arrivano insieme, sessanta volte al secondo ciascuno:
+  // `deviceorientationabsolute` (riferito al Nord) e `deviceorientation` (su
+  // Android relativo). Non si sovrascrivono più a vicenda — ognuno finisce
+  // dove serve, e il relativo è la metà stabile del ponte, non un ripiego
+  // che rimbalza. Prima comandava l'assoluto e il relativo lo sostituiva
+  // dopo tre secondi di silenzio: siccome la loro alpha differisce di un
+  // angolo qualunque, quel cambio della guardia girava il cielo di colpo —
+  // ed è il «a un certo punto la bussola impazzisce» delle segnalazioni.
+  if (assoluto || !skyBussola.eulAssoluti ||
+      adesso - skyBussola.quandoE > SKY_ASSETTO_SCADENZA_MS) {
+    const dt = Math.min(1, Math.max(0.001, (adesso - (skyBussola.quandoE || adesso)) / 1000));
+    skyBussola.euleri = { alpha, beta, gamma };
+    // La vista Telescopio legge da qui la livella e il goniometro (beta e
+    // gamma sono l'inclinazione, cioè l'accelerometro): quella lettura non
+    // ha niente a che vedere con la bussola e resta dov'è sempre stata.
+    sky.orient = skyBussola.euleri;
+    skyBussola.quandoE = adesso;
+    skyBussola.eulAssoluti = assoluto;
+    if (!assoluto && skyBussola.magAzimut !== null &&
+        adesso - skyBussola.quandoMag < SKY_ASSETTO_SCADENZA_MS) {
+      skyPonteAggiorna(alpha, skyBussola.magAzimut, skyBussola.magPeso, dt);
+    }
+  }
+
+  skyBussolaPrimaLettura(assoluto || (bussolaIOS && skyBussola.ponte !== null));
+}
+
+// La prima lettura è anche la sola occasione buona per dire com'è che
+// funziona: la schermata di benvenuto non c'è più (e non deve tornare), ma
+// «muovi il telefono» resta una cosa che nessuno indovina guardando una
+// mappa ferma. Una riga, sei secondi, e solo su un dispositivo che i sensori
+// ce li ha davvero.
+function skyBussolaPrimaLettura(conNord) {
   const primaLettura = !sky.sensori;
-  const orientamento = { alpha, beta, gamma };
-  sky.orient = orientamento;
-  sky.assoluto = assoluto;
+  const cambio = conNord !== sky.assoluto;
   sky.sensori = true;
-  // La prima lettura è anche la sola occasione buona per dire com'è che
-  // funziona: la schermata di benvenuto non c'è più (e non deve tornare),
-  // ma «muovi il telefono» resta una cosa che nessuno indovina guardando
-  // una mappa ferma. Una riga, cinque secondi, e solo su un dispositivo che
-  // i sensori ce li ha davvero.
+  if (conNord) sky.assoluto = true;
   if (primaLettura) {
     skyAvviso('sensori', 'Punta il telefono verso il cielo: la mappa segue quello che inquadri.', 6000);
   }
-  // Cambia anche quel che possiamo promettere all'utente: con una bussola
-  // relativa il Nord va corretto a mano.
-  if (cambioSorgente || primaLettura) skyAggiornaStato();
+  if (cambio || primaLettura) skyAggiornaStato();
+}
+
+// --- Da tutto questo, una matrice -------------------------------------
+// In ordine di bontà: il quaternione del sistema, gli angoli già riferiti al
+// Nord, gli angoli del giroscopio col ponte addosso. L'ultima riga è la
+// vecchia strada di sempre, e resta come rete per i telefoni che non hanno
+// nient'altro.
+function skyAssettoGrezzo() {
+  const adesso = performance.now();
+  if (skyBussola.q && adesso - skyBussola.quandoQ < SKY_ASSETTO_SCADENZA_MS) {
+    const R = skyMatriceDaQuaternione(skyBussola.q);
+    if (R) return { R, fonte: 'quaternione', conNord: true };
+  }
+  const e = skyBussola.euleri;
+  if (!e || adesso - skyBussola.quandoE > SKY_ASSETTO_SCADENZA_MS * 4) return null;
+  if (skyBussola.eulAssoluti) {
+    return {
+      R: skyMatriceDispositivo(e.alpha * SKY_D2R, e.beta * SKY_D2R, e.gamma * SKY_D2R),
+      fonte: 'evento', conNord: true
+    };
+  }
+  if (skyBussola.ponte !== null) {
+    return {
+      R: skyMatriceDispositivo((e.alpha + skyBussola.ponte) * SKY_D2R,
+        e.beta * SKY_D2R, e.gamma * SKY_D2R),
+      fonte: 'ponte', conNord: true
+    };
+  }
+  // Nessun riferimento al Nord: l'assetto c'è lo stesso ed è utile (il cielo
+  // si muove col telefono), ma il Nord lo deve dare l'utente.
+  return {
+    R: skyMatriceDispositivo(e.alpha * SKY_D2R, e.beta * SKY_D2R, e.gamma * SKY_D2R),
+    fonte: 'evento', conNord: false
+  };
+}
+
+function skyAssettoDisponibile() {
+  return !!skyAssettoGrezzo();
+}
+
+// La matrice che il planetario disegna: l'assetto del sistema, più la
+// declinazione magnetica (che porta al Nord vero, l'unico rispetto al quale
+// sono calcolati gli astri) e la correzione manuale o da astro. Tutt'e due
+// sono rotazioni attorno alla verticale, ed è così che vanno applicate: a
+// telefono ritto sommarle ad alpha sarebbe stato lo stesso, ma con il
+// quaternione gli angoli di Eulero non ci sono più.
+function skyMatriceBussola() {
+  const a = skyAssettoGrezzo();
+  if (!a) return null;
+  skyBussola.fonte = a.fonte;
+  sky.assoluto = a.conNord;
+  const correzione = (a.conNord ? -sky.declinazione : 0) + sky.offsetBussola;
+  return skyGiraMatriceAzimut(a.R, correzione);
+}
+
+// Quanto ci si può fidare del Nord segnato, in gradi di errore stimato.
+// `null` quando non c'è modo di saperlo.
+function skyBussolaErroreStimato() {
+  if (skyBussola.tarata) return 0;
+  if (skyBussola.accuratezza !== null && skyBussola.accuratezza < 0) return 999;
+  if (skyBussola.ponte === null && skyBussola.fonte === 'quaternione' &&
+      !skyBussola.qRel) return null;
+  return skyBussola.scarto;
+}
+
+function skyBussolaDisturbata() {
+  const err = skyBussolaErroreStimato();
+  return err !== null && err > SKY_SCARTO_ALLARME;
+}
+
+// Il disturbo va detto, ma una volta ogni tanto: un pannello che si accende
+// perché si è passati accanto a un termosifone insegna solo a ignorarlo.
+function skyControllaDisturboBussola() {
+  if (!skyUsaSensori() || !skyBussolaDisturbata()) return;
+  const adesso = performance.now();
+  if (adesso - skyBussola.avvisoDisturbo < SKY_DISTURBO_RIPETI_MS) return;
+  skyBussola.avvisoDisturbo = adesso;
+  skyAvviso('bussola', 'La bussola è disturbata da qualcosa di ferroso qui vicino. ' +
+    'Punta la Luna o un pianeta e tocca «Tara su un astro» (pannello Navigazione): ' +
+    'la correzione diventa esatta.', 9000);
+}
+
+// --- La taratura su un astro ------------------------------------------
+// L'unico riferimento che un planetario ha e una mappa no. L'altezza sopra
+// l'orizzonte la dà la gravità e non sbaglia mai: è quindi lei a dire QUALE
+// astro si sta puntando, mentre l'azimut può essere lontano quanto è grande
+// l'errore della bussola — che è proprio il numero che stiamo cercando.
+const SKY_TARA_ALT_MAX = 8;    // gradi di scarto in altezza ammessi per riconoscere l'astro
+const SKY_TARA_AZ_MAX = 60;    // …e quanto può essere sbagliata la bussola
+const SKY_TARA_MAG_MAX = 2.0;  // più deboli di così non si puntano a colpo sicuro
+// (due tonde e non una e mezza per far entrare la Polare, che di stelle su cui
+//  tarare una bussola è la prima della lista: sta praticamente sul Nord vero)
+// Chi si può puntare senza sbagliarsi. I pianeti deboli restano fuori: nessuno
+// riconosce Urano in cielo, e tarare su un astro che si è creduto di vedere
+// vuol dire scrivere l'errore invece di toglierlo.
+const SKY_TARA_PIANETI = new Set(['Venus', 'Jupiter', 'Mars', 'Saturn', 'Mercury']);
+
+function skyDirezioneMirino() {
+  const base = sky.ultimaBase;
+  if (!base) return null;
+  const f = base.f;
+  return {
+    az: skyGradiTondi(Math.atan2(f[0], f[1]) * SKY_R2D),
+    alt: Math.asin(Math.max(-1, Math.min(1, f[2]))) * SKY_R2D
+  };
+}
+
+// Che astro sta guardando, fra quelli che uno riconosce a occhio nudo.
+function skyAstroDaTarare() {
+  const mirino = skyDirezioneMirino();
+  if (!mirino) return null;
+  let scelto = null;
+  for (const o of (sky.oggetti || [])) {
+    if (!o || typeof o.az !== 'number' || typeof o.alt !== 'number') continue;
+    if (o.alt < 3) continue;   // troppo basso: rifrazione, foschia e tetti
+    let luce;
+    if (o.tipo === 'sole' || o.tipo === 'luna') luce = -30;
+    else if (o.tipo === 'pianeta') luce = SKY_TARA_PIANETI.has(o.id) ? -2 : 99;
+    else if (o.tipo === 'stella') luce = typeof o.mag === 'number' ? o.mag : 99;
+    else continue;             // satelliti e cielo profondo non sono riferimenti
+    if (luce > SKY_TARA_MAG_MAX) continue;
+    // L'altezza la dà la gravità e non sbaglia mai: è lei a dire QUALE astro
+    // si sta puntando. L'azimut invece può essere lontano quanto è grande
+    // l'errore della bussola, che è proprio il numero che stiamo cercando —
+    // chiedergli di essere già vicino sarebbe chiedere di aver già finito.
+    const dAlt = Math.abs(o.alt - mirino.alt);
+    if (dAlt > SKY_TARA_ALT_MAX) continue;
+    const dAz = Math.abs(skyScartoAngoli(o.az, mirino.az)) * Math.cos(mirino.alt * SKY_D2R);
+    if (dAz > SKY_TARA_AZ_MAX) continue;
+    const punteggio = luce + dAlt * 0.1 + dAz * 0.02;
+    if (!scelto || punteggio < scelto.punteggio) scelto = { o, punteggio, mirino };
+  }
+  return scelto;
+}
+
+// Applica la taratura. Il conto è una riga: la bussola sbaglia esattamente
+// di quanto l'azimut vero dell'astro si discosta da quello in cui il
+// planetario sta guardando adesso.
+function skyTaraSuAstro() {
+  if (!skyUsaSensori()) {
+    skyAvviso('bussola', 'La taratura serve alla bussola del telefono: accendi «Segui il telefono».', 6000);
+    return false;
+  }
+  const scelta = skyAstroDaTarare();
+  if (!scelta) {
+    skyAvviso('bussola', 'Punta il mirino su un astro che vedi davvero — la Luna, il Sole, ' +
+      'un pianeta o una stella luminosa — e riprova.', 7000);
+    return false;
+  }
+  const correzione = skyScartoAngoli(scelta.o.az, scelta.mirino.az);
+  skyImpostaOffsetBussola(sky.offsetBussola + correzione);
+  skyBussola.tarata = { astro: scelta.o.nome || 'astro', gradi: correzione, quando: Date.now() };
+  skyBussola.scarto = 0;
+  sky.baseFiltrata = null;   // il cielo ci arriva subito, non scivolandoci per mezzo secondo
+  skyAvviso('bussola', `Bussola tarata su ${scelta.o.nome}: correzione ` +
+    `${correzione >= 0 ? '+' : ''}${correzione.toFixed(1)}°. ` +
+    'Da adesso il Nord lo porta il giroscopio.', 7000);
+  skyAggiornaStato();
+  skyAggiornaTastoTara();
+  return true;
+}
+
+function skyAzzeraTaratura() {
+  skyBussola.tarata = null;
+  skyImpostaOffsetBussola(0);
+  sky.baseFiltrata = null;
+  skyAggiornaTastoTara();
+  skyAggiornaStato();
+}
+
+function skyAggiornaTastoTara() {
+  const t = document.getElementById('skymap-btn-tara-astro');
+  if (!t) return;
+  const scelta = skyUsaSensori() ? skyAstroDaTarare() : null;
+  t.disabled = !skyUsaSensori();
+  t.textContent = scelta ? `Tara su ${scelta.o.nome}` : 'Tara su un astro';
+  t.title = scelta
+    ? `Dice alla bussola che lì c'è ${scelta.o.nome}: da quel momento il Nord è esatto ` +
+      'per costruzione, perché l\'azimut vero di quell\'astro lo calcoliamo noi'
+    : 'Punta il mirino su un astro che vedi davvero (la Luna, il Sole, un pianeta, ' +
+      'una stella luminosa) e tocca qui: la bussola si corregge sul cielo vero';
+  skyTasto('skymap-btn-tara-astro', !!skyBussola.tarata);
 }
 
 // Un telefono che l'evento ce l'ha ma non lo manda mai — manca il
@@ -10492,10 +10956,15 @@ function skyAscoltaOrientamento() {
   if (typeof DeviceOrientationEvent === 'undefined') return false;
   if (sky.ascolto) return true;
   sky.ascolto = true;
-  // Ci si iscrive a entrambi gli eventi, ma non per usarli entrambi: quello
-  // assoluto è il migliore e su certi dispositivi esiste senza mai arrivare,
-  // quindi il relativo resta lì come rete di sicurezza. A scegliere fra i due,
-  // lettura per lettura, è skyEventoOrientamento.
+  // Prima di tutto la strada buona: il quaternione della Generic Sensor API,
+  // che è la stessa fusione di sistema che usa Google Maps e non ha pose
+  // degeneri (§7.1-quinquies). Dove non c'è — iOS, e i computer — non
+  // succede niente e restano gli eventi.
+  skyAvviaSensoreAssetto();
+  // Ci si iscrive a entrambi gli eventi, e adesso servono davvero tutti e
+  // due: quello assoluto porta il Nord, quello relativo porta l'assetto
+  // stabile del giroscopio, che è la metà del ponte. Non si sovrascrivono
+  // più a vicenda — a smistarli è skyEventoOrientamento.
   sky.baseFiltrata = null;
   if ('ondeviceorientationabsolute' in window) {
     window.addEventListener('deviceorientationabsolute', skyEventoOrientamento, true);
@@ -10714,6 +11183,11 @@ function skyAggiornaOggetti(forza) {
     // Cosa succede nel cielo di quest'ora: l'elenco segue l'orologio
     skyAggiornaEventi();
     skyChiediEventiDelMese();
+    // La bussola: se è disturbata va detto, e il tasto della taratura deve
+    // sapere che astro si sta puntando adesso (§7.1-quinquies). Due volte al
+    // secondo, non a ogni fotogramma: è una scrittura nella pagina.
+    skyControllaDisturboBussola();
+    skyAggiornaTastoTara();
   }
 
   // Chi arriva da un'altra scheda ("Trova Marte nel cielo") chiede di
@@ -19869,14 +20343,18 @@ function skyAggiornaHud(base) {
 // montatura (e lì infatti c'è, nella vista Telescopio). Spento e
 // tratteggiato vuol dire che quel Nord è indicativo.
 const SKY_BUSSOLA_MODI = {
+  astro:     'Bussola tarata sul cielo vero: il Nord è esatto per costruzione',
   vera:      'Bussola: la punta ambrata è il Nord geografico',
+  dubbia:    'Bussola disturbata da qualcosa di ferroso: tarala su un astro',
   magnetica: 'Bussola da tarare: il Nord segnato è quello magnetico',
   manuale:   'La vista la muovi col dito: il Nord è quello del cielo disegnato'
 };
 
 function skyModoBussola() {
   if (!sky.sensori || !sky.seguiTelefono) return 'manuale';
-  return sky.assoluto ? 'vera' : 'magnetica';
+  if (!sky.assoluto) return 'magnetica';
+  if (skyBussola.tarata) return 'astro';
+  return skyBussolaDisturbata() ? 'dubbia' : 'vera';
 }
 
 // Il quadrante gira, l'indice sta fermo: è il verso di una bussola vera, e
@@ -20024,7 +20502,37 @@ function skyStatoEsteso() {
   } else {
     righe.push('Posizione non ancora rilevata');
   }
+  righe.push(skyBussolaTesto());
   return righe.join('\n');
+}
+
+// Come sta la bussola, in una riga. Serve al `title` della lettura del luogo
+// e a chi legge con lo schermo: sul cielo non si scrive niente di tutto
+// questo, il quadrante lo dice col suo aspetto.
+function skyBussolaTesto() {
+  if (!sky.sensori) return 'Bussola: nessun sensore (la vista la muovi col dito)';
+  const FONTI = {
+    quaternione: 'assetto completo dal sistema (nessuna posa degenere)',
+    evento: 'angoli di orientamento del browser',
+    ponte: 'giroscopio agganciato al Nord magnetico'
+  };
+  const parti = [`Bussola: ${FONTI[skyBussola.fonte] || 'in attesa di una lettura'}`];
+  if (skyBussola.tarata) {
+    parti.push(`tarata su ${skyBussola.tarata.astro} ` +
+      `(${skyBussola.tarata.gradi >= 0 ? '+' : ''}${skyBussola.tarata.gradi.toFixed(1)}°)`);
+  } else if (sky.offsetBussola) {
+    const m = sky.offsetBussola > 180 ? sky.offsetBussola - 360 : sky.offsetBussola;
+    parti.push(`correzione manuale ${m >= 0 ? '+' : ''}${m.toFixed(0)}°`);
+  }
+  if (sky.assoluto && sky.declinazione) {
+    parti.push(`declinazione magnetica ${sky.declinazione >= 0 ? '+' : ''}${sky.declinazione.toFixed(1)}°`);
+  }
+  const err = skyBussolaErroreStimato();
+  if (err !== null && err > SKY_SCARTO_ALLARME) {
+    parti.push(err > 90 ? 'il telefono la dichiara inaffidabile'
+      : `disturbata di circa ${err.toFixed(0)}°`);
+  }
+  return parti.join(' · ');
 }
 
 // =====================================================================
@@ -24451,7 +24959,10 @@ function skyInizializzaGesti() {
       // per esempio provando a scorrere la pagina — per ruotarlo di decine di
       // gradi, e quella rotazione restava salvata anche alle aperture
       // successive: il cielo risultava storto senza che si capisse perché.
-      if (sky.calibrazione) skyImpostaOffsetBussola(sky.offsetBussola - dx * gradiPerPixel);
+      if (sky.calibrazione) {
+        skyBussola.tarata = null;   // il dito smentisce la taratura sul cielo
+        skyImpostaOffsetBussola(sky.offsetBussola - dx * gradiPerPixel);
+      }
     } else {
       // Il dito ha la precedenza sull'inseguimento: se no la vista tornerebbe
       // indietro da sola a ogni fotogramma
@@ -24676,14 +25187,23 @@ function inizializzaSkymap() {
     });
   });
   collega('skymap-btn-segui', () => { skyAlternaSeguiTelefono(); skyMostraGruppo(''); });
-  collega('skymap-cal-meno', () => skyImpostaOffsetBussola(sky.offsetBussola - 5));
-  collega('skymap-cal-piu', () => skyImpostaOffsetBussola(sky.offsetBussola + 5));
-  collega('skymap-cal-zero', () => skyImpostaOffsetBussola(0));
+  // Ritoccare a mano vuol dire smentire la taratura sul cielo: la si
+  // dimentica, se no il quadrante continuerebbe a promettere «esatto».
+  const aMano = (gradi) => {
+    skyBussola.tarata = null;
+    skyImpostaOffsetBussola(sky.offsetBussola + gradi);
+    skyAggiornaTastoTara();
+  };
+  collega('skymap-cal-meno', () => aMano(-5));
+  collega('skymap-cal-piu', () => aMano(5));
+  collega('skymap-cal-zero', skyAzzeraTaratura);
+  collega('skymap-btn-tara-astro', skyTaraSuAstro);
   collega('skymap-btn-calibra', () => {
     sky.calibrazione = !sky.calibrazione;
     skyAggiornaTastoCalibrazione();
   });
   skyAggiornaTastoCalibrazione();
+  skyAggiornaTastoTara();
 
   // La scheda dell'oggetto si chiude col suo ✕
   collega('skymap-dettaglio-chiudi', skyChiudiDettaglio);
