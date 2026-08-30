@@ -1565,24 +1565,91 @@
     return migliore && migliore.aereo;
   }
 
-  function aereiSchedaHtml(a) {
-    const dato = (nome, valore) => valore ? `<li><span class="voce-dato">${nome}:</span> ${sicuro(valore)}</li>` : '';
+  // Le voci della scheda, in ordine, ognuna con la sua **chiave**: è quella
+  // che permette di ritrovarle nel documento e riscriverne il solo valore.
+  // L'itinerario non ha un valore qui perché non viene dal feed: arriva dalla
+  // rete e se lo scrive da sé (`aereiCaricaRotta`), quindi qui è solo il posto
+  // che gli si tiene, con dentro la scritta d'attesa.
+  function aereiVociScheda(a) {
     const quota = Number.isFinite(a.quotaM) ? `${Math.round(a.quotaM).toLocaleString('it-IT')} m` : 'non comunicata';
     const velocita = Number.isFinite(a.velocitaMs) ? `${Math.round(a.velocitaMs * 3.6)} km/h` : 'non comunicata';
+    return [
+      { chiave: 'volo', nome: 'Volo', valore: a.callsign },
+      { chiave: 'registrazione', nome: 'Registrazione', valore: a.registrazione },
+      { chiave: 'aeromobile', nome: 'Aeromobile', valore: a.descrizione || a.tipoIcao },
+      { chiave: 'operatore', nome: 'Operatore', valore: a.operatore },
+      { chiave: 'quota', nome: 'Quota', valore: quota },
+      { chiave: 'velocita', nome: 'Velocità', valore: velocita },
+      { chiave: 'direzione', nome: 'Rotta', valore: Number.isFinite(a.direzione) ? `${Math.round(a.direzione)}°` : '' },
+      { chiave: 'distanza', nome: 'Distanza', valore: Number.isFinite(a.distanzaKm) ? `${a.distanzaKm.toFixed(1)} km` : '' },
+      { chiave: 'itinerario', nome: 'Itinerario', dallaRete: true },
+      { chiave: 'icao', nome: 'Codice ICAO', valore: String(a.id || '').toUpperCase() },
+      { chiave: 'squawk', nome: 'Squawk', valore: a.squawk }
+    ].filter(v => v.dallaRete || v.valore);
+  }
+
+  function aereiNotaScheda(a) {
+    return a.stimato
+      ? 'Posizione stimata dalla rotta, velocità e salita dell’ultima lettura ADS-B.'
+      : 'Posizione allineata al feed ADS-B in tempo reale.';
+  }
+
+  function aereiSchedaHtml(a) {
     const fascia = fasciaDi(a.distanzaKm);
     return `<div class="scheda-testata"><h3>✈ ${sicuro(a.callsign || a.id)}</h3></div>` +
       `<p class="aereo-fascia" style="--fascia:${fascia.colore}">` +
-      `<span class="aereo-pallino" aria-hidden="true"></span>${sicuro(fascia.nome)}</p>` +
+      `<span class="aereo-pallino" aria-hidden="true"></span>` +
+      `<span data-vivo="fascia">${sicuro(fascia.nome)}</span></p>` +
       `<div id="aereo-foto-${sicuro(a.id)}"></div><ul>` +
-      dato('Volo', a.callsign) + dato('Registrazione', a.registrazione) + dato('Aeromobile', a.descrizione || a.tipoIcao) +
-      dato('Operatore', a.operatore) + dato('Quota', quota) + dato('Velocità', velocita) +
-      dato('Rotta', Number.isFinite(a.direzione) ? `${Math.round(a.direzione)}°` : '') +
-      dato('Distanza', Number.isFinite(a.distanzaKm) ? `${a.distanzaKm.toFixed(1)} km` : '') +
-      `<li id="aereo-rotta-${sicuro(a.id)}"><span class="voce-dato">Itinerario:</span> ricerca in corso…</li>` +
-      dato('Codice ICAO', String(a.id || '').toUpperCase()) + dato('Squawk', a.squawk) + '</ul>' +
+      aereiVociScheda(a).map(v => v.dallaRete
+        ? `<li id="aereo-rotta-${sicuro(a.id)}"><span class="voce-dato">${v.nome}:</span> ricerca in corso…</li>`
+        : `<li><span class="voce-dato">${v.nome}:</span> <span data-vivo="${v.chiave}">${sicuro(v.valore)}</span></li>`).join('') +
+      '</ul>' +
       `<div class="aereo-azioni"><button type="button" class="tasto-cielo aereo-mappa" data-aereo-id="${sicuro(a.id)}">Rotta sulla mappa</button></div>` +
-      `<p class="nota-dettaglio">${a.stimato ? 'Posizione stimata dalla rotta, velocità e salita dell’ultima lettura ADS-B.' :
-        'Posizione allineata al feed ADS-B in tempo reale.'}</p>`;
+      `<p class="nota-dettaglio" data-vivo="nota">${aereiNotaScheda(a)}</p>`;
+  }
+
+  // Riscrive i **soli valori** della scheda già a schermo, senza toccarne la
+  // struttura. Risponde `false` quando non se ne può occupare — la scheda che
+  // c'è è di un altro aereo, o ha cambiato forma perché una voce è comparsa o
+  // sparita — e allora tocca a chi chiama rifarla da capo.
+  //
+  // È la cura del difetto che si vedeva così: aperta la scheda di un aereo,
+  // lo scorrimento saltellava una volta al secondo. La scheda si riscriveva
+  // tutta a ogni aggiornamento, e nel rifarla si buttavano via anche le due
+  // cose che arrivano dalla rete — la foto e l'itinerario — che tornavano
+  // solo un istante dopo: ogni secondo la scheda si accorciava di duecento
+  // pixel e si riallungava. Nel momento in cui era corta lo scorrimento
+  // veniva **tosato** dall'altezza, quindi nessun ripristino poteva più
+  // rimetterlo dov'era: chi stava leggendo in fondo si vedeva la scheda
+  // scivolare verso l'alto a ogni battito. La cura non è ripristinare meglio,
+  // è non buttare via niente: cinque numeri che cambiano non sono una scheda
+  // nuova.
+  function aereiAggiornaSchedaViva(a) {
+    if (!a) return false;
+    const corpo = document.getElementById('skymap-dettaglio-corpo');
+    if (!corpo) return false;
+    // L'aereo si riconosce dal riquadro della foto, che c'è sempre e porta il
+    // suo identificativo: nessun marchio da tenere allineato a parte.
+    const foto = corpo.querySelector('[id^="aereo-foto-"]');
+    if (!foto || foto.id !== `aereo-foto-${a.id}`) return false;
+
+    const voci = aereiVociScheda(a).filter(v => !v.dallaRete);
+    const presenti = Array.from(corpo.querySelectorAll('[data-vivo]')).map(n => n.dataset.vivo);
+    const attese = ['fascia', ...voci.map(v => v.chiave), 'nota'];
+    if (presenti.join(',') !== attese.join(',')) return false;
+
+    const scrivi = (chiave, testo) => {
+      const nodo = corpo.querySelector(`[data-vivo="${chiave}"]`);
+      if (nodo && nodo.textContent !== testo) nodo.textContent = testo;
+    };
+    const fascia = fasciaDi(a.distanzaKm);
+    const riga = corpo.querySelector('.aereo-fascia');
+    if (riga) riga.style.setProperty('--fascia', fascia.colore);
+    scrivi('fascia', fascia.nome);
+    voci.forEach(v => scrivi(v.chiave, String(v.valore)));
+    scrivi('nota', aereiNotaScheda(a));
+    return true;
   }
 
   function aereiTrova(id) {
@@ -1830,6 +1897,7 @@
   window.aereiAggiornaUI = aggiornaUI;
   window.aereoNelPunto = aereoNelPunto;
   window.aereiSchedaHtml = aereiSchedaHtml;
+  window.aereiAggiornaSchedaViva = aereiAggiornaSchedaViva;
   window.aereiCaricaFoto = aereiCaricaFoto;
   window.aereiRaggioCambiato = aereiRaggioCambiato;
   window.aereiAggiornaAdesso = aereiAggiornaAdesso;

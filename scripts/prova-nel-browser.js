@@ -224,6 +224,63 @@ const server = http.createServer((req, res) => {
   });
   ok('aggiornare i dati non riporta in cima la scheda dell’aereo',
     scorrimentoSchedaAereo === 220, `${scorrimentoSchedaAereo}px`);
+
+  // Lo scorrimento saltellava una volta al secondo, ed è la prova che dice
+  // perché: la scheda si riscriveva tutta, quindi la foto e l'itinerario —
+  // che arrivano dalla rete e vivono nel documento, non nei dati dell'aereo —
+  // sparivano a ogni aggiornamento. La scheda si accorciava di duecento pixel
+  // e si riallungava un istante dopo, e nel frattempo lo scorrimento veniva
+  // tosato dall'altezza calata: nessun ripristino poteva più rimetterlo dov'era.
+  // Qui si guarda la causa e non il sintomo — la foto resta e l'altezza non
+  // cala — perché il sintomo, misurato in un browser che non fa scorrere
+  // niente per davvero, si nasconde.
+  const schedaVivaAereo = await pagina.evaluate(async () => {
+    const pannello = document.getElementById('skymap-dettaglio');
+    const corpo = document.getElementById('skymap-dettaglio-corpo');
+    const trovaOriginale = window.aereiTrova;
+    const caricaOriginale = window.aereiCaricaFoto;
+    const selezioneOriginale = sky.selezione;
+    // Un aereo che si muove: la distanza cambia fra una lettura e l'altra,
+    // che è esattamente quello che fa girare skyAggiornaScheda ogni secondo.
+    let km = 12.4;
+    const aereo = () => ({ id: 'ab1234', callsign: 'AZ123', az: 90, alt: 30,
+      quotaM: 10600, velocitaMs: 250, direzione: 275, distanzaKm: km, stimato: false });
+    window.aereiTrova = () => aereo();
+    window.aereiCaricaFoto = () => {};
+    sky.selezione = { categoria: 'aereo', dati: { id: 'ab1234' } };
+    pannello.classList.add('visibile');
+    skyAggiornaScheda();
+    // La foto e l'itinerario arrivano dalla rete qualche istante dopo:
+    // li mettiamo a mano, come farebbero aereiCaricaFoto e aereiCaricaRotta.
+    const boxFoto = document.getElementById('aereo-foto-ab1234');
+    if (boxFoto) boxFoto.innerHTML = '<div class="aereo-foto" style="height:190px"></div>';
+    const boxRotta = document.getElementById('aereo-rotta-ab1234');
+    if (boxRotta) boxRotta.textContent = 'Partenza: Milano (LIN) · Arrivo: Roma (FCO)';
+    const altezzaPrima = corpo.scrollHeight;
+    km = 11.9;
+    skyAggiornaScheda();
+    await new Promise(risolvi => requestAnimationFrame(risolvi));
+    const esito = {
+      fotoRimasta: !!document.querySelector('#aereo-foto-ab1234 .aereo-foto'),
+      itinerarioRimasto: (document.getElementById('aereo-rotta-ab1234') || {}).textContent || '',
+      altezzaPrima, altezzaDopo: corpo.scrollHeight,
+      distanzaAggiornata: corpo.textContent.includes('11.9 km')
+    };
+    window.aereiTrova = trovaOriginale;
+    window.aereiCaricaFoto = caricaOriginale;
+    sky.selezione = selezioneOriginale;
+    corpo.innerHTML = '';
+    pannello.classList.remove('visibile');
+    return esito;
+  });
+  ok('aggiornare i dati non fa collassare la scheda dell’aereo',
+    schedaVivaAereo.fotoRimasta && schedaVivaAereo.itinerarioRimasto.includes('Roma') &&
+    schedaVivaAereo.altezzaDopo === schedaVivaAereo.altezzaPrima && schedaVivaAereo.distanzaAggiornata,
+    `foto ${schedaVivaAereo.fotoRimasta ? 'rimasta' : 'buttata'}, itinerario ` +
+    `${schedaVivaAereo.itinerarioRimasto.includes('Roma') ? 'rimasto' : 'buttato'}, ` +
+    `altezza ${schedaVivaAereo.altezzaPrima} → ${schedaVivaAereo.altezzaDopo} px, ` +
+    `distanza ${schedaVivaAereo.distanzaAggiornata ? 'aggiornata' : 'ferma'}`);
+
   const extraAereo = await pagina.evaluate(() => schedaExtraHtml({ categoria: 'aereo', id: 'test' }));
   ok('la scheda degli aerei non mostra il grafico di stanotte', extraAereo === '');
 
