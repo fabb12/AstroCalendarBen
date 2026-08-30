@@ -812,6 +812,14 @@
                    che cosa -->
               <details id="skymap-istruzioni" class="nota-ripiegata">
                 <summary>Bussola e posizione</summary>
+                <!-- La taratura sul cielo vero: l'unico riferimento che un
+                     planetario ha e una mappa no. Sta per prima perché è la
+                     risposta giusta quasi sempre — i ±5° a mano restano per
+                     chi non ha nessun astro in vista. -->
+                <div class="riga-comandi">
+                  <button id="skymap-btn-tara-astro" type="button" class="tasto-cielo"
+                    title="Punta il mirino su un astro che vedi davvero (la Luna, il Sole, un pianeta, una stella luminosa) e tocca qui: la bussola si corregge sul cielo vero">Tara su un astro</button>
+                </div>
                 <div class="riga-comandi">
                   <button id="skymap-cal-meno" type="button" class="tasto-cielo tasto-passo" title="Ruota la bussola verso ovest">−5°</button>
                   <span id="skymap-cal-valore" class="lettura-bussola">0°</span>

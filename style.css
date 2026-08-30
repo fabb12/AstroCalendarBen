@@ -3852,6 +3852,24 @@ body.mappa-spostamento-immersiva { overflow: hidden; }
 .bussola-cielo[data-modo="manuale"] .bussola-nord,
 .bussola-cielo[data-modo="magnetica"] .bussola-nord { fill: rgba(245, 181, 68, 0.6); }
 
+/* Bussola disturbata dal ferro (§7.1-quinquies): il quadrante si smorza come
+   quello da tarare — perché è esattamente quello che è — ma non lampeggia e
+   non diventa rosso. Una spia d'allarme su un pannello che si accende perché
+   si è passati accanto a un termosifone insegna solo a ignorare le spie. */
+.bussola-cielo[data-modo="dubbia"] { opacity: 0.8; }
+.bussola-cielo[data-modo="dubbia"] .bussola-ago { fill: rgba(245, 181, 68, 0.5); filter: none; }
+.bussola-cielo[data-modo="dubbia"] .bussola-nord { fill: rgba(245, 181, 68, 0.6); }
+
+/* Bussola tarata su un astro: il Nord non viene più dal magnetometro ma dal
+   cielo vero, ed è l'unico stato in cui questa app può promettere l'esattezza.
+   Si dice con un filo di verde sulla punta — il colore che nel resto
+   dell'interfaccia vuol dire «misurato», non «stimato». */
+.bussola-cielo[data-modo="astro"] .bussola-nord { fill: rgba(110, 231, 183, 0.95); }
+.bussola-cielo[data-modo="astro"] .bussola-ago {
+  fill: rgba(245, 181, 68, 0.95);
+  filter: drop-shadow(0 0 3px rgba(110, 231, 183, 0.45));
+}
+
 /* Col mouse le letture si possono sorvolare, e allora il loro `title` dice
    il dettaglio esteso (le coordinate vere, la provenienza per intero, che
    Nord sta segnando la bussola). Col dito no, e di proposito: sul telefono

@@ -8396,6 +8396,553 @@ titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-
   if (salva.vista === undefined) delete window.skyLuogoDelCielo; else window.skyLuogoDelCielo = salva.vista;
 }
 
+// =====================================================================
+titolo('29. La bussola: perché Google Maps punta il Nord e noi no (app.js §7.1-quinquies)');
+// =====================================================================
+//
+// È la segnalazione più difficile da credere che questa app abbia avuto:
+// «i punti cardinali sono imprecisi, come se il magnetometro a un certo
+// punto impazzisse — eppure Maps, sullo stesso telefono, è preciso».
+// Sono vere tutt'e due le cose, e il magnetometro non c'entra: c'entra la
+// posa. Una bussola di sistema misura la direzione del bordo superiore del
+// telefono **proiettato sull'orizzonte**, e quella proiezione è lunga
+// |cos β|: col telefono in mano davanti agli occhi vale uno, col telefono
+// puntato verso il cielo tende a zero. Dividere per una lunghezza che tende
+// a zero non dà un errore, dà un numero — sempre plausibile e sempre più
+// sbagliato. E a occhio non si vede: un cielo storto di dieci gradi è un
+// cielo bellissimo.
+//
+// Qui si controllano le tre cure e i due contro-esempi che le motivano. Le
+// funzioni sono una **copia** di quelle di `app.js` (questa pagina non lo
+// carica): il giorno che divergono non lo dice nessuno.
+(function proveBussola() {
+  const G = Math.PI / 180, R = 180 / Math.PI;
+  // Il modello magnetico copiato più sotto è scritto con i nomi di app.js
+  const SKY_D2R = G, SKY_R2D = R;
+
+  // --- copie da app.js §7.1 e §7.1-quinquies ---
+  function skyMatriceDispositivo(alpha, beta, gamma) {
+    const cA = Math.cos(alpha), sA = Math.sin(alpha);
+    const cB = Math.cos(beta), sB = Math.sin(beta);
+    const cG = Math.cos(gamma), sG = Math.sin(gamma);
+    return [
+      [cA * cG - sA * sB * sG, -sA * cB, cA * sG + sA * sB * cG],
+      [sA * cG + cA * sB * sG,  cA * cB, sA * sG - cA * sB * cG],
+      [-cB * sG,                sB,      cB * cG]
+    ];
+  }
+  function skyMatriceDaQuaternione(q) {
+    const n = Math.hypot(q[0], q[1], q[2], q[3]);
+    if (!(n > 1e-9)) return null;
+    const x = q[0] / n, y = q[1] / n, z = q[2] / n, w = q[3] / n;
+    return [
+      [1 - 2 * (y * y + z * z), 2 * (x * y - z * w),     2 * (x * z + y * w)],
+      [2 * (x * y + z * w),     1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+      [2 * (x * z - y * w),     2 * (y * z + x * w),     1 - 2 * (x * x + y * y)]
+    ];
+  }
+  function skyGradiTondi(g) { return ((g % 360) + 360) % 360; }
+  function skyScartoAngoli(a, b) {
+    let d = (a - b) % 360;
+    if (d > 180) d -= 360;
+    if (d <= -180) d += 360;
+    return d;
+  }
+  function skyAzimutDiAssetto(q) {
+    const z = q[2], w = q[3];
+    const peso = Math.hypot(z, w);
+    if (!(peso > 1e-9)) return { azimut: 0, peso: 0 };
+    return { azimut: skyGradiTondi(2 * Math.atan2(z, w) * R), peso };
+  }
+  function skyGiraMatriceAzimut(M, gradi) {
+    if (!gradi) return M;
+    const a = gradi * G, c = Math.cos(a), s = Math.sin(a);
+    return [
+      [c * M[0][0] - s * M[1][0], c * M[0][1] - s * M[1][1], c * M[0][2] - s * M[1][2]],
+      [s * M[0][0] + c * M[1][0], s * M[0][1] + c * M[1][1], s * M[0][2] + c * M[1][2]],
+      M[2]
+    ];
+  }
+  // Quaternioni di comodo, [x, y, z, w], per costruire gli assetti di prova
+  function qm(p, q) {
+    const [x1, y1, z1, w1] = p, [x2, y2, z2, w2] = q;
+    return [w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+            w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+            w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+            w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2];
+  }
+  const qx = a => [Math.sin(a / 2), 0, 0, Math.cos(a / 2)];
+  const qy = a => [0, Math.sin(a / 2), 0, Math.cos(a / 2)];
+  const qz = a => [0, 0, Math.sin(a / 2), Math.cos(a / 2)];
+  const qEuleri = (a, b, g) => qm(qm(qz(a * G), qx(b * G)), qy(g * G));
+  const applica = (M, v) => [
+    M[0][0] * v[0] + M[0][1] * v[1] + M[0][2] * v[2],
+    M[1][0] * v[0] + M[1][1] * v[1] + M[1][2] * v[2],
+    M[2][0] * v[0] + M[2][1] * v[1] + M[2][2] * v[2]];
+  const azimutDi = v => skyGradiTondi(Math.atan2(v[0], v[1]) * R);
+  const altezzaDi = v => Math.asin(Math.max(-1, Math.min(1, v[2] / Math.hypot(v[0], v[1], v[2])))) * R;
+
+  // ------------------------------------------------------------------
+  nota('<b>A. Le due strade dell\'assetto devono raccontare lo stesso cielo.</b>');
+
+  // La prova che tiene insieme tutto il pezzo: se il quaternione e gli angoli
+  // di Eulero non dessero la stessa matrice, il cielo si sposterebbe cambiando
+  // telefono — ed è il modo peggiore di sbagliare, perché nessuno dei due
+  // sembrerebbe rotto.
+  let peggioM = 0;
+  for (let i = 0; i < 5000; i++) {
+    const a = Math.random() * 360, b = Math.random() * 360 - 180, g = Math.random() * 180 - 90;
+    const A = skyMatriceDispositivo(a * G, b * G, g * G);
+    const B = skyMatriceDaQuaternione(qEuleri(a, b, g));
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) peggioM = Math.max(peggioM, Math.abs(A[r][c] - B[r][c]));
+  }
+  prova('il quaternione del sistema e gli angoli di Eulero danno la stessa matrice',
+    peggioM < 1e-12, `scarto massimo ${peggioM.toExponential(1)} su 5.000 assetti a caso`);
+
+  // Non-regressione: la correzione (declinazione + taratura) adesso si applica
+  // sul mondo perché con il quaternione gli angoli di Eulero non ci sono più.
+  // Deve venire identica a quella di prima, che si sommava ad alpha.
+  let peggioC = 0;
+  for (let i = 0; i < 2000; i++) {
+    const a = Math.random() * 360, b = Math.random() * 360 - 180, g = Math.random() * 180 - 90;
+    const d = Math.random() * 60 - 30;
+    const vecchio = skyMatriceDispositivo((a + d) * G, b * G, g * G);
+    const nuovo = skyGiraMatriceAzimut(skyMatriceDispositivo(a * G, b * G, g * G), d);
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) peggioC = Math.max(peggioC, Math.abs(vecchio[r][c] - nuovo[r][c]));
+  }
+  prova('girare il mondo attorno alla verticale è la stessa cosa che sommare ad alpha',
+    peggioC < 1e-12, `scarto massimo ${peggioC.toExponential(1)}`);
+
+  // …e in particolare non tocca l'altezza sull'orizzonte, che la dà la
+  // gravità e non ha bisogno di nessuna correzione.
+  let peggioAlt = 0;
+  for (let i = 0; i < 2000; i++) {
+    const a = Math.random() * 360, b = Math.random() * 360 - 180, g = Math.random() * 180 - 90;
+    const M = skyMatriceDispositivo(a * G, b * G, g * G);
+    const f1 = applica(M, [0, 0, -1]);
+    const f2 = applica(skyGiraMatriceAzimut(M, 37), [0, 0, -1]);
+    peggioAlt = Math.max(peggioAlt, Math.abs(altezzaDi(f1) - altezzaDi(f2)));
+  }
+  prova('la correzione della bussola non sposta di un primo l\'altezza sull\'orizzonte',
+    peggioAlt < 1e-10, `scarto massimo ${peggioAlt.toExponential(1)}°`);
+
+  // ------------------------------------------------------------------
+  nota('<b>B. Il contro-esempio: cosa succede alla posa in cui si guarda il cielo.</b>');
+
+  // A beta = 90° la terna alpha/beta/gamma perde un grado di libertà: alpha e
+  // gamma diventano intercambiabili, cioè due terne lontanissime descrivono lo
+  // stesso assetto. Un browser che quegli angoli li arrotonda non ha modo di
+  // restituire il Nord, e non è colpa sua.
+  // A beta = 90° la matrice dipende solo dalla somma alpha + gamma: due terne
+  // lontane quaranta gradi descrivono lo stesso identico assetto.
+  const A1 = skyMatriceDispositivo(10 * G, 90 * G, 0);
+  const A2 = skyMatriceDispositivo(50 * G, 90 * G, -40 * G);
+  let peggioDeg = 0;
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) peggioDeg = Math.max(peggioDeg, Math.abs(A1[r][c] - A2[r][c]));
+  prova('a beta 90° due alpha lontane 40° descrivono lo STESSO assetto (Eulero si arrende)',
+    peggioDeg < 1e-12, `alpha 10° e alpha 50°, scarto fra le matrici ${peggioDeg.toExponential(1)}`);
+
+  // La bussola di sistema misura la direzione del bordo superiore proiettato
+  // sull'orizzonte, e quella proiezione è lunga |cos β|. È il numero per cui
+  // si divide, ed è la ragione per cui Maps — che si guarda quasi in piano —
+  // non ha mai questo problema e un planetario ce l'ha sempre.
+  const lung = b => Math.hypot(...applica(skyMatriceDispositivo(0, b * G, 0), [0, 1, 0]).slice(0, 2));
+  prova('col telefono in piano la proiezione del bordo superiore è lunga quanto lui',
+    Math.abs(lung(0) - 1) < 1e-12);
+  prova('col telefono ritto verso il cielo la stessa proiezione si annulla',
+    lung(85) < 0.09 && lung(89) < 0.02,
+    `85° → ${lung(85).toFixed(3)}, 89° → ${lung(89).toFixed(3)} della lunghezza di prima`);
+
+  // E quanto costa: mezzo grado di errore d'assetto (un tremolio del polso)
+  // diventa, sulla direzione del bordo superiore, un errore che cresce come
+  // la tangente della posa.
+  // E quanto costa. Mezzo grado di errore sull'assetto — il tremolio di un
+  // polso, o la stima della verticale fatta da un accelerometro che sta in
+  // mano a qualcuno — sulla direzione del bordo superiore diventa un errore
+  // che cresce come la tangente dell'inclinazione: mezzo grado in piano,
+  // trenta gradi col telefono puntato allo zenit. Non è rumore del
+  // magnetometro, è la geometria della domanda.
+  const giraAttornoAlNord = (v, eps) => {
+    const c = Math.cos(eps * G), s = Math.sin(eps * G);
+    return [c * v[0] + s * v[2], v[1], -s * v[0] + c * v[2]];
+  };
+  function erroreHeading(b) {
+    const M = skyMatriceDispositivo(30 * G, b * G, 20 * G);
+    const y = applica(M, [0, 1, 0]);
+    return Math.abs(skyScartoAngoli(azimutDi(giraAttornoAlNord(y, 0.5)), azimutDi(y)));
+  }
+  const e0 = erroreHeading(0), e60 = erroreHeading(60), e89 = erroreHeading(89);
+  prova('mezzo grado di errore d\'assetto vale mezzo grado in piano e trenta col telefono ritto',
+    e0 < 0.05 && e60 > 0.5 && e89 > 20,
+    `in piano ${e0.toFixed(2)}°, a 60° ${e60.toFixed(2)}°, a 89° ${e89.toFixed(1)}°`);
+
+  // La cura, misurata con lo stesso identico disturbo: letto sull'assetto
+  // completo invece che sulla proiezione di un asse, non esplode da nessuna
+  // parte — resta dell'ordine del disturbo qualunque sia la posa.
+  let peggioTwist = 0, doveTwist = 0;
+  for (let b = -100; b <= 100; b += 2) {
+    for (const g of [-60, 0, 60]) for (const a of [0, 90, 200]) {
+      const q1 = qEuleri(a, b, g), q2 = qm(qy(0.5 * G), q1);
+      const d = Math.abs(skyScartoAngoli(skyAzimutDiAssetto(q2).azimut, skyAzimutDiAssetto(q1).azimut));
+      if (d > peggioTwist) { peggioTwist = d; doveTwist = b; }
+    }
+  }
+  prova('sull\'assetto completo lo stesso disturbo resta mezzo grado a qualunque posa',
+    peggioTwist < 0.7, `peggio ${peggioTwist.toFixed(2)}° (a ${doveTwist}° di inclinazione), ` +
+    `contro i ${e89.toFixed(0)}° della bussola di sistema`);
+
+  // ------------------------------------------------------------------
+  nota('<b>C. Il ponte del giroscopio: dove il quaternione non c\'è.</b>');
+
+  // La proprietà su cui poggia tutto il ponte: due assetti che differiscono
+  // per un giro attorno alla verticale hanno azimut d'assetto che
+  // differiscono esattamente di quel giro. (Quel numero NON è l'alpha di
+  // Eulero — differisce di un termine che dipende da beta e gamma — e non
+  // importa: qui conta solo la differenza.)
+  let peggioD = 0;
+  for (let i = 0; i < 5000; i++) {
+    const a = Math.random() * 360, b = Math.random() * 150 - 75, g = Math.random() * 180 - 90;
+    const d = Math.random() * 200 - 100;
+    const q1 = qEuleri(a, b, g), q2 = qm(qz(d * G), q1);
+    peggioD = Math.max(peggioD, Math.abs(skyScartoAngoli(
+      skyScartoAngoli(skyAzimutDiAssetto(q2).azimut, skyAzimutDiAssetto(q1).azimut), d)));
+  }
+  prova('la differenza fra due azimut d\'assetto è esattamente il giro applicato',
+    peggioD < 1e-9, `scarto massimo ${peggioD.toExponential(1)}°`);
+
+  prova('e il peso vale uno col telefono in piano, zero solo col telefono capovolto',
+    Math.abs(skyAzimutDiAssetto(qEuleri(30, 0, 0)).peso - 1) < 1e-12 &&
+    skyAzimutDiAssetto(qEuleri(30, 180, 0)).peso < 1e-9 &&
+    skyAzimutDiAssetto(qEuleri(30, 90, 0)).peso > 0.7,
+    `in piano 1, ritto ${skyAzimutDiAssetto(qEuleri(30, 90, 0)).peso.toFixed(2)}, capovolto 0`);
+
+  // Il ponte vero e proprio, copiato da app.js con il suo stato.
+  const SKY_PONTE_TAU_S = 4, SKY_PONTE_TAU_TARATO_S = 90, SKY_PONTE_PESO_MIN = 0.08;
+  const SKY_SCARTO_TAU_S = 3;
+  function nuovoPonte() { return { ponte: null, ponteVisto: 0, scarto: 0, tarata: null }; }
+  function skyPonteAggiorna(B, stabile, magnetico, peso, dt) {
+    if (!(peso > 0)) return;
+    const voluto = skyScartoAngoli(magnetico, stabile);
+    if (B.ponte === null) { B.ponte = voluto; B.ponteVisto = peso; return; }
+    if (!(peso > SKY_PONTE_PESO_MIN)) return;
+    const errore = skyScartoAngoli(voluto, B.ponte);
+    const kScarto = 1 - Math.exp(-dt / SKY_SCARTO_TAU_S);
+    B.scarto += (Math.abs(errore) * peso - B.scarto) * kScarto;
+    const tau = B.tarata ? SKY_PONTE_TAU_TARATO_S : SKY_PONTE_TAU_S;
+    const k = (1 - Math.exp(-dt / tau)) * peso * peso;
+    B.ponte = skyScartoAngoli(B.ponte + errore * Math.min(1, k), 0);
+    if (peso > B.ponteVisto) B.ponteVisto = peso;
+  }
+
+  // Converge allo scarto vero: il giroscopio ha il Nord in un punto qualunque,
+  // il magnetometro sa dov'è, e in qualche secondo il primo se lo prende.
+  {
+    const B = nuovoPonte();
+    // primo aggancio in posa mediocre, poi trenta secondi di letture buone
+    skyPonteAggiorna(B, 100, 100 + 17, 0.05, 1 / 30);
+    for (let t = 0; t < 30 * 30; t++) skyPonteAggiorna(B, 100, 100 + 40, 1, 1 / 30);
+    prova('il ponte si aggancia subito e poi si assesta sullo scarto vero',
+      Math.abs(B.ponte - 40) < 0.5, `${B.ponte.toFixed(2)}° contro 40° veri`);
+  }
+
+  // Il peso è il QUADRATO della bontà della posa: una lettura presa col
+  // telefono ritto non si butta, ma non deve pesare quanto una presa in piano.
+  {
+    const buono = nuovoPonte(), storto = nuovoPonte();
+    buono.ponte = 0; storto.ponte = 0;
+    const peso = Math.abs(Math.cos(78 * G));   // ≈ 0,208
+    for (let t = 0; t < 60; t++) {
+      skyPonteAggiorna(buono, 0, 30, 1, 1 / 60);
+      skyPonteAggiorna(storto, 0, 30, peso, 1 / 60);
+    }
+    const rapporto = buono.ponte / storto.ponte;
+    prova('una lettura presa col telefono ritto conta il quadrato: 23 volte meno',
+      rapporto > 15 && rapporto < 35,
+      `in un secondo il ponte si sposta di ${buono.ponte.toFixed(2)}° in piano e ` +
+      `di ${storto.ponte.toFixed(3)}° a 78° di inclinazione`);
+  }
+
+  // Il contro-esempio che risponde alla segnalazione. Prima il Nord era
+  // l'ultima lettura arrivata: un disturbo isolato — una portiera, un
+  // altoparlante, il cruscotto — girava il cielo di colpo e tutto insieme.
+  {
+    const B = nuovoPonte(); B.ponte = 0;
+    for (let t = 0; t < 30; t++) skyPonteAggiorna(B, 0, 70, 1, 1 / 60);   // mezzo secondo
+    prova('un disturbo di 70° per mezzo secondo sposta il cielo di pochi gradi, non di settanta',
+      Math.abs(B.ponte) < 10,
+      `col ponte ${B.ponte.toFixed(1)}°, con la regola di prima («comanda l'ultima lettura») 70°`);
+    prova('…e mezzo secondo di ferro non fa ancora scattare la spia: una spia che si accende ' +
+      'passando accanto a un termosifone insegna solo a ignorare le spie',
+      B.scarto < 12, `${B.scarto.toFixed(1)}° di scarto stimato, soglia 12°`);
+    for (let t = 0; t < 90; t++) skyPonteAggiorna(B, 0, 70, 1, 1 / 60);   // in tutto due secondi
+    prova('un disturbo che DURA invece sì, ed è quello che va detto',
+      B.scarto > 12, `${B.scarto.toFixed(1)}° dopo due secondi`);
+  }
+
+  // Il salto fra 359° e 1° non deve valere mezzo giro di errore: è l'errore
+  // che una media aritmetica di angoli fa sempre.
+  {
+    const B = nuovoPonte(); B.ponte = 359;
+    for (let t = 0; t < 60 * 30; t++) skyPonteAggiorna(B, 0, 2, 1, 1 / 60);
+    prova('attraversando il Nord il ponte fa due gradi, non trecentocinquantotto',
+      Math.abs(skyScartoAngoli(B.ponte, 2)) < 0.3, `arriva a ${B.ponte.toFixed(2)}°`);
+  }
+
+  // Senza nessuna lettura magnetica non si inventa un Nord: si dichiara che
+  // non c'è, e il quadrante lo dice smorzandosi.
+  {
+    const B = nuovoPonte();
+    skyPonteAggiorna(B, 100, 140, 0, 1 / 60);
+    prova('senza magnetometro il ponte resta vuoto invece di inventarsi il Nord', B.ponte === null);
+  }
+
+  // Dopo una taratura su un astro il magnetometro non deve più smontarla in
+  // pochi secondi: la costante di tempo si allunga di più di venti volte.
+  {
+    const libero = nuovoPonte(), tarato = nuovoPonte();
+    libero.ponte = 0; tarato.ponte = 0; tarato.tarata = { astro: 'Luna' };
+    for (let t = 0; t < 60 * 5; t++) {
+      skyPonteAggiorna(libero, 0, 20, 1, 1 / 60);
+      skyPonteAggiorna(tarato, 0, 20, 1, 1 / 60);
+    }
+    prova('dopo la taratura su un astro il magnetometro corregge molto più piano',
+      tarato.ponte < libero.ponte / 5,
+      `in cinque secondi il ponte libero si sposta di ${libero.ponte.toFixed(1)}°, ` +
+      `quello tarato di ${tarato.ponte.toFixed(1)}°`);
+  }
+
+  // ------------------------------------------------------------------
+  nota('<b>D. La declinazione magnetica (WMM 2025), contro il calcolatore del NOAA.</b>');
+
+  // Il World Magnetic Model 2025 è **copiato** da app.js, coefficienti
+  // compresi: questa pagina non carica app.js, e cento righe di ricorsione di
+  // Legendre non provate sono cento righe che sbagliano in silenzio — una
+  // declinazione storta di dieci gradi disegna un cielo perfettamente
+  // plausibile. I coefficienti restano fermi fino al 2030.
+  const SKY_WMM = {
+    epoca: 2025.0,
+    nMax: 12,
+    g: [0,-29351.8,-1410.8,-2556.6,2951.1,1649.3,1361,-2404.1,1243.8,453.6,895,799.5,55.7,-281.1,12.1,-233.2,368.9,187.2,-138.7,-142,20.9,64.4,63.8,76.9,-115.7,-40.9,14.9,-60.7,79.5,-77,-8.8,59.3,15.8,2.5,-11.1,14.2,23.2,10.8,-17.5,2,-21.7,16.9,15,-16.8,0.9,4.6,7.8,3,-0.2,-2.5,-13.1,2.4,8.6,-8.7,-12.9,-1.3,-6.4,0.2,2,-1,-0.6,-0.9,1.5,0.9,-2.7,-3.9,2.9,-1.5,-2.5,2.4,-0.6,-0.1,-0.6,-0.1,1.1,-1,-0.2,2.6,-2,-0.2,0.3,1.2,-1.3,0.6,0.6,0.5,-0.1,-0.4,-0.2,-1.3,-0.7],
+    h: [0,0,4545.4,0,-3133.6,-815.1,0,-56.6,237.5,-549.5,0,278.6,-133.9,212,-375.6,0,45.4,220.2,-122.9,43,106.1,0,-18.4,16.8,48.8,-59.8,10.9,72.7,0,-48.9,-14.4,-1,23.4,-7.4,-25.1,-2.3,0,7.1,-12.6,11.4,-9.7,12.7,0.7,-5.2,3.9,0,-24.8,12.2,8.3,-3.3,-5.2,7.2,-0.6,0.8,10,0,3.3,0,2.4,5.3,-9.1,0.4,-4.2,-3.8,0.9,-9.1,0,0,2.9,-0.6,0.2,0.5,-0.3,-1.2,-1.7,-2.9,-1.8,-2.3,0,-1.3,0.7,1,-1.4,0,0.6,-0.1,0.8,0.1,-1,0.1,0.2],
+    dg: [0,12,9.7,-11.6,-5.2,-8,-1.3,-4.2,0.4,-15.6,-1.6,-2.4,-6,5.6,-7,0.6,1.4,0,0.6,2.2,0.9,-0.2,-0.4,0.9,1.2,-0.9,0.3,0.9,0,-0.1,-0.1,0.5,-0.1,-0.8,-0.8,0.8,-0.1,0.2,0,0.5,-0.1,0.3,0.2,0,0.2,0,-0.1,0.1,0.3,-0.3,0,0.3,-0.1,0.1,-0.1,0.1,0,0.1,0.1,0,-0.3,0,-0.1,-0.1,0,0,0,0,0,0,0,-0.1,0,0,-0.1,-0.1,-0.1,-0.1,0,0,0,0,0,0,0.1,0,0,0,-0.1,0,-0.1],
+    dh: [0,0,-21.5,0,-27.7,-12.1,0,4,-0.3,-4.1,0,-1.1,4.1,1.6,-4.4,0,-0.5,2.2,0.4,1.7,1.9,0,0.3,-1.6,-0.4,0.9,0.7,0.9,0,0.6,0.5,-0.8,0,-1,0.6,-0.2,0,-0.2,0.5,-0.4,0.4,-0.5,-0.6,0.3,0.2,0,-0.3,0.3,-0.3,0.3,0.2,-0.1,-0.2,0.4,0.1,0,0,0,-0.2,0.1,-0.1,0.1,0,-0.1,0.2,0,0,0,0.1,0,0.1,0,0,0.1,0,0,0,0,0,0,0,-0.1,0.1,0,0,0,0,0,0,0,-0.1]
+  };
+
+  // Declinazione magnetica in gradi (positiva se il Nord magnetico sta a Est di
+  // quello vero) al livello del mare, nel luogo e nell'istante dati.
+  function skyDeclinazioneMagnetica(lat, lon, quando) {
+    const M = SKY_WMM, nMax = M.nMax;
+    const data = quando instanceof Date ? quando : new Date(quando || Date.now());
+    const anno = data.getUTCFullYear();
+    const annoDecimale = anno + (data.getTime() - Date.UTC(anno, 0, 1)) / (365 * 86400000);
+    // Fuori dalla finestra di validità il modello si estrapola: peggiora di
+    // qualche decimo di grado all'anno, sempre meglio che ignorare il problema.
+    const dt = Math.max(-5, Math.min(10, annoDecimale - M.epoca));
+
+    // Dalla latitudine geodetica (quella del GPS) a quella geocentrica, che è
+    // il sistema in cui il modello è scritto. Ellissoide WGS84, raggio di
+    // riferimento del modello 6371.2 km.
+    const a = 6378.137, b = 6356.7523142, re = 6371.2;
+    const e2 = 1 - (b * b) / (a * a);
+    const sinLat = Math.sin(lat * SKY_D2R), cosLat = Math.cos(lat * SKY_D2R);
+    const rc = a / Math.sqrt(1 - e2 * sinLat * sinLat);
+    const xp = rc * cosLat;
+    const zp = rc * (1 - e2) * sinLat;
+    const r = Math.sqrt(xp * xp + zp * zp);
+    const phi = Math.asin(zp / r);
+    const x = Math.sin(phi);
+    const z = Math.sqrt((1 - x) * (1 + x)); // = cos(phi), scritto così per non perdere cifre ai poli
+
+    // Polinomi associati di Legendre semi-normalizzati alla Schmidt, con la
+    // loro derivata rispetto alla latitudine (ricorsione standard del WMM).
+    const idx = (n, m) => n * (n + 1) / 2 + m;
+    const P = [1], dP = [0], norma = [1];
+    for (let n = 1; n <= nMax; n++) {
+      for (let m = 0; m <= n; m++) {
+        const i = idx(n, m);
+        if (n === m) {
+          const i1 = idx(n - 1, m - 1);
+          P[i] = z * P[i1];
+          dP[i] = z * dP[i1] + x * P[i1];
+        } else if (m > n - 2) {
+          const i2 = idx(n - 1, m);
+          P[i] = x * P[i2];
+          dP[i] = x * dP[i2] - z * P[i2];
+        } else {
+          const i1 = idx(n - 2, m), i2 = idx(n - 1, m);
+          const k = ((n - 1) * (n - 1) - m * m) / ((2 * n - 1) * (2 * n - 3));
+          P[i] = x * P[i2] - k * P[i1];
+          dP[i] = x * dP[i2] - z * P[i2] - k * dP[i1];
+        }
+      }
+    }
+    for (let n = 1; n <= nMax; n++) {
+      norma[idx(n, 0)] = norma[idx(n - 1, 0)] * (2 * n - 1) / n;
+      for (let m = 1; m <= n; m++) {
+        norma[idx(n, m)] = norma[idx(n, m - 1)] *
+          Math.sqrt(((n - m + 1) * (m === 1 ? 2 : 1)) / (n + m));
+      }
+    }
+    for (let n = 1; n <= nMax; n++) {
+      for (let m = 0; m <= n; m++) {
+        const i = idx(n, m);
+        P[i] *= norma[i];
+        dP[i] *= -norma[i];
+      }
+    }
+
+    // Seni e coseni dei multipli della longitudine, e potenze del raggio
+    const cosL = Math.cos(lon * SKY_D2R), sinL = Math.sin(lon * SKY_D2R);
+    const cosM = [1, cosL], sinM = [0, sinL];
+    for (let m = 2; m <= nMax; m++) {
+      cosM[m] = cosM[m - 1] * cosL - sinM[m - 1] * sinL;
+      sinM[m] = cosM[m - 1] * sinL + sinM[m - 1] * cosL;
+    }
+    const rp = [(re / r) * (re / r)];
+    for (let n = 1; n <= nMax; n++) rp[n] = rp[n - 1] * (re / r);
+
+    // Somma delle armoniche: bx verso Nord, by verso Est, bz verso il basso
+    let bx = 0, by = 0, bz = 0;
+    for (let n = 1; n <= nMax; n++) {
+      for (let m = 0; m <= n; m++) {
+        const i = idx(n, m);
+        const g = M.g[i] + dt * M.dg[i];
+        const h = M.h[i] + dt * M.dh[i];
+        bz -= rp[n] * (g * cosM[m] + h * sinM[m]) * (n + 1) * P[i];
+        by += rp[n] * (g * sinM[m] - h * cosM[m]) * m * P[i];
+        bx -= rp[n] * (g * cosM[m] + h * sinM[m]) * dP[i];
+      }
+    }
+    const cosPhi = Math.cos(phi);
+    if (Math.abs(cosPhi) > 1e-10) {
+      by /= cosPhi;
+    } else {
+      // Ai poli la divisione per il coseno esplode: la componente verso Est si
+      // ricava con la formula limite prevista dal modello.
+      by = 0;
+      let q1 = 1;
+      const Ps = [1];
+      for (let n = 1; n <= nMax; n++) {
+        const i = idx(n, 1);
+        const q2 = q1 * (2 * n - 1) / n;
+        const q3 = q2 * Math.sqrt(2 * n / (n + 1));
+        q1 = q2;
+        if (n === 1) {
+          Ps[n] = Ps[n - 1];
+        } else {
+          const k = ((n - 1) * (n - 1) - 1) / ((2 * n - 1) * (2 * n - 3));
+          Ps[n] = x * Ps[n - 1] - k * Ps[n - 2];
+        }
+        by += rp[n] * ((M.g[i] + dt * M.dg[i]) * sinM[1] - (M.h[i] + dt * M.dh[i]) * cosM[1]) * Ps[n] * q3;
+      }
+    }
+
+    // Il campo è nel sistema geocentrico: va riportato all'orizzonte locale
+    const psi = phi - lat * SKY_D2R;
+    const nord = bx * Math.cos(psi) - bz * Math.sin(psi);
+    return Math.atan2(by, nord) * SKY_R2D;
+  }
+
+  {
+    const quando = new Date(Date.UTC(2025, 6, 2));
+    [['Milano', 45.46, 9.19, 3.55], ['Londra', 51.50, -0.13, 0.99],
+     ['Seattle', 47.61, -122.33, 15.03], ['Sydney', -33.87, 151.21, 12.80],
+     ['Città del Capo', -33.92, 18.42, -26.50], ['Reykjavik', 64.13, -21.90, -11.41]
+    ].forEach(([nome, lat, lon, atteso]) => {
+      const d = skyDeclinazioneMagnetica(lat, lon, quando);
+      prova(`declinazione a ${nome}: ${atteso >= 0 ? '+' : ''}${atteso}°`,
+        Math.abs(d - atteso) < 0.3, `calcolata ${d >= 0 ? '+' : ''}${d.toFixed(2)}°`);
+    });
+    // Ai poli la componente verso Est si ricava con una formula limite: senza,
+    // è una divisione per il coseno della latitudine, cioè per zero.
+    const polo = skyDeclinazioneMagnetica(90, 0, quando);
+    prova('al polo Nord esatto la formula limite dà un numero e non un infinito',
+      isFinite(polo), `${polo.toFixed(1)}°`);
+    // Il verso: con il Nord magnetico a Est di quello vero, il cielo va girato
+    // all'indietro di altrettanto. Sbagliare segno raddoppia l'errore invece
+    // di toglierlo, e a occhio è indistinguibile.
+    const d = skyDeclinazioneMagnetica(45.46, 9.19, quando);
+    const M = skyGiraMatriceAzimut(skyMatriceDispositivo(0, 90 * G, 0), -d);
+    const azCorretto = azimutDi(applica(M, [0, 0, -1]));
+    const azGrezzo = azimutDi(applica(skyMatriceDispositivo(0, 90 * G, 0), [0, 0, -1]));
+    // Il verso è la cosa che a occhio non si vede: sbagliarlo raddoppia
+    // l'errore invece di toglierlo, e il cielo resta bellissimo. Il Nord
+    // magnetico a Est di quello vero vuol dire che l'azimut vero di ogni
+    // direzione è MAGGIORE di quello letto sulla bussola, di quei gradi lì.
+    prova('la declinazione si somma all\'azimut letto: Nord magnetico a Est, azimut maggiore',
+      Math.abs(skyScartoAngoli(azCorretto, azGrezzo) - d) < 1e-9,
+      `${skyScartoAngoli(azCorretto, azGrezzo).toFixed(2)}° per una declinazione di +${d.toFixed(2)}°`);
+  }
+
+  // ------------------------------------------------------------------
+  nota('<b>E. La taratura su un astro: l\'unico riferimento che una mappa non ha.</b>');
+
+  // Copia della scelta dell'astro (app.js §7.1-quinquies). L'altezza la dà la
+  // gravità e non sbaglia mai: è lei a dire QUALE astro si sta puntando,
+  // mentre l'azimut può essere lontano quanto è grande l'errore della
+  // bussola — che è proprio il numero che si sta cercando.
+  const SKY_TARA_ALT_MAX = 8, SKY_TARA_AZ_MAX = 60, SKY_TARA_MAG_MAX = 2.0;
+  const SKY_TARA_PIANETI = new Set(['Venus', 'Jupiter', 'Mars', 'Saturn', 'Mercury']);
+  function astroDaTarare(oggetti, mirino) {
+    let scelto = null;
+    for (const o of oggetti) {
+      if (!o || typeof o.az !== 'number' || typeof o.alt !== 'number') continue;
+      if (o.alt < 3) continue;
+      let luce;
+      if (o.tipo === 'sole' || o.tipo === 'luna') luce = -30;
+      else if (o.tipo === 'pianeta') luce = SKY_TARA_PIANETI.has(o.id) ? -2 : 99;
+      else if (o.tipo === 'stella') luce = typeof o.mag === 'number' ? o.mag : 99;
+      else continue;
+      if (luce > SKY_TARA_MAG_MAX) continue;
+      const dAlt = Math.abs(o.alt - mirino.alt);
+      if (dAlt > SKY_TARA_ALT_MAX) continue;
+      const dAz = Math.abs(skyScartoAngoli(o.az, mirino.az)) * Math.cos(mirino.alt * G);
+      if (dAz > SKY_TARA_AZ_MAX) continue;
+      const punteggio = luce + dAlt * 0.1 + dAz * 0.02;
+      if (!scelto || punteggio < scelto.punteggio) scelto = { o, punteggio };
+    }
+    return scelto;
+  }
+
+  const luna = { id: 'Moon', nome: 'Luna', tipo: 'luna', az: 200, alt: 35 };
+  const giove = { id: 'Jupiter', nome: 'Giove', tipo: 'pianeta', az: 150, alt: 35 };
+  const urano = { id: 'Uranus', nome: 'Urano', tipo: 'pianeta', az: 152, alt: 35 };
+  const vega = { id: 'Star3', nome: 'Vega', tipo: 'stella', mag: 0.03, az: 151, alt: 36 };
+  const debole = { id: 'Star9', nome: 'una stellina', tipo: 'stella', mag: 3.4, az: 150.5, alt: 35 };
+  const iss = { id: 'sat-iss', nome: 'ISS', tipo: 'satellite', az: 150, alt: 35 };
+
+  // Il caso vero: la bussola sbaglia di 22°, il mirino è fisicamente sulla
+  // Luna, e la Luna disegnata è 22° più in là.
+  {
+    const errore = 22;
+    const mirino = { az: skyGradiTondi(luna.az - errore), alt: luna.alt };
+    const scelta = astroDaTarare([luna, giove, vega], mirino);
+    const correzione = scelta ? skyScartoAngoli(scelta.o.az, mirino.az) : null;
+    prova('puntando la Luna con la bussola sbagliata di 22° si riconosce la Luna',
+      !!scelta && scelta.o.nome === 'Luna');
+    prova('…e la correzione trovata è esattamente l\'errore della bussola',
+      Math.abs(correzione - errore) < 1e-9, `${correzione.toFixed(3)}° contro ${errore}° veri`);
+    // …e applicandola l'errore va a zero, non «quasi».
+    const dopo = skyScartoAngoli(luna.az, skyGradiTondi(mirino.az + correzione));
+    prova('applicata, l\'errore residuo è zero per costruzione',
+      Math.abs(dopo) < 1e-9, `${Math.abs(dopo).toExponential(1)}°`);
+  }
+
+  prova('un astro alla stessa altezza ma a 40° di azimut si trova lo stesso',
+    !!astroDaTarare([giove], { az: 190, alt: 35 }));
+  prova('uno alla stessa azimut ma venti gradi più in alto no: l\'altezza non sbaglia mai',
+    astroDaTarare([giove], { az: 150, alt: 55 }) === null);
+  prova('fra Giove e una stellina di terza grandezza vince Giove',
+    astroDaTarare([giove, debole], { az: 150, alt: 35 }).o.nome === 'Giove');
+  prova('su Urano non si tara: nessuno lo riconosce in cielo',
+    astroDaTarare([urano], { az: 152, alt: 35 }) === null);
+  prova('e nemmeno su una stazione spaziale, che fra un minuto è altrove',
+    astroDaTarare([iss], { az: 150, alt: 35 }) === null);
+  prova('un astro a due gradi sull\'orizzonte si lascia stare (rifrazione e tetti)',
+    astroDaTarare([{ id: 'Moon', nome: 'Luna', tipo: 'luna', az: 200, alt: 2 }],
+      { az: 200, alt: 2 }) === null);
+})();
+
 // Rimettere a posto la `fetch` vera: da qui in giù la pagina torna a parlare
 // col mondo, e le prove che aspettano hanno già catturato quella finta.
 Promise.all(proveInVolo).then(() => { window.fetch = overVero; },
