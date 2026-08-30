@@ -1274,6 +1274,176 @@ function rilPuntoVisibileA(az, alt) {
   return { km: RIL_DIST[migliore] / 1000, alt: altezzaMigliore, scarto };
 }
 
+// A che quota sta il suolo lungo un raggio, fra due distanze: il **minimo**
+// dei nodi della maglia che ci cascano dentro, `null` se non ce n'è nessuno.
+//
+// Serve alla quota degli specchi d'acqua, e serve per una ragione che non è
+// la finezza — anche se centosei anelli al posto di diciotto fette non
+// guastano, e sono la differenza fra avere un campione dentro a un fiume e
+// non averne nessuno.
+//
+// La ragione è che **le due misure devono venire dallo stesso modello**. Il
+// piano del lago si ricavava dalla griglia grossa (Copernicus a novanta
+// metri, dal servizio delle quote) mentre il terreno che lo copre lo disegna
+// questa maglia (SRTM a trenta, dalle tessere): sono due misure diverse
+// della stessa collina, e in terreno ripido non danno lo stesso metro — dieci
+// o venti di scarto sono normali, ed è la ragione per cui `rilievo.scarto`
+// esiste. Confrontarle vuol dire chiedere se la riva sta sopra il lago
+// sapendo le due quote da due fonti che litigano: la riva risulta più alta
+// dell'acqua di quanto litigano, e il lago viene tagliato per un dislivello
+// che nessuno dei due modelli afferma. Lo scarto è tolto **nel punto in cui
+// si sta**, non ovunque, quindi il litigio resta tutto intero là fuori.
+//
+// Letta di qui, invece, la quota dell'acqua e quella del terreno davanti sono
+// lo stesso array: il confronto torna a essere una domanda di geometria.
+//
+// L'azimut non si interpola, e non è una scorciatoia: la maglia ha
+// settecentoventi raggi e le bande dell'acqua pure, con lo stesso passo di
+// mezzo grado. È lo stesso raggio.
+function rilQuoteDentro(az, daM, aM) {
+  if (!rilPronto() || !rilievo.quota) return null;
+  const nr = RIL_ANELLI;
+  const i = ((Math.round(((az % 360) + 360) % 360 / RIL_PASSO_AZ) % RIL_AZIMUT) + RIL_AZIMUT) % RIL_AZIMUT;
+  const a = i * nr;
+  let minimo = null;
+  for (let k = 0; k < nr; k++) {
+    const d = RIL_DIST[k];
+    if (d < daM) continue;
+    if (d > aM) break;
+    const q = rilievo.quota[a + k];
+    if (minimo === null || q < minimo) minimo = q;
+  }
+  return minimo;
+}
+
+// I due nodi che **abbracciano** un tratto: l'ultimo prima e il primo dopo.
+// È il ripiego di qui sopra per gli specchi troppo stretti perché un anello
+// ci caschi dentro — un fiume, una pozza — e di uno specchio d'acqua dice la
+// sola cosa che si sa comunque: che è più basso di quello che ha attorno.
+function rilQuoteAttorno(az, daM, aM) {
+  if (!rilPronto() || !rilievo.quota) return null;
+  const nr = RIL_ANELLI;
+  const i = ((Math.round(((az % 360) + 360) % 360 / RIL_PASSO_AZ) % RIL_AZIMUT) + RIL_AZIMUT) % RIL_AZIMUT;
+  const a = i * nr;
+  let prima = null, dopo = null;
+  for (let k = 0; k < nr; k++) {
+    const d = RIL_DIST[k];
+    if (d < daM) prima = rilievo.quota[a + k];
+    else if (d > aM) { dopo = rilievo.quota[a + k]; break; }
+  }
+  if (prima === null) return dopo;
+  if (dopo === null) return prima;
+  return Math.min(prima, dopo);
+}
+
+// La cresta che serve all'**acqua**, che è una domanda diversa da tutte le
+// altre di questo file — e per una ragione geometrica che vale la pena
+// scrivere, perché è quella che ha tenuto i laghi fuori dallo schermo.
+//
+// Un lago è un **piano**. Guardandolo dall'alto, ogni suo punto sta sotto la
+// linea dell'orizzonte, e la riva vicina è il punto più basso di tutti: la
+// sua depressione è la più grande. Ma la riva è anche il posto dove il
+// terreno **finisce a quel livello** — cioè, per un pendio che scende al
+// lago, il suolo davanti alla riva ha quasi esattamente la stessa
+// depressione dell'acqua che le sta dietro. Chiedere «la cresta davanti è
+// più alta dell'acqua?» con un margine di un ventesimo di grado vuol dire
+// giocarsi la riva a testa o croce: misurato sul banco, con un modello del
+// suolo che sbaglia di otto metri — cioè un tetto, un albero, la normale
+// differenza fra due modelli — la riva arretra di settanta metri in media e
+// di un chilometro e mezzo al peggio, e in una direzione su venti il lago
+// sparisce del tutto.
+//
+// La cura viene dalla stessa geometria. Un campione che sta **al livello
+// dell'acqua o sotto** non può nascondere quell'acqua, mai: se è più vicino,
+// la sua depressione è più grande (stesso dislivello diviso una distanza
+// minore), quindi sta sotto la linea di vista. Quelli che tagliano la riva
+// sono perciò solo quelli che stanno **qualche metro sopra** il piano del
+// lago — e «qualche metro» è esattamente la misura dell'errore di un modello
+// di superficie. Quindi il margine si scrive in **metri di quota** e non in
+// gradi: ogni campione si abbassa di `abbassaM` metri prima di chiedergli se
+// copre. A trecento metri sono più di un grado, a cinque chilometri sette
+// centesimi — cioè tanto dove il rumore fa danno e niente dove non ne fa.
+//
+// Il risultato è in **tangente** e non in gradi, perché il confronto con la
+// linea di vista di un punto è un confronto fra pendenze: `tan = (quota −
+// occhio − curvatura) / distanza`, la stessa quantità che `rilAngolo`
+// arcotangenta. E si accumula il massimo, come `fronte`: ogni voce è
+// «la pendenza più alta incontrata fino a qui».
+// La pendenza si ricava dalle **quote** e non dagli angoli già pronti, e non
+// è pignoleria: sono settantaseimila anelli a giro (settecentoventi raggi per
+// centosei), e altrettante tangenti da calcolare costavano più di tutto il
+// resto della funzione. Da `rilievo.quota` la stessa quantità esce con una
+// sottrazione e una divisione — ed esce anche più esatta, perché non passa
+// per la tosatura a ottantacinque gradi che `rilAngolo` mette al nadir.
+let rilFrontiAcquaBuf = null;
+
+function rilFrontiAcqua(az, abbassaM, tettoGradi, finoA) {
+  if (!rilPronto() || !rilievo.quota) return null;
+  const nr = RIL_ANELLI;
+  // Più in là dell'acqua più lontana di questa direzione non serve camminare:
+  // la cresta oltre la banda non copre niente che si stia guardando. Su un
+  // posto con un lago vicino sono venti anelli invece di centosei, e questa
+  // funzione gira settecentoventi volte a ogni ricostruzione della maglia.
+  // (Il passo di riga resta `nr`: sono due numeri diversi, e confonderli vuol
+  // dire leggere le quote di un altro raggio.)
+  const quanti = (typeof finoA === 'number' && isFinite(finoA) && finoA > 0)
+    ? Math.min(nr, Math.ceil(rilAnelloDi(finoA)) + 2)
+    : nr;
+  if (!rilFrontiAcquaBuf) rilFrontiAcquaBuf = new Float32Array(nr);
+  const fuori = rilFrontiAcquaBuf;
+  const dove = (((az % 360) + 360) % 360) / RIL_PASSO_AZ;
+  const i = Math.floor(dove) % RIL_AZIMUT;
+  const j = (i + 1) % RIL_AZIMUT;
+  const t = dove - Math.floor(dove);
+  const s = t * t * (3 - 2 * t);
+  const a = i * nr, b = j * nr;
+  // L'abbassamento non può superare qualche grado, ed è il freno che tiene in
+  // piedi il primo piano: a tre metri dai piedi sei metri di quota sono
+  // sessantatré gradi, cioè «niente qui davanti copre niente» — e chi guarda
+  // l'acqua dall'orlo di una scogliera ha proprio l'orlo a nasconderla.
+  const tetto = Math.tan((tettoGradi || 3) * Math.PI / 180);
+  // La camera con cui la maglia è stata costruita: è l'occhio a cui gli
+  // angoli di `rilievo.alt` sono riferiti, e dev'essere lo stesso qui.
+  const occhio = typeof rilievo.occhio === 'number'
+    ? rilievo.occhio
+    : ((typeof terreno !== 'undefined' && typeof terreno.quota === 'number' ? terreno.quota : 0)
+       + TERRENO_ALTEZZA_OCCHIO_M);
+  const curva = (1 - TERRENO_RIFRAZIONE) / (2 * TERRENO_RAGGIO_KM * 1000);
+  let massimo = -Infinity;
+  for (let k = 0; k < quanti; k++) {
+    const d = RIL_DIST[k];
+    // Il **grembiule** non risponde a questa domanda, e lasciarglielo fare è
+    // il modo in cui l'acqua spariva tutta insieme.
+    //
+    // I dieci anelli sotto i venticinque metri stanno lì per **disegnare** il
+    // suolo sotto le scarpe, e la loro quota è la lettura bilineare della
+    // cella di raster su cui si sta: ventisette metri di lato, cioè lo stesso
+    // numero che c'è sotto i piedi. Non portano nessuna informazione propria
+    // — non possono, il modello lì dentro non ha niente da dire — ma a
+    // quindici centimetri dall'occhio un metro di quota vale ottantun gradi.
+    // Basta perciò che la camera e la maglia non siano d'accordo di due metri
+    // (una quota che arriva dalla rete, l'occhio portato al pelo dell'acqua,
+    // un fix del GPS a metà strada) perché il primo anello dichiari una
+    // parete verticale — e siccome `fronte` è un massimo che si accumula,
+    // quella parete si ricopia in **tutti** gli anelli di quel raggio: da lì
+    // in poi qualunque cosa risulta coperta, a qualunque distanza. Misurato
+    // sul banco con due metri di disaccordo: ottantanove gradi di cresta in
+    // tutte e settecentoventi le direzioni, e zero acqua disegnata su
+    // trecentotrentacinque direzioni che ne avevano.
+    //
+    // Il suolo sotto le scarpe non nasconde niente. La camminata comincia
+    // dove il modello ricomincia a parlare.
+    if (d < RIL_VICINO_M) { fuori[k] = -Infinity; continue; }
+    const q = rilievo.quota[a + k] * (1 - s) + rilievo.quota[b + k] * s;
+    const v = (q - occhio) / d - curva * d - Math.min(tetto, abbassaM / d);
+    if (v > massimo) massimo = v;
+    fuori[k] = massimo;
+  }
+  // `n` è fin dove il buffer è stato riempito in questo giro: oltre ci sono i
+  // resti del giro di prima, e chi legge non deve guardarli.
+  return { tan: fuori, dist: RIL_DIST, n: quanti };
+}
+
 function rilFrontiA(az, fuori) {
   if (!rilPronto()) return null;
   const nd = TERRENO_DISTANZE.length;

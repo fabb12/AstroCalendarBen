@@ -4,78 +4,101 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-**La bussola** (`app.js` §7.1-quinquies, nuova). La segnalazione: «i punti
-cardinali sono imprecisi, come se il magnetometro a un certo punto
-impazzisse — eppure Google Maps, sullo stesso telefono, è preciso».
+**I laghi che non si vedono stando a due passi da loro** (`terreno.js` §12,
+`rilievo.js` §7). La segnalazione: «nel planetario, in prossimità del Lago di
+Como, dovrei vedere l'acqua e non c'è nulla; e dove c'è, il profilo non è
+giusto».
 
-Sono vere tutt'e due le cose, e il magnetometro non c'entra: c'entra **la
-posa**. Una bussola di sistema (`CLHeading` su iOS, il canale «heading» di
-Android) misura la direzione del bordo superiore del telefono **proiettato
-sull'orizzonte**, e quella proiezione è lunga `|cos β|`. Chi guarda una mappa
-il telefono lo tiene quasi piatto: la proiezione è lunga quanto il telefono e
-la risposta è ottima. Chi guarda il cielo lo punta in su: la proiezione si
-accorcia e verso lo zenit si annulla. Misurato nel §29: mezzo grado di errore
-d'assetto vale **mezzo grado in piano e trenta gradi col telefono ritto**. La
-stessa cosa capita alla terna alpha/beta/gamma, che a β = 90° perde un grado
-di libertà — due terne con alpha lontane quaranta gradi descrivono lo stesso
-identico assetto — ed è la posa normale di un planetario.
+La causa non sta nei dati di OpenStreetMap e non sta nel disegno: sta in una
+**geometria che è un pareggio**. Guardando un lago da un pendio che ci scende
+dentro, la riva è il punto in cui il terreno arriva al livello dell'acqua —
+quindi il suolo davanti alla riva e la superficie dietro di lei hanno la
+**stessa depressione**. Il conto che decide se un lago si vede confrontava i
+due angoli con un ventesimo di grado di franchigia, che a settecento metri
+sono sessantacinque centimetri di quota: qualunque cosa di più grande — un
+tetto, un albero, il normale disaccordo fra due modelli del suolo sullo stesso
+pendio — taglia la riva. E siccome la cresta è un massimo che si **accumula**,
+quello che viene tagliato resta tagliato per tutte le distanze successive.
 
-Tre cure, in ordine di quanto pesano.
+Misurato sul banco (una scena tipo Como: osservatore a 296 m, ramo di lago a
+199, ottocento metri di riva), con un modello del suolo sbagliato di otto
+metri: settanta metri di arretramento mediano della riva, millecinquecento al
+peggio, e una direzione su venti senz'acqua. Con quindici — cioè con un
+condominio, che è quello che Copernicus si porta dentro in un paese —
+centoquaranta metri e tre chilometri e mezzo.
 
-1. **Il quaternione al posto degli angoli di Eulero.** Dove c'è
-   (`AbsoluteOrientationSensor`, Android/Chrome) si legge direttamente la
-   fusione del sistema — lo stesso `TYPE_ROTATION_VECTOR` che usa Maps —
-   senza il giro per gli angoli: gravità e campo insieme determinano
-   l'assetto completo, e pose degeneri non ce ne sono. `skyAvviaSensoreAssetto()`,
-   `skyMatriceDaQuaternione()`.
-2. **Il ponte del giroscopio.** Dove il quaternione non c'è (iOS: niente
-   Generic Sensor API, e `webkitCompassHeading` è proprio la bussola che si
-   accorcia) si misura lo scarto fra l'assetto stabile del giroscopio e il
-   Nord magnetico **mentre il telefono è in una posa in cui la bussola è
-   affidabile**, e lo si tiene: da lì in poi il Nord lo porta il giroscopio.
-   Il peso di ogni correzione è il **quadrato** della bontà della posa
-   (`skyPonteAggiorna`), quindi una lettura presa col telefono ritto conta
-   ventitré volte meno di una presa in piano invece di contare uguale. Si
-   legge anche `webkitCompassAccuracy`, che iOS dichiara e che nessuno
-   guardava.
-3. **La taratura su un astro** (`skyTaraSuAstro`, tasto «Tara su un astro» in
-   «Bussola e posizione»). Le prime due tolgono l'errore della geometria, non
-   quello del ferro: una custodia con la calamita o il cruscotto dell'auto
-   spostano il campo di gradi, e nessun software li può indovinare — Maps, lì,
-   chiede l'otto in aria e spera. Ma un planetario ha un riferimento che una
-   mappa non ha: **sa dov'è il Sole**. Si punta la Luna, il Sole, un pianeta o
-   una stella luminosa e si tocca il tasto: la correzione diventa **esatta per
-   costruzione**. Quale astro sia lo dice l'altezza (±8°, la dà la gravità e
-   non sbaglia mai), non l'azimut (±60°, che è proprio l'errore che stiamo
-   cercando). Dopo, il ponte rallenta di più di venti volte, se no il
-   magnetometro se la rimangerebbe in pochi secondi.
+Tre cure, e sono tutte geometria e non tarature.
+
+1. **La franchigia si scrive in metri, non in gradi.** Un campione che sta al
+   livello dell'acqua o sotto non può nasconderla mai: se è più vicino, lo
+   stesso dislivello diviso una distanza minore fa una depressione maggiore,
+   cioè sta sotto la linea di vista. Quello che taglia una riva è quindi solo
+   terreno che si alza **sopra il piano del lago**, e di quanto debba alzarsi
+   perché gli si creda è l'incertezza del modello: sei metri
+   (`ACQUE_OCCLUSIONE_ABBASSA_M`, tosata a tre gradi per non spegnere il primo
+   piano). Il confronto passa in **pendenza** (`acqueTangenteVista`), dove
+   abbassare un campione di tanti metri è una divisione, e la cresta
+   dell'acqua se la costruisce `acqueFrontiAcqua` — dal rilievo quando c'è,
+   cioè dalla superficie che si sta davvero disegnando e coi suoi centosei
+   anelli invece delle diciotto fette della griglia grossa.
+
+2. **L'occhio è uno solo** (`acqueOcchio`). L'acqua si guardava con
+   `terreno.quota`, che è la quota del *centro della griglia grossa*: resta
+   indietro di chilometri muovendosi, e `acqueAllineaOcchio` la riscrive di
+   colpo quando ci si accorge di stare sull'acqua. La cresta però veniva dalla
+   maglia del rilievo, costruita con un'altra camera. Vicino ai piedi due
+   metri di differenza sono decine di gradi.
+
+3. **Il grembiule non risponde a questa domanda.** I dieci anelli del rilievo
+   sotto i venticinque metri servono a *disegnare* il suolo sotto le scarpe:
+   la loro quota è la lettura bilineare della cella di raster su cui si sta e
+   informazione propria non ne portano. Ma a quindici centimetri un metro e
+   sei di quota vale ottantacinque gradi, e quel valore si ricopia in tutti
+   gli anelli del raggio — misurato sul banco, ottantanove gradi di cresta in
+   tutte e settecentoventi le direzioni e **zero acqua** su trecentotrentacinque
+   direzioni che ne avevano. `rilFrontiAcqua` comincia a camminare da
+   `RIL_VICINO_M`.
 
 Nella stessa passata, tre cose collegate:
 
-- **Il cielo non gira più di colpo «a un certo punto».** `deviceorientation`
-  (relativo su Android, alpha da un punto qualunque) subentrava a
-  `deviceorientationabsolute` dopo tre secondi di silenzio, e quel cambio
-  della guardia girava tutto insieme. Adesso non si sostituiscono: il
-  relativo è la metà stabile del ponte.
-- **La bussola disturbata si dice.** Il disaccordo fra magnetometro e
-  giroscopio è la sola misura di quanto stia mentendo: sopra i 12° il
-  quadrante si smorza (`data-modo="dubbia"`) e l'avviso compare al massimo
-  una volta ogni due minuti — mezzo secondo di ferro non lo fa scattare, due
-  secondi sì.
-- **Il push-to del telescopio** (`telMatriceTelefono`) usa la stessa matrice
-  del planetario: prima rifaceva i conti dagli angoli di Eulero e si
-  ritrovava una bussola peggiore di quella che gli stava accanto, con
-  l'aggravante che lì i gradi si pagano in oculari mancati.
+- **La quota di uno specchio si chiede in tre gradini** (`acqueQuoteDeiCorpi`):
+  i campioni della griglia che cascano dentro, poi quelli della maglia del
+  rilievo — che negli specchi stretti (un fiume, l'acqua a duecento metri) ci
+  arriva davvero — e solo alla fine quelli che lo abbracciano, che stanno sulla
+  riva e quindi sopra l'acqua. Prima la maglia non c'era e il secondo gradino
+  mancava. Che la maglia venga *dopo* la griglia è misurato e non ovvio: quella
+  superficie è il modello delle tessere **traslato** per accordarsi alla griglia
+  in un punto di terra ferma, mentre sull'acqua i due modelli vanno d'accordo
+  benissimo — traslarla scentra il lago esattamente di quello scarto.
 
-**§29 di `verifica.html`**, nuovo: 35 prove, tutte passate. Le due strade
-dell'assetto che devono dare la stessa matrice, il contro-esempio della posa
-(i trenta gradi contro il mezzo grado), l'invariante del ponte, il
-contro-esempio del disturbo (settanta gradi col vecchio «comanda l'ultima
-lettura», otto col ponte), il World Magnetic Model contro il calcolatore del
-NOAA in sei posti del mondo — cento righe di ricorsione di Legendre mai
-provate prima, e il **verso** della declinazione, che sbagliato raddoppia
-l'errore invece di toglierlo — e la taratura sull'astro. Suite intera: 888
-prove, l'unica rossa è quella del grembiule del rilievo (§25), che falliva
-già prima di questo lavoro.
+- **Un elenco in mano non si butta per una richiesta andata male.**
+  `acqueVisibili` chiedeva `stato === 'pronto'`, quindi un ritaglio in corso
+  mentre ci si muove o una riprova dopo un 429 spegnevano tutta l'acqua pur
+  avendola buona da un istante prima. È la lezione di `terrenoDisponibile` e di
+  `cimeVisibili`, che qui era rimasta da imparare.
 
-Cache PWA portata ad `astrocal-v229`.
+- **Un'assenza che si spiega.** `acque.conto` tiene il conto di dove si sono
+  perse le bande (fuori raggio, sopra l'occhio, coperte, troppo corte) e
+  `acqueTesto` lo scrive: «l'acqua qui attorno c'è (N tratti), ma il terreno
+  davanti la copre tutta» è un'altra cosa da «nessun lago entro venticinque
+  chilometri», e sullo schermo le due erano la stessa immagine.
+
+Misurato prima e dopo sulla stessa scena, col rilievo acceso (com'è di serie) e
+un disaccordo di dodici metri fra i due modelli del suolo: dal 96,9% di lago
+disegnato con centoquattro rive tagliate e tre direzioni vuote, al 100% senza
+niente di tagliato. Col rilievo spento e tre metri di rumore: da 283 rive
+tagliate a 19. Il conto costa 6,7 ms invece di 4,7 a ogni ricostruzione della
+maglia (non a fotogramma): la camminata si ferma all'acqua più lontana di
+quella direzione e legge le quote invece di ricalcolare settantaseimila
+tangenti.
+
+Quindici prove nuove nel §20 di `verifica.html` (in tutto 902 passate, 1
+fallita — quella è del §28 e c'era già prima di questo lavoro: «e nel grembiule
+sotto i piedi lo scarto resta comunque piccolo», 5,944°).
+
+**Quello che non si è potuto fare**: verificare sul posto vero. Da qui la rete
+verso Overpass e Open-Meteo è chiusa, quindi le misure sono su scene
+sintetiche costruite come Como e non sui dati veri di Como. Se l'acqua ancora
+non compare, adesso la riga di stato del pannello (o `acque.conto` dalla
+console) dice **quale** dei tre casi è: non è arrivata, è sopra l'occhio, o il
+terreno la copre.

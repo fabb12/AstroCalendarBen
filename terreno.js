@@ -4377,7 +4377,13 @@ const ACQUE_AREA_MIN = 4000;
 // l'acqua che c'è da disegnare c'è, e il poligono resta un poligono.
 const ACQUE_DEP_MAX_GRADI = 85;
 
-// Di quanto la cresta davanti deve superare l'acqua per nasconderla.
+// Di quanto la cresta davanti doveva superare l'acqua per nasconderla.
+//
+// Non la usa più nessuno nell'app — l'ha sostituita la franchigia in metri
+// qui sotto — e resta perché il §20 di `verifica.html` la adopera come
+// **contro-esempio**: la regola di prima, fatta girare sulla stessa scena,
+// deve arretrare la riva di centinaia di metri là dove quella nuova non la
+// muove. Toglierla vorrebbe dire perdere il metro di paragone.
 //
 // I modelli del suolo spianano gli specchi d'acqua, quindi i campioni dentro
 // a un lago **sono** la quota del lago: confrontare l'angolo dell'acqua con
@@ -4388,6 +4394,42 @@ const ACQUE_DEP_MAX_GRADI = 85;
 // meno di un pixel a qualunque ingrandimento e toglie di mezzo il
 // ballottaggio.
 const ACQUE_OCCLUSIONE_MARGINE_GRADI = 0.05;
+
+// …e di quanti **metri** si abbassa il terreno prima di chiedergli se copre.
+//
+// È la stessa domanda dell'altra costante, chiesta nell'unità giusta, ed è la
+// riga che risponde a «sono in riva al Lago di Como e l'acqua non c'è».
+//
+// Un ventesimo di grado di franchigia toglie il ballottaggio fra due numeri
+// **identici**, e per quello serviva. Ma alla riva vicina i due numeri non
+// sono identici: sono lo stesso numero più il rumore del modello del suolo,
+// che è fatto di tetti, di alberi e di novanta metri di cella. Guardando un
+// lago da un pendio che ci scende dentro — cioè come lo si guarda quasi
+// sempre — il suolo davanti alla riva ha la stessa depressione dell'acqua
+// dietro di lei per pura geometria: qualunque metro di troppo in un campione
+// diventa allora una riva che arretra. Misurato sul banco di prova, con un
+// modello sbagliato di otto metri: settanta metri di arretramento mediano,
+// millecinquecento al peggio, e una direzione su venti in cui il lago
+// spariva del tutto. Con quindici metri — un condominio, ed è quello che
+// Copernicus mette dentro a un paese — sono centoquaranta metri e tre
+// chilometri e mezzo.
+//
+// La geometria dice però anche come uscirne, ed è esatta: un campione che sta
+// **al livello dell'acqua o sotto** non può nasconderla mai. Se è più vicino
+// di lei, lo stesso dislivello diviso una distanza minore fa una depressione
+// **maggiore**, quindi quel campione sta sotto la linea di vista. Solo chi si
+// alza sopra il piano del lago può coprirlo — e quanto deve alzarsi perché
+// gli si creda è, esattamente, l'incertezza del modello: qualche metro.
+//
+// Sei metri sono la taglia degli alberi e dei tetti che un modello di
+// superficie non sa di avere. A trecento metri valgono più di un grado, a
+// cinque chilometri sette centesimi: tanto dove il rumore fa danno, niente
+// dove non ne fa. E il tetto in gradi tiene in piedi il primo piano — a tre
+// metri dai piedi sei metri di quota sarebbero sessantatré gradi, cioè
+// «niente qui davanti copre niente», mentre chi guarda l'acqua dall'orlo di
+// una scogliera ha proprio l'orlo a nasconderla.
+const ACQUE_OCCLUSIONE_ABBASSA_M = 6;
+const ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI = 3;
 
 // Di quanto ci si scosta da una soglia per leggere la cresta di **prima**.
 // La cresta davanti è una scala a diciotto gradini (uno per distanza
@@ -4451,6 +4493,12 @@ const acque = {
   sommerso: false,
   quotaSommerso: null,    // la quota della superficie su cui si sta, in metri
   avanzamento: 0,         // 0…1 per la barra della §9-ter: richiesta, poi raggi
+  // Perché le bande non sono arrivate sullo schermo: quante ce n'erano,
+  // quante ne sono rimaste, e quante sono cadute per ognuna delle tre
+  // ragioni possibili. Lo riempie `acqueVisibili` e lo legge la riga di
+  // stato — un lago che non si vede deve poter **dire** perché, se no è
+  // identico a un posto senza laghi (vedi `acqueTesto`).
+  conto: null,
   quanti: 0,              // quanti specchi d'acqua sono stati trovati
   nomi: [],               // i più grandi, per la riga di stato
   fonte: '',
@@ -5508,6 +5556,31 @@ function acqueCorpoDiBanda(banda, b, k) {
   return typeof banda[4] === 'number' ? banda[4] : `~${b}.${k}`;
 }
 
+function acqueQuoteDaRilievo() {
+  return typeof rilQuoteDentro === 'function' && typeof rilPronto === 'function' && rilPronto();
+}
+
+// La quota dell'occhio con cui si guarda l'acqua — e dev'essere **la stessa**
+// con cui è stata costruita la superficie che la copre.
+//
+// Sembra una pignoleria e non lo è: l'occhio è il termine che si sottrae a
+// tutti gli angoli, e i due numeri possono divergere davvero. La maglia del
+// rilievo si costruisce con la camera di quel momento (`rilievo.occhio`) e si
+// rifà ogni sessanta metri; `terreno.quota` è la quota del **centro della
+// griglia grossa**, che muovendosi resta indietro di chilometri, e che
+// `acqueAllineaOcchio` può riscrivere di colpo quando ci si accorge di essere
+// sull'acqua. Confrontare la cresta di una con il piano d'acqua misurato
+// dall'altra vuol dire sbagliare di quella differenza — e vicino ai piedi due
+// metri di differenza sono decine di gradi.
+function acqueOcchio() {
+  if (acqueQuoteDaRilievo() && typeof rilievo.occhio === 'number' && isFinite(rilievo.occhio) &&
+      rilievo.occhio !== 0) {
+    return rilievo.occhio;
+  }
+  return (typeof terreno.quota === 'number' ? terreno.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M;
+}
+
+
 // A che quota sta la superficie di ogni specchio d'acqua in vista.
 //
 // **Una quota per lago, non una per banda**, ed è la correzione da cui
@@ -5540,14 +5613,44 @@ function acqueCorpoDiBanda(banda, b, k) {
 // suolo sotto i piedi se l'acqua comincia da lì, e in ogni caso il più basso
 // dei campioni che abbracciano le sue bande. Anche il ripiego, però, si
 // decide **una volta per specchio**: è quello che tiene la superficie piatta.
+// …e da quale modello del suolo si va a chiedere.
+//
+// Prima la **griglia grossa**, e per una ragione che il banco di prova ha
+// smentito e poi rimesso in fila, perché non è quella che viene in mente.
+//
+// Verrebbe da chiedere il piano del lago alla stessa superficie che poi lo
+// copre — cioè al rilievo — e tenere le due misure nello stesso modello. Ma
+// la maglia del rilievo non è il modello delle tessere: è quel modello
+// **traslato** di `rilievo.scarto`, cioè di quanto le tessere e la griglia
+// litigano *nel punto in cui si sta*, che è un punto di terra ferma. Sui
+// pendii i due modelli non vanno d'accordo di qualche metro; sull'**acqua**
+// invece vanno d'accordo benissimo, perché tutti e due la spianano al suo
+// livello vero. Traslare tutto per accordare la terra vuol dire quindi
+// scentrare l'acqua esattamente di quello scarto: misurato sul banco, con
+// dodici metri di disaccordo il lago finiva dodici metri sotto il suo livello
+// e la riva vicina veniva tagliata dove invece si vede.
+//
+// La regola giusta è allora questa, in tre gradini:
+//
+//   1. i campioni della **griglia** che cascano dentro allo specchio, che
+//      sono la superficie misurata e basta;
+//   2. se non ce n'è nemmeno uno — un fiume, un laghetto, l'acqua a duecento
+//      metri dalle scarpe: tutta roba più stretta dei centocinquanta metri
+//      della griglia — quelli del **rilievo**, che di anelli ne ha centosei e
+//      dentro all'acqua ci arriva davvero. Sbagliati di `scarto`, cioè di
+//      qualche metro, e sono comunque molto meglio del gradino dopo;
+//   3. e solo alla fine i campioni che lo **abbracciano**, che stanno sulla
+//      riva e quindi sopra l'acqua — sempre, e proprio dalla parte che fa
+//      sparire le bande.
 function acqueQuoteDeiCorpi(bande) {
   const quote = new Map();
-  if (!bande || !terreno.quote) return quote;
+  const dalRilievo = acqueQuoteDaRilievo();
+  if (!bande || (!terreno.quote && !dalRilievo)) return quote;
   const nd = TERRENO_DISTANZE.length;
   const conta = (corpo, campo, q) => {
     if (typeof q !== 'number') return;
     let v = quote.get(corpo);
-    if (!v) { v = { dentro: null, attorno: null }; quote.set(corpo, v); }
+    if (!v) { v = { dentro: null, maglia: null, attorno: null }; quote.set(corpo, v); }
     if (v[campo] === null || q < v[campo]) v[campo] = q;
   };
 
@@ -5578,6 +5681,13 @@ function acqueQuoteDeiCorpi(bande) {
       if (vicino < TERRENO_DISTANZE[0] * 1000 && typeof terreno.quota === 'number') {
         conta(corpo, 'attorno', terreno.quota);
       }
+      if (dalRilievo) {
+        // Il secondo gradino: la maglia arriva dentro agli specchi in cui la
+        // griglia non ha nemmeno un campione.
+        if (!stretto) conta(corpo, 'maglia', rilQuoteDentro(az, vicino, lontano));
+        conta(corpo, 'attorno', rilQuoteAttorno(az, vicino, lontano));
+      }
+      if (!terreno.quote) continue;
       let prima = null, dopo = null;
       for (let d = 0; d < nd; d++) {
         const m = TERRENO_DISTANZE[d] * 1000;
@@ -5595,7 +5705,8 @@ function acqueQuoteDeiCorpi(bande) {
 
   const fuori = new Map();
   quote.forEach((v, corpo) => {
-    const q = v.dentro !== null ? v.dentro : v.attorno;
+    const q = v.dentro !== null ? v.dentro
+      : (v.maglia !== null ? v.maglia : v.attorno);
     if (q !== null) fuori.set(corpo, q);
   });
   return fuori;
@@ -5716,6 +5827,69 @@ function acqueCrestaGrezza(az, km) {
   return k < 0 ? null : v[k];
 }
 
+// Le distanze della griglia grossa in metri, una volta sola: la cresta
+// dell'acqua le legge per ogni direzione, e `TERRENO_DISTANZE[k] * 1000`
+// dentro a un ciclo è una moltiplicazione per niente.
+const TERRENO_DISTANZE_M = TERRENO_DISTANZE.map(km => km * 1000);
+
+// La pendenza della linea di vista di un punto: `(quota − occhio −
+// curvatura) / distanza`.
+//
+// È la stessa quantità che `acqueDepressione` arcotangenta, e sta qui in
+// tangente perché il confronto con il terreno davanti è un confronto fra
+// pendenze — e in pendenza si può abbassare un campione di tanti metri
+// dividendo per la sua distanza, che è tutto il punto di
+// `ACQUE_OCCLUSIONE_ABBASSA_M`.
+function acqueTangenteVista(quota, occhio, m) {
+  const s = Math.max(0.05, m);
+  const abbassa = (1 - TERRENO_RIFRAZIONE) * s * s / (2 * TERRENO_RAGGIO_KM * 1000);
+  return (quota - occhio - abbassa) / s;
+}
+
+// La cresta che l'acqua interroga: per ogni distanza campionata, la pendenza
+// più alta incontrata fino a lì, con ogni campione già abbassato dei suoi
+// metri di franchigia.
+//
+// Quando c'è il rilievo la dà lui (`rilFrontiAcqua`), e non è una preferenza:
+// è **la superficie che si sta disegnando**, letta con i suoi
+// centosei anelli invece che con le diciotto fette della griglia grossa. Se
+// le due divergessero si vedrebbe subito, ed è il difetto che si vedeva: un
+// lago tagliato dove sullo schermo non c'è niente che lo tagli.
+//
+// Il ripiego è la griglia grossa, e lì si parte dalle creste **già filtrate**
+// (`terrenoFrontiA`, che gli spilli li ha tolti) invece che dalle quote
+// grezze: un campione impazzito lì dentro non è un albero, è un buco nel
+// modello, e sei metri di franchigia non lo assorbirebbero. L'abbassamento si
+// applica allora alla distanza della fetta, che per un massimo accumulato è
+// una stima prudente — la fetta è al più lontana quanto il campione che l'ha
+// alzata, quindi si abbassa di meno del dovuto e si copre semmai un po' di
+// più. Con il rilievo acceso — cioè di serie — questo ramo non lo tocca
+// nessuno.
+let acqueFrontiTanBuf = null;
+
+function acqueFrontiAcqua(az, finoA) {
+  if (typeof rilFrontiAcqua === 'function') {
+    const v = rilFrontiAcqua(az, ACQUE_OCCLUSIONE_ABBASSA_M,
+                             ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI, finoA);
+    if (v) return v;
+  }
+  if (!terrenoDisponibile() || !terreno.fronti) return null;
+  const n = TERRENO_DISTANZE.length;
+  if (!acqueFrontiScratch) acqueFrontiScratch = new Float32Array(n);
+  if (!acqueFrontiTanBuf) acqueFrontiTanBuf = new Float32Array(n);
+  const riga = terrenoFrontiA(az, acqueFrontiScratch);
+  if (!riga) return null;
+  const tetto = Math.tan(ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI * Math.PI / 180);
+  let massimo = -Infinity;
+  for (let k = 0; k < n; k++) {
+    const giu = Math.min(tetto, ACQUE_OCCLUSIONE_ABBASSA_M / TERRENO_DISTANZE_M[k]);
+    const v = Math.tan(riga[k] * Math.PI / 180) - giu;
+    if (v > massimo) massimo = v;
+    acqueFrontiTanBuf[k] = massimo;
+  }
+  return { tan: acqueFrontiTanBuf, dist: TERRENO_DISTANZE_M };
+}
+
 function acqueQuotaDi(az, vicinoM, lontanoM) {
   if (!terreno.quote) return null;
   const nd = TERRENO_DISTANZE.length;
@@ -5790,11 +5964,26 @@ function acqueQuotaDi(az, vicinoM, lontanoM) {
 // Il risultato si tiene finché non cambia il terreno o l'altezza da cui si
 // guarda: è la stessa memoria di comodo di `cimeVisibili`.
 function acqueVisibili() {
-  if (!acque.acceso || acque.stato !== 'pronto' || !acque.bande) return null;
+  // «C'è un elenco?», non «l'ultima richiesta è riuscita?».
+  //
+  // È la stessa lezione di `terrenoDisponibile` per il profilo e di
+  // `cimeVisibili` per le vette, e qui era rimasta da imparare: chiedendo
+  // `stato === 'pronto'` bastava **un solo tentativo andato male** — un
+  // ritaglio in corso mentre ci si muove, una riprova automatica dopo un 429,
+  // un cambio di raggio — perché tutta l'acqua sparisse dallo schermo pur
+  // essendo in mano, buona, da un istante prima. Sparire e ricomparire è
+  // peggio che non esserci: sembra un difetto del disegno.
+  if (!acque.acceso || !acque.bande) return null;
   if (!terrenoDisponibile()) return null;
 
-  const occhio = (typeof terreno.quota === 'number' ? terreno.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M;
-  const chiave = `${occhio.toFixed(1)}|${terreno.quando}|${raggioAcque()}`;
+  const occhio = acqueOcchio();
+  // La chiave si porta dietro anche **da che superficie** arriva l'occlusione:
+  // la maglia del rilievo si rifà ogni sessanta metri di strada, e con essa
+  // cambia quello che copre cosa. Senza, la risposta tenuta da parte
+  // resterebbe quella di prima finché non cambia la quota dell'occhio.
+  const daRilievo = typeof rilPronto === 'function' && rilPronto();
+  const chiave = `${occhio.toFixed(1)}|${terreno.quando}|${raggioAcque()}|` +
+    (daRilievo ? (rilievo.chiave || 'r') : 'g');
   if (acque.vista && acque.vistaChiave === chiave) return acque.vista;
 
   const limite = raggioAcque() * 1000;
@@ -5802,11 +5991,25 @@ function acqueVisibili() {
   // cominciare: è quella che tiene la superficie piatta da una colonna
   // all'altra (vedi `acqueQuoteDeiCorpi`).
   const quoteCorpi = acqueQuoteDeiCorpi(acque.bande);
+  // Perché una banda non si vede. Non è statistica per la statistica: un lago
+  // che non compare non lascia traccia — sullo schermo è identico a un posto
+  // senza laghi — ed è il modo in cui questo difetto è rimasto in piedi.
+  // Adesso la riga di stato può dire quale delle tre cose è successa.
+  const conto = { bande: 0, tenute: 0, fuoriRaggio: 0, sopraLocchio: 0, coperte: 0, corte: 0 };
   const fuori = new Array(ACQUE_DIREZIONI).fill(null);
   for (let b = 0; b < ACQUE_DIREZIONI; b++) {
     const lista = acque.bande[b];
     if (!lista) continue;
     const az = b * ACQUE_PASSO_AZ;
+    // La cresta che copre, una volta per direzione e non una per banda: è una
+    // camminata sugli anelli del rilievo, e le bande di una stessa direzione
+    // la userebbero identica. Si cammina fino all'acqua più lontana e non oltre.
+    let piuLontano = 0;
+    for (let k = 0; k < lista.length; k++) {
+      const f = Math.min(lista[k][1], limite);
+      if (f > piuLontano) piuLontano = f;
+    }
+    const fronti = acqueFrontiAcqua(az, piuLontano);
     const tenute = [];
     for (let iBanda = 0; iBanda < lista.length; iBanda++) {
       const [vicino, lontano, tipo, nome] = lista[iBanda];
@@ -5818,9 +6021,11 @@ function acqueVisibili() {
       // troverebbe ogni banda diversa da ogni altra e non ne legherebbe più
       // nessuna: un lago disegnato a mezzo grado per volta.
       const corpo = typeof lista[iBanda][4] === 'number' ? lista[iBanda][4] : null;
-      if (vicino > limite) continue;
+      const quantePrima = tenute.length;
+      conto.bande++;
+      if (vicino > limite) { conto.fuoriRaggio++; continue; }
       const fine = Math.min(lontano, limite);
-      if (!(fine > vicino)) continue;
+      if (!(fine > vicino)) { conto.fuoriRaggio++; continue; }
       // La quota della superficie. Una banda che comincia **ai piedi** non la
       // va a chiedere a nessuno: la si sa già. Se ci si sta dentro è la
       // superficie su cui si galleggia (`acqueAllineaOcchio` l'ha già messa
@@ -5836,7 +6041,7 @@ function acqueVisibili() {
       let quota = suPiedi && typeof terreno.quota === 'number' ? terreno.quota : null;
       if (quota === null && quoteCorpi.has(chiaveCorpo)) quota = quoteCorpi.get(chiaveCorpo);
       if (quota === null) quota = acqueQuotaDi(az, vicino, fine);
-      if (quota === null) continue;
+      if (quota === null) { conto.sopraLocchio++; continue; }
 
       // L'acqua si allontana verso l'orizzonte, quindi l'angolo cresce (si
       // avvicina a zero) con la distanza: la riva vicina è il punto più in
@@ -5844,7 +6049,7 @@ function acqueVisibili() {
       // invece, non fa che salire.
       const dep = m => acqueDepressione(quota, occhio, m);
       const altoFine = dep(fine);
-      if (!(altoFine < -0.02)) continue;      // sopra l'occhio: non è superficie
+      if (!(altoFine < -0.02)) { conto.sopraLocchio++; continue; }  // non è superficie
 
       // Dove il terreno davanti la copre, e dove no.
       //
@@ -5877,37 +6082,55 @@ function acqueVisibili() {
       // smette di sembrare un lago e diventa una fila di cunei.
       //
       // Adesso i campioni si mettono **dove il dato cambia**, e da nessun'altra
-      // parte. La cresta davanti la dà `acqueCrestaGrezza`, che legge la riga
-      // delle creste parziali e tiene l'ultima distanza campionata che ci sta
-      // dentro: è una **scala a diciotto gradini**, costante fra un gradino e
-      // l'altro. Dentro a un gradino, allora, la cresta è ferma e l'angolo
-      // dell'acqua sale (l'acqua si allontana), quindi il confronto può
-      // cambiare risposta **una volta sola** — e una bisezione lo trova
-      // esatto. Guardare più fitto di così non aggiunge niente: si
-      // ricalcolerebbe due volte lo stesso numero.
+      // parte. La cresta davanti è una **scala a gradini** — uno per anello
+      // della superficie che disegna, o per fetta della griglia grossa —
+      // costante fra un gradino e l'altro. Dentro a un gradino, allora, la
+      // cresta è ferma e la linea di vista dell'acqua sale (l'acqua si
+      // allontana), quindi il confronto può cambiare risposta **una volta
+      // sola** — e una bisezione lo trova esatto. Guardare più fitto di così
+      // non aggiunge niente: si ricalcolerebbe due volte lo stesso numero.
       //
       // Ne viene una cosa che il passo fisso non poteva dare: il bordo non
       // dipende più da quanto è lunga la banda, quindi due colonne contigue
       // lo trovano nello stesso posto. E costa **meno** di prima, non di più:
       // una ventina di valutazioni al massimo invece di dodici, ma senza mai
       // sbagliare.
+      //
+      // I gradini sono quelli della cresta che si sta usando, e cambiano con
+      // lei: centosei col rilievo, diciotto con la griglia grossa. Prenderli
+      // dalla parte sbagliata vorrebbe dire cercare il bordo dove il dato non
+      // cambia — cioè tornare al passo fisso, con un altro nome.
+      const gradini = fronti ? fronti.dist : TERRENO_DISTANZE_M;
+      const quantiGradini = fronti && typeof fronti.n === 'number'
+        ? Math.min(fronti.n, gradini.length) : gradini.length;
       const passiM = [vicino];
-      for (let k = 0; k < TERRENO_DISTANZE.length; k++) {
+      for (let k = 0; k < quantiGradini; k++) {
         // Da che distanza in poi l'anello `k` entra nel conto della cresta:
-        // `acqueCrestaGrezza` confronta con `m · TERRENO_FRONTE_MARGINE`.
-        const soglia = TERRENO_DISTANZE[k] * 1000 / TERRENO_FRONTE_MARGINE;
+        // il confronto è con `m · TERRENO_FRONTE_MARGINE`.
+        const soglia = gradini[k] / TERRENO_FRONTE_MARGINE;
         if (soglia <= vicino + ACQUE_SOGLIA_SCARTO_M) continue;
         if (soglia >= fine) break;
         passiM.push(soglia - ACQUE_SOGLIA_SCARTO_M, soglia);
       }
       passiM.push(fine);
+      // Coperta o no: si confrontano due **pendenze**, non due angoli.
+      //
+      // È lo stesso confronto di prima — «il terreno davanti sta sopra la
+      // linea di vista?» — scritto nell'unità in cui si può dare una
+      // franchigia che voglia dire qualcosa. In gradi, un ventesimo di grado
+      // è una franchigia enorme a cinquanta metri e nulla a cinque
+      // chilometri; in pendenza, `ACQUE_OCCLUSIONE_ABBASSA_M` metri diviso la
+      // distanza del campione sono sempre gli stessi metri di quota, che è
+      // l'unità in cui un modello del suolo sbaglia. Chi abbassa è
+      // `acqueFrontiAcqua`, campione per campione, prima di accumulare il
+      // massimo: qui resta un confronto e due indici.
       const coperta = m => {
-        const davanti = acqueCrestaGrezza(az, m / 1000);
-        // Il margine è quello che tiene fermo il bordo: senza, alla riva
-        // vicina l'acqua e il terreno che le sta davanti hanno lo stesso
-        // angolo (il modello del suolo spiana i laghi) e il confronto lo
-        // decide l'arrotondamento.
-        return davanti !== null && davanti > dep(m) + ACQUE_OCCLUSIONE_MARGINE_GRADI;
+        if (!fronti) return false;
+        const dentro = m * TERRENO_FRONTE_MARGINE;
+        let k = -1;
+        for (let j = 0; j < quantiGradini; j++) { if (gradini[j] <= dentro) k = j; else break; }
+        if (k < 0) return false;
+        return fronti.tan[k] > acqueTangenteVista(quota, occhio, m);
       };
       // Dove sta il passaggio fra `a`, che è **scoperto**, e `b`, che è
       // **coperto**. Restituisce sempre il punto scoperto più vicino al
@@ -5934,8 +6157,12 @@ function acqueVisibili() {
         // un laghetto di quaranta metri è piccolo, non è rumore.
         const aiPiedi = inizio <= 0.5 && finePezzo > 0.5;
         const tuttaLaBanda = inizio <= vicino + 1 && finePezzo >= fine - 1;
-        if (!(finePezzo > inizio + 1)) return;
-        if (!aiPiedi && !tuttaLaBanda && finePezzo - inizio < ACQUE_TRATTO_MIN_M) return;
+        if (!(finePezzo > inizio + 1)) { conto.corte++; return; }
+        if (!aiPiedi && !tuttaLaBanda && finePezzo - inizio < ACQUE_TRATTO_MIN_M) {
+          conto.corte++;
+          return;
+        }
+        conto.tenute++;
         tenute.push({
           vicino: inizio, lontano: finePezzo, tipo, nome, corpo,
           depVicino: dep(inizio), depLontano: dep(finePezzo), quota,
@@ -5967,10 +6194,16 @@ function acqueVisibili() {
         primaM = m;
       }
       chiudi();
+      if (tenute.length === quantePrima) conto.coperte++;
     }
     if (tenute.length) fuori[b] = tenute;
   }
 
+  // Una banda che non ha lasciato niente è finita sotto al terreno: `coperte`
+  // conta le direzioni in cui è successo, non le bande, e va bene così — è la
+  // domanda che si fa guardando lo schermo.
+  conto.daRilievo = daRilievo;
+  acque.conto = conto;
   acque.vista = fuori;
   acque.vistaChiave = chiave;
   return fuori;
@@ -6116,6 +6349,19 @@ function acqueTesto() {
   let direzioni = 0;
   for (const v of viste) if (v) direzioni++;
   if (!direzioni) {
+    // Perché non se ne vede. Un'assenza che non si spiega è indistinguibile
+    // da un posto senza laghi, ed è il modo in cui questo difetto è rimasto
+    // in piedi per mesi: sullo schermo, «il terreno la copre» e «non l'ho
+    // mai scaricata» sono la stessa identica immagine.
+    const c = acque.conto;
+    if (c && c.bande) {
+      if (c.sopraLocchio >= c.bande / 2) {
+        return `L'acqua qui attorno c'è, ma risulta più in alto di chi guarda: ` +
+          `la quota del terreno non torna, e finché non torna non la disegno.`;
+      }
+      return `L'acqua qui attorno c'è (${c.bande} tratti), ma il terreno davanti la copre tutta: ` +
+        `da qui non se ne vede.`;
+    }
     return `L'acqua qui attorno c'è, ma resta tutta dietro alle creste: da qui non se ne vede.`;
   }
   const nomi = acque.nomi.length ? ` (${acque.nomi.join(', ')})` : '';
