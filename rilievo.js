@@ -126,6 +126,26 @@ const RIL_TESSERE_MIN_MS = 8000;
 // niente. Ognuna è un quarto di megabyte.
 const RIL_TESSERE_TENUTE = 18;
 
+// Quando riprovare una tessera che non è arrivata, e quante volte.
+//
+// È la differenza fra un guaio di un secondo e un guaio per tutta la
+// sessione. Una tessera può non arrivare per ragioni che passano da sole —
+// `ERR_CONNECTION_CLOSED` da S3, un tunnel, il Wi-Fi che cambia cella — e
+// segnarla come «non c'è» una volta per sempre vuol dire tenersi il buco
+// finché l'app resta aperta: quel settore del disco legge la griglia grossa
+// (centocinquanta metri di passo) mentre i suoi vicini leggono le tessere
+// (ventisette), e il primo piano ci viene a facce piatte con la cucitura in
+// mezzo. Sullo schermo non si legge come un dato mancante, si legge come un
+// terreno sbagliato.
+//
+// Venti secondi, e cinque tentativi in tutto. Il tetto serve perché una
+// tessera può anche non esistere davvero (il mare aperto, un buco nel
+// dataset): lì riprovare all'infinito vorrebbe dire una richiesta ogni venti
+// secondi per sempre, e la risposta giusta — la griglia grossa — ce l'abbiamo
+// già.
+const RIL_TESSERA_RIPROVA_MS = 20000;
+const RIL_TESSERA_TENTATIVI = 5;
+
 // Sotto questo scostamento la maglia si legge così com'è: mezzo metro non
 // sposta nessun nodo di un pixel, e pagare una bilineare per nodo per non
 // spostare niente sarebbe il modo più caro di non cambiare il disegno.
@@ -614,10 +634,56 @@ const rilievo = {
 };
 
 // Le tessere già decodificate, per questo luogo. Chiave `x/y`, valore una
-// `Float32Array(256×256)` di metri, oppure `null` se quella tessera non è
-// arrivata — che è un'informazione anche quella: dice di non richiederla e
-// di ripiegare sulla griglia grossa.
+// `Float32Array(256×256)` di metri. Qui dentro ci sono **solo** le tessere
+// che sono arrivate davvero: una che non è arrivata non è un valore `null` da
+// tenere, è una domanda ancora aperta, e sta nell'altra mappa.
 let rilTessere = new Map();
+
+// Quelle che non sono arrivate: quando ci si è provati l'ultima volta e
+// quante volte in tutto. Tenerle separate è il punto — con un `null` dentro a
+// `rilTessere` la tessera risultava «presente» a `rilTessereBastano` e al
+// filtro delle mancanti, quindi non veniva richiesta mai più.
+let rilTessereGuaste = new Map();
+
+function rilSegnaGuasta(chiave) {
+  const g = rilTessereGuaste.get(chiave);
+  rilTessereGuaste.set(chiave, {
+    quando: Date.now(), tentativi: (g ? g.tentativi : 0) + 1
+  });
+}
+
+// Questa tessera va (ri)chiesta adesso? Sì se non ce l'abbiamo e o non
+// l'abbiamo mai provata, o l'abbiamo provata abbastanza tempo fa e non troppe
+// volte.
+function rilTesseraDaChiedere(chiave) {
+  if (rilTessere.has(chiave)) return false;
+  const g = rilTessereGuaste.get(chiave);
+  if (!g) return true;
+  if (g.tentativi >= RIL_TESSERA_TENTATIVI) return false;
+  return Date.now() - g.quando >= RIL_TESSERA_RIPROVA_MS;
+}
+
+// Quante ne mancano nel disco di qui, e di quelle quante hanno ancora un
+// tentativo davanti. Le legge la riga di stato: una tessera che non arriva
+// non deve essere un'assenza muta, perché sullo schermo il suo settore —
+// disegnato dalla griglia grossa, a facce larghe — è indistinguibile da un
+// terreno liscio per davvero.
+function rilTessereMancanti(lat, lon) {
+  if (rilievo.lat === null && typeof lat !== 'number') return { mancanti: 0, ancora: 0 };
+  let elenco = rilTessereAttorno(
+    typeof lat === 'number' ? lat : rilievo.lat,
+    typeof lon === 'number' ? lon : rilievo.lon, RIL_RAGGIO_KM);
+  if (elenco.length > RIL_TESSERE_MAX) elenco = elenco.slice(0, RIL_TESSERE_MAX);
+  let mancanti = 0, ancora = 0;
+  elenco.forEach(t => {
+    const chiave = `${t.x}/${t.y}`;
+    if (rilTessere.has(chiave)) return;
+    mancanti++;
+    const g = rilTessereGuaste.get(chiave);
+    if (!g || g.tentativi < RIL_TESSERA_TENTATIVI) ancora++;
+  });
+  return { mancanti, ancora };
+}
 
 function rilDistanzaDalCentro(luogo) {
   if (!luogo || rilievo.lat === null || typeof terrenoDistanzaKm !== 'function') return Infinity;
@@ -848,16 +914,26 @@ function rilChiediTessera(x, y) {
 // Tutte quelle che servono, a scaglioni di `RIL_INSIEME`. Una che non arriva
 // non fa cadere le altre: resta un buco, e lì la maglia legge la griglia
 // grossa — che è esattamente il terreno che c'era prima di questo file.
+//
+// Ma resta un buco **per adesso**, non per sempre: si segna fra le guaste con
+// l'ora del tentativo, e fra venti secondi la si richiede. Prima ci si
+// scriveva un `null` dentro a `rilTessere`, e da quel momento la tessera
+// risultava presente a chiunque chiedesse `has` — cioè non veniva richiesta
+// più, e quel settore restava a facce piatte finché l'app era aperta.
 async function rilPrendiTessere(elenco) {
   rilievo.tessereChieste = elenco.length;
   rilievo.tessereAvute = 0;
   rilievo.avanzamento = 0;
-  let lato = 256;
+  let lato = rilLatoTessera;
   for (let i = 0; i < elenco.length; i += RIL_INSIEME) {
     const gruppo = elenco.slice(i, i + RIL_INSIEME);
     await Promise.all(gruppo.map(t => rilChiediTessera(t.x, t.y).then(
-      d => { rilTessere.set(`${t.x}/${t.y}`, d.q); lato = d.lato; },
-      () => { rilTessere.set(`${t.x}/${t.y}`, null); }
+      d => {
+        rilTessere.set(`${t.x}/${t.y}`, d.q);
+        rilTessereGuaste.delete(`${t.x}/${t.y}`);
+        lato = d.lato;
+      },
+      () => { rilSegnaGuasta(`${t.x}/${t.y}`); }
     ).then(() => {
       rilievo.tessereAvute++;
       rilievo.avanzamento = rilievo.tessereAvute / Math.max(1, rilievo.tessereChieste);
@@ -1492,6 +1568,7 @@ function rilScorda() {
   rilievo.fini = 0;
   rilievo.occhioOra = null;
   rilTessere = new Map();
+  rilTessereGuaste = new Map();
 }
 
 
@@ -1515,10 +1592,12 @@ function rilScorda() {
 // Le tessere che servono a questo punto ci sono già tutte? È la domanda che
 // separa il calcolo dalla rete.
 function rilTessereBastano(lat, lon) {
-  if (!rilTessere.size) return false;
   let elenco = rilTessereAttorno(lat, lon, RIL_RAGGIO_KM);
   if (elenco.length > RIL_TESSERE_MAX) elenco = elenco.slice(0, RIL_TESSERE_MAX);
-  return elenco.every(t => rilTessere.has(`${t.x}/${t.y}`));
+  // «Bastano» vuol dire che non c'è più niente da chiedere: o la tessera c'è,
+  // o è stata provata abbastanza volte da smettere di sperarci. Una che ha
+  // fallito una volta sola e da poco **non** basta, ed è tutta la differenza.
+  return elenco.every(t => !rilTesseraDaChiedere(`${t.x}/${t.y}`));
 }
 
 // Quelle che ci si è lasciati dietro. Non si buttano subito — tornare sui
@@ -1526,15 +1605,25 @@ function rilTessereBastano(lat, lon) {
 // tutte: viaggiando, un quarto di megabyte a tessera diventa presto un
 // conto vero.
 function rilPotaTessere(lat, lon) {
-  if (rilTessere.size <= RIL_TESSERE_TENUTE) return;
+  // Le guaste si potano insieme alle buone, e con lo stesso metro: una
+  // tessera che ci si è lasciati alle spalle non la si richiederà più da qui,
+  // e tenerne il verbale per sempre vuol dire che tornandoci fra un'ora si
+  // ricomincerebbe dal conto dei tentativi di allora invece che da zero.
+  if (rilTessere.size <= RIL_TESSERE_TENUTE &&
+      rilTessereGuaste.size <= RIL_TESSERE_TENUTE) return;
   const o = rilPixelMondo(lat, lon, RIL_ZOOM);
   const L = rilLatoTessera;
-  const ordinate = [...rilTessere.keys()].map(chiave => {
-    const [x, y] = chiave.split('/').map(Number);
-    const dx = (x + 0.5) * L - o.px, dy = (y + 0.5) * L - o.py;
-    return { chiave, d: dx * dx + dy * dy };
-  }).sort((a, b) => a.d - b.d);
-  for (let i = RIL_TESSERE_TENUTE; i < ordinate.length; i++) rilTessere.delete(ordinate[i].chiave);
+  const pota = mappa => {
+    if (mappa.size <= RIL_TESSERE_TENUTE) return;
+    const ordinate = [...mappa.keys()].map(chiave => {
+      const [x, y] = chiave.split('/').map(Number);
+      const dx = (x + 0.5) * L - o.px, dy = (y + 0.5) * L - o.py;
+      return { chiave, d: dx * dx + dy * dy };
+    }).sort((a, b) => a.d - b.d);
+    for (let i = RIL_TESSERE_TENUTE; i < ordinate.length; i++) mappa.delete(ordinate[i].chiave);
+  };
+  pota(rilTessere);
+  pota(rilTessereGuaste);
 }
 
 // La quota del suolo sotto un punto, nel riferimento della griglia grossa
@@ -1637,7 +1726,14 @@ function rilOcchioOra() {
 // si ha in mano per il tempo di rifarlo vuol dire che a ogni affinamento
 // l'orizzonte torna quello finto per qualche secondo. A buttarla è solo un
 // cambio di luogo.
-async function rilCarica() {
+//
+// `forza` serve a un caso solo, ed è quello delle tessere che non sono
+// arrivate: lì il posto non è cambiato e nemmeno l'occhio, quindi la chiave è
+// la stessa e senza questo parametro non si ripasserebbe mai — cioè la
+// tessera persa resterebbe persa anche avendo tutte le ragioni per
+// richiederla. Chi la usa è `rilControlla`, e la spende solo quando una
+// riprova è davvero scaduta.
+async function rilCarica(forza) {
   if (rilievo.inCostruzione) { rilievo.daRifare = true; return false; }
   const luogo = rilLuogo();
   if (!luogo || !rilievo.acceso) return false;
@@ -1650,7 +1746,7 @@ async function rilCarica() {
   // dire raddrizzare a mano tutto quello che si era appena inclinato.
   const occhio = rilOcchioMeta(lat, lon);
   const chiave = rilChiaveDi(lat, lon, occhio);
-  if (chiave === rilievo.chiave) return true;
+  if (chiave === rilievo.chiave && !forza) return true;
 
   rilievo.inCostruzione = true;
   rilievo.daRifare = false;
@@ -1676,7 +1772,7 @@ async function rilCarica() {
       // Solo quelle che mancano: quelle che si hanno già sono le stesse
       // colline, e ricomprarle attraversando un confine di tessera sarebbe
       // un megabyte per non cambiare niente.
-      const mancanti = elenco.filter(t => !rilTessere.has(`${t.x}/${t.y}`));
+      const mancanti = elenco.filter(t => rilTesseraDaChiedere(`${t.x}/${t.y}`));
       if (mancanti.length) {
         rilievo.ultimeTessere = Date.now();
         rilLatoTessera = await rilPrendiTessere(mancanti);
@@ -1736,7 +1832,25 @@ function rilControlla() {
   if (typeof terrenoDisponibile !== 'function' || !terrenoDisponibile()) return;
   const luogo = rilLuogo();
   if (!luogo) return;
-  if (rilChiaveDi(luogo.lat, luogo.lon, rilOcchioMeta(luogo.lat, luogo.lon)) === rilievo.chiave) return;
+  if (rilChiaveDi(luogo.lat, luogo.lon, rilOcchioMeta(luogo.lat, luogo.lon)) === rilievo.chiave) {
+    // Stessa chiave: il posto non è cambiato e non c'è niente da rifare —
+    // tranne quando una tessera non era arrivata e adesso la si può
+    // richiedere. Da fermo quello è l'unico momento in cui si ripassa, e
+    // senza questa riga non arriverebbe mai: il buco lasciato da un
+    // `ERR_CONNECTION_CLOSED` resterebbe lì, disegnato con la griglia grossa,
+    // finché l'app è aperta. Il freno è quello delle tessere
+    // (`RIL_TESSERE_MIN_MS`), che è già il tetto di quante volte si può
+    // bussare a S3.
+    //
+    // La prima domanda è la più a buon mercato, e questa funzione gira a ogni
+    // fotogramma: se non è mai fallita nessuna tessera non c'è niente da
+    // riprovare, ed è una lettura di proprietà. Solo dopo si paga il disco.
+    if (!rilievo.cresta || !rilTessereGuaste.size) return;
+    if (Date.now() - (rilievo.ultimeTessere || 0) < RIL_TESSERE_MIN_MS) return;
+    if (rilTessereBastano(luogo.lat, luogo.lon)) return;
+    rilCarica(true);
+    return;
+  }
   // Il centro nuovo si prepara presto e spesso: sessanta metri, non
   // quattrocentocinquanta. Ricostruire è aritmetica a scaglioni, e mentre
   // gira resta disegnata quella vecchia — già traslata verso il punto nuovo,
@@ -1782,7 +1896,16 @@ function rilTesto() {
     const vive = [...rilTessere.values()].filter(Boolean).length;
     if (!vive) return 'Rilievo: dalla griglia grossa, senza le tessere fini.';
     const passo = Math.round(rilMetriPerPixel(rilievo.lat || 45, RIL_ZOOM));
-    return `Rilievo: ${passo} m di passo entro ${RIL_RAGGIO_KM} km (${vive} tessere).`;
+    const riga = `Rilievo: ${passo} m di passo entro ${RIL_RAGGIO_KM} km (${vive} tessere)`;
+    // Una tessera che manca non deve restare un'assenza muta: quel settore è
+    // disegnato dalla griglia grossa, cioè a facce larghe, e sullo schermo è
+    // indistinguibile da un terreno liscio per davvero.
+    const conto = rilTessereMancanti();
+    if (!conto.mancanti) return `${riga}.`;
+    const quante = conto.mancanti === 1 ? 'una non è arrivata' : `${conto.mancanti} non sono arrivate`;
+    return conto.ancora
+      ? `${riga}; ${quante}, ci riprovo.`
+      : `${riga}; ${quante}: lì il terreno resta grosso.`;
   }
   return '';
 }

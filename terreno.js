@@ -1180,9 +1180,31 @@ function terrenoRichieste(lat, lon, sapute) {
     (i % TERRENO_PASSO_GROSSO === 0 ? grosse : fini).push(i);
   }
   const richieste = [];
+  // Le direzioni di una richiesta si prendono **a salto**, non di fila.
+  //
+  // È la differenza fra un buco e un poligono, e si vede solo quando il
+  // servizio dice di no. Una richiesta porta cinque direzioni, e le cinque
+  // erano cinque consecutive: nel giro grosso sono una ogni nove gradi, cioè
+  // **trentasei gradi di orizzonte in un colpo solo**. Perdendola,
+  // `terrenoRiempiVuoti` unisce i due bordi con una interpolazione sola e
+  // quell'arco diventa una faccia piatta larga un decimo del giro — che è
+  // esattamente l'artefatto poligonale che si vede sullo schermo, e che non
+  // somiglia affatto a un dato mancante: somiglia a una collina finta.
+  //
+  // Prendendole a salto, la stessa richiesta persa lascia cinque buchi da una
+  // direzione ciascuno, sparsi per tutto il giro, e ognuno viene tappato dalle
+  // sue vicine vere a nove gradi di distanza — che su quote del suolo è una
+  // stima buona. Non si perde niente e non si chiede niente in più: sono le
+  // stesse ventiquattro richieste con lo stesso numero di punti, riordinate.
   const impacchetta = (elenco, giro) => {
-    for (let i = 0; i < elenco.length; i += TERRENO_DIREZIONI_PER_RICHIESTA) {
-      const dirs = elenco.slice(i, i + TERRENO_DIREZIONI_PER_RICHIESTA);
+    if (!elenco.length) return;
+    // Quante richieste servono, e da lì il passo: prendendo una voce ogni
+    // `quante`, nessun gruppo può superare le direzioni per richiesta e
+    // insieme coprono l'elenco una volta sola.
+    const quante = Math.ceil(elenco.length / TERRENO_DIREZIONI_PER_RICHIESTA);
+    for (let r = 0; r < quante; r++) {
+      const dirs = [];
+      for (let i = r; i < elenco.length; i += quante) dirs.push(elenco[i]);
       const punti = [];
       dirs.forEach(d => TERRENO_DISTANZE.forEach(
         km => punti.push(terrenoPuntoA(lat, lon, d * TERRENO_PASSO_AZ, km))));

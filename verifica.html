@@ -977,6 +977,54 @@ titolo('9. La forma vera del terreno');
           })(),
           `${ric.filter(r => r.giro === 0).length} richieste nel giro grosso su ${ric.length}`);
 
+    // Le direzioni di una richiesta si prendono **a salto**, e la differenza
+    // si vede solo quando il servizio dice di no — cioè proprio nel caso per
+    // cui tutto questo esiste. Presa una richiesta del giro grosso e buttata
+    // via, quanto è largo l'arco che `terrenoRiempiVuoti` deve tappare con
+    // una interpolazione sola? Di fila erano cinque direzioni consecutive,
+    // cioè cinquantaquattro gradi di orizzonte inventati da due soli
+    // campioni: sullo schermo è una faccia piatta larga un settimo del giro,
+    // e non somiglia a un dato mancante — somiglia a una collina finta.
+    const arcoPeggiore = richieste => {
+      const persa = richieste.find(r => r.giro === 0);
+      const avute = new Set(richieste
+        .filter(r => r.giro === 0 && r !== persa)
+        .reduce((a, r) => a.concat(r.dirs), []));
+      let peggio = 0;
+      persa.dirs.forEach(d => {
+        let a = d, b = d, da = 0, db = 0;
+        while (!avute.has(a)) { a = (a - 1 + TERRENO_DIREZIONI) % TERRENO_DIREZIONI; da++; }
+        while (!avute.has(b)) { b = (b + 1) % TERRENO_DIREZIONI; db++; }
+        peggio = Math.max(peggio, (da + db) * TERRENO_PASSO_AZ);
+      });
+      return peggio;
+    };
+    prova('una richiesta persa non lascia un arco intero da interpolare',
+          arcoPeggiore(ric) <= 6 * TERRENO_PASSO_AZ,
+          `il buco più largo vale ${arcoPeggiore(ric)}° di azimut`);
+
+    // Il contro-esempio, cioè l'impacchettamento di prima: le stesse
+    // direzioni prese di fila.
+    prova('mentre prendendole di fila, come prima, ne lasciava uno da decine di gradi',
+          (() => {
+            const grosse = [];
+            for (let i = 0; i < TERRENO_DIREZIONI; i += TERRENO_PASSO_GROSSO) grosse.push(i);
+            const per = Math.max(1, Math.floor(TERRENO_PER_RICHIESTA / nd));
+            const vecchie = [];
+            for (let i = 0; i < grosse.length; i += per) {
+              vecchie.push({ giro: 0, dirs: grosse.slice(i, i + per) });
+            }
+            return arcoPeggiore(vecchie) >= 8 * TERRENO_PASSO_AZ;
+          })(),
+          `di fila: ${(() => {
+            const grosse = [];
+            for (let i = 0; i < TERRENO_DIREZIONI; i += TERRENO_PASSO_GROSSO) grosse.push(i);
+            const per = Math.max(1, Math.floor(TERRENO_PER_RICHIESTA / nd));
+            const vecchie = [];
+            for (let i = 0; i < grosse.length; i += per) vecchie.push({ giro: 0, dirs: grosse.slice(i, i + per) });
+            return arcoPeggiore(vecchie);
+          })()}° contro ${arcoPeggiore(ric)}°`);
+
     // Un 400 non si riprova: la richiesta è scritta male e riprovarla
     // identica dà lo stesso errore tre volte. Un 429 sì, ed è il caso vero.
     prova('si riprova quando ha senso, e non quando non ne ha',
@@ -7452,6 +7500,87 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
     rilCrestaX = salva.cx; rilCrestaY = salva.cy;
     rilColonneUltime = salva.n; rilAnelloUltimo = salva.a;
 
+  }
+
+  // --- La tessera che non arriva ---------------------------------------
+  //
+  // È la segnalazione «il terreno a volte non si carica bene e ci sono degli
+  // artefatti poligonali», e in console non c'era niente che ne parlasse:
+  // solo due `ERR_CONNECTION_CLOSED` su un `1457.png`, cioè una tessera su
+  // sei. Non si può giudicare a occhio, ed è per questo che sta scritto qui:
+  // un settore del disco disegnato dalla griglia grossa in mezzo a vicini
+  // disegnati dalle tessere è un settore a facce piatte con la cucitura in
+  // mezzo, e sullo schermo non si legge come un dato mancante — si legge come
+  // una collina finta. Il difetto vero però non era il buco: era che il buco
+  // non si chiudeva **mai più**.
+  {
+    const salvaBuone = rilTessere, salvaGuaste = rilTessereGuaste;
+    rilTessere = new Map();
+    rilTessereGuaste = new Map();
+    const K = '2151/1457';
+    const invecchia = ms => { const g = rilTessereGuaste.get(K); if (g) g.quando -= ms; };
+
+    prova('una tessera mai provata si chiede', rilTesseraDaChiedere(K));
+
+    rilSegnaGuasta(K);
+    prova('appena fallita non si ribussa subito', !rilTesseraDaChiedere(K));
+
+    // Il contro-esempio, cioè la regola di prima: si scriveva un `null` dentro
+    // a `rilTessere`, e da quel momento `has` diceva di sì a chiunque
+    // chiedesse — sia a `rilTessereBastano` sia al filtro delle mancanti.
+    // Quindi non veniva richiesta più, e quel settore restava grosso finché
+    // l'app era aperta.
+    prova('col null di prima la tessera risultava presente e non si richiedeva mai più',
+      new Map([[K, null]]).has(K) === true);
+
+    invecchia(RIL_TESSERA_RIPROVA_MS + 1);
+    prova('passata la pausa si riprova', rilTesseraDaChiedere(K));
+
+    for (let t = 1; t < RIL_TESSERA_TENTATIVI; t++) { rilSegnaGuasta(K); invecchia(RIL_TESSERA_RIPROVA_MS + 1); }
+    prova('ma non all\'infinito: dopo i tentativi ci si ferma',
+      !rilTesseraDaChiedere(K),
+      `${RIL_TESSERA_TENTATIVI} tentativi, poi resta la griglia grossa`);
+
+    rilTessere.set(K, new Float32Array(1));
+    rilTessereGuaste.delete(K);
+    prova('e una che è arrivata non si richiede', !rilTesseraDaChiedere(K));
+
+    // «Bastano» deve voler dire «non c'è niente da chiedere adesso», se no
+    // `rilCarica` entra nel giro delle tessere, non ne trova nessuna da
+    // chiedere, non aggiorna `ultimeTessere` — e rifà la maglia a vuoto a ogni
+    // controllo. Le due domande devono essere la stessa domanda.
+    {
+      const dentro = rilTessereAttorno(COMO.lat, COMO.lon, RIL_RAGGIO_KM)
+        .slice(0, RIL_TESSERE_MAX);
+      rilTessere = new Map();
+      rilTessereGuaste = new Map();
+      dentro.forEach(t => rilTessere.set(`${t.x}/${t.y}`, new Float32Array(1)));
+      prova('col disco pieno non c\'è più niente da chiedere',
+        rilTessereBastano(COMO.lat, COMO.lon));
+
+      const persa = `${dentro[0].x}/${dentro[0].y}`;
+      rilTessere.delete(persa);
+      prova('persa una tessera, il disco non basta più',
+        !rilTessereBastano(COMO.lat, COMO.lon));
+      const daChiedere = dentro.filter(t => rilTesseraDaChiedere(`${t.x}/${t.y}`));
+      prova('e «non basta» e «ce n\'è una da chiedere» sono la stessa cosa',
+        (!rilTessereBastano(COMO.lat, COMO.lon)) === (daChiedere.length > 0) &&
+        daChiedere.length === 1);
+
+      rilSegnaGuasta(persa);
+      prova('mentre la pausa scorre il disco basta, e non si rifà la maglia a vuoto',
+        rilTessereBastano(COMO.lat, COMO.lon));
+
+      // E il conto che finisce nella riga di stato: un lago che non si vede
+      // deve poter dire perché, e una tessera che manca pure.
+      const conto = rilTessereMancanti(COMO.lat, COMO.lon);
+      prova('la riga di stato sa quante ne mancano e se ci si riprova ancora',
+        conto.mancanti === 1 && conto.ancora === 1,
+        `${conto.mancanti} mancante, ${conto.ancora} ancora da riprovare`);
+    }
+
+    rilTessere = salvaBuone;
+    rilTessereGuaste = salvaGuaste;
   }
 }
 
