@@ -31428,6 +31428,11 @@ function simCostruisciScena(ev) {
     return { tipo, dati, inizio: d - semi, fine: d + semi, durata: 28,
       nota: 'Le posizioni di Terra e pianeta sono quelle vere: al massimo dell’elongazione il pianeta appare illuminato a metà.' };
   }
+  if (tipo === 'congiunzione') {
+    const semi = 12 * SIM_ORA;
+    return { tipo, dati, inizio: d - semi, fine: d + semi, durata: 30,
+      nota: 'Posizioni e separazione sono calcolate istante per istante. I dischi dei pianeti sono ingranditi per renderli riconoscibili; le distanze angolari e il campo del binocolo sono in scala.' };
+  }
   // Evento generico (compresi quelli aggiunti a mano): si simula il cielo
   const semi = 4 * SIM_ORA;
   return { tipo: 'cielo', dati, inizio: d - semi, fine: d + semi, durata: 26,
@@ -32415,6 +32420,90 @@ function simScenaCielo(ctx, tempo) {
   ];
 }
 
+// Campo ravvicinato dei due protagonisti di una congiunzione. Il cerchio e
+// la distanza fra i centri sono in scala; i dischi sono ingranditi, altrimenti
+// un pianeta occuperebbe meno di un pixel anche su uno schermo grande.
+function simScenaCongiunzione(ctx, tempo) {
+  const L = sim.L, H = sim.H, dati = sim.scena.dati;
+  const congiunzione = sim.evento.congiunzione || {};
+  const idA = dati.a || congiunzione.a, idB = dati.b || congiunzione.b;
+  const nomeA = dati.nomeA || congiunzione.nomeA || idA;
+  const nomeB = dati.nomeB || congiunzione.nomeB || idB;
+  const o = simOsservatore();
+
+  ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, L, H);
+  simDisegnaStelleSfondo(ctx, 0.65);
+
+  let va, vb, sep, altA, altB, azA, azB, faseLuna = 1, distanzaA, distanzaB;
+  try {
+    va = Astronomy.GeoVector(idA, tempo, true);
+    vb = Astronomy.GeoVector(idB, tempo, true);
+    sep = Astronomy.AngleBetween(va, vb);
+    distanzaA = Math.hypot(va.x, va.y, va.z) * UA_KM;
+    distanzaB = Math.hypot(vb.x, vb.y, vb.z) * UA_KM;
+    const eqA = Astronomy.Equator(idA, tempo, o.obs, true, true);
+    const eqB = Astronomy.Equator(idB, tempo, o.obs, true, true);
+    const hA = Astronomy.Horizon(tempo, o.obs, eqA.ra, eqA.dec, 'normal');
+    const hB = Astronomy.Horizon(tempo, o.obs, eqB.ra, eqB.dec, 'normal');
+    altA = hA.altitude; altB = hB.altitude; azA = hA.azimuth; azB = hB.azimuth;
+    if (idA === 'Moon' || idB === 'Moon') faseLuna = Astronomy.Illumination('Moon', tempo).phase_fraction;
+  } catch (e) {
+    return ['<p>Non è stato possibile calcolare la posizione dei due astri.</p>'];
+  }
+
+  const campo = 8; // gradi: campo tipico di un binocolo 7×50
+  const rCampo = Math.min(L * 0.42, H * 0.40), cx = L / 2, cy = H / 2;
+  const scala = 2 * rCampo / campo;
+  const ra = Math.atan2(va.y, va.x), rb = Math.atan2(vb.y, vb.x);
+  const decA = Math.atan2(va.z, Math.hypot(va.x, va.y));
+  const decB = Math.atan2(vb.z, Math.hypot(vb.x, vb.y));
+  let dra = rb - ra;
+  if (dra > Math.PI) dra -= Math.PI * 2;
+  if (dra < -Math.PI) dra += Math.PI * 2;
+  const dx = dra * Math.cos((decA + decB) / 2) / (Math.PI / 180) * scala;
+  const dy = -(decB - decA) / (Math.PI / 180) * scala;
+  const ax = cx - dx / 2, ay = cy - dy / 2, bx = cx + dx / 2, by = cy + dy / 2;
+
+  ctx.beginPath(); ctx.arc(cx, cy, rCampo, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(15,23,42,0.62)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(125,211,252,0.55)'; ctx.lineWidth = 2; ctx.stroke();
+  simEtichetta(ctx, 'campo di 8° (binocolo)', cx, cy - rCampo - 14, '#7dd3fc');
+
+  const disegnaCorpo = (id, nome, x, y) => {
+    if (id === 'Moon') {
+      simDisegnaLuna(ctx, x, y, Math.max(13, Math.min(25, rCampo * 0.11)), faseLuna,
+        true, '#e5e7eb', 'rgba(2,6,23,0.92)');
+    } else {
+      const r = Math.max(6, Math.min(10, rCampo * 0.045));
+      const colore = id === 'Saturn' ? '#f5d99b' : id === 'Mars' ? '#fb8b64' :
+        id === 'Venus' ? '#fff4c2' : id === 'Jupiter' ? '#f4c99b' : '#dbeafe';
+      ctx.fillStyle = colore; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      if (id === 'Saturn') {
+        ctx.strokeStyle = '#e8c77c'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(x, y, r * 1.8, r * 0.55, -0.18, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    simEtichetta(ctx, nome, x, y + Math.max(25, rCampo * 0.15), '#f8fafc', 'center', true);
+  };
+  disegnaCorpo(idA, nomeA, ax, ay); disegnaCorpo(idB, nomeB, bx, by);
+
+  ctx.strokeStyle = 'rgba(216,180,254,0.9)'; ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+  simEtichetta(ctx, `${sep.toFixed(2)}°`, cx, cy - 12, '#e9d5ff', 'center', true);
+
+  const minuti = (tempo - sim.evento.dataObj) / SIM_MIN;
+  const sopra = altA > 0 && altB > 0, altMedia = (altA + altB) / 2;
+  const azMedia = ((azA + azB) / 2 + 360) % 360;
+  const distanzaTesto = km => km >= 1e8
+    ? `${(km / 1e9).toFixed(2)} miliardi di km` : `${Math.round(km / 1e6)} milioni di km`;
+  return [
+    `<p><strong>${nomeA} e ${nomeB}: ${sep.toFixed(2)}° di separazione</strong> (${Math.round(sep * 60)} primi d’arco).</p>`,
+    `<p>${sopra ? `Entrambi sopra l’orizzonte, a circa <strong>${altMedia.toFixed(0)}°</strong> verso <strong>${skyNomeDirezione(azMedia)}</strong>.` : `Da questa posizione almeno uno dei due astri è <strong>sotto l’orizzonte</strong>.`}</p>`,
+    `<p>${minuti < 0 ? 'Mancano' : 'Sono passati'} <strong>${simDurataTesto(minuti)}</strong> ${minuti < 0 ? 'al' : 'dal'} massimo avvicinamento.</p>`,
+    `<p>La vicinanza è solo apparente: ${nomeA} dista circa <strong>${distanzaTesto(distanzaA)}</strong> dalla Terra, ${nomeB} circa <strong>${distanzaTesto(distanzaB)}</strong>.</p>`
+  ];
+}
+
 // =====================================================================
 // 8.11 Ciclo di disegno e comandi
 // =====================================================================
@@ -32452,6 +32541,7 @@ function simDisegna(dtReale) {
         case 'stagione':      righe = simScenaStagione(ctx, tempo); break;
         case 'sciame':        righe = simScenaSciame(ctx, tempo, dtReale); break;
         case 'elongazione':   righe = simScenaElongazione(ctx, tempo); break;
+        case 'congiunzione':  righe = simScenaCongiunzione(ctx, tempo); break;
         default:              righe = simScenaCielo(ctx, tempo); break;
       }
     } catch (err) {
@@ -32540,6 +32630,7 @@ const SIM_PERCHE_ECLITTICA = {
   stagione: 'Equinozi e solstizi sono i quattro punti in cui l\'eclittica incrocia l\'equatore celeste: ' +
     'le stagioni nascono proprio dall\'angolo fra i due.',
   elongazione: 'Un pianeta si allontana dal Sole muovendosi lungo quella linea: l\'elongazione si misura lì sopra.',
+  congiunzione: 'Le congiunzioni accadono perché Luna e pianeti percorrono la stessa fascia del cielo e, visti dalla Terra, a volte si allineano quasi sulla stessa direzione.',
   cielo: 'Sole, Luna e pianeti che vedi in scena stanno tutti appoggiati a quella riga.'
 };
 
@@ -32783,7 +32874,11 @@ function aggiungiCongiunzioni(oggi, limite) {
             nomeA: coppia.a.nome, nomeB: coppia.b.nome,
             separazione: gradi
           },
-          simul: { scena: 'cielo' },
+          simul: {
+            scena: 'congiunzione',
+            a: coppia.a.id, b: coppia.b.id,
+            nomeA: coppia.a.nome, nomeB: coppia.b.nome
+          },
           programma: {
             cosaPortare: 'Nulla di obbligatorio: si vede a occhio nudo. Un binocolo li mostra insieme nello stesso campo, e con il telefono si fanno belle foto.',
             doveVederlo: `Serve un orizzonte libero nella direzione giusta: guarda la scheda “da qui” qui sotto per sapere dove e a che ora sono visibili dal tuo luogo.`,
