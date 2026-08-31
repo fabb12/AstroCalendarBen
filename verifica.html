@@ -549,8 +549,9 @@ let senzaNome = -1;
 for (let i = cat.quante - 1; i > 0; i--) if (!cat.nomiPerIndice.has(i)) { senzaNome = i; break; }
 if (senzaNome > 0) {
   const s = catSchedaStella(senzaNome);
-  prova('una stella senza nome si presenta lo stesso, senza inventarsi una sigla',
-        !!s && /^Stella di magnitudine/.test(s.nome), s && s.nome);
+  prova('una stella senza nome mostra il proprio codice identificativo',
+        !!s && s.codiceCatalogo === `CAT ${senzaNome}` &&
+        s.nome.startsWith(`Stella CAT ${senzaNome} di magnitudine`), s && s.nome);
 }
 nota(`Stelle con un nome o una lettera di Bayer: ${STELLE_NOMI.length.toLocaleString('it')} su ${cat.quante.toLocaleString('it')}.`);
 
