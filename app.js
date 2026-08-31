@@ -6585,7 +6585,7 @@ function costruisciAgenda() {
     // l'evento segnato dove bisogna guardare.
     scorciatoie.push(`<button onclick="apriEventoNelPlanetario('${evento.id}')" class="${stileScorciatoia}" ` +
       `title="Apre il planetario sull'istante dell'evento, puntato dove guardare">Vedi nel planetario</button>`);
-    if (!evento.manuale && (evento.corpoCielo || (evento.simul && typeof evento.simul.ra === 'number'))) {
+    if (eventoHaPostoIdeale(evento)) {
       scorciatoie.push(`<button onclick="apriMigliorPosto('${evento.id}')" class="${stileScorciatoia}" ` +
         `title="Cerca entro il raggio scelto un punto in cui montagne e colline non coprono l'evento">Trova il posto migliore</button>`);
     }
@@ -7473,6 +7473,10 @@ const sky = {
   // Inseguimento: la vista tiene l'oggetto scelto al centro, da sola, mentre
   // il cielo ruota o mentre il playback corre
   inseguimento: false,
+  // Se l'inseguimento nasce da «Vai all'evento», conserva l'evento e non
+  // soltanto l'astro: anche il radiante di uno sciame deve poter essere
+  // ricalcolato e tenuto al centro mentre cambia l'ora mostrata.
+  eventoInseguito: null,
   // La strada che l'oggetto scelto percorre nel cielo durante l'osservazione:
   // da dove è salito, dove sarà fra un'ora, quando tramonta (vedi 7.3-bis)
   mostraTraccia: true,
@@ -22455,6 +22459,14 @@ function skyAggiornaEtichette() {
 // Da qui in poi la scheda si apre in un modo solo: premendo direttamente
 // sull'oggetto disegnato sulla mappa.
 function skyImpostaTarget(id, opzioni = {}) {
+  // Una nuova scelta esplicita prende il posto dell'evento che la camera
+  // stava seguendo; «Vai all'evento» reimposta subito dopo il proprio
+  // aggancio, quando questa funzione viene usata durante quel flusso.
+  if (sky.eventoInseguito) {
+    sky.eventoInseguito = null;
+    sky.inseguimento = false;
+    skyAggiornaTastoInsegui();
+  }
   const spegni = sky.target === id && !opzioni.mantieni;
   sky.target = spegni ? null : id;
   sky.cacheOrari = { chiave: null, valore: null };
@@ -23189,6 +23201,21 @@ function skyTastoPercheHtml(ev) {
   return '';
 }
 
+// La ricerca del posto ideale confronta il profilo del terreno nella
+// direzione dell'evento. Il tasto ha quindi senso soltanto quando l'evento
+// porta un astro oppure coordinate equatoriali utilizzabili; promemoria,
+// stagioni ed eventi senza un punto preciso nel cielo non devono offrirlo.
+function eventoHaPostoIdeale(ev) {
+  return !!(ev && ev.dataObj && (ev.corpoCielo ||
+    (ev.simul && typeof ev.simul.ra === 'number' && typeof ev.simul.dec === 'number')));
+}
+
+function skyTastoPostoIdealeHtml(ev) {
+  if (!eventoHaPostoIdeale(ev)) return '';
+  return `<button type="button" class="tasto-evento-cielo" onclick="apriMigliorPosto('${ev.id}')" ` +
+    `title="Cerca un punto in cui montagne e colline non coprono l'evento">Posto ideale</button>`;
+}
+
 // La finestra della mappa vive nella pagina, e la pagina non si vede finché
 // il cielo è a schermo intero (nel pieno schermo vero il browser disegna solo
 // l'elemento richiesto): si esce prima, se no il tasto sembrerebbe rotto.
@@ -23228,7 +23255,7 @@ function skyEventoHtml(ev, inCorso) {
       <p class="quando-evento">${skyQuandoEventoTesto(ev, inCorso)}</p>
       <div class="azioni-evento">
         <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Vai all'evento</button>
-        <button type="button" class="tasto-evento-cielo" onclick="apriMigliorPosto('${ev.id}')">Posto ideale</button>
+        ${skyTastoPostoIdealeHtml(ev)}
         ${skyTastoPercheHtml(ev)}
       </div>
     </div>
@@ -23256,7 +23283,7 @@ function skyEventoSettimanaHtml(ev) {
       <p class="quando-evento">${skyGiornoEventoTesto(ev)} · ${skyScartoTempoTesto(scarto)}</p>
       <div class="azioni-evento">
         <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Vai all'evento</button>
-        <button type="button" class="tasto-evento-cielo" onclick="apriMigliorPosto('${ev.id}')">Posto ideale</button>
+        ${skyTastoPostoIdealeHtml(ev)}
         ${skyTastoPercheHtml(ev)}
       </div>
     </div>
@@ -23312,7 +23339,9 @@ window.skyVaiAEvento = (id) => {
   if (!ev) return;
   skyFermaPlayback();
   skyImpostaOffsetTempo((ev.dataObj.getTime() - Date.now()) / 1000);
-  skyAvviso('eventi', `Orologio portato su “${ev.titolo}”.`, 5000);
+  skyEventoNelCielo(id);
+  skyAttivaInseguimentoEvento(ev);
+  skyAvviso('eventi', `Orologio portato su “${ev.titolo}”: l'evento resta al centro della mappa.`, 5000);
 };
 
 // Punta la mappa dove si vede l'evento: il radiante di uno sciame, l'astro
@@ -23340,6 +23369,28 @@ window.skyEventoNelCielo = (id) => {
   skyMostraGruppo('');
   skyCentraSu({ nome: `il radiante delle ${p.nome}`, az: p.az, alt: p.alt });
 };
+
+// «Vai all'evento» non e' un semplice salto temporale: la camera resta
+// agganciata al punto dell'evento. Conserviamo l'id (anziche' una posizione
+// gia' calcolata) per poter ricalcolare anche i radianti mentre il tempo
+// scorre. Gli eventi senza una direzione precisa, come equinozi e aurore,
+// mantengono invece la vista scelta dal loro modulo.
+function skyAttivaInseguimentoEvento(ev) {
+  const p = skyPosizioneEvento(ev, skyAdesso());
+  if (!p) {
+    sky.eventoInseguito = null;
+    sky.inseguimento = false;
+    skyAggiornaTastoInsegui();
+    return;
+  }
+  sky.eventoInseguito = ev.id;
+  sky.inseguimento = true;
+  skyAggiornaTastoInsegui();
+  if (!skyUsaSensori()) {
+    skyFermaMovimenti();
+    skyCentraSu({ nome: ev.titolo, az: p.az, alt: p.alt }, { subito: true });
+  }
+}
 
 // Vedere l'evento nel planetario, nel momento giusto.
 //   È il tasto che ogni scheda dell'agenda porta in cima alle scorciatoie, e
@@ -23405,6 +23456,8 @@ window.apriEventoNelPlanetario = (id) => {
     aurImpostaKpSimulato(typeof ev.aurora.kp === 'number' ? ev.aurora.kp : null);
     if (typeof aurGuardaInCielo === 'function') aurGuardaInCielo();
   }
+
+  skyAttivaInseguimentoEvento(ev);
 
   skyAggiornaTastiFiltri();
 
@@ -24233,6 +24286,11 @@ function skyCentraSu(o, opzioni = {}) {
 // L'oggetto "scelto adesso": prima quello di cui è aperta la scheda, poi
 // l'astro acceso nell'elenco. Sono i due modi di dire "questo qui".
 function skyOggettoScelto() {
+  if (sky.eventoInseguito) {
+    const ev = eventiCalcolati.find(e => e.id === sky.eventoInseguito);
+    const p = ev ? skyPosizioneEvento(ev, skyAdesso()) : null;
+    if (p) return { nome: ev.titolo, az: p.az, alt: p.alt };
+  }
   const voce = skyVoceSelezionata();
   if (voce && typeof voce.az === 'number') return voce;
   if (sky.target) {
@@ -24245,6 +24303,10 @@ function skyOggettoScelto() {
 function skyAlternaInseguimento() {
   const acceso = !sky.inseguimento;
   const o = skyOggettoScelto();
+
+  // Il tasto manuale torna sempre a inseguire l'oggetto selezionato; non deve
+  // riattivare per errore l'ultimo evento raggiunto dal calendario.
+  sky.eventoInseguito = null;
 
   if (acceso && !o) {
     skyAvviso('inseguimento', 'Prima scegli cosa inseguire: toccalo sulla mappa, o prendilo dall\'elenco degli astri.', 7000);
@@ -24291,6 +24353,7 @@ function skyInsegui() {
 function skySpegniInseguimento(motivo) {
   if (!sky.inseguimento) return;
   sky.inseguimento = false;
+  sky.eventoInseguito = null;
   skyAggiornaTastoInsegui();
   if (motivo) skyAvviso('inseguimento', motivo, 5000);
   else skyAvviso('inseguimento', '');
