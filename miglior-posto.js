@@ -14,6 +14,19 @@ let postoEvento = null;
 let postoMappa = null;
 let postoStrati = [];
 
+// La ricerca parte dal punto dal quale il planetario sta mostrando il cielo.
+// Se l'utente ha usato "Vai qua", quel luogo di visita ha la precedenza sulla
+// posizione principale dell'app: usare osservatoreCorrente() riportava invece
+// la mappa al posto precedente proprio dopo uno spostamento nel planetario.
+function postoCentroCorrente() {
+  const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
+  if (luogo && isFinite(luogo.lat) && isFinite(luogo.lon)) {
+    return { lat: Number(luogo.lat), lon: Number(luogo.lon) };
+  }
+  const obs = typeof osservatoreCorrente === 'function' ? osservatoreCorrente() : null;
+  return obs ? { lat: obs.latitude, lon: obs.longitude } : null;
+}
+
 function postoDestinazione(lat, lon, az, km) {
   if (typeof terrenoPuntoA === 'function') return terrenoPuntoA(lat, lon, az, km);
   const r = 6371, a = az * Math.PI / 180, f1 = lat * Math.PI / 180;
@@ -188,12 +201,11 @@ async function postoAvviaRicerca() {
   const stato = document.getElementById('posto-evento-stato');
   const tasto = document.getElementById('posto-evento-cerca');
   const raggio = Number(document.getElementById('posto-evento-raggio').value);
-  const obs = osservatoreCorrente();
-  if (!postoEvento || !obs) { stato.textContent = 'Imposta prima la tua posizione nelle Impostazioni.'; return; }
+  const centro = postoCentroCorrente();
+  if (!postoEvento || !centro) { stato.textContent = 'Imposta prima la tua posizione nelle Impostazioni.'; return; }
   stato.textContent = `Cerco strade pubbliche carrabili, poi confronto il terreno entro ${raggio} km…`;
   tasto.disabled = true;
   try {
-    const centro = { lat: obs.latitude, lon: obs.longitude };
     const risultati = await postoAnalizza(postoEvento, centro, raggio);
     postoMostraRisultati(postoEvento, centro, raggio, risultati);
     stato.textContent = `Ricerca completata: ${risultati.filter(p => p.margine > 0).length} punti accessibili hanno l'evento sopra il profilo del terreno.`;
@@ -208,8 +220,8 @@ window.apriMigliorPosto = id => {
   document.getElementById('posto-evento-risultati').innerHTML = '';
   document.getElementById('posto-evento-stato').textContent = 'Scegli quanto lontano vuoi cercare, poi avvia il confronto.';
   document.getElementById('modale-posto-evento').classList.remove('hidden');
-  const obs = osservatoreCorrente();
-  if (obs) postoDisegnaMappa({ lat: obs.latitude, lon: obs.longitude },
+  const centro = postoCentroCorrente();
+  if (centro) postoDisegnaMappa(centro,
     Number(document.getElementById('posto-evento-raggio').value), [], 0);
 };
 
@@ -223,8 +235,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const r = document.getElementById('posto-evento-raggio');
   r.addEventListener('input', () => {
     document.getElementById('posto-evento-raggio-testo').textContent = `${r.value} km`;
-    const obs = osservatoreCorrente();
-    if (postoMappa && obs) postoDisegnaMappa({ lat: obs.latitude, lon: obs.longitude }, Number(r.value), [], 0);
+    const centro = postoCentroCorrente();
+    if (postoMappa && centro) postoDisegnaMappa(centro, Number(r.value), [], 0);
   });
   document.getElementById('posto-evento-cerca').addEventListener('click', postoAvviaRicerca);
   document.getElementById('btn-chiudi-posto-evento').addEventListener('click', () => document.getElementById('modale-posto-evento').classList.add('hidden'));
