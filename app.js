@@ -16145,11 +16145,30 @@ const SKY_ACQUA_CALMA = [
   { pendenza: 0.3, lunghezza: 0.32 }     // 1 = fiume
 ];
 
-// Sotto questa altezza in pixel una striscia d'acqua non si riempie: si
-// traccia. Un poligono alto mezzo pixel non copre nessun pixel intero e
-// sullo schermo non compare affatto — ed è il caso normale dei fiumi, che
-// visti da lontano sono una riga e nient'altro.
-const SKY_ACQUA_FILO_PX = 1.6;
+// Quanto è **alta almeno** una striscia d'acqua disegnata.
+//
+// È la risposta a «i fiumi non si vedono, e quando si vedono sono un filo di
+// pennarello azzurro». Un corso d'acqua largo trenta metri, guardato da tre
+// chilometri e da cinquanta metri più in alto, occupa in verticale qualche
+// decimo di pixel: la geometria è giusta e il disegno è nessun disegno. La
+// stessa cosa succede al bordo di ogni lago, dove la superficie si assottiglia
+// fino a sparire — ed è lì che nascevano le code a punta.
+//
+// La forma vera, a quella scala, non c'è: il fiume è più stretto di un pixel.
+// Ma il **posto** c'è, ed è esatto al metro (`acqueTagliaUno` lo calcola dalla
+// geometria vera). Allora si disegna una forma plausibile nel posto giusto: la
+// striscia si allarga fino a questo minimo attorno alla sua mezzeria, che è
+// dove l'acqua sta davvero, e da lì in poi è acqua come tutte le altre —
+// stesso colore di Fresnel, stesse rive, stessa foschia. Due pixel e mezzo,
+// che è la larghezza a cui un tratto smette di essere una riga e comincia a
+// essere una superficie.
+const SKY_ACQUA_MIN_PX = 2.5;
+
+// E quanto si smorza quando la larghezza è tutta prestata. Non è pignoleria:
+// un'acqua allargata dieci volte, disegnata piena, è più marcata del lago vero
+// che le sta accanto — e allora il ruscello dietro casa grida più forte del
+// Garda. A opacità piena resta chi la larghezza ce l'ha davvero.
+const SKY_ACQUA_MIN_ALFA = 0.55;
 
 // Sotto questa altezza in pixel non si mettono onde né riflessi a bande:
 // una striscia di tre pixel divisa in fasce sono tre righe, non delle onde.
@@ -16159,6 +16178,31 @@ const SKY_ACQUA_ALTA_PX = 6;
 // distanza dentro a una striscia. Sono le stesse misure del mare, ridotte:
 // una striscia è alta una frazione dello schermo, non tutto.
 const SKY_ACQUA_PASSO_PX = 7;
+
+// L'isteresi con cui il passo di campionamento cambia: la stessa di
+// `RIL_ISTERESI`, e per la stessa ragione — fra la soglia per infittire e
+// quella per diradare ci dev'essere una fascia morta, se no il passo balla a
+// ogni fotogramma mentre il dito pizzica.
+const SKY_ACQUA_ISTERESI = 1.35;
+
+// Il passo di adesso, tenuto fra un fotogramma e l'altro. È uno solo per
+// tutte le strisce, e si decide **dalla focale e basta**: sono la stessa acqua
+// guardata con lo stesso campo, e facendolo dipendere da quanto è larga questa
+// striscia due laghi si campionerebbero a passi diversi — peggio, si
+// scriverebbero addosso lo stato a vicenda e il passo ballerebbe fra l'uno e
+// l'altro dentro allo stesso fotogramma.
+const skyAcquaPasso = { colonne: 1 };
+
+function skyAcquaPassoColonne(focale) {
+  const passoAz = (typeof ACQUE_PASSO_AZ === 'number') ? ACQUE_PASSO_AZ : 0.5;
+  const pxColonna = Math.max(1e-6, focale * passoAz * SKY_D2R);
+  const voluto = SKY_ACQUA_PASSO_PX / pxColonna;
+  let p = skyAcquaPasso.colonne;
+  while (p < 256 && voluto > p * SKY_ACQUA_ISTERESI) p *= 2;
+  while (p > 1 && voluto < (p / 2) / SKY_ACQUA_ISTERESI) p /= 2;
+  skyAcquaPasso.colonne = p;
+  return p;
+}
 const SKY_ACQUA_FASCE = [4, 6, 8];
 
 // Le depressioni a cui si ferma la rampa del colore. Non sono equidistanti:
@@ -16464,8 +16508,26 @@ function skyAcqueStrisce(viste, arco) {
   const n = Math.min(ACQUE_DIREZIONI, Math.round(2 * arco.mezzo / passo) + 1);
   const colonne = [];
   for (let i = 0; i < n; i++) {
-    const az = arco.centro - arco.mezzo + i * passo;
-    const idx = Math.round((((az % 360) + 360) % 360) / passo) % ACQUE_DIREZIONI;
+    const voluto = arco.centro - arco.mezzo + i * passo;
+    const idx = Math.round((((voluto % 360) + 360) % 360) / passo) % ACQUE_DIREZIONI;
+    // L'azimut con cui la colonna si **disegna** è quello del suo campione,
+    // non quello continuo da cui lo si è cercato, ed è la riga che toglie il
+    // tremolio dell'acqua sotto lo zoom.
+    //
+    // `arco.mezzo` cresce e cala col campo visivo, quindi il capofila
+    // `centro − mezzo` scorre a ogni pizzicata: disegnando lì, ogni colonna
+    // scivolava con continuità mentre i **dati** che le stanno attaccati
+    // restavano quelli del campione più vicino. Fin qui sarebbe uno
+    // scorrimento; il guaio è che a metà passo `idx` scatta al campione
+    // accanto, e le due rive saltano di colpo alla differenza fra due bande
+    // contigue — che su un lago di sbieco sono centinaia di metri. Sullo
+    // schermo è un bordo che ondeggia e ogni tanto sussulta, e lo si vede
+    // solo pizzicando, perché da fermi nulla si muove.
+    //
+    // Ancorando il disegno alla griglia dei dati la geometria dipende solo
+    // dall'indice: due fotogrammi con lo stesso insieme di colonne disegnano
+    // esattamente gli stessi pixel, per qualunque campo visivo.
+    const az = idx * passo;
     const lista = viste[idx];
     colonne.push(lista ? lista.map(b => ({ az, b, usata: false })) : []);
   }
@@ -16547,6 +16609,57 @@ function skyDisegnaAcqueInterne(ctx, base, focale, aria) {
   ctx.restore();
 }
 
+// Le colonne più sottili di `minimo` si allargano attorno alla loro
+// **mezzeria**, che è dove l'acqua sta davvero.
+//
+// Si fa per colonna e non per striscia: un lago può essere alto venti pixel in
+// mezzo e mezzo pixel ai bordi, e sono proprio i bordi a dover restare acqua
+// invece di assottigliarsi in una punta. Le depressioni vere (`depAlto`,
+// `depBasso`) non si toccano: servono al colore, alle onde e al riflesso, e
+// quelle la larghezza prestata non la devono vedere.
+function skyAcquaAllargaSottili(alto, basso, minimo) {
+  const n = alto.length;
+  // Prima si decide, poi si allarga, e sono **due giri**: allargando strada
+  // facendo, la colonna in coda legge la tangente su una vicina che è già
+  // stata spostata, e prende una direzione storta. È un errore di un
+  // ventesimo di pixel e non si vedrebbe mai — ma è anche il genere di
+  // dipendenza dall'ordine che, il giorno che qualcuno cambia il verso del
+  // ciclo, diventa un difetto vero.
+  const dove = new Array(n);
+  for (let i = 0; i < n; i++) {
+    if (!alto[i]) continue;
+    let dx = basso[i].px - alto[i].px, dy = basso[i].py - alto[i].py;
+    const h = Math.hypot(dx, dy);
+    if (h >= minimo) continue;
+    if (h > 1e-3) { dx /= h; dy /= h; }
+    else {
+      // Larghezza nulla: la direzione «giù» non si può leggere dai due
+      // estremi, perché coincidono. La dà allora la perpendicolare alla
+      // striscia — che per un fiume guardato per il verso lungo è esattamente
+      // giusta: la sua sezione sta di traverso al suo corso.
+      let tx = 0, ty = 0;
+      for (let j = i + 1; j < n; j++) if (alto[j]) { tx = alto[j].px - alto[i].px; ty = alto[j].py - alto[i].py; break; }
+      if (tx === 0 && ty === 0) {
+        for (let j = i - 1; j >= 0; j--) if (alto[j]) { tx = alto[i].px - alto[j].px; ty = alto[i].py - alto[j].py; break; }
+      }
+      const m = Math.hypot(tx, ty);
+      if (m > 1e-3) { dx = -ty / m; dy = tx / m; } else { dx = 0; dy = 1; }
+      // Il verso: la riva vicina sta più in basso sullo schermo di quella
+      // lontana, in tutte le inquadrature in cui si guarda l'acqua.
+      if (dy < 0) { dx = -dx; dy = -dy; }
+    }
+    dove[i] = [dx, dy];
+  }
+  const r = minimo / 2;
+  for (let i = 0; i < n; i++) {
+    if (!dove[i]) continue;
+    const [dx, dy] = dove[i];
+    const mx = (alto[i].px + basso[i].px) / 2, my = (alto[i].py + basso[i].py) / 2;
+    alto[i] = { px: mx - dx * r, py: my - dy * r, davanti: true };
+    basso[i] = { px: mx + dx * r, py: my + dy * r, davanti: true };
+  }
+}
+
 // Una striscia d'acqua: il bordo lontano in cima, quello vicino in fondo, e
 // in mezzo il colore, la foschia, le rive, l'onda e il riflesso.
 function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, gradiente, riva) {
@@ -16608,6 +16721,12 @@ function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, g
   dist /= quanti;
   depMedia /= quanti;
 
+  // Le colonne troppo sottili si allargano attorno alla loro mezzeria fino a
+  // `SKY_ACQUA_MIN_PX` (vedi lì il perché).
+  const sottile = Math.max(0, Math.min(1, cima / SKY_ACQUA_MIN_PX));
+  skyAcquaAllargaSottili(alto, basso, SKY_ACQUA_MIN_PX);
+  if (cima < SKY_ACQUA_MIN_PX) cima = SKY_ACQUA_MIN_PX;
+
   const colore = skyAcquaColore(-depMedia, aria);
   // La foschia, come per le creste: a venticinque chilometri metà del
   // contrasto se n'è andata. Senza, un lago in fondo alla valle è nitido
@@ -16616,27 +16735,17 @@ function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, g
   const velo = 1 - Math.exp(-(dist / 1000) / SKY_FOSCHIA_KM);
   const aria0 = skyColoreCielo(aria, 1.2);
 
-  if (cima < SKY_ACQUA_FILO_PX) {
-    // Il filo: una striscia più sottile di un pixel e mezzo non si riempie,
-    // si traccia. È il caso normale di ogni fiume — e di un lago guardato da
-    // lontano e da poco più in alto di lui. L'opacità segue lo spessore vero
-    // invece di essere piena: un tratto opaco alto mezzo pixel è un filo di
-    // vernice azzurra, e a occhio è più falso di nessun fiume.
-    ctx.beginPath();
-    let giu = false;
-    for (let i = 0; i < n; i++) {
-      if (!alto[i]) { giu = false; continue; }
-      const x = (alto[i].px + basso[i].px) / 2, y = (alto[i].py + basso[i].py) / 2;
-      if (giu) ctx.lineTo(x, y); else { ctx.moveTo(x, y); giu = true; }
-    }
-    ctx.lineWidth = 1;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = skyRgba(skyMescolaColore(colore, aria0, velo * 0.6),
-      Math.max(0.18, Math.min(0.85, cima / SKY_ACQUA_FILO_PX)) * (1 - velo * 0.4));
-    ctx.stroke();
-    return;
-  }
+  // Quanta della larghezza disegnata è **prestata** (vedi `SKY_ACQUA_MIN_PX`):
+  // tutta per un ruscello, niente per un lago che di pixel ne ha i suoi. Da lì
+  // l'opacità, che è l'unico modo onesto di dire «qui c'è acqua, ma è più
+  // sottile di così» senza disegnare un filo di vernice.
+  //
+  // Prima di questo, sotto al pixel e mezzo si tracciava una **linea**: un
+  // fiume era un tratto di pennarello azzurro largo un pixel, senza colore
+  // dell'acqua, senza rive, senza foschia — cioè l'unica cosa del paesaggio
+  // che non fosse fatta come tutte le altre, e infatti si vedeva.
+  ctx.save();
+  ctx.globalAlpha *= SKY_ACQUA_MIN_ALFA + (1 - SKY_ACQUA_MIN_ALFA) * sottile;
 
   // Il corpo, riempito con la rampa unica del fotogramma. Se per qualche
   // ragione la rampa non c'è (la vista guarda dritto in su, e allora
@@ -16688,11 +16797,14 @@ function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, g
 
   skyAcquaRive(ctx, aria, alto, basso, colore, velo);
 
-  // Onde e riflessi: solo se la striscia è abbastanza alta perché ci stiano.
-  if (cima >= SKY_ACQUA_ALTA_PX) {
+  // Onde e riflessi: solo se la striscia è abbastanza alta perché ci stiano —
+  // e **davvero** alta, non allargata a forza: dentro a due pixel e mezzo di
+  // larghezza prestata non c'è nessuna onda da leggere.
+  if (cima >= SKY_ACQUA_ALTA_PX && sottile >= 1) {
     skyAcquaTessitura(ctx, base, focale, aria, statoMare, astri, pezzi,
       alto, basso, depAlto, depBasso, px, velo, t);
   }
+  ctx.restore();
 }
 
 // Le due rive.
@@ -16800,15 +16912,41 @@ function skyAcquaTessitura(ctx, base, focale, aria, statoMare, astri, pezzi,
     if (alto[i].px < xMin) xMin = alto[i].px;
     if (alto[i].px > xMax) xMax = alto[i].px;
   }
-  const nc = Math.max(2, Math.min(dritte.length,
-    Math.round((xMax - xMin) / SKY_ACQUA_PASSO_PX) + 1));
+  // Il passo delle colonne campionate, **a potenze di due**.
+  //
+  // È l'altra metà del tremolio sotto lo zoom, e viene da lontano: la griglia
+  // era misurata in pixel (una colonna ogni sette) e le colonne si sceglievano
+  // per indice, `dritte[floor(c · dritte.length / nc)]`. Basta che `nc` cambi
+  // di uno — cioè sette pixel di pizzicata — perché **tutte** le colonne
+  // scelte scivolino di un campione: l'onda, il luccichio e le zampe di gatto
+  // si rileggono in punti diversi e la superficie striscia di traverso, che è
+  // esattamente il difetto per cui il terreno era passato alle potenze di due
+  // (`rilPassoColonne` in `rilievo.js`).
+  //
+  // Con un passo che raddoppia, le colonne campionate a passo 4 sono un
+  // **sottoinsieme** di quelle a passo 2: attraversando la soglia i campioni
+  // che restano restano dove sono, e gli altri si aggiungono in mezzo. Nulla
+  // scivola. L'isteresi fa il resto — non si torna indietro finché non si è
+  // ben oltre il punto di scambio, se no si balla attorno alla soglia.
+  const passoC = skyAcquaPassoColonne(focale);
+  const nc = Math.max(2, Math.floor((dritte.length - 1) / passoC) + 1);
   if (nc < 2) return;
-  const salto = dritte.length / nc;
   const colonne = new Int32Array(nc);
-  for (let c = 0; c < nc; c++) colonne[c] = dritte[Math.min(dritte.length - 1, Math.floor(c * salto))];
+  for (let c = 0; c < nc; c++) colonne[c] = dritte[Math.min(dritte.length - 1, c * passoC)];
 
-  const nf = Math.max(1, Math.min(quanto(SKY_ACQUA_FASCE[0], SKY_ACQUA_FASCE[1], SKY_ACQUA_FASCE[2]),
-    Math.round(px / 14)));
+  // Le fasce di distanza, con la stessa cura: sono le frazioni `j/nf` del
+  // cammino fra le due rive, e con `nf` a potenze di due le frazioni di prima
+  // (0, ½, 1) sopravvivono a quelle nuove (0, ¼, ½, ¾, 1) — cioè raddoppiando
+  // il dettaglio le righe già disegnate non si spostano.
+  //
+  // Qui l'isteresi non serve e non ci sarebbe dove tenerla (`px` è di questa
+  // striscia, non del fotogramma): basta la proprietà di annidamento. Al
+  // cambio di soglia le righe che c'erano restano dove sono e in mezzo ne
+  // compaiono altre — un dettaglio che si infittisce, non una superficie che
+  // scivola.
+  const nfMax = quanto(SKY_ACQUA_FASCE[0], SKY_ACQUA_FASCE[1], SKY_ACQUA_FASCE[2]);
+  const nf = Math.max(1, Math.min(1 << Math.floor(Math.log2(nfMax)),
+    Math.pow(2, Math.round(Math.log2(Math.max(1, px / 14))))));
 
   // Le fasce: per ognuna la distanza media, la depressione media, e da lì
   // quali componenti d'onda si vedono ancora e quanto conta l'aureola.
