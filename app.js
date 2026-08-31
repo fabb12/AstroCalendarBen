@@ -23139,8 +23139,18 @@ function skyAggiornaScheda() {
       aereiAggiornaSchedaViva(voce)) return;
 
   const scorrimento = pannello.scrollTop;
+  // Il corpo viene rigenerato ogni secondo per tenere aggiornati posizione,
+  // altezza e magnitudine. Un <details> nuovo, però, nasce sempre chiuso: il
+  // battito successivo al tocco faceva quindi richiudere subito “Altri dati”.
+  // Conserviamo anche questo stato dell'interfaccia, come già facciamo con lo
+  // scorrimento della scheda.
+  const dettagliAperti = !!corpo.querySelector('.dettagli-scheda[open]');
   corpo.innerHTML = voce ? (voce.categoria === 'aereo' && typeof aereiSchedaHtml === 'function'
     ? aereiSchedaHtml(voce) : skySchedaHtml(voce)) : skyAttesaSchedaHtml();
+  if (dettagliAperti) {
+    const dettagli = corpo.querySelector('.dettagli-scheda');
+    if (dettagli) dettagli.open = true;
+  }
   if (voce && voce.categoria === 'aereo' && typeof aereiCaricaFoto === 'function') aereiCaricaFoto(voce);
 
   // In coda alla scheda: le lune di Giove (solo per Giove) e la curva
