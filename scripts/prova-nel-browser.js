@@ -178,6 +178,21 @@ const server = http.createServer((req, res) => {
       disegniCostellazioni.premuto === 'false');
   console.log(`              magnitudine limite adesso: ${cielo.limite && cielo.limite.toFixed(1)}`);
 
+  // La casella dello scarto resta montata sia nel futuro sia nel passato.
+  // Il suo valore veniva aggiornato, ma l'etichetta no, perché entrambe le
+  // situazioni erano considerate genericamente "spostate".
+  const versiBarraTempo = await pagina.evaluate(() => {
+    skyImpostaOffsetTempo(3600);
+    const futuro = document.querySelector('#skymap-tempo-quando .orologio-scarto .etichetta-orologio-tempo')?.textContent;
+    skyImpostaOffsetTempo(-3600);
+    const passato = document.querySelector('#skymap-tempo-quando .orologio-scarto .etichetta-orologio-tempo')?.textContent;
+    skyImpostaOffsetTempo(0);
+    return { futuro, passato };
+  });
+  ok('la barra del tempo cambia etichetta attraversando il presente',
+    versiBarraTempo.futuro === 'Futuro' && versiBarraTempo.passato === 'Passato',
+    `${versiBarraTempo.futuro} → ${versiBarraTempo.passato}`);
+
   // La X aggiunta alla scheda degli aerei aveva ridefinito il pannello come
   // `position: relative`: dentro al planetario entrava così nel flusso sotto
   // al canvas e pareva non aprirsi. Proviamo la posizione calcolata, non solo

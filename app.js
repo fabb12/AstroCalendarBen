@@ -35786,7 +35786,10 @@ function skyAggiornaTestoTempo() {
       orologio.append(nome, ora);
       return orologio;
     };
-    const modo = `${orari.fusoDiverso ? 'altro-fuso' : 'fuso-dispositivo'}-${orari.spostato ? 'spostato' : 'adesso'}`;
+    // Anche il verso fa parte della struttura: passando attraverso "adesso"
+    // la casella dello scarto resta presente, ma la sua etichetta deve
+    // cambiare da Futuro a Passato (o viceversa), non soltanto il valore.
+    const modo = `${orari.fusoDiverso ? 'altro-fuso' : 'fuso-dispositivo'}-${orari.direzione}`;
     if (lettura.dataset.modo !== modo) {
       const celle = orari.fusoDiverso
         ? [creaOrologio('Località', orari.luogo, 'orologio-luogo'),
