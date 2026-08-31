@@ -8370,6 +8370,8 @@ titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-
     rQuota: rilievo.quota, rAlt: rilievo.alt, rCresta: rilievo.cresta, rFronte: rilievo.fronte,
     rLat: rilievo.lat, rLon: rilievo.lon, rOcchio: rilievo.occhio, rScarto: rilievo.scarto,
     rOcchioOra: rilievo.occhioOra, rAcceso: rilievo.acceso,
+    rOcchioLat: rilievo.occhioLat, rOcchioLon: rilievo.occhioLon,
+    rChiave: rilievo.chiave, rStato: rilievo.stato,
     tessere: rilTessere, lato: rilLatoTessera,
     cimeLat: cime.lat, cimeLon: cime.lon,
     luogo: window.luogoCorrente, vista: window.skyLuogoDelCielo
@@ -8724,10 +8726,24 @@ titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-
     // piedi, altrimenti i poligoni circondano il punto di vista; fuori dal
     // grembiule invisibile, però, non si deve abbassare una montagna vera.
     const occhioProvvisorio = 201.6;
+    // Che la correzione sia ancora in corso lo dice la maglia: è stata
+    // costruita con la camera di lassù, e la camera di adesso è ancora
+    // quaggiù. È quella differenza — e non la distanza dal terreno — la
+    // condizione in cui il raccordo entra in funzione.
+    const occhioMagliaPrima = rilievo.occhio;
+    rilievo.occhio = 701.6;
     prova('durante il caricamento il terreno sotto i piedi non ingloba la camera',
       rilLasciaSpazioCamera(500, occhioProvvisorio, 1) < occhioProvvisorio);
     prova('il raccordo anti-attraversamento finisce prima del terreno visibile',
       rilLasciaSpazioCamera(500, occhioProvvisorio, RIL_SPAZIO_CAMERA_M) === 500);
+    // E quando i due sono in pari non raccorda affatto. Fatto sempre,
+    // spianava il terreno vero sotto i settanta metri — su un pendio al
+    // dieci per cento sono sei gradi a venticinque metri, cioè la prova
+    // della traslazione qui sopra che falliva senza che niente lo dicesse.
+    rilievo.occhio = occhioProvvisorio;
+    prova('ma con la camera in pari con la sua maglia non spiana niente',
+      rilLasciaSpazioCamera(500, occhioProvvisorio, 1) === 500);
+    rilievo.occhio = occhioMagliaPrima;
     // La quota scritta accanto al nome del luogo è la stessa camera meno
     // l'altezza di una persona: se le due divergessero, si leggerebbe una
     // quota mentre se ne sta disegnando un'altra.
@@ -8798,6 +8814,116 @@ titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-
       Math.abs(terrenoPuntoDaDisegnare().lat - 45) < 1e-12);
   }
 
+  // --- Un salto non è una camminata ------------------------------------
+  //
+  // È la segnalazione «quando uso "vai qui" a volte ho questo errore
+  // poligonale»: un cuneo di terra che sale dall'orizzonte fin quasi allo
+  // zenit, con dentro i nomi dei paesi. Non è un poligono sbagliato, è
+  // terreno disegnato per davvero — la cresta viene ottantadue gradi in
+  // tutte e settecentoventi le direzioni — e viene da una cosa sola: la
+  // **camera sotto la superficie che sta disegnando**.
+  //
+  // A metterla lì erano due regole scritte per chi cammina. La quota
+  // dell'occhio insegue il suolo a quattro metri al secondo, che è giusto
+  // salendo una strada di montagna e vuol dire **due minuti** dopo un salto
+  // a una cima a seicento metri; e la maglia del posto di prima resta
+  // disegnata, traslata, mentre il terreno nuovo arriva. In quei due minuti
+  // il paesaggio è una parete.
+  //
+  // Nessuna delle due si giudica a occhio, e la seconda nemmeno leggendo il
+  // codice: `rilScorda` c'era, ed era scritto in un commento che i cambi di
+  // luogo veri passavano di lì — solo che non la chiamava nessuno.
+  {
+    const na = RIL_AZIMUT, nr = RIL_ANELLI, D2R = Math.PI / 180;
+    // Il posto nuovo: una cima a 664 m, la valle attorno. Il vecchio è un
+    // paese di pianura a 200, venti chilometri più a sud.
+    const suoloNuovo = d => 664 - 420 * (1 - Math.exp(-Math.pow(d / 2600, 2)));
+    const QVECCHIA = 200, LAT = 46, LON = 9;
+    rilievo.acceso = true;
+    rilievo.quota = new Float32Array(na * nr);
+    rilievo.alt = new Float32Array(na * nr);
+    rilievo.cresta = new Float32Array(na);
+    rilievo.fronte = new Float32Array(na * nr);
+    rilievo.lat = LAT; rilievo.lon = LON;
+    rilievo.occhio = suoloNuovo(0) + TERRENO_ALTEZZA_OCCHIO_M;
+    for (let i = 0; i < na; i++) {
+      for (let k = 0; k < nr; k++) rilievo.quota[i * nr + k] = suoloNuovo(RIL_DIST[k]);
+    }
+    // Quanto sale l'orizzonte disegnato, con la camera dove si trova.
+    const crestaCon = occhio => {
+      let peggio = -90;
+      for (let i = 0; i < na; i += 17) {
+        const a = i * RIL_PASSO_AZ * D2R, sn = Math.sin(a), cs = Math.cos(a);
+        for (let k = 0; k < nr; k++) {
+          const v = rilCampioneInMovimento(sn, cs, k, { est: 0, nord: 0 }, occhio);
+          if (v > peggio) peggio = v;
+        }
+      }
+      return peggio;
+    };
+
+    // Il contro-esempio, cioè la regola di prima: la camera arriva dalla
+    // pianura e sale di quattro metri al secondo.
+    let occhioVecchio = QVECCHIA + TERRENO_ALTEZZA_OCCHIO_M;
+    const crestaSubito = crestaCon(occhioVecchio);
+    for (let s = 0; s < 30; s++) occhioVecchio = rilSmussaOcchio(occhioVecchio, rilievo.occhio, 1000);
+    const crestaDopo30 = crestaCon(occhioVecchio);
+    prova('col la camera ferma alla quota del posto di prima il paesaggio è una parete',
+      crestaSubito > 75 && crestaDopo30 > 70,
+      `${crestaSubito.toFixed(0)}° appena arrivati, ${crestaDopo30.toFixed(0)}° dopo mezzo minuto`);
+    prova('e la salita a quattro metri al secondo dura minuti, non istanti',
+      (rilievo.occhio - QVECCHIA) / RIL_OCCHIO_V_MAX_M_S > 100,
+      `${((rilievo.occhio - QVECCHIA) / RIL_OCCHIO_V_MAX_M_S).toFixed(0)} s per 464 m di dislivello`);
+
+    // La cura: portati altrove, la camera ci arriva invece di incamminarsi.
+    window.luogoCorrente = () => ({ lat: LAT, lon: LON });
+    delete window.skyLuogoDelCielo;
+    fermaMoto();
+    terreno.lat = LAT; terreno.lon = LON; terreno.quota = suoloNuovo(0);
+    terreno.quotaAcqua = false;
+    rilievo.occhioOra = QVECCHIA + TERRENO_ALTEZZA_OCCHIO_M;
+    rilievo.occhioLat = LAT - 20 / 111.195; rilievo.occhioLon = LON;
+    const occhioDopoSalto = rilOcchioOra();
+    prova('dopo un salto la camera è già alla quota di qui',
+      Math.abs(occhioDopoSalto - rilievo.occhio) < 1e-6,
+      `${occhioDopoSalto.toFixed(1)} m, e il suolo di qui sta a ${rilievo.occhio.toFixed(1)}`);
+    prova('e allora l\'orizzonte torna un orizzonte', crestaCon(occhioDopoSalto) < 5,
+      `${crestaCon(occhioDopoSalto).toFixed(1)}° contro i ${crestaSubito.toFixed(0)}° di prima`);
+
+    // Ma camminando insegue ancora: è il pezzo che fa salire la camera
+    // scavalcando un valico, e non va perso per curare il salto.
+    rilievo.occhioOra = QVECCHIA + TERRENO_ALTEZZA_OCCHIO_M;
+    rilievo.occhioLat = LAT - 0.05 / 111.195; rilievo.occhioLon = LON;
+    rilievo.occhioQuando = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - 100;
+    const occhioCamminando = rilOcchioOra();
+    prova('cinquanta metri di strada, invece, la camera li insegue con dolcezza',
+      occhioCamminando > QVECCHIA + TERRENO_ALTEZZA_OCCHIO_M &&
+      occhioCamminando < rilievo.occhio - 1,
+      `${occhioCamminando.toFixed(1)} m, in viaggio verso ${rilievo.occhio.toFixed(1)}`);
+
+    // E la maglia: dentro al suo disco è ancora la superficie di qui,
+    // fuori no. Il controllo va fatto **prima** di quello sul terreno
+    // grosso, perché la finestra in cui la maglia vecchia restava sullo
+    // schermo è esattamente quella in cui il profilo nuovo non c'è ancora.
+    const messaLi = () => {
+      rilievo.cresta = new Float32Array(na);
+      rilievo.lat = LAT; rilievo.lon = LON; rilievo.chiave = 'finta';
+    };
+    messaLi();
+    prova('duecento metri più in là la maglia è ancora la superficie di qui',
+      rilScordaSeAltrove({ lat: LAT + 0.2 / 111.195, lon: LON }) === false);
+    messaLi();
+    prova('venti chilometri più in là no, e si butta',
+      rilScordaSeAltrove({ lat: LAT + 20 / 111.195, lon: LON }) === true &&
+      rilPronto() === false);
+    prova('e lo dice, invece di lasciare uno schermo senza terreno e senza perché',
+      rilievo.stato === 'in-corso');
+    // La soglia è il disco delle tessere: fuori di lì, di qui, la maglia
+    // non ha più niente di fine da dire — il primo piano lo disegnerebbe
+    // con la griglia grossa di un altro punto.
+    prova('la soglia è il disco delle tessere', RIL_MAGLIA_VALIDA_M === RIL_RAGGIO_KM * 1000);
+  }
+
   fermaMoto();
   terrenoMoto.fix.length = 0;
   salva.fix.forEach(f => terrenoMoto.fix.push(f));
@@ -8810,11 +8936,77 @@ titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-
   rilievo.lat = salva.rLat; rilievo.lon = salva.rLon;
   rilievo.occhio = salva.rOcchio; rilievo.scarto = salva.rScarto;
   rilievo.occhioOra = salva.rOcchioOra; rilievo.acceso = salva.rAcceso;
+  rilievo.occhioLat = salva.rOcchioLat; rilievo.occhioLon = salva.rOcchioLon;
+  rilievo.chiave = salva.rChiave; rilievo.stato = salva.rStato;
   rilTessere = salva.tessere; rilLatoTessera = salva.lato;
   cime.lat = salva.cimeLat; cime.lon = salva.cimeLon;
   if (salva.luogo === undefined) delete window.luogoCorrente; else window.luogoCorrente = salva.luogo;
   if (salva.vista === undefined) delete window.skyLuogoDelCielo; else window.skyLuogoDelCielo = salva.vista;
 }
+
+// --- L'invariante, sulla maglia vera --------------------------------
+//
+// Tutto quello che sta qui sopra si riassume in una riga sola: **sotto i
+// piedi la superficie sta alla quota della camera**. Quando vale, non
+// esiste nessuna parete vicina; quando non vale, il terreno a settanta
+// metri si alza dell'intero disaccordo, e a quindici centimetri dalle
+// scarpe di ottantanove gradi.
+//
+// Regge perché la camera legge le stesse fonti della maglia nello stesso
+// ordine — tessere, griglia grossa, quota misurata del centro. Il difetto
+// era proprio un gradino saltato: senza la griglia in mezzo, la camera
+// ripiegava sulla quota misurata **di un altro posto**. Qui si costruisce
+// la maglia per davvero, con le tessere che non arrivano, e le si chiede
+// cosa c'è sotto le scarpe.
+attendi('anche senza tessere, la maglia di un posto nuovo ha il suolo sotto la camera', (async () => {
+  const salva = {
+    quote: terreno.quote, lat: terreno.lat, lon: terreno.lon,
+    quota: terreno.quota, acqua: terreno.quotaAcqua,
+    tessere: rilTessere, scarto: rilievo.scarto
+  };
+  const nd = TERRENO_DISTANZE.length;
+  // Il suolo: pianura a 220 m e una cima a 664 venti chilometri a nord.
+  const vero = (est, nord) =>
+    220 + 444 * Math.exp(-Math.pow(Math.hypot(est, nord - 20000) / 3000, 2));
+  const quote = new Array(TERRENO_DIREZIONI * nd);
+  for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+    const a = i * TERRENO_PASSO_AZ * D2R, sn = Math.sin(a), cs = Math.cos(a);
+    for (let k = 0; k < nd; k++) {
+      const m = TERRENO_DISTANZE[k] * 1000;
+      quote[i * nd + k] = vero(sn * m, cs * m);
+    }
+  }
+  // La griglia grossa è quella del posto **vecchio**, che è dove la si è
+  // chiesta: è la situazione dei secondi dopo un «guarda il cielo da qui».
+  terreno.quote = quote; terreno.lat = 45.8; terreno.lon = 9;
+  terreno.quota = vero(0, 0); terreno.quotaAcqua = false;
+  rilTessere = new Map();          // le tessere del posto nuovo non ci sono
+  rilievo.scarto = 0;
+
+  const lat = 45.8 + 20 / 111.195, lon = 9;
+  const occhio = rilOcchioMeta(lat, lon);
+  const maglia = await rilCostruisciMaglia(lat, lon, occhio);
+  let peggio = -90;
+  for (let i = 0; i < RIL_AZIMUT; i += 13) {
+    for (let k = 0; k < RIL_ANELLI_PIEDI; k++) {
+      peggio = Math.max(peggio, maglia.alt[i * RIL_ANELLI + k]);
+    }
+  }
+  // E il contro-esempio: la camera com'era, cioè la quota misurata del
+  // posto di prima, con la stessa identica maglia.
+  const prima = rilAngolo(vero(0, 20000), terreno.quota + TERRENO_ALTEZZA_OCCHIO_M, RIL_DIST[0]);
+
+  terreno.quote = salva.quote; terreno.lat = salva.lat; terreno.lon = salva.lon;
+  terreno.quota = salva.quota; terreno.quotaAcqua = salva.acqua;
+  rilTessere = salva.tessere; rilievo.scarto = salva.scarto;
+
+  return {
+    esito: peggio < 0 && Math.abs(occhio - (vero(0, 20000) + TERRENO_ALTEZZA_OCCHIO_M)) < 6 &&
+      prima > 85,
+    nota: `camera a ${occhio.toFixed(0)} m e grembiule a ${peggio.toFixed(1)}°, ` +
+      `contro i ${prima.toFixed(0)}° della camera di prima`
+  };
+})());
 
 // =====================================================================
 titolo('29. La bussola: perché Google Maps punta il Nord e noi no (app.js §7.1-quinquies)');

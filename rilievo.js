@@ -151,6 +151,27 @@ const RIL_TESSERA_TENTATIVI = 5;
 // spostare niente sarebbe il modo più caro di non cambiare il disegno.
 const RIL_TRASLA_MIN_M = 0.5;
 
+// E oltre questo scostamento non si trasla affatto: la maglia non è più la
+// superficie di qui, e va buttata.
+//
+// La traslazione in sé regge bene: misurata su un fianco prealpino contro la
+// maglia ricostruita da capo nel punto nuovo, l'errore mediano della cresta
+// resta sotto il centesimo di grado fino a tre chilometri. Quello che non
+// regge è il resto — e sono due cose. Le tessere coprono `RIL_RAGGIO_KM`
+// attorno al **centro della maglia**: uscito da quel disco, di qui la maglia
+// non ha più niente di fine da dire, e il primo piano lo disegna con la
+// griglia grossa di un altro punto. E la camera, che sta a una quota presa
+// da un modello diverso: basta che i due non siano d'accordo perché il
+// terreno vicino si alzi come una parete (§8-bis). Con «Guarda il cielo da
+// qui» le due cose capitano insieme, ed è il cuneo di terra sopra l'orizzonte
+// che se ne vede.
+//
+// Buttarla non lascia un buco: senza maglia il planetario torna al profilo a
+// bande di `terreno.js`, che è quello che disegna prima che la maglia arrivi.
+// Tenerla sarebbe come i profili di Genova disegnati a Bolzano — peggio di
+// nessuna collina, perché sembrano veri.
+const RIL_MAGLIA_VALIDA_M = RIL_RAGGIO_KM * 1000;
+
 // Quanto in fretta la quota dell'occhio insegue il terreno sotto i piedi.
 // Non ci si arriva di colpo, e non è morbidezza gratuita: il modello del
 // suolo dice un valore ogni ventisette metri, e due fix vicini possono
@@ -167,6 +188,23 @@ const RIL_OCCHIO_TAU_MS = 1500;
 // strada di montagna, senza permettere al caricamento di sollevare il punto
 // di vista in un paio di fotogrammi.
 const RIL_OCCHIO_V_MAX_M_S = 4;
+// Ma un **salto non è una camminata**, e questa è la riga che lo dice.
+//
+// La camera insegue il suolo con dolcezza perché camminando il suolo cambia
+// sotto i piedi, e quattro metri al secondo sono la salita di una strada di
+// montagna. «Guarda il cielo da qui» invece non è un passo: è un altro
+// posto, e fra i due c'è tutta la differenza fra correggere una stima e
+// cambiare argomento. Salendo con quel tetto da una città di pianura a una
+// cima a seicento metri ci vogliono **due minuti**, e in quei due minuti la
+// camera sta sotto al suolo che sta disegnando: misurato sul banco, una
+// cresta di ottantadue gradi in tutte e settecentoventi le direzioni, che
+// sullo schermo è il cuneo di terra che sale fin quasi allo zenit.
+//
+// Trecento metri sono il doppio del passo più lungo che la posizione
+// consegni davvero (`SKY_SPOSTAMENTO_MIN_M`, centocinquanta, e in mezzo il
+// punto vivo interpola): oltre, da un fotogramma all'altro, non ci si è
+// mossi — si è stati portati, e la camera ci arriva invece di incamminarsi.
+const RIL_SALTO_OCCHIO_M = 300;
 // Finché l'occhio sta ancora recuperando una correzione altimetrica, il
 // primissimo lembo della maglia non deve poterlo avvolgere. Non si alza la
 // camera per evitarlo (sarebbe proprio il salto che vogliamo eliminare): si
@@ -600,6 +638,11 @@ const rilievo = {
   // suolo sotto i piedi (§8-bis). `null` finché non c'è una maglia.
   occhioOra: null,
   occhioQuando: 0,
+  // E dove la si è posata l'ultima volta. Serve a distinguere una camminata
+  // da un salto: la quota si insegue con dolcezza solo se il punto è ancora
+  // quello di prima (§8-bis, `RIL_SALTO_OCCHIO_M`).
+  occhioLat: null,
+  occhioLon: null,
   ultimeTessere: 0,   // quando si è chiesto l'ultimo giro di tessere
   fini: 0,            // quante direzioni hanno davvero letto una tessera
   scarto: 0,          // di quanto si sono spostate le tessere per accordarsi
@@ -1174,6 +1217,14 @@ async function rilCostruisciMaglia(lat, lon, occhio) {
     scarto = Math.max(-RIL_SCARTO_MAX, Math.min(RIL_SCARTO_MAX, sottoGriglia - sottoTessera));
   }
 
+  // Nota per chi passasse di qui a cercare un allineamento anche per la
+  // griglia grossa: non serve, e la ragione è nella camera. `rilOcchioMeta`
+  // legge **le stesse fonti nello stesso ordine** — tessere, poi griglia,
+  // poi la quota misurata del centro — quindi la superficie sotto i piedi
+  // sta alla quota della camera per costruzione, comunque siano andate le
+  // tessere. Allinearla di nuovo qui vorrebbe dire spostare lo sfondo di un
+  // numero che vale zero in tutti i casi che si sanno raccontare.
+
   let inizio = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   for (let i = 0; i < na; i++) {
     const az = i * RIL_PASSO_AZ;
@@ -1196,8 +1247,11 @@ async function rilCostruisciMaglia(lat, lon, occhio) {
       }
       // Nessuna delle due fonti sa niente di quel punto: si tiene l'anello
       // di prima, che è la cosa più vicina al vero che si abbia. Al primo
-      // anello non c'è nemmeno quello, e allora vale il suolo sotto i piedi.
-      if (q === null) q = k > 0 ? quota[i * nr + k - 1] : (terreno.quota || 0);
+      // anello non c'è nemmeno quello, e allora vale il suolo sotto i piedi
+      // — quello della **camera**, non `terreno.quota`: sono lo stesso
+      // numero da fermo, e dopo un cambio di posto la seconda è ancora la
+      // quota di dov'eravamo prima.
+      if (q === null) q = k > 0 ? quota[i * nr + k - 1] : sottoGriglia;
       quota[i * nr + k] = q;
       alt[i * nr + k] = rilAngolo(q, occhio, s);
     }
@@ -1567,8 +1621,33 @@ function rilScorda() {
   rilievo.chiave = null;
   rilievo.fini = 0;
   rilievo.occhioOra = null;
+  rilievo.occhioLat = null;
+  rilievo.occhioLon = null;
   rilTessere = new Map();
   rilTessereGuaste = new Map();
+}
+
+// La maglia che c'è in mano parla ancora del posto in cui si è?
+//
+// È la domanda che `terreno.js` si fa sul profilo (`TERRENO_TIENI_PROFILO_KM`),
+// con una soglia diversa perché diversa è la promessa: un orizzonte a sessanta
+// chilometri visto da nove più in là è lo stesso orizzonte, mentre una
+// superficie disegnata a ventisette metri di passo è la superficie di **quel**
+// disco e di nessun altro. Fuori di lì non si trasla: si butta, e si ricomincia
+// da qui — che è esattamente quello che succede arrivando in un posto nuovo.
+//
+// Restituisce `true` se qualcosa è stato buttato, così chi chiama sa che da
+// adesso in poi non c'è più niente da disegnare.
+function rilScordaSeAltrove(luogo) {
+  if (!luogo || !rilievo.cresta) return false;
+  if (rilDistanzaDalCentro(luogo) <= RIL_MAGLIA_VALIDA_M) return false;
+  rilScorda();
+  // Non è un guasto ed è meglio dirlo: la forma del terreno di qui sta
+  // arrivando, come alla prima apertura. Un'assenza muta, in questo modulo,
+  // si legge come un terreno sbagliato invece che come un dato che manca.
+  rilievo.stato = 'in-corso';
+  rilievo.motivo = '';
+  return true;
 }
 
 
@@ -1636,9 +1715,32 @@ function rilQuotaSuolo(lat, lon) {
   return q === null ? null : q + (rilievo.scarto || 0);
 }
 
+// Quanto dice la griglia grossa del suolo sotto un punto. È il gradino di
+// mezzo fra le tessere e `terreno.quota`: centocinquanta metri di passo
+// invece di ventisette, ma di **quel** punto — mentre `terreno.quota` è la
+// quota misurata dove la griglia è stata chiesta, che dopo un cambio di
+// posto è un'altra collina. `null` se nemmeno lei sa rispondere.
+function rilQuotaGrigliaSotto(lat, lon) {
+  if (typeof terreno === 'undefined' || !terreno.quote) return null;
+  const scosto = rilScostoGriglia(lat, lon);
+  if (!scosto) return typeof terreno.quota === 'number' ? terreno.quota : null;
+  return rilQuotaGrigliaDa(scosto, 0, 1, 0, 0);
+}
+
 // Dove dovrebbe stare la camera in un punto: il suolo che c'è lì sotto più
-// l'altezza di una persona. Quando le tessere non sanno rispondere resta la
-// quota misurata a punti, che è quella di sempre.
+// l'altezza di una persona.
+//
+// Le fonti sono tre e si provano in ordine di quanto sanno di **questo**
+// punto: le tessere (ventisette metri di passo), la griglia grossa
+// (centocinquanta) e infine `terreno.quota`, che è la misura esatta di dove
+// la griglia è stata chiesta e vale finché si sta lì.
+//
+// L'ordine non è un dettaglio: la camera e la maglia devono stare sulla
+// stessa superficie, e la maglia legge esattamente queste fonti in questo
+// ordine. Saltando il gradino di mezzo — com'era — dopo un «guarda il cielo
+// da qui» la camera restava alla quota del posto di prima mentre la
+// superficie era già quella di qui: quattrocento metri di disaccordo, che a
+// settanta metri di distanza sono ottant'un gradi di parete.
 function rilOcchioMeta(lat, lon) {
   const misurata = typeof terreno !== 'undefined' && typeof terreno.quota === 'number';
   const fermo = (misurata ? terreno.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M;
@@ -1660,7 +1762,9 @@ function rilOcchioMeta(lat, lon) {
     return fermo;
   }
   const suolo = rilQuotaSuolo(lat, lon);
-  return suolo === null ? fermo : suolo + TERRENO_ALTEZZA_OCCHIO_M;
+  if (suolo !== null) return suolo + TERRENO_ALTEZZA_OCCHIO_M;
+  const grossa = rilQuotaGrigliaSotto(lat, lon);
+  return grossa === null ? fermo : grossa + TERRENO_ALTEZZA_OCCHIO_M;
 }
 
 // Un nuovo dato altimetrico non deve mai diventare un teletrasporto della
@@ -1685,6 +1789,14 @@ function rilSmussaOcchio(attuale, meta, dt) {
 // quella misurata, anche quando sale davvero davanti all'osservatore.
 function rilLasciaSpazioCamera(quota, occhio, metri) {
   if (metri >= RIL_SPAZIO_CAMERA_M) return quota;
+  // «Mentre viene assorbita», e non sempre: il raccordo serve finché la
+  // camera sta **più in basso** del suolo su cui la maglia è stata
+  // costruita, che è l'unico caso in cui il primo lembo può avvolgerla.
+  // Applicandolo comunque si spiana il terreno che uno ha davvero davanti:
+  // su un pendio al dieci per cento, a venticinque metri sono sei gradi —
+  // ed è la prova del §25 di `verifica.html` («traslando, ogni nodo dice il
+  // terreno visto dal punto nuovo») che quel prezzo lo misura.
+  if (!(rilievo.occhio - occhio > RIL_OCCHIO_RIFAI_M)) return quota;
   const suoloCamera = occhio - TERRENO_ALTEZZA_OCCHIO_M;
   if (quota <= suoloCamera) return quota;
   const t = Math.max(0, metri / RIL_SPAZIO_CAMERA_M);
@@ -1699,12 +1811,26 @@ function rilOcchioOra() {
   const luogo = rilLuogo();
   if (!rilPronto() || !luogo) {
     rilievo.occhioOra = null;
+    rilievo.occhioLat = rilievo.occhioLon = null;
     return luogo ? rilOcchioMeta(luogo.lat, luogo.lon) : TERRENO_ALTEZZA_OCCHIO_M;
   }
   const meta = rilOcchioMeta(luogo.lat, luogo.lon);
 
+  // Ci si è mossi o si è stati portati? Fra i due passa la differenza fra
+  // inseguire il suolo e restare appesi alla quota di un altro posto per due
+  // minuti (`RIL_SALTO_OCCHIO_M`). La domanda si fa sul **punto**, non sulla
+  // differenza di quota: un dislivello grosso può benissimo essere una
+  // correzione del modello arrivata dalla rete, ed è proprio quella che lo
+  // smorzamento esiste per assorbire.
+  const saltato = rilievo.occhioLat === null || rilievo.occhioLon === null ||
+    typeof terrenoDistanzaKm !== 'function' ||
+    terrenoDistanzaKm(luogo.lat, luogo.lon, rilievo.occhioLat, rilievo.occhioLon) * 1000
+      > RIL_SALTO_OCCHIO_M;
+  rilievo.occhioLat = luogo.lat;
+  rilievo.occhioLon = luogo.lon;
+
   const ora = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-  if (rilievo.occhioOra === null || !isFinite(rilievo.occhioOra)) {
+  if (saltato || rilievo.occhioOra === null || !isFinite(rilievo.occhioOra)) {
     rilievo.occhioOra = meta;
     rilievo.occhioQuando = ora;
     return meta;
@@ -1737,6 +1863,12 @@ async function rilCarica(forza) {
   if (rilievo.inCostruzione) { rilievo.daRifare = true; return false; }
   const luogo = rilLuogo();
   if (!luogo || !rilievo.acceso) return false;
+  // Prima di tutto, e prima della guardia qui sotto: una maglia di un altro
+  // posto non si tiene per il tempo di rifare questa. Il controllo sta anche
+  // qui e non solo in `rilControlla` perché a chiamare questa funzione, col
+  // planetario chiuso, è `terreno.js` quando il profilo nuovo arriva — e in
+  // quel caso di fotogrammi non ne passa nessuno.
+  rilScordaSeAltrove(luogo);
   if (typeof terrenoDisponibile !== 'function' || !terrenoDisponibile()) return false;
 
   const lat = luogo.lat, lon = luogo.lon;
@@ -1829,9 +1961,19 @@ async function rilCarica(forza) {
 // peggiore perché sembra vero.
 function rilControlla() {
   if (!rilievo.acceso || rilievo.inCostruzione) return;
-  if (typeof terrenoDisponibile !== 'function' || !terrenoDisponibile()) return;
   const luogo = rilLuogo();
   if (!luogo) return;
+  // La prima domanda si fa **prima** di quella sul terreno, ed è tutta la
+  // cura del cuneo di terra sopra l'orizzonte: la finestra in cui la maglia
+  // di prima veniva disegnata qui è esattamente quella in cui il profilo
+  // grosso del posto nuovo non è ancora arrivato. Chiedendo prima
+  // `terrenoDisponibile()` si usciva di qui senza guardare, e la maglia
+  // vecchia restava sullo schermo per tutto lo scarico — che con un 429 sono
+  // minuti.
+  if (rilScordaSeAltrove(luogo) && typeof terrenoAggiornaPannello === 'function') {
+    terrenoAggiornaPannello();
+  }
+  if (typeof terrenoDisponibile !== 'function' || !terrenoDisponibile()) return;
   if (rilChiaveDi(luogo.lat, luogo.lon, rilOcchioMeta(luogo.lat, luogo.lon)) === rilievo.chiave) {
     // Stessa chiave: il posto non è cambiato e non c'è niente da rifare —
     // tranne quando una tessera non era arrivata e adesso la si può
