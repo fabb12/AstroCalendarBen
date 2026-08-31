@@ -221,6 +221,22 @@ const RIL_OCCHIO_GRIGLIA_KM = 0.3;
 // di così non sposta un pixel nemmeno sotto i piedi.
 const RIL_OCCHIO_RIFAI_M = 0.05;
 
+// E di quanto deve scostarsi perché non basti più rifare gli angoli al volo,
+// e la maglia vada **ricostruita**.
+//
+// Sono due soglie diverse perché rispondono a due domande diverse. Il disegno
+// si arrangia con qualunque scarto: rifà l'angolo di ogni nodo con la camera
+// di adesso, e la superficie dipinta è esatta al centesimo di grado. Quello
+// che non si rifà da sé sono `rilievo.cresta` e `rilievo.fronte` — la cresta
+// che dice se un astro è sorto, quella che nasconde una vetta, quella che
+// taglia un lago — che restano calcolate con l'occhio della costruzione. A un
+// metro e mezzo di scarto, a centocinquanta metri di distanza, sono più di
+// mezzo grado: abbastanza perché un lago sparisca e il nome di una montagna
+// finisca appeso all'aria. Più giù non si scende, però, se no il tremolio del
+// GPS da fermo — che nel decimetro c'è sempre — rifarebbe la maglia ogni tre
+// secondi per non spostare un pixel.
+const RIL_OCCHIO_RIFAI_MAGLIA_M = 1.5;
+
 // Dove le due fonti si danno il cambio. La griglia grossa e le tessere
 // vengono da due modelli del suolo diversi e sullo stesso punto non danno
 // lo stesso metro: passando di netto si vedrebbe un gradino ad anello tutto
@@ -901,6 +917,11 @@ const rilievo = {
   lat: null,
   lon: null,
   occhio: 0,
+  // La versione della griglia grossa con cui la maglia è stata costruita
+  // (`terreno.quando`). Sta nella chiave, e sta anche qui in chiaro perché
+  // `rilControlla` deve poter distinguere «mi sono spostato di poco» da
+  // «è cambiato il terreno sotto» senza spezzare una stringa.
+  grigliaQuando: 0,
   // La camera di adesso, che fra una ricostruzione e l'altra insegue il
   // suolo sotto i piedi (§8-bis). `null` finché non c'è una maglia.
   occhioOra: null,
@@ -1886,10 +1907,24 @@ function rilScorda() {
   rilievo.minAlt = null;
   rilievo.maxAlt = null;
   rilievo.chiave = null;
+  rilievo.grigliaQuando = 0;
   rilievo.fini = 0;
   rilievo.occhioOra = null;
   rilievo.occhioLat = null;
   rilievo.occhioLon = null;
+  // Lo scarto è la misura di **quanto le tessere sbagliano in quel punto**:
+  // portarselo in un altro posto vuol dire spostare di quei metri un terreno
+  // che con quella misura non c'entra niente. Qui non se ne sa più niente
+  // finché non lo si rimisura, e zero è la sola risposta onesta.
+  rilievo.scarto = 0;
+  // E il freno del giro di tessere non vale più: è lì per non ribussare a S3
+  // per **lo stesso disco** mentre si cammina, non per far aspettare otto
+  // secondi chi è appena arrivato dall'altra parte della valle. Senza questa
+  // riga, un «guarda il cielo da qui» dato poco dopo l'arrivo delle tessere
+  // di prima costruiva la maglia del posto nuovo **senza una tessera**, cioè
+  // dalla griglia grossa di quello vecchio traslata di dieci chilometri: un
+  // paesaggio liscio, senza rilievo, che non è quello di nessun posto.
+  rilievo.ultimeTessere = 0;
   rilTessere = new Map();
   rilTessereGuaste = new Map();
 }
@@ -2143,8 +2178,15 @@ async function rilCarica(forza) {
   // i piedi in questo punto (§8-bis) e non la quota del centro precedente:
   // ricostruire la superficie con la camera di dieci chilometri fa vorrebbe
   // dire raddrizzare a mano tutto quello che si era appena inclinato.
-  const occhio = rilOcchioMeta(lat, lon);
-  const chiave = rilChiaveDi(lat, lon, occhio);
+  //
+  // Questa qui però è solo la risposta che si può dare **adesso**, e appena
+  // arrivati da un altro posto è una stima presa dalla griglia grossa di
+  // *quello* posto: a dieci chilometri di distanza sono campioni ogni tre
+  // gradi e ogni tre chilometri, cioè centinaia di metri di errore in
+  // montagna. Serve a decidere se vale la pena muoversi; la buona si prende
+  // più giù, quando le tessere sono arrivate.
+  let occhio = rilOcchioMeta(lat, lon);
+  let chiave = rilChiaveDi(lat, lon, occhio);
   if (chiave === rilievo.chiave && !forza) return true;
 
   rilievo.inCostruzione = true;
@@ -2179,6 +2221,31 @@ async function rilCarica(forza) {
       }
     }
 
+    // Adesso, e non prima: la quota della camera si rilegge **dopo** le
+    // tessere.
+    //
+    // È la riga che rimette in piedi l'invariante su cui si regge tutto il
+    // file — «la superficie sotto i piedi sta alla quota della camera» — e
+    // che si rompeva in un caso solo, ma proprio quello che si usa per
+    // guardare da una cima: arrivando in un posto nuovo, le tessere sono le
+    // uniche che sappiano dov'è il suolo qui, e leggendo l'occhio prima di
+    // averle si costruiva la maglia sulla stima presa dalla griglia di
+    // dov'eravamo. Misurato sul banco, saltando fra due cime a undici
+    // chilometri: la camera veniva posata **duecentocinquanta metri più in
+    // basso** del suolo vero, `rilCostruisciMaglia` tosava la differenza a
+    // `RIL_SCARTO_MAX` — perché uno scarto così non è un disaccordo fra due
+    // modelli, ed è giusto che lo tosi — e ne restavano centocinquanta di
+    // camera sotto la superficie: cresta a **89,95° in tutte e
+    // settecentoventi le direzioni**, cioè il cuneo di terra fin quasi allo
+    // zenit.
+    //
+    // Non è una seconda lettura di comodo: `rilOcchioMeta` prova le fonti
+    // nello stesso ordine in cui le legge la maglia (tessere, griglia,
+    // quota misurata del centro), quindi chiamandola qui le due leggono per
+    // forza la stessa cosa. Chiamandola prima, no.
+    occhio = rilOcchioMeta(lat, lon);
+    chiave = rilChiaveDi(lat, lon, occhio);
+
     const maglia = await rilCostruisciMaglia(lat, lon, occhio);
     const derivate = rilRicava(maglia.alt);
     rilievo.quota = maglia.quota;
@@ -2193,6 +2260,7 @@ async function rilCarica(forza) {
     rilievo.lon = lon;
     rilievo.occhio = occhio;
     rilievo.chiave = chiave;
+    rilievo.grigliaQuando = (typeof terreno !== 'undefined' ? (terreno.quando || 0) : 0);
     rilievo.ultimoCaricamento = Date.now();
     rilievo.stato = 'pronto';
     // Quante tessere hanno risposto davvero: se nessuna, la maglia c'è
@@ -2241,7 +2309,8 @@ function rilControlla() {
     terrenoAggiornaPannello();
   }
   if (typeof terrenoDisponibile !== 'function' || !terrenoDisponibile()) return;
-  if (rilChiaveDi(luogo.lat, luogo.lon, rilOcchioMeta(luogo.lat, luogo.lon)) === rilievo.chiave) {
+  const occhio = rilOcchioMeta(luogo.lat, luogo.lon);
+  if (rilChiaveDi(luogo.lat, luogo.lon, occhio) === rilievo.chiave) {
     // Stessa chiave: il posto non è cambiato e non c'è niente da rifare —
     // tranne quando una tessera non era arrivata e adesso la si può
     // richiedere. Da fermo quello è l'unico momento in cui si ripassa, e
@@ -2268,7 +2337,18 @@ function rilControlla() {
   // sorto?», «quella vetta si vede?», «dove finisce quel lago?» — restano
   // agganciate al terreno che si sta davvero disegnando.
   if (rilievo.cresta) {
-    if (rilDistanzaDalCentro(luogo) < RIL_RICENTRA_M) return;
+    // Il freno dei sessanta metri è del **posto**, e per un pezzo si è preso
+    // anche le altre due parti della chiave: la quota della camera e la
+    // versione della griglia grossa. Da fermo quelle due sono le sole che
+    // cambino — arriva il terreno vero di qui, arrivano le tessere, ci si
+    // scopre sull'acqua — e la chiave risultava diversa, ma questa riga
+    // usciva prima di rifare qualunque cosa: la maglia restava quella
+    // costruita con la stima sbagliata **finché non ci si spostava di
+    // sessanta metri a piedi**, cioè per sempre, standosene su una cima a
+    // guardare. Un difetto transitorio diventava definitivo proprio qui.
+    const soloSpostati = Math.abs(occhio - rilievo.occhio) < RIL_OCCHIO_RIFAI_MAGLIA_M &&
+      rilievo.grigliaQuando === (typeof terreno !== 'undefined' ? (terreno.quando || 0) : 0);
+    if (soloSpostati && rilDistanzaDalCentro(luogo) < RIL_RICENTRA_M) return;
     if (Date.now() - rilievo.ultimoCaricamento < RIL_RICENTRA_MIN_MS) return;
   }
   rilCarica();

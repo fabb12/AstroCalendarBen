@@ -4,87 +4,57 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-**Le montagne sembrano montagne, e i fiumi si vedono** (`rilievo.js` §1 e §9,
-`app.js` — il blocco dell'acqua della §7.3.2). La richiesta era in due parti:
-il rilievo doveva distinguere le montagne lontane dalle vicine, avere il
-colore che una montagna ha nell'immaginario di chiunque — un po' di bianco in
-cima, bruno e verde sotto — una trama credibile e un contrasto che le separi a
-colpo d'occhio; e i laghi e i fiumi dovevano avere una forma nel posto giusto e
-smettere di traballare sotto lo zoom.
+**Il cuneo di terra dopo un «vai qui», e la montagna che non sembra una
+montagna** (`rilievo.js` §2, §8 e §8-bis). La segnalazione era «ogni tanto,
+passando da una vetta all'altra con vai qui, la montagna non viene
+rappresentata bene»: sullo schermo un paesaggio liscio senza rilievo, i nomi
+delle vette appesi molto sotto la riga dell'orizzonte, e a volte il cuneo di
+terra che sale fin quasi allo zenit — lo stesso «errore poligonale» che si
+credeva curato.
 
-### Le montagne
+Curato lo era, ma per metà. L'invariante di questo file — *sotto i piedi la
+superficie sta alla quota della camera* — regge fra chi legge le due fonti
+**nello stesso istante**, e `rilCarica` non lo fa: prende la quota
+dell'occhio, *poi* scarica le tessere, poi costruisce. E le tessere sono le
+uniche che sappiano dov'è il suolo in un posto in cui non si è mai stati:
+appena arrivati, la griglia grossa è ancora quella di dov'eravamo, e di là
+sa dire un campione ogni tre gradi e ogni tre chilometri.
 
-Prima erano di **un colore solo** — il suolo di `SKY_PAESAGGI`, schiarito
-fetta per fetta — e la forma la raccontavano il chiaroscuro e i contorni.
-Adesso ci sono due veli sopra a quel fondo, e fanno due mestieri diversi:
+Misurato sul banco, saltando fra due cime a undici chilometri: la camera
+veniva posata **duecentocinquanta metri più in basso** del suolo vero,
+`rilCostruisciMaglia` tosava la differenza a `RIL_SCARTO_MAX` (ed è giusto
+che la tosi: uno scarto così non è un disaccordo fra due modelli del suolo),
+e i centocinquanta che restavano erano camera sotto la superficie —
+**cresta a 89,95° in tutte e settecentoventi le direzioni**.
 
-* **Il colore della quota** (§`RIL_QUOTE`, steso *prima* del chiaroscuro, che
-  deve poterlo scolpire). La fascia si sceglie sulla quota **divisa per la
-  linea della neve** — `rilNeveDa`, latitudine più stagione — e le fasce sono
-  agganciate al **limite del bosco**, non spalmate uniformemente: al primo
-  tentativo lo erano, e da un paese di fondovalle a milleduecento metri il
-  prato sotto i piedi veniva color paglia mentre le creste in fondo restavano
-  verdi, cioè la prospettiva aerea al contrario. Il limite si sfrangia di
-  `RIL_QUOTA_FRANGIA_M`, se no la neve comincerebbe alla stessa quota su tutto
-  il panorama e sarebbe una curva di livello.
+Tre cause, e vanno insieme:
 
-* **Il velo dell'aria** (`RIL_VELO_ARIA`), la prospettiva aerea, steso per
-  ultimo sulle stesse quattordici fette che hanno dipinto il fondo. L'opacità è
-  **proporzionale a `rilLontananza`** e non a una sua potenza, e non è una
-  taratura: quella cifra *è* l'opacità della colonna d'aria. Il primo tentativo
-  la elevava al cubo per caricare il fondo della veduta; sembra una buona idea
-  finché non si guarda dove cadono le fette, che dividono in parti uguali la
-  foschia — col cubo l'ultimo passo valeva quasi tre volte gli altri, e il
-  banco l'ha misurato in quarantotto livelli su 255.
-
-La cosa più utile che è venuta fuori, però, è **da dove venivano le righe
-verticali** — quelle per cui la montagna sembrava una tenda a righe. Non erano
-chiaroscuro: erano **copertura**. Spegnendo del tutto il chiaroscuro (tutti i
-livelli dello stesso colore) le righe restavano. Le cause, in ordine di peso:
-
-1. `RIL_STRISCIA_SBORDO` era un pixel e mezzo, per non lasciare la cucitura fra
-   due corse consecutive. Ma le corse dello stesso livello stanno in un
-   tracciato solo e non si sommano; fra livelli diversi sono due `stroke()` e
-   lì la sovrapposizione si somma davvero — quindici livelli su 255, contro
-   l'uno e mezzo della cucitura che si voleva evitare. E capita una volta per
-   **cambio di livello**, quindi una colonna che cambia venti volte diventa
-   sistematicamente più chiara di quella accanto che ne cambia due. Adesso è
-   zero.
-2. Il buco all'occlusione: quando un nodo spariva dietro a quello davanti si
-   spegneva `ok`, e il nodo che riemergeva non disegnava nessuna striscia —
-   restava una fascia di schermo senza chiaroscuro per ogni rottura. Adesso
-   `ok` resta acceso (flag `rotto`) e la striscia si tira dal crinale al nodo
-   che riemerge: è la faccia che si rialza, ed è tutta lì dentro.
-3. La granatura, che al primo tentativo era ancorata al **nodo della maglia** e
-   quindi peggiorava le cose: le colonne disegnate non sono i nodi. Adesso è
-   ancorata al terreno (`RIL_GRANA_M`, metri veri).
-4. Il primo piano: `RIL_VICINO_*` da 70/250 a 110/420 e `RIL_PIEGA_M` da 60 a
-   170 metri — una derivata seconda su due celle scarse è rumore, e con sei
-   livelli di forza quel rumore vale quattro livelli **per colonna**. E la
-   pendenza in azimut adesso è centrata invece che in avanti.
-
-### L'acqua
-
-* **Il tremolio sotto lo zoom** aveva due cause e nessuna si vede in un
-  fotogramma fermo. La colonna si disegnava all'azimut *continuo*
-  (`centro − mezzo + i·passo`), che scorre a ogni pizzicata mentre i dati
-  restano quelli del campione più vicino: a metà passo l'indice scatta e le
-  rive saltano. Adesso si disegna all'azimut **del campione**. E la griglia
-  dell'onda era misurata in pixel con le colonne scelte per indice: sette pixel
-  di pizzicata e *tutte* scivolavano di un campione. Adesso è a potenze di due
-  con isteresi, che è la stessa cura di `rilPassoColonne`.
-* **I fiumi** si ripiegavano su una linea da un pixel — senza colore
-  dell'acqua, senza rive, senza foschia. La forma vera a quella scala non c'è,
-  il posto sì: `skyAcquaAllargaSottili` allarga la striscia a `SKY_ACQUA_MIN_PX`
-  attorno alla sua **mezzeria**, e da lì in poi è acqua come tutte le altre. La
-  larghezza prestata si paga in opacità.
+1. **L'occhio si legge adesso dopo le tessere** (e la chiave con lui). È la
+   riga che rimette in piedi l'invariante: chiamando `rilOcchioMeta` lì, la
+   camera e la maglia leggono per forza la stessa cosa.
+2. **`rilScorda` azzera `ultimeTessere` e `scarto`.** Il freno di
+   `RIL_TESSERE_MIN_MS` è lì per non ribussare a S3 per *lo stesso disco*
+   mentre si cammina; applicato a un salto faceva costruire la maglia del
+   posto nuovo **senza una tessera**, cioè dalla griglia grossa di quello
+   vecchio traslata di undici chilometri — il paesaggio liscio della
+   segnalazione. Lo `scarto` è la misura di quanto le tessere sbagliano
+   *lì*, e altrove sposta un terreno che non c'entra.
+3. **Il freno dei sessanta metri di `rilControlla` è del posto**, e si
+   prendeva anche le altre due parti della chiave: la quota della camera e
+   la versione della griglia. Da fermo su una cima quelle due sono le sole
+   che cambino, la chiave risultava diversa e poi si usciva comunque — cioè
+   la maglia sbagliata restava lì finché non ci si spostava di sessanta
+   metri a piedi. È il punto in cui un difetto di qualche secondo diventava
+   definitivo. Adesso il freno vale solo se anche l'occhio
+   (`RIL_OCCHIO_RIFAI_MAGLIA_M`) e `rilievo.grigliaQuando` sono gli stessi.
 
 ### Il banco
 
-964 prove verdi (erano 927), tutte le nuove falliscono sul codice di prima.
-`scripts/prova-verifica.js` è nuovo: fa girare `verifica.html` in un browser
-vero e riporta le rosse, senza doverlo aprire a mano.
+969 prove verdi (erano 964). Le quattro nuove del §28 falliscono tutte sul
+codice di prima, e il contro-esempio è scritto coi numeri: «camera a 477 m
+sul suolo di 660, cresta 90,0°».
 
-Da sapere, perché è costato tempo: le due prove `Esc chiude una finestra
-comune` e `Esc chiude anche la scheda oculare` di `scripts/prova-nel-browser.js`
-sono **rosse anche su `main`** — non c'entrano con questo lavoro.
+Da sapere: `scripts/prova-nel-browser.js` e `scripts/prova-verifica.js`
+vogliono `CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome` se il
+percorso di serie non esiste, e la prima chiede la rete (senza, i suoi
+«problemi» sono tutti richieste fallite).
