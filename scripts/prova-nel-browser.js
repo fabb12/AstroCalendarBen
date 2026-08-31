@@ -122,6 +122,20 @@ const server = http.createServer((req, res) => {
   });
   ok('il calendario si è calcolato', moduli.eventiCalcolati > 0, `${moduli.eventiCalcolati} eventi`);
 
+  // --- una sola via d'uscita per tutte le schede ---
+  console.log('\n— chiusura delle schede con Esc —');
+  await pagina.click('#btn-impostazioni');
+  await pagina.keyboard.press('Escape');
+  ok('Esc chiude una finestra comune', await pagina.locator('#modale-impostazioni').evaluate(el => el.classList.contains('hidden')));
+
+  await pagina.evaluate(() => document.getElementById('modale-oculare').classList.remove('hidden'));
+  await pagina.keyboard.press('Escape');
+  ok('Esc chiude anche la scheda oculare', await pagina.locator('#modale-oculare').evaluate(el => el.classList.contains('hidden')));
+
+  await pagina.evaluate(() => document.getElementById('skymap-dettaglio').classList.add('visibile'));
+  await pagina.keyboard.press('Escape');
+  ok('Esc chiude una scheda appoggiata al planetario', await pagina.locator('#skymap-dettaglio').evaluate(el => !el.classList.contains('visibile')));
+
   // --- i nuovi eventi sono entrati? ---
   const tipi = await pagina.evaluate(() => {
     const cerca = t => eventiCalcolati.filter(e => e.titolo.includes(t)).length;
