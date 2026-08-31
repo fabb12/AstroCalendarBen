@@ -9431,7 +9431,7 @@ titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-
 // ripiegava sulla quota misurata **di un altro posto**. Qui si costruisce
 // la maglia per davvero, con le tessere che non arrivano, e le si chiede
 // cosa c'è sotto le scarpe.
-attendi('anche senza tessere, la maglia di un posto nuovo ha il suolo sotto la camera', (async () => {
+const provaGrembiule = (async () => {
   const salva = {
     quote: terreno.quote, lat: terreno.lat, lon: terreno.lon,
     quota: terreno.quota, acqua: terreno.quotaAcqua,
@@ -9479,7 +9479,196 @@ attendi('anche senza tessere, la maglia di un posto nuovo ha il suolo sotto la c
     nota: `camera a ${occhio.toFixed(0)} m e grembiule a ${peggio.toFixed(1)}°, ` +
       `contro i ${prima.toFixed(0)}° della camera di prima`
   };
-})());
+})();
+attendi('anche senza tessere, la maglia di un posto nuovo ha il suolo sotto la camera',
+  provaGrembiule);
+
+
+// --- Le tessere arrivano prima della camera, non dopo -----------------
+//
+// La riga sopra dice che la camera e la maglia leggono le stesse fonti
+// nello stesso ordine, e questo basta a chi le chiama nello stesso
+// istante. `rilCarica` no: prende la quota dell'occhio, **poi** scarica le
+// tessere, poi costruisce. E le tessere sono le uniche che sappiano dov'è
+// il suolo in un posto in cui non si è mai stati — appena arrivati da un
+// «guarda il cielo da qui», la griglia grossa è ancora quella di dov'eravamo
+// e di qui sa dire soltanto un campione ogni tre gradi e ogni tre
+// chilometri.
+//
+// Sono le due metà dello stesso difetto, ed è la segnalazione «passando da
+// una vetta all'altra, ogni tanto». Fra le due letture ci stanno dei metri
+// veri: se ne sono misurati **duecentocinquanta** saltando fra due cime a
+// undici chilometri. `rilCostruisciMaglia` ne tosa cento
+// (`RIL_SCARTO_MAX` — uno scarto così non è un disaccordo fra due modelli
+// del suolo, ed è giusto che lo tosi), e i centocinquanta che restano sono
+// camera sotto la superficie: cresta a novanta gradi in tutte e
+// settecentoventi le direzioni.
+//
+// Qui si costruisce la maglia per davvero, con `rilCarica` e con delle
+// tessere finte prese da un suolo noto. La prova si accoda alla precedente
+// perché le due si passano lo stesso `rilievo`.
+attendi('la maglia si costruisce con la camera letta DOPO le tessere', provaGrembiule.then(async () => {
+  const M = 111195;
+  // Il suolo: una cima a 1900 dove si era, una a 760 dove si va, e in mezzo
+  // una valle a 300. Le due sono a undici chilometri.
+  const CIME = [{ lat: 46.10, lon: 9, q: 1900, r: 2600 },
+                { lat: 46.00, lon: 9, q: 760, r: 1400 }];
+  const suolo = (lat, lon) => {
+    let q = 300;
+    for (const c of CIME) {
+      const d = Math.hypot((lat - c.lat) * M, (lon - c.lon) * M * Math.cos(lat * D2R));
+      q = Math.max(q, 300 + (c.q - 300) * Math.exp(-(d * d) / (c.r * c.r)));
+    }
+    return q;
+  };
+  const salva = {
+    quote: terreno.quote, tLat: terreno.lat, tLon: terreno.lon, tQuota: terreno.quota,
+    acqua: terreno.quotaAcqua, profilo: terreno.profilo, acceso: terreno.acceso,
+    tessere: rilTessere, guaste: rilTessereGuaste, chiedi: rilChiediTessera,
+    ril: Object.assign({}, rilievo),
+    luogo: window.luogoCorrente, vista: window.skyLuogoDelCielo
+  };
+  // Tessere finte, dal suolo noto: è l'unica cosa che sappia com'è fatto il
+  // posto nuovo, ed è esattamente il punto della prova.
+  rilChiediTessera = (x, y) => {
+    const L = 256, q = new Float32Array(L * L), n = 256 * Math.pow(2, RIL_ZOOM);
+    for (let iy = 0; iy < L; iy++) {
+      const g = Math.PI - 2 * Math.PI * (y * L + iy + 0.5) / n;
+      const lat = Math.atan(Math.sinh(g)) / D2R;
+      for (let ix = 0; ix < L; ix++) {
+        q[iy * L + ix] = suolo(lat, (x * L + ix + 0.5) / n * 360 - 180);
+      }
+    }
+    return Promise.resolve({ lato: L, q });
+  };
+  // La griglia grossa è quella della cima vecchia, con la sua quota
+  // misurata: è quello che c'è in mano nei secondi dopo il salto.
+  const nd = TERRENO_DISTANZE.length;
+  const quote = new Array(TERRENO_DIREZIONI * nd);
+  for (let i = 0; i < TERRENO_DIREZIONI; i++) {
+    const a = i * TERRENO_PASSO_AZ * D2R;
+    for (let k = 0; k < nd; k++) {
+      const m = TERRENO_DISTANZE[k] * 1000;
+      quote[i * nd + k] = Math.round(suolo(46.10 + m * Math.cos(a) / M,
+        9 + m * Math.sin(a) / (M * Math.cos(46.1 * D2R))));
+    }
+  }
+  terreno.acceso = true;
+  terreno.quote = quote; terreno.lat = 46.10; terreno.lon = 9;
+  terreno.quota = suolo(46.10, 9); terreno.quotaAcqua = false;
+  terreno.profilo = terreno.profilo || new Float32Array(361);
+  window.luogoCorrente = () => ({ lat: 46.00, lon: 9 });
+  delete window.skyLuogoDelCielo;
+  rilTessere = new Map(); rilTessereGuaste = new Map();
+  rilievo.acceso = true;
+  rilievo.chiave = null; rilievo.cresta = null; rilievo.scarto = 0;
+  rilievo.ultimeTessere = 0; rilievo.occhioOra = null;
+  rilievo.occhioLat = rilievo.occhioLon = null;
+
+  // Il contro-esempio, cioè l'ordine di prima: la camera letta **senza**
+  // tessere, che è la stima presa dalla griglia della cima vecchia.
+  const occhioPrima = rilOcchioMeta(46.00, 9);
+
+  await rilCarica();
+
+  const veroB = suolo(46.00, 9);
+  const sotto = rilievo.quota ? rilievo.quota[0] : NaN;   // il suolo sotto i piedi
+  let peggio = -90;
+  if (rilievo.cresta) for (let i = 0; i < RIL_AZIMUT; i++) peggio = Math.max(peggio, rilievo.cresta[i]);
+  // E che cosa sarebbe venuto con la camera di prima, sulla stessa maglia.
+  const scartoPrima = Math.max(-RIL_SCARTO_MAX, Math.min(RIL_SCARTO_MAX,
+    (occhioPrima - TERRENO_ALTEZZA_OCCHIO_M) - veroB));
+  const parete = rilAngolo(veroB + scartoPrima, occhioPrima, RIL_DIST[0]);
+
+  const tessere = rilTessere.size;
+  const occhio = rilievo.occhio;
+
+  terreno.quote = salva.quote; terreno.lat = salva.tLat; terreno.lon = salva.tLon;
+  terreno.quota = salva.tQuota; terreno.quotaAcqua = salva.acqua;
+  terreno.profilo = salva.profilo; terreno.acceso = salva.acceso;
+  rilTessere = salva.tessere; rilTessereGuaste = salva.guaste;
+  rilChiediTessera = salva.chiedi;
+  Object.assign(rilievo, salva.ril);
+  if (salva.luogo === undefined) delete window.luogoCorrente; else window.luogoCorrente = salva.luogo;
+  if (salva.vista === undefined) delete window.skyLuogoDelCielo; else window.skyLuogoDelCielo = salva.vista;
+
+  return {
+    esito: tessere > 0 && Math.abs(occhio - TERRENO_ALTEZZA_OCCHIO_M - sotto) < 1 &&
+      peggio < 60 && Math.abs(occhioPrima - veroB) > 100 && parete > 85,
+    nota: `camera a ${occhio.toFixed(0)} m sul suolo di ${sotto.toFixed(0)}, cresta ${peggio.toFixed(1)}°; ` +
+      `con la camera letta prima delle tessere (${occhioPrima.toFixed(0)} m) sarebbero ${parete.toFixed(0)}°`
+  };
+}));
+
+// Un posto nuovo non è «ho appena chiesto le tessere»: il freno che tiene a
+// bada S3 mentre si cammina, applicato a un salto, faceva costruire la
+// maglia della cima nuova **senza una tessera** — cioè dalla griglia grossa
+// di quella vecchia, traslata di undici chilometri. Un paesaggio liscio che
+// non è quello di nessun posto.
+{
+  const salva = Object.assign({}, rilievo);
+  const tess = rilTessere, guaste = rilTessereGuaste;
+  rilievo.cresta = new Float32Array(RIL_AZIMUT);
+  rilievo.lat = 46; rilievo.lon = 9;
+  rilievo.scarto = -37; rilievo.ultimeTessere = Date.now();
+  rilScordaSeAltrove({ lat: 46 + 20 / 111.195, lon: 9 });
+  prova('cambiando posto il freno delle tessere non vale più',
+    rilievo.ultimeTessere === 0,
+    'se no la maglia del posto nuovo si costruisce senza tessere');
+  prova('e nemmeno l\'allineamento misurato dov\'eravamo',
+    rilievo.scarto === 0,
+    'è di quanto le tessere sbagliano *lì*: altrove sposta un terreno che non c\'entra');
+  Object.assign(rilievo, salva);
+  rilTessere = tess; rilTessereGuaste = guaste;
+}
+
+// E il freno dei sessanta metri, che è del **posto**, non deve mangiarsi le
+// altre due parti della chiave. Da fermo su una cima quelle due sono le sole
+// che cambino — arriva il terreno vero di qui, arrivano le tessere, ci si
+// scopre sull'acqua — e finché questa riga usciva per prima la maglia
+// costruita con la stima sbagliata restava lì **finché non ci si spostava di
+// sessanta metri a piedi**: un difetto di qualche secondo diventava
+// definitivo.
+{
+  const salva = Object.assign({}, rilievo);
+  const salvaT = { lat: terreno.lat, lon: terreno.lon, quota: terreno.quota,
+    quando: terreno.quando, profilo: terreno.profilo, acceso: terreno.acceso,
+    acqua: terreno.quotaAcqua, quote: terreno.quote };
+  const salvaL = { luogo: window.luogoCorrente, vista: window.skyLuogoDelCielo };
+  const salvaCarica = rilCarica;
+  let chiamate = 0;
+  rilCarica = () => { chiamate++; return Promise.resolve(true); };
+  terreno.acceso = true;
+  terreno.profilo = terreno.profilo || new Float32Array(361);
+  terreno.lat = 46; terreno.lon = 9; terreno.quota = 700; terreno.quotaAcqua = false;
+  terreno.quando = 1;
+  window.luogoCorrente = () => ({ lat: 46, lon: 9 });
+  delete window.skyLuogoDelCielo;
+  rilievo.acceso = true; rilievo.inCostruzione = false;
+  rilievo.cresta = new Float32Array(RIL_AZIMUT);
+  rilievo.lat = 46; rilievo.lon = 9;
+  rilievo.occhio = 701.6; rilievo.grigliaQuando = 1;
+  rilievo.ultimoCaricamento = Date.now() - 10 * RIL_RICENTRA_MIN_MS;
+  rilievo.chiave = rilChiaveDi(46, 9, 701.6);
+
+  rilControlla();
+  const fermi = chiamate;
+  // Adesso la quota vera di qui arriva, e sposta la camera di duecento metri.
+  terreno.quota = 900; terreno.quando = 2;
+  rilControlla();
+  const dopo = chiamate;
+
+  rilCarica = salvaCarica;
+  Object.assign(rilievo, salva);
+  Object.assign(terreno, salvaT);
+  if (salvaL.luogo === undefined) delete window.luogoCorrente; else window.luogoCorrente = salvaL.luogo;
+  if (salvaL.vista === undefined) delete window.skyLuogoDelCielo; else window.skyLuogoDelCielo = salvaL.vista;
+
+  prova('da fermo, con tutto uguale, la maglia non si rifà', fermi === 0);
+  prova('ma se cambia la quota della camera sì, anche restando fermi',
+    dopo === 1, `${dopo - fermi} ricostruzione dopo duecento metri di correzione`);
+}
+
 
 // =====================================================================
 titolo('29. La bussola: perché Google Maps punta il Nord e noi no (app.js §7.1-quinquies)');
