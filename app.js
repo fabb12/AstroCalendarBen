@@ -22718,6 +22718,7 @@ function skyRigheScheda(o) {
 
   // --- Da qui in giù: i numeri da strumento, dietro "Altri dati" ---------
 
+  dato(dettagli, 'Codice catalogo', o.codiceCatalogo);
   dato(dettagli, 'Costellazione', skyCostellazioneDi(o.ra, o.dec));
   dato(dettagli, 'Distanza dalla Terra', skyDistanzaTesto(o));
   dato(dettagli, 'Dimensioni', skyDimensioniTesto(o));

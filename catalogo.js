@@ -1260,13 +1260,19 @@ function catSchedaStella(indice) {
   const c = catClasseDaBV(bv);
   const T = catTemperaturaDaBV(bv);
   const nome = cat.nomiPerIndice.get(indice);
+  // Questo e' l'identificativo stabile usato dal planetario (`cat:<indice>`),
+  // scritto in una forma leggibile anche nella scheda. Non pretende di essere
+  // una sigla Hipparcos: serve a riconoscere e ritrovare senza ambiguita' una
+  // delle migliaia di stelle che non hanno un nome proprio o una lettera di
+  // Bayer nel catalogo compatto dell'app.
+  const codiceCatalogo = `CAT ${indice}`;
 
-  // Senza nome non si inventa niente: si dice quello che è. «Stella di
-  // magnitudine 5,4 nel Cigno» è un'informazione vera, e più utile di una
-  // sigla di catalogo che non dice nulla a chi guarda.
+  // Senza nome si conserva la descrizione utile (luminosita' e
+  // costellazione), ma le si affianca il codice: due stelle della stessa
+  // magnitudine nella stessa figura non devono piu' sembrare la stessa.
   const costellazione = catCostellazioneDi(ra, dec);
   const comeSiChiama = nome ||
-    `Stella di magnitudine ${magnitudine.toFixed(1).replace('.', ',')}` +
+    `Stella ${codiceCatalogo} di magnitudine ${magnitudine.toFixed(1).replace('.', ',')}` +
     (costellazione ? ` — ${costellazione}` : '');
 
   return {
@@ -1274,6 +1280,7 @@ function catSchedaStella(indice) {
     disegno: 'stella',
     tipo: 'stella',
     senzaNome: !nome,
+    codiceCatalogo,
     ra, dec, mag: magnitudine, bv,
     indiceCatalogo: indice,
     colore: cat.colori.get(indice) || CAT_FAMIGLIE_COLORE[cat.famiglie[indice]],
