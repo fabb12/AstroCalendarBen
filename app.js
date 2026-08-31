@@ -35771,9 +35771,9 @@ function skyAggiornaTestoTempo() {
   const lettura = document.getElementById('skymap-tempo-quando');
   if (lettura) {
     const orari = skyOrariBarraTempo(quando);
-    // I due orologi hanno ciascuno una casella propria: in questo modo il
-    // browser puo' ridimensionarli senza troncare l'intera lettura e senza
-    // farne sparire uno sugli schermi verticali piu' stretti.
+    // Ogni informazione ha una casella propria: il CSS puo' cosi' distribuire
+    // orari e scarto senza affidarsi a una frase che, in verticale, verrebbe
+    // inevitabilmente troncata.
     const creaOrologio = (etichetta, valore, classe) => {
       const orologio = document.createElement('span');
       orologio.className = `orologio-barra-tempo ${classe}`;
@@ -35786,26 +35786,31 @@ function skyAggiornaTestoTempo() {
       orologio.append(nome, ora);
       return orologio;
     };
-    // Durante il trascinamento questa funzione gira una volta per fotogramma:
-    // si aggiornano soltanto i numeri già presenti, senza ricostruire il DOM
-    // sotto al dito. Al primo aggiornamento, invece, si creano le due caselle.
-    let valoreLuogo = lettura.querySelector('.orologio-luogo .valore-orologio-tempo');
-    let valoreDispositivo = lettura.querySelector('.orologio-dispositivo .valore-orologio-tempo');
-    if (!valoreLuogo || !valoreDispositivo) {
-      lettura.replaceChildren(
-        creaOrologio('Località', orari.luogo, 'orologio-luogo'),
-        creaOrologio('Qui', orari.dispositivo, 'orologio-dispositivo')
-      );
-      valoreLuogo = lettura.querySelector('.orologio-luogo .valore-orologio-tempo');
-      valoreDispositivo = lettura.querySelector('.orologio-dispositivo .valore-orologio-tempo');
+    const modo = `${orari.fusoDiverso ? 'altro-fuso' : 'fuso-dispositivo'}-${orari.spostato ? 'spostato' : 'adesso'}`;
+    if (lettura.dataset.modo !== modo) {
+      const celle = orari.fusoDiverso
+        ? [creaOrologio('Località', orari.luogo, 'orologio-luogo'),
+          creaOrologio('Dispositivo', orari.dispositivo, 'orologio-dispositivo')]
+        : [creaOrologio('Dispositivo', orari.luogo, 'orologio-luogo')];
+      if (orari.mostraScarto) celle.push(creaOrologio(orari.direzione, orari.scarto, 'orologio-scarto'));
+      lettura.replaceChildren(...celle);
+      lettura.dataset.modo = modo;
     }
-    if (valoreLuogo.textContent !== orari.luogo) valoreLuogo.textContent = orari.luogo;
-    if (valoreDispositivo.textContent !== orari.dispositivo) {
-      valoreDispositivo.textContent = orari.dispositivo;
-    }
+    const valori = {
+      '.orologio-luogo': orari.luogo,
+      '.orologio-dispositivo': orari.dispositivo,
+      '.orologio-scarto': orari.scarto
+    };
+    Object.entries(valori).forEach(([selettore, valore]) => {
+      const nodo = lettura.querySelector(`${selettore} .valore-orologio-tempo`);
+      if (nodo && nodo.textContent !== valore) nodo.textContent = valore;
+    });
+    lettura.classList.toggle('fuso-diverso', orari.fusoDiverso);
+    lettura.classList.toggle('con-scarto', orari.mostraScarto);
     const esteso = dataOraDelLuogo(quando, skyLuogoDelCielo(), { weekday: 'short' });
     lettura.setAttribute('aria-label',
-      `Ora della località ${orari.luogo}; ora del dispositivo ${orari.dispositivo}`);
+      `${orari.fusoDiverso ? `Ora della località ${orari.luogo}; ora attuale del dispositivo ${orari.dispositivo}; ` :
+        `Ora del dispositivo ${orari.luogo}; `}${orari.direzione.toLowerCase()}, ${orari.scarto}`);
     lettura.title = `${esteso} · dispositivo ${orari.dispositivo}` +
       `${scarto === 0 ? ' (tempo reale)' : ' · ' + skyScartoTempoTesto(scarto)}` +
       ' — tocca per data, passo e velocità del playback';
@@ -35814,20 +35819,32 @@ function skyAggiornaTestoTempo() {
   skyAggiornaCampoData(quando);
 }
 
-// I due orari sempre visibili nella barra: il fuso del luogo osservato e il
-// fuso del dispositivo. Il resto del contesto temporale rimane nel titolo e
-// nel pannello "Tempo", così nessuno dei due orologi viene mai troncato.
+// Contenuto delle due modalita' della barra. Se luogo e dispositivo hanno lo
+// stesso fuso non ripetiamo due volte lo stesso orologio; se sono diversi il
+// confronto e' fra l'istante osservato nel luogo e l'ora *attuale* di chi usa
+// il dispositivo. Lo scarto e' sempre rispetto a questo preciso adesso.
 function skyOrariBarraTempo(quando) {
   const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
-  // Entrambi descrivono lo stesso istante della linea del tempo. Prima il
-  // secondo orologio usava sempre `new Date()`: appena si spostava il cielo,
-  // quindi, le due letture smettevano di essere confrontabili.
+  const fusoLuogo = fusoDelLuogo(luogo).nome;
+  const fusoDispositivo = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const adesso = new Date();
+  const scartoOre = (quando.getTime() - adesso.getTime()) / 3600000;
+  const spostato = Math.abs(scartoOre) >= (1 / 3600);
+  const assoluto = Math.abs(scartoOre);
+  const numero = assoluto < 0.05 ? '< 0,1' : assoluto.toLocaleString('it-IT', {
+    minimumFractionDigits: 0, maximumFractionDigits: 1
+  });
   const dispositivo = new Intl.DateTimeFormat('it-IT', {
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
-  }).format(quando);
+  }).format(adesso);
   return {
     luogo: oraDelLuogo(quando, luogo, { soloLocale: true }),
-    dispositivo
+    dispositivo,
+    fusoDiverso: fusoLuogo !== fusoDispositivo,
+    spostato,
+    mostraScarto: fusoLuogo !== fusoDispositivo || spostato,
+    direzione: spostato ? (scartoOre > 0 ? 'Futuro' : 'Passato') : 'Tempo reale',
+    scarto: spostato ? `${scartoOre > 0 ? '+' : '−'}${numero} h` : '0 h'
   };
 }
 

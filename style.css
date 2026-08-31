@@ -4502,10 +4502,10 @@ body input.casella-data:hover { border: 0; }
   min-width: 0;
   height: var(--tasto-tempo);
   padding: 0 12px;
-  /* Due colonne indipendenti: anche quando lo spazio manca ciascun orologio
-     conserva metà della lettura e nessuno dei due finisce nei puntini. */
+  /* Una, due o tre colonne indipendenti secondo la modalita': anche quando lo
+     spazio manca ogni orologio conserva la propria porzione di lettura. */
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   line-height: 1;
   text-align: center;
@@ -4523,6 +4523,9 @@ body input.casella-data:hover { border: 0; }
   overflow: hidden;
   cursor: pointer;
 }
+.lettura-barra-tempo.fuso-diverso { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lettura-barra-tempo.fuso-diverso.con-scarto { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.lettura-barra-tempo:not(.fuso-diverso).con-scarto { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .orologio-barra-tempo {
   min-width: 0;
   display: flex;
@@ -4535,6 +4538,8 @@ body input.casella-data:hover { border: 0; }
 .orologio-barra-tempo + .orologio-barra-tempo {
   border-left: 1px solid var(--bordo);
 }
+.orologio-scarto .etichetta-orologio-tempo,
+.orologio-scarto .valore-orologio-tempo { color: var(--ambra); }
 .etichetta-orologio-tempo {
   max-width: 100%;
   color: var(--testo-3);
