@@ -4,101 +4,69 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-**I laghi che non si vedono stando a due passi da loro** (`terreno.js` §12,
-`rilievo.js` §7). La segnalazione: «nel planetario, in prossimità del Lago di
-Como, dovrei vedere l'acqua e non c'è nulla; e dove c'è, il profilo non è
-giusto».
+**Il cuneo di terra dopo «vai qui»** (`rilievo.js` §1, §6, §8 e §8-bis). La
+segnalazione, con la fotografia: «quando uso la funzione vai qui a volte ho
+questo errore poligonale» — un cuneo grigio che sale dall'orizzonte fin quasi
+allo zenit, coi nomi dei paesi scritti sopra e il filo bianco del crinale che
+gli gira attorno.
 
-La causa non sta nei dati di OpenStreetMap e non sta nel disegno: sta in una
-**geometria che è un pareggio**. Guardando un lago da un pendio che ci scende
-dentro, la riva è il punto in cui il terreno arriva al livello dell'acqua —
-quindi il suolo davanti alla riva e la superficie dietro di lei hanno la
-**stessa depressione**. Il conto che decide se un lago si vede confrontava i
-due angoli con un ventesimo di grado di franchigia, che a settecento metri
-sono sessantacinque centimetri di quota: qualunque cosa di più grande — un
-tetto, un albero, il normale disaccordo fra due modelli del suolo sullo stesso
-pendio — taglia la riva. E siccome la cresta è un massimo che si **accumula**,
-quello che viene tagliato resta tagliato per tutte le distanze successive.
+Non è un poligono sbagliato, ed è la prima cosa da sapere: è terreno disegnato
+benissimo. Misurata sul banco, la cresta viene **ottantadue gradi in tutte e
+settecentoventi le direzioni**, e sullo schermo quella è una calotta attorno
+allo zenit ritagliata dall'arco che il rilievo sta disegnando — cioè un cuneo.
+La causa sta tutta in una riga: **la camera era sotto la superficie che stava
+disegnando**. Un occhio quattrocento metri più in basso del suolo lo vede
+alzarsi come una parete, e a settanta metri di distanza quella parete è
+ottantun gradi.
 
-Misurato sul banco (una scena tipo Como: osservatore a 296 m, ramo di lago a
-199, ottocento metri di riva), con un modello del suolo sbagliato di otto
-metri: settanta metri di arretramento mediano della riva, millecinquecento al
-peggio, e una direzione su venti senz'acqua. Con quindici — cioè con un
-condominio, che è quello che Copernicus si porta dentro in un paese —
-centoquaranta metri e tre chilometri e mezzo.
+A metterla lì erano due regole scritte per chi cammina, applicate a un salto.
 
-Tre cure, e sono tutte geometria e non tarature.
+1. **La camera si incamminava invece di arrivare.** La quota dell'occhio
+   insegue il suolo a quattro metri al secondo (`RIL_OCCHIO_V_MAX_M_S`), che è
+   la salita di una strada di montagna e va benissimo camminando. Da un paese
+   di pianura a una cima a seicento metri, però, sono **centosedici secondi**:
+   misurato passo per passo, 82° appena arrivati, 80° dopo dieci secondi, 74°
+   dopo un minuto, e il paesaggio giusto solo alla fine. Adesso `rilOcchioOra`
+   guarda **il punto** e non la quota (`RIL_SALTO_OCCHIO_M`, 300 m, il doppio
+   del passo più lungo che la posizione consegni davvero): oltre quello, da un
+   fotogramma all'altro, non ci si è mossi — si è stati portati.
 
-1. **La franchigia si scrive in metri, non in gradi.** Un campione che sta al
-   livello dell'acqua o sotto non può nasconderla mai: se è più vicino, lo
-   stesso dislivello diviso una distanza minore fa una depressione maggiore,
-   cioè sta sotto la linea di vista. Quello che taglia una riva è quindi solo
-   terreno che si alza **sopra il piano del lago**, e di quanto debba alzarsi
-   perché gli si creda è l'incertezza del modello: sei metri
-   (`ACQUE_OCCLUSIONE_ABBASSA_M`, tosata a tre gradi per non spegnere il primo
-   piano). Il confronto passa in **pendenza** (`acqueTangenteVista`), dove
-   abbassare un campione di tanti metri è una divisione, e la cresta
-   dell'acqua se la costruisce `acqueFrontiAcqua` — dal rilievo quando c'è,
-   cioè dalla superficie che si sta davvero disegnando e coi suoi centosei
-   anelli invece delle diciotto fette della griglia grossa.
+2. **La maglia del posto di prima restava disegnata**, traslata di decine di
+   chilometri, per tutto il tempo in cui il terreno nuovo arrivava — che con un
+   429 sono minuti. `rilScorda` c'era già, e un commento diceva che i cambi di
+   luogo veri passavano di lì: non la chiamava nessuno. Adesso c'è
+   `rilScordaSeAltrove` (`RIL_MAGLIA_VALIDA_M`, il disco delle tessere: fuori
+   di lì, di qui, la maglia non ha più niente di fine da dire) e la si chiama
+   **prima** della guardia su `terrenoDisponibile()`. È quello il punto: la
+   finestra in cui la maglia vecchia restava sullo schermo era esattamente
+   quella in cui il profilo grosso del posto nuovo non c'era ancora, e
+   chiedendo prima di lui si usciva senza guardare.
 
-2. **L'occhio è uno solo** (`acqueOcchio`). L'acqua si guardava con
-   `terreno.quota`, che è la quota del *centro della griglia grossa*: resta
-   indietro di chilometri muovendosi, e `acqueAllineaOcchio` la riscrive di
-   colpo quando ci si accorge di stare sull'acqua. La cresta però veniva dalla
-   maglia del rilievo, costruita con un'altra camera. Vicino ai piedi due
-   metri di differenza sono decine di gradi.
+Sotto le due c'era l'anello che mancava alla catena, ed è la parte che vale
+per tutti e non solo per «vai qui»: `rilOcchioMeta` provava le tessere e poi
+ripiegava su `terreno.quota` — la quota misurata **di un altro posto** —
+saltando la griglia grossa, che di quel punto sa rispondere. Misurato: con la
+maglia costruita venti chilometri più in là e le tessere che non arrivano, la
+camera diceva 222 m dove il suolo sta a 664, e la cresta veniva novanta gradi
+tondi. Adesso le fonti sono tre nello stesso ordine in cui le legge la maglia
+(tessere → griglia grossa → quota misurata del centro), e da lì viene
+l'invariante che tiene in piedi tutto: **sotto i piedi la superficie sta alla
+quota della camera**, comunque siano andate le tessere. Con quella, non c'è
+più nessun allineamento da fare sulla griglia dentro a `rilCostruisciMaglia`:
+lo scarto che ci si vorrebbe togliere vale zero per costruzione.
 
-3. **Il grembiule non risponde a questa domanda.** I dieci anelli del rilievo
-   sotto i venticinque metri servono a *disegnare* il suolo sotto le scarpe:
-   la loro quota è la lettura bilineare della cella di raster su cui si sta e
-   informazione propria non ne portano. Ma a quindici centimetri un metro e
-   sei di quota vale ottantacinque gradi, e quel valore si ricopia in tutti
-   gli anelli del raggio — misurato sul banco, ottantanove gradi di cresta in
-   tutte e settecentoventi le direzioni e **zero acqua** su trecentotrentacinque
-   direzioni che ne avevano. `rilFrontiAcqua` comincia a camminare da
-   `RIL_VICINO_M`.
+Nella stessa passata è venuto fuori che il banco era **rosso su `main`** dal
+30 agosto, e proprio qui: `rilLasciaSpazioCamera` — il raccordo che tiene il
+primo lembo della maglia sotto i piedi — si applicava sempre, mentre serve
+solo finché la camera sta più in basso del suolo su cui la maglia è stata
+costruita. Fatto sempre, spianava il terreno vero sotto i settanta metri: su
+un pendio al dieci per cento sono sei gradi a venticinque metri, ed era la
+prova «traslando, ogni nodo dice il terreno visto dal punto nuovo» del §25 che
+falliva senza che niente lo dicesse.
 
-Nella stessa passata, tre cose collegate:
-
-- **La quota di uno specchio si chiede in tre gradini** (`acqueQuoteDeiCorpi`):
-  i campioni della griglia che cascano dentro, poi quelli della maglia del
-  rilievo — che negli specchi stretti (un fiume, l'acqua a duecento metri) ci
-  arriva davvero — e solo alla fine quelli che lo abbracciano, che stanno sulla
-  riva e quindi sopra l'acqua. Prima la maglia non c'era e il secondo gradino
-  mancava. Che la maglia venga *dopo* la griglia è misurato e non ovvio: quella
-  superficie è il modello delle tessere **traslato** per accordarsi alla griglia
-  in un punto di terra ferma, mentre sull'acqua i due modelli vanno d'accordo
-  benissimo — traslarla scentra il lago esattamente di quello scarto.
-
-- **Un elenco in mano non si butta per una richiesta andata male.**
-  `acqueVisibili` chiedeva `stato === 'pronto'`, quindi un ritaglio in corso
-  mentre ci si muove o una riprova dopo un 429 spegnevano tutta l'acqua pur
-  avendola buona da un istante prima. È la lezione di `terrenoDisponibile` e di
-  `cimeVisibili`, che qui era rimasta da imparare.
-
-- **Un'assenza che si spiega.** `acque.conto` tiene il conto di dove si sono
-  perse le bande (fuori raggio, sopra l'occhio, coperte, troppo corte) e
-  `acqueTesto` lo scrive: «l'acqua qui attorno c'è (N tratti), ma il terreno
-  davanti la copre tutta» è un'altra cosa da «nessun lago entro venticinque
-  chilometri», e sullo schermo le due erano la stessa immagine.
-
-Misurato prima e dopo sulla stessa scena, col rilievo acceso (com'è di serie) e
-un disaccordo di dodici metri fra i due modelli del suolo: dal 96,9% di lago
-disegnato con centoquattro rive tagliate e tre direzioni vuote, al 100% senza
-niente di tagliato. Col rilievo spento e tre metri di rumore: da 283 rive
-tagliate a 19. Il conto costa 6,7 ms invece di 4,7 a ogni ricostruzione della
-maglia (non a fotogramma): la camminata si ferma all'acqua più lontana di
-quella direzione e legge le quote invece di ricalcolare settantaseimila
-tangenti.
-
-Quindici prove nuove nel §20 di `verifica.html` (in tutto 902 passate, 1
-fallita — quella è del §28 e c'era già prima di questo lavoro: «e nel grembiule
-sotto i piedi lo scarto resta comunque piccolo», 5,944°).
-
-**Quello che non si è potuto fare**: verificare sul posto vero. Da qui la rete
-verso Overpass e Open-Meteo è chiusa, quindi le misure sono su scene
-sintetiche costruite come Como e non sui dati veri di Como. Se l'acqua ancora
-non compare, adesso la riga di stato del pannello (o `acque.conto` dalla
-console) dice **quale** dei tre casi è: non è arrivata, è sopra l'occhio, o il
-terreno la copre.
+Le prove stanno nei §25 e §28 di `verifica.html` (927 in tutto, tutte verdi;
+erano 916 con una rossa), e le nuove falliscono sul codice di prima — la
+camera che resta a 201,6 m dove il suolo sta a 665,6, e l'orizzonte a 82°.
+Il banco si può far girare senza browser a mano con Playwright: serve la
+cartella da un server locale, Astronomy Engine da `node_modules` e le altre
+librerie del CDN finte, come fa già `scripts/prova-nel-browser.js`.
