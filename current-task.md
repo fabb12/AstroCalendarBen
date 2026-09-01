@@ -4,57 +4,60 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-**Il cuneo di terra dopo un «vai qui», e la montagna che non sembra una
-montagna** (`rilievo.js` §2, §8 e §8-bis). La segnalazione era «ogni tanto,
-passando da una vetta all'altra con vai qui, la montagna non viene
-rappresentata bene»: sullo schermo un paesaggio liscio senza rilievo, i nomi
-delle vette appesi molto sotto la riga dell'orizzonte, e a volte il cuneo di
-terra che sale fin quasi allo zenit — lo stesso «errore poligonale» che si
-credeva curato.
+**La Via Lattea ridisegnata** (`via-lattea.js`, nuovo; §30 di
+`verifica.html`). La richiesta era «rendila super realistica, bella e
+affascinante».
 
-Curato lo era, ma per metà. L'invariante di questo file — *sotto i piedi la
-superficie sta alla quota della camera* — regge fra chi legge le due fonti
-**nello stesso istante**, e `rilCarica` non lo fa: prende la quota
-dell'occhio, *poi* scarica le tessere, poi costruisce. E le tessere sono le
-uniche che sappiano dov'è il suolo in un posto in cui non si è mai stati:
-appena arrivati, la griglia grossa è ancora quella di dov'eravamo, e di là
-sa dire un campione ogni tre gradi e ogni tre chilometri.
+Il pezzo era già una nuvola di milleseicento fiocchi tondi e non più una
+riga ripassata, ma chi la Via Lattea l'ha vista da un posto buio la
+riconosceva ancora per quello che era: una campitura sfumata con dentro
+qualche gobba. Le mancavano tre cose, e sono le tre che si vedono per
+prime — la **grana** (quella banda brulica, e una campitura liscia si
+legge come vernice per quanto la si sfumi), le **venature di polvere**
+coi bordi frastagliati, e **le cose che non sono la banda**: le Nubi di
+Magellano, che dall'emisfero sud sono la cosa più bella del cielo e qui
+non c'erano affatto, e i grumi di idrogeno acceso.
 
-Misurato sul banco, saltando fra due cime a undici chilometri: la camera
-veniva posata **duecentocinquanta metri più in basso** del suolo vero,
-`rilCostruisciMaglia` tosava la differenza a `RIL_SCARTO_MAX` (ed è giusto
-che la tosi: uno scarto così non è un disaccordo fra due modelli del suolo),
-e i centocinquanta che restavano erano camera sotto la superficie —
-**cresta a 89,95° in tutte e settecentoventi le direzioni**.
+Adesso: quattro strati di fiocchi (velo, nubi granulose, grani, oggetti),
+sorteggiati da un campo di densità **frattale**, stampati con sprite già
+granulose — la grana sta dentro all'immagine che si ricopia, quindi a
+fotogramma non costa niente. La Fenditura è una spina col bordo mosso dal
+rumore invece che una fila di macchie tonde.
 
-Tre cause, e vanno insieme:
+### Le tre cose che si sono imparate misurando
 
-1. **L'occhio si legge adesso dopo le tessere** (e la chiave con lui). È la
-   riga che rimette in piedi l'invariante: chiamando `rilOcchioMeta` lì, la
-   camera e la maglia leggono per forza la stessa cosa.
-2. **`rilScorda` azzera `ultimeTessere` e `scarto`.** Il freno di
-   `RIL_TESSERE_MIN_MS` è lì per non ribussare a S3 per *lo stesso disco*
-   mentre si cammina; applicato a un salto faceva costruire la maglia del
-   posto nuovo **senza una tessera**, cioè dalla griglia grossa di quello
-   vecchio traslata di undici chilometri — il paesaggio liscio della
-   segnalazione. Lo `scarto` è la misura di quanto le tessere sbagliano
-   *lì*, e altrove sposta un terreno che non c'entra.
-3. **Il freno dei sessanta metri di `rilControlla` è del posto**, e si
-   prendeva anche le altre due parti della chiave: la quota della camera e
-   la versione della griglia. Da fermo su una cima quelle due sono le sole
-   che cambino, la chiave risultava diversa e poi si usciva comunque — cioè
-   la maglia sbagliata restava lì finché non ci si spostava di sessanta
-   metri a piedi. È il punto in cui un difetto di qualche secondo diventava
-   definitivo. Adesso il freno vale solo se anche l'occhio
-   (`RIL_OCCHIO_RIFAI_MAGLIA_M`) e `rilievo.grigliaQuando` sono gli stessi.
+1. **Il rumore è timido**, e non si vede leggendo il codice: un fbm a
+   quattro ottave sta fra 0,32 e 0,69, cioè modula del dieci per cento. È
+   il motivo per cui la prima versione restava liscia. `skyVLStira` lo
+   allarga attorno alla media e tosa; quello che esce dai bordi sono i
+   vuoti e i grumi.
+2. **La densità non va contata due volte.** I fiocchi si pescano già
+   dalla densità: dandogli *anche* una luce proporzionale a quella, il
+   disegno va come il quadrato — e cinque volte diventano venticinque.
+   Era il difetto che rendeva invisibile tutto il tratto dal Cigno a
+   Cassiopea, cioè metà della Via Lattea che si vede d'estate.
+3. **Il costo non è il numero dei fiocchi, è il numero dei timbri.** Col
+   cono della vista (un prodotto scalare al posto di una proiezione
+   intera), la proiezione srotolata e i grani che si spengono a campo
+   largo, cinquemilaseicento fiocchi costano meno dei milleseicento di
+   prima: misurato in un browser senza acceleratore, 3,7 ms a 180° di
+   campo contro 3,3, e 8,8 a 55° contro 9,0.
+
+Il profilo della banda lungo il giro è stato tarato contro quello della
+fotometria vera (scarto quadratico medio 0,6 ottave, contro 1,4 della
+prima stesura).
 
 ### Il banco
 
-969 prove verdi (erano 964). Le quattro nuove del §28 falliscono tutte sul
-codice di prima, e il contro-esempio è scritto coi numeri: «camera a 477 m
-sul suolo di 660, cresta 90,0°».
+1052 prove verdi (erano 969). Il §30 è l'unica sezione che carichi il
+modulo **per davvero** invece di tenersene una copia, ed è il motivo per
+cui il pezzo è uscito da `app.js`: ottocento righe di formule ricopiate
+in `verifica.html` sarebbero state la copia peggiore del progetto. La
+prova della periodicità ha fatto saltare fuori un difetto latente di
+`skyVLDistanza`, che funzionava solo con le longitudini già normalizzate
+(il `%` di JavaScript tiene il segno del dividendo).
 
-Da sapere: `scripts/prova-nel-browser.js` e `scripts/prova-verifica.js`
-vogliono `CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome` se il
-percorso di serie non esiste, e la prima chiede la rete (senza, i suoi
-«problemi» sono tutti richieste fallite).
+Da sapere: `scripts/prova-verifica.js` e `scripts/prova-nel-browser.js`
+vogliono `CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome` se
+il percorso di serie non esiste, e `npm install --no-save playwright-core
+astronomy-engine`.

@@ -4,9 +4,14 @@
 const fs = require('fs');
 process.chdir(require('path').join(__dirname, '..'));
 
-const file = ['app.js', 'telescopio.js', 'catalogo.js', 'corpi-minori.js', 'pianifica.js',
-  'meteo-astro.js', 'eventi-extra.js', 'dati-stelle.js', 'dati-stelle-deboli.js',
-  'dati-costellazioni.js', 'dati-profondo.js', 'dati-corpi-minori.js'];
+// L'elenco è quello di index.html, nello stesso ordine, più i cataloghi
+// che catalogo.js si carica da sé. Va tenuto allineato: un file che manca
+// da qui è un file di cui le collisioni non le controlla nessuno.
+const file = ['app.js', 'telescopio.js', 'catalogo.js', 'costellazioni.js', 'via-lattea.js',
+  'corpi-minori.js', 'pianifica.js', 'terreno.js', 'miglior-posto.js', 'rilievo.js',
+  'meteo-astro.js', 'aurora-polare.js', 'config.js', 'aerei.js', 'eventi-extra.js',
+  'ui-nuova.js', 'didattica.js', 'dati-stelle.js', 'dati-stelle-deboli.js',
+  'dati-costellazioni.js', 'dati-profondo.js', 'dati-corpi-minori.js', 'dati-distanze.js'];
 
 const visto = new Map();
 const scontri = [];

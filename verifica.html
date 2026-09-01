@@ -73,7 +73,6 @@ const SKY_PROFONDO = [{ nome: 'M31 — Galassia di Andromeda', angoloPosizione: 
   distanza: '2,5 milioni di anni luce', nota: 'La cosa più lontana visibile a occhio nudo.' }];
 const SKY_COLORI_PROFONDO = { galassia: '#c4b5fd', nebulosa: '#a5f3fc', ammasso: '#fde68a',
   globulare: '#fed7aa', planetaria: '#86efac' };
-const SKY_VIA_LATTEA = [];
 const sky = {
   observer: new Astronomy.Observer(45.4642, 9.19, 120),
   fov: 55, larghezza: 900, altezza: 600,
@@ -290,6 +289,27 @@ function skyAcquaAllargaSottili(alto, basso, minimo) {
     basso[i] = { px: mx + dx * r, py: my + dy * r, davanti: true };
   }
 }
+
+// I due generatori di numeri a caso ripetibili di app.js. Li vuole
+// `via-lattea.js` (§30), che qui gira per davvero: sono sei righe, e sono
+// una **copia**, con l'avvertenza di sempre — il giorno che divergono da
+// app.js non lo dice nessuno. Se divergessero, però, il difetto sarebbe
+// benigno: la Via Lattea provata qui sarebbe un'altra Via Lattea, non una
+// Via Lattea sbagliata.
+function skySeme(testo) {
+  let h = 2166136261;
+  for (let i = 0; i < testo.length; i++) { h ^= testo.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function skyCaso(seme) {
+  let s = seme >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 </script>
 
 <script src="catalogo.js"></script>
@@ -317,6 +337,13 @@ function skyAcquaAllargaSottili(alto, basso, minimo) {
 <!-- Gli aerei ADS-B (§27). Il modulo non scarica niente da solo: il suo
      battito parte da `aereiAvvia()`, che qui non chiama nessuno. -->
 <script src="aerei.js"></script>
+
+<!-- La Via Lattea (§30). È il motivo per cui quel pezzo è uscito da app.js
+     e sta in un file suo: ottocento righe di formule copiate qui dentro
+     sarebbero state la copia peggiore di tutto il progetto. All'avvio non
+     fa niente — il sorteggio dei fiocchi parte solo quando qualcuno chiama
+     `skyNubiDelCielo()`, e le tele solo con `skyTeleViaLattea()`. -->
+<script src="via-lattea.js"></script>
 
 <script>
 // ---------------------------------------------------------------------
@@ -10215,6 +10242,564 @@ titolo('29. La bussola: perché Google Maps punta il Nord e noi no (app.js §7.1
   prova('un astro a due gradi sull\'orizzonte si lascia stare (rifrazione e tetti)',
     astroDaTarare([{ id: 'Moon', nome: 'Luna', tipo: 'luna', az: 200, alt: 2 }],
       { az: 200, alt: 2 }) === null);
+})();
+
+// =====================================================================
+titolo('30. La Via Lattea (via-lattea.js)');
+// È la cosa del planetario che si giudica peggio a occhio di tutte, e
+// per una ragione che vale la pena scrivere: **qualunque** nastro
+// chiaro appoggiato in diagonale sul cielo somiglia alla Via Lattea.
+// Nessuno, guardando lo schermo, dice «questa banda è larga il doppio
+// del vero» o «la Fenditura sta dalla parte sbagliata»: dice «bella».
+// Un errore di segno nella conversione galattica mette la banda
+// nell'altra metà del cielo e continua a essere una bella banda; una
+// trama che modula del dieci per cento invece che del cinquanta fa una
+// campitura liscia, e chi la guarda dice «sembra finta» senza saper dire
+// perché. Qui si mette per iscritto quello che dev'essere vero.
+(function () {
+  const larghezzaPrima = sky.larghezza, altezzaPrima = sky.altezza, fovPrima = sky.fov;
+  const bandaPrima = sky.viaLattea;
+  const D2R = Math.PI / 180;
+
+  // L'inversa della conversione galattica, scritta qui apposta: provare
+  // `skyGalatticoAEquatoriale` contro sé stessa non proverebbe niente, e
+  // due strade indipendenti che si chiudono sono l'unico modo di dire che
+  // la terna di costanti è quella giusta e non la sua immagine allo
+  // specchio.
+  function equatorialeAGalattico(raGradi, dec) {
+    const d = dec * D2R, dn = SKY_NGP_DEC * D2R, dra = (raGradi - SKY_NGP_RA) * D2R;
+    const sb = Math.sin(dn) * Math.sin(d) + Math.cos(dn) * Math.cos(d) * Math.cos(dra);
+    const b = Math.asin(Math.max(-1, Math.min(1, sb))) * 180 / Math.PI;
+    const y = Math.cos(d) * Math.sin(dra);
+    const x = Math.cos(dn) * Math.sin(d) - Math.sin(dn) * Math.cos(d) * Math.cos(dra);
+    const l = ((SKY_L_NCP - Math.atan2(y, x) * 180 / Math.PI) % 360 + 360) % 360;
+    return { l, b };
+  }
+
+  // --- Le coordinate galattiche --------------------------------------
+  const centro = skyGalatticoAEquatoriale(0, 0);
+  prova('il centro galattico cade in Sagittario, 17h45,6m −28°56\'',
+    Math.abs(centro.ra - 17.7603) < 0.01 && Math.abs(centro.dec + 28.936) < 0.05,
+    `RA ${centro.ra.toFixed(4)}h  dec ${centro.dec.toFixed(3)}°`);
+  const anti = skyGalatticoAEquatoriale(180, 0);
+  prova('l\'anticentro sta esattamente agli antipodi, in Auriga',
+    Math.abs(anti.ra - 5.7603) < 0.01 && Math.abs(anti.dec - 28.936) < 0.05,
+    `RA ${anti.ra.toFixed(4)}h  dec ${anti.dec.toFixed(3)}°`);
+  prova('il polo nord galattico torna dov\'è dichiarato',
+    Math.abs(skyGalatticoAEquatoriale(0, 90).dec - SKY_NGP_DEC) < 1e-6);
+
+  // Sei stelle di cui le coordinate galattiche sono pubblicate. Il verso è
+  // la cosa che a occhio non si vede: specchiare la longitudine lascia la
+  // banda dov'è (è quasi simmetrica) e sposta la Fenditura dall'altra
+  // parte del Cigno.
+  [
+    ['Deneb',     310.358,  45.280,  84.28,   2.00],
+    ['Sadr',      305.557,  40.257,  78.15,   1.87],
+    ['Antares',   247.352, -26.432, 351.95,  15.06],
+    ['Vega',      279.234,  38.784,  67.45,  19.24],
+    ['Sirio',     101.287, -16.716, 227.23,  -8.89],
+    ['Arturo',    213.915,  19.182,  15.05,  69.11]
+  ].forEach(([nome, ra, dec, l, b]) => {
+    const g = equatorialeAGalattico(ra, dec);
+    const dl = Math.abs((((g.l - l + 540) % 360) - 180)) * Math.cos(b * D2R);
+    prova(`${nome} sta alle sue coordinate galattiche (l ${l}, b ${b})`,
+      Math.hypot(dl, g.b - b) < 0.06, `scarto ${Math.hypot(dl, g.b - b).toFixed(3)}°`);
+    const p = skyGalatticoAEquatoriale(g.l, g.b);
+    prova(`…e l'andata e ritorno si chiude su ${nome}`,
+      Math.abs(p.ra * 15 - ra) * Math.cos(dec * D2R) < 0.01 && Math.abs(p.dec - dec) < 0.01);
+  });
+
+  // --- Il rumore è timido, ed è la lezione di questo file -------------
+  // Un fbm a quattro ottave *sembra* andare da zero a uno. In pratica non
+  // ci va mai: interpolare fra numeri a caso stringe lo scarto, e sommare
+  // le ottave lo stringe ancora. Moltiplicare la banda per una cosa così
+  // vuol dire modularla del dieci per cento, cioè lasciarla liscia — ed è
+  // il difetto che sullo schermo si legge come vernice, senza che nessuna
+  // riga di codice sembri sbagliata.
+  (function () {
+    const caso = skyCaso(skySeme('prova rumore'));
+    const grezzi = [], stirati = [];
+    for (let i = 0; i < 20000; i++) {
+      const x = caso() * 400 - 200, y = caso() * 400 - 200, z = caso() * 400 - 200;
+      const n = skyVLTrama(x, y, z, 4, false);
+      grezzi.push(n);
+      stirati.push(skyVLStira(n, 2.8));
+    }
+    grezzi.sort((a, b) => a - b); stirati.sort((a, b) => a - b);
+    const q = (v, p) => v[Math.floor(p * (v.length - 1))];
+    const largoGrezzo = q(grezzi, 0.95) - q(grezzi, 0.05);
+    const largoStirato = q(stirati, 0.95) - q(stirati, 0.05);
+    prova('il contro-esempio: un fbm crudo sta quasi tutto in un terzo di scala',
+      largoGrezzo < 0.42, `dal 5° al 95° percentile sono ${largoGrezzo.toFixed(2)} su 1`);
+    prova('allargato, la trama usa quasi tutta la scala',
+      largoStirato > 0.85, `${largoStirato.toFixed(2)} su 1`);
+    prova('e non esce mai dallo zero-uno, per quanto la si allarghi',
+      stirati[0] >= 0 && stirati[stirati.length - 1] <= 1 &&
+      skyVLStira(0.9, 40) === 1 && skyVLStira(0.1, 40) === 0);
+    prova('la media non si sposta: si allarga attorno a lei, non la si tira',
+      Math.abs(stirati.reduce((a, b) => a + b, 0) / stirati.length - 0.5) < 0.01);
+    let fuori = 0;
+    for (let i = 0; i < 20000; i++) {
+      const v = skyVLRumore(caso() * 400 - 200, caso() * 400 - 200, caso() * 400 - 200);
+      if (!(v >= 0 && v <= 1)) fuori++;
+    }
+    prova('il rumore di base sta fra zero e uno', fuori === 0);
+  })();
+
+  // --- Nessuna cucitura ----------------------------------------------
+  // Il rumore si chiede al **versore** e non alla coppia (l, b), e quella
+  // è la riga per cui a l = 0 non c'è niente da ricucire. Se un giorno
+  // qualcuno lo riscrivesse in coordinate piane, il difetto sarebbe una
+  // riga verticale netta in mezzo al Sagittario — cioè nel posto più
+  // luminoso del cielo.
+  (function () {
+    function salto(l0) {
+      let m = 0;
+      for (let b = -25; b <= 25; b += 0.25) {
+        m = Math.max(m, Math.abs(skyVLDensita((l0 - 0.002 + 360) % 360, b) -
+                                 skyVLDensita((l0 + 0.002) % 360, b)));
+      }
+      return m;
+    }
+    // La prova vera è che il campo sia **periodico**: se il rumore fosse
+    // chiesto alla coppia (l, b) invece che al versore, un giro intero
+    // darebbe un altro numero — e lì, in mezzo al Sagittario, si vedrebbe
+    // una riga verticale netta.
+    let peggio = 0;
+    for (let l = 0; l < 360; l += 3.7) {
+      for (let b = -20; b <= 20; b += 2.3) {
+        peggio = Math.max(peggio, Math.abs(skyVLDensita(l, b) - skyVLDensita(l + 360, b)),
+                                  Math.abs(skyVLDensita(l, b) - skyVLDensita(l - 720, b)));
+      }
+    }
+    prova('il campo è periodico: un giro intero riporta allo stesso numero',
+      peggio < 1e-9, `scarto massimo ${peggio.toExponential(1)}`);
+    // …e continuo attraversandolo. Il salto si misura in frazione della
+    // densità che c'è lì, se no si sta misurando quanto è luminoso il
+    // Sagittario invece di quanto è liscia la cucitura.
+    let quanto = 0;
+    for (let b = -20; b <= 20; b += 0.25) {
+      const d = skyVLDensita(0, b);
+      if (d < 0.05) continue;
+      quanto = Math.max(quanto, Math.abs(skyVLDensita(359.998, b) - skyVLDensita(0.002, b)) / d);
+    }
+    prova('a cavallo di l = 0 non c\'è nessuno scalino',
+      quanto < 0.02, `il salto vale il ${(100 * quanto).toFixed(2)}% della densità che c'è lì`);
+    prova('ai poli galattici non c\'è niente, da qualunque longitudine ci si arrivi',
+      skyVLDensita(0, 90) === 0 && skyVLDensita(123, 90) === 0 && skyVLDensita(250, -90) === 0);
+  })();
+
+  // --- La forma della banda ------------------------------------------
+  prova('verso il centro la banda è molto più larga che all\'anticentro',
+    skyVLSemiSpessore(0) > 3 * skyVLSemiSpessore(180),
+    `${skyVLSemiSpessore(0).toFixed(1)}° contro ${skyVLSemiSpessore(180).toFixed(1)}°`);
+  // Il fondo della banda lungo il giro è piatto **per scelta**: due volte
+  // e mezzo fra il Sagittario e l'anticentro, non venti. Il resto del
+  // contrasto lo fanno le nubi con un nome e la polvere, e mettere tutto
+  // qui era il difetto che spegneva metà della Via Lattea d'estate.
+  prova('il fondo della banda cala verso l\'anticentro, ma senza spegnersi',
+    skyVLLuceGiro(0) / skyVLLuceGiro(180) > 1.8 && skyVLLuceGiro(0) / skyVLLuceGiro(180) < 3.2,
+    `${(skyVLLuceGiro(0) / skyVLLuceGiro(180)).toFixed(1)}×`);
+  (function () {
+    // Il contrasto che si vede è un'altra cosa, e lì il fattore è grosso
+    let sagittario = 0, anticentro = 0;
+    for (let b = -14; b <= 14; b += 0.2) {
+      sagittario = Math.max(sagittario, skyVLDensita(6, b));
+      anticentro = Math.max(anticentro, skyVLDensita(180, b));
+    }
+    prova('ma quello che si vede in Sagittario resta molte volte l\'anticentro',
+      sagittario / anticentro > 3 && sagittario / anticentro < 14,
+      `${(sagittario / anticentro).toFixed(1)}×`);
+  })();
+  prova('la gobba del Cigno c\'è: lì la banda torna a slargarsi',
+    skyVLSemiSpessore(82) > skyVLSemiSpessore(140) + 1,
+    `${skyVLSemiSpessore(82).toFixed(1)}° contro ${skyVLSemiSpessore(140).toFixed(1)}°`);
+  (function () {
+    let massimo = 0;
+    for (let l = 0; l < 360; l += 0.5) massimo = Math.max(massimo, Math.abs(skyVLPiano(l)));
+    prova('il centro della banda non è b = 0, ma non se ne va nemmeno',
+      massimo > 0.3 && massimo < 2.2, `al massimo ${massimo.toFixed(2)}° dal piano`);
+    prova('e sta sotto il piano verso l\'anticentro, dove il disco è vicino',
+      skyVLPiano(180) < -0.5 && skyVLPiano(180) < skyVLPiano(0),
+      `${skyVLPiano(180).toFixed(2)}° all'anticentro contro ${skyVLPiano(0).toFixed(2)}° al centro`);
+  })();
+
+  // --- La polvere -----------------------------------------------------
+  // Una polvere che restituisse più di uno non sarebbe polvere: sarebbe
+  // una sorgente, e accenderebbe la banda invece di spegnerla. È il genere
+  // di errore che si vede solo come «lì è più chiaro», cioè non si vede.
+  (function () {
+    let min = 2, max = -1;
+    for (let l = 0; l < 360; l += 2) {
+      for (let b = -16; b <= 16; b += 0.5) {
+        const p = skyVLPolvere(l, b, skyVLVersore(l, b), skyVLPiano(l), skyVLSemiSpessore(l));
+        min = Math.min(min, p); max = Math.max(max, p);
+      }
+    }
+    prova('la polvere toglie luce e non ne aggiunge mai', min >= 0 && max <= 1,
+      `fra ${min.toFixed(3)} e ${max.toFixed(3)}`);
+    prova('…e da qualche parte toglie quasi tutto', min < 0.15);
+  })();
+
+  // --- La Fenditura ---------------------------------------------------
+  // Dentro alla banda ci dev'essere un minimo netto, e deve salire verso
+  // l'Ofiuco: nel Cigno la Fenditura corre quasi sul piano, in Ofiuco se
+  // ne stacca di sei gradi. È il suo aspetto, e disegnarla dritta la fa
+  // sembrare un graffio invece che polvere.
+  (function () {
+    const dove = [];
+    [20, 35, 50, 65].forEach(l => {
+      const semi = skyVLSemiSpessore(l);
+      let buio = Infinity, buioB = 0, chiaro = 0;
+      for (let b = -semi; b <= semi; b += 0.05) {
+        const d = skyVLDensita(l, b);
+        if (d < buio) { buio = d; buioB = b; }
+        if (d > chiaro) chiaro = d;
+      }
+      dove.push(buioB);
+      prova(`a l = ${l}° la Fenditura taglia la banda in due`, buio < 0.3 * chiaro,
+        `il buio vale ${buio.toFixed(3)} contro ${chiaro.toFixed(3)}, a b = ${buioB.toFixed(1)}°`);
+    });
+    prova('e sale verso l\'Ofiuco invece di correre dritta',
+      dove[0] > dove[dove.length - 1] + 2,
+      `da b = ${dove[dove.length - 1].toFixed(1)}° a l = 65° a b = ${dove[0].toFixed(1)}° a l = 20°`);
+    // Nel Cigno, dove comincia, la Fenditura è stretta e la banda è larga:
+    // taglia meno, e deve tagliare meno — se lì spegnesse tutto, il Cigno
+    // sparirebbe, e il Cigno è la parte della Via Lattea che si guarda per
+    // prima alzando gli occhi d'estate.
+    (function () {
+      const semi = skyVLSemiSpessore(80);
+      let buio = Infinity, chiaro = 0;
+      for (let b = -semi; b <= semi; b += 0.05) {
+        const d = skyVLDensita(80, b);
+        buio = Math.min(buio, d); chiaro = Math.max(chiaro, d);
+      }
+      prova('nel Cigno invece la incide soltanto, e la banda resta',
+        buio < 0.55 * chiaro && buio > 0.12 * chiaro,
+        `il buio vale il ${(100 * buio / chiaro).toFixed(0)}% del chiaro`);
+    })();
+    // Fuori dal suo arco la Fenditura non deve esistere affatto: è una cosa
+    // sola, lunga settanta gradi, non un modo di scurire la banda
+    let fuori = 0;
+    for (let l = 100; l <= 300; l += 2) {
+      for (let b = -12; b <= 12; b += 0.5) if (skyVLFenditura(l, b, skyVLVersore(l, b)) !== 0) fuori++;
+    }
+    prova('e fuori dal suo arco la Fenditura non c\'è proprio', fuori === 0);
+    // Là la banda si assottiglia e si smerigli, ma non si spezza: il nucleo
+    // resta continuo, ed è quello che a occhio si legge come «prosegue»
+    [140, 180, 200].forEach(l => {
+      const semi = skyVLSemiSpessore(l);
+      let mi = Infinity, ma = 0;
+      for (let b = -0.4 * semi; b <= 0.4 * semi; b += 0.05) {
+        const d = skyVLDensita(l, b);
+        mi = Math.min(mi, d); ma = Math.max(ma, d);
+      }
+      prova(`a l = ${l}° il nucleo della banda è continuo, non tagliato`,
+        mi > 0.35 * ma, `il punto più scuro vale il ${(100 * mi / ma).toFixed(0)}% del più chiaro`);
+    });
+  })();
+
+  // --- Il cielo attorno a qualche stella che si conosce ---------------
+  (function () {
+    function attorno(raGradi, dec, raggio) {
+      const g = equatorialeAGalattico(raGradi, dec);
+      let m = 0;
+      for (let dl = -raggio; dl <= raggio; dl += 0.5) {
+        for (let db = -raggio; db <= raggio; db += 0.5) {
+          m = Math.max(m, skyVLDensita(((g.l + dl / Math.cos(g.b * D2R)) % 360 + 360) % 360, g.b + db));
+        }
+      }
+      return m;
+    }
+    const cigno = attorno(310.358, 45.280, 3);          // Deneb
+    const sadr = attorno(305.557, 40.257, 3);           // Sadr, in mezzo al Cigno
+    const antares = attorno(247.352, -26.432, 4);       // Antares
+    prova('attorno a Deneb e a Sadr la banda c\'è: il Cigno sta dentro alla Via Lattea',
+      cigno > 0.35 && sadr > 0.35, `${cigno.toFixed(2)} e ${sadr.toFixed(2)}`);
+    prova('attorno ad Antares ce n\'è, ma molta meno — ed è giusto così',
+      antares > 0.12 && antares < 0.6 * sadr,
+      `${antares.toFixed(2)}: sta quindici gradi sopra al piano, in mezzo alla polvere di Rho Ofiuco`);
+    prova('attorno ad Arturo niente, ed è giusto: sta a settanta gradi dal piano',
+      attorno(213.915, 19.182, 4) === 0);
+    prova('e nemmeno attorno alla Polare', attorno(37.955, 89.264, 4) === 0);
+  })();
+
+  // --- I fiocchi ------------------------------------------------------
+  const nubi = skyNubiDelCielo();
+  const tele = skyTeleViaLattea();
+
+  prova('i fiocchi si sorteggiano una volta sola',
+    skyNubiDelCielo() === nubi, `${nubi.length} fiocchi`);
+  prova('le tele sono cinquantaquattro: quattro forme × sei tinte, più le sei varianti di grana',
+    tele.length === SKY_VL_TELA_NEBULOSA + SKY_VL_TINTE.length && tele.length === 54,
+    `${tele.length}`);
+  prova('nessun fiocco punta a una tela che non c\'è',
+    nubi.every(n => n.tela >= 0 && n.tela < tele.length && tele[n.tela]));
+  prova('nessun raggio, luce o tangente storta',
+    nubi.every(n => isFinite(n.luce) && n.luce >= 0 && n.r > 0 && n.rt > 0 && isFinite(n.rt)));
+  prova('tutti i versori sono unitari',
+    nubi.every(n => Math.abs(Math.hypot(n.v[0], n.v[1], n.v[2]) - 1) < 1e-9));
+  prova('la tangente della semiampiezza è quella del raggio che il fiocco dichiara',
+    nubi.every(n => Math.abs(n.rt - Math.tan(n.r * 0.5 * D2R)) < 1e-12));
+
+  // Gli strati devono essere tratti **contigui** dell'elenco, e i grani in
+  // fondo: il diradamento sul telefono salta un fiocco su tre con un
+  // modulo sull'indice, e con gli strati mescolati diraderebbe a caso.
+  (function () {
+    const visti = [];
+    let ultimo = -1;
+    nubi.forEach(n => { if (n.strato !== ultimo) { visti.push(n.strato); ultimo = n.strato; } });
+    prova('ogni strato è un tratto contiguo dell\'elenco',
+      new Set(visti).size === visti.length, 'ordine: ' + visti.join(', '));
+    prova('i grani stanno in fondo, come vuole il diradamento sul telefono',
+      nubi[nubi.length - 1].strato === 2 && visti[visti.length - 1] === 2);
+  })();
+
+  // --- Il bilancio della luce -----------------------------------------
+  // Non si tara la luce di un fiocco, si tara la somma. È la sola difesa
+  // contro il difetto in cui si cade cambiando il numero dei fiocchi: la
+  // banda si accende o si spegne, e ci si mette a rincorrere una costante
+  // che non è il problema.
+  (function () {
+    const flusso = [0, 0, 0, 0];
+    nubi.forEach(n => { flusso[n.strato] += n.luce * n.r * n.r; });
+    [['velo', 0, SKY_VL_QUOTE.velo], ['nubi', 1, SKY_VL_QUOTE.nubi], ['grani', 2, SKY_VL_QUOTE.grani]]
+      .forEach(([nome, k, quota]) => {
+        prova(`lo strato «${nome}» fa la luce che dichiara`,
+          Math.abs(flusso[k] - SKY_VL_LUCE * quota) < 0.01 * SKY_VL_LUCE,
+          `${flusso[k].toFixed(1)} contro ${(SKY_VL_LUCE * quota).toFixed(1)} gradi quadri`);
+      });
+    prova('e le tre quote sommano uno',
+      Math.abs(SKY_VL_QUOTE.velo + SKY_VL_QUOTE.nubi + SKY_VL_QUOTE.grani - 1) < 1e-9);
+    prova('Magellano e i grumi di idrogeno non entrano nel bilancio della banda',
+      flusso[3] > 0 && flusso[3] < 0.06 * SKY_VL_LUCE,
+      `${flusso[3].toFixed(1)} gradi quadri, cioè il ${(100 * flusso[3] / SKY_VL_LUCE).toFixed(0)}% della banda`);
+  })();
+
+  // I fiocchi della banda devono stare **sulla** banda: se un giorno il
+  // sorteggio dimenticasse il coseno della latitudine si affollerebbero
+  // verso i poli galattici, cioè dove non c'è niente.
+  (function () {
+    let dentro = 0, quanti = 0;
+    nubi.forEach(n => {
+      if (n.strato === 3) return;
+      quanti++;
+      const dec = Math.asin(n.v[2]) * 180 / Math.PI;
+      const ra = (Math.atan2(n.v[1], n.v[0]) * 180 / Math.PI + 360) % 360;
+      if (Math.abs(equatorialeAGalattico(ra, dec).b) < 20) dentro++;
+    });
+    prova('i fiocchi della banda stanno sulla banda',
+      dentro / quanti > 0.97, `${(100 * dentro / quanti).toFixed(1)}% entro venti gradi dal piano`);
+  })();
+
+  // --- Magellano e i grumi di idrogeno --------------------------------
+  (function () {
+    function quantiVicino(raGradi, dec, raggio) {
+      return nubi.filter(n => {
+        const d = Math.asin(n.v[2]) * 180 / Math.PI;
+        const r = (Math.atan2(n.v[1], n.v[0]) * 180 / Math.PI + 360) % 360;
+        return Math.hypot((((r - raGradi + 540) % 360) - 180) * Math.cos(dec * D2R), d - dec) < raggio;
+      }).length;
+    }
+    const lmc = SKY_VL_MAGELLANO[0], smc = SKY_VL_MAGELLANO[1];
+    prova('la Grande Nube di Magellano è al suo posto (5h23,6m −69°45\')',
+      Math.abs(lmc.ra - 80.894) < 0.05 && Math.abs(lmc.dec + 69.756) < 0.05 &&
+      quantiVicino(lmc.ra, lmc.dec, 5) > 250, `${quantiVicino(lmc.ra, lmc.dec, 5)} fiocchi entro 5°`);
+    prova('la Piccola pure (0h52,8m −72°50\')',
+      Math.abs(smc.ra - 13.187) < 0.05 && Math.abs(smc.dec + 72.829) < 0.05 &&
+      quantiVicino(smc.ra, smc.dec, 3) > 120, `${quantiVicino(smc.ra, smc.dec, 3)} fiocchi entro 3°`);
+    prova('la Tarantola sta dentro alla Grande Nube, non accanto',
+      quantiVicino(84.68, -69.10, 0.5) >= 1 &&
+      Math.hypot((84.68 - lmc.ra) * Math.cos(lmc.dec * D2R), -69.10 - lmc.dec) < 2.5,
+      `${Math.hypot((84.68 - lmc.ra) * Math.cos(lmc.dec * D2R), -69.10 - lmc.dec).toFixed(2)}° dal centro`);
+    prova('e tutt\'e due stanno nello strato che ingrandendo non si spegne',
+      nubi.filter(n => Math.hypot((((Math.atan2(n.v[1], n.v[0]) * 180 / Math.PI + 360) % 360 - lmc.ra + 540) % 360 - 180) * Math.cos(lmc.dec * D2R),
+        Math.asin(n.v[2]) * 180 / Math.PI - lmc.dec) < 5).every(n => n.strato === 3));
+
+    // Quattro nebulose di cui la posizione è pubblicata. Una nebulosa
+    // messa a occhio resta una bella macchia rosa nel posto sbagliato.
+    [['Orione', 5.5881, -5.39, 0.4], ['Eta Carinae', 10.7521, -59.87, 0.5],
+     ['Nord America', 20.9789, 44.52, 0.6], ['Laguna', 18.0606, -24.38, 0.5]]
+      .forEach(([nome, raOre, dec, tol]) => {
+        const n = SKY_VL_NEBULOSE.find(x => x.nome === nome);
+        const p = skyGalatticoAEquatoriale(n.l, n.b);
+        const scarto = Math.hypot((p.ra - raOre) * 15 * Math.cos(dec * D2R), p.dec - dec);
+        prova(`la nebulosa «${nome}» cade dove sta`, scarto < tol, `scarto ${scarto.toFixed(2)}°`);
+      });
+  })();
+
+  // --- Le tele: la grana c'è davvero? ---------------------------------
+  // È la domanda che dà il nome a tutto il pezzo, e sullo schermo non si
+  // giudica: una nube liscia e una granulosa sono tutt'e due «una nube».
+  // Il giudice è il rapporto fra il quinto e il novantacinquesimo
+  // percentile, tolta la sfumatura radiale — se sta vicino a uno, la
+  // sprite è un disco sfumato e la banda tornerà una campitura.
+  (function () {
+    function grana(tela, esponente) {
+      const lato = tela.width, m = (lato - 1) / 2;
+      const c = document.createElement('canvas');
+      c.width = c.height = lato;
+      const g = c.getContext('2d');
+      g.drawImage(tela, 0, 0);
+      const dati = g.getImageData(0, 0, lato, lato).data;
+      const v = [];
+      for (let y = 0; y < lato; y++) {
+        for (let x = 0; x < lato; x++) {
+          const u = (x - m) / m, w = (y - m) / m, d = Math.hypot(u, w);
+          if (d > 0.15 && d < 0.75) v.push(dati[(y * lato + x) * 4 + 3] / (255 * Math.pow(1 - d, esponente)));
+        }
+      }
+      v.sort((a, b) => a - b);
+      return { p05: v[Math.floor(0.05 * v.length)], p95: v[Math.floor(0.95 * v.length)] };
+    }
+    const nube = grana(tele[SKY_VL_TELA_NUBE], 1.9);
+    prova('la tela di una nube è granulosa, non un disco sfumato',
+      nube.p95 / Math.max(0.02, nube.p05) > 4,
+      `dal 5° al 95° percentile va ${(nube.p95 / Math.max(0.02, nube.p05)).toFixed(1)}× (${nube.p05.toFixed(2)} → ${nube.p95.toFixed(2)})`);
+    const velo = grana(tele[SKY_VL_TELA_VELO], 2.4);
+    prova('quella del velo invece è liscia, ed è voluto: è larga sei gradi',
+      velo.p95 / Math.max(0.02, velo.p05) < 1.35,
+      `${(velo.p95 / Math.max(0.02, velo.p05)).toFixed(2)}×`);
+    let vuote = 0;
+    tele.forEach(t => { if (!t || !t.width) vuote++; });
+    prova('nessuna tela è rimasta vuota', vuote === 0);
+  })();
+
+  // --- Il disegno -----------------------------------------------------
+  // La promessa scritta in cima al file: il ciclo di disegno **non passa
+  // da `skyProietta`**, si srotola la formula in casa per non costruire
+  // cinquemila oggetti a fotogramma. Due scritture della stessa formula
+  // sono due cose che possono divergere, e il giorno che divergono la
+  // Via Lattea si stacca dalle stelle senza che nessuna delle due parti
+  // sembri sbagliata. Qui si guarda dove i timbri sono finiti davvero.
+  (function () {
+    const timbri = [];
+    const finto = {
+      globalAlpha: 1, globalCompositeOperation: 'source-over',
+      save() {}, restore() {},
+      drawImage(img, x, y, w, h) { timbri.push({ img, x, y, w, h, a: this.globalAlpha }); }
+    };
+    // Tre fiocchi messi a mano, in punti diversi del cielo, di misure molto
+    // diverse: uno grosso al centro della vista, uno piccolo di lato, uno
+    // dietro le spalle (che non si deve disegnare affatto).
+    sky.larghezza = 900; sky.altezza = 600; sky.fov = 60;
+    const focale = skyFocale();
+    const base = skyBaseVerso(0, 30);
+    const finti = [
+      { az: 0,   alt: 30, r: 3.0 },
+      { az: 40,  alt: 12, r: 0.4 },
+      { az: 180, alt: -40, r: 2.0 }
+    ].map(f => {
+      const v = skyVettore(f.az, f.alt);
+      const dec = Math.asin(v[2]) * 180 / Math.PI;
+      const n = skyVLFioccoEq(0, dec, f.r, 0.4, SKY_VL_TELA_NUBE, 1);
+      n.vh = v; n.alt = f.alt;
+      return n;
+    });
+    sky.viaLattea = finti;
+    skyDisegnaViaLattea(finto, base, focale, null);
+
+    prova('il fiocco sotto l\'orizzonte non si disegna: lo copre il terreno',
+      timbri.length === 2, `${timbri.length} timbri su tre fiocchi`);
+    let peggio = 0;
+    timbri.forEach((t, k) => {
+      const n = finti[k];
+      const p = skyProietta(n.vh, base, focale);
+      // il metro angolare e la scala locale di app.js, scritti qui perché
+      // questa pagina non li ha: due righe, e sono quelle che dicono
+      // quanto è grande un fiocco *lì*
+      const r = 2 * focale * Math.tan(n.r / 2 * SKY_D2R) * (2 / Math.max(0.01, 1 + p.d));
+      peggio = Math.max(peggio, Math.abs(t.x + t.w / 2 - p.px), Math.abs(t.y + t.h / 2 - p.py),
+        Math.abs(t.w / 2 - r));
+    });
+    prova('la proiezione srotolata dà gli stessi pixel di `skyProietta`',
+      peggio < 1e-9, `scarto massimo ${peggio.toExponential(1)} px`);
+
+    // Il flusso conservato sotto la misura minima: un grano che diventa
+    // più piccolo di un pixel non si spegne di colpo — si disegna alla
+    // misura minima con la luce scalata come l'area che gli si è tolta.
+    // Senza, allargando il campo i grani si spengono uno per volta, e
+    // quello che si vede è uno sfarfallio.
+    const grano = skyVLFioccoEq(0, Math.asin(skyVettore(0, 30)[2]) * 180 / Math.PI,
+      0.12, 0.5, SKY_VL_TELA_GRANO, 2);
+    grano.vh = skyVettore(0, 30); grano.alt = 30;
+    sky.viaLattea = [grano];
+    // Si allarga il campo un grado per volta e si guarda cosa succede al
+    // grano: prima si rimpicciolisce come deve, poi si ferma alla misura
+    // minima e a calare è la luce, e alla fine sparisce.
+    const misure = [];
+    for (let fov = 40; fov <= 140; fov++) {
+      sky.fov = fov;
+      timbri.length = 0;
+      finto.globalAlpha = 1;
+      skyDisegnaViaLattea(finto, skyBaseVerso(0, 30), skyFocale(), null);
+      misure.push({ fov, disegnato: timbri.length > 0,
+        w: timbri.length ? timbri[0].w : 0, a: timbri.length ? timbri[0].a : 0 });
+    }
+    const fermi = misure.filter(m => m.disegnato && Math.abs(m.w - 2 * SKY_VL_MIN_DISEGNO) < 1e-9);
+    const cresciuti = misure.filter(m => m.disegnato && m.w > 2 * SKY_VL_MIN_DISEGNO + 1e-9);
+    prova('allargando il campo il grano si rimpicciolisce fino alla misura minima e lì si ferma',
+      cresciuti.length > 5 && fermi.length > 3,
+      `${cresciuti.length} campi visivi alla misura vera, ${fermi.length} alla minima`);
+    prova('…e da lì a calare è la luce, come l\'area che gli si è tolta',
+      fermi.every((m, i) => i === 0 || m.a < fermi[i - 1].a + 1e-12) &&
+      fermi[fermi.length - 1].a < 0.95 * fermi[0].a,
+      `da α ${fermi[0].a.toFixed(4)} a ${fermi[fermi.length - 1].a.toFixed(4)}`);
+    // Nessuno scalino finché il grano si vede ancora, e uscita di scena in
+    // punta di piedi: quando sparisce dev'essere già sotto a quello che una
+    // tela a otto bit sa disegnare. Un grano che si spegne da acceso, o che
+    // fa un salto a metà strada, sullo schermo si legge come uno
+    // sfarfallio mentre si allarga il campo — che è il difetto che tutta
+    // questa macchinetta esiste per togliere.
+    (function () {
+      // Il salto si misura **in assoluto** e non in percentuale: in coda la
+      // luce è già un livello su 255, e lì un calo del cinquanta per cento
+      // è mezzo livello — cioè niente. Quello che non deve succedere è un
+      // gradino che si veda, e un gradino che si veda si misura in livelli.
+      let salto = 0, dove = 0;
+      const visti = misure.filter(m => m.disegnato);
+      for (let i = 1; i < misure.length; i++) {
+        if (!misure[i].disegnato || !misure[i - 1].disegnato) continue;
+        const s = Math.abs(misure[i].a - misure[i - 1].a);
+        if (s > salto) { salto = s; dove = misure[i].fov; }
+      }
+      prova('nessuno scalino di luce, in nessun punto della scala',
+        salto < 0.025, `il salto più grosso vale ${(salto * 255).toFixed(1)} livelli su 255 (a ${dove}° di campo)`);
+      const ultimo = visti[visti.length - 1];
+      prova('e quando sparisce era già sotto a quello che la tela sa disegnare',
+        ultimo.a < 0.02, `l'ultimo disegnato vale α ${ultimo.a.toFixed(4)}, cioè ${(ultimo.a * 255).toFixed(1)} livelli su 255`);
+    })();
+  })();
+
+  // --- Quanto se ne vede da qui ---------------------------------------
+  (function () {
+    sky.fov = 55;
+    const banda = skyForzaViaLattea(null, false);
+    const oggetti = skyForzaViaLattea(null, true);
+    prova('la Grande Nube resiste al cielo di città più della banda', oggetti > banda,
+      `${oggetti.toFixed(2)} contro ${banda.toFixed(2)}`);
+    prova('la Luna piena e alta cancella quasi la banda',
+      skyForzaViaLattea({ alt: 55, frazione: 1 }, false) < 0.2 * banda,
+      `resta il ${(100 * skyForzaViaLattea({ alt: 55, frazione: 1 }, false) / banda).toFixed(0)}%`);
+    prova('un quarto di Luna conta molto meno di mezza: la fase non è lineare',
+      skyForzaViaLattea({ alt: 55, frazione: 0.5 }, false) >
+      0.5 * banda + 0.5 * skyForzaViaLattea({ alt: 55, frazione: 1 }, false));
+    prova('la Luna tramontata non toglie niente',
+      Math.abs(skyForzaViaLattea({ alt: -20, frazione: 1 }, false) - banda) < 1e-9);
+    sky.fov = 3;
+    prova('ingrandendo la banda si fa da parte: lì le stelle le mette il catalogo',
+      skyForzaViaLattea(null, false) < 0.5 * banda);
+    prova('…ma i grumi di idrogeno e Magellano no, che ingrandendo si guardano meglio',
+      Math.abs(skyForzaViaLattea(null, true) - oggetti) < 1e-9);
+    sky.fov = 55;
+    sky.atmosfera = false;
+    prova('con l\'atmosfera spenta è una carta stellare, e la banda si disegna intera',
+      skyForzaViaLattea({ alt: 55, frazione: 1 }, false) === 1);
+    sky.atmosfera = true;
+  })();
+
+  sky.larghezza = larghezzaPrima; sky.altezza = altezzaPrima; sky.fov = fovPrima;
+  sky.viaLattea = bandaPrima;
 })();
 
 // Rimettere a posto la `fetch` vera: da qui in giù la pagina torna a parlare

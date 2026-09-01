@@ -32,9 +32,10 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | File | Righe | Contenuto |
 |---|---|---|
 | `index.html` | ~1.950 | Struttura statica: testata, 6 viste, 10 modali. Nessuna logica. |
-| `app.js` | ~28.700 | Tutto tranne il telescopio e i moduli aggiunti dopo. |
+| `app.js` | ~36.400 | Tutto tranne il telescopio e i moduli aggiunti dopo. |
 | `telescopio.js` | ~5.535 | Vista Telescopio, isolata. ~136 funzioni, prefisso `tel`. |
 | `catalogo.js` | ~980 | **Il catalogo del cielo**: 5.044 stelle, 88 costellazioni, 142 oggetti profondi, e il motore a matrice che li muove. Prefisso `cat`. |
+| `via-lattea.js` | ~1.090 | **La Via Lattea**: il piano della Galassia guardato da dentro. Non una banda sfumata ma quattro strati di fiocchi — il velo, le nubi stellari granulose, i grani (le stelle che l'occhio non separa) e gli oggetti (le **Nubi di Magellano**, i grumi di idrogeno acceso) — sorteggiati da un campo di densità **frattale** e stampati con sprite già granulose. Ci sono la **Grande Fenditura** come spina frastagliata, la ragnatela di polvere, il colore che passa dall'oro del rigonfiamento all'azzurro dei bracci esterni. Prefisso `skyVL`. |
 | `costellazioni.js` | ~2.700 | **I disegni delle figure, i nomi delle altre culture, il cielo australe**: 29 disegni agganciati alle stelle vere con un telaio di due ancore, i **disegni fatti a mano** che si appoggiano da soli sulle stelle (basta il nome del file), i nomi arabi/cinesi/māori/aborigeni/andini con la loro storia, l'atlante di tutte e 88, il tasto che porta il planetario sotto il cielo giusto e le **distanze vere** che servono al banco in 3D. Prefisso `cost`. |
 | `arte-costellazioni/` | | **I disegni fatti a mano**, un file per figura, più il `LEGGIMI.md` che spiega come aggiungerne uno. Non è codice: si carica l'immagine e si scrive il suo nome in `COST_IMMAGINI` (§5-bis di `costellazioni.js`). |
 | `corpi-minori.js` | ~660 | **Lune di Giove, comete e asteroidi**: `JupiterMoons` e propagazione kepleriana a mano. |
@@ -56,10 +57,10 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `dati-profondo.js` | ~170 | Messier completo + NGC luminosi, 142 oggetti (29 KB). **Su richiesta.** |
 | `dati-corpi-minori.js` | ~85 | Elementi orbitali di 41 comete e 20 asteroidi (11 KB). **Su richiesta.** |
 | `dati-distanze.js` | ~95 | **Quanto è lontana ogni stella delle figure**: 767 vertici con la distanza in anni luce, magnitudine, colore e nome (35 KB). **Solo al banco «Le costellazioni non esistono».** |
-| `verifica.html` | ~6.640 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
+| `verifica.html` | ~10.800 | **Il banco di prova.** Si apre da un server e controlla i conti contro valori noti. Non fa parte della PWA. |
 | `scripts/costruisci-dati.js` | ~430 | Genera i `dati-*.js` dalle fonti pubbliche. Si lancia a mano, non serve all'app. |
 | `style.css` | ~7.480 | Tema "Deep Space" + impaginazione responsive. |
-| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v238`). |
+| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v239`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -67,7 +68,8 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 **Ordine di caricamento** (è quello di `index.html`, e conta):
 
 ```
-app.js → telescopio.js → catalogo.js → costellazioni.js → corpi-minori.js
+app.js → telescopio.js → catalogo.js → costellazioni.js → via-lattea.js
+       → corpi-minori.js
        → pianifica.js → terreno.js → rilievo.js → meteo-astro.js → aurora-polare.js
        → config.js → aerei.js → eventi-extra.js → ui-nuova.js
        → didattica.js
@@ -83,7 +85,7 @@ carica `catalogo.js` da sé alla prima apertura del planetario (`apriSkymap()`).
 |---|---|
 | `apriSkymap()` | avvia `catCarica()`, `corpiMinoriCarica()`, `terrenoCarica()`, `cittaCarica()` e `caricaAurora()` |
 | `skyAggiornaCatalogo()` | se `catAggiornaPosizioni()` risponde, esce subito |
-| `skyDisegna()` | chiama `catDisegnaStelle()`, `catDisegnaFigure()`, `costDisegnaArte()`, `aurDisegna()` e `aereiDisegna()` |
+| `skyDisegna()` | chiama `catDisegnaStelle()`, `catDisegnaFigure()`, `costDisegnaArte()`, `skyDisegnaViaLattea()`, `aurDisegna()` e `aereiDisegna()` |
 | `apriSkymap()` / `chiudiSkymap()` | accendono e spengono il battito degli aerei (`aereiAvvia()` / `aereiFerma()`): i **dati** partono da soli, il **disegno** no |
 | `skyOggettoNelPunto()` / `skyAggiornaScheda()` | chiedono ad `aereoNelPunto()` e ad `aereiSchedaHtml()` — un aereo è un oggetto della mappa come un pianeta |
 | `skyAggiornaOsservatore()` | avvisa `aereiPosizioneCambiata()`: una fotografia del vecchio centro non deve comparire nel cielo nuovo |
@@ -200,7 +202,7 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-costellazioni` (l'atlante),
 | 7461–7711 | **7.1-ter** Il luogo da cui si guarda: il planetario può spostare l'occhio altrove senza toccare la posizione dell'app | `skyLuogoDelCielo()` (**7482**), `skyAggiornaOsservatore()` (**7498**), `skyImpostaLuogoVista()`, `skyTornaAlLuogoDiCasa()`, `skyInizializzaLuogoVista()` (**7614**) |
 | 8207–9120 | **7.1-quater** Il punto scelto sul mappamondo: la mappa Leaflet per i luoghi che un nome non ce l'hanno. Tre fondi (strade, curve di livello, fotografia dall'alto), ingrandimento fino al singolo spiazzo, segno che si trascina, ricerca per nome, pieno schermo, e la porta d'ingresso da **Google Maps** | `LUOGO_SFONDI` (**8251**), `luogoMappa` (**8266**), `luogoMappaCostruisci()` (**8320**), `luogoMappaSfondo()` (**8384**), `luogoMappaFaiSegno()` (**8411**), `luogoMappaScegli()` (**8452**), `luogoMappaAggiornaLettura()` (**8490**), `luogoDaTesto()` (**8628**), `luogoIncollaUsa()` (**8674**), `luogoCerca()` (**8772**), `luogoAlternaSchermoIntero()` (**8802**), `apriMappaLuogoCielo()` (**8885**), `luogoMappaUsa()` (**8924**), `inizializzaMappaLuogo()` (**8936**) |
 | 7712–8052 | **7.2** Posizioni degli astri (Sole, Luna, pianeti, stelle `Star1…Star8`); qui si calcolano anche l'ombra della Terra sulla Luna e l'apertura degli anelli di Saturno. Ogni quanto rifarle non è fisso: si adatta a quanto si è ingranditi (mezzo pixel di movimento del cielo), mentre i numeri scritti attorno alla mappa vanno più piano | `skyIntervalloCalcolo()` (**7749**), `SKY_UI_INTERVALLO` (**7747**), `skyAggiornaOggetti()` (**7756**), `skyOmbraDellaTerra()` (**7853**), `skyAssettoDiSaturno()` (**7893**) |
-| 8053–8374 | **7.3 / 7.3.1** Disegno del cielo e aspetto dell'aria: colore del fondo per ora del giorno, foschia, aloni, **Via Lattea** (le nubi galattiche, la Fenditura del Cigno, quanto se ne vede da qui) | `skyAria()`, `skyDisegnaSfondo()` (**8142**), `skyVLDensita()`, `SKY_VIA_LATTEA`, `skyForzaViaLattea()`, `skyDisegnaViaLattea()` |
+| 8053–8374 | **7.3 / 7.3.1** Disegno del cielo e aspetto dell'aria: colore del fondo per ora del giorno, foschia, aloni. La **Via Lattea** è uscita di qui e sta in `via-lattea.js`: restano tre chiamate, tutte dietro a un `typeof` | `skyAria()`, `skyDisegnaSfondo()`, `skyColoreCielo()` |
 | 8375–9874 | **7.3.2 La pelle degli astri** — le facce vere, dipinte una volta sola su tele fuori schermo: Luna coi mari, Sole con granulazione e corona, pianeti con bande e calotte, nebulose e galassie, profilo dell'orizzonte, **il mare** (superficie, onde e strada di luce, prefisso `skyMare`), **l'eclissi di Luna** (l'ombra della Terra addosso alla Luna, prefisso `skyEclisse`), eclissi di Sole | `skyPelle()` (**8433**), `skyLatoTela()` / `SKY_TELA_LATO_MAX` / `skyTelePixelMax()`, `skyLunaDettaglioFine()`, `SKY_FACCE` (**9066**), `skyFacciaDi()` (**9083**), `skyDisegnaGlobo()` (**9284**), `SKY_PROFILO` (**9381**), `skyDisegnaTerreno()` (**9525**), `skyDisegnaLuna()` (**9698**), `SKY_ECL_TONI` / `skyEclisseColore()` / `skyEclisseFermate()` / `skyEclisseLuceLuna()` / `skyDisegnaOmbraLunare()` (**9740**), `skyDisegnaPianeta()` (**9795**), `skyDisegnaSole()` (**9834**), `skyEclisseDiSole()` (**9896**) |
 | 9875–10468 | **7.3 (seguito)** Misura degli astri (icona o disco vero), disegno di ogni astro, ciclo di disegno | `skyRaggio(o, focale)` (**9947**), `skyDisegnaAstro()` (**10008**), `skyDisegna()` (**10271**) |
 | 10469–10607 | **7.3-bis** Traccia dell'oggetto osservato: la strada che percorre nelle ore attorno all'istante mostrato, con l'ora segnata di ora in ora | `skyCalcolaTraccia()` (**10501**), `skyDisegnaTraccia()`, `SKY_TRACCIA_ORE` (**10482**) |
@@ -331,6 +333,8 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
   `_ecl*` = interni della mappa eclissi, `lez*` = la lezione animata
   dell'eclittica, `terreno*` = la forma vera del terreno attorno a casa, `citta*` = i paesi che la illuminano, `cime*` = le montagne che ci spuntano sopra, `acque*` = i laghi e i fiumi,
   `ril*` = il rilievo del terreno (le tessere, la maglia, il suo disegno),
+  `skyVL*` = la Via Lattea (il campo di densità, il rumore, i fiocchi, le
+  Nubi di Magellano),
   `aerei*` = gli aerei ADS-B (il trasporto, le fasce di distanza e il loro pannello),
   `did*` = il laboratorio della vista Didattica (`aurL*` il suo banco delle
   aurore), `aur*` = le aurore polari nel planetario e la forma della
@@ -356,7 +360,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v238`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v239`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - Se aggiungi un file all'app, aggiungilo anche a `ASSETS` in `sw.js`. **I
   `dati-*.js` e le immagini di `arte-costellazioni/` no**: restano fuori di
@@ -601,9 +605,56 @@ un minuto è altrove. Come per il §19, il §21 e il §25 le formule sono una
 **copia** — questa pagina non carica `app.js` — e il World Magnetic Model è
 copiato con tutti i suoi coefficienti: restano fermi fino al 2030.
 
+**§30** guarda la Via Lattea, che è la cosa del planetario che si giudica
+peggio a occhio di tutte — e per una ragione che vale la pena scrivere:
+**qualunque** nastro chiaro appoggiato in diagonale sul cielo somiglia alla
+Via Lattea. Nessuno, guardando lo schermo, dice «questa banda è larga il
+doppio del vero» o «la Fenditura sta dalla parte sbagliata»: dice «bella».
+Un errore di segno nella conversione galattica mette la banda nell'altra
+metà del cielo e continua a essere una bella banda. Questa sezione è
+l'unica che carichi il modulo **per davvero** (`via-lattea.js`) invece di
+tenersene una copia, ed è il motivo per cui quel pezzo è uscito da
+`app.js`: ottocento righe di formule ricopiate qui dentro sarebbero state
+la copia peggiore di tutto il progetto. Si controllano: le **coordinate
+galattiche** contro un'inversa scritta apposta e contro sei stelle di cui i
+valori sono pubblicati (Deneb, Sadr, Antares, Vega, Sirio, Arturo), andata
+e ritorno compresi; che il campo sia **periodico** su un giro intero — è la
+prova che il rumore si chiede al versore e non alla coppia (l, b), e la
+stessa che ha fatto saltare fuori che `skyVLDistanza` funzionava solo con
+le longitudini già normalizzate (il `%` di JavaScript tiene il segno del
+dividendo) — e che attraversando l = 0 non ci sia nessuno scalino; il
+**rumore timido**, col contro-esempio scritto in chiaro (un fbm crudo sta
+in un terzo di scala, allargato ne usa il novanta per cento) e la
+non-regressione che allargandolo non esce mai dallo zero-uno; la **forma
+della banda** (larga verso il centro, la gobba del Cigno, il centro che non
+sta a b = 0); che la **polvere** tolga luce e non ne aggiunga mai; che la
+**Fenditura** tagli davvero la banda in due fra l = 20 e l = 65, che salga
+verso l'Ofiuco invece di correre dritta, che nel Cigno la incida soltanto —
+se lì spegnesse tutto, sparirebbe la parte che si guarda per prima alzando
+gli occhi d'estate — e che fuori dal suo arco non esista affatto; che il
+cielo attorno a Deneb e a Sadr sia dentro alla banda e quello attorno ad
+Arturo no. Poi i **fiocchi**: che le tele siano cinquantaquattro e nessun
+fiocco punti a una che non c'è, che ogni strato sia un tratto **contiguo**
+dell'elenco coi grani in fondo (lo esige il diradamento sul telefono, che
+è un modulo sull'indice), e il **bilancio della luce** — la somma
+`luce·r²` di ogni strato dev'essere quella dichiarata da `SKY_VL_QUOTE`,
+che è la sola difesa contro il difetto in cui si cade cambiando il numero
+dei fiocchi: la banda si accende o si spegne e ci si mette a rincorrere una
+costante che non è il problema. Poi **Magellano** e i grumi di idrogeno
+alle loro coordinate vere, e la **grana delle sprite** misurata in numeri
+(tolta la sfumatura radiale, dal quinto al novantacinquesimo percentile
+dev'esserci un fattore quattro; sul velo, che è liscio di proposito, meno
+di un terzo). In coda le due prove del **disegno**: che la proiezione
+srotolata dia gli stessi pixel di `skyProietta` — è la copia che può
+divergere, e il giorno che diverge la Via Lattea si stacca dalle stelle
+senza che nessuna delle due parti sembri sbagliata — e che un grano, mentre
+il campo si allarga, si rimpicciolisca fino alla misura minima, lì si
+fermi, e da lì a calare sia la **luce**, senza nessuno scalino e senza
+sparire da acceso.
+
 Se tocchi qualcosa in `catalogo.js`, `costellazioni.js`, `corpi-minori.js`,
 `terreno.js`, `rilievo.js` (**il colore delle montagne e il velo dell'aria**
-compresi), `aurora-polare.js`, `aerei.js`, **la bussola e i
+compresi), `via-lattea.js`, `aurora-polare.js`, `aerei.js`, **la bussola e i
 sensori di orientamento**, l'acqua (mare, laghi, fiumi), **i nomi
 sull'orizzonte e la loro distanza**, **il paesaggio col GPS in movimento**,
 l'eclissi di
@@ -997,9 +1048,15 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Nuova icona | `DISEGNI` `app.js:53` |
 | Le stelle del cielo (quante, quali, di che colore) | `catalogo.js`: i dati in `dati-stelle.js` (mag ≤ 6) e `dati-stelle-deboli.js` (fino a 7, caricato solo se serve); il motore in `catAggiornaPosizioni()`, il disegno in `catDisegnaStelle()`. Quante se ne vedono lo decide `catMagnitudineLimite()`, che somma il cielo di casa (Bortle) e lo zoom (`catGuadagnoZoom()`) e poi **si ferma dove finisce il catalogo** (riga qui sotto) |
 | **Ingrandisco e spariscono tutte le stelle** | `catMagnitudineVoluta()` / `catProfonditaCatalogo()` / `catMagnitudineLimite()` / `catOltreIlCatalogo()` in `catalogo.js` §5. Il guadagno dello zoom vale fino a tre magnitudini, quindi da un cielo di periferia il limite saliva a **8,6** — ma la stella più debole che questo catalogo conosce è la **7,0**. Chiedere l'ottava non faceva comparire nessuna stella: faceva solo credere al disegno di avere tre magnitudini di margine, mentre lo schermo si svuotava **per geometria** — sotto i due gradi di campo un ritaglio di cielo contiene in media mezza stella più luminosa della settima, a 0,25° nessuna. Adesso il limite si ferma alla profondità vera del catalogo e l'avanzo (`catOltreIlCatalogo()`) va al **raggio**: senza di lui la tosatura avrebbe *rimpicciolito* le poche superstiti proprio dove restano sole, e — perché le magnitudini sono arrotondate al decimo — avrebbe azzerato il raggio delle **140 stelle che stanno esattamente alla 7,00**, cioè si sarebbe mangiata l'ultima riga del catalogo, la più affollata. Sotto `CAT_FOV_OCULARE` (6°) le stelle si disegnano **tutte a una a una**, con alone e nome: sullo schermo ce ne sono cinque, e un puntino da un pixel in mezzo al nero si legge come polvere sul vetro. E una volta per sessione lo si **dice** (`catDilloCheIlCatalogoFinisce()`, come lo `skyAvviso` del tremolio della mano): un cielo che si svuota ingrandendo sembra un guasto, e non lo è. Attenzione a due trappole scritte in chiaro nei commenti: `catServeSecondoLivello()` deve guardare la magnitudine **voluta** (col limite già tosato il file delle deboli non si chiederebbe mai), e `catLimiteProfondo()` pure — il cielo profondo è un altro catalogo, e legandolo alla settima magnitudine delle stelle sparivano le nebuline fra la 10,5 e la 11. Prove nel §3-bis di `verifica.html` |
-| **La forma della Via Lattea** (dov'è larga, dov'è chiara, dov'è tagliata) | `skyVLDensita(l, b)` in `app.js` (sezione 7.3, «La Via Lattea»): mette insieme lo spessore della banda (`skyVLSemiSpessore`, il rigonfiamento centrale), la luce lungo il giro (`skyVLLuceGiro`) e due tabelle di nubi con un nome — `SKY_VL_CHIARE` (Sagittario, Scudo, Cigno, Carena…) e `SKY_VL_SCURE` (la **Fenditura del Cigno**, il Sacco di Carbone). Da quella densità `SKY_VIA_LATTEA` sorteggia una volta sola milleseicento fiocchi, che è quello che si disegna: non più una linea ripassata con tratti larghi, ma una nuvola. Per vedere la mappa (l, b) senza aprire il planetario basta stampare `skyVLDensita` su una griglia |
-| **La Fenditura del Cigno non si vede, o è una collana di buchi** | la catena di `SKY_VL_SCURE` ha passo 6° e raggio 4°: le macchie **si devono toccare**, se no fra una e l'altra la densità risale e la fenditura si sgrana. È un buco vero, non una vernice scura sopra al chiaro — con `lighter` una vernice scura non esisterebbe, e quindi dove c'è polvere semplicemente non si mettono fiocchi |
-| **La Via Lattea è quasi sparita** | quasi sempre non è un guasto: è `skyForzaViaLattea()`. La banda è la prima cosa che il cielo perde, e adesso il disegno lo dice — `SKY_VL_PER_CIELO` la smorza col Bortle di casa (da 1 in montagna a 0,12 in città), la Luna alta e piena la cancella quasi del tutto, e sotto i 12° di campo si ritira perché a quell'ingrandimento al suo posto ci sono le stelle vere del catalogo. Si cambia il cielo di casa da `impostaCieloDiCasa()` (Impostazioni, o il profilo del telescopio) |
+| **La forma della Via Lattea** (dov'è larga, dov'è chiara, dov'è tagliata) | `skyVLDensita(l, b)` in `via-lattea.js` §3. Mette insieme quattro cose: dove sta il **centro** della banda (`skyVLPiano` — non è b = 0, il Sole sta una ventina di parsec sopra al piano medio e il disco esterno è svasato), quanto è **spessa** (`skyVLSemiSpessore`: dodici gradi verso il rigonfiamento, tre e mezzo all'anticentro), quanto **brilla** lungo il giro (`skyVLLuceGiro`) e le nubi con un nome (`SKY_VL_CHIARE`). Sopra a tutto passa la **trama frattale** e sotto la **polvere** (`skyVLPolvere`). Per vedere la mappa (l, b) senza aprire il planetario basta stampare `skyVLDensita` su una griglia. Prove nel §30 di `verifica.html` |
+| **La banda è liscia, sembra vernice** | è il difetto che questo file esiste per togliere, e la causa non si vede leggendo il codice: **il rumore è timido**. Una sola ottava di rumore a valori sul reticolo sta quasi tutta fra 0,19 e 0,80; un fbm a quattro ottave fra 0,32 e 0,69 — la formula va da zero a uno e in pratica non ci arriva mai. Moltiplicare la banda per una cosa così vuol dire modularla del dieci per cento, cioè non modularla. `skyVLStira(n, k)` allarga attorno alla media e tosa: quello che esce dai bordi sono i **vuoti** e i **grumi**, che è esattamente quello che una nube stellare vera ha e una gaussiana no. Vale nel campo di densità *e* dentro alle sprite. Contro-esempio misurato nel §30 |
+| **La grana della banda** (quel brulichio che dice «stelle» e non «vernice») | sta **dentro** alle sprite, ed è la scelta che rende il pezzo gratis: un disco sfumato timbrato duemila volte fa una campitura comunque lo si sfumi, mentre duemila timbri granulosi di misura e variante diversa fanno una trama che non si ripete. `skyTeleViaLattea()` (§6) dipinge nove maschere in bianco e nero e le **tinge** con un `destination-in` — cinquantaquattro giri di `ImageData` sarebbero cinquanta millisecondi, nove sono otto. Sopra ci va lo strato dei **grani**, che sono le stelle che l'occhio non separa: tutti quasi uguali di luce, e a cambiare è *quanti* ce ne sono |
+| **La Grande Fenditura** | `skyVLFenditura(l, b, v)` in `via-lattea.js` §3. Era una fila di ventuno macchie tonde messe a mano e si vedeva per quello che era — una collana. Adesso è una **spina**: una curva che nel Cigno corre quasi sul piano e salendo verso l'Ofiuco se ne stacca di sei gradi e mezzo, con posizione e larghezza spostate dal rumore, cioè coi bordi **frastagliati** — e una nube di polvere si riconosce dai bordi. Larga com'è non spegne la banda, che lì è il doppio: si vedono due strisce chiare col nero in mezzo, che è quello che c'è in cielo |
+| **Le Nubi di Magellano** | `SKY_VL_MAGELLANO` + `skyVLGeneraMagellano()` (§8). Dall'emisfero sud sono la cosa più bella del cielo e per anni qui non c'erano affatto. Si sorteggiano nel **piano tangente** attorno al loro centro, in gradi di est e di nord, e da lì si passa a coordinate equatoriali: è il modo di dire una posizione e l'inclinazione della barra senza portarle avanti e indietro fra due sistemi. Stanno nello strato 3, quello che **ingrandendo non si spegne** — sono cose che uno *va* a guardare. La Tarantola è un grumo rosa dentro alla Grande Nube |
+| **I grumi di idrogeno acceso** (Laguna, Nord America, Eta Carinae, Orione) | `SKY_VL_NEBULOSE` (§9): sono i pochi punti in cui quel grigio ha un colore vero. Le misure sono quelle vere, e per questo la Nebulosa Gum è enorme e quasi invisibile mentre la Laguna è piccola e si vede. Come Magellano stanno nello strato che non si spegne ingrandendo |
+| **La Via Lattea è sparita dal Cigno a Cassiopea** | era il difetto più grosso della prima riscrittura, e la causa è una regola che verrebbe in mente a chiunque: dare a ogni fiocco una luce proporzionale a quanto è chiara la banda lì. Ma i fiocchi si **pescano già** dalla densità — dove la banda è il doppio più chiara ce ne finisce il doppio — e se ognuno fosse anche il doppio più luminoso il disegno andrebbe come il **quadrato** della densità: cinque volte diventano venticinque. Sullo schermo non si legge come un errore di conto, si legge come «la Via Lattea è solo in Sagittario», che è una frase che nessuno mette in dubbio guardando una figura. La densità entra una volta sola, e entra dal **dove**: la luce di un fiocco dipende solo dalla sua misura, e per le nubi dal **rapporto** fra la densità esatta e quella media della sua cella — che racconta la struttura *dentro* alla cella, cioè il bordo netto della Fenditura, e non ripete quella fuori |
+| **Quanto costa disegnarla** | tre cose, e sono quelle che tengono cinquemilaseicento fiocchi sotto al costo dei milleseicento di prima (misurato in un browser vero, senza acceleratore: 3,7 ms a 180° di campo contro 3,3, e 8,8 a 55° contro 9,0). Il **cono della vista** (`dLimite` in §12) scarta un fiocco con un prodotto scalare invece che con una proiezione intera — a campo stretto sono nove su dieci. La proiezione è **srotolata** come in `catalogo.js`, per non costruire cinquemila oggetti a fotogramma. E i **grani si spengono a campo largo** (`SKY_VL_GRANI_FOV`), dove varrebbero mezzo pixel: la luce che smettono di portare passa alle nubi, se no la banda si spegnerebbe mentre ci si allarga |
+| **La Via Lattea è quasi sparita** | quasi sempre non è un guasto: è `skyForzaViaLattea(luna, oggetti)`. La banda è la prima cosa che il cielo perde, e il disegno lo dice — `SKY_VL_PER_CIELO` la smorza col Bortle di casa (da 1 in montagna a 0,12 in città), la Luna alta e piena la cancella quasi del tutto, e sotto i 14° di campo si ritira perché a quell'ingrandimento al suo posto ci sono le stelle vere del catalogo. Magellano e i grumi di idrogeno hanno una scala loro (`SKY_VL_OGG_PER_CIELO`) e non si ritirano affatto: la Grande Nube si vede anche da un cielo mediocre — è una macchia concentrata, non un velo largo mezzo cielo — e Orione la vedono anche dai balconi di città. Si cambia il cielo di casa da `impostaCieloDiCasa()` (Impostazioni, o il profilo del telescopio). Il rubinetto generale è `SKY_VL_ALFA` |
 | Il cielo è storto o specchiato dopo un tocco al catalogo | `catMatriceCielo()` in `catalogo.js`: `RotationMatrix.rot` è memorizzata `rot[sorgente][destinazione]`, cioè trasposta rispetto a come si scrive a mano, e la terna della libreria è (Nord, Ovest, Zenit) mentre `skyProietta` vuole (Est, Nord, Alto) |
 | Un astro fuori posto di mezzo grado | quasi sempre è la precessione: `Astronomy.Horizon()` vuole coordinate **dell'equatore di oggi**, i cataloghi sono in J2000, e fra i due ballano 0,36°. Passando per `catMatriceCielo()` la correzione è obbligata |
 | Le costellazioni (tutte e 88, i nomi italiani) | `dati-costellazioni.js` + `catDisegnaFigure()`. Quante se ne disegnano dipende dal campo: `rango` 1 a campo largo, fino a 3 ingrandendo |
