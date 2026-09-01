@@ -9221,6 +9221,12 @@ titolo('28. Il paesaggio mentre ci si muove (terreno.js §6-bis, rilievo.js §8-
     prova('anche una correzione verso il basso conserva la stessa velocità regolare',
       correttaGiu < 500 && correttaGiu >= 500 - RIL_OCCHIO_V_MAX_M_S * 0.016 - 1e-9,
       `${correttaGiu.toFixed(2)} m al primo fotogramma`);
+    prova('salendo la collisione non lascia mai la camera dentro al terreno',
+      rilEvitaCollisioneOcchio(corretta, 500) === 500,
+      `${rilEvitaCollisioneOcchio(corretta, 500).toFixed(2)} m, pavimento a 500 m`);
+    prova('scendendo resta invece attivo il movimento morbido della camera',
+      rilEvitaCollisioneOcchio(correttaGiu, 200) === correttaGiu,
+      `${correttaGiu.toFixed(2)} m senza caduta istantanea a 200 m`);
     // Mentre quella correzione viene assorbita la nuova maglia può essere
     // già più alta della camera. Il suo primo lembo deve restare sotto i
     // piedi, altrimenti i poligoni circondano il punto di vista; fuori dal

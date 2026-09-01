@@ -2085,6 +2085,18 @@ function rilSmussaOcchio(attuale, meta, dt) {
   return attuale + passo;
 }
 
+// La morbidezza della camera non può prevalere sulla collisione col suolo.
+// Quando si sale, `rilSmussaOcchio` può restare per qualche secondo sotto la
+// nuova superficie: in una maglia prospettica significa guardare una faccia
+// dal retro, che a FOV largo diventa il grande poligono sul cielo e i cunei
+// appuntiti ai piedi dello schermo. La quota del suolo è già la stessa usata
+// dalla maglia (`rilOcchioMeta`); questo vincolo la tratta come un pavimento.
+// In discesa continua invece a comandare lo smorzamento, quindi la camera non
+// sobbalza seguendo ogni cella del raster.
+function rilEvitaCollisioneOcchio(occhio, minimo) {
+  return Math.max(occhio, minimo);
+}
+
 // Garantisce lo spazio fisico attorno alla camera mentre una quota arrivata
 // dalla rete viene assorbita. Il limite vale solo nel grembiule invisibile
 // sotto i piedi: oltre `RIL_SPAZIO_CAMERA_M` la montagna resta esattamente
@@ -2142,7 +2154,8 @@ function rilOcchioOra() {
   // secondo la salita dura lo stesso.
   const dt = ora - (rilievo.occhioQuando || ora);
   rilievo.occhioQuando = ora;
-  rilievo.occhioOra = rilSmussaOcchio(rilievo.occhioOra, meta, dt);
+  rilievo.occhioOra = rilEvitaCollisioneOcchio(
+    rilSmussaOcchio(rilievo.occhioOra, meta, dt), meta);
   return rilievo.occhioOra;
 }
 
