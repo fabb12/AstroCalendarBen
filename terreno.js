@@ -103,8 +103,12 @@ const TERRENO_PER_RICHIESTA = 90;
 const TERRENO_RAGGIO_KM = 6371;
 const TERRENO_RIFRAZIONE = 0.13;
 
-// L'occhio non sta per terra.
-const TERRENO_ALTEZZA_OCCHIO_M = 1.6;
+// L'occhio non sta per terra. Due metri e venti non vogliono simulare una
+// persona insolitamente alta: sono l'altezza della camera virtuale, con il
+// piccolo margine che serve fra il punto di vista e un modello altimetrico a
+// celle. A 1,6 m bastava l'interpolazione di una cella ripida per far passare
+// la camera sotto una faccia e proiettarla come un ventaglio di triangoli.
+const TERRENO_ALTEZZA_OCCHIO_M = 2.2;
 
 // Oltre questo, non è più un orizzonte: è una parete, e quasi sempre è un
 // dato sbagliato.
