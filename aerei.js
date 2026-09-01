@@ -1606,7 +1606,7 @@
         ? `<li id="aereo-rotta-${sicuro(a.id)}"><span class="voce-dato">${v.nome}:</span> ricerca in corso…</li>`
         : `<li><span class="voce-dato">${v.nome}:</span> <span data-vivo="${v.chiave}">${sicuro(v.valore)}</span></li>`).join('') +
       '</ul>' +
-      `<div class="aereo-azioni"><button type="button" class="tasto-cielo aereo-mappa" data-aereo-id="${sicuro(a.id)}">Rotta sulla mappa</button></div>` +
+      `<div class="aereo-azioni"><button type="button" class="tasto-cielo aereo-mappa" data-aereo-id="${sicuro(a.id)}">Traccia reale sulla mappa</button></div>` +
       `<p class="nota-dettaglio" data-vivo="nota">${aereiNotaScheda(a)}</p>`;
   }
 
@@ -1681,7 +1681,7 @@
     const titolo = document.getElementById('aereo-rotta-titolo');
     if (!a || !modale || !carta) return;
     if (typeof L === 'undefined') { if (typeof skyAvviso === 'function') skyAvviso('aereo-mappa', 'La carta geografica richiede la rete al primo utilizzo.', 6000); return; }
-    if (titolo) titolo.textContent = `Rotta di ${a.callsign || String(a.id).toUpperCase()}`;
+    if (titolo) titolo.textContent = `Traccia ADS-B di ${a.callsign || String(a.id).toUpperCase()}`;
     modale.classList.add('visibile'); modale.setAttribute('aria-hidden', 'false');
     if (!mappaRotta) {
       mappaRotta = L.map(carta, { zoomControl: true, maxZoom: 16 });
@@ -1697,22 +1697,38 @@
     const rotta = rottaCache.get(chiaveRotta);
     if (rotta && rotta.promessa && !rotta.valore) await rotta.promessa;
     const dettagli = rotta && rotta.valore;
+    // Questa e' la sola linea continua della carta: collega esclusivamente
+    // posizioni realmente ricevute dai feed ADS-B. Congiungere partenza e
+    // arrivo disegnava invece una scorciatoia rettilinea che un aereo non ha
+    // mai percorso (ignorava aerovie, deviazioni e attese).
     const osservati = (tracce.get(String(a.id).toLowerCase()) || []).map(p => [p.lat, p.lon]);
     if (!osservati.length) osservati.push([a.lat, a.lon]);
     const previsti = [a, ...[1, 2, 3, 4, 5].map(m => posizioneFutura(a, m * 60))].map(p => [p.lat, p.lon]);
-    stratiRotta.push(L.polyline(osservati, { color: '#22d3ee', weight: 4 }).addTo(mappaRotta));
+    if (osservati.length > 1) {
+      stratiRotta.push(L.polyline(osservati, { color: '#22d3ee', weight: 4 }).addTo(mappaRotta));
+    }
     stratiRotta.push(L.polyline(previsti, { color: '#fb923c', weight: 3, dashArray: '7 7' }).addTo(mappaRotta));
     stratiRotta.push(L.circleMarker([a.lat, a.lon], { radius: 8, color: '#fff', weight: 2,
       fillColor: fasciaDi(a.distanzaKm).colore, fillOpacity: 1 }).bindTooltip('Posizione attuale').addTo(mappaRotta));
-    const itinerario = dettagli && dettagli.coordinatePartenza && dettagli.coordinateArrivo
-      ? [dettagli.coordinatePartenza, dettagli.coordinateArrivo] : [];
-    if (itinerario.length) {
-      stratiRotta.push(L.polyline(itinerario, { color: '#2563eb', weight: 4, opacity: .8 }).addTo(mappaRotta));
-      stratiRotta.push(L.circleMarker(itinerario[0], { radius: 6, color: '#166534', fillColor: '#22c55e', fillOpacity: 1 })
+    // Gli aeroporti sono informazioni certe dell'itinerario, ma non sono la
+    // geometria del volo: restano quindi due marcatori, mai una linea.
+    const itinerario = [];
+    if (dettagli && dettagli.coordinatePartenza) {
+      itinerario.push(dettagli.coordinatePartenza);
+      stratiRotta.push(L.circleMarker(dettagli.coordinatePartenza,
+        { radius: 6, color: '#166534', fillColor: '#22c55e', fillOpacity: 1 })
         .bindTooltip(`Partenza: ${dettagli.partenza}`).addTo(mappaRotta));
-      stratiRotta.push(L.circleMarker(itinerario[1], { radius: 6, color: '#991b1b', fillColor: '#ef4444', fillOpacity: 1 })
+    }
+    if (dettagli && dettagli.coordinateArrivo) {
+      itinerario.push(dettagli.coordinateArrivo);
+      stratiRotta.push(L.circleMarker(dettagli.coordinateArrivo,
+        { radius: 6, color: '#991b1b', fillColor: '#ef4444', fillOpacity: 1 })
         .bindTooltip(`Arrivo: ${dettagli.arrivo}`).addTo(mappaRotta));
     }
+    const nota = document.getElementById('aereo-rotta-nota');
+    if (nota) nota.textContent = osservati.length > 1
+      ? `${osservati.length} posizioni reali ADS-B rilevate durante questa sessione; la linea arancione è solo la previsione dei prossimi 5 minuti.`
+      : 'La traccia reale inizierà a formarsi con le prossime letture ADS-B; non viene inventata una linea retta fra gli aeroporti.';
     const tutti = itinerario.concat(osservati, previsti);
     requestAnimationFrame(() => { mappaRotta.invalidateSize(); mappaRotta.fitBounds(L.latLngBounds(tutti).pad(.25), { maxZoom: 13 }); });
   }

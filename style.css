@@ -9101,9 +9101,9 @@ body button.did-ponte:active { transform: translateY(1px); }
 .aereo-rotta-carta h3 { color:#f8fafc; font-size:1rem; font-weight:700; }
 #aereo-rotta-mappa { height:min(62vh,480px); min-height:280px; border-radius:10px; background:#172033; }
 .aereo-rotta-carta > p { margin:8px 2px 0; color:#cbd5e1; font-size:.75rem; }
+.aereo-rotta-carta > .aereo-rotta-nota { color:#94a3b8; line-height:1.35; }
 .aereo-leggenda { display:inline-block; width:22px; border-top:3px solid #22d3ee; vertical-align:middle; }
 .aereo-leggenda.prevista { border-color:#fb923c; border-top-style:dashed; }
-.aereo-leggenda.completa { border-color:#2563eb; }
 #aereo-rotta-mappa { background:#dbeafe; }
 #aereo-rotta-mappa .leaflet-tile-pane { filter:none; }
 #aereo-rotta-mappa .leaflet-control-attribution { background:rgba(255,255,255,.88); color:#334155; }
