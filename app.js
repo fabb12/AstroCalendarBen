@@ -8450,6 +8450,7 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
     }));
   } catch (e) { /* storage pieno o non disponibile: pazienza */ }
   skyAvviso('posizione', ''); // la posizione c'è: via l'eventuale avviso
+  skyAggiornaAvvisoGps();
   skyAggiornaStato();
   aggiornaTastiPosizione();
   // Ci si è spostati davvero? Allora anche le colline sono altre, e altri
@@ -20570,7 +20571,51 @@ function skyAvviso(chiave, testo, durataMs) {
   if (!el) return;
   const completo = Object.keys(sky.avvisi).map(k => sky.avvisi[k]).filter(Boolean).join(' ');
   el.textContent = completo;
+  // Quando il cielo sta usando il ripiego di rete, l'avviso non deve essere
+  // soltanto una diagnosi: da qui si può chiedere subito un fix preciso. Il
+  // tasto viene costruito come DOM (non come HTML nel testo degli avvisi),
+  // così gli altri messaggi restano testo sicuro e continuano a sommarsi.
+  if (sky.avvisi['gps-rete'] && !skyAttivazioneGpsInCorso) {
+    const attiva = document.createElement('button');
+    attiva.type = 'button';
+    attiva.className = 'skymap-avviso-azione';
+    attiva.textContent = 'Attiva GPS';
+    attiva.addEventListener('click', skyAttivaGpsDaAvviso);
+    el.appendChild(attiva);
+  }
   el.classList.toggle('hidden', !completo);
+}
+
+// Il browser non consente di cambiare direttamente l'interruttore GPS del
+// sistema, ma un gesto esplicito può chiedere posizione precisa e permesso.
+// L'avviso resta nella barra gialla finché il dispositivo non consegna un fix.
+let skyAttivazioneGpsInCorso = false;
+
+function skyAggiornaAvvisoGps() {
+  const p = sky.posizione;
+  const daRete = !!p && (p.origine || p.fonte) === 'rete';
+  skyAvviso('gps-rete', daRete
+    ? 'GPS non attivo: stai usando una posizione approssimata dalla rete.'
+    : '');
+}
+
+async function skyAttivaGpsDaAvviso() {
+  if (skyAttivazioneGpsInCorso) return;
+  skyAttivazioneGpsInCorso = true;
+  skyAvviso('gps-rete', 'Attivazione GPS in corso…');
+  posRilevamentoForzato = true;
+  try {
+    const esito = await skyRichiediPosizione();
+    if (esito === 'gps') {
+      skySorvegliaPosizione(true, 'preciso');
+      skyAggiornaOggetti(true);
+      await posDopoCambio();
+    }
+  } finally {
+    posRilevamentoForzato = false;
+    skyAttivazioneGpsInCorso = false;
+    skyAggiornaAvvisoGps();
+  }
 }
 
 // Accende o spegne un tasto del planetario. Lo stato è una classe sola
@@ -24619,6 +24664,11 @@ async function skyAvvia() {
   // vista, e una sola attesa messa qui in mezzo lo perderebbe.
   skyAvviaSensori();
 
+  // Anche se una posizione di rete è già pronta dall'avvio dell'app, ogni
+  // apertura del planetario deve dichiarare che il GPS non è quello in uso e
+  // offrire l'attivazione nella barra gialla sotto al cielo.
+  skyAggiornaAvvisoGps();
+
   // La posizione l'app la cerca già da sé all'avvio (7.1-bis), e la
   // sorveglianza la tiene aggiornata: rifare la cascata a ogni apertura del
   // planetario vorrebbe dire una richiesta GPS in più ogni volta che si
@@ -24637,8 +24687,8 @@ async function skyAvvia() {
   if (esito.esito === 'gps') {
     skyAvviso('posizione', '');
   } else if (esito.esito === 'rete') {
-    skyAvviso('posizione', 'Posizione approssimata, dedotta dalla connessione: per il puntamento fine ' +
-      'conviene sceglierla a mano dal tasto della posizione, nella scheda Stasera.');
+    skyAvviso('posizione', '');
+    skyAggiornaAvvisoGps();
   } else if (sky.observer || skyCaricaPosizioneSalvata()) {
     skyAvviso('posizione', '');
   } else {
