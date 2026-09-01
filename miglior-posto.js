@@ -90,13 +90,39 @@ function postoDistanzaM(a, b) {
   return Math.hypot(x, y);
 }
 
+function postoCoordinateValide(p) {
+  return !!p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon)) &&
+    Number(p.lat) >= -90 && Number(p.lat) <= 90 &&
+    Number(p.lon) >= -180 && Number(p.lon) <= 180;
+}
+
 function postoPuntoSuTratto(p, a, b) {
+  // `out geom` di Overpass può lasciare un elemento null nella geometria
+  // quando uno dei nodi della way non è disponibile. Non è un guasto di rete
+  // e non deve interrompere tutta la ricerca tentando di leggere `a.lon`.
+  if (!postoCoordinateValide(p) || !postoCoordinateValide(a) || !postoCoordinateValide(b)) return null;
   const k = Math.cos(p.lat * Math.PI / 180);
   const ax = (a.lon - p.lon) * k, ay = a.lat - p.lat;
   const bx = (b.lon - p.lon) * k, by = b.lat - p.lat;
   const dx = bx - ax, dy = by - ay;
   const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy || 1)));
   return { lat: a.lat + (b.lat - a.lat) * t, lon: a.lon + (b.lon - a.lon) * t };
+}
+
+// URL ufficiale Maps URLs: senza `origin` Google usa la posizione corrente
+// del telefono; `travelmode=driving` evita che ricordi l'ultimo mezzo scelto,
+// mentre `dir_action=navigate` avvia la navigazione quando il punto di partenza
+// è disponibile. La destinazione resta il punto esatto agganciato alla strada,
+// nell'ordine richiesto da Google (latitudine, longitudine).
+function postoLinkIndicazioni(p) {
+  if (!postoCoordinateValide(p)) return null;
+  const parametri = new URLSearchParams({
+    api: '1',
+    destination: `${Number(p.lat).toFixed(6)},${Number(p.lon).toFixed(6)}`,
+    travelmode: 'driving',
+    dir_action: 'navigate'
+  });
+  return `https://www.google.com/maps/dir/?${parametri.toString()}`;
 }
 
 async function postoAgganciaAlleStrade(candidati) {
@@ -107,13 +133,15 @@ async function postoAgganciaAlleStrade(candidati) {
   const elementi = await (typeof overpassInFila === 'function'
     ? overpassInFila(() => overpassChiedi(query, 45000))
     : overpassChiedi(query, 45000));
-  const strade = elementi.filter(e => postoStradaCarrabile(e.tags) && Array.isArray(e.geometry) && e.geometry.length > 1);
+  const strade = elementi.filter(e => e && postoStradaCarrabile(e.tags) &&
+    Array.isArray(e.geometry) && e.geometry.length > 1);
 
   return candidati.map(p => {
     let migliore = null, metri = Infinity, strada = null;
     strade.forEach(via => {
       for (let i = 1; i < via.geometry.length; i++) {
         const q = postoPuntoSuTratto(p, via.geometry[i - 1], via.geometry[i]);
+        if (!q) continue;
         const d = postoDistanzaM(p, q);
         if (d < metri) { migliore = q; metri = d; strada = via; }
       }
@@ -187,11 +215,11 @@ function postoMostraRisultati(ev, centro, raggio, risultati) {
     const nomeStrada = String(p.strada).replace(/[&<>"']/g, c => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     })[c]);
-    const maps = `https://www.google.com/maps/dir/?api=1&destination=${p.lat.toFixed(6)},${p.lon.toFixed(6)}`;
+    const maps = postoLinkIndicazioni(p);
     return `<article class="posto-risultato${i === 0 ? ' migliore' : ''}">
       <span class="posto-numero">${i + 1}</span><div><h3>${i === 0 ? 'Punto consigliato' : 'Alternativa'} · ${Math.round(p.quota)} m</h3>
       <p>${esito}: l'evento sarà a <b>${p.astro.alt.toFixed(1)}°</b>, il terreno arriva a circa <b>${p.cresta.toFixed(1)}°</b>. Distanza in linea d'aria ${p.distanza.toFixed(1)} km. Punto su <b>${nomeStrada}</b>, indicata da OpenStreetMap come carrabile e senza divieti di accesso privato.</p>
-      <div class="posto-azioni"><a href="${maps}" target="_blank" rel="noopener">Indicazioni stradali</a><button type="button" onclick="postoGuardaDaQui(${p.lat},${p.lon},'${ev.id}')">Planetario da qui</button></div></div>
+      <div class="posto-azioni"><a href="${maps}" target="_blank" rel="noopener">Indicazioni stradali con Google Maps</a><button type="button" onclick="postoGuardaDaQui(${p.lat},${p.lon},'${ev.id}')">Planetario da qui</button></div></div>
     </article>`;
   }).join('');
   postoDisegnaMappa(centro, raggio, risultati, risultati[0].astro.az);
