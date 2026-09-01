@@ -7636,6 +7636,13 @@ const SKY_TAU_MOSSA = 0.035;    // secondi di memoria quando lo si muove davvero
 // molto meno: si preferisce un filo di ballo a un cielo che insegue.
 const SKY_TAU_FERMO_AR = 0.12;
 const SKY_TAU_MOSSA_AR = 0.02;
+// A telefono immobile il magnetometro continua a cambiare di pochi decimi di
+// grado. Su una carta è quasi invisibile, ma sopra uno spigolo ripreso dalla
+// camera fa sembrare che sia l'oggetto virtuale a camminare. In AR teniamo
+// quindi l'ultima posa finché la nuova non esce da questo piccolo cerchio.
+// Non perdiamo il movimento lento: il confronto resta con la posa mostrata,
+// perciò gli scarti si accumulano e appena superano la soglia la vista segue.
+const SKY_AR_POSA_FERMA_GRADI = 0.18;
 const SKY_TAU_SPIA_VELOCE = 0.1; // le due medie che riconoscono il movimento…
 const SKY_TAU_SPIA_LENTA = 0.5;  // …dal rumore: distanti solo se ci si muove
 const SKY_MOVIMENTO_GRADI = 3;   // oltre questo scarto fra le due è movimento
@@ -7718,6 +7725,19 @@ function skyLevigaBase(nuova) {
     rGrezzo[2] - f[2] * proiezione
   ]);
   const u = skyCross(r, f);
+
+  // Stabilizzazione ottica: il filtro esponenziale da solo tende sempre alla
+  // lettura rumorosa e quindi non si ferma mai davvero. Il piccolo dead-band
+  // si applica solo alla fotocamera e solo quando le due spie classificano la
+  // posa come ferma. Le spie e la stima del rumore vengono comunque salvate,
+  // così un movimento reale viene riconosciuto senza ritardo.
+  if (sky.camera && quota < 0.3 && skyAngoloFra(prec.f, f) < SKY_AR_POSA_FERMA_GRADI) {
+    sky.baseFiltrata = {
+      f: prec.f, r: prec.r, u: prec.u,
+      veloce, lento, rumore, tempo: adesso, schermo
+    };
+    return { f: prec.f, r: prec.r, u: prec.u };
+  }
 
   sky.baseFiltrata = { f, r, u, veloce, lento, rumore, tempo: adesso, schermo };
   return { f, r, u };
@@ -7851,6 +7871,13 @@ function skyRiparaNavigazione() {
 // pixel dal centro (vedi `skyProietta`): perché nell'altezza dello schermo
 // ci stiano `fov` gradi, mezza altezza deve valere 2·F·tan(fov/4).
 function skyFocale() {
+  // Una fotografia è una proiezione prospettica (rettilinea), non una
+  // planisferica stereografica. Usare la stessa focale stereografica sopra
+  // il video faceva combaciare il solo centro: verso i bordi gli astri si
+  // allontanavano progressivamente dagli oggetti reali.
+  if (skyCampoDaObiettivo()) {
+    return (sky.altezza / 2) / Math.tan(sky.fov / 2 * SKY_D2R);
+  }
   return (sky.altezza / 2) / (2 * Math.tan(sky.fov / 4 * SKY_D2R));
 }
 
@@ -7880,6 +7907,7 @@ function skyAngoloDiRaggio(pixel, focale) {
 // anche all'angolo), ma di quanto dipende da dove. `d` è il coseno
 // dell'angolo dall'asse, cioè la componente in avanti del versore.
 function skyScalaLocale(d) {
+  if (skyCampoDaObiettivo()) return 1 / Math.max(0.01, d);
   return 2 / Math.max(0.01, 1 + d);
 }
 
@@ -8022,9 +8050,9 @@ function skyTaraCampoFotocamera(campoVerticaleVoluto) {
 // planetari usano per default.
 //
 // A campo stretto le due coincidono: `2tan(θ/2)` e `tan(θ)` differiscono
-// di θ³/4, che a mezzo grado di campo è un miliardesimo di pixel. Quindi
-// non c'è nessun caso da distinguere, nessuna modalità da scegliere, e
-// nessun salto quando si allarga il campo: la formula è una sola.
+// di θ³/4, che a mezzo grado di campo è un miliardesimo di pixel. La mappa
+// usa quindi sempre questa formula; fa eccezione soltanto la realtà
+// aumentata, dove bisogna riprodurre la prospettiva rettilinea del video.
 //
 // Il conto è più corto di quello di prima. Se `v` è un versore, la sua
 // componente in avanti `d` è già il coseno dell'angolo dall'asse, e vale
@@ -8036,6 +8064,18 @@ function skyProietta(v, base, focale) {
   const d = skyDot(v, base.f);
   const x = skyDot(v, base.r);
   const y = skyDot(v, base.u);
+  // Il feed della camera è rettilineo: qui la stessa geometria deve valere
+  // anche per il cielo, altrimenti una taratura fatta al centro resta errata
+  // in ogni altro punto del fotogramma.
+  if (skyCampoDaObiettivo()) {
+    const davanti = d > 0.001;
+    return {
+      davanti,
+      px: davanti ? sky.larghezza / 2 + focale * x / d : 0,
+      py: davanti ? sky.altezza / 2 - focale * y / d : 0,
+      x, y, d
+    };
+  }
   const davanti = d > SKY_D_MIN;
   const den = (1 + d) * 0.5;
   return {
@@ -8053,6 +8093,15 @@ function skyProietta(v, base, focale) {
 function skyDirezione(px, py, base, focale) {
   const X = (px - sky.larghezza / 2) / focale;
   const Y = (sky.altezza / 2 - py) / focale;
+  if (skyCampoDaObiettivo()) {
+    const n = Math.hypot(X, Y, 1);
+    const x = X / n, y = Y / n, d = 1 / n;
+    return [
+      x * base.r[0] + y * base.u[0] + d * base.f[0],
+      x * base.r[1] + y * base.u[1] + d * base.f[1],
+      x * base.r[2] + y * base.u[2] + d * base.f[2]
+    ];
+  }
   const S = X * X + Y * Y;
   const k = 4 / (4 + S);
   const x = X * k, y = Y * k, d = (4 - S) / (4 + S);
