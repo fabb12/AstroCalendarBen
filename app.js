@@ -30050,13 +30050,30 @@ function solAvvicinaA(id) {
 // Compatibilità con i tasti della scheda: la Terra è un corpo come gli altri
 function solAvvicinaTerra() { solAvvicinaA('Earth'); }
 
-// Cerca un corpo senza dimenticare da dove si stava guardando. Se la camera
-// gira intorno alla Terra e si cerca Marte, il nuovo quadro è centrato sul
-// punto medio Terra–Marte e lo zoom viene aperto quanto basta per mostrarli
-// entrambi. Il perno viene poi lasciato: tenerlo sulla Terra rimetterebbe la
-// Terra al centro a ogni fotogramma, cancellando l'inquadratura di coppia.
+// Il punto della scena che si trova al centro della tela. Di solito e' il
+// perno scelto con un tocco; dopo uno spostamento a due dita, invece, ricaviamo
+// il punto del piano dell'eclittica che sta sotto al centro dello schermo.
+// Cosi' anche una ricerca fatta dopo aver composto a mano l'inquadratura non
+// butta via quella scelta.
+function solCentroCamera() {
+  const perno = solPuntoPerno();
+  if (perno) return perno;
+  const scala = Math.max(1e-9, sol.scala || 0);
+  const se = Math.sin(sol.elev * SKY_D2R);
+  if (Math.abs(se) < 1e-4) return { x: 0, y: 0, z: 0 };
+  const xr = -sol.panX / scala;
+  const yr = sol.panY / (scala * se);
+  const ca = Math.cos(sol.az), sa = Math.sin(sol.az);
+  return { x: xr * ca + yr * sa, y: -xr * sa + yr * ca, z: 0 };
+}
+
+// Cerca un corpo senza dimenticare da dove si stava guardando. Il centro
+// della camera resta quello scelto prima (un pianeta, il Sole o il punto
+// composto con lo spostamento a due dita); e' la camera a girargli attorno
+// finche' il corpo cercato compare alla sua destra. Lo zoom si apre soltanto
+// quanto serve a mostrare la distanza fra il centro e il risultato.
 function solInquadraRicerca(id) {
-  const origine = solPuntoPerno() || { x: 0, y: 0, z: 0 };
+  const origine = solCentroCamera();
   let arrivo = null;
   if (id === 'Sun') arrivo = { x: 0, y: 0, z: 0 };
   else if (id === 'Moon') arrivo = solScenaLuna();
@@ -30067,24 +30084,31 @@ function solInquadraRicerca(id) {
   if (!arrivo) return false;
 
   sol.scelto = id === 'Sun' ? null : (id === 'Moon' ? 'Earth' : id);
-  const distanza = Math.hypot(arrivo.x - origine.x, arrivo.y - origine.y, arrivo.z - origine.z);
-  sol.perno = null;
+  const dx = arrivo.x - origine.x;
+  const dy = arrivo.y - origine.y;
+  const dz = arrivo.z - origine.z;
+  const distanza = Math.hypot(dx, dy, dz);
+  // Con questo azimut la componente nel piano cade sull'orizzontale dello
+  // schermo: il risultato non si nasconde dietro al centro e la sua altezza
+  // vera sopra o sotto l'eclittica resta leggibile. L'elevazione, scelta da
+  // chi stava guardando, non viene cambiata.
+  if (Math.hypot(dx, dy) > 1e-7) sol.az = Math.atan2(-dy, dx);
   const zoom = distanza > 1e-7
     ? Math.min(SOL_ZOOM_MAX, 0.68 / (0.44 * distanza))
     : Math.min(SOL_ZOOM_MAX, Math.max(sol.zoomVoluto, solZoomPer(SOL_VICINO_TERRA_UA)));
   solImpostaZoom(zoom, { morbido: true });
 
-  // La traslazione è calcolata con lo zoom d'arrivo, non con quello che sta
-  // ancora scivolando, così a fine corsa i due estremi hanno lo stesso spazio.
+  // La traslazione e' calcolata con orientamento e zoom d'arrivo: rimette
+  // esattamente lo stesso punto al centro, invece di centrare il punto medio
+  // fra quel punto e il corpo cercato.
   const salvaZoom = sol.zoom;
   sol.zoom = zoom;
   solMisura();
   sol.panX = 0;
   sol.panY = 0;
   const a = solProietta(origine);
-  const b = solProietta(arrivo);
-  sol.panX = sol.cx - (a.px + b.px) / 2;
-  sol.panY = sol.cy - (a.py + b.py) / 2;
+  sol.panX = sol.cx - a.px;
+  sol.panY = sol.cy - a.py;
   sol.zoom = salvaZoom;
   solMisura();
   sol.quadro = 'terra';
