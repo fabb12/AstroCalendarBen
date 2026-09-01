@@ -13991,12 +13991,21 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // davvero: confronta l'angolo dell'acqua con quello della cresta che le
   // sta davanti, e taglia via la riva che resta nascosta. Quello che arriva
   // fin qui, quindi, è già solo l'acqua che da qui si vede.
+  // L'acqua non resta dentro allo stato canvas usato dal rilievo. Il rilievo
+  // 3D ritaglia le sue passate alla sagoma del suolo e, a campo largo, cambia
+  // anche il modo in cui quella sagoma viene riempita: ereditare per errore
+  // quel ritaglio rendeva i laghi una campitura perfettamente valida ma con
+  // zero pixel disponibili. Si chiude quindi qui il contesto del terreno e
+  // si passa esplicitamente la sua opacità all'acqua.
+  ctx.restore();
   if (typeof skyDisegnaAcqueInterne === 'function') {
-    skyDisegnaAcqueInterne(ctx, base, focale, aria);
+    skyDisegnaAcqueInterne(ctx, base, focale, aria, velo);
   }
 
   // Il riferimento del viaggio va sopra al suolo e all'acqua, come un
   // piccolo picchetto piantato nel punto da cui la camera e' partita.
+  ctx.save();
+  ctx.globalAlpha = velo;
   skyDisegnaPuntoPartenza(ctx, base, focale);
   ctx.restore();
 
@@ -16176,7 +16185,7 @@ function skyAcqueStrisce(viste, arco) {
   return strisce;
 }
 
-function skyDisegnaAcqueInterne(ctx, base, focale, aria) {
+function skyDisegnaAcqueInterne(ctx, base, focale, aria, opacita) {
   if (typeof acqueVisibili !== 'function') return;
   const viste = acqueVisibili();
   if (!viste) return;
@@ -16204,6 +16213,10 @@ function skyDisegnaAcqueInterne(ctx, base, focale, aria) {
   const gradiente = skyAcqueGradiente(ctx, base, focale, aria, arco, fine, o);
   const suolo = skyColoriPaesaggio('suolo', aria);
   ctx.save();
+  // Non dipendere dallo stato lasciato dal terreno 3D: oltre a rendere il
+  // disegno immune ai suoi clip, conserva esattamente la dissolvenza del
+  // paesaggio quando si stringe il campo su un astro.
+  ctx.globalAlpha *= typeof opacita === 'number' ? opacita : skyOpacitaTerreno();
   for (const s of strisce) {
     skyAcquaStriscia(ctx, base, focale, aria, stato, astri, s, t, gradiente,
       skyAcqueRiflessoRiva(ctx, base, focale, s, fine, o, suolo));

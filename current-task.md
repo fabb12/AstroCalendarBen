@@ -4,6 +4,17 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
+**Ripristinata l'acqua dei laghi nel Planetario 3D.** Il disegno delle acque
+interne ora parte in un contesto canvas proprio, dopo aver chiuso quello del
+rilievo: non può più ereditare il ritaglio della sagoma 3D che, soprattutto a
+campo largo, lasciava al lago zero pixel disegnabili. L'opacità del paesaggio
+viene passata esplicitamente, quindi resta invariata la dissolvenza allo zoom.
+
+Incrementata anche la cache PWA a `astrocal-v244`, così i browser già installati
+non mescolano il nuovo `app.js` con i moduli del paesaggio rimasti in cache.
+
+## Intervento precedente
+
 **La Via Lattea ridisegnata** (`via-lattea.js`, nuovo; §30 di
 `verifica.html`). La richiesta era «rendila super realistica, bella e
 affascinante».
