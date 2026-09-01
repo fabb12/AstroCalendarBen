@@ -732,7 +732,7 @@
                   <button id="skymap-btn-deepsky" type="button" class="tasto-cielo" title="Galassie, nebulose e ammassi">Deep Sky</button>
                   <button id="skymap-btn-satelliti" type="button" class="tasto-cielo attiva" title="ISS e Tiangong">Satelliti</button>
                   <button id="skymap-btn-corpiminori" type="button" class="tasto-cielo attiva" title="Comete e asteroidi abbastanza luminosi da vedersi stanotte: quasi sempre non ce n'è nessuno, e quando c'è è il motivo per uscire">Comete e asteroidi</button>
-                  <button id="skymap-btn-aerei" type="button" class="tasto-cielo" aria-pressed="false"
+                  <button id="skymap-btn-aerei" type="button" class="tasto-cielo attiva" aria-pressed="true"
                     title="Disegna in cielo gli aerei ADS-B entro il raggio scelto, colorati per distanza">Aerei</button>
                 </div>
                 <p class="titolo-foglio-vista">Segni e aiuti</p>
@@ -749,7 +749,7 @@
               <div id="foglio-vista-cielo" class="foglio-vista" role="tabpanel" data-scheda="cielo" aria-labelledby="scheda-vista-cielo" hidden>
                 <div class="riga-comandi riga-tasti-griglia">
                   <button id="skymap-btn-atmosfera" type="button" class="tasto-cielo attiva" aria-pressed="true" title="Mostra il colore del cielo, la foschia e gli aloni. Spegnendola si spengono anche le nuvole">Atmosfera</button>
-                  <button id="skymap-btn-nuvole" type="button" class="tasto-cielo" aria-pressed="false" title="Aggiunge le nuvole previste per questo luogo e quest'ora all'atmosfera">Nuvole</button>
+                  <button id="skymap-btn-nuvole" type="button" class="tasto-cielo attiva" aria-pressed="true" title="Aggiunge le nuvole previste per questo luogo e quest'ora all'atmosfera">Nuvole</button>
                   <button id="skymap-btn-aurora" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'ovale aurorale — boreale o australe, secondo l'emisfero — messo in cielo dove sta davvero: se da qui si vede, e quanto se ne affaccia sopra l'orizzonte, lo decide la curvatura della Terra">Aurora</button>
                 </div>
 
@@ -901,9 +901,8 @@
                  domande diverse: **Dati ADS-B** tiene vivo il feed (acceso
                  di serie: quando si decide di guardare, gli aerei ci sono
                  già), **Mostra in cielo** disegna i triangoli sopra le
-                 stelle (spento di serie: un cielo stellato con dieci
-                 etichette arancioni sopra non è quello che uno apre alle
-                 undici di sera). Il terzo, **Auto**, è il battito che
+                 stelle (acceso di serie, così il traffico presente compare
+                 subito nel planetario). Il terzo, **Auto**, è il battito che
                  rinfresca la fotografia quando invecchia. -->
             <section class="gruppo-comandi gruppo-aerei" data-gruppo="aerei" aria-label="Aerei ADS-B">
               <div class="aerei-testata">
@@ -917,7 +916,7 @@
               <p id="aerei-stato" class="aerei-stato" role="status" aria-live="polite"
                  data-fase="attesa">In attesa dei dati ADS-B…</p>
               <div class="riga-comandi riga-tasti-griglia aerei-interruttori">
-                <button id="aerei-btn-mostra" type="button" class="tasto-cielo" aria-pressed="false"
+                <button id="aerei-btn-mostra" type="button" class="tasto-cielo attiva" aria-pressed="true"
                   title="Disegna i triangoli sopra il cielo, colorati per distanza. Non tocca il feed: spegnendolo i dati continuano ad arrivare">Mostra in cielo</button>
                 <button id="aerei-btn-dati" type="button" class="tasto-cielo attiva" aria-pressed="true"
                   title="Tiene vivo il feed ADS-B. Spegnendolo si fermano le richieste e la fotografia viene buttata">Dati ADS-B</button>

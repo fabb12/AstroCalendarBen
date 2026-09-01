@@ -625,13 +625,14 @@
   //    domande diverse, e tenerle nella stessa variabile costringeva ad
   //    accendere il disegno per sapere che c'è in cielo — e ad aspettare il
   //    primo scarico proprio nell'istante in cui uno voleva vedere qualcosa.
-  //    Adesso i dati partono da soli aprendo il planetario e il disegno nasce
-  //    spento: quando lo si accende, gli aerei ci sono già.
+  //    Adesso dati e disegno partono da soli aprendo il planetario, così gli
+  //    aerei sono subito visibili; i due interruttori restano indipendenti per
+  //    chi preferisce tenere il feed in memoria senza mostrarlo.
   // =====================================================================
 
   const stato = {
     aerei: [], timer: null, richiesta: null, controller: null, ultimoCentro: null,
-    dati: true, visibile: false, auto: true,
+    dati: true, visibile: true, auto: true,
     ultimoSuccesso: 0, ultimoTentativo: 0, prossimoAggiornamento: 0, prossimoTentativo: 0,
     tentativiFalliti: 0, errore: '', errNome: '', ultimaFonte: '', avviato: false,
     ricaricaDopo: false, ultimoRenderSecondo: null, feedbackRichiesto: false, feedbackTimer: null,
