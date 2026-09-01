@@ -5718,6 +5718,71 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   letter-spacing: 0.01em;
 }
 
+/* Ricerca dei corpi: al centro in alto, lontana dalle due colonne di tasti.
+   Il fondo è quello degli altri comandi sulla scena, così resta leggibile
+   anche quando sotto passa un'orbita chiara. */
+.sol-ricerca {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 7;
+  width: min(270px, calc(100% - 300px));
+  transform: translateX(-50%);
+}
+.sol-ricerca > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.sol-ricerca-riga {
+  display: flex;
+  border: 1px solid var(--bordo-scena);
+  border-radius: 999px;
+  background: var(--fondo-scena);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.sol-ricerca input {
+  min-width: 0;
+  flex: 1;
+  padding: 9px 4px 9px 13px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--testo);
+  font-size: 0.78rem;
+}
+.sol-ricerca input::placeholder { color: var(--testo-3); }
+.sol-ricerca button {
+  width: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--blu-chiaro);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+.sol-ricerca button:hover { background: rgba(28, 36, 60, 0.94); }
+.sol-ricerca-esito {
+  display: block;
+  min-height: 1em;
+  margin: 4px 10px 0;
+  color: #fca5a5;
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .sol-ricerca {
+    top: 132px;
+    width: min(260px, calc(100% - 84px));
+  }
+  .sol-suggerimento { top: 182px; }
+}
+
 /* --- Le due manopole di secondo piano ---
    Distanze e dimensioni non sono una domanda che ci si fa guardando: si
    scelgono una volta. Stanno quindi dietro a un tasto della colonna di

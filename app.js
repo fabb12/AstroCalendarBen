@@ -30027,6 +30027,57 @@ function solAvvicinaA(id) {
 // Compatibilità con i tasti della scheda: la Terra è un corpo come gli altri
 function solAvvicinaTerra() { solAvvicinaA('Earth'); }
 
+// Cerca un corpo senza dimenticare da dove si stava guardando. Se la camera
+// gira intorno alla Terra e si cerca Marte, il nuovo quadro è centrato sul
+// punto medio Terra–Marte e lo zoom viene aperto quanto basta per mostrarli
+// entrambi. Il perno viene poi lasciato: tenerlo sulla Terra rimetterebbe la
+// Terra al centro a ogni fotogramma, cancellando l'inquadratura di coppia.
+function solInquadraRicerca(id) {
+  const origine = solPuntoPerno() || { x: 0, y: 0, z: 0 };
+  let arrivo = null;
+  if (id === 'Sun') arrivo = { x: 0, y: 0, z: 0 };
+  else if (id === 'Moon') arrivo = solScenaLuna();
+  else {
+    const p = sol.pianeti.find(v => v.id === id);
+    if (p) arrivo = p.scena || solScena(p.pos);
+  }
+  if (!arrivo) return false;
+
+  sol.scelto = id === 'Sun' ? null : (id === 'Moon' ? 'Earth' : id);
+  const distanza = Math.hypot(arrivo.x - origine.x, arrivo.y - origine.y, arrivo.z - origine.z);
+  sol.perno = null;
+  const zoom = distanza > 1e-7
+    ? Math.min(SOL_ZOOM_MAX, 0.68 / (0.44 * distanza))
+    : Math.min(SOL_ZOOM_MAX, Math.max(sol.zoomVoluto, solZoomPer(SOL_VICINO_TERRA_UA)));
+  solImpostaZoom(zoom, { morbido: true });
+
+  // La traslazione è calcolata con lo zoom d'arrivo, non con quello che sta
+  // ancora scivolando, così a fine corsa i due estremi hanno lo stesso spazio.
+  const salvaZoom = sol.zoom;
+  sol.zoom = zoom;
+  solMisura();
+  sol.panX = 0;
+  sol.panY = 0;
+  const a = solProietta(origine);
+  const b = solProietta(arrivo);
+  sol.panX = sol.cx - (a.px + b.px) / 2;
+  sol.panY = sol.cy - (a.py + b.py) / 2;
+  sol.zoom = salvaZoom;
+  solMisura();
+  sol.quadro = 'terra';
+  solAggiornaScheda(true);
+  solAggiornaTasti();
+  if (sol.aperto) solDisegna();
+  return true;
+}
+
+function solIdDaRicerca(testo) {
+  const pulito = String(testo || '').trim().toLocaleLowerCase('it-IT');
+  const nomi = { sole: 'Sun', luna: 'Moon' };
+  SOL_PIANETI.forEach(p => { nomi[p.nome.toLocaleLowerCase('it-IT')] = p.id; });
+  return nomi[pulito] || null;
+}
+
 // Torna alla vista d'insieme centrata sul Sole: stessa inquadratura con cui
 // ci si è entrati, non un ritorno a metà — «vicino a un corpo» e «vista
 // d'insieme» sono due modi diversi di guardare, non due gradi dello stesso.
@@ -30576,6 +30627,10 @@ window.apriSistemaSolare = (opzioni = {}) => {
   solGeneraStelle(110);
   if (!sol.fasce.length) solGeneraFasce();
   solInizializzaGesti();
+  const campoRicerca = document.getElementById('sol-cerca');
+  const esitoRicerca = document.getElementById('sol-ricerca-esito');
+  if (campoRicerca) campoRicerca.value = '';
+  if (esitoRicerca) esitoRicerca.textContent = '';
   const aiuto = document.querySelector('.sol-suggerimento');
   if (aiuto) aiuto.classList.remove('sol-svanito');
   // Il pannellino delle opzioni è una cosa di questa sessione, non una
@@ -30675,6 +30730,20 @@ function inizializzaSistemaSolare() {
     if (b) b.addEventListener('click', chiudiSistemaSolare);
   });
   modale.addEventListener('click', e => { if (e.target === modale) chiudiSistemaSolare(); });
+
+  const ricerca = document.getElementById('sol-ricerca');
+  const campoRicerca = document.getElementById('sol-cerca');
+  const esitoRicerca = document.getElementById('sol-ricerca-esito');
+  if (ricerca && campoRicerca) ricerca.addEventListener('submit', e => {
+    e.preventDefault();
+    const id = solIdDaRicerca(campoRicerca.value);
+    if (!id || !solInquadraRicerca(id)) {
+      if (esitoRicerca) esitoRicerca.textContent = 'Elemento non trovato';
+      return;
+    }
+    if (esitoRicerca) esitoRicerca.textContent = '';
+    campoRicerca.blur();
+  });
 
   // I tre tondi delle viste. Sono l'unico comando sempre in vista, e le tre
   // cose che fanno sono tre risposte diverse alla stessa domanda: la
@@ -30843,6 +30912,9 @@ function inizializzaSistemaSolare() {
     if (e.key === 'Escape' && solPannelloTempoAperto()) { solChiudiPannelloTempo(); return; }
     // E finché si scrive una data, le frecce e lo spazio sono del campo
     if (solPannelloTempoAperto() && e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    // Nel campo di ricerca R, F, C, spazio e frecce sono testo e navigazione,
+    // non scorciatoie della telecamera.
+    if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
     // Le frecce girano la scena nello stesso verso del dito; con Maiusc
     // premuto la spostano, come il trascinamento col tasto destro
     const passoPan = 40;

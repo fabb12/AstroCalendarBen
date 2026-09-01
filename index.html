@@ -1709,6 +1709,32 @@
             </button>
           </div>
 
+          <!-- La ricerca resta appoggiata alla scena: scegliere un corpo non
+               sostituisce il punto che si stava guardando, ma costruisce
+               un'inquadratura che tenga dentro entrambi. -->
+          <form id="sol-ricerca" class="sol-ricerca" role="search">
+            <label for="sol-cerca">Cerca nel Sistema Solare</label>
+            <div class="sol-ricerca-riga">
+              <input id="sol-cerca" type="search" list="sol-elementi"
+                placeholder="Es. Marte" autocomplete="off"
+                aria-label="Cerca un elemento nel Sistema Solare">
+              <button type="submit" aria-label="Trova e inquadra l'elemento" title="Trova e inquadra">⌕</button>
+            </div>
+            <datalist id="sol-elementi">
+              <option value="Sole"></option>
+              <option value="Mercurio"></option>
+              <option value="Venere"></option>
+              <option value="Terra"></option>
+              <option value="Luna"></option>
+              <option value="Marte"></option>
+              <option value="Giove"></option>
+              <option value="Saturno"></option>
+              <option value="Urano"></option>
+              <option value="Nettuno"></option>
+            </datalist>
+            <span id="sol-ricerca-esito" class="sol-ricerca-esito" aria-live="polite"></span>
+          </form>
+
           <!-- La scheda del corpo scelto. Sta **dentro** al guscio, appoggiata
                sulla scena come la scheda dell'oggetto nel planetario, e non
                più giù nella finestra: da quando si entra già a tutto schermo,
