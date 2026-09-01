@@ -4,6 +4,17 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
+**Il Lago di Como torna visibile anche dietro le rive urbane.** L'occlusione
+dell'acqua ora assorbe il normale disaccordo verticale fra i due modelli del
+rilievo: tetti, lungolago e pendio dentro la stessa cella non vengono più
+scambiati per una diga che copre l'intero lago. Le pareti vere continuano a
+nascondere l'acqua grazie al limite angolare della franchigia.
+
+La prova del paesaggio include ora una riva urbana alta diciotto metri e la
+cache PWA passa a `astrocal-v245`.
+
+## Intervento precedente
+
 **Ripristinata l'acqua dei laghi nel Planetario 3D.** Il disegno delle acque
 interne ora parte in un contesto canvas proprio, dopo aver chiuso quello del
 rilievo: non può più ereditare il ritaglio della sagoma 3D che, soprattutto a
