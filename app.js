@@ -7518,7 +7518,7 @@ const sky = {
   // Cielo dipinto come lo si vede davvero a quell'ora: colore che cambia col
   // Sole, foschia sull'orizzonte, stelle che sbiadiscono di giorno
   atmosfera: true,
-  nuvole: false,
+  nuvole: true,
   luceCielo: 0,          // quanto è chiaro il cielo adesso: 0 notte, 1 giorno
   ariaOra: null,         // i colori dell'aria dell'ultimo fotogramma
   // Eclissi di Sole in corso all'ora mostrata: quanto la Luna copre il disco
