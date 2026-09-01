@@ -5161,6 +5161,7 @@ body input.casella-data:hover { border: 0; }
   transition: background-color var(--transizione), border-color var(--transizione);
 }
 .tasto-registra-cielo:hover { background: rgba(28, 36, 60, 0.92); }
+.tasto-registra-sistema { width: 42px; height: 42px; }
 .tasto-registra-cielo.in-corso { border-color: rgba(248, 113, 113, 0.75); background: rgba(40, 10, 14, 0.9); }
 
 .segno-reg {
