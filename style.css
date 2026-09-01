@@ -489,6 +489,21 @@ body .bg-black\/60, body .bg-black\/70 { background-color: rgba(3, 5, 12, 0.74);
 
 /* Avvisi in ambra, su fondo velato */
 body .bg-amber-950\/40 { background-color: var(--ambra-velo); }
+
+/* L'avviso GPS sotto al planetario contiene anche la soluzione: un comando
+   compatto ma ben distinguibile dal testo della barra gialla. */
+.skymap-avviso-azione {
+  margin-left: .75rem;
+  padding: .35rem .7rem;
+  border: 1px solid var(--ambra);
+  border-radius: .55rem;
+  background: rgba(245, 181, 68, .16);
+  color: #fff3cf;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.skymap-avviso-azione:hover,
+.skymap-avviso-azione:focus-visible { background: rgba(245, 181, 68, .3); }
 body .border-amber-800 { border-color: rgba(245, 181, 68, 0.32); }
 body .border-green-600 { border-color: rgba(52, 211, 153, 0.4); }
 body .border-blue-500  { border-color: rgba(76, 141, 255, 0.45); }
