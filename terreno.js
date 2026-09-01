@@ -4447,14 +4447,18 @@ const ACQUE_OCCLUSIONE_MARGINE_GRADI = 0.05;
 // alza sopra il piano del lago può coprirlo — e quanto deve alzarsi perché
 // gli si creda è, esattamente, l'incertezza del modello: qualche metro.
 //
-// Sei metri sono la taglia degli alberi e dei tetti che un modello di
-// superficie non sa di avere. A trecento metri valgono più di un grado, a
-// cinque chilometri sette centesimi: tanto dove il rumore fa danno, niente
+// Ventiquattro metri coprono anche il disaccordo normale fra Copernicus e
+// SRTM sulle rive urbanizzate e ripide (a Como dentro una cella finiscono
+// insieme tetti, lungolago e versante). Sei metri bastavano sul banco pulito,
+// ma nel dato vero lasciavano che una fila di edifici diventasse una diga e
+// cancellasse tutto il lago. A trecento metri la franchigia resta limitata
+// dal tetto qui sotto; a cinque chilometri vale meno di tre decimi di grado:
+// tanto dove il rumore fa danno, poco dove una collina vera deve coprire,
 // dove non ne fa. E il tetto in gradi tiene in piedi il primo piano — a tre
-// metri dai piedi sei metri di quota sarebbero sessantatré gradi, cioè
+// metri dai piedi ventiquattro metri di quota sarebbero quasi verticali, cioè
 // «niente qui davanti copre niente», mentre chi guarda l'acqua dall'orlo di
 // una scogliera ha proprio l'orlo a nasconderla.
-const ACQUE_OCCLUSIONE_ABBASSA_M = 6;
+const ACQUE_OCCLUSIONE_ABBASSA_M = 24;
 const ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI = 3;
 
 // Di quanto ci si scosta da una soglia per leggere la cresta di **prima**.
