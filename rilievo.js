@@ -825,8 +825,11 @@ const RIL_FONDI = 14;
 // all'altra possono incrociarsi, e i quattordici poligoni finiscono per
 // sovrapporsi in grandi tasselli. Oltre questa apertura la profondita' delle
 // singole fette e' comunque compressa in pochi pixel: si dipinge percio' un
-// solo fondo, ritagliato con la sagoma esatta, e si lascia che pettinatura e
-// contorni raccontino ancora la forma 3D. Sotto la soglia non cambia nulla.
+// solo fondo, ritagliato con la sagoma esatta. Anche la pettinatura radiale
+// viene omessa: a questa scala le colonne non descrivono piu' pendii leggibili
+// ma diventano lunghi cunei che convergono verso il punto sotto l'osservatore.
+// La grana del suolo (disegnata da app.js) e il crinale conservano comunque
+// forma e materia del paesaggio. Sotto la soglia non cambia nulla.
 const RIL_FOV_FONDI_SEPARATI_MAX = 125;
 
 function rilFondiSeparati() {
@@ -2798,6 +2801,11 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   const scalaBanda = (RIL_TINTA_BANDE - 1) /
     Math.max(1e-6, (RIL_QUOTE[RIL_QUOTE.length - 1].f - RIL_QUOTE[0].f) * neve);
   const fondoK = rilFondoAnelli();
+  // Una sola decisione per tutto il fotogramma: fondo, tinte, chiaroscuro,
+  // foschia e contorni devono passare insieme dal rilievo dettagliato alla
+  // campitura larga. Lasciare attive soltanto le strisce dopo aver unificato
+  // il fondo era la causa degli "spuntoni" a raggiera ancora visibili.
+  const dettaglio = rilFondiSeparati();
   // Di quanto la maglia è decentrata rispetto a dove si è adesso, e a che
   // quota è l'occhio in questo momento. Due numeri per fotogramma, non due
   // per nodo: sotto la soglia di traslazione il primo è `null` e la
@@ -3182,8 +3190,9 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     // Al FOV estremo un'unica campitura evita alla radice le intersezioni
     // fra i poligoni delle distanze. La sagoma conosce gia' i casi difficili
     // (terra dentro/fuori da un anello), quindi non puo' richiudersi nel
-    // cielo; l'ombreggiatura dettagliata viene aggiunta subito dopo.
-    if (!rilFondiSeparati()) {
+    // cielo; a questa apertura la grana continua del suolo prende il posto
+    // dell'ombreggiatura a colonne.
+    if (!dettaglio) {
       const kMedio = fondoK[Math.floor(RIL_FONDI * 0.45)];
       const col = rilColoreDiFetta(rilLontananza(RIL_DIST[kMedio] / 1000), suolo);
       ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
@@ -3233,34 +3242,36 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // fatta la montagna, il chiaroscuro dice che forma ha, e la seconda cosa
   // deve poter scolpire la prima. Steso sopra, un velo al sessanta per cento
   // spianerebbe le luci e le ombre che si è appena finito di disegnare.
-  for (let i = 0; i < rilTinte.length; i++) {
-    const t = rilTinte[i];
-    if (!t.n) continue;
-    ctx.beginPath();
-    for (let j = 0; j < t.n; j += 4) {
-      ctx.moveTo(t.v[j], t.v[j + 1]);
-      ctx.lineTo(t.v[j + 2], t.v[j + 3]);
+  if (dettaglio) {
+    for (let i = 0; i < rilTinte.length; i++) {
+      const t = rilTinte[i];
+      if (!t.n) continue;
+      ctx.beginPath();
+      for (let j = 0; j < t.n; j += 4) {
+        ctx.moveTo(t.v[j], t.v[j + 1]);
+        ctx.lineTo(t.v[j + 2], t.v[j + 3]);
+      }
+      ctx.strokeStyle = tinte[i];
+      ctx.lineWidth = larghezzaColonna;
+      ctx.lineCap = 'butt';
+      ctx.stroke();
+      chiamate++;
     }
-    ctx.strokeStyle = tinte[i];
-    ctx.lineWidth = larghezzaColonna;
-    ctx.lineCap = 'butt';
-    ctx.stroke();
-    chiamate++;
-  }
 
-  for (let l = 0; l < RIL_LIVELLI; l++) {
-    const t = rilTratti[l];
-    if (!t.n) continue;
-    ctx.beginPath();
-    for (let i = 0; i < t.n; i += 4) {
-      ctx.moveTo(t.v[i], t.v[i + 1]);
-      ctx.lineTo(t.v[i + 2], t.v[i + 3]);
+    for (let l = 0; l < RIL_LIVELLI; l++) {
+      const t = rilTratti[l];
+      if (!t.n) continue;
+      ctx.beginPath();
+      for (let i = 0; i < t.n; i += 4) {
+        ctx.moveTo(t.v[i], t.v[i + 1]);
+        ctx.lineTo(t.v[i + 2], t.v[i + 3]);
+      }
+      ctx.strokeStyle = tav[l];
+      ctx.lineWidth = larghezzaColonna;
+      ctx.lineCap = 'butt';
+      ctx.stroke();
+      chiamate++;
     }
-    ctx.strokeStyle = tav[l];
-    ctx.lineWidth = larghezzaColonna;
-    ctx.lineCap = 'butt';
-    ctx.stroke();
-    chiamate++;
   }
 
   // --- Il velo dell'aria, fetta per fetta -------------------------------
@@ -3275,7 +3286,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   //
   // Il primo non si disegna affatto: la fetta davanti è a poche centinaia di
   // metri e fra l'occhio e lei non c'è niente.
-  if (rilFondiSeparati() && aria && aria.foschia) {
+  if (dettaglio && aria && aria.foschia) {
     const f = aria.foschia;
     for (let b = RIL_FONDI - 1; b >= 1; b--) {
       const a = rilVeloDiFetta(rilLontananza(RIL_DIST[fondoK[b]] / 1000));
@@ -3298,7 +3309,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // solo se il punto di rottura sta più o meno allo stesso anello — se no si
   // legherebbero creste che non hanno niente a che vedere fra loro.
   const biancoProfilo = [255, 255, 255];
-  {
+  if (dettaglio) {
     ctx.beginPath();
     let segmenti = 0;
     for (let c = 0; c + 1 < nCol; c++) {
