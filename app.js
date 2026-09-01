@@ -29964,6 +29964,17 @@ function solAlternaOpzioni() {
 const SOL_GIRO_PER_PIXEL = 0.008;    // radianti di azimut per pixel di dito
 const SOL_ELEV_PER_PIXEL = 0.32;     // gradi di elevazione per pixel di dito
 
+// Quando un corpo selezionato riempie buona parte della tela, la sensibilita'
+// adatta alla vista d'insieme diventa troppo brusca: pochi pixel di dito fanno
+// attraversare continenti e crateri. La riduciamo progressivamente oltre 8x,
+// senza creare uno scalino e senza cambiare il comportamento della panoramica.
+// Il limite inferiore lascia comunque possibile un giro completo anche allo
+// zoom massimo (25 000x), ma offre circa otto volte piu' precisione.
+function solPrecisioneCamera() {
+  if (!sol.perno || sol.vicino || sol.zoomVoluto <= 8) return 1;
+  return Math.max(0.12, 1 / (1 + 0.55 * Math.log2(sol.zoomVoluto / 8)));
+}
+
 // Rimette la scena in mezzo alla tela: lo spostamento con due dita è comodo
 // finché non ci si perde, e allora serve un modo solo per tornare.
 function solCentra() {
@@ -30363,7 +30374,10 @@ function solInizializzaGesti() {
     // mezzo è la maniglia — resta sotto le dita mentre lo zoom lavora
     if (sol.puntatori.size >= 2 && sol.pizzico) {
       const d = distanzaDita();
-      if (sol.pizzico.d > 4) solImpostaZoom(sol.pizzico.zoom * (d / sol.pizzico.d));
+      if (sol.pizzico.d > 4) {
+        const rapporto = d / sol.pizzico.d;
+        solImpostaZoom(sol.pizzico.zoom * Math.pow(rapporto, solPrecisioneCamera()));
+      }
       const m = centroDita();
       solSposta(m.x - sol.pizzico.cx, m.y - sol.pizzico.cy);
       sol.pizzico.cx = m.x;
@@ -30378,8 +30392,9 @@ function solInizializzaGesti() {
     sol.mosso += Math.abs(dx) + Math.abs(dy);
     if (sol.modoPan) { solSposta(dx, dy); return; }
     // Il verso del modellino: il dito porta con sé la scena
-    sol.az += dx * SOL_GIRO_PER_PIXEL;
-    const elev = Math.max(-89, Math.min(89, sol.elevVoluta + dy * SOL_ELEV_PER_PIXEL));
+    const precisione = solPrecisioneCamera();
+    sol.az += dx * SOL_GIRO_PER_PIXEL * precisione;
+    const elev = Math.max(-89, Math.min(89, sol.elevVoluta + dy * SOL_ELEV_PER_PIXEL * precisione));
     sol.elevVoluta = elev;
     sol.elev = elev;
     solAggiornaTasti();
@@ -30411,7 +30426,7 @@ function solInizializzaGesti() {
     e.preventDefault();
     const pixel = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);
     const scatti = Math.max(-4, Math.min(4, pixel / 100));
-    if (scatti) solImpostaZoom(sol.zoomVoluto * Math.exp(-scatti * 0.12), { morbido: true });
+    if (scatti) solImpostaZoom(sol.zoomVoluto * Math.exp(-scatti * 0.12 * solPrecisioneCamera()), { morbido: true });
   }, { passive: false });
 
   // Sul globo terrestre il doppio clic/doppio tocco imposta direttamente il
@@ -30880,9 +30895,11 @@ function inizializzaSistemaSolare() {
   const schermo = document.getElementById('sol-schermo');
   if (schermo) schermo.addEventListener('click', solAlternaSchermoIntero);
   const zoomMenoMappa = document.getElementById('sol-zoom-meno');
-  if (zoomMenoMappa) zoomMenoMappa.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto / 1.4, { morbido: true }));
+  if (zoomMenoMappa) zoomMenoMappa.addEventListener('click', () =>
+    solImpostaZoom(sol.zoomVoluto / Math.pow(1.4, solPrecisioneCamera()), { morbido: true }));
   const zoomPiuMappa = document.getElementById('sol-zoom-piu');
-  if (zoomPiuMappa) zoomPiuMappa.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto * 1.4, { morbido: true }));
+  if (zoomPiuMappa) zoomPiuMappa.addEventListener('click', () =>
+    solImpostaZoom(sol.zoomVoluto * Math.pow(1.4, solPrecisioneCamera()), { morbido: true }));
 
   // Il pieno schermo può finire anche senza passare dal tasto (Esc, o il
   // gesto del sistema): quando succede, la tela va rimisurata comunque
@@ -30980,19 +30997,20 @@ function inizializzaSistemaSolare() {
     if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
     // Le frecce girano la scena nello stesso verso del dito; con Maiusc
     // premuto la spostano, come il trascinamento col tasto destro
-    const passoPan = 40;
+    const precisione = solPrecisioneCamera();
+    const passoPan = 40 * precisione;
     // A tutto schermo l'Esc è del pieno schermo: si torna alla finestra, non
     // si chiude tutto. È lo stesso patto della mappa dell'ombra
     if (e.key === 'Escape' && solSchermoIntero) { solEsciSchermoIntero(); return; }
     if (e.key === 'Escape') chiudiSistemaSolare();
-    else if (e.key === 'ArrowLeft') { e.shiftKey ? solSposta(-passoPan, 0) : (sol.az -= 0.12); }
-    else if (e.key === 'ArrowRight') { e.shiftKey ? solSposta(passoPan, 0) : (sol.az += 0.12); }
+    else if (e.key === 'ArrowLeft') { e.shiftKey ? solSposta(-passoPan, 0) : (sol.az -= 0.12 * precisione); }
+    else if (e.key === 'ArrowRight') { e.shiftKey ? solSposta(passoPan, 0) : (sol.az += 0.12 * precisione); }
     else if (e.key === 'ArrowUp') {
       if (e.shiftKey) solSposta(0, -passoPan);
-      else { sol.elevVoluta = Math.max(-89, sol.elevVoluta - 4); solAggiornaTasti(); }
+      else { sol.elevVoluta = Math.max(-89, sol.elevVoluta - 4 * precisione); solAggiornaTasti(); }
     } else if (e.key === 'ArrowDown') {
       if (e.shiftKey) solSposta(0, passoPan);
-      else { sol.elevVoluta = Math.min(89, sol.elevVoluta + 4); solAggiornaTasti(); }
+      else { sol.elevVoluta = Math.min(89, sol.elevVoluta + 4 * precisione); solAggiornaTasti(); }
     } else if (e.key === 'c' || e.key === 'C') solCentra();
     else if (e.key === 'r' || e.key === 'R') solRipristinaVista();
     else if (e.key === 'f' || e.key === 'F') solAlternaSchermoIntero();
