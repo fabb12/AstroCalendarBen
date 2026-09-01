@@ -7568,7 +7568,8 @@ const sky = {
     mime: '',
     durataReale: 0,        // quanto è durata davvero (si può fermare prima)
     ultimoConto: 0,        // per non riscrivere il conto alla rovescia a ogni fotogramma
-    esito: null            // { blob, url, nome, tipo }
+    esito: null,           // { blob, url, nome, tipo }
+    origine: 'planetario'  // oppure `solare`: decide tela, comandi e risultato
   },
   ultimoPuntatore: 'mouse'  // com'è arrivato l'ultimo tocco: dito o mouse
 };
@@ -25879,8 +25880,8 @@ function skyRegTipoVideo() {
 // schermo intero) il filmato si spezzerebbe. Larghezza e altezza pari, che
 // certi codificatori video non digeriscono i numeri dispari.
 function skyRegPreparaTela() {
-  const l = sky.larghezza || 320;
-  const h = sky.altezza || 320;
+  const l = sky.reg.origine === 'solare' ? (sol.L || 320) : (sky.larghezza || 320);
+  const h = sky.reg.origine === 'solare' ? (sol.H || 320) : (sky.altezza || 320);
   const dpr = window.devicePixelRatio || 1;
   const k = Math.min(dpr, SKY_REG_LATO_VIDEO / Math.max(l, h));
   const tela = document.createElement('canvas');
@@ -25911,17 +25912,18 @@ function skyRegComponi() {
 
   ctx.filter = filtro;
   const video = document.getElementById('skymap-video');
-  if (sky.camera && video && video.videoWidth) {
+  if (r.origine !== 'solare' && sky.camera && video && video.videoWidth) {
     skyRegDisegnaCoprendo(ctx, video, video.videoWidth, video.videoHeight, L, H);
   }
-  if (sky.canvas && sky.canvas.width) {
-    skyRegDisegnaCoprendo(ctx, sky.canvas, sky.canvas.width, sky.canvas.height, L, H);
+  const sorgente = r.origine === 'solare' ? sol.canvas : sky.canvas;
+  if (sorgente && sorgente.width) {
+    skyRegDisegnaCoprendo(ctx, sorgente, sorgente.width, sorgente.height, L, H);
   }
 
   // La scheda è un elemento HTML sovrapposto al canvas, perciò drawImage non
   // può prenderla insieme al cielo. Se l'utente l'ha lasciata aperta la
   // ridisegniamo sulla tela del filmato, nella stessa posizione e misura.
-  skyRegDisegnaScheda(ctx, L, H);
+  if (r.origine !== 'solare') skyRegDisegnaScheda(ctx, L, H);
 
   // La firma passa sotto lo stesso filtro di tutto il resto: una scritta
   // bianca su un filmato rosso si vedrebbe subito che è stata appiccicata dopo
@@ -26053,9 +26055,17 @@ function skyRegAlterna() {
   else skyRegAvvia();
 }
 
+function skyRegAlternaDa(origine) {
+  // Una sola registrazione alla volta: il tasto che l'ha avviata resta anche
+  // quello che la ferma. A riposo, invece, la scena scelta diventa la fonte.
+  if (!sky.reg.attiva) sky.reg.origine = origine;
+  skyRegAlterna();
+}
+
 function skyRegAvvia() {
   const r = sky.reg;
-  if (r.attiva || !sky.canvas) return;
+  const sorgente = r.origine === 'solare' ? sol.canvas : sky.canvas;
+  if (r.attiva || !sorgente) return;
 
   // Un risultato per volta: quello di prima si butta solo adesso, così chi ha
   // fatto due registrazioni di fila non si ritrova la prima sparita a metà
@@ -26160,16 +26170,18 @@ function skyRegFerma(opzioni = {}) {
 // rosso, mentre registra diventa un quadrato che pulsa e accanto compaiono i
 // secondi che mancano. Con `restano` a null torna a riposo.
 function skyRegAggiornaComando(restano) {
-  const tasto = document.getElementById('skymap-btn-registra');
-  const tempo = document.getElementById('skymap-reg-tempo');
+  const prefisso = sky.reg.origine === 'solare' ? 'sol' : 'skymap';
+  const tasto = document.getElementById(`${prefisso}-btn-registra`);
+  const tempo = document.getElementById(`${prefisso}-reg-tempo`);
   const inCorso = restano !== null;
   if (tasto) {
     tasto.classList.toggle('in-corso', inCorso);
     tasto.setAttribute('aria-pressed', inCorso ? 'true' : 'false');
     tasto.title = inCorso
       ? 'Ferma qui la registrazione e tieni quello che hai ripreso'
-      : `Registra ${sky.reg.durataSec} secondi di cielo da condividere`;
-    tasto.setAttribute('aria-label', inCorso ? 'Ferma la registrazione' : 'Registra il cielo');
+      : `Registra ${sky.reg.durataSec} secondi ${sky.reg.origine === 'solare' ? 'del Sistema Solare 3D' : 'di cielo'} da condividere`;
+    tasto.setAttribute('aria-label', inCorso ? 'Ferma la registrazione' :
+      (sky.reg.origine === 'solare' ? 'Registra il Sistema Solare 3D' : 'Registra il cielo'));
   }
   if (!tempo) return;
   tempo.classList.toggle('visibile', inCorso);
@@ -26186,7 +26198,8 @@ function skyRegAggiornaComando(restano) {
 function skyRegNomeFile(est) {
   const d = skyAdesso();
   const due = (n) => String(n).padStart(2, '0');
-  return `planetario-${d.getFullYear()}${due(d.getMonth() + 1)}${due(d.getDate())}-` +
+  const nome = sky.reg.origine === 'solare' ? 'sistema-solare-3d' : 'planetario';
+  return `${nome}-${d.getFullYear()}${due(d.getMonth() + 1)}${due(d.getDate())}-` +
     `${due(d.getHours())}${due(d.getMinutes())}${due(d.getSeconds())}.${est}`;
 }
 
@@ -26200,7 +26213,8 @@ function skyRegMostraEsito(blob, est, tipo) {
     tipo: tipo || blob.type
   };
 
-  const anteprima = document.getElementById('skymap-clip-anteprima');
+  const prefisso = r.origine === 'solare' ? 'sol' : 'skymap';
+  const anteprima = document.getElementById(`${prefisso}-clip-anteprima`);
   if (anteprima) {
     anteprima.innerHTML = '';
     const v = document.createElement('video');
@@ -26214,21 +26228,22 @@ function skyRegMostraEsito(blob, est, tipo) {
     v.play().catch(() => { /* basta il tasto play */ });
   }
 
-  const nota = document.getElementById('skymap-clip-nota');
+  const nota = document.getElementById(`${prefisso}-clip-nota`);
   if (nota) {
     const mb = blob.size / (1024 * 1024);
     const peso = mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(blob.size / 1024)} kB`;
     const durata = (r.durataReale || r.durataSec).toFixed(1).replace('.0', '').replace('.', ',');
     nota.textContent = `Filmato di ${durata} s · ${peso} · ${r.esito.nome}`;
   }
-  const pannello = document.getElementById('skymap-clip');
+  const pannello = document.getElementById(`${prefisso}-clip`);
   if (pannello) pannello.classList.add('visibile');
 }
 
 function skyRegChiudiPannello() {
-  const pannello = document.getElementById('skymap-clip');
+  const prefisso = sky.reg.origine === 'solare' ? 'sol' : 'skymap';
+  const pannello = document.getElementById(`${prefisso}-clip`);
   if (pannello) pannello.classList.remove('visibile');
-  const anteprima = document.getElementById('skymap-clip-anteprima');
+  const anteprima = document.getElementById(`${prefisso}-clip-anteprima`);
   // Il video dell'anteprima va tolto di mezzo davvero: lasciato lì continua a
   // girare in sottofondo sopra a un cielo che nel frattempo cammina
   if (anteprima) anteprima.innerHTML = '';
@@ -26252,12 +26267,14 @@ async function skyRegCondividi() {
   // dell'app: se il planetario è in visita altrove, vale l'altrove.
   const daDove = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
   const luogo = daDove ? (daDove.nome || formattaCoordinate(daDove.lat, daDove.lon)) : '';
-  const testo = `Il cielo del ${quando}${luogo ? `, da ${luogo}` : ''}, ` +
-    'dal planetario di AstroCalendario di Ben.';
+  const solare = sky.reg.origine === 'solare';
+  const testo = solare
+    ? `Il Sistema Solare del ${quando}, da AstroCalendario di Ben.`
+    : `Il cielo del ${quando}${luogo ? `, da ${luogo}` : ''}, dal planetario di AstroCalendario di Ben.`;
   try {
     const file = new File([e.blob], e.nome, { type: e.tipo });
     if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'Il cielo di stasera', text: testo });
+      await navigator.share({ files: [file], title: solare ? 'Il Sistema Solare in 3D' : 'Il cielo di stasera', text: testo });
       return;
     }
   } catch (err) {
@@ -26314,11 +26331,16 @@ function skyRegInizializza() {
     });
   });
 
-  collega('skymap-btn-registra', skyRegAlterna);
+  collega('skymap-btn-registra', () => skyRegAlternaDa('planetario'));
+  collega('sol-btn-registra', () => skyRegAlternaDa('solare'));
   collega('skymap-clip-chiudi', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); });
   collega('skymap-clip-condividi', skyRegCondividi);
   collega('skymap-clip-salva', skyRegSalva);
   collega('skymap-clip-rifai', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); skyRegAvvia(); });
+  collega('sol-clip-chiudi', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); });
+  collega('sol-clip-condividi', skyRegCondividi);
+  collega('sol-clip-salva', skyRegSalva);
+  collega('sol-clip-rifai', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); skyRegAvvia(); });
 
   skyRegAggiornaComandi();
 }
@@ -29823,6 +29845,7 @@ function solPassoCiclo(ts) {
   solLeggiPosizioni(quando);
   solCalcolaOrbite(quando);
   solDisegna();
+  if (sky.reg.attiva && sky.reg.origine === 'solare') skyRegAcquisisci();
 
   // I numeri scritti sotto vanno più piano del disegno: rifare la tabella a
   // sessanta fotogrammi al secondo si sente, e nessuno la legge così in fretta
@@ -30687,6 +30710,9 @@ window.apriSistemaSolare = (opzioni = {}) => {
 };
 
 function chiudiSistemaSolare() {
+  // Senza la scena davanti non si può continuare a comporre il filmato.
+  // Come uscendo dal planetario, una ripresa in corso viene annullata.
+  if (sky.reg.attiva && sky.reg.origine === 'solare') skyRegFerma({ annulla: true });
   // Prima di tutto si torna dentro alla finestra: col ripiego il guscio è
   // appeso al body, e nasconderei il modale lasciando la scena a coprire
   // tutto lo schermo

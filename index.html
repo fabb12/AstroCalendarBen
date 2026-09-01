@@ -1756,6 +1756,14 @@
             <button id="sol-reset" type="button" class="tasto-mappa-sistema"
               title="Rimetti la vista com'era all'apertura: stessa inquadratura, stesso ingrandimento (o premi R)"
               aria-label="Rimetti la vista come all'apertura">⟲</button>
+            <div class="riga-registra-cielo">
+              <span id="sol-reg-tempo" class="tempo-reg" aria-live="polite"></span>
+              <button id="sol-btn-registra" type="button" class="tasto-registra-cielo tasto-registra-sistema"
+                aria-pressed="false" title="Registra qualche secondo del Sistema Solare 3D da condividere"
+                aria-label="Registra il Sistema Solare 3D">
+                <span class="segno-reg" aria-hidden="true"></span>
+              </button>
+            </div>
             <!-- Le due manopole di secondo piano: come sono disegnate le
                  distanze e come sono disegnate le misure dei corpi. Non
                  stanno in vista perché non sono una domanda che ci si fa
@@ -1805,6 +1813,21 @@
             <button id="sol-zoom-piu" type="button" class="tasto-mappa-sistema"
               title="Avvicinati" aria-label="Avvicinati">+</button>
           </div>
+
+          <!-- La registrazione usa lo stesso motore del planetario, ma il
+               risultato resta dentro questa scena anche a tutto schermo. -->
+          <aside id="sol-clip" class="pannello-clip" aria-live="polite">
+            <button id="sol-clip-chiudi" type="button" class="tasto-chiudi-dettaglio"
+              title="Chiudi" aria-label="Chiudi">✕</button>
+            <h3>Il tuo Sistema Solare</h3>
+            <div id="sol-clip-anteprima" class="anteprima-clip"></div>
+            <p id="sol-clip-nota" class="nota-clip"></p>
+            <div class="riga-comandi">
+              <button id="sol-clip-condividi" type="button" class="tasto-cielo tasto-primario">Condividi</button>
+              <button id="sol-clip-salva" type="button" class="tasto-cielo">Salva</button>
+              <button id="sol-clip-rifai" type="button" class="tasto-cielo">Rifai</button>
+            </div>
+          </aside>
 
           <!-- Il pannello del tempo, quando lo si chiede da qui. Dentro non
                c'è una copia dei comandi del planetario: c'è proprio il suo
