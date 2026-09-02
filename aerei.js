@@ -1697,10 +1697,10 @@
     const rotta = rottaCache.get(chiaveRotta);
     if (rotta && rotta.promessa && !rotta.valore) await rotta.promessa;
     const dettagli = rotta && rotta.valore;
-    // Questa e' la sola linea continua della carta: collega esclusivamente
-    // posizioni realmente ricevute dai feed ADS-B. Congiungere partenza e
-    // arrivo disegnava invece una scorciatoia rettilinea che un aereo non ha
-    // mai percorso (ignorava aerovie, deviazioni e attese).
+    // La traccia ciano racconta dove l'aereo e' passato davvero. L'itinerario
+    // blu, invece, rende subito visibile la rotta richiesta anche quando la
+    // sessione e' appena iniziata: e' tratteggiato per dichiarare che collega
+    // i due aeroporti e non pretende di ricostruire aerovie e deviazioni.
     const osservati = (tracce.get(String(a.id).toLowerCase()) || []).map(p => [p.lat, p.lon]);
     if (!osservati.length) osservati.push([a.lat, a.lon]);
     const previsti = [a, ...[1, 2, 3, 4, 5].map(m => posizioneFutura(a, m * 60))].map(p => [p.lat, p.lon]);
@@ -1725,10 +1725,17 @@
         { radius: 6, color: '#991b1b', fillColor: '#ef4444', fillOpacity: 1 })
         .bindTooltip(`Arrivo: ${dettagli.arrivo}`).addTo(mappaRotta));
     }
+    if (itinerario.length === 2) {
+      stratiRotta.unshift(L.polyline(itinerario, {
+        color: '#60a5fa', weight: 4, opacity: .9, dashArray: '12 8'
+      }).bindTooltip('Itinerario fra gli aeroporti').addTo(mappaRotta));
+    }
     const nota = document.getElementById('aereo-rotta-nota');
     if (nota) nota.textContent = osservati.length > 1
       ? `${osservati.length} posizioni reali ADS-B rilevate durante questa sessione; la linea arancione è solo la previsione dei prossimi 5 minuti.`
-      : 'La traccia reale inizierà a formarsi con le prossime letture ADS-B; non viene inventata una linea retta fra gli aeroporti.';
+      : itinerario.length === 2
+        ? 'La linea blu tratteggiata indica l’itinerario fra gli aeroporti; la traccia reale si formerà con le prossime letture ADS-B.'
+        : 'La traccia reale inizierà a formarsi con le prossime letture ADS-B.';
     const tutti = itinerario.concat(osservati, previsti);
     requestAnimationFrame(() => { mappaRotta.invalidateSize(); mappaRotta.fitBounds(L.latLngBounds(tutti).pad(.25), { maxZoom: 13 }); });
   }
@@ -1750,8 +1757,11 @@
   }
 
   function orarioRotta(rotta, prefisso) {
+    const aeroporto = prefisso === 'departure' ? rotta.origin : rotta.destination;
     const valore = rotta[`${prefisso}_time`] || rotta[`scheduled_${prefisso}`] ||
-      rotta[`${prefisso}_scheduled`] || rotta[prefisso] && rotta[prefisso].scheduled_time;
+      rotta[`${prefisso}_scheduled`] || rotta[prefisso] &&
+      (rotta[prefisso].scheduled_time || rotta[prefisso].time || rotta[prefisso].scheduled) ||
+      aeroporto && (aeroporto.scheduled_time || aeroporto.time || aeroporto.scheduled);
     if (!valore) return '';
     const data = new Date(valore);
     return isNaN(data.getTime()) ? String(valore) : data.toLocaleString('it-IT', {
@@ -1789,10 +1799,12 @@
       if (pannello) pannello.scrollTop = scorrimento;
       return;
     }
-    const riga = (nome, luogo, ora) => luogo
-      ? `<div><span class="voce-dato">${nome}:</span> ${sicuro(luogo)}${ora ? ` · ${sicuro(ora)}` : ''}</div>` : '';
-    box.innerHTML = riga('Partenza', rotta.partenza, rotta.oraPartenza) +
-      riga('Arrivo', rotta.arrivo, rotta.oraArrivo);
+    const riga = (nome, valore) => valore
+      ? `<div><span class="voce-dato">${nome}:</span> ${sicuro(valore)}</div>` : '';
+    box.innerHTML = riga('Partenza', rotta.partenza) +
+      riga('Orario di partenza', rotta.oraPartenza || 'non comunicato') +
+      riga('Arrivo', rotta.arrivo) +
+      riga('Orario di arrivo', rotta.oraArrivo || 'non comunicato');
     if (pannello) pannello.scrollTop = scorrimento;
   }
 
@@ -1923,7 +1935,7 @@
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
     interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky,
     scaricaConRipiego, corsaProvider, providersPredefiniti, aereoAdesso, istanteMostratoMs, tempoReale,
-    interpretaRotta, aeroportoTesto, aeroportoCoordinate, registraTracce, tracce, stato, providersDisponibili,
+    interpretaRotta, aeroportoTesto, aeroportoCoordinate, orarioRotta, registraTracce, tracce, stato, providersDisponibili,
     FASCE_DISTANZA, fasciaDi, ordinaPerSalute, salute, segnaEsito, peggiore, fase, testoDiStato,
     intervalloAggiornamento, pianificaProssimo, RIPROVE_MS, DATI_VECCHI_MS, DATI_SCADUTI_MS,
     AGGIORNA_VISIBILE_MS, AGGIORNA_SFONDO_MS,
