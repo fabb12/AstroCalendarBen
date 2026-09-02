@@ -1674,6 +1674,37 @@
     if (modale) { modale.classList.remove('visibile'); modale.setAttribute('aria-hidden', 'true'); }
   }
 
+  // Leaflet unisce due coordinate con un segmento diritto sulla proiezione
+  // della carta. Per un volo lungo quello non e' il cammino piu' breve sulla
+  // Terra: l'ortodromia e' un arco di cerchio massimo e, soprattutto alle
+  // alte latitudini, deve incurvarsi visibilmente. La interpoliamo sulla sfera
+  // in vettori cartesiani e la spezziamo all'antimeridiano, altrimenti Leaflet
+  // disegnerebbe una falsa linea che attraversa tutta la carta.
+  function puntiOrtodromia(partenza, arrivo) {
+    if (!partenza || !arrivo) return [];
+    const vettore = punto => {
+      const lat = radianti(punto[0]), lon = radianti(punto[1]);
+      return [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)];
+    };
+    const a = vettore(partenza), b = vettore(arrivo);
+    const prodotto = Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]));
+    const angolo = Math.acos(prodotto);
+    const passi = Math.max(16, Math.ceil(angolo / radianti(2)));
+    const seno = Math.sin(angolo);
+    const segmenti = [[]];
+    for (let i = 0; i <= passi; i++) {
+      const t = i / passi;
+      const p = seno > 1e-8
+        ? a.map((v, j) => (Math.sin((1 - t) * angolo) * v + Math.sin(t * angolo) * b[j]) / seno)
+        : a.map((v, j) => v * (1 - t) + b[j] * t);
+      const punto = [gradi(Math.atan2(p[2], Math.hypot(p[0], p[1]))), limita180(gradi(Math.atan2(p[1], p[0])))];
+      const segmento = segmenti[segmenti.length - 1];
+      if (segmento.length && Math.abs(punto[1] - segmento[segmento.length - 1][1]) > 180) segmenti.push([]);
+      segmenti[segmenti.length - 1].push(punto);
+    }
+    return segmenti.filter(segmento => segmento.length > 1);
+  }
+
   async function aereiMostraMappa(id) {
     const a = aereiTrova(id);
     const modale = document.getElementById('aereo-rotta-modale');
@@ -1697,10 +1728,9 @@
     const rotta = rottaCache.get(chiaveRotta);
     if (rotta && rotta.promessa && !rotta.valore) await rotta.promessa;
     const dettagli = rotta && rotta.valore;
-    // La traccia ciano racconta dove l'aereo e' passato davvero. L'itinerario
-    // blu, invece, rende subito visibile la rotta richiesta anche quando la
-    // sessione e' appena iniziata: e' tratteggiato per dichiarare che collega
-    // i due aeroporti e non pretende di ricostruire aerovie e deviazioni.
+    // La traccia ciano racconta dove l'aereo e' passato davvero; la linea blu
+    // e' l'ortodromia, cioe' il percorso piu' corto sulla superficie terrestre
+    // fra i due aeroporti, anche quando la sessione e' appena iniziata.
     const osservati = (tracce.get(String(a.id).toLowerCase()) || []).map(p => [p.lat, p.lon]);
     if (!osservati.length) osservati.push([a.lat, a.lon]);
     const previsti = [a, ...[1, 2, 3, 4, 5].map(m => posizioneFutura(a, m * 60))].map(p => [p.lat, p.lon]);
@@ -1710,8 +1740,8 @@
     stratiRotta.push(L.polyline(previsti, { color: '#fb923c', weight: 3, dashArray: '7 7' }).addTo(mappaRotta));
     stratiRotta.push(L.circleMarker([a.lat, a.lon], { radius: 8, color: '#fff', weight: 2,
       fillColor: fasciaDi(a.distanzaKm).colore, fillOpacity: 1 }).bindTooltip('Posizione attuale').addTo(mappaRotta));
-    // Gli aeroporti sono informazioni certe dell'itinerario, ma non sono la
-    // geometria del volo: restano quindi due marcatori, mai una linea.
+    // I marcatori fissano gli estremi certi; la geometria che li unisce viene
+    // calcolata sotto come ortodromia, non come segmento sulla carta.
     const itinerario = [];
     if (dettagli && dettagli.coordinatePartenza) {
       itinerario.push(dettagli.coordinatePartenza);
@@ -1726,15 +1756,15 @@
         .bindTooltip(`Arrivo: ${dettagli.arrivo}`).addTo(mappaRotta));
     }
     if (itinerario.length === 2) {
-      stratiRotta.unshift(L.polyline(itinerario, {
-        color: '#60a5fa', weight: 4, opacity: .9, dashArray: '12 8'
-      }).bindTooltip('Itinerario fra gli aeroporti').addTo(mappaRotta));
+      stratiRotta.unshift(L.polyline(puntiOrtodromia(itinerario[0], itinerario[1]), {
+        color: '#60a5fa', weight: 4, opacity: .9
+      }).bindTooltip('Rotta ortodromica').addTo(mappaRotta));
     }
     const nota = document.getElementById('aereo-rotta-nota');
     if (nota) nota.textContent = osservati.length > 1
       ? `${osservati.length} posizioni reali ADS-B rilevate durante questa sessione; la linea arancione è solo la previsione dei prossimi 5 minuti.`
       : itinerario.length === 2
-        ? 'La linea blu tratteggiata indica l’itinerario fra gli aeroporti; la traccia reale si formerà con le prossime letture ADS-B.'
+        ? 'La linea blu indica la rotta ortodromica fra gli aeroporti; la traccia ADS-B reale si formerà con le prossime letture.'
         : 'La traccia reale inizierà a formarsi con le prossime letture ADS-B.';
     const tutti = itinerario.concat(osservati, previsti);
     requestAnimationFrame(() => { mappaRotta.invalidateSize(); mappaRotta.fitBounds(L.latLngBounds(tutti).pad(.25), { maxZoom: 13 }); });
@@ -1935,7 +1965,8 @@
   window.AereiADS_B = { distanzaDirezione, posizioneFutura, coordinateCielo, separazione, arricchisci,
     interpretaAdsbExchange, interpretaOpenSky, urlAdsbExchange, urlAdsbFi, urlOpenSky,
     scaricaConRipiego, corsaProvider, providersPredefiniti, aereoAdesso, istanteMostratoMs, tempoReale,
-    interpretaRotta, aeroportoTesto, aeroportoCoordinate, orarioRotta, registraTracce, tracce, stato, providersDisponibili,
+    interpretaRotta, aeroportoTesto, aeroportoCoordinate, orarioRotta, puntiOrtodromia,
+    registraTracce, tracce, stato, providersDisponibili,
     FASCE_DISTANZA, fasciaDi, ordinaPerSalute, salute, segnaEsito, peggiore, fase, testoDiStato,
     intervalloAggiornamento, pianificaProssimo, RIPROVE_MS, DATI_VECCHI_MS, DATI_SCADUTI_MS,
     AGGIORNA_VISIBILE_MS, AGGIORNA_SFONDO_MS,
