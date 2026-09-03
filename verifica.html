@@ -10548,6 +10548,9 @@ titolo('30. La Via Lattea (via-lattea.js)');
   prova('le tele sono cinquantaquattro: quattro forme × sei tinte, più le sei varianti di grana',
     tele.length === SKY_VL_TELA_NEBULOSA + SKY_VL_TINTE.length && tele.length === 54,
     `${tele.length}`);
+  prova('ogni tinta ha cuore, corpo e bordo per una sfumatura fotografica',
+    SKY_VL_SFUMATURE.length === SKY_VL_TINTE.length &&
+    SKY_VL_SFUMATURE.every((s, i) => s.length === 3 && s[1].every((v, k) => v === SKY_VL_TINTE[i][k])));
   prova('nessun fiocco punta a una tela che non c\'è',
     nubi.every(n => n.tela >= 0 && n.tela < tele.length && tele[n.tela]));
   prova('nessun raggio, luce o tangente storta',

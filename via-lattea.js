@@ -508,7 +508,7 @@ function skyVLScala(campo, i, j) {
 }
 
 // =====================================================================
-// 5. IL COLORE — le sei tinte e l'elenco piatto delle tele
+// 5. IL COLORE — sei famiglie di sfumature e l'elenco piatto delle tele
 // =====================================================================
 // A occhio nudo la Via Lattea è grigia — la visione notturna il colore non
 // ce l'ha. Ma questa è una figura, e in una figura il colore può dire una
@@ -523,6 +523,23 @@ const SKY_VL_TINTE = [
   [186, 203, 250],   // 3 — i bracci esterni, verso l'anticentro
   [255, 152, 170],   // 4 — l'idrogeno acceso: Laguna, Nord America, Carena
   [176, 236, 224]    // 5 — l'ossigeno: il Velo del Cigno
+];
+
+// Una fotografia non ha fiocchi di un colore piatto: il cuore delle nubi
+// stellari tende al bianco caldo, la polvere lascia ai margini una tinta
+// più fredda e meno satura. Ogni famiglia ha quindi tre fermate (cuore,
+// corpo e bordo). Non si ricavano schiarendo meccanicamente un solo RGB:
+// sono scelte separatamente, così il Sagittario passa davvero dall'avorio
+// all'ambra, mentre Cigno e anticentro sfumano dal perla all'azzurro.
+// `SKY_VL_TINTE` resta il colore del corpo e continua a essere l'indice
+// stabile usato dai fiocchi; questa tabella aggiunge profondità alle tele.
+const SKY_VL_SFUMATURE = [
+  [[255, 249, 226], [255, 226, 178], [151, 105, 91]],
+  [[255, 250, 235], [248, 231, 208], [155, 137, 151]],
+  [[252, 249, 255], [214, 223, 246], [119, 137, 188]],
+  [[240, 246, 255], [186, 203, 250], [91, 112, 181]],
+  [[255, 232, 220], [255, 152, 170], [137, 72, 126]],
+  [[235, 255, 247], [176, 236, 224], [72, 130, 155]]
 ];
 
 // Le tele, in un elenco piatto: ogni fiocco si porta dietro il numero
@@ -574,12 +591,22 @@ function skyVLMaschera(lato, forma) {
   return tela;
 }
 
-function skyVLTinge(maschera, colore) {
+function skyVLTinge(maschera, sfumatura) {
   const lato = maschera.width;
   const tela = document.createElement('canvas');
   tela.width = tela.height = lato;
   const c = tela.getContext('2d');
-  c.fillStyle = 'rgb(' + colore[0] + ',' + colore[1] + ',' + colore[2] + ')';
+  const rgb = colore => 'rgb(' + colore[0] + ',' + colore[1] + ',' + colore[2] + ')';
+  // Il centro appena decentrato evita l'impressione di una serie di
+  // bersagli concentrici quando molte tele si sovrappongono. Il bordo è
+  // abbastanza scuro da dare profondità ma non diventa mai un contorno:
+  // è comunque ritagliato dalla lunga coda alfa della maschera.
+  const g = c.createRadialGradient(lato * 0.43, lato * 0.40, lato * 0.03,
+    lato * 0.50, lato * 0.50, lato * 0.70);
+  g.addColorStop(0, rgb(sfumatura[0]));
+  g.addColorStop(0.42, rgb(sfumatura[1]));
+  g.addColorStop(1, rgb(sfumatura[2]));
+  c.fillStyle = g;
   c.fillRect(0, 0, lato, lato);
   c.globalCompositeOperation = 'destination-in';
   c.drawImage(maschera, 0, 0);
@@ -632,10 +659,10 @@ function skyTeleViaLattea() {
   });
 
   const lista = [];
-  SKY_VL_TINTE.forEach(c => lista.push(skyVLTinge(velo, c)));
-  SKY_VL_TINTE.forEach(c => nubi.forEach(m => lista.push(skyVLTinge(m, c))));
-  SKY_VL_TINTE.forEach(c => lista.push(skyVLTinge(grano, c)));
-  SKY_VL_TINTE.forEach(c => lista.push(skyVLTinge(nebulosa, c)));
+  SKY_VL_SFUMATURE.forEach(c => lista.push(skyVLTinge(velo, c)));
+  SKY_VL_SFUMATURE.forEach(c => nubi.forEach(m => lista.push(skyVLTinge(m, c))));
+  SKY_VL_SFUMATURE.forEach(c => lista.push(skyVLTinge(grano, c)));
+  SKY_VL_SFUMATURE.forEach(c => lista.push(skyVLTinge(nebulosa, c)));
   skyVLTele = lista;
   return skyVLTele;
 }
