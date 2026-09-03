@@ -1,4 +1,4 @@
-const CACHE_NAME = 'astrocal-v250';
+const CACHE_NAME = 'astrocal-v251';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
@@ -76,8 +76,29 @@ const SERVIZI_ADSB = [
   'opendata.adsb.fi',
   'api.adsb.one',
   'opensky-network.org',
-  // I ponti CORS pubblici sono volutamente esclusi: i loro 401/408 non sono
-  // un ripiego affidabile. Il percorso normale e' il Worker configurato.
+  // E i **ponti CORS pubblici**, che per un periodo sono stati esclusi da
+  // questo elenco con la motivazione «i loro 401/408 non sono un ripiego
+  // affidabile». Che e' vero e non c'entra: qui non si sceglie chi
+  // interrogare, si sceglie chi lasciar passare senza mettersi in mezzo — e
+  // mettercisi costava due cose, tutt'e due misurate in console.
+  //
+  // La prima e' il **racconto**. Un ponte che risponde senza intestazione
+  // CORS fa fallire la fetch, il ripiego generico la trasforma in un `504`
+  // sintetico, e `aerei.js` scrive nella pagella un numero che nessun server
+  // ha mai mandato: dal pannello si legge «risposta 504» dove il guasto era
+  // un CORS mancante o un limite di richieste. E' la stessa bugia che il
+  // ripiego raccontava per Overpass, e la cura e' la stessa.
+  //
+  // La seconda e' peggio ed e' invisibile: `aerei.js` mette le porte in corsa
+  // e **abortisce le perdenti**, ma l'abort della pagina non tocca la fetch
+  // che sta girando qui dentro. Con il service worker in mezzo, ogni ponte
+  // perdente continuava a consumare fino in fondo la quota di un servizio
+  // pubblico — cioe' l'esatto contrario di quello che la corsa vuole.
+  //
+  // In cache non ci finiscono comunque (non sono `HOST_DA_CONSERVARE`),
+  // quindi qui non si perde niente.
+  'api.allorigins.win',
+  'api.codetabs.com'
 ];
 
 // Host le cui risposte salviamo man mano che arrivano (librerie, tessere mappa)

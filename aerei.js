@@ -306,10 +306,17 @@
   //  aperto. Zero configurazione.
   //
   //  Il prezzo, ed e' giusto saperlo: sono di terzi, hanno limiti loro e
-  //  possono sparire senza avvisare. Per questo sono **tre e non uno**, per
-  //  questo ognuno e' abbinato a una rete diversa, e per questo stanno dietro
-  //  al proxy proprio quando c'e'. La pagella (§2) fa il resto: misura quale
+  //  possono sparire senza avvisare — e sparire e' proprio quello che hanno
+  //  fatto tutti insieme, il giorno in cui `corsproxy.io` ha cominciato a
+  //  chiedere una chiave (401) e gli altri due rispondevano senza
+  //  intestazione CORS. Per questo sono **piu' di uno**, per questo nessuna
+  //  rete dipende da un ponte solo, e per questo stanno dietro al proxy
+  //  proprio quando c'e'. La pagella (§2) fa il resto: misura quale
   //  combinazione funziona da qui e il giro dopo comincia da quella.
+  //
+  //  E per questo, soprattutto, un sito che vuole gli aerei **sempre**
+  //  configura `ADSB_PROXY_URL`: questi ponti sono il modo di funzionare
+  //  senza aver distribuito niente, non una garanzia.
   //
   //  Perche' proprio ADSB.fi e adsb.lol: sono le due che, interrogate **da un
   //  server**, hanno risposto 200 con i dati (22 e 21 aerei). Airplanes.live e
@@ -317,18 +324,27 @@
   //  si chiede scrivendo a contact@airplanes.live.
   // =====================================================================
 
+  // `corsproxy.io` **e' uscito da questo elenco**, e vale la pena scrivere
+  // perche': non taceva e non sbagliava ogni tanto, rispondeva **401** a ogni
+  // richiesta. Da quando chiede una chiave e un'origine registrata, per un
+  // sito che non ne ha e' un no definitivo — non un guasto che passa. La
+  // pagella (§2) lo mandava dovutamente in fondo alla corsa, ma un posto in
+  // corsa lo occupava lo stesso, e un ripiego che non puo' riuscire mai non
+  // e' un ripiego: e' un ritardo. Le due porte rimaste bastano a tenere in
+  // piedi la regola che conta, cioe' che nessuna rete dipenda da un ponte
+  // solo.
   const PONTI_CORS = [
     { nome: 'allorigins', avvolgi: u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}` },
-    { nome: 'codetabs', avvolgi: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}` },
-    { nome: 'corsproxy.io', avvolgi: u => `https://corsproxy.io/?url=${encodeURIComponent(u)}` }
+    { nome: 'codetabs', avvolgi: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}` }
   ];
 
-  // Ogni ponte con una rete diversa: se un ponte cade, non porta giu' con se'
-  // anche l'unica rete che stava servendo.
+  // Ogni rete passa da tutt'e due i ponti, e i primi due tentativi usano
+  // ponti diversi: se un ponte cade, non porta giu' con se' anche l'unica
+  // rete che stava servendo.
   const ABBINAMENTI = [
     { ponte: PONTI_CORS[0], rete: 'ADSB.fi', feed: urlAdsbFi },
     { ponte: PONTI_CORS[1], rete: 'adsb.lol', feed: feedAdsbLol },
-    { ponte: PONTI_CORS[2], rete: 'ADSB.fi', feed: urlAdsbFi },
+    { ponte: PONTI_CORS[1], rete: 'ADSB.fi', feed: urlAdsbFi },
     { ponte: PONTI_CORS[0], rete: 'adsb.lol', feed: feedAdsbLol }
   ];
 

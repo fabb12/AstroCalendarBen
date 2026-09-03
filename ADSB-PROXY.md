@@ -2,13 +2,17 @@
 
 GitHub Pages può servire solo file statici: non può aggiungere l'intestazione
 `Access-Control-Allow-Origin` che manca ai feed ADS-B. I proxy CORS pubblici
-non sono un ripiego affidabile (rispondono 401/408 e cambiano regole senza
-preavviso) e non vengono interrogati dall'app.
+sì, ma sono di terzi e cambiano regole senza preavviso: l'app li interroga
+come **ultimo** gradino, e il giorno in cui cadono insieme — è successo, vedi
+«Quando cadono anche i ponti» in fondo — restano l'unica cosa fra il sito e un
+cielo senza aerei.
 
-Il file `worker-adsb.js` è quindi un piccolo Cloudflare Worker del progetto:
-interroga quattro reti ADS-B indipendenti **dal server**, aggiunge il CORS e
-mantiene la risposta per 20 secondi. Le affianca con timeout brevi, invece di
-aspettare in serie una rete muta.
+Il file `worker-adsb.js` è quindi il proxy del progetto: interroga cinque
+fonti ADS-B indipendenti **dal server**, aggiunge il CORS e mantiene la
+risposta per 20 secondi. Le affianca con timeout brevi, invece di aspettare in
+serie una rete muta. Gira uguale su Deno Deploy e su Cloudflare Workers, ma
+**il posto giusto è Deno**: il perché è misurato, ed è la tabella di «Su
+Cloudflare non funziona, su Deno sì».
 
 Perché è il percorso raccomandato, in una riga: senza Worker la scelta della
 rete che funziona dipende dal browser, dalla rete di casa e dai filtri
@@ -19,33 +23,38 @@ aerei «a volte ci sono e a volte no».
 
 ## La procedura, dall'inizio alla fine
 
-### 1. Il Worker su Cloudflare
+### 1. Il proxy su Deno Deploy
 
-Serve un account gratuito su [dash.cloudflare.com](https://dash.cloudflare.com).
-**Non** bisogna spostare il dominio né creare un sito Cloudflare Pages: il sito
-resta su GitHub Pages, Cloudflare fa solo da proxy.
+Serve un account gratuito su [dash.deno.com](https://dash.deno.com), accesso
+con GitHub, niente carta di credito. **Non** bisogna spostare il dominio: il
+sito resta su GitHub Pages, Deno fa solo da proxy.
 
 Due strade, stesso risultato.
 
 **Dal browser** (nessun Node, nessun npm da installare):
 
-1. Workers & Pages → **Create** → **Create Worker** (o «Start with Hello World»);
-2. nome: `astrocalendarben-adsb`;
-3. **Deploy**, poi **Edit code**;
-4. cancellare il codice di esempio e incollare **tutto** `worker-adsb.js`
+1. **New Playground**;
+2. cancellare il codice di esempio e incollare **tutto** `worker-adsb.js`
    (è già scritto nel formato module, con `export default`);
-5. **Deploy**.
+3. **Save & Deploy**.
 
-**Da riga di comando**, se si ha Node: `npx wrangler deploy` nella radice del
-repo — `wrangler.toml` è già configurato.
+**Per la versione definitiva**: New Project → collega il repository, punto di
+ingresso `worker-adsb.js`. Così si aggiorna da solo a ogni push.
+
+> **Su Cloudflare no**, e non è una preferenza: da un Worker tutte e cinque le
+> fonti rifiutano l'IP condiviso (403, 429, 403, 403, e OpenSky che non
+> risponde affatto), mentre dalla stessa ora su Deno tre rispondono. Il file
+> gira lì lo stesso — `wrangler.toml` è ancora nel repo e `npx wrangler
+> deploy` funziona — ma è un vicolo cieco, e il pannello degli aerei resterà
+> vuoto identico a prima. La tabella è più sotto.
 
 ### 2. La prova che funziona
 
-Cloudflare stampa un indirizzo tipo
-`https://astrocalendarben-adsb.NOMEACCOUNT.workers.dev`. Aprire nel browser:
+Deno stampa un indirizzo tipo
+`https://astrocalendarben-adsb.deno.dev`. Aprire nel browser:
 
 ```
-https://astrocalendarben-adsb.NOMEACCOUNT.workers.dev/api/adsb?lat=45.4642&lon=9.1900&dist=50
+https://astrocalendarben-adsb.deno.dev/api/adsb?lat=45.4642&lon=9.1900&dist=50
 ```
 
 - un JSON con `{"ac": [...]}` o `{"aircraft": [...]}` → **funziona**;
@@ -65,7 +74,7 @@ variable**:
 
 | Name | Value |
 |---|---|
-| `ADSB_PROXY_URL` | `https://astrocalendarben-adsb.NOMEACCOUNT.workers.dev` |
+| `ADSB_PROXY_URL` | `https://astrocalendarben-adsb.deno.dev` |
 
 Senza virgolette, **senza `/api/adsb`** (lo aggiunge l'app) e senza `/` finale.
 Una *variable*, non un *secret*: l'indirizzo finisce comunque nel browser di
@@ -86,7 +95,7 @@ Actions → **Pubblica il sito** → **Run workflow** → `main`. Il workflow sc
 nell'artefatto pubblicato:
 
 ```js
-window.ADSB_PROXY_URL = "https://astrocalendarben-adsb.NOMEACCOUNT.workers.dev";
+window.ADSB_PROXY_URL = "https://astrocalendarben-adsb.deno.dev";
 ```
 
 Il `config.js` del repository resta vuoto: la sostituzione avviene solo in
@@ -99,7 +108,7 @@ sembra che la configurazione non abbia funzionato affatto. `config.js` sta in
 `ASSETS` del service worker e la strategia è *cache-first*, quindi chi ha già
 aperto il sito continua a ricevere il `config.js` **vecchio** — quello vuoto —
 e l'app continua a provare i feed diretti come prima. Cambiare `CACHE_NAME`
-(oggi `astrocal-v219`) è l'unico modo di far scadere quella copia.
+(vedi la prima riga di `sw.js`) è l'unico modo di far scadere quella copia.
 
 ---
 
@@ -121,11 +130,29 @@ L'app ha quindi tre gradini, e il primo che risponde vince:
    che leggono l'indirizzo dal loro server e rimandano la risposta col CORS
    aperto. **Non richiedono nessuna configurazione**: il sito funziona appena
    pubblicato. Il prezzo è che hanno limiti loro e possono sparire senza
-   avvisare, ed è per questo che sono tre e ognuno è abbinato a una rete
-   diversa.
+   avvisare, ed è per questo che sono più di uno e nessuna rete dipende da un
+   ponte solo.
 
 Chi vuole che gli aerei ci siano sempre configura il punto 1. Chi vuole solo
-aprire il sito si affida al punto 3 e non fa niente.
+aprire il sito si affida al punto 3 — sapendo che è un prestito, non una
+garanzia: vedi qui sotto.
+
+## Quando cadono anche i ponti
+
+È successo, ed è il motivo per cui il punto 1 non è un lusso. In una stessa
+sessione, dal sito pubblicato:
+
+| ponte | risposta | che genere di guasto |
+|---|---|---|
+| `corsproxy.io` | **HTTP 401** | **permanente**: chiede una chiave e un'origine registrata. Non torna da solo — infatti è stato tolto da `PONTI_CORS` |
+| `api.allorigins.win` | risposta **senza `Access-Control-Allow-Origin`** | passeggero: il servizio risponde, ma con una pagina d'errore del suo front-end, che l'intestazione non ce l'ha |
+| `api.codetabs.com` | risposta **senza `Access-Control-Allow-Origin`** | passeggero, tipicamente il suo limite di richieste |
+
+Con tutti e tre giù e nessun `ADSB_PROXY_URL`, l'app non ha **nessuna** strada:
+le quattro reti dirette non si leggono da un browser per definizione. Il
+pannello lo dice per esteso (la fase `proxyMancante` di `aerei.js`) e in
+console compare `[aerei] Nessun proxy proprio configurato` — che è la riga da
+cercare quando gli aerei non arrivano mai.
 
 ## Su Cloudflare non funziona, su Deno sì — ed è tutto qui
 
@@ -265,7 +292,7 @@ Se serve la fotografia completa c'è **`/api/diagnostica`**, che interroga
 tutti e quattro invece di correre e aspetta ognuno fino in fondo:
 
 ```
-https://IL-TUO-WORKER.workers.dev/api/diagnostica?lat=45.4642&lon=9.1900&dist=50
+https://IL-TUO-PROXY.deno.dev/api/diagnostica?lat=45.4642&lon=9.1900&dist=50
 ```
 
 Restituisce per ogni feed il codice HTTP, i millisecondi, il numero di aerei
@@ -313,10 +340,11 @@ quelle politiche cambiano senza preavviso e GitHub Pages non può correggerle.
 
 ## Cose da sapere sui limiti
 
-- **Quota Cloudflare**: 100.000 richieste al giorno sul piano gratuito. Con un
-  aggiornamento ogni 45 secondi a planetario aperto (`AGGIORNA_VISIBILE_MS`) e
-  ogni 3 minuti a disegno spento, sono un paio di migliaia di richieste al
-  giorno per utente: la quota non si sfiora.
+- **Quota**: sia Deno Deploy sia Cloudflare hanno piani gratuiti molto larghi
+  (centinaia di migliaia di richieste al giorno). Con un aggiornamento ogni 45
+  secondi a planetario aperto (`AGGIORNA_VISIBILE_MS`) e ogni 3 minuti a
+  disegno spento, sono un paio di migliaia di richieste al giorno per utente:
+  la quota non si sfiora.
 - **La cache dentro al Worker**: il `cf: { cacheEverything, cacheTtl: 20 }` è
   con ogni probabilità ignorato su un dominio `*.workers.dev`, dove la cache
   di Cloudflare non è disponibile. Non è grave — ogni richiesta arriva
