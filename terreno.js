@@ -461,7 +461,170 @@ const TERRENO_FONTI = [
 // deve poter girare: chi fallisce lo sposta avanti, chi riesce lo pianta lì.
 let terrenoFonteOra = 0;
 
-function terrenoFonte() { return TERRENO_FONTI[terrenoFonteOra % TERRENO_FONTI.length]; }
+
+// --- La pagella delle porte -------------------------------------------
+//
+// È la risposta alla cosa che si vede più di tutte aprendo la console:
+// venti righe rosse identiche, `429 (Too Many Requests)`, tutte sullo stesso
+// indirizzo, tutte con le stesse settantadue coordinate. Una `fetch` che
+// fallisce il browser la scrive lui, e da JavaScript non si può zittire: il
+// solo modo di non avere quelle righe è **non fare quelle richieste**.
+//
+// E non c'era niente che le fermasse. Il rubinetto sapeva rallentare, la
+// rotazione sapeva cambiare porta — ma tutt'e due dimenticavano ogni cosa
+// alla fine della corsa. Quindi la stessa scoperta si rifaceva da capo cinque
+// volte per richiesta (`TERRENO_NO_PER_CAMBIARE`), poi di nuovo a ognuna
+// delle cinque riprove automatiche di `TERRENO_RIPROVE_MS`, poi di nuovo a
+// ogni ricarica della pagina. Un 429 però non è la sfortuna di una richiesta:
+// è il servizio che dice «sei oltre la quota», e vale per tutte le richieste
+// e per un po' di tempo. Ricordarselo è tutto quello che serviva.
+//
+// La pagella è la stessa cosa che gli aerei ADS-B tengono da un pezzo
+// (`CHIAVE_SALUTE` in `aerei.js`), ed è salvata per la stessa ragione: quale
+// porta sia aperta dipende da questa rete e da questo momento, e chi riapre
+// l'app dopo trenta secondi non deve ricomprarsi la scoperta. Come quella,
+// **non va nel backup** — è una misura di qui, non una preferenza.
+const CHIAVE_QUOTE_SALUTE = 'astrocalendario_quote_salute';
+
+// Quanto sta in castigo una porta che ha detto di no.
+//
+// Due scale diverse, perché sono due notizie diverse. Un **429** è una frase
+// sulla quota: il servizio sa che non ci servirà per un pezzo, e insistere
+// prima è solo un altro 429. Un guasto qualunque — un 502, la rete che cade,
+// la sveglia che scade — non dice niente di simile, e mezzo minuto dopo può
+// benissimo funzionare.
+const TERRENO_PENALE_QUOTA_MS = 60000;      // il primo 429
+const TERRENO_PENALE_QUOTA_MAX_MS = 900000; // e al più un quarto d'ora
+const TERRENO_PENALE_GUASTO_MS = 20000;
+const TERRENO_PENALE_GUASTO_MAX_MS = 300000;
+// Un `retry-after` lo si rispetta, ma non oltre: mezz'ora è già più del giro
+// completo delle riprove automatiche, e oltre quel punto tanto vale che a
+// riprovare sia la prossima apertura.
+const TERRENO_PENALE_TETTO_MS = 1800000;
+
+// Quanto si è disposti ad aspettare che una porta si riapra, prima di
+// arrendersi per questo giro. Venti secondi: oltre, l'attesa non è più
+// un'attesa — è un terreno che non arriva mentre la riga di stato dice che
+// sta arrivando, che è il modo peggiore di fallire. Ci pensano le riprove
+// automatiche (`TERRENO_RIPROVE_MS`), che a quel punto ripartono da una
+// pagella già scritta e non buttano più nemmeno una richiesta sul muro.
+const TERRENO_ATTESA_PORTE_MS = 20000;
+
+const terrenoSalute = new Map();
+let terrenoSaluteLetta = false;
+
+function terrenoSaluteDi(nome) {
+  if (!terrenoSaluteLetta) {
+    terrenoSaluteLetta = true;
+    try {
+      const grezzo = JSON.parse(localStorage.getItem(CHIAVE_QUOTE_SALUTE) || '{}');
+      Object.keys(grezzo).forEach(k => {
+        const v = grezzo[k];
+        if (!v || typeof v !== 'object') return;
+        terrenoSalute.set(k, {
+          penaleFino: Number(v.penaleFino) || 0,
+          noDiFila: Number(v.noDiFila) || 0,
+          ultimoOk: Number(v.ultimoOk) || 0,
+          motivo: String(v.motivo || '')
+        });
+      });
+    } catch (e) { /* senza memoria si riparte dall'ordine scritto */ }
+  }
+  let v = terrenoSalute.get(nome);
+  if (!v) { v = { penaleFino: 0, noDiFila: 0, ultimoOk: 0, motivo: '' }; terrenoSalute.set(nome, v); }
+  return v;
+}
+
+function terrenoSaluteSalva() {
+  try {
+    const grezzo = {};
+    terrenoSalute.forEach((v, k) => { grezzo[k] = v; });
+    localStorage.setItem(CHIAVE_QUOTE_SALUTE, JSON.stringify(grezzo));
+  } catch (e) { /* niente storage: la pagella vale per questa sessione */ }
+}
+
+// Fino a quando questa porta è in castigo (0 = è aperta).
+function terrenoPenaleDi(f, ora) {
+  const v = terrenoSaluteDi(f.nome);
+  return v.penaleFino > (ora || Date.now()) ? v.penaleFino : 0;
+}
+
+// Ha detto di no: si segna quanto sta ferma. La penale raddoppia a ogni no
+// **di fila**, così una porta che ogni tanto inciampa torna in gioco subito e
+// una chiusa smette in fretta di costare richieste.
+function terrenoSegnaNo(f, e) {
+  const v = terrenoSaluteDi(f.nome);
+  const ora = Date.now();
+  const quota = e && e.stato === 429;
+  v.noDiFila++;
+  v.motivo = (e && e.message) || 'guasto';
+  // Un guasto qualunque non manda in castigo nessuno finché è isolato, ed è
+  // voluto: una porta che risponde una volta su due è una porta che funziona
+  // piano, e le riserve vanno dieci volte più lente di lei — abbandonarla al
+  // primo inciampo è il difetto che `TERRENO_NO_PER_CAMBIARE` aveva già
+  // misurato (trentun secondi contro cinquantotto). Solo un **429** parla
+  // della porta e non della richiesta, e vale dal primo.
+  const soglia = quota ? TERRENO_NO_PER_CAMBIARE_QUOTA : TERRENO_NO_PER_CAMBIARE;
+  if (v.noDiFila < soglia) { terrenoSaluteSalva(); return; }
+  const passo = quota ? TERRENO_PENALE_QUOTA_MS : TERRENO_PENALE_GUASTO_MS;
+  const tetto = quota ? TERRENO_PENALE_QUOTA_MAX_MS : TERRENO_PENALE_GUASTO_MAX_MS;
+  let quanto = Math.min(tetto, passo * Math.pow(2, Math.min(5, v.noDiFila - soglia)));
+  // Se il servizio ha detto lui quanto aspettare, ha ragione lui: è l'unico
+  // che sappia quando la quota si riapre.
+  if (e && e.attesa > 0) quanto = Math.max(quanto, Math.min(TERRENO_PENALE_TETTO_MS, e.attesa));
+  v.penaleFino = Math.max(v.penaleFino, ora + quanto);
+  terrenoSaluteSalva();
+}
+
+function terrenoSegnaSi(f) {
+  const v = terrenoSaluteDi(f.nome);
+  if (!v.noDiFila && !v.penaleFino) { v.ultimoOk = Date.now(); return; }
+  v.noDiFila = 0; v.penaleFino = 0; v.motivo = ''; v.ultimoOk = Date.now();
+  terrenoSaluteSalva();
+}
+
+// La porta di adesso: la prima **aperta** a partire da quella corrente.
+//
+// Chi è in castigo si salta senza nemmeno provarci, ed è tutta la differenza:
+// prima la scoperta che una porta è chiusa costava cinque richieste rifiutate
+// a ogni corsa, e adesso ne costa zero finché il castigo dura.
+function terrenoFonte() {
+  const n = TERRENO_FONTI.length;
+  const ora = Date.now();
+  const partenza = ((terrenoFonteOra % n) + n) % n;
+  for (let i = 0; i < n; i++) {
+    const f = TERRENO_FONTI[(partenza + i) % n];
+    if (!terrenoPenaleDi(f, ora)) return f;
+  }
+  // Sono chiuse tutte: si torna da quella che riapre per prima. Chi la usa
+  // deve però guardare `terrenoAttesaPorte()` prima di partire — se no la
+  // richiesta parte lo stesso e si prende il 429 che si sapeva già.
+  let prima = TERRENO_FONTI[partenza], quando = Infinity;
+  for (const f of TERRENO_FONTI) {
+    const p = terrenoPenaleDi(f, ora);
+    if (p < quando) { quando = p; prima = f; }
+  }
+  return prima;
+}
+
+// Fra quanto si riapre una porta. Zero se una è già aperta adesso.
+function terrenoAttesaPorte(ora) {
+  const adesso = ora || Date.now();
+  let attesa = Infinity;
+  for (const f of TERRENO_FONTI) {
+    const p = terrenoPenaleDi(f, adesso);
+    if (!p) return 0;
+    attesa = Math.min(attesa, p - adesso);
+  }
+  return attesa;
+}
+
+// Serve alle prove e al tasto «riprova» del pannello: chiedere di nuovo
+// adesso vuol dire dare un'altra possibilità a tutte le porte.
+function terrenoScordaPenali() {
+  terrenoSalute.forEach(v => { v.penaleFino = 0; v.noDiFila = 0; });
+  terrenoSaluteSalva();
+}
 
 // Una richiesta sola, con la sua sveglia.
 //
@@ -614,6 +777,22 @@ const TERRENO_SI_PER_MOLLARE = 1;      // quanti sì di fila prima di riaprire
 // cose, che è tutto quello che le si chiede.
 const TERRENO_NO_PER_CAMBIARE = 5;
 
+// E quanti ne bastano quando i no sono dei **429**.
+//
+// Due, e i due numeri rispondono a due domande diverse. Cinque è la soglia per
+// distinguere «questa fonte va piano» da «questa fonte è chiusa», e serve
+// perché un guasto qualunque capita anche a una porta che funziona. Un 429
+// invece è una frase sulla quota, non sulla richiesta: dopo il secondo di
+// fila non c'è più niente da scoprire, e ogni tentativo in più è una riga
+// rossa in console in cambio di niente.
+//
+// Due e non uno perché un 429 isolato può essere colpa nostra — una raffica
+// partita un attimo prima che il rubinetto si stringesse — e un sì in mezzo
+// azzera il conto: una fonte che risponde una volta su due funziona piano, e
+// le riserve vanno dieci volte più lente di lei (è la misura che ha fissato i
+// cinque qui sopra, e resta valida).
+const TERRENO_NO_PER_CAMBIARE_QUOTA = 2;
+
 function terrenoRitmoDi(f) {
   if (!f.ritmo) {
     f.ritmo = {
@@ -670,6 +849,25 @@ function terrenoInFila(compito, pri) {
 function terrenoRubinetto() {
   if (terrenoTimer) return;
   while (terrenoCoda.length) {
+    // Prima di tutto: c'è una porta aperta? Se sono tutte in castigo non si
+    // bussa a nessuna — è l'unico modo di non avere quelle righe rosse in
+    // console, perché una `fetch` rifiutata la scrive il browser e non la si
+    // può zittire. Si aspetta quella che riapre per prima, e se manca troppo
+    // ci si arrende per questo giro invece di lasciare la coda appesa: a
+    // riprovare ci pensa la cascata di `TERRENO_RIPROVE_MS`.
+    const chiuse = terrenoAttesaPorte();
+    if (chiuse > 0) {
+      if (chiuse > TERRENO_ATTESA_PORTE_MS) {
+        const e = new Error('i servizi delle quote sono tutti a quota piena');
+        e.stato = 429;
+        e.porteChiuse = true;
+        while (terrenoCoda.length) terrenoCoda.shift().no(e);
+        return;
+      }
+      terrenoTimer = setTimeout(() => { terrenoTimer = null; terrenoRubinetto(); },
+                                Math.min(chiuse, TERRENO_PAUSA_MAX_MS));
+      return;
+    }
     // La fonte si rilegge a ogni giro: se è cambiata mentre questa richiesta
     // era in coda, parte verso quella nuova. Con lei si rileggono anche il suo
     // passo e il suo tetto di richieste insieme.
@@ -729,11 +927,21 @@ function terrenoFrena(f, e) {
     r.liberoDa = Math.max(r.liberoDa, ora + pausa);
     r.frenatoFino = ora + pausa;
   }
-  // Tre no di fila non sono la sfortuna di una richiesta: sono questa fonte.
-  // Si cambia porta, e ci si porta dietro la coda che deve ancora partire —
-  // che è il punto: prima ognuna delle ventiquattro doveva sbatterci il naso
-  // per conto suo.
-  if (r.noDiFila >= TERRENO_NO_PER_CAMBIARE) {
+  // La pagella, che vive più a lungo della corsa: da qui in poi questa porta
+  // si salta senza provarci (vedi `CHIAVE_QUOTE_SALUTE`).
+  terrenoSegnaNo(f, e);
+  // Un **429** non è la sfortuna di una richiesta: è il servizio che dice
+  // «sei oltre la quota», e vale per tutte. Si cambia porta subito, alla
+  // prima, invece di ricomprarsi la stessa notizia altre quattro volte —
+  // quattro richieste rifiutate, quattro righe rosse in console e qualche
+  // secondo, per sapere una cosa che il servizio aveva già detto.
+  //
+  // Gli altri guasti no: un 502 o una sveglia scaduta capitano anche a una
+  // porta che funziona, e abbandonarla al primo inciampo vuol dire finire
+  // sulle riserve, che sono dieci volte più lente (vedi
+  // `TERRENO_NO_PER_CAMBIARE`).
+  const quota = e && e.stato === 429;
+  if (r.noDiFila >= (quota ? TERRENO_NO_PER_CAMBIARE_QUOTA : TERRENO_NO_PER_CAMBIARE)) {
     r.noDiFila = 0;
     terrenoCambiaFonte(f);
   }
@@ -755,8 +963,11 @@ function terrenoScorre(f) {
   const r = terrenoRitmoDi(f);
   // Un sì azzera il conto dei no: quello che conta per cambiare porta sono i
   // no **di fila**, e una fonte che risponde una volta su due è una fonte che
-  // funziona piano, non una porta chiusa.
+  // funziona piano, non una porta chiusa. Vale per il ritmo di questa corsa
+  // e per la pagella che le sopravvive, che sono la stessa notizia scritta
+  // per due orizzonti di tempo diversi.
   r.noDiFila = 0;
+  terrenoSegnaSi(f);
   if (++r.siDiFila < TERRENO_SI_PER_MOLLARE) return;
   r.siDiFila = 0;
   r.distanza = Math.max(f.distanza, Math.round(r.distanza * TERRENO_MOLLA));
@@ -829,6 +1040,11 @@ async function terrenoQuoteInsistendo(punti, pri) {
     } catch (e) {
       ultimo = e;
       if (!terrenoRiprovabile(e)) throw e;
+      // Le porte sono chiuse tutte e per un pezzo: insistere non vuol dire
+      // essere tenaci, vuol dire rimettersi in coda cinque volte per farsi
+      // dire cinque volte la stessa cosa. Si esce, e la riga di stato lo
+      // racconta; a riprovare ci pensa la cascata automatica.
+      if (e && e.porteChiuse) throw e;
       // Niente sonno qui: la pausa l'ha già messa `terrenoFrena` sul
       // rubinetto, e sommarcene una seconda è il difetto che questa riga
       // conteneva.
@@ -2241,7 +2457,18 @@ function terrenoMotivoGuaio(e) {
   // si accettino le condizioni.
   const tutte = TERRENO_FONTI.length > 1;
   let che;
-  if (e && e.stato === 429) {
+  if (e && e.porteChiuse) {
+    // Il caso nuovo, ed è quello che si vede più spesso: non abbiamo
+    // nemmeno provato, perché sapevamo già che tutte e tre le porte erano a
+    // quota piena. Dirlo per esteso — **con l'ora** — è la differenza fra
+    // «non funziona» e «funziona, ma non adesso»: chi legge sa che non c'è
+    // niente da riparare e nessun tasto da premere.
+    const fra = Math.max(0, Math.round(terrenoAttesaPorte() / 1000));
+    const quando = fra >= 90 ? `fra ${Math.round(fra / 60)} minuti`
+      : fra > 0 ? `fra ${fra} secondi` : 'a momenti';
+    che = `i servizi delle quote sono a quota piena e li ho lasciati in pace ` +
+      `(riprovo ${quando})`;
+  } else if (e && e.stato === 429) {
     che = tutte
       ? 'i servizi delle quote sono tutti sovraccarichi (429)'
       : 'il servizio delle quote è sovraccarico (429)';
@@ -2285,10 +2512,16 @@ function terrenoRiprovaPiuTardi() {
   if (n >= TERRENO_RIPROVE_MS.length) return;
   terreno.tentativi = n + 1;
   if (terreno.sveglia) clearTimeout(terreno.sveglia);
+  // Mai **prima** che una porta si riapra. Sono due orologi diversi: questa
+  // scala dice quanto ha senso aspettare dopo un buco nell'acqua, la pagella
+  // dice quando il servizio ha detto che si può ribussare. Svegliarsi prima
+  // non costa richieste (il rubinetto non consegna a una porta chiusa) ma
+  // brucia un tentativo della cascata per niente — e i tentativi sono cinque.
+  const attesa = Math.max(TERRENO_RIPROVE_MS[n], terrenoAttesaPorte() + 1000);
   terreno.sveglia = setTimeout(() => {
     terreno.sveglia = null;
     terrenoCarica(true);
-  }, TERRENO_RIPROVE_MS[n]);
+  }, attesa);
 }
 
 
@@ -2526,7 +2759,13 @@ function terrenoAlterna() {
   // guardare — ed è anche il solo modo che ha per riprovare quando i tre
   // tentativi da soli sono finiti. Stessa regola dei nomi delle montagne.
   if (terreno.acceso && terreno.stato !== 'pronto') {
-    if (terreno.stato === 'fallito') terreno.tentativi = 0;
+    if (terreno.stato === 'fallito') {
+      terreno.tentativi = 0;
+      // E si dà un'altra possibilità anche alle porte in castigo: la pagella
+      // è una cortesia verso un servizio che ha detto di no, non una punizione
+      // da scontare — e chi preme il tasto sta chiedendo proprio di ribussare.
+      terrenoScordaPenali();
+    }
     terrenoCarica(terreno.stato === 'fallito');
   }
   // Non serve chiedere un ridisegno: il planetario ridisegna a ogni

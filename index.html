@@ -37,8 +37,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
 
-  <!-- Tailwind CSS per la grafica -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind CSS: il foglio **già compilato**, non il compilatore.
+       `cdn.tailwindcss.com` è mezzo megabyte di JavaScript che a ogni
+       apertura rilegge il DOM e riscrive il CSS — e che nella console lo
+       dice a ogni apertura («should not be used in production»). Le classi
+       che usiamo non cambiano da sole: si compilano una volta con
+       `node scripts/costruisci-tailwind.js` e il risultato sta qui accanto.
+       Va **prima** di style.css: la pelle la dà lui (§10 di CLAUDE.md). -->
+  <link rel="stylesheet" href="tailwind.css">
   
   <!-- Astronomy Engine per calcolare gli eventi -->
   <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>

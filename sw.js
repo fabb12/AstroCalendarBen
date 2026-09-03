@@ -1,9 +1,10 @@
-const CACHE_NAME = 'astrocal-v251';
+const CACHE_NAME = 'astrocal-v252';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
   './',
   './index.html',
+  './tailwind.css',
   './style.css',
   './app.js',
   './telescopio.js',
@@ -49,10 +50,12 @@ const ASSETS = [
 // Librerie esterne: vanno messe in cache anche loro, altrimenti l'app
 // installata si apre "rotta" quando non c'è rete (proprio di notte, in campo).
 const LIBRERIE = [
-  // Il compilatore Tailwind è uno script classico `no-cors`: forzarne qui il
-  // download in modalità CORS fa fallire l'installazione in console perché il
-  // CDN non invia ACAO. style.css contiene già la rete di sicurezza offline,
-  // quindi lo lasciamo caricare normalmente dalla pagina senza precache.
+  // Tailwind non è più qui, e non è più nemmeno una libreria esterna: le
+  // utility che l'app usa stanno in `tailwind.css`, compilato una volta e
+  // messo in ASSETS come style.css. Il compilatore del CDN era uno script
+  // classico `no-cors` che non si poteva nemmeno mettere in precache — cioè
+  // proprio la libreria da cui dipendeva l'impaginazione era l'unica che
+  // offline non c'era.
   'https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js',
   'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js',
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css',
@@ -104,7 +107,6 @@ const SERVIZI_ADSB = [
 // Host le cui risposte salviamo man mano che arrivano (librerie, tessere mappa)
 const HOST_DA_CONSERVARE = [
   'cdn.jsdelivr.net',
-  'cdn.tailwindcss.com',
   'unpkg.com',
   'tile.openstreetmap.org',
   // Le curve di livello della mappa del luogo: stesse tessere PNG leggere di
