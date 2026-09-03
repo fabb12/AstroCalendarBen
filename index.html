@@ -128,6 +128,7 @@
 
     <div class="azioni-testata">
       <button id="btn-aggiungi" class="azione-testata azione-primaria" title="Aggiungi un evento tuo" data-icona="piu">Aggiungi evento</button>
+      <button id="btn-galleria" class="azione-testata" title="Rivedi i video registrati" data-icona="galleria">Galleria</button>
       <button id="btn-installa" class="azione-testata azione-viola hidden" title="Installa l'app sul dispositivo" data-icona="scarica">Installa l'app</button>
       <button id="btn-notifiche" class="azione-testata" title="Avvisami prima di un evento" data-icona="campana">Avvisami</button>
       <button id="btn-impostazioni" class="azione-testata" title="Posizione, backup e calendario" data-icona="ingranaggio">Impostazioni</button>
@@ -2341,6 +2342,28 @@
         <div class="barra-chiudi">
           <button id="btn-chiudi-oculare-basso" type="button" class="tasto-chiudi-largo">Chiudi</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GALLERIA DEI FILMATI REGISTRATI -->
+  <div id="modale-galleria" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto"
+       role="dialog" aria-modal="true" aria-labelledby="galleria-titolo">
+    <div class="pannello-modale pannello-galleria bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="grande">
+      <div class="testata-modale flex justify-between items-center p-5 border-b border-slate-700">
+        <div>
+          <h2 id="galleria-titolo" class="text-xl md:text-2xl font-bold text-white">Galleria video</h2>
+          <p class="text-xs text-slate-400 mt-1">Le registrazioni salvate con AstroCalendario, disponibili anche senza rete</p>
+        </div>
+        <button id="btn-chiudi-galleria" class="tasto-chiudi con-etichetta" type="button" aria-label="Chiudi la galleria"><span aria-hidden="true">×</span><span>Chiudi</span></button>
+      </div>
+      <div class="corpo-modale galleria-corpo">
+        <div class="galleria-comandi">
+          <p id="galleria-cartella" class="galleria-cartella">Scegli una cartella per conservare anche una copia dei video sul dispositivo.</p>
+          <button id="galleria-scegli-cartella" type="button" class="tasto-cielo">Scegli cartella</button>
+        </div>
+        <p id="galleria-stato" class="galleria-stato" role="status" aria-live="polite"></p>
+        <div id="galleria-elenco" class="galleria-elenco"></div>
       </div>
     </div>
   </div>

@@ -186,6 +186,9 @@ const DISEGNI = {
 
   piu: `<path d="M12 5.4v13.2M5.4 12h13.2"/>`,
 
+  galleria: `<rect x="3.5" y="5" width="17" height="14" rx="2"/>
+    <path d="m5.8 16 4.1-4.2 3.1 3 2.2-2.2 3 3.4"/><circle cx="15.8" cy="9" r="1.4"/>`,
+
   campana: `<path d="M18 10.4a6 6 0 1 0-12 0c0 4.2-1.6 5.6-1.6 5.6h15.2S18 14.6 18 10.4z"/>
     <path d="M10.2 19.2a2.1 2.1 0 0 0 3.6 0"/>`,
 
@@ -732,6 +735,7 @@ window.addEventListener('DOMContentLoaded', () => {
   caricaDiario();
   inizializzaUI();
   inizializzaFormAggiungi();
+  videoInizializza();
   inizializzaMappaEclissiUI();
   inizializzaEclissiDiCasaUI();
   inizializzaMappaLunareUI();
@@ -26350,8 +26354,7 @@ async function skyRegCondividi() {
     'l\'ho scaricato, così lo puoi allegare a mano.', 9000);
 }
 
-function skyRegSalva() {
-  const e = sky.reg.esito;
+function skyRegScarica(e) {
   if (!e) return;
   const a = document.createElement('a');
   a.href = e.url;
@@ -26359,6 +26362,188 @@ function skyRegSalva() {
   document.body.appendChild(a);
   a.click();
   a.remove();
+}
+
+// --- Archivio e cartella dei video ---------------------------------------
+
+const VIDEO_DB_NOME = 'astrocalendario-video';
+const VIDEO_DB_VERSIONE = 1;
+let videoCartella = null;
+let videoUrlGalleria = [];
+
+function videoApriDB() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) { reject(new Error('IndexedDB non disponibile')); return; }
+    const richiesta = indexedDB.open(VIDEO_DB_NOME, VIDEO_DB_VERSIONE);
+    richiesta.onupgradeneeded = () => {
+      const db = richiesta.result;
+      if (!db.objectStoreNames.contains('video')) db.createObjectStore('video', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('preferenze')) db.createObjectStore('preferenze');
+    };
+    richiesta.onsuccess = () => resolve(richiesta.result);
+    richiesta.onerror = () => reject(richiesta.error);
+  });
+}
+
+async function videoDB(negozio, modo, azione) {
+  const db = await videoApriDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(negozio, modo);
+    const richiesta = azione(tx.objectStore(negozio));
+    richiesta.onsuccess = () => resolve(richiesta.result);
+    richiesta.onerror = () => reject(richiesta.error);
+    tx.oncomplete = () => db.close();
+  });
+}
+
+function videoMessaggio(testo) {
+  const stato = document.getElementById('galleria-stato');
+  if (stato) stato.textContent = testo || '';
+}
+
+async function videoScegliCartella() {
+  if (typeof window.showDirectoryPicker !== 'function') {
+    videoMessaggio('Questo browser non permette di scegliere una cartella: i video verranno scaricati normalmente.');
+    return null;
+  }
+  try {
+    const handle = await window.showDirectoryPicker({ id: 'astrocalendario-video', mode: 'readwrite' });
+    videoCartella = handle;
+    try { await videoDB('preferenze', 'readwrite', store => store.put(handle, 'cartella-video')); } catch (e) { /* la copia funziona comunque */ }
+    videoAggiornaCartella();
+    videoMessaggio(`I prossimi video saranno copiati in “${handle.name}”.`);
+    return handle;
+  } catch (e) {
+    if (!e || e.name !== 'AbortError') videoMessaggio('Non è stato possibile aprire la cartella scelta.');
+    return null;
+  }
+}
+
+function videoAggiornaCartella() {
+  const testo = document.getElementById('galleria-cartella');
+  if (!testo) return;
+  testo.textContent = videoCartella
+    ? `Cartella scelta: “${videoCartella.name}”. Ogni salvataggio crea qui una copia del file.`
+    : 'Scegli una cartella per conservare anche una copia dei video sul dispositivo.';
+}
+
+async function videoScriviInCartella(esito) {
+  if (!videoCartella) return false;
+  try {
+    let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
+    if (permesso !== 'granted') permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
+    if (permesso !== 'granted') return false;
+    const file = await videoCartella.getFileHandle(esito.nome, { create: true });
+    const scrittura = await file.createWritable();
+    await scrittura.write(esito.blob);
+    await scrittura.close();
+    return true;
+  } catch (e) { return false; }
+}
+
+async function videoArchivia(esito) {
+  const elemento = {
+    id: esito.nome,
+    nome: esito.nome,
+    tipo: esito.tipo || esito.blob.type,
+    blob: esito.blob,
+    creato: Date.now(),
+    origine: sky.reg.origine,
+    durata: sky.reg.durataReale || sky.reg.durataSec
+  };
+  await videoDB('video', 'readwrite', store => store.put(elemento));
+}
+
+async function skyRegSalva() {
+  const esito = sky.reg.esito;
+  if (!esito) return;
+  // Il selettore va aperto subito dal gesto dell'utente: dopo una await alcuni
+  // browser considererebbero conclusa l'attivazione e lo bloccherebbero.
+  if (!videoCartella && typeof window.showDirectoryPicker === 'function') await videoScegliCartella();
+  try { await videoArchivia(esito); }
+  catch (e) {
+    skyAvviso('registra', 'Non c’è spazio per aggiungere il video alla galleria.', 8000);
+    return;
+  }
+  const copiato = await videoScriviInCartella(esito);
+  if (!copiato) skyRegScarica(esito);
+  skyAvviso('registra', copiato
+    ? `Video salvato nella galleria e nella cartella “${videoCartella.name}”.`
+    : 'Video salvato nella galleria e scaricato sul dispositivo.', 7000);
+}
+
+async function videoElimina(id) {
+  await videoDB('video', 'readwrite', store => store.delete(id));
+  await videoRenderGalleria();
+}
+
+function videoScaricaSalvato(video) {
+  const url = URL.createObjectURL(video.blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = video.nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function videoRenderGalleria() {
+  const elenco = document.getElementById('galleria-elenco');
+  if (!elenco) return;
+  videoUrlGalleria.forEach(url => URL.revokeObjectURL(url));
+  videoUrlGalleria = [];
+  let video = [];
+  try { video = await videoDB('video', 'readonly', store => store.getAll()); }
+  catch (e) { videoMessaggio('Non riesco a leggere l’archivio video su questo dispositivo.'); }
+  elenco.innerHTML = '';
+  if (!video.length) {
+    elenco.innerHTML = '<p class="galleria-vuota">Non ci sono ancora video. Registrane uno dal Planetario o dal Sistema Solare 3D e premi “Salva”.</p>';
+    return;
+  }
+  video.sort((a, b) => b.creato - a.creato).forEach(elemento => {
+    const url = URL.createObjectURL(elemento.blob);
+    videoUrlGalleria.push(url);
+    const scheda = document.createElement('article');
+    scheda.className = 'galleria-video';
+    const lettore = document.createElement('video');
+    lettore.src = url; lettore.controls = true; lettore.preload = 'metadata'; lettore.playsInline = true;
+    const corpo = document.createElement('div'); corpo.className = 'galleria-video-corpo';
+    const nome = document.createElement('p'); nome.className = 'galleria-video-nome'; nome.textContent = elemento.nome;
+    const meta = document.createElement('p'); meta.className = 'galleria-video-meta';
+    meta.textContent = `${new Date(elemento.creato).toLocaleString('it-IT')} · ${Number(elemento.durata || 0).toFixed(1).replace('.0', '')} s`;
+    const azioni = document.createElement('div'); azioni.className = 'galleria-video-azioni';
+    const scarica = document.createElement('button'); scarica.type = 'button'; scarica.className = 'tasto-cielo'; scarica.textContent = 'Scarica';
+    scarica.addEventListener('click', () => videoScaricaSalvato(elemento));
+    const elimina = document.createElement('button'); elimina.type = 'button'; elimina.className = 'tasto-cielo'; elimina.textContent = 'Elimina';
+    elimina.addEventListener('click', () => videoElimina(elemento.id));
+    azioni.append(scarica, elimina); corpo.append(nome, meta, azioni); scheda.append(lettore, corpo); elenco.appendChild(scheda);
+  });
+}
+
+async function videoApriGalleria() {
+  const modale = document.getElementById('modale-galleria');
+  if (!modale) return;
+  modale.classList.remove('hidden');
+  videoAggiornaCartella();
+  await videoRenderGalleria();
+}
+
+function videoChiudiGalleria() {
+  document.getElementById('modale-galleria')?.classList.add('hidden');
+  document.querySelectorAll('#galleria-elenco video').forEach(video => video.pause());
+}
+
+async function videoInizializza() {
+  document.getElementById('btn-galleria')?.addEventListener('click', videoApriGalleria);
+  document.getElementById('btn-chiudi-galleria')?.addEventListener('click', videoChiudiGalleria);
+  document.getElementById('galleria-scegli-cartella')?.addEventListener('click', videoScegliCartella);
+  document.getElementById('modale-galleria')?.addEventListener('click', e => {
+    if (e.target.id === 'modale-galleria') videoChiudiGalleria();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !document.getElementById('modale-galleria')?.classList.contains('hidden')) videoChiudiGalleria();
+  });
+  try { videoCartella = await videoDB('preferenze', 'readonly', store => store.get('cartella-video')); }
+  catch (e) { videoCartella = null; }
+  videoAggiornaCartella();
 }
 
 // --- Comandi --------------------------------------------------------------

@@ -5386,6 +5386,38 @@ body input.casella-data:hover { border: 0; }
   color: var(--testo-3);
 }
 
+/* Galleria persistente: le schede mantengono il lettore abbastanza grande
+   da essere utile, ma si dispongono in più colonne quando c'è spazio. */
+.pannello-galleria { max-width: 1040px; }
+.galleria-corpo { display: grid; gap: 16px; }
+.galleria-comandi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: var(--superficie-bassa);
+}
+.galleria-cartella, .galleria-stato { color: var(--testo-2); font-size: .84rem; }
+.galleria-stato:empty { display: none; }
+.galleria-elenco { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 14px; }
+.galleria-vuota { grid-column: 1 / -1; padding: 36px 18px; text-align: center; color: var(--testo-3); }
+.galleria-video {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: var(--superficie-bassa);
+}
+.galleria-video video { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: #000; }
+.galleria-video-corpo { display: grid; gap: 8px; padding: 12px; }
+.galleria-video-nome { overflow: hidden; color: var(--testo); font-size: .88rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.galleria-video-meta { color: var(--testo-3); font-size: .75rem; }
+.galleria-video-azioni { display: flex; flex-wrap: wrap; gap: 7px; }
+@media (max-width: 520px) { .galleria-comandi { align-items: stretch; flex-direction: column; } }
+
 /* Le note lunghe stanno ripiegate: il titolo si legge, il resto si apre */
 .nota-ripiegata > summary {
   font-size: 0.76rem;
