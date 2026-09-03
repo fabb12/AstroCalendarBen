@@ -46,14 +46,21 @@ async function postoQuote(punti) {
   const quote = [];
   for (let i = 0; i < punti.length; i += 100) {
     const pezzo = punti.slice(i, i + 100);
-    const u = new URL('https://api.open-meteo.com/v1/elevation');
-    u.searchParams.set('latitude', pezzo.map(p => p.lat.toFixed(5)).join(','));
-    u.searchParams.set('longitude', pezzo.map(p => p.lon.toFixed(5)).join(','));
-    const risposta = await fetch(u.toString());
-    if (!risposta.ok) throw new Error('quote del terreno non disponibili');
-    const dati = await risposta.json();
-    if (!Array.isArray(dati.elevation)) throw new Error('risposta delle quote incompleta');
-    quote.push(...dati.elevation);
+    // Il modulo del terreno ha gia' una coda che limita le raffiche, riprova
+    // gli errori temporanei e passa da Open-Meteo a Open-Elevation e
+    // OpenTopoData quando una fonte e' carica. Usare qui una fetch diretta
+    // rendeva invece tutta la ricerca dipendente da una sola risposta: un 429
+    // di Open-Meteo produceva subito «quote non disponibili», pur avendo due
+    // fonti di riserva gia' caricate nell'app.
+    if (typeof terrenoQuoteInsistendo !== 'function') {
+      throw new Error('servizio delle quote non inizializzato');
+    }
+    const ricevute = await terrenoQuoteInsistendo(pezzo, 0);
+    if (!Array.isArray(ricevute) || ricevute.length !== pezzo.length ||
+        ricevute.some(q => typeof q !== 'number' || !isFinite(q))) {
+      throw new Error('risposta delle quote incompleta');
+    }
+    quote.push(...ricevute);
   }
   return quote;
 }
