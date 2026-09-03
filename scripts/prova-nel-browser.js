@@ -207,6 +207,25 @@ const server = http.createServer((req, res) => {
     versiBarraTempo.futuro === 'Futuro' && versiBarraTempo.passato === 'Passato',
     `${versiBarraTempo.futuro} → ${versiBarraTempo.passato}`);
 
+  const firmaVideo = await pagina.evaluate(() => {
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = '600 24px system-ui, sans-serif';
+    const massimo = 240;
+    const corto = 'Milano';
+    const lungo = 'San Martino in Passiria nella Provincia Autonoma di Bolzano';
+    const accorciato = skyRegTestoEntro(ctx, lungo, massimo);
+    return {
+      corto: skyRegTestoEntro(ctx, corto, massimo),
+      accorciato,
+      larghezza: ctx.measureText(accorciato).width,
+      massimo
+    };
+  });
+  ok('la firma del video contiene i nomi lunghi entro il fotogramma',
+    firmaVideo.corto === 'Milano' && firmaVideo.accorciato.endsWith('…') &&
+      firmaVideo.larghezza <= firmaVideo.massimo,
+    `${firmaVideo.accorciato} (${firmaVideo.larghezza.toFixed(1)}/${firmaVideo.massimo}px)`);
+
   // La X aggiunta alla scheda degli aerei aveva ridefinito il pannello come
   // `position: relative`: dentro al planetario entrava così nel flusso sotto
   // al canvas e pareva non aprirsi. Proviamo la posizione calcolata, non solo
