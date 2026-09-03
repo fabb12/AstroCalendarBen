@@ -26062,6 +26062,22 @@ function skyRegDisegnaCoprendo(ctx, sorgente, sl, sh, L, H) {
   ctx.drawImage(sorgente, (L - l) / 2, (H - h) / 2, l, h);
 }
 
+// Accorcia soltanto quanto serve e lascia sempre visibile la fine “…”: i nomi
+// restituiti dal geocodificatore possono contenere comune, provincia e paese,
+// mentre la firma del video ha una sola riga a disposizione.
+function skyRegTestoEntro(ctx, testo, larghezza) {
+  if (ctx.measureText(testo).width <= larghezza) return testo;
+  const puntini = '…';
+  if (ctx.measureText(puntini).width > larghezza) return '';
+  let minimo = 0, massimo = testo.length;
+  while (minimo < massimo) {
+    const mezzo = Math.ceil((minimo + massimo) / 2);
+    if (ctx.measureText(testo.slice(0, mezzo).trimEnd() + puntini).width <= larghezza) minimo = mezzo;
+    else massimo = mezzo - 1;
+  }
+  return testo.slice(0, minimo).trimEnd() + puntini;
+}
+
 // La firma: quando e da dove. Senza, un filmato di stelle mandato a qualcuno
 // è un fondo nero con dei puntini; con due righe diventa "il cielo di
 // quella sera, da lì".
@@ -26082,7 +26098,6 @@ function skyRegFirma(ctx, L, H) {
   if (luogoFirma) {
     dove = luogoFirma.nome || formattaCoordinate(luogoFirma.lat, luogoFirma.lon);
   }
-  const riga = dove ? `${data} · ${dove}` : data;
 
   ctx.save();
   ctx.textBaseline = 'bottom';
@@ -26092,6 +26107,13 @@ function skyRegFirma(ctx, L, H) {
 
   const misuraNome = Math.round(misura * 0.82);
   ctx.font = `600 ${misura}px system-ui, sans-serif`;
+  const larghezzaFirma = Math.max(0, L - margine * 2);
+  // La data identifica il momento e deve restare intera. Se il nome del luogo
+  // è troppo lungo, si accorcia invece di uscire dal fotogramma registrato.
+  const prefisso = dove ? `${data} · ` : '';
+  const riga = dove
+    ? prefisso + skyRegTestoEntro(ctx, dove, Math.max(0, larghezzaFirma - ctx.measureText(prefisso).width))
+    : skyRegTestoEntro(ctx, data, larghezzaFirma);
   const largaRiga = ctx.measureText(riga).width;
   ctx.font = `${misuraNome}px system-ui, sans-serif`;
   const largoNome = ctx.measureText('AstroCalendario di Ben').width;
