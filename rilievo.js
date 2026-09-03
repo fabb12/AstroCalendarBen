@@ -2471,17 +2471,127 @@ let rilRottN = null;
 
 const RIL_ROTTURE = 6;
 
+// --- Quanto è larga una colonna, e perché non è un numero solo ---------
+//
+// È la riga da cui vengono i **lampi radiali**: quelle strisce chiare, lunghe
+// mezzo schermo, che comparivano sul terreno a campo largo e scorrevano
+// mentre si muoveva la camera. A occhio sembrano un difetto del dato — una
+// cresta impazzita, un settore di maglia sbagliato — e non lo sono affatto:
+// sono **il fondo che si vede fra due colonne**, cioè un buco largo mezzo
+// pixel là dove il tratto non arriva a toccare quello accanto.
+//
+// La larghezza era una sola per tutto il fotogramma, `focale · Δaz`, cioè la
+// distanza fra due meridiani **al centro della vista**. Ma la proiezione è
+// stereografica, e la stereografica stira: la scala locale vale
+// `2·focale/(1+d)`, che al centro vale `focale` e ai bordi di un riquadro da
+// cento gradi una volta e mezzo tanto. E dall'altra parte i meridiani
+// **convergono** verso il nadir, di un fattore `cos(alt)`. Il rapporto fra la
+// distanza vera di due colonne e quella disegnata è quindi `cos(alt)·2/(1+d)`
+// — misurato: da 0,30 a 1,52 in un riquadro da cento gradi, da 0,98 a 1,04 in
+// uno da trenta. Dove quel numero supera l'uno il tratto è **troppo stretto** e
+// fra una colonna e l'altra resta scoperto il fondo della fetta, che è più
+// chiaro del terreno ombreggiato: un filo chiaro, largo mezzo pixel e lungo
+// quanto la corsa di livello che lo affianca, cioè centinaia di pixel. Ecco
+// perché si vedevano solo a campo largo, solo verso i bordi del riquadro, e
+// perché si spostavano appena si muoveva la camera: il posto in cui la
+// stereografica stira di più si sposta con lei.
+//
+// Il numero giusto ce l'abbiamo già: `ca / den` è nella camminata, sono due
+// valori che il disegno calcola comunque. Il problema è che una `stroke()`
+// ha **una** larghezza per tracciato, e i tracciati sono quaranta (uno per
+// livello di chiaroscuro): dargliene una per segmento vorrebbe dire una
+// chiamata per segmento, cioè diecimila.
+//
+// La cura è quantizzare: poche classi di larghezza, e ogni corsa finisce in
+// quella **appena più larga** di quanto le serve. Così un buco non può
+// esistere per costruzione — la larghezza disegnata è sempre ≥ quella vera —
+// e in cambio si spende un po' di sovrapposizione, che al peggio sfuoca il
+// chiaroscuro di traverso e non lascia vedere niente.
+//
+// I gradini non sono equispaziati, ed è misurato: in un riquadro da trenta
+// gradi il fattore sta fra 0,98 e 1,04, in uno da sessanta fra 0,79 e 1,18, in
+// uno da cento fra 0,30 e 1,52. Cioè quasi tutte le viste normali vivono nel
+// primo palmo sopra l'uno, e lì un gradino grosso vorrebbe dire disegnare il
+// venti per cento troppo largo per guadagnare niente: il primo scalino è
+// perciò stretto, e gli altri crescono in proporzione.
+//
+// L'ultimo dice fin dove si arriva, e il numero è misurato: all'apertura
+// massima a cui la pettinatura si disegna ancora
+// (`RIL_FOV_FONDI_SEPARATI_MAX`, centoventicinque gradi) l'angolo del riquadro
+// vede il terreno con un fattore di 2,4. Oltre quella soglia il chiaroscuro
+// non si disegna affatto, quindi 2,6 è il capolinea e non una scelta.
+const RIL_LARGHEZZE = [1, 1.12, 1.3, 1.52, 1.8, 2.15, 2.6];
+const RIL_LARG_CLASSI = RIL_LARGHEZZE.length;
+// Un filo di margine, perché due tratti che si toccano esattamente lasciano
+// sul pixel in comune due mezze coperture che non ne fanno una piena. È un
+// terzo di pixel e non uno: la classe arrotonda già per eccesso, e un pixel
+// intero è la sovrapposizione che `RIL_STRISCIA_SBORDO` ha appena finito di
+// togliere di mezzo nell'altra direzione.
+const RIL_LARG_MARGINE = 0.35;
+
+// Quanto una corsa può allontanarsi dal meridiano che sta disegnando.
+//
+// È la **seconda** metà dei lampi radiali, e da sola valeva quanto la prima.
+// Una corsa di livello uguale si disegna come un segmento dritto fra il primo
+// e l'ultimo nodo, ma una colonna di azimut costante, in stereografica, è un
+// **arco**: fuori dal meridiano che passa per il centro della vista si
+// incurva, e su una corsa lunga qualche centinaio di pixel la corda se ne
+// allontana di parecchi. Finché due colonne vicine si incurvano allo stesso
+// modo non si vede niente — ma le corse si rompono a quote diverse in ogni
+// colonna, quindi le corde di due colonne contigue sono diverse, si aprono a
+// ventaglio, e fra loro resta lo stesso filo di fondo scoperto.
+//
+// Non si tosa allora la lunghezza in pixel, che sarebbe un numero a caso: le
+// colonne vicine al centro della vista sono rette e non hanno niente da
+// spezzare, quelle ai bordi si incurvano subito. Si misura invece **la
+// freccia** — di quanto la corda si scosta dall'arco — e si chiude la corsa
+// quando supera un terzo di pixel. Per un arco la freccia vale un quarto
+// dello scostamento del capo dalla direzione di partenza, ed è quest'ultimo
+// che si confronta: un prodotto vettoriale per nodo, senza radici quadrate.
+const RIL_CORDA_FRECCIA = 0.35;
+const RIL_CORDA_K2 = (4 * RIL_CORDA_FRECCIA) * (4 * RIL_CORDA_FRECCIA);
+
+// La corda da (x0,y0) al punto nuovo si è allontanata troppo dall'arco?
+// `sx`,`sy` sono il **primo passo** della corsa così com'è (non normalizzato):
+// il prodotto vettoriale con il capo vale allora `|primo passo| · scostamento`,
+// e il confronto si fa sui quadrati.
+function rilCordaTroppoStorta(sx, sy, s2, x0, y0, x, y) {
+  if (!(s2 > 0.01)) return false;
+  const cr = sx * (y - y0) - sy * (x - x0);
+  return cr * cr > RIL_CORDA_K2 * s2;
+}
+
+// In che classe cade una corsa larga `fattore` volte la larghezza di base.
+// Si arrotonda **per eccesso**: una colonna disegnata un po' troppo larga si
+// sovrappone alla vicina, una disegnata un po' troppo stretta lascia vedere
+// quello che c'è sotto.
+function rilClasseLarghezza(fattore) {
+  // Un giro corto invece di un logaritmo: sta dentro al ciclo del disegno, e
+  // sono ventimila nodi per fotogramma. Quasi tutti escono al primo o al
+  // secondo confronto — il fattore mediano di una vista normale sta appena
+  // sopra l'uno.
+  if (!(fattore > 1)) return 0;
+  for (let i = 1; i < RIL_LARG_CLASSI; i++) if (fattore <= RIL_LARGHEZZE[i]) return i;
+  return RIL_LARG_CLASSI - 1;
+}
+
 function rilMagazzino(nCol) {
   if (!rilTratti) {
     rilTratti = [];
-    for (let i = 0; i < RIL_LIVELLI; i++) rilTratti.push({ v: new Float32Array(8192), n: 0 });
+    // Un magazzino per **coppia** (livello, classe di larghezza). I buffer
+    // partono piccoli e crescono da sé: le classi larghe servono solo ai
+    // bordi di un riquadro molto aperto, e allocarle tutte da 8.192 float
+    // vorrebbe dire sei megabyte per non usarli quasi mai.
+    for (let i = 0; i < RIL_LIVELLI * RIL_LARG_CLASSI; i++) {
+      rilTratti.push({ v: new Float32Array(i % RIL_LARG_CLASSI ? 512 : 8192), n: 0 });
+    }
   }
   if (!rilTinte) {
     rilTinte = [];
     // Meno affollati di quelli del chiaroscuro: la quota lungo un raggio
     // cambia piano, quindi le corse sono lunghe e sono poche.
-    for (let i = 0; i < RIL_TINTA_BANDE; i++) {
-      rilTinte.push({ v: new Float32Array(2048), n: 0 });
+    for (let i = 0; i < RIL_TINTA_BANDE * RIL_LARG_CLASSI; i++) {
+      rilTinte.push({ v: new Float32Array(i % RIL_LARG_CLASSI ? 256 : 2048), n: 0 });
     }
   }
   if (!rilCrestaX || rilCrestaX.length < nCol) {
@@ -2780,13 +2890,24 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   const pxGrado = Math.max(1e-6, focale * SKY_D2R);
   const passo = rilPassoColonne(pxGrado);
   const nCol = Math.min(Math.ceil(na / passo) + 1,
-    Math.floor(2 * arco.mezzo / (RIL_PASSO_AZ * passo)) + 2);
+    Math.floor(2 * arco.mezzo / (RIL_PASSO_AZ * passo)) + 3);
   if (nCol < 2) return false;
-  const i0 = Math.floor((arco.centro - arco.mezzo) / RIL_PASSO_AZ);
+  // Il capofila si aggancia alla **griglia dei campioni**, non all'arco.
+  //
+  // `arco.centro − arco.mezzo` scorre con continuità mentre si gira la
+  // camera, quindi con un passo maggiore di uno l'insieme delle colonne
+  // disegnate cambiava a ogni mezzo grado: gli stessi dati venivano
+  // ricampionati altrove e il tratteggio scivolava sul terreno invece di
+  // restarci attaccato. Ancorandolo a un multiplo di `passo`, le colonne del
+  // passo largo sono un sottoinsieme di quelle del passo stretto e girandosi
+  // il disegno trasla e basta. È la stessa cura di `skyAcqueStrisce` in
+  // `app.js`, e per la stessa ragione. La colonna in più di `nCol` copre il
+  // mezzo passo che l'ancoraggio arretra.
+  const i0 = Math.floor((arco.centro - arco.mezzo) / (RIL_PASSO_AZ * passo)) * passo;
 
   const cronometro = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   rilMagazzino(nCol);
-  for (let i = 0; i < RIL_LIVELLI; i++) rilTratti[i].n = 0;
+  for (let i = 0; i < rilTratti.length; i++) rilTratti[i].n = 0;
   for (let i = 0; i < rilTinte.length; i++) rilTinte[i].n = 0;
 
   const luce = rilLuce(base);
@@ -2829,11 +2950,14 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   const W = sky.larghezza, H = sky.altezza, M = 8;
   const D2R = Math.PI / 180;
   const scalaLiv = (RIL_LIVELLI - 1) / (RIL_COSENO_MAX - RIL_COSENO_MIN);
-  // Quanto è larga una colonna sullo schermo, più un pelo: le strisce si
-  // devono sovrapporre appena, se no fra due colonne resta la riga chiara
-  // dell'antialiasing — che su un terreno pettinato di righe è il difetto che
-  // si nota per primo.
-  const larghezzaColonna = RIL_PASSO_AZ * passo * pxGrado + 1;
+  // Quanto è larga una colonna sullo schermo **al centro della vista**: da lì
+  // in fuori la stereografica la stira e i meridiani la stringono, e di
+  // quanto lo dice la classe di ogni corsa (vedi `RIL_LARG_CLASSI`).
+  const larghezzaBase = RIL_PASSO_AZ * passo * pxGrado;
+  const larghezze = new Array(RIL_LARG_CLASSI);
+  for (let i = 0; i < RIL_LARG_CLASSI; i++) {
+    larghezze[i] = larghezzaBase * RIL_LARGHEZZE[i] + RIL_LARG_MARGINE;
+  }
   let strisce = 0;
 
   // Il tratto si spegne con la distanza insieme al terreno che pettina: una
@@ -2859,10 +2983,14 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     let fetta = 0;                       // la prossima curva di fondo da chiudere
     let nRott = 0;
     // La corsa di livelli uguali in questa colonna, e la striscia che ne esce.
+    // `runS*` è il suo primo passo: serve a sapere quando la corda si è
+    // allontanata dall'arco del meridiano (`rilCordaTroppoStorta`).
     let runN = -1, runLiv = -1, runX0 = 0, runY0 = 0, runX1 = 0, runY1 = 0;
+    let runSx = 0, runSy = 0, runS2 = 0;
     // La stessa corsa, per il velo delle quote: chiave diversa, geometria
     // identica.
     let tinN = -1, tinKey = -1, tinX0 = 0, tinY0 = 0, tinX1 = 0, tinY1 = 0;
+    let tinSx = 0, tinSy = 0, tinS2 = 0;
     for (let k = 0; k < nr; k++) {
       // Le fette di fondo che questo anello si è appena lasciato indietro:
       // la loro cresta parziale è l'ultimo nodo **visto**, che è per
@@ -2922,6 +3050,12 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
       const den = (1 + d) * 0.5;
       const nx2 = mezzaL + focale * (vx * rx + vy * ry + vz * rz) / den;
       const ny2 = mezzaH - focale * (vx * ux + vy * uy + vz * uz) / den;
+      // Quanto la colonna è larga **qui** rispetto a quanto lo è al centro
+      // della vista: `cos(alt)` è la convergenza dei meridiani verso il
+      // nadir, `1/den` lo stiramento della stereografica. Due divisioni su
+      // numeri che ci sono già, ed è tutto quello che serve per non lasciare
+      // buchi fra una colonna e l'altra (vedi `RIL_LARG_CLASSI`).
+      const classe = rilClasseLarghezza(ca / den);
 
       if (ok) {
         // Fuori dal riquadro solo se **tutti e due** i capi stanno oltre lo
@@ -3048,25 +3182,40 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
             let banda = Math.round(qFrangia * scalaBanda);
             if (banda < 0) banda = 0;
             else if (banda >= RIL_TINTA_BANDE) banda = RIL_TINTA_BANDE - 1;
-            const chiave = banda;
-            if (tinN >= 0 && chiave === tinKey) {
+            const chiave = banda * RIL_LARG_CLASSI + classe;
+            if (tinN >= 0 && chiave === tinKey &&
+                !rilCordaTroppoStorta(tinSx, tinSy, tinS2, tinX0, tinY0, nx2, ny2)) {
               tinX1 = nx2; tinY1 = ny2;
             } else {
               if (tinN >= 0) rilChiudiRun(tinKey, tinX0, tinY0, tinX1, tinY1, rilTinte);
+              // La corsa nuova riparte **dal capo della vecchia** quando a
+              // spezzarla è stata la curvatura: due tratti che si toccano
+              // dipingono la stessa superficie di uno solo, e stando nello
+              // stesso tracciato non lasciano nemmeno la cucitura.
+              const daCurva = tinN >= 0 && chiave === tinKey;
               tinKey = chiave; tinN = k;
-              tinX0 = px; tinY0 = py; tinX1 = nx2; tinY1 = ny2;
+              tinX0 = daCurva ? tinX1 : px; tinY0 = daCurva ? tinY1 : py;
+              tinX1 = nx2; tinY1 = ny2;
+              tinSx = tinX1 - tinX0; tinSy = tinY1 - tinY0;
+              tinS2 = tinSx * tinSx + tinSy * tinSy;
             }
           }
 
           // Le facce contigue con lo stesso livello diventano **una striscia
           // sola**: il chiaroscuro lungo un raggio cambia piano, quindi le
           // strisce sono lunghe e sono poche.
-          if (runN >= 0 && liv === runLiv) {
+          const chiaveLiv = liv * RIL_LARG_CLASSI + classe;
+          if (runN >= 0 && chiaveLiv === runLiv &&
+              !rilCordaTroppoStorta(runSx, runSy, runS2, runX0, runY0, nx2, ny2)) {
             runX1 = nx2; runY1 = ny2;
           } else {
             if (runN >= 0) strisce += rilChiudiRun(runLiv, runX0, runY0, runX1, runY1);
-            runLiv = liv; runN = k;
-            runX0 = px; runY0 = py; runX1 = nx2; runY1 = ny2;
+            const daCurva = runN >= 0 && chiaveLiv === runLiv;
+            runLiv = chiaveLiv; runN = k;
+            runX0 = daCurva ? runX1 : px; runY0 = daCurva ? runY1 : py;
+            runX1 = nx2; runY1 = ny2;
+            runSx = runX1 - runX0; runSy = runY1 - runY0;
+            runS2 = runSx * runSx + runSy * runSy;
           }
         }
       }
@@ -3242,36 +3391,31 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // fatta la montagna, il chiaroscuro dice che forma ha, e la seconda cosa
   // deve poter scolpire la prima. Steso sopra, un velo al sessanta per cento
   // spianerebbe le luci e le ombre che si è appena finito di disegnare.
-  if (dettaglio) {
-    for (let i = 0; i < rilTinte.length; i++) {
-      const t = rilTinte[i];
+  //
+  // I magazzini sono indicizzati `(colore · RIL_LARG_CLASSI + classe)`: il
+  // colore lo dà la tavolozza, la larghezza la classe. Le classi larghe
+  // restano quasi sempre vuote — servono ai bordi di un riquadro molto
+  // aperto — e una `stroke()` su un tracciato vuoto non si fa, quindi a campo
+  // stretto le chiamate sono esattamente quelle di prima.
+  const disegnaMagazzini = (magazzini, tavolozza) => {
+    for (let i = 0; i < magazzini.length; i++) {
+      const t = magazzini[i];
       if (!t.n) continue;
       ctx.beginPath();
       for (let j = 0; j < t.n; j += 4) {
         ctx.moveTo(t.v[j], t.v[j + 1]);
         ctx.lineTo(t.v[j + 2], t.v[j + 3]);
       }
-      ctx.strokeStyle = tinte[i];
-      ctx.lineWidth = larghezzaColonna;
+      ctx.strokeStyle = tavolozza[(i / RIL_LARG_CLASSI) | 0];
+      ctx.lineWidth = larghezze[i % RIL_LARG_CLASSI];
       ctx.lineCap = 'butt';
       ctx.stroke();
       chiamate++;
     }
-
-    for (let l = 0; l < RIL_LIVELLI; l++) {
-      const t = rilTratti[l];
-      if (!t.n) continue;
-      ctx.beginPath();
-      for (let i = 0; i < t.n; i += 4) {
-        ctx.moveTo(t.v[i], t.v[i + 1]);
-        ctx.lineTo(t.v[i + 2], t.v[i + 3]);
-      }
-      ctx.strokeStyle = tav[l];
-      ctx.lineWidth = larghezzaColonna;
-      ctx.lineCap = 'butt';
-      ctx.stroke();
-      chiamate++;
-    }
+  };
+  if (dettaglio) {
+    disegnaMagazzini(rilTinte, tinte);
+    disegnaMagazzini(rilTratti, tav);
   }
 
   // --- Il velo dell'aria, fetta per fetta -------------------------------

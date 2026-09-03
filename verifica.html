@@ -1273,6 +1273,109 @@ titolo('9. La forma vera del terreno');
       terrenoFonteOra = fonteVera;
     }
 
+    // 2-bis. La pagella delle porte, che è la cosa che toglie le righe rosse
+    // dalla console.
+    //
+    // Un 429 è la frase che si legge più di ogni altra aprendo il planetario,
+    // e finché il rubinetto se la dimenticava a fine corsa la stessa scoperta
+    // si ricomprava cinque volte per richiesta, poi a ogni ripresa automatica,
+    // poi a ogni ricarica della pagina — centocinquanta richieste rifiutate,
+    // misurate, per sapere una cosa che il servizio aveva detto alla prima. E
+    // una `fetch` rifiutata la scrive il browser: da JavaScript quelle righe
+    // non si possono zittire, si possono solo non provocare.
+    {
+      const fonteVera = terrenoFonteOra;
+      const pagellaVera = new Map();
+      terrenoSalute.forEach((v, k) => pagellaVera.set(k, Object.assign({}, v)));
+      terrenoScordaPenali();
+
+      const f = TERRENO_FONTI[0];
+      const r = terrenoRitmoDi(f);
+      const salva = { liberoDa: r.liberoDa, frenatoFino: r.frenatoFino, noDiFila: r.noDiFila };
+      terrenoFonteOra = 0;
+
+      prova('con la pagella pulita tutte le porte sono aperte',
+            terrenoAttesaPorte() === 0 && terrenoFonte() === f);
+
+      // Un 429 isolato non manda in castigo nessuno: può essere una raffica
+      // partita un attimo prima che il rubinetto si stringesse, ed è la
+      // stessa ragione per cui non si cambia porta al primo no.
+      terrenoSegnaNo(f, { stato: 429 });
+      prova('un 429 solo non chiude la porta',
+            terrenoPenaleDi(f) === 0 && terrenoAttesaPorte() === 0);
+
+      // Il secondo di fila sì: da lì in poi quella porta si salta senza
+      // provarci, e la scoperta costa **due** richieste invece di cinque.
+      terrenoSegnaNo(f, { stato: 429 });
+      prova('due 429 di fila la mandano in castigo, e non ci si bussa più',
+            terrenoPenaleDi(f) > 0 && terrenoFonte() !== f,
+            `si passa a ${terrenoFonte().nome}`);
+      prova('ma una porta in castigo non ferma le altre',
+            terrenoAttesaPorte() === 0);
+
+      // Un sì cancella tutto: una fonte che risponde una volta su due
+      // funziona piano, e le riserve vanno dieci volte più lente di lei.
+      terrenoScorre(f);
+      prova('un sì la rimette in gioco', terrenoPenaleDi(f) === 0 && terrenoFonte() === f);
+
+      // Il `retry-after` è la sola voce che sappia davvero quando la quota si
+      // riapre: si rispetta, ma non oltre il tetto.
+      terrenoScordaPenali();
+      terrenoSegnaNo(f, { stato: 429 });
+      terrenoSegnaNo(f, { stato: 429, attesa: 240000 });
+      const attesa = terrenoPenaleDi(f) - Date.now();
+      prova('un retry-after si rispetta',
+            attesa > 200000 && attesa <= TERRENO_PENALE_TETTO_MS + 1000,
+            `${Math.round(attesa / 1000)} s`);
+      terrenoScordaPenali();
+      terrenoSegnaNo(f, { stato: 429 });
+      terrenoSegnaNo(f, { stato: 429, attesa: 86400000 });
+      prova('ma un retry-after di un giorno no: il tetto è mezz\'ora',
+            terrenoPenaleDi(f) - Date.now() <= TERRENO_PENALE_TETTO_MS + 1000);
+
+      // Un guasto qualunque non è una frase sulla quota: la porta resta
+      // aperta finché i no non diventano quelli che già facevano cambiare
+      // fonte. Se no si finisce sulle riserve per un 502 isolato.
+      terrenoScordaPenali();
+      for (let i = 0; i < TERRENO_NO_PER_CAMBIARE - 1; i++) terrenoSegnaNo(f, { stato: 502 });
+      prova('un guasto qualunque non manda in castigo al primo colpo',
+            terrenoPenaleDi(f) === 0,
+            `${TERRENO_NO_PER_CAMBIARE - 1} guasti di fila, e la porta è ancora aperta`);
+      terrenoSegnaNo(f, { stato: 502 });
+      prova('ma una porta che non risponde più si chiude anche senza 429',
+            terrenoPenaleDi(f) > 0);
+
+      // E il caso che conta: tutte chiuse. Lì non si bussa a nessuna e si
+      // dice fra quanto — se no la coda resta appesa e la riga di stato dice
+      // «sto misurando» per un'ora, che è il modo peggiore di fallire.
+      terrenoScordaPenali();
+      for (const porta of TERRENO_FONTI) {
+        terrenoSegnaNo(porta, { stato: 429 });
+        terrenoSegnaNo(porta, { stato: 429 });
+      }
+      const quanto = terrenoAttesaPorte();
+      prova('con tutte le porte chiuse si sa dire fra quanto si riapre',
+            quanto > 0 && quanto <= TERRENO_PENALE_QUOTA_MAX_MS,
+            `${Math.round(quanto / 1000)} s`);
+      prova('e l\'attesa è più lunga di quanto valga la pena restare in coda',
+            quanto > TERRENO_ATTESA_PORTE_MS,
+            `${Math.round(quanto / 1000)} s contro i ${TERRENO_ATTESA_PORTE_MS / 1000} s della coda`);
+      prova('il messaggio dice che non ci si è nemmeno provati, e quando si riprova',
+            /quota piena/.test(terrenoMotivoGuaio({ stato: 429, porteChiuse: true })) &&
+            /riprovo/i.test(terrenoMotivoGuaio({ stato: 429, porteChiuse: true })));
+
+      // Il tasto del pannello è una richiesta esplicita di chi sta lì a
+      // guardare: quella riapre tutto.
+      terrenoScordaPenali();
+      prova('il tasto «riprova» dà un\'altra possibilità a tutte le porte',
+            terrenoAttesaPorte() === 0);
+
+      r.liberoDa = salva.liberoDa; r.frenatoFino = salva.frenatoFino; r.noDiFila = salva.noDiFila;
+      terrenoFonteOra = fonteVera;
+      terrenoSalute.clear();
+      pagellaVera.forEach((v, k) => terrenoSalute.set(k, v));
+    }
+
     // 3. La ripresa. Questa è la garanzia vera: un tentativo che va male non
     // riporta a zero, quindi tentativi diversi si sommano invece di
     // ripetersi. Senza, con un servizio che risponde una volta su tre il
@@ -8090,6 +8193,139 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
 
     rilTessere = salvaBuone;
     rilTessereGuaste = salvaGuaste;
+  }
+}
+
+// --- I lampi radiali: il fondo che si vede fra due colonne -------------
+//
+// È la segnalazione delle «strisce che si muovono quando muovo la camera», e
+// a occhio si giudica per quello che non è: sembrano un dato sbagliato — una
+// cresta impazzita, un settore di maglia storto — mentre sono terreno
+// disegnato benissimo con **un buco largo mezzo pixel** fra una colonna e
+// l'altra. Sotto c'è il fondo della fetta, che è più chiaro del terreno
+// ombreggiato, e siccome le corse di livello sono lunghe centinaia di pixel
+// quel buco si legge come un filo chiaro lungo mezzo schermo.
+//
+// Nessun fotogramma singolo è «sbagliato», ed è per questo che sta scritto
+// qui: si controlla che la larghezza disegnata copra sempre quella vera.
+{
+  nota('I lampi radiali: la larghezza di una colonna non è un numero solo.');
+
+  // La larghezza vera di una colonna è quella di base moltiplicata per
+  // `cos(alt) · 2/(1+d)` — i meridiani che convergono verso il nadir, e la
+  // stereografica che stira verso i bordi. La classe deve coprirla **sempre**.
+  {
+    let peggio = 0, sotto = 0, quante = 0;
+    for (let f = 0.2; f <= 2.6; f += 0.01) {
+      const c = rilClasseLarghezza(f);
+      const disegnata = RIL_LARGHEZZE[c];
+      quante++;
+      if (disegnata < f - 1e-9) sotto++;
+      // La sovrabbondanza si misura solo **sopra l'uno**: sotto, i meridiani
+      // convergono verso il nadir e la colonna disegnata è per forza più larga
+      // di quella vera — è quello che il disegno ha sempre fatto, e lì
+      // l'eccesso non si vede perché quel terreno è a due passi dalle scarpe
+      // (`RIL_VICINO_NIENTE_M`).
+      if (f >= 1) peggio = Math.max(peggio, disegnata / f);
+    }
+    prova('nessuna corsa viene disegnata più stretta di quanto le serve',
+      sotto === 0, `${quante} fattori provati da 0,20 a 2,60`);
+    prova('e nemmeno troppo più larga: la sovrabbondanza resta sotto un quarto',
+      peggio < 1.25, `al peggio ×${peggio.toFixed(2)}`);
+    // E la scala arriva fin dove serve. Il numero è misurato: al campo più
+    // largo a cui la pettinatura si disegna ancora, l'angolo del riquadro
+    // vede il terreno con un fattore di 2,4 — se la scala si fermasse prima,
+    // i lampi tornerebbero proprio lì.
+    prova('la scala copre il fattore peggiore che si misuri col chiaroscuro acceso',
+      RIL_LARGHEZZE[RIL_LARGHEZZE.length - 1] >= 2.4,
+      `arriva a ×${RIL_LARGHEZZE[RIL_LARGHEZZE.length - 1]}, e a 125° di campo serve ×2,4`);
+  }
+
+  // Il contro-esempio, cioè la regola di prima: **una** larghezza per tutto
+  // il fotogramma, più un pixel. In un riquadro da cento gradi il fattore
+  // arriva a 1,5 e la colonna di base è larga meno di tre pixel: il pixel in
+  // più non basta, e resta scoperto mezzo pixel per tutta la lunghezza della
+  // corsa.
+  {
+    const focale = 321.7;                       // cento gradi su un riquadro da 600
+    const base = RIL_PASSO_AZ * focale * D2R;   // passo 1
+    const primaLarga = base + 1;
+    const serve = base * 1.52;                  // il fattore misurato ai bordi
+    prova('col conto di prima, ai bordi di un riquadro largo restava un buco',
+      primaLarga < serve,
+      `disegnava ${primaLarga.toFixed(2)} px dove ne servivano ${serve.toFixed(2)}`);
+    const adesso = RIL_LARGHEZZE[rilClasseLarghezza(1.52)] * base + RIL_LARG_MARGINE;
+    prova('e adesso quel buco non c\'è', adesso >= serve,
+      `${adesso.toFixed(2)} px contro ${serve.toFixed(2)}`);
+  }
+
+  // A campo stretto il fattore sta appena sopra l'uno, e lì un gradino grosso
+  // costerebbe una sfocatura di traverso per non guadagnare niente: è la
+  // ragione per cui i gradini non sono equispaziati.
+  prova('a campo stretto il primo gradino è fine',
+    RIL_LARGHEZZE[rilClasseLarghezza(1.04)] < 1.13,
+    `fattore 1,04 → ×${RIL_LARGHEZZE[rilClasseLarghezza(1.04)]}`);
+  prova('le classi crescono e partono esattamente dall\'uno',
+    RIL_LARGHEZZE.every((v, i) => i === 0 ? v === 1 : v > RIL_LARGHEZZE[i - 1]),
+    RIL_LARGHEZZE.join(' · '));
+
+  // La seconda metà dello stesso difetto: una corsa si disegna come un
+  // **segmento dritto**, ma una colonna di azimut costante in stereografica è
+  // un arco. Due colonne vicine rompono le corse a quote diverse, quindi le
+  // loro corde sono diverse e si aprono a ventaglio — e fra loro resta lo
+  // stesso filo di fondo scoperto.
+  {
+    // Un arco di raggio R campionato fitto: si controlla dopo quanti punti la
+    // regola chiude la corsa, e che la freccia a quel punto sia ancora sotto
+    // il pixel promesso.
+    const frecciaDopo = (R) => {
+      const passo = 0.004;                       // radianti per campione
+      const px = (t) => [R * Math.sin(t), R * (1 - Math.cos(t))];
+      const [x0, y0] = px(0), [x1, y1] = px(passo);
+      const sx = x1 - x0, sy = y1 - y0, s2 = sx * sx + sy * sy;
+      for (let n = 2; n < 4000; n++) {
+        const [x, y] = px(n * passo);
+        if (rilCordaTroppoStorta(sx, sy, s2, x0, y0, x, y)) {
+          // La freccia vera della corda che si stava per disegnare.
+          const L = Math.hypot(x - x0, y - y0);
+          const meta = px((n * passo) / 2);
+          const cr = Math.abs((x - x0) * (meta[1] - y0) - (y - y0) * (meta[0] - x0)) / L;
+          return { n, L, freccia: cr };
+        }
+      }
+      return null;
+    };
+    const stretto = frecciaDopo(400);
+    const largo = frecciaDopo(4000);
+    prova('una corsa si chiude prima che la corda si stacchi dall\'arco',
+      stretto && stretto.freccia < 1,
+      `su un arco da 400 px la corda arriva a ${stretto.L.toFixed(0)} px con ` +
+      `${stretto.freccia.toFixed(2)} px di freccia`);
+    prova('e dove il meridiano è quasi dritto non si spezza niente per niente',
+      largo && largo.L > stretto.L * 2.5,
+      `arco dieci volte più largo: corda ${largo.L.toFixed(0)} px contro ${stretto.L.toFixed(0)}`);
+    prova('una colonna perfettamente dritta resta una corsa sola',
+      !rilCordaTroppoStorta(0, 10, 100, 0, 0, 0, 900));
+  }
+
+  // E l'ancoraggio delle colonne alla griglia dei campioni: girandosi, il
+  // disegno deve traslare, non ricampionarsi altrove. Con `passo` maggiore di
+  // uno il capofila deve restare un multiplo del passo.
+  {
+    const passo = 4;
+    const indici = (centro) => {
+      const i0 = Math.floor(centro / (RIL_PASSO_AZ * passo)) * passo;
+      return [0, 1, 2, 3].map(c => (((i0 + c * passo) % RIL_AZIMUT) + RIL_AZIMUT) % RIL_AZIMUT);
+    };
+    const a = indici(30), b = indici(31.4);
+    prova('girando la camera le colonne restano sui campioni di prima',
+      a.every(v => v % passo === 0) && b.every(v => v % passo === 0),
+      `da ${a[0]} a ${b[0]}, tutti multipli di ${passo}`);
+    // Il contro-esempio: il capofila di prima, preso sull'arco continuo.
+    const prima = (centro) => Math.floor(centro / RIL_PASSO_AZ);
+    prova('col conto di prima cambiava proprio l\'insieme dei campioni letti',
+      (prima(30) % passo) !== (prima(31.4) % passo),
+      `fase ${prima(30) % passo} → ${prima(31.4) % passo}`);
   }
 }
 

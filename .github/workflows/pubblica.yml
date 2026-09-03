@@ -89,7 +89,7 @@ jobs:
         # manca un pezzo, meglio fermarsi qui.
         run: |
           mancanti=0
-          for f in index.html manifest.json sw.js style.css app.js; do
+          for f in index.html manifest.json sw.js style.css tailwind.css app.js; do
             if [ ! -s "_sito/$f" ]; then
               echo "::error::manca (o è vuoto) _sito/$f"
               mancanti=1
@@ -100,6 +100,16 @@ jobs:
           for f in $(grep -oE '<script[^>]+src="[^":]+\.js"' _sito/index.html | grep -oE 'src="[^"]+"' | cut -d'"' -f2); do
             if [ ! -s "_sito/$f" ]; then
               echo "::error::index.html carica $f, che non c'è"
+              mancanti=1
+            fi
+          done
+          # E i fogli di stile locali con loro: da quando Tailwind è compilato
+          # nel repository invece di essere ricostruito nel browser, un
+          # `tailwind.css` che manca non è una funzione spenta — è tutta
+          # l'impaginazione che se ne va.
+          for f in $(grep -oE '<link[^>]+rel="stylesheet"[^>]+href="[^":]+\.css"' _sito/index.html | grep -oE 'href="[^"]+"' | cut -d'"' -f2); do
+            if [ ! -s "_sito/$f" ]; then
+              echo "::error::index.html carica il foglio $f, che non c'è"
               mancanti=1
             fi
           done
