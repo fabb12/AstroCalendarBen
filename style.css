@@ -994,6 +994,36 @@ body.cielo-immersivo .nav-principale { display: none; }
   font-size: 0.68rem;
   font-variant-numeric: tabular-nums;
 }
+.evento-griglia-scheda { display: none; }
+/* Nel menu "+altri" ogni evento ha una vera azione con un nome. Nelle
+   caselle del mese resta invece tutta la riga cliccabile, senza comprimere
+   ulteriormente titolo e ora. */
+.fc-popover .evento-griglia {
+  gap: 8px;
+  padding: 6px 7px;
+}
+.fc-popover .evento-griglia-scheda {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--colore-evento) 55%, var(--bordo));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--colore-evento) 20%, var(--superficie-alta));
+  color: var(--testo);
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.fc-popover .evento-griglia-scheda:hover,
+.fc-popover .evento-griglia-scheda:focus-visible {
+  background: color-mix(in srgb, var(--colore-evento) 38%, var(--superficie-alta));
+  outline: 2px solid var(--testo);
+  outline-offset: 1px;
+}
 .fc .fc-daygrid-day.fc-day-other { opacity: 0.35; }
 .fc-popover {
   background: var(--superficie-piena) !important;

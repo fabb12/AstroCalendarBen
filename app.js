@@ -6419,8 +6419,35 @@ function contenutoEventoGriglia(arg) {
     ora.textContent = props.ora;
     box.appendChild(ora);
   }
+  // FullCalendar riusa questo stesso contenuto anche nel menu "+altri".
+  // Nella casella il tasto resta nascosto (lo spazio e' pochissimo), mentre
+  // nel menu diventa un'azione esplicita: non bisogna indovinare che tutta la
+  // riga sia cliccabile per arrivare alla scheda completa dell'evento.
+  const scheda = document.createElement('button');
+  scheda.type = 'button';
+  scheda.className = 'evento-griglia-scheda';
+  scheda.textContent = 'Vedi scheda';
+  scheda.setAttribute('aria-label', `Vedi la scheda di ${arg.event.title}`);
+  scheda.addEventListener('click', eventoClick => {
+    eventoClick.preventDefault();
+    eventoClick.stopPropagation();
+    apriSchedaEvento(arg.event.id);
+  });
+  box.appendChild(scheda);
   box.title = `${arg.event.title}${cat ? ` · ${cat.nome}` : ''}${props.ora ? ` · ore ${props.ora}` : ''}`;
   return { domNodes: [box] };
+}
+
+// Porta da qual entrano sia il tocco sulla riga del calendario sia il tasto
+// esplicito nel menu "+altri". Tenerli sulla stessa strada evita che i due
+// modi di aprire una scheda finiscano per applicare filtri o tempi diversi.
+function apriSchedaEvento(id) {
+  mostraVista('agenda');
+  setTimeout(() => {
+    const card = [...document.querySelectorAll('article[data-evento-id]')]
+      .find(voce => voce.dataset.eventoId === String(id));
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 300);
 }
 
 // Ricarica nel calendario a griglia solo gli eventi che passano i filtri.
@@ -6705,11 +6732,7 @@ function inizializzaCalendario() {
       if (info.event.id === 'intervallo-scelto') return;
       // Se clicco su un evento nel calendario apro l'agenda sulla sua scheda.
       // La voce NON parte da sola: si attiva solo col tasto “Ascolta” o con la notifica.
-      document.getElementById('btn-vista-agenda').click();
-      setTimeout(() => {
-        const card = document.querySelector(`article[data-evento-id="${info.event.id}"]`);
-        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
+      apriSchedaEvento(info.event.id);
     }
   });
   // Il primo disegno non conta come "l'utente ha scelto un mese": l'agenda
