@@ -27635,6 +27635,11 @@ function solCorpoDelPerno(id) {
 // Quanto si disegna grosso un corpo, nelle due misure: il pallino ingrandito
 // che si tocca col dito, o il diametro vero in scala fra i corpi.
 function solRaggioCorpo(p) {
+  // Con «Dimensioni reali» i diametri usano il metro astronomico della
+  // scena: `sol.scala` misura una UA. Lo zoom non gonfia quindi i mondi con
+  // una legge separata; scegliendo anche le distanze reali, il rapporto
+  // Sole–Terra–orbite resta fisicamente esatto.
+  if (sol.misureVere) return Math.max(0.25, (p.km / 2) / SOL_UA_KM * sol.scala);
   // Sotto il pixel e mezzo un pianeta non è più un pianeta ma un granello di
   // polvere: Mercurio e Marte si fermano lì. Fra tutti gli altri il rapporto
   // è quello vero.
@@ -27650,6 +27655,7 @@ function solRaggioCorpo(p) {
 // misura: la base per il fattore di crescita, con il minimo che lo tiene in
 // vita quando ci si allontana.
 function solRaggioSole() {
+  if (sol.misureVere) return Math.max(0.25, (SOL_SOLE_KM / 2) / SOL_UA_KM * sol.scala);
   return Math.max(SOL_SOLE_MIN_PX, solSoleBase() * solCrescita());
 }
 
@@ -27662,7 +27668,7 @@ function solRaggioLuna() {
   // anche lei, come cresce qualunque corpo su cui ci si avvicini
   const crescita = solCorpoDelPerno('Moon') ? solCrescitaCorpo() : solCrescita();
   return sol.misureVere
-    ? Math.max(0.55, SOL_LUNA_KM * SOL_PX_PER_KM / 2 * crescita)
+    ? Math.max(0.25, (SOL_LUNA_KM / 2) / SOL_UA_KM * sol.scala)
     : SOL_RAGGIO_LUNA * crescita;
 }
 
@@ -29455,19 +29461,6 @@ function solProfiloCono(base, asse, raggio, sMax) {
   return su.concat(giu.reverse());
 }
 
-// Fin dove tirare un cono prima che finisca dentro alla Terra. Se l'asse la
-// manca del tutto — le eclissi parziali, quelle che sfiorano i poli — il cono
-// prosegue fino alla sua portata, che è la verità: passa accanto e tira via.
-function solQuantoPrimaDiTerra(base, asse, portata) {
-  const rT = solVicRaggioTerra();
-  const b = skyDot(base, asse);
-  const c = skyDot(base, base) - rT * rT;
-  const disc = b * b - c;
-  if (disc <= 0) return portata;
-  const s = -b - Math.sqrt(disc);
-  return s > 0 ? Math.min(portata, s) : portata;
-}
-
 // Con i corpi ingranditi il punto geografico dell'eclissi non si trova piu'
 // sulla retta che interseca la sfera *ingrandita*. Quella costruzione sceglie
 // infatti un altro punto del globo (tanto piu' lontano quanto piu' il cono e'
@@ -29481,8 +29474,37 @@ function solQuantoPrimaDiTerra(base, asse, portata) {
 // globo, anche con l'ingrandimento didattico attivo.
 function solConoLunaVisibile(base, asseFisico, portata, ombra) {
   if (!ombra || !ombra.centro) {
-    const s = solQuantoPrimaDiTerra(base, asseFisico, portata);
-    return { asse: asseFisico, portata: s, rapporto: 1 };
+    // Se i globi sono ingranditi, va ingrandito anche lo *scarto* trasversale
+    // del cono. Prima si allargavano Terra, Luna e ombre, ma l'asse restava
+    // sui chilometri reali: una congiunzione che mancava la Terra poteva così
+    // attraversare il globo tre volte più grande e sembrare un'eclissi.
+    //
+    // `vicino` è il punto dell'asse fisico più prossimo al centro terrestre.
+    // Lo portiamo alla stessa scala trasversale dei corpi, lasciando intatta
+    // la distanza longitudinale Terra–Luna. Con «Reali» k=1 e la costruzione
+    // coincide esattamente con quella fisica.
+    const k = solVicIngrandimento();
+    const sVicino = Math.max(0, Math.min(portata, -skyDot(base, asseFisico)));
+    const vicino = [
+      base[0] + asseFisico[0] * sVicino,
+      base[1] + asseFisico[1] * sVicino,
+      base[2] + asseFisico[2] * sVicino
+    ];
+    const bersaglio = vicino.map(v => v * k);
+    const tratto = [
+      bersaglio[0] - base[0], bersaglio[1] - base[1], bersaglio[2] - base[2]
+    ];
+    const finoAlMinimo = Math.hypot(tratto[0], tratto[1], tratto[2]);
+    if (!(finoAlMinimo > 0)) return { asse: asseFisico, portata, rapporto: 1, manca: true };
+    return {
+      asse: solVersore(tratto),
+      // Un breve tratto oltre il punto di minima distanza rende evidente che
+      // il cono passa accanto alla Terra e prosegue, invece di finirci sopra.
+      portata: Math.min(portata, finoAlMinimo * 1.12),
+      rapporto: sVicino / finoAlMinimo,
+      manca: true,
+      minimo: bersaglio
+    };
   }
   const centro = solVersore(ombra.centro);
   const arrivo = centro.map(v => v * solVicRaggioTerra());
@@ -29495,7 +29517,8 @@ function solConoLunaVisibile(base, asseFisico, portata, ombra) {
     portata: Math.min(portata, sGrafico),
     // I raggi restano quelli del cono fisico alla medesima frazione del
     // tragitto; cambia soltanto la sua posa sulla Terra ingrandita.
-    rapporto: sGrafico > 0 ? sFisico / sGrafico : 1
+    rapporto: sGrafico > 0 ? sFisico / sGrafico : 1,
+    manca: false
   };
 }
 
@@ -29663,21 +29686,24 @@ function solDisegnaRaggiVicino(ctx, versoSole, portata) {
 function solDisegnaSoleVicino(ctx, versoSole) {
   const dir = solVersoRaggi(versoSole);
   if (!dir) return;
-  const terra = solVicPunto([0, 0, 0]);
   const r = Math.max(23, Math.min(36, Math.min(sol.L, sol.H) * 0.06));
   const margine = r + 13;
+  // Il Sole e' fuori campo: lo si ancora alla tela, non alla Terra. Cosi'
+  // zoom e pan muovono il sistema Terra–Luna ma non fanno scivolare la sua
+  // sorgente luminosa lungo il bordo.
+  const origine = { px: sol.L / 2, py: sol.H / 2 };
   const candidati = [];
   if (Math.abs(dir.ux) > 1e-6) {
-    candidati.push((margine - terra.px) / dir.ux);
-    candidati.push((sol.L - margine - terra.px) / dir.ux);
+    candidati.push((margine - origine.px) / dir.ux);
+    candidati.push((sol.L - margine - origine.px) / dir.ux);
   }
   if (Math.abs(dir.uy) > 1e-6) {
-    candidati.push((margine - terra.py) / dir.uy);
-    candidati.push((sol.H - margine - terra.py) / dir.uy);
+    candidati.push((margine - origine.py) / dir.uy);
+    candidati.push((sol.H - margine - origine.py) / dir.uy);
   }
   const t = candidati.filter(v => v > 0).sort((a, b) => a - b)[0];
   if (!isFinite(t)) return;
-  const x = terra.px + dir.ux * t, y = terra.py + dir.uy * t;
+  const x = origine.px + dir.ux * t, y = origine.py + dir.uy * t;
 
   ctx.save();
   const alone = ctx.createRadialGradient(x, y, r * 0.18, x, y, r * 2.7);
@@ -29701,6 +29727,27 @@ function solDisegnaSoleVicino(ctx, versoSole) {
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowBlur = 0;
+  // Granulazione e macchie deterministiche: danno materia alla fotosfera
+  // senza scintillare o cambiare disposizione a ogni fotogramma.
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.97, 0, Math.PI * 2);
+  ctx.clip();
+  for (let i = 0; i < 42; i++) {
+    const a = i * 2.399963, rr = r * 0.84 * Math.sqrt((i + 0.5) / 42);
+    const gx = x + Math.cos(a) * rr, gy = y + Math.sin(a) * rr;
+    ctx.fillStyle = i % 3 ? 'rgba(255,255,220,0.11)' : 'rgba(180,72,8,0.10)';
+    ctx.beginPath();
+    ctx.ellipse(gx, gy, r * 0.055, r * 0.025, a, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  [[-0.31, 0.18, 0.075], [0.24, -0.23, 0.055], [0.33, -0.18, 0.032]].forEach(m => {
+    ctx.fillStyle = 'rgba(91, 33, 8, 0.72)';
+    ctx.beginPath();
+    ctx.ellipse(x + m[0] * r, y + m[1] * r, m[2] * r, m[2] * r * 0.48, -0.25, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
   ctx.strokeStyle = 'rgba(255, 251, 235, 0.82)';
   ctx.lineWidth = 1.2;
   ctx.stroke();
@@ -29824,6 +29871,34 @@ function solDisegnaVicino() {
           RAGGIO_LUNA_KM, dSoleLuna, (s + apiceGrafico) * posa.rapporto)) * k,
         posa.portata - apiceGrafico,
         soloContorno ? null : 'rgba(180, 83, 9, 0.22)', 'rgba(251, 191, 36, 0.88)');
+    }
+
+    // Nessuna eclissi: un segno nel punto di minima distanza chiude la
+    // lettura del disegno. Il cono non "tocca" il globo ingrandito e la
+    // barretta mostra visivamente il margine con cui lo manca.
+    if (posa.manca && posa.minimo && !soloContorno) {
+      const p = solVicPunto(posa.minimo);
+      const c = solVicPunto([0, 0, 0]);
+      const dx = p.px - c.px, dy = p.py - c.py;
+      const d = Math.hypot(dx, dy);
+      if (d > 2) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(c.px, c.py);
+        ctx.lineTo(p.px, p.py);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(p.px, p.py, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        solTesto(ctx, 'il cono manca la Terra', p.px + 7, p.py - 6,
+          'rgba(253, 224, 71, 0.92)', 10.5);
+      }
     }
   };
 
