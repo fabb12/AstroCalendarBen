@@ -23400,15 +23400,15 @@ function skyAggiornaFumetto() {
     segno.innerHTML = icona(dati.segno, 17);
     titolo.textContent = dati.titolo;
     corpo.innerHTML = (dati.foto
-      ? '<figure class="fumetto-aereo-foto"><img loading="eager" referrerpolicy="no-referrer">' +
+      ? '<figure class="fumetto-foto"><img loading="eager" referrerpolicy="no-referrer">' +
         (dati.foto.credito ? '<figcaption></figcaption>' : '') + '</figure>'
       : '') + dati.righe.map(r =>
       `<p class="fumetto-riga">${r.etichetta ? `<span class="fumetto-voce">${r.etichetta}:</span> ` : ''}` +
       `<span data-fumetto="${r.chiave}"></span></p>`).join('');
     sky.fumettoRimisura = true;
     if (dati.foto) {
-      const immagine = corpo.querySelector('.fumetto-aereo-foto img');
-      const credito = corpo.querySelector('.fumetto-aereo-foto figcaption');
+      const immagine = corpo.querySelector('.fumetto-foto img');
+      const credito = corpo.querySelector('.fumetto-foto figcaption');
       if (immagine) {
         immagine.src = dati.foto.src;
         immagine.alt = dati.foto.alt || '';
