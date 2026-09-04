@@ -4570,7 +4570,12 @@ body input.casella-data:hover { border: 0; }
   cursor: default;
 }
 .tasto-barra-tempo:disabled:hover { border-color: var(--bordo); background: var(--superficie-alta); }
-.tasto-stop-barra { font-size: 0.72rem; }
+.tasto-pausa-barra { font-size: 1rem; }
+.tasto-pausa-barra.attiva {
+  border-color: rgba(245, 181, 68, 0.65);
+  background: rgba(60, 40, 8, 0.9);
+  color: var(--ambra);
+}
 
 /* Il ritorno ad adesso c'è solo quando c'è un altrove da cui tornare: in
    tempo reale sarebbe un tasto che non fa niente, e occuperebbe lo spazio
