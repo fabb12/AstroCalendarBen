@@ -29635,6 +29635,69 @@ function solDisegnaRaggiVicino(ctx, versoSole, portata) {
   ctx.restore();
 }
 
+// Il Sole del banco Terra-Luna non puo' stare alla sua distanza reale: a
+// centocinquanta milioni di chilometri sarebbe oltre trecento orbite lunari
+// fuori dalla tela. Nasconderlo del tutto, pero', lascia i coni senza una
+// causa visibile. Lo appoggiamo quindi al bordo nella sua direzione vera,
+// come una sorgente luminosa dichiaratamente fuori scala. I raggi paralleli
+// partono dalla stessa parte e continuano a conservare la geometria reale.
+function solDisegnaSoleVicino(ctx, versoSole) {
+  const dir = solVersoRaggi(versoSole);
+  if (!dir) return;
+  const terra = solVicPunto([0, 0, 0]);
+  const r = Math.max(23, Math.min(36, Math.min(sol.L, sol.H) * 0.06));
+  const margine = r + 13;
+  const candidati = [];
+  if (Math.abs(dir.ux) > 1e-6) {
+    candidati.push((margine - terra.px) / dir.ux);
+    candidati.push((sol.L - margine - terra.px) / dir.ux);
+  }
+  if (Math.abs(dir.uy) > 1e-6) {
+    candidati.push((margine - terra.py) / dir.uy);
+    candidati.push((sol.H - margine - terra.py) / dir.uy);
+  }
+  const t = candidati.filter(v => v > 0).sort((a, b) => a - b)[0];
+  if (!isFinite(t)) return;
+  const x = terra.px + dir.ux * t, y = terra.py + dir.uy * t;
+
+  ctx.save();
+  const alone = ctx.createRadialGradient(x, y, r * 0.18, x, y, r * 2.7);
+  alone.addColorStop(0, 'rgba(255, 250, 210, 0.95)');
+  alone.addColorStop(0.3, 'rgba(251, 191, 36, 0.48)');
+  alone.addColorStop(1, 'rgba(245, 158, 11, 0)');
+  ctx.fillStyle = alone;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 2.7, 0, Math.PI * 2);
+  ctx.fill();
+
+  const disco = ctx.createRadialGradient(x - r * 0.3, y - r * 0.32, r * 0.08, x, y, r);
+  disco.addColorStop(0, '#fffde7');
+  disco.addColorStop(0.42, '#fde047');
+  disco.addColorStop(0.82, '#f59e0b');
+  disco.addColorStop(1, '#ea580c');
+  ctx.fillStyle = disco;
+  ctx.shadowColor = 'rgba(253, 224, 71, 0.9)';
+  ctx.shadowBlur = 18;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(255, 251, 235, 0.82)';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
+  ctx.font = `700 11px ${SOL_CARATTERE}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = y < sol.H / 2 ? 'top' : 'bottom';
+  const ty = y < sol.H / 2 ? y + r + 7 : y - r - 7;
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(6, 10, 20, 0.9)';
+  ctx.strokeText('SOLE · luce', x, ty);
+  ctx.fillStyle = '#fef3c7';
+  ctx.fillText('SOLE · luce', x, ty);
+  ctx.restore();
+}
+
 // Da che parte cade il Sole, sullo schermo: serve ai raggi e alla scritta che
 // li nomina, che però va messa insieme a tutte le altre (vedi
 // `solEtichetteVicino`) o finisce stampata sopra alla Luna
@@ -29675,6 +29738,7 @@ function solDisegnaVicino() {
   // restare in mezzo alla tela, e la Terra le gira attorno (vedi `solScegli`)
   solAggiornaPivot();
 
+  solDisegnaSoleVicino(ctx, g.versoSole);
   solDisegnaRaggiVicino(ctx, g.versoSole, g.dLuna);
   solDisegnaPianoVicino(ctx, g.dLuna);
 
@@ -29890,9 +29954,31 @@ function solEtichetteVicino(ctx, corpi, orbita, g) {
   const k = solVicIngrandimento();
   const largoOmbra = solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, meta) * k * solVicPx();
   if (largoOmbra > 5) {
-    solEtichetta(ctx, 'ombra', pMeta.px, pMeta.py, largoOmbra + 2, 'rgba(196, 181, 253, 0.8)', 10.5, prese);
+    solEtichetta(ctx, 'ombra terrestre', pMeta.px, pMeta.py, largoOmbra + 2, 'rgba(196, 181, 253, 0.8)', 10.5, prese);
     const largoPen = solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, meta) * k * solVicPx();
-    solEtichetta(ctx, 'penombra', pMeta.px, pMeta.py, largoPen + 2, 'rgba(148, 175, 225, 0.7)', 10, prese);
+    solEtichetta(ctx, 'penombra terrestre', pMeta.px, pMeta.py, largoPen + 2, 'rgba(148, 175, 225, 0.7)', 10, prese);
+  }
+  // Quando la Luna e' fra Sole e Terra, i due coni quasi coincidono sullo
+  // stesso asse. Nominarli vicino alla Luna evita che sembrino il seguito
+  // del cono terrestre e rende leggibile quale ombra sta raggiungendo il
+  // globo. La macchia sulla superficie, disegnata dal globo stesso, resta
+  // davanti al pianeta e chiude visivamente questo cono nel punto esatto.
+  const luce = skyDot(solVersore(g.luna), g.versoSole);
+  if (luce > 0.9) {
+    const antiLuna = solVersore([
+      g.luna[0] - g.sole[0], g.luna[1] - g.sole[1], g.luna[2] - g.sole[2]]);
+    const metaLuna = Math.min(g.dLuna * 0.42,
+      solApiceOmbra(RAGGIO_LUNA_KM, Math.hypot(
+        g.sole[0] - g.luna[0], g.sole[1] - g.luna[1], g.sole[2] - g.luna[2])) * 0.55);
+    const pLuna = solVicPunto([
+      g.luna[0] + antiLuna[0] * metaLuna,
+      g.luna[1] + antiLuna[1] * metaLuna,
+      g.luna[2] + antiLuna[2] * metaLuna
+    ]);
+    solEtichetta(ctx, 'ombra lunare', pLuna.px, pLuna.py, 7,
+      'rgba(216, 200, 255, 0.92)', 10.5, prese);
+    solEtichetta(ctx, 'penombra lunare', pLuna.px, pLuna.py, 23,
+      'rgba(165, 195, 245, 0.82)', 10, prese);
   }
   if (orbita && orbita.nodi.length >= 2) {
     orbita.nodi.slice(0, 2).forEach(n => {
