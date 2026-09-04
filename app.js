@@ -29718,11 +29718,32 @@ function solDisegnaVicino() {
     const posa = solConoLunaVisibile(g.luna, antiLuna, g.dLuna * 1.25, ombraSole);
     solDisegnaCono(ctx, g.luna, posa.asse,
       (s) => solRaggioPenombra(RAGGIO_LUNA_KM, dSoleLuna, s * posa.rapporto) * k,
-      posa.portata, 'rgba(250, 204, 21, 0.10)', 'rgba(253, 224, 71, 0.5)');
+      posa.portata, SOL_COL_PENOMBRA, SOL_COL_PENOMBRA_BORDO);
+
+    // Il cono pieno non finisce sempre sulla Terra. Se la Luna e' un po'
+    // piu' lontana, si chiude prima e da quella punta nasce l'antiumbra, che
+    // si riallarga fino al globo: e' proprio la geometria di un'eclissi
+    // anulare. Fermare il disegno alla punta lasciava invece un tratto vuoto
+    // fra cono e macchia terrestre, come se fossero due fenomeni separati.
+    // Disegniamo prima l'umbra scura fino alla punta (o alla superficie), poi
+    // l'eventuale antiumbra con la stessa ambra usata sulla Terra.
+    const apiceGrafico = apiceLuna / posa.rapporto;
+    const fineUmbra = Math.min(apiceGrafico, posa.portata);
     solDisegnaCono(ctx, g.luna, posa.asse,
       (s) => solRaggioUmbra(RAGGIO_LUNA_KM, dSoleLuna, s * posa.rapporto) * k,
-      Math.min(apiceLuna / posa.rapporto, posa.portata),
-      'rgba(250, 180, 24, 0.24)', 'rgba(255, 221, 87, 0.95)');
+      fineUmbra, SOL_COL_OMBRA, SOL_COL_OMBRA_BORDO);
+    if (apiceGrafico < posa.portata) {
+      const punta = [
+        g.luna[0] + posa.asse[0] * apiceGrafico,
+        g.luna[1] + posa.asse[1] * apiceGrafico,
+        g.luna[2] + posa.asse[2] * apiceGrafico
+      ];
+      solDisegnaCono(ctx, punta, posa.asse,
+        (s) => Math.max(0, -solRaggioUmbra(
+          RAGGIO_LUNA_KM, dSoleLuna, (s + apiceGrafico) * posa.rapporto)) * k,
+        posa.portata - apiceGrafico,
+        'rgba(180, 83, 9, 0.22)', 'rgba(251, 191, 36, 0.88)');
+    }
   };
 
   coniTerra();
