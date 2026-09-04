@@ -29770,7 +29770,7 @@ function solDisegnaSoleVicino(ctx, versoSole, distanzaLuna) {
   ctx.textBaseline = 'middle';
   ctx.lineWidth = 4;
   ctx.strokeStyle = 'rgba(6, 10, 20, 0.9)';
-  const etichetta = sol.misureVere ? 'SOLE · dimensione reale' : 'SOLE · dimensione didattica';
+  const etichetta = sol.misureVere ? 'SOLE · dimensione reale' : 'SOLE';
   ctx.strokeText(etichetta, etichettaX, etichettaY);
   ctx.fillStyle = '#fef3c7';
   ctx.fillText(etichetta, etichettaX, etichettaY);
