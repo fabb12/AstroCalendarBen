@@ -192,6 +192,25 @@ const server = http.createServer((req, res) => {
       disegniCostellazioni.premuto === 'false');
   console.log(`              magnitudine limite adesso: ${cielo.limite && cielo.limite.toFixed(1)}`);
 
+  // Ogni formato usato dal menu Eventi deve offrire la strada verso la
+  // scheda completa: sia ciò che sta accadendo, sia il programma settimanale.
+  const tastiSchedaEventi = await pagina.evaluate(() => {
+    const ev = eventiCalcolati[0];
+    const conta = html => {
+      const nodo = document.createElement('div');
+      nodo.innerHTML = html;
+      return [...nodo.querySelectorAll('button')]
+        .filter(b => b.textContent.trim() === 'Vedi scheda').length;
+    };
+    return {
+      vicino: conta(skyEventoHtml(ev, false)),
+      settimana: conta(skyEventoSettimanaHtml(ev))
+    };
+  });
+  ok('ogni evento nel menu del planetario ha il tasto Vedi scheda',
+    tastiSchedaEventi.vicino === 1 && tastiSchedaEventi.settimana === 1,
+    `evento vicino ${tastiSchedaEventi.vicino}, settimana ${tastiSchedaEventi.settimana}`);
+
   // La casella dello scarto resta montata sia nel futuro sia nel passato.
   // Il suo valore veniva aggiornato, ma l'etichetta no, perché entrambe le
   // situazioni erano considerate genericamente "spostate".

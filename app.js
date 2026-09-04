@@ -23140,6 +23140,7 @@ function skyEventoHtml(ev, inCorso) {
       <p class="quando-evento">${skyQuandoEventoTesto(ev, inCorso)}</p>
       <div class="azioni-evento">
         <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Vai all'evento</button>
+        <button type="button" class="tasto-evento-cielo" onclick="apriSchedaEvento('${ev.id}')">Vedi scheda</button>
         ${skyTastoPostoIdealeHtml(ev)}
         ${skyTastoPercheHtml(ev)}
       </div>
@@ -23168,6 +23169,7 @@ function skyEventoSettimanaHtml(ev) {
       <p class="quando-evento">${skyGiornoEventoTesto(ev)} · ${skyScartoTempoTesto(scarto)}</p>
       <div class="azioni-evento">
         <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Vai all'evento</button>
+        <button type="button" class="tasto-evento-cielo" onclick="apriSchedaEvento('${ev.id}')">Vedi scheda</button>
         ${skyTastoPostoIdealeHtml(ev)}
         ${skyTastoPercheHtml(ev)}
       </div>
