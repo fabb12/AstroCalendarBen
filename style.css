@@ -5191,6 +5191,16 @@ body input.casella-data:hover { border: 0; }
   text-overflow: clip;
   overflow-wrap: anywhere;
 }
+/* Il nome e' il dato che permette di capire quale stella sia stata toccata.
+   Quelle senza nome proprio portano anche codice di catalogo, magnitudine e
+   costellazione: lasciamo che occupino piu' righe invece di nasconderne la
+   parte finale dietro ai puntini. */
+.fumetto-nome-intero .fumetto-titolo {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
 .fumetto-aereo-foto { margin: 0 0 6px; }
 .fumetto-aereo-foto img {
   display: block;
