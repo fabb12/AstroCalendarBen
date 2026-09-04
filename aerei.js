@@ -1198,6 +1198,11 @@
 
   function sicuro(s) { const e = document.createElement('span'); e.textContent = String(s); return e.innerHTML; }
 
+  function testoRicercaAereo(a) {
+    return [a.callsign, a.registrazione, a.descrizione, a.tipoIcao, a.operatore, a.id]
+      .filter(Boolean).join(' ').toLocaleLowerCase('it');
+  }
+
   function render() {
     aggiornaAllineamenti();
     const box = document.getElementById('aerei-elenco');
@@ -1208,20 +1213,40 @@
         : 'Ancora nessuna lettura: appena arriva, gli aerei compaiono qui.') + '</p>';
       return;
     }
+    const ricerca = String((document.getElementById('aerei-cerca-input') || {}).value || '')
+      .trim().toLocaleLowerCase('it');
+    const mostrati = ricerca ? stato.aerei.filter(a => testoRicercaAereo(a).includes(ricerca)) : stato.aerei;
+    if (!mostrati.length) {
+      box.innerHTML = '<p class="etichetta-comando">Nessun aereo corrisponde alla ricerca.</p>';
+      return;
+    }
     const inDiretta = tempoReale();
-    box.innerHTML = stato.aerei.map(a => {
+    box.innerHTML = mostrati.map(a => {
       const all = a.allineamenti[0];
       const f = fasciaDi(a.distanzaKm);
-      return `<article class="aereo-riga" style="--fascia:${f.colore};--fascia-forte:${f.forte}">` +
+      const nome = a.callsign || a.registrazione || String(a.id || '').toUpperCase();
+      return `<button type="button" class="aereo-riga" data-aereo-punta="${sicuro(a.id)}" ` +
+        `aria-label="Punta il planetario su ${sicuro(nome)}" ` +
+        `style="--fascia:${f.colore};--fascia-forte:${f.forte}">` +
         `<div class="aereo-riga-testa"><span class="aereo-pallino" aria-hidden="true"></span>` +
-        `<strong>${sicuro(a.callsign)}</strong>` +
+        `<strong>${sicuro(nome)}</strong>` +
         `<span class="aereo-distanza">${a.distanzaKm.toFixed(1)} km</span></div>` +
         `<p class="aereo-dati">${Math.round(a.quotaM || 0).toLocaleString('it-IT')} m · ` +
         `${Math.round((a.velocitaMs || 0) * 3.6)} km/h · ${Math.round(a.direzione || 0)}° · ` +
         `${inDiretta ? 'in tempo reale' : 'posizione stimata'}</p>` +
         (all ? `<p class="aereo-allineamento">Possibile allineamento con ${sicuro(all.nome)} ` +
-          `${all.minuti ? `fra ${all.minuti} min` : 'adesso'} (${all.scarto.toFixed(1)}°)</p>` : '') + '</article>';
+          `${all.minuti ? `fra ${all.minuti} min` : 'adesso'} (${all.scarto.toFixed(1)}°)</p>` : '') + '</button>';
     }).join('');
+  }
+
+  function puntaAereoDalPannello(id) {
+    const a = aereiTrova(id);
+    if (!a) return;
+    aereiImpostaVisibili(true);
+    if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
+    if (typeof skyCentraSu === 'function') skyCentraSu({ ...a, nome: a.callsign || a.registrazione || 'L’aereo' });
+    const canvas = document.getElementById('skymap-canvas');
+    if (canvas && typeof canvas.focus === 'function') canvas.focus({ preventScroll: true });
   }
 
   // =====================================================================
@@ -2030,14 +2055,18 @@
     collega('aerei-btn-mostra', () => aereiAlternaVisibili());
     collega('aerei-btn-dati', () => aereiAlternaDati());
     collega('aerei-btn-auto', () => aereiAlternaAuto());
+    const cerca = document.getElementById('aerei-cerca-input');
+    if (cerca) cerca.addEventListener('input', render);
     collega('aerei-pannello-chiudi', () => {
       if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
     });
     document.addEventListener('click', e => {
       const tracking = e.target.closest && e.target.closest('.aereo-tracking');
       const mappa = e.target.closest && e.target.closest('.aereo-mappa');
+      const punta = e.target.closest && e.target.closest('[data-aereo-punta]');
       if (tracking) aereiAlternaTracking(tracking.dataset.aereoId);
       if (mappa) aereiMostraMappa(mappa.dataset.aereoId);
+      if (punta) puntaAereoDalPannello(punta.dataset.aereoPunta);
       if (e.target.closest && e.target.closest('[data-chiudi-rotta-aereo]')) chiudiMappaRotta();
     });
     // Tornando su una scheda lasciata in secondo piano la fotografia è quasi
