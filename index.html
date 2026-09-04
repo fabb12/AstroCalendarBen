@@ -107,7 +107,7 @@
              comandi: lì compare la forma corta, che è già quella con cui
              l'app si presenta sulla schermata iniziale (manifest.json) -->
         <h1 class="titolo-app"><span class="nome-lungo">AstroCalendario di Ben</span><span class="nome-corto">AstroCal</span></h1>
-        <p class="sottotitolo-app">Cosa c'è da vedere in cielo, stanotte e nei prossimi anni</p>
+        <p class="sottotitolo-app">Il cielo di stanotte, da casa tua</p>
       </div>
     </div>
 
@@ -404,10 +404,15 @@
                nomi scritti per esteso facevano una striscia larga mezzo
                schermo, che sul telefono bisognava anche far scorrere. Adesso
                ogni gruppo è la sua icona e nient'altro — orologio, calendario,
-               occhio, cursori, bussola, stella — e il nome resta dove serve
+               occhio, stella — e il nome resta dove serve
                davvero: nel `title` per chi ha il mouse, e in una scritta
-               nascosta (`.nome-gruppo`) per chi legge con lo schermo. Sei
-               tondi entrano senza scorrere anche su un telefono da 320px.
+               nascosta (`.nome-gruppo`) per chi legge con lo schermo.
+
+               Sono quattro e non cinque: «Navigazione» — dove si guarda, i
+               punti cardinali, la bussola — era la stessa domanda di
+               «Visualizzazione», cioè *come* guardo il cielo, spezzata in due
+               linguette che non si sapeva quale aprire. Adesso è la prima
+               scheda di quel pannello.
                Il segnaposto resta subito accanto: scegliere il punto di
                osservazione è un'azione diretta, non un'impostazione da
                cercare dentro al pannello Tempo. La spia ADS-B gli sta a
@@ -428,18 +433,12 @@
                   <path d="M3.6 10h16.8M8.4 3.6v3.4M15.6 3.6v3.4"/>
                 </svg><span class="nome-gruppo">Eventi</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="vista" aria-pressed="false"
-                title="Come guardare il cielo e cosa disegnarci: schermo, oggetti, aria, paesaggio">
+                title="Come guardare il cielo e cosa disegnarci: direzione, schermo, oggetti, aria, paesaggio">
                 <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                   stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M2.6 12S6.4 6.4 12 6.4 21.4 12 21.4 12 17.6 17.6 12 17.6 2.6 12 2.6 12z"/>
                   <circle cx="12" cy="12" r="2.8"/>
                 </svg><span class="nome-gruppo">Visualizzazione</span></button>
-              <button type="button" class="linguetta-gruppo" data-vai-gruppo="navigazione" aria-pressed="false"
-                title="Dove si guarda, zoom e bussola">
-                <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="8.6"/><path d="M15.6 8.4l-2 5.2-5.2 2 2-5.2z"/>
-                </svg><span class="nome-gruppo">Navigazione</span></button>
               <button type="button" class="linguetta-gruppo" data-vai-gruppo="astri" aria-pressed="false"
                 title="Scegli l'astro da cercare">
                 <svg class="icona-linguetta" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -695,7 +694,11 @@
               <div class="schede-vista-guscio">
                 <div class="segmenti-cielo schede-vista" role="tablist" aria-label="Che cosa regolare">
                   <button type="button" class="tasto-segmento attiva" role="tab" aria-selected="true"
-                    id="scheda-vista-schermo"
+                    id="scheda-vista-direzione"
+                    data-scheda-vista="direzione" aria-controls="foglio-vista-direzione"
+                    title="Dove si guarda: punti cardinali, campo visivo, bussola e posizione">Direzione</button>
+                  <button type="button" class="tasto-segmento" role="tab" aria-selected="false"
+                    id="scheda-vista-schermo" tabindex="-1"
                     data-scheda-vista="schermo" aria-controls="foglio-vista-schermo"
                     title="Come guardare: pieno schermo, colori notturni, fotocamera, reticolo">Schermo</button>
                   <button type="button" class="tasto-segmento" role="tab" aria-selected="false"
@@ -713,10 +716,72 @@
                 </div>
               </div>
 
-              <!-- SCHERMO: come guardare -->
-              <div id="foglio-vista-schermo" class="foglio-vista foglio-attivo" role="tabpanel" data-scheda="schermo" aria-labelledby="scheda-vista-schermo">
+              <!-- DIREZIONE: dove si guarda.
+                   Era il pannello «Navigazione», una linguetta a sé: ma «dove
+                   guardo» e «come guardo» sono la stessa domanda, e tenerle in
+                   due finestre diverse voleva dire chiedere a chi apre il
+                   planetario di indovinare quale delle due contenesse il
+                   comando che sta cercando. Qui sta per prima perché è la cosa
+                   che si tocca subito: si arriva, si gira il cielo verso sud,
+                   e solo dopo si decide che cosa disegnarci sopra.
+
+                   Le tre fasce rispondono a tre domande in fila: verso dove,
+                   che cosa segue la vista, e — ripiegata, perché la si apre
+                   solo quando il Nord punta storto — la bussola. -->
+              <div id="foglio-vista-direzione" class="foglio-vista foglio-attivo" role="tabpanel" data-scheda="direzione" aria-labelledby="scheda-vista-direzione">
+                <p class="titolo-foglio-vista">Guarda verso</p>
+                <div class="riga-comandi" role="group" aria-label="Guarda verso">
+                  <div class="segmenti-cielo">
+                    <button type="button" class="tasto-segmento" data-verso="0" title="Guarda verso nord">N</button>
+                    <button type="button" class="tasto-segmento" data-verso="90" title="Guarda verso est">E</button>
+                    <button type="button" class="tasto-segmento" data-verso="180" title="Guarda verso sud">S</button>
+                    <button type="button" class="tasto-segmento" data-verso="270" title="Guarda verso ovest">O</button>
+                    <button type="button" class="tasto-segmento" data-verso="zenit" title="Guarda dritto in alto">Zenit</button>
+                  </div>
+                </div>
+                <p class="titolo-foglio-vista">Chi muove la vista</p>
+                <div class="riga-comandi riga-tasti-griglia">
+                  <button id="skymap-btn-segui" type="button" class="tasto-cielo attiva"
+                    title="Con bussola e giroscopio accesi il cielo lo punta il telefono. Spegnendolo la mappa la muovi tu col dito, e i tasti Centra e i punti cardinali tornano a funzionare">Segui il telefono</button>
+                  <button id="skymap-btn-centra" type="button" class="tasto-cielo" title="Porta al centro della mappa l'oggetto selezionato">Centra</button>
+                  <button id="skymap-btn-insegui" type="button" class="tasto-cielo"
+                    title="Tieni l'oggetto selezionato sempre al centro della mappa: la vista lo segue mentre il cielo ruota o mentre scorre il playback">Insegui</button>
+                  <button id="skymap-btn-campo" type="button" class="tasto-cielo" title="Torna al campo visivo di partenza, 55° (con la fotocamera accesa: azzera la taratura dell'obiettivo)">Campo 55°</button>
+                </div>
+                <!-- Bussola e posizione: le si apre solo quando qualcosa non
+                     torna, e insieme ai comandi ci sono le istruzioni per capire
+                     che cosa -->
+                <details id="skymap-istruzioni" class="nota-ripiegata">
+                  <summary>Il Nord punta storto? Bussola e posizione</summary>
+                  <!-- La taratura sul cielo vero: l'unico riferimento che un
+                       planetario ha e una mappa no. Sta per prima perché è la
+                       risposta giusta quasi sempre — i ±5° a mano restano per
+                       chi non ha nessun astro in vista. -->
+                  <div class="riga-comandi">
+                    <button id="skymap-btn-tara-astro" type="button" class="tasto-cielo"
+                      title="Punta il mirino su un astro che vedi davvero (la Luna, il Sole, un pianeta, una stella luminosa) e tocca qui: la bussola si corregge sul cielo vero">Tara su un astro</button>
+                  </div>
+                  <div class="riga-comandi">
+                    <button id="skymap-cal-meno" type="button" class="tasto-cielo tasto-passo" title="Ruota la bussola verso ovest">−5°</button>
+                    <span id="skymap-cal-valore" class="lettura-bussola">0°</span>
+                    <button id="skymap-cal-piu" type="button" class="tasto-cielo tasto-passo" title="Ruota la bussola verso est">+5°</button>
+                    <button id="skymap-cal-zero" type="button" class="tasto-cielo tasto-passo" title="Torna alla bussola del telefono, senza correzioni">Azzera</button>
+                    <button id="skymap-btn-calibra" type="button" class="tasto-cielo" title="Permette di correggere la bussola trascinando il dito sul cielo">Calibra</button>
+                    <button id="skymap-btn-posizione" type="button" class="tasto-cielo" title="Rileva di nuovo la posizione: GPS, poi rete, poi a mano">Posizione</button>
+                  </div>
+                </details>
+              </div>
+
+              <!-- SCHERMO: come guardare.
+                   «Vista pulita» è arrivata qui da Navigazione, ed è il suo
+                   posto: toglie di mezzo tutto quello che sta *sopra* al cielo,
+                   che è la stessa famiglia del pieno schermo e dei colori
+                   notturni — non ha niente a che vedere con dove si guarda. -->
+              <div id="foglio-vista-schermo" class="foglio-vista" role="tabpanel" data-scheda="schermo" aria-labelledby="scheda-vista-schermo" hidden>
                 <div class="riga-comandi riga-tasti-griglia">
                   <button id="skymap-btn-schermo" type="button" class="tasto-cielo" title="Il cielo occupa tutto lo schermo (anche con un doppio clic sulla mappa)">Schermo intero</button>
+                  <button id="skymap-btn-pulito" type="button" class="tasto-cielo"
+                    aria-pressed="false" title="Nasconde tutte le informazioni e i comandi in sovrimpressione; resta solo il pulsante di registrazione. Tocca il cielo per farli ricomparire">Vista pulita</button>
                   <button id="skymap-btn-notte" type="button" class="tasto-cielo" title="Filtro rosso: protegge la vista notturna">Modalità notte</button>
                   <button id="skymap-btn-hover" type="button" class="tasto-cielo" aria-pressed="false" title="La modalità hover è disponibile quando la vista segue il telefono">Modalità hover</button>
                   <button id="skymap-btn-camera" type="button" class="tasto-cielo" title="Sovrapponi il cielo all'immagine della fotocamera: il campo visivo diventa quello dell'obiettivo, e il pizzico lo tara">Fotocamera</button>
@@ -757,14 +822,23 @@
                 <div class="riga-comandi riga-tasti-griglia">
                   <button id="skymap-btn-atmosfera" type="button" class="tasto-cielo attiva" aria-pressed="true" title="Mostra il colore del cielo, la foschia e gli aloni. Spegnendola si spengono anche le nuvole">Atmosfera</button>
                   <button id="skymap-btn-nuvole" type="button" class="tasto-cielo attiva" aria-pressed="true" title="Aggiunge le nuvole previste per questo luogo e quest'ora all'atmosfera">Nuvole</button>
-                  <button id="skymap-btn-aurora" type="button" class="tasto-cielo attiva" aria-pressed="true" title="L'ovale aurorale — boreale o australe, secondo l'emisfero — messo in cielo dove sta davvero: se da qui si vede, e quanto se ne affaccia sopra l'orizzonte, lo decide la curvatura della Terra">Aurora</button>
+                  <button id="skymap-btn-aurora" type="button" class="tasto-cielo" aria-pressed="false" aria-expanded="false" aria-controls="blocco-aurora" title="Accendi l'ovale aurorale — boreale o australe, secondo l'emisfero — messo in cielo dove sta davvero: se da qui si vede, e quanto se ne affaccia sopra l'orizzonte, lo decide la curvatura della Terra. Accendendolo compaiono qui sotto la slitta della tempesta e la riga che dice cosa si vedrebbe da qui">Aurora</button>
                 </div>
 
                 <!-- L'aurora vera, da queste latitudini, capita una volta ogni
                      dieci anni. La slitta serve a vederla lo stesso: si alza
                      la tempesta e si guarda da che Kp comincia ad affacciarsi
-                     sopra le colline di casa. -->
-                <div class="blocco-aurora">
+                     sopra le colline di casa.
+
+                     Compare **solo con l'ovale acceso** (`hidden` lo mette e lo
+                     toglie `aurAggiornaPannello`): a tasto spento la slitta
+                     regolava una cosa che non si stava disegnando, e la riga di
+                     stato raccontava un cielo che nessuno stava guardando —
+                     due terzi della scheda «Cielo» occupati da un comando
+                     inerte. Chi la muove accende comunque l'aurora
+                     (`aurImpostaKpSimulato`), quindi il comando non si può
+                     perdere: si apre con la cosa che comanda. -->
+                <div id="blocco-aurora" class="blocco-aurora" hidden>
                   <p id="skymap-aurora-nota" class="etichetta-comando nota-lunga"></p>
                   <div class="riga-comandi riga-aurora">
                     <label class="etichetta-comando" for="skymap-aurora-kp">Simula una tempesta</label>
@@ -787,55 +861,6 @@
                 </div>
                 <p id="skymap-terreno-nota" class="etichetta-comando nota-lunga"></p>
               </div>
-            </section>
-
-            <!-- NAVIGAZIONE: dove si guarda. I
-                 quattro punti cardinali diventano quattro lettere in una
-                 pillola sola, e la bussola — che si tocca una volta in tutta
-                 la serata, e solo se punta storto — sta ripiegata insieme
-                 alle sue istruzioni. -->
-            <section class="gruppo-comandi" data-gruppo="navigazione" aria-label="Navigazione">
-              <div class="riga-comandi riga-tasti-griglia">
-                <button id="skymap-btn-pulito" type="button" class="tasto-cielo"
-                  aria-pressed="false" title="Nasconde tutte le informazioni e i comandi in sovrimpressione; resta solo il pulsante di registrazione. Tocca il cielo per farli ricomparire">Vista pulita</button>
-                <button id="skymap-btn-segui" type="button" class="tasto-cielo attiva"
-                  title="Con bussola e giroscopio accesi il cielo lo punta il telefono. Spegnendolo la mappa la muovi tu col dito, e i tasti Centra e i punti cardinali tornano a funzionare">Segui il telefono</button>
-                <button id="skymap-btn-centra" type="button" class="tasto-cielo" title="Porta al centro della mappa l'oggetto selezionato">Centra</button>
-                <button id="skymap-btn-insegui" type="button" class="tasto-cielo"
-                  title="Tieni l'oggetto selezionato sempre al centro della mappa: la vista lo segue mentre il cielo ruota o mentre scorre il playback">Insegui</button>
-                <button id="skymap-btn-campo" type="button" class="tasto-cielo" title="Torna al campo visivo di partenza, 55° (con la fotocamera accesa: azzera la taratura dell'obiettivo)">Campo 55°</button>
-              </div>
-              <div class="riga-comandi" role="group" aria-label="Guarda verso">
-                <div class="segmenti-cielo">
-                  <button type="button" class="tasto-segmento" data-verso="0" title="Guarda verso nord">N</button>
-                  <button type="button" class="tasto-segmento" data-verso="90" title="Guarda verso est">E</button>
-                  <button type="button" class="tasto-segmento" data-verso="180" title="Guarda verso sud">S</button>
-                  <button type="button" class="tasto-segmento" data-verso="270" title="Guarda verso ovest">O</button>
-                  <button type="button" class="tasto-segmento" data-verso="zenit" title="Guarda dritto in alto">Zenit</button>
-                </div>
-              </div>
-              <!-- Bussola e posizione: le si apre solo quando qualcosa non
-                   torna, e insieme ai comandi ci sono le istruzioni per capire
-                   che cosa -->
-              <details id="skymap-istruzioni" class="nota-ripiegata">
-                <summary>Bussola e posizione</summary>
-                <!-- La taratura sul cielo vero: l'unico riferimento che un
-                     planetario ha e una mappa no. Sta per prima perché è la
-                     risposta giusta quasi sempre — i ±5° a mano restano per
-                     chi non ha nessun astro in vista. -->
-                <div class="riga-comandi">
-                  <button id="skymap-btn-tara-astro" type="button" class="tasto-cielo"
-                    title="Punta il mirino su un astro che vedi davvero (la Luna, il Sole, un pianeta, una stella luminosa) e tocca qui: la bussola si corregge sul cielo vero">Tara su un astro</button>
-                </div>
-                <div class="riga-comandi">
-                  <button id="skymap-cal-meno" type="button" class="tasto-cielo tasto-passo" title="Ruota la bussola verso ovest">−5°</button>
-                  <span id="skymap-cal-valore" class="lettura-bussola">0°</span>
-                  <button id="skymap-cal-piu" type="button" class="tasto-cielo tasto-passo" title="Ruota la bussola verso est">+5°</button>
-                  <button id="skymap-cal-zero" type="button" class="tasto-cielo tasto-passo" title="Torna alla bussola del telefono, senza correzioni">Azzera</button>
-                  <button id="skymap-btn-calibra" type="button" class="tasto-cielo" title="Permette di correggere la bussola trascinando il dito sul cielo">Calibra</button>
-                  <button id="skymap-btn-posizione" type="button" class="tasto-cielo" title="Rileva di nuovo la posizione: GPS, poi rete, poi a mano">Posizione</button>
-                </div>
-              </details>
             </section>
 
             <!-- ASTRI: l'elenco di cosa cercare -->
