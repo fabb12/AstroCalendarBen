@@ -27183,13 +27183,15 @@ async function videoScegliCartella(creaCartellaApp = false) {
   }
   try {
     const base = await window.showDirectoryPicker({ id: 'astrocalendario-video', mode: 'readwrite', startIn: 'videos' });
-    // Il selettore web non può creare da solo una cartella accanto a Video:
-    // l'utente indica la posizione e noi creiamo (o riapriamo) quella dell'app.
+    // Quando si apre una cartella esistente, quella scelta E' la cartella da
+    // leggere: non va mai nascosta dentro una nuova sottocartella. Soltanto il
+    // comando esplicito «Crea» chiede una posizione e crea quella dell'app.
     const handle = creaCartellaApp && base.name.toLocaleLowerCase() !== VIDEO_CARTELLA_NOME
       ? await base.getDirectoryHandle(VIDEO_CARTELLA_NOME, { create: true })
       : base;
     videoCartella = handle;
     videoCartellaAutorizzata = true;
+    videoMostraSceltaIniziale(false);
     try { await videoDB('preferenze', 'readwrite', store => store.put(handle, 'cartella-video')); } catch (e) { /* la copia funziona comunque */ }
     videoAggiornaCartella();
     videoMessaggio(`La galleria è sincronizzata con “${handle.name}”.`);
@@ -27205,8 +27207,12 @@ function videoAggiornaCartella() {
   const testo = document.getElementById('galleria-cartella');
   if (!testo) return;
   testo.textContent = videoCartella
-    ? `Cartella sincronizzata: “${videoCartella.name}”. Le modifiche ai file MP4 appariranno qui.`
-    : `Aprendo la galleria verrà creata la cartella “${VIDEO_CARTELLA_NOME}”.`;
+    ? `Cartella sincronizzata: “${videoCartella.name}”. Le modifiche ai video appariranno qui.`
+    : 'Scegli la cartella che contiene i video da mostrare.';
+}
+
+function videoMostraSceltaIniziale(mostra) {
+  document.getElementById('galleria-scelta-iniziale')?.classList.toggle('hidden', !mostra);
 }
 
 async function videoScriviInCartella(esito) {
@@ -27299,7 +27305,7 @@ async function videoRenderGalleria() {
       if (permesso === 'granted') {
         const dallaCartella = [];
         for await (const [nome, handle] of videoCartella.entries()) {
-          if (handle.kind !== 'file' || !/\.mp4$/i.test(nome)) continue;
+          if (handle.kind !== 'file' || !/\.(?:mp4|webm)$/i.test(nome)) continue;
           const file = await handle.getFile();
           dallaCartella.push({
             id: `cartella:${nome}`, nome, tipo: file.type || 'video/mp4', blob: file,
@@ -27312,7 +27318,7 @@ async function videoRenderGalleria() {
         video = video.filter(v => !v.cartellaNome || nomiPresenti.has(v.cartellaNome));
         const nomiCartella = new Set(dallaCartella.map(v => v.nome));
         video = video.filter(v => !nomiCartella.has(v.nome)).concat(dallaCartella);
-        videoMessaggio(`${dallaCartella.length} file MP4 sincronizzati da “${videoCartella.name}”.`);
+        videoMessaggio(`${dallaCartella.length} video caricati da “${videoCartella.name}”.`);
       }
     } catch (e) {
       videoMessaggio('Non riesco a sincronizzare la cartella. Riaprila con “Scegli cartella”.');
@@ -27354,8 +27360,13 @@ async function videoApriGalleria() {
   modale.classList.remove('hidden');
   videoAggiornaCartella();
   if (!videoCartella && typeof window.showDirectoryPicker === 'function') {
-    await videoScegliCartella(true);
+    // Senza un handle salvato il browser non permette di cercare una cartella
+    // per nome senza coinvolgere l'utente. Mostriamo quindi le due alternative
+    // prima del selettore, evitando di creare cartelle per errore.
+    videoMostraSceltaIniziale(true);
+    videoMessaggio('Scegli se collegare una cartella esistente o crearne una nuova.');
   } else if (videoCartella) {
+    videoMostraSceltaIniziale(false);
     try {
       let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
       if (permesso !== 'granted') permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
@@ -27379,7 +27390,9 @@ function videoChiudiGalleria() {
 async function videoInizializza() {
   document.getElementById('btn-galleria')?.addEventListener('click', videoApriGalleria);
   document.getElementById('btn-chiudi-galleria')?.addEventListener('click', videoChiudiGalleria);
-  document.getElementById('galleria-scegli-cartella')?.addEventListener('click', () => videoScegliCartella(true));
+  document.getElementById('galleria-scegli-cartella')?.addEventListener('click', () => videoScegliCartella(false));
+  document.getElementById('galleria-usa-esistente')?.addEventListener('click', () => videoScegliCartella(false));
+  document.getElementById('galleria-crea-cartella')?.addEventListener('click', () => videoScegliCartella(true));
   document.getElementById('modale-galleria')?.addEventListener('click', e => {
     if (e.target.id === 'modale-galleria') videoChiudiGalleria();
   });

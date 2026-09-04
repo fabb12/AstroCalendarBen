@@ -285,6 +285,58 @@ const server = http.createServer((req, res) => {
     `${salvataggiRipetuti.scritture} scritture, ${salvataggiRipetuti.verifichePermesso} verifica e ` +
       `${salvataggiRipetuti.richiestePermesso} nuove richieste`);
 
+  const sceltaCartellaGalleria = await pagina.evaluate(async () => {
+    const cartellaOriginale = videoCartella;
+    const autorizzazioneOriginale = videoCartellaAutorizzata;
+    const pickerOriginale = window.showDirectoryPicker;
+    let sottocartelleCreate = 0;
+    const file = nome => ({
+      kind: 'file',
+      getFile: async () => new File(['filmato'], nome, {
+        type: nome.endsWith('.webm') ? 'video/webm' : 'video/mp4', lastModified: Date.now()
+      })
+    });
+    const esistente = {
+      name: 'I miei filmati',
+      queryPermission: async () => 'granted',
+      async *entries() {
+        yield ['uno.mp4', file('uno.mp4')];
+        yield ['due.webm', file('due.webm')];
+        yield ['note.txt', file('note.txt')];
+      },
+      getDirectoryHandle: async () => { sottocartelleCreate += 1; }
+    };
+    window.showDirectoryPicker = async () => esistente;
+    await videoScegliCartella(false);
+    const sceltaDiretta = videoCartella === esistente;
+    const videoCaricati = document.querySelectorAll('#galleria-elenco .galleria-video').length;
+
+    const cartellaApp = {
+      name: VIDEO_CARTELLA_NOME,
+      queryPermission: async () => 'granted',
+      async *entries() {}
+    };
+    const posizione = {
+      name: 'Video',
+      getDirectoryHandle: async (nome, opzioni) => {
+        if (nome === VIDEO_CARTELLA_NOME && opzioni.create) sottocartelleCreate += 1;
+        return cartellaApp;
+      }
+    };
+    window.showDirectoryPicker = async () => posizione;
+    await videoScegliCartella(true);
+    const creazioneEsplicita = videoCartella === cartellaApp;
+
+    window.showDirectoryPicker = pickerOriginale;
+    videoCartella = cartellaOriginale;
+    videoCartellaAutorizzata = autorizzazioneOriginale;
+    return { sceltaDiretta, videoCaricati, creazioneEsplicita, sottocartelleCreate };
+  });
+  ok('la galleria usa direttamente la cartella esistente e ne carica i video',
+    sceltaCartellaGalleria.sceltaDiretta && sceltaCartellaGalleria.videoCaricati === 2 &&
+      sceltaCartellaGalleria.creazioneEsplicita && sceltaCartellaGalleria.sottocartelleCreate === 1,
+    `${sceltaCartellaGalleria.videoCaricati} video, ${sceltaCartellaGalleria.sottocartelleCreate} creazione esplicita`);
+
   // La X aggiunta alla scheda degli aerei aveva ridefinito il pannello come
   // `position: relative`: dentro al planetario entrava così nel flusso sotto
   // al canvas e pareva non aprirsi. Proviamo la posizione calcolata, non solo

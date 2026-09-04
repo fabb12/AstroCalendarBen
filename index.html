@@ -2422,8 +2422,18 @@
       </div>
       <div class="corpo-modale galleria-corpo">
         <div class="galleria-comandi">
-          <p id="galleria-cartella" class="galleria-cartella">Aprendo la galleria verrà creata la cartella “astrocalben”.</p>
+          <p id="galleria-cartella" class="galleria-cartella">Scegli la cartella che contiene i video da mostrare.</p>
           <button id="galleria-scegli-cartella" type="button" class="tasto-cielo">Scegli cartella</button>
+        </div>
+        <div id="galleria-scelta-iniziale" class="galleria-scelta-iniziale hidden" role="group" aria-labelledby="galleria-scelta-titolo">
+          <div>
+            <p id="galleria-scelta-titolo" class="galleria-scelta-titolo">La cartella di AstroCalendario non è ancora collegata</p>
+            <p class="galleria-cartella">Puoi scegliere una cartella già esistente e caricare subito i video che contiene, oppure crearne una nuova.</p>
+          </div>
+          <div class="galleria-scelta-azioni">
+            <button id="galleria-usa-esistente" type="button" class="tasto-cielo">Scegli una cartella esistente</button>
+            <button id="galleria-crea-cartella" type="button" class="tasto-cielo">Crea “astrocalben”</button>
+          </div>
         </div>
         <p id="galleria-stato" class="galleria-stato" role="status" aria-live="polite"></p>
         <div id="galleria-elenco" class="galleria-elenco"></div>
