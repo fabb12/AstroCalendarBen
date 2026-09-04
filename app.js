@@ -7484,6 +7484,12 @@ const sky = {
   // non in minuti, perché la barra del tempo deve poter spostare il cielo
   // anche di dieci secondi: le stazioni spaziali fanno un grado al secondo.
   offsetTempoSec: 0,
+  // I due orologi non sono la stessa cosa: in `reale` l'istante viene sempre
+  // dal sistema; in `simulato` resta ancorato qui e si muove soltanto per un
+  // comando dell'utente o per il playback. In particolare Pausa deve fermare
+  // davvero l'istante, non lasciare che continui a seguire Date.now().
+  modalitaTempo: 'reale',
+  istanteSimulatoMs: null,
   ancoraTempoSec: 0,     // il centro della finestra su cui scorre la slitta
   finestraTempoSec: 43200, // mezza larghezza della finestra della slitta
   passoTempoSec: 600,    // quanto spostano i tasti − e +, e con loro la slitta
@@ -22903,6 +22909,13 @@ function skyRigheScheda(o) {
 const skySchedaImg = new Map();
 function skySchedaImmagineHtml(o) {
   if (!o) return '';
+  // Per le stazioni non si inventa una miniatura dal simbolo della mappa:
+  // la scheda si apre direttamente su una fotografia reale della stazione.
+  const sat = o.tipo === 'satellite' ? satelliteDaId(o.satId) : null;
+  if (sat && sat.foto) {
+    return `<img class="scheda-img scheda-img-stazione" src="${sat.foto}" ` +
+      `alt="${sat.fotoAlt}" width="160" height="96" loading="eager" referrerpolicy="no-referrer">`;
+  }
   const chiave = o.categoria === 'profondo' ? 'dso:' + o.nome : o.id;
   if (!chiave) return '';
   if (skySchedaImg.has(chiave)) return skySchedaImg.get(chiave);
@@ -24936,6 +24949,18 @@ function skyGuardaVerso(verso) {
 
 // Apre il cielo in diretta puntato su una stazione spaziale
 window.cercaSatelliteNelCielo = (satId) => {
+  cercaNelCielo('sat-' + satId);
+  satPrecaricaTle();
+};
+
+// Ponte dalla previsione di Stasera al planetario: il culmine è il punto più
+// alto e quindi quello utile da osservare. Prima si imposta l'istante esatto,
+// poi si apre la vista e si centra la stazione calcolata per quell'istante.
+window.vaiAlPassaggioSatellite = (satId, istanteMs) => {
+  const quando = Number(istanteMs);
+  if (!satelliteDaId(satId) || !Number.isFinite(quando)) return;
+  skyFermaPlayback();
+  skyImpostaOffsetTempo((quando - Date.now()) / 1000);
   cercaNelCielo('sat-' + satId);
   satPrecaricaTle();
 };
@@ -30962,12 +30987,11 @@ function solAggiornaBarra(quando) {
     const cammina = solInMarcia();
     const v = skyVelocitaPlayback();
     const verso = sky.playbackVerso || sky.playbackUltimoVerso || 1;
-    play.textContent = cammina ? '❚❚' : (verso > 0 ? '▶' : '◀');
+    play.textContent = verso > 0 ? '▶' : '◀';
     play.classList.toggle('attiva', !!cammina);
+    play.disabled = !!cammina;
     play.setAttribute('aria-pressed', cammina ? 'true' : 'false');
-    play.title = cammina
-      ? `Ferma il tempo (sta camminando a ${v.nome}, la stessa velocità del planetario)`
-      : `Fai camminare il tempo ${verso > 0 ? 'in avanti' : 'all’indietro'}, a ${v.nome}`;
+    play.title = `Fai camminare il tempo ${verso > 0 ? 'in avanti' : 'all’indietro'}, a ${v.nome}`;
   }
   const stop = document.getElementById('sol-stop');
   if (stop) stop.disabled = !solInMarcia();
@@ -31004,8 +31028,7 @@ function solFermaTempo() {
 }
 
 function solAlternaMarcia() {
-  if (solInMarcia()) skyFermaPlayback();
-  else skyAvviaPlayback(sky.playbackUltimoVerso || 1);
+  if (!solInMarcia()) skyAvviaPlayback(sky.playbackUltimoVerso || 1);
   solAggiornaBarra();
 }
 
@@ -31025,7 +31048,7 @@ function solSpostaDiUnPasso(verso) {
 function solTornaAdesso() {
   solFermaTempo();
   sol.ancoraSec = 0;
-  skyImpostaOffsetTempo(0);
+  skyImpostaOffsetTempo(0, { reale: true });
   skyRicalcolaOraAttuale();
   solAggiornaBarra();
 }
@@ -35109,6 +35132,8 @@ const SATELLITI = [
     nomeLungo: 'Stazione Spaziale Internazionale',
     catnr: 25544,
     colore: '#93c5fd',
+    foto: 'https://commons.wikimedia.org/wiki/Special:Redirect/file/International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg?width=800',
+    fotoAlt: 'La Stazione Spaziale Internazionale fotografata in orbita',
     chiaveTle: 'astrocalendario_tle_iss',
     classe: 'Stazione spaziale abitata',
     dimensione: '109 × 73 m, pannelli solari compresi',
@@ -35128,6 +35153,8 @@ const SATELLITI = [
     nomeLungo: 'Tiangong, la stazione spaziale cinese',
     catnr: 48274,
     colore: '#fca5a5',
+    foto: 'https://commons.wikimedia.org/wiki/Special:Redirect/file/Chinese_Space_Station.jpg?width=800',
+    fotoAlt: 'La stazione spaziale Tiangong fotografata in orbita',
     chiaveTle: 'astrocalendario_tle_css',
     classe: 'Stazione spaziale abitata',
     dimensione: 'circa 55 m fra i moduli e i pannelli',
@@ -35496,7 +35523,7 @@ function mostraPassaggiSatelliti() {
           ${p.durataMin} min di passaggio · ${p.distanzaMin} km di distanza al culmine · passaggio ${qualita}.
         </p>
         <div class="mt-2">
-          <button onclick="cercaSatelliteNelCielo('${p.satId}')" class="text-xs px-3 py-1.5 rounded-full bg-slate-700 hover:bg-blue-600 text-white font-semibold" title="Apri il cielo in diretta puntato sulla stazione">Trova nel cielo</button>
+          <button onclick="vaiAlPassaggioSatellite('${p.satId}', ${p.culmine.getTime()})" class="text-xs px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold" title="Apri il planetario al culmine del passaggio, puntato sulla stazione">Vai al planetario</button>
         </div>
       </div>`;
   }).join('');
@@ -36742,7 +36769,14 @@ const SKY_COLORI_PROFONDO = {
 // spostare avanti e indietro — di secondi o di anni — per rivedere una notte
 // passata o preparare quella che verrà.
 function skyAdesso() {
-  return new Date(Date.now() + (sky.offsetTempoSec || 0) * 1000);
+  if (sky.modalitaTempo === 'simulato' && Number.isFinite(sky.istanteSimulatoMs)) {
+    // Lo scarto e' una lettura derivata: mentre il simulato e' in pausa
+    // cambia rispetto all'orologio reale, ma il suo istante resta immobile.
+    sky.offsetTempoSec = (sky.istanteSimulatoMs - Date.now()) / 1000;
+    return new Date(sky.istanteSimulatoMs);
+  }
+  sky.offsetTempoSec = 0;
+  return new Date();
 }
 
 // Il tasto «adesso» non deve limitarsi ad azzerare lo scarto: chi lo preme
@@ -37025,7 +37059,7 @@ function skyAggiornaTestoTempo() {
   const marcia = sky.playbackVerso
     ? `${sky.playbackVerso > 0 ? '▶' : '◀'} ${skyVelocitaPlayback().nome}`
     : '';
-  const spostato = scarto !== 0 || !!sky.playbackVerso;
+  const spostato = sky.modalitaTempo === 'simulato';
 
   // La lettura in testa al blocco "Quando" non ripete l'istante: quello sta
   // già scritto cifra per cifra nelle sei caselle subito sotto, e ripeterlo
@@ -37036,7 +37070,9 @@ function skyAggiornaTestoTempo() {
   if (el) {
     const istante = dataOraDelLuogo(quando, skyLuogoDelCielo(),
       { weekday: 'short', secondi: true });
-    const scartoTesto = scarto === 0 ? 'in tempo reale' : skyScartoTempoTesto(scarto);
+    const scartoTesto = sky.modalitaTempo === 'reale'
+      ? 'Tempo attuale'
+      : `Tempo simulato · ${skyScartoTempoTesto(scarto)}`;
     el.textContent = [scartoTesto, marcia].filter(Boolean).join(' · ');
     el.title = `${istante} · ${scartoTesto}`;
     el.classList.toggle('spostata', spostato);
@@ -37273,6 +37309,14 @@ function skyImpostaOffsetTempo(secondi, opzioni = {}) {
   const valore = Number(secondi) || 0;
   sky.offsetTempoSec = Math.max(skyLimiteTempoSec(-1), Math.min(skyLimiteTempoSec(1),
     opzioni.fluido ? valore : Math.round(valore)));
+  if (opzioni.reale) {
+    sky.modalitaTempo = 'reale';
+    sky.istanteSimulatoMs = null;
+    sky.offsetTempoSec = 0;
+  } else {
+    sky.modalitaTempo = 'simulato';
+    sky.istanteSimulatoMs = Date.now() + sky.offsetTempoSec * 1000;
+  }
 
   // Se l'istante nuovo è fuori dalla finestra, la finestra lo segue: altrimenti
   // la slitta resterebbe incollata a un estremo senza poter più tornare
@@ -37439,7 +37483,8 @@ function skyAvanzaPlayback() {
   if (!dt) return;
 
   const v = skyVelocitaPlayback().fattore * sky.playbackVerso;
-  const nuovo = (sky.offsetTempoSec || 0) + (v - 1) * dt;
+  const nuovoIstante = skyAdesso().getTime() + v * dt * 1000;
+  const nuovo = (nuovoIstante - Date.now()) / 1000;
 
   // Arrivati al capolinea della macchina del tempo il playback si ferma da
   // solo, invece di spingere contro il limite col tasto acceso a vuoto
@@ -37453,10 +37498,13 @@ function skyAvanzaPlayback() {
   skyImpostaOffsetTempo(nuovo, { fluido: true });
 }
 
-// Avvia il playback in un verso (+1 avanti, −1 indietro). Ripremendo il
-// tasto già acceso si mette in pausa: è quello che fa ogni lettore.
+// Avvia il playback in un verso (+1 avanti, −1 indietro). Play e Pausa sono
+// comandi distinti: mentre la marcia e' attiva i tasti Play vengono disabilitati.
 function skyAvviaPlayback(verso) {
-  if (sky.playbackVerso === verso) { skyFermaPlayback(); return; }
+  if (sky.playbackVerso === verso) return;
+  // Anche partendo dal tempo attuale, il playback entra esplicitamente nel
+  // tempo simulato: da qui Pausa può congelare proprio questo istante.
+  if (sky.modalitaTempo === 'reale') skyImpostaOffsetTempo(0);
   sky.playbackVerso = verso;
   sky.playbackUltimoVerso = verso;  // il play della barra ripartirà di qui
   sky.playbackUltimo = 0;          // il primo dt parte dal fotogramma dopo
@@ -37468,12 +37516,15 @@ function skyAvviaPlayback(verso) {
 
 function skyFermaPlayback() {
   if (!sky.playbackVerso) return;
+  const istanteFermo = skyAdesso().getTime();
   sky.playbackVerso = 0;
   sky.playbackUltimo = 0;
   skyAggiornaComandiPlayback();
-  // Fermandosi si torna a un secondo intero (camminando lo scarto porta i
-  // decimi) e si rifà il conto pieno, che nel frattempo girava a passo ridotto
-  skyImpostaOffsetTempo(Math.round(sky.offsetTempoSec || 0));
+  // Si conserva anche la frazione di secondo dell'ultimo fotogramma: Pausa
+  // congela l'immagine senza il piccolo salto che produrrebbe un arrotondamento.
+  skyImpostaOffsetTempo((istanteFermo - Date.now()) / 1000, { fluido: true });
+  sky.prossimoCalcolo = 0;
+  sky.cacheOrari = { chiave: null, valore: null };
 }
 
 // Il moltiplicatore sale e scende per gradini. Si può cambiare anche mentre
@@ -37490,6 +37541,10 @@ function skyCambiaVelocitaPlayback(passo) {
 function skyAggiornaComandiPlayback() {
   skyTasto('skymap-play-indietro', sky.playbackVerso < 0);
   skyTasto('skymap-play-avanti', sky.playbackVerso > 0);
+  const indietro = document.getElementById('skymap-play-indietro');
+  const avanti = document.getElementById('skymap-play-avanti');
+  if (indietro) indietro.disabled = !!sky.playbackVerso;
+  if (avanti) avanti.disabled = !!sky.playbackVerso;
   ['skymap-play-stop', 'skymap-tempo-stop'].forEach(id => {
     const stop = document.getElementById(id);
     if (stop) stop.disabled = !sky.playbackVerso;
@@ -37509,24 +37564,19 @@ function skyAggiornaComandiPlayback() {
   if (meno) meno.disabled = sky.playbackVelIndice <= 0;
   if (piu) piu.disabled = sky.playbackVelIndice >= SKY_VELOCITA_PLAYBACK.length - 1;
 
-  // Il play della barra del tempo: un tasto solo, che avvia e ferma. Da fermo
-  // il simbolo ricorda il verso in cui ripartirà — chi ha appena visto Marte
-  // tornare indietro trova il ◀ e sa che ripremendo tornerà indietro ancora.
-  // In marcia diventa il quadratino di stop e si accende: è l'unico segnale
-  // che l'ora si muove da sola, e senza si guarda un cielo che scorre senza
-  // sapere chi lo sta spingendo.
+  // Il play della barra avvia soltanto e ricorda il verso scelto. Durante la
+  // marcia e' disabilitato: a fermare il tempo pensa il tasto Pausa distinto.
   const play = document.getElementById('skymap-tempo-play');
   if (play) {
     const inMarcia = !!sky.playbackVerso;
     const verso = sky.playbackVerso || sky.playbackUltimoVerso || 1;
-    play.textContent = inMarcia ? '■' : (verso > 0 ? '▶' : '◀');
+    play.textContent = verso > 0 ? '▶' : '◀';
     play.classList.toggle('attiva', inMarcia);
+    play.disabled = inMarcia;
     play.setAttribute('aria-pressed', inMarcia ? 'true' : 'false');
-    play.setAttribute('aria-label', inMarcia ? 'Ferma il playback' : 'Avvia il playback');
-    play.title = inMarcia
-      ? `Ferma il playback (il cielo sta camminando a ${v.nome})`
-      : `Fai camminare il cielo ${verso > 0 ? 'in avanti' : 'all’indietro'}, a ${v.nome}` +
-        ' (verso e velocità si cambiano nel pannello Tempo)';
+    play.setAttribute('aria-label', 'Avvia il playback');
+    play.title = `Fai camminare il cielo ${verso > 0 ? 'in avanti' : 'all’indietro'}, a ${v.nome}` +
+      ' (verso e velocità si cambiano nel pannello Tempo)';
   }
 }
 
@@ -37631,7 +37681,7 @@ function inizializzaSkymapExtra() {
   const tornaAdesso = () => {
     skyFermaPlayback();
     sky.ancoraTempoSec = 0;
-    skyImpostaOffsetTempo(0);
+    skyImpostaOffsetTempo(0, { reale: true });
     skyRicalcolaOraAttuale();
     skyMostraGruppo('');
   };
@@ -37639,10 +37689,9 @@ function inizializzaSkymapExtra() {
   // La lettura della barra è anche la porta del pannello: il posto dove uno
   // si accorge che l'ora è sbagliata è lo stesso dove vuole aggiustarla
   collega('skymap-tempo-quando', () => skyMostraGruppo('tempo'));
-  // Il play della barra: avvia nel verso di prima, o ferma quello che cammina
+  // Play avvia soltanto; Pausa e' il comando distinto immediatamente accanto.
   collega('skymap-tempo-play', () => {
-    if (sky.playbackVerso) skyFermaPlayback();
-    else skyAvviaPlayback(sky.playbackUltimoVerso || 1);
+    if (!sky.playbackVerso) skyAvviaPlayback(sky.playbackUltimoVerso || 1);
   });
   collega('skymap-tempo-stop', skyFermaPlayback);
   // Il passo scelto vale per i due tasti e per la slitta insieme — e vale
