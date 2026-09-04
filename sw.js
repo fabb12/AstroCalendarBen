@@ -1,21 +1,25 @@
-const CACHE_NAME = 'astrocal-v160';
+const CACHE_NAME = 'astrocal-v260';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [
   './',
   './index.html',
+  './tailwind.css',
   './style.css',
   './app.js',
   './telescopio.js',
   './catalogo.js',
   './costellazioni.js',
+  './via-lattea.js',
   './corpi-minori.js',
   './pianifica.js',
   './terreno.js',
+  './miglior-posto.js',
   './rilievo.js',
   './meteo-astro.js',
   './aurora-polare.js',
   './aerei.js',
+  './config.js',
   './eventi-extra.js',
   './ui-nuova.js',
   './didattica.js',
@@ -46,10 +50,12 @@ const ASSETS = [
 // Librerie esterne: vanno messe in cache anche loro, altrimenti l'app
 // installata si apre "rotta" quando non c'è rete (proprio di notte, in campo).
 const LIBRERIE = [
-  // Il compilatore Tailwind è uno script classico `no-cors`: forzarne qui il
-  // download in modalità CORS fa fallire l'installazione in console perché il
-  // CDN non invia ACAO. style.css contiene già la rete di sicurezza offline,
-  // quindi lo lasciamo caricare normalmente dalla pagina senza precache.
+  // Tailwind non è più qui, e non è più nemmeno una libreria esterna: le
+  // utility che l'app usa stanno in `tailwind.css`, compilato una volta e
+  // messo in ASSETS come style.css. Il compilatore del CDN era uno script
+  // classico `no-cors` che non si poteva nemmeno mettere in precache — cioè
+  // proprio la libreria da cui dipendeva l'impaginazione era l'unica che
+  // offline non c'era.
   'https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js',
   'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js',
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css',
@@ -73,14 +79,34 @@ const SERVIZI_ADSB = [
   'opendata.adsb.fi',
   'api.adsb.one',
   'opensky-network.org',
+  // E i **ponti CORS pubblici**, che per un periodo sono stati esclusi da
+  // questo elenco con la motivazione «i loro 401/408 non sono un ripiego
+  // affidabile». Che e' vero e non c'entra: qui non si sceglie chi
+  // interrogare, si sceglie chi lasciar passare senza mettersi in mezzo — e
+  // mettercisi costava due cose, tutt'e due misurate in console.
+  //
+  // La prima e' il **racconto**. Un ponte che risponde senza intestazione
+  // CORS fa fallire la fetch, il ripiego generico la trasforma in un `504`
+  // sintetico, e `aerei.js` scrive nella pagella un numero che nessun server
+  // ha mai mandato: dal pannello si legge «risposta 504» dove il guasto era
+  // un CORS mancante o un limite di richieste. E' la stessa bugia che il
+  // ripiego raccontava per Overpass, e la cura e' la stessa.
+  //
+  // La seconda e' peggio ed e' invisibile: `aerei.js` mette le porte in corsa
+  // e **abortisce le perdenti**, ma l'abort della pagina non tocca la fetch
+  // che sta girando qui dentro. Con il service worker in mezzo, ogni ponte
+  // perdente continuava a consumare fino in fondo la quota di un servizio
+  // pubblico — cioe' l'esatto contrario di quello che la corsa vuole.
+  //
+  // In cache non ci finiscono comunque (non sono `HOST_DA_CONSERVARE`),
+  // quindi qui non si perde niente.
   'api.allorigins.win',
-  'corsproxy.io'
+  'api.codetabs.com'
 ];
 
 // Host le cui risposte salviamo man mano che arrivano (librerie, tessere mappa)
 const HOST_DA_CONSERVARE = [
   'cdn.jsdelivr.net',
-  'cdn.tailwindcss.com',
   'unpkg.com',
   'tile.openstreetmap.org',
   // Le curve di livello della mappa del luogo: stesse tessere PNG leggere di

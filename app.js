@@ -186,6 +186,9 @@ const DISEGNI = {
 
   piu: `<path d="M12 5.4v13.2M5.4 12h13.2"/>`,
 
+  galleria: `<rect x="3.5" y="5" width="17" height="14" rx="2"/>
+    <path d="m5.8 16 4.1-4.2 3.1 3 2.2-2.2 3 3.4"/><circle cx="15.8" cy="9" r="1.4"/>`,
+
   campana: `<path d="M18 10.4a6 6 0 1 0-12 0c0 4.2-1.6 5.6-1.6 5.6h15.2S18 14.6 18 10.4z"/>
     <path d="M10.2 19.2a2.1 2.1 0 0 0 3.6 0"/>`,
 
@@ -193,7 +196,13 @@ const DISEGNI = {
     <path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3L5.5 5.5"/>`,
 
   scarica: `<path d="M12 3.6v11.2M7.8 10.6L12 14.8l4.2-4.2"/>
-    <path d="M4.6 17.4v1.6a1.4 1.4 0 0 0 1.4 1.4h12a1.4 1.4 0 0 0 1.4-1.4v-1.6"/>`
+    <path d="M4.6 17.4v1.6a1.4 1.4 0 0 0 1.4 1.4h12a1.4 1.4 0 0 0 1.4-1.4v-1.6"/>`,
+
+  // Un aereo visto da sotto, il muso in alto: ali a freccia, coda e due
+  // scie. Serve al fumetto degli ADS-B, che fino a ieri usava un carattere
+  // Unicode — e un glifo di sistema, in mezzo alle icone a contorno di
+  // tutta l'app, si riconosce subito per quello che è.
+  aereo: `<path d="M12 2.6c1.1 0 1.9 1.3 1.9 3v3.1l6.5 3.8v2.2l-6.5-2v3.6l2.2 1.7v1.8L12 18.9l-4.1 1.9v-1.8l2.2-1.7v-3.6l-6.5 2v-2.2l6.5-3.8V5.6c0-1.7.8-3 1.9-3z"/>`
 };
 
 // Restituisce il disegno richiesto, pronto da mettere dentro l'HTML
@@ -612,6 +621,12 @@ function applicaProfiloDispositivo(opzioni = {}) {
   dispositivoAttuale = profilo;
   radice.dataset.dispositivo = profilo;
 
+  // L'apertura automatica delle schede serve quando il planetario viene
+  // usato come cercatore, seguendo i sensori di un telefono o di un tablet.
+  // Se una finestra viene allargata fino al profilo computer, il comando e
+  // la sosta del mirino devono spegnersi subito, senza aspettare un riavvio.
+  if (typeof skyAggiornaStatoHover === 'function') skyAggiornaStatoHover();
+
   adattaFiltri();
   adattaIstruzioniCielo();
   adattaCalendario();
@@ -713,6 +728,12 @@ function inizializzaNavigazione() {
 
 // Avvio al caricamento della pagina
 window.addEventListener('DOMContentLoaded', () => {
+  // Le schede di Visualizzazione sono navigazione HTML, non dipendono dal
+  // canvas: rendiamole operative prima degli inizializzatori del planetario.
+  // In questo modo un errore (o un browser senza una delle API usate dal
+  // cielo) non lascia Direzione/Schermo/Oggetti/Cielo/Paesaggio come tasti
+  // inerti.
+  skyInizializzaSchedeVista();
   registraSW();
   inizializzaDispositivo();
   inizializzaNavigazione();
@@ -721,6 +742,7 @@ window.addEventListener('DOMContentLoaded', () => {
   caricaDiario();
   inizializzaUI();
   inizializzaFormAggiungi();
+  videoInizializza();
   inizializzaMappaEclissiUI();
   inizializzaEclissiDiCasaUI();
   inizializzaMappaLunareUI();
@@ -1166,6 +1188,167 @@ function formattaCoordinate(lat, lon) {
   const ns = lat >= 0 ? 'N' : 'S';
   const ew = lon >= 0 ? 'E' : 'O';
   return `${Math.abs(lat).toFixed(1)}° ${ns}, ${Math.abs(lon).toFixed(1)}° ${ew}`;
+}
+
+
+// =====================================================================
+// 1-bis. ORA DEL LUOGO (non quella del dispositivo)
+//   Un istante astronomico è assoluto, ma l'ora civile dipende dal punto
+//   della Terra da cui lo si osserva. Intl sa applicare anche ora legale e
+//   cambi storici, purché gli si dia il nome IANA del fuso. Open-Meteo lo
+//   ricava dalle coordinate; lo conserviamo perché continui a valere offline.
+//   Accanto all'ora locale mostriamo sempre UTC: così un appuntamento resta
+//   inequivocabile anche se viene condiviso con chi si trova altrove.
+// =====================================================================
+const CHIAVE_FUSI_ORARI = 'astrocalendario_fusi_orari_v2';
+const fusiOrari = new Map();
+let fusiOrariCaricati = false;
+
+function fusoChiave(lat, lon) {
+  // Il fuso è un dato politico, non geografico: due punti distanti pochi
+  // metri possono stare ai lati opposti di un confine. La vecchia griglia da
+  // 0,05° faceva quindi condividere la stessa voce a località con fusi
+  // diversi, e tornando dall'una all'altra l'orologio restava su quello già
+  // in cache. Usiamo la stessa precisione delle coordinate inviate al
+  // servizio: abbastanza per distinguere il punto senza moltiplicare chiavi
+  // a causa del rumore infinitesimo dei numeri in virgola mobile.
+  return `${Number(lat).toFixed(4)},${Number(lon).toFixed(4)}`;
+}
+
+function fusiCarica() {
+  if (fusiOrariCaricati) return;
+  fusiOrariCaricati = true;
+  try {
+    const dati = JSON.parse(localStorage.getItem(CHIAVE_FUSI_ORARI) || '{}');
+    Object.keys(dati).forEach(k => fusiOrari.set(k, dati[k]));
+  } catch (e) { /* storage negato o dato vecchio corrotto */ }
+}
+
+function fusoRicorda(lat, lon, nome, abbreviazione) {
+  if (!isFinite(lat) || !isFinite(lon) || !nome) return;
+  // Verifica che il browser conosca davvero questo identificatore IANA.
+  try { new Intl.DateTimeFormat('it-IT', { timeZone: nome }).format(new Date()); }
+  catch (e) { return; }
+  fusiCarica();
+  fusiOrari.set(fusoChiave(lat, lon), { nome, abbreviazione: abbreviazione || '' });
+  try {
+    const dati = Object.fromEntries(Array.from(fusiOrari.entries()).slice(-80));
+    localStorage.setItem(CHIAVE_FUSI_ORARI, JSON.stringify(dati));
+  } catch (e) { /* il valore resta valido per questa sessione */ }
+}
+
+function fusoDelLuogo(luogo) {
+  fusiCarica();
+  const l = luogo || (typeof luogoCorrente === 'function' ? luogoCorrente() : null);
+  // Quando il luogo porta gia' con se' il fuso (citta' scelta o posizione
+  // salvata), quello e' il dato piu' diretto e non deve dipendere dalla cache
+  // separata. Questo rende corretta la barra anche al primo fotogramma e al
+  // riavvio offline.
+  if (l && l.fuso) {
+    try {
+      new Intl.DateTimeFormat('it-IT', { timeZone: l.fuso }).format(new Date());
+      return { nome: l.fuso, abbreviazione: l.abbreviazioneFuso || '' };
+    } catch (e) { /* identificatore vecchio o non supportato: prova la cache */ }
+  }
+  if (l && isFinite(l.lat) && isFinite(l.lon)) {
+    const noto = fusiOrari.get(fusoChiave(l.lat, l.lon));
+    if (noto) return noto;
+  }
+  // Prima risposta, o funzionamento offline: il fuso del dispositivo è più
+  // onesto di un offset inventato dalla longitudine (confini e ora legale non
+  // seguono i meridiani). Appena arriva la rete la lettura viene aggiornata.
+  return { nome: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', abbreviazione: '' };
+}
+
+function oraUTC(data, secondi) {
+  if (!data) return '—';
+  return new Intl.DateTimeFormat('it-IT', {
+    timeZone: 'UTC', hour: '2-digit', minute: '2-digit',
+    ...(secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
+  }).format(data);
+}
+
+function oraDelLuogo(data, luogo, opzioni = {}) {
+  if (!data) return '—';
+  const fuso = fusoDelLuogo(luogo);
+  const locale = new Intl.DateTimeFormat('it-IT', {
+    timeZone: fuso.nome, hour: '2-digit', minute: '2-digit',
+    ...(opzioni.secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
+  }).format(data);
+  return opzioni.soloLocale ? locale : `${locale} (${oraUTC(data, opzioni.secondi)} UTC)`;
+}
+
+function dataOraDelLuogo(data, luogo, opzioni = {}) {
+  if (!data) return '—';
+  const fuso = fusoDelLuogo(luogo);
+  const locale = new Intl.DateTimeFormat('it-IT', {
+    timeZone: fuso.nome,
+    ...(opzioni.weekday ? { weekday: opzioni.weekday } : {}),
+    day: 'numeric', month: opzioni.month || 'short',
+    ...(opzioni.year === false ? {} : { year: 'numeric' }),
+    hour: '2-digit', minute: '2-digit',
+    ...(opzioni.secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
+  }).format(data);
+  return `${locale} (${oraUTC(data, opzioni.secondi)} UTC)`;
+}
+
+// I pezzi civili di un istante nel fuso del luogo. Non usiamo i getDate() e
+// getHours() di Date: quelli descrivono il fuso del telefono, che può essere
+// diverso da quello del cielo quando ci si sposta sulla mappa.
+function partiDataDelLuogo(data, luogo) {
+  const fuso = fusoDelLuogo(luogo);
+  const parti = new Intl.DateTimeFormat('en-GB', {
+    timeZone: fuso.nome, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+  }).formatToParts(data);
+  const risultato = {};
+  parti.forEach(p => {
+    if (p.type !== 'literal') risultato[p.type] = Number(p.value);
+  });
+  return risultato;
+}
+
+// Trasforma un'ora scritta "come sull'orologio del posto" nell'istante UTC
+// corrispondente. L'offset non si ricava dalla longitudine: cambia ai confini
+// politici e con l'ora legale. Le correzioni coprono anche un cambio d'ora;
+// il controllo finale respinge le ore civili inesistenti nel salto primaverile.
+function dataDalTempoDelLuogo(valori, luogo) {
+  const desideratoUTC = Date.UTC(valori.year, valori.month - 1, valori.day,
+    valori.hour, valori.minute, valori.second, 0);
+  let ms = desideratoUTC;
+  for (let i = 0; i < 3; i++) {
+    const p = partiDataDelLuogo(new Date(ms), luogo);
+    const lettoComeUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second, 0);
+    const correzione = desideratoUTC - lettoComeUTC;
+    if (!correzione) break;
+    ms += correzione;
+  }
+  const data = new Date(ms);
+  const p = partiDataDelLuogo(data, luogo);
+  return p.year === valori.year && p.month === valori.month && p.day === valori.day &&
+    p.hour === valori.hour && p.minute === valori.minute && p.second === valori.second
+    ? data : null;
+}
+
+let fusoRichieste = new Map();
+function caricaFusoOrario(lat, lon) {
+  if (!isFinite(lat) || !isFinite(lon)) return Promise.resolve(null);
+  fusiCarica();
+  const chiave = fusoChiave(lat, lon);
+  if (fusiOrari.has(chiave)) return Promise.resolve(fusiOrari.get(chiave));
+  if (fusoRichieste.has(chiave)) return fusoRichieste.get(chiave);
+  const url = 'https://api.open-meteo.com/v1/forecast' +
+    `?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}` +
+    '&current=temperature_2m&timezone=auto&forecast_days=1';
+  const richiesta = fetch(url).then(r => {
+    if (!r.ok) throw new Error('fuso non disponibile');
+    return r.json();
+  }).then(d => {
+    fusoRicorda(lat, lon, d.timezone, d.timezone_abbreviation);
+    return fusiOrari.get(chiave) || null;
+  }).catch(() => null).finally(() => fusoRichieste.delete(chiave));
+  fusoRichieste.set(chiave, richiesta);
+  return richiesta;
 }
 
 // =====================================================================
@@ -2118,7 +2301,8 @@ function _eclUtSelezionato() {
   return _eclissiEventoInCorso.eclissi.peakUt + _eclissiOffsetTempoMin / 1440;
 }
 function _eclOra(data) {
-  return data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const luogo = _eclissiPosizioneTemporanea || (typeof luogoCorrente === 'function' ? luogoCorrente() : null);
+  return oraDelLuogo(data, luogo);
 }
 function _eclOraUTC(data) {
   return `${String(data.getUTCHours()).padStart(2, '0')}:${String(data.getUTCMinutes()).padStart(2, '0')}`;
@@ -2138,7 +2322,8 @@ function _eclNomeCentrale(kind) {
 // Un contatto si annota al secondo: al bordo della fascia la totalità può
 // durarne una decina, e i minuti tondi non basterebbero a dire quando.
 function _eclOraSec(data) {
-  return data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const luogo = _eclissiPosizioneTemporanea || (typeof luogoCorrente === 'function' ? luogoCorrente() : null);
+  return oraDelLuogo(data, luogo, { secondi: true });
 }
 // Durata della fase centrale: sotto l'ora si legge meglio in minuti e secondi.
 function _eclDurataSec(sec) {
@@ -3806,6 +3991,43 @@ function _lunContatti(dati) {
   return v;
 }
 
+// Aggiunge a ogni carta geografica lo stesso comando giorno/notte. Le mappe
+// partono sempre chiare; il tema scuro resta una scelta della singola carta.
+function aggiungiControlloTemaMappa(mappa, contenitore) {
+  if (!mappa || typeof L === 'undefined') return null;
+  const nodo = typeof contenitore === 'string' ? document.getElementById(contenitore) : contenitore;
+  if (!nodo || nodo.dataset.controlloTemaMappa === 'pronto') return null;
+  nodo.dataset.controlloTemaMappa = 'pronto';
+  nodo.classList.add('mappa-chiara');
+
+  const Tema = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd() {
+      const guscio = L.DomUtil.create('div', 'leaflet-bar controllo-tema-mappa');
+      const tasto = L.DomUtil.create('button', 'controllo-tema-mappa-tasto', guscio);
+      tasto.type = 'button';
+      L.DomEvent.disableClickPropagation(guscio);
+      L.DomEvent.disableScrollPropagation(guscio);
+      const aggiorna = () => {
+        const chiara = nodo.classList.contains('mappa-chiara');
+        tasto.textContent = chiara ? '☾' : '☀';
+        tasto.title = chiara ? 'Passa alla mappa scura' : 'Passa alla mappa chiara';
+        tasto.setAttribute('aria-label', tasto.title);
+        tasto.setAttribute('aria-pressed', chiara ? 'false' : 'true');
+      };
+      L.DomEvent.on(tasto, 'click', () => {
+        const rendiScura = nodo.classList.contains('mappa-chiara');
+        nodo.classList.toggle('mappa-chiara', !rendiScura);
+        nodo.classList.toggle('mappa-scura', rendiScura);
+        aggiorna();
+      });
+      aggiorna();
+      return guscio;
+    }
+  });
+  return new Tema().addTo(mappa);
+}
+
 let _lunMappa = null;
 let _lunStrati = [];
 let _lunEventoInCorso = null;
@@ -3844,6 +4066,7 @@ function apriMappaLunare(id) {
       maxZoom: 6, attribution: '&copy; OpenStreetMap'
     }).addTo(_lunMappa);
     L.control.zoom({ position: 'topright' }).addTo(_lunMappa);
+    aggiungiControlloTemaMappa(_lunMappa, 'mappa-lunare');
   }
 
   _lunStrati.forEach(s => _lunMappa.removeLayer(s));
@@ -4068,7 +4291,7 @@ function _eclAggiornaHud(quadro) {
   const faseEl = document.getElementById('eclissi-hud-fase');
   const tempo = _eclissiTempoSelezionato();
   if (oraEl) {
-    oraEl.innerHTML = `<b>${_eclOra(tempo)}</b><span class="ecl-hud-utc">${_eclOraUTC(tempo)} UTC</span>`;
+    oraEl.innerHTML = `<b>${_eclOra(tempo)}</b>`;
   }
   if (faseEl) {
     let testo = 'Eclissi non ancora iniziata', classe = 'attesa';
@@ -5422,7 +5645,7 @@ function mostraErrore(msg) {
 }
 
 function formattData(data) {
-  return data.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return dataOraDelLuogo(data, null, { month: 'long' });
 }
 
 // =====================================================================
@@ -6148,7 +6371,7 @@ function eventiPerGriglia(lista) {
     extendedProps: {
       categoria: e.categoria,
       colore: e.colore,
-      ora: e.dataObj.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+      ora: oraDelLuogo(e.dataObj, null)
     }
   }));
   // La fascia dell'intervallo scelto: un evento di sfondo, che FullCalendar
@@ -6203,8 +6426,35 @@ function contenutoEventoGriglia(arg) {
     ora.textContent = props.ora;
     box.appendChild(ora);
   }
+  // FullCalendar riusa questo stesso contenuto anche nel menu "+altri".
+  // Nella casella il tasto resta nascosto (lo spazio e' pochissimo), mentre
+  // nel menu diventa un'azione esplicita: non bisogna indovinare che tutta la
+  // riga sia cliccabile per arrivare alla scheda completa dell'evento.
+  const scheda = document.createElement('button');
+  scheda.type = 'button';
+  scheda.className = 'evento-griglia-scheda';
+  scheda.textContent = 'Vedi scheda';
+  scheda.setAttribute('aria-label', `Vedi la scheda di ${arg.event.title}`);
+  scheda.addEventListener('click', eventoClick => {
+    eventoClick.preventDefault();
+    eventoClick.stopPropagation();
+    apriSchedaEvento(arg.event.id);
+  });
+  box.appendChild(scheda);
   box.title = `${arg.event.title}${cat ? ` · ${cat.nome}` : ''}${props.ora ? ` · ore ${props.ora}` : ''}`;
   return { domNodes: [box] };
+}
+
+// Porta da qual entrano sia il tocco sulla riga del calendario sia il tasto
+// esplicito nel menu "+altri". Tenerli sulla stessa strada evita che i due
+// modi di aprire una scheda finiscano per applicare filtri o tempi diversi.
+function apriSchedaEvento(id) {
+  mostraVista('agenda');
+  setTimeout(() => {
+    const card = [...document.querySelectorAll('article[data-evento-id]')]
+      .find(voce => voce.dataset.eventoId === String(id));
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 300);
 }
 
 // Ricarica nel calendario a griglia solo gli eventi che passano i filtri.
@@ -6373,6 +6623,10 @@ function costruisciAgenda() {
     // l'evento segnato dove bisogna guardare.
     scorciatoie.push(`<button onclick="apriEventoNelPlanetario('${evento.id}')" class="${stileScorciatoia}" ` +
       `title="Apre il planetario sull'istante dell'evento, puntato dove guardare">Vedi nel planetario</button>`);
+    if (eventoHaPostoIdeale(evento)) {
+      scorciatoie.push(`<button onclick="apriMigliorPosto('${evento.id}')" class="${stileScorciatoia}" ` +
+        `title="Cerca entro il raggio scelto un punto in cui montagne e colline non coprono l'evento">Trova il posto migliore</button>`);
+    }
     if (evento.eclissi) {
       scorciatoie.push(`<button onclick="apriMappaEclissi('${evento.id}')" class="${stileScorciatoia}" ` +
         `title="Il percorso del cono d'ombra, minuto per minuto">Mappa dell'ombra</button>`);
@@ -6485,11 +6739,7 @@ function inizializzaCalendario() {
       if (info.event.id === 'intervallo-scelto') return;
       // Se clicco su un evento nel calendario apro l'agenda sulla sua scheda.
       // La voce NON parte da sola: si attiva solo col tasto “Ascolta” o con la notifica.
-      document.getElementById('btn-vista-agenda').click();
-      setTimeout(() => {
-        const card = document.querySelector(`article[data-evento-id="${info.event.id}"]`);
-        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
+      apriSchedaEvento(info.event.id);
     }
   });
   // Il primo disegno non conta come "l'utente ha scelto un mese": l'agenda
@@ -6893,6 +7143,11 @@ const CHIAVE_SKY_BUSSOLA = 'astrocalendario_bussola_offset_v2';
 // entrano nel lato lungo dell'inquadratura (vedi skyCampoFotocamera)
 const CHIAVE_SKY_CAMERA = 'astrocalendario_camera_campo';
 const CHIAVE_SKY_TASTI_ZOOM = 'astrocalendario_tasti_zoom';
+const CHIAVE_SKY_SOSTA = 'astrocalendario_sosta_mirino';
+const CHIAVE_SKY_DURATA_MAPPA_SPOSTAMENTO = 'astrocalendario_durata_mappa_spostamento';
+const CHIAVE_SKY_HOVER = 'astrocalendario_modalita_hover';
+const SKY_SOSTA_PREDEFINITA_SEC = 1.2;
+const SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC = 5;
 
 // Corpi del Sistema Solare mostrati nel cielo.
 // Gli id sono i valori di Astronomy.Body (semplici stringhe): li scriviamo
@@ -7148,6 +7403,17 @@ const sky = {
   // non viene salvato: la posizione vera resta quella delle Impostazioni
   // (vedi 7.1-ter). { lat, lon, nome }
   luogoVista: null,
+  // Il fumetto dell'oggetto scelto (§7.4): quanto misura l'ultima volta che
+  // lo si è guardato, e se quella misura è ancora buona. Non è una
+  // raffinatezza — `getBoundingClientRect` forza l'impaginazione, e leggerla
+  // a ogni fotogramma dopo aver scritto `left`/`top` è il botta-e-risposta
+  // che mangia il ciclo di disegno.
+  fumettoMisura: null,
+  fumettoRimisura: true,
+  // Zone cliccabili dei nomi geografici disegnati nell'ultimo fotogramma.
+  // Il canvas non ha elementi DOM: conservare qui geometria e coordinate
+  // rende paesi e vette dei veri punti di partenza, non semplici scritte.
+  etichetteLuogo: [],
   scartoPerScelta: false, // l'ultima lettura automatica è stata rifiutata perché comanda la posizione scelta
   attesaPosizione: null, // richiesta di geolocalizzazione in corso (una sola per volta)
   erroreGps: null,       // ultimo errore del navigatore: { codice, quando }
@@ -7178,6 +7444,10 @@ const sky = {
   // Trascinamento e sua inerzia: quanto correva il dito quando ha lasciato il
   // cielo, e la vista che continua da sola e si spegne (vedi 7.4-ter)
   trascinamento: null,
+  // La carta geografica che compare dopo un viaggio della camera nel
+  // paesaggio. Leaflet nasce soltanto al primo spostamento.
+  mappaSpostamento: { mappa: null, partenza: null, arrivo: null, strati: [],
+    durataSec: SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC, timer: null },
   inerzia: null,
   ultimoFotogramma: 0,   // performance.now() del fotogramma precedente, per il dt
   // Il ciclo respira? `battito` è l'istante dell'ultimo fotogramma e
@@ -7191,6 +7461,12 @@ const sky = {
   // `skyGranaScorrimento`).
   grana: null,
   target: null,          // id dell'astro da cercare
+  // Oggetto rimasto sotto il mirino e avanzamento dell'apertura automatica
+  // della sua scheda. La verifica gira a intervalli, non a ogni fotogramma.
+  modalitaHover: true,
+  sostaMirinoSec: SKY_SOSTA_PREDEFINITA_SEC,
+  sostaMirino: null,
+  prossimoControlloSosta: 0,
   oggetti: [],           // posizioni calcolate (az/alt) degli astri
   prossimoCalcolo: 0,
   prossimoAggiornoUI: 0, // i numeri attorno alla mappa vanno più piano del cielo
@@ -7238,6 +7514,10 @@ const sky = {
   // Inseguimento: la vista tiene l'oggetto scelto al centro, da sola, mentre
   // il cielo ruota o mentre il playback corre
   inseguimento: false,
+  // Se l'inseguimento nasce da «Vai all'evento», conserva l'evento e non
+  // soltanto l'astro: anche il radiante di uno sciame deve poter essere
+  // ricalcolato e tenuto al centro mentre cambia l'ora mostrata.
+  eventoInseguito: null,
   // La strada che l'oggetto scelto percorre nel cielo durante l'osservazione:
   // da dove è salito, dove sarà fra un'ora, quando tramonta (vedi 7.3-bis)
   mostraTraccia: true,
@@ -7279,6 +7559,7 @@ const sky = {
   // Cielo dipinto come lo si vede davvero a quell'ora: colore che cambia col
   // Sole, foschia sull'orizzonte, stelle che sbiadiscono di giorno
   atmosfera: true,
+  nuvole: true,
   luceCielo: 0,          // quanto è chiaro il cielo adesso: 0 notte, 1 giorno
   ariaOra: null,         // i colori dell'aria dell'ultimo fotogramma
   // Eclissi di Sole in corso all'ora mostrata: quanto la Luna copre il disco
@@ -7328,7 +7609,8 @@ const sky = {
     mime: '',
     durataReale: 0,        // quanto è durata davvero (si può fermare prima)
     ultimoConto: 0,        // per non riscrivere il conto alla rovescia a ogni fotogramma
-    esito: null            // { blob, url, nome, tipo }
+    esito: null,           // { blob, url, nome, tipo }
+    origine: 'planetario'  // oppure `solare`: decide tela, comandi e risultato
   },
   ultimoPuntatore: 'mouse'  // com'è arrivato l'ultimo tocco: dito o mouse
 };
@@ -7395,6 +7677,13 @@ const SKY_TAU_MOSSA = 0.035;    // secondi di memoria quando lo si muove davvero
 // molto meno: si preferisce un filo di ballo a un cielo che insegue.
 const SKY_TAU_FERMO_AR = 0.12;
 const SKY_TAU_MOSSA_AR = 0.02;
+// A telefono immobile il magnetometro continua a cambiare di pochi decimi di
+// grado. Su una carta è quasi invisibile, ma sopra uno spigolo ripreso dalla
+// camera fa sembrare che sia l'oggetto virtuale a camminare. In AR teniamo
+// quindi l'ultima posa finché la nuova non esce da questo piccolo cerchio.
+// Non perdiamo il movimento lento: il confronto resta con la posa mostrata,
+// perciò gli scarti si accumulano e appena superano la soglia la vista segue.
+const SKY_AR_POSA_FERMA_GRADI = 0.18;
 const SKY_TAU_SPIA_VELOCE = 0.1; // le due medie che riconoscono il movimento…
 const SKY_TAU_SPIA_LENTA = 0.5;  // …dal rumore: distanti solo se ci si muove
 const SKY_MOVIMENTO_GRADI = 3;   // oltre questo scarto fra le due è movimento
@@ -7478,6 +7767,19 @@ function skyLevigaBase(nuova) {
   ]);
   const u = skyCross(r, f);
 
+  // Stabilizzazione ottica: il filtro esponenziale da solo tende sempre alla
+  // lettura rumorosa e quindi non si ferma mai davvero. Il piccolo dead-band
+  // si applica solo alla fotocamera e solo quando le due spie classificano la
+  // posa come ferma. Le spie e la stima del rumore vengono comunque salvate,
+  // così un movimento reale viene riconosciuto senza ritardo.
+  if (sky.camera && quota < 0.3 && skyAngoloFra(prec.f, f) < SKY_AR_POSA_FERMA_GRADI) {
+    sky.baseFiltrata = {
+      f: prec.f, r: prec.r, u: prec.u,
+      veloce, lento, rumore, tempo: adesso, schermo
+    };
+    return { f: prec.f, r: prec.r, u: prec.u };
+  }
+
   sky.baseFiltrata = { f, r, u, veloce, lento, rumore, tempo: adesso, schermo };
   return { f, r, u };
 }
@@ -7487,29 +7789,28 @@ function skyLevigaBase(nuova) {
 // potrebbe portare al centro della mappa un oggetto scelto dall'elenco, che
 // è proprio quello che si vuole quando si cerca qualcosa.
 function skyUsaSensori() {
-  return !!(sky.sensori && sky.seguiTelefono && sky.orient);
+  return !!(sky.sensori && sky.seguiTelefono && skyAssettoDisponibile());
 }
 
 // Terna di riferimento della "telecamera": f = dove punta il telefono,
 // r = destra dello schermo, u = alto dello schermo (tutti in Est/Nord/Alto).
 function skyBase() {
   if (skyUsaSensori()) {
-    // alpha arriva riferito al Nord magnetico: skyCorrezioneNord lo porta al
-    // Nord vero, l'unico rispetto al quale sono calcolati gli astri.
-    const R = skyMatriceDispositivo(
-      (sky.orient.alpha + skyCorrezioneNord() + sky.offsetBussola) * SKY_D2R,
-      sky.orient.beta * SKY_D2R,
-      sky.orient.gamma * SKY_D2R
-    );
-    // Assi dello schermo espressi negli assi del telefono (ruotati se è in orizzontale)
-    const o = skyAngoloSchermo() * SKY_D2R;
-    const co = Math.cos(o), so = Math.sin(o);
-    return skyLevigaBase({
-      // Si guarda attraverso il retro del telefono: asse -Z del dispositivo
-      f: skyApplica(R, [0, 0, -1]),
-      r: skyApplica(R, [co, -so, 0]),
-      u: skyApplica(R, [so, co, 0])
-    });
+    // La matrice arriva dalla §7.1-quinquies, che sceglie da sé la strada
+    // migliore fra quelle che questo telefono offre e ci ha già dentro la
+    // declinazione magnetica e la correzione manuale.
+    const R = skyMatriceBussola();
+    if (R) {
+      // Assi dello schermo espressi negli assi del telefono (ruotati se è in orizzontale)
+      const o = skyAngoloSchermo() * SKY_D2R;
+      const co = Math.cos(o), so = Math.sin(o);
+      return skyLevigaBase({
+        // Si guarda attraverso il retro del telefono: asse -Z del dispositivo
+        f: skyApplica(R, [0, 0, -1]),
+        r: skyApplica(R, [co, -so, 0]),
+        u: skyApplica(R, [so, co, 0])
+      });
+    }
   }
   // Modalità manuale: la direzione di sguardo la decide il dito, ed è esatta
   sky.baseFiltrata = null;
@@ -7553,6 +7854,14 @@ let skyDettoDelTremolio = false;
 // modo dei tasti + e −, della rotellina e del "campo normale", dove il salto
 // secco fa perdere il filo di cosa si stava guardando.
 function skyImpostaFov(gradi, opzioni = {}) {
+  // Un gesto interrotto dal browser (succede soprattutto passando da due
+  // dita a una) può consegnare per un solo evento una distanza non valida.
+  // `Math.min/max` non riparano NaN: lo propagano, la focale diventa NaN e
+  // da quel momento Canvas non riesce più a proiettare niente. Non si deve
+  // quindi lasciare che una lettura guasta avveleni lo stato persistente
+  // della vista: si ignora quel singolo campione e il gesto successivo
+  // continua dal campo ancora valido.
+  if (!Number.isFinite(gradi) || gradi <= 0) return;
   sky.fovVoluto = Math.max(SKY_FOV_MIN, Math.min(SKY_FOV_MAX, gradi));
   if (!opzioni.morbido) sky.fov = sky.fovVoluto;
   if (!skyDettoDelTremolio && sky.fovVoluto <= 6 && skyUsaSensori()) {
@@ -7562,12 +7871,54 @@ function skyImpostaFov(gradi, opzioni = {}) {
   }
 }
 
+// Ultima rete prima della proiezione. Le coordinate della vista vengono da
+// puntatori, inerzia, animazioni e sensori: basta che uno solo di quei flussi
+// produca una volta NaN perché i resti e i confronti successivi continuino a
+// restituire NaN per sempre. Il risultato sullo schermo è caratteristico:
+// resta soltanto una striscia dell'ultimo fotogramma e tutto il resto è
+// vuoto. Conserviamo l'ultima navigazione completa e, se un campione guasto
+// supera le difese locali, torniamo lì invece di rendere inutilizzabile il
+// planetario fino al riavvio.
+function skyRiparaNavigazione() {
+  const valida = Number.isFinite(sky.manuale.az) && Number.isFinite(sky.manuale.alt) &&
+    Number.isFinite(sky.fov) && sky.fov > 0 &&
+    Number.isFinite(sky.fovVoluto) && sky.fovVoluto > 0;
+  if (valida) {
+    sky.manuale.az = ((sky.manuale.az % 360) + 360) % 360;
+    sky.manuale.alt = Math.max(-89, Math.min(89, sky.manuale.alt));
+    sky.fov = Math.max(SKY_FOV_MIN, Math.min(SKY_FOV_MAX, sky.fov));
+    sky.fovVoluto = Math.max(SKY_FOV_MIN, Math.min(SKY_FOV_MAX, sky.fovVoluto));
+    sky.ultimaNavigazioneBuona = {
+      az: sky.manuale.az, alt: sky.manuale.alt, fov: sky.fov, fovVoluto: sky.fovVoluto
+    };
+    return false;
+  }
+
+  const buona = sky.ultimaNavigazioneBuona || { az: 180, alt: 20, fov: 55, fovVoluto: 55 };
+  sky.manuale.az = buona.az;
+  sky.manuale.alt = buona.alt;
+  sky.fov = buona.fov;
+  sky.fovVoluto = buona.fovVoluto;
+  sky.inerzia = null;
+  sky.animazioneVista = null;
+  sky.trascinamento = null;
+  sky.pizzico = null;
+  return true;
+}
+
 // Distanza focale in pixel corrispondente al campo visivo verticale scelto.
 //
 // In stereografica un punto a θ gradi dall'asse cade a `2·F·tan(θ/2)`
 // pixel dal centro (vedi `skyProietta`): perché nell'altezza dello schermo
 // ci stiano `fov` gradi, mezza altezza deve valere 2·F·tan(fov/4).
 function skyFocale() {
+  // Una fotografia è una proiezione prospettica (rettilinea), non una
+  // planisferica stereografica. Usare la stessa focale stereografica sopra
+  // il video faceva combaciare il solo centro: verso i bordi gli astri si
+  // allontanavano progressivamente dagli oggetti reali.
+  if (skyCampoDaObiettivo()) {
+    return (sky.altezza / 2) / Math.tan(sky.fov / 2 * SKY_D2R);
+  }
   return (sky.altezza / 2) / (2 * Math.tan(sky.fov / 4 * SKY_D2R));
 }
 
@@ -7597,6 +7948,7 @@ function skyAngoloDiRaggio(pixel, focale) {
 // anche all'angolo), ma di quanto dipende da dove. `d` è il coseno
 // dell'angolo dall'asse, cioè la componente in avanti del versore.
 function skyScalaLocale(d) {
+  if (skyCampoDaObiettivo()) return 1 / Math.max(0.01, d);
   return 2 / Math.max(0.01, 1 + d);
 }
 
@@ -7739,9 +8091,9 @@ function skyTaraCampoFotocamera(campoVerticaleVoluto) {
 // planetari usano per default.
 //
 // A campo stretto le due coincidono: `2tan(θ/2)` e `tan(θ)` differiscono
-// di θ³/4, che a mezzo grado di campo è un miliardesimo di pixel. Quindi
-// non c'è nessun caso da distinguere, nessuna modalità da scegliere, e
-// nessun salto quando si allarga il campo: la formula è una sola.
+// di θ³/4, che a mezzo grado di campo è un miliardesimo di pixel. La mappa
+// usa quindi sempre questa formula; fa eccezione soltanto la realtà
+// aumentata, dove bisogna riprodurre la prospettiva rettilinea del video.
 //
 // Il conto è più corto di quello di prima. Se `v` è un versore, la sua
 // componente in avanti `d` è già il coseno dell'angolo dall'asse, e vale
@@ -7753,6 +8105,18 @@ function skyProietta(v, base, focale) {
   const d = skyDot(v, base.f);
   const x = skyDot(v, base.r);
   const y = skyDot(v, base.u);
+  // Il feed della camera è rettilineo: qui la stessa geometria deve valere
+  // anche per il cielo, altrimenti una taratura fatta al centro resta errata
+  // in ogni altro punto del fotogramma.
+  if (skyCampoDaObiettivo()) {
+    const davanti = d > 0.001;
+    return {
+      davanti,
+      px: davanti ? sky.larghezza / 2 + focale * x / d : 0,
+      py: davanti ? sky.altezza / 2 - focale * y / d : 0,
+      x, y, d
+    };
+  }
   const davanti = d > SKY_D_MIN;
   const den = (1 + d) * 0.5;
   return {
@@ -7770,6 +8134,15 @@ function skyProietta(v, base, focale) {
 function skyDirezione(px, py, base, focale) {
   const X = (px - sky.larghezza / 2) / focale;
   const Y = (sky.altezza / 2 - py) / focale;
+  if (skyCampoDaObiettivo()) {
+    const n = Math.hypot(X, Y, 1);
+    const x = X / n, y = Y / n, d = 1 / n;
+    return [
+      x * base.r[0] + y * base.u[0] + d * base.f[0],
+      x * base.r[1] + y * base.u[1] + d * base.f[1],
+      x * base.r[2] + y * base.u[2] + d * base.f[2]
+    ];
+  }
   const S = X * X + Y * Y;
   const k = 4 / (4 + S);
   const x = X * k, y = Y * k, d = (4 - S) / (4 + S);
@@ -8087,6 +8460,7 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   const origine = (dettagli && dettagli.origine) ||
     (SKY_FONTI_RIPIEGO.includes(fonte) ? null : fonte);
   const nome = dettagli && dettagli.nome ? dettagli.nome : null;
+  const fuso = dettagli && dettagli.fuso ? dettagli.fuso : null;
 
   // Prima di ogni altro giudizio: una lettura automatica non tocca la
   // posizione che l'utente ha scelto. Lo scarto viene annotato, perché chi
@@ -8121,9 +8495,15 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   // in una sessione precedente, e in mancanza di quello la città di
   // riferimento più vicina. Serve a dire "Roma" invece di "41,9° N, 12,5° E",
   // che a colpo d'occhio non dice niente a nessuno.
+  // Una città scelta dalla ricerca porta già con sé il fuso IANA restituito
+  // dal geocoder. Va registrato prima di aggiornare l'osservatore: altrimenti
+  // il primo fotogramma (e tutta la sessione senza una seconda risposta di
+  // rete) continua a mostrare l'ora del luogo precedente.
+  if (fuso) fusoRicorda(lat, lon, fuso);
   sky.posizione = {
     lat, lon, fonte, origine, precisione, tempo, velocita,
-    nome: nome || nomeLuogoSalvato(lat, lon) || nomeLuogoVicino(lat, lon)
+    nome: nome || nomeLuogoSalvato(lat, lon) || nomeLuogoVicino(lat, lon),
+    fuso: fuso || null, abbreviazioneFuso: ''
   };
   // ...e intanto si chiede il nome vero a chi ha la mappa. Solo per i punti
   // che un nome non ce l'hanno: una città scelta in elenco è già il nome che
@@ -8141,14 +8521,27 @@ function skyImpostaPosizione(lat, lon, fonte, dettagli) {
   skyAggiornaDeclinazione();
   // Cambiando luogo cambiano orari, altezze e giudizi: la memoria va svuotata
   svuotaCacheLocali();
+  caricaFusoOrario(lat, lon).then(() => {
+    const trovato = fusiOrari.get(fusoChiave(lat, lon));
+    if (trovato && sky.posizione &&
+        fusoChiave(sky.posizione.lat, sky.posizione.lon) === fusoChiave(lat, lon)) {
+      sky.posizione.fuso = trovato.nome;
+      sky.posizione.abbreviazioneFuso = trovato.abbreviazione || '';
+    }
+    if (typeof aggiornaStaseraNuovo === 'function') aggiornaStaseraNuovo();
+    if (typeof costruisciAgenda === 'function') costruisciAgenda();
+    if (typeof skyAggiornaTestoTempo === 'function') skyAggiornaTestoTempo();
+  });
   try {
     localStorage.setItem(CHIAVE_SKY_POSIZIONE, JSON.stringify({
       lat, lon, precisione, tempo,
       origine: sky.posizione.origine,
-      nome: sky.posizione.nome
+      nome: sky.posizione.nome,
+      fuso: sky.posizione.fuso || fuso || null
     }));
   } catch (e) { /* storage pieno o non disponibile: pazienza */ }
   skyAvviso('posizione', ''); // la posizione c'è: via l'eventuale avviso
+  skyAggiornaAvvisoGps();
   skyAggiornaStato();
   aggiornaTastiPosizione();
   // Ci si è spostati davvero? Allora anche le colline sono altre, e altri
@@ -8172,7 +8565,8 @@ function skyCaricaPosizioneSalvata() {
         precisione: dati.precisione,
         tempo: dati.tempo,
         origine: dati.origine || null,
-        nome: dati.nome || null
+        nome: dati.nome || null,
+        fuso: dati.fuso || null
       });
       return true;
     }
@@ -8322,6 +8716,15 @@ function skySorvegliaPosizione(autorizzata, modo) {
     posModoSorveglianza = voluto;
     sky.sorveglianza = navigator.geolocation.watchPosition(
       (pos) => {
+        // Ogni lettura conta per capire se ci si sta muovendo, **anche**
+        // quelle che il filtro qui sotto scarta: sono proprio loro a dire
+        // che si sta camminando piano invece che stando fermi, ed è da
+        // quella risposta che il paesaggio decide se vale la pena
+        // riscaricarsi (`terrenoInMoto`, §6-bis di `terreno.js`).
+        if (typeof terrenoSegnaFix === 'function') {
+          terrenoSegnaFix(pos.coords.latitude, pos.coords.longitude,
+                          pos.coords.speed, pos.timestamp);
+        }
         const cambiata = skyImpostaPosizione(pos.coords.latitude, pos.coords.longitude, 'gps', {
           precisione: pos.coords.accuracy,
           tempo: pos.timestamp,
@@ -8840,13 +9243,19 @@ async function avviaPosizioneAllAvvio() {
 // posizione vera. `proprio` distingue i due casi per chi deve raccontarlo.
 function skyLuogoDelCielo() {
   if (sky.luogoVista) {
-    return { lat: sky.luogoVista.lat, lon: sky.luogoVista.lon, nome: sky.luogoVista.nome || null, proprio: true };
+    return {
+      lat: sky.luogoVista.lat, lon: sky.luogoVista.lon,
+      nome: sky.luogoVista.nome || null, fuso: sky.luogoVista.fuso || null,
+      abbreviazioneFuso: sky.luogoVista.abbreviazioneFuso || '', proprio: true
+    };
   }
   const l = luogoCorrente();
   if (!l) return null;
   return {
     lat: l.lat, lon: l.lon,
     nome: (sky.posizione && sky.posizione.nome) || null,
+    fuso: (sky.posizione && sky.posizione.fuso) || null,
+    abbreviazioneFuso: (sky.posizione && sky.posizione.abbreviazioneFuso) || '',
     proprio: false
   };
 }
@@ -8862,6 +9271,12 @@ function skyAggiornaOsservatore() {
   // Cambiando luogo cambiano altezze, orari e giudizi: la memoria va svuotata
   sky.prossimoCalcolo = 0;
   sky.cacheOrari = { chiave: null, valore: null };
+  // Anche il feed ADS-B e' centrato sull'osservatore del planetario, ma
+  // spostarsi non e' cambiare cielo: il modulo decide da se' (aerei.js
+  // §4-bis) se questo e' un passo del viaggio — e allora tiene la fotografia
+  // e rifa' le coordinate dal punto di adesso — oppure un salto in un altro
+  // posto, che e' l'unico caso in cui la butta e ricarica.
+  if (typeof aereiPosizioneCambiata === 'function') aereiPosizioneCambiata();
   if (sky.aperto && typeof skyAggiornaOggetti === 'function') skyAggiornaOggetti(true);
   // Cambiando luogo cambia anche l'orizzonte: le colline sono altre, altri
   // i paesi che di notte lo illuminano e altre le montagne che ci spuntano
@@ -8872,13 +9287,37 @@ function skyAggiornaOsservatore() {
   else if (typeof terrenoCarica === 'function') terrenoCarica();
   skyAggiornaStato();
   skyAggiornaLuogoVistaUI();
+  // Luogo e istante sono le due coordinate dello stesso cielo. Aggiornare
+  // soltanto stelle e paesaggio lasciava la barra e le sei caselle nel fuso
+  // del posto precedente finché non terminava una richiesta di rete (e, se
+  // quella falliva, per tutta la visita). Il fuso già noto viene applicato
+  // qui, nello stesso passaggio sincrono che cambia l'osservatore.
+  if (typeof skyAggiornaTestoTempo === 'function') skyAggiornaTestoTempo();
 }
 
 // Sposta l'occhio altrove. Restituisce false se il punto non ha senso: le
 // coordinate scritte a mano possono essere qualsiasi cosa.
-function skyImpostaLuogoVista(lat, lon, nome) {
+function skyImpostaLuogoVista(lat, lon, nome, fuso) {
   if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return false;
-  sky.luogoVista = { lat, lon, nome: nome || nomeLuogoVicino(lat, lon) };
+  // Open-Meteo restituisce già il fuso IANA insieme alle città cercate: non
+  // buttiamolo via per richiederlo subito dopo. Così l'orologio cambia nello
+  // stesso fotogramma del luogo, anche con una rete lenta.
+  if (fuso) fusoRicorda(lat, lon, fuso);
+  sky.luogoVista = {
+    lat, lon, nome: nome || nomeLuogoVicino(lat, lon),
+    fuso: fuso || null, abbreviazioneFuso: ''
+  };
+  caricaFusoOrario(lat, lon).then(() => {
+    if (sky.luogoVista && fusoChiave(sky.luogoVista.lat, sky.luogoVista.lon) === fusoChiave(lat, lon)) {
+      const trovato = fusiOrari.get(fusoChiave(lat, lon));
+      if (trovato) {
+        sky.luogoVista.fuso = trovato.nome;
+        sky.luogoVista.abbreviazioneFuso = trovato.abbreviazione || '';
+      }
+      skyAggiornaTestoTempo();
+      skyAggiornaStato();
+    }
+  });
   skyAggiornaOsservatore();
   return true;
 }
@@ -8924,10 +9363,13 @@ function skyNomeLuogoConAltitudine(luogo) {
 }
 
 // Applica una città o un punto scelto nel pannello e lo racconta
-function skyUsaLuogoVista(lat, lon, nome) {
+function skyUsaLuogoVista(lat, lon, nome, opzioni = {}) {
+  // Questo e' il punto da cui parte la camera. Va letto prima di cambiare
+  // l'osservatore, altrimenti sulla carta partenza e arrivo coinciderebbero.
+  const partenza = skyLuogoDelCielo();
   // Le coordinate arrivano da un elenco di città, quindi sono buone: il
   // controllo resta come rete di sicurezza per chi chiamasse da altrove.
-  if (!skyImpostaLuogoVista(lat, lon, nome)) {
+  if (!skyImpostaLuogoVista(lat, lon, nome, opzioni.fuso)) {
     skyAvviso('luogo', 'Quel punto non sta sulla Terra: riprova con un\'altra città.', 6000);
     return;
   }
@@ -8935,6 +9377,12 @@ function skyUsaLuogoVista(lat, lon, nome) {
   const campo = document.getElementById('skymap-luogo-cerca');
   if (campo) campo.value = '';
   const l = skyLuogoDelCielo();
+  // La mini-mappa racconta il viaggio compiuto dentro al paesaggio. Cercare
+  // una città o scegliere un punto dal mappamondo cambia l'osservatore, ma
+  // non è uno spostamento della camera sul terreno e non deve farla apparire.
+  if (opzioni.mostraSpostamentoTerreno && partenza && l) {
+    skyMostraMappaSpostamentoGeografico(partenza, l);
+  }
   skyAvviso('luogo', `Cielo visto da ${l && l.nome ? l.nome : formattaCoordinate(lat, lon)}: solo qui nel planetario.`, 7000);
   skyMostraGruppo('');
 }
@@ -8954,7 +9402,7 @@ function skyMostraRisultatiLuogo(elenco, nota) {
   box.querySelectorAll('[data-luogo]').forEach(btn => {
     btn.addEventListener('click', () => {
       const c = elenco[parseInt(btn.dataset.luogo, 10)];
-      if (c) skyUsaLuogoVista(c.lat, c.lon, c.nome);
+      if (c) skyUsaLuogoVista(c.lat, c.lon, c.nome, { fuso: c.fuso });
     });
   });
 }
@@ -9095,8 +9543,23 @@ const luogoMappa = {
   zoomUltimo: LUOGO_ZOOM_APERTURA,  // com'era stretta l'ultima volta che si è chiusa
   sfondo: 'strade',// quale dei tre fondi è acceso
   strato: null,    // il tileLayer di adesso
-  occhio: null     // ResizeObserver: la mappa va rimisurata a ogni cambio di forma
+  occhio: null,    // ResizeObserver: la mappa va rimisurata a ogni cambio di forma
+  tocco: null      // partenza dell'ultimo dito sulla mappa
 };
+
+// Dopo avere indicato il terreno non si cambia osservatore per sbaglio: il
+// pallino giallo offre la conferma proprio nel punto appena scelto.
+function luogoMappaMostraVaiQua() {
+  if (!luogoMappa.segno) return;
+  luogoMappa.segno.bindPopup(
+    '<button type="button" class="luogo-vai-qua">Vai qua</button>',
+    { closeButton: false, className: 'luogo-popup-vai', offset: [0, -10] }
+  ).openPopup();
+  const popup = luogoMappa.segno.getPopup();
+  const nodo = popup && popup.getElement();
+  const vai = nodo && nodo.querySelector('.luogo-vai-qua');
+  if (vai) vai.addEventListener('click', luogoMappaUsa, { once: true });
+}
 
 // Longitudine riportata fra −180 e +180: Leaflet, con `worldCopyJump`, per un
 // tocco sulla copia del mondo a destra restituisce 200 o 380, che a Astronomy
@@ -9189,20 +9652,59 @@ function luogoMappaCostruisci() {
     // del telefono, e la rotellina lo è sul computer: qui la mappa è dentro a
     // una finestra che scorre, e senza queste due righe la rotellina scorreva
     // il foglio invece di avvicinare il terreno.
-    scrollWheelZoom: true, touchZoom: true, tap: true
+    scrollWheelZoom: true, touchZoom: true, tap: true,
+    // Il doppio gesto qui sceglie il luogo; lo zoom resta comodamente
+    // disponibile con rotella, pulsanti e pizzico a due dita.
+    doubleClickZoom: false
   }).setView([41.9, 12.5], LUOGO_ZOOM_APERTURA);
   luogoMappaSfondo(luogoMappa.sfondo, { zitto: true });
   // Lo zoom a destra, come sulla mappa dell'ombra: le due mappe dell'app si
   // devono comandare allo stesso modo.
   L.control.zoom({ position: 'topright' }).addTo(luogoMappa.mappa);
+  aggiungiControlloTemaMappa(luogoMappa.mappa, riquadro);
   luogoMappaConsegnaTasti();
+
+  // Leaflet su alcuni browser trasforma il tocco in un click senza
+  // conservarne pointerType. Lo annotiamo prima, così telefono e PC non
+  // vengono confusi nemmeno sui dispositivi ibridi.
+  riquadro.addEventListener('pointerdown', (e) => {
+    luogoMappa.tocco = e.pointerType || 'mouse';
+  }, { passive: true });
 
   luogoMappa.mappa.on('click', (e) => {
     // Toccare la mappa è anche il modo di dire "ho finito di cercare": se
     // l'elenco dei nomi resta aperto copre proprio la parte che si sta
     // guardando.
     luogoMostraRisultati([], null);
+    // Mouse e trackpad scelgono soltanto col doppio clic. Sul telefono un
+    // tocco deve invece rispondere subito: il doppio tocco appartiene allo
+    // zoom e non va requisito per cambiare punto di osservazione.
+    const originale = e.originalEvent;
+    const puntatore = originale && originale.pointerType;
+    const tocco = puntatore === 'touch' || puntatore === 'pen' ||
+      luogoMappa.tocco === 'touch' || luogoMappa.tocco === 'pen' ||
+      (originale && /^touch/.test(originale.type));
+    luogoMappa.tocco = null;
+    if (!tocco) return;
     luogoMappaScegli(e.latlng.lat, e.latlng.lng);
+    luogoMappaMostraVaiQua();
+  });
+
+  // Mouse e trackpad hanno un dblclick affidabile.
+  luogoMappa.mappa.on('dblclick', (e) => {
+    L.DomEvent.preventDefault(e.originalEvent);
+    luogoMappaScegli(e.latlng.lat, e.latlng.lng);
+    luogoMappaMostraVaiQua();
+  });
+
+  // «Vai qua» serve a confermare il punto appena indicato. Se nel frattempo
+  // si trascina o si ingrandisce la carta, quel punto non è più il centro
+  // dell'attenzione: lasciare il fumetto appeso al terreno lo faceva sembrare
+  // ancora la scelta corrente. `dragstart` (invece di `movestart`) evita anche
+  // di chiuderlo durante l'eventuale auto-pan con cui Leaflet lo porta in
+  // vista appena aperto.
+  luogoMappa.mappa.on('dragstart zoomstart', () => {
+    luogoMappa.mappa.closePopup();
   });
 
   // Quanto si era stretto se lo ricorda: chi ha appena scelto un prato a
@@ -10013,60 +10515,526 @@ function inizializzaMappaLuogo() {
   luogoAggiornaTastoSchermo();
 }
 
-// Il telefono può mandare DUE flussi di orientamento, e sono flussi diversi:
-// "deviceorientationabsolute" è riferito al Nord vero (usa il magnetometro),
-// mentre "deviceorientation" su Android è relativo, cioè la sua alpha parte
-// da dove si trovava il telefono quando il sensore si è acceso. Ascoltandoli
-// tutti e due, sessanta volte al secondo ciascuno, si sovrascrivevano a
-// vicenda: le loro alpha differiscono di un angolo qualunque, e il cielo
-// rimbalzava di continuo fra due orientamenti. Comanda l'assoluto; il
-// relativo si usa solo finché l'assoluto non arriva, o se smette di arrivare.
-const SKY_ATTESA_ASSOLUTO_MS = 3000;
+// =====================================================================
+// 7.1-quinquies LA BUSSOLA
+//   Perché sullo stesso telefono Google Maps punta il Nord e un planetario
+//   no — e cosa si può fare via software.
+//
+//   La segnalazione è sempre la stessa: «i punti cardinali sono imprecisi,
+//   come se il magnetometro a un certo punto impazzisse; eppure Maps, qui
+//   accanto, è preciso». Sono vere tutt'e due le cose, e non è il
+//   magnetometro: è **la posa**.
+//
+//   Una bussola di sistema (`CLHeading` su iOS, il canale «heading» di
+//   Android) risponde a una domanda sola: da che parte punta il bordo
+//   superiore del telefono, misurato sulla sua **proiezione orizzontale**.
+//   Chi guarda una mappa il telefono lo tiene quasi piatto: quella
+//   proiezione è lunga quanto il telefono e la risposta è ottima. Chi guarda
+//   il cielo lo punta in su: la proiezione si accorcia, e quando il bordo
+//   superiore arriva verso lo zenit si annulla del tutto. Dividere per una
+//   lunghezza che tende a zero non dà un errore, dà un numero — sempre
+//   plausibile e sempre più sbagliato. La stessa cosa capita alla terna
+//   alpha/beta/gamma, che a beta = ±90° perde un grado di libertà (alpha e
+//   gamma diventano intercambiabili): ed è la posa normale di questa app.
+//   Il magnetometro, nel frattempo, sta misurando benissimo.
+//
+//   Da qui le tre cure, in ordine di quanto pesano.
+//
+//   1. **Il quaternione al posto degli angoli di Eulero.** Dove c'è
+//      (`AbsoluteOrientationSensor`: Android/Chrome) si legge direttamente la
+//      fusione del sistema — lo stesso `TYPE_ROTATION_VECTOR` che usa Maps —
+//      come quaternione: niente giro per gli angoli, niente arrotondamento e
+//      **nessuna posa degenere**, perché gravità e campo magnetico insieme
+//      determinano l'assetto completo da qualunque parte si punti.
+//
+//   2. **Il ponte del giroscopio.** Dove il quaternione non c'è (iOS: la
+//      Generic Sensor API non esiste, e `webkitCompassHeading` è proprio la
+//      bussola che si accorcia) il telefono dà comunque due cose: un assetto
+//      stabile dal giroscopio, col Nord però in un punto qualunque, e un Nord
+//      magnetico, buono solo da quasi piatti. Si misura allora lo **scarto
+//      fra i due mentre il telefono sta in una posa in cui la bussola è
+//      affidabile**, e lo si tiene: da lì in poi il Nord lo porta il
+//      giroscopio, che pose degeneri non ne ha. È il modo in cui si tara
+//      guardando la mappa e si punta guardando il cielo — e il peso di ogni
+//      correzione è il quadrato della bontà della posa, quindi una lettura
+//      presa col telefono ritto conta venticinque volte meno di una presa in
+//      piano invece di contare uguale.
+//
+//   3. **La taratura su un astro.** Le prime due tolgono l'errore della
+//      geometria, non quello del ferro: una custodia con la calamita, il
+//      cruscotto dell'auto, un tetto armato spostano il campo di gradi, e
+//      nessun software li può indovinare — Maps, lì, chiede l'otto in aria e
+//      spera. Ma un planetario ha un riferimento che una mappa non ha: **sa
+//      dov'è il Sole**. Si punta la Luna, il Sole o una stella luminosa, si
+//      tocca «Tara», e la correzione diventa esatta per costruzione — non
+//      «migliore»: esatta, perché l'azimut vero di quell'astro lo calcoliamo
+//      noi al primo d'arco. Da lì in poi è il giroscopio a portarla in giro.
+//
+//   Le prove stanno nel §29 di `verifica.html`.
+// =====================================================================
 
-// Riceve alpha/beta/gamma dal telefono. Su iOS webkitCompassHeading dà
-// direttamente la direzione rispetto al Nord vero: è la più affidabile.
+const SKY_SENSORE_HZ = 60;           // quanto spesso chiedere l'assetto al sistema
+const SKY_ASSETTO_SCADENZA_MS = 1500; // oltre questo silenzio, una sorgente è muta
+const SKY_PONTE_TAU_S = 4;           // con che calma il Nord magnetico corregge il giroscopio
+const SKY_PONTE_TAU_TARATO_S = 90;   // …e con che calma dopo una taratura su un astro
+const SKY_PONTE_PESO_MIN = 0.08;     // sotto questa bontà di posa la bussola non si ascolta
+const SKY_MAG_ACCURATEZZA_MAX = 30;  // ± gradi dichiarati da iOS oltre i quali non si crede
+const SKY_SCARTO_TAU_S = 3;          // con che calma si stima il disaccordo
+const SKY_SCARTO_ALLARME = 12;       // gradi di disaccordo persistente: bussola da tarare
+const SKY_DISTURBO_RIPETI_MS = 120000; // l'avviso del disturbo non più spesso di così
+
+// Tutto quello che si sa della direzione del Nord, in un posto solo.
+const skyBussola = {
+  sensore: null, sensoreRel: null, sensoreProvato: false,
+  q: null, quandoQ: 0,             // assetto completo dal sistema (telefono → Est/Nord/Alto)
+  qRel: null, quandoRel: 0,        // assetto stabile del giroscopio, col Nord in un punto qualunque
+  euleri: null, quandoE: 0,        // alpha/beta/gamma dell'ultimo evento
+  eulAssoluti: false,              // quegli angoli sono già riferiti al Nord magnetico
+  magAzimut: null, quandoMag: 0,   // il Nord magnetico dichiarato dal sistema, come alpha
+  magPeso: 0,                      // quanto quella dichiarazione è ben condizionata (0…1)
+  accuratezza: null,               // ± gradi dichiarati (solo iOS); −1 = da tarare
+  ponte: null,                     // gradi da sommare all'assetto stabile per avere il Nord
+  ponteVisto: 0,                   // quanto ci si è potuti fidare finora, al meglio
+  scarto: 0,                       // disaccordo fra magnetico e giroscopio, in gradi
+  fonte: 'nessuna',                // 'quaternione' | 'evento' | 'ponte'
+  tarata: null,                    // { astro, gradi, quando } dopo una taratura su un astro
+  avvisoDisturbo: 0
+};
+
+// --- Angoli e quaternioni ---------------------------------------------
+
+function skyGradiTondi(g) { return ((g % 360) + 360) % 360; }
+
+// Differenza fra due angoli riportata in (−180, 180]: è l'unica che non
+// racconta mezzo giro di errore quando si passa da 359° a 1°.
+function skyScartoAngoli(a, b) {
+  let d = (a - b) % 360;
+  if (d > 180) d -= 360;
+  if (d <= -180) d += 360;
+  return d;
+}
+
+// Quaternione [x, y, z, w] → matrice che porta gli assi del telefono in
+// quelli del mondo (Est, Nord, Alto). È esattamente la stessa convenzione
+// della terna alpha/beta/gamma — lo controlla il §29 di `verifica.html`,
+// che le confronta su un centinaio di assetti sorteggiati: se le due
+// divergessero, il cielo si sposterebbe cambiando telefono, che è il modo
+// peggiore di sbagliare perché nessuno dei due sembra rotto.
+function skyMatriceDaQuaternione(q) {
+  const n = Math.hypot(q[0], q[1], q[2], q[3]);
+  if (!(n > 1e-9)) return null;
+  const x = q[0] / n, y = q[1] / n, z = q[2] / n, w = q[3] / n;
+  return [
+    [1 - 2 * (y * y + z * z), 2 * (x * y - z * w),     2 * (x * z + y * w)],
+    [2 * (x * y + z * w),     1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+    [2 * (x * z - y * w),     2 * (y * z + x * w),     1 - 2 * (x * x + y * y)]
+  ];
+}
+
+// Di quanto un assetto è girato attorno alla verticale del posto. Non si
+// passa dagli angoli di Eulero — sarebbe tornare al problema — ma dalla
+// decomposizione «twist e swing»: scritto l'assetto come Rz(giro) seguito
+// dal resto, la parte attorno a Z è il quaternione (0, 0, z, w) normalizzato.
+//
+// Il numero che ne esce **non** è l'alpha di Eulero (differisce di un
+// termine che dipende da beta e gamma), e non importa: qui serve solo a
+// confrontare due assetti che differiscono per un giro attorno alla
+// verticale, e su quella differenza i due coincidono cifra per cifra. È
+// l'invariante da cui dipende tutto il ponte, e il §29 lo prova.
+//
+// Il `peso` è la lunghezza di quella parte prima di normalizzarla, cioè
+// quanto la domanda ha senso: vale uno col telefono in piano e cade a zero
+// solo col telefono capovolto esatto — una posa molto più rara di quella in
+// cui Eulero si arrende, che è invece la posa normale di un planetario.
+function skyAzimutDiAssetto(q) {
+  const z = q[2], w = q[3];
+  const peso = Math.hypot(z, w);
+  if (!(peso > 1e-9)) return { azimut: 0, peso: 0 };
+  return { azimut: skyGradiTondi(2 * Math.atan2(z, w) * SKY_R2D), peso };
+}
+
+// Girare un vettore del mondo attorno alla verticale. Sommare gradi ad alpha
+// è la stessa cosa (Rz sta a sinistra di tutto, nella terna di Eulero), ma
+// con il quaternione gli angoli di Eulero non ci sono più: la correzione va
+// applicata dove è sempre stata, cioè sul mondo.
+function skyGiraAzimut(v, gradi) {
+  const a = gradi * SKY_D2R, c = Math.cos(a), s = Math.sin(a);
+  return [c * v[0] - s * v[1], s * v[0] + c * v[1], v[2]];
+}
+
+function skyGiraMatriceAzimut(R, gradi) {
+  if (!gradi) return R;
+  const a = gradi * SKY_D2R, c = Math.cos(a), s = Math.sin(a);
+  return [
+    [c * R[0][0] - s * R[1][0], c * R[0][1] - s * R[1][1], c * R[0][2] - s * R[1][2]],
+    [s * R[0][0] + c * R[1][0], s * R[0][1] + c * R[1][1], s * R[0][2] + c * R[1][2]],
+    R[2]
+  ];
+}
+
+// --- Il ponte fra il giroscopio e il Nord magnetico -------------------
+// `stabile` è l'azimut dell'assetto che il giroscopio tiene fermo ma con il
+// Nord in un punto qualunque; `magnetico` è quello che dichiara la bussola
+// di sistema, giusto solo in certe pose. Il ponte è la loro differenza, e
+// si aggiorna con un peso che è il **quadrato** della bontà della posa: una
+// lettura presa col telefono ritto non va buttata, ma non deve nemmeno
+// pesare quanto una presa in piano.
+function skyPonteAggiorna(stabile, magnetico, peso, dt) {
+  if (!(peso > 0)) return;
+  const voluto = skyScartoAngoli(magnetico, stabile);
+  // Il primo aggancio si fa comunque, anche con una posa mediocre: è quello
+  // che l'app faceva da sempre, e non c'è ragione di partire peggio. Da lì in
+  // poi vale la regola del peso, e appena il telefono passa per una posa
+  // buona il ponte ci si assesta sopra.
+  if (skyBussola.ponte === null) {
+    skyBussola.ponte = voluto;
+    skyBussola.ponteVisto = peso;
+    return;
+  }
+  if (!(peso > SKY_PONTE_PESO_MIN)) return;
+  const errore = skyScartoAngoli(voluto, skyBussola.ponte);
+  // Il disaccordo che resta è la sola misura che abbiamo di quanto la
+  // bussola stia mentendo: un campo pulito lo tiene sotto il grado, un
+  // cruscotto d'auto o una custodia con la calamita lo tengono a decine.
+  const kScarto = 1 - Math.exp(-dt / SKY_SCARTO_TAU_S);
+  skyBussola.scarto += (Math.abs(errore) * peso - skyBussola.scarto) * kScarto;
+
+  const tau = skyBussola.tarata ? SKY_PONTE_TAU_TARATO_S : SKY_PONTE_TAU_S;
+  const k = (1 - Math.exp(-dt / tau)) * peso * peso;
+  skyBussola.ponte = skyScartoAngoli(skyBussola.ponte + errore * Math.min(1, k), 0);
+  if (peso > skyBussola.ponteVisto) skyBussola.ponteVisto = peso;
+}
+
+// --- La lettura dal sistema -------------------------------------------
+
+// Il quaternione arriva dalla Generic Sensor API. Due sensori: quello
+// assoluto è la risposta, quello relativo serve da testimone — è lo stesso
+// assetto senza magnetometro, e il disaccordo fra i due dice quanto il ferro
+// lì intorno sta disturbando.
+function skyBussolaQuaternione(quale, quat) {
+  if (!quat || quat.length < 4) return;
+  const adesso = performance.now();
+  if (quale === 'assoluto') {
+    skyBussola.q = [quat[0], quat[1], quat[2], quat[3]];
+    skyBussola.quandoQ = adesso;
+    skyBussola.fonte = 'quaternione';
+    skyBussolaPrimaLettura(true);
+  } else {
+    skyBussola.qRel = [quat[0], quat[1], quat[2], quat[3]];
+    skyBussola.quandoRel = adesso;
+  }
+  // Il ponte si tiene aggiornato anche quando non serve a disegnare: è lui
+  // che sa dire se la bussola è disturbata, e il giorno che il sensore
+  // assoluto tace è già pronto a prenderne il posto.
+  if (skyBussola.q && skyBussola.qRel &&
+      Math.abs(skyBussola.quandoQ - skyBussola.quandoRel) < SKY_ASSETTO_SCADENZA_MS) {
+    const mag = skyAzimutDiAssetto(skyBussola.q);
+    const gyr = skyAzimutDiAssetto(skyBussola.qRel);
+    const dt = Math.min(1, Math.max(0.001, (adesso - (skyBussola.quandoPonte || adesso)) / 1000));
+    skyBussola.quandoPonte = adesso;
+    skyPonteAggiorna(gyr.azimut, mag.azimut, Math.min(mag.peso, gyr.peso), dt);
+  }
+}
+
+async function skyAvviaSensoreAssetto() {
+  if (skyBussola.sensoreProvato) return;
+  skyBussola.sensoreProvato = true;
+  if (typeof AbsoluteOrientationSensor !== 'function') return;
+  // I permessi della Generic Sensor API non aprono nessun pannello: o sono
+  // già concessi (è il caso normale in cima a una pagina https) o rispondono
+  // no, e allora si resta agli eventi, che ci sono comunque.
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      const esiti = await Promise.all(['accelerometer', 'gyroscope', 'magnetometer'].map(
+        name => navigator.permissions.query({ name }).catch(() => ({ state: 'granted' }))));
+      if (esiti.some(e => e && e.state === 'denied')) return;
+    }
+  } catch (e) { /* nomi sconosciuti al browser: si prova lo stesso */ }
+
+  const avvia = (Classe, quale) => {
+    if (typeof Classe !== 'function') return null;
+    try {
+      const s = new Classe({ frequency: SKY_SENSORE_HZ, referenceFrame: 'device' });
+      s.addEventListener('reading', () => skyBussolaQuaternione(quale, s.quaternion || []));
+      // NotReadableError, NotAllowedError: il sensore non c'è, o è occupato.
+      // Non è un guasto — è il caso di tutti i computer — e la rete sotto
+      // sono gli eventi, che restano attaccati comunque.
+      s.addEventListener('error', () => { try { s.stop(); } catch (e2) { /* già ferma */ } });
+      s.start();
+      return s;
+    } catch (e) { return null; }
+  };
+  skyBussola.sensore = avvia(AbsoluteOrientationSensor, 'assoluto');
+  skyBussola.sensoreRel = avvia(typeof RelativeOrientationSensor === 'function'
+    ? RelativeOrientationSensor : null, 'relativo');
+}
+
+// Riceve alpha/beta/gamma dal telefono. Su iOS `webkitCompassHeading` è la
+// bussola di CoreLocation — quella che si accorcia col telefono ritto — e
+// alpha invece viene dal giroscopio, stabile ma col Nord in un punto
+// qualunque: sono esattamente le due metà del ponte.
 function skyEventoOrientamento(e) {
   const bussolaIOS = typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading);
-  const assoluto = bussolaIOS || e.absolute === true || e.type === 'deviceorientationabsolute';
-  const adesso = Date.now();
-
-  if (assoluto) {
-    sky.ultimoAssoluto = adesso;
-  } else if (adesso - sky.ultimoAssoluto < SKY_ATTESA_ASSOLUTO_MS) {
-    return; // c'è di meglio in arrivo: questa lettura non serve
-  }
+  const assoluto = e.absolute === true || e.type === 'deviceorientationabsolute';
+  const adesso = performance.now();
 
   // Un valore mancante non è "zero": prenderlo alla lettera faceva scattare
   // il cielo verso Nord. Se manca, si tiene l'ultimo valore buono.
-  const prec = sky.orient;
+  const prec = skyBussola.euleri;
   const numero = (v, difetto) => (typeof v === 'number' && isFinite(v) ? v : difetto);
-  const alpha = bussolaIOS
-    ? 360 - e.webkitCompassHeading            // bussola di iOS -> alpha assoluto
-    : numero(e.alpha, prec ? prec.alpha : null);
+  const alpha = numero(e.alpha, prec ? prec.alpha : null);
   const beta = numero(e.beta, prec ? prec.beta : null);
   const gamma = numero(e.gamma, prec ? prec.gamma : null);
   if (alpha === null || beta === null || gamma === null) return;
 
-  // Cambiando sorgente l'alpha cambia di scatto: il filtro riparte da capo,
-  // altrimenti il cielo ci arriverebbe scivolando per mezzo secondo.
-  const cambioSorgente = assoluto !== sky.assoluto;
-  if (cambioSorgente) sky.baseFiltrata = null;
+  // Prima la metà magnetica, se questo evento ce l'ha: così il ponte trova
+  // già il Nord di *questo* istante invece di quello di sedici millisecondi
+  // fa, e soprattutto si aggancia al primo evento invece che al secondo.
+  if (bussolaIOS) {
+    // `webkitCompassHeading` è la direzione del bordo superiore del telefono
+    // proiettato sull'orizzonte, e vale 360 − alpha finché quella proiezione
+    // esiste: la sua lunghezza è |cos β|, ed è quella la bontà della posa.
+    // Col telefono ritto verso il cielo tende a zero, ed è lì che questa
+    // bussola — la stessa di Maps — comincia a dire numeri a caso. Sotto
+    // l'orizzonte del piano (cos β < 0, telefono rovesciato all'indietro) il
+    // bordo superiore punta dall'altra parte e la relazione si ribalta: quelle
+    // letture si lasciano fuori invece di indovinare di quanto.
+    const cB = Math.cos(beta * SKY_D2R);
+    skyBussola.magAzimut = skyGradiTondi(360 - e.webkitCompassHeading);
+    skyBussola.quandoMag = adesso;
+    // iOS dichiara anche di quanto potrebbe sbagliare. Un −1 vuol dire
+    // «non fidarti», ed è esattamente il momento in cui Maps chiede l'otto
+    // in aria: noi lo diciamo e offriamo la taratura su un astro, che è meglio.
+    const acc = typeof e.webkitCompassAccuracy === 'number' ? e.webkitCompassAccuracy : null;
+    skyBussola.accuratezza = acc;
+    const credibile = acc === null || (acc >= 0 && acc <= SKY_MAG_ACCURATEZZA_MAX);
+    skyBussola.magPeso = credibile ? Math.max(0, cB) : 0;
+    if (acc !== null && !credibile) skyBussola.scarto = Math.max(skyBussola.scarto, acc < 0 ? 25 : acc);
+  }
 
+  // Due flussi diversi arrivano insieme, sessanta volte al secondo ciascuno:
+  // `deviceorientationabsolute` (riferito al Nord) e `deviceorientation` (su
+  // Android relativo). Non si sovrascrivono più a vicenda — ognuno finisce
+  // dove serve, e il relativo è la metà stabile del ponte, non un ripiego
+  // che rimbalza. Prima comandava l'assoluto e il relativo lo sostituiva
+  // dopo tre secondi di silenzio: siccome la loro alpha differisce di un
+  // angolo qualunque, quel cambio della guardia girava il cielo di colpo —
+  // ed è il «a un certo punto la bussola impazzisce» delle segnalazioni.
+  if (assoluto || !skyBussola.eulAssoluti ||
+      adesso - skyBussola.quandoE > SKY_ASSETTO_SCADENZA_MS) {
+    const dt = Math.min(1, Math.max(0.001, (adesso - (skyBussola.quandoE || adesso)) / 1000));
+    skyBussola.euleri = { alpha, beta, gamma };
+    // La vista Telescopio legge da qui la livella e il goniometro (beta e
+    // gamma sono l'inclinazione, cioè l'accelerometro): quella lettura non
+    // ha niente a che vedere con la bussola e resta dov'è sempre stata.
+    sky.orient = skyBussola.euleri;
+    skyBussola.quandoE = adesso;
+    skyBussola.eulAssoluti = assoluto;
+    if (!assoluto && skyBussola.magAzimut !== null &&
+        adesso - skyBussola.quandoMag < SKY_ASSETTO_SCADENZA_MS) {
+      skyPonteAggiorna(alpha, skyBussola.magAzimut, skyBussola.magPeso, dt);
+    }
+  }
+
+  skyBussolaPrimaLettura(assoluto || (bussolaIOS && skyBussola.ponte !== null));
+}
+
+// La prima lettura è anche la sola occasione buona per dire com'è che
+// funziona: la schermata di benvenuto non c'è più (e non deve tornare), ma
+// «muovi il telefono» resta una cosa che nessuno indovina guardando una
+// mappa ferma. Una riga, sei secondi, e solo su un dispositivo che i sensori
+// ce li ha davvero.
+function skyBussolaPrimaLettura(conNord) {
   const primaLettura = !sky.sensori;
-  sky.orient = { alpha, beta, gamma };
-  sky.assoluto = assoluto;
+  const cambio = conNord !== sky.assoluto;
   sky.sensori = true;
-  // La prima lettura è anche la sola occasione buona per dire com'è che
-  // funziona: la schermata di benvenuto non c'è più (e non deve tornare),
-  // ma «muovi il telefono» resta una cosa che nessuno indovina guardando
-  // una mappa ferma. Una riga, cinque secondi, e solo su un dispositivo che
-  // i sensori ce li ha davvero.
+  if (conNord) sky.assoluto = true;
   if (primaLettura) {
     skyAvviso('sensori', 'Punta il telefono verso il cielo: la mappa segue quello che inquadri.', 6000);
   }
-  // Cambia anche quel che possiamo promettere all'utente: con una bussola
-  // relativa il Nord va corretto a mano.
-  if (cambioSorgente || primaLettura) skyAggiornaStato();
+  if (cambio || primaLettura) skyAggiornaStato();
+}
+
+// --- Da tutto questo, una matrice -------------------------------------
+// In ordine di bontà: il quaternione del sistema, gli angoli già riferiti al
+// Nord, gli angoli del giroscopio col ponte addosso. L'ultima riga è la
+// vecchia strada di sempre, e resta come rete per i telefoni che non hanno
+// nient'altro.
+function skyAssettoGrezzo() {
+  const adesso = performance.now();
+  if (skyBussola.q && adesso - skyBussola.quandoQ < SKY_ASSETTO_SCADENZA_MS) {
+    const R = skyMatriceDaQuaternione(skyBussola.q);
+    if (R) return { R, fonte: 'quaternione', conNord: true };
+  }
+  const e = skyBussola.euleri;
+  if (!e || adesso - skyBussola.quandoE > SKY_ASSETTO_SCADENZA_MS * 4) return null;
+  if (skyBussola.eulAssoluti) {
+    return {
+      R: skyMatriceDispositivo(e.alpha * SKY_D2R, e.beta * SKY_D2R, e.gamma * SKY_D2R),
+      fonte: 'evento', conNord: true
+    };
+  }
+  if (skyBussola.ponte !== null) {
+    return {
+      R: skyMatriceDispositivo((e.alpha + skyBussola.ponte) * SKY_D2R,
+        e.beta * SKY_D2R, e.gamma * SKY_D2R),
+      fonte: 'ponte', conNord: true
+    };
+  }
+  // Nessun riferimento al Nord: l'assetto c'è lo stesso ed è utile (il cielo
+  // si muove col telefono), ma il Nord lo deve dare l'utente.
+  return {
+    R: skyMatriceDispositivo(e.alpha * SKY_D2R, e.beta * SKY_D2R, e.gamma * SKY_D2R),
+    fonte: 'evento', conNord: false
+  };
+}
+
+function skyAssettoDisponibile() {
+  return !!skyAssettoGrezzo();
+}
+
+// La matrice che il planetario disegna: l'assetto del sistema, più la
+// declinazione magnetica (che porta al Nord vero, l'unico rispetto al quale
+// sono calcolati gli astri) e la correzione manuale o da astro. Tutt'e due
+// sono rotazioni attorno alla verticale, ed è così che vanno applicate: a
+// telefono ritto sommarle ad alpha sarebbe stato lo stesso, ma con il
+// quaternione gli angoli di Eulero non ci sono più.
+function skyMatriceBussola() {
+  const a = skyAssettoGrezzo();
+  if (!a) return null;
+  skyBussola.fonte = a.fonte;
+  sky.assoluto = a.conNord;
+  const correzione = (a.conNord ? -sky.declinazione : 0) + sky.offsetBussola;
+  return skyGiraMatriceAzimut(a.R, correzione);
+}
+
+// Quanto ci si può fidare del Nord segnato, in gradi di errore stimato.
+// `null` quando non c'è modo di saperlo.
+function skyBussolaErroreStimato() {
+  if (skyBussola.tarata) return 0;
+  if (skyBussola.accuratezza !== null && skyBussola.accuratezza < 0) return 999;
+  if (skyBussola.ponte === null && skyBussola.fonte === 'quaternione' &&
+      !skyBussola.qRel) return null;
+  return skyBussola.scarto;
+}
+
+function skyBussolaDisturbata() {
+  const err = skyBussolaErroreStimato();
+  return err !== null && err > SKY_SCARTO_ALLARME;
+}
+
+// Il disturbo va detto, ma una volta ogni tanto: un pannello che si accende
+// perché si è passati accanto a un termosifone insegna solo a ignorarlo.
+function skyControllaDisturboBussola() {
+  if (!skyUsaSensori() || !skyBussolaDisturbata()) return;
+  const adesso = performance.now();
+  if (adesso - skyBussola.avvisoDisturbo < SKY_DISTURBO_RIPETI_MS) return;
+  skyBussola.avvisoDisturbo = adesso;
+  skyAvviso('bussola', 'La bussola è disturbata da qualcosa di ferroso qui vicino. ' +
+    'Punta la Luna o un pianeta e tocca «Tara su un astro» (pannello Navigazione): ' +
+    'la correzione diventa esatta.', 9000);
+}
+
+// --- La taratura su un astro ------------------------------------------
+// L'unico riferimento che un planetario ha e una mappa no. L'altezza sopra
+// l'orizzonte la dà la gravità e non sbaglia mai: è quindi lei a dire QUALE
+// astro si sta puntando, mentre l'azimut può essere lontano quanto è grande
+// l'errore della bussola — che è proprio il numero che stiamo cercando.
+const SKY_TARA_ALT_MAX = 8;    // gradi di scarto in altezza ammessi per riconoscere l'astro
+const SKY_TARA_AZ_MAX = 60;    // …e quanto può essere sbagliata la bussola
+const SKY_TARA_MAG_MAX = 2.0;  // più deboli di così non si puntano a colpo sicuro
+// (due tonde e non una e mezza per far entrare la Polare, che di stelle su cui
+//  tarare una bussola è la prima della lista: sta praticamente sul Nord vero)
+// Chi si può puntare senza sbagliarsi. I pianeti deboli restano fuori: nessuno
+// riconosce Urano in cielo, e tarare su un astro che si è creduto di vedere
+// vuol dire scrivere l'errore invece di toglierlo.
+const SKY_TARA_PIANETI = new Set(['Venus', 'Jupiter', 'Mars', 'Saturn', 'Mercury']);
+
+function skyDirezioneMirino() {
+  const base = sky.ultimaBase;
+  if (!base) return null;
+  const f = base.f;
+  return {
+    az: skyGradiTondi(Math.atan2(f[0], f[1]) * SKY_R2D),
+    alt: Math.asin(Math.max(-1, Math.min(1, f[2]))) * SKY_R2D
+  };
+}
+
+// Che astro sta guardando, fra quelli che uno riconosce a occhio nudo.
+function skyAstroDaTarare() {
+  const mirino = skyDirezioneMirino();
+  if (!mirino) return null;
+  let scelto = null;
+  for (const o of (sky.oggetti || [])) {
+    if (!o || typeof o.az !== 'number' || typeof o.alt !== 'number') continue;
+    if (o.alt < 3) continue;   // troppo basso: rifrazione, foschia e tetti
+    let luce;
+    if (o.tipo === 'sole' || o.tipo === 'luna') luce = -30;
+    else if (o.tipo === 'pianeta') luce = SKY_TARA_PIANETI.has(o.id) ? -2 : 99;
+    else if (o.tipo === 'stella') luce = typeof o.mag === 'number' ? o.mag : 99;
+    else continue;             // satelliti e cielo profondo non sono riferimenti
+    if (luce > SKY_TARA_MAG_MAX) continue;
+    // L'altezza la dà la gravità e non sbaglia mai: è lei a dire QUALE astro
+    // si sta puntando. L'azimut invece può essere lontano quanto è grande
+    // l'errore della bussola, che è proprio il numero che stiamo cercando —
+    // chiedergli di essere già vicino sarebbe chiedere di aver già finito.
+    const dAlt = Math.abs(o.alt - mirino.alt);
+    if (dAlt > SKY_TARA_ALT_MAX) continue;
+    const dAz = Math.abs(skyScartoAngoli(o.az, mirino.az)) * Math.cos(mirino.alt * SKY_D2R);
+    if (dAz > SKY_TARA_AZ_MAX) continue;
+    const punteggio = luce + dAlt * 0.1 + dAz * 0.02;
+    if (!scelto || punteggio < scelto.punteggio) scelto = { o, punteggio, mirino };
+  }
+  return scelto;
+}
+
+// Applica la taratura. Il conto è una riga: la bussola sbaglia esattamente
+// di quanto l'azimut vero dell'astro si discosta da quello in cui il
+// planetario sta guardando adesso.
+function skyTaraSuAstro() {
+  if (!skyUsaSensori()) {
+    skyAvviso('bussola', 'La taratura serve alla bussola del telefono: accendi «Segui il telefono».', 6000);
+    return false;
+  }
+  const scelta = skyAstroDaTarare();
+  if (!scelta) {
+    skyAvviso('bussola', 'Punta il mirino su un astro che vedi davvero — la Luna, il Sole, ' +
+      'un pianeta o una stella luminosa — e riprova.', 7000);
+    return false;
+  }
+  const correzione = skyScartoAngoli(scelta.o.az, scelta.mirino.az);
+  skyImpostaOffsetBussola(sky.offsetBussola + correzione);
+  skyBussola.tarata = { astro: scelta.o.nome || 'astro', gradi: correzione, quando: Date.now() };
+  skyBussola.scarto = 0;
+  sky.baseFiltrata = null;   // il cielo ci arriva subito, non scivolandoci per mezzo secondo
+  skyAvviso('bussola', `Bussola tarata su ${scelta.o.nome}: correzione ` +
+    `${correzione >= 0 ? '+' : ''}${correzione.toFixed(1)}°. ` +
+    'Da adesso il Nord lo porta il giroscopio.', 7000);
+  skyAggiornaStato();
+  skyAggiornaTastoTara();
+  return true;
+}
+
+function skyAzzeraTaratura() {
+  skyBussola.tarata = null;
+  skyImpostaOffsetBussola(0);
+  sky.baseFiltrata = null;
+  skyAggiornaTastoTara();
+  skyAggiornaStato();
+}
+
+function skyAggiornaTastoTara() {
+  const t = document.getElementById('skymap-btn-tara-astro');
+  if (!t) return;
+  const scelta = skyUsaSensori() ? skyAstroDaTarare() : null;
+  t.disabled = !skyUsaSensori();
+  t.textContent = scelta ? `Tara su ${scelta.o.nome}` : 'Tara su un astro';
+  t.title = scelta
+    ? `Dice alla bussola che lì c'è ${scelta.o.nome}: da quel momento il Nord è esatto ` +
+      'per costruzione, perché l\'azimut vero di quell\'astro lo calcoliamo noi'
+    : 'Punta il mirino su un astro che vedi davvero (la Luna, il Sole, un pianeta, ' +
+      'una stella luminosa) e tocca qui: la bussola si corregge sul cielo vero';
+  skyTasto('skymap-btn-tara-astro', !!skyBussola.tarata);
 }
 
 // Un telefono che l'evento ce l'ha ma non lo manda mai — manca il
@@ -10084,10 +11052,15 @@ function skyAscoltaOrientamento() {
   if (typeof DeviceOrientationEvent === 'undefined') return false;
   if (sky.ascolto) return true;
   sky.ascolto = true;
-  // Ci si iscrive a entrambi gli eventi, ma non per usarli entrambi: quello
-  // assoluto è il migliore e su certi dispositivi esiste senza mai arrivare,
-  // quindi il relativo resta lì come rete di sicurezza. A scegliere fra i due,
-  // lettura per lettura, è skyEventoOrientamento.
+  // Prima di tutto la strada buona: il quaternione della Generic Sensor API,
+  // che è la stessa fusione di sistema che usa Google Maps e non ha pose
+  // degeneri (§7.1-quinquies). Dove non c'è — iOS, e i computer — non
+  // succede niente e restano gli eventi.
+  skyAvviaSensoreAssetto();
+  // Ci si iscrive a entrambi gli eventi, e adesso servono davvero tutti e
+  // due: quello assoluto porta il Nord, quello relativo porta l'assetto
+  // stabile del giroscopio, che è la metà del ponte. Non si sovrascrivono
+  // più a vicenda — a smistarli è skyEventoOrientamento.
   sky.baseFiltrata = null;
   if ('ondeviceorientationabsolute' in window) {
     window.addEventListener('deviceorientationabsolute', skyEventoOrientamento, true);
@@ -10306,6 +11279,11 @@ function skyAggiornaOggetti(forza) {
     // Cosa succede nel cielo di quest'ora: l'elenco segue l'orologio
     skyAggiornaEventi();
     skyChiediEventiDelMese();
+    // La bussola: se è disturbata va detto, e il tasto della taratura deve
+    // sapere che astro si sta puntando adesso (§7.1-quinquies). Due volte al
+    // secondo, non a ogni fotogramma: è una scrittura nella pagina.
+    skyControllaDisturboBussola();
+    skyAggiornaTastoTara();
   }
 
   // Chi arriva da un'altra scheda ("Trova Marte nel cielo") chiede di
@@ -10573,7 +11551,7 @@ function skyOrariPuntoFisso(ra, dec) {
 }
 
 function skyOra(data) {
-  return data ? data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '—';
+  return oraDelLuogo(data, typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null);
 }
 
 // =====================================================================
@@ -10798,413 +11776,13 @@ function skyVelo() {
 }
 
 // --- La Via Lattea ---------------------------------------------------
-//
-// Non è un catalogo: è il piano della nostra Galassia guardato da dentro.
-// Per molto tempo qui c'è stata una riga — i punti di latitudine galattica
-// zero — ripassata venti volte con tratti sempre più larghi. Da lontano
-// funzionava, ma raccontava tre bugie, e sono le tre cose che chiunque
-// abbia visto la Via Lattea da un posto buio riconosce per prime:
-//
-//   · la banda non ha una larghezza sola. Verso il Sagittario si guarda
-//     il rigonfiamento centrale della Galassia — ventiseimila anni luce
-//     di stelle in fila — e occupa venti gradi di cielo; verso
-//     l'anticentro, in Auriga, si guarda fuori dal disco e resta un
-//     nastro di cinque;
-//   · non ha una luminosità sola, e non cambia con dolcezza: le nubi
-//     stellari (la Grande Nube del Sagittario, la Nube dello Scudo,
-//     quella del Cigno, la Carena) sono chiazze, con un loro bordo;
-//   · e soprattutto **non è continua**. La Fenditura del Cigno la taglia
-//     in due dal Cigno al Sagittario, settanta gradi di cielo di seguito.
-//     Non è un vuoto: è polvere davanti, ed è il dettaglio che più di
-//     ogni altro dice «Via Lattea vera» invece di «nastro disegnato».
-//
-// Quindi non più una linea, ma una nuvola: milleseicento fiocchi sparsi
-// in coordinate galattiche seguendo una densità che mette insieme lo
-// spessore della banda, la luce lungo il giro e le nubi con un nome,
-// chiare e scure. Dove la densità è zero non si mette niente, e quel
-// niente è la fenditura — un buco vero, non una vernice scura stesa sopra
-// al chiaro (che con la fusione additiva non esisterebbe nemmeno).
-//
-// I fiocchi si sorteggiano una volta sola — alla prima apertura del
-// planetario, non all'avvio dell'app — da un seme fisso: la Via Lattea di
-// stasera dev'essere la stessa di ieri sera.
-const SKY_NGP_RA = 192.85948;    // polo nord galattico, ascensione retta in gradi
-const SKY_NGP_DEC = 27.12825;    // ...e declinazione
-const SKY_L_NCP = 122.93192;     // longitudine galattica del polo nord celeste
-
-function skyGalatticoAEquatoriale(l, b) {
-  const br = b * SKY_D2R;
-  const dNGP = SKY_NGP_DEC * SKY_D2R;
-  const dl = (SKY_L_NCP - l) * SKY_D2R;
-  const sinDec = Math.sin(dNGP) * Math.sin(br) + Math.cos(dNGP) * Math.cos(br) * Math.cos(dl);
-  const dec = Math.asin(Math.max(-1, Math.min(1, sinDec)));
-  const y = Math.cos(br) * Math.sin(dl);
-  const x = Math.cos(dNGP) * Math.sin(br) - Math.sin(dNGP) * Math.cos(br) * Math.cos(dl);
-  const ra = ((SKY_NGP_RA + Math.atan2(y, x) * SKY_R2D) % 360 + 360) % 360;
-  return { ra: ra / 15, dec: dec * SKY_R2D };
-}
-
-// Quanti gradi di longitudine galattica siamo lontani dal centro (che sta
-// in Sagittario, a l = 0): il numero da cui dipende quasi tutto il resto.
-function skyVLDalCentro(l) {
-  const a = ((l % 360) + 360) % 360;
-  return Math.min(a, 360 - a);
-}
-
-// Distanza fra due punti in coordinate galattiche. Il coseno sulla
-// longitudine serve perché a b = 30° un grado di longitudine è mezzo grado
-// di cielo: senza, le nubi alte sopra al piano verrebbero stirate.
-function skyVLDistanza(l1, b1, l2, b2) {
-  const dl = (((l1 - l2 + 540) % 360) - 180) * Math.cos((b1 + b2) * 0.5 * SKY_D2R);
-  return Math.hypot(dl, b1 - b2);
-}
-
-// Semispessore della banda, in gradi. Il rigonfiamento centrale è il primo
-// termine gaussiano; il secondo è la gobba del Cigno, dove il braccio di
-// Orione ci passa accanto e la banda torna a essere larga.
-function skyVLSemiSpessore(l) {
-  const d = skyVLDalCentro(l);
-  return 3.4
-    + 8.4 * Math.exp(-Math.pow(d / 38, 2))
-    + 1.6 * Math.exp(-Math.pow((d - 82) / 34, 2));
-}
-
-// Quanto brilla la banda lungo il giro: verso il centro è una nuvola
-// densa, all'anticentro un quinto di quella luce. L'esponente 1,7 (invece
-// del quadrato) tiene la caduta ripida vicino al centro e piatta lontano,
-// che è come si comporta davvero.
-function skyVLLuceGiro(l) {
-  const d = skyVLDalCentro(l);
-  return 0.2 + 0.8 * Math.exp(-Math.pow(d / 62, 1.7));
-}
-
-// Le nubi stellari con un nome: chiazze dove la banda si addensa. Sono
-// quelle che si vedono a occhio nudo da un cielo buio, e sono il motivo
-// per cui la Via Lattea non sembra mai dipinta con un pennello solo.
-const SKY_VL_CHIARE = [
-  { nome: 'Grande Nube del Sagittario',  l: 6,   b: -3.6, r: 6.0, forza: 0.95 },
-  { nome: 'Piccola Nube del Sagittario', l: 13,  b: -1.6, r: 2.6, forza: 0.62 },
-  { nome: 'Nube dello Scudo',            l: 27,  b: -0.6, r: 4.0, forza: 0.78 },
-  { nome: "Nube dell'Aquila",            l: 45,  b: -1.2, r: 4.0, forza: 0.42 },
-  { nome: 'Nube del Cigno',              l: 78,  b: 1.4,  r: 6.5, forza: 0.58 },
-  { nome: 'Cassiopea',                   l: 118, b: -1.0, r: 4.5, forza: 0.30 },
-  { nome: 'Perseo',                      l: 134, b: -2.0, r: 4.5, forza: 0.26 },
-  { nome: 'Auriga',                      l: 174, b: 0.6,  r: 4.0, forza: 0.20 },
-  { nome: 'Poppa',                       l: 245, b: -1.4, r: 5.0, forza: 0.26 },
-  { nome: 'Vele',                        l: 266, b: -1.6, r: 5.0, forza: 0.38 },
-  { nome: 'Carena',                      l: 287, b: -0.8, r: 5.0, forza: 0.72 },
-  { nome: 'Croce del Sud',               l: 301, b: 0.4,  r: 4.5, forza: 0.46 },
-  { nome: 'Centauro',                    l: 312, b: 0.2,  r: 4.5, forza: 0.44 },
-  { nome: 'Regolo',                      l: 330, b: -0.6, r: 4.5, forza: 0.52 },
-  { nome: 'Scorpione',                   l: 344, b: 1.2,  r: 4.0, forza: 0.48 }
-];
-
-// Le nubi scure: polvere fra noi e le stelle. La lunga catena da l = 80 a
-// l = 0 è la Fenditura del Cigno, che nel Cigno corre sul piano e
-// salendo verso l'Ofiuco se ne stacca di cinque gradi — per questo è una
-// fila di macchie e non una riga: quella deviazione è il suo aspetto.
-// Le macchie della catena si toccano — passo di sei gradi, raggio di
-// quattro — perché la fenditura è una cosa sola: con macchie distanziate
-// restava una collana di buchi, che è il difetto opposto e altrettanto
-// riconoscibile.
-const SKY_VL_SCURE = [
-  { nome: 'Fenditura del Cigno',    l: 86,  b: 0.2,  r: 3.6, forza: 0.50 },
-  { nome: 'Fenditura del Cigno',    l: 80,  b: 0.4,  r: 3.8, forza: 0.66 },
-  { nome: 'Fenditura del Cigno',    l: 74,  b: 0.6,  r: 3.9, forza: 0.76 },
-  { nome: 'Fenditura del Cigno',    l: 68,  b: 0.8,  r: 4.0, forza: 0.80 },
-  { nome: 'Fenditura del Cigno',    l: 62,  b: 1.1,  r: 4.0, forza: 0.82 },
-  { nome: "Fenditura dell'Aquila",  l: 56,  b: 1.5,  r: 4.0, forza: 0.82 },
-  { nome: "Fenditura dell'Aquila",  l: 50,  b: 1.9,  r: 4.0, forza: 0.82 },
-  { nome: "Fenditura dell'Aquila",  l: 44,  b: 2.3,  r: 4.1, forza: 0.82 },
-  { nome: "Fenditura dell'Aquila",  l: 38,  b: 2.8,  r: 4.1, forza: 0.80 },
-  { nome: 'Fenditura del Serpente', l: 32,  b: 3.3,  r: 4.2, forza: 0.78 },
-  { nome: 'Fenditura del Serpente', l: 26,  b: 3.9,  r: 4.2, forza: 0.76 },
-  { nome: "Fenditura dell'Ofiuco",  l: 20,  b: 4.5,  r: 4.3, forza: 0.74 },
-  { nome: "Fenditura dell'Ofiuco",  l: 14,  b: 5.1,  r: 4.3, forza: 0.72 },
-  { nome: "Fenditura dell'Ofiuco",  l: 8,   b: 5.7,  r: 4.2, forza: 0.68 },
-  { nome: 'Nebulosa Pipa',          l: 2,   b: 6.2,  r: 4.0, forza: 0.60 },
-  { nome: 'Rho Ofiuco',             l: 355, b: 6.6,  r: 3.6, forza: 0.46 },
-  { nome: 'Sacco di Carbone',       l: 303, b: -0.8, r: 3.0, forza: 0.82 },
-  { nome: 'Buco nel Centauro',      l: 316, b: 0.6,  r: 2.8, forza: 0.46 },
-  { nome: 'Polvere nel Regolo',     l: 337, b: 1.4,  r: 3.0, forza: 0.44 },
-  { nome: 'Polvere nel Cefeo',      l: 104, b: 2.2,  r: 3.2, forza: 0.40 },
-  { nome: 'Polvere nel Toro',       l: 168, b: -3.0, r: 3.4, forza: 0.30 }
-];
-
-// Ogni nube con un nome tocca una decina di gradi di longitudine e basta,
-// ma il sorteggio chiede la densità trentamila volte, e cercarle tutte
-// ogni volta è quasi tutto il tempo che ci vuole. Si dividono una volta
-// sola in spicchi di dieci gradi: per un punto se ne guardano tre o
-// quattro invece di trentasei.
-const SKY_VL_SPICCHIO = 10;              // gradi di longitudine per spicchio
-const SKY_VL_SPICCHI = 360 / SKY_VL_SPICCHIO;
-
-function skyVLPerSpicchi(elenco) {
-  const spicchi = [];
-  for (let i = 0; i < SKY_VL_SPICCHI; i++) spicchi.push([]);
-  elenco.forEach(n => {
-    // Fin dove arriva: oltre i 2,6 raggi la gaussiana è sotto lo 0,1% e il
-    // conto la salta. Il coseno della latitudine allarga quel raggio in
-    // longitudine, e 0,85 è il caso peggiore (una nube sul piano guardata
-    // da trenta gradi sopra).
-    const arrivo = 2.6 * n.r / 0.85 + SKY_VL_SPICCHIO;
-    const da = Math.floor((n.l - arrivo) / SKY_VL_SPICCHIO);
-    const a = Math.ceil((n.l + arrivo) / SKY_VL_SPICCHIO);
-    for (let k = da; k <= a; k++) spicchi[((k % SKY_VL_SPICCHI) + SKY_VL_SPICCHI) % SKY_VL_SPICCHI].push(n);
-  });
-  return spicchi;
-}
-
-const SKY_VL_CHIARE_SPICCHI = skyVLPerSpicchi(SKY_VL_CHIARE);
-const SKY_VL_SCURE_SPICCHI = skyVLPerSpicchi(SKY_VL_SCURE);
-
-// Quanta luce c'è in quel punto del cielo galattico. Il profilo verticale
-// è una gaussiana con una coda: il nocciolo della banda è stretto, ma un
-// alone tenue arriva molto più in alto — e senza la coda la banda ha un
-// bordo, che è la cosa che non deve avere.
-function skyVLDensita(l, b) {
-  const u = b / skyVLSemiSpessore(l);
-  const profilo = 0.84 * Math.exp(-u * u * 1.7) + 0.16 * Math.exp(-Math.abs(u) * 1.2);
-  let d = skyVLLuceGiro(l) * profilo;
-
-  const spicchio = ((Math.floor(l / SKY_VL_SPICCHIO) % SKY_VL_SPICCHI) + SKY_VL_SPICCHI) % SKY_VL_SPICCHI;
-  const chiare = SKY_VL_CHIARE_SPICCHI[spicchio];
-  const scure = SKY_VL_SCURE_SPICCHI[spicchio];
-
-  for (let i = 0; i < chiare.length; i++) {
-    const n = chiare[i];
-    const x = skyVLDistanza(l, b, n.l, n.b) / n.r;
-    if (x < 2.6) d += n.forza * Math.exp(-x * x);
-  }
-  for (let i = 0; i < scure.length; i++) {
-    const n = scure[i];
-    const x = skyVLDistanza(l, b, n.l, n.b) / n.r;
-    if (x < 2.6) d *= 1 - n.forza * Math.exp(-x * x);
-  }
-
-  // La grana: tre onde con periodi che non sono uno il multiplo dell'altro
-  // (17°, 48°, 7°), perché due sole facevano una scalloppatura regolare —
-  // una fila di gobbe tutte uguali, che è il difetto che questa riga esiste
-  // per togliere.
-  const grana = 0.72
-    + 0.16 * Math.sin(l * 0.37 + b * 0.21)
-    + 0.13 * Math.cos(l * 0.131 - b * 0.44 + 2.1)
-    + 0.09 * Math.sin(l * 0.89 + b * 0.63 + 0.7);
-  return Math.max(0, d * grana);
-}
-
-// Il colore. A occhio nudo la Via Lattea è grigia, ma questa è una
-// figura, e in una figura il colore dice una cosa vera: verso il centro
-// la luce attraversa migliaia di anni luce di polvere e arriva arrossata,
-// verso l'anticentro sono le giovani stelle azzurre dei bracci esterni.
-const SKY_VL_COLORI = [
-  [236, 214, 178],   // 0 — il rigonfiamento centrale, arrossato dalla polvere
-  [206, 216, 255],   // 1 — il grosso della banda
-  [180, 200, 255]    // 2 — i bracci esterni, verso l'anticentro
-];
-
-// Massimo della densità (con un margine): serve al sorteggio per
-// accettazione-rifiuto, che è il modo di sparpagliare punti seguendo una
-// funzione senza doverla saper integrare.
-const SKY_VL_DENSITA_MAX = 1.9;
-const SKY_VL_QUANTE = 1600;
-
-// Il sorteggio dei fiocchi. Si fa una volta sola, ma **non all'avvio**:
-// sono trentamila estrazioni, e su un telefono si sentono. Chi apre l'app
-// per sapere che tempo fa stasera non deve pagarle: si fanno la prima
-// volta che il planetario chiede le nubi, dentro a `skyNubiDelCielo()`.
-function skyGeneraViaLattea() {
-  const caso = skyCaso(skySeme('via lattea'));
-  const nubi = [];
-  let tentativi = 0;
-
-  while (nubi.length < SKY_VL_QUANTE && tentativi < SKY_VL_QUANTE * 60) {
-    tentativi++;
-    const l = caso() * 360;
-    const semi = skyVLSemiSpessore(l);
-    // La latitudine si pesca su una fascia larga due volte e mezzo lo
-    // spessore: più in là la densità è comunque zero e il campione si
-    // butterebbe via
-    const b = (caso() * 2 - 1) * semi * 2.5;
-    const d = skyVLDensita(l, b);
-    if (d < 0.02 || caso() * SKY_VL_DENSITA_MAX > d) continue;
-
-    // Le misure dei fiocchi sono sbilanciate verso i piccoli (l'esponente
-    // 1,8), perché sono loro a fare la grana; i pochi grandi fanno l'alone
-    // che tiene insieme il tutto. Dove la banda è larga sono più grandi:
-    // in Sagittario il rigonfiamento è una nuvola, non un filo.
-    const r = (1.0 + 3.2 * Math.pow(caso(), 1.8)) * (0.62 + 0.05 * semi);
-
-    // La luce di un fiocco cala con la sua misura: se no i pochi grandi si
-    // prenderebbero tutta la scena e la banda tornerebbe liscia
-    const luce = d * 1.6 / (1 + r);
-
-    // La tinta segue la longitudine, con un po' di rimescolamento: una
-    // separazione netta fra caldo e freddo si vedrebbe come una cucitura
-    const verso = Math.max(0, Math.min(1, (skyVLDalCentro(l) - 22) / 88)) + caso() * 0.34 - 0.17;
-    const tinta = verso < 0.33 ? 0 : (verso < 0.72 ? 1 : 2);
-
-    const p = skyGalatticoAEquatoriale(((l % 360) + 360) % 360, b);
-    const ra = p.ra * 15 * SKY_D2R, dec = p.dec * SKY_D2R, cd = Math.cos(dec);
-    nubi.push({
-      ra: p.ra, dec: p.dec,
-      v: [cd * Math.cos(ra), cd * Math.sin(ra), Math.sin(dec)],
-      r, luce, tinta
-    });
-  }
-  return nubi;
-}
-
-// Le nubi portate nel cielo di adesso. Sono più di mille: gli oggetti si
-// costruiscono una volta e a ogni aggiornamento si riscrivono soltanto il
-// versore orizzontale e l'altezza, dentro agli stessi oggetti. Chi le
-// calcola è catalogo.js quando il catalogo è caricato (stessa matrice
-// delle stelle, quindi stessa precessione); qui c'è la strada di riserva
-// per i primi secondi, quando il catalogo non c'è ancora.
-let skyVLCielo = null;
-
-function skyNubiDelCielo() {
-  if (!skyVLCielo) {
-    skyVLCielo = skyGeneraViaLattea().map(n => ({
-      v: n.v, vh: [0, 0, 0], alt: -90, r: n.r, luce: n.luce, tinta: n.tinta
-    }));
-  }
-  return skyVLCielo;
-}
-
-// Una matrice sola per tutte le nubi, come fa catalogo.js per le stelle:
-// milleseicento chiamate a Horizon() a ogni aggiornamento sarebbero il
-// conto più caro della vista, e per un fondo sfocato non ha senso.
-function skyPortaViaLatteaInCielo(t) {
-  if (!sky.observer || typeof Astronomy === 'undefined') { sky.viaLattea = []; return; }
-  let M;
-  try {
-    M = Astronomy.CombineRotation(
-      Astronomy.Rotation_EQJ_EQD(t),
-      Astronomy.Rotation_EQD_HOR(t, sky.observer)
-    ).rot;
-  } catch (e) {
-    sky.viaLattea = [];                    // data fuori scala: si lascia stare
-    return;
-  }
-  // Stessa avvertenza di catalogo.js: `rot` è memorizzata [sorgente][destinazione],
-  // e la terna della libreria è (Nord, Ovest, Zenit) — Est = −Ovest.
-  const nx = M[0][0], ny = M[1][0], nz = M[2][0];
-  const ox = M[0][1], oy = M[1][1], oz = M[2][1];
-  const zx = M[0][2], zy = M[1][2], zz = M[2][2];
-
-  const nubi = skyNubiDelCielo();
-  for (let i = 0; i < nubi.length; i++) {
-    const n = nubi[i], x = n.v[0], y = n.v[1], z = n.v[2];
-    const alto = zx * x + zy * y + zz * z;
-    n.vh[0] = -(ox * x + oy * y + oz * z);
-    n.vh[1] =   nx * x + ny * y + nz * z;
-    n.vh[2] =   alto;
-    n.alt = Math.asin(Math.max(-1, Math.min(1, alto))) * SKY_R2D;
-  }
-  sky.viaLattea = nubi;
-}
-
-// --- Il fiocco ---------------------------------------------------------
-// Un solo disegno, dipinto una volta per tinta su una tela fuori schermo e
-// da lì in poi soltanto ricopiato. Un gradiente radiale costruito a ogni
-// fiocco vorrebbe dire milleseicento oggetti gradiente per fotogramma, che
-// è esattamente il genere di spesa che questa vista non si può permettere.
-const SKY_VL_PROFILO = [[0, 1], [0.22, 0.66], [0.42, 0.36], [0.62, 0.15], [0.82, 0.04], [1, 0]];
-let skyVLTele = null;
-
-function skyTeleViaLattea() {
-  if (skyVLTele) return skyVLTele;
-  skyVLTele = SKY_VL_COLORI.map(colore => {
-    const lato = 96, m = lato / 2;
-    const tela = document.createElement('canvas');
-    tela.width = tela.height = lato;
-    const c = tela.getContext('2d');
-    const g = c.createRadialGradient(m, m, 0, m, m, m);
-    SKY_VL_PROFILO.forEach(([p, a]) => g.addColorStop(p, skyRgba(colore, a)));
-    c.fillStyle = g;
-    c.fillRect(0, 0, lato, lato);
-    return tela;
-  });
-  return skyVLTele;
-}
-
-// Quanto della Via Lattea arriva davvero all'occhio da qui. È la parte che
-// mancava del tutto: la banda è la prima cosa che il cielo perde. Da un
-// cielo di città non c'è, con la Luna piena alta nemmeno, e disegnarla lo
-// stesso è la bugia più grossa che questa vista possa raccontare a chi la
-// cerca poi fuori dalla finestra.
-const SKY_VL_PER_CIELO = { 2: 1, 3: 0.88, 4: 0.70, 5: 0.52, 6: 0.30, 8: 0.12 };
-const SKY_VL_ALFA = 0.13;
-
-function skyForzaViaLattea(luna) {
-  // Atmosfera spenta: è una carta stellare, e su una carta la banda si
-  // disegna per intero
-  if (!sky.atmosfera) return 1;
-
-  let k = 0.42;
-  if (typeof cieloDiCasa === 'function') {
-    try { k = SKY_VL_PER_CIELO[cieloDiCasa()] || k; } catch (e) { /* niente storage */ }
-  }
-
-  // La Luna: piena e alta cancella la banda come un lampione. Conta la
-  // fase più che proporzionalmente (un primo quarto illumina un quarto di
-  // quanto illumina la piena, non la metà) e conta quanto è alta.
-  if (luna && luna.alt > -2) {
-    const fase = typeof luna.frazione === 'number' ? luna.frazione : 1;
-    const quanta = Math.pow(fase, 1.7) * Math.min(1, (luna.alt + 2) / 32);
-    k *= 1 - 0.88 * Math.max(0, quanta);
-  }
-
-  // Ingrandendo, quella che a occhio nudo è una nuvola diventa un campo di
-  // stelle, e il catalogo qui sotto ce le mette davvero: la nube si fa da
-  // parte invece di restare una macchia sfocata sopra le stelle.
-  const fov = sky.fov || 55;
-  if (fov < 12) k *= Math.max(0.45, (fov - 1.5) / 12);
-
-  return Math.max(0, k);
-}
-
-function skyDisegnaViaLattea(ctx, base, focale, luna) {
-  const nubi = sky.viaLattea;
-  if (!nubi || !nubi.length) return;
-  const velo = skyVelo();
-  if (velo < 0.08) return;               // di giorno non c'è niente da mostrare
-  const forza = skyForzaViaLattea(luna) * velo * SKY_VL_ALFA;
-  if (forza < 0.002) return;
-
-  // Sul telefono si disegna un fiocco su due, con il doppio della luce
-  // ciascuno: la banda resta della stessa luminosità e il riempimento si
-  // dimezza. È lo stesso patto che c'era coi veli di prima, e qui vale
-  // anche di più: a campo largo i fiocchi in vista sono quattrocento, e
-  // il riempimento è tutto il costo di questo disegno.
-  const passo = sky.larghezza < 560 ? 2 : 1;
-  const tele = skyTeleViaLattea();
-  const L = sky.larghezza, H = sky.altezza;
-
-  ctx.save();
-  // La Via Lattea è luce che si somma al cielo, non vernice che lo copre:
-  // le stelle si devono vedere attraverso, ed è quello che fa `lighter`.
-  ctx.globalCompositeOperation = 'lighter';
-
-  for (let i = 0; i < nubi.length; i += passo) {
-    const n = nubi[i];
-    if (n.alt < -8) continue;            // sotto l'orizzonte la copre il terreno
-    const p = skyProietta(n.vh, base, focale);
-    if (!p.davanti) continue;
-
-    const r = skyRaggioAngolare(n.r, focale) * skyScalaLocale(p.d);
-    if (r < 1) continue;
-    if (p.px + r < 0 || p.px - r > L || p.py + r < 0 || p.py - r > H) continue;
-
-    const a = n.luce * forza * passo * skyEstinzione(n.alt);
-    if (a < 0.005) continue;
-
-    ctx.globalAlpha = Math.min(0.5, a);
-    ctx.drawImage(tele[n.tinta], p.px - r, p.py - r, r * 2, r * 2);
-  }
-  ctx.restore();
-}
+// Sta tutta in `via-lattea.js`, che è caricato subito dopo questo file: la
+// banda, la Fenditura, le Nubi di Magellano e i grumi di idrogeno acceso.
+// Da qui si chiamano tre nomi soli, e tutt'e tre dietro a un `typeof` —
+// `skyPortaViaLatteaInCielo()` in `skyAggiornaOggetti()` e
+// `skyDisegnaViaLattea()` in `skyDisegna()`, più `skyNubiDelCielo()` che
+// se lo prende catalogo.js. Senza quel file il cielo è quello di prima,
+// con le stelle e senza la banda.
 
 // =====================================================================
 // 7.3.2 LA PELLE DEGLI ASTRI
@@ -11297,7 +11875,7 @@ function skyTelePixelMax() {
 // pixel per punto sono duemilaseicento pixel veri, dipinti a partire da una
 // tela di duecentocinquantasei — un ingrandimento di dieci volte, cioè una
 // sfocatura da cui non torna indietro niente. È lo stesso guasto già trovato
-// sulla Terra della vista 3D (`SOL_ZOOM_MAX_TERRA`), e la cura è la stessa:
+// sulla Terra della vista 3D (`SOL_ZOOM_MAX_CORPO`), e la cura è la stessa:
 // la tela deve seguire il disco.
 //
 // Il tetto adesso è **1024 per tutti**, e i due numeri che lo scelgono sono
@@ -11872,7 +12450,7 @@ function skyDipingiVenere(ctx) {
 // mondo senza una faccia. Quella faccia l'ha dipinta a lungo una decina di
 // macchie tonde appoggiate alle coordinate vere (`SKY_TERRE`), e per la
 // misura di allora bastavano; ma da quando ci si può avvicinare parecchio
-// (`SOL_ZOOM_MAX_TERRA`) si leggevano per quello che erano — bolle verdi —
+// (`SOL_ZOOM_MAX_CORPO`) si leggevano per quello che erano — bolle verdi —
 // e adesso anche la faccia dipinta usa le **coste vere** di `SKY_MONDO`,
 // cioè lo stesso mondo del globo da vicino (§7.7-ter) e del banco del
 // tramonto. Un mondo solo, disegnato tre volte: se si corregge una costa, si
@@ -11882,7 +12460,7 @@ function skyDipingiVenere(ctx) {
 //   Le macchie qui sopra sono la Terra vista da lontano, dove il globo è
 //   largo venti pixel e una chiazza verde al posto giusto è tutto quello che
 //   serve. Ma nella vista 3D ci si avvicina finché il globo prende mezzo
-//   schermo (`SOL_ZOOM_MAX_TERRA`), e a quella misura dieci bolle si leggono
+//   schermo (`SOL_ZOOM_MAX_CORPO`), e a quella misura dieci bolle si leggono
 //   per quello che sono: bolle. Con la sagoma vera invece si riconosce il
 //   proprio paese — e riconoscerlo è metà del motivo per cui si guarda la
 //   Terra da fuori, perché il puntino di casa sta *lì*.
@@ -13503,9 +14081,22 @@ function skyDisegnaTerreno(ctx, base, focale, aria) {
   // davvero: confronta l'angolo dell'acqua con quello della cresta che le
   // sta davanti, e taglia via la riva che resta nascosta. Quello che arriva
   // fin qui, quindi, è già solo l'acqua che da qui si vede.
+  // L'acqua non resta dentro allo stato canvas usato dal rilievo. Il rilievo
+  // 3D ritaglia le sue passate alla sagoma del suolo e, a campo largo, cambia
+  // anche il modo in cui quella sagoma viene riempita: ereditare per errore
+  // quel ritaglio rendeva i laghi una campitura perfettamente valida ma con
+  // zero pixel disponibili. Si chiude quindi qui il contesto del terreno e
+  // si passa esplicitamente la sua opacità all'acqua.
+  ctx.restore();
   if (typeof skyDisegnaAcqueInterne === 'function') {
-    skyDisegnaAcqueInterne(ctx, base, focale, aria);
+    skyDisegnaAcqueInterne(ctx, base, focale, aria, velo);
   }
+
+  // Il riferimento del viaggio va sopra al suolo e all'acqua, come un
+  // piccolo picchetto piantato nel punto da cui la camera e' partita.
+  ctx.save();
+  ctx.globalAlpha = velo;
+  skyDisegnaPuntoPartenza(ctx, base, focale);
   ctx.restore();
 
   // La linea d'orizzonte vero resta, sopra al profilo: è il riferimento —
@@ -14715,31 +15306,39 @@ function skyMareCorpo(ctx, base, focale, aria, m) {
   ctx.save();
   const velo = ctx.globalAlpha;
   ctx.fillStyle = g;
-  let i = 0;
-  while (i < n - 1) {
-    if (!col[i] || col[i].liv <= 0) { i++; continue; }
-    const liv = col[i].liv;
-    let fine = i;
-    while (fine + 1 < n && col[fine + 1] && col[fine + 1].liv === liv) fine++;
-    // Un pezzo arriva **sempre** almeno alla colonna dopo. Alla riva il
-    // livello cambia a ogni colonna, quindi ogni pezzo sarebbe lungo una
-    // colonna sola, cioè un poligono senza area: saltandoli si lasciava
-    // scoperta tutta la fascia di costa, e sullo schermo il mare cominciava
-    // di netto dove la sfumatura era finita — una riga verticale al posto
-    // della riva. Due pezzi contigui condividono una colonna e si toccano.
-    const chiusura = (fine === i && col[i + 1]) ? i + 1 : fine;
-    if (chiusura > i) {
-      ctx.globalAlpha = velo * liv / SKY_MARE_GRADINI;
-      ctx.beginPath();
-      ctx.moveTo(col[i].orlo.px, col[i].orlo.py);
-      for (let k = i + 1; k <= chiusura; k++) ctx.lineTo(col[k].orlo.px, col[k].orlo.py);
-      for (let k = chiusura; k >= i; k--) ctx.lineTo(col[k].giu.px, col[k].giu.py);
+
+  // La costa e' una maschera continua, non una fila di pezzi con opacita'
+  // diverse. Disegnare separatamente ogni livello faceva sovrapporre il
+  // triangolo di chiusura di un pezzo a quello successivo: con campi larghi
+  // quei triangoli convergono verso i piedi e il mare diventava una
+  // girandola di spicchi chiari e scuri.
+  //
+  // Si stendono invece 24 veli **annidati**: il velo q contiene tutte le
+  // colonne che hanno almeno q parti d'acqua. La trasparenza di ogni passata
+  // e' quella che porta esattamente da (q-1)/N a q/N con source-over. Cosi'
+  // due colonne vicine condividono sempre la stessa vernice e il passaggio
+  // terra-acqua resta morbido senza triangoli sovrapposti.
+  for (let q = 1; q <= SKY_MARE_GRADINI; q++) {
+    ctx.globalAlpha = velo / (SKY_MARE_GRADINI - q + 1);
+    ctx.beginPath();
+    let inizio = -1;
+    const chiudi = fine => {
+      if (inizio < 0 || fine <= inizio) { inizio = -1; return; }
+      ctx.moveTo(col[inizio].orlo.px, col[inizio].orlo.py);
+      for (let k = inizio + 1; k <= fine; k++) ctx.lineTo(col[k].orlo.px, col[k].orlo.py);
+      for (let k = fine; k >= inizio; k--) ctx.lineTo(col[k].giu.px, col[k].giu.py);
       ctx.closePath();
-      ctx.fill();
+      inizio = -1;
+    };
+    for (let i = 0; i < n; i++) {
+      if (col[i] && col[i].liv >= q) {
+        if (inizio < 0) inizio = i;
+      } else if (inizio >= 0) {
+        chiudi(i - 1);
+      }
     }
-    // Il pezzo dopo riparte dall'ultima colonna di questo, non dalla
-    // successiva: la colonna in comune è la cerniera.
-    i = Math.max(fine, i + 1);
+    if (inizio >= 0) chiudi(n - 1);
+    ctx.fill();
   }
   ctx.restore();
 }
@@ -15247,11 +15846,30 @@ const SKY_ACQUA_CALMA = [
   { pendenza: 0.3, lunghezza: 0.32 }     // 1 = fiume
 ];
 
-// Sotto questa altezza in pixel una striscia d'acqua non si riempie: si
-// traccia. Un poligono alto mezzo pixel non copre nessun pixel intero e
-// sullo schermo non compare affatto — ed è il caso normale dei fiumi, che
-// visti da lontano sono una riga e nient'altro.
-const SKY_ACQUA_FILO_PX = 1.6;
+// Quanto è **alta almeno** una striscia d'acqua disegnata.
+//
+// È la risposta a «i fiumi non si vedono, e quando si vedono sono un filo di
+// pennarello azzurro». Un corso d'acqua largo trenta metri, guardato da tre
+// chilometri e da cinquanta metri più in alto, occupa in verticale qualche
+// decimo di pixel: la geometria è giusta e il disegno è nessun disegno. La
+// stessa cosa succede al bordo di ogni lago, dove la superficie si assottiglia
+// fino a sparire — ed è lì che nascevano le code a punta.
+//
+// La forma vera, a quella scala, non c'è: il fiume è più stretto di un pixel.
+// Ma il **posto** c'è, ed è esatto al metro (`acqueTagliaUno` lo calcola dalla
+// geometria vera). Allora si disegna una forma plausibile nel posto giusto: la
+// striscia si allarga fino a questo minimo attorno alla sua mezzeria, che è
+// dove l'acqua sta davvero, e da lì in poi è acqua come tutte le altre —
+// stesso colore di Fresnel, stesse rive, stessa foschia. Due pixel e mezzo,
+// che è la larghezza a cui un tratto smette di essere una riga e comincia a
+// essere una superficie.
+const SKY_ACQUA_MIN_PX = 2.5;
+
+// E quanto si smorza quando la larghezza è tutta prestata. Non è pignoleria:
+// un'acqua allargata dieci volte, disegnata piena, è più marcata del lago vero
+// che le sta accanto — e allora il ruscello dietro casa grida più forte del
+// Garda. A opacità piena resta chi la larghezza ce l'ha davvero.
+const SKY_ACQUA_MIN_ALFA = 0.55;
 
 // Sotto questa altezza in pixel non si mettono onde né riflessi a bande:
 // una striscia di tre pixel divisa in fasce sono tre righe, non delle onde.
@@ -15261,6 +15879,31 @@ const SKY_ACQUA_ALTA_PX = 6;
 // distanza dentro a una striscia. Sono le stesse misure del mare, ridotte:
 // una striscia è alta una frazione dello schermo, non tutto.
 const SKY_ACQUA_PASSO_PX = 7;
+
+// L'isteresi con cui il passo di campionamento cambia: la stessa di
+// `RIL_ISTERESI`, e per la stessa ragione — fra la soglia per infittire e
+// quella per diradare ci dev'essere una fascia morta, se no il passo balla a
+// ogni fotogramma mentre il dito pizzica.
+const SKY_ACQUA_ISTERESI = 1.35;
+
+// Il passo di adesso, tenuto fra un fotogramma e l'altro. È uno solo per
+// tutte le strisce, e si decide **dalla focale e basta**: sono la stessa acqua
+// guardata con lo stesso campo, e facendolo dipendere da quanto è larga questa
+// striscia due laghi si campionerebbero a passi diversi — peggio, si
+// scriverebbero addosso lo stato a vicenda e il passo ballerebbe fra l'uno e
+// l'altro dentro allo stesso fotogramma.
+const skyAcquaPasso = { colonne: 1 };
+
+function skyAcquaPassoColonne(focale) {
+  const passoAz = (typeof ACQUE_PASSO_AZ === 'number') ? ACQUE_PASSO_AZ : 0.5;
+  const pxColonna = Math.max(1e-6, focale * passoAz * SKY_D2R);
+  const voluto = SKY_ACQUA_PASSO_PX / pxColonna;
+  let p = skyAcquaPasso.colonne;
+  while (p < 256 && voluto > p * SKY_ACQUA_ISTERESI) p *= 2;
+  while (p > 1 && voluto < (p / 2) / SKY_ACQUA_ISTERESI) p /= 2;
+  skyAcquaPasso.colonne = p;
+  return p;
+}
 const SKY_ACQUA_FASCE = [4, 6, 8];
 
 // Le depressioni a cui si ferma la rampa del colore. Non sono equidistanti:
@@ -15505,8 +16148,28 @@ function skyCrestaDisegnataEntro(az, km) {
   return k < 0 ? null : u.creste[col.pos + k];
 }
 
+// Quanto può saltare il bordo di una striscia da una colonna alla successiva
+// prima che non sia più la stessa superficie continua.
+//
+// Il metro è la **striscia stessa**: fra due colonne contigue (mezzo grado)
+// una riva può spostarsi di parecchio se il lago è messo di sbieco, ma non
+// può saltare di più di quanto la banda sia lunga senza che in mezzo ci sia
+// qualcosa — un promontorio, un'altra riva, la fine del lago. Sotto quella
+// soglia si sta seguendo la stessa superficie che si allontana, sopra si sta
+// cucendo insieme due cose diverse.
+//
+// Il caso che conta è la **biforcazione**: una colonna in cui si vede tutto
+// il lago (poniamo da uno a nove chilometri) e quella accanto in cui un
+// promontorio lo taglia in due (uno-tre e sei-nove). Nessuno dei due tratti
+// è «lo stesso» della banda intera, e legarcene uno vuol dire trascinare un
+// bordo di cinque chilometri in mezzo grado: un gradino netto lungo mezzo
+// schermo, con sotto l'altro tratto disegnato per conto suo. La risposta
+// giusta è che lì la striscia **finisce**, e i due tratti ne cominciano due
+// nuove: due poligoni, e in mezzo il promontorio.
+const SKY_ACQUA_SALTO = 1;
+
 // Le strisce: si cammina lungo l'arco in vista e si legano fra loro le
-// bande di colonne vicine che si sovrappongono in distanza.
+// bande di colonne vicine che sono lo **stesso specchio d'acqua**.
 //
 // Serve perché lo stesso lago, in due direzioni contigue, è due bande
 // diverse — e disegnarle una per una vorrebbe dire un riempimento con
@@ -15514,16 +16177,58 @@ function skyCrestaDisegnataEntro(az, km) {
 // una volta e non vale la pena rifare. Legandole si ottiene un poligono
 // solo per specchio d'acqua, che è anche il modo giusto di pensarlo.
 //
-// Il legame è «quale banda della colonna dopo si sovrappone di più a
-// questa»: con due laghi uno dietro l'altro nella stessa direzione, ognuno
-// resta suo.
+// Il legame era «quale banda della colonna dopo si sovrappone di più a
+// questa», e per un lago in mezzo alla pianura andava benissimo. Va a pezzi
+// appena il terreno entra in gioco, ed è da lì che vengono gli spicchi.
+// L'occlusione **spezza** una colonna in più tratti — il lago in conca di cui
+// si vede la metà lontana, il promontorio che taglia in due la veduta — e la
+// massima sovrapposizione, che non sa niente di *chi* è cosa, sceglie il
+// tratto sbagliato: la striscia salta dalla riva vicina di questa colonna a
+// quella lontana della prossima, il poligono si attraversa da solo, e con la
+// regola di riempimento `nonzero` quello che ne esce è un cuneo. Il tratto
+// scavalcato, intanto, comincia una striscia sua che parte a metà del lago:
+// il secondo cuneo, quello che sembra un ritaglio appoggiato sopra all'acqua.
+//
+// Adesso il legame chiede tre cose, e sono tre cose diverse:
+//
+//   1. **lo stesso specchio d'acqua** (`corpo`, da `terreno.js` §12): due
+//      laghi che in una direzione si accavallano non si cuciono mai fra loro,
+//      per quanto le loro distanze si sovrappongano;
+//   2. **una sovrapposizione vera**, e non la meno peggio: metà della banda
+//      più corta. Due tratti che si sfiorano per cento metri su tre
+//      chilometri non sono la stessa superficie vista da mezzo grado più in
+//      là, sono due superfici;
+//   3. **nessun salto** dei bordi oltre `SKY_ACQUA_SALTO` (qui sopra).
+//
+// Quando nessuno passa l'esame la striscia finisce lì, e il tratto rimasto ne
+// comincia una sua: due strisce disegnate ognuna con le sue rive, che è
+// esattamente quello che si vede guardando un lago tagliato da un
+// promontorio.
 function skyAcqueStrisce(viste, arco) {
   const passo = ACQUE_PASSO_AZ;
   const n = Math.min(ACQUE_DIREZIONI, Math.round(2 * arco.mezzo / passo) + 1);
   const colonne = [];
   for (let i = 0; i < n; i++) {
-    const az = arco.centro - arco.mezzo + i * passo;
-    const idx = Math.round((((az % 360) + 360) % 360) / passo) % ACQUE_DIREZIONI;
+    const voluto = arco.centro - arco.mezzo + i * passo;
+    const idx = Math.round((((voluto % 360) + 360) % 360) / passo) % ACQUE_DIREZIONI;
+    // L'azimut con cui la colonna si **disegna** è quello del suo campione,
+    // non quello continuo da cui lo si è cercato, ed è la riga che toglie il
+    // tremolio dell'acqua sotto lo zoom.
+    //
+    // `arco.mezzo` cresce e cala col campo visivo, quindi il capofila
+    // `centro − mezzo` scorre a ogni pizzicata: disegnando lì, ogni colonna
+    // scivolava con continuità mentre i **dati** che le stanno attaccati
+    // restavano quelli del campione più vicino. Fin qui sarebbe uno
+    // scorrimento; il guaio è che a metà passo `idx` scatta al campione
+    // accanto, e le due rive saltano di colpo alla differenza fra due bande
+    // contigue — che su un lago di sbieco sono centinaia di metri. Sullo
+    // schermo è un bordo che ondeggia e ogni tanto sussulta, e lo si vede
+    // solo pizzicando, perché da fermi nulla si muove.
+    //
+    // Ancorando il disegno alla griglia dei dati la geometria dipende solo
+    // dall'indice: due fotogrammi con lo stesso insieme di colonne disegnano
+    // esattamente gli stessi pixel, per qualunque campo visivo.
+    const az = idx * passo;
     const lista = viste[idx];
     colonne.push(lista ? lista.map(b => ({ az, b, usata: false })) : []);
   }
@@ -15539,9 +16244,22 @@ function skyAcqueStrisce(viste, arco) {
         let meglio = null, quanto = 0;
         for (const w of colonne[j]) {
           if (w.usata) continue;
+          // `null` vuol dire «non si sa di che specchio è» — bande salvate da
+          // una versione precedente — e allora questa cernita non si applica:
+          // meglio la regola di prima che nessuna striscia.
+          if (w.b.corpo !== null && corrente.b.corpo !== null &&
+              w.b.corpo !== corrente.b.corpo) continue;
           const da = Math.max(corrente.b.vicino, w.b.vicino);
           const a = Math.min(corrente.b.lontano, w.b.lontano);
-          if (a - da > quanto) { quanto = a - da; meglio = w; }
+          const insieme = a - da;
+          if (!(insieme > quanto)) continue;
+          const corta = Math.min(corrente.b.lontano - corrente.b.vicino,
+                                 w.b.lontano - w.b.vicino);
+          if (!(insieme >= corta / 2)) continue;
+          const salto = Math.max(Math.abs(w.b.vicino - corrente.b.vicino),
+                                 Math.abs(w.b.lontano - corrente.b.lontano));
+          if (salto > corta * SKY_ACQUA_SALTO) continue;
+          quanto = insieme; meglio = w;
         }
         if (!meglio) break;
         meglio.usata = true;
@@ -15557,7 +16275,7 @@ function skyAcqueStrisce(viste, arco) {
   return strisce;
 }
 
-function skyDisegnaAcqueInterne(ctx, base, focale, aria) {
+function skyDisegnaAcqueInterne(ctx, base, focale, aria, opacita) {
   if (typeof acqueVisibili !== 'function') return;
   const viste = acqueVisibili();
   if (!viste) return;
@@ -15585,6 +16303,10 @@ function skyDisegnaAcqueInterne(ctx, base, focale, aria) {
   const gradiente = skyAcqueGradiente(ctx, base, focale, aria, arco, fine, o);
   const suolo = skyColoriPaesaggio('suolo', aria);
   ctx.save();
+  // Non dipendere dallo stato lasciato dal terreno 3D: oltre a rendere il
+  // disegno immune ai suoi clip, conserva esattamente la dissolvenza del
+  // paesaggio quando si stringe il campo su un astro.
+  ctx.globalAlpha *= typeof opacita === 'number' ? opacita : skyOpacitaTerreno();
   for (const s of strisce) {
     skyAcquaStriscia(ctx, base, focale, aria, stato, astri, s, t, gradiente,
       skyAcqueRiflessoRiva(ctx, base, focale, s, fine, o, suolo));
@@ -15592,9 +16314,82 @@ function skyDisegnaAcqueInterne(ctx, base, focale, aria) {
   ctx.restore();
 }
 
+// Le colonne più sottili di `minimo` si allargano attorno alla loro
+// **mezzeria**, che è dove l'acqua sta davvero.
+//
+// Si fa per colonna e non per striscia: un lago può essere alto venti pixel in
+// mezzo e mezzo pixel ai bordi, e sono proprio i bordi a dover restare acqua
+// invece di assottigliarsi in una punta. Le depressioni vere (`depAlto`,
+// `depBasso`) non si toccano: servono al colore, alle onde e al riflesso, e
+// quelle la larghezza prestata non la devono vedere.
+function skyAcquaAllargaSottili(alto, basso, minimo) {
+  const n = alto.length;
+  // Prima si decide, poi si allarga, e sono **due giri**: allargando strada
+  // facendo, la colonna in coda legge la tangente su una vicina che è già
+  // stata spostata, e prende una direzione storta. È un errore di un
+  // ventesimo di pixel e non si vedrebbe mai — ma è anche il genere di
+  // dipendenza dall'ordine che, il giorno che qualcuno cambia il verso del
+  // ciclo, diventa un difetto vero.
+  const dove = new Array(n);
+  for (let i = 0; i < n; i++) {
+    if (!alto[i]) continue;
+    let dx = basso[i].px - alto[i].px, dy = basso[i].py - alto[i].py;
+    const h = Math.hypot(dx, dy);
+    if (h >= minimo) continue;
+    if (h > 1e-3) { dx /= h; dy /= h; }
+    else {
+      // Larghezza nulla: la direzione «giù» non si può leggere dai due
+      // estremi, perché coincidono. La dà allora la perpendicolare alla
+      // striscia — che per un fiume guardato per il verso lungo è esattamente
+      // giusta: la sua sezione sta di traverso al suo corso.
+      let tx = 0, ty = 0;
+      for (let j = i + 1; j < n; j++) if (alto[j]) { tx = alto[j].px - alto[i].px; ty = alto[j].py - alto[i].py; break; }
+      if (tx === 0 && ty === 0) {
+        for (let j = i - 1; j >= 0; j--) if (alto[j]) { tx = alto[i].px - alto[j].px; ty = alto[i].py - alto[j].py; break; }
+      }
+      const m = Math.hypot(tx, ty);
+      if (m > 1e-3) { dx = -ty / m; dy = tx / m; } else { dx = 0; dy = 1; }
+      // Il verso: la riva vicina sta più in basso sullo schermo di quella
+      // lontana, in tutte le inquadrature in cui si guarda l'acqua.
+      if (dy < 0) { dx = -dx; dy = -dy; }
+    }
+    dove[i] = [dx, dy];
+  }
+  const r = minimo / 2;
+  for (let i = 0; i < n; i++) {
+    if (!dove[i]) continue;
+    const [dx, dy] = dove[i];
+    const mx = (alto[i].px + basso[i].px) / 2, my = (alto[i].py + basso[i].py) / 2;
+    alto[i] = { px: mx - dx * r, py: my - dy * r, davanti: true };
+    basso[i] = { px: mx + dx * r, py: my + dy * r, davanti: true };
+  }
+}
+
 // Una striscia d'acqua: il bordo lontano in cima, quello vicino in fondo, e
 // in mezzo il colore, la foschia, le rive, l'onda e il riflesso.
 function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, gradiente, riva) {
+  // Una colonna non è una linea: è la **cella** di mezzo grado che quel
+  // campione rappresenta. Quindi la striscia si allarga di un quarto di grado
+  // da una parte e dall'altra, e sono due cose diverse a chiederlo.
+  //
+  // La prima è il laghetto largo un raggio solo: con un unico punto il
+  // contorno si chiudeva su sé stesso e anche il ripiego a filo tracciava un
+  // segmento lungo zero, cioè spariva del tutto.
+  //
+  // La seconda è quello che succede **fra due strisce**. Da quando una
+  // striscia finisce dove la superficie si biforca (vedi `SKY_ACQUA_SALTO`),
+  // le interruzioni non sono più un'eccezione: e disegnando ogni striscia da
+  // azimut a azimut, fra l'ultima colonna di una e la prima della successiva
+  // resterebbe mezzo grado di niente — una fessura verticale in mezzo
+  // all'acqua a ogni biforcazione. Allargando ognuna di un quarto di grado
+  // per parte i due bordi **coincidono**: le strisce si toccano senza
+  // sovrapporsi, che è la stessa proprietà su cui poggia il disegno a bande
+  // del terreno.
+  const mezzo = (typeof ACQUE_PASSO_AZ === 'number' ? ACQUE_PASSO_AZ : 0.5) / 2;
+  const primo = pezzi[0], ultimo = pezzi[pezzi.length - 1];
+  pezzi = [{ az: primo.az - mezzo, b: primo.b }]
+    .concat(pezzi.length > 1 ? pezzi : [])
+    .concat([{ az: ultimo.az + mezzo, b: ultimo.b }]);
   const tipo = pezzi[0].b.tipo === 1 ? 1 : 0;
   const n = pezzi.length;
   const alto = new Array(n), basso = new Array(n);
@@ -15631,6 +16426,12 @@ function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, g
   dist /= quanti;
   depMedia /= quanti;
 
+  // Le colonne troppo sottili si allargano attorno alla loro mezzeria fino a
+  // `SKY_ACQUA_MIN_PX` (vedi lì il perché).
+  const sottile = Math.max(0, Math.min(1, cima / SKY_ACQUA_MIN_PX));
+  skyAcquaAllargaSottili(alto, basso, SKY_ACQUA_MIN_PX);
+  if (cima < SKY_ACQUA_MIN_PX) cima = SKY_ACQUA_MIN_PX;
+
   const colore = skyAcquaColore(-depMedia, aria);
   // La foschia, come per le creste: a venticinque chilometri metà del
   // contrasto se n'è andata. Senza, un lago in fondo alla valle è nitido
@@ -15639,27 +16440,17 @@ function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, g
   const velo = 1 - Math.exp(-(dist / 1000) / SKY_FOSCHIA_KM);
   const aria0 = skyColoreCielo(aria, 1.2);
 
-  if (cima < SKY_ACQUA_FILO_PX) {
-    // Il filo: una striscia più sottile di un pixel e mezzo non si riempie,
-    // si traccia. È il caso normale di ogni fiume — e di un lago guardato da
-    // lontano e da poco più in alto di lui. L'opacità segue lo spessore vero
-    // invece di essere piena: un tratto opaco alto mezzo pixel è un filo di
-    // vernice azzurra, e a occhio è più falso di nessun fiume.
-    ctx.beginPath();
-    let giu = false;
-    for (let i = 0; i < n; i++) {
-      if (!alto[i]) { giu = false; continue; }
-      const x = (alto[i].px + basso[i].px) / 2, y = (alto[i].py + basso[i].py) / 2;
-      if (giu) ctx.lineTo(x, y); else { ctx.moveTo(x, y); giu = true; }
-    }
-    ctx.lineWidth = 1;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = skyRgba(skyMescolaColore(colore, aria0, velo * 0.6),
-      Math.max(0.18, Math.min(0.85, cima / SKY_ACQUA_FILO_PX)) * (1 - velo * 0.4));
-    ctx.stroke();
-    return;
-  }
+  // Quanta della larghezza disegnata è **prestata** (vedi `SKY_ACQUA_MIN_PX`):
+  // tutta per un ruscello, niente per un lago che di pixel ne ha i suoi. Da lì
+  // l'opacità, che è l'unico modo onesto di dire «qui c'è acqua, ma è più
+  // sottile di così» senza disegnare un filo di vernice.
+  //
+  // Prima di questo, sotto al pixel e mezzo si tracciava una **linea**: un
+  // fiume era un tratto di pennarello azzurro largo un pixel, senza colore
+  // dell'acqua, senza rive, senza foschia — cioè l'unica cosa del paesaggio
+  // che non fosse fatta come tutte le altre, e infatti si vedeva.
+  ctx.save();
+  ctx.globalAlpha *= SKY_ACQUA_MIN_ALFA + (1 - SKY_ACQUA_MIN_ALFA) * sottile;
 
   // Il corpo, riempito con la rampa unica del fotogramma. Se per qualche
   // ragione la rampa non c'è (la vista guarda dritto in su, e allora
@@ -15711,11 +16502,14 @@ function skyAcquaStriscia(ctx, base, focale, aria, statoMare, astri, pezzi, t, g
 
   skyAcquaRive(ctx, aria, alto, basso, colore, velo);
 
-  // Onde e riflessi: solo se la striscia è abbastanza alta perché ci stiano.
-  if (cima >= SKY_ACQUA_ALTA_PX) {
+  // Onde e riflessi: solo se la striscia è abbastanza alta perché ci stiano —
+  // e **davvero** alta, non allargata a forza: dentro a due pixel e mezzo di
+  // larghezza prestata non c'è nessuna onda da leggere.
+  if (cima >= SKY_ACQUA_ALTA_PX && sottile >= 1) {
     skyAcquaTessitura(ctx, base, focale, aria, statoMare, astri, pezzi,
       alto, basso, depAlto, depBasso, px, velo, t);
   }
+  ctx.restore();
 }
 
 // Le due rive.
@@ -15823,15 +16617,41 @@ function skyAcquaTessitura(ctx, base, focale, aria, statoMare, astri, pezzi,
     if (alto[i].px < xMin) xMin = alto[i].px;
     if (alto[i].px > xMax) xMax = alto[i].px;
   }
-  const nc = Math.max(2, Math.min(dritte.length,
-    Math.round((xMax - xMin) / SKY_ACQUA_PASSO_PX) + 1));
+  // Il passo delle colonne campionate, **a potenze di due**.
+  //
+  // È l'altra metà del tremolio sotto lo zoom, e viene da lontano: la griglia
+  // era misurata in pixel (una colonna ogni sette) e le colonne si sceglievano
+  // per indice, `dritte[floor(c · dritte.length / nc)]`. Basta che `nc` cambi
+  // di uno — cioè sette pixel di pizzicata — perché **tutte** le colonne
+  // scelte scivolino di un campione: l'onda, il luccichio e le zampe di gatto
+  // si rileggono in punti diversi e la superficie striscia di traverso, che è
+  // esattamente il difetto per cui il terreno era passato alle potenze di due
+  // (`rilPassoColonne` in `rilievo.js`).
+  //
+  // Con un passo che raddoppia, le colonne campionate a passo 4 sono un
+  // **sottoinsieme** di quelle a passo 2: attraversando la soglia i campioni
+  // che restano restano dove sono, e gli altri si aggiungono in mezzo. Nulla
+  // scivola. L'isteresi fa il resto — non si torna indietro finché non si è
+  // ben oltre il punto di scambio, se no si balla attorno alla soglia.
+  const passoC = skyAcquaPassoColonne(focale);
+  const nc = Math.max(2, Math.floor((dritte.length - 1) / passoC) + 1);
   if (nc < 2) return;
-  const salto = dritte.length / nc;
   const colonne = new Int32Array(nc);
-  for (let c = 0; c < nc; c++) colonne[c] = dritte[Math.min(dritte.length - 1, Math.floor(c * salto))];
+  for (let c = 0; c < nc; c++) colonne[c] = dritte[Math.min(dritte.length - 1, c * passoC)];
 
-  const nf = Math.max(1, Math.min(quanto(SKY_ACQUA_FASCE[0], SKY_ACQUA_FASCE[1], SKY_ACQUA_FASCE[2]),
-    Math.round(px / 14)));
+  // Le fasce di distanza, con la stessa cura: sono le frazioni `j/nf` del
+  // cammino fra le due rive, e con `nf` a potenze di due le frazioni di prima
+  // (0, ½, 1) sopravvivono a quelle nuove (0, ¼, ½, ¾, 1) — cioè raddoppiando
+  // il dettaglio le righe già disegnate non si spostano.
+  //
+  // Qui l'isteresi non serve e non ci sarebbe dove tenerla (`px` è di questa
+  // striscia, non del fotogramma): basta la proprietà di annidamento. Al
+  // cambio di soglia le righe che c'erano restano dove sono e in mezzo ne
+  // compaiono altre — un dettaglio che si infittisce, non una superficie che
+  // scivola.
+  const nfMax = quanto(SKY_ACQUA_FASCE[0], SKY_ACQUA_FASCE[1], SKY_ACQUA_FASCE[2]);
+  const nf = Math.max(1, Math.min(1 << Math.floor(Math.log2(nfMax)),
+    Math.pow(2, Math.round(Math.log2(Math.max(1, px / 14))))));
 
   // Le fasce: per ognuna la distanza media, la depressione media, e da lì
   // quali componenti d'onda si vedono ancora e quanto conta l'aureola.
@@ -17329,15 +18149,25 @@ const SKY_CIME_VELO_STRATO = [1, 0.94, 0.86];
 // vera resta come guardia: se le due si allontanano più di
 // `SKY_CIME_AGGANCIO_MAX` il disegno non sta parlando di questa vetta (una
 // cresta più vicina se l'è mangiata, o è oltre l'ultimo campione), e allora
-// meglio la quota vera che un aggancio a caso.
+// il nome non va disegnato: appenderlo alla quota teorica è precisamente ciò
+// che lo farebbe galleggiare nel cielo.
 const SKY_CIME_AGGANCIO_MAX = 1.5;
 const SKY_CIME_AGGANCIO_PROVE = 7;
 
 function skyPuntaDisegnata(c) {
-  const raggio = typeof TERRENO_PASSO_AZ === 'number' ? TERRENO_PASSO_AZ * 0.5 : 1.5;
+  // Col rilievo fine la punta può cadere al massimo fra due raggi della sua
+  // maglia (mezzo grado), non fra due campioni della vecchia griglia grossa
+  // (7,5°). Usare sempre quest'ultima faceva cercare per quasi quattro gradi
+  // per lato: bastava una cima più alta lì accanto e il nome scivolava su di
+  // lei, lasciando la propria punta senza etichetta.
+  const fine = typeof rilPronto === 'function' && rilPronto() &&
+    typeof RIL_PASSO_AZ === 'number';
+  const passo = fine ? RIL_PASSO_AZ
+    : (typeof TERRENO_PASSO_AZ === 'number' ? TERRENO_PASSO_AZ : 3);
+  const raggio = passo * 0.5;
   let azMigliore = c.az;
   let altMigliore = skyQuotaDisegnata(c.az, c.km);
-  if (!Number.isFinite(altMigliore)) return { az: c.az, alt: c.alt };
+  if (!Number.isFinite(altMigliore)) return null;
   for (let i = 0; i < SKY_CIME_AGGANCIO_PROVE; i++) {
     const az = c.az + raggio * (2 * i / (SKY_CIME_AGGANCIO_PROVE - 1) - 1);
     const q = skyQuotaDisegnata(az, c.km);
@@ -17346,11 +18176,11 @@ function skyPuntaDisegnata(c) {
     // far scivolare il nome lungo una cresta piatta.
     if (Number.isFinite(q) && q > altMigliore + 1e-4) { altMigliore = q; azMigliore = az; }
   }
-  return {
-    az: azMigliore,
-    alt: Math.min(Math.max(altMigliore, c.alt - SKY_CIME_AGGANCIO_MAX),
-      c.alt + SKY_CIME_AGGANCIO_MAX)
-  };
+  // La quota OSM serve soltanto da guardia d'identità. La posizione da
+  // proiettare resta *esattamente* quella del crinale dipinto: tosarla verso
+  // `c.alt` lasciava ancora fino a 1,5° di aria fra triangolino e montagna.
+  if (Math.abs(altMigliore - c.alt) > SKY_CIME_AGGANCIO_MAX) return null;
+  return { az: azMigliore, alt: altMigliore };
 }
 
 // A quale strato appartiene una vetta. Le soglie sono quelle del disegno
@@ -17488,6 +18318,9 @@ const SKY_NOMI_ORIZZONTE = {
 //
 // Vanno **dopo** il terreno, se no li coprirebbe.
 function skyDisegnaNomiOrizzonte(ctx, base, focale) {
+  // Si ricostruisce a ogni fotogramma: trascinamento e zoom spostano le
+  // etichette, quindi una hit-area del fotogramma precedente mentirebbe.
+  sky.etichetteLuogo = [];
   // «Etichette» governa i nomi astronomici e i toponimi ordinari, mentre
   // «Nomi dei monti» ha un interruttore proprio. Il vecchio ritorno qui
   // sopra annullava quell'interruttore: risultava acceso, scaricava le
@@ -17760,6 +18593,12 @@ function skyNomiCitta(ctx, base, focale, occupati) {
     // centra a mano: si parte da sinistra e si va avanti.
     const x = p.px - e.largo / 2;
     const y = p.py - e.stacco;
+    sky.etichetteLuogo.push({
+      rett: skyRettOrientato(p.px, y - pro.corpo * 0.42,
+        e.largo + 18, pro.corpo + 14, 0),
+      punto: { lat: e.c.lat, lon: e.c.lon, nome: e.c.nome,
+        az: e.c.az, alt: skyQuotaDisegnata(e.c.az, Infinity), km: e.c.km }
+    });
     ctx.font = `${SKY_NOMI_ORIZZONTE.citta.stile} ${pro.corpo.toFixed(1)}px ${SKY_FONT_ETICHETTE}`;
     skyScrittaConAlone(ctx, e.c.nome, x, y, pro.pieno, pro.alone, pro.corpo * 0.26);
     if (e.kmTesto) {
@@ -17814,6 +18653,7 @@ function skyNomiCime(ctx, base, focale, occupati) {
     // Non `c.az`/`c.alt` ma la punta come è **disegnata**: è l'unica cosa che
     // fa toccare il triangolino al crinale invece di lasciarlo per aria.
     const punta = skyPuntaDisegnata(c);
+    if (!punta) continue;
     const p = skyProietta(skyVettore(punta.az, punta.alt), base, focale);
     if (!p.davanti) continue;
     // Di traverso si è larghi di manica (la scritta parte da qui e va a
@@ -17882,7 +18722,7 @@ function skyNomiCime(ctx, base, focale, occupati) {
     if (!messa) continue;
     scritte++;
     poste.push({
-      p, ax: messa.ax, ay: messa.ay, nome: c.nome, quotaTesto, largoNome, largo,
+      c, p, ax: messa.ax, ay: messa.ay, nome: c.nome, quotaTesto, largoNome, largo,
       incl: messa.incl, verso: messa.verso, velo: SKY_CIME_VELO_STRATO[strato] || 1
     });
   }
@@ -17923,6 +18763,12 @@ function skyNomiCime(ctx, base, focale, occupati) {
     ctx.globalAlpha = e.velo;
     skyPillola(ctx, -bordo, -altoBlocco / 2, e.largo + bordo * 2, altoBlocco,
       altoBlocco / 2, tinta.pillola);
+    sky.etichetteLuogo.push({
+      rett: skyRettAppoggiato(e.ax - Math.cos(e.incl) * bordo,
+        e.ay - Math.sin(e.incl) * bordo, e.largo + bordo * 2, altoBlocco + 10, e.incl),
+      punto: { lat: e.c.lat, lon: e.c.lon, nome: e.c.nome,
+        az: e.c.az, alt: e.c.alt, km: e.c.km }
+    });
     ctx.font = `${SKY_NOMI_ORIZZONTE.cime.stile} ${corpo}px ${SKY_FONT_ETICHETTE}`;
     skyScrittaConAlone(ctx, e.nome, 0, 0, tinta.pieno, tinta.alone, corpo * 0.24);
     ctx.font = `italic 400 ${corpoQuota}px ${SKY_FONT_ETICHETTE}`;
@@ -19183,7 +20029,9 @@ function skyDisegna() {
     skyDisegnaSfondo(ctx, base, focale, aria);
     skyDisegnaAloneSole(ctx, base, focale, sole, aria);
     skyDisegnaAloneLuna(ctx, base, focale, luna);
-    if (sky.mostraViaLattea) skyDisegnaViaLattea(ctx, base, focale, luna);
+    if (sky.mostraViaLattea && typeof skyDisegnaViaLattea === 'function') {
+      skyDisegnaViaLattea(ctx, base, focale, luna);
+    }
   }
 
   // Il fondo di stelle del catalogo grande, e sopra di lui le figure.
@@ -19243,6 +20091,16 @@ function skyDisegna() {
     disegnaAstriPrincipali();
   }
 
+  // Le nuvole appartengono al luogo e all'ora mostrati, non a una generica
+  // decorazione del planetario. Si dipingono sopra alla luce del cielo e a
+  // tutti gli astri (che devono davvero sparire dietro uno strato coperto),
+  // ma prima del terreno, perché una cresta vicina le taglia all'orizzonte.
+  // Il modulo meteo le scarica e interpola; senza rete questo gancio non fa
+  // nulla e il planetario continua a funzionare come prima.
+  if (!conCamera && typeof meteoDisegnaNuvole === 'function') {
+    meteoDisegnaNuvole(ctx, base, focale, aria);
+  }
+
   if (!conCamera) skyDisegnaTerreno(ctx, base, focale, aria);
   // I nomi — paesi e montagne insieme, in una passata sola perché il posto
   // se lo devono dividere (vedi `skyDisegnaNomiOrizzonte`)
@@ -19288,7 +20146,9 @@ function skyDisegna() {
   // equatoriale: lo disegna il modulo Telescopio, se è acceso.
   if (typeof telDisegnaPoloSuCielo === 'function') telDisegnaPoloSuCielo(ctx, base, focale);
 
+  skyControllaSostaMirino();
   skyDisegnaMirino(ctx);
+  skyDisegnaAvanzamentoSosta(ctx);
 
   // Se manca la posizione non c'è nulla da calcolare: spieghiamo il perché
   if (!sky.observer) {
@@ -19301,6 +20161,13 @@ function skyDisegna() {
   }
 
   skyAggiornaHud(base);
+  // E' HTML sopra al canvas, ma appartiene al terreno: segue percio' la
+  // proiezione a ogni fotogramma insieme a cime, paesi e orizzonte.
+  skyAggiornaVaiQua(base, focale);
+  // Il fumetto dell'oggetto scelto: HTML sopra al canvas, ma attaccato a un
+  // punto del cielo, quindi segue la proiezione fotogramma per fotogramma
+  // come le etichette dei paesi e delle vette.
+  skyPosizionaFumetto(base, focale);
 
   // Se si sta registrando, questo fotogramma finisce anche nel filmato: il
   // montaggio si fa qui, appena il cielo è finito (vedi 7.6)
@@ -19329,14 +20196,18 @@ function skyAggiornaHud(base) {
 // montatura (e lì infatti c'è, nella vista Telescopio). Spento e
 // tratteggiato vuol dire che quel Nord è indicativo.
 const SKY_BUSSOLA_MODI = {
+  astro:     'Bussola tarata sul cielo vero: il Nord è esatto per costruzione',
   vera:      'Bussola: la punta ambrata è il Nord geografico',
+  dubbia:    'Bussola disturbata da qualcosa di ferroso: tarala su un astro',
   magnetica: 'Bussola da tarare: il Nord segnato è quello magnetico',
   manuale:   'La vista la muovi col dito: il Nord è quello del cielo disegnato'
 };
 
 function skyModoBussola() {
   if (!sky.sensori || !sky.seguiTelefono) return 'manuale';
-  return sky.assoluto ? 'vera' : 'magnetica';
+  if (!sky.assoluto) return 'magnetica';
+  if (skyBussola.tarata) return 'astro';
+  return skyBussolaDisturbata() ? 'dubbia' : 'vera';
 }
 
 // Il quadrante gira, l'indice sta fermo: è il verso di una bussola vera, e
@@ -19352,6 +20223,9 @@ function skyAggiornaBussola(az) {
   const gradi = document.getElementById('skymap-bussola-gradi');
   const testo = `${Math.round(az) % 360}°`;
   if (gradi && gradi.textContent !== testo) gradi.textContent = testo;
+  const direzione = document.getElementById('skymap-bussola-direzione');
+  const nomeDirezione = skyNomeDirezione(az);
+  if (direzione && direzione.textContent !== nomeDirezione) direzione.textContent = nomeDirezione;
 
   // IL CONO DELL'INQUADRATURA
   // Quanto cielo sta entrando nella vista, disegnato invece che scritto: il
@@ -19362,7 +20236,7 @@ function skyAggiornaBussola(az) {
   //
   // Il minimo di quattro gradi non è un ritocco estetico: a forte
   // ingrandimento il campo scende a un quarto di grado, e un cono largo un
-  // quarto di grado su un quadrante da 64 pixel è meno di un pixel — cioè
+  // quarto di grado su un quadrante di pochi pixel è meno di un pixel — cioè
   // niente, e la bussola sembrerebbe rotta proprio quando si sta guardando
   // la cosa più interessante. Il massimo lascia un margine sul quadrante,
   // così a 180° continua a leggersi come un'apertura e non come un disco.
@@ -19388,7 +20262,7 @@ function skyAggiornaBussola(az) {
   // Chi legge con lo schermo non vede né il quadrante né l'indice né il cono:
   // a lui le stesse cose vanno dette a parole, ed è l'unico posto in cui vale
   // la pena — sul cielo l'apertura si guarda, non si legge.
-  const detto = `Vista verso ${skyNomeDirezione(az)}, ${Math.round(az) % 360} gradi, ` +
+  const detto = `Vista verso ${nomeDirezione}, ${Math.round(az) % 360} gradi, ` +
     `campo inquadrato ${skyCampoTesto()}`;
   if (b.getAttribute('aria-label') !== detto) b.setAttribute('aria-label', detto);
 }
@@ -19407,7 +20281,51 @@ function skyAvviso(chiave, testo, durataMs) {
   if (!el) return;
   const completo = Object.keys(sky.avvisi).map(k => sky.avvisi[k]).filter(Boolean).join(' ');
   el.textContent = completo;
+  // Quando il cielo sta usando il ripiego di rete, l'avviso non deve essere
+  // soltanto una diagnosi: da qui si può chiedere subito un fix preciso. Il
+  // tasto viene costruito come DOM (non come HTML nel testo degli avvisi),
+  // così gli altri messaggi restano testo sicuro e continuano a sommarsi.
+  if (sky.avvisi['gps-rete'] && !skyAttivazioneGpsInCorso) {
+    const attiva = document.createElement('button');
+    attiva.type = 'button';
+    attiva.className = 'skymap-avviso-azione';
+    attiva.textContent = 'Attiva GPS';
+    attiva.addEventListener('click', skyAttivaGpsDaAvviso);
+    el.appendChild(attiva);
+  }
   el.classList.toggle('hidden', !completo);
+}
+
+// Il browser non consente di cambiare direttamente l'interruttore GPS del
+// sistema, ma un gesto esplicito può chiedere posizione precisa e permesso.
+// L'avviso resta nella barra gialla finché il dispositivo non consegna un fix.
+let skyAttivazioneGpsInCorso = false;
+
+function skyAggiornaAvvisoGps() {
+  const p = sky.posizione;
+  const daRete = !!p && (p.origine || p.fonte) === 'rete';
+  skyAvviso('gps-rete', daRete
+    ? 'GPS non attivo: stai usando una posizione approssimata dalla rete.'
+    : '');
+}
+
+async function skyAttivaGpsDaAvviso() {
+  if (skyAttivazioneGpsInCorso) return;
+  skyAttivazioneGpsInCorso = true;
+  skyAvviso('gps-rete', 'Attivazione GPS in corso…');
+  posRilevamentoForzato = true;
+  try {
+    const esito = await skyRichiediPosizione();
+    if (esito === 'gps') {
+      skySorvegliaPosizione(true, 'preciso');
+      skyAggiornaOggetti(true);
+      await posDopoCambio();
+    }
+  } finally {
+    posRilevamentoForzato = false;
+    skyAttivazioneGpsInCorso = false;
+    skyAggiornaAvvisoGps();
+  }
 }
 
 // Accende o spegne un tasto del planetario. Lo stato è una classe sola
@@ -19481,7 +20399,37 @@ function skyStatoEsteso() {
   } else {
     righe.push('Posizione non ancora rilevata');
   }
+  righe.push(skyBussolaTesto());
   return righe.join('\n');
+}
+
+// Come sta la bussola, in una riga. Serve al `title` della lettura del luogo
+// e a chi legge con lo schermo: sul cielo non si scrive niente di tutto
+// questo, il quadrante lo dice col suo aspetto.
+function skyBussolaTesto() {
+  if (!sky.sensori) return 'Bussola: nessun sensore (la vista la muovi col dito)';
+  const FONTI = {
+    quaternione: 'assetto completo dal sistema (nessuna posa degenere)',
+    evento: 'angoli di orientamento del browser',
+    ponte: 'giroscopio agganciato al Nord magnetico'
+  };
+  const parti = [`Bussola: ${FONTI[skyBussola.fonte] || 'in attesa di una lettura'}`];
+  if (skyBussola.tarata) {
+    parti.push(`tarata su ${skyBussola.tarata.astro} ` +
+      `(${skyBussola.tarata.gradi >= 0 ? '+' : ''}${skyBussola.tarata.gradi.toFixed(1)}°)`);
+  } else if (sky.offsetBussola) {
+    const m = sky.offsetBussola > 180 ? sky.offsetBussola - 360 : sky.offsetBussola;
+    parti.push(`correzione manuale ${m >= 0 ? '+' : ''}${m.toFixed(0)}°`);
+  }
+  if (sky.assoluto && sky.declinazione) {
+    parti.push(`declinazione magnetica ${sky.declinazione >= 0 ? '+' : ''}${sky.declinazione.toFixed(1)}°`);
+  }
+  const err = skyBussolaErroreStimato();
+  if (err !== null && err > SKY_SCARTO_ALLARME) {
+    parti.push(err > 90 ? 'il telefono la dichiara inaffidabile'
+      : `disturbata di circa ${err.toFixed(0)}°`);
+  }
+  return parti.join(' · ');
 }
 
 // =====================================================================
@@ -21167,6 +22115,135 @@ function skyScegliAstroDaElenco(id, opzioni = {}) {
   skyMostraGruppo('');
 }
 
+// La stessa barra cerca anche punti sulla Terra. Non cambia il luogo da cui
+// si osserva: calcola invece la direzione dal punto dell'osservatore e gira
+// il panorama verso la città o la vetta scelta, proprio come fa con un astro.
+let skyTipoRicerca = 'astri';
+let skyLuoghiTimer = null;
+let skyLuoghiRichiesta = 0;
+
+function skyTipoLuogo(r) {
+  const codice = (r.feature_code || '').toUpperCase();
+  if (codice === 'MT' || codice === 'PK' || codice === 'MTS' || codice === 'HLL') return 'Montagna';
+  return 'Città';
+}
+
+function skyAzimutGeografico(a, b) {
+  const f1 = a.lat * SKY_D2R, f2 = b.lat * SKY_D2R;
+  const dl = (b.lon - a.lon) * SKY_D2R;
+  const y = Math.sin(dl) * Math.cos(f2);
+  const x = Math.cos(f1) * Math.sin(f2) - Math.sin(f1) * Math.cos(f2) * Math.cos(dl);
+  return (Math.atan2(y, x) * SKY_R2D + 360) % 360;
+}
+
+function skyMostraLuoghiTrovati(elenco, nota) {
+  const box = document.getElementById('skymap-luoghi-risultati');
+  if (!box) return;
+  box.replaceChildren();
+  box.classList.remove('hidden');
+  elenco.forEach(luogo => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'risultato-luogo-cielo';
+    b.setAttribute('role', 'option');
+    const nome = document.createElement('span');
+    nome.className = 'risultato-luogo-cielo-nome';
+    nome.textContent = luogo.nome;
+    const tipo = document.createElement('span');
+    tipo.className = 'risultato-luogo-cielo-tipo';
+    tipo.textContent = luogo.tipo;
+    const dove = document.createElement('span');
+    dove.className = 'risultato-luogo-cielo-dove';
+    dove.textContent = luogo.paese || formattaCoordinate(luogo.lat, luogo.lon);
+    b.append(nome, tipo, dove);
+    b.addEventListener('click', () => skyScegliLuogoDaRicerca(luogo));
+    box.appendChild(b);
+  });
+  if (nota) {
+    const p = document.createElement('p');
+    p.className = 'risultati-luoghi-nota';
+    p.textContent = nota;
+    box.appendChild(p);
+  }
+}
+
+async function skyCercaLuoghiOnline(testo, richiesta) {
+  try {
+    const url = 'https://geocoding-api.open-meteo.com/v1/search' +
+      `?name=${encodeURIComponent(testo.trim())}&count=10&language=it&format=json`;
+    const risposta = await fetchConScadenza(url, 5000);
+    if (!risposta.ok || richiesta !== skyLuoghiRichiesta) return;
+    const dati = await risposta.json();
+    const elenco = (dati.results || []).filter(r => isFinite(r.latitude) && isFinite(r.longitude)).map(r => ({
+      nome: r.name,
+      paese: [r.admin1, r.country].filter(Boolean).join(', '),
+      lat: r.latitude,
+      lon: r.longitude,
+      quota: Number.isFinite(r.elevation) ? r.elevation : null,
+      tipo: skyTipoLuogo(r)
+    }));
+    skyMostraLuoghiTrovati(elenco, elenco.length ? null : 'Nessuna città o montagna trovata.');
+  } catch (e) {
+    if (richiesta === skyLuoghiRichiesta)
+      skyMostraLuoghiTrovati([], 'Ricerca online non disponibile. Controlla la connessione.');
+  }
+}
+
+function skyCercaLuoghi(testo) {
+  if (skyLuoghiTimer) clearTimeout(skyLuoghiTimer);
+  if ((testo || '').trim().length < 2) {
+    skyMostraLuoghiTrovati([], 'Scrivi almeno due lettere.');
+    return;
+  }
+  const richiesta = ++skyLuoghiRichiesta;
+  skyMostraLuoghiTrovati([], 'Sto cercando…');
+  skyLuoghiTimer = setTimeout(() => skyCercaLuoghiOnline(testo, richiesta), 350);
+}
+
+function skyScegliLuogoDaRicerca(luogo) {
+  const osservatore = skyLuogoDelCielo();
+  if (!osservatore) {
+    skyAvviso('luogo-cercato', 'Prima scegli o rileva la tua posizione: serve per sapere in che direzione guardare.', 7000);
+    return;
+  }
+  const km = skyDistanzaGeograficaKm(osservatore, luogo);
+  const az = skyAzimutGeografico(osservatore, luogo);
+  // Il risultato non deve sparire insieme al pannello di ricerca: lo
+  // lasciamo scritto sul paesaggio, con la distanza da dove si osserva e lo
+  // stesso comando esplicito usato quando si tocca direttamente il terreno.
+  // A quota zero la targhetta indica la direzione geografica anche per un
+  // luogo lontano, fuori dalla porzione di rilievo che abbiamo scaricato.
+  const punto = { ...luogo, az, alt: 0, km };
+  sky.target = null;
+  skyCentraSu(punto);
+  skyMostraVaiQua(punto, sky.larghezza / 2, sky.altezza / 2);
+  const quota = luogo.quota !== null ? ` · quota ${Math.round(luogo.quota)} m` : '';
+  skyAvviso('luogo-cercato', `${luogo.nome} è verso ${skyNomeDirezione(az)} (${Math.round(az)}°), ` +
+    `a ${luogoDistanzaTesto(km)}${quota}. La mappa guarda ora in quella direzione.`, 10000);
+  const campo = document.getElementById('skymap-astri-cerca');
+  if (campo) campo.blur();
+  skyMostraGruppo('');
+}
+
+function skyImpostaTipoRicerca(tipo) {
+  skyTipoRicerca = tipo === 'luoghi' ? 'luoghi' : 'astri';
+  const pannello = document.querySelector('.gruppo-comandi.gruppo-astri');
+  if (pannello) pannello.classList.toggle('ricerca-luoghi', skyTipoRicerca === 'luoghi');
+  document.querySelectorAll('[data-tipo-ricerca]').forEach(b => {
+    const attivo = b.dataset.tipoRicerca === skyTipoRicerca;
+    b.classList.toggle('attiva', attivo);
+    b.setAttribute('aria-selected', attivo ? 'true' : 'false');
+  });
+  const campo = document.getElementById('skymap-astri-cerca');
+  if (campo) {
+    campo.value = '';
+    campo.placeholder = skyTipoRicerca === 'luoghi' ? 'Es. Roma o Monte Bianco…' : 'Cerca per nome…';
+    campo.setAttribute('aria-label', skyTipoRicerca === 'luoghi' ? 'Cerca una città o una montagna' : 'Cerca un astro per nome');
+  }
+  document.getElementById('skymap-luoghi-risultati')?.classList.toggle('hidden', skyTipoRicerca !== 'luoghi');
+  skyFiltraElenco();
+}
+
 // Il colore di una pillola dice il suo stato: scelta, su adesso, tramontata.
 // Misure e spaziature stanno in style.css (`.chip-astro`), che le sa
 // stringere sui telefoni: qui restano solo i colori.
@@ -21275,6 +22352,14 @@ function skyAggiornaEtichette() {
 // Da qui in poi la scheda si apre in un modo solo: premendo direttamente
 // sull'oggetto disegnato sulla mappa.
 function skyImpostaTarget(id, opzioni = {}) {
+  // Una nuova scelta esplicita prende il posto dell'evento che la camera
+  // stava seguendo; «Vai all'evento» reimposta subito dopo il proprio
+  // aggancio, quando questa funzione viene usata durante quel flusso.
+  if (sky.eventoInseguito) {
+    sky.eventoInseguito = null;
+    sky.inseguimento = false;
+    skyAggiornaTastoInsegui();
+  }
   const spegni = sky.target === id && !opzioni.mantieni;
   sky.target = spegni ? null : id;
   sky.cacheOrari = { chiave: null, valore: null };
@@ -21538,6 +22623,7 @@ function skyRigheScheda(o) {
 
   // --- Da qui in giù: i numeri da strumento, dietro "Altri dati" ---------
 
+  dato(dettagli, 'Codice catalogo', o.codiceCatalogo);
   dato(dettagli, 'Costellazione', skyCostellazioneDi(o.ra, o.dec));
   dato(dettagli, 'Distanza dalla Terra', skyDistanzaTesto(o));
   dato(dettagli, 'Dimensioni', skyDimensioniTesto(o));
@@ -21724,6 +22810,11 @@ function skyVoceSelezionata() {
     return o ? Object.assign({ categoria: 'astro' }, o) : null;
   }
 
+  if (sel.categoria === 'aereo' && typeof aereiTrova === 'function') {
+    const corrente = aereiTrova(sel.dati && sel.dati.id);
+    if (corrente) return Object.assign({ categoria: 'aereo' }, corrente);
+  }
+
   const voce = Object.assign({ categoria: sel.categoria }, sel.dati);
   if (sky.observer && typeof Astronomy !== 'undefined' && typeof voce.ra === 'number') {
     try {
@@ -21762,8 +22853,12 @@ function skyJ2000AllaData(raOre, dec, t) {
 function skyApriDettaglio(sel) {
   skyMostraGruppo('');
   sky.selezione = sel;
+  // Quello che si apre toccando un oggetto è il **fumetto**, non più il
+  // pannello: quattro righe attaccate all'oggetto invece di venti righe
+  // nell'angolo. La scheda completa resta a un tocco, dietro al suo ⓘ.
   const pannello = document.getElementById('skymap-dettaglio');
-  if (pannello) pannello.classList.add('visibile');
+  if (pannello) pannello.classList.remove('visibile');
+  skyApriFumetto();
   skyAggiornaScheda();
 }
 
@@ -21772,6 +22867,7 @@ function skyChiudiDettaglio() {
   sky.evidenza = null;
   const pannello = document.getElementById('skymap-dettaglio');
   if (pannello) pannello.classList.remove('visibile');
+  skyChiudiFumetto();
   skyAggiornaScheda();
 }
 
@@ -21790,9 +22886,38 @@ function skyAggiornaScheda() {
     ? { az: voce.az, alt: voce.alt }
     : null;
 
+  // Il fumetto è l'altra metà della stessa selezione, e si rinfresca con lo
+  // stesso battito: i suoi numeri (altezza, distanza, quota) cambiano come
+  // quelli della scheda. Va prima dell'uscita qui sotto, perché quasi sempre
+  // è lui a essere aperto e il pannello no.
+  skyAggiornaFumetto();
+
   if (!pannello.classList.contains('visibile')) return;
+
+  // La scheda di un aereo cambia una volta al secondo, ma quello che cambia
+  // sono cinque numeri. Riscriverla tutta voleva dire buttare via anche la
+  // foto e l'itinerario, che vengono dalla rete e ricompaiono un istante
+  // dopo: la scheda si accorciava e si riallungava a ogni battito, e nel
+  // frattempo lo scorrimento veniva tosato dall'altezza calata. Finché è lo
+  // stesso aereo e la scheda ha la stessa forma, si riscrivono i soli valori
+  // e non c'è più niente da ripristinare.
+  if (voce && voce.categoria === 'aereo' && typeof aereiAggiornaSchedaViva === 'function' &&
+      aereiAggiornaSchedaViva(voce)) return;
+
   const scorrimento = pannello.scrollTop;
-  corpo.innerHTML = voce ? skySchedaHtml(voce) : skyAttesaSchedaHtml();
+  // Il corpo viene rigenerato ogni secondo per tenere aggiornati posizione,
+  // altezza e magnitudine. Un <details> nuovo, però, nasce sempre chiuso: il
+  // battito successivo al tocco faceva quindi richiudere subito “Altri dati”.
+  // Conserviamo anche questo stato dell'interfaccia, come già facciamo con lo
+  // scorrimento della scheda.
+  const dettagliAperti = !!corpo.querySelector('.dettagli-scheda[open]');
+  corpo.innerHTML = voce ? (voce.categoria === 'aereo' && typeof aereiSchedaHtml === 'function'
+    ? aereiSchedaHtml(voce) : skySchedaHtml(voce)) : skyAttesaSchedaHtml();
+  if (dettagliAperti) {
+    const dettagli = corpo.querySelector('.dettagli-scheda');
+    if (dettagli) dettagli.open = true;
+  }
+  if (voce && voce.categoria === 'aereo' && typeof aereiCaricaFoto === 'function') aereiCaricaFoto(voce);
 
   // In coda alla scheda: le lune di Giove (solo per Giove) e la curva
   // dell'altezza di stanotte. Sono due canvas, e vanno disegnati DOPO
@@ -21806,6 +22931,19 @@ function skyAggiornaScheda() {
   }
 
   pannello.scrollTop = scorrimento;
+  // Le informazioni dell'aereo arrivano anche in modo asincrono (foto e
+  // itinerario). Su WebKit, inoltre, il ricalcolo dell'altezza viene fatto
+  // soltanto al fotogramma successivo: il valore appena rimesso qui sopra
+  // può quindi essere limitato a zero mentre il corpo è ancora considerato
+  // vuoto. Ripeterlo dopo il layout impedisce alla scheda di tornare in cima
+  // da sola, senza interferire con un eventuale nuovo gesto dell'utente.
+  const selezioneAllaScrittura = sky.selezione;
+  requestAnimationFrame(() => {
+    if (sky.selezione === selezioneAllaScrittura && pannello.isConnected &&
+        pannello.classList.contains('visibile') && pannello.scrollTop < scorrimento) {
+      pannello.scrollTop = scorrimento;
+    }
+  });
 }
 
 // Cosa scrivere quando non c'è (ancora) nulla da mostrare
@@ -21822,6 +22960,378 @@ function skyAttesaSchedaHtml() {
         `<button type="button" onclick="apriPosizione(true)" class="senza-cornice underline text-blue-300 hover:text-blue-200">scegliamola insieme</button>.`;
   }
   return `Calcolo della posizione di <strong>${skyNomeCorpo(sel.id)}</strong> in corso…`;
+}
+
+// --- Il fumetto dell'oggetto -------------------------------------------
+//
+// Quello che si vedeva prima era un **pannello**: un rettangolo inchiodato
+// nell'angolo alto a sinistra, con dentro venti righe di dati. Funzionava,
+// e aveva il difetto che hanno tutti i pannelli su una mappa — non dice a
+// *cosa* si riferisce. Toccando un triangolo in mezzo a otto triangoli, la
+// scheda compariva dall'altra parte dello schermo e restava da capire quale
+// dei tanti si fosse preso; e su un telefono si mangiava mezzo cielo proprio
+// mentre lo si stava guardando.
+//
+// Un fumetto risponde a tutte e due le cose con la stessa forma: sta
+// **attaccato** all'oggetto (la coda lo indica, e lo segue mentre il cielo
+// scorre sotto al dito) e dice **poche righe** — quelle che si leggono in
+// un colpo d'occhio. I venti numeri non sono spariti: stanno dietro al
+// tasto ⓘ, che apre la scheda completa di prima.
+//
+// Regole di posizionamento, e ognuna viene da un caso vero:
+//   · il fumetto sta **sopra** all'oggetto quando c'è posto, se no sotto —
+//     sopra è il verso naturale (il dito che ha toccato sta sotto e non lo
+//     copre), ma per un aereo alto in cielo sopra non c'è niente;
+//   · si **tosa** dentro al riquadro, e la coda scorre per continuare a
+//     indicare l'oggetto: un fumetto mezzo fuori dallo schermo è peggio di
+//     un fumetto spostato di venti pixel;
+//   · rispetta le due fasce che il cielo ha già occupato — la bussola in
+//     cima e la barra del tempo in fondo — perché scriverci sopra vuol dire
+//     coprire gli unici due comandi sempre in vista;
+//   · quando l'oggetto esce dallo schermo il fumetto **sparisce** senza che
+//     la selezione si perda: si torna a guardare da quella parte e ricompare.
+const SKY_FUMETTO_STACCO = 16;      // quanti pixel fra la punta della coda e l'oggetto
+const SKY_FUMETTO_MARGINE = 10;     // dal bordo del riquadro
+const SKY_FUMETTO_CODA = 9;         // mezza larghezza della coda
+const SKY_FUMETTO_ORLO = 16;        // fin dove la coda può scorrere lungo il bordo
+const SKY_FUMETTO_TESTA = 52;       // testata, imbottiture e bordi: l'altezza senza righe
+const SKY_FUMETTO_RIGA = 18;        // quanto misura una riga di testo, coda compresa
+
+// Quante righe ci stanno davvero. Non è una raffinatezza: su un telefono
+// girato il cielo è alto due dita, e fra la bussola e la barra del tempo
+// restano meno di cento pixel — misurati, novantasei su uno schermo da
+// 640×360. Un fumetto da quattro righe lì dentro non ci sta, e la cosa che
+// finiva coperta era la barra del tempo, cioè l'orologio. Le righe si
+// perdono quindi dalla coda, e per questo ognuna le ordina dalla più
+// importante alla meno: per un aereo l'itinerario prima e lo squawk mai,
+// per un astro cos'è e da che parte prima della magnitudine.
+function skyFumettoQuanteRighe() {
+  const fasce = skyFasceCielo();
+  // La banda buona è quella **fra le due fasce**, non tutto il riquadro: su
+  // un 640×360 sono centoventi pixel, e con quattro righe il fumetto ne
+  // misura centotrentadue. Due righe è il pavimento — sotto, il fumetto non
+  // dice più abbastanza da valere il posto che occupa — e a quel punto a
+  // cedere è la fascia di sopra, che è l'altra metà della cura (vedi il
+  // tetto in `skyPosizionaFumetto`).
+  const banda = (sky.altezza || 0) - fasce.bassa - Math.max(0, fasce.alta - 24);
+  if (!(banda > 0)) return 4;
+  return Math.max(2, Math.min(4, Math.floor((banda - SKY_FUMETTO_TESTA) / SKY_FUMETTO_RIGA)));
+}
+
+// Le due fasce da non invadere sono scritte nel CSS (`--zona-alta-cielo` e
+// `--sopra-barra-tempo`) e cambiano con la forma dello schermo: leggerle a
+// ogni fotogramma sarebbe una `getComputedStyle` sessanta volte al secondo,
+// quindi si rileggono mezzo secondo per volta — cambiano solo girando il
+// telefono o entrando a schermo intero, cioè molto più lentamente di così.
+let skyFumettoFasce = { quando: 0, alta: 0, bassa: 0 };
+function skyFasceCielo() {
+  const ora = performance.now();
+  if (ora - skyFumettoFasce.quando < 500) return skyFumettoFasce;
+  const vista = document.querySelector('.vista-cielo') ||
+    document.getElementById('skymap-contenitore');
+  let alta = 128, bassa = 96;
+  if (vista) {
+    const st = getComputedStyle(vista);
+    const leggi = (nome, ripiego) => {
+      const v = parseFloat(st.getPropertyValue(nome));
+      return Number.isFinite(v) && v > 0 ? v : ripiego;
+    };
+    alta = leggi('--zona-alta-cielo', alta);
+    bassa = leggi('--sopra-barra-tempo', bassa);
+  }
+  skyFumettoFasce = { quando: ora, alta, bassa };
+  return skyFumettoFasce;
+}
+
+// Le righe compatte di un astro: quattro al massimo, e sono le quattro
+// domande che uno si fa guardando in su — cos'è, da che parte, quanto in
+// alto, quanto è luminoso. Tutto il resto (coordinate, temperatura,
+// distanza in unità astronomiche) è roba da scheda completa.
+function skyFumettoDatiAstro(o) {
+  const righe = [];
+  const metti = (chiave, etichetta, valore) => {
+    if (valore) righe.push({ chiave, etichetta, valore });
+  };
+
+  metti('tipo', '', skyClasseTesto(o));
+
+  // «49° sopra l'orizzonte» è la frase della scheda completa, e in un fumetto
+  // da 216 pixel manda la riga a capo per dire una cosa che il numero dice da
+  // solo: sopra l'orizzonte si sta per definizione, quando ci si sta. Sotto
+  // invece va detto, ed è il caso raro — lì la riga più lunga se la merita.
+  if (typeof o.az === 'number' && typeof o.alt === 'number') {
+    metti('dove', 'Dove', `${skyNomeDirezione(o.az)} · ${Math.round(o.az) % 360}° · ` +
+      (o.alt >= 0 ? `${skyNumero(o.alt, 0)}° di altezza`
+                  : `${skyNumero(Math.abs(o.alt), 0)}° sotto l'orizzonte`));
+  }
+
+  // La fase si dice per la Luna sempre, e per un pianeta solo quando c'è:
+  // stessa regola della scheda completa, se no Giove porterebbe per tutto
+  // l'anno una riga che dice «illuminato al 100%».
+  if (typeof o.frazione === 'number' && (o.tipo === 'luna' || o.frazione < 0.98)) {
+    metti('fase', 'Fase', `illuminato al ${Math.round(o.frazione * 100)}%`);
+  }
+
+  // La magnitudine, ma non il suo discorso: la scheda completa dice «-10,2 —
+  // a occhio nudo, sotto un cielo buio», e in un fumetto quella coda va a
+  // capo e si porta via una riga per dire una cosa che si sapeva già (una
+  // Luna piena si vede a occhio nudo). Resta il numero, che è il dato.
+  const mag = skyMagnitudineTesto(o);
+  if (mag) metti('mag', 'Magnitudine', mag.split(' — ')[0]);
+
+  // Per una stazione spaziale la magnitudine non dice niente e l'orario sì:
+  // quello che si vuole sapere è se sta passando adesso.
+  if (o.tipo === 'satellite') {
+    metti('luce', '', o.alt <= 0
+      ? 'Sotto l\'orizzonte: adesso non si vede'
+      : (o.illuminato ? 'Al Sole: se il cielo è scuro si vede a occhio nudo'
+                      : 'Nell\'ombra della Terra: c\'è, ma non riflette luce'));
+  }
+
+  return {
+    chiave: `astro:${o.id || o.nome}`,
+    segno: o.disegno || (o.categoria === 'profondo' ? 'nebulosa' : 'stella'),
+    titolo: o.tipo === 'satellite' && satelliteDaId(o.satId)
+      ? satelliteDaId(o.satId).nomeLungo : (o.nome || ''),
+    righe
+  };
+}
+
+// Titolo, segno e righe del fumetto di adesso — o `null` se non c'è niente
+// da mostrare. Gli aerei se le scrivono da sé (`aereiFumettoDati`): quel
+// modulo sa cose che qui non arrivano, l'itinerario per primo.
+function skyFumettoDati(voce) {
+  if (!voce) return null;
+  const dati = voce.categoria === 'aereo'
+    ? (typeof aereiFumettoDati === 'function' ? aereiFumettoDati(voce) : null)
+    : skyFumettoDatiAstro(voce);
+  // Il taglio si fa **qui** e non dentro a chi le scrive: è una misura dello
+  // schermo, non una proprietà dell'oggetto, e chi scrive le righe di un
+  // aereo non ha nessuna ragione di sapere quanto è alto il cielo.
+  // Un aereo deve dire sempre partenza, destinazione, modello, quota,
+  // velocità e distanza: sul telefono il fumetto può scorrere, ma non
+  // nasconde dati richiesti solo perché il cielo è basso.
+  if (dati && voce.categoria !== 'aereo') {
+    dati.righe = (dati.righe || []).slice(0, skyFumettoQuanteRighe());
+  }
+  return dati;
+}
+
+// Riscrive il fumetto. Come per la scheda dell'aereo (§ aerei.js), la
+// struttura si rifà **solo** quando cambia: finché è lo stesso oggetto con
+// le stesse righe si riscrivono i soli valori. Rifare l'HTML due volte al
+// secondo vorrebbe dire ricreare anche i due tasti, cioè perdere il fuoco
+// della tastiera e far ripartire da capo l'animazione di chi li sta premendo.
+function skyAggiornaFumetto() {
+  const f = document.getElementById('skymap-fumetto');
+  if (!f) return;
+  const corpo = document.getElementById('skymap-fumetto-corpo');
+  const titolo = document.getElementById('skymap-fumetto-titolo');
+  const segno = document.getElementById('skymap-fumetto-segno');
+  if (!corpo || !titolo || !segno) return;
+
+  const dati = f.classList.contains('visibile') ? skyFumettoDati(skyVoceSelezionata()) : null;
+  if (!dati) { f.dataset.chiave = ''; return; }
+
+  // La tinta del fumetto è quella dell'oggetto: per un aereo è la sua fascia
+  // di distanza (rosso entro dieci chilometri, poi arancio, giallo, azzurro),
+  // che è la stessa del triangolo sulla mappa — il fumetto e il simbolo che
+  // indica devono dire la stessa cosa anche di sfuggita.
+  f.style.setProperty('--fumetto-tinta', dati.colore || 'rgba(148, 197, 255, .85)');
+  f.classList.toggle('fumetto-aereo', dati.classe === 'fumetto-aereo');
+
+  const forma = `${dati.chiave}|${dati.foto ? dati.foto.src : ''}|${dati.righe.map(r => r.chiave).join(',')}`;
+  if (f.dataset.chiave !== forma) {
+    f.dataset.chiave = forma;
+    segno.innerHTML = icona(dati.segno, 17);
+    titolo.textContent = dati.titolo;
+    corpo.innerHTML = (dati.foto
+      ? '<figure class="fumetto-aereo-foto"><img>' +
+        (dati.foto.credito ? '<figcaption></figcaption>' : '') + '</figure>'
+      : '') + dati.righe.map(r =>
+      `<p class="fumetto-riga">${r.etichetta ? `<span class="fumetto-voce">${r.etichetta}:</span> ` : ''}` +
+      `<span data-fumetto="${r.chiave}"></span></p>`).join('');
+    sky.fumettoRimisura = true;
+    if (dati.foto) {
+      const immagine = corpo.querySelector('.fumetto-aereo-foto img');
+      const credito = corpo.querySelector('.fumetto-aereo-foto figcaption');
+      if (immagine) {
+        immagine.src = dati.foto.src;
+        immagine.alt = dati.foto.alt || '';
+        immagine.addEventListener('load', () => { sky.fumettoRimisura = true; }, { once: true });
+      }
+      if (credito) credito.textContent = `Foto: ${dati.foto.credito}`;
+    }
+  }
+  dati.righe.forEach(r => {
+    const nodo = corpo.querySelector(`[data-fumetto="${r.chiave}"]`);
+    // Un numero che cambia può cambiare la larghezza («9.750 m» → «10.100 m»),
+    // e con lei il posto giusto della coda: chi riscrive lo dichiara.
+    if (nodo && nodo.textContent !== r.valore) {
+      nodo.textContent = r.valore;
+      sky.fumettoRimisura = true;
+    }
+  });
+}
+
+// Dove sta l'oggetto di cui è aperto il fumetto. Per un astro dell'elenco è
+// lui stesso, per tutto il resto è la stessa coppia (az, alt) che accende il
+// cerchio azzurro dell'evidenza: due punti diversi vorrebbero dire una coda
+// che indica un pezzo di cielo vuoto accanto al cerchio.
+function skyPuntoSelezione() {
+  const voce = skyVoceSelezionata();
+  return voce && typeof voce.az === 'number' && typeof voce.alt === 'number'
+    ? { az: voce.az, alt: voce.alt } : null;
+}
+
+// Quanto misura il fumetto. Sembra una riga sola e invece è la ragione per
+// cui questo pezzo non costa niente: `getBoundingClientRect` **forza il
+// calcolo dell'impaginazione**, e chiamarla a ogni fotogramma dopo aver
+// scritto `left` e `top` è il classico botta-e-risposta che mette in
+// ginocchio un ciclo di disegno (si scrive, si invalida, si rilegge, si
+// ricalcola: sessanta volte al secondo). La misura però cambia solo quando
+// cambia quello che c'è scritto dentro o la forma del riquadro — cioè due
+// volte al secondo nel caso peggiore — quindi si tiene, e a dire che è
+// scaduta è `sky.fumettoRimisura`, che alza `skyAggiornaFumetto` quando ha
+// davvero riscritto qualcosa.
+//
+// Si arrotonda **per eccesso**: `offsetHeight` è già intero e perde i
+// decimi, e quei decimi erano proprio il pixel con cui il fumetto
+// scavalcava la barra del tempo (misurato: 132 contro 132,4). Il posto poi
+// si tosa per difetto, per la stessa ragione.
+function skyMisuraFumetto(f) {
+  const m = sky.fumettoMisura;
+  if (!sky.fumettoRimisura && m && m.L === sky.larghezza && m.H === sky.altezza) return m;
+  const r = f.getBoundingClientRect();
+  sky.fumettoRimisura = false;
+  sky.fumettoMisura = { w: Math.ceil(r.width), h: Math.ceil(r.height),
+                        L: sky.larghezza, H: sky.altezza };
+  return sky.fumettoMisura;
+}
+
+// Il fumetto insegue l'oggetto: gira dentro al ciclo di disegno, a ogni
+// fotogramma, come le etichette dei paesi e delle vette.
+function skyPosizionaFumetto(base, focale) {
+  const f = document.getElementById('skymap-fumetto');
+  if (!f || !f.classList.contains('visibile')) return;
+
+  const punto = skyPuntoSelezione();
+  if (!punto) { f.style.visibility = 'hidden'; return; }
+
+  const p = skyProietta(skyVettore(punto.az, punto.alt), base, focale);
+  const L = sky.larghezza, H = sky.altezza;
+  const { w, h } = skyMisuraFumetto(f);
+  // Fuori dallo schermo (o dietro alla nuca) il fumetto si spegne, ma la
+  // selezione resta: girandosi verso l'oggetto ricompare dov'era.
+  if (!p.davanti || p.px < -w || p.px > L + w || p.py < -h || p.py > H + h) {
+    f.style.visibility = 'hidden';
+    return;
+  }
+  f.style.visibility = 'visible';
+
+  const fasce = skyFasceCielo();
+  const M = SKY_FUMETTO_MARGINE;
+  const bassoMax = H - fasce.bassa;   // la barra del tempo non si copre mai
+  // Sotto alla bussola, ma solo finché fra le due fasce ci sta il fumetto:
+  // quando non ci sta (telefono girato, cielo alto due dita) il tetto si
+  // alza fin dove serve. Delle due, quella che non si può coprire è la
+  // barra del tempo — è l'orologio, e ci si scorre il tempo col dito.
+  // (senza margine in più: quel `- M` in coda faceva alzare il fumetto sopra
+  // alla bussola anche quando ci stava, cioè relaxava un vincolo che non era
+  // stretto — dieci pixel di scarto e la fascia si invadeva per niente)
+  const altoMin = Math.max(M, Math.min(fasce.alta - 24, bassoMax - h));
+
+  // Sopra all'oggetto quando c'è posto: è il verso naturale, perché il dito
+  // che l'ha toccato sta sotto e non deve coprire quello che ha appena aperto.
+  const sopra = p.py - SKY_FUMETTO_STACCO - h >= altoMin;
+  let top = sopra ? p.py - SKY_FUMETTO_STACCO - h : p.py + SKY_FUMETTO_STACCO;
+  top = Math.max(altoMin, Math.min(bassoMax - h, top));
+
+  let left = Math.max(M, Math.min(L - M - w, p.px - w / 2));
+
+  // La coda scorre lungo il bordo per continuare a indicare l'oggetto anche
+  // quando il fumetto è stato spostato per stare dentro allo schermo. Se
+  // nemmeno scorrendo ci arriva — l'oggetto è molto più in là del bordo —
+  // si ferma all'orlo e resta una freccia che dice «di là».
+  left = Math.floor(left); top = Math.floor(top);
+  const codaX = Math.round(Math.max(SKY_FUMETTO_ORLO,
+    Math.min(w - SKY_FUMETTO_ORLO, p.px - left)));
+
+  f.style.left = `${left}px`;
+  f.style.top = `${top}px`;
+  f.style.setProperty('--coda-x', `${codaX}px`);
+  f.dataset.verso = sopra ? 'sopra' : 'sotto';
+  // Il fumetto è stato tosato e la coda non arriva più all'oggetto: si tiene
+  // il filo che li unisce, se no la coda indicherebbe il posto sbagliato.
+  const scarto = Math.abs(p.px - (left + codaX));
+  f.classList.toggle('fumetto-lontano', scarto > SKY_FUMETTO_CODA);
+  skyDisegnaFiloFumetto(p, left, top, w, h, codaX, sopra, scarto);
+}
+
+// Il filo fra la coda e l'oggetto, quando i due si sono separati. Non è un
+// ornamento: senza, un fumetto spinto contro il bordo indica una porzione di
+// cielo qualunque, ed è esattamente l'equivoco che il fumetto esiste per
+// togliere. È un elemento HTML e non un tratto sul canvas perché deve stare
+// sopra al fumetto stesso, che è HTML: sul canvas passerebbe sotto.
+function skyDisegnaFiloFumetto(p, left, top, w, h, codaX, sopra, scarto) {
+  const filo = document.getElementById('skymap-fumetto-filo');
+  if (!filo) return;
+  if (scarto <= SKY_FUMETTO_CODA) { filo.style.display = 'none'; return; }
+  const x0 = left + codaX, y0 = sopra ? top + h : top;
+  const dx = p.px - x0, dy = p.py - y0;
+  filo.style.display = 'block';
+  filo.style.left = `${Math.round(x0)}px`;
+  filo.style.top = `${Math.round(y0)}px`;
+  filo.style.width = `${Math.round(Math.hypot(dx, dy))}px`;
+  filo.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+}
+
+// Apre il fumetto sull'oggetto scelto: è la scheda di prima, ridotta alle
+// righe che si leggono in un colpo d'occhio.
+function skyApriFumetto() {
+  const f = document.getElementById('skymap-fumetto');
+  if (!f) return;
+  f.classList.add('visibile');
+  f.dataset.chiave = '';
+  sky.fumettoRimisura = true;
+  f.style.visibility = 'hidden';   // finché non si sa dove sta l'oggetto
+  skyAggiornaFumetto();
+}
+
+function skyChiudiFumetto() {
+  const f = document.getElementById('skymap-fumetto');
+  if (f) { f.classList.remove('visibile'); f.dataset.chiave = ''; }
+  const filo = document.getElementById('skymap-fumetto-filo');
+  if (filo) filo.style.display = 'none';
+}
+
+// Il tasto ⓘ: gli stessi dati, tutti. Il fumetto lascia il posto alla
+// scheda completa — tenerli aperti tutt'e due vorrebbe dire scrivere due
+// volte le stesse quattro righe, e su un telefono non ci starebbero
+// nemmeno. Chiudendo la scheda si torna al fumetto, che è il gesto che ci
+// si aspetta da un «mostra di più».
+function skyApriSchedaCompleta() {
+  if (!sky.selezione) return;
+  skyChiudiFumetto();
+  const pannello = document.getElementById('skymap-dettaglio');
+  if (pannello) pannello.classList.add('visibile');
+  skyAggiornaScheda();
+}
+
+function skyTornaAlFumetto() {
+  const pannello = document.getElementById('skymap-dettaglio');
+  if (pannello) pannello.classList.remove('visibile');
+  if (sky.selezione) skyApriFumetto();
+  else skyChiudiDettaglio();
+}
+
+// C'è qualcosa aperto sull'oggetto scelto? Lo chiede la sosta del mirino,
+// che non deve sostituire la selezione mentre se ne sta leggendo una.
+function skySchedaOFumettoAperti() {
+  const p = document.getElementById('skymap-dettaglio');
+  const f = document.getElementById('skymap-fumetto');
+  return !!((p && p.classList.contains('visibile')) ||
+            (f && f.classList.contains('visibile')));
 }
 
 // =====================================================================
@@ -21966,34 +23476,30 @@ function skyQuandoEventoTesto(ev, inCorso) {
   return inCorso ? `in corso · ${picco}` : skyScartoTempoTesto(scarto);
 }
 
-// Il tasto della mappa, per gli eventi che ne hanno una.
-//   Un'eclissi di Sole non si capisce dalla sola posizione in cielo: la
-//   domanda vera è da dove la si vede e quanto — e la risposta è il percorso
-//   del cono d'ombra. Chi la incontra qui, nell'elenco del planetario, prima
-//   doveva ricordarsi di cercarla in agenda per arrivarci. Per le eclissi di
-//   Luna il gemello è la mappa di visibilità.
-function skyTastoMappaHtml(ev) {
-  // Le eclissi hanno due tasti, e dicono due cose diverse: la mappa risponde
-  // a «da dove si vede», il banco Terra e Luna (§7.7-quater) a «perché
-  // proprio stavolta». Il secondo è il posto in cui si vede che la Luna, per
-  // una volta, il cono d'ombra lo prende in pieno.
-  const perche = `<button type="button" class="tasto-evento-cielo" onclick="skyEventoInTreD('${ev.id}')" ` +
-    `title="La Terra e la Luna da fuori in quell'istante, a scala vera, coi coni d'ombra">Perché succede</button>`;
-  if (ev.eclissi) {
-    return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" onclick="skyApriMappaEvento('${ev.id}')" ` +
-      `title="Il percorso del cono d'ombra sulla Terra, minuto per minuto">Mappa dell'ombra</button>${perche}`;
+// Nel planetario conserviamo solo la spiegazione della geometria delle
+// eclissi. Le mappe «Dove si vede» e «Mappa dell'ombra» restano nelle schede
+// dell'Agenda, dove c'è lo spazio per leggerle senza affollare ogni evento.
+function skyTastoPercheHtml(ev) {
+  if (ev.eclissi || ev.eclissiLunare) {
+    return `<button type="button" class="tasto-evento-cielo" onclick="skyEventoInTreD('${ev.id}')" ` +
+      `title="La Terra e la Luna da fuori in quell'istante, a scala vera, coi coni d'ombra">Perché succede</button>`;
   }
-  if (ev.eclissiLunare) {
-    return `<button type="button" class="tasto-evento-cielo tasto-evento-forte" onclick="skyApriMappaEvento('${ev.id}')" ` +
-      `title="Da dove si vede, a che ora, e con la Luna quanto alta">Dove si vede</button>${perche}`;
-  }
-  // Una cometa non ha un terzo tasto suo, e per un po' l'ha avuto: «Vai
-  // sulla cometa», accanto a «Porta l'orologio qui» e «Mostra in cielo».
-  // Tre tasti in fila su una riga di elenco sono due di troppo, e quel
-  // terzo faceva esattamente quello che fa il secondo. Adesso a
-  // selezionare la cometa ci pensa «Mostra in cielo», che è dove uno la
-  // cerca.
   return '';
+}
+
+// La ricerca del posto ideale confronta il profilo del terreno nella
+// direzione dell'evento. Il tasto ha quindi senso soltanto quando l'evento
+// porta un astro oppure coordinate equatoriali utilizzabili; promemoria,
+// stagioni ed eventi senza un punto preciso nel cielo non devono offrirlo.
+function eventoHaPostoIdeale(ev) {
+  return !!(ev && ev.dataObj && (ev.corpoCielo ||
+    (ev.simul && typeof ev.simul.ra === 'number' && typeof ev.simul.dec === 'number')));
+}
+
+function skyTastoPostoIdealeHtml(ev) {
+  if (!eventoHaPostoIdeale(ev)) return '';
+  return `<button type="button" class="tasto-evento-cielo" onclick="apriMigliorPosto('${ev.id}')" ` +
+    `title="Cerca un punto in cui montagne e colline non coprono l'evento">Posto ideale</button>`;
 }
 
 // La finestra della mappa vive nella pagina, e la pagina non si vede finché
@@ -22022,28 +23528,22 @@ window.skyEventoInTreD = (id) => {
   if (typeof apriSistemaSolare === 'function') apriSistemaSolare({ evento: id });
 };
 
-// Una riga dell'elenco: cosa succede, quando, e i tasti che servono —
-// portarci sopra l'orologio, cercarlo in cielo e, per le eclissi, aprire
-// la mappa di dove si vede.
+// Una riga dell'elenco: cosa succede, quando, e le tre risposte utili —
+// andare all'istante dell'evento, cercare il posto ideale e, quando la
+// geometria lo permette, capire perché succede. La direzione e «Mostra in
+// cielo» duplicavano ciò che il planetario fa già dopo «Vai all'evento».
 function skyEventoHtml(ev, inCorso) {
   const cat = CATEGORIE[ev.categoria] || CATEGORIE.personali;
-  const posizione = skyPosizioneEvento(ev, skyAdesso());
-  const dove = posizione
-    ? `<span class="dove-evento">${skyNomeDirezione(posizione.az)}, ${Math.round(posizione.alt)}°` +
-      `${posizione.alt < 0 ? ' (sotto l\'orizzonte)' : ''}</span>`
-    : '';
-  const cerca = posizione
-    ? `<button type="button" class="tasto-evento-cielo" onclick="skyEventoNelCielo('${ev.id}')">Mostra in cielo</button>`
-    : '';
   return `<div class="voce-evento-cielo${inCorso ? ' in-corso' : ''}" style="--colore-evento:${ev.colore || '#60a5fa'}">
     <span class="segno-evento">${icona(cat.disegno, 18)}</span>
     <div class="corpo-evento">
       <p class="titolo-evento">${ev.titolo}</p>
-      <p class="quando-evento">${skyQuandoEventoTesto(ev, inCorso)}${dove ? ' · ' + dove : ''}</p>
+      <p class="quando-evento">${skyQuandoEventoTesto(ev, inCorso)}</p>
       <div class="azioni-evento">
-        <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Porta l'orologio qui</button>
-        ${cerca}
-        ${skyTastoMappaHtml(ev)}
+        <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Vai all'evento</button>
+        <button type="button" class="tasto-evento-cielo" onclick="apriSchedaEvento('${ev.id}')">Vedi scheda</button>
+        ${skyTastoPostoIdealeHtml(ev)}
+        ${skyTastoPercheHtml(ev)}
       </div>
     </div>
   </div>`;
@@ -22054,14 +23554,12 @@ function skyEventoHtml(ev, inCorso) {
 // cui uscire, invece, sì.
 function skyGiornoEventoTesto(ev) {
   const d = ev.dataObj;
-  return d.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }) +
-    ' · ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  return dataOraDelLuogo(d, typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null,
+    { weekday: 'short', year: false });
 }
 
-// Una riga dell'elenco della settimana. Qui il tasto è uno solo, ed è quello
-// che serve: portare il planetario su quella sera e puntarlo dove guardare.
-// "Mostra in cielo" non avrebbe senso — al cielo di adesso quell'evento non
-// c'è ancora.
+// Una riga dell'elenco della settimana offre le stesse azioni essenziali delle
+// righe vicine, così non cambia vocabolario in base alla distanza temporale.
 function skyEventoSettimanaHtml(ev) {
   const cat = CATEGORIE[ev.categoria] || CATEGORIE.personali;
   const scarto = Math.round((ev.dataObj.getTime() - skyAdesso().getTime()) / 1000);
@@ -22071,8 +23569,10 @@ function skyEventoSettimanaHtml(ev) {
       <p class="titolo-evento">${ev.titolo}</p>
       <p class="quando-evento">${skyGiornoEventoTesto(ev)} · ${skyScartoTempoTesto(scarto)}</p>
       <div class="azioni-evento">
-        <button type="button" class="tasto-evento-cielo" onclick="apriEventoNelPlanetario('${ev.id}')">Vedi nel planetario</button>
-        ${skyTastoMappaHtml(ev)}
+        <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Vai all'evento</button>
+        <button type="button" class="tasto-evento-cielo" onclick="apriSchedaEvento('${ev.id}')">Vedi scheda</button>
+        ${skyTastoPostoIdealeHtml(ev)}
+        ${skyTastoPercheHtml(ev)}
       </div>
     </div>
   </div>`;
@@ -22127,7 +23627,9 @@ window.skyVaiAEvento = (id) => {
   if (!ev) return;
   skyFermaPlayback();
   skyImpostaOffsetTempo((ev.dataObj.getTime() - Date.now()) / 1000);
-  skyAvviso('eventi', `Orologio portato su “${ev.titolo}”.`, 5000);
+  skyEventoNelCielo(id);
+  skyAttivaInseguimentoEvento(ev);
+  skyAvviso('eventi', `Orologio portato su “${ev.titolo}”: l'evento resta al centro della mappa.`, 5000);
 };
 
 // Punta la mappa dove si vede l'evento: il radiante di uno sciame, l'astro
@@ -22155,6 +23657,28 @@ window.skyEventoNelCielo = (id) => {
   skyMostraGruppo('');
   skyCentraSu({ nome: `il radiante delle ${p.nome}`, az: p.az, alt: p.alt });
 };
+
+// «Vai all'evento» non e' un semplice salto temporale: la camera resta
+// agganciata al punto dell'evento. Conserviamo l'id (anziche' una posizione
+// gia' calcolata) per poter ricalcolare anche i radianti mentre il tempo
+// scorre. Gli eventi senza una direzione precisa, come equinozi e aurore,
+// mantengono invece la vista scelta dal loro modulo.
+function skyAttivaInseguimentoEvento(ev) {
+  const p = skyPosizioneEvento(ev, skyAdesso());
+  if (!p) {
+    sky.eventoInseguito = null;
+    sky.inseguimento = false;
+    skyAggiornaTastoInsegui();
+    return;
+  }
+  sky.eventoInseguito = ev.id;
+  sky.inseguimento = true;
+  skyAggiornaTastoInsegui();
+  if (!skyUsaSensori()) {
+    skyFermaMovimenti();
+    skyCentraSu({ nome: ev.titolo, az: p.az, alt: p.alt }, { subito: true });
+  }
+}
 
 // Vedere l'evento nel planetario, nel momento giusto.
 //   È il tasto che ogni scheda dell'agenda porta in cima alle scorciatoie, e
@@ -22220,6 +23744,8 @@ window.apriEventoNelPlanetario = (id) => {
     aurImpostaKpSimulato(typeof ev.aurora.kp === 'number' ? ev.aurora.kp : null);
     if (typeof aurGuardaInCielo === 'function') aurGuardaInCielo();
   }
+
+  skyAttivaInseguimentoEvento(ev);
 
   skyAggiornaTastiFiltri();
 
@@ -22323,6 +23849,21 @@ function skyOggettoNelPunto(px, py) {
     if (!scelto || d < scelto.d) scelto = { d, sel: crea() };
   };
 
+  // Gli aerei sono oggetti veri della mappa, non soltanto etichette: hanno
+  // la precedenza sui puntini del catalogo e al tocco aprono i dati ADS-B.
+  if (typeof aereoNelPunto === 'function') {
+    const aereo = aereoNelPunto(px, py, base, focale);
+    if (aereo) return { categoria: 'aereo', dati: aereo };
+  }
+
+  // Il nome di una costellazione e' gia' una scelta precisa, non fondo del
+  // cielo: deve vincere anche se una stella capita dietro alle sue lettere.
+  // Le linee, molto piu' estese, restano invece per ultime qui sotto.
+  if (typeof costNomeNelPunto === 'function') {
+    const siglaNome = costNomeNelPunto(px, py, base, focale);
+    if (siglaNome) return { categoria: 'costellazione', sigla: siglaNome };
+  }
+
   skyOggettiDaDisegnare().forEach(o =>
     guarda(o.az, o.alt, Math.max(24, skyRaggio(o, focale) + 16), () => ({ categoria: 'astro', id: o.id })));
   if (scelto) return scelto.sel;
@@ -22370,11 +23911,277 @@ function skyOggettoNelPunto(px, py) {
   // ultimo perché una figura è larga venti gradi: messa prima, si
   // mangerebbe ogni altro tocco.
   if (typeof costFiguraNelPunto === 'function') {
+    // Di giorno le figure sono invisibili: non si apre una pagina per una
+    // linea che il cielo non sta mostrando. La posizione del Sole vale anche
+    // quando l'utente ha disattivato la resa dell'atmosfera.
+    const sole = sky.oggetti.find(o => o.id === 'Sun');
+    if (sole && sole.alt >= 0) return null;
     const sigla = costFiguraNelPunto(px, py, base, focale);
     if (sigla) return { categoria: 'costellazione', sigla };
   }
 
   return scelto ? scelto.sel : null;
+}
+
+// Lasciando il mirino giallo sullo stesso oggetto, la sua scheda si apre da
+// sola. È il gesto naturale quando il telefono si usa come un cercatore: si
+// punta, si tiene fermo e si legge, senza dover poi toccare lo schermo e
+// perdere l'inquadratura. La chiave descrive l'oggetto, non l'istanza del dato
+// (che per satelliti e cataloghi viene ricreata durante gli aggiornamenti).
+function skyChiaveSelezione(sel) {
+  if (!sel) return '';
+  if (sel.categoria === 'astro') return `astro:${sel.id}`;
+  if (sel.categoria === 'costellazione') return `costellazione:${sel.sigla}`;
+  const d = sel.dati || {};
+  return `${sel.categoria}:${d.id || d.nome || d.sigla || ''}`;
+}
+
+// L'hover non è un sostituto del mouse: apre la scheda del corpo rimasto
+// sotto al mirino mentre si punta fisicamente il dispositivo. Per questo il
+// comando ha senso soltanto se "Segui il telefono" è acceso e il profilo
+// corrente non è quello di un computer.
+function skyHoverDisponibile() {
+  return sky.seguiTelefono && (dispositivoAttuale || profiloDispositivo()) !== 'computer';
+}
+
+function skyHoverAttivo() {
+  return sky.modalitaHover && skyHoverDisponibile();
+}
+
+function skyAggiornaStatoHover() {
+  const tasto = document.getElementById('skymap-btn-hover');
+  if (!tasto) return;
+  const disponibile = skyHoverDisponibile();
+  const attivo = disponibile && sky.modalitaHover;
+  skyTasto('skymap-btn-hover', attivo);
+  tasto.disabled = !disponibile;
+  tasto.title = disponibile
+    ? 'Apre automaticamente la scheda dell\'oggetto quando il mirino giallo resta fermo su di esso'
+    : ((dispositivoAttuale || profiloDispositivo()) === 'computer'
+      ? 'La modalità hover è disponibile solo su telefono o tablet'
+      : 'Per usare la modalità hover attiva “Segui il telefono”');
+  if (!attivo) sky.sostaMirino = null;
+}
+
+// Il mirino puo' avere un astro proiettato dietro una collina: la ricerca
+// degli oggetti lo trova comunque (serve al tocco quando si e' scelto di
+// mostrare gli astri dietro i monti), ma la sosta automatica non deve
+// attraversare il paesaggio. Prima di avviare l'hover controlliamo quindi la
+// direzione esatta del mirino contro lo stesso profilo usato per disegnare il
+// terreno, compresi gli ostacoli dichiarati dall'utente.
+function skyPuntoSulTerreno(px, py) {
+  const base = sky.ultimaBase, focale = sky.ultimaFocale;
+  if (!base || !focale) return false;
+  const v = skyDirezione(px, py, base, focale);
+  const az = ((Math.atan2(v[0], v[1]) * SKY_R2D) % 360 + 360) % 360;
+  const alt = Math.asin(Math.max(-1, Math.min(1, v[2]))) * SKY_R2D;
+  return alt <= skyAltezzaOrizzonte(az);
+}
+
+function skyControllaSostaMirino() {
+  if (!skyHoverAttivo()) {
+    sky.sostaMirino = null;
+    return;
+  }
+  const ora = performance.now();
+  if (ora < sky.prossimoControlloSosta) return;
+  sky.prossimoControlloSosta = ora + 100;
+
+  // Una scheda già aperta deve restare legata all'oggetto che l'ha aperta:
+  // spostare il cielo (o il telefono) dietro al pannello non deve sostituirne
+  // il contenuto con un nuovo oggetto rimasto per caso sotto al mirino.
+  if (skySchedaOFumettoAperti()) {
+    sky.sostaMirino = null;
+    return;
+  }
+
+  // Sul terreno l'hover resta completamente inattivo, anche se dietro la
+  // cresta passa un astro selezionabile. Appena il mirino torna nel cielo il
+  // tempo di sosta riparte da zero, evitando aperture immediate al confine.
+  if (skyPuntoSulTerreno(sky.larghezza / 2, sky.altezza / 2)) {
+    sky.sostaMirino = null;
+    return;
+  }
+
+  // Una costellazione apre l'atlante intero: far sparire il planetario senza
+  // un tocco sarebbe sorprendente. La sosta riguarda le schede degli oggetti
+  // celesti; inoltre si ferma mentre un dito sta governando la mappa.
+  const sel = sky.puntatori.size || !sky.ultimaBase
+    ? null
+    : skyOggettoNelPunto(sky.larghezza / 2, sky.altezza / 2);
+  const valido = sel && sel.categoria !== 'costellazione' ? sel : null;
+  const chiave = skyChiaveSelezione(valido);
+  if (!chiave) { sky.sostaMirino = null; return; }
+  if (!sky.sostaMirino || sky.sostaMirino.chiave !== chiave) {
+    sky.sostaMirino = { chiave, dal: ora, aperto: false, selezione: valido };
+    return;
+  }
+  sky.sostaMirino.selezione = valido;
+  if (sky.sostaMirino.aperto || ora - sky.sostaMirino.dal < sky.sostaMirinoSec * 1000) return;
+  sky.sostaMirino.aperto = true;
+  if (valido.categoria === 'astro') {
+    sky.target = valido.id;
+    sky.cacheOrari = { chiave: null, valore: null };
+    skyAggiornaStileElenco();
+  }
+  skyApriDettaglio(valido);
+}
+
+function skyDisegnaAvanzamentoSosta(ctx) {
+  const s = sky.sostaMirino;
+  if (!s || s.aperto) return;
+  const progresso = Math.max(0, Math.min(1,
+    (performance.now() - s.dal) / (sky.sostaMirinoSec * 1000)));
+  if (!progresso) return;
+  ctx.save();
+  ctx.strokeStyle = SKY_MIRINO_COLORE;
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(sky.larghezza / 2, sky.altezza / 2, 18, -Math.PI / 2,
+    -Math.PI / 2 + progresso * Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Traduce un punto dello schermo in un punto del paesaggio. La proiezione
+// inversa dà azimut e altezza; `rilievo.js` riconosce poi quale campione 3D
+// visibile sta sotto il dito. Il controllo sulla cresta impedisce che un
+// tocco nel cielo vuoto venga scambiato per una montagna lontana.
+function skyLuogoNelPunto(px, py) {
+  const base = sky.ultimaBase, focale = sky.ultimaFocale;
+  if (!base || !focale || typeof rilPuntoVisibileA !== 'function' ||
+      typeof terrenoPuntoA !== 'function') return null;
+  const v = skyDirezione(px, py, base, focale);
+  const az = ((Math.atan2(v[0], v[1]) * SKY_R2D) % 360 + 360) % 360;
+  const alt = Math.asin(Math.max(-1, Math.min(1, v[2]))) * SKY_R2D;
+  const cresta = skyAltezzaOrizzonte(az);
+  const campione = rilPuntoVisibileA(az, alt);
+  // Il bordo disegnato e la cresta interpolata non coincidono necessariamente
+  // al decimo di grado: proprio sulla punta stretta di una vetta il tocco può
+  // cadere qualche pixel sopra `cresta`, pur essendo sul poligono visibile.
+  // Accettiamo quindi la distanza dal campione realmente disegnato, tradotta
+  // in pixel alla scala corrente. Il limite angolare resta anche come rete
+  // contro un tocco nel cielo vuoto e non trasforma tutta la colonna sotto una
+  // cima in un bersaglio.
+  const gradiPerPixel = sky.fov / Math.max(1, sky.altezza);
+  const tolleranza = Math.max(0.35, Math.min(2.5, gradiPerPixel * 14));
+  if (alt < -45 || !campione || campione.scarto > tolleranza ||
+      alt > cresta + tolleranza) return null;
+  const partenza = skyLuogoDelCielo();
+  if (!partenza) return null;
+  const punto = terrenoPuntoA(partenza.lat, partenza.lon, az, campione.km);
+  return { ...punto, az, alt: campione.alt, km: campione.km };
+}
+
+// Un nome geografico è una scorciatoia più precisa del terreno sotto di lui:
+// porta le coordinate OSM del paese o della vetta. Le etichette delle cime
+// sono inclinate, perciò il punto viene riportato negli assi del rettangolo
+// invece di usare un riquadro esterno enorme e ambiguo.
+function skyEtichettaLuogoNelPunto(px, py) {
+  const etichette = sky.etichetteLuogo || [];
+  for (let i = etichette.length - 1; i >= 0; i--) {
+    const e = etichette[i], r = e.rett;
+    const dx = px - r.cx, dy = py - r.cy;
+    const u = dx * r.ux + dy * r.uy;
+    const v = dx * r.vx + dy * r.vy;
+    if (Math.abs(u) <= r.hu + 6 && Math.abs(v) <= r.hv + 6) return e.punto;
+  }
+  return null;
+}
+
+function skyChiudiVaiQua() {
+  const popup = document.getElementById('sky-vai-qua');
+  if (popup) popup.remove();
+}
+
+// Il tasto conferma un punto del terreno, non un pixel dello schermo. Anche
+// se nel frattempo cambia l'inquadratura, azimut e altezza permettono di
+// proiettarlo di nuovo e di ritrovarlo nello stesso luogo reale.
+// Riposiziona la conferma con la stessa proiezione usata dal terreno. Il
+// fumetto e' un elemento HTML sopra al canvas, quindi senza questo passaggio
+// resterebbe incollato al pixel del primo tocco (oppure, in passato, veniva
+// tolto appena la camera si muoveva). Il suo riferimento invece e' un punto
+// del mondo: azimut e altezza non cambiano quando gira la camera.
+function skyAggiornaVaiQua(base, focale) {
+  const popup = document.getElementById('sky-vai-qua');
+  const punto = popup && popup.punto;
+  if (!popup || !punto || typeof punto.az !== 'number' || typeof punto.alt !== 'number') return;
+  const p = skyProietta(skyVettore(punto.az, punto.alt), base, focale);
+  const inVista = p.davanti && p.px > -popup.offsetWidth && p.px < sky.larghezza + popup.offsetWidth &&
+    p.py > -popup.offsetHeight && p.py < sky.altezza + popup.offsetHeight;
+  popup.style.visibility = inVista ? 'visible' : 'hidden';
+  if (!inVista) return;
+  popup.style.left = `${p.px}px`;
+  popup.style.top = `${p.py}px`;
+  popup.anchor = { px: p.px, py: p.py };
+}
+
+// La corsa verso un punto del rilievo e' soltanto una transizione visiva, ma
+// deve rispettare la stessa regola di una telecamera vera: davanti al terreno
+// resta uno spazio di sicurezza. Il rapporto prospettico D/(D-cammino)
+// traduce la parte percorsa nello `scale()` del canvas; il cammino viene
+// fermato molto prima del campione scelto, cosi' una cima vicina non puo'
+// attraversare il piano della camera e mostrare il retro dei poligoni.
+function skyScalaVoloSicura(punto) {
+  const distanzaM = Math.max(0, Number(punto && punto.km) * 1000 || 0);
+  const margineM = Math.max(35, Math.min(180, distanzaM * 0.12));
+  const camminoVolutoM = distanzaM * 0.15;
+  const camminoM = Math.min(camminoVolutoM, Math.max(0, distanzaM - margineM));
+  if (!distanzaM || !camminoM) return 1;
+  return Math.min(1.18, distanzaM / (distanzaM - camminoM));
+}
+
+// La conferma resta attaccata al punto indicato, come sulla mappa Leaflet:
+// prima si sceglie, poi si decide esplicitamente di spostare l'osservatore.
+function skyMostraVaiQua(punto, px, py) {
+  skyChiudiVaiQua();
+  const contenitore = document.getElementById('skymap-contenitore');
+  if (!contenitore) return;
+  const popup = document.createElement('div');
+  popup.id = 'sky-vai-qua';
+  popup.className = 'sky-popup-vai';
+  popup.punto = { ...punto };
+  popup.anchor = { px, py };
+  popup.style.left = `${Math.max(12, Math.min(sky.larghezza - 12, px))}px`;
+  popup.style.top = `${Math.max(12, Math.min(sky.altezza - 12, py))}px`;
+  const distanza = punto.km < 1 ? Math.round(punto.km * 1000) + ' m' : punto.km.toFixed(1) + ' km';
+  // Il fumetto resta sul paesaggio anche dopo che l'avviso scompare: per un
+  // luogo cercato deve quindi conservare non soltanto nome e distanza, ma
+  // anche la direzione in cui il planetario si è girato. I gradi tolgono
+  // ogni ambiguità tra due settori cardinali vicini.
+  const direzione = Number.isFinite(punto.az)
+    ? `${skyNomeDirezione(punto.az)} · ${Math.round(punto.az)}°`
+    : '';
+  const didascalia = document.createElement('span');
+  didascalia.textContent = [punto.nome, distanza, direzione].filter(Boolean).join(' · ');
+  const tasto = document.createElement('button');
+  tasto.type = 'button';
+  tasto.textContent = 'Vai qua';
+  popup.append(didascalia, tasto);
+  tasto.addEventListener('click', (e) => {
+    e.stopPropagation();
+    skyChiudiVaiQua();
+    // Il punto scelto è il fuoco del viaggio: lo zoom parte proprio da lì,
+    // non dal centro dello schermo, così la camera sembra correre verso il
+    // paese/la cima toccati prima che il nuovo paesaggio venga calcolato.
+    const ancora = popup.anchor || { px, py };
+    contenitore.style.setProperty('--sky-volo-x', `${ancora.px}px`);
+    contenitore.style.setProperty('--sky-volo-y', `${ancora.py}px`);
+    contenitore.style.setProperty('--sky-volo-scala', skyScalaVoloSicura(punto).toFixed(4));
+    contenitore.classList.add('sky-volo-luogo');
+    skyAvviso('luogo', 'Mi sposto nel punto scelto e ricalcolo il paesaggio…', 5000);
+    // Una breve corsa della camera rende leggibile il cambio di punto; il
+    // caricamento del nuovo terreno parte soltanto all'arrivo, non decine di
+    // volte durante l'animazione.
+    setTimeout(() => {
+      contenitore.classList.remove('sky-volo-luogo');
+      skyUsaLuogoVista(punto.lat, punto.lon,
+        punto.nome || formattaCoordinate(punto.lat, punto.lon),
+        { mostraSpostamentoTerreno: true });
+    }, 900);
+  }, { once: true });
+  contenitore.appendChild(popup);
 }
 
 // =====================================================================
@@ -22485,6 +24292,195 @@ function skyRicordaTrascinamento(dAz, dAlt) {
   };
 }
 
+// La distanza fra i due punti serve alla didascalia. La carta invece usa
+// direttamente le coordinate, così mostra strade, paesi e forma del luogo.
+function skyDistanzaGeograficaKm(a, b) {
+  const p1 = a.lat * SKY_D2R, p2 = b.lat * SKY_D2R;
+  const dp = (b.lat - a.lat) * SKY_D2R, dl = (b.lon - a.lon) * SKY_D2R;
+  const h = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(Math.max(0, 1 - h)));
+}
+
+// Direzione iniziale del tratto geografico a -> b. La mini-mappa usa le
+// coordinate direttamente; il segno nel paesaggio, invece, deve sapere in
+// quale azimut si trova il vecchio punto rispetto alla nuova camera.
+function skyAzimutGeografico(a, b) {
+  const p1 = a.lat * SKY_D2R, p2 = b.lat * SKY_D2R;
+  const dl = (b.lon - a.lon) * SKY_D2R;
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return ((Math.atan2(y, x) * SKY_R2D) % 360 + 360) % 360;
+}
+
+// Dopo essere arrivati, il pallino giallo resta sul terreno nella direzione
+// del luogo lasciato. Non e' un elemento dello schermo: viene riproiettato a
+// ogni fotogramma, quindi resta davvero appoggiato al panorama mentre si gira
+// o si ingrandisce. Aprendo la carta geografica a tutto schermo scompare: li'
+// la stessa informazione e' gia' raccontata dai due marcatori della mappa.
+function skyDisegnaPuntoPartenza(ctx, base, focale) {
+  const m = sky.mappaSpostamento;
+  const box = document.getElementById('skymap-mappa-spostamento');
+  if (!m.partenza || !m.arrivo || !box ||
+      box.classList.contains('mappa-spostamento-aperta')) return;
+
+  const km = skyDistanzaGeograficaKm(m.arrivo, m.partenza);
+  if (!(km > 0.005)) return;
+  const az = skyAzimutGeografico(m.arrivo, m.partenza);
+  let alt = skyAltezzaOrizzonte(az);
+  if (typeof terrenoFronteA === 'function' && typeof terrenoDisponibile === 'function' &&
+      terrenoDisponibile() && typeof TERRENO_DISTANZE !== 'undefined') {
+    let k = 0;
+    while (k + 1 < TERRENO_DISTANZE.length &&
+           Math.abs(TERRENO_DISTANZE[k + 1] - km) < Math.abs(TERRENO_DISTANZE[k] - km)) k++;
+    const precisa = terrenoFronteA(az, k);
+    if (Number.isFinite(precisa)) alt = precisa;
+  }
+  const p = skyProietta(skyVettore(az, alt), base, focale);
+  if (!p.davanti || p.px < -20 || p.px > sky.larghezza + 20 ||
+      p.py < -28 || p.py > sky.altezza + 20) return;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.72)';
+  ctx.shadowBlur = 5;
+  ctx.strokeStyle = '#422006';
+  ctx.fillStyle = '#fde047';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(p.px, p.py + 1);
+  ctx.lineTo(p.px, p.py - 12);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(p.px, p.py - 15, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function skyNascondiMappaSpostamento() {
+  const m = sky.mappaSpostamento;
+  if (m.timer) { clearTimeout(m.timer); m.timer = null; }
+  skyChiudiMappaSpostamento();
+  m.partenza = null;
+  m.arrivo = null;
+  document.getElementById('skymap-mappa-spostamento')?.classList.add('hidden');
+}
+
+function skyInterazioneMappaSpostamento(attiva) {
+  const mappa = sky.mappaSpostamento.mappa;
+  if (!mappa) return;
+  ['dragging', 'touchZoom', 'doubleClickZoom', 'scrollWheelZoom', 'boxZoom', 'keyboard'].forEach(nome => {
+    const comando = mappa[nome];
+    if (comando && typeof comando[attiva ? 'enable' : 'disable'] === 'function') comando[attiva ? 'enable' : 'disable']();
+  });
+}
+
+// Ricalcola l'inquadratura dopo che il riquadro ha cambiato misura. Leaflet
+// conserva il vecchio centro quando la mini-mappa diventa grande: il percorso
+// finirebbe quindi spostato verso un angolo, pur avendo molto più spazio a
+// disposizione. Partenza e arrivo sono la vera inquadratura di questa carta.
+function skyInquadraMappaSpostamento() {
+  const m = sky.mappaSpostamento;
+  if (!m.mappa || !m.partenza || !m.arrivo) return;
+  const da = [m.partenza.lat, m.partenza.lon];
+  const a = [m.arrivo.lat, m.arrivo.lon];
+  const distanza = skyDistanzaGeograficaKm(m.partenza, m.arrivo);
+  if (distanza < 0.05) m.mappa.setView(a, 16, { animate: false });
+  else m.mappa.fitBounds(L.latLngBounds([da, a]).pad(0.45), { animate: false, maxZoom: 15 });
+}
+
+// Leaflet deve conoscere la misura visibile del riquadro prima di calcolare
+// il centro. Farlo subito dopo aver tolto `hidden` usa a volte la misura del
+// fotogramma precedente e lascia il tragitto fuori centro.
+function skyAggiornaInquadraturaMappaSpostamento() {
+  const m = sky.mappaSpostamento;
+  if (!m.mappa) return;
+  requestAnimationFrame(() => {
+    if (!m.mappa) return;
+    m.mappa.invalidateSize({ pan: false });
+    skyInquadraMappaSpostamento();
+    requestAnimationFrame(() => {
+      if (!m.mappa) return;
+      m.mappa.invalidateSize({ pan: false });
+      skyInquadraMappaSpostamento();
+    });
+  });
+}
+
+function skyProgrammaChiusuraMappaSpostamento() {
+  const m = sky.mappaSpostamento;
+  if (m.timer) clearTimeout(m.timer);
+  m.timer = null;
+  if (!(m.durataSec > 0)) return; // zero significa «fino al prossimo tocco»
+  m.timer = setTimeout(() => skyNascondiMappaSpostamento(), m.durataSec * 1000);
+}
+
+function skyApriMappaSpostamento() {
+  const box = document.getElementById('skymap-mappa-spostamento');
+  if (!box || box.classList.contains('hidden') || box.classList.contains('mappa-spostamento-aperta')) return;
+  if (sky.mappaSpostamento.timer) {
+    clearTimeout(sky.mappaSpostamento.timer);
+    sky.mappaSpostamento.timer = null;
+  }
+  box.classList.add('mappa-spostamento-aperta');
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-label', 'Mappa interattiva dello spostamento geografico');
+  document.body.classList.add('mappa-spostamento-immersiva');
+  skyInterazioneMappaSpostamento(true);
+  skyAggiornaInquadraturaMappaSpostamento();
+  document.getElementById('skymap-mappa-spostamento-esci')?.focus();
+}
+
+function skyChiudiMappaSpostamento() {
+  const box = document.getElementById('skymap-mappa-spostamento');
+  if (!box || !box.classList.contains('mappa-spostamento-aperta')) return;
+  box.classList.remove('mappa-spostamento-aperta');
+  box.setAttribute('role', 'button');
+  box.removeAttribute('aria-modal');
+  box.setAttribute('aria-label', 'Spostamento geografico della vista. Apri la mappa interattiva a tutto schermo');
+  document.body.classList.remove('mappa-spostamento-immersiva');
+  skyInterazioneMappaSpostamento(false);
+  skyAggiornaInquadraturaMappaSpostamento();
+  skyProgrammaChiusuraMappaSpostamento();
+  box.focus({ preventScroll: true });
+}
+
+function skyMostraMappaSpostamentoGeografico(partenza, arrivo) {
+  const m = sky.mappaSpostamento;
+  const box = document.getElementById('skymap-mappa-spostamento');
+  const carta = document.getElementById('skymap-mappa-spostamento-carta');
+  if (!box || !carta || typeof L === 'undefined') return;
+  m.partenza = { lat: partenza.lat, lon: partenza.lon, nome: partenza.nome };
+  m.arrivo = { lat: arrivo.lat, lon: arrivo.lon, nome: arrivo.nome };
+  box.classList.remove('hidden');
+  if (!m.mappa) {
+    m.mappa = L.map(carta, { zoomControl: false, dragging: false, touchZoom: false,
+      doubleClickZoom: false, scrollWheelZoom: false, boxZoom: false, keyboard: false,
+      attributionControl: true });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '&copy; OpenStreetMap'
+    }).addTo(m.mappa);
+    aggiungiControlloTemaMappa(m.mappa, carta);
+  }
+  m.strati.forEach(strato => m.mappa.removeLayer(strato));
+  const da = [partenza.lat, partenza.lon], a = [arrivo.lat, arrivo.lon];
+  const filo = L.polyline([da, a], { color: '#0284c7', weight: 4, dashArray: '7 6' }).addTo(m.mappa);
+  const origine = L.circleMarker(da, { radius: 7, color: '#713f12', weight: 2,
+    fillColor: '#fde047', fillOpacity: 1 }).addTo(m.mappa);
+  const destinazione = L.circleMarker(a, { radius: 7, color: '#075985', weight: 2,
+    fillColor: '#7dd3fc', fillOpacity: 1 }).addTo(m.mappa);
+  m.strati = [filo, origine, destinazione];
+  const distanza = skyDistanzaGeograficaKm(partenza, arrivo);
+  skyAggiornaInquadraturaMappaSpostamento();
+  const misura = distanza < 1 ? `${Math.round(distanza * 1000)} m` : `${distanza.toFixed(distanza < 10 ? 1 : 0)} km`;
+  const nomeArrivo = arrivo.nome || formattaCoordinate(arrivo.lat, arrivo.lon);
+  const testo = `Spostamento: ${misura} · ${nomeArrivo}`;
+  const label = document.getElementById('skymap-mappa-spostamento-testo');
+  if (label) label.textContent = testo;
+  box.setAttribute('aria-label', `${testo}. Il punto giallo indica la partenza, quello azzurro l'arrivo. Tocca per aprire la mappa interattiva a tutto schermo.`);
+  skyProgrammaChiusuraMappaSpostamento();
+}
+
 // Il dito si stacca: se stava ancora correndo, la vista prosegue da sola.
 function skyLanciaVista() {
   const t = sky.trascinamento;
@@ -22577,6 +24573,11 @@ function skyCentraSu(o, opzioni = {}) {
 // L'oggetto "scelto adesso": prima quello di cui è aperta la scheda, poi
 // l'astro acceso nell'elenco. Sono i due modi di dire "questo qui".
 function skyOggettoScelto() {
+  if (sky.eventoInseguito) {
+    const ev = eventiCalcolati.find(e => e.id === sky.eventoInseguito);
+    const p = ev ? skyPosizioneEvento(ev, skyAdesso()) : null;
+    if (p) return { nome: ev.titolo, az: p.az, alt: p.alt };
+  }
   const voce = skyVoceSelezionata();
   if (voce && typeof voce.az === 'number') return voce;
   if (sky.target) {
@@ -22589,6 +24590,10 @@ function skyOggettoScelto() {
 function skyAlternaInseguimento() {
   const acceso = !sky.inseguimento;
   const o = skyOggettoScelto();
+
+  // Il tasto manuale torna sempre a inseguire l'oggetto selezionato; non deve
+  // riattivare per errore l'ultimo evento raggiunto dal calendario.
+  sky.eventoInseguito = null;
 
   if (acceso && !o) {
     skyAvviso('inseguimento', 'Prima scegli cosa inseguire: toccalo sulla mappa, o prendilo dall\'elenco degli astri.', 7000);
@@ -22635,6 +24640,7 @@ function skyInsegui() {
 function skySpegniInseguimento(motivo) {
   if (!sky.inseguimento) return;
   sky.inseguimento = false;
+  sky.eventoInseguito = null;
   skyAggiornaTastoInsegui();
   if (motivo) skyAvviso('inseguimento', motivo, 5000);
   else skyAvviso('inseguimento', '');
@@ -22692,6 +24698,7 @@ function skyAlternaSeguiTelefono() {
   // guidare: meglio spegnerlo che lasciare acceso un tasto che non fa nulla
   if (nuovo && sky.sensori) skySpegniInseguimento();
   skyTasto('skymap-btn-segui', nuovo);
+  skyAggiornaStatoHover();
   skyAggiornaStato();
 
   // Con la fotocamera accesa sganciare la vista stacca il cielo dall'immagine:
@@ -22751,6 +24758,11 @@ async function skyAvvia() {
   // vista, e una sola attesa messa qui in mezzo lo perderebbe.
   skyAvviaSensori();
 
+  // Anche se una posizione di rete è già pronta dall'avvio dell'app, ogni
+  // apertura del planetario deve dichiarare che il GPS non è quello in uso e
+  // offrire l'attivazione nella barra gialla sotto al cielo.
+  skyAggiornaAvvisoGps();
+
   // La posizione l'app la cerca già da sé all'avvio (7.1-bis), e la
   // sorveglianza la tiene aggiornata: rifare la cascata a ogni apertura del
   // planetario vorrebbe dire una richiesta GPS in più ogni volta che si
@@ -22769,8 +24781,8 @@ async function skyAvvia() {
   if (esito.esito === 'gps') {
     skyAvviso('posizione', '');
   } else if (esito.esito === 'rete') {
-    skyAvviso('posizione', 'Posizione approssimata, dedotta dalla connessione: per il puntamento fine ' +
-      'conviene sceglierla a mano dal tasto della posizione, nella scheda Stasera.');
+    skyAvviso('posizione', '');
+    skyAggiornaAvvisoGps();
   } else if (sky.observer || skyCaricaPosizioneSalvata()) {
     skyAvviso('posizione', '');
   } else {
@@ -22826,6 +24838,9 @@ function skyCiclo() {
   // tornerà più (vedi `skyVigilaCicli`).
   sky.battito = performance.now();
   try {
+    // Prima di qualunque conto: una coordinata non finita non deve arrivare
+    // alla proiezione e lasciare sul canvas un fotogramma disegnato a metà.
+    skyRiparaNavigazione();
     // Quanto è durato il fotogramma precedente: lo chiedono lo zoom morbido e
     // l'inerzia, che devono comportarsi uguale a qualunque cadenza (vedi 7.4-ter)
     const dt = skyDeltaFotogramma();
@@ -23035,6 +25050,8 @@ function apriSkymap() {
   sky.ultimoFotogramma = 0;
   sky.inerzia = null;
   sky.trascinamento = null;
+  sky.sostaMirino = null;
+  sky.prossimoControlloSosta = 0;
   sky.fovVoluto = sky.fov;
   skyAccendiCiclo();
   skyCaricaIlResto();
@@ -23091,6 +25108,12 @@ function skyCaricaIlResto() {
     },
     () => { if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica(); },
     () => { if (typeof satPrecaricaTle === 'function') satPrecaricaTle(); },
+    // Copertura nuvolosa del luogo e dell'ora mostrati. È separata dal
+    // meteo della scheda Stasera: il planetario può essere in visita in
+    // un'altra città senza cambiare la posizione dell'app.
+    () => { if (typeof meteoCaricaNuvoleCielo === 'function') meteoCaricaNuvoleCielo(); },
+    // Non scarica nulla finché l'interruttore Aerei non è stato acceso; se
+    // lo era già, riavvia soltanto il timer fermato uscendo dal planetario.
     () => { if (typeof aereiAvvia === 'function') aereiAvvia(); },
     // Il Kp del NOAA: serve a sapere se l'ovale aurorale, stanotte, scende
     // fin qui. Senza rete non si sa, e resta la simulazione.
@@ -23152,6 +25175,7 @@ function splashPlanetarioNascondi() {
 function chiudiSkymap() {
   if (!sky.aperto) return;
   sky.aperto = false;
+  sky.sostaMirino = null;
   if (typeof aereiFerma === 'function') aereiFerma();
   skySpegniCiclo();
   // Il playback non deve sopravvivere alla vista: tornando qui domani il
@@ -23266,6 +25290,9 @@ function skyInizializzaGesti() {
     if (sky.tocco && sky.tocco.id === e.pointerId &&
         Math.hypot(e.clientX - sky.tocco.x, e.clientY - sky.tocco.y) > 8) {
       sky.tocco.mosso = true;
+      // Il punto del terreno era legato alla vecchia inquadratura: appena il
+      // dito muove davvero la camera, la sua conferma non e' più coerente.
+      skyChiudiVaiQua();
     }
 
     if (sky.puntatori.size === 2 && sky.pizzico) {
@@ -23288,7 +25315,10 @@ function skyInizializzaGesti() {
       // per esempio provando a scorrere la pagina — per ruotarlo di decine di
       // gradi, e quella rotazione restava salvata anche alle aperture
       // successive: il cielo risultava storto senza che si capisse perché.
-      if (sky.calibrazione) skyImpostaOffsetBussola(sky.offsetBussola - dx * gradiPerPixel);
+      if (sky.calibrazione) {
+        skyBussola.tarata = null;   // il dito smentisce la taratura sul cielo
+        skyImpostaOffsetBussola(sky.offsetBussola - dx * gradiPerPixel);
+      }
     } else {
       // Il dito ha la precedenza sull'inseguimento: se no la vista tornerebbe
       // indietro da sola a ogni fotogramma
@@ -23318,9 +25348,35 @@ function skyInizializzaGesti() {
     if (t.mosso || sky.puntatori.size > 1) return;
     if (performance.now() - t.quando > 600) return;
 
+    // Dopo aver mostrato quanto ci si e' spostati, il tocco successivo sul
+    // planetario libera il cielo dalla carta (senza rubare il normale tocco
+    // che apre una scheda o sceglie un luogo).
+    skyNascondiMappaSpostamento();
+
     const r = c.getBoundingClientRect();
-    const sel = skyOggettoNelPunto(e.clientX - r.left, e.clientY - r.top);
-    if (!sel) { skyChiudiDettaglio(); return; }
+    const px = e.clientX - r.left, py = e.clientY - r.top;
+    // I nomi di paesi e vette sono comandi visibili: hanno precedenza sugli
+    // astri che, per caso, possono essere proiettati dietro la loro pillola.
+    const etichettaLuogo = skyEtichettaLuogoNelPunto(px, py);
+    if (etichettaLuogo) {
+      skyChiudiDettaglio();
+      skyMostraVaiQua(etichettaLuogo, px, py);
+      return;
+    }
+    const sel = skyOggettoNelPunto(px, py);
+    if (!sel) {
+      const luogo = skyLuogoNelPunto(px, py);
+      if (luogo) { skyChiudiDettaglio(); skyMostraVaiQua(luogo, px, py); return; }
+      skyChiudiVaiQua();
+      // La scheda e il bersaglio sono due parti della stessa selezione: la
+      // prima era già chiusa dal tocco nel vuoto, mentre il secondo restava
+      // acceso con guida e traccia dell'orbita. Spegnerlo tramite la stessa
+      // funzione usata dall'elenco aggiorna anche pillole e dati collegati.
+      if (sky.target) skyImpostaTarget(sky.target);
+      skyChiudiDettaglio();
+      return;
+    }
+    skyChiudiVaiQua();
     // Una figura non ha una scheda da aprire sopra la mappa: ha una
     // pagina, con il disegno, i nomi delle altre culture e il tasto per
     // andarci sotto. Si apre quella, e la scheda dell'oggetto resta com'era.
@@ -23420,6 +25476,12 @@ function inizializzaSkymap() {
   const impZoom = document.getElementById('imp-skymap-zoom');
   if (impZoom) impZoom.checked = mostraZoom;
 
+  // La preferenza hover nasce accesa, come nelle versioni che precedono il
+  // suo interruttore. Diventa effettiva solo mentre la vista segue il
+  // telefono/tablet e non viene mai applicata sul profilo computer.
+  sky.modalitaHover = localStorage.getItem(CHIAVE_SKY_HOVER) !== '0';
+  skyAggiornaStatoHover();
+
   // Costellazioni, deep sky, macchina del tempo e fotocamera
   inizializzaSkymapExtra();
   // I comandi della registrazione (vedi 7.6)
@@ -23481,17 +25543,34 @@ function inizializzaSkymap() {
     });
   });
   collega('skymap-btn-segui', () => { skyAlternaSeguiTelefono(); skyMostraGruppo(''); });
-  collega('skymap-cal-meno', () => skyImpostaOffsetBussola(sky.offsetBussola - 5));
-  collega('skymap-cal-piu', () => skyImpostaOffsetBussola(sky.offsetBussola + 5));
-  collega('skymap-cal-zero', () => skyImpostaOffsetBussola(0));
+  // Ritoccare a mano vuol dire smentire la taratura sul cielo: la si
+  // dimentica, se no il quadrante continuerebbe a promettere «esatto».
+  const aMano = (gradi) => {
+    skyBussola.tarata = null;
+    skyImpostaOffsetBussola(sky.offsetBussola + gradi);
+    skyAggiornaTastoTara();
+  };
+  collega('skymap-cal-meno', () => aMano(-5));
+  collega('skymap-cal-piu', () => aMano(5));
+  collega('skymap-cal-zero', skyAzzeraTaratura);
+  collega('skymap-btn-tara-astro', skyTaraSuAstro);
   collega('skymap-btn-calibra', () => {
     sky.calibrazione = !sky.calibrazione;
     skyAggiornaTastoCalibrazione();
   });
   skyAggiornaTastoCalibrazione();
+  skyAggiornaTastoTara();
 
   // La scheda dell'oggetto si chiude col suo ✕
   collega('skymap-dettaglio-chiudi', skyChiudiDettaglio);
+  collega('skymap-dettaglio-chiudi-alto', skyChiudiDettaglio);
+  // Il fumetto: il ⓘ apre tutti i dati, il ✕ chiude la selezione. La scheda
+  // completa ha in più la freccia che riporta al fumetto, che è il gesto che
+  // ci si aspetta dopo un «mostra di più» — chiudere la scheda col ✕ chiude
+  // invece tutto, come ha sempre fatto.
+  collega('skymap-fumetto-info', skyApriSchedaCompleta);
+  collega('skymap-fumetto-chiudi', skyChiudiDettaglio);
+  collega('skymap-dettaglio-indietro', skyTornaAlFumetto);
 
   // I filtri della mappa
   const filtro = (id, campo) => collega(id, () => {
@@ -23509,7 +25588,22 @@ function inizializzaSkymap() {
   filtro('skymap-btn-griglia', 'mostraGriglia');
   filtro('skymap-btn-etichette', 'mostraNomi');
   filtro('skymap-btn-vialattea', 'mostraViaLattea');
-  filtro('skymap-btn-atmosfera', 'atmosfera');
+  // Le nuvole sono uno strato dell'atmosfera, non una modalità alternativa.
+  // Spegnere l'atmosfera toglie quindi anche le nuvole; accendere le nuvole
+  // riaccende l'atmosfera, se necessario, e le sovrappone al cielo dipinto.
+  collega('skymap-btn-atmosfera', () => {
+    sky.atmosfera = !sky.atmosfera;
+    if (!sky.atmosfera) sky.nuvole = false;
+    skyAggiornaTastiFiltri();
+    skyAggiornaOggetti(true);
+  });
+  collega('skymap-btn-nuvole', () => {
+    sky.nuvole = !sky.nuvole;
+    if (sky.nuvole) sky.atmosfera = true;
+    skyAggiornaTastiFiltri();
+    skyAggiornaOggetti(true);
+    if (sky.nuvole && typeof meteoCaricaNuvoleCielo === 'function') meteoCaricaNuvoleCielo();
+  });
   // Il terreno vero non è un filtro come gli altri: non nasconde
   // qualcosa che c'è già, cambia la forma dell'orizzonte. Se lo si
   // accende la prima volta senza rete, lo dice e resta il disegnato.
@@ -23541,10 +25635,15 @@ function inizializzaSkymap() {
   collega('skymap-btn-acque', () => {
     if (typeof acqueAlterna === 'function') acqueAlterna();
   });
-  // L'aurora: acceso, l'ovale c'è sempre — solo che da quasi tutta Europa
-  // sta sotto l'orizzonte e non si disegna niente. Il tasto serve a
-  // spegnerla quando si sta simulando una tempesta e si vuole rivedere il
-  // cielo di prima.
+  // L'aurora nasce spenta, e questo tasto fa due cose in un gesto solo:
+  // accende l'ovale e apre i suoi comandi — la slitta della tempesta e la riga
+  // che dice cosa si vedrebbe da qui. Da queste latitudini l'ovale acceso non
+  // disegna quasi mai niente (sta sotto l'orizzonte), quindi tenere quei
+  // comandi sempre a schermo voleva dire regolare una cosa invisibile: adesso
+  // si aprono con lei e si richiudono spegnendola. Il pannello resta aperto,
+  // che è il contrario dei comandi della scheda «Schermo»: lì si cambia come
+  // si vede il cielo e il pannello è d'intralcio, qui si comincia a regolare
+  // una tempesta e la slitta è appena comparsa.
   collega('skymap-btn-aurora', () => {
     if (typeof aurAlterna === 'function') aurAlterna();
   });
@@ -23587,6 +25686,14 @@ function inizializzaSkymap() {
   document.querySelectorAll('#cielo-comandi [data-vai-gruppo]').forEach(b => {
     b.addEventListener('click', () => skyMostraGruppo(b.dataset.vaiGruppo));
   });
+  // Gli aerei: il tasto disegna o non disegna i triangoli, esattamente come
+  // Pianeti o Satelliti. Il feed è un'altra cosa e vive nel suo pannello —
+  // ma chi chiede di vedere gli aerei mentre i dati sono in pausa li
+  // riaccende, perché un cielo vuoto non è la risposta a quella domanda.
+  collega('skymap-btn-aerei', () => {
+    if (typeof aereiImpostaAccesi === 'function') aereiImpostaAccesi(
+      !(typeof AereiADS_B !== 'undefined' && AereiADS_B.stato.visibile));
+  });
   // Sotto il cielo il tasto deve fare qualcosa al primo tocco, non aprire
   // una finestra: si prova la cascata sul posto. Solo se resta senza
   // risposta si apre la finestra, dove la posizione si può scegliere a mano.
@@ -23617,21 +25724,50 @@ function inizializzaSkymap() {
     else aggiornaTastiPosizione();
   });
 
+  // I quattro comandi della scheda «Schermo» — pieno schermo, notte, hover,
+  // fotocamera — chiudono il pannello appena li si tocca, e non è una comodità
+  // in più: tutti e quattro cambiano *come si vede il cielo*, e il pannello
+  // copre metà del cielo. Restando aperto nascondeva proprio la cosa che il
+  // tocco era servito a cambiare — il filtro rosso, l'immagine della
+  // fotocamera, il riquadro allargato — e per vederla bisognava richiuderlo a
+  // mano dalla sua linguetta. Sono la stessa famiglia di «Centra» e «Campo
+  // 55°», che il pannello lo chiudevano da sempre.
   collega('skymap-btn-notte', () => {
     const cont = document.getElementById('skymap-contenitore');
     if (!cont) return;
     const attiva = cont.classList.toggle('modalita-notte');
     skyTasto('skymap-btn-notte', attiva, attiva ? 'Colori normali' : 'Modalità notte');
+    skyMostraGruppo('');
+  });
+  collega('skymap-btn-hover', () => {
+    // A tasto spento (hover non disponibile) non si chiude niente: non è
+    // successo niente, e chiudere il pannello somiglierebbe a una risposta.
+    if (!skyHoverDisponibile()) return;
+    sky.modalitaHover = !sky.modalitaHover;
+    sky.sostaMirino = null;
+    skyAggiornaStatoHover();
+    try { localStorage.setItem(CHIAVE_SKY_HOVER, sky.modalitaHover ? '1' : '0'); } catch (e) { /* niente storage */ }
+    skyMostraGruppo('');
   });
 
   // --- Trovare un astro senza scorrere tutto l'elenco ---
+  document.querySelectorAll('[data-tipo-ricerca]').forEach(b =>
+    b.addEventListener('click', () => skyImpostaTipoRicerca(b.dataset.tipoRicerca)));
   const cercaAstri = document.getElementById('skymap-astri-cerca');
   if (cercaAstri) {
-    cercaAstri.addEventListener('input', skyFiltraElenco);
+    cercaAstri.addEventListener('input', () => {
+      if (skyTipoRicerca === 'luoghi') skyCercaLuoghi(cercaAstri.value);
+      else skyFiltraElenco();
+    });
     cercaAstri.addEventListener('keydown', (e) => {
       // Invio sceglie il primo rimasto: scritto "sat", il gesto dopo è
       // sempre quello, e farglielo cercare col dito è una tappa di troppo
       if (e.key === 'Enter') {
+        if (skyTipoRicerca === 'luoghi') {
+          const primoLuogo = document.querySelector('#skymap-luoghi-risultati .risultato-luogo-cielo');
+          if (primoLuogo) { e.preventDefault(); primoLuogo.click(); }
+          return;
+        }
         const primo = document.querySelector('#skymap-oggetti .chip-astro[data-fuori="no"]');
         if (primo) {
           e.preventDefault();
@@ -23644,7 +25780,8 @@ function inizializzaSkymap() {
       if (e.key === 'Escape' && cercaAstri.value) {
         e.stopPropagation();
         cercaAstri.value = '';
-        skyFiltraElenco();
+        if (skyTipoRicerca === 'luoghi') skyMostraLuoghiTrovati([], 'Scrivi almeno due lettere.');
+        else skyFiltraElenco();
       }
     });
   }
@@ -23655,11 +25792,13 @@ function inizializzaSkymap() {
     skyMostraGruppo('');
   });
 
-  collega('skymap-btn-schermo', skyAlternaSchermoIntero);
+  collega('skymap-btn-schermo', () => { skyAlternaSchermoIntero(); skyMostraGruppo(''); });
   // Lo stesso comando, ma appoggiato sull'angolo della mappa: com'è per la
   // mappa dell'ombra delle eclissi, dove il ⛶ sta lì e non dentro a un
   // pannello. Andarlo a cercare fra le opzioni della Visualizzazione,
-  // mentre si guarda il cielo, era una tappa di troppo.
+  // mentre si guarda il cielo, era una tappa di troppo. Questo il pannello
+  // non lo chiude perché a schermo intero i pannelli non si aprono affatto:
+  // non c'è niente da chiudere.
   collega('skymap-btn-schermo-mappa', skyAlternaSchermoIntero);
   collega('skymap-btn-esci', () => skyEsciSchermoIntero());
 
@@ -23706,6 +25845,7 @@ function skyAggiornaTastiFiltri() {
   skyTasto('skymap-btn-deepsky', sky.mostraProfondo);
   skyTasto('skymap-btn-polo', sky.mostraPolo);
   skyTasto('skymap-btn-atmosfera', sky.atmosfera);
+  skyTasto('skymap-btn-nuvole', sky.nuvole);
   skyTasto('skymap-btn-eventi', sky.mostraEventi);
   skyTasto('skymap-btn-traccia', sky.mostraTraccia);
   skyTasto('skymap-btn-eclittica', sky.mostraEclittica);
@@ -23723,6 +25863,13 @@ function skyMostraGruppo(nome) {
   // Chi tocca "Astri" prima che il tempo libero arrivi le trova comunque.
   if (nome === 'astri') skyCostruisciElenco();
   const aperto = barra.dataset.gruppoAttivo === nome ? '' : (nome || '');
+  // «Aerei» non è più insieme pannello e interruttore, ed è la correzione di
+  // un equivoco che costava caro: aprire il pannello per *guardare* lo stato
+  // dei dati accendeva anche i triangoli sul cielo, e richiuderlo li spegneva
+  // insieme al feed. Adesso questa linguetta apre e chiude una finestra e
+  // basta; a decidere se gli aerei si disegnano è il tasto «Aerei» del
+  // pannello Visualizzazione (o «Mostra in cielo» qui dentro), e a decidere
+  // se i dati arrivano è «Dati ADS-B».
   // Il pannello del gruppo e la scheda dell'oggetto stanno tutt'e due in
   // fondo alla mappa: su un telefono, aperti insieme, si scrivevano uno
   // sopra l'altro. Non stanno mai a schermo nello stesso momento — aprendo
@@ -23737,11 +25884,76 @@ function skyMostraGruppo(nome) {
     b.classList.toggle('attiva', attiva);
     b.setAttribute('aria-pressed', attiva ? 'true' : 'false');
   });
+  // Il tasto degli aerei nel pannello Visualizzazione dice se i triangoli
+  // sono accesi, non se questo pannello è aperto: è un interruttore come
+  // Pianeti o Stelle, e la spia accanto a lui parla dei dati.
+  if (typeof aereiAggiornaUI === 'function') aereiAggiornaUI();
   // Le altezze accanto ai nomi si aggiornano solo a pannello aperto (vedi
   // `skyElencoInVista`): aprendolo adesso sarebbero quelle di quando lo si è
   // chiuso, e mezzo minuto in cielo si vede. Una passata subito, prima che
   // il primo battito da mezzo secondo arrivi.
   if (aperto === 'astri') skyAggiornaEtichette();
+}
+
+// --- Le cinque schede del pannello Visualizzazione -------------------
+// Un pannello solo al posto di tre, e dentro cinque fogli che si danno il
+// cambio. La scelta si ricorda fra una sessione e l'altra: chi ha passato la
+// serata a sistemare il paesaggio non se lo ritrova su «Direzione» ogni volta
+// che riapre il planetario — ed è la ragione per cui questa funzione esiste
+// invece di essere tre righe dentro a un ascoltatore.
+//
+// «Direzione» è arrivata qui dal pannello Navigazione, che era una linguetta a
+// sé. Erano due finestre per la stessa domanda — come guardo il cielo — e chi
+// cercava «Centra» o i punti cardinali doveva indovinare quale delle due
+// aprire. Sta per prima perché è quello che si tocca appena arrivati: si gira
+// il cielo verso sud, e solo dopo si decide cosa disegnarci sopra.
+const CHIAVE_SKY_SCHEDA_VISTA = 'astrocalendario_scheda_vista';
+const SKY_SCHEDE_VISTA = ['direzione', 'schermo', 'oggetti', 'cielo', 'paesaggio'];
+
+function skyMostraSchedaVista(nome, ricorda = true) {
+  const scelta = SKY_SCHEDE_VISTA.includes(nome) ? nome : SKY_SCHEDE_VISTA[0];
+  document.querySelectorAll('[data-scheda-vista]').forEach(b => {
+    const attiva = b.dataset.schedaVista === scelta;
+    b.classList.toggle('attiva', attiva);
+    b.setAttribute('aria-selected', attiva ? 'true' : 'false');
+    b.tabIndex = attiva ? 0 : -1;
+  });
+  // `hidden` e non una classe: un foglio nascosto non deve nemmeno essere
+  // raggiungibile col tabulatore, se no si finisce a premere invio su un
+  // tasto che non si vede.
+  document.querySelectorAll('.foglio-vista').forEach(f => {
+    f.hidden = f.dataset.scheda !== scelta;
+    f.classList.toggle('foglio-attivo', f.dataset.scheda === scelta);
+  });
+  if (ricorda) {
+    try { localStorage.setItem(CHIAVE_SKY_SCHEDA_VISTA, scelta); } catch (e) { /* niente storage */ }
+  }
+}
+
+function skyInizializzaSchedeVista() {
+  const schede = Array.from(document.querySelectorAll('[data-scheda-vista]'));
+  schede.forEach(b => {
+    b.addEventListener('click', () => skyMostraSchedaVista(b.dataset.schedaVista));
+    // Un tablist deve poter essere percorso anche con le frecce. Oltre a
+    // completare il comportamento accessibile, questo evita di affidarsi al
+    // click sintetico dei browser mobili quando il pannello sta scorrendo.
+    b.addEventListener('keydown', e => {
+      const avanti = e.key === 'ArrowRight' || e.key === 'ArrowDown';
+      const indietro = e.key === 'ArrowLeft' || e.key === 'ArrowUp';
+      if (!avanti && !indietro && e.key !== 'Home' && e.key !== 'End') return;
+      e.preventDefault();
+      const corrente = Math.max(0, schede.indexOf(b));
+      const indice = e.key === 'Home' ? 0
+        : e.key === 'End' ? schede.length - 1
+          : (corrente + (avanti ? 1 : -1) + schede.length) % schede.length;
+      const prossima = schede[indice];
+      skyMostraSchedaVista(prossima.dataset.schedaVista);
+      prossima.focus();
+    });
+  });
+  let salvata = '';
+  try { salvata = localStorage.getItem(CHIAVE_SKY_SCHEDA_VISTA) || ''; } catch (e) { /* niente storage */ }
+  skyMostraSchedaVista(salvata, false);
 }
 
 // =====================================================================
@@ -23862,6 +26074,31 @@ function skyAggiornaTastiSchermo() {
 }
 
 function skyInizializzaSchermoIntero() {
+  const mappaSpostamento = document.getElementById('skymap-mappa-spostamento');
+  const esciMappaSpostamento = document.getElementById('skymap-mappa-spostamento-esci');
+  if (mappaSpostamento) {
+    mappaSpostamento.addEventListener('click', e => {
+      if (!mappaSpostamento.classList.contains('mappa-spostamento-aperta')) skyApriMappaSpostamento();
+    });
+    mappaSpostamento.addEventListener('keydown', e => {
+      if (!mappaSpostamento.classList.contains('mappa-spostamento-aperta') && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        skyApriMappaSpostamento();
+      }
+    });
+  }
+  if (esciMappaSpostamento) esciMappaSpostamento.addEventListener('click', e => {
+    e.stopPropagation();
+    skyChiudiMappaSpostamento();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && mappaSpostamento?.classList.contains('mappa-spostamento-aperta')) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      skyChiudiMappaSpostamento();
+    }
+  }, true);
+
   // Uscita dal pieno schermo decisa dal browser (Esc, gesto di sistema):
   // qui si rimette in ordine anche il resto
   const cambio = () => {
@@ -24166,8 +26403,8 @@ function skyRegTipoVideo() {
 // schermo intero) il filmato si spezzerebbe. Larghezza e altezza pari, che
 // certi codificatori video non digeriscono i numeri dispari.
 function skyRegPreparaTela() {
-  const l = sky.larghezza || 320;
-  const h = sky.altezza || 320;
+  const l = sky.reg.origine === 'solare' ? (sol.L || 320) : (sky.larghezza || 320);
+  const h = sky.reg.origine === 'solare' ? (sol.H || 320) : (sky.altezza || 320);
   const dpr = window.devicePixelRatio || 1;
   const k = Math.min(dpr, SKY_REG_LATO_VIDEO / Math.max(l, h));
   const tela = document.createElement('canvas');
@@ -24178,7 +26415,8 @@ function skyRegPreparaTela() {
   return !!sky.reg.ctx;
 }
 
-// Un fotogramma: fotocamera sotto, cielo sopra, firma in fondo. Le due
+// Un fotogramma: fotocamera sotto, cielo sopra, eventuale scheda informativa
+// e firma in fondo. Le due
 // immagini si ritagliano come fa il riquadro sullo schermo (`object-fit:
 // cover`), così quello che si registra è quello che si sta guardando.
 function skyRegComponi() {
@@ -24197,12 +26435,18 @@ function skyRegComponi() {
 
   ctx.filter = filtro;
   const video = document.getElementById('skymap-video');
-  if (sky.camera && video && video.videoWidth) {
+  if (r.origine !== 'solare' && sky.camera && video && video.videoWidth) {
     skyRegDisegnaCoprendo(ctx, video, video.videoWidth, video.videoHeight, L, H);
   }
-  if (sky.canvas && sky.canvas.width) {
-    skyRegDisegnaCoprendo(ctx, sky.canvas, sky.canvas.width, sky.canvas.height, L, H);
+  const sorgente = r.origine === 'solare' ? sol.canvas : sky.canvas;
+  if (sorgente && sorgente.width) {
+    skyRegDisegnaCoprendo(ctx, sorgente, sorgente.width, sorgente.height, L, H);
   }
+
+  // La scheda è un elemento HTML sovrapposto al canvas, perciò drawImage non
+  // può prenderla insieme al cielo. Se l'utente l'ha lasciata aperta la
+  // ridisegniamo sulla tela del filmato, nella stessa posizione e misura.
+  if (r.origine !== 'solare') skyRegDisegnaScheda(ctx, L, H);
 
   // La firma passa sotto lo stesso filtro di tutto il resto: una scritta
   // bianca su un filmato rosso si vedrebbe subito che è stata appiccicata dopo
@@ -24210,10 +26454,98 @@ function skyRegComponi() {
   ctx.filter = 'none';
 }
 
+// Quello che sta sull'oggetto scelto — il fumetto, o la scheda completa
+// quando è aperta lei — va **ridisegnato** dentro al filmato: sono HTML sopra
+// al canvas, e un canvas registra solo sé stesso. Senza questo, chi guarda la
+// clip vede il cerchio azzurro attorno a un aereo e nessuna riga che dica
+// quale sia.
+function skyRegDisegnaScheda(ctx, L, H) {
+  const fumetto = document.getElementById('skymap-fumetto');
+  if (fumetto && fumetto.classList.contains('visibile') &&
+      fumetto.style.visibility !== 'hidden') {
+    skyRegDisegnaRiquadro(ctx, L, H, fumetto, fumetto);
+  }
+  const pannello = document.getElementById('skymap-dettaglio');
+  const corpo = document.getElementById('skymap-dettaglio-corpo');
+  if (!pannello || !corpo || !pannello.classList.contains('visibile')) return;
+  skyRegDisegnaRiquadro(ctx, L, H, pannello, corpo);
+}
+
+function skyRegDisegnaRiquadro(ctx, L, H, pannello, corpo) {
+  const area = sky.canvas && sky.canvas.getBoundingClientRect();
+  const box = pannello.getBoundingClientRect();
+  if (!area || !area.width || !area.height || !box.width || !box.height) return;
+  const sx = L / area.width, sy = H / area.height;
+  const x = Math.max(0, (box.left - area.left) * sx);
+  const y = Math.max(0, (box.top - area.top) * sy);
+  const w = Math.min(L - x, box.width * sx);
+  const h = Math.min(H - y, box.height * sy);
+  if (w < 20 || h < 20) return;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(6, 10, 20, .92)';
+  ctx.strokeStyle = 'rgba(100, 116, 139, .75)';
+  ctx.lineWidth = Math.max(1, sx);
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, Math.max(8, 12 * sx));
+  else ctx.rect(x, y, w, h);
+  ctx.fill(); ctx.stroke(); ctx.clip();
+
+  const righe = Array.from(corpo.querySelectorAll('h2, h3, h4, li, p'))
+    .filter(el => el.offsetParent !== null)
+    .map(el => ({ testo: (el.innerText || el.textContent || '').trim(), titolo: /^H[234]$/.test(el.tagName) }))
+    .filter(r => r.testo);
+  const margine = Math.max(12, 14 * sx);
+  const larghezza = Math.max(20, w - margine * 2);
+  let cy = y + margine;
+  for (const riga of righe) {
+    const misura = Math.max(11, (riga.titolo ? 16 : 12) * Math.min(sx, sy));
+    const passo = misura * 1.32;
+    ctx.font = `${riga.titolo ? '700' : '400'} ${misura}px system-ui, sans-serif`;
+    ctx.fillStyle = riga.titolo ? '#f8fafc' : '#cbd5e1';
+    for (const linea of skyRegSpezzaTesto(ctx, riga.testo, larghezza)) {
+      if (cy + passo > y + h - margine) { ctx.restore(); return; }
+      ctx.fillText(linea, x + margine, cy + misura);
+      cy += passo;
+    }
+    cy += passo * .28;
+  }
+  ctx.restore();
+}
+
+function skyRegSpezzaTesto(ctx, testo, larghezza) {
+  const parole = testo.replace(/\s+/g, ' ').split(' ');
+  const righe = [];
+  let riga = '';
+  parole.forEach(parola => {
+    const prova = riga ? `${riga} ${parola}` : parola;
+    if (riga && ctx.measureText(prova).width > larghezza) { righe.push(riga); riga = parola; }
+    else riga = prova;
+  });
+  if (riga) righe.push(riga);
+  return righe;
+}
+
 function skyRegDisegnaCoprendo(ctx, sorgente, sl, sh, L, H) {
   const scala = Math.max(L / sl, H / sh);
   const l = sl * scala, h = sh * scala;
   ctx.drawImage(sorgente, (L - l) / 2, (H - h) / 2, l, h);
+}
+
+// Accorcia soltanto quanto serve e lascia sempre visibile la fine “…”: i nomi
+// restituiti dal geocodificatore possono contenere comune, provincia e paese,
+// mentre la firma del video ha una sola riga a disposizione.
+function skyRegTestoEntro(ctx, testo, larghezza) {
+  if (ctx.measureText(testo).width <= larghezza) return testo;
+  const puntini = '…';
+  if (ctx.measureText(puntini).width > larghezza) return '';
+  let minimo = 0, massimo = testo.length;
+  while (minimo < massimo) {
+    const mezzo = Math.ceil((minimo + massimo) / 2);
+    if (ctx.measureText(testo.slice(0, mezzo).trimEnd() + puntini).width <= larghezza) minimo = mezzo;
+    else massimo = mezzo - 1;
+  }
+  return testo.slice(0, minimo).trimEnd() + puntini;
 }
 
 // La firma: quando e da dove. Senza, un filmato di stelle mandato a qualcuno
@@ -24236,7 +26568,6 @@ function skyRegFirma(ctx, L, H) {
   if (luogoFirma) {
     dove = luogoFirma.nome || formattaCoordinate(luogoFirma.lat, luogoFirma.lon);
   }
-  const riga = dove ? `${data} · ${dove}` : data;
 
   ctx.save();
   ctx.textBaseline = 'bottom';
@@ -24246,6 +26577,13 @@ function skyRegFirma(ctx, L, H) {
 
   const misuraNome = Math.round(misura * 0.82);
   ctx.font = `600 ${misura}px system-ui, sans-serif`;
+  const larghezzaFirma = Math.max(0, L - margine * 2);
+  // La data identifica il momento e deve restare intera. Se il nome del luogo
+  // è troppo lungo, si accorcia invece di uscire dal fotogramma registrato.
+  const prefisso = dove ? `${data} · ` : '';
+  const riga = dove
+    ? prefisso + skyRegTestoEntro(ctx, dove, Math.max(0, larghezzaFirma - ctx.measureText(prefisso).width))
+    : skyRegTestoEntro(ctx, data, larghezzaFirma);
   const largaRiga = ctx.measureText(riga).width;
   ctx.font = `${misuraNome}px system-ui, sans-serif`;
   const largoNome = ctx.measureText('AstroCalendario di Ben').width;
@@ -24275,9 +26613,17 @@ function skyRegAlterna() {
   else skyRegAvvia();
 }
 
+function skyRegAlternaDa(origine) {
+  // Una sola registrazione alla volta: il tasto che l'ha avviata resta anche
+  // quello che la ferma. A riposo, invece, la scena scelta diventa la fonte.
+  if (!sky.reg.attiva) sky.reg.origine = origine;
+  skyRegAlterna();
+}
+
 function skyRegAvvia() {
   const r = sky.reg;
-  if (r.attiva || !sky.canvas) return;
+  const sorgente = r.origine === 'solare' ? sol.canvas : sky.canvas;
+  if (r.attiva || !sorgente) return;
 
   // Un risultato per volta: quello di prima si butta solo adesso, così chi ha
   // fatto due registrazioni di fila non si ritrova la prima sparita a metà
@@ -24382,16 +26728,18 @@ function skyRegFerma(opzioni = {}) {
 // rosso, mentre registra diventa un quadrato che pulsa e accanto compaiono i
 // secondi che mancano. Con `restano` a null torna a riposo.
 function skyRegAggiornaComando(restano) {
-  const tasto = document.getElementById('skymap-btn-registra');
-  const tempo = document.getElementById('skymap-reg-tempo');
+  const prefisso = sky.reg.origine === 'solare' ? 'sol' : 'skymap';
+  const tasto = document.getElementById(`${prefisso}-btn-registra`);
+  const tempo = document.getElementById(`${prefisso}-reg-tempo`);
   const inCorso = restano !== null;
   if (tasto) {
     tasto.classList.toggle('in-corso', inCorso);
     tasto.setAttribute('aria-pressed', inCorso ? 'true' : 'false');
     tasto.title = inCorso
       ? 'Ferma qui la registrazione e tieni quello che hai ripreso'
-      : `Registra ${sky.reg.durataSec} secondi di cielo da condividere`;
-    tasto.setAttribute('aria-label', inCorso ? 'Ferma la registrazione' : 'Registra il cielo');
+      : `Registra ${sky.reg.durataSec} secondi ${sky.reg.origine === 'solare' ? 'del Sistema Solare 3D' : 'di cielo'} da condividere`;
+    tasto.setAttribute('aria-label', inCorso ? 'Ferma la registrazione' :
+      (sky.reg.origine === 'solare' ? 'Registra il Sistema Solare 3D' : 'Registra il cielo'));
   }
   if (!tempo) return;
   tempo.classList.toggle('visibile', inCorso);
@@ -24408,7 +26756,8 @@ function skyRegAggiornaComando(restano) {
 function skyRegNomeFile(est) {
   const d = skyAdesso();
   const due = (n) => String(n).padStart(2, '0');
-  return `planetario-${d.getFullYear()}${due(d.getMonth() + 1)}${due(d.getDate())}-` +
+  const nome = sky.reg.origine === 'solare' ? 'sistema-solare-3d' : 'planetario';
+  return `${nome}-${d.getFullYear()}${due(d.getMonth() + 1)}${due(d.getDate())}-` +
     `${due(d.getHours())}${due(d.getMinutes())}${due(d.getSeconds())}.${est}`;
 }
 
@@ -24422,7 +26771,8 @@ function skyRegMostraEsito(blob, est, tipo) {
     tipo: tipo || blob.type
   };
 
-  const anteprima = document.getElementById('skymap-clip-anteprima');
+  const prefisso = r.origine === 'solare' ? 'sol' : 'skymap';
+  const anteprima = document.getElementById(`${prefisso}-clip-anteprima`);
   if (anteprima) {
     anteprima.innerHTML = '';
     const v = document.createElement('video');
@@ -24436,21 +26786,22 @@ function skyRegMostraEsito(blob, est, tipo) {
     v.play().catch(() => { /* basta il tasto play */ });
   }
 
-  const nota = document.getElementById('skymap-clip-nota');
+  const nota = document.getElementById(`${prefisso}-clip-nota`);
   if (nota) {
     const mb = blob.size / (1024 * 1024);
     const peso = mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(blob.size / 1024)} kB`;
     const durata = (r.durataReale || r.durataSec).toFixed(1).replace('.0', '').replace('.', ',');
     nota.textContent = `Filmato di ${durata} s · ${peso} · ${r.esito.nome}`;
   }
-  const pannello = document.getElementById('skymap-clip');
+  const pannello = document.getElementById(`${prefisso}-clip`);
   if (pannello) pannello.classList.add('visibile');
 }
 
 function skyRegChiudiPannello() {
-  const pannello = document.getElementById('skymap-clip');
+  const prefisso = sky.reg.origine === 'solare' ? 'sol' : 'skymap';
+  const pannello = document.getElementById(`${prefisso}-clip`);
   if (pannello) pannello.classList.remove('visibile');
-  const anteprima = document.getElementById('skymap-clip-anteprima');
+  const anteprima = document.getElementById(`${prefisso}-clip-anteprima`);
   // Il video dell'anteprima va tolto di mezzo davvero: lasciato lì continua a
   // girare in sottofondo sopra a un cielo che nel frattempo cammina
   if (anteprima) anteprima.innerHTML = '';
@@ -24474,12 +26825,14 @@ async function skyRegCondividi() {
   // dell'app: se il planetario è in visita altrove, vale l'altrove.
   const daDove = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
   const luogo = daDove ? (daDove.nome || formattaCoordinate(daDove.lat, daDove.lon)) : '';
-  const testo = `Il cielo del ${quando}${luogo ? `, da ${luogo}` : ''}, ` +
-    'dal planetario di AstroCalendario di Ben.';
+  const solare = sky.reg.origine === 'solare';
+  const testo = solare
+    ? `Il Sistema Solare del ${quando}, da AstroCalendario di Ben.`
+    : `Il cielo del ${quando}${luogo ? `, da ${luogo}` : ''}, dal planetario di AstroCalendario di Ben.`;
   try {
     const file = new File([e.blob], e.nome, { type: e.tipo });
     if (navigator.canShare && navigator.share && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'Il cielo di stasera', text: testo });
+      await navigator.share({ files: [file], title: solare ? 'Il Sistema Solare in 3D' : 'Il cielo di stasera', text: testo });
       return;
     }
   } catch (err) {
@@ -24493,8 +26846,7 @@ async function skyRegCondividi() {
     'l\'ho scaricato, così lo puoi allegare a mano.', 9000);
 }
 
-function skyRegSalva() {
-  const e = sky.reg.esito;
+function skyRegScarica(e) {
   if (!e) return;
   const a = document.createElement('a');
   a.href = e.url;
@@ -24502,6 +26854,269 @@ function skyRegSalva() {
   document.body.appendChild(a);
   a.click();
   a.remove();
+}
+
+// --- Archivio e cartella dei video ---------------------------------------
+
+const VIDEO_DB_NOME = 'astrocalendario-video';
+const VIDEO_DB_VERSIONE = 1;
+const VIDEO_CARTELLA_NOME = 'astrocalben';
+let videoCartella = null;
+// `queryPermission()` non è una lettura gratuita su tutti i browser: alcune
+// versioni mobili tornano a rispondere "prompt" anche nello stesso utilizzo
+// della pagina. Ricordiamo quindi il consenso già ottenuto per questo handle.
+// Il browser continua comunque a fare da autorità (ogni scrittura può essere
+// rifiutata); questa variabile evita soltanto di richiedere due volte lo stesso
+// consenso dopo che l'utente ha scelto la cartella.
+let videoCartellaAutorizzata = false;
+let videoUrlGalleria = [];
+let videoTimerSincronizzazione = 0;
+let videoSincronizzazioneInCorso = false;
+
+function videoApriDB() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) { reject(new Error('IndexedDB non disponibile')); return; }
+    const richiesta = indexedDB.open(VIDEO_DB_NOME, VIDEO_DB_VERSIONE);
+    richiesta.onupgradeneeded = () => {
+      const db = richiesta.result;
+      if (!db.objectStoreNames.contains('video')) db.createObjectStore('video', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('preferenze')) db.createObjectStore('preferenze');
+    };
+    richiesta.onsuccess = () => resolve(richiesta.result);
+    richiesta.onerror = () => reject(richiesta.error);
+  });
+}
+
+async function videoDB(negozio, modo, azione) {
+  const db = await videoApriDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(negozio, modo);
+    const richiesta = azione(tx.objectStore(negozio));
+    richiesta.onsuccess = () => resolve(richiesta.result);
+    richiesta.onerror = () => reject(richiesta.error);
+    tx.oncomplete = () => db.close();
+  });
+}
+
+function videoMessaggio(testo) {
+  const stato = document.getElementById('galleria-stato');
+  if (stato) stato.textContent = testo || '';
+}
+
+async function videoScegliCartella(creaCartellaApp = false) {
+  if (typeof window.showDirectoryPicker !== 'function') {
+    videoMessaggio('Questo browser non permette di scegliere una cartella: i video verranno scaricati normalmente.');
+    return null;
+  }
+  try {
+    const base = await window.showDirectoryPicker({ id: 'astrocalendario-video', mode: 'readwrite', startIn: 'videos' });
+    // Il selettore web non può creare da solo una cartella accanto a Video:
+    // l'utente indica la posizione e noi creiamo (o riapriamo) quella dell'app.
+    const handle = creaCartellaApp && base.name.toLocaleLowerCase() !== VIDEO_CARTELLA_NOME
+      ? await base.getDirectoryHandle(VIDEO_CARTELLA_NOME, { create: true })
+      : base;
+    videoCartella = handle;
+    videoCartellaAutorizzata = true;
+    try { await videoDB('preferenze', 'readwrite', store => store.put(handle, 'cartella-video')); } catch (e) { /* la copia funziona comunque */ }
+    videoAggiornaCartella();
+    videoMessaggio(`La galleria è sincronizzata con “${handle.name}”.`);
+    await videoRenderGalleria();
+    return handle;
+  } catch (e) {
+    if (!e || e.name !== 'AbortError') videoMessaggio('Non è stato possibile aprire la cartella scelta.');
+    return null;
+  }
+}
+
+function videoAggiornaCartella() {
+  const testo = document.getElementById('galleria-cartella');
+  if (!testo) return;
+  testo.textContent = videoCartella
+    ? `Cartella sincronizzata: “${videoCartella.name}”. Le modifiche ai file MP4 appariranno qui.`
+    : `Aprendo la galleria verrà creata la cartella “${VIDEO_CARTELLA_NOME}”.`;
+}
+
+async function videoScriviInCartella(esito) {
+  if (!videoCartella) return false;
+  try {
+    if (!videoCartellaAutorizzata) {
+      let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
+      if (permesso !== 'granted') permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
+      if (permesso !== 'granted') return false;
+      videoCartellaAutorizzata = true;
+    }
+    const file = await videoCartella.getFileHandle(esito.nome, { create: true });
+    const scrittura = await file.createWritable();
+    await scrittura.write(esito.blob);
+    await scrittura.close();
+    return true;
+  } catch (e) {
+    // Un'autorizzazione puo essere revocata dalle impostazioni del browser:
+    // in quel caso al prossimo gesto dell'utente la verificheremo di nuovo.
+    if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
+      videoCartellaAutorizzata = false;
+    }
+    return false;
+  }
+}
+
+async function videoArchivia(esito, nellaCartella = false) {
+  const elemento = {
+    id: esito.nome,
+    nome: esito.nome,
+    tipo: esito.tipo || esito.blob.type,
+    blob: esito.blob,
+    creato: Date.now(),
+    origine: sky.reg.origine,
+    durata: sky.reg.durataReale || sky.reg.durataSec,
+    cartellaNome: nellaCartella ? esito.nome : ''
+  };
+  await videoDB('video', 'readwrite', store => store.put(elemento));
+}
+
+async function skyRegSalva() {
+  const esito = sky.reg.esito;
+  if (!esito) return;
+  // Il selettore va aperto subito dal gesto dell'utente: dopo una await alcuni
+  // browser considererebbero conclusa l'attivazione e lo bloccherebbero.
+  if (!videoCartella && typeof window.showDirectoryPicker === 'function') await videoScegliCartella();
+  const copiato = await videoScriviInCartella(esito);
+  try { await videoArchivia(esito, copiato); }
+  catch (e) {
+    skyAvviso('registra', 'Non c’è spazio per aggiungere il video alla galleria.', 8000);
+    return;
+  }
+  if (!copiato) skyRegScarica(esito);
+  skyAvviso('registra', copiato
+    ? `Video salvato nella galleria e nella cartella “${videoCartella.name}”.`
+    : 'Video salvato nella galleria e scaricato sul dispositivo.', 7000);
+}
+
+async function videoElimina(elemento) {
+  if (elemento.dallaCartella && videoCartella) {
+    try { await videoCartella.removeEntry(elemento.nome); }
+    catch (e) { videoMessaggio('Non è stato possibile eliminare il file dalla cartella.'); return; }
+  }
+  const archiviati = await videoDB('video', 'readonly', store => store.getAll());
+  const corrispondenti = archiviati.filter(v => v.id === elemento.id || v.nome === elemento.nome);
+  await Promise.all(corrispondenti.map(v => videoDB('video', 'readwrite', store => store.delete(v.id))));
+  await videoRenderGalleria();
+}
+
+function videoScaricaSalvato(video) {
+  const url = URL.createObjectURL(video.blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = video.nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function videoRenderGalleria() {
+  const elenco = document.getElementById('galleria-elenco');
+  if (!elenco || videoSincronizzazioneInCorso) return;
+  videoSincronizzazioneInCorso = true;
+  videoUrlGalleria.forEach(url => URL.revokeObjectURL(url));
+  videoUrlGalleria = [];
+  let video = [];
+  try { video = await videoDB('video', 'readonly', store => store.getAll()); }
+  catch (e) { videoMessaggio('Non riesco a leggere l’archivio video su questo dispositivo.'); }
+  if (videoCartella) {
+    try {
+      const permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
+      if (permesso === 'granted') {
+        const dallaCartella = [];
+        for await (const [nome, handle] of videoCartella.entries()) {
+          if (handle.kind !== 'file' || !/\.mp4$/i.test(nome)) continue;
+          const file = await handle.getFile();
+          dallaCartella.push({
+            id: `cartella:${nome}`, nome, tipo: file.type || 'video/mp4', blob: file,
+            creato: file.lastModified, durata: 0, dimensione: file.size, dallaCartella: true
+          });
+        }
+        const nomiPresenti = new Set(dallaCartella.map(v => v.nome));
+        const obsoleti = video.filter(v => v.cartellaNome && !nomiPresenti.has(v.cartellaNome));
+        await Promise.all(obsoleti.map(v => videoDB('video', 'readwrite', store => store.delete(v.id))));
+        video = video.filter(v => !v.cartellaNome || nomiPresenti.has(v.cartellaNome));
+        const nomiCartella = new Set(dallaCartella.map(v => v.nome));
+        video = video.filter(v => !nomiCartella.has(v.nome)).concat(dallaCartella);
+        videoMessaggio(`${dallaCartella.length} file MP4 sincronizzati da “${videoCartella.name}”.`);
+      }
+    } catch (e) {
+      videoMessaggio('Non riesco a sincronizzare la cartella. Riaprila con “Scegli cartella”.');
+    }
+  }
+  elenco.innerHTML = '';
+  if (!video.length) {
+    elenco.innerHTML = '<p class="galleria-vuota">Non ci sono ancora video. Registrane uno dal Planetario o dal Sistema Solare 3D e premi “Salva”.</p>';
+    videoSincronizzazioneInCorso = false;
+    return;
+  }
+  video.sort((a, b) => b.creato - a.creato).forEach(elemento => {
+    const url = URL.createObjectURL(elemento.blob);
+    videoUrlGalleria.push(url);
+    const scheda = document.createElement('article');
+    scheda.className = 'galleria-video';
+    const lettore = document.createElement('video');
+    lettore.src = url; lettore.controls = true; lettore.preload = 'metadata'; lettore.playsInline = true;
+    const corpo = document.createElement('div'); corpo.className = 'galleria-video-corpo';
+    const nome = document.createElement('p'); nome.className = 'galleria-video-nome'; nome.textContent = elemento.nome;
+    const meta = document.createElement('p'); meta.className = 'galleria-video-meta';
+    const dettaglio = elemento.durata
+      ? `${Number(elemento.durata).toFixed(1).replace('.0', '')} s`
+      : `${(Number(elemento.dimensione || elemento.blob.size) / 1048576).toFixed(1)} MB`;
+    meta.textContent = `${new Date(elemento.creato).toLocaleString('it-IT')} · ${dettaglio}`;
+    const azioni = document.createElement('div'); azioni.className = 'galleria-video-azioni';
+    const scarica = document.createElement('button'); scarica.type = 'button'; scarica.className = 'tasto-cielo'; scarica.textContent = 'Scarica';
+    scarica.addEventListener('click', () => videoScaricaSalvato(elemento));
+    const elimina = document.createElement('button'); elimina.type = 'button'; elimina.className = 'tasto-cielo'; elimina.textContent = 'Elimina';
+    elimina.addEventListener('click', () => videoElimina(elemento));
+    azioni.append(scarica, elimina); corpo.append(nome, meta, azioni); scheda.append(lettore, corpo); elenco.appendChild(scheda);
+  });
+  videoSincronizzazioneInCorso = false;
+}
+
+async function videoApriGalleria() {
+  const modale = document.getElementById('modale-galleria');
+  if (!modale) return;
+  modale.classList.remove('hidden');
+  videoAggiornaCartella();
+  if (!videoCartella && typeof window.showDirectoryPicker === 'function') {
+    await videoScegliCartella(true);
+  } else if (videoCartella) {
+    try {
+      let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
+      if (permesso !== 'granted') permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
+      videoCartellaAutorizzata = permesso === 'granted';
+    } catch (e) { /* videoRenderGalleria mostrerà come riaprire la cartella */ }
+  }
+  await videoRenderGalleria();
+  clearInterval(videoTimerSincronizzazione);
+  videoTimerSincronizzazione = setInterval(() => {
+    if (!modale.classList.contains('hidden')) videoRenderGalleria();
+  }, 2000);
+}
+
+function videoChiudiGalleria() {
+  document.getElementById('modale-galleria')?.classList.add('hidden');
+  document.querySelectorAll('#galleria-elenco video').forEach(video => video.pause());
+  clearInterval(videoTimerSincronizzazione);
+  videoTimerSincronizzazione = 0;
+}
+
+async function videoInizializza() {
+  document.getElementById('btn-galleria')?.addEventListener('click', videoApriGalleria);
+  document.getElementById('btn-chiudi-galleria')?.addEventListener('click', videoChiudiGalleria);
+  document.getElementById('galleria-scegli-cartella')?.addEventListener('click', () => videoScegliCartella(true));
+  document.getElementById('modale-galleria')?.addEventListener('click', e => {
+    if (e.target.id === 'modale-galleria') videoChiudiGalleria();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !document.getElementById('modale-galleria')?.classList.contains('hidden')) videoChiudiGalleria();
+  });
+  try { videoCartella = await videoDB('preferenze', 'readonly', store => store.get('cartella-video')); }
+  catch (e) { videoCartella = null; }
+  videoCartellaAutorizzata = false;
+  videoAggiornaCartella();
 }
 
 // --- Comandi --------------------------------------------------------------
@@ -24536,11 +27151,16 @@ function skyRegInizializza() {
     });
   });
 
-  collega('skymap-btn-registra', skyRegAlterna);
+  collega('skymap-btn-registra', () => skyRegAlternaDa('planetario'));
+  collega('sol-btn-registra', () => skyRegAlternaDa('solare'));
   collega('skymap-clip-chiudi', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); });
   collega('skymap-clip-condividi', skyRegCondividi);
   collega('skymap-clip-salva', skyRegSalva);
   collega('skymap-clip-rifai', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); skyRegAvvia(); });
+  collega('sol-clip-chiudi', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); });
+  collega('sol-clip-condividi', skyRegCondividi);
+  collega('sol-clip-salva', skyRegSalva);
+  collega('sol-clip-rifai', () => { skyRegChiudiPannello(); skyRegDimenticaEsito(); skyRegAvvia(); });
 
   skyRegAggiornaComandi();
 }
@@ -24608,8 +27228,12 @@ const SOL_PIANETI = [
 // alla scala di partenza (zoom 1): da lì in poi crescono col disegno, vedi
 // `solCrescita()`.
 const SOL_RAGGIO_SOLE = 17;
-const SOL_RAGGIO_LUNA = 3.4;
-const SOL_LUNA_KM = 3474;     // serve ai pallini in scala: la Luna è un quarto della Terra
+// Anche fra i pallini facilitati la Luna conserva il rapporto col diametro
+// terrestre: 3.474 / 12.742 = 0,273. Prima aveva raggio 3,4 contro i 7,6
+// della Terra (quasi la meta), e nella coppia sembrava molto più grande di
+// quanto sia davvero. Il minimo resta comunque abbastanza largo da toccarla.
+const SOL_LUNA_KM = 3474;
+const SOL_RAGGIO_LUNA = 7.6 * SOL_LUNA_KM / 12742;
 
 // --- Le due fasce di sassi ---------------------------------------------------
 //   Non sono un ornamento. Sono la ragione per cui questo disegno si legge in
@@ -24744,12 +27368,14 @@ const SOL_VICINO_TERRA_UA = 1.7;
 // Quanto ci si può avvicinare con lo zoom. Il tetto normale (`SOL_ZOOM_MAX`)
 // è pensato per la vista d'insieme, dove non ha senso spingersi oltre — a
 // quello zoom il Sole comincia già a mangiarsi Mercurio (vedi `solTettoSole`).
-// Girando intorno alla Terra quel problema non c'è: il Sole è lontano fuori
-// dallo schermo, e il senso della vista è proprio avvicinarsi a lei quanto
-// si vuole. `SOL_ZOOM_MAX_TERRA` vale mentre si sta girando attorno a un
-// corpo, cioè finché `sol.perno` non è nullo.
+// Girando intorno a un corpo quel problema non c'è: il Sole è lontano fuori
+// dallo schermo e il pianeta scelto è il centro della scena. Il limite alto
+// vale quindi per Terra, Luna e tutti gli altri pianeti, finché `sol.perno`
+// non è nullo. Venticinquemila ingrandimenti permettono di attraversare il
+// disco e guardarne davvero la superficie, senza rendere inutilizzabile lo
+// zoom della vista d'insieme.
 const SOL_ZOOM_MAX = 60;
-const SOL_ZOOM_MAX_TERRA = 900;
+const SOL_ZOOM_MAX_CORPO = 25000;
 
 // Il passo del tempo **non è più roba di questa vista**: è quello del
 // planetario (`SKY_PASSI_TEMPO`), perché l'orologio è uno solo e due passi
@@ -24984,12 +27610,15 @@ function solCrescita() {
 // dimezzare costino uguale — ma senza il tetto pensato per il Sole, che qui
 // non c'entra niente: a questi zoom il Sole è già fuori dallo schermo. È lui
 // che si sta avvicinando, e deve poter crescere finché lo zoom lo permette
-// (vedi `SOL_ZOOM_MAX_TERRA`). Valeva per la sola Terra, e valeva perché era
+// (vedi `SOL_ZOOM_MAX_CORPO`). Valeva per la sola Terra, e valeva perché era
 // l'unico corpo su cui ci si potesse avvicinare: adesso che il perno è di
 // tutti, questa crescita è di tutti.
-const SOL_CRESCITA_TERRA_MAX = 60;
-function solCrescitaTerra() {
-  return Math.min(SOL_CRESCITA_TERRA_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
+// Il vecchio tetto di 60 fermava il diametro anche se la telecamera
+// continuava ad avanzare: oltre quel punto aumentava solo il vuoto fra le
+// orbite. A 160 anche i mondi più piccoli possono riempire lo schermo.
+const SOL_CRESCITA_CORPO_MAX = 160;
+function solCrescitaCorpo() {
+  return Math.min(SOL_CRESCITA_CORPO_MAX, Math.sqrt(Math.max(0.01, sol.zoom)));
 }
 
 // Chi cresce con la crescita «da vicino»: il corpo su cui si sta girando, e
@@ -25006,11 +27635,16 @@ function solCorpoDelPerno(id) {
 // Quanto si disegna grosso un corpo, nelle due misure: il pallino ingrandito
 // che si tocca col dito, o il diametro vero in scala fra i corpi.
 function solRaggioCorpo(p) {
+  // Con «Dimensioni reali» i diametri usano il metro astronomico della
+  // scena: `sol.scala` misura una UA. Lo zoom non gonfia quindi i mondi con
+  // una legge separata; scegliendo anche le distanze reali, il rapporto
+  // Sole–Terra–orbite resta fisicamente esatto.
+  if (sol.misureVere) return Math.max(0.25, (p.km / 2) / SOL_UA_KM * sol.scala);
   // Sotto il pixel e mezzo un pianeta non è più un pianeta ma un granello di
   // polvere: Mercurio e Marte si fermano lì. Fra tutti gli altri il rapporto
   // è quello vero.
   const base = sol.misureVere ? Math.max(1.2, p.km * SOL_PX_PER_KM / 2) : p.raggio;
-  const crescita = solCorpoDelPerno(p.id) ? solCrescitaTerra() : solCrescita();
+  const crescita = solCorpoDelPerno(p.id) ? solCrescitaCorpo() : solCrescita();
   // Mezzo pixel è il minimo assoluto: quando la scena si stringe i pianeti
   // rimpiccioliscono col Sole (vedi `solCrescita`), ma un pianeta che sparisce
   // del tutto lascerebbe l'orbita senza chi la percorre
@@ -25021,6 +27655,7 @@ function solRaggioCorpo(p) {
 // misura: la base per il fattore di crescita, con il minimo che lo tiene in
 // vita quando ci si allontana.
 function solRaggioSole() {
+  if (sol.misureVere) return Math.max(0.25, (SOL_SOLE_KM / 2) / SOL_UA_KM * sol.scala);
   return Math.max(SOL_SOLE_MIN_PX, solSoleBase() * solCrescita());
 }
 
@@ -25031,9 +27666,9 @@ function solRaggioSole() {
 function solRaggioLuna() {
   // Girando intorno alla Luna — o alla Terra, che le sta accanto — cresce
   // anche lei, come cresce qualunque corpo su cui ci si avvicini
-  const crescita = solCorpoDelPerno('Moon') ? solCrescitaTerra() : solCrescita();
+  const crescita = solCorpoDelPerno('Moon') ? solCrescitaCorpo() : solCrescita();
   return sol.misureVere
-    ? Math.max(0.55, SOL_LUNA_KM * SOL_PX_PER_KM / 2 * crescita)
+    ? Math.max(0.25, (SOL_LUNA_KM / 2) / SOL_UA_KM * sol.scala)
     : SOL_RAGGIO_LUNA * crescita;
 }
 
@@ -25564,6 +28199,10 @@ function solDisegnaCorpo(ctx, corpo, assi) {
   // per ogni altro pianeta.
   if (corpo.id === 'Earth' &&
       solDisegnaTerraVera(ctx, versoSole, r, assi, new Date(sol.istante))) {
+    if (sol.globoTerra) {
+      sol.globoTerra.px = p.px;
+      sol.globoTerra.py = p.py;
+    }
     ctx.restore();
     return;
   }
@@ -25597,14 +28236,21 @@ function solDisegnaCorpo(ctx, corpo, assi) {
   // scena da dalla parte del Sole un pianeta è quasi tutto notte, e un disco
   // scuro su fondo scuro non si legge come un mondo ma come un buco nel
   // disegno — con l'orlo resta una biglia in ombra, che è quello che è
-  ctx.save();
-  ctx.globalAlpha = 0.55;
-  ctx.strokeStyle = corpo.colore;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(0, 0, r - 0.5, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
+  // Con le dimensioni reali i pianeti lontani possono essere piu' piccoli
+  // di mezzo pixel. In quel caso il tratto, centrato sul bordo del disco,
+  // copre gia' tutto il corpo: arretrarlo di mezzo pixel produrrebbe inoltre
+  // un raggio negativo, che Canvas rifiuta con IndexSizeError e fermerebbe
+  // l'intero fotogramma del planetario.
+  if (r > 0.5) {
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = corpo.colore;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, r - 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   ctx.save();
   if (k < 0.985) {
@@ -25782,20 +28428,42 @@ function solDisegnaLuna(ctx, terra, davanti, assi) {
   const versoSole = solVersoIlSole(terra);
   const angLuce = assi && versoSole ? solAngoloSchermo(versoSole, assi) : 0;
   ctx.translate(p.px, p.py);
-  ctx.fillStyle = '#22262f';
+  // Prima si chiudeva con una tinta grigia uniforme: avvicinandosi alla
+  // coppia Terra-Luna diventava una biglia liscia, benché il planetario
+  // disponga già della pelle selenografica con mari e crateri. La stessa
+  // tela viene ora orientata secondo il polo lunare e ritagliata dalla fase.
+  ctx.fillStyle = solColoreNotte('#e2e8f0');
   ctx.beginPath();
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.fill();
+  ctx.save();
   if (k < 0.985) {
     ctx.rotate(angLuce);
     skyPercorsoIlluminato(ctx, r, k);
+    ctx.clip();
     ctx.rotate(-angLuce);
   } else {
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.clip();
   }
-  ctx.fillStyle = '#e2e8f0';
-  ctx.fill();
+  const faccia = skyFacciaDi({ id: 'Moon' }, r);
+  if (faccia) {
+    const asseLuna = solAsseLuna(new Date(sol.istante || Date.now()));
+    const polo = assi ? solAngoloPolo(asseLuna, assi) : 0;
+    ctx.rotate(polo);
+    ctx.drawImage(faccia, -r, -r, r * 2, r * 2);
+    ctx.rotate(-polo);
+  } else {
+    const luce = ctx.createRadialGradient(-r * 0.28, -r * 0.28, 0, 0, 0, r);
+    luce.addColorStop(0, '#f4f1e9');
+    luce.addColorStop(0.72, '#c4bfb5');
+    luce.addColorStop(1, '#817e79');
+    ctx.fillStyle = luce;
+    ctx.fillRect(-r, -r, r * 2, r * 2);
+  }
+  skyRilievoSfera(ctx, r, angLuce, { brillante: 0.06, bordo: 0.62 });
+  ctx.restore();
   ctx.restore();
 }
 
@@ -25900,7 +28568,7 @@ function solDisegnaBussolaOrari(ctx, terra, prese) {
 //   Nella vista d'insieme la Terra è un pallino azzurro largo otto pixel, e
 //   la faccia dipinta di §7.3.2 — dieci macchie di continente al posto
 //   giusto — è tutto quello che ci sta. Ma da quando ci si può avvicinare a
-//   girarle intorno (`SOL_ZOOM_MAX_TERRA`, novecento ingrandimenti) quel
+//   girarle intorno (`SOL_ZOOM_MAX_CORPO`, venticinquemila ingrandimenti) quel
 //   pallino diventa mezzo schermo, e a quella misura tre cose che il disegno
 //   non diceva cominciano a pesare più di tutte le altre:
 //
@@ -26135,6 +28803,12 @@ function solDisegnaTerraVera(ctx, versoSole, r, assi, quando) {
   const telaio = solTelaioTerra(quando);
   if (!telaio) return false;
 
+  // Geometria dell'ultimo globo disegnato. Il contesto e' gia' traslato sul
+  // centro della Terra: il centro assoluto viene aggiunto da
+  // `solDisegnaCorpo`. Serve a trasformare un doppio tocco sul disco nelle
+  // coordinate geografiche dello stesso punto visibile.
+  sol.globoTerra = { telaio, assi, r, quando };
+
   const k = Math.max(0, Math.min(1, (1 + skyDot(versoSole, assi.verso)) / 2));
   const angLuce = solAngoloSchermo(versoSole, assi);
 
@@ -26335,7 +29009,12 @@ function solDisegnaTerraVera(ctx, versoSole, r, assi, quando) {
 // disegna affatto: un segno che traspare attraverso il pianeta è peggio di
 // nessun segno, perché sembra dire che sei da questa parte.
 function solDisegnaCasaSullaTerra(ctx, telaio, assi, r) {
-  const casa = typeof luogoCorrente === 'function' ? luogoCorrente() : null;
+  // E' il punto del planetario, non necessariamente la posizione principale
+  // dell'app: se si sta visitando un altro luogo i due grafici devono avere
+  // lo stesso osservatore.
+  const casa = typeof skyLuogoDelCielo === 'function'
+    ? skyLuogoDelCielo()
+    : (typeof luogoCorrente === 'function' ? luogoCorrente() : null);
   if (!casa) return;
   const p = solGloboProietta(solPuntoTerra(telaio, casa.lat, casa.lon), assi, r);
   if (p.z <= 0.05) return;
@@ -26789,17 +29468,65 @@ function solProfiloCono(base, asse, raggio, sMax) {
   return su.concat(giu.reverse());
 }
 
-// Fin dove tirare un cono prima che finisca dentro alla Terra. Se l'asse la
-// manca del tutto — le eclissi parziali, quelle che sfiorano i poli — il cono
-// prosegue fino alla sua portata, che è la verità: passa accanto e tira via.
-function solQuantoPrimaDiTerra(base, asse, portata) {
-  const rT = solVicRaggioTerra();
-  const b = skyDot(base, asse);
-  const c = skyDot(base, base) - rT * rT;
-  const disc = b * b - c;
-  if (disc <= 0) return portata;
-  const s = -b - Math.sqrt(disc);
-  return s > 0 ? Math.min(portata, s) : portata;
+// Con i corpi ingranditi il punto geografico dell'eclissi non si trova piu'
+// sulla retta che interseca la sfera *ingrandita*. Quella costruzione sceglie
+// infatti un altro punto del globo (tanto piu' lontano quanto piu' il cono e'
+// radente): era il motivo per cui, nella vista ravvicinata, il cono giallo
+// finiva in Asia mentre la sua ombra era disegnata sull'Australia.
+//
+// La fisica si calcola sempre sulla Terra vera (`ombra.centro`). Soltanto per
+// il disegno portiamo quel versore sulla superficie del globo visibile e
+// congiungiamo la Luna a quel punto. Cosi' l'asse grafico termina esattamente
+// nel centro della macchia che `solDisegnaOmbraDellaLuna` dipinge sullo stesso
+// globo, anche con l'ingrandimento didattico attivo.
+function solConoLunaVisibile(base, asseFisico, portata, ombra) {
+  if (!ombra || !ombra.centro) {
+    // Se i globi sono ingranditi, va ingrandito anche lo *scarto* trasversale
+    // del cono. Prima si allargavano Terra, Luna e ombre, ma l'asse restava
+    // sui chilometri reali: una congiunzione che mancava la Terra poteva così
+    // attraversare il globo tre volte più grande e sembrare un'eclissi.
+    //
+    // `vicino` è il punto dell'asse fisico più prossimo al centro terrestre.
+    // Lo portiamo alla stessa scala trasversale dei corpi, lasciando intatta
+    // la distanza longitudinale Terra–Luna. Con «Reali» k=1 e la costruzione
+    // coincide esattamente con quella fisica.
+    const k = solVicIngrandimento();
+    const sVicino = Math.max(0, Math.min(portata, -skyDot(base, asseFisico)));
+    const vicino = [
+      base[0] + asseFisico[0] * sVicino,
+      base[1] + asseFisico[1] * sVicino,
+      base[2] + asseFisico[2] * sVicino
+    ];
+    const bersaglio = vicino.map(v => v * k);
+    const tratto = [
+      bersaglio[0] - base[0], bersaglio[1] - base[1], bersaglio[2] - base[2]
+    ];
+    const finoAlMinimo = Math.hypot(tratto[0], tratto[1], tratto[2]);
+    if (!(finoAlMinimo > 0)) return { asse: asseFisico, portata, rapporto: 1, manca: true };
+    return {
+      asse: solVersore(tratto),
+      // Un breve tratto oltre il punto di minima distanza rende evidente che
+      // il cono passa accanto alla Terra e prosegue, invece di finirci sopra.
+      portata: Math.min(portata, finoAlMinimo * 1.12),
+      rapporto: sVicino / finoAlMinimo,
+      manca: true,
+      minimo: bersaglio
+    };
+  }
+  const centro = solVersore(ombra.centro);
+  const arrivo = centro.map(v => v * solVicRaggioTerra());
+  const tratto = [arrivo[0] - base[0], arrivo[1] - base[1], arrivo[2] - base[2]];
+  const sGrafico = Math.hypot(tratto[0], tratto[1], tratto[2]);
+  const sFisico = Math.hypot(
+    ombra.centro[0] - base[0], ombra.centro[1] - base[1], ombra.centro[2] - base[2]);
+  return {
+    asse: solVersore(tratto),
+    portata: Math.min(portata, sGrafico),
+    // I raggi restano quelli del cono fisico alla medesima frazione del
+    // tragitto; cambia soltanto la sua posa sulla Terra ingrandita.
+    rapporto: sGrafico > 0 ? sFisico / sGrafico : 1,
+    manca: false
+  };
 }
 
 // `dentro` a null vuol dire «solo il bordo»: serve alla seconda passata, quella
@@ -26957,6 +29684,96 @@ function solDisegnaRaggiVicino(ctx, versoSole, portata) {
   ctx.restore();
 }
 
+// Il Sole del banco Terra-Luna non puo' stare alla sua distanza reale: a
+// centocinquanta milioni di chilometri sarebbe oltre trecento orbite lunari
+// fuori dalla tela. Il centro sta quindi, nella direzione vera, poco oltre
+// l'orbita lunare. A differenza del vecchio Sole inchiodato al bordo della
+// tela, e' un punto della scena: zoom, trascinamento e rotazione lo muovono
+// con la stessa proiezione di Terra, Luna e coni.
+//
+// A riposo il disco e' volutamente didattico, circa dodici Terre di diametro:
+// abbastanza grande da riconoscere da dove partono i raggi, senza coprire il
+// banco delle ombre. Se si scelgono «Dimensioni reali», invece, il suo raggio
+// e' davvero 696.350 km nello stesso metro degli altri corpi.
+const SOL_VIC_SOLE_DISTANZA_ORBITE = 1.18;
+const SOL_VIC_SOLE_RAGGI_TERRA = 6;
+function solDisegnaSoleVicino(ctx, versoSole, distanzaLuna) {
+  const dir = solVersoRaggi(versoSole);
+  if (!dir) return;
+  const raggioKm = sol.misureVere
+    ? SOL_SOLE_KM / 2
+    : RAGGIO_TERRA_KM * SOL_VIC_SOLE_RAGGI_TERRA;
+  const r = raggioKm * solVicPx();
+  if (!(r > 0)) return;
+  const distanza = (distanzaLuna || 384400) * SOL_VIC_SOLE_DISTANZA_ORBITE;
+  const centro = solVicPunto([
+    versoSole[0] * distanza,
+    versoSole[1] * distanza,
+    versoSole[2] * distanza
+  ]);
+  const x = centro.px, y = centro.py;
+
+  ctx.save();
+  const alone = ctx.createRadialGradient(x, y, r * 0.18, x, y, r * 2.7);
+  alone.addColorStop(0, 'rgba(255, 250, 210, 0.95)');
+  alone.addColorStop(0.3, 'rgba(251, 191, 36, 0.48)');
+  alone.addColorStop(1, 'rgba(245, 158, 11, 0)');
+  ctx.fillStyle = alone;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 2.7, 0, Math.PI * 2);
+  ctx.fill();
+
+  const disco = ctx.createRadialGradient(x - r * 0.3, y - r * 0.32, r * 0.08, x, y, r);
+  disco.addColorStop(0, '#fffde7');
+  disco.addColorStop(0.42, '#fde047');
+  disco.addColorStop(0.82, '#f59e0b');
+  disco.addColorStop(1, '#ea580c');
+  ctx.fillStyle = disco;
+  ctx.shadowColor = 'rgba(253, 224, 71, 0.9)';
+  ctx.shadowBlur = 18;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  // Granulazione e macchie deterministiche: danno materia alla fotosfera
+  // senza scintillare o cambiare disposizione a ogni fotogramma.
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, r * 0.97, 0, Math.PI * 2);
+  ctx.clip();
+  for (let i = 0; i < 42; i++) {
+    const a = i * 2.399963, rr = r * 0.84 * Math.sqrt((i + 0.5) / 42);
+    const gx = x + Math.cos(a) * rr, gy = y + Math.sin(a) * rr;
+    ctx.fillStyle = i % 3 ? 'rgba(255,255,220,0.11)' : 'rgba(180,72,8,0.10)';
+    ctx.beginPath();
+    ctx.ellipse(gx, gy, r * 0.055, r * 0.025, a, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  [[-0.31, 0.18, 0.075], [0.24, -0.23, 0.055], [0.33, -0.18, 0.032]].forEach(m => {
+    ctx.fillStyle = 'rgba(91, 33, 8, 0.72)';
+    ctx.beginPath();
+    ctx.ellipse(x + m[0] * r, y + m[1] * r, m[2] * r, m[2] * r * 0.48, -0.25, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255, 251, 235, 0.82)';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
+  ctx.font = `700 11px ${SOL_CARATTERE}`;
+  ctx.textAlign = 'center';
+  const etichettaX = Math.max(80, Math.min(sol.L - 80, x - dir.ux * (r + 16)));
+  const etichettaY = Math.max(18, Math.min(sol.H - 18, y - dir.uy * (r + 16)));
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(6, 10, 20, 0.9)';
+  const etichetta = sol.misureVere ? 'SOLE · dimensione reale' : 'SOLE · dimensione didattica';
+  ctx.strokeText(etichetta, etichettaX, etichettaY);
+  ctx.fillStyle = '#fef3c7';
+  ctx.fillText(etichetta, etichettaX, etichettaY);
+  ctx.restore();
+}
+
 // Da che parte cade il Sole, sullo schermo: serve ai raggi e alla scritta che
 // li nomina, che però va messa insieme a tutte le altre (vedi
 // `solEtichetteVicino`) o finisce stampata sopra alla Luna
@@ -26997,27 +29814,26 @@ function solDisegnaVicino() {
   // restare in mezzo alla tela, e la Terra le gira attorno (vedi `solScegli`)
   solAggiornaPivot();
 
+  solDisegnaSoleVicino(ctx, g.versoSole, g.dLuna);
   solDisegnaRaggiVicino(ctx, g.versoSole, g.dLuna);
   solDisegnaPianoVicino(ctx, g.dLuna);
 
-  // I due coni d'ombra, in due passate. Il riempimento va **sotto** ai corpi —
-  // altrimenti la velatura viola coprirebbe l'Africa e le fasi della Luna — ma
-  // il contorno va **sopra**: avvicinandosi, il disco della Terra si prende
-  // mezzo schermo e si mangiava tutto l'attacco del cono, che spuntava fuori
-  // dall'altro lato come se nascesse dal nulla. Un cono d'ombra parte dal
-  // corpo che lo fa, e questo è il pezzo di disegno che lo dice.
+  // I riempimenti dei due coni stanno dietro ai corpi, che restano opachi. Il
+  // contorno del cono lunare avra' invece una seconda passata davanti alla
+  // Terra: e' il filo che congiunge la Luna alla macchia sul globo e deve far
+  // vedere senza ambiguita' dove va a finire l'ombra.
   const apiceTerra = solApiceOmbra(RAGGIO_TERRA_KM, g.dSole);
   const portataTerra = Math.min(apiceTerra, g.dLuna * SOL_VIC_CONO_OLTRE);
   // Il cono della Terra, sempre: è lui che spiega perché la maggior parte
   // delle lune piene non è un'eclissi. Prima la penombra, larga e sfumata,
   // poi l'ombra piena dentro di lei.
-  const coniTerra = (soloBordo) => {
+  const coniTerra = () => {
     solDisegnaCono(ctx, [0, 0, 0], antiSole,
       (s) => solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, s) * k,
-      g.dLuna * SOL_VIC_CONO_OLTRE, soloBordo ? null : SOL_COL_PENOMBRA, SOL_COL_PENOMBRA_BORDO);
+      g.dLuna * SOL_VIC_CONO_OLTRE, SOL_COL_PENOMBRA, SOL_COL_PENOMBRA_BORDO);
     solDisegnaCono(ctx, [0, 0, 0], antiSole,
       (s) => solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, s) * k,
-      portataTerra, soloBordo ? null : SOL_COL_OMBRA, SOL_COL_OMBRA_BORDO);
+      portataTerra, SOL_COL_OMBRA, SOL_COL_OMBRA_BORDO);
   };
 
   // Il cono della Luna, quando è dalla parte del Sole: quello che, se arriva
@@ -27028,7 +29844,8 @@ function solDisegnaVicino() {
   const dSoleLuna = Math.hypot(
     g.sole[0] - g.luna[0], g.sole[1] - g.luna[1], g.sole[2] - g.luna[2]);
   const luce = skyDot(solVersore(g.luna), g.versoSole);
-  const coniLuna = (soloBordo) => {
+  const ombraSole = luce > 0.9 ? solOmbraLunareSuTerra(quando) : null;
+  const coniLuna = (soloContorno = false) => {
     if (!(luce > 0.9)) return;
     const antiLuna = [-versoSoleDallaLuna[0], -versoSoleDallaLuna[1], -versoSoleDallaLuna[2]];
     const apiceLuna = solApiceOmbra(RAGGIO_LUNA_KM, dSoleLuna);
@@ -27036,17 +29853,67 @@ function solDisegnaVicino() {
     // oltre significava disegnarne la parte che *è dentro al pianeta*, che
     // spuntava fuori dall'altro lato come una macchia grigia in mezzo alla
     // notte — la cosa che a colpo d'occhio dice «questo disegno è sbagliato»
-    const portata = solQuantoPrimaDiTerra(g.luna, antiLuna, g.dLuna * 1.25);
-    solDisegnaCono(ctx, g.luna, antiLuna,
-      (s) => solRaggioPenombra(RAGGIO_LUNA_KM, dSoleLuna, s) * k,
-      portata, soloBordo ? null : 'rgba(146, 116, 44, 0.14)', 'rgba(214, 176, 84, 0.34)');
-    solDisegnaCono(ctx, g.luna, antiLuna,
-      (s) => solRaggioUmbra(RAGGIO_LUNA_KM, dSoleLuna, s) * k,
-      Math.min(apiceLuna, portata), soloBordo ? null : 'rgba(126, 88, 22, 0.42)', 'rgba(251, 191, 36, 0.8)');
+    const posa = solConoLunaVisibile(g.luna, antiLuna, g.dLuna * 1.25, ombraSole);
+    solDisegnaCono(ctx, g.luna, posa.asse,
+      (s) => solRaggioPenombra(RAGGIO_LUNA_KM, dSoleLuna, s * posa.rapporto) * k,
+      posa.portata, soloContorno ? null : SOL_COL_PENOMBRA, SOL_COL_PENOMBRA_BORDO);
+
+    // Il cono pieno non finisce sempre sulla Terra. Se la Luna e' un po'
+    // piu' lontana, si chiude prima e da quella punta nasce l'antiumbra, che
+    // si riallarga fino al globo: e' proprio la geometria di un'eclissi
+    // anulare. Fermare il disegno alla punta lasciava invece un tratto vuoto
+    // fra cono e macchia terrestre, come se fossero due fenomeni separati.
+    // Disegniamo prima l'umbra scura fino alla punta (o alla superficie), poi
+    // l'eventuale antiumbra con la stessa ambra usata sulla Terra.
+    const apiceGrafico = apiceLuna / posa.rapporto;
+    const fineUmbra = Math.min(apiceGrafico, posa.portata);
+    solDisegnaCono(ctx, g.luna, posa.asse,
+      (s) => solRaggioUmbra(RAGGIO_LUNA_KM, dSoleLuna, s * posa.rapporto) * k,
+      fineUmbra, soloContorno ? null : SOL_COL_OMBRA, SOL_COL_OMBRA_BORDO);
+    if (apiceGrafico < posa.portata) {
+      const punta = [
+        g.luna[0] + posa.asse[0] * apiceGrafico,
+        g.luna[1] + posa.asse[1] * apiceGrafico,
+        g.luna[2] + posa.asse[2] * apiceGrafico
+      ];
+      solDisegnaCono(ctx, punta, posa.asse,
+        (s) => Math.max(0, -solRaggioUmbra(
+          RAGGIO_LUNA_KM, dSoleLuna, (s + apiceGrafico) * posa.rapporto)) * k,
+        posa.portata - apiceGrafico,
+        soloContorno ? null : 'rgba(180, 83, 9, 0.22)', 'rgba(251, 191, 36, 0.88)');
+    }
+
+    // Nessuna eclissi: un segno nel punto di minima distanza chiude la
+    // lettura del disegno. Il cono non "tocca" il globo ingrandito e la
+    // barretta mostra visivamente il margine con cui lo manca.
+    if (posa.manca && posa.minimo && !soloContorno) {
+      const p = solVicPunto(posa.minimo);
+      const c = solVicPunto([0, 0, 0]);
+      const dx = p.px - c.px, dy = p.py - c.py;
+      const d = Math.hypot(dx, dy);
+      if (d > 2) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.9)';
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(c.px, c.py);
+        ctx.lineTo(p.px, p.py);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(p.px, p.py, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        solTesto(ctx, 'il cono manca la Terra', p.px + 7, p.py - 6,
+          'rgba(253, 224, 71, 0.92)', 10.5);
+      }
+    }
   };
 
-  coniTerra(false);
-  coniLuna(false);
+  coniTerra();
+  coniLuna();
 
   // Il bersaglio: l'ombra alla distanza a cui sta adesso la Luna, misurata
   // lungo l'asse — non alla sua distanza dalla Terra, che è un'altra cosa
@@ -27091,16 +29958,14 @@ function solDisegnaVicino() {
   ];
   finti.sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
   finti.forEach(c => solDisegnaCorpo(ctx, c, assi));
+  // Il globo non deve nascondere proprio l'arrivo del cono che questa scena
+  // vuole spiegare. Ripassiamo soltanto i bordi (non il velo): cosi' la Terra
+  // resta solida e leggibile, mentre le linee arrivano davanti fino al punto
+  // esatto in cui l'ombra cade sulla superficie.
+  coniLuna(true);
   // Chi ha appena disegnato i due corpi sa dove sono finiti sullo schermo, e
   // il dito ha bisogno proprio di quello (`solTocco`)
   sol.vicCorpi = finti;
-
-  // La seconda passata dei coni: solo i contorni, sopra ai corpi. È quella che
-  // tiene il cono in primo piano rispetto alla Terra — e col bersaglio ripassato
-  // sopra, perché il cerchio che la Luna manca è il punto di tutto il banco.
-  coniTerra(true);
-  coniLuna(true);
-  bersaglio();
 
   // Il filo a piombo della Luna sul piano: dice di quanto è fuori bersaglio,
   // e lo dice prima di qualunque numero
@@ -27196,9 +30061,31 @@ function solEtichetteVicino(ctx, corpi, orbita, g) {
   const k = solVicIngrandimento();
   const largoOmbra = solRaggioUmbra(RAGGIO_TERRA_KM, g.dSole, meta) * k * solVicPx();
   if (largoOmbra > 5) {
-    solEtichetta(ctx, 'ombra', pMeta.px, pMeta.py, largoOmbra + 2, 'rgba(196, 181, 253, 0.8)', 10.5, prese);
+    solEtichetta(ctx, 'ombra terrestre', pMeta.px, pMeta.py, largoOmbra + 2, 'rgba(196, 181, 253, 0.8)', 10.5, prese);
     const largoPen = solRaggioPenombra(RAGGIO_TERRA_KM, g.dSole, meta) * k * solVicPx();
-    solEtichetta(ctx, 'penombra', pMeta.px, pMeta.py, largoPen + 2, 'rgba(148, 175, 225, 0.7)', 10, prese);
+    solEtichetta(ctx, 'penombra terrestre', pMeta.px, pMeta.py, largoPen + 2, 'rgba(148, 175, 225, 0.7)', 10, prese);
+  }
+  // Quando la Luna e' fra Sole e Terra, i due coni quasi coincidono sullo
+  // stesso asse. Nominarli vicino alla Luna evita che sembrino il seguito
+  // del cono terrestre e rende leggibile quale ombra sta raggiungendo il
+  // globo. La macchia sulla superficie, disegnata dal globo stesso, resta
+  // davanti al pianeta e chiude visivamente questo cono nel punto esatto.
+  const luce = skyDot(solVersore(g.luna), g.versoSole);
+  if (luce > 0.9) {
+    const antiLuna = solVersore([
+      g.luna[0] - g.sole[0], g.luna[1] - g.sole[1], g.luna[2] - g.sole[2]]);
+    const metaLuna = Math.min(g.dLuna * 0.42,
+      solApiceOmbra(RAGGIO_LUNA_KM, Math.hypot(
+        g.sole[0] - g.luna[0], g.sole[1] - g.luna[1], g.sole[2] - g.luna[2])) * 0.55);
+    const pLuna = solVicPunto([
+      g.luna[0] + antiLuna[0] * metaLuna,
+      g.luna[1] + antiLuna[1] * metaLuna,
+      g.luna[2] + antiLuna[2] * metaLuna
+    ]);
+    solEtichetta(ctx, 'ombra lunare', pLuna.px, pLuna.py, 7,
+      'rgba(216, 200, 255, 0.92)', 10.5, prese);
+    solEtichetta(ctx, 'penombra lunare', pLuna.px, pLuna.py, 23,
+      'rgba(165, 195, 245, 0.82)', 10, prese);
   }
   if (orbita && orbita.nodi.length >= 2) {
     orbita.nodi.slice(0, 2).forEach(n => {
@@ -27469,6 +30356,9 @@ function solAlternaVicino() {
 function solDisegna() {
   if (!sol.ctx) return;
   const ctx = sol.ctx;
+  // Sara' valorizzato di nuovo solo se in questo fotogramma la Terra e'
+  // abbastanza grande da mostrare (e quindi scegliere) la sua superficie.
+  sol.globoTerra = null;
   solMisura();
   solSfondo(ctx);
 
@@ -27579,7 +30469,7 @@ function solDisegna() {
   const riga = sol.H - 10 - (sol.altaBarra || 0);
   const alto = sol.elev > 70 ? 'a picco sul piano' : (sol.elev < 8 ? 'quasi dentro al piano' : `${Math.round(sol.elev)}° sopra il piano`);
   const largo = solUaAlBordo(sol.zoom);
-  const misure = sol.misureVere ? 'pianeti in scala, Sole no' : 'pianeti ingranditi';
+  const misure = sol.misureVere ? 'corpi in scala' : 'corpi ingranditi';
   // Avvicinandosi alla Terra il bordo scende sotto il centesimo di unità
   // astronomica, e la scritta diceva «0,00 UA al bordo», cioè niente. Sotto
   // quella soglia il metro giusto sono i chilometri, che è anche il modo in
@@ -27909,6 +30799,7 @@ function solTornaAdesso() {
   solFermaTempo();
   sol.ancoraSec = 0;
   skyImpostaOffsetTempo(0);
+  skyRicalcolaOraAttuale();
   solAggiornaBarra();
 }
 
@@ -27995,6 +30886,7 @@ function solPassoCiclo(ts) {
   solLeggiPosizioni(quando);
   solCalcolaOrbite(quando);
   solDisegna();
+  if (sky.reg.attiva && sky.reg.origine === 'solare') skyRegAcquisisci();
 
   // I numeri scritti sotto vanno più piano del disegno: rifare la tabella a
   // sessanta fotogrammi al secondo si sente, e nessuno la legge così in fretta
@@ -28010,7 +30902,7 @@ function solImpostaZoom(z, opzioni = {}) {
   // fare tutt'e due le cose: allontanarsi finché il cono d'ombra della Terra
   // ci sta per intero (un milione e mezzo di chilometri) e avvicinarsi alla
   // Terra finché si riconoscono i continenti.
-  const tetto = sol.vicino ? SOL_VIC_ZOOM_MAX : (sol.perno ? SOL_ZOOM_MAX_TERRA : SOL_ZOOM_MAX);
+  const tetto = sol.vicino ? SOL_VIC_ZOOM_MAX : (sol.perno ? SOL_ZOOM_MAX_CORPO : SOL_ZOOM_MAX);
   const pavimento = sol.vicino ? SOL_VIC_ZOOM_MIN : 0.35;
   const valore = Math.max(pavimento, Math.min(tetto, z));
   sol.zoomVoluto = valore;
@@ -28099,6 +30991,17 @@ function solAlternaOpzioni() {
 // e ogni volta bisognava provare in che verso andasse.
 const SOL_GIRO_PER_PIXEL = 0.008;    // radianti di azimut per pixel di dito
 const SOL_ELEV_PER_PIXEL = 0.32;     // gradi di elevazione per pixel di dito
+
+// Quando un corpo selezionato riempie buona parte della tela, la sensibilita'
+// adatta alla vista d'insieme diventa troppo brusca: pochi pixel di dito fanno
+// attraversare continenti e crateri. La riduciamo progressivamente oltre 8x,
+// senza creare uno scalino e senza cambiare il comportamento della panoramica.
+// Il limite inferiore lascia comunque possibile un giro completo anche allo
+// zoom massimo (25 000x), ma offre circa otto volte piu' precisione.
+function solPrecisioneCamera() {
+  if (!sol.perno || sol.vicino || sol.zoomVoluto <= 8) return 1;
+  return Math.max(0.12, 1 / (1 + 0.55 * Math.log2(sol.zoomVoluto / 8)));
+}
 
 // Rimette la scena in mezzo alla tela: lo spostamento con due dita è comodo
 // finché non ci si perde, e allora serve un modo solo per tornare.
@@ -28199,6 +31102,81 @@ function solAvvicinaA(id) {
 // Compatibilità con i tasti della scheda: la Terra è un corpo come gli altri
 function solAvvicinaTerra() { solAvvicinaA('Earth'); }
 
+// Il punto della scena che si trova al centro della tela. Di solito e' il
+// perno scelto con un tocco; dopo uno spostamento a due dita, invece, ricaviamo
+// il punto del piano dell'eclittica che sta sotto al centro dello schermo.
+// Cosi' anche una ricerca fatta dopo aver composto a mano l'inquadratura non
+// butta via quella scelta.
+function solCentroCamera() {
+  const perno = solPuntoPerno();
+  if (perno) return perno;
+  const scala = Math.max(1e-9, sol.scala || 0);
+  const se = Math.sin(sol.elev * SKY_D2R);
+  if (Math.abs(se) < 1e-4) return { x: 0, y: 0, z: 0 };
+  const xr = -sol.panX / scala;
+  const yr = sol.panY / (scala * se);
+  const ca = Math.cos(sol.az), sa = Math.sin(sol.az);
+  return { x: xr * ca + yr * sa, y: -xr * sa + yr * ca, z: 0 };
+}
+
+// Cerca un corpo senza dimenticare da dove si stava guardando. Il centro
+// della camera resta quello scelto prima (un pianeta, il Sole o il punto
+// composto con lo spostamento a due dita); e' la camera a girargli attorno
+// finche' il corpo cercato compare alla sua destra. Lo zoom si apre soltanto
+// quanto serve a mostrare la distanza fra il centro e il risultato.
+function solInquadraRicerca(id) {
+  const origine = solCentroCamera();
+  let arrivo = null;
+  if (id === 'Sun') arrivo = { x: 0, y: 0, z: 0 };
+  else if (id === 'Moon') arrivo = solScenaLuna();
+  else {
+    const p = sol.pianeti.find(v => v.id === id);
+    if (p) arrivo = p.scena || solScena(p.pos);
+  }
+  if (!arrivo) return false;
+
+  sol.scelto = id === 'Sun' ? null : (id === 'Moon' ? 'Earth' : id);
+  const dx = arrivo.x - origine.x;
+  const dy = arrivo.y - origine.y;
+  const dz = arrivo.z - origine.z;
+  const distanza = Math.hypot(dx, dy, dz);
+  // Con questo azimut la componente nel piano cade sull'orizzontale dello
+  // schermo: il risultato non si nasconde dietro al centro e la sua altezza
+  // vera sopra o sotto l'eclittica resta leggibile. L'elevazione, scelta da
+  // chi stava guardando, non viene cambiata.
+  if (Math.hypot(dx, dy) > 1e-7) sol.az = Math.atan2(-dy, dx);
+  const zoom = distanza > 1e-7
+    ? Math.min(SOL_ZOOM_MAX, 0.68 / (0.44 * distanza))
+    : Math.min(SOL_ZOOM_MAX, Math.max(sol.zoomVoluto, solZoomPer(SOL_VICINO_TERRA_UA)));
+  solImpostaZoom(zoom, { morbido: true });
+
+  // La traslazione e' calcolata con orientamento e zoom d'arrivo: rimette
+  // esattamente lo stesso punto al centro, invece di centrare il punto medio
+  // fra quel punto e il corpo cercato.
+  const salvaZoom = sol.zoom;
+  sol.zoom = zoom;
+  solMisura();
+  sol.panX = 0;
+  sol.panY = 0;
+  const a = solProietta(origine);
+  sol.panX = sol.cx - a.px;
+  sol.panY = sol.cy - a.py;
+  sol.zoom = salvaZoom;
+  solMisura();
+  sol.quadro = 'terra';
+  solAggiornaScheda(true);
+  solAggiornaTasti();
+  if (sol.aperto) solDisegna();
+  return true;
+}
+
+function solIdDaRicerca(testo) {
+  const pulito = String(testo || '').trim().toLocaleLowerCase('it-IT');
+  const nomi = { sole: 'Sun', luna: 'Moon' };
+  SOL_PIANETI.forEach(p => { nomi[p.nome.toLocaleLowerCase('it-IT')] = p.id; });
+  return nomi[pulito] || null;
+}
+
 // Torna alla vista d'insieme centrata sul Sole: stessa inquadratura con cui
 // ci si è entrati, non un ritorno a metà — «vicino a un corpo» e «vista
 // d'insieme» sono due modi diversi di guardare, non due gradi dello stesso.
@@ -28280,7 +31258,7 @@ function solZoomSullaTerra() {
   // arrivare alla misura sbagliata proprio con i pallini in scala.
   const base = sol.misureVere ? Math.max(1.2, terra.km * SOL_PX_PER_KM / 2) : terra.raggio;
   if (!(base > 0)) return null;
-  return Math.min(SOL_ZOOM_MAX_TERRA, Math.pow(SOL_ENTRATA_TERRA_PX / base, 2));
+  return Math.min(SOL_ZOOM_MAX_CORPO, Math.pow(SOL_ENTRATA_TERRA_PX / base, 2));
 }
 
 // L'ingresso: il quadro d'insieme per un fotogramma — la disposizione di
@@ -28300,7 +31278,7 @@ function solEntraSullaTerra() {
   const zoom = solZoomSullaTerra();
   if (zoom === null) return;
   // Il perno prima dello zoom: è lui a scegliere il tetto dentro a
-  // `solImpostaZoom` (SOL_ZOOM_MAX_TERRA invece di SOL_ZOOM_MAX), e senza
+  // `solImpostaZoom` (SOL_ZOOM_MAX_CORPO invece di SOL_ZOOM_MAX), e senza
   // questa riga il tuffo si fermerebbe a un sessantesimo della strada.
   sol.perno = 'Earth';
   solImpostaZoom(zoom, { morbido: true });
@@ -28334,6 +31312,25 @@ function solInizializzaGesti() {
   const c = sol.canvas;
   if (!c || c.dataset.gestiPronti === 'si') return;
   c.dataset.gestiPronti = 'si';
+
+  // Il primo rilascio fa parte anche di un doppio clic: se scegliessimo il
+  // corpo subito, la telecamera si aggancerebbe alla Terra prima che il
+  // `dblclick` possa usare lo stesso gesto per impostare il luogo. Aspettiamo
+  // quindi il tempo massimo gia' concesso a un tocco secco; il secondo clic
+  // sostituisce il primo e, se cade sul globo, `dblclick` annulla tutto.
+  let toccoInAttesa = null;
+  const annullaToccoInAttesa = () => {
+    if (toccoInAttesa !== null) clearTimeout(toccoInAttesa);
+    toccoInAttesa = null;
+  };
+  const rimandaTocco = (e) => {
+    annullaToccoInAttesa();
+    const punto = { clientX: e.clientX, clientY: e.clientY };
+    toccoInAttesa = setTimeout(() => {
+      toccoInAttesa = null;
+      solTocco(punto);
+    }, 500);
+  };
 
   const distanzaDita = () => {
     const p = [...sol.puntatori.values()];
@@ -28375,6 +31372,10 @@ function solInizializzaGesti() {
   };
 
   c.addEventListener('pointerdown', (e) => {
+    // Un eventuale secondo clic deve avere il tempo di dichiararsi tale. Se
+    // poi non completa il doppio clic, il suo `pointerup` rimettera' in coda
+    // la normale scelta del corpo.
+    annullaToccoInAttesa();
     c.setPointerCapture(e.pointerId);
     sol.puntatori.set(e.pointerId, { x: e.clientX, y: e.clientY });
     sol.mosso = 0;
@@ -28401,7 +31402,10 @@ function solInizializzaGesti() {
     // mezzo è la maniglia — resta sotto le dita mentre lo zoom lavora
     if (sol.puntatori.size >= 2 && sol.pizzico) {
       const d = distanzaDita();
-      if (sol.pizzico.d > 4) solImpostaZoom(sol.pizzico.zoom * (d / sol.pizzico.d));
+      if (sol.pizzico.d > 4) {
+        const rapporto = d / sol.pizzico.d;
+        solImpostaZoom(sol.pizzico.zoom * Math.pow(rapporto, solPrecisioneCamera()));
+      }
       const m = centroDita();
       solSposta(m.x - sol.pizzico.cx, m.y - sol.pizzico.cy);
       sol.pizzico.cx = m.x;
@@ -28416,8 +31420,9 @@ function solInizializzaGesti() {
     sol.mosso += Math.abs(dx) + Math.abs(dy);
     if (sol.modoPan) { solSposta(dx, dy); return; }
     // Il verso del modellino: il dito porta con sé la scena
-    sol.az += dx * SOL_GIRO_PER_PIXEL;
-    const elev = Math.max(-89, Math.min(89, sol.elevVoluta + dy * SOL_ELEV_PER_PIXEL));
+    const precisione = solPrecisioneCamera();
+    sol.az += dx * SOL_GIRO_PER_PIXEL * precisione;
+    const elev = Math.max(-89, Math.min(89, sol.elevVoluta + dy * SOL_ELEV_PER_PIXEL * precisione));
     sol.elevVoluta = elev;
     sol.elev = elev;
     solAggiornaTasti();
@@ -28430,7 +31435,7 @@ function solInizializzaGesti() {
     // continua da lì senza doverlo staccare e riappoggiare
     riancora();
     // Un tocco secco, senza trascinamento: sceglie il pianeta più vicino
-    if (era === 1 && sol.mosso < 8 && performance.now() - sol.giu < 500 && !sol.modoPan) solTocco(e);
+    if (era === 1 && sol.mosso < 8 && performance.now() - sol.giu < 500 && !sol.modoPan) rimandaTocco(e);
     if (!sol.puntatori.size) sol.modoPan = false;
   };
   c.addEventListener('pointerup', fine);
@@ -28449,8 +31454,47 @@ function solInizializzaGesti() {
     e.preventDefault();
     const pixel = e.deltaMode === 1 ? e.deltaY * 16 : (e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY);
     const scatti = Math.max(-4, Math.min(4, pixel / 100));
-    if (scatti) solImpostaZoom(sol.zoomVoluto * Math.exp(-scatti * 0.12), { morbido: true });
+    if (scatti) solImpostaZoom(sol.zoomVoluto * Math.exp(-scatti * 0.12 * solPrecisioneCamera()), { morbido: true });
   }, { passive: false });
+
+  // Sul globo terrestre il doppio clic/doppio tocco imposta direttamente il
+  // punto giallo. Non cambia la posizione principale salvata: esattamente
+  // come il mappamondo del planetario, cambia il suo luogo di visita; percio'
+  // tornando al cielo si ritrova subito lo stesso osservatore.
+  c.addEventListener('dblclick', (e) => {
+    if (solImpostaPuntoDalGlobo(e)) {
+      // Il doppio clic ha un significato proprio: non deve anche scegliere la
+      // Terra e cambiare il perno della telecamera.
+      annullaToccoInAttesa();
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+}
+
+function solImpostaPuntoDalGlobo(e) {
+  const g = sol.globoTerra;
+  if (!g || !sol.canvas || !isFinite(g.px) || !isFinite(g.py) || g.r < 18) return false;
+  const rett = sol.canvas.getBoundingClientRect();
+  // Le coordinate della scena sono in CSS pixel: `solRidimensiona` usa il
+  // DPR soltanto nella trasformazione del contesto.
+  const x = e.clientX - rett.left - g.px;
+  const y = e.clientY - rett.top - g.py;
+  const q = (x * x + y * y) / (g.r * g.r);
+  if (q > 1) return false;
+
+  // Inversa della proiezione ortografica di `solGloboProietta`. Si prende la
+  // radice positiva: soltanto la faccia rivolta alla camera e' cliccabile.
+  const z = Math.sqrt(Math.max(0, 1 - q));
+  const u = [0, 1, 2].map(i =>
+    g.assi.destra[i] * (x / g.r) + g.assi.alto[i] * (-y / g.r) + g.assi.verso[i] * z);
+  const lat = Math.asin(Math.max(-1, Math.min(1, skyDot(u, g.telaio.nord)))) / SKY_D2R;
+  const lon = Math.atan2(skyDot(u, g.telaio.est), skyDot(u, g.telaio.pm)) / SKY_D2R;
+  const nome = nomeLuogoVicino(lat, lon);
+  if (!skyImpostaLuogoVista(lat, lon, nome)) return false;
+  solDisegna();
+  skyAvviso('luogo', `Punto impostato dal Sistema Solare 3D: ${nome || formattaCoordinate(lat, lon)}.`, 7000);
+  return true;
 }
 
 function solTocco(e) {
@@ -28478,7 +31522,15 @@ function solTocco(e) {
   if (!sol.vicino && sol.lunaSchermo) {
     prova('Moon', sol.lunaSchermo.px, sol.lunaSchermo.py, sol.lunaSchermo.r);
   }
-  if (migliore) solScegli(migliore);
+  if (migliore) {
+    solScegli(migliore);
+  } else if (sol.scelto) {
+    // Lo spazio vuoto si comporta come un secondo tocco sul corpo scelto:
+    // chiude la scheda e lascia il suo perno, tornando alla vista d'insieme.
+    // Prima non succedeva nulla e, dopo aver aperto un'orbita, la selezione
+    // rimaneva attiva finché non si centrava di nuovo il piccolo pianeta.
+    solScegli(sol.scelto);
+  }
 }
 
 // --- A tutto schermo -------------------------------------------------------
@@ -28678,6 +31730,10 @@ window.apriSistemaSolare = (opzioni = {}) => {
   solGeneraStelle(110);
   if (!sol.fasce.length) solGeneraFasce();
   solInizializzaGesti();
+  const campoRicerca = document.getElementById('sol-cerca');
+  const esitoRicerca = document.getElementById('sol-ricerca-esito');
+  if (campoRicerca) campoRicerca.value = '';
+  if (esitoRicerca) esitoRicerca.textContent = '';
   const aiuto = document.querySelector('.sol-suggerimento');
   if (aiuto) aiuto.classList.remove('sol-svanito');
   // Il pannellino delle opzioni è una cosa di questa sessione, non una
@@ -28734,6 +31790,9 @@ window.apriSistemaSolare = (opzioni = {}) => {
 };
 
 function chiudiSistemaSolare() {
+  // Senza la scena davanti non si può continuare a comporre il filmato.
+  // Come uscendo dal planetario, una ripresa in corso viene annullata.
+  if (sky.reg.attiva && sky.reg.origine === 'solare') skyRegFerma({ annulla: true });
   // Prima di tutto si torna dentro alla finestra: col ripiego il guscio è
   // appeso al body, e nasconderei il modale lasciando la scena a coprire
   // tutto lo schermo
@@ -28777,6 +31836,20 @@ function inizializzaSistemaSolare() {
     if (b) b.addEventListener('click', chiudiSistemaSolare);
   });
   modale.addEventListener('click', e => { if (e.target === modale) chiudiSistemaSolare(); });
+
+  const ricerca = document.getElementById('sol-ricerca');
+  const campoRicerca = document.getElementById('sol-cerca');
+  const esitoRicerca = document.getElementById('sol-ricerca-esito');
+  if (ricerca && campoRicerca) ricerca.addEventListener('submit', e => {
+    e.preventDefault();
+    const id = solIdDaRicerca(campoRicerca.value);
+    if (!id || !solInquadraRicerca(id)) {
+      if (esitoRicerca) esitoRicerca.textContent = 'Elemento non trovato';
+      return;
+    }
+    if (esitoRicerca) esitoRicerca.textContent = '';
+    campoRicerca.blur();
+  });
 
   // I tre tondi delle viste. Sono l'unico comando sempre in vista, e le tre
   // cose che fanno sono tre risposte diverse alla stessa domanda: la
@@ -28850,9 +31923,11 @@ function inizializzaSistemaSolare() {
   const schermo = document.getElementById('sol-schermo');
   if (schermo) schermo.addEventListener('click', solAlternaSchermoIntero);
   const zoomMenoMappa = document.getElementById('sol-zoom-meno');
-  if (zoomMenoMappa) zoomMenoMappa.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto / 1.4, { morbido: true }));
+  if (zoomMenoMappa) zoomMenoMappa.addEventListener('click', () =>
+    solImpostaZoom(sol.zoomVoluto / Math.pow(1.4, solPrecisioneCamera()), { morbido: true }));
   const zoomPiuMappa = document.getElementById('sol-zoom-piu');
-  if (zoomPiuMappa) zoomPiuMappa.addEventListener('click', () => solImpostaZoom(sol.zoomVoluto * 1.4, { morbido: true }));
+  if (zoomPiuMappa) zoomPiuMappa.addEventListener('click', () =>
+    solImpostaZoom(sol.zoomVoluto * Math.pow(1.4, solPrecisioneCamera()), { morbido: true }));
 
   // Il pieno schermo può finire anche senza passare dal tasto (Esc, o il
   // gesto del sistema): quando succede, la tela va rimisurata comunque
@@ -28945,21 +32020,25 @@ function inizializzaSistemaSolare() {
     if (e.key === 'Escape' && solPannelloTempoAperto()) { solChiudiPannelloTempo(); return; }
     // E finché si scrive una data, le frecce e lo spazio sono del campo
     if (solPannelloTempoAperto() && e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    // Nel campo di ricerca R, F, C, spazio e frecce sono testo e navigazione,
+    // non scorciatoie della telecamera.
+    if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
     // Le frecce girano la scena nello stesso verso del dito; con Maiusc
     // premuto la spostano, come il trascinamento col tasto destro
-    const passoPan = 40;
+    const precisione = solPrecisioneCamera();
+    const passoPan = 40 * precisione;
     // A tutto schermo l'Esc è del pieno schermo: si torna alla finestra, non
     // si chiude tutto. È lo stesso patto della mappa dell'ombra
     if (e.key === 'Escape' && solSchermoIntero) { solEsciSchermoIntero(); return; }
     if (e.key === 'Escape') chiudiSistemaSolare();
-    else if (e.key === 'ArrowLeft') { e.shiftKey ? solSposta(-passoPan, 0) : (sol.az -= 0.12); }
-    else if (e.key === 'ArrowRight') { e.shiftKey ? solSposta(passoPan, 0) : (sol.az += 0.12); }
+    else if (e.key === 'ArrowLeft') { e.shiftKey ? solSposta(-passoPan, 0) : (sol.az -= 0.12 * precisione); }
+    else if (e.key === 'ArrowRight') { e.shiftKey ? solSposta(passoPan, 0) : (sol.az += 0.12 * precisione); }
     else if (e.key === 'ArrowUp') {
       if (e.shiftKey) solSposta(0, -passoPan);
-      else { sol.elevVoluta = Math.max(-89, sol.elevVoluta - 4); solAggiornaTasti(); }
+      else { sol.elevVoluta = Math.max(-89, sol.elevVoluta - 4 * precisione); solAggiornaTasti(); }
     } else if (e.key === 'ArrowDown') {
       if (e.shiftKey) solSposta(0, passoPan);
-      else { sol.elevVoluta = Math.min(89, sol.elevVoluta + 4); solAggiornaTasti(); }
+      else { sol.elevVoluta = Math.min(89, sol.elevVoluta + 4 * precisione); solAggiornaTasti(); }
     } else if (e.key === 'c' || e.key === 'C') solCentra();
     else if (e.key === 'r' || e.key === 'R') solRipristinaVista();
     else if (e.key === 'f' || e.key === 'F') solAlternaSchermoIntero();
@@ -29043,10 +32122,8 @@ function simOsservatore() {
 // copre quello che c'è sotto (la N della cupola, il bordo della Luna). L'anno
 // intanto è già scritto nel titolo della finestra.
 function simOraTesto(data, compatto) {
-  return data.toLocaleString('it-IT', Object.assign(
-    { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' },
-    compatto ? {} : { year: 'numeric' }
-  ));
+  const o = simOsservatore();
+  return dataOraDelLuogo(data, o, { year: !compatto });
 }
 
 // Durata in forma leggibile, a partire dai minuti
@@ -29394,6 +32471,11 @@ function simCostruisciScena(ev) {
     const semi = 45 * SIM_GIORNO;
     return { tipo, dati, inizio: d - semi, fine: d + semi, durata: 28,
       nota: 'Le posizioni di Terra e pianeta sono quelle vere: al massimo dell’elongazione il pianeta appare illuminato a metà.' };
+  }
+  if (tipo === 'congiunzione') {
+    const semi = 12 * SIM_ORA;
+    return { tipo, dati, inizio: d - semi, fine: d + semi, durata: 30,
+      nota: 'Posizioni e separazione sono calcolate istante per istante. I dischi dei pianeti sono ingranditi per renderli riconoscibili; le distanze angolari e il campo del binocolo sono in scala.' };
   }
   // Evento generico (compresi quelli aggiunti a mano): si simula il cielo
   const semi = 4 * SIM_ORA;
@@ -30224,7 +33306,7 @@ function simScenaSciame(ctx, tempo, dtReale) {
     simEtichetta(ctx, 'radiante', pr.x, pr.y - 24, '#67e8f9', 'center', true);
   }
 
-  const ora = tempo.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const ora = oraDelLuogo(tempo, simOsservatore());
   const righe = [
     `<p><strong>Ore ${ora}</strong> · radiante ${radiante.alt > 0
       ? `a <strong>${radiante.alt.toFixed(0)}°</strong> sopra l’orizzonte`
@@ -30382,6 +33464,90 @@ function simScenaCielo(ctx, tempo) {
   ];
 }
 
+// Campo ravvicinato dei due protagonisti di una congiunzione. Il cerchio e
+// la distanza fra i centri sono in scala; i dischi sono ingranditi, altrimenti
+// un pianeta occuperebbe meno di un pixel anche su uno schermo grande.
+function simScenaCongiunzione(ctx, tempo) {
+  const L = sim.L, H = sim.H, dati = sim.scena.dati;
+  const congiunzione = sim.evento.congiunzione || {};
+  const idA = dati.a || congiunzione.a, idB = dati.b || congiunzione.b;
+  const nomeA = dati.nomeA || congiunzione.nomeA || idA;
+  const nomeB = dati.nomeB || congiunzione.nomeB || idB;
+  const o = simOsservatore();
+
+  ctx.fillStyle = '#020617'; ctx.fillRect(0, 0, L, H);
+  simDisegnaStelleSfondo(ctx, 0.65);
+
+  let va, vb, sep, altA, altB, azA, azB, faseLuna = 1, distanzaA, distanzaB;
+  try {
+    va = Astronomy.GeoVector(idA, tempo, true);
+    vb = Astronomy.GeoVector(idB, tempo, true);
+    sep = Astronomy.AngleBetween(va, vb);
+    distanzaA = Math.hypot(va.x, va.y, va.z) * UA_KM;
+    distanzaB = Math.hypot(vb.x, vb.y, vb.z) * UA_KM;
+    const eqA = Astronomy.Equator(idA, tempo, o.obs, true, true);
+    const eqB = Astronomy.Equator(idB, tempo, o.obs, true, true);
+    const hA = Astronomy.Horizon(tempo, o.obs, eqA.ra, eqA.dec, 'normal');
+    const hB = Astronomy.Horizon(tempo, o.obs, eqB.ra, eqB.dec, 'normal');
+    altA = hA.altitude; altB = hB.altitude; azA = hA.azimuth; azB = hB.azimuth;
+    if (idA === 'Moon' || idB === 'Moon') faseLuna = Astronomy.Illumination('Moon', tempo).phase_fraction;
+  } catch (e) {
+    return ['<p>Non è stato possibile calcolare la posizione dei due astri.</p>'];
+  }
+
+  const campo = 8; // gradi: campo tipico di un binocolo 7×50
+  const rCampo = Math.min(L * 0.42, H * 0.40), cx = L / 2, cy = H / 2;
+  const scala = 2 * rCampo / campo;
+  const ra = Math.atan2(va.y, va.x), rb = Math.atan2(vb.y, vb.x);
+  const decA = Math.atan2(va.z, Math.hypot(va.x, va.y));
+  const decB = Math.atan2(vb.z, Math.hypot(vb.x, vb.y));
+  let dra = rb - ra;
+  if (dra > Math.PI) dra -= Math.PI * 2;
+  if (dra < -Math.PI) dra += Math.PI * 2;
+  const dx = dra * Math.cos((decA + decB) / 2) / (Math.PI / 180) * scala;
+  const dy = -(decB - decA) / (Math.PI / 180) * scala;
+  const ax = cx - dx / 2, ay = cy - dy / 2, bx = cx + dx / 2, by = cy + dy / 2;
+
+  ctx.beginPath(); ctx.arc(cx, cy, rCampo, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(15,23,42,0.62)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(125,211,252,0.55)'; ctx.lineWidth = 2; ctx.stroke();
+  simEtichetta(ctx, 'campo di 8° (binocolo)', cx, cy - rCampo - 14, '#7dd3fc');
+
+  const disegnaCorpo = (id, nome, x, y) => {
+    if (id === 'Moon') {
+      simDisegnaLuna(ctx, x, y, Math.max(13, Math.min(25, rCampo * 0.11)), faseLuna,
+        true, '#e5e7eb', 'rgba(2,6,23,0.92)');
+    } else {
+      const r = Math.max(6, Math.min(10, rCampo * 0.045));
+      const colore = id === 'Saturn' ? '#f5d99b' : id === 'Mars' ? '#fb8b64' :
+        id === 'Venus' ? '#fff4c2' : id === 'Jupiter' ? '#f4c99b' : '#dbeafe';
+      ctx.fillStyle = colore; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      if (id === 'Saturn') {
+        ctx.strokeStyle = '#e8c77c'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(x, y, r * 1.8, r * 0.55, -0.18, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    simEtichetta(ctx, nome, x, y + Math.max(25, rCampo * 0.15), '#f8fafc', 'center', true);
+  };
+  disegnaCorpo(idA, nomeA, ax, ay); disegnaCorpo(idB, nomeB, bx, by);
+
+  ctx.strokeStyle = 'rgba(216,180,254,0.9)'; ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+  simEtichetta(ctx, `${sep.toFixed(2)}°`, cx, cy - 12, '#e9d5ff', 'center', true);
+
+  const minuti = (tempo - sim.evento.dataObj) / SIM_MIN;
+  const sopra = altA > 0 && altB > 0, altMedia = (altA + altB) / 2;
+  const azMedia = ((azA + azB) / 2 + 360) % 360;
+  const distanzaTesto = km => km >= 1e8
+    ? `${(km / 1e9).toFixed(2)} miliardi di km` : `${Math.round(km / 1e6)} milioni di km`;
+  return [
+    `<p><strong>${nomeA} e ${nomeB}: ${sep.toFixed(2)}° di separazione</strong> (${Math.round(sep * 60)} primi d’arco).</p>`,
+    `<p>${sopra ? `Entrambi sopra l’orizzonte, a circa <strong>${altMedia.toFixed(0)}°</strong> verso <strong>${skyNomeDirezione(azMedia)}</strong>.` : `Da questa posizione almeno uno dei due astri è <strong>sotto l’orizzonte</strong>.`}</p>`,
+    `<p>${minuti < 0 ? 'Mancano' : 'Sono passati'} <strong>${simDurataTesto(minuti)}</strong> ${minuti < 0 ? 'al' : 'dal'} massimo avvicinamento.</p>`,
+    `<p>La vicinanza è solo apparente: ${nomeA} dista circa <strong>${distanzaTesto(distanzaA)}</strong> dalla Terra, ${nomeB} circa <strong>${distanzaTesto(distanzaB)}</strong>.</p>`
+  ];
+}
+
 // =====================================================================
 // 8.11 Ciclo di disegno e comandi
 // =====================================================================
@@ -30419,6 +33585,7 @@ function simDisegna(dtReale) {
         case 'stagione':      righe = simScenaStagione(ctx, tempo); break;
         case 'sciame':        righe = simScenaSciame(ctx, tempo, dtReale); break;
         case 'elongazione':   righe = simScenaElongazione(ctx, tempo); break;
+        case 'congiunzione':  righe = simScenaCongiunzione(ctx, tempo); break;
         default:              righe = simScenaCielo(ctx, tempo); break;
       }
     } catch (err) {
@@ -30507,6 +33674,7 @@ const SIM_PERCHE_ECLITTICA = {
   stagione: 'Equinozi e solstizi sono i quattro punti in cui l\'eclittica incrocia l\'equatore celeste: ' +
     'le stagioni nascono proprio dall\'angolo fra i due.',
   elongazione: 'Un pianeta si allontana dal Sole muovendosi lungo quella linea: l\'elongazione si misura lì sopra.',
+  congiunzione: 'Le congiunzioni accadono perché Luna e pianeti percorrono la stessa fascia del cielo e, visti dalla Terra, a volte si allineano quasi sulla stessa direzione.',
   cielo: 'Sole, Luna e pianeti che vedi in scena stanno tutti appoggiati a quella riga.'
 };
 
@@ -30750,7 +33918,11 @@ function aggiungiCongiunzioni(oggi, limite) {
             nomeA: coppia.a.nome, nomeB: coppia.b.nome,
             separazione: gradi
           },
-          simul: { scena: 'cielo' },
+          simul: {
+            scena: 'congiunzione',
+            a: coppia.a.id, b: coppia.b.id,
+            nomeA: coppia.a.nome, nomeB: coppia.b.nome
+          },
           programma: {
             cosaPortare: 'Nulla di obbligatorio: si vede a occhio nudo. Un binocolo li mostra insieme nello stesso campo, e con il telefono si fanno belle foto.',
             doveVederlo: `Serve un orizzonte libero nella direzione giusta: guarda la scheda “da qui” qui sotto per sapere dove e a che ora sono visibili dal tuo luogo.`,
@@ -31061,7 +34233,8 @@ async function posCittaOnline(testo) {
         nome: r.name,
         paese: [r.admin1, r.country].filter(Boolean).join(', '),
         lat: r.latitude,
-        lon: r.longitude
+        lon: r.longitude,
+        fuso: r.timezone || null
       }));
   } catch (e) {
     return []; // offline: restano le città a bordo, che bastano
@@ -31083,7 +34256,7 @@ function posMostraRisultati(elenco, nota) {
   box.querySelectorAll('[data-citta]').forEach(btn => {
     btn.addEventListener('click', () => {
       const c = elenco[parseInt(btn.dataset.citta, 10)];
-      if (c) posUsaLuogo(c.lat, c.lon, c.nome, 'citta');
+      if (c) posUsaLuogo(c.lat, c.lon, c.nome, 'citta', c.fuso);
     });
   });
   // Sul telefono la tastiera copre metà schermo: senza questo le città
@@ -31092,8 +34265,10 @@ function posMostraRisultati(elenco, nota) {
 }
 
 // Applica un luogo scelto a mano e aggiorna tutta l'app
-async function posUsaLuogo(lat, lon, nome, fonte) {
-  skyImpostaPosizione(lat, lon, fonte, { nome: nome || null, tempo: Date.now() });
+async function posUsaLuogo(lat, lon, nome, fonte, fuso) {
+  skyImpostaPosizione(lat, lon, fonte, {
+    nome: nome || null, tempo: Date.now(), fuso: fuso || null
+  });
   const manuale = document.getElementById('pos-manuale');
   if (manuale) manuale.classList.remove('in-evidenza');
   posImpostaStrato('manuale', 'fatto', `Stai usando ${nome || formattaCoordinate(lat, lon)}.`);
@@ -31440,11 +34615,11 @@ function circostanzeLocali(evento) {
 }
 
 function oraBreve(data) {
-  return data ? data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '—';
+  return oraDelLuogo(data, null);
 }
 
 function dataOraBreve(data) {
-  return data ? data.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+  return dataOraDelLuogo(data, null, { year: false });
 }
 
 // =====================================================================
@@ -31490,7 +34665,7 @@ async function caricaMeteo(forza) {
   const url = 'https://api.open-meteo.com/v1/forecast' +
     `?latitude=${luogo.lat.toFixed(4)}&longitude=${luogo.lon.toFixed(4)}` +
     '&hourly=cloud_cover,temperature_2m,relative_humidity_2m,wind_speed_10m' +
-    `&forecast_days=${METEO_GIORNI}&timezone=auto`;
+    `&forecast_days=${METEO_GIORNI}&timezone=auto&timeformat=unixtime`;
 
   meteoInCorso = fetch(url)
     .then(r => {
@@ -31499,10 +34674,11 @@ async function caricaMeteo(forza) {
     })
     .then(dati => {
       const h = dati.hourly || {};
+      fusoRicorda(luogo.lat, luogo.lon, dati.timezone, dati.timezone_abbreviation);
       const ore = (h.time || []).map((t, i) => ({
-        // Open-Meteo con timezone=auto restituisce l'ora locale senza fuso:
-        // interpretata dal browser come ora locale, che è esattamente ciò che serve.
-        ms: new Date(t).getTime(),
+        // Con timeformat=unixtime ogni campione è un istante UTC assoluto:
+        // non dipende dal fuso del telefono che sta eseguendo l'app.
+        ms: Number(t) * 1000,
         nuvole: h.cloud_cover ? h.cloud_cover[i] : null,
         temp: h.temperature_2m ? h.temperature_2m[i] : null,
         umidita: h.relative_humidity_2m ? h.relative_humidity_2m[i] : null,
@@ -32963,6 +36139,50 @@ function inizializzaImpostazioni() {
     });
   }
 
+  const impSosta = document.getElementById('imp-skymap-sosta');
+  if (impSosta) {
+    const salvata = parseFloat(localStorage.getItem(CHIAVE_SKY_SOSTA));
+    sky.sostaMirinoSec = isNaN(salvata)
+      ? SKY_SOSTA_PREDEFINITA_SEC
+      : Math.max(0.5, Math.min(10, salvata));
+    impSosta.value = String(sky.sostaMirinoSec);
+    impSosta.addEventListener('change', () => {
+      const secondi = Math.max(0.5, Math.min(10,
+        parseFloat(impSosta.value) || SKY_SOSTA_PREDEFINITA_SEC));
+      sky.sostaMirinoSec = secondi;
+      sky.sostaMirino = null;
+      impSosta.value = String(secondi);
+      try { localStorage.setItem(CHIAVE_SKY_SOSTA, String(secondi)); } catch (e) { /* niente storage */ }
+    });
+  }
+
+  const impDurataMappa = document.getElementById('imp-skymap-durata-mappa');
+  const impMappaSempre = document.getElementById('imp-skymap-mappa-sempre');
+  if (impDurataMappa && impMappaSempre) {
+    const salvata = localStorage.getItem(CHIAVE_SKY_DURATA_MAPPA_SPOSTAMENTO);
+    const valore = salvata === 'sempre' ? 0 : parseFloat(salvata);
+    sky.mappaSpostamento.durataSec = Number.isFinite(valore)
+      ? Math.max(0, Math.min(60, valore))
+      : SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC;
+    impMappaSempre.checked = sky.mappaSpostamento.durataSec === 0;
+    impDurataMappa.value = String(sky.mappaSpostamento.durataSec || SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC);
+    impDurataMappa.disabled = impMappaSempre.checked;
+    const salvaDurataMappa = () => {
+      const sempre = impMappaSempre.checked;
+      const secondi = Math.max(1, Math.min(60,
+        parseFloat(impDurataMappa.value) || SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC));
+      impDurataMappa.value = String(secondi);
+      impDurataMappa.disabled = sempre;
+      sky.mappaSpostamento.durataSec = sempre ? 0 : secondi;
+      try { localStorage.setItem(CHIAVE_SKY_DURATA_MAPPA_SPOSTAMENTO, sempre ? 'sempre' : String(secondi)); } catch (e) { /* niente storage */ }
+      if (!document.getElementById('skymap-mappa-spostamento')?.classList.contains('hidden')) {
+        skyProgrammaChiusuraMappaSpostamento();
+      }
+    };
+    impDurataMappa.addEventListener('change', salvaDurataMappa);
+    impMappaSempre.addEventListener('change', salvaDurataMappa);
+  }
+
   const tab = Array.from(document.querySelectorAll('[data-imp-tab]'));
   const mostraTab = (nome, portaFocus) => {
     tab.forEach(tasto => {
@@ -33283,6 +36503,26 @@ function skyAdesso() {
   return new Date(Date.now() + (sky.offsetTempoSec || 0) * 1000);
 }
 
+// Il tasto «adesso» non deve limitarsi ad azzerare lo scarto: chi lo preme
+// sta chiedendo che ora è *qui*, nel luogo da cui il planetario sta guardando.
+// Applichiamo subito il fuso già noto e, se serve, lo ricaviamo di nuovo dalle
+// coordinate; al ritorno della risposta aggiorniamo soltanto se nel frattempo
+// l'utente non si è spostato ancora.
+function skyRicalcolaOraAttuale() {
+  const luogo = skyLuogoDelCielo();
+  skyAggiornaTestoTempo();
+  if (!luogo) return Promise.resolve(null);
+  const chiave = fusoChiave(luogo.lat, luogo.lon);
+  return caricaFusoOrario(luogo.lat, luogo.lon).then(fuso => {
+    const corrente = skyLuogoDelCielo();
+    if (corrente && fusoChiave(corrente.lat, corrente.lon) === chiave) {
+      skyAggiornaTestoTempo();
+      if (typeof solAggiornaBarra === 'function') solAggiornaBarra();
+    }
+    return fuso;
+  });
+}
+
 // Posizioni delle stelle delle costellazioni e degli oggetti profondi
 function skyAggiornaCatalogo(data) {
   if (!sky.observer || typeof Astronomy === 'undefined') {
@@ -33327,10 +36567,11 @@ function skyAggiornaCatalogo(data) {
   }
 
   // Le nubi della Via Lattea, ricalcolate con il resto. Non passano di qui
-  // per Horizon() — sono milleseicento — ma per la matrice unica di
-  // `skyPortaViaLatteaInCielo()`. Quando catalogo.js è caricato questo giro
-  // non si fa nemmeno: le nubi se le porta lui, con la matrice delle stelle.
-  if (sky.mostraViaLattea) {
+  // per Horizon() — sono cinquemilaseicento — ma per la matrice unica di
+  // `skyPortaViaLatteaInCielo()` (in `via-lattea.js`). Quando catalogo.js è
+  // caricato questo giro non si fa nemmeno: le nubi se le porta lui, con la
+  // matrice delle stelle.
+  if (sky.mostraViaLattea && typeof skyPortaViaLatteaInCielo === 'function') {
     skyPortaViaLatteaInCielo(t);
   } else {
     sky.viaLattea = [];
@@ -33551,10 +36792,8 @@ function skyAggiornaTestoTempo() {
   // tempo reale, e a che passo il cielo sta camminando.
   const el = document.getElementById('skymap-tempo-testo');
   if (el) {
-    const istante = quando.toLocaleString('it-IT', {
-      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
-    });
+    const istante = dataOraDelLuogo(quando, skyLuogoDelCielo(),
+      { weekday: 'short', secondi: true });
     const scartoTesto = scarto === 0 ? 'in tempo reale' : skyScartoTempoTesto(scarto);
     el.textContent = [scartoTesto, marcia].filter(Boolean).join(' · ');
     el.title = `${istante} · ${scartoTesto}`;
@@ -33575,61 +36814,86 @@ function skyAggiornaTestoTempo() {
   if (barra && !sky.slittaTempoAttiva) barra.classList.toggle('spostata', spostato);
 
   const lettura = document.getElementById('skymap-tempo-quando');
-  if (lettura && !sky.slittaTempoAttiva) {
-    lettura.textContent = skyTestoBarraTempo(quando, scarto, marcia);
-    const esteso = quando.toLocaleString('it-IT', {
-      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
+  if (lettura) {
+    const orari = skyOrariBarraTempo(quando);
+    // Ogni informazione ha una casella propria: il CSS puo' cosi' distribuire
+    // orari e scarto senza affidarsi a una frase che, in verticale, verrebbe
+    // inevitabilmente troncata.
+    const creaOrologio = (etichetta, valore, classe) => {
+      const orologio = document.createElement('span');
+      orologio.className = `orologio-barra-tempo ${classe}`;
+      const nome = document.createElement('span');
+      nome.className = 'etichetta-orologio-tempo';
+      nome.textContent = etichetta;
+      const ora = document.createElement('span');
+      ora.className = 'valore-orologio-tempo';
+      ora.textContent = valore;
+      orologio.append(nome, ora);
+      return orologio;
+    };
+    // Anche il verso fa parte della struttura: passando attraverso "adesso"
+    // la casella dello scarto resta presente, ma la sua etichetta deve
+    // cambiare da Futuro a Passato (o viceversa), non soltanto il valore.
+    const modo = `${orari.fusoDiverso ? 'altro-fuso' : 'fuso-dispositivo'}-${orari.direzione}`;
+    if (lettura.dataset.modo !== modo) {
+      const celle = orari.fusoDiverso
+        ? [creaOrologio('Località', orari.luogo, 'orologio-luogo'),
+          creaOrologio('Dispositivo', orari.dispositivo, 'orologio-dispositivo')]
+        : [creaOrologio('Dispositivo', orari.luogo, 'orologio-luogo')];
+      if (orari.mostraScarto) celle.push(creaOrologio(orari.direzione, orari.scarto, 'orologio-scarto'));
+      lettura.replaceChildren(...celle);
+      lettura.dataset.modo = modo;
+    }
+    const valori = {
+      '.orologio-luogo': orari.luogo,
+      '.orologio-dispositivo': orari.dispositivo,
+      '.orologio-scarto': orari.scarto
+    };
+    Object.entries(valori).forEach(([selettore, valore]) => {
+      const nodo = lettura.querySelector(`${selettore} .valore-orologio-tempo`);
+      if (nodo && nodo.textContent !== valore) nodo.textContent = valore;
     });
-    lettura.title = `${esteso}${scarto === 0 ? ' (tempo reale)' : ' · ' + skyScartoTempoTesto(scarto)}` +
+    lettura.classList.toggle('fuso-diverso', orari.fusoDiverso);
+    lettura.classList.toggle('con-scarto', orari.mostraScarto);
+    const esteso = dataOraDelLuogo(quando, skyLuogoDelCielo(), { weekday: 'short' });
+    lettura.setAttribute('aria-label',
+      `${orari.fusoDiverso ? `Ora della località ${orari.luogo}; ora attuale del dispositivo ${orari.dispositivo}; ` :
+        `Ora del dispositivo ${orari.luogo}; `}${orari.direzione.toLowerCase()}, ${orari.scarto}`);
+    lettura.title = `${esteso} · dispositivo ${orari.dispositivo}` +
+      `${scarto === 0 ? ' (tempo reale)' : ' · ' + skyScartoTempoTesto(scarto)}` +
       ' — tocca per data, passo e velocità del playback';
   }
 
   skyAggiornaCampoData(quando);
 }
 
-// Lo stesso scarto in forma di targhetta: "+20 min", "+7h46", "−3g 4h". Serve
-// dove lo spazio si conta a lettere — la barra del tempo su un telefono — e
-// dove "3 g 4 h fa" non ci starebbe mai.
-function skyScartoBreve(secondi) {
-  const a = Math.abs(secondi);
-  const segno = secondi > 0 ? '+' : '−';
-  const g = Math.floor(a / 86400);
-  const h = Math.floor((a % 86400) / 3600);
-  const m = Math.floor((a % 3600) / 60);
-  // Le ore si scrivono all'orologiaia — "+7h46" — perché "+7 h 46" lascia
-  // quel 46 senza unità, e chi legge di sfuggita capisce quarantasei ore
-  if (g) return `${segno}${g}g${h ? ' ' + h + 'h' : ''}`;
-  if (h) return `${segno}${h}h${m ? String(m).padStart(2, '0') : ''}`;
-  if (m) return `${segno}${m} min`;
-  return `${segno}${Math.floor(a)} s`;
-}
-
-// Che cosa scrive la barra del tempo. Deve stare in una pillola stretta senza
-// rubare spazio alla slitta, quindi dice il minimo che serve a non sbagliarsi:
-//   · l'ora, sempre;
-//   · il giorno, solo se non è oggi (spostarsi di tre ore è un conto,
-//     spostarsi di tre giorni e vedere solo "22:41" è una trappola);
-//   · di quanto ci si è spostati — o, se il cielo sta camminando, a che passo,
-//     perché lì lo scarto cambia a ogni fotogramma ed è illeggibile.
-// L'ultima riga è quella che cambia con la larghezza: sulla mappa larga si
-// dice per esteso ("fra 20 min"), su quella stretta in targhetta ("+20 min").
-function skyTestoBarraTempo(quando, scarto, marcia) {
-  const ora = quando.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-  const oggi = new Date();
-  const giorno = quando.toDateString() === oggi.toDateString()
-    ? ''
-    : quando.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' }) + ' ';
-  const testa = giorno + ora;
-  if (scarto === 0 && !marcia) return testa;
-
-  const stretta = !sky.larghezza || sky.larghezza < 500;
-  // Su una mappa stretta, quando c'è già la data non si aggiunge anche di
-  // quanto: "5 ago 10:01" dice dove sei meglio di "5 ago 10:01 · +3 g" tagliato
-  if (stretta && giorno && !marcia) return testa;
-
-  const coda = marcia || (stretta ? skyScartoBreve(scarto) : skyScartoTempoTesto(scarto));
-  return `${testa} · ${coda}`;
+// Contenuto delle due modalita' della barra. Se luogo e dispositivo hanno lo
+// stesso fuso non ripetiamo due volte lo stesso orologio; se sono diversi il
+// confronto e' fra l'istante osservato nel luogo e l'ora *attuale* di chi usa
+// il dispositivo. Lo scarto e' sempre rispetto a questo preciso adesso.
+function skyOrariBarraTempo(quando) {
+  const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
+  const fusoLuogo = fusoDelLuogo(luogo).nome;
+  const fusoDispositivo = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const adesso = new Date();
+  const scartoOre = (quando.getTime() - adesso.getTime()) / 3600000;
+  const spostato = Math.abs(scartoOre) >= (1 / 3600);
+  const assoluto = Math.abs(scartoOre);
+  const numero = assoluto < 0.05 ? '< 0,1' : assoluto.toLocaleString('it-IT', {
+    minimumFractionDigits: 0, maximumFractionDigits: 1
+  });
+  const dispositivo = new Intl.DateTimeFormat('it-IT', {
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).format(adesso);
+  return {
+    luogo: oraDelLuogo(quando, luogo, { soloLocale: true }),
+    dispositivo,
+    fusoDiverso: fusoLuogo !== fusoDispositivo,
+    spostato,
+    mostraScarto: fusoLuogo !== fusoDispositivo || spostato,
+    direzione: spostato ? (scartoOre > 0 ? 'Futuro' : 'Passato') : 'Tempo reale',
+    scarto: spostato ? `${scartoOre > 0 ? '+' : '−'}${numero} h` : '0 h'
+  };
 }
 
 // --- Le sei caselle della data ---
@@ -33638,12 +36902,12 @@ function skyTestoBarraTempo(quando, scarto, marcia) {
 // intero — è l'unico modo di arrivare al 3000 senza mille clic su una
 // freccetta.
 const SKY_CASELLE_DATA = [
-  { id: 'skymap-data-giorno',  leggi: d => d.getDate() },
-  { id: 'skymap-data-mese',    leggi: d => d.getMonth() + 1 },
-  { id: 'skymap-data-anno',    leggi: d => d.getFullYear(), cifre: 4 },
-  { id: 'skymap-data-ore',     leggi: d => d.getHours() },
-  { id: 'skymap-data-minuti',  leggi: d => d.getMinutes() },
-  { id: 'skymap-data-secondi', leggi: d => d.getSeconds() }
+  { id: 'skymap-data-giorno',  parte: 'day' },
+  { id: 'skymap-data-mese',    parte: 'month' },
+  { id: 'skymap-data-anno',    parte: 'year', cifre: 4 },
+  { id: 'skymap-data-ore',     parte: 'hour' },
+  { id: 'skymap-data-minuti',  parte: 'minute' },
+  { id: 'skymap-data-secondi', parte: 'second' }
 ];
 
 // Il campo della data segue l'istante mostrato, ma non mentre ci si scrive
@@ -33655,10 +36919,11 @@ const SKY_CASELLE_DATA = [
 function skyAggiornaCampoData(quando) {
   const gruppo = document.getElementById('skymap-data');
   if (!gruppo || gruppo.contains(document.activeElement)) return;
+  const parti = partiDataDelLuogo(quando, skyLuogoDelCielo());
   SKY_CASELLE_DATA.forEach(c => {
     const campo = document.getElementById(c.id);
     if (!campo) return;
-    const valore = String(c.leggi(quando)).padStart(c.cifre || 2, '0');
+    const valore = String(parti[c.parte]).padStart(c.cifre || 2, '0');
     if (campo.value !== valore) campo.value = valore;
   });
 }
@@ -33681,13 +36946,11 @@ function skyDataDalleCaselle() {
   const giorno = n['skymap-data-giorno'];
   if (anno < ANNO_MINIMO_NAVIGABILE || anno > ANNO_MASSIMO_NAVIGABILE) return null;
   if (mese < 1 || mese > 12 || giorno < 1 || giorno > 31) return null;
-  const d = new Date(anno, mese - 1, giorno,
-    n['skymap-data-ore'], n['skymap-data-minuti'], n['skymap-data-secondi'], 0);
-  if (isNaN(d.getTime())) return null;
-  // Il 31 di febbraio, scritto in un campo, diventerebbe il 3 di marzo senza
-  // che nessuno lo dica: se la data si è "sistemata" da sola non era una data
-  if (d.getFullYear() !== anno || d.getMonth() !== mese - 1 || d.getDate() !== giorno) return null;
-  return d;
+  return dataDalTempoDelLuogo({
+    year: anno, month: mese, day: giorno,
+    hour: n['skymap-data-ore'], minute: n['skymap-data-minuti'],
+    second: n['skymap-data-secondi']
+  }, skyLuogoDelCielo());
 }
 
 // "Vai": porta il cielo alla data scritta. Se non è una data, le caselle
@@ -34123,6 +37386,7 @@ function inizializzaSkymapExtra() {
     skyFermaPlayback();
     sky.ancoraTempoSec = 0;
     skyImpostaOffsetTempo(0);
+    skyRicalcolaOraAttuale();
     skyMostraGruppo('');
   };
   collega('skymap-tempo-adesso', tornaAdesso);
@@ -34190,7 +37454,10 @@ function inizializzaSkymapExtra() {
     skyAggiornaOggetti(true);
   });
 
-  collega('skymap-btn-camera', skyAttivaFotocamera);
+  // Il pannello si chiude **prima** di chiedere la fotocamera: il permesso
+  // può metterci qualche secondo, e in quei secondi il cielo dev'essere già
+  // libero — l'immagine arriva sotto al pannello, non davanti.
+  collega('skymap-btn-camera', () => { skyMostraGruppo(''); skyAttivaFotocamera(); });
 
   // Uscendo dal planetario la fotocamera si spegne: batteria e privacy
   document.addEventListener('visibilitychange', () => {

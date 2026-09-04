@@ -97,6 +97,146 @@ const RIL_RAGGIO_KM = 6;
 // quel numero il raggio si stringe invece di scaricare di più.
 const RIL_TESSERE_MAX = 9;
 
+// Rifare la maglia e riscaricare le tessere sono **due cose diverse**, e per
+// un pezzo sono state la stessa: si ricostruiva solo quando conveniva
+// ripagare il megabyte, cioè ogni quattrocentocinquanta metri a piedi e ogni
+// chilometro e mezzo in macchina. In mezzo la maglia veniva traslata a ogni
+// fotogramma (`rilCampioneInMovimento`) — il che teneva il disegno vivo, ma
+// lasciava scoperta la metà che non si disegna: `rilievo.cresta` e
+// `rilievo.fronte` continuavano a raccontare il posto di partenza. Sono loro
+// a dire se un astro è sorto, quale vetta si vede e dove finisce un lago:
+// per un chilometro e mezzo l'orizzonte disegnato e quello calcolato
+// parlavano di due punti diversi, e i nomi delle montagne finivano appesi a
+// creste che sullo schermo non c'erano più.
+//
+// Rifare la maglia però **non costa rete**: le tessere sono già decodificate
+// in memoria e coprono sei chilometri, quindi ricostruire è aritmetica —
+// settantaseimila `atan2` a scaglioni di otto millesimi, cioè qualche
+// fotogramma di lavoro spalmato, mentre quella vecchia resta disegnata. Si
+// rifà allora spesso (sotto, `RIL_RICENTRA_M`) e si scarica solo quando le
+// tessere che servono non ci sono più.
+const RIL_RICENTRA_M = 60;
+const RIL_RICENTRA_MIN_MS = 3000;
+// Fra due giri di tessere: sotto questo tempo si ricostruisce con quello che
+// c'è, che è sempre meglio di una maglia ferma.
+const RIL_TESSERE_MIN_MS = 8000;
+// Quante tessere decodificate si tengono in memoria. Nove coprono il disco;
+// le altre sono quelle che ci si lascia dietro viaggiando, e tenerne un po'
+// vuol dire che tornare indietro (o girare attorno a un isolato) non ricompra
+// niente. Ognuna è un quarto di megabyte.
+const RIL_TESSERE_TENUTE = 18;
+
+// Quando riprovare una tessera che non è arrivata, e quante volte.
+//
+// È la differenza fra un guaio di un secondo e un guaio per tutta la
+// sessione. Una tessera può non arrivare per ragioni che passano da sole —
+// `ERR_CONNECTION_CLOSED` da S3, un tunnel, il Wi-Fi che cambia cella — e
+// segnarla come «non c'è» una volta per sempre vuol dire tenersi il buco
+// finché l'app resta aperta: quel settore del disco legge la griglia grossa
+// (centocinquanta metri di passo) mentre i suoi vicini leggono le tessere
+// (ventisette), e il primo piano ci viene a facce piatte con la cucitura in
+// mezzo. Sullo schermo non si legge come un dato mancante, si legge come un
+// terreno sbagliato.
+//
+// Venti secondi, e cinque tentativi in tutto. Il tetto serve perché una
+// tessera può anche non esistere davvero (il mare aperto, un buco nel
+// dataset): lì riprovare all'infinito vorrebbe dire una richiesta ogni venti
+// secondi per sempre, e la risposta giusta — la griglia grossa — ce l'abbiamo
+// già.
+const RIL_TESSERA_RIPROVA_MS = 20000;
+const RIL_TESSERA_TENTATIVI = 5;
+
+// Sotto questo scostamento la maglia si legge così com'è: mezzo metro non
+// sposta nessun nodo di un pixel, e pagare una bilineare per nodo per non
+// spostare niente sarebbe il modo più caro di non cambiare il disegno.
+const RIL_TRASLA_MIN_M = 0.5;
+
+// E oltre questo scostamento non si trasla affatto: la maglia non è più la
+// superficie di qui, e va buttata.
+//
+// La traslazione in sé regge bene: misurata su un fianco prealpino contro la
+// maglia ricostruita da capo nel punto nuovo, l'errore mediano della cresta
+// resta sotto il centesimo di grado fino a tre chilometri. Quello che non
+// regge è il resto — e sono due cose. Le tessere coprono `RIL_RAGGIO_KM`
+// attorno al **centro della maglia**: uscito da quel disco, di qui la maglia
+// non ha più niente di fine da dire, e il primo piano lo disegna con la
+// griglia grossa di un altro punto. E la camera, che sta a una quota presa
+// da un modello diverso: basta che i due non siano d'accordo perché il
+// terreno vicino si alzi come una parete (§8-bis). Con «Guarda il cielo da
+// qui» le due cose capitano insieme, ed è il cuneo di terra sopra l'orizzonte
+// che se ne vede.
+//
+// Buttarla non lascia un buco: senza maglia il planetario torna al profilo a
+// bande di `terreno.js`, che è quello che disegna prima che la maglia arrivi.
+// Tenerla sarebbe come i profili di Genova disegnati a Bolzano — peggio di
+// nessuna collina, perché sembrano veri.
+const RIL_MAGLIA_VALIDA_M = RIL_RAGGIO_KM * 1000;
+
+// Quanto in fretta la quota dell'occhio insegue il terreno sotto i piedi.
+// Non ci si arriva di colpo, e non è morbidezza gratuita: il modello del
+// suolo dice un valore ogni ventisette metri, e due fix vicini possono
+// pescare due celle diverse che differiscono di qualche metro. Cinque metri
+// a venticinque di distanza sono undici gradi — cioè tutto l'orizzonte
+// vicino che sobbalza. Un secondo e mezzo di costante di tempo li spalma,
+// e a passo d'uomo o in macchina la salita vera si segue lo stesso.
+const RIL_OCCHIO_TAU_MS = 1500;
+// Un dato che arriva dalla rete può correggere la quota anche di centinaia
+// di metri. La sola esponenziale è continua, ma all'inizio percorre una
+// frazione dello scarto: con 300 m di correzione sono ancora più di 180 m/s,
+// percepiti come un colpo di camera. Questo tetto trasforma la correzione in
+// una salita regolare. Quattro metri al secondo lasciano seguire anche una
+// strada di montagna, senza permettere al caricamento di sollevare il punto
+// di vista in un paio di fotogrammi.
+const RIL_OCCHIO_V_MAX_M_S = 4;
+// Ma un **salto non è una camminata**, e questa è la riga che lo dice.
+//
+// La camera insegue il suolo con dolcezza perché camminando il suolo cambia
+// sotto i piedi, e quattro metri al secondo sono la salita di una strada di
+// montagna. «Guarda il cielo da qui» invece non è un passo: è un altro
+// posto, e fra i due c'è tutta la differenza fra correggere una stima e
+// cambiare argomento. Salendo con quel tetto da una città di pianura a una
+// cima a seicento metri ci vogliono **due minuti**, e in quei due minuti la
+// camera sta sotto al suolo che sta disegnando: misurato sul banco, una
+// cresta di ottantadue gradi in tutte e settecentoventi le direzioni, che
+// sullo schermo è il cuneo di terra che sale fin quasi allo zenit.
+//
+// Trecento metri sono il doppio del passo più lungo che la posizione
+// consegni davvero (`SKY_SPOSTAMENTO_MIN_M`, centocinquanta, e in mezzo il
+// punto vivo interpola): oltre, da un fotogramma all'altro, non ci si è
+// mossi — si è stati portati, e la camera ci arriva invece di incamminarsi.
+const RIL_SALTO_OCCHIO_M = 300;
+// Finché l'occhio sta ancora recuperando una correzione altimetrica, il
+// primissimo lembo della maglia non deve poterlo avvolgere. Non si alza la
+// camera per evitarlo (sarebbe proprio il salto che vogliamo eliminare): si
+// raccorda invece soltanto il terreno sotto i piedi alla quota corrente e si
+// esaurisce il raccordo prima che il dettaglio diventi visibile.
+const RIL_SPAZIO_CAMERA_M = 70;
+// Fin dove attorno al centro della griglia grossa comanda la quota misurata
+// da `terreno.js` invece di quella letta dalle tessere. Il passaggio è
+// continuo per costruzione: lo scarto fra i due modelli è tarato proprio
+// perché nel centro diano lo stesso numero.
+const RIL_OCCHIO_GRIGLIA_KM = 0.3;
+// Sotto questo scarto fra la camera di adesso e quella con cui la maglia è
+// stata costruita si legge la maglia così com'è. Cinque centimetri: meno
+// di così non sposta un pixel nemmeno sotto i piedi.
+const RIL_OCCHIO_RIFAI_M = 0.05;
+
+// E di quanto deve scostarsi perché non basti più rifare gli angoli al volo,
+// e la maglia vada **ricostruita**.
+//
+// Sono due soglie diverse perché rispondono a due domande diverse. Il disegno
+// si arrangia con qualunque scarto: rifà l'angolo di ogni nodo con la camera
+// di adesso, e la superficie dipinta è esatta al centesimo di grado. Quello
+// che non si rifà da sé sono `rilievo.cresta` e `rilievo.fronte` — la cresta
+// che dice se un astro è sorto, quella che nasconde una vetta, quella che
+// taglia un lago — che restano calcolate con l'occhio della costruzione. A un
+// metro e mezzo di scarto, a centocinquanta metri di distanza, sono più di
+// mezzo grado: abbastanza perché un lago sparisca e il nome di una montagna
+// finisca appeso all'aria. Più giù non si scende, però, se no il tremolio del
+// GPS da fermo — che nel decimetro c'è sempre — rifarebbe la maglia ogni tre
+// secondi per non spostare un pixel.
+const RIL_OCCHIO_RIFAI_MAGLIA_M = 1.5;
+
 // Dove le due fonti si danno il cambio. La griglia grossa e le tessere
 // vengono da due modelli del suolo diversi e sullo stesso punto non danno
 // lo stesso metro: passando di netto si vedrebbe un gradino ad anello tutto
@@ -154,11 +294,19 @@ const RIL_ANELLI = RIL_ANELLI_PIEDI + RIL_ANELLI_LONTANI;
 // piatto la depressione di un anello vale circa h/s, quindi una progressione
 // geometrica in distanza è una progressione geometrica in **angolo** — passi
 // sempre della stessa taglia relativa, che è come li vede l'occhio.
+//
+// Le due ragioni stanno a parte perché servono anche fuori di qui: sono
+// quello che permette di trovare **l'anello di una distanza qualunque con
+// un logaritmo** invece che cercandolo (`rilAnelloDi`), e quel conto sta
+// dentro al ciclo di disegno.
+const RIL_RAGIONE_PIEDI = Math.pow(RIL_VICINO_M / RIL_PIEDI_M, 1 / RIL_ANELLI_PIEDI);
+const RIL_RAGIONE_LONTANI = Math.pow(RIL_LONTANO_M / RIL_VICINO_M, 1 / (RIL_ANELLI_LONTANI - 1));
+
 const RIL_DIST = (() => {
   const a = new Float64Array(RIL_ANELLI);
-  const rp = Math.pow(RIL_VICINO_M / RIL_PIEDI_M, 1 / RIL_ANELLI_PIEDI);
+  const rp = RIL_RAGIONE_PIEDI;
   for (let k = 0; k < RIL_ANELLI_PIEDI; k++) a[k] = RIL_PIEDI_M * Math.pow(rp, k);
-  const r = Math.pow(RIL_LONTANO_M / RIL_VICINO_M, 1 / (RIL_ANELLI_LONTANI - 1));
+  const r = RIL_RAGIONE_LONTANI;
   for (let k = 0; k < RIL_ANELLI_LONTANI; k++) {
     a[RIL_ANELLI_PIEDI + k] = RIL_VICINO_M * Math.pow(r, k);
   }
@@ -272,8 +420,67 @@ const RIL_LUCE_ALT_MIN = 35;
 // non uno perché di notte il terreno vale una dozzina di livelli su 255: un
 // tratto che ne aggiunge tre non esiste, e uno che ne aggiunge sessanta
 // diventa più chiaro del cielo.
-const RIL_TRATTO_NOTTE = 0.22;
-const RIL_TRATTO_GIORNO = 0.32;
+const RIL_TRATTO_NOTTE = 0.24;
+const RIL_TRATTO_GIORNO = 0.38;
+
+// Il fondo resta un poco più chiaro del colore base del suolo. Il rilievo
+// prima era corretto nei rapporti fra i piani, ma nelle ore diurne le mezze
+// tinte si chiudevano troppo presto e i valloni finivano in una sola massa
+// scura. Questa è luce diffusa del cielo, non luce diretta: perciò cresce col
+// giorno, resta appena presente di notte e, soprattutto, non cancella le
+// ombre direzionali che vengono applicate dopo.
+const RIL_DIFFUSA_NOTTE = 0.025;
+const RIL_DIFFUSA_GIORNO = 0.12;
+
+// Anche il primo piano riceve almeno metà della luce diffusa dall'aria.
+// Senza questo pavimento le fette vicine restavano quasi del colore grezzo
+// del suolo, mentre oltre `RIL_FOV_FONDI_SEPARATI_MAX` la campitura unica
+// usa per forza una fetta media e diventava di colpo molto più chiara. La
+// luminosità del terreno non deve dipendere dallo zoom: la distanza continua
+// a schiarire ulteriormente i piani lontani, ma nessun piano torna alla
+// vecchia massa scura.
+const RIL_LONTANANZA_MINIMA = 0.5;
+
+// Quanta aria si stende **sopra** a una fetta di distanza.
+//
+// È la manopola della prospettiva aerea, cioè della sola cosa per cui si
+// riconosce a colpo d'occhio che una cresta sta dietro a un'altra: quella in
+// fondo prende il colore del cielo — azzurro di giorno, arancione al
+// tramonto. I due colori del suolo (`vicino` e `lontano`) da soli non lo
+// sanno dire: sono una scala di chiarezza, non di tinta, e due creste dello
+// stesso verde si leggono alla stessa distanza per quanto una sia più chiara.
+//
+// Si stende come un **velo sulle stesse fette** già disegnate — dopo il
+// colore della quota e dopo il chiaroscuro — e non come una correzione del
+// colore di fondo. La differenza non è di eleganza. Un velo è un poligono:
+// vela di altrettanto tutto quello che gli sta sotto, e non ha nessun bordo
+// verticale da nascondere. Farlo entrare invece nel colore, nodo per nodo,
+// voleva dire una classe di distanza per nodo — e fra una classe e l'altra
+// c'è un salto: sullo schermo veniva pulviscolo, ed è il difetto che questo
+// velo esiste per non avere.
+//
+// L'opacità è **proporzionale a `rilLontananza`**, e non a una sua potenza.
+// Ci sono voluti due tentativi per arrivarci, e il secondo è più semplice del
+// primo — che è il segno che è quello giusto.
+//
+// `rilLontananza` non è una scala di comodo: è `1 − e^(−d/τ)` normalizzata,
+// cioè **l'opacità della colonna d'aria** che sta fra l'occhio e quel pezzo di
+// montagna. Un velo che vale quella cifra non è una taratura, è la legge di
+// Beer scritta come si scrive. Il primo tentativo la elevava al cubo per
+// caricare il fondo della veduta, e a occhio sembra una buona idea finché non
+// si guarda dove cadono le quattordici fette: sono scelte apposta per dividere
+// in **parti uguali la foschia** (vedi `rilFondoAnelli`), quindi una legge
+// lineare in quella cifra dà passi di velo uguali, mentre il cubo li accumula
+// tutti in fondo — misurato, quarantotto livelli su 255 fra le ultime due, che
+// è una banda che si legge come tale.
+//
+// Settantadue per cento e non di più: al cento la cresta in fondo diventerebbe
+// esattamente il cielo e sparirebbe, che è l'errore opposto e si vede uguale.
+const RIL_VELO_ARIA = 0.72;
+
+function rilVeloDiFetta(t) {
+  return RIL_VELO_ARIA * Math.max(0, Math.min(1, t));
+}
 
 // Da quanta **piega** in su il tratto si vede pieno.
 //
@@ -305,9 +512,22 @@ const RIL_PIEGA_PIENA = 0.16;
 // Fra due colonne così vicine la quota è interpolata linearmente e la
 // derivata seconda vale **zero per costruzione** — il fianco veniva liscio
 // come una lastra, che è l'opposto del difetto di prima ma è altrettanto
-// falso. Sessanta metri sono un paio di celle: la misura più fine che il dato
-// sappia davvero sostenere, e a quel passo un vallone si vede.
-const RIL_PIEGA_M = 60;
+// falso.
+//
+// Sessanta metri erano però l'errore opposto, e si vedeva come **righe
+// verticali** su tutto il primo piano. Una derivata seconda è la cosa più
+// rumorosa che si possa chiedere a un modello del suolo, e il suo rumore
+// scala come `1/L`: su due celle scarse il conto non misura il vallone,
+// misura lo scarto fra due celle vicine, e con `RIL_PIEGA_LIVELLI` a sei
+// quello sposta il chiaroscuro di quattro livelli **per colonna**. Su un
+// fianco liscio, dove le corse di livello uguale sono lunghe, quattro
+// livelli per colonna sono barre verticali alte mezzo schermo.
+//
+// Centosettanta metri sono sei celle: il rumore scende di tre volte e il
+// segnale resta tutto, perché un vallone di montagna è largo qualche
+// centinaio di metri — sotto quella misura non c'è nessun vallone da
+// trovare, c'è solo il modello che trema.
+const RIL_PIEGA_M = 170;
 
 // Di quanti livelli la piega sposta il chiaroscuro, a saturazione. Sei su
 // ventiquattro: un quarto della scala, che basta a far leggere un vallone
@@ -323,8 +543,8 @@ const RIL_PIEGA_LIVELLI = 6;
 // di rettangoli in primo piano, con il rumore del modello scambiato per
 // forma del terreno. Sopra ai duecentocinquanta metri invece le celle sono
 // una decina e la forma c'è davvero.
-const RIL_VICINO_PIENO_M = 250;
-const RIL_VICINO_NIENTE_M = 70;
+const RIL_VICINO_PIENO_M = 420;
+const RIL_VICINO_NIENTE_M = 110;
 
 // Un tentativo che non è servito, e vale la pena scriverlo perché è quello
 // che viene in mente per primo: legare il tratto alla **pendenza** invece che
@@ -344,6 +564,219 @@ const RIL_FILO_DENTRO = 0.30;
 // spezzettano su ogni dente, più largo e si cuciono creste che non hanno
 // niente a che vedere fra loro.
 const RIL_CONTORNO_SALTO = 3;
+
+// --- Il colore della montagna: la quota --------------------------------
+//
+// Fino a qui il terreno aveva **un colore solo** — quello del suolo di
+// `SKY_PAESAGGI`, schiarito dalla foschia fetta per fetta — e la forma la
+// raccontavano il chiaroscuro e i contorni. È una tavola panoramica, e come
+// tavola panoramica funziona; solo che non somiglia a una montagna. Una
+// montagna, nell'immagine che ne ha chiunque, è fatta a fasce: il bosco in
+// fondovalle, i pascoli, la roccia bruna, il grigio del detrito e la neve in
+// cima. Sono fasce di **quota**, e la quota qui c'è: `rilievo.quota` la tiene
+// per ognuno dei settantaseimila nodi della maglia.
+//
+// Il colore si stende quindi come un secondo velo sopra al fondo, con le
+// stesse strisce del chiaroscuro e la stessa economia: una `stroke()` per
+// combinazione, non una per faccia.
+//
+// Due cose non sono decorazione, e sono quelle che tengono insieme il pezzo
+// con il resto del modulo.
+//
+//   * La fascia si sceglie sulla quota **divisa per la linea della neve**,
+//     non sui metri. In pianura la linea della neve sta a tremila metri e
+//     tutto resta verde, che è giusto; sulle Alpi la stessa tabella dà
+//     bosco, pascolo, roccia e neve alle altezze in cui stanno davvero. Una
+//     tabella in metri assoluti avrebbe fatto la Norvegia tutta verde e le
+//     Ande tutte bianche.
+//
+//   * Il velo **sbiadisce con la distanza**, e non poco: è la prospettiva
+//     aerea, cioè la cosa per cui una cresta a quaranta chilometri si
+//     riconosce come lontana prima ancora di sapere quanto è alta. Vicino il
+//     colore c'è tutto, in fondo resta appena un'ombra di sé e comanda la
+//     foschia. Costa il prodotto fra le fasce e le classi di distanza — che
+//     è la ragione per cui le une e le altre sono poche.
+
+// La linea delle nevi persistenti, per latitudine. Non è una costante e non è
+// una retta: ai tropici sale (l'aria secca degli anticicloni), poi scende
+// quasi linearmente. I nodi vengono dalla climatologia della linea di
+// equilibrio dei ghiacciai, e servono qui a una cosa sola — dare una scala
+// alla montagna — quindi vale la pena averli plausibili e non esatti.
+const RIL_NEVE_LAT = [
+  [0, 4700], [20, 5000], [35, 3900], [45, 2900],
+  [55, 1800], [65, 1050], [75, 550], [90, 300]
+];
+
+// Quanto la stagione la abbassa. D'inverno la neve scende molto sotto la
+// linea delle nevi persistenti — sulle Alpi arriva in fondovalle — e chi
+// guarda l'orizzonte a gennaio quella neve la vede. Il massimo si tocca un
+// mese dopo il solstizio, che è il ritardo vero delle stagioni.
+const RIL_NEVE_INVERNO = 0.55;
+
+// Di quanti metri la fascia si sfrangia. Una linea della neve netta, tirata
+// alla stessa quota su tutto il panorama, è una curva di livello: si legge
+// come un disegno tecnico. In montagna il limite lo fanno l'esposizione, il
+// vento e i canaloni, e quello che si vede è una frangia irregolare larga
+// qualche centinaio di metri di quota. Il disturbo è **agganciato al
+// terreno** (nodo per nodo, non fotogramma per fotogramma), quindi sta
+// fermo mentre ci si muove.
+const RIL_QUOTA_FRANGIA_M = 190;
+
+// Le fasce, in frazioni della linea della neve. I colori sono quelli di
+// mezzogiorno pieno: di notte il velo si spegne da sé (`rilTintaAlfa`),
+// perché una montagna di notte è una sagoma e non un atlante.
+// Le fasce non sono spaziate a occhio: sono agganciate al **limite del
+// bosco**, che è l'unica riga che si vede davvero guardando una montagna, e
+// che sta poco sotto i tre quarti della linea della neve (sulle Alpi
+// duemila metri contro duemilaseicento). Sotto di lui è tutto verde — e
+// «tutto» vuol dire fino a tre quarti dell'altezza, che è la cosa che al
+// primo tentativo era sbagliata: le fasce erano spalmate uniformemente, il
+// bruno cominciava a metà, e da un paese di fondovalle a milleduecento metri
+// il prato sotto i piedi veniva color paglia mentre le creste in fondo
+// restavano verdi — cioè la prospettiva aerea al contrario.
+const RIL_QUOTE = [
+  { f: 0.00, c: [42, 58, 34] },    // fondovalle, verde cupo
+  { f: 0.34, c: [58, 74, 40] },    // bosco
+  { f: 0.62, c: [78, 88, 48] },    // bosco alto, radure, il verde che schiarisce
+  { f: 0.80, c: [112, 106, 64] },  // pascoli sopra il limite del bosco
+  { f: 0.90, c: [116, 98, 80] },   // detrito e roccia bruna
+  { f: 0.98, c: [140, 136, 132] }, // roccia nuda, grigia
+  { f: 1.06, c: [242, 244, 249] }  // neve
+];
+
+// In quanti gradini si campiona quella rampa. Dodici: fra due contigui
+// restano due o tre livelli su 255, cioè la soglia sotto la quale una banda
+// non si legge più come banda. Meno si vedrebbero eccome — a fasce nette la
+// montagna torna un disegno geologico.
+//
+// Sono anche il numero di `stroke()` in più per fotogramma, ed è per questo
+// che la distanza **non** è una seconda dimensione qui dentro: la racconta il
+// velo dell'aria (`RIL_VELO_ARIA`), che è un poligono per fetta.
+const RIL_TINTA_BANDE = 12;
+
+// Quanto pesa il velo, da vicino. Sopra questo valore il chiaroscuro che ci
+// va sopra non riesce più a scolpire: il colore si mangia la forma.
+const RIL_TINTA_ALFA = 0.62;
+
+// Sotto questa luce del cielo il velo non si stende affatto: di notte la
+// terra vale una dozzina di livelli su 255, e dipingerci sopra dei verdi e
+// dei bruni vuol dire schiarirla — cioè cancellare la sola cosa che di notte
+// disegna il profilo delle colline, che è il loro essere più scure del cielo.
+const RIL_TINTA_LUCE_MIN = 0.14;
+
+// La granatura del terreno: quanti livelli di chiaroscuro sposta, e su che
+// **misura di terreno** si stende. Non è rumore per il gusto del rumore — è
+// quello che distingue un fianco *dipinto* da un fianco *fotografato*: le
+// macchie di bosco, le radure, i ghiaioni, il variare della roccia.
+//
+// La misura è in **metri di terreno**, e non è una raffinatezza: al primo
+// tentativo il disturbo era agganciato al nodo della maglia (l'indice di
+// azimut e quello di anello), e il risultato si vedeva subito per quello che
+// era — righe verticali. Le colonne che si disegnano non sono i nodi: a
+// campo largo il passo ne salta due o tre, quindi due colonne contigue sullo
+// schermo pescavano disturbi scorrelati e il fianco veniva a pettine, che è
+// esattamente il difetto che questo modulo si porta scritto come errore da
+// non rifare.
+//
+// Ancorato al terreno invece è una macchia: due colonne vicine guardano
+// quasi lo stesso punto del suolo e leggono quasi lo stesso numero. E in più
+// sta ferma mentre ci si muove, perché il posto non cambia.
+const RIL_GRANA_LIVELLI = 2.6;
+const RIL_GRANA_M = 340;
+const RIL_GRANA_FINE_M = 95;
+
+// Oltre questa distanza la seconda ottava non si calcola: a quattro
+// chilometri novanta metri di terreno sono un grado e un quarto, e sotto la
+// foschia non ne resta niente da vedere. Sono quattro hash per nodo
+// risparmiati là dove i nodi sono di più.
+const RIL_GRANA_FINE_MAX_M = 4000;
+
+// Un numero fra zero e uno che dipende **solo** dal nodo: due fotogrammi di
+// fila danno lo stesso, quindi niente tremola, e due nodi vicini danno numeri
+// scorrelati. È l'hash di Wang, che costa due moltiplicazioni e due xor.
+function rilRumore(i, k) {
+  let h = (Math.imul(i, 73856093) ^ Math.imul(k, 19349663)) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 2246822519);
+  h = (h ^ (h >>> 13)) >>> 0;
+  return h / 4294967296;
+}
+
+// Lo stesso, ma su un **punto del terreno** invece che su un nodo: rumore di
+// valore bilineare fra i quattro angoli della cella che lo contiene, con la
+// solita curva a S che toglie gli spigoli. `x` e `y` arrivano già divisi per
+// la misura della macchia, quindi qui la cella è larga uno.
+function rilRumore2D(x, y) {
+  const i = Math.floor(x), j = Math.floor(y);
+  const fx = x - i, fy = y - j;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = rilRumore(i, j), b = rilRumore(i + 1, j);
+  const c = rilRumore(i, j + 1), d = rilRumore(i + 1, j + 1);
+  return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+}
+
+// A che quota comincia la neve, a una certa latitudine e in una certa
+// giornata. Sta a parte da `rilQuotaNeve` perché il luogo e l'orologio sono
+// due cose che il banco di prova non ha: così la legge si può provare per
+// quello che è, senza dover fingere un pianeta attorno.
+function rilNeveDa(lat, quando) {
+  const g = Math.min(90, Math.abs(lat));
+  let base = RIL_NEVE_LAT[RIL_NEVE_LAT.length - 1][1];
+  for (let i = 1; i < RIL_NEVE_LAT.length; i++) {
+    const [g0, q0] = RIL_NEVE_LAT[i - 1], [g1, q1] = RIL_NEVE_LAT[i];
+    if (g <= g1) { base = q0 + (q1 - q0) * (g - g0) / (g1 - g0); break; }
+  }
+  // La stagione: uno a fine inverno, zero a fine estate, e il segno della
+  // latitudine dice quale inverno è. Il ritardo di un mese sul solstizio è
+  // quello vero — il freddo non arriva col giorno più corto, arriva dopo.
+  const giorno = (quando - Date.UTC(quando.getUTCFullYear(), 0, 1)) / 86400000;
+  const fase = (giorno - 20) / 365.25 * 2 * Math.PI;
+  const inverno = (1 + (lat < 0 ? -1 : 1) * Math.cos(fase)) / 2;
+  return Math.max(200, base * (1 - RIL_NEVE_INVERNO * inverno));
+}
+
+// A che quota comincia la neve, qui e adesso.
+function rilQuotaNeve() {
+  const luogo = (typeof rilLuogo === 'function') ? rilLuogo() : null;
+  const lat = luogo && Number.isFinite(luogo.lat) ? luogo.lat : 45;
+  const quando = (typeof skyAdesso === 'function') ? skyAdesso() : new Date();
+  return rilNeveDa(lat, quando);
+}
+
+// Il colore di una banda: la rampa di `RIL_QUOTE` campionata in
+// `RIL_TINTA_BANDE` gradini.
+function rilColoreDiBanda(b) {
+  const f = RIL_QUOTE[0].f +
+    (RIL_QUOTE[RIL_QUOTE.length - 1].f - RIL_QUOTE[0].f) * (b / (RIL_TINTA_BANDE - 1));
+  for (let i = 1; i < RIL_QUOTE.length; i++) {
+    if (f > RIL_QUOTE[i].f && i < RIL_QUOTE.length - 1) continue;
+    const a = RIL_QUOTE[i - 1], c = RIL_QUOTE[i];
+    const t = Math.max(0, Math.min(1, (f - a.f) / (c.f - a.f)));
+    return [a.c[0] + (c.c[0] - a.c[0]) * t,
+            a.c[1] + (c.c[1] - a.c[1]) * t,
+            a.c[2] + (c.c[2] - a.c[2]) * t];
+  }
+  return RIL_QUOTE[0].c.slice();
+}
+
+// Quanto è forte il velo delle quote. Si spegne col buio e basta: la distanza
+// non entra qui: la fa il velo dell'aria, steso dopo.
+function rilTintaAlfa() {
+  const luce = Math.max(0, Math.min(1, sky.luceCielo));
+  if (luce <= RIL_TINTA_LUCE_MIN) return 0;
+  const giorno = Math.min(1, (luce - RIL_TINTA_LUCE_MIN) / (1 - RIL_TINTA_LUCE_MIN));
+  return RIL_TINTA_ALFA * giorno;
+}
+
+// La tavolozza del velo: un colore già pronto per banda.
+function rilTavolozzaQuote() {
+  const a = rilTintaAlfa();
+  const fuori = new Array(RIL_TINTA_BANDE);
+  for (let b = 0; b < RIL_TINTA_BANDE; b++) {
+    const c = rilColoreDiBanda(b);
+    fuori[b] = `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a.toFixed(3)})`;
+  }
+  return fuori;
+}
 
 // --- Il fondo del terreno, fetta di distanza per fetta di distanza -----
 //
@@ -385,6 +818,23 @@ const RIL_CONTORNO_SALTO = 3;
 // che l'occhio misura. Quattordici bastano: fra una fetta e l'altra restano
 // due livelli su 255, sotto la soglia in cui una banda si legge come tale.
 const RIL_FONDI = 14;
+
+// A campo molto largo le curve delle fette non sono piu' figure annidate sul
+// piano dello schermo. La stereografica conserva gli angoli, non l'ordine
+// planare: vicino ai bordi due creste che sul terreno sono una davanti
+// all'altra possono incrociarsi, e i quattordici poligoni finiscono per
+// sovrapporsi in grandi tasselli. Oltre questa apertura la profondita' delle
+// singole fette e' comunque compressa in pochi pixel: si dipinge percio' un
+// solo fondo, ritagliato con la sagoma esatta. Anche la pettinatura radiale
+// viene omessa: a questa scala le colonne non descrivono piu' pendii leggibili
+// ma diventano lunghi cunei che convergono verso il punto sotto l'osservatore.
+// La grana del suolo (disegnata da app.js) e il crinale conservano comunque
+// forma e materia del paesaggio. Sotto la soglia non cambia nulla.
+const RIL_FOV_FONDI_SEPARATI_MAX = 125;
+
+function rilFondiSeparati() {
+  return !Number.isFinite(sky.fov) || sky.fov <= RIL_FOV_FONDI_SEPARATI_MAX;
+}
 
 // Quando le curve del terreno **si chiudono attorno al cielo**.
 //
@@ -470,6 +920,21 @@ const rilievo = {
   lat: null,
   lon: null,
   occhio: 0,
+  // La versione della griglia grossa con cui la maglia è stata costruita
+  // (`terreno.quando`). Sta nella chiave, e sta anche qui in chiaro perché
+  // `rilControlla` deve poter distinguere «mi sono spostato di poco» da
+  // «è cambiato il terreno sotto» senza spezzare una stringa.
+  grigliaQuando: 0,
+  // La camera di adesso, che fra una ricostruzione e l'altra insegue il
+  // suolo sotto i piedi (§8-bis). `null` finché non c'è una maglia.
+  occhioOra: null,
+  occhioQuando: 0,
+  // E dove la si è posata l'ultima volta. Serve a distinguere una camminata
+  // da un salto: la quota si insegue con dolcezza solo se il punto è ancora
+  // quello di prima (§8-bis, `RIL_SALTO_OCCHIO_M`).
+  occhioLat: null,
+  occhioLon: null,
+  ultimeTessere: 0,   // quando si è chiesto l'ultimo giro di tessere
   fini: 0,            // quante direzioni hanno davvero letto una tessera
   scarto: 0,          // di quanto si sono spostate le tessere per accordarsi
                       // alla griglia grossa, in metri
@@ -481,6 +946,7 @@ const rilievo = {
   tessereAvute: 0,
   inCostruzione: false,
   daRifare: false,
+  ultimoCaricamento: 0,
 
   // Ha disegnato lui questo fotogramma? Lo chiedono i laghi e i nomi delle
   // montagne, che devono sapere **dove il terreno è dipinto** e non dove il
@@ -502,10 +968,146 @@ const rilievo = {
 };
 
 // Le tessere già decodificate, per questo luogo. Chiave `x/y`, valore una
-// `Float32Array(256×256)` di metri, oppure `null` se quella tessera non è
-// arrivata — che è un'informazione anche quella: dice di non richiederla e
-// di ripiegare sulla griglia grossa.
+// `Float32Array(256×256)` di metri. Qui dentro ci sono **solo** le tessere
+// che sono arrivate davvero: una che non è arrivata non è un valore `null` da
+// tenere, è una domanda ancora aperta, e sta nell'altra mappa.
 let rilTessere = new Map();
+
+// Quelle che non sono arrivate: quando ci si è provati l'ultima volta e
+// quante volte in tutto. Tenerle separate è il punto — con un `null` dentro a
+// `rilTessere` la tessera risultava «presente» a `rilTessereBastano` e al
+// filtro delle mancanti, quindi non veniva richiesta mai più.
+let rilTessereGuaste = new Map();
+
+function rilSegnaGuasta(chiave) {
+  const g = rilTessereGuaste.get(chiave);
+  rilTessereGuaste.set(chiave, {
+    quando: Date.now(), tentativi: (g ? g.tentativi : 0) + 1
+  });
+}
+
+// Questa tessera va (ri)chiesta adesso? Sì se non ce l'abbiamo e o non
+// l'abbiamo mai provata, o l'abbiamo provata abbastanza tempo fa e non troppe
+// volte.
+function rilTesseraDaChiedere(chiave) {
+  if (rilTessere.has(chiave)) return false;
+  const g = rilTessereGuaste.get(chiave);
+  if (!g) return true;
+  if (g.tentativi >= RIL_TESSERA_TENTATIVI) return false;
+  return Date.now() - g.quando >= RIL_TESSERA_RIPROVA_MS;
+}
+
+// Quante ne mancano nel disco di qui, e di quelle quante hanno ancora un
+// tentativo davanti. Le legge la riga di stato: una tessera che non arriva
+// non deve essere un'assenza muta, perché sullo schermo il suo settore —
+// disegnato dalla griglia grossa, a facce larghe — è indistinguibile da un
+// terreno liscio per davvero.
+function rilTessereMancanti(lat, lon) {
+  if (rilievo.lat === null && typeof lat !== 'number') return { mancanti: 0, ancora: 0 };
+  let elenco = rilTessereAttorno(
+    typeof lat === 'number' ? lat : rilievo.lat,
+    typeof lon === 'number' ? lon : rilievo.lon, RIL_RAGGIO_KM);
+  if (elenco.length > RIL_TESSERE_MAX) elenco = elenco.slice(0, RIL_TESSERE_MAX);
+  let mancanti = 0, ancora = 0;
+  elenco.forEach(t => {
+    const chiave = `${t.x}/${t.y}`;
+    if (rilTessere.has(chiave)) return;
+    mancanti++;
+    const g = rilTessereGuaste.get(chiave);
+    if (!g || g.tentativi < RIL_TESSERA_TENTATIVI) ancora++;
+  });
+  return { mancanti, ancora };
+}
+
+function rilDistanzaDalCentro(luogo) {
+  if (!luogo || rilievo.lat === null || typeof terrenoDistanzaKm !== 'function') return Infinity;
+  return terrenoDistanzaKm(luogo.lat, luogo.lon, rilievo.lat, rilievo.lon) * 1000;
+}
+
+// Lo scostamento fra il centro della maglia e il punto in cui si è adesso,
+// in metri di Est e di Nord. Si calcola una volta per fotogramma e non una
+// per nodo: sono settecentoventi colonne per un centinaio di anelli, e due
+// seni per nodo si sentono.
+function rilScostamento(luogo) {
+  if (!luogo || rilievo.lat === null || rilievo.lon === null) return null;
+  const latMedia = (luogo.lat + rilievo.lat) * Math.PI / 360;
+  const nord = (luogo.lat - rilievo.lat) * 111195;
+  const est = (luogo.lon - rilievo.lon) * 111195 * Math.cos(latMedia);
+  if (Math.abs(est) < RIL_TRASLA_MIN_M && Math.abs(nord) < RIL_TRASLA_MIN_M) return null;
+  return { est, nord };
+}
+
+// L'anello di una distanza, come numero **con la virgola**: la parte intera
+// è l'indice, la frazione dice quanto si sta fra lui e il successivo.
+//
+// Con un logaritmo e non cercandolo, e non è micro-ottimizzazione: questa
+// riga sta dentro al ciclo di disegno, cioè gira ventimila volte per
+// fotogramma, e una ricerca lineare su centosei anelli lì dentro si sente.
+// Si può fare perché le distanze sono due progressioni geometriche di
+// ragione nota (`RIL_RAGIONE_*`), che è il motivo per cui sono state
+// scelte così.
+function rilAnelloDi(metri) {
+  const m = Math.max(1e-3, metri);
+  if (m <= RIL_VICINO_M) {
+    return Math.log(m / RIL_PIEDI_M) / Math.log(RIL_RAGIONE_PIEDI);
+  }
+  return RIL_ANELLI_PIEDI +
+    Math.log(m / RIL_VICINO_M) / Math.log(RIL_RAGIONE_LONTANI);
+}
+
+// La quota della maglia in un punto qualunque del suo disco, dato in
+// coordinate polari **della maglia**. Bilineare nelle due direzioni: in
+// azimut fra due colonne, in distanza fra due anelli.
+//
+// Bilineare e non «il nodo più vicino», ed è la differenza fra una
+// traslazione e uno scivolamento a scatti. Gli anelli stanno fra loro
+// all'otto per cento e le colonne a mezzo grado: prendendo il nodo più
+// vicino, muovendosi il terreno si ricampiona a quantoni — un pendio
+// continuo diventa una scaletta che salta di un gradino a ogni fix, ed è
+// esattamente il tremolio che si vede dal finestrino. È la stessa lezione
+// di `rilQuotaTessere`, che per la stessa ragione non prende il pixel più
+// vicino.
+function rilQuotaMaglia(azGradi, metri) {
+  const nr = RIL_ANELLI;
+  const dove = (((azGradi % 360) + 360) % 360) / RIL_PASSO_AZ;
+  const i = Math.floor(dove) % RIL_AZIMUT;
+  const j = (i + 1) % RIL_AZIMUT;
+  const u = dove - Math.floor(dove);
+
+  const anello = Math.max(0, Math.min(nr - 1.0001, rilAnelloDi(metri)));
+  const k = Math.floor(anello);
+  const v = anello - k;
+
+  const q = rilievo.quota;
+  const a = q[i * nr + k],     b = q[j * nr + k];
+  const c = q[i * nr + k + 1], e = q[j * nr + k + 1];
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + e * u) * v;
+}
+
+// Riporta un nodo della maglia centrata sul vecchio fix nel sistema polare
+// del fix corrente. Non interpola il paesaggio fra due fotografie: sposta i
+// punti del terreno nello spazio, perciò il primo piano scorre più del fondo
+// (la parallasse che si vede davvero dal finestrino).
+//
+// L'angolo si rifà con la distanza **nuova** e con l'occhio **di adesso**
+// (`rilievo.occhioOra`, §8-bis): è quello che fa salire e scendere la
+// camera insieme al terreno che si sta percorrendo — in salita si comincia
+// a vedere oltre la cresta, scendendo in una conca l'orizzonte si alza.
+// Con la quota dell'occhio ferma al punto di partenza, invece, il paesaggio
+// scorreva ma il punto di vista restava sospeso a mezz'aria.
+function rilCampioneInMovimento(sinAz, cosAz, k, scostamento, occhio) {
+  const s = RIL_DIST[k];
+  const eVecchio = scostamento.est + sinAz * s;
+  const nVecchio = scostamento.nord + cosAz * s;
+  const distanza = Math.sqrt(eVecchio * eVecchio + nVecchio * nVecchio);
+  // Il punto è finito **dietro** al centro della maglia, più vicino del
+  // primo anello: lì non c'è niente da leggere e l'unica cosa onesta è il
+  // suolo sotto i piedi.
+  if (distanza < RIL_DIST[0]) return rilAngolo(occhio - TERRENO_ALTEZZA_OCCHIO_M, occhio, s);
+  const azVecchio = Math.atan2(eVecchio, nVecchio) * 180 / Math.PI;
+  const quota = rilLasciaSpazioCamera(rilQuotaMaglia(azVecchio, distanza), occhio, s);
+  return rilAngolo(quota, occhio, s);
+}
 
 
 // =====================================================================
@@ -646,16 +1248,26 @@ function rilChiediTessera(x, y) {
 // Tutte quelle che servono, a scaglioni di `RIL_INSIEME`. Una che non arriva
 // non fa cadere le altre: resta un buco, e lì la maglia legge la griglia
 // grossa — che è esattamente il terreno che c'era prima di questo file.
+//
+// Ma resta un buco **per adesso**, non per sempre: si segna fra le guaste con
+// l'ora del tentativo, e fra venti secondi la si richiede. Prima ci si
+// scriveva un `null` dentro a `rilTessere`, e da quel momento la tessera
+// risultava presente a chiunque chiedesse `has` — cioè non veniva richiesta
+// più, e quel settore restava a facce piatte finché l'app era aperta.
 async function rilPrendiTessere(elenco) {
   rilievo.tessereChieste = elenco.length;
   rilievo.tessereAvute = 0;
   rilievo.avanzamento = 0;
-  let lato = 256;
+  let lato = rilLatoTessera;
   for (let i = 0; i < elenco.length; i += RIL_INSIEME) {
     const gruppo = elenco.slice(i, i + RIL_INSIEME);
     await Promise.all(gruppo.map(t => rilChiediTessera(t.x, t.y).then(
-      d => { rilTessere.set(`${t.x}/${t.y}`, d.q); lato = d.lato; },
-      () => { rilTessere.set(`${t.x}/${t.y}`, null); }
+      d => {
+        rilTessere.set(`${t.x}/${t.y}`, d.q);
+        rilTessereGuaste.delete(`${t.x}/${t.y}`);
+        lato = d.lato;
+      },
+      () => { rilSegnaGuasta(`${t.x}/${t.y}`); }
     ).then(() => {
       rilievo.tessereAvute++;
       rilievo.avanzamento = rilievo.tessereAvute / Math.max(1, rilievo.tessereChieste);
@@ -770,6 +1382,26 @@ function rilQuotaGriglia(azGradi, metri) {
 }
 
 
+// Di quanto il centro di questa maglia è spostato rispetto a quello della
+// griglia grossa, in metri di Est e di Nord. `null` quando coincidono, che
+// è il caso di sempre da fermo — e allora non si paga niente.
+function rilScostoGriglia(lat, lon) {
+  if (typeof terreno === 'undefined' || terreno.lat === null || terreno.lon === null) return null;
+  const nord = (lat - terreno.lat) * 111195;
+  const est = (lon - terreno.lon) * 111195 * Math.cos((lat + terreno.lat) * Math.PI / 360);
+  if (Math.abs(est) < RIL_TRASLA_MIN_M && Math.abs(nord) < RIL_TRASLA_MIN_M) return null;
+  return { est, nord };
+}
+
+// La quota della griglia grossa nel punto che sta a `(az, s)` da **qui**,
+// tenendo conto che lei parla da un centro diverso.
+function rilQuotaGrigliaDa(scosto, sinAz, cosAz, az, s) {
+  if (!scosto) return rilQuotaGriglia(az, s);
+  const e = scosto.est + sinAz * s;
+  const n = scosto.nord + cosAz * s;
+  return rilQuotaGriglia(Math.atan2(e, n) * 180 / Math.PI, Math.hypot(e, n));
+}
+
 // La quota della griglia grossa a un indice di distanza esatto, interpolata
 // nel solo azimut. È il mattone di `rilQuotaGriglia`, tirato fuori perché
 // serve anche da solo — al primo campione, dove la distanza non si interpola
@@ -859,6 +1491,15 @@ async function rilCostruisciMaglia(lat, lon, occhio) {
   // fonti si mescolano non c'è più nessun gradino ad anello.
   const sottoTessera = rilQuotaTessere(o.px, o.py);
   const sottoGriglia = occhio - TERRENO_ALTEZZA_OCCHIO_M;
+
+  // La griglia grossa è centrata dove `terreno.js` l'ha chiesta, che dal
+  // giorno in cui il profilo si tiene anche muovendosi (§6-bis di
+  // `terreno.js`) non è più per forza qui. Lo sfondo oltre il raggio delle
+  // tessere va allora chiesto **nel riferimento di lei**: senza, guidando
+  // per dieci chilometri le montagne lontane restavano ferme agli azimut
+  // della partenza mentre il primo piano scorreva — cioè il paesaggio si
+  // strappava in due a metà distanza.
+  const scostoGriglia = rilScostoGriglia(lat, lon);
   let scarto = 0;
   if (sottoTessera !== null) {
     // Tosato: uno scarto enorme non è un disaccordo fra due modelli, è una
@@ -866,6 +1507,14 @@ async function rilCostruisciMaglia(lat, lon, occhio) {
     // fidarsi delle tessere così come sono che spostarle di duecento metri.
     scarto = Math.max(-RIL_SCARTO_MAX, Math.min(RIL_SCARTO_MAX, sottoGriglia - sottoTessera));
   }
+
+  // Nota per chi passasse di qui a cercare un allineamento anche per la
+  // griglia grossa: non serve, e la ragione è nella camera. `rilOcchioMeta`
+  // legge **le stesse fonti nello stesso ordine** — tessere, poi griglia,
+  // poi la quota misurata del centro — quindi la superficie sotto i piedi
+  // sta alla quota della camera per costruzione, comunque siano andate le
+  // tessere. Allinearla di nuovo qui vorrebbe dire spostare lo sfondo di un
+  // numero che vale zero in tutti i casi che si sanno raccontare.
 
   let inizio = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   for (let i = 0; i < na; i++) {
@@ -884,13 +1533,16 @@ async function rilCostruisciMaglia(lat, lon, occhio) {
         if (qt !== null) { q = qt + scarto; toccataUnaTessera = true; }
       }
       if (peso < 1 || q === null) {
-        const qg = rilQuotaGriglia(az, s);
+        const qg = rilQuotaGrigliaDa(scostoGriglia, sinAz, cosAz, az, s);
         if (qg !== null) q = (q === null) ? qg : q * peso + qg * (1 - peso);
       }
       // Nessuna delle due fonti sa niente di quel punto: si tiene l'anello
       // di prima, che è la cosa più vicina al vero che si abbia. Al primo
-      // anello non c'è nemmeno quello, e allora vale il suolo sotto i piedi.
-      if (q === null) q = k > 0 ? quota[i * nr + k - 1] : (terreno.quota || 0);
+      // anello non c'è nemmeno quello, e allora vale il suolo sotto i piedi
+      // — quello della **camera**, non `terreno.quota`: sono lo stesso
+      // numero da fermo, e dopo un cambio di posto la seconda è ancora la
+      // quota di dov'eravamo prima.
+      if (q === null) q = k > 0 ? quota[i * nr + k - 1] : sottoGriglia;
       quota[i * nr + k] = q;
       alt[i * nr + k] = rilAngolo(q, occhio, s);
     }
@@ -1016,6 +1668,203 @@ function rilFronteA(az, k) {
   return rilCrestaEntroM(az, d * 1000);
 }
 
+// Il punto del rilievo che sta sotto un tocco del planetario. Non basta
+// restituire la cresta: nella veduta 3D si possono indicare anche un fianco o
+// il fondo della valle. Percorriamo lo stesso raggio usato dal disegno e
+// teniamo soltanto i campioni realmente visibili (ogni campione deve superare
+// il massimo incontrato prima). Fra questi scegliamo quello più vicino
+// all'altezza indicata dal dito.
+function rilPuntoVisibileA(az, alt) {
+  if (!rilPronto() || !isFinite(az) || !isFinite(alt)) return null;
+  const nr = RIL_ANELLI;
+  const dove = (((az % 360) + 360) % 360) / RIL_PASSO_AZ;
+  const i = Math.floor(dove) % RIL_AZIMUT;
+  const j = (i + 1) % RIL_AZIMUT;
+  const t = dove - Math.floor(dove);
+  const s = t * t * (3 - 2 * t);
+  const a = i * nr, b = j * nr;
+  let fronte = -90, migliore = -1, altezzaMigliore = null, scarto = Infinity;
+  for (let k = 0; k < nr; k++) {
+    const altezza = rilievo.alt[a + k] * (1 - s) + rilievo.alt[b + k] * s;
+    if (altezza + 1e-4 < fronte) continue;
+    fronte = Math.max(fronte, altezza);
+    const d = Math.abs(altezza - alt);
+    if (d < scarto) { scarto = d; migliore = k; altezzaMigliore = altezza; }
+  }
+  if (migliore < 0) return null;
+  return { km: RIL_DIST[migliore] / 1000, alt: altezzaMigliore, scarto };
+}
+
+// A che quota sta il suolo lungo un raggio, fra due distanze: il **minimo**
+// dei nodi della maglia che ci cascano dentro, `null` se non ce n'è nessuno.
+//
+// Serve alla quota degli specchi d'acqua, e serve per una ragione che non è
+// la finezza — anche se centosei anelli al posto di diciotto fette non
+// guastano, e sono la differenza fra avere un campione dentro a un fiume e
+// non averne nessuno.
+//
+// La ragione è che **le due misure devono venire dallo stesso modello**. Il
+// piano del lago si ricavava dalla griglia grossa (Copernicus a novanta
+// metri, dal servizio delle quote) mentre il terreno che lo copre lo disegna
+// questa maglia (SRTM a trenta, dalle tessere): sono due misure diverse
+// della stessa collina, e in terreno ripido non danno lo stesso metro — dieci
+// o venti di scarto sono normali, ed è la ragione per cui `rilievo.scarto`
+// esiste. Confrontarle vuol dire chiedere se la riva sta sopra il lago
+// sapendo le due quote da due fonti che litigano: la riva risulta più alta
+// dell'acqua di quanto litigano, e il lago viene tagliato per un dislivello
+// che nessuno dei due modelli afferma. Lo scarto è tolto **nel punto in cui
+// si sta**, non ovunque, quindi il litigio resta tutto intero là fuori.
+//
+// Letta di qui, invece, la quota dell'acqua e quella del terreno davanti sono
+// lo stesso array: il confronto torna a essere una domanda di geometria.
+//
+// L'azimut non si interpola, e non è una scorciatoia: la maglia ha
+// settecentoventi raggi e le bande dell'acqua pure, con lo stesso passo di
+// mezzo grado. È lo stesso raggio.
+function rilQuoteDentro(az, daM, aM) {
+  if (!rilPronto() || !rilievo.quota) return null;
+  const nr = RIL_ANELLI;
+  const i = ((Math.round(((az % 360) + 360) % 360 / RIL_PASSO_AZ) % RIL_AZIMUT) + RIL_AZIMUT) % RIL_AZIMUT;
+  const a = i * nr;
+  let minimo = null;
+  for (let k = 0; k < nr; k++) {
+    const d = RIL_DIST[k];
+    if (d < daM) continue;
+    if (d > aM) break;
+    const q = rilievo.quota[a + k];
+    if (minimo === null || q < minimo) minimo = q;
+  }
+  return minimo;
+}
+
+// I due nodi che **abbracciano** un tratto: l'ultimo prima e il primo dopo.
+// È il ripiego di qui sopra per gli specchi troppo stretti perché un anello
+// ci caschi dentro — un fiume, una pozza — e di uno specchio d'acqua dice la
+// sola cosa che si sa comunque: che è più basso di quello che ha attorno.
+function rilQuoteAttorno(az, daM, aM) {
+  if (!rilPronto() || !rilievo.quota) return null;
+  const nr = RIL_ANELLI;
+  const i = ((Math.round(((az % 360) + 360) % 360 / RIL_PASSO_AZ) % RIL_AZIMUT) + RIL_AZIMUT) % RIL_AZIMUT;
+  const a = i * nr;
+  let prima = null, dopo = null;
+  for (let k = 0; k < nr; k++) {
+    const d = RIL_DIST[k];
+    if (d < daM) prima = rilievo.quota[a + k];
+    else if (d > aM) { dopo = rilievo.quota[a + k]; break; }
+  }
+  if (prima === null) return dopo;
+  if (dopo === null) return prima;
+  return Math.min(prima, dopo);
+}
+
+// La cresta che serve all'**acqua**, che è una domanda diversa da tutte le
+// altre di questo file — e per una ragione geometrica che vale la pena
+// scrivere, perché è quella che ha tenuto i laghi fuori dallo schermo.
+//
+// Un lago è un **piano**. Guardandolo dall'alto, ogni suo punto sta sotto la
+// linea dell'orizzonte, e la riva vicina è il punto più basso di tutti: la
+// sua depressione è la più grande. Ma la riva è anche il posto dove il
+// terreno **finisce a quel livello** — cioè, per un pendio che scende al
+// lago, il suolo davanti alla riva ha quasi esattamente la stessa
+// depressione dell'acqua che le sta dietro. Chiedere «la cresta davanti è
+// più alta dell'acqua?» con un margine di un ventesimo di grado vuol dire
+// giocarsi la riva a testa o croce: misurato sul banco, con un modello del
+// suolo che sbaglia di otto metri — cioè un tetto, un albero, la normale
+// differenza fra due modelli — la riva arretra di settanta metri in media e
+// di un chilometro e mezzo al peggio, e in una direzione su venti il lago
+// sparisce del tutto.
+//
+// La cura viene dalla stessa geometria. Un campione che sta **al livello
+// dell'acqua o sotto** non può nascondere quell'acqua, mai: se è più vicino,
+// la sua depressione è più grande (stesso dislivello diviso una distanza
+// minore), quindi sta sotto la linea di vista. Quelli che tagliano la riva
+// sono perciò solo quelli che stanno **qualche metro sopra** il piano del
+// lago — e «qualche metro» è esattamente la misura dell'errore di un modello
+// di superficie. Quindi il margine si scrive in **metri di quota** e non in
+// gradi: ogni campione si abbassa di `abbassaM` metri prima di chiedergli se
+// copre. A trecento metri sono più di un grado, a cinque chilometri sette
+// centesimi — cioè tanto dove il rumore fa danno e niente dove non ne fa.
+//
+// Il risultato è in **tangente** e non in gradi, perché il confronto con la
+// linea di vista di un punto è un confronto fra pendenze: `tan = (quota −
+// occhio − curvatura) / distanza`, la stessa quantità che `rilAngolo`
+// arcotangenta. E si accumula il massimo, come `fronte`: ogni voce è
+// «la pendenza più alta incontrata fino a qui».
+// La pendenza si ricava dalle **quote** e non dagli angoli già pronti, e non
+// è pignoleria: sono settantaseimila anelli a giro (settecentoventi raggi per
+// centosei), e altrettante tangenti da calcolare costavano più di tutto il
+// resto della funzione. Da `rilievo.quota` la stessa quantità esce con una
+// sottrazione e una divisione — ed esce anche più esatta, perché non passa
+// per la tosatura a ottantacinque gradi che `rilAngolo` mette al nadir.
+let rilFrontiAcquaBuf = null;
+
+function rilFrontiAcqua(az, abbassaM, tettoGradi, finoA) {
+  if (!rilPronto() || !rilievo.quota) return null;
+  const nr = RIL_ANELLI;
+  // Più in là dell'acqua più lontana di questa direzione non serve camminare:
+  // la cresta oltre la banda non copre niente che si stia guardando. Su un
+  // posto con un lago vicino sono venti anelli invece di centosei, e questa
+  // funzione gira settecentoventi volte a ogni ricostruzione della maglia.
+  // (Il passo di riga resta `nr`: sono due numeri diversi, e confonderli vuol
+  // dire leggere le quote di un altro raggio.)
+  const quanti = (typeof finoA === 'number' && isFinite(finoA) && finoA > 0)
+    ? Math.min(nr, Math.ceil(rilAnelloDi(finoA)) + 2)
+    : nr;
+  if (!rilFrontiAcquaBuf) rilFrontiAcquaBuf = new Float32Array(nr);
+  const fuori = rilFrontiAcquaBuf;
+  const dove = (((az % 360) + 360) % 360) / RIL_PASSO_AZ;
+  const i = Math.floor(dove) % RIL_AZIMUT;
+  const j = (i + 1) % RIL_AZIMUT;
+  const t = dove - Math.floor(dove);
+  const s = t * t * (3 - 2 * t);
+  const a = i * nr, b = j * nr;
+  // L'abbassamento non può superare qualche grado, ed è il freno che tiene in
+  // piedi il primo piano: a tre metri dai piedi sei metri di quota sono
+  // sessantatré gradi, cioè «niente qui davanti copre niente» — e chi guarda
+  // l'acqua dall'orlo di una scogliera ha proprio l'orlo a nasconderla.
+  const tetto = Math.tan((tettoGradi || 3) * Math.PI / 180);
+  // La camera con cui la maglia è stata costruita: è l'occhio a cui gli
+  // angoli di `rilievo.alt` sono riferiti, e dev'essere lo stesso qui.
+  const occhio = typeof rilievo.occhio === 'number'
+    ? rilievo.occhio
+    : ((typeof terreno !== 'undefined' && typeof terreno.quota === 'number' ? terreno.quota : 0)
+       + TERRENO_ALTEZZA_OCCHIO_M);
+  const curva = (1 - TERRENO_RIFRAZIONE) / (2 * TERRENO_RAGGIO_KM * 1000);
+  let massimo = -Infinity;
+  for (let k = 0; k < quanti; k++) {
+    const d = RIL_DIST[k];
+    // Il **grembiule** non risponde a questa domanda, e lasciarglielo fare è
+    // il modo in cui l'acqua spariva tutta insieme.
+    //
+    // I dieci anelli sotto i venticinque metri stanno lì per **disegnare** il
+    // suolo sotto le scarpe, e la loro quota è la lettura bilineare della
+    // cella di raster su cui si sta: ventisette metri di lato, cioè lo stesso
+    // numero che c'è sotto i piedi. Non portano nessuna informazione propria
+    // — non possono, il modello lì dentro non ha niente da dire — ma a
+    // quindici centimetri dall'occhio un metro di quota vale ottantun gradi.
+    // Basta perciò che la camera e la maglia non siano d'accordo di due metri
+    // (una quota che arriva dalla rete, l'occhio portato al pelo dell'acqua,
+    // un fix del GPS a metà strada) perché il primo anello dichiari una
+    // parete verticale — e siccome `fronte` è un massimo che si accumula,
+    // quella parete si ricopia in **tutti** gli anelli di quel raggio: da lì
+    // in poi qualunque cosa risulta coperta, a qualunque distanza. Misurato
+    // sul banco con due metri di disaccordo: ottantanove gradi di cresta in
+    // tutte e settecentoventi le direzioni, e zero acqua disegnata su
+    // trecentotrentacinque direzioni che ne avevano.
+    //
+    // Il suolo sotto le scarpe non nasconde niente. La camminata comincia
+    // dove il modello ricomincia a parlare.
+    if (d < RIL_VICINO_M) { fuori[k] = -Infinity; continue; }
+    const q = rilievo.quota[a + k] * (1 - s) + rilievo.quota[b + k] * s;
+    const v = (q - occhio) / d - curva * d - Math.min(tetto, abbassaM / d);
+    if (v > massimo) massimo = v;
+    fuori[k] = massimo;
+  }
+  // `n` è fin dove il buffer è stato riempito in questo giro: oltre ci sono i
+  // resti del giro di prima, e chi legge non deve guardarli.
+  return { tan: fuori, dist: RIL_DIST, n: quanti };
+}
+
 function rilFrontiA(az, fuori) {
   if (!rilPronto()) return null;
   const nd = TERRENO_DISTANZE.length;
@@ -1042,8 +1891,14 @@ function rilFrontiA(az, fuori) {
 // =====================================================================
 
 // Il posto da cui si guarda è lo stesso di `terreno.js`: il luogo di sola
-// visita del planetario se c'è, se no la posizione dell'app.
+// visita del planetario se c'è, se no la posizione dell'app — e in
+// movimento il **punto vivo**, cioè l'ultimo fix grezzo portato avanti
+// dalla corsa (§6-bis di `terreno.js`). La differenza si vede tutta: la
+// posizione dell'app avanza a scatti di centocinquanta metri, che è la
+// soglia sotto la quale un fix è respiro del sensore, e il paesaggio
+// disegnato con quella saltava da un fermo all'altro.
 function rilLuogo() {
+  if (typeof terrenoPuntoDaDisegnare === 'function') return terrenoPuntoDaDisegnare();
   return typeof terrenoLuogo === 'function' ? terrenoLuogo() : null;
 }
 
@@ -1055,8 +1910,256 @@ function rilScorda() {
   rilievo.minAlt = null;
   rilievo.maxAlt = null;
   rilievo.chiave = null;
+  rilievo.grigliaQuando = 0;
   rilievo.fini = 0;
+  rilievo.occhioOra = null;
+  rilievo.occhioLat = null;
+  rilievo.occhioLon = null;
+  // Lo scarto è la misura di **quanto le tessere sbagliano in quel punto**:
+  // portarselo in un altro posto vuol dire spostare di quei metri un terreno
+  // che con quella misura non c'entra niente. Qui non se ne sa più niente
+  // finché non lo si rimisura, e zero è la sola risposta onesta.
+  rilievo.scarto = 0;
+  // E il freno del giro di tessere non vale più: è lì per non ribussare a S3
+  // per **lo stesso disco** mentre si cammina, non per far aspettare otto
+  // secondi chi è appena arrivato dall'altra parte della valle. Senza questa
+  // riga, un «guarda il cielo da qui» dato poco dopo l'arrivo delle tessere
+  // di prima costruiva la maglia del posto nuovo **senza una tessera**, cioè
+  // dalla griglia grossa di quello vecchio traslata di dieci chilometri: un
+  // paesaggio liscio, senza rilievo, che non è quello di nessun posto.
+  rilievo.ultimeTessere = 0;
   rilTessere = new Map();
+  rilTessereGuaste = new Map();
+}
+
+// La maglia che c'è in mano parla ancora del posto in cui si è?
+//
+// È la domanda che `terreno.js` si fa sul profilo (`TERRENO_TIENI_PROFILO_KM`),
+// con una soglia diversa perché diversa è la promessa: un orizzonte a sessanta
+// chilometri visto da nove più in là è lo stesso orizzonte, mentre una
+// superficie disegnata a ventisette metri di passo è la superficie di **quel**
+// disco e di nessun altro. Fuori di lì non si trasla: si butta, e si ricomincia
+// da qui — che è esattamente quello che succede arrivando in un posto nuovo.
+//
+// Restituisce `true` se qualcosa è stato buttato, così chi chiama sa che da
+// adesso in poi non c'è più niente da disegnare.
+function rilScordaSeAltrove(luogo) {
+  if (!luogo || !rilievo.cresta) return false;
+  if (rilDistanzaDalCentro(luogo) <= RIL_MAGLIA_VALIDA_M) return false;
+  rilScorda();
+  // Non è un guasto ed è meglio dirlo: la forma del terreno di qui sta
+  // arrivando, come alla prima apertura. Un'assenza muta, in questo modulo,
+  // si legge come un terreno sbagliato invece che come un dato che manca.
+  rilievo.stato = 'in-corso';
+  rilievo.motivo = '';
+  return true;
+}
+
+
+// --- 8-bis. La camera che cammina dentro al paesaggio -----------------
+//
+// La quota dell'occhio è il termine che si **sottrae a tutti gli angoli**:
+// alzarla di dieci metri abbassa di dieci metri tutto l'orizzonte, vicino e
+// lontano. Da fermo la si prende una volta e lì resta. Muovendosi no — ed è
+// la differenza fra una fotografia che scorre e una camera che percorre il
+// terreno: passando un valico si comincia a vedere oltre la cresta *perché
+// si è saliti*, e scendendo in una conca l'orizzonte si chiude addosso.
+// Prima quel numero restava quello del punto di partenza, e il paesaggio
+// scorreva sotto un punto di vista appeso a mezz'aria.
+//
+// Il suolo lo dicono le tessere, che sono già in memoria: una lettura
+// bilineare per fotogramma, e nient'altro. Lo `scarto` è lo stesso che
+// `rilCostruisciMaglia` ha misurato per mettere d'accordo tessere e griglia
+// grossa — senza di lui l'occhio si troverebbe su un'altra superficie da
+// quella disegnata, che è il difetto che quello scarto esiste per curare.
+
+// Le tessere che servono a questo punto ci sono già tutte? È la domanda che
+// separa il calcolo dalla rete.
+function rilTessereBastano(lat, lon) {
+  let elenco = rilTessereAttorno(lat, lon, RIL_RAGGIO_KM);
+  if (elenco.length > RIL_TESSERE_MAX) elenco = elenco.slice(0, RIL_TESSERE_MAX);
+  // «Bastano» vuol dire che non c'è più niente da chiedere: o la tessera c'è,
+  // o è stata provata abbastanza volte da smettere di sperarci. Una che ha
+  // fallito una volta sola e da poco **non** basta, ed è tutta la differenza.
+  return elenco.every(t => !rilTesseraDaChiedere(`${t.x}/${t.y}`));
+}
+
+// Quelle che ci si è lasciati dietro. Non si buttano subito — tornare sui
+// propri passi è la cosa più normale del mondo — ma nemmeno si tengono
+// tutte: viaggiando, un quarto di megabyte a tessera diventa presto un
+// conto vero.
+function rilPotaTessere(lat, lon) {
+  // Le guaste si potano insieme alle buone, e con lo stesso metro: una
+  // tessera che ci si è lasciati alle spalle non la si richiederà più da qui,
+  // e tenerne il verbale per sempre vuol dire che tornandoci fra un'ora si
+  // ricomincerebbe dal conto dei tentativi di allora invece che da zero.
+  if (rilTessere.size <= RIL_TESSERE_TENUTE &&
+      rilTessereGuaste.size <= RIL_TESSERE_TENUTE) return;
+  const o = rilPixelMondo(lat, lon, RIL_ZOOM);
+  const L = rilLatoTessera;
+  const pota = mappa => {
+    if (mappa.size <= RIL_TESSERE_TENUTE) return;
+    const ordinate = [...mappa.keys()].map(chiave => {
+      const [x, y] = chiave.split('/').map(Number);
+      const dx = (x + 0.5) * L - o.px, dy = (y + 0.5) * L - o.py;
+      return { chiave, d: dx * dx + dy * dy };
+    }).sort((a, b) => a.d - b.d);
+    for (let i = RIL_TESSERE_TENUTE; i < ordinate.length; i++) mappa.delete(ordinate[i].chiave);
+  };
+  pota(rilTessere);
+  pota(rilTessereGuaste);
+}
+
+// La quota del suolo sotto un punto, nel riferimento della griglia grossa
+// (cioè lo stesso in cui è scritta `terreno.quota`). `null` se lì le
+// tessere non ci sono.
+function rilQuotaSuolo(lat, lon) {
+  if (!rilTessere.size) return null;
+  const o = rilPixelMondo(lat, lon, RIL_ZOOM);
+  const q = rilQuotaTessere(o.px, o.py);
+  return q === null ? null : q + (rilievo.scarto || 0);
+}
+
+// Quanto dice la griglia grossa del suolo sotto un punto. È il gradino di
+// mezzo fra le tessere e `terreno.quota`: centocinquanta metri di passo
+// invece di ventisette, ma di **quel** punto — mentre `terreno.quota` è la
+// quota misurata dove la griglia è stata chiesta, che dopo un cambio di
+// posto è un'altra collina. `null` se nemmeno lei sa rispondere.
+function rilQuotaGrigliaSotto(lat, lon) {
+  if (typeof terreno === 'undefined' || !terreno.quote) return null;
+  const scosto = rilScostoGriglia(lat, lon);
+  if (!scosto) return typeof terreno.quota === 'number' ? terreno.quota : null;
+  return rilQuotaGrigliaDa(scosto, 0, 1, 0, 0);
+}
+
+// Dove dovrebbe stare la camera in un punto: il suolo che c'è lì sotto più
+// l'altezza di una persona.
+//
+// Le fonti sono tre e si provano in ordine di quanto sanno di **questo**
+// punto: le tessere (ventisette metri di passo), la griglia grossa
+// (centocinquanta) e infine `terreno.quota`, che è la misura esatta di dove
+// la griglia è stata chiesta e vale finché si sta lì.
+//
+// L'ordine non è un dettaglio: la camera e la maglia devono stare sulla
+// stessa superficie, e la maglia legge esattamente queste fonti in questo
+// ordine. Saltando il gradino di mezzo — com'era — dopo un «guarda il cielo
+// da qui» la camera restava alla quota del posto di prima mentre la
+// superficie era già quella di qui: quattrocento metri di disaccordo, che a
+// settanta metri di distanza sono ottant'un gradi di parete.
+function rilOcchioMeta(lat, lon) {
+  const misurata = typeof terreno !== 'undefined' && typeof terreno.quota === 'number';
+  const fermo = (misurata ? terreno.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M;
+  // Stando sull'acqua la quota non è quella del suolo ma quella della
+  // superficie, e a stabilirlo è `acqueAllineaOcchio` in `terreno.js`: lì
+  // comanda lei, e le tessere — che il pelo dell'acqua non lo conoscono —
+  // non devono rimetterci mano.
+  if (typeof terreno !== 'undefined' && terreno.quotaAcqua) return fermo;
+  // Vicino al centro della griglia comanda la misura di lì. È il punto di
+  // cui `terreno.js` ha chiesto la quota per davvero, ed è quel numero il
+  // riferimento di tutta l'app — le creste, l'acqua, le vette. Usarlo qui
+  // è anche il modo in cui `rilCostruisciMaglia` torna a **misurare** lo
+  // scarto fra i due modelli del suolo invece di riportarselo dietro: le
+  // due cose combaciano di sicuro, perché quello scarto è definito
+  // esattamente come «quanto le tessere sbagliano in questo punto».
+  if (misurata && typeof terrenoDistanzaKm === 'function' &&
+      terreno.lat !== null && terreno.lon !== null &&
+      terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) <= RIL_OCCHIO_GRIGLIA_KM) {
+    return fermo;
+  }
+  const suolo = rilQuotaSuolo(lat, lon);
+  if (suolo !== null) return suolo + TERRENO_ALTEZZA_OCCHIO_M;
+  const grossa = rilQuotaGrigliaSotto(lat, lon);
+  return grossa === null ? fermo : grossa + TERRENO_ALTEZZA_OCCHIO_M;
+}
+
+// Un nuovo dato altimetrico non deve mai diventare un teletrasporto della
+// camera. In viaggio può arrivare dopo il fix che l'ha richiesto e correggere
+// anche di centinaia di metri la stima precedente: proprio nell'istante in
+// cui finiscono di caricarsi le tessere, saltare direttamente alla nuova
+// quota produce il colpo verso l'alto che si vede dal finestrino. I cambi di
+// luogo veri passano invece da `rilScorda`, che azzera `occhioOra`, quindi non
+// c'è bisogno di dedurli (male) dalla sola differenza di quota.
+function rilSmussaOcchio(attuale, meta, dt) {
+  const tempo = Math.max(0, Math.min(1000, dt));
+  const a = 1 - Math.exp(-tempo / RIL_OCCHIO_TAU_MS);
+  const passoMorbido = (meta - attuale) * a;
+  const passoMassimo = RIL_OCCHIO_V_MAX_M_S * tempo / 1000;
+  const passo = Math.max(-passoMassimo, Math.min(passoMassimo, passoMorbido));
+  return attuale + passo;
+}
+
+// La morbidezza della camera non può prevalere sulla collisione col suolo.
+// Quando si sale, `rilSmussaOcchio` può restare per qualche secondo sotto la
+// nuova superficie: in una maglia prospettica significa guardare una faccia
+// dal retro, che a FOV largo diventa il grande poligono sul cielo e i cunei
+// appuntiti ai piedi dello schermo. La quota del suolo è già la stessa usata
+// dalla maglia (`rilOcchioMeta`); questo vincolo la tratta come un pavimento.
+// In discesa continua invece a comandare lo smorzamento, quindi la camera non
+// sobbalza seguendo ogni cella del raster.
+function rilEvitaCollisioneOcchio(occhio, minimo) {
+  return Math.max(occhio, minimo);
+}
+
+// Garantisce lo spazio fisico attorno alla camera mentre una quota arrivata
+// dalla rete viene assorbita. Il limite vale solo nel grembiule invisibile
+// sotto i piedi: oltre `RIL_SPAZIO_CAMERA_M` la montagna resta esattamente
+// quella misurata, anche quando sale davvero davanti all'osservatore.
+function rilLasciaSpazioCamera(quota, occhio, metri) {
+  if (metri >= RIL_SPAZIO_CAMERA_M) return quota;
+  // «Mentre viene assorbita», e non sempre: il raccordo serve finché la
+  // camera sta **più in basso** del suolo su cui la maglia è stata
+  // costruita, che è l'unico caso in cui il primo lembo può avvolgerla.
+  // Applicandolo comunque si spiana il terreno che uno ha davvero davanti:
+  // su un pendio al dieci per cento, a venticinque metri sono sei gradi —
+  // ed è la prova del §25 di `verifica.html` («traslando, ogni nodo dice il
+  // terreno visto dal punto nuovo») che quel prezzo lo misura.
+  if (!(rilievo.occhio - occhio > RIL_OCCHIO_RIFAI_M)) return quota;
+  const suoloCamera = occhio - TERRENO_ALTEZZA_OCCHIO_M;
+  if (quota <= suoloCamera) return quota;
+  const t = Math.max(0, metri / RIL_SPAZIO_CAMERA_M);
+  // Smoothstep: nessuna piega né sotto i piedi né al termine del raccordo.
+  const peso = t * t * (3 - 2 * t);
+  return suoloCamera + (quota - suoloCamera) * peso;
+}
+
+// La quota dell'occhio adesso, inseguita con dolcezza. Da usare nel disegno
+// e nella ricostruzione della maglia: sono la stessa camera.
+function rilOcchioOra() {
+  const luogo = rilLuogo();
+  if (!rilPronto() || !luogo) {
+    rilievo.occhioOra = null;
+    rilievo.occhioLat = rilievo.occhioLon = null;
+    return luogo ? rilOcchioMeta(luogo.lat, luogo.lon) : TERRENO_ALTEZZA_OCCHIO_M;
+  }
+  const meta = rilOcchioMeta(luogo.lat, luogo.lon);
+
+  // Ci si è mossi o si è stati portati? Fra i due passa la differenza fra
+  // inseguire il suolo e restare appesi alla quota di un altro posto per due
+  // minuti (`RIL_SALTO_OCCHIO_M`). La domanda si fa sul **punto**, non sulla
+  // differenza di quota: un dislivello grosso può benissimo essere una
+  // correzione del modello arrivata dalla rete, ed è proprio quella che lo
+  // smorzamento esiste per assorbire.
+  const saltato = rilievo.occhioLat === null || rilievo.occhioLon === null ||
+    typeof terrenoDistanzaKm !== 'function' ||
+    terrenoDistanzaKm(luogo.lat, luogo.lon, rilievo.occhioLat, rilievo.occhioLon) * 1000
+      > RIL_SALTO_OCCHIO_M;
+  rilievo.occhioLat = luogo.lat;
+  rilievo.occhioLon = luogo.lon;
+
+  const ora = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  if (saltato || rilievo.occhioOra === null || !isFinite(rilievo.occhioOra)) {
+    rilievo.occhioOra = meta;
+    rilievo.occhioQuando = ora;
+    return meta;
+  }
+  // Smorzamento esponenziale col `dt` del fotogramma, come tutti i
+  // movimenti morbidi dell'app: a trenta o a centoventi fotogrammi al
+  // secondo la salita dura lo stesso.
+  const dt = ora - (rilievo.occhioQuando || ora);
+  rilievo.occhioQuando = ora;
+  rilievo.occhioOra = rilEvitaCollisioneOcchio(
+    rilSmussaOcchio(rilievo.occhioOra, meta, dt), meta);
+  return rilievo.occhioOra;
 }
 
 // Costruire la maglia. Non si chiama a mano: la chiama `rilControlla`,
@@ -1067,17 +2170,40 @@ function rilScorda() {
 // si ha in mano per il tempo di rifarlo vuol dire che a ogni affinamento
 // l'orizzonte torna quello finto per qualche secondo. A buttarla è solo un
 // cambio di luogo.
-async function rilCarica() {
+//
+// `forza` serve a un caso solo, ed è quello delle tessere che non sono
+// arrivate: lì il posto non è cambiato e nemmeno l'occhio, quindi la chiave è
+// la stessa e senza questo parametro non si ripasserebbe mai — cioè la
+// tessera persa resterebbe persa anche avendo tutte le ragioni per
+// richiederla. Chi la usa è `rilControlla`, e la spende solo quando una
+// riprova è davvero scaduta.
+async function rilCarica(forza) {
   if (rilievo.inCostruzione) { rilievo.daRifare = true; return false; }
   const luogo = rilLuogo();
   if (!luogo || !rilievo.acceso) return false;
+  // Prima di tutto, e prima della guardia qui sotto: una maglia di un altro
+  // posto non si tiene per il tempo di rifare questa. Il controllo sta anche
+  // qui e non solo in `rilControlla` perché a chiamare questa funzione, col
+  // planetario chiuso, è `terreno.js` quando il profilo nuovo arriva — e in
+  // quel caso di fotogrammi non ne passa nessuno.
+  rilScordaSeAltrove(luogo);
   if (typeof terrenoDisponibile !== 'function' || !terrenoDisponibile()) return false;
 
   const lat = luogo.lat, lon = luogo.lon;
-  const occhio = (typeof terreno.quota === 'number' ? terreno.quota : 0) +
-    TERRENO_ALTEZZA_OCCHIO_M;
-  const chiave = rilChiaveDi(lat, lon, occhio);
-  if (chiave === rilievo.chiave) return true;
+  // L'occhio della maglia nuova è quello **di adesso**, cioè il suolo sotto
+  // i piedi in questo punto (§8-bis) e non la quota del centro precedente:
+  // ricostruire la superficie con la camera di dieci chilometri fa vorrebbe
+  // dire raddrizzare a mano tutto quello che si era appena inclinato.
+  //
+  // Questa qui però è solo la risposta che si può dare **adesso**, e appena
+  // arrivati da un altro posto è una stima presa dalla griglia grossa di
+  // *quello* posto: a dieci chilometri di distanza sono campioni ogni tre
+  // gradi e ogni tre chilometri, cioè centinaia di metri di errore in
+  // montagna. Serve a decidere se vale la pena muoversi; la buona si prende
+  // più giù, quando le tessere sono arrivate.
+  let occhio = rilOcchioMeta(lat, lon);
+  let chiave = rilChiaveDi(lat, lon, occhio);
+  if (chiave === rilievo.chiave && !forza) return true;
 
   rilievo.inCostruzione = true;
   rilievo.daRifare = false;
@@ -1086,23 +2212,55 @@ async function rilCarica() {
   if (typeof terrenoAggiornaPannello === 'function') terrenoAggiornaPannello();
 
   try {
-    // Le tessere si riscaricano solo se il posto è cambiato davvero: un
-    // affinamento della griglia grossa, o la quota dell'occhio che si
-    // assesta quando si scopre di essere sull'acqua, non spostano di un
-    // metro le colline — e riscaricare un megabyte per rifare lo stesso
-    // conto sarebbe il modo più caro di non cambiare niente.
-    const lontano = rilievo.lat === null ||
-      (typeof terrenoDistanzaKm === 'function' &&
-        terrenoDistanzaKm(lat, lon, rilievo.lat, rilievo.lon) > 0.2);
-    if (lontano || !rilTessere.size) {
-      rilTessere = new Map();
+    // Le tessere si riscaricano solo se quelle che servono non ci sono più.
+    // È la separazione che rende possibile tutto il resto: **ricostruire la
+    // maglia non costa rete**, quindi la si può rifare ogni sessanta metri
+    // (`rilControlla`) senza che nessuno paghi niente, mentre il megabyte di
+    // tessere si ricompra solo attraversando il bordo del disco coperto —
+    // che a questo zoom è un affare di chilometri. Prima le due cose erano
+    // legate da una soglia sola, e la soglia era per forza quella cara.
+    if (!rilTessereBastano(lat, lon) &&
+        Date.now() - (rilievo.ultimeTessere || 0) >= RIL_TESSERE_MIN_MS) {
       let elenco = rilTessereAttorno(lat, lon, RIL_RAGGIO_KM);
       // Più di quante se ne possono permettere: si tengono le più vicine,
       // che è come dire che il raggio si stringe. Meglio un primo piano
       // fine e uno sfondo grosso che il contrario.
       if (elenco.length > RIL_TESSERE_MAX) elenco = elenco.slice(0, RIL_TESSERE_MAX);
-      rilLatoTessera = await rilPrendiTessere(elenco);
+      // Solo quelle che mancano: quelle che si hanno già sono le stesse
+      // colline, e ricomprarle attraversando un confine di tessera sarebbe
+      // un megabyte per non cambiare niente.
+      const mancanti = elenco.filter(t => rilTesseraDaChiedere(`${t.x}/${t.y}`));
+      if (mancanti.length) {
+        rilievo.ultimeTessere = Date.now();
+        rilLatoTessera = await rilPrendiTessere(mancanti);
+        rilPotaTessere(lat, lon);
+      }
     }
+
+    // Adesso, e non prima: la quota della camera si rilegge **dopo** le
+    // tessere.
+    //
+    // È la riga che rimette in piedi l'invariante su cui si regge tutto il
+    // file — «la superficie sotto i piedi sta alla quota della camera» — e
+    // che si rompeva in un caso solo, ma proprio quello che si usa per
+    // guardare da una cima: arrivando in un posto nuovo, le tessere sono le
+    // uniche che sappiano dov'è il suolo qui, e leggendo l'occhio prima di
+    // averle si costruiva la maglia sulla stima presa dalla griglia di
+    // dov'eravamo. Misurato sul banco, saltando fra due cime a undici
+    // chilometri: la camera veniva posata **duecentocinquanta metri più in
+    // basso** del suolo vero, `rilCostruisciMaglia` tosava la differenza a
+    // `RIL_SCARTO_MAX` — perché uno scarto così non è un disaccordo fra due
+    // modelli, ed è giusto che lo tosi — e ne restavano centocinquanta di
+    // camera sotto la superficie: cresta a **89,95° in tutte e
+    // settecentoventi le direzioni**, cioè il cuneo di terra fin quasi allo
+    // zenit.
+    //
+    // Non è una seconda lettura di comodo: `rilOcchioMeta` prova le fonti
+    // nello stesso ordine in cui le legge la maglia (tessere, griglia,
+    // quota misurata del centro), quindi chiamandola qui le due leggono per
+    // forza la stessa cosa. Chiamandola prima, no.
+    occhio = rilOcchioMeta(lat, lon);
+    chiave = rilChiaveDi(lat, lon, occhio);
 
     const maglia = await rilCostruisciMaglia(lat, lon, occhio);
     const derivate = rilRicava(maglia.alt);
@@ -1118,6 +2276,8 @@ async function rilCarica() {
     rilievo.lon = lon;
     rilievo.occhio = occhio;
     rilievo.chiave = chiave;
+    rilievo.grigliaQuando = (typeof terreno !== 'undefined' ? (terreno.quando || 0) : 0);
+    rilievo.ultimoCaricamento = Date.now();
     rilievo.stato = 'pronto';
     // Quante tessere hanno risposto davvero: se nessuna, la maglia c'è
     // comunque (legge la griglia grossa) ma non è il rilievo fine, e la riga
@@ -1152,18 +2312,60 @@ async function rilCarica() {
 // peggiore perché sembra vero.
 function rilControlla() {
   if (!rilievo.acceso || rilievo.inCostruzione) return;
-  if (typeof terrenoDisponibile !== 'function' || !terrenoDisponibile()) return;
   const luogo = rilLuogo();
   if (!luogo) return;
-  const occhio = (typeof terreno.quota === 'number' ? terreno.quota : 0) +
-    TERRENO_ALTEZZA_OCCHIO_M;
-  if (rilChiaveDi(luogo.lat, luogo.lon, occhio) === rilievo.chiave) return;
-  // Un luogo del tutto diverso: la maglia vecchia non parla più di qui, e le
-  // colline di Genova disegnate a Bolzano sono peggio di nessuna collina
-  // perché sembrano vere.
-  if (rilievo.lat !== null && typeof terrenoDistanzaKm === 'function' &&
-      terrenoDistanzaKm(luogo.lat, luogo.lon, rilievo.lat, rilievo.lon) > RIL_RAGGIO_KM) {
-    rilScorda();
+  // La prima domanda si fa **prima** di quella sul terreno, ed è tutta la
+  // cura del cuneo di terra sopra l'orizzonte: la finestra in cui la maglia
+  // di prima veniva disegnata qui è esattamente quella in cui il profilo
+  // grosso del posto nuovo non è ancora arrivato. Chiedendo prima
+  // `terrenoDisponibile()` si usciva di qui senza guardare, e la maglia
+  // vecchia restava sullo schermo per tutto lo scarico — che con un 429 sono
+  // minuti.
+  if (rilScordaSeAltrove(luogo) && typeof terrenoAggiornaPannello === 'function') {
+    terrenoAggiornaPannello();
+  }
+  if (typeof terrenoDisponibile !== 'function' || !terrenoDisponibile()) return;
+  const occhio = rilOcchioMeta(luogo.lat, luogo.lon);
+  if (rilChiaveDi(luogo.lat, luogo.lon, occhio) === rilievo.chiave) {
+    // Stessa chiave: il posto non è cambiato e non c'è niente da rifare —
+    // tranne quando una tessera non era arrivata e adesso la si può
+    // richiedere. Da fermo quello è l'unico momento in cui si ripassa, e
+    // senza questa riga non arriverebbe mai: il buco lasciato da un
+    // `ERR_CONNECTION_CLOSED` resterebbe lì, disegnato con la griglia grossa,
+    // finché l'app è aperta. Il freno è quello delle tessere
+    // (`RIL_TESSERE_MIN_MS`), che è già il tetto di quante volte si può
+    // bussare a S3.
+    //
+    // La prima domanda è la più a buon mercato, e questa funzione gira a ogni
+    // fotogramma: se non è mai fallita nessuna tessera non c'è niente da
+    // riprovare, ed è una lettura di proprietà. Solo dopo si paga il disco.
+    if (!rilievo.cresta || !rilTessereGuaste.size) return;
+    if (Date.now() - (rilievo.ultimeTessere || 0) < RIL_TESSERE_MIN_MS) return;
+    if (rilTessereBastano(luogo.lat, luogo.lon)) return;
+    rilCarica(true);
+    return;
+  }
+  // Il centro nuovo si prepara presto e spesso: sessanta metri, non
+  // quattrocentocinquanta. Ricostruire è aritmetica a scaglioni, e mentre
+  // gira resta disegnata quella vecchia — già traslata verso il punto nuovo,
+  // quindi non si vede nessun salto. Quello che si guadagna è che
+  // `rilievo.cresta` e `rilievo.fronte` — cioè le risposte a «quell'astro è
+  // sorto?», «quella vetta si vede?», «dove finisce quel lago?» — restano
+  // agganciate al terreno che si sta davvero disegnando.
+  if (rilievo.cresta) {
+    // Il freno dei sessanta metri è del **posto**, e per un pezzo si è preso
+    // anche le altre due parti della chiave: la quota della camera e la
+    // versione della griglia grossa. Da fermo quelle due sono le sole che
+    // cambino — arriva il terreno vero di qui, arrivano le tessere, ci si
+    // scopre sull'acqua — e la chiave risultava diversa, ma questa riga
+    // usciva prima di rifare qualunque cosa: la maglia restava quella
+    // costruita con la stima sbagliata **finché non ci si spostava di
+    // sessanta metri a piedi**, cioè per sempre, standosene su una cima a
+    // guardare. Un difetto transitorio diventava definitivo proprio qui.
+    const soloSpostati = Math.abs(occhio - rilievo.occhio) < RIL_OCCHIO_RIFAI_MAGLIA_M &&
+      rilievo.grigliaQuando === (typeof terreno !== 'undefined' ? (terreno.quando || 0) : 0);
+    if (soloSpostati && rilDistanzaDalCentro(luogo) < RIL_RICENTRA_M) return;
+    if (Date.now() - rilievo.ultimoCaricamento < RIL_RICENTRA_MIN_MS) return;
   }
   rilCarica();
 }
@@ -1199,7 +2401,16 @@ function rilTesto() {
     const vive = [...rilTessere.values()].filter(Boolean).length;
     if (!vive) return 'Rilievo: dalla griglia grossa, senza le tessere fini.';
     const passo = Math.round(rilMetriPerPixel(rilievo.lat || 45, RIL_ZOOM));
-    return `Rilievo: ${passo} m di passo entro ${RIL_RAGGIO_KM} km (${vive} tessere).`;
+    const riga = `Rilievo: ${passo} m di passo entro ${RIL_RAGGIO_KM} km (${vive} tessere)`;
+    // Una tessera che manca non deve restare un'assenza muta: quel settore è
+    // disegnato dalla griglia grossa, cioè a facce larghe, e sullo schermo è
+    // indistinguibile da un terreno liscio per davvero.
+    const conto = rilTessereMancanti();
+    if (!conto.mancanti) return `${riga}.`;
+    const quante = conto.mancanti === 1 ? 'una non è arrivata' : `${conto.mancanti} non sono arrivate`;
+    return conto.ancora
+      ? `${riga}; ${quante}, ci riprovo.`
+      : `${riga}; ${quante}: lì il terreno resta grosso.`;
   }
   return '';
 }
@@ -1244,6 +2455,7 @@ function rilTesto() {
 // I magazzini di lavoro. Migliaia di segmenti per fotogramma allocati ogni
 // volta sarebbero decine di megabyte al secondo da far raccogliere.
 let rilTratti = null;      // un array di coordinate per livello di chiaroscuro
+let rilTinte = null;       // e uno per coppia (banda di quota, classe di distanza)
 let rilCrestaX = null;     // la sagoma disegnata, in pixel
 let rilCrestaY = null;
 let rilCrestaA = null;     // e in gradi, per chi la chiede dopo
@@ -1259,10 +2471,128 @@ let rilRottN = null;
 
 const RIL_ROTTURE = 6;
 
+// --- Quanto è larga una colonna, e perché non è un numero solo ---------
+//
+// È la riga da cui vengono i **lampi radiali**: quelle strisce chiare, lunghe
+// mezzo schermo, che comparivano sul terreno a campo largo e scorrevano
+// mentre si muoveva la camera. A occhio sembrano un difetto del dato — una
+// cresta impazzita, un settore di maglia sbagliato — e non lo sono affatto:
+// sono **il fondo che si vede fra due colonne**, cioè un buco largo mezzo
+// pixel là dove il tratto non arriva a toccare quello accanto.
+//
+// La larghezza era una sola per tutto il fotogramma, `focale · Δaz`, cioè la
+// distanza fra due meridiani **al centro della vista**. Ma la proiezione è
+// stereografica, e la stereografica stira: la scala locale vale
+// `2·focale/(1+d)`, che al centro vale `focale` e ai bordi di un riquadro da
+// cento gradi una volta e mezzo tanto. E dall'altra parte i meridiani
+// **convergono** verso il nadir, di un fattore `cos(alt)`. Il rapporto fra la
+// distanza vera di due colonne e quella disegnata è quindi `cos(alt)·2/(1+d)`
+// — misurato: da 0,30 a 1,52 in un riquadro da cento gradi, da 0,98 a 1,04 in
+// uno da trenta. Dove quel numero supera l'uno il tratto è **troppo stretto** e
+// fra una colonna e l'altra resta scoperto il fondo della fetta, che è più
+// chiaro del terreno ombreggiato: un filo chiaro, largo mezzo pixel e lungo
+// quanto la corsa di livello che lo affianca, cioè centinaia di pixel. Ecco
+// perché si vedevano solo a campo largo, solo verso i bordi del riquadro, e
+// perché si spostavano appena si muoveva la camera: il posto in cui la
+// stereografica stira di più si sposta con lei.
+//
+// Il numero giusto ce l'abbiamo già: `ca / den` è nella camminata, sono due
+// valori che il disegno calcola comunque. Il problema è che una `stroke()`
+// ha **una** larghezza per tracciato, e i tracciati sono quaranta (uno per
+// livello di chiaroscuro): dargliene una per segmento vorrebbe dire una
+// chiamata per segmento, cioè diecimila.
+//
+// La cura è quantizzare: poche classi di larghezza, e ogni corsa finisce in
+// quella **appena più larga** di quanto le serve. Così un buco non può
+// esistere per costruzione — la larghezza disegnata è sempre ≥ quella vera —
+// e in cambio si spende un po' di sovrapposizione, che al peggio sfuoca il
+// chiaroscuro di traverso e non lascia vedere niente.
+//
+// I gradini non sono equispaziati, ed è misurato: in un riquadro da trenta
+// gradi il fattore sta fra 0,98 e 1,04, in uno da sessanta fra 0,79 e 1,18, in
+// uno da cento fra 0,30 e 1,52. Cioè quasi tutte le viste normali vivono nel
+// primo palmo sopra l'uno, e lì un gradino grosso vorrebbe dire disegnare il
+// venti per cento troppo largo per guadagnare niente: il primo scalino è
+// perciò stretto, e gli altri crescono in proporzione.
+//
+// L'ultimo dice fin dove si arriva, e il numero è misurato: all'apertura
+// massima a cui la pettinatura si disegna ancora
+// (`RIL_FOV_FONDI_SEPARATI_MAX`, centoventicinque gradi) l'angolo del riquadro
+// vede il terreno con un fattore di 2,4. Oltre quella soglia il chiaroscuro
+// non si disegna affatto, quindi 2,6 è il capolinea e non una scelta.
+const RIL_LARGHEZZE = [1, 1.12, 1.3, 1.52, 1.8, 2.15, 2.6];
+const RIL_LARG_CLASSI = RIL_LARGHEZZE.length;
+// Un filo di margine, perché due tratti che si toccano esattamente lasciano
+// sul pixel in comune due mezze coperture che non ne fanno una piena. È un
+// terzo di pixel e non uno: la classe arrotonda già per eccesso, e un pixel
+// intero è la sovrapposizione che `RIL_STRISCIA_SBORDO` ha appena finito di
+// togliere di mezzo nell'altra direzione.
+const RIL_LARG_MARGINE = 0.35;
+
+// Quanto una corsa può allontanarsi dal meridiano che sta disegnando.
+//
+// È la **seconda** metà dei lampi radiali, e da sola valeva quanto la prima.
+// Una corsa di livello uguale si disegna come un segmento dritto fra il primo
+// e l'ultimo nodo, ma una colonna di azimut costante, in stereografica, è un
+// **arco**: fuori dal meridiano che passa per il centro della vista si
+// incurva, e su una corsa lunga qualche centinaio di pixel la corda se ne
+// allontana di parecchi. Finché due colonne vicine si incurvano allo stesso
+// modo non si vede niente — ma le corse si rompono a quote diverse in ogni
+// colonna, quindi le corde di due colonne contigue sono diverse, si aprono a
+// ventaglio, e fra loro resta lo stesso filo di fondo scoperto.
+//
+// Non si tosa allora la lunghezza in pixel, che sarebbe un numero a caso: le
+// colonne vicine al centro della vista sono rette e non hanno niente da
+// spezzare, quelle ai bordi si incurvano subito. Si misura invece **la
+// freccia** — di quanto la corda si scosta dall'arco — e si chiude la corsa
+// quando supera un terzo di pixel. Per un arco la freccia vale un quarto
+// dello scostamento del capo dalla direzione di partenza, ed è quest'ultimo
+// che si confronta: un prodotto vettoriale per nodo, senza radici quadrate.
+const RIL_CORDA_FRECCIA = 0.35;
+const RIL_CORDA_K2 = (4 * RIL_CORDA_FRECCIA) * (4 * RIL_CORDA_FRECCIA);
+
+// La corda da (x0,y0) al punto nuovo si è allontanata troppo dall'arco?
+// `sx`,`sy` sono il **primo passo** della corsa così com'è (non normalizzato):
+// il prodotto vettoriale con il capo vale allora `|primo passo| · scostamento`,
+// e il confronto si fa sui quadrati.
+function rilCordaTroppoStorta(sx, sy, s2, x0, y0, x, y) {
+  if (!(s2 > 0.01)) return false;
+  const cr = sx * (y - y0) - sy * (x - x0);
+  return cr * cr > RIL_CORDA_K2 * s2;
+}
+
+// In che classe cade una corsa larga `fattore` volte la larghezza di base.
+// Si arrotonda **per eccesso**: una colonna disegnata un po' troppo larga si
+// sovrappone alla vicina, una disegnata un po' troppo stretta lascia vedere
+// quello che c'è sotto.
+function rilClasseLarghezza(fattore) {
+  // Un giro corto invece di un logaritmo: sta dentro al ciclo del disegno, e
+  // sono ventimila nodi per fotogramma. Quasi tutti escono al primo o al
+  // secondo confronto — il fattore mediano di una vista normale sta appena
+  // sopra l'uno.
+  if (!(fattore > 1)) return 0;
+  for (let i = 1; i < RIL_LARG_CLASSI; i++) if (fattore <= RIL_LARGHEZZE[i]) return i;
+  return RIL_LARG_CLASSI - 1;
+}
+
 function rilMagazzino(nCol) {
   if (!rilTratti) {
     rilTratti = [];
-    for (let i = 0; i < RIL_LIVELLI; i++) rilTratti.push({ v: new Float32Array(8192), n: 0 });
+    // Un magazzino per **coppia** (livello, classe di larghezza). I buffer
+    // partono piccoli e crescono da sé: le classi larghe servono solo ai
+    // bordi di un riquadro molto aperto, e allocarle tutte da 8.192 float
+    // vorrebbe dire sei megabyte per non usarli quasi mai.
+    for (let i = 0; i < RIL_LIVELLI * RIL_LARG_CLASSI; i++) {
+      rilTratti.push({ v: new Float32Array(i % RIL_LARG_CLASSI ? 512 : 8192), n: 0 });
+    }
+  }
+  if (!rilTinte) {
+    rilTinte = [];
+    // Meno affollati di quelli del chiaroscuro: la quota lungo un raggio
+    // cambia piano, quindi le corse sono lunghe e sono poche.
+    for (let i = 0; i < RIL_TINTA_BANDE * RIL_LARG_CLASSI; i++) {
+      rilTinte.push({ v: new Float32Array(i % RIL_LARG_CLASSI ? 256 : 2048), n: 0 });
+    }
   }
   if (!rilCrestaX || rilCrestaX.length < nCol) {
     const n = Math.max(nCol, 1024);
@@ -1286,8 +2616,8 @@ function rilMagazzino(nCol) {
 // colonna di azimut costante e' obliqua ai lati dello schermo; forzarla dentro
 // un rettangolo verticale produceva proprio i tasselli che comparivano nel
 // cielo e sul terreno durante lo zoom.
-function rilMettiStriscia(liv, x0, y0, x1, y1) {
-  const t = rilTratti[liv];
+function rilMettiStriscia(liv, x0, y0, x1, y1, dove) {
+  const t = (dove || rilTratti)[liv];
   if (t.n + 4 > t.v.length) {
     const piu = new Float32Array(t.v.length * 2);
     piu.set(t.v);
@@ -1296,11 +2626,35 @@ function rilMettiStriscia(liv, x0, y0, x1, y1) {
   t.v[t.n++] = x0; t.v[t.n++] = y0; t.v[t.n++] = x1; t.v[t.n++] = y1;
 }
 
-// Il segmento sborda di un pixel e mezzo ai due capi: le corse consecutive
-// si sovrappongono appena e non lasciano la cucitura dell'antialiasing.
-const RIL_STRISCIA_SBORDO = 1.5;
+// Di quanto il segmento sborda ai due capi. **Zero**, ed è la riga che toglie
+// di mezzo le righe verticali del panorama.
+//
+// Sbordava di un pixel e mezzo, per non lasciare la cucitura
+// dell'antialiasing fra due corse consecutive. Il rimedio costava molto più
+// del male, e il conto è questo. Le corse dello stesso livello stanno in un
+// tracciato solo e si compongono in un colpo: fra loro una sovrapposizione
+// non si somma. Fra **livelli diversi** invece sono due `stroke()`, e lì tre
+// pixel di sovrapposizione si sommano davvero: con l'opacità di un tratto
+// (0,19) due passate fanno 0,34 invece di 0,19, cioè un salto di quindici
+// livelli su 255 — cinque volte la soglia a cui una banda si vede.
+//
+// E non capita qui e là: capita **una volta per cambio di livello**, quindi
+// una colonna il cui chiaroscuro cambia spesso si prende venti cuciture e
+// diventa sistematicamente più chiara di quella accanto, che ne ha due. Il
+// risultato è una barra verticale alta mezzo schermo, e non ha niente a che
+// vedere col terreno: dipende da quante volte il livello è cambiato lungo il
+// raggio. Misurato spegnendo del tutto il chiaroscuro — tutti i livelli dello
+// stesso colore — le righe **restano**, ed è la prova che non erano
+// chiaroscuro ma copertura.
+//
+// La cucitura che si temeva, invece, non si vede: due tratti con la punta
+// tagliata che finiscono e cominciano nello stesso punto coprono il pixel a
+// cavallo per intero fra tutt'e due, e a comporli separatamente si perde
+// `0,21 · α²` — un livello e mezzo su 255 con l'opacità di un tratto. Un
+// quindicesimo dell'errore che si stava introducendo per evitarlo.
+const RIL_STRISCIA_SBORDO = 0;
 
-function rilChiudiRun(liv, x0, y0, x1, y1) {
+function rilChiudiRun(liv, x0, y0, x1, y1, dove) {
   // A campo largo un meridiano non e' verticale: nella stereografica e' un
   // arco, e ai lati del riquadro puo' correre parecchi pixel anche in x.
   // Conservare solo min/max y e dipingere un rettangolo verticale trasformava
@@ -1314,7 +2668,7 @@ function rilChiudiRun(liv, x0, y0, x1, y1) {
   else { dx /= m; dy /= m; }
   rilMettiStriscia(liv,
     x0 - dx * RIL_STRISCIA_SBORDO, y0 - dy * RIL_STRISCIA_SBORDO,
-    x1 + dx * RIL_STRISCIA_SBORDO, y1 + dy * RIL_STRISCIA_SBORDO);
+    x1 + dx * RIL_STRISCIA_SBORDO, y1 + dy * RIL_STRISCIA_SBORDO, dove);
   return 1;
 }
 
@@ -1436,8 +2790,15 @@ function rilLontananza(km) {
 // crinale davanti e uno in fondo resta tutto, ed è quello fra `vicino` e
 // `lontano`: un fattore due.
 function rilColoreDiFetta(t, suolo) {
+  t = Math.max(RIL_LONTANANZA_MINIMA, Math.min(1, t));
   const tinta = Math.pow(1 - t, 0.9);
-  return skyMescolaColore(suolo.lontano, suolo.vicino, tinta);
+  const base = skyMescolaColore(suolo.lontano, suolo.vicino, tinta);
+  const giorno = Math.max(0, Math.min(1, sky.luceCielo));
+  const diffusa = RIL_DIFFUSA_NOTTE + (RIL_DIFFUSA_GIORNO - RIL_DIFFUSA_NOTTE) * giorno;
+  // Una diffusa appena calda mantiene il terreno naturale senza lavarlo di
+  // bianco; la foschia continua a stabilire da sola il colore dei piani
+  // lontani.
+  return skyMescolaColore(base, [238, 231, 205], diffusa);
 }
 
 // La tavolozza del tratteggio: un colore per livello di chiaroscuro.
@@ -1460,7 +2821,11 @@ function rilTavolozzaTratti(luce) {
     const k = b / (RIL_LIVELLI - 1);
     const q = (k - 0.45) / 0.55;
     const c = q >= 0 ? L : O;
-    const a = forte * Math.abs(q) * (q >= 0 ? 1 : 0.75);
+    // Le ombre hanno quasi la stessa forza delle luci. Erano ridotte a tre
+    // quarti e sui versanti opposti al Sole restava soltanto una velatura;
+    // il tono freddo e la maggiore profondità fanno ora leggere davvero la
+    // direzione della luce, senza annerire il colore di fondo più chiaro.
+    const a = forte * Math.abs(q) * (q >= 0 ? 1 : 0.92);
     fuori[b] = `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
   }
   return fuori;
@@ -1525,18 +2890,59 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   const pxGrado = Math.max(1e-6, focale * SKY_D2R);
   const passo = rilPassoColonne(pxGrado);
   const nCol = Math.min(Math.ceil(na / passo) + 1,
-    Math.floor(2 * arco.mezzo / (RIL_PASSO_AZ * passo)) + 2);
+    Math.floor(2 * arco.mezzo / (RIL_PASSO_AZ * passo)) + 3);
   if (nCol < 2) return false;
-  const i0 = Math.floor((arco.centro - arco.mezzo) / RIL_PASSO_AZ);
+  // Il capofila si aggancia alla **griglia dei campioni**, non all'arco.
+  //
+  // `arco.centro − arco.mezzo` scorre con continuità mentre si gira la
+  // camera, quindi con un passo maggiore di uno l'insieme delle colonne
+  // disegnate cambiava a ogni mezzo grado: gli stessi dati venivano
+  // ricampionati altrove e il tratteggio scivolava sul terreno invece di
+  // restarci attaccato. Ancorandolo a un multiplo di `passo`, le colonne del
+  // passo largo sono un sottoinsieme di quelle del passo stretto e girandosi
+  // il disegno trasla e basta. È la stessa cura di `skyAcqueStrisce` in
+  // `app.js`, e per la stessa ragione. La colonna in più di `nCol` copre il
+  // mezzo passo che l'ancoraggio arretra.
+  const i0 = Math.floor((arco.centro - arco.mezzo) / (RIL_PASSO_AZ * passo)) * passo;
 
   const cronometro = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   rilMagazzino(nCol);
-  for (let i = 0; i < RIL_LIVELLI; i++) rilTratti[i].n = 0;
+  for (let i = 0; i < rilTratti.length; i++) rilTratti[i].n = 0;
+  for (let i = 0; i < rilTinte.length; i++) rilTinte[i].n = 0;
 
   const luce = rilLuce(base);
+  const luogo = rilLuogo();
   const tav = rilTavolozzaTratti(luce);
+  // Le fasce di quota: la tavolozza già pronta, la linea della neve di qui e
+  // di adesso, e la scala che porta una quota su una banda. Tre numeri per
+  // fotogramma — dentro alla camminata resta una moltiplicazione.
+  const tinte = rilTavolozzaQuote();
+  const neve = rilQuotaNeve();
+  const tintaViva = rilTintaAlfa() > 0.004;
+  const scalaBanda = (RIL_TINTA_BANDE - 1) /
+    Math.max(1e-6, (RIL_QUOTE[RIL_QUOTE.length - 1].f - RIL_QUOTE[0].f) * neve);
   const fondoK = rilFondoAnelli();
-  const occhio = rilievo.occhio;
+  // Una sola decisione per tutto il fotogramma: fondo, tinte, chiaroscuro,
+  // foschia e contorni devono passare insieme dal rilievo dettagliato alla
+  // campitura larga. Lasciare attive soltanto le strisce dopo aver unificato
+  // il fondo era la causa degli "spuntoni" a raggiera ancora visibili.
+  const dettaglio = rilFondiSeparati();
+  // Di quanto la maglia è decentrata rispetto a dove si è adesso, e a che
+  // quota è l'occhio in questo momento. Due numeri per fotogramma, non due
+  // per nodo: sotto la soglia di traslazione il primo è `null` e la
+  // camminata legge `rilievo.alt` così com'è, senza pagare niente.
+  const scostamento = rilScostamento(luogo);
+  const occhio = rilOcchioOra();
+  // Gli angoli si rifanno anche quando a muoversi è **solo la camera**: la
+  // maglia è stata costruita con l'occhio che c'era allora, e quello di
+  // adesso lo insegue con qualche decimo di secondo di ritardo (§8-bis).
+  // Senza questa riga il ritardo si scaricherebbe tutto insieme sulla
+  // ricostruzione successiva — cioè uno scatto ogni tre secondi, che è
+  // proprio quello che si sta togliendo di mezzo.
+  const scostoFermo = { est: 0, nord: 0 };
+  const rifaiAngoli = !!scostamento ||
+    Math.abs(occhio - rilievo.occhio) > RIL_OCCHIO_RIFAI_M;
+  const scosto = scostamento || scostoFermo;
   const fx = base.f[0], fy = base.f[1], fz = base.f[2];
   const rx = base.r[0], ry = base.r[1], rz = base.r[2];
   const ux = base.u[0], uy = base.u[1], uz = base.u[2];
@@ -1544,11 +2950,14 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   const W = sky.larghezza, H = sky.altezza, M = 8;
   const D2R = Math.PI / 180;
   const scalaLiv = (RIL_LIVELLI - 1) / (RIL_COSENO_MAX - RIL_COSENO_MIN);
-  // Quanto è larga una colonna sullo schermo, più un pelo: le strisce si
-  // devono sovrapporre appena, se no fra due colonne resta la riga chiara
-  // dell'antialiasing — che su un terreno pettinato di righe è il difetto che
-  // si nota per primo.
-  const larghezzaColonna = RIL_PASSO_AZ * passo * pxGrado + 1;
+  // Quanto è larga una colonna sullo schermo **al centro della vista**: da lì
+  // in fuori la stereografica la stira e i meridiani la stringono, e di
+  // quanto lo dice la classe di ogni corsa (vedi `RIL_LARG_CLASSI`).
+  const larghezzaBase = RIL_PASSO_AZ * passo * pxGrado;
+  const larghezze = new Array(RIL_LARG_CLASSI);
+  for (let i = 0; i < RIL_LARG_CLASSI; i++) {
+    larghezze[i] = larghezzaBase * RIL_LARGHEZZE[i] + RIL_LARG_MARGINE;
+  }
   let strisce = 0;
 
   // Il tratto si spegne con la distanza insieme al terreno che pettina: una
@@ -1570,10 +2979,18 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
     let massimo = -Infinity, kMax = 0;
     let px = 0, py = 0, ok = false;      // il nodo visibile precedente
     let haVisto = false;                 // px/py dicono qualcosa
+    let rotto = false;                   // fra px/py e qui il terreno sparisce dietro
     let fetta = 0;                       // la prossima curva di fondo da chiudere
     let nRott = 0;
     // La corsa di livelli uguali in questa colonna, e la striscia che ne esce.
+    // `runS*` è il suo primo passo: serve a sapere quando la corda si è
+    // allontanata dall'arco del meridiano (`rilCordaTroppoStorta`).
     let runN = -1, runLiv = -1, runX0 = 0, runY0 = 0, runX1 = 0, runY1 = 0;
+    let runSx = 0, runSy = 0, runS2 = 0;
+    // La stessa corsa, per il velo delle quote: chiave diversa, geometria
+    // identica.
+    let tinN = -1, tinKey = -1, tinX0 = 0, tinY0 = 0, tinX1 = 0, tinY1 = 0;
+    let tinSx = 0, tinSy = 0, tinS2 = 0;
     for (let k = 0; k < nr; k++) {
       // Le fette di fondo che questo anello si è appena lasciato indietro:
       // la loro cresta parziale è l'ultimo nodo **visto**, che è per
@@ -1585,16 +3002,40 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
         rilFondoY[o] = haVisto ? py : NaN;
         fetta++;
       }
-      const a = rilievo.alt[baseQ + k];
+      // In movimento l'angolo si rifà dal punto in cui si è adesso e con
+      // l'occhio di adesso; da fermo si legge quello che la maglia ha già
+      // calcolato. La **pendenza** invece si prende sempre nel riferimento
+      // della maglia (`baseQ`), ed è una scelta: ricampionare anche le due
+      // vicine costerebbe tre bilineari per nodo, e da quando il centro si
+      // rifà ogni sessanta metri lo scostamento è una correzione piccola —
+      // sul chiaroscuro, che è una derivata locale, non si vede.
+      const a = rifaiAngoli ? rilCampioneInMovimento(sinAz, cosAz, k, scosto, occhio)
+                            : rilievo.alt[baseQ + k];
       if (!(a > massimo)) {
         // Nascosto: se veniamo da un tratto visibile, qui il terreno
         // **sparisce dietro** a quello che abbiamo davanti — ed è un contorno.
-        if (ok && nRott < RIL_ROTTURE) {
+        //
+        // `ok` però non si spegne, ed è la riga che toglie i capelli
+        // verticali dal panorama. Spegnendolo, il nodo che torna in vista non
+        // disegnava nessuna striscia: fra la punta del crinale e lui restava
+        // una fascia di schermo senza chiaroscuro, larga una colonna e alta
+        // quanto la faccia che si rialza. Su un fianco frastagliato sono
+        // decine di fasce per colonna, a quote diverse in ogni colonna, e
+        // sullo schermo si leggono come una pioggia di capelli chiari.
+        //
+        // Quella fascia non è vuota, ed è il punto: i raggi che ci passano
+        // rasentano il crinale e vanno a battere sulla faccia che si rialza
+        // più in là — che è tutta lì dentro, schiacciata in un angolo di
+        // niente, perché fra l'ultimo nodo nascosto e il primo di nuovo
+        // visibile la quota fa un salto. Disegnare la striscia dal crinale al
+        // nodo che riemerge, col chiaroscuro di quest'ultimo, la copre con
+        // esattamente la faccia che gli spetta.
+        if (!rotto && ok && nRott < RIL_ROTTURE) {
           const o = c * RIL_ROTTURE + nRott;
           rilRottX[o] = px; rilRottY[o] = py; rilRottK[o] = k - 1;
           nRott++;
+          rotto = true;
         }
-        ok = false;
         continue;
       }
       massimo = a; kMax = k;
@@ -1603,10 +3044,18 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
       const ca = Math.cos(rad), sa = Math.sin(rad);
       const vx = sinAz * ca, vy = cosAz * ca, vz = sa;
       const d = vx * fx + vy * fy + vz * fz;
-      if (d <= SKY_D_MIN) { ok = false; continue; }
+      // Dietro all'occhio, invece, `px`/`py` non vogliono più dire niente e la
+      // striscia non si può tirare: lì `ok` si spegne davvero.
+      if (d <= SKY_D_MIN) { ok = false; rotto = false; continue; }
       const den = (1 + d) * 0.5;
       const nx2 = mezzaL + focale * (vx * rx + vy * ry + vz * rz) / den;
       const ny2 = mezzaH - focale * (vx * ux + vy * uy + vz * uz) / den;
+      // Quanto la colonna è larga **qui** rispetto a quanto lo è al centro
+      // della vista: `cos(alt)` è la convergenza dei meridiani verso il
+      // nadir, `1/den` lo stiramento della stereografica. Due divisioni su
+      // numeri che ci sono già, ed è tutto quello che serve per non lasciare
+      // buchi fra una colonna e l'altra (vedi `RIL_LARG_CLASSI`).
+      const classe = rilClasseLarghezza(ca / den);
 
       if (ok) {
         // Fuori dal riquadro solo se **tutti e due** i capi stanno oltre lo
@@ -1617,6 +3066,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
                       (py < -M && ny2 < -M) || (py > H + M && ny2 > H + M);
         if (fuori) {
           if (runN >= 0) { strisce += rilChiudiRun(runLiv, runX0, runY0, runX1, runY1); runN = -1; }
+          if (tinN >= 0) { rilChiudiRun(tinKey, tinX0, tinY0, tinX1, tinY1, rilTinte); tinN = -1; }
         } else {
           // La normale della faccia: la tangente lungo l'azimut per quella
           // lungo la distanza.
@@ -1638,7 +3088,20 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           const qPiu = rilievo.quota[iPiu * nr + k], qMeno = rilievo.quota[iMeno * nr + k];
           const dAz = salto * RIL_PASSO_AZ * D2R;
           const ex = s * (Math.sin(azRad + dAz) - sinAz), ey = s * (Math.cos(azRad + dAz) - cosAz);
-          const ez = qPiu - q;
+          // La pendenza in azimut è **centrata**: la media fra il campione
+          // avanti e quello indietro, non la differenza col solo campione
+          // avanti.
+          //
+          // È la differenza fra un fianco e una tenda a righe. Una differenza
+          // in avanti misura la pendenza mezzo passo più in là del nodo che
+          // sta illuminando, e ci porta dentro tutto il rumore di quel solo
+          // campione: due colonne contigue leggono due celle diverse del
+          // modello, prendono due livelli di chiaroscuro diversi, e siccome
+          // una corsa di livello uguale lungo il raggio è lunga, quella
+          // differenza esce come una **barra verticale** alta mezzo schermo.
+          // Centrata, il rumore dei due campioni si media invece di sommarsi
+          // e la stima cade dove sta il nodo.
+          const ez = (qPiu - qMeno) / 2;
           // La tangente lungo la distanza si misura sugli stessi
           // `RIL_PIEGA_M` metri della tangente in azimut, e non fra due
           // anelli contigui.
@@ -1651,9 +3114,9 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // legge come un mosaico di rettangoli, uno per cella della maglia.
           // Con lo stesso passo nelle due direzioni la normale è quella di un
           // fazzoletto di terreno vero.
-          const saltoK = Math.max(1, Math.min(k,
+          const saltoK = Math.min(k, Math.max(1,
             Math.round(RIL_PIEGA_M / Math.max(1, s - sPrec))));
-          const sIndietro = RIL_DIST[k - saltoK];
+          const sIndietro = RIL_DIST[Math.max(0, k - saltoK)];
           const tx = (s - sIndietro) * sinAz, ty = (s - sIndietro) * cosAz;
           const tz = q - rilievo.quota[baseQ + k - saltoK];
           let ax = ey * tz - ez * ty;
@@ -1691,25 +3154,75 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
           // non tremola: serve solo a rompere i confini fra una banda e
           // l'altra, che è quello che si legge come mosaico. È la stessa idea
           // del dithering, e costa uno xor.
-          const rumore = ((idx * 73856093) ^ (k * 19349663)) >>> 0;
-          let liv = Math.round(livF + ((rumore % 997) / 997 - 0.5) * 0.7);
+          const rumore = rilRumore(idx, k);
+          // E sopra di lui la **granatura**: le macchie larghe che un fianco
+          // vero ha e una campitura no — il bosco che si dirada, la radura, il
+          // ghiaione, il cambio di roccia. Sono due ottave, misurate in metri
+          // di terreno (`RIL_GRANA_M` e `RIL_GRANA_FINE_M`), e si spengono con
+          // la distanza insieme a tutto il resto del dettaglio: a quaranta
+          // chilometri una montagna non ha macchie, ha foschia.
+          const gx = s * sinAz, gy = s * cosAz;
+          let granaV = (rilRumore2D(gx / RIL_GRANA_M, gy / RIL_GRANA_M) - 0.5) * 1.5;
+          if (s < RIL_GRANA_FINE_MAX_M) {
+            granaV += (rilRumore2D(gx / RIL_GRANA_FINE_M, gy / RIL_GRANA_FINE_M) - 0.5) * 0.6;
+          }
+          livF += granaV * RIL_GRANA_LIVELLI * v;
+          let liv = Math.round(livF + (rumore - 0.5) * 0.7);
           if (liv < 0) liv = 0; else if (liv >= RIL_LIVELLI) liv = RIL_LIVELLI - 1;
+
+          // --- Il velo delle quote -------------------------------------
+          //
+          // La banda si sceglie sulla quota **sfrangiata**: senza il
+          // disturbo, la neve comincerebbe alla stessa identica altezza su
+          // tutto il panorama e si leggerebbe come una curva di livello
+          // tirata col righello. Con lui il limite entra nei canaloni e
+          // lascia scoperti i costoloni, che è quello che si vede davvero.
+          if (tintaViva) {
+            const qFrangia = q + (granaV * 2) * RIL_QUOTA_FRANGIA_M;
+            let banda = Math.round(qFrangia * scalaBanda);
+            if (banda < 0) banda = 0;
+            else if (banda >= RIL_TINTA_BANDE) banda = RIL_TINTA_BANDE - 1;
+            const chiave = banda * RIL_LARG_CLASSI + classe;
+            if (tinN >= 0 && chiave === tinKey &&
+                !rilCordaTroppoStorta(tinSx, tinSy, tinS2, tinX0, tinY0, nx2, ny2)) {
+              tinX1 = nx2; tinY1 = ny2;
+            } else {
+              if (tinN >= 0) rilChiudiRun(tinKey, tinX0, tinY0, tinX1, tinY1, rilTinte);
+              // La corsa nuova riparte **dal capo della vecchia** quando a
+              // spezzarla è stata la curvatura: due tratti che si toccano
+              // dipingono la stessa superficie di uno solo, e stando nello
+              // stesso tracciato non lasciano nemmeno la cucitura.
+              const daCurva = tinN >= 0 && chiave === tinKey;
+              tinKey = chiave; tinN = k;
+              tinX0 = daCurva ? tinX1 : px; tinY0 = daCurva ? tinY1 : py;
+              tinX1 = nx2; tinY1 = ny2;
+              tinSx = tinX1 - tinX0; tinSy = tinY1 - tinY0;
+              tinS2 = tinSx * tinSx + tinSy * tinSy;
+            }
+          }
 
           // Le facce contigue con lo stesso livello diventano **una striscia
           // sola**: il chiaroscuro lungo un raggio cambia piano, quindi le
           // strisce sono lunghe e sono poche.
-          if (runN >= 0 && liv === runLiv) {
+          const chiaveLiv = liv * RIL_LARG_CLASSI + classe;
+          if (runN >= 0 && chiaveLiv === runLiv &&
+              !rilCordaTroppoStorta(runSx, runSy, runS2, runX0, runY0, nx2, ny2)) {
             runX1 = nx2; runY1 = ny2;
           } else {
             if (runN >= 0) strisce += rilChiudiRun(runLiv, runX0, runY0, runX1, runY1);
-            runLiv = liv; runN = k;
-            runX0 = px; runY0 = py; runX1 = nx2; runY1 = ny2;
+            const daCurva = runN >= 0 && chiaveLiv === runLiv;
+            runLiv = chiaveLiv; runN = k;
+            runX0 = daCurva ? runX1 : px; runY0 = daCurva ? runY1 : py;
+            runX1 = nx2; runY1 = ny2;
+            runSx = runX1 - runX0; runSy = runY1 - runY0;
+            runS2 = runSx * runSx + runSy * runSy;
           }
         }
       }
-      px = nx2; py = ny2; ok = true; haVisto = true;
+      px = nx2; py = ny2; ok = true; rotto = false; haVisto = true;
     }
     if (runN >= 0) { strisce += rilChiudiRun(runLiv, runX0, runY0, runX1, runY1); runN = -1; }
+    if (tinN >= 0) { rilChiudiRun(tinKey, tinX0, tinY0, tinX1, tinY1, rilTinte); tinN = -1; }
     // Le fette che restano — e la più esterna, che è la sagoma intera.
     while (fetta < RIL_FONDI - 1) {
       const o = fetta * nCol + c;
@@ -1769,77 +3282,97 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // volta sola comunque siano tante. È la stessa geometria del profilo a
   // bande di `app.js`, e per la stessa ragione.
   let chiamate = 0;
+  // Il tracciato di una fetta, che serve **due volte**: una per il colore del
+  // suolo e una per il velo dell'aria steso sopra a tutto. Torna `false` se
+  // di quella fetta non c'è niente sullo schermo.
+  const giuFetta = H + Math.max(W, H);
+  const tracciaFetta = (b) => {
+    const sopra = b * nCol, sotto = (b - 1) * nCol;
+    // La fetta più vicina, quando le curve si chiudono attorno al cielo.
+    //
+    // Le altre sono anelli fra due curve e si disegnano come tali; questa no,
+    // perché al di là di lei non c'è un'altra curva — c'è **tutto il resto**.
+    // Chiuderla al fondo del riquadro, come si fa quando l'orizzonte
+    // attraversa lo schermo da parte a parte, vuol dire prendere un anello che
+    // gira attorno al centro e tirargli una riga fino al bordo di sotto: il
+    // poligono si attraversa da solo e metà della volta celeste si dipinge di
+    // terra (vedi `RIL_ANELLO_GRADI`).
+    if (b === 0 && rilAnelloUltimo) {
+      ctx.beginPath();
+      let dentro = false;
+      for (let c = 0; c < nCol; c++) {
+        if (Number.isNaN(rilFondoX[sopra + c])) continue;
+        if (dentro) ctx.lineTo(rilFondoX[sopra + c], rilFondoY[sopra + c]);
+        else { ctx.moveTo(rilFondoX[sopra + c], rilFondoY[sopra + c]); dentro = true; }
+      }
+      if (!dentro) return null;
+      ctx.closePath();
+      return rilAnelloUltimo === 'dentro' ? 'anello-dentro' : 'anello-fuori';
+    }
+    ctx.beginPath();
+    let inizio = -1, qualcosa = false;
+    const chiudi = (fine) => {
+      if (inizio < 0 || fine < inizio) { inizio = -1; return; }
+      for (let c = inizio; c <= fine; c++) ctx.lineTo(rilFondoX[sopra + c], rilFondoY[sopra + c]);
+      // Il bordo di sotto, all'indietro: la fetta davanti, o il fondo del
+      // riquadro per la prima. Se la fetta davanti non si proietta (capita
+      // solo ai capi, dove il punto finisce dietro all'occhio) si scende
+      // comunque fuori dal riquadro: meglio un pelo di terreno in più che un
+      // buco da cui si vede il cielo.
+      for (let c = fine; c >= inizio; c--) {
+        const x = b > 0 ? rilFondoX[sotto + c] : rilFondoX[sopra + c];
+        const y = b > 0 ? rilFondoY[sotto + c] : giuFetta;
+        if (Number.isNaN(x) || Number.isNaN(y)) ctx.lineTo(rilFondoX[sopra + c], giuFetta);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      inizio = -1; qualcosa = true;
+    };
+    for (let c = 0; c < nCol; c++) {
+      if (Number.isNaN(rilFondoX[sopra + c])) { chiudi(c - 1); continue; }
+      if (inizio < 0) { inizio = c; ctx.moveTo(rilFondoX[sopra + c], rilFondoY[sopra + c]); }
+    }
+    chiudi(nCol - 1);
+    return qualcosa ? 'piena' : null;
+  };
   {
-    const giu = H + Math.max(W, H);
-    for (let b = RIL_FONDI - 1; b >= 0; b--) {
-      const col = rilColoreDiFetta(rilLontananza(RIL_DIST[fondoK[b]] / 1000), suolo);
-      const sopra = b * nCol, sotto = (b - 1) * nCol;
+    // Al FOV estremo un'unica campitura evita alla radice le intersezioni
+    // fra i poligoni delle distanze. La sagoma conosce gia' i casi difficili
+    // (terra dentro/fuori da un anello), quindi non puo' richiudersi nel
+    // cielo; a questa apertura la grana continua del suolo prende il posto
+    // dell'ombreggiatura a colonne.
+    if (!dettaglio) {
+      const kMedio = fondoK[Math.floor(RIL_FONDI * 0.45)];
+      const col = rilColoreDiFetta(rilLontananza(RIL_DIST[kMedio] / 1000), suolo);
       ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
-      ctx.strokeStyle = ctx.fillStyle;
-      ctx.lineWidth = 1;
-
-      // La fetta più vicina, quando le curve si chiudono attorno al cielo.
-      //
-      // Le altre sono anelli fra due curve e si disegnano come tali; questa
-      // no, perché al di là di lei non c'è un'altra curva — c'è **tutto il
-      // resto**. Chiuderla al fondo del riquadro, come si fa quando
-      // l'orizzonte attraversa lo schermo da parte a parte, vuol dire
-      // prendere un anello che gira attorno al centro e tirargli una riga
-      // fino al bordo di sotto: il poligono si attraversa da solo e metà
-      // della volta celeste si dipinge di terra (vedi `RIL_ANELLO_GRADI`).
-      if (b === 0 && rilAnelloUltimo) {
-        ctx.beginPath();
-        let dentro = false;
-        for (let c = 0; c < nCol; c++) {
-          if (Number.isNaN(rilFondoX[sopra + c])) continue;
-          if (dentro) ctx.lineTo(rilFondoX[sopra + c], rilFondoY[sopra + c]);
-          else { ctx.moveTo(rilFondoX[sopra + c], rilFondoY[sopra + c]); dentro = true; }
-        }
-        if (!dentro) continue;
-        ctx.closePath();
-        // Il filo va sulla sola curva: aggiungendo il riquadro al tracciato
-        // e stampandolo si disegnerebbe una cornice attorno allo schermo.
-        ctx.stroke();
-        if (rilAnelloUltimo === 'dentro') {
-          ctx.fill();
-        } else {
+      const regola = rilTracciaSagoma(ctx);
+      if (regola) {
+        ctx.fill(regola);
+        chiamate++;
+      }
+    } else {
+      for (let b = RIL_FONDI - 1; b >= 0; b--) {
+        const col = rilColoreDiFetta(rilLontananza(RIL_DIST[fondoK[b]] / 1000), suolo);
+        ctx.fillStyle = `rgb(${col[0]},${col[1]},${col[2]})`;
+        ctx.strokeStyle = ctx.fillStyle;
+        ctx.lineWidth = 1;
+        const forma = tracciaFetta(b);
+        if (!forma) continue;
+        if (forma === 'anello-fuori') {
+          // Il filo va sulla sola curva: aggiungendo il riquadro al tracciato
+          // e stampandolo si disegnerebbe una cornice attorno allo schermo.
+          ctx.stroke();
           ctx.rect(0, 0, W, H);
           ctx.fill('evenodd');
+        } else {
+          ctx.fill();
+          // Il contorno col proprio colore chiude la cucitura fra due strisce
+          // che condividono un lato: due riempimenti antialiasati per conto
+          // loro lasciano lì due mezze coperture che non fanno un pieno.
+          ctx.stroke();
         }
         chiamate += 2;
-        continue;
       }
-
-      ctx.beginPath();
-      let inizio = -1;
-      const chiudi = (fine) => {
-        if (inizio < 0 || fine < inizio) { inizio = -1; return; }
-        for (let c = inizio; c <= fine; c++) ctx.lineTo(rilFondoX[sopra + c], rilFondoY[sopra + c]);
-        // Il bordo di sotto, all'indietro: la fetta davanti, o il fondo del
-        // riquadro per la prima. Se la fetta davanti non si proietta (capita
-        // solo ai capi, dove il punto finisce dietro all'occhio) si scende
-        // comunque fuori dal riquadro: meglio un pelo di terreno in più che
-        // un buco da cui si vede il cielo.
-        for (let c = fine; c >= inizio; c--) {
-          const x = b > 0 ? rilFondoX[sotto + c] : rilFondoX[sopra + c];
-          const y = b > 0 ? rilFondoY[sotto + c] : giu;
-          if (Number.isNaN(x) || Number.isNaN(y)) ctx.lineTo(rilFondoX[sopra + c], giu);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        inizio = -1;
-      };
-      for (let c = 0; c < nCol; c++) {
-        if (Number.isNaN(rilFondoX[sopra + c])) { chiudi(c - 1); continue; }
-        if (inizio < 0) { inizio = c; ctx.moveTo(rilFondoX[sopra + c], rilFondoY[sopra + c]); }
-      }
-      chiudi(nCol - 1);
-      ctx.fill();
-      // Il contorno col proprio colore chiude la cucitura fra due strisce
-      // che condividono un lato: due riempimenti antialiasati per conto loro
-      // lasciano lì due mezze coperture che non fanno un pieno.
-      ctx.stroke();
-      chiamate += 2;
     }
   }
 
@@ -1851,19 +3384,64 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // sporcare il cielo lungo il crinale.
   ctx.save();
   ctx.clip(rilTracciaSagoma(ctx) || 'nonzero');
-  for (let l = 0; l < RIL_LIVELLI; l++) {
-    const t = rilTratti[l];
-    if (!t.n) continue;
-    ctx.beginPath();
-    for (let i = 0; i < t.n; i += 4) {
-      ctx.moveTo(t.v[i], t.v[i + 1]);
-      ctx.lineTo(t.v[i + 2], t.v[i + 3]);
+
+  // --- Il velo delle quote ----------------------------------------------
+  //
+  // Va **prima** del chiaroscuro e non dopo: il colore dice di che cosa è
+  // fatta la montagna, il chiaroscuro dice che forma ha, e la seconda cosa
+  // deve poter scolpire la prima. Steso sopra, un velo al sessanta per cento
+  // spianerebbe le luci e le ombre che si è appena finito di disegnare.
+  //
+  // I magazzini sono indicizzati `(colore · RIL_LARG_CLASSI + classe)`: il
+  // colore lo dà la tavolozza, la larghezza la classe. Le classi larghe
+  // restano quasi sempre vuote — servono ai bordi di un riquadro molto
+  // aperto — e una `stroke()` su un tracciato vuoto non si fa, quindi a campo
+  // stretto le chiamate sono esattamente quelle di prima.
+  const disegnaMagazzini = (magazzini, tavolozza) => {
+    for (let i = 0; i < magazzini.length; i++) {
+      const t = magazzini[i];
+      if (!t.n) continue;
+      ctx.beginPath();
+      for (let j = 0; j < t.n; j += 4) {
+        ctx.moveTo(t.v[j], t.v[j + 1]);
+        ctx.lineTo(t.v[j + 2], t.v[j + 3]);
+      }
+      ctx.strokeStyle = tavolozza[(i / RIL_LARG_CLASSI) | 0];
+      ctx.lineWidth = larghezze[i % RIL_LARG_CLASSI];
+      ctx.lineCap = 'butt';
+      ctx.stroke();
+      chiamate++;
     }
-    ctx.strokeStyle = tav[l];
-    ctx.lineWidth = larghezzaColonna;
-    ctx.lineCap = 'butt';
-    ctx.stroke();
-    chiamate++;
+  };
+  if (dettaglio) {
+    disegnaMagazzini(rilTinte, tinte);
+    disegnaMagazzini(rilTratti, tav);
+  }
+
+  // --- Il velo dell'aria, fetta per fetta -------------------------------
+  //
+  // La prospettiva aerea, e va **per ultima**: è l'aria che sta fra l'occhio
+  // e quel pezzo di montagna, quindi vela allo stesso modo il colore della
+  // quota, la pettinatura e i valloni. Sono gli stessi quattordici poligoni
+  // che hanno appena dipinto il fondo (`tracciaFetta`), quindi non c'è nessuna
+  // geometria nuova da costruire — e siccome le creste parziali non si
+  // scavalcano mai, i veli si toccano senza sovrapporsi e ogni pixel si paga
+  // una volta sola.
+  //
+  // Il primo non si disegna affatto: la fetta davanti è a poche centinaia di
+  // metri e fra l'occhio e lei non c'è niente.
+  if (dettaglio && aria && aria.foschia) {
+    const f = aria.foschia;
+    for (let b = RIL_FONDI - 1; b >= 1; b--) {
+      const a = rilVeloDiFetta(rilLontananza(RIL_DIST[fondoK[b]] / 1000));
+      if (!(a > 0.004)) continue;
+      ctx.fillStyle = `rgba(${Math.round(f[0])},${Math.round(f[1])},${Math.round(f[2])},${a.toFixed(3)})`;
+      const forma = tracciaFetta(b);
+      if (!forma) continue;
+      if (forma === 'anello-fuori') { ctx.rect(0, 0, W, H); ctx.fill('evenodd'); }
+      else ctx.fill();
+      chiamate++;
+    }
   }
   ctx.restore();
 
@@ -1875,7 +3453,7 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   // solo se il punto di rottura sta più o meno allo stesso anello — se no si
   // legherebbero creste che non hanno niente a che vedere fra loro.
   const biancoProfilo = [255, 255, 255];
-  {
+  if (dettaglio) {
     ctx.beginPath();
     let segmenti = 0;
     for (let c = 0; c + 1 < nCol; c++) {

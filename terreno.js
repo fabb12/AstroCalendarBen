@@ -103,8 +103,12 @@ const TERRENO_PER_RICHIESTA = 90;
 const TERRENO_RAGGIO_KM = 6371;
 const TERRENO_RIFRAZIONE = 0.13;
 
-// L'occhio non sta per terra.
-const TERRENO_ALTEZZA_OCCHIO_M = 1.6;
+// L'occhio non sta per terra. Due metri e venti non vogliono simulare una
+// persona insolitamente alta: sono l'altezza della camera virtuale, con il
+// piccolo margine che serve fra il punto di vista e un modello altimetrico a
+// celle. A 1,6 m bastava l'interpolazione di una cella ripida per far passare
+// la camera sotto una faccia e proiettarla come un ventaglio di triangoli.
+const TERRENO_ALTEZZA_OCCHIO_M = 2.2;
 
 // Oltre questo, non è più un orizzonte: è una parete, e quasi sempre è un
 // dato sbagliato.
@@ -221,6 +225,18 @@ const TERRENO_SPILLO_LARGO_GRADI = 1.2;
 // senso riscaricarlo perché ci si è spostati di un isolato.
 const TERRENO_RAGGIO_VALIDO_KM = 2;
 
+// ...e quanto ci si può spostare **mentre ci si sta spostando**, che è
+// un'altra domanda (§6-bis, `terrenoRaggioValidoKm`). Sotto i due
+// chilometri fissi, col GPS acceso in macchina, il profilo si butta e si
+// riscarica ogni minuto e mezzo: e siccome scaricarlo costa dei secondi,
+// per una buona parte del viaggio l'orizzonte è quello finto. Le tre
+// misure sono i tre modi di muoversi, e sono tarate su quanto cambia
+// **quello che si guarda**: a piedi il paesaggio vicino conta, in
+// macchina si guarda la catena in fondo, in aereo si guarda la regione.
+const TERRENO_RAGGIO_MOTO_PIEDI_KM = 3;
+const TERRENO_RAGGIO_MOTO_AUTO_KM = 9;
+const TERRENO_RAGGIO_MOTO_AEREO_KM = 30;
+
 // Quanti posti si tengono da parte. Uno solo non basta più da quando il
 // planetario può andare a guardare il cielo di un'altra città: si va a
 // vedere Bolzano, si torna a casa, e casa andrebbe riscaricata da capo —
@@ -311,6 +327,11 @@ const terreno = {
   // cioè i nomi delle montagne sparivano di nuovo, per mezz'ora, a
   // ondate. Si azzera cambiando posto, o appena un profilo arriva.
   arreso: false,
+  // Quando è finito l'ultimo scarico dalla rete, e il timer del prossimo
+  // mentre ci si muove (§6-bis): servono a non chiedere le stesse
+  // ventiquattro richieste a ogni curva.
+  quandoRete: 0,
+  timerMoto: null,
   acceso: true
 };
 
@@ -440,7 +461,170 @@ const TERRENO_FONTI = [
 // deve poter girare: chi fallisce lo sposta avanti, chi riesce lo pianta lì.
 let terrenoFonteOra = 0;
 
-function terrenoFonte() { return TERRENO_FONTI[terrenoFonteOra % TERRENO_FONTI.length]; }
+
+// --- La pagella delle porte -------------------------------------------
+//
+// È la risposta alla cosa che si vede più di tutte aprendo la console:
+// venti righe rosse identiche, `429 (Too Many Requests)`, tutte sullo stesso
+// indirizzo, tutte con le stesse settantadue coordinate. Una `fetch` che
+// fallisce il browser la scrive lui, e da JavaScript non si può zittire: il
+// solo modo di non avere quelle righe è **non fare quelle richieste**.
+//
+// E non c'era niente che le fermasse. Il rubinetto sapeva rallentare, la
+// rotazione sapeva cambiare porta — ma tutt'e due dimenticavano ogni cosa
+// alla fine della corsa. Quindi la stessa scoperta si rifaceva da capo cinque
+// volte per richiesta (`TERRENO_NO_PER_CAMBIARE`), poi di nuovo a ognuna
+// delle cinque riprove automatiche di `TERRENO_RIPROVE_MS`, poi di nuovo a
+// ogni ricarica della pagina. Un 429 però non è la sfortuna di una richiesta:
+// è il servizio che dice «sei oltre la quota», e vale per tutte le richieste
+// e per un po' di tempo. Ricordarselo è tutto quello che serviva.
+//
+// La pagella è la stessa cosa che gli aerei ADS-B tengono da un pezzo
+// (`CHIAVE_SALUTE` in `aerei.js`), ed è salvata per la stessa ragione: quale
+// porta sia aperta dipende da questa rete e da questo momento, e chi riapre
+// l'app dopo trenta secondi non deve ricomprarsi la scoperta. Come quella,
+// **non va nel backup** — è una misura di qui, non una preferenza.
+const CHIAVE_QUOTE_SALUTE = 'astrocalendario_quote_salute';
+
+// Quanto sta in castigo una porta che ha detto di no.
+//
+// Due scale diverse, perché sono due notizie diverse. Un **429** è una frase
+// sulla quota: il servizio sa che non ci servirà per un pezzo, e insistere
+// prima è solo un altro 429. Un guasto qualunque — un 502, la rete che cade,
+// la sveglia che scade — non dice niente di simile, e mezzo minuto dopo può
+// benissimo funzionare.
+const TERRENO_PENALE_QUOTA_MS = 60000;      // il primo 429
+const TERRENO_PENALE_QUOTA_MAX_MS = 900000; // e al più un quarto d'ora
+const TERRENO_PENALE_GUASTO_MS = 20000;
+const TERRENO_PENALE_GUASTO_MAX_MS = 300000;
+// Un `retry-after` lo si rispetta, ma non oltre: mezz'ora è già più del giro
+// completo delle riprove automatiche, e oltre quel punto tanto vale che a
+// riprovare sia la prossima apertura.
+const TERRENO_PENALE_TETTO_MS = 1800000;
+
+// Quanto si è disposti ad aspettare che una porta si riapra, prima di
+// arrendersi per questo giro. Venti secondi: oltre, l'attesa non è più
+// un'attesa — è un terreno che non arriva mentre la riga di stato dice che
+// sta arrivando, che è il modo peggiore di fallire. Ci pensano le riprove
+// automatiche (`TERRENO_RIPROVE_MS`), che a quel punto ripartono da una
+// pagella già scritta e non buttano più nemmeno una richiesta sul muro.
+const TERRENO_ATTESA_PORTE_MS = 20000;
+
+const terrenoSalute = new Map();
+let terrenoSaluteLetta = false;
+
+function terrenoSaluteDi(nome) {
+  if (!terrenoSaluteLetta) {
+    terrenoSaluteLetta = true;
+    try {
+      const grezzo = JSON.parse(localStorage.getItem(CHIAVE_QUOTE_SALUTE) || '{}');
+      Object.keys(grezzo).forEach(k => {
+        const v = grezzo[k];
+        if (!v || typeof v !== 'object') return;
+        terrenoSalute.set(k, {
+          penaleFino: Number(v.penaleFino) || 0,
+          noDiFila: Number(v.noDiFila) || 0,
+          ultimoOk: Number(v.ultimoOk) || 0,
+          motivo: String(v.motivo || '')
+        });
+      });
+    } catch (e) { /* senza memoria si riparte dall'ordine scritto */ }
+  }
+  let v = terrenoSalute.get(nome);
+  if (!v) { v = { penaleFino: 0, noDiFila: 0, ultimoOk: 0, motivo: '' }; terrenoSalute.set(nome, v); }
+  return v;
+}
+
+function terrenoSaluteSalva() {
+  try {
+    const grezzo = {};
+    terrenoSalute.forEach((v, k) => { grezzo[k] = v; });
+    localStorage.setItem(CHIAVE_QUOTE_SALUTE, JSON.stringify(grezzo));
+  } catch (e) { /* niente storage: la pagella vale per questa sessione */ }
+}
+
+// Fino a quando questa porta è in castigo (0 = è aperta).
+function terrenoPenaleDi(f, ora) {
+  const v = terrenoSaluteDi(f.nome);
+  return v.penaleFino > (ora || Date.now()) ? v.penaleFino : 0;
+}
+
+// Ha detto di no: si segna quanto sta ferma. La penale raddoppia a ogni no
+// **di fila**, così una porta che ogni tanto inciampa torna in gioco subito e
+// una chiusa smette in fretta di costare richieste.
+function terrenoSegnaNo(f, e) {
+  const v = terrenoSaluteDi(f.nome);
+  const ora = Date.now();
+  const quota = e && e.stato === 429;
+  v.noDiFila++;
+  v.motivo = (e && e.message) || 'guasto';
+  // Un guasto qualunque non manda in castigo nessuno finché è isolato, ed è
+  // voluto: una porta che risponde una volta su due è una porta che funziona
+  // piano, e le riserve vanno dieci volte più lente di lei — abbandonarla al
+  // primo inciampo è il difetto che `TERRENO_NO_PER_CAMBIARE` aveva già
+  // misurato (trentun secondi contro cinquantotto). Solo un **429** parla
+  // della porta e non della richiesta, e vale dal primo.
+  const soglia = quota ? TERRENO_NO_PER_CAMBIARE_QUOTA : TERRENO_NO_PER_CAMBIARE;
+  if (v.noDiFila < soglia) { terrenoSaluteSalva(); return; }
+  const passo = quota ? TERRENO_PENALE_QUOTA_MS : TERRENO_PENALE_GUASTO_MS;
+  const tetto = quota ? TERRENO_PENALE_QUOTA_MAX_MS : TERRENO_PENALE_GUASTO_MAX_MS;
+  let quanto = Math.min(tetto, passo * Math.pow(2, Math.min(5, v.noDiFila - soglia)));
+  // Se il servizio ha detto lui quanto aspettare, ha ragione lui: è l'unico
+  // che sappia quando la quota si riapre.
+  if (e && e.attesa > 0) quanto = Math.max(quanto, Math.min(TERRENO_PENALE_TETTO_MS, e.attesa));
+  v.penaleFino = Math.max(v.penaleFino, ora + quanto);
+  terrenoSaluteSalva();
+}
+
+function terrenoSegnaSi(f) {
+  const v = terrenoSaluteDi(f.nome);
+  if (!v.noDiFila && !v.penaleFino) { v.ultimoOk = Date.now(); return; }
+  v.noDiFila = 0; v.penaleFino = 0; v.motivo = ''; v.ultimoOk = Date.now();
+  terrenoSaluteSalva();
+}
+
+// La porta di adesso: la prima **aperta** a partire da quella corrente.
+//
+// Chi è in castigo si salta senza nemmeno provarci, ed è tutta la differenza:
+// prima la scoperta che una porta è chiusa costava cinque richieste rifiutate
+// a ogni corsa, e adesso ne costa zero finché il castigo dura.
+function terrenoFonte() {
+  const n = TERRENO_FONTI.length;
+  const ora = Date.now();
+  const partenza = ((terrenoFonteOra % n) + n) % n;
+  for (let i = 0; i < n; i++) {
+    const f = TERRENO_FONTI[(partenza + i) % n];
+    if (!terrenoPenaleDi(f, ora)) return f;
+  }
+  // Sono chiuse tutte: si torna da quella che riapre per prima. Chi la usa
+  // deve però guardare `terrenoAttesaPorte()` prima di partire — se no la
+  // richiesta parte lo stesso e si prende il 429 che si sapeva già.
+  let prima = TERRENO_FONTI[partenza], quando = Infinity;
+  for (const f of TERRENO_FONTI) {
+    const p = terrenoPenaleDi(f, ora);
+    if (p < quando) { quando = p; prima = f; }
+  }
+  return prima;
+}
+
+// Fra quanto si riapre una porta. Zero se una è già aperta adesso.
+function terrenoAttesaPorte(ora) {
+  const adesso = ora || Date.now();
+  let attesa = Infinity;
+  for (const f of TERRENO_FONTI) {
+    const p = terrenoPenaleDi(f, adesso);
+    if (!p) return 0;
+    attesa = Math.min(attesa, p - adesso);
+  }
+  return attesa;
+}
+
+// Serve alle prove e al tasto «riprova» del pannello: chiedere di nuovo
+// adesso vuol dire dare un'altra possibilità a tutte le porte.
+function terrenoScordaPenali() {
+  terrenoSalute.forEach(v => { v.penaleFino = 0; v.noDiFila = 0; });
+  terrenoSaluteSalva();
+}
 
 // Una richiesta sola, con la sua sveglia.
 //
@@ -593,6 +777,22 @@ const TERRENO_SI_PER_MOLLARE = 1;      // quanti sì di fila prima di riaprire
 // cose, che è tutto quello che le si chiede.
 const TERRENO_NO_PER_CAMBIARE = 5;
 
+// E quanti ne bastano quando i no sono dei **429**.
+//
+// Due, e i due numeri rispondono a due domande diverse. Cinque è la soglia per
+// distinguere «questa fonte va piano» da «questa fonte è chiusa», e serve
+// perché un guasto qualunque capita anche a una porta che funziona. Un 429
+// invece è una frase sulla quota, non sulla richiesta: dopo il secondo di
+// fila non c'è più niente da scoprire, e ogni tentativo in più è una riga
+// rossa in console in cambio di niente.
+//
+// Due e non uno perché un 429 isolato può essere colpa nostra — una raffica
+// partita un attimo prima che il rubinetto si stringesse — e un sì in mezzo
+// azzera il conto: una fonte che risponde una volta su due funziona piano, e
+// le riserve vanno dieci volte più lente di lei (è la misura che ha fissato i
+// cinque qui sopra, e resta valida).
+const TERRENO_NO_PER_CAMBIARE_QUOTA = 2;
+
 function terrenoRitmoDi(f) {
   if (!f.ritmo) {
     f.ritmo = {
@@ -649,6 +849,25 @@ function terrenoInFila(compito, pri) {
 function terrenoRubinetto() {
   if (terrenoTimer) return;
   while (terrenoCoda.length) {
+    // Prima di tutto: c'è una porta aperta? Se sono tutte in castigo non si
+    // bussa a nessuna — è l'unico modo di non avere quelle righe rosse in
+    // console, perché una `fetch` rifiutata la scrive il browser e non la si
+    // può zittire. Si aspetta quella che riapre per prima, e se manca troppo
+    // ci si arrende per questo giro invece di lasciare la coda appesa: a
+    // riprovare ci pensa la cascata di `TERRENO_RIPROVE_MS`.
+    const chiuse = terrenoAttesaPorte();
+    if (chiuse > 0) {
+      if (chiuse > TERRENO_ATTESA_PORTE_MS) {
+        const e = new Error('i servizi delle quote sono tutti a quota piena');
+        e.stato = 429;
+        e.porteChiuse = true;
+        while (terrenoCoda.length) terrenoCoda.shift().no(e);
+        return;
+      }
+      terrenoTimer = setTimeout(() => { terrenoTimer = null; terrenoRubinetto(); },
+                                Math.min(chiuse, TERRENO_PAUSA_MAX_MS));
+      return;
+    }
     // La fonte si rilegge a ogni giro: se è cambiata mentre questa richiesta
     // era in coda, parte verso quella nuova. Con lei si rileggono anche il suo
     // passo e il suo tetto di richieste insieme.
@@ -708,11 +927,21 @@ function terrenoFrena(f, e) {
     r.liberoDa = Math.max(r.liberoDa, ora + pausa);
     r.frenatoFino = ora + pausa;
   }
-  // Tre no di fila non sono la sfortuna di una richiesta: sono questa fonte.
-  // Si cambia porta, e ci si porta dietro la coda che deve ancora partire —
-  // che è il punto: prima ognuna delle ventiquattro doveva sbatterci il naso
-  // per conto suo.
-  if (r.noDiFila >= TERRENO_NO_PER_CAMBIARE) {
+  // La pagella, che vive più a lungo della corsa: da qui in poi questa porta
+  // si salta senza provarci (vedi `CHIAVE_QUOTE_SALUTE`).
+  terrenoSegnaNo(f, e);
+  // Un **429** non è la sfortuna di una richiesta: è il servizio che dice
+  // «sei oltre la quota», e vale per tutte. Si cambia porta subito, alla
+  // prima, invece di ricomprarsi la stessa notizia altre quattro volte —
+  // quattro richieste rifiutate, quattro righe rosse in console e qualche
+  // secondo, per sapere una cosa che il servizio aveva già detto.
+  //
+  // Gli altri guasti no: un 502 o una sveglia scaduta capitano anche a una
+  // porta che funziona, e abbandonarla al primo inciampo vuol dire finire
+  // sulle riserve, che sono dieci volte più lente (vedi
+  // `TERRENO_NO_PER_CAMBIARE`).
+  const quota = e && e.stato === 429;
+  if (r.noDiFila >= (quota ? TERRENO_NO_PER_CAMBIARE_QUOTA : TERRENO_NO_PER_CAMBIARE)) {
     r.noDiFila = 0;
     terrenoCambiaFonte(f);
   }
@@ -734,8 +963,11 @@ function terrenoScorre(f) {
   const r = terrenoRitmoDi(f);
   // Un sì azzera il conto dei no: quello che conta per cambiare porta sono i
   // no **di fila**, e una fonte che risponde una volta su due è una fonte che
-  // funziona piano, non una porta chiusa.
+  // funziona piano, non una porta chiusa. Vale per il ritmo di questa corsa
+  // e per la pagella che le sopravvive, che sono la stessa notizia scritta
+  // per due orizzonti di tempo diversi.
   r.noDiFila = 0;
+  terrenoSegnaSi(f);
   if (++r.siDiFila < TERRENO_SI_PER_MOLLARE) return;
   r.siDiFila = 0;
   r.distanza = Math.max(f.distanza, Math.round(r.distanza * TERRENO_MOLLA));
@@ -762,10 +994,15 @@ function terrenoScorre(f) {
 // reggendo adesso, e che intanto ha già girato la porta se la fonte non
 // risponde più (`terrenoCambiaFonte`).
 //
-// Cinque tentativi in tutto, non cinque per fonte: sono i tre giri di porta
-// più due riprove: bastano a coprire il singhiozzo e non fanno di
-// ventiquattro richieste duecento.
-const TERRENO_TENTATIVI = 5;
+// Sei tentativi in tutto, non sei per fonte. Il sesto non è una riprova
+// casuale: `terrenoFrena` cambia porta dopo cinque no di fila, quindi con
+// cinque tentativi la richiesta che scopriva una Open-Meteo chiusa girava la
+// porta proprio nell'ultimo `catch` e poi si arrendeva. Le richieste dietro di
+// lei usavano la riserva, ma quella pioniera lasciava una direzione stimata e
+// il messaggio «qualche direzione non è arrivata». Serve un tentativo **dopo**
+// la soglia di rotazione; sei è il minimo che lo garantisce e non trasforma le
+// ventiquattro richieste in duecento.
+const TERRENO_TENTATIVI = TERRENO_NO_PER_CAMBIARE + 1;
 
 // Vale la pena riprovare? Sì per i 429 («sei andato troppo forte»), per i
 // guasti del server e per tutto quello che non è nemmeno arrivato a una
@@ -803,6 +1040,11 @@ async function terrenoQuoteInsistendo(punti, pri) {
     } catch (e) {
       ultimo = e;
       if (!terrenoRiprovabile(e)) throw e;
+      // Le porte sono chiuse tutte e per un pezzo: insistere non vuol dire
+      // essere tenaci, vuol dire rimettersi in coda cinque volte per farsi
+      // dire cinque volte la stessa cosa. Si esce, e la riga di stato lo
+      // racconta; a riprovare ci pensa la cascata automatica.
+      if (e && e.porteChiuse) throw e;
       // Niente sonno qui: la pausa l'ha già messa `terrenoFrena` sul
       // rubinetto, e sommarcene una seconda è il difetto che questa riga
       // conteneva.
@@ -1158,9 +1400,31 @@ function terrenoRichieste(lat, lon, sapute) {
     (i % TERRENO_PASSO_GROSSO === 0 ? grosse : fini).push(i);
   }
   const richieste = [];
+  // Le direzioni di una richiesta si prendono **a salto**, non di fila.
+  //
+  // È la differenza fra un buco e un poligono, e si vede solo quando il
+  // servizio dice di no. Una richiesta porta cinque direzioni, e le cinque
+  // erano cinque consecutive: nel giro grosso sono una ogni nove gradi, cioè
+  // **trentasei gradi di orizzonte in un colpo solo**. Perdendola,
+  // `terrenoRiempiVuoti` unisce i due bordi con una interpolazione sola e
+  // quell'arco diventa una faccia piatta larga un decimo del giro — che è
+  // esattamente l'artefatto poligonale che si vede sullo schermo, e che non
+  // somiglia affatto a un dato mancante: somiglia a una collina finta.
+  //
+  // Prendendole a salto, la stessa richiesta persa lascia cinque buchi da una
+  // direzione ciascuno, sparsi per tutto il giro, e ognuno viene tappato dalle
+  // sue vicine vere a nove gradi di distanza — che su quote del suolo è una
+  // stima buona. Non si perde niente e non si chiede niente in più: sono le
+  // stesse ventiquattro richieste con lo stesso numero di punti, riordinate.
   const impacchetta = (elenco, giro) => {
-    for (let i = 0; i < elenco.length; i += TERRENO_DIREZIONI_PER_RICHIESTA) {
-      const dirs = elenco.slice(i, i + TERRENO_DIREZIONI_PER_RICHIESTA);
+    if (!elenco.length) return;
+    // Quante richieste servono, e da lì il passo: prendendo una voce ogni
+    // `quante`, nessun gruppo può superare le direzioni per richiesta e
+    // insieme coprono l'elenco una volta sola.
+    const quante = Math.ceil(elenco.length / TERRENO_DIREZIONI_PER_RICHIESTA);
+    for (let r = 0; r < quante; r++) {
+      const dirs = [];
+      for (let i = r; i < elenco.length; i += quante) dirs.push(elenco[i]);
       const punti = [];
       dirs.forEach(d => TERRENO_DISTANZE.forEach(
         km => punti.push(terrenoPuntoA(lat, lon, d * TERRENO_PASSO_AZ, km))));
@@ -1553,6 +1817,244 @@ function terrenoDimentica() {
 
 
 // =====================================================================
+// 6-bis. IL MOVIMENTO
+//
+//   Tutto questo file è scritto per chi sta fermo: si arriva in un posto,
+//   si scarica la forma del terreno, la si tiene. Il GPS acceso in
+//   macchina è un'altra storia — un punto nuovo ogni secondo, e ogni
+//   punto è una domanda diversa. Presa alla lettera, quella domanda
+//   voleva dire buttare il profilo e riscaricarlo ogni due chilometri:
+//   l'orizzonte tornava quello finto per qualche secondo, i nomi delle
+//   montagne sparivano, e poi tutto ricompariva di colpo — a ogni
+//   ricarica, per tutto il viaggio. È il singhiozzo di sempre, in una
+//   veste nuova: la differenza è che qui non capita una volta
+//   all'apertura, capita **continuamente**.
+//
+//   La cura non è scaricare di più, è cambiare la domanda. Andando a
+//   quaranta all'ora il paesaggio a sessanta chilometri non cambia
+//   affatto, quello a cinque cambia piano, e quello sotto i piedi cambia
+//   in fretta — ed è il solo che il rilievo sa già ridisegnare da sé
+//   traslando la maglia, senza chiedere niente a nessuno (`rilievo.js`
+//   §8). Quindi: il profilo grosso lo si tiene molto più a lungo, la
+//   soglia per rifarlo cresce con la velocità, e quello che si ha in
+//   mano non si butta mai prima di avere il sostituto.
+//
+//   Da qui la velocità la leggono in tre — le quote, le vette, i paesi —
+//   e per questo sta qui e non dentro a uno di loro: tre stime della
+//   stessa cosa, calcolate su tre storie diverse, sarebbero tre risposte
+//   diverse alla domanda «ci stiamo muovendo?».
+// =====================================================================
+
+// `coords.speed` non c'è su tutti i browser (e su molti vale `null` da
+// fermo e anche in movimento), quindi la velocità si misura anche fra i
+// fix che arrivano. Due letture bastano; se ne tengono alcune per non
+// farsi ingannare da un salto isolato del sensore.
+const TERRENO_MOTO_FIX = 5;
+// Oltre questa età un fix non racconta più niente del movimento di
+// adesso: è il salto fra la posizione salvata ieri e la prima di oggi.
+const TERRENO_MOTO_FINESTRA_MS = 60000;
+// Sotto un metro al secondo si è fermi: è il respiro del GPS, che a
+// telefono appoggiato sul tavolo sposta il punto di qualche metro.
+const TERRENO_MOTO_V_MIN = 1.0;
+// Ci si ferma a un semaforo e si riparte: dichiarare «fermo» al primo
+// fix lento vorrebbe dire far ripartire tutta la macchina delle
+// ricariche in mezzo al viaggio. Si resta «in moto» per un po' dopo
+// l'ultimo fix veloce.
+const TERRENO_MOTO_CODA_MS = 20000;
+
+const terrenoMoto = {
+  fix: [],            // { lat, lon, quando }
+  velocita: 0,        // m/s, la migliore stima di adesso
+  ultimoMoto: 0       // quando si è visto muoversi l'ultima volta
+};
+
+// Da chiamare a ogni lettura del GPS, comprese quelle che il filtro di
+// `skyLetturaAttendibile` scarta: proprio quelle dicono che ci si sta
+// muovendo piano, ed è l'informazione che serve.
+function terrenoSegnaFix(lat, lon, velocitaGps, quando) {
+  if (!isFinite(lat) || !isFinite(lon)) return;
+  // Quando la lettura è stata **presa**, non quando è arrivata qui: fra le
+  // due può passare qualche decimo di secondo, e la velocità si misura
+  // dividendo per quel tempo. Il numero però va guardato prima di crederci
+  // — qualche browser mette lì un orologio suo, che con l'epoca non ha
+  // niente a che vedere — e se non ha senso vale l'ora di adesso.
+  const adesso = Date.now();
+  const ora = (isFinite(quando) && Math.abs(adesso - quando) < 5 * 60 * 1000)
+    ? quando : adesso;
+  const fix = terrenoMoto.fix;
+  fix.push({ lat, lon, quando: ora });
+  while (fix.length > TERRENO_MOTO_FIX) fix.shift();
+  fix.sort((a, b) => a.quando - b.quando);
+  while (fix.length > 2 && ora - fix[0].quando > TERRENO_MOTO_FINESTRA_MS) fix.shift();
+
+  // La misura dichiarata dal sensore quando c'è, se no quella fra il fix
+  // più vecchio ancora buono e questo. Si prende la **maggiore**: un GPS
+  // che dichiara zero mentre il punto corre di trecento metri sta
+  // sbagliando lui, e credergli vorrebbe dire rimettersi a scaricare.
+  let stimata = 0;
+  const primo = fix[0];
+  const dt = (ora - primo.quando) / 1000;
+  if (fix.length > 1 && dt > 0.5 && dt <= TERRENO_MOTO_FINESTRA_MS / 1000) {
+    stimata = terrenoDistanzaKm(primo.lat, primo.lon, lat, lon) * 1000 / dt;
+  }
+  const dichiarata = isFinite(velocitaGps) && velocitaGps >= 0 ? velocitaGps : 0;
+  terrenoMoto.velocita = Math.max(stimata, dichiarata);
+  if (terrenoMoto.velocita >= TERRENO_MOTO_V_MIN) terrenoMoto.ultimoMoto = ora;
+}
+
+// Quanto si sta correndo, in metri al secondo. Zero quando le letture
+// sono vecchie: un viaggio finito mezz'ora fa non è un viaggio.
+function terrenoVelocita() {
+  const fix = terrenoMoto.fix;
+  if (!fix.length) return 0;
+  if (Date.now() - fix[fix.length - 1].quando > TERRENO_MOTO_FINESTRA_MS) return 0;
+  return terrenoMoto.velocita;
+}
+
+function terrenoInMoto() {
+  if (terrenoVelocita() >= TERRENO_MOTO_V_MIN) return true;
+  return terrenoMoto.ultimoMoto > 0 &&
+    Date.now() - terrenoMoto.ultimoMoto < TERRENO_MOTO_CODA_MS;
+}
+
+// --- Il punto vivo ----------------------------------------------------
+//
+// Il GPS consegna un fix al secondo, e il filtro dell'app ne accetta uno
+// ogni centocinquanta metri: sotto quella soglia è respiro del sensore, non
+// movimento (`skyLetturaAttendibile`). È la regola giusta per il **cielo**,
+// dove centocinquanta metri non spostano una stella di un pixel, ed è la
+// regola sbagliata per il **terreno**: lì centocinquanta metri sono un
+// balzo, e in macchina il paesaggio avanzava a scatti — fermo, salto,
+// fermo, salto. È l'effetto fastidioso di cui si sta parlando, e non ha
+// niente a che vedere con lo scarico dei dati: è la posizione stessa che
+// arriva a gradini.
+//
+// Il paesaggio quindi non guarda la posizione dell'app: guarda il punto
+// vivo, che è l'ultimo fix grezzo — tutti, anche quelli scartati — portato
+// avanti dalla velocità nel tempo passato da allora, e poi inseguito con
+// dolcezza perché l'arrivo del fix successivo non si veda come uno strappo.
+// Costa due sottrazioni per fotogramma e rende continuo quello che il
+// sensore dà a scatti; se il GPS smette di parlare, l'estrapolazione si
+// ferma dopo pochi secondi invece di continuare a inventare strada.
+const TERRENO_VIVO_MAX_MS = 4000;
+const TERRENO_VIVO_TAU_MS = 350;
+// Più lontano di così dal punto dell'app, il fix non parla dello stesso
+// posto: la posizione è stata scelta a mano, o siamo appena stati spostati
+// altrove. Il punto vivo si spegne.
+const TERRENO_VIVO_STACCO_KM = 3;
+
+const terrenoVivo = { lat: null, lon: null, quando: 0 };
+
+// Dove si è **adesso**, per chi disegna. `null` quando non ha senso: fermi,
+// senza fix, o col planetario spostato a guardare il cielo di un'altra
+// città — lì il punto è quello scelto e non si muove di un metro.
+function terrenoPuntoVivo() {
+  const luogo = terrenoLuogo();
+  if (!luogo || luogo.proprio) return null;
+  const fix = terrenoMoto.fix;
+  if (!fix.length || !terrenoInMoto()) { terrenoVivo.lat = null; return null; }
+  const ultimo = fix[fix.length - 1];
+  if (terrenoDistanzaKm(ultimo.lat, ultimo.lon, luogo.lat, luogo.lon) > TERRENO_VIVO_STACCO_KM) {
+    terrenoVivo.lat = null;
+    return null;
+  }
+
+  // Dove porta la corsa, se il fix di prima dice da che parte si sta
+  // andando. Il tempo si tosa: un GPS che tace non autorizza a inventare
+  // chilometri di strada.
+  const ora = Date.now();
+  let lat = ultimo.lat, lon = ultimo.lon;
+  const prima = fix.length > 1 ? fix[fix.length - 2] : null;
+  if (prima) {
+    const dt = (ultimo.quando - prima.quando) / 1000;
+    if (dt > 0.2 && dt < 30) {
+      const avanti = Math.min(TERRENO_VIVO_MAX_MS, ora - ultimo.quando) / 1000;
+      lat += (ultimo.lat - prima.lat) / dt * avanti;
+      lon += (ultimo.lon - prima.lon) / dt * avanti;
+    }
+  }
+
+  // E ci si arriva scivolando. Senza, l'istante in cui arriva un fix nuovo
+  // si vedrebbe: l'estrapolazione sbaglia sempre di qualcosa, e correggerla
+  // di colpo è uno scatto per ogni secondo di viaggio.
+  if (terrenoVivo.lat === null ||
+      terrenoDistanzaKm(terrenoVivo.lat, terrenoVivo.lon, lat, lon) > TERRENO_VIVO_STACCO_KM) {
+    terrenoVivo.lat = lat; terrenoVivo.lon = lon;
+  } else {
+    const dt = Math.max(0, Math.min(1000, ora - (terrenoVivo.quando || ora)));
+    const a = 1 - Math.exp(-dt / TERRENO_VIVO_TAU_MS);
+    terrenoVivo.lat += (lat - terrenoVivo.lat) * a;
+    terrenoVivo.lon += (lon - terrenoVivo.lon) * a;
+  }
+  terrenoVivo.quando = ora;
+  return { lat: terrenoVivo.lat, lon: terrenoVivo.lon, nome: luogo.nome, proprio: false };
+}
+
+// Il punto da cui **disegnare**: quello vivo se c'è, se no quello dell'app.
+// Chi decide se scaricare qualcosa usa invece `terrenoLuogo`, che è fermo
+// fra un fix accettato e l'altro — una richiesta di rete non si fa partire
+// da un punto estrapolato.
+function terrenoPuntoDaDisegnare() {
+  return terrenoPuntoVivo() || terrenoLuogo();
+}
+
+// Quanto lontano dal suo centro un profilo resta una risposta buona.
+//
+// Da fermo sono i due chilometri di sempre. In movimento il numero cambia
+// perché cambia la domanda: chi va in macchina non sta guardando il fosso
+// a cento metri, sta guardando la catena all'orizzonte, e quella a otto
+// chilometri di distanza è la stessa identica catena. Il primo piano —
+// che invece cambia — lo rifà il rilievo traslando la maglia, senza rete
+// (`rilievo.js` §8). Tenere qui la soglia stretta non renderebbe il
+// paesaggio più giusto: lo farebbe **sparire** per il tempo di ogni
+// scarico, che è la cosa peggiore delle due.
+function terrenoRaggioValidoKm() {
+  const v = terrenoVelocita();
+  if (v >= 45) return TERRENO_RAGGIO_MOTO_AEREO_KM;
+  if (v >= 8)  return TERRENO_RAGGIO_MOTO_AUTO_KM;
+  if (terrenoInMoto()) return TERRENO_RAGGIO_MOTO_PIEDI_KM;
+  return TERRENO_RAGGIO_VALIDO_KM;
+}
+
+// Oltre questa distanza il profilo che si ha in mano non parla più del
+// posto in cui si è, e va buttato subito: le colline di Genova disegnate
+// a Bolzano sono peggio di nessuna collina, perché sembrano vere. Sotto,
+// **si tiene** finché non arriva il sostituto — anche quando si sta già
+// scaricando il profilo nuovo. È la stessa regola che `terrenoDisponibile`
+// ha imparato a caro prezzo, applicata allo spazio invece che al tempo.
+const TERRENO_TIENI_PROFILO_KM = 60;
+
+// Che frazione del raggio di ricerca resta buona allontanandosi dal centro,
+// e fin dove. Un elenco preso su ottanta chilometri, guardato da venti più
+// in là, ne copre ancora sessanta nella direzione in cui si va: è meno di
+// prima, non è niente. Il tetto serve al caso opposto — un raggio da
+// duecento chilometri non autorizza a nominare le vette di un'altra
+// regione perché una volta si è passati di lì.
+const TERRENO_MOTO_VALIDO_QUOTA = 0.35;
+const TERRENO_MOTO_VALIDO_MAX_KM = 35;
+
+// Ogni quanto, al massimo, si rifà lo scarico mentre ci si muove.
+// Ventiquattro richieste a un servizio pubblico ogni novanta secondi non
+// sono un aggiornamento, sono una raffica: il rubinetto della §4 frena, i
+// 429 arrivano, e il profilo «nuovo» finisce per arrivare più tardi di
+// quello che si sarebbe tenuto stando zitti.
+const TERRENO_RICARICA_MOTO_MS = 120000;
+
+// Il rinvio non è una rinuncia: appena scade, si riparte dal punto in cui
+// si è **allora**, che è quello che serve. Un timer solo, spostato in
+// avanti da ogni chiamata, come fa `cimeRimandaDopoViaggio`.
+function terrenoRimandaInMoto() {
+  if (terreno.timerMoto) return;
+  const attesa = Math.max(2000,
+    TERRENO_RICARICA_MOTO_MS - (Date.now() - (terreno.quandoRete || 0)));
+  terreno.timerMoto = setTimeout(() => {
+    terreno.timerMoto = null;
+    terrenoCarica();
+  }, attesa);
+}
+
+
+// =====================================================================
 // 7. L'INNESCO
 // =====================================================================
 
@@ -1597,6 +2099,7 @@ function terrenoApplica(lat, lon, dati, sorgente, ancoraInCorso) {
   terreno.motivo = '';
   if (!ancoraInCorso) terreno.avanzamento = 0;
   terreno.quando = Date.now();
+  if (sorgente === 'rete' && !ancoraInCorso) terreno.quandoRete = terreno.quando;
   terreno.sorgente = sorgente;
   // Se si sta dentro all'acqua, l'occhio non sta sul suolo: sta sulla
   // superficie. Si chiede qui perché il terreno e le acque arrivano in
@@ -1615,6 +2118,21 @@ function terrenoApplica(lat, lon, dati, sorgente, ancoraInCorso) {
 // mostrato. Il controllo evita che, mentre ci si sposta, accanto alla nuova
 // città rimanga per qualche secondo l'altitudine di quella precedente.
 function terrenoQuotaDelLuogo(lat, lon) {
+  // Col rilievo acceso la quota del punto in cui si è la sanno le tessere,
+  // e la sanno **adesso**: muovendosi la si legge dove si è arrivati invece
+  // di sparire appena ci si allontana di due chilometri dal centro della
+  // griglia. È la stessa camera che disegna il paesaggio (`rilOcchioMeta`).
+  //
+  // Si chiede però al pezzo che risponde `null` quando non sa: se le
+  // tessere quel punto non lo coprono, la camera ripiega su
+  // `terreno.quota` — che è la quota del **centro della griglia**, cioè
+  // proprio il numero che questa funzione esiste per non mostrare accanto
+  // al nome di un altro posto.
+  if (typeof rilQuotaSuolo === 'function' && typeof rilPronto === 'function' &&
+      rilPronto() && isFinite(lat) && isFinite(lon) && !terreno.quotaAcqua) {
+    const q = rilQuotaSuolo(lat, lon);
+    if (q !== null && isFinite(q)) return q;
+  }
   if (typeof terreno.quota !== 'number' || !isFinite(lat) || !isFinite(lon) ||
       !isFinite(terreno.lat) || !isFinite(terreno.lon)) return null;
   const dLat = lat - terreno.lat;
@@ -1705,14 +2223,34 @@ function terrenoCarica(forza) {
   if (!luogo) return Promise.resolve(false);
   const lat = luogo.lat, lon = luogo.lon;
 
+  const raggioBuono = terrenoRaggioValidoKm();
   if (!forza && terreno.stato === 'pronto' && terreno.lat !== null &&
-      terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) <= TERRENO_RAGGIO_VALIDO_KM) {
+      terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) <= raggioBuono) {
     return Promise.resolve(true);
   }
   // C'è già una richiesta in volo. Se è per questo stesso posto, si aspetta
   // quella; se nel frattempo il luogo è cambiato di nuovo (due città scelte
   // in fretta), la si lascia finire e si riparte dopo — nel `finally`.
   if (terreno.stato === 'in-corso') return terreno.promessa || Promise.resolve(false);
+
+  // In movimento, due scarichi ravvicinati sono due volte lo stesso
+  // paesaggio: si aspetta il tempo minimo e poi si riparte da dove si è
+  // arrivati, non da dove si era quando è scattata la soglia. Il rinvio
+  // non lascia lo schermo scoperto — quello che c'è resta disegnato — ed è
+  // la stessa cura di `cimeRimandaDopoViaggio`, applicata alle quote.
+  //
+  // Il rinvio vale per un passo del viaggio, non per un salto: se il punto
+  // è più lontano di quanto si possa averlo raggiunto camminando o
+  // guidando, allora non ci si è arrivati — lo si è **scelto**, ed è una
+  // domanda nuova che ha diritto a una risposta subito.
+  const passoDelViaggio = terreno.lat !== null &&
+    terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) <=
+      raggioBuono + terrenoVelocita() * TERRENO_RICARICA_MOTO_MS / 1000000;
+  if (!forza && terreno.profilo && passoDelViaggio && terrenoInMoto() &&
+      Date.now() - (terreno.quandoRete || 0) < TERRENO_RICARICA_MOTO_MS) {
+    terrenoRimandaInMoto();
+    return Promise.resolve(true);
+  }
 
   if (!forza) {
     const salvato = terrenoLeggiSalvato(lat, lon);
@@ -1737,8 +2275,10 @@ function terrenoCarica(forza) {
   // quando cambia il posto: il servizio che ha detto di no per Bolzano non
   // ha detto niente su Genova.
   if (terreno.sveglia) { clearTimeout(terreno.sveglia); terreno.sveglia = null; }
+  // E nemmeno il rinvio del viaggio: si sta partendo adesso, e da qui.
+  if (terreno.timerMoto) { clearTimeout(terreno.timerMoto); terreno.timerMoto = null; }
   if (terreno.provatoLat === null || terreno.provatoLat === undefined ||
-      terrenoDistanzaKm(lat, lon, terreno.provatoLat, terreno.provatoLon) > TERRENO_RAGGIO_VALIDO_KM) {
+      terrenoDistanzaKm(lat, lon, terreno.provatoLat, terreno.provatoLon) > raggioBuono) {
     terreno.tentativi = 0;
     // Posto nuovo, domanda nuova: qui non ci si è ancora arresi, e chi
     // aspetta il terreno prima di parlare ha ragione ad aspettare.
@@ -1754,8 +2294,17 @@ function terrenoCarica(forza) {
   // mezzo a quello vero. Da un'altra parte invece va buttato subito: le
   // colline di Genova disegnate a Bolzano sono peggio di nessuna collina,
   // perché sembrano vere.
+  //
+  // «Da un'altra parte» però non vuol dire «due chilometri più in là». Col
+  // GPS acceso in macchina quella soglia si supera ogni minuto e mezzo, e
+  // ogni volta il profilo veniva buttato *prima* di avere il sostituto:
+  // per i secondi dello scarico l'orizzonte tornava finto e i nomi delle
+  // montagne sparivano — a ripetizione, per tutto il viaggio. Adesso a
+  // buttarlo è solo un salto vero (`TERRENO_TIENI_PROFILO_KM`): il
+  // paesaggio a sessanta chilometri visto da nove più in là è lo stesso
+  // paesaggio, e tenerlo è meglio che non averne nessuno.
   if (terreno.profilo && (terreno.lat === null ||
-      terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) > TERRENO_RAGGIO_VALIDO_KM)) {
+      terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) > TERRENO_TIENI_PROFILO_KM)) {
     terrenoScordaProfilo();
   }
 
@@ -1777,7 +2326,17 @@ function terrenoCarica(forza) {
     // che dice di no un giorno sì e uno no il terreno non arrivava mai.
     dati => {
       terrenoSalva(lat, lon, dati);
-      terrenoApplica(lat, lon, dati, 'rete', true);
+      // Il giro grosso è una direzione su tre: un orizzonte vero, ma più
+      // grosso di quello intero. Mostrarlo subito è la cosa giusta quando
+      // in mano non c'è niente — meglio l'orizzonte vero a passo largo che
+      // quello inventato — ed è la cosa sbagliata quando un profilo intero
+      // c'è già e parla di qui vicino: sarebbe un peggioramento visibile,
+      // e sullo schermo un peggioramento seguito da un miglioramento sono
+      // **due** scatti invece di uno.
+      const meglioAspettare = terreno.profilo &&
+        terreno.misurate >= TERRENO_DIREZIONI && terreno.lat !== null &&
+        terrenoDistanzaKm(lat, lon, terreno.lat, terreno.lon) <= TERRENO_TIENI_PROFILO_KM;
+      if (!meglioAspettare) terrenoApplica(lat, lon, dati, 'rete', true);
     }, riprendi)
     .then(({ dati, guaio }) => {
       terrenoSalva(lat, lon, dati);
@@ -1898,7 +2457,18 @@ function terrenoMotivoGuaio(e) {
   // si accettino le condizioni.
   const tutte = TERRENO_FONTI.length > 1;
   let che;
-  if (e && e.stato === 429) {
+  if (e && e.porteChiuse) {
+    // Il caso nuovo, ed è quello che si vede più spesso: non abbiamo
+    // nemmeno provato, perché sapevamo già che tutte e tre le porte erano a
+    // quota piena. Dirlo per esteso — **con l'ora** — è la differenza fra
+    // «non funziona» e «funziona, ma non adesso»: chi legge sa che non c'è
+    // niente da riparare e nessun tasto da premere.
+    const fra = Math.max(0, Math.round(terrenoAttesaPorte() / 1000));
+    const quando = fra >= 90 ? `fra ${Math.round(fra / 60)} minuti`
+      : fra > 0 ? `fra ${fra} secondi` : 'a momenti';
+    che = `i servizi delle quote sono a quota piena e li ho lasciati in pace ` +
+      `(riprovo ${quando})`;
+  } else if (e && e.stato === 429) {
     che = tutte
       ? 'i servizi delle quote sono tutti sovraccarichi (429)'
       : 'il servizio delle quote è sovraccarico (429)';
@@ -1942,10 +2512,16 @@ function terrenoRiprovaPiuTardi() {
   if (n >= TERRENO_RIPROVE_MS.length) return;
   terreno.tentativi = n + 1;
   if (terreno.sveglia) clearTimeout(terreno.sveglia);
+  // Mai **prima** che una porta si riapra. Sono due orologi diversi: questa
+  // scala dice quanto ha senso aspettare dopo un buco nell'acqua, la pagella
+  // dice quando il servizio ha detto che si può ribussare. Svegliarsi prima
+  // non costa richieste (il rubinetto non consegna a una porta chiusa) ma
+  // brucia un tentativo della cascata per niente — e i tentativi sono cinque.
+  const attesa = Math.max(TERRENO_RIPROVE_MS[n], terrenoAttesaPorte() + 1000);
   terreno.sveglia = setTimeout(() => {
     terreno.sveglia = null;
     terrenoCarica(true);
-  }, TERRENO_RIPROVE_MS[n]);
+  }, attesa);
 }
 
 
@@ -2183,7 +2759,13 @@ function terrenoAlterna() {
   // guardare — ed è anche il solo modo che ha per riprovare quando i tre
   // tentativi da soli sono finiti. Stessa regola dei nomi delle montagne.
   if (terreno.acceso && terreno.stato !== 'pronto') {
-    if (terreno.stato === 'fallito') terreno.tentativi = 0;
+    if (terreno.stato === 'fallito') {
+      terreno.tentativi = 0;
+      // E si dà un'altra possibilità anche alle porte in castigo: la pagella
+      // è una cortesia verso un servizio che ha detto di no, non una punizione
+      // da scontare — e chi preme il tasto sta chiedendo proprio di ribussare.
+      terrenoScordaPenali();
+    }
     terrenoCarica(terreno.stato === 'fallito');
   }
   // Non serve chiedere un ridisegno: il planetario ridisegna a ogni
@@ -2362,6 +2944,15 @@ function terrenoAvanzamentoTotale() {
 function terrenoBarraAggiorna() {
   const el = document.getElementById('terreno-progress');
   if (!el) return;
+  // In viaggio la barra non si accende, e la ragione è la stessa per cui
+  // esiste: dice «sto misurando il terreno attorno a te» a chi ha davanti
+  // l'orizzonte finto e ha bisogno di sapere che quello vero sta arrivando.
+  // Guidando l'orizzonte vero c'è già — è quello di poco fa, che si tiene
+  // apposta (§6-bis) — e quella pillola diventa una spia che si riaccende
+  // ogni due minuti sopra a un paesaggio che nel frattempo non è mai
+  // sparito: cioè rumore, e per giunta rumore che dice il contrario di
+  // quello che si vede.
+  if (terrenoDisponibile() && terrenoInMoto() && !terrenoBarra.vista) return;
   const v = terrenoAvanzamentoTotale();
   if (!v.attiva) return;
 
@@ -2439,7 +3030,7 @@ const RAGGI_LIMITI = {
   // Gli aerei arrivano da ADS-B e cambiano continuamente: un raggio più
   // largo è utile in pianura, uno stretto evita traffico lontano e richieste
   // inutilmente grandi quando interessa solo ciò che passa sopra casa.
-  aerei: { min: 10, max: 250, passo: 5, predefinito: 100 },
+  aerei: { min: 10, max: 250, passo: 5, predefinito: 50 },
   // I laghi e i fiumi si cercano molto più vicino, e non per prudenza: un
   // lago a cinquanta chilometri, visto da uno che sta in pianura, è sotto
   // l'orizzonte — e quando invece si vede (da una cima) è una riga di due
@@ -2586,6 +3177,16 @@ const CITTA_RAGGIO_PAESI_KM = 20;
 const CITTA_RAGGIO_RIPIEGO_KM = 30;
 const CITTA_MAX = 60;
 const CITTA_RAGGIO_VALIDO_KM = 5;
+// In movimento vale la stessa regola delle vette (qui sotto,
+// `cimeRaggioValidoKm`): l'elenco copre novanta chilometri attorno al punto
+// in cui è stato chiesto, e spostandosi di venti se ne perdono venti da una
+// parte — non tutti. Buttarlo via per intero vorrebbe dire un orizzonte
+// senza un nome per tutto il viaggio.
+function cittaRaggioValidoKm() {
+  if (!terrenoInMoto()) return CITTA_RAGGIO_VALIDO_KM;
+  return Math.max(CITTA_RAGGIO_VALIDO_KM,
+    Math.min(TERRENO_MOTO_VALIDO_MAX_KM, raggioCitta() * TERRENO_MOTO_VALIDO_QUOTA));
+}
 // Più lunga del `timeout` scritto nella query dei paesi (20 s), come per le
 // vette e per le acque. Era **quindici** secondi, cioè cinque meno di quelli
 // che il server si era preso: la richiesta veniva tagliata mentre Overpass ci
@@ -2608,6 +3209,15 @@ const citta = {
   stato: 'niente',        // niente | in-corso | pronto | fallito
   lat: null, lon: null,
   elenco: [],             // { nome, az, km, abitanti, forza, alto, mezzo, alfa }
+  // I paesi come sono arrivati, senza geometria: nome, coordinate,
+  // abitanti. Servono a rifare azimut, distanza e forza della cupola da un
+  // punto diverso da quello in cui sono stati cercati — cioè a farli
+  // scorrere mentre ci si sposta, invece di lasciarli inchiodati a dove
+  // erano quando è partita la richiesta (§6-bis).
+  grezze: [],
+  // Per quale punto vale `elenco` adesso: la geometria si rifà solo quando
+  // il punto cambia davvero, non a ogni fotogramma.
+  vistaChiave: null,
   fonte: '',
   motivo: '',
   avanzamento: 0,         // 0…1 per la barra della §9-ter
@@ -2749,11 +3359,25 @@ function cittaQueryOverpass(lat, lon) {
 // richiesta, e l'affiancamento qui sotto le mette in corsa una dopo l'altra
 // senza aspettare che la precedente si arrenda.
 const OVERPASS_ISTANZE = [
+  // L'istanza svizzera viene per prima: oltre a essere vicina al punto del
+  // problema segnalato, evita che una visita nelle Alpi dipenda sempre dal
+  // nodo tedesco, che quando scadeva lasciava in console soltanto un
+  // ERR_CONNECTION_TIMED_OUT. La rotazione continua a distribuire il resto.
+  'https://overpass.osm.ch/api/interpreter',
   'https://overpass-api.de/api/interpreter',
   'https://overpass.private.coffee/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
   'https://overpass.openstreetmap.fr/api/interpreter'
 ];
+
+// Una porta che ha appena taciuto non va rimessa subito davanti alle altre
+// due richieste del paesaggio e poi, di nuovo, davanti alle loro query corte.
+// Era esattamente ciò che faceva comparire più timeout uguali per un solo
+// caricamento. Il ricordo è breve e vive soltanto nella scheda: abbastanza
+// per far passare città, cime e acque dalla porta successiva, non abbastanza
+// per dichiarare guasta un'istanza pubblica per tutta la giornata.
+const OVERPASS_PAUSA_GUASTA_MS = 120000;
+const overpassGuastaFino = new Map();
 
 // Dopo quanto si prova **anche** l'altra istanza, invece di stare a guardare
 // la prima.
@@ -2837,10 +3461,25 @@ function overpassPeso(e) {
 // costano tempo: costano solo altre possibilità di essere serviti dentro
 // quello stesso minuto.
 function overpassChiedi(query, attesaMs) {
-  const n = OVERPASS_ISTANZE.length;
+  const totale = OVERPASS_ISTANZE.length;
   const inizio = overpassIstanzaOra;
-  overpassIstanzaOra = (overpassIstanzaOra + 1) % n;
+  overpassIstanzaOra = (overpassIstanzaOra + 1) % totale;
   const scadenza = Date.now() + attesaMs;
+
+  // Prima le porte che non hanno appena fallito. Se fossero tutte in pausa
+  // non si resta però senza tentare: si ordinano per quella che torna
+  // disponibile prima. È un circuito aperto, non una lista nera.
+  const ora = Date.now();
+  const tutte = Array.from({ length: totale }, (_, i) => OVERPASS_ISTANZE[(inizio + i) % totale])
+    .sort((a, b) => {
+      const fa = overpassGuastaFino.get(a) || 0;
+      const fb = overpassGuastaFino.get(b) || 0;
+      const aa = fa > ora, bb = fb > ora;
+      return aa === bb ? (aa ? fa - fb : 0) : (aa ? 1 : -1);
+    });
+  const disponibili = tutte.filter(i => (overpassGuastaFino.get(i) || 0) <= ora);
+  const istanze = disponibili.length ? disponibili : tutte;
+  const n = istanze.length;
 
   return new Promise((ok, no) => {
     const controlli = [];
@@ -2878,7 +3517,7 @@ function overpassChiedi(query, attesaMs) {
       if (chiuso || prossima >= n) return;
       const resta = scadenza - Date.now();
       if (resta <= 0) { if (attive <= 0) arrenditi(); return; }
-      const istanza = OVERPASS_ISTANZE[(inizio + prossima) % n];
+      const istanza = istanze[prossima];
       prossima++;
       attive++;
       const c = typeof AbortController === 'function' ? new AbortController() : null;
@@ -2906,12 +3545,18 @@ function overpassChiedi(query, attesaMs) {
           if (timer) clearTimeout(timer);
           if (!dati || !Array.isArray(dati.elements)) throw new Error('risposta senza elementi');
           if (chiuso) return;
+          overpassGuastaFino.delete(istanza);
           attive--;
           smetti();
           ok(dati.elements);
         })
         .catch(e => {
           if (timer) clearTimeout(timer);
+          // Un aborto provocato da `smetti` significa soltanto che un'altra
+          // porta ha vinto: non è un guasto. Tutti gli altri errori di rete,
+          // timeout e risposte HTTP fanno invece saltare questa istanza nel
+          // resto del caricamento.
+          if (!chiuso) overpassGuastaFino.set(istanza, Date.now() + OVERPASS_PAUSA_GUASTA_MS);
           nonCeLHaFatta(e);
         });
 
@@ -3121,6 +3766,8 @@ function cittaDalSalvato(v) {
 function cittaDimentica() {
   citta.stato = 'niente';
   citta.elenco = [];
+  citta.grezze = [];
+  citta.vistaChiave = null;
   citta.lat = citta.lon = null;
   citta.fonte = '';
   citta.quandoFallito = 0;
@@ -3135,11 +3782,22 @@ function cittaApplica(lat, lon, grezze, fonte) {
   const luogo = terrenoLuogo();
   citta.lat = lat;
   citta.lon = lon;
+  citta.grezze = grezze;
   citta.elenco = cittaPrepara(grezze, lat, lon, luogo && luogo.nome);
+  citta.vistaChiave = cittaChiaveVista(lat, lon);
   citta.fonte = fonte;
   citta.stato = 'pronto';
   citta.motivo = '';
   terrenoAggiornaPannello();
+}
+
+// La chiave dice per quale punto vale la geometria dei paesi. Undici metri
+// di risoluzione, che è la stessa delle vette: un paese a dieci chilometri
+// si sposta allora di sei centesimi di grado per volta, cioè di niente.
+// Con la risoluzione più larga di cento metri il salto era mezzo grado, e
+// mezzo grado su un nome appeso all'orizzonte si vede.
+function cittaChiaveVista(lat, lon) {
+  return `${lat.toFixed(4)},${lon.toFixed(4)}`;
 }
 
 function cittaCarica(forza, soloCache) {
@@ -3154,7 +3812,7 @@ function cittaCarica(forza, soloCache) {
   // tutta la sessione — nessuno sarebbe più tornato a chiedere i paesi veri.
   const supplenza = citta.fonte === 'interno';
   if (!forza && citta.stato === 'pronto' && !supplenza && citta.lat !== null &&
-      terrenoDistanzaKm(lat, lon, citta.lat, citta.lon) <= CITTA_RAGGIO_VALIDO_KM) {
+      terrenoDistanzaKm(lat, lon, citta.lat, citta.lon) <= cittaRaggioValidoKm()) {
     return Promise.resolve(true);
   }
   if (citta.stato === 'in-corso') return citta.promessa || Promise.resolve(false);
@@ -3225,7 +3883,7 @@ function cittaCarica(forza, soloCache) {
     .finally(() => {
       citta.promessa = null;
       const ora = terrenoLuogo();
-      if (ora && terrenoDistanzaKm(ora.lat, ora.lon, lat, lon) > CITTA_RAGGIO_VALIDO_KM) {
+      if (ora && terrenoDistanzaKm(ora.lat, ora.lon, lat, lon) > cittaRaggioValidoKm()) {
         cittaCarica();
       }
     });
@@ -3240,12 +3898,30 @@ function cittaCarica(forza, soloCache) {
 // planetario le proietta da sé: qui si sa dove stanno e quanto illuminano,
 // non come finiscono sullo schermo.
 function cittaVicine() {
-  if (!citta.acceso || citta.stato !== 'pronto') return [];
+  // Come per le vette (`cimeVisibili`): conta avere un elenco, non che
+  // l'ultima richiesta sia riuscita. Un tentativo fallito mentre si guida
+  // spegneva tutte le luci dell'orizzonte insieme.
+  if (!citta.acceso || !citta.elenco.length) return [];
+  const luogo = terrenoPuntoDaDisegnare();
+  // Spostandosi, i paesi non si spostano — ma la loro **direzione** e la
+  // loro **distanza** sì, e con esse quanto la cupola è larga e quanto
+  // illumina. L'elenco era calcolato una volta sola, nel punto in cui la
+  // ricerca era partita: in macchina i nomi restavano inchiodati agli
+  // azimut di dieci chilometri prima, cioè indicavano il posto sbagliato
+  // dell'orizzonte. Rifare la geometria non costa una richiesta e nemmeno
+  // un fotogramma: sono un centinaio di voci, e si rifà solo quando il
+  // punto cambia davvero (`cittaChiaveVista`, undici metri).
+  if (luogo && citta.grezze.length) {
+    const chiave = cittaChiaveVista(luogo.lat, luogo.lon);
+    if (chiave !== citta.vistaChiave) {
+      citta.elenco = cittaPrepara(citta.grezze, luogo.lat, luogo.lon, luogo.nome);
+      citta.vistaChiave = chiave;
+    }
+  }
   // Il nome preciso può arrivare dopo le città (il GPS e il geocodificatore
   // lavorano in parallelo). La seconda potatura evita che, per alcuni secondi
   // o fino al prossimo caricamento, resti visibile il nome appena riconosciuto
   // del luogo in cui ci si trova.
-  const luogo = terrenoLuogo();
   return citta.elenco.filter(c => !cittaEPostoOsservatore(c, luogo && luogo.nome));
 }
 
@@ -3339,13 +4015,32 @@ const CIME_RAGGIO_RIPIEGO_KM = 35;
 // che stanno lì, non fra le sei più grosse del giro intero.
 const CIME_MAX = 80;
 const CIME_RAGGIO_VALIDO_KM = 5;
+// Quanto ci si può allontanare dal centro della ricerca e continuare a
+// nominare quello che si è trovato. Da fermo cinque chilometri, perché più
+// in là si è in un altro posto e conviene rifare la domanda. In movimento
+// no: la ricerca copre ottanta chilometri, `cimeVisibili` rifà comunque
+// azimut, distanza e altezza apparente dal punto in cui si è adesso, e
+// quindi le vette che restano nell'elenco sono ancora **giuste** — manca
+// solo quello che è entrato in scena davanti. Con la soglia stretta,
+// invece, dopo cinque chilometri di strada non compariva più nessun nome
+// finché non ci si fermava: è così che i nomi dei monti sono spariti in
+// modalità GPS.
+function cimeRaggioValidoKm() {
+  if (!terrenoInMoto()) return CIME_RAGGIO_VALIDO_KM;
+  return Math.max(CIME_RAGGIO_VALIDO_KM,
+    Math.min(TERRENO_MOTO_VALIDO_MAX_KM, raggioCime() * TERRENO_MOTO_VALIDO_QUOTA));
+}
 // In viaggio il GPS può consegnare un punto nuovo a ogni curva. Una ricerca
 // Overpass per ciascun punto non riuscirebbe comunque a raggiungere il
 // telefono e terrebbe occupato il servizio con risposte già vecchie. Le
 // copie locali si usano sempre; la rete parte soltanto quando il luogo resta
 // fermo per questo intervallo.
 const CIME_FERMO_PRIMA_DI_CARICARE_MS = 12000;
-const CIME_VELOCITA_VIAGGIO_M_S = 2.5;
+// ...e comunque non si sta in viaggio per sempre senza rinfrescare
+// l'elenco: dopo questo tempo la ricerca parte anche correndo. È più lunga
+// dell'attesa delle quote perché una richiesta a Overpass costa più di una
+// a Open-Meteo, e perché ottanta chilometri di vette invecchiano piano.
+const CIME_RICARICA_MOTO_MS = 4 * 60 * 1000;
 // Più lunga del `timeout` scritto nella query (25 s): il client non deve
 // mai essere lui ad arrendersi per primo.
 const CIME_ATTESA_MS = 32000;
@@ -3390,7 +4085,10 @@ const cime = {
   vistaChiave: null,
   vista: [],
   timerViaggio: null,
-  ultimoLuogo: null
+  // Quando l'elenco è stato preso davvero. In viaggio è lui a decidere se
+  // vale la pena rifare la domanda (§6-bis): il posto cambia in
+  // continuazione, il tempo no.
+  quandoPreso: 0
 };
 
 
@@ -3541,7 +4239,6 @@ function cimeDimentica() {
   cime.vistaChiave = null;
   cime.lat = cime.lon = null;
   cime.timerViaggio = null;
-  cime.ultimoLuogo = null;
   overpassRiprovaAzzera('cime');
 }
 
@@ -3557,25 +4254,26 @@ function cimeApplica(lat, lon, grezze, fonte) {
   cime.fonte = fonte;
   cime.stato = 'pronto';
   cime.motivo = '';
+  cime.quandoPreso = Date.now();
   terrenoAggiornaPannello();
 }
 
-// Dice se il punto sta ancora correndo. `coords.speed` non è disponibile su
-// tutti i browser, quindi si affianca una misura fra le letture che arrivano
-// qui. Il limite temporale evita di scambiare per un viaggio il salto fra la
-// posizione salvata ieri e il primo fix di oggi.
-function cimeLuogoInViaggio(luogo) {
-  const ora = Date.now();
-  const prima = cime.ultimoLuogo;
-  cime.ultimoLuogo = { lat: luogo.lat, lon: luogo.lon, quando: ora };
-  const velocitaGps = typeof sky !== 'undefined' && sky.posizione &&
-    isFinite(sky.posizione.velocita) ? sky.posizione.velocita : null;
-  if (velocitaGps !== null && velocitaGps >= CIME_VELOCITA_VIAGGIO_M_S) return true;
-  if (!prima) return false;
-  const secondi = (ora - prima.quando) / 1000;
-  if (secondi <= 0 || secondi > 120) return false;
-  return terrenoDistanzaKm(prima.lat, prima.lon, luogo.lat, luogo.lon) * 1000 / secondi >=
-    CIME_VELOCITA_VIAGGIO_M_S;
+// Dice se il punto sta ancora correndo. La misura è quella condivisa di
+// §6-bis: `coords.speed` quando c'è, se no lo spostamento fra le letture.
+// Stava qui, con una storia sua, e ne è uscita per una ragione precisa —
+// tre moduli che stimano la stessa velocità su tre storie diverse danno
+// tre risposte diverse alla stessa domanda, e allora uno dei tre riscarica
+// mentre gli altri due aspettano.
+//
+// Una ricerca rinviata però non è una ricerca annullata: appena si smette
+// di correre — o appena scade l'attesa lunga, se si corre da un pezzo —
+// riparte da dove si è arrivati.
+function cimeLuogoInViaggio() {
+  if (!terrenoInMoto()) return false;
+  // In viaggio da tanto: a un certo punto l'elenco va rinfrescato lo
+  // stesso, se no dopo mezz'ora di autostrada si stanno ancora nominando
+  // le vette del casello di partenza.
+  return Date.now() - (cime.quandoPreso || 0) < CIME_RICARICA_MOTO_MS;
 }
 
 function cimeRimandaDopoViaggio() {
@@ -3597,7 +4295,7 @@ function cimeCarica(forza, soloCache) {
   const lat = luogo.lat, lon = luogo.lon;
 
   if (!forza && cime.stato === 'pronto' && cime.lat !== null &&
-      terrenoDistanzaKm(lat, lon, cime.lat, cime.lon) <= CIME_RAGGIO_VALIDO_KM) {
+      terrenoDistanzaKm(lat, lon, cime.lat, cime.lon) <= cimeRaggioValidoKm()) {
     return Promise.resolve(true);
   }
   if (cime.stato === 'in-corso') return cime.promessa || Promise.resolve(false);
@@ -3633,7 +4331,7 @@ function cimeCarica(forza, soloCache) {
   // diventare vecchia prima della risposta. Il timer viene spostato avanti
   // da ogni nuovo fix: appena ci si ferma, una sola ricerca serve il punto
   // effettivo d'arrivo.
-  if (!forza && cimeLuogoInViaggio(luogo)) {
+  if (!forza && cimeLuogoInViaggio()) {
     cimeRimandaDopoViaggio();
     return Promise.resolve(false);
   }
@@ -3691,7 +4389,7 @@ function cimeCarica(forza, soloCache) {
     .finally(() => {
       cime.promessa = null;
       const ora = terrenoLuogo();
-      if (ora && terrenoDistanzaKm(ora.lat, ora.lon, lat, lon) > CIME_RAGGIO_VALIDO_KM) {
+      if (ora && terrenoDistanzaKm(ora.lat, ora.lon, lat, lon) > cimeRaggioValidoKm()) {
         cimeCarica();
       }
     });
@@ -3707,6 +4405,16 @@ function cimeCarica(forza, soloCache) {
 // mare, che per chi sta in pianura è quasi giusto e per chi sta in
 // montagna sbaglia dalla parte prudente (le vette sembrano più alte).
 function cimeQuotaOcchio() {
+  // Col rilievo acceso la camera non sta più dove la griglia grossa è stata
+  // chiesta: cammina sul terreno (`rilievo.js` §8-bis). Chiedere l'occhio a
+  // lui non è un dettaglio — l'occhio è il termine che si sottrae a tutti
+  // gli angoli, e la cresta con cui queste vette vengono confrontate
+  // (`rilCrestaEntroM`) è costruita **con quello lì**. Prendendone due
+  // diversi, salendo un passo le vette risultavano tutte nascoste o tutte
+  // scoperte a seconda del verso della salita.
+  if (typeof rilievo !== 'undefined' && rilievo.cresta && isFinite(rilievo.occhio)) {
+    return rilievo.occhio;
+  }
   const suolo = typeof terreno.quota === 'number' ? terreno.quota : 0;
   return suolo + TERRENO_ALTEZZA_OCCHIO_M;
 }
@@ -3731,19 +4439,30 @@ function cimeQuotaOcchio() {
 // cancellata dalla cresta più alta che le stava alle spalle: sparivano
 // esattamente le vette vicine, quelle che uno riconosce.
 function cimeVisibili() {
-  if (!cime.acceso || cime.stato !== 'pronto' || !cime.elenco.length) return [];
-  const luogo = terrenoLuogo();
+  // La domanda è **se un elenco c'è**, non se l'ultima richiesta è andata
+  // bene. Sono due cose diverse, ed è la stessa lezione che
+  // `terrenoDisponibile` ha imparato a caro prezzo per il profilo: in
+  // viaggio le richieste a Overpass ripartono di continuo e ogni tanto una
+  // fallisce — un tunnel, un 429 — e con lo stato a «fallito» sparivano
+  // tutti i nomi insieme, benché l'elenco fosse ancora in mano e ancora
+  // buono. Che valga per questo posto lo dice il raggio, tre righe più giù;
+  // che ci sia lo dice `elenco`.
+  if (!cime.acceso || !cime.elenco.length) return [];
+  // Il punto da cui si disegna, non quello da cui si scarica: in movimento
+  // è quello vivo, e le etichette scorrono insieme alle creste invece di
+  // fare un salto a ogni fix accettato.
+  const luogo = terrenoPuntoDaDisegnare();
   if (!luogo || cime.lat === null ||
-      terrenoDistanzaKm(luogo.lat, luogo.lon, cime.lat, cime.lon) > CIME_RAGGIO_VALIDO_KM) {
-    // Mai lasciare sul parabrezza i nomi del tratto precedente mentre la
-    // nuova ricerca è rinviata o in volo.
+      terrenoDistanzaKm(luogo.lat, luogo.lon, cime.lat, cime.lon) > cimeRaggioValidoKm()) {
+    // Fuori dal raggio in cui l'elenco vale ancora qualcosa: meglio nessun
+    // nome che i nomi di un'altra valle.
     return [];
   }
   // Tre risposte diverse, e la chiave se ne deve accorgere: il terreno c'è
   // (e allora vale l'istante in cui è arrivato), il terreno sta arrivando,
   // il terreno non c'è e non arriverà.
   const attesa = terrenoInArrivo();
-  const chiave = `${luogo.lat.toFixed(4)},${luogo.lon.toFixed(4)}|${cimeQuotaOcchio().toFixed(1)}|` +
+  const chiave = `${luogo.lat.toFixed(4)},${luogo.lon.toFixed(4)}|${cimeQuotaOcchio().toFixed(0)}|` +
     `${terrenoDisponibile() ? terreno.quando : (attesa ? 'attesa' : 0)}`;
   if (cime.vistaChiave === chiave) return cime.vista;
 
@@ -3923,7 +4642,13 @@ const ACQUE_AREA_MIN = 4000;
 // l'acqua che c'è da disegnare c'è, e il poligono resta un poligono.
 const ACQUE_DEP_MAX_GRADI = 85;
 
-// Di quanto la cresta davanti deve superare l'acqua per nasconderla.
+// Di quanto la cresta davanti doveva superare l'acqua per nasconderla.
+//
+// Non la usa più nessuno nell'app — l'ha sostituita la franchigia in metri
+// qui sotto — e resta perché il §20 di `verifica.html` la adopera come
+// **contro-esempio**: la regola di prima, fatta girare sulla stessa scena,
+// deve arretrare la riva di centinaia di metri là dove quella nuova non la
+// muove. Toglierla vorrebbe dire perdere il metro di paragone.
 //
 // I modelli del suolo spianano gli specchi d'acqua, quindi i campioni dentro
 // a un lago **sono** la quota del lago: confrontare l'angolo dell'acqua con
@@ -3935,12 +4660,69 @@ const ACQUE_DEP_MAX_GRADI = 85;
 // ballottaggio.
 const ACQUE_OCCLUSIONE_MARGINE_GRADI = 0.05;
 
-// In quanti punti si guarda una banda per sapere quali suoi tratti si vedono.
-// Erano otto quando il conto cercava un taglio solo; adesso che si tengono
-// tutti i tratti scoperti conta anche **dove** cominciano, e dodici passi su
-// una banda di un chilometro sono ottanta metri di grana. Gira una volta per
-// terreno e per altezza dell'occhio, non a ogni fotogramma.
-const ACQUE_OCCLUSIONE_PASSI = 12;
+// …e di quanti **metri** si abbassa il terreno prima di chiedergli se copre.
+//
+// È la stessa domanda dell'altra costante, chiesta nell'unità giusta, ed è la
+// riga che risponde a «sono in riva al Lago di Como e l'acqua non c'è».
+//
+// Un ventesimo di grado di franchigia toglie il ballottaggio fra due numeri
+// **identici**, e per quello serviva. Ma alla riva vicina i due numeri non
+// sono identici: sono lo stesso numero più il rumore del modello del suolo,
+// che è fatto di tetti, di alberi e di novanta metri di cella. Guardando un
+// lago da un pendio che ci scende dentro — cioè come lo si guarda quasi
+// sempre — il suolo davanti alla riva ha la stessa depressione dell'acqua
+// dietro di lei per pura geometria: qualunque metro di troppo in un campione
+// diventa allora una riva che arretra. Misurato sul banco di prova, con un
+// modello sbagliato di otto metri: settanta metri di arretramento mediano,
+// millecinquecento al peggio, e una direzione su venti in cui il lago
+// spariva del tutto. Con quindici metri — un condominio, ed è quello che
+// Copernicus mette dentro a un paese — sono centoquaranta metri e tre
+// chilometri e mezzo.
+//
+// La geometria dice però anche come uscirne, ed è esatta: un campione che sta
+// **al livello dell'acqua o sotto** non può nasconderla mai. Se è più vicino
+// di lei, lo stesso dislivello diviso una distanza minore fa una depressione
+// **maggiore**, quindi quel campione sta sotto la linea di vista. Solo chi si
+// alza sopra il piano del lago può coprirlo — e quanto deve alzarsi perché
+// gli si creda è, esattamente, l'incertezza del modello: qualche metro.
+//
+// Ventiquattro metri coprono anche il disaccordo normale fra Copernicus e
+// SRTM sulle rive urbanizzate e ripide (a Como dentro una cella finiscono
+// insieme tetti, lungolago e versante). Sei metri bastavano sul banco pulito,
+// ma nel dato vero lasciavano che una fila di edifici diventasse una diga e
+// cancellasse tutto il lago. A trecento metri la franchigia resta limitata
+// dal tetto qui sotto; a cinque chilometri vale meno di tre decimi di grado:
+// tanto dove il rumore fa danno, poco dove una collina vera deve coprire,
+// dove non ne fa. E il tetto in gradi tiene in piedi il primo piano — a tre
+// metri dai piedi ventiquattro metri di quota sarebbero quasi verticali, cioè
+// «niente qui davanti copre niente», mentre chi guarda l'acqua dall'orlo di
+// una scogliera ha proprio l'orlo a nasconderla.
+const ACQUE_OCCLUSIONE_ABBASSA_M = 24;
+const ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI = 3;
+
+// Di quanto ci si scosta da una soglia per leggere la cresta di **prima**.
+// La cresta davanti è una scala a diciotto gradini (uno per distanza
+// campionata), e per sapere quanto è alto un gradino bisogna guardare da
+// tutt'e due le parti dello scalino: un metro basta e avanza.
+const ACQUE_SOGLIA_SCARTO_M = 1;
+
+// Quanto stretto si cerca il punto in cui l'acqua esce da dietro la cresta.
+// Dieci metri a un chilometro sono sei decimi di grado di depressione: sotto
+// quella misura il bordo non si muove più di un pixel a nessun ingrandimento
+// utile, e ogni dimezzamento in più è una valutazione della cresta in più.
+const ACQUE_OCCLUSIONE_FINE_M = 10;
+
+// Sotto questa lunghezza un tratto scoperto non è un tratto: è la grana del
+// modello del suolo. L'occlusione si calcola contro una griglia che ha
+// novanta metri di cella e diciotto distanze campionate, quindi un pezzo
+// d'acqua che spunta per sessanta metri fra due creste non è un pezzo
+// d'acqua — è il modo in cui quella griglia arrotonda. Tenerli vuol dire
+// riempire il bordo dei laghi di schegge larghe mezzo grado, ognuna
+// disegnata come una striscia a sé con le sue rive: gli spicchi.
+//
+// L'acqua che comincia **ai piedi** non passa di qui: lì la misura non è la
+// sua lunghezza, è tutto il pezzo di schermo sotto l'orizzonte.
+const ACQUE_TRATTO_MIN_M = 60;
 
 const ACQUE_ATTESA_MS = 30000;
 // Fin dove arriva la query corta di ripiego. Era un 12 scritto a mano dentro
@@ -3948,12 +4730,26 @@ const ACQUE_ATTESA_MS = 30000;
 // col raggio con cui è stato **preso**, non con quello che si era chiesto.
 const ACQUE_RAGGIO_RIPIEGO_KM = 12;
 const ACQUE_RAGGIO_VALIDO_KM = 2;
+// Fin dove ci si può allontanare e rifare comunque le bande con i bordi
+// che si hanno già (§6-bis). Non è generosità: un lago disegnato con le
+// distanze di dieci chilometri fa è un lago appoggiato sul prato, e qui
+// — a differenza delle vette, che si ricalcolano una per una — la
+// geometria è tutta nelle bande.
+const ACQUE_RITAGLIO_MAX_KM = 8;
 const ACQUE_RIPROVA_DOPO_MS = 4 * 60 * 1000;
 
 const acque = {
   stato: 'niente',        // niente | in-corso | pronto | fallito
   lat: null,
   lon: null,
+  // I poligoni e le linee come sono arrivati da OpenStreetMap, e da quale
+  // punto sono stati chiesti. Servono a rifare le bande spostandosi, senza
+  // rete (§6-bis, `acqueRitaglia`). Non si salvano in `localStorage`: lì
+  // vanno le bande, che pesano un centesimo.
+  tracciati: null,
+  tracciatiLat: null,
+  tracciatiLon: null,
+  ritaglio: null,         // il ritaglio in corso, per non farne due insieme
   // La rasterizzazione: per ogni mezzo grado, gli intervalli di distanza in
   // cui c'è acqua. `[vicino, lontano, tipo]` in metri, tipo 0 = fermo
   // (lago), 1 = corrente (fiume).
@@ -3966,6 +4762,12 @@ const acque = {
   sommerso: false,
   quotaSommerso: null,    // la quota della superficie su cui si sta, in metri
   avanzamento: 0,         // 0…1 per la barra della §9-ter: richiesta, poi raggi
+  // Perché le bande non sono arrivate sullo schermo: quante ce n'erano,
+  // quante ne sono rimaste, e quante sono cadute per ognuna delle tre
+  // ragioni possibili. Lo riempie `acqueVisibili` e lo legge la riga di
+  // stato — un lago che non si vede deve poter **dire** perché, se no è
+  // identico a un posto senza laghi (vedi `acqueTesto`).
+  conto: null,
   quanti: 0,              // quanti specchi d'acqua sono stati trovati
   nomi: [],               // i più grandi, per la riga di stato
   fonte: '',
@@ -3995,34 +4797,61 @@ function raggioAcque() { return raggi.acque; }
 // una relazione porta la geometria di ogni suo pezzo, e i pezzi vanno
 // **ricuciti** in anelli prima di poterli usare (`acqueCuciAnelli`): un arco
 // di riva, da solo, non ha un dentro.
+//
+// Due `out` e non uno, e non è pignoleria: è il motivo per cui i laghi
+// grandi potevano sparire del tutto.
+//
+// Un `out` con un tetto stampa gli elementi nell'ordine in cui il server li
+// tiene, cioè **prima tutte le vie e poi le relazioni**. Con un'unione sola e
+// un tetto di 1200, in una provincia di laghi il tetto se lo prendono le vie
+// — ogni stagno, ogni vasca, ogni tronco di fiume mappato come area, e i
+// corsi d'acqua sono spezzati in decine di vie a testa — e le relazioni non
+// vengono stampate affatto. Ma le relazioni **sono** i laghi grandi: il
+// Ceresio, il Lario, il Verbano, il Garda. Il sintomo è quello peggiore di
+// tutti, perché non è un errore ma un'assenza: il lago semplicemente non c'è,
+// e attorno restano le pozze e i fiumiciattoli che ci stavano nel tetto.
+//
+// Con due `out` ognuno ha il suo tetto: alle relazioni ne bastano poche —
+// dentro a venticinque chilometri i laghi con un multipoligono si contano
+// sulle dita — e non se le può mangiare nessuno.
 function acqueQueryOverpass(lat, lon) {
   const r = terrenoRiquadro(lat, lon, raggioAcque());
   const bb = `(${r.s.toFixed(4)},${r.o.toFixed(4)},${r.n.toFixed(4)},${r.e.toFixed(4)})`;
-  return '[out:json][timeout:25];(' +
+  return '[out:json][timeout:25];' +
+    `relation["natural"="water"]${bb};out geom 200;` +
+    '(' +
     `way["natural"="water"]${bb};` +
-    `relation["natural"="water"]${bb};` +
     `way["waterway"~"^(river|canal)$"]${bb};` +
-    ');out geom 1200;';
+    ');out geom 1000;';
 }
 
 // Il ripiego, per quando la richiesta larga si prende un 504: solo i laghi,
-// solo vicino, niente relazioni. È molto più corta e passa quasi sempre.
+// solo vicino. È molto più corta e passa quasi sempre.
+//
+// Le relazioni ci sono anche qui, e prima no. Erano state lasciate fuori
+// perché costano, ed è vero — ma dentro a dodici chilometri sono una manciata,
+// e sono proprio i laghi che uno guarda: rinunciarci vuol dire che quando la
+// richiesta larga non passa il ripiego restituisce le pozze e non il lago,
+// cioè la risposta che sembra funzionare ed è quella sbagliata. Anche qui
+// hanno il loro `out`, per la ragione della funzione qui sopra.
 function acqueQueryCorta(lat, lon) {
   const r = terrenoRiquadro(lat, lon, Math.min(ACQUE_RAGGIO_RIPIEGO_KM, raggioAcque()));
   const bb = `(${r.s.toFixed(4)},${r.o.toFixed(4)},${r.n.toFixed(4)},${r.e.toFixed(4)})`;
-  return '[out:json][timeout:20];(' +
+  return '[out:json][timeout:20];' +
+    `relation["natural"="water"]${bb};out geom 60;` +
+    '(' +
     `way["natural"="water"]${bb};` +
     `way["waterway"="river"]${bb};` +
-    ');out geom 500;';
+    ');out geom 400;';
 }
 
 // Due punti che sono lo stesso punto. Le vie di una relazione **condividono
-// il nodo** agli estremi, quindi le coordinate che arrivano sono identiche
-// cifra per cifra: la tolleranza serve solo a non dipendere dal fatto che
-// restino identiche anche dopo un arrotondamento di Overpass. Un decimo di
-// milionesimo di grado è un centimetro.
+// il nodo** agli estremi, quindi normalmente le coordinate sono identiche.
+// Alcune istanze Overpass, però, serializzano i membri con precisioni appena
+// diverse: un milionesimo di grado è circa un decimetro e basta a ricucire
+// lo stesso nodo senza saldare rive realmente separate.
 function acqueStessoPunto(a, b) {
-  return Math.abs(a.lat - b.lat) < 1e-7 && Math.abs(a.lon - b.lon) < 1e-7;
+  return Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lon - b.lon) < 1e-6;
 }
 
 // Ricucire i pezzi di una relazione in anelli chiusi.
@@ -4083,19 +4912,37 @@ function acqueCuciAnelli(archi) {
     if (pezzo.length > 3 && acqueStessoPunto(pezzo[0], pezzo[pezzo.length - 1])) anelli.push(pezzo);
     else aperti.push(pezzo);
   }
-  // Quello che non si è chiuso si chiude a forza, come si faceva prima con
-  // ogni singolo membro. Capita quando la relazione è incompleta o quando
-  // Overpass ne ha tagliato dei pezzi (il limite di `out geom`): un anello
-  // approssimato è comunque molto meglio di dieci mezzelune, perché ha un
-  // dentro e una parità sola.
+  // Gli archi rimasti aperti NON sono superfici. Chiuderli con una retta fra
+  // i due estremi inventerebbe una costa e riempirebbe il settore compreso
+  // fra quella corda e la riva: sono gli «spicchi d'acqua» che comparivano
+  // accanto ai laghi quando Overpass restituiva una relazione incompleta.
+  // Meglio omettere quel contorno incompleto che alterare il profilo reale.
   return { anelli, aperti };
 }
 
 // Da quello che risponde Overpass alle sole cose che servono: una lista di
 // tracciati, ognuno con il suo tipo, se è chiuso, e la sua larghezza se è
 // un corso d'acqua.
+//
+// Ogni tracciato si porta dietro due numeri e non uno, ed è una distinzione
+// che costa una riga e ne risolve parecchie più in là. `id` è **l'anello**,
+// ed è quello che serve alla parità dei tagli: un bordo chiuso ha un dentro
+// e un fuori suoi, e due anelli non si possono accoppiare fra loro. `corpo`
+// è **lo specchio d'acqua**, cioè l'elemento di OpenStreetMap da cui gli
+// anelli vengono: una relazione con due anelli esterni — il ramo di qua e il
+// ramo di là dello stesso lago — è un corpo solo.
+//
+// La differenza conta perché di uno specchio d'acqua ci sono due cose che
+// valgono per **tutto** lo specchio e non per un suo pezzo: il nome, e —
+// soprattutto — la quota della superficie. Un lago ha un livello solo, e
+// senza un modo di dire «questa banda e quella sono lo stesso lago» quella
+// quota si finisce per chiederla banda per banda a una griglia che ha
+// centocinquanta metri di passo: due colonne contigue leggono campioni
+// diversi, rispondono con qualche metro di scarto, e la superficie viene
+// disegnata a terrazze.
 function acqueLeggiElementi(elementi) {
   const fuori = [];
+  let corpo = -1;
   const aggiungi = (punti, tags, chiuso, nome) => {
     if (!Array.isArray(punti) || punti.length < 2) return;
     const corrente = tags && tags.waterway && !tags.natural;
@@ -4105,12 +4952,13 @@ function acqueLeggiElementi(elementi) {
       largo = isFinite(scritta) && scritta > 0
         ? scritta : (ACQUE_LARGHEZZA[tags.waterway] || ACQUE_LARGHEZZA.stream);
     }
-    fuori.push({ punti, corrente: !!corrente, largo, chiuso, nome: nome || '' });
+    fuori.push({ punti, corrente: !!corrente, largo, chiuso, nome: nome || '', corpo });
   };
 
   for (const e of elementi) {
     if (!e) continue;
     const tags = e.tags || {};
+    corpo++;
     // I fiumi mappati come area (`natural=water` + `water=river`) sono
     // poligoni e vanno trattati da poligoni, non da linee: il campo
     // `waterway` ce l'hanno lo stesso, e senza questo controllo un'ansa
@@ -4137,7 +4985,9 @@ function acqueLeggiElementi(elementi) {
       }
       const cuciti = acqueCuciAnelli(archi);
       cuciti.anelli.forEach(a => aggiungi(a, tags, true, tags.name));
-      cuciti.aperti.forEach(a => aggiungi(a, tags, true, tags.name));
+      // Un membro aperto non viene mai promosso a poligono: la corda di
+      // chiusura produrrebbe acqua su terra. Una successiva lettura dalla
+      // cache o da un altro endpoint potrà fornire l'anello completo.
     }
   }
   return fuori;
@@ -4270,6 +5120,13 @@ function acqueTagliVuoti(limiteM) {
   // i nomi arrivavano fino a qui e poi sparivano, e sullo schermo i laghi
   // restavano senza etichetta (vedi `acqueBandeDaTagli`).
   tagli.nomi = new Map();
+  // E a che **specchio d'acqua** appartiene ogni anello. Sta qui accanto ai
+  // nomi e per la stessa ragione: è una proprietà del bordo e non
+  // dell'incrocio, e da qui la legge l'unico punto in cui una banda nasce.
+  // Serve poi a tutto quello che di uno specchio va detto una volta sola —
+  // la quota della superficie, e il fatto che due bande di colonne contigue
+  // siano lo stesso lago.
+  tagli.corpi = new Map();
   tagli.limite = limiteM;
   return tagli;
 }
@@ -4329,9 +5186,8 @@ function acqueFiumeAddosso(p, n, largo, tagli, id) {
       : Math.min(tetto, ((den > 0 ? mezzo : -mezzo) - perp) / den);
     if (!(t > 0.5)) continue;
     if (!tagli[b]) tagli[b] = [];
-    // Un attraversamento centrato sui piedi e profondo il doppio dell'uscita:
-    // `acqueBandeDaTagli` lo tosa a zero da sé e ne fa la banda [0, t].
-    tagli[b].push({ t: 0, fiume: true, prof: 2 * t, id });
+    // L'acqua comincia ai piedi e finisce dove il raggio esce dalla striscia.
+    tagli[b].push({ t: 0, fine: t, fiume: true, id });
   }
   return true;
 }
@@ -4367,6 +5223,13 @@ function acqueTagliaUno(tr, id, tagli, lat, lon, limiteM) {
   // Il nome si segna qui, una volta per specchio d'acqua: da qui in poi un
   // incrocio è un numero e una distanza, e il numero basta a ritrovarlo.
   if (tr.nome && tagli.nomi && !tagli.nomi.has(id)) tagli.nomi.set(id, tr.nome);
+  // E a che specchio appartiene questo anello. Senza un'entrata sua — un
+  // tracciato che arriva da un salvataggio vecchio, o dalle prove — l'anello
+  // fa specchio per conto suo, che è la risposta di prima e non sbaglia mai
+  // in modo pericoloso: al più tiene separate due metà dello stesso lago.
+  if (tagli.corpi && !tagli.corpi.has(id)) {
+    tagli.corpi.set(id, typeof tr.corpo === 'number' ? tr.corpo : id);
+  }
 
   // Un corso d'acqua che ci passa sotto i piedi: la sua acqua non nasce da
   // nessun attraversamento, e va disegnata a parte (vedi `acqueFiumeAddosso`).
@@ -4419,12 +5282,32 @@ function acqueTagliaUno(tr, id, tagli, lat, lon, limiteM) {
       if (u < 0 || u >= 1) continue;
       if (!tagli[b]) tagli[b] = [];
       if (tr.corrente) {
-        // Quanto è profondo l'attraversamento: la larghezza divisa il
-        // seno dell'angolo fra il raggio e la riva.
+        // Dove il raggio entra nella striscia del corso d'acqua e dove ne
+        // esce. Il conto è esatto e vale la pena scriverlo, perché la forma
+        // che se ne ricava è **la** forma di un fiume disegnato di sbieco:
+        // il raggio taglia l'asse a distanza `t`, e la mezza corda è
+        // `largo / (2·sen)` con `sen` il seno dell'angolo fra il raggio e la
+        // riva. Da lì viene anche il fatto che entrata e uscita non sono mai
+        // simmetriche attorno ai piedi: `t·sen` **è** la distanza
+        // perpendicolare dall'asse, quindi l'entrata cade a distanza
+        // negativa esattamente quando ci si sta dentro — e in quel caso
+        // l'acqua comincia davvero dalle scarpe.
+        //
+        // Prima il seno aveva un pavimento a 0,12 e la corda era tosata
+        // simmetricamente attorno a `t`. Il pavimento è quello che faceva
+        // danno: su un lato quasi parallelo al raggio gonfiava la corda fino
+        // a otto larghezze, e la sua metà si mangiava tutta la distanza —
+        // così un fiume a centocinquanta metri risultava cominciare **ai
+        // piedi**, cioè disegnato dal nadir in su, mentre la direzione
+        // accanto lo teneva dov'era. Sono gli spicchi che si vedevano
+        // accanto ai corsi d'acqua di sbieco. Il tetto resta, ma tosa il
+        // solo capo lontano: un fiume guardato per il verso lungo non si
+        // vede fino all'orizzonte, ma comincia dove comincia.
         const sen = Math.abs(det / len);
-        const prof = Math.min(tr.largo * ACQUE_FIUME_MAX,
-          tr.largo / Math.max(0.12, sen));
-        tagli[b].push({ t, fiume: true, prof, id });
+        const mezzaCorda = sen > 1e-6 ? tr.largo / (2 * sen) : Infinity;
+        const dentro = Math.max(0, t - mezzaCorda);
+        const fine = Math.min(t + mezzaCorda, dentro + tr.largo * ACQUE_FIUME_MAX);
+        tagli[b].push({ t: dentro, fine, fiume: true, id });
       } else {
         // `id` serve alla parità: gli incroci si accoppiano **per
         // poligono** e non tutti insieme. Con due laghi che si
@@ -4509,6 +5392,10 @@ function acqueBandeDaTagli(tagli) {
   // dimenticare una volta sola invece che in quattro.
   const nomi = (tagli && tagli.nomi) || null;
   const nomeDi = id => (nomi && nomi.get(id)) || '';
+  // E di che specchio d'acqua è, che è la stessa storia del nome: si legge
+  // qui perché qui è l'unico posto in cui una banda nasce.
+  const corpi = (tagli && tagli.corpi) || null;
+  const corpoDi = id => (corpi && corpi.has(id)) ? corpi.get(id) : id;
 
   for (let b = 0; b < ACQUE_DIREZIONI; b++) {
     const lista = tagli[b];
@@ -4525,7 +5412,7 @@ function acqueBandeDaTagli(tagli) {
       lista.sort((x, y) => x.t - y.t);
       for (const c of lista) {
         if (c.fiume) {
-          pezzi.push([Math.max(0, c.t - c.prof / 2), c.t + c.prof / 2, 1, nomeDi(c.id)]);
+          pezzi.push([Math.max(0, c.t), c.fine, 1, nomeDi(c.id), corpoDi(c.id)]);
           continue;
         }
         let p = perPoligono.get(c.id);
@@ -4537,18 +5424,34 @@ function acqueBandeDaTagli(tagli) {
     perPoligono.forEach((p, id) => {
       const ts = p.ts;
       const nome = nomeDi(id);
+      const corpo = corpoDi(id);
       let k = 0;
       // Ci stiamo dentro: il primo taglio è la riva, e l'acqua comincia **ai
       // piedi**. È la banda che prima non veniva generata affatto, e la sua
       // mancanza è tutto il guasto: senza di lei chi sta in mezzo a un lago
       // vede l'acqua cominciare dalla riva opposta.
-      if (sommersi && sommersi.has(id)) { pezzi.push([0, ts[0], 0, nome]); k = 1; }
-      for (; k + 1 < ts.length; k += 2) pezzi.push([ts[k], ts[k + 1], 0, nome]);
-      // Un taglio spaiato in fondo (capita ai bordi del riquadro scaricato,
-      // dove il poligono è tagliato a metà) si chiude sul limite invece di
-      // buttarlo: un lago che continua oltre i venticinque chilometri è
-      // comunque un lago fino a lì.
-      if (k < ts.length) pezzi.push([ts[k], ts[k] + 200, 0, nome]);
+      if (sommersi && sommersi.has(id)) { pezzi.push([0, ts[0], 0, nome, corpo]); k = 1; }
+      for (; k + 1 < ts.length; k += 2) pezzi.push([ts[k], ts[k + 1], 0, nome, corpo]);
+      // Un taglio spaiato in fondo: la riva di là sta oltre il raggio di
+      // ricerca, quindi il suo incrocio è stato scartato e l'ingresso resta
+      // senza uscita. Si chiude **sul limite**, che è la sola risposta onesta:
+      // un lago che continua oltre i venticinque chilometri è comunque un lago
+      // fino a lì.
+      //
+      // Il codice però aggiungeva duecento metri e basta, contro quello che
+      // il suo stesso commento diceva — e duecento metri, accanto a una
+      // direzione in cui la riva di là ci sta dentro e la banda è lunga sei
+      // chilometri, non sono un lago: sono una scheggia. È il ritaglio a
+      // punta che si vedeva sul bordo dei laghi grandi, ed è per costruzione
+      // che compariva sempre e solo dove il lago esce dal raggio.
+      //
+      // Senza un limite dichiarato (tagli costruiti a mano) si torna alla
+      // vecchia coda di duecento metri: una banda lunga infinito finirebbe in
+      // `localStorage` come `null`, che è un modo di rompere il salvataggio.
+      if (k < ts.length) {
+        pezzi.push([ts[k], isFinite(limite) ? Math.max(ts[k] + 1, limite) : ts[k] + 200,
+                    0, nome, corpo]);
+      }
     });
 
     // Sommersi in uno specchio che in questa direzione non ha nessun taglio:
@@ -4558,7 +5461,7 @@ function acqueBandeDaTagli(tagli) {
     // è una ragione per non disegnarla.
     if (sommersi) {
       sommersi.forEach(id => {
-        if (!perPoligono.has(id)) pezzi.push([0, limite, 0, nomeDi(id)]);
+        if (!perPoligono.has(id)) pezzi.push([0, limite, 0, nomeDi(id), corpoDi(id)]);
       });
     }
     if (!pezzi.length) { bande[b] = null; continue; }
@@ -4568,12 +5471,18 @@ function acqueBandeDaTagli(tagli) {
     for (const p of pezzi) {
       const ultimo = uniti[uniti.length - 1];
       if (ultimo && p[0] <= ultimo[1] + 3) {
+        // Un lago che inghiotte un fiume resta un lago: tipo, nome e specchio
+        // li decide il pezzo più lungo, che è quello che si vede. Le due
+        // lunghezze vanno confrontate **prima** di allungare la banda, se no
+        // si mette a paragone il pezzo nuovo con l'unione dei due e a vincere
+        // è sempre chi c'era già.
+        const eraLungo = ultimo[1] - ultimo[0];
+        const nuovoLungo = p[1] - p[0];
         ultimo[1] = Math.max(ultimo[1], p[1]);
-        // Un lago che inghiotte un fiume resta un lago: il tipo lo decide
-        // il pezzo più lungo, che è quello che si vede.
-        if (p[1] - p[0] > ultimo[1] - ultimo[0]) { ultimo[2] = p[2]; ultimo[3] = p[3]; } else if (!ultimo[3] && p[3]) { ultimo[3] = p[3]; }
+        if (nuovoLungo > eraLungo) { ultimo[2] = p[2]; ultimo[3] = p[3]; ultimo[4] = p[4]; }
+        else if (!ultimo[3] && p[3]) { ultimo[3] = p[3]; }
       } else {
-        uniti.push([Math.round(p[0]), Math.round(p[1]), p[2], p[3]]);
+        uniti.push([Math.round(p[0]), Math.round(p[1]), p[2], p[3], p[4]]);
       }
     }
     bande[b] = uniti.length ? uniti : null;
@@ -4616,7 +5525,18 @@ function acqueNomiGrandi(tracciati, lat, lon) {
 // La 3 è la volta del **fiume sotto i piedi**: chi aveva già delle bande
 // salvate in un posto attraversato da un corso d'acqua se le teneva senza la
 // banda che comincia dalle scarpe, che è proprio quella che mancava.
-const ACQUE_VERSIONE = 3;
+//
+// La 4 invalida le bande ricavate chiudendo artificialmente i membri aperti
+// delle relazioni: senza, chi aveva già visitato il Lago di Como continuava
+// a vedere gli spicchi sbagliati anche dopo la correzione della geometria.
+//
+// La 5 aggiunge il quinto posto, cioè **di che specchio d'acqua** è la banda.
+// Da lì dipende la quota della superficie — un livello per lago invece di uno
+// per banda — e il fatto che due bande di colonne contigue si riconoscano
+// come lo stesso lago al momento di disegnarle. Senza, si legge benissimo e
+// ogni banda fa lago per conto suo: la superficie torna a terrazze e le
+// strisce a spicchi, che è esattamente la cosa che si sta togliendo.
+const ACQUE_VERSIONE = 5;
 
 function acqueArchivio() {
   try {
@@ -4680,6 +5600,8 @@ function acqueDimentica() {
   acque.quandoFallito = 0;
   acque.fallitoLat = acque.fallitoLon = null;
   acque.lat = acque.lon = null;
+  acque.tracciati = null;
+  acque.tracciatiLat = acque.tracciatiLon = null;
   overpassRiprovaAzzera('acque');
 }
 
@@ -4695,6 +5617,22 @@ function acqueDimentica() {
 function acqueMonta(lat, lon, tracciati, fonte, tagli) {
   acque.lat = lat;
   acque.lon = lon;
+  // I bordi grezzi si tengono, e non è memoria sprecata: sono la sola cosa
+  // che permetta di rifare le bande da un punto diverso **senza chiedere
+  // niente a nessuno**. Muovendosi serve di continuo — le bande sono
+  // distanze misurate dal centro della ricerca, quindi invecchiano di un
+  // metro per ogni metro percorso — e senza di loro l'unica alternativa era
+  // una richiesta a Overpass ogni due chilometri (§6-bis).
+  // Il centro però è quello da cui i bordi sono stati **chiesti**, e resta
+  // fermo anche quando le bande si rifanno da un punto diverso: se
+  // scivolasse insieme a loro, un ritaglio dopo l'altro ci si allontanerebbe
+  // senza limite dai dati che si hanno davvero (`acqueRitagliabile` misura
+  // da lì). Per questo si aggiorna solo quando i bordi sono nuovi.
+  if (tracciati && tracciati !== acque.tracciati) {
+    acque.tracciati = tracciati;
+    acque.tracciatiLat = lat;
+    acque.tracciatiLon = lon;
+  }
   acque.sommerso = !!(tagli.sommersi && tagli.sommersi.size);
   acque.bande = acqueBandeDaTagli(tagli);
   acque.quanti = acque.bande.reduce((n, b) => n + (b ? b.length : 0), 0);
@@ -4737,6 +5675,40 @@ function acqueApplicaAScaglioni(lat, lon, tracciati, fonte) {
     .then(tagli => acqueMonta(lat, lon, tracciati, fonte, tagli));
 }
 
+// Si può rifare la rasterizzazione da qui con quello che si ha già?
+// Serve che i bordi ci siano, che siano stati presi abbastanza vicino e
+// che quello che resta da raccontare sia ancora un paesaggio e non un
+// ritaglio: spostandosi di venti chilometri su una ricerca da venticinque,
+// del lago di partenza resterebbe la riva sbagliata.
+function acqueRitagliabile(lat, lon) {
+  if (!acque.tracciati || acque.tracciatiLat === null) return false;
+  const d = terrenoDistanzaKm(lat, lon, acque.tracciatiLat, acque.tracciatiLon);
+  if (d <= ACQUE_RAGGIO_VALIDO_KM) return false;   // le bande vanno ancora bene così
+  return d <= Math.min(ACQUE_RITAGLIO_MAX_KM, raggioAcque() * TERRENO_MOTO_VALIDO_QUOTA);
+}
+
+// E rifarla. Il raggio si accorcia di quanto ci si è allontanati: oltre
+// quella distanza i bordi non ci sono, e disegnare una riva che finisce
+// perché finiscono i dati è peggio che non disegnarla.
+function acqueRitaglia(lat, lon) {
+  if (acque.ritaglio) return acque.ritaglio;
+  const d = terrenoDistanzaKm(lat, lon, acque.tracciatiLat, acque.tracciatiLon);
+  const limite = Math.max(1000, (raggioAcque() - d) * 1000);
+  // Lo stato **non** passa a «in-corso», ed è la riga che conta: quelle
+  // vecchie sono bande buone fino a due chilometri fa, e `acqueVisibili`
+  // tace appena lo stato non è «pronto». Dichiararsi occupati per il tempo
+  // del ritaglio vorrebbe dire spegnere i laghi ogni due chilometri per
+  // rifarli — cioè il singhiozzo che questa funzione esiste per togliere.
+  acque.ritaglio = acqueTagliaAScaglioni(acque.tracciati, lat, lon, limite)
+    .then(tagli => {
+      acqueMonta(lat, lon, acque.tracciati, acque.fonte || 'osm', tagli);
+      return true;
+    })
+    .catch(() => false)
+    .finally(() => { acque.ritaglio = null; });
+  return acque.ritaglio;
+}
+
 function acqueCarica(forza, soloCache) {
   if (!acque.acceso) return Promise.resolve(false);
 
@@ -4749,6 +5721,14 @@ function acqueCarica(forza, soloCache) {
     return Promise.resolve(true);
   }
   if (acque.stato === 'in-corso') return acque.promessa || Promise.resolve(false);
+  if (acque.ritaglio) return acque.ritaglio;
+
+  // Ci si è spostati, ma i bordi che si hanno in mano coprono ancora questo
+  // punto: le bande si rifanno **da qui**, senza rete. È il pezzo che fa
+  // scorrere i laghi insieme al paesaggio invece di farli sparire e
+  // ricomparire altrove a ogni ricarica.
+  if (!forza && acqueRitagliabile(lat, lon)) return acqueRitaglia(lat, lon);
+
   if (!forza && acque.stato === 'fallito' &&
       Date.now() - (acque.quandoFallito || 0) < ACQUE_RIPROVA_DOPO_MS &&
       acque.fallitoLat !== null &&
@@ -4838,6 +5818,169 @@ function acqueDepressione(quota, occhio, m) {
   return Math.max(-ACQUE_DEP_MAX_GRADI, Math.min(ACQUE_DEP_MAX_GRADI, a));
 }
 
+// Di che specchio d'acqua è questa banda. Le bande salvate da una versione
+// precedente non ce l'hanno, e allora ognuna fa specchio per conto suo: è la
+// risposta di prima, e non sbaglia mai in modo pericoloso.
+function acqueCorpoDiBanda(banda, b, k) {
+  return typeof banda[4] === 'number' ? banda[4] : `~${b}.${k}`;
+}
+
+function acqueQuoteDaRilievo() {
+  return typeof rilQuoteDentro === 'function' && typeof rilPronto === 'function' && rilPronto();
+}
+
+// La quota dell'occhio con cui si guarda l'acqua — e dev'essere **la stessa**
+// con cui è stata costruita la superficie che la copre.
+//
+// Sembra una pignoleria e non lo è: l'occhio è il termine che si sottrae a
+// tutti gli angoli, e i due numeri possono divergere davvero. La maglia del
+// rilievo si costruisce con la camera di quel momento (`rilievo.occhio`) e si
+// rifà ogni sessanta metri; `terreno.quota` è la quota del **centro della
+// griglia grossa**, che muovendosi resta indietro di chilometri, e che
+// `acqueAllineaOcchio` può riscrivere di colpo quando ci si accorge di essere
+// sull'acqua. Confrontare la cresta di una con il piano d'acqua misurato
+// dall'altra vuol dire sbagliare di quella differenza — e vicino ai piedi due
+// metri di differenza sono decine di gradi.
+function acqueOcchio() {
+  if (acqueQuoteDaRilievo() && typeof rilievo.occhio === 'number' && isFinite(rilievo.occhio) &&
+      rilievo.occhio !== 0) {
+    return rilievo.occhio;
+  }
+  return (typeof terreno.quota === 'number' ? terreno.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M;
+}
+
+
+// A che quota sta la superficie di ogni specchio d'acqua in vista.
+//
+// **Una quota per lago, non una per banda**, ed è la correzione da cui
+// dipende tutto il resto di questa sezione. Un lago ha un livello solo: il
+// Ceresio sta a 271 metri dalla punta di Porlezza a quella di Ponte Tresa, e
+// il fatto che lo si guardi verso nord o verso nord-nordest non lo cambia di
+// un centimetro.
+//
+// Chiedere quella quota **banda per banda**, com'era, vuol dire chiederla a
+// una griglia che ha centocinquanta metri di passo nel primo anello e
+// chilometri più in là: due colonne contigue prendono campioni diversi, e
+// dove una banda è corta — la punta di un ramo, il tratto che spunta da
+// dietro un promontorio — dentro non ci casca nessun campione e si finisce
+// sul ripiego, che pesca sulla **riva**. Misurato su una scena di prova:
+// 271 metri in una direzione e 290 in quella accanto, cioè lo stesso lago
+// disegnato a due altezze diverse a mezzo grado di distanza. Sullo schermo
+// sono terrazze, gradini e — quando la riva risulta più in alto dell'occhio —
+// bande che spariscono del tutto, lasciando dei buchi a spicchio in mezzo
+// all'acqua.
+//
+// Qui invece i campioni si mettono insieme: **tutti** quelli che cascano
+// dentro a **una qualunque** banda di quello specchio, in qualunque
+// direzione, e di quelli si prende il minimo. Il minimo e non la mediana per
+// la ragione di sempre — un modello del suolo spiana i laghi, quindi i
+// campioni che stanno davvero sull'acqua sono tutti uguali fra loro e gli
+// unici a sballare sono quelli che sbordano sulla riva, che stanno **sopra**.
+//
+// Chi non ha nemmeno un campione dentro — un fiume, un laghetto, lo specchio
+// che si ha davanti alle scarpe — ripiega su quello che si sa comunque: il
+// suolo sotto i piedi se l'acqua comincia da lì, e in ogni caso il più basso
+// dei campioni che abbracciano le sue bande. Anche il ripiego, però, si
+// decide **una volta per specchio**: è quello che tiene la superficie piatta.
+// …e da quale modello del suolo si va a chiedere.
+//
+// Prima la **griglia grossa**, e per una ragione che il banco di prova ha
+// smentito e poi rimesso in fila, perché non è quella che viene in mente.
+//
+// Verrebbe da chiedere il piano del lago alla stessa superficie che poi lo
+// copre — cioè al rilievo — e tenere le due misure nello stesso modello. Ma
+// la maglia del rilievo non è il modello delle tessere: è quel modello
+// **traslato** di `rilievo.scarto`, cioè di quanto le tessere e la griglia
+// litigano *nel punto in cui si sta*, che è un punto di terra ferma. Sui
+// pendii i due modelli non vanno d'accordo di qualche metro; sull'**acqua**
+// invece vanno d'accordo benissimo, perché tutti e due la spianano al suo
+// livello vero. Traslare tutto per accordare la terra vuol dire quindi
+// scentrare l'acqua esattamente di quello scarto: misurato sul banco, con
+// dodici metri di disaccordo il lago finiva dodici metri sotto il suo livello
+// e la riva vicina veniva tagliata dove invece si vede.
+//
+// La regola giusta è allora questa, in tre gradini:
+//
+//   1. i campioni della **griglia** che cascano dentro allo specchio, che
+//      sono la superficie misurata e basta;
+//   2. se non ce n'è nemmeno uno — un fiume, un laghetto, l'acqua a duecento
+//      metri dalle scarpe: tutta roba più stretta dei centocinquanta metri
+//      della griglia — quelli del **rilievo**, che di anelli ne ha centosei e
+//      dentro all'acqua ci arriva davvero. Sbagliati di `scarto`, cioè di
+//      qualche metro, e sono comunque molto meglio del gradino dopo;
+//   3. e solo alla fine i campioni che lo **abbracciano**, che stanno sulla
+//      riva e quindi sopra l'acqua — sempre, e proprio dalla parte che fa
+//      sparire le bande.
+function acqueQuoteDeiCorpi(bande) {
+  const quote = new Map();
+  const dalRilievo = acqueQuoteDaRilievo();
+  if (!bande || (!terreno.quote && !dalRilievo)) return quote;
+  const nd = TERRENO_DISTANZE.length;
+  const conta = (corpo, campo, q) => {
+    if (typeof q !== 'number') return;
+    let v = quote.get(corpo);
+    if (!v) { v = { dentro: null, maglia: null, attorno: null }; quote.set(corpo, v); }
+    if (v[campo] === null || q < v[campo]) v[campo] = q;
+  };
+
+  for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+    const lista = bande[b];
+    if (!lista) continue;
+    const az = b * ACQUE_PASSO_AZ;
+    const dove = (((az % 360) + 360) % 360) / TERRENO_PASSO_AZ;
+    const i = Math.floor(dove) % TERRENO_DIREZIONI;
+    const j = (i + 1) % TERRENO_DIREZIONI;
+    const t = dove - Math.floor(dove);
+    for (let k = 0; k < lista.length; k++) {
+      const banda = lista[k];
+      const corpo = acqueCorpoDiBanda(banda, b, k);
+      const vicino = banda[0], lontano = banda[1];
+      // Un corso d'acqua è **sempre** più stretto del passo della griglia, e
+      // per lui «i campioni che cascano dentro alla banda» non vuol dire
+      // niente: guardato di sbieco un fiume largo sessanta metri fa una banda
+      // lunga mezzo chilometro, e i campioni che ci cascano dentro stanno
+      // sulla riva, non nell'acqua. Prendendoli per la superficie si ottiene
+      // un fiume alto quanto la sponda di là — cioè, dove la sponda sale,
+      // sopra l'occhio: la banda viene scartata come «non è superficie» e il
+      // fiume non si disegna affatto. Per lui contano solo i campioni che lo
+      // abbracciano e il suolo sotto i piedi.
+      const stretto = banda[2] === 1;
+      // Un'acqua che comincia **dentro al primo anello** non può stare più in
+      // alto del suolo su cui si sta: se no ci scorrerebbe addosso.
+      if (vicino < TERRENO_DISTANZE[0] * 1000 && typeof terreno.quota === 'number') {
+        conta(corpo, 'attorno', terreno.quota);
+      }
+      if (dalRilievo) {
+        // Il secondo gradino: la maglia arriva dentro agli specchi in cui la
+        // griglia non ha nemmeno un campione.
+        if (!stretto) conta(corpo, 'maglia', rilQuoteDentro(az, vicino, lontano));
+        conta(corpo, 'attorno', rilQuoteAttorno(az, vicino, lontano));
+      }
+      if (!terreno.quote) continue;
+      let prima = null, dopo = null;
+      for (let d = 0; d < nd; d++) {
+        const m = TERRENO_DISTANZE[d] * 1000;
+        const qa = terreno.quote[i * nd + d], qb = terreno.quote[j * nd + d];
+        if (typeof qa !== 'number' || typeof qb !== 'number') continue;
+        const q = qa + (qb - qa) * t;
+        if (m >= vicino && m <= lontano) { if (!stretto) conta(corpo, 'dentro', q); }
+        else if (m < vicino) prima = q;
+        else if (dopo === null) dopo = q;
+      }
+      conta(corpo, 'attorno', prima);
+      conta(corpo, 'attorno', dopo);
+    }
+  }
+
+  const fuori = new Map();
+  quote.forEach((v, corpo) => {
+    const q = v.dentro !== null ? v.dentro
+      : (v.maglia !== null ? v.maglia : v.attorno);
+    if (q !== null) fuori.set(corpo, q);
+  });
+  return fuori;
+}
+
 // A che quota sta la superficie su cui si sta, quando ci si sta dentro.
 //
 // Il modello del suolo spiana gli specchi d'acqua, quindi la risposta è già
@@ -4864,6 +6007,13 @@ function acqueDepressione(quota, occhio, m) {
 // superiore onesto (la riva sta sopra l'acqua, non sotto). Quel caso si
 // aggiusta da sé: la quota resta segnata come stimata, `terrenoDaCompletare`
 // la richiede, e quando la misura del punto arriva vince lei.
+//
+// Quali campioni sono acqua nostra lo dice adesso lo stesso conto che serve
+// al disegno (`acqueQuoteDeiCorpi`): lo specchio in cui si sta è quello le
+// cui bande cominciano **ai piedi**, e la sua superficie è il minimo dei
+// campioni che cascano dentro a una qualunque delle sue bande — non solo di
+// quelle davanti alle scarpe. È la stessa acqua, e guardarla tutta vuol dire
+// avere qualche campione buono anche quando qui vicino non ce n'è nessuno.
 function acqueQuotaSuperficie() {
   const nd = TERRENO_DISTANZE.length;
   let acquaMin = null, anelloMin = null;
@@ -4871,14 +6021,15 @@ function acqueQuotaSuperficie() {
     for (let i = 0; i < TERRENO_DIREZIONI; i++) {
       const q0 = terreno.quote[i * nd];
       if (typeof q0 === 'number' && (anelloMin === null || q0 < anelloMin)) anelloMin = q0;
-      // Fin dove arriva, in questa direzione, l'acqua che comincia ai piedi.
-      const banda = acque.bande
-        ? acque.bande[Math.round(i * TERRENO_PASSO_AZ / ACQUE_PASSO_AZ) % ACQUE_DIREZIONI] : null;
-      if (!banda || !banda.length || banda[0][0] > 0) continue;
-      const fin = banda[0][1];
-      for (let k = 0; k < nd; k++) {
-        if (TERRENO_DISTANZE[k] * 1000 > fin) break;
-        const q = terreno.quote[i * nd + k];
+    }
+    if (acque.bande) {
+      const quoteCorpi = acqueQuoteDeiCorpi(acque.bande);
+      // Gli specchi che ci contengono: quelli che in qualche direzione
+      // cominciano dai piedi.
+      for (let b = 0; b < ACQUE_DIREZIONI; b++) {
+        const lista = acque.bande[b];
+        if (!lista || !lista.length || lista[0][0] > 0) continue;
+        const q = quoteCorpi.get(acqueCorpoDiBanda(lista[0], b, 0));
         if (typeof q === 'number' && (acquaMin === null || q < acquaMin)) acquaMin = q;
       }
     }
@@ -4943,6 +6094,69 @@ function acqueCrestaGrezza(az, km) {
   // La riga è un massimo accumulato, quindi l'ultimo campione che ci sta
   // dentro **è** il massimo: non serve girarli tutti.
   return k < 0 ? null : v[k];
+}
+
+// Le distanze della griglia grossa in metri, una volta sola: la cresta
+// dell'acqua le legge per ogni direzione, e `TERRENO_DISTANZE[k] * 1000`
+// dentro a un ciclo è una moltiplicazione per niente.
+const TERRENO_DISTANZE_M = TERRENO_DISTANZE.map(km => km * 1000);
+
+// La pendenza della linea di vista di un punto: `(quota − occhio −
+// curvatura) / distanza`.
+//
+// È la stessa quantità che `acqueDepressione` arcotangenta, e sta qui in
+// tangente perché il confronto con il terreno davanti è un confronto fra
+// pendenze — e in pendenza si può abbassare un campione di tanti metri
+// dividendo per la sua distanza, che è tutto il punto di
+// `ACQUE_OCCLUSIONE_ABBASSA_M`.
+function acqueTangenteVista(quota, occhio, m) {
+  const s = Math.max(0.05, m);
+  const abbassa = (1 - TERRENO_RIFRAZIONE) * s * s / (2 * TERRENO_RAGGIO_KM * 1000);
+  return (quota - occhio - abbassa) / s;
+}
+
+// La cresta che l'acqua interroga: per ogni distanza campionata, la pendenza
+// più alta incontrata fino a lì, con ogni campione già abbassato dei suoi
+// metri di franchigia.
+//
+// Quando c'è il rilievo la dà lui (`rilFrontiAcqua`), e non è una preferenza:
+// è **la superficie che si sta disegnando**, letta con i suoi
+// centosei anelli invece che con le diciotto fette della griglia grossa. Se
+// le due divergessero si vedrebbe subito, ed è il difetto che si vedeva: un
+// lago tagliato dove sullo schermo non c'è niente che lo tagli.
+//
+// Il ripiego è la griglia grossa, e lì si parte dalle creste **già filtrate**
+// (`terrenoFrontiA`, che gli spilli li ha tolti) invece che dalle quote
+// grezze: un campione impazzito lì dentro non è un albero, è un buco nel
+// modello, e sei metri di franchigia non lo assorbirebbero. L'abbassamento si
+// applica allora alla distanza della fetta, che per un massimo accumulato è
+// una stima prudente — la fetta è al più lontana quanto il campione che l'ha
+// alzata, quindi si abbassa di meno del dovuto e si copre semmai un po' di
+// più. Con il rilievo acceso — cioè di serie — questo ramo non lo tocca
+// nessuno.
+let acqueFrontiTanBuf = null;
+
+function acqueFrontiAcqua(az, finoA) {
+  if (typeof rilFrontiAcqua === 'function') {
+    const v = rilFrontiAcqua(az, ACQUE_OCCLUSIONE_ABBASSA_M,
+                             ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI, finoA);
+    if (v) return v;
+  }
+  if (!terrenoDisponibile() || !terreno.fronti) return null;
+  const n = TERRENO_DISTANZE.length;
+  if (!acqueFrontiScratch) acqueFrontiScratch = new Float32Array(n);
+  if (!acqueFrontiTanBuf) acqueFrontiTanBuf = new Float32Array(n);
+  const riga = terrenoFrontiA(az, acqueFrontiScratch);
+  if (!riga) return null;
+  const tetto = Math.tan(ACQUE_OCCLUSIONE_ABBASSA_MAX_GRADI * Math.PI / 180);
+  let massimo = -Infinity;
+  for (let k = 0; k < n; k++) {
+    const giu = Math.min(tetto, ACQUE_OCCLUSIONE_ABBASSA_M / TERRENO_DISTANZE_M[k]);
+    const v = Math.tan(riga[k] * Math.PI / 180) - giu;
+    if (v > massimo) massimo = v;
+    acqueFrontiTanBuf[k] = massimo;
+  }
+  return { tan: acqueFrontiTanBuf, dist: TERRENO_DISTANZE_M };
 }
 
 function acqueQuotaDi(az, vicinoM, lontanoM) {
@@ -5019,40 +6233,84 @@ function acqueQuotaDi(az, vicinoM, lontanoM) {
 // Il risultato si tiene finché non cambia il terreno o l'altezza da cui si
 // guarda: è la stessa memoria di comodo di `cimeVisibili`.
 function acqueVisibili() {
-  if (!acque.acceso || acque.stato !== 'pronto' || !acque.bande) return null;
+  // «C'è un elenco?», non «l'ultima richiesta è riuscita?».
+  //
+  // È la stessa lezione di `terrenoDisponibile` per il profilo e di
+  // `cimeVisibili` per le vette, e qui era rimasta da imparare: chiedendo
+  // `stato === 'pronto'` bastava **un solo tentativo andato male** — un
+  // ritaglio in corso mentre ci si muove, una riprova automatica dopo un 429,
+  // un cambio di raggio — perché tutta l'acqua sparisse dallo schermo pur
+  // essendo in mano, buona, da un istante prima. Sparire e ricomparire è
+  // peggio che non esserci: sembra un difetto del disegno.
+  if (!acque.acceso || !acque.bande) return null;
   if (!terrenoDisponibile()) return null;
 
-  const occhio = (typeof terreno.quota === 'number' ? terreno.quota : 0) + TERRENO_ALTEZZA_OCCHIO_M;
-  const chiave = `${occhio.toFixed(1)}|${terreno.quando}|${raggioAcque()}`;
+  const occhio = acqueOcchio();
+  // La chiave si porta dietro anche **da che superficie** arriva l'occlusione:
+  // la maglia del rilievo si rifà ogni sessanta metri di strada, e con essa
+  // cambia quello che copre cosa. Senza, la risposta tenuta da parte
+  // resterebbe quella di prima finché non cambia la quota dell'occhio.
+  const daRilievo = typeof rilPronto === 'function' && rilPronto();
+  const chiave = `${occhio.toFixed(1)}|${terreno.quando}|${raggioAcque()}|` +
+    (daRilievo ? (rilievo.chiave || 'r') : 'g');
   if (acque.vista && acque.vistaChiave === chiave) return acque.vista;
 
   const limite = raggioAcque() * 1000;
+  // La quota di ogni specchio d'acqua, decisa una volta per tutte prima di
+  // cominciare: è quella che tiene la superficie piatta da una colonna
+  // all'altra (vedi `acqueQuoteDeiCorpi`).
+  const quoteCorpi = acqueQuoteDeiCorpi(acque.bande);
+  // Perché una banda non si vede. Non è statistica per la statistica: un lago
+  // che non compare non lascia traccia — sullo schermo è identico a un posto
+  // senza laghi — ed è il modo in cui questo difetto è rimasto in piedi.
+  // Adesso la riga di stato può dire quale delle tre cose è successa.
+  const conto = { bande: 0, tenute: 0, fuoriRaggio: 0, sopraLocchio: 0, coperte: 0, corte: 0 };
   const fuori = new Array(ACQUE_DIREZIONI).fill(null);
   for (let b = 0; b < ACQUE_DIREZIONI; b++) {
     const lista = acque.bande[b];
     if (!lista) continue;
     const az = b * ACQUE_PASSO_AZ;
+    // La cresta che copre, una volta per direzione e non una per banda: è una
+    // camminata sugli anelli del rilievo, e le bande di una stessa direzione
+    // la userebbero identica. Si cammina fino all'acqua più lontana e non oltre.
+    let piuLontano = 0;
+    for (let k = 0; k < lista.length; k++) {
+      const f = Math.min(lista[k][1], limite);
+      if (f > piuLontano) piuLontano = f;
+    }
+    const fronti = acqueFrontiAcqua(az, piuLontano);
     const tenute = [];
-    for (const [vicino, lontano, tipo, nome] of lista) {
-      if (vicino > limite) continue;
+    for (let iBanda = 0; iBanda < lista.length; iBanda++) {
+      const [vicino, lontano, tipo, nome] = lista[iBanda];
+      const chiaveCorpo = acqueCorpoDiBanda(lista[iBanda], b, iBanda);
+      // Quello che esce di qui è il numero dello specchio **oppure `null`**,
+      // e la differenza conta per chi disegna: `null` vuol dire «non lo so»
+      // (bande di una forma precedente), non «uno specchio diverso da tutti
+      // gli altri». Con la chiave di comodo al suo posto, chi lega le strisce
+      // troverebbe ogni banda diversa da ogni altra e non ne legherebbe più
+      // nessuna: un lago disegnato a mezzo grado per volta.
+      const corpo = typeof lista[iBanda][4] === 'number' ? lista[iBanda][4] : null;
+      const quantePrima = tenute.length;
+      conto.bande++;
+      if (vicino > limite) { conto.fuoriRaggio++; continue; }
       const fine = Math.min(lontano, limite);
-      if (!(fine > vicino)) continue;
+      if (!(fine > vicino)) { conto.fuoriRaggio++; continue; }
       // La quota della superficie. Una banda che comincia **ai piedi** non la
-      // va a chiedere alla griglia: la si sa già. Se ci si sta dentro è la
+      // va a chiedere a nessuno: la si sa già. Se ci si sta dentro è la
       // superficie su cui si galleggia (`acqueAllineaOcchio` l'ha già messa
       // anche in `terreno.quota`); se no — un fiume che passa sotto il ponte,
       // la riva su cui si sta — è il suolo sotto le scarpe.
       //
-      // Chiederla comunque alla griglia è il modo di sbagliarla, ed era il
-      // guasto: uno specchio d'acqua più stretto del passo della griglia non
-      // ha nessun campione dentro di sé, e il ripiego pescava sulla riva. Con
-      // una riva che sale quel numero sta **sopra** l'occhio, e l'acqua veniva
-      // scartata come «sopra l'orizzonte» — cioè spariva senza lasciare
-      // traccia.
+      // Per tutte le altre è la quota del **suo specchio**, non quella che si
+      // ricava dai campioni che cascano dentro a questa banda: un lago ha un
+      // livello solo, e chiederlo banda per banda è il modo di ottenerne uno
+      // diverso a ogni mezzo grado. L'ultimo ripiego resta quello di sempre,
+      // per le bande che arrivano da un salvataggio senza specchio.
       const suPiedi = vicino <= 0.5;
-      const quota = suPiedi && typeof terreno.quota === 'number'
-        ? terreno.quota : acqueQuotaDi(az, vicino, fine);
-      if (quota === null) continue;
+      let quota = suPiedi && typeof terreno.quota === 'number' ? terreno.quota : null;
+      if (quota === null && quoteCorpi.has(chiaveCorpo)) quota = quoteCorpi.get(chiaveCorpo);
+      if (quota === null) quota = acqueQuotaDi(az, vicino, fine);
+      if (quota === null) { conto.sopraLocchio++; continue; }
 
       // L'acqua si allontana verso l'orizzonte, quindi l'angolo cresce (si
       // avvicina a zero) con la distanza: la riva vicina è il punto più in
@@ -5060,7 +6318,7 @@ function acqueVisibili() {
       // invece, non fa che salire.
       const dep = m => acqueDepressione(quota, occhio, m);
       const altoFine = dep(fine);
-      if (!(altoFine < -0.02)) continue;      // sopra l'occhio: non è superficie
+      if (!(altoFine < -0.02)) { conto.sopraLocchio++; continue; }  // non è superficie
 
       // Dove il terreno davanti la copre, e dove no.
       //
@@ -5078,20 +6336,104 @@ function acqueVisibili() {
       //
       // Adesso la striscia si campiona e si tengono **tutti** i tratti
       // scoperti, non uno: un lago diviso in due da un promontorio sono due
-      // strisce, che è quello che si vede davvero. Il campionamento è più
-      // fitto di prima perché adesso conta anche dove i tratti cominciano.
-      const passi = ACQUE_OCCLUSIONE_PASSI;
+      // strisce, che è quello che si vede davvero.
+      //
+      // E il passaggio si **cerca**, non si prende dov'era il campione. Erano
+      // dodici campioni equispaziati fra le due rive, cioè un passo che
+      // dipende da quanto è lunga la banda: su una banda di sei chilometri
+      // sono cinquecento metri, e siccome le due rive cambiano a ogni mezzo
+      // grado i dodici campioni cadono ogni volta in punti diversi. Il bordo
+      // dell'acqua ne usciva quantizzato in modo **diverso per ogni colonna**:
+      // misurato su una scena di prova, settantacinque metri di errore medio
+      // e quattrocentoquaranta al peggio. Sullo schermo non è un errore di
+      // posizione, è una seghettatura — la riva vicina che avanza e arretra
+      // di mezzo chilometro a ogni colonna, che è il modo in cui un lago
+      // smette di sembrare un lago e diventa una fila di cunei.
+      //
+      // Adesso i campioni si mettono **dove il dato cambia**, e da nessun'altra
+      // parte. La cresta davanti è una **scala a gradini** — uno per anello
+      // della superficie che disegna, o per fetta della griglia grossa —
+      // costante fra un gradino e l'altro. Dentro a un gradino, allora, la
+      // cresta è ferma e la linea di vista dell'acqua sale (l'acqua si
+      // allontana), quindi il confronto può cambiare risposta **una volta
+      // sola** — e una bisezione lo trova esatto. Guardare più fitto di così
+      // non aggiunge niente: si ricalcolerebbe due volte lo stesso numero.
+      //
+      // Ne viene una cosa che il passo fisso non poteva dare: il bordo non
+      // dipende più da quanto è lunga la banda, quindi due colonne contigue
+      // lo trovano nello stesso posto. E costa **meno** di prima, non di più:
+      // una ventina di valutazioni al massimo invece di dodici, ma senza mai
+      // sbagliare.
+      //
+      // I gradini sono quelli della cresta che si sta usando, e cambiano con
+      // lei: centosei col rilievo, diciotto con la griglia grossa. Prenderli
+      // dalla parte sbagliata vorrebbe dire cercare il bordo dove il dato non
+      // cambia — cioè tornare al passo fisso, con un altro nome.
+      const gradini = fronti ? fronti.dist : TERRENO_DISTANZE_M;
+      const quantiGradini = fronti && typeof fronti.n === 'number'
+        ? Math.min(fronti.n, gradini.length) : gradini.length;
+      const passiM = [vicino];
+      for (let k = 0; k < quantiGradini; k++) {
+        // Da che distanza in poi l'anello `k` entra nel conto della cresta:
+        // il confronto è con `m · TERRENO_FRONTE_MARGINE`.
+        const soglia = gradini[k] / TERRENO_FRONTE_MARGINE;
+        if (soglia <= vicino + ACQUE_SOGLIA_SCARTO_M) continue;
+        if (soglia >= fine) break;
+        passiM.push(soglia - ACQUE_SOGLIA_SCARTO_M, soglia);
+      }
+      passiM.push(fine);
+      // Coperta o no: si confrontano due **pendenze**, non due angoli.
+      //
+      // È lo stesso confronto di prima — «il terreno davanti sta sopra la
+      // linea di vista?» — scritto nell'unità in cui si può dare una
+      // franchigia che voglia dire qualcosa. In gradi, un ventesimo di grado
+      // è una franchigia enorme a cinquanta metri e nulla a cinque
+      // chilometri; in pendenza, `ACQUE_OCCLUSIONE_ABBASSA_M` metri diviso la
+      // distanza del campione sono sempre gli stessi metri di quota, che è
+      // l'unità in cui un modello del suolo sbaglia. Chi abbassa è
+      // `acqueFrontiAcqua`, campione per campione, prima di accumulare il
+      // massimo: qui resta un confronto e due indici.
+      const coperta = m => {
+        if (!fronti) return false;
+        const dentro = m * TERRENO_FRONTE_MARGINE;
+        let k = -1;
+        for (let j = 0; j < quantiGradini; j++) { if (gradini[j] <= dentro) k = j; else break; }
+        if (k < 0) return false;
+        return fronti.tan[k] > acqueTangenteVista(quota, occhio, m);
+      };
+      // Dove sta il passaggio fra `a`, che è **scoperto**, e `b`, che è
+      // **coperto**. Restituisce sempre il punto scoperto più vicino al
+      // confine, mai quello coperto: un bordo che sborda di un metro sul
+      // terreno è una riga d'acqua appoggiata sulla riva, e si vede.
+      const confine = (a, b) => {
+        let dentro = a, fuoriDa = b;
+        while (Math.abs(dentro - fuoriDa) > ACQUE_OCCLUSIONE_FINE_M) {
+          const mezzo = (dentro + fuoriDa) / 2;
+          if (coperta(mezzo)) fuoriDa = mezzo; else dentro = mezzo;
+        }
+        return dentro;
+      };
+
       let daM = null, aM = null;
       const chiudi = () => {
         if (daM === null) return;
         const inizio = daM, finePezzo = aM;
         daM = aM = null;
-        // Un metro di striscia non è una striscia. Ma se comincia ai piedi la
-        // misura non è più la sua lunghezza: è tutto il pezzo di schermo sotto
-        // l'orizzonte, e va disegnato.
-        if (!(finePezzo > inizio + 1) && !(inizio <= 0.5 && finePezzo > 0.5)) return;
+        // Una scheggia non è una striscia (vedi `ACQUE_TRATTO_MIN_M`). Ma se
+        // comincia ai piedi la misura non è più la sua lunghezza: è tutto il
+        // pezzo di schermo sotto l'orizzonte, e va disegnato. E un tratto che
+        // arriva fino alla riva vera non si scarta mai per la sua lunghezza:
+        // un laghetto di quaranta metri è piccolo, non è rumore.
+        const aiPiedi = inizio <= 0.5 && finePezzo > 0.5;
+        const tuttaLaBanda = inizio <= vicino + 1 && finePezzo >= fine - 1;
+        if (!(finePezzo > inizio + 1)) { conto.corte++; return; }
+        if (!aiPiedi && !tuttaLaBanda && finePezzo - inizio < ACQUE_TRATTO_MIN_M) {
+          conto.corte++;
+          return;
+        }
+        conto.tenute++;
         tenute.push({
-          vicino: inizio, lontano: finePezzo, tipo, nome,
+          vicino: inizio, lontano: finePezzo, tipo, nome, corpo,
           depVicino: dep(inizio), depLontano: dep(finePezzo), quota,
           // Se la riva vicina è stata **tagliata** dal terreno o è la riva
           // vera. Le due si disegnano diverse, ed è la differenza fra un lago
@@ -5102,24 +6444,35 @@ function acqueVisibili() {
           tagliata: inizio > vicino + 1
         });
       };
-      for (let p = 0; p <= passi; p++) {
-        const m = vicino + (fine - vicino) * (p / passi);
-        const davanti = acqueCrestaGrezza(az, m / 1000);
-        // Il margine è quello che tiene fermo il bordo: senza, alla riva
-        // vicina l'acqua e il terreno che le sta davanti hanno lo stesso
-        // angolo (il modello del suolo spiana i laghi) e il confronto lo
-        // decide l'arrotondamento.
-        const coperta = davanti !== null &&
-                        davanti > dep(m) + ACQUE_OCCLUSIONE_MARGINE_GRADI;
-        if (coperta) { chiudi(); continue; }
-        if (daM === null) daM = m;
-        aM = m;
+
+      let primaCoperta = null, primaM = vicino;
+      for (let p = 0; p < passiM.length; p++) {
+        const m = passiM[p];
+        const c = coperta(m);
+        if (primaCoperta !== null && c !== primaCoperta) {
+          // Il campione ha cambiato risposta fra `primaM` e `m`: il bordo sta
+          // lì in mezzo, e lo si stringe invece di accontentarsi del passo.
+          const bordo = c ? confine(primaM, m) : confine(m, primaM);
+          if (c) { aM = bordo; chiudi(); }
+          else { daM = bordo; aM = m; }
+        } else if (!c) {
+          if (daM === null) daM = m;
+          aM = m;
+        }
+        primaCoperta = c;
+        primaM = m;
       }
       chiudi();
+      if (tenute.length === quantePrima) conto.coperte++;
     }
     if (tenute.length) fuori[b] = tenute;
   }
 
+  // Una banda che non ha lasciato niente è finita sotto al terreno: `coperte`
+  // conta le direzioni in cui è successo, non le bande, e va bene così — è la
+  // domanda che si fa guardando lo schermo.
+  conto.daRilievo = daRilievo;
+  acque.conto = conto;
   acque.vista = fuori;
   acque.vistaChiave = chiave;
   return fuori;
@@ -5265,6 +6618,19 @@ function acqueTesto() {
   let direzioni = 0;
   for (const v of viste) if (v) direzioni++;
   if (!direzioni) {
+    // Perché non se ne vede. Un'assenza che non si spiega è indistinguibile
+    // da un posto senza laghi, ed è il modo in cui questo difetto è rimasto
+    // in piedi per mesi: sullo schermo, «il terreno la copre» e «non l'ho
+    // mai scaricata» sono la stessa identica immagine.
+    const c = acque.conto;
+    if (c && c.bande) {
+      if (c.sopraLocchio >= c.bande / 2) {
+        return `L'acqua qui attorno c'è, ma risulta più in alto di chi guarda: ` +
+          `la quota del terreno non torna, e finché non torna non la disegno.`;
+      }
+      return `L'acqua qui attorno c'è (${c.bande} tratti), ma il terreno davanti la copre tutta: ` +
+        `da qui non se ne vede.`;
+    }
     return `L'acqua qui attorno c'è, ma resta tutta dietro alle creste: da qui non se ne vede.`;
   }
   const nomi = acque.nomi.length ? ` (${acque.nomi.join(', ')})` : '';

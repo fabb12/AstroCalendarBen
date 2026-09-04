@@ -545,6 +545,9 @@ function raggiMappaCostruisci() {
   raggiPannello.strato = L.tileLayer(fondo.url, {
     maxZoom: 14, maxNativeZoom: Math.min(14, fondo.nativo), attribution: fondo.attribuzione
   }).addTo(raggiPannello.mappa);
+  if (typeof aggiungiControlloTemaMappa === 'function') {
+    aggiungiControlloTemaMappa(raggiPannello.mappa, 'imp-raggi-mappa');
+  }
 
   // Toccare la mappa vuol dire «fin lì»: la distanza dal centro è il raggio,
   // e il cerchio scelto ci va. È il gesto per cui questa mappa esiste — non
@@ -852,6 +855,9 @@ function disegnaLuneDiGiove(canvas, data) {
 // Il pezzo che si attacca in fondo alla scheda dell'oggetto
 function schedaExtraHtml(voce) {
   if (!voce) return '';
+  // La curva di visibilità notturna descrive gli astri, non un velivolo che
+  // si sposta in tempo reale: nella scheda degli aerei sarebbe priva di senso.
+  if (voce.categoria === 'aereo') return '';
   const pezzi = [];
 
   if (voce.id === 'Jupiter' && typeof luneDiGioveRacconto === 'function') {
@@ -903,7 +909,65 @@ function disegnaSchedaExtra(voce) {
 // 4. ACCENDERE TUTTO
 // =====================================================================
 
+// Esc e' la via d'uscita comune da ogni foglio aperto. Alcune finestre
+// storiche avevano gia' un proprio ascoltatore, altre (Diario, Impostazioni,
+// posizione, oculare...) si potevano invece chiudere soltanto col mouse. Si
+// passa dal loro vero tasto di chiusura, anziche' nascondere il DOM qui: in
+// questo modo continua a girare anche la pulizia specifica di ciascuna scheda.
+function inizializzaChiusuraSchedeConEsc() {
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing) return;
+
+    // Nel planetario le schede appoggiate al cielo stanno sopra alle finestre
+    // che eventualmente le contengono: una pressione chiude soltanto il
+    // foglio in primo piano, non tutto quello che c'e' sotto.
+    const chiusureInPrimoPiano = [
+      ['#aereo-rotta-modale.visibile', '#aereo-rotta-modale [data-chiudi-rotta-aereo]'],
+      ['#skymap-clip.visibile', '#skymap-clip-chiudi'],
+      // La scheda completa sta *davanti* al fumetto: il primo Esc chiude lei
+      // e rimette in scena il fumetto, il secondo chiude anche quello. E' la
+      // stessa regola del foglio in primo piano scritta qui sopra, applicata
+      // ai due modi di guardare lo stesso oggetto.
+      ['#skymap-dettaglio.visibile', '#skymap-dettaglio-indietro'],
+      ['#skymap-fumetto.visibile', '#skymap-fumetto-chiudi'],
+      ['#sol-tempo-pannello:not(.hidden)', '#sol-tempo-chiudi']
+    ];
+    for (const [foglio, tasto] of chiusureInPrimoPiano) {
+      if (!document.querySelector(foglio)) continue;
+      const chiudi = document.querySelector(tasto);
+      if (chiudi) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        chiudi.click();
+        return;
+      }
+    }
+
+    // Le finestre condividono tutte lo stesso velo e una testata col tasto
+    // «Chiudi». Se per errore ce ne fossero due aperte, l'ultima nel DOM e'
+    // quella montata piu' in alto e quindi e' la sola che deve ricevere Esc.
+    const aperte = Array.from(document.querySelectorAll('.velo-modale:not(.hidden)'));
+    const modale = aperte[aperte.length - 1];
+    if (!modale) return;
+    // Queste viste gestiscono anche un proprio schermo intero o un foglio
+    // interno: il loro ascoltatore decide se il primo Esc debba chiudere
+    // quello e il secondo la finestra. Non gli si deve rubare il tasto.
+    const conGestionePropria = new Set([
+      'modale-mappa', 'modale-eclissi-casa', 'modale-lunare',
+      'modale-simulazione', 'modale-lezione', 'modale-sistema',
+      'modale-luogo-cielo', 'modale-costellazioni'
+    ]);
+    if (conGestionePropria.has(modale.id)) return;
+    const chiudi = modale.querySelector('.testata-modale .tasto-chiudi');
+    if (!chiudi) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    chiudi.click();
+  }, true);
+}
+
 function inizializzaNuoveFunzioni() {
+  inizializzaChiusuraSchedeConEsc();
   // Le previsioni da astronomo partono con calma: non sono la prima cosa
   // che serve, e chiederle subito rallenta l'apertura.
   setTimeout(() => {

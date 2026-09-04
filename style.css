@@ -398,6 +398,23 @@ body .rounded-xl  { border-radius: var(--raggio-l); }
 body .rounded-lg  { border-radius: var(--raggio-m); }
 body .rounded     { border-radius: var(--raggio-s); }
 
+/* Ricerca del punto da cui un evento resta libero sopra il terreno. */
+.posto-evento-corpo { display: grid; gap: 14px; }
+.posto-evento-comandi { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 2fr) auto; gap: 12px; align-items: center; }
+.posto-evento-comandi label { display: flex; justify-content: space-between; gap: 12px; color: var(--testo-2); font-size: .88rem; }
+.posto-evento-comandi label span { color: var(--blu-chiaro); white-space: nowrap; }
+.posto-evento-stato { min-height: 1.4em; color: var(--testo-2); font-size: .86rem; }
+.posto-evento-mappa { height: min(42vh, 370px); min-height: 260px; border-radius: var(--raggio-l); overflow: hidden; background: #111827; border: 1px solid var(--bordo); }
+.posto-evento-risultati { display: grid; gap: 9px; }
+.posto-risultato { display: grid; grid-template-columns: 34px 1fr; gap: 10px; padding: 13px; background: rgba(15,23,42,.72); border: 1px solid var(--bordo); border-radius: var(--raggio-m); }
+.posto-risultato.migliore { border-color: rgba(52,211,153,.65); background: rgba(6,78,59,.2); }
+.posto-numero { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--blu); color: #fff; font-weight: 800; }
+.posto-risultato h3 { color: #fff; font-weight: 700; }
+.posto-risultato p, .posto-evento-avvertenza { color: var(--testo-3); font-size: .8rem; margin-top: 3px; }
+.posto-azioni { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
+.posto-azioni a, .posto-azioni button { padding: 6px 11px; border-radius: 999px; background: #334155; color: #fff; font-size: .76rem; font-weight: 650; }
+@media (max-width: 650px) { .posto-evento-comandi { grid-template-columns: 1fr; } .posto-evento-mappa { min-height: 230px; } }
+
 body .shadow,
 body .shadow-lg  { box-shadow: var(--ombra-2), var(--luce-interna); }
 body .shadow-xl,
@@ -472,6 +489,21 @@ body .bg-black\/60, body .bg-black\/70 { background-color: rgba(3, 5, 12, 0.74);
 
 /* Avvisi in ambra, su fondo velato */
 body .bg-amber-950\/40 { background-color: var(--ambra-velo); }
+
+/* L'avviso GPS sotto al planetario contiene anche la soluzione: un comando
+   compatto ma ben distinguibile dal testo della barra gialla. */
+.skymap-avviso-azione {
+  margin-left: .75rem;
+  padding: .35rem .7rem;
+  border: 1px solid var(--ambra);
+  border-radius: .55rem;
+  background: rgba(245, 181, 68, .16);
+  color: #fff3cf;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.skymap-avviso-azione:hover,
+.skymap-avviso-azione:focus-visible { background: rgba(245, 181, 68, .3); }
 body .border-amber-800 { border-color: rgba(245, 181, 68, 0.32); }
 body .border-green-600 { border-color: rgba(52, 211, 153, 0.4); }
 body .border-blue-500  { border-color: rgba(76, 141, 255, 0.45); }
@@ -486,7 +518,7 @@ button {
   letter-spacing: -0.008em;
 }
 
-body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.leaflet-control-zoom a) {
+body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.leaflet-control-zoom a):not(.controllo-tema-mappa-tasto) {
   font-weight: 500;
   cursor: pointer;
   border-width: 1px;
@@ -962,6 +994,36 @@ body.cielo-immersivo .nav-principale { display: none; }
   font-size: 0.68rem;
   font-variant-numeric: tabular-nums;
 }
+.evento-griglia-scheda { display: none; }
+/* Nel menu "+altri" ogni evento ha una vera azione con un nome. Nelle
+   caselle del mese resta invece tutta la riga cliccabile, senza comprimere
+   ulteriormente titolo e ora. */
+.fc-popover .evento-griglia {
+  gap: 8px;
+  padding: 6px 7px;
+}
+.fc-popover .evento-griglia-scheda {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--colore-evento) 55%, var(--bordo));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--colore-evento) 20%, var(--superficie-alta));
+  color: var(--testo);
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.fc-popover .evento-griglia-scheda:hover,
+.fc-popover .evento-griglia-scheda:focus-visible {
+  background: color-mix(in srgb, var(--colore-evento) 38%, var(--superficie-alta));
+  outline: 2px solid var(--testo);
+  outline-offset: 1px;
+}
 .fc .fc-daygrid-day.fc-day-other { opacity: 0.35; }
 .fc-popover {
   background: var(--superficie-piena) !important;
@@ -973,15 +1035,49 @@ body.cielo-immersivo .nav-principale { display: none; }
 .fc-popover-header { background: rgba(148, 168, 214, 0.08) !important; color: var(--testo); }
 
 /* ------------------------------------------------------------- LEAFLET     */
-.leaflet-container { background: #03050c; font-family: var(--sans); }
+.leaflet-container { background: #cfe0ef; font-family: var(--sans); }
 .leaflet-control-zoom a {
   background: var(--superficie-piena);
   color: var(--testo);
   border-color: var(--bordo);
 }
 .leaflet-control-zoom a:hover { background: var(--superficie-alta); color: #fff; }
-/* Le mappe di base sono chiare: le portiamo nella notte */
-.leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(0.86) saturate(0.6) contrast(0.95); }
+/* Le carte geografiche nascono chiare. Ogni mappa e mini-mappa offre il
+   proprio tasto per passare al fondo scuro senza cambiare le altre. */
+.leaflet-tile-pane,
+.leaflet-container.mappa-chiara .leaflet-tile-pane { filter: saturate(0.94) contrast(1.03); }
+.leaflet-container.mappa-scura { background: #03050c !important; }
+.leaflet-container.mappa-scura .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(185deg) brightness(0.86) saturate(0.6) contrast(0.95) !important;
+}
+
+.controllo-tema-mappa-tasto {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  font-size: 19px;
+  line-height: 30px;
+  cursor: pointer;
+}
+.controllo-tema-mappa-tasto:hover { background: #fff; }
+.mappa-scura .controllo-tema-mappa-tasto {
+  background: rgba(15, 23, 42, 0.94);
+  color: #fff;
+}
+.mappa-scura .leaflet-control-zoom a {
+  background: var(--superficie-piena);
+  color: var(--testo);
+  border-color: var(--bordo);
+}
+.mappa-scura .leaflet-control-attribution {
+  background: rgba(6, 10, 20, 0.7) !important;
+  color: var(--testo-3) !important;
+}
+.mappa-scura .leaflet-control-attribution a { color: var(--testo-2) !important; }
 
 /* …tranne la mappa del cono d'ombra, che di partenza resta chiara. Lì la
    domanda è geografica — «l'ombra passa sopra casa mia? quanto devo guidare
@@ -3175,6 +3271,108 @@ body button.pos-risultato:focus-visible {
   min-height: 320px;
   touch-action: none;
 }
+
+.mappa-spostamento-cielo {
+  position: absolute;
+  z-index: 24;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: var(--sopra-barra-tempo);
+  width: min(220px, 54vw);
+  overflow: hidden;
+  border: 1px solid rgba(14, 116, 144, 0.42);
+  border-radius: 13px;
+  background: rgba(248, 250, 252, 0.97);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  animation: mappa-spostamento-entra 160ms ease-out;
+}
+.mappa-spostamento-carta { width: 100%; height: 152px; background: #dff3fb; }
+/* La regola Leaflet generale porta le carte nel tema notturno. Questa e'
+   una carta geografica: strade, boschi e acqua restano nei colori chiari
+   originali, appena ravvivati per essere leggibili nel riquadro piccolo. */
+.mappa-spostamento-carta .leaflet-tile-pane {
+  filter: saturate(0.86) brightness(1.08) contrast(0.96);
+}
+.mappa-spostamento-carta .leaflet-control-attribution {
+  font-size: 7px;
+  line-height: 10px;
+  background: rgba(255, 255, 255, 0.78);
+}
+.mappa-spostamento-testo {
+  display: block;
+  padding: 6px 8px 7px;
+  color: #0f3d4c;
+  border-top: 1px solid rgba(14, 116, 144, 0.2);
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.25;
+}
+.mappa-spostamento-invito {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 500;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #075985;
+  font-size: 0.62rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+.mappa-spostamento-esci { display: none; }
+.mappa-spostamento-cielo.mappa-spostamento-aperta {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  cursor: default;
+  animation: none;
+}
+.mappa-spostamento-cielo.mappa-spostamento-aperta .mappa-spostamento-carta { height: 100%; }
+.mappa-spostamento-cielo.mappa-spostamento-aperta .mappa-spostamento-testo {
+  position: absolute;
+  z-index: 600;
+  left: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  max-width: calc(100% - 24px);
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f3d4c;
+  font-size: 0.8rem;
+}
+.mappa-spostamento-cielo.mappa-spostamento-aperta .mappa-spostamento-invito { display: none; }
+.mappa-spostamento-cielo.mappa-spostamento-aperta .mappa-spostamento-esci {
+  position: absolute;
+  z-index: 700;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(14, 116, 144, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #075985;
+  font-size: 0.78rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+body.mappa-spostamento-immersiva { overflow: hidden; }
+@keyframes mappa-spostamento-entra {
+  from { opacity: 0; transform: translateY(5px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mappa-spostamento-cielo { animation: none; }
+}
 .tela-simulazione {
   display: block;
   width: 100%;
@@ -3269,6 +3467,20 @@ body button.pos-risultato:focus-visible {
 }
 .cielo-letture { flex: 0 0 auto; }
 
+/* Fuori dallo schermo intero la bussola occupa l'angolo alto a destra,
+   accanto alle linguette, invece di scendere con la riga delle letture.
+   Riserviamo lo stesso spazio nella barra, così l'ultimo comando non le
+   finisce sotto. In Fullscreen torna nel flusso: il tasto Esci prende
+   l'angolo e la bussola rimane subito sotto, come prima. */
+#skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .cielo-barra {
+  padding-right: 92px;
+}
+#skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .bussola-cielo {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  right: 10px;
+}
+
 /* Le linguette: una striscia di pillole sopra al cielo */
 .linguette-gruppi {
   display: flex;
@@ -3287,6 +3499,7 @@ body button.pos-risultato:focus-visible {
 
 /* Il segnaposto apre direttamente la scelta del punto di osservazione. Sta
    accanto al menu, con una sagoma propria per non sembrare un settimo gruppo. */
+.azioni-dirette-cielo { display: flex; flex: 0 0 auto; gap: 8px; }
 .tasto-mappa-luogo-cielo {
   flex: 0 0 auto;
   display: flex;
@@ -3309,6 +3522,83 @@ body button.pos-risultato:focus-visible {
   color: #fff;
   border-color: rgba(125, 211, 252, 0.72);
   background: rgba(14, 116, 144, 0.72);
+}
+
+/* La spia ADS-B è un comando principale accanto alla scelta del luogo e
+   porta al pannello dove si può chiedere subito un nuovo aggiornamento. */
+.tasto-adsb-cielo {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background-color var(--transizione), border-color var(--transizione);
+}
+.tasto-adsb-cielo:hover,
+.tasto-adsb-cielo:focus-visible {
+  border-color: rgba(125, 211, 252, 0.72);
+  background: rgba(14, 116, 144, 0.72);
+}
+
+/* Conferma del punto scelto direttamente sul paesaggio 3D. Come il popup
+   della mappa, nasce sopra il punto e non cambia luogo finché non si preme
+   esplicitamente «Vai qua». */
+.sky-popup-vai {
+  position: absolute;
+  z-index: 38;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(-50%, calc(-100% - 12px));
+  padding: 6px 7px 6px 10px;
+  border: 1px solid rgba(250, 204, 21, 0.7);
+  border-radius: 12px;
+  background: rgba(6, 10, 20, 0.94);
+  color: #fde68a;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.sky-popup-vai::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%) rotate(45deg);
+  border-right: 1px solid rgba(250, 204, 21, 0.7);
+  border-bottom: 1px solid rgba(250, 204, 21, 0.7);
+  background: rgba(6, 10, 20, 0.94);
+}
+.sky-popup-vai button {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 11px;
+  background: #facc15;
+  color: #172033;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+#skymap-contenitore.sky-volo-luogo canvas {
+  transform-origin: var(--sky-volo-x, 50%) var(--sky-volo-y, 50%);
+  /* Il valore arriva dal controllo di collisione del rilievo: non usare qui
+     una scala fissa, perche' con un ostacolo vicino porterebbe la camera
+     virtuale dentro la montagna. */
+  transform: scale(var(--sky-volo-scala, 1));
+  filter: brightness(0.62) blur(1.6px);
+  transition: transform 900ms cubic-bezier(.2,.72,.25,1), filter 900ms ease-in;
 }
 
 /* Ogni gruppo è un tondo con dentro il suo segno, e nient'altro: sei nomi
@@ -3489,19 +3779,24 @@ body button.pos-risultato:focus-visible {
 .bussola-cielo {
   position: relative;
   flex: 0 0 auto;
-  width: 64px;
-  height: 64px;
+  width: 82px;
+  height: 82px;
   border-radius: 999px;
-  border: 1px solid var(--bordo-forte);
-  background: rgba(6, 10, 20, 0.74);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(148, 163, 184, 0.62);
+  background: radial-gradient(circle at 50% 42%, rgba(25, 39, 66, 0.88), rgba(5, 9, 19, 0.94));
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.38), inset 0 0 0 2px rgba(125, 211, 252, 0.07);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
   /* È una lettura, non un comando: il dito ci passa attraverso e trascina
      il cielo che le sta sotto */
   pointer-events: none;
 }
 .bussola-quadrante { display: block; width: 100%; height: 100%; }
 .bussola-fondo { fill: rgba(10, 16, 30, 0.35); stroke: none; }
+.bussola-anello-esterno,
+.bussola-anello-interno { fill: none; }
+.bussola-anello-esterno { stroke: rgba(203, 213, 225, 0.28); stroke-width: 1; }
+.bussola-anello-interno { stroke: rgba(125, 211, 252, 0.16); stroke-width: 0.8; }
 
 /* IL CONO DELL'INQUADRATURA
    Quanto cielo entra nella vista adesso, aperto sul quadrante a partire
@@ -3531,7 +3826,9 @@ body button.pos-risultato:focus-visible {
   stroke-linecap: round;
 }
 .bussola-tacca-corta { stroke: rgba(169, 180, 204, 0.4); stroke-width: 2.5; }
-.bussola-ago { fill: var(--ambra); }
+.bussola-ago { fill: #fb923c; filter: drop-shadow(0 0 3px rgba(251, 146, 60, 0.72)); }
+.bussola-ago-sud { fill: rgba(148, 163, 184, 0.72); }
+.bussola-perno { fill: #f8fafc; stroke: rgba(15, 23, 42, 0.9); stroke-width: 1; }
 .bussola-nord,
 .bussola-lettera {
   font-family: var(--sans);
@@ -3539,8 +3836,8 @@ body button.pos-risultato:focus-visible {
   text-anchor: middle;
   dominant-baseline: central;
 }
-.bussola-nord { font-size: 13px; fill: var(--ambra); }
-.bussola-lettera { font-size: 11px; fill: rgba(200, 210, 232, 0.82); }
+.bussola-nord { font-size: 14px; fill: #fb923c; }
+.bussola-lettera { font-size: 11px; fill: rgba(226, 232, 240, 0.9); }
 
 /* L'indice della vista: una punta gialla appoggiata sul bordo alto, che
    guarda in dentro */
@@ -3570,11 +3867,24 @@ body button.pos-risultato:focus-visible {
 }
 .bussola-gradi {
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   color: var(--testo);
+}
+.bussola-direzione {
+  max-width: 42px;
+  overflow: hidden;
+  font-family: var(--sans);
+  font-size: 0.45rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--blu-chiaro);
 }
 
 /* Quando la bussola non sa dov'è il Nord vero — sensori spenti, vista
@@ -3583,9 +3893,27 @@ body button.pos-risultato:focus-visible {
    chi ha bisogno del dettaglio lo trova nel titolo. */
 .bussola-cielo[data-modo="manuale"] { opacity: 0.78; }
 .bussola-cielo[data-modo="manuale"] .bussola-ago,
-.bussola-cielo[data-modo="magnetica"] .bussola-ago { fill: rgba(245, 181, 68, 0.5); }
+.bussola-cielo[data-modo="magnetica"] .bussola-ago { fill: rgba(245, 181, 68, 0.5); filter: none; }
 .bussola-cielo[data-modo="manuale"] .bussola-nord,
 .bussola-cielo[data-modo="magnetica"] .bussola-nord { fill: rgba(245, 181, 68, 0.6); }
+
+/* Bussola disturbata dal ferro (§7.1-quinquies): il quadrante si smorza come
+   quello da tarare — perché è esattamente quello che è — ma non lampeggia e
+   non diventa rosso. Una spia d'allarme su un pannello che si accende perché
+   si è passati accanto a un termosifone insegna solo a ignorare le spie. */
+.bussola-cielo[data-modo="dubbia"] { opacity: 0.8; }
+.bussola-cielo[data-modo="dubbia"] .bussola-ago { fill: rgba(245, 181, 68, 0.5); filter: none; }
+.bussola-cielo[data-modo="dubbia"] .bussola-nord { fill: rgba(245, 181, 68, 0.6); }
+
+/* Bussola tarata su un astro: il Nord non viene più dal magnetometro ma dal
+   cielo vero, ed è l'unico stato in cui questa app può promettere l'esattezza.
+   Si dice con un filo di verde sulla punta — il colore che nel resto
+   dell'interfaccia vuol dire «misurato», non «stimato». */
+.bussola-cielo[data-modo="astro"] .bussola-nord { fill: rgba(110, 231, 183, 0.95); }
+.bussola-cielo[data-modo="astro"] .bussola-ago {
+  fill: rgba(245, 181, 68, 0.95);
+  filter: drop-shadow(0 0 3px rgba(110, 231, 183, 0.45));
+}
 
 /* Col mouse le letture si possono sorvolare, e allora il loro `title` dice
    il dettaglio esteso (le coordinate vere, la provenienza per intero, che
@@ -3622,6 +3950,90 @@ body button.pos-risultato:focus-visible {
 .gruppo-comandi.gruppo-astri.gruppo-attivo { max-height: 66%; }
 /* Anche quello degli eventi: ogni voce è tre righe più i suoi tasti */
 .gruppo-comandi.gruppo-eventi.gruppo-attivo { max-height: 66%; }
+
+/* --- Le quattro schede del pannello Visualizzazione ---------------------
+   Un pannello solo al posto di due, e dentro quattro fogli che si danno il
+   cambio. Le pillole in cima sono le stesse dei punti cardinali
+   (`.segmenti-cielo`): non c'era ragione di inventare una grafica nuova per
+   una cosa che si comporta uguale, e riusandola si eredita anche il
+   comportamento su schermo stretto.
+
+   La striscia resta **appiccicata in cima** mentre il foglio scorre: con
+   quattordici pillole sotto, scorrendo fino in fondo si perdeva di vista
+   proprio la cosa che dice dove si è. */
+.gruppo-comandi.gruppo-vista.gruppo-attivo { max-height: 62%; padding-top: 0; }
+/* Il guscio, non la striscia, è la parte appiccicata: prende tutta la
+   larghezza del pannello (margini negativi) e si ridà da sé l'imbottitura
+   che il pannello ha smesso di avere in cima. Rendendo appiccicata la sola
+   pillola restava scoperta la fascia di imbottitura sopra di lei, e i tasti
+   che scorrevano ci passavano dietro a metà — visibili, tagliati, sopra le
+   schede. */
+.schede-vista-guscio {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 -14px 10px;
+  padding: 12px 14px 9px;
+  background: rgba(6, 10, 20, 0.97);
+  border-bottom: 1px solid var(--bordo);
+}
+.schede-vista .tasto-segmento {
+  font-family: inherit;
+  font-size: 0.79rem;
+  font-weight: 550;
+  letter-spacing: -0.005em;
+}
+/* Le schede sono cinque da quando «Direzione» è arrivata qui da Navigazione,
+   e cinque nomi in una pillola sola non ci stanno su un telefono stretto: i
+   segmenti hanno `white-space: nowrap`, quindi non vanno a capo — il testo
+   esce dal suo tondo e le scritte si toccano. Misurato su 320 pixel: la
+   striscia ne chiede 271 e il pannello ne offre 272, cioè il difetto è a un
+   pixel di distanza. Qui il corpo scende, come già fa `.tasto-segmento` sotto
+   i 620px (che però non morde: `.schede-vista .tasto-segmento` è più
+   specifico, e vince).
+
+   Non si accorciano invece i nomi: «Cielo» e «Paesaggio» dicono cosa c'è
+   dentro, e un'abbreviazione a tre lettere rimanderebbe alla memoria una cosa
+   che adesso si legge. */
+@media (max-width: 620px) {
+  .schede-vista .tasto-segmento { font-size: 0.7rem; padding-inline: 3px; }
+}
+/* Sotto i trecentottanta pixel nemmeno così: «Paesaggio» sforava di quattro
+   pixel e mezzo dal suo tondo, misurati su uno schermo da 320. È l'ultima riga
+   di difesa e vale solo lì — la striscia si stringe fino al filo e il corpo
+   scende all'ultimo gradino, quello che il pannello del tempo usa da sempre
+   per i suoi sette segmenti. Provata la via delle due righe, a corpo pieno:
+   si legge meglio ma la striscia è appiccicata in cima al pannello, e su un
+   telefono da 320 quei trentaquattro pixel in più li paga l'elenco dei tasti
+   sotto — che è la cosa per cui il pannello si è aperto. */
+@media (max-width: 380px) {
+  .schede-vista { gap: 0; padding: 1px; }
+  .schede-vista .tasto-segmento { font-size: 0.6rem; letter-spacing: -0.015em; padding-inline: 0; }
+}
+.foglio-vista[hidden] { display: none; }
+/* Il titolino dentro a un foglio: due gruppi che nella stessa scheda
+   rispondono a due domande diverse — i corpi e i segni che li accompagnano —
+   e una riga di testo li separa meglio di un filo, perché dice *quale* è
+   quale invece di limitarsi a dividerli. */
+.titolo-foglio-vista {
+  margin: 12px 0 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+.foglio-vista > .riga-comandi:first-child { margin-top: 0; }
+.foglio-vista > .titolo-foglio-vista:first-child { margin-top: 0; }
+/* La bussola, in fondo alla scheda «Direzione», è un'altra cosa dai comandi
+   sopra: quelli si usano ogni sera, lei si apre la prima volta e poi quasi
+   mai. Il filo lo dice senza scriverlo — è lo stesso stacco che separa la
+   slitta dell'aurora dai tasti del cielo. */
+.foglio-vista > .nota-ripiegata {
+  margin-top: 12px;
+  padding-top: 6px;
+  border-top: 1px solid var(--bordo);
+}
 /* Tempo e luogo deve restare leggero: pochi comandi, niente note visibili.
    Dentro sono due blocchi (`.blocco-tempo`) col loro titolo, separati da un
    filo: le due domande — quando, e da dove — si riconoscono prima di essere
@@ -3748,6 +4160,41 @@ body .chip-astro {
   background: rgba(6, 10, 20, 0.97);
   border-bottom: 1px solid var(--bordo);
 }
+.selettore-ricerca-cielo {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: 2px;
+  margin-bottom: 7px;
+  padding: 2px;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.1);
+}
+.selettore-ricerca-cielo .tasto-segmento { min-height: 32px; border-radius: 8px; }
+.gruppo-astri.ricerca-luoghi .riga-categorie-astri,
+.gruppo-astri.ricerca-luoghi .riga-viste-astri,
+.gruppo-astri.ricerca-luoghi .istruzione-ricerca-cielo,
+.gruppo-astri.ricerca-luoghi #skymap-oggetti,
+.gruppo-astri.ricerca-luoghi #skymap-astri-vuoto,
+.gruppo-astri.ricerca-luoghi #skymap-astri-visibili { display: none; }
+.risultati-luoghi-cielo { display: grid; gap: 5px; margin-top: 7px; }
+.risultati-luoghi-cielo.hidden { display: none; }
+body .risultato-luogo-cielo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 7px 10px;
+  text-align: left;
+  border: 1px solid var(--bordo);
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.82);
+}
+.risultato-luogo-cielo:hover { background: rgba(51, 65, 85, 0.95); }
+.risultato-luogo-cielo-nome { overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.risultato-luogo-cielo-tipo { color: var(--testo-3); font-size: 0.7rem; text-transform: uppercase; }
+.risultato-luogo-cielo-dove { grid-column: 1 / -1; color: var(--testo-3); font-size: 0.72rem; }
+.risultati-luoghi-nota { margin: 3px 2px; color: var(--testo-3); font-size: 0.76rem; }
 .riga-cerca-astri { flex-wrap: nowrap; gap: 6px; }
 .riga-cerca-astri .campo-cielo { flex: 1 1 auto; min-width: 0; }
 .riga-cerca-astri .tasto-cielo { flex: 0 0 auto; }
@@ -4067,6 +4514,9 @@ body input.casella-data:hover { border: 0; }
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--ombra-2);
+  /* La lettura dell'ora si misura sulla barra vera, non sull'intera
+     finestra: margini e safe area possono togliere parecchio spazio. */
+  container-type: inline-size;
 }
 /* Senza sfocatura la sola trasparenza non basta a tenere leggibili dei numeri
    sopra a un cielo stellato: lì la barra si scurisce */
@@ -4124,32 +4574,67 @@ body input.casella-data:hover { border: 0; }
   box-shadow: var(--alone-blu);
 }
 
-/* La lettura: è anche il tasto che apre il pannello "Tempo". Un numero che si
-   può toccare deve sembrare toccabile, quindi ha la sua cornice; ma resta
-   scritto in tono minore, perché è una lettura e non un comando. */
+/* La lettura: è anche il tasto che apre il pannello "Tempo". L'orario è il
+   dato principale della barra: Inter lo rende più nitido del monospace anche
+   sui display piccoli, mentre peso, contrasto e una lieve luce interna lo
+   tengono leggibile sopra qualunque zona del cielo. */
 .lettura-barra-tempo {
   flex: 0 1 auto;
   box-sizing: border-box;
   min-width: 0;
   height: var(--tasto-tempo);
   padding: 0 12px;
-  /* Riga di testo e non scatola flessibile: così, quando lo spazio manca
-     davvero, si perde la coda con tre puntini invece di tagliare la scritta
-     da tutte e due le parti e restare con "o 10:01 · +3 g" */
-  display: block;
-  line-height: calc(var(--tasto-tempo) - 2px);
+  /* Una, due o tre colonne indipendenti secondo la modalita': anche quando lo
+     spazio manca ogni orologio conserva la propria porzione di lettura. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  line-height: 1;
   text-align: center;
   border: 1px solid var(--bordo);
   border-radius: 999px;
-  background: var(--incassato);
-  color: var(--testo);
-  font-family: var(--mono);
-  font-size: 0.78rem;
+  background: rgba(12, 18, 32, 0.94);
+  color: #f7f9ff;
+  font-family: var(--sans);
+  font-size: 0.96rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   overflow: hidden;
-  text-overflow: ellipsis;
   cursor: pointer;
+}
+.lettura-barra-tempo.fuso-diverso { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.lettura-barra-tempo.fuso-diverso.con-scarto { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.lettura-barra-tempo:not(.fuso-diverso).con-scarto { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.orologio-barra-tempo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding-inline: clamp(2px, 1.5cqi, 9px);
+}
+.orologio-barra-tempo + .orologio-barra-tempo {
+  border-left: 1px solid var(--bordo);
+}
+.orologio-scarto .etichetta-orologio-tempo,
+.orologio-scarto .valore-orologio-tempo { color: var(--ambra); }
+.etichetta-orologio-tempo {
+  max-width: 100%;
+  color: var(--testo-3);
+  font-size: clamp(0.48rem, 2.3cqi, 0.62rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.valore-orologio-tempo {
+  font-size: clamp(0.78rem, 4.2cqi, 1rem);
+  font-weight: 800;
+  white-space: nowrap;
 }
 .lettura-barra-tempo:hover { border-color: var(--bordo-forte); color: var(--testo); }
 /* Fuori dal tempo reale la lettura si accende d'ambra: è lo stesso colore di
@@ -4222,16 +4707,23 @@ body input.casella-data:hover { border: 0; }
   .cielo-chrome { gap: 6px; padding: 8px; padding-top: max(8px, env(safe-area-inset-top)); }
   /* La fascia si stringe insieme a tutto il resto: 8px di margine, la
      pillola più bassa (34px + 3px+3px di imbottitura + 2px di bordo =
-     42px), 6px di distacco, la bussola più piccola (52px). */
-  .vista-cielo { --zona-alta-cielo: 108px; }
+     42px), 6px di distacco, la bussola più piccola (68px). */
+  .vista-cielo { --zona-alta-cielo: 124px; }
   .linguetta-gruppo { width: 34px; height: 34px; }
   .icona-linguetta { width: 19px; height: 19px; }
   .linguette-gruppi { padding: 3px; gap: 2px; }
-  .tasto-mappa-luogo-cielo { width: 42px; height: 42px; }
+  .tasto-mappa-luogo-cielo,
+  .tasto-adsb-cielo { width: 42px; height: 42px; }
   .lettura-cielo { font-size: 0.7rem; padding: 4px 9px; }
-  .letture-sinistra { max-width: calc(100% - 66px); }
-  .bussola-cielo { width: 52px; height: 52px; }
-  .bussola-gradi { font-size: 0.6rem; }
+  .letture-sinistra { max-width: calc(100% - 82px); }
+  .bussola-cielo { width: 68px; height: 68px; }
+  #skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .cielo-barra { padding-right: 76px; }
+  #skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .bussola-cielo {
+    top: max(8px, env(safe-area-inset-top));
+    right: 8px;
+  }
+  .bussola-gradi { font-size: 0.65rem; }
+  .bussola-direzione { max-width: 36px; font-size: 0.4rem; }
   .bussola-indice { border-left-width: 4px; border-right-width: 4px; border-top-width: 7px; }
   .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
   .gruppo-comandi.gruppo-astri.gruppo-attivo.ricerca-attiva { max-height: min(78%, 520px); }
@@ -4317,7 +4809,7 @@ body input.casella-data:hover { border: 0; }
      Sotto ai 36 non si scende: un bersaglio più piccolo si sbaglia. */
   .vista-cielo { --tasto-tempo: 36px; --alta-barra-tempo: calc(var(--tasto-tempo) + 12px); }
   .barra-tempo { gap: 5px; padding: 5px 6px; left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); }
-  .lettura-barra-tempo { padding: 0 9px; font-size: 0.72rem; }
+  .lettura-barra-tempo { padding: 0 9px; font-size: 0.88rem; }
   .tasto-barra-tempo { font-size: 0.94rem; }
 }
 
@@ -4354,6 +4846,20 @@ body input.casella-data:hover { border: 0; }
   .lettura-barra-tempo { flex: 1 1 0; }
 }
 
+/* In verticale la barra ha più altezza disponibile e l'istante deve potersi
+   leggere al primo colpo. La misura cresce con il suo contenitore (non con
+   un modello di telefono), restando entro limiti che non spingono i comandi
+   fuori riga. In orizzontale questa regola non entra: lì rimangono identiche
+   le misure compatte definite sopra. */
+@media (orientation: portrait) {
+  .lettura-barra-tempo {
+    padding-inline: clamp(2px, 1.5cqi, 8px);
+  }
+  .valore-orologio-tempo {
+    font-size: clamp(0.82rem, 5.2cqi, 1.18rem);
+  }
+}
+
 /* ------------------------------------------ SCHEDA DELL'OGGETTO SULLA MAPPA */
 /* Sta dentro al riquadro del cielo: così la si legge anche a schermo intero,
    dove tutto il resto della pagina è fuori scena. */
@@ -4364,10 +4870,10 @@ body input.casella-data:hover { border: 0; }
 .pannello-dettaglio {
   position: absolute;
   left: max(12px, env(safe-area-inset-left));
-  /* Sopra alla barra del tempo, come lo zoom: in fondo alla mappa la barra
-     c'è sempre, e una scheda che ci finisce sotto nasconde proprio l'ora a
-     cui valgono i dati che sta mostrando */
-  bottom: var(--sopra-barra-tempo);
+  /* La scheda comincia subito sotto al nome del paese: la lettura e i dati
+     dell'oggetto formano così un solo blocco nell'angolo alto sinistro e
+     lasciano libero il cielo sopra alla barra del tempo. */
+  top: var(--zona-alta-cielo);
   z-index: 6;
   width: min(340px, calc(100% - 96px));
   /* Non sale mai più su di dove finisce la fascia dei comandi in cima: il
@@ -4377,7 +4883,7 @@ body input.casella-data:hover { border: 0; }
      arrivare più su della bussola e scriverci sopra. */
   max-height: min(62%, 420px, calc(100% - var(--zona-alta-cielo) - var(--sopra-barra-tempo)));
   overflow-y: auto;
-  padding: 14px 34px 14px 14px;
+  padding: 14px;
   border: 1px solid var(--bordo-forte);
   border-radius: var(--raggio-m);
   /* Leggermente trasparente: la scheda sta sopra al cielo, e sotto ci sono
@@ -4390,6 +4896,9 @@ body input.casella-data:hover { border: 0; }
   font-size: 0.84rem;
   color: var(--testo-2);
   overscroll-behavior: contain;
+  /* La foto dell'aereo e l'itinerario arrivano dopo il testo. Il browser non
+     deve scegliere da solo un nuovo punto di ancoraggio mentre si sta leggendo. */
+  overflow-anchor: none;
 }
 /* Dove la sfocatura non esiste (qualche browser la ignora) la trasparenza da
    sola renderebbe illeggibile la scheda sopra una Via Lattea: lì si scurisce */
@@ -4429,6 +4938,12 @@ body input.casella-data:hover { border: 0; }
 .pannello-dettaglio .voce-dato { color: var(--blu-chiaro); }
 .pannello-dettaglio .nota-dettaglio { margin: 9px 0 0; color: var(--testo-3); }
 .pannello-dettaglio .allarme-dettaglio { margin: 8px 0 0; color: var(--ambra); }
+.pannello-dettaglio-azioni {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.tasto-chiudi-dettaglio.tasto-chiudi-dettaglio-fondo { position: static; }
 /* "Altri dati": chiusi di default. La scheda deve stare in una striscia
    sola su un telefono, e i numeri da strumento (coordinate, distanza,
    temperatura…) sono quelli che quasi nessuno legge lì per lì — restano a
@@ -4464,6 +4979,221 @@ body input.casella-data:hover { border: 0; }
 }
 .tasto-chiudi-dettaglio:hover { color: var(--testo); border-color: var(--bordo-forte); }
 
+/* ------------------------------------------------- IL FUMETTO DELL'OGGETTO */
+/* Sta ATTACCATO all'oggetto invece che nell'angolo, ed è quello che il
+   pannello di prima non poteva dire: *quale* dei tanti triangoli si è
+   toccato. La coda lo indica; quando il fumetto viene spinto contro un bordo
+   la coda scorre lungo il suo lato (`--coda-x`, scritta da JavaScript) e, se
+   nemmeno così ci arriva, entra in scena il filo.
+
+   Le misure sono pensate per un telefono in mano: il fumetto non supera mai
+   i 260 pixel né il 78% della larghezza dello schermo (sotto ai 560px scende
+   a 240 e all'84%: un fumetto che copre tutto il cielo non è più un fumetto,
+   è di nuovo il pannello di prima), il testo non scende sotto i 12,3px — la
+   misura sotto la quale una riga di dati su un fondo scuro, in movimento, si
+   smette di leggere — e i due tasti restano quadrati da 30px, che è il
+   minimo per un pollice. */
+.fumetto-cielo { display: none; }
+.fumetto-cielo.visibile { display: block; }
+.fumetto-cielo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 7;
+  width: max-content;
+  max-width: min(260px, 78vw);
+  padding: 9px 10px 9px 11px;
+  border: 1px solid var(--bordo-forte);
+  /* Il filo di tinta sul bordo sinistro è la fascia di distanza dell'aereo,
+     cioè lo stesso colore del suo triangolo sulla mappa: il fumetto e il
+     simbolo che indica devono dire la stessa cosa anche di sfuggita. */
+  border-left: 3px solid var(--fumetto-tinta, rgba(148, 197, 255, .85));
+  border-radius: 13px;
+  background: rgba(9, 14, 26, 0.90);
+  backdrop-filter: blur(10px) saturate(1.08);
+  -webkit-backdrop-filter: blur(10px) saturate(1.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: var(--testo-2);
+  font-size: 0.78rem;
+  line-height: 1.34;
+  /* Il fumetto insegue l'oggetto a ogni fotogramma: il browser non deve
+     provare a mettere in mezzo una transizione, e nemmeno a ricalcolare il
+     resto della pagina per un pannello che si sposta di due pixel. */
+  contain: layout paint;
+  transition: none;
+}
+/* Dove la sfocatura non c'è, la trasparenza da sola renderebbe illeggibile
+   il fumetto sopra alla Via Lattea o a una Luna piena: lì si scurisce */
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  .fumetto-cielo { background: rgba(9, 14, 26, 0.96); }
+}
+
+/* La coda. Un quadrato girato di 45° con due soli lati bordati: da sopra si
+   vedono quelli di sotto, da sotto quelli di sopra — così il bordo del
+   fumetto resta continuo tutt'intorno e la coda non ha una riga che la
+   taglia in mezzo. */
+.fumetto-coda {
+  position: absolute;
+  left: var(--coda-x, 50%);
+  width: 13px;
+  height: 13px;
+  margin-left: -6.5px;
+  background: rgba(9, 14, 26, 0.90);
+  transform: rotate(45deg);
+}
+.fumetto-cielo[data-verso="sopra"] .fumetto-coda {
+  bottom: -7px;
+  border-right: 1px solid var(--bordo-forte);
+  border-bottom: 1px solid var(--bordo-forte);
+}
+.fumetto-cielo[data-verso="sotto"] .fumetto-coda {
+  top: -7px;
+  border-left: 1px solid var(--bordo-forte);
+  border-top: 1px solid var(--bordo-forte);
+}
+/* Quando il fumetto è stato tosato contro un bordo la coda non indica più
+   l'oggetto: si spegne, e a unirli resta il filo (che è preciso). */
+.fumetto-cielo.fumetto-lontano .fumetto-coda { opacity: 0; }
+
+/* Il filo fra la coda e l'oggetto. È un elemento a parte, e non un
+   pseudo-elemento del fumetto, perché deve poter uscire dal suo riquadro:
+   `contain: paint` lo taglierebbe al bordo. */
+.fumetto-filo {
+  position: absolute;
+  display: none;
+  height: 1px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg,
+    var(--fumetto-tinta, rgba(148, 197, 255, .85)), rgba(148, 197, 255, 0.18));
+  pointer-events: none;
+  z-index: 6;
+}
+
+.fumetto-testa {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.fumetto-segno {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 2px 4px;
+  border: 1px solid var(--bordo);
+  border-radius: 6px;
+  color: var(--fumetto-tinta, var(--blu-chiaro));
+}
+.fumetto-segno .icona-disegnata { display: block; }
+.fumetto-titolo {
+  margin: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: var(--testo);
+  /* Un indicativo di volo non va a capo; un nome di cometa lungo si accorcia
+     invece di allargare il fumetto oltre il suo tetto. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Il filetto che riempie la riga del titolo fino ai tasti: è quello che
+   trasforma due parole e due bottoni in una testata. */
+.fumetto-filetto {
+  flex: 1 1 12px;
+  min-width: 8px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--bordo-forte), rgba(148, 168, 214, 0.05));
+}
+.fumetto-tasto {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--bordo);
+  border-radius: 8px;
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  cursor: pointer;
+}
+.fumetto-tasto:hover { color: var(--testo); border-color: var(--bordo-forte); }
+.fumetto-tasto:active { transform: translateY(1px); }
+
+.fumetto-righe { display: grid; gap: 2px; }
+.fumetto-riga {
+  margin: 0;
+  /* Due righe al massimo per voce: un itinerario lungo («Francoforte sul
+     Meno (FRA) → Buenos Aires (EZE)») va a capo una volta e poi si accorcia,
+     invece di far crescere il fumetto fino a coprire il cielo. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fumetto-riga:first-child { color: var(--testo); font-weight: 600; }
+.fumetto-voce { color: var(--blu-chiaro); }
+
+/* L'aereo porta nel cielo la sua carta d'identità completa. Il nome può
+   andare a capo (non viene troncato coi puntini) e la foto resta abbastanza
+   bassa da lasciare visibile il cielo a cui il fumetto è attaccato. */
+.fumetto-cielo.fumetto-aereo {
+  max-width: min(310px, 88vw);
+  max-height: min(430px, calc(100% - 72px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.fumetto-aereo .fumetto-titolo {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+.fumetto-aereo-foto { margin: 0 0 6px; }
+.fumetto-aereo-foto img {
+  display: block;
+  width: 100%;
+  max-height: 112px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.fumetto-aereo-foto figcaption {
+  margin-top: 2px;
+  color: var(--testo-3);
+  font-size: .66rem;
+  line-height: 1.2;
+}
+
+/* La freccia che dalla scheda completa riporta al fumetto. Sta accanto al ✕
+   e non al suo posto: chiudere e tornare indietro sono due gesti diversi. */
+.tasto-indietro-dettaglio {
+  right: 46px;
+  font-size: 1.1rem;
+  line-height: 0.9;
+}
+
+/* Su uno schermo piccolo il fumetto è la sola cosa che si legge del cielo:
+   si stringe di larghezza ma NON di corpo — è l'errore che si fa sempre, e
+   il risultato è un fumetto che ci sta e non si legge. */
+@media (max-width: 560px) {
+  .fumetto-cielo {
+    max-width: min(240px, 84vw);
+    padding: 8px 9px 8px 10px;
+    font-size: 0.775rem;
+  }
+  .fumetto-titolo { font-size: 0.88rem; }
+}
+/* Il telefono girato: di altezza ce n'è pochissima (il cielo è alto due
+   dita), quindi il fumetto perde una riga invece di coprire il panorama. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .fumetto-cielo { max-width: min(230px, 46vw); padding: 7px 9px; }
+  .fumetto-riga { -webkit-line-clamp: 1; }
+  .fumetto-tasto { width: 28px; height: 28px; }
+  .fumetto-aereo-foto img { max-height: 58px; }
+}
 /* --------------------------------------------- "STO PREPARANDO IL CIELO" */
 /* La riga che compare sulla mappa mentre il catalogo arriva. Sta in basso
    a sinistra, e i due posti che ha scartato dicono perché: al centro
@@ -4617,6 +5347,8 @@ body input.casella-data:hover { border: 0; }
 #skymap-contenitore.vista-pulita .cielo-chrome,
 #skymap-contenitore.vista-pulita .barra-tempo,
 #skymap-contenitore.vista-pulita .pannello-dettaglio,
+#skymap-contenitore.vista-pulita .fumetto-cielo,
+#skymap-contenitore.vista-pulita .fumetto-filo,
 #skymap-contenitore.vista-pulita .pannello-clip,
 #skymap-contenitore.vista-pulita .tasto-esci-cielo,
 #skymap-contenitore.vista-pulita .barra-terreno,
@@ -4713,6 +5445,7 @@ body input.casella-data:hover { border: 0; }
   transition: background-color var(--transizione), border-color var(--transizione);
 }
 .tasto-registra-cielo:hover { background: rgba(28, 36, 60, 0.92); }
+.tasto-registra-sistema { width: 42px; height: 42px; }
 .tasto-registra-cielo.in-corso { border-color: rgba(248, 113, 113, 0.75); background: rgba(40, 10, 14, 0.9); }
 
 .segno-reg {
@@ -4785,12 +5518,50 @@ body input.casella-data:hover { border: 0; }
 /* A schermo intero l'angolo in alto a destra è del tasto Esci: le linguette
    dei gruppi si fermano prima, per non finirgli sotto */
 #skymap-contenitore:fullscreen .cielo-barra,
-#skymap-contenitore.finto-schermo-intero .cielo-barra { padding-right: 104px; }
+#skymap-contenitore:-webkit-full-screen .cielo-barra,
+#skymap-contenitore.finto-schermo-intero .cielo-barra { padding-right: 104px !important; }
+
+/* WebKit meno recente non abbina `:fullscreen`: annulla esplicitamente il
+   posizionamento da vista normale anche nel suo schermo intero nativo. */
+#skymap-contenitore:-webkit-full-screen .bussola-cielo {
+  position: relative !important;
+  top: auto !important;
+  right: auto !important;
+}
 
 /* ------------------------------------------- REGISTRARE UN MOMENTO         */
 /* La durata della registrazione è una preferenza e vive nelle Impostazioni;
    sulla mappa resta soltanto il comando immediato per avviarla. */
 .impostazioni-durata { max-width: 260px; }
+
+.impostazione-sosta-mirino {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+}
+.impostazione-sosta-mirino small {
+  display: block;
+  margin-top: 3px;
+  color: var(--testo-3);
+  font-weight: 400;
+}
+.impostazione-sosta-controllo {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.impostazione-sosta-controllo input {
+  width: 58px;
+  padding: 7px 6px;
+  border: 1px solid var(--bordo);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  color: var(--testo);
+  text-align: center;
+}
 
 .impostazioni-tab {
   display: flex;
@@ -4821,11 +5592,18 @@ body input.casella-data:hover { border: 0; }
 .impostazioni-corpo { min-height: 340px; }
 
 /* ------------------------------------------- L'AURORA                      */
-/* Sta in fondo ai Filtri, sotto al suo tasto: una riga che dice cosa si
-   vedrebbe da qui e la slitta per alzare la tempesta. La slitta non è un
+/* Sta in fondo alla scheda «Cielo», sotto al suo tasto: una riga che dice cosa
+   si vedrebbe da qui e la slitta per alzare la tempesta. La slitta non è un
    comando qualunque — è il modo in cui questa vista si usa quasi sempre,
    visto che l'aurora vera da queste latitudini capita una volta ogni dieci
-   anni — e per questo si prende la riga tutta per sé. */
+   anni — e per questo si prende la riga tutta per sé.
+
+   Ma si prendeva la riga **sempre**, anche a ovale spento: due terzi della
+   scheda occupati da un comando che non regolava niente di disegnato. Adesso
+   il blocco è la parte aperta del tasto «Aurora» — `hidden` lo mette e lo
+   toglie `aurAggiornaPannello()` — e il tasto lo dichiara con `aria-expanded`.
+   Qui non serve nessuna regola per nasconderlo: `.blocco-aurora` non dichiara
+   un `display`, quindi quello di serie di `[hidden]` funziona. */
 .blocco-aurora {
   margin-top: 10px;
   padding-top: 10px;
@@ -4898,6 +5676,38 @@ body input.casella-data:hover { border: 0; }
   font-size: 0.78rem;
   color: var(--testo-3);
 }
+
+/* Galleria persistente: le schede mantengono il lettore abbastanza grande
+   da essere utile, ma si dispongono in più colonne quando c'è spazio. */
+.pannello-galleria { max-width: 1040px; }
+.galleria-corpo { display: grid; gap: 16px; }
+.galleria-comandi {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: var(--superficie-bassa);
+}
+.galleria-cartella, .galleria-stato { color: var(--testo-2); font-size: .84rem; }
+.galleria-stato:empty { display: none; }
+.galleria-elenco { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 14px; }
+.galleria-vuota { grid-column: 1 / -1; padding: 36px 18px; text-align: center; color: var(--testo-3); }
+.galleria-video {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: var(--superficie-bassa);
+}
+.galleria-video video { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: #000; }
+.galleria-video-corpo { display: grid; gap: 8px; padding: 12px; }
+.galleria-video-nome { overflow: hidden; color: var(--testo); font-size: .88rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.galleria-video-meta { color: var(--testo-3); font-size: .75rem; }
+.galleria-video-azioni { display: flex; flex-wrap: wrap; gap: 7px; }
+@media (max-width: 520px) { .galleria-comandi { align-items: stretch; flex-direction: column; } }
 
 /* Le note lunghe stanno ripiegate: il titolo si legge, il resto si apre */
 .nota-ripiegata > summary {
@@ -5232,6 +6042,71 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
   letter-spacing: 0.01em;
 }
 
+/* Ricerca dei corpi: al centro in alto, lontana dalle due colonne di tasti.
+   Il fondo è quello degli altri comandi sulla scena, così resta leggibile
+   anche quando sotto passa un'orbita chiara. */
+.sol-ricerca {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  z-index: 7;
+  width: min(270px, calc(100% - 300px));
+  transform: translateX(-50%);
+}
+.sol-ricerca > label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.sol-ricerca-riga {
+  display: flex;
+  border: 1px solid var(--bordo-scena);
+  border-radius: 999px;
+  background: var(--fondo-scena);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.sol-ricerca input {
+  min-width: 0;
+  flex: 1;
+  padding: 9px 4px 9px 13px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--testo);
+  font-size: 0.78rem;
+}
+.sol-ricerca input::placeholder { color: var(--testo-3); }
+.sol-ricerca button {
+  width: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--blu-chiaro);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+.sol-ricerca button:hover { background: rgba(28, 36, 60, 0.94); }
+.sol-ricerca-esito {
+  display: block;
+  min-height: 1em;
+  margin: 4px 10px 0;
+  color: #fca5a5;
+  font-size: 0.68rem;
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .sol-ricerca {
+    top: 132px;
+    width: min(260px, calc(100% - 84px));
+  }
+  .sol-suggerimento { top: 182px; }
+}
+
 /* --- Le due manopole di secondo piano ---
    Distanze e dimensioni non sono una domanda che ci si fa guardando: si
    scelgono una volta. Stanno quindi dietro a un tasto della colonna di
@@ -5365,6 +6240,7 @@ body.sol-immersivo { overflow: hidden; }
 }
 .sol-pannello-tempo.hidden { display: none; }
 .sol-tempo-testata { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sol-tempo-testata-solo-chiudi { justify-content: flex-end; }
 .sol-tempo-corpo { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 
 /* Da ospite la sezione non è più "il gruppo aperto sopra al cielo": il vetro,
@@ -5804,6 +6680,32 @@ body .luogo-tasto-mappa.attiva { background: var(--blu); border-color: transpare
   height: 30px;
   background: rgba(245, 158, 11, 0.22);
   animation: luogo-pulsa 2.2s ease-out infinite;
+}
+
+/* La conferma resta attaccata al pallino scelto: non bisogna cercare il tasto
+   nel piede della finestra dopo avere indicato un prato sulla mappa. */
+.luogo-popup-vai .leaflet-popup-content-wrapper,
+.luogo-popup-vai .leaflet-popup-tip {
+  background: rgba(6, 10, 20, 0.96);
+  color: #fff;
+}
+.luogo-popup-vai .leaflet-popup-content { margin: 7px; }
+.luogo-vai-qua {
+  min-width: 92px;
+  min-height: 42px;
+  padding: 8px 16px;
+  border: 1px solid rgba(251, 191, 36, 0.75);
+  border-radius: 10px;
+  background: #d97706;
+  color: #fff;
+  font: 700 0.92rem/1 inherit;
+  cursor: pointer;
+}
+.luogo-vai-qua:hover,
+.luogo-vai-qua:focus-visible {
+  background: #f59e0b;
+  outline: 2px solid #fde68a;
+  outline-offset: 2px;
 }
 @keyframes luogo-pulsa {
   0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
@@ -6273,8 +7175,8 @@ body.luogo-immersivo { overflow: hidden; }
   .card-hover:hover { transform: none; }
 
   /* La scheda dell'oggetto non si mangia la mappa: sul telefono resta una
-     striscia in basso, e il resto del cielo si vede sopra. Anche qui non
-     sale mai sopra alla bussola (vedi --zona-alta-cielo). */
+     striscia compatta sotto al paese, e il resto del cielo rimane libero.
+     Anche qui rispetta la fascia della bussola (vedi --zona-alta-cielo). */
   .pannello-dettaglio { max-height: min(54%, calc(100% - var(--zona-alta-cielo) - var(--sopra-barra-tempo))); }
 
   /* --- Calendario compatto --- */
@@ -8384,11 +9286,217 @@ body button.did-ponte:active { transform: translateY(1px); }
     height: calc(92dvh - 100px);
   }
 }
-/* Aerei ADS-B: elenco compatto sopra il cielo, leggibile anche con una mano. */
-.gruppo-aerei { max-height: min(62vh, 430px); overflow-y: auto; }
-.aerei-testata { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-.aerei-elenco { display:grid; gap:7px; margin-top:9px; }
-.aereo-riga { border:1px solid rgba(148,163,184,.24); border-radius:10px; padding:8px 10px; background:rgba(15,23,42,.84); }
-.aereo-riga strong { color:#e0f2fe; letter-spacing:.04em; }
-.aereo-dati { color:#cbd5e1; font-size:.76rem; margin-top:2px; }
+/* --- AEREI ADS-B -------------------------------------------------------
+   Il pannello è un elenco compatto sopra il cielo, leggibile con una mano
+   sola — ma la prima cosa che deve dire non sono gli aerei: è **come stanno
+   i dati**. Da qui la riga di stato con la sua tinta, la spia accanto al
+   tasto e la leggenda dei colori, che sono i tre modi (corto, medio, lungo)
+   di raccontare la stessa cosa. */
+/* Questo pannello e' un vero elenco, non una tavolozza di quattro comandi:
+   quando viene aperto usa tutta l'altezza rimasta fra la barra superiore e
+   l'orologio. A scorrere e' soltanto l'elenco, cosi' ricerca e stato non si
+   perdono mentre si cerca un volo in mezzo al traffico. */
+.gruppo-comandi.gruppo-aerei.gruppo-attivo {
+  display:flex;
+  flex:1 1 0;
+  flex-direction:column;
+  max-height:none;
+  overflow:hidden;
+}
+.aerei-testata { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding-right:34px; }
+.aerei-titolo { display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
+.aerei-titolo strong { color:var(--testo); letter-spacing:.01em; }
+.aerei-contatore { color:var(--testo-3); font-size:.72rem; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+.aerei-contatore #aerei-conteggio { color:var(--testo-2); font-weight:700; }
+
+/* La riga di stato: dice quanti aerei, da quale rete, di quando è la
+   lettura e — se qualcosa non va — che cosa e quando si riprova. Il filo
+   colorato a sinistra è la stessa scala della spia, così si riconosce prima
+   di essere letta. Un guasto **non** diventa una riga rossa urlata: gli
+   aerei sono un di più, e un pannello che si accende di rosso perché una
+   rete pubblica ha starnutito addestra a ignorare il rosso. */
+.aerei-stato {
+  margin-top: 6px;
+  padding: 7px 10px 7px 12px;
+  border-radius: 8px;
+  border-left: 3px solid var(--bordo-forte);
+  background: rgba(15, 23, 42, 0.6);
+  color: var(--testo-2);
+  font-size: .75rem;
+  line-height: 1.35;
+}
+.aerei-stato[data-fase="ok"] { border-left-color:#22c55e; color:#dcfce7; }
+.aerei-stato[data-fase="carico"] { border-left-color:#38bdf8; color:#e0f2fe; }
+.aerei-stato[data-fase="vecchio"],
+.aerei-stato[data-fase="passato"] { border-left-color:#f59e0b; color:#fef3c7; }
+.aerei-stato[data-fase="errore"],
+.aerei-stato[data-fase="senzaRete"],
+.aerei-stato[data-fase="senzaPosizione"] { border-left-color:#ef4444; color:#fecaca; }
+.aerei-stato[data-fase="spento"] { border-left-color:var(--bordo-forte); color:var(--testo-3); }
+
+.aerei-interruttori { margin-top: 10px; }
+#aerei-aggiorna[data-esito="successo"] { color:#86efac; border-color:#22c55e; }
+#aerei-aggiorna[data-esito="errore"] { color:#fca5a5; border-color:#ef4444; }
+
+/* La spia: verde freschi, azzurra in arrivo, ambra vecchi, rossa guasto,
+   grigia in pausa. È l'unica parte di questo modulo sempre in vista, ed è
+   quella che risponde alla domanda per cui il pannello esiste — «i dati ci
+   sono?» — senza aprire niente. Il pulsare dell'azzurro non è un vezzo: un
+   colore fermo su «sto scaricando» è indistinguibile da un colore fermo su
+   «sono fermo». */
+.aerei-spia {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--testo-3);
+  box-shadow: 0 0 0 1px rgba(2, 6, 23, .6);
+}
+.aerei-spia[data-fase="ok"] { background:#22c55e; box-shadow:0 0 7px rgba(34,197,94,.75); }
+.aerei-spia[data-fase="vecchio"] { background:#f59e0b; box-shadow:0 0 7px rgba(245,158,11,.7); }
+.aerei-spia[data-fase="errore"] { background:#ef4444; box-shadow:0 0 7px rgba(239,68,68,.75); }
+.aerei-spia[data-fase="spento"] { background:#475569; }
+.aerei-spia[data-fase="carico"],
+.aerei-spia[data-fase="attesa"] { background:#38bdf8; animation: aerei-battito 1.1s ease-in-out infinite; }
+@keyframes aerei-battito { 0%,100% { opacity:1; } 50% { opacity:.28; } }
+@media (prefers-reduced-motion: reduce) {
+  .aerei-spia[data-fase="carico"], .aerei-spia[data-fase="attesa"] { animation:none; }
+}
+
+/* La leggenda dei colori: quattro pallini e quattro etichette su una riga
+   sola. La scrive `aereiScriviLeggenda()` da FASCE_DISTANZA — qui c'è solo
+   la forma, mai le soglie. */
+.aerei-leggenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 10px 0 2px;
+  padding: 7px 10px;
+  border: 1px solid var(--bordo);
+  border-radius: 8px;
+  background: var(--incassato);
+  list-style: none;
+}
+.aerei-fascia {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--testo-2);
+  font-size: .7rem;
+  font-variant-numeric: tabular-nums;
+}
+.aereo-pallino {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--fascia, #fb923c);
+  box-shadow: 0 0 0 1px rgba(2, 6, 23, .55);
+}
+
+.aerei-cerca { margin-top:9px; }
+.aerei-cerca label {
+  display:block;
+  margin-bottom:4px;
+  color:var(--testo-2);
+  font-size:.72rem;
+  font-weight:650;
+}
+.aerei-cerca input {
+  width:100%;
+  min-height:38px;
+  padding:7px 10px;
+  border:1px solid var(--bordo-forte);
+  border-radius:8px;
+  background:rgba(2, 6, 23, .78);
+  color:var(--testo);
+  font-size:.78rem;
+}
+.aerei-cerca input:focus { outline:2px solid rgba(56,189,248,.62); outline-offset:1px; }
+.aerei-cerca input::placeholder { color:var(--testo-3); }
+.aerei-elenco {
+  display:grid;
+  flex:1 1 auto;
+  min-height:0;
+  align-content:start;
+  gap:7px;
+  margin-top:9px;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+/* La riga dell'elenco porta la stessa tinta del triangolo in cielo: quello
+   che si tocca sulla mappa si ritrova qui senza cercarlo per nome. Il colore
+   sta sul bordo e sul pallino, non sul fondo — quattro rettangoli pieni di
+   rosso, arancio, giallo e azzurro sarebbero una cartella colori, non un
+   elenco. */
+.aereo-riga {
+  display:block;
+  width:100%;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+  border:1px solid var(--bordo);
+  border-left:3px solid var(--fascia, #fb923c);
+  border-radius:9px; padding:6px 9px; background:rgba(8,25,45,.92);
+}
+.aereo-riga:hover { border-color:var(--fascia, #fb923c); background:rgba(12,35,60,.96); }
+.aereo-riga:focus-visible { outline:2px solid var(--fascia, #fb923c); outline-offset:2px; }
+.aereo-riga-testa { display:flex; align-items:center; gap:7px; }
+.aereo-riga strong { color:#f8fafc; letter-spacing:.04em; }
+.aereo-distanza {
+  margin-left:auto;
+  color:var(--fascia, #fb923c);
+  font-family:var(--mono); font-size:.74rem; font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.aereo-dati { color:#cbd5e1; font-size:.74rem; line-height:1.25; margin-top:2px; }
 .aereo-allineamento { color:#fde68a; font-size:.73rem; margin-top:3px; }
+/* La fascia scritta in chiaro nella scheda dell'oggetto: sul cielo il colore
+   basta, ma la scheda la si apre proprio per leggere i dati. */
+.aereo-fascia {
+  display:flex; align-items:center; gap:6px;
+  margin:2px 0 8px;
+  color:var(--fascia, #fb923c);
+  font-size:.75rem; font-weight:600;
+}
+.aereo-foto { width:100%; max-height:190px; object-fit:cover; border-radius:10px; margin:8px 0 10px; background:#0f172a; }
+.aereo-foto-credito { color:#64748b; font-size:.68rem; margin-top:-7px; margin-bottom:9px; }
+.aereo-azioni { display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; }
+.aereo-azioni .tasto-cielo { flex:1 1 130px; }
+.aereo-rotta-modale { display:none; position:absolute; inset:0; z-index:80; align-items:center; justify-content:center; padding:18px; }
+.aereo-rotta-modale.visibile { display:flex; }
+.aereo-rotta-sfondo { position:absolute; inset:0; border:0; background:rgba(2,6,23,.78); }
+.aereo-rotta-carta { position:relative; width:min(760px,100%); background:#07111f; border:1px solid rgba(148,163,184,.45); border-radius:14px; padding:12px; box-shadow:0 20px 60px #000; }
+.aereo-rotta-carta header { display:flex; align-items:center; justify-content:space-between; min-height:34px; }
+.aereo-rotta-carta h3 { color:#f8fafc; font-size:1rem; font-weight:700; }
+#aereo-rotta-mappa { height:min(62vh,480px); min-height:280px; border-radius:10px; background:#172033; }
+.aereo-rotta-carta > p { margin:8px 2px 0; color:#cbd5e1; font-size:.75rem; }
+.aereo-rotta-carta > .aereo-rotta-nota { color:#94a3b8; line-height:1.35; }
+.aereo-leggenda { display:inline-block; width:22px; border-top:3px solid #22d3ee; vertical-align:middle; }
+.aereo-leggenda.itinerario { border-color:#60a5fa; }
+.aereo-leggenda.prevista { border-color:#fb923c; border-top-style:dashed; }
+#aereo-rotta-mappa { background:#dbeafe; }
+#aereo-rotta-mappa .leaflet-tile-pane { filter:none; }
+#aereo-rotta-mappa .leaflet-control-attribution { background:rgba(255,255,255,.88); color:#334155; }
+#aereo-rotta-mappa .leaflet-control-attribution a { color:#1d4ed8 !important; }
+/* Il pannello e' gia' assoluto nella regola principale. Non trasformarlo in
+   un elemento del flusso: la scheda degli aerei finirebbe sotto al canvas e
+   sembrerebbe non aprirsi. L'assoluto fa anche da riferimento al tasto X. */
+.tasto-chiudi-dettaglio-alto { position:absolute; top:10px; right:10px; z-index:3; }
+.scheda-testata { padding-right:42px; }
+
+/* Le vecchie eccezioni chiare delle singole carte hanno selettori molto
+   specifici. In tema notte il comando comune deve vincere anche su quelle. */
+:is(#mappa-eclissi, #mappa-lunare, #mappa-luogo, #imp-raggi-mappa,
+    #aereo-rotta-mappa, #posto-evento-mappa, #skymap-mappa-spostamento-carta).mappa-scura {
+  background: #03050c !important;
+}
+:is(#mappa-eclissi, #mappa-lunare, #mappa-luogo, #imp-raggi-mappa,
+    #aereo-rotta-mappa, #posto-evento-mappa, #skymap-mappa-spostamento-carta).mappa-scura .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(185deg) brightness(0.86) saturate(0.6) contrast(0.95) !important;
+}
+:is(#mappa-eclissi, #mappa-lunare, #mappa-luogo, #imp-raggi-mappa,
+    #aereo-rotta-mappa, #posto-evento-mappa, #skymap-mappa-spostamento-carta).mappa-scura .leaflet-control-attribution {
+  background: rgba(6, 10, 20, 0.7) !important;
+  color: var(--testo-3) !important;
+}

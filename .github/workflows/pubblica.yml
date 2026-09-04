@@ -49,6 +49,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Prepara la cartella del sito
+        env:
+          ADSB_PROXY_URL: ${{ vars.ADSB_PROXY_URL }}
         # L'app non ha build: i file sorgente *sono* il sito. Si copiano da una
         # parte solo per lasciar fuori quello che online non serve — la storia
         # di git, i workflow, la mappa del progetto e lo script che rigenera i
@@ -62,6 +64,9 @@ jobs:
             --exclude '.github' \
             --exclude '_sito' \
             --exclude 'scripts' \
+            --exclude 'worker-adsb.js' \
+            --exclude 'wrangler.toml' \
+            --exclude 'ADSB-PROXY.md' \
             --exclude 'CLAUDE.md' \
             --exclude 'current-task.md' \
             --exclude 'Idee_da_implementare.txt'
@@ -69,6 +74,14 @@ jobs:
           # cartelle e i file che cominciano per underscore. Qui non ce ne sono,
           # ma il giorno che ci fossero il guasto sarebbe silenzioso.
           touch _sito/.nojekyll
+          # Il Worker è il percorso più stabile. Se non è ancora configurato,
+          # pubblichiamo comunque: l'app proverà direttamente le reti ADS-B
+          # che in quel momento espongono CORS, invece di disattivare il feed.
+          if [ -z "$ADSB_PROXY_URL" ]; then
+            echo "::warning::Manca ADSB_PROXY_URL: uso i feed ADS-B diretti di emergenza"
+          fi
+          case "$ADSB_PROXY_URL" in ''|https://*) ;; *) echo "::error::ADSB_PROXY_URL deve iniziare con https://"; exit 1;; esac
+          printf "window.ADSB_PROXY_URL = %s;\n" "$(printf %s "$ADSB_PROXY_URL" | jq -Rs .)" > _sito/config.js
 
       - name: Controlla che ci sia tutto
         # Una pubblicazione a metà è peggio di una fallita: il service worker
@@ -76,7 +89,7 @@ jobs:
         # manca un pezzo, meglio fermarsi qui.
         run: |
           mancanti=0
-          for f in index.html manifest.json sw.js style.css app.js; do
+          for f in index.html manifest.json sw.js style.css tailwind.css app.js; do
             if [ ! -s "_sito/$f" ]; then
               echo "::error::manca (o è vuoto) _sito/$f"
               mancanti=1
@@ -87,6 +100,16 @@ jobs:
           for f in $(grep -oE '<script[^>]+src="[^":]+\.js"' _sito/index.html | grep -oE 'src="[^"]+"' | cut -d'"' -f2); do
             if [ ! -s "_sito/$f" ]; then
               echo "::error::index.html carica $f, che non c'è"
+              mancanti=1
+            fi
+          done
+          # E i fogli di stile locali con loro: da quando Tailwind è compilato
+          # nel repository invece di essere ricostruito nel browser, un
+          # `tailwind.css` che manca non è una funzione spenta — è tutta
+          # l'impaginazione che se ne va.
+          for f in $(grep -oE '<link[^>]+rel="stylesheet"[^>]+href="[^":]+\.css"' _sito/index.html | grep -oE 'href="[^"]+"' | cut -d'"' -f2); do
+            if [ ! -s "_sito/$f" ]; then
+              echo "::error::index.html carica il foglio $f, che non c'è"
               mancanti=1
             fi
           done

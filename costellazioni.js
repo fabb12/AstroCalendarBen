@@ -2151,6 +2151,42 @@ function costArteMostra(sigla) {
 //     quello che si sta guardando.
 // =====================================================================
 
+// Il nome e' un comando ancora piu' esplicito delle linee: chi preme la
+// scritta «Orione» sta chiedendo proprio la pagina di Orione. Lo proviamo
+// separatamente, prima degli astri, cosi' una stella disegnata per caso sotto
+// alle lettere non ruba il tocco. Misure e proiezione sono le stesse usate da
+// `catDisegnaFigure`; il margine porta il bersaglio all'ampiezza di un dito.
+function costNomeNelPunto(px, py, base, focale) {
+  if (!catPronto() || !sky.mostraCostellazioni || !sky.mostraNomi || !cat.figure) return null;
+  const velo = typeof skyVelo === 'function' ? skyVelo() : 1;
+  if (velo < 0.06) return null;
+
+  const rangoMax = sky.fov > 90 ? 1 : sky.fov > 45 ? 2 : 3;
+  const L = sky.larghezza, A = sky.altezza;
+  const cx = L / 2, cy = A / 2;
+  const fr = base.f, br = base.r, bu = base.u;
+
+  for (const fig of cat.figure) {
+    if (fig.rango > rangoMax) continue;
+    const x = fig.centroOra[0], y = fig.centroOra[1], z = fig.centroOra[2];
+    const d = x * fr[0] + y * fr[1] + z * fr[2];
+    if (d <= SKY_D_MIN || z < 0) continue;
+    const den = (1 + d) * 0.5;
+    const xNome = cx + focale * ((x * br[0] + y * br[1] + z * br[2]) / den);
+    const yNome = cy - focale * ((x * bu[0] + y * bu[1] + z * bu[2]) / den);
+    if (xNome < 0 || xNome > L || yNome < 0 || yNome > A) continue;
+
+    // Il carattere della mappa e' 600 11px system-ui. Questa stima un poco
+    // larga evita di creare una tela solo per misurare una scritta a ogni
+    // tocco, e soprattutto rende comodi anche i nomi corti sul telefono.
+    const mezzaLarghezza = Math.max(22, fig.nome.length * 3.6 + 8);
+    if (Math.abs(px - xNome) <= mezzaLarghezza && Math.abs(py - yNome) <= 16) {
+      return fig.sigla;
+    }
+  }
+  return null;
+}
+
 function costFiguraNelPunto(px, py, base, focale) {
   if (!catPronto() || !sky.mostraCostellazioni || !cat.figure) return null;
   const L = sky.larghezza, A = sky.altezza;

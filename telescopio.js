@@ -1428,8 +1428,18 @@ function telPercorsoSalti(bersaglio) {
 //    lì" e "ce l'hai nell'oculare".
 
 function telMatriceTelefono() {
-  if (typeof sky === 'undefined' || !sky.orient) return null;
-  if (typeof skyMatriceDispositivo !== 'function') return null;
+  if (typeof sky === 'undefined') return null;
+  // La stessa matrice che punta il planetario (app.js §7.1-quinquies): il
+  // quaternione del sistema dove c'è, il ponte del giroscopio dove no, con
+  // dentro declinazione magnetica e taratura sull'astro. Prima qui si
+  // rifacevano i conti dagli angoli di Eulero, e il push-to si ritrovava una
+  // bussola peggiore di quella del planetario che gli stava accanto — con
+  // l'aggravante che qui i gradi si pagano in oculari mancati.
+  if (typeof skyMatriceBussola === 'function') {
+    const R = skyMatriceBussola();
+    if (R) return R;
+  }
+  if (!sky.orient || typeof skyMatriceDispositivo !== 'function') return null;
   const correzione = typeof skyCorrezioneNord === 'function' ? skyCorrezioneNord() : 0;
   return skyMatriceDispositivo(
     (sky.orient.alpha + correzione + (sky.offsetBussola || 0)) * TEL_D2R,
@@ -5177,7 +5187,7 @@ function telBip(frequenza, durata) {
 
 function telOraTesto(data) {
   if (!data) return '—';
-  return data.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  return typeof oraDelLuogo === 'function' ? oraDelLuogo(data, null) : data.toISOString().slice(11, 16) + ' UTC';
 }
 
 function telPannelloSerata() {

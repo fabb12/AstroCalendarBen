@@ -122,6 +122,20 @@ const server = http.createServer((req, res) => {
   });
   ok('il calendario si è calcolato', moduli.eventiCalcolati > 0, `${moduli.eventiCalcolati} eventi`);
 
+  // --- una sola via d'uscita per tutte le schede ---
+  console.log('\n— chiusura delle schede con Esc —');
+  await pagina.click('#btn-impostazioni');
+  await pagina.keyboard.press('Escape');
+  ok('Esc chiude una finestra comune', await pagina.locator('#modale-impostazioni').evaluate(el => el.classList.contains('hidden')));
+
+  await pagina.evaluate(() => document.getElementById('modale-oculare').classList.remove('hidden'));
+  await pagina.keyboard.press('Escape');
+  ok('Esc chiude anche la scheda oculare', await pagina.locator('#modale-oculare').evaluate(el => el.classList.contains('hidden')));
+
+  await pagina.evaluate(() => document.getElementById('skymap-dettaglio').classList.add('visibile'));
+  await pagina.keyboard.press('Escape');
+  ok('Esc chiude una scheda appoggiata al planetario', await pagina.locator('#skymap-dettaglio').evaluate(el => !el.classList.contains('visibile')));
+
   // --- i nuovi eventi sono entrati? ---
   const tipi = await pagina.evaluate(() => {
     const cerca = t => eventiCalcolati.filter(e => e.titolo.includes(t)).length;
@@ -178,6 +192,196 @@ const server = http.createServer((req, res) => {
       disegniCostellazioni.premuto === 'false');
   console.log(`              magnitudine limite adesso: ${cielo.limite && cielo.limite.toFixed(1)}`);
 
+  // Ogni formato usato dal menu Eventi deve offrire la strada verso la
+  // scheda completa: sia ciò che sta accadendo, sia il programma settimanale.
+  const tastiSchedaEventi = await pagina.evaluate(() => {
+    const ev = eventiCalcolati[0];
+    const conta = html => {
+      const nodo = document.createElement('div');
+      nodo.innerHTML = html;
+      return [...nodo.querySelectorAll('button')]
+        .filter(b => b.textContent.trim() === 'Vedi scheda').length;
+    };
+    return {
+      vicino: conta(skyEventoHtml(ev, false)),
+      settimana: conta(skyEventoSettimanaHtml(ev))
+    };
+  });
+  ok('ogni evento nel menu del planetario ha il tasto Vedi scheda',
+    tastiSchedaEventi.vicino === 1 && tastiSchedaEventi.settimana === 1,
+    `evento vicino ${tastiSchedaEventi.vicino}, settimana ${tastiSchedaEventi.settimana}`);
+
+  // La casella dello scarto resta montata sia nel futuro sia nel passato.
+  // Il suo valore veniva aggiornato, ma l'etichetta no, perché entrambe le
+  // situazioni erano considerate genericamente "spostate".
+  const versiBarraTempo = await pagina.evaluate(() => {
+    skyImpostaOffsetTempo(3600);
+    const futuro = document.querySelector('#skymap-tempo-quando .orologio-scarto .etichetta-orologio-tempo')?.textContent;
+    skyImpostaOffsetTempo(-3600);
+    const passato = document.querySelector('#skymap-tempo-quando .orologio-scarto .etichetta-orologio-tempo')?.textContent;
+    skyImpostaOffsetTempo(0);
+    return { futuro, passato };
+  });
+  ok('la barra del tempo cambia etichetta attraversando il presente',
+    versiBarraTempo.futuro === 'Futuro' && versiBarraTempo.passato === 'Passato',
+    `${versiBarraTempo.futuro} → ${versiBarraTempo.passato}`);
+
+  const firmaVideo = await pagina.evaluate(() => {
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = '600 24px system-ui, sans-serif';
+    const massimo = 240;
+    const corto = 'Milano';
+    const lungo = 'San Martino in Passiria nella Provincia Autonoma di Bolzano';
+    const accorciato = skyRegTestoEntro(ctx, lungo, massimo);
+    return {
+      corto: skyRegTestoEntro(ctx, corto, massimo),
+      accorciato,
+      larghezza: ctx.measureText(accorciato).width,
+      massimo
+    };
+  });
+  ok('la firma del video contiene i nomi lunghi entro il fotogramma',
+    firmaVideo.corto === 'Milano' && firmaVideo.accorciato.endsWith('…') &&
+      firmaVideo.larghezza <= firmaVideo.massimo,
+    `${firmaVideo.accorciato} (${firmaVideo.larghezza.toFixed(1)}/${firmaVideo.massimo}px)`);
+
+  const salvataggiRipetuti = await pagina.evaluate(async () => {
+    const cartellaOriginale = videoCartella;
+    const autorizzazioneOriginale = videoCartellaAutorizzata;
+    let verifichePermesso = 0;
+    let richiestePermesso = 0;
+    let scritture = 0;
+    videoCartella = {
+      queryPermission: async () => { verifichePermesso += 1; return 'granted'; },
+      requestPermission: async () => { richiestePermesso += 1; return 'granted'; },
+      getFileHandle: async () => ({
+        createWritable: async () => ({
+          write: async () => { scritture += 1; },
+          close: async () => {}
+        })
+      })
+    };
+    videoCartellaAutorizzata = false;
+    const esito = { nome: 'prova.mp4', blob: new Blob(['video']) };
+    const primo = await videoScriviInCartella(esito);
+    const secondo = await videoScriviInCartella(esito);
+    videoCartella = cartellaOriginale;
+    videoCartellaAutorizzata = autorizzazioneOriginale;
+    return { primo, secondo, verifichePermesso, richiestePermesso, scritture };
+  });
+  ok('la cartella autorizzata accetta piu salvataggi senza richiedere ancora il permesso',
+    salvataggiRipetuti.primo && salvataggiRipetuti.secondo &&
+      salvataggiRipetuti.verifichePermesso === 1 &&
+      salvataggiRipetuti.richiestePermesso === 0 && salvataggiRipetuti.scritture === 2,
+    `${salvataggiRipetuti.scritture} scritture, ${salvataggiRipetuti.verifichePermesso} verifica e ` +
+      `${salvataggiRipetuti.richiestePermesso} nuove richieste`);
+
+  // La X aggiunta alla scheda degli aerei aveva ridefinito il pannello come
+  // `position: relative`: dentro al planetario entrava così nel flusso sotto
+  // al canvas e pareva non aprirsi. Proviamo la posizione calcolata, non solo
+  // la presenza della classe, per intercettare anche future regole tardive.
+  const schedaAereo = await pagina.evaluate(() => {
+    const pannello = document.getElementById('skymap-dettaglio');
+    pannello.classList.add('visibile');
+    const stile = getComputedStyle(pannello);
+    const risultato = {
+      posizione: stile.position,
+      visibile: stile.display !== 'none',
+      scorrevole: ['auto', 'scroll'].includes(stile.overflowY)
+    };
+    pannello.classList.remove('visibile');
+    return risultato;
+  });
+  ok('la scheda degli aerei si apre sopra al planetario',
+    schedaAereo.visibile && schedaAereo.posizione === 'absolute' && schedaAereo.scorrevole,
+    `${schedaAereo.posizione}, scorrimento ${schedaAereo.scorrevole ? 'attivo' : 'spento'}`);
+  const scorrimentoSchedaAereo = await pagina.evaluate(async () => {
+    const pannello = document.getElementById('skymap-dettaglio');
+    const corpo = document.getElementById('skymap-dettaglio-corpo');
+    const trovaOriginale = window.aereiTrova;
+    const htmlOriginale = window.aereiSchedaHtml;
+    const caricaOriginale = window.aereiCaricaFoto;
+    const selezioneOriginale = sky.selezione;
+    window.aereiTrova = () => ({ id: 'test-scroll', callsign: 'TEST', az: 90, alt: 30 });
+    window.aereiSchedaHtml = () => `<div style="height:900px">Scheda aereo di prova</div>`;
+    window.aereiCaricaFoto = () => {};
+    sky.selezione = { categoria: 'aereo', dati: { id: 'test-scroll' } };
+    pannello.classList.add('visibile');
+    skyAggiornaScheda();
+    pannello.scrollTop = 220;
+    skyAggiornaScheda();
+    await new Promise(risolvi => requestAnimationFrame(() => requestAnimationFrame(risolvi)));
+    const posizione = pannello.scrollTop;
+    window.aereiTrova = trovaOriginale;
+    window.aereiSchedaHtml = htmlOriginale;
+    window.aereiCaricaFoto = caricaOriginale;
+    sky.selezione = selezioneOriginale;
+    corpo.innerHTML = '';
+    pannello.classList.remove('visibile');
+    return posizione;
+  });
+  ok('aggiornare i dati non riporta in cima la scheda dell’aereo',
+    scorrimentoSchedaAereo === 220, `${scorrimentoSchedaAereo}px`);
+
+  // Lo scorrimento saltellava una volta al secondo, ed è la prova che dice
+  // perché: la scheda si riscriveva tutta, quindi la foto e l'itinerario —
+  // che arrivano dalla rete e vivono nel documento, non nei dati dell'aereo —
+  // sparivano a ogni aggiornamento. La scheda si accorciava di duecento pixel
+  // e si riallungava un istante dopo, e nel frattempo lo scorrimento veniva
+  // tosato dall'altezza calata: nessun ripristino poteva più rimetterlo dov'era.
+  // Qui si guarda la causa e non il sintomo — la foto resta e l'altezza non
+  // cala — perché il sintomo, misurato in un browser che non fa scorrere
+  // niente per davvero, si nasconde.
+  const schedaVivaAereo = await pagina.evaluate(async () => {
+    const pannello = document.getElementById('skymap-dettaglio');
+    const corpo = document.getElementById('skymap-dettaglio-corpo');
+    const trovaOriginale = window.aereiTrova;
+    const caricaOriginale = window.aereiCaricaFoto;
+    const selezioneOriginale = sky.selezione;
+    // Un aereo che si muove: la distanza cambia fra una lettura e l'altra,
+    // che è esattamente quello che fa girare skyAggiornaScheda ogni secondo.
+    let km = 12.4;
+    const aereo = () => ({ id: 'ab1234', callsign: 'AZ123', az: 90, alt: 30,
+      quotaM: 10600, velocitaMs: 250, direzione: 275, distanzaKm: km, stimato: false });
+    window.aereiTrova = () => aereo();
+    window.aereiCaricaFoto = () => {};
+    sky.selezione = { categoria: 'aereo', dati: { id: 'ab1234' } };
+    pannello.classList.add('visibile');
+    skyAggiornaScheda();
+    // La foto e l'itinerario arrivano dalla rete qualche istante dopo:
+    // li mettiamo a mano, come farebbero aereiCaricaFoto e aereiCaricaRotta.
+    const boxFoto = document.getElementById('aereo-foto-ab1234');
+    if (boxFoto) boxFoto.innerHTML = '<div class="aereo-foto" style="height:190px"></div>';
+    const boxRotta = document.getElementById('aereo-rotta-ab1234');
+    if (boxRotta) boxRotta.textContent = 'Partenza: Milano (LIN) · Arrivo: Roma (FCO)';
+    const altezzaPrima = corpo.scrollHeight;
+    km = 11.9;
+    skyAggiornaScheda();
+    await new Promise(risolvi => requestAnimationFrame(risolvi));
+    const esito = {
+      fotoRimasta: !!document.querySelector('#aereo-foto-ab1234 .aereo-foto'),
+      itinerarioRimasto: (document.getElementById('aereo-rotta-ab1234') || {}).textContent || '',
+      altezzaPrima, altezzaDopo: corpo.scrollHeight,
+      distanzaAggiornata: corpo.textContent.includes('11.9 km')
+    };
+    window.aereiTrova = trovaOriginale;
+    window.aereiCaricaFoto = caricaOriginale;
+    sky.selezione = selezioneOriginale;
+    corpo.innerHTML = '';
+    pannello.classList.remove('visibile');
+    return esito;
+  });
+  ok('aggiornare i dati non fa collassare la scheda dell’aereo',
+    schedaVivaAereo.fotoRimasta && schedaVivaAereo.itinerarioRimasto.includes('Roma') &&
+    schedaVivaAereo.altezzaDopo === schedaVivaAereo.altezzaPrima && schedaVivaAereo.distanzaAggiornata,
+    `foto ${schedaVivaAereo.fotoRimasta ? 'rimasta' : 'buttata'}, itinerario ` +
+    `${schedaVivaAereo.itinerarioRimasto.includes('Roma') ? 'rimasto' : 'buttato'}, ` +
+    `altezza ${schedaVivaAereo.altezzaPrima} → ${schedaVivaAereo.altezzaDopo} px, ` +
+    `distanza ${schedaVivaAereo.distanzaAggiornata ? 'aggiornata' : 'ferma'}`);
+
+  const extraAereo = await pagina.evaluate(() => schedaExtraHtml({ categoria: 'aereo', id: 'test' }));
+  ok('la scheda degli aerei non mostra il grafico di stanotte', extraAereo === '');
+
   // --- il ciclo di disegno regge? ---
   const fps = await pagina.evaluate(() => new Promise(risolvi => {
     let n = 0; const t0 = performance.now();
@@ -185,6 +389,28 @@ const server = http.createServer((req, res) => {
     requestAnimationFrame(conta);
   }));
   ok('il cielo gira fluido', fps > 30, `${fps.toFixed(0)} fotogrammi al secondo con tutto acceso`);
+
+  // Con le dimensioni fisiche un pianeta lontano puo' avere un raggio fra
+  // 0,25 e 0,5 px. Il bordo interno del dischetto non deve quindi chiedere
+  // a Canvas un raggio negativo e buttare via tutto il fotogramma.
+  const pianetaMinuscolo = await pagina.evaluate(() => {
+    const tela = document.createElement('canvas');
+    tela.width = tela.height = 20;
+    const ctx = tela.getContext('2d');
+    const corpo = {
+      id: 'Mercury', nome: 'Mercurio', colore: '#aaa9a7',
+      pos: { x: 1, y: 0, z: 0 }, schermo: { px: 10, py: 10 },
+      rDisegno: 0.263
+    };
+    try {
+      solDisegnaCorpo(ctx, corpo, solAssiVista());
+      return true;
+    } catch (e) {
+      return `${e.name}: ${e.message}`;
+    }
+  });
+  ok('un pianeta sotto mezzo pixel non interrompe il fotogramma',
+    pianetaMinuscolo === true, String(pianetaMinuscolo));
 
   // --- l'ombra lunare non cambia quando si ingrandisce ---
   // Questa prova usa il disegno vero di app.js su tele reali. Il difetto che
@@ -223,6 +449,65 @@ const server = http.createServer((req, res) => {
   ok('sfumature dell’eclissi invarianti ingrandendo la Luna',
     ombraLunare.scarto <= 4,
     `raggi ${ombraLunare.raggi.join(' → ')} px, scarto massimo ${ombraLunare.scarto}/255`);
+
+  // Il cono giallo della vista Terra-Luna deve arrivare allo stesso punto
+  // geografico della macchia sul globo anche quando i corpi sono ingranditi.
+  // Il 12 agosto 2026 rende lo scarto molto evidente ed e' quindi un buon
+  // caso di regressione per la posa grafica del cono.
+  const conoSolare = await pagina.evaluate(() => {
+    const quando = new Date('2026-08-12T17:45:00Z');
+    const g = solGeocentriche(quando);
+    const ombra = solOmbraLunareSuTerra(quando);
+    const salva = sol.misureVere;
+    sol.misureVere = false;
+    const asse = solVersore([
+      g.luna[0] - g.sole[0], g.luna[1] - g.sole[1], g.luna[2] - g.sole[2]
+    ]);
+    const posa = solConoLunaVisibile(g.luna, asse, g.dLuna * 1.25, ombra);
+    const arrivo = [
+      g.luna[0] + posa.asse[0] * posa.portata,
+      g.luna[1] + posa.asse[1] * posa.portata,
+      g.luna[2] + posa.asse[2] * posa.portata
+    ];
+    sol.misureVere = salva;
+    const a = solVersore(arrivo), b = solVersore(ombra.centro);
+    const erroreKm = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) * RAGGIO_TERRA_KM;
+    return { erroreKm, portata: posa.portata, ombra: !!ombra };
+  });
+  ok('il cono solare punta il centro dell’ombra sulla Terra ingrandita',
+    conoSolare.ombra && conoSolare.erroreKm < 0.01,
+    `scarto geografico ${conoSolare.erroreKm.toFixed(4)} km`);
+
+  // I riempimenti restano dietro ai globi, ma il contorno del cono lunare
+  // viene ripassato davanti alla Terra: deve mostrare dove l'ombra raggiunge
+  // la superficie. Registriamo l'ordine del disegno vero.
+  const occlusioniConi = await pagina.evaluate(() => {
+    const eventi = [];
+    const conoOriginale = solDisegnaCono;
+    const corpoOriginale = solDisegnaCorpo;
+    const istanteOriginale = sol.istante;
+    solDisegnaCono = (...args) => { eventi.push('cono'); return conoOriginale(...args); };
+    solDisegnaCorpo = (...args) => {
+      if (args[1] && (args[1].id === 'Earth' || args[1].id === 'Moon')) eventi.push(args[1].id);
+      return corpoOriginale(...args);
+    };
+    try {
+      sol.istante = new Date('2026-08-12T17:45:00Z').getTime();
+      solDisegnaVicino();
+    } finally {
+      sol.istante = istanteOriginale;
+      solDisegnaCono = conoOriginale;
+      solDisegnaCorpo = corpoOriginale;
+    }
+    const ultimoCono = eventi.lastIndexOf('cono');
+    const primaTerra = eventi.indexOf('Earth');
+    const primaLuna = eventi.indexOf('Moon');
+    return { eventi, ultimoCono, primaTerra, primaLuna };
+  });
+  ok('il cono lunare termina davanti alla Terra',
+    occlusioniConi.ultimoCono > occlusioniConi.primaTerra &&
+      occlusioniConi.ultimoCono > occlusioniConi.primaLuna,
+    `ordine ${occlusioniConi.eventi.join(' → ')}`);
 
   // --- le lune di Giove ---
   const giove = await pagina.evaluate(() => {
