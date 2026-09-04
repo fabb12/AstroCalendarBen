@@ -28236,14 +28236,21 @@ function solDisegnaCorpo(ctx, corpo, assi) {
   // scena da dalla parte del Sole un pianeta è quasi tutto notte, e un disco
   // scuro su fondo scuro non si legge come un mondo ma come un buco nel
   // disegno — con l'orlo resta una biglia in ombra, che è quello che è
-  ctx.save();
-  ctx.globalAlpha = 0.55;
-  ctx.strokeStyle = corpo.colore;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(0, 0, r - 0.5, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
+  // Con le dimensioni reali i pianeti lontani possono essere piu' piccoli
+  // di mezzo pixel. In quel caso il tratto, centrato sul bordo del disco,
+  // copre gia' tutto il corpo: arretrarlo di mezzo pixel produrrebbe inoltre
+  // un raggio negativo, che Canvas rifiuta con IndexSizeError e fermerebbe
+  // l'intero fotogramma del planetario.
+  if (r > 0.5) {
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = corpo.colore;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, r - 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   ctx.save();
   if (k < 0.985) {

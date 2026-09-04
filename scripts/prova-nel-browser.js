@@ -390,6 +390,28 @@ const server = http.createServer((req, res) => {
   }));
   ok('il cielo gira fluido', fps > 30, `${fps.toFixed(0)} fotogrammi al secondo con tutto acceso`);
 
+  // Con le dimensioni fisiche un pianeta lontano puo' avere un raggio fra
+  // 0,25 e 0,5 px. Il bordo interno del dischetto non deve quindi chiedere
+  // a Canvas un raggio negativo e buttare via tutto il fotogramma.
+  const pianetaMinuscolo = await pagina.evaluate(() => {
+    const tela = document.createElement('canvas');
+    tela.width = tela.height = 20;
+    const ctx = tela.getContext('2d');
+    const corpo = {
+      id: 'Mercury', nome: 'Mercurio', colore: '#aaa9a7',
+      pos: { x: 1, y: 0, z: 0 }, schermo: { px: 10, py: 10 },
+      rDisegno: 0.263
+    };
+    try {
+      solDisegnaCorpo(ctx, corpo, solAssiVista());
+      return true;
+    } catch (e) {
+      return `${e.name}: ${e.message}`;
+    }
+  });
+  ok('un pianeta sotto mezzo pixel non interrompe il fotogramma',
+    pianetaMinuscolo === true, String(pianetaMinuscolo));
+
   // --- l'ombra lunare non cambia quando si ingrandisce ---
   // Questa prova usa il disegno vero di app.js su tele reali. Il difetto che
   // ha motivato la correzione si vedeva soltanto avvicinandosi alla Luna:
