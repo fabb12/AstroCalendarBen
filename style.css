@@ -324,18 +324,16 @@ body .azione-testata.azione-viola {
   box-shadow: var(--alone-viola), var(--luce-interna);
 }
 
-/* Fino a 1440px restano i soli disegni: tre parole in fila mangerebbero la
-   riga e costringerebbero il nome dell'app a troncarsi, che è la cosa che
-   meno deve succedere. Il significato lo porta già l'icona (più, campana,
-   ingranaggio) e il nome resta in aria-label per chi usa un lettore. */
-@media (max-width: 1439px) {
-  .azione-testata {
-    width: clamp(38px, 3.2vw, 40px);
-    padding: 0;
-  }
-  .azione-testata .etichetta-lunga,
-  .azione-testata .etichetta-breve { display: none; }
+/* Le azioni restano compatte anche sul monitor. I nomi tradotti possono
+   essere molto piu lunghi dell'italiano e non devono mai spingere la
+   navigazione su una seconda riga; il significato resta nell'icona, nel
+   tooltip e nell'aria-label aggiunto da app.js. */
+.azione-testata {
+  width: clamp(38px, 3.2vw, 40px);
+  padding: 0;
 }
+.azione-testata .etichetta-lunga,
+.azione-testata .etichetta-breve { display: none; }
 
 /* Navigazione: un segmented control essenziale, in vetro */
 .nav-principale {
@@ -2607,7 +2605,7 @@ figure.ecl-schema-fig {
    ========================================================================== */
 .testata-app {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px clamp(12px, 1.6vw, 22px);
