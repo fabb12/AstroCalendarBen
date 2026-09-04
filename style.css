@@ -6240,6 +6240,7 @@ body.sol-immersivo { overflow: hidden; }
 }
 .sol-pannello-tempo.hidden { display: none; }
 .sol-tempo-testata { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sol-tempo-testata-solo-chiudi { justify-content: flex-end; }
 .sol-tempo-corpo { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 
 /* Da ospite la sezione non è più "il gruppo aperto sopra al cielo": il vetro,

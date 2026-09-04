@@ -29679,35 +29679,32 @@ function solDisegnaRaggiVicino(ctx, versoSole, portata) {
 
 // Il Sole del banco Terra-Luna non puo' stare alla sua distanza reale: a
 // centocinquanta milioni di chilometri sarebbe oltre trecento orbite lunari
-// fuori dalla tela. Il suo *raggio*, invece, puo' e deve usare lo stesso
-// metro di Terra, Luna e righello: 696.350 km. Il centro viene appoggiato al
-// bordo nella sua direzione vera. Cosi' il disco e' gia' enorme come deve
-// essere e, avvicinandosi, se ne vede soltanto una porzione sempre piu'
-// piccola invece di un bollino che resta uguale.
+// fuori dalla tela. Il centro sta quindi, nella direzione vera, poco oltre
+// l'orbita lunare. A differenza del vecchio Sole inchiodato al bordo della
+// tela, e' un punto della scena: zoom, trascinamento e rotazione lo muovono
+// con la stessa proiezione di Terra, Luna e coni.
 //
-// La posa dipende solo dalla tela e dalla direzione, mai dallo zoom o dal
-// pan. Questo dettaglio e' intenzionale: mentre si aziona lo zoom il Sole
-// cresce attorno allo stesso centro e non scivola lungo il bordo.
-function solDisegnaSoleVicino(ctx, versoSole) {
+// A riposo il disco e' volutamente didattico, circa dodici Terre di diametro:
+// abbastanza grande da riconoscere da dove partono i raggi, senza coprire il
+// banco delle ombre. Se si scelgono «Dimensioni reali», invece, il suo raggio
+// e' davvero 696.350 km nello stesso metro degli altri corpi.
+const SOL_VIC_SOLE_DISTANZA_ORBITE = 1.18;
+const SOL_VIC_SOLE_RAGGI_TERRA = 6;
+function solDisegnaSoleVicino(ctx, versoSole, distanzaLuna) {
   const dir = solVersoRaggi(versoSole);
   if (!dir) return;
-  const r = (SOL_SOLE_KM / 2) * solVicPx();
+  const raggioKm = sol.misureVere
+    ? SOL_SOLE_KM / 2
+    : RAGGIO_TERRA_KM * SOL_VIC_SOLE_RAGGI_TERRA;
+  const r = raggioKm * solVicPx();
   if (!(r > 0)) return;
-  // Il centro, non il lembo, e' ancorato al bordo. Usare `r` per calcolare
-  // questa posizione farebbe traslare il Sole a ogni scatto dello zoom.
-  const origine = { px: sol.L / 2, py: sol.H / 2 };
-  const candidati = [];
-  if (Math.abs(dir.ux) > 1e-6) {
-    candidati.push((0 - origine.px) / dir.ux);
-    candidati.push((sol.L - origine.px) / dir.ux);
-  }
-  if (Math.abs(dir.uy) > 1e-6) {
-    candidati.push((0 - origine.py) / dir.uy);
-    candidati.push((sol.H - origine.py) / dir.uy);
-  }
-  const t = candidati.filter(v => v > 0).sort((a, b) => a - b)[0];
-  if (!isFinite(t)) return;
-  const x = origine.px + dir.ux * t, y = origine.py + dir.uy * t;
+  const distanza = (distanzaLuna || 384400) * SOL_VIC_SOLE_DISTANZA_ORBITE;
+  const centro = solVicPunto([
+    versoSole[0] * distanza,
+    versoSole[1] * distanza,
+    versoSole[2] * distanza
+  ]);
+  const x = centro.px, y = centro.py;
 
   ctx.save();
   const alone = ctx.createRadialGradient(x, y, r * 0.18, x, y, r * 2.7);
@@ -29758,16 +29755,15 @@ function solDisegnaSoleVicino(ctx, versoSole) {
   if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
   ctx.font = `700 11px ${SOL_CARATTERE}`;
   ctx.textAlign = 'center';
-  // Il nome resta leggibile anche quando il bordo del disco e' ormai molto
-  // oltre la tela. Non segue il raggio: seguendolo sparirebbe allo zoom.
-  const etichettaX = Math.max(58, Math.min(sol.L - 58, x - dir.ux * 18));
-  const etichettaY = Math.max(18, Math.min(sol.H - 18, y - dir.uy * 18));
+  const etichettaX = Math.max(80, Math.min(sol.L - 80, x - dir.ux * (r + 16)));
+  const etichettaY = Math.max(18, Math.min(sol.H - 18, y - dir.uy * (r + 16)));
   ctx.textBaseline = 'middle';
   ctx.lineWidth = 4;
   ctx.strokeStyle = 'rgba(6, 10, 20, 0.9)';
-  ctx.strokeText('SOLE · scala reale', etichettaX, etichettaY);
+  const etichetta = sol.misureVere ? 'SOLE · dimensione reale' : 'SOLE · dimensione didattica';
+  ctx.strokeText(etichetta, etichettaX, etichettaY);
   ctx.fillStyle = '#fef3c7';
-  ctx.fillText('SOLE · scala reale', etichettaX, etichettaY);
+  ctx.fillText(etichetta, etichettaX, etichettaY);
   ctx.restore();
 }
 
@@ -29811,7 +29807,7 @@ function solDisegnaVicino() {
   // restare in mezzo alla tela, e la Terra le gira attorno (vedi `solScegli`)
   solAggiornaPivot();
 
-  solDisegnaSoleVicino(ctx, g.versoSole);
+  solDisegnaSoleVicino(ctx, g.versoSole, g.dLuna);
   solDisegnaRaggiVicino(ctx, g.versoSole, g.dLuna);
   solDisegnaPianoVicino(ctx, g.dLuna);
 
@@ -30466,7 +30462,7 @@ function solDisegna() {
   const riga = sol.H - 10 - (sol.altaBarra || 0);
   const alto = sol.elev > 70 ? 'a picco sul piano' : (sol.elev < 8 ? 'quasi dentro al piano' : `${Math.round(sol.elev)}° sopra il piano`);
   const largo = solUaAlBordo(sol.zoom);
-  const misure = sol.misureVere ? 'pianeti in scala, Sole no' : 'pianeti ingranditi';
+  const misure = sol.misureVere ? 'corpi in scala' : 'corpi ingranditi';
   // Avvicinandosi alla Terra il bordo scende sotto il centesimo di unità
   // astronomica, e la scritta diceva «0,00 UA al bordo», cioè niente. Sotto
   // quella soglia il metro giusto sono i chilometri, che è anche il modo in

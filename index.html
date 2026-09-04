@@ -1909,8 +1909,9 @@
                app.js). Stesso aspetto, stessi tasti, stesso istante. -->
           <div id="sol-tempo-pannello" class="sol-pannello-tempo hidden" role="dialog"
                aria-label="Quando" aria-modal="false">
-            <div class="sol-tempo-testata">
-              <span class="sol-etichetta">Quando</span>
+            <!-- Il pannello ospitato contiene gia' la propria testata
+                 "Quando": ripeterla qui produceva due titoli identici. -->
+            <div class="sol-tempo-testata sol-tempo-testata-solo-chiudi">
               <button id="sol-tempo-chiudi" type="button" class="tasto-chiudi-dettaglio"
                 title="Chiudi" aria-label="Chiudi i comandi del tempo">✕</button>
             </div>
