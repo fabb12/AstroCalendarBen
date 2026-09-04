@@ -1089,6 +1089,7 @@
   const SEGNI = {
     play:   '<path d="M8 5.4 18.4 12 8 18.6z" fill="currentColor" stroke="none"/>',
     pausa:  '<path d="M9 5.6v12.8M15 5.6v12.8" stroke-width="2.4"/>',
+    stop:   '<rect x="7.2" y="7.2" width="9.6" height="9.6" rx="0.8" fill="currentColor" stroke="none"/>',
     inizio: '<path d="M7 5.6v12.8"/><path d="M18.4 5.6 9.2 12l9.2 6.4z" fill="currentColor" stroke="none"/>',
     meno:   '<path d="M5.6 12h12.8"/>',
     piu:    '<path d="M12 5.6v12.8M5.6 12h12.8"/>',
@@ -1109,6 +1110,7 @@
       <div class="did-barra">
         <button id="${p}-inizio" type="button" class="did-tondo" title="Torna all'inizio" aria-label="Torna all'inizio">${segno('inizio')}</button>
         <button id="${p}-play" type="button" class="did-tondo did-play" title="Avvia o ferma l'animazione" aria-pressed="false" aria-label="Avvia">${segno('play')}</button>
+        <button id="${p}-stop" type="button" class="did-tondo did-stop" title="Ferma il tempo" aria-label="Ferma l'animazione" disabled>${segno('stop')}</button>
         <input id="${p}-slitta" class="did-slitta" type="range" min="${opz.min || 0}" max="${opz.max || 1000}" step="${opz.passo || 1}" value="${opz.valore || 0}"
           aria-label="${opz.etichettaSlitta || 'Scorri il tempo'}">
         <span id="${p}-lettura" class="did-lettura">—</span>
@@ -1140,6 +1142,8 @@
     b.setAttribute('aria-pressed', condizione ? 'true' : 'false');
     b.setAttribute('aria-label', condizione ? 'Ferma' : 'Avvia');
     b.classList.toggle('in-marcia', !!condizione);
+    const stop = $(p + '-stop');
+    if (stop) stop.disabled = !condizione;
   }
 
   function collegaBarra(p, oggetto, opz = {}) {
@@ -1148,6 +1152,12 @@
       oggetto.marcia = !oggetto.marcia;
       alterna(p, oggetto.marcia);
       if (opz.suMarcia) opz.suMarcia(oggetto.marcia);
+    });
+    const stop = $(p + '-stop');
+    if (stop) stop.addEventListener('click', () => {
+      oggetto.marcia = false;
+      alterna(p, false);
+      if (opz.suMarcia) opz.suMarcia(false);
     });
     const inizio = $(p + '-inizio');
     if (inizio) inizio.addEventListener('click', () => {

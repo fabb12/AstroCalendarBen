@@ -638,6 +638,8 @@
                     <button id="skymap-play-avanti" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
                       title="Fai scorrere il cielo in avanti (ripremi per fermarlo)"
                       aria-label="Playback in avanti">▶▶</button>
+                    <button id="skymap-play-stop" type="button" class="tasto-cielo tasto-stop" disabled
+                      title="Ferma il tempo" aria-label="Ferma il playback">■</button>
                     <span class="stacco-comandi" aria-hidden="true"></span>
                     <button id="skymap-vel-meno" type="button" class="tasto-cielo tasto-passo"
                       title="Rallenta il playback" aria-label="Rallenta il playback">−</button>
@@ -1041,6 +1043,8 @@
           <button id="skymap-tempo-play" type="button" class="tasto-barra-tempo tasto-play-barra"
             aria-pressed="false" title="Fai camminare il cielo da solo"
             aria-label="Avvia il playback">▶</button>
+          <button id="skymap-tempo-stop" type="button" class="tasto-barra-tempo tasto-stop-barra"
+            title="Ferma il tempo" aria-label="Ferma il playback" disabled>■</button>
         </div>
 
         <!-- I comandi appoggiati sull'angolo della mappa: quelli che si usano
@@ -1414,6 +1418,8 @@
               <button id="eclissi-play" type="button" class="ecl-btn-play" title="Avvia il filmato dell'ombra">
                 <span class="ecl-icona-play"></span><span class="ecl-play-testo">Riproduci</span>
               </button>
+              <button id="eclissi-stop" type="button" class="ecl-btn-stop" title="Ferma il filmato dell'ombra"
+                      aria-label="Ferma il filmato" disabled><span aria-hidden="true">■</span><span>Stop</span></button>
               <div class="ecl-linea-tempo">
                 <div class="ecl-tempo-pista">
                   <input id="eclissi-tempo-slider" type="range" min="-180" max="180" value="0" step="0.5"
@@ -1675,6 +1681,7 @@
         <!-- Comandi: riproduzione, linea del tempo, velocità -->
         <div class="flex items-center gap-3">
           <button id="sim-btn-play" class="px-4 py-2 rounded-full font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow" title="Avvia o metti in pausa">Pausa</button>
+          <button id="sim-btn-stop" class="sim-btn-stop px-4 py-2 rounded-full font-semibold bg-slate-700 hover:bg-slate-600 text-white" title="Ferma il tempo" aria-label="Ferma la simulazione"><span aria-hidden="true">■</span><span class="sim-stop-testo">Stop</span></button>
           <input id="sim-slider" type="range" min="0" max="1000" value="0" step="1"
             class="flex-1 accent-blue-500 cursor-pointer" title="Scorri il tempo">
           <button id="sim-btn-velocita" class="px-3 py-2 rounded-full font-semibold bg-slate-700 hover:bg-slate-600 text-white w-16" title="Velocità della simulazione">1×</button>
@@ -1964,6 +1971,8 @@
               title="Avanti di un passo" aria-label="Avanti di un passo">+</button>
             <button id="sol-play" type="button" class="tasto-barra-tempo tasto-play-barra"
               aria-pressed="false" title="Fai camminare il tempo" aria-label="Avvia">▶</button>
+            <button id="sol-stop" type="button" class="tasto-barra-tempo tasto-stop-barra"
+              title="Ferma il tempo" aria-label="Ferma il tempo" disabled>■</button>
             <!-- La velocità con cui il tempo cammina è quella del planetario:
                  è lo stesso orologio, e questi due tasti muovono lo stesso
                  moltiplicatore che si trova nel pannello Tempo sotto al cielo. -->

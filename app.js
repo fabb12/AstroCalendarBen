@@ -4395,13 +4395,16 @@ function _eclissiAggiornaTutto() {
 
 function _eclFilmatoAggiornaPulsante() {
   const btn = document.getElementById('eclissi-play');
-  if (!btn) return;
-  btn.classList.toggle('in-corso', _eclFilmato.attivo);
-  btn.setAttribute('aria-label', _eclFilmato.attivo ? 'Metti in pausa' : 'Avvia il filmato');
-  btn.title = _eclFilmato.attivo ? 'Metti in pausa' : 'Avvia il filmato dell\'ombra';
-  btn.innerHTML = _eclFilmato.attivo
-    ? '<span class="ecl-icona-pausa"></span><span class="ecl-play-testo">Pausa</span>'
-    : '<span class="ecl-icona-play"></span><span class="ecl-play-testo">Riproduci</span>';
+  if (btn) {
+    btn.classList.toggle('in-corso', _eclFilmato.attivo);
+    btn.setAttribute('aria-label', _eclFilmato.attivo ? 'Metti in pausa' : 'Avvia il filmato');
+    btn.title = _eclFilmato.attivo ? 'Metti in pausa' : 'Avvia il filmato dell\'ombra';
+    btn.innerHTML = _eclFilmato.attivo
+      ? '<span class="ecl-icona-pausa"></span><span class="ecl-play-testo">Pausa</span>'
+      : '<span class="ecl-icona-play"></span><span class="ecl-play-testo">Riproduci</span>';
+  }
+  const stop = document.getElementById('eclissi-stop');
+  if (stop) stop.disabled = !_eclFilmato.attivo;
 }
 
 function _eclFilmatoAvvia() {
@@ -5429,6 +5432,8 @@ function inizializzaMappaEclissiUI() {
 
   const play = document.getElementById('eclissi-play');
   if (play) play.addEventListener('click', _eclFilmatoAlterna);
+  const stop = document.getElementById('eclissi-stop');
+  if (stop) stop.addEventListener('click', _eclFilmatoFerma);
 
   const comandi = [
     ['eclissi-tempo-avvio', () => _eclVaiA(_eclFinestra.inizio)],
@@ -30964,6 +30969,8 @@ function solAggiornaBarra(quando) {
       ? `Ferma il tempo (sta camminando a ${v.nome}, la stessa velocità del planetario)`
       : `Fai camminare il tempo ${verso > 0 ? 'in avanti' : 'all’indietro'}, a ${v.nome}`;
   }
+  const stop = document.getElementById('sol-stop');
+  if (stop) stop.disabled = !solInMarcia();
   // La velocità, scritta accanto al play: è quella del planetario, e i due
   // tasti la cambiano per tutt'e due le viste insieme
   const vel = document.getElementById('sol-vel-valore');
@@ -32174,6 +32181,8 @@ function inizializzaSistemaSolare() {
   // La barra del tempo
   const play = document.getElementById('sol-play');
   if (play) play.addEventListener('click', solAlternaMarcia);
+  const stop = document.getElementById('sol-stop');
+  if (stop) stop.addEventListener('click', () => { solFermaTempo(); solAggiornaBarra(); });
   const adesso = document.getElementById('sol-tempo-adesso');
   if (adesso) adesso.addEventListener('click', solTornaAdesso);
   // La lettura è la porta del pannello del tempo, come nel planetario (7.5-ter)
@@ -33843,6 +33852,8 @@ function simCiclo(ts) {
 function simAggiornaPulsantePlay() {
   const btn = document.getElementById('sim-btn-play');
   if (btn) btn.textContent = sim.riproduce ? 'Pausa' : 'Riproduci';
+  const stop = document.getElementById('sim-btn-stop');
+  if (stop) stop.disabled = !sim.riproduce;
 }
 
 // Apre la simulazione dell'evento indicato
@@ -33944,6 +33955,11 @@ function inizializzaSimulazione() {
   const btnPlay = document.getElementById('sim-btn-play');
   if (btnPlay) btnPlay.addEventListener('click', () => {
     sim.riproduce = !sim.riproduce;
+    simAggiornaPulsantePlay();
+  });
+  const btnStop = document.getElementById('sim-btn-stop');
+  if (btnStop) btnStop.addEventListener('click', () => {
+    sim.riproduce = false;
     simAggiornaPulsantePlay();
   });
 
@@ -37474,6 +37490,10 @@ function skyCambiaVelocitaPlayback(passo) {
 function skyAggiornaComandiPlayback() {
   skyTasto('skymap-play-indietro', sky.playbackVerso < 0);
   skyTasto('skymap-play-avanti', sky.playbackVerso > 0);
+  ['skymap-play-stop', 'skymap-tempo-stop'].forEach(id => {
+    const stop = document.getElementById(id);
+    if (stop) stop.disabled = !sky.playbackVerso;
+  });
 
   const v = skyVelocitaPlayback();
   const lettura = document.getElementById('skymap-vel-valore');
@@ -37624,6 +37644,7 @@ function inizializzaSkymapExtra() {
     if (sky.playbackVerso) skyFermaPlayback();
     else skyAvviaPlayback(sky.playbackUltimoVerso || 1);
   });
+  collega('skymap-tempo-stop', skyFermaPlayback);
   // Il passo scelto vale per i due tasti e per la slitta insieme — e vale
   // anche per il Sistema Solare 3D, che legge lo stesso gradino (§7.7)
   skyScriviChipPasso(document.querySelector('#skymap-passi .segmenti-cielo'));
@@ -37633,6 +37654,7 @@ function inizializzaSkymapExtra() {
   // --- Il playback: verso e moltiplicatore di velocità ---
   collega('skymap-play-indietro', () => skyAvviaPlayback(-1));
   collega('skymap-play-avanti', () => skyAvviaPlayback(1));
+  collega('skymap-play-stop', skyFermaPlayback);
   collega('skymap-vel-meno', () => skyCambiaVelocitaPlayback(-1));
   collega('skymap-vel-piu', () => skyCambiaVelocitaPlayback(1));
 

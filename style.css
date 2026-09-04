@@ -1471,6 +1471,22 @@ body .ecl-btn-play.in-corso {
   border-color: rgba(245, 181, 68, 0.5);
   box-shadow: 0 6px 24px -10px rgba(245, 158, 11, 0.7);
 }
+body .ecl-btn-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 14px;
+  border: 1px solid var(--bordo);
+  border-radius: 999px;
+  background: var(--superficie-alta);
+  color: var(--testo);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+body .ecl-btn-stop:disabled,
+body .sim-btn-stop:disabled { opacity: 0.4; cursor: default; }
 .ecl-icona-play {
   width: 0; height: 0;
   border-left: 11px solid currentColor;
@@ -2438,6 +2454,8 @@ figure.ecl-schema-fig {
   .ecl-lettore-riga { flex-wrap: wrap; gap: 10px; }
   body .ecl-btn-play { padding: 9px 14px; }
   .ecl-btn-play .ecl-play-testo { display: none; }
+  body .ecl-btn-stop { padding: 9px 12px; }
+  .ecl-btn-stop span:last-child, .sim-stop-testo { display: none; }
   .ecl-linea-tempo { flex: 1 1 120px; }
   .ecl-gruppo-tasti { width: 100%; justify-content: space-between; gap: 4px; }
   body .ecl-tasto { padding: 6px 9px; font-size: 0.72rem; }
@@ -4354,8 +4372,8 @@ body .gruppo-astri.ricerca-attiva .chip-astro {
 /* Il playback: i due versi restano compatti a sinistra e la velocità si
    appoggia al bordo destro (è il margine automatico dello stacco a spingerla
    là). Senza, i due tasti del verso si prendevano tutto lo spazio avanzato e
-   su una riga larga diventavano due lastre. Lo stop è già nel play della
-   barra in fondo alla mappa, e qui non si ripete. */
+   su una riga larga diventavano due lastre. Lo stop resta sempre distinto
+   dai due versi, così non serve ricordare quale play è in marcia. */
 .riga-playback {
   flex-wrap: nowrap;
   gap: 5px;
@@ -4549,6 +4567,12 @@ body input.casella-data:hover { border: 0; }
 }
 .tasto-barra-tempo:hover { border-color: var(--bordo-forte); background: rgba(40, 52, 84, 0.9); }
 .tasto-barra-tempo:active { transform: translateY(1px); }
+.tasto-barra-tempo:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.tasto-barra-tempo:disabled:hover { border-color: var(--bordo); background: var(--superficie-alta); }
+.tasto-stop-barra { font-size: 0.72rem; }
 
 /* Il ritorno ad adesso c'è solo quando c'è un altrove da cui tornare: in
    tempo reale sarebbe un tasto che non fa niente, e occuperebbe lo spazio
@@ -4800,7 +4824,7 @@ body input.casella-data:hover { border: 0; }
 
   /* --- La barra del tempo su uno schermo stretto ---
      Il conto, su un telefono da 360 pixel: 16 di margini, 16 di imbottitura,
-     5 spazi da 5, e in fila 36 (⟲) + 36 (−) + 36 (+) + 36 (play) più la
+     6 spazi da 5, e in fila 36 (⟲) + 36 (−) + 36 (+) + 36 (play) + 36 (stop) più la
      lettura. Alla slitta restano una novantina di pixel quando il ⟲ c'è, e
      centoventicinque quando l'orologio è in tempo reale e il ⟲ non c'è. Con
      la finestra del passo dietro (dieci minuti di slitta, non un mese) sono
@@ -4818,7 +4842,7 @@ body input.casella-data:hover { border: 0; }
    lettura si mangiano tutta la riga, e alla slitta restavano cinquanta pixel.
    Cinquanta pixel di binario vogliono dire che un polpastrello, largo undici,
    copre un quinto della finestra: si trascina alla cieca e si sbaglia sempre.
-   Quindi la slitta si prende una riga tutta sua, larga quanto la mappa —
+     Quindi la slitta si prende una riga tutta sua, larga quanto la mappa —
    duecentocinquanta pixel invece di cinquanta — e la barra diventa alta due
    righe. Trenta pixel di cielo in meno, in cambio di un comando che si usa
    davvero: sulla mappa la slitta è il modo in cui ci si muove nel tempo, i
@@ -8522,6 +8546,8 @@ body button.did-tondo {
               background-color var(--transizione);
 }
 body button.did-tondo:hover { color: var(--testo); border-color: var(--bordo-forte); }
+body button.did-tondo:disabled { opacity: 0.35; cursor: default; }
+body button.did-tondo:disabled:hover { color: var(--testo-2); border-color: var(--bordo); }
 body button.did-play {
   background: var(--blu);
   border-color: transparent;
