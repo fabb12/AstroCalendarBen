@@ -9291,7 +9291,17 @@ body button.did-ponte:active { transform: translateY(1px); }
    i dati**. Da qui la riga di stato con la sua tinta, la spia accanto al
    tasto e la leggenda dei colori, che sono i tre modi (corto, medio, lungo)
    di raccontare la stessa cosa. */
-.gruppo-aerei { max-height: min(62vh, 470px); overflow-y: auto; }
+/* Questo pannello e' un vero elenco, non una tavolozza di quattro comandi:
+   quando viene aperto usa tutta l'altezza rimasta fra la barra superiore e
+   l'orologio. A scorrere e' soltanto l'elenco, cosi' ricerca e stato non si
+   perdono mentre si cerca un volo in mezzo al traffico. */
+.gruppo-comandi.gruppo-aerei.gruppo-attivo {
+  display:flex;
+  flex:1 1 0;
+  flex-direction:column;
+  max-height:none;
+  overflow:hidden;
+}
 .aerei-testata { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding-right:34px; }
 .aerei-titolo { display:flex; align-items:baseline; gap:9px; flex-wrap:wrap; }
 .aerei-titolo strong { color:var(--testo); letter-spacing:.01em; }
@@ -9383,17 +9393,53 @@ body button.did-ponte:active { transform: translateY(1px); }
   box-shadow: 0 0 0 1px rgba(2, 6, 23, .55);
 }
 
-.aerei-elenco { display:grid; gap:7px; margin-top:9px; }
+.aerei-cerca { margin-top:9px; }
+.aerei-cerca label {
+  display:block;
+  margin-bottom:4px;
+  color:var(--testo-2);
+  font-size:.72rem;
+  font-weight:650;
+}
+.aerei-cerca input {
+  width:100%;
+  min-height:38px;
+  padding:7px 10px;
+  border:1px solid var(--bordo-forte);
+  border-radius:8px;
+  background:rgba(2, 6, 23, .78);
+  color:var(--testo);
+  font-size:.78rem;
+}
+.aerei-cerca input:focus { outline:2px solid rgba(56,189,248,.62); outline-offset:1px; }
+.aerei-cerca input::placeholder { color:var(--testo-3); }
+.aerei-elenco {
+  display:grid;
+  flex:1 1 auto;
+  min-height:0;
+  align-content:start;
+  gap:7px;
+  margin-top:9px;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
 /* La riga dell'elenco porta la stessa tinta del triangolo in cielo: quello
    che si tocca sulla mappa si ritrova qui senza cercarlo per nome. Il colore
    sta sul bordo e sul pallino, non sul fondo — quattro rettangoli pieni di
    rosso, arancio, giallo e azzurro sarebbero una cartella colori, non un
    elenco. */
 .aereo-riga {
+  display:block;
+  width:100%;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
   border:1px solid var(--bordo);
   border-left:3px solid var(--fascia, #fb923c);
   border-radius:9px; padding:6px 9px; background:rgba(8,25,45,.92);
 }
+.aereo-riga:hover { border-color:var(--fascia, #fb923c); background:rgba(12,35,60,.96); }
+.aereo-riga:focus-visible { outline:2px solid var(--fascia, #fb923c); outline-offset:2px; }
 .aereo-riga-testa { display:flex; align-items:center; gap:7px; }
 .aereo-riga strong { color:#f8fafc; letter-spacing:.04em; }
 .aereo-distanza {
