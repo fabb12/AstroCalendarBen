@@ -1022,7 +1022,8 @@
                altrove: quando il cielo è quello vero non c'è niente da tornare);
              · i due tasti del passo, per lo scatto preciso;
              · la slitta, per il trascinamento;
-             · il play, che parte nel verso scelto l'ultima volta.
+             · il play, che diventa stop mentre il tempo cammina;
+             · la pausa, per congelare l'istante mostrato.
              Il resto — la data scritta a mano, la misura del passo, il verso e
              la velocità del playback — resta nel pannello "Tempo", che si apre
              toccando la lettura stessa. -->
@@ -1043,8 +1044,9 @@
           <button id="skymap-tempo-play" type="button" class="tasto-barra-tempo tasto-play-barra"
             aria-pressed="false" title="Fai camminare il cielo da solo"
             aria-label="Avvia il playback">▶</button>
-          <button id="skymap-tempo-stop" type="button" class="tasto-barra-tempo tasto-stop-barra"
-            title="Ferma il tempo" aria-label="Ferma il playback" disabled>■</button>
+          <button id="skymap-tempo-pausa" type="button" class="tasto-barra-tempo tasto-pausa-barra"
+            aria-pressed="false" title="Congela il tempo sull'istante mostrato"
+            aria-label="Metti in pausa il tempo"><span aria-hidden="true">⏸</span></button>
         </div>
 
         <!-- I comandi appoggiati sull'angolo della mappa: quelli che si usano
@@ -1954,7 +1956,7 @@
 
           <!-- La stessa barra del tempo del planetario, stessi tasti e stesso
                ordine: ⟲ per tornare ad adesso, l'istante, un passo indietro,
-               la slitta, un passo avanti, il play. E come là, la lettura è
+               la slitta, un passo avanti, il play/stop e la pausa. E come là, la lettura è
                anche la porta del pannello: dove ci si accorge che l'ora è
                sbagliata è dove la si vuole aggiustare. -->
           <div id="sol-tempo" class="barra-tempo sol-barra-tempo" role="group" aria-label="Il tempo">
@@ -1971,8 +1973,9 @@
               title="Avanti di un passo" aria-label="Avanti di un passo">+</button>
             <button id="sol-play" type="button" class="tasto-barra-tempo tasto-play-barra"
               aria-pressed="false" title="Fai camminare il tempo" aria-label="Avvia">▶</button>
-            <button id="sol-stop" type="button" class="tasto-barra-tempo tasto-stop-barra"
-              title="Ferma il tempo" aria-label="Ferma il tempo" disabled>■</button>
+            <button id="sol-pausa" type="button" class="tasto-barra-tempo tasto-pausa-barra"
+              aria-pressed="false" title="Congela il tempo sull'istante mostrato"
+              aria-label="Metti in pausa il tempo"><span aria-hidden="true">⏸</span></button>
             <!-- La velocità con cui il tempo cammina è quella del planetario:
                  è lo stesso orologio, e questi due tasti muovono lo stesso
                  moltiplicatore che si trova nel pannello Tempo sotto al cielo. -->
