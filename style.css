@@ -4780,16 +4780,20 @@ body input.casella-data:hover { border: 0; }
   .riga-playback .tasto-cielo.tasto-passo { padding: 8px 9px; }
   .lettura-velocita { min-width: 54px; font-size: 0.74rem; }
   .stacco-comandi { margin: 0 1px; }
-  /* Sette gradini in trecentoventi pixel: la pillola si stringe fino al
+  /* Otto gradini in trecentoventi pixel: la pillola si stringe fino al
      filo (un pixel di stacco, due di rientro) e il corpo scende, se no
      "1 mese" e "1 anno" escono dal loro segmento e si toccano — e il
      segmento acceso, più largo del testo che contiene, diventa un pallino */
   .segmenti-cielo { gap: 1px; padding: 2px; }
   .tasto-segmento { min-height: 34px; padding: 7px 2px; font-size: 0.68rem; letter-spacing: -0.01em; }
+  /* Il primo gradino ha due parole: su una sola riga invadeva il vicino
+     "10 s". Le impiliamo dentro al suo segmento, senza abbreviare proprio
+     l'impostazione predefinita che deve dire chiaramente "Tempo reale". */
+  #skymap-passi [data-passo-tempo="1"] { white-space: normal; line-height: 0.95; }
   .riga-comandi { gap: 6px; }
 
   /* Sotto i trecentottanta pixel (i telefoni piccoli, e ogni telefono
-     girato con la tastiera aperta) nemmeno così i sette gradini ci stanno:
+     girato con la tastiera aperta) nemmeno così gli otto gradini ci stanno:
      il pannello si stringe di un paio di pixel per lato e il corpo scende
      ancora. È l'ultima riga di difesa, e vale solo lì. */
   @media (max-width: 380px) {
