@@ -6811,6 +6811,10 @@ function mostraVista(nome, opzioni = {}) {
     // chiedere esplicitamente di conservare l'orologio.
     if (vistaPrima !== 'cielo' && !opzioni.conservaTempo) {
       skyFermaPlayback();
+      // Anche il passo fa parte dello stato temporale: tornando al
+      // planetario dopo una simulazione accelerata, il cielo deve ripartire
+      // con la velocita' naturale e il comando deve indicare "Tempo reale".
+      skyImpostaPassoTempo(1);
       sky.ancoraTempoSec = 0;
       skyImpostaOffsetTempo(0, { reale: true });
     }
