@@ -731,7 +731,8 @@ window.addEventListener('DOMContentLoaded', () => {
   // Le schede di Visualizzazione sono navigazione HTML, non dipendono dal
   // canvas: rendiamole operative prima degli inizializzatori del planetario.
   // In questo modo un errore (o un browser senza una delle API usate dal
-  // cielo) non lascia Schermo/Oggetti/Cielo/Paesaggio come tasti inerti.
+  // cielo) non lascia Direzione/Schermo/Oggetti/Cielo/Paesaggio come tasti
+  // inerti.
   skyInizializzaSchedeVista();
   registraSW();
   inizializzaDispositivo();
@@ -25615,10 +25616,15 @@ function inizializzaSkymap() {
   collega('skymap-btn-acque', () => {
     if (typeof acqueAlterna === 'function') acqueAlterna();
   });
-  // L'aurora: acceso, l'ovale c'è sempre — solo che da quasi tutta Europa
-  // sta sotto l'orizzonte e non si disegna niente. Il tasto serve a
-  // spegnerla quando si sta simulando una tempesta e si vuole rivedere il
-  // cielo di prima.
+  // L'aurora nasce spenta, e questo tasto fa due cose in un gesto solo:
+  // accende l'ovale e apre i suoi comandi — la slitta della tempesta e la riga
+  // che dice cosa si vedrebbe da qui. Da queste latitudini l'ovale acceso non
+  // disegna quasi mai niente (sta sotto l'orizzonte), quindi tenere quei
+  // comandi sempre a schermo voleva dire regolare una cosa invisibile: adesso
+  // si aprono con lei e si richiudono spegnendola. Il pannello resta aperto,
+  // che è il contrario dei comandi della scheda «Schermo»: lì si cambia come
+  // si vede il cielo e il pannello è d'intralcio, qui si comincia a regolare
+  // una tempesta e la slitta è appena comparsa.
   collega('skymap-btn-aurora', () => {
     if (typeof aurAlterna === 'function') aurAlterna();
   });
@@ -25699,18 +25705,30 @@ function inizializzaSkymap() {
     else aggiornaTastiPosizione();
   });
 
+  // I quattro comandi della scheda «Schermo» — pieno schermo, notte, hover,
+  // fotocamera — chiudono il pannello appena li si tocca, e non è una comodità
+  // in più: tutti e quattro cambiano *come si vede il cielo*, e il pannello
+  // copre metà del cielo. Restando aperto nascondeva proprio la cosa che il
+  // tocco era servito a cambiare — il filtro rosso, l'immagine della
+  // fotocamera, il riquadro allargato — e per vederla bisognava richiuderlo a
+  // mano dalla sua linguetta. Sono la stessa famiglia di «Centra» e «Campo
+  // 55°», che il pannello lo chiudevano da sempre.
   collega('skymap-btn-notte', () => {
     const cont = document.getElementById('skymap-contenitore');
     if (!cont) return;
     const attiva = cont.classList.toggle('modalita-notte');
     skyTasto('skymap-btn-notte', attiva, attiva ? 'Colori normali' : 'Modalità notte');
+    skyMostraGruppo('');
   });
   collega('skymap-btn-hover', () => {
+    // A tasto spento (hover non disponibile) non si chiude niente: non è
+    // successo niente, e chiudere il pannello somiglierebbe a una risposta.
     if (!skyHoverDisponibile()) return;
     sky.modalitaHover = !sky.modalitaHover;
     sky.sostaMirino = null;
     skyAggiornaStatoHover();
     try { localStorage.setItem(CHIAVE_SKY_HOVER, sky.modalitaHover ? '1' : '0'); } catch (e) { /* niente storage */ }
+    skyMostraGruppo('');
   });
 
   // --- Trovare un astro senza scorrere tutto l'elenco ---
@@ -25755,11 +25773,13 @@ function inizializzaSkymap() {
     skyMostraGruppo('');
   });
 
-  collega('skymap-btn-schermo', skyAlternaSchermoIntero);
+  collega('skymap-btn-schermo', () => { skyAlternaSchermoIntero(); skyMostraGruppo(''); });
   // Lo stesso comando, ma appoggiato sull'angolo della mappa: com'è per la
   // mappa dell'ombra delle eclissi, dove il ⛶ sta lì e non dentro a un
   // pannello. Andarlo a cercare fra le opzioni della Visualizzazione,
-  // mentre si guarda il cielo, era una tappa di troppo.
+  // mentre si guarda il cielo, era una tappa di troppo. Questo il pannello
+  // non lo chiude perché a schermo intero i pannelli non si aprono affatto:
+  // non c'è niente da chiudere.
   collega('skymap-btn-schermo-mappa', skyAlternaSchermoIntero);
   collega('skymap-btn-esci', () => skyEsciSchermoIntero());
 
@@ -25856,14 +25876,20 @@ function skyMostraGruppo(nome) {
   if (aperto === 'astri') skyAggiornaEtichette();
 }
 
-// --- Le quattro schede del pannello Visualizzazione ------------------
-// Un pannello solo al posto di due, e dentro quattro fogli che si danno il
+// --- Le cinque schede del pannello Visualizzazione -------------------
+// Un pannello solo al posto di tre, e dentro cinque fogli che si danno il
 // cambio. La scelta si ricorda fra una sessione e l'altra: chi ha passato la
-// serata a sistemare il paesaggio non se lo ritrova su «Schermo» ogni volta
+// serata a sistemare il paesaggio non se lo ritrova su «Direzione» ogni volta
 // che riapre il planetario — ed è la ragione per cui questa funzione esiste
 // invece di essere tre righe dentro a un ascoltatore.
+//
+// «Direzione» è arrivata qui dal pannello Navigazione, che era una linguetta a
+// sé. Erano due finestre per la stessa domanda — come guardo il cielo — e chi
+// cercava «Centra» o i punti cardinali doveva indovinare quale delle due
+// aprire. Sta per prima perché è quello che si tocca appena arrivati: si gira
+// il cielo verso sud, e solo dopo si decide cosa disegnarci sopra.
 const CHIAVE_SKY_SCHEDA_VISTA = 'astrocalendario_scheda_vista';
-const SKY_SCHEDE_VISTA = ['schermo', 'oggetti', 'cielo', 'paesaggio'];
+const SKY_SCHEDE_VISTA = ['direzione', 'schermo', 'oggetti', 'cielo', 'paesaggio'];
 
 function skyMostraSchedaVista(nome, ricorda = true) {
   const scelta = SKY_SCHEDE_VISTA.includes(nome) ? nome : SKY_SCHEDE_VISTA[0];
@@ -37214,7 +37240,10 @@ function inizializzaSkymapExtra() {
     skyAggiornaOggetti(true);
   });
 
-  collega('skymap-btn-camera', skyAttivaFotocamera);
+  // Il pannello si chiude **prima** di chiedere la fotocamera: il permesso
+  // può metterci qualche secondo, e in quei secondi il cielo dev'essere già
+  // libero — l'immagine arriva sotto al pannello, non davanti.
+  collega('skymap-btn-camera', () => { skyMostraGruppo(''); skyAttivaFotocamera(); });
 
   // Uscendo dal planetario la fotocamera si spegne: batteria e privacy
   document.addEventListener('visibilitychange', () => {

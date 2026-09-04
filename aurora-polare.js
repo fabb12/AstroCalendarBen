@@ -409,7 +409,16 @@ const AUR_QUADRO_PX = 26;
 const AUR_FETTE_MAX = 4;
 
 const aur = {
-  acceso: true,
+  // Nasce **spenta**, come i nomi dei monti e i disegni delle costellazioni, e
+  // per la stessa ragione: da queste latitudini l'ovale acceso non disegna
+  // niente — sta sotto l'orizzonte, oltre la curvatura della Terra — mentre i
+  // suoi comandi si prendevano due terzi della scheda «Cielo» a ogni apertura
+  // del planetario. Adesso il tasto è quello che li apre: si preme «Aurora» e
+  // compaiono la slitta della tempesta e la riga che dice cosa si vedrebbe da
+  // qui. Quando l'aurora c'è per davvero non tocca all'utente accorgersene:
+  // il riquadro della dashboard (`aurGuardaInCielo`), gli eventi «aurora» del
+  // calendario e il banco della Didattica la accendono da sé.
+  acceso: false,
   kpSimulato: null,        // null = si usa il Kp vero
   geo: null,
   chiave: '',
@@ -865,7 +874,19 @@ function aurAggiornaPannello() {
   if (tasto) {
     tasto.classList.toggle('attiva', aur.acceso);
     tasto.setAttribute('aria-pressed', aur.acceso ? 'true' : 'false');
+    tasto.setAttribute('aria-expanded', aur.acceso ? 'true' : 'false');
   }
+  // La slitta del Kp e la riga che racconta cosa si vedrebbe da qui **stanno
+  // sotto al tasto dell'aurora**, e compaiono solo con l'ovale acceso. A tasto
+  // spento erano due terzi della scheda «Cielo» occupati da un comando che non
+  // comandava niente di disegnato, con sotto una frase che descriveva un cielo
+  // che nessuno stava guardando — e chi arrivava lì cercando le nuvole doveva
+  // scorrerle via per trovarle. Il comando non si può perdere per questo:
+  // muovendo la slitta l'aurora si accende da sé (`aurImpostaKpSimulato`), e
+  // qui si apre insieme alla cosa che regola. `hidden` e non una classe, così
+  // il tabulatore non ci passa dentro quando non si vede.
+  const blocco = document.getElementById('blocco-aurora');
+  if (blocco) blocco.hidden = !aur.acceso;
   const slitta = document.getElementById('skymap-aurora-kp');
   const vero = aurKpVero();
   if (slitta && document.activeElement !== slitta) {
@@ -891,6 +912,9 @@ function aurAggiornaPannello() {
 function aurAggiornaNota(subito) {
   const nota = document.getElementById('skymap-aurora-nota');
   if (!nota) return;
+  // Col blocco chiuso non c'è niente da riscrivere, e `aurTesto()` non è
+  // gratis: rifà la geometria dell'ovale per dire una frase che nessuno legge.
+  if (!aur.acceso) return;
   const ora = Date.now();
   if (!subito && ora - aur.notaQuando < 1000) return;
   aur.notaQuando = ora;

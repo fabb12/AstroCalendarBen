@@ -3983,6 +3983,33 @@ body.mappa-spostamento-immersiva { overflow: hidden; }
   font-weight: 550;
   letter-spacing: -0.005em;
 }
+/* Le schede sono cinque da quando «Direzione» è arrivata qui da Navigazione,
+   e cinque nomi in una pillola sola non ci stanno su un telefono stretto: i
+   segmenti hanno `white-space: nowrap`, quindi non vanno a capo — il testo
+   esce dal suo tondo e le scritte si toccano. Misurato su 320 pixel: la
+   striscia ne chiede 271 e il pannello ne offre 272, cioè il difetto è a un
+   pixel di distanza. Qui il corpo scende, come già fa `.tasto-segmento` sotto
+   i 620px (che però non morde: `.schede-vista .tasto-segmento` è più
+   specifico, e vince).
+
+   Non si accorciano invece i nomi: «Cielo» e «Paesaggio» dicono cosa c'è
+   dentro, e un'abbreviazione a tre lettere rimanderebbe alla memoria una cosa
+   che adesso si legge. */
+@media (max-width: 620px) {
+  .schede-vista .tasto-segmento { font-size: 0.7rem; padding-inline: 3px; }
+}
+/* Sotto i trecentottanta pixel nemmeno così: «Paesaggio» sforava di quattro
+   pixel e mezzo dal suo tondo, misurati su uno schermo da 320. È l'ultima riga
+   di difesa e vale solo lì — la striscia si stringe fino al filo e il corpo
+   scende all'ultimo gradino, quello che il pannello del tempo usa da sempre
+   per i suoi sette segmenti. Provata la via delle due righe, a corpo pieno:
+   si legge meglio ma la striscia è appiccicata in cima al pannello, e su un
+   telefono da 320 quei trentaquattro pixel in più li paga l'elenco dei tasti
+   sotto — che è la cosa per cui il pannello si è aperto. */
+@media (max-width: 380px) {
+  .schede-vista { gap: 0; padding: 1px; }
+  .schede-vista .tasto-segmento { font-size: 0.6rem; letter-spacing: -0.015em; padding-inline: 0; }
+}
 .foglio-vista[hidden] { display: none; }
 /* Il titolino dentro a un foglio: due gruppi che nella stessa scheda
    rispondono a due domande diverse — i corpi e i segni che li accompagnano —
@@ -3997,6 +4024,16 @@ body.mappa-spostamento-immersiva { overflow: hidden; }
   color: var(--testo-3);
 }
 .foglio-vista > .riga-comandi:first-child { margin-top: 0; }
+.foglio-vista > .titolo-foglio-vista:first-child { margin-top: 0; }
+/* La bussola, in fondo alla scheda «Direzione», è un'altra cosa dai comandi
+   sopra: quelli si usano ogni sera, lei si apre la prima volta e poi quasi
+   mai. Il filo lo dice senza scriverlo — è lo stesso stacco che separa la
+   slitta dell'aurora dai tasti del cielo. */
+.foglio-vista > .nota-ripiegata {
+  margin-top: 12px;
+  padding-top: 6px;
+  border-top: 1px solid var(--bordo);
+}
 /* Tempo e luogo deve restare leggero: pochi comandi, niente note visibili.
    Dentro sono due blocchi (`.blocco-tempo`) col loro titolo, separati da un
    filo: le due domande — quando, e da dove — si riconoscono prima di essere
@@ -5524,11 +5561,18 @@ body input.casella-data:hover { border: 0; }
 .impostazioni-corpo { min-height: 340px; }
 
 /* ------------------------------------------- L'AURORA                      */
-/* Sta in fondo ai Filtri, sotto al suo tasto: una riga che dice cosa si
-   vedrebbe da qui e la slitta per alzare la tempesta. La slitta non è un
+/* Sta in fondo alla scheda «Cielo», sotto al suo tasto: una riga che dice cosa
+   si vedrebbe da qui e la slitta per alzare la tempesta. La slitta non è un
    comando qualunque — è il modo in cui questa vista si usa quasi sempre,
    visto che l'aurora vera da queste latitudini capita una volta ogni dieci
-   anni — e per questo si prende la riga tutta per sé. */
+   anni — e per questo si prende la riga tutta per sé.
+
+   Ma si prendeva la riga **sempre**, anche a ovale spento: due terzi della
+   scheda occupati da un comando che non regolava niente di disegnato. Adesso
+   il blocco è la parte aperta del tasto «Aurora» — `hidden` lo mette e lo
+   toglie `aurAggiornaPannello()` — e il tasto lo dichiara con `aria-expanded`.
+   Qui non serve nessuna regola per nasconderlo: `.blocco-aurora` non dichiara
+   un `display`, quindi quello di serie di `[hidden]` funziona. */
 .blocco-aurora {
   margin-top: 10px;
   padding-top: 10px;
