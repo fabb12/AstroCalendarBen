@@ -1181,6 +1181,33 @@
              scritte a mano): questa dice solo che sta per riempirsi, perché
              qualche secondo di cielo spoglio senza una parola sembra un
              guasto. Sparisce da sé quando le stelle ci sono. -->
+        <!-- L'avviso di transito. Un aereo davanti al Sole dura meno di un
+             secondo e la ISS davanti alla Luna un secondo e mezzo: non sono
+             cose che si scoprano guardando il cielo, sono cose a cui bisogna
+             **arrivare in tempo**. Per questo l'avviso non sta in un pannello
+             — che è chiuso, e chi lo apre lo apre per un'altra ragione — ma
+             appoggiato sul cielo, sotto alla riga del luogo e sopra a tutto
+             il resto.
+
+             Il numero grande a destra è il tempo che manca, ed è l'unica cosa
+             che si legge di corsa. La riga sotto dice dove guardare, quanto
+             dura e **quanto ci si può credere**: per una stazione è un
+             orario, per un aereo è una mira con la sua tolleranza, e la
+             differenza fra le due va scritta (vedi §6 e §7 di transiti.js).
+             La riempie `tranAggiornaAvviso()`. -->
+        <aside id="transito-avviso" class="avviso-transito hidden" role="status" aria-live="polite">
+          <span class="avviso-transito-segno" aria-hidden="true"></span>
+          <div class="avviso-transito-testo">
+            <p class="avviso-transito-titolo" data-transito-titolo></p>
+            <p class="avviso-transito-nota" data-transito-nota></p>
+          </div>
+          <strong class="avviso-transito-quando" data-transito-quando></strong>
+          <button type="button" class="avviso-transito-tasto" data-transito-guarda
+                  title="Gira la vista dove succede">Guarda</button>
+          <button type="button" class="avviso-transito-chiudi" data-transito-chiudi
+                  title="Chiudi l'avviso" aria-label="Chiudi l'avviso del transito">✕</button>
+        </aside>
+
         <div id="skymap-caricamento" class="caricamento-cielo hidden" role="status" aria-live="polite">
           <span class="rotella-cielo" aria-hidden="true"></span>
           <span>Sto preparando il cielo: 5.044 stelle in arrivo…</span>
@@ -2500,6 +2527,9 @@
   <script src="aurora-polare.js"></script>
   <script src="config.js"></script>
   <script src="aerei.js"></script>
+  <!-- I transiti: chi passa davanti a chi. Va dopo `aerei.js` perché ne
+       legge le rotte, e dopo `app.js` perché ne legge il cielo. -->
+  <script src="transiti.js"></script>
   <script src="eventi-extra.js"></script>
   <script src="ui-nuova.js"></script>
   <script src="didattica.js"></script>

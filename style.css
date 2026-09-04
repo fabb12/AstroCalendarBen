@@ -5223,6 +5223,140 @@ body input.casella-data:hover { border: 0; }
   line-height: 1.2;
   pointer-events: none;   /* è un'informazione, non un comando: il dito ci passa attraverso */
 }
+/* --- L'avviso di transito ---------------------------------------------
+   Un transito dura fra un decimo di secondo (un aereo vicino sul Sole) e un
+   secondo e mezzo (la ISS sulla Luna): l'avviso non serve a raccontare, serve
+   a **far arrivare in tempo**. Da qui le tre scelte di questo riquadro.
+
+   Sta sul cielo e non in un pannello, sotto alla fascia della bussola
+   (`--zona-alta-cielo`): un pannello chiuso non avvisa nessuno.
+
+   Il tempo che manca è la cosa più grande scritta qui dentro, ed è a destra,
+   dove finisce la lettura: è l'unico numero che si legge di corsa mentre si
+   sta già alzando la testa.
+
+   E il dito ci passa attraverso ovunque tranne che sui due tasti — «Guarda»
+   e la chiusura — perché sotto c'è il cielo, e un riquadro che intercetta il
+   trascinamento in mezzo allo schermo è un riquadro che si vuole chiudere
+   subito. */
+.avviso-transito {
+  position: absolute;
+  top: var(--zona-alta-cielo);
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  margin: 0 auto;
+  max-width: 480px;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px 9px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 197, 253, 0.42);
+  background: rgba(9, 16, 34, 0.92);
+  backdrop-filter: blur(5px);
+  box-shadow: 0 10px 26px rgba(2, 6, 18, 0.45);
+  color: var(--testo-1, #e2e8f0);
+  pointer-events: none;
+}
+.avviso-transito > button { pointer-events: auto; }
+
+/* Il segno: un disco chiaro con addosso un puntino scuro, cioè esattamente
+   la cosa che sta per succedere. Disegnato in CSS come la rotella del
+   caricamento — nell'interfaccia non ci sono emoji, e per un glifo così
+   piccolo un SVG sarebbe più codice del disegno. */
+.avviso-transito-segno {
+  position: relative;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #fde68a, #f59e0b 72%, rgba(245, 158, 11, 0) 100%);
+}
+.avviso-transito-segno::after {
+  content: "";
+  position: absolute;
+  left: 52%;
+  top: 40%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #04070d;
+  transform: translate(-50%, -50%);
+}
+.avviso-transito[data-genere="stazione"] .avviso-transito-segno {
+  background: radial-gradient(circle at 50% 45%, #e2e8f0, #94a3b8 72%, rgba(148, 163, 184, 0) 100%);
+}
+
+.avviso-transito-testo { min-width: 0; flex: 1 1 auto; }
+.avviso-transito-titolo {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.15;
+  /* Un titolo che va a capo alza il riquadro e gli fa coprire il cielo che
+     sta annunciando: si accorcia coi puntini. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avviso-transito-nota {
+  margin: 2px 0 0;
+  font-size: 0.72rem;
+  line-height: 1.2;
+  color: var(--testo-2, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avviso-transito-quando {
+  flex: 0 0 auto;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #fcd34d;
+  white-space: nowrap;
+}
+.avviso-transito[data-genere="stazione"] .avviso-transito-quando { color: #93c5fd; }
+
+.avviso-transito-tasto {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte, rgba(148, 163, 184, 0.26));
+  background: rgba(30, 41, 59, 0.9);
+  color: var(--testo-1, #e2e8f0);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.avviso-transito-tasto:hover { background: rgba(51, 65, 85, 0.95); }
+.avviso-transito-chiudi {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--testo-2, #94a3b8);
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.avviso-transito-chiudi:hover { color: var(--testo-1, #e2e8f0); background: rgba(51, 65, 85, 0.8); }
+
+/* Su un telefono girato il cielo è alto due dita: la riga di dettaglio è la
+   prima a cedere il posto, perché il titolo e il tempo che manca da soli
+   dicono già cosa fare. */
+@media (max-width: 560px) {
+  .avviso-transito { gap: 8px; padding: 7px 8px 7px 10px; }
+  .avviso-transito-titolo { font-size: 0.78rem; }
+  .avviso-transito-tasto { padding: 4px 8px; font-size: 0.7rem; }
+}
+@media (orientation: landscape) and (max-height: 460px) {
+  .avviso-transito-nota { display: none; }
+}
+
 .rotella-cielo {
   width: 14px;
   height: 14px;
@@ -5352,6 +5486,7 @@ body input.casella-data:hover { border: 0; }
 #skymap-contenitore.vista-pulita .pannello-clip,
 #skymap-contenitore.vista-pulita .tasto-esci-cielo,
 #skymap-contenitore.vista-pulita .barra-terreno,
+#skymap-contenitore.vista-pulita .avviso-transito,
 #skymap-contenitore.vista-pulita .caricamento-cielo,
 #skymap-contenitore.vista-pulita .comandi-mappa-cielo > :not(.riga-registra-cielo) { display: none !important; }
 #skymap-contenitore.vista-pulita .comandi-mappa-cielo { bottom: max(12px, env(safe-area-inset-bottom)); }

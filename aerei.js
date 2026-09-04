@@ -84,6 +84,38 @@
   // pacchetto perso in un minuto di cielo senza aerei.
   const RIPROVE_MS = [3000, 9000, 25000, 60000, 150000, 300000];
   const PREVISIONE_MINUTI = 5;
+  // --- L'arco di transito ---------------------------------------------
+  // Cinque minuti erano la previsione **disegnata**, e sono diventati anche
+  // il limite di quella **calcolata** senza che nessuno lo decidesse. Ma un
+  // aereo in crociera a undici chilometri sta sopra l'orizzonte geometrico
+  // fino a trecentosettanta chilometri di distanza: a duecentocinquanta
+  // metri al secondo il suo arco in cielo dura **venticinque minuti**, non
+  // cinque, e chi vuole sapere se passerà davanti alla Luna ha bisogno di
+  // tutto l'arco (il conto vero lo fa `transiti.js`, che da qui prende solo
+  // la rotta).
+  //
+  // Il tetto però c'è, e non è una comodità: è il punto oltre il quale la
+  // riga smette di essere una previsione. Un grado di scarto di rotta — una
+  // virata appena accennata, cioè il minimo che un aereo faccia — su
+  // venticinque minuti sposta la posizione di **sei chilometri e mezzo**.
+  // Disegnare l'arco fin lì è onesto solo perché la riga si assottiglia e
+  // sbiadisce mano a mano (§7): quello che si vede è la fiducia che cala,
+  // non una rotta che si conosce.
+  const AEREI_ARCO_MAX_MIN = 25;
+  // Il primo minuto si campiona ogni dieci secondi. Non è un vezzo: un aereo
+  // che passa sopra la testa a due chilometri attraversa il cielo a tre gradi
+  // al secondo, cioè quasi duecento gradi in un minuto — e una riga tirata
+  // fra il campione di adesso e quello di fra un minuto sarebbe una corda
+  // che taglia il cielo da parte a parte, invece dell'arco che l'aereo
+  // percorre davvero.
+  const AEREI_ARCO_PASSO_FINE_S = 10;
+  const AEREI_ARCO_FINE_S = 60;
+  // L'apertura alare che si dà a un aereo di cui non si sa il modello:
+  // l'ADS-B porta una posizione, non una fusoliera. Quaranta metri sono un
+  // corto-medio raggio, ed è lo stesso numero che usa `transiti.js` — il
+  // valore non entra nell'istante di un transito, entra solo in quanto
+  // grande lo si disegna quando è vicino.
+  const AEREI_APERTURA_M = 40;
 
   // --- Muoversi non è cambiare cielo ----------------------------------
   // Le tre misure che rendono questo modulo sopportabile in macchina. Il
@@ -728,6 +760,85 @@
     return { az: d.az, alt, distanzaKm, distanzaSuoloKm: d.km };
   }
 
+  // L'orizzonte vero in quella direzione, colline comprese: è la stessa
+  // cascata con cui il planetario decide se un astro è sorto. Senza il
+  // modulo del terreno resta lo zero geometrico, e l'arco finisce dove
+  // finisce la Terra tonda invece che dietro alla montagna.
+  function orizzonteIn(az) {
+    if (typeof skyAltezzaOrizzonte === 'function') {
+      try { const h = skyAltezzaOrizzonte(az); if (Number.isFinite(h)) return h; }
+      catch (e) { /* niente terreno: vale lo zero */ }
+    }
+    return 0;
+  }
+
+  // Le tre cose che dell'arco si vogliono sapere senza rileggerlo tutto:
+  // quanto in alto arriva, per quanto ancora si vede, e se quel «per quanto»
+  // è una misura o il tetto della fiducia. La differenza conta: «sparisce
+  // dietro le colline fra 6 minuti» è una previsione, «lo seguo per 25
+  // minuti» è il punto in cui abbiamo smesso di guardare.
+  function arcoRiassunto(punti) {
+    if (!punti || !punti.length) return null;
+    const ultimo = punti[punti.length - 1];
+    let culmine = punti[0];
+    punti.forEach(p => { if (p.alt > culmine.alt) culmine = p; });
+    return {
+      minutiResidui: ultimo.minuti,
+      tramonta: !!ultimo.tramonto,
+      altMax: culmine.alt,
+      azCulmine: culmine.az,
+      minutiCulmine: culmine.minuti,
+      troncato: !ultimo.tramonto && ultimo.minuti >= AEREI_ARCO_MAX_MIN
+    };
+  }
+
+  // L'arco di transito: dove passa l'aereo da adesso fino a quando sparisce
+  // dietro l'orizzonte, o fino al tetto della fiducia (`AEREI_ARCO_MAX_MIN`).
+  //
+  // Due cose da sapere prima di metterci mano. La prima è il **passo
+  // variabile**: fitto nel primo minuto, dove l'aereo vicino corre in cielo,
+  // e da lì in poi al minuto, dove ormai striscia. La seconda è che l'arco
+  // **si ferma davvero** quando l'aereo tramonta: continuare a propagarlo
+  // sotto la cresta vorrebbe dire disegnare una riga dentro alla montagna,
+  // che è il modo in cui una previsione smette di somigliare a una
+  // previsione.
+  function arcoDiTransito(origine, obs) {
+    const punti = [];
+    const massimo = AEREI_ARCO_MAX_MIN * 60;
+    let sotto = false;
+    for (let s = 0; s <= massimo; s += (s < AEREI_ARCO_FINE_S ? AEREI_ARCO_PASSO_FINE_S : 60)) {
+      const futuro = posizioneFutura(origine, s);
+      const cielo = coordinateCielo(futuro, obs);
+      const minuti = s / 60;
+      punti.push({
+        secondi: s, minuti, ...cielo,
+        // Le tacche restano al minuto tondo dentro alla previsione corta di
+        // sempre, e passano ai cinque minuti nel tratto lungo: sei pallini
+        // fitti sono una previsione, venticinque sono una collana.
+        tacca: Number.isInteger(minuti) &&
+          (minuti <= PREVISIONE_MINUTI ? minuti > 0 : minuti % 5 === 0),
+        oltreLaFiducia: minuti > PREVISIONE_MINUTI
+      });
+      if (cielo.alt < orizzonteIn(cielo.az)) { sotto = true; break; }
+    }
+    // Il tramonto dell'aereo, cercato per bisezione fra l'ultimo campione
+    // alto e il primo basso: è quello che dice per quanto tempo ancora si
+    // può guardare, ed è il numero che la scheda scrive.
+    if (sotto && punti.length > 1) {
+      let a = punti[punti.length - 2].secondi, b = punti[punti.length - 1].secondi;
+      for (let k = 0; k < 20 && b - a > 0.5; k++) {
+        const m = (a + b) / 2;
+        const c = coordinateCielo(posizioneFutura(origine, m), obs);
+        if (c.alt >= orizzonteIn(c.az)) a = m; else b = m;
+      }
+      punti[punti.length - 1] = {
+        secondi: a, minuti: a / 60, ...coordinateCielo(posizioneFutura(origine, a), obs),
+        tacca: false, oltreLaFiducia: a / 60 > PREVISIONE_MINUTI, tramonto: true
+      };
+    }
+    return punti;
+  }
+
   function separazione(a, b) {
     const aa = radianti(a.alt), ab = radianti(b.alt);
     const cos = Math.sin(aa) * Math.sin(ab) + Math.cos(aa) * Math.cos(ab) *
@@ -892,13 +1003,9 @@
     });
     return Array.from(unici.values()).map(a => {
       const cielo = coordinateCielo(a, obs);
-      const traiettoria = [];
-      for (let minuti = 0; minuti <= PREVISIONE_MINUTI; minuti++) {
-        const futuro = posizioneFutura(a, minuti * 60);
-        traiettoria.push({ minuti, ...coordinateCielo(futuro, obs) });
-      }
-      return { ...a, ...cielo, traiettoria, allineamenti: [],
-        posizioneFeed: { ...a } };
+      const traiettoria = arcoDiTransito(a, obs);
+      return { ...a, ...cielo, traiettoria, arco: arcoRiassunto(traiettoria),
+        allineamenti: [], posizioneFeed: { ...a } };
     }).filter(a => a.distanzaSuoloKm <= raggioKm()).sort((a, b) => a.distanzaKm - b.distanzaKm);
   }
 
@@ -970,12 +1077,9 @@
     const secondi = oraMs / 1000 - (origine.ultimaLettura || Date.now() / 1000);
     const corrente = posizioneFutura(origine, secondi);
     const cielo = coordinateCielo(corrente, obs);
-    const traiettoria = [];
-    for (let minuti = 0; minuti <= PREVISIONE_MINUTI; minuti++) {
-      const futuro = posizioneFutura(corrente, minuti * 60);
-      traiettoria.push({ minuti, ...coordinateCielo(futuro, obs) });
-    }
-    return { ...a, ...corrente, ...cielo, traiettoria, allineamenti: a.allineamenti || [],
+    const traiettoria = arcoDiTransito(corrente, obs);
+    return { ...a, ...corrente, ...cielo, traiettoria, arco: arcoRiassunto(traiettoria),
+      allineamenti: a.allineamenti || [],
       posizioneFeed: origine, stimato: !tempoReale(oraMs), istanteMostrato: oraMs };
   }
 
@@ -986,8 +1090,40 @@
     return stato.aerei;
   }
 
+  // Gli allineamenti — e perché questa funzione, da sola, non poteva
+  // funzionare.
+  //
+  // Cercare l'allineamento **sui campioni della traiettoria** è un errore
+  // che si vede solo facendo i conti, e per questo è rimasto in piedi a
+  // lungo: il codice è giusto, la geometria è giusta, e il risultato è
+  // quasi sempre «niente». Il disco del Sole è largo mezzo grado; un aereo
+  // vicino ne attraversa il cielo a gradi al secondo, quindi ci sta dentro
+  // per una frazione di secondo. Chiedere a sei campioni distanti un minuto
+  // di cascare proprio lì è chiedere una coincidenza da uno su centinaia —
+  // e il sintomo è un'assenza, cioè la cosa che in questo cielo non lascia
+  // mai traccia.
+  //
+  // Il conto vero lo fa `transiti.js`, che il minimo lo **raffina** invece
+  // di sperare di campionarlo. Qui resta il campionamento come ripiego: se
+  // quel modulo non c'è, gli aerei si comportano esattamente come prima.
   function aggiornaAllineamenti() {
     if (typeof sky === 'undefined') return;
+    if (typeof tranEventi === 'function') {
+      const per = new Map();
+      tranEventi().forEach(e => {
+        if (e.genere !== 'aereo') return;
+        const chi = String(e.oggettoId);
+        if (!per.has(chi)) per.set(chi, []);
+        per.get(chi).push({
+          nome: e.astroNome,
+          minuti: Math.max(0, Math.round((e.quando - Date.now()) / 60000)),
+          scarto: e.separazione,
+          transito: e.transito
+        });
+      });
+      stato.aerei.forEach(a => { a.allineamenti = per.get(String(a.id)) || []; });
+      return;
+    }
     const astri = (sky.oggetti || []).filter(o =>
       ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'].includes(o.id));
     stato.aerei.forEach(a => {
@@ -1234,8 +1370,9 @@
         `<p class="aereo-dati">${Math.round(a.quotaM || 0).toLocaleString('it-IT')} m · ` +
         `${Math.round((a.velocitaMs || 0) * 3.6)} km/h · ${Math.round(a.direzione || 0)}° · ` +
         `${inDiretta ? 'in tempo reale' : 'posizione stimata'}</p>` +
-        (all ? `<p class="aereo-allineamento">Possibile allineamento con ${sicuro(all.nome)} ` +
-          `${all.minuti ? `fra ${all.minuti} min` : 'adesso'} (${all.scarto.toFixed(1)}°)</p>` : '') + '</button>';
+        (all ? `<p class="aereo-allineamento">${all.transito ? 'Passa davanti a' : 'Passa vicino a'} ` +
+          `${sicuro(all.nome)} ${all.minuti ? `fra ${all.minuti} min` : 'adesso'} ` +
+          `(${all.scarto < 1 ? all.scarto.toFixed(2) : all.scarto.toFixed(1)}°)</p>` : '') + '</button>';
     }).join('');
   }
 
@@ -1337,6 +1474,12 @@
         stato.errore = ''; stato.errNome = '';
         pianificaProssimo(true);
         render();
+        // I transiti si rifanno **adesso**, non al prossimo giro del loro
+        // orologio: la fotografia appena arrivata è quella che dice se
+        // qualcuno sta per passare davanti al Sole, e aspettare i quattro
+        // secondi del ritmo di serie vorrebbe dire buttarne quattro su un
+        // preavviso che ne dura sessanta.
+        if (typeof tranAggiorna === 'function') tranAggiorna(true);
         concludiFeedback(`Dati ADS-B aggiornati: ${stato.aerei.length} ` +
           `${stato.aerei.length === 1 ? 'aereo trovato' : 'aerei trovati'}.`, false);
       }).catch(e => {
@@ -1489,6 +1632,53 @@
   //    che quell'aereo è a venti chilometri quando magari è a due.
   // =====================================================================
 
+  // --- In controluce ---------------------------------------------------
+  //
+  // Il nero della silhouette. Non è `#000` per capriccio tipografico: un
+  // aereo davanti al Sole è illuminato **da dietro**, e quello che ne arriva
+  // qui è solo il poco di cielo diffuso attorno al suo bordo. Sulle
+  // fotografie vere è nero pieno, e mettere un grigio «per non essere
+  // troppo duri» toglierebbe l'unica cosa che rende riconoscibile un
+  // transito: che il contorno è **netto**.
+  const COLORE_SILHOUETTE = '#04070d';
+
+  // Quanto ci si crede, minuto per minuto. Piena dentro alla previsione
+  // corta di sempre, poi cala fino a un quarto al capolinea dell'arco. La
+  // curva è quella dell'errore: lo scarto di traverso cresce **linearmente**
+  // col tempo (rotta sbagliata × tempo), quindi la fiducia va come il suo
+  // reciproco, e non a gradini — un gradino direbbe che al minuto sei si sa
+  // qualcosa che al minuto cinque e mezzo non si sapeva.
+  function fiduciaArco(minuti) {
+    if (!(minuti > PREVISIONE_MINUTI)) return 1;
+    const oltre = (minuti - PREVISIONE_MINUTI) / (AEREI_ARCO_MAX_MIN - PREVISIONE_MINUTI);
+    return Math.max(0.22, 1 / (1 + 3.2 * Math.max(0, Math.min(1, oltre))));
+  }
+
+  // C'è un disco luminoso sotto a questo punto dello schermo? La risposta la
+  // sa `app.js`, che ha appena disegnato Sole e Luna e sa dove sono finiti e
+  // quanto sono grandi. Qui si chiede e basta, con la solita guardia: senza
+  // quella funzione gli aerei si disegnano come prima.
+  function discoSotto(px, py) {
+    return typeof skyDiscoDavanti === 'function' ? skyDiscoDavanti(px, py) : null;
+  }
+
+  // Di quanto va ingrandito il simbolo perché sia grande quanto l'aereo è
+  // davvero. Uno vuol dire «l'icona di sempre»: è il caso normale, e a campo
+  // largo resta uno per qualunque aereo. Il tetto serve solo a non far
+  // esplodere il disegno quando un aereo passa a duecento metri sopra la
+  // testa con il campo a un quarto di grado.
+  function misuraAereo(a, p, focale) {
+    if (typeof skyRaggioAngolare !== 'function' || !focale) return 1;
+    const km = Math.max(0.05, a.distanzaKm || 10);
+    const mezzaApertura = Math.atan2(AEREI_APERTURA_M / 2000, km) * 180 / Math.PI;
+    const scala = typeof skyScalaLocale === 'function' ? skyScalaLocale(p.d) : 1;
+    const raggioPx = skyRaggioAngolare(mezzaApertura, focale) * scala;
+    // Sette pixel è la mezza altezza del triangolo di base: è quella la
+    // misura da confrontare, se no il simbolo cambierebbe taglia dove non
+    // deve.
+    return Math.max(1, Math.min(40, raggioPx / 7));
+  }
+
   function aereiDisegna(ctx, base, focale) {
     hitEtichette.length = 0;
     if (!stato.visibile || !stato.aerei.length || typeof skyProietta !== 'function') return;
@@ -1518,13 +1708,39 @@
       // all'indice sbagliato e' peggio di nessuna tacca — dice un'ora falsa
       // con la stessa faccia con cui direbbe quella giusta.
       const punti = a.traiettoria.map(t => ({
-        ...skyProietta(skyVettore(t.az, t.alt), base, focale), minuti: t.minuti
+        ...skyProietta(skyVettore(t.az, t.alt), base, focale),
+        minuti: t.minuti, tacca: t.tacca, lungo: t.oltreLaFiducia, tramonto: t.tramonto
       })).filter(p => p.davanti);
       if (!punti.length) return;
       const fascia = fasciaDi(a.distanzaKm);
-      ctx.strokeStyle = fascia.colore; ctx.globalAlpha = (fresco ? 0.85 : 0.55);
-      ctx.setLineDash([4, 5]); ctx.lineWidth = 1.4;
-      ctx.beginPath(); punti.forEach((p, i) => i ? ctx.lineTo(p.px, p.py) : ctx.moveTo(p.px, p.py)); ctx.stroke();
+
+      // La riga della previsione, segmento per segmento. Due cose la
+      // distinguono da quella di prima, e sono le due cose che l'arco lungo
+      // ha portato con sé.
+      //
+      // La **fiducia che cala**: oltre i cinque minuti il tratto si
+      // assottiglia e sbiadisce (`fiduciaArco`). Non è una sfumatura
+      // decorativa: è l'unica cosa onesta da fare con una riga che al minuto
+      // venti può essere sei chilometri più in là. Disegnare l'arco intero
+      // con lo stesso tratto dei primi trenta secondi vorrebbe dire
+      // promettere venticinque minuti di rotta a un aereo che ne ha
+      // dichiarata una sola, adesso.
+      //
+      // E la **silhouette**: dove il tratto passa sopra al disco del Sole o
+      // della Luna diventa scuro. Un tratteggio arancione sopra la
+      // fotosfera è la stessa bruttura di un nome di paese dipinto sopra
+      // alla collina — e soprattutto è falso: lì davanti, in controluce, non
+      // c'è niente di arancione.
+      ctx.setLineDash([4, 5]);
+      for (let i = 1; i < punti.length; i++) {
+        const q0 = punti[i - 1], q1 = punti[i];
+        const sopraDisco = discoSotto((q0.px + q1.px) / 2, (q0.py + q1.py) / 2);
+        const f = fiduciaArco(q1.minuti);
+        ctx.globalAlpha = (fresco ? 0.85 : 0.55) * f;
+        ctx.strokeStyle = sopraDisco ? COLORE_SILHOUETTE : fascia.colore;
+        ctx.lineWidth = 1.4 * (0.55 + 0.45 * f);
+        ctx.beginPath(); ctx.moveTo(q0.px, q0.py); ctx.lineTo(q1.px, q1.py); ctx.stroke();
+      }
 
       // Le tacche dei minuti. Un tratteggio uniforme dice «va di la'», e basta:
       // per leggerlo come una **previsione** serve sapere dove sara' fra
@@ -1541,25 +1757,41 @@
       if (corsaPx >= AEREI_TACCHE_PX_MIN) {
         ctx.setLineDash([]);
         punti.forEach(p => {
-          if (!p.minuti) return;                       // lo zero ce l'ha gia' il simbolo
-          const ultimo = p.minuti === PREVISIONE_MINUTI;
+          if (!p.tacca) return;                        // lo zero ce l'ha gia' il simbolo
+          const capolinea = p.minuti === PREVISIONE_MINUTI;
           ctx.beginPath();
-          ctx.arc(p.px, p.py, ultimo ? 2.6 : 1.6, 0, Math.PI * 2);
-          ctx.fillStyle = fascia.colore;
-          ctx.globalAlpha = (fresco ? 0.9 : 0.5) * (ultimo ? 1 : 0.75);
+          ctx.arc(p.px, p.py, capolinea ? 2.6 : 1.6, 0, Math.PI * 2);
+          ctx.fillStyle = discoSotto(p.px, p.py) ? COLORE_SILHOUETTE : fascia.colore;
+          ctx.globalAlpha = (fresco ? 0.9 : 0.5) * (capolinea ? 1 : 0.75) * fiduciaArco(p.minuti);
           ctx.fill();
         });
-        // Il numero solo in coda, e solo quando c'e' spazio davvero: cinque
-        // etichette su una traiettoria sono cinque cose da leggere, e quello
-        // che serve e' un capolinea a cui riferire le tacche in mezzo.
-        if (corsaPx >= AEREI_ETICHETTA_PX_MIN && coda.minuti === PREVISIONE_MINUTI) {
-          ctx.globalAlpha = fresco ? 0.85 : 0.5;
+        // I numeri: il capolinea della previsione corta, che è il riferimento
+        // a cui appendere le tacche in mezzo, e la **fine dell'arco**, che è
+        // la notizia nuova — «da qui in poi non lo vedi più», oppure «da qui
+        // in poi non lo so più». Due etichette e non venticinque: una per
+        // ogni tacca sarebbe un elenco da leggere, non un colpo d'occhio.
+        if (corsaPx >= AEREI_ETICHETTA_PX_MIN) {
           ctx.font = '600 9px system-ui';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.lineWidth = 2.4; ctx.lineJoin = 'round';
           ctx.strokeStyle = 'rgba(2,6,23,.85)';
-          ctx.strokeText(`+${PREVISIONE_MINUTI}′`, coda.px, coda.py - 8);
-          ctx.fillText(`+${PREVISIONE_MINUTI}′`, coda.px, coda.py - 8);
+          const cinque = punti.find(p => p.minuti === PREVISIONE_MINUTI);
+          if (cinque) {
+            ctx.globalAlpha = fresco ? 0.85 : 0.5;
+            ctx.fillStyle = '#fff7ed';
+            ctx.strokeText(`+${PREVISIONE_MINUTI}′`, cinque.px, cinque.py - 8);
+            ctx.fillText(`+${PREVISIONE_MINUTI}′`, cinque.px, cinque.py - 8);
+          }
+          if (coda !== cinque && coda.minuti > PREVISIONE_MINUTI + 1 &&
+              Math.hypot(coda.px - (cinque ? cinque.px : testa.px),
+                         coda.py - (cinque ? cinque.py : testa.py)) >= AEREI_ETICHETTA_PX_MIN) {
+            const testo = coda.tramonto ? `tramonta +${Math.round(coda.minuti)}′`
+                                        : `+${Math.round(coda.minuti)}′`;
+            ctx.globalAlpha = (fresco ? 0.8 : 0.5) * fiduciaArco(coda.minuti);
+            ctx.fillStyle = '#fff7ed';
+            ctx.strokeText(testo, coda.px, coda.py - 8);
+            ctx.fillText(testo, coda.px, coda.py - 8);
+          }
           ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
         }
       }
@@ -1572,19 +1804,48 @@
       // del planetario e dell'inclinazione del telefono.
       const avanti = punti.slice(1).find(q => Math.hypot(q.px - p.px, q.py - p.py) > .5);
       const angolo = avanti ? Math.atan2(avanti.py - p.py, avanti.px - p.px) + Math.PI / 2 : 0;
+
+      // Quanto è grande davvero. A dieci chilometri un'apertura alare di
+      // quaranta metri è un decimo di grado, cioè un pixel: vince l'icona, e
+      // a campo largo non cambia niente rispetto a prima. Ma a due
+      // chilometri sono più di un grado — **il doppio del Sole** — e
+      // ingrandendo sul disco quello che si deve vedere è una sagoma che lo
+      // copre, non un triangolino di sette pixel appoggiato sopra. È la
+      // stessa regola dei pianeti (`skyRaggio`: il massimo fra l'icona e il
+      // disco vero), applicata all'unico oggetto del cielo che di solito è
+      // più vicino di tutti.
+      const misura = misuraAereo(a, p, focale);
+      const disco = discoSotto(p.px, p.py);
       ctx.save();
       ctx.translate(p.px, p.py); ctx.rotate(angolo);
-      // Il contorno scuro sotto al simbolo è la stessa ricetta dei nomi delle
-      // montagne: un triangolo rosso su un tramonto rosso non si vede, e sul
-      // cielo di mezzogiorno nemmeno un azzurro.
-      ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(6, 5); ctx.lineTo(0, 2); ctx.lineTo(-6, 5); ctx.closePath();
-      ctx.strokeStyle = 'rgba(2,6,23,.85)'; ctx.lineWidth = 2.6; ctx.lineJoin = 'round'; ctx.stroke();
-      ctx.fillStyle = fascia.colore; ctx.fill();
-      if (a.allineamenti.length) {
-        ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.scale(misura, misura);
+      if (disco) {
+        // In controluce non c'è colore e non c'è contorno: c'è un buco nella
+        // luce. Il contorno scuro che serve sul cielo — dove un triangolo
+        // rosso su un tramonto rosso sparisce — qui sarebbe un alone attorno
+        // a una cosa già nera, cioè l'unico modo di rendere sfocata la sola
+        // silhouette netta che questo cielo abbia.
+        ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(6, 5); ctx.lineTo(0, 2); ctx.lineTo(-6, 5); ctx.closePath();
+        ctx.fillStyle = COLORE_SILHOUETTE; ctx.fill();
+      } else {
+        // Il contorno scuro sotto al simbolo è la stessa ricetta dei nomi delle
+        // montagne: un triangolo rosso su un tramonto rosso non si vede, e sul
+        // cielo di mezzogiorno nemmeno un azzurro.
+        ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(6, 5); ctx.lineTo(0, 2); ctx.lineTo(-6, 5); ctx.closePath();
+        ctx.strokeStyle = 'rgba(2,6,23,.85)'; ctx.lineWidth = 2.6 / misura; ctx.lineJoin = 'round'; ctx.stroke();
+        ctx.fillStyle = fascia.colore; ctx.fill();
       }
       ctx.restore();
+      if (a.allineamenti.length) {
+        // L'anello resta fuori dalla scala del simbolo: dice «guarda qui», e
+        // un segno che dice «guarda qui» non deve diventare grande insieme
+        // alla cosa che indica, se no smette di indicarla.
+        ctx.save();
+        ctx.translate(p.px, p.py);
+        ctx.beginPath(); ctx.arc(0, 0, Math.max(11, 8 * misura), 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.restore();
+      }
       const etichetta = `${a.callsign} · ${a.distanzaKm.toFixed(1)} km`;
       ctx.font = '700 11px system-ui';
       const x = p.px + 9, y = p.py - 7, larghezza = ctx.measureText(etichetta).width + 10;
@@ -1637,10 +1898,27 @@
       { chiave: 'velocita', nome: 'Velocità', valore: velocita },
       { chiave: 'direzione', nome: 'Rotta', valore: Number.isFinite(a.direzione) ? `${Math.round(a.direzione)}°` : '' },
       { chiave: 'distanza', nome: 'Distanza', valore: Number.isFinite(a.distanzaKm) ? `${a.distanzaKm.toFixed(1)} km` : '' },
+      // Per quanto ancora si vede. È la domanda che uno si fa davvero
+      // guardando un aereo — «faccio in tempo a prendere il binocolo?» — e
+      // fino a quando l'arco si fermava a cinque minuti non c'era nessuna
+      // riga che potesse rispondere. La differenza fra le due risposte non è
+      // una sfumatura: «tramonta fra 6 minuti» è una previsione, «lo seguo
+      // per 25 minuti» è il punto in cui abbiamo smesso di guardare.
+      { chiave: 'arco', nome: 'In vista', valore: aereiTestoArco(a.arco) },
       { chiave: 'itinerario', nome: 'Itinerario', dallaRete: true },
       { chiave: 'icao', nome: 'Codice ICAO', valore: String(a.id || '').toUpperCase() },
       { chiave: 'squawk', nome: 'Squawk', valore: a.squawk }
     ].filter(v => v.dallaRete || v.valore);
+  }
+
+  function aereiTestoArco(arco) {
+    if (!arco || !Number.isFinite(arco.minutiResidui)) return '';
+    const m = arco.minutiResidui;
+    const quanto = m < 1 ? `${Math.round(m * 60)} s` : `${Math.round(m)} min`;
+    const alto = Number.isFinite(arco.altMax) ? `, fino a ${Math.round(arco.altMax)}° di altezza` : '';
+    return arco.tramonta
+      ? `ancora ${quanto}${alto}, poi tramonta`
+      : `almeno ${quanto}${alto}`;
   }
 
   function aereiNotaScheda(a) {
@@ -2122,6 +2400,10 @@
     // Muoversi (§4-bis)
     scartoDalCentroKm, tolleranzaCentroKm, saltoCentroKm, centroAltrove, ricentraPresto,
     unisciConLaMemoria, osservatoreDisegno, osservatore,
+    // L'arco di transito (§ «L'arco di transito» in cima al file)
+    arcoDiTransito, arcoRiassunto, aereiTestoArco, fiduciaArco, misuraAereo, orizzonteIn,
+    AEREI_ARCO_MAX_MIN, AEREI_ARCO_PASSO_FINE_S, AEREI_ARCO_FINE_S,
+    AEREI_APERTURA_M, PREVISIONE_MINUTI, COLORE_SILHOUETTE,
     AEREI_CENTRO_QUOTA, AEREI_CENTRO_MIN_KM, AEREI_CENTRO_MAX_KM, AEREI_SALTO_MIN_KM,
     AEREI_MOTO_MIN_MS, AEREI_MEMORIA_MS, AEREI_VIVO_MAX_KM };
 }());

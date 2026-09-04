@@ -11442,6 +11442,9 @@ function skyAggiungiSatelliti(lista, quando) {
       az: p.az,
       alt: p.alt,
       distanzaKm: p.distanza,
+      // Il diametro viaggia con l'oggetto: `skyRaggio` sceglie da sé fra
+      // l'icona e la misura vera, ed è la stessa regola dei pianeti.
+      diametroKm: sat.diametroKm,
       illuminato: satelliteIlluminato(p.posizione, quando),
       traccia,
       // Dati da tabella per la scheda: cos'è, quanto è grande, quanto brilla
@@ -19655,6 +19658,129 @@ function skyRaggioVero(o, focale, scala) {
   return focale * (o.diametroKm / 2) / km * (scala || 1);
 }
 
+// --- Il modellino delle stazioni spaziali ------------------------------
+//
+// Un rombo dice «non è una stella». Non dice quale delle due stazioni sia,
+// non dice da che parte stia andando, e soprattutto non dice **che cosa
+// sia**: a un quarto di grado di campo la ISS è larga trentasette pixel —
+// il calcolo è quello di `skyRaggioVero`, centonove metri a quattrocento
+// chilometri — e disegnarci dentro un rombo è come disegnare Saturno senza
+// anelli perché tanto è un puntino.
+//
+// I due modelli sono ridotti all'osso, ma all'osso giusto: quello che si
+// riconosce in una fotografia è il **traliccio coi pannelli** della ISS e la
+// **T** di Tiangong, e sono le due cose che qui restano. Sotto la misura in
+// cui quel disegno diventa una macchia (`SKY_STAZIONE_MODELLO_PX`) si torna
+// al rombo, che a cinque pixel è ancora un simbolo e non un pasticcio.
+//
+// L'orientamento non è decorativo. Una stazione vola con il traliccio **di
+// traverso** alla rotta e i moduli **lungo** la rotta: girare il modellino
+// nel verso in cui si sta muovendo è la stessa informazione che il triangolo
+// degli aerei dà col muso, e si legge senza numeri.
+const SKY_STAZIONE_MODELLO_PX = 7;
+
+// Da che parte sta andando, in pixel di schermo. La direzione si prende
+// dalla scia già calcolata (`o.traccia`, mezzo minuto per campione): dal
+// primo punto del passato al primo del futuro. Non si usa l'azimut: sullo
+// schermo comanda la proiezione, e a campo largo una rotta verso nord può
+// essere disegnata in qualunque direzione.
+function skyDirezioneStazione(o, base, focale) {
+  if (!o.traccia || o.traccia.length < 2) return null;
+  const primoFuturo = o.traccia.find(t => t.futuro);
+  const ultimoPassato = o.traccia.filter(t => !t.futuro).pop();
+  if (!primoFuturo || !ultimoPassato) return null;
+  const a = skyProietta(skyVettore(ultimoPassato.az, ultimoPassato.alt), base, focale);
+  const b = skyProietta(skyVettore(primoFuturo.az, primoFuturo.alt), base, focale);
+  if (!a.davanti || !b.davanti) return null;
+  const dx = b.px - a.px, dy = b.py - a.py;
+  if (Math.hypot(dx, dy) < 0.3) return null;
+  return Math.atan2(dy, dx);
+}
+
+// I due modelli, disegnati nel riquadro unitario: +x è il verso della rotta,
+// +y è di traverso. Chi chiama ha già ruotato e scalato.
+function skyFormaStazione(ctx, quale, r) {
+  const barra = (x0, y0, x1, y1, spessore) => {
+    ctx.beginPath();
+    ctx.lineWidth = spessore * r;
+    ctx.lineCap = 'round';
+    ctx.moveTo(x0 * r, y0 * r);
+    ctx.lineTo(x1 * r, y1 * r);
+    ctx.stroke();
+  };
+  const pannello = (cx, cy, lx, ly) => {
+    ctx.beginPath();
+    ctx.rect((cx - lx / 2) * r, (cy - ly / 2) * r, lx * r, ly * r);
+    ctx.fill();
+    ctx.stroke();
+  };
+  if (quale === 'css') {
+    // Tiangong: il modulo centrale, il laboratorio agganciato di fianco (la
+    // T che le dà il nome) e i due pannelli.
+    barra(-1.15, 0, 1.15, 0, 0.42);
+    barra(0.35, -0.85, 0.35, 0.85, 0.34);
+    ctx.lineWidth = Math.max(0.5, 0.08 * r);
+    pannello(0, -1.45, 1.15, 0.42);
+    pannello(0, 1.45, 1.15, 0.42);
+    return;
+  }
+  // ISS: i moduli in fila lungo la rotta, il traliccio di traverso, e le due
+  // coppie di pannelli agganciate al traliccio.
+  barra(-0.95, 0, 0.95, 0, 0.4);
+  barra(0, -1.7, 0, 1.7, 0.17);
+  ctx.lineWidth = Math.max(0.5, 0.08 * r);
+  pannello(0, -0.78, 1.7, 0.42);
+  pannello(0, 0.78, 1.7, 0.42);
+  pannello(0, -1.42, 1.7, 0.42);
+  pannello(0, 1.42, 1.7, 0.42);
+}
+
+function skyDisegnaStazione(ctx, px, py, r, o, base, focale) {
+  // In controluce non c'è colore: c'è un buco nella luce. È la stessa regola
+  // degli aerei (`aerei.js`), e vale qui per la ragione per cui la ISS
+  // davanti alla Luna è la fotografia che tutti provano a fare.
+  const disco = typeof skyDiscoDavanti === 'function' ? skyDiscoDavanti(px, py) : null;
+  const nero = '#04070d';
+  const tinta = disco ? nero : (o.illuminato === false ? '#64748b' : o.colore);
+  const orlo = disco ? nero : '#f8fafc';
+
+  if (r < SKY_STAZIONE_MODELLO_PX) {
+    // Il rombo di sempre: a questa misura un modellino sarebbe una macchia,
+    // e una macchia dice meno di un simbolo.
+    ctx.beginPath();
+    ctx.moveTo(px, py - r);
+    ctx.lineTo(px + r, py);
+    ctx.lineTo(px, py + r);
+    ctx.lineTo(px - r, py);
+    ctx.closePath();
+    ctx.fillStyle = tinta;
+    ctx.fill();
+    if (!disco) { ctx.strokeStyle = orlo; ctx.lineWidth = 1; ctx.stroke(); }
+    return;
+  }
+
+  const angolo = skyDirezioneStazione(o, base, focale);
+  ctx.save();
+  ctx.translate(px, py);
+  if (angolo !== null) ctx.rotate(angolo);
+  ctx.fillStyle = tinta;
+  ctx.strokeStyle = tinta;
+  ctx.lineJoin = 'round';
+  skyFormaStazione(ctx, o.satId, r * 0.62);
+  if (!disco) {
+    // Sul cielo il modellino ha bisogno di un orlo chiaro per la stessa
+    // ragione per cui ce l'hanno i nomi delle montagne: sopra alla Via
+    // Lattea o a una nuvola chiara una sagoma grigia sparisce. In
+    // controluce l'orlo non si mette — un contorno attorno a una cosa già
+    // nera è l'unico modo di sfocare una silhouette.
+    ctx.globalAlpha *= 0.85;
+    ctx.strokeStyle = orlo;
+    ctx.lineWidth = Math.max(0.6, r * 0.05);
+    skyFormaStazione(ctx, o.satId, r * 0.62);
+  }
+  ctx.restore();
+}
+
 // Percorso della stazione spaziale nei minuti attorno all'istante mostrato:
 // il tratteggio è la strada già fatta, la linea piena è dove sta andando.
 function skyDisegnaScia(ctx, base, focale, o) {
@@ -19679,6 +19805,56 @@ function skyDisegnaScia(ctx, base, focale, o) {
   }
   ctx.setLineDash([]);
   ctx.restore();
+}
+
+// --- I dischi luminosi di questo fotogramma ---------------------------
+//
+// Chi passa **davanti** al Sole o alla Luna non si disegna come chi passa
+// sul cielo: in controluce non è un triangolo arancione, è un buco nella
+// luce. Ma per saperlo bisogna sapere dove il disco è finito sullo schermo e
+// quanto è grande, e quello lo sa solo chi l'ha appena disegnato — la misura
+// dipende dal campo visivo, dallo stiramento della stereografica in quel
+// punto e dall'eventuale ingrandimento dell'icona.
+//
+// Quindi il disegno degli astri lascia qui la sua ricevuta e chi viene dopo
+// la legge. Gli aerei (`aerei.js`) e le stazioni sono disegnati **dopo** gli
+// astri proprio per questo, ed è la correzione d'ordine che ha portato con
+// sé tutto il resto: prima passavano sotto, cioè un aereo che transitava sul
+// Sole spariva dietro al Sole — l'unico oggetto del cielo che non gli può
+// stare davanti.
+//
+// Sole e Luna, e nient'altro. Non è pigrizia: sono i due dischi abbastanza
+// luminosi da stagliare qualcosa contro di loro. Un aereo davanti a Giove
+// non è una silhouette — è un aereo davanti a un puntino, e disegnarlo nero
+// vorrebbe dire cancellarlo sul cielo notturno.
+let skyDischiAstri = [];
+
+// Quanto poca Luna basta a fare da fondo. Sotto un sesto di disco illuminato
+// quello che si attraversa è quasi tutto la parte scura, e una silhouette lì
+// sarebbe una sagoma nera su fondo nero: cioè un oggetto che sparisce
+// proprio mentre gli si sta dicendo di farsi vedere.
+const SKY_DISCO_LUNA_MIN = 0.16;
+
+function skyRegistraDisco(o, p, r) {
+  if (o.tipo === 'sole') { skyDischiAstri.push({ id: o.id, tipo: o.tipo, px: p.px, py: p.py, r }); return; }
+  if (o.tipo !== 'luna') return;
+  const frazione = typeof o.frazione === 'number' ? o.frazione : 1;
+  if (frazione < SKY_DISCO_LUNA_MIN) return;
+  // Una Luna dentro all'ombra della Terra è ramata e debolissima: continua a
+  // fare da fondo, ma non è più il fondo di una Luna piena. Si registra
+  // comunque — un transito sull'eclissi è la fotografia di una vita — e chi
+  // disegna sa che lì il nero deve restare nero.
+  skyDischiAstri.push({ id: o.id, tipo: o.tipo, px: p.px, py: p.py, r });
+}
+
+// C'è un disco luminoso sotto a questo punto dello schermo? Restituisce il
+// disco, se c'è, così chi lo chiede può anche sapere quale e quanto grande.
+function skyDiscoDavanti(px, py) {
+  for (let i = 0; i < skyDischiAstri.length; i++) {
+    const d = skyDischiAstri[i];
+    if (Math.hypot(px - d.px, py - d.py) <= d.r) return d;
+  }
+  return null;
 }
 
 function skyDisegnaAstro(ctx, base, focale, o) {
@@ -19711,6 +19887,13 @@ function skyDisegnaAstro(ctx, base, focale, o) {
     (o.tipo === 'pianeta' && typeof o.mag === 'number' && o.mag < 0);
   const visibilita = skyEstinzione(o.alt) * (resiste ? 1 : Math.max(0.12, skyVelo()));
   if (!sottoOrizzonte && visibilita < 0.06) return;
+
+  // La ricevuta per chi passa davanti (vedi `skyDischiAstri` qui sopra). Va
+  // lasciata **qui**, dopo il taglio dei bordi e della visibilità: un disco
+  // fuori dallo schermo o cancellato dalla luce del giorno non fa da fondo a
+  // nessuno, e registrarlo lo stesso vorrebbe dire annerire un aereo davanti
+  // a una Luna che in quel fotogramma non è disegnata.
+  if (!sottoOrizzonte) skyRegistraDisco(o, p, r);
 
   // La scia della stazione spaziale: tratteggiata dove è già passata,
   // continua dove sta andando nei prossimi minuti.
@@ -19786,18 +19969,10 @@ function skyDisegnaAstro(ctx, base, focale, o) {
   } else if (o.tipo === 'stella') {
     // Il nocciolo l'ha già disegnato skyDisegnaPuntoStellare
   } else if (o.tipo === 'satellite') {
-    // Un rombo, per non confonderla con una stella: le stazioni si muovono
-    ctx.beginPath();
-    ctx.moveTo(p.px, p.py - r);
-    ctx.lineTo(p.px + r, p.py);
-    ctx.lineTo(p.px, p.py + r);
-    ctx.lineTo(p.px - r, p.py);
-    ctx.closePath();
-    ctx.fillStyle = o.illuminato === false ? '#64748b' : o.colore;
-    ctx.fill();
-    ctx.strokeStyle = '#f8fafc';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    // Il modellino, o il rombo se è troppo piccola perché un modellino dica
+    // qualcosa (vedi `skyDisegnaStazione`). E la silhouette, quando sta
+    // passando davanti al Sole o alla Luna.
+    skyDisegnaStazione(ctx, p.px, p.py, r, o, base, focale);
   } else if (o.tipo === 'luna') {
     // Da che parte arriva la luce (il lembo illuminato punta sempre di là) e
     // da che parte sta il nord del cielo (i mari si orientano su quello)
@@ -20064,7 +20239,6 @@ function skyDisegna() {
   // chilometri di quota ma spesso a mille di distanza: quello che le
   // finisce sotto la cresta, sotto la cresta deve restare.
   if (typeof aurDisegna === 'function') aurDisegna(ctx, base, focale);
-  if (typeof aereiDisegna === 'function') aereiDisegna(ctx, base, focale);
   // Le cupole di luce dei paesi: **prima** del terreno, così la collina le
   // taglia come fa dal vero (la luce viene da dietro il crinale), e
   // **dopo** le stelle, perché è esattamente quello che fanno — sbiadire
@@ -20075,12 +20249,35 @@ function skyDisegna() {
   // comparire davanti al paesaggio. La vista normale, invece, li dipinge qui:
   // il terreno tracciato subito dopo li copre davvero quando sono dietro una
   // cresta. Con la fotocamera non c'è terreno disegnato e l'ordine è neutro.
+  // L'ordine dentro agli astri, e la ragione per cui gli aerei sono
+  // scesi qui in fondo.
+  //
+  // Un aereo e una stazione spaziale sono a chilometri, il Sole e la Luna a
+  // milioni: fra i due non c'è partita su chi stia davanti a chi, e finché
+  // `aereiDisegna` girava insieme all'aurora — cioè **prima** degli astri —
+  // un aereo che attraversava il Sole ci finiva **dietro**. Il transito
+  // c'era, la geometria era giusta, e sullo schermo non si vedeva niente:
+  // il disco lo cancellava. È il difetto che rendeva inutile qualunque
+  // previsione, perché l'unica cosa che nessuno poteva guardare era proprio
+  // il momento previsto.
+  //
+  // Le stazioni stavano già in fondo (`satellite: 4`) e restano lì. Gli
+  // aerei si disegnano subito dopo, cioè sopra a tutti gli astri e sotto al
+  // terreno: una collina davanti li deve coprire davvero, e quella viene
+  // dopo di qui.
   const ordineAstri = { stella: 0, pianeta: 1, sole: 2, luna: 3, satellite: 4 };
   const daDisegnare = skyOggettiDaDisegnare();
-  const disegnaAstriPrincipali = () => daDisegnare
-    .slice()
-    .sort((a, b) => (ordineAstri[a.tipo] || 0) - (ordineAstri[b.tipo] || 0))
-    .forEach(o => skyDisegnaAstro(ctx, base, focale, o));
+  const disegnaAstriPrincipali = () => {
+    // Le ricevute dei dischi valgono un fotogramma solo: gli astri si
+    // spostano, il campo cambia, e un disco vecchio annerirebbe un aereo che
+    // adesso passa sul cielo vuoto.
+    skyDischiAstri = [];
+    daDisegnare
+      .slice()
+      .sort((a, b) => (ordineAstri[a.tipo] || 0) - (ordineAstri[b.tipo] || 0))
+      .forEach(o => skyDisegnaAstro(ctx, base, focale, o));
+    if (typeof aereiDisegna === 'function') aereiDisegna(ctx, base, focale);
+  };
   const disegnaAstriSecondari = () => {
     skyDisegnaCostellazioni(ctx, base, focale);
     skyDisegnaProfondo(ctx, base, focale);
@@ -24855,6 +25052,13 @@ function skyCiclo() {
     // playback o lo spostamento morbido, l'oggetto scelto torna al centro
     skyInsegui();
     skyDisegna();
+    // I transiti: chi passa davanti a chi, e fra quanto. La funzione si
+    // strozza da sé (§8 di `transiti.js`) — gli aerei ogni quattro secondi,
+    // le stazioni ogni due minuti e fuori dal fotogramma — quindi da qui
+    // costa un confronto fra due numeri. Sta **dopo** `skyDisegna` di
+    // proposito: il fotogramma che l'utente sta aspettando esce per primo, e
+    // il conto del transito arriva col successivo.
+    if (typeof tranAggiorna === 'function') tranAggiorna(false);
     skyUltimoGuasto = null;
   } catch (e) {
     skyGuastoFotogramma(e);
@@ -34892,6 +35096,11 @@ const SATELLITI = [
     chiaveTle: 'astrocalendario_tle_iss',
     classe: 'Stazione spaziale abitata',
     dimensione: '109 × 73 m, pannelli solari compresi',
+    // In chilometri, per il disegno: è la misura da cui `skyRaggioVero`
+    // ricava quanti pixel occupa davvero. A un quarto di grado di campo
+    // sono una quarantina, cioè abbastanza perché il modellino di §
+    // `skyDisegnaStazione` sia un modellino e non una macchia.
+    diametroKm: 0.109,
     magTipica: -3,
     periodoMin: 93,
     creazione: 911520000000,
@@ -34906,6 +35115,7 @@ const SATELLITI = [
     chiaveTle: 'astrocalendario_tle_css',
     classe: 'Stazione spaziale abitata',
     dimensione: 'circa 55 m fra i moduli e i pannelli',
+    diametroKm: 0.055,
     magTipica: -1,
     periodoMin: 92,
     creazione: 1619654400000,
