@@ -37034,38 +37034,30 @@ function skyScartoTempoTesto(secondi) {
   return secondi > 0 ? `fra ${durata}` : `${durata} fa`;
 }
 
-// Lo scarto compatto della barra non usa sigle e segni: deve potersi leggere
-// come una frase. L'unita' cresce insieme allo spostamento, cosi' un salto di
-// un minuto dice «1 minuto avanti» e uno di un'ora «1 ora indietro», invece
-// di mostrare entrambi come una frazione (positiva o negativa) di ora.
+// Lo scarto della barra deve occupare poco anche sugli schermi stretti: segno,
+// unita' abbreviate e al massimo le due parti piu' significative. Superata
+// un'unita' si conserva il resto (per esempio "+12 m 3 s" o "-1 g 2 h"),
+// cosi' la lettura resta precisa senza tornare alle forme lunghe.
 function skyScartoBarraTesto(secondi) {
-  const assoluto = Math.abs(secondi);
-  let valore;
-  let singolare;
-  let plurale;
-  if (assoluto < 60) {
-    valore = assoluto;
-    singolare = 'secondo'; plurale = 'secondi';
-  } else if (assoluto < 3600) {
-    valore = assoluto / 60;
-    singolare = 'minuto'; plurale = 'minuti';
-  } else if (assoluto < 86400) {
-    valore = assoluto / 3600;
-    singolare = 'ora'; plurale = 'ore';
-  } else if (assoluto < 2592000) {
-    valore = assoluto / 86400;
-    singolare = 'giorno'; plurale = 'giorni';
-  } else if (assoluto < 31557600) {
-    valore = assoluto / 2592000;
-    singolare = 'mese'; plurale = 'mesi';
-  } else {
-    valore = assoluto / 31557600;
-    singolare = 'anno'; plurale = 'anni';
+  const totale = Math.round(Math.abs(secondi));
+  if (!totale) return '0 s';
+  const unita = [
+    { sigla: 'a', secondi: 365 * 86400 },
+    { sigla: 'g', secondi: 86400 },
+    { sigla: 'h', secondi: 3600 },
+    { sigla: 'm', secondi: 60 },
+    { sigla: 's', secondi: 1 }
+  ];
+  let resto = totale;
+  const pezzi = [];
+  for (const u of unita) {
+    const valore = Math.floor(resto / u.secondi);
+    if (!valore) continue;
+    pezzi.push(`${valore} ${u.sigla}`);
+    resto %= u.secondi;
+    if (pezzi.length === 2) break;
   }
-  const arrotondato = Math.round(valore * 10) / 10;
-  const numero = arrotondato.toLocaleString('it-IT', { maximumFractionDigits: 1 });
-  const unita = arrotondato === 1 ? singolare : plurale;
-  return `${numero} ${unita} ${secondi >= 0 ? 'avanti' : 'indietro'}`;
+  return `${secondi >= 0 ? '+' : '-'}${pezzi.join(' ')}`;
 }
 
 function skyAggiornaTestoTempo() {
@@ -37183,7 +37175,7 @@ function skyOrariBarraTempo(quando) {
     spostato,
     mostraScarto: fusoLuogo !== fusoDispositivo || spostato,
     direzione: spostato ? (scartoOre > 0 ? 'Futuro' : 'Passato') : 'Tempo reale',
-    scarto: spostato ? skyScartoBarraTesto(scartoOre * 3600) : '0 secondi'
+    scarto: spostato ? skyScartoBarraTesto(scartoOre * 3600) : '0 s'
   };
 }
 

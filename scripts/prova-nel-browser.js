@@ -221,18 +221,18 @@ const server = http.createServer((req, res) => {
     skyImpostaOffsetTempo(-3600);
     const passato = document.querySelector('#skymap-tempo-quando .orologio-scarto .etichetta-orologio-tempo')?.textContent;
     const unOraIndietro = document.querySelector('#skymap-tempo-quando .orologio-scarto .valore-orologio-tempo')?.textContent;
-    const scarti = [60, 120, 86400, -2592000, 31557600].map(skyScartoBarraTesto);
+    const scarti = [63, 3723, 90000, -2592000, 31536000 + 172800].map(skyScartoBarraTesto);
     skyImpostaOffsetTempo(0);
     return { futuro, passato, unOraAvanti, unOraIndietro, scarti };
   });
   ok('la barra del tempo cambia etichetta attraversando il presente',
     versiBarraTempo.futuro === 'Futuro' && versiBarraTempo.passato === 'Passato',
     `${versiBarraTempo.futuro} → ${versiBarraTempo.passato}`);
-  ok('lo scarto dice la durata in parole e il verso del movimento',
-    versiBarraTempo.unOraAvanti === '1 ora avanti' &&
-      versiBarraTempo.unOraIndietro === '1 ora indietro' &&
+  ok('lo scarto usa segno, unita brevi e al massimo due parti',
+    versiBarraTempo.unOraAvanti === '+1 h' &&
+      versiBarraTempo.unOraIndietro === '-1 h' &&
       versiBarraTempo.scarti.join('|') ===
-        '1 minuto avanti|2 minuti avanti|1 giorno avanti|1 mese indietro|1 anno avanti',
+        '+1 m 3 s|+1 h 2 m|+1 g 1 h|-30 g|+1 a 2 g',
     `${versiBarraTempo.unOraAvanti}; ${versiBarraTempo.unOraIndietro}; ${versiBarraTempo.scarti.join('; ')}`);
 
   const firmaVideo = await pagina.evaluate(() => {
