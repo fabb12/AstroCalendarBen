@@ -29679,27 +29679,31 @@ function solDisegnaRaggiVicino(ctx, versoSole, portata) {
 
 // Il Sole del banco Terra-Luna non puo' stare alla sua distanza reale: a
 // centocinquanta milioni di chilometri sarebbe oltre trecento orbite lunari
-// fuori dalla tela. Nasconderlo del tutto, pero', lascia i coni senza una
-// causa visibile. Lo appoggiamo quindi al bordo nella sua direzione vera,
-// come una sorgente luminosa dichiaratamente fuori scala. I raggi paralleli
-// partono dalla stessa parte e continuano a conservare la geometria reale.
+// fuori dalla tela. Il suo *raggio*, invece, puo' e deve usare lo stesso
+// metro di Terra, Luna e righello: 696.350 km. Il centro viene appoggiato al
+// bordo nella sua direzione vera. Cosi' il disco e' gia' enorme come deve
+// essere e, avvicinandosi, se ne vede soltanto una porzione sempre piu'
+// piccola invece di un bollino che resta uguale.
+//
+// La posa dipende solo dalla tela e dalla direzione, mai dallo zoom o dal
+// pan. Questo dettaglio e' intenzionale: mentre si aziona lo zoom il Sole
+// cresce attorno allo stesso centro e non scivola lungo il bordo.
 function solDisegnaSoleVicino(ctx, versoSole) {
   const dir = solVersoRaggi(versoSole);
   if (!dir) return;
-  const r = Math.max(23, Math.min(36, Math.min(sol.L, sol.H) * 0.06));
-  const margine = r + 13;
-  // Il Sole e' fuori campo: lo si ancora alla tela, non alla Terra. Cosi'
-  // zoom e pan muovono il sistema Terra–Luna ma non fanno scivolare la sua
-  // sorgente luminosa lungo il bordo.
+  const r = (SOL_SOLE_KM / 2) * solVicPx();
+  if (!(r > 0)) return;
+  // Il centro, non il lembo, e' ancorato al bordo. Usare `r` per calcolare
+  // questa posizione farebbe traslare il Sole a ogni scatto dello zoom.
   const origine = { px: sol.L / 2, py: sol.H / 2 };
   const candidati = [];
   if (Math.abs(dir.ux) > 1e-6) {
-    candidati.push((margine - origine.px) / dir.ux);
-    candidati.push((sol.L - margine - origine.px) / dir.ux);
+    candidati.push((0 - origine.px) / dir.ux);
+    candidati.push((sol.L - origine.px) / dir.ux);
   }
   if (Math.abs(dir.uy) > 1e-6) {
-    candidati.push((margine - origine.py) / dir.uy);
-    candidati.push((sol.H - margine - origine.py) / dir.uy);
+    candidati.push((0 - origine.py) / dir.uy);
+    candidati.push((sol.H - origine.py) / dir.uy);
   }
   const t = candidati.filter(v => v > 0).sort((a, b) => a - b)[0];
   if (!isFinite(t)) return;
@@ -29754,13 +29758,16 @@ function solDisegnaSoleVicino(ctx, versoSole) {
   if (!SOL_CARATTERE) SOL_CARATTERE = getComputedStyle(document.body).fontFamily || 'sans-serif';
   ctx.font = `700 11px ${SOL_CARATTERE}`;
   ctx.textAlign = 'center';
-  ctx.textBaseline = y < sol.H / 2 ? 'top' : 'bottom';
-  const ty = y < sol.H / 2 ? y + r + 7 : y - r - 7;
+  // Il nome resta leggibile anche quando il bordo del disco e' ormai molto
+  // oltre la tela. Non segue il raggio: seguendolo sparirebbe allo zoom.
+  const etichettaX = Math.max(58, Math.min(sol.L - 58, x - dir.ux * 18));
+  const etichettaY = Math.max(18, Math.min(sol.H - 18, y - dir.uy * 18));
+  ctx.textBaseline = 'middle';
   ctx.lineWidth = 4;
   ctx.strokeStyle = 'rgba(6, 10, 20, 0.9)';
-  ctx.strokeText('SOLE · luce', x, ty);
+  ctx.strokeText('SOLE · scala reale', etichettaX, etichettaY);
   ctx.fillStyle = '#fef3c7';
-  ctx.fillText('SOLE · luce', x, ty);
+  ctx.fillText('SOLE · scala reale', etichettaX, etichettaY);
   ctx.restore();
 }
 
