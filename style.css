@@ -5137,6 +5137,36 @@ body input.casella-data:hover { border: 0; }
 .fumetto-riga:first-child { color: var(--testo); font-weight: 600; }
 .fumetto-voce { color: var(--blu-chiaro); }
 
+/* L'aereo porta nel cielo la sua carta d'identità completa. Il nome può
+   andare a capo (non viene troncato coi puntini) e la foto resta abbastanza
+   bassa da lasciare visibile il cielo a cui il fumetto è attaccato. */
+.fumetto-cielo.fumetto-aereo {
+  max-width: min(310px, 88vw);
+  max-height: min(430px, calc(100% - 72px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.fumetto-aereo .fumetto-titolo {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+.fumetto-aereo-foto { margin: 0 0 6px; }
+.fumetto-aereo-foto img {
+  display: block;
+  width: 100%;
+  max-height: 112px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.fumetto-aereo-foto figcaption {
+  margin-top: 2px;
+  color: var(--testo-3);
+  font-size: .66rem;
+  line-height: 1.2;
+}
+
 /* La freccia che dalla scheda completa riporta al fumetto. Sta accanto al ✕
    e non al suo posto: chiudere e tornare indietro sono due gesti diversi. */
 .tasto-indietro-dettaglio {
@@ -5162,6 +5192,7 @@ body input.casella-data:hover { border: 0; }
   .fumetto-cielo { max-width: min(230px, 46vw); padding: 7px 9px; }
   .fumetto-riga { -webkit-line-clamp: 1; }
   .fumetto-tasto { width: 28px; height: 28px; }
+  .fumetto-aereo-foto img { max-height: 58px; }
 }
 /* --------------------------------------------- "STO PREPARANDO IL CIELO" */
 /* La riga che compare sulla mappa mentre il catalogo arriva. Sta in basso

@@ -202,7 +202,8 @@
         operatore: a.ownOp || '', squawk: a.squawk || '',
         lon: numero(a.lon), lat: numero(a.lat),
         quotaM: quotaPiedi === null ? null : quotaPiedi * 0.3048,
-        aTerra: a.alt_baro === 'ground', velocitaMs: (numero(a.gs) || 0) * 0.514444,
+        aTerra: a.alt_baro === 'ground',
+        velocitaMs: numero(a.gs) === null ? null : numero(a.gs) * 0.514444,
         direzione: numero(a.track), salitaMs: (numero(a.baro_rate) || 0) * 0.00508,
         ultimaLettura: Math.floor(Date.now() / 1000 - (vistoSecondiFa || 0))
       };
@@ -223,8 +224,8 @@
       id: a[0], callsign: String(a[1] || '').trim() || String(a[0] || '').toUpperCase(),
       registrazione: '', tipoIcao: '', descrizione: '', operatore: '', squawk: String(a[14] || ''),
       lon: numero(a[5]), lat: numero(a[6]), quotaM: numero(a[13]) ?? numero(a[7]),
-      aTerra: !!a[8], velocitaMs: numero(a[9]) || 0, direzione: numero(a[10]),
-      salitaMs: numero(a[11]) || 0, ultimaLettura: numero(a[4]) || numero(a[3])
+      aTerra: !!a[8], velocitaMs: numero(a[9]), direzione: numero(a[10]),
+      salitaMs: numero(a[11]), ultimaLettura: numero(a[4]) ?? numero(a[3])
     })).filter(a => Number.isFinite(a.lat) && Number.isFinite(a.lon));
   }
 
@@ -703,16 +704,28 @@
       Math.cos(lat1) * Math.sin(distanza) * Math.cos(rotta));
     const lon = lon1 + Math.atan2(Math.sin(rotta) * Math.sin(distanza) * Math.cos(lat1),
       Math.cos(distanza) - Math.sin(lat1) * Math.sin(lat));
-    return { ...aereo, lat: gradi(lat), lon: limita180(gradi(lon)),
-      quotaM: Math.max(0, (aereo.quotaM || 0) + (aereo.salitaMs || 0) * secondi) };
+    const quotaM = Number.isFinite(aereo.quotaM)
+      ? Math.max(0, aereo.quotaM + (Number.isFinite(aereo.salitaMs) ? aereo.salitaMs : 0) * secondi)
+      : null;
+    return { ...aereo, lat: gradi(lat), lon: limita180(gradi(lon)), quotaM };
   }
 
   function coordinateCielo(aereo, osservatore) {
     const d = distanzaDirezione(osservatore, aereo);
-    const quotaOsservatore = osservatore.quotaM || 0;
-    const alt = gradi(Math.atan2((aereo.quotaM || 0) - quotaOsservatore,
-      Math.max(.02, d.km * 1000))) - gradi(d.km / (2 * TERRA_KM));
-    return { az: d.az, alt, distanzaKm: d.km };
+    // Non confondere la distanza sulla carta con quella che separa davvero
+    // l'occhio dall'aereo. Il triangolo va risolto sui due raggi terrestri:
+    // così curvatura, quota dell'osservatore e quota dell'aereo entrano nello
+    // stesso conto, invece di correggere a posteriori una Terra piatta.
+    const quotaOsservatoreKm = Number.isFinite(osservatore.quotaM) ? osservatore.quotaM / 1000 : 0;
+    const quotaAereoKm = Number.isFinite(aereo.quotaM) ? aereo.quotaM / 1000 : 0;
+    const rOsservatore = TERRA_KM + quotaOsservatoreKm;
+    const rAereo = TERRA_KM + quotaAereoKm;
+    const angolo = d.km / TERRA_KM;
+    const avanti = rAereo * Math.sin(angolo);
+    const alto = rAereo * Math.cos(angolo) - rOsservatore;
+    const distanzaKm = Math.hypot(avanti, alto);
+    const alt = gradi(Math.atan2(alto, Math.max(.00002, avanti)));
+    return { az: d.az, alt, distanzaKm, distanzaSuoloKm: d.km };
   }
 
   function separazione(a, b) {
@@ -886,7 +899,7 @@
       }
       return { ...a, ...cielo, traiettoria, allineamenti: [],
         posizioneFeed: { ...a } };
-    }).filter(a => a.distanzaKm <= raggioKm()).sort((a, b) => a.distanzaKm - b.distanzaKm);
+    }).filter(a => a.distanzaSuoloKm <= raggioKm()).sort((a, b) => a.distanzaKm - b.distanzaKm);
   }
 
   // Quello che il feed non ha riconfermato non è per forza sparito dal cielo.
@@ -1852,10 +1865,35 @@
     return { pronta: voce.pronta, valore: voce.valore };
   }
 
-  // Le righe compatte del fumetto: quattro, e sono quelle che si leggono in
-  // un colpo d'occhio guardando in su — da dove viene e dove va, quanto è
-  // alto e quanto corre, che aeroplano è, quanto è lontano. Il resto
-  // (registrazione, operatore, squawk, ICAO, la foto) sta dietro al ⓘ.
+  const fotoFumettoCache = new Map();
+
+  // La fotografia parte insieme al fumetto e non lo blocca. La cache conserva
+  // anche l'esito negativo: mentre il fumetto si aggiorna due volte al secondo
+  // non deve lanciare due richieste al secondo a Planespotters.
+  function fotoFumettoOra(a) {
+    const id = String(a && a.id || '').toLowerCase();
+    if (!id) return null;
+    if (!fotoFumettoCache.has(id)) {
+      const voce = { pronta: false, valore: null };
+      fotoFumettoCache.set(id, voce);
+      fetch(`https://api.planespotters.net/pub/photos/hex/${encodeURIComponent(id)}`,
+        { cache: 'force-cache' }).then(r => r.ok ? r.json() : null)
+        .then(d => d && d.photos && d.photos[0]).catch(() => null).then(foto => {
+          const img = foto && (foto.thumbnail_large || foto.thumbnail);
+          voce.valore = img && img.src ? {
+            src: img.src,
+            credito: foto.photographer || '',
+            alt: `Foto dell’aereo ${a.callsign || id}`
+          } : null;
+          voce.pronta = true;
+        });
+    }
+    return fotoFumettoCache.get(id).valore;
+  }
+
+  // Nel fumetto l'aereo non e' una sigla seguita da numeri anonimi: ogni
+  // dato ha il suo nome, l'aeromobile resta scritto per intero e partenza e
+  // destinazione hanno due righe distinte.
   function aereiFumettoDati(a) {
     const righe = [];
     const metti = (chiave, etichetta, valore) => {
@@ -1864,17 +1902,17 @@
 
     const rotta = aereiRottaOra(a);
     if (rotta.valore && (rotta.valore.partenza || rotta.valore.arrivo)) {
-      metti('rotta', '', `${rotta.valore.partenza || '?'} → ${rotta.valore.arrivo || '?'}`);
+      metti('partenza', 'Partenza', rotta.valore.partenza || 'non comunicata');
+      metti('destinazione', 'Destinazione', rotta.valore.arrivo || 'non comunicata');
     } else if (!rotta.pronta) {
-      metti('rotta', '', 'Cerco l’itinerario…');
+      metti('partenza', 'Itinerario', 'ricerca in corso…');
     }
 
-    const pezzi = [];
-    if (Number.isFinite(a.quotaM)) pezzi.push(`${Math.round(a.quotaM).toLocaleString('it-IT')} m`);
-    if (Number.isFinite(a.velocitaMs)) pezzi.push(`${Math.round(a.velocitaMs * 3.6)} km/h`);
-    metti('volo', '', pezzi.join(' · '));
-
-    metti('tipo', '', a.descrizione || a.tipoIcao || '');
+    metti('tipo', 'Aereo', a.descrizione || a.tipoIcao || 'non comunicato');
+    metti('quota', 'Quota', Number.isFinite(a.quotaM)
+      ? `${Math.round(a.quotaM).toLocaleString('it-IT')} m s.l.m.` : 'non comunicata');
+    metti('velocita', 'Velocità', Number.isFinite(a.velocitaMs)
+      ? `${Math.round(a.velocitaMs * 3.6)} km/h` : 'non comunicata');
 
     // Il `≈` dice in un carattere quello che la scheda completa dice in una
     // riga: questa posizione non è l'ultima lettura ADS-B, è quella lettura
@@ -1882,7 +1920,7 @@
     if (Number.isFinite(a.distanzaKm)) {
       const dove = typeof skyNomeDirezione === 'function' && Number.isFinite(a.az)
         ? ` · ${skyNomeDirezione(a.az)}` : '';
-      metti('distanza', '', `${a.stimato ? '≈ ' : ''}${a.distanzaKm.toFixed(1)} km${dove}`);
+      metti('distanza', 'Distanza reale', `${a.stimato ? '≈ ' : ''}${a.distanzaKm.toFixed(1)} km${dove}`);
     }
 
     return {
@@ -1890,6 +1928,8 @@
       segno: 'aereo',
       titolo: a.callsign || String(a.id || '').toUpperCase(),
       colore: fasciaDi(a.distanzaKm).colore,
+      classe: 'fumetto-aereo',
+      foto: fotoFumettoOra(a),
       righe
     };
   }
@@ -1954,7 +1994,8 @@
   // cielo vuoto e la riga «ancora nessuna lettura» per tutto il tempo dello
   // scarico, con i dati buoni gettati un istante prima.
   function aereiRaggioCambiato() {
-    stato.aerei = stato.aerei.filter(a => a.distanzaKm <= raggioKm());
+    stato.aerei = stato.aerei.filter(a =>
+      (Number.isFinite(a.distanzaSuoloKm) ? a.distanzaSuoloKm : a.distanzaKm) <= raggioKm());
     stato.prossimoAggiornamento = 0;
     stato.prossimoTentativo = 0;
     stato.tentativiFalliti = 0;

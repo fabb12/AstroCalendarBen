@@ -8870,6 +8870,21 @@ adsbAttendi('una pagina HTML restituita con 200 non ferma la corsa', async () =>
   // il livello del mare: disegnato, sarebbe un aereo sepolto.
   prova('e in discesa non scende mai sotto zero',
     adsb.posizioneFutura({ ...aereo, quotaM: 300, salitaMs: -20 }, 300).quotaM === 0);
+  prova('una quota assente resta assente, non diventa falsamente zero',
+    adsb.posizioneFutura({ ...aereo, quotaM: null }, 300).quotaM === null);
+
+  const verticale = adsb.coordinateCielo(
+    { lat: 45, lon: 9, quotaM: 10100 }, { lat: 45, lon: 9, quotaM: 100 });
+  prova('la distanza e la quota formano una distanza reale tridimensionale',
+    Math.abs(verticale.distanzaKm - 10) < .001 && Math.abs(verticale.alt - 90) < .001,
+    `${verticale.distanzaKm.toFixed(3)} km a ${verticale.alt.toFixed(1)}°`);
+
+  const obliquo = adsb.coordinateCielo(
+    adsb.posizioneFutura({ ...aereo, quotaM: 10100, salitaMs: 0 }, 40),
+    { lat: 45, lon: 9, quotaM: 100 });
+  prova('la distanza mostrata non è quella piatta sulla carta',
+    obliquo.distanzaKm > obliquo.distanzaSuoloKm && Math.abs(obliquo.distanzaKm - Math.sqrt(200)) < .03,
+    `${obliquo.distanzaSuoloKm.toFixed(2)} km al suolo → ${obliquo.distanzaKm.toFixed(2)} km reali`);
 
   const ric = adsb.arricchisci([aereo], { lat: 45, lon: 9, quotaM: 100 }, 400);
   const t = ric[0].traiettoria;

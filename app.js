@@ -23108,7 +23108,12 @@ function skyFumettoDati(voce) {
   // Il taglio si fa **qui** e non dentro a chi le scrive: è una misura dello
   // schermo, non una proprietà dell'oggetto, e chi scrive le righe di un
   // aereo non ha nessuna ragione di sapere quanto è alto il cielo.
-  if (dati) dati.righe = (dati.righe || []).slice(0, skyFumettoQuanteRighe());
+  // Un aereo deve dire sempre partenza, destinazione, modello, quota,
+  // velocità e distanza: sul telefono il fumetto può scorrere, ma non
+  // nasconde dati richiesti solo perché il cielo è basso.
+  if (dati && voce.categoria !== 'aereo') {
+    dati.righe = (dati.righe || []).slice(0, skyFumettoQuanteRighe());
+  }
   return dati;
 }
 
@@ -23133,16 +23138,30 @@ function skyAggiornaFumetto() {
   // che è la stessa del triangolo sulla mappa — il fumetto e il simbolo che
   // indica devono dire la stessa cosa anche di sfuggita.
   f.style.setProperty('--fumetto-tinta', dati.colore || 'rgba(148, 197, 255, .85)');
+  f.classList.toggle('fumetto-aereo', dati.classe === 'fumetto-aereo');
 
-  const forma = `${dati.chiave}|${dati.righe.map(r => r.chiave).join(',')}`;
+  const forma = `${dati.chiave}|${dati.foto ? dati.foto.src : ''}|${dati.righe.map(r => r.chiave).join(',')}`;
   if (f.dataset.chiave !== forma) {
     f.dataset.chiave = forma;
     segno.innerHTML = icona(dati.segno, 17);
     titolo.textContent = dati.titolo;
-    corpo.innerHTML = dati.righe.map(r =>
+    corpo.innerHTML = (dati.foto
+      ? '<figure class="fumetto-aereo-foto"><img>' +
+        (dati.foto.credito ? '<figcaption></figcaption>' : '') + '</figure>'
+      : '') + dati.righe.map(r =>
       `<p class="fumetto-riga">${r.etichetta ? `<span class="fumetto-voce">${r.etichetta}:</span> ` : ''}` +
       `<span data-fumetto="${r.chiave}"></span></p>`).join('');
     sky.fumettoRimisura = true;
+    if (dati.foto) {
+      const immagine = corpo.querySelector('.fumetto-aereo-foto img');
+      const credito = corpo.querySelector('.fumetto-aereo-foto figcaption');
+      if (immagine) {
+        immagine.src = dati.foto.src;
+        immagine.alt = dati.foto.alt || '';
+        immagine.addEventListener('load', () => { sky.fumettoRimisura = true; }, { once: true });
+      }
+      if (credito) credito.textContent = `Foto: ${dati.foto.credito}`;
+    }
   }
   dati.righe.forEach(r => {
     const nodo = corpo.querySelector(`[data-fumetto="${r.chiave}"]`);
