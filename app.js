@@ -26390,8 +26390,11 @@ function skyRegScarica(e) {
 
 const VIDEO_DB_NOME = 'astrocalendario-video';
 const VIDEO_DB_VERSIONE = 1;
+const VIDEO_CARTELLA_NOME = 'astrocalben';
 let videoCartella = null;
 let videoUrlGalleria = [];
+let videoTimerSincronizzazione = 0;
+let videoSincronizzazioneInCorso = false;
 
 function videoApriDB() {
   return new Promise((resolve, reject) => {
@@ -26423,17 +26426,23 @@ function videoMessaggio(testo) {
   if (stato) stato.textContent = testo || '';
 }
 
-async function videoScegliCartella() {
+async function videoScegliCartella(creaCartellaApp = false) {
   if (typeof window.showDirectoryPicker !== 'function') {
     videoMessaggio('Questo browser non permette di scegliere una cartella: i video verranno scaricati normalmente.');
     return null;
   }
   try {
-    const handle = await window.showDirectoryPicker({ id: 'astrocalendario-video', mode: 'readwrite' });
+    const base = await window.showDirectoryPicker({ id: 'astrocalendario-video', mode: 'readwrite', startIn: 'videos' });
+    // Il selettore web non può creare da solo una cartella accanto a Video:
+    // l'utente indica la posizione e noi creiamo (o riapriamo) quella dell'app.
+    const handle = creaCartellaApp && base.name.toLocaleLowerCase() !== VIDEO_CARTELLA_NOME
+      ? await base.getDirectoryHandle(VIDEO_CARTELLA_NOME, { create: true })
+      : base;
     videoCartella = handle;
     try { await videoDB('preferenze', 'readwrite', store => store.put(handle, 'cartella-video')); } catch (e) { /* la copia funziona comunque */ }
     videoAggiornaCartella();
-    videoMessaggio(`I prossimi video saranno copiati in “${handle.name}”.`);
+    videoMessaggio(`La galleria è sincronizzata con “${handle.name}”.`);
+    await videoRenderGalleria();
     return handle;
   } catch (e) {
     if (!e || e.name !== 'AbortError') videoMessaggio('Non è stato possibile aprire la cartella scelta.');
@@ -26445,8 +26454,8 @@ function videoAggiornaCartella() {
   const testo = document.getElementById('galleria-cartella');
   if (!testo) return;
   testo.textContent = videoCartella
-    ? `Cartella scelta: “${videoCartella.name}”. Ogni salvataggio crea qui una copia del file.`
-    : 'Scegli una cartella per conservare anche una copia dei video sul dispositivo.';
+    ? `Cartella sincronizzata: “${videoCartella.name}”. Le modifiche ai file MP4 appariranno qui.`
+    : `Aprendo la galleria verrà creata la cartella “${VIDEO_CARTELLA_NOME}”.`;
 }
 
 async function videoScriviInCartella(esito) {
@@ -26463,7 +26472,7 @@ async function videoScriviInCartella(esito) {
   } catch (e) { return false; }
 }
 
-async function videoArchivia(esito) {
+async function videoArchivia(esito, nellaCartella = false) {
   const elemento = {
     id: esito.nome,
     nome: esito.nome,
@@ -26471,7 +26480,8 @@ async function videoArchivia(esito) {
     blob: esito.blob,
     creato: Date.now(),
     origine: sky.reg.origine,
-    durata: sky.reg.durataReale || sky.reg.durataSec
+    durata: sky.reg.durataReale || sky.reg.durataSec,
+    cartellaNome: nellaCartella ? esito.nome : ''
   };
   await videoDB('video', 'readwrite', store => store.put(elemento));
 }
@@ -26482,20 +26492,26 @@ async function skyRegSalva() {
   // Il selettore va aperto subito dal gesto dell'utente: dopo una await alcuni
   // browser considererebbero conclusa l'attivazione e lo bloccherebbero.
   if (!videoCartella && typeof window.showDirectoryPicker === 'function') await videoScegliCartella();
-  try { await videoArchivia(esito); }
+  const copiato = await videoScriviInCartella(esito);
+  try { await videoArchivia(esito, copiato); }
   catch (e) {
     skyAvviso('registra', 'Non c’è spazio per aggiungere il video alla galleria.', 8000);
     return;
   }
-  const copiato = await videoScriviInCartella(esito);
   if (!copiato) skyRegScarica(esito);
   skyAvviso('registra', copiato
     ? `Video salvato nella galleria e nella cartella “${videoCartella.name}”.`
     : 'Video salvato nella galleria e scaricato sul dispositivo.', 7000);
 }
 
-async function videoElimina(id) {
-  await videoDB('video', 'readwrite', store => store.delete(id));
+async function videoElimina(elemento) {
+  if (elemento.dallaCartella && videoCartella) {
+    try { await videoCartella.removeEntry(elemento.nome); }
+    catch (e) { videoMessaggio('Non è stato possibile eliminare il file dalla cartella.'); return; }
+  }
+  const archiviati = await videoDB('video', 'readonly', store => store.getAll());
+  const corrispondenti = archiviati.filter(v => v.id === elemento.id || v.nome === elemento.nome);
+  await Promise.all(corrispondenti.map(v => videoDB('video', 'readwrite', store => store.delete(v.id))));
   await videoRenderGalleria();
 }
 
@@ -26509,15 +26525,42 @@ function videoScaricaSalvato(video) {
 
 async function videoRenderGalleria() {
   const elenco = document.getElementById('galleria-elenco');
-  if (!elenco) return;
+  if (!elenco || videoSincronizzazioneInCorso) return;
+  videoSincronizzazioneInCorso = true;
   videoUrlGalleria.forEach(url => URL.revokeObjectURL(url));
   videoUrlGalleria = [];
   let video = [];
   try { video = await videoDB('video', 'readonly', store => store.getAll()); }
   catch (e) { videoMessaggio('Non riesco a leggere l’archivio video su questo dispositivo.'); }
+  if (videoCartella) {
+    try {
+      const permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
+      if (permesso === 'granted') {
+        const dallaCartella = [];
+        for await (const [nome, handle] of videoCartella.entries()) {
+          if (handle.kind !== 'file' || !/\.mp4$/i.test(nome)) continue;
+          const file = await handle.getFile();
+          dallaCartella.push({
+            id: `cartella:${nome}`, nome, tipo: file.type || 'video/mp4', blob: file,
+            creato: file.lastModified, durata: 0, dimensione: file.size, dallaCartella: true
+          });
+        }
+        const nomiPresenti = new Set(dallaCartella.map(v => v.nome));
+        const obsoleti = video.filter(v => v.cartellaNome && !nomiPresenti.has(v.cartellaNome));
+        await Promise.all(obsoleti.map(v => videoDB('video', 'readwrite', store => store.delete(v.id))));
+        video = video.filter(v => !v.cartellaNome || nomiPresenti.has(v.cartellaNome));
+        const nomiCartella = new Set(dallaCartella.map(v => v.nome));
+        video = video.filter(v => !nomiCartella.has(v.nome)).concat(dallaCartella);
+        videoMessaggio(`${dallaCartella.length} file MP4 sincronizzati da “${videoCartella.name}”.`);
+      }
+    } catch (e) {
+      videoMessaggio('Non riesco a sincronizzare la cartella. Riaprila con “Scegli cartella”.');
+    }
+  }
   elenco.innerHTML = '';
   if (!video.length) {
     elenco.innerHTML = '<p class="galleria-vuota">Non ci sono ancora video. Registrane uno dal Planetario o dal Sistema Solare 3D e premi “Salva”.</p>';
+    videoSincronizzazioneInCorso = false;
     return;
   }
   video.sort((a, b) => b.creato - a.creato).forEach(elemento => {
@@ -26530,14 +26573,18 @@ async function videoRenderGalleria() {
     const corpo = document.createElement('div'); corpo.className = 'galleria-video-corpo';
     const nome = document.createElement('p'); nome.className = 'galleria-video-nome'; nome.textContent = elemento.nome;
     const meta = document.createElement('p'); meta.className = 'galleria-video-meta';
-    meta.textContent = `${new Date(elemento.creato).toLocaleString('it-IT')} · ${Number(elemento.durata || 0).toFixed(1).replace('.0', '')} s`;
+    const dettaglio = elemento.durata
+      ? `${Number(elemento.durata).toFixed(1).replace('.0', '')} s`
+      : `${(Number(elemento.dimensione || elemento.blob.size) / 1048576).toFixed(1)} MB`;
+    meta.textContent = `${new Date(elemento.creato).toLocaleString('it-IT')} · ${dettaglio}`;
     const azioni = document.createElement('div'); azioni.className = 'galleria-video-azioni';
     const scarica = document.createElement('button'); scarica.type = 'button'; scarica.className = 'tasto-cielo'; scarica.textContent = 'Scarica';
     scarica.addEventListener('click', () => videoScaricaSalvato(elemento));
     const elimina = document.createElement('button'); elimina.type = 'button'; elimina.className = 'tasto-cielo'; elimina.textContent = 'Elimina';
-    elimina.addEventListener('click', () => videoElimina(elemento.id));
+    elimina.addEventListener('click', () => videoElimina(elemento));
     azioni.append(scarica, elimina); corpo.append(nome, meta, azioni); scheda.append(lettore, corpo); elenco.appendChild(scheda);
   });
+  videoSincronizzazioneInCorso = false;
 }
 
 async function videoApriGalleria() {
@@ -26545,18 +26592,32 @@ async function videoApriGalleria() {
   if (!modale) return;
   modale.classList.remove('hidden');
   videoAggiornaCartella();
+  if (!videoCartella && typeof window.showDirectoryPicker === 'function') {
+    await videoScegliCartella(true);
+  } else if (videoCartella) {
+    try {
+      const permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
+      if (permesso !== 'granted') await videoCartella.requestPermission({ mode: 'readwrite' });
+    } catch (e) { /* videoRenderGalleria mostrerà come riaprire la cartella */ }
+  }
   await videoRenderGalleria();
+  clearInterval(videoTimerSincronizzazione);
+  videoTimerSincronizzazione = setInterval(() => {
+    if (!modale.classList.contains('hidden')) videoRenderGalleria();
+  }, 2000);
 }
 
 function videoChiudiGalleria() {
   document.getElementById('modale-galleria')?.classList.add('hidden');
   document.querySelectorAll('#galleria-elenco video').forEach(video => video.pause());
+  clearInterval(videoTimerSincronizzazione);
+  videoTimerSincronizzazione = 0;
 }
 
 async function videoInizializza() {
   document.getElementById('btn-galleria')?.addEventListener('click', videoApriGalleria);
   document.getElementById('btn-chiudi-galleria')?.addEventListener('click', videoChiudiGalleria);
-  document.getElementById('galleria-scegli-cartella')?.addEventListener('click', videoScegliCartella);
+  document.getElementById('galleria-scegli-cartella')?.addEventListener('click', () => videoScegliCartella(true));
   document.getElementById('modale-galleria')?.addEventListener('click', e => {
     if (e.target.id === 'modale-galleria') videoChiudiGalleria();
   });
