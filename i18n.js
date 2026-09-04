@@ -88,20 +88,98 @@
     ['ammasso aperto', 'open cluster'], ['ammasso globulare', 'globular cluster'], ['stella doppia', 'double star']
   ].sort((a, b) => b[0].length - a[0].length);
 
+  // Short UI copy is often assembled at runtime (including notes, captions and
+  // explanations).  These expressions are deliberately applied after the
+  // sentence-level catalogue above, so newly composed copy is translated too.
+  const glossaryEntries = Object.entries({
+    'Perché succede': 'Why it happens', 'Dove e quando vederla': 'Where and when to see it',
+    'Trova il posto migliore': 'Find the best place', "Mappa dell'ombra": 'Shadow map',
+    'Vedi nel planetario': 'View in the planetarium', 'Leggi ad alta voce': 'Read aloud',
+    'A tutto schermo': 'Full screen', 'Torna ad adesso': 'Return to now',
+    'Posizione attuale': 'Current location', 'Aggiorna adesso': 'Refresh now',
+    'Aggiornamento automatico': 'Automatic refresh', 'Mostra in cielo': 'Show in the sky',
+    'Segui il telefono': 'Follow the phone', 'Torna al planetario': 'Back to the planetarium',
+    'Distanze vere': 'True distances', 'Misure vere': 'True sizes',
+    'Sistema Solare': 'Solar System', 'Via Lattea': 'Milky Way', 'profondo cielo': 'deep sky',
+    'stella cadente': 'shooting star', 'stelle cadenti': 'shooting stars',
+    'costellazione': 'constellation', 'costellazioni': 'constellations',
+    'eclissi solare': 'solar eclipse', 'eclissi lunare': 'lunar eclipse', 'eclissi': 'eclipse',
+    'fase lunare': 'moon phase', 'fasi lunari': 'moon phases',
+    'equinozio': 'equinox', 'solstizio': 'solstice', 'orbita': 'orbit', 'ombra': 'shadow',
+    'osservazione': 'observation', 'osservazioni': 'observations', 'evento': 'event', 'eventi': 'events',
+    'spiegazione': 'explanation', 'descrizione': 'description', 'suggerimento': 'tip',
+    'Direzione': 'Direction', 'Schermo': 'Display', 'Oggetti': 'Objects', 'Cielo': 'Sky',
+    'Paesaggio': 'Landscape', 'Bussola': 'Compass', 'Giorno': 'Day', 'Ore': 'Hours',
+    'Secondi': 'Seconds', 'Inizio': 'Start', 'Fine': 'End', 'Massimo': 'Maximum',
+    'Pausa': 'Pause', 'Avvia': 'Start', 'Ascolta': 'Listen', 'Guarda': 'Look',
+    'Condividi': 'Share', 'Rifai': 'Redo', 'Esci': 'Exit', 'Incolla': 'Paste',
+    'Compresse': 'Compressed', 'Ingrandite': 'Enlarged', 'Reali': 'Real',
+    'Allontanati': 'Zoom out', 'Avvicinati': 'Zoom in', 'Ingrandisci': 'Zoom in', 'Riduci': 'Zoom out',
+    'Latitudine': 'Latitude', 'Longitudine': 'Longitude', 'Altitudine': 'Altitude',
+    'Nord': 'North', 'Sud': 'South', 'Est': 'East', 'Ovest': 'West',
+    'sera': 'evening', 'mattino': 'morning', 'notte': 'night', 'tempo reale': 'real time',
+    'tempo': 'time', 'velocità': 'speed', 'distanze': 'distances', 'dimensioni': 'sizes',
+    'luminosità': 'brightness', 'visibilità': 'visibility', 'temperatura': 'temperature',
+    'copertura nuvolosa': 'cloud cover', 'orizzonte': 'horizon', 'rilievo': 'terrain',
+    'città': 'city', 'paese': 'town', 'coordinate': 'coordinates', 'mappa': 'map',
+    'fotocamera': 'camera', 'reticolo': 'grid', 'satelliti': 'satellites', 'aerei': 'aircraft',
+    'stelle': 'stars', 'astro': 'celestial object', 'pianeti': 'planets',
+    'punto scelto': 'selected point', 'oggetto scelto': 'selected object',
+    'data scritta': 'entered date', 'momento': 'moment', 'istante': 'instant',
+    'apri': 'open', 'chiudi': 'close', 'mostra': 'show', 'nascondi': 'hide',
+    'scegli': 'choose', 'cerca': 'search', 'trova': 'find', 'scarica': 'download',
+    'registra': 'record', 'ferma': 'stop', 'rallenta': 'slow down', 'accelera': 'speed up',
+    'attiva': 'enable', 'disattiva': 'disable', 'aggiungi': 'add', 'modifica': 'edit',
+    'salva': 'save', 'elimina': 'delete', 'indietro': 'back', 'avanti': 'forward',
+    'selezionato': 'selected', 'disponibile': 'available', 'necessaria': 'required',
+    'necessario': 'required', 'possibile': 'possible', 'automatico': 'automatic',
+    'attuale': 'current', 'prossima': 'next', 'prossimo': 'next', 'precedente': 'previous',
+    'qui': 'here', 'adesso': 'now', 'oggi': 'today', 'stanotte': 'tonight',
+    'domani': 'tomorrow', 'durante': 'during', 'prima': 'before', 'dopo': 'after',
+    'sopra': 'above', 'sotto': 'below', 'vicino': 'near', 'lontano': 'far',
+    'molto': 'very', 'circa': 'about', 'fino a': 'up to', 'ogni': 'every',
+    'nessuno': 'none', 'nessuna': 'none', 'tutto': 'all', 'tutti': 'all',
+    'tocca': 'tap', 'premi': 'press', 'trascina': 'drag', 'scrivi': 'enter',
+    'puoi': 'you can', 'serve': 'is needed', 'usa': 'use', 'scegliere': 'choose',
+    'con': 'with', 'senza': 'without', 'per': 'for', 'dal': 'from', 'dalla': 'from',
+    'dove': 'where', 'quando': 'when', 'come': 'how', 'perché': 'why'
+  }).sort((a, b) => b[0].length - a[0].length);
+  const glossary = new Map(glossaryEntries);
+
   let language = 'it';
   let observer;
   let applying = false;
   const originals = new WeakMap();
   const translated = new WeakMap();
+  const attributeState = new WeakMap();
+  const TRANSLATABLE_ATTRIBUTES = ['title', 'placeholder', 'aria-label', 'data-tooltip', 'data-label'];
 
   function translateText(value) {
     const paddingStart = value.match(/^\s*/)[0];
     const paddingEnd = value.match(/\s*$/)[0];
     let text = value.slice(paddingStart.length, value.length - paddingEnd.length);
     if (!text) return value;
-    if (exact.has(text)) return paddingStart + exact.get(text) + paddingEnd;
-    for (const [it, en] of fragments) text = text.replaceAll(it, en);
+    const lookup = text.replace(/\u00ad/g, '');
+    if (exact.has(lookup)) return paddingStart + exact.get(lookup) + paddingEnd;
+    if (glossary.has(lookup)) return paddingStart + glossary.get(lookup) + paddingEnd;
+    for (const [it, en] of fragments) text = replacePhrase(text, it, en);
+    for (const [it, en] of glossaryEntries) text = replacePhrase(text, it, en);
     return paddingStart + text + paddingEnd;
+  }
+
+  function replacePhrase(text, source, translation) {
+    const expression = new RegExp(`(^|[^\\p{L}])(${escapeRegExp(source)})(?=$|[^\\p{L}])`, 'giu');
+    return text.replace(expression, (_, prefix, match) => prefix + matchCase(translation, match));
+  }
+
+  function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function matchCase(translation, source) {
+    if (source === source.toUpperCase()) return translation.toUpperCase();
+    if (/^\p{Lu}/u.test(source)) return translation[0].toUpperCase() + translation.slice(1);
+    return translation;
   }
 
   function translateNode(node) {
@@ -120,17 +198,21 @@
       return;
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return;
-    for (const attr of ['title', 'placeholder', 'aria-label']) {
+    const states = attributeState.get(node) || {};
+    for (const attr of TRANSLATABLE_ATTRIBUTES) {
       if (!node.hasAttribute(attr)) continue;
-      const key = `i18nOriginal${attr.replace('-', '')}`;
+      const current = node.getAttribute(attr);
+      const state = states[attr] || {};
       if (language === 'en') {
-        if (!node.dataset[key]) node.dataset[key] = node.getAttribute(attr);
-        node.setAttribute(attr, translateText(node.dataset[key]));
-      } else if (node.dataset[key]) {
-        node.setAttribute(attr, node.dataset[key]);
-        delete node.dataset[key];
+        if (current !== state.translated) state.original = current;
+        state.translated = translateText(state.original ?? current);
+        if (current !== state.translated) node.setAttribute(attr, state.translated);
+      } else if (state.original != null && current === state.translated) {
+        node.setAttribute(attr, state.original);
+        delete states[attr];
       }
     }
+    attributeState.set(node, states);
     for (const child of node.childNodes) translateNode(child);
   }
 
@@ -199,11 +281,15 @@
       applying = true;
       for (const record of records) {
         if (record.type === 'characterData') translateNode(record.target);
+        if (record.type === 'attributes') translateNode(record.target);
         for (const node of record.addedNodes) translateNode(node);
       }
       applying = false;
     });
-    observer.observe(document.body, { subtree: true, childList: true, characterData: true });
+    observer.observe(document.body, {
+      subtree: true, childList: true, characterData: true, attributes: true,
+      attributeFilter: TRANSLATABLE_ATTRIBUTES
+    });
 
     const preference = localStorage.getItem(STORAGE_LANGUAGE);
     if (preference === 'it' || preference === 'en') return setLanguage(preference);
@@ -216,7 +302,12 @@
     }
   }
 
-  window.astroI18n = { setLanguage, getLanguage: () => language, translate: translateText };
+  window.astroI18n = {
+    setLanguage,
+    getLanguage: () => language,
+    getLocale: () => language === 'en' ? 'en-GB' : 'it-IT',
+    translate: translateText
+  };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialise, { once: true });
   else initialise();
 })();
