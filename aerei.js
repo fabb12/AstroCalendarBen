@@ -1825,18 +1825,80 @@
     };
   }
 
+  // La richiesta dell'itinerario, una sola per indicativo di volo. Stava
+  // dentro a `aereiCaricaRotta`, che scrive dentro a un riquadro della scheda;
+  // il fumetto un riquadro non ce l'ha — e la rotta la vuole **subito**, per
+  // decidere se quella riga esiste — quindi la partenza della richiesta e la
+  // scrittura del risultato sono adesso due cose separate.
+  function chiediRotta(callsign) {
+    if (rottaCache.has(callsign)) return rottaCache.get(callsign);
+    const voce = { valore: null, pronta: false, promessa: null };
+    voce.promessa = fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(callsign)}`,
+      { cache: 'force-cache' }).then(r => r.ok ? r.json() : null).then(interpretaRotta).catch(() => null)
+      .then(rotta => { voce.valore = rotta; voce.pronta = true; return rotta; });
+    rottaCache.set(callsign, voce);
+    return voce;
+  }
+
+  // Quello che si sa dell'itinerario **in questo istante**: chi legge non
+  // aspetta, e alla lettura successiva (il fumetto si rinfresca due volte al
+  // secondo) lo trova pronto. `pronta` distingue «non è ancora arrivato» da
+  // «questo volo un itinerario pubblico non ce l'ha», che sono due frasi
+  // diverse da dire a chi guarda.
+  function aereiRottaOra(a) {
+    const callsign = String(a && a.callsign || '').trim().replace(/\s+/g, '');
+    if (!callsign) return { pronta: true, valore: null };
+    const voce = chiediRotta(callsign);
+    return { pronta: voce.pronta, valore: voce.valore };
+  }
+
+  // Le righe compatte del fumetto: quattro, e sono quelle che si leggono in
+  // un colpo d'occhio guardando in su — da dove viene e dove va, quanto è
+  // alto e quanto corre, che aeroplano è, quanto è lontano. Il resto
+  // (registrazione, operatore, squawk, ICAO, la foto) sta dietro al ⓘ.
+  function aereiFumettoDati(a) {
+    const righe = [];
+    const metti = (chiave, etichetta, valore) => {
+      if (valore) righe.push({ chiave, etichetta, valore });
+    };
+
+    const rotta = aereiRottaOra(a);
+    if (rotta.valore && (rotta.valore.partenza || rotta.valore.arrivo)) {
+      metti('rotta', '', `${rotta.valore.partenza || '?'} → ${rotta.valore.arrivo || '?'}`);
+    } else if (!rotta.pronta) {
+      metti('rotta', '', 'Cerco l’itinerario…');
+    }
+
+    const pezzi = [];
+    if (Number.isFinite(a.quotaM)) pezzi.push(`${Math.round(a.quotaM).toLocaleString('it-IT')} m`);
+    if (Number.isFinite(a.velocitaMs)) pezzi.push(`${Math.round(a.velocitaMs * 3.6)} km/h`);
+    metti('volo', '', pezzi.join(' · '));
+
+    metti('tipo', '', a.descrizione || a.tipoIcao || '');
+
+    // Il `≈` dice in un carattere quello che la scheda completa dice in una
+    // riga: questa posizione non è l'ultima lettura ADS-B, è quella lettura
+    // portata avanti dalla rotta.
+    if (Number.isFinite(a.distanzaKm)) {
+      const dove = typeof skyNomeDirezione === 'function' && Number.isFinite(a.az)
+        ? ` · ${skyNomeDirezione(a.az)}` : '';
+      metti('distanza', '', `${a.stimato ? '≈ ' : ''}${a.distanzaKm.toFixed(1)} km${dove}`);
+    }
+
+    return {
+      chiave: `aereo:${a.id}`,
+      segno: 'aereo',
+      titolo: a.callsign || String(a.id || '').toUpperCase(),
+      colore: fasciaDi(a.distanzaKm).colore,
+      righe
+    };
+  }
+
   async function aereiCaricaRotta(a) {
     const callsign = String(a.callsign || '').trim().replace(/\s+/g, '');
     const box = document.getElementById(`aereo-rotta-${a.id}`);
     if (!box || !callsign) return;
-    if (!rottaCache.has(callsign)) {
-      const voce = { valore: null, promessa: null };
-      voce.promessa = fetch(`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(callsign)}`,
-        { cache: 'force-cache' }).then(r => r.ok ? r.json() : null).then(interpretaRotta).catch(() => null)
-        .then(rotta => (voce.valore = rotta));
-      rottaCache.set(callsign, voce);
-    }
-    const rotta = await rottaCache.get(callsign).promessa;
+    const rotta = await chiediRotta(callsign).promessa;
     if (!box.isConnected) return;
     const pannello = box.closest('.pannello-dettaglio');
     const scorrimento = pannello && pannello.scrollTop;
@@ -1972,6 +2034,7 @@
   window.aereiAggiornaUI = aggiornaUI;
   window.aereoNelPunto = aereoNelPunto;
   window.aereiSchedaHtml = aereiSchedaHtml;
+  window.aereiFumettoDati = aereiFumettoDati;
   window.aereiAggiornaSchedaViva = aereiAggiornaSchedaViva;
   window.aereiCaricaFoto = aereiCaricaFoto;
   window.aereiRaggioCambiato = aereiRaggioCambiato;

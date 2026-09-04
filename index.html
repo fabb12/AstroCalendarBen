@@ -1080,9 +1080,43 @@
           <button id="skymap-zoom-out" type="button" class="tasto-zoom-cielo" title="Riduci" aria-label="Riduci">−</button>
         </div>
 
+        <!-- Il fumetto dell'oggetto toccato: sta ATTACCATO all'oggetto,
+             non nell'angolo, e dice le quattro righe che si leggono in un
+             colpo d'occhio. La coda lo indica e lo segue mentre il cielo
+             scorre; il filo entra in scena solo quando il fumetto è stato
+             spinto contro un bordo e la coda da sola non ci arriva più.
+             Tutti i dati stanno dietro al ⓘ, che apre la scheda qui sotto. -->
+        <div id="skymap-fumetto-filo" class="fumetto-filo" aria-hidden="true"></div>
+        <aside id="skymap-fumetto" class="fumetto-cielo" aria-live="polite" data-verso="sopra">
+          <div class="fumetto-testa">
+            <span id="skymap-fumetto-segno" class="fumetto-segno" aria-hidden="true"></span>
+            <h3 id="skymap-fumetto-titolo" class="fumetto-titolo"></h3>
+            <span class="fumetto-filetto" aria-hidden="true"></span>
+            <button id="skymap-fumetto-info" type="button" class="fumetto-tasto"
+              title="Tutti i dati di questo oggetto" aria-label="Mostra tutti i dati">
+              <svg class="icona-disegnata" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.6h.01"/>
+              </svg>
+            </button>
+            <button id="skymap-fumetto-chiudi" type="button" class="fumetto-tasto"
+              title="Chiudi" aria-label="Chiudi">
+              <svg class="icona-disegnata" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+                <path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6"/>
+              </svg>
+            </button>
+          </div>
+          <div id="skymap-fumetto-corpo" class="fumetto-righe"></div>
+          <span class="fumetto-coda" aria-hidden="true"></span>
+        </aside>
+
         <!-- Scheda dell'oggetto toccato sulla mappa: sta dentro al riquadro
-             del cielo, così funziona anche a schermo intero -->
+             del cielo, così funziona anche a schermo intero. Non si apre più
+             da sola: ci si arriva dal ⓘ del fumetto, e la freccia riporta là. -->
         <aside id="skymap-dettaglio" class="pannello-dettaglio" aria-live="polite">
+          <button id="skymap-dettaglio-indietro" type="button" class="tasto-chiudi-dettaglio tasto-indietro-dettaglio"
+            title="Torna al fumetto" aria-label="Torna al fumetto">‹</button>
           <button id="skymap-dettaglio-chiudi-alto" type="button" class="tasto-chiudi-dettaglio tasto-chiudi-dettaglio-alto"
             title="Chiudi la scheda" aria-label="Chiudi la scheda">✕</button>
           <div id="skymap-dettaglio-corpo"></div>
