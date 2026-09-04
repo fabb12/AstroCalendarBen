@@ -22792,6 +22792,18 @@ function skyClasseTesto(o) {
   return null;
 }
 
+// `classe` nasce per la scheda completa, dove puo' contenere piccoli pezzi
+// di HTML di presentazione (per esempio la nota grigia sulla classe spettrale
+// dedotta dal colore). Nel fumetto, invece, i valori vengono inseriti con
+// `textContent`: passargli quella stringa alla lettera mostrerebbe i tag
+// all'utente. Qui conserviamo tutte le parole, ma togliamo la marcatura.
+function skyTestoSenzaHtml(valore) {
+  if (typeof valore !== 'string') return valore;
+  const nodo = document.createElement('div');
+  nodo.innerHTML = valore;
+  return (nodo.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
 // Gli orari del giorno mostrato: per i corpi della libreria li cerca lei,
 // per un punto fisso del cielo li calcoliamo noi
 function skyOrariDi(o) {
@@ -23283,7 +23295,7 @@ function skyFumettoDatiAstro(o) {
     if (valore) righe.push({ chiave, etichetta, valore });
   };
 
-  metti('tipo', '', skyClasseTesto(o));
+  metti('tipo', '', skyTestoSenzaHtml(skyClasseTesto(o)));
 
   // «49° sopra l'orizzonte» è la frase della scheda completa, e in un fumetto
   // da 216 pixel manda la riga a capo per dire una cosa che il numero dice da
@@ -23318,11 +23330,22 @@ function skyFumettoDatiAstro(o) {
                       : 'Nell\'ombra della Terra: c\'è, ma non riflette luce'));
   }
 
+  const sat = o.tipo === 'satellite' ? satelliteDaId(o.satId) : null;
   return {
     chiave: `astro:${o.id || o.nome}`,
     segno: o.disegno || (o.categoria === 'profondo' ? 'nebulosa' : 'stella'),
-    titolo: o.tipo === 'satellite' && satelliteDaId(o.satId)
-      ? satelliteDaId(o.satId).nomeLungo : (o.nome || ''),
+    // La sigla breve resta utile sulla mappa e nell'elenco, ma nel fumetto
+    // c'e' spazio per dire per esteso quale stazione si sta indicando.
+    titolo: sat ? sat.nomeLungo : (o.nome || ''),
+    foto: sat && sat.foto ? {
+      src: sat.foto,
+      alt: sat.fotoAlt || sat.nomeLungo,
+      credito: sat.fotoCredito || ''
+    } : null,
+    // I nomi delle stelle del catalogo possono essere descrizioni complete
+    // (codice, magnitudine e costellazione): non vanno accorciati con i
+    // puntini proprio nel fumetto che deve identificare l'astro toccato.
+    nomeSempreIntero: o.tipo === 'stella',
     righe
   };
 }
@@ -23369,6 +23392,7 @@ function skyAggiornaFumetto() {
   // indica devono dire la stessa cosa anche di sfuggita.
   f.style.setProperty('--fumetto-tinta', dati.colore || 'rgba(148, 197, 255, .85)');
   f.classList.toggle('fumetto-aereo', dati.classe === 'fumetto-aereo');
+  f.classList.toggle('fumetto-nome-intero', dati.nomeSempreIntero === true);
 
   const forma = `${dati.chiave}|${dati.foto ? dati.foto.src : ''}|${dati.righe.map(r => r.chiave).join(',')}`;
   if (f.dataset.chiave !== forma) {
@@ -23376,7 +23400,7 @@ function skyAggiornaFumetto() {
     segno.innerHTML = icona(dati.segno, 17);
     titolo.textContent = dati.titolo;
     corpo.innerHTML = (dati.foto
-      ? '<figure class="fumetto-aereo-foto"><img>' +
+      ? '<figure class="fumetto-aereo-foto"><img loading="eager" referrerpolicy="no-referrer">' +
         (dati.foto.credito ? '<figcaption></figcaption>' : '') + '</figure>'
       : '') + dati.righe.map(r =>
       `<p class="fumetto-riga">${r.etichetta ? `<span class="fumetto-voce">${r.etichetta}:</span> ` : ''}` +
@@ -35115,8 +35139,11 @@ const SATELLITI = [
     nomeLungo: 'Stazione Spaziale Internazionale',
     catnr: 25544,
     colore: '#93c5fd',
-    foto: 'https://commons.wikimedia.org/wiki/Special:Redirect/file/International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg?width=800',
+    // URL diretto della miniatura: Special:Redirect di Commons viene spesso
+    // rifiutato quando l'immagine e' incorporata da un'altra origine.
+    foto: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg/800px-International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg',
     fotoAlt: 'La Stazione Spaziale Internazionale fotografata in orbita',
+    fotoCredito: 'NASA / Wikimedia Commons',
     chiaveTle: 'astrocalendario_tle_iss',
     classe: 'Stazione spaziale abitata',
     dimensione: '109 × 73 m, pannelli solari compresi',
@@ -35136,8 +35163,9 @@ const SATELLITI = [
     nomeLungo: 'Tiangong, la stazione spaziale cinese',
     catnr: 48274,
     colore: '#fca5a5',
-    foto: 'https://commons.wikimedia.org/wiki/Special:Redirect/file/Chinese_Space_Station.jpg?width=800',
+    foto: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Chinese_Space_Station.jpg/800px-Chinese_Space_Station.jpg',
     fotoAlt: 'La stazione spaziale Tiangong fotografata in orbita',
+    fotoCredito: 'Wikimedia Commons',
     chiaveTle: 'astrocalendario_tle_css',
     classe: 'Stazione spaziale abitata',
     dimensione: 'circa 55 m fra i moduli e i pannelli',

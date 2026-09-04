@@ -134,6 +134,51 @@ const AEREO = {
       (astro.righe || []).join(' | '));
     ok('col segno dell\'oggetto', astro.segno === true);
 
+    // Le stelle del catalogo portano nella classe una nota impaginata per la
+    // scheda completa. Nel fumetto devono restare le parole, mai i tag HTML.
+    const stella = await pagina.evaluate(() => {
+      const dati = skyFumettoDatiAstro({
+        id: 'cat:prova', nome: 'Stella di prova', tipo: 'stella',
+        disegno: 'stella', classe: 'Stella bianca <span class="text-slate-500">(classe F circa)</span>'
+      });
+      return {
+        titolo: dati.titolo,
+        tipo: dati.righe[0] && dati.righe[0].valore,
+        nomeSempreIntero: dati.nomeSempreIntero
+      };
+    });
+    ok('il fumetto scrive il nome completo della stella', stella.titolo === 'Stella di prova', stella.titolo);
+    ok('il nome della stella non viene troncato nel fumetto', stella.nomeSempreIntero === true);
+    ok('la classe della stella non mostra codice HTML',
+      stella.tipo === 'Stella bianca (classe F circa)' && !/[<>]/.test(stella.tipo), stella.tipo);
+    const titoloStella = await pagina.evaluate(() => {
+      const prova = document.createElement('div');
+      prova.className = 'fumetto-nome-intero';
+      prova.innerHTML = '<h3 class="fumetto-titolo">Stella CAT 12345 di magnitudine 5,7 — Orsa Maggiore</h3>';
+      document.body.appendChild(prova);
+      const stile = getComputedStyle(prova.firstElementChild);
+      const risultato = { whiteSpace: stile.whiteSpace, overflow: stile.overflow, textOverflow: stile.textOverflow };
+      prova.remove();
+      return risultato;
+    });
+    ok('il titolo esteso può andare a capo senza ellissi',
+      titoloStella.whiteSpace === 'normal' && titoloStella.overflow === 'visible' &&
+        titoloStella.textOverflow === 'clip',
+      JSON.stringify(titoloStella));
+
+    const stazione = await pagina.evaluate(() => {
+      const dati = skyFumettoDatiAstro({
+        id: 'sat-iss', satId: 'iss', nome: 'ISS', tipo: 'satellite',
+        disegno: 'satellite', classe: 'Stazione spaziale abitata', alt: 20, illuminato: true
+      });
+      return { titolo: dati.titolo, foto: dati.foto };
+    });
+    ok('la stazione ha il nome per esteso nel fumetto',
+      stazione.titolo === 'Stazione Spaziale Internazionale', stazione.titolo);
+    ok('la fotografia della stazione usa un indirizzo diretto caricabile',
+      !!stazione.foto && /upload\.wikimedia\.org\/wikipedia\/commons\/thumb/.test(stazione.foto.src),
+      stazione.foto ? stazione.foto.src : 'nessuna foto');
+
     // --- un aereo: le righe del mockup ----------------------------------
     await pagina.evaluate((a) => {
       // Il feed non c'è: si mette a mano una fotografia con dentro un aereo
