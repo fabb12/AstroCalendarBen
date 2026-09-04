@@ -86,8 +86,14 @@ const AEREO = {
     // api.adsbdb.com contiene «adsb» — e la riga della rotta non arriva mai.
     for (const rotta of ['**open-meteo.com/**', '**noaa.gov/**', '**celestrak.org/**',
                          '**ipapi**', '**ipwho**', '**geojs**', '**overpass**',
-                         '**amazonaws.com/**', '**planespotters**', '**adsb**'])
+                         '**amazonaws.com/**', '**adsb**'])
       await pagina.route(rotta, r => r.abort());
+    await pagina.route('**planespotters.net/**', r => r.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ photos: [{ thumbnail: {
+        src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90"></svg>'
+      }, photographer: 'Mario Rossi' }] })
+    }));
     await pagina.route('**api.adsbdb.com**', r => r.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({ response: { flightroute: {
@@ -142,14 +148,19 @@ const AEREO = {
       return {
         titolo: document.getElementById('skymap-fumetto-titolo').textContent,
         righe: Array.from(f.querySelectorAll('.fumetto-riga')).map(p => p.textContent.trim()),
-        tinta: getComputedStyle(f).borderLeftColor
+        tinta: getComputedStyle(f).borderLeftColor,
+        foto: !!f.querySelector('.fumetto-aereo-foto img')
       };
     });
     ok('il fumetto di un aereo porta il suo indicativo', aereo.titolo === 'BRJ273', aereo.titolo);
-    ok('con l\'itinerario', aereo.righe.some(r => /Madrid.*→.*Roma/.test(r)), aereo.righe[0]);
-    ok('la quota e la velocità', aereo.righe.some(r => /9\.750 m/.test(r) && /878 km\/h/.test(r)),
-      aereo.righe.find(r => /m/.test(r)));
-    ok('e che aeroplano è', aereo.righe.some(r => r === 'Boeing 737-800'));
+    ok('con partenza e destinazione per esteso',
+      aereo.righe.some(r => /Partenza.*Madrid/.test(r)) && aereo.righe.some(r => /Destinazione.*Roma/.test(r)),
+      aereo.righe.slice(0, 2).join(' | '));
+    ok('la quota e la velocità',
+      aereo.righe.some(r => /Quota.*9\.750 m s\.l\.m\./.test(r)) && aereo.righe.some(r => /Velocità.*878 km\/h/.test(r)),
+      aereo.righe.filter(r => /Quota|Velocità/.test(r)).join(' | '));
+    ok('e che aeroplano è, senza abbreviazioni', aereo.righe.some(r => r === 'Aereo: Boeing 737-800'));
+    ok('la fotografia arriva dentro al fumetto', aereo.foto === true);
     ok('la tinta è la sua fascia di distanza (33 km → giallo)',
       /248|250|,\s*8/.test(aereo.tinta) || aereo.tinta !== 'rgb(148, 197, 255)', aereo.tinta);
 
