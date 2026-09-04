@@ -141,6 +141,16 @@ function skyBaseVerso(az, alt) {
 function skyAngoloDiRaggio(pixel, focale) {
   return 2 * Math.atan(pixel / (2 * focale)) * SKY_R2D;
 }
+// Il metro angolare della proiezione e quanto la stereografica stira *lì*:
+// li chiama `misuraAereo` di aerei.js (§31), che decide quando un aereo
+// smette di essere un'icona e diventa la sua sagoma vera. Sono copie come
+// le tre qui sopra, e valgono lo stesso avvertimento: il giorno che
+// divergono da app.js non lo dice nessuno.
+function skyRaggioAngolare(gradi, focale) {
+  const g = Math.max(0, Math.min(179, gradi));
+  return 2 * focale * Math.tan(g / 2 * SKY_D2R);
+}
+function skyScalaLocale(d) { return 2 / Math.max(0.01, 1 + d); }
 function skyArcoOrizzonteInVista(base, focale) {
   const semi = skyAngoloDiRaggio(Math.hypot(sky.larghezza, sky.altezza) / 2, focale) * SKY_D2R;
   const altF = Math.asin(Math.max(-1, Math.min(1, base.f[2])));
@@ -344,6 +354,12 @@ function skyCaso(seme) {
      fa niente — il sorteggio dei fiocchi parte solo quando qualcuno chiama
      `skyNubiDelCielo()`, e le tele solo con `skyTeleViaLattea()`. -->
 <script src="via-lattea.js"></script>
+
+<!-- I transiti (§31). Anche questo modulo non fa niente all'avvio: il suo
+     motore parte da `tranAggiorna()`, che qui non chiama nessuno, e la
+     geometria dei §2-§4 è pura — prende i suoi punti da una funzione che le
+     si passa, e per questo si può provare senza caricare `app.js`. -->
+<script src="transiti.js"></script>
 
 <script>
 // ---------------------------------------------------------------------
@@ -8888,13 +8904,44 @@ adsbAttendi('una pagina HTML restituita con 200 non ferma la corsa', async () =>
 
   const ric = adsb.arricchisci([aereo], { lat: 45, lon: 9, quotaM: 100 }, 400);
   const t = ric[0].traiettoria;
-  prova('la traiettoria ha un punto per minuto, dal presente al quinto',
-    t.length === 6 && t.every((p, i) => p.minuti === i), t.map(p => p.minuti).join(','));
+
+  // L'arco di transito, che ha preso il posto dei cinque minuti tondi.
+  //
+  // Cinque minuti erano la previsione **disegnata**, ed erano diventati per
+  // inerzia anche il limite di quella **calcolata**: sopra a quei sei punti
+  // girava la ricerca degli allineamenti, e cercare un transito su sei
+  // istanti distanti un minuto è cercarlo dove non può essere (il conto sta
+  // nel §31). L'arco adesso arriva fin dove l'aereo si vede — al tramonto
+  // dietro le colline, o al tetto della fiducia — e i cinque minuti restano
+  // dentro, con le loro tacche.
+  const minuti = t.map(p => p.minuti);
+  prova('l\'arco supera i cinque minuti di prima',
+    t[t.length - 1].minuti > 5, `arriva a +${t[t.length - 1].minuti.toFixed(1)}′`);
+  prova('…e i minuti tondi di prima ci stanno ancora tutti dentro',
+    [0, 1, 2, 3, 4, 5].every(m => minuti.some(x => Math.abs(x - m) < 1e-9)),
+    minuti.slice(0, 12).join(','));
+  // Il primo minuto va campionato fitto, e non è un vezzo: un aereo che
+  // passa sopra la testa a due chilometri attraversa il cielo a tre gradi al
+  // secondo, cioè quasi duecento gradi in un minuto. Una riga tirata fra il
+  // campione di adesso e quello di fra un minuto sarebbe una corda che
+  // taglia il cielo da parte a parte, non l'arco che l'aereo percorre.
+  prova('il primo minuto è campionato ogni dieci secondi',
+    minuti.filter(m => m > 0 && m < 1).length === 5,
+    `${minuti.filter(m => m < 1).length} punti nel primo minuto`);
   prova('ogni punto sa dire dove guardare e quanto e\' lontano',
     t.every(p => Number.isFinite(p.az) && Number.isFinite(p.alt) && Number.isFinite(p.distanzaKm)));
   prova('e allontanandosi le distanze crescono, minuto per minuto',
     t.every((p, i) => i === 0 || p.distanzaKm > t[i - 1].distanzaKm),
-    t.map(p => p.distanzaKm.toFixed(0)).join(' → '));
+    t.filter(p => Number.isInteger(p.minuti)).map(p => p.distanzaKm.toFixed(0)).join(' → '));
+  // Il riassunto dell'arco: le tre cose che se ne vogliono sapere senza
+  // rileggerlo tutto. La differenza fra «tramonta» e «troncato» è quella fra
+  // una previsione e il punto in cui abbiamo smesso di guardare.
+  const arco = ric[0].arco;
+  prova('l\'arco si riassume in quanto dura, quanto sale e perché finisce',
+    arco && Number.isFinite(arco.minutiResidui) && Number.isFinite(arco.altMax) &&
+    (arco.tramonta || arco.troncato),
+    arco ? `${arco.minutiResidui.toFixed(1)}′, culmine ${arco.altMax.toFixed(1)}°, ` +
+      (arco.tramonta ? 'tramonta' : 'troncato') : 'nessun arco');
 
   // La trappola del disegno, ed e' quella per cui il minuto viaggia **col
   // punto** e non con l'indice: i punti dietro all'osservatore vengono
@@ -8903,9 +8950,10 @@ adsbAttendi('una pagina HTML restituita con 200 non ferma la corsa', async () =>
   // all'indice direbbe un'ora falsa con la stessa faccia con cui direbbe
   // quella giusta — che e' il difetto che questo modulo ha gia' avuto in
   // altre vesti.
-  const scartati = t.filter((p, i) => i !== 1 && i !== 2);
+  const tondi = t.filter(p => Number.isInteger(p.minuti));
+  const scartati = tondi.filter((p, i) => i !== 1 && i !== 2);
   prova('scartando dei punti, il minuto resta attaccato a quello giusto',
-    scartati[1].minuti === 3 && scartati[scartati.length - 1].minuti === 5,
+    scartati[1].minuti === 3 && scartati[0].minuti === 0,
     `minuti rimasti: ${scartati.map(p => p.minuti).join(',')}`);
 }
 
@@ -11070,6 +11118,430 @@ titolo('30. La Via Lattea (via-lattea.js)');
   sky.larghezza = larghezzaPrima; sky.altezza = altezzaPrima; sky.fov = fovPrima;
   sky.viaLattea = bandaPrima;
 })();
+
+// =====================================================================
+titolo('31. I transiti: quando un aereo o la ISS passano davanti a un astro (transiti.js)');
+// =====================================================================
+//
+// È la famiglia di prove che nasce da un conto, e il conto vale la pena di
+// scriverlo prima di tutto il resto perché è tutta la ragione del modulo.
+//
+// Il disco del Sole è largo mezzo grado. Un aereo a cinque chilometri
+// attraversa il cielo a quasi tre gradi al secondo, la ISS a uno: il
+// transito dura fra un decimo di secondo e un secondo e mezzo. Il codice di
+// prima cercava gli allineamenti su **sei campioni distanti un minuto**, e
+// la probabilità che uno di quei sei istanti caschi dentro alla finestra
+// buona è meno di una su trecento.
+//
+// Non era un filtro poco sensibile: era un filtro che non poteva funzionare.
+// E il sintomo — nessun avviso — è identico a «stanotte non passa niente»,
+// che è il modo in cui questo genere di difetto resta in piedi per sempre.
+// Nessuno, guardando lo schermo, può dire quale dei due sta vedendo.
+//
+// Le prove sono di cinque famiglie: **il conto che non torna** (il
+// campionamento a un minuto, col contro-esempio scritto in chiaro), **il
+// passo in gradi** (perché camminare a passo angolare non può saltare
+// niente, e perché costa poco), **la precisione** (la separazione scritta
+// con l'`atan2` invece che con l'`acos`, e il minuto portato al
+// millisecondo), **gli astri interpolati** (la scorciatoia che regge tutto
+// il resto: va misurata, non sperata) e **l'onestà** (le due incertezze, che
+// sono di due mondi diversi e vanno scritte diverse).
+{
+  const T = window.Transiti;
+  const adsbT = window.AereiADS_B;
+
+  // --- 1. Il conto che non torna -------------------------------------
+  //
+  // La scena è quella normale: un aereo che attraversa il cielo passando
+  // esattamente sul Sole. Si muove a due gradi al secondo — un aereo di
+  // linea a sette chilometri — e il Sole ha un raggio di 0,266°.
+  const ISTANTE = 1700000000000;        // l'istante vero del transito
+  const OMEGA = 2;                      // gradi al secondo
+  const R_SOLE = 0.266;
+  const versoreAstro = T.tranVersore(180, 45);
+  const camminoV = t => T.tranVersore(180, 45 + OMEGA * (t - ISTANTE) / 1000);
+  const separaDa = t => T.tranSeparazione(camminoV(t), versoreAstro);
+
+  // Il contro-esempio, coi numeri: sei campioni al minuto, come faceva
+  // `aggiornaAllineamenti` in `aerei.js`. La fase di partenza è quella che
+  // capita — qui l'aereo entra in scena quarantasette secondi prima del
+  // transito — e il campione più fortunato lo manca di ventisei gradi.
+  const alMinuto = [];
+  for (let k = 0; k <= 5; k++) alMinuto.push(separaDa(ISTANTE - 47000 + k * 60000));
+  const minimoAlMinuto = Math.min.apply(null, alMinuto);
+  prova('col campionamento al minuto di prima il transito non si vede nemmeno',
+    minimoAlMinuto > 20,
+    `il campione più vicino manca il Sole di ${minimoAlMinuto.toFixed(0)}°, e il disco ne è largo 0,53`);
+
+  // La durata, che è il numero da cui viene tutto: attraversare un disco di
+  // 0,532° a due gradi al secondo sono duecentosessantasei millisecondi.
+  const durataVera = 2 * R_SOLE / OMEGA * 1000;
+  prova('…perché il transito dura un quarto di secondo, non un minuto',
+    Math.abs(durataVera - 266) < 1, `${durataVera.toFixed(0)} ms dentro al disco`);
+
+  // --- 2. Il passo in gradi ------------------------------------------
+  //
+  // Il campionamento non deve trovare l'istante: deve solo **incastrarlo**
+  // fra due campioni. Perché possa farlo, fra un campione e il successivo
+  // l'oggetto non deve spostarsi in cielo più di quanto si è dichiarato — e
+  // quella è una condizione sul passo **angolare**, non su quello temporale.
+  const punti = T.tranCammino(camminoV, ISTANTE - 15000, ISTANTE + 15000, 2,
+    { dtMinMs: 20, dtMaxMs: 20000, dtIniziale: 2000 });
+  let passoMax = 0;
+  for (let i = 1; i < punti.length; i++) passoMax = Math.max(passoMax, T.tranSeparazione(punti[i - 1].v, punti[i].v));
+  prova('camminando a passo angolare nessun campione scavalca il passo dichiarato',
+    passoMax <= 2 * 2 + 1e-9, `il salto più grosso è ${passoMax.toFixed(2)}° su 2° chiesti`);
+  const minimoCamminando = Math.min.apply(null, punti.map(p => T.tranSeparazione(p.v, versoreAstro)));
+  prova('…e così l\'avvicinamento si vede, invece di sparire',
+    minimoCamminando <= 2, `il campione più vicino manca il Sole di ${minimoCamminando.toFixed(2)}°`);
+
+  // La proprietà che rende sopportabile tutto questo, e che non si vede
+  // leggendo il codice: **il numero dei campioni è la lunghezza angolare del
+  // cammino diviso il passo, e non dipende dalla durata**. Un aereo lento
+  // che striscia per il quadruplo del tempo percorre lo stesso arco e costa
+  // lo stesso.
+  const veloce = T.tranCammino(t => T.tranVersore(180, 45 + 2 * (t - ISTANTE) / 1000),
+    ISTANTE, ISTANTE + 20000, 2, { dtMinMs: 20, dtMaxMs: 60000, dtIniziale: 1000 });
+  const lento = T.tranCammino(t => T.tranVersore(180, 45 + 0.5 * (t - ISTANTE) / 1000),
+    ISTANTE, ISTANTE + 80000, 2, { dtMinMs: 20, dtMaxMs: 60000, dtIniziale: 1000 });
+  prova('il costo del cammino segue i gradi percorsi, non i minuti passati',
+    Math.abs(veloce.length - lento.length) <= Math.max(3, veloce.length * 0.15),
+    `${veloce.length} campioni in 20 s contro ${lento.length} in 80 s, stessi 40° di cielo`);
+
+  // Il passo si accorcia da solo dove serve, ed è l'unico modo di seguire un
+  // aereo che passa sopra la testa: lì la velocità angolare cambia di un
+  // fattore cento fra l'inizio e il culmine del passaggio.
+  const obs0 = { lat: 45, lon: 9, quotaM: 0 };
+  const sopraLaTesta = { lat: 44.9, lon: 9, quotaM: 2000, velocitaMs: 250, direzione: 0,
+                         salitaMs: 0, id: 'z', callsign: 'ZZ', ultimaLettura: ISTANTE / 1000 };
+  const campSopra = T.tranAereoCampionatore(sopraLaTesta, obs0);
+  const cammSopra = T.tranCammino(t => campSopra(t).v, ISTANTE, ISTANTE + 180000, 2,
+    { dtMinMs: 20, dtMaxMs: 30000, dtIniziale: 2000 });
+  const passi = [];
+  for (let i = 1; i < cammSopra.length; i++) passi.push(cammSopra[i].t - cammSopra[i - 1].t);
+  prova('e sopra la testa i passi si accorciano da soli di un ordine di grandezza',
+    Math.max.apply(null, passi) / Math.min.apply(null, passi) > 10,
+    `dal più corto (${Math.min.apply(null, passi)} ms) al più lungo (${Math.max.apply(null, passi)} ms)`);
+  let passoMaxAereo = 0;
+  for (let i = 1; i < cammSopra.length; i++) {
+    passoMaxAereo = Math.max(passoMaxAereo, T.tranSeparazione(cammSopra[i - 1].v, cammSopra[i].v));
+  }
+  prova('…senza mai scavalcare il passo, nemmeno al culmine',
+    passoMaxAereo <= 4 + 1e-9, `${passoMaxAereo.toFixed(2)}° al massimo`);
+
+  // --- 3. La precisione -----------------------------------------------
+  //
+  // La separazione non si scrive con un `acos` del prodotto scalare, ed è la
+  // riga da cui dipende tutto il resto: a un milionesimo di grado il coseno
+  // vale uno **meno un numero più piccolo della risoluzione di un double**,
+  // e la differenza si perde per intero. È l'errore che non lascia traccia:
+  // il conto gira, restituisce un numero plausibile, e quel numero è zero.
+  const micro = 1e-6;   // gradi
+  const u = T.tranVersore(0, 0), w = T.tranVersore(micro, 0);
+  const conAtan = T.tranSeparazione(u, w);
+  const conAcos = Math.acos(Math.max(-1, Math.min(1, u[0] * w[0] + u[1] * w[1] + u[2] * w[2]))) * 180 / Math.PI;
+  prova('la separazione resta esatta anche a un milionesimo di grado',
+    Math.abs(conAtan - micro) / micro < 1e-6, `${conAtan.toExponential(3)}° contro ${micro.toExponential(3)}° veri`);
+  prova('col coseno, invece, la stessa domanda risponde zero',
+    Math.abs(conAcos - micro) / micro > 0.1,
+    `l'acos dice ${conAcos.toExponential(3)}°, cioè sbaglia del ${Math.round(Math.abs(conAcos - micro) / micro * 100)}%`);
+
+  // Il polo e la cucitura: due direzioni a cavallo del nord distano due
+  // gradi, non trecentocinquantotto. È la ragione per cui qui dentro non
+  // circolano mai coppie (azimut, altezza) ma solo versori.
+  // Due direzioni alla stessa altezza non distano `Δaz`: distano
+  // `Δaz · cos(alt)`, perché salendo i meridiani si stringono. A venti gradi
+  // due gradi di azimut sono un grado e 88, e il conto giusto è quello — la
+  // cosa che questa prova guarda è che **non** siano trecentocinquantotto.
+  const attorno = T.tranSeparazione(T.tranVersore(359, 20), T.tranVersore(1, 20));
+  prova('attraversando il nord la separazione è due gradi scarsi, non trecentocinquantotto',
+    Math.abs(attorno - 2 * Math.cos(20 * Math.PI / 180)) < 0.01,
+    `${attorno.toFixed(3)}°, cioè 2°·cos 20° = ${(2 * Math.cos(20 * Math.PI / 180)).toFixed(3)}°`);
+  prova('e allo zenit due azimut opposti sono la stessa direzione',
+    T.tranSeparazione(T.tranVersore(0, 90), T.tranVersore(180, 90)) < 1e-9);
+
+  // Il minimo raffinato: è la «precisione al millisecondo» chiesta per le
+  // stazioni, ed è aritmetica — quanto valga fisicamente lo dice l'età del
+  // TLE, ed è la prova in fondo a questa sezione.
+  const bracket = T.tranBrackets(punti, punti.map(p => T.tranSeparazione(p.v, versoreAstro)));
+  prova('il minimo si incastra fra due campioni', bracket.length >= 1,
+    `${bracket.length} avvicinamenti incastrati`);
+  const raffinato = T.tranMinimo(separaDa, bracket[0].a, bracket[0].b, 1);
+  prova('e raffinandolo si arriva al millisecondo',
+    Math.abs(raffinato.t - ISTANTE) <= 1.5,
+    `sbaglia di ${Math.abs(raffinato.t - ISTANTE).toFixed(2)} ms su un bracket largo ${(bracket[0].b - bracket[0].a) / 1000}s`);
+  prova('…e il campionamento da solo, sullo stesso bracket, sbagliava di secondi',
+    Math.abs(bracket[0].stima - raffinato.valore) > 0.05,
+    `il campione più vicino diceva ${bracket[0].stima.toFixed(2)}°, il minimo vero è ${raffinato.valore.toFixed(4)}°`);
+
+  // I contatti, cioè l'entrata e l'uscita dal disco: da lì viene la durata,
+  // che è il numero che dice se si fa in tempo a scattare la fotografia.
+  const entra = T.tranContatto(separaDa, ISTANTE, ISTANTE - 15000, R_SOLE, 1);
+  const esce = T.tranContatto(separaDa, ISTANTE, ISTANTE + 15000, R_SOLE, 1);
+  prova('i contatti col bordo del disco tornano con la geometria',
+    Math.abs((esce - entra) - durataVera) < 2,
+    `${(esce - entra).toFixed(1)} ms misurati contro ${durataVera.toFixed(1)} calcolati`);
+
+  // --- 4. La ricerca intera, dal cammino alla scheda ------------------
+  const tabellaFinta = [{ id: 'Sun', nome: 'Sole', tipo: 'sole', raggio: R_SOLE,
+    tab: { at: () => versoreAstro } }];
+  const campiona = t => {
+    const v = camminoV(t);
+    const aa = T.tranAzAlt(v);
+    return { v, az: aa.az, alt: aa.alt, km: 7 };
+  };
+  const trovati = T.tranCercaAvvicinamenti(campiona, ISTANTE - 15000, ISTANTE + 15000, tabellaFinta, {});
+  prova('la ricerca completa trova il transito',
+    trovati.length === 1 && trovati[0].transito, `${trovati.length} avvicinamenti, transito: ${trovati.length ? trovati[0].transito : '—'}`);
+  prova('…all\'istante giusto, al millisecondo',
+    trovati.length && Math.abs(trovati[0].quando - ISTANTE) <= 1.5,
+    trovati.length ? `sbaglia di ${Math.abs(trovati[0].quando - ISTANTE).toFixed(2)} ms` : '');
+  prova('…con la durata giusta',
+    trovati.length && Math.abs(trovati[0].durataMs - durataVera) < 3,
+    trovati.length ? `${trovati[0].durataMs.toFixed(1)} ms` : '');
+  prova('…e sa dire quanto è centrale, che è quello che decide se vale la corsa',
+    trovati.length && trovati[0].centralita < 0.01,
+    trovati.length ? `${(trovati[0].centralita * 100).toFixed(1)}% del raggio dal centro` : '');
+
+  // Uno sfioramento non è un transito, e chiamarlo così sarebbe la bugia più
+  // facile da dire: la separazione è piccola, il numero è convincente, e chi
+  // esce a guardare non vede passare niente sul disco.
+  const daLontano = t => T.tranVersore(180.6, 45 + OMEGA * (t - ISTANTE) / 1000);
+  const sfiora = T.tranCercaAvvicinamenti(t => {
+    const v = daLontano(t); const aa = T.tranAzAlt(v);
+    return { v, az: aa.az, alt: aa.alt, km: 7 };
+  }, ISTANTE - 15000, ISTANTE + 15000, tabellaFinta, {});
+  prova('un passaggio a mezzo grado si trova, ma non si chiama transito',
+    sfiora.length === 1 && !sfiora[0].transito && sfiora[0].durataMs === null,
+    sfiora.length ? `separazione ${sfiora[0].separazione.toFixed(3)}°, raggio del disco ${R_SOLE}` : 'niente trovato');
+
+  // Un aereo vicino è largo quanto il Sole, e sfiorandone il bordo lo copre
+  // comunque: è la ragione per cui il bersaglio non è il raggio del disco ma
+  // il raggio più la mezza apertura.
+  const conApertura = T.tranCercaAvvicinamenti(t => {
+    const v = daLontano(t); const aa = T.tranAzAlt(v);
+    return { v, az: aa.az, alt: aa.alt, km: 2 };
+  }, ISTANTE - 15000, ISTANTE + 15000, tabellaFinta, { apertura: T.tranAperturaAereo });
+  prova('…ma a due chilometri l\'aereo è largo abbastanza da toccarlo lo stesso',
+    conApertura.length === 1 && conApertura[0].transito,
+    `l'aereo è largo ${T.tranAperturaAereo(2).toFixed(2)}°, il disco ${(R_SOLE * 2).toFixed(2)}°`);
+
+  // --- 5. Gli astri interpolati ---------------------------------------
+  //
+  // È la scorciatoia da cui dipende tutto il costo del modulo: gli astri si
+  // campionano **una volta** al minuto e si interpolano, invece di chiedere
+  // a Astronomy Engine una posizione per ogni campione di ogni aereo. È
+  // lecita solo se l'errore che introduce è molto più piccolo di quello che
+  // si sta misurando — e questo non si spera, si misura. Il banco di prova
+  // usa la **Luna**, che è la più veloce di tutte.
+  const osservatore = new Astronomy.Observer(45.81, 9.03, 200);
+  const lunaVera = t => {
+    const tt = Astronomy.MakeTime(new Date(t));
+    const equ = Astronomy.Equator('Moon', tt, osservatore, true, true);
+    const hor = Astronomy.Horizon(tt, osservatore, equ.ra, equ.dec, 'normal');
+    return T.tranVersore(hor.azimuth, hor.altitude);
+  };
+  const t0Luna = Date.UTC(2026, 2, 14, 21, 0, 0);
+  const tabLuna = T.tranTabellaAstro(lunaVera, t0Luna, t0Luna + 30 * 60000, T.TRAN_PASSO_ASTRI_MS);
+  let erroreMax = 0;
+  for (let i = 0; i <= 300; i++) {
+    const t = t0Luna + (i / 300) * 30 * 60000;
+    erroreMax = Math.max(erroreMax, T.tranSeparazione(tabLuna.at(t), lunaVera(t)));
+  }
+  prova('la Luna interpolata sta sotto il centesimo di secondo d\'arco',
+    erroreMax * 3600 < 0.05,
+    `errore massimo ${(erroreMax * 3600).toExponential(2)}″ su nodi da un minuto`);
+  prova('…cioè cinquantamila volte meno del disco che si sta attraversando',
+    (R_SOLE * 2 * 3600) / Math.max(1e-12, erroreMax * 3600) > 50000,
+    `il disco è ${(R_SOLE * 2 * 3600).toFixed(0)}″`);
+  // Sui nodi l'interpolazione deve restituire il nodo, non «quasi» il nodo:
+  // è la proprietà da cui dipende tutto il resto, ed è anche l'unico modo di
+  // accorgersi di un passo scritto in un posto e letto in un altro — un
+  // nodo cercato dove non c'è dà un errore piccolo e plausibile, cioè
+  // invisibile.
+  const suUnNodo = t0Luna + 2 * T.TRAN_PASSO_ASTRI_MS;
+  prova('sui nodi la tabella si rilegge identica',
+    T.tranSeparazione(tabLuna.at(suUnNodo), lunaVera(suUnNodo)) * 3600 < 1e-6);
+  // E il numero che conta davvero non è il secondo d'arco: è di quanto
+  // sposta l'**istante** del transito. Per l'aereo più lento che valga la
+  // pena guardare — un grado ogni venti secondi — l'errore della tabella
+  // vale meno di un millisecondo, cioè resta sotto la precisione dichiarata.
+  const spostaIstanteMs = erroreMax / 0.05 * 1000;
+  prova('…e sull\'istante del transito vale meno di un millisecondo',
+    spostaIstanteMs < 1, `${spostaIstanteMs.toFixed(3)} ms sull'aereo più lento`);
+
+  // La cucitura del nord, che è la ragione per cui la tabella interpola
+  // **versori** e non azimut. Una media fra 359° e 1° dà 180°, cioè la parte
+  // opposta del cielo — e a occhio non se ne accorgerebbe nessuno finché non
+  // capita di avere un transito proprio a nord.
+  const tNord = 1700000000000;
+  const attraversaNord = t => T.tranVersore(359 + (t - tNord) / 60000 * 2, 30);
+  const tabNord = T.tranTabellaAstro(attraversaNord, tNord, tNord + 4 * 60000, 60000);
+  const meta = tNord + 30000;
+  prova('interpolando versori il nord si attraversa senza salti',
+    T.tranSeparazione(tabNord.at(meta), attraversaNord(meta)) < 0.01,
+    `azimut interpolato ${T.tranAzAlt(tabNord.at(meta)).az.toFixed(2)}°, vero ${T.tranAzAlt(attraversaNord(meta)).az.toFixed(2)}°`);
+
+  // --- 6. L'arco di un aereo -------------------------------------------
+  //
+  // Un aereo a diecimila metri sta sopra l'orizzonte geometrico fino a
+  // trecentocinquantasette chilometri: a duecentocinquanta metri al secondo
+  // sono ventitré minuti e mezzo, non cinque. Il numero si può controllare
+  // a mano — `acos(R / (R + h))` — ed è quello che questa prova fa.
+  const inCrociera = { lat: 45, lon: 9, quotaM: 10000, velocitaMs: 250, direzione: 0,
+                       salitaMs: 0, id: 'c', callsign: 'CC', ultimaLettura: ISTANTE / 1000 };
+  const campCrociera = T.tranAereoCampionatore(inCrociera, obs0);
+  const arco = T.tranArcoAereo(campCrociera, ISTANTE, 25 * 60000);
+  const kmOrizzonte = 6371 * Math.acos(6371 / 6381);
+  const attesoSec = kmOrizzonte * 1000 / 250;
+  prova('l\'arco di un aereo in crociera dura più di venti minuti, non cinque',
+    arco && Math.abs((arco.fine - ISTANTE) / 1000 - attesoSec) < 20,
+    arco ? `finisce a +${((arco.fine - ISTANTE) / 60000).toFixed(1)}′, calcolati ${(attesoSec / 60).toFixed(1)}′` : 'nessun arco');
+  prova('…e finisce dove l\'aereo tramonta davvero, non a un minuto tondo',
+    arco && Math.abs(campCrociera(arco.fine).alt) < 0.02,
+    arco ? `all'istante trovato l'aereo sta a ${campCrociera(arco.fine).alt.toFixed(4)}° di altezza` : '');
+  prova('l\'arco si guarda anche all\'indietro, ed è simmetrico',
+    arco && Math.abs((ISTANTE - arco.inizio) - (arco.fine - ISTANTE)) < 25000,
+    arco ? `da ${((ISTANTE - arco.inizio) / 60000).toFixed(1)}′ fa a +${((arco.fine - ISTANTE) / 60000).toFixed(1)}′` : '');
+
+  // --- 7. L'onestà: due incertezze di due mondi diversi ---------------
+  //
+  // È la parte che questo modulo esiste per non dimenticare. Un TLE di ieri
+  // sbaglia di un decimo di secondo; l'estrapolazione di un aereo a cinque
+  // minuti sbaglia di **gradi**. Scrivere i due avvisi con la stessa faccia
+  // vorrebbe dire mentire su uno dei due — e mentirebbe proprio su quello
+  // che la gente proverebbe a guardare.
+  const traverso = 250 * 300 * (1 * Math.PI / 180);
+  prova('un grado di rotta su cinque minuti sposta l\'aereo di un chilometro e tre',
+    Math.abs(traverso - 1309) < 5, `${traverso.toFixed(0)} m di traverso`);
+  const cono = T.tranIncertezzaAereo({ velocitaMs: 250 }, 300000, 10);
+  prova('…che a dieci chilometri è un cono largo più di otto gradi',
+    cono > 8 && cono < 9, `${cono.toFixed(1)}°, contro lo 0,53° del disco del Sole`);
+  prova('il cono cresce col preavviso e si stringe con la distanza',
+    T.tranIncertezzaAereo({ velocitaMs: 250 }, 600000, 10) > cono &&
+    T.tranIncertezzaAereo({ velocitaMs: 250 }, 300000, 40) < cono);
+
+  // La conseguenza, ed è la sola cosa onesta da farne: un transito d'aereo si
+  // annuncia **a due minuti**, non a dieci. Più in là il cono è più largo del
+  // bersaglio, e l'avviso direbbe soltanto «forse, da qualche parte, in
+  // quella direzione».
+  const base = { genere: 'aereo', chiave: 'x', quando: 0, transito: true, alt: 45,
+                 bersaglio: R_SOLE, separazione: 0.01 };
+  const ora = Date.now();
+  const vicino = Object.assign({}, base, { quando: ora + 60000,
+    incertezza: T.tranIncertezzaAereo({ velocitaMs: 250 }, 60000, 10) });
+  const lontano = Object.assign({}, base, { chiave: 'y', quando: ora + 300000, incertezza: cono });
+  prova('un transito d\'aereo a un minuto si annuncia', T.tranMeritaAvviso(vicino, ora),
+    `cono di ${vicino.incertezza.toFixed(1)}°`);
+  prova('…a cinque minuti no, perché il cono è più largo di quello che si annuncia',
+    !T.tranMeritaAvviso(lontano, ora), `cono di ${lontano.incertezza.toFixed(1)}°`);
+  prova('uno sfioramento non merita un avviso, per quanto vicino',
+    !T.tranMeritaAvviso(Object.assign({}, vicino, { transito: false }), ora));
+  prova('e un transito a tre gradi sull\'orizzonte nemmeno: lì non guarda nessuno',
+    !T.tranMeritaAvviso(Object.assign({}, vicino, { alt: 3 }), ora));
+
+  // Una stazione, invece, si annuncia con ore di anticipo: SGP4 con un TLE
+  // fresco sbaglia di un decimo di secondo, e un'ora di preavviso è
+  // esattamente quello che serve per andare a prendere il telescopio.
+  const stazione = { genere: 'stazione', chiave: 's', quando: ora + 2 * 3600 * 1000,
+                     transito: true, alt: 60, bersaglio: R_SOLE, separazione: 0.02 };
+  prova('una stazione si annuncia con due ore di anticipo', T.tranMeritaAvviso(stazione, ora));
+  prova('…ma non con cinque, che è più della finestra di un avviso',
+    !T.tranMeritaAvviso(Object.assign({}, stazione, { quando: ora + 5 * 3600 * 1000 }), ora));
+
+  // Chiudere un avviso è una risposta, non un rinvio.
+  T.stato.scartato[stazione.chiave] = ora;
+  prova('un avviso chiuso non torna', !T.tranMeritaAvviso(stazione, ora));
+  delete T.stato.scartato[stazione.chiave];
+
+  // --- 8. Il tempo che manca, scritto come lo si direbbe ---------------
+  prova('«fra 45 s»', T.tranQuantoManca(45000) === 'fra 45 s', T.tranQuantoManca(45000));
+  prova('«fra 3 min 15 s»', T.tranQuantoManca(195000) === 'fra 3 min 15 s', T.tranQuantoManca(195000));
+  // Sopra i dieci minuti i secondi sono rumore: sapere che ne mancano
+  // venticinque è utile, sapere che ne mancano venticinque e otto secondi è
+  // una cifra da leggere per niente.
+  prova('sopra i dieci minuti i secondi spariscono',
+    T.tranQuantoManca(1508000) === 'fra 25 min', T.tranQuantoManca(1508000));
+  prova('«fra 2 h 15 min»', T.tranQuantoManca(8100000) === 'fra 2 h 15 min', T.tranQuantoManca(8100000));
+  prova('un transito in corso si dice «adesso»', T.tranQuantoManca(-4000) === 'adesso');
+  prova('e uno finito da un minuto è «passato»', T.tranQuantoManca(-60000) === 'passato');
+  prova('la direzione si dice a parole, e attraversando il nord non fa mezzo giro',
+    T.tranPunti(0) === 'N' && T.tranPunti(359) === 'N' && T.tranPunti(225) === 'SO',
+    `${T.tranPunti(0)} · ${T.tranPunti(359)} · ${T.tranPunti(225)}`);
+
+  // --- 9. Quanto è grande un aereo, davvero ---------------------------
+  //
+  // È il numero che sorprende, e cambia il disegno: a cinque chilometri
+  // un'apertura alare di quaranta metri copre quasi mezzo grado, cioè
+  // **quasi quanto il Sole intero**. Un triangolino di sette pixel appoggiato
+  // sopra al disco, a quel punto, è una bugia sulla scala.
+  prova('a cinque chilometri un aereo è largo quasi quanto il Sole',
+    Math.abs(T.tranAperturaAereo(5) - 0.458) < 0.01,
+    `${T.tranAperturaAereo(5).toFixed(3)}° contro i ${(R_SOLE * 2).toFixed(3)}° del disco`);
+  prova('…e a venti resta un decimo di quello, cioè un puntino',
+    T.tranAperturaAereo(20) < 0.12, `${T.tranAperturaAereo(20).toFixed(3)}°`);
+
+  // Il disegno se ne accorge: `misuraAereo` vale uno — cioè «l'icona di
+  // sempre» — a campo largo, e cresce solo quando la misura vera supera
+  // l'icona. È la stessa regola dei pianeti (`skyRaggio`), ed è quella che
+  // garantisce che a campo largo non cambi **niente** rispetto a prima.
+  if (adsbT && adsbT.misuraAereo) {
+    const largo = adsbT.misuraAereo({ distanzaKm: 10 }, { d: 1 }, 600);
+    const stretto = adsbT.misuraAereo({ distanzaKm: 2 }, { d: 1 }, 137000);
+    prova('a campo largo il simbolo dell\'aereo resta l\'icona di sempre',
+      largo === 1, `fattore ${largo}`);
+    prova('…e a campo stretto diventa grande quanto l\'aereo è davvero',
+      stretto > 5, `fattore ${stretto.toFixed(1)}`);
+    // La fiducia che cala lungo l'arco: piena dentro ai cinque minuti,
+    // poi giù senza gradini. Un gradino direbbe che al minuto sei si sa
+    // qualcosa che al minuto cinque e mezzo non si sapeva.
+    prova('la fiducia è piena dentro alla previsione corta',
+      adsbT.fiduciaArco(0) === 1 && adsbT.fiduciaArco(5) === 1);
+    prova('…e da lì cala senza gradini fino al capolinea dell\'arco',
+      adsbT.fiduciaArco(6) < 1 && adsbT.fiduciaArco(25) < adsbT.fiduciaArco(15) &&
+      adsbT.fiduciaArco(15) < adsbT.fiduciaArco(6) &&
+      Math.abs(adsbT.fiduciaArco(5.001) - 1) < 0.01,
+      `5′ → ${adsbT.fiduciaArco(5).toFixed(2)}, 15′ → ${adsbT.fiduciaArco(15).toFixed(2)}, ` +
+      `25′ → ${adsbT.fiduciaArco(25).toFixed(2)}`);
+    // «Per quanto ancora si vede», che è la domanda vera di chi guarda un
+    // aereo. Le due risposte non si possono confondere: una previsione
+    // («tramonta fra sei minuti») e un capolinea («lo seguo per venticinque»)
+    // dicono cose diverse, e scriverle uguali sarebbe la stessa bugia del
+    // millisecondo senza la sua tolleranza.
+    prova('la scheda dice per quanto un aereo si vede ancora, e se è una previsione',
+      /tramonta/.test(adsbT.aereiTestoArco({ minutiResidui: 6.2, tramonta: true, altMax: 31 })) &&
+      /almeno/.test(adsbT.aereiTestoArco({ minutiResidui: 25, troncato: true, altMax: 12 })),
+      adsbT.aereiTestoArco({ minutiResidui: 6.2, tramonta: true, altMax: 31 }));
+    prova('…e sotto il minuto lo dice in secondi, non in «0 min»',
+      /\bs\b/.test(adsbT.aereiTestoArco({ minutiResidui: 0.4, tramonta: true, altMax: 8 })),
+      adsbT.aereiTestoArco({ minutiResidui: 0.4, tramonta: true, altMax: 8 }));
+  } else {
+    nota('il disegno degli aerei non è esposto: le prove della misura e della fiducia saltano.');
+  }
+
+  // --- 10. Le stazioni, e cosa vuol dire «al millisecondo» ------------
+  //
+  // Il raffinamento arriva al millisecondo, ed è aritmetica. Ma un TLE
+  // invecchia di circa un chilometro al giorno, e un chilometro a sette
+  // chilometri e mezzo al secondo sono **un decimo di secondo**: quella è la
+  // barra d'errore vera, e va scritta accanto invece di lasciar credere che
+  // il millisecondo sia una promessa.
+  const erroreUnGiorno = 1 / 7.66;
+  prova('un TLE di un giorno vale un decimo di secondo di incertezza',
+    Math.abs(erroreUnGiorno - 0.1305) < 0.001, `${erroreUnGiorno.toFixed(3)} s`);
+  prova('…cioè cento volte il millisecondo a cui arriva il raffinamento',
+    erroreUnGiorno * 1000 > 100);
+  // Le due stazioni, e nessun'altra: è quello che è stato chiesto, e un
+  // elenco che crescesse da sé sarebbe un'altra cosa.
+  if (typeof SATELLITI !== 'undefined') {
+    prova('si gestiscono la ISS e Tiangong, e nient\'altro',
+      T.tranStazioni().length === 2 &&
+      T.tranStazioni().every(s => s.id === 'iss' || s.id === 'css'),
+      T.tranStazioni().map(s => s.nome).join(' e '));
+  } else {
+    nota('`SATELLITI` vive in app.js, che questa pagina non carica: la prova delle due stazioni salta.');
+  }
+}
 
 // Rimettere a posto la `fetch` vera: da qui in giù la pagina torna a parlare
 // col mondo, e le prove che aspettano hanno già catturato quella finta.

@@ -4,86 +4,120 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-**Un pannello solo per «come guardo il cielo»**, più tre cose che gli stavano
-attorno: i comandi dello schermo che non si toglievano di mezzo, la slitta
-dell'aurora sempre a schermo, e il sottotitolo dell'app.
+**I transiti**: quando un aereo o una stazione spaziale passano davanti al Sole
+o alla Luna, quando succede, e come si fa ad arrivarci in tempo. Un modulo
+nuovo (`transiti.js`, prefisso `tran`), l'arco degli aerei esteso, l'ordine
+del disegno corretto e un avviso a schermo.
 
-### 1. «Navigazione» è entrata in «Visualizzazione»
+### Il conto da cui nasce tutto
 
-Erano due linguette sopra la mappa e facevano la stessa domanda — *come guardo
-il cielo* — spezzata in due: in «Navigazione» c'erano i punti cardinali,
-«Segui il telefono», Centra, Insegui, il campo visivo e la bussola; in
-«Visualizzazione» c'era tutto il resto. Chi cercava «Centra» doveva indovinare
-quale delle due aprire, e il nome non aiutava.
+Il disco del Sole è largo mezzo grado. Un aereo a cinque chilometri attraversa
+il cielo a quasi tre gradi al secondo, la ISS a uno: **il transito dura fra un
+decimo di secondo e un secondo e mezzo**. Il codice di prima
+(`aggiornaAllineamenti` in `aerei.js`) cercava gli allineamenti su **sei
+campioni distanti un minuto**, e la probabilità che uno di quei sei istanti
+caschi dentro alla finestra buona è meno di **una su trecento**.
 
-Adesso è un pannello solo con **cinque schede**, e la prima è **Direzione**:
+Non era un filtro poco sensibile: era un filtro che non poteva funzionare. E
+il sintomo — nessun avviso — è identico a «stanotte non passa niente», che è
+il modo in cui questo genere di difetto resta in piedi per sempre: nessuno,
+guardando lo schermo, può dire quale dei due sta vedendo.
 
-- **Direzione** — *Guarda verso* (N E S O Zenit), *Chi muove la vista* (Segui
-  il telefono, Centra, Insegui, Campo 55°), e in fondo, ripiegata dietro a
-  «Il Nord punta storto?», la bussola con la taratura sull'astro e la
-  posizione. Sta per prima perché è quello che si tocca appena arrivati.
-- **Schermo**, **Oggetti**, **Cielo**, **Paesaggio** come prima.
+### 1. Il modulo — `transiti.js`
 
-Con lei è passata **«Vista pulita»**, che in Navigazione non c'entrava niente:
-toglie di mezzo quello che sta *sopra* al cielo, cioè è di famiglia col pieno
-schermo e coi colori notturni. Le linguette sopra la mappa restano quattro:
-Tempo, Eventi, Visualizzazione, Astri.
+Quattro scelte, e sono quelle che il file esiste per tenere in piedi.
 
-La cosa che non si vede leggendo il codice: le pillole delle schede hanno
-`white-space: nowrap` e **non vanno a capo**. Cinque nomi su un telefono da
-320 px sforavano di quattro pixel e mezzo — misurati — e il testo usciva dal
-suo tondo. Sotto i 380 px la striscia si stringe al filo e il corpo scende a
-0,6rem, che è l'ultimo gradino già in uso per i sette segmenti del pannello
-del tempo. La soglia non è a occhio: a 0,7rem lo sforo si annulla fra i 375 e
-i 390. Provata anche la via delle due righe a corpo pieno: si legge meglio, ma
-la striscia è appiccicata in cima e quei trentaquattro pixel in più li paga
-l'elenco dei tasti sotto — che è la cosa per cui il pannello si è aperto.
+- **Il passo si misura in gradi, non in secondi.** Si cammina lungo la
+  traiettoria tenendo fisso quanto l'oggetto si sposta *in cielo* fra un
+  campione e il successivo. Ne viene una proprietà che vale la pena scrivere:
+  il numero dei campioni è la lunghezza angolare del cammino diviso il passo, e
+  **non dipende dalla durata** — un aereo lento che striscia per il quadruplo
+  del tempo percorre lo stesso arco e costa lo stesso. Vicino, dove corre, i
+  passi si accorciano da soli; ed è lì che serve.
+- **Il minimo si raffina, non si campiona.** Il campionamento serve solo a
+  *incastrare* il momento del massimo avvicinamento fra due istanti; da lì lo
+  trova una sezione aurea, che arriva al millisecondo.
+- **Le due incertezze si dichiarano.** Un TLE di ieri sbaglia di un decimo di
+  secondo; l'estrapolazione di un aereo a cinque minuti sbaglia di **gradi**.
+  Sono due mondi diversi e un avviso che li scrivesse con la stessa faccia
+  mentirebbe su uno dei due.
+- **Il conto sta fuori dal fotogramma.** Misurate: la scansione degli aerei
+  con quaranta aerei in cielo costa dieci millisecondi (quanto un fotogramma
+  intero), quella delle stazioni ne costava **trecentotredici**. Adesso vanno
+  tutt'e due in `requestIdleCallback`, e la seconda è una coda di compiti che
+  cede il turno ogni mezzo fotogramma (mediana misurata: 2,6 ms).
 
-### 2. I comandi della scheda «Schermo» si tolgono di mezzo
+### 2. L'arco degli aerei, e quanto ci si può credere
 
-Pieno schermo, modalità notte, hover e fotocamera adesso **chiudono il
-pannello appena li si tocca**. Non è una comodità: cambiano tutti e quattro
-*come si vede il cielo*, e il pannello copre metà del cielo — restando aperto
-nascondeva proprio la cosa che il tocco era servito a cambiare, e per vederla
-bisognava richiuderlo a mano. Sono la stessa famiglia di «Centra» e «Campo
-55°», che il pannello lo chiudevano da sempre.
+Cinque minuti erano la previsione **disegnata**, ed erano diventati per inerzia
+anche il limite di quella **calcolata**. Ma un aereo a undici chilometri sta
+sopra l'orizzonte fino a trecentosettanta chilometri: il suo arco dura
+**venticinque minuti**. Adesso si campiona ogni dieci secondi nel primo minuto
+(un aereo sopra la testa fa quasi duecento gradi in sessanta secondi: una corda
+fra due campioni al minuto taglierebbe il cielo da parte a parte) e al minuto
+da lì in poi, fermandosi dove l'aereo **tramonta davvero**, dietro l'orizzonte
+vero di `terreno.js`.
 
-Due dettagli: l'hover **non** chiude niente a tasto spento (non è successo
-niente, e chiudere somiglierebbe a una risposta), e la fotocamera chiude
-*prima* di chiedere il permesso, che può metterci qualche secondo. Il ⛶ sulla
-mappa non chiude niente perché a schermo intero i pannelli non si aprono.
+La riga disegnata si assottiglia e sbiadisce oltre i cinque minuti, e non è una
+sfumatura: un grado di scarto di rotta su venticinque minuti sposta l'aereo di
+sei chilometri e mezzo. Quello che si vede è la fiducia che cala, non una rotta
+che si conosce. Per la stessa ragione un transito d'aereo si annuncia **a un
+minuto e non a cinque**: a cinque il cono d'incertezza è largo più di otto
+gradi, e il disco del Sole ne è largo mezzo.
 
-### 3. L'aurora apre e chiude i suoi comandi
+### 3. L'ordine del disegno — il difetto che rendeva inutile tutto il resto
 
-La slitta del Kp e la riga «cosa si vedrebbe da qui» erano **sempre** a
-schermo: due terzi della scheda «Cielo» occupati da un comando che regolava
-una cosa che non si stava disegnando — da queste latitudini l'ovale acceso non
-disegna niente, sta sotto l'orizzonte — e da una frase che raccontava un cielo
-che nessuno stava guardando. Chi arrivava lì per le nuvole doveva scorrerle
-via.
+`aereiDisegna` girava insieme all'aurora, cioè **prima** degli astri: un aereo
+che transitava sul Sole ci finiva **dietro**. La geometria era giusta, la
+previsione era giusta, e sullo schermo non si vedeva niente — l'unica cosa che
+nessuno poteva guardare era proprio il momento previsto.
 
-Adesso l'aurora **nasce spenta**, come i nomi dei monti e i disegni delle
-costellazioni, e il suo tasto fa due cose in un gesto: accende l'ovale e apre
-i suoi comandi. Il comando non si può perdere — muovendo la slitta l'aurora si
-accende da sé — e quando l'aurora c'è davvero non tocca all'utente
-accorgersene: il riquadro della dashboard, gli eventi «aurora» del calendario
-e il banco della Didattica la accendono già da sé.
+Adesso gli aerei si disegnano in fondo a `disegnaAstriPrincipali()`: sopra a
+tutti gli astri e sotto al terreno. E chi ha appena disegnato il Sole o la
+Luna lascia la **ricevuta** di dove il disco è finito sullo schermo
+(`skyDischiAstri`), così chi ci passa davanti si disegna nero pieno e senza
+contorno — un alone attorno a una cosa già nera è l'unico modo di sfocare
+l'unica silhouette netta che questo cielo abbia.
 
-### 4. Il sottotitolo
+Con lei sono arrivate due misure vere: un aereo a due chilometri è largo **più
+del doppio del Sole** e a forte ingrandimento si disegna così, e le stazioni
+hanno un **modellino** invece del rombo — a un quarto di grado di campo la ISS
+è larga trentasette pixel, e disegnarci un rombo è come disegnare Saturno
+senza anelli perché tanto è un puntino.
 
-«Cosa c'è da vedere in cielo, stanotte e nei prossimi anni» (53 caratteri) →
-**«Il cielo di stanotte, da casa tua»** (33). Non è solo più corto: quello di
-prima veniva **tagliato dai puntini** a 1280 e a 1800 px di finestra, cioè non
-si leggeva mai per intero proprio dove c'era spazio. Adesso ci sta.
+### 4. L'avviso
+
+Sta sul cielo e non in un pannello (un pannello chiuso non avvisa nessuno), e
+il tempo che manca è la cosa più grande scritta lì dentro. La riga sotto dice
+dove guardare, quanto dura e con che tolleranza — un orario per una stazione,
+una mira per un aereo.
 
 ### Come è stato provato
 
-`scripts/prova-nel-browser.js` e `scripts/prova-fumetto.js` (75 prove, tutte
-verdi) girano come prima — i tre guasti che restano rossi nel primo sono gli
-stessi identici sul commit di partenza, controllati con `git stash`. In più,
-in un browser vero: le linguette sono quattro, le schede cinque, i comandi di
-Navigazione sono davvero dentro a «Direzione» e funzionano (toccare «S» gira
-la vista a 180° e chiude il pannello), i quattro tasti di «Schermo» chiudono
-il pannello e l'hover a tasto spento no, la slitta dell'aurora è alta 0 px a
-tasto spento e 127 con l'ovale acceso, e le cinque schede stanno in una riga
-senza sbordare a 320, 360 e 412 px.
+- **`verifica.html` §31**, 57 prove nuove: il conto che non torna (col
+  contro-esempio dei sei campioni al minuto), il passo in gradi, la precisione
+  (la separazione con l'`atan2` resta esatta a un milionesimo di grado dove
+  l'`acos` risponde **zero**), gli astri interpolati misurati contro Astronomy
+  Engine, e l'onestà delle due incertezze. 1138 verdi, 5 rosse — le stesse
+  cinque del commit di partenza, controllate con `git stash`.
+- **`scripts/prova-transiti.js`** (nuovo), 28 prove in un browser vero: sono
+  le due cose che un conto non può giudicare. **Il pixel** al centro del Sole
+  con l'aereo davanti (252/255 senza, 8/255 con, e nero pieno invece del
+  colore della fascia), e il **modellino** delle stazioni misurato dove il
+  rombo non arriva. Più l'avviso, il motore dall'aereo all'avviso, i TLE, e
+  l'invariante della coda a scaglioni.
+- `prova-nel-browser.js` e `prova-fumetto.js` girano come prima: gli stessi
+  tre e due guasti rossi del commit di partenza, controllati con `git stash`.
+  Il fotogramma non è cambiato (otto al secondo in container, uguale prima e
+  dopo).
+
+### Un difetto trovato dalle prove, e vale la pena ricordarlo
+
+`Number.isFinite(Infinity)` risponde **falso**. Il budget «tutto in un colpo»
+di `tranLavoroStazioni` ricadeva quindi sugli otto millisecondi di serie, la
+coda cedeva il turno, e la versione sincrona tornava con la sua lista ancora
+vuota. Era invisibile finché le tabelle degli astri erano già in memoria — il
+lavoro che restava ci stava dentro a uno scaglione — e compariva solo quando
+bisognava ricostruirle: a intermittenza, che è il modo peggiore. L'ha preso la
+prova che confronta le due strade della coda, ed è esattamente quello per cui
+c'è.
