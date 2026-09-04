@@ -572,6 +572,26 @@ const server = http.createServer((req, res) => {
 
   // --- l'interfaccia nuova è davvero a schermo? ---
   console.log('\n— l\'interfaccia —');
+  const tempoIngresso = await pagina.evaluate(async () => {
+    skyImpostaOffsetTempo(-3600);
+    mostraVista('stasera');
+    mostraVista('cielo');
+    const prima = skyAdesso().getTime();
+    await new Promise(r => setTimeout(r, 120));
+    const dopo = skyAdesso().getTime();
+    return {
+      modalita: sky.modalitaTempo,
+      scarto: Math.abs(dopo - Date.now()),
+      avanzato: dopo - prima,
+      adsbReale: typeof AereiADS_B !== 'undefined' && AereiADS_B.tempoReale()
+    };
+  });
+  ok('il planetario si apre in tempo reale',
+    tempoIngresso.modalita === 'reale' && tempoIngresso.scarto < 1000,
+    `${tempoIngresso.modalita}, scarto ${tempoIngresso.scarto} ms`);
+  ok('l\'orologio reale continua a scorrere per i feed correnti',
+    tempoIngresso.avanzato >= 80 && tempoIngresso.adsbReale,
+    `${tempoIngresso.avanzato} ms, ADS-B ${tempoIngresso.adsbReale ? 'reale' : 'stimato'}`);
   await pagina.evaluate(() => mostraVista('stasera'));
   await pagina.waitForTimeout(1500);
   const ui = await pagina.evaluate(() => {

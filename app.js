@@ -4613,7 +4613,7 @@ window.eclissiVaiAlPlanetario = () => {
   // che la mappa sta mostrando: è quello che si è chiesto di guardare.
   _eclAssestaIlCielo();
   chiudiMappaEclissi();
-  if (typeof mostraVista === 'function') mostraVista('cielo');
+  if (typeof mostraVista === 'function') mostraVista('cielo', { conservaTempo: true });
   if (typeof skyFermaPlayback === 'function') skyFermaPlayback();
   sky.mostraEventi = true;
   // Il Sole è il protagonista: si punta lui, e la sua traccia racconta da
@@ -6773,7 +6773,8 @@ const VISTE = [
 ];
 
 // Mostra una sola vista alla volta e aggiorna lo stile dei pulsanti
-function mostraVista(nome) {
+function mostraVista(nome, opzioni = {}) {
+  const vistaPrima = vistaAttuale;
   const attivo = "voce-menu attiva";
   const inattivo = "voce-menu";
   // Serve a chi ridisegna dopo un cambio di schermo: sa cosa c'è davanti
@@ -6802,6 +6803,17 @@ function mostraVista(nome) {
   // Il disegno del cielo gira solo quando la sua vista è a schermo;
   // uscendo si spegne anche la fotocamera (batteria e privacy).
   if (nome === 'cielo') {
+    // Entrare normalmente nel planetario significa guardare ciò che sta
+    // succedendo adesso. Un istante scelto per un evento non deve restare
+    // congelato e ricomparire ore dopo, soprattutto perché i feed reali
+    // (come l'ADS-B) fuori dall'ora attuale mostrerebbero solo stime. Le
+    // aperture che collegano due viste della stessa simulazione possono
+    // chiedere esplicitamente di conservare l'orologio.
+    if (vistaPrima !== 'cielo' && !opzioni.conservaTempo) {
+      skyFermaPlayback();
+      sky.ancoraTempoSec = 0;
+      skyImpostaOffsetTempo(0, { reale: true });
+    }
     apriSkymap();
   } else {
     chiudiSkymap();
