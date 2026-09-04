@@ -26392,6 +26392,13 @@ const VIDEO_DB_NOME = 'astrocalendario-video';
 const VIDEO_DB_VERSIONE = 1;
 const VIDEO_CARTELLA_NOME = 'astrocalben';
 let videoCartella = null;
+// `queryPermission()` non è una lettura gratuita su tutti i browser: alcune
+// versioni mobili tornano a rispondere "prompt" anche nello stesso utilizzo
+// della pagina. Ricordiamo quindi il consenso già ottenuto per questo handle.
+// Il browser continua comunque a fare da autorità (ogni scrittura può essere
+// rifiutata); questa variabile evita soltanto di richiedere due volte lo stesso
+// consenso dopo che l'utente ha scelto la cartella.
+let videoCartellaAutorizzata = false;
 let videoUrlGalleria = [];
 let videoTimerSincronizzazione = 0;
 let videoSincronizzazioneInCorso = false;
@@ -26439,6 +26446,7 @@ async function videoScegliCartella(creaCartellaApp = false) {
       ? await base.getDirectoryHandle(VIDEO_CARTELLA_NOME, { create: true })
       : base;
     videoCartella = handle;
+    videoCartellaAutorizzata = true;
     try { await videoDB('preferenze', 'readwrite', store => store.put(handle, 'cartella-video')); } catch (e) { /* la copia funziona comunque */ }
     videoAggiornaCartella();
     videoMessaggio(`La galleria è sincronizzata con “${handle.name}”.`);
@@ -26461,15 +26469,25 @@ function videoAggiornaCartella() {
 async function videoScriviInCartella(esito) {
   if (!videoCartella) return false;
   try {
-    let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
-    if (permesso !== 'granted') permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
-    if (permesso !== 'granted') return false;
+    if (!videoCartellaAutorizzata) {
+      let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
+      if (permesso !== 'granted') permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
+      if (permesso !== 'granted') return false;
+      videoCartellaAutorizzata = true;
+    }
     const file = await videoCartella.getFileHandle(esito.nome, { create: true });
     const scrittura = await file.createWritable();
     await scrittura.write(esito.blob);
     await scrittura.close();
     return true;
-  } catch (e) { return false; }
+  } catch (e) {
+    // Un'autorizzazione puo essere revocata dalle impostazioni del browser:
+    // in quel caso al prossimo gesto dell'utente la verificheremo di nuovo.
+    if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
+      videoCartellaAutorizzata = false;
+    }
+    return false;
+  }
 }
 
 async function videoArchivia(esito, nellaCartella = false) {
@@ -26596,8 +26614,9 @@ async function videoApriGalleria() {
     await videoScegliCartella(true);
   } else if (videoCartella) {
     try {
-      const permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
-      if (permesso !== 'granted') await videoCartella.requestPermission({ mode: 'readwrite' });
+      let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
+      if (permesso !== 'granted') permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
+      videoCartellaAutorizzata = permesso === 'granted';
     } catch (e) { /* videoRenderGalleria mostrerà come riaprire la cartella */ }
   }
   await videoRenderGalleria();
@@ -26626,6 +26645,7 @@ async function videoInizializza() {
   });
   try { videoCartella = await videoDB('preferenze', 'readonly', store => store.get('cartella-video')); }
   catch (e) { videoCartella = null; }
+  videoCartellaAutorizzata = false;
   videoAggiornaCartella();
 }
 

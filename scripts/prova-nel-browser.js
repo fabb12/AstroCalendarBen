@@ -226,6 +226,37 @@ const server = http.createServer((req, res) => {
       firmaVideo.larghezza <= firmaVideo.massimo,
     `${firmaVideo.accorciato} (${firmaVideo.larghezza.toFixed(1)}/${firmaVideo.massimo}px)`);
 
+  const salvataggiRipetuti = await pagina.evaluate(async () => {
+    const cartellaOriginale = videoCartella;
+    const autorizzazioneOriginale = videoCartellaAutorizzata;
+    let verifichePermesso = 0;
+    let richiestePermesso = 0;
+    let scritture = 0;
+    videoCartella = {
+      queryPermission: async () => { verifichePermesso += 1; return 'granted'; },
+      requestPermission: async () => { richiestePermesso += 1; return 'granted'; },
+      getFileHandle: async () => ({
+        createWritable: async () => ({
+          write: async () => { scritture += 1; },
+          close: async () => {}
+        })
+      })
+    };
+    videoCartellaAutorizzata = false;
+    const esito = { nome: 'prova.mp4', blob: new Blob(['video']) };
+    const primo = await videoScriviInCartella(esito);
+    const secondo = await videoScriviInCartella(esito);
+    videoCartella = cartellaOriginale;
+    videoCartellaAutorizzata = autorizzazioneOriginale;
+    return { primo, secondo, verifichePermesso, richiestePermesso, scritture };
+  });
+  ok('la cartella autorizzata accetta piu salvataggi senza richiedere ancora il permesso',
+    salvataggiRipetuti.primo && salvataggiRipetuti.secondo &&
+      salvataggiRipetuti.verifichePermesso === 1 &&
+      salvataggiRipetuti.richiestePermesso === 0 && salvataggiRipetuti.scritture === 2,
+    `${salvataggiRipetuti.scritture} scritture, ${salvataggiRipetuti.verifichePermesso} verifica e ` +
+      `${salvataggiRipetuti.richiestePermesso} nuove richieste`);
+
   // La X aggiunta alla scheda degli aerei aveva ridefinito il pannello come
   // `position: relative`: dentro al planetario entrava così nel flusso sotto
   // al canvas e pareva non aprirsi. Proviamo la posizione calcolata, non solo
