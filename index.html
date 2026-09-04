@@ -961,6 +961,12 @@
                    qui divergerebbe al primo ritocco delle soglie senza che
                    niente lo dica. -->
               <ul id="aerei-leggenda" class="aerei-leggenda" aria-label="Come si leggono i colori"></ul>
+              <div class="aerei-cerca">
+                <label for="aerei-cerca-input">Cerca un aereo</label>
+                <input id="aerei-cerca-input" type="search" inputmode="search" autocomplete="off"
+                  placeholder="Volo, registrazione, modello o ICAO"
+                  aria-controls="aerei-elenco">
+              </div>
               <div id="aerei-elenco" class="aerei-elenco"></div>
               <p class="etichetta-comando nota-lunga">Posizioni ADS-B entro il raggio scelto (50 km di serie; si cambia nelle Impostazioni). Il colore dice quanto è vicino; la linea tratteggiata è la rotta dei 5 minuti successivi. Spostando l'orologio, aereo e rotta diventano stime coerenti con l'istante mostrato.</p>
             </section>
