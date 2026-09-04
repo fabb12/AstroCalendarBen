@@ -2885,20 +2885,20 @@ function terrenoAggiornaPannello() {
 // =====================================================================
 
 const TERRENO_FASI = [
-  { chiave: 'quote', peso: 0.34, che: 'la forma del terreno',
+  { chiave: 'quote', peso: 0.34, che: 'fase.quote',
     stato: () => terreno.stato, quanto: () => terreno.avanzamento },
-  { chiave: 'citta', peso: 0.07, che: 'le luci dei paesi',
+  { chiave: 'citta', peso: 0.07, che: 'fase.citta',
     stato: () => citta.stato, quanto: () => citta.avanzamento },
-  { chiave: 'cime', peso: 0.07, che: 'i nomi delle montagne',
+  { chiave: 'cime', peso: 0.07, che: 'fase.cime',
     stato: () => cime.stato, quanto: () => cime.avanzamento },
-  { chiave: 'acque', peso: 0.18, che: 'i laghi e i fiumi',
+  { chiave: 'acque', peso: 0.18, che: 'fase.acque',
     stato: () => acque.stato, quanto: () => acque.avanzamento },
   // Il rilievo (`rilievo.js`). Pesa quanto le quote a punti, e non è
   // generosità: sono da quattro a sei tessere da un centinaio di kilobyte
   // l'una, cioè il grosso di quello che si scarica per un luogo nuovo. Il
   // `typeof` c'è perché questo file può non esserci — chi lo toglie
   // dall'`index.html` deve ritrovare l'app di prima, barra compresa.
-  { chiave: 'rilievo', peso: 0.34, che: 'il rilievo del terreno',
+  { chiave: 'rilievo', peso: 0.34, che: 'fase.rilievo',
     stato: () => (typeof rilievo === 'undefined' ? 'spento' : rilievo.stato),
     quanto: () => (typeof rilievo === 'undefined' ? 0 : rilievo.avanzamento) }
 ];
@@ -2964,8 +2964,8 @@ function terrenoBarraAggiorna() {
     // Cosa si sta aspettando, non «caricamento»: sono quattro cose diverse e
     // sapere quale è in ritardo è metà della risposta quando una non arriva.
     testo.textContent = v.corre
-      ? `Sto misurando ${terrenoElencoAParole(v.che)}… ${per}%`
-      : 'Il terreno attorno a te è pronto.';
+      ? astroI18n.t('terreno.stoMisurando', { che: terrenoElencoAParole(v.che), per })
+      : astroI18n.t('terreno.pronto');
   }
   el.setAttribute('aria-valuenow', String(per));
 
@@ -2991,10 +2991,17 @@ function terrenoBarraAggiorna() {
 }
 
 // «le quote», «le quote e i laghi», «le quote, i paesi e i laghi».
+/* «le quote, i paesi e le acque». Le voci arrivano come **chiavi** e si
+ * traducono qui; la congiunzione finale («e», «and») è della lingua e viene
+ * dal dizionario — incollarla a mano è il modo di scrivere «the elevations,
+ * the towns e the water». */
 function terrenoElencoAParole(v) {
-  if (!v || !v.length) return 'il terreno';
-  if (v.length === 1) return v[0];
-  return `${v.slice(0, -1).join(', ')} e ${v[v.length - 1]}`;
+  if (!v || !v.length) return astroI18n.t('terreno.ilTerreno');
+  const nomi = v.map(k => (typeof k === 'string' && k.startsWith('fase.'))
+    ? astroI18n.t('terreno.' + k) : k);
+  if (nomi.length === 1) return nomi[0];
+  return astroI18n.t('terreno.elencoFinale', {
+    prime: nomi.slice(0, -1).join(', '), ultima: nomi[nomi.length - 1] });
 }
 
 

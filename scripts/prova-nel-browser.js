@@ -99,6 +99,11 @@ const server = http.createServer((req, res) => {
   await pagina.evaluate(() => {
     localStorage.setItem('astrocalendario_posizione',
       JSON.stringify({ lat: 45.4642, lon: 9.19, nome: 'Milano', fonte: 'manuale' }));
+    // La lingua si fissa: le attese di questa prova sono scritte in italiano,
+    // e senza una preferenza salvata il gestore sceglie la lingua del browser
+    // — che su una macchina di CI è l'inglese. La lingua si prova a parte, in
+    // `scripts/prova-lingua.js`.
+    localStorage.setItem('astrocal_lingua', 'it');
   });
   await pagina.reload({ waitUntil: 'networkidle' });
   await pagina.waitForTimeout(2500);

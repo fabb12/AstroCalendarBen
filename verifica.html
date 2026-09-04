@@ -322,6 +322,26 @@ function skyCaso(seme) {
 }
 </script>
 
+<!-- Il gestore delle lingue, e prima di lui i dizionari.
+     Va **prima** dei moduli, e non è un dettaglio di comodo: `terreno.js`,
+     `catalogo.js`, `costellazioni.js` e `aerei.js` qui girano per davvero, e
+     da quando il testo viene dalle chiavi chiamano `astroI18n.t()`. Senza il
+     gestore quella chiamata è un `ReferenceError`, e in una pagina di
+     `<script>` unici un ReferenceError non fa fallire una prova: **porta via
+     tutte le sezioni che vengono dopo**, in silenzio. È la trappola descritta
+     in tre punti di CLAUDE.md, e questa volta è arrivata dalla lingua.
+
+     La lingua si fissa **prima** che il gestore parta: le stringhe che le
+     prove si aspettano sono italiane, e senza una preferenza salvata il
+     gestore sceglierebbe quella del browser (e chiederebbe il paese alla
+     rete, che qui non serve a niente). -->
+<script>
+  try { localStorage.setItem('astrocal_lingua', 'it'); } catch (e) { /* modo privato */ }
+</script>
+<script src="lingue/it.js"></script>
+<script src="lingue/en.js"></script>
+<script src="i18n.js"></script>
+
 <script src="catalogo.js"></script>
 <script src="corpi-minori.js"></script>
 <script src="terreno.js"></script>

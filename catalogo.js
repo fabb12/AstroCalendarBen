@@ -416,9 +416,9 @@ function catDimensioneTesto(o) {
     ? `${gradi(o.assePrimi)} × ${gradi(o.asseMinore)}`
     : gradi(o.assePrimi);
   const lune = o.assePrimi / 31;
-  if (lune >= 1.6) return `${misura} (${Math.round(lune)} volte la Luna piena)`;
-  if (lune >= 0.7) return `${misura} (grande come la Luna piena)`;
-  if (lune >= 0.25) return `${misura} (un terzo della Luna piena)`;
+  if (lune >= 1.6) return `${misura} (${astroI18n.t('profondo.volteLunaPiena', { n: Math.round(lune) })})`;
+  if (lune >= 0.7) return `${misura} (${astroI18n.t('profondo.comeLunaPiena')})`;
+  if (lune >= 0.25) return `${misura} (${astroI18n.t('profondo.terzoLunaPiena')})`;
   return misura;
 }
 
@@ -1285,7 +1285,8 @@ function catSchedaStella(indice) {
     indiceCatalogo: indice,
     colore: cat.colori.get(indice) || CAT_FAMIGLIE_COLORE[cat.famiglie[indice]],
     // Prima il colore, che è misurato; poi la classe, che è dedotta
-    classe: `Stella ${c.colore} <span class="text-slate-500">(classe ${c.classe} circa, dedotta dal colore)</span>`,
+    classe: astroI18n.t('stella.classe', { colore: astroI18n.t('stella.colore.' + c.classe) }) +
+      ` <span class="text-slate-500">(${astroI18n.t('stella.classeDedotta', { classe: c.classe })})</span>`,
     temperatura: T,
     nota: catNotaStella(c, T, magnitudine)
   };
@@ -1295,23 +1296,21 @@ function catSchedaStella(indice) {
 // Sole, perché è l'unica stella di cui tutti hanno un'idea.
 function catNotaStella(c, T, mag) {
   const gradi = Math.round(T / 100) * 100;
-  const controIlSole = T > 6400 ? 'più calda del Sole'
-                     : T < 5300 ? 'più fredda del Sole'
-                     : 'calda quasi quanto il Sole';
+  const controIlSole = astroI18n.t(T > 6400 ? 'stella.piuCalda'
+    : T < 5300 ? 'stella.piuFredda' : 'stella.quasiComeIlSole');
 
-  let testo = `Il colore non è un dettaglio estetico: dice la temperatura. ` +
-    `Questa è ${c.colore}, sui ${gradi.toLocaleString('it')} gradi in superficie — ` +
-    `${controIlSole}, che ne ha 5.800.`;
+  // `toLocaleString('it')` era il separatore dei migliaia inchiodato
+  // all'italiano: 5.800 gradi qui e 5,800 in inglese.
+  let testo = astroI18n.t('stella.notaColore', {
+    colore: astroI18n.t('stella.colore.' + c.classe),
+    gradi: astroI18n.numero(gradi),
+    confronto: controIlSole
+  });
 
   // Le rosse molto fredde sono quasi sempre giganti: una nana rossa a
   // quella temperatura sarebbe troppo debole per vedersi a occhio nudo.
-  if (c.classe === 'M' && mag < 6) {
-    testo += ' Una rossa così visibile a occhio nudo è quasi certamente una gigante: ' +
-      'le nane rosse sono la maggioranza delle stelle della Galassia, ma nessuna si vede senza telescopio.';
-  } else if ((c.classe === 'O' || c.classe === 'B') && mag < 4) {
-    testo += ' Le azzurre bruciano in fretta e vivono poco: qualche decina di milioni di anni, ' +
-      'contro i dieci miliardi del Sole.';
-  }
+  if (c.classe === 'M' && mag < 6) testo += ' ' + astroI18n.t('stella.notaGigante');
+  else if ((c.classe === 'O' || c.classe === 'B') && mag < 4) testo += ' ' + astroI18n.t('stella.notaAzzurra');
   return testo;
 }
 

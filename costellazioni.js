@@ -2337,14 +2337,19 @@ function costEmisfero(sigla) {
 //     e il tasto indietro sparisce — ma è la stessa pagina, non due.
 // =====================================================================
 
+/* I filtri dell'atlante. `nome` è un **getter** sulla chiave, come per le
+ * categorie degli eventi in app.js: chi lo legge non cambia, e il valore segue
+ * la lingua di adesso invece di essere quello letto al caricamento del file. */
 const COST_FILTRI = [
-  { id: 'tutte',    nome: 'Tutte' },
-  { id: 'australi', nome: 'Cielo australe' },
-  { id: 'boreali',  nome: 'Cielo boreale' },
-  { id: 'disegni',  nome: 'Con disegno' },
-  { id: 'qui',      nome: 'Si vedono da qui' },
-  { id: 'buio',     nome: 'Del buio' }
-];
+  { id: 'tutte' }, { id: 'australi' }, { id: 'boreali' },
+  { id: 'disegni' }, { id: 'qui' }, { id: 'buio' }
+].map(v => {
+  Object.defineProperty(v, 'nome', {
+    enumerable: true,
+    get() { return astroI18n.t('atlante.filtro.' + v.id); }
+  });
+  return v;
+});
 
 function costElencoVoci() {
   if (typeof COSTELLAZIONI_IAU === 'undefined') return [];
@@ -2997,8 +3002,12 @@ function costInizializza() {
 
   const filtri = document.getElementById('cost-filtri');
   if (filtri) {
+    // La chiave sul bottone: il testo lo riscrive il gestore al cambio lingua,
+    // e l'ascoltatore sta sul contenitore (delega), quindi non c'è niente da
+    // riattaccare.
     filtri.innerHTML = COST_FILTRI.map(f =>
-      `<button type="button" class="tasto-cielo${f.id === 'tutte' ? ' attiva' : ''}" data-filtro="${f.id}">${f.nome}</button>`
+      `<button type="button" class="tasto-cielo${f.id === 'tutte' ? ' attiva' : ''}" ` +
+      `data-filtro="${f.id}" data-i18n="atlante.filtro.${f.id}">${f.nome}</button>`
     ).join('');
     filtri.addEventListener('click', e => {
       const b = e.target.closest('[data-filtro]');

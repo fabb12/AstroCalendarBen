@@ -732,7 +732,7 @@ function meteoTestoCasella(riga, valore) {
 // Costruisce la griglia per le prossime `ore` ore, a partire da adesso.
 function meteoGrigliaHtml(ore) {
   if (!meteoAstro || !meteoAstro.ore.length) {
-    return '<p class="nota-meteo">Previsioni non ancora disponibili.</p>';
+    return `<p class="nota-meteo">${astroI18n.t('meteo.nonAncoraDisponibili')}</p>`;
   }
 
   const adesso = Date.now() - 3600000;

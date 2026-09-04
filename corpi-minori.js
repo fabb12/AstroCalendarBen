@@ -166,10 +166,10 @@ function luneDiGioveRacconto(data) {
 
   const fatti = [];
   lune.forEach(l => {
-    if (l.transito) fatti.push(`${l.nome} sta passando davanti a Giove`);
-    if (l.ombraSuGiove) fatti.push(`l'ombra di ${l.nome} è sul disco di Giove`);
-    if (l.occultata) fatti.push(`${l.nome} è nascosta dietro Giove`);
-    if (l.eclissata) fatti.push(`${l.nome} è nel cono d'ombra di Giove`);
+    if (l.transito) fatti.push(astroI18n.t('lune.transito', { luna: l.nome }));
+    if (l.ombraSuGiove) fatti.push(astroI18n.t('lune.ombra', { luna: l.nome }));
+    if (l.occultata) fatti.push(astroI18n.t('lune.occultata', { luna: l.nome }));
+    if (l.eclissata) fatti.push(astroI18n.t('lune.eclissata', { luna: l.nome }));
   });
 
   // In fila da ovest a est, che è come si vedono nel campo dell'oculare
@@ -184,7 +184,7 @@ function luneDiGioveRacconto(data) {
         (inFila.some(l => l.x < 0) ? ' — ' : '') + 'GIOVE' +
         (inFila.some(l => l.x >= 0) ? ' — ' : '') +
         inFila.filter(l => l.x >= 0).map(l => l.nome).join(' · ')
-      : 'tutte e quattro nascoste da Giove'
+      : astroI18n.t('lune.tutteNascoste')
   };
 }
 

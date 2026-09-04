@@ -102,8 +102,18 @@ const AEREO = {
     }));
 
     await pagina.goto('http://localhost:8098/index.html', { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await pagina.evaluate(() => localStorage.setItem('astrocalendario_posizione',
-      JSON.stringify({ lat: 45.4642, lon: 9.19, nome: 'Milano', fonte: 'manuale' })));
+    await pagina.evaluate(() => {
+      localStorage.setItem('astrocalendario_posizione',
+        JSON.stringify({ lat: 45.4642, lon: 9.19, nome: 'Milano', fonte: 'manuale' }));
+      // La lingua si fissa, e non è pignoleria: le righe che questa prova
+      // controlla sono scritte in italiano («Partenza», «Quota»), e senza una
+      // preferenza salvata il gestore sceglie da sé — la lingua del browser,
+      // che su una macchina di CI è l'inglese. Prima non si vedeva perché la
+      // scelta arrivava **dopo** la rete (una sveglia da 3,5 s) e le prove
+      // finivano prima; adesso è immediata, e una prova che dipende
+      // dall'ambiente è una prova che un giorno diventa rossa da sola.
+      localStorage.setItem('astrocal_lingua', 'it');
+    });
     await pagina.reload({ waitUntil: 'domcontentloaded' });
     await pagina.evaluate(() => mostraVista('cielo'));
     await pagina.waitForTimeout(3500);

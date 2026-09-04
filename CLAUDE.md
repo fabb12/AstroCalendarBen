@@ -50,7 +50,9 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `worker-adsb.js` | ~430 | Il proxy ADS-B del progetto, e **la sola strada per cui gli aerei arrivino**: le quattro reti non mandano il CORS, quindi da un browser non si leggono mai. Interroga OpenSky (credenziali facoltative nei secret `OPENSKY_*`) e le quattro reti di comunità, traduce lo schema OpenSky in quello readsb, aggiunge il CORS **solo alle origini ammesse** (`ORIGINI_AMMESSE`) e tiene la fotografia 20 secondi. `/` si presenta, `/api/diagnostica` dice cosa ha risposto ogni fonte e se da qui si arriva a OpenSky. **Va distribuito su Deno Deploy, non su Cloudflare**: gira su tutt'e due (Web standard, `export default { fetch }`), ma da un Worker tutte e cinque le fonti rifiutano l'IP condiviso — misurato, e dalla stessa ora da Deno ne rispondono tre. Non fa parte della PWA: vedi `ADSB-PROXY.md`. |
 | `aurora-polare.js` | ~1.015 | **Le aurore polari nel planetario**: l'ovale aurorale attorno al polo geomagnetico, boreale e australe, disegnato dove sta davvero, più la **forma dello scudo** (magnetopausa e onda d'urto) che serve al banco della Didattica. Prefisso `aur`. |
 | `eventi-extra.js` | ~720 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete e **aurore** (previsione del Kp a tre giorni + stagione degli equinozi). |
-| `ui-nuova.js` | ~350 | L'interfaccia di tutto quanto sopra. |
+| `ui-nuova.js` | ~1.150 | L'interfaccia di tutto quanto sopra, e **il ridisegno al cambio lingua** (`ridisegnaTuttoPerLingua`): l'elenco di chi si compone in JavaScript e quindi va rifatto, non riscritto. |
+| `i18n.js` | ~740 | **Il gestore delle lingue.** Chiavi al posto delle frasi: `t('chiave')` è una lettura da `Map`, e il cambio lingua non guarda il documento — scorre l'**indice** dei soli nodi che portano una chiave (quattrocentosettanta contro quarantacinquemila nodi di testo) e avvisa chi si disegna da sé. Ci stanno anche i formati che dipendono dalla lingua e non sono frasi: numeri, date, conti alla rovescia (in due registri, lungo e corto), punti cardinali — in inglese l'ovest è «W» e non «O». Quello di prima traduceva il DOM con duecento espressioni regolari a ogni cambio, e per questo era insieme lento e incompleto: vedi `I18N.md`. |
+| `lingue/it.js`, `lingue/en.js` | 886 voci | I **dizionari**, in memoria all'avvio. Sono file di dati come i `dati-*.js` e non `.json` di proposito: da `file://` una `fetch` di JSON è vietata, e questa applicazione si apre anche con un doppio clic. Vanno **prima** di `i18n.js`. Si generano a mano, non da uno script. |
 | `didattica.js` | ~8.730 | **Il laboratorio**: gli otto banchi di prova della vista Didattica — moto retrogrado, leggi di Keplero, fionda gravitazionale (tre schede: il banco di prova, i conti, il Grand Tour), finestre di lancio, allineamenti, aurore polari, **le costellazioni nello spazio vero**, e **il Sole al tramonto** (quattro quadri: la Terra che gira, quanta aria attraversa la luce, che colore ne esce, e lo stesso cielo su Marte). Prefisso `did`. |
 | `dati-stelle.js` | ~1.360 | 5.044 stelle fino alla mag 6,0 (147 KB). **Caricato su richiesta.** |
 | `dati-stelle-deboli.js` | ~1.335 | Altre 10.500 fino alla mag 7,0 (267 KB). **Solo a chi serve** (Bortle ≤ 4 o forte zoom). |
@@ -63,7 +65,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `scripts/costruisci-tailwind.js` | ~70 | Genera `tailwind.css`. Si lancia a mano quando si aggiunge una classe Tailwind nuova, non serve all'app. |
 | `style.css` | ~9.380 | Tema "Deep Space" + impaginazione responsive. |
 | `tailwind.css` | ~600 | **Generato**, non si tocca a mano: le sole utility di Tailwind che l'app usa davvero, compilate una volta. Ha preso il posto di `cdn.tailwindcss.com`, che era il **compilatore** — mezzo megabyte di JavaScript che a ogni apertura rileggeva il DOM per riscrivere questo stesso CSS, e che nella console lo diceva a ogni apertura. Va caricato **prima** di `style.css`. |
-| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v262`). |
+| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v265`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -71,6 +73,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 **Ordine di caricamento** (è quello di `index.html`, e conta):
 
 ```
+lingue/it.js → lingue/en.js → i18n.js          (i dizionari, poi il gestore)
 app.js → telescopio.js → catalogo.js → costellazioni.js → via-lattea.js
        → corpi-minori.js
        → pianifica.js → terreno.js → rilievo.js → meteo-astro.js → aurora-polare.js
@@ -354,7 +357,16 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 ## 10. Convenzioni
 
 - **Tutto in italiano**: `calcolaEventiAstronomi`, `aggiungiFasiLunari`,
-  `luogoCorrente`. Non introdurre nomi inglesi.
+  `luogoCorrente`. Non introdurre nomi inglesi. Vale per il **codice** — nomi,
+  commenti, chiavi di `localStorage` — e non per il testo che si legge sullo
+  schermo, che è la riga qui sotto.
+- **Nessuna frase da leggere si scrive in un file dell'applicazione.** Si
+  scrive `astroI18n.t('chiave')` (o `data-i18n` in `index.html`) e la frase sta
+  nei due dizionari, `lingue/it.js` e `lingue/en.js`. Chi se ne dimentica lo
+  scopre da `node scripts/controlla-i18n.js`, che in CI non lascia crescere il
+  numero delle stringhe cablate. Tutto in `I18N.md`, comprese le trappole
+  misurate — fra cui la più insidiosa: la chiave va sul nodo che porta **la
+  parola**, e non sul suo genitore.
 - **Prefissi**: `sky*` = planetario (la vista si chiama ancora `cielo` nel
   codice), `skyDipingi*` = pennelli delle facce degli astri (si chiamano una
   volta sola, dentro `skyPelle`), `skyMare*` = la superficie del mare nel
@@ -394,8 +406,12 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v262`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v265`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
+- **Se hai aggiunto del testo che si legge**, la frase va nei due dizionari e
+  non nel codice: `node scripts/controlla-i18n.js --patto` lo controlla, e
+  `node scripts/prova-lingua.js` guarda cosa resta in italiano **sullo
+  schermo** dopo un cambio lingua, che è l'unica domanda che conta.
 - **Se hai aggiunto una classe di Tailwind** a `index.html` o a uno script,
   rilancia `node scripts/costruisci-tailwind.js` (una volta sola serve
   `npm install tailwindcss@3`). Da quando il CSS è compilato nel repository,
@@ -460,6 +476,50 @@ l'ultima registrata**, quindi i rifiuti generici vanno *prima* dell'itinerario
 finto — `**adsb**` contiene `api.adsbdb.com`, e messo dopo se lo mangia: la
 riga della rotta non arriva mai e la prova fallisce per un motivo che non
 c'entra col codice.
+
+### Le lingue — `scripts/prova-lingua.js` e `scripts/prova-i18n.js`
+
+```
+node scripts/prova-i18n.js       # il gestore, senza browser: mezzo secondo
+node scripts/prova-lingua.js     # la copertura vera, in un Chromium
+node scripts/controlla-i18n.js   # l'audit delle stringhe cablate
+```
+
+Delle quattro cose che il gestore promette, tre non si giudicano guardando lo
+schermo e una non si giudica affatto.
+
+La **copertura** è la sola che conti, e l'unico giudice è contare le parole
+italiane che restano *sullo schermo* dopo il cambio: per contarle bisogna che
+la pagina sia impaginata per davvero, e si guardano i soli nodi che hanno un
+`offsetParent` — le sette viste esistono tutte insieme nel documento e sei sono
+nascoste, quindi contando tutto si conterebbe sei volte del testo che nessuno
+guarda. Che una vista nascosta si rimetta in pari quando si apre lo prova la
+sezione dopo, che le riapre una per una: è lì che salta fuori quella rimasta
+indietro. Le **prestazioni** si misurano dove il difetto viveva — documento
+intero, pannelli aperti — e divise in due: la riscrittura del testo e il
+ridisegno, che sono due costi di natura diversa e vanno letti separati, se no
+si ottimizza quello sbagliato. Il **modo** si misura strutturalmente (quanti
+nodi si toccano contro quanti nodi di testo ci sono): un cambio veloce per caso
+tornerebbe lento appena la pagina cresce. Il **ripiego** si prova togliendo una
+chiave e guardando che esca l'italiano e non un buco.
+
+`scripts/i18n-tetto.json` tiene i tetti della copertura, e sono un cricchetto:
+scendono quando si converte un pezzo e non risalgono. Zero non è ancora vero —
+nell'agenda resta il contenuto degli eventi (congiunzioni, sciami, stagioni,
+eclissi) e restano le viste Diario, Telescopio e Didattica — e una prova che
+pretende zero adesso è una prova rossa per sempre, cioè una prova che si impara
+a ignorare.
+
+Due cose da sapere prima di metterci mano, ed è la stessa di sempre in un'altra
+veste. **`verifica.html` carica `i18n.js`**: quella pagina fa girare
+`terreno.js`, `catalogo.js`, `costellazioni.js` e `aerei.js` per davvero, e
+senza il gestore la loro prima `astroI18n.t()` è un `ReferenceError` — che in
+una pagina di `<script>` unici non fa fallire una prova, **porta via tutte le
+sezioni che vengono dopo**, in silenzio (misurato: da 1138 prove a 10). E le
+prove che **non** parlano di lingua la lingua la fissano
+(`localStorage.astrocal_lingua = 'it'`): le loro attese sono in italiano, e da
+quando la scelta è immediata — prima aspettava la rete, e le prove finivano
+prima di lei — su una macchina di CI arrivava l'inglese.
 
 ### Il banco di prova — `verifica.html`
 
@@ -875,6 +935,8 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 
 | Richiesta | Punto di partenza |
 |---|---|
+| **Il cambio lingua è lento, o una parte resta in italiano** | `i18n.js` e `I18N.md`. Le tre domande, nell'ordine in cui conviene farsele. **(1) Quel testo ha una chiave?** `node scripts/controlla-i18n.js --lista --file <file>` lo dice; se non ce l'ha, il difetto è quello e basta scriverla. **(2) Chi lo disegna viene avvisato?** Se il testo si compone in JavaScript, il cambio lingua non lo riscrive: lo deve **ridisegnare** chi lo ha fatto, e l'elenco di chi viene avvisato è `ridisegnaTuttoPerLingua` in `ui-nuova.js`. Una vista non a schermo si segna in debito (`vistePerLingua`) e lo paga in `mostraVista`. **(3) Quella frase è tenuta da qualche parte?** Una cache di frasi è una cache di una lingua: `cacheCircostanze` (il verdetto «da qui si vede?») si svuota col ridisegno, e la scheda di un aereo porta scritto in che lingua è (`corpo.dataset.lingua`) perché la scorciatoia che riscrive i soli numeri non lasci le etichette di prima. Per la lentezza: `astroI18n` misura due lavori diversi, e `scripts/prova-lingua.js` li stampa separati — la riscrittura del testo (dieci millisecondi su cinquecento nodi) e il ridisegno, che costa quanto costa aprire quella vista |
+| **Una frase nuova da mostrare** | non si scrive nel codice: `astroI18n.t('chiave')` (o `data-i18n` nell'HTML), e la frase nei due dizionari. Se dipende da una quantità, la voce si scrive `{ uno: …, altri: … }` e a scegliere è `Intl.PluralRules` — con una stringa sola «fra 1 giorni» è sbagliato in tutte le lingue. Se contiene un numero, il numero entra come segnaposto (`{n}`) e non concatenato: così prende il separatore della lingua, e in italiano quattro cifre **non** lo portano (5800, non 5.800) mentre in inglese sì |
 | **Un intervallo di date nel calendario** (non un mese solo) | `intervalloSelezionato` (`app.js:23`), i due selettori `[data-selettore-intervallo]` in `index.html` (vista Mese e vista Agenda), `vaiAllIntervalloDelSelettore()` → `impostaIntervalloSelezionato()`, che calcola tutti i mesi toccati (`mesiDellIntervallo()`). L'intervallo e il mese scelto si escludono a vicenda — sono due modi di chiedere la stessa cosa, e tenerli accesi insieme vuol dire non sapere più quale dei due si sta leggendo. **Non c'è un tetto ai mesi**: un mese costa una settantina di millisecondi (il triplo su un telefono) e il calcolo è sincrono, quindi i mesi si fanno **a scaglioni** — `calcolaMesiAScaglioni()` lavora per `INTERVALLO_MS_PER_GIRO` e poi cede il turno al browser, che così ridisegna e resta vivo; la riga di stato dice a che punto è e le viste si rinfrescano al massimo ogni `INTERVALLO_MS_FRA_MOSTRE`, così gli eventi compaiono mano a mano — a tempo e non a mesi, perché il costo del ridisegno cresce col numero di eventi e non con la lunghezza dell'intervallo. `sincronizzaCalendario()` ricarica la griglia dentro a un `batchRendering`: `addEvent` ridisegna a ogni chiamata, e con i millequattrocento eventi di dieci anni quella riga da sola costava **dodici secondi** (vale per ogni ricarica, filtri e ricerca compresi). Una richiesta nuova ferma quella in corso (`fermaCalcoloIntervallo()`, che vale anche scegliendo un mese o togliendo l'intervallo): due conteggi insieme si sovrascriverebbero la riga di stato a vicenda. L'agenda filtra con `eventiNellIntervallo()`, il calendario tinge i giorni con un evento di sfondo (`.fascia-intervallo`) e le date si leggono e si scrivono in **ora locale** (`dataIso()`/`dataDaCasella()`: `new Date('2026-08-15')` sarebbe mezzanotte UTC, cioè il giorno prima per chi sta a ovest). Stili `.selettore-intervallo`, `.etichetta-intervallo`, `.campo-data-intervallo` |
 | **Come si legge un evento nella griglia del mese** | `contenutoEventoGriglia()` (passata a FullCalendar come `eventContent`), che scrive icona della categoria + titolo + ora invece del pallino e del titolo grigio di prima. Il colore arriva dal nodo (`--colore-evento`), non da un elenco di categorie duplicato nel CSS; l'ora si vede solo dove la casella è larga (media query dei 1440px), perché in centoquaranta pixel toglie il posto al titolo. FullCalendar stende il colore dell'evento come fondo pieno **in riga**: per questo `.fc-daygrid-block-event` lo azzera con `!important`. Stili `.evento-griglia*` |
 | Nuovo tipo di evento astronomico | `calcolaEventiAstronomi()` `app.js:676` + una `aggiungi…()`, poi `CATEGORIE` `app.js:46` (che oggi tiene anche `aurore`) |
