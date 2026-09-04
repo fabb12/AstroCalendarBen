@@ -456,19 +456,24 @@ const server = http.createServer((req, res) => {
     conoSolare.ombra && conoSolare.erroreKm < 0.01,
     `scarto geografico ${conoSolare.erroreKm.toFixed(4)} km`);
 
-  // I globi sono la maschera opaca dei coni: nessun bordo va ripassato dopo
-  // Terra o Luna, altrimenti ricompare sopra continenti e crateri. Registriamo
-  // l'ordine del disegno vero senza sostituire il resto della scena.
+  // I riempimenti restano dietro ai globi, ma il contorno del cono lunare
+  // viene ripassato davanti alla Terra: deve mostrare dove l'ombra raggiunge
+  // la superficie. Registriamo l'ordine del disegno vero.
   const occlusioniConi = await pagina.evaluate(() => {
     const eventi = [];
     const conoOriginale = solDisegnaCono;
     const corpoOriginale = solDisegnaCorpo;
+    const istanteOriginale = sol.istante;
     solDisegnaCono = (...args) => { eventi.push('cono'); return conoOriginale(...args); };
     solDisegnaCorpo = (...args) => {
       if (args[1] && (args[1].id === 'Earth' || args[1].id === 'Moon')) eventi.push(args[1].id);
       return corpoOriginale(...args);
     };
-    try { solDisegnaVicino(); } finally {
+    try {
+      sol.istante = new Date('2026-08-12T17:45:00Z').getTime();
+      solDisegnaVicino();
+    } finally {
+      sol.istante = istanteOriginale;
       solDisegnaCono = conoOriginale;
       solDisegnaCorpo = corpoOriginale;
     }
@@ -477,10 +482,9 @@ const server = http.createServer((req, res) => {
     const primaLuna = eventi.indexOf('Moon');
     return { eventi, ultimoCono, primaTerra, primaLuna };
   });
-  ok('Terra e Luna occludono entrambi i coni d’ombra',
-    occlusioniConi.ultimoCono >= 0 &&
-      occlusioniConi.primaTerra > occlusioniConi.ultimoCono &&
-      occlusioniConi.primaLuna > occlusioniConi.ultimoCono,
+  ok('il cono lunare termina davanti alla Terra',
+    occlusioniConi.ultimoCono > occlusioniConi.primaTerra &&
+      occlusioniConi.ultimoCono > occlusioniConi.primaLuna,
     `ordine ${occlusioniConi.eventi.join(' → ')}`);
 
   // --- le lune di Giove ---

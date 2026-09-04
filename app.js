@@ -29742,12 +29742,10 @@ function solDisegnaVicino() {
   solDisegnaRaggiVicino(ctx, g.versoSole, g.dLuna);
   solDisegnaPianoVicino(ctx, g.dLuna);
 
-  // I due coni si disegnano interamente **prima** dei corpi. Terra e Luna sono
-  // opache: devono quindi coprire non soltanto il riempimento, ma anche i bordi
-  // del cono che passa dietro di loro. Ripassare i bordi alla fine produceva
-  // due fili colorati sopra continenti e crateri, come se l'ombra attraversasse
-  // una sfera trasparente. Il disco dipinto dopo fa da maschera naturale a
-  // entrambi i coni e lascia che ogni bordo arrivi esattamente al limbo.
+  // I riempimenti dei due coni stanno dietro ai corpi, che restano opachi. Il
+  // contorno del cono lunare avra' invece una seconda passata davanti alla
+  // Terra: e' il filo che congiunge la Luna alla macchia sul globo e deve far
+  // vedere senza ambiguita' dove va a finire l'ombra.
   const apiceTerra = solApiceOmbra(RAGGIO_TERRA_KM, g.dSole);
   const portataTerra = Math.min(apiceTerra, g.dLuna * SOL_VIC_CONO_OLTRE);
   // Il cono della Terra, sempre: è lui che spiega perché la maggior parte
@@ -29771,7 +29769,7 @@ function solDisegnaVicino() {
     g.sole[0] - g.luna[0], g.sole[1] - g.luna[1], g.sole[2] - g.luna[2]);
   const luce = skyDot(solVersore(g.luna), g.versoSole);
   const ombraSole = luce > 0.9 ? solOmbraLunareSuTerra(quando) : null;
-  const coniLuna = () => {
+  const coniLuna = (soloContorno = false) => {
     if (!(luce > 0.9)) return;
     const antiLuna = [-versoSoleDallaLuna[0], -versoSoleDallaLuna[1], -versoSoleDallaLuna[2]];
     const apiceLuna = solApiceOmbra(RAGGIO_LUNA_KM, dSoleLuna);
@@ -29782,7 +29780,7 @@ function solDisegnaVicino() {
     const posa = solConoLunaVisibile(g.luna, antiLuna, g.dLuna * 1.25, ombraSole);
     solDisegnaCono(ctx, g.luna, posa.asse,
       (s) => solRaggioPenombra(RAGGIO_LUNA_KM, dSoleLuna, s * posa.rapporto) * k,
-      posa.portata, SOL_COL_PENOMBRA, SOL_COL_PENOMBRA_BORDO);
+      posa.portata, soloContorno ? null : SOL_COL_PENOMBRA, SOL_COL_PENOMBRA_BORDO);
 
     // Il cono pieno non finisce sempre sulla Terra. Se la Luna e' un po'
     // piu' lontana, si chiude prima e da quella punta nasce l'antiumbra, che
@@ -29795,7 +29793,7 @@ function solDisegnaVicino() {
     const fineUmbra = Math.min(apiceGrafico, posa.portata);
     solDisegnaCono(ctx, g.luna, posa.asse,
       (s) => solRaggioUmbra(RAGGIO_LUNA_KM, dSoleLuna, s * posa.rapporto) * k,
-      fineUmbra, SOL_COL_OMBRA, SOL_COL_OMBRA_BORDO);
+      fineUmbra, soloContorno ? null : SOL_COL_OMBRA, SOL_COL_OMBRA_BORDO);
     if (apiceGrafico < posa.portata) {
       const punta = [
         g.luna[0] + posa.asse[0] * apiceGrafico,
@@ -29806,7 +29804,7 @@ function solDisegnaVicino() {
         (s) => Math.max(0, -solRaggioUmbra(
           RAGGIO_LUNA_KM, dSoleLuna, (s + apiceGrafico) * posa.rapporto)) * k,
         posa.portata - apiceGrafico,
-        'rgba(180, 83, 9, 0.22)', 'rgba(251, 191, 36, 0.88)');
+        soloContorno ? null : 'rgba(180, 83, 9, 0.22)', 'rgba(251, 191, 36, 0.88)');
     }
   };
 
@@ -29856,6 +29854,11 @@ function solDisegnaVicino() {
   ];
   finti.sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
   finti.forEach(c => solDisegnaCorpo(ctx, c, assi));
+  // Il globo non deve nascondere proprio l'arrivo del cono che questa scena
+  // vuole spiegare. Ripassiamo soltanto i bordi (non il velo): cosi' la Terra
+  // resta solida e leggibile, mentre le linee arrivano davanti fino al punto
+  // esatto in cui l'ombra cade sulla superficie.
+  coniLuna(true);
   // Chi ha appena disegnato i due corpi sa dove sono finiti sullo schermo, e
   // il dito ha bisogno proprio di quello (`solTocco`)
   sol.vicCorpi = finti;
