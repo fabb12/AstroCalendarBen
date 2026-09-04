@@ -509,6 +509,46 @@ const server = http.createServer((req, res) => {
       occlusioniConi.ultimoCono > occlusioniConi.primaLuna,
     `ordine ${occlusioniConi.eventi.join(' → ')}`);
 
+  // Sole, Terra e Luna devono condividere la stessa coda di profondita':
+  // ruotando la camera non puo' esserci un Sole inchiodato per sempre dietro
+  // agli altri due. Confrontiamo l'ordine reale delle chiamate col valore di
+  // `vicinanza` prodotto dalla stessa proiezione usata dal disegno.
+  const occlusioniCorpi = await pagina.evaluate(() => {
+    const casi = [];
+    const soleOriginale = solDisegnaSoleVicino;
+    const corpoOriginale = solDisegnaCorpo;
+    const stato = { az: sol.az, elev: sol.elev, istante: sol.istante };
+    try {
+      sol.istante = new Date('2026-08-12T17:45:00Z').getTime();
+      for (const az of [0.2, Math.PI + 0.2]) {
+        const ordine = [];
+        sol.az = az;
+        sol.elev = 18;
+        solDisegnaSoleVicino = (...args) => { ordine.push('Sun'); return soleOriginale(...args); };
+        solDisegnaCorpo = (...args) => {
+          if (args[1] && (args[1].id === 'Earth' || args[1].id === 'Moon')) ordine.push(args[1].id);
+          return corpoOriginale(...args);
+        };
+        solDisegnaVicino();
+        const g = solGeocentriche(new Date(sol.istante));
+        const profondita = [
+          ['Sun', solVicPunto(solPuntoSoleVicino(g.versoSole, g.dLuna)).vicinanza],
+          ['Earth', solVicPunto([0, 0, 0]).vicinanza],
+          ['Moon', solVicPunto(g.luna).vicinanza]
+        ].sort((a, b) => a[1] - b[1]).map(x => x[0]);
+        casi.push({ ordine: ordine.slice(0, 3), atteso: profondita });
+      }
+    } finally {
+      Object.assign(sol, stato);
+      solDisegnaSoleVicino = soleOriginale;
+      solDisegnaCorpo = corpoOriginale;
+    }
+    return casi;
+  });
+  ok('Sole, Terra e Luna rispettano la profondita della camera',
+    occlusioniCorpi.every(c => c.ordine.join() === c.atteso.join()),
+    occlusioniCorpi.map(c => `${c.ordine.join(' → ')} (atteso ${c.atteso.join(' → ')})`).join('; '));
+
   // --- le lune di Giove ---
   const giove = await pagina.evaluate(() => {
     const r = luneDiGioveRacconto(new Date());

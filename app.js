@@ -29697,6 +29697,14 @@ function solDisegnaRaggiVicino(ctx, versoSole, portata) {
 // e' davvero 696.350 km nello stesso metro degli altri corpi.
 const SOL_VIC_SOLE_DISTANZA_ORBITE = 1.18;
 const SOL_VIC_SOLE_RAGGI_TERRA = 6;
+function solPuntoSoleVicino(versoSole, distanzaLuna) {
+  const distanza = (distanzaLuna || 384400) * SOL_VIC_SOLE_DISTANZA_ORBITE;
+  return [
+    versoSole[0] * distanza,
+    versoSole[1] * distanza,
+    versoSole[2] * distanza
+  ];
+}
 function solDisegnaSoleVicino(ctx, versoSole, distanzaLuna) {
   const dir = solVersoRaggi(versoSole);
   if (!dir) return;
@@ -29705,12 +29713,7 @@ function solDisegnaSoleVicino(ctx, versoSole, distanzaLuna) {
     : RAGGIO_TERRA_KM * SOL_VIC_SOLE_RAGGI_TERRA;
   const r = raggioKm * solVicPx();
   if (!(r > 0)) return;
-  const distanza = (distanzaLuna || 384400) * SOL_VIC_SOLE_DISTANZA_ORBITE;
-  const centro = solVicPunto([
-    versoSole[0] * distanza,
-    versoSole[1] * distanza,
-    versoSole[2] * distanza
-  ]);
+  const centro = solVicPunto(solPuntoSoleVicino(versoSole, distanzaLuna));
   const x = centro.px, y = centro.py;
 
   ctx.save();
@@ -29814,7 +29817,6 @@ function solDisegnaVicino() {
   // restare in mezzo alla tela, e la Terra le gira attorno (vedi `solScegli`)
   solAggiornaPivot();
 
-  solDisegnaSoleVicino(ctx, g.versoSole, g.dLuna);
   solDisegnaRaggiVicino(ctx, g.versoSole, g.dLuna);
   solDisegnaPianoVicino(ctx, g.dLuna);
 
@@ -29956,8 +29958,22 @@ function solDisegnaVicino() {
       rDisegno: Math.max(2.2, rLuna * px)
     }
   ];
-  finti.sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
-  finti.forEach(c => solDisegnaCorpo(ctx, c, assi));
+  // Anche il Sole appartiene alla profondità della scena. Disegnarlo sempre
+  // per primo faceva sì che Terra e Luna gli passassero davanti qualunque
+  // fosse il lato da cui si ruotava il banco. Mettiamo i tre dischi nella
+  // stessa fila, dal più lontano al più vicino: così ciascuno può occultare
+  // gli altri due e l'ordine si capovolge naturalmente girando la camera.
+  const soleVicino = {
+    id: 'Sun',
+    schermo: solVicPunto(solPuntoSoleVicino(g.versoSole, g.dLuna)),
+    disegna: () => solDisegnaSoleVicino(ctx, g.versoSole, g.dLuna)
+  };
+  const dischi = finti.map(c => ({
+    id: c.id, schermo: c.schermo, disegna: () => solDisegnaCorpo(ctx, c, assi)
+  }));
+  dischi.push(soleVicino);
+  dischi.sort((a, b) => a.schermo.vicinanza - b.schermo.vicinanza);
+  dischi.forEach(c => c.disegna());
   // Il globo non deve nascondere proprio l'arrivo del cono che questa scena
   // vuole spiegare. Ripassiamo soltanto i bordi (non il velo): cosi' la Terra
   // resta solida e leggibile, mentre le linee arrivano davanti fino al punto
