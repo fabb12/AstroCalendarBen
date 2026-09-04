@@ -1,6 +1,9 @@
 /* Internationalisation for the client-only application.
- * Italian remains the source language. English is applied to both the static
- * page and content produced later by the astronomy modules.
+ *
+ * Legacy views still emit Italian source copy, so the DOM translator below
+ * keeps them working. New UI must use astroI18n.t(messageKey, values): keyed
+ * messages make missing translations visible and let another locale be added
+ * without changing application modules.
  */
 (() => {
   'use strict';
@@ -8,6 +11,29 @@
   const STORAGE_LANGUAGE = 'astrocal_lingua';
   const STORAGE_COUNTRY = 'astrocal_paese_connessione';
   const COUNTRY_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+  const localeDefinitions = new Map();
+  const MESSAGE_KEYS = Object.freeze({
+    languageSwitch: 'language.switch',
+    appTitle: 'app.title'
+  });
+
+  function registerLocale(code, definition) {
+    const normalised = String(code || '').trim().toLowerCase();
+    if (!/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/.test(normalised)) {
+      throw new TypeError(`Invalid locale code: ${code}`);
+    }
+    const previous = localeDefinitions.get(normalised) || {};
+    localeDefinitions.set(normalised, {
+      locale: definition.locale || previous.locale || normalised,
+      manifest: definition.manifest || previous.manifest || 'manifest.json',
+      messages: { ...(previous.messages || {}), ...(definition.messages || {}) },
+      exact: definition.exact || previous.exact || new Map(),
+      fragments: definition.fragments || previous.fragments || [],
+      glossaryEntries: definition.glossaryEntries || previous.glossaryEntries || [],
+      glossary: definition.glossary || previous.glossary || new Map()
+    });
+  }
 
   const exact = new Map(Object.entries({
     'AstroCalendario di Ben': "Ben's AstroCalendar",
@@ -146,25 +172,65 @@
   }).sort((a, b) => b[0].length - a[0].length);
   const glossary = new Map(glossaryEntries);
 
+  registerLocale('it', {
+    locale: 'it-IT',
+    manifest: 'manifest.json',
+    messages: {
+      [MESSAGE_KEYS.languageSwitch]: 'Passa a {language}',
+      [MESSAGE_KEYS.appTitle]: 'AstroCalendario di Ben'
+    }
+  });
+  registerLocale('en', {
+    locale: 'en-GB',
+    manifest: 'manifest-en.json',
+    messages: {
+      [MESSAGE_KEYS.languageSwitch]: 'Switch to {language}',
+      [MESSAGE_KEYS.appTitle]: "Ben's AstroCalendar"
+    },
+    exact, fragments, glossaryEntries, glossary
+  });
+
   let language = 'it';
   let observer;
   let applying = false;
   const originals = new WeakMap();
   const translated = new WeakMap();
   const attributeState = new WeakMap();
-  const TRANSLATABLE_ATTRIBUTES = ['title', 'placeholder', 'aria-label', 'data-tooltip', 'data-label'];
+  const TRANSLATABLE_ATTRIBUTES = [
+    'title', 'placeholder', 'aria-label', 'data-tooltip', 'data-label',
+    'data-i18n', 'data-i18n-title', 'data-i18n-placeholder', 'data-i18n-aria-label'
+  ];
+  const KEYED_ATTRIBUTES = Object.freeze({
+    'data-i18n-title': 'title',
+    'data-i18n-placeholder': 'placeholder',
+    'data-i18n-aria-label': 'aria-label'
+  });
 
   function translateText(value) {
+    const definition = localeDefinitions.get(language);
+    if (!definition || language === 'it') return value;
     const paddingStart = value.match(/^\s*/)[0];
     const paddingEnd = value.match(/\s*$/)[0];
     let text = value.slice(paddingStart.length, value.length - paddingEnd.length);
     if (!text) return value;
     const lookup = text.replace(/\u00ad/g, '');
-    if (exact.has(lookup)) return paddingStart + exact.get(lookup) + paddingEnd;
-    if (glossary.has(lookup)) return paddingStart + glossary.get(lookup) + paddingEnd;
-    for (const [it, en] of fragments) text = replacePhrase(text, it, en);
-    for (const [it, en] of glossaryEntries) text = replacePhrase(text, it, en);
+    if (definition.exact.has(lookup)) return paddingStart + definition.exact.get(lookup) + paddingEnd;
+    if (definition.glossary.has(lookup)) return paddingStart + definition.glossary.get(lookup) + paddingEnd;
+    for (const [source, translatedText] of definition.fragments) text = replacePhrase(text, source, translatedText);
+    for (const [source, translatedText] of definition.glossaryEntries) text = replacePhrase(text, source, translatedText);
     return paddingStart + text + paddingEnd;
+  }
+
+  function message(key, values = {}) {
+    const definition = localeDefinitions.get(language) || localeDefinitions.get('it');
+    const template = definition.messages[key];
+    if (template == null) {
+      console.warn(`[i18n] Missing message: ${key} (${language})`);
+      return key;
+    }
+    return template.replace(/\{([\w.-]+)\}/g, (token, name) => (
+      Object.prototype.hasOwnProperty.call(values, name) ? String(values[name]) : token
+    ));
   }
 
   function replacePhrase(text, source, translation) {
@@ -198,6 +264,16 @@
       return;
     }
     if (node.nodeType !== Node.ELEMENT_NODE) return;
+    if (node.hasAttribute('data-i18n')) {
+      const result = message(node.getAttribute('data-i18n'));
+      if (node.textContent !== result) node.textContent = result;
+      return;
+    }
+    for (const [keyAttribute, targetAttribute] of Object.entries(KEYED_ATTRIBUTES)) {
+      if (!node.hasAttribute(keyAttribute)) continue;
+      const result = message(node.getAttribute(keyAttribute));
+      if (node.getAttribute(targetAttribute) !== result) node.setAttribute(targetAttribute, result);
+    }
     const states = attributeState.get(node) || {};
     for (const attr of TRANSLATABLE_ATTRIBUTES) {
       if (!node.hasAttribute(attr)) continue;
@@ -219,18 +295,28 @@
   function refreshButton() {
     const button = document.getElementById('btn-lingua');
     if (!button) return;
-    button.textContent = language === 'it' ? 'EN' : 'IT';
-    button.title = language === 'it' ? 'Switch to English' : "Passa all'italiano";
+    const codes = [...localeDefinitions.keys()];
+    const next = codes[(codes.indexOf(language) + 1) % codes.length];
+    const displayNames = typeof Intl.DisplayNames === 'function'
+      ? new Intl.DisplayNames([localeDefinitions.get(language).locale], { type: 'language' })
+      : null;
+    button.textContent = next.toUpperCase();
+    button.title = message(MESSAGE_KEYS.languageSwitch, {
+      language: displayNames?.of(next) || next.toUpperCase()
+    });
     button.setAttribute('aria-label', button.title);
+    button.dataset.nextLanguage = next;
   }
 
   function setLanguage(next, { persist = false } = {}) {
-    language = next === 'en' ? 'en' : 'it';
+    const requested = String(next || '').toLowerCase();
+    language = localeDefinitions.has(requested) ? requested : 'it';
+    const definition = localeDefinitions.get(language);
     document.documentElement.lang = language;
     document.documentElement.dataset.language = language;
-    document.title = language === 'en' ? "Ben's AstroCalendar" : 'AstroCalendario di Ben';
+    document.title = message(MESSAGE_KEYS.appTitle);
     const manifest = document.querySelector('link[rel="manifest"]');
-    if (manifest) manifest.href = language === 'en' ? 'manifest-en.json' : 'manifest.json';
+    if (manifest) manifest.href = definition.manifest;
     applying = true;
     translateNode(document.body);
     applying = false;
@@ -269,8 +355,13 @@
     button.id = 'btn-lingua';
     button.type = 'button';
     button.className = 'selettore-lingua';
-    button.addEventListener('click', () => setLanguage(language === 'it' ? 'en' : 'it', { persist: true }));
+    button.addEventListener('click', () => setLanguage(button.dataset.nextLanguage, { persist: true }));
     actions.appendChild(button);
+    refreshButton();
+  }
+
+  function addLocale(code, definition) {
+    registerLocale(code, definition);
     refreshButton();
   }
 
@@ -292,7 +383,7 @@
     });
 
     const preference = localStorage.getItem(STORAGE_LANGUAGE);
-    if (preference === 'it' || preference === 'en') return setLanguage(preference);
+    if (localeDefinitions.has(preference)) return setLanguage(preference);
     try {
       const country = await fetchCountry();
       setLanguage(country === 'IT' ? 'it' : 'en');
@@ -304,8 +395,11 @@
 
   window.astroI18n = {
     setLanguage,
+    registerLocale: addLocale,
+    t: message,
     getLanguage: () => language,
-    getLocale: () => language === 'en' ? 'en-GB' : 'it-IT',
+    getLocale: () => localeDefinitions.get(language).locale,
+    getSupportedLanguages: () => [...localeDefinitions.keys()],
     translate: translateText
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialise, { once: true });
