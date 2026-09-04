@@ -574,6 +574,7 @@ const server = http.createServer((req, res) => {
   console.log('\n— l\'interfaccia —');
   const tempoIngresso = await pagina.evaluate(async () => {
     skyImpostaOffsetTempo(-3600);
+    skyImpostaPassoTempo(600);
     mostraVista('stasera');
     mostraVista('cielo');
     const prima = skyAdesso().getTime();
@@ -581,14 +582,17 @@ const server = http.createServer((req, res) => {
     const dopo = skyAdesso().getTime();
     return {
       modalita: sky.modalitaTempo,
+      passo: sky.passoTempoSec,
+      passoAttivo: document.querySelector('[data-passo-tempo="1"]')?.getAttribute('aria-pressed'),
       scarto: Math.abs(dopo - Date.now()),
       avanzato: dopo - prima,
       adsbReale: typeof AereiADS_B !== 'undefined' && AereiADS_B.tempoReale()
     };
   });
   ok('il planetario si apre in tempo reale',
-    tempoIngresso.modalita === 'reale' && tempoIngresso.scarto < 1000,
-    `${tempoIngresso.modalita}, scarto ${tempoIngresso.scarto} ms`);
+    tempoIngresso.modalita === 'reale' && tempoIngresso.passo === 1 &&
+      tempoIngresso.passoAttivo === 'true' && tempoIngresso.scarto < 1000,
+    `${tempoIngresso.modalita}, passo ${tempoIngresso.passo} s, scarto ${tempoIngresso.scarto} ms`);
   ok('l\'orologio reale continua a scorrere per i feed correnti',
     tempoIngresso.avanzato >= 80 && tempoIngresso.adsbReale,
     `${tempoIngresso.avanzato} ms, ADS-B ${tempoIngresso.adsbReale ? 'reale' : 'stimato'}`);
