@@ -4942,6 +4942,190 @@ body input.casella-data:hover { border: 0; }
 }
 .tasto-chiudi-dettaglio:hover { color: var(--testo); border-color: var(--bordo-forte); }
 
+/* ------------------------------------------------- IL FUMETTO DELL'OGGETTO */
+/* Sta ATTACCATO all'oggetto invece che nell'angolo, ed è quello che il
+   pannello di prima non poteva dire: *quale* dei tanti triangoli si è
+   toccato. La coda lo indica; quando il fumetto viene spinto contro un bordo
+   la coda scorre lungo il suo lato (`--coda-x`, scritta da JavaScript) e, se
+   nemmeno così ci arriva, entra in scena il filo.
+
+   Le misure sono pensate per un telefono in mano: il fumetto non supera mai
+   i 260 pixel né il 78% della larghezza dello schermo (sotto ai 560px scende
+   a 240 e all'84%: un fumetto che copre tutto il cielo non è più un fumetto,
+   è di nuovo il pannello di prima), il testo non scende sotto i 12,3px — la
+   misura sotto la quale una riga di dati su un fondo scuro, in movimento, si
+   smette di leggere — e i due tasti restano quadrati da 30px, che è il
+   minimo per un pollice. */
+.fumetto-cielo { display: none; }
+.fumetto-cielo.visibile { display: block; }
+.fumetto-cielo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 7;
+  width: max-content;
+  max-width: min(260px, 78vw);
+  padding: 9px 10px 9px 11px;
+  border: 1px solid var(--bordo-forte);
+  /* Il filo di tinta sul bordo sinistro è la fascia di distanza dell'aereo,
+     cioè lo stesso colore del suo triangolo sulla mappa: il fumetto e il
+     simbolo che indica devono dire la stessa cosa anche di sfuggita. */
+  border-left: 3px solid var(--fumetto-tinta, rgba(148, 197, 255, .85));
+  border-radius: 13px;
+  background: rgba(9, 14, 26, 0.90);
+  backdrop-filter: blur(10px) saturate(1.08);
+  -webkit-backdrop-filter: blur(10px) saturate(1.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: var(--testo-2);
+  font-size: 0.78rem;
+  line-height: 1.34;
+  /* Il fumetto insegue l'oggetto a ogni fotogramma: il browser non deve
+     provare a mettere in mezzo una transizione, e nemmeno a ricalcolare il
+     resto della pagina per un pannello che si sposta di due pixel. */
+  contain: layout paint;
+  transition: none;
+}
+/* Dove la sfocatura non c'è, la trasparenza da sola renderebbe illeggibile
+   il fumetto sopra alla Via Lattea o a una Luna piena: lì si scurisce */
+@supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+  .fumetto-cielo { background: rgba(9, 14, 26, 0.96); }
+}
+
+/* La coda. Un quadrato girato di 45° con due soli lati bordati: da sopra si
+   vedono quelli di sotto, da sotto quelli di sopra — così il bordo del
+   fumetto resta continuo tutt'intorno e la coda non ha una riga che la
+   taglia in mezzo. */
+.fumetto-coda {
+  position: absolute;
+  left: var(--coda-x, 50%);
+  width: 13px;
+  height: 13px;
+  margin-left: -6.5px;
+  background: rgba(9, 14, 26, 0.90);
+  transform: rotate(45deg);
+}
+.fumetto-cielo[data-verso="sopra"] .fumetto-coda {
+  bottom: -7px;
+  border-right: 1px solid var(--bordo-forte);
+  border-bottom: 1px solid var(--bordo-forte);
+}
+.fumetto-cielo[data-verso="sotto"] .fumetto-coda {
+  top: -7px;
+  border-left: 1px solid var(--bordo-forte);
+  border-top: 1px solid var(--bordo-forte);
+}
+/* Quando il fumetto è stato tosato contro un bordo la coda non indica più
+   l'oggetto: si spegne, e a unirli resta il filo (che è preciso). */
+.fumetto-cielo.fumetto-lontano .fumetto-coda { opacity: 0; }
+
+/* Il filo fra la coda e l'oggetto. È un elemento a parte, e non un
+   pseudo-elemento del fumetto, perché deve poter uscire dal suo riquadro:
+   `contain: paint` lo taglierebbe al bordo. */
+.fumetto-filo {
+  position: absolute;
+  display: none;
+  height: 1px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg,
+    var(--fumetto-tinta, rgba(148, 197, 255, .85)), rgba(148, 197, 255, 0.18));
+  pointer-events: none;
+  z-index: 6;
+}
+
+.fumetto-testa {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.fumetto-segno {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 2px 4px;
+  border: 1px solid var(--bordo);
+  border-radius: 6px;
+  color: var(--fumetto-tinta, var(--blu-chiaro));
+}
+.fumetto-segno .icona-disegnata { display: block; }
+.fumetto-titolo {
+  margin: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+  color: var(--testo);
+  /* Un indicativo di volo non va a capo; un nome di cometa lungo si accorcia
+     invece di allargare il fumetto oltre il suo tetto. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Il filetto che riempie la riga del titolo fino ai tasti: è quello che
+   trasforma due parole e due bottoni in una testata. */
+.fumetto-filetto {
+  flex: 1 1 12px;
+  min-width: 8px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--bordo-forte), rgba(148, 168, 214, 0.05));
+}
+.fumetto-tasto {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--bordo);
+  border-radius: 8px;
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  cursor: pointer;
+}
+.fumetto-tasto:hover { color: var(--testo); border-color: var(--bordo-forte); }
+.fumetto-tasto:active { transform: translateY(1px); }
+
+.fumetto-righe { display: grid; gap: 2px; }
+.fumetto-riga {
+  margin: 0;
+  /* Due righe al massimo per voce: un itinerario lungo («Francoforte sul
+     Meno (FRA) → Buenos Aires (EZE)») va a capo una volta e poi si accorcia,
+     invece di far crescere il fumetto fino a coprire il cielo. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fumetto-riga:first-child { color: var(--testo); font-weight: 600; }
+.fumetto-voce { color: var(--blu-chiaro); }
+
+/* La freccia che dalla scheda completa riporta al fumetto. Sta accanto al ✕
+   e non al suo posto: chiudere e tornare indietro sono due gesti diversi. */
+.tasto-indietro-dettaglio {
+  right: 46px;
+  font-size: 1.1rem;
+  line-height: 0.9;
+}
+
+/* Su uno schermo piccolo il fumetto è la sola cosa che si legge del cielo:
+   si stringe di larghezza ma NON di corpo — è l'errore che si fa sempre, e
+   il risultato è un fumetto che ci sta e non si legge. */
+@media (max-width: 560px) {
+  .fumetto-cielo {
+    max-width: min(240px, 84vw);
+    padding: 8px 9px 8px 10px;
+    font-size: 0.775rem;
+  }
+  .fumetto-titolo { font-size: 0.88rem; }
+}
+/* Il telefono girato: di altezza ce n'è pochissima (il cielo è alto due
+   dita), quindi il fumetto perde una riga invece di coprire il panorama. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .fumetto-cielo { max-width: min(230px, 46vw); padding: 7px 9px; }
+  .fumetto-riga { -webkit-line-clamp: 1; }
+  .fumetto-tasto { width: 28px; height: 28px; }
+}
 /* --------------------------------------------- "STO PREPARANDO IL CIELO" */
 /* La riga che compare sulla mappa mentre il catalogo arriva. Sta in basso
    a sinistra, e i due posti che ha scartato dicono perché: al centro
@@ -5095,6 +5279,8 @@ body input.casella-data:hover { border: 0; }
 #skymap-contenitore.vista-pulita .cielo-chrome,
 #skymap-contenitore.vista-pulita .barra-tempo,
 #skymap-contenitore.vista-pulita .pannello-dettaglio,
+#skymap-contenitore.vista-pulita .fumetto-cielo,
+#skymap-contenitore.vista-pulita .fumetto-filo,
 #skymap-contenitore.vista-pulita .pannello-clip,
 #skymap-contenitore.vista-pulita .tasto-esci-cielo,
 #skymap-contenitore.vista-pulita .barra-terreno,

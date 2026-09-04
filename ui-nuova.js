@@ -924,7 +924,12 @@ function inizializzaChiusuraSchedeConEsc() {
     const chiusureInPrimoPiano = [
       ['#aereo-rotta-modale.visibile', '#aereo-rotta-modale [data-chiudi-rotta-aereo]'],
       ['#skymap-clip.visibile', '#skymap-clip-chiudi'],
-      ['#skymap-dettaglio.visibile', '#skymap-dettaglio-chiudi-alto'],
+      // La scheda completa sta *davanti* al fumetto: il primo Esc chiude lei
+      // e rimette in scena il fumetto, il secondo chiude anche quello. E' la
+      // stessa regola del foglio in primo piano scritta qui sopra, applicata
+      // ai due modi di guardare lo stesso oggetto.
+      ['#skymap-dettaglio.visibile', '#skymap-dettaglio-indietro'],
+      ['#skymap-fumetto.visibile', '#skymap-fumetto-chiudi'],
       ['#sol-tempo-pannello:not(.hidden)', '#sol-tempo-chiudi']
     ];
     for (const [foglio, tasto] of chiusureInPrimoPiano) {

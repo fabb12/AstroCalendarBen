@@ -196,7 +196,13 @@ const DISEGNI = {
     <path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3L5.5 5.5"/>`,
 
   scarica: `<path d="M12 3.6v11.2M7.8 10.6L12 14.8l4.2-4.2"/>
-    <path d="M4.6 17.4v1.6a1.4 1.4 0 0 0 1.4 1.4h12a1.4 1.4 0 0 0 1.4-1.4v-1.6"/>`
+    <path d="M4.6 17.4v1.6a1.4 1.4 0 0 0 1.4 1.4h12a1.4 1.4 0 0 0 1.4-1.4v-1.6"/>`,
+
+  // Un aereo visto da sotto, il muso in alto: ali a freccia, coda e due
+  // scie. Serve al fumetto degli ADS-B, che fino a ieri usava un carattere
+  // Unicode — e un glifo di sistema, in mezzo alle icone a contorno di
+  // tutta l'app, si riconosce subito per quello che è.
+  aereo: `<path d="M12 2.6c1.1 0 1.9 1.3 1.9 3v3.1l6.5 3.8v2.2l-6.5-2v3.6l2.2 1.7v1.8L12 18.9l-4.1 1.9v-1.8l2.2-1.7v-3.6l-6.5 2v-2.2l6.5-3.8V5.6c0-1.7.8-3 1.9-3z"/>`
 };
 
 // Restituisce il disegno richiesto, pronto da mettere dentro l'HTML
@@ -7396,6 +7402,13 @@ const sky = {
   // non viene salvato: la posizione vera resta quella delle Impostazioni
   // (vedi 7.1-ter). { lat, lon, nome }
   luogoVista: null,
+  // Il fumetto dell'oggetto scelto (§7.4): quanto misura l'ultima volta che
+  // lo si è guardato, e se quella misura è ancora buona. Non è una
+  // raffinatezza — `getBoundingClientRect` forza l'impaginazione, e leggerla
+  // a ogni fotogramma dopo aver scritto `left`/`top` è il botta-e-risposta
+  // che mangia il ciclo di disegno.
+  fumettoMisura: null,
+  fumettoRimisura: true,
   // Zone cliccabili dei nomi geografici disegnati nell'ultimo fotogramma.
   // Il canvas non ha elementi DOM: conservare qui geometria e coordinate
   // rende paesi e vette dei veri punti di partenza, non semplici scritte.
@@ -20150,6 +20163,10 @@ function skyDisegna() {
   // E' HTML sopra al canvas, ma appartiene al terreno: segue percio' la
   // proiezione a ogni fotogramma insieme a cime, paesi e orizzonte.
   skyAggiornaVaiQua(base, focale);
+  // Il fumetto dell'oggetto scelto: HTML sopra al canvas, ma attaccato a un
+  // punto del cielo, quindi segue la proiezione fotogramma per fotogramma
+  // come le etichette dei paesi e delle vette.
+  skyPosizionaFumetto(base, focale);
 
   // Se si sta registrando, questo fotogramma finisce anche nel filmato: il
   // montaggio si fa qui, appena il cielo è finito (vedi 7.6)
@@ -22835,8 +22852,12 @@ function skyJ2000AllaData(raOre, dec, t) {
 function skyApriDettaglio(sel) {
   skyMostraGruppo('');
   sky.selezione = sel;
+  // Quello che si apre toccando un oggetto è il **fumetto**, non più il
+  // pannello: quattro righe attaccate all'oggetto invece di venti righe
+  // nell'angolo. La scheda completa resta a un tocco, dietro al suo ⓘ.
   const pannello = document.getElementById('skymap-dettaglio');
-  if (pannello) pannello.classList.add('visibile');
+  if (pannello) pannello.classList.remove('visibile');
+  skyApriFumetto();
   skyAggiornaScheda();
 }
 
@@ -22845,6 +22866,7 @@ function skyChiudiDettaglio() {
   sky.evidenza = null;
   const pannello = document.getElementById('skymap-dettaglio');
   if (pannello) pannello.classList.remove('visibile');
+  skyChiudiFumetto();
   skyAggiornaScheda();
 }
 
@@ -22862,6 +22884,12 @@ function skyAggiornaScheda() {
   sky.evidenza = voce && voce.categoria !== 'astro' && typeof voce.az === 'number'
     ? { az: voce.az, alt: voce.alt }
     : null;
+
+  // Il fumetto è l'altra metà della stessa selezione, e si rinfresca con lo
+  // stesso battito: i suoi numeri (altezza, distanza, quota) cambiano come
+  // quelli della scheda. Va prima dell'uscita qui sotto, perché quasi sempre
+  // è lui a essere aperto e il pannello no.
+  skyAggiornaFumetto();
 
   if (!pannello.classList.contains('visibile')) return;
 
@@ -22931,6 +22959,359 @@ function skyAttesaSchedaHtml() {
         `<button type="button" onclick="apriPosizione(true)" class="senza-cornice underline text-blue-300 hover:text-blue-200">scegliamola insieme</button>.`;
   }
   return `Calcolo della posizione di <strong>${skyNomeCorpo(sel.id)}</strong> in corso…`;
+}
+
+// --- Il fumetto dell'oggetto -------------------------------------------
+//
+// Quello che si vedeva prima era un **pannello**: un rettangolo inchiodato
+// nell'angolo alto a sinistra, con dentro venti righe di dati. Funzionava,
+// e aveva il difetto che hanno tutti i pannelli su una mappa — non dice a
+// *cosa* si riferisce. Toccando un triangolo in mezzo a otto triangoli, la
+// scheda compariva dall'altra parte dello schermo e restava da capire quale
+// dei tanti si fosse preso; e su un telefono si mangiava mezzo cielo proprio
+// mentre lo si stava guardando.
+//
+// Un fumetto risponde a tutte e due le cose con la stessa forma: sta
+// **attaccato** all'oggetto (la coda lo indica, e lo segue mentre il cielo
+// scorre sotto al dito) e dice **poche righe** — quelle che si leggono in
+// un colpo d'occhio. I venti numeri non sono spariti: stanno dietro al
+// tasto ⓘ, che apre la scheda completa di prima.
+//
+// Regole di posizionamento, e ognuna viene da un caso vero:
+//   · il fumetto sta **sopra** all'oggetto quando c'è posto, se no sotto —
+//     sopra è il verso naturale (il dito che ha toccato sta sotto e non lo
+//     copre), ma per un aereo alto in cielo sopra non c'è niente;
+//   · si **tosa** dentro al riquadro, e la coda scorre per continuare a
+//     indicare l'oggetto: un fumetto mezzo fuori dallo schermo è peggio di
+//     un fumetto spostato di venti pixel;
+//   · rispetta le due fasce che il cielo ha già occupato — la bussola in
+//     cima e la barra del tempo in fondo — perché scriverci sopra vuol dire
+//     coprire gli unici due comandi sempre in vista;
+//   · quando l'oggetto esce dallo schermo il fumetto **sparisce** senza che
+//     la selezione si perda: si torna a guardare da quella parte e ricompare.
+const SKY_FUMETTO_STACCO = 16;      // quanti pixel fra la punta della coda e l'oggetto
+const SKY_FUMETTO_MARGINE = 10;     // dal bordo del riquadro
+const SKY_FUMETTO_CODA = 9;         // mezza larghezza della coda
+const SKY_FUMETTO_ORLO = 16;        // fin dove la coda può scorrere lungo il bordo
+const SKY_FUMETTO_TESTA = 52;       // testata, imbottiture e bordi: l'altezza senza righe
+const SKY_FUMETTO_RIGA = 18;        // quanto misura una riga di testo, coda compresa
+
+// Quante righe ci stanno davvero. Non è una raffinatezza: su un telefono
+// girato il cielo è alto due dita, e fra la bussola e la barra del tempo
+// restano meno di cento pixel — misurati, novantasei su uno schermo da
+// 640×360. Un fumetto da quattro righe lì dentro non ci sta, e la cosa che
+// finiva coperta era la barra del tempo, cioè l'orologio. Le righe si
+// perdono quindi dalla coda, e per questo ognuna le ordina dalla più
+// importante alla meno: per un aereo l'itinerario prima e lo squawk mai,
+// per un astro cos'è e da che parte prima della magnitudine.
+function skyFumettoQuanteRighe() {
+  const fasce = skyFasceCielo();
+  // La banda buona è quella **fra le due fasce**, non tutto il riquadro: su
+  // un 640×360 sono centoventi pixel, e con quattro righe il fumetto ne
+  // misura centotrentadue. Due righe è il pavimento — sotto, il fumetto non
+  // dice più abbastanza da valere il posto che occupa — e a quel punto a
+  // cedere è la fascia di sopra, che è l'altra metà della cura (vedi il
+  // tetto in `skyPosizionaFumetto`).
+  const banda = (sky.altezza || 0) - fasce.bassa - Math.max(0, fasce.alta - 24);
+  if (!(banda > 0)) return 4;
+  return Math.max(2, Math.min(4, Math.floor((banda - SKY_FUMETTO_TESTA) / SKY_FUMETTO_RIGA)));
+}
+
+// Le due fasce da non invadere sono scritte nel CSS (`--zona-alta-cielo` e
+// `--sopra-barra-tempo`) e cambiano con la forma dello schermo: leggerle a
+// ogni fotogramma sarebbe una `getComputedStyle` sessanta volte al secondo,
+// quindi si rileggono mezzo secondo per volta — cambiano solo girando il
+// telefono o entrando a schermo intero, cioè molto più lentamente di così.
+let skyFumettoFasce = { quando: 0, alta: 0, bassa: 0 };
+function skyFasceCielo() {
+  const ora = performance.now();
+  if (ora - skyFumettoFasce.quando < 500) return skyFumettoFasce;
+  const vista = document.querySelector('.vista-cielo') ||
+    document.getElementById('skymap-contenitore');
+  let alta = 128, bassa = 96;
+  if (vista) {
+    const st = getComputedStyle(vista);
+    const leggi = (nome, ripiego) => {
+      const v = parseFloat(st.getPropertyValue(nome));
+      return Number.isFinite(v) && v > 0 ? v : ripiego;
+    };
+    alta = leggi('--zona-alta-cielo', alta);
+    bassa = leggi('--sopra-barra-tempo', bassa);
+  }
+  skyFumettoFasce = { quando: ora, alta, bassa };
+  return skyFumettoFasce;
+}
+
+// Le righe compatte di un astro: quattro al massimo, e sono le quattro
+// domande che uno si fa guardando in su — cos'è, da che parte, quanto in
+// alto, quanto è luminoso. Tutto il resto (coordinate, temperatura,
+// distanza in unità astronomiche) è roba da scheda completa.
+function skyFumettoDatiAstro(o) {
+  const righe = [];
+  const metti = (chiave, etichetta, valore) => {
+    if (valore) righe.push({ chiave, etichetta, valore });
+  };
+
+  metti('tipo', '', skyClasseTesto(o));
+
+  // «49° sopra l'orizzonte» è la frase della scheda completa, e in un fumetto
+  // da 216 pixel manda la riga a capo per dire una cosa che il numero dice da
+  // solo: sopra l'orizzonte si sta per definizione, quando ci si sta. Sotto
+  // invece va detto, ed è il caso raro — lì la riga più lunga se la merita.
+  if (typeof o.az === 'number' && typeof o.alt === 'number') {
+    metti('dove', 'Dove', `${skyNomeDirezione(o.az)} · ${Math.round(o.az) % 360}° · ` +
+      (o.alt >= 0 ? `${skyNumero(o.alt, 0)}° di altezza`
+                  : `${skyNumero(Math.abs(o.alt), 0)}° sotto l'orizzonte`));
+  }
+
+  // La fase si dice per la Luna sempre, e per un pianeta solo quando c'è:
+  // stessa regola della scheda completa, se no Giove porterebbe per tutto
+  // l'anno una riga che dice «illuminato al 100%».
+  if (typeof o.frazione === 'number' && (o.tipo === 'luna' || o.frazione < 0.98)) {
+    metti('fase', 'Fase', `illuminato al ${Math.round(o.frazione * 100)}%`);
+  }
+
+  // La magnitudine, ma non il suo discorso: la scheda completa dice «-10,2 —
+  // a occhio nudo, sotto un cielo buio», e in un fumetto quella coda va a
+  // capo e si porta via una riga per dire una cosa che si sapeva già (una
+  // Luna piena si vede a occhio nudo). Resta il numero, che è il dato.
+  const mag = skyMagnitudineTesto(o);
+  if (mag) metti('mag', 'Magnitudine', mag.split(' — ')[0]);
+
+  // Per una stazione spaziale la magnitudine non dice niente e l'orario sì:
+  // quello che si vuole sapere è se sta passando adesso.
+  if (o.tipo === 'satellite') {
+    metti('luce', '', o.alt <= 0
+      ? 'Sotto l\'orizzonte: adesso non si vede'
+      : (o.illuminato ? 'Al Sole: se il cielo è scuro si vede a occhio nudo'
+                      : 'Nell\'ombra della Terra: c\'è, ma non riflette luce'));
+  }
+
+  return {
+    chiave: `astro:${o.id || o.nome}`,
+    segno: o.disegno || (o.categoria === 'profondo' ? 'nebulosa' : 'stella'),
+    titolo: o.tipo === 'satellite' && satelliteDaId(o.satId)
+      ? satelliteDaId(o.satId).nomeLungo : (o.nome || ''),
+    righe
+  };
+}
+
+// Titolo, segno e righe del fumetto di adesso — o `null` se non c'è niente
+// da mostrare. Gli aerei se le scrivono da sé (`aereiFumettoDati`): quel
+// modulo sa cose che qui non arrivano, l'itinerario per primo.
+function skyFumettoDati(voce) {
+  if (!voce) return null;
+  const dati = voce.categoria === 'aereo'
+    ? (typeof aereiFumettoDati === 'function' ? aereiFumettoDati(voce) : null)
+    : skyFumettoDatiAstro(voce);
+  // Il taglio si fa **qui** e non dentro a chi le scrive: è una misura dello
+  // schermo, non una proprietà dell'oggetto, e chi scrive le righe di un
+  // aereo non ha nessuna ragione di sapere quanto è alto il cielo.
+  if (dati) dati.righe = (dati.righe || []).slice(0, skyFumettoQuanteRighe());
+  return dati;
+}
+
+// Riscrive il fumetto. Come per la scheda dell'aereo (§ aerei.js), la
+// struttura si rifà **solo** quando cambia: finché è lo stesso oggetto con
+// le stesse righe si riscrivono i soli valori. Rifare l'HTML due volte al
+// secondo vorrebbe dire ricreare anche i due tasti, cioè perdere il fuoco
+// della tastiera e far ripartire da capo l'animazione di chi li sta premendo.
+function skyAggiornaFumetto() {
+  const f = document.getElementById('skymap-fumetto');
+  if (!f) return;
+  const corpo = document.getElementById('skymap-fumetto-corpo');
+  const titolo = document.getElementById('skymap-fumetto-titolo');
+  const segno = document.getElementById('skymap-fumetto-segno');
+  if (!corpo || !titolo || !segno) return;
+
+  const dati = f.classList.contains('visibile') ? skyFumettoDati(skyVoceSelezionata()) : null;
+  if (!dati) { f.dataset.chiave = ''; return; }
+
+  // La tinta del fumetto è quella dell'oggetto: per un aereo è la sua fascia
+  // di distanza (rosso entro dieci chilometri, poi arancio, giallo, azzurro),
+  // che è la stessa del triangolo sulla mappa — il fumetto e il simbolo che
+  // indica devono dire la stessa cosa anche di sfuggita.
+  f.style.setProperty('--fumetto-tinta', dati.colore || 'rgba(148, 197, 255, .85)');
+
+  const forma = `${dati.chiave}|${dati.righe.map(r => r.chiave).join(',')}`;
+  if (f.dataset.chiave !== forma) {
+    f.dataset.chiave = forma;
+    segno.innerHTML = icona(dati.segno, 17);
+    titolo.textContent = dati.titolo;
+    corpo.innerHTML = dati.righe.map(r =>
+      `<p class="fumetto-riga">${r.etichetta ? `<span class="fumetto-voce">${r.etichetta}:</span> ` : ''}` +
+      `<span data-fumetto="${r.chiave}"></span></p>`).join('');
+    sky.fumettoRimisura = true;
+  }
+  dati.righe.forEach(r => {
+    const nodo = corpo.querySelector(`[data-fumetto="${r.chiave}"]`);
+    // Un numero che cambia può cambiare la larghezza («9.750 m» → «10.100 m»),
+    // e con lei il posto giusto della coda: chi riscrive lo dichiara.
+    if (nodo && nodo.textContent !== r.valore) {
+      nodo.textContent = r.valore;
+      sky.fumettoRimisura = true;
+    }
+  });
+}
+
+// Dove sta l'oggetto di cui è aperto il fumetto. Per un astro dell'elenco è
+// lui stesso, per tutto il resto è la stessa coppia (az, alt) che accende il
+// cerchio azzurro dell'evidenza: due punti diversi vorrebbero dire una coda
+// che indica un pezzo di cielo vuoto accanto al cerchio.
+function skyPuntoSelezione() {
+  const voce = skyVoceSelezionata();
+  return voce && typeof voce.az === 'number' && typeof voce.alt === 'number'
+    ? { az: voce.az, alt: voce.alt } : null;
+}
+
+// Quanto misura il fumetto. Sembra una riga sola e invece è la ragione per
+// cui questo pezzo non costa niente: `getBoundingClientRect` **forza il
+// calcolo dell'impaginazione**, e chiamarla a ogni fotogramma dopo aver
+// scritto `left` e `top` è il classico botta-e-risposta che mette in
+// ginocchio un ciclo di disegno (si scrive, si invalida, si rilegge, si
+// ricalcola: sessanta volte al secondo). La misura però cambia solo quando
+// cambia quello che c'è scritto dentro o la forma del riquadro — cioè due
+// volte al secondo nel caso peggiore — quindi si tiene, e a dire che è
+// scaduta è `sky.fumettoRimisura`, che alza `skyAggiornaFumetto` quando ha
+// davvero riscritto qualcosa.
+//
+// Si arrotonda **per eccesso**: `offsetHeight` è già intero e perde i
+// decimi, e quei decimi erano proprio il pixel con cui il fumetto
+// scavalcava la barra del tempo (misurato: 132 contro 132,4). Il posto poi
+// si tosa per difetto, per la stessa ragione.
+function skyMisuraFumetto(f) {
+  const m = sky.fumettoMisura;
+  if (!sky.fumettoRimisura && m && m.L === sky.larghezza && m.H === sky.altezza) return m;
+  const r = f.getBoundingClientRect();
+  sky.fumettoRimisura = false;
+  sky.fumettoMisura = { w: Math.ceil(r.width), h: Math.ceil(r.height),
+                        L: sky.larghezza, H: sky.altezza };
+  return sky.fumettoMisura;
+}
+
+// Il fumetto insegue l'oggetto: gira dentro al ciclo di disegno, a ogni
+// fotogramma, come le etichette dei paesi e delle vette.
+function skyPosizionaFumetto(base, focale) {
+  const f = document.getElementById('skymap-fumetto');
+  if (!f || !f.classList.contains('visibile')) return;
+
+  const punto = skyPuntoSelezione();
+  if (!punto) { f.style.visibility = 'hidden'; return; }
+
+  const p = skyProietta(skyVettore(punto.az, punto.alt), base, focale);
+  const L = sky.larghezza, H = sky.altezza;
+  const { w, h } = skyMisuraFumetto(f);
+  // Fuori dallo schermo (o dietro alla nuca) il fumetto si spegne, ma la
+  // selezione resta: girandosi verso l'oggetto ricompare dov'era.
+  if (!p.davanti || p.px < -w || p.px > L + w || p.py < -h || p.py > H + h) {
+    f.style.visibility = 'hidden';
+    return;
+  }
+  f.style.visibility = 'visible';
+
+  const fasce = skyFasceCielo();
+  const M = SKY_FUMETTO_MARGINE;
+  const bassoMax = H - fasce.bassa;   // la barra del tempo non si copre mai
+  // Sotto alla bussola, ma solo finché fra le due fasce ci sta il fumetto:
+  // quando non ci sta (telefono girato, cielo alto due dita) il tetto si
+  // alza fin dove serve. Delle due, quella che non si può coprire è la
+  // barra del tempo — è l'orologio, e ci si scorre il tempo col dito.
+  // (senza margine in più: quel `- M` in coda faceva alzare il fumetto sopra
+  // alla bussola anche quando ci stava, cioè relaxava un vincolo che non era
+  // stretto — dieci pixel di scarto e la fascia si invadeva per niente)
+  const altoMin = Math.max(M, Math.min(fasce.alta - 24, bassoMax - h));
+
+  // Sopra all'oggetto quando c'è posto: è il verso naturale, perché il dito
+  // che l'ha toccato sta sotto e non deve coprire quello che ha appena aperto.
+  const sopra = p.py - SKY_FUMETTO_STACCO - h >= altoMin;
+  let top = sopra ? p.py - SKY_FUMETTO_STACCO - h : p.py + SKY_FUMETTO_STACCO;
+  top = Math.max(altoMin, Math.min(bassoMax - h, top));
+
+  let left = Math.max(M, Math.min(L - M - w, p.px - w / 2));
+
+  // La coda scorre lungo il bordo per continuare a indicare l'oggetto anche
+  // quando il fumetto è stato spostato per stare dentro allo schermo. Se
+  // nemmeno scorrendo ci arriva — l'oggetto è molto più in là del bordo —
+  // si ferma all'orlo e resta una freccia che dice «di là».
+  left = Math.floor(left); top = Math.floor(top);
+  const codaX = Math.round(Math.max(SKY_FUMETTO_ORLO,
+    Math.min(w - SKY_FUMETTO_ORLO, p.px - left)));
+
+  f.style.left = `${left}px`;
+  f.style.top = `${top}px`;
+  f.style.setProperty('--coda-x', `${codaX}px`);
+  f.dataset.verso = sopra ? 'sopra' : 'sotto';
+  // Il fumetto è stato tosato e la coda non arriva più all'oggetto: si tiene
+  // il filo che li unisce, se no la coda indicherebbe il posto sbagliato.
+  const scarto = Math.abs(p.px - (left + codaX));
+  f.classList.toggle('fumetto-lontano', scarto > SKY_FUMETTO_CODA);
+  skyDisegnaFiloFumetto(p, left, top, w, h, codaX, sopra, scarto);
+}
+
+// Il filo fra la coda e l'oggetto, quando i due si sono separati. Non è un
+// ornamento: senza, un fumetto spinto contro il bordo indica una porzione di
+// cielo qualunque, ed è esattamente l'equivoco che il fumetto esiste per
+// togliere. È un elemento HTML e non un tratto sul canvas perché deve stare
+// sopra al fumetto stesso, che è HTML: sul canvas passerebbe sotto.
+function skyDisegnaFiloFumetto(p, left, top, w, h, codaX, sopra, scarto) {
+  const filo = document.getElementById('skymap-fumetto-filo');
+  if (!filo) return;
+  if (scarto <= SKY_FUMETTO_CODA) { filo.style.display = 'none'; return; }
+  const x0 = left + codaX, y0 = sopra ? top + h : top;
+  const dx = p.px - x0, dy = p.py - y0;
+  filo.style.display = 'block';
+  filo.style.left = `${Math.round(x0)}px`;
+  filo.style.top = `${Math.round(y0)}px`;
+  filo.style.width = `${Math.round(Math.hypot(dx, dy))}px`;
+  filo.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+}
+
+// Apre il fumetto sull'oggetto scelto: è la scheda di prima, ridotta alle
+// righe che si leggono in un colpo d'occhio.
+function skyApriFumetto() {
+  const f = document.getElementById('skymap-fumetto');
+  if (!f) return;
+  f.classList.add('visibile');
+  f.dataset.chiave = '';
+  sky.fumettoRimisura = true;
+  f.style.visibility = 'hidden';   // finché non si sa dove sta l'oggetto
+  skyAggiornaFumetto();
+}
+
+function skyChiudiFumetto() {
+  const f = document.getElementById('skymap-fumetto');
+  if (f) { f.classList.remove('visibile'); f.dataset.chiave = ''; }
+  const filo = document.getElementById('skymap-fumetto-filo');
+  if (filo) filo.style.display = 'none';
+}
+
+// Il tasto ⓘ: gli stessi dati, tutti. Il fumetto lascia il posto alla
+// scheda completa — tenerli aperti tutt'e due vorrebbe dire scrivere due
+// volte le stesse quattro righe, e su un telefono non ci starebbero
+// nemmeno. Chiudendo la scheda si torna al fumetto, che è il gesto che ci
+// si aspetta da un «mostra di più».
+function skyApriSchedaCompleta() {
+  if (!sky.selezione) return;
+  skyChiudiFumetto();
+  const pannello = document.getElementById('skymap-dettaglio');
+  if (pannello) pannello.classList.add('visibile');
+  skyAggiornaScheda();
+}
+
+function skyTornaAlFumetto() {
+  const pannello = document.getElementById('skymap-dettaglio');
+  if (pannello) pannello.classList.remove('visibile');
+  if (sky.selezione) skyApriFumetto();
+  else skyChiudiDettaglio();
+}
+
+// C'è qualcosa aperto sull'oggetto scelto? Lo chiede la sosta del mirino,
+// che non deve sostituire la selezione mentre se ne sta leggendo una.
+function skySchedaOFumettoAperti() {
+  const p = document.getElementById('skymap-dettaglio');
+  const f = document.getElementById('skymap-fumetto');
+  return !!((p && p.classList.contains('visibile')) ||
+            (f && f.classList.contains('visibile')));
 }
 
 // =====================================================================
@@ -23589,8 +23970,7 @@ function skyControllaSostaMirino() {
   // Una scheda già aperta deve restare legata all'oggetto che l'ha aperta:
   // spostare il cielo (o il telefono) dietro al pannello non deve sostituirne
   // il contenuto con un nuovo oggetto rimasto per caso sotto al mirino.
-  const pannello = document.getElementById('skymap-dettaglio');
-  if (pannello && pannello.classList.contains('visibile')) {
+  if (skySchedaOFumettoAperti()) {
     sky.sostaMirino = null;
     return;
   }
@@ -25164,6 +25544,13 @@ function inizializzaSkymap() {
   // La scheda dell'oggetto si chiude col suo ✕
   collega('skymap-dettaglio-chiudi', skyChiudiDettaglio);
   collega('skymap-dettaglio-chiudi-alto', skyChiudiDettaglio);
+  // Il fumetto: il ⓘ apre tutti i dati, il ✕ chiude la selezione. La scheda
+  // completa ha in più la freccia che riporta al fumetto, che è il gesto che
+  // ci si aspetta dopo un «mostra di più» — chiudere la scheda col ✕ chiude
+  // invece tutto, come ha sempre fatto.
+  collega('skymap-fumetto-info', skyApriSchedaCompleta);
+  collega('skymap-fumetto-chiudi', skyChiudiDettaglio);
+  collega('skymap-dettaglio-indietro', skyTornaAlFumetto);
 
   // I filtri della mappa
   const filtro = (id, campo) => collega(id, () => {
@@ -26022,11 +26409,24 @@ function skyRegComponi() {
   ctx.filter = 'none';
 }
 
+// Quello che sta sull'oggetto scelto — il fumetto, o la scheda completa
+// quando è aperta lei — va **ridisegnato** dentro al filmato: sono HTML sopra
+// al canvas, e un canvas registra solo sé stesso. Senza questo, chi guarda la
+// clip vede il cerchio azzurro attorno a un aereo e nessuna riga che dica
+// quale sia.
 function skyRegDisegnaScheda(ctx, L, H) {
+  const fumetto = document.getElementById('skymap-fumetto');
+  if (fumetto && fumetto.classList.contains('visibile') &&
+      fumetto.style.visibility !== 'hidden') {
+    skyRegDisegnaRiquadro(ctx, L, H, fumetto, fumetto);
+  }
   const pannello = document.getElementById('skymap-dettaglio');
   const corpo = document.getElementById('skymap-dettaglio-corpo');
   if (!pannello || !corpo || !pannello.classList.contains('visibile')) return;
+  skyRegDisegnaRiquadro(ctx, L, H, pannello, corpo);
+}
 
+function skyRegDisegnaRiquadro(ctx, L, H, pannello, corpo) {
   const area = sky.canvas && sky.canvas.getBoundingClientRect();
   const box = pannello.getBoundingClientRect();
   if (!area || !area.width || !area.height || !box.width || !box.height) return;
