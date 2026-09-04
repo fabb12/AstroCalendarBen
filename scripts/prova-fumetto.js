@@ -78,6 +78,14 @@ const AEREO = {
     await pagina.route('**cdn.jsdelivr.net**', r => r.fulfill({ body: '', contentType: 'text/javascript' }));
     await pagina.route('**cdn.tailwindcss.com**', r => r.fulfill({ body: '', contentType: 'text/javascript' }));
     await pagina.route('**fonts.googleapis.com**', r => r.fulfill({ body: '', contentType: 'text/css' }));
+    // Non basta verificare che il dato contenga un URL: il difetto originale
+    // lasciava la fotografia fuori dal DOM. Una piccola immagine sostitutiva
+    // rende la prova indipendente dalla rete ma attraversa davvero caricamento,
+    // impaginazione e pittura del fumetto.
+    await pagina.route('**upload.wikimedia.org/**', r => r.fulfill({
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#6ea8d7"/></svg>',
+      contentType: 'image/svg+xml'
+    }));
     await pagina.route('**/astronomy.browser.min.js', r =>
       r.fulfill({ body: leggiAstronomy(), contentType: 'text/javascript' }));
     // L'ORDINE CONTA, ed è al contrario di come sembra: quando più rotte
@@ -178,6 +186,32 @@ const AEREO = {
     ok('la fotografia della stazione usa un indirizzo diretto caricabile',
       !!stazione.foto && /upload\.wikimedia\.org\/wikipedia\/commons\/thumb/.test(stazione.foto.src),
       stazione.foto ? stazione.foto.src : 'nessuna foto');
+    const fotoStazione = await pagina.evaluate(async () => {
+      const oggetto = {
+        id: 'sat-iss', satId: 'iss', nome: 'ISS', tipo: 'satellite',
+        disegno: 'satellite', classe: 'Stazione spaziale abitata',
+        az: 180, alt: 20, illuminato: true
+      };
+      sky.oggetti.push(oggetto);
+      sky.selezione = { categoria: 'astro', id: oggetto.id };
+      const fumetto = document.getElementById('skymap-fumetto');
+      fumetto.classList.add('visibile');
+      skyAggiornaFumetto();
+      const img = fumetto.querySelector('.fumetto-foto img');
+      if (img && !img.complete) await new Promise(resolve => img.addEventListener('load', resolve, { once: true }));
+      const rett = img ? img.getBoundingClientRect() : null;
+      return {
+        presente: !!img,
+        caricata: !!img && img.naturalWidth > 0,
+        visibile: !!rett && rett.width > 0 && rett.height > 0,
+        alt: img ? img.alt : ''
+      };
+    });
+    ok('la fotografia della stazione viene inserita davvero nel fumetto',
+      fotoStazione.presente && fotoStazione.caricata && fotoStazione.visibile,
+      JSON.stringify(fotoStazione));
+    ok('la fotografia della stazione ha un testo alternativo descrittivo',
+      /Stazione Spaziale Internazionale/.test(fotoStazione.alt), fotoStazione.alt);
 
     // --- un aereo: le righe del mockup ----------------------------------
     await pagina.evaluate((a) => {
@@ -194,7 +228,7 @@ const AEREO = {
         titolo: document.getElementById('skymap-fumetto-titolo').textContent,
         righe: Array.from(f.querySelectorAll('.fumetto-riga')).map(p => p.textContent.trim()),
         tinta: getComputedStyle(f).borderLeftColor,
-        foto: !!f.querySelector('.fumetto-aereo-foto img')
+        foto: !!f.querySelector('.fumetto-foto img')
       };
     });
     ok('il fumetto di un aereo porta il suo indicativo', aereo.titolo === 'BRJ273', aereo.titolo);
