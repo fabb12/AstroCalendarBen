@@ -1,0 +1,37 @@
+{
+  "name": "Ben's AstroCalendar",
+  "short_name": "AstroCal",
+  "start_url": "./index.html?vista=cielo",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#04060D",
+  "theme_color": "#04060D",
+  "description": "Astronomy events app with guides, calendar, and spoken descriptions.",
+  "lang": "en",
+  "categories": [
+    "education",
+    "utilities",
+    "lifestyle"
+  ],
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
