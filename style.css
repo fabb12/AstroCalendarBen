@@ -7326,6 +7326,18 @@ body.luogo-immersivo { overflow: hidden; }
   .pannello-dettaglio { max-height: calc(100% - var(--zona-alta-cielo) - var(--sopra-barra-tempo)); width: min(300px, 44%); }
   .gruppo-comandi.gruppo-attivo { max-height: 100%; }
 
+  /* A schermo intero la bussola torna normalmente nel flusso della riga
+     delle letture. Sul telefono girato, pero', i suoi 68px fanno diventare
+     alta anche la riga del nome della localita': il pannello successivo
+     comincia quindi molto piu' in basso della pillola a sinistra. La bussola
+     resta visivamente nello stesso punto, ma fuori dal flusso, cosi' sotto
+     al nome rimane soltanto il normale spazio di 6px della colonna. */
+  .bussola-cielo {
+    position: absolute;
+    top: calc(max(8px, env(safe-area-inset-top)) + 48px);
+    right: max(8px, env(safe-area-inset-right));
+  }
+
   /* Girato, la mappa è alta un terzo: la barra del tempo si stringe quanto
      può senza che i tasti diventino difficili da prendere. Di larghezza però
      ce n'è tanta, e la slitta se la prende tutta — il controllo fine, qui,
