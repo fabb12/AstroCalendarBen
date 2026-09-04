@@ -37034,6 +37034,40 @@ function skyScartoTempoTesto(secondi) {
   return secondi > 0 ? `fra ${durata}` : `${durata} fa`;
 }
 
+// Lo scarto compatto della barra non usa sigle e segni: deve potersi leggere
+// come una frase. L'unita' cresce insieme allo spostamento, cosi' un salto di
+// un minuto dice «1 minuto avanti» e uno di un'ora «1 ora indietro», invece
+// di mostrare entrambi come una frazione (positiva o negativa) di ora.
+function skyScartoBarraTesto(secondi) {
+  const assoluto = Math.abs(secondi);
+  let valore;
+  let singolare;
+  let plurale;
+  if (assoluto < 60) {
+    valore = assoluto;
+    singolare = 'secondo'; plurale = 'secondi';
+  } else if (assoluto < 3600) {
+    valore = assoluto / 60;
+    singolare = 'minuto'; plurale = 'minuti';
+  } else if (assoluto < 86400) {
+    valore = assoluto / 3600;
+    singolare = 'ora'; plurale = 'ore';
+  } else if (assoluto < 2592000) {
+    valore = assoluto / 86400;
+    singolare = 'giorno'; plurale = 'giorni';
+  } else if (assoluto < 31557600) {
+    valore = assoluto / 2592000;
+    singolare = 'mese'; plurale = 'mesi';
+  } else {
+    valore = assoluto / 31557600;
+    singolare = 'anno'; plurale = 'anni';
+  }
+  const arrotondato = Math.round(valore * 10) / 10;
+  const numero = arrotondato.toLocaleString('it-IT', { maximumFractionDigits: 1 });
+  const unita = arrotondato === 1 ? singolare : plurale;
+  return `${numero} ${unita} ${secondi >= 0 ? 'avanti' : 'indietro'}`;
+}
+
 function skyAggiornaTestoTempo() {
   const quando = skyAdesso();
   const scarto = Math.round(sky.offsetTempoSec || 0);
@@ -37139,10 +37173,6 @@ function skyOrariBarraTempo(quando) {
   const adesso = new Date();
   const scartoOre = (quando.getTime() - adesso.getTime()) / 3600000;
   const spostato = Math.abs(scartoOre) >= (1 / 3600);
-  const assoluto = Math.abs(scartoOre);
-  const numero = assoluto < 0.05 ? '< 0,1' : assoluto.toLocaleString('it-IT', {
-    minimumFractionDigits: 0, maximumFractionDigits: 1
-  });
   const dispositivo = new Intl.DateTimeFormat('it-IT', {
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
   }).format(adesso);
@@ -37153,7 +37183,7 @@ function skyOrariBarraTempo(quando) {
     spostato,
     mostraScarto: fusoLuogo !== fusoDispositivo || spostato,
     direzione: spostato ? (scartoOre > 0 ? 'Futuro' : 'Passato') : 'Tempo reale',
-    scarto: spostato ? `${scartoOre > 0 ? '+' : '−'}${numero} h` : '0 h'
+    scarto: spostato ? skyScartoBarraTesto(scartoOre * 3600) : '0 secondi'
   };
 }
 
