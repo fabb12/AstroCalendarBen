@@ -428,6 +428,61 @@ const server = http.createServer((req, res) => {
     ombraLunare.scarto <= 4,
     `raggi ${ombraLunare.raggi.join(' → ')} px, scarto massimo ${ombraLunare.scarto}/255`);
 
+  // Il cono giallo della vista Terra-Luna deve arrivare allo stesso punto
+  // geografico della macchia sul globo anche quando i corpi sono ingranditi.
+  // Il 12 agosto 2026 rende lo scarto molto evidente ed e' quindi un buon
+  // caso di regressione per la posa grafica del cono.
+  const conoSolare = await pagina.evaluate(() => {
+    const quando = new Date('2026-08-12T17:45:00Z');
+    const g = solGeocentriche(quando);
+    const ombra = solOmbraLunareSuTerra(quando);
+    const salva = sol.misureVere;
+    sol.misureVere = false;
+    const asse = solVersore([
+      g.luna[0] - g.sole[0], g.luna[1] - g.sole[1], g.luna[2] - g.sole[2]
+    ]);
+    const posa = solConoLunaVisibile(g.luna, asse, g.dLuna * 1.25, ombra);
+    const arrivo = [
+      g.luna[0] + posa.asse[0] * posa.portata,
+      g.luna[1] + posa.asse[1] * posa.portata,
+      g.luna[2] + posa.asse[2] * posa.portata
+    ];
+    sol.misureVere = salva;
+    const a = solVersore(arrivo), b = solVersore(ombra.centro);
+    const erroreKm = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) * RAGGIO_TERRA_KM;
+    return { erroreKm, portata: posa.portata, ombra: !!ombra };
+  });
+  ok('il cono solare punta il centro dell’ombra sulla Terra ingrandita',
+    conoSolare.ombra && conoSolare.erroreKm < 0.01,
+    `scarto geografico ${conoSolare.erroreKm.toFixed(4)} km`);
+
+  // I globi sono la maschera opaca dei coni: nessun bordo va ripassato dopo
+  // Terra o Luna, altrimenti ricompare sopra continenti e crateri. Registriamo
+  // l'ordine del disegno vero senza sostituire il resto della scena.
+  const occlusioniConi = await pagina.evaluate(() => {
+    const eventi = [];
+    const conoOriginale = solDisegnaCono;
+    const corpoOriginale = solDisegnaCorpo;
+    solDisegnaCono = (...args) => { eventi.push('cono'); return conoOriginale(...args); };
+    solDisegnaCorpo = (...args) => {
+      if (args[1] && (args[1].id === 'Earth' || args[1].id === 'Moon')) eventi.push(args[1].id);
+      return corpoOriginale(...args);
+    };
+    try { solDisegnaVicino(); } finally {
+      solDisegnaCono = conoOriginale;
+      solDisegnaCorpo = corpoOriginale;
+    }
+    const ultimoCono = eventi.lastIndexOf('cono');
+    const primaTerra = eventi.indexOf('Earth');
+    const primaLuna = eventi.indexOf('Moon');
+    return { eventi, ultimoCono, primaTerra, primaLuna };
+  });
+  ok('Terra e Luna occludono entrambi i coni d’ombra',
+    occlusioniConi.ultimoCono >= 0 &&
+      occlusioniConi.primaTerra > occlusioniConi.ultimoCono &&
+      occlusioniConi.primaLuna > occlusioniConi.ultimoCono,
+    `ordine ${occlusioniConi.eventi.join(' → ')}`);
+
   // --- le lune di Giove ---
   const giove = await pagina.evaluate(() => {
     const r = luneDiGioveRacconto(new Date());
