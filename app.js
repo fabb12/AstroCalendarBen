@@ -7494,9 +7494,8 @@ const sky = {
   finestraTempoSec: 43200, // mezza larghezza della finestra della slitta
   passoTempoSec: 600,    // quanto spostano i tasti − e +, e con loro la slitta
   // Playback: il tempo che cammina da solo. Verso 0 fermo, +1 avanti,
-  // −1 indietro; la velocità è un gradino della scala SKY_VELOCITA_PLAYBACK
+  // −1 indietro; la velocità del playback è il passo del tempo selezionato
   playbackVerso: 0,
-  playbackVelIndice: 2,
   playbackUltimo: 0,     // performance.now() dell'ultimo passo, per il dt
   // Il verso scelto l'ultima volta: il play della barra del tempo è uno solo,
   // e riparte da dove si era rimasti. Chi guarda un pianeta tornare indietro
@@ -30992,27 +30991,6 @@ function solAggiornaBarra(quando) {
     play.setAttribute('aria-label', cammina ? 'Ferma il playback' : 'Avvia il playback in avanti');
     play.title = cammina ? 'Ferma il tempo qui' : `Fai avanzare il tempo a ${v.nome}`;
   }
-  const pausa = document.getElementById('sol-pausa');
-  if (pausa) {
-    const congelato = sky.modalitaTempo === 'simulato' && !solInMarcia();
-    pausa.classList.toggle('attiva', congelato);
-    pausa.setAttribute('aria-pressed', congelato ? 'true' : 'false');
-  }
-  // La velocità, scritta accanto al play: è quella del planetario, e i due
-  // tasti la cambiano per tutt'e due le viste insieme
-  const vel = document.getElementById('sol-vel-valore');
-  if (vel) {
-    const v = skyVelocitaPlayback();
-    vel.textContent = v.nome;
-    vel.title = `In un secondo vero passa ${v.nome.replace('/s', '')} di tempo (${v.fattore.toLocaleString('it-IT')}×). ` +
-      'È la stessa velocità del playback del planetario.';
-    vel.classList.toggle('in-corso', !!sky.playbackVerso);
-  }
-  const velMeno = document.getElementById('sol-vel-meno');
-  const velPiu = document.getElementById('sol-vel-piu');
-  if (velMeno) velMeno.disabled = (sky.playbackVelIndice || 0) <= 0;
-  if (velPiu) velPiu.disabled = (sky.playbackVelIndice || 0) >= SKY_VELOCITA_PLAYBACK.length - 1;
-
   // Col pannello del tempo in prestito qui (7.5-ter) il ciclo del cielo è in
   // pausa, e nessuno rinfrescherebbe la data scritta nel campo né la lettura
   // lunga: mentre il pannello è aperto ci pensa questa barra
@@ -31033,13 +31011,6 @@ function solFermaTempo() {
 function solAlternaMarcia() {
   if (solInMarcia()) skyFermaPlayback();
   else skyAvviaPlayback(1);
-  solAggiornaBarra();
-}
-
-// La velocità del playback, cambiata da qui: è la stessa manopola del
-// planetario, e infatti muove il suo indice
-function solCambiaVelocita(passo) {
-  skyCambiaVelocitaPlayback(passo);
   solAggiornaBarra();
 }
 
@@ -32208,8 +32179,6 @@ function inizializzaSistemaSolare() {
   // La barra del tempo
   const play = document.getElementById('sol-play');
   if (play) play.addEventListener('click', solAlternaMarcia);
-  const pausa = document.getElementById('sol-pausa');
-  if (pausa) pausa.addEventListener('click', () => { skyPausaTempo(); solAggiornaBarra(); });
   const adesso = document.getElementById('sol-tempo-adesso');
   if (adesso) adesso.addEventListener('click', solTornaAdesso);
   // La lettura è la porta del pannello del tempo, come nel planetario (7.5-ter)
@@ -32260,12 +32229,6 @@ function inizializzaSistemaSolare() {
   // che è quello del planetario preso in prestito (7.5-ter) e si apre
   // toccando la lettura della barra. Un orologio solo, un passo solo, e un
   // posto solo in cui cambiarlo.
-
-  // La velocità del playback, che è quella del planetario
-  const velMeno = document.getElementById('sol-vel-meno');
-  if (velMeno) velMeno.addEventListener('click', () => solCambiaVelocita(-1));
-  const velPiu = document.getElementById('sol-vel-piu');
-  if (velPiu) velPiu.addEventListener('click', () => solCambiaVelocita(1));
 
   document.addEventListener('keydown', e => {
     if (!sol.aperto) return;
@@ -37372,6 +37335,7 @@ function skyImpostaFinestraTempo(secondi) {
 // Adesso i chip sono generati da qui in tutt'e due i posti, e cambiarli in uno
 // li cambia nell'altro.
 const SKY_PASSI_TEMPO = [
+  { sec: 1,              nome: 'Tempo reale', finestra: 600 },
   { sec: 10,             nome: '10 s',   finestra: 600 },          // slitta su ±10 minuti
   { sec: 60,             nome: '1 min',  finestra: 3600 },
   { sec: 600,            nome: '10 min', finestra: 43200 },
@@ -37424,6 +37388,7 @@ function skyImpostaPassoTempo(secondi) {
     b.classList.toggle('attiva', scelto);
     b.setAttribute('aria-pressed', scelto ? 'true' : 'false');
   });
+  skyAggiornaComandiPlayback();
   skyImpostaFinestraTempo(gradino.finestra);
   if (typeof sol === 'object' && sol && sol.aperto) {
     sol.ancoraSec = sky.offsetTempoSec || 0;   // la finestra nuova si centra su dove siamo
@@ -37453,24 +37418,15 @@ function skySpostaDiUnPasso(verso) {
 // se ne aggiunge una in meno: v − 1 andando avanti, −v − 1 all'indietro.
 // Con v = 1 in avanti lo scarto sta fermo, ed è esattamente il tempo reale.
 
-const SKY_VELOCITA_PLAYBACK = [
-  { fattore: 10,      nome: '10 s/s' },    // le stazioni spaziali che attraversano il cielo
-  { fattore: 60,      nome: '1 min/s' },
-  { fattore: 300,     nome: '5 min/s' },   // la rotazione della volta si vede a occhio
-  { fattore: 1800,    nome: '30 min/s' },
-  { fattore: 3600,    nome: '1 h/s' },     // alba e tramonto in pochi secondi
-  { fattore: 21600,   nome: '6 h/s' },
-  { fattore: 86400,   nome: '1 g/s' },     // la Luna che cambia posto e fase
-  { fattore: 604800,  nome: '7 g/s' },
-  { fattore: 2592000, nome: '30 g/s' }     // le stagioni, i pianeti che tornano indietro
-];
-
 const SKY_PLAYBACK_INTERVALLO = 80;   // ms fra un ricalcolo e l'altro, col playback acceso
 const SKY_PLAYBACK_SALTO_MAX = 0.5;   // s reali: oltre, l'intervallo si taglia
 
 function skyVelocitaPlayback() {
-  const i = Math.max(0, Math.min(SKY_VELOCITA_PLAYBACK.length - 1, sky.playbackVelIndice || 0));
-  return SKY_VELOCITA_PLAYBACK[i];
+  const passo = skyPassoTempo();
+  return {
+    fattore: passo.sec,
+    nome: passo.sec === 1 ? 'Tempo reale' : `${passo.nome}/s`
+  };
 }
 
 // Un fotogramma di playback: sposta lo scarto di quanto è passato davvero,
@@ -37525,63 +37481,16 @@ function skyFermaPlayback() {
   sky.playbackVerso = 0;
   sky.playbackUltimo = 0;
   skyAggiornaComandiPlayback();
-  // Si conserva anche la frazione di secondo dell'ultimo fotogramma: Pausa
+  // Si conserva anche la frazione di secondo dell'ultimo fotogramma: Stop
   // congela l'immagine senza il piccolo salto che produrrebbe un arrotondamento.
   skyImpostaOffsetTempo((istanteFermo - Date.now()) / 1000, { fluido: true });
   sky.prossimoCalcolo = 0;
   sky.cacheOrari = { chiave: null, valore: null };
 }
 
-// Pausa e Stop non sono lo stesso comando. Stop compare al posto di Play e
-// arresta una corsa; Pausa, sempre disponibile a destra, congela anche il
-// normale orologio in tempo reale sull'istante che si sta guardando.
-function skyPausaTempo() {
-  if (sky.playbackVerso) {
-    skyFermaPlayback();
-  } else if (sky.modalitaTempo === 'reale') {
-    skyImpostaOffsetTempo(0);
-  }
-  sky.prossimoCalcolo = 0;
-  skyAggiornaComandiPlayback();
-  skyAggiornaTestoTempo();
-}
-
-// Il moltiplicatore sale e scende per gradini. Si può cambiare anche mentre
-// il cielo cammina: cambia il passo, non l'istante raggiunto.
-function skyCambiaVelocitaPlayback(passo) {
-  const massimo = SKY_VELOCITA_PLAYBACK.length - 1;
-  sky.playbackVelIndice = Math.max(0, Math.min(massimo, (sky.playbackVelIndice || 0) + passo));
-  skyAggiornaComandiPlayback();
-  skyAggiornaTestoTempo();
-}
-
-// Tasti del playback e lettura della velocità. Ai due estremi della scala i
-// tasti si spengono: dire "più veloce" quando più veloce non c'è confonde.
+// Il solo tasto del playback riflette sempre il passo scelto nel pannello.
 function skyAggiornaComandiPlayback() {
-  skyTasto('skymap-play-indietro', sky.playbackVerso < 0);
-  skyTasto('skymap-play-avanti', sky.playbackVerso > 0);
-  const indietro = document.getElementById('skymap-play-indietro');
-  const avanti = document.getElementById('skymap-play-avanti');
-  if (indietro) indietro.disabled = !!sky.playbackVerso;
-  if (avanti) avanti.disabled = !!sky.playbackVerso;
-  ['skymap-play-stop'].forEach(id => {
-    const stop = document.getElementById(id);
-    if (stop) stop.disabled = !sky.playbackVerso;
-  });
-
   const v = skyVelocitaPlayback();
-  const lettura = document.getElementById('skymap-vel-valore');
-  if (lettura) {
-    // Solo il passo, senza il moltiplicatore: "1 h/s" dice già tutto, e sul
-    // telefono "3.600× · 1 h/s" mandava a capo la riga del playback
-    lettura.textContent = v.nome;
-    lettura.title = `In un secondo vero passa ${v.nome.replace('/s', '')} di cielo (${v.fattore.toLocaleString('it-IT')}×)`;
-    lettura.classList.toggle('in-corso', !!sky.playbackVerso);
-  }
-  const meno = document.getElementById('skymap-vel-meno');
-  const piu = document.getElementById('skymap-vel-piu');
-  if (meno) meno.disabled = sky.playbackVelIndice <= 0;
-  if (piu) piu.disabled = sky.playbackVelIndice >= SKY_VELOCITA_PLAYBACK.length - 1;
 
   // Il comando principale e' Play quando fermo e diventa Stop durante la
   // marcia: cosi' resta sempre sotto lo stesso dito.
@@ -37593,15 +37502,8 @@ function skyAggiornaComandiPlayback() {
     play.setAttribute('aria-pressed', inMarcia ? 'true' : 'false');
     play.setAttribute('aria-label', inMarcia ? 'Ferma il playback' : 'Avvia il playback in avanti');
     play.title = inMarcia ? 'Ferma il tempo qui' :
-      `Fai avanzare il cielo a ${v.nome} (la velocità si cambia nel pannello Tempo)`;
+      `Fai avanzare il cielo a ${v.nome} (il passo si cambia nel pannello Tempo)`;
   }
-  ['skymap-tempo-pausa', 'sol-pausa'].forEach(id => {
-    const pausa = document.getElementById(id);
-    if (!pausa) return;
-    const congelato = sky.modalitaTempo === 'simulato' && !sky.playbackVerso;
-    pausa.classList.toggle('attiva', congelato);
-    pausa.setAttribute('aria-pressed', congelato ? 'true' : 'false');
-  });
 }
 
 // --- Fotocamera: il cielo calcolato sopra l'immagine reale ---
@@ -37713,24 +37615,17 @@ function inizializzaSkymapExtra() {
   // La lettura della barra è anche la porta del pannello: il posto dove uno
   // si accorge che l'ora è sbagliata è lo stesso dove vuole aggiustarla
   collega('skymap-tempo-quando', () => skyMostraGruppo('tempo'));
-  // Play avanza e diventa Stop durante la corsa; Pausa congela anche l'ora reale.
+  // Un solo comando: Play avanza col passo scelto e diventa Stop durante la corsa.
   collega('skymap-tempo-play', () => {
     if (sky.playbackVerso) skyFermaPlayback();
     else skyAvviaPlayback(1);
   });
-  collega('skymap-tempo-pausa', skyPausaTempo);
   // Il passo scelto vale per i due tasti e per la slitta insieme — e vale
   // anche per il Sistema Solare 3D, che legge lo stesso gradino (§7.7)
   skyScriviChipPasso(document.querySelector('#skymap-passi .segmenti-cielo'));
   collega('skymap-passo-meno', () => skySpostaDiUnPasso(-1));
   collega('skymap-passo-piu', () => skySpostaDiUnPasso(1));
 
-  // --- Il playback: verso e moltiplicatore di velocità ---
-  collega('skymap-play-indietro', () => skyAvviaPlayback(-1));
-  collega('skymap-play-avanti', () => skyAvviaPlayback(1));
-  collega('skymap-play-stop', skyFermaPlayback);
-  collega('skymap-vel-meno', () => skyCambiaVelocitaPlayback(-1));
-  collega('skymap-vel-piu', () => skyCambiaVelocitaPlayback(1));
 
   // La data scritta a mano: qualsiasi istante fra i due anni estremi, in ora
   // locale. Sono sei caselle, e ognuna si comporta come le altre — Invio vale
