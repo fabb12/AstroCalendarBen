@@ -7491,8 +7491,8 @@ const sky = {
   modalitaTempo: 'reale',
   istanteSimulatoMs: null,
   ancoraTempoSec: 0,     // il centro della finestra su cui scorre la slitta
-  finestraTempoSec: 43200, // mezza larghezza della finestra della slitta
-  passoTempoSec: 600,    // quanto spostano i tasti − e +, e con loro la slitta
+  finestraTempoSec: 600, // mezza larghezza della finestra della slitta
+  passoTempoSec: 1,      // tempo reale; quanto spostano i tasti − e +, e con loro la slitta
   // Playback: il tempo che cammina da solo. Verso 0 fermo, +1 avanti,
   // −1 indietro; la velocità del playback è il passo del tempo selezionato
   playbackVerso: 0,
@@ -31934,7 +31934,7 @@ window.apriSistemaSolare = (opzioni = {}) => {
   // una scelta di chi guarda: se ne segna il valore di prima e chiudendo lo si
   // rimette, a meno che nel frattempo il passo non sia stato scelto a mano —
   // quello è una scelta, e le scelte non si disfano (vedi `chiudiSistemaSolare`).
-  sol.passoPrima = sky.passoTempoSec || 600;
+  sol.passoPrima = sky.passoTempoSec || 1;
   sol.passoToccato = false;
   skyImpostaPassoTempo(sol.vicino ? SOL_PASSO_ENTRATA_VICINO : SOL_PASSO_ENTRATA);
   // Si riparte sempre dalla vista d'insieme: girare intorno a un corpo è una
@@ -37348,7 +37348,7 @@ const SKY_PASSI_TEMPO = [
 // Il gradino della scala che vale adesso: la 3D ci legge la finestra della sua
 // slitta e il salto dei suoi tasti, esattamente come il planetario
 function skyPassoTempo() {
-  const passo = sky.passoTempoSec || 600;
+  const passo = sky.passoTempoSec || 1;
   return SKY_PASSI_TEMPO.reduce((a, b) =>
     Math.abs(b.sec - passo) < Math.abs(a.sec - passo) ? b : a);
 }
@@ -37376,7 +37376,7 @@ function skyScriviChipPasso(contenitore) {
 }
 
 function skyImpostaPassoTempo(secondi) {
-  const voluto = Math.max(1, parseInt(secondi, 10) || 600);
+  const voluto = Math.max(1, parseInt(secondi, 10) || 1);
   const gradino = SKY_PASSI_TEMPO.reduce((a, b) =>
     Math.abs(b.sec - voluto) < Math.abs(a.sec - voluto) ? b : a);
   sky.passoTempoSec = gradino.sec;
@@ -37400,7 +37400,7 @@ function skyImpostaPassoTempo(secondi) {
 // spinta, e mentre il cielo cammina serve proprio a quello — saltare la
 // mezz'ora che non interessa.
 function skySpostaDiUnPasso(verso) {
-  const passo = sky.passoTempoSec || 600;
+  const passo = sky.passoTempoSec || 1;
   skyImpostaOffsetTempo((sky.offsetTempoSec || 0) + verso * passo);
 }
 
