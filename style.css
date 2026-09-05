@@ -4780,16 +4780,20 @@ body input.casella-data:hover { border: 0; }
   .riga-playback .tasto-cielo.tasto-passo { padding: 8px 9px; }
   .lettura-velocita { min-width: 54px; font-size: 0.74rem; }
   .stacco-comandi { margin: 0 1px; }
-  /* Sette gradini in trecentoventi pixel: la pillola si stringe fino al
+  /* Otto gradini in trecentoventi pixel: la pillola si stringe fino al
      filo (un pixel di stacco, due di rientro) e il corpo scende, se no
      "1 mese" e "1 anno" escono dal loro segmento e si toccano — e il
      segmento acceso, più largo del testo che contiene, diventa un pallino */
   .segmenti-cielo { gap: 1px; padding: 2px; }
   .tasto-segmento { min-height: 34px; padding: 7px 2px; font-size: 0.68rem; letter-spacing: -0.01em; }
+  /* Il primo gradino ha due parole: su una sola riga invadeva il vicino
+     "10 s". Le impiliamo dentro al suo segmento, senza abbreviare proprio
+     l'impostazione predefinita che deve dire chiaramente "Tempo reale". */
+  #skymap-passi [data-passo-tempo="1"] { white-space: normal; line-height: 0.95; }
   .riga-comandi { gap: 6px; }
 
   /* Sotto i trecentottanta pixel (i telefoni piccoli, e ogni telefono
-     girato con la tastiera aperta) nemmeno così i sette gradini ci stanno:
+     girato con la tastiera aperta) nemmeno così gli otto gradini ci stanno:
      il pannello si stringe di un paio di pixel per lato e il corpo scende
      ancora. È l'ultima riga di difesa, e vale solo lì. */
   @media (max-width: 380px) {
@@ -5187,15 +5191,28 @@ body input.casella-data:hover { border: 0; }
   text-overflow: clip;
   overflow-wrap: anywhere;
 }
-.fumetto-aereo-foto { margin: 0 0 6px; }
-.fumetto-aereo-foto img {
+/* Il nome e' il dato che permette di capire quale stella sia stata toccata.
+   Quelle senza nome proprio portano anche codice di catalogo, magnitudine e
+   costellazione: lasciamo che occupino piu' righe invece di nasconderne la
+   parte finale dietro ai puntini. */
+.fumetto-nome-intero .fumetto-titolo {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+/* È la fotografia dell'oggetto, non necessariamente di un aereo: la usano
+   anche ISS e Tiangong. Un nome comune evita che una futura regola dedicata
+   agli aerei finisca per nascondere le stazioni. */
+.fumetto-foto { margin: 0 0 6px; }
+.fumetto-foto img {
   display: block;
   width: 100%;
   max-height: 112px;
   object-fit: cover;
   border-radius: 8px;
 }
-.fumetto-aereo-foto figcaption {
+.fumetto-foto figcaption {
   margin-top: 2px;
   color: var(--testo-3);
   font-size: .66rem;
@@ -5227,7 +5244,7 @@ body input.casella-data:hover { border: 0; }
   .fumetto-cielo { max-width: min(230px, 46vw); padding: 7px 9px; }
   .fumetto-riga { -webkit-line-clamp: 1; }
   .fumetto-tasto { width: 28px; height: 28px; }
-  .fumetto-aereo-foto img { max-height: 58px; }
+  .fumetto-foto img { max-height: 58px; }
 }
 /* --------------------------------------------- "STO PREPARANDO IL CIELO" */
 /* La riga che compare sulla mappa mentre il catalogo arriva. Sta in basso
@@ -5863,6 +5880,19 @@ body input.casella-data:hover { border: 0; }
 }
 .galleria-cartella, .galleria-stato { color: var(--testo-2); font-size: .84rem; }
 .galleria-stato:empty { display: none; }
+.galleria-scelta-iniziale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--accento);
+  border-radius: var(--raggio-m);
+  background: color-mix(in srgb, var(--accento) 9%, var(--superficie-bassa));
+}
+.galleria-scelta-iniziale.hidden { display: none; }
+.galleria-scelta-titolo { margin-bottom: 4px; color: var(--testo); font-size: .9rem; font-weight: 700; }
+.galleria-scelta-azioni { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; }
 .galleria-elenco { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 14px; }
 .galleria-vuota { grid-column: 1 / -1; padding: 36px 18px; text-align: center; color: var(--testo-3); }
 .galleria-video {
@@ -5877,7 +5907,10 @@ body input.casella-data:hover { border: 0; }
 .galleria-video-nome { overflow: hidden; color: var(--testo); font-size: .88rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .galleria-video-meta { color: var(--testo-3); font-size: .75rem; }
 .galleria-video-azioni { display: flex; flex-wrap: wrap; gap: 7px; }
-@media (max-width: 520px) { .galleria-comandi { align-items: stretch; flex-direction: column; } }
+@media (max-width: 650px) {
+  .galleria-comandi, .galleria-scelta-iniziale { align-items: stretch; flex-direction: column; }
+  .galleria-scelta-azioni { display: grid; }
+}
 
 /* Le note lunghe stanno ripiegate: il titolo si legge, il resto si apre */
 .nota-ripiegata > summary {

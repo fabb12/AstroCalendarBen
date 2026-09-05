@@ -34,15 +34,15 @@ una chiave: `data-i18n` compariva **zero volte** in `index.html` e
 
 ### Com'è adesso
 
-1. **I dizionari sono in memoria** (`lingue/it.js`, `lingue/en.js`, 886 voci
+1. **I dizionari sono in memoria** (`lingue/it.js`, `lingue/en.js`, 893 voci
    in parità), assorbiti appena `i18n.js` viene eseguito e **non** al
    `DOMContentLoaded` — `verifica.html` gira mentre il documento si sta ancora
    leggendo, e `t()` deve rispondere anche a lei. Nessuna richiesta di rete,
    nessuna API di traduzione.
 2. **Il cambio lingua non guarda il documento**: scorre l'indice dei soli nodi
-   che portano una chiave (**473 contro 45.163** nodi di testo) e avvisa chi si
-   disegna da sé. Misurato con tutte le finestre aperte: **50 ms in tutto, di
-   cui 10 di riscrittura del testo**; il resto è il ridisegno delle viste, che
+   che portano una chiave (**464 contro 45.000** nodi di testo) e avvisa chi si
+   disegna da sé. Misurato con tutte le finestre aperte: **34 ms in tutto, di
+   cui 7 di riscrittura del testo**; il resto è il ridisegno delle viste, che
    costa quanto costa aprirle.
 3. **La lingua si sceglie subito**, con quello che il browser sa già dire; il
    paese dall'IP corregge dopo, in silenzio, e solo se nessuno ha scelto a mano.
@@ -52,11 +52,11 @@ una chiave: `data-i18n` compariva **zero volte** in `index.html` e
 
 ### Cosa dicono i numeri
 
-- **`index.html`: 397 stringhe cablate → 0.** Le 481 chiavi sono state generate
+- **`index.html`: 397 stringhe cablate → 0.** Le 472 chiavi sono state generate
   e poi tradotte a mano.
 - **Il planetario, dopo un cambio lingua: 0 frasi italiane a schermo e 0
   attributi** (erano migliaia).
-- L'audit statico: **1175 → 638**. Quello che resta è quasi tutto il
+- L'audit statico: **1175 → 636**. Quello che resta è quasi tutto il
   *contenuto* degli eventi dell'agenda e tre viste, elencati qui sotto.
 - `verifica.html`: **1138 verdi, 5 rosse** — identico al commit di partenza
   (le cinque sono le stesse dell'acqua e del rilievo).
@@ -82,7 +82,7 @@ una chiave: `data-i18n` compariva **zero volte** in `index.html` e
   l'avviso di un transito, che ha due centimetri di schermo. Unificarli in uno
   solo sembrava una pulizia ed era una perdita.
 - `scripts/controlla-i18n.js` (l'audit), `scripts/prova-lingua.js` (47 prove in
-  un browser), `scripts/prova-i18n.js` riscritto (29 prove senza browser),
+  un browser), `scripts/prova-i18n.js` riscritto (31 prove senza browser),
   `scripts/i18n-tetto.json` (il cricchetto).
 
 ### Cosa resta, e dov'è scritto
@@ -96,6 +96,33 @@ I tetti stanno in `scripts/i18n-tetto.json` e scendono, non risalgono:
 | stasera | 10 | due righe di riepilogo del meteo |
 | diario | 6 | `costruisciDiario` e i traguardi |
 | — | — | `didattica.js` (~56): non ha un ingresso per ridisegnarsi, va aggiunto insieme alle sue chiavi |
+
+### L'unione con main
+
+`main` era andato avanti di nove PR, e tre toccavano proprio quello che questo
+lavoro aveva riscritto: il playback (la riga «Marcia» del pannello Tempo e i
+tasti di pausa sono stati **tolti**, il playback è un Play/Stop solo nella
+barra), lo scarto della barra del tempo (una funzione nuova,
+`skyScartoBarraTesto`, con le sue sigle) e la galleria video (un blocco nuovo di
+markup). I conflitti erano tre file.
+
+- **`i18n.js`**: main aveva aggiunto delle voci al glossario, che qui non esiste
+  più. Le sue quattro stringhe nuove sono diventate chiavi come tutte le altre.
+- **`index.html`**: si è preso l'HTML di main e ci si è rimessa l'iniezione
+  delle chiavi da capo. Le chiavi nascono dallo slug della frase italiana,
+  quindi quelle del testo non toccato sono venute identiche: **sei nuove** (la
+  galleria, e il titolo della lettura della barra che main ha riscritto) e
+  **quindici sparite** insieme agli elementi del playback.
+- **`sw.js`**: solo il `CACHE_NAME`, portato a v270.
+
+Da quelle quindici chiavi sparite sono nate le **due prove che legano i tre
+posti** in cui una chiave vive (l'HTML, il codice, il dizionario): ogni chiave
+citata esiste, e nessuna è orfana. Non si rompeva niente — sullo schermo
+compariva il nome della chiave, che è leggibile e per questo passa inosservato.
+
+Dopo l'unione i banchi dicono gli stessi numeri di `main`: `verifica.html`
+1138/5, `prova-nel-browser` 4 rosse, `prova-fumetto` 0. Il cambio lingua è anche
+**sceso a 34 ms** — main ha tolto dei comandi, e sono nodi in meno da riscrivere.
 
 ### Tre difetti trovati misurando, e vale la pena ricordarli
 

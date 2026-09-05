@@ -617,38 +617,8 @@
                   </div>
                 </div>
 
-                <!-- PLAYBACK: il tempo che cammina da solo. I salti e la slitta
-                     portano su un istante e lì si fermano; qui invece il cielo si
-                     muove sotto gli occhi, ed è l'unico modo per vedere quello
-                     che un fermo immagine non racconta: il cielo che ruota
-                     attorno alla Polare, la Luna che scivola fra le stelle, un
-                     pianeta che rallenta e torna indietro. Accanto ai due tasti
-                     del verso c'è il moltiplicatore, che dice quanto tempo di
-                     cielo passa in un secondo vero.
-
-                     Il verso scelto qui è quello che poi userà il ▶ della barra
-                     del tempo: chi guarda il cielo tornare indietro di solito
-                     vuole rifarlo, e non deve riaprire il pannello per dirlo. -->
-                <div class="riga-etichettata">
-                  <span class="etichetta-riga" id="skymap-et-marcia" data-i18n="ui.marcia">Marcia</span>
-                  <div class="corpo-riga riga-playback" role="group" aria-labelledby="skymap-et-marcia">
-                    <button id="skymap-play-indietro" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
-                      title="Fai scorrere il cielo all'indietro (ripremi per fermarlo)"
-                      aria-label="Playback all'indietro" data-i18n-title="ui.fai-scorrere-il-cielo-all-indietro-ripremi">◀◀</button>
-                    <button id="skymap-play-avanti" type="button" class="tasto-cielo tasto-play" aria-pressed="false"
-                      title="Fai scorrere il cielo in avanti (ripremi per fermarlo)"
-                      aria-label="Playback in avanti" data-i18n-title="ui.fai-scorrere-il-cielo-in-avanti-ripremi-per">▶▶</button>
-                    <button id="skymap-play-stop" type="button" class="tasto-cielo tasto-stop" disabled
-                      title="Ferma il tempo" aria-label="Ferma il playback" data-i18n-title="ui.ferma-il-tempo" data-i18n-aria-label="ui.ferma-il-playback">■</button>
-                    <span class="stacco-comandi" aria-hidden="true"></span>
-                    <button id="skymap-vel-meno" type="button" class="tasto-cielo tasto-passo"
-                      title="Rallenta il playback" aria-label="Rallenta il playback" data-i18n-title="ui.rallenta-il-playback" data-i18n-aria-label="ui.rallenta-il-playback">−</button>
-                    <span id="skymap-vel-valore" class="lettura-velocita" aria-live="polite"
-                      title="Quanto tempo del cielo passa in un secondo vero" data-i18n-title="ui.quanto-tempo-del-cielo-passa-in-un-secondo">—</span>
-                    <button id="skymap-vel-piu" type="button" class="tasto-cielo tasto-passo"
-                      title="Accelera il playback" aria-label="Accelera il playback" data-i18n-title="ui.accelera-il-playback" data-i18n-aria-label="ui.accelera-il-playback">+</button>
-                  </div>
-                </div>
+                <!-- Anche il playback usa questo stesso passo: il comando
+                     unico Play/Stop si trova nella barra sotto al cielo. -->
               </div>
 
             </section>
@@ -1022,18 +992,17 @@
                altrove: quando il cielo è quello vero non c'è niente da tornare);
              · i due tasti del passo, per lo scatto preciso;
              · la slitta, per il trascinamento;
-             · il play, che diventa stop mentre il tempo cammina;
-             · la pausa, per congelare l'istante mostrato.
-             Il resto — la data scritta a mano, la misura del passo, il verso e
-             la velocità del playback — resta nel pannello "Tempo", che si apre
+             · il play, che diventa stop mentre il tempo cammina.
+             Il resto — la data scritta a mano e la misura del passo, che vale
+             anche per il playback — resta nel pannello "Tempo", che si apre
              toccando la lettura stessa. -->
         <div id="cielo-tempo" class="barra-tempo" role="group" aria-label="Controllo del tempo" data-i18n-aria-label="ui.controllo-del-tempo">
           <button id="skymap-tempo-adesso" type="button" class="tasto-barra-tempo tasto-adesso"
             title="Il cielo mostrato non è quello di adesso: tocca per tornare al tempo reale"
             aria-label="Torna al cielo di adesso" data-i18n-title="ui.il-cielo-mostrato-non-e-quello-di-adesso">⟲</button>
           <button id="skymap-tempo-quando" type="button" class="lettura-barra-tempo"
-            title="L'istante mostrato: tocca per data, passo e velocità del playback"
-            aria-label="Istante mostrato: apri i comandi del tempo" data-i18n-title="ui.l-istante-mostrato-tocca-per-data-passo-e" data-i18n-aria-label="ui.istante-mostrato-apri-i-comandi-del-tempo">—</button>
+            title="L'istante mostrato: tocca per data e passo del tempo"
+            aria-label="Istante mostrato: apri i comandi del tempo" data-i18n-title="ui.l-istante-mostrato-tocca-per-data-e-passo" data-i18n-aria-label="ui.istante-mostrato-apri-i-comandi-del-tempo">—</button>
           <button id="skymap-passo-meno" type="button" class="tasto-barra-tempo"
             title="Indietro di un passo" aria-label="Indietro di un passo" data-i18n-title="ui.indietro-di-un-passo" data-i18n-aria-label="ui.indietro-di-un-passo">−</button>
           <input id="skymap-tempo" type="range" min="-3600" max="3600" step="5" value="0"
@@ -1044,9 +1013,6 @@
           <button id="skymap-tempo-play" type="button" class="tasto-barra-tempo tasto-play-barra"
             aria-pressed="false" title="Fai camminare il cielo da solo"
             aria-label="Avvia il playback" data-i18n-title="ui.fai-camminare-il-cielo-da-solo" data-i18n-aria-label="ui.avvia-il-playback">▶</button>
-          <button id="skymap-tempo-pausa" type="button" class="tasto-barra-tempo tasto-pausa-barra"
-            aria-pressed="false" title="Congela il tempo sull'istante mostrato"
-            aria-label="Metti in pausa il tempo" data-i18n-title="ui.congela-il-tempo-sull-istante-mostrato" data-i18n-aria-label="ui.metti-in-pausa-il-tempo"><span aria-hidden="true">⏸</span></button>
         </div>
 
         <!-- I comandi appoggiati sull'angolo della mappa: quelli che si usano
@@ -1956,7 +1922,7 @@
 
           <!-- La stessa barra del tempo del planetario, stessi tasti e stesso
                ordine: ⟲ per tornare ad adesso, l'istante, un passo indietro,
-               la slitta, un passo avanti, il play/stop e la pausa. E come là, la lettura è
+               la slitta, un passo avanti e il play/stop. E come là, la lettura è
                anche la porta del pannello: dove ci si accorge che l'ora è
                sbagliata è dove la si vuole aggiustare. -->
           <div id="sol-tempo" class="barra-tempo sol-barra-tempo" role="group" aria-label="Il tempo" data-i18n-aria-label="ui.il-tempo">
@@ -1973,20 +1939,6 @@
               title="Avanti di un passo" aria-label="Avanti di un passo" data-i18n-title="ui.avanti-di-un-passo" data-i18n-aria-label="ui.avanti-di-un-passo">+</button>
             <button id="sol-play" type="button" class="tasto-barra-tempo tasto-play-barra"
               aria-pressed="false" title="Fai camminare il tempo" aria-label="Avvia" data-i18n-title="ui.fai-camminare-il-tempo">▶</button>
-            <button id="sol-pausa" type="button" class="tasto-barra-tempo tasto-pausa-barra"
-              aria-pressed="false" title="Congela il tempo sull'istante mostrato"
-              aria-label="Metti in pausa il tempo" data-i18n-title="ui.congela-il-tempo-sull-istante-mostrato" data-i18n-aria-label="ui.metti-in-pausa-il-tempo"><span aria-hidden="true">⏸</span></button>
-            <!-- La velocità con cui il tempo cammina è quella del planetario:
-                 è lo stesso orologio, e questi due tasti muovono lo stesso
-                 moltiplicatore che si trova nel pannello Tempo sotto al cielo. -->
-            <span class="sol-velocita" role="group" aria-label="Velocità del tempo" data-i18n-aria-label="ui.velocita-del-tempo">
-              <button id="sol-vel-meno" type="button" class="tasto-barra-tempo tasto-vel-barra"
-                title="Rallenta" aria-label="Rallenta il tempo" data-i18n-aria-label="ui.rallenta-il-tempo">−</button>
-              <span id="sol-vel-valore" class="lettura-velocita" aria-live="polite"
-                title="Quanto tempo passa in un secondo vero" data-i18n-title="ui.quanto-tempo-passa-in-un-secondo-vero">—</span>
-              <button id="sol-vel-piu" type="button" class="tasto-barra-tempo tasto-vel-barra"
-                title="Accelera" aria-label="Accelera il tempo" data-i18n-aria-label="ui.accelera-il-tempo">+</button>
-            </span>
           </div>
         </div>
 
@@ -2468,8 +2420,18 @@
       </div>
       <div class="corpo-modale galleria-corpo">
         <div class="galleria-comandi">
-          <p id="galleria-cartella" class="galleria-cartella" data-i18n="ui.aprendo-la-galleria-verra-creata-la-cartella">Aprendo la galleria verrà creata la cartella “astrocalben”.</p>
+          <p id="galleria-cartella" class="galleria-cartella" data-i18n="ui.scegli-la-cartella-che-contiene-i-video-da">Scegli la cartella che contiene i video da mostrare.</p>
           <button id="galleria-scegli-cartella" type="button" class="tasto-cielo" data-i18n="ui.scegli-cartella">Scegli cartella</button>
+        </div>
+        <div id="galleria-scelta-iniziale" class="galleria-scelta-iniziale hidden" role="group" aria-labelledby="galleria-scelta-titolo">
+          <div>
+            <p id="galleria-scelta-titolo" class="galleria-scelta-titolo" data-i18n="ui.la-cartella-di-astrocalendario-non-e-ancora">La cartella di AstroCalendario non è ancora collegata</p>
+            <p class="galleria-cartella" data-i18n="ui.puoi-scegliere-una-cartella-gia-esistente-e">Puoi scegliere una cartella già esistente e caricare subito i video che contiene, oppure crearne una nuova.</p>
+          </div>
+          <div class="galleria-scelta-azioni">
+            <button id="galleria-usa-esistente" type="button" class="tasto-cielo" data-i18n="ui.scegli-una-cartella-esistente">Scegli una cartella esistente</button>
+            <button id="galleria-crea-cartella" type="button" class="tasto-cielo" data-i18n="ui.crea-astrocalben">Crea “astrocalben”</button>
+          </div>
         </div>
         <p id="galleria-stato" class="galleria-stato" role="status" aria-live="polite"></p>
         <div id="galleria-elenco" class="galleria-elenco"></div>
@@ -2511,12 +2473,12 @@
   </div>
 
   <!-- I dizionari, e poi il gestore che li assorbe.
-       L'ordine conta: `i18n.js` legge `window.ASTRO_DIZIONARI` all'avvio, e
-       una lingua che arrivasse dopo resterebbe fuori dal primo disegno. Sono
-       file di dati come i `dati-*.js` e non `.json` di proposito: da
-       `file://` una `fetch` di JSON è vietata, e questa applicazione si apre
-       anche con un doppio clic. Aggiungere una lingua è aggiungere una riga
-       qui — il selettore legge il registro e si allunga da sé. -->
+       L'ordine conta: `i18n.js` legge `window.ASTRO_DIZIONARI` appena viene
+       eseguito, e una lingua che arrivasse dopo resterebbe fuori. Sono file di
+       dati come i `dati-*.js` e non `.json` di proposito: da `file://` una
+       `fetch` di JSON è vietata, e questa applicazione si apre anche con un
+       doppio clic. Aggiungere una lingua è aggiungere una riga qui — il
+       selettore legge il registro e si allunga da sé. -->
   <script src="lingue/it.js"></script>
   <script src="lingue/en.js"></script>
   <script src="i18n.js"></script>

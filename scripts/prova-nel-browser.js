@@ -222,14 +222,23 @@ const server = http.createServer((req, res) => {
   const versiBarraTempo = await pagina.evaluate(() => {
     skyImpostaOffsetTempo(3600);
     const futuro = document.querySelector('#skymap-tempo-quando .orologio-scarto .etichetta-orologio-tempo')?.textContent;
+    const unOraAvanti = document.querySelector('#skymap-tempo-quando .orologio-scarto .valore-orologio-tempo')?.textContent;
     skyImpostaOffsetTempo(-3600);
     const passato = document.querySelector('#skymap-tempo-quando .orologio-scarto .etichetta-orologio-tempo')?.textContent;
+    const unOraIndietro = document.querySelector('#skymap-tempo-quando .orologio-scarto .valore-orologio-tempo')?.textContent;
+    const scarti = [63, 3723, 90000, -2592000, 31536000 + 172800].map(skyScartoBarraTesto);
     skyImpostaOffsetTempo(0);
-    return { futuro, passato };
+    return { futuro, passato, unOraAvanti, unOraIndietro, scarti };
   });
   ok('la barra del tempo cambia etichetta attraversando il presente',
     versiBarraTempo.futuro === 'Futuro' && versiBarraTempo.passato === 'Passato',
     `${versiBarraTempo.futuro} → ${versiBarraTempo.passato}`);
+  ok('lo scarto usa segno, unita brevi e al massimo due parti',
+    versiBarraTempo.unOraAvanti === '+1 h' &&
+      versiBarraTempo.unOraIndietro === '-1 h' &&
+      versiBarraTempo.scarti.join('|') ===
+        '+1 m 3 s|+1 h 2 m|+1 g 1 h|-30 g|+1 a 2 g',
+    `${versiBarraTempo.unOraAvanti}; ${versiBarraTempo.unOraIndietro}; ${versiBarraTempo.scarti.join('; ')}`);
 
   const firmaVideo = await pagina.evaluate(() => {
     const ctx = document.createElement('canvas').getContext('2d');
@@ -280,6 +289,58 @@ const server = http.createServer((req, res) => {
       salvataggiRipetuti.richiestePermesso === 0 && salvataggiRipetuti.scritture === 2,
     `${salvataggiRipetuti.scritture} scritture, ${salvataggiRipetuti.verifichePermesso} verifica e ` +
       `${salvataggiRipetuti.richiestePermesso} nuove richieste`);
+
+  const sceltaCartellaGalleria = await pagina.evaluate(async () => {
+    const cartellaOriginale = videoCartella;
+    const autorizzazioneOriginale = videoCartellaAutorizzata;
+    const pickerOriginale = window.showDirectoryPicker;
+    let sottocartelleCreate = 0;
+    const file = nome => ({
+      kind: 'file',
+      getFile: async () => new File(['filmato'], nome, {
+        type: nome.endsWith('.webm') ? 'video/webm' : 'video/mp4', lastModified: Date.now()
+      })
+    });
+    const esistente = {
+      name: 'I miei filmati',
+      queryPermission: async () => 'granted',
+      async *entries() {
+        yield ['uno.mp4', file('uno.mp4')];
+        yield ['due.webm', file('due.webm')];
+        yield ['note.txt', file('note.txt')];
+      },
+      getDirectoryHandle: async () => { sottocartelleCreate += 1; }
+    };
+    window.showDirectoryPicker = async () => esistente;
+    await videoScegliCartella(false);
+    const sceltaDiretta = videoCartella === esistente;
+    const videoCaricati = document.querySelectorAll('#galleria-elenco .galleria-video').length;
+
+    const cartellaApp = {
+      name: VIDEO_CARTELLA_NOME,
+      queryPermission: async () => 'granted',
+      async *entries() {}
+    };
+    const posizione = {
+      name: 'Video',
+      getDirectoryHandle: async (nome, opzioni) => {
+        if (nome === VIDEO_CARTELLA_NOME && opzioni.create) sottocartelleCreate += 1;
+        return cartellaApp;
+      }
+    };
+    window.showDirectoryPicker = async () => posizione;
+    await videoScegliCartella(true);
+    const creazioneEsplicita = videoCartella === cartellaApp;
+
+    window.showDirectoryPicker = pickerOriginale;
+    videoCartella = cartellaOriginale;
+    videoCartellaAutorizzata = autorizzazioneOriginale;
+    return { sceltaDiretta, videoCaricati, creazioneEsplicita, sottocartelleCreate };
+  });
+  ok('la galleria usa direttamente la cartella esistente e ne carica i video',
+    sceltaCartellaGalleria.sceltaDiretta && sceltaCartellaGalleria.videoCaricati === 2 &&
+      sceltaCartellaGalleria.creazioneEsplicita && sceltaCartellaGalleria.sottocartelleCreate === 1,
+    `${sceltaCartellaGalleria.videoCaricati} video, ${sceltaCartellaGalleria.sottocartelleCreate} creazione esplicita`);
 
   // La X aggiunta alla scheda degli aerei aveva ridefinito il pannello come
   // `position: relative`: dentro al planetario entrava così nel flusso sotto
@@ -577,6 +638,30 @@ const server = http.createServer((req, res) => {
 
   // --- l'interfaccia nuova è davvero a schermo? ---
   console.log('\n— l\'interfaccia —');
+  const tempoIngresso = await pagina.evaluate(async () => {
+    skyImpostaOffsetTempo(-3600);
+    skyImpostaPassoTempo(600);
+    mostraVista('stasera');
+    mostraVista('cielo');
+    const prima = skyAdesso().getTime();
+    await new Promise(r => setTimeout(r, 120));
+    const dopo = skyAdesso().getTime();
+    return {
+      modalita: sky.modalitaTempo,
+      passo: sky.passoTempoSec,
+      passoAttivo: document.querySelector('[data-passo-tempo="1"]')?.getAttribute('aria-pressed'),
+      scarto: Math.abs(dopo - Date.now()),
+      avanzato: dopo - prima,
+      adsbReale: typeof AereiADS_B !== 'undefined' && AereiADS_B.tempoReale()
+    };
+  });
+  ok('il planetario si apre in tempo reale',
+    tempoIngresso.modalita === 'reale' && tempoIngresso.passo === 1 &&
+      tempoIngresso.passoAttivo === 'true' && tempoIngresso.scarto < 1000,
+    `${tempoIngresso.modalita}, passo ${tempoIngresso.passo} s, scarto ${tempoIngresso.scarto} ms`);
+  ok('l\'orologio reale continua a scorrere per i feed correnti',
+    tempoIngresso.avanzato >= 80 && tempoIngresso.adsbReale,
+    `${tempoIngresso.avanzato} ms, ADS-B ${tempoIngresso.adsbReale ? 'reale' : 'stimato'}`);
   await pagina.evaluate(() => mostraVista('stasera'));
   await pagina.waitForTimeout(1500);
   const ui = await pagina.evaluate(() => {

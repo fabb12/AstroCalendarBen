@@ -52,7 +52,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `eventi-extra.js` | ~720 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete e **aurore** (previsione del Kp a tre giorni + stagione degli equinozi). |
 | `ui-nuova.js` | ~1.150 | L'interfaccia di tutto quanto sopra, e **il ridisegno al cambio lingua** (`ridisegnaTuttoPerLingua`): l'elenco di chi si compone in JavaScript e quindi va rifatto, non riscritto. |
 | `i18n.js` | ~740 | **Il gestore delle lingue.** Chiavi al posto delle frasi: `t('chiave')` è una lettura da `Map`, e il cambio lingua non guarda il documento — scorre l'**indice** dei soli nodi che portano una chiave (quattrocentosettanta contro quarantacinquemila nodi di testo) e avvisa chi si disegna da sé. Ci stanno anche i formati che dipendono dalla lingua e non sono frasi: numeri, date, conti alla rovescia (in due registri, lungo e corto), punti cardinali — in inglese l'ovest è «W» e non «O». Quello di prima traduceva il DOM con duecento espressioni regolari a ogni cambio, e per questo era insieme lento e incompleto: vedi `I18N.md`. |
-| `lingue/it.js`, `lingue/en.js` | 886 voci | I **dizionari**, in memoria all'avvio. Sono file di dati come i `dati-*.js` e non `.json` di proposito: da `file://` una `fetch` di JSON è vietata, e questa applicazione si apre anche con un doppio clic. Vanno **prima** di `i18n.js`. Si generano a mano, non da uno script. |
+| `lingue/it.js`, `lingue/en.js` | 893 voci | I **dizionari**, in memoria all'avvio. Sono file di dati come i `dati-*.js` e non `.json` di proposito: da `file://` una `fetch` di JSON è vietata, e questa applicazione si apre anche con un doppio clic. Vanno **prima** di `i18n.js`. Si generano a mano, non da uno script. |
 | `didattica.js` | ~8.730 | **Il laboratorio**: gli otto banchi di prova della vista Didattica — moto retrogrado, leggi di Keplero, fionda gravitazionale (tre schede: il banco di prova, i conti, il Grand Tour), finestre di lancio, allineamenti, aurore polari, **le costellazioni nello spazio vero**, e **il Sole al tramonto** (quattro quadri: la Terra che gira, quanta aria attraversa la luce, che colore ne esce, e lo stesso cielo su Marte). Prefisso `did`. |
 | `dati-stelle.js` | ~1.360 | 5.044 stelle fino alla mag 6,0 (147 KB). **Caricato su richiesta.** |
 | `dati-stelle-deboli.js` | ~1.335 | Altre 10.500 fino alla mag 7,0 (267 KB). **Solo a chi serve** (Bortle ≤ 4 o forte zoom). |
@@ -65,7 +65,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `scripts/costruisci-tailwind.js` | ~70 | Genera `tailwind.css`. Si lancia a mano quando si aggiunge una classe Tailwind nuova, non serve all'app. |
 | `style.css` | ~9.380 | Tema "Deep Space" + impaginazione responsive. |
 | `tailwind.css` | ~600 | **Generato**, non si tocca a mano: le sole utility di Tailwind che l'app usa davvero, compilate una volta. Ha preso il posto di `cdn.tailwindcss.com`, che era il **compilatore** — mezzo megabyte di JavaScript che a ogni apertura rileggeva il DOM per riscrivere questo stesso CSS, e che nella console lo diceva a ogni apertura. Va caricato **prima** di `style.css`. |
-| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v265`). |
+| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v270`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -406,7 +406,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v265`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v270`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - **Se hai aggiunto del testo che si legge**, la frase va nei due dizionari e
   non nel codice: `node scripts/controlla-i18n.js --patto` lo controlla, e

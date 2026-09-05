@@ -4703,7 +4703,7 @@ window.eclissiVaiAlPlanetario = () => {
   // che la mappa sta mostrando: è quello che si è chiesto di guardare.
   _eclAssestaIlCielo();
   chiudiMappaEclissi();
-  if (typeof mostraVista === 'function') mostraVista('cielo');
+  if (typeof mostraVista === 'function') mostraVista('cielo', { conservaTempo: true });
   if (typeof skyFermaPlayback === 'function') skyFermaPlayback();
   sky.mostraEventi = true;
   // Il Sole è il protagonista: si punta lui, e la sua traccia racconta da
@@ -6879,7 +6879,8 @@ const VISTE = [
 ];
 
 // Mostra una sola vista alla volta e aggiorna lo stile dei pulsanti
-function mostraVista(nome) {
+function mostraVista(nome, opzioni = {}) {
+  const vistaPrima = vistaAttuale;
   const attivo = "voce-menu attiva";
   const inattivo = "voce-menu";
   // Serve a chi ridisegna dopo un cambio di schermo: sa cosa c'è davanti
@@ -6913,6 +6914,21 @@ function mostraVista(nome) {
   // Il disegno del cielo gira solo quando la sua vista è a schermo;
   // uscendo si spegne anche la fotocamera (batteria e privacy).
   if (nome === 'cielo') {
+    // Entrare normalmente nel planetario significa guardare ciò che sta
+    // succedendo adesso. Un istante scelto per un evento non deve restare
+    // congelato e ricomparire ore dopo, soprattutto perché i feed reali
+    // (come l'ADS-B) fuori dall'ora attuale mostrerebbero solo stime. Le
+    // aperture che collegano due viste della stessa simulazione possono
+    // chiedere esplicitamente di conservare l'orologio.
+    if (vistaPrima !== 'cielo' && !opzioni.conservaTempo) {
+      skyFermaPlayback();
+      // Anche il passo fa parte dello stato temporale: tornando al
+      // planetario dopo una simulazione accelerata, il cielo deve ripartire
+      // con la velocita' naturale e il comando deve indicare "Tempo reale".
+      skyImpostaPassoTempo(1);
+      sky.ancoraTempoSec = 0;
+      skyImpostaOffsetTempo(0, { reale: true });
+    }
     apriSkymap();
   } else {
     chiudiSkymap();
@@ -7602,12 +7618,11 @@ const sky = {
   modalitaTempo: 'reale',
   istanteSimulatoMs: null,
   ancoraTempoSec: 0,     // il centro della finestra su cui scorre la slitta
-  finestraTempoSec: 43200, // mezza larghezza della finestra della slitta
-  passoTempoSec: 600,    // quanto spostano i tasti − e +, e con loro la slitta
+  finestraTempoSec: 600, // mezza larghezza della finestra della slitta
+  passoTempoSec: 1,      // tempo reale; quanto spostano i tasti − e +, e con loro la slitta
   // Playback: il tempo che cammina da solo. Verso 0 fermo, +1 avanti,
-  // −1 indietro; la velocità è un gradino della scala SKY_VELOCITA_PLAYBACK
+  // −1 indietro; la velocità del playback è il passo del tempo selezionato
   playbackVerso: 0,
-  playbackVelIndice: 2,
   playbackUltimo: 0,     // performance.now() dell'ultimo passo, per il dt
   // Il verso scelto l'ultima volta: il play della barra del tempo è uno solo,
   // e riparte da dove si era rimasti. Chi guarda un pianeta tornare indietro
@@ -22866,6 +22881,18 @@ function skyClasseTesto(o) {
   return null;
 }
 
+// `classe` nasce per la scheda completa, dove puo' contenere piccoli pezzi
+// di HTML di presentazione (per esempio la nota grigia sulla classe spettrale
+// dedotta dal colore). Nel fumetto, invece, i valori vengono inseriti con
+// `textContent`: passargli quella stringa alla lettera mostrerebbe i tag
+// all'utente. Qui conserviamo tutte le parole, ma togliamo la marcatura.
+function skyTestoSenzaHtml(valore) {
+  if (typeof valore !== 'string') return valore;
+  const nodo = document.createElement('div');
+  nodo.innerHTML = valore;
+  return (nodo.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
 // Gli orari del giorno mostrato: per i corpi della libreria li cerca lei,
 // per un punto fisso del cielo li calcoliamo noi
 function skyOrariDi(o) {
@@ -23389,7 +23416,7 @@ function skyFumettoDatiAstro(o) {
     if (valore) righe.push({ chiave, etichetta, valore });
   };
 
-  metti('tipo', '', skyClasseTesto(o));
+  metti('tipo', '', skyTestoSenzaHtml(skyClasseTesto(o)));
 
   // «49° sopra l'orizzonte» è la frase della scheda completa, e in un fumetto
   // da 216 pixel manda la riga a capo per dire una cosa che il numero dice da
@@ -23424,11 +23451,22 @@ function skyFumettoDatiAstro(o) {
                       : 'Nell\'ombra della Terra: c\'è, ma non riflette luce'));
   }
 
+  const sat = o.tipo === 'satellite' ? satelliteDaId(o.satId) : null;
   return {
     chiave: `astro:${o.id || o.nome}`,
     segno: o.disegno || (o.categoria === 'profondo' ? 'nebulosa' : 'stella'),
-    titolo: o.tipo === 'satellite' && satelliteDaId(o.satId)
-      ? satelliteDaId(o.satId).nomeLungo : (o.nome || ''),
+    // La sigla breve resta utile sulla mappa e nell'elenco, ma nel fumetto
+    // c'e' spazio per dire per esteso quale stazione si sta indicando.
+    titolo: sat ? sat.nomeLungo : (o.nome || ''),
+    foto: sat && sat.foto ? {
+      src: sat.foto,
+      alt: sat.fotoAlt || sat.nomeLungo,
+      credito: sat.fotoCredito || ''
+    } : null,
+    // I nomi delle stelle del catalogo possono essere descrizioni complete
+    // (codice, magnitudine e costellazione): non vanno accorciati con i
+    // puntini proprio nel fumetto che deve identificare l'astro toccato.
+    nomeSempreIntero: o.tipo === 'stella',
     righe
   };
 }
@@ -23475,6 +23513,7 @@ function skyAggiornaFumetto() {
   // indica devono dire la stessa cosa anche di sfuggita.
   f.style.setProperty('--fumetto-tinta', dati.colore || 'rgba(148, 197, 255, .85)');
   f.classList.toggle('fumetto-aereo', dati.classe === 'fumetto-aereo');
+  f.classList.toggle('fumetto-nome-intero', dati.nomeSempreIntero === true);
 
   const forma = `${dati.chiave}|${dati.foto ? dati.foto.src : ''}|${dati.righe.map(r => r.chiave).join(',')}`;
   if (f.dataset.chiave !== forma) {
@@ -23482,15 +23521,15 @@ function skyAggiornaFumetto() {
     segno.innerHTML = icona(dati.segno, 17);
     titolo.textContent = dati.titolo;
     corpo.innerHTML = (dati.foto
-      ? '<figure class="fumetto-aereo-foto"><img>' +
+      ? '<figure class="fumetto-foto"><img loading="eager" referrerpolicy="no-referrer">' +
         (dati.foto.credito ? '<figcaption></figcaption>' : '') + '</figure>'
       : '') + dati.righe.map(r =>
       `<p class="fumetto-riga">${r.etichetta ? `<span class="fumetto-voce">${r.etichetta}:</span> ` : ''}` +
       `<span data-fumetto="${r.chiave}"></span></p>`).join('');
     sky.fumettoRimisura = true;
     if (dati.foto) {
-      const immagine = corpo.querySelector('.fumetto-aereo-foto img');
-      const credito = corpo.querySelector('.fumetto-aereo-foto figcaption');
+      const immagine = corpo.querySelector('.fumetto-foto img');
+      const credito = corpo.querySelector('.fumetto-foto figcaption');
       if (immagine) {
         immagine.src = dati.foto.src;
         immagine.alt = dati.foto.alt || '';
@@ -27267,13 +27306,15 @@ async function videoScegliCartella(creaCartellaApp = false) {
   }
   try {
     const base = await window.showDirectoryPicker({ id: 'astrocalendario-video', mode: 'readwrite', startIn: 'videos' });
-    // Il selettore web non può creare da solo una cartella accanto a Video:
-    // l'utente indica la posizione e noi creiamo (o riapriamo) quella dell'app.
+    // Quando si apre una cartella esistente, quella scelta E' la cartella da
+    // leggere: non va mai nascosta dentro una nuova sottocartella. Soltanto il
+    // comando esplicito «Crea» chiede una posizione e crea quella dell'app.
     const handle = creaCartellaApp && base.name.toLocaleLowerCase() !== VIDEO_CARTELLA_NOME
       ? await base.getDirectoryHandle(VIDEO_CARTELLA_NOME, { create: true })
       : base;
     videoCartella = handle;
     videoCartellaAutorizzata = true;
+    videoMostraSceltaIniziale(false);
     try { await videoDB('preferenze', 'readwrite', store => store.put(handle, 'cartella-video')); } catch (e) { /* la copia funziona comunque */ }
     videoAggiornaCartella();
     videoMessaggio(`La galleria è sincronizzata con “${handle.name}”.`);
@@ -27289,8 +27330,12 @@ function videoAggiornaCartella() {
   const testo = document.getElementById('galleria-cartella');
   if (!testo) return;
   testo.textContent = videoCartella
-    ? `Cartella sincronizzata: “${videoCartella.name}”. Le modifiche ai file MP4 appariranno qui.`
-    : `Aprendo la galleria verrà creata la cartella “${VIDEO_CARTELLA_NOME}”.`;
+    ? `Cartella sincronizzata: “${videoCartella.name}”. Le modifiche ai video appariranno qui.`
+    : 'Scegli la cartella che contiene i video da mostrare.';
+}
+
+function videoMostraSceltaIniziale(mostra) {
+  document.getElementById('galleria-scelta-iniziale')?.classList.toggle('hidden', !mostra);
 }
 
 async function videoScriviInCartella(esito) {
@@ -27383,7 +27428,7 @@ async function videoRenderGalleria() {
       if (permesso === 'granted') {
         const dallaCartella = [];
         for await (const [nome, handle] of videoCartella.entries()) {
-          if (handle.kind !== 'file' || !/\.mp4$/i.test(nome)) continue;
+          if (handle.kind !== 'file' || !/\.(?:mp4|webm)$/i.test(nome)) continue;
           const file = await handle.getFile();
           dallaCartella.push({
             id: `cartella:${nome}`, nome, tipo: file.type || 'video/mp4', blob: file,
@@ -27396,7 +27441,7 @@ async function videoRenderGalleria() {
         video = video.filter(v => !v.cartellaNome || nomiPresenti.has(v.cartellaNome));
         const nomiCartella = new Set(dallaCartella.map(v => v.nome));
         video = video.filter(v => !nomiCartella.has(v.nome)).concat(dallaCartella);
-        videoMessaggio(`${dallaCartella.length} file MP4 sincronizzati da “${videoCartella.name}”.`);
+        videoMessaggio(`${dallaCartella.length} video caricati da “${videoCartella.name}”.`);
       }
     } catch (e) {
       videoMessaggio('Non riesco a sincronizzare la cartella. Riaprila con “Scegli cartella”.');
@@ -27438,8 +27483,13 @@ async function videoApriGalleria() {
   modale.classList.remove('hidden');
   videoAggiornaCartella();
   if (!videoCartella && typeof window.showDirectoryPicker === 'function') {
-    await videoScegliCartella(true);
+    // Senza un handle salvato il browser non permette di cercare una cartella
+    // per nome senza coinvolgere l'utente. Mostriamo quindi le due alternative
+    // prima del selettore, evitando di creare cartelle per errore.
+    videoMostraSceltaIniziale(true);
+    videoMessaggio('Scegli se collegare una cartella esistente o crearne una nuova.');
   } else if (videoCartella) {
+    videoMostraSceltaIniziale(false);
     try {
       let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
       if (permesso !== 'granted') permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
@@ -27463,7 +27513,9 @@ function videoChiudiGalleria() {
 async function videoInizializza() {
   document.getElementById('btn-galleria')?.addEventListener('click', videoApriGalleria);
   document.getElementById('btn-chiudi-galleria')?.addEventListener('click', videoChiudiGalleria);
-  document.getElementById('galleria-scegli-cartella')?.addEventListener('click', () => videoScegliCartella(true));
+  document.getElementById('galleria-scegli-cartella')?.addEventListener('click', () => videoScegliCartella(false));
+  document.getElementById('galleria-usa-esistente')?.addEventListener('click', () => videoScegliCartella(false));
+  document.getElementById('galleria-crea-cartella')?.addEventListener('click', () => videoScegliCartella(true));
   document.getElementById('modale-galleria')?.addEventListener('click', e => {
     if (e.target.id === 'modale-galleria') videoChiudiGalleria();
   });
@@ -31115,27 +31167,6 @@ function solAggiornaBarra(quando) {
     play.setAttribute('aria-label', cammina ? 'Ferma il playback' : 'Avvia il playback in avanti');
     play.title = cammina ? 'Ferma il tempo qui' : `Fai avanzare il tempo a ${v.nome}`;
   }
-  const pausa = document.getElementById('sol-pausa');
-  if (pausa) {
-    const congelato = sky.modalitaTempo === 'simulato' && !solInMarcia();
-    pausa.classList.toggle('attiva', congelato);
-    pausa.setAttribute('aria-pressed', congelato ? 'true' : 'false');
-  }
-  // La velocità, scritta accanto al play: è quella del planetario, e i due
-  // tasti la cambiano per tutt'e due le viste insieme
-  const vel = document.getElementById('sol-vel-valore');
-  if (vel) {
-    const v = skyVelocitaPlayback();
-    vel.textContent = v.nome;
-    vel.title = `In un secondo vero passa ${v.nome.replace('/s', '')} di tempo (${v.fattore.toLocaleString('it-IT')}×). ` +
-      'È la stessa velocità del playback del planetario.';
-    vel.classList.toggle('in-corso', !!sky.playbackVerso);
-  }
-  const velMeno = document.getElementById('sol-vel-meno');
-  const velPiu = document.getElementById('sol-vel-piu');
-  if (velMeno) velMeno.disabled = (sky.playbackVelIndice || 0) <= 0;
-  if (velPiu) velPiu.disabled = (sky.playbackVelIndice || 0) >= SKY_VELOCITA_PLAYBACK.length - 1;
-
   // Col pannello del tempo in prestito qui (7.5-ter) il ciclo del cielo è in
   // pausa, e nessuno rinfrescherebbe la data scritta nel campo né la lettura
   // lunga: mentre il pannello è aperto ci pensa questa barra
@@ -31156,13 +31187,6 @@ function solFermaTempo() {
 function solAlternaMarcia() {
   if (solInMarcia()) skyFermaPlayback();
   else skyAvviaPlayback(1);
-  solAggiornaBarra();
-}
-
-// La velocità del playback, cambiata da qui: è la stessa manopola del
-// planetario, e infatti muove il suo indice
-function solCambiaVelocita(passo) {
-  skyCambiaVelocitaPlayback(passo);
   solAggiornaBarra();
 }
 
@@ -32086,7 +32110,7 @@ window.apriSistemaSolare = (opzioni = {}) => {
   // una scelta di chi guarda: se ne segna il valore di prima e chiudendo lo si
   // rimette, a meno che nel frattempo il passo non sia stato scelto a mano —
   // quello è una scelta, e le scelte non si disfano (vedi `chiudiSistemaSolare`).
-  sol.passoPrima = sky.passoTempoSec || 600;
+  sol.passoPrima = sky.passoTempoSec || 1;
   sol.passoToccato = false;
   skyImpostaPassoTempo(sol.vicino ? SOL_PASSO_ENTRATA_VICINO : SOL_PASSO_ENTRATA);
   // Si riparte sempre dalla vista d'insieme: girare intorno a un corpo è una
@@ -32331,8 +32355,6 @@ function inizializzaSistemaSolare() {
   // La barra del tempo
   const play = document.getElementById('sol-play');
   if (play) play.addEventListener('click', solAlternaMarcia);
-  const pausa = document.getElementById('sol-pausa');
-  if (pausa) pausa.addEventListener('click', () => { skyPausaTempo(); solAggiornaBarra(); });
   const adesso = document.getElementById('sol-tempo-adesso');
   if (adesso) adesso.addEventListener('click', solTornaAdesso);
   // La lettura è la porta del pannello del tempo, come nel planetario (7.5-ter)
@@ -32383,12 +32405,6 @@ function inizializzaSistemaSolare() {
   // che è quello del planetario preso in prestito (7.5-ter) e si apre
   // toccando la lettura della barra. Un orologio solo, un passo solo, e un
   // posto solo in cui cambiarlo.
-
-  // La velocità del playback, che è quella del planetario
-  const velMeno = document.getElementById('sol-vel-meno');
-  if (velMeno) velMeno.addEventListener('click', () => solCambiaVelocita(-1));
-  const velPiu = document.getElementById('sol-vel-piu');
-  if (velPiu) velPiu.addEventListener('click', () => solCambiaVelocita(1));
 
   document.addEventListener('keydown', e => {
     if (!sol.aperto) return;
@@ -35261,8 +35277,11 @@ const SATELLITI = [
     nomeLungo: 'Stazione Spaziale Internazionale',
     catnr: 25544,
     colore: '#93c5fd',
-    foto: 'https://commons.wikimedia.org/wiki/Special:Redirect/file/International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg?width=800',
+    // URL diretto della miniatura: Special:Redirect di Commons viene spesso
+    // rifiutato quando l'immagine e' incorporata da un'altra origine.
+    foto: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg/800px-International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg',
     fotoAlt: 'La Stazione Spaziale Internazionale fotografata in orbita',
+    fotoCredito: 'NASA / Wikimedia Commons',
     chiaveTle: 'astrocalendario_tle_iss',
     classe: 'Stazione spaziale abitata',
     dimensione: '109 × 73 m, pannelli solari compresi',
@@ -35282,8 +35301,9 @@ const SATELLITI = [
     nomeLungo: 'Tiangong, la stazione spaziale cinese',
     catnr: 48274,
     colore: '#fca5a5',
-    foto: 'https://commons.wikimedia.org/wiki/Special:Redirect/file/Chinese_Space_Station.jpg?width=800',
+    foto: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Chinese_Space_Station.jpg/800px-Chinese_Space_Station.jpg',
     fotoAlt: 'La stazione spaziale Tiangong fotografata in orbita',
+    fotoCredito: 'Wikimedia Commons',
     chiaveTle: 'astrocalendario_tle_css',
     classe: 'Stazione spaziale abitata',
     dimensione: 'circa 55 m fra i moduli e i pannelli',
@@ -37145,6 +37165,34 @@ function skyScartoTempoTesto(secondi) {
   return astroI18n.scartoTempo((Number(secondi) || 0) * 1000);
 }
 
+// Lo scarto della barra deve occupare poco anche sugli schermi stretti: segno,
+// unita' abbreviate e al massimo le due parti piu' significative. Superata
+// un'unita' si conserva il resto (per esempio "+12 m 3 s" o "-1 g 2 h"),
+// cosi' la lettura resta precisa senza tornare alle forme lunghe.
+function skyScartoBarraTesto(secondi) {
+  const totale = Math.round(Math.abs(secondi));
+  if (!totale) return astroI18n.t('barraTempo.unitaSecondi', { n: 0 });
+  // Le sigle sono parole abbreviate, non simboli: in italiano il giorno è «g»
+  // e in inglese «d». Stanno nel dizionario come tutte le altre.
+  const unita = [
+    { chiave: 'barraTempo.unitaAnni', secondi: 365 * 86400 },
+    { chiave: 'barraTempo.unitaGiorni', secondi: 86400 },
+    { chiave: 'barraTempo.unitaOre', secondi: 3600 },
+    { chiave: 'barraTempo.unitaMinuti', secondi: 60 },
+    { chiave: 'barraTempo.unitaSecondi', secondi: 1 }
+  ];
+  let resto = totale;
+  const pezzi = [];
+  for (const u of unita) {
+    const valore = Math.floor(resto / u.secondi);
+    if (!valore) continue;
+    pezzi.push(astroI18n.t(u.chiave, { n: valore }));
+    resto %= u.secondi;
+    if (pezzi.length === 2) break;
+  }
+  return `${secondi >= 0 ? '+' : '-'}${pezzi.join(' ')}`;
+}
+
 function skyAggiornaTestoTempo() {
   const quando = skyAdesso();
   const scarto = Math.round(sky.offsetTempoSec || 0);
@@ -37254,10 +37302,6 @@ function skyOrariBarraTempo(quando) {
   const adesso = new Date();
   const scartoOre = (quando.getTime() - adesso.getTime()) / 3600000;
   const spostato = Math.abs(scartoOre) >= (1 / 3600);
-  const assoluto = Math.abs(scartoOre);
-  const numero = assoluto < 0.05 ? '< 0,1' : assoluto.toLocaleString('it-IT', {
-    minimumFractionDigits: 0, maximumFractionDigits: 1
-  });
   const dispositivo = new Intl.DateTimeFormat('it-IT', {
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
   }).format(adesso);
@@ -37267,8 +37311,9 @@ function skyOrariBarraTempo(quando) {
     fusoDiverso: fusoLuogo !== fusoDispositivo,
     spostato,
     mostraScarto: fusoLuogo !== fusoDispositivo || spostato,
-    direzione: spostato ? (scartoOre > 0 ? 'Futuro' : 'Passato') : 'Tempo reale',
-    scarto: spostato ? `${scartoOre > 0 ? '+' : '−'}${numero} h` : '0 h'
+    direzione: astroI18n.t(spostato
+      ? (scartoOre > 0 ? 'barraTempo.futuro' : 'barraTempo.passato') : 'barraTempo.tempoReale'),
+    scarto: spostato ? skyScartoBarraTesto(scartoOre * 3600) : '0 s'
   };
 }
 
@@ -37465,20 +37510,29 @@ function skyImpostaFinestraTempo(secondi) {
 // cielo la slitta era su un'altra scala, con l'istante finito fuori finestra.
 // Adesso i chip sono generati da qui in tutt'e due i posti, e cambiarli in uno
 // li cambia nell'altro.
+// I nomi sono getter sulle chiavi `passo.*`: «Tempo reale» e «1 mese» sono
+// parole, «10 s» e «1 h» sono unità che in inglese cambiano lettera (il giorno
+// è «d»). Chi legge `passo.nome` non cambia, e il valore segue la lingua.
 const SKY_PASSI_TEMPO = [
-  { sec: 10,             nome: '10 s',   finestra: 600 },          // slitta su ±10 minuti
-  { sec: 60,             nome: '1 min',  finestra: 3600 },
-  { sec: 600,            nome: '10 min', finestra: 43200 },
-  { sec: 3600,           nome: '1 h',    finestra: 604800 },
-  { sec: 86400,          nome: '1 g',    finestra: 2592000 },      // slitta su ±30 giorni
-  { sec: 2592000,        nome: '1 mese', finestra: 2 * 365.25 * 86400 },
-  { sec: 31557600,       nome: '1 anno', finestra: 30 * 365.25 * 86400 }
-];
+  { sec: 1,        chiave: 'reale',  finestra: 600 },
+  { sec: 10,       chiave: 's10',    finestra: 600 },              // slitta su ±10 minuti
+  { sec: 60,       chiave: 'min1',   finestra: 3600 },
+  { sec: 600,      chiave: 'min10',  finestra: 43200 },
+  { sec: 3600,     chiave: 'h1',     finestra: 604800 },
+  { sec: 86400,    chiave: 'g1',     finestra: 2592000 },          // slitta su ±30 giorni
+  { sec: 2592000,  chiave: 'mese1',  finestra: 2 * 365.25 * 86400 },
+  { sec: 31557600, chiave: 'anno1',  finestra: 30 * 365.25 * 86400 }
+].map(p => {
+  Object.defineProperty(p, 'nome', {
+    enumerable: true, get() { return astroI18n.t('passo.' + p.chiave); }
+  });
+  return p;
+});
 
 // Il gradino della scala che vale adesso: la 3D ci legge la finestra della sua
 // slitta e il salto dei suoi tasti, esattamente come il planetario
 function skyPassoTempo() {
-  const passo = sky.passoTempoSec || 600;
+  const passo = sky.passoTempoSec || 1;
   return SKY_PASSI_TEMPO.reduce((a, b) =>
     Math.abs(b.sec - passo) < Math.abs(a.sec - passo) ? b : a);
 }
@@ -37506,7 +37560,7 @@ function skyScriviChipPasso(contenitore) {
 }
 
 function skyImpostaPassoTempo(secondi) {
-  const voluto = Math.max(1, parseInt(secondi, 10) || 600);
+  const voluto = Math.max(1, parseInt(secondi, 10) || 1);
   const gradino = SKY_PASSI_TEMPO.reduce((a, b) =>
     Math.abs(b.sec - voluto) < Math.abs(a.sec - voluto) ? b : a);
   sky.passoTempoSec = gradino.sec;
@@ -37518,6 +37572,7 @@ function skyImpostaPassoTempo(secondi) {
     b.classList.toggle('attiva', scelto);
     b.setAttribute('aria-pressed', scelto ? 'true' : 'false');
   });
+  skyAggiornaComandiPlayback();
   skyImpostaFinestraTempo(gradino.finestra);
   if (typeof sol === 'object' && sol && sol.aperto) {
     sol.ancoraSec = sky.offsetTempoSec || 0;   // la finestra nuova si centra su dove siamo
@@ -37529,7 +37584,7 @@ function skyImpostaPassoTempo(secondi) {
 // spinta, e mentre il cielo cammina serve proprio a quello — saltare la
 // mezz'ora che non interessa.
 function skySpostaDiUnPasso(verso) {
-  const passo = sky.passoTempoSec || 600;
+  const passo = sky.passoTempoSec || 1;
   skyImpostaOffsetTempo((sky.offsetTempoSec || 0) + verso * passo);
 }
 
@@ -37547,24 +37602,16 @@ function skySpostaDiUnPasso(verso) {
 // se ne aggiunge una in meno: v − 1 andando avanti, −v − 1 all'indietro.
 // Con v = 1 in avanti lo scarto sta fermo, ed è esattamente il tempo reale.
 
-const SKY_VELOCITA_PLAYBACK = [
-  { fattore: 10,      nome: '10 s/s' },    // le stazioni spaziali che attraversano il cielo
-  { fattore: 60,      nome: '1 min/s' },
-  { fattore: 300,     nome: '5 min/s' },   // la rotazione della volta si vede a occhio
-  { fattore: 1800,    nome: '30 min/s' },
-  { fattore: 3600,    nome: '1 h/s' },     // alba e tramonto in pochi secondi
-  { fattore: 21600,   nome: '6 h/s' },
-  { fattore: 86400,   nome: '1 g/s' },     // la Luna che cambia posto e fase
-  { fattore: 604800,  nome: '7 g/s' },
-  { fattore: 2592000, nome: '30 g/s' }     // le stagioni, i pianeti che tornano indietro
-];
-
 const SKY_PLAYBACK_INTERVALLO = 80;   // ms fra un ricalcolo e l'altro, col playback acceso
 const SKY_PLAYBACK_SALTO_MAX = 0.5;   // s reali: oltre, l'intervallo si taglia
 
 function skyVelocitaPlayback() {
-  const i = Math.max(0, Math.min(SKY_VELOCITA_PLAYBACK.length - 1, sky.playbackVelIndice || 0));
-  return SKY_VELOCITA_PLAYBACK[i];
+  const passo = skyPassoTempo();
+  return {
+    fattore: passo.sec,
+    nome: passo.sec === 1 ? astroI18n.t('passo.reale')
+      : astroI18n.t('passo.alSecondo', { passo: passo.nome })
+  };
 }
 
 // Un fotogramma di playback: sposta lo scarto di quanto è passato davvero,
@@ -37619,63 +37666,16 @@ function skyFermaPlayback() {
   sky.playbackVerso = 0;
   sky.playbackUltimo = 0;
   skyAggiornaComandiPlayback();
-  // Si conserva anche la frazione di secondo dell'ultimo fotogramma: Pausa
+  // Si conserva anche la frazione di secondo dell'ultimo fotogramma: Stop
   // congela l'immagine senza il piccolo salto che produrrebbe un arrotondamento.
   skyImpostaOffsetTempo((istanteFermo - Date.now()) / 1000, { fluido: true });
   sky.prossimoCalcolo = 0;
   sky.cacheOrari = { chiave: null, valore: null };
 }
 
-// Pausa e Stop non sono lo stesso comando. Stop compare al posto di Play e
-// arresta una corsa; Pausa, sempre disponibile a destra, congela anche il
-// normale orologio in tempo reale sull'istante che si sta guardando.
-function skyPausaTempo() {
-  if (sky.playbackVerso) {
-    skyFermaPlayback();
-  } else if (sky.modalitaTempo === 'reale') {
-    skyImpostaOffsetTempo(0);
-  }
-  sky.prossimoCalcolo = 0;
-  skyAggiornaComandiPlayback();
-  skyAggiornaTestoTempo();
-}
-
-// Il moltiplicatore sale e scende per gradini. Si può cambiare anche mentre
-// il cielo cammina: cambia il passo, non l'istante raggiunto.
-function skyCambiaVelocitaPlayback(passo) {
-  const massimo = SKY_VELOCITA_PLAYBACK.length - 1;
-  sky.playbackVelIndice = Math.max(0, Math.min(massimo, (sky.playbackVelIndice || 0) + passo));
-  skyAggiornaComandiPlayback();
-  skyAggiornaTestoTempo();
-}
-
-// Tasti del playback e lettura della velocità. Ai due estremi della scala i
-// tasti si spengono: dire "più veloce" quando più veloce non c'è confonde.
+// Il solo tasto del playback riflette sempre il passo scelto nel pannello.
 function skyAggiornaComandiPlayback() {
-  skyTasto('skymap-play-indietro', sky.playbackVerso < 0);
-  skyTasto('skymap-play-avanti', sky.playbackVerso > 0);
-  const indietro = document.getElementById('skymap-play-indietro');
-  const avanti = document.getElementById('skymap-play-avanti');
-  if (indietro) indietro.disabled = !!sky.playbackVerso;
-  if (avanti) avanti.disabled = !!sky.playbackVerso;
-  ['skymap-play-stop'].forEach(id => {
-    const stop = document.getElementById(id);
-    if (stop) stop.disabled = !sky.playbackVerso;
-  });
-
   const v = skyVelocitaPlayback();
-  const lettura = document.getElementById('skymap-vel-valore');
-  if (lettura) {
-    // Solo il passo, senza il moltiplicatore: "1 h/s" dice già tutto, e sul
-    // telefono "3.600× · 1 h/s" mandava a capo la riga del playback
-    lettura.textContent = v.nome;
-    lettura.title = `In un secondo vero passa ${v.nome.replace('/s', '')} di cielo (${v.fattore.toLocaleString('it-IT')}×)`;
-    lettura.classList.toggle('in-corso', !!sky.playbackVerso);
-  }
-  const meno = document.getElementById('skymap-vel-meno');
-  const piu = document.getElementById('skymap-vel-piu');
-  if (meno) meno.disabled = sky.playbackVelIndice <= 0;
-  if (piu) piu.disabled = sky.playbackVelIndice >= SKY_VELOCITA_PLAYBACK.length - 1;
 
   // Il comando principale e' Play quando fermo e diventa Stop durante la
   // marcia: cosi' resta sempre sotto lo stesso dito.
@@ -37687,15 +37687,8 @@ function skyAggiornaComandiPlayback() {
     play.setAttribute('aria-pressed', inMarcia ? 'true' : 'false');
     play.setAttribute('aria-label', inMarcia ? 'Ferma il playback' : 'Avvia il playback in avanti');
     play.title = inMarcia ? 'Ferma il tempo qui' :
-      `Fai avanzare il cielo a ${v.nome} (la velocità si cambia nel pannello Tempo)`;
+      `Fai avanzare il cielo a ${v.nome} (il passo si cambia nel pannello Tempo)`;
   }
-  ['skymap-tempo-pausa', 'sol-pausa'].forEach(id => {
-    const pausa = document.getElementById(id);
-    if (!pausa) return;
-    const congelato = sky.modalitaTempo === 'simulato' && !sky.playbackVerso;
-    pausa.classList.toggle('attiva', congelato);
-    pausa.setAttribute('aria-pressed', congelato ? 'true' : 'false');
-  });
 }
 
 // --- Fotocamera: il cielo calcolato sopra l'immagine reale ---
@@ -37807,24 +37800,17 @@ function inizializzaSkymapExtra() {
   // La lettura della barra è anche la porta del pannello: il posto dove uno
   // si accorge che l'ora è sbagliata è lo stesso dove vuole aggiustarla
   collega('skymap-tempo-quando', () => skyMostraGruppo('tempo'));
-  // Play avanza e diventa Stop durante la corsa; Pausa congela anche l'ora reale.
+  // Un solo comando: Play avanza col passo scelto e diventa Stop durante la corsa.
   collega('skymap-tempo-play', () => {
     if (sky.playbackVerso) skyFermaPlayback();
     else skyAvviaPlayback(1);
   });
-  collega('skymap-tempo-pausa', skyPausaTempo);
   // Il passo scelto vale per i due tasti e per la slitta insieme — e vale
   // anche per il Sistema Solare 3D, che legge lo stesso gradino (§7.7)
   skyScriviChipPasso(document.querySelector('#skymap-passi .segmenti-cielo'));
   collega('skymap-passo-meno', () => skySpostaDiUnPasso(-1));
   collega('skymap-passo-piu', () => skySpostaDiUnPasso(1));
 
-  // --- Il playback: verso e moltiplicatore di velocità ---
-  collega('skymap-play-indietro', () => skyAvviaPlayback(-1));
-  collega('skymap-play-avanti', () => skyAvviaPlayback(1));
-  collega('skymap-play-stop', skyFermaPlayback);
-  collega('skymap-vel-meno', () => skyCambiaVelocitaPlayback(-1));
-  collega('skymap-vel-piu', () => skyCambiaVelocitaPlayback(1));
 
   // La data scritta a mano: qualsiasi istante fra i due anni estremi, in ora
   // locale. Sono sei caselle, e ognuna si comporta come le altre — Invio vale

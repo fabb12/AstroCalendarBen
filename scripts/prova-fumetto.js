@@ -78,6 +78,14 @@ const AEREO = {
     await pagina.route('**cdn.jsdelivr.net**', r => r.fulfill({ body: '', contentType: 'text/javascript' }));
     await pagina.route('**cdn.tailwindcss.com**', r => r.fulfill({ body: '', contentType: 'text/javascript' }));
     await pagina.route('**fonts.googleapis.com**', r => r.fulfill({ body: '', contentType: 'text/css' }));
+    // Non basta verificare che il dato contenga un URL: il difetto originale
+    // lasciava la fotografia fuori dal DOM. Una piccola immagine sostitutiva
+    // rende la prova indipendente dalla rete ma attraversa davvero caricamento,
+    // impaginazione e pittura del fumetto.
+    await pagina.route('**upload.wikimedia.org/**', r => r.fulfill({
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#6ea8d7"/></svg>',
+      contentType: 'image/svg+xml'
+    }));
     await pagina.route('**/astronomy.browser.min.js', r =>
       r.fulfill({ body: leggiAstronomy(), contentType: 'text/javascript' }));
     // L'ORDINE CONTA, ed è al contrario di come sembra: quando più rotte
@@ -144,6 +152,77 @@ const AEREO = {
       (astro.righe || []).join(' | '));
     ok('col segno dell\'oggetto', astro.segno === true);
 
+    // Le stelle del catalogo portano nella classe una nota impaginata per la
+    // scheda completa. Nel fumetto devono restare le parole, mai i tag HTML.
+    const stella = await pagina.evaluate(() => {
+      const dati = skyFumettoDatiAstro({
+        id: 'cat:prova', nome: 'Stella di prova', tipo: 'stella',
+        disegno: 'stella', classe: 'Stella bianca <span class="text-slate-500">(classe F circa)</span>'
+      });
+      return {
+        titolo: dati.titolo,
+        tipo: dati.righe[0] && dati.righe[0].valore,
+        nomeSempreIntero: dati.nomeSempreIntero
+      };
+    });
+    ok('il fumetto scrive il nome completo della stella', stella.titolo === 'Stella di prova', stella.titolo);
+    ok('il nome della stella non viene troncato nel fumetto', stella.nomeSempreIntero === true);
+    ok('la classe della stella non mostra codice HTML',
+      stella.tipo === 'Stella bianca (classe F circa)' && !/[<>]/.test(stella.tipo), stella.tipo);
+    const titoloStella = await pagina.evaluate(() => {
+      const prova = document.createElement('div');
+      prova.className = 'fumetto-nome-intero';
+      prova.innerHTML = '<h3 class="fumetto-titolo">Stella CAT 12345 di magnitudine 5,7 — Orsa Maggiore</h3>';
+      document.body.appendChild(prova);
+      const stile = getComputedStyle(prova.firstElementChild);
+      const risultato = { whiteSpace: stile.whiteSpace, overflow: stile.overflow, textOverflow: stile.textOverflow };
+      prova.remove();
+      return risultato;
+    });
+    ok('il titolo esteso può andare a capo senza ellissi',
+      titoloStella.whiteSpace === 'normal' && titoloStella.overflow === 'visible' &&
+        titoloStella.textOverflow === 'clip',
+      JSON.stringify(titoloStella));
+
+    const stazione = await pagina.evaluate(() => {
+      const dati = skyFumettoDatiAstro({
+        id: 'sat-iss', satId: 'iss', nome: 'ISS', tipo: 'satellite',
+        disegno: 'satellite', classe: 'Stazione spaziale abitata', alt: 20, illuminato: true
+      });
+      return { titolo: dati.titolo, foto: dati.foto };
+    });
+    ok('la stazione ha il nome per esteso nel fumetto',
+      stazione.titolo === 'Stazione Spaziale Internazionale', stazione.titolo);
+    ok('la fotografia della stazione usa un indirizzo diretto caricabile',
+      !!stazione.foto && /upload\.wikimedia\.org\/wikipedia\/commons\/thumb/.test(stazione.foto.src),
+      stazione.foto ? stazione.foto.src : 'nessuna foto');
+    const fotoStazione = await pagina.evaluate(async () => {
+      const oggetto = {
+        id: 'sat-iss', satId: 'iss', nome: 'ISS', tipo: 'satellite',
+        disegno: 'satellite', classe: 'Stazione spaziale abitata',
+        az: 180, alt: 20, illuminato: true
+      };
+      sky.oggetti.push(oggetto);
+      sky.selezione = { categoria: 'astro', id: oggetto.id };
+      const fumetto = document.getElementById('skymap-fumetto');
+      fumetto.classList.add('visibile');
+      skyAggiornaFumetto();
+      const img = fumetto.querySelector('.fumetto-foto img');
+      if (img && !img.complete) await new Promise(resolve => img.addEventListener('load', resolve, { once: true }));
+      const rett = img ? img.getBoundingClientRect() : null;
+      return {
+        presente: !!img,
+        caricata: !!img && img.naturalWidth > 0,
+        visibile: !!rett && rett.width > 0 && rett.height > 0,
+        alt: img ? img.alt : ''
+      };
+    });
+    ok('la fotografia della stazione viene inserita davvero nel fumetto',
+      fotoStazione.presente && fotoStazione.caricata && fotoStazione.visibile,
+      JSON.stringify(fotoStazione));
+    ok('la fotografia della stazione ha un testo alternativo descrittivo',
+      /Stazione Spaziale Internazionale/.test(fotoStazione.alt), fotoStazione.alt);
+
     // --- un aereo: le righe del mockup ----------------------------------
     await pagina.evaluate((a) => {
       // Il feed non c'è: si mette a mano una fotografia con dentro un aereo
@@ -159,7 +238,7 @@ const AEREO = {
         titolo: document.getElementById('skymap-fumetto-titolo').textContent,
         righe: Array.from(f.querySelectorAll('.fumetto-riga')).map(p => p.textContent.trim()),
         tinta: getComputedStyle(f).borderLeftColor,
-        foto: !!f.querySelector('.fumetto-aereo-foto img')
+        foto: !!f.querySelector('.fumetto-foto img')
       };
     });
     ok('il fumetto di un aereo porta il suo indicativo', aereo.titolo === 'BRJ273', aereo.titolo);

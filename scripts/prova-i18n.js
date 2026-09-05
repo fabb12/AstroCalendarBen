@@ -114,6 +114,116 @@ prova('i segnaposto sono gli stessi nelle due lingue', () => {
   assert.deepStrictEqual(guai, [], guai.slice(0, 6).join(' | '));
 });
 
+/* Le due prove che tengono insieme le tre metà.
+ *
+ * Una chiave si scrive in due posti — `data-i18n="…"` nell'HTML e
+ * `astroI18n.t('…')` nel codice — e il dizionario è un terzo. Quando i tre
+ * divergono non si rompe niente: sullo schermo compare il **nome della
+ * chiave**, che è leggibile e quindi passa inosservato. È capitato unendo
+ * `main`, che aveva tolto dall'HTML la riga del playback e con lei quindici
+ * chiavi.
+ *
+ * Le due prove guardano la stessa cosa da due lati, e per questo leggono il
+ * codice in due modi diversi — che è il punto da capire prima di metterci mano.
+ *
+ * «Ogni chiave citata esiste» deve essere **stretta**: guarda solo i posti in
+ * cui una chiave è citata per intero e senza dubbi (l'attributo nell'HTML, la
+ * chiamata diretta a `t()`). Metà delle chiavi si compongono — `t('bussola.' +
+ * k)`, `` t(`fase.${q}.titolo`) `` — e un letterale come `'fonte.attesa'`
+ * passato a un aiutante che gli mette davanti `bussola.` non è una chiave: è un
+ * pezzo. Contarlo vorrebbe dire una prova rossa per un difetto che non c'è.
+ *
+ * «Nessuna chiave è orfana» deve essere **larga**: è una prova di contenimento,
+ * e le basta trovare la chiave citata *da qualche parte*. Qui i letterali che
+ * finiscono col punto sono prefissi e coprono tutto quello che comincia così,
+ * e si legge anche `i18n.js`, che le sue chiavi (`app.titolo`, `tempo.*`) le
+ * compone da sé.
+ */
+const FILE_APP = ['index.html', 'app.js', 'ui-nuova.js', 'aerei.js', 'transiti.js',
+  'catalogo.js', 'costellazioni.js', 'corpi-minori.js', 'terreno.js', 'rilievo.js',
+  'pianifica.js', 'meteo-astro.js', 'aurora-polare.js', 'telescopio.js',
+  'didattica.js', 'eventi-extra.js', 'miglior-posto.js', 'via-lattea.js'];
+
+function leggiFile(elenco) {
+  const perFile = new Map();
+  let tutto = '';
+  for (const nome of elenco) {
+    const via = path.join(RADICE, nome);
+    if (!fs.existsSync(via)) continue;
+    const testo = fs.readFileSync(via, 'utf8');
+    perFile.set(nome, testo);
+    tutto += testo;
+  }
+  return { tutto, perFile };
+}
+
+/* Stretta: le chiavi citate per intero, in un posto in cui non possono essere
+ * altro. Chi finisce col punto è un prefisso e non si conta. */
+function chiaviDirette(testo) {
+  const trovate = new Set();
+  for (const m of testo.matchAll(/data-i18n(?:-[a-z-]+)?="([^"{}]+)"/g)) {
+    if (!m[1].endsWith('.')) trovate.add(m[1]);
+  }
+  for (const m of testo.matchAll(/\b(?:astroI18n|i18n)\.(?:t|esiste)\(\s*'([^'`${}]+)'/g)) {
+    if (!m[1].endsWith('.')) trovate.add(m[1]);
+  }
+  return trovate;
+}
+
+/* Larga: qualunque letterale puntato, più i prefissi (letterali col punto in
+ * coda e template con un `${}` dopo il punto). */
+function citazioniLarghe(testo) {
+  const intere = new Set();
+  const prefissi = new Set();
+  for (const m of testo.matchAll(/data-i18n(?:-[a-z-]+)?="([^"{}]+)"/g)) {
+    (m[1].endsWith('.') ? prefissi : intere).add(m[1]);
+  }
+  for (const m of testo.matchAll(/'([a-zA-Z][\w-]*(?:\.[\w-]*)+)'/g)) {
+    (m[1].endsWith('.') ? prefissi : intere).add(m[1]);
+  }
+  for (const m of testo.matchAll(/`([a-zA-Z][\w-]*(?:\.[\w-]*)*\.)\$\{/g)) prefissi.add(m[1]);
+  // `p + 'Secondi'` dentro a i18n.js: il prefisso sta in una variabile, e il
+  // pezzo dopo è il letterale. Si tiene anche quello, come sospetto di coda.
+  for (const m of testo.matchAll(/\+\s*'([A-Za-z][\w]*)'/g)) intere.add('§coda§' + m[1]);
+  return { intere, prefissi };
+}
+
+prova('ogni chiave usata dal codice esiste nel dizionario', () => {
+  const { perFile } = leggiFile(FILE_APP);
+  const messaggi = contesto.window.ASTRO_DIZIONARI.it.messaggi;
+  const mancanti = new Map();
+  for (const [nome, testo] of perFile) {
+    for (const chiave of chiaviDirette(testo)) {
+      if (messaggi[chiave] === undefined && !mancanti.has(chiave)) mancanti.set(chiave, nome);
+    }
+  }
+  const elenco = [...mancanti].map(([k, f]) => `${k} (${f})`);
+  assert.deepStrictEqual(elenco, [], `${elenco.length} citate e non tradotte: ${elenco.slice(0, 8).join(', ')}`);
+});
+
+prova('e nessuna chiave del dizionario è rimasta orfana', () => {
+  const { tutto } = leggiFile([...FILE_APP, 'i18n.js']);
+  const { intere, prefissi } = citazioniLarghe(tutto);
+  const orfane = Object.keys(contesto.window.ASTRO_DIZIONARI.it.messaggi).filter(chiave => {
+    if (intere.has(chiave)) return false;
+    for (const p of prefissi) if (chiave.startsWith(p)) return false;
+    /* Il caso `p + 'Secondi'`, che è come `i18n.js` compone i suoi due
+     * registri del tempo: il prefisso sta in una variabile (`'tempo.fra'` o
+     * `'tempo.breve'`, letterali entrambi) e la coda è un altro letterale.
+     * Una chiave è citata se **un letterale le fa da testa e un altro da
+     * coda**: è la forma di una concatenazione, e riconoscerla vale più che
+     * tenere a mano l'elenco di quelle sei chiavi. */
+    for (const testa of intere) {
+      if (testa.startsWith('§coda§') || !chiave.startsWith(testa)) continue;
+      for (const c of intere) {
+        if (c.startsWith('§coda§') && chiave.endsWith(c.slice('§coda§'.length))) return false;
+      }
+    }
+    return true;
+  });
+  assert.deepStrictEqual(orfane, [], `${orfane.length} non citate da nessuno: ${orfane.slice(0, 8).join(', ')}`);
+});
+
 // =========================================================================
 console.log('\n— la lettura di un messaggio —');
 
