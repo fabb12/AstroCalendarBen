@@ -14,8 +14,10 @@
 //     node scripts/prova-fumetto.js
 const { chromium } = require('playwright-core');
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const CHROMIUM = process.env.CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const RADICE = path.join(__dirname, '..');
@@ -82,10 +84,40 @@ const AEREO = {
     // lasciava la fotografia fuori dal DOM. Una piccola immagine sostitutiva
     // rende la prova indipendente dalla rete ma attraversa davvero caricamento,
     // impaginazione e pittura del fumetto.
-    await pagina.route('**upload.wikimedia.org/**', r => r.fulfill({
+    //
+    // E però — ed è la lezione di questa prova — una sostitutiva servita a
+    // **tutti** gli indirizzi rende la prova cieca sull'unica cosa che si era
+    // rotta davvero: i nomi dei file su Commons non esistevano, l'immagine
+    // dava 404, e il fumetto restava senza fotografia mentre qui dentro tutto
+    // era verde. Quindi il finto server ubbidisce a un regime, e le prove qui
+    // sotto glielo cambiano sotto ai piedi per far fallire una candidata, poi
+    // due, poi anche il soccorso di Wikipedia.
+    const regime = { falliscono: 0, wikipedia: false };
+    let fotoIss = [];       // le candidate vere, lette dalla pagina dopo il goto
+    const SOCCORSO = 'https://upload.wikimedia.org/wikipedia/commons/soccorso-di-wikipedia.jpg';
+    const IMMAGINE = {
       body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#6ea8d7"/></svg>',
-      contentType: 'image/svg+xml'
-    }));
+      contentType: 'image/svg+xml',
+      // `no-store` non è pignoleria: senza, la prima prova (in cui tutti gli
+      // indirizzi rispondono) lascia la candidata nella cache del browser, e
+      // quella dopo — che la vuole rotta — se la ritrova servita dalla memoria
+      // senza passare da qui. La prova del ripiego diventava verde per il
+      // motivo sbagliato: non c'era stato nessun 404 da cui ripiegare.
+      headers: { 'cache-control': 'no-store' }
+    };
+    await pagina.route('**upload.wikimedia.org/**', (r, req) => {
+      const i = fotoIss.indexOf(req.url());
+      if (i >= 0 && i < regime.falliscono) {
+        return r.fulfill({ status: 404, body: '', headers: { 'cache-control': 'no-store' } });
+      }
+      return r.fulfill(IMMAGINE);
+    });
+    // Il soccorso: l'immagine di apertura della voce di Wikipedia, che è quello
+    // che `satFotoDaWikipedia` va a chiedere quando le candidate sono finite.
+    await pagina.route('**en.wikipedia.org/**', r => (regime.wikipedia
+      ? r.fulfill({ contentType: 'application/json',
+                    body: JSON.stringify({ thumbnail: { source: SOCCORSO } }) })
+      : r.fulfill({ status: 404, body: '' })));
     await pagina.route('**/astronomy.browser.min.js', r =>
       r.fulfill({ body: leggiAstronomy(), contentType: 'text/javascript' }));
     // L'ORDINE CONTA, ed è al contrario di come sembra: quando più rotte
@@ -184,6 +216,9 @@ const AEREO = {
         titoloStella.textOverflow === 'clip',
       JSON.stringify(titoloStella));
 
+    // --- le stazioni spaziali e la loro fotografia ----------------------
+    fotoIss = await pagina.evaluate(() => satelliteDaId('iss').foto.map(f => f.src));
+
     const stazione = await pagina.evaluate(() => {
       const dati = skyFumettoDatiAstro({
         id: 'sat-iss', satId: 'iss', nome: 'ISS', tipo: 'satellite',
@@ -193,35 +228,135 @@ const AEREO = {
     });
     ok('la stazione ha il nome per esteso nel fumetto',
       stazione.titolo === 'Stazione Spaziale Internazionale', stazione.titolo);
-    ok('la fotografia della stazione usa un indirizzo diretto caricabile',
-      !!stazione.foto && /upload\.wikimedia\.org\/wikipedia\/commons\/thumb/.test(stazione.foto.src),
-      stazione.foto ? stazione.foto.src : 'nessuna foto');
-    const fotoStazione = await pagina.evaluate(async () => {
+
+    // Ogni stazione ha **più** di una candidata: con una sola, un nome di file
+    // sbagliato è un fumetto senza fotografia e nessuno se ne accorge.
+    const elenchi = await pagina.evaluate(() =>
+      SATELLITI.map(s => ({ id: s.id, quante: Array.isArray(s.foto) ? s.foto.length : 0,
+                            voce: !!s.fotoVoce, credito: s.fotoCredito || '' })));
+    ok('ogni stazione ha almeno due fotografie di riserva',
+      elenchi.length > 0 && elenchi.every(e => e.quante >= 2),
+      elenchi.map(e => `${e.id}:${e.quante}`).join(' '));
+    ok('e la voce di Wikipedia da cui farsi soccorrere',
+      elenchi.every(e => e.voce), elenchi.map(e => `${e.id}:${e.voce}`).join(' '));
+    ok('ogni fotografia porta la sua didascalia',
+      elenchi.every(e => e.credito.length > 3), elenchi.map(e => e.credito).join(' | '));
+
+    // La prova che avrebbe preso il difetto vero, e si può fare **senza rete**:
+    // il percorso di un file su Wikimedia non è libero, è l'md5 del suo nome —
+    // `thumb/<a>/<ab>/<Nome>/<larghezza>px-<Nome>`. Un indirizzo scritto a mano
+    // che non torna con questa regola non esiste su nessun server di Commons, e
+    // fin qui nessuno lo controllava: si guardava solo che ci fosse la parola
+    // «thumb». (Che il *file* esista poi davvero lo dice solo la rete: è la
+    // prova in coda, quella con PROVA_RETE=1.)
+    const indirizzi = await pagina.evaluate(() =>
+      SATELLITI.flatMap(s => s.foto.map(f => f.src)));
+    const storti = indirizzi.filter(src => {
+      const m = /^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/thumb\/([0-9a-f])\/([0-9a-f]{2})\/([^/]+)\/(\d+)px-([^/]+)$/.exec(src);
+      if (!m) return true;
+      if (m[3] !== m[5]) return true;                       // la miniatura è di un altro file
+      const nome = decodeURIComponent(m[3]);
+      const h = crypto.createHash('md5').update(nome, 'utf8').digest('hex');
+      return m[1] !== h[0] || m[2] !== h.slice(0, 2);
+    });
+    ok('ogni indirizzo di Commons è coerente con l\'md5 del nome del file',
+      storti.length === 0 && indirizzi.length >= 4, storti.join(' | ') || `${indirizzi.length} indirizzi`);
+
+    // Il fumetto vero. `apri` rimette in piedi la scena da capo ogni volta:
+    // svuota la memoria delle candidate e toglie l'oggetto finto da
+    // `sky.oggetti` alla fine — senza, il resto della prova disegnava un
+    // satellite senza colore e `skyDisegna` moriva su un `addColorStop`,
+    // portandosi via in silenzio tutte le prove dopo questa.
+    const apriFumettoStazione = () => pagina.evaluate(async () => {
+      satFotoScelta.clear();
+      satFotoChieste.clear();
+      const sat = satelliteDaId('iss');
+      if (!sat.fotoDiPartenza) sat.fotoDiPartenza = sat.foto.slice();
+      sat.foto = sat.fotoDiPartenza.slice();
       const oggetto = {
         id: 'sat-iss', satId: 'iss', nome: 'ISS', tipo: 'satellite',
         disegno: 'satellite', classe: 'Stazione spaziale abitata',
-        az: 180, alt: 20, illuminato: true
+        colore: sat.colore, az: 180, alt: 20, illuminato: true
       };
       sky.oggetti.push(oggetto);
       sky.selezione = { categoria: 'astro', id: oggetto.id };
       const fumetto = document.getElementById('skymap-fumetto');
       fumetto.classList.add('visibile');
-      skyAggiornaFumetto();
+      // La chiave della forma va azzerata a mano: fra una prova e l'altra
+      // cambia il regime del finto server, non il contenuto del fumetto, e
+      // `skyAggiornaFumetto` — che giustamente non rifà l'HTML quando la forma
+      // è la stessa — si sarebbe tenuta l'immagine già caricata dalla prova
+      // precedente. La prova del ripiego diventava verde o rossa a seconda di
+      // quanti giri di disegno erano passati nel frattempo, cioè a seconda
+      // della misura dello schermo: una prova che dipende dal caso.
+      fumetto.dataset.chiave = '';
+      // Tre giri: il primo mette la candidata, un `error` fa passare alla
+      // seconda, il soccorso di Wikipedia arriva da una promessa. Fra un giro
+      // e l'altro si aspetta che l'immagine di adesso abbia finito.
+      for (let giro = 0; giro < 3; giro++) {
+        skyAggiornaFumetto();
+        const img = fumetto.querySelector('.fumetto-foto img');
+        if (img && !img.complete) {
+          await new Promise(r => {
+            img.addEventListener('load', r, { once: true });
+            img.addEventListener('error', r, { once: true });
+          });
+        }
+        await new Promise(r => setTimeout(r, 120));
+      }
       const img = fumetto.querySelector('.fumetto-foto img');
-      if (img && !img.complete) await new Promise(resolve => img.addEventListener('load', resolve, { once: true }));
       const rett = img ? img.getBoundingClientRect() : null;
-      return {
+      const esito = {
         presente: !!img,
         caricata: !!img && img.naturalWidth > 0,
         visibile: !!rett && rett.width > 0 && rett.height > 0,
-        alt: img ? img.alt : ''
+        src: img ? img.src : '',
+        alt: img ? img.alt : '',
+        credito: (fumetto.querySelector('.fumetto-foto figcaption') || {}).textContent || '',
+        cornice: !!fumetto.querySelector('.fumetto-foto'),
+        righe: fumetto.querySelectorAll('.fumetto-riga').length
       };
+      // Si smonta la scena: l'oggetto finto non deve sopravvivere alla prova.
+      sky.oggetti = sky.oggetti.filter(o => o !== oggetto);
+      sky.selezione = null;
+      fumetto.classList.remove('visibile');
+      return esito;
     });
+
+    regime.falliscono = 0; regime.wikipedia = false;
+    const fotoStazione = await apriFumettoStazione();
     ok('la fotografia della stazione viene inserita davvero nel fumetto',
       fotoStazione.presente && fotoStazione.caricata && fotoStazione.visibile,
       JSON.stringify(fotoStazione));
     ok('la fotografia della stazione ha un testo alternativo descrittivo',
       /Stazione Spaziale Internazionale/.test(fotoStazione.alt), fotoStazione.alt);
+    ok('e la didascalia con chi l\'ha scattata',
+      /^Foto: .{3,}/.test(fotoStazione.credito), fotoStazione.credito);
+
+    // Una candidata che dà 404 non deve costare la fotografia: è il difetto
+    // vero, ridotto a una prova.
+    regime.falliscono = 1;
+    const ripiego = await apriFumettoStazione();
+    ok('se il primo indirizzo dà 404 si passa alla fotografia di riserva',
+      ripiego.caricata && ripiego.visibile && ripiego.src === fotoIss[1],
+      JSON.stringify({ src: ripiego.src, atteso: fotoIss[1] }));
+
+    // Finite le candidate, il soccorso: l'immagine di apertura della voce.
+    regime.falliscono = fotoIss.length; regime.wikipedia = true;
+    const soccorso = await apriFumettoStazione();
+    ok('finite le riserve, la fotografia arriva dalla voce di Wikipedia',
+      soccorso.caricata && soccorso.src === SOCCORSO,
+      JSON.stringify({ src: soccorso.src, atteso: SOCCORSO }));
+
+    // E quando non arriva proprio niente: nessuna cornice vuota. È l'altra
+    // metà del difetto — un riquadro alto zero con dentro un'icona rotta è
+    // peggio di un fumetto di sole righe, perché sembra un guasto dell'app.
+    regime.wikipedia = false;
+    const niente = await apriFumettoStazione();
+    ok('se non arriva nessuna fotografia non resta una cornice vuota',
+      niente.cornice === false && niente.presente === false && niente.righe >= 1,
+      JSON.stringify(niente));
+    regime.falliscono = 0;
 
     // --- un aereo: le righe del mockup ----------------------------------
     await pagina.evaluate((a) => {
@@ -427,6 +562,41 @@ const AEREO = {
   }
 
   await browser.close();
+
+  // --- e infine la sola domanda che un finto server non può rispondere ----
+  //
+  // Tutto quello che sta qui sopra gira contro immagini sostitutive, e va
+  // bene: prova il fumetto, non Wikimedia. Ma il difetto vero era di un'altra
+  // natura — i file su Commons **non esistevano** — e nessuna sostitutiva lo
+  // può prendere: un indirizzo inventato e uno buono, serviti dallo stesso
+  // finto server, sono la stessa cosa. L'md5 dice che l'indirizzo è scritto
+  // bene; che ci sia davvero un file dall'altra parte lo dice solo la rete.
+  //
+  // Quindi questa passata è a parte e va chiesta:  PROVA_RETE=1 node …
+  // Serve dopo aver toccato `SATELLITI`, ed è l'unica prova di questo file
+  // che possa diventare rossa per colpa di qualcun altro (Commons che
+  // rinomina un file) — per questo non è nel giro di tutti i giorni.
+  if (process.env.PROVA_RETE === '1') {
+    console.log('\n— gli indirizzi veri, sulla rete —');
+    console.log('  (404 = il file su Commons non c\'è, ed è il difetto da prendere;' +
+                '\n   403 o «sveglia scaduta» = c\'è un proxy in mezzo, non è Commons a rispondere)');
+    const indirizzi = JSON.parse(fs.readFileSync(path.join(RADICE, 'app.js'), 'utf8')
+      .match(/const SATELLITI = \[[\s\S]*?\n\];/)[0]
+      .match(/https:\/\/upload\.wikimedia\.org[^'"]+/g).map(JSON.stringify).join(',')
+      .replace(/^/, '[').replace(/$/, ']'));
+    for (const src of indirizzi) {
+      const stato = await new Promise(r => {
+        const req = https.request(src, { method: 'HEAD', timeout: 15000 }, res => {
+          res.resume(); r(res.statusCode);
+        });
+        req.on('timeout', () => { req.destroy(); r('sveglia scaduta'); });
+        req.on('error', e => r(e.message));
+        req.end();
+      });
+      ok(`${src.split('/').pop().slice(0, 52)} esiste su Commons`, stato === 200, String(stato));
+    }
+  }
+
   server.close();
   console.log(ko ? `\n${ko} prove fallite\n` : '\nTutto a posto.\n');
   process.exit(ko ? 1 : 0);

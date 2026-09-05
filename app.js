@@ -23054,9 +23054,13 @@ function skySchedaImmagineHtml(o) {
   // Per le stazioni non si inventa una miniatura dal simbolo della mappa:
   // la scheda si apre direttamente su una fotografia reale della stazione.
   const sat = o.tipo === 'satellite' ? satelliteDaId(o.satId) : null;
-  if (sat && sat.foto) {
-    return `<img class="scheda-img scheda-img-stazione" src="${sat.foto}" ` +
-      `alt="${sat.fotoAlt}" width="160" height="96" loading="eager" referrerpolicy="no-referrer">`;
+  const fotoSat = satFotoDi(sat);
+  if (fotoSat) {
+    // `onerror` non è un ornamento: senza, un indirizzo sbagliato lascia qui
+    // un riquadro di 160×96 pixel vuoto e non lo dice a nessuno (§13-bis).
+    return `<img class="scheda-img scheda-img-stazione" src="${fotoSat.src}" ` +
+      `alt="${fotoSat.alt}" width="160" height="96" loading="eager" referrerpolicy="no-referrer" ` +
+      `data-sat-id="${sat.id}" onerror="satFotoGuasta(this)">`;
   }
   const chiave = o.categoria === 'profondo' ? 'dso:' + o.nome : o.id;
   if (!chiave) return '';
@@ -23458,11 +23462,9 @@ function skyFumettoDatiAstro(o) {
     // La sigla breve resta utile sulla mappa e nell'elenco, ma nel fumetto
     // c'e' spazio per dire per esteso quale stazione si sta indicando.
     titolo: sat ? sat.nomeLungo : (o.nome || ''),
-    foto: sat && sat.foto ? {
-      src: sat.foto,
-      alt: sat.fotoAlt || sat.nomeLungo,
-      credito: sat.fotoCredito || ''
-    } : null,
+    // La fotografia della stazione: quale sia lo decide `satFotoDi` (§13-bis),
+    // che tiene il conto di quale candidata ha caricato davvero.
+    foto: satFotoDi(sat),
     // I nomi delle stelle del catalogo possono essere descrizioni complete
     // (codice, magnitudine e costellazione): non vanno accorciati con i
     // puntini proprio nel fumetto che deve identificare l'astro toccato.
@@ -23531,9 +23533,21 @@ function skyAggiornaFumetto() {
       const immagine = corpo.querySelector('.fumetto-foto img');
       const credito = corpo.querySelector('.fumetto-foto figcaption');
       if (immagine) {
+        // L'id della stazione viaggia sull'immagine perché `satFotoGuasta`
+        // sappia di chi sta cercando la fotografia: è lo stesso gancio usato
+        // dalla scheda completa, dove l'`onerror` è scritto nell'HTML.
+        if (dati.foto.satId) immagine.dataset.satId = dati.foto.satId;
         immagine.src = dati.foto.src;
         immagine.alt = dati.foto.alt || '';
         immagine.addEventListener('load', () => { sky.fumettoRimisura = true; }, { once: true });
+        // Una fotografia che non arriva non lascia una cornice vuota: per una
+        // stazione si prova la candidata dopo (§13-bis), per un aeroplano —
+        // dove l'indirizzo lo ha dato il servizio delle fotografie e non c'è
+        // nessun ripiego da tentare — la figura se ne va e basta.
+        immagine.addEventListener('error', () => {
+          if (immagine.dataset.satId) satFotoGuasta(immagine);
+          else satFotoTogli(immagine);
+        });
       }
       if (credito) credito.textContent = `Foto: ${dati.foto.credito}`;
     }
@@ -35279,9 +35293,21 @@ const SATELLITI = [
     colore: '#93c5fd',
     // URL diretto della miniatura: Special:Redirect di Commons viene spesso
     // rifiutato quando l'immagine e' incorporata da un'altra origine.
-    foto: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg/800px-International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg',
+    //
+    // Sono **due** e non una, e la ragione sta scritta in §13-bis: un nome di
+    // file sbagliato dà un 404 che non somiglia a un guasto — somiglia a un
+    // fumetto senza fotografia, cioè a com'era prima. Le due sono della stessa
+    // serie (il sorvolo dell'equipaggio Crew-2, 8 novembre 2021, NASA), quindi
+    // la didascalia vale per tutt'e due.
+    foto: [
+      { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/View_of_the_ISS_taken_during_Crew-2_flyaround_(ISS066-E-081311).jpg/800px-View_of_the_ISS_taken_during_Crew-2_flyaround_(ISS066-E-081311).jpg' },
+      { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/View_of_the_ISS_taken_during_Crew-2_flyaround_(ISS066-E-079547).jpg/800px-View_of_the_ISS_taken_during_Crew-2_flyaround_(ISS066-E-079547).jpg' }
+    ],
     fotoAlt: 'La Stazione Spaziale Internazionale fotografata in orbita',
     fotoCredito: 'NASA / Wikimedia Commons',
+    // L'ultima rete, quando nemmeno quelle qui sopra arrivano: il titolo della
+    // voce di Wikipedia da cui farsi dire qual è la sua immagine di apertura.
+    fotoVoce: 'International_Space_Station',
     chiaveTle: 'astrocalendario_tle_iss',
     classe: 'Stazione spaziale abitata',
     dimensione: '109 × 73 m, pannelli solari compresi',
@@ -35301,9 +35327,16 @@ const SATELLITI = [
     nomeLungo: 'Tiangong, la stazione spaziale cinese',
     catnr: 48274,
     colore: '#fca5a5',
-    foto: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Chinese_Space_Station.jpg/800px-Chinese_Space_Station.jpg',
+    // Le due sono lo stesso scatto al telescopio di Shujianyang, intero e
+    // ritagliato: la licenza è CC BY-SA 4.0, e chiede che l'autore sia
+    // nominato — per questo la didascalia dice il nome e non solo «Commons».
+    foto: [
+      { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/Chinese_Tiangong_Space_Station.jpg/800px-Chinese_Tiangong_Space_Station.jpg' },
+      { src: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Chinese_Tiangong_Space_Station_(cropped).jpg/800px-Chinese_Tiangong_Space_Station_(cropped).jpg' }
+    ],
     fotoAlt: 'La stazione spaziale Tiangong fotografata in orbita',
-    fotoCredito: 'Wikimedia Commons',
+    fotoCredito: 'Shujianyang / Wikimedia Commons (CC BY-SA 4.0)',
+    fotoVoce: 'Tiangong_space_station',
     chiaveTle: 'astrocalendario_tle_css',
     classe: 'Stazione spaziale abitata',
     dimensione: 'circa 55 m fra i moduli e i pannelli',
@@ -35333,6 +35366,125 @@ let satPrecaricaAvviata = false;
 
 function satelliteDaId(id) {
   return SATELLITI.find(s => s.id === id) || null;
+}
+
+// =====================================================================
+// 13-bis. LA FOTOGRAFIA DI UNA STAZIONE
+//     Il fumetto e la scheda di ISS e Tiangong si aprono su una fotografia
+//     vera: sono gli unici oggetti del cielo che una faccia dipinta non
+//     possono averla — un traliccio con i pannelli non si disegna con le
+//     macchie di `skyPelle` — e sono anche i soli che uno abbia visto in
+//     fotografia mille volte.
+//
+//     Questa sezione esiste per un difetto che è durato mesi e che non si
+//     poteva vedere: gli indirizzi scritti in `SATELLITI` erano costruiti
+//     bene — Wikimedia mette un file in `thumb/<a>/<ab>/`, dove `ab` sono i
+//     primi due caratteri dell'md5 del nome, e quei due caratteri
+//     tornavano — ma il **nome del file** non esisteva su Commons. Il
+//     risultato è un 404, e un `<img>` che riceve un 404 non fa rumore: non
+//     solleva niente, non scrive niente in console che parli del fumetto,
+//     lascia una cornice vuota alta zero. Sullo schermo è identico a «per
+//     le stazioni la fotografia non c'è», che è esattamente quello che
+//     l'utente ha segnalato due volte.
+//
+//     Le tre cure, e nessuna delle tre da sola basta:
+//       1. gli indirizzi giusti (file che su Commons esistono davvero);
+//       2. **più di uno**, provati in fila: un nome sbagliato costa la
+//          seconda candidata, non la fotografia;
+//       3. e quando finiscono, si **chiede a Wikipedia** qual è l'immagine
+//          di apertura della voce — che è l'unica fonte che resti giusta
+//          anche il giorno in cui su Commons un file viene rinominato.
+//     Se anche quella tace, la cornice si **toglie di mezzo**: meglio un
+//     fumetto di sole righe che un riquadro vuoto con dentro un'icona rotta.
+// =====================================================================
+
+// Quale candidata ha caricato, per stazione. `-1` vuol dire che le abbiamo
+// finite tutte: senza questa memoria ogni ridisegno del fumetto (due volte
+// al secondo) ricomincerebbe dalla prima e si ricomprerebbe i suoi 404.
+const satFotoScelta = new Map();
+// Le voci di Wikipedia già interrogate: una richiesta per stazione e basta,
+// come fa `aerei.js` con le fotografie degli aeroplani.
+const satFotoChieste = new Set();
+
+// La fotografia da mostrare adesso, o `null` se non ce n'è (ancora) nessuna.
+function satFotoDi(sat) {
+  if (!sat || !Array.isArray(sat.foto) || !sat.foto.length) return null;
+  const i = satFotoScelta.has(sat.id) ? satFotoScelta.get(sat.id) : 0;
+  if (i < 0 || i >= sat.foto.length) return null;
+  return {
+    src: sat.foto[i].src,
+    alt: sat.fotoAlt || sat.nomeLungo || sat.nome,
+    credito: sat.foto[i].credito || sat.fotoCredito || '',
+    satId: sat.id
+  };
+}
+
+// Una fotografia che non arriva. È il gancio `onerror` dei due posti che la
+// mostrano — il fumetto e la scheda — e fa una cosa sola: passa alla
+// candidata dopo. Quando non ce ne sono più, va a chiedere a Wikipedia; e se
+// nemmeno lì c'è risposta, l'immagine (con la sua didascalia, e nel fumetto
+// con tutta la `<figure>`) sparisce invece di restare a fare da cornice a un
+// buco.
+function satFotoGuasta(img) {
+  const sat = img && satelliteDaId(img.dataset ? img.dataset.satId : null);
+  if (!sat) { satFotoTogli(img); return; }
+  const prossima = (satFotoScelta.has(sat.id) ? satFotoScelta.get(sat.id) : 0) + 1;
+  if (Array.isArray(sat.foto) && prossima < sat.foto.length) {
+    satFotoScelta.set(sat.id, prossima);
+    satFotoScrivi(img, sat);
+    return;
+  }
+  satFotoScelta.set(sat.id, -1);
+  satFotoDaWikipedia(sat).then(trovata => {
+    // La promessa si scioglie dopo: il fumetto potrebbe non essere più quello
+    // di prima, e `img` essere già uscita dal documento. In quel caso non si
+    // tocca niente — al prossimo ridisegno la candidata nuova c'è già.
+    if (!trovata) { satFotoTogli(img); return; }
+    if (img && img.isConnected) satFotoScrivi(img, sat);
+  });
+}
+
+// Mette nell'immagine la candidata di adesso, didascalia compresa.
+function satFotoScrivi(img, sat) {
+  const foto = satFotoDi(sat);
+  if (!foto) { satFotoTogli(img); return; }
+  img.src = foto.src;
+  img.alt = foto.alt || '';
+  const cornice = img.closest ? img.closest('.fumetto-foto') : null;
+  const didascalia = cornice ? cornice.querySelector('figcaption') : null;
+  if (didascalia) didascalia.textContent = foto.credito ? `Foto: ${foto.credito}` : '';
+  if (typeof sky === 'object' && sky) sky.fumettoRimisura = true;
+}
+
+// Toglie la fotografia dal documento. Nel fumetto se ne va tutta la
+// `<figure>` (se no resterebbe la sola didascalia, che è la firma di una
+// fotografia che non c'è) e si chiede una rimisura, perché senza quei cento
+// pixel il fumetto va posato da un'altra parte.
+function satFotoTogli(img) {
+  if (!img) return;
+  const cornice = img.closest ? img.closest('.fumetto-foto') : null;
+  (cornice || img).remove();
+  if (typeof sky === 'object' && sky) sky.fumettoRimisura = true;
+}
+
+// L'immagine di apertura della voce di Wikipedia. È l'unica fonte che sa
+// rispondere anche quando gli indirizzi scritti qui dentro sono invecchiati:
+// la voce c'è sempre, e chi la cura tiene la sua immagine aggiornata. La
+// risposta si accoda a `sat.foto`, così vale anche per i ridisegni dopo.
+function satFotoDaWikipedia(sat) {
+  if (!sat || !sat.fotoVoce || satFotoChieste.has(sat.id)) return Promise.resolve(false);
+  satFotoChieste.add(sat.id);
+  return fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${sat.fotoVoce}`)
+    .then(r => (r.ok ? r.json() : null))
+    .then(d => {
+      const src = d && ((d.thumbnail && d.thumbnail.source) ||
+                        (d.originalimage && d.originalimage.source));
+      if (!src) return false;
+      sat.foto.push({ src, credito: sat.fotoCredito || 'Wikimedia Commons' });
+      satFotoScelta.set(sat.id, sat.foto.length - 1);
+      return true;
+    })
+    .catch(() => false);
 }
 
 function tleDaCache(sat) {

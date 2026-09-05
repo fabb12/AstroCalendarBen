@@ -4,140 +4,97 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-**Il gestore delle lingue**, rifatto da capo: chiavi al posto di un traduttore
-di frasi. Nasce da due segnalazioni — «il cambio verso l'inglese è molto lento»
-e «molte parti restano in italiano, soprattutto le schede informative» — che
-sono due facce della stessa scelta sbagliata.
+**Le fotografie delle stazioni spaziali nel fumetto del planetario**, che non
+comparivano. Segnalazione: «non vedo ancora foto delle stazioni spaziali nel
+fumetto». Il «ancora» conta: la funzione era già stata scritta e sembrava a
+posto — c'era il dato in `SATELLITI`, c'era il pezzo che lo mette nel fumetto
+(`skyFumettoDatiAstro`) e nella scheda (`skySchedaImmagineHtml`), c'era il CSS
+(`.fumetto-foto`), e c'era pure una prova verde in `scripts/prova-fumetto.js`.
 
-### Com'era
+### Cos'era
 
-Il gestore di prima traduceva **il DOM**. A ogni cambio lingua camminava tutti
-i nodi di testo del documento e su ognuno passava duecento espressioni regolari
-prese da un glossario di frasi e di parole. Nessun file dell'applicazione usava
-una chiave: `data-i18n` compariva **zero volte** in `index.html` e
-`astroI18n.t()` zero volte nel codice.
+Gli indirizzi delle immagini erano **costruiti bene e puntavano al nulla**.
+Wikimedia mette un file in `thumb/<a>/<ab>/<Nome>/<larghezza>px-<Nome>`, dove
+`<a>` e `<ab>` sono i primi caratteri dell'md5 del nome: quei caratteri
+tornavano (rifatto il conto in locale, cifra per cifra). Ma i **nomi dei file
+non esistono su Commons**:
 
-- **Era lento** per il conto, non per una riga: qualche migliaio di nodi per
-  duecento voci, ognuna con una `RegExp` nuova, in un colpo sul filo
-  dell'interfaccia. E un `MutationObserver` su `characterData` e sugli
-  attributi di tutto il `body` rifaceva quel giro a ogni pannello riscritto —
-  che in un planetario sono diverse volte al secondo.
-- **Alla prima apertura si aspettava la rete**: `await` su `ipwho.is` con una
-  sveglia da 3,5 s *prima* di scegliere una lingua. Chi apriva l'app da Londra
-  vedeva tre secondi e mezzo di italiano e poi un cambio a scatto.
-- **Era incompleto, e non poteva non esserlo.** Un dizionario di frasi traduce
-  le frasi che ci sono scritte dentro; le schede informative sono fatte di
-  frasi composte al momento («è circumpolare: non tramonta mai», «disco
-  illuminato al 87%») e non stanno in nessun elenco. Dove il glossario mordeva
-  a metà usciva un misto delle due lingue, che è l'unico esito peggiore del non
-  tradurre affatto.
+- `International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg` — non c'è;
+- `Chinese_Space_Station.jpg` — non c'è (ci sono `Chinese Tiangong Space
+  Station.jpg` e `Chinese Space Station - front.jpg`, che sono altri file).
 
-### Com'è adesso
+Cioè: un indirizzo plausibile a occhio, con l'hash giusto, che dà 404. E un
+`<img>` che si prende un 404 **non fa rumore**: non solleva niente, non scrive
+niente che parli del fumetto, lascia una cornice alta zero. Sullo schermo è
+identico a «per le stazioni la fotografia non c'è» — che è la ragione per cui
+è durato, e per cui la segnalazione è arrivata due volte.
 
-1. **I dizionari sono in memoria** (`lingue/it.js`, `lingue/en.js`, 893 voci
-   in parità), assorbiti appena `i18n.js` viene eseguito e **non** al
-   `DOMContentLoaded` — `verifica.html` gira mentre il documento si sta ancora
-   leggendo, e `t()` deve rispondere anche a lei. Nessuna richiesta di rete,
-   nessuna API di traduzione.
-2. **Il cambio lingua non guarda il documento**: scorre l'indice dei soli nodi
-   che portano una chiave (**464 contro 45.000** nodi di testo) e avvisa chi si
-   disegna da sé. Misurato con tutte le finestre aperte: **34 ms in tutto, di
-   cui 7 di riscrittura del testo**; il resto è il ridisegno delle viste, che
-   costa quanto costa aprirle.
-3. **La lingua si sceglie subito**, con quello che il browser sa già dire; il
-   paese dall'IP corregge dopo, in silenzio, e solo se nessuno ha scelto a mano.
-4. **Il ripiego** è lingua scelta → italiano (la sorgente) → nome della chiave,
-   con un avviso in console **una volta sola per chiave** e
-   `astroI18n.rapporto()` per l'elenco.
+E la prova non poteva prenderlo: serviva un'immagine sostitutiva a
+**qualunque** indirizzo di `upload.wikimedia.org`, quindi un nome inventato e
+uno buono erano la stessa cosa.
 
-### Cosa dicono i numeri
+### Com'è adesso — §13-bis di `app.js`
 
-- **`index.html`: 397 stringhe cablate → 0.** Le 472 chiavi sono state generate
-  e poi tradotte a mano.
-- **Il planetario, dopo un cambio lingua: 0 frasi italiane a schermo e 0
-  attributi** (erano migliaia).
-- L'audit statico: **1175 → 636**. Quello che resta è quasi tutto il
-  *contenuto* degli eventi dell'agenda e tre viste, elencati qui sotto.
-- `verifica.html`: **1138 verdi, 5 rosse** — identico al commit di partenza
-  (le cinque sono le stesse dell'acqua e del rilievo).
-- `prova-nel-browser.js`: 4 rosse come alla partenza. `prova-fumetto.js`: da 5
-  a **3** (due passavano a caso, ora la lingua è fissata).
+1. **Gli indirizzi giusti**, e sono **due per stazione** e non uno: per la ISS
+   i due scatti del sorvolo Crew-2 (NASA, pubblico dominio), per Tiangong lo
+   scatto al telescopio di Shujianyang, intero e ritagliato (CC BY-SA 4.0 —
+   la didascalia adesso nomina l'autore, come la licenza chiede).
+2. **`satFotoGuasta`** sull'`onerror` di tutt'e due i posti che la mostrano: un
+   nome sbagliato costa la candidata dopo, non la fotografia. `satFotoScelta`
+   ricorda quale ha caricato, se no ogni ridisegno (due volte al secondo) si
+   ricomprerebbe i suoi 404.
+3. **Il soccorso**: finite le candidate, si chiede a Wikipedia qual è
+   l'immagine di apertura della voce (`fotoVoce`) — l'unica fonte che resti
+   giusta il giorno in cui su Commons un file viene rinominato.
+4. E se non arriva niente, la cornice si **toglie**: meglio un fumetto di sole
+   righe che un riquadro vuoto con dentro un'icona rotta.
 
-### I pezzi nuovi
+`CACHE_NAME` è a `astrocal-v271`.
 
-- `i18n.js` riscritto; `lingue/it.js` e `lingue/en.js`.
-- `ui-nuova.js` §«Il ridisegno al cambio lingua»: chi si compone in JavaScript
-  va **ridisegnato**, non riscritto. Si ridisegna quello che è a schermo; le
-  altre viste si segnano in debito e lo pagano in `mostraVista`.
-- `creaEvento` accetta `chiave`: titolo, spiegazione e programma diventano
-  getter e si risolvono quando l'agenda li legge. Un evento nasce una volta e
-  vive per sempre — scrivergli dentro la frase voleva dire un'agenda che non
-  cambia più lingua.
-- `conNomeTradotto()`: le tabelle lette in venti posti (`CATEGORIE`,
-  `STRUMENTI`, `COST_FILTRI`, `POS_ETICHETTE`, `NOMI_MESI`, `LEZ_CAPITOLI`) non
-  si convertono chiamante per chiamante — si converte quello che i chiamanti
-  leggono.
-- **Sei conti alla rovescia** scritti in cinque file diventano uno
-  (`astroI18n.quantoManca`), in due registri: lungo per l'agenda, corto per
-  l'avviso di un transito, che ha due centimetri di schermo. Unificarli in uno
-  solo sembrava una pulizia ed era una perdita.
-- `scripts/controlla-i18n.js` (l'audit), `scripts/prova-lingua.js` (47 prove in
-  un browser), `scripts/prova-i18n.js` riscritto (31 prove senza browser),
-  `scripts/i18n-tetto.json` (il cricchetto).
+### Le prove
 
-### Cosa resta, e dov'è scritto
+`scripts/prova-fumetto.js`, e ci sono tre cose nuove che vale la pena sapere.
 
-I tetti stanno in `scripts/i18n-tetto.json` e scendono, non risalgono:
+- **La prova che il difetto vero l'avrebbe preso, senza rete**: il percorso di
+  un file su Wikimedia è l'md5 del suo nome, quindi un indirizzo che non torna
+  con quella regola non esiste da nessuna parte. Fin qui si guardava solo che
+  ci fosse la parola «thumb».
+- **Il finto server ubbidisce a un regime** che le prove gli cambiano sotto ai
+  piedi: una candidata rotta (→ si passa alla riserva), poi tutte (→ arriva il
+  soccorso di Wikipedia), poi anche quello (→ nessuna cornice vuota).
+- **`PROVA_RETE=1 node scripts/prova-fumetto.js`**: una passata a parte che va
+  a bussare davvero agli indirizzi. È la sola che possa dire se il file su
+  Commons c'è — **e in questa sessione non si è potuta eseguire**, perché il
+  proxy di rete dell'ambiente blocca `upload.wikimedia.org` (403 sul CONNECT,
+  non un 404 di Commons). Da fare al primo giro su una rete vera.
 
-| dove | frasi | cosa manca |
-|---|---|---|
-| agenda | ~1.560 | il **contenuto degli eventi** che non è ancora passato alle chiavi: congiunzioni, sciami meteorici, stagioni, eclissi, opposizioni. Le fasi lunari sono fatte, ed erano metà dell'agenda |
-| telescopio | 14 | `telescopio.js`, ~100 stringhe |
-| stasera | 10 | due righe di riepilogo del meteo |
-| diario | 6 | `costruisciDiario` e i traguardi |
-| — | — | `didattica.js` (~56): non ha un ingresso per ridisegnarsi, va aggiunto insieme alle sue chiavi |
+Nella stessa passata è saltato fuori che **metà di `prova-fumetto.js` non
+girava più**: il finto satellite che la prova delle stazioni infilava in
+`sky.oggetti` non aveva il campo `colore`, e al primo `skyDisegna` successivo
+`skyDisegnaAstro` moriva su `addColorStop('undefinedaa')`. Da lì in giù —
+l'aereo, la geometria, la coda, i tasti, il costo della misura — non veniva
+eseguito niente, in silenzio. Adesso l'oggetto porta il suo colore e viene
+tolto da `sky.oggetti` a fine prova.
 
-### L'unione con main
+### Cosa resta rosso, e non è di questo lavoro
 
-`main` era andato avanti di nove PR, e tre toccavano proprio quello che questo
-lavoro aveva riscritto: il playback (la riga «Marcia» del pannello Tempo e i
-tasti di pausa sono stati **tolti**, il playback è un Play/Stop solo nella
-barra), lo scarto della barra del tempo (una funzione nuova,
-`skyScartoBarraTesto`, con le sue sigle) e la galleria video (un blocco nuovo di
-markup). I conflitti erano tre file.
+Con la prova che torna a girare tutta, viene fuori una cosa che era nascosta
+dietro a quel crollo: **`resta fuori dalla bussola e dalla barra del tempo`
+fallisce, e riguarda il fumetto di un aereo**, non le stazioni.
 
-- **`i18n.js`**: main aveva aggiunto delle voci al glossario, che qui non esiste
-  più. Le sue quattro stringhe nuove sono diventate chiavi come tutte le altre.
-- **`index.html`**: si è preso l'HTML di main e ci si è rimessa l'iniezione
-  delle chiavi da capo. Le chiavi nascono dallo slug della frase italiana,
-  quindi quelle del testo non toccato sono venute identiche: **sei nuove** (la
-  galleria, e il titolo della lettura della barra che main ha riscritto) e
-  **quindici sparite** insieme agli elementi del playback.
-- **`sw.js`**: solo il `CACHE_NAME`, portato a v270.
+- Su un telefono girato (640×360) il fumetto di un aereo è alto 248 px mentre
+  fra le due fasce ce ne sono 120: si posa a y=11 e arriva a 259, cioè **copre
+  la barra del tempo**, che è l'orologio. Il commento in `skyPosizionaFumetto`
+  dice l'opposto («delle due, quella che non si può coprire è la barra del
+  tempo»), quindi è un difetto vero e non una scelta.
+- Su 360×640 lo stesso, su 1280×800 è invece mezzo pixel di arrotondamento.
 
-Da quelle quindici chiavi sparite sono nate le **due prove che legano i tre
-posti** in cui una chiave vive (l'HTML, il codice, il dizionario): ogni chiave
-citata esiste, e nessuna è orfana. Non si rompeva niente — sullo schermo
-compariva il nome della chiave, che è leggibile e per questo passa inosservato.
+Non l'ho toccato: nasce dalla decisione — scritta e voluta — che il fumetto di
+un aereo **non perde righe** e semmai scorre, e rimetterlo a posto vuol dire
+tarare l'altezza massima contro le due fasce (CSS `.fumetto-cielo.fumetto-aereo`
++ il tetto in `skyPosizionaFumetto`), cioè un lavoro sul fumetto degli aerei
+che con le fotografie delle stazioni non c'entra. È il prossimo da prendere.
 
-Dopo l'unione i banchi dicono gli stessi numeri di `main`: `verifica.html`
-1138/5, `prova-nel-browser` 4 rosse, `prova-fumetto` 0. Il cambio lingua è anche
-**sceso a 34 ms** — main ha tolto dei comandi, e sono nodi in meno da riscrivere.
-
-### Tre difetti trovati misurando, e vale la pena ricordarli
-
-- **La chiave va sul nodo che porta la parola.** `inizializzaNavigazione`
-  sposta l'etichetta di un bottone dentro a uno `<span>`: la `data-i18n`
-  rimasta sul bottone faceva scrivere la parola **due volte**
-  («StaseraTonight»). Adesso la chiave segue la parola, e il gestore rifiuta di
-  aggiungere testo a un elemento che ha figli e nessun testo proprio.
-- **`verifica.html` non caricava `i18n.js`**, e fa girare `terreno.js`,
-  `catalogo.js`, `costellazioni.js` e `aerei.js` per davvero: la prima
-  `astroI18n.t()` era un `ReferenceError`, e in una pagina di `<script>` unici
-  quello non fa fallire una prova — porta via tutte le sezioni successive. Da
-  1138 prove a **10**, in silenzio. È la trappola scritta in tre punti di
-  `CLAUDE.md`, arrivata dalla lingua.
-- **In italiano quattro cifre non portano il separatore** (5800, non 5.800),
-  in inglese sì (5,800): è CLDR, `Intl` la applica, e il dizionario diceva
-  «5.800» a mano — due modi di scrivere lo stesso numero nella stessa riga
-  della scheda di una stella.
+Restano rosse, identiche a prima di questo lavoro e non toccate da qui, anche
+cinque prove di `verifica.html` (acque e rilievo) e quattro di
+`prova-nel-browser.js`.

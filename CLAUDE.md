@@ -65,7 +65,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `scripts/costruisci-tailwind.js` | ~70 | Genera `tailwind.css`. Si lancia a mano quando si aggiunge una classe Tailwind nuova, non serve all'app. |
 | `style.css` | ~9.380 | Tema "Deep Space" + impaginazione responsive. |
 | `tailwind.css` | ~600 | **Generato**, non si tocca a mano: le sole utility di Tailwind che l'app usa davvero, compilate una volta. Ha preso il posto di `cdn.tailwindcss.com`, che era il **compilatore** — mezzo megabyte di JavaScript che a ogni apertura rileggeva il DOM per riscrivere questo stesso CSS, e che nella console lo diceva a ogni apertura. Va caricato **prima** di `style.css`. |
-| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v270`). |
+| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v271`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -259,7 +259,7 @@ Modali (in `index.html`): `modale-aggiungi`, `modale-costellazioni` (l'atlante),
 | 17648–18247 | **10-bis. Finestra della posizione** + ricerca città (locale, poi Open-Meteo) | `apriPosizione(forza)` (**17702**), `inizializzaPosizioneUI()` (**17953**) |
 | 18248–18422 | **11. Meteo e indice di osservabilità** | `indiceOsservabilita(evento)` (**18349**) |
 | 18423–18471 | **12. Strumento necessario** (occhio / binocolo / telescopio) | `STRUMENTI` (**18428**) |
-| 18472–18869 | **13. Passaggi di ISS e Tiangong** (SGP4) | `SATELLITI` (**18483**) |
+| 18472–18869 | **13. Passaggi di ISS e Tiangong** (SGP4), e **13-bis** la fotografia di una stazione | `SATELLITI` (**18483**), `satFotoDi()` / `satFotoGuasta()` / `satFotoDaWikipedia()` |
 | 18870–19135 | **14. Vista "Stasera"** | `costruisciStasera()` (**18907**) |
 | 19136–19337 | **15. Diario e traguardi** | `TRAGUARDI` (**19172**), `caricaDiario()` (**19148**) |
 | 19338–19718 | **16. Condivisione (`?evento=`), export `.ics`, backup JSON** | `esportaBackup()` (**19577**), `urlEvento(id)` (**19341**) |
@@ -406,7 +406,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v270`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v271`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - **Se hai aggiunto del testo che si legge**, la frase va nei due dizionari e
   non nel codice: `node scripts/controlla-i18n.js --patto` lo controlla, e
@@ -450,6 +450,7 @@ non il codice.
 ```
 npm install playwright-core astronomy-engine
 node scripts/prova-fumetto.js
+PROVA_RETE=1 node scripts/prova-fumetto.js   # in più: gli indirizzi veri, sulla rete
 ```
 
 Il fumetto dell'oggetto (§7.4) è il genere di pezzo che a occhio si giudica
@@ -476,6 +477,19 @@ l'ultima registrata**, quindi i rifiuti generici vanno *prima* dell'itinerario
 finto — `**adsb**` contiene `api.adsbdb.com`, e messo dopo se lo mangia: la
 riga della rotta non arriva mai e la prova fallisce per un motivo che non
 c'entra col codice.
+
+E la lezione più cara di questo file, che vale per ogni prova che finga la
+rete: **una sostitutiva servita a tutti gli indirizzi rende la prova cieca
+proprio sull'indirizzo**. Le fotografie delle stazioni erano verdi qui dentro
+e assenti nell'app, perché il finto server rispondeva 200 anche a un nome di
+file che su Commons non esiste. Adesso il finto server ubbidisce a un regime
+che le prove cambiano sotto ai piedi — una candidata rotta, poi tutte, poi
+anche il soccorso di Wikipedia — e c'è la prova **aritmetica** che il difetto
+vero l'avrebbe preso senza rete: il percorso di un file su Wikimedia è l'md5
+del suo nome, quindi un indirizzo scritto a mano che non torna con quella
+regola non esiste su nessun server. Che il file poi ci sia davvero lo dice
+solo `PROVA_RETE=1`, ed è l'unica prova di questo file che possa diventare
+rossa per colpa di qualcun altro: per questo è a parte e va chiesta.
 
 ### Le lingue — `scripts/prova-lingua.js` e `scripts/prova-i18n.js`
 
@@ -1180,6 +1194,9 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | **Il fumetto su uno schermo piccolo** | non si stringe di **corpo**, che è l'errore che si fa sempre e dà un fumetto che ci sta e non si legge: si stringe di **larghezza** (`min(260px, 78vw)`, e sotto ai 560px `min(240px, 84vw)`) e perde righe. Il testo non scende sotto i 12,3px — la misura sotto la quale una riga di dati su un fondo scuro, in movimento, si smette di leggere — e i due tasti restano quadrati da 30px (28 col telefono girato), che è il minimo per un pollice. Ogni riga si ferma a **due capoversi** (`-webkit-line-clamp`), uno solo col telefono girato: un itinerario lungo va a capo una volta e poi si accorcia, invece di far crescere il fumetto fino a coprire il cielo. `scripts/prova-fumetto.js` misura tutte e quattro le cose su tre schermi (360×640, 640×360, 1280×800) |
 | **Il fumetto costa un fotogramma** | `skyMisuraFumetto()` e `sky.fumettoRimisura`. `getBoundingClientRect` **forza il calcolo dell'impaginazione**, e chiamarla a ogni fotogramma dopo aver scritto `left` e `top` è il classico botta-e-risposta che mette in ginocchio un ciclo di disegno: si scrive, si invalida, si rilegge, si ricalcola, sessanta volte al secondo. La misura però cambia solo quando cambia quello che c'è scritto dentro o la forma del riquadro — due volte al secondo nel caso peggiore — quindi si tiene, e a dire che è scaduta è `skyAggiornaFumetto` quando ha davvero riscritto qualcosa (**anche un numero**: «9.750 m» → «10.100 m» cambia la larghezza, e con lei il posto giusto della coda). Misurato: una lettura invece di trenta in trenta fotogrammi |
 | **Il fumetto non compare nel filmato registrato** | `skyRegDisegnaScheda()` → `skyRegDisegnaRiquadro()` (§7.6). Il fumetto è HTML sopra al canvas, e un canvas registra solo sé stesso: va **ridisegnato** dentro al filmato, come già si faceva per la scheda. Senza, chi guarda la clip vede il cerchio azzurro attorno a un aereo e nessuna riga che dica quale sia |
+| **Nel fumetto (o nella scheda) di una stazione spaziale non c'è la fotografia** | §**13-bis** di `app.js`, `satFotoDi()` / `satFotoGuasta()` / `satFotoDaWikipedia()`. Il difetto è durato mesi e non si poteva vedere: gli indirizzi scritti in `SATELLITI` erano **costruiti** bene — Wikimedia mette un file in `thumb/<a>/<ab>/`, dove `ab` sono i primi due caratteri dell'md5 del nome, e quei due caratteri tornavano — ma i **nomi dei file** su Commons non esistevano (`International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg`, `Chinese_Space_Station.jpg`: nessuno dei due). Un `<img>` che si prende un 404 non fa rumore — non solleva niente, non scrive niente che parli del fumetto, lascia una cornice alta zero — e sullo schermo è **identico** a «per le stazioni la fotografia non c'è». Le cure sono tre e nessuna da sola basta: gli indirizzi giusti; **più di uno** per stazione, provati in fila da `satFotoGuasta` sull'`onerror` (un nome sbagliato costa la seconda candidata, non la fotografia); e quando finiscono, l'immagine di apertura della voce di Wikipedia (`fotoVoce`), che è l'unica fonte che resti giusta il giorno in cui su Commons un file viene rinominato. Se anche quella tace, la cornice si **toglie**: meglio un fumetto di sole righe che un riquadro vuoto. Prove in `scripts/prova-fumetto.js` — compresa quella che il difetto vero l'avrebbe preso: **l'md5 del nome deve tornare col percorso**, che si controlla senza rete, e la passata `PROVA_RETE=1`, che è la sola che possa dire se il file su Commons c'è davvero |
+| **Una prova del fumetto che diventa verde senza provare niente** | è la lezione di `scripts/prova-fumetto.js`, e vale per ogni prova che finga la rete: le fotografie erano servite da una sostitutiva su `**upload.wikimedia.org/**`, quindi **qualunque** indirizzo rispondeva 200 — un nome inventato e uno buono erano la stessa cosa, e la prova era verde mentre nell'app non compariva niente. Adesso il finto server ubbidisce a un regime che le prove cambiano sotto ai piedi (una candidata rotta, poi tutte, poi anche Wikipedia). Due trappole trovate lì dentro: le sostitutive vanno servite con `cache-control: no-store` (se no la prova che vuole il 404 si ritrova l'immagine buona dalla cache del browser) e fra una prova e l'altra va azzerata `#skymap-fumetto`.`dataset.chiave`, perché `skyAggiornaFumetto` — giustamente — non rifà l'HTML quando la forma non cambia |
+| **Metà di `prova-fumetto.js` non girava** | il finto satellite che la prova delle stazioni infilava in `sky.oggetti` non aveva il campo `colore`: al primo `skyDisegna` successivo `skyDisegnaAstro` moriva su `addColorStop('undefinedaa')`, e da lì in giù — l'aereo, la geometria del fumetto, la coda, i tasti, il costo della misura — **non veniva eseguito niente**. È la trappola di sempre in un'altra veste: una prova sparita non fallisce, semplicemente non compare. Adesso l'oggetto porta il suo colore e viene tolto da `sky.oggetti` a fine prova |
 | **Esc sul planetario: cosa chiude prima** | `inizializzaChiusuraSchedeConEsc()` in `ui-nuova.js` §4, elenco `chiusureInPrimoPiano`. La scheda completa sta **davanti** al fumetto, quindi il primo Esc chiude lei e rimette in scena il fumetto (`#skymap-dettaglio-indietro`), il secondo chiude anche quello (`#skymap-fumetto-chiudi`). È la regola del foglio in primo piano che quell'elenco già applicava, estesa ai due modi di guardare lo stesso oggetto |
 | **Il mirino giallo al centro del cielo** | `skyDisegnaMirino()` (fine 7.3), `SKY_MIRINO_COLORE`. È l'unica cosa gialla del planetario, e non è un vezzo: il grigio di prima si perdeva sopra al terreno o a un pianeta luminoso, mentre il giallo non appartiene a nessun astro e a nessun paesaggio — nemmeno alle cupole di luce, che sono ambra — quindi si legge come un segno dello strumento e non come una cosa che sta in cielo. Sotto ci va il contorno scuro, come per i nomi delle montagne. Il buco in mezzo esiste perché lì ci sta l'astro che si vuole guardare. È lo stesso giallo dell'indice della bussola, che è l'altro capo della stessa informazione |
 | **Le letture sopra il cielo** (che si è ridotto, e perché) | `.cielo-letture` in `index.html`: a sinistra **una parola sola** — il nome del posto, «Milano» (`#skymap-stato`, `skyAggiornaStato()`) — e a destra la bussola, che direzione e campo li disegna invece di scriverli. Tutto il resto se n'è andato a giro, ed erano risposte a domande che nessuno fa mentre guarda in su: «Nord vero», la declinazione magnetica e «bussola relativa: da calibrare» (lo dice il quadrante col suo aspetto), l'altezza e il campo in cifre (li dicono il cielo e il cono), l'etichetta «Posizione attuale» (il nome di una città dice già di essere un posto), la provenienza del dato, la precisione e il «solo qui» del luogo di sola visita — quest'ultimo adesso è il colore azzurro del nome (`.lettura-stato.altrove`). La declinazione in particolare è un numero da montatura equatoriale, non da planetario, e sta dov'è utile: nella vista Telescopio (`telDeclinazioneMagnetica()`). Niente è perso: `skyStatoEsteso()` mette tutto nel `title` della riga (che è anche quello che viene letto a voce), e per esteso quelle cose stanno nel pannello Tempo e luogo, che è da dove si cambiano. Da notare per chi ci rimette mano: `#skymap-stato` è **uscito** dall'elenco delle letture monospaziate in cima a `style.css` — il monospazio fa sembrare il nome di una città la matricola di un apparecchio |
