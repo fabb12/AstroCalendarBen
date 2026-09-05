@@ -20926,6 +20926,26 @@ function skyAvviso(chiave, testo, durataMs) {
     el.appendChild(attiva);
   }
   el.classList.toggle('hidden', !completo);
+  skyMisuraAvviso(el, completo);
+}
+
+// Quanto è alto l'avviso, scritto dove il CSS lo può leggere.
+//   Da quando l'avviso è appoggiato sul cielo invece di stare in fondo alla
+//   pagina, in basso a sinistra si contendono lo stesso angolo in tre: lui, la
+//   barra di caricamento del terreno e la carta dello spostamento. Le altre
+//   due sono ancorate a un numero scritto a mano (`--sopra-barra-tempo` più
+//   quaranta pixel), che va bene per un avviso di una riga e non per uno di
+//   tre — e su un telefono gli avvisi sono quasi sempre di tre. Il risultato è
+//   una barra stampata dentro a un riquadro ambra, cioè due messaggi
+//   illeggibili al posto di due leggibili. L'altezza vera non si può scrivere
+//   in un `calc`: si misura qui, che è il solo posto in cui l'avviso cambia.
+function skyMisuraAvviso(el, completo) {
+  const vista = document.querySelector('.vista-cielo');
+  if (!vista) return;
+  // `offsetHeight` forza l'impaginazione, ma questa funzione la chiama un
+  // gesto o un cambio di stato — non il ciclo di disegno.
+  const alta = completo ? Math.ceil(el.offsetHeight) : 0;
+  vista.style.setProperty('--alta-avviso-cielo', alta ? (alta + 8) + 'px' : '0px');
 }
 
 // Il browser non consente di cambiare direttamente l'interruttore GPS del
@@ -25409,22 +25429,114 @@ function skyGuardaVerso(verso) {
   skyCentraSu({ nome: skyNomeDirezione(verso), az: verso, alt: 25 });
 }
 
-// Apre il cielo in diretta puntato su una stazione spaziale
-window.cercaSatelliteNelCielo = (satId) => {
-  cercaNelCielo('sat-' + satId);
+// --- Dalla previsione di Stasera al planetario, puntato sulla stazione ----
+//
+// I due tasti delle stazioni («Vai al planetario» di un passaggio previsto e
+// «Dov'è ora» del riepilogo) chiedono la stessa identica cosa — apri il cielo
+// e mettici davanti la stazione — e cambia soltanto *quando*. Quindi è una
+// funzione sola, e le quattro cose che prima non faceva sono le quattro cose
+// che rendevano il tasto inutile:
+//
+//   1. **L'ora, e l'ordine in cui si scrive.** L'offset si impostava *prima*
+//      di aprire la vista, e `mostraVista('cielo')` arrivando da un'altra
+//      vista lo **azzera** — di proposito: entrare nel planetario vuol dire
+//      guardare adesso, e un istante congelato che ricompare ore dopo sarebbe
+//      un difetto. Solo che qui l'istante è tutto il punto del tasto: da
+//      Stasera si arrivava sistematicamente sul cielo di adesso, cioè quasi
+//      sempre di giorno, senza nessuna stazione da nessuna parte. La vista si
+//      apre quindi per prima e l'orologio si sposta dopo, che è già l'ordine
+//      di `apriEventoNelPlanetario`.
+//   2. **Le posizioni.** Spostato l'orologio, `sky.oggetti` resta quello
+//      calcolato per l'ora di prima: `skyImpostaTarget` ci legge dentro e
+//      centrerebbe la posizione vecchia. Per un pianeta non si vedrebbe, per
+//      una stazione sì — fa **un grado al secondo**. Si rifanno subito.
+//   3. **Il telefono.** Con «Segui il telefono» acceso la direzione la decide
+//      la bussola e nessun centraggio vale niente: si arrivava su un cielo
+//      puntato dove si teneva il telefono, con la stazione da qualche altra
+//      parte. Qui la vista si sgancia, e lo si dice.
+//   4. **L'inseguimento.** Una stazione attraversa il cielo in cinque minuti:
+//      centrata una volta e lasciata lì, scivola fuori dal riquadro mentre la
+//      si guarda — e col passo del tempo o col playback sparisce in un
+//      attimo. Si accende quindi da sé, come per gli eventi del calendario.
+function skyPuntaStazione(satId, istanteMs) {
+  const sat = satelliteDaId(satId);
+  if (!sat) return;
+  const id = 'sat-' + satId;
+  // `Number(null)` vale **zero**, non NaN: chiedendo a `Number.isFinite` se
+  // c'è un istante, «Dov'è ora» rispondeva di sì e si portava l'orologio al
+  // primo gennaio 1970. L'assenza si guarda prima della conversione.
+  const quando = istanteMs == null ? NaN : Number(istanteMs);
+  const alPassaggio = Number.isFinite(quando);
+
+  mostraVista('cielo');
+  skyMostraGruppo('');
+
+  // 1. Il tempo, **dopo** aver aperto la vista (che lo azzera) e prima di
+  //    tutto il resto (che da lui dipende). Fermare il playback prima di
+  //    spostarsi serve a non vedere l'istante appena raggiunto scappare via.
+  skyFermaPlayback();
+  if (alPassaggio) skyImpostaOffsetTempo((quando - Date.now()) / 1000);
+  else skyImpostaOffsetTempo(0, { reale: true });
+  skyAggiornaOggetti(true);
+
+  // 2. I filtri: una stazione spenta da un filtro non si trova nemmeno
+  //    seguendo la freccia. La traccia dice da dove arriva e dove va, che per
+  //    un passaggio è metà di quello che si è venuti a sapere.
+  sky.mostraSatelliti = true;
+  sky.mostraTraccia = true;
+
+  // 3. La mappa dev'essere spostabile, se no l'inseguimento non ha niente da
+  //    guidare (vedi `skyAlternaInseguimento`, che lo dice a chi lo accende
+  //    a mano). La funzione scrive da sé l'avviso che spiega il gesto.
+  if (skyUsaSensori()) skyAlternaSeguiTelefono();
+
+  // 4. Il bersaglio e poi l'inseguimento, in quest'ordine: `skyImpostaTarget`
+  //    spegne l'inseguimento di prima — è la regola giusta per una scelta
+  //    qualunque — quindi accenderlo prima non servirebbe a niente.
+  skyImpostaTarget(id, { mantieni: true });
+  const o = skyVoceDiId(id);
+  skyAssicuraVisibile(o);
+  skyAggiornaTastiFiltri();
+  sky.eventoInseguito = null;
+  sky.inseguimento = true;
+  skyAggiornaTastoInsegui();
+  if (o && !skyUsaSensori()) {
+    skyFermaMovimenti();
+    skyCentraSu(o, { subito: true });
+  }
+
+  // 5. I dati orbitali. Di norma ci sono già — il tasto esiste perché un
+  //    passaggio è stato calcolato, e per calcolarlo ci volevano — ma chi
+  //    arriva da un link condiviso o da un salvataggio vecchio no: allora la
+  //    stazione compare fra qualche secondo, e `sky.centraQuandoPronto` più
+  //    l'inseguimento acceso la portano al centro da soli.
   satPrecaricaTle();
-};
+
+  skyAvviso('stazione', skyTestoPuntaStazione(sat, o, alPassaggio), 12000);
+}
+
+// Il cielo mostrato non è quello di adesso, o lo è: in tutt'e due i casi va
+// detto, se no si leggono posizioni giuste credendole sbagliate.
+function skyTestoPuntaStazione(sat, o, alPassaggio) {
+  const dati = { nome: sat.nome };
+  if (!o || typeof o.az !== 'number') return astroI18n.t('stazione.senzaDati', dati);
+  dati.dove = skyNomeDirezione(o.az);
+  dati.alt = Math.round(o.alt);
+  if (o.alt < 0) return astroI18n.t('stazione.sottoOrizzonte', dati);
+  dati.quando = dataOraBreve(skyAdesso());
+  return astroI18n.t(alPassaggio ? 'stazione.passaggio' : 'stazione.adesso', dati);
+}
+
+// Apre il cielo in diretta puntato su una stazione spaziale
+window.cercaSatelliteNelCielo = (satId) => skyPuntaStazione(satId, null);
 
 // Ponte dalla previsione di Stasera al planetario: il culmine è il punto più
-// alto e quindi quello utile da osservare. Prima si imposta l'istante esatto,
-// poi si apre la vista e si centra la stazione calcolata per quell'istante.
+// alto e quindi quello utile da osservare.
 window.vaiAlPassaggioSatellite = (satId, istanteMs) => {
-  const quando = Number(istanteMs);
-  if (!satelliteDaId(satId) || !Number.isFinite(quando)) return;
-  skyFermaPlayback();
-  skyImpostaOffsetTempo((quando - Date.now()) / 1000);
-  cercaNelCielo('sat-' + satId);
-  satPrecaricaTle();
+  // Anche qui l'assenza si guarda prima della conversione: `Number(null)` è
+  // zero, e passerebbe per un istante buono (vedi `skyPuntaStazione`).
+  if (istanteMs == null || !Number.isFinite(Number(istanteMs))) return;
+  skyPuntaStazione(satId, Number(istanteMs));
 };
 
 // =====================================================================

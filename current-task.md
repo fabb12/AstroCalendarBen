@@ -8,116 +8,68 @@ Tutto il resto è fatto, provato e dentro al tetto.
 
 ## Ultimo intervento completato
 
-**La Didattica e il Telescopio tradotti per intero, i mesi del calendario, il
-Diario, i moduli del paesaggio e i nomi delle 88 costellazioni.** Richiesta:
-«completa la traduzione in inglese, controlla bene la parte didattica e
-telescopio, traduci ogni voce, controlla anche i mesi nel calendario».
+**Il planetario si prende tutto lo schermo, e il tasto delle stazioni porta
+davvero al passaggio.** Richiesta: «lo schermo del planetario deve occupare il
+massimo spazio senza lasciare spazi vuoti soprattutto negli schermi piccoli,
+mantenendo comunque il menu; e nella sezione Stasera, il tasto planetario delle
+previsioni delle stazioni deve mostrare il tempo e la posizione giusta e
+abilitare automaticamente il tracking».
 
-### 1. I mesi del calendario — `app.js`
+### 1. La fascia nera sotto al cielo — `style.css`
 
-`NOMI_MESI` era già un array di getter su `Intl`, ma le dodici `<option>` del
-selettore del mese si scrivevano **una volta sola** alla costruzione: dopo un
-cambio lingua restavano «gennaio, febbraio…» dentro a un'interfaccia inglese.
-Adesso c'è `riempiNomiMesi(selMese)`, chiamata da `inizializzaSelettoriMese()`
-*e* da `sincronizzaSelettoriMese()` (che gira a ogni cambio lingua). È
-**idempotente** — se il primo e l'ultimo nome sono già quelli giusti non tocca
-niente — perché riscrivere l'`innerHTML` di un `<select>` mentre uno lo sta
-usando gli porta via il fuoco.
+La catena delle altezze del planetario è sei anelli (corpo → main → vista →
+scena → riquadro → tela) e basta che **uno** sia alto quanto il suo contenuto
+perché tutti quelli dopo perdano l'altezza definita: una `height: 100%` di
+un'altezza che non c'è non vale niente, e nessuno lo dice. L'anello rotto era
+`.vista-cielo`, una griglia con `align-content: start`. Misurato: su un
+telefono da 360×640 il cielo era alto **383 px** dove ce n'erano 529 liberi —
+centoquarantasei pixel di niente appena sopra alla barra della navigazione — e
+su un tablet 872 su 1067. Adesso la riga si stira (`minmax(0, 1fr)`) e ogni
+anello dichiara il suo `min-height: 0`. Il cielo passa a 526 px sul telefono,
+730 su un 390×844, 1067 sul tablet: zero spazi vuoti, testata e menu al loro
+posto. Di rimbalzo è tornata verde una prova di `prova-fumetto.js` a 360×640,
+che sullo spazio in meno falliva.
 
-FullCalendar invece i nomi dei mesi e dei giorni li scrive da sé, dal suo
-`locale`: li rimette a posto `calendarioCambiaLingua()`, che era già lì.
+Con lo spazio recuperato è saltato fuori l'angolo in basso a sinistra, dove da
+quando l'avviso sta sul cielo se lo contendono in tre: l'avviso, la barra del
+terreno e la carta dello spostamento. Le ultime due erano ancorate a un numero
+scritto a mano (`--sopra-barra-tempo` più quaranta pixel), buono per un avviso
+di una riga e non per uno di tre — e su un telefono sono quasi sempre di tre:
+la barra finiva stampata dentro al riquadro ambra. L'altezza vera la scrive
+adesso `skyMisuraAvviso` in `--alta-avviso-cielo`, e il CSS la somma.
 
-### 2. `telescopio.js` — da zero a completo
+### 2. «Vai al planetario» di una stazione — `app.js`
 
-~430 chiavi `tel.*`. Le tabelle passano dagli aiutanti di `app.js`
-(`conNomeDaId`, `conTestiDaId`, `conNomeTradotto`): `TEL_CERCATORI`,
-`TEL_TIPI`, `TEL_CIELI`, `TEL_PANNELLI`, `TEL_PASSI_COLLIMAZIONE`,
-`TEL_FIGURE_TEST`, `TEL_FRAZIONI_CAMPO`, i tre metodi di puntamento. Convertiti
-tutti e cinque i pannelli, l'allineamento per deriva, il radar push-to, i salti
-di stella, i cerchi graduati, l'anteprima dell'oculare e ogni `fillText` delle
-tele.
+Quattro difetti, un tasto solo. Il grosso era l'**ordine**: l'orologio si
+spostava *prima* di `cercaNelCielo`, e `mostraVista('cielo')`, arrivando da
+un'altra vista, lo **azzera** di proposito — misurato, da Stasera si arrivava
+sistematicamente sul cielo di adesso, cioè quasi sempre di giorno e senza
+nessuna stazione. Poi: le posizioni non si rifacevano per l'ora nuova (una
+stazione fa **un grado al secondo**), con «Segui il telefono» acceso nessun
+centraggio valeva, e l'inseguimento non si accendeva — una stazione attraversa
+il cielo in cinque minuti e centrata una volta scivola fuori mentre la si
+guarda. I due tasti («Vai al planetario» e «Dov'è ora») sono adesso una
+funzione sola, `skyPuntaStazione`, e cambia soltanto *quando*. Dentro c'è anche
+la trappola di `Number(null)`, che vale **zero** e non NaN: chiedendo a
+`Number.isFinite` se c'era un istante, «Dov'è ora» rispondeva di sì e portava
+l'orologio al 1970.
 
-Due cose da sapere:
+Quattro chiavi nuove nei due dizionari (`stazione.*`): l'audit resta a 364.
 
-- **Il nome di un oculare non si salva più tradotto.** I preset scrivevano
-  `nome: '20 mm Plössl (in dotazione)'` dentro a `localStorage`: quella frase
-  restava italiana per sempre. Adesso il preset porta `dotazione: true` e il
-  nome lo compone `telNomeOculare(oc)` al momento di scriverlo.
-- **`conNomeDaId` saltava `id: 0`.** La verità semplice (`if (voce.id)`)
-  lasciava non tradotta la prima voce di `TEL_FRAZIONI_CAMPO`, che parte da
-  zero — un difetto su otto, invisibile. Adesso è `!= null`, in
-  `conNomeDaId` e in `conTestiDaId`.
-- **La guardia di `telCostruisciVista`** era `dataset.pronto`: la striscia
-  delle cinque linguette non si riscriveva mai dopo il primo disegno. Adesso è
-  `dataset.lingua`.
+### 3. Le prove
 
-### 3. `didattica.js` — da zero a completo
+`scripts/prova-stazioni.js`, nuovo: apre l'app in un Chromium, mette i dati
+orbitali a mano (Celestrak non si raggiunge dalle prove), prende un passaggio
+vero dai conti dell'app e controlla che il tasto porti l'orologio sul culmine,
+punti la mappa dove sarà la stazione **a quell'istante** (non adesso), accenda
+l'inseguimento e lo tenga un minuto dopo, che «Dov'è ora» torni al tempo reale
+e che con la bussola accesa la vista si sganci. Parte da **Stasera** di
+proposito: provandolo col planetario già davanti la riga che azzerava
+l'orologio non gira, e la prova diventerebbe cieca proprio sul difetto che deve
+prendere. Sul codice di prima è rossa in nove punti.
 
-~460 chiavi `did.*`, otto banchi. La scorciatoia si chiama **`testoDi`** e non
-`t` né `tr`: tutt'e due quei nomi sono già presi da `const` locali in questo
-file (`const t = didTela(...)`, `const t = Astronomy.MakeTime(...)`,
-`const tr = fionda.traiettoria`), e una `const` che ombreggia una funzione nello
-stesso blocco non dà un nome sbagliato — dà un ReferenceError da zona morta.
-
-- `laboratorio(def)` traduce da sé `chip`/`occhiello`/`titolo`/`sommario` dei
-  banchi (`did.lab.<id>.<campo>`), quindi nessuno degli otto deve saperlo.
-- `CORPI` e `FIONDA_PIANETI` prendono il nome da `nomeCorpo(id)`, la tabella
-  unica dell'applicazione: erano la settima e l'ottava copia, ed è così che la
-  Didattica diceva «Marte» mentre l'agenda accanto diceva «Mars». `muTesto` è
-  diventato un getter, perché «1,26687 × 10⁸» ha il separatore della lingua.
-- Le quaranta tappe delle Voyager, i cinque quadri e le quattro notti del banco
-  delle aurore passano da `testoDaChiave` in un ciclo.
-- `MESI`/`MESI_BREVI` sono array di getter su `Intl` come in `app.js`; `num()`
-  passa da `astroI18n.numero`.
-- **`didRidisegnaPerLingua()`** (nuova, chiamata da `ridisegnaTuttoPerLingua`):
-  il banco è composto tutto in JavaScript, quindi si rifà da capo. Rimette il
-  banco che era aperto, chiude prima lo schermo intero e richiama `entra()`.
-  `didCostruisci` adesso aggancia l'ascoltatore delle linguette una volta sola
-  (`dataset.collegato`), se no ogni ridisegno ne appendeva un altro.
-- **`verifica.html` carica `didattica.js` senza `app.js`**: gli aiutanti delle
-  tabelle passano da tre wrapper guardati (`nomiDaId`, `nomiTabella`,
-  `testiTabella`, `nomeDi`). Senza, un `ReferenceError` alla prima riga si
-  portava via `window.didProve` e con lui i §12 e §17, in silenzio.
-
-### 4. Il Diario, e i moduli del planetario
-
-- **Diario** (`app.js` §15): le tre schede di riepilogo, l'elenco vuoto, i dieci
-  traguardi (`traguardo.*` via `conNomeDaId`/`conTestiDaId`). Il traguardo delle
-  quattro fasi cercava «Luna Piena» **dentro al titolo congelato** della voce:
-  con l'app in inglese non scattava più, cioè si rimangiava un traguardo già
-  preso. Adesso il diario salva anche la **chiave** dell'evento
-  (`fase.2`, che non dipende dalla lingua) e per le voci vecchie c'è
-  `diarioEDiFase`, che confronta con `astroI18n.tutteLeVersioni('fase.N.titolo')`
-  — un'aggiunta al gestore (`i18n.js`), pensata per i testi *congelati* e non
-  per comporne di nuovi.
-- **`terreno.js`** (48 → 0): la riga di stato del paesaggio per intero — il
-  profilo, le luci dei paesi, le vette, i laghi e i fiumi, e i guasti di
-  Overpass. I nomi dei quattro tasti li legge adesso `terrenoEtichettaTasto`
-  dalla **stessa chiave** che `index.html` porta con `data-i18n`, se no il nome
-  di un tasto avrebbe due sorgenti.
-- **`rilievo.js`**, **`aurora-polare.js`**, **`aerei.js`**,
-  **`miglior-posto.js`** (81 in tutto → 0).
-- **`costellazioni.js`** (20 → 0) e **i nomi delle 88 figure IAU**. I nomi
-  stanno in `dati-costellazioni.js`, che è *generato*: si traducono in
-  `costNomeFigura(sigla, ripiego)` con la sigla per chiave (`cost.nome.Ori`).
-  La funzione è globale perché la legge anche `catalogo.js`, che scrive i nomi
-  sopra le figure nel planetario — e lì il nome è diventato un **getter**,
-  perché `cat.figure` si costruisce una volta sola all'apertura. L'ordine
-  alfabetico dell'atlante usa il locale di adesso.
-
-### 5. Le prove
-
-`scripts/prova-lingua.js` non apriva la **Didattica** e apriva del Telescopio
-il solo pannello «Strumento»: il conto di quella vista era un quinto della
-vista. Adesso il ciclo apre gli otto banchi e i cinque pannelli e tiene il conto
-**peggiore**. Da lì è saltato fuori che, siccome la sezione delle prestazioni
-lascia aperti tutti i modali, la copertura misura anche l'atlante — che infatti
-aveva ottantotto nomi italiani.
-
-Risultati: `prova-i18n` verde, `prova-lingua` verde, audit 364 (era 621).
-
-`scripts/i18n-tetto.json` scende a **364** e le viste a 0 tranne telescopio 4 e
-didattica 1, che sono scritti nel campo `_residui` del file con il loro perché.
+`prova-nel-browser.js` e `prova-fumetto.js`: nessuna regressione (le poche
+rosse sono le stesse di prima, misurate a parte sul codice pulito).
 
 ## Cosa resta
 
