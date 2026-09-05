@@ -290,6 +290,13 @@ const TERRENO_MARE = 0, TERRENO_PIANURA = 1, TERRENO_COLLINA = 2, TERRENO_MONTAG
 // 2. LO STATO
 // =====================================================================
 
+/* La scorciatoia per leggere una frase dal dizionario, col prefisso di
+ * questo modulo. */
+function terT(chiave, valori) {
+  return (typeof astroI18n === 'object' && typeof astroI18n.t === 'function')
+    ? astroI18n.t('terreno.' + chiave, valori) : chiave;
+}
+
 const terreno = {
   stato: 'niente',        // niente | in-corso | pronto | fallito | spento
   lat: null,
@@ -1723,7 +1730,7 @@ async function terrenoCostruisci(lat, lon, mostra, gia) {
   }
 
   // Niente di niente: allora è un guasto vero, e si dice.
-  if (!avute.length) throw guaio || new Error('nessuna quota è arrivata');
+  if (!avute.length) throw guaio || new Error(terT('nessunaQuota'));
   return { dati: terrenoMonta(grezze, avute, quotaCasa), guaio };
 }
 
@@ -2484,11 +2491,8 @@ function terrenoMotivoGuaio(e) {
   // completare — quello resta al suo posto e l'orizzonte è vero lo stesso.
   // Dire «resta l'orizzonte disegnato» mentre sullo schermo ci sono le
   // colline vere è il genere di riga che fa dubitare di tutto il resto.
-  const resta = terreno.profilo
-    ? 'intanto resta l\'orizzonte che ho già, un po\' meno fine.'
-    : 'intanto resta l\'orizzonte disegnato.';
-  return `Non sono riuscito a prendere la forma del terreno: ${che}. ` +
-    `Riprovo da solo fra poco; ${resta}`;
+  const resta = terT(terreno.profilo ? 'restaQuelloCheHo' : 'restaDisegnato');
+  return terT('nonRiuscito', { che, resta });
 }
 
 // Quando riprovare da soli, dopo un buco nell'acqua. Sempre più distanti:
@@ -2796,49 +2800,52 @@ function terrenoTesto() {
     const dove = terrenoFonteOra > 0 ? ` (via ${terrenoFonte().nome})` : '';
     // Dopo il giro grosso l'orizzonte disegnato è già quello vero: va detto,
     // se no chi guarda crede che quello che vede sia ancora la finzione.
-    if (terreno.profilo) return `L'orizzonte qui sopra è già quello vero: lo sto affinando${q}${dove}…`;
-    return `Sto misurando com'è fatto il terreno attorno a te${q}${dove}…`;
+    if (terreno.profilo) return terT('affino', { q, dove });
+    return terT('stoMisurandoIlTerreno', { q, dove });
   }
   if (terreno.stato === 'fallito') return terreno.motivo;
 
   const r = terrenoRiassunto();
-  if (!r) return 'Apri il planetario da un posto con la rete e prendo la forma vera del terreno qui attorno.';
+  if (!r) return terT('serveRete');
 
-  const quota = typeof r.quota === 'number' ? `Sei a ${Math.round(r.quota)} m. ` : '';
+  const quota = typeof r.quota === 'number'
+    ? terT('seiA', { m: astroI18n.numero(Math.round(r.quota)) }) + ' ' : '';
   // Quando manca qualche direzione lo si dice, ma in coda e senza allarme:
   // il terreno c'è ed è quello vero, solo un po' meno fine da qualche parte.
   const meta = terreno.misurate && terreno.misurate < TERRENO_DIREZIONI
-    ? ` (${TERRENO_DIREZIONI - terreno.misurate} direzioni su ${TERRENO_DIREZIONI} sono stimate: la rete non le ha portate tutte, ` +
-      'e le chiedo ancora ogni tanto finché non arrivano)'
+    ? ' ' + terT('direzioniStimate',
+        { n: TERRENO_DIREZIONI - terreno.misurate, tot: TERRENO_DIREZIONI })
     : '';
 
   // Com'è fatto il giro. Non «l'orizzonte è alto 3,4°» — che è vero e non
   // dice niente — ma le parole con cui uno descriverebbe il posto in cui
   // vive: il mare da una parte, la montagna dall'altra, la pianura in mezzo.
-  const parole = {
-    mare: 'il mare', pianura: 'pianura', collina: 'colline', montagna: 'montagne'
-  };
   const pezzi = r.paesaggi
     .filter(p => p.quota >= 0.08)
     .map(p => {
-      const q = p.quota >= 0.75 ? 'quasi tutt\'intorno'
-        : p.quota >= 0.45 ? 'per metà orizzonte'
-        : p.quota >= 0.22 ? `verso ${p.direzione}`
-        : `un tratto verso ${p.direzione}`;
-      return `${parole[p.tipo] || p.tipo} ${q}`;
+      const q = p.quota >= 0.75 ? terT('quasiTuttIntorno')
+        : p.quota >= 0.45 ? terT('perMetaOrizzonte')
+        : p.quota >= 0.22 ? terT('verso', { direzione: p.direzione })
+        : terT('unTrattoVerso', { direzione: p.direzione });
+      return terT('paesaggio.' + p.tipo) + ' ' + q;
     });
-  const paesaggio = pezzi.length ? `Attorno a te: ${pezzi.join(', ')}. ` : '';
+  const paesaggio = pezzi.length ? terT('attornoATe', { pezzi: pezzi.join(', ') }) + ' ' : '';
 
-  if (r.alto < 0.35) {
-    return quota + paesaggio + 'L\'orizzonte è libero in tutte le direzioni: non c\'è niente che copra.' + meta;
-  }
+  if (r.alto < 0.35) return quota + paesaggio + terT('orizzonteLibero') + meta;
+
   const cosa = r.tipoPiuAlto && r.tipoPiuAlto !== 'pianura' && r.tipoPiuAlto !== 'mare'
-    ? ` (${r.tipoPiuAlto === 'montagna' ? 'la montagna' : 'la collina'})` : '';
+    ? ' (' + terT(r.tipoPiuAlto === 'montagna' ? 'laMontagna' : 'laCollina') + ')' : '';
   return quota + paesaggio +
-    `Il punto più alto è a ${r.alto.toFixed(1)}° verso ${r.direzione}${cosa}. ` +
-    (r.basso < 0.35
-      ? 'Da qualche parte l\'orizzonte è invece completamente libero.'
-      : `Il più basso è a ${r.basso.toFixed(1)}°.`) + meta;
+    terT('puntoPiuAlto', { gradi: astroI18n.numero(r.alto, 1), direzione: r.direzione, cosa }) + ' ' +
+    (r.basso < 0.35 ? terT('altroveLibero')
+      : terT('piuBasso', { gradi: astroI18n.numero(r.basso, 1) })) + meta;
+}
+
+/* Il nome di un tasto del paesaggio, coi puntini se sta scaricando. */
+function terrenoEtichettaTasto(chiave, inCorso) {
+  const nome = (typeof astroI18n === 'object' && typeof astroI18n.t === 'function')
+    ? astroI18n.t(chiave) : chiave;
+  return inCorso ? nome + '…' : nome;
 }
 
 function terrenoAggiornaPannello() {
@@ -2847,7 +2854,11 @@ function terrenoAggiornaPannello() {
     const acceso = terreno.acceso;
     tasto.classList.toggle('attiva', acceso);
     tasto.setAttribute('aria-pressed', acceso ? 'true' : 'false');
-    tasto.textContent = terreno.stato === 'in-corso' ? 'Terreno vero…' : 'Terreno vero';
+    // L'etichetta è la stessa che `index.html` porta con `data-i18n`: qui si
+    // rilegge quella chiave invece di scriverne una seconda, se no il nome
+    // del tasto avrebbe due sorgenti e il giorno che divergono non lo dice
+    // nessuno. In corso si aggiungono i puntini, e basta.
+    tasto.textContent = terrenoEtichettaTasto('ui.terreno-vero', terreno.stato === 'in-corso');
   }
   const nota = document.getElementById('skymap-terreno-nota');
   if (nota) {
@@ -3432,16 +3443,16 @@ let overpassIstanzaOra = 0;
 // utile fra quelle che sappiamo, perché l'abort è l'ultimo anello, non la
 // causa. Qui si traduce, e la causa la si tiene da parte (`overpassPeso`).
 function overpassMotivo(e) {
-  if (!e) return 'OpenStreetMap non ha risposto';
-  if (e.name === 'AbortError') return 'OpenStreetMap non ha risposto in tempo';
+  if (!e) return terT('osmNonHaRisposto');
+  if (e.name === 'AbortError') return terT('osmFuoriTempo');
   const m = e.message || '';
   // `TypeError: Failed to fetch` è quello che il browser dice sia quando non
   // c'è rete, sia quando la risposta arriva senza intestazione CORS. Dal
   // codice le due non si distinguono, ma il consiglio è lo stesso.
   if (e.name === 'TypeError' || /failed to fetch|networkerror|load failed/i.test(m)) {
-    return 'non riesco a raggiungere OpenStreetMap';
+    return terT('osmIrraggiungibile');
   }
-  return m || 'OpenStreetMap non ha risposto';
+  return m || terT('osmNonHaRisposto');
 }
 
 // Quale dei guasti raccontare, quando falliscono tutti.
@@ -3943,8 +3954,8 @@ function cittaAlterna() {
 }
 
 function cittaTesto() {
-  if (!citta.acceso) return 'Luci delle città spente: orizzonte nero, come da un deserto.';
-  if (citta.stato === 'in-corso') return 'Sto cercando i paesi qui attorno…';
+  if (!citta.acceso) return terT('cittaSpente');
+  if (citta.stato === 'in-corso') return terT('cittaCerco');
   if (citta.stato === 'fallito') return citta.motivo;
   if (citta.stato !== 'pronto' || !citta.elenco.length) return '';
 
@@ -3953,12 +3964,11 @@ function cittaTesto() {
   // La supplenza va detta: un orizzonte con tre capoluoghi e nessun paese
   // sembra un orizzonte, e chi lo guarda non ha modo di sapere che i nomi
   // veri non sono mai arrivati.
-  const nota = citta.fonte === 'interno'
-    ? ' Per ora però ci sono solo le città grandi: OpenStreetMap non ha risposto, si riprova da sé fra qualche minuto.'
-    : '';
-  return `Sull'orizzonte ci sono le luci di ${citta.elenco.length} centri abitati: ` +
-    `il chiarore più forte è quello di ${prima.nome}, a ${prima.km.toFixed(0)} km verso ${dove}. ` +
-    'È la direzione in cui conviene NON cercare le cose deboli.' + nota;
+  const nota = citta.fonte === 'interno' ? ' ' + terT('cittaSupplenza') : '';
+  return terT('cittaTrovate', {
+    n: citta.elenco.length, nome: prima.nome,
+    km: astroI18n.numero(Math.round(prima.km)), dove
+  }) + nota;
 }
 
 function cittaAggiornaTasto() {
@@ -3966,7 +3976,7 @@ function cittaAggiornaTasto() {
   if (!tasto) return;
   tasto.classList.toggle('attiva', citta.acceso);
   tasto.setAttribute('aria-pressed', citta.acceso ? 'true' : 'false');
-  tasto.textContent = citta.stato === 'in-corso' ? 'Luci delle città…' : 'Luci delle città';
+  tasto.textContent = terrenoEtichettaTasto('ui.luci-delle-citta', citta.stato === 'in-corso');
 }
 
 
@@ -4552,9 +4562,9 @@ function cimeAlterna() {
 }
 
 function cimeTesto() {
-  if (!cime.acceso) return 'Nomi delle montagne spenti.';
-  if (cime.stato === 'niente') return `Accesi: cerco le vette entro ${raggioCime()} km…`;
-  if (cime.stato === 'in-corso') return 'Sto cercando le montagne qui attorno…';
+  if (!cime.acceso) return terT('cimeSpente');
+  if (cime.stato === 'niente') return terT('cimeAccesi', { km: raggioCime() });
+  if (cime.stato === 'in-corso') return terT('cimeCerco');
   if (cime.stato === 'fallito') return cime.motivo;
   if (cime.stato !== 'pronto') return '';
   if (cime.motivo) return cime.motivo;
@@ -4567,16 +4577,20 @@ function cimeTesto() {
   // come se lo fosse sarebbe una bugia che dura due secondi.
   if (!viste.length) {
     if (terrenoInArrivo()) {
-      return `Ho ${cime.elenco.length} vette qui attorno: aspetto la forma del terreno per sapere quali si vedono.`;
+      return terT('cimeAspettoTerreno', { n: cime.elenco.length });
     }
     return cime.elenco.length
-      ? `Le ${cime.elenco.length} vette entro ${raggioCime()} km restano tutte dietro alla prima cresta: da qui non se ne vede nessuna.`
-      : `Nessuna vetta con un nome entro ${raggioCime()} km: nelle Impostazioni puoi allargare la ricerca.`;
+      ? terT('cimeDietroCresta', { n: cime.elenco.length, km: raggioCime() })
+      : terT('cimeNessuna', { km: raggioCime() });
   }
   const prima = viste[0];
   const dove = typeof skyNomeDirezione === 'function' ? skyNomeDirezione(prima.az) : '';
-  return `Sopra l'orizzonte si riconoscono ${viste.length} vette entro ${raggioCime()} km: la più imponente è ${prima.nome} ` +
-    `(${Math.round(prima.quota)} m), a ${prima.km.toFixed(0)} km verso ${dove}, alta ${prima.alt.toFixed(1)}°.`;
+  return terT('cimeViste', {
+    n: viste.length, raggio: raggioCime(), nome: prima.nome,
+    quota: astroI18n.numero(Math.round(prima.quota)),
+    km: astroI18n.numero(Math.round(prima.km)), dove,
+    alt: astroI18n.numero(prima.alt, 1)
+  });
 }
 
 function cimeAggiornaTasto() {
@@ -4584,7 +4598,7 @@ function cimeAggiornaTasto() {
   if (!tasto) return;
   tasto.classList.toggle('attiva', cime.acceso);
   tasto.setAttribute('aria-pressed', cime.acceso ? 'true' : 'false');
-  tasto.textContent = cime.stato === 'in-corso' ? 'Nomi dei monti…' : 'Nomi dei monti';
+  tasto.textContent = terrenoEtichettaTasto('ui.nomi-dei-monti', cime.stato === 'in-corso');
 }
 
 
@@ -6609,19 +6623,13 @@ function acqueAlterna() {
 }
 
 function acqueTesto() {
-  if (!acque.acceso) return 'Laghi e fiumi spenti.';
-  if (acque.stato === 'in-corso') return 'Sto cercando laghi e fiumi qui attorno…';
-  if (acque.stato === 'fallito') {
-    return `Laghi e fiumi: ${acque.motivo}. L'orizzonte resta quello di prima.`;
-  }
+  if (!acque.acceso) return terT('acqueSpente');
+  if (acque.stato === 'in-corso') return terT('acqueCerco');
+  if (acque.stato === 'fallito') return terT('acqueFallito', { motivo: acque.motivo });
   if (acque.stato !== 'pronto') return '';
-  if (!acque.quanti) return `Nessun lago né fiume entro ${raggioAcque()} km.`;
+  if (!acque.quanti) return terT('acqueNessuna', { km: raggioAcque() });
   const viste = acqueVisibili();
-  if (!viste) {
-    return terrenoInArrivo()
-      ? 'Ho trovato dell\'acqua qui attorno: aspetto la forma del terreno per sapere quale se ne vede.'
-      : '';
-  }
+  if (!viste) return terrenoInArrivo() ? terT('acqueAspettoTerreno') : '';
   let direzioni = 0;
   for (const v of viste) if (v) direzioni++;
   if (!direzioni) {
@@ -6631,17 +6639,13 @@ function acqueTesto() {
     // mai scaricata» sono la stessa identica immagine.
     const c = acque.conto;
     if (c && c.bande) {
-      if (c.sopraLocchio >= c.bande / 2) {
-        return `L'acqua qui attorno c'è, ma risulta più in alto di chi guarda: ` +
-          `la quota del terreno non torna, e finché non torna non la disegno.`;
-      }
-      return `L'acqua qui attorno c'è (${c.bande} tratti), ma il terreno davanti la copre tutta: ` +
-        `da qui non se ne vede.`;
+      if (c.sopraLocchio >= c.bande / 2) return terT('acqueSopraLocchio');
+      return terT('acqueCoperta', { n: c.bande });
     }
-    return `L'acqua qui attorno c'è, ma resta tutta dietro alle creste: da qui non se ne vede.`;
+    return terT('acqueDietroCreste');
   }
   const nomi = acque.nomi.length ? ` (${acque.nomi.join(', ')})` : '';
-  return `Si vede dell'acqua in ${Math.round(direzioni * ACQUE_PASSO_AZ)}° di orizzonte${nomi}.`;
+  return terT('acqueViste', { gradi: Math.round(direzioni * ACQUE_PASSO_AZ), nomi });
 }
 
 function acqueAggiornaTasto() {
@@ -6649,5 +6653,5 @@ function acqueAggiornaTasto() {
   if (!tasto) return;
   tasto.classList.toggle('attiva', acque.acceso);
   tasto.setAttribute('aria-pressed', acque.acceso ? 'true' : 'false');
-  tasto.textContent = acque.stato === 'in-corso' ? 'Laghi e fiumi…' : 'Laghi e fiumi';
+  tasto.textContent = terrenoEtichettaTasto('ui.laghi-e-fiumi', acque.stato === 'in-corso');
 }

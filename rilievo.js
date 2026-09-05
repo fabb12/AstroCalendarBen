@@ -2386,31 +2386,34 @@ function rilAggiornaTasto() {
   if (!tasto) return;
   tasto.classList.toggle('attiva', rilievo.acceso);
   tasto.setAttribute('aria-pressed', rilievo.acceso ? 'true' : 'false');
-  tasto.textContent = rilievo.stato === 'in-corso' ? 'Rilievo 3D…' : 'Rilievo 3D';
+  // La stessa etichetta che `index.html` porta con `data-i18n`, coi puntini
+  // quando sta scaricando: una sola sorgente per il nome del tasto.
+  tasto.textContent = astroI18n.t('rilievo.tasto') + (rilievo.stato === 'in-corso' ? '…' : '');
 }
 
 function rilTesto() {
+  const T = (k, v) => astroI18n.t('rilievo.' + k, v);
   if (!rilievo.acceso) return '';
   if (rilievo.stato === 'in-corso') {
     return rilievo.tessereChieste
-      ? `Rilievo: ${rilievo.tessereAvute}/${rilievo.tessereChieste} tessere.`
-      : 'Rilievo: sto misurando la forma del terreno.';
+      ? T('tessere', { avute: rilievo.tessereAvute, chieste: rilievo.tessereChieste })
+      : T('misuro');
   }
-  if (rilievo.stato === 'guaio') return `Rilievo: ${rilievo.motivo}.`;
+  if (rilievo.stato === 'guaio') return T('guaio', { motivo: rilievo.motivo });
   if (rilievo.stato === 'pronto' && rilPronto()) {
     const vive = [...rilTessere.values()].filter(Boolean).length;
-    if (!vive) return 'Rilievo: dalla griglia grossa, senza le tessere fini.';
-    const passo = Math.round(rilMetriPerPixel(rilievo.lat || 45, RIL_ZOOM));
-    const riga = `Rilievo: ${passo} m di passo entro ${RIL_RAGGIO_KM} km (${vive} tessere)`;
+    if (!vive) return T('grigliaGrossa');
+    const riga = T('passo', {
+      passo: Math.round(rilMetriPerPixel(rilievo.lat || 45, RIL_ZOOM)),
+      km: RIL_RAGGIO_KM, tessere: vive
+    });
     // Una tessera che manca non deve restare un'assenza muta: quel settore è
     // disegnato dalla griglia grossa, cioè a facce larghe, e sullo schermo è
     // indistinguibile da un terreno liscio per davvero.
     const conto = rilTessereMancanti();
-    if (!conto.mancanti) return `${riga}.`;
-    const quante = conto.mancanti === 1 ? 'una non è arrivata' : `${conto.mancanti} non sono arrivate`;
-    return conto.ancora
-      ? `${riga}; ${quante}, ci riprovo.`
-      : `${riga}; ${quante}: lì il terreno resta grosso.`;
+    if (!conto.mancanti) return riga + '.';
+    const quante = T('mancanti', { n: conto.mancanti });
+    return riga + '; ' + T(conto.ancora ? 'riprovo' : 'restaGrosso', { quante });
   }
   return '';
 }

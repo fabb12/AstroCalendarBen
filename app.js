@@ -116,6 +116,21 @@ function conNomeTradotto(tabella, prefisso) {
   return tabella;
 }
 
+/* E la stessa, per una tabella in cui il campo da tradurre non si chiama
+ * `nome`: i quattro quadri del banco del tramonto lo chiamano `chip`, e
+ * rinominarlo per far contento questo aiutante vorrebbe dire toccare i
+ * posti che leggono — cioè proprio quello che tutta questa famiglia serve a
+ * non fare. */
+function conTestiTradotti(tabella, prefisso, campi) {
+  for (const [id, voce] of Object.entries(tabella)) {
+    for (const campo of campi) {
+      if (voce[campo] === undefined) continue;
+      testoDaChiave(voce, campo, `${prefisso}${id}.${campo}`);
+    }
+  }
+  return tabella;
+}
+
 /* La stessa cosa per un **elenco** invece di una tabella: la chiave la dà il
  * campo `id` della voce, non la sua posizione. Serve ai corpi del Sistema
  * Solare, che stanno in array (`SKY_CORPI`, `CONG_CORPI`, `SOL_PIANETI`) e
@@ -124,7 +139,11 @@ function conNomeTradotto(tabella, prefisso) {
  * senza tre copie da tenere d'accordo. */
 function conNomeDaId(elenco, prefisso) {
   for (const voce of elenco) {
-    if (voce && voce.id) nomeDaChiave(voce, prefisso + voce.id);
+    // `voce.id != null` e non `voce.id`: le frazioni di campo della deriva
+    // (`telescopio.js`) partono da **zero**, e con la verità semplice la
+    // prima voce dell'elenco restava l'unica non tradotta — cioè il difetto
+    // più difficile da vedere che ci sia, uno su otto.
+    if (voce && voce.id != null) nomeDaChiave(voce, prefisso + voce.id);
   }
   return elenco;
 }
@@ -134,7 +153,7 @@ function conNomeDaId(elenco, prefisso) {
  * idea: la chiave è `<prefisso><id>.<campo>`. */
 function conTestiDaId(elenco, prefisso, campi) {
   for (const voce of elenco) {
-    if (!voce || !voce.id) continue;
+    if (!voce || voce.id == null) continue;
     for (const campo of campi) {
       if (voce[campo] === undefined) continue;
       testoDaChiave(voce, campo, `${prefisso}${voce.id}.${campo}`);
@@ -6198,6 +6217,25 @@ function inizializzaUI() {
 //    nel tempo: gli eventi di quel mese vengono calcolati sul momento.
 // =====================================================================
 
+/* Scrive i dodici nomi dei mesi dentro a una `<select>`, e li riscrive quando
+ * la lingua cambia.
+ *
+ * Si rifà l'`innerHTML` **solo se le etichette sono davvero cambiate**: nella
+ * stessa lingua rifarlo a ogni sincronizzazione vorrebbe dire distruggere e
+ * ricostruire dodici nodi a ogni cambio di mese, e — la parte che si vede —
+ * togliere il fuoco alla tendina proprio mentre qualcuno ci sta scegliendo
+ * dentro con la tastiera. */
+function riempiNomiMesi(selMese) {
+  if (!selMese) return;
+  const nomi = [];
+  for (let i = 0; i < 12; i++) nomi.push(NOMI_MESI[i]);
+  const prima = selMese.options.length === 12 ? selMese.options[0].textContent : null;
+  if (prima === nomi[0] && selMese.options[11].textContent === nomi[11]) return;
+  const scelto = selMese.value;
+  selMese.innerHTML = nomi.map((nome, i) => `<option value="${i}">${nome}</option>`).join('');
+  if (scelto !== '') selMese.value = scelto;
+}
+
 // Riempie i due selettori (calendario e agenda) e ne collega i tasti
 function inizializzaSelettoriMese() {
   const oggi = new Date();
@@ -6206,9 +6244,7 @@ function inizializzaSelettoriMese() {
     const campoAnno = box.querySelector('[data-campo-anno]');
 
     if (selMese) {
-      selMese.innerHTML = NOMI_MESI
-        .map((nome, i) => `<option value="${i}">${nome}</option>`)
-        .join('');
+      riempiNomiMesi(selMese);
       selMese.value = String(oggi.getMonth());
     }
     if (campoAnno) {
@@ -6408,15 +6444,18 @@ function impostaIntervalloSelezionato(inizio, fine) {
     sincronizzaCalendario();
     costruisciAgenda();
   };
-  scriviStatoIntervallo(mesi.length > 1
-    ? `Calcolo gli eventi dal ${da.toLocaleDateString('it-IT')} al ${a.toLocaleDateString('it-IT')}: ${mesi.length} mesi…`
-    : `Calcolo gli eventi dal ${da.toLocaleDateString('it-IT')} al ${a.toLocaleDateString('it-IT')}…`);
+  scriviStatoIntervallo(astroI18n.t(
+    mesi.length > 1 ? 'mese.calcoloIntervalloMesi' : 'mese.calcoloIntervallo', {
+      da: da.toLocaleDateString(localeData()),
+      a: a.toLocaleDateString(localeData()),
+      n: mesi.length
+    }));
   mostra();
 
   let ultimaMostra = performance.now();
   calcolaMesiAScaglioni(mesi,
     (fatti, quanti) => {
-      scriviStatoIntervallo(`Calcolo gli eventi: ${fatti} mesi su ${quanti}…`);
+      scriviStatoIntervallo(astroI18n.t('mese.calcoloAvanzamento', { fatti, quanti }));
       // Le viste si rinfrescano ogni tanto, e il «tanto» è **tempo**, non
       // mesi: rifare la griglia vuol dire buttare via tutti gli eventi e
       // rimetterceli uno per uno, e l'agenda scrive una scheda per evento —
@@ -6514,6 +6553,16 @@ function sincronizzaSelettoriMese() {
   document.querySelectorAll('[data-selettore-mese]').forEach(box => {
     const selMese = box.querySelector('[data-campo-mese]');
     const campoAnno = box.querySelector('[data-campo-anno]');
+    // I dodici nomi dei mesi: sono scritti dentro alle `<option>` una volta
+    // sola, all'avvio (`inizializzaSelettoriMese`), e nessuna chiave li
+    // riscrive — un'`<option>` non ha figli di testo indicizzabili e
+    // `NOMI_MESI` è un getter che risponde nella lingua di adesso solo a chi
+    // lo *rilegge*. Chi cambiava lingua si ritrovava perciò «Settembre» in
+    // una tendina per il resto inglese, ed era l'unico pezzo del calendario
+    // rimasto indietro. Si riscrivono qui, che è la funzione che il cambio
+    // lingua chiama già; il valore scelto si rimette dopo, se no cambiare le
+    // etichette lo azzererebbe.
+    if (selMese) riempiNomiMesi(selMese);
     if (selMese) selMese.value = String(mese);
     if (campoAnno && document.activeElement !== campoAnno) campoAnno.value = String(anno);
   });
@@ -6536,9 +6585,11 @@ function sincronizzaSelettoriMese() {
   // cambia l'agenda, non il calendario, e le due scritte non devono litigare
   const quanti = intervalloSelezionato ? eventiNellIntervallo(getEventiFiltrati()).length : 0;
   const testoIntervallo = intervalloSelezionato
-    ? `Intervallo dal ${intervalloSelezionato.inizio.toLocaleDateString('it-IT')} ` +
-      `al ${intervalloSelezionato.fine.toLocaleDateString('it-IT')}: ` +
-      `${quanti === 1 ? 'un evento' : `${quanti} eventi`}. I giorni dell’intervallo sono evidenziati.`
+    ? astroI18n.t('mese.intervallo', {
+        n: quanti,
+        da: intervalloSelezionato.inizio.toLocaleDateString(localeData()),
+        a: intervalloSelezionato.fine.toLocaleDateString(localeData())
+      })
     : null;
 
   const statoCal = document.getElementById('calendario-stato');
@@ -36363,7 +36414,7 @@ function vociDiario() {
 }
 
 // Traguardi: si sbloccano da soli guardando il cielo, non premendo tasti
-const TRAGUARDI = [
+const TRAGUARDI = conTestiDaId(conNomeDaId([
   { id: 'primo', nome: 'Prima luce', disegno: 'stella', desc: 'La tua prima osservazione registrata',
     ok: v => v.length >= 1 },
   { id: 'cinque', nome: 'Osservatore assiduo', disegno: 'binocolo', desc: 'Cinque osservazioni nel diario',
@@ -36374,9 +36425,12 @@ const TRAGUARDI = [
     ok: v => v.some(x => x.categoria === 'eclissi') },
   { id: 'meteore', nome: 'Desiderio espresso', disegno: 'meteora', desc: 'Hai visto uno sciame meteorico',
     ok: v => v.some(x => x.categoria === 'meteore') },
+  // Le quattro fasi si riconoscono dalla **chiave** dell'evento e non dal suo
+  // titolo: da quando il titolo si compone nella lingua di adesso, cercare
+  // «Luna Piena» dentro a «Full Moon» non trova più niente — e un traguardo
+  // che non scatta più non lo segnala nessuno.
   { id: 'fasi', nome: 'Ciclo completo', disegno: 'lunapiena', desc: 'Tutte e quattro le fasi lunari',
-    ok: v => ['Luna Nuova', 'Primo Quarto', 'Luna Piena', 'Ultimo Quarto']
-      .every(f => v.some(x => (x.titolo || '').includes(f))) },
+    ok: v => [0, 1, 2, 3].every(q => v.some(x => diarioEDiFase(x, q))) },
   { id: 'pianeti', nome: 'Giro dei pianeti', disegno: 'saturno', desc: 'Tre osservazioni di pianeti',
     ok: v => v.filter(x => x.categoria === 'pianeti' || x.categoria === 'congiunzioni').length >= 3 },
   { id: 'categorie', nome: 'Collezionista', disegno: 'bersaglio', desc: 'Almeno un evento per quattro categorie diverse',
@@ -36385,7 +36439,24 @@ const TRAGUARDI = [
     ok: v => v.some(x => x.strumento === 'telescopio') },
   { id: 'notturno', nome: 'Nottambulo', disegno: 'luna', desc: 'Un\'osservazione registrata fra l\'una e le cinque del mattino',
     ok: v => v.some(x => { const d = new Date(x.dataEvento || x.quando); return d.getHours() >= 1 && d.getHours() < 5; }) }
-];
+], 'traguardo.'), 'traguardo.', ['desc']);
+
+/* Una voce del diario è la fase lunare numero `q`?
+ *
+ * La domanda ha due risposte perché il diario ha due generazioni di voci.
+ * Quelle scritte da qui in avanti portano la **chiave** dell'evento
+ * (`fase.2`), che non dipende dalla lingua e risponde in un confronto. Quelle
+ * di prima hanno solo il titolo, congelato nella lingua di quel giorno: si
+ * confronta allora con il titolo in **tutte** le lingue conosciute, se no chi
+ * ha usato l'app in italiano e la apre in inglese si vede sparire un traguardo
+ * che aveva già preso. */
+function diarioEDiFase(voce, q) {
+  if (!voce) return false;
+  if (voce.chiave === 'fase.' + q) return true;
+  const titolo = voce.titolo || '';
+  if (!titolo) return false;
+  return astroI18n.tutteLeVersioni('fase.' + q + '.titolo').some(t => t && titolo.includes(t));
+}
 
 function traguardiRaggiunti() {
   const voci = vociDiario();
@@ -36461,6 +36532,11 @@ function inizializzaDiarioUI() {
       // Titolo, data e categoria vengono congelati qui: il diario deve
       // restare leggibile anche quando l'evento esce dal calendario.
       titolo: evento ? evento.titolo : precedente.titolo,
+      // La **chiave** dell'evento accanto al titolo, e non al suo posto: il
+      // titolo si congela nella lingua di quel giorno, la chiave no. È da lei
+      // che il traguardo delle quattro fasi riconosce una Luna Piena anche se
+      // nel diario sta scritta «Full Moon».
+      chiave: evento && evento.chiave ? evento.chiave : precedente.chiave,
       dataEvento: evento ? evento.dataObj.toISOString() : precedente.dataEvento,
       categoria: evento ? evento.categoria : precedente.categoria,
       nota: document.getElementById('diario-nota').value.trim(),
@@ -36486,9 +36562,14 @@ function costruisciDiario() {
       ? (voci.reduce((s, v) => s + (v.stelle || 0), 0) / voci.filter(v => v.stelle).length).toFixed(1)
       : '—';
     statistiche.innerHTML = [
-      schedaRiepilogo('Osservazioni', String(voci.length), voci.length ? `L'ultima: ${dataOraBreve(new Date(voci[0].dataEvento || voci[0].quando))}` : 'Il diario è ancora vuoto'),
-      schedaRiepilogo('Categorie esplorate', `${categorie} su ${Object.keys(CATEGORIE).length}`, 'Fasi lunari, eclissi, meteore, pianeti…'),
-      schedaRiepilogo('Voto medio', String(media), 'Quanto ti sono piaciute le serate')
+      schedaRiepilogo(astroI18n.t('diario.osservazioni'), String(voci.length),
+        voci.length
+          ? astroI18n.t('diario.ultima', { data: dataOraBreve(new Date(voci[0].dataEvento || voci[0].quando)) })
+          : astroI18n.t('diario.vuoto')),
+      schedaRiepilogo(astroI18n.t('diario.categorieEsplorate'),
+        astroI18n.t('diario.suTotale', { n: categorie, tot: Object.keys(CATEGORIE).length }),
+        astroI18n.t('diario.categorieEsempi')),
+      schedaRiepilogo(astroI18n.t('diario.votoMedio'), String(media), astroI18n.t('diario.quantoPiaciute'))
     ].join('');
   }
 
@@ -36501,24 +36582,24 @@ function costruisciDiario() {
 
   if (elenco) {
     if (!voci.length) {
-      elenco.innerHTML = '<p class="text-slate-400">Nessuna osservazione registrata. Nell\'agenda, sotto ogni evento, trovi il pulsante “Visto!”.</p>';
+      elenco.innerHTML = `<p class="text-slate-400">${astroI18n.t('diario.nessunaOsservazione')}</p>`;
       return;
     }
     elenco.innerHTML = voci.map(v => {
       const cat = CATEGORIE[v.categoria];
       const stelle = v.stelle ? '★'.repeat(v.stelle) + '☆'.repeat(5 - v.stelle) : '';
       const strumento = STRUMENTI[v.strumento] ? `${icona(STRUMENTI[v.strumento].disegno, 15)} ${STRUMENTI[v.strumento].nome}` :
-                        (v.strumento === 'foto' ? `${icona('fotocamera', 15)} Con la fotocamera` : '');
+                        (v.strumento === 'foto' ? `${icona('fotocamera', 15)} ${astroI18n.t('diario.conLaFotocamera')}` : '');
       return `
         <article class="bg-slate-900 p-4 rounded-xl border border-slate-700">
           <div class="flex justify-between items-start gap-3">
             <div class="min-w-0">
-              <h4 class="font-bold text-white flex items-center gap-2">${iconaCategoria(v.categoria, 18)} ${v.titolo || 'Osservazione'}</h4>
+              <h4 class="font-bold text-white flex items-center gap-2">${iconaCategoria(v.categoria, 18)} ${v.titolo || astroI18n.t('diario.osservazione')}</h4>
               <p class="text-xs text-blue-400 mt-0.5">${dataOraBreve(new Date(v.dataEvento || v.quando))}</p>
             </div>
             <div class="text-right flex-shrink-0">
               <p class="text-amber-400 text-sm">${stelle}</p>
-              <button onclick="apriDiarioEvento('${v.id}')" class="px-2.5 py-1 mt-1 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors" title="Modifica questa osservazione">Modifica</button>
+              <button onclick="apriDiarioEvento('${v.id}')" class="px-2.5 py-1 mt-1 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors" title="${astroI18n.t('diario.modificaTitolo')}">${astroI18n.t('diario.modifica')}</button>
             </div>
           </div>
           ${v.nota ? `<p class="text-sm text-slate-300 mt-2 whitespace-pre-line">${v.nota.replace(/</g, '&lt;')}</p>` : ''}

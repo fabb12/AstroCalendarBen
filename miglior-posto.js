@@ -202,7 +202,10 @@ function postoDisegnaMappa(centro, raggio, risultati, azAstro) {
   risultati.slice(0, 5).forEach((p, i) => {
     const colore = p.margine > 5 ? '#34d399' : p.margine > 0 ? '#fbbf24' : '#f87171';
     const m = L.circleMarker([p.lat, p.lon], { radius: i ? 7 : 10, color: '#fff', weight: 2, fillColor: colore, fillOpacity: 0.95 })
-      .bindTooltip(`${i + 1}. ${Math.round(p.quota)} m · ${p.strada} · margine ${p.margine.toFixed(1)}°`).addTo(postoMappa);
+      .bindTooltip(astroI18n.t('posto.tooltip', {
+        n: i + 1, quota: astroI18n.numero(Math.round(p.quota)), strada: p.strada,
+        margine: astroI18n.numero(p.margine, 1)
+      })).addTo(postoMappa);
     postoStrati.push(m);
     if (!i) {
       const fine = postoDestinazione(p.lat, p.lon, azAstro, Math.min(8, raggio / 2));
@@ -218,15 +221,22 @@ function postoDisegnaMappa(centro, raggio, risultati, azAstro) {
 function postoMostraRisultati(ev, centro, raggio, risultati) {
   const box = document.getElementById('posto-evento-risultati');
   box.innerHTML = risultati.slice(0, 5).map((p, i) => {
-    const esito = p.margine > 5 ? 'Vista libera' : p.margine > 0 ? 'Visibile, margine ridotto' : 'Coperto dal terreno';
+    const esito = astroI18n.t(p.margine > 5 ? 'posto.vistaLibera'
+      : p.margine > 0 ? 'posto.margineRidotto' : 'posto.coperto');
     const nomeStrada = String(p.strada).replace(/[&<>"']/g, c => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     })[c]);
     const maps = postoLinkIndicazioni(p);
     return `<article class="posto-risultato${i === 0 ? ' migliore' : ''}">
-      <span class="posto-numero">${i + 1}</span><div><h3>${i === 0 ? 'Punto consigliato' : 'Alternativa'} · ${Math.round(p.quota)} m</h3>
-      <p>${esito}: l'evento sarà a <b>${p.astro.alt.toFixed(1)}°</b>, il terreno arriva a circa <b>${p.cresta.toFixed(1)}°</b>. Distanza in linea d'aria ${p.distanza.toFixed(1)} km. Punto su <b>${nomeStrada}</b>, indicata da OpenStreetMap come carrabile e senza divieti di accesso privato.</p>
-      <div class="posto-azioni"><a href="${maps}" target="_blank" rel="noopener">Indicazioni stradali con Google Maps</a><button type="button" onclick="postoGuardaDaQui(${p.lat},${p.lon},'${ev.id}')">Planetario da qui</button></div></div>
+      <span class="posto-numero">${i + 1}</span><div><h3>${astroI18n.t(i === 0 ? 'posto.consigliato' : 'posto.alternativa')} · ${astroI18n.numero(Math.round(p.quota))} m</h3>
+      <p>${astroI18n.t('posto.dettaglio', {
+        esito,
+        alt: astroI18n.numero(p.astro.alt, 1),
+        cresta: astroI18n.numero(p.cresta, 1),
+        km: astroI18n.numero(p.distanza, 1),
+        strada: nomeStrada
+      })}</p>
+      <div class="posto-azioni"><a href="${maps}" target="_blank" rel="noopener">${astroI18n.t('posto.indicazioni')}</a><button type="button" onclick="postoGuardaDaQui(${p.lat},${p.lon},'${ev.id}')">${astroI18n.t('posto.planetarioDaQui')}</button></div></div>
     </article>`;
   }).join('');
   postoDisegnaMappa(centro, raggio, risultati, risultati[0].astro.az);
@@ -237,23 +247,25 @@ async function postoAvviaRicerca() {
   const tasto = document.getElementById('posto-evento-cerca');
   const raggio = Number(document.getElementById('posto-evento-raggio').value);
   const centro = postoCentroCorrente();
-  if (!postoEvento || !centro) { stato.textContent = 'Imposta prima la tua posizione nelle Impostazioni.'; return; }
-  stato.textContent = `Cerco strade pubbliche carrabili, poi confronto il terreno entro ${raggio} km…`;
+  if (!postoEvento || !centro) { stato.textContent = astroI18n.t('posto.senzaPosizione'); return; }
+  stato.textContent = astroI18n.t('posto.cerco', { km: raggio });
   tasto.disabled = true;
   try {
     const risultati = await postoAnalizza(postoEvento, centro, raggio);
     postoMostraRisultati(postoEvento, centro, raggio, risultati);
-    stato.textContent = `Ricerca completata: ${risultati.filter(p => p.margine > 0).length} punti accessibili hanno l'evento sopra il profilo del terreno.`;
-  } catch (e) { stato.textContent = `Non riesco a completare la ricerca: ${e.message}. Riprova quando c'è rete.`; }
+    stato.textContent = astroI18n.t('posto.completata',
+      { n: risultati.filter(p => p.margine > 0).length });
+  } catch (e) { stato.textContent = astroI18n.t('posto.fallita', { motivo: e.message }); }
   finally { tasto.disabled = false; }
 }
 
 window.apriMigliorPosto = id => {
   postoEvento = eventiCalcolati.find(e => e.id === id);
   if (!postoEvento || typeof Astronomy === 'undefined') return;
-  document.getElementById('posto-evento-titolo').textContent = `Dove vedere: ${postoEvento.titolo}`;
+  document.getElementById('posto-evento-titolo').textContent =
+    astroI18n.t('posto.doveVedere', { titolo: postoEvento.titolo });
   document.getElementById('posto-evento-risultati').innerHTML = '';
-  document.getElementById('posto-evento-stato').textContent = 'Scegli quanto lontano vuoi cercare, poi avvia il confronto.';
+  document.getElementById('posto-evento-stato').textContent = astroI18n.t('posto.scegliRaggio');
   document.getElementById('modale-posto-evento').classList.remove('hidden');
   const centro = postoCentroCorrente();
   if (centro) postoDisegnaMappa(centro,

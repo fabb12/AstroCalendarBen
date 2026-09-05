@@ -1,15 +1,20 @@
 {
-  "_perche": "Un cricchetto, non un obiettivo. Questi numeri contano le stringhe italiane ancora cablate nell'interfaccia: devono scendere e non risalire. Chi converte un pezzo li abbassa; chi ne aggiunge una li fa sforare e la prova diventa rossa. Le viste 'stasera', 'calendario' e 'agenda' sono a zero e ci devono restare: il contenuto degli eventi (fasi, eclissi, stagioni, sciami, congiunzioni, superlune, opposizioni, transiti, comete, aurore) e' passato alle chiavi. Restano il Diario, il Telescopio e la Didattica.",
+  "_perche": "Un cricchetto, non un obiettivo. Questi numeri contano le stringhe italiane ancora cablate nell'interfaccia: devono scendere e non risalire. Chi converte un pezzo li abbassa; chi ne aggiunge una li fa sforare e la prova diventa rossa. Le viste 'stasera', 'calendario', 'agenda' e 'diario' sono a zero e ci devono restare. Quello che resta nelle altre due e' scritto qui sotto, perche' un numero senza il suo perche' si abbassa a caso.",
+  "_residui": {
+    "telescopio": "4, e sono due cose sole. Due sono i **nomi degli oggetti profondi** ('M3 - Globulare dei Cani da Caccia'): stanno in SKY_PROFONDO (app.js) e in dati-profondo.js, e sono anche l'identificativo con cui l'app li ritrova ('dso:<nome>') - tradurre il nome vuol dire cambiare l'identificativo, e con lui i link gia' condivisi e il ponte verso il catalogo grande. Va fatto, ma insieme: un id stabile separato dal nome, in tutt'e tre i posti. Gli altri due sono falsi positivi della sonda: 'SE' e' la sigla del sud-est, uguale nelle due lingue.",
+    "didattica": "1, ed e' un falso positivo: '-23.7' per day' contiene 'per', che la sonda cerca come parola italiana."
+  },
   "_comandi": [
     "node scripts/controlla-i18n.js --patto     # l'audit statico contro il tetto",
     "node scripts/prova-lingua.js               # la copertura vera, in un browser"
   ],
-  "totale": 621,
+  "totale": 364,
   "viste": {
     "stasera": 0,
     "calendario": 0,
     "agenda": 0,
-    "diario": 6,
-    "telescopio": 13
+    "diario": 0,
+    "telescopio": 4,
+    "didattica": 1
   }
 }

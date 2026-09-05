@@ -357,7 +357,15 @@ function catPreparaFigure() {
     centro[0] /= norma; centro[1] /= norma; centro[2] /= norma;
 
     return {
-      sigla: c.sigla, nome: c.nome, latino: c.latino, rango: c.rango,
+      sigla: c.sigla, latino: c.latino, rango: c.rango,
+      // Il nome è un **getter**: le figure si costruiscono una volta sola,
+      // all'apertura del planetario, e con una stringa il nome scritto sopra
+      // a Orione resterebbe quello della lingua di allora per tutta la
+      // sessione. La traduzione la fa `costellazioni.js`, che è l'unico
+      // posto in cui i nomi delle figure si traducono.
+      get nome() {
+        return (typeof costNomeFigura === 'function') ? costNomeFigura(c.sigla, c.nome) : c.nome;
+      },
       spezzate, centroJ2000: centro, centroOra: new Float64Array(3)
     };
   });

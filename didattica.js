@@ -72,18 +72,43 @@
     terra:      '#4c8dff'
   };
 
+  /* Gli aiutanti delle tabelle tradotte, con la rete sotto.
+   *
+   * `conNomeDaId` e compagni stanno in `app.js`, che in `index.html` viene
+   * prima di questo file: usarli è lecito. Ma **`verifica.html` carica
+   * questo file senza `app.js`** — e un `ReferenceError` alla prima riga di
+   * un modulo non fa fallire una prova, porta via `window.didProve` intero
+   * e con lui i §12 e §17, in silenzio. Che è esattamente il modo in cui
+   * una sezione di prove sparisce senza che nessuno se ne accorga.
+   * Chiamarli attraverso questi tre wrapper costa una riga e toglie il
+   * problema per sempre. */
+  const nomiDaId    = (e, p)    => (typeof conNomeDaId === 'function') ? conNomeDaId(e, p) : e;
+  const nomiTabella = (t, p)    => (typeof conNomeTradotto === 'function') ? conNomeTradotto(t, p) : t;
+  const testiTabella = (t, p, c) => (typeof conTestiTradotti === 'function') ? conTestiTradotti(t, p, c) : t;
+  const nomeDi      = (id)      => (typeof nomeCorpo === 'function') ? nomeCorpo(id) : String(id);
+
   // I corpi che compaiono in più di un esperimento, con i numeri che
   // servono a tutti: semiasse in UA, periodo in anni, raggio in km.
+  // I `nome` non sono scritti qui: sono la stessa tabella di tutta
+  // l'applicazione (`nomeCorpo` in app.js, chiave `corpo.<id>`). Erano una
+  // settima copia, ed è così che la Didattica poteva dire «Marte» mentre
+  // l'agenda accanto diceva «Mars».
   const CORPI = {
-    Mercury: { nome: 'Mercurio', a: 0.38710, T: 0.24085, e: 0.2056, raggio: 2440,  colore: '#b6a99a' },
-    Venus:   { nome: 'Venere',   a: 0.72333, T: 0.61520, e: 0.0068, raggio: 6052,  colore: '#e8cf9a' },
-    Earth:   { nome: 'Terra',    a: 1.00000, T: 1.00000, e: 0.0167, raggio: 6371,  colore: '#4c8dff' },
-    Mars:    { nome: 'Marte',    a: 1.52371, T: 1.88085, e: 0.0934, raggio: 3390,  colore: '#e0715a' },
-    Jupiter: { nome: 'Giove',    a: 5.20288, T: 11.8618, e: 0.0489, raggio: 69911, colore: '#e0a367' },
-    Saturn:  { nome: 'Saturno',  a: 9.53667, T: 29.4571, e: 0.0565, raggio: 58232, colore: '#e3d6a3' },
-    Uranus:  { nome: 'Urano',    a: 19.1891, T: 84.0205, e: 0.0457, raggio: 25362, colore: '#8fdcf0' },
-    Neptune: { nome: 'Nettuno',  a: 30.0699, T: 164.771, e: 0.0113, raggio: 24622, colore: '#6d9bf5' }
+    Mercury: { a: 0.38710, T: 0.24085, e: 0.2056, raggio: 2440,  colore: '#b6a99a' },
+    Venus:   { a: 0.72333, T: 0.61520, e: 0.0068, raggio: 6052,  colore: '#e8cf9a' },
+    Earth:   { a: 1.00000, T: 1.00000, e: 0.0167, raggio: 6371,  colore: '#4c8dff' },
+    Mars:    { a: 1.52371, T: 1.88085, e: 0.0934, raggio: 3390,  colore: '#e0715a' },
+    Jupiter: { a: 5.20288, T: 11.8618, e: 0.0489, raggio: 69911, colore: '#e0a367' },
+    Saturn:  { a: 9.53667, T: 29.4571, e: 0.0565, raggio: 58232, colore: '#e3d6a3' },
+    Uranus:  { a: 19.1891, T: 84.0205, e: 0.0457, raggio: 25362, colore: '#8fdcf0' },
+    Neptune: { a: 30.0699, T: 164.771, e: 0.0113, raggio: 24622, colore: '#6d9bf5' }
   };
+  for (const [id, voce] of Object.entries(CORPI)) {
+    Object.defineProperty(voce, 'nome', {
+      enumerable: true,
+      get: () => nomeDi(id)
+    });
+  }
 
   const stato = {
     acceso: false,
@@ -98,7 +123,20 @@
   // tempo e `disegna` mette tutto sulla tela. Chi non ha bisogno di una
   // di queste cose semplicemente non la definisce.
   const LABORATORI = [];
-  function laboratorio(def) { LABORATORI.push(def); return def; }
+  // Le quattro frasi che presentano un banco — la pillola, l'occhiello, il
+  // titolo e il sommario — sono scritte qui sotto in italiano perché è la
+  // lingua sorgente, ma si leggono dal dizionario: diventano getter su
+  // `did.lab.<id>.<campo>`, e nessuno degli otto banchi deve saperlo.
+  const CAMPI_LAB = ['chip', 'occhiello', 'titolo', 'sommario'];
+  function laboratorio(def) {
+    if (typeof testoDaChiave === 'function' && def && def.id) {
+      for (const campo of CAMPI_LAB) {
+        if (def[campo] !== undefined) testoDaChiave(def, campo, `did.lab.${def.id}.${campo}`);
+      }
+    }
+    LABORATORI.push(def);
+    return def;
+  }
   function labAttivo() { return LABORATORI.find(l => l.id === stato.lab) || LABORATORI[0]; }
 
   // ===================================================================
@@ -521,8 +559,7 @@
       // d'uscita dell'app: due tasti distinti, di cui uno sempre spento,
       // sarebbero solo un tasto in più nell'angolo di un disegno
       l.tastoPieno.textContent = intero ? '✕' : '⛶';
-      l.tastoPieno.title = intero ? 'Esci dallo schermo intero (anche con Esc)'
-        : 'Guarda la scena a schermo intero, con la sua barra del tempo';
+      l.tastoPieno.title = testoDi(intero ? 'did.lente.esciPieno' : 'did.lente.pieno');
       l.tastoPieno.setAttribute('aria-label', l.tastoPieno.title);
       l.tastoPieno.setAttribute('aria-pressed', intero ? 'true' : 'false');
       l.tastoPieno.classList.toggle('did-lente-esci', intero);
@@ -530,7 +567,7 @@
     if (l.box) {
       l.box.classList.toggle('did-lente-accesa', accesa);
       l.box.classList.toggle('did-lente-gira', !!l.puoGirare);
-      if (l.lettura) l.lettura.textContent = l.zoom.toFixed(1).replace('.', ',') + '×';
+      if (l.lettura) l.lettura.textContent = num(l.zoom, 1) + '×';
       // Il tasto del punto di vista dice l'inclinazione di adesso: è la sua
       // etichetta e insieme il suo modo di spiegarsi, perché un numero di
       // gradi che cambia mentre si trascina si capisce da sé
@@ -564,13 +601,13 @@
     box.innerHTML =
       (!opz || opz.pieno !== false
         ? '<button type="button" class="did-lente-tasto did-lente-pieno" data-lente="pieno" ' +
-            'title="Guarda la scena a schermo intero, con la sua barra del tempo" ' +
-            'aria-label="Schermo intero" aria-pressed="false">⛶</button>'
+            'title="' + testoDi('did.lente.pieno') + '" ' +
+            'aria-label="' + testoDi('did.lente.schermoIntero') + '" aria-pressed="false">⛶</button>'
         : '') +
       '<button type="button" class="did-lente-tasto did-lente-giro" data-lente="gira" ' +
-        'title="Gira la scena: a picco sul piano, obliqua, di taglio. Si trascina anche col dito, come il Sistema Solare in 3D." ' +
-        'aria-label="Cambia il punto di vista sul piano">90°</button>' +
-      '<span class="did-lente-fattore">1,0×</span>' +
+        'title="' + testoDi('did.lente.giraTitolo') + '" ' +
+        'aria-label="' + testoDi('did.lente.giraAria') + '">90°</button>' +
+      '<span class="did-lente-fattore">' + num(1, 1) + '×</span>' +
       // Il ⟲ sta **prima** del − e del +, e non in fondo com'era. In fondo
       // spuntava esattamente sotto al dito che aveva appena toccato il +:
       // a riposo si vede il solo +, appena si ingrandisce compaiono gli
@@ -579,9 +616,9 @@
       // volte «avvicinati» e ci si ritrovava al punto di partenza. Con
       // questo ordine il + resta l'ultimo in tutti e due i casi, cioè non
       // si muove mai.
-      '<button type="button" class="did-lente-tasto did-lente-azzera" data-lente="azzera" title="Rimetti la scena a picco, alla misura intera" aria-label="Rimetti la scena com\'era">⟲</button>' +
-      '<button type="button" class="did-lente-tasto" data-lente="meno" title="Allontanati (tienilo premuto per andare via piano)" aria-label="Allontanati">−</button>' +
-      '<button type="button" class="did-lente-tasto" data-lente="piu" title="Avvicinati al disegno: tienilo premuto per avvicinarti piano, oppure usa la rotella, due dita, o due tocchi" aria-label="Avvicinati">+</button>';
+      '<button type="button" class="did-lente-tasto did-lente-azzera" data-lente="azzera" title="' + testoDi('did.lente.azzeraTitolo') + '" aria-label="' + testoDi('did.lente.azzeraAria') + '">⟲</button>' +
+      '<button type="button" class="did-lente-tasto" data-lente="meno" title="' + testoDi('did.lente.menoTitolo') + '" aria-label="' + testoDi('did.lente.meno') + '">−</button>' +
+      '<button type="button" class="did-lente-tasto" data-lente="piu" title="' + testoDi('did.lente.piuTitolo') + '" aria-label="' + testoDi('did.lente.piu') + '">+</button>';
     scena.appendChild(box);
 
     // Tenere premuto + o − avvicina di continuo. Su un telefono la rotella
@@ -1108,11 +1145,11 @@
       `<button type="button" class="tasto-segmento${i === (opz.velIndice || 1) ? ' attiva' : ''}" data-vel="${v}">${v}×</button>`).join('');
     return `
       <div class="did-barra">
-        <button id="${p}-inizio" type="button" class="did-tondo" title="Torna all'inizio" aria-label="Torna all'inizio">${segno('inizio')}</button>
-        <button id="${p}-play" type="button" class="did-tondo did-play" title="Avvia o ferma l'animazione" aria-pressed="false" aria-label="Avvia">${segno('play')}</button>
-        <button id="${p}-stop" type="button" class="did-tondo did-stop" title="Ferma il tempo" aria-label="Ferma l'animazione" disabled>${segno('stop')}</button>
+        <button id="${p}-inizio" type="button" class="did-tondo" title="${testoDi('did.barra.inizio')}" aria-label="${testoDi('did.barra.inizio')}">${segno('inizio')}</button>
+        <button id="${p}-play" type="button" class="did-tondo did-play" title="${testoDi('did.barra.playTitolo')}" aria-pressed="false" aria-label="${testoDi('did.barra.avvia')}">${segno('play')}</button>
+        <button id="${p}-stop" type="button" class="did-tondo did-stop" title="${testoDi('did.barra.stopTitolo')}" aria-label="${testoDi('did.barra.stopAria')}" disabled>${segno('stop')}</button>
         <input id="${p}-slitta" class="did-slitta" type="range" min="${opz.min || 0}" max="${opz.max || 1000}" step="${opz.passo || 1}" value="${opz.valore || 0}"
-          aria-label="${opz.etichettaSlitta || 'Scorri il tempo'}">
+          aria-label="${opz.etichettaSlitta || testoDi('did.barra.scorriIlTempo')}">
         <span id="${p}-lettura" class="did-lettura">—</span>
         <div class="segmenti-cielo did-velocita" id="${p}-velocita">${velocita}</div>
       </div>`;
@@ -1140,7 +1177,7 @@
     if (!b) return;
     b.innerHTML = segno(condizione ? 'pausa' : 'play');
     b.setAttribute('aria-pressed', condizione ? 'true' : 'false');
-    b.setAttribute('aria-label', condizione ? 'Ferma' : 'Avvia');
+    b.setAttribute('aria-label', testoDi(condizione ? 'did.barra.ferma' : 'did.barra.avvia'));
     b.classList.toggle('in-marcia', !!condizione);
     const stop = $(p + '-stop');
     if (stop) stop.disabled = !condizione;
@@ -1181,19 +1218,68 @@
   }
 
   // ---------------------------------------------------- date e numeri
-  const MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+  //
+  // I nomi dei mesi non stanno nel dizionario, e per la stessa ragione per
+  // cui non ci stanno in `app.js`: `Intl` li conosce in ogni lingua, con la
+  // maiuscola o la minuscola che quella lingua vuole. Qui però si leggono in
+  // mezzo a una frase, quindi restano minuscoli in italiano e maiuscoli in
+  // inglese senza che nessuno debba deciderlo. Il ripiego italiano serve al
+  // caso in cui `Intl` non ci sia.
+  const MESI_IT = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
     'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
-  const MESI_BREVI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+  const MESI_BREVI_IT = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+  const cacheMesi = new Map();
+  function didLocale() {
+    return (typeof astroI18n === 'object' && typeof astroI18n.locale === 'function')
+      ? astroI18n.locale() : 'it-IT';
+  }
+  function mesiDelLocale(stile) {
+    const locale = didLocale();
+    const chiave = locale + '|' + stile;
+    let elenco = cacheMesi.get(chiave);
+    if (!elenco) {
+      try {
+        const f = new Intl.DateTimeFormat(locale, { month: stile });
+        elenco = [];
+        for (let m = 0; m < 12; m++) elenco.push(f.format(new Date(2000, m, 15)).replace('.', ''));
+      } catch (e) { elenco = stile === 'long' ? MESI_IT : MESI_BREVI_IT; }
+      cacheMesi.set(chiave, elenco);
+    }
+    return elenco;
+  }
+  const MESI = { get length() { return 12; } };
+  const MESI_BREVI = { get length() { return 12; } };
+  for (let i = 0; i < 12; i++) {
+    Object.defineProperty(MESI, i, { enumerable: true, get: () => mesiDelLocale('long')[i] });
+    Object.defineProperty(MESI_BREVI, i, { enumerable: true, get: () => mesiDelLocale('short')[i] });
+  }
 
   function didData(d) { return `${d.getDate()} ${MESI[d.getMonth()]} ${d.getFullYear()}`; }
   function didDataBreve(d) { return `${d.getDate()} ${MESI_BREVI[d.getMonth()]} ${d.getFullYear()}`; }
   function didDataCorta(d) { return `${d.getDate()} ${MESI_BREVI[d.getMonth()]}`; }
-  function num(v, dec = 1) { return Number(v).toFixed(dec).replace('.', ','); }
+  // Il separatore decimale è una regola della lingua, non una frase: la sa
+  // `Intl`, e scriverlo a mano voleva dire «1,5» dentro a un pannello inglese.
+  function num(v, dec = 1) {
+    return (typeof astroI18n === 'object' && typeof astroI18n.numero === 'function')
+      ? astroI18n.numero(Number(v), dec)
+      : Number(v).toFixed(dec).replace('.', ',');
+  }
   // I chilometri di un'orbita si scrivono a gruppi di tre: «1266870» non si
   // legge, «1.266.870» sì. Serve solo al pannello dei conti della fionda,
   // dove i numeri sono grossi e devono restare confrontabili a occhio.
   function numMila(v, dec = 0) {
-    return Number(v).toLocaleString('it-IT', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+    return Number(v).toLocaleString(didLocale(), { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  }
+  // La scorciatoia che tutto il file usa per leggere una frase dal dizionario.
+  // Si chiama `testoDi` e non `t` di proposito, e nemmeno `tr`: tutt'e due
+  // in questo file sono già presi — `const t = didTela(...)`,
+  // `const t = Astronomy.MakeTime(...)`, `const tr = fionda.traiettoria` —
+  // e una `const` che ombreggia la funzione nello stesso blocco non dà un
+  // nome sbagliato: dà un ReferenceError da zona morta, cioè un banco che
+  // smette di disegnare. Un nome lungo, qui, è la cosa più corta da fare.
+  function testoDi(chiave, valori) {
+    return (typeof astroI18n === 'object' && typeof astroI18n.t === 'function')
+      ? astroI18n.t(chiave, valori) : chiave;
   }
 
   // L'istante da cui parte tutto: è l'orologio del planetario, non quello
@@ -1296,15 +1382,15 @@
         <div class="did-scene did-scene-due">
           <figure class="did-scena">
             <canvas id="did-retro-elio" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">Le orbite viste da fuori</figcaption>
+            <figcaption class="did-targhetta">${testoDi('did.retro.orbiteDaFuori')}</figcaption>
           </figure>
           <figure class="did-scena">
             <canvas id="did-retro-cielo" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">Quello che si vede da qui</figcaption>
+            <figcaption class="did-targhetta">${testoDi('did.retro.quelloCheSiVede')}</figcaption>
           </figure>
         </div>
 
-        ${didBarra('did-retro', { min: 0, max: RETRO_PASSI - 1, valore: 0, etichettaSlitta: 'Scorri i mesi' })}
+        ${didBarra('did-retro', { min: 0, max: RETRO_PASSI - 1, valore: 0, etichettaSlitta: testoDi('did.retro.scorriIMesi') })}
 
         <div class="did-riga">
           <div class="segmenti-cielo" id="did-retro-corpi">
@@ -1312,28 +1398,26 @@
           </div>
         </div>
         <div class="did-riga did-riga-fine">
-          <button type="button" class="did-tasto" id="did-retro-prima">‹ Cappio prima</button>
+          <button type="button" class="did-tasto" id="did-retro-prima">‹ ${testoDi('did.retro.cappioPrima')}</button>
           <span class="did-quando" id="did-retro-quando">—</span>
-          <button type="button" class="did-tasto" id="did-retro-dopo">Cappio dopo ›</button>
+          <button type="button" class="did-tasto" id="did-retro-dopo">${testoDi('did.retro.cappioDopo')} ›</button>
         </div>
 
         ${didLetture([
-          { id: 'did-retro-data', nome: 'Data mostrata', forte: true },
-          { id: 'did-retro-moto', nome: 'Moto apparente', forte: true },
-          { id: 'did-retro-vel', nome: 'Velocità in cielo' },
-          { id: 'did-retro-dist', nome: 'Distanza dalla Terra' },
-          { id: 'did-retro-elong', nome: 'Distanza dal Sole in cielo' },
-          { id: 'did-retro-mag', nome: 'Luminosità' }
+          { id: 'did-retro-data', nome: testoDi('did.retro.dataMostrata'), forte: true },
+          { id: 'did-retro-moto', nome: testoDi('did.retro.motoApparente'), forte: true },
+          { id: 'did-retro-vel', nome: testoDi('did.retro.velocitaInCielo') },
+          { id: 'did-retro-dist', nome: testoDi('did.retro.distanzaDallaTerra') },
+          { id: 'did-retro-elong', nome: testoDi('did.retro.distanzaDalSole') },
+          { id: 'did-retro-mag', nome: testoDi('did.retro.luminosita') }
         ])}
 
         <p class="did-spiega" id="did-retro-spiega">—</p>
-        <p class="did-nota">Il cappio a destra è disegnato in coordinate eclittiche vere: la sua forma cambia a
-          ogni passaggio perché dipende da quanto l'orbita del pianeta è inclinata sulla nostra. I due dischi
-          sono fuori scala — a scala vera la Terra sarebbe invisibile.</p>
+        <p class="did-nota">${testoDi('did.retro.nota')}</p>
 
         ${didPonti([
-          { azione: 'cielo', icona: 'stella', testo: 'Guardalo in cielo a questa data', titolo: 'Porta il planetario alla data mostrata, puntato sul pianeta' },
-          { azione: 'tred', icona: 'saturno', testo: 'Vedilo dall\'esterno', titolo: 'Apre il Sistema Solare in 3D allo stesso istante' }
+          { azione: 'cielo', icona: 'stella', testo: testoDi('did.retro.ponteCielo'), titolo: testoDi('did.retro.ponteCieloTitolo') },
+          { azione: 'tred', icona: 'saturno', testo: testoDi('did.ponte.vediloDallEsterno'), titolo: testoDi('did.ponte.stessoIstante') }
         ])}`;
     },
 
@@ -1516,27 +1600,29 @@
     const retrogrado = c.retro;
     const quasiFermo = Math.abs(c.velLon) < 0.012;
     scrivi('did-retro-moto',
-      quasiFermo ? 'fermo (stazionario)' : retrogrado ? 'retrogrado — va all\'indietro' : 'diretto — va avanti',
+      testoDi(quasiFermo ? 'did.retro.fermo' : retrogrado ? 'did.retro.retrogrado' : 'did.retro.diretto'),
       quasiFermo ? 'ambra' : retrogrado ? 'rosso' : 'verde');
-    scrivi('did-retro-vel', `${num(c.velLon * 60, 1)}′ al giorno`);
-    scrivi('did-retro-dist', `${num(c.dist, 3)} UA · ${num(c.dist * AU_KM / 1e6, 0)} milioni di km`);
+    scrivi('did-retro-vel', testoDi('did.retro.primiAlGiorno', { n: num(c.velLon * 60, 1) }));
+    scrivi('did-retro-dist', testoDi('did.retro.uaEMilioni',
+      { ua: num(c.dist, 3), km: num(c.dist * AU_KM / 1e6, 0) }));
 
     try {
       const t = Astronomy.MakeTime(c.data);
       const el = Astronomy.AngleFromSun(retro.corpo, t);
-      scrivi('did-retro-elong', `${num(el, 0)}° dal Sole`);
+      scrivi('did-retro-elong', testoDi('did.retro.gradiDalSole', { n: num(el, 0) }));
       const ill = Astronomy.Illumination(retro.corpo, t);
-      scrivi('did-retro-mag', `magnitudine ${num(ill.mag, 1)}`);
+      scrivi('did-retro-mag', testoDi('did.retro.magnitudine', { n: num(ill.mag, 1) }));
     } catch (e) {
       scrivi('did-retro-elong', '—'); scrivi('did-retro-mag', '—');
     }
 
     const quando = $('did-retro-quando');
-    if (quando && retro.centro) quando.textContent = `Opposizione: ${didDataBreve(retro.centro)}`;
+    if (quando && retro.centro) quando.textContent = testoDi('did.retro.opposizione', { data: didDataBreve(retro.centro) });
     const lettura = $('did-retro-lettura');
     if (lettura && retro.centro) {
       const g = Math.round((c.data - retro.centro) / GIORNO_MS);
-      lettura.textContent = g === 0 ? 'opposizione' : `${g > 0 ? '+' : '−'}${Math.abs(g)} g`;
+      lettura.textContent = g === 0 ? testoDi('did.retro.opposizioneCorto')
+        : `${g > 0 ? '+' : '−'}${testoDi('did.retro.giorniCorto', { n: Math.abs(g) })}`;
     }
 
     const sp = $('did-retro-spiega');
@@ -1546,16 +1632,13 @@
       const fine = staz.find(s => !s.versoRetro && (!inizio || s.indice > inizio.indice));
       let durata = '';
       if (inizio && fine) {
-        const giorni = Math.round((fine.data - inizio.data) / GIORNO_MS);
-        durata = ` Questo cappio dura <strong>${giorni} giorni</strong>, dal ${didDataBreve(inizio.data)} al ${didDataBreve(fine.data)}.`;
+        durata = ' ' + testoDi('did.retro.durataCappio', {
+          giorni: Math.round((fine.data - inizio.data) / GIORNO_MS),
+          da: didDataBreve(inizio.data),
+          a: didDataBreve(fine.data)
+        });
       }
-      sp.innerHTML = retrogrado
-        ? `Adesso ${nome} <strong>sta andando all'indietro</strong> fra le stelle. Guarda a sinistra: la Terra
-           è dalla stessa parte del Sole rispetto a ${nome} e lo sta sorpassando, come un'auto sulla corsia
-           interna. Il filo che li unisce ruota all'indietro, e il pianeta con lui.${durata}`
-        : `Adesso ${nome} <strong>va avanti</strong>, verso oriente, come fa quasi sempre. Il sorpasso deve
-           ancora cominciare (o è già finito): la Terra e ${nome} si stanno avvicinando lungo le rispettive
-           orbite.${durata}`;
+      sp.innerHTML = testoDi(retrogrado ? 'did.retro.spiegaRetro' : 'did.retro.spiegaDiretto', { nome }) + durata;
     }
   }
 
@@ -1615,9 +1698,9 @@
     didCorpo(ctx, cx, cy, Math.max(7, L * 0.026), C.sole, { alone: 3.4 });
     didCorpo(ctx, tx, ty, 5, C.terra);
     didCorpo(ctx, px, py, 6.5, CORPI[retro.corpo].colore, { anelli: retro.corpo === 'Saturn' });
-    didScritta(ctx, 'Terra', tx + 9, ty + 4, { colore: C.bluChiaro, misura: 11 });
+    didScritta(ctx, CORPI.Earth.nome, tx + 9, ty + 4, { colore: C.bluChiaro, misura: 11 });
     didScritta(ctx, CORPI[retro.corpo].nome, px + 10, py + 4, { colore: CORPI[retro.corpo].colore, misura: 11 });
-    didScritta(ctx, 'Sole', cx + 12, cy + 16, { colore: C.ambra, misura: 10 });
+    didScritta(ctx, testoDi('did.sole'), cx + 12, cy + 16, { colore: C.ambra, misura: 10 });
   }
 
   function retroDisegnaCielo() {
@@ -1671,7 +1754,7 @@
     ctx.setLineDash([6, 6]);
     ctx.beginPath(); ctx.moveTo(0, Y(0)); ctx.lineTo(L, Y(0)); ctx.stroke();
     ctx.setLineDash([]);
-    didScritta(ctx, 'eclittica', 8, Y(0) - 6, { colore: 'rgba(245, 181, 68, 0.75)', misura: 9, peso: 500 });
+    didScritta(ctx, testoDi('did.retro.eclittica'), 8, Y(0) - 6, { colore: 'rgba(245, 181, 68, 0.75)', misura: 9, peso: 500 });
 
     // Sei o sette tacche, non una ogni grado: il passo si sceglie da sé
     // in base a quanto cielo è inquadrato
@@ -1732,11 +1815,11 @@
     if (x < 4 || x > L - 4) {
       const xb = x < 4 ? 14 : L - 14;
       didFreccia(ctx, xb + (x < 4 ? 10 : -10), H / 2, xb, H / 2, { colore: C.testo3, spessore: 1.6, punta: 8 });
-      didScritta(ctx, 'fuori dal riquadro', L / 2, H / 2 - 12,
+      didScritta(ctx, testoDi('did.retro.fuoriDalRiquadro'), L / 2, H / 2 - 12,
         { colore: C.testo3, misura: 10, allinea: 'center', peso: 600 });
     }
 
-    didScritta(ctx, 'longitudine eclittica →', L - 8, H - 10, { colore: C.testo3, misura: 9, allinea: 'right', peso: 500 });
+    didScritta(ctx, testoDi('did.retro.longitudineEclittica') + ' →', L - 8, H - 10, { colore: C.testo3, misura: 9, allinea: 'right', peso: 500 });
   }
 
   // ===================================================================
@@ -1775,52 +1858,52 @@
     costruisci() {
       return `
         <div class="segmenti-cielo did-quadri" id="did-kep-quadri">
-          <button type="button" class="tasto-segmento attiva" data-quadro="forma">1ª · L'ellisse</button>
-          <button type="button" class="tasto-segmento" data-quadro="aree">2ª · Le aree</button>
-          <button type="button" class="tasto-segmento" data-quadro="armonia">3ª · L'armonia</button>
+          <button type="button" class="tasto-segmento attiva" data-quadro="forma">${testoDi('did.kep.chipForma')}</button>
+          <button type="button" class="tasto-segmento" data-quadro="aree">${testoDi('did.kep.chipAree')}</button>
+          <button type="button" class="tasto-segmento" data-quadro="armonia">${testoDi('did.kep.chipArmonia')}</button>
         </div>
 
         <figure class="did-scena did-scena-tonda">
           <canvas id="did-kep-tela" class="did-tela"></canvas>
-          <figcaption class="did-targhetta" id="did-kep-targhetta">La prima legge</figcaption>
+          <figcaption class="did-targhetta" id="did-kep-targhetta">${testoDi('did.kep.primaLegge')}</figcaption>
         </figure>
 
         <div id="did-kep-comandi-orbita">
-          ${didBarra('did-kep', { min: 0, max: 999, valore: 0, etichettaSlitta: 'Scorri lungo l\'orbita' })}
+          ${didBarra('did-kep', { min: 0, max: 999, valore: 0, etichettaSlitta: testoDi('did.kep.scorriOrbita') })}
           <div class="did-riga">
-            <label class="did-etichetta" for="did-kep-ecc">Schiacciamento dell'orbita (eccentricità)</label>
-            <span class="did-valore" id="did-kep-ecc-val">0,60</span>
+            <label class="did-etichetta" for="did-kep-ecc">${testoDi('did.kep.schiacciamento')}</label>
+            <span class="did-valore" id="did-kep-ecc-val">${num(0.6, 3)}</span>
           </div>
           <input id="did-kep-ecc" class="did-slitta did-slitta-larga" type="range" min="0" max="0.92" step="0.01" value="0.6">
           <div class="did-riga did-riga-avvolgi" id="did-kep-esempi">
-            <span class="did-etichetta">Prendi quella di:</span>
-            <button type="button" class="did-pillola" data-ecc="0.0167" data-nome="Terra">Terra</button>
-            <button type="button" class="did-pillola" data-ecc="0.0934" data-nome="Marte">Marte</button>
-            <button type="button" class="did-pillola" data-ecc="0.2056" data-nome="Mercurio">Mercurio</button>
-            <button type="button" class="did-pillola" data-ecc="0.85" data-nome="una cometa">una cometa</button>
+            <span class="did-etichetta">${testoDi('did.kep.prendiQuellaDi')}</span>
+            <button type="button" class="did-pillola" data-ecc="0.0167" data-nome="${CORPI.Earth.nome}">${CORPI.Earth.nome}</button>
+            <button type="button" class="did-pillola" data-ecc="0.0934" data-nome="${CORPI.Mars.nome}">${CORPI.Mars.nome}</button>
+            <button type="button" class="did-pillola" data-ecc="0.2056" data-nome="${CORPI.Mercury.nome}">${CORPI.Mercury.nome}</button>
+            <button type="button" class="did-pillola" data-ecc="0.85" data-nome="${testoDi('did.kep.unaCometa')}">${testoDi('did.kep.unaCometa')}</button>
           </div>
         </div>
 
         <div id="did-kep-comandi-armonia" class="hidden">
           <div class="did-riga">
-            <label class="did-etichetta" for="did-kep-a">Se un pianeta stesse a…</label>
-            <span class="did-valore" id="did-kep-a-val">1,52 UA</span>
+            <label class="did-etichetta" for="did-kep-a">${testoDi('did.kep.seUnPianeta')}</label>
+            <span class="did-valore" id="did-kep-a-val">${num(1.52, 2)} ${testoDi('did.ua')}</span>
           </div>
           <input id="did-kep-a" class="did-slitta did-slitta-larga" type="range" min="0.3" max="31" step="0.01" value="1.52">
         </div>
 
         ${didLetture([
-          { id: 'did-kep-r', nome: 'Distanza dal Sole', forte: true },
-          { id: 'did-kep-v', nome: 'Velocità adesso', forte: true },
-          { id: 'did-kep-peri', nome: 'Perielio · afelio' },
-          { id: 'did-kep-area', nome: 'Area spazzata in 1/12 di anno' }
+          { id: 'did-kep-r', nome: testoDi('did.kep.distanzaDalSole'), forte: true },
+          { id: 'did-kep-v', nome: testoDi('did.kep.velocitaAdesso'), forte: true },
+          { id: 'did-kep-peri', nome: testoDi('did.kep.perielioAfelio') },
+          { id: 'did-kep-area', nome: testoDi('did.kep.areaSpazzata') }
         ])}
 
         <p class="did-spiega" id="did-kep-spiega">—</p>
 
         ${didPonti([
-          { azione: 'tred', icona: 'saturno', testo: 'Vedi le orbite vere in 3D', titolo: 'Apre il Sistema Solare in 3D, dove le orbite sono quelle vere' },
-          { azione: 'lezione', icona: 'sole', testo: 'E perché stanno tutte sullo stesso piano?', titolo: 'Apre la lezione dell\'eclittica' }
+          { azione: 'tred', icona: 'saturno', testo: testoDi('did.kep.ponteTred'), titolo: testoDi('did.kep.ponteTredTitolo') },
+          { azione: 'lezione', icona: 'sole', testo: testoDi('did.kep.ponteLezione'), titolo: testoDi('did.kep.ponteLezioneTitolo') }
         ])}`;
     },
 
@@ -1884,9 +1967,8 @@
     if (orb) orb.classList.toggle('hidden', kep.quadro === 'armonia');
     if (arm) arm.classList.toggle('hidden', kep.quadro !== 'armonia');
     const targhetta = $('did-kep-targhetta');
-    if (targhetta) targhetta.textContent = kep.quadro === 'forma' ? 'Prima legge — l\'orbita è un\'ellisse, il Sole sta in un fuoco'
-      : kep.quadro === 'aree' ? 'Seconda legge — in tempi uguali si spazzano aree uguali'
-      : 'Terza legge — il quadrato dell\'anno è il cubo della distanza';
+    if (targhetta) targhetta.textContent = testoDi(kep.quadro === 'forma' ? 'did.kep.targhettaForma'
+      : kep.quadro === 'aree' ? 'did.kep.targhettaAree' : 'did.kep.targhettaArmonia');
     kepNumeri();
   }
 
@@ -1923,18 +2005,14 @@
       const a = kep.aTerza;
       const T = Math.pow(a, 1.5);
       const av = $('did-kep-a-val');
-      if (av) av.textContent = `${num(a, 2)} UA`;
-      scrivi('did-kep-r', `${num(a, 2)} UA dal Sole`);
+      const anno = T < 1 ? testoDi('did.giorni', { n: num(T * 365.25, 0) }) : testoDi('did.anni', { n: num(T, 2) });
+      if (av) av.textContent = `${num(a, 2)} ${testoDi('did.ua')}`;
+      scrivi('did-kep-r', testoDi('did.kep.uaDalSole', { n: num(a, 2) }));
       scrivi('did-kep-v', `${num(29.785 / Math.sqrt(a), 1)} km/s`);
-      scrivi('did-kep-peri', `il suo anno: ${T < 1 ? num(T * 365.25, 0) + ' giorni' : num(T, 2) + ' anni'}`);
+      scrivi('did-kep-peri', testoDi('did.kep.ilSuoAnno', { anno }));
       scrivi('did-kep-area', '—');
       const sp = $('did-kep-spiega');
-      if (sp) sp.innerHTML = `Un pianeta a <strong>${num(a, 2)} UA</strong> impiegherebbe
-        <strong>${T < 1 ? num(T * 365.25, 0) + ' giorni' : num(T, 2) + ' anni'}</strong> a fare un giro:
-        è ${num(a, 2)} elevato a 1,5. Il doppio della distanza non fa il doppio dell'anno, ne fa quasi il
-        triplo — ed è questa sproporzione che rende il viaggio verso i pianeti esterni così lento, e le
-        loro finestre di lancio così frequenti (perché li raggiungiamo quasi subito, tanto loro non
-        scappano).`;
+      if (sp) sp.innerHTML = testoDi('did.kep.spiegaArmonia', { ua: num(a, 2), anno });
       return;
     }
 
@@ -1944,33 +2022,26 @@
     // Tutti i numeri riferiti a un semiasse di 1 UA, così sono confrontabili
     const r = p.r;
     const v = Math.sqrt(MU_SOLE * (2 / r - 1)) * UA_ANNO_IN_KMS;
-    scrivi('did-kep-r', `${num(r, 3)} UA (a = 1 UA)`);
+    scrivi('did-kep-r', testoDi('did.kep.uaConSemiasse', { n: num(r, 3) }));
     scrivi('did-kep-v', `${num(v, 2)} km/s`, r < 1 ? 'verde' : 'ambra');
-    scrivi('did-kep-peri', `${num(1 - e, 3)} UA · ${num(1 + e, 3)} UA`);
+    scrivi('did-kep-peri', `${num(1 - e, 3)} ${testoDi('did.ua')} · ${num(1 + e, 3)} ${testoDi('did.ua')}`);
     // L'area di un dodicesimo di orbita è sempre la stessa: π·a·b/12
     const area = Math.PI * Math.sqrt(1 - e * e) / 12;
-    scrivi('did-kep-area', `${num(area, 4)} UA² — sempre la stessa`);
+    scrivi('did-kep-area', testoDi('did.kep.semprelaStessa', { n: num(area, 4) }));
     const lettura = $('did-kep-lettura');
-    if (lettura) lettura.textContent = `mese ${Math.floor(kep.fase * 12) + 1}/12`;
+    if (lettura) lettura.textContent = testoDi('did.kep.meseDodici', { n: Math.floor(kep.fase * 12) + 1 });
 
     const sp = $('did-kep-spiega');
     if (!sp) return;
     if (kep.quadro === 'forma') {
       sp.innerHTML = e < 0.03
-        ? `Con l'eccentricità quasi a zero l'ellisse è indistinguibile da un cerchio: è il caso della Terra
-           (e = 0,0167), ed è il motivo per cui per duemila anni nessuno si è accorto che non era un cerchio.
-           <strong>Alza lo schiacciamento</strong> e guarda dove va a finire il Sole: non al centro, ma in
-           uno dei due fuochi — l'altro resta vuoto.`
-        : `Il Sole sta in <strong>uno dei due fuochi</strong>, mai al centro. La distanza dal Sole oscilla
-           fra ${num(1 - e, 3)} e ${num(1 + e, 3)} UA nello stesso giro, e con lei oscilla tutto: la
-           velocità, la luce ricevuta, la durata delle stagioni.`;
+        ? testoDi('did.kep.spiegaCerchio', { ecc: num(0.0167, 4) })
+        : testoDi('did.kep.spiegaFuoco', { min: num(1 - e, 3), max: num(1 + e, 3) });
     } else {
-      sp.innerHTML = `I dodici spicchi hanno forme diversissime — stretti e lunghi vicino all'afelio, larghi
-        e corti al perielio — ma <strong>la stessa area</strong>, e il pianeta ne percorre uno per ogni
-        dodicesimo del suo anno. Detto al contrario: vicino al Sole deve correre
-        (${num(Math.sqrt(MU_SOLE * (2 / (1 - e) - 1)) * UA_ANNO_IN_KMS, 1)} km/s al perielio) e lontano può
-        andare piano (${num(Math.sqrt(MU_SOLE * (2 / (1 + e) - 1)) * UA_ANNO_IN_KMS, 1)} km/s all'afelio).
-        È la conservazione del momento angolare, scoperta prima che avesse un nome.`;
+      sp.innerHTML = testoDi('did.kep.spiegaAree', {
+        perielio: num(Math.sqrt(MU_SOLE * (2 / (1 - e) - 1)) * UA_ANNO_IN_KMS, 1),
+        afelio: num(Math.sqrt(MU_SOLE * (2 / (1 + e) - 1)) * UA_ANNO_IN_KMS, 1)
+      });
     }
   }
 
@@ -2066,7 +2137,7 @@
 
     didCorpo(ctx, X(0), Y(0), Math.max(9, scala * 0.075), C.sole, { alone: 3.2 });
     didCorpo(ctx, X(p.x), Y(p.y), 7, C.terra);
-    didScritta(ctx, 'Sole', X(0), Y(0) + Math.max(9, scala * 0.075) + 14, { colore: C.ambra, misura: 10, allinea: 'center' });
+    didScritta(ctx, testoDi('did.sole'), X(0), Y(0) + Math.max(9, scala * 0.075) + 14, { colore: C.ambra, misura: 10, allinea: 'center' });
     didScritta(ctx, `${num(vKm * UA_ANNO_IN_KMS, 1)} km/s`, X(p.x) + 11, Y(p.y) - 9, { colore: C.verde, misura: 10, peso: 700 });
   }
 
@@ -2168,11 +2239,22 @@
   // stesso μ scritto come si scrive a mano, che nel pannello dei conti
   // vale più di 126687000.
   const FIONDA_PIANETI = {
-    Venus:   { mu: 3.24859e5, vOrb: 35.02, raggio: 6052,  nome: 'Venere',  colore: '#e8cf9a', muTesto: '3,24859 × 10⁵' },
-    Earth:   { mu: 3.98600e5, vOrb: 29.78, raggio: 6371,  nome: 'Terra',   colore: '#4c8dff', muTesto: '3,98600 × 10⁵' },
-    Jupiter: { mu: 1.26687e8, vOrb: 13.07, raggio: 69911, nome: 'Giove',   colore: '#e0a367', muTesto: '1,26687 × 10⁸' },
-    Saturn:  { mu: 3.79312e7, vOrb: 9.68,  raggio: 58232, nome: 'Saturno', colore: '#e3d6a3', muTesto: '3,79312 × 10⁷' }
+    Venus:   { mu: 3.24859e5, vOrb: 35.02, raggio: 6052,  mant: 3.24859, esp: '10⁵', colore: '#e8cf9a' },
+    Earth:   { mu: 3.98600e5, vOrb: 29.78, raggio: 6371,  mant: 3.98600, esp: '10⁵', colore: '#4c8dff' },
+    Jupiter: { mu: 1.26687e8, vOrb: 13.07, raggio: 69911, mant: 1.26687, esp: '10⁸', colore: '#e0a367' },
+    Saturn:  { mu: 3.79312e7, vOrb: 9.68,  raggio: 58232, mant: 3.79312, esp: '10⁷', colore: '#e3d6a3' }
   };
+  // Il nome viene dalla tabella unica dell'applicazione, e `muTesto` — il μ
+  // scritto come si scrive a mano — dal separatore decimale della lingua:
+  // «1,26687 × 10⁸» in italiano, «1.26687 × 10⁸» in inglese.
+  for (const [id, voce] of Object.entries(FIONDA_PIANETI)) {
+    Object.defineProperty(voce, 'nome', {
+      enumerable: true, get: () => nomeDi(id)
+    });
+    Object.defineProperty(voce, 'muTesto', {
+      enumerable: true, get: () => `${num(voce.mant, 5)} × ${voce.esp}`
+    });
+  }
 
   laboratorio({
     id: 'fionda',
@@ -2188,29 +2270,29 @@
     costruisci() {
       return `
         <div class="segmenti-cielo did-quadri" id="did-fionda-schede">
-          <button type="button" class="tasto-segmento attiva" data-scheda="sim">Il banco di prova</button>
-          <button type="button" class="tasto-segmento" data-scheda="conti">Come si calcola</button>
-          <button type="button" class="tasto-segmento" data-scheda="voyager">Il Grand Tour delle Voyager</button>
+          <button type="button" class="tasto-segmento attiva" data-scheda="sim">${testoDi('did.fionda.schedaSim')}</button>
+          <button type="button" class="tasto-segmento" data-scheda="conti">${testoDi('did.fionda.schedaConti')}</button>
+          <button type="button" class="tasto-segmento" data-scheda="voyager">${testoDi('did.fionda.schedaVoyager')}</button>
         </div>
 
         <div id="did-fionda-sim">
           <div class="did-scene did-scene-due">
             <figure class="did-scena">
               <canvas id="did-fionda-pianeta" class="did-tela"></canvas>
-              <figcaption class="did-targhetta">Visto dal pianeta — <em>entra ed esce alla stessa velocità</em></figcaption>
+              <figcaption class="did-targhetta">${testoDi('did.fionda.targhettaPianeta')}</figcaption>
             </figure>
             <figure class="did-scena">
               <canvas id="did-fionda-sole" class="did-tela"></canvas>
-              <figcaption class="did-targhetta">Visto dal Sole — <em>esce a una velocità diversa</em></figcaption>
+              <figcaption class="did-targhetta">${testoDi('did.fionda.targhettaSole')}</figcaption>
             </figure>
           </div>
 
           <figure class="did-scena did-scena-bassa">
             <canvas id="did-fionda-vettori" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">Perché: la stessa somma, fatta due volte</figcaption>
+            <figcaption class="did-targhetta">${testoDi('did.fionda.targhettaVettori')}</figcaption>
           </figure>
 
-          ${didBarra('did-fionda', { min: 0, max: 999, valore: 0, etichettaSlitta: 'Scorri il passaggio' })}
+          ${didBarra('did-fionda', { min: 0, max: 999, valore: 0, etichettaSlitta: testoDi('did.fionda.scorriPassaggio') })}
 
           <div class="did-riga">
             <div class="segmenti-cielo" id="did-fionda-corpi">
@@ -2219,111 +2301,80 @@
           </div>
 
           <div class="did-riga">
-            <label class="did-etichetta" for="did-fionda-b">Quanto passa lontano, e da che parte</label>
-            <span class="did-valore" id="did-fionda-b-val">15 raggi, dietro</span>
+            <label class="did-etichetta" for="did-fionda-b">${testoDi('did.fionda.quantoLontano')}</label>
+            <span class="did-valore" id="did-fionda-b-val">${testoDi('did.fionda.raggiDietro', { n: 15 })}</span>
           </div>
           <input id="did-fionda-b" class="did-slitta did-slitta-larga" type="range" min="-40" max="40" step="0.5" value="15">
 
           <div class="did-riga">
-            <label class="did-etichetta" for="did-fionda-v">Con che velocità arriva (rispetto al pianeta)</label>
-            <span class="did-valore" id="did-fionda-v-val">10,0 km/s</span>
+            <label class="did-etichetta" for="did-fionda-v">${testoDi('did.fionda.conCheVelocita')}</label>
+            <span class="did-valore" id="did-fionda-v-val">${num(10, 1)} km/s</span>
           </div>
           <input id="did-fionda-v" class="did-slitta did-slitta-larga" type="range" min="2" max="25" step="0.5" value="10">
 
           ${didLetture([
-            { id: 'did-fionda-prima', nome: 'Velocità prima (dal Sole)', forte: true },
-            { id: 'did-fionda-dopo', nome: 'Velocità dopo (dal Sole)', forte: true },
-            { id: 'did-fionda-guadagno', nome: 'Guadagno netto', forte: true },
-            { id: 'did-fionda-dev', nome: 'Di quanto viene piegata (δ)' },
-            { id: 'did-fionda-peri', nome: 'Passaggio più stretto' },
-            { id: 'did-fionda-vperi', nome: 'Quanto va forte là in mezzo' },
-            { id: 'did-fionda-max', nome: 'Il massimo da questa rotta' }
+            { id: 'did-fionda-prima', nome: testoDi('did.fionda.velPrima'), forte: true },
+            { id: 'did-fionda-dopo', nome: testoDi('did.fionda.velDopo'), forte: true },
+            { id: 'did-fionda-guadagno', nome: testoDi('did.fionda.guadagnoNetto'), forte: true },
+            { id: 'did-fionda-dev', nome: testoDi('did.fionda.diQuantoPiegata') },
+            { id: 'did-fionda-peri', nome: testoDi('did.fionda.passaggioStretto') },
+            { id: 'did-fionda-vperi', nome: testoDi('did.fionda.quantoForte') },
+            { id: 'did-fionda-max', nome: testoDi('did.fionda.massimoRotta') }
           ])}
 
           <p class="did-spiega" id="did-fionda-spiega">—</p>
-          <p class="did-nota">Arrivando di traverso alla corsa del pianeta — come qui — il massimo non si
-            ottiene con la deviazione più forte possibile ma con una deviazione di <strong>90°</strong>, e
-            vale <em>v∞ + V − √(v∞² + V²)</em>: piegare di più vuol dire ributtare indietro velocità appena
-            guadagnata. Il tetto assoluto, potendo scegliere anche da che parte arrivare, è due volte la più
-            piccola fra la velocità della sonda e quella del pianeta. Ed è per questo che le fionde si fanno
-            a Giove: non perché sia grosso, ma perché è grosso <em>e</em> si muove — Saturno pesa un terzo e
-            viaggia più piano, e infatti rende meno.</p>
+          <p class="did-nota">${testoDi('did.fionda.notaMassimo')}</p>
         </div>
 
         <div id="did-fionda-conti" class="hidden">
-          <p class="did-spiega"><strong>Prima, senza formule.</strong> Tira una pallina contro un treno
-            che ti viene incontro. Per il macchinista la pallina arriva a una certa velocità e rimbalza
-            via con la stessa: il treno non se ne accorge nemmeno. Ma il treno, intanto, si è mosso — e
-            per te che stai a bordo strada la pallina torna indietro con la sua velocità <em>più due
-            volte</em> quella del treno. Non l'ha spinta nessuno: è cambiato chi guarda.
-            La fionda gravitazionale è quella pallina. Il pianeta è il treno, e al posto della lamiera
-            c'è la gravità: non tocca, ma piega — e per il resto il conto è identico.</p>
+          <p class="did-spiega">${testoDi('did.fionda.senzaFormule')}</p>
 
-          <h4 class="did-sottotitolo">I cinque numeri che servono</h4>
-          <p class="did-nota">Tre li dà il pianeta e stanno sulle tabelle; due li scegli tu, e sono le
-            due slitte del banco di prova. Non serve altro: né la massa della sonda (non compare mai),
-            né dove si trova il Sole.</p>
+          <h4 class="did-sottotitolo">${testoDi('did.fionda.cinqueNumeri')}</h4>
+          <p class="did-nota">${testoDi('did.fionda.cinqueNumeriNota')}</p>
           <div class="did-dati" id="did-fionda-dati"></div>
 
-          <h4 class="did-sottotitolo">Il conto, in sei passi</h4>
-          <p class="did-nota">Sono i numeri che hai adesso sulle slitte: cambia una slitta nell'altra
-            scheda e qui cambia tutto, riga per riga.</p>
+          <h4 class="did-sottotitolo">${testoDi('did.fionda.contoSeiPassi')}</h4>
+          <p class="did-nota">${testoDi('did.fionda.contoSeiPassiNota')}</p>
           <div class="did-passi" id="did-fionda-passi"></div>
 
           <p class="did-spiega" id="did-fionda-tetto">—</p>
 
-          <p class="did-nota">Due cose che stupiscono, e sono tutt'e due vere. <strong>La massa della
-            sonda non compare</strong>: la fionda funziona identica per una sonda da una tonnellata e per
-            un sasso, perché la gravità accelera tutti allo stesso modo. E <strong>l'energia si
-            conserva</strong>: quella che la sonda guadagna il pianeta la perde, rallentando sulla propria
-            orbita. Voyager 2 ha rubato a Giove tanta velocità da spostarlo — di circa un miliardesimo di
-            miliardesimo di millimetro al secondo.</p>
+          <p class="did-nota">${testoDi('did.fionda.dueCoseStupiscono')}</p>
         </div>
 
         <div id="did-fionda-voyager" class="hidden">
           <figure class="did-scena did-scena-tonda">
             <canvas id="did-voy-tela" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">Il Grand Tour, 1977 – 1990 · posizioni planetarie reali</figcaption>
+            <figcaption class="did-targhetta">${testoDi('did.voy.targhettaTour')}</figcaption>
           </figure>
 
-          <p class="did-nota did-nota-gesto"><strong>Girala col dito</strong> (o col tasto dei gradi in alto
-            a destra, o trascinando col mouse): vista a picco questa è una pianta, e la cosa più bella del
-            viaggio non si vede. Mettila di taglio e guarda la <strong>Voyager 1 staccarsi dal piano dei
-            pianeti</strong> dopo Saturno, e la 2 tuffarcisi sotto dopo Nettuno. Per <strong>avvicinarti</strong>:
-            la rotella del mouse, due dita sullo schermo, due tocchi svelti, o il + tenuto premuto. Col ⛶ la
-            scena si prende tutto lo schermo, barra del tempo compresa.</p>
+          <p class="did-nota did-nota-gesto">${testoDi('did.voy.giralaColDito')}</p>
 
           <figure class="did-scena did-scena-bassa">
             <canvas id="did-voy-grafico" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">La velocità rispetto al Sole, incontro dopo incontro</figcaption>
+            <figcaption class="did-targhetta">${testoDi('did.voy.targhettaGrafico')}</figcaption>
           </figure>
 
-          ${didBarra('did-voy', { min: 1977, max: 1990.5, passo: 0.02, valore: 1977.6, etichettaSlitta: 'Scorri gli anni' })}
+          ${didBarra('did-voy', { min: 1977, max: 1990.5, passo: 0.02, valore: 1977.6, etichettaSlitta: testoDi('did.voy.scorriAnni') })}
 
           <div class="did-linea-tempo" id="did-voy-linea"></div>
 
           ${didLetture([
-            { id: 'did-voy-quando', nome: 'Siamo nel', forte: true },
-            { id: 'did-voy-1', nome: 'Voyager 1 · velocità', forte: true },
-            { id: 'did-voy-d1', nome: 'Voyager 1 · dov\'è' },
-            { id: 'did-voy-2', nome: 'Voyager 2 · velocità', forte: true },
-            { id: 'did-voy-d2', nome: 'Voyager 2 · dov\'è' },
-            { id: 'did-voy-prossimo', nome: 'Prossimo incontro' }
+            { id: 'did-voy-quando', nome: testoDi('did.voy.siamoNel'), forte: true },
+            { id: 'did-voy-1', nome: testoDi('did.voy.v1velocita'), forte: true },
+            { id: 'did-voy-d1', nome: testoDi('did.voy.v1dove') },
+            { id: 'did-voy-2', nome: testoDi('did.voy.v2velocita'), forte: true },
+            { id: 'did-voy-d2', nome: testoDi('did.voy.v2dove') },
+            { id: 'did-voy-prossimo', nome: testoDi('did.voy.prossimoIncontro') }
           ])}
 
           <p class="did-spiega" id="did-voy-spiega">—</p>
-          <p class="did-nota">Le posizioni dei quattro giganti sono quelle vere, calcolate anno per anno,
-            <strong>z compresa</strong>: l'allineamento del Grand Tour — che si ripresenta una volta ogni
-            176 anni — è quello che c'era davvero. Le date degli incontri, le distanze di massimo
-            avvicinamento e le due inclinazioni di fuga (35° sopra il piano per la 1, 48° sotto per la 2)
-            sono esatte. La traiettoria fra un incontro e l'altro è stilizzata — passa per i punti veri nei
-            giorni veri, ma la curva che li unisce è disegnata — e i valori di velocità sono quelli
-            indicativi ricostruiti dalle carte JPL.</p>
+          <p class="did-nota">${testoDi('did.voy.notaPosizioni')}</p>
         </div>
 
         ${didPonti([
-          { azione: 'tred', icona: 'saturno', testo: 'Dove sono oggi i giganti', titolo: 'Apre il Sistema Solare in 3D all\'istante di adesso' },
-          { azione: 'cielo', icona: 'stella', testo: 'Guarda Giove stasera', titolo: 'Apre il planetario puntato su Giove' }
+          { azione: 'tred', icona: 'saturno', testo: testoDi('did.fionda.ponteTred'), titolo: testoDi('did.fionda.ponteTredTitolo') },
+          { azione: 'cielo', icona: 'stella', testo: testoDi('did.fionda.ponteCielo'), titolo: testoDi('did.fionda.ponteCieloTitolo') }
         ])}`;
     },
 
@@ -2639,24 +2690,23 @@
     const tr = fionda.traiettoria;
     if (!tr) return;
     const bv = $('did-fionda-b-val');
-    if (bv) bv.textContent = fionda.b === 0 ? 'in rotta di collisione'
-      : `${num(Math.abs(fionda.b), 1)} raggi, ${fionda.b > 0 ? 'dietro al pianeta' : 'davanti al pianeta'}`;
+    if (bv) bv.textContent = fionda.b === 0 ? testoDi('did.fionda.rottaCollisione')
+      : testoDi(fionda.b > 0 ? 'did.fionda.raggiDietroAl' : 'did.fionda.raggiDavantiAl',
+                { n: num(Math.abs(fionda.b), 1) });
     const vv = $('did-fionda-v-val');
     if (vv) vv.textContent = `${num(fionda.vInf, 1)} km/s`;
 
     if (tr.schianto) {
       scrivi('did-fionda-prima', `${num(tr.primaSole, 2)} km/s`);
-      scrivi('did-fionda-dopo', 'schiantata sul pianeta', 'rosso');
+      scrivi('did-fionda-dopo', testoDi('did.fionda.schiantata'), 'rosso');
       scrivi('did-fionda-guadagno', '—', 'rosso');
       scrivi('did-fionda-dev', '—');
-      scrivi('did-fionda-peri', 'impatto');
+      scrivi('did-fionda-peri', testoDi('did.fionda.impatto'));
       scrivi('did-fionda-vperi', '—');
       scrivi('did-fionda-max', `+ ${num(tr.max, 2)} km/s`);
       const sp = $('did-fionda-spiega');
-      if (sp) sp.innerHTML = `Troppo stretto: la sonda ha colpito ${tr.nome}. È il limite vero della fionda —
-        più si passa vicino più si viene deviati, ma sotto la superficie non si passa. La formula lo dice
-        prima ancora di provare: il perielio <em>r<sub>p</sub> = a·(e − 1)</em> viene
-        ${num(tr.periRaggi, 2)} raggi, e il pianeta ne occupa uno. Allarga il parametro d'impatto.`;
+      if (sp) sp.innerHTML = testoDi('did.fionda.troppoStretto',
+        { nome: tr.nome, raggi: num(tr.periRaggi, 2) });
       fiondaConti();
       return;
     }
@@ -2666,30 +2716,26 @@
     scrivi('did-fionda-guadagno', `${tr.guadagno >= 0 ? '+' : '−'}${num(Math.abs(tr.guadagno), 2)} km/s`,
       tr.guadagno >= 0 ? 'verde' : 'rosso');
     scrivi('did-fionda-dev', `${num(tr.dev, 1)}°`);
-    scrivi('did-fionda-peri', `${num(tr.periRaggi, 1)} raggi di ${tr.nome} · ${numMila(tr.peri)} km`);
+    scrivi('did-fionda-peri', testoDi('did.fionda.raggiDiKm',
+      { raggi: num(tr.periRaggi, 1), nome: tr.nome, km: numMila(tr.peri) }));
     scrivi('did-fionda-vperi', `${num(tr.vPeri, 1)} km/s`);
-    scrivi('did-fionda-max', `+ ${num(tr.max, 2)} km/s (con δ = 90°)`);
+    scrivi('did-fionda-max', testoDi('did.fionda.conDelta90', { n: num(tr.max, 2) }));
     const p = fiondaPunto();
     const lettura = $('did-fionda-lettura');
-    if (lettura && p) lettura.textContent = `${num(p.t / 86400, 1)} g`;
+    if (lettura && p) lettura.textContent = testoDi('did.giorniCorto', { n: num(p.t / 86400, 1) });
     fiondaConti();
 
     const sp = $('did-fionda-spiega');
     if (!sp) return;
     const resa = Math.abs(tr.guadagno) / tr.max * 100;
-    sp.innerHTML = tr.guadagno >= 0
-      ? `La sonda è passata <strong>dietro</strong> a ${tr.nome}, cioè dalla parte da cui il pianeta se ne
-         sta andando: si è fatta trascinare, ed è uscita con <strong>${num(tr.guadagno, 2)} km/s in più</strong>
-         rispetto al Sole — il ${num(resa, 0)}% di tutto quello che ${tr.nome} potrebbe darle.
-         Nelle due tele qui sopra la sonda è la stessa: a sinistra entra ed esce a ${num(fionda.vInf, 1)} km/s,
-         a destra entra a ${num(tr.primaSole, 2)} ed esce a ${num(tr.dopoSole, 2)}. Nessuna delle due sbaglia:
-         cambia chi guarda. Il conto torna perché ${tr.nome} ha perso esattamente altrettanta energia — solo
-         che pesa 10²⁴ volte più della sonda, e non se ne accorge nessuno.`
-      : `La sonda è passata <strong>davanti</strong> a ${tr.nome}, cioè si è messa sulla sua strada: le ha
-         restituito <strong>${num(Math.abs(tr.guadagno), 2)} km/s</strong>. Sembra uno spreco, e invece è
-         una manovra normalissima: per andare verso il Sole — Parker Solar Probe, BepiColombo — bisogna
-         <em>frenare</em>, e frenare con i motori costerebbe molto più propellente di quanto se ne possa
-         portare. Prova a mandare la sonda dall'altra parte, e il segno cambia.`;
+    sp.innerHTML = testoDi(tr.guadagno >= 0 ? 'did.fionda.spiegaDietro' : 'did.fionda.spiegaDavanti', {
+      nome: tr.nome,
+      guadagno: num(Math.abs(tr.guadagno), 2),
+      resa: num(resa, 0),
+      vInf: num(fionda.vInf, 1),
+      prima: num(tr.primaSole, 2),
+      dopo: num(tr.dopoSole, 2)
+    });
   }
 
   // ------------------------------------------- «Come si calcola», dal vivo
@@ -2720,20 +2766,18 @@
       </div>`;
 
     dati.innerHTML =
-      riga('μ', `Quanto tira ${tr.nome}`, `${tr.muTesto} km³/s²`,
-        `La massa del pianeta moltiplicata per la costante di gravitazione. Si usa sempre il prodotto,
-         mai i due numeri separati: è lui che si misura davvero, guardando una luna girare.`) +
-      riga('R', `Il raggio di ${tr.nome}`, `${numMila(tr.raggio)} km`,
-        'Il muro: sotto non si passa, e infatti è lui a mettere il limite a tutta la manovra.') +
-      riga('V', `Quanto corre ${tr.nome}`, `${num(V, 2)} km/s`,
-        'La velocità con cui il pianeta gira attorno al Sole. È da qui che si ruba: un pianeta fermo non regalerebbe niente.') +
-      riga('v∞', 'Con che velocità arriva la sonda', `${num(v0, 1)} km/s`,
-        `Misurata <em>dal pianeta</em> e <em>da lontano</em>: la velocità che la sonda avrebbe se il pianeta
-         non la tirasse. Arrivandogli addosso va già più forte — a bordo campo, in questo caso,
-         ${num(Math.sqrt(v0 * v0 + 2 * tr.mu / Math.max(1, tr.raggio * 220)), 1)} km/s.`) +
-      riga('b', 'Di quanto lo manca', `${num(Math.abs(fionda.b), 1)} raggi = ${numMila(tr.bKm)} km`,
-        `Il <em>parametro d'impatto</em>: quanto la sonda mancherebbe il centro del pianeta se la gravità
-         non la piegasse. Non è la distanza a cui passa davvero — quella viene dopo, ed è più piccola.`);
+      riga('μ', testoDi('did.fionda.quantoTira', { nome: tr.nome }), `${tr.muTesto} km³/s²`,
+        testoDi('did.fionda.notaMu')) +
+      riga('R', testoDi('did.fionda.ilRaggioDi', { nome: tr.nome }), `${numMila(tr.raggio)} km`,
+        testoDi('did.fionda.notaRaggio')) +
+      riga('V', testoDi('did.fionda.quantoCorre', { nome: tr.nome }), `${num(V, 2)} km/s`,
+        testoDi('did.fionda.notaVorb')) +
+      riga('v∞', testoDi('did.fionda.conCheVelocitaArriva'), `${num(v0, 1)} km/s`,
+        testoDi('did.fionda.notaVinf',
+          { bordo: num(Math.sqrt(v0 * v0 + 2 * tr.mu / Math.max(1, tr.raggio * 220)), 1) })) +
+      riga('b', testoDi('did.fionda.diQuantoLoManca'),
+        testoDi('did.fionda.raggiUgualeKm', { raggi: num(Math.abs(fionda.b), 1), km: numMila(tr.bKm) }),
+        testoDi('did.fionda.notaB'));
 
     const passo = (n, titolo, formula, conto, esito, spiega) => `
       <div class="did-passo">
@@ -2748,59 +2792,49 @@
 
     const dev = tr.dev;
     passi.innerHTML =
-      passo(1, 'Quanto pesa la gravità rispetto alla corsa',
+      passo(1, testoDi('did.fionda.p1titolo'),
         'a = μ / v∞²',
-        `${tr.muTesto} / ${num(v0, 1)}²`, `${numMila(tr.semiasse)} km (${num(tr.semiasse / tr.raggio, 1)} raggi)`,
-        `È il semiasse dell'iperbole, e si legge come un metro di paragone: se <em>b</em> è molto più
-         piccolo di <em>a</em>, la sonda entra nel campo del pianeta e ne esce girata; se è molto più
-         grande, tira dritto. Qui b/a vale ${num(tr.bKm / tr.semiasse, 2)}.`) +
-      passo(2, 'Quanto è aperta la curva',
+        `${tr.muTesto} / ${num(v0, 1)}²`,
+        testoDi('did.fionda.kmERaggi', { km: numMila(tr.semiasse), raggi: num(tr.semiasse / tr.raggio, 1) }),
+        testoDi('did.fionda.p1nota', { rapporto: num(tr.bKm / tr.semiasse, 2) })) +
+      passo(2, testoDi('did.fionda.p2titolo'),
         'e = √(1 + (b/a)²)',
         `√(1 + ${num(tr.bKm / tr.semiasse, 3)}²)`, num(tr.ecc, 3),
-        `L'eccentricità. Sotto 1 sarebbe un'orbita chiusa e la sonda resterebbe prigioniera del pianeta;
-         qui è sempre sopra 1 — la sonda passa e se ne va. Più <em>e</em> è vicino a 1, più la curva è
-         stretta attorno al pianeta.`) +
-      passo(3, 'Di quanto viene piegata — è il numero che conta',
+        testoDi('did.fionda.p2nota')) +
+      passo(3, testoDi('did.fionda.p3titolo'),
         'sin(δ/2) = 1/e   →   δ = 2 · arcsin(1/e)',
         `2 · arcsin(1 / ${num(tr.ecc, 3)})`, `${num(dev, 1)}°`,
-        `<strong>δ è tutta la manovra.</strong> La gravità non cambia di un centesimo la velocità della
-         sonda rispetto al pianeta: le gira soltanto la freccia, di questi gradi. Tutto quello che segue
-         è conseguenza di questa rotazione.`) +
-      passo(4, 'Quanto passa vicino davvero',
+        testoDi('did.fionda.p3nota')) +
+      passo(4, testoDi('did.fionda.p4titolo'),
         'r_p = a · (e − 1)',
         `${numMila(tr.semiasse)} · (${num(tr.ecc, 3)} − 1)`,
-        `${numMila(tr.peri)} km (${num(tr.periRaggi, 2)} raggi)`,
-        `Il passaggio più stretto. Se viene meno di R la sonda non passa: si schianta, e la manovra non
-         esiste. È questo il vero limite della fionda, non la fisica.`) +
-      passo(5, 'Quanto va forte là in mezzo',
+        testoDi('did.fionda.kmERaggi', { km: numMila(tr.peri), raggi: num(tr.periRaggi, 2) }),
+        testoDi('did.fionda.p4nota')) +
+      passo(5, testoDi('did.fionda.p5titolo'),
         'v_p = √(v∞² + 2μ / r_p)',
         `√(${num(v0, 1)}² + 2 · ${tr.muTesto} / ${numMila(tr.peri)})`, `${num(tr.vPeri, 2)} km/s`,
-        `Conservazione dell'energia, niente di più. Cadendo verso il pianeta la sonda accelera fino a
-         qui; risalendo restituisce tutto e torna a ${num(v0, 1)} km/s. È il motivo per cui, <em>per il
-         pianeta</em>, il bilancio è zero.`) +
-      passo(6, 'La stessa cosa, guardata dal Sole',
+        testoDi('did.fionda.p5nota', { vinf: num(v0, 1) })) +
+      passo(6, testoDi('did.fionda.p6titolo'),
         'v_prima = √(v∞² + V²)   ·   v_dopo = √(v∞² + V² + 2·v∞·V·sin δ)',
         `√(${num(v0, 1)}² + ${num(V, 2)}² ${tr.verso > 0 ? '+' : '−'} 2·${num(v0, 1)}·${num(V, 2)}·sin ${num(dev, 1)}°)`,
-        `${num(tr.dopoSole, 2)} km/s, contro i ${num(tr.primaSole, 2)} di prima`,
-        `Nessuna formula nuova: è la somma di due frecce, fatta prima e dopo. La sonda arriva di traverso
-         alla corsa del pianeta, e per questo prima vale sempre √(v∞²+V²). Passando
-         <strong>${tr.verso > 0 ? 'dietro' : 'davanti'}</strong> la rotazione porta la freccia
-         ${tr.verso > 0 ? 'dalla parte in cui il pianeta viaggia, e le due si sommano' :
-           'contro la corsa del pianeta, e le due si sottraggono'}:
-         <strong>${tr.guadagno >= 0 ? '+' : '−'}${num(Math.abs(tr.guadagno), 2)} km/s</strong>.`);
+        testoDi('did.fionda.p6esito', { dopo: num(tr.dopoSole, 2), prima: num(tr.primaSole, 2) }),
+        testoDi('did.fionda.p6nota', {
+          lato: testoDi(tr.verso > 0 ? 'did.fionda.dietro' : 'did.fionda.davanti'),
+          effetto: testoDi(tr.verso > 0 ? 'did.fionda.siSommano' : 'did.fionda.siSottraggono'),
+          segno: tr.guadagno >= 0 ? '+' : '−',
+          valore: num(Math.abs(tr.guadagno), 2)
+        }));
 
     if (tetto) {
-      tetto.innerHTML = `<strong>E il tetto?</strong> La punta della freccia relativa gira su un cerchio,
-        quindi il salto più grande possibile della velocità è la corda di quel cerchio:
-        <em>Δv = 2·v∞·sin(δ/2)</em> = ${num(tr.dvRel, 2)} km/s. Ma non tutto quel salto diventa velocità
-        in più rispetto al Sole: dipende da dove punta. Con questa rotta d'arrivo il massimo si ottiene
-        con <strong>δ = 90°</strong> e vale <em>v∞ + V − √(v∞² + V²)</em> =
-        <strong>${num(tr.max, 2)} km/s</strong>; ${tr.schianto ? 'adesso però la sonda non passa proprio'
-          : tr.guadagno >= 0 ? `adesso ne stai prendendo ${num(tr.guadagno / tr.max * 100, 0)}%`
-          : `adesso invece stai frenando di ${num(-tr.guadagno, 2)} km/s, ed è un limite che non c'è —
-             perdere si può perdere quanto si vuole, fino a fermarsi`}. Potendo scegliere anche da che parte arrivare,
-        il limite invalicabile è due volte la più piccola fra v∞ e V, cioè
-        ${num(tr.maxAssoluto, 1)} km/s: più di così un pianeta non può dare, per quanto lo si sfiori.`;
+      tetto.innerHTML = testoDi('did.fionda.tetto', {
+        dvRel: num(tr.dvRel, 2),
+        max: num(tr.max, 2),
+        adesso: tr.schianto ? testoDi('did.fionda.tettoSchianto')
+          : tr.guadagno >= 0
+            ? testoDi('did.fionda.tettoPreso', { perc: num(tr.guadagno / tr.max * 100, 0) })
+            : testoDi('did.fionda.tettoFreno', { valore: num(-tr.guadagno, 2) }),
+        assoluto: num(tr.maxAssoluto, 1)
+      });
     }
   }
 
@@ -2848,9 +2882,9 @@
     // (a cinque raggi da Giove va a ventisette km/s), risalendo
     // restituisce tutto. Quello che non cambia è la velocità **da
     // lontano**, cioè v∞: entra e esce con quella, identica.
-    didScritta(ctx, `entra a ${num(tr.vInf, 2)}  ·  esce a ${num(tr.vInf, 2)} km/s  ·  piegata di ${num(tr.dev, 1)}°`,
+    didScritta(ctx, testoDi('did.fionda.entraEsce', { v: num(tr.vInf, 2), dev: num(tr.dev, 1) }),
       12, 20, { colore: C.testo2, misura: 10, peso: 700, mono: true, schermo: true });
-    didScritta(ctx, `in mezzo accelera cadendo fino a ${num(tr.vPeri, 1)} km/s e rallenta risalendo: si riprende tutto`,
+    didScritta(ctx, testoDi('did.fionda.inMezzoAccelera', { v: num(tr.vPeri, 1) }),
       12, 35, { colore: C.testo3, misura: 9, peso: 500, schermo: true });
   }
 
@@ -2924,7 +2958,7 @@
     ctx.fillRect(0, 0, L, H);
     const tr = fionda.traiettoria;
     if (tr.schianto) {
-      didScritta(ctx, 'La sonda non è mai uscita: nessun vettore da sommare.', L / 2, H / 2,
+      didScritta(ctx, testoDi('did.fionda.maiUscita'), L / 2, H / 2,
         { colore: C.testo3, misura: 12, allinea: 'center', peso: 600 });
       return;
     }
@@ -2951,14 +2985,15 @@
     };
 
     const y = H * 0.72;
-    disegna(L * 0.27, y, a, 'rgba(169, 180, 204, 0.95)', 'prima dell\'incontro', `${num(tr.primaSole, 2)} km/s`);
-    disegna(L * 0.73, y, b, tr.guadagno >= 0 ? C.verde : C.rosso, 'dopo l\'incontro', `${num(tr.dopoSole, 2)} km/s`);
+    disegna(L * 0.27, y, a, 'rgba(169, 180, 204, 0.95)', testoDi('did.fionda.primaIncontro'), `${num(tr.primaSole, 2)} km/s`);
+    disegna(L * 0.73, y, b, tr.guadagno >= 0 ? C.verde : C.rosso, testoDi('did.fionda.dopoIncontro'), `${num(tr.dopoSole, 2)} km/s`);
 
     // La legenda: tre righe, tre colori, e si smette di indovinare
     const voci = [
-      [didVela(tr.colore, 0.95), `velocità di ${tr.nome} (${num(V, 1)} km/s)`],
-      ['rgba(138, 180, 255, 0.95)', `velocità rispetto a ${tr.nome} — ruota di ${num(tr.dev, 0)}°, resta ${num(tr.vInf, 1)} km/s`],
-      [tr.guadagno >= 0 ? C.verde : C.rosso, 'somma delle due: la velocità rispetto al Sole']
+      [didVela(tr.colore, 0.95), testoDi('did.fionda.legVelPianeta', { nome: tr.nome, v: num(V, 1) })],
+      ['rgba(138, 180, 255, 0.95)', testoDi('did.fionda.legVelRelativa',
+        { nome: tr.nome, dev: num(tr.dev, 0), v: num(tr.vInf, 1) })],
+      [tr.guadagno >= 0 ? C.verde : C.rosso, testoDi('did.fionda.legSomma')]
     ];
     voci.forEach(([col, testo], i) => {
       const yy = 18 + i * 15;
@@ -3047,6 +3082,18 @@
           a girare invece che ad accelerare. Ha visitato quattro pianeti: nessun'altra sonda, prima o dopo.` }
     ]
   };
+
+  // Le tappe sono prosa da leggere: titolo, racconto e la data scritta per
+  // esteso. Restano scritte qui in italiano perché è la lingua sorgente, e
+  // si leggono dal dizionario come tutto il resto.
+  for (const [sonda, tappe] of Object.entries(VOY_TAPPE)) {
+    tappe.forEach((tap, i) => {
+      if (typeof testoDaChiave !== 'function') return;
+      for (const campo of ['titolo', 'testo', 'giorno']) {
+        if (tap[campo] !== undefined) testoDaChiave(tap, campo, `did.voy.${sonda}.${i}.${campo}`);
+      }
+    });
+  }
 
   // Quanto ogni sonda esce dal piano dei pianeti dopo l'ultimo incontro,
   // in gradi. Sono i due numeri che rendono questo viaggio una faccenda a
@@ -3232,7 +3279,7 @@
       const partita = a >= VOY_TAPPE[chi][0].anno;
       const n = chi === 'v1' ? '1' : '2';
       if (!partita) {
-        scrivi('did-voy-' + n, 'non ancora partita', chi === 'v1' ? 'blu' : 'verde');
+        scrivi('did-voy-' + n, testoDi('did.voy.nonAncoraPartita'), chi === 'v1' ? 'blu' : 'verde');
         scrivi('did-voy-d' + n, '—');
         return;
       }
@@ -3240,9 +3287,10 @@
       scrivi('did-voy-' + n, `${num(voyVelocita(chi, a), 1)} km/s`, chi === 'v1' ? 'blu' : 'verde');
       // Sotto il grado non vale la pena parlare di «fuori dal piano»: sono
       // le inclinazioni di sempre delle orbite planetarie
-      const fuori = Math.abs(s.lat) < 1 ? 'nel piano dei pianeti'
-        : `${num(Math.abs(s.lat), 0)}° ${s.lat > 0 ? 'sopra' : 'sotto'} il piano`;
-      scrivi('did-voy-d' + n, `${num(s.ua, 1)} UA · ${fuori}`);
+      const fuori = Math.abs(s.lat) < 1 ? testoDi('did.voy.nelPiano')
+        : testoDi(s.lat > 0 ? 'did.voy.sopraIlPiano' : 'did.voy.sottoIlPiano',
+                  { gradi: num(Math.abs(s.lat), 0) });
+      scrivi('did-voy-d' + n, `${num(s.ua, 1)} ${testoDi('did.ua')} · ${fuori}`);
     });
 
     // La prossima tappa, di chiunque sia
@@ -3256,7 +3304,7 @@
     });
     scrivi('did-voy-prossimo', prossima
       ? `${diChi} → ${CORPI[prossima.dove].nome}, ${prossima.giorno}`
-      : 'nessuno: sono uscite dal Sistema Solare');
+      : testoDi('did.voy.nessunIncontro'));
     const lettura = $('did-voy-lettura');
     if (lettura) lettura.textContent = `${anno}`;
 
@@ -3268,9 +3316,10 @@
       const t = ultima.t;
       const dettagli = [];
       if (t.giorno) dettagli.push(t.giorno);
-      if (t.stretta) dettagli.push(`${numMila(t.stretta)} km dal centro del pianeta`);
+      if (t.stretta) dettagli.push(testoDi('did.voy.kmDalCentro', { km: numMila(t.stretta) }));
       if (t.salto !== undefined) {
-        dettagli.push(`${t.salto >= 0 ? '+' : '−'}${num(Math.abs(t.salto), 1)} km/s rispetto al Sole`);
+        dettagli.push(testoDi('did.voy.kmsRispettoAlSole',
+          { valore: `${t.salto >= 0 ? '+' : '−'}${num(Math.abs(t.salto), 1)}` }));
       }
       sp.innerHTML = `<strong>${VOY_NOMI[ultima.chi]} · ${t.titolo}</strong>` +
         (dettagli.length ? `<span class="did-spiega-dati">${dettagli.join(' · ')}</span>` : '') +
@@ -3399,11 +3448,11 @@
         // Gli scostamenti sono in pixel di schermo (`dx`/`dy`): dentro alla
         // matrice, con la scena di taglio, i dodici pixel che separano le
         // due righe diventavano due e le scritte si stampavano una sull'altra
-        didScritta(ctx, `${VOY_NOMI[chi]} · ${num(s.ua, 1)} UA`, q.x, q.y,
+        didScritta(ctx, `${VOY_NOMI[chi]} · ${num(s.ua, 1)} ${testoDi('did.ua')}`, q.x, q.y,
           { colore: col, misura: 10, peso: 700, dx: 13, dy: chi === 'v1' ? -14 : 24 });
         if (Math.abs(s.lat) >= 1) {
-          didScritta(ctx, `${num(Math.abs(s.lat), 0)}° ${s.lat > 0 ? 'sopra' : 'sotto'} il piano`,
-            q.x, q.y,
+          didScritta(ctx, testoDi(s.lat > 0 ? 'did.voy.sopraIlPiano' : 'did.voy.sottoIlPiano',
+            { gradi: num(Math.abs(s.lat), 0) }), q.x, q.y,
             { colore: didVela(col, 0.75), misura: 9, peso: 600, dx: 13, dy: chi === 'v1' ? -1 : 37 });
         }
       }
@@ -3506,10 +3555,10 @@
       return `
         <figure class="did-scena did-scena-tonda">
           <canvas id="did-lancio-tela" class="did-tela"></canvas>
-          <figcaption class="did-targhetta" id="did-lancio-verdetto">Scegli la meta, sposta la data, lancia</figcaption>
+          <figcaption class="did-targhetta" id="did-lancio-verdetto">${testoDi('did.lancio.sceglLaMeta')}</figcaption>
         </figure>
 
-        ${didBarra('did-lancio', { min: 0, max: 999, valore: 0, etichettaSlitta: 'Scorri il volo', velocita: [0.5, 1, 2, 4] })}
+        ${didBarra('did-lancio', { min: 0, max: 999, valore: 0, etichettaSlitta: testoDi('did.lancio.scorriIlVolo'), velocita: [0.5, 1, 2, 4] })}
 
         <div class="did-riga">
           <div class="segmenti-cielo" id="did-lancio-mete">
@@ -3518,28 +3567,26 @@
         </div>
 
         <div class="did-riga">
-          <label class="did-etichetta" for="did-lancio-scarto">Parto rispetto alla finestra perfetta</label>
-          <span class="did-valore" id="did-lancio-scarto-val">il giorno giusto</span>
+          <label class="did-etichetta" for="did-lancio-scarto">${testoDi('did.lancio.partoRispetto')}</label>
+          <span class="did-valore" id="did-lancio-scarto-val">${testoDi('did.lancio.ilGiornoGiusto')}</span>
         </div>
         <input id="did-lancio-scarto" class="did-slitta did-slitta-larga" type="range" min="-90" max="90" step="1" value="0">
 
         ${didLetture([
-          { id: 'did-lancio-volo', nome: 'Tempo di volo', forte: true },
-          { id: 'did-lancio-angolo', nome: 'Dove deve stare la meta alla partenza', forte: true },
-          { id: 'did-lancio-esito', nome: 'Esito del lancio', forte: true },
-          { id: 'did-lancio-sinodico', nome: 'Ogni quanto si riapre la finestra' },
-          { id: 'did-lancio-dv', nome: 'Spinta necessaria (Δv totale)' },
-          { id: 'did-lancio-prossima', nome: 'Prossima finestra vera' }
+          { id: 'did-lancio-volo', nome: testoDi('did.lancio.tempoDiVolo'), forte: true },
+          { id: 'did-lancio-angolo', nome: testoDi('did.lancio.doveDeveStare'), forte: true },
+          { id: 'did-lancio-esito', nome: testoDi('did.lancio.esitoDelLancio'), forte: true },
+          { id: 'did-lancio-sinodico', nome: testoDi('did.lancio.ogniQuanto') },
+          { id: 'did-lancio-dv', nome: testoDi('did.lancio.spintaNecessaria') },
+          { id: 'did-lancio-prossima', nome: testoDi('did.lancio.prossimaFinestra') }
         ])}
 
         <p class="did-spiega" id="did-lancio-spiega">—</p>
-        <p class="did-nota">Il conto è quello dell'orbita di Hohmann, la più economica che ci sia: mezza
-          ellisse tangente a tutt'e due le orbite. Le sonde vere ne usano varianti più veloci e più care, e
-          spesso ci aggiungono una fionda o due — ma la finestra resta, e resta larga poche settimane.</p>
+        <p class="did-nota">${testoDi('did.lancio.notaHohmann')}</p>
 
         ${didPonti([
-          { azione: 'tred', icona: 'saturno', testo: 'Portami alla prossima finestra vera', titolo: 'Sposta l\'orologio alla data trovata e apre il Sistema Solare in 3D' },
-          { azione: 'cielo', icona: 'stella', testo: 'E in cielo, quel giorno, dov\'è?', titolo: 'Apre il planetario a quella data, puntato sulla meta' }
+          { azione: 'tred', icona: 'saturno', testo: testoDi('did.lancio.ponteTred'), titolo: testoDi('did.lancio.ponteTredTitolo') },
+          { azione: 'cielo', icona: 'stella', testo: testoDi('did.lancio.ponteCielo'), titolo: testoDi('did.lancio.ponteCieloTitolo') }
         ])}`;
     },
 
@@ -3655,20 +3702,26 @@
     if (!c) return;
     const nome = CORPI[lancio.meta].nome;
     const sv = $('did-lancio-scarto-val');
-    if (sv) sv.textContent = lancio.scarto === 0 ? 'il giorno giusto'
-      : `${Math.abs(lancio.scarto)} giorni ${lancio.scarto > 0 ? 'in ritardo' : 'in anticipo'}`;
+    if (sv) sv.textContent = lancio.scarto === 0 ? testoDi('did.lancio.ilGiornoGiusto')
+      : testoDi(lancio.scarto > 0 ? 'did.lancio.giorniInRitardo' : 'did.lancio.giorniInAnticipo',
+                { n: Math.abs(lancio.scarto) });
 
     scrivi('did-lancio-volo', c.tVoloGiorni > 400
-      ? `${num(c.tVoloAnni, 2)} anni (${Math.round(c.tVoloGiorni)} giorni)`
-      : `${Math.round(c.tVoloGiorni)} giorni`);
-    scrivi('did-lancio-angolo', `${num(Math.abs(c.fase), 1)}° ${c.fase >= 0 ? 'avanti alla Terra' : 'dietro alla Terra'}`);
+      ? testoDi('did.lancio.anniEGiorni', { anni: num(c.tVoloAnni, 2), giorni: Math.round(c.tVoloGiorni) })
+      : testoDi('did.giorni', { n: Math.round(c.tVoloGiorni) }));
+    scrivi('did-lancio-angolo', testoDi(c.fase >= 0 ? 'did.lancio.avantiAllaTerra' : 'did.lancio.dietroAllaTerra',
+      { gradi: num(Math.abs(c.fase), 1) }));
     scrivi('did-lancio-sinodico', c.sinodico > 400
-      ? `ogni ${num(c.sinodico / 365.25, 2)} anni` : `ogni ${Math.round(c.sinodico)} giorni (${num(c.sinodico / 30.44, 0)} mesi)`);
+      ? testoDi('did.lancio.ogniAnni', { n: num(c.sinodico / 365.25, 2) })
+      : testoDi('did.lancio.ogniGiorniMesi',
+          { giorni: Math.round(c.sinodico), mesi: num(c.sinodico / 30.44, 0) }));
     scrivi('did-lancio-dv', `${num(c.dv1 + c.dv2, 2)} km/s (${num(c.dv1, 2)} + ${num(c.dv2, 2)})`);
     scrivi('did-lancio-prossima', lancio.finestra
-      ? `${didData(lancio.finestra.data)} → arrivo ${didDataBreve(lancio.finestra.arrivo)}` : 'non trovata');
+      ? testoDi('did.lancio.partenzaArrivo',
+          { partenza: didData(lancio.finestra.data), arrivo: didDataBreve(lancio.finestra.arrivo) })
+      : testoDi('did.lancio.nonTrovata'));
     const lettura = $('did-lancio-lettura');
-    if (lettura) lettura.textContent = `giorno ${Math.round(c.tVoloGiorni * lancio.t)}`;
+    if (lettura) lettura.textContent = testoDi('did.lancio.giornoN', { n: Math.round(c.tVoloGiorni * lancio.t) });
 
     // Di quanto si sbaglia. L'angolo di fase che serve è fissato; partendo
     // N giorni dopo, la meta si trova già spostata di N·(ω − ω_terra)
@@ -3687,53 +3740,61 @@
 
     const verdetto = $('did-lancio-verdetto');
     if (!lancio.partito) {
-      scrivi('did-lancio-esito', 'ancora a terra');
-      if (verdetto) { verdetto.textContent = 'Sposta la data, poi premi Avvia per partire'; verdetto.className = 'did-targhetta'; }
+      scrivi('did-lancio-esito', testoDi('did.lancio.ancoraATerra'));
+      if (verdetto) { verdetto.textContent = testoDi('did.lancio.spostaLaData'); verdetto.className = 'did-targhetta'; }
     } else if (lancio.t < 1) {
-      scrivi('did-lancio-esito', `in volo — ${Math.round(lancio.t * 100)}% del tragitto`, 'blu');
-      if (verdetto) { verdetto.textContent = `In volo verso ${nome} — mancano ${Math.round(c.tVoloGiorni * (1 - lancio.t))} giorni`; verdetto.className = 'did-targhetta'; }
+      scrivi('did-lancio-esito', testoDi('did.lancio.inVoloPerc', { perc: Math.round(lancio.t * 100) }), 'blu');
+      if (verdetto) {
+        verdetto.textContent = testoDi('did.lancio.inVoloVerso',
+          { nome, giorni: Math.round(c.tVoloGiorni * (1 - lancio.t)) });
+        verdetto.className = 'did-targhetta';
+      }
     } else if (centrato) {
-      scrivi('did-lancio-esito', 'bersaglio centrato', 'verde');
-      if (verdetto) { verdetto.textContent = `Centrato: la sonda e ${nome} sono arrivati insieme`; verdetto.className = 'did-targhetta did-bene'; }
+      scrivi('did-lancio-esito', testoDi('did.lancio.bersaglioCentrato'), 'verde');
+      if (verdetto) { verdetto.textContent = testoDi('did.lancio.centratoInsieme', { nome }); verdetto.className = 'did-targhetta did-bene'; }
     } else {
-      scrivi('did-lancio-esito', `mancato di ${num(mancatoKm / 1e6, 1)} milioni di km`, 'rosso');
-      if (verdetto) { verdetto.textContent = `Mancato: ${nome} era ${num(mancatoKm / 1e6, 1)} milioni di km più ${scartoGradi > 0 ? 'avanti' : 'indietro'}`; verdetto.className = 'did-targhetta did-male'; }
+      scrivi('did-lancio-esito', testoDi('did.lancio.mancatoDi', { milioni: num(mancatoKm / 1e6, 1) }), 'rosso');
+      if (verdetto) {
+        verdetto.textContent = testoDi(scartoGradi > 0 ? 'did.lancio.mancatoAvanti' : 'did.lancio.mancatoIndietro',
+          { nome, milioni: num(mancatoKm / 1e6, 1) });
+        verdetto.className = 'did-targhetta did-male';
+      }
     }
 
     const sp = $('did-lancio-spiega');
     if (!sp) return;
     if (!lancio.partito) {
-      sp.innerHTML = `Per arrivare a ${nome} la sonda deve percorrere <strong>mezza ellisse</strong>
-        ${c.interno
-          ? `con l'afelio sull'orbita della Terra e il perielio su quella di ${nome}`
-          : `col perielio sull'orbita della Terra e l'afelio su quella di ${nome}`}: ci mette
-        <strong>${Math.round(c.tVoloGiorni)} giorni</strong>, e questo numero non si può cambiare — lo
-        fissa Keplero. Quindi ${nome} al momento del lancio deve trovarsi <strong>${num(Math.abs(c.fase), 0)}°
-        ${c.fase >= 0 ? 'più avanti' : 'più indietro'}</strong> della Terra, per essere al punto d'arrivo
-        quando ci arriva la sonda. Questa configurazione si ripete
-        ${c.sinodico > 400 ? `ogni ${num(c.sinodico / 365.25, 1)} anni` : `ogni ${Math.round(c.sinodico / 30.44)} mesi`}:
-        è la finestra di lancio, e fuori da lì non si parte.`;
+      sp.innerHTML = testoDi('did.lancio.spiegaPrima', {
+        nome,
+        ellisse: testoDi(c.interno ? 'did.lancio.ellisseInterna' : 'did.lancio.ellisseEsterna', { nome }),
+        giorni: Math.round(c.tVoloGiorni),
+        gradi: num(Math.abs(c.fase), 0),
+        dove: testoDi(c.fase >= 0 ? 'did.lancio.piuAvanti' : 'did.lancio.piuIndietro'),
+        ogni: c.sinodico > 400
+          ? testoDi('did.lancio.ogniAnni', { n: num(c.sinodico / 365.25, 1) })
+          : testoDi('did.lancio.ogniMesi', { n: Math.round(c.sinodico / 30.44) })
+      });
     } else if (lancio.t >= 1 && !centrato) {
-      sp.innerHTML = `Partire ${Math.abs(lancio.scarto)} giorni ${lancio.scarto > 0 ? 'dopo' : 'prima'} non
-        sposta l'orbita della sonda — quella è sempre la stessa ellisse, e ci mette sempre
-        ${Math.round(c.tVoloGiorni)} giorni. Sposta il pianeta: in quei giorni ${nome} si è mosso di
-        <strong>${num(Math.abs(scartoGradi), 1)}°</strong> rispetto a dove doveva stare, che alla sua
-        distanza fanno <strong>${num(mancatoKm / 1e6, 1)} milioni di chilometri</strong>. Con il
-        propellente di bordo, una correzione così non si paga: si aspetta la finestra dopo.`;
+      sp.innerHTML = testoDi('did.lancio.spiegaMancato', {
+        n: Math.abs(lancio.scarto),
+        quando: testoDi(lancio.scarto > 0 ? 'did.lancio.dopo' : 'did.lancio.prima'),
+        giorni: Math.round(c.tVoloGiorni),
+        nome,
+        gradi: num(Math.abs(scartoGradi), 1),
+        milioni: num(mancatoKm / 1e6, 1)
+      });
     } else if (lancio.t >= 1) {
-      sp.innerHTML = `Centrato. La sonda ha percorso <strong>${Math.round(c.tVoloGiorni)} giorni</strong> di
-        volo cieco — nessuna spinta, solo caduta libera attorno al Sole — e ha trovato ${nome} esattamente
-        dove doveva essere. È così che si arriva su un pianeta: non si insegue, si dà appuntamento.`;
+      sp.innerHTML = testoDi('did.lancio.spiegaCentrato', { giorni: Math.round(c.tVoloGiorni), nome });
     } else {
       // Verso l'esterno si sale rallentando, verso l'interno si scende
       // accelerando: è la stessa seconda legge di Keplero letta nei due
       // versi, e dirla al contrario è il modo più rapido di insegnarla male
-      sp.innerHTML = `La sonda è in caduta libera. Dopo la ${c.interno ? 'frenata' : 'spinta'} iniziale di
-        <strong>${num(c.dv1, 2)} km/s</strong> non accende più niente: ${c.interno
-          ? `scende verso il perielio andando sempre più forte (seconda legge di Keplero), e quando ci
-             arriva le servirà un'altra spinta di ${num(c.dv2, 2)} km/s per frenare, se no risale`
-          : `sale verso l'afelio rallentando (seconda legge di Keplero), e quando ci arriva le servirà
-             un'altra spinta di ${num(c.dv2, 2)} km/s per non ricadere indietro`}.`;
+      sp.innerHTML = testoDi('did.lancio.spiegaInVolo', {
+        manovra: testoDi(c.interno ? 'did.lancio.frenata' : 'did.lancio.spinta'),
+        dv1: num(c.dv1, 2),
+        seguito: testoDi(c.interno ? 'did.lancio.scendeAlPerielio' : 'did.lancio.saleAllAfelio',
+                         { dv2: num(c.dv2, 2) })
+      });
     }
   }
 
@@ -3788,7 +3849,7 @@
     // Il punto d'arrivo previsto, sempre a 180° dalla partenza
     const ax = X(c.r2 * Math.cos(Math.PI)), ay = Y(c.r2 * Math.sin(Math.PI));
     didCerchio(ctx, ax, ay, 7, 'rgba(245, 181, 68, 0.55)', 1.4, [3, 3]);
-    didScritta(ctx, 'punto d\'arrivo', ax, ay - 13, { colore: 'rgba(245, 181, 68, 0.8)', misura: 9, allinea: 'center', peso: 600 });
+    didScritta(ctx, testoDi('did.lancio.puntoDArrivo'), ax, ay - 13, { colore: 'rgba(245, 181, 68, 0.8)', misura: 9, allinea: 'center', peso: 600 });
 
     // L'angolo di fase alla partenza, disegnato come un settore: è la
     // cosa che si deve capire, quindi si vede
@@ -3881,11 +3942,11 @@
 
         <div class="did-riga did-riga-fine">
           <div class="segmenti-cielo" id="did-allin-periodo">
-            <button type="button" class="tasto-segmento attiva" data-anni="5">5 anni</button>
-            <button type="button" class="tasto-segmento" data-anni="10">10 anni</button>
-            <button type="button" class="tasto-segmento" data-anni="25">25 anni</button>
+            <button type="button" class="tasto-segmento attiva" data-anni="5">${testoDi('did.anni', { n: 5 })}</button>
+            <button type="button" class="tasto-segmento" data-anni="10">${testoDi('did.anni', { n: 10 })}</button>
+            <button type="button" class="tasto-segmento" data-anni="25">${testoDi('did.anni', { n: 25 })}</button>
           </div>
-          <button type="button" class="did-tasto did-primario" id="did-allin-cerca">Cerca</button>
+          <button type="button" class="did-tasto did-primario" id="did-allin-cerca">${testoDi('did.allin.cerca')}</button>
         </div>
 
         <div class="did-avanzamento hidden" id="did-allin-avanzamento">
@@ -3894,13 +3955,10 @@
         </div>
 
         <div class="did-risultati" id="did-allin-lista">
-          <p class="did-vuoto">Scegli i pianeti e premi <strong>Cerca</strong>: l'app scorre le posizioni
-            vere giorno per giorno e tiene solo le configurazioni più strette.</p>
+          <p class="did-vuoto">${testoDi('did.allin.vuoto')}</p>
         </div>
 
-        <p class="did-nota">Un «allineamento» perfetto non esiste: le orbite sono inclinate l'una sull'altra,
-          e la fila è sempre approssimata. Qui la misura è lo <strong>scarto</strong>: il settore angolare
-          più stretto che contiene tutti i pianeti scelti. Sotto i dieci gradi si può già parlare di fila.</p>`;
+        <p class="did-nota">${testoDi('did.allin.nota')}</p>`;
     },
 
     collega() {
@@ -3943,7 +4001,7 @@
     const scelti = Object.keys(allin.scelti).filter(k => allin.scelti[k]);
     const lista = $('did-allin-lista');
     if (scelti.length < 2) {
-      if (lista) lista.innerHTML = `<p class="did-vuoto did-male">Servono almeno due pianeti.</p>`;
+      if (lista) lista.innerHTML = `<p class="did-vuoto did-male">${testoDi('did.allin.servonoDue')}</p>`;
       return;
     }
     const passo = 3;                       // giorni fra un campione e l'altro
@@ -3960,7 +4018,7 @@
     allin.risultati = [];
     const av = $('did-allin-avanzamento');
     if (av) av.classList.remove('hidden');
-    if (lista) lista.innerHTML = `<p class="did-vuoto">Ricerca in corso…</p>`;
+    if (lista) lista.innerHTML = `<p class="did-vuoto">${testoDi('did.allin.ricercaInCorso')}</p>`;
   }
 
   // Un pezzetto per fotogramma: quanto basta a restare sotto i pochi
@@ -4014,7 +4072,7 @@
     const barra = $('did-allin-barra');
     if (barra) barra.style.width = Math.round(L.fatto / L.totale * 100) + '%';
     const nota = $('did-allin-nota');
-    if (nota) nota.textContent = `${Math.round(L.fatto / L.totale * 100)}% dei giorni esaminati`;
+    if (nota) nota.textContent = testoDi('did.allin.perGiorniEsaminati', { perc: Math.round(L.fatto / L.totale * 100) });
 
     if (L.fatto >= L.totale) { allinConcludi(L); }
   }
@@ -4095,10 +4153,10 @@
   }
 
   function allinComeSiVede(gradi) {
-    if (gradi < 0.5) return 'più vicini di una Luna piena: sembrano quasi una stella sola';
-    if (gradi < 1.5) return 'entro tre dischi di Luna: entrambi nello stesso campo del binocolo';
-    if (gradi < 3) return 'un dito a braccio teso li copre tutti e due';
-    return 'due dita a braccio teso: una coppia che si nota subito';
+    if (gradi < 0.5) return testoDi('did.allin.vicinanza1');
+    if (gradi < 1.5) return testoDi('did.allin.vicinanza2');
+    if (gradi < 3) return testoDi('did.allin.vicinanza3');
+    return testoDi('did.allin.vicinanza4');
   }
 
   function allinMostra() {
@@ -4115,21 +4173,16 @@
     if (allin.migliorElio) {
       const m = allin.migliorElio;
       const n = allin.numeroScelti;
-      riassunto = `<p class="did-riassunto">Nei prossimi ${allin.anni} anni la fila più stretta di questi
-        ${n} pianeti attorno al Sole è di <strong>${num(m.scarto, 0)}°</strong>, il ${didDataBreve(m.data)}.
-        ${m.scarto > 60
-          ? `Cioè: non si allineano affatto, e non è un caso — con ${n} pianeti che girano a velocità tutte
-             diverse, trovarli nello stesso spicchio è praticamente impossibile. Togline qualcuno e guarda
-             come cambia.`
-          : m.scarto > 25
-            ? 'Un bel raggruppamento, ma non una fila: a occhio, dall\'esterno, si vedrebbe un ventaglio.'
-            : 'Una fila vera e propria — con questi pianeti è un evento raro.'}</p>`;
+      riassunto = `<p class="did-riassunto">${testoDi('did.allin.riassunto', {
+        anni: allin.anni, n, gradi: num(m.scarto, 0), data: didDataBreve(m.data),
+        giudizio: m.scarto > 60 ? testoDi('did.allin.giudizioMai', { n })
+          : m.scarto > 25 ? testoDi('did.allin.giudizioVentaglio')
+          : testoDi('did.allin.giudizioFila')
+      })}</p>`;
     }
 
     if (!allin.risultati.length) {
-      lista.innerHTML = riassunto + `<p class="did-vuoto">Nessuna configurazione stretta da segnalare.
-        Prova con un periodo più lungo, o con Venere e Giove: sono i due che si incontrano più spesso, e
-        sono anche i due più luminosi del cielo.</p>`;
+      lista.innerHTML = riassunto + `<p class="did-vuoto">${testoDi('did.allin.nessunaConfigurazione')}</p>`;
       return;
     }
     lista.innerHTML = riassunto + allin.risultati.map((r, i) => {
@@ -4137,25 +4190,22 @@
       const pallini = r.corpi.map(k => `<span class="did-pallino" style="background:${CORPI[k].colore}"></span>`).join('');
       const basso = r.elongazione !== null && r.elongazione < 18;
       const forte = r.tipo === 'coppia' ? r.scarto < 1.5 : r.tipo === 'raduno' ? r.scarto < 12 : r.scarto < 12;
-      const marchio = r.tipo === 'elio' ? ['did-marchio-elio', 'fila dal Sole']
-        : r.tipo === 'raduno' ? ['did-marchio-raduno', 'raduno in cielo']
-        : ['did-marchio-geo', 'congiunzione'];
+      const marchio = r.tipo === 'elio' ? ['did-marchio-elio', testoDi('did.allin.marchioElio')]
+        : r.tipo === 'raduno' ? ['did-marchio-raduno', testoDi('did.allin.marchioRaduno')]
+        : ['did-marchio-geo', testoDi('did.allin.marchioCongiunzione')];
 
       let testo;
       if (r.tipo === 'elio') {
-        testo = `Tutti dalla stessa parte del Sole, dentro a un settore di ${num(r.scarto, 0)}°: è la
-          configurazione più stretta che questi pianeti raggiungono nel periodo cercato. È una posizione
-          vera dello spazio, e si vede solo dall'esterno — dalla Terra non ci si accorge di niente.`;
+        testo = testoDi('did.allin.testoElio', { gradi: num(r.scarto, 0) });
       } else if (r.tipo === 'raduno') {
-        testo = `Tutti e ${r.corpi.length} dentro a ${num(r.scarto, 0)}° di cielo: un raduno che si vede
-          a occhio nudo, se il Sole non è di mezzo.`;
+        testo = testoDi('did.allin.testoRaduno', { n: r.corpi.length, gradi: num(r.scarto, 0) });
       } else {
-        testo = `${nomi[0]} e ${nomi[1]} a <strong>${num(r.scarto, 1)}°</strong> l'uno dall'altro —
-          ${allinComeSiVede(r.scarto)}.`;
+        testo = testoDi('did.allin.testoCoppia', {
+          primo: nomi[0], secondo: nomi[1], gradi: num(r.scarto, 1), come: allinComeSiVede(r.scarto)
+        });
       }
       const avviso = basso
-        ? `<p class="did-esito-avviso">Attenzione: a ${num(r.elongazione, 0)}° dal Sole, quindi bassissima
-           sull'orizzonte e immersa nel crepuscolo. Difficile, ma non impossibile.</p>`
+        ? `<p class="did-esito-avviso">${testoDi('did.allin.avvisoBasso', { gradi: num(r.elongazione, 0) })}</p>`
         : '';
 
       return `
@@ -4169,8 +4219,8 @@
           <p class="did-esito-testo">${testo}</p>
           ${avviso}
           <div class="did-esito-tasti">
-            ${r.tipo !== 'elio' ? `<button type="button" class="did-tasto" data-vai="cielo" data-indice="${i}">Guardalo in cielo</button>` : ''}
-            <button type="button" class="did-tasto" data-vai="tred" data-indice="${i}">Vedilo dall'esterno</button>
+            ${r.tipo !== 'elio' ? `<button type="button" class="did-tasto" data-vai="cielo" data-indice="${i}">${testoDi('did.allin.guardaloInCielo')}</button>` : ''}
+            <button type="button" class="did-tasto" data-vai="tred" data-indice="${i}">${testoDi('did.ponte.vediloDallEsterno')}</button>
           </div>
         </article>`;
     }).join('');
@@ -4380,6 +4430,22 @@
     { id: 'padana', nome: 'Pianura Padana', lat: 44.49, lon: 11.34 },
     { id: 'hobart', nome: 'Hobart', lat: -42.88, lon: 147.33 }
   ];
+
+  // Le tre tabelle di sopra sono tutte prosa da leggere: si convertono qui,
+  // una volta, e nessuno dei disegni che le legge cambia di una riga.
+  if (typeof testoDaChiave === 'function') {
+    for (const [id, q] of Object.entries(AURL_QUADRI)) {
+      for (const campo of ['chip', 'targhetta', 'titolo', 'testo']) {
+        if (q[campo] !== undefined) testoDaChiave(q, campo, `did.aurL.quadro.${id}.${campo}`);
+      }
+    }
+    for (const m of AURL_METE) {
+      for (const campo of ['paese', 'titolo', 'testo']) {
+        if (m[campo] !== undefined) testoDaChiave(m, campo, `did.aurL.meta.${m.id}.${campo}`);
+      }
+    }
+  }
+  nomiDaId(AURL_LUOGHI, 'did.aurL.luogo.');
 
   const aurL = {
     quadro: 'vento',
@@ -4713,8 +4779,9 @@
     });
 
     return Object.assign({
-      boreale, mia: mia.lat, verso: boreale ? 'nord' : 'sud',
-      nome: boreale ? 'boreale' : 'australe',
+      boreale, mia: mia.lat,
+      get verso() { return testoDi(boreale ? 'did.aurL.nord' : 'did.aurL.sud'); },
+      get nome() { return testoDi(boreale ? 'did.aurL.boreale' : 'did.aurL.australe'); },
       siVedeVerde: verdeSuOrizzonte,
       siVede: migliore.cima > 0.5
     }, migliore);
@@ -4820,19 +4887,17 @@
           </figure>
 
           ${didBarra('did-aur', { min: 0, max: AURL_ORE * 10, valore: 0,
-            etichettaSlitta: 'Scorri le ore della tempesta' })}
+            etichettaSlitta: testoDi('did.aurL.scorriOre') })}
 
           ${didLetture([
-            { id: 'did-aur-nube', nome: 'La nube è a' },
-            { id: 'did-aur-vel', nome: 'Vento solare' },
-            { id: 'did-aur-naso', nome: 'Naso dello scudo', forte: true },
-            { id: 'did-aur-kp', nome: 'Indice Kp', forte: true },
-            { id: 'did-aur-daqui', nome: 'Da casa tua', forte: true }
+            { id: 'did-aur-nube', nome: testoDi('did.aurL.laNubeEA') },
+            { id: 'did-aur-vel', nome: testoDi('did.aurL.ventoSolare') },
+            { id: 'did-aur-naso', nome: testoDi('did.aurL.nasoScudo'), forte: true },
+            { id: 'did-aur-kp', nome: testoDi('did.aurL.indiceKp'), forte: true },
+            { id: 'did-aur-daqui', nome: testoDi('did.aurL.daCasaTua'), forte: true }
           ])}
 
-          <p class="did-nota did-nota-gesto">Gira la scena col dito (o trascinando col mouse) per
-            guardarla da un'altra parte. Per avvicinarti: la rotella del mouse, due dita sullo schermo, o il
-            + tenuto premuto. Il ⟲ rimette tutto a posto, e il ⛶ prende tutto lo schermo.</p>
+          <p class="did-nota did-nota-gesto">${testoDi('did.aurL.notaGesto')}</p>
         </div>
 
         <div id="did-aur-scena-taglio" class="hidden">
@@ -4846,16 +4911,16 @@
           </div>
 
           <div class="did-riga">
-            <label class="did-etichetta" for="did-aur-kp-slitta">Quanto è forte la tempesta</label>
-            <span class="did-valore" id="did-aur-kp-val">Kp 6,0</span>
+            <label class="did-etichetta" for="did-aur-kp-slitta">${testoDi('did.aurL.quantoForte')}</label>
+            <span class="did-valore" id="did-aur-kp-val">Kp ${num(6, 1)}</span>
           </div>
           <input id="did-aur-kp-slitta" class="did-slitta did-slitta-larga" type="range" min="0" max="9" step="0.1" value="6">
 
           ${didLetture([
-            { id: 'did-aur-t-lat', nome: 'Latitudine geomagnetica' },
-            { id: 'did-aur-t-dist', nome: 'L\'ovale dista', forte: true },
-            { id: 'did-aur-t-verde', nome: 'Il verde (120 km)', forte: true },
-            { id: 'did-aur-t-rosso', nome: 'Il rosso (250 km)', forte: true }
+            { id: 'did-aur-t-lat', nome: testoDi('did.aurL.latGeomagnetica') },
+            { id: 'did-aur-t-dist', nome: testoDi('did.aurL.ovaleDista'), forte: true },
+            { id: 'did-aur-t-verde', nome: testoDi('did.aurL.ilVerde'), forte: true },
+            { id: 'did-aur-t-rosso', nome: testoDi('did.aurL.ilRosso'), forte: true }
           ])}
 
           <p class="did-spiega" id="did-aur-t-spiega">—</p>
@@ -4864,17 +4929,13 @@
         <p class="did-spiega" id="did-aur-spiega">—</p>
         <p class="did-nota" id="did-aur-nota">—</p>
 
-        <h4 class="did-sottotitolo">Quattro notti in cui è successo davvero</h4>
-        <p class="did-nota">Da quasi tutta Europa l'aurora capita una volta ogni molti anni: aspettare
-          che succeda per vederla non è un piano. Queste righe portano il planetario in un altro posto e
-          in un'altra notte — quelle vere — con l'ovale acceso al Kp di allora. La posizione dell'app non
-          si tocca: è una visita, e dal pannello <em>Tempo e luogo</em> del planetario si torna a casa
-          con un tasto.</p>
+        <h4 class="did-sottotitolo">${testoDi('did.aurL.quattroNotti')}</h4>
+        <p class="did-nota">${testoDi('did.aurL.quattroNottiNota')}</p>
         <div class="did-mete" id="did-aur-mete"></div>
 
         ${didPonti([
-          { azione: 'cielo', icona: 'stella', testo: 'L\'aurora nel cielo di casa', titolo: 'Apre il planetario da qui, con l\'ovale acceso alla tempesta scelta qui sopra' },
-          { azione: 'tred', icona: 'saturno', testo: 'Il Sistema Solare adesso', titolo: 'Apre la vista dall\'esterno all\'istante di adesso' }
+          { azione: 'cielo', icona: 'stella', testo: testoDi('did.aurL.ponteCielo'), titolo: testoDi('did.aurL.ponteCieloTitolo') },
+          { azione: 'tred', icona: 'saturno', testo: testoDi('did.aurL.ponteTred'), titolo: testoDi('did.aurL.ponteTredTitolo') }
         ])}`;
     },
 
@@ -5059,29 +5120,30 @@
 
     const lettura = $('did-aur-lettura');
     if (lettura) {
-      lettura.textContent = `${num(t, 1)} h — ` + (
-        t < 0.5 ? 'l\'eruzione'
-          : nube.q < 1 ? 'la nube viaggia'
-            : t - AURL_VIAGGIO_H < 1 ? 'l\'urto'
-              : aurLSottotempesta(t).scarica ? 'sottotempesta' : 'la coda si carica');
+      lettura.textContent = `${num(t, 1)} h — ` + testoDi(
+        t < 0.5 ? 'did.aurL.faseEruzione'
+          : nube.q < 1 ? 'did.aurL.faseViaggio'
+            : t - AURL_VIAGGIO_H < 1 ? 'did.aurL.faseUrto'
+              : aurLSottotempesta(t).scarica ? 'did.aurL.faseSottotempesta' : 'did.aurL.faseCarica');
     }
 
     scrivi('did-aur-nube', nube.q >= 1
-      ? 'arrivata'
-      : `${num((AURL_SOLE_X - Math.abs(nube.x)) * RE_KM / 1e6, 1)} milioni di km dal Sole`);
+      ? testoDi('did.aurL.arrivata')
+      : testoDi('did.aurL.milioniDalSole', { n: num((AURL_SOLE_X - Math.abs(nube.x)) * RE_KM / 1e6, 1) }));
     scrivi('did-aur-vel', `${Math.round(v.v)} km/s`);
-    scrivi('did-aur-naso', `${num(s.r0, 1)} R⊕ · ${Math.round(s.r0 * RE_KM / 1000)} mila km`,
+    scrivi('did-aur-naso', testoDi('did.aurL.raggiEMila',
+      { raggi: num(s.r0, 1), mila: Math.round(s.r0 * RE_KM / 1000) }),
       s.r0 < 7 ? 'rosso' : '');
     scrivi('did-aur-kp', `Kp ${num(kp, 1)}`, kp >= 7 ? 'verde' : (kp >= 5 ? 'ambra' : ''));
 
     const l = typeof luogoCorrente === 'function' ? luogoCorrente() : null;
-    if (!l) { scrivi('did-aur-daqui', 'posizione ignota'); return; }
+    if (!l) { scrivi('did-aur-daqui', testoDi('did.aurL.posizioneIgnota')); return; }
     const g = aurLGuarda(aurLOraBuona(didAdesso(), l.lat, l.lon), l.lat, l.lon, kp);
     if (!g) { scrivi('did-aur-daqui', '—'); return; }
     scrivi('did-aur-daqui',
-      !g.siVede ? 'niente: resta sotto l\'orizzonte'
-        : g.siVedeVerde ? `archi verdi, fino a ${num(g.cima, 0)}°`
-          : `solo bagliore rosso, fino a ${num(g.cima, 0)}°`,
+      !g.siVede ? testoDi('did.aurL.nienteSottoOrizzonte')
+        : testoDi(g.siVedeVerde ? 'did.aurL.archiVerdi' : 'did.aurL.soloBagliore',
+                  { gradi: num(g.cima, 0) }),
       g.siVedeVerde ? 'verde' : (g.siVede ? 'ambra' : ''));
   }
 
@@ -5092,36 +5154,33 @@
     const l = aurLLuogoScelto();
     const g = aurLGuarda(aurLOraBuona(didAdesso(), l.lat, l.lon), l.lat, l.lon, kp);
     const spiega = $('did-aur-t-spiega');
-    if (!g) { if (spiega) spiega.textContent = 'Il modulo delle aurore non è caricato.'; return; }
+    if (!g) { if (spiega) spiega.textContent = testoDi('did.aurL.moduloNonCaricato'); return; }
 
-    scrivi('did-aur-t-lat', `${num(Math.abs(g.mia), 1)}° ${g.boreale ? 'nord' : 'sud'}`);
+    scrivi('did-aur-t-lat', `${num(Math.abs(g.mia), 1)}° ${testoDi(g.boreale ? 'did.aurL.nord' : 'did.aurL.sud')}`);
     scrivi('did-aur-t-dist', `${Math.round(g.km)} km`);
     scrivi('did-aur-t-verde', `${num(g.verde, 1)}°`, g.verde > 3 ? 'verde' : 'rosso');
     scrivi('did-aur-t-rosso', `${num(g.rosso, 1)}°`, g.rosso > 3 ? 'verde' : (g.rosso > 0 ? 'ambra' : 'rosso'));
 
     if (!spiega) return;
     if (g.cima <= 0.5) {
-      spiega.innerHTML = `Da <strong>${l.nome}</strong>, con Kp ${num(kp, 1)}, l'ovale resta
-        ${Math.round(g.km)} km più in là e la curvatura della Terra lo nasconde tutto: non si affaccia
-        nemmeno la cima. Alza il Kp e guarda da che punto comincia a spuntare — quel numero, per il tuo
-        parallelo, dice tutto.`;
+      spiega.innerHTML = testoDi('did.aurL.tSottoOrizzonte',
+        { luogo: l.nome, kp: num(kp, 1), km: Math.round(g.km) });
     } else if (!g.siVedeVerde) {
-      spiega.innerHTML = `<strong>Ecco il caso italiano.</strong> Da ${l.nome} l'ovale è a
-        ${Math.round(g.km)} km: il verde a 120 km di quota sta a ${num(g.verde, 1)}°, cioè
-        ${g.verde < 0 ? 'sotto l\'orizzonte, oltre il bordo della Terra' : 'talmente basso da essere spento dall\'aria'},
-        mentre il rosso a 250 km si affaccia a ${num(g.rosso, 1)}° e la cima della tenda arriva a
-        ${num(g.cima, 1)}°. Aspettati un bagliore rosato, non archi verdi. Nessuno l'ha deciso: è la
-        Terra che è tonda.`;
+      spiega.innerHTML = testoDi('did.aurL.tCasoItaliano', {
+        luogo: l.nome, km: Math.round(g.km), verde: num(g.verde, 1),
+        dove: testoDi(g.verde < 0 ? 'did.aurL.oltreIlBordo' : 'did.aurL.talmenteBasso'),
+        rosso: num(g.rosso, 1), cima: num(g.cima, 1)
+      });
     } else if (g.cima > 60) {
-      spiega.innerHTML = `Da <strong>${l.nome}</strong> con Kp ${num(kp, 1)} l'ovale è praticamente
-        addosso — ${Math.round(g.km)} km — e le tende arrivano a ${num(g.cima, 0)}° sopra l'orizzonte,
-        cioè quasi allo zenit. Da sotto l'ovale l'aurora non si guarda «verso ${g.verso}»: si guarda in
-        su, e la corona aurorale si apre a raggiera sopra la testa.`;
+      spiega.innerHTML = testoDi('did.aurL.tAddosso', {
+        luogo: l.nome, kp: num(kp, 1), km: Math.round(g.km),
+        cima: num(g.cima, 0), verso: g.verso
+      });
     } else {
-      spiega.innerHTML = `Da <strong>${l.nome}</strong> con Kp ${num(kp, 1)} l'ovale è a
-        ${Math.round(g.km)} km: abbastanza vicino perché il verde stia sopra l'orizzonte
-        (${num(g.verde, 1)}°) e si vedano gli archi, non solo il bagliore. La cima della tenda arriva a
-        ${num(g.cima, 0)}° verso ${g.verso}.`;
+      spiega.innerHTML = testoDi('did.aurL.tArchi', {
+        luogo: l.nome, kp: num(kp, 1), km: Math.round(g.km),
+        verde: num(g.verde, 1), cima: num(g.cima, 0), verso: g.verso
+      });
     }
   }
 
@@ -5132,13 +5191,17 @@
   // sta sotto — ed è successo, scrivendo «il cielo rosso del 2024» sopra
   // a una riga che con Kp 9 dice che il verde ci arrivava eccome.
   function aurLRiassunto(g) {
-    if (!g) return 'Il modulo delle aurore non è caricato.';
-    if (!g.siVede) return 'Da lì, quella notte: l\'ovale resta sotto l\'orizzonte.';
+    if (!g) return testoDi('did.aurL.moduloNonCaricato');
+    if (!g.siVede) return testoDi('did.aurL.daLiSottoOrizzonte');
     const dice = (nome, alt) => alt > 0
-      ? `${nome} a <strong>${num(alt, 0)}°</strong>`
-      : `${nome} sotto l'orizzonte`;
-    return `Da lì, quella notte: ${dice('il verde', g.verde)}, ${dice('il rosso', g.rosso)}, ` +
-      `la cima della tenda a <strong>${num(g.cima, 0)}°</strong> verso ${g.verso}.`;
+      ? testoDi('did.aurL.aGradi', { nome, gradi: num(alt, 0) })
+      : testoDi('did.aurL.sottoOrizzonte', { nome });
+    return testoDi('did.aurL.daLiQuellaNotte', {
+      verde: dice(testoDi('did.aurL.ilVerdeCorto'), g.verde),
+      rosso: dice(testoDi('did.aurL.ilRossoCorto'), g.rosso),
+      cima: num(g.cima, 0),
+      verso: g.verso
+    });
   }
 
   function aurLCostruisciMete() {
@@ -5152,12 +5215,12 @@
           <div class="did-meta-testa">
             <strong class="did-meta-nome">${m.nome}</strong>
             <span class="did-meta-paese">${m.paese}</span>
-            <span class="did-meta-kp${m.kpVero ? ' did-meta-kp-vero' : ''}">Kp ${num(m.kp, 0)}${m.kpVero ? ' · vero' : ''}</span>
+            <span class="did-meta-kp${m.kpVero ? ' did-meta-kp-vero' : ''}">Kp ${num(m.kp, 0)}${m.kpVero ? ' · ' + testoDi('did.aurL.vero') : ''}</span>
           </div>
           <p class="did-meta-quando">${didData(data)} — ${m.titolo}</p>
           <p class="did-meta-testo">${m.testo}</p>
           <p class="did-meta-esito">${aurLRiassunto(g)}</p>
-          <button type="button" class="did-tasto did-primario" data-meta="${m.id}">Portami lì nel planetario</button>
+          <button type="button" class="did-tasto did-primario" data-meta="${m.id}">${testoDi('did.aurL.portamiLi')}</button>
         </article>`;
     }).join('');
   }
@@ -5190,12 +5253,15 @@
       }
       if (typeof skyAvviso === 'function') {
         skyAvviso('aurora',
-          `${m.nome || 'Da qui'}, ${didData(data)}, Kp ${num(m.kp, 1)}: ` +
+          testoDi('did.aurL.avvisoTesta',
+            { luogo: m.nome || testoDi('did.aurL.daQui'), data: didData(data), kp: num(m.kp, 1) }) + ' ' +
           (g.siVedeVerde
-            ? `l'ovale ${g.nome} è a ${Math.round(g.km)} km e gli archi verdi arrivano a ${num(g.cima, 0)}° verso ${g.verso}.`
+            ? testoDi('did.aurL.avvisoVerdi',
+                { nome: g.nome, km: Math.round(g.km), cima: num(g.cima, 0), verso: g.verso })
             : g.siVede
-              ? `l'ovale ${g.nome} è a ${Math.round(g.km)} km — il verde resta sotto la curvatura, si affaccia il rosso fino a ${num(g.cima, 0)}° verso ${g.verso}.`
-              : 'con questo Kp, da qui l\'ovale resta sotto l\'orizzonte: alza la slitta del Kp nel pannello Filtri.'),
+              ? testoDi('did.aurL.avvisoRosso',
+                  { nome: g.nome, km: Math.round(g.km), cima: num(g.cima, 0), verso: g.verso })
+              : testoDi('did.aurL.avvisoNiente')),
           14000);
       }
     }, 90);
@@ -5253,7 +5319,7 @@
     ctx.fillStyle = alone;
     ctx.beginPath(); ctx.arc(c.x, c.y, r * 4.2, 0, Math.PI * 2); ctx.fill();
     didCorpo(ctx, c.x, c.y, r, CA.sole, { alone: 1.9 });
-    didScritta(ctx, 'Sole', c.x, c.y + r + 16, { colore: CA.sole, misura: 11, allinea: 'center' });
+    didScritta(ctx, testoDi('did.sole'), c.x, c.y + r + 16, { colore: CA.sole, misura: 11, allinea: 'center' });
   }
 
   // Il vento: fili che scorrono verso la coda e girano attorno allo scudo.
@@ -5346,7 +5412,7 @@
     ctx.moveTo(x.x - 7, x.y - 7); ctx.lineTo(x.x + 7, x.y + 7);
     ctx.moveTo(x.x + 7, x.y - 7); ctx.lineTo(x.x - 7, x.y + 7);
     ctx.stroke();
-    didScritta(ctx, 'qui si rompe', x.x + 11, x.y - 9, { colore: CA.rosso, misura: 10, peso: 700 });
+    didScritta(ctx, testoDi('did.aurL.quiSiRompe'), x.x + 11, x.y - 9, { colore: CA.rosso, misura: 10, peso: 700 });
 
     if (st.scarica) {
       const d = ((aurL.t - AURL_VIAGGIO_H - 0.3) % AURL_CICLO_H) / AURL_CICLO_H;
@@ -5357,7 +5423,7 @@
       g.addColorStop(1, didVela(CA.coda, 0));
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(c.x, c.y, rr, 0, Math.PI * 2); ctx.fill();
-      didScritta(ctx, 'via il plasmoide', c.x, c.y - rr - 6,
+      didScritta(ctx, testoDi('did.aurL.viaIlPlasmoide'), c.x, c.y - rr - 6,
         { colore: CA.coda, misura: 10, allinea: 'center', peso: 700 });
     }
 
@@ -5423,7 +5489,7 @@
     aurLFilo(ctx, fronte, CA.nube, 1.8, 0.6);
 
     const c = aurLPro([n.x, 0, n.raggioFronte * Math.sin(AURL_NUBE_APERTURA)], w);
-    didScritta(ctx, 'la nube', c.x, c.y - 8,
+    didScritta(ctx, testoDi('did.aurL.laNube'), c.x, c.y - 8,
       { colore: CA.nube, misura: 11, allinea: 'center', peso: 700 });
   }
 
@@ -5449,7 +5515,7 @@
     ctx.stroke();
 
     if (r < 16) {
-      didScritta(ctx, 'Terra', c.x, c.y + r + 15, { colore: C.testo2, misura: 11, allinea: 'center' });
+      didScritta(ctx, CORPI.Earth.nome, c.x, c.y + r + 15, { colore: C.testo2, misura: 11, allinea: 'center' });
       return;
     }
 
@@ -5543,7 +5609,7 @@
       const terra = aurLPro([-1.15, 0, 0], w);
       didFreccia(ctx, sole.x, sole.y, terra.x, terra.y,
         { colore: didVela(CA.sole, 0.85), spessore: 1.8, punta: 8 });
-      didScritta(ctx, 'verso il Sole', sole.x, sole.y - 9,
+      didScritta(ctx, testoDi('did.aurL.versoIlSole'), sole.x, sole.y - 9,
         { colore: CA.sole, misura: 10, allinea: 'center', peso: 700 });
       return;
     }
@@ -5556,7 +5622,7 @@
       { colore: CA.scudo, misura: 10, peso: 700, allinea: 'right' });
 
     const coda = aurLPro([AURL_CODA_MAX * 0.62, 0, s.codaR * 1.25], w);
-    didScritta(ctx, 'la coda — lunga centinaia di raggi', coda.x, coda.y,
+    didScritta(ctx, testoDi('did.aurL.laCoda'), coda.x, coda.y,
       { colore: CA.coda, misura: 10, allinea: 'center', peso: 700 });
   }
 
@@ -5650,7 +5716,7 @@
     ctx.setLineDash([5, 5]); ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(obsX - 26, obsY); ctx.lineTo(L + 30, obsY); ctx.stroke();
     ctx.setLineDash([]);
-    didScritta(ctx, 'orizzonte', L - 10, obsY - 7,
+    didScritta(ctx, testoDi('did.aurL.orizzonte'), L - 10, obsY - 7,
       { colore: C.testo2, misura: 10, allinea: 'right', peso: 700 });
 
     // Le linee di vista. Gli angoli scritti sono quelli veri, e sul disegno
@@ -5677,9 +5743,9 @@
       { colore: CA.casa, misura: 11, allinea: 'center', peso: 700 });
 
     const pOvale = P(psi, 470);
-    didScritta(ctx, `l'ovale · ${Math.round(g.km)} km di distanza`, pOvale.x, pOvale.y,
+    didScritta(ctx, testoDi('did.aurL.ovaleDistante', { km: Math.round(g.km) }), pOvale.x, pOvale.y,
       { colore: C.testo2, misura: 10, allinea: 'center', peso: 700 });
-    didScritta(ctx, 'curvatura e quote alla stessa scala — nessuna esagerazione',
+    didScritta(ctx, testoDi('did.aurL.stessaScala'),
       12, 18, { colore: C.testo3, misura: 10, peso: 600 });
   }
 
@@ -5719,22 +5785,26 @@
   //   si caricano solo entrando qui. Prefisso `spa`.
   // ===================================================================
 
-  const SPA_FIGURE = [
-    { sigla: 'Ori', nome: 'Orione' },
-    { sigla: 'UMa', nome: 'Orsa Maggiore' },
-    { sigla: 'Cru', nome: 'Croce del Sud' },
-    { sigla: 'Cas', nome: 'Cassiopea' },
-    { sigla: 'Leo', nome: 'Leone' },
-    { sigla: 'Cyg', nome: 'Cigno' },
-    { sigla: 'Sco', nome: 'Scorpione' },
-    { sigla: 'Gem', nome: 'Gemelli' }
-  ];
+  // Il nome di una figura sta in una namespace sua (`cost.nome.<sigla>`) e
+  // non in una del banco: le costellazioni si chiamano allo stesso modo in
+  // tutta l'app, e il giorno che l'atlante passerà alle chiavi troverà le
+  // sue già scritte.
+  const SPA_FIGURE = nomiDaId([
+    { id: 'Ori', sigla: 'Ori', nome: 'Orione' },
+    { id: 'UMa', sigla: 'UMa', nome: 'Orsa Maggiore' },
+    { id: 'Cru', sigla: 'Cru', nome: 'Croce del Sud' },
+    { id: 'Cas', sigla: 'Cas', nome: 'Cassiopea' },
+    { id: 'Leo', sigla: 'Leo', nome: 'Leone' },
+    { id: 'Cyg', sigla: 'Cyg', nome: 'Cigno' },
+    { id: 'Sco', sigla: 'Sco', nome: 'Scorpione' },
+    { id: 'Gem', sigla: 'Gem', nome: 'Gemelli' }
+  ], 'cost.nome.');
 
-  const SPA_QUADRI = {
+  const SPA_QUADRI = nomiTabella({
     figura:  { nome: 'La figura',            elev: 90, az: 0 },
     spazio:  { nome: 'Nello spazio',         elev: 16, az: 28 },
     altrove: { nome: 'Da un altro pianeta',  elev: 90, az: 0 }
-  };
+  }, 'did.spa.quadro.');
 
   // Fin dove si può andare. Duemila anni luce sono più della stella più
   // lontana di quasi tutte le figure: oltre, non si sta più guardando la
@@ -6014,11 +6084,12 @@
       const r = spaRaggioStella(s.mag);
       didCorpoSchermo(ctx, p.x, p.y, r, costColoreStella(s.bv), { alone: r * 3 });
       if (s.mag < 2.9 && s.nome) {
-        spaEtichetta(ctx, `${s.nome} · ${Math.round(s.al)} al`, p.x + r, p.y, C.testo2, zone);
+        spaEtichetta(ctx, testoDi('did.spa.stellaAl', { nome: s.nome, al: Math.round(s.al) }),
+          p.x + r, p.y, C.testo2, zone);
       }
     });
 
-    didScritta(ctx, 'Da qui: la figura che tutti conoscono', 12, 18,
+    didScritta(ctx, testoDi('did.spa.daQui'), 12, 18,
       { colore: C.testo3, misura: 11, peso: 700, schermo: true });
   }
 
@@ -6060,10 +6131,10 @@
       if (v < min || v > max) return;
       const x = perX(v);
       ctx.beginPath(); ctx.moveTo(x, alto - 6); ctx.lineTo(x, H - basso + 4); ctx.stroke();
-      didScritta(ctx, v >= 1000 ? (v / 1000) + '.000' : String(v), x, H - basso + 16,
+      didScritta(ctx, v >= 1000 ? num(v, 0) : String(v), x, H - basso + 16,
         { colore: C.testo3, misura: 10, allinea: 'center', peso: 600, schermo: true });
     });
-    didScritta(ctx, 'anni luce', L - dx, H - basso + 16,
+    didScritta(ctx, testoDi('did.spa.anniLuce'), L - dx, H - basso + 16,
       { colore: C.testo3, misura: 10, allinea: 'right', peso: 600, schermo: true });
 
     scelte.forEach((v, k) => {
@@ -6075,13 +6146,13 @@
       ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(sx, y); ctx.lineTo(x, y); ctx.stroke();
       didCorpoSchermo(ctx, x, y, 3.4, costColoreStella(v.s.bv), { alone: 9 });
-      didScritta(ctx, v.s.nome || 'una stella', sx - 8, y + 3,
+      didScritta(ctx, v.s.nome || testoDi('did.spa.unaStella'), sx - 8, y + 3,
         { colore: C.testo2, misura: 10.5, allinea: 'right', peso: 600, schermo: true });
       didScritta(ctx, `${Math.round(v.s.al)}${v.s.stimata ? ' ?' : ''}`, x + 9, y + 3,
         { colore: C.testo3, misura: 10, peso: 600, schermo: true });
     });
 
-    didScritta(ctx, 'Quanto è lontana ognuna — scala logaritmica', 12, 16,
+    didScritta(ctx, testoDi('did.spa.quantoLontana'), 12, 16,
       { colore: C.testo3, misura: 11, peso: 700, schermo: true });
   }
 
@@ -6208,9 +6279,9 @@
       }
       return { x: x + prove[0][0], y: y + prove[0][1] };
     };
-    const nomeSole = staltrove ? 'il Sole — casa' : 'il Sole — noi siamo qui';
+    const nomeSole = staltrove ? testoDi('did.spa.soleCasa') : testoDi('did.spa.soleQui');
     const postoSole = posa(sole.x, sole.y, nomeSole, [[0, 18], [0, -13], [0, 31]]);
-    const nomeOcchio = opz.nomeOcchio || 'sei qui';
+    const nomeOcchio = opz.nomeOcchio || testoDi('did.spa.seiQui');
     const postoOcchio = staltrove
       ? posa(occhioP.x, occhioP.y, nomeOcchio, [[0, 22], [0, -17], [0, 35], [0, -30]])
       : null;
@@ -6233,7 +6304,7 @@
       ctx.lineWidth = 1;
       ctx.stroke();
       const et = spaPro([raggio, 0, 0], w);
-      const testo = raggio >= 1000 ? (raggio / 1000) + '.000 al' : raggio + ' al';
+      const testo = testoDi('did.spa.raggioAl', { al: num(raggio, 0) });
       if (!prendi(et.x, et.y - 4, testo.length * 5.4 + 8, 13)) return;
       didScritta(ctx, testo, et.x, et.y - 4,
         { colore: C.testo3, misura: 9.5, allinea: 'center', peso: 600, schermo: true });
@@ -6319,7 +6390,7 @@
   function spaDisegnaSpazio() {
     spaScena3D('did-spa-tela', {
       proporzione: 1.45, altezza: 480, occhio: [0, 0, 0],
-      titolo: 'Gira col dito: la figura è un caso, e si vede subito'
+      titolo: testoDi('did.spa.giraFigura')
     });
   }
 
@@ -6331,10 +6402,12 @@
     spaScena3D('did-spa-tela-altrove', {
       proporzione: 1.35, altezza: 420,
       occhio: spaOsservatore(),
-      nomeOcchio: meta ? `sei qui — ${meta.nome}` : (via ? `sei qui · ${via} al` : 'sei qui'),
+      nomeOcchio: meta
+        ? testoDi('did.spa.seiQuiMeta', { nome: meta.nome })
+        : (via ? testoDi('did.spa.seiQuiAl', { al: num(via, 0) }) : testoDi('did.spa.seiQui')),
       titolo: via
-        ? 'Gira col dito: da lì i raggi visuali si aprono a ventaglio'
-        : 'Gira col dito — poi spostati, e guarda cosa succede ai raggi'
+        ? testoDi('did.spa.giraVentaglio')
+        : testoDi('did.spa.giraPoiSpostati')
     });
   }
 
@@ -6425,15 +6498,16 @@
     });
 
     let testo;
-    if (!partito) testo = 'Sei sul Sole: è la figura di sempre';
-    else if (meta) testo = `Da un pianeta di ${meta.nome} · ${Math.round(meta.al)} anni luce da casa`;
-    else testo = `${Math.round(spa.viaggio)} anni luce di lato — e la figura non c'è più`;
+    if (!partito) testo = testoDi('did.spa.sulSole');
+    else if (meta) testo = testoDi('did.spa.daPianetaDi',
+      { nome: meta.nome, al: num(Math.round(meta.al), 0) });
+    else testo = testoDi('did.spa.diLato', { al: num(Math.round(spa.viaggio), 0) });
     didScritta(ctx, testo, 12, 18,
       { colore: partito ? '#c4b5fd' : C.testo3, misura: 11, peso: 700, schermo: true });
     if (partito) {
       didScritta(ctx, meta
-        ? `in grigio com'era da qui — e ${meta.nome}, lassù, è il tuo Sole`
-        : "in grigio com'era da qui",
+        ? testoDi('did.spa.grigioMeta', { nome: meta.nome })
+        : testoDi('did.spa.grigio'),
         12, 33, { colore: C.testo3, misura: 10, peso: 600, schermo: true });
     }
   }
@@ -6516,9 +6590,8 @@
   }
 
   function spaAttesa(ctx, L, H) {
-    didScritta(ctx, spa.stato === 'fallito'
-      ? 'Le distanze non si sono caricate: serve la rete, una volta sola.'
-      : 'Sto prendendo le distanze delle stelle…',
+    didScritta(ctx, testoDi(spa.stato === 'fallito'
+      ? 'did.spa.distanzeGuaste' : 'did.spa.distanzeInArrivo'),
       L / 2, H / 2, { colore: C.testo3, misura: 12, allinea: 'center', peso: 600, schermo: true });
   }
 
@@ -6535,21 +6608,27 @@
     const cfr = spaConfronto();
     const svanite = cfr ? cfr.svanite : 0;
 
-    scrivi('did-spa-vicina', `${vicina.nome || 'una stella'} · ${Math.round(vicina.al)} al`);
-    scrivi('did-spa-lontana', `${lontana.nome || 'una stella'} · ${Math.round(lontana.al)} al`);
-    scrivi('did-spa-rapporto', `${rapporto.toFixed(1)} volte`, rapporto > 3 ? 'ambra' : null);
-    scrivi('did-spa-svanite', `${svanite} su ${d.stelle.length}`, svanite ? 'ambra' : null);
+    scrivi('did-spa-vicina', testoDi('did.spa.stellaAl',
+      { nome: vicina.nome || testoDi('did.spa.unaStella'), al: Math.round(vicina.al) }));
+    scrivi('did-spa-lontana', testoDi('did.spa.stellaAl',
+      { nome: lontana.nome || testoDi('did.spa.unaStella'), al: Math.round(lontana.al) }));
+    scrivi('did-spa-rapporto', testoDi('did.spa.volte', { n: num(rapporto, 1) }),
+      rapporto > 3 ? 'ambra' : null);
+    scrivi('did-spa-svanite', testoDi('did.spa.suTotale', { n: svanite, tot: d.stelle.length }),
+      svanite ? 'ambra' : null);
 
     // La coppia che si è aperta di più: due stelle unite da una linea
     // della figura, e quanto distavano prima e quanto distano adesso
     const c = cfr && cfr.coppia;
     if (!c || c.salto < 0.05) {
-      scrivi('did-spa-coppia', spaLontananza() > 0.5 ? 'niente di misurabile' : '—');
-    } else {
-      const na = d.stelle[c.a].nome || 'una stella';
-      const nb = d.stelle[c.b].nome || 'una stella';
       scrivi('did-spa-coppia',
-        `${na}–${nb}: da ${num(c.prima, 1)}° a ${num(c.dopo, 1)}°`,
+        spaLontananza() > 0.5 ? testoDi('did.spa.nienteMisurabile') : '—');
+    } else {
+      const na = d.stelle[c.a].nome || testoDi('did.spa.unaStella');
+      const nb = d.stelle[c.b].nome || testoDi('did.spa.unaStella');
+      scrivi('did-spa-coppia',
+        testoDi('did.spa.coppiaAperta',
+          { a: na, b: nb, prima: num(c.prima, 1), dopo: num(c.dopo, 1) }),
         c.salto > 5 ? 'ambra' : null);
     }
   }
@@ -6558,11 +6637,13 @@
     const meta = spaMeta();
     const v = $('did-spa-viaggio-valore');
     if (v) {
-      v.textContent = meta ? `${Math.round(meta.al)} anni luce`
-        : (spa.viaggio < 1 ? 'sul Sole' : `${Math.round(spa.viaggio)} anni luce`);
+      v.textContent = meta
+        ? testoDi('did.spa.anniLuceN', { n: num(Math.round(meta.al), 0) })
+        : (spa.viaggio < 1 ? testoDi('did.spa.sulSoleCorto')
+          : testoDi('did.spa.anniLuceN', { n: num(Math.round(spa.viaggio), 0) }));
     }
     const dir = $('did-spa-direzione-valore');
-    if (dir) dir.textContent = meta ? 'verso la meta' : `${Math.round(spa.direzione)}°`;
+    if (dir) dir.textContent = meta ? testoDi('did.spa.versoLaMeta') : `${Math.round(spa.direzione)}°`;
     const mete = $('did-spa-mete');
     if (mete) mete.querySelectorAll('[data-meta]').forEach(b =>
       b.classList.toggle('attiva', b.dataset.meta === String(spa.meta)));
@@ -6576,9 +6657,13 @@
     if (!riga) return;
     const mete = spaMete();
     riga.innerHTML =
-      `<span class="did-etichetta">Va' a stare su…</span>` +
-      `<button type="button" class="did-pillola${spa.meta === null ? ' attiva' : ''}" data-meta="null">dal Sole</button>` +
-      mete.map(v => `<button type="button" class="did-pillola${spa.meta === v.i ? ' attiva' : ''}" data-meta="${v.i}" title="${Math.round(v.s.al)} anni luce da qui${v.s.stimata ? ', distanza stimata' : ''}">${v.s.nome}</button>`).join('');
+      `<span class="did-etichetta">${testoDi('did.spa.vaAStareSu')}</span>` +
+      `<button type="button" class="did-pillola${spa.meta === null ? ' attiva' : ''}" data-meta="null">${testoDi('did.spa.dalSole')}</button>` +
+      mete.map(v => {
+        const quanto = testoDi('did.spa.anniLuceDaQui', { n: num(Math.round(v.s.al), 0) });
+        const titolo = v.s.stimata ? quanto + testoDi('did.spa.distanzaStimata') : quanto;
+        return `<button type="button" class="did-pillola${spa.meta === v.i ? ' attiva' : ''}" data-meta="${v.i}" title="${titolo}">${v.s.nome}</button>`;
+      }).join('');
   }
 
   // Il ponte in entrata: dalla scheda dell'atlante si arriva qui, con la
@@ -6643,18 +6728,18 @@
         <div class="did-scene did-scene-due" data-quadro="figura">
           <figure class="did-scena">
             <canvas id="did-spa-figura" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">La figura, come si vede da qui</figcaption>
+            <figcaption class="did-targhetta">${testoDi('did.spa.targaFigura')}</figcaption>
           </figure>
           <figure class="did-scena">
             <canvas id="did-spa-distanze" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">Le distanze vere, una barra per stella</figcaption>
+            <figcaption class="did-targhetta">${testoDi('did.spa.targaDistanze')}</figcaption>
           </figure>
         </div>
 
         <div class="did-scene" data-quadro="spazio" hidden>
           <figure class="did-scena">
             <canvas id="did-spa-tela" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">Le stesse stelle nello spazio, con i raggi visuali dal Sole</figcaption>
+            <figcaption class="did-targhetta">${testoDi('did.spa.targaSpazio')}</figcaption>
           </figure>
         </div>
 
@@ -6666,23 +6751,23 @@
           <div class="did-scene did-scene-due">
             <figure class="did-scena">
               <canvas id="did-spa-altrove" class="did-tela"></canvas>
-              <figcaption class="did-targhetta">Lo stesso pezzo di cielo, visto da lì — in grigio com'era da qui</figcaption>
+              <figcaption class="did-targhetta">${testoDi('did.spa.targaAltrove')}</figcaption>
             </figure>
             <figure class="did-scena">
               <canvas id="did-spa-tela-altrove" class="did-tela"></canvas>
-              <figcaption class="did-targhetta">Perché: dov'è finito il tuo occhio — <em>gira col dito</em></figcaption>
+              <figcaption class="did-targhetta">${testoDi('did.spa.targaOcchio')}</figcaption>
             </figure>
           </div>
 
           <div class="did-riga">
-            <label class="did-etichetta" for="did-spa-viaggio">Quanto ti allontani dal Sole</label>
-            <span class="did-valore" id="did-spa-viaggio-valore">sul Sole</span>
+            <label class="did-etichetta" for="did-spa-viaggio">${testoDi('did.spa.quantoTiAllontani')}</label>
+            <span class="did-valore" id="did-spa-viaggio-valore">${testoDi('did.spa.sulSoleCorto')}</span>
           </div>
           <input id="did-spa-viaggio" class="did-slitta did-slitta-larga" type="range"
             min="0" max="${SPA_VIAGGIO_MAX}" step="10" value="0">
 
           <div class="did-riga">
-            <label class="did-etichetta" for="did-spa-direzione">Da che parte ti sposti</label>
+            <label class="did-etichetta" for="did-spa-direzione">${testoDi('did.spa.daCheParte')}</label>
             <span class="did-valore" id="did-spa-direzione-valore">0°</span>
           </div>
           <input id="did-spa-direzione" class="did-slitta did-slitta-larga" type="range"
@@ -6690,26 +6775,20 @@
         </div>
 
         ${didLetture([
-          { id: 'did-spa-vicina', nome: 'La più vicina' },
-          { id: 'did-spa-lontana', nome: 'La più lontana' },
-          { id: 'did-spa-rapporto', nome: 'Quante volte più lontana', forte: true },
-          { id: 'did-spa-svanite', nome: 'Da lì, invisibili a occhio', forte: true },
-          { id: 'did-spa-coppia', nome: 'La coppia che si è aperta di più', forte: true }
+          { id: 'did-spa-vicina', nome: testoDi('did.spa.letturaVicina') },
+          { id: 'did-spa-lontana', nome: testoDi('did.spa.letturaLontana') },
+          { id: 'did-spa-rapporto', nome: testoDi('did.spa.letturaRapporto'), forte: true },
+          { id: 'did-spa-svanite', nome: testoDi('did.spa.letturaSvanite'), forte: true },
+          { id: 'did-spa-coppia', nome: testoDi('did.spa.letturaCoppia'), forte: true }
         ])}
 
-        <p class="did-nota">Le distanze vengono dalle parallassi di Hipparcos (database HYG). Per una
-          decina di stelle molto lontane la parallasse non basta a dare un numero: quelle sono
-          segnate con un punto interrogativo, e messe alla distanza mediana della loro figura.
-          Le magnitudini nel terzo quadro sono ricalcolate dalla distanza vera: allontanandosi non
-          cambia solo il disegno, cambia anche quali stelle si vedono ancora. Andando a stare su una
-          stella della figura, quella lì sparisce dal cielo — è il Sole di quel posto — e le altre
-          si riordinano da capo: il grigio tratteggiato è come stavano viste da qui.</p>
+        <p class="did-nota">${testoDi('did.spa.nota')}</p>
 
         ${didPonti([
-          { azione: 'cielo', icona: 'stella', testo: 'Vedila nel planetario',
-            titolo: 'La stessa figura sul cielo di stanotte, con il suo disegno' },
-          { azione: 'atlante', icona: 'lista', testo: 'La sua pagina nell\'atlante',
-            titolo: 'Chi le ha dato il nome, come la chiamano altrove, e se da qui si vede' }
+          { azione: 'cielo', icona: 'stella', testo: testoDi('did.spa.pontePlanetario'),
+            titolo: testoDi('did.spa.pontePlanetarioT') },
+          { azione: 'atlante', icona: 'lista', testo: testoDi('did.spa.ponteAtlante'),
+            titolo: testoDi('did.spa.ponteAtlanteT') }
         ])}`;
     },
 
@@ -6892,18 +6971,18 @@
   // mezzo grado, cioè più del diametro del Sole.
   const TRAM_CURVA_RAGGI = 6;
 
-  const TRAM_BANDE = [
-    { id: 'blu',   nm: 450, colore: '#4c8dff' },
-    { id: 'verde', nm: 550, colore: '#5fd6a8' },
-    { id: 'rosso', nm: 650, colore: '#ff6b5a' }
-  ];
+  const TRAM_BANDE = nomiDaId([
+    { id: 'blu',   nome: 'blu',   nm: 450, colore: '#4c8dff' },
+    { id: 'verde', nome: 'verde', nm: 550, colore: '#5fd6a8' },
+    { id: 'rosso', nome: 'rosso', nm: 650, colore: '#ff6b5a' }
+  ], 'did.tram.banda.');
 
-  const TRAM_QUADRI = {
+  const TRAM_QUADRI = testiTabella({
     globo:  { chip: 'Perché tramonta' },
     aria:   { chip: 'Quanta aria' },
     colore: { chip: 'Che colore ha' },
     marte:  { chip: 'E su Marte?' }
-  };
+  }, 'did.tram.quadro.', ['chip']);
 
   // I punti di vista sul globo. «Di taglio» è quello di partenza, e non per
   // caso: con la telecamera perpendicolare alla direzione del Sole il
@@ -6917,28 +6996,28 @@
   // dalla parte opposta a quella del mattino: mettendo il Sole a destra,
   // tutto il tratto che questo banco racconta — dal mezzogiorno al buio —
   // finiva dietro al globo, e l'omino spariva proprio quando serviva.
-  const TRAM_VISTE = {
+  const TRAM_VISTE = nomiTabella({
     taglio: { nome: 'Di taglio',  az: 90, elev: 12 },
     alto:   { nome: "Dall'alto",  az: 90, elev: 70 },
     sole:   { nome: 'Dal Sole',   az: 0,  elev: 14 }
-  };
+  }, 'did.tram.vista.');
 
-  const TRAM_LUOGHI = [
+  const TRAM_LUOGHI = nomiDaId([
     { id: 'qui',  nome: 'Da casa tua' },
     { id: 'eq',   nome: "All'equatore", lat: 0,     lon: 12 },
     { id: 'nord', nome: 'Tromsø, 69° N', lat: 69.65, lon: 18.96 }
-  ];
+  ], 'did.tram.luogo.');
 
   // I salti: l'altezza del Sole che conta, e la slitta ci arriva da sola.
   // Servono perché il tratto interessante — dal Sole basso alla fine del
   // crepuscolo — è meno di un decimo della corsa della slitta.
-  const TRAM_METE = [
-    { nome: 'Mezzogiorno', ora: 0 },
-    { nome: 'Sole a 10°',  h: 10 },
-    { nome: 'Tramonto',    h: 0 },
-    { nome: 'Crepuscolo',  h: -6 },
-    { nome: 'Notte',       ora: TRAM_ORA_MAX }
-  ];
+  const TRAM_METE = nomiDaId([
+    { id: 'mezzogiorno', nome: 'Mezzogiorno', ora: 0 },
+    { id: 'sole10',      nome: 'Sole a 10°',  h: 10 },
+    { id: 'tramonto',    nome: 'Tramonto',    h: 0 },
+    { id: 'crepuscolo',  nome: 'Crepuscolo',  h: -6 },
+    { id: 'notte',       nome: 'Notte',       ora: TRAM_ORA_MAX }
+  ], 'did.tram.meta.');
 
   // Il mondo e le luci delle città stanno in `app.js` (§7.3.2, `SKY_MONDO` e
   // `SKY_LUCI_CITTA`): sono lo stesso mondo che la vista 3D del Sistema
@@ -7585,12 +7664,12 @@
       const dove = (verso, testo, colore) => didScritta(ctx, testo,
         cen.x + gx / gn * R * 0.6 * verso, cen.y + gy / gn * R * 0.6 * verso,
         { colore, misura: 12, allinea: 'center', peso: 800 });
-      dove(1, 'GIORNO', 'rgba(214, 234, 255, 0.85)');
-      dove(-1, 'NOTTE', 'rgba(158, 176, 214, 0.8)');
+      dove(1, testoDi('did.tram.giorno'), 'rgba(214, 234, 255, 0.85)');
+      dove(-1, testoDi('did.tram.notte'), 'rgba(158, 176, 214, 0.8)');
     }
 
     if (etichettaSole) {
-      didScritta(ctx, L < 460 ? 'il Sole' : 'il Sole — sta fermo',
+      didScritta(ctx, testoDi(L < 460 ? 'did.tram.ilSole' : 'did.tram.ilSoleFermo'),
         etichettaSole.x, etichettaSole.y,
         { colore: '#ffd166', misura: 11, allinea: 'center', peso: 700 });
     } else if (tramDot(a.s, w.d) > 0) {
@@ -7598,7 +7677,7 @@
       // è dietro alla telecamera — e senza una riga che lo dica sembra che
       // sia sparito. È anche il quadro in cui tutto il bordo è arancione:
       // da lassù il limbo è tutto tramonto, perché il Sole lo sfiora ovunque
-      didScritta(ctx, 'Il Sole è alle tue spalle: si vede solo il giorno.',
+      didScritta(ctx, testoDi('did.tram.soleAlleSpalle'),
         12, H - 16, { colore: '#ffd166', misura: 11, peso: 700, schermo: true });
     }
 
@@ -7606,9 +7685,9 @@
     // la tela è larga trecentocinquanta pixel, e una riga di stato
     // appoggiata in basso finiva sotto alla targhetta — cioè si scriveva
     // per non farsi leggere. Quello che diceva è comunque nelle letture.
-    didScritta(ctx, 'Il Sole non si muove: gira la Terra.', 12, 20,
+    didScritta(ctx, testoDi('did.tram.giraLaTerra'), 12, 20,
       { colore: C.testo2, misura: 12, peso: 700, schermo: true });
-    didScritta(ctx, `Aria ingrandita ~${esagera}× — alla scala vera è un filo.`,
+    didScritta(ctx, testoDi('did.tram.ariaIngrandita', { n: esagera }),
       12, 37, { colore: C.testo3, misura: 10.5, peso: 600, schermo: true });
   }
 
@@ -7733,7 +7812,7 @@
     ctx.moveTo(obsX, obsY - ariaPx); ctx.lineTo(obsX - 10, obsY - ariaPx - 26);
     ctx.stroke();
     ctx.setLineDash([]);
-    didScritta(ctx, 'dritto sopra la testa: 1×', obsX - 12, obsY - ariaPx - 30,
+    didScritta(ctx, testoDi('did.tram.drittoSopra'), obsX - 12, obsY - ariaPx - 30,
       { colore: C.testo2, misura: 10.5, allinea: 'right', peso: 700 });
 
     // quello di adesso, col colore che si porta dietro: bianco quando entra,
@@ -7760,7 +7839,8 @@
     // alto»: col Sole a mezza altezza il raggio è ripido, e uno scostamento
     // verticale la lasciava appoggiata sopra alla riga
     const mx = (ex + obsX) / 2, my = (ey + obsY) / 2;
-    didScritta(ctx, `adesso: ${Math.round(s.cammino)} km — ${num(s.X, 1)}×`,
+    didScritta(ctx, testoDi('did.tram.adesso',
+      { km: num(Math.round(s.cammino), 0), x: num(s.X, 1) }),
       mx - Math.sin(rad) * 16, my - Math.cos(rad) * 16,
       { colore: tramHexOf(coloreSole), misura: 12, allinea: 'center', peso: 800 });
 
@@ -7789,13 +7869,14 @@
       ctx.stroke();
     }
     if (s.X > 1.4) {
-      didScritta(ctx, 'il blu esce di lato: è quello che fa il cielo azzurro',
+      didScritta(ctx, testoDi('did.tram.bluDiLato'),
         ex + (obsX - ex) * 0.10 + nx * 46, ey + (obsY - ey) * 0.10 + ny * 46,
         { colore: 'rgba(150, 190, 255, 0.95)', misura: 10.5, peso: 700 });
     }
 
     // Quanta ne arriva davvero, scritto dove arriva
-    didScritta(ctx, `arriva il ${num(s.bande.verde * 100, s.bande.verde > 0.1 ? 0 : 1)}%`,
+    didScritta(ctx, testoDi('did.tram.arrivaIl',
+      { n: num(s.bande.verde * 100, s.bande.verde > 0.1 ? 0 : 1) }),
       obsX - 10, obsY + 16,
       { colore: tramHexOf(coloreSole), misura: 11, allinea: 'right', peso: 800 });
 
@@ -7837,12 +7918,12 @@
 
     // --- Il titolo del quadro ------------------------------------------
     didScritta(ctx, s.sopra
-      ? `${Math.round(s.cammino)} km d'aria contro gli 8,4 che basterebbero col Sole sulla testa: ${num(s.X, 1)} volte.`
-      : `Il Sole è sotto l'orizzonte: la luce che resta ha attraversato tutto questo e oltre.`,
+      ? testoDi('did.tram.kmAria', { km: num(Math.round(s.cammino), 0), x: num(s.X, 1) })
+      : testoDi('did.tram.soleSottoOrizzonte'),
       12, 22, { colore: C.testo, misura: 13, peso: 800, schermo: true });
-    didScritta(ctx, "Otto chilometri e mezzo è poco più dell'Everest (8,8) e meno di un aereo di linea (11).",
+    didScritta(ctx, testoDi('did.tram.everest'),
       12, 39, { colore: C.testo3, misura: 10.5, peso: 600, schermo: true });
-    didScritta(ctx, 'Curvatura, spessore e cammino allo stesso metro — nessuna esagerazione.',
+    didScritta(ctx, testoDi('did.tram.stessoMetro'),
       12, 55, { colore: C.testo3, misura: 10, peso: 600, schermo: true });
   }
 
@@ -7911,12 +7992,13 @@
       ctx.moveTo(cx + rx + 12, yVero); ctx.lineTo(cx + rx + 12, ySole);
       ctx.stroke();
       ctx.setLineDash([]);
-      didScritta(ctx, `rifrazione ${Math.round(s.R)}′`, cx + rx + 18, (yVero + ySole) / 2 + 4,
+      didScritta(ctx, testoDi('did.tram.rifrazione', { n: Math.round(s.R) }),
+        cx + rx + 18, (yVero + ySole) / 2 + 4,
         { colore: '#e2eafa', misura: 10.5, peso: 700 });
       // a sinistra del cerchio e non sotto: sotto c'è la targhetta, e
       // proprio nell'istante che conta — il Sole geometrico appena sceso —
       // la scritta ci finiva dietro
-      didScritta(ctx, 'dov\'è davvero il Sole', cx - rx - 10, yVero + 4,
+      didScritta(ctx, testoDi('did.tram.dovEDavvero'), cx - rx - 10, yVero + 4,
         { colore: 'rgba(226, 234, 250, 0.85)', misura: 10, allinea: 'right', peso: 700 });
     };
 
@@ -7949,17 +8031,18 @@
     ctx.lineTo(L, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = 'rgba(233, 237, 247, 0.22)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(0, yOriz); ctx.lineTo(L, yOriz); ctx.stroke();
-    didScritta(ctx, 'orizzonte', L - 10, yOriz + 15,
+    didScritta(ctx, testoDi('did.aurL.orizzonte'), L - 10, yOriz + 15,
       { colore: C.testo2, misura: 10, allinea: 'right', peso: 600 });
 
     segnoVero();
 
     const schiaccia = Math.max(0, 1 - ry / rx);
     didScritta(ctx, s.sopra
-      ? `Disco schiacciato del ${Math.round(schiaccia * 100)}% · rifrazione ${Math.round(s.R)}′ contro i 32′ del diametro`
-      : 'Il disco è sotto l\'orizzonte: resta il crepuscolo',
+      ? testoDi('did.tram.discoSchiacciato',
+          { pct: Math.round(schiaccia * 100), r: Math.round(s.R) })
+      : testoDi('did.tram.discoSotto'),
       12, 20, { colore: C.testo2, misura: 11, peso: 700, schermo: true });
-    didScritta(ctx, `Campo inquadrato: ${num(campo, 1)}° in altezza — il Sole è alla sua misura vera`,
+    didScritta(ctx, testoDi('did.tram.campoInquadrato', { gradi: num(campo, 1) }),
       12, 36, { colore: C.testo3, misura: 10, peso: 600, schermo: true });
   }
 
@@ -7983,7 +8066,7 @@
     ctx.setLineDash([3, 4]);
     ctx.beginPath(); ctx.moveTo(16, alto); ctx.lineTo(L - 16, alto); ctx.stroke();
     ctx.setLineDash([]);
-    didScritta(ctx, 'tutta la luce (100%)', L - 18, alto - 8,
+    didScritta(ctx, testoDi('did.tram.tuttaLaLuce'), L - 18, alto - 8,
       { colore: C.testo3, misura: 9.5, allinea: 'right', peso: 600, schermo: true });
 
     TRAM_BANDE.forEach((b, i) => {
@@ -8000,19 +8083,20 @@
       ctx.strokeRect(x, y, largo, h);
 
       const pct = v * 100;
-      const testoPct = pct >= 1 ? `${num(pct, pct >= 10 ? 0 : 1)}%` : (pct >= 0.01 ? `${num(pct, 2)}%` : '< 0,01%');
+      const testoPct = pct >= 1 ? `${num(pct, pct >= 10 ? 0 : 1)}%`
+        : (pct >= 0.01 ? `${num(pct, 2)}%` : '< ' + num(0.01, 2) + '%');
       didScritta(ctx, testoPct, x + largo / 2, y - 6,
         { colore: C.testo, misura: 10.5, allinea: 'center', peso: 700, schermo: true });
-      didScritta(ctx, `${b.id} · ${b.nm} nm`, x + largo / 2, H - basso + 16,
+      didScritta(ctx, `${b.nome} · ${b.nm} nm`, x + largo / 2, H - basso + 16,
         { colore: C.testo2, misura: 10, allinea: 'center', peso: 600, schermo: true });
     });
 
-    didScritta(ctx, `Quanta luce arriva all'occhio, dopo ${num(s.X, 1)} masse d'aria`, 12, 18,
+    didScritta(ctx, testoDi('did.tram.quantaLuce', { n: num(s.X, 1) }), 12, 18,
       { colore: C.testo3, misura: 11, peso: 700, schermo: true });
     // il campione del colore che ne esce: è quello che il Sole ha adesso
     ctx.fillStyle = tramRGBA(tramColoreSole(s.bande));
     ctx.beginPath(); ctx.roundRect(12, 28, 26, 15, 5); ctx.fill();
-    didScritta(ctx, 'il colore che ne esce', 46, 40,
+    didScritta(ctx, testoDi('did.tram.coloreCheNeEsce'), 46, 40,
       { colore: C.testo2, misura: 10, peso: 600, schermo: true });
   }
 
@@ -8143,24 +8227,23 @@
       const cx = r.x + r.L / 2;
       didScritta(ctx, testo, cx, r.y - 5,
         { colore, misura: 12, allinea: 'center', peso: 800, schermo: true });
-      didScritta(ctx, `cielo ${tramNomeTinta(tinta)}`, cx, r.y + r.H + 16,
+      didScritta(ctx, testoDi('did.tram.cieloTinta', { tinta: tramNomeTinta(tinta) }),
+        cx, r.y + r.H + 16,
         { colore: tramRGBA(tinta), misura: 12, allinea: 'center', peso: 800, schermo: true });
       didScritta(ctx, sottotitolo, cx, r.y + r.H + 31,
         { colore: C.testo3, misura: 10, allinea: 'center', peso: 600, schermo: true });
     };
-    intesta(rTerra, 'TERRA', '#8ab4ff', tintaT, 'molecole ben più piccole della luce: Rayleigh, λ⁻⁴');
-    intesta(rMarte, 'MARTE', '#e0956a', tintaM, 'polvere grande come la luce, e ferro che mangia il blu');
+    intesta(rTerra, nomeDi('Earth').toUpperCase(), '#8ab4ff', tintaT,
+      testoDi('did.tram.sottoTerra'));
+    intesta(rMarte, nomeDi('Mars').toUpperCase(), '#e0956a', tintaM,
+      testoDi('did.tram.sottoMarte'));
 
     const sotto = rMarte.y + rMarte.H + coda + 14;
-    didScritta(ctx, s.hVero > 6
-      ? (stretto ? 'Di giorno: noi azzurri, Marte color paglia.'
-        : 'Di giorno: da noi il blu sparpagliato in tutto il cielo, su Marte la polvere che se lo mangia e lascia il colore della sabbia.')
-      : (stretto ? 'Al tramonto si scambiano: noi rossi, Marte azzurro.'
-        : 'Al tramonto si scambiano: il nostro cielo diventa rosso, e su Marte il blu si stringe attorno al Sole invece di sparpagliarsi.'),
+    didScritta(ctx, testoDi(s.hVero > 6
+      ? (stretto ? 'did.tram.giornoCorto' : 'did.tram.giornoLungo')
+      : (stretto ? 'did.tram.tramontoCorto' : 'did.tram.tramontoLungo')),
       12, sotto, { colore: C.testo2, misura: 11, peso: 700, schermo: true });
-    didScritta(ctx, stretto
-      ? 'Molecole: Terra 0,097, Marte 0,006. Polvere: 0,5.'
-      : 'Spessore ottico a 550 nm — molecole: Terra 0,097, Marte 0,006 (sedici volte meno). Polvere di Marte: 0,5, cioè ottanta volte la sua aria.',
+    didScritta(ctx, testoDi(stretto ? 'did.tram.otticoCorto' : 'did.tram.otticoLungo'),
       12, sotto + 16, { colore: C.testo3, misura: 10, peso: 600, schermo: true });
 
     // il Sole si può prendere anche qui
@@ -8171,8 +8254,7 @@
       ctx.beginPath(); ctx.arc(M.cx, M.yOriz - s.hVero * M.kpx, 16, 0, Math.PI * 2); ctx.stroke();
       ctx.setLineDash([]);
     }
-    didScritta(ctx, stretto ? 'Trascina su e giù per muovere il Sole.'
-      : 'Trascina su e giù per muovere il Sole — si muove in tutt\'e due i cieli.',
+    didScritta(ctx, testoDi(stretto ? 'did.tram.trascinaCorto' : 'did.tram.trascinaLungo'),
       12, 18, { colore: C.testo3, misura: 10.5, peso: 600, schermo: true });
   }
 
@@ -8180,16 +8262,16 @@
   // cieli: un cielo «rgb(191,181,139)» non lo capisce nessuno.
   function tramNomeTinta(c) {
     const mx = Math.max(c.r, c.g, c.b), mn = Math.min(c.r, c.g, c.b);
-    if (mx < 26) return 'quasi nero';
+    if (mx < 26) return testoDi('did.tram.tinta.quasiNero');
     const sat = (mx - mn) / Math.max(1, mx);
-    if (sat < 0.13) return 'grigio';
-    if (c.b >= mx - 1) return c.g > c.r * 1.25 ? 'azzurro' : 'blu';
+    if (sat < 0.13) return testoDi('did.tram.tinta.grigio');
+    if (c.b >= mx - 1) return testoDi(c.g > c.r * 1.25 ? 'did.tram.tinta.azzurro' : 'did.tram.tinta.blu');
     if (c.r >= mx - 1) {
-      if (c.g > c.r * 0.78) return c.b > c.r * 0.6 ? 'color paglia' : 'giallo ocra';
-      if (c.g > c.r * 0.45) return 'arancione';
-      return 'rosso';
+      if (c.g > c.r * 0.78) return testoDi(c.b > c.r * 0.6 ? 'did.tram.tinta.paglia' : 'did.tram.tinta.ocra');
+      if (c.g > c.r * 0.45) return testoDi('did.tram.tinta.arancione');
+      return testoDi('did.tram.tinta.rosso');
     }
-    return 'verdastro';
+    return testoDi('did.tram.tinta.verdastro');
   }
 
   // -------------------------------------------------------------------
@@ -8311,75 +8393,80 @@
     const s = tramCalcola();
     const coloreSole = tramColoreSole(s.bande);
 
-    scrivi('did-tram-ora', `${tramOraTesto()} — girata di ${Math.round(tram.ora)}°`);
+    scrivi('did-tram-ora', testoDi('did.tram.oraGirata',
+      { ora: tramOraTesto(), gradi: Math.round(tram.ora) }));
     // Sotto il ventesimo di grado dire «sopra» o «sotto» è una lotteria di
     // arrotondamento: si scriveva «0,0° sotto l'orizzonte», che è un modo
     // di sbagliare che sembra un dato
-    scrivi('did-tram-vero', Math.abs(s.hVero) < 0.05 ? 'esattamente sull\'orizzonte'
-      : (s.hVero > 0 ? `${num(s.hVero, 1)}° sopra l'orizzonte`
-        : `${num(-s.hVero, 1)}° sotto l'orizzonte`));
-    scrivi('did-tram-rifrazione', `${Math.round(s.R)}′ — il Sole è alzato di tanto`);
+    scrivi('did-tram-vero', Math.abs(s.hVero) < 0.05 ? testoDi('did.tram.sullOrizzonte')
+      : (s.hVero > 0 ? testoDi('did.tram.sopraOrizzonte', { gradi: num(s.hVero, 1) })
+        : testoDi('did.tram.sottoOrizzonte', { gradi: num(-s.hVero, 1) })));
+    scrivi('did-tram-rifrazione', testoDi('did.tram.alzatoDiTanto', { n: Math.round(s.R) }));
     scrivi('did-tram-apparente', `${num(s.hApp, 2)}°`,
       !s.sopra ? 'rosso' : (s.hVero < 0 ? 'ambra' : null));
-    scrivi('did-tram-massa', `${num(s.X, 1)}× · ${Math.round(s.cammino)} km d'aria`,
+    scrivi('did-tram-massa', testoDi('did.tram.massaAria',
+      { x: num(s.X, 1), km: num(Math.round(s.cammino), 0) }),
       s.X > 12 ? 'ambra' : null);
 
     const pctVerde = s.bande.verde * 100;
     scrivi('did-tram-luce',
-      `${pctVerde >= 1 ? num(pctVerde, 1) : num(pctVerde, 3)}% — ${num(1 / s.bande.verde, 0)}× più debole`,
+      testoDi('did.tram.piuDebole', {
+        pct: pctVerde >= 1 ? num(pctVerde, 1) : num(pctVerde, 3),
+        volte: num(1 / s.bande.verde, 0)
+      }),
       s.bande.verde < 0.5 ? 'ambra' : null);
 
     const elColore = $('did-tram-colore');
     if (elColore) {
       const rapporto = s.bande.blu / Math.max(1e-6, s.bande.rosso);
-      let nomeCol = 'rosso puro';
-      if (rapporto > 0.75) nomeCol = 'bianco neutro';
-      else if (rapporto > 0.4) nomeCol = 'giallo';
-      else if (rapporto > 0.12) nomeCol = 'arancione dorato';
-      else if (rapporto > 0.02) nomeCol = 'arancione profondo';
-      elColore.textContent = nomeCol;
+      let nomeCol = 'did.tram.col.rossoPuro';
+      if (rapporto > 0.75) nomeCol = 'did.tram.col.bianco';
+      else if (rapporto > 0.4) nomeCol = 'did.tram.col.giallo';
+      else if (rapporto > 0.12) nomeCol = 'did.tram.col.dorato';
+      else if (rapporto > 0.02) nomeCol = 'did.tram.col.profondo';
+      elColore.textContent = testoDi(nomeCol);
       elColore.className = 'did-lettura-valore';
       elColore.style.color = tramRGBA(coloreSole);
     }
 
     if (tram.veroAdesso !== undefined) {
-      scrivi('did-tram-adesso', tram.veroAdesso === null ? 'N/D'
-        : (tram.veroAdesso > 0 ? `${num(tram.veroAdesso, 1)}° sopra l'orizzonte`
-          : `tramontato, ${num(-tram.veroAdesso, 1)}° sotto`));
+      scrivi('did-tram-adesso', tram.veroAdesso === null ? testoDi('did.nd')
+        : (tram.veroAdesso > 0
+          ? testoDi('did.tram.sopraOrizzonte', { gradi: num(tram.veroAdesso, 1) })
+          : testoDi('did.tram.tramontatoSotto', { gradi: num(-tram.veroAdesso, 1) })));
     }
 
     const sl = $('did-tram-slitta');
     if (sl && document.activeElement !== sl) sl.value = String(Math.round(tram.ora * 10));
     const lettura = $('did-tram-lettura');
-    if (lettura) lettura.textContent = `${tramOraTesto()} · Sole a ${num(s.hVero, 1)}°`;
+    if (lettura) lettura.textContent = testoDi('did.tram.letturaBarra',
+      { ora: tramOraTesto(), gradi: num(s.hVero, 1) });
 
     const dove = $('did-tram-dove');
     if (dove) {
       const hMax = tramAltezzaMassima();
-      dove.innerHTML = `Stai guardando dal parallelo <strong>${num(Math.abs(tram.lat), 1)}° ${tram.lat >= 0 ? 'N' : 'S'}</strong>. `
-        + `Oggi il Sole è a picco sul parallelo <strong>${num(Math.abs(tram.decl), 1)}° ${tram.decl >= 0 ? 'N' : 'S'}</strong>, `
-        + (hMax <= 0
-          ? `e da qui non sorge affatto: gira tutto il giorno sotto l'orizzonte.`
-          : `quindi da qui non sale mai sopra <strong>${num(hMax, 1)}°</strong>. L'ora è quella solare vera: mezzogiorno è quando il Sole passa in meridiano.`);
+      const emis = g => astroI18n.siglaPunto(g >= 0 ? 'N' : 'S');
+      dove.innerHTML = testoDi('did.tram.dalParallelo', {
+        lat: num(Math.abs(tram.lat), 1), emiLat: emis(tram.lat),
+        decl: num(Math.abs(tram.decl), 1), emiDecl: emis(tram.decl)
+      }) + ' ' + (hMax <= 0
+        ? testoDi('did.tram.nonSorge')
+        : testoDi('did.tram.nonSaleSopra', { gradi: num(hMax, 1) }));
     }
 
     const sp = $('did-tram-spiega');
     if (!sp) return;
     if (!s.sopra) {
-      sp.innerHTML = `Il disco è scomparso sotto l'orizzonte ottico. Quello che resta in cielo è
-        <strong>crepuscolo</strong>: luce che non arriva più dritta, ma diffusa dall'aria alta che da lassù
-        vede ancora il Sole. È lo stesso anello arancione che, sul globo, si vede di taglio dallo spazio.`;
+      sp.innerHTML = testoDi('did.tram.spiegaCrepuscolo');
     } else if (s.hVero < -0.02) {
-      sp.innerHTML = `Geometricamente il Sole è già <strong>${num(-s.hVero, 2)}° sotto l'orizzonte</strong>:
-        senza atmosfera sarebbe tramontato. Lo vediamo ancora perché l'aria piega il raggio di
-        <strong>${Math.round(s.R)}′</strong> — più del mezzo grado che il disco stesso misura, e per questo
-        il tramonto «vero» e quello che si guarda non sono lo stesso istante.`;
+      sp.innerHTML = testoDi('did.tram.spiegaRifrazione',
+        { gradi: num(-s.hVero, 2), primi: Math.round(s.R) });
     } else {
-      sp.innerHTML = `La luce attraversa <strong>${Math.round(s.cammino)} km</strong> d'aria invece degli 8,4
-        che basterebbero col Sole dritto sopra la testa: <strong>${num(s.X, 1)} volte</strong> tanto. La diffusione di Rayleigh cresce come
-        λ⁻⁴, quindi il blu se ne va per primo — ne resta il <strong>${num(s.bande.blu * 100, s.bande.blu > 0.01 ? 1 : 3)}%</strong> —
-        mentre del rosso arriva ancora il <strong>${num(s.bande.rosso * 100, 0)}%</strong>. Il blu perso non è
-        sparito: è il colore del cielo attorno.`;
+      sp.innerHTML = testoDi('did.tram.spiegaAria', {
+        km: num(Math.round(s.cammino), 0), x: num(s.X, 1),
+        blu: num(s.bande.blu * 100, s.bande.blu > 0.01 ? 1 : 3),
+        rosso: num(s.bande.rosso * 100, 0)
+      });
     }
   }
 
@@ -8469,23 +8556,20 @@
         <div id="did-tram-q-globo">
           <figure class="did-scena did-scena-tonda">
             <canvas id="did-tram-globo" class="did-tela"></canvas>
-            <figcaption class="did-targhetta"><strong>Trascina la Terra</strong> per farla girare. Il Sole sta fermo.</figcaption>
+            <figcaption class="did-targhetta">${testoDi('did.tram.targaGlobo')}</figcaption>
           </figure>
           <div class="did-riga did-riga-avvolgi" id="did-tram-viste">
-            <span class="did-etichetta">Guarda il globo:</span>
+            <span class="did-etichetta">${testoDi('did.tram.guardaIlGlobo')}</span>
             ${Object.keys(TRAM_VISTE).map((k, i) =>
               `<button type="button" class="did-pillola${i === 0 ? ' attiva' : ''}" data-vista="${k}">${TRAM_VISTE[k].nome}</button>`).join('')}
           </div>
-          <p class="did-nota did-nota-gesto">Un dito di traverso fa girare la Terra — cioè fa passare le ore —
-            e in su o in giù alza e abbassa il punto di vista; due dita avvicinano.</p>
+          <p class="did-nota did-nota-gesto">${testoDi('did.tram.notaGesto')}</p>
         </div>
 
         <div id="did-tram-q-aria" class="hidden">
           <figure class="did-scena did-scena-tonda">
             <canvas id="did-tram-aria" class="did-tela"></canvas>
-            <figcaption class="did-targhetta"><strong>Trascina il Sole</strong> — scala vera, curvatura compresa.
-              Il trattino verticale è il cammino più corto possibile: <em>quello lungo ci sta dentro tante volte
-              quanta è la massa d'aria</em>.</figcaption>
+            <figcaption class="did-targhetta">${testoDi('did.tram.targaAria')}</figcaption>
           </figure>
         </div>
 
@@ -8493,12 +8577,11 @@
           <div class="did-scene did-scene-due">
             <figure class="did-scena">
               <canvas id="did-tram-cielo" class="did-tela"></canvas>
-              <figcaption class="did-targhetta"><strong>Trascina il Sole su e giù.</strong> Il disco è alla misura
-                vera, schiacciato dalla rifrazione, e accanto c'è dove sarebbe senza aria</figcaption>
+              <figcaption class="did-targhetta">${testoDi('did.tram.targaCielo')}</figcaption>
             </figure>
             <figure class="did-scena">
               <canvas id="did-tram-bande" class="did-tela"></canvas>
-              <figcaption class="did-targhetta">Quanta luce resta, colore per colore</figcaption>
+              <figcaption class="did-targhetta">${testoDi('did.tram.targaBande')}</figcaption>
             </figure>
           </div>
         </div>
@@ -8506,53 +8589,44 @@
         <div id="did-tram-q-marte" class="hidden">
           <figure class="did-scena did-scena-tonda">
             <canvas id="did-tram-marte" class="did-tela"></canvas>
-            <figcaption class="did-targhetta">Stessa ora, stessa scala: a cambiare è solo <em>chi</em> diffonde la luce.</figcaption>
+            <figcaption class="did-targhetta">${testoDi('did.tram.targaMarte')}</figcaption>
           </figure>
-          <p class="did-nota">Da noi diffondono le molecole d'aria, mille volte più piccole della lunghezza
-            d'onda: è il regime di <strong>Rayleigh</strong>, dove la diffusione cresce come λ⁻⁴ e va un po'
-            in tutte le direzioni. Il blu viene sparpagliato per tutto il cielo — e da qualunque parte si
-            guardi, ne arriva: <strong>cielo azzurro</strong>. Su Marte l'aria è lo 0,6% della nostra e di
-            Rayleigh non resta niente: a diffondere è la <strong>polvere</strong>, granelli di un paio di
-            micron, cioè grandi <em>come</em> la lunghezza d'onda. Una polvere così non guarda il colore
-            quando ferma la luce, ma la ridiffonde con un picco in avanti tanto più stretto quanto più corta
-            è l'onda — e per giunta è ossido di ferro, che il blu se lo mangia. Lontano dal Sole vince
-            l'assorbimento (<strong>cielo color paglia</strong>), vicino al Sole vince il picco in avanti
-            (<strong>alone azzurro al tramonto</strong>). È il nostro cielo esattamente al contrario.</p>
+          <p class="did-nota">${testoDi('did.tram.notaMarte')}</p>
         </div>
 
         ${didBarra('did-tram', { min: 0, max: TRAM_ORA_MAX * 10, passo: 1, valore: 0,
-          etichettaSlitta: 'Quanto è girata la Terra dal mezzogiorno', velocita: [0.25, 1, 3, 8] })}
+          etichettaSlitta: testoDi('did.tram.etichettaSlitta'), velocita: [0.25, 1, 3, 8] })}
 
         <div class="did-riga did-riga-avvolgi" id="did-tram-mete">
-          <span class="did-etichetta">Portami a:</span>
+          <span class="did-etichetta">${testoDi('did.tram.portamiA')}</span>
           ${TRAM_METE.map((m, i) => `<button type="button" class="did-pillola" data-meta="${i}">${m.nome}</button>`).join('')}
         </div>
 
         <div class="did-riga did-riga-avvolgi" id="did-tram-luoghi">
-          <span class="did-etichetta">Da dove guardi:</span>
+          <span class="did-etichetta">${testoDi('did.tram.daDoveGuardi')}</span>
           ${TRAM_LUOGHI.map((l, i) =>
             `<button type="button" class="did-pillola${i === 0 ? ' attiva' : ''}" data-luogo="${l.id}">${l.nome}</button>`).join('')}
         </div>
 
         ${didLetture([
-        { id: 'did-tram-ora', nome: 'Ora solare del posto' },
-        { id: 'did-tram-vero', nome: 'Dov\'è il Sole per davvero' },
-        { id: 'did-tram-rifrazione', nome: 'Quanto lo alza l\'aria' },
-        { id: 'did-tram-apparente', nome: 'Dove lo vediamo', forte: true },
-        { id: 'did-tram-massa', nome: 'Aria attraversata', forte: true },
-        { id: 'did-tram-luce', nome: 'Luce che arriva', forte: true },
-        { id: 'did-tram-colore', nome: 'Colore che ne esce', forte: true },
-        { id: 'did-tram-adesso', nome: 'Il Sole adesso, da casa tua' }
+        { id: 'did-tram-ora', nome: testoDi('did.tram.letturaOra') },
+        { id: 'did-tram-vero', nome: testoDi('did.tram.letturaVero') },
+        { id: 'did-tram-rifrazione', nome: testoDi('did.tram.letturaRifrazione') },
+        { id: 'did-tram-apparente', nome: testoDi('did.tram.letturaApparente'), forte: true },
+        { id: 'did-tram-massa', nome: testoDi('did.tram.letturaMassa'), forte: true },
+        { id: 'did-tram-luce', nome: testoDi('did.tram.letturaLuce'), forte: true },
+        { id: 'did-tram-colore', nome: testoDi('did.tram.letturaColore'), forte: true },
+        { id: 'did-tram-adesso', nome: testoDi('did.tram.letturaAdesso') }
       ])}
 
         <p class="did-spiega" id="did-tram-spiega">—</p>
         <p class="did-nota" id="did-tram-dove">—</p>
 
         ${didPonti([
-        { azione: 'cielo', icona: 'sole', testo: 'Vedi il tramonto di stasera',
-          titolo: 'Porta il planetario all\'ora vera del tramonto, da casa tua' },
-        { azione: 'tred', icona: 'saturno', testo: 'Guarda la Terra da fuori',
-          titolo: 'Apre il Sistema Solare in 3D' }
+        { azione: 'cielo', icona: 'sole', testo: testoDi('did.tram.ponteCielo'),
+          titolo: testoDi('did.tram.ponteCieloT') },
+        { azione: 'tred', icona: 'saturno', testo: testoDi('did.tram.ponteTred'),
+          titolo: testoDi('did.tram.ponteTredT') }
       ])}`;
     },
 
@@ -8684,15 +8758,55 @@
         <div class="did-corpo">${l.costruisci()}</div>
       </section>`).join('');
 
-    linguette.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-lab]');
-      if (!b) return;
-      didApri(b.dataset.lab);
-    });
+    // Il nodo delle linguette non viene sostituito (gli si riscrive dentro),
+    // quindi il suo ascoltatore sopravvive a una ricostruzione: senza questa
+    // guardia il ridisegno al cambio lingua ne appenderebbe uno nuovo ogni
+    // volta. Quello del banco no, perché `banco.innerHTML` rifà le sezioni.
+    if (!linguette.dataset.collegato) {
+      linguette.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-lab]');
+        if (!b) return;
+        didApri(b.dataset.lab);
+      });
+      linguette.dataset.collegato = '1';
+    }
 
     LABORATORI.forEach(l => { if (l.collega) { try { l.collega(); } catch (err) { console.warn('Didattica:', l.id, err); } } });
     stato.costruito = true;
   }
+
+  /* Il ridisegno al cambio lingua.
+   *
+   * Qui non c'è niente da riscrivere nodo per nodo: il banco è **tutto**
+   * composto in JavaScript — le linguette, le intestazioni, il markup di
+   * ognuno degli otto banchi, le letture, i ponti — e le scritte sulle tele
+   * si ridipingono da sé al fotogramma dopo. L'unica strada onesta è
+   * rifarlo da capo, che è la stessa cosa che `didCostruisci` fa
+   * all'apertura: si azzera `stato.costruito`, si ricostruisce e si
+   * riaggancia tutto.
+   *
+   * Tre cose vanno tenute d'occhio, e sono i tre modi in cui questo
+   * ridisegno poteva rompere quello che stava mostrando. Il banco aperto si
+   * **rimette** dov'era (`didCostruisci` accende sempre il primo, e
+   * ritrovarsi sul moto retrogrado dopo aver toccato la bandiera sarebbe
+   * peggio di una scritta in italiano). Lo schermo intero si **chiude**
+   * prima, se no la scena a cui era appeso finisce buttata via mentre è
+   * ancora fuori dal banco. E `l.entra()` va richiamato sul banco che
+   * resta a schermo, perché è lui a caricare i dati e a costruire le liste
+   * che il markup nuovo non ha più (le mete del banco delle costellazioni,
+   * la linea del tempo del Grand Tour). */
+  window.didRidisegnaPerLingua = function () {
+    const banco = $('did-banco');
+    if (!banco || !stato.costruito) return;
+    const aperto = stato.lab;
+    didPienoEsci();
+    const prima = labAttivo();
+    if (prima && prima.esce) { try { prima.esce(); } catch (e) { /* niente */ } }
+    stato.costruito = false;
+    didCostruisci();
+    stato.lab = null;                 // se no `didApri` esce subito: è già lui
+    didApri(aperto);
+  };
 
   function didApri(id) {
     const prima = labAttivo();

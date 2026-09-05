@@ -1401,7 +1401,7 @@
   async function carica(forza, mostraFeedback) {
     if (mostraFeedback) {
       stato.feedbackRichiesto = true;
-      feedbackAggiornamento('Aggiornamento dei dati ADS-B in corso…', false);
+      feedbackAggiornamento(astroI18n.t('aerei.aggiornamentoInCorso'), false);
     }
     const concludiFeedback = (testo, errore) => {
       if (!stato.feedbackRichiesto) return;
@@ -1595,7 +1595,7 @@
     // la fotografia in corso e ne programma subito una nuova.
     if (stato.richiesta && stato.controller) {
       stato.feedbackRichiesto = true;
-      feedbackAggiornamento('Aggiornamento dei dati ADS-B in corso…', false);
+      feedbackAggiornamento(astroI18n.t('aerei.aggiornamentoInCorso'), false);
       stato.ricaricaDopo = true;
       stato.controller.abort();
       return stato.richiesta;
@@ -2091,14 +2091,12 @@
     if (itinerario.length === 2) {
       stratiRotta.unshift(L.polyline(puntiOrtodromia(itinerario[0], itinerario[1]), {
         color: '#60a5fa', weight: 4, opacity: .9
-      }).bindTooltip('Rotta ortodromica').addTo(mappaRotta));
+      }).bindTooltip(astroI18n.t('aereo.rottaOrtodromica')).addTo(mappaRotta));
     }
     const nota = document.getElementById('aereo-rotta-nota');
     if (nota) nota.textContent = osservati.length > 1
-      ? `${osservati.length} posizioni reali ADS-B rilevate durante questa sessione; la linea arancione è solo la previsione dei prossimi 5 minuti.`
-      : itinerario.length === 2
-        ? 'La linea blu indica la rotta ortodromica fra gli aeroporti; la traccia ADS-B reale si formerà con le prossime letture.'
-        : 'La traccia reale inizierà a formarsi con le prossime letture ADS-B.';
+      ? astroI18n.t('aereo.notaOsservate', { n: osservati.length })
+      : astroI18n.t(itinerario.length === 2 ? 'aereo.notaOrtodromica' : 'aereo.notaNessuna');
     const tutti = itinerario.concat(osservati, previsti);
     requestAnimationFrame(() => { mappaRotta.invalidateSize(); mappaRotta.fitBounds(L.latLngBounds(tutti).pad(.25), { maxZoom: 13 }); });
   }

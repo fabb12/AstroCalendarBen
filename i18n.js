@@ -228,6 +228,26 @@
     return !!(base && base.messaggi.has(chiave));
   }
 
+  /* La stessa chiave in **tutte** le lingue caricate, senza doppioni.
+   *
+   * Serve a chi deve riconoscere un testo che è stato *congelato* in una
+   * lingua e riletto in un'altra: nel diario il titolo di un evento si salva
+   * com'era il giorno in cui lo si è segnato, e un traguardo che cerca «Luna
+   * Piena» dentro a «Full Moon» smette di scattare — cioè si rimangia un
+   * traguardo già preso, che è il modo peggiore di sbagliare una traduzione.
+   * Non è una scorciatoia per comporre testo: chi deve *scrivere* usa `t`. */
+  function tutteLeVersioni(chiave) {
+    const viste = new Set();
+    for (const diz of dizionari.values()) {
+      const v = diz.messaggi.get(chiave);
+      if (typeof v === 'string' && v) viste.add(v);
+      else if (v && typeof v === 'object') {
+        for (const forma of Object.values(v)) if (typeof forma === 'string' && forma) viste.add(forma);
+      }
+    }
+    return [...viste];
+  }
+
   /* Il ponte per quello che non è ancora convertito: una stringa italiana
    * intera, cercata per intero. Nessuna espressione regolare, nessuna parola
    * dentro a una frase — se la frase non c'è nel ponte, resta italiana e
@@ -805,6 +825,7 @@
     // Il testo
     t,
     esiste,
+    tutteLeVersioni,
     testo: testoLegacy,
     // La lingua
     setLanguage: impostaLingua,
