@@ -1249,6 +1249,13 @@ const COST_BUIO = [
 //     poi dimenticarsene.
 // =====================================================================
 
+/* La scorciatoia per leggere una frase dal dizionario. Il prefisso è `cost.`,
+ * lo stesso dei nomi delle figure. */
+function costT(chiave, valori) {
+  return (typeof astroI18n === 'object' && typeof astroI18n.t === 'function')
+    ? astroI18n.t('cost.' + chiave, valori) : chiave;
+}
+
 const cost = {
   arte: false,            // i disegni si accendono solo quando vengono richiesti
   quando: 0,              // per quale aggiornamento del catalogo sono buoni i telai
@@ -2351,6 +2358,25 @@ const COST_FILTRI = [
   return v;
 });
 
+/* Il nome di una figura, nella lingua di adesso.
+ *
+ * I nomi stanno in `dati-costellazioni.js`, che è **generato** e non si tocca
+ * a mano: si traducono qui, con la sigla IAU per chiave (`cost.nome.Ori`) e
+ * l'italiano del file come ripiego. La sigla è l'identificativo giusto perché
+ * è la stessa in tutte le lingue — il nome no, ed è per questo che nessuna
+ * ricerca e nessun salvataggio ci si appoggia.
+ *
+ * È una funzione globale e non una locale perché la legge anche il planetario
+ * (`catalogo.js`, quando scrive i nomi sopra le figure): due copie dello
+ * stesso nome divergerebbero al primo ritocco. */
+function costNomeFigura(sigla, ripiego) {
+  if (typeof astroI18n === 'object' && typeof astroI18n.t === 'function') {
+    const chiave = 'cost.nome.' + sigla;
+    if (astroI18n.esiste(chiave)) return astroI18n.t(chiave);
+  }
+  return ripiego || sigla;
+}
+
 function costElencoVoci() {
   if (typeof COSTELLAZIONI_IAU === 'undefined') return [];
   const visti = new Set();
@@ -2359,7 +2385,7 @@ function costElencoVoci() {
     if (visti.has(c.sigla)) return;        // il Serpente è in due pezzi
     visti.add(c.sigla);
     voci.push({
-      sigla: c.sigla, nome: c.nome, latino: c.latino, rango: c.rango,
+      sigla: c.sigla, nome: costNomeFigura(c.sigla, c.nome), latino: c.latino, rango: c.rango,
       emisfero: costEmisfero(c.sigla),
       // «Ha un disegno» vuol dire che qualcosa da vedere c'è: le curve
       // della §2 o l'immagine della §5-bis, indifferentemente
@@ -2367,7 +2393,11 @@ function costElencoVoci() {
       nomi: (COST_NOMI[c.sigla] && COST_NOMI[c.sigla].nomi) || []
     });
   });
-  voci.sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+  // L'ordine alfabetico è quello della lingua di adesso: in inglese
+  // «Andromeda, Antlia, Apus…» non è l'ordine italiano tradotto.
+  const dove = (typeof astroI18n === 'object' && typeof astroI18n.locale === 'function')
+    ? astroI18n.locale() : 'it-IT';
+  voci.sort((a, b) => a.nome.localeCompare(b.nome, dove));
   return voci;
 }
 
@@ -2402,7 +2432,7 @@ function costCostruisciElenco() {
     cont.innerHTML = COST_BUIO.map(b => `
       <button type="button" class="cost-riga" data-buio="${b.id}">
         <span class="cost-riga-nome">${b.nome}</span>
-        <span class="cost-riga-sotto">${(COST_CULTURE[b.cultura] || {}).nome || ''} · una figura fatta di buio</span>
+        <span class="cost-riga-sotto">${(COST_CULTURE[b.cultura] || {}).nome || ''} · ${costT('figuraDiBuio')}</span>
       </button>`).join('');
     return;
   }
@@ -2410,7 +2440,7 @@ function costCostruisciElenco() {
   const lat = costLatitudineDiCasa();
   const voci = costFiltraVoci();
   if (!voci.length) {
-    cont.innerHTML = '<p class="cost-vuoto">Nessuna costellazione con questo nome.</p>';
+    cont.innerHTML = `<p class="cost-vuoto">${costT('nessunaConQuestoNome')}</p>`;
     return;
   }
 
@@ -2418,11 +2448,11 @@ function costCostruisciElenco() {
     const vis = costVisibilita(v.sigla, lat);
     let dove = '';
     if (vis) {
-      if (vis.maiVisibile) dove = '<span class="cost-tag cost-tag-mai">da qui mai</span>';
-      else if (vis.circumpolare) dove = '<span class="cost-tag cost-tag-si">non tramonta mai</span>';
-      else if (vis.bassa) dove = `<span class="cost-tag">appena ${Math.round(vis.altMax)}° sull'orizzonte</span>`;
+      if (vis.maiVisibile) dove = `<span class="cost-tag cost-tag-mai">${costT('daQuiMai')}</span>`;
+      else if (vis.circumpolare) dove = `<span class="cost-tag cost-tag-si">${costT('nonTramontaMai')}</span>`;
+      else if (vis.bassa) dove = `<span class="cost-tag">${costT('appenaSullOrizzonte', { gradi: Math.round(vis.altMax) })}</span>`;
     }
-    const arte = v.disegno ? '<span class="cost-tag cost-tag-arte">disegno</span>' : '';
+    const arte = v.disegno ? `<span class="cost-tag cost-tag-arte">${costT('disegno')}</span>` : '';
     return `
       <button type="button" class="cost-riga" data-sigla="${v.sigla}">
         <span class="cost-riga-nome">${v.nome}</span>
@@ -2435,7 +2465,7 @@ function costCostruisciElenco() {
 
 function costSchedaHtml(sigla) {
   const voce = costElencoVoci().find(v => v.sigla === sigla);
-  if (!voce) return '<p class="cost-vuoto">Costellazione non trovata.</p>';
+  if (!voce) return `<p class="cost-vuoto">${costT('nonTrovata')}</p>`;
 
   const lat = costLatitudineDiCasa();
   const vis = costVisibilita(sigla, lat);
@@ -2443,27 +2473,25 @@ function costSchedaHtml(sigla) {
   const gruppo = COST_GRUPPI[costGruppoDi(sigla)];
 
   const etichette = [
-    `<span class="cost-etichetta">${voce.emisfero === 'australe' ? 'cielo australe'
-      : voce.emisfero === 'boreale' ? 'cielo boreale' : 'cielo equatoriale'}</span>`,
-    voce.disegno ? '<span class="cost-etichetta cost-etichetta-arte">con disegno</span>' : ''
+    `<span class="cost-etichetta">${costT(voce.emisfero === 'australe' ? 'cieloAustrale'
+      : voce.emisfero === 'boreale' ? 'cieloBoreale' : 'cieloEquatoriale')}</span>`,
+    voce.disegno ? `<span class="cost-etichetta cost-etichetta-arte">${costT('conDisegno')}</span>` : ''
   ].join('');
 
   let daQui = '';
   if (vis && typeof lat === 'number') {
     if (vis.maiVisibile) {
-      daQui = `<p class="cost-daqui cost-daqui-no"><strong>Da qui non si vede mai.</strong> ` +
-        `Alla tua latitudine (${Math.round(lat)}°) resta tutta sotto l'orizzonte, a qualunque ora ` +
-        `e in qualunque mese: non è questione di aspettare la notte giusta, è la curvatura della Terra. ` +
-        `Il tasto qui sotto ti porta dove si vede.</p>`;
+      daQui = `<p class="cost-daqui cost-daqui-no">${costT('maiVisibile', { lat: Math.round(lat) })}</p>`;
     } else if (vis.circumpolare) {
-      daQui = `<p class="cost-daqui"><strong>Da qui non tramonta mai:</strong> gira intorno al polo ` +
-        `e resta sopra l'orizzonte tutta la notte, tutto l'anno. Al massimo arriva a ` +
-        `${Math.round(vis.altMax)}° di altezza.</p>`;
+      daQui = `<p class="cost-daqui">${costT('circumpolare', { gradi: Math.round(vis.altMax) })}</p>`;
     } else {
       const mese = costMeseMigliore(vis.ra);
-      daQui = `<p class="cost-daqui">Da qui arriva al massimo a <strong>${Math.round(vis.altMax)}°</strong> ` +
-        `sopra l'orizzonte${vis.bassa ? ' — bassa, serve un orizzonte libero da quella parte' : ''}. ` +
-        (mese ? `Culmina a mezzanotte verso <strong>${mese}</strong>, ed è quello il mese in cui si guarda meglio.` : '') +
+      daQui = `<p class="cost-daqui">` +
+        costT('altezzaMassima', {
+          gradi: Math.round(vis.altMax),
+          nota: vis.bassa ? costT('bassaNota') : ''
+        }) +
+        (mese ? ' ' + costT('culminaVerso', { mese }) : '') +
         `</p>`;
     }
   }
@@ -2487,15 +2515,14 @@ function costSchedaHtml(sigla) {
       `onclick="costMostraInCielo('${sigla}')">Mostrala in cielo</button>`);
   }
   azioni.push(`<button type="button" class="tasto-evento-cielo" onclick="costPortami('${sigla}')">` +
-    `${vis && vis.maiVisibile ? 'Portami dove si vede' : 'Portami sotto il suo cielo'}</button>`);
+    `${costT(vis && vis.maiVisibile ? 'portamiDoveSiVede' : 'portamiSottoIlCielo')}</button>`);
   // La stessa figura, ma nello spazio vero: è la risposta alla domanda
   // che viene dopo aver letto che ogni cultura ci ha visto una cosa
   // diversa — «ma allora la figura c'è o no?». No.
   if (typeof didCostellazioneNelloSpazio === 'function') {
     azioni.push(`<button type="button" class="tasto-evento-cielo" ` +
       `onclick="didCostellazioneNelloSpazio('${sigla}')" ` +
-      `title="Le sue stelle messe nello spazio vero, ognuna alla sua distanza: la figura è ` +
-      `un effetto di prospettiva, e da un altro pianeta non c'è">Dove stanno davvero</button>`);
+      `title="${costT('doveStannoTitolo')}">${costT('doveStanno')}</button>`);
   }
 
   return `
@@ -2505,9 +2532,7 @@ function costSchedaHtml(sigla) {
       <div class="cost-etichette">${etichette}</div>
     </div>
     <div class="cost-tela-guscio"><canvas id="cost-tela" class="cost-tela"></canvas></div>
-    <p class="cost-tela-nota">${voce.disegno
-      ? 'Le linee sono la figura ufficiale, il tratto chiaro è il disegno: le stesse curve che il planetario appoggia sul cielo vero.'
-      : 'Di questa figura il planetario disegna le linee ufficiali. La sagoma non c\'è: sono le figure che nessuno, nemmeno chi le ha inventate, è mai riuscito a vedere davvero.'}</p>
+    <p class="cost-tela-nota">${costT(voce.disegno ? 'notaConDisegno' : 'notaSenzaDisegno')}</p>
     ${daQui}
     ${dati && dati.racconto ? `<p class="cost-racconto">${dati.racconto}</p>` : ''}
     <div class="cost-origine">
@@ -2823,7 +2848,7 @@ window.costMostraInCielo = function (sigla) {
   const luogo = (typeof skyLuogoDelCielo === 'function' && skyLuogoDelCielo()) || null;
   if (!luogo || typeof luogo.lat !== 'number') {
     if (typeof skyAvviso === 'function') {
-      skyAvviso('costellazione', 'Per dire dove guardare mi serve la tua posizione: aprila dal pannello Tempo e luogo.', 7000);
+      skyAvviso('costellazione', costT('servePosizione'), 7000);
     }
     return;
   }
@@ -2905,8 +2930,7 @@ window.costPortamiAlBuio = function (id) {
   if (meglio) costPortaOrologio(meglio.quando);
   costGuardaVerso(b.centro, meglio ? meglio.quando : adesso);
   if (typeof skyAvviso === 'function') {
-    skyAvviso('costellazione', `${b.nome}: sei a ${meta.nome}. Cerca il buio, non le stelle — ` +
-      'la figura è la macchia scura in mezzo alla Via Lattea.', 11000);
+    skyAvviso('costellazione', costT('cercaIlBuio', { nome: b.nome, meta: meta.nome }), 11000);
   }
 };
 
@@ -2961,8 +2985,7 @@ function costTornaAllElenco() {
   if (guscio) guscio.dataset.vista = 'elenco';
   const corpo = document.getElementById('cost-scheda');
   if (corpo && !cost.scelta) {
-    corpo.innerHTML = '<p class="cost-vuoto">Scegli una costellazione dall\'elenco: ' +
-      'trovi la figura, il disegno, chi le ha dato il nome e se da casa tua si vede.</p>';
+    corpo.innerHTML = `<p class="cost-vuoto">${costT('scegliDallElenco')}</p>`;
   }
 }
 

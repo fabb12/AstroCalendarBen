@@ -828,45 +828,35 @@ function aurKpVero() {
 // intero: dice se il verde arriva sopra l'orizzonte o se resta solo il
 // rosso, e in che direzione guardare.
 function aurTesto() {
-  if (!aur.acceso) return 'Aurore spente.';
+  const T = (k, v) => astroI18n.t('aurora.' + k, v);
+  if (!aur.acceso) return T('spente');
   const luogo = typeof skyLuogoDelCielo === 'function' ? skyLuogoDelCielo() : null;
-  if (!luogo) return 'Serve la tua posizione per sapere dove passa l\'ovale aurorale.';
+  if (!luogo) return T('servePosizione');
 
   const k = aurKpMostrato();
-  if (k.kp === null || isNaN(k.kp)) {
-    return 'Il Kp di quest\'ora non si sa (la previsione del NOAA arriva a tre giorni, ' +
-      'e del passato non c\'è). Muovi la slitta qui sotto per vedere che aurora farebbe una tempesta.';
-  }
+  if (k.kp === null || isNaN(k.kp)) return T('kpIgnoto');
 
   const g = aurGeometria(skyAdesso(), luogo, k.kp);
   if (!g) return '';
-  const dove = g.boreale ? 'nord' : 'sud';
-  const nome = g.boreale ? 'boreale' : 'australe';
-  const quale = k.simulato ? `Kp ${aurNumero(k.kp)} simulato` : `Kp ${aurNumero(k.kp)}`;
+  const dove = T(g.boreale ? 'nord' : 'sud');
+  const nome = T(g.boreale ? 'boreale' : 'australe');
+  const quale = T(k.simulato ? 'kpSimulato' : 'kpQuale', { kp: aurNumero(k.kp) });
   const direzione = typeof skyNomeDirezione === 'function'
     ? skyNomeDirezione(g.azMassima) : dove;
 
   if (g.altMassima <= 0.2) {
-    return `${quale}: l'ovale aurorale resta sotto l'orizzonte ${dove}. ` +
-      `Da qui — ${aurNumero(Math.abs(g.mia))}° di latitudine geomagnetica — non si vedrebbe niente. ` +
-      'Con la slitta puoi far crescere la tempesta e guardare da che Kp comincia ad affacciarsi.';
+    return T('sottoOrizzonte', { quale, dove, lat: aurNumero(Math.abs(g.mia)) });
   }
   if (!g.verde) {
-    return `${quale}: da qui il verde resta sotto l'orizzonte — è oltre la curvatura della Terra — ` +
-      `e si affaccia solo la parte alta delle tende, il rosso dell'ossigeno a duecento chilometri: ` +
-      `fino a ${aurNumero(g.altMassima)}° sopra l'orizzonte, verso ${direzione}. ` +
-      'È l\'aurora che si è vista dall\'Italia nel maggio 2024.';
+    return T('soloRosso', { quale, alt: aurNumero(g.altMassima), direzione });
   }
-  if (g.altMassima > 60) {
-    return `${quale}: l'ovale ${nome} ti passa praticamente sopra la testa. ` +
-      `Le tende scendono dallo zenit e il verde riempie il cielo verso ${direzione}.`;
-  }
-  return `${quale}: aurora ${nome} visibile da qui, con gli archi verdi sopra l'orizzonte ` +
-    `e le tende che arrivano a ${aurNumero(g.altMassima)}° verso ${direzione}.`;
+  if (g.altMassima > 60) return T('sopraLaTesta', { quale, nome, direzione });
+  return T('archiVerdi', { quale, nome, alt: aurNumero(g.altMassima), direzione });
 }
 
+// Il separatore decimale è una regola della lingua, non una frase.
 function aurNumero(v) {
-  return (Math.round(v * 10) / 10).toString().replace('.', ',');
+  return astroI18n.numero(Math.round(v * 10) / 10, 1).replace(/[.,]0$/, '');
 }
 
 function aurAggiornaPannello() {
@@ -895,8 +885,9 @@ function aurAggiornaPannello() {
   const lettura = document.getElementById('skymap-aurora-kp-valore');
   if (lettura) {
     lettura.textContent = aur.kpSimulato !== null
-      ? `Kp ${aurNumero(aur.kpSimulato)} simulato`
-      : (vero === null ? 'Kp non disponibile' : `Kp ${aurNumero(vero)} vero`);
+      ? astroI18n.t('aurora.kpSimulato', { kp: aurNumero(aur.kpSimulato) })
+      : (vero === null ? astroI18n.t('aurora.kpNonDisponibile')
+        : astroI18n.t('aurora.kpVero', { kp: aurNumero(vero) }));
   }
   const torna = document.getElementById('skymap-aurora-vero');
   if (torna) torna.disabled = aur.kpSimulato === null;

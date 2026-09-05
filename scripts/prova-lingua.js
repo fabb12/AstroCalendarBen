@@ -324,11 +324,25 @@ const SPIA_EN = /(?:^|[\s>(«"'])(?:the|and|is|are|was|of|to|you|your|that|this|
   // apre nel planetario, le altre sei viste sono già costruite e nascoste, e
   // al cambio lingua non vengono ridisegnate (costerebbe secondi per niente).
   // La promessa è che si ridisegnino **quando si aprono**, e questa è la prova.
+  /* Le due viste che si aprono su **un pannello per volta**.
+   *
+   * Aprire il Telescopio vuol dire vedere il pannello «Strumento» e nient'altro:
+   * gli altri quattro esistono nel documento ma non hanno un `offsetParent`, e
+   * la sonda — che guarda giustamente solo ciò che si vede — non li conta. Per
+   * mesi il conto del Telescopio è stato quello del suo primo pannello, cioè un
+   * quinto della vista. Vale identico per la Didattica, che di banchi ne ha otto
+   * e ne disegna uno. Qui li si apre tutti e si tiene il conto **peggiore**: è
+   * quello che uno vedrebbe aprendo il pannello sbagliato. */
+  const SOTTOPANNELLI = {
+    telescopio: ['strumento', 'allineamento', 'punta', 'serata', 'cura'],
+    didattica: ['retro', 'keplero', 'fionda', 'finestre', 'allineamenti', 'aurora', 'spazio', 'tramonto']
+  };
+
   const perVista = [];
-  for (const vista of ['stasera', 'calendario', 'agenda', 'diario', 'telescopio']) {
+  for (const vista of ['stasera', 'calendario', 'agenda', 'diario', 'telescopio', 'didattica']) {
     await pagina.evaluate((v) => mostraVista(v), vista);
     await pagina.waitForTimeout(500);
-    const italiano = await pagina.evaluate(([spia, spiaEn]) => {
+    const conta = () => pagina.evaluate(([spia, spiaEn]) => {
       const re = new RegExp(spia, 'i');
       const reEn = new RegExp(spiaEn, 'i');
       let quante = 0;
@@ -357,8 +371,29 @@ const SPIA_EN = /(?:^|[\s>(«"'])(?:the|and|is|are|was|of|to|you|your|that|this|
       }
       return { quante, primi };
     }, [SPIA_IT.source, SPIA_EN.source]);
+
+    let italiano = await conta();
+    let dove = '';
+    for (const pannello of SOTTOPANNELLI[vista] || []) {
+      // Il Telescopio ha una funzione globale; la Didattica no — i suoi otto
+      // banchi si aprono dalle linguette, che è poi quello che fa un utente.
+      const aperto = await pagina.evaluate((id) => {
+        if (typeof telMostraPannello === 'function' && document.getElementById('vista-telescopio')
+            && !document.getElementById('vista-telescopio').classList.contains('hidden')) {
+          try { telMostraPannello(id); return true; } catch (e) { /* non è questa vista */ }
+        }
+        const linguetta = document.querySelector(`#did-linguette [data-lab="${id}"]`);
+        if (linguetta) { linguetta.click(); return true; }
+        return false;
+      }, pannello);
+      if (!aperto) continue;
+      await pagina.waitForTimeout(350);
+      const q = await conta();
+      if (q.quante > italiano.quante) { italiano = q; dove = ' (' + pannello + ')'; }
+    }
+
     perVista.push([vista, italiano.quante]);
-    console.log(`     ${vista.padEnd(11)} ${String(italiano.quante).padStart(4)} frasi italiane`);
+    console.log(`     ${(vista + dove).padEnd(11)} ${String(italiano.quante).padStart(4)} frasi italiane`);
     for (const p of italiano.primi) console.log('                    ' + p);
   }
   /* Il tetto, non lo zero.

@@ -1,135 +1,137 @@
 # Task Corrente
 
-Niente in corso.
+**In corso: finire la traduzione inglese di `app.js`.** Vedi «Cosa resta» in
+fondo — sono le eclissi (la mappa dell'ombra, le eclissi di casa, quelle
+lunari), le simulazioni e gli avvisi del planetario, per un totale di **355
+stringhe** contate da `node scripts/controlla-i18n.js --lista --file app.js`.
+Tutto il resto è fatto, provato e dentro al tetto.
 
 ## Ultimo intervento completato
 
-**La traduzione inglese del contenuto degli eventi, la ricerca in inglese, e il
-tasto della registrazione che diventava «NaN».** Segnalazione: «non tutte le
-parti sono tradotte, soprattutto le schede dei vari eventi e la ricerca degli
-eventi che ovviamente deve essere in inglese; inoltre c'è un bug: quando passo a
-en il tasto di registrazione passa a nan e lampeggia».
+**La Didattica e il Telescopio tradotti per intero, i mesi del calendario, il
+Diario, i moduli del paesaggio e i nomi delle 88 costellazioni.** Richiesta:
+«completa la traduzione in inglese, controlla bene la parte didattica e
+telescopio, traduci ogni voce, controlla anche i mesi nel calendario».
 
-### 1. Il tasto della registrazione — `app.js` §7.6
+### 1. I mesi del calendario — `app.js`
 
-Una riga sola, ed è il difetto più corto e più visibile dei tre. Il ridisegno
-del cambio lingua (`ridisegnaTuttoPerLingua`, in `ui-nuova.js`) chiama
-`skyRegAggiornaComando()` **senza argomento** per riscriverne il titolo, che è
-una frase del dizionario. Dentro, però:
+`NOMI_MESI` era già un array di getter su `Intl`, ma le dodici `<option>` del
+selettore del mese si scrivevano **una volta sola** alla costruzione: dopo un
+cambio lingua restavano «gennaio, febbraio…» dentro a un'interfaccia inglese.
+Adesso c'è `riempiNomiMesi(selMese)`, chiamata da `inizializzaSelettoriMese()`
+*e* da `sincronizzaSelettoriMese()` (che gira a ogni cambio lingua). È
+**idempotente** — se il primo e l'ultimo nome sono già quelli giusti non tocca
+niente — perché riscrivere l'`innerHTML` di un `<select>` mentre uno lo sta
+usando gli porta via il fuoco.
 
-```js
-const inCorso = restano !== null;      // undefined !== null → vero
-…
-tempo.textContent = `${Math.max(0, restano).toFixed(1)} s`;   // «NaN s»
-```
+FullCalendar invece i nomi dei mesi e dei giorni li scrive da sé, dal suo
+`locale`: li rimette a posto `calendarioCambiaLingua()`, che era già lì.
 
-Quindi cambiare lingua **accendeva** il tasto — la classe `in-corso` è il
-quadrato che pulsa — e gli scriveva accanto il conto alla rovescia di una
-registrazione che non era mai cominciata.
+### 2. `telescopio.js` — da zero a completo
 
-Due cure, e la seconda è quella che chiude la strada anche agli altri:
+~430 chiavi `tel.*`. Le tabelle passano dagli aiutanti di `app.js`
+(`conNomeDaId`, `conTestiDaId`, `conNomeTradotto`): `TEL_CERCATORI`,
+`TEL_TIPI`, `TEL_CIELI`, `TEL_PANNELLI`, `TEL_PASSI_COLLIMAZIONE`,
+`TEL_FIGURE_TEST`, `TEL_FRAZIONI_CAMPO`, i tre metodi di puntamento. Convertiti
+tutti e cinque i pannelli, l'allineamento per deriva, il radar push-to, i salti
+di stella, i cerchi graduati, l'anteprima dell'oculare e ogni `fillText` delle
+tele.
 
-1. senza argomento la funzione **deduce lo stato da `sky.reg`**, che lo sa già
-   (`attiva`, `durataSec`, `avvio`): chi chiede solo di riscrivere le parole non
-   ha nessun motivo di dover dire anche a che punto è la registrazione;
-2. `inCorso` è `Number.isFinite(restano)` e non `restano !== null`, così nessun
-   `undefined` e nessun `NaN` arrivati da un'altra parte possono più accenderlo.
+Due cose da sapere:
 
-### 2. Il contenuto degli eventi
+- **Il nome di un oculare non si salva più tradotto.** I preset scrivevano
+  `nome: '20 mm Plössl (in dotazione)'` dentro a `localStorage`: quella frase
+  restava italiana per sempre. Adesso il preset porta `dotazione: true` e il
+  nome lo compone `telNomeOculare(oc)` al momento di scriverlo.
+- **`conNomeDaId` saltava `id: 0`.** La verità semplice (`if (voce.id)`)
+  lasciava non tradotta la prima voce di `TEL_FRAZIONI_CAMPO`, che parte da
+  zero — un difetto su otto, invisibile. Adesso è `!= null`, in
+  `conNomeDaId` e in `conTestiDaId`.
+- **La guardia di `telCostruisciVista`** era `dataset.pronto`: la striscia
+  delle cinque linguette non si riscriveva mai dopo il primo disegno. Adesso è
+  `dataset.lingua`.
 
-Era il grosso. Le fasi lunari erano già passate alle chiavi; **tutte le altre
-famiglie** scrivevano il loro testo in italiano dentro alla chiamata a
-`creaEvento`, e un evento nasce una volta e vive finché l'app è aperta — quindi
-quella frase restava italiana anche dopo il cambio lingua. Misurato prima:
-**1.564 frasi italiane** nell'agenda con l'interfaccia in inglese.
+### 3. `didattica.js` — da zero a completo
 
-Convertite: eclissi di Luna e di Sole, equinozi e solstizi, sciami meteorici,
-elongazioni, congiunzioni e occultazioni (`app.js`); superlune e microlune,
-opposizioni, congiunzioni col Sole, splendore di Venere, transiti sul Sole,
-comete, aurore previste e stagione delle aurore (`eventi-extra.js`).
+~460 chiavi `did.*`, otto banchi. La scorciatoia si chiama **`testoDi`** e non
+`t` né `tr`: tutt'e due quei nomi sono già presi da `const` locali in questo
+file (`const t = didTela(...)`, `const t = Astronomy.MakeTime(...)`,
+`const tr = fionda.traiettoria`), e una `const` che ombreggia una funzione nello
+stesso blocco non dà un nome sbagliato — dà un ReferenceError da zona morta.
 
-Il meccanismo nuovo è **la funzione**: `creaEvento` accettava già una `chiave`,
-che va bene per un testo fisso e non basta per una frase che porta dentro un
-numero («Marte dista 0,58 unità astronomiche», «il disco misura 33,5 primi
-d'arco»). Adesso `titolo`, `spiegazione` e `programma` accettano anche una
-funzione: i numeri restano chiusi lì dentro, trovati una volta sola, e a rifarsi
-è la sola frase attorno. Il risultato si tiene (`defRisolta`) con la lingua e
-`generazioneTesti` per chiave — la ricerca legge titolo e spiegazione di *tutti*
-gli eventi a ogni tasto premuto.
+- `laboratorio(def)` traduce da sé `chip`/`occhiello`/`titolo`/`sommario` dei
+  banchi (`did.lab.<id>.<campo>`), quindi nessuno degli otto deve saperlo.
+- `CORPI` e `FIONDA_PIANETI` prendono il nome da `nomeCorpo(id)`, la tabella
+  unica dell'applicazione: erano la settima e l'ottava copia, ed è così che la
+  Didattica diceva «Marte» mentre l'agenda accanto diceva «Mars». `muTesto` è
+  diventato un getter, perché «1,26687 × 10⁸» ha il separatore della lingua.
+- Le quaranta tappe delle Voyager, i cinque quadri e le quattro notti del banco
+  delle aurore passano da `testoDaChiave` in un ciclo.
+- `MESI`/`MESI_BREVI` sono array di getter su `Intl` come in `app.js`; `num()`
+  passa da `astroI18n.numero`.
+- **`didRidisegnaPerLingua()`** (nuova, chiamata da `ridisegnaTuttoPerLingua`):
+  il banco è composto tutto in JavaScript, quindi si rifà da capo. Rimette il
+  banco che era aperto, chiude prima lo schermo intero e richiama `entra()`.
+  `didCostruisci` adesso aggancia l'ascoltatore delle linguette una volta sola
+  (`dataset.collegato`), se no ogni ridisegno ne appendeva un altro.
+- **`verifica.html` carica `didattica.js` senza `app.js`**: gli aiutanti delle
+  tabelle passano da tre wrapper guardati (`nomiDaId`, `nomiTabella`,
+  `testiTabella`, `nomeDi`). Senza, un `ReferenceError` alla prima riga si
+  portava via `window.didProve` e con lui i §12 e §17, in silenzio.
 
-Da lì è venuta gratis la **ricerca**, che è la seconda metà della segnalazione:
-`getEventiFiltrati()` confronta `ev.titolo` e `ev.spiegazione`, e da quando sono
-getter cercare «eclipse» trova le eclissi senza che la ricerca sappia niente di
-lingue. Prima non trovava niente, ed è il sintomo peggiore dei due: un elenco
-vuoto somiglia a «stasera non c'è niente».
+### 4. Il Diario, e i moduli del planetario
 
-E i **nomi dei pianeti**, che erano sei copie (`SKY_CORPI`, `CONG_CORPI`,
-`SOL_PIANETI`, `LEZ_PIANETI`, la tabella della lezione, `PIAN_NOMI_PIANETI` in
-`pianifica.js`). Adesso sono una: `nomeCorpo(id)` con la chiave `corpo.<id>`, e
-le tabelle ci passano attraverso `conNomeDaId(elenco, 'corpo.')`. Con sei copie
-la dashboard diceva «Marte» mentre l'agenda diceva «Mars».
+- **Diario** (`app.js` §15): le tre schede di riepilogo, l'elenco vuoto, i dieci
+  traguardi (`traguardo.*` via `conNomeDaId`/`conTestiDaId`). Il traguardo delle
+  quattro fasi cercava «Luna Piena» **dentro al titolo congelato** della voce:
+  con l'app in inglese non scattava più, cioè si rimangiava un traguardo già
+  preso. Adesso il diario salva anche la **chiave** dell'evento
+  (`fase.2`, che non dipende dalla lingua) e per le voci vecchie c'è
+  `diarioEDiFase`, che confronta con `astroI18n.tutteLeVersioni('fase.N.titolo')`
+  — un'aggiunta al gestore (`i18n.js`), pensata per i testi *congelati* e non
+  per comporne di nuovi.
+- **`terreno.js`** (48 → 0): la riga di stato del paesaggio per intero — il
+  profilo, le luci dei paesi, le vette, i laghi e i fiumi, e i guasti di
+  Overpass. I nomi dei quattro tasti li legge adesso `terrenoEtichettaTasto`
+  dalla **stessa chiave** che `index.html` porta con `data-i18n`, se no il nome
+  di un tasto avrebbe due sorgenti.
+- **`rilievo.js`**, **`aurora-polare.js`**, **`aerei.js`**,
+  **`miglior-posto.js`** (81 in tutto → 0).
+- **`costellazioni.js`** (20 → 0) e **i nomi delle 88 figure IAU**. I nomi
+  stanno in `dati-costellazioni.js`, che è *generato*: si traducono in
+  `costNomeFigura(sigla, ripiego)` con la sigla per chiave (`cost.nome.Ori`).
+  La funzione è globale perché la legge anche `catalogo.js`, che scrive i nomi
+  sopra le figure nel planetario — e lì il nome è diventato un **getter**,
+  perché `cat.figure` si costruisce una volta sola all'apertura. L'ordine
+  alfabetico dell'atlante usa il locale di adesso.
 
-Nella stessa passata: la cornice dell'agenda (i messaggi «nessun evento», i
-badge degli eventi manuali, le etichette dei consigli di scatto), i motivi
-dell'indice di osservabilità, il riquadro «Stanotte» della dashboard con i nomi
-delle fasi lunari, la griglia del mese di FullCalendar (`calendarioCambiaLingua`)
-e le cinque frasi della bussola.
+### 5. Le prove
 
-E la **data** della scheda, che è il residuo che nessun conto vedeva. Il locale
-di `Intl` era cablato a `it-IT`, e sulle ore non si notava — con
-`hourCycle: 'h23'` le 07:51 si scrivono uguali in tutte e due le lingue — mentre
-sulla data intera sì: «4 settembre 2026 alle ore 07:51» sotto al titolo di ogni
-scheda inglese. La sonda di `prova-lingua.js` non poteva prenderla, perché quella
-frase non contiene nessuna parola italiana funzionale: adesso il locale lo dà
-`localeData()`, `dataTesto` è un getter come il titolo, e la prova guarda i nomi
-dei mesi.
+`scripts/prova-lingua.js` non apriva la **Didattica** e apriva del Telescopio
+il solo pannello «Strumento»: il conto di quella vista era un quinto della
+vista. Adesso il ciclo apre gli otto banchi e i cinque pannelli e tiene il conto
+**peggiore**. Da lì è saltato fuori che, siccome la sezione delle prestazioni
+lascia aperti tutti i modali, la copertura misura anche l'atlante — che infatti
+aveva ottantotto nomi italiani.
 
-### 3. Dove siamo adesso
+Risultati: `prova-i18n` verde, `prova-lingua` verde, audit 364 (era 621).
 
-`node scripts/prova-lingua.js`, viste aperte dopo il cambio lingua:
+`scripts/i18n-tetto.json` scende a **364** e le viste a 0 tranne telescopio 4 e
+didattica 1, che sono scritti nel campo `_residui` del file con il loro perché.
 
-| vista | prima | adesso |
-|---|---|---|
-| Stasera | 10 | **0** |
-| Mese | 0 | **0** |
-| Agenda | 1.564 | **0** |
-| Diario | 6 | 6 |
-| Telescopio | 14 | 13 |
+## Cosa resta
 
-Gli attributi (`title`, `aria-label`, `placeholder`) rimasti italiani sono
-passati da 1 a 0. I tetti di `scripts/i18n-tetto.json` sono stati abbassati di
-conseguenza: quelle tre viste a zero sono un cricchetto, e non devono risalire.
-
-Restano il **Diario**, il **Telescopio** e la **Didattica**, che non sono mai
-stati convertiti e non lo sono adesso.
-
-### Una cosa da sapere prima di rimetterci mano
-
-La sonda di `prova-lingua.js` cerca parole funzionali italiane, e tre di
-quelle — `come`, `per`, `non` — esistono anche in inglese. Finché l'agenda era
-italiana non faceva danno; da quando è tradotta lo faceva tutto: «Moon and Venus
-**come** within 29 arcminutes» veniva contata come frase italiana, e il conto
-della vista si fermava a 26 invece che a zero — un numero che per giunta dipende
-da quante congiunzioni cadono nel mese in cui la prova gira. Accanto a `SPIA_IT`
-c'è adesso `SPIA_EN`, e una sola parola che in italiano non esiste basta a
-scartare il colpo.
-
-### Le prove
-
-- `node scripts/prova-i18n.js` — verde, e comprende le due che legano HTML,
-  codice e dizionario (ogni chiave citata esiste, nessuna chiave orfana).
-- `node scripts/prova-lingua.js` — verde, con due sezioni nuove: **«il contenuto
-  degli eventi, e la ricerca»** (ogni famiglia ha il suo titolo nelle due lingue,
-  nessun titolo resta italiano, «eclipse» trova 200 eventi e «eclissi» zero) e
-  **«il tasto della registrazione non si accende al cambio lingua»**. Quest'ultima
-  è stata provata contro il codice di prima: dice «lampeggia» e «NaN s», cioè
-  esattamente le due parole della segnalazione.
-- `node scripts/controlla-i18n.js --patto` — dentro al tetto (621).
-- I due dizionari hanno lo stesso numero di chiavi: **1.101** (erano 893).
-
-Non toccate, e già rosse prima di questo lavoro: `scripts/prova-fumetto.js`
-(«resta fuori dalla bussola e dalla barra del tempo», su tutte e tre le
-finestre) e `scripts/prova-nel-browser.js` (un'eccezione dentro a
-`solDisegnaVicino`). Provate su `main` e falliscono uguale.
-
-`CACHE_NAME` è a `astrocal-v272`.
+1. **`app.js`, 355 stringhe.** Sono in blocchi:
+   - le **eclissi di Sole**: la mappa dell'ombra e i suoi comandi (§1-ter),
+     il meteo dell'eclissi, la condivisione, «le eclissi di casa tua»
+     (§1-quater);
+   - le **eclissi di Luna** (§1-quinquies);
+   - le **scene della simulazione** (§8);
+   - gli **avvisi del planetario** (`skyAvviso`) e qualche riga sparsa.
+   Si convertono come le altre: chiave, `astroI18n.t`, voce nei due dizionari.
+2. **I nomi degli oggetti profondi** («M3 — Globulare dei Cani da Caccia»).
+   Stanno in `SKY_PROFONDO` (`app.js`) e in `dati-profondo.js`, e sono **anche
+   l'identificativo** con cui l'app li ritrova (`dso:<nome>`): tradurre il nome
+   vuol dire cambiare l'identificativo, e con lui i link già condivisi e il
+   ponte verso il catalogo grande di `catalogo.js`. Va fatto in un colpo solo,
+   in tutt'e tre i posti: un id stabile separato dal nome mostrato.

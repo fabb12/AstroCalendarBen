@@ -1068,7 +1068,10 @@ const DISEGNO_VISTE = {
   agenda: () => { if (typeof costruisciAgenda === 'function') costruisciAgenda(); },
   calendario: () => { if (typeof sincronizzaCalendario === 'function') sincronizzaCalendario(); },
   diario: () => { if (typeof costruisciDiario === 'function') costruisciDiario(); },
-  telescopio: () => { if (typeof telCostruisciPannello === 'function') telCostruisciPannello(); }
+  // `telCostruisciVista` e non `telCostruisciPannello`: la striscia delle
+  // cinque linguette porta i nomi dei pannelli, e li riscrive solo lei.
+  telescopio: () => { if (typeof telCostruisciVista === 'function') telCostruisciVista(); },
+  didattica: () => { if (typeof didRidisegnaPerLingua === 'function') didRidisegnaPerLingua(); }
 };
 const vistePerLingua = new Set();
 
@@ -1117,6 +1120,17 @@ function ridisegnaTuttoPerLingua() {
     }],
     ['avviso dei transiti', () => {
       if (typeof tranAggiornaAvviso === 'function') tranAggiornaAvviso();
+    }],
+    // L'atlante delle costellazioni: si compone tutto in JavaScript, e resta
+    // aperto mentre si tocca la bandiera. Si rifà solo se è a schermo — è un
+    // modale, e a finestra chiusa lo rifà comunque chi la riapre.
+    ['atlante delle costellazioni', () => {
+      const modale = document.getElementById('modale-costellazioni');
+      if (!modale || modale.classList.contains('hidden')) return;
+      if (typeof costCostruisciElenco === 'function') costCostruisciElenco();
+      if (typeof costMostraScheda === 'function' && typeof cost === 'object' && cost.scelta) {
+        costMostraScheda(cost.scelta);
+      }
     }],
     // I due tasti che scrivono il loro `title` solo quando il loro stato
     // cambia: senza una spinta resterebbero nella lingua di quando sono stati
