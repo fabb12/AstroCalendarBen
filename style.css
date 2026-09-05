@@ -3931,6 +3931,49 @@ body.mappa-spostamento-immersiva { overflow: hidden; }
   filter: drop-shadow(0 0 3px rgba(110, 231, 183, 0.45));
 }
 
+/* Scelta iniziale del controllo del planetario. È dentro al contenitore del
+   cielo, così non copre il resto dell'app, e compare solo quando il codice ha
+   verificato che questo è un telefono con sensori di orientamento. */
+.scelta-sensori {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(5px);
+}
+.scelta-sensori.hidden { display: none; }
+.scelta-sensori-carta {
+  width: min(430px, 100%);
+  padding: 1.5rem;
+  text-align: center;
+  color: #cbd5e1;
+  background: linear-gradient(155deg, rgba(30, 41, 59, 0.98), rgba(10, 16, 30, 0.98));
+  border: 1px solid rgba(125, 211, 252, 0.38);
+  border-radius: 1.25rem;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 30px rgba(56, 189, 248, 0.1);
+}
+.scelta-sensori-icona { display: block; margin-bottom: .35rem; color: #7dd3fc; font-size: 2rem; }
+.scelta-sensori-carta h3 { margin: 0 0 .7rem; color: #fff; font-size: 1.25rem; font-weight: 700; }
+.scelta-sensori-carta p { margin: 0 0 1.25rem; line-height: 1.55; }
+.scelta-sensori-azioni { display: grid; gap: .65rem; }
+.scelta-sensori-azioni button {
+  min-height: 46px;
+  padding: .7rem 1rem;
+  color: #e2e8f0;
+  background: rgba(51, 65, 85, 0.82);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: .8rem;
+  font-weight: 650;
+}
+.scelta-sensori-azioni .scelta-sensori-si {
+  color: #082f49;
+  background: #7dd3fc;
+  border-color: #bae6fd;
+}
+
 /* Col mouse le letture si possono sorvolare, e allora il loro `title` dice
    il dettaglio esteso (le coordinate vere, la provenienza per intero, che
    Nord sta segnando la bussola). Col dito no, e di proposito: sul telefono

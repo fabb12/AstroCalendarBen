@@ -1141,12 +1141,25 @@
           </div>
         </section>
 
-        <!-- Qui c'era la schermata iniziale con i due tasti: «Attiva bussola
-             e posizione» oppure «continua senza sensori». Non c'è più, e non
-             va rimessa: il cielo si apre già acceso — sensori, bussola e
-             posizione partono da soli in `apriSkymap()` — e chi punta il
-             telefono verso l'alto trova la mappa che lo segue senza aver
-             letto niente. Vedi `skyAvviaSensori` in app.js (sezione 7.1). -->
+        <!-- Compare soltanto sui telefoni che espongono davvero i sensori di
+             orientamento. Su computer il planetario parte direttamente e si
+             muove con mouse o dito, senza interrompere l'apertura. -->
+        <section id="skymap-scelta-sensori" class="scelta-sensori hidden" role="dialog"
+          aria-modal="true" aria-labelledby="skymap-scelta-sensori-titolo">
+          <div class="scelta-sensori-carta">
+            <span class="scelta-sensori-icona" aria-hidden="true">✦</span>
+            <h3 id="skymap-scelta-sensori-titolo" data-i18n="sky.sensori.domandaTitolo">Vuoi muovere il cielo con il telefono?</h3>
+            <p data-i18n="sky.sensori.domandaTesto">Il planetario può seguire giroscopio, accelerometro e bussola mentre punti il telefono verso il cielo.</p>
+            <div class="scelta-sensori-azioni">
+              <button type="button" class="scelta-sensori-si" onclick="skyScegliMovimentoTelefono(true)" data-i18n="sky.sensori.usaMovimento">Sì, segui il telefono</button>
+              <button type="button" onclick="skyScegliMovimentoTelefono(false)" data-i18n="sky.sensori.usaDito">No, muovo la camera con il dito</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Questa non è la vecchia schermata obbligatoria: la scelta qui
+             sopra viene mostrata solo dopo aver riconosciuto un telefono con
+             sensori; su computer non compare mai. -->
 
         <!-- "Sto preparando il cielo": la riga che compare mentre il catalogo
              arriva. Il cielo sotto è già vivo (pianeti, Luna, le figure
