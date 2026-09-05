@@ -7800,8 +7800,10 @@ const sky = {
   ascolto: false,        // gli ascoltatori dell'orientamento sono già attaccati
   sensoriNegati: false,  // il permesso dei sensori è stato rifiutato: non si insiste
   attesaGesto: false,    // il permesso aspetta un tocco (iOS lo lega al gesto)
+  sceltaSensori: null,   // null finché il telefono non ha scelto sensori o dito
+  domandaSensoriMostrata: false,
   avviata: false,        // la prima apertura del planetario ha già cercato la posizione
-  seguiTelefono: true,   // con i sensori accesi, il cielo lo punta il telefono
+  seguiTelefono: false,  // diventa true solo se l'utente sceglie il movimento
   assoluto: false,       // alpha riferito al Nord magnetico (bussola affidabile)
   orient: null,          // { alpha, beta, gamma } dall'ultimo evento
   ultimoAssoluto: 0,     // quando è arrivata l'ultima lettura riferita al Nord
@@ -11239,7 +11241,7 @@ function skyBussolaPrimaLettura(conNord) {
   sky.sensori = true;
   if (conNord) sky.assoluto = true;
   if (primaLettura) {
-    skyAvviso('sensori', 'Punta il telefono verso il cielo: la mappa segue quello che inquadri.', 6000);
+    skyProponiMovimentoTelefono();
   }
   if (cambio || primaLettura) skyAggiornaStato();
 }
@@ -11483,19 +11485,63 @@ async function skyRichiediSensori() {
   return skyAscoltaOrientamento();
 }
 
-// --- I sensori si accendono da soli ----------------------------------
-// Per anni il planetario si apriva su una schermata con due tasti: «Attiva
-// bussola e posizione» oppure «continua senza sensori». Era una domanda mal
-// posta — chi apre un planetario col telefono in mano vuole puntarlo verso
-// il cielo, non scegliere una modalità — e costava un tocco a ogni apertura,
-// per giunta prima di aver visto una sola stella.
-//
-// Adesso non si chiede niente: si accende tutto quello che c'è. Giroscopio e
-// accelerometro arrivano insieme, dallo stesso evento `deviceorientation`
-// (beta e gamma sono l'inclinazione, cioè l'accelerometro; alpha è la
-// direzione, cioè giroscopio e magnetometro fusi), e dove non c'è nessuno
-// dei due l'evento semplicemente non arriva mai: sul computer si resta col
-// dito, senza aver detto niente a nessuno.
+// La domanda ha senso soltanto su un telefono. L'API da sola non basta a
+// distinguerlo: diversi browser desktop dichiarano DeviceOrientationEvent ma
+// non hanno alcun sensore dietro. Su Android ascoltiamo prima un valore vero e
+// mostriamo la scelta soltanto allora. Su iOS il sistema vieta la prima lettura
+// prima del permesso: lì la combinazione API protetta + schermo tattile è il
+// segnale disponibile prima di aprire il pannello di sistema.
+function skyESmartphone() {
+  const tattile = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+  const agenteMobile = /Android.*Mobile|iPhone|iPod|Windows Phone/i.test(navigator.userAgent || '');
+  return tattile && (profiloDispositivo() === 'telefono' || agenteMobile);
+}
+
+function skyEUnTelefonoConSensoriProtetti() {
+  if (typeof DeviceOrientationEvent === 'undefined' ||
+      typeof DeviceOrientationEvent.requestPermission !== 'function') return false;
+  return skyESmartphone();
+}
+
+function skyProponiMovimentoTelefono() {
+  if (!sky.aperto || sky.sceltaSensori !== null || sky.domandaSensoriMostrata) return;
+  if (!skyESmartphone()) return;
+  // Per le API senza permesso arriviamo qui solo da una lettura reale. Per
+  // quelle protette la verifica è stata fatta prima di chiedere il permesso.
+  if (!sky.sensori && !skyEUnTelefonoConSensoriProtetti()) return;
+  sky.domandaSensoriMostrata = true;
+  const modale = document.getElementById('skymap-scelta-sensori');
+  if (modale) modale.classList.remove('hidden');
+}
+
+function skyScegliMovimentoTelefono(usaMovimento) {
+  sky.sceltaSensori = !!usaMovimento;
+  sky.seguiTelefono = !!usaMovimento;
+  const modale = document.getElementById('skymap-scelta-sensori');
+  if (modale) modale.classList.add('hidden');
+  skyTasto('skymap-btn-segui', sky.seguiTelefono);
+  skyAggiornaStatoHover();
+  skyAggiornaStato();
+
+  if (!usaMovimento) return;
+  // Su iOS questo clic è il gesto richiesto dal pannello di autorizzazione.
+  if (!sky.ascolto) {
+    skyRichiediSensori().then((ok) => {
+      if (ok) skyAggiornaStato();
+      else {
+        sky.seguiTelefono = false;
+        sky.sceltaSensori = false;
+        skyTasto('skymap-btn-segui', false);
+        skyAvviso('sensori', 'Bussola e giroscopio non autorizzati: la mappa la muovi col dito.', 9000);
+      }
+    });
+  } else {
+    skyAvviso('sensori', 'Punta il telefono verso il cielo: la mappa segue quello che inquadri.', 6000);
+  }
+}
+
+// --- Riconoscimento e avvio dei sensori -------------------------------
+// Dove non c'è hardware non compare nulla: il planetario resta manuale.
 //
 // L'unico nodo è iOS, che il permesso lo lega al gesto che l'ha chiesto.
 // `apriSkymap()` è chiamata proprio dal tocco sulla voce «Planetario» del
@@ -11507,21 +11553,16 @@ async function skyRichiediSensori() {
 function skyAvviaSensori() {
   if (sky.ascolto || sky.sensoriNegati) return;
   if (typeof DeviceOrientationEvent === 'undefined') return;
-  // Dove il permesso non esiste non c'è niente da aspettare, e non c'è
-  // motivo di passare da una promessa: si ascolta e via.
+  // Dove il permesso non esiste ci si mette in ascolto senza agganciare la
+  // camera: sarà la prima lettura reale a mostrare la scelta.
   if (typeof DeviceOrientationEvent.requestPermission !== 'function') {
     skyAscoltaOrientamento();
     return;
   }
-  skyRichiediSensori().then((ok) => {
-    if (ok) { skyAggiornaStato(); return; }
-    if (sky.sensoriNegati) {
-      skyAvviso('sensori', 'Bussola e giroscopio non autorizzati: la mappa la muovi col dito. ' +
-        'Il permesso si ridà dalle impostazioni del browser.', 9000);
-      return;
-    }
-    skySensoriAlPrimoTocco();
-  });
+  // iPhone/iPad: prima la nostra scelta, poi — soltanto se la risposta è sì
+  // — il permesso del sistema. Un computer che espone l'interfaccia non passa
+  // questa verifica e non viene interrotto.
+  if (skyEUnTelefonoConSensoriProtetti()) skyProponiMovimentoTelefono();
 }
 
 // iOS ha rifiutato perché non c'era nessun gesto in corso: si riprova al
