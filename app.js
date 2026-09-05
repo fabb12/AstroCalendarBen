@@ -1449,8 +1449,9 @@ function formattaCoordinate(lat, lon) {
 //   della Terra da cui lo si osserva. Intl sa applicare anche ora legale e
 //   cambi storici, purché gli si dia il nome IANA del fuso. Open-Meteo lo
 //   ricava dalle coordinate; lo conserviamo perché continui a valere offline.
-//   Accanto all'ora locale mostriamo sempre UTC: così un appuntamento resta
-//   inequivocabile anche se viene condiviso con chi si trova altrove.
+//   Nell'interfaccia mostriamo soltanto l'ora civile del luogo scelto: e'
+//   quella utile a chi deve uscire a osservare. Il fuso IANA mantiene corretti
+//   anche ora legale e cambi storici, senza esporre all'utente l'ora UTC.
 // =====================================================================
 const CHIAVE_FUSI_ORARI = 'astrocalendario_fusi_orari_v2';
 const fusiOrari = new Map();
@@ -1526,14 +1527,6 @@ function localeData() {
     ? astroI18n.locale() : 'it-IT';
 }
 
-function oraUTC(data, secondi) {
-  if (!data) return '—';
-  return new Intl.DateTimeFormat(localeData(), {
-    timeZone: 'UTC', hour: '2-digit', minute: '2-digit',
-    ...(secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
-  }).format(data);
-}
-
 function oraDelLuogo(data, luogo, opzioni = {}) {
   if (!data) return '—';
   const fuso = fusoDelLuogo(luogo);
@@ -1541,7 +1534,7 @@ function oraDelLuogo(data, luogo, opzioni = {}) {
     timeZone: fuso.nome, hour: '2-digit', minute: '2-digit',
     ...(opzioni.secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
   }).format(data);
-  return opzioni.soloLocale ? locale : `${locale} (${oraUTC(data, opzioni.secondi)} UTC)`;
+  return locale;
 }
 
 function dataOraDelLuogo(data, luogo, opzioni = {}) {
@@ -1555,7 +1548,7 @@ function dataOraDelLuogo(data, luogo, opzioni = {}) {
     hour: '2-digit', minute: '2-digit',
     ...(opzioni.secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
   }).format(data);
-  return `${locale} (${oraUTC(data, opzioni.secondi)} UTC)`;
+  return locale;
 }
 
 // I pezzi civili di un istante nel fuso del luogo. Non usiamo i getDate() e
