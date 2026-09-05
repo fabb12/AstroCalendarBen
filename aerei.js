@@ -1185,12 +1185,11 @@
   }
 
   function fraQuanto(ms) {
-    const s = Math.max(0, Math.round(ms / 1000));
-    if (s <= 1) return 'a momenti';
-    if (s < 60) return `fra ${s} s`;
-    const m = Math.round(s / 60);
-    return m < 60 ? `fra ${m} min` : `fra ${Math.round(m / 60)} h`;
+    // La riga di stato del pannello è una riga sola e ci stanno già quattro
+    // notizie: qui il tempo si dice corto.
+    return astroI18n.quantoManca(ms, { breve: true });
   }
+
 
   function guaioLeggibile() {
     if (stato.errNome === 'TimeoutError') return 'nessuna rete ADS-B ha risposto in tempo';
@@ -1202,51 +1201,36 @@
   // se serve — **cosa non va e quando riprovo**. In quest'ordine, perché è
   // l'ordine in cui uno se le chiede.
   function testoDiStato() {
+    const T = (k, v) => astroI18n.t('aereiStato.' + k, v);
     const f = fase();
-    const conteggio = stato.aerei.length;
-    const quanti = conteggio === 1 ? '1 aereo' : `${conteggio} aerei`;
+    const quanti = T('quanti', { n: stato.aerei.length });
     const eta = stato.ultimoSuccesso ? quantoFa(Date.now() - stato.ultimoSuccesso) : '';
     const prossimo = stato.dati && stato.auto && stato.prossimoAggiornamento
-      ? ` · nuovo scarico ${fraQuanto(stato.prossimoAggiornamento - Date.now())}` : '';
-    if (f === 'senzaPosizione') return 'Serve una posizione per cercare gli aerei.';
-    if (f === 'proxyMancante') {
-      return 'Nessun dato: le reti ADS-B non autorizzano le richieste dei browser e in ' +
-        'questo momento non risponde nemmeno un ponte CORS pubblico. Per una strada ' +
-        'che non dipende da servizi di terzi si configura un proxy proprio ' +
-        '(ADSB_PROXY_URL, vedi ADSB-PROXY.md).';
-    }
+      ? T('nuovoScarico', { quando: fraQuanto(stato.prossimoAggiornamento - Date.now()) }) : '';
+    if (f === 'senzaPosizione') return T('senzaPosizione');
+    if (f === 'proxyMancante') return T('proxyMancante');
     if (f === 'spento') {
-      return stato.ultimoSuccesso
-        ? `Dati in pausa · ultima lettura ${eta} (${quanti}).`
-        : 'Dati in pausa: accendi «Dati ADS-B» per scaricare il traffico vicino.';
+      return stato.ultimoSuccesso ? T('spentoConDati', { eta, quanti }) : T('spento');
     }
     if (f === 'carico') {
-      return stato.ultimoSuccesso
-        ? `Aggiornamento in corso… · intanto ${quanti} dall'ultima lettura ${eta}.`
-        : 'Primo scarico dei dati ADS-B in corso…';
+      return stato.ultimoSuccesso ? T('caricoConDati', { quanti, eta }) : T('carico');
     }
-    if (f === 'passato') {
-      return `Macchina del tempo: ${quanti} in posizione stimata dall'ultima lettura ADS-B. ` +
-        'Torna ad Adesso per i dati in tempo reale.';
-    }
+    if (f === 'passato') return T('passato', { quanti });
     if (f === 'senzaRete') {
-      return stato.ultimoSuccesso
-        ? `Senza rete · resta l'ultima lettura di ${eta} (${quanti}).`
-        : 'Senza rete: i dati ADS-B arriveranno appena torna la connessione.';
+      return stato.ultimoSuccesso ? T('senzaReteConDati', { eta, quanti }) : T('senzaRete');
     }
     if (f === 'errore') {
       const riprova = stato.prossimoTentativo
-        ? ` Riprovo ${fraQuanto(stato.prossimoTentativo - Date.now())}.` : '';
+        ? T('riprovo', { quando: fraQuanto(stato.prossimoTentativo - Date.now()) }) : '';
       return stato.ultimoSuccesso
-        ? `Aggiornamento non riuscito (${guaioLeggibile()}): resta l'ultima lettura di ${eta} (${quanti}).${riprova}`
-        : `Dati ADS-B non disponibili (${guaioLeggibile()}).${riprova}`;
+        ? T('erroreConDati', { guaio: guaioLeggibile(), eta, quanti, riprova })
+        : T('errore', { guaio: guaioLeggibile(), riprova });
     }
-    if (f === 'vecchio') {
-      return `${quanti} · ultima lettura ${eta}: posizioni propagate dalla rotta.${prossimo}`;
-    }
-    if (!stato.ultimoSuccesso) return 'In attesa del primo scarico ADS-B…';
-    return `${quanti} · ${stato.ultimaFonte || 'ADS-B'} · aggiornato ${eta}${prossimo}`;
+    if (f === 'vecchio') return T('vecchio', { quanti, eta, prossimo });
+    if (!stato.ultimoSuccesso) return T('primoScarico');
+    return T('normale', { quanti, fonte: stato.ultimaFonte || 'ADS-B', eta, prossimo });
   }
+
 
   function scriviTesto(id, testo) {
     const el = document.getElementById(id);
@@ -1281,8 +1265,9 @@
       spia.dataset.fase = info.spia;
       const padre = spia.closest('button');
       if (padre) {
-        padre.title = `${info.nota}. Apri il pannello degli aerei ADS-B`;
-        padre.setAttribute('aria-label', `${info.nota}. Apri il pannello degli aerei ADS-B`);
+        const spiega = astroI18n.t('aereo.apriPannello', { nota: info.nota });
+        padre.title = spiega;
+        padre.setAttribute('aria-label', spiega);
       }
     }
     scriviTesto('aerei-conteggio', stato.aerei.length ? String(stato.aerei.length) : '—');
@@ -1320,7 +1305,8 @@
       b.disabled = !concluso;
       b.setAttribute('aria-busy', concluso ? 'false' : 'true');
       b.dataset.esito = concluso ? (errore ? 'errore' : 'successo') : 'caricamento';
-      b.textContent = concluso ? (errore ? 'Non riuscito' : 'Aggiornato ✓') : 'Aggiornamento…';
+      b.textContent = astroI18n.t(concluso
+        ? (errore ? 'aereo.nonRiuscito' : 'aereo.aggiornato') : 'aereo.aggiornamento');
     }
     if (typeof skyAvviso === 'function') skyAvviso('adsb', testo, concluso ? 6000 : undefined);
     if (concluso) {
@@ -1887,44 +1873,54 @@
   // rete e se lo scrive da sé (`aereiCaricaRotta`), quindi qui è solo il posto
   // che gli si tiene, con dentro la scritta d'attesa.
   function aereiVociScheda(a) {
-    const quota = Number.isFinite(a.quotaM) ? `${Math.round(a.quotaM).toLocaleString('it-IT')} m` : 'non comunicata';
-    const velocita = Number.isFinite(a.velocitaMs) ? `${Math.round(a.velocitaMs * 3.6)} km/h` : 'non comunicata';
+    // `toLocaleString('it-IT')` era il separatore dei migliaia inchiodato
+    // all'italiano: undicimila metri si scrivono «11.000» qui e «11,000» in
+    // inglese, ed è il genere di dettaglio per cui una traduzione si vede.
+    const quota = Number.isFinite(a.quotaM)
+      ? `${astroI18n.numero(Math.round(a.quotaM))} m` : astroI18n.t('aereo.nonComunicata');
+    const velocita = Number.isFinite(a.velocitaMs)
+      ? `${astroI18n.numero(Math.round(a.velocitaMs * 3.6))} km/h` : astroI18n.t('aereo.nonComunicata');
+    // `chiave` è l'identificativo della riga (lo legge `data-vivo`, e non deve
+    // cambiare mai); `nome` è la sua etichetta, e quella viene dal dizionario.
+    // Tenerle separate è la ragione per cui la scorciatoia che riscrive i soli
+    // valori continua a funzionare in tutte le lingue.
+    const E = (k) => astroI18n.t('aereo.' + k);
     return [
-      { chiave: 'volo', nome: 'Volo', valore: a.callsign },
-      { chiave: 'registrazione', nome: 'Registrazione', valore: a.registrazione },
-      { chiave: 'aeromobile', nome: 'Aeromobile', valore: a.descrizione || a.tipoIcao },
-      { chiave: 'operatore', nome: 'Operatore', valore: a.operatore },
-      { chiave: 'quota', nome: 'Quota', valore: quota },
-      { chiave: 'velocita', nome: 'Velocità', valore: velocita },
-      { chiave: 'direzione', nome: 'Rotta', valore: Number.isFinite(a.direzione) ? `${Math.round(a.direzione)}°` : '' },
-      { chiave: 'distanza', nome: 'Distanza', valore: Number.isFinite(a.distanzaKm) ? `${a.distanzaKm.toFixed(1)} km` : '' },
+      { chiave: 'volo', nome: E('volo'), valore: a.callsign },
+      { chiave: 'registrazione', nome: E('registrazione'), valore: a.registrazione },
+      { chiave: 'aeromobile', nome: E('aeromobile'), valore: a.descrizione || a.tipoIcao },
+      { chiave: 'operatore', nome: E('operatore'), valore: a.operatore },
+      { chiave: 'quota', nome: E('quota'), valore: quota },
+      { chiave: 'velocita', nome: E('velocita'), valore: velocita },
+      { chiave: 'direzione', nome: E('rotta'), valore: Number.isFinite(a.direzione) ? `${Math.round(a.direzione)}°` : '' },
+      { chiave: 'distanza', nome: E('distanza'), valore: Number.isFinite(a.distanzaKm) ? `${astroI18n.numero(a.distanzaKm, 1)} km` : '' },
       // Per quanto ancora si vede. È la domanda che uno si fa davvero
       // guardando un aereo — «faccio in tempo a prendere il binocolo?» — e
       // fino a quando l'arco si fermava a cinque minuti non c'era nessuna
       // riga che potesse rispondere. La differenza fra le due risposte non è
       // una sfumatura: «tramonta fra 6 minuti» è una previsione, «lo seguo
       // per 25 minuti» è il punto in cui abbiamo smesso di guardare.
-      { chiave: 'arco', nome: 'In vista', valore: aereiTestoArco(a.arco) },
-      { chiave: 'itinerario', nome: 'Itinerario', dallaRete: true },
-      { chiave: 'icao', nome: 'Codice ICAO', valore: String(a.id || '').toUpperCase() },
-      { chiave: 'squawk', nome: 'Squawk', valore: a.squawk }
+      { chiave: 'arco', nome: E('inVista'), valore: aereiTestoArco(a.arco) },
+      { chiave: 'itinerario', nome: E('itinerario'), dallaRete: true },
+      { chiave: 'icao', nome: E('icao'), valore: String(a.id || '').toUpperCase() },
+      { chiave: 'squawk', nome: E('squawk'), valore: a.squawk }
     ].filter(v => v.dallaRete || v.valore);
   }
 
   function aereiTestoArco(arco) {
     if (!arco || !Number.isFinite(arco.minutiResidui)) return '';
     const m = arco.minutiResidui;
-    const quanto = m < 1 ? `${Math.round(m * 60)} s` : `${Math.round(m)} min`;
-    const alto = Number.isFinite(arco.altMax) ? `, fino a ${Math.round(arco.altMax)}° di altezza` : '';
-    return arco.tramonta
-      ? `ancora ${quanto}${alto}, poi tramonta`
-      : `almeno ${quanto}${alto}`;
+    const quanto = m < 1
+      ? astroI18n.t('tempo.unitaSecondi', { n: Math.round(m * 60) })
+      : astroI18n.t('tempo.unitaMinuti', { n: Math.round(m) });
+    const alto = Number.isFinite(arco.altMax)
+      ? astroI18n.t('aereo.finoAAltezza', { gradi: Math.round(arco.altMax) }) : '';
+    return astroI18n.t(arco.tramonta ? 'aereo.ancoraPoiTramonta' : 'aereo.almeno',
+      { quanto, alto });
   }
 
   function aereiNotaScheda(a) {
-    return a.stimato
-      ? 'Posizione stimata dalla rotta, velocità e salita dell’ultima lettura ADS-B.'
-      : 'Posizione allineata al feed ADS-B in tempo reale.';
+    return astroI18n.t(a.stimato ? 'aereo.posizioneStimata' : 'aereo.posizioneAllineata');
   }
 
   function aereiSchedaHtml(a) {
@@ -1935,10 +1931,10 @@
       `<span data-vivo="fascia">${sicuro(fascia.nome)}</span></p>` +
       `<div id="aereo-foto-${sicuro(a.id)}"></div><ul>` +
       aereiVociScheda(a).map(v => v.dallaRete
-        ? `<li id="aereo-rotta-${sicuro(a.id)}"><span class="voce-dato">${v.nome}:</span> ricerca in corso…</li>`
+        ? `<li id="aereo-rotta-${sicuro(a.id)}"><span class="voce-dato">${v.nome}:</span> ${astroI18n.t('aereo.ricercaInCorso')}</li>`
         : `<li><span class="voce-dato">${v.nome}:</span> <span data-vivo="${v.chiave}">${sicuro(v.valore)}</span></li>`).join('') +
       '</ul>' +
-      `<div class="aereo-azioni"><button type="button" class="tasto-cielo aereo-mappa" data-aereo-id="${sicuro(a.id)}">Traccia reale sulla mappa</button></div>` +
+      `<div class="aereo-azioni"><button type="button" class="tasto-cielo aereo-mappa" data-aereo-id="${sicuro(a.id)}">${astroI18n.t('aereo.tracciaSullaMappa')}</button></div>` +
       `<p class="nota-dettaglio" data-vivo="nota">${aereiNotaScheda(a)}</p>`;
   }
 
@@ -1962,6 +1958,10 @@
     if (!a) return false;
     const corpo = document.getElementById('skymap-dettaglio-corpo');
     if (!corpo) return false;
+    // Una scheda scritta in un'altra lingua non è la stessa scheda: le chiavi
+    // di `data-vivo` sono identificatori, quindi la forma combacerebbe e si
+    // riscriverebbero i soli numeri, lasciando le etichette come stavano.
+    if (corpo.dataset.lingua && corpo.dataset.lingua !== astroI18n.getLanguage()) return false;
     // L'aereo si riconosce dal riquadro della foto, che c'è sempre e porta il
     // suo identificativo: nessun marchio da tenere allineato a parte.
     const foto = corpo.querySelector('[id^="aereo-foto-"]');
@@ -2043,8 +2043,9 @@
     const carta = document.getElementById('aereo-rotta-mappa');
     const titolo = document.getElementById('aereo-rotta-titolo');
     if (!a || !modale || !carta) return;
-    if (typeof L === 'undefined') { if (typeof skyAvviso === 'function') skyAvviso('aereo-mappa', 'La carta geografica richiede la rete al primo utilizzo.', 6000); return; }
-    if (titolo) titolo.textContent = `Traccia ADS-B di ${a.callsign || String(a.id).toUpperCase()}`;
+    if (typeof L === 'undefined') { if (typeof skyAvviso === 'function') skyAvviso('aereo-mappa', astroI18n.t('aereo.cartaServeRete'), 6000); return; }
+    if (titolo) titolo.textContent = astroI18n.t('aereo.tracciaAdsbDi',
+      { volo: a.callsign || String(a.id).toUpperCase() });
     modale.classList.add('visibile'); modale.setAttribute('aria-hidden', 'false');
     if (!mappaRotta) {
       mappaRotta = L.map(carta, { zoomControl: true, maxZoom: 16 });
@@ -2203,19 +2204,21 @@
       if (valore) righe.push({ chiave, etichetta, valore });
     };
 
+    const T = (k, v) => astroI18n.t('aereo.' + k, v);
+    const ignoto = T('nonComunicata');
     const rotta = aereiRottaOra(a);
     if (rotta.valore && (rotta.valore.partenza || rotta.valore.arrivo)) {
-      metti('partenza', 'Partenza', rotta.valore.partenza || 'non comunicata');
-      metti('destinazione', 'Destinazione', rotta.valore.arrivo || 'non comunicata');
+      metti('partenza', T('partenza'), rotta.valore.partenza || ignoto);
+      metti('destinazione', T('destinazione'), rotta.valore.arrivo || ignoto);
     } else if (!rotta.pronta) {
-      metti('partenza', 'Itinerario', 'ricerca in corso…');
+      metti('partenza', T('itinerario'), T('ricercaInCorso'));
     }
 
-    metti('tipo', 'Aereo', a.descrizione || a.tipoIcao || 'non comunicato');
-    metti('quota', 'Quota', Number.isFinite(a.quotaM)
-      ? `${Math.round(a.quotaM).toLocaleString('it-IT')} m s.l.m.` : 'non comunicata');
-    metti('velocita', 'Velocità', Number.isFinite(a.velocitaMs)
-      ? `${Math.round(a.velocitaMs * 3.6)} km/h` : 'non comunicata');
+    metti('tipo', T('aereo'), a.descrizione || a.tipoIcao || ignoto);
+    metti('quota', T('quota'), Number.isFinite(a.quotaM)
+      ? T('metriSlm', { n: astroI18n.numero(Math.round(a.quotaM)) }) : ignoto);
+    metti('velocita', T('velocita'), Number.isFinite(a.velocitaMs)
+      ? `${astroI18n.numero(Math.round(a.velocitaMs * 3.6))} km/h` : ignoto);
 
     // Il `≈` dice in un carattere quello che la scheda completa dice in una
     // riga: questa posizione non è l'ultima lettura ADS-B, è quella lettura
@@ -2223,7 +2226,8 @@
     if (Number.isFinite(a.distanzaKm)) {
       const dove = typeof skyNomeDirezione === 'function' && Number.isFinite(a.az)
         ? ` · ${skyNomeDirezione(a.az)}` : '';
-      metti('distanza', 'Distanza reale', `${a.stimato ? '≈ ' : ''}${a.distanzaKm.toFixed(1)} km${dove}`);
+      metti('distanza', T('distanzaReale'),
+        `${a.stimato ? '≈ ' : ''}${astroI18n.numero(a.distanzaKm, 1)} km${dove}`);
     }
 
     return {
@@ -2246,7 +2250,8 @@
     const pannello = box.closest('.pannello-dettaglio');
     const scorrimento = pannello && pannello.scrollTop;
     if (!rotta || (!rotta.partenza && !rotta.arrivo)) {
-      box.innerHTML = '<span class="voce-dato">Itinerario:</span> non disponibile';
+      box.innerHTML = `<span class="voce-dato">${astroI18n.t('aereo.itinerario')}:</span> ` +
+        astroI18n.t('aereo.nonDisponibile');
       if (pannello) pannello.scrollTop = scorrimento;
       return;
     }

@@ -294,19 +294,21 @@ function pianDisegnaCurva(canvas, curva, etichetta) {
 
 // Il riassunto a parole della curva, per chi il grafico non lo guarda
 function pianRaccontoCurva(curva) {
-  if (!curva) return 'Serve la posizione per sapere quando sale.';
+  const T = (k, v) => astroI18n.t('curva.' + k, v);
+  if (!curva) return T('servePosizione');
   if (!curva.migliore) {
-    if (curva.culmine && curva.culmine.alt > 0) {
-      return 'Stanotte non arriva mai sopra l\'orizzonte a cielo buio: sta su di giorno.';
-    }
-    return 'Stanotte non sorge mai da qui.';
+    if (curva.culmine && curva.culmine.alt > 0) return T('soloDiGiorno');
+    return T('nonSorgeMai');
   }
   const ore = curva.oreUtili;
-  const quanto = ore >= 6 ? 'per quasi tutta la notte'
-               : ore >= 3 ? `per circa ${Math.round(ore)} ore`
-               : ore >= 1 ? `per poco più di un'ora` : 'per meno di un\'ora';
-  return `Il momento buono è verso le ${oraBreve(new Date(curva.migliore.ms))}, ` +
-         `a ${Math.round(curva.migliore.alt)}° sull'orizzonte. Utilizzabile ${quanto}.`;
+  const quanto = ore >= 6 ? T('quasiTuttaLaNotte')
+               : ore >= 3 ? T('circaOre', { n: Math.round(ore) })
+               : ore >= 1 ? T('pocoPiuDiUnOra') : T('menoDiUnOra');
+  return T('momentoBuono', {
+    ora: oraBreve(new Date(curva.migliore.ms)),
+    gradi: Math.round(curva.migliore.alt),
+    quanto
+  });
 }
 
 
@@ -374,7 +376,7 @@ function pianDisturboLunare(quando) {
     const t = Astronomy.MakeTime(quando);
     const ill = Astronomy.Illumination('Moon', t);
     const pos = altAzCorpo('Moon', quando, obs);
-    if (pos.alt <= 0) return { fattore: 0, testo: 'Luna sotto l\'orizzonte: cielo al suo meglio' };
+    if (pos.alt <= 0) return { fattore: 0, testo: astroI18n.t('notte.lunaSottoOrizzonte') };
     // Sotto i venti gradi la Luna illumina molto meno: la sua luce
     // attraversa più atmosfera e non arriva allo zenit.
     const quantoAlta = Math.min(1, pos.alt / 40);
@@ -382,7 +384,8 @@ function pianDisturboLunare(quando) {
     return {
       fattore,
       testo: fattore > 0.15
-        ? `Luna al ${Math.round(ill.phase_fraction * 100)}% e a ${Math.round(pos.alt)}° sull'orizzonte`
+        ? astroI18n.t('notte.lunaAlPerCento', {
+            perc: Math.round(ill.phase_fraction * 100), gradi: Math.round(pos.alt) })
         : null
     };
   } catch (e) {
@@ -421,13 +424,14 @@ function migliorDiStanotte(quanti) {
 
     // --- quanto sale ---
     const alt = curva.migliore.alt;
-    if (alt < 20) { punti -= 30; motivi.push(`resta basso, arriva solo a ${Math.round(alt)}°`); }
-    else if (alt < 35) { punti -= 12; motivi.push(`non sale molto (${Math.round(alt)}°)`); }
-    else motivi.push(`sale fino a ${Math.round(alt)}°`);
+    const M = (k, v) => astroI18n.t('motivo.' + k, v);
+    if (alt < 20) { punti -= 30; motivi.push(M('restaBasso', { gradi: Math.round(alt) })); }
+    else if (alt < 35) { punti -= 12; motivi.push(M('nonSaleMolto', { gradi: Math.round(alt) })); }
+    else motivi.push(M('saleFinoA', { gradi: Math.round(alt) }));
 
     // --- per quanto tempo ---
-    if (curva.oreUtili < 1) { punti -= 25; motivi.push('poco più di mezz\'ora di finestra utile'); }
-    else if (curva.oreUtili < 2.5) { punti -= 10; motivi.push(`finestra stretta, circa ${Math.round(curva.oreUtili)} ore`); }
+    if (curva.oreUtili < 1) { punti -= 25; motivi.push(M('mezzOra')); }
+    else if (curva.oreUtili < 2.5) { punti -= 10; motivi.push(M('finestraStretta', { n: Math.round(curva.oreUtili) })); }
 
     // --- il disturbo della Luna, che non tocca tutti allo stesso modo ---
     // Sui pianeti e sulla Luna stessa non conta niente: sono luminosi, e
@@ -443,10 +447,10 @@ function migliorDiStanotte(quanti) {
     let strumento = null;
     if (b.tipo === 'profondo' && typeof profondoStrumento === 'function') {
       strumento = profondoStrumento(b.dato, bortle);
-      if (strumento === 'telescopio') { punti -= 8; motivi.push('serve il telescopio'); }
+      if (strumento === 'telescopio') { punti -= 8; motivi.push(M('serveIlTelescopio')); }
     } else if (b.tipo === 'corpoMinore') {
       strumento = b.mag <= 6 ? 'occhio' : b.mag <= 9 ? 'binocolo' : 'telescopio';
-      motivi.push(`magnitudine ${b.mag.toFixed(1)}`);
+      motivi.push(M('magnitudine', { mag: astroI18n.numero(b.mag, 1) }));
     }
 
     // --- il cielo che hai ---
@@ -454,7 +458,7 @@ function migliorDiStanotte(quanti) {
     // una penalità, è un fatto, e va detto invece di proporlo lo stesso.
     if (b.tipo === 'profondo' && strumento === 'telescopio' && b.dato.brillanza > 13.5 && bortle >= 6) {
       punti -= 30;
-      motivi.push('col tuo cielo è quasi impossibile');
+      motivi.push(M('quasiImpossibile'));
     }
 
     // --- il meteo, uguale per tutti ---
@@ -497,15 +501,18 @@ function pianComEStanotte() {
   const bortle = typeof cieloDiCasa === 'function' ? cieloDiCasa() : 5;
   const cielo = typeof CAT_CIELI !== 'undefined' ? CAT_CIELI[bortle] : null;
 
+  const N = (k, v) => astroI18n.t('notte.' + k, v);
   const pezzi = [];
   if (nuvole !== null) {
-    pezzi.push(nuvole <= 20 ? 'cielo sereno' : nuvole <= 50 ? 'nuvole a tratti'
-             : nuvole <= 80 ? 'molto nuvoloso' : 'coperto');
+    pezzi.push(N(nuvole <= 20 ? 'sereno' : nuvole <= 50 ? 'aTratti'
+             : nuvole <= 80 ? 'moltoNuvoloso' : 'coperto'));
   }
-  if (luna.fattore < 0.1) pezzi.push('senza Luna');
-  else if (luna.fattore > 0.5) pezzi.push('con la Luna che schiarisce tutto');
-  else pezzi.push('con un po\' di Luna');
-  if (cielo) pezzi.push(`da un cielo «${cielo.nome.toLowerCase()}»`);
+  if (luna.fattore < 0.1) pezzi.push(N('senzaLuna'));
+  else if (luna.fattore > 0.5) pezzi.push(N('lunaSchiarisce'));
+  else pezzi.push(N('unPoDiLuna'));
+  // Il nome della scala di Bortle va in minuscolo dentro alla frase in
+  // italiano; in inglese non si tocca, e a saperlo è il dizionario.
+  if (cielo) pezzi.push(N('daUnCielo', { cielo: cielo.nome.toLowerCase() }));
 
   return {
     testo: pezzi.join(', '),

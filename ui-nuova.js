@@ -49,12 +49,11 @@ function aggiornaStaseraMeteoAstro() {
   if (finestra) {
     const f = meteoFinestraMigliore();
     if (!f) {
-      finestra.textContent = meteoAstro
-        ? 'Non riesco a giudicare le prossime notti.'
-        : 'Sto scaricando le previsioni…';
+      finestra.textContent = astroI18n.t(meteoAstro
+        ? 'meteo.nonRiescoAGiudicare' : 'meteo.stoScaricando');
       finestra.dataset.esito = 'niente';
     } else {
-      finestra.textContent = f.niente ? f.testo : `Finestra migliore: ${f.testo}.`;
+      finestra.textContent = f.niente ? f.testo : astroI18n.t('meteo.finestraMigliore', { testo: f.testo });
       finestra.dataset.esito = f.niente ? 'no' : f.voto >= 75 ? 'ottima' : 'discreta';
     }
   }
@@ -79,7 +78,7 @@ function aggiornaAvvisoAurora() {
     const tasto = document.createElement('button');
     tasto.type = 'button';
     tasto.className = 'tasto-planetario';
-    tasto.textContent = 'Vedila nel planetario';
+    tasto.textContent = astroI18n.t('stasera.vedilaNelPlanetario');
     tasto.addEventListener('click', () => aurGuardaInCielo());
     box.appendChild(document.createElement('br'));
     box.appendChild(tasto);
@@ -92,9 +91,11 @@ function aggiornaAvvisoAurora() {
 //   riconosce la sigla non sa se sta guardando un pianeta, una galassia o
 //   una cometa — e sono tre serate diverse.
 function tipoDelBersaglio(m) {
-  if (m.tipo === 'pianeta') return 'pianeta';
+  if (m.tipo === 'pianeta') return astroI18n.t('bersaglio.pianeta');
   if (m.tipo === 'luna') return '';                    // "Luna" si dice già da sé
-  if (m.tipo === 'corpoMinore') return m.dato && m.dato.tipo === 'cometa' ? 'cometa' : 'asteroide';
+  if (m.tipo === 'corpoMinore') {
+    return astroI18n.t(m.dato && m.dato.tipo === 'cometa' ? 'bersaglio.cometa' : 'bersaglio.asteroide');
+  }
   if (m.tipo === 'profondo' && m.dato) {
     const che = m.dato.tipoTesto || m.dato.tipo || '';
     // Il nome di catalogo di un oggetto senza nome proprio finisce già col
@@ -113,8 +114,9 @@ function aggiornaStaseraMigliori() {
   if (!box) return;
 
   if (!osservatoreCorrente()) {
-    box.innerHTML = '<p class="text-slate-400 text-sm">Serve la posizione per sapere cosa hai sopra la testa.</p>' +
-      '<button type="button" onclick="apriPosizione(true)" class="mt-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors">Dimmi dove sono</button>';
+    box.innerHTML = `<p class="text-slate-400 text-sm">${astroI18n.t('stasera.servePosizione')}</p>` +
+      '<button type="button" onclick="apriPosizione(true)" class="mt-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors">' +
+      astroI18n.t('stasera.dimmiDoveSono') + '</button>';
     if (sotto) sotto.textContent = '';
     return;
   }
@@ -132,7 +134,7 @@ function aggiornaStaseraMigliori() {
   // ai primi cinque che valgono la serata.
   const migliori = migliorDiStanotte(typeof quanto === 'function' ? quanto(6, 8, 10) : 10);
   if (!migliori.length) {
-    box.innerHTML = '<p class="text-slate-400 text-sm">Stanotte non c\'è niente che salga abbastanza da qui.</p>';
+    box.innerHTML = `<p class="text-slate-400 text-sm">${astroI18n.t('stasera.nienteAbbastanzaAlto')}</p>`;
     return;
   }
 
@@ -146,14 +148,14 @@ function aggiornaStaseraMigliori() {
     // profondo o cometa — se lo porta dietro la voce (`idCielo`).
     const alCielo = m.idCielo
       ? `<button type="button" class="tasto-planetario" onclick="cercaNelCielo('${m.idCielo.replace(/'/g, "\\'")}')"
-           title="Aprilo nel planetario, con la mappa puntata su di lui">${icona('bersaglio', 14)} Planetario</button>`
+           title="${astroI18n.t('stasera.aprilNelPlanetario')}">${icona('bersaglio', 14)} ${astroI18n.t('ui.planetario')}</button>`
       : '';
     return `<div class="riga-migliore">
       <div class="riga-migliore-testa">
-        <span class="pallino-voto" style="background:${colore}" title="${m.punti} su 100"></span>
+        <span class="pallino-voto" style="background:${colore}" title="${astroI18n.t('stasera.puntiSu100', { n: m.punti })}"></span>
         <strong class="nome-migliore">${m.nome}</strong>
         ${che ? `<span class="tipo-migliore">${che}</span>` : ''}
-        <span class="ora-migliore">verso le ${oraBreve(m.quando)}, a ${Math.round(m.altezza)}°</span>
+        <span class="ora-migliore">${astroI18n.t('stasera.versoLeAGradi', { ora: oraBreve(m.quando), gradi: Math.round(m.altezza) })}</span>
       </div>
       <p class="motivi-migliore">${m.motivi.join(' · ')}</p>
       <div class="piede-migliore">${strumento}${alCielo}</div>
@@ -187,7 +189,7 @@ function costruisciSceltaCielo() {
     const c = CAT_CIELI[b];
     return `<button type="button" class="tasto-cielo-casa${b === attuale ? ' attiva' : ''}" ` +
       `data-bortle="${b}" aria-pressed="${b === attuale}" ` +
-      `title="Bortle ${b}: si arriva a vedere fino alla magnitudine ${c.magLimite}">${c.nome}</button>`;
+      `title="${astroI18n.t('cielo.bortleTitolo', { b, mag: astroI18n.numero(c.magLimite, 1) })}">${c.nome}</button>`;
   }).join('');
 
   box.querySelectorAll('[data-bortle]').forEach(t => {
@@ -205,8 +207,8 @@ function costruisciSceltaCielo() {
     const quante = catPronto()
       ? (() => { let q = 0; for (let i = 0; i < cat.quante; i++) if (cat.magnitudini[i] <= c.magLimite) q++; return q; })()
       : null;
-    nota.textContent = `Scala di Bortle ${attuale}: a occhio nudo si arriva alla magnitudine ${c.magLimite}` +
-      (quante ? `, cioè circa ${quante.toLocaleString('it')} stelle in tutto il cielo.` : '.');
+    nota.textContent = astroI18n.t('cielo.scalaBortle', { b: attuale, mag: astroI18n.numero(c.magLimite, 1) }) +
+      (quante ? astroI18n.t('cielo.cioeStelle', { n: astroI18n.numero(quante) }) : '.');
   }
 }
 
@@ -220,7 +222,7 @@ function costruisciOrizzonte() {
       <span class="dir-orizzonte">${nome}</span>
       <input type="number" min="0" max="80" step="1" inputmode="numeric"
              value="${Math.round(valori[i])}" data-settore="${i}"
-             aria-label="Altezza degli ostacoli verso ${nome}, in gradi">
+             aria-label="${astroI18n.t('orizzonte.altezzaOstacoli', { dove: nome })}">
     </label>`).join('');
 
   const salva = () => {
@@ -406,16 +408,17 @@ function raggiConta(n, unita) {
 // cercando» no, e dirle con la stessa frase è il modo di far credere che
 // un elenco vuoto sia definitivo.
 function raggiRiga(v) {
-  if (v.spento()) return 'spenti';
+  const T = (k, val) => astroI18n.t('raggi.' + k, val);
+  if (v.spento()) return T('spenti');
   const stato = v.stato ? v.stato() : null;
-  if (stato === 'in-corso') return 'sto cercando…';
-  if (stato === 'fallito') return 'non sono riuscito a cercare';
+  if (stato === 'in-corso') return T('stoCercando');
+  if (stato === 'fallito') return T('nonRiuscito');
   const trovate = v.trovate ? v.trovate() : null;
   if (trovate === null) return '';
-  if (stato !== 'pronto') return 'apri il planetario per cercare';
-  if (!trovate) return 'niente qui attorno';
+  if (stato !== 'pronto') return T('apriIlPlanetario');
+  if (!trovate) return T('nienteQuiAttorno');
   const viste = v.inVista ? v.inVista() : null;
-  return raggiConta(trovate, v.unita) + (viste === null ? '' : ` · ${viste} in vista`);
+  return raggiConta(trovate, v.unita) + (viste === null ? '' : T('inVista', { n: viste }));
 }
 
 // L'impaginato, scritto una volta sola. Rifarlo a ogni cambiamento
@@ -426,7 +429,7 @@ function raggiPannelloCostruisci(box) {
   box.innerHTML = `
     <div class="raggi-mappa-guscio">
       <div id="imp-raggi-mappa" class="raggi-mappa"></div>
-      <button type="button" id="imp-raggi-pieno" class="raggi-pieno" aria-label="Apri la mappa a tutto schermo" title="Mappa a tutto schermo">⛶</button>
+      <button type="button" id="imp-raggi-pieno" class="raggi-pieno" data-i18n-aria-label="ui.apri-la-mappa-a-tutto-schermo" data-i18n-title="ui.mappa-a-tutto-schermo">⛶</button>
       <p id="imp-raggi-assente" class="raggi-assente hidden"></p>
     </div>
     <div class="raggi-legenda" role="radiogroup" aria-label="Quale raggio stai regolando">
@@ -523,8 +526,8 @@ function raggiMappaCostruisci() {
   if (!riquadro.offsetParent && riquadro.getClientRects().length === 0) return;
   const centro = raggiCentro();
   const perche = (typeof L === 'undefined')
-    ? 'La mappa non si è caricata (serve la rete la prima volta). I raggi si regolano con la slitta qui sotto.'
-    : (!centro ? 'Non so ancora dove sei: scegli una posizione e la mappa comparirà. Intanto i raggi si regolano con la slitta.' : null);
+    ? astroI18n.t('raggi.senzaMappa')
+    : (!centro ? astroI18n.t('raggi.senzaPosizione') : null);
   if (perche) {
     riquadro.classList.add('hidden');
     if (assente) { assente.textContent = perche; assente.classList.remove('hidden'); }
@@ -752,7 +755,8 @@ function costruisciRaggiOrizzonte() {
     const dentro = scelta.dentro ? scelta.dentro() : null;
     spiega.textContent = scelta.aiuto +
       (dentro && dentro < valore - 0.5
-        ? ` Entro ${Math.round(dentro)} km ${scelta.dentroChe()}; oltre, ${scelta.fuoriChe()} — è l'anello tratteggiato.`
+        ? astroI18n.t('raggi.anelloTratteggiato', {
+            km: Math.round(dentro), dentro: scelta.dentroChe(), fuori: scelta.fuoriChe() })
         : '');
   }
 
@@ -769,9 +773,8 @@ function costruisciRaggiOrizzonte() {
 
   const nota = document.getElementById('imp-raggi-nota');
   if (nota) {
-    nota.textContent = (typeof cime !== 'undefined' && cime.acceso)
-      ? 'Montagne, paesi e acque arrivano da OpenStreetMap; gli aerei sono aggiornati in tempo reale tramite ADS-B.'
-      : 'I nomi delle montagne sono spenti: l\'orizzonte resta la forma del terreno, senza scritte. Si accendono anche dal pannello Visualizzazione del planetario.';
+    nota.textContent = astroI18n.t((typeof cime !== 'undefined' && cime.acceso)
+      ? 'raggi.notaAccesi' : 'raggi.notaSpenti');
   }
 }
 
@@ -1019,6 +1022,187 @@ function inizializzaNuoveFunzioni() {
   });
 
   aggiornaStaseraNuovo();
+}
+
+// ============================================================================
+// Il ridisegno al cambio lingua
+// ============================================================================
+//
+// L'interfaccia statica la rimette a posto il gestore da sé: sono i nodi che
+// portano una `data-i18n`, e li tiene in un indice. Ma metà di questa
+// applicazione non è statica — le schede degli astri, la dashboard, l'agenda,
+// i pannelli del planetario si **compongono in JavaScript** a ogni
+// aggiornamento, e nel documento non lasciano nessuna chiave da riscrivere.
+// Per loro il cambio lingua non è un testo da sostituire: è un ridisegno.
+//
+// È esattamente il pezzo che mancava, ed è la ragione per cui prima «molte
+// parti dell'interfaccia restavano in italiano»: il traduttore a glossario
+// camminava il DOM *una volta*, al momento del cambio, e tutto quello che
+// veniva riscritto dopo — cioè tutto ciò che si aggiorna — tornava in
+// italiano senza che nessuno lo rimettesse a posto.
+//
+// Tre cose da sapere prima di aggiungere una voce qui:
+//   - il `typeof` si guarda **dentro** alla funzione e non fuori: `didattica.js`
+//     si carica dopo questo file, e una guardia valutata adesso lo escluderebbe
+//     per sempre;
+//   - ogni voce va nel suo `try`: un pannello che cade non deve portarsi via i
+//     dieci che vengono dopo — chi cambia lingua vede l'interfaccia cambiare
+//     tutta, non fino al primo guasto (il gestore lo fa già fra un ascoltatore
+//     e l'altro, qui è fra una vista e l'altra);
+//   - si ridisegna solo quello che è **a schermo**. Ricostruire il calendario
+//     di dieci anni o l'elenco di trecentosettanta astri a pannello chiuso
+//     costerebbe secondi per niente: chi non è in vista si rifà da sé quando
+//     lo si apre.
+/* Come si ridisegna ognuna delle viste, e quali sono in debito.
+ *
+ * `DISEGNO_VISTE` tiene la ricetta di ogni vista; `vistePerLingua` i nomi di
+ * quelle che sono state costruite in una lingua che non è più quella scelta.
+ * Il planetario non è in questo elenco: le sue parti si ridisegnano una per
+ * una qui sopra, perché è la vista che sta a schermo quasi sempre e non si
+ * ricostruisce mai per intero. */
+const DISEGNO_VISTE = {
+  stasera: () => {
+    if (typeof costruisciStasera === 'function') costruisciStasera();
+    if (typeof aggiornaStaseraNuovo === 'function') aggiornaStaseraNuovo();
+  },
+  agenda: () => { if (typeof costruisciAgenda === 'function') costruisciAgenda(); },
+  calendario: () => { if (typeof sincronizzaCalendario === 'function') sincronizzaCalendario(); },
+  diario: () => { if (typeof costruisciDiario === 'function') costruisciDiario(); },
+  telescopio: () => { if (typeof telCostruisciPannello === 'function') telCostruisciPannello(); }
+};
+const vistePerLingua = new Set();
+
+function ridisegnaVista(nome) {
+  const disegna = DISEGNO_VISTE[nome];
+  if (!disegna) return;
+  disegna();
+  vistePerLingua.delete(nome);
+}
+
+/* La chiama `mostraVista` (in app.js) appena una vista torna a schermo: se è
+ * in debito la ridisegna, se no non fa niente. Un `Set.has` per cambio di
+ * vista è il prezzo. */
+function ridisegnaVistaSeVecchia(nome) {
+  if (vistePerLingua.has(nome)) ridisegnaVista(nome);
+}
+
+function ridisegnaTuttoPerLingua() {
+  const passate = [
+    // Il planetario: la scheda dell'oggetto, il fumetto, l'elenco, gli eventi
+    ['scheda del planetario', () => {
+      if (typeof skyAggiornaScheda === 'function') skyAggiornaScheda();
+    }],
+    ['elenco degli astri', () => {
+      // Solo se il pannello è aperto: sono 370 pillole con un disegno ognuna.
+      const elenco = document.getElementById('skymap-oggetti');
+      if (elenco && elenco.dataset.pronto && typeof skyInvalidaElenco === 'function') {
+        skyInvalidaElenco();
+      }
+    }],
+    ['eventi nel planetario', () => {
+      if (typeof skyAggiornaEventi === 'function') skyAggiornaEventi();
+    }],
+    ['barra del tempo', () => {
+      if (typeof skyAggiornaTestoTempo === 'function') skyAggiornaTestoTempo();
+      if (typeof skyAggiornaStato === 'function') skyAggiornaStato();
+    }],
+    ['pannello degli aerei', () => {
+      if (typeof aereiAggiornaUI === 'function') aereiAggiornaUI();
+    }],
+    ['pannello del terreno', () => {
+      if (typeof terrenoAggiornaPannello === 'function') terrenoAggiornaPannello();
+    }],
+    ['pannello dell\'aurora', () => {
+      if (typeof aurAggiornaPannello === 'function') aurAggiornaPannello();
+    }],
+    ['avviso dei transiti', () => {
+      if (typeof tranAggiornaAvviso === 'function') tranAggiornaAvviso();
+    }],
+    // I due tasti che scrivono il loro `title` solo quando il loro stato
+    // cambia: senza una spinta resterebbero nella lingua di quando sono stati
+    // toccati l'ultima volta — che per chi non li tocca mai è l'avvio.
+    ['tasti che si riscrivono da soli', () => {
+      if (typeof skyAggiornaTastiSchermo === 'function') skyAggiornaTastiSchermo();
+      if (typeof skyRegAggiornaComando === 'function') skyRegAggiornaComando();
+      if (typeof aggiornaTastoFiltri === 'function') aggiornaTastoFiltri();
+    }],
+    // I chip dei filtri e il tasto «Filtri»: si costruiscono una volta
+    // all'avvio e portano i nomi delle categorie e degli strumenti, quindi al
+    // cambio lingua vanno rifatti. Sono l'esempio del difetto che questa
+    // sezione esiste per togliere: nessuno li avrebbe rimessi a posto, e
+    // restavano in italiano in mezzo a un'interfaccia inglese.
+    ['chip dei filtri', () => {
+      if (typeof costruisciChipCategorie === 'function') costruisciChipCategorie();
+      if (typeof inizializzaFiltroStrumento === 'function') inizializzaFiltroStrumento();
+      if (typeof costruisciTastoFiltri === 'function') costruisciTastoFiltri();
+    }],
+    // Le viste: si ridisegna **quella a schermo** e le altre si segnano.
+    //
+    // Ridisegnarle tutte e sette costerebbe secondi per niente — il calendario
+    // di dieci anni, l'agenda di millequattrocento schede — e chi cambia
+    // lingua sta guardando una vista sola. Ma non ridisegnarle affatto era il
+    // difetto: l'applicazione si apre nel planetario, la dashboard è già
+    // costruita e nascosta, e chi cambiava lingua e poi toccava «Stasera» la
+    // trovava in italiano. Quindi si segna il debito, e `mostraVista` lo paga
+    // quando quella vista torna in vista (§`ridisegnaVistaSeVecchia`).
+    // Le frasi calcolate e **tenute**: il verdetto «da qui si vede?» di ogni
+    // evento sta in una cache, e una cache di frasi è una cache di una lingua.
+    // Svuotarla costa niente (si rifà quando l'agenda si ridisegna) e
+    // dimenticarla vorrebbe dire un'agenda inglese con i verdetti italiani.
+    ['le frasi calcolate e tenute', () => {
+      if (typeof svuotaCacheLocali === 'function') svuotaCacheLocali();
+    }],
+    // Le righe di stato dei selettori del mese: portano il nome del mese e la
+    // frase «stai leggendo…», e le scrive una funzione che nessuna delle
+    // ricette delle viste chiama.
+    ['righe di stato del mese', () => {
+      if (typeof sincronizzaSelettoriMese === 'function') sincronizzaSelettoriMese();
+    }],
+    ['la vista a schermo', () => ridisegnaVista(vistaAttuale)],
+    ['il debito delle altre viste', () => {
+      for (const nome of Object.keys(DISEGNO_VISTE)) {
+        if (nome !== vistaAttuale) vistePerLingua.add(nome);
+      }
+      vistePerLingua.delete(vistaAttuale);
+    }],
+    // La Didattica non è ancora convertita alle chiavi, e non ha un ingresso
+    // per ridisegnarsi: `didCostruisci` esce subito se `stato.costruito`, e
+    // forzarlo da fuori vorrebbe dire buttare via le otto tele e le loro
+    // telecamere. Quando i suoi testi passeranno al dizionario, la voce da
+    // aggiungere qui è la sua — non prima, che sarebbe codice morto.
+
+    // Le finestre: si toccano solo se aperte.
+    ['impostazioni', () => {
+      const finestra = document.getElementById('modale-impostazioni');
+      if (finestra && !finestra.classList.contains('hidden') &&
+          typeof aggiornaSchedaImpostazioni === 'function') aggiornaSchedaImpostazioni();
+    }],
+    ['finestra della posizione', () => {
+      const finestra = document.getElementById('modale-posizione');
+      if (finestra && !finestra.classList.contains('hidden') &&
+          typeof posAggiornaScheda === 'function') posAggiornaScheda();
+    }],
+    ['Sistema Solare 3D', () => {
+      const finestra = document.getElementById('modale-sistema');
+      if (finestra && !finestra.classList.contains('hidden') &&
+          typeof solAggiornaScheda === 'function') solAggiornaScheda(true);
+    }],
+    ['atlante delle costellazioni', () => {
+      const finestra = document.getElementById('modale-costellazioni');
+      if (finestra && !finestra.classList.contains('hidden') &&
+          typeof costMostraScheda === 'function' && typeof cost === 'object' && cost.scelta) {
+        costMostraScheda(cost.scelta);
+      }
+    }]
+  ];
+  for (const [nome, passata] of passate) {
+    try { passata(); }
+    catch (errore) { console.error(`[i18n] Il ridisegno di «${nome}» è caduto:`, errore); }
+  }
+}
+
+if (typeof astroI18n === 'object' && typeof astroI18n.alCambio === 'function') {
+  astroI18n.alCambio(ridisegnaTuttoPerLingua);
 }
 
 // L'aggancio all'avvio. `DOMContentLoaded` è già passato quando questo

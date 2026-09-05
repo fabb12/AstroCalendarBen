@@ -1002,22 +1002,19 @@
   // «due ore, quindici minuti e otto secondi» è una cifra da leggere per
   // niente.
   function tranQuantoManca(ms) {
-    const s = Math.round(ms / 1000);
-    if (s <= 0 && s > -TRAN_AVVISO_CODA_MS / 1000) return 'adesso';
-    if (s <= 0) return 'passato';
-    if (s < 60) return `fra ${s} s`;
-    if (s < 3600) {
-      const m = Math.floor(s / 60), r = s % 60;
-      return m < 10 && r ? `fra ${m} min ${r} s` : `fra ${m} min`;
-    }
-    const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
-    return m ? `fra ${h} h ${m} min` : `fra ${h} h`;
+    // Il conto sta nel gestore delle lingue: la precisione che si adatta alla
+    // distanza (i secondi finché contano, poi i minuti) è la stessa che serve
+    // a un'eclissi del 2070 e a un transito che comincia adesso, e scritta due
+    // volte diventa due frasi da tradurre.
+    // `breve`: l'avviso sta appoggiato sul cielo e ha due centimetri di
+    // larghezza — «fra 45 s», non «fra 45 secondi».
+    return astroI18n.quantoManca(ms, { codaMs: TRAN_AVVISO_CODA_MS, breve: true });
   }
 
+
   function tranPunti(az) {
-    const nomi = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
-                  'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
-    return nomi[Math.round(((az % 360) + 360) % 360 / 22.5) % 16];
+    // La rosa la dà il gestore: in inglese l'ovest è «W», non «O».
+    return astroI18n.siglaPunto(az);
   }
 
   function tranTitolo(e) {

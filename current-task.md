@@ -4,120 +4,140 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-**I transiti**: quando un aereo o una stazione spaziale passano davanti al Sole
-o alla Luna, quando succede, e come si fa ad arrivarci in tempo. Un modulo
-nuovo (`transiti.js`, prefisso `tran`), l'arco degli aerei esteso, l'ordine
-del disegno corretto e un avviso a schermo.
+**Il gestore delle lingue**, rifatto da capo: chiavi al posto di un traduttore
+di frasi. Nasce da due segnalazioni — «il cambio verso l'inglese è molto lento»
+e «molte parti restano in italiano, soprattutto le schede informative» — che
+sono due facce della stessa scelta sbagliata.
 
-### Il conto da cui nasce tutto
+### Com'era
 
-Il disco del Sole è largo mezzo grado. Un aereo a cinque chilometri attraversa
-il cielo a quasi tre gradi al secondo, la ISS a uno: **il transito dura fra un
-decimo di secondo e un secondo e mezzo**. Il codice di prima
-(`aggiornaAllineamenti` in `aerei.js`) cercava gli allineamenti su **sei
-campioni distanti un minuto**, e la probabilità che uno di quei sei istanti
-caschi dentro alla finestra buona è meno di **una su trecento**.
+Il gestore di prima traduceva **il DOM**. A ogni cambio lingua camminava tutti
+i nodi di testo del documento e su ognuno passava duecento espressioni regolari
+prese da un glossario di frasi e di parole. Nessun file dell'applicazione usava
+una chiave: `data-i18n` compariva **zero volte** in `index.html` e
+`astroI18n.t()` zero volte nel codice.
 
-Non era un filtro poco sensibile: era un filtro che non poteva funzionare. E
-il sintomo — nessun avviso — è identico a «stanotte non passa niente», che è
-il modo in cui questo genere di difetto resta in piedi per sempre: nessuno,
-guardando lo schermo, può dire quale dei due sta vedendo.
+- **Era lento** per il conto, non per una riga: qualche migliaio di nodi per
+  duecento voci, ognuna con una `RegExp` nuova, in un colpo sul filo
+  dell'interfaccia. E un `MutationObserver` su `characterData` e sugli
+  attributi di tutto il `body` rifaceva quel giro a ogni pannello riscritto —
+  che in un planetario sono diverse volte al secondo.
+- **Alla prima apertura si aspettava la rete**: `await` su `ipwho.is` con una
+  sveglia da 3,5 s *prima* di scegliere una lingua. Chi apriva l'app da Londra
+  vedeva tre secondi e mezzo di italiano e poi un cambio a scatto.
+- **Era incompleto, e non poteva non esserlo.** Un dizionario di frasi traduce
+  le frasi che ci sono scritte dentro; le schede informative sono fatte di
+  frasi composte al momento («è circumpolare: non tramonta mai», «disco
+  illuminato al 87%») e non stanno in nessun elenco. Dove il glossario mordeva
+  a metà usciva un misto delle due lingue, che è l'unico esito peggiore del non
+  tradurre affatto.
 
-### 1. Il modulo — `transiti.js`
+### Com'è adesso
 
-Quattro scelte, e sono quelle che il file esiste per tenere in piedi.
+1. **I dizionari sono in memoria** (`lingue/it.js`, `lingue/en.js`, 893 voci
+   in parità), assorbiti appena `i18n.js` viene eseguito e **non** al
+   `DOMContentLoaded` — `verifica.html` gira mentre il documento si sta ancora
+   leggendo, e `t()` deve rispondere anche a lei. Nessuna richiesta di rete,
+   nessuna API di traduzione.
+2. **Il cambio lingua non guarda il documento**: scorre l'indice dei soli nodi
+   che portano una chiave (**464 contro 45.000** nodi di testo) e avvisa chi si
+   disegna da sé. Misurato con tutte le finestre aperte: **34 ms in tutto, di
+   cui 7 di riscrittura del testo**; il resto è il ridisegno delle viste, che
+   costa quanto costa aprirle.
+3. **La lingua si sceglie subito**, con quello che il browser sa già dire; il
+   paese dall'IP corregge dopo, in silenzio, e solo se nessuno ha scelto a mano.
+4. **Il ripiego** è lingua scelta → italiano (la sorgente) → nome della chiave,
+   con un avviso in console **una volta sola per chiave** e
+   `astroI18n.rapporto()` per l'elenco.
 
-- **Il passo si misura in gradi, non in secondi.** Si cammina lungo la
-  traiettoria tenendo fisso quanto l'oggetto si sposta *in cielo* fra un
-  campione e il successivo. Ne viene una proprietà che vale la pena scrivere:
-  il numero dei campioni è la lunghezza angolare del cammino diviso il passo, e
-  **non dipende dalla durata** — un aereo lento che striscia per il quadruplo
-  del tempo percorre lo stesso arco e costa lo stesso. Vicino, dove corre, i
-  passi si accorciano da soli; ed è lì che serve.
-- **Il minimo si raffina, non si campiona.** Il campionamento serve solo a
-  *incastrare* il momento del massimo avvicinamento fra due istanti; da lì lo
-  trova una sezione aurea, che arriva al millisecondo.
-- **Le due incertezze si dichiarano.** Un TLE di ieri sbaglia di un decimo di
-  secondo; l'estrapolazione di un aereo a cinque minuti sbaglia di **gradi**.
-  Sono due mondi diversi e un avviso che li scrivesse con la stessa faccia
-  mentirebbe su uno dei due.
-- **Il conto sta fuori dal fotogramma.** Misurate: la scansione degli aerei
-  con quaranta aerei in cielo costa dieci millisecondi (quanto un fotogramma
-  intero), quella delle stazioni ne costava **trecentotredici**. Adesso vanno
-  tutt'e due in `requestIdleCallback`, e la seconda è una coda di compiti che
-  cede il turno ogni mezzo fotogramma (mediana misurata: 2,6 ms).
+### Cosa dicono i numeri
 
-### 2. L'arco degli aerei, e quanto ci si può credere
+- **`index.html`: 397 stringhe cablate → 0.** Le 472 chiavi sono state generate
+  e poi tradotte a mano.
+- **Il planetario, dopo un cambio lingua: 0 frasi italiane a schermo e 0
+  attributi** (erano migliaia).
+- L'audit statico: **1175 → 636**. Quello che resta è quasi tutto il
+  *contenuto* degli eventi dell'agenda e tre viste, elencati qui sotto.
+- `verifica.html`: **1138 verdi, 5 rosse** — identico al commit di partenza
+  (le cinque sono le stesse dell'acqua e del rilievo).
+- `prova-nel-browser.js`: 4 rosse come alla partenza. `prova-fumetto.js`: da 5
+  a **3** (due passavano a caso, ora la lingua è fissata).
 
-Cinque minuti erano la previsione **disegnata**, ed erano diventati per inerzia
-anche il limite di quella **calcolata**. Ma un aereo a undici chilometri sta
-sopra l'orizzonte fino a trecentosettanta chilometri: il suo arco dura
-**venticinque minuti**. Adesso si campiona ogni dieci secondi nel primo minuto
-(un aereo sopra la testa fa quasi duecento gradi in sessanta secondi: una corda
-fra due campioni al minuto taglierebbe il cielo da parte a parte) e al minuto
-da lì in poi, fermandosi dove l'aereo **tramonta davvero**, dietro l'orizzonte
-vero di `terreno.js`.
+### I pezzi nuovi
 
-La riga disegnata si assottiglia e sbiadisce oltre i cinque minuti, e non è una
-sfumatura: un grado di scarto di rotta su venticinque minuti sposta l'aereo di
-sei chilometri e mezzo. Quello che si vede è la fiducia che cala, non una rotta
-che si conosce. Per la stessa ragione un transito d'aereo si annuncia **a un
-minuto e non a cinque**: a cinque il cono d'incertezza è largo più di otto
-gradi, e il disco del Sole ne è largo mezzo.
+- `i18n.js` riscritto; `lingue/it.js` e `lingue/en.js`.
+- `ui-nuova.js` §«Il ridisegno al cambio lingua»: chi si compone in JavaScript
+  va **ridisegnato**, non riscritto. Si ridisegna quello che è a schermo; le
+  altre viste si segnano in debito e lo pagano in `mostraVista`.
+- `creaEvento` accetta `chiave`: titolo, spiegazione e programma diventano
+  getter e si risolvono quando l'agenda li legge. Un evento nasce una volta e
+  vive per sempre — scrivergli dentro la frase voleva dire un'agenda che non
+  cambia più lingua.
+- `conNomeTradotto()`: le tabelle lette in venti posti (`CATEGORIE`,
+  `STRUMENTI`, `COST_FILTRI`, `POS_ETICHETTE`, `NOMI_MESI`, `LEZ_CAPITOLI`) non
+  si convertono chiamante per chiamante — si converte quello che i chiamanti
+  leggono.
+- **Sei conti alla rovescia** scritti in cinque file diventano uno
+  (`astroI18n.quantoManca`), in due registri: lungo per l'agenda, corto per
+  l'avviso di un transito, che ha due centimetri di schermo. Unificarli in uno
+  solo sembrava una pulizia ed era una perdita.
+- `scripts/controlla-i18n.js` (l'audit), `scripts/prova-lingua.js` (47 prove in
+  un browser), `scripts/prova-i18n.js` riscritto (31 prove senza browser),
+  `scripts/i18n-tetto.json` (il cricchetto).
 
-### 3. L'ordine del disegno — il difetto che rendeva inutile tutto il resto
+### Cosa resta, e dov'è scritto
 
-`aereiDisegna` girava insieme all'aurora, cioè **prima** degli astri: un aereo
-che transitava sul Sole ci finiva **dietro**. La geometria era giusta, la
-previsione era giusta, e sullo schermo non si vedeva niente — l'unica cosa che
-nessuno poteva guardare era proprio il momento previsto.
+I tetti stanno in `scripts/i18n-tetto.json` e scendono, non risalgono:
 
-Adesso gli aerei si disegnano in fondo a `disegnaAstriPrincipali()`: sopra a
-tutti gli astri e sotto al terreno. E chi ha appena disegnato il Sole o la
-Luna lascia la **ricevuta** di dove il disco è finito sullo schermo
-(`skyDischiAstri`), così chi ci passa davanti si disegna nero pieno e senza
-contorno — un alone attorno a una cosa già nera è l'unico modo di sfocare
-l'unica silhouette netta che questo cielo abbia.
+| dove | frasi | cosa manca |
+|---|---|---|
+| agenda | ~1.560 | il **contenuto degli eventi** che non è ancora passato alle chiavi: congiunzioni, sciami meteorici, stagioni, eclissi, opposizioni. Le fasi lunari sono fatte, ed erano metà dell'agenda |
+| telescopio | 14 | `telescopio.js`, ~100 stringhe |
+| stasera | 10 | due righe di riepilogo del meteo |
+| diario | 6 | `costruisciDiario` e i traguardi |
+| — | — | `didattica.js` (~56): non ha un ingresso per ridisegnarsi, va aggiunto insieme alle sue chiavi |
 
-Con lei sono arrivate due misure vere: un aereo a due chilometri è largo **più
-del doppio del Sole** e a forte ingrandimento si disegna così, e le stazioni
-hanno un **modellino** invece del rombo — a un quarto di grado di campo la ISS
-è larga trentasette pixel, e disegnarci un rombo è come disegnare Saturno
-senza anelli perché tanto è un puntino.
+### L'unione con main
 
-### 4. L'avviso
+`main` era andato avanti di nove PR, e tre toccavano proprio quello che questo
+lavoro aveva riscritto: il playback (la riga «Marcia» del pannello Tempo e i
+tasti di pausa sono stati **tolti**, il playback è un Play/Stop solo nella
+barra), lo scarto della barra del tempo (una funzione nuova,
+`skyScartoBarraTesto`, con le sue sigle) e la galleria video (un blocco nuovo di
+markup). I conflitti erano tre file.
 
-Sta sul cielo e non in un pannello (un pannello chiuso non avvisa nessuno), e
-il tempo che manca è la cosa più grande scritta lì dentro. La riga sotto dice
-dove guardare, quanto dura e con che tolleranza — un orario per una stazione,
-una mira per un aereo.
+- **`i18n.js`**: main aveva aggiunto delle voci al glossario, che qui non esiste
+  più. Le sue quattro stringhe nuove sono diventate chiavi come tutte le altre.
+- **`index.html`**: si è preso l'HTML di main e ci si è rimessa l'iniezione
+  delle chiavi da capo. Le chiavi nascono dallo slug della frase italiana,
+  quindi quelle del testo non toccato sono venute identiche: **sei nuove** (la
+  galleria, e il titolo della lettura della barra che main ha riscritto) e
+  **quindici sparite** insieme agli elementi del playback.
+- **`sw.js`**: solo il `CACHE_NAME`, portato a v270.
 
-### Come è stato provato
+Da quelle quindici chiavi sparite sono nate le **due prove che legano i tre
+posti** in cui una chiave vive (l'HTML, il codice, il dizionario): ogni chiave
+citata esiste, e nessuna è orfana. Non si rompeva niente — sullo schermo
+compariva il nome della chiave, che è leggibile e per questo passa inosservato.
 
-- **`verifica.html` §31**, 57 prove nuove: il conto che non torna (col
-  contro-esempio dei sei campioni al minuto), il passo in gradi, la precisione
-  (la separazione con l'`atan2` resta esatta a un milionesimo di grado dove
-  l'`acos` risponde **zero**), gli astri interpolati misurati contro Astronomy
-  Engine, e l'onestà delle due incertezze. 1138 verdi, 5 rosse — le stesse
-  cinque del commit di partenza, controllate con `git stash`.
-- **`scripts/prova-transiti.js`** (nuovo), 28 prove in un browser vero: sono
-  le due cose che un conto non può giudicare. **Il pixel** al centro del Sole
-  con l'aereo davanti (252/255 senza, 8/255 con, e nero pieno invece del
-  colore della fascia), e il **modellino** delle stazioni misurato dove il
-  rombo non arriva. Più l'avviso, il motore dall'aereo all'avviso, i TLE, e
-  l'invariante della coda a scaglioni.
-- `prova-nel-browser.js` e `prova-fumetto.js` girano come prima: gli stessi
-  tre e due guasti rossi del commit di partenza, controllati con `git stash`.
-  Il fotogramma non è cambiato (otto al secondo in container, uguale prima e
-  dopo).
+Dopo l'unione i banchi dicono gli stessi numeri di `main`: `verifica.html`
+1138/5, `prova-nel-browser` 4 rosse, `prova-fumetto` 0. Il cambio lingua è anche
+**sceso a 34 ms** — main ha tolto dei comandi, e sono nodi in meno da riscrivere.
 
-### Un difetto trovato dalle prove, e vale la pena ricordarlo
+### Tre difetti trovati misurando, e vale la pena ricordarli
 
-`Number.isFinite(Infinity)` risponde **falso**. Il budget «tutto in un colpo»
-di `tranLavoroStazioni` ricadeva quindi sugli otto millisecondi di serie, la
-coda cedeva il turno, e la versione sincrona tornava con la sua lista ancora
-vuota. Era invisibile finché le tabelle degli astri erano già in memoria — il
-lavoro che restava ci stava dentro a uno scaglione — e compariva solo quando
-bisognava ricostruirle: a intermittenza, che è il modo peggiore. L'ha preso la
-prova che confronta le due strade della coda, ed è esattamente quello per cui
-c'è.
+- **La chiave va sul nodo che porta la parola.** `inizializzaNavigazione`
+  sposta l'etichetta di un bottone dentro a uno `<span>`: la `data-i18n`
+  rimasta sul bottone faceva scrivere la parola **due volte**
+  («StaseraTonight»). Adesso la chiave segue la parola, e il gestore rifiuta di
+  aggiungere testo a un elemento che ha figli e nessun testo proprio.
+- **`verifica.html` non caricava `i18n.js`**, e fa girare `terreno.js`,
+  `catalogo.js`, `costellazioni.js` e `aerei.js` per davvero: la prima
+  `astroI18n.t()` era un `ReferenceError`, e in una pagina di `<script>` unici
+  quello non fa fallire una prova — porta via tutte le sezioni successive. Da
+  1138 prove a **10**, in silenzio. È la trappola scritta in tre punti di
+  `CLAUDE.md`, arrivata dalla lingua.
+- **In italiano quattro cifre non portano il separatore** (5800, non 5.800),
+  in inglese sì (5,800): è CLDR, `Intl` la applica, e il dizionario diceva
+  «5.800» a mano — due modi di scrivere lo stesso numero nella stessa riga
+  della scheda di una stella.
