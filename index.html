@@ -1214,10 +1214,12 @@
           </div>
           <span class="barra-terreno-testo" data-testo-terreno></span>
         </div>
-      </div>
 
-      <!-- Avvisi su permessi mancanti (posizione, bussola) -->
-      <p id="skymap-avviso" class="hidden mt-3 text-sm text-amber-400 bg-amber-950/40 border border-amber-800 rounded-xl p-3"></p>
+        <!-- I messaggi non occupano una riga della pagina: compaiono sul
+             bordo basso del planetario, sopra ai comandi del tempo, e quando
+             spariscono restituiscono immediatamente tutto lo spazio al cielo. -->
+        <p id="skymap-avviso" class="skymap-avviso hidden" role="status" aria-live="polite"></p>
+      </div>
      </div>
 
     </div>

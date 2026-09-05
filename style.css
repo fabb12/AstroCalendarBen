@@ -3423,18 +3423,74 @@ body.mappa-spostamento-immersiva { overflow: hidden; }
   --zona-alta-cielo: 128px;
 }
 
+/* Il planetario è la vista, non una scheda dentro alla pagina. Quando è
+   aperto il documento diventa una colonna alta esattamente quanto la finestra:
+   testata e navigazione prendono il loro spazio reale e tutto ciò che rimane
+   va alla tela. Non restano quindi né il margine editoriale laterale né una
+   coda di pagina vuota sotto al cielo. */
+body.vista-planetario-attiva {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+body.vista-planetario-attiva .testata-app {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+}
+body.vista-planetario-attiva main.contenitore {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: none;
+  padding-inline: 0;
+  padding-bottom: var(--barra-inferiore);
+}
+body.vista-planetario-attiva .vista-cielo,
+body.vista-planetario-attiva .cielo-scena,
+body.vista-planetario-attiva #skymap-contenitore {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+body.vista-planetario-attiva #skymap-contenitore {
+  border-inline: 0;
+  border-bottom: 0;
+  border-radius: 0;
+}
+body.vista-planetario-attiva .tela-cielo {
+  height: 100%;
+  min-height: 0;
+}
+
+/* Gli avvisi sono feedback temporaneo, non contenuto che deve allungare la
+   pagina. Si appoggiano in fondo alla scena, appena sopra la barra del tempo,
+   e lasciano il cielo visibile ai lati anche quando il testo è lungo. */
+.skymap-avviso {
+  position: absolute;
+  z-index: 26;
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: var(--sopra-barra-tempo);
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(217, 119, 6, 0.72);
+  border-radius: 12px;
+  background: rgba(69, 26, 3, 0.9);
+  color: #fbbf24;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42);
+}
+
 @media (min-width: 1180px) {
   .tela-cielo { min-height: 520px; }
 
   /* Sul computer il planetario usa tutta la finestra disponibile senza
      entrare nel Fullscreen del browser: restano testata e navigazione, ma il
      cielo non è più limitato alla larghezza editoriale delle altre viste. */
-  body.vista-planetario-attiva main.contenitore {
-    max-width: none;
-  }
   body.vista-planetario-attiva .tela-cielo {
-    height: calc(100vh - 150px);
-    height: calc(100dvh - 150px);
+    height: 100%;
   }
 }
 
