@@ -1,15 +1,15 @@
 {
-  "_perche": "Un cricchetto, non un obiettivo. Questi numeri contano le stringhe italiane ancora cablate nell'interfaccia: devono scendere e non risalire. Chi converte un pezzo li abbassa; chi ne aggiunge una li fa sforare e la prova diventa rossa. Zero e' la meta, e per l'audit statico e per le viste non e' ancora vero: manca il contenuto degli eventi (congiunzioni, sciami, stagioni, eclissi) e le viste Diario, Telescopio e Didattica.",
+  "_perche": "Un cricchetto, non un obiettivo. Questi numeri contano le stringhe italiane ancora cablate nell'interfaccia: devono scendere e non risalire. Chi converte un pezzo li abbassa; chi ne aggiunge una li fa sforare e la prova diventa rossa. Le viste 'stasera', 'calendario' e 'agenda' sono a zero e ci devono restare: il contenuto degli eventi (fasi, eclissi, stagioni, sciami, congiunzioni, superlune, opposizioni, transiti, comete, aurore) e' passato alle chiavi. Restano il Diario, il Telescopio e la Didattica.",
   "_comandi": [
     "node scripts/controlla-i18n.js --patto     # l'audit statico contro il tetto",
     "node scripts/prova-lingua.js               # la copertura vera, in un browser"
   ],
-  "totale": 640,
+  "totale": 621,
   "viste": {
-    "stasera": 10,
+    "stasera": 0,
     "calendario": 0,
-    "agenda": 1600,
+    "agenda": 0,
     "diario": 6,
-    "telescopio": 14
+    "telescopio": 13
   }
 }

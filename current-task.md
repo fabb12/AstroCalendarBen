@@ -4,97 +4,132 @@ Niente in corso.
 
 ## Ultimo intervento completato
 
-**Le fotografie delle stazioni spaziali nel fumetto del planetario**, che non
-comparivano. Segnalazione: «non vedo ancora foto delle stazioni spaziali nel
-fumetto». Il «ancora» conta: la funzione era già stata scritta e sembrava a
-posto — c'era il dato in `SATELLITI`, c'era il pezzo che lo mette nel fumetto
-(`skyFumettoDatiAstro`) e nella scheda (`skySchedaImmagineHtml`), c'era il CSS
-(`.fumetto-foto`), e c'era pure una prova verde in `scripts/prova-fumetto.js`.
+**La traduzione inglese del contenuto degli eventi, la ricerca in inglese, e il
+tasto della registrazione che diventava «NaN».** Segnalazione: «non tutte le
+parti sono tradotte, soprattutto le schede dei vari eventi e la ricerca degli
+eventi che ovviamente deve essere in inglese; inoltre c'è un bug: quando passo a
+en il tasto di registrazione passa a nan e lampeggia».
 
-### Cos'era
+### 1. Il tasto della registrazione — `app.js` §7.6
 
-Gli indirizzi delle immagini erano **costruiti bene e puntavano al nulla**.
-Wikimedia mette un file in `thumb/<a>/<ab>/<Nome>/<larghezza>px-<Nome>`, dove
-`<a>` e `<ab>` sono i primi caratteri dell'md5 del nome: quei caratteri
-tornavano (rifatto il conto in locale, cifra per cifra). Ma i **nomi dei file
-non esistono su Commons**:
+Una riga sola, ed è il difetto più corto e più visibile dei tre. Il ridisegno
+del cambio lingua (`ridisegnaTuttoPerLingua`, in `ui-nuova.js`) chiama
+`skyRegAggiornaComando()` **senza argomento** per riscriverne il titolo, che è
+una frase del dizionario. Dentro, però:
 
-- `International_Space_Station_as_seen_from_SpaceX_Crew-2.jpg` — non c'è;
-- `Chinese_Space_Station.jpg` — non c'è (ci sono `Chinese Tiangong Space
-  Station.jpg` e `Chinese Space Station - front.jpg`, che sono altri file).
+```js
+const inCorso = restano !== null;      // undefined !== null → vero
+…
+tempo.textContent = `${Math.max(0, restano).toFixed(1)} s`;   // «NaN s»
+```
 
-Cioè: un indirizzo plausibile a occhio, con l'hash giusto, che dà 404. E un
-`<img>` che si prende un 404 **non fa rumore**: non solleva niente, non scrive
-niente che parli del fumetto, lascia una cornice alta zero. Sullo schermo è
-identico a «per le stazioni la fotografia non c'è» — che è la ragione per cui
-è durato, e per cui la segnalazione è arrivata due volte.
+Quindi cambiare lingua **accendeva** il tasto — la classe `in-corso` è il
+quadrato che pulsa — e gli scriveva accanto il conto alla rovescia di una
+registrazione che non era mai cominciata.
 
-E la prova non poteva prenderlo: serviva un'immagine sostitutiva a
-**qualunque** indirizzo di `upload.wikimedia.org`, quindi un nome inventato e
-uno buono erano la stessa cosa.
+Due cure, e la seconda è quella che chiude la strada anche agli altri:
 
-### Com'è adesso — §13-bis di `app.js`
+1. senza argomento la funzione **deduce lo stato da `sky.reg`**, che lo sa già
+   (`attiva`, `durataSec`, `avvio`): chi chiede solo di riscrivere le parole non
+   ha nessun motivo di dover dire anche a che punto è la registrazione;
+2. `inCorso` è `Number.isFinite(restano)` e non `restano !== null`, così nessun
+   `undefined` e nessun `NaN` arrivati da un'altra parte possono più accenderlo.
 
-1. **Gli indirizzi giusti**, e sono **due per stazione** e non uno: per la ISS
-   i due scatti del sorvolo Crew-2 (NASA, pubblico dominio), per Tiangong lo
-   scatto al telescopio di Shujianyang, intero e ritagliato (CC BY-SA 4.0 —
-   la didascalia adesso nomina l'autore, come la licenza chiede).
-2. **`satFotoGuasta`** sull'`onerror` di tutt'e due i posti che la mostrano: un
-   nome sbagliato costa la candidata dopo, non la fotografia. `satFotoScelta`
-   ricorda quale ha caricato, se no ogni ridisegno (due volte al secondo) si
-   ricomprerebbe i suoi 404.
-3. **Il soccorso**: finite le candidate, si chiede a Wikipedia qual è
-   l'immagine di apertura della voce (`fotoVoce`) — l'unica fonte che resti
-   giusta il giorno in cui su Commons un file viene rinominato.
-4. E se non arriva niente, la cornice si **toglie**: meglio un fumetto di sole
-   righe che un riquadro vuoto con dentro un'icona rotta.
+### 2. Il contenuto degli eventi
 
-`CACHE_NAME` è a `astrocal-v271`.
+Era il grosso. Le fasi lunari erano già passate alle chiavi; **tutte le altre
+famiglie** scrivevano il loro testo in italiano dentro alla chiamata a
+`creaEvento`, e un evento nasce una volta e vive finché l'app è aperta — quindi
+quella frase restava italiana anche dopo il cambio lingua. Misurato prima:
+**1.564 frasi italiane** nell'agenda con l'interfaccia in inglese.
+
+Convertite: eclissi di Luna e di Sole, equinozi e solstizi, sciami meteorici,
+elongazioni, congiunzioni e occultazioni (`app.js`); superlune e microlune,
+opposizioni, congiunzioni col Sole, splendore di Venere, transiti sul Sole,
+comete, aurore previste e stagione delle aurore (`eventi-extra.js`).
+
+Il meccanismo nuovo è **la funzione**: `creaEvento` accettava già una `chiave`,
+che va bene per un testo fisso e non basta per una frase che porta dentro un
+numero («Marte dista 0,58 unità astronomiche», «il disco misura 33,5 primi
+d'arco»). Adesso `titolo`, `spiegazione` e `programma` accettano anche una
+funzione: i numeri restano chiusi lì dentro, trovati una volta sola, e a rifarsi
+è la sola frase attorno. Il risultato si tiene (`defRisolta`) con la lingua e
+`generazioneTesti` per chiave — la ricerca legge titolo e spiegazione di *tutti*
+gli eventi a ogni tasto premuto.
+
+Da lì è venuta gratis la **ricerca**, che è la seconda metà della segnalazione:
+`getEventiFiltrati()` confronta `ev.titolo` e `ev.spiegazione`, e da quando sono
+getter cercare «eclipse» trova le eclissi senza che la ricerca sappia niente di
+lingue. Prima non trovava niente, ed è il sintomo peggiore dei due: un elenco
+vuoto somiglia a «stasera non c'è niente».
+
+E i **nomi dei pianeti**, che erano sei copie (`SKY_CORPI`, `CONG_CORPI`,
+`SOL_PIANETI`, `LEZ_PIANETI`, la tabella della lezione, `PIAN_NOMI_PIANETI` in
+`pianifica.js`). Adesso sono una: `nomeCorpo(id)` con la chiave `corpo.<id>`, e
+le tabelle ci passano attraverso `conNomeDaId(elenco, 'corpo.')`. Con sei copie
+la dashboard diceva «Marte» mentre l'agenda diceva «Mars».
+
+Nella stessa passata: la cornice dell'agenda (i messaggi «nessun evento», i
+badge degli eventi manuali, le etichette dei consigli di scatto), i motivi
+dell'indice di osservabilità, il riquadro «Stanotte» della dashboard con i nomi
+delle fasi lunari, la griglia del mese di FullCalendar (`calendarioCambiaLingua`)
+e le cinque frasi della bussola.
+
+E la **data** della scheda, che è il residuo che nessun conto vedeva. Il locale
+di `Intl` era cablato a `it-IT`, e sulle ore non si notava — con
+`hourCycle: 'h23'` le 07:51 si scrivono uguali in tutte e due le lingue — mentre
+sulla data intera sì: «4 settembre 2026 alle ore 07:51» sotto al titolo di ogni
+scheda inglese. La sonda di `prova-lingua.js` non poteva prenderla, perché quella
+frase non contiene nessuna parola italiana funzionale: adesso il locale lo dà
+`localeData()`, `dataTesto` è un getter come il titolo, e la prova guarda i nomi
+dei mesi.
+
+### 3. Dove siamo adesso
+
+`node scripts/prova-lingua.js`, viste aperte dopo il cambio lingua:
+
+| vista | prima | adesso |
+|---|---|---|
+| Stasera | 10 | **0** |
+| Mese | 0 | **0** |
+| Agenda | 1.564 | **0** |
+| Diario | 6 | 6 |
+| Telescopio | 14 | 13 |
+
+Gli attributi (`title`, `aria-label`, `placeholder`) rimasti italiani sono
+passati da 1 a 0. I tetti di `scripts/i18n-tetto.json` sono stati abbassati di
+conseguenza: quelle tre viste a zero sono un cricchetto, e non devono risalire.
+
+Restano il **Diario**, il **Telescopio** e la **Didattica**, che non sono mai
+stati convertiti e non lo sono adesso.
+
+### Una cosa da sapere prima di rimetterci mano
+
+La sonda di `prova-lingua.js` cerca parole funzionali italiane, e tre di
+quelle — `come`, `per`, `non` — esistono anche in inglese. Finché l'agenda era
+italiana non faceva danno; da quando è tradotta lo faceva tutto: «Moon and Venus
+**come** within 29 arcminutes» veniva contata come frase italiana, e il conto
+della vista si fermava a 26 invece che a zero — un numero che per giunta dipende
+da quante congiunzioni cadono nel mese in cui la prova gira. Accanto a `SPIA_IT`
+c'è adesso `SPIA_EN`, e una sola parola che in italiano non esiste basta a
+scartare il colpo.
 
 ### Le prove
 
-`scripts/prova-fumetto.js`, e ci sono tre cose nuove che vale la pena sapere.
+- `node scripts/prova-i18n.js` — verde, e comprende le due che legano HTML,
+  codice e dizionario (ogni chiave citata esiste, nessuna chiave orfana).
+- `node scripts/prova-lingua.js` — verde, con due sezioni nuove: **«il contenuto
+  degli eventi, e la ricerca»** (ogni famiglia ha il suo titolo nelle due lingue,
+  nessun titolo resta italiano, «eclipse» trova 200 eventi e «eclissi» zero) e
+  **«il tasto della registrazione non si accende al cambio lingua»**. Quest'ultima
+  è stata provata contro il codice di prima: dice «lampeggia» e «NaN s», cioè
+  esattamente le due parole della segnalazione.
+- `node scripts/controlla-i18n.js --patto` — dentro al tetto (621).
+- I due dizionari hanno lo stesso numero di chiavi: **1.101** (erano 893).
 
-- **La prova che il difetto vero l'avrebbe preso, senza rete**: il percorso di
-  un file su Wikimedia è l'md5 del suo nome, quindi un indirizzo che non torna
-  con quella regola non esiste da nessuna parte. Fin qui si guardava solo che
-  ci fosse la parola «thumb».
-- **Il finto server ubbidisce a un regime** che le prove gli cambiano sotto ai
-  piedi: una candidata rotta (→ si passa alla riserva), poi tutte (→ arriva il
-  soccorso di Wikipedia), poi anche quello (→ nessuna cornice vuota).
-- **`PROVA_RETE=1 node scripts/prova-fumetto.js`**: una passata a parte che va
-  a bussare davvero agli indirizzi. È la sola che possa dire se il file su
-  Commons c'è — **e in questa sessione non si è potuta eseguire**, perché il
-  proxy di rete dell'ambiente blocca `upload.wikimedia.org` (403 sul CONNECT,
-  non un 404 di Commons). Da fare al primo giro su una rete vera.
+Non toccate, e già rosse prima di questo lavoro: `scripts/prova-fumetto.js`
+(«resta fuori dalla bussola e dalla barra del tempo», su tutte e tre le
+finestre) e `scripts/prova-nel-browser.js` (un'eccezione dentro a
+`solDisegnaVicino`). Provate su `main` e falliscono uguale.
 
-Nella stessa passata è saltato fuori che **metà di `prova-fumetto.js` non
-girava più**: il finto satellite che la prova delle stazioni infilava in
-`sky.oggetti` non aveva il campo `colore`, e al primo `skyDisegna` successivo
-`skyDisegnaAstro` moriva su `addColorStop('undefinedaa')`. Da lì in giù —
-l'aereo, la geometria, la coda, i tasti, il costo della misura — non veniva
-eseguito niente, in silenzio. Adesso l'oggetto porta il suo colore e viene
-tolto da `sky.oggetti` a fine prova.
-
-### Cosa resta rosso, e non è di questo lavoro
-
-Con la prova che torna a girare tutta, viene fuori una cosa che era nascosta
-dietro a quel crollo: **`resta fuori dalla bussola e dalla barra del tempo`
-fallisce, e riguarda il fumetto di un aereo**, non le stazioni.
-
-- Su un telefono girato (640×360) il fumetto di un aereo è alto 248 px mentre
-  fra le due fasce ce ne sono 120: si posa a y=11 e arriva a 259, cioè **copre
-  la barra del tempo**, che è l'orologio. Il commento in `skyPosizionaFumetto`
-  dice l'opposto («delle due, quella che non si può coprire è la barra del
-  tempo»), quindi è un difetto vero e non una scelta.
-- Su 360×640 lo stesso, su 1280×800 è invece mezzo pixel di arrotondamento.
-
-Non l'ho toccato: nasce dalla decisione — scritta e voluta — che il fumetto di
-un aereo **non perde righe** e semmai scorre, e rimetterlo a posto vuol dire
-tarare l'altezza massima contro le due fasce (CSS `.fumetto-cielo.fumetto-aereo`
-+ il tetto in `skyPosizionaFumetto`), cioè un lavoro sul fumetto degli aerei
-che con le fotografie delle stazioni non c'entra. È il prossimo da prendere.
-
-Restano rosse, identiche a prima di questo lavoro e non toccate da qui, anche
-cinque prove di `verifica.html` (acque e rilievo) e quattro di
-`prova-nel-browser.js`.
+`CACHE_NAME` è a `astrocal-v272`.

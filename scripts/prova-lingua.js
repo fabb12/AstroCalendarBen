@@ -87,6 +87,22 @@ const server = http.createServer((req, res) => {
  * contare i nomi delle stelle, che non si traducono. */
 const SPIA_IT = /(?:^|[\s>(«"'])(?:il|lo|la|le|gli|un[ao]?|del|della|dei|degli|delle|dal|dalla|nel|nella|sul|sulla|con|per|non|che|come|dove|quando|perch[eé]|pi[uù]|molto|tutt[oiae]|quest[oaie]|quell[oaie]|sono|essere|c'[eè]|se|ma|per[oò]|anche|ancora|gi[aà]|solo|senza|sopra|sotto|prima|dopo|verso|fino|fra|oppure|invece|mentre|quindi|allora|adesso|stanotte|cielo|luna|sole|terra)(?=$|[\s.,;:!?»"')<])/i;
 
+/* E le parole che dicono «questa frase è **inglese**», che sono la metà
+ * mancante di quel conto.
+ *
+ * Tre parole della lista di sopra esistono anche in inglese — `come`, `per`,
+ * `non` — e finché l'agenda era italiana non facevano danno. Da quando è
+ * tradotta lo fanno tutto: «Moon and Venus **come** within 29 arcminutes» e «a
+ * few times **per** solar cycle» venivano contate come frasi italiane, e il
+ * conto della vista non scendeva mai a zero. Peggio: quel numero dipendeva da
+ * quante congiunzioni cadono nel mese in cui la prova gira, quindi un tetto
+ * cucito addosso a lui sarebbe rosso il mese dopo.
+ *
+ * Queste invece in italiano non esistono affatto, e una sola basta: nessuna
+ * frase di questa applicazione mescola le due lingue dentro allo stesso nodo di
+ * testo — ogni nodo viene da una voce sola del dizionario. */
+const SPIA_EN = /(?:^|[\s>(«"'])(?:the|and|is|are|was|of|to|you|your|that|this|these|with|from|for|at|by|it|its|as|but|when|where|what|how|much|more|than|there|here|does|do|not|no|nothing|only|about|around|between|into|onto|over|under|before|after|until|while|because|so|also|still|already|enough|another|other|each|every|all|any|some|one|two|three)(?=$|[\s.,;:!?»"')<])/i;
+
 (async () => {
   await new Promise(r => server.listen(8098, r));
   const browser = await chromium.launch({ executablePath: CHROMIUM });
@@ -256,14 +272,15 @@ const SPIA_IT = /(?:^|[\s>(«"'])(?:il|lo|la|le|gli|un[ao]?|del|della|dei|degli|
   // torna a schermo (`ridisegnaVistaSeVecchia`), non quando cambia la lingua.
   // Che quella promessa sia mantenuta lo prova la sezione dopo, aprendo le
   // viste una per una: è lì che una vista rimasta indietro salta fuori.
-  const resti = await pagina.evaluate((spia) => {
+  const resti = await pagina.evaluate(([spia, spiaEn]) => {
     const re = new RegExp(spia, 'i');
+    const reEn = new RegExp(spiaEn, 'i');
     const fuori = [];
     const giro = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let nodo;
     while ((nodo = giro.nextNode())) {
       const testo = (nodo.nodeValue || '').trim();
-      if (testo.length < 4 || !re.test(testo)) continue;
+      if (testo.length < 4 || !re.test(testo) || reEn.test(testo)) continue;
       const genitore = nodo.parentElement;
       if (!genitore || /^(SCRIPT|STYLE|NOSCRIPT|CANVAS)$/.test(genitore.tagName)) continue;
       // `offsetParent` nullo vuol dire fuori dall'impaginazione (o `position:
@@ -276,25 +293,26 @@ const SPIA_IT = /(?:^|[\s>(«"'])(?:il|lo|la|le|gli|un[ao]?|del|della|dei|degli|
       });
     }
     return fuori;
-  }, SPIA_IT.source);
+  }, [SPIA_IT.source, SPIA_EN.source]);
   console.log(`     frasi italiane ancora a schermo: ${resti.length}`);
   for (const r of resti.slice(0, 12)) console.log(`       ${r.dove}  «${r.testo}»`);
   ok('l\'interfaccia statica non ha più frasi italiane', resti.length === 0,
      resti.length ? resti.length + ' rimaste' : 'nessuna');
 
   // I titoli e gli aria-label, che è la metà che non si vede
-  const attributi = await pagina.evaluate((spia) => {
+  const attributi = await pagina.evaluate(([spia, spiaEn]) => {
     const re = new RegExp(spia, 'i');
+    const reEn = new RegExp(spiaEn, 'i');
     const fuori = [];
     for (const el of document.querySelectorAll('[title],[aria-label],[placeholder]')) {
       if (!el.offsetParent) continue;                  // non impaginato: nessuno lo legge
       for (const a of ['title', 'aria-label', 'placeholder']) {
         const v = (el.getAttribute(a) || '').trim();
-        if (v.length > 3 && re.test(v)) fuori.push(`${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''} @${a} «${v.slice(0, 70)}»`);
+        if (v.length > 3 && re.test(v) && !reEn.test(v)) fuori.push(`${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''} @${a} «${v.slice(0, 70)}»`);
       }
     }
     return fuori;
-  }, SPIA_IT.source);
+  }, [SPIA_IT.source, SPIA_EN.source]);
   console.log(`     attributi italiani rimasti: ${attributi.length}`);
   for (const a of attributi.slice(0, 10)) console.log('       ' + a);
   ok('titoli, aria-label e placeholder tradotti', attributi.length === 0,
@@ -310,23 +328,35 @@ const SPIA_IT = /(?:^|[\s>(«"'])(?:il|lo|la|le|gli|un[ao]?|del|della|dei|degli|
   for (const vista of ['stasera', 'calendario', 'agenda', 'diario', 'telescopio']) {
     await pagina.evaluate((v) => mostraVista(v), vista);
     await pagina.waitForTimeout(500);
-    const italiano = await pagina.evaluate((spia) => {
+    const italiano = await pagina.evaluate(([spia, spiaEn]) => {
       const re = new RegExp(spia, 'i');
+      const reEn = new RegExp(spiaEn, 'i');
       let quante = 0;
       const primi = [];
       const giro = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       let nodo;
       while ((nodo = giro.nextNode())) {
         const testo = (nodo.nodeValue || '').trim();
-        if (testo.length < 4 || !re.test(testo)) continue;
+        if (testo.length < 4 || !re.test(testo) || reEn.test(testo)) continue;
         const g = nodo.parentElement;
         if (!g || /^(SCRIPT|STYLE|NOSCRIPT|CANVAS)$/.test(g.tagName)) continue;
         if (!g.offsetParent && g !== document.body) continue;
         quante++;
-        if (primi.length < 3) primi.push(g.tagName.toLowerCase() + ' «' + testo.slice(0, 60) + '»');
+        /* Si stampa anche **quale** parola ha fatto scattare la sonda, e si
+         * stampano fino a otto voci invece di tre. Serve da quando i conti
+         * sono scesi a poche unità: la sonda cerca parole funzionali italiane
+         * (`come`, `non`, `per`, `la`) e qualcuna di quelle è una parola
+         * inglese — «Moon and Venus come within 29 arcminutes» viene contata
+         * per quel «come». Con la parola in chiaro un falso positivo si
+         * riconosce a colpo d'occhio; senza, si va a cercare una traduzione
+         * che è già stata fatta. */
+        const colpita = (testo.match(re) || [''])[0].trim();
+        if (primi.length < 8) {
+          primi.push(g.tagName.toLowerCase() + ' [' + colpita + '] «' + testo.slice(0, 60) + '»');
+        }
       }
       return { quante, primi };
-    }, SPIA_IT.source);
+    }, [SPIA_IT.source, SPIA_EN.source]);
     perVista.push([vista, italiano.quante]);
     console.log(`     ${vista.padEnd(11)} ${String(italiano.quante).padStart(4)} frasi italiane`);
     for (const p of italiano.primi) console.log('                    ' + p);
@@ -377,6 +407,142 @@ const SPIA_IT = /(?:^|[\s>(«"'])(?:il|lo|la|le|gli|un[ao]?|del|della|dei|degli|
   });
   ok('i bottoni con icona hanno ancora la loro icona', icone.senzaIcona === 0,
      `${icone.quanti} elementi con icona e chiave`);
+
+  // =====================================================================
+  /* Il contenuto degli eventi, e la ricerca.
+   *
+   * È la prova che risponde alla segnalazione: un'agenda inglese con dentro
+   * «Eclissi Lunare Totale» e «Marte all'opposizione». Non basta contare le
+   * frasi italiane rimaste a schermo (lo fa la sezione della copertura): quel
+   * conto guarda i nodi *impaginati*, e in un mese qualunque non capitano tutte
+   * le famiglie di eventi. Qui si chiede invece a ogni famiglia il suo titolo
+   * nelle due lingue, che è una domanda che non dipende dal calendario.
+   *
+   * E si prova la seconda metà, che a occhio non si vede affatto: la **ricerca**
+   * legge il titolo e la spiegazione degli eventi, quindi in inglese cercare
+   * «eclipse» deve trovare le eclissi — e cercare «eclissi» non deve trovare
+   * niente, perché quella parola non è più scritta da nessuna parte. */
+  console.log('\n— il contenuto degli eventi, e la ricerca —');
+  const eventi = await pagina.evaluate(() => {
+    const perLingua = (lingua) => {
+      window.astroI18n.setLanguage(lingua);
+      const titoli = eventiCalcolati.map(e => e.titolo);
+      return {
+        // Una famiglia per riga, cercata fra tutti gli eventi calcolati.
+        famiglie: {
+          fase: titoli.some(t => /Luna Piena|Full Moon/.test(t)),
+          eclissiLunare: titoli.some(t => /Eclissi Lunare|Lunar Eclipse/.test(t)),
+          eclissiSolare: titoli.some(t => /Eclissi Solare|Solar Eclipse/.test(t)),
+          stagione: titoli.some(t => /Solstizio|Equinozio|Solstice|Equinox/.test(t)),
+          sciame: titoli.some(t => /Sciame|shower/i.test(t)),
+          congiunzione: titoli.some(t => /Congiunzione|conjunction/i.test(t))
+        },
+        // Nessun titolo può restare italiano quando la lingua è l'inglese.
+        italiani: titoli.filter(t => /Eclissi|Sciame|Congiunzione|Solstizio|Equinozio|Marte|Giove|Saturno|Venere|Mercurio|Luna(?!r)/.test(t)).length,
+        inglesi: titoli.filter(t => /Eclipse|shower|conjunction|Solstice|Equinox|Mars|Jupiter|Saturn|Venus|Mercury|Moon/i.test(t)).length,
+        // Un evento a caso, per far vedere che anche la prosa cambia
+        esempio: (eventiCalcolati.find(e => e.eclissiLunare) || {}).spiegazione || '',
+        /* La data scritta per esteso, che è la riga sotto al titolo di ogni
+         * scheda. La scrive `Intl` e non il dizionario, quindi la sonda che
+         * cerca parole italiane non la vede: «4 settembre 2026 alle ore 07:51»
+         * non contiene nessuna delle sue parole spia, ed è rimasta italiana
+         * dentro a un'agenda inglese senza che nessun conto lo dicesse. */
+        date: eventiCalcolati.slice(0, 40).map(e => e.dataTesto).join(' | ')
+      };
+    };
+    const cerca = (testo) => {
+      filtroTesto = testo;
+      const quanti = getEventiFiltrati().length;
+      filtroTesto = '';
+      return quanti;
+    };
+    const it = perLingua('it');
+    const en = perLingua('en');
+    window.astroI18n.setLanguage('en');
+    const ricercaEn = { eclipse: cerca('eclipse'), eclissi: cerca('eclissi'), mars: cerca('mars') };
+    window.astroI18n.setLanguage('it');
+    const ricercaIt = { eclissi: cerca('eclissi'), eclipse: cerca('eclipse'), marte: cerca('marte') };
+    window.astroI18n.setLanguage('en');
+    return { it, en, ricercaEn, ricercaIt, quanti: eventiCalcolati.length };
+  });
+  console.log(`     eventi in calendario: ${eventi.quanti}`);
+  console.log(`     titoli italiani con la lingua inglese: ${eventi.en.italiani}`);
+  console.log(`     ricerca in inglese: «eclipse» ${eventi.ricercaEn.eclipse}, «eclissi» ${eventi.ricercaEn.eclissi}, «mars» ${eventi.ricercaEn.mars}`);
+  console.log(`     ricerca in italiano: «eclissi» ${eventi.ricercaIt.eclissi}, «eclipse» ${eventi.ricercaIt.eclipse}, «marte» ${eventi.ricercaIt.marte}`);
+  const famiglieIt = Object.entries(eventi.it.famiglie).filter(([, c]) => c).map(([n]) => n);
+  ok('le famiglie di eventi ci sono, in italiano', famiglieIt.length >= 4, famiglieIt.join(', '));
+  ok('e in inglese sono le stesse',
+     JSON.stringify(eventi.it.famiglie) === JSON.stringify(eventi.en.famiglie),
+     JSON.stringify(eventi.en.famiglie));
+  ok('nessun titolo di evento resta italiano', eventi.en.italiani === 0,
+     eventi.en.italiani ? eventi.en.italiani + ' rimasti' : 'nessuno');
+  ok('e i titoli inglesi ci sono davvero', eventi.en.inglesi > 0, eventi.en.inglesi + ' titoli');
+  ok('anche la prosa della scheda cambia lingua',
+     /shadow/i.test(eventi.en.esempio) && /ombra/i.test(eventi.it.esempio),
+     eventi.en.esempio.slice(0, 60));
+  // I mesi, che la sonda delle parole italiane non può prendere: nessuna delle
+  // sue spie compare in «4 settembre 2026 alle ore 07:51».
+  const MESI_IT = /gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre| alle ore /i;
+  const MESI_EN = /January|February|March|April|May|June|July|August|September|October|November|December/i;
+  ok('la data della scheda è nella lingua scelta',
+     MESI_EN.test(eventi.en.date) && !MESI_IT.test(eventi.en.date),
+     eventi.en.date.slice(0, 46));
+  ok('e tornando all\'italiano torna italiana',
+     MESI_IT.test(eventi.it.date), eventi.it.date.slice(0, 46));
+  // La ricerca: è il pezzo che al momento della segnalazione non funzionava
+  // affatto in inglese, e non lo diceva — un elenco vuoto somiglia a «stasera
+  // non c'è niente».
+  ok('in inglese si cerca in inglese', eventi.ricercaEn.eclipse > 0 && eventi.ricercaEn.mars > 0,
+     `«eclipse» trova ${eventi.ricercaEn.eclipse}, «mars» ${eventi.ricercaEn.mars}`);
+  ok('e la parola italiana non trova più niente', eventi.ricercaEn.eclissi === 0,
+     `«eclissi» trova ${eventi.ricercaEn.eclissi}`);
+  ok('in italiano si cerca in italiano', eventi.ricercaIt.eclissi > 0 && eventi.ricercaIt.marte > 0,
+     `«eclissi» trova ${eventi.ricercaIt.eclissi}, «marte» ${eventi.ricercaIt.marte}`);
+
+  // =====================================================================
+  /* Il tasto della registrazione, al cambio lingua.
+   *
+   * La segnalazione era «passando a EN il tasto di registrazione diventa NaN e
+   * lampeggia», e la causa sta in una riga del ridisegno: `skyRegAggiornaComando()`
+   * chiamata senza argomento per riscriverne il titolo. Dentro, `restano !== null`
+   * era vero per `undefined`, quindi il tasto si accendeva (la classe `in-corso`
+   * è il quadrato che pulsa) e il conto alla rovescia scriveva «NaN s».
+   *
+   * Si guardano i fatti che si vedevano sullo schermo — la classe e il testo —
+   * e non la funzione: è l'unico modo di accorgersi se la stessa cosa torna da
+   * un'altra strada. */
+  console.log('\n— il tasto della registrazione non si accende al cambio lingua —');
+  const reg = await pagina.evaluate(() => {
+    const tasto = document.getElementById('skymap-btn-registra');
+    const tempo = document.getElementById('skymap-reg-tempo');
+    const stato = () => ({
+      inCorso: tasto.classList.contains('in-corso'),
+      premuto: tasto.getAttribute('aria-pressed'),
+      conto: (tempo.textContent || '').trim(),
+      visibile: tempo.classList.contains('visibile'),
+      titolo: tasto.title
+    });
+    window.astroI18n.setLanguage('it');
+    const prima = stato();
+    window.astroI18n.setLanguage('en');
+    const dopo = stato();
+    // E per non lasciare in piedi solo la prova del riposo: chiamata con un
+    // conto vero il tasto si accende, ed è quello che deve fare.
+    skyRegAggiornaComando(7.5);
+    const conConto = stato();
+    skyRegAggiornaComando(null);
+    return { prima, dopo, conConto, aRiposo: stato() };
+  });
+  ok('a riposo il tasto è spento, in italiano', !reg.prima.inCorso && reg.prima.conto === '');
+  ok('e resta spento dopo il cambio lingua', !reg.dopo.inCorso,
+     reg.dopo.inCorso ? 'lampeggia' : 'spento');
+  ok('il conto alla rovescia non dice «NaN»', !/NaN/.test(reg.dopo.conto) && reg.dopo.conto === '',
+     reg.dopo.conto === '' ? 'vuoto' : `«${reg.dopo.conto}»`);
+  ok('e non si dichiara premuto', reg.dopo.premuto === 'false', String(reg.dopo.premuto));
+  ok('il titolo del tasto è nella lingua nuova', /Record/i.test(reg.dopo.titolo), reg.dopo.titolo);
+  ok('con un conto vero però si accende', reg.conConto.inCorso && /7[.,]5/.test(reg.conConto.conto),
+     `«${reg.conConto.conto}»`);
+  ok('e con null torna a riposo', !reg.aRiposo.inCorso && reg.aRiposo.conto === '');
 
   // =====================================================================
   console.log('\n— il bottone della lingua —');

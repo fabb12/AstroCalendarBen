@@ -92,28 +92,28 @@ function aggiungiSuperlune(inizio, fine) {
             const primi = 2 * Math.atan(1737.4 / apside.dist_km) * 180 / Math.PI * 60;
             const controMedia = (384400 / apside.dist_km - 1) * 100;
 
+            // I numeri sono già calcolati; le frasi si compongono quando
+            // l'agenda le legge, così un cambio lingua le riscrive senza
+            // rifare la ricerca dell'apside. `km` passa da `t()` e non da
+            // `toLocaleString('it')`: il separatore delle migliaia è una regola
+            // della lingua, e con quello cablato un'agenda inglese scriveva
+            // «356.500 km» invece di «356,500 km».
+            const quale = perigeo ? 'super' : 'micro';
+            const L = (k, v) => astroI18n.t(`luna.${quale}.${k}`, v);
+            const dati = {
+              km: Math.round(apside.dist_km),
+              primi: Number(primi.toFixed(1)),
+              percento: Math.abs(Math.round(controMedia))
+            };
             creaEvento({
-              titolo: perigeo ? 'Superluna' : 'Microluna',
+              titolo: () => L('titolo'),
               dataObj: piena.date,
               categoria: 'luna',
               colore: '#e2e8f0',
               corpoCielo: 'Moon',
               strumento: 'occhio',
-              spiegazione: perigeo
-                ? `Luna piena a ${Math.round(apside.dist_km).toLocaleString('it')} km, vicina al punto più ` +
-                  `prossimo della sua orbita. Il disco misura ${primi.toFixed(1)} primi d'arco, ` +
-                  `${Math.abs(controMedia).toFixed(0)}% più grande della media.`
-                : `Luna piena a ${Math.round(apside.dist_km).toLocaleString('it')} km, vicina al punto più ` +
-                  `lontano della sua orbita: il disco più piccolo dell'anno, ${primi.toFixed(1)} primi d'arco.`,
-              programma: perigeo
-                ? 'La differenza col vero c\'è ma è modesta: il 14% fra la più grande e la più piccola ' +
-                  'dell\'anno, e non avendo un termine di paragone in cielo a occhio non si distingue. ' +
-                  'Il modo per vederla davvero è fotografarla sempre con lo stesso obiettivo e ' +
-                  'confrontare gli scatti a mesi di distanza. L\'effetto «Luna enorme» che si vede ' +
-                  'all\'orizzonte, invece, non c\'entra niente con la distanza: è un\'illusione ottica, ' +
-                  'e all\'orizzonte la Luna è anzi leggermente più lontana che allo zenit.'
-                : 'La Luna piena più piccola e più debole dell\'anno. Non è uno spettacolo: è il ' +
-                  'termine di paragone che serve per accorgersi, sei mesi dopo, di quanto cambia.',
+              spiegazione: () => L('spiegazione', dati),
+              programma: () => L('programma'),
               simul: { scena: 'fase', fase: 180 }
             });
           }
@@ -140,12 +140,14 @@ function aggiungiSuperlune(inizio, fine) {
 //     dietro, e per settimane non si vede.
 // =====================================================================
 
+// Il nome non sta qui: lo dà `nomeCorpo(id)` di app.js, che è la sola tabella
+// dei nomi del Sistema Solare che questo progetto abbia.
 const EXTRA_PIANETI_ESTERNI = [
-  { id: 'Mars', nome: 'Marte', colore: '#f87171' },
-  { id: 'Jupiter', nome: 'Giove', colore: '#fbbf24' },
-  { id: 'Saturn', nome: 'Saturno', colore: '#fcd34d' },
-  { id: 'Uranus', nome: 'Urano', colore: '#67e8f9' },
-  { id: 'Neptune', nome: 'Nettuno', colore: '#818cf8' }
+  { id: 'Mars', colore: '#f87171' },
+  { id: 'Jupiter', colore: '#fbbf24' },
+  { id: 'Saturn', colore: '#fcd34d' },
+  { id: 'Uranus', colore: '#67e8f9' },
+  { id: 'Neptune', colore: '#818cf8' }
 ];
 
 // Sotto questa magnitudine un'opposizione non è una notizia per nessuno
@@ -171,29 +173,21 @@ function aggiungiOpposizioni(inizio, fine) {
         const geo = Astronomy.GeoVector(p.id, t, true);
         const dTerra = Math.hypot(geo.x, geo.y, geo.z);
 
+        // Il consiglio è diverso per Marte, Saturno e Giove, e per gli altri
+        // due è lo stesso: chi non ha una chiave sua legge quella generica.
+        const consiglio = ['Mars', 'Saturn', 'Jupiter'].includes(p.id)
+          ? `opposizione.programma.${p.id}` : 'opposizione.programma.lontani';
+        const dati = { ua: Number(dTerra.toFixed(2)), mag: Number(ill.mag.toFixed(1)) };
         creaEvento({
-          titolo: `${p.nome} all'opposizione`,
+          titolo: () => astroI18n.t('opposizione.titolo', { corpo: nomeCorpo(p.id) }),
           dataObj: t.date,
           categoria: 'pianeti',
           colore: p.colore,
           corpoCielo: p.id,
           strumento: EXTRA_OPPOSIZIONE_STRUMENTO[p.id] || 'binocolo',
-          spiegazione: `${p.nome} è dalla parte opposta del Sole: sorge al tramonto, ` +
-            `è più alto a mezzanotte e tramonta all'alba. Dista ${dTerra.toFixed(2)} unità ` +
-            `astronomiche dalla Terra e brilla di magnitudine ${ill.mag.toFixed(1)}: ` +
-            `è la notte migliore dell'anno per guardarlo.`,
-          programma: p.id === 'Mars'
-            ? 'È l\'unico periodo in cui Marte mostra qualcosa: fuori dalle opposizioni resta ' +
-              'un puntino arancione anche nei telescopi grandi. Aspetta che sia alto, lascia ' +
-              'raffreddare lo strumento, e ingrandisci molto più di quanto sembri ragionevole.'
-            : p.id === 'Saturn'
-            ? 'Gli anelli sono la cosa che converte le persone all\'astronomia. Bastano ' +
-              'cinquanta ingrandimenti per vederli staccati dal disco.'
-            : p.id === 'Jupiter'
-            ? 'Le due bande scure si vedono anche in un piccolo rifrattore, e le quattro lune ' +
-              'cambiano disposizione di ora in ora: guardale a inizio e a fine serata.'
-            : 'Serve una carta per riconoscerlo fra le stelle: a un\'occhiata distratta è una ' +
-              'stellina qualunque. Il modo sicuro è guardare due sere di fila e vedere chi si è mosso.',
+          spiegazione: () => astroI18n.t('opposizione.spiegazione',
+            { ...dati, corpo: nomeCorpo(p.id) }),
+          programma: () => astroI18n.t(consiglio),
           simul: { scena: 'cielo', corpo: p.id }
         });
       } catch (e) { /* questa opposizione non si racconta: si va avanti */ }
@@ -214,17 +208,14 @@ function aggiungiOpposizioni(inizio, fine) {
       if (!t || t.date > fine) break;
 
       creaEvento({
-        titolo: `${p.nome} in congiunzione col Sole`,
+        titolo: () => astroI18n.t('congiunzioneSole.titolo', { corpo: nomeCorpo(p.id) }),
         dataObj: t.date,
         categoria: 'pianeti',
         colore: '#94a3b8',
         corpoCielo: p.id,
         strumento: 'occhio',
-        spiegazione: `${p.nome} passa dietro al Sole visto da qui: per qualche settimana, ` +
-          'prima e dopo, non è osservabile.',
-        programma: 'Non c\'è niente da guardare, ed è proprio questo il punto: se lo stavi ' +
-          'cercando e non lo trovavi, il motivo è questo. Ricomparirà nel cielo del mattino, ' +
-          'basso a est prima dell\'alba.',
+        spiegazione: () => astroI18n.t('congiunzioneSole.spiegazione', { corpo: nomeCorpo(p.id) }),
+        programma: () => astroI18n.t('congiunzioneSole.programma'),
         simul: { scena: 'cielo', corpo: p.id }
       });
 
@@ -259,20 +250,17 @@ function aggiungiSplendoreVenere(inizio, fine) {
 
     if (p.time.date >= inizio) {
       const fase = Math.round(p.phase_fraction * 100);
+      const mag = Number(p.mag.toFixed(1));
       creaEvento({
-        titolo: 'Venere al massimo splendore',
+        titolo: () => astroI18n.t('splendore.titolo', { corpo: nomeCorpo('Venus') }),
         dataObj: p.time.date,
         categoria: 'pianeti',
         colore: '#fef9c3',
         corpoCielo: 'Venus',
         strumento: 'occhio',
-        spiegazione: `Venere raggiunge la magnitudine ${p.mag.toFixed(1)}, il massimo di questa ` +
-          `apparizione. È illuminato solo per il ${fase}% — una falce — ma è così vicino che ` +
-          'la falce compensa abbondantemente.',
-        programma: 'A questa luminosità Venere fa ombra: da un posto buio, con la Luna sotto ' +
-          'l\'orizzonte, tieni un foglio bianco davanti a te e guarda. Al binocolo, tenuto ' +
-          'fermissimo, la falce si vede già — ed è la stessa osservazione che nel 1610 convinse ' +
-          'Galileo che Venere gira attorno al Sole e non attorno a noi.',
+        spiegazione: () => astroI18n.t('splendore.spiegazione',
+          { corpo: nomeCorpo('Venus'), mag, n: fase }),
+        programma: () => astroI18n.t('splendore.programma', { corpo: nomeCorpo('Venus') }),
         simul: { scena: 'cielo', corpo: 'Venus' }
       });
     }
@@ -297,7 +285,7 @@ function aggiungiSplendoreVenere(inizio, fine) {
 function aggiungiTransitiSolari(inizio, fine) {
   if (typeof Astronomy === 'undefined') return;
 
-  [{ id: 'Mercury', nome: 'Mercurio' }, { id: 'Venus', nome: 'Venere' }].forEach(p => {
+  [{ id: 'Mercury' }, { id: 'Venus' }].forEach(p => {
     let quando = new Date(inizio);
     let giri = 0;
     while (giri++ < 60) {
@@ -305,28 +293,25 @@ function aggiungiTransitiSolari(inizio, fine) {
       try { t = Astronomy.SearchTransit(p.id, quando); } catch (e) { break; }
       if (!t || t.start.date > fine) break;
 
-      const durataOre = (t.finish.date - t.start.date) / 3600000;
+      const durataOre = Number(((t.finish.date - t.start.date) / 3600000).toFixed(1));
+      const primi = Number(t.separation.toFixed(1));
+      const inizio = t.start.date, fine = t.finish.date;
+      const T = (k, v) => astroI18n.t('transitoSole.' + k, v);
       creaEvento({
-        titolo: `Transito di ${p.nome} sul Sole`,
+        titolo: () => T('titolo', { corpo: nomeCorpo(p.id) }),
         dataObj: t.peak.date,
         categoria: 'pianeti',
         colore: '#fb923c',
         corpoCielo: 'Sun',
         strumento: 'telescopio',
-        spiegazione: `${p.nome} passa davanti al disco del Sole: un dischetto nero perfettamente ` +
-          `tondo che lo attraversa in ${durataOre.toFixed(1)} ore, dalle ${oraBreve(t.start.date)} ` +
-          `alle ${oraBreve(t.finish.date)}. Al centro passa a ${t.separation.toFixed(1)} primi ` +
-          'd\'arco dal centro del Sole.',
-        programma: '⚠ MAI guardare il Sole senza un filtro solare certificato messo DAVANTI ' +
-          'all\'obiettivo: un secondo basta a rendere ciechi per sempre, e nel telescopio il ' +
-          'danno è istantaneo e indolore. I filtri che si avvitano all\'oculare non vanno usati ' +
-          'mai — si crepano per il calore. In alternativa, la proiezione su un cartoncino ' +
-          'bianco è sicura e mostra tutto. ' +
-          (p.id === 'Venus'
-            ? 'I transiti di Venere vengono a coppie separate da otto anni, e poi non se ne ' +
-              'vedono più per oltre un secolo: chi se lo perde non ne ha un altro.'
-            : 'Il dischetto di Mercurio è piccolissimo, un centosessantesimo del diametro del ' +
-              'Sole: serve un ingrandimento vero, non basta il filtro sugli occhiali.'),
+        // Gli orari si riformattano alla lettura: `oraBreve` passa dal fuso e
+        // dalla lingua del luogo, e un'ora scritta una volta per sempre
+        // resterebbe quella del momento in cui l'evento è nato.
+        spiegazione: () => T('spiegazione', {
+          corpo: nomeCorpo(p.id), ore: durataOre, primi,
+          da: oraBreve(inizio), a: oraBreve(fine)
+        }),
+        programma: () => T('avvisoFiltro') + ' ' + T('nota.' + p.id),
         simul: { scena: 'cielo', corpo: 'Sun' }
       });
 
@@ -390,7 +375,7 @@ function aggiungiComete(inizio, fine) {
     const aOcchio = massimo.mag <= 5.5;
 
     creaEvento({
-      titolo: `Cometa ${c.nome} al massimo`,
+      titolo: () => astroI18n.t('cometa.titolo', { nome: c.nome }),
       dataObj: new Date(massimo.ms),
       categoria: 'pianeti',
       colore: '#6ee7b7',
@@ -402,19 +387,19 @@ function aggiungiComete(inizio, fine) {
       // un'eclissi si punta la Luna.
       corpoCielo: 'min:' + c.nome,
       strumento: aOcchio ? 'occhio' : massimo.mag <= 8 ? 'binocolo' : 'telescopio',
-      spiegazione: `La cometa ${c.nome} raggiunge la magnitudine ${massimo.mag.toFixed(1)}, ` +
-        `a ${massimo.p.distanzaTerra.toFixed(2)} unità astronomiche dalla Terra e ` +
-        `${massimo.p.distanzaSole.toFixed(2)} dal Sole. ` +
-        (settimane > 1 ? `Resta alla portata per circa ${settimane} settimane.` : 'La finestra è di pochi giorni.'),
-      programma: (aOcchio
-        ? 'Dovrebbe vedersi a occhio nudo da un posto buio, ma non aspettarti la fotografia: ' +
-          'a occhio una cometa è una macchia sfocata con forse un accenno di coda. Il binocolo ' +
-          'è lo strumento giusto, meglio del telescopio — serve campo largo, non ingrandimento. '
-        : 'Cercala col binocolo: le comete sono grandi e deboli, e il telescopio ingrandisce ' +
-          'troppo per contenerle. ') +
-        'Tieni presente che le previsioni sulla luminosità delle comete sbagliano spesso e di ' +
-        'molto, in tutt\'e due i sensi: dipende da quanto ghiaccio evapora, e quello si scopre ' +
-        'solo quando succede.'
+      // Il nome della cometa è un nome proprio (C/2023 A3, Halley) e resta
+      // com'è: la frase attorno no. «Resta alla portata per N settimane» ha il
+      // plurale, e a scegliere la forma è `Intl.PluralRules` con `{n}`.
+      spiegazione: () => astroI18n.t('cometa.spiegazione', {
+        nome: c.nome,
+        mag: Number(massimo.mag.toFixed(1)),
+        ua: Number(massimo.p.distanzaTerra.toFixed(2)),
+        uaSole: Number(massimo.p.distanzaSole.toFixed(2))
+      }) + ' ' + (settimane > 1
+        ? astroI18n.t('cometa.finestraSettimane', { n: settimane })
+        : astroI18n.t('cometa.finestraCorta')),
+      programma: () => astroI18n.t(aOcchio ? 'cometa.aOcchio' : 'cometa.alBinocolo') +
+        ' ' + astroI18n.t('cometa.avvertenza')
     });
   });
 }
@@ -483,12 +468,16 @@ function auroraCasaGeomagnetica() {
   if (!l || !isFinite(l.lat) || !isFinite(l.lon)) return null;
   const g = latitudineGeomagnetica(l.lat, l.lon);
   const boreale = g >= 0;
+  // `nome` e `verso` sono due parole che finiscono dentro a delle frasi
+  // («Aurora boreale», «un orizzonte nord libero e buio»): getter, se no
+  // restano quelle di quando l'evento è nato. Il verso lo dà `nomePunto`, che è
+  // già il posto in cui questo progetto tiene i punti cardinali.
   return {
     lat: l.lat, lon: l.lon,
     mia: Math.abs(g),
     boreale,
-    nome: boreale ? 'boreale' : 'australe',
-    verso: boreale ? 'nord' : 'sud'
+    get nome() { return astroI18n.t(boreale ? 'aurora.boreale' : 'aurora.australe'); },
+    get verso() { return astroI18n.nomePunto(boreale ? 0 : 180); }
   };
 }
 
@@ -510,8 +499,10 @@ function auroraAltezzaSole(data, lat, lon) {
   } catch (e) { return null; }
 }
 
+// Un Kp si scrive con un decimale al massimo, e il separatore lo decide la
+// lingua: «Kp 5,3» qui, «Kp 5.3» in inglese.
 function auroraNumero(v) {
-  return (Math.round(v * 10) / 10).toString().replace('.', ',');
+  return astroI18n.numero(Math.round(v * 10) / 10);
 }
 
 // --- (a) le notti che il NOAA prevede -------------------------------
@@ -553,39 +544,26 @@ function aurorePreviste(inizio, fine) {
     const addosso = n.kp >= serve.sopra;
     const solaCoda = !addosso && n.kp >= serve.bagliore;
 
+    // Il verdetto è una frase intera per ognuno dei tre casi, non una frase
+    // montata a pezzi: «l'ovale scende sopra la tua testa» e «è al limite»
+    // hanno una struttura diversa in inglese.
+    const quale = addosso ? 'addosso' : solaCoda ? 'solaCoda' : 'alLimite';
+    const A = (k, v) => astroI18n.t('aurora.previsione.' + k, v);
     creaEvento({
-      titolo: `Aurora ${casa.nome}: Kp ${auroraNumero(n.kp)} previsto`,
+      titolo: () => A('titolo', { dove: casa.nome, kp: auroraNumero(n.kp) }),
       dataObj: n.quando,
       categoria: 'aurore',
       colore: addosso ? '#4ade80' : '#fb7185',
       strumento: 'occhio',
       aurora: { kp: n.kp, previsione: true },
-      spiegazione:
-        `Il NOAA prevede un indice Kp di ${auroraNumero(n.kp)} per questa notte. ` +
-        `Da qui — ${auroraNumero(casa.mia)}° di latitudine geomagnetica — ` +
-        (addosso
-          ? `l'ovale aurorale scende sopra la tua testa: se il cielo è sereno, gli archi verdi ` +
-            `si vedono alti a ${casa.verso}, e con questa tempesta possono arrivare allo zenit.`
-          : solaCoda
-            ? `l'ovale resta oltre l'orizzonte, ma non tutto: il verde vive a 100–180 km e la ` +
-              `curvatura della Terra lo nasconde, mentre il rosso dell'ossigeno a duecento e passa ` +
-              `chilometri si affaccia lo stesso. Aspettati un bagliore rosato basso a ${casa.verso}, ` +
-              `non archi verdi — è l'aurora che si è vista dall'Italia nel maggio 2024.`
-            : `è al limite: serve un orizzonte ${casa.verso} completamente libero e buio.`) +
-        ' Le previsioni del Kp a tre giorni sbagliano spesso di un punto in su o in giù.',
-      programma: {
-        cosaPortare: 'Niente strumenti: l\'aurora è larga decine di gradi e il binocolo la taglia. ' +
-          'Semmai una macchina fotografica su treppiede — il sensore vede i colori che l\'occhio, ' +
-          'al buio, quasi non distingue.',
-        doveVederlo: `Un posto con l'orizzonte ${casa.verso} completamente sgombro e nessun paese ` +
-          'illuminato da quella parte: una cupola di luce arancione su un bagliore rosso lo cancella. ' +
-          'La costa, un crinale, un campo aperto.',
-        comeVederlo: 'Dai venti minuti agli occhi prima di giudicare, e guarda a lungo: l\'aurora ' +
-          'cambia in pochi minuti e le sottotempeste arrivano a ondate, con mezz\'ora di niente in ' +
-          'mezzo. Il momento migliore è attorno alla mezzanotte magnetica, cioè poco prima o poco ' +
-          'dopo la mezzanotte vera. Il tasto «Vedi nel planetario» ti fa vedere adesso che forma ' +
-          'avrebbe da qui.'
-      }
+      spiegazione: () =>
+        A('apertura', { kp: auroraNumero(n.kp), gradi: auroraNumero(casa.mia) }) + ' ' +
+        A(quale, { verso: casa.verso }) + ' ' + A('incertezza'),
+      programma: () => ({
+        cosaPortare: A('cosaPortare'),
+        doveVederlo: A('doveVederlo', { verso: casa.verso }),
+        comeVederlo: A('comeVederlo')
+      })
     });
   });
 }
@@ -603,7 +581,7 @@ function auroreStagioni(inizio, fine) {
     let s;
     try { s = Astronomy.Seasons(anno); } catch (e) { continue; }
 
-    [['marzo', s.mar_equinox.date], ['settembre', s.sep_equinox.date]].forEach(([mese, eq]) => {
+    [['marzo', s.mar_equinox.date], ['settembre', s.sep_equinox.date]].forEach(([quale, eq]) => {
       if (!eq || eq < inizio || eq > fine) return;
       // L'evento è la notte dell'equinozio, non l'istante: un equinozio
       // cade spesso a mezzogiorno, e aprire il planetario lì mostrerebbe
@@ -618,46 +596,37 @@ function auroreStagioni(inizio, fine) {
         ? Math.max(3, Math.min(9, Math.round(serve.bagliore * 10) / 10))
         : 6;
 
+      const S = (k, v) => astroI18n.t('aurora.stagione.' + k, v);
+      // Che tempesta ci vorrebbe da qui: tre risposte diverse, non una frase
+      // con un numero dentro — la terza non ha nemmeno un numero da dire.
+      const quanto = () => {
+        if (!casa) return '';
+        const dove = S('daQui', { gradi: auroraNumero(casa.mia) });
+        if (serve.bagliore <= 6) {
+          return ' ' + dove + ' ' + S('bastaKp',
+            { kp: auroraNumero(Math.max(0, serve.bagliore)), verso: casa.verso });
+        }
+        if (serve.bagliore <= 9) {
+          return ' ' + dove + ' ' + S('servirebbeKp', { kp: auroraNumero(serve.bagliore) });
+        }
+        return ' ' + dove + ' ' + S('fuoriScala');
+      };
       creaEvento({
-        titolo: `Stagione delle aurore — equinozio di ${mese}`,
+        // Il titolo nomina l'equinozio, e «di marzo» non è un mese incollato
+        // dentro a una frase: in inglese è «the March equinox», con il mese
+        // davanti. Due chiavi intere, una per equinozio.
+        titolo: () => S('titolo.' + quale),
         dataObj: notte,
         categoria: 'aurore',
         colore: '#34d399',
         strumento: 'occhio',
         aurora: { kp: kpFinto, stagione: true },
-        spiegazione:
-          'Attorno agli equinozi le tempeste geomagnetiche sono circa il doppio che attorno ai ' +
-          'solstizi, e non è una coincidenza: è l\'effetto di Russell-McPherron. Il campo magnetico ' +
-          'che il Sole ci soffia addosso arriva avvolto a spirale, e in marzo e in settembre ' +
-          'l\'inclinazione dell\'asse terrestre lo presenta al campo terrestre nel verso che ' +
-          'favorisce la riconnessione — che è il rubinetto da cui passa l\'energia dell\'aurora. ' +
-          'Le tre settimane attorno a questa data sono il periodo dell\'anno in cui vale la pena ' +
-          'tenere d\'occhio le previsioni. ' +
-          (casa
-            ? `Da qui, a ${auroraNumero(casa.mia)}° di latitudine geomagnetica, ` +
-              (serve.bagliore <= 6
-                ? `basta un Kp ${auroraNumero(Math.max(0, serve.bagliore))} perché qualcosa si affacci a ${casa.verso}: ` +
-                  'in una stagione buona capita più volte.'
-                : serve.bagliore <= 9
-                  ? `servirebbe un Kp ${auroraNumero(serve.bagliore)}: capita qualche volta per ciclo solare, ` +
-                    'e il maggio 2024 è stata l\'ultima.'
-                  : 'ci vorrebbe una tempesta fuori scala — dal tuo parallelo l\'aurora è una cosa ' +
-                    'da una volta ogni molte decine d\'anni.')
-            : ''),
-        programma: {
-          cosaPortare: 'Niente di speciale: l\'aurora si guarda a occhio nudo. Utile invece un ' +
-            'telefono con la notifica delle tempeste geomagnetiche, perché il preavviso vero è ' +
-            'di poche ore.',
-          doveVederlo: casa
-            ? `Serve un orizzonte ${casa.verso} libero e buio. Se abiti in pianura, il posto giusto ` +
-              'lo si sceglie una volta e ci si torna: quando arriva la tempesta non c\'è tempo di cercarlo.'
-            : 'Serve un orizzonte libero e buio verso il polo più vicino.',
-          comeVederlo: 'Non è un evento a data fissa e nessuno può prometterlo: è una stagione. ' +
-            'Il riquadro «Che cielo avrai» della dashboard mostra il Kp previsto per le prossime ' +
-            'tre notti, ed è quello il momento in cui decidere se uscire. Il banco «Aurore polari» ' +
-            'della vista Didattica spiega da dove viene tutto questo, e ti porta nel planetario ' +
-            'in un posto e in una notte in cui l\'aurora si è vista per davvero.'
-        }
+        spiegazione: () => S('spiegazione') + quanto(),
+        programma: () => ({
+          cosaPortare: S('cosaPortare'),
+          doveVederlo: casa ? S('doveVederlo', { verso: casa.verso }) : S('doveVederloSenzaCasa'),
+          comeVederlo: S('comeVederlo')
+        })
       });
     });
   }
