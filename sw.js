@@ -1,8 +1,7 @@
-// Le fotografie delle stazioni sono lette da app.js: cambiare quel file senza
-// cambiare anche questa chiave lascerebbe ai dispositivi gia' installati la
-// vecchia copia, cioe' proprio il fumetto senza foto. Lo stesso vale per i
-// dizionari delle lingue, che sono due file nuovi.
-const CACHE_NAME = 'astrocal-v271';
+// La logica della galleria è in app.js: cambiare quel file senza cambiare
+// anche questa chiave lascerebbe ai dispositivi già installati la vecchia
+// copia, cioè quella che ricrea i lettori e interrompe i video ogni due secondi.
+const CACHE_NAME = 'astrocal-v272';
 
 // File dell'app: senza questi non parte nulla
 const ASSETS = [

@@ -27282,6 +27282,21 @@ let videoCartellaAutorizzata = false;
 let videoUrlGalleria = [];
 let videoTimerSincronizzazione = 0;
 let videoSincronizzazioneInCorso = false;
+// La cartella viene ricontrollata mentre la galleria resta aperta, ma un
+// controllo non deve diventare un nuovo montaggio dei lettori. Ricreare i
+// <video> ogni due secondi azzera infatti il buffer e la posizione di
+// riproduzione: il filmato torna continuamente a "caricare" e non parte mai.
+// Questa firma descrive ciò che si vede senza leggere il contenuto dei Blob.
+let videoFirmaGalleria = null;
+
+function videoFirmaElenco(video) {
+  return video.map(v => [
+    v.dallaCartella ? 'cartella' : 'archivio',
+    v.id, v.nome, Number(v.creato) || 0,
+    Number(v.dimensione || (v.blob && v.blob.size)) || 0,
+    v.tipo || (v.blob && v.blob.type) || ''
+  ].join('\u001f')).join('\u001e');
+}
 
 function videoApriDB() {
   return new Promise((resolve, reject) => {
@@ -27431,8 +27446,6 @@ async function videoRenderGalleria() {
   const elenco = document.getElementById('galleria-elenco');
   if (!elenco || videoSincronizzazioneInCorso) return;
   videoSincronizzazioneInCorso = true;
-  videoUrlGalleria.forEach(url => URL.revokeObjectURL(url));
-  videoUrlGalleria = [];
   let video = [];
   try { video = await videoDB('video', 'readonly', store => store.getAll()); }
   catch (e) { videoMessaggio('Non riesco a leggere l’archivio video su questo dispositivo.'); }
@@ -27461,13 +27474,25 @@ async function videoRenderGalleria() {
       videoMessaggio('Non riesco a sincronizzare la cartella. Riaprila con “Scegli cartella”.');
     }
   }
+  video.sort((a, b) => b.creato - a.creato);
+  const firma = videoFirmaElenco(video);
+  // Il timer serve a scoprire file aggiunti o tolti fuori dall'app. Se nulla
+  // è cambiato lasciamo però intatto il DOM: oltre a costare meno, conserva
+  // buffer, currentTime, pausa e schermo intero del lettore in uso.
+  if (firma === videoFirmaGalleria && elenco.childElementCount) {
+    videoSincronizzazioneInCorso = false;
+    return;
+  }
+  videoFirmaGalleria = firma;
+  videoUrlGalleria.forEach(url => URL.revokeObjectURL(url));
+  videoUrlGalleria = [];
   elenco.innerHTML = '';
   if (!video.length) {
     elenco.innerHTML = '<p class="galleria-vuota">Non ci sono ancora video. Registrane uno dal Planetario o dal Sistema Solare 3D e premi “Salva”.</p>';
     videoSincronizzazioneInCorso = false;
     return;
   }
-  video.sort((a, b) => b.creato - a.creato).forEach(elemento => {
+  video.forEach(elemento => {
     const url = URL.createObjectURL(elemento.blob);
     videoUrlGalleria.push(url);
     const scheda = document.createElement('article');
