@@ -1124,6 +1124,9 @@ function ridisegnaTuttoPerLingua() {
     ['tasti che si riscrivono da soli', () => {
       if (typeof skyAggiornaTastiSchermo === 'function') skyAggiornaTastiSchermo();
       if (typeof skyRegAggiornaComando === 'function') skyRegAggiornaComando();
+      // La bussola: il suo `title` e il suo `aria-label` li riscrive il ciclo
+      // di disegno del planetario, che a vista chiusa non gira.
+      if (typeof skyAggiornaBussola === 'function') skyAggiornaBussola();
       if (typeof aggiornaTastoFiltri === 'function') aggiornaTastoFiltri();
     }],
     // I chip dei filtri e il tasto «Filtri»: si costruiscono una volta
@@ -1157,6 +1160,11 @@ function ridisegnaTuttoPerLingua() {
     // ricette delle viste chiama.
     ['righe di stato del mese', () => {
       if (typeof sincronizzaSelettoriMese === 'function') sincronizzaSelettoriMese();
+    }],
+    // La griglia del mese: i nomi dei giorni e dei mesi li scrive FullCalendar
+    // dal suo locale, e quello va cambiato a mano (§`calendarioCambiaLingua`).
+    ['la lingua della griglia del mese', () => {
+      if (typeof calendarioCambiaLingua === 'function') calendarioCambiaLingua();
     }],
     ['la vista a schermo', () => ridisegnaVista(vistaAttuale)],
     ['il debito delle altre viste', () => {

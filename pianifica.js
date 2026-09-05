@@ -330,7 +330,7 @@ function pianBersagli() {
   ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'].forEach(id => {
     lista.push({ tipo: 'pianeta', id, nome: pianNomePianeta(id) });
   });
-  lista.push({ tipo: 'luna', id: 'Moon', nome: 'Luna' });
+  lista.push({ tipo: 'luna', id: 'Moon', nome: pianNomePianeta('Moon') });
 
   if (typeof catPronto === 'function' && catPronto()) {
     cat.profondo.forEach(o => lista.push({
@@ -349,11 +349,13 @@ function pianBersagli() {
   return lista;
 }
 
-const PIAN_NOMI_PIANETI = {
-  Mercury: 'Mercurio', Venus: 'Venere', Mars: 'Marte', Jupiter: 'Giove',
-  Saturn: 'Saturno', Uranus: 'Urano', Neptune: 'Nettuno'
-};
-function pianNomePianeta(id) { return PIAN_NOMI_PIANETI[id] || id; }
+// Una copia dei nomi dei pianeti non serve più: li dà `nomeCorpo` di app.js,
+// che è la sola tabella dei nomi del Sistema Solare — quella che legge anche il
+// cielo, l'agenda e la vista 3D. Con due copie, la dashboard diceva «Marte»
+// mentre l'agenda diceva «Mars».
+function pianNomePianeta(id) {
+  return (typeof nomeCorpo === 'function' ? nomeCorpo(id) : null) || id;
+}
 
 // Con che nome il planetario conosce questo bersaglio.
 //   Serve al tasto "Planetario" della dashboard: da lì si apre il cielo già

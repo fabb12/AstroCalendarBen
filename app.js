@@ -111,17 +111,67 @@ const NOMI_MESI = (() => {
  */
 function conNomeTradotto(tabella, prefisso) {
   for (const [id, voce] of Object.entries(tabella)) {
-    const italiano = voce.nome;
-    delete voce.nome;
-    Object.defineProperty(voce, 'nome', {
-      enumerable: true, configurable: true,
-      get() {
-        return (typeof astroI18n === 'object' && typeof astroI18n.t === 'function')
-          ? astroI18n.t(prefisso + id) : italiano;
-      }
-    });
+    nomeDaChiave(voce, prefisso + id);
   }
   return tabella;
+}
+
+/* La stessa cosa per un **elenco** invece di una tabella: la chiave la dà il
+ * campo `id` della voce, non la sua posizione. Serve ai corpi del Sistema
+ * Solare, che stanno in array (`SKY_CORPI`, `CONG_CORPI`, `SOL_PIANETI`) e
+ * portano tutti l'identificativo di Astronomy Engine — quindi «Marte» si
+ * traduce una volta e vale in cielo, nelle schede dell'agenda e nella vista 3D
+ * senza tre copie da tenere d'accordo. */
+function conNomeDaId(elenco, prefisso) {
+  for (const voce of elenco) {
+    if (voce && voce.id) nomeDaChiave(voce, prefisso + voce.id);
+  }
+  return elenco;
+}
+
+/* E per i campi che non sono il nome — la classe e la nota di un corpo del
+ * Sistema Solare, cioè le due frasi che si leggono nella sua scheda. Stessa
+ * idea: la chiave è `<prefisso><id>.<campo>`. */
+function conTestiDaId(elenco, prefisso, campi) {
+  for (const voce of elenco) {
+    if (!voce || !voce.id) continue;
+    for (const campo of campi) {
+      if (voce[campo] === undefined) continue;
+      testoDaChiave(voce, campo, `${prefisso}${voce.id}.${campo}`);
+    }
+  }
+  return elenco;
+}
+
+function nomeDaChiave(voce, chiave) {
+  testoDaChiave(voce, 'nome', chiave);
+}
+
+function testoDaChiave(voce, campo, chiave) {
+  const italiano = voce[campo];
+  delete voce[campo];
+  Object.defineProperty(voce, campo, {
+    enumerable: true, configurable: true,
+    get() {
+      return (typeof astroI18n === 'object' && typeof astroI18n.t === 'function')
+        ? astroI18n.t(chiave) : italiano;
+    }
+  });
+}
+
+/* Il nome di un corpo del Sistema Solare, nella lingua di adesso.
+ *
+ * Gli eventi lo nominano nei titoli e nelle spiegazioni («Marte
+ * all'opposizione», «Transito di Venere sul Sole»), e ognuna di quelle
+ * famiglie se lo scriveva per conto suo in italiano. È il pezzo che rendeva
+ * un'agenda inglese piena di nomi italiani, e — meno visibile ma peggio — la
+ * ricerca cieca: chi scrive «Mars» nel campo di ricerca cerca dentro ai titoli,
+ * e nei titoli c'era scritto «Marte». */
+function nomeCorpo(id) {
+  const nome = String(id || '');
+  if (!nome) return '';
+  return (typeof astroI18n === 'object' && typeof astroI18n.t === 'function')
+    ? astroI18n.t('corpo.' + nome) : nome;
 }
 
 const CATEGORIE = conNomeTradotto({
@@ -876,6 +926,49 @@ function normalizzaProgramma(programma) {
   };
 }
 
+/* Quante volte le frasi tenute in memoria sono state dichiarate scadute. La
+ * muove `svuotaCacheLocali()`, che è già il posto da cui passano il cambio di
+ * luogo e il cambio lingua. */
+let generazioneTesti = 0;
+
+/* Una voce dell'evento che si risolve quando la si legge.
+ *
+ * `enumerable` sì, perché l'agenda e la ricerca leggono l'evento come un
+ * oggetto qualunque; `configurable` sì, perché un evento manuale modificato si
+ * riscrive i campi (`evento.titolo = …`) e una proprietà non configurabile
+ * farebbe fallire quell'assegnamento in silenzio. */
+function defRisolta(evento, campo, calcola) {
+  /* Si tiene il risultato, e la chiave è la lingua più la generazione.
+   *
+   * Non è ottimizzazione prematura: la **ricerca** legge titolo e spiegazione
+   * di *tutti* gli eventi a ogni tasto premuto — millequattrocento eventi per
+   * due frasi, e ogni frase è qualche lettura dal dizionario più una
+   * sostituzione di segnaposto.
+   *
+   * La generazione (`generazioneTesti`) la muove `svuotaCacheLocali`, cioè il
+   * cambio di luogo: qualche frase porta dentro un'ora («dalle 13:12 alle
+   * 19:03»), e quell'ora si legge nel fuso del posto da cui si guarda. La
+   * lingua sta nella chiave *oltre* alla generazione e non al suo posto,
+   * perché il cambio lingua svuota le cache a metà del suo giro: chi si
+   * ridisegna prima (la scheda del planetario, l'elenco degli eventi) leggerebbe
+   * il titolo vecchio. */
+  let tenuto, per;
+  Object.defineProperty(evento, campo, {
+    enumerable: true, configurable: true,
+    get() {
+      const chiave = (typeof astroI18n === 'object' ? astroI18n.lingua() : 'it') +
+        '|' + generazioneTesti;
+      if (per !== chiave) { tenuto = calcola(); per = chiave; }
+      return tenuto;
+    },
+    set(valore) {
+      Object.defineProperty(evento, campo, {
+        enumerable: true, configurable: true, writable: true, value: valore
+      });
+    }
+  });
+}
+
 // Helper: crea un evento con id sicuro e testo data formattato
 /* Ogni evento nasce qui.
  *
@@ -893,16 +986,24 @@ function normalizzaProgramma(programma) {
  *
  * Chi passa ancora le stringhe (gli eventi scritti a mano dall'utente, che
  * sono nella *sua* lingua e non si traducono) continua a funzionare: `chiave`
- * è facoltativa e le stringhe vincono se ci sono entrambe. */
+ * è facoltativa e le stringhe vincono se ci sono entrambe.
+ *
+ * `titolo`, `spiegazione` e `programma` accettano anche una **funzione**, e
+ * quella è la forma che serve alle famiglie il cui testo porta dentro dei
+ * numeri o dei nomi: «Marte è a 0,58 unità astronomiche», «il disco misura
+ * 33,5 primi d'arco». Una chiave nuda non basta (il numero è calcolato) e una
+ * stringa nemmeno (resterebbe nella lingua di quando l'evento è nato): la
+ * funzione compone la frase **quando l'agenda la legge**, chiamando `t()` con
+ * i valori che il conto astronomico ha già trovato. Il conto non si rifà: i
+ * numeri sono chiusi dentro alla funzione, che rilegge solo il dizionario. */
 function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, eclissiLunare, corpoCielo, simul, strumento, congiunzione, aurora, chiave }) {
   const evento = {
     id: id || `ev${contatoreId++}`,
-    titolo,
+    titolo: typeof titolo === 'function' ? undefined : titolo,
     dataObj,
-    dataTesto: formattData(dataObj),
-    spiegazione,
+    spiegazione: typeof spiegazione === 'function' ? undefined : spiegazione,
     colore,
-    programma: normalizzaProgramma(programma),
+    programma: typeof programma === 'function' ? null : normalizzaProgramma(programma),
     manuale: !!manuale,
     linkMappa: linkMappa || null,
     categoria: categoria || 'altro',
@@ -925,9 +1026,27 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     aurora: aurora || null
   };
 
+  /* La data scritta per esteso è un getter come le altre, e non era così.
+   *
+   * È la riga sotto al titolo di ogni scheda dell'agenda, e la scrive `Intl`
+   * dal locale della lingua: scritta alla nascita dell'evento restava «4
+   * settembre 2026 alle ore 07:51» dentro a una scheda per il resto inglese.
+   * Dipende anche dal **luogo** (il fuso), e `defRisolta` tiene conto di
+   * tutt'e due. */
+  defRisolta(evento, 'dataTesto', () => formattData(dataObj));
+
+  // Le funzioni: diventano getter, e il programma passa comunque da
+  // `normalizzaProgramma` — anche una funzione può rispondere con una stringa
+  // sola (è la forma delle famiglie di `eventi-extra.js`) e l'agenda si aspetta
+  // sempre le tre righe.
+  if (typeof titolo === 'function') defRisolta(evento, 'titolo', titolo);
+  if (typeof spiegazione === 'function') defRisolta(evento, 'spiegazione', spiegazione);
+  if (typeof programma === 'function') {
+    defRisolta(evento, 'programma', () => normalizzaProgramma(programma()));
+  }
+
   // Le tre voci che si leggono sullo schermo, risolte alla lettura invece che
-  // alla nascita. `dataTesto` no: quella è una data già formattata e la rifà
-  // chi ridisegna l'agenda.
+  // alla nascita — come la data, qui sopra.
   if (chiave) {
     if (titolo == null) {
       Object.defineProperty(evento, 'titolo', {
@@ -1141,16 +1260,23 @@ function aggiungiFasiLunari(t0, limite) {
 // --- Eclissi Lunari (tutte quelle nel periodo) ---
 function aggiungiEclissiLunari(t0, limite) {
   try {
-    const kindIt = { penumbral: 'Penombrale', partial: 'Parziale', total: 'Totale' };
     let ecl = Astronomy.SearchLunarEclipse(t0);
     // ~2,4 eclissi lunari/anno: fino al 2070 servono oltre 100 iterazioni
     for (let i = 0; i < 160; i++) {
       const dataPicco = ecl.peak.date; // BUGFIX: 'peak' è già un AstroTime
       if (dataPicco > limite) break;
+      // Il genere dell'eclissi è l'unica cosa che cambia nel titolo, e la
+      // spiegazione è la stessa per tutte e tre: una chiave per il titolo con
+      // dentro il nome del genere, invece di tre copie della stessa frase.
+      const kind = ecl.kind;
+      const E = (k, v) => astroI18n.t('eclissiLunare.' + k, v);
       creaEvento({
-        titolo: `Eclissi Lunare ${kindIt[ecl.kind] || ecl.kind}`,
+        titolo: () => E('titolo', { tipo: E('tipo.' + kind) }),
         dataObj: dataPicco,
-        spiegazione: 'La Terra proietta la sua ombra sulla Luna, oscurandola e, nelle eclissi totali, donandole un colore rossastro (“Luna di Sangue”).',
+        spiegazione: () => E('spiegazione'),
+        programma: () => ({
+          cosaPortare: E('cosaPortare'), doveVederlo: E('doveVederlo'), comeVederlo: E('comeVederlo')
+        }),
         colore: '#ef4444',
         categoria: 'eclissi',
         corpoCielo: 'Moon',
@@ -1173,11 +1299,6 @@ function aggiungiEclissiLunari(t0, limite) {
           sdPartial: ecl.sd_partial,
           sdTotal: ecl.sd_total,
           oscuramento: ecl.obscuration
-        },
-        programma: {
-          cosaPortare: 'Occhi aperti e, se vuoi, una macchina fotografica con teleobiettivo.',
-          doveVederlo: 'Ovunque la Luna sia visibile sopra l’orizzonte.',
-          comeVederlo: 'Si guarda tranquillamente a occhio nudo, senza alcun filtro.'
         }
       });
       ecl = Astronomy.NextLunarEclipse(ecl.peak); // richiede il tempo di picco (AstroTime)
@@ -1200,6 +1321,7 @@ function aggiungiEclissiSolari(t0, limite) {
       if (dataPicco > limite) break;
 
       const tipo = kindIt[ecl.kind] || ecl.kind;
+      const kind = ecl.kind;
 
       // Il punto di massima eclissi (lat/lon) è definito solo quando l'asse
       // dell'ombra tocca la Terra (eclissi totale, anulare o ibrida).
@@ -1207,42 +1329,44 @@ function aggiungiEclissiSolari(t0, limite) {
                        typeof ecl.longitude === 'number' && !isNaN(ecl.longitude);
 
       // Percentuale di Sole oscurato al culmine, se disponibile
-      let percOsc = '';
-      if (typeof ecl.obscuration === 'number' && !isNaN(ecl.obscuration)) {
-        percOsc = ` Al culmine il Sole risulta oscurato per circa il ${Math.round(ecl.obscuration * 100)}%.`;
-      }
+      const oscurato = (typeof ecl.obscuration === 'number' && !isNaN(ecl.obscuration))
+        ? Math.round(ecl.obscuration * 100) : null;
 
-      let spiegazione, doveVederlo, linkMappa = null;
+      /* Le due spiegazioni sono due frasi diverse e non una con un pezzo
+       * dentro: un'eclissi con la fascia di totalità dice *dove* passa, una
+       * parziale a livello globale dice che quella fascia non esiste. Montarle
+       * a pezzi in italiano funzionava per caso — «eclissi anulare», «la
+       * anularità dura più a lungo» — e in inglese il pezzo cade nel posto
+       * sbagliato della frase. Il genere della fase centrale è quindi una
+       * chiave sua (`eclissiSolare.fase.*`), non un aggettivo declinato. */
+      // Le coordinate portano dentro una lettera che dipende dalla lingua
+      // (l'ovest è «O» o «W»): si rifanno alla lettura come tutto il resto.
+      const lat = haCentro ? ecl.latitude : 0, lon = haCentro ? ecl.longitude : 0;
+      const coord = () => formattaCoordinate(lat, lon);
+      const E = (k, v) => astroI18n.t('eclissiSolare.' + k, v);
+      const percOsc = () => oscurato === null ? '' : ' ' + E('oscurato', { n: oscurato });
+      const faseCentrale = () => E('fase.' + (kind === 'total' ? 'total'
+                                            : kind === 'annular' ? 'annular' : 'centrale'));
+      const spiegazione = haCentro
+        ? () => E('spiegazioneConFascia', { tipo: E('tipoInFrase.' + kind),
+                                            fase: faseCentrale(), coord: coord() }) + percOsc() +
+                ' ' + E('spiegazioneAttorno')
+        : () => E('spiegazioneParziale') + percOsc() + ' ' + E('spiegazioneParzialeDove');
+      const doveVederlo = haCentro
+        ? () => E('doveConFascia', { coord: coord(), fase: faseCentrale() })
+        : () => E('doveParziale');
 
-      if (haCentro) {
-        const coord = formattaCoordinate(ecl.latitude, ecl.longitude);
-        const faseCentrale = ecl.kind === 'total' ? 'totalità'
-                           : ecl.kind === 'annular' ? 'anularità'
-                           : 'fase centrale';
-        spiegazione = `La Luna passa davanti al Sole (eclissi ${tipo.toLowerCase()}). ` +
-          `Il punto di massima visibilità — dove l'eclissi è massima e la ${faseCentrale} dura più a lungo — ` +
-          `si trova a ${coord}, al centro della stretta fascia che attraversa la Terra.${percOsc} ` +
-          `Tutt'intorno, per alcune migliaia di chilometri, si osserva invece un'eclissi parziale.`;
-        doveVederlo = `Punto di massima eclissi: ${coord}. La fase ${faseCentrale === 'fase centrale' ? 'centrale' : faseCentrale} ` +
-          `è visibile solo lungo la stretta fascia che passa per quel punto; la fase parziale è visibile in una ` +
-          `vasta regione (fino a qualche migliaio di km) tutt'attorno alla fascia. Verifica se la tua zona vi rientra.`;
-        // Non è più un collegamento nella scheda: resta solo come ripiego per
-        // quando Leaflet non si carica e la mappa dell'ombra non si può aprire.
-        linkMappa = {
-          url: `https://www.google.com/maps?q=${ecl.latitude.toFixed(4)},${ecl.longitude.toFixed(4)}`,
-          testo: `Punto di massima eclissi sulla mappa (${coord})`
-        };
-      } else {
-        // Eclissi parziale a livello globale: l'ombra centrale non tocca la Terra
-        spiegazione = `La Luna copre solo in parte il disco del Sole (eclissi parziale a livello globale): ` +
-          `l'asse dell'ombra non tocca la superficie terrestre, quindi non esiste un punto di totalità.${percOsc} ` +
-          `È osservabile come eclissi parziale, soprattutto dalle regioni polari o dalle zone sotto la penombra della Luna.`;
-        doveVederlo = `Nessuna fascia di totalità: l'eclissi è parziale ovunque sia visibile, ` +
-          `in genere verso le regioni polari. Verifica se la tua zona rientra nell'area di visibilità.`;
-      }
+      // Non è più un collegamento nella scheda: resta solo come ripiego per
+      // quando Leaflet non si carica e la mappa dell'ombra non si può aprire.
+      const linkMappa = haCentro ? {
+        url: `https://www.google.com/maps?q=${ecl.latitude.toFixed(4)},${ecl.longitude.toFixed(4)}`,
+        // Il testo del collegamento si risolve alla lettura come tutto il
+        // resto: `linkMappa` lo legge chi disegna la scheda.
+        get testo() { return E('sullaMappa', { coord: coord() }); }
+      } : null;
 
       creaEvento({
-        titolo: `Eclissi Solare ${tipo}`,
+        titolo: () => E('titolo', { tipo: E('tipo.' + kind) }),
         dataObj: dataPicco,
         spiegazione,
         colore: '#f97316',
@@ -1274,11 +1398,11 @@ function aggiungiEclissiSolari(t0, limite) {
           lat: haCentro ? ecl.latitude : null,
           lon: haCentro ? ecl.longitude : null
         },
-        programma: {
-          cosaPortare: 'OBBLIGATORI occhiali certificati per eclissi (ISO 12312-2) o un filtro solare: mai guardare il Sole a occhio nudo, nemmeno parzialmente eclissato.',
-          doveVederlo,
-          comeVederlo: 'Usa esclusivamente filtri solari certificati oppure la proiezione con un foro stenopeico. Mai binocolo o telescopio senza apposito filtro solare.'
-        }
+        programma: () => ({
+          cosaPortare: E('cosaPortare'),
+          doveVederlo: doveVederlo(),
+          comeVederlo: E('comeVederlo')
+        })
       });
       ecl = Astronomy.NextGlobalSolarEclipse(ecl.peak); // richiede il tempo di picco (AstroTime)
     }
@@ -1287,10 +1411,15 @@ function aggiungiEclissiSolari(t0, limite) {
   }
 }
 
-// Formatta una coppia lat/lon in testo leggibile (es. "41,9° N, 12,5° E")
+// Formatta una coppia lat/lon in testo leggibile (es. "41,9° N, 12,5° E").
+// Le quattro lettere vengono dal dizionario e non da qui: in italiano l'ovest
+// si scrive «O» e in inglese «W», e una coordinata con la lettera sbagliata
+// indica un punto della Terra che non è quello.
 function formattaCoordinate(lat, lon) {
-  const ns = lat >= 0 ? 'N' : 'S';
-  const ew = lon >= 0 ? 'E' : 'O';
+  const sigla = (k) => (typeof astroI18n === 'object' && typeof astroI18n.t === 'function')
+    ? astroI18n.t('punto.sigla.' + k) : k.toUpperCase();
+  const ns = sigla(lat >= 0 ? 'n' : 's');
+  const ew = sigla(lon >= 0 ? 'e' : 'w');
   return `${Math.abs(lat).toFixed(1)}° ${ns}, ${Math.abs(lon).toFixed(1)}° ${ew}`;
 }
 
@@ -1364,9 +1493,23 @@ function fusoDelLuogo(luogo) {
   return { nome: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', abbreviazione: '' };
 }
 
+/* Il locale con cui si scrivono le date, che è quello della lingua scelta e
+ * non «it-IT».
+ *
+ * Era cablato, e per le **ore** non si vedeva: con `hourCycle: 'h23'` le 07:51
+ * si scrivono uguali in tutte e due le lingue. Si vedeva invece sulla data
+ * intera, che è la riga sotto al titolo di ogni scheda dell'agenda: «4
+ * settembre 2026 alle ore 07:51» in mezzo a una scheda per il resto inglese.
+ * Il mese e la parola che lo lega all'ora li scrive `Intl`, e gli basta il
+ * locale giusto — è per questo che i formati non stanno nel dizionario. */
+function localeData() {
+  return (typeof astroI18n === 'object' && typeof astroI18n.locale === 'function')
+    ? astroI18n.locale() : 'it-IT';
+}
+
 function oraUTC(data, secondi) {
   if (!data) return '—';
-  return new Intl.DateTimeFormat('it-IT', {
+  return new Intl.DateTimeFormat(localeData(), {
     timeZone: 'UTC', hour: '2-digit', minute: '2-digit',
     ...(secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
   }).format(data);
@@ -1375,7 +1518,7 @@ function oraUTC(data, secondi) {
 function oraDelLuogo(data, luogo, opzioni = {}) {
   if (!data) return '—';
   const fuso = fusoDelLuogo(luogo);
-  const locale = new Intl.DateTimeFormat('it-IT', {
+  const locale = new Intl.DateTimeFormat(localeData(), {
     timeZone: fuso.nome, hour: '2-digit', minute: '2-digit',
     ...(opzioni.secondi ? { second: '2-digit' } : {}), hourCycle: 'h23'
   }).format(data);
@@ -1385,7 +1528,7 @@ function oraDelLuogo(data, luogo, opzioni = {}) {
 function dataOraDelLuogo(data, luogo, opzioni = {}) {
   if (!data) return '—';
   const fuso = fusoDelLuogo(luogo);
-  const locale = new Intl.DateTimeFormat('it-IT', {
+  const locale = new Intl.DateTimeFormat(localeData(), {
     timeZone: fuso.nome,
     ...(opzioni.weekday ? { weekday: opzioni.weekday } : {}),
     day: 'numeric', month: opzioni.month || 'short',
@@ -5596,27 +5739,35 @@ function aggiungiStagioni(oggi, limite) {
     const annoInizio = oggi.getFullYear();
     for (let anno = annoInizio; anno <= limite.getFullYear(); anno++) {
       const s = Astronomy.Seasons(anno);
+      // Quattro voci fisse: titolo e spiegazione stanno nel dizionario sotto
+      // `stagione.<quale>.*`, mentre le tre righe del programma sono le stesse
+      // per tutte e quattro e vivono una volta sola sotto `stagione.riga.*` —
+      // per questo il programma è una funzione e non lo risolve `chiave`, che
+      // le andrebbe a cercare dentro alla stagione.
+      const R = (k) => astroI18n.t('stagione.riga.' + k);
       const punti = [
-        { at: s.mar_equinox, titolo: 'Equinozio di Primavera', tipo: 'equinozio', spiegazione: 'Il Sole attraversa l’equatore celeste: giorno e notte hanno quasi la stessa durata. Inizia la primavera nell’emisfero nord.' },
-        { at: s.jun_solstice, titolo: 'Solstizio d’Estate', tipo: 'solstizio', spiegazione: 'Il giorno più lungo dell’anno nell’emisfero nord: il Sole raggiunge la massima altezza a mezzogiorno.' },
-        { at: s.sep_equinox, titolo: 'Equinozio d’Autunno', tipo: 'equinozio', spiegazione: 'Di nuovo giorno e notte quasi uguali: inizia l’autunno nell’emisfero nord.' },
-        { at: s.dec_solstice, titolo: 'Solstizio d’Inverno', tipo: 'solstizio', spiegazione: 'La notte più lunga dell’anno nell’emisfero nord: il Sole è più basso sull’orizzonte.' }
+        { at: s.mar_equinox, quale: 'primavera', tipo: 'equinozio' },
+        { at: s.jun_solstice, quale: 'estate', tipo: 'solstizio' },
+        { at: s.sep_equinox, quale: 'autunno', tipo: 'equinozio' },
+        { at: s.dec_solstice, quale: 'inverno', tipo: 'solstizio' }
       ];
       punti.forEach(p => {
         const d = p.at.date;
         if (d >= oggi && d <= limite) {
           creaEvento({
-            titolo: p.titolo,
+            chiave: `stagione.${p.quale}`,
             dataObj: d,
-            spiegazione: p.spiegazione,
             colore: '#22c55e',
             categoria: 'stagioni',
-            simul: { scena: 'stagione', tipo: p.tipo, nome: p.titolo },
-            programma: {
-              cosaPortare: 'Nulla di particolare: è un evento di calendario astronomico.',
-              doveVederlo: 'Non si “vede” un punto preciso: segna il cambio di stagione.',
-              comeVederlo: 'Nota come cambiano l’ora dell’alba e del tramonto nei giorni vicini.'
-            }
+            // `nome` lo legge la scena della simulazione: un getter, se no
+            // resterebbe la parola italiana di quando l'evento è nato.
+            simul: {
+              scena: 'stagione', tipo: p.tipo,
+              get nome() { return astroI18n.t(`stagione.${p.quale}.titolo`); }
+            },
+            programma: () => ({
+              cosaPortare: R('cosaPortare'), doveVederlo: R('doveVederlo'), comeVederlo: R('comeVederlo')
+            })
           });
         }
       });
@@ -5632,25 +5783,26 @@ function aggiungiSciamiMeteorici(oggi, limite) {
     // ra = ascensione retta del radiante (ore), dec = declinazione (gradi),
     // zhrNum = meteore/ora con radiante allo zenit e cielo perfetto: servono
     // alla simulazione per disegnare il radiante e stimare la frequenza reale.
+    /* Il nome di uno sciame **non** è un nome proprio che si porta uguale in
+     * tutte le lingue: le Quadrantidi in inglese sono le Quadrantids e le
+     * Perseidi le Perseids. Quindi ognuno ha un `id`, e il nome sta nel
+     * dizionario sotto `sciame.nome.<id>` — che è anche la parola con cui uno
+     * lo cerca nel campo di ricerca. `zhr` era una frase italiana in tabella
+     * («fino a 120 meteore/ora») e adesso sono due dati: quante meteore, e se
+     * il numero è un tetto o una media (`fino`). */
     const sciami = [
-      { nome: 'Quadrantidi', mese: 1, giorno: 3, zhr: 'fino a 120 meteore/ora', ra: 15.33, dec: 49.5, zhrNum: 120 },
-      { nome: 'Liridi', mese: 4, giorno: 22, zhr: 'circa 18 meteore/ora', ra: 18.13, dec: 33.6, zhrNum: 18 },
-      { nome: 'Eta Aquaridi', mese: 5, giorno: 6, zhr: 'circa 50 meteore/ora', ra: 22.47, dec: -1.0, zhrNum: 50 },
-      {
-        nome: 'Delta Aquaridi meridionali e Alfa Capricornidi',
-        mese: 7, giorno: 30, zhr: 'fino a circa 25 meteore/ora', ra: 22.67, dec: -16.4, zhrNum: 25,
-        spiegazione: 'Doppio sciame che raggiunge il picco nella notte tra il 30 e il 31 luglio. Le Delta Aquaridi meridionali offrono scie di media velocità (fino a circa 25 meteore/ora in condizioni perfette), mentre le Alfa Capricornidi regalano bolidi molto luminosi e lenti.',
-        programma: {
-          cosaPortare: 'Sedia sdraio, coperta e bevande. Niente telescopio: serve un ampio campo visivo.',
-          doveVederlo: 'Lontano dalle luci della città, in un luogo con orizzonte sgombro; lascia gli occhi adattarsi al buio per 20 minuti.',
-          comeVederlo: 'A occhio nudo verso l’alto, con orario migliore intorno alle 3:00 del mattino, quando il radiante è più alto nel cielo.'
-        }
-      },
-      { nome: 'Perseidi', mese: 8, giorno: 12, zhr: 'fino a 100 meteore/ora', ra: 3.22, dec: 58.0, zhrNum: 100 },
-      { nome: 'Orionidi', mese: 10, giorno: 21, zhr: 'circa 20 meteore/ora', ra: 6.33, dec: 15.5, zhrNum: 20 },
-      { nome: 'Leonidi', mese: 11, giorno: 17, zhr: 'circa 15 meteore/ora', ra: 10.23, dec: 21.6, zhrNum: 15 },
-      { nome: 'Geminidi', mese: 12, giorno: 14, zhr: 'fino a 120 meteore/ora', ra: 7.50, dec: 32.5, zhrNum: 120 },
-      { nome: 'Ursidi', mese: 12, giorno: 22, zhr: 'circa 10 meteore/ora', ra: 14.47, dec: 75.3, zhrNum: 10 }
+      { id: 'quadrantidi', mese: 1, giorno: 3, ra: 15.33, dec: 49.5, zhrNum: 120, fino: true },
+      { id: 'liridi', mese: 4, giorno: 22, ra: 18.13, dec: 33.6, zhrNum: 18 },
+      { id: 'etaAquaridi', mese: 5, giorno: 6, ra: 22.47, dec: -1.0, zhrNum: 50 },
+      // Il doppio sciame di fine luglio ha una spiegazione e un programma suoi:
+      // `propria` dice che vanno cercati sotto `sciame.<id>.*` invece che nelle
+      // frasi generiche.
+      { id: 'deltaAquaridi', mese: 7, giorno: 30, ra: 22.67, dec: -16.4, zhrNum: 25, fino: true, propria: true },
+      { id: 'perseidi', mese: 8, giorno: 12, ra: 3.22, dec: 58.0, zhrNum: 100, fino: true },
+      { id: 'orionidi', mese: 10, giorno: 21, ra: 6.33, dec: 15.5, zhrNum: 20 },
+      { id: 'leonidi', mese: 11, giorno: 17, ra: 10.23, dec: 21.6, zhrNum: 15 },
+      { id: 'geminidi', mese: 12, giorno: 14, ra: 7.50, dec: 32.5, zhrNum: 120, fino: true },
+      { id: 'ursidi', mese: 12, giorno: 22, ra: 14.47, dec: 75.3, zhrNum: 10 }
     ];
     const annoInizio = oggi.getFullYear();
     for (let anno = annoInizio; anno <= limite.getFullYear(); anno++) {
@@ -5658,18 +5810,27 @@ function aggiungiSciamiMeteorici(oggi, limite) {
         // Picco tipico intorno alle 22:00 ora locale
         const d = new Date(anno, s.mese - 1, s.giorno, 22, 0, 0);
         if (d >= oggi && d <= limite) {
+          const S = (k, v) => astroI18n.t('sciame.' + k, v);
+          const nome = () => S('nome.' + s.id);
+          const riga = (k) => s.propria && astroI18n.esiste(`sciame.${s.id}.${k}`)
+            ? S(`${s.id}.${k}`) : S('riga.' + k);
           creaEvento({
-            titolo: `Sciame Meteorico: ${s.nome}`,
+            titolo: () => S('titolo', { nome: nome() }),
             dataObj: d,
-            spiegazione: s.spiegazione || `Pioggia di stelle cadenti (${s.zhr} nelle condizioni migliori). Le meteore sembrano irradiarsi da un punto della volta celeste.`,
+            spiegazione: () => s.propria && astroI18n.esiste(`sciame.${s.id}.spiegazione`)
+              ? S(`${s.id}.spiegazione`)
+              : S(s.fino ? 'spiegazioneFino' : 'spiegazioneCirca', { n: s.zhrNum }),
             colore: '#06b6d4',
             categoria: 'meteore',
-            simul: { scena: 'sciame', nome: s.nome, ra: s.ra, dec: s.dec, zhr: s.zhrNum },
-            programma: s.programma || {
-              cosaPortare: 'Sedia sdraio, coperta e bevande calde. Niente telescopio: serve un ampio campo visivo.',
-              doveVederlo: 'Cielo buio e senza inquinamento luminoso; lascia gli occhi adattarsi al buio per 20 minuti.',
-              comeVederlo: 'Guarda a occhio nudo verso l’alto, dopo mezzanotte quando il radiante è più alto.'
-            }
+            simul: {
+              scena: 'sciame', ra: s.ra, dec: s.dec, zhr: s.zhrNum,
+              get nome() { return nome(); }
+            },
+            programma: () => ({
+              cosaPortare: riga('cosaPortare'),
+              doveVederlo: riga('doveVederlo'),
+              comeVederlo: riga('comeVederlo')
+            })
           });
         }
       });
@@ -5682,12 +5843,12 @@ function aggiungiSciamiMeteorici(oggi, limite) {
 // --- Massima Elongazione di Mercurio e Venere (miglior visibilità) ---
 function aggiungiElongazioni(oggi, limite) {
   try {
-    const pianeti = [
-      { body: Astronomy.Body.Mercury, nome: 'Mercurio' },
-      { body: Astronomy.Body.Venus, nome: 'Venere' }
-    ];
+    // Il nome del pianeta lo dà `nomeCorpo`, che è la sola tabella di nomi del
+    // Sistema Solare: qui non se ne tiene una copia.
+    const pianeti = [Astronomy.Body.Mercury, Astronomy.Body.Venus];
     // Nota: Astronomy.Body.X è la stringa del corpo, riusata dal planetario
-    pianeti.forEach(p => {
+    pianeti.forEach(body => {
+      const p = { body, get nome() { return nomeCorpo(body); } };
       let start = new Date(oggi);
       // Mercurio ~6 elongazioni/anno, Venere ~2: fino al 2030 servono decine di iterazioni
       for (let i = 0; i < 50; i++) {
@@ -5700,26 +5861,29 @@ function aggiungiElongazioni(oggi, limite) {
         if (!e) break;
         const d = e.time.date;
         if (d > limite) break;
-        const quando = e.visibility === 'morning' ? 'al mattino, prima dell’alba' : 'alla sera, dopo il tramonto';
+        const mattino = e.visibility === 'morning';
+        const gradi = Math.round(e.elongation);
+        const L = (k, v) => astroI18n.t('elongazione.' + k, v);
+        const quando = () => L(mattino ? 'alMattino' : 'allaSera');
         creaEvento({
-          titolo: `Massima Elongazione di ${p.nome}`,
+          titolo: () => L('titolo', { corpo: nomeCorpo(body) }),
           dataObj: d,
-          spiegazione: `${p.nome} raggiunge la massima distanza apparente dal Sole (${e.elongation.toFixed(0)}°): è il momento migliore per osservarlo, visibile ${quando}.`,
+          spiegazione: () => L('spiegazione', { corpo: nomeCorpo(body), gradi, quando: quando() }),
           colore: '#a855f7',
           categoria: 'pianeti',
           corpoCielo: p.body,
           simul: {
             scena: 'elongazione',
             corpo: p.body,
-            nome: p.nome,
+            get nome() { return nomeCorpo(body); },
             elongazione: e.elongation,
             visibilita: e.visibility
           },
-          programma: {
-            cosaPortare: 'Binocolo; un piccolo telescopio per apprezzarne la fase.',
-            doveVederlo: `Verso l’orizzonte ${e.visibility === 'morning' ? 'a est' : 'a ovest'}, ${quando}.`,
-            comeVederlo: 'Cerca un orizzonte libero da ostacoli: il pianeta resta basso sull’orizzonte.'
-          }
+          programma: () => ({
+            cosaPortare: L('cosaPortare'),
+            doveVederlo: L('doveVederlo', { verso: astroI18n.nomePunto(mattino ? 90 : 270), quando: quando() }),
+            comeVederlo: L('comeVederlo')
+          })
         });
         // Avanza oltre l'elongazione trovata per cercare la successiva
         start = new Date(d.getTime() + 20 * 24 * 60 * 60 * 1000);
@@ -5847,7 +6011,10 @@ function modificaEventoManuale(id, dati) {
 
   evento.titolo = dati.titolo;
   evento.dataObj = dati.dataObj;
-  evento.dataTesto = formattData(dati.dataObj);
+  // La data resta un getter: il titolo e la spiegazione di un evento manuale
+  // sono nella lingua di chi li ha scritti e non si traducono, ma «4 settembre
+  // 2026 alle ore 07:51» la scrive `Intl`, e quella segue la lingua.
+  defRisolta(evento, 'dataTesto', () => formattData(evento.dataObj));
   evento.spiegazione = dati.spiegazione || 'Evento aggiunto manualmente.';
   evento.colore = dati.colore || '#3b82f6';
   evento.programma = programmaDaDati(dati);
@@ -6570,6 +6737,20 @@ function sincronizzaCalendario() {
   });
 }
 
+/* La lingua della griglia del mese.
+ *
+ * I nomi dei giorni e dei mesi nell'intestazione del calendario non passano
+ * dal nostro dizionario: li scrive FullCalendar dal locale che gli si dà alla
+ * costruzione, e cambiare lingua non li tocca — restavano in italiano dentro a
+ * una vista per il resto inglese. Sono due opzioni da riscrivere, e vanno
+ * riscritte **prima** del ridisegno della vista, se no il titolo del mese resta
+ * quello di prima fino al mese successivo. */
+function calendarioCambiaLingua() {
+  if (!fullCalendarInstance) return;
+  fullCalendarInstance.setOption('locale', astroI18n.lingua());
+  fullCalendarInstance.setOption('buttonText', { today: astroI18n.t('calendario.oggi') });
+}
+
 // Sul telefono i due blocchi di filtri (categoria e strumento) occupavano più
 // spazio della ricerca stessa. Qui accanto al campo compare un tasto "Filtri"
 // che li apre e li chiude; su schermi più grandi il tasto non esiste nemmeno,
@@ -6686,12 +6867,12 @@ function costruisciAgenda() {
   if (eventiDaMostrare.length === 0) {
     let messaggio;
     if (eventiCalcolati.length === 0) {
-      messaggio = 'Nessun evento da mostrare.';
+      messaggio = astroI18n.t('agenda.nessunEvento');
     } else if (meseSelezionato) {
-      messaggio = `Nessun evento in ${NOMI_MESI[meseSelezionato.mese]} ${meseSelezionato.anno} ` +
-        'con i filtri attivi. Prova a cambiare mese, ricerca o categoria.';
+      messaggio = astroI18n.t('agenda.nessunEventoNelMese',
+        { mese: NOMI_MESI[meseSelezionato.mese], anno: meseSelezionato.anno });
     } else {
-      messaggio = 'Nessun evento corrisponde alla ricerca. Prova a cambiare i termini o la categoria.';
+      messaggio = astroI18n.t('agenda.nessunEventoTrovato');
     }
     container.innerHTML = `<p class="text-center text-slate-400">${messaggio}</p>`;
     return;
@@ -6703,7 +6884,7 @@ function costruisciAgenda() {
     card.dataset.eventoId = evento.id;
     // Una piccola linea colorata a sinistra per il tipo di evento
     const badgeManuale = evento.manuale
-      ? '<span class="ml-2 align-middle text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">Manuale</span>'
+      ? `<span class="ml-2 align-middle text-xs bg-green-600 text-white px-2 py-0.5 rounded-full">${astroI18n.t('agenda.manuale')}</span>`
       : '';
     // Badge con la categoria dell'evento: disegno + nome (es. Fasi Lunari)
     const cat = CATEGORIE[evento.categoria];
@@ -6712,10 +6893,10 @@ function costruisciAgenda() {
       : '';
     // Gli eventi manuali si possono modificare ed eliminare
     const bottoneModifica = evento.manuale
-      ? `<button onclick="apriModificaEvento('${evento.id}')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-blue-600 rounded-full flex-shrink-0" title="Modifica evento">Modifica</button>`
+      ? `<button onclick="apriModificaEvento('${evento.id}')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-blue-600 rounded-full flex-shrink-0" title="${astroI18n.t('agenda.modificaTitolo')}">${astroI18n.t('agenda.modifica')}</button>`
       : '';
     const bottoneElimina = evento.manuale
-      ? `<button onclick="eliminaEventoManuale('${evento.id}')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-red-600 rounded-full flex-shrink-0" title="Elimina evento">Elimina</button>`
+      ? `<button onclick="eliminaEventoManuale('${evento.id}')" class="px-3 py-1.5 text-sm bg-slate-700 hover:bg-red-600 rounded-full flex-shrink-0" title="${astroI18n.t('agenda.eliminaTitolo')}">${astroI18n.t('agenda.elimina')}</button>`
       : '';
     // Le scorciatoie del riquadro "Come prepararsi": solo tasti, e solo tasti
     // che restano dentro l'app. Niente scritte sottolineate in mezzo al testo,
@@ -6801,11 +6982,16 @@ function inizializzaCalendario() {
 
   fullCalendarInstance = new FullCalendar.Calendar(calendarEl, {
     initialView: 'dayGridMonth',
-    locale: 'it',
+    // I nomi dei giorni e dei mesi della griglia li scrive FullCalendar, non
+    // noi: gli si dà la lingua di adesso e li prende dal suo catalogo di
+    // locali. Il tasto «Oggi» invece è una nostra parola, e sta nel dizionario
+    // come tutte le altre. A rimettere tutt'e due dopo un cambio lingua ci
+    // pensa `calendarioCambiaLingua`.
+    locale: astroI18n.lingua(),
     firstDay: 1, // Lunedì
     height: 'auto',
     ...opzioniSchermo,
-    buttonText: { today: 'Oggi' },
+    buttonText: { today: astroI18n.t('calendario.oggi') },
     moreLinkContent: (arg) => `+${arg.num}`,
     // Niente rettangoli pieni: la riga la disegna `contenutoEventoGriglia`,
     // con l'icona della categoria, il titolo e l'ora
@@ -7287,7 +7473,12 @@ const SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC = 5;
 // `diametroKm` e `classe` servono alla scheda che si apre toccando l'astro:
 // la distanza e la magnitudine cambiano ogni istante e le calcoliamo, ma il
 // diametro e la natura dell'oggetto sono dati da tabella.
-const SKY_CORPI = [
+/* I nomi, la classe e la nota vengono dal dizionario: `conNomeDaId` per il
+ * nome (la stessa tabella che usano le congiunzioni e la vista 3D — «Marte» si
+ * traduce una volta) e `conTestiDaId` per le due frasi della scheda. Il valore
+ * italiano resta scritto qui perché è il ripiego quando il gestore non c'è, ed
+ * è anche il modo di leggere la tabella senza aprire il dizionario. */
+const SKY_CORPI = conTestiDaId(conNomeDaId([
   { id: 'Sun',     nome: 'Sole',     disegno: 'sole',     colore: '#fbbf24', tipo: 'sole',
     diametroKm: 1392700, classe: 'Stella: la nostra',
     nota: 'Contiene il 99,86% della massa di tutto il Sistema Solare.' },
@@ -7315,7 +7506,7 @@ const SKY_CORPI = [
   { id: 'Neptune', nome: 'Nettuno',  disegno: 'nettuno',  colore: '#93c5fd', tipo: 'pianeta',
     diametroKm: 49244, classe: 'Gigante ghiacciato',
     nota: 'Mai visibile a occhio nudo: fu trovato con i calcoli prima che col telescopio.' }
-];
+], 'corpo.'), 'corpo.', ['classe', 'nota']);
 
 // Otto stelle luminose usate come punti di riferimento per orientarsi.
 // Coordinate J2000: ascensione retta in ore, declinazione in gradi.
@@ -20539,13 +20730,16 @@ function skyAggiornaHud(base) {
 // quanti gradi è non serve a chi guarda il cielo, serve a chi allinea una
 // montatura (e lì infatti c'è, nella vista Telescopio). Spento e
 // tratteggiato vuol dire che quel Nord è indicativo.
-const SKY_BUSSOLA_MODI = {
-  astro:     'Bussola tarata sul cielo vero: il Nord è esatto per costruzione',
-  vera:      'Bussola: la punta ambrata è il Nord geografico',
-  dubbia:    'Bussola disturbata da qualcosa di ferroso: tarala su un astro',
-  magnetica: 'Bussola da tarare: il Nord segnato è quello magnetico',
-  manuale:   'La vista la muovi col dito: il Nord è quello del cielo disegnato'
-};
+// I cinque stati della bussola, detti a parole nel `title` del quadrante. Le
+// frasi stanno nel dizionario (`bussola.modo.*`): erano una tabella, e una
+// tabella di frasi letta una volta è una tabella nella lingua di allora.
+const SKY_BUSSOLA_MODI = conNomeTradotto({
+  astro:     { nome: 'Bussola tarata sul cielo vero: il Nord è esatto per costruzione' },
+  vera:      { nome: 'Bussola: la punta ambrata è il Nord geografico' },
+  dubbia:    { nome: 'Bussola disturbata da qualcosa di ferroso: tarala su un astro' },
+  magnetica: { nome: 'Bussola da tarare: il Nord segnato è quello magnetico' },
+  manuale:   { nome: 'La vista la muovi col dito: il Nord è quello del cielo disegnato' }
+}, 'bussola.modo.');
 
 function skyModoBussola() {
   if (!sky.sensori || !sky.seguiTelefono) return 'manuale';
@@ -20558,9 +20752,16 @@ function skyModoBussola() {
 // l'unico che risponde alla domanda «da che parte devo girarmi». Il Nord
 // sta a 0° di azimut, quindi rispetto alla vista è indietro di `az`: la
 // rosa si gira di −az.
+/* Senza argomento riscrive la bussola con l'azimut che ha già in mano, e chi
+ * la chiama così è il cambio lingua: il suo `title` e il suo `aria-label` sono
+ * due frasi del dizionario, e le riscrive solo il ciclo di disegno del
+ * planetario — che a vista chiusa non gira. Restavano nella lingua di quando il
+ * cielo era stato guardato l'ultima volta. */
 function skyAggiornaBussola(az) {
   const b = document.getElementById('skymap-bussola');
   if (!b) return;
+  if (az === undefined) az = sky.bussolaAzimut || 0;
+  sky.bussolaAzimut = az;
   const rosa = document.getElementById('skymap-bussola-rosa');
   if (rosa) rosa.setAttribute('transform', `rotate(${(-az).toFixed(1)})`);
 
@@ -20599,10 +20800,12 @@ function skyAggiornaBussola(az) {
   }
 
   const modo = skyModoBussola();
-  if (b.dataset.modo !== modo) {
-    b.dataset.modo = modo;
-    b.title = SKY_BUSSOLA_MODI[modo];
-  }
+  if (b.dataset.modo !== modo) b.dataset.modo = modo;
+  // Il titolo si riscrive sempre e non solo al cambio di modo: è una frase del
+  // dizionario, e legarla al cambio di stato vuol dire tenerla nella lingua di
+  // allora. Il confronto prima di scrivere costa niente e non tocca il DOM.
+  const spiega = SKY_BUSSOLA_MODI[modo].nome;
+  if (b.title !== spiega) b.title = spiega;
   // Chi legge con lo schermo non vede né il quadrante né l'indice né il cono:
   // a lui le stesse cose vanno dette a parole, ed è l'unico posto in cui vale
   // la pena — sul cielo l'apertura si guarda, non si legge.
@@ -21351,14 +21554,14 @@ function skyDisegnaScartoEclittica(ctx, base, focale) {
 // Semiasse in unità astronomiche, periodo in anni, inclinazione dell'orbita
 // sull'eclittica e longitudine del nodo ascendente (dove l'orbita sale sopra
 // il piano della Terra): sono questi due ultimi numeri a fare la lezione.
-const LEZ_PIANETI = [
-  { nome: 'Mercurio', ua: 0.387, anni: 0.241, incl: 7.00, nodo: 48.3,  raggio: 3.4, colore: '#cbd5e1' },
-  { nome: 'Venere',   ua: 0.723, anni: 0.615, incl: 3.39, nodo: 76.7,  raggio: 4.6, colore: '#fde68a' },
-  { nome: 'Terra',    ua: 1.000, anni: 1.000, incl: 0.00, nodo: 0,     raggio: 4.8, colore: '#60a5fa' },
-  { nome: 'Marte',    ua: 1.524, anni: 1.881, incl: 1.85, nodo: 49.6,  raggio: 3.8, colore: '#f87171' },
-  { nome: 'Giove',    ua: 5.203, anni: 11.86, incl: 1.30, nodo: 100.5, raggio: 8.0, colore: '#fbbf24' },
-  { nome: 'Saturno',  ua: 9.537, anni: 29.45, incl: 2.49, nodo: 113.7, raggio: 6.8, colore: '#fcd34d' }
-];
+const LEZ_PIANETI = conNomeDaId([
+  { id: 'Mercury', nome: 'Mercurio', ua: 0.387, anni: 0.241, incl: 7.00, nodo: 48.3,  raggio: 3.4, colore: '#cbd5e1' },
+  { id: 'Venus',   nome: 'Venere',   ua: 0.723, anni: 0.615, incl: 3.39, nodo: 76.7,  raggio: 4.6, colore: '#fde68a' },
+  { id: 'Earth',   nome: 'Terra',    ua: 1.000, anni: 1.000, incl: 0.00, nodo: 0,     raggio: 4.8, colore: '#60a5fa' },
+  { id: 'Mars',    nome: 'Marte',    ua: 1.524, anni: 1.881, incl: 1.85, nodo: 49.6,  raggio: 3.8, colore: '#f87171' },
+  { id: 'Jupiter', nome: 'Giove',    ua: 5.203, anni: 11.86, incl: 1.30, nodo: 100.5, raggio: 8.0, colore: '#fbbf24' },
+  { id: 'Saturn',  nome: 'Saturno',  ua: 9.537, anni: 29.45, incl: 2.49, nodo: 113.7, raggio: 6.8, colore: '#fcd34d' }
+], 'corpo.');
 
 // I cinque quadri. `elev` è l'altezza della telecamera sul piano: 90° è la
 // vista dall'alto, pochi gradi è la vista di taglio.
@@ -21610,7 +21813,7 @@ function lezDisegnaDisco(ctx, forza) {
 // volta all'apertura del quadro: in un minuto non si spostano.
 function lezLeggiCielo() {
   if (typeof Astronomy === 'undefined') { lez.cielo = null; return; }
-  const nomi = [
+  const nomi = conNomeDaId([
     { id: 'Sun', nome: 'Sole', colore: '#fde68a', raggio: 9 },
     { id: 'Moon', nome: 'Luna', colore: '#e2e8f0', raggio: 7 },
     { id: 'Mercury', nome: 'Mercurio', colore: '#cbd5e1', raggio: 4 },
@@ -21618,7 +21821,7 @@ function lezLeggiCielo() {
     { id: 'Mars', nome: 'Marte', colore: '#f87171', raggio: 4.5 },
     { id: 'Jupiter', nome: 'Giove', colore: '#fbbf24', raggio: 6.5 },
     { id: 'Saturn', nome: 'Saturno', colore: '#fcd34d', raggio: 6 }
-  ];
+  ], 'corpo.');
   try {
     const t = Astronomy.MakeTime(skyAdesso());
     lez.cielo = nomi.map(n => {
@@ -27135,11 +27338,31 @@ function skyRegFerma(opzioni = {}) {
 // Il tasto sulla mappa dice da solo cosa sta succedendo: fermo è un tondo
 // rosso, mentre registra diventa un quadrato che pulsa e accanto compaiono i
 // secondi che mancano. Con `restano` a null torna a riposo.
+//
+// Senza argomento vuol dire «rinfresca quello che c'è», e chi la chiama così è
+// il cambio lingua (`ridisegnaTuttoPerLingua`): il titolo del tasto è una
+// frase del dizionario, e senza una spinta resterebbe nella lingua di quando è
+// stato scritto l'ultima volta. Quel `restano` mancante era il difetto:
+// `undefined !== null` è vero, quindi cambiare lingua accendeva il tasto —
+// classe `in-corso`, cioè il quadrato che pulsa — e il conto alla rovescia
+// scriveva `Math.max(0, undefined).toFixed(1)`, cioè «NaN s», sopra un
+// planetario che non stava registrando niente. Lo stato lo sa `sky.reg`: non
+// c'è nessun bisogno che glielo dica chi chiede solo di riscrivere le parole.
 function skyRegAggiornaComando(restano) {
   const prefisso = sky.reg.origine === 'solare' ? 'sol' : 'skymap';
   const tasto = document.getElementById(`${prefisso}-btn-registra`);
   const tempo = document.getElementById(`${prefisso}-reg-tempo`);
-  const inCorso = restano !== null;
+  if (restano === undefined) {
+    restano = sky.reg.attiva
+      ? Math.max(0, sky.reg.durataSec - (performance.now() - sky.reg.avvio) / 1000)
+      : null;
+    // Il conto va riscritto adesso: la strozzatura dei cento millisecondi
+    // serve al ciclo di disegno, non a un gesto dell'utente.
+    sky.reg.ultimoConto = 0;
+  }
+  // `Number.isFinite` e non `!== null`: un `undefined` o un `NaN` arrivati da
+  // qualunque altra parte non devono più poter accendere il tasto.
+  const inCorso = Number.isFinite(restano);
   if (tasto) {
     tasto.classList.toggle('in-corso', inCorso);
     tasto.setAttribute('aria-pressed', inCorso ? 'true' : 'false');
@@ -27636,7 +27859,7 @@ const SOL_RIF_UA = 30.07;           // Nettuno: il metro con cui si normalizza t
 // quella in scala, dove Giove viene ventinove volte Mercurio come nella
 // realtà. Nessuna delle due è in scala con le *distanze*: lì la Terra sarebbe
 // un centesimo di pixel.
-const SOL_PIANETI = [
+const SOL_PIANETI = conNomeDaId([
   { id: 'Mercury', nome: 'Mercurio', colore: '#cbd5e1', raggio: 5.0,  km: 4879,   ua: 0.387, anni: 0.241 },
   { id: 'Venus',   nome: 'Venere',   colore: '#fde68a', raggio: 7.2,  km: 12104,  ua: 0.723, anni: 0.615 },
   { id: 'Earth',   nome: 'Terra',    colore: '#60a5fa', raggio: 7.6,  km: 12742,  ua: 1.000, anni: 1.000 },
@@ -27645,7 +27868,7 @@ const SOL_PIANETI = [
   { id: 'Saturn',  nome: 'Saturno',  colore: '#fcd34d', raggio: 11.5, km: 116460, ua: 9.537, anni: 29.45 },
   { id: 'Uranus',  nome: 'Urano',    colore: '#67e8f9', raggio: 8.6,  km: 50724,  ua: 19.19, anni: 84.01 },
   { id: 'Neptune', nome: 'Nettuno',  colore: '#93c5fd', raggio: 8.3,  km: 49244,  ua: 30.07, anni: 164.8 }
-];
+], 'corpo.');
 
 // Il raggio del Sole e quello del pallino della Luna coi pallini ingranditi,
 // alla scala di partenza (zoom 1): da lì in poi crescono col disegno, vedi
@@ -34181,14 +34404,14 @@ function inizializzaSimulazione() {
 // =====================================================================
 
 // Corpi messi a confronto fra loro (la Luna è la protagonista più frequente)
-const CONG_CORPI = [
+const CONG_CORPI = conNomeDaId([
   { id: 'Moon',    nome: 'Luna',     disegno: 'luna' },
   { id: 'Mercury', nome: 'Mercurio', disegno: 'mercurio' },
   { id: 'Venus',   nome: 'Venere',   disegno: 'venere' },
   { id: 'Mars',    nome: 'Marte',    disegno: 'marte' },
   { id: 'Jupiter', nome: 'Giove',    disegno: 'giove' },
   { id: 'Saturn',  nome: 'Saturno',  disegno: 'saturno' }
-];
+], 'corpo.');
 
 // Quanto lontano nel tempo cercare le congiunzioni: la scansione è giornaliera
 // e la libreria calcola tutto nel browser, quindi teniamo un orizzonte umano.
@@ -34301,49 +34524,46 @@ function aggiungiCongiunzioni(oggi, limite) {
 
         const conLuna = coppia.a.id === 'Moon' || coppia.b.id === 'Moon';
         const gradi = migliore;
-        const testoDistanza = gradi < 1
-          ? `${Math.round(gradi * 60)} primi d'arco (meno di un grado: entrano insieme nel campo di un binocolo)`
-          : `${gradi.toFixed(1)}°`;
+        const idA = coppia.a.id, idB = coppia.b.id;
+        const C = (k, v) => astroI18n.t('congiunzione.' + k, v);
+        // Sotto il grado la distanza si dice in primi d'arco, e la frase che lo
+        // accompagna («entrano insieme nel campo di un binocolo») è parte della
+        // misura, non un commento: sta nella stessa chiave.
+        const distanza = () => gradi < 1
+          ? C('primiDArco', { n: Math.round(gradi * 60) })
+          : `${astroI18n.numero(gradi, 1)}°`;
 
         // Sotto il mezzo grado la Luna può addirittura coprire il pianeta:
         // la copertura vera dipende dal luogo, quindi lo diciamo come possibilità.
         const occultazione = conLuna && gradi < 0.5;
-        const titolo = occultazione
-          ? `Occultazione: ${coppia.a.nome} nasconde ${coppia.b.nome}`
-          : `Congiunzione ${coppia.a.nome}–${coppia.b.nome}`;
-
-        const spiegazione = occultazione
-          ? `${coppia.a.nome} e ${coppia.b.nome} arrivano a ${testoDistanza} l'uno dall'altro: da alcune zone della Terra ` +
-            `la Luna passa davanti al pianeta e lo nasconde per qualche decina di minuti. Da altre zone si vede comunque ` +
-            `un avvicinamento spettacolare. Controlla gli orari locali qui sotto.`
-          : `${coppia.a.nome} e ${coppia.b.nome} si avvicinano fino a ${testoDistanza}. ` +
-            `Non si toccano davvero — restano lontanissimi fra loro — ma dalla Terra appaiono quasi sovrapposti: ` +
-            `è uno degli spettacoli più facili da riconoscere anche in città.`;
+        const nomi = () => ({ a: nomeCorpo(idA), b: nomeCorpo(idB), distanza: distanza() });
 
         creaEvento({
-          titolo,
+          titolo: () => C(occultazione ? 'titoloOccultazione' : 'titolo', nomi()),
           dataObj: quando,
-          spiegazione,
+          spiegazione: () => C(occultazione ? 'spiegazioneOccultazione' : 'spiegazione', nomi()),
           colore: occultazione ? '#f472b6' : '#8b5cf6',
           categoria: 'congiunzioni',
           // Nel cielo si punta il corpo più facile da trovare
           corpoCielo: conLuna ? 'Moon' : coppia.b.id,
           strumento: 'occhio',
           congiunzione: {
-            a: coppia.a.id, b: coppia.b.id,
-            nomeA: coppia.a.nome, nomeB: coppia.b.nome,
+            a: idA, b: idB,
+            get nomeA() { return nomeCorpo(idA); },
+            get nomeB() { return nomeCorpo(idB); },
             separazione: gradi
           },
           simul: {
             scena: 'congiunzione',
-            a: coppia.a.id, b: coppia.b.id,
-            nomeA: coppia.a.nome, nomeB: coppia.b.nome
+            a: idA, b: idB,
+            get nomeA() { return nomeCorpo(idA); },
+            get nomeB() { return nomeCorpo(idB); }
           },
-          programma: {
-            cosaPortare: 'Nulla di obbligatorio: si vede a occhio nudo. Un binocolo li mostra insieme nello stesso campo, e con il telefono si fanno belle foto.',
-            doveVederlo: `Serve un orizzonte libero nella direzione giusta: guarda la scheda “da qui” qui sotto per sapere dove e a che ora sono visibili dal tuo luogo.`,
-            comeVederlo: 'Cerca i due punti luminosi molto vicini: quello che non “tremola” è il pianeta, le stelle invece scintillano.'
-          }
+          programma: () => ({
+            cosaPortare: C('cosaPortare'),
+            doveVederlo: C('doveVederlo'),
+            comeVederlo: C('comeVederlo')
+          })
         });
       }
     });
@@ -34940,6 +35160,9 @@ let agendaDaRicostruire = false;
 function svuotaCacheLocali() {
   cacheBuio.clear();
   cacheCircostanze.clear();
+  // Anche le frasi degli eventi: qualcuna porta dentro un'ora, e un'ora
+  // dipende dal fuso del luogo (§`defRisolta`).
+  generazioneTesti++;
   agendaDaRicostruire = true;
   eventiCalcolati.forEach(e => { delete e.localeCache; });
 }
@@ -35139,12 +35362,13 @@ function iniziale(testo) {
 }
 
 function descriviNuvole(perc) {
-  if (perc === null || perc === undefined) return 'previsione non disponibile';
-  if (perc <= 15) return 'cielo sereno';
-  if (perc <= 40) return 'poco nuvoloso';
-  if (perc <= 70) return 'nuvoloso a tratti';
-  if (perc <= 90) return 'molto nuvoloso';
-  return 'coperto';
+  const N = (k) => astroI18n.t('nuvole.' + k);
+  if (perc === null || perc === undefined) return N('senzaPrevisione');
+  if (perc <= 15) return N('sereno');
+  if (perc <= 40) return N('pocoNuvoloso');
+  if (perc <= 70) return N('aTratti');
+  if (perc <= 90) return N('moltoNuvoloso');
+  return N('coperto');
 }
 
 // Punteggio 0–100 di quanto conviene uscire per un evento, con i motivi.
@@ -35158,6 +35382,12 @@ function indiceOsservabilita(evento) {
 
   const motivi = [];
   let punteggio = 100;
+  // I motivi sono le mezze frasi che l'agenda incolla dopo il punteggio
+  // («basso sull'orizzonte (12°); cielo ancora chiaro a quell'ora»): ognuna è
+  // una chiave intera, perché in inglese non basta cambiare le parole al posto
+  // loro — «non al momento del picco, ma verso le 4:10» si dice in un altro
+  // ordine.
+  const M = (k, v) => astroI18n.t('osserva.' + k, v);
 
   const locale = evento.localeCache !== undefined ? evento.localeCache : circostanzeLocali(evento);
   const solare = evento.corpoCielo === 'Sun';
@@ -35175,29 +35405,29 @@ function indiceOsservabilita(evento) {
       quando = locale.migliore.quando;
       altezza = locale.migliore.alt;
       punteggio -= 10;
-      motivi.push(`non al momento del picco, ma verso le ${oraBreve(quando)}`);
+      motivi.push(M('nonAlPicco', { ora: oraBreve(quando) }));
     } else if (locale.alt < 0) {
-      return { punteggio: 0, semaforo: pallino('#e2685c'), motivi: ['non visibile da qui: sotto l\'orizzonte'], nuvole: null, quando: null };
+      return { punteggio: 0, semaforo: pallino('#e2685c'), motivi: [M('sottoOrizzonte')], nuvole: null, quando: null };
     }
 
     if (altezza !== null && altezza < 15) {
       punteggio -= 20;
-      motivi.push(`basso sull'orizzonte (${Math.round(altezza)}°)`);
+      motivi.push(M('basso', { gradi: Math.round(altezza) }));
     }
 
     const altSole = altezzaSole(quando, obs);
     if (!solare && altSole !== null && altSole > -6) {
       punteggio -= 40;
-      motivi.push('cielo ancora chiaro a quell\'ora');
+      motivi.push(M('cieloChiaro'));
     }
   }
 
   const previsione = meteoPerData(quando);
   if (previsione && previsione.nuvole !== null) {
     punteggio -= Math.round(previsione.nuvole * 0.65);
-    motivi.push(`${descriviNuvole(previsione.nuvole)} (${Math.round(previsione.nuvole)}% di nuvole)`);
+    motivi.push(M('nuvole', { come: descriviNuvole(previsione.nuvole), n: Math.round(previsione.nuvole) }));
   } else {
-    motivi.push('previsione meteo non disponibile');
+    motivi.push(M('senzaPrevisione'));
   }
 
   // La Luna piena cancella meteore e oggetti deboli, ma per le eclissi
@@ -35208,7 +35438,7 @@ function indiceOsservabilita(evento) {
       const posLuna = altAzCorpo('Moon', quando, obs);
       if (posLuna.alt > 0 && ill.phase_fraction > 0.5) {
         punteggio -= Math.round(ill.phase_fraction * 30);
-        motivi.push(`Luna illuminata al ${Math.round(ill.phase_fraction * 100)}% e alta nel cielo: schiarisce lo sfondo`);
+        motivi.push(M('lunaAlta', { n: Math.round(ill.phase_fraction * 100) }));
       }
     } catch (e) { /* niente dati lunari */ }
   }
@@ -35678,7 +35908,7 @@ async function aggiornaPassaggiSatelliti(forza) {
     return;
   }
   if (typeof satellite === 'undefined') {
-    if (box) box.innerHTML = '<p class="text-amber-400">Libreria orbitale non caricata: riapri l\'app quando c\'è rete, poi funzionerà anche offline.</p>';
+    if (box) box.innerHTML = `<p class="text-amber-400">${astroI18n.t('stanotte.senzaLibreriaOrbitale')}</p>`;
     return;
   }
   if (satInCorso) return satInCorso;
@@ -35846,14 +36076,15 @@ function schedaRiepilogo(titolo, valore, dettaglio) {
 
 // Nome della fase lunare a partire dalla longitudine eclittica relativa
 function nomeFaseLunare(angolo) {
-  if (angolo < 22.5 || angolo >= 337.5) return 'Luna Nuova';
-  if (angolo < 67.5) return 'Luna crescente';
-  if (angolo < 112.5) return 'Primo Quarto';
-  if (angolo < 157.5) return 'Gibbosa crescente';
-  if (angolo < 202.5) return 'Luna Piena';
-  if (angolo < 247.5) return 'Gibbosa calante';
-  if (angolo < 292.5) return 'Ultimo Quarto';
-  return 'Luna calante';
+  const F = (k) => astroI18n.t('faseLuna.' + k);
+  if (angolo < 22.5 || angolo >= 337.5) return F('nuova');
+  if (angolo < 67.5) return F('crescente');
+  if (angolo < 112.5) return F('primoQuarto');
+  if (angolo < 157.5) return F('gibbosaCrescente');
+  if (angolo < 202.5) return F('piena');
+  if (angolo < 247.5) return F('gibbosaCalante');
+  if (angolo < 292.5) return F('ultimoQuarto');
+  return F('calante');
 }
 
 function costruisciStaseraRiepilogo() {
@@ -35864,12 +36095,10 @@ function costruisciStaseraRiepilogo() {
   if (!luogo) {
     box.innerHTML = `
       <div class="scheda-piena bg-slate-900 p-4 rounded-xl border border-amber-800">
-        <p class="text-amber-400 font-semibold">Manca la tua posizione</p>
-        <p class="text-sm text-slate-300 mt-1">Senza un punto sulla Terra non posso dirti a che ora fa buio,
-          cosa sorge e cosa tramonta. Ci sono tre modi per darmelo — il GPS, la connessione o la tua città
-          scelta in elenco — e almeno uno funziona sempre. Resta salvato solo su questo dispositivo.</p>
+        <p class="text-amber-400 font-semibold">${astroI18n.t('stanotte.mancaPosizione')}</p>
+        <p class="text-sm text-slate-300 mt-1">${astroI18n.t('stanotte.mancaPosizioneTesto')}</p>
         <button type="button" onclick="apriPosizione(true)"
-          class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">Dimmi dove sono</button>
+          class="mt-3 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white">${astroI18n.t('stasera.dimmiDoveSono')}</button>
       </div>`;
     return;
   }
@@ -35887,13 +36116,14 @@ function costruisciStaseraRiepilogo() {
     // lasciata a metà.
     const finestra = buio.buioInizio && buio.buioFine
       ? `${oraBreve(buio.buioInizio)} →\u00A0${oraBreve(buio.buioFine)}`
-      : 'niente buio completo stanotte';
+      : astroI18n.t('stanotte.nienteBuio');
     const dettaglio = buio.buioInizio
-      ? `Tramonto ${oraBreve(buio.tramonto)} · alba ${oraBreve(buio.alba)}`
-      : `Il Sole non scende mai a −18°: crepuscolo per tutta la notte. Tramonto ${oraBreve(buio.tramonto)}.`;
-    schede.push(schedaRiepilogo('Buio astronomico', finestra, dettaglio));
+      ? astroI18n.t('stanotte.tramontoAlba', { tramonto: oraBreve(buio.tramonto), alba: oraBreve(buio.alba) })
+      : astroI18n.t('stanotte.crepuscoloTuttaNotte', { tramonto: oraBreve(buio.tramonto) });
+    schede.push(schedaRiepilogo(astroI18n.t('stanotte.buioAstronomico'), finestra, dettaglio));
   } else {
-    schede.push(schedaRiepilogo('Buio astronomico', 'non calcolabile', 'Alle tue latitudini il Sole potrebbe non tramontare affatto.'));
+    schede.push(schedaRiepilogo(astroI18n.t('stanotte.buioAstronomico'),
+      astroI18n.t('stanotte.nonCalcolabile'), astroI18n.t('stanotte.latitudiniAlte')));
   }
 
   // 2. Luna: quanto disturba e quando
@@ -35903,9 +36133,8 @@ function costruisciStaseraRiepilogo() {
     const fase = Astronomy.MoonPhase(t);
     const orari = orariSorgereTramonto('Moon', new Date(), obs);
     const perc = Math.round(ill.phase_fraction * 100);
-    const disturbo = perc > 70 ? 'cielo molto schiarito: meglio Luna e pianeti che oggetti deboli'
-                   : perc > 30 ? 'disturbo moderato per gli oggetti deboli'
-                   : 'cielo scuro: ottimo per meteore e deep sky';
+    const disturbo = astroI18n.t('stanotte.disturbo.' +
+      (perc > 70 ? 'alto' : perc > 30 ? 'medio' : 'basso'));
     // Il dato da leggere in un colpo d'occhio è la percentuale, e basta
     // quella: "illuminata al 78%" era una frase, e con due riquadri per riga
     // sul telefono andava a capo — un numero che va a capo non è più un
@@ -35914,10 +36143,11 @@ function costruisciStaseraRiepilogo() {
     schede.push(schedaRiepilogo(
       nomeFaseLunare(fase),
       `${perc}%`,
-      `Sorge ${oraBreve(orari.sorge)} · tramonta ${oraBreve(orari.tramonta)}. ${iniziale(disturbo)}.`
+      astroI18n.t('stanotte.lunaOrari', { sorge: oraBreve(orari.sorge), tramonta: oraBreve(orari.tramonta) }) +
+        ' ' + iniziale(disturbo) + '.'
     ));
   } catch (e) {
-    schede.push(schedaRiepilogo('Luna', 'dati non disponibili', ''));
+    schede.push(schedaRiepilogo(astroI18n.t('corpo.Moon'), astroI18n.t('stanotte.datiNonDisponibili'), ''));
   }
 
   // Il prossimo evento del calendario qui non c'è più: era la prima riga
@@ -35934,10 +36164,10 @@ async function costruisciStaseraMeteo() {
   if (!box) return;
   if (!luogoCorrente()) { box.innerHTML = ''; return; }
 
-  box.innerHTML = '<p class="text-sm text-slate-400">Carico le previsioni…</p>';
+  box.innerHTML = `<p class="text-sm text-slate-400">${astroI18n.t('meteo.caricoPrevisioni')}</p>`;
   await caricaMeteo(false);
   if (!meteo || !meteo.ore.length) {
-    box.innerHTML = '<p class="text-sm text-amber-400">Previsioni non disponibili (serve la rete). Il resto dei dati è calcolato in locale e resta valido.</p>';
+    box.innerHTML = `<p class="text-sm text-amber-400">${astroI18n.t('meteo.senzaRete')}</p>`;
     return;
   }
 
@@ -35948,7 +36178,7 @@ async function costruisciStaseraMeteo() {
 
   const ore = meteo.ore.filter(o => o.ms >= partenza - 3600000 && o.ms <= arrivo + 3600000);
   if (!ore.length) {
-    box.innerHTML = '<p class="text-sm text-slate-400">Nessuna previsione per le ore di questa notte.</p>';
+    box.innerHTML = `<p class="text-sm text-slate-400">${astroI18n.t('meteo.nessunaPerStanotte')}</p>`;
     return;
   }
 
@@ -35956,7 +36186,11 @@ async function costruisciStaseraMeteo() {
   const migliore = ore.reduce((a, b) => ((b.nuvole ?? 100) < (a.nuvole ?? 100) ? b : a), ore[0]);
   const semaforo = pallino(media <= 25 ? '#7fb069' : media <= 60 ? '#eab54a' : '#e2685c');
   const vecchio = Math.round((Date.now() - meteo.quando) / 60000);
-  const notaVecchio = vecchio > 90 ? ` · previsione di ${vecchio > 1440 ? Math.round(vecchio / 1440) + ' giorni' : Math.round(vecchio / 60) + ' ore'} fa` : '';
+  // «previsione di tre ore fa»: il conto alla rovescia al passato lo sa già
+  // scrivere il gestore, con le sue parole e il suo plurale.
+  const notaVecchio = vecchio > 90
+    ? ' · ' + astroI18n.t('meteo.previsioneDi', { quanto: astroI18n.scartoTempo(-vecchio * 60000) })
+    : '';
 
   // Il giudizio di stanotte in una riga, e nient'altro.
   //   Qui sotto c'era anche l'istogramma delle nuvole ora per ora, con la
@@ -35970,8 +36204,8 @@ async function costruisciStaseraMeteo() {
   box.innerHTML = `
     <div class="bg-slate-900 p-4 rounded-xl border border-slate-700">
       <div class="flex justify-between items-baseline flex-wrap gap-2">
-        <p class="font-bold text-white">${semaforo} ${iniziale(descriviNuvole(media))} (${media}% di nuvole in media stanotte)</p>
-        <p class="text-xs text-slate-400">Ora migliore: ${oraBreve(new Date(migliore.ms))} con ${Math.round(migliore.nuvole ?? 0)}%${notaVecchio}</p>
+        <p class="font-bold text-white">${semaforo} ${iniziale(descriviNuvole(media))} ${astroI18n.t('meteo.mediaStanotte', { n: media })}</p>
+        <p class="text-xs text-slate-400">${astroI18n.t('meteo.oraMigliore', { ora: oraBreve(new Date(migliore.ms)), n: Math.round(migliore.nuvole ?? 0) })}${notaVecchio}</p>
       </div>
     </div>`;
 
@@ -38080,9 +38314,9 @@ function bloccoFotoHtml(evento) {
   return `<details class="bg-slate-900 rounded-xl mt-3 text-sm border border-slate-700">
     <summary class="p-3 cursor-pointer font-bold text-white">${f.titolo}</summary>
     <div class="px-3 pb-3 space-y-1 text-slate-300">
-      <p><span class="text-blue-400">Obiettivo:</span> ${f.obiettivo}</p>
-      <p><span class="text-blue-400">Esposizione:</span> ${f.esposizione}</p>
-      <p><span class="text-blue-400">Errore da evitare:</span> ${f.errore}</p>
+      <p><span class="text-blue-400">${astroI18n.t('foto.etichetta.obiettivo')}:</span> ${f.obiettivo}</p>
+      <p><span class="text-blue-400">${astroI18n.t('foto.etichetta.esposizione')}:</span> ${f.esposizione}</p>
+      <p><span class="text-blue-400">${astroI18n.t('foto.etichetta.errore')}:</span> ${f.errore}</p>
       <p class="text-slate-400">${f.treppiede} ${f.telefono}</p>
     </div>
   </details>`;
