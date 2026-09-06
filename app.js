@@ -8171,6 +8171,7 @@ const sky = {
     mime: '',
     durataReale: 0,        // quanto è durata davvero (si può fermare prima)
     ultimoConto: 0,        // per non riscrivere il conto alla rovescia a ogni fotogramma
+    riquadri: new Map(),   // fotografie HTML di fumetto/scheda per il montaggio
     esito: null,           // { blob, url, nome, tipo }
     origine: 'planetario'  // oppure `solare`: decide tela, comandi e risultato
   },
@@ -27502,6 +27503,24 @@ function skyRegDisegnaRiquadro(ctx, L, H, pannello, corpo) {
   const h = Math.min(H - y, box.height * sy);
   if (w < 20 || h < 20) return;
 
+  // Il riquadro vero non è soltanto testo: può contenere la fotografia di un
+  // aereo o di una stazione, icone, grafici e impaginazioni a due colonne.
+  // Conserviamo una fotografia del DOM, completa degli stili calcolati, e la
+  // usiamo nei fotogrammi successivi. La conversione è asincrona (le immagini
+  // possono dover essere lette), perciò non deve mai fermare il cielo.
+  const impronta = skyRegImprontaRiquadro(pannello);
+  const memoria = sky.reg.riquadri.get(pannello);
+  if (memoria && memoria.immagine && memoria.impronta === impronta) {
+    ctx.drawImage(memoria.immagine, x, y, w, h);
+    return;
+  }
+  if (!memoria || !memoria.inCorso || memoria.impronta !== impronta) {
+    skyRegFotografaRiquadro(pannello, impronta);
+  }
+
+  // Primo fotogramma (mentre la fotografia viene preparata): non lasciare un
+  // buco nero. Questa resa testuale è anche il ripiego per browser molto
+  // vecchi che non sanno disegnare un foreignObject SVG.
   ctx.save();
   ctx.fillStyle = 'rgba(6, 10, 20, .92)';
   ctx.strokeStyle = 'rgba(100, 116, 139, .75)';
@@ -27531,6 +27550,88 @@ function skyRegDisegnaRiquadro(ctx, L, H, pannello, corpo) {
     cy += passo * .28;
   }
   ctx.restore();
+}
+
+function skyRegImprontaRiquadro(pannello) {
+  const immagini = Array.from(pannello.querySelectorAll('img'))
+    .map(img => `${img.currentSrc || img.src}:${img.complete}:${img.naturalWidth}`).join('|');
+  const scorrevoli = [pannello, ...pannello.querySelectorAll('*')]
+    .filter(el => el.scrollTop || el.scrollLeft)
+    .map(el => `${el.scrollLeft},${el.scrollTop}`).join('|');
+  return `${pannello.clientWidth}x${pannello.clientHeight}:${pannello.innerHTML}:${immagini}:${scorrevoli}`;
+}
+
+// Fa una copia autosufficiente del riquadro: gli stili CSS diventano stili
+// inline, i canvas diventano immagini e le fotografie di rete vengono incluse
+// come data URL. In questo modo l'SVG non dipende più dal DOM né dalla rete e
+// soprattutto non contamina la tela del video con una sorgente cross-origin.
+async function skyRegFotografaRiquadro(pannello, impronta) {
+  const precedente = sky.reg.riquadri.get(pannello);
+  const voce = { impronta, immagine: precedente && precedente.immagine, inCorso: true };
+  sky.reg.riquadri.set(pannello, voce);
+  const larghezza = pannello.clientWidth, altezza = pannello.clientHeight;
+  if (!larghezza || !altezza) { voce.inCorso = false; return; }
+  try {
+    const copia = pannello.cloneNode(true);
+    const originali = [pannello, ...pannello.querySelectorAll('*')];
+    const copie = [copia, ...copia.querySelectorAll('*')];
+    originali.forEach((el, i) => {
+      const cs = getComputedStyle(el);
+      let css = '';
+      for (let n = 0; n < cs.length; n += 1) {
+        const nome = cs[n];
+        css += `${nome}:${cs.getPropertyValue(nome)};`;
+      }
+      copie[i].setAttribute('style', css);
+      if (el instanceof HTMLImageElement) copie[i].setAttribute('data-reg-img', String(i));
+      if (el instanceof HTMLCanvasElement) {
+        const img = document.createElement('img');
+        img.setAttribute('style', css);
+        try { img.src = el.toDataURL('image/png'); } catch (e) { img.alt = ''; }
+        copie[i].replaceWith(img);
+        copie[i] = img;
+      }
+    });
+    const fotoCopie = Array.from(copia.querySelectorAll('img'));
+    await Promise.all(fotoCopie.map(async img => {
+      const haIndice = img.hasAttribute('data-reg-img');
+      const indice = Number(img.getAttribute('data-reg-img'));
+      img.removeAttribute('data-reg-img');
+      if (!haIndice || !Number.isFinite(indice)) return; // era un canvas, già trasformato in data URL
+      const originale = originali[indice];
+      const sorgente = originale && (originale.currentSrc || originale.src);
+      if (!sorgente || sorgente.startsWith('data:')) return;
+      try {
+        const risposta = await fetch(sorgente, { cache: 'force-cache' });
+        if (!risposta.ok) { img.removeAttribute('src'); return; }
+        const blob = await risposta.blob();
+        img.src = await new Promise((ok, no) => {
+          const lettore = new FileReader();
+          lettore.onload = () => ok(lettore.result);
+          lettore.onerror = no;
+          lettore.readAsDataURL(blob);
+        });
+      } catch (e) {
+        // Un URL esterno dentro all'SVG renderebbe insicura tutta la tela e il
+        // MediaRecorder smetterebbe di produrre dati. Meglio il testo alternativo
+        // nel solo fotogramma di ripiego che perdere l'intero filmato.
+        img.removeAttribute('src');
+      }
+    }));
+    copia.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    const html = new XMLSerializer().serializeToString(copia);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${larghezza}" height="${altezza}">` +
+      `<foreignObject width="100%" height="100%">${html}</foreignObject></svg>`;
+    const immagine = new Image();
+    await new Promise((ok, no) => {
+      immagine.onload = ok; immagine.onerror = no;
+      immagine.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    });
+    const attuale = sky.reg.riquadri.get(pannello);
+    if (attuale === voce) { voce.immagine = immagine; voce.inCorso = false; }
+  } catch (e) {
+    voce.inCorso = false;
+  }
 }
 
 function skyRegSpezzaTesto(ctx, testo, larghezza) {
@@ -27648,6 +27749,7 @@ function skyRegAvvia() {
   // Un risultato per volta: quello di prima si butta solo adesso, così chi ha
   // fatto due registrazioni di fila non si ritrova la prima sparita a metà
   skyRegDimenticaEsito();
+  r.riquadri.clear();
   skyRegChiudiPannello();
 
   if (!skyRegPreparaTela()) {
