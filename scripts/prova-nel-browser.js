@@ -158,6 +158,52 @@ const server = http.createServer((req, res) => {
     riattivazioneSensori.richieste === 1 && !riattivazioneSensori.accesoDopoErrore,
     `${riattivazioneSensori.richieste} richiesta, acceso: ${riattivazioneSensori.accesoDopoErrore}`);
 
+  // La realtà aumentata non deve poter nascere sganciata: il suo pulsante
+  // riattiva da sé «Segui il telefono» e inoltra la richiesta ai sensori
+  // prima di aprire la fotocamera.
+  const aggancioAutomaticoAr = await pagina.evaluate(async () => {
+    const richiediOriginale = skyRichiediSensori;
+    const mediaOriginali = navigator.mediaDevices;
+    const stato = {
+      seguiTelefono: sky.seguiTelefono,
+      ascolto: sky.ascolto,
+      sensori: sky.sensori,
+      sensoriNegati: sky.sensoriNegati,
+      camera: sky.camera
+    };
+    let richiesteSensori = 0;
+    let richiesteCamera = 0;
+    skyRichiediSensori = async () => { richiesteSensori += 1; return true; };
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: async () => {
+        richiesteCamera += 1;
+        return { getTracks: () => [{ stop() {} }] };
+      } }
+    });
+    sky.seguiTelefono = false;
+    sky.ascolto = false;
+    sky.sensori = false;
+    sky.sensoriNegati = false;
+    sky.camera = null;
+    await skyAttivaFotocamera();
+    const risultato = { richiesteSensori, richiesteCamera, segue: sky.seguiTelefono };
+    if (sky.camera) await skyAttivaFotocamera();
+    skyRichiediSensori = richiediOriginale;
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: mediaOriginali
+    });
+    Object.assign(sky, stato);
+    skyTasto('skymap-btn-segui', sky.seguiTelefono);
+    return risultato;
+  });
+  ok('«Realtà aumentata» abilita automaticamente «Segui il telefono»',
+    aggancioAutomaticoAr.richiesteSensori === 1 &&
+      aggancioAutomaticoAr.richiesteCamera === 1 && aggancioAutomaticoAr.segue,
+    `${aggancioAutomaticoAr.richiesteSensori} richiesta sensori, ` +
+      `${aggancioAutomaticoAr.richiesteCamera} fotocamera, segue: ${aggancioAutomaticoAr.segue}`);
+
   // --- una sola via d'uscita per tutte le schede ---
   console.log('\n— chiusura delle schede con Esc —');
   await pagina.click('#btn-impostazioni');
