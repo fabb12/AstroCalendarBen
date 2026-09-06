@@ -25398,6 +25398,30 @@ function skyAlternaSeguiTelefono() {
   skyAggiornaStatoHover();
   skyAggiornaStato();
 
+  // Il tasto deve poter accendere davvero i sensori, non soltanto cambiare
+  // colore. È essenziale su iOS: se nella domanda iniziale si era scelto il
+  // tocco, nessun ascoltatore è ancora attivo e il permesso può essere
+  // richiesto soltanto dentro questo clic. Prima il tasto metteva
+  // `seguiTelefono` a true, ma lasciava la mappa in manuale per sempre.
+  if (nuovo && !sky.ascolto) {
+    skyRichiediSensori().then((ok) => {
+      if (ok) {
+        skyAggiornaStato();
+        skyAvviso('sensori', 'Punta il telefono verso il cielo: la mappa segue quello che inquadri.', 6000);
+        return;
+      }
+      // Un colore acceso senza un sensore dietro prometterebbe una modalità
+      // che non esiste. Si torna quindi allo stato manuale anche quando il
+      // browser non espone affatto l'API, oltre che in caso di rifiuto.
+      sky.seguiTelefono = false;
+      skyTasto('skymap-btn-segui', false);
+      skyAggiornaStatoHover();
+      skyAggiornaStato();
+      skyAvviso('sensori', 'Bussola e giroscopio non disponibili o non autorizzati: la mappa la muovi col dito.', 9000);
+    });
+    return;
+  }
+
   // Con la fotocamera accesa sganciare la vista stacca il cielo dall'immagine:
   // non è più realtà aumentata, è una mappa sopra uno sfondo.
   if (sky.camera && sky.sensori) {
