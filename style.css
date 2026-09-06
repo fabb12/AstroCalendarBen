@@ -850,6 +850,12 @@ body.cielo-immersivo .nav-principale { display: none; }
 .fc-theme-standard td,
 .fc-theme-standard th { border-color: var(--bordo); }
 .fc-theme-standard .fc-scrollgrid { border-radius: var(--raggio-l); overflow: hidden; }
+
+/* Le regole della barra di FullCalendar — qui, e le due in fondo fra le
+   media query — sono **dormienti**: da quando la barra del periodo fa anche
+   il suo mestiere, `headerToolbar` è `false` (§`opzioniCalendarioPerSchermo`)
+   e questi nodi non nascono. Restano perché riaccenderla è una riga sola, e
+   senza tema i suoi tasti tornerebbero bianchi in mezzo al cielo. */
 .fc .fc-toolbar-title {
   color: var(--testo);
   font-weight: 600;
@@ -2308,21 +2314,184 @@ figure.ecl-schema-fig {
   color: var(--testo-3);
 }
 
-/* ------------------------------------------------- SELETTORE DEL MESE
-   Un mese e un anno da scrivere a mano, per andare dove si vuole nel
-   tempo: gli eventi di quel mese vengono calcolati sul momento. */
-.selettore-mese {
+/* --------------------------------------------------- BARRA DEL PERIODO
+   Il comando delle date di calendario e agenda, e ce n'è uno solo.
+
+   Erano tre righe impilate: la barra di FullCalendar (freccia, mese,
+   freccia, oggi), la riga «Vai al mese» coi suoi due campi e i suoi due
+   tasti, e la riga «Oppure un intervallo» con altri due campi e altri due
+   tasti. Su un telefono andavano a capo cinque o sei volte — mezza
+   schermata di controlli sopra a un calendario che ne chiedeva tutta — e
+   dicevano tre volte la stessa cosa: mese e intervallo si escludono a
+   vicenda, e la barra della griglia sfogliava gli stessi mesi del
+   selettore che le stava sotto.
+
+   Resta una riga: il **nome** del periodo che si sta leggendo, le due
+   frecce per scorrerlo, il tondo di oggi. I campi si aprono sotto solo
+   quando si tocca il nome, e portano un modo per volta. */
+.barra-periodo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  /* Su un monitor il nome non deve stirarsi da un bordo all'altro: un tasto
+     largo milletrecento pixel per scriverci «Settembre 2026» non si legge
+     come un comando, si legge come un titolo. Su un telefono la misura non
+     morde e la barra riempie la riga, che è quello che serve lì. */
+  max-width: 440px;
+}
+
+/* Le frecce e il tondo di oggi: quadrati da 38, che è la misura minima di
+   un bersaglio per un pollice senza rubare larghezza al nome */
+.periodo-freccia {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--bordo);
+  background: var(--superficie-alta);
+  color: var(--testo-2);
+  cursor: pointer;
+  transition: color var(--transizione), border-color var(--transizione),
+              background-color var(--transizione);
+}
+
+.periodo-freccia svg { width: 18px; height: 18px; }
+.periodo-freccia:hover { border-color: var(--bordo-forte); color: var(--testo); }
+.periodo-oggi { color: var(--testo-3); }
+.periodo-oggi:hover { color: var(--blu-chiaro); }
+
+/* Il nome si prende tutto lo spazio che resta: è la cosa che si legge, e
+   una data lunga («28 dic 2026 – 5 gen 2027») ci deve stare senza puntini */
+.periodo-nome {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo);
+  background: var(--incassato);
+  color: var(--testo);
+  font-family: var(--titolo);
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color var(--transizione), background-color var(--transizione);
+}
+
+.periodo-nome:hover { border-color: var(--bordo-forte); }
+
+.periodo-testo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.periodo-freccetta {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  color: var(--testo-3);
+  transition: transform var(--transizione);
+}
+
+.periodo-aperto .periodo-freccetta { transform: rotate(180deg); }
+
+/* Con un intervallo acceso è lui a comandare quello che si legge nelle due
+   viste, e il comando lo dice senza bisogno di una parola in più */
+.barra-periodo.intervallo-acceso .periodo-nome {
+  border-color: rgba(76, 141, 255, 0.45);
+  background: rgba(76, 141, 255, 0.12);
+}
+
+/* Il foglio dei campi. Sta appoggiato sopra al contenuto invece che
+   spingerlo in giù: aprirlo non deve far saltare il calendario. */
+.periodo-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-width: 440px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--raggio-m);
+  border: 1px solid var(--bordo-forte);
+  background: var(--superficie-piena);
+  box-shadow: var(--ombra-3);
+}
+
+.periodo-modi {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--incassato);
+}
+
+.periodo-modo {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--testo-2);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transizione), color var(--transizione);
+}
+
+.periodo-modo.attivo {
+  background: var(--blu);
+  color: #fff;
+  box-shadow: var(--alone-blu);
+}
+
+.periodo-foglio { display: grid; gap: 10px; }
+
+.periodo-campi {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
 }
 
-.selettore-mese-etichetta {
-  font-size: 0.8rem;
-  color: var(--testo-3);
+.periodo-campo-mese { flex: 1 1 8em; min-width: 0; }
+
+.periodo-azioni,
+.periodo-scorciatoie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
+
+.periodo-azioni .selettore-mese-btn { flex: 1 1 auto; }
+
+.periodo-chip {
+  flex: 1 1 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px dashed var(--bordo-forte);
+  background: transparent;
+  color: var(--testo-2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--transizione), border-color var(--transizione);
+}
+
+.periodo-chip:hover { color: var(--testo); border-color: var(--blu); }
 
 .selettore-mese-campo {
   background: var(--incassato);
@@ -2363,30 +2532,10 @@ figure.ecl-schema-fig {
 
 .selettore-mese-btn-primario:hover { background: var(--blu-scuro); }
 
-/* ------------------------------------------- SELETTORE DELL'INTERVALLO
-   Due date qualsiasi invece di un mese. Sta sotto al selettore del mese e
-   si legge come la sua alternativa — «oppure» — non come un secondo
-   comando da capire: stessa riga, stessi campi, stessi tasti. Quando è
-   acceso si accende anche lui, perché da lì in poi è lui a comandare
-   quello che si legge nelle due viste. */
-.selettore-intervallo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  padding: 8px 10px;
-  border: 1px solid transparent;
-  border-radius: var(--raggio-m);
-  transition: border-color var(--transizione), background-color var(--transizione);
-}
-
-.selettore-intervallo.intervallo-acceso {
-  border-color: var(--bordo);
-  background: rgba(76, 141, 255, 0.06);
-}
-
+/* Le due date dell'intervallo, dentro al foglio del periodo */
 .etichetta-intervallo {
+  flex: 1 1 calc(50% - 4px);
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2397,6 +2546,8 @@ figure.ecl-schema-fig {
 /* Le caselle data native sono chiare di partenza, come tutti i comandi del
    browser: qui si rimettono nel tema scuro, icona del calendario compresa */
 .campo-data-intervallo {
+  flex: 1 1 auto;
+  min-width: 0;
   color-scheme: dark;
   font-variant-numeric: tabular-nums;
 }
@@ -2414,11 +2565,14 @@ figure.ecl-schema-fig {
 
 /* -------------------------------------------------------------- RESPONSIVE */
 @media (max-width: 640px) {
-  /* Sul telefono il selettore va a capo con ordine: campi affiancati,
-     tasti su una riga tutta loro */
+  /* Sul telefono i campi del foglio vanno a capo con ordine: mese e anno
+     affiancati, tasti su una riga tutta loro */
   .selettore-mese-campo { flex: 1 1 auto; min-width: 0; }
   .selettore-mese-anno { flex: 0 0 5.5em; }
   .selettore-mese-btn { flex: 1 1 auto; }
+  /* Il foglio si prende tutta la larghezza della barra: sotto i 400 px un
+     riquadro più stretto costringerebbe le due date a incolonnarsi */
+  .periodo-menu { max-width: none; }
 
   body .rounded-2xl { border-radius: var(--raggio-l); }
 
@@ -7531,12 +7685,17 @@ body.luogo-immersivo { overflow: hidden; }
   .evento-griglia-icona { display: none; }
   .evento-griglia-titolo { font-size: 0.63rem; }
 
-  /* Il selettore dell'intervallo si stringe: etichetta e casella sulla stessa
-     riga, e i due tasti affiancati come quelli del mese */
-  .selettore-intervallo { padding: 6px 0; gap: 6px; }
-  .selettore-intervallo .selettore-mese-etichetta { flex: 1 1 100%; }
-  .etichetta-intervallo { flex: 1 1 calc(50% - 3px); min-width: 0; }
-  .campo-data-intervallo { flex: 1 1 auto; min-width: 0; }
+  /* La barra del periodo si stringe fino al filo. I quattro tondi scendono a
+     34 px — è l'ultimo gradino su cui un pollice ci prende ancora — perché
+     quello che si guadagna va tutto al nome, che è l'unica cosa da leggere:
+     con quattro tondi da 38 e i loro margini, su uno schermo da 320 al nome
+     restavano centoquaranta pixel, cioè «28 dic 20…». */
+  .barra-periodo { gap: 4px; }
+  .periodo-freccia { width: 34px; height: 34px; }
+  .periodo-freccia svg { width: 16px; height: 16px; }
+  .periodo-nome { min-height: 34px; padding: 5px 10px; font-size: 0.9rem; gap: 6px; }
+  .periodo-menu { padding: 10px; gap: 8px; }
+  .etichetta-intervallo { flex: 1 1 calc(50% - 3px); }
 }
 
 /* Il sottotitolo si vede solo da 900px in su: sotto verrebbe tagliato a metà

@@ -305,29 +305,102 @@
 
     <!-- VISTA CALENDARIO A GRIGLIA -->
     <div id="vista-calendario" class="bg-slate-800 p-4 md:p-6 rounded-2xl border border-slate-700 shadow-xl">
-      <!-- Scelta diretta del mese: anche molto indietro nel tempo -->
-      <div class="selettore-mese" data-selettore-mese>
-        <span class="selettore-mese-etichetta" data-i18n="ui.vai-al-mese">Vai al mese</span>
-        <select data-campo-mese class="selettore-mese-campo" aria-label="Mese"></select>
-        <input type="number" data-campo-anno class="selettore-mese-campo selettore-mese-anno"
-          min="1600" max="3000" step="1" aria-label="Anno" inputmode="numeric">
-        <button type="button" data-azione-mese="vai" class="selettore-mese-btn selettore-mese-btn-primario" data-i18n="ui.mostra">Mostra</button>
-        <button type="button" data-azione-mese="oggi" class="selettore-mese-btn" data-i18n="ui.mese-corrente">Mese corrente</button>
-      </div>
-      <!-- L'intervallo: due date qualsiasi, anche a cavallo di più mesi o di
-           più anni. Un mese per volta risponde a «cosa succede a marzo»; un
-           intervallo risponde alle domande che la gente si fa davvero — le
-           due settimane di ferie, il weekend lungo, i tre mesi che mancano al
-           viaggio. Gli eventi di tutti i mesi che tocca vengono calcolati al
-           momento, come per il mese singolo. -->
-      <div class="selettore-intervallo" data-selettore-intervallo>
-        <span class="selettore-mese-etichetta" data-i18n="ui.oppure-un-intervallo">Oppure un intervallo</span>
-        <label class="etichetta-intervallo" data-i18n="ui.dal">Dal <input type="date" data-campo-da
-          class="selettore-mese-campo campo-data-intervallo" aria-label="Data di inizio"></label>
-        <label class="etichetta-intervallo">al <input type="date" data-campo-a
-          class="selettore-mese-campo campo-data-intervallo" aria-label="Data di fine"></label>
-        <button type="button" data-azione-intervallo="calcola" class="selettore-mese-btn selettore-mese-btn-primario" data-i18n="ui.calcola-gli-eventi">Calcola gli eventi</button>
-        <button type="button" data-azione-intervallo="azzera" class="selettore-mese-btn" data-i18n="ui.togli-lintervallo">Togli l’intervallo</button>
+      <!-- IL PERIODO — un comando solo per il mese e per l'intervallo.
+
+           Erano due file di comandi sempre a schermo: «Vai al mese» con la
+           sua tendina, il suo anno e i suoi due tasti, e sotto «Oppure un
+           intervallo» con altre due caselle e altri due tasti. Su un telefono
+           quella roba andava a capo quattro o cinque volte, cioè mezza
+           schermata di controlli prima ancora di vedere una casella del
+           calendario — e le due file dicevano la stessa cosa, perché mese e
+           intervallo **si escludono a vicenda**: acceso uno, l'altro si
+           spegne (§`impostaMeseSelezionato`). Tenere a schermo tutti e due i
+           modi di scegliere voleva dire chiedere ogni volta quale dei due
+           stesse comandando.
+
+           Quello che si guarda è **un periodo**, e un periodo per volta. A
+           schermo resta perciò una riga sola che dice qual è — «Settembre
+           2026», «1–30 set», «Prossimi eventi» — con le due frecce per
+           scorrerlo e il tasto per tornare a oggi; i campi si aprono sotto
+           solo quando si tocca il nome. -->
+      <div class="barra-periodo" data-periodo="calendario">
+        <button type="button" class="periodo-freccia" data-periodo-passo="-1"
+          aria-label="Periodo precedente" title="Periodo precedente"
+          data-i18n-aria-label="periodo.precedente" data-i18n-title="periodo.precedente">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button type="button" class="periodo-nome" data-periodo-apri
+          aria-haspopup="true" aria-expanded="false" aria-controls="periodo-menu-calendario">
+          <span class="periodo-testo" data-periodo-testo></span>
+          <svg class="periodo-freccetta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <button type="button" class="periodo-freccia" data-periodo-passo="1"
+          aria-label="Periodo successivo" title="Periodo successivo"
+          data-i18n-aria-label="periodo.successivo" data-i18n-title="periodo.successivo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button type="button" class="periodo-freccia periodo-oggi" data-periodo-azione="oggi"
+          aria-label="Torna al mese corrente" title="Torna al mese corrente"
+          data-i18n-aria-label="periodo.oggiTitolo" data-i18n-title="periodo.oggiTitolo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
+        </button>
+
+        <!-- Il foglio dei campi: chiuso quasi sempre, e quando si apre porta
+             un modo per volta. Le due linguette non sono due pannelli da
+             confrontare: sono la stessa domanda fatta in due unità di misura
+             diverse, un mese o due date. -->
+        <div class="periodo-menu hidden" id="periodo-menu-calendario" data-periodo-menu role="group"
+          aria-label="Scegli il periodo" data-i18n-aria-label="periodo.scegli">
+          <div class="periodo-modi" role="tablist">
+            <button type="button" class="periodo-modo" data-periodo-modo="mese" role="tab"
+              aria-selected="true" data-i18n="periodo.modoMese">Mese</button>
+            <button type="button" class="periodo-modo" data-periodo-modo="intervallo" role="tab"
+              aria-selected="false" data-i18n="periodo.modoIntervallo">Intervallo</button>
+          </div>
+
+          <div class="periodo-foglio" data-periodo-foglio="mese">
+            <div class="periodo-campi">
+              <select data-campo-mese class="selettore-mese-campo periodo-campo-mese" aria-label="Mese" data-i18n-aria-label="periodo.mese"></select>
+              <input type="number" data-campo-anno class="selettore-mese-campo selettore-mese-anno"
+                min="1600" max="3000" step="1" aria-label="Anno" inputmode="numeric" data-i18n-aria-label="periodo.anno">
+            </div>
+            <div class="periodo-azioni">
+              <button type="button" data-azione-mese="vai" class="selettore-mese-btn selettore-mese-btn-primario" data-i18n="ui.mostra">Mostra</button>
+              <button type="button" data-azione-mese="oggi" class="selettore-mese-btn" data-i18n="ui.mese-corrente">Mese corrente</button>
+            </div>
+          </div>
+
+          <!-- L'intervallo: due date qualsiasi, anche a cavallo di più mesi o
+               di più anni. Un mese per volta risponde a «cosa succede a
+               marzo»; un intervallo risponde alle domande che la gente si fa
+               davvero — le due settimane di ferie, il weekend lungo, i tre
+               mesi che mancano al viaggio. Gli eventi di tutti i mesi che
+               tocca vengono calcolati al momento, come per il mese singolo. -->
+          <div class="periodo-foglio hidden" data-periodo-foglio="intervallo">
+            <div class="periodo-campi">
+              <label class="etichetta-intervallo" data-i18n="ui.dal">Dal <input type="date" data-campo-da
+                class="selettore-mese-campo campo-data-intervallo" aria-label="Data di inizio" data-i18n-aria-label="periodo.dataInizio"></label>
+              <label class="etichetta-intervallo" data-i18n="periodo.al">al <input type="date" data-campo-a
+                class="selettore-mese-campo campo-data-intervallo" aria-label="Data di fine" data-i18n-aria-label="periodo.dataFine"></label>
+            </div>
+            <!-- Le tre durate che si chiedono davvero, contate da oggi: senza
+                 di loro un intervallo costa due caselle data da compilare a
+                 mano, che sul telefono sono due tastierini -->
+            <div class="periodo-scorciatoie">
+              <button type="button" class="periodo-chip" data-periodo-durata="7" data-i18n="periodo.durata7">7 giorni</button>
+              <button type="button" class="periodo-chip" data-periodo-durata="30" data-i18n="periodo.durata30">30 giorni</button>
+              <button type="button" class="periodo-chip" data-periodo-durata="90" data-i18n="periodo.durata90">3 mesi</button>
+            </div>
+            <div class="periodo-azioni">
+              <button type="button" data-azione-intervallo="calcola" class="selettore-mese-btn selettore-mese-btn-primario" data-i18n="ui.calcola-gli-eventi">Calcola gli eventi</button>
+              <button type="button" data-azione-intervallo="azzera" class="selettore-mese-btn" data-i18n="ui.togli-lintervallo">Togli l’intervallo</button>
+            </div>
+          </div>
+        </div>
       </div>
       <p id="calendario-stato" class="text-xs text-slate-400 mb-3"></p>
       <div id="calendario-griglia"></div>
@@ -335,26 +408,77 @@
 
     <!-- VISTA AGENDA A LISTA -->
     <div id="vista-agenda" class="hidden grid gap-6">
-      <!-- Stesso selettore del calendario: le due viste restano allineate -->
+      <!-- Lo stesso comando del calendario, con in più «Tutti i prossimi»:
+           quello è dell'agenda soltanto — la griglia un mese lo mostra
+           comunque, mentre l'elenco può anche non avere nessun periodo e dire
+           quello che viene. -->
       <div>
-        <div class="selettore-mese" data-selettore-mese>
-          <span class="selettore-mese-etichetta" data-i18n="ui.mese">Mese</span>
-          <select data-campo-mese class="selettore-mese-campo" aria-label="Mese"></select>
-          <input type="number" data-campo-anno class="selettore-mese-campo selettore-mese-anno"
-            min="1600" max="3000" step="1" aria-label="Anno" inputmode="numeric">
-          <button type="button" data-azione-mese="vai" class="selettore-mese-btn selettore-mese-btn-primario" data-i18n="ui.mostra">Mostra</button>
-          <button type="button" data-azione-mese="oggi" class="selettore-mese-btn" data-i18n="ui.mese-corrente">Mese corrente</button>
-          <button type="button" data-azione-mese="prossimi" class="selettore-mese-btn" data-i18n="ui.tutti-i-prossimi">Tutti i prossimi</button>
-        </div>
-        <!-- Lo stesso intervallo del calendario: le due viste restano allineate -->
-        <div class="selettore-intervallo" data-selettore-intervallo>
-          <span class="selettore-mese-etichetta" data-i18n="ui.oppure-un-intervallo">Oppure un intervallo</span>
-          <label class="etichetta-intervallo" data-i18n="ui.dal">Dal <input type="date" data-campo-da
-            class="selettore-mese-campo campo-data-intervallo" aria-label="Data di inizio"></label>
-          <label class="etichetta-intervallo">al <input type="date" data-campo-a
-            class="selettore-mese-campo campo-data-intervallo" aria-label="Data di fine"></label>
-          <button type="button" data-azione-intervallo="calcola" class="selettore-mese-btn selettore-mese-btn-primario" data-i18n="ui.calcola-gli-eventi">Calcola gli eventi</button>
-          <button type="button" data-azione-intervallo="azzera" class="selettore-mese-btn" data-i18n="ui.togli-lintervallo">Togli l’intervallo</button>
+        <div class="barra-periodo" data-periodo="agenda">
+          <button type="button" class="periodo-freccia" data-periodo-passo="-1"
+            aria-label="Periodo precedente" title="Periodo precedente"
+            data-i18n-aria-label="periodo.precedente" data-i18n-title="periodo.precedente">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button type="button" class="periodo-nome" data-periodo-apri
+            aria-haspopup="true" aria-expanded="false" aria-controls="periodo-menu-agenda">
+            <span class="periodo-testo" data-periodo-testo></span>
+            <svg class="periodo-freccetta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <button type="button" class="periodo-freccia" data-periodo-passo="1"
+            aria-label="Periodo successivo" title="Periodo successivo"
+            data-i18n-aria-label="periodo.successivo" data-i18n-title="periodo.successivo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <button type="button" class="periodo-freccia periodo-oggi" data-periodo-azione="oggi"
+            aria-label="Torna al mese corrente" title="Torna al mese corrente"
+            data-i18n-aria-label="periodo.oggiTitolo" data-i18n-title="periodo.oggiTitolo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
+          </button>
+
+          <div class="periodo-menu hidden" id="periodo-menu-agenda" data-periodo-menu role="group"
+            aria-label="Scegli il periodo" data-i18n-aria-label="periodo.scegli">
+            <div class="periodo-modi" role="tablist">
+              <button type="button" class="periodo-modo" data-periodo-modo="mese" role="tab"
+                aria-selected="true" data-i18n="periodo.modoMese">Mese</button>
+              <button type="button" class="periodo-modo" data-periodo-modo="intervallo" role="tab"
+                aria-selected="false" data-i18n="periodo.modoIntervallo">Intervallo</button>
+            </div>
+
+            <div class="periodo-foglio" data-periodo-foglio="mese">
+              <div class="periodo-campi">
+                <select data-campo-mese class="selettore-mese-campo periodo-campo-mese" aria-label="Mese" data-i18n-aria-label="periodo.mese"></select>
+                <input type="number" data-campo-anno class="selettore-mese-campo selettore-mese-anno"
+                  min="1600" max="3000" step="1" aria-label="Anno" inputmode="numeric" data-i18n-aria-label="periodo.anno">
+              </div>
+              <div class="periodo-azioni">
+                <button type="button" data-azione-mese="vai" class="selettore-mese-btn selettore-mese-btn-primario" data-i18n="ui.mostra">Mostra</button>
+                <button type="button" data-azione-mese="oggi" class="selettore-mese-btn" data-i18n="ui.mese-corrente">Mese corrente</button>
+                <button type="button" data-azione-mese="prossimi" class="selettore-mese-btn" data-i18n="ui.tutti-i-prossimi">Tutti i prossimi</button>
+              </div>
+            </div>
+
+            <div class="periodo-foglio hidden" data-periodo-foglio="intervallo">
+              <div class="periodo-campi">
+                <label class="etichetta-intervallo" data-i18n="ui.dal">Dal <input type="date" data-campo-da
+                  class="selettore-mese-campo campo-data-intervallo" aria-label="Data di inizio" data-i18n-aria-label="periodo.dataInizio"></label>
+                <label class="etichetta-intervallo" data-i18n="periodo.al">al <input type="date" data-campo-a
+                  class="selettore-mese-campo campo-data-intervallo" aria-label="Data di fine" data-i18n-aria-label="periodo.dataFine"></label>
+              </div>
+              <div class="periodo-scorciatoie">
+                <button type="button" class="periodo-chip" data-periodo-durata="7" data-i18n="periodo.durata7">7 giorni</button>
+                <button type="button" class="periodo-chip" data-periodo-durata="30" data-i18n="periodo.durata30">30 giorni</button>
+                <button type="button" class="periodo-chip" data-periodo-durata="90" data-i18n="periodo.durata90">3 mesi</button>
+              </div>
+              <div class="periodo-azioni">
+                <button type="button" data-azione-intervallo="calcola" class="selettore-mese-btn selettore-mese-btn-primario" data-i18n="ui.calcola-gli-eventi">Calcola gli eventi</button>
+                <button type="button" data-azione-intervallo="azzera" class="selettore-mese-btn" data-i18n="ui.togli-lintervallo">Togli l’intervallo</button>
+              </div>
+            </div>
+          </div>
         </div>
         <p id="agenda-stato" class="text-xs text-slate-400"></p>
       </div>

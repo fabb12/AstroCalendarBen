@@ -739,6 +739,23 @@ window.ASTRO_DIZIONARI['it'] = {
     'mese.calcoloIntervalloMesi': 'Calcolo gli eventi dal {da} al {a}: {n} mesi…',
     'mese.calcoloAvanzamento': 'Calcolo gli eventi: {fatti} mesi su {quanti}…',
 
+    // --- La barra del periodo (calendario e agenda) --------------------
+    'periodo.precedente': 'Periodo precedente',
+    'periodo.successivo': 'Periodo successivo',
+    'periodo.oggiTitolo': 'Torna al mese corrente',
+    'periodo.scegli': 'Scegli il periodo',
+    'periodo.modoMese': 'Mese',
+    'periodo.modoIntervallo': 'Intervallo',
+    'periodo.mese': 'Mese',
+    'periodo.anno': 'Anno',
+    'periodo.al': 'al',
+    'periodo.dataInizio': 'Data di inizio',
+    'periodo.dataFine': 'Data di fine',
+    'periodo.durata7': '7 giorni',
+    'periodo.durata30': '30 giorni',
+    'periodo.durata90': '3 mesi',
+    'periodo.prossimi': 'Prossimi eventi',
+
     // --- Lo schermo intero del planetario ------------------------------
     'schermo.esciTitolo': 'Esci dallo schermo intero (anche con Esc)',
 

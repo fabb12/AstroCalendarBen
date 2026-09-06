@@ -8,68 +8,87 @@ Tutto il resto è fatto, provato e dentro al tetto.
 
 ## Ultimo intervento completato
 
-**Il planetario si prende tutto lo schermo, e il tasto delle stazioni porta
-davvero al passaggio.** Richiesta: «lo schermo del planetario deve occupare il
-massimo spazio senza lasciare spazi vuoti soprattutto negli schermi piccoli,
-mantenendo comunque il menu; e nella sezione Stasera, il tasto planetario delle
-previsioni delle stazioni deve mostrare il tempo e la posizione giusta e
-abilitare automaticamente il tracking».
+**Il comando delle date di calendario e agenda si è ridotto a una riga.**
+Richiesta: «nella sezione calendario e agenda comprimi in un unico comando la
+gestione delle date tra singolo mese e intervallo di date; controllo
+intelligente e comodo anche per schermo piccolo; lo scopo è dare più spazio
+al contenuto di calendario e schede».
 
-### 1. La fascia nera sotto al cielo — `style.css`
+### 1. Il difetto, misurato
 
-La catena delle altezze del planetario è sei anelli (corpo → main → vista →
-scena → riquadro → tela) e basta che **uno** sia alto quanto il suo contenuto
-perché tutti quelli dopo perdano l'altezza definita: una `height: 100%` di
-un'altezza che non c'è non vale niente, e nessuno lo dice. L'anello rotto era
-`.vista-cielo`, una griglia con `align-content: start`. Misurato: su un
-telefono da 360×640 il cielo era alto **383 px** dove ce n'erano 529 liberi —
-centoquarantasei pixel di niente appena sopra alla barra della navigazione — e
-su un tablet 872 su 1067. Adesso la riga si stira (`minmax(0, 1fr)`) e ogni
-anello dichiara il suo `min-height: 0`. Il cielo passa a 526 px sul telefono,
-730 su un 390×844, 1067 sul tablet: zero spazi vuoti, testata e menu al loro
-posto. Di rimbalzo è tornata verde una prova di `prova-fumetto.js` a 360×640,
-che sullo spazio in meno falliva.
+Sopra alla griglia c'erano **tre file di comandi impilate**: la barra di
+FullCalendar (freccia, mese, freccia, oggi), la riga «Vai al mese» con la sua
+tendina, il suo anno e i suoi due tasti, e la riga «Oppure un intervallo» con
+altre due caselle data e altri due tasti. A 320 px andavano a capo cinque
+volte: **346 pixel** di controlli su uno schermo alto 640, cioè più di metà
+schermata prima di vedere una casella del calendario.
 
-Con lo spazio recuperato è saltato fuori l'angolo in basso a sinistra, dove da
-quando l'avviso sta sul cielo se lo contendono in tre: l'avviso, la barra del
-terreno e la carta dello spostamento. Le ultime due erano ancorate a un numero
-scritto a mano (`--sopra-barra-tempo` più quaranta pixel), buono per un avviso
-di una riga e non per uno di tre — e su un telefono sono quasi sempre di tre:
-la barra finiva stampata dentro al riquadro ambra. L'altezza vera la scrive
-adesso `skyMisuraAvviso` in `--alta-avviso-cielo`, e il CSS la somma.
+E dicevano tre volte la stessa cosa. Mese e intervallo **si escludono a
+vicenda** — `impostaMeseSelezionato` spegne l'intervallo e
+`impostaIntervalloSelezionato` spegne il mese — quindi tenere a schermo tutti e
+due i modi di scegliere voleva dire chiedere ogni volta quale dei due stesse
+comandando; e la barra di FullCalendar sfogliava gli stessi mesi del selettore
+che le stava sotto.
 
-### 2. «Vai al planetario» di una stazione — `app.js`
+### 2. La barra del periodo — `index.html`, `app.js` §1-quater, `style.css`
 
-Quattro difetti, un tasto solo. Il grosso era l'**ordine**: l'orologio si
-spostava *prima* di `cercaNelCielo`, e `mostraVista('cielo')`, arrivando da
-un'altra vista, lo **azzera** di proposito — misurato, da Stasera si arrivava
-sistematicamente sul cielo di adesso, cioè quasi sempre di giorno e senza
-nessuna stazione. Poi: le posizioni non si rifacevano per l'ora nuova (una
-stazione fa **un grado al secondo**), con «Segui il telefono» acceso nessun
-centraggio valeva, e l'inseguimento non si accendeva — una stazione attraversa
-il cielo in cinque minuti e centrata una volta scivola fuori mentre la si
-guarda. I due tasti («Vai al planetario» e «Dov'è ora») sono adesso una
-funzione sola, `skyPuntaStazione`, e cambia soltanto *quando*. Dentro c'è anche
-la trappola di `Number(null)`, che vale **zero** e non NaN: chiedendo a
-`Number.isFinite` se c'era un istante, «Dov'è ora» rispondeva di sì e portava
-l'orologio al 1970.
+Quello che si guarda è **un periodo**, e un periodo per volta. A schermo resta
+una riga: il **nome** di quel periodo («Settembre 2026», «6 set – 5 ott»,
+«Prossimi eventi»), le due frecce per scorrerlo, il tondo di oggi. I campi
+stanno in un foglio che si apre solo se lo si chiede, appoggiato **sopra** al
+contenuto invece che spingerlo in giù — aprirlo non deve far saltare il
+calendario — con due linguette, Mese e Intervallo.
 
-Quattro chiavi nuove nei due dizionari (`stazione.*`): l'audit resta a 364.
+`headerToolbar` di FullCalendar è passato a `false`: le sue regole di stile
+restano dormienti, col perchè scritto accanto a `.fc .fc-toolbar-title`.
+
+Misurato dopo, stessa sonda: **63 px** a 320 e a 390, **73** sul computer (da
+139). Sul telefono sono 283 pixel restituiti alla griglia.
+
+Tre cose non sono decorazione, e ognuna viene da una domanda vera:
+- riaprendo il foglio con un intervallo acceso si riapre **sull'intervallo**:
+  chi ce l'ha lo vuole ritoccare, non ricominciare da un mese;
+- le frecce, con un intervallo acceso, lo spostano **di quanto è lungo** e non
+  di un mese: chi guarda le due settimane di ferie vuole le due settimane dopo;
+- le tre durate già pronte (7 giorni, 30, 3 mesi) esistono perchè altrimenti
+  un intervallo costa due caselle data compilate a mano, che su un telefono
+  sono due tastierini e un ripensamento.
+
+Il nome si **abbrevia** sul telefono (`meseCorto`, e l'anno di un intervallo di
+quest'anno non si scrive): a 320 px al nome restano centosedici pixel e
+«Settembre 2026» ne chiede centoventisei — è la stessa scelta che faceva il
+`titleFormat` della barra di FullCalendar. Da lì la riga in
+`ridisegnaPerDispositivo`, se no chi allarga la finestra si tiene «Set 2026»
+per sempre. La forma lunga sta nel `title` del tasto.
+
+Trappola trovata misurando: lo stato del foglio si scrive `data-modo-periodo`
+e **non** `data-periodo-modo`, che è già il nome dei due tasti delle linguette.
+Da dentro la barra non fa danno — un `querySelectorAll` su un elemento non
+restituisce l'elemento stesso — ma chi lo cerca **dal documento** si ritrova
+fra le linguette anche tutta la barra: è esattamente quello che è successo alla
+prova, che ne ha trovate tre invece di due.
+
+Chiavi nuove nei due dizionari sotto `periodo.*`; zero stringhe italiane
+cablate in più (`controlla-i18n.js` dà lo stesso identico elenco di prima —
+il totale sforava già di due prima di questo lavoro, ed è roba d'altri).
 
 ### 3. Le prove
 
-`scripts/prova-stazioni.js`, nuovo: apre l'app in un Chromium, mette i dati
-orbitali a mano (Celestrak non si raggiunge dalle prove), prende un passaggio
-vero dai conti dell'app e controlla che il tasto porti l'orologio sul culmine,
-punti la mappa dove sarà la stazione **a quell'istante** (non adesso), accenda
-l'inseguimento e lo tenga un minuto dopo, che «Dov'è ora» torni al tempo reale
-e che con la bussola accesa la vista si sganci. Parte da **Stasera** di
-proposito: provandolo col planetario già davanti la riga che azzerava
-l'orologio non gira, e la prova diventerebbe cieca proprio sul difetto che deve
-prendere. Sul codice di prima è rossa in nove punti.
+`prova-lingua.js`: tutto verde, calendario e agenda restano a **zero** frasi
+italiane dopo il cambio lingua.
 
-`prova-nel-browser.js` e `prova-fumetto.js`: nessuna regressione (le poche
-rosse sono le stesse di prima, misurate a parte sul codice pulito).
+Una prova a parte (fuori dal repository) apre l'app a 320x640, 390x844 e
+1280x900 e controlla che la barra sia una riga sola, che il nome ci stia per
+intero senza puntini, che il foglio non esca dallo schermo, che le linguette si
+diano il cambio, che le frecce scorrano il mese e l'intervallo, che Esc e un
+tocco fuori chiudano, che le due viste restino allineate e che in inglese le
+linguette e le durate siano tradotte. Tutto verde.
+
+**Da rifare a mano**: in questo ambiente il CDN è chiuso, quindi FullCalendar
+non si carica e `fullCalendarInstance` resta `null`. Le due cose che passano da
+lui — che la griglia si muova con le frecce e che la fascia dell'intervallo si
+disegni — sono state controllate sullo **stato** che le comanda, non sui pixel.
+Vanno guardate con la rete aperta.
 
 ## Cosa resta
 

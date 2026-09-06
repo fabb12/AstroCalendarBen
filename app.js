@@ -464,17 +464,15 @@ function quanto(telefono, tablet, computer) {
 // Le opzioni del calendario a griglia cambiano con lo spazio: sul telefono
 // due eventi per casella e il resto sotto "+altri", sul monitor tutti
 function opzioniCalendarioPerSchermo() {
-  const telefono = (dispositivoAttuale || profiloDispositivo()) === 'telefono';
   return {
     dayMaxEvents: quanto(2, 3, 6),
-    // Sul telefono la barra in cima si riduce all'osso: freccia, mese, freccia.
-    // Per tornare a oggi c'è già "Mese corrente" nel selettore qui sopra.
-    headerToolbar: telefono
-      ? { left: 'prev', center: 'title', right: 'next' }
-      : { left: 'prev,next today', center: 'title', right: '' },
-    titleFormat: telefono
-      ? { year: 'numeric', month: 'short' }
-      : { year: 'numeric', month: 'long' }
+    // La barra di FullCalendar non c'è più. Diceva esattamente le stesse tre
+    // cose della barra del periodo che le sta sopra — mese indietro, nome del
+    // mese, mese avanti, e «oggi» — quindi era una riga di comandi ripetuta,
+    // e su un telefono una riga di comandi è una settimana di calendario in
+    // meno. Adesso a sfogliare i mesi è la barra del periodo (§1-quater), che
+    // è anche l'unico posto in cui le date si scelgono.
+    headerToolbar: false
   };
 }
 
@@ -729,6 +727,10 @@ function ridisegnaPerDispositivo() {
     // altrimenti cancelleremmo il "Caricamento…" con un "non disponibile"
     if (Object.keys(satTle).length) mostraPassaggiSatelliti();
   }
+  // Il nome del periodo si scrive per esteso o abbreviato a seconda di quanto
+  // è larga la barra (`periodoNome`): senza questa riga, chi apre l'app col
+  // telefono e poi allarga la finestra si tiene «Set 2026» per sempre.
+  if (typeof sincronizzaSelettoriMese === 'function') sincronizzaSelettoriMese();
   // Le tele. Ognuna ha già il suo `resize`, ma girando il telefono quel
   // `resize` arriva mentre la finestra ha ancora le misure di prima (su iOS
   // sempre): la passata buona è questa, che parte a 120 e a 300 millisecondi
@@ -6229,12 +6231,115 @@ function riempiNomiMesi(selMese) {
   if (scelto !== '') selMese.value = scelto;
 }
 
-// Riempie i due selettori (calendario e agenda) e ne collega i tasti
+// --- La barra del periodo ---------------------------------------------------
+//   Un comando solo per le due domande che prima ne avevano uno per uno: «fammi
+//   vedere marzo» e «fammi vedere dal 3 al 17». Sono la stessa domanda in due
+//   unità di misura, si escludono a vicenda (accendere l'una spegne l'altra:
+//   §`impostaMeseSelezionato`), e tenere a schermo tutti e due i modi di
+//   chiederla voleva dire, su un telefono, mezza schermata di controlli sopra
+//   al calendario e la necessità di indovinare ogni volta quale dei due stesse
+//   comandando.
+//
+//   A schermo resta una riga: il **nome** del periodo che si sta leggendo, due
+//   frecce per scorrerlo e il tondo per tornare a oggi. I campi stanno in un
+//   foglio che si apre solo se lo si chiede, e che porta un modo per volta.
+
+// Chiude i fogli aperti. `tranne` è la barra che si sta per aprire: le due
+// viste non sono mai a schermo insieme, ma un foglio lasciato aperto dietro a
+// una vista nascosta si ritroverebbe aperto tornandoci.
+function periodoChiudiFogli(tranne) {
+  document.querySelectorAll('[data-periodo]').forEach(barra => {
+    if (barra === tranne) return;
+    const menu = barra.querySelector('[data-periodo-menu]');
+    if (menu) menu.classList.add('hidden');
+    barra.classList.remove('periodo-aperto');
+    const apri = barra.querySelector('[data-periodo-apri]');
+    if (apri) apri.setAttribute('aria-expanded', 'false');
+  });
+}
+
+// Quale dei due modi mostra il foglio. Le linguette non sono due pannelli da
+// confrontare: sono la stessa domanda in due unità di misura, e se ne vede una.
+function periodoImpostaModo(barra, modo) {
+  // `data-modo-periodo` e non `data-periodo-modo`: quel secondo nome è già
+  // dei due tasti delle linguette. Da dentro non fa danno — un
+  // `querySelectorAll` su un elemento non restituisce l'elemento stesso — ma
+  // chiunque lo cerchi **dal documento** (`'#vista-calendario
+  // [data-periodo-modo]'`: una prova, un foglio di stile) si ritrova fra le
+  // linguette anche tutta la barra, e non lo dice nessuno. È successo alla
+  // prova della lingua, che si è trovata tre linguette invece di due.
+  barra.dataset.modoPeriodo = modo;
+  barra.querySelectorAll('[data-periodo-modo]').forEach(chip => {
+    const suo = chip.dataset.periodoModo === modo;
+    chip.classList.toggle('attivo', suo);
+    chip.setAttribute('aria-selected', suo ? 'true' : 'false');
+  });
+  barra.querySelectorAll('[data-periodo-foglio]').forEach(foglio => {
+    foglio.classList.toggle('hidden', foglio.dataset.periodoFoglio !== modo);
+  });
+}
+
+function periodoApriFoglio(barra) {
+  const menu = barra.querySelector('[data-periodo-menu]');
+  if (!menu) return;
+  periodoChiudiFogli(barra);
+  // Il modo si sceglie da solo su quello che sta comandando adesso: chi ha un
+  // intervallo acceso e riapre il foglio lo vuole ritoccare, non ricominciare
+  // da un mese.
+  periodoImpostaModo(barra, intervalloSelezionato ? 'intervallo' : 'mese');
+  menu.classList.remove('hidden');
+  barra.classList.add('periodo-aperto');
+  const apri = barra.querySelector('[data-periodo-apri]');
+  if (apri) apri.setAttribute('aria-expanded', 'true');
+}
+
+function periodoAlternaFoglio(barra) {
+  const menu = barra.querySelector('[data-periodo-menu]');
+  if (menu && !menu.classList.contains('hidden')) periodoChiudiFogli(null);
+  else periodoApriFoglio(barra);
+}
+
+// Le frecce. Con un mese scelto scorrono i mesi; con un intervallo acceso lo
+// spostano di **quanto è lungo**: chi guarda le due settimane di ferie e preme
+// la freccia vuole le due settimane dopo, non il mese dopo.
+function periodoScorri(passo) {
+  const giorno = 86400000;
+  if (intervalloSelezionato) {
+    const da = intervalloSelezionato.inizio;
+    const a = intervalloSelezionato.fine;
+    const quanti = Math.max(1, Math.round((a.getTime() - da.getTime()) / giorno));
+    const salto = passo * quanti;
+    impostaIntervalloSelezionato(
+      new Date(da.getFullYear(), da.getMonth(), da.getDate() + salto),
+      new Date(a.getFullYear(), a.getMonth(), a.getDate() + salto));
+    return;
+  }
+  const rif = meseSelezionato
+    ? new Date(meseSelezionato.anno, meseSelezionato.mese, 1)
+    : meseMostratoDalCalendario();
+  const meta = new Date(rif.getFullYear(), rif.getMonth() + passo, 1);
+  // Fuori dai binari non si va, e non ci si va nemmeno a metà: il capolinea è
+  // il capolinea, e un tasto che non fa niente è meglio di un salto altrove.
+  if (meta.getFullYear() < ANNO_MINIMO_NAVIGABILE || meta.getFullYear() > ANNO_MASSIMO_NAVIGABILE) return;
+  impostaMeseSelezionato(meta.getFullYear(), meta.getMonth());
+}
+
+// Le durate già pronte dell'intervallo, contate da oggi. Senza di loro un
+// intervallo costa due caselle data compilate a mano, che su un telefono sono
+// due tastierini e un ripensamento.
+function periodoDurataDaOggi(giorni) {
+  const oggi = new Date();
+  const inizio = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate());
+  const fine = new Date(inizio.getFullYear(), inizio.getMonth(), inizio.getDate() + giorni - 1);
+  impostaIntervalloSelezionato(inizio, fine);
+}
+
+// Riempie le barre del periodo (calendario e agenda) e ne collega i comandi
 function inizializzaSelettoriMese() {
   const oggi = new Date();
-  document.querySelectorAll('[data-selettore-mese]').forEach(box => {
-    const selMese = box.querySelector('[data-campo-mese]');
-    const campoAnno = box.querySelector('[data-campo-anno]');
+  document.querySelectorAll('[data-periodo]').forEach(barra => {
+    const selMese = barra.querySelector('[data-campo-mese]');
+    const campoAnno = barra.querySelector('[data-campo-anno]');
 
     if (selMese) {
       riempiNomiMesi(selMese);
@@ -6246,27 +6351,15 @@ function inizializzaSelettoriMese() {
       campoAnno.value = String(oggi.getFullYear());
       // Invio nel campo anno = "Mostra", senza dover cercare il tasto
       campoAnno.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { e.preventDefault(); vaiAlMeseDelSelettore(box); }
+        if (e.key === 'Enter') { e.preventDefault(); vaiAlMeseDelSelettore(barra); }
       });
     }
 
-    box.querySelectorAll('[data-azione-mese]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const azione = btn.dataset.azioneMese;
-        if (azione === 'vai') vaiAlMeseDelSelettore(box);
-        else if (azione === 'oggi') impostaMeseSelezionato(oggiAnno(), oggiMese());
-        else if (azione === 'prossimi') azzeraMeseSelezionato();
-      });
-    });
-  });
-
-  // I due selettori d'intervallo (calendario e agenda): stessi campi, stesso
-  // effetto, e quello che si scrive in uno compare anche nell'altro
-  document.querySelectorAll('[data-selettore-intervallo]').forEach(box => {
-    const da = box.querySelector('[data-campo-da]');
-    const a = box.querySelector('[data-campo-a]');
-    // Si parte da oggi e dai trenta giorni dopo: è l'intervallo che quasi
-    // tutti vogliono, e trovarlo già scritto è metà del lavoro fatto
+    // Le due caselle dell'intervallo: si parte da oggi e dai trenta giorni
+    // dopo, che è l'intervallo che quasi tutti vogliono — trovarlo già scritto
+    // è metà del lavoro fatto
+    const da = barra.querySelector('[data-campo-da]');
+    const a = barra.querySelector('[data-campo-a]');
     const fra30 = new Date(oggi.getFullYear(), oggi.getMonth(), oggi.getDate() + 30);
     if (da && !da.value) da.value = dataIso(oggi);
     if (a && !a.value) a.value = dataIso(fra30);
@@ -6275,17 +6368,105 @@ function inizializzaSelettoriMese() {
       campo.min = `${ANNO_MINIMO_NAVIGABILE}-01-01`;
       campo.max = `${ANNO_MASSIMO_NAVIGABILE}-12-31`;
       campo.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { e.preventDefault(); vaiAllIntervalloDelSelettore(box); }
+        if (e.key === 'Enter') { e.preventDefault(); vaiAllIntervalloDelSelettore(barra); }
       });
     });
-    box.querySelectorAll('[data-azione-intervallo]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (btn.dataset.azioneIntervallo === 'calcola') vaiAllIntervalloDelSelettore(box);
+
+    // Un ascoltatore solo per tutta la barra: i comandi sono nove e stanno
+    // tutti qui dentro, e appenderne nove vorrebbe dire nove chiusure che
+    // tengono viva la stessa `barra`.
+    barra.addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (!btn || !barra.contains(btn)) return;
+      const d = btn.dataset;
+      if (d.periodoApri !== undefined) { periodoAlternaFoglio(barra); return; }
+      if (d.periodoPasso) { periodoScorri(parseInt(d.periodoPasso, 10)); return; }
+      if (d.periodoAzione === 'oggi') { impostaMeseSelezionato(oggiAnno(), oggiMese()); return; }
+      if (d.periodoModo) { periodoImpostaModo(barra, d.periodoModo); return; }
+      if (d.periodoDurata) { periodoDurataDaOggi(parseInt(d.periodoDurata, 10)); periodoChiudiFogli(null); return; }
+      if (d.azioneMese) {
+        if (d.azioneMese === 'vai') vaiAlMeseDelSelettore(barra);
+        else if (d.azioneMese === 'oggi') impostaMeseSelezionato(oggiAnno(), oggiMese());
+        else if (d.azioneMese === 'prossimi') azzeraMeseSelezionato();
+        periodoChiudiFogli(null);
+        return;
+      }
+      if (d.azioneIntervallo) {
+        if (d.azioneIntervallo === 'calcola') vaiAllIntervalloDelSelettore(barra);
         else azzeraIntervalloSelezionato();
-      });
+        periodoChiudiFogli(null);
+      }
+    });
+
+    // Esc chiude il foglio senza toccare quello che si stava scrivendo. Non
+    // passa dall'ascoltatore globale di `ui-nuova.js`: quello si occupa delle
+    // finestre col velo, e questo non è una finestra.
+    barra.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      const menu = barra.querySelector('[data-periodo-menu]');
+      if (!menu || menu.classList.contains('hidden')) return;
+      e.stopPropagation();
+      periodoChiudiFogli(null);
+      const apri = barra.querySelector('[data-periodo-apri]');
+      if (apri) apri.focus();
     });
   });
+
+  // Un tocco fuori chiude. Va in cattura, se no un comando che riscrive la
+  // vista sotto (e con lei il nodo toccato) farebbe risultare il tocco
+  // «fuori» da una barra che nel frattempo non c'è più.
+  document.addEventListener('pointerdown', e => {
+    if (e.target.closest && e.target.closest('[data-periodo]')) return;
+    periodoChiudiFogli(null);
+  }, true);
+
   sincronizzaSelettoriMese();
+}
+
+// Il nome del periodo scritto sulla barra: è la sola cosa che di quel comando
+// si legge senza aprirlo, quindi deve dire lo stato, non l'ultimo campo
+// toccato. `quale` è la vista, perché le due non hanno gli stessi stati: la
+// griglia un mese lo mostra comunque, l'agenda può non avere nessun periodo.
+function periodoNome(quale, opz = {}) {
+  // Quanto è stretto il posto in cui il nome finisce. A 320 px, fra i quattro
+  // tondi e le imbottiture, al nome restano centosedici pixel: «Settembre
+  // 2026» ne chiede centoventisei. Il `title` del tasto invece ha spazio
+  // infinito e porta sempre la forma lunga (`stretto: false`).
+  const stretto = opz.stretto !== undefined ? opz.stretto
+    : (dispositivoAttuale || profiloDispositivo()) === 'telefono';
+  if (intervalloSelezionato) {
+    return periodoNomeIntervallo(intervalloSelezionato.inizio, intervalloSelezionato.fine, stretto);
+  }
+  if (quale === 'agenda' && !meseSelezionato) return astroI18n.t('periodo.prossimi');
+  const rif = meseSelezionato
+    ? new Date(meseSelezionato.anno, meseSelezionato.mese, 1)
+    : meseMostratoDalCalendario();
+  // Sul telefono il mese si abbrevia — è la stessa scelta che faceva il
+  // `titleFormat` della barra di FullCalendar, e per lo stesso motivo.
+  return `${stretto ? meseCorto(rif) : NOMI_MESI[rif.getMonth()]} ${rif.getFullYear()}`;
+}
+
+// «Set», «Sep»: il nome corto del mese, con l'iniziale maiuscola come vuole
+// il posto in cui finisce (in italiano `Intl` lo dà minuscolo e col punto)
+function meseCorto(d) {
+  const nome = d.toLocaleDateString(localeData(), { month: 'short' }).replace(/\.$/, '');
+  return nome.charAt(0).toUpperCase() + nome.slice(1);
+}
+
+// «12–26 ago 2026» dentro allo stesso mese, «28 dic 2026 – 5 gen 2027» a
+// cavallo: quello che si ripete si scrive una volta sola. Stretto, l'anno si
+// scrive solo quando non è questo — che una vacanza sia di quest'anno è il
+// caso normale, e dirlo costa cinque caratteri su diciotto, cioè la
+// differenza fra un nome che si legge e uno coi puntini.
+function periodoNomeIntervallo(da, a, stretto) {
+  const corta = (d, conAnno) => d.toLocaleDateString(localeData(),
+    conAnno ? { day: 'numeric', month: 'short', year: 'numeric' }
+            : { day: 'numeric', month: 'short' });
+  const stessoAnno = da.getFullYear() === a.getFullYear();
+  const annoOvvio = stretto && stessoAnno && a.getFullYear() === new Date().getFullYear();
+  const coda = corta(a, !annoOvvio);
+  if (stessoAnno && da.getMonth() === a.getMonth()) return `${da.getDate()}–${coda}`;
+  return `${corta(da, !stessoAnno)} – ${coda}`;
 }
 
 // La data nel formato che vuole `<input type="date">`, in ora locale. Non si
@@ -6543,7 +6724,7 @@ function sincronizzaSelettoriMese() {
   const anno = riferimento.getFullYear();
   const mese = riferimento.getMonth();
 
-  document.querySelectorAll('[data-selettore-mese]').forEach(box => {
+  document.querySelectorAll('[data-periodo]').forEach(box => {
     const selMese = box.querySelector('[data-campo-mese]');
     const campoAnno = box.querySelector('[data-campo-anno]');
     // I dodici nomi dei mesi: sono scritti dentro alle `<option>` una volta
@@ -6563,16 +6744,23 @@ function sincronizzaSelettoriMese() {
   // I campi dell'intervallo, tenuti d'accordo fra le due viste. Chi ci sta
   // scrivendo dentro non si tocca: riscrivergli il campo sotto le dita è il
   // modo più veloce di far sbagliare una data.
-  if (intervalloSelezionato) {
-    document.querySelectorAll('[data-selettore-intervallo]').forEach(box => {
+  document.querySelectorAll('[data-periodo]').forEach(box => {
+    if (intervalloSelezionato) {
       const da = box.querySelector('[data-campo-da]');
       const a = box.querySelector('[data-campo-a]');
       if (da && document.activeElement !== da) da.value = dataIso(intervalloSelezionato.inizio);
       if (a && document.activeElement !== a) a.value = dataIso(intervalloSelezionato.fine);
-    });
-  }
-  document.querySelectorAll('[data-selettore-intervallo]').forEach(box =>
-    box.classList.toggle('intervallo-acceso', !!intervalloSelezionato));
+    }
+    box.classList.toggle('intervallo-acceso', !!intervalloSelezionato);
+    // Il nome del periodo: l'unica cosa di questo comando che si legga senza
+    // aprirlo, e quindi la sola che debba sempre essere vera. Nel `title` va
+    // la forma lunga, che è quella che un intervallo a cavallo d'anno non
+    // riesce a scrivere per intero in una barra da telefono.
+    const testo = box.querySelector('[data-periodo-testo]');
+    if (testo) testo.textContent = periodoNome(box.dataset.periodo);
+    const apri = box.querySelector('[data-periodo-apri]');
+    if (apri) apri.title = periodoNome(box.dataset.periodo, { stretto: false });
+  });
 
   // La riga sotto la griglia segue il mese davvero disegnato: "Tutti i prossimi"
   // cambia l'agenda, non il calendario, e le due scritte non devono litigare
