@@ -3292,7 +3292,8 @@ body button.pos-risultato:focus-visible {
   position: absolute;
   z-index: 24;
   left: max(12px, env(safe-area-inset-left));
-  bottom: var(--sopra-barra-tempo);
+  /* Stesso angolo dell'avviso e della barra del terreno: vedi `.barra-terreno` */
+  bottom: calc(var(--sopra-barra-tempo) + var(--alta-avviso-cielo, 0px));
   width: min(220px, 54vw);
   overflow: hidden;
   border: 1px solid rgba(14, 116, 144, 0.42);
@@ -3427,7 +3428,22 @@ body.mappa-spostamento-immersiva { overflow: hidden; }
    aperto il documento diventa una colonna alta esattamente quanto la finestra:
    testata e navigazione prendono il loro spazio reale e tutto ciò che rimane
    va alla tela. Non restano quindi né il margine editoriale laterale né una
-   coda di pagina vuota sotto al cielo. */
+   coda di pagina vuota sotto al cielo.
+
+   La catena delle altezze è quattro anelli — corpo → main → vista → scena →
+   riquadro → tela — e basta che **uno** di loro sia alto quanto il suo
+   contenuto perché tutti quelli dopo di lui perdano l'altezza definita e
+   ripieghino sul contenuto: una `height: 100%` di un'altezza che non c'è non
+   vale niente, e nessuno lo dice. È quello che succedeva qui: `.vista-cielo`
+   è una griglia con `align-content: start`, cioè la sua unica riga è alta
+   quanto il contenuto invece di prendersi tutto il posto, e da lì in giù ogni
+   `100%` diventava circolare — la tela ripiegava sulla proporzione del
+   canvas e sotto al cielo restava una fascia nera. Misurata su un telefono da
+   360×640: 383 pixel di cielo dove ce n'erano 529 liberi, cioè **146 pixel di
+   niente** appena sopra alla barra della navigazione; su un tablet 196.
+   La riga della griglia si stira quindi per davvero (`minmax(0, 1fr)`) e ogni
+   anello dichiara anche il suo `min-height: 0`, se no il minimo automatico di
+   una griglia lo rigonfierebbe dal di dentro. */
 body.vista-planetario-attiva {
   display: flex;
   flex-direction: column;
@@ -3440,11 +3456,19 @@ body.vista-planetario-attiva .testata-app {
   margin-bottom: 0;
 }
 body.vista-planetario-attiva main.contenitore {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
   max-width: none;
   padding-inline: 0;
   padding-bottom: var(--barra-inferiore);
+}
+body.vista-planetario-attiva .vista-cielo {
+  flex: 1 1 auto;
+  align-content: stretch;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
 }
 body.vista-planetario-attiva .vista-cielo,
 body.vista-planetario-attiva .cielo-scena,
@@ -5538,7 +5562,11 @@ body input.casella-data:hover { border: 0; }
    bloccata mentre sta lavorando. */
 .barra-terreno {
   position: absolute;
-  bottom: calc(var(--sopra-barra-tempo) + 42px);
+  /* L'avviso sta sotto di lei e cresce verso l'alto: quanto è alto lo scrive
+     `skyMisuraAvviso` in `--alta-avviso-cielo`, perché un `calc` non può
+     misurare tre righe di testo. Senza, su un telefono la barra finiva
+     stampata dentro al riquadro ambra dell'avviso. */
+  bottom: calc(var(--sopra-barra-tempo) + 42px + var(--alta-avviso-cielo, 0px));
   left: max(12px, env(safe-area-inset-left));
   z-index: 6;
   display: flex;
