@@ -30,7 +30,7 @@ const FILE_UI = [
   'app.js', 'ui-nuova.js', 'telescopio.js', 'didattica.js', 'aerei.js',
   'transiti.js', 'pianifica.js', 'meteo-astro.js', 'terreno.js', 'rilievo.js',
   'catalogo.js', 'costellazioni.js', 'corpi-minori.js', 'aurora-polare.js',
-  'eventi-extra.js', 'miglior-posto.js', 'via-lattea.js'
+  'eventi-extra.js', 'miglior-posto.js', 'via-lattea.js', 'visione.js'
 ];
 
 // Le parole che dicono «questa è una frase italiana e non un identificatore».

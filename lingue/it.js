@@ -2092,6 +2092,34 @@ window.ASTRO_DIZIONARI['it'] = {
     'aurora.sopraLaTesta': '{quale}: l\'ovale {nome} ti passa praticamente sopra la testa. Le tende scendono dallo zenit e il verde riempie il cielo verso {direzione}.',
     'aurora.archiVerdi': '{quale}: aurora {nome} visibile da qui, con gli archi verdi sopra l\'orizzonte e le tende che arrivano a {alt}° verso {direzione}.',
 
+    // --- La realtà aumentata e il motore di vista (visione.js) --------
+    'ar.accendi': 'Realtà aumentata',
+    'ar.spegni': 'Spegni la fotocamera',
+    'ar.accendiTitolo': 'Realtà aumentata: il cielo calcolato sopra l\'immagine della fotocamera, agganciato agli oggetti veri',
+    'ar.spegniTitolo': 'Spegni la fotocamera e torna al cielo disegnato',
+    'ar.senzaAccesso': 'Questo browser non dà accesso alla fotocamera.',
+    'ar.nonDisponibile': 'Fotocamera non disponibile: serve il permesso del browser e una connessione sicura (https).',
+    'ar.sganciata': 'Vista sganciata: per sovrapporre il cielo all’immagine riattiva “Segui il telefono”.',
+    'ar.senzaSensori': 'Senza bussola e giroscopio il cielo non può seguire l’inquadratura: qui la fotocamera fa solo da sfondo.',
+    'ar.sganciataOra': 'Vista sganciata: il cielo disegnato non sta più sopra quello che inquadri.',
+    'ar.bussolaRelativa': 'Bussola relativa: se il cielo è ruotato rispetto all’immagine, correggilo con “Calibra”. Con il pizzico invece si tara il campo dell’obiettivo.',
+    'ar.taratura': 'Taratura della fotocamera: {gradi}° di cielo nell’altezza dello schermo. Allarga o stringi finché gli astri disegnati non si posano su quelli veri.',
+    'ar.taraturaAzzerata': 'Taratura della fotocamera azzerata.',
+    'ar.aggancioAzzerato': 'Mira rifatta da capo: punta il telefono verso la Luna, un pianeta o un aereo e aspetta un istante.',
+    'ar.pillolaTitolo': 'Aggancio della realtà aumentata: tocca per rifare la mira',
+    'visione.spento': 'Aggancio spento',
+    'visione.cerca': 'Cerco riferimenti…',
+    'visione.attesa': 'Attendo l’immagine…',
+    'visione.movimento': 'Fermati un istante per agganciare',
+    'visione.agganciato': {
+      uno: 'Agganciato · {n} riferimento · ±{scarto}°',
+      altri: 'Agganciato · {n} riferimenti · ±{scarto}°'
+    },
+    'visione.aerei': {
+      uno: 'Aereo agganciato all’immagine',
+      altri: '{n} aerei agganciati all’immagine'
+    },
+
     // --- Gli aerei (aerei.js) -----------------------------------------
     'aerei.aggiornamentoInCorso': 'Aggiornamento dei dati ADS-B in corso…',
     'aereo.rottaOrtodromica': 'Rotta ortodromica',

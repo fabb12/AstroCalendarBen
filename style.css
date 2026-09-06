@@ -5846,6 +5846,101 @@ body input.casella-data:hover { border: 0; }
 .tasto-schermo-cielo:hover { background: rgba(28, 36, 60, 0.92); color: #fff; }
 .tasto-schermo-cielo.attiva { background: var(--blu); border-color: transparent; color: #fff; }
 
+/* La realtà aumentata, primo comando della colonna. Stessa famiglia degli
+   altri (stessa taglia, stessa pelle), con due differenze volute.
+
+   La prima è il colore da acceso: non il blu degli altri stati ma il **verde
+   dell'aggancio**, che è la stessa tinta della pillola qui sotto — perché
+   quello che si accende non è una preferenza, è uno strumento che sta
+   misurando qualcosa, e i due segnali devono leggersi come una cosa sola.
+
+   La seconda è il filo esterno appena visibile: da spento questo tasto deve
+   farsi notare più degli altri, perché è la porta della funzione che questo
+   planetario ha di più rispetto a una carta stampata, e per un anno è stata
+   dentro alla quarta scheda di un pannello. */
+.tasto-camera-cielo {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  color: var(--testo);
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.14);
+  transition: background-color var(--transizione), color var(--transizione),
+              border-color var(--transizione), box-shadow var(--transizione);
+}
+.tasto-camera-cielo:hover { background: rgba(28, 36, 60, 0.92); color: #fff; }
+.tasto-camera-cielo .icona-disegnata { display: block; }
+.tasto-camera-cielo.attiva {
+  background: rgba(16, 84, 62, 0.94);
+  border-color: rgba(52, 211, 153, 0.8);
+  color: #ecfdf5;
+  box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.35), 0 0 14px rgba(16, 185, 129, 0.28);
+}
+
+/* La pillola dell'aggancio. Sta in alto a sinistra, appena sotto al nome del
+   posto — e non in basso, che sarebbe l'angolo naturale per una spia.
+
+   La ragione è che quell'angolo è già di tre inquilini che si spostano l'un
+   l'altro: l'avviso del cielo, che cresce verso l'alto e la cui altezza vera
+   la scrive `skyMisuraAvviso` in `--alta-avviso-cielo` perché un `calc` non
+   può misurare tre righe di testo; la barra del terreno, appoggiata sopra di
+   lui; e la carta dello spostamento. Aggiungere un quarto vorrebbe dire
+   entrare in quella catena, e la pillola dell'aggancio deve essere leggibile
+   **mentre** l'avviso parla — sono due cose diverse e capitano insieme.
+   Sotto al nome del posto invece è sola, e sta accanto alla cosa che le
+   somiglia di più: da dove è calcolato il cielo, e quanto bene ci sta sopra.
+
+   Tre stati e tre colori, ed è la stessa scala della spia degli aerei
+   (§`aerei.js`): verde quando la mira è agganciata a oggetti riconosciuti,
+   ambra mentre li cerca, grigia da spenta. Il pallino pulsa **solo** mentre
+   cerca: un segnale che pulsa quando tutto va bene addestra a ignorarlo. */
+.ar-stato {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  top: var(--zona-alta-cielo);
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(62%, 260px);
+  padding: 5px 10px;
+  border: 1px solid var(--bordo-forte);
+  border-radius: 999px;
+  background: rgba(6, 10, 20, 0.82);
+  color: var(--testo-2);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+.ar-stato-segno {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.ar-stato-testo { min-width: 0; }
+.ar-stato[data-stato="agganciato"] { color: #6ee7b7; border-color: rgba(52, 211, 153, 0.45); }
+.ar-stato[data-stato="cerca"] { color: #fcd34d; border-color: rgba(251, 191, 36, 0.4); }
+.ar-stato[data-stato="cerca"] .ar-stato-segno { animation: battito-ar 1.4s ease-in-out infinite; }
+.ar-stato[data-stato="spento"] { color: var(--testo-3); }
+@keyframes battito-ar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ar-stato[data-stato="cerca"] .ar-stato-segno { animation: none; }
+}
+/* In vista pulita sparisce con tutto il resto: lì si guarda e basta. */
+#skymap-contenitore.vista-pulita .ar-stato { display: none; }
+
 /* L'inseguimento: stessa pelle degli altri comandi della mappa. Acceso
    diventa blu, perché è uno stato che dura — la vista continua a muoversi da
    sola finché non lo si spegne, e chi lo dimentica acceso non capisce più

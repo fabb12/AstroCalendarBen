@@ -1069,6 +1069,32 @@
   // Il feed è una fotografia di alcuni secondi fa. A ogni fotogramma si
   // riparte da quell'istante e si propaga velocità, rotta e salita fino ad
   // adesso: il simbolo e la linea non restano congelati per cinque minuti.
+  // L'ancora della realtà aumentata: dove `visione.js` ha visto **davvero**
+  // questo aereo nel fotogramma della fotocamera, meno dove lo dicevamo noi.
+  //
+  // È una correzione che vale la pena spiegare, perché somiglia a un imbroglio
+  // e non lo è. La posizione di un aereo non arriva da un conto ma da una
+  // lettura ADS-B vecchia di qualche secondo, propagata dalla rotta: a
+  // duecentocinquanta metri al secondo, tre secondi sono ottocento metri, e a
+  // cinque chilometri di distanza sono **nove gradi** di cielo. Quell'errore
+  // è di questo aereo e di nessun altro — non è la bussola, che sbaglia per
+  // tutti allo stesso modo — quindi non si può togliere raddrizzando la
+  // vista: si toglie solo qui, aereo per aereo. Quando l'immagine dice dov'è
+  // la sagoma, quella è la risposta migliore che abbiamo, e l'etichetta ci si
+  // incolla sopra.
+  //
+  // Senza `visione.js`, o con la fotocamera spenta, questa riga non fa niente.
+  function ancoraVista(id, cielo) {
+    if (typeof visAncoraAereo !== 'function' || !cielo) return cielo;
+    const anc = visAncoraAereo(id);
+    if (!anc) return cielo;
+    return Object.assign({}, cielo, {
+      az: ((cielo.az + anc.dAz) % 360 + 360) % 360,
+      alt: Math.max(-90, Math.min(90, cielo.alt + anc.dAlt)),
+      agganciato: true
+    });
+  }
+
   function aereoAdesso(a, obs, oraMs = istanteMostratoMs()) {
     const origine = a.posizioneFeed || a;
     // Lo scarto e' volutamente firmato: nella macchina del tempo una lettura
@@ -1076,8 +1102,12 @@
     // futuro. Limitare a zero, come prima, congelava l'aereo tornando indietro.
     const secondi = oraMs / 1000 - (origine.ultimaLettura || Date.now() / 1000);
     const corrente = posizioneFutura(origine, secondi);
-    const cielo = coordinateCielo(corrente, obs);
-    const traiettoria = arcoDiTransito(corrente, obs);
+    const cielo = ancoraVista(a.id, coordinateCielo(corrente, obs));
+    // La traiettoria si sposta con lui: è la stessa correzione, e una riga
+    // tratteggiata che parte due gradi accanto al suo aereo si legge come un
+    // difetto del disegno — l'occhio la usa proprio per capire quale sagoma
+    // sia quale.
+    const traiettoria = arcoDiTransito(corrente, obs).map(p => ancoraVista(a.id, p));
     return { ...a, ...corrente, ...cielo, traiettoria, arco: arcoRiassunto(traiettoria),
       allineamenti: a.allineamenti || [],
       posizioneFeed: origine, stimato: !tempoReale(oraMs), istanteMostrato: oraMs };
