@@ -219,6 +219,17 @@
   const VIS_CONFERME = 3;
   const VIS_PERDITE = 12;
 
+  // Riferimenti del paesaggio: angoli e bordi netti di tetti, montagne,
+  // piante e muri. Non hanno coordinate astronomiche, quindi non possono
+  // trovare il Nord da soli; possono però tenere ferma una mira già acquisita
+  // e colmare i minuti in cui di notte nessun astro è leggibile dalla camera.
+  // Si cercano in tutto il fotogramma, deliberatamente anche sotto la linea
+  // dell'orizzonte.
+  const VIS_SCENA_MAX = 28;
+  const VIS_SCENA_DISTANZA = 10;
+  const VIS_SCENA_RICERCA = 6;
+  const VIS_SCENA_PATCH = 2;
+
   const stato = {
     attivo: false,          // il motore gira
     acceso: true,           // lo si vuole (interruttore dell'utente)
@@ -241,6 +252,8 @@
     segni: [],              // dove disegnare le parentesi dell'aggancio
     macchie: 0,             // quante macchie ha visto l'ultimo giro
     aereiAgganciati: 0,     // quanti aerei hanno trovato la loro sagoma
+    scena: null,            // fotogramma e punti fermi del paesaggio
+    riferimentiScena: 0,
     scala: 1,               // l'ultima correzione di focale applicata
     motoGradiS: 0,
     ultimoGiro: 0,
@@ -643,6 +656,94 @@
       });
     }
     return { macchie, rumore, soglia };
+  }
+
+  // Angoli ad alto contrasto, distribuiti nel fotogramma. Il prodotto dei
+  // gradienti orizzontale e verticale privilegia spigoli e ramificazioni e
+  // non scambia una lunga riga d'orizzonte per decine di riferimenti.
+  function visPuntiScena(luma, L, H) {
+    const grezzi = [];
+    for (let y = 3; y < H - 3; y += 2) {
+      for (let x = 3; x < L - 3; x += 2) {
+        const gx = Math.abs(luma[y * L + x + 2] - luma[y * L + x - 2]);
+        const gy = Math.abs(luma[(y + 2) * L + x] - luma[(y - 2) * L + x]);
+        const forza = Math.min(gx, gy);
+        if (forza >= 9) grezzi.push({ x, y, forza });
+      }
+    }
+    grezzi.sort((a, b) => b.forza - a.forza);
+    const punti = [];
+    for (const p of grezzi) {
+      if (punti.some(q => Math.hypot(q.x - p.x, q.y - p.y) < VIS_SCENA_DISTANZA)) continue;
+      punti.push(p);
+      if (punti.length >= VIS_SCENA_MAX) break;
+    }
+    return punti;
+  }
+
+  function visErrorePatch(a, b, L, H, ax, ay, bx, by) {
+    let mediaA = 0, mediaB = 0, n = 0;
+    for (let dy = -VIS_SCENA_PATCH; dy <= VIS_SCENA_PATCH; dy++) {
+      for (let dx = -VIS_SCENA_PATCH; dx <= VIS_SCENA_PATCH; dx++) {
+        const xa = ax + dx, ya = ay + dy, xb = bx + dx, yb = by + dy;
+        if (xa < 0 || xa >= L || xb < 0 || xb >= L || ya < 0 || ya >= H || yb < 0 || yb >= H) return Infinity;
+        mediaA += a[ya * L + xa]; mediaB += b[yb * L + xb]; n++;
+      }
+    }
+    mediaA /= n; mediaB /= n;
+    let somma = 0;
+    for (let dy = -VIS_SCENA_PATCH; dy <= VIS_SCENA_PATCH; dy++) {
+      for (let dx = -VIS_SCENA_PATCH; dx <= VIS_SCENA_PATCH; dx++) {
+        const va = a[(ay + dy) * L + ax + dx] - mediaA;
+        const vb = b[(by + dy) * L + bx + dx] - mediaB;
+        somma += Math.abs(va - vb);
+      }
+    }
+    return somma / Math.max(1, n);
+  }
+
+  // Segue i dettagli statici fra due fotogrammi e li restituisce già nella
+  // forma del risolutore di assetto: `a` è la direzione del riferimento nel
+  // mondo quando è stato acquisito, `b` quella in cui appare ora.
+  function visSeguiScena(fot, base, focale) {
+    const prima = stato.scena;
+    const coppie = [], segni = [];
+    const aSchermo = (x, y) => ({
+      x: (x + 0.5) * fot.perPixelX,
+      y: (y + 0.5) * fot.perPixelY
+    });
+    const nuovi = [];
+    if (prima && prima.L === fot.largo && prima.H === fot.alto) {
+      for (const p of prima.punti) {
+        let migliore = null;
+        for (let dy = -VIS_SCENA_RICERCA; dy <= VIS_SCENA_RICERCA; dy++) {
+          for (let dx = -VIS_SCENA_RICERCA; dx <= VIS_SCENA_RICERCA; dx++) {
+            const e = visErrorePatch(prima.luma, fot.luma, fot.largo, fot.alto, p.x, p.y, p.x + dx, p.y + dy);
+            if (!migliore || e < migliore.e) migliore = { x: p.x + dx, y: p.y + dy, e };
+          }
+        }
+        // Una patch che cambia troppo è una foglia mossa, un passante o il
+        // salto d'esposizione del flash: non deve trascinare il cielo.
+        if (!migliore || migliore.e > 18) continue;
+        const s = aSchermo(migliore.x, migliore.y);
+        coppie.push({ a: p.mondo, b: versore(skyDirezione(s.x, s.y, base, focale)), peso: 0.35 });
+        nuovi.push({ x: migliore.x, y: migliore.y, mondo: p.mondo });
+        segni.push({ vettore: p.mondo, genere: 'scena', raggio: 8 });
+      }
+    }
+    // Se i vecchi dettagli sono usciti dal campo, semina i vuoti dal
+    // fotogramma corrente. Nessun filtro sull'altezza: il primo piano sotto
+    // l'orizzonte è spesso il riferimento notturno più nitido.
+    if (nuovi.length < VIS_SCENA_MAX / 2) {
+      for (const p of visPuntiScena(fot.luma, fot.largo, fot.alto)) {
+        if (nuovi.some(q => Math.hypot(q.x - p.x, q.y - p.y) < VIS_SCENA_DISTANZA)) continue;
+        const s = aSchermo(p.x, p.y);
+        nuovi.push({ x: p.x, y: p.y, mondo: versore(skyDirezione(s.x, s.y, base, focale)) });
+        if (nuovi.length >= VIS_SCENA_MAX) break;
+      }
+    }
+    stato.scena = { L: fot.largo, H: fot.alto, luma: new Float32Array(fot.luma), punti: nuovi };
+    return { coppie, segni };
   }
 
   // ===================================================================
@@ -1145,7 +1246,6 @@
 
     const { macchie, rumore } = visRilevaMacchie(fot.luma, fot.largo, fot.alto, {});
     stato.macchie = macchie.length;
-    if (!macchie.length) { perdiAggancio('niente-riferimenti'); return false; }
 
     // Dal fotogramma ridotto al riquadro: una moltiplicazione, perché il
     // ritaglio l'ha già tolto §2.
@@ -1165,15 +1265,19 @@
       x: m.px, y: m.py, raggio: m.raggioPx, segno: m.segno, flusso: m.flusso
     }));
 
+    const scena = visSeguiScena(fot, base, focale);
+    stato.riferimentiScena = scena.coppie.length;
     const candidati = visCandidati(base, focale);
-    if (!candidati.length) { perdiAggancio('niente-riferimenti'); return false; }
 
     // Pixel per grado al centro della vista: è il metro con cui si scrivono
     // i cancelli in gradi.
     const perGrado = focale * D2R;
     const cancello = stato.agganciato ? VIS_CANCELLO_STRETTO : VIS_CANCELLO_LARGO;
-    const coppie = visAssocia(candidati, inRiquadro, { perGrado, cancello });
-    if (!coppie.length) { perdiAggancio('niente-riferimenti'); return false; }
+    const coppie = candidati.length
+      ? visAssocia(candidati, inRiquadro, { perGrado, cancello }) : [];
+    if (!coppie.length && scena.coppie.length < 3) {
+      perdiAggancio('niente-riferimenti'); return false;
+    }
 
     // --- L'assetto, dai soli astri -------------------------------------
     //
@@ -1186,15 +1290,23 @@
     let R = identita();
     let misurato = false;
 
-    if (perAssetto.length) {
+    if (perAssetto.length || scena.coppie.length >= 3) {
+      // I riferimenti noti danno la mira assoluta; quelli del paesaggio la
+      // tengono ferma fra un fotogramma e l'altro. Quando convivono entrano
+      // nello stesso consenso, ma il paesaggio pesa meno perché rami e foglie
+      // possono muoversi.
       const wahba = perAssetto.map(c => ({
         a: c.candidato.vettore,                                   // dove dovrebbe stare
         b: versore(skyDirezione(c.macchia.x, c.macchia.y, base, focale)), // dove si vede
         peso: c.candidato.peso
-      }));
+      })).concat(scena.coppie);
       const sol = visRisolviRotazione(wahba, {});
       const gradi = angoloDi(sol.R);
-      if (sol.usate >= 1 && gradi < VIS_CORREZIONE_MAX && isFinite(gradi)) {
+      const soloScena = !perAssetto.length;
+      // Un paesaggio non conosce il Nord e quindi corregge soltanto piccoli
+      // scivolamenti; un astro può invece recuperare l'intero errore bussola.
+      const limite = soloScena ? 4 : VIS_CORREZIONE_MAX;
+      if (sol.usate >= (soloScena ? 3 : 1) && gradi < limite && isFinite(gradi)) {
         R = sol.R;
         stato.scarto = sol.residuo;
         stato.riferimenti = sol.usate;
@@ -1235,7 +1347,7 @@
       stato.conferme = Math.min(VIS_CONFERME + 3, stato.conferme + 1);
       if (stato.conferme >= VIS_CONFERME || perAssetto.length >= 2) {
         stato.agganciato = true;
-        stato.motivo = 'agganciato';
+        stato.motivo = perAssetto.length ? 'agganciato' : 'scena';
       }
 
       // La focale, quando ci sono almeno due riferimenti buoni e distanti.
@@ -1298,7 +1410,7 @@
       vettore: c.candidato.vettore,
       genere: c.candidato.genere,
       raggio: Math.max(7, (c.macchia.raggio || 2) * 2.2)
-    }));
+    })).concat(scena.segni);
 
     ancoreInvecchia();
 
@@ -1394,7 +1506,8 @@
       const p = skyProietta(s.vettore, base, focale);
       if (!p.davanti) return;
       const r = Math.max(9, Math.min(60, s.raggio));
-      ctx.strokeStyle = s.genere === 'aereo' ? 'rgba(125, 211, 252, 0.75)' : 'rgba(196, 181, 253, 0.7)';
+      ctx.strokeStyle = s.genere === 'aereo' ? 'rgba(125, 211, 252, 0.75)'
+        : s.genere === 'scena' ? 'rgba(110, 231, 183, 0.55)' : 'rgba(196, 181, 253, 0.7)';
       const l = r * 0.42;
       // Quattro angoli, come il riquadro di messa a fuoco di una fotocamera.
       [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => {
@@ -1421,7 +1534,9 @@
         // il separatore decimale lo mette la lingua (mezzo grado qui si
         // scrive «0,5» e in inglese «0.5»), e formattarlo qui vorrebbe dire
         // scrivere un numero italiano dentro a una frase inglese.
-        testo: T('agganciato', { n: stato.riferimenti, scarto: Math.round(stato.scarto * 10) / 10 })
+        testo: stato.motivo === 'scena'
+          ? T('scena', { n: stato.riferimentiScena })
+          : T('agganciato', { n: stato.riferimenti, scarto: Math.round(stato.scarto * 10) / 10 })
       };
     }
     if (stato.aereiAgganciati && stato.motivo === 'aerei') {
@@ -1454,6 +1569,8 @@
     stato.conferme = 0;
     stato.perdite = 0;
     stato.agganciato = false;
+    stato.scena = null;
+    stato.riferimentiScena = 0;
     stato.motivo = 'cerca';
     stato.guastoDetto = false;
     visAggiornaHud();
@@ -1465,6 +1582,8 @@
     stato.segni = [];
     stato.ancore.clear();
     stato.pose.length = 0;
+    stato.scena = null;
+    stato.riferimentiScena = 0;
     // La correzione **non** si butta: è una misura vera dell'errore di
     // bussola in questo posto, e se la fotocamera si riaccende fra dieci
     // secondi è ancora quella. La fa scadere il tempo (§`correzioneViva`).
@@ -1482,6 +1601,7 @@
     return {
       attivo: stato.attivo, acceso: stato.acceso, agganciato: stato.agganciato,
       riferimenti: stato.riferimenti, scarto: stato.scarto, macchie: stato.macchie,
+      riferimentiScena: stato.riferimentiScena,
       motivo: stato.motivo, costo: stato.costo, cadenza: stato.cadenza,
       correzione: stato.correzione ? angoloDi(stato.correzione) : 0,
       ancore: stato.ancore.size, scala: stato.scala, moto: stato.motoGradiS
@@ -1497,6 +1617,8 @@
     stato.agganciato = false;
     stato.conferme = 0;
     stato.segni = [];
+    stato.scena = null;
+    stato.riferimentiScena = 0;
     stato.scala = 1;
     visAggiornaHud();
   }

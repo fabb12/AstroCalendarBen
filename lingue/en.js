@@ -2057,7 +2057,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'ar.bussolaRelativa': 'Relative compass: if the sky is rotated with respect to the image, fix it with “Calibrate”. Pinching instead calibrates the lens field.',
     'ar.taratura': 'Camera calibration: {gradi}° of sky in the height of the screen. Widen or tighten it until the drawn objects settle onto the real ones.',
     'ar.taraturaAzzerata': 'Camera calibration reset.',
-    'ar.aggancioAzzerato': 'Aim restarted: point the phone at the Moon, a planet or an aircraft and wait a moment.',
+    'ar.aggancioAzzerato': 'Aim restarted: frame the sky or a fixed landmark such as a roof, mountain or plant, then wait a moment.',
     'ar.pillolaTitolo': 'Augmented-reality lock: tap to restart the aim',
     'visione.spento': 'Lock off',
     'visione.cerca': 'Looking for references…',
@@ -2066,6 +2066,10 @@ window.ASTRO_DIZIONARI['en'] = {
     'visione.agganciato': {
       uno: 'Locked · {n} reference · ±{scarto}°',
       altri: 'Locked · {n} references · ±{scarto}°'
+    },
+    'visione.scena': {
+      uno: 'Aim stable · {n} landscape reference',
+      altri: 'Aim stable · {n} landscape references'
     },
     'visione.aerei': {
       uno: 'Aircraft locked to the image',
