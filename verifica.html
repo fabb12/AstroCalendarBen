@@ -117,12 +117,43 @@ function skyVettore(az, alt) {
   const a = az * SKY_D2R, h = alt * SKY_D2R;
   return [Math.cos(h) * Math.sin(a), Math.cos(h) * Math.cos(a), Math.sin(h)];
 }
+// Il ramo della realtà aumentata, che è l'altra metà della stessa funzione in
+// app.js: sopra l'immagine di una fotocamera la proiezione dev'essere
+// rettilinea (prospettica) come quella dell'obiettivo, non stereografica.
+// Qui è spento per tutte le sezioni tranne la §32, che lo accende: le altre
+// provano il planetario disegnato, dove vale la stereografica.
+let skyProvaAR = false;
+function skyCampoDaObiettivo() { return skyProvaAR; }
 function skyProietta(v, base, focale) {
   const d = skyDot(v, base.f), x = skyDot(v, base.r), y = skyDot(v, base.u);
+  if (skyCampoDaObiettivo()) {
+    const avanti = d > 0.001;
+    return { davanti: avanti,
+      px: avanti ? sky.larghezza / 2 + focale * x / d : 0,
+      py: avanti ? sky.altezza / 2 - focale * y / d : 0, x, y, d };
+  }
   const davanti = d > SKY_D_MIN, den = (1 + d) * 0.5;
   return { davanti,
     px: davanti ? sky.larghezza / 2 + focale * (x / den) : 0,
     py: davanti ? sky.altezza / 2 - focale * (y / den) : 0, x, y, d };
+}
+// L'inversa. La chiama `visione.js` per davvero (§32): è lei a dire in che
+// direzione del mondo cade la macchia trovata nel fotogramma, ed è il punto
+// in cui un segno sbagliato manderebbe l'aggancio dalla parte opposta.
+function skyDirezione(px, py, base, focale) {
+  const X = (px - sky.larghezza / 2) / focale, Y = (sky.altezza / 2 - py) / focale;
+  if (skyCampoDaObiettivo()) {
+    const n = Math.hypot(X, Y, 1);
+    const x = X / n, y = Y / n, d = 1 / n;
+    return [x * base.r[0] + y * base.u[0] + d * base.f[0],
+            x * base.r[1] + y * base.u[1] + d * base.f[1],
+            x * base.r[2] + y * base.u[2] + d * base.f[2]];
+  }
+  const S = X * X + Y * Y, k = 4 / (4 + S);
+  const x = X * k, y = Y * k, d = (4 - S) / (4 + S);
+  return [x * base.r[0] + y * base.u[0] + d * base.f[0],
+          x * base.r[1] + y * base.u[1] + d * base.f[1],
+          x * base.r[2] + y * base.u[2] + d * base.f[2]];
 }
 function skyBaseVerso(az, alt) {
   const f = skyVettore(az, alt), a = az * SKY_D2R;
@@ -380,6 +411,14 @@ function skyCaso(seme) {
      geometria dei §2-§4 è pura — prende i suoi punti da una funzione che le
      si passa, e per questo si può provare senza caricare `app.js`. -->
 <script src="transiti.js"></script>
+
+<!-- Il motore di vista della realtà aumentata (§32). Come gli altri qui
+     sopra non fa niente all'avvio — è un IIFE che registra le sue funzioni e
+     basta, il ciclo lo chiama `skyCiclo` che qui non esiste — e le funzioni
+     che il §32 prova sono **le sue**, non una copia: il rivelatore di
+     macchie, l'associazione e la soluzione di Wahba sono le stesse righe che
+     girano nel planetario. -->
+<script src="visione.js"></script>
 
 <script>
 // ---------------------------------------------------------------------
@@ -11561,6 +11600,457 @@ titolo('31. I transiti: quando un aereo o la ISS passano davanti a un astro (tra
   } else {
     nota('`SATELLITI` vive in app.js, che questa pagina non carica: la prova delle due stazioni salta.');
   }
+}
+
+// =====================================================================
+// §32. LA REALTÀ AUMENTATA: riconoscere gli oggetti e agganciarci il cielo
+// =====================================================================
+//
+// È la famiglia che a occhio si giudica peggio di tutte, e per una ragione
+// che vale la pena scrivere prima delle prove: **un cielo disallineato è un
+// cielo bellissimo**. Sopra l'immagine di una fotocamera, un'etichetta
+// appoggiata due gradi accanto all'aereo vero sembra un'etichetta; il segno
+// della Luna messo mezzo grado più in là sembra il segno della Luna. Nessuno,
+// guardando lo schermo, dice «questa rotazione ha il segno invertito»: dice
+// «boh, non è precisissimo». E un segno invertito, che è l'errore più facile
+// da fare in tutto questo lavoro, produce esattamente la stessa immagine di
+// prima — solo peggiorata del doppio.
+//
+// Il giudice quindi non è l'occhio: è una scena sintetica di cui si conosce
+// la verità. Si sceglie una posa vera, le si applica un errore noto, si
+// generano le macchie dove le cose si vedrebbero davvero, e si pretende che
+// il motore ritrovi l'errore e lo cancelli. Se il segno è girato, la prova
+// non è appena meno buona: è rossa.
+if (typeof Visione === 'undefined') {
+  titolo('§32. La realtà aumentata');
+  nota('`visione.js` non è caricato: la sezione salta.');
+} else {
+  titolo('§32. La realtà aumentata — riconoscimento e aggancio');
+  const V = Visione;
+  const G = Math.PI / 180;
+  // Il ramo rettilineo della proiezione: sopra un'immagine di fotocamera vale
+  // quella, e provare l'aggancio in stereografica vorrebbe dire provarlo con
+  // una geometria che in AR non si usa mai.
+  const larghezzaPrima = sky.larghezza, altezzaPrima = sky.altezza;
+  skyProvaAR = true;
+  sky.larghezza = 800; sky.altezza = 1200;
+  const focaleAR = (sky.altezza / 2) / Math.tan(30 * G);   // 60° verticali
+
+  const baseVerso2 = (az, alt) => {
+    const f = skyVettore(az, alt), a = az * G;
+    const r = [Math.cos(a), -Math.sin(a), 0];
+    return { f, r, u: [r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0]] };
+  };
+  const ruota = (R, b) => ({ f: V.applica(R, b.f), r: V.applica(R, b.r), u: V.applica(R, b.u) });
+
+  // --- Il segno, e la convergenza ------------------------------------
+  {
+    const vera = baseVerso2(120, 25);
+    // Tre gradi di bussola più uno di inclinazione: l'errore tipico di un
+    // telefono onesto in una stanza senza ferro.
+    const errore = V.moltiplica(V.rodrigues([0, 0, 3 * G]), V.rodrigues([1 * G, 0, 0]));
+    const sensore = ruota(errore, vera);
+    const astri = [[122, 27], [117, 22], [124, 21], [118, 29]].map(([az, h]) => skyVettore(az, h));
+    // Le macchie stanno dove le cose si vedono **davvero**, cioè proiettate
+    // con la posa vera: è questo che rende la prova un giudice.
+    const macchie = astri.map(v => skyProietta(v, vera, focaleAR));
+    prova('la scena sintetica sta tutta in quadro',
+      macchie.every(m => m.davanti && m.px > 0 && m.px < sky.larghezza && m.py > 0 && m.py < sky.altezza));
+
+    const coppie = astri.map((v, i) => ({
+      a: v, b: V.versore(skyDirezione(macchie[i].px, macchie[i].py, sensore, focaleAR)), peso: 1
+    }));
+    const sol = V.visRisolviRotazione(coppie, {});
+    prova('la rotazione trovata è grande quanto l\'errore vero',
+      Math.abs(V.angoloDi(sol.R) - V.angoloDi(errore)) < 1e-5,
+      `${V.angoloDi(sol.R).toFixed(4)}° contro ${V.angoloDi(errore).toFixed(4)}°`);
+    prova('lo scarto residuo è nullo', sol.residuo < 1e-5, sol.residuo.toExponential(1) + '°');
+
+    // La prova che conta: correggendo la posa del sensore, gli astri
+    // disegnati finiscono **sulle** macchie.
+    const corretta = ruota(sol.R, sensore);
+    let peggio = 0, senza = 0;
+    astri.forEach((v, i) => {
+      const p = skyProietta(v, corretta, focaleAR);
+      peggio = Math.max(peggio, Math.hypot(p.px - macchie[i].px, p.py - macchie[i].py));
+      const q = skyProietta(v, sensore, focaleAR);
+      senza = Math.max(senza, Math.hypot(q.px - macchie[i].px, q.py - macchie[i].py));
+    });
+    prova('gli astri si posano sulle macchie, sotto il centesimo di pixel',
+      peggio < 0.01, peggio.toExponential(1) + ' px');
+    // Il contro-esempio, cioè quello che si vede oggi senza il motore: mezzo
+    // dito di scarto sullo schermo, che è la segnalazione.
+    prova('senza correzione lo scarto è di decine di pixel (è il difetto)',
+      senza > 40, Math.round(senza) + ' px');
+
+    // --- E adesso il telefono si muove -------------------------------
+    //
+    // È la domanda che questa funzione esiste per risolvere: «se muovo il
+    // cellulare, l'elemento resta allineato all'oggetto vero?». La risposta
+    // sta tutta nel fatto che la correzione è una rotazione del **mondo** e
+    // non la posizione di un'etichetta: una volta misurata da fermi, vale per
+    // una posa che non è mai stata misurata. Qui si gira la camera di
+    // venticinque gradi — vera e sensore insieme, come fa un telefono che
+    // gira — e si guarda **senza rimisurare niente**. Se l'aggancio fosse un
+    // segno incollato allo schermo, qui salterebbe via.
+    //
+    // Da notare come si costruisce la posa girata, perché è **il modello**:
+    // l'errore della bussola è una rotazione del mondo (un Nord spostato) e
+    // resta la stessa comunque il telefono sia messo, quindi il sensore dopo
+    // la rotazione è `errore` applicato alla posa vera **nuova**. Girare
+    // invece la posa già sbagliata darebbe un errore che ruota col telefono,
+    // che è quello che farebbe un aggancio incollato allo schermo — e
+    // infatti, provato così, il residuo resta di tre pixel invece di
+    // annullarsi.
+    {
+      const giroCam = V.rodrigues([0.10, -0.05, 0.42]);
+      const veraDopo = ruota(giroCam, vera);
+      const sensoreDopo = ruota(errore, veraDopo);
+      const correttaDopo = ruota(sol.R, sensoreDopo);
+      let dopo = 0, prima = 0;
+      astri.forEach(v => {
+        const vero = skyProietta(v, veraDopo, focaleAR);
+        if (!vero.davanti) return;
+        const disegnato = skyProietta(v, correttaDopo, focaleAR);
+        const senza = skyProietta(v, sensoreDopo, focaleAR);
+        dopo = Math.max(dopo, Math.hypot(disegnato.px - vero.px, disegnato.py - vero.py));
+        prima = Math.max(prima, Math.hypot(senza.px - vero.px, senza.py - vero.py));
+      });
+      prova('dopo venticinque gradi di rotazione l\'aggancio tiene, senza rimisurare',
+        dopo < 0.01, `${dopo.toExponential(1)} px (senza correzione: ${Math.round(prima)})`);
+    }
+
+    // E il segno girato: se la rotazione si applicasse al contrario non
+    // resterebbe com'era, **raddoppierebbe**. È la prova che distingue una
+    // convenzione giusta da una che sembra giusta.
+    const alContrario = ruota(V.scalaRotazione(sol.R, -1), sensore);
+    let doppio = 0;
+    astri.forEach((v, i) => {
+      const p = skyProietta(v, alContrario, focaleAR);
+      doppio = Math.max(doppio, Math.hypot(p.px - macchie[i].px, p.py - macchie[i].py));
+    });
+    prova('col segno girato lo scarto raddoppia invece di sparire',
+      doppio > senza * 1.7, `${Math.round(doppio)} px contro ${Math.round(senza)}`);
+  }
+
+  // --- Un riferimento solo: la rotazione minima ----------------------
+  //
+  // È il caso normale di una serata: la Luna, e nient'altro di riconoscibile.
+  // Una stella non dice come sei girato **attorno** a lei, quindi il sistema
+  // è indeterminato in una direzione — e la risposta giusta lì è «non
+  // inventarti un rollio», che è quello che fa il termine λ del §7.
+  {
+    const vera = baseVerso2(200, 40);
+    const errore = V.rodrigues([0, 0, 5 * G]);
+    const sensore = ruota(errore, vera);
+    const v = skyVettore(203, 43);
+    const m = skyProietta(v, vera, focaleAR);
+    const sol = V.visRisolviRotazione(
+      [{ a: v, b: V.versore(skyDirezione(m.px, m.py, sensore, focaleAR)), peso: 1 }], {});
+    const p = skyProietta(v, ruota(sol.R, sensore), focaleAR);
+    prova('con un riferimento solo l\'astro ci finisce comunque sopra',
+      Math.hypot(p.px - m.px, p.py - m.py) < 0.05,
+      Math.hypot(p.px - m.px, p.py - m.py).toExponential(1) + ' px');
+    prova('e la rotazione è la più piccola che risolve, non una qualunque',
+      V.angoloDi(sol.R) <= V.angoloDi(errore) + 1e-6,
+      `${V.angoloDi(sol.R).toFixed(3)}° ≤ ${V.angoloDi(errore).toFixed(3)}°`);
+  }
+
+  // --- Venti gradi di errore: la linearizzazione itera ---------------
+  //
+  // Con del ferro vicino la bussola sbaglia di venti gradi, e a venti gradi
+  // `R v ≈ v + ω × v` non è più vera al primo giro. Il rimedio non è una
+  // formula esatta: è ripetere.
+  {
+    const vera = baseVerso2(10, 15);
+    const errore = V.moltiplica(V.rodrigues([0, 0, 18 * G]), V.rodrigues([0, 6 * G, 0]));
+    const sensore = ruota(errore, vera);
+    const astri = [[12, 18], [7, 12], [14, 11]].map(([az, h]) => skyVettore(az, h));
+    const macchie = astri.map(v => skyProietta(v, vera, focaleAR));
+    const sol = V.visRisolviRotazione(astri.map((v, i) => ({
+      a: v, b: V.versore(skyDirezione(macchie[i].px, macchie[i].py, sensore, focaleAR)), peso: 1
+    })), {});
+    prova('a diciannove gradi di errore lo scarto resta sotto il millesimo di grado',
+      sol.residuo < 1e-3, sol.residuo.toExponential(1) + '°');
+    // Il contro-esempio: un giro solo non basta, e chi si fermasse lì
+    // lascerebbe un grado sul tavolo senza che niente lo dica.
+    const unGiro = V.visRisolviRotazione(astri.map((v, i) => ({
+      a: v, b: V.versore(skyDirezione(macchie[i].px, macchie[i].py, sensore, focaleAR)), peso: 1
+    })), { giri: 1 });
+    prova('con un giro solo il residuo è mille volte peggio (è il perché delle iterazioni)',
+      unGiro.residuo > sol.residuo * 100, unGiro.residuo.toFixed(3) + '°');
+  }
+
+  // --- Una coppia sbagliata non porta via il resto -------------------
+  //
+  // È l'unico modo in cui questo motore può fare danno: associare una macchia
+  // all'astro sbagliato e ruotare tutto il cielo per farla tornare. La difesa
+  // è pesare al quadrato chi si scosta dal consenso.
+  {
+    const vera = baseVerso2(300, 30);
+    const sensore = ruota(V.rodrigues([0, 0, 2 * G]), vera);
+    const astri = [[302, 32], [297, 27], [304, 26], [299, 34]].map(([az, h]) => skyVettore(az, h));
+    const macchie = astri.map(v => skyProietta(v, vera, focaleAR));
+    macchie[3] = skyProietta(skyVettore(291, 34), vera, focaleAR);   // la quarta è sbagliata
+    const sol = V.visRisolviRotazione(astri.map((v, i) => ({
+      a: v, b: V.versore(skyDirezione(macchie[i].px, macchie[i].py, sensore, focaleAR)), peso: 1
+    })), {});
+    const corretta = ruota(sol.R, sensore);
+    let peggio = 0;
+    for (let i = 0; i < 3; i++) {
+      const p = skyProietta(astri[i], corretta, focaleAR);
+      peggio = Math.max(peggio, Math.hypot(p.px - macchie[i].px, p.py - macchie[i].py));
+    }
+    // Il numero, con i due contro-esempi misurati sulla stessa scena: col
+    // peso lineare di Huber le tre coppie buone restavano storte di
+    // **diciannove pixel**, col peso al quadrato di 3,7, e buttando via
+    // l'intrusa e rifacendo il conto di zero. È la differenza fra «pesare
+    // meno un dato sbagliato» e «non usarlo».
+    prova('le tre coppie buone restano allineate nonostante la quarta sbagliata',
+      peggio < 0.5, Math.round(peggio * 100) / 100 + ' px');
+    prova('e la coppia sbagliata viene contata fuori', sol.usate === 3, 'usate: ' + sol.usate);
+  }
+
+  // --- La focale: tarare l'obiettivo guardando -----------------------
+  {
+    const vera = baseVerso2(80, 20);
+    const astri = [[84, 24], [76, 16]].map(([az, h]) => skyVettore(az, h));
+    const previsti = astri.map(v => skyProietta(v, vera, focaleAR));
+    const visti = astri.map(v => skyProietta(v, vera, focaleAR * 1.12));
+    const r = V.visStimaScala(astri.map((v, i) => ({
+      previstoX: previsti[i].px, previstoY: previsti[i].py,
+      vistoX: visti[i].px, vistoY: visti[i].py
+    })), {});
+    prova('due riferimenti dicono di quanto l\'obiettivo è diverso da quello supposto',
+      r && Math.abs(r - 1.12) < 0.01, 'rapporto ' + (r || 0).toFixed(4));
+    // Due riferimenti troppo vicini non dicono niente sulla scala: la loro
+    // distanza è dominata dall'errore di centroide, non dalla focale.
+    const vicini = [{ previstoX: 400, previstoY: 600, vistoX: 400, vistoY: 600 },
+                    { previstoX: 420, previstoY: 610, vistoX: 421, vistoY: 612 }];
+    prova('due riferimenti troppo vicini non tarano niente',
+      V.visStimaScala(vicini, {}) === null);
+  }
+
+  // --- Il rivelatore di macchie --------------------------------------
+  //
+  // Un fotogramma finto con dentro le due cose che questo modulo deve
+  // trovare: una sorgente **chiara** su fondo scuro (una stella, di notte) e
+  // una **scura** su fondo chiaro (un aereo controluce, di giorno). La
+  // seconda è la ragione per cui il residuo si tiene col segno: un rivelatore
+  // che cerca solo il chiaro, di giorno, non trova mai niente — e non lo dice.
+  {
+    const L = 120, H = 80;
+    const luma = new Float32Array(L * H);
+    let seme = 12345;
+    const caso = () => { seme = (seme * 1103515245 + 12345) & 0x7fffffff; return seme / 0x7fffffff; };
+    for (let y = 0; y < H; y++) for (let x = 0; x < L; x++) luma[y * L + x] = 40 + 60 * (y / H) + caso() * 2;
+    const posa = (cx, cy, amp, s) => {
+      for (let y = 0; y < H; y++) for (let x = 0; x < L; x++) {
+        const d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+        luma[y * L + x] += amp * Math.exp(-d2 / (2 * s * s));
+      }
+    };
+    posa(30.4, 20.7, 60, 1.3);     // la stella
+    posa(85.2, 55.1, -55, 1.8);    // l'aereo controluce
+    const out = V.visRilevaMacchie(luma, L, H, {});
+    // Questa è la prova che ha trovato il difetto degli **aloni**: stimando
+    // il fondo con una media a scatola, ogni macchia si scava attorno un
+    // anello di segno opposto, e prima della regola sul segno queste due
+    // sorgenti ne producevano undici.
+    prova('due sorgenti danno due macchie, non undici (gli aloni non contano)',
+      out.macchie.length === 2, 'trovate: ' + out.macchie.length);
+    const chiara = out.macchie.find(m => m.segno > 0);
+    const scura = out.macchie.find(m => m.segno < 0);
+    prova('la sorgente chiara è trovata sotto il pixel',
+      chiara && Math.hypot(chiara.x - 30.4, chiara.y - 20.7) < 0.35,
+      chiara ? `(${chiara.x.toFixed(2)}, ${chiara.y.toFixed(2)}) contro (30.40, 20.70)` : 'non trovata');
+    prova('la sagoma scura pure — è la riga che fa funzionare il giorno',
+      scura && Math.hypot(scura.x - 85.2, scura.y - 55.1) < 0.35,
+      scura ? `(${scura.x.toFixed(2)}, ${scura.y.toFixed(2)}) contro (85.20, 55.10)` : 'non trovata');
+    prova('il secondo momento distingue una sagoma larga da un punto',
+      scura && chiara && scura.raggio > chiara.raggio * 1.15,
+      scura && chiara ? `${scura.raggio.toFixed(2)} contro ${chiara.raggio.toFixed(2)}` : '');
+    // Due stelle vicine restano due: la regola dell'alone guarda il segno, e
+    // due stelle hanno lo stesso segno. Senza questa, la cintura di Orione
+    // diventerebbe una stella sola.
+    const luma2 = new Float32Array(L * H);
+    for (let i = 0; i < luma2.length; i++) luma2[i] = 30 + caso() * 2;
+    const posa2 = (cx, cy, amp, s) => {
+      for (let y = 0; y < H; y++) for (let x = 0; x < L; x++) {
+        const d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+        luma2[y * L + x] += amp * Math.exp(-d2 / (2 * s * s));
+      }
+    };
+    posa2(50, 40, 70, 1.2); posa2(59, 40, 65, 1.2);
+    const due = V.visRilevaMacchie(luma2, L, H, {});
+    prova('due stelle a nove pixel restano due macchie',
+      due.macchie.filter(m => m.segno > 0).length === 2,
+      'chiare trovate: ' + due.macchie.filter(m => m.segno > 0).length);
+    // Un fotogramma senza niente non deve produrre riferimenti: è il muro
+    // davanti, il cielo coperto, la fotocamera puntata per terra.
+    const piatto = new Float32Array(L * H);
+    for (let i = 0; i < piatto.length; i++) piatto[i] = 100 + caso() * 2;
+    prova('un fotogramma uniforme non produce nessuna macchia',
+      V.visRilevaMacchie(piatto, L, H, {}).macchie.length === 0);
+
+    // --- Il disco saturo, che è la Luna -----------------------------
+    //
+    // Le due prove che vengono da un difetto misurato in un browser vero, e
+    // che a occhio non si vedono affatto: la Luna semplicemente non si
+    // agganciava, e il motore diceva «cerco riferimenti».
+    //
+    // Un disco pieno non è un punto luminoso. In cima ha un pianoro saturo,
+    // dove ogni pixel è un massimo locale, e il fondo stimato a scatola —
+    // che al centro del disco è quasi tutto disco — abbassa il residuo
+    // proprio in mezzo: il massimo del residuo casca su un **anello**. Da lì
+    // due guasti che si sommano: parecchi picchi invece di uno (e quattro
+    // copie della stessa macchia sono, per la regola dell'ambiguità del §6,
+    // quattro riferimenti ambigui, cioè nessuno), e il baricentro tirato
+    // fuori dal centro di alcuni pixel — cioè un errore **sistematico**, che
+    // il filtro non toglie perché non è rumore.
+    const L2 = 140, H2 = 140;
+    const disco = new Float32Array(L2 * H2);
+    for (let i = 0; i < disco.length; i++) disco[i] = 60 + caso() * 1.5;
+    const cxVero = 70.5, cyVero = 68.5, rDisco = 7.5;
+    for (let y = 0; y < H2; y++) for (let x = 0; x < L2; x++) {
+      if (Math.hypot(x - cxVero, y - cyVero) <= rDisco) disco[y * L2 + x] = 250;
+    }
+    const dOut = V.visRilevaMacchie(disco, L2, H2, {});
+    prova('un disco saturo largo quindici pixel dà UNA macchia',
+      dOut.macchie.length === 1, 'trovate: ' + dOut.macchie.length);
+    prova('e il suo centro è il centro del disco, non un punto del suo anello',
+      dOut.macchie.length === 1 &&
+      Math.hypot(dOut.macchie[0].x - cxVero, dOut.macchie[0].y - cyVero) < 0.4,
+      dOut.macchie.length ? `(${dOut.macchie[0].x.toFixed(2)}, ${dOut.macchie[0].y.toFixed(2)}) contro (${cxVero}, ${cyVero})` : '');
+    prova('e si riconosce come esteso, non come un punto',
+      dOut.macchie.length === 1 && dOut.macchie[0].raggio > 3,
+      dOut.macchie.length ? dOut.macchie[0].raggio.toFixed(2) + ' px' : '');
+  }
+
+  // --- L'associazione ------------------------------------------------
+  {
+    const perGrado = 20;
+    const cand = [
+      { id: 'Moon', genere: 'astro', px: 100, py: 100, raggioAtteso: 0.27, peso: 1.4 },
+      { id: 'Vega', genere: 'astro', px: 300, py: 200, raggioAtteso: 0.05, peso: 0.85 }
+    ];
+    const c = V.visAssocia(cand, [
+      { x: 104, y: 103, raggio: 5.4, segno: 1 },
+      { x: 297, y: 204, raggio: 1.1, segno: 1 }
+    ], { perGrado, cancello: 12 });
+    prova('due candidati e due macchie si associano a coppie',
+      c.length === 2 && c[0].candidato.id === 'Moon' && c[0].macchia.x === 104);
+    // L'ambiguità: due macchie ugualmente plausibili non sono un riferimento,
+    // sono una moneta lanciata — e una moneta lanciata, qui, sposta tutto il
+    // cielo.
+    prova('due macchie identiche alla stessa distanza non fanno un riferimento',
+      V.visAssocia([cand[1]], [
+        { x: 306, y: 200, raggio: 1.1, segno: 1 },
+        { x: 294, y: 200, raggio: 1.1, segno: 1 }
+      ], { perGrado, cancello: 12 }).length === 0);
+    prova('oltre il cancello non si associa niente',
+      V.visAssocia([cand[1]], [{ x: 300 + perGrado * 13, y: 200, raggio: 1.1, segno: 1 }],
+        { perGrado, cancello: 12 }).length === 0);
+    // La taglia è il secondo segnale: fra due macchie quasi equidistanti da
+    // un candidato grande come la Luna vince quella della taglia giusta,
+    // anche se non è la più vicina in pixel.
+    const conTaglia = V.visAssocia([cand[0]], [
+      { x: 100 + 26, y: 100, raggio: 5.4, segno: 1 },
+      { x: 100 + 34, y: 100, raggio: 0.6, segno: 1 }
+    ], { perGrado, cancello: 12 });
+    prova('a parità di distanza vince la macchia della taglia giusta',
+      conTaglia.length === 1 && conTaglia[0].macchia.raggio === 5.4);
+    // E un candidato aereo ha il suo cancello, più largo: la sua posizione
+    // porta l'errore della propagazione ADS-B, che vale gradi.
+    const aereo = [{ id: 'aereo:x', genere: 'aereo', px: 400, py: 400,
+                     raggioAtteso: 0.06, peso: 0.6, polarita: 0,
+                     cancello: V.VIS_CANCELLO_AEREO }];
+    prova('un aereo si aggancia anche a sei gradi, dove un astro non lo farebbe',
+      V.visAssocia(aereo, [{ x: 400 + perGrado * 6, y: 400, raggio: 1, segno: -1 }],
+        { perGrado, cancello: V.VIS_CANCELLO_STRETTO }).length === 1);
+
+    // La polarità. Un astro è più chiaro del cielo, sempre: di giorno come di
+    // notte, è per questo che si vede. Una sagoma scura può essere un aereo o
+    // un uccello, e prendere quella per la Luna è il modo in cui l'aggancio
+    // si porta via tutto il cielo. La regola serve **anche** quando non
+    // sbaglia il bersaglio: senza, la Luna e la sagoma di un aereo che le
+    // passa a cinque gradi diventavano due candidate ugualmente plausibili e
+    // la regola dell'ambiguità le scartava tutt'e due — cioè nessun aggancio,
+    // che è il sintomo con cui questo difetto si è presentato.
+    const chiaro = { id: 'Moon', genere: 'astro', px: 500, py: 500,
+                     raggioAtteso: 0.27, peso: 1.4, polarita: 1 };
+    prova('una macchia scura non può essere un astro',
+      V.visAssocia([chiaro], [{ x: 505, y: 500, raggio: 5, segno: -1 }],
+        { perGrado, cancello: 12 }).length === 0);
+    prova('e la sagoma scura vicina non rende ambigua la Luna',
+      V.visAssocia([chiaro], [
+        { x: 505, y: 500, raggio: 5, segno: 1 },
+        { x: 500 + perGrado * 5, y: 500, raggio: 2, segno: -1 }
+      ], { perGrado, cancello: 12 }).length === 1);
+  }
+
+  // --- Le utilità delle rotazioni ------------------------------------
+  {
+    const R = V.rodrigues([0, 0, 30 * G]);
+    prova('l\'angolo di una rotazione si rilegge dalla traccia', Math.abs(V.angoloDi(R) - 30) < 1e-9);
+    prova('scalata a metà, una rotazione vale metà angolo',
+      Math.abs(V.angoloDi(V.scalaRotazione(R, 0.5)) - 15) < 1e-9);
+    prova('scalare l\'identità non divide per zero',
+      V.angoloDi(V.scalaRotazione(V.identita(), 0.5)) < 1e-12);
+    // Rodrigues esatta e non `I + [ω]×`: quello che conta è che la matrice
+    // resti **ortogonale**, perché viene moltiplicata addosso a sé stessa un
+    // fotogramma dopo l'altro. Mille composizioni di un decimo di grado
+    // devono fare cento gradi tondi, e non deformare niente.
+    let M = V.identita();
+    for (let i = 0; i < 1000; i++) M = V.moltiplica(V.rodrigues([0, 0.1 * G, 0]), M);
+    prova('mille composizioni fanno cento gradi tondi',
+      Math.abs(V.angoloDi(M) - 100) < 1e-6, V.angoloDi(M).toFixed(9) + '°');
+    const v = V.applica(M, [0.3, -0.5, 0.81]);
+    prova('e la lunghezza di un versore non si perde per strada',
+      Math.abs(Math.hypot(v[0], v[1], v[2]) - Math.hypot(0.3, -0.5, 0.81)) < 1e-12);
+    prova('lo scarto fra due azimut attraversa il nord',
+      Math.abs(V.scartoAz(1, 359) - 2) < 1e-9, V.scartoAz(1, 359) + '°');
+    prova('e non si scrive mai fuori da mezzo giro',
+      [0, 90, 180, 270, 359.9].every(a => Math.abs(V.scartoAz(a, 12)) <= 180));
+  }
+
+  // --- L'ancora di un aereo: un anello che si chiude -----------------
+  //
+  // La correzione di un aereo è un **incremento**, perché la previsione che
+  // l'ha misurata portava già dentro l'ancora di prima. Il conto quindi si
+  // chiude su sé stesso, e la prova è che ci arrivi e poi ci resti fermo:
+  // un'ancora che continuasse a sommare divergerebbe, una che sostituisse
+  // ballerebbe a ogni misura.
+  {
+    const tau = 0.28, dt = 0.08;
+    const k = 1 - Math.exp(-dt / tau);
+    let ancora = 0;
+    const veroScarto = 6;      // gradi fra dove diciamo che è e dov'è
+    for (let i = 0; i < 40; i++) ancora += (veroScarto - ancora) * k;
+    prova('in tre secondi l\'ancora arriva sullo scarto vero',
+      Math.abs(ancora - veroScarto) < 0.05, ancora.toFixed(3) + '° su ' + veroScarto);
+    // A convergenza l'incremento misurato è zero e l'ancora sta ferma.
+    const fermo = ancora + (veroScarto - ancora) * k;
+    prova('e a convergenza non si muove più', Math.abs(fermo - ancora) < 1e-3);
+    prova('un\'ancora più grande del massimo si rifiuta invece di volare via',
+      V.VIS_ANCORA_MAX > 0 && V.VIS_ANCORA_MAX < 30, V.VIS_ANCORA_MAX + '°');
+  }
+
+  // --- Le soglie, che devono restare quello che dicono ---------------
+  {
+    prova('il cancello stretto è molto più stretto di quello largo',
+      V.VIS_CANCELLO_STRETTO < V.VIS_CANCELLO_LARGO / 4,
+      `${V.VIS_CANCELLO_STRETTO}° contro ${V.VIS_CANCELLO_LARGO}°`);
+    prova('quello di un aereo sta in mezzo ai due',
+      V.VIS_CANCELLO_AEREO > V.VIS_CANCELLO_STRETTO && V.VIS_CANCELLO_AEREO < V.VIS_CANCELLO_LARGO);
+    prova('la correzione ha un tetto: oltre non è una bussola imprecisa',
+      V.VIS_CORREZIONE_MAX > V.VIS_CANCELLO_LARGO && V.VIS_CORREZIONE_MAX <= 40,
+      V.VIS_CORREZIONE_MAX + '°');
+  }
+
+  skyProvaAR = false;
+  sky.larghezza = larghezzaPrima;
+  sky.altezza = altezzaPrima;
 }
 
 // Rimettere a posto la `fetch` vera: da qui in giù la pagina torna a parlare

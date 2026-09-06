@@ -8355,6 +8355,14 @@ function skyUsaSensori() {
   return !!(sky.sensori && sky.seguiTelefono && skyAssettoDisponibile());
 }
 
+// Il raddrizzamento della realtà aumentata, se il motore di vista c'è ed è
+// agganciato. Sta qui e non dentro a `visione.js` per la ragione di sempre:
+// un modulo che manca non deve cambiare niente, e la guardia è meglio
+// scriverla una volta sola dove la si legge.
+function skyCorreggiConVista(base) {
+  return (typeof visCorreggiBase === 'function') ? visCorreggiBase(base) : base;
+}
+
 // Terna di riferimento della "telecamera": f = dove punta il telefono,
 // r = destra dello schermo, u = alto dello schermo (tutti in Est/Nord/Alto).
 function skyBase() {
@@ -8367,12 +8375,19 @@ function skyBase() {
       // Assi dello schermo espressi negli assi del telefono (ruotati se è in orizzontale)
       const o = skyAngoloSchermo() * SKY_D2R;
       const co = Math.cos(o), so = Math.sin(o);
-      return skyLevigaBase({
+      // In realtà aumentata, all'ultimo passo, il motore di vista raddrizza
+      // la terna: `visione.js` ha riconosciuto nell'immagine gli astri che il
+      // cielo calcolato dice che ci sono lì e sa di quanto la bussola sta
+      // sbagliando. Si ruota il **riferimento**, non gli oggetti — così tutto
+      // quello che il planetario disegna si sposta insieme, e resta insieme
+      // mentre il telefono gira. Senza quel modulo, o senza aggancio, questa
+      // riga non fa niente.
+      return skyCorreggiConVista(skyLevigaBase({
         // Si guarda attraverso il retro del telefono: asse -Z del dispositivo
         f: skyApplica(R, [0, 0, -1]),
         r: skyApplica(R, [co, -so, 0]),
         u: skyApplica(R, [so, co, 0])
-      });
+      }));
     }
   }
   // Modalità manuale: la direzione di sguardo la decide il dito, ed è esatta
@@ -8627,8 +8642,7 @@ function skyTaraCampoFotocamera(campoVerticaleVoluto) {
   if (!lato) return;
   skyImpostaTaraturaCamera(lato);
   skyAvviso('camera-taratura',
-    `Taratura della fotocamera: ${Math.round(sky.cameraCampo)}° di cielo nell'altezza dello schermo. ` +
-    'Allarga o stringi finché gli astri disegnati non si posano su quelli veri.', 5000);
+    astroI18n.t('ar.taratura', { gradi: Math.round(sky.cameraCampo) }), 5000);
 }
 
 // --- Come il cielo finisce sullo schermo ------------------------------
@@ -20955,6 +20969,14 @@ function skyDisegna() {
   // equatoriale: lo disegna il modulo Telescopio, se è acceso.
   if (typeof telDisegnaPoloSuCielo === 'function') telDisegnaPoloSuCielo(ctx, base, focale);
 
+  // Le parentesi dell'aggancio della realtà aumentata: attorno a ogni
+  // riferimento che il motore di vista ha riconosciuto nell'immagine vera.
+  // Sono l'unica cosa che dica *perché* il cielo si è spostato da solo, e
+  // senza di loro quel movimento si legge come un difetto.
+  if (conCamera && typeof visDisegnaAgganci === 'function') {
+    visDisegnaAgganci(ctx, base, focale);
+  }
+
   skyControllaSostaMirino();
   skyDisegnaMirino(ctx);
   skyDisegnaAvanzamentoSosta(ctx);
@@ -25614,8 +25636,10 @@ function skyAlternaSeguiTelefono() {
   // Con la fotocamera accesa sganciare la vista stacca il cielo dall'immagine:
   // non è più realtà aumentata, è una mappa sopra uno sfondo.
   if (sky.camera && sky.sensori) {
-    skyAvviso('camera', nuovo ? '' :
-      'Vista sganciata: il cielo disegnato non sta più sopra quello che inquadri.');
+    skyAvviso('camera', nuovo ? '' : astroI18n.t('ar.sganciataOra'));
+    // Sganciata la vista non c'è più niente da agganciare: la posizione del
+    // cielo la decide il dito, e l'immagine sotto non ne sa niente.
+    if (typeof visAvvia === 'function') { if (nuovo) visAvvia(); else visFerma(); }
   }
 
   if (!sky.sensori) {
@@ -25876,6 +25900,23 @@ function skyCiclo() {
     // proposito: il fotogramma che l'utente sta aspettando esce per primo, e
     // il conto del transito arriva col successivo.
     if (typeof tranAggiorna === 'function') tranAggiorna(false);
+    // Il motore di vista, per la stessa ragione e con lo stesso patto: sta
+    // **dopo** il disegno, si strozza da sé (guarda l'immagine dodici volte
+    // al secondo, non sessanta) e da qui costa il confronto fra due numeri.
+    // Riceve la posa appena usata per disegnare, che è quella con cui va
+    // confrontato il fotogramma — e se la salva con l'ora, perché il
+    // fotogramma che leggerà è stato preso qualche decina di millisecondi fa
+    // (§10 di `visione.js`).
+    if (typeof visAggiorna === 'function') {
+      // Il motore si accende da sé quando le condizioni ci sono. Non è una
+      // ridondanza dell'accensione fatta in `skyAttivaFotocamera`: la
+      // fotocamera si può accendere **prima** che i sensori rispondano — su
+      // iOS il permesso dell'orientamento è un altro permesso, e arriva al
+      // primo tocco — e in quel caso la realtà aumentata partiva come sfondo
+      // e restava sfondo per sempre, senza che niente lo dicesse.
+      if (sky.camera && skyUsaSensori() && !visAttivo()) visAvvia();
+      visAggiorna(sky.ultimaBase, sky.ultimaFocale);
+    }
     skyUltimoGuasto = null;
   } catch (e) {
     skyGuastoFotogramma(e);
@@ -26530,7 +26571,11 @@ function inizializzaSkymap() {
       sky.cameraCampoLato = 0;
       try { localStorage.removeItem(CHIAVE_SKY_CAMERA); } catch (e) { /* niente storage */ }
       skySincronizzaCampoFotocamera();
-      skyAvviso('camera-taratura', 'Taratura della fotocamera azzerata.', 3000);
+      // Con la taratura si azzera anche l'aggancio: la correzione trovata
+      // valeva per quella focale, e tenerla addosso a un'altra vuol dire
+      // spostare il cielo per un motivo che non c'è più.
+      if (typeof visAzzera === 'function') visAzzera();
+      skyAvviso('camera-taratura', astroI18n.t('ar.taraturaAzzerata'), 3000);
       skyMostraGruppo('');
       return;
     }
@@ -38645,6 +38690,33 @@ function skyAggiornaComandiPlayback() {
 
 // --- Fotocamera: il cielo calcolato sopra l'immagine reale ---
 
+// I due tasti che accendono la realtà aumentata sono due, e devono dire la
+// stessa cosa: quello appoggiato sulla mappa (che è il comando vero — sta in
+// colonna con lo schermo intero e l'inseguimento, e funziona anche a cielo
+// pieno schermo, dove i pannelli non si aprono) e quello dentro alla scheda
+// «Schermo», che resta perché è lì che uno va a cercarlo la prima volta.
+// Tenerli d'accordo a mano è il modo di ritrovarsene uno acceso e uno spento:
+// li scrive questa, e nessun altro.
+function skyAggiornaTastiCamera(attiva) {
+  const T = (k) => (typeof astroI18n === 'object' && astroI18n.t) ? astroI18n.t(k) : k;
+  const pannello = document.getElementById('skymap-btn-camera');
+  if (pannello) {
+    pannello.classList.toggle('attiva', !!attiva);
+    pannello.setAttribute('aria-pressed', attiva ? 'true' : 'false');
+    pannello.textContent = T(attiva ? 'ar.spegni' : 'ar.accendi');
+    pannello.title = T(attiva ? 'ar.spegniTitolo' : 'ar.accendiTitolo');
+  }
+  const mappa = document.getElementById('skymap-btn-camera-mappa');
+  if (mappa) {
+    // Qui dentro c'è un disegno, non una parola: il testo non si tocca.
+    mappa.classList.toggle('attiva', !!attiva);
+    mappa.setAttribute('aria-pressed', attiva ? 'true' : 'false');
+    mappa.title = T(attiva ? 'ar.spegniTitolo' : 'ar.accendiTitolo');
+    mappa.setAttribute('aria-label', T(attiva ? 'ar.spegni' : 'ar.accendi'));
+  }
+  if (typeof visAggiornaHud === 'function') visAggiornaHud();
+}
+
 async function skyAttivaFotocamera() {
   const video = document.getElementById('skymap-video');
   if (!video) return;
@@ -38654,6 +38726,7 @@ async function skyAttivaFotocamera() {
     sky.camera = null;
     video.srcObject = null;
     video.classList.add('hidden');
+    if (typeof visFerma === 'function') visFerma();
     // Spenta la fotocamera il campo torna a essere una preferenza: si riprende
     // quello che c'era prima, e il filtro riparte con lo smorzamento della
     // mappa disegnata.
@@ -38662,17 +38735,28 @@ async function skyAttivaFotocamera() {
     sky.baseFiltrata = null;
     skyAvviso('camera', '');
     skyAvviso('camera-taratura', '');
-    skyTasto('skymap-btn-camera', false, 'Fotocamera');
+    skyAggiornaTastiCamera(false);
     return;
   }
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    skyAvviso('camera', 'Questo browser non dà accesso alla fotocamera.');
+    skyAvviso('camera', astroI18n.t('ar.senzaAccesso'));
     return;
   }
   try {
+    // Si chiede la risoluzione più alta che il telefono conceda senza
+    // discutere (`ideal`, non `exact`: un vincolo rigido fa fallire l'intera
+    // richiesta su chi non ce l'ha, e allora la fotocamera non si accende
+    // affatto). Non è vanità: il riconoscimento del §4 di `visione.js` misura
+    // il centroide di una macchia, e una macchia larga tre pixel su un
+    // fotogramma da 640 è larga nove su uno da 1920 — cioè tre volte la
+    // precisione angolare dell'aggancio, gratis.
     sky.camera = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' } }, audio: false
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 }, height: { ideal: 1080 }
+      },
+      audio: false
     });
     video.srcObject = sky.camera;
     video.classList.remove('hidden');
@@ -38686,24 +38770,25 @@ async function skyAttivaFotocamera() {
     skySincronizzaCampoFotocamera();
     // Le misure del video arrivano col primo fotogramma, che può tardare
     video.addEventListener('loadedmetadata', skySincronizzaCampoFotocamera, { once: true });
-    skyTasto('skymap-btn-camera', true, 'Spegni fotocamera');
+    skyAggiornaTastiCamera(true);
     // Senza bussola l'immagine e il cielo calcolato non possono stare
     // insieme: meglio dirlo subito che lasciar credere a un difetto della
     // realtà aumentata.
     if (!skyUsaSensori()) {
-      skyAvviso('camera', sky.sensori
-        ? 'Vista sganciata: per sovrapporre il cielo all’immagine riattiva “Segui il telefono”.'
-        : 'Senza bussola e giroscopio il cielo non può seguire l’inquadratura: qui la fotocamera fa solo da sfondo.');
+      skyAvviso('camera', astroI18n.t(sky.sensori ? 'ar.sganciata' : 'ar.senzaSensori'));
     } else {
       skyAvviso('camera', '');
+      // Il motore di vista parte solo qui: senza sensori non c'è niente da
+      // raddrizzare (la vista la comanda il dito) e guardare l'immagine
+      // sarebbe lavoro buttato.
+      if (typeof visAvvia === 'function') visAvvia();
       if (!sky.assoluto) {
-        skyAvviso('camera-taratura', 'Bussola relativa: se il cielo è ruotato rispetto all’immagine, ' +
-          'correggilo con “Calibra”. Con il pizzico invece si tara il campo dell’obiettivo.', 8000);
+        skyAvviso('camera-taratura', astroI18n.t('ar.bussolaRelativa'), 8000);
       }
     }
   } catch (e) {
     sky.camera = null;
-    skyAvviso('camera', 'Fotocamera non disponibile: serve il permesso del browser e una connessione sicura (https).');
+    skyAvviso('camera', astroI18n.t('ar.nonDisponibile'));
   }
 }
 
@@ -38812,6 +38897,20 @@ function inizializzaSkymapExtra() {
   // può metterci qualche secondo, e in quei secondi il cielo dev'essere già
   // libero — l'immagine arriva sotto al pannello, non davanti.
   collega('skymap-btn-camera', () => { skyMostraGruppo(''); skyAttivaFotocamera(); });
+  // Lo stesso comando sulla mappa. È lui il tasto vero: la realtà aumentata
+  // è il modo in cui questo planetario si usa in giardino — si punta il
+  // telefono e si guarda — e stava dietro a un pannello, dentro alla quarta
+  // delle cinque schede, cioè in un posto che si trova solo cercandolo. Qui
+  // sta in colonna coi comandi del guardare e funziona anche a schermo
+  // intero, dove i pannelli non si aprono affatto.
+  collega('skymap-btn-camera-mappa', () => { skyMostraGruppo(''); skyAttivaFotocamera(); });
+  // La pillola dell'aggancio è anche un tasto: toccandola si rifà la mira da
+  // capo. Serve quando ci si sposta di posto — il ferro attorno è un altro —
+  // o quando l'aggancio si è preso una macchia sbagliata e lo si vede.
+  collega('ar-stato', () => {
+    if (typeof visAzzera === 'function') visAzzera();
+    skyAvviso('camera-taratura', astroI18n.t('ar.aggancioAzzerato'), 3000);
+  });
 
   // Uscendo dal planetario la fotocamera si spegne: batteria e privacy
   document.addEventListener('visibilitychange', () => {

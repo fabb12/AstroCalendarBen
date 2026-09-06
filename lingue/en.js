@@ -2044,6 +2044,34 @@ window.ASTRO_DIZIONARI['en'] = {
     'aurora.sopraLaTesta': '{quale}: the {nome} oval passes practically overhead. The curtains come down from the zenith and the green fills the sky towards {direzione}.',
     'aurora.archiVerdi': '{quale}: {nome} aurora visible from here, with the green arcs above the horizon and the curtains reaching {alt}° towards {direzione}.',
 
+    // --- La realtà aumentata e il motore di vista (visione.js) --------
+    'ar.accendi': 'Augmented reality',
+    'ar.spegni': 'Turn the camera off',
+    'ar.accendiTitolo': 'Augmented reality: the computed sky over the camera image, locked onto the real objects',
+    'ar.spegniTitolo': 'Turn the camera off and go back to the drawn sky',
+    'ar.senzaAccesso': 'This browser gives no access to the camera.',
+    'ar.nonDisponibile': 'Camera unavailable: it needs the browser’s permission and a secure connection (https).',
+    'ar.sganciata': 'View unlocked: to overlay the sky on the image, switch “Follow the phone” back on.',
+    'ar.senzaSensori': 'Without a compass and a gyroscope the sky cannot follow the framing: here the camera is only a backdrop.',
+    'ar.sganciataOra': 'View unlocked: the drawn sky is no longer sitting on what you are framing.',
+    'ar.bussolaRelativa': 'Relative compass: if the sky is rotated with respect to the image, fix it with “Calibrate”. Pinching instead calibrates the lens field.',
+    'ar.taratura': 'Camera calibration: {gradi}° of sky in the height of the screen. Widen or tighten it until the drawn objects settle onto the real ones.',
+    'ar.taraturaAzzerata': 'Camera calibration reset.',
+    'ar.aggancioAzzerato': 'Aim restarted: point the phone at the Moon, a planet or an aircraft and wait a moment.',
+    'ar.pillolaTitolo': 'Augmented-reality lock: tap to restart the aim',
+    'visione.spento': 'Lock off',
+    'visione.cerca': 'Looking for references…',
+    'visione.attesa': 'Waiting for the image…',
+    'visione.movimento': 'Hold still for a moment to lock on',
+    'visione.agganciato': {
+      uno: 'Locked · {n} reference · ±{scarto}°',
+      altri: 'Locked · {n} references · ±{scarto}°'
+    },
+    'visione.aerei': {
+      uno: 'Aircraft locked to the image',
+      altri: '{n} aircraft locked to the image'
+    },
+
     // --- Gli aerei (aerei.js) -----------------------------------------
     'aerei.aggiornamentoInCorso': 'Refreshing the ADS-B data…',
     'aereo.rottaOrtodromica': 'Great-circle route',

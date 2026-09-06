@@ -1121,6 +1121,16 @@ function ridisegnaTuttoPerLingua() {
     ['avviso dei transiti', () => {
       if (typeof tranAggiornaAvviso === 'function') tranAggiornaAvviso();
     }],
+    // I due tasti della realtà aumentata e la pillola dell'aggancio: il loro
+    // testo dipende dallo stato (acceso/spento, agganciato/cerca), quindi non
+    // basta la chiave scritta nell'HTML — quella riscriverebbe «Realtà
+    // aumentata» sopra a un tasto che dice «Spegni».
+    ['realtà aumentata', () => {
+      if (typeof skyAggiornaTastiCamera === 'function') {
+        skyAggiornaTastiCamera(typeof sky === 'object' && !!sky.camera);
+      }
+      if (typeof visAggiornaHud === 'function') visAggiornaHud();
+    }],
     // L'atlante delle costellazioni: si compone tutto in JavaScript, e resta
     // aperto mentre si tocca la bandiera. Si rifà solo se è a schermo — è un
     // modale, e a finestra chiusa lo rifà comunque chi la riapre.

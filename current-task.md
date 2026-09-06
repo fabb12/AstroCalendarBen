@@ -1,108 +1,114 @@
 # Task Corrente
 
-**In corso: finire la traduzione inglese di `app.js`.** Vedi «Cosa resta» in
-fondo — sono le eclissi (la mappa dell'ombra, le eclissi di casa, quelle
-lunari), le simulazioni e gli avvisi del planetario, per un totale di **355
-stringhe** contate da `node scripts/controlla-i18n.js --lista --file app.js`.
-Tutto il resto è fatto, provato e dentro al tetto.
+**Niente in corso.**
+
+Resta aperto, come prima, il lavoro di fondo sulla traduzione inglese di
+`app.js`: 353 stringhe cablate contate da
+`node scripts/controlla-i18n.js --lista --file app.js` — le eclissi (la mappa
+dell'ombra, le eclissi di casa, quelle lunari), le simulazioni e gli avvisi del
+planetario. Il tetto è sceso da 364 a 362 con l'intervento qui sotto.
 
 ## Ultimo intervento completato
 
-**Il comando delle date di calendario e agenda si è ridotto a una riga.**
-Richiesta: «nella sezione calendario e agenda comprimi in un unico comando la
-gestione delle date tra singolo mese e intervallo di date; controllo
-intelligente e comodo anche per schermo piccolo; lo scopo è dare più spazio
-al contenuto di calendario e schede».
+**La realtà aumentata riconosce gli oggetti veri e ci si aggancia.**
+Richiesta: «migliora la funzionalità realtà aumentata, mettila più in vista.
+Quando è attivata implementa un sistema di tracciamento del target in modo da
+allineare perfettamente, in automatico, le informazioni in sovraimpressione —
+l'aereo dato ADS-B deve combaciare con l'aereo vero, idem per tutti gli altri
+astri. Se muovo il cellulare l'elemento deve rimanere allineato all'oggetto
+reale.»
 
-### 1. Il difetto, misurato
+### 1. Il difetto, e perché erano tre difetti
 
-Sopra alla griglia c'erano **tre file di comandi impilate**: la barra di
-FullCalendar (freccia, mese, freccia, oggi), la riga «Vai al mese» con la sua
-tendina, il suo anno e i suoi due tasti, e la riga «Oppure un intervallo» con
-altre due caselle data e altri due tasti. A 320 px andavano a capo cinque
-volte: **346 pixel** di controlli su uno schermo alto 640, cioè più di metà
-schermata prima di vedere una casella del calendario.
+Nella fotografia allegata l'aereo disegnato stava qualche grado accanto
+all'aereo vero. La geometria della realtà aumentata era già giusta — la
+proiezione sopra il video è rettilinea come quella dell'obiettivo, il campo lo
+detta l'obiettivo e non la preferenza — e quindi il residuo veniva da tre
+cause di natura diversa, che è la ragione per cui un solo numero non le
+poteva curare:
 
-E dicevano tre volte la stessa cosa. Mese e intervallo **si escludono a
-vicenda** — `impostaMeseSelezionato` spegne l'intervallo e
-`impostaIntervalloSelezionato` spegne il mese — quindi tenere a schermo tutti e
-due i modi di scegliere voleva dire chiedere ogni volta quale dei due stesse
-comandando; e la barra di FullCalendar sfogliava gli stessi mesi del selettore
-che le stava sotto.
+- **l'assetto**: la bussola sbaglia. Un grado nel migliore dei casi, venti con
+  del ferro vicino. È un errore uguale per tutto il cielo;
+- **l'obiettivo**: quanto riprenda la fotocamera il browser non lo dice (né
+  `getSettings()` né `getCapabilities()` espongono il campo visivo). Si assume
+  65° sul lato lungo; se l'obiettivo è un grandangolo da 78° il centro
+  combacia lo stesso e i bordi no;
+- **l'oggetto**: un aereo ADS-B non è dove il feed dice. La propagazione di una
+  lettura vecchia di tre secondi, a 250 m/s, sono ottocento metri — che a
+  cinque chilometri di distanza sono **nove gradi**. Ed è un errore di quel
+  singolo aereo, non del cielo.
 
-### 2. La barra del periodo — `index.html`, `app.js` §1-quater, `style.css`
+### 2. `visione.js` (~1.100 righe, prefisso `vis`)
 
-Quello che si guarda è **un periodo**, e un periodo per volta. A schermo resta
-una riga: il **nome** di quel periodo («Settembre 2026», «6 set – 5 ott»,
-«Prossimi eventi»), le due frecce per scorrerlo, il tondo di oggi. I campi
-stanno in un foglio che si apre solo se lo si chiede, appoggiato **sopra** al
-contenuto invece che spingerlo in giù — aprirlo non deve far saltare il
-calendario — con due linguette, Mese e Intervallo.
+Un modulo nuovo che stima tre cose invece di una, ognuna dal dato che la può
+misurare. §3-§4 rilevano le macchie nel fotogramma **col segno** (di giorno un
+aereo è una sagoma scura: chi cerca solo il chiaro non lo trova mai, e non lo
+dice); §5-§6 le associano ai candidati con un cancello che si stringe man mano
+che ci si fida; §7 risolve la rotazione che le fa combaciare tutte (Wahba
+linearizzato e iterato, con λ piccolo e pesi ridiscendenti); §8 ricava la
+focale vera dal rapporto fra due distanze; §9 tiene le ancore dei singoli
+oggetti.
 
-`headerToolbar` di FullCalendar è passato a `false`: le sue regole di stile
-restano dormienti, col perchè scritto accanto a `.fc .fc-toolbar-title`.
+**La riga che risponde alla domanda del movimento**: quello che si misura non
+è la posizione di un'etichetta ma una **rotazione del mondo**. La si misura da
+fermi, dove l'immagine è nitida, e da lì la porta avanti il giroscopio — è la
+divisione della navigazione inerziale, *il giroscopio dà il movimento, la vista
+dà la mira*. Provato: dopo venticinque gradi di rotazione, **senza rimisurare
+niente**, gli astri restano sulle loro macchie.
 
-Misurato dopo, stessa sonda: **63 px** a 320 e a 390, **73** sul computer (da
-139). Sul telefono sono 283 pixel restituiti alla griglia.
+### 3. I quattro difetti trovati misurando
 
-Tre cose non sono decorazione, e ognuna viene da una domanda vera:
-- riaprendo il foglio con un intervallo acceso si riapre **sull'intervallo**:
-  chi ce l'ha lo vuole ritoccare, non ricominciare da un mese;
-- le frecce, con un intervallo acceso, lo spostano **di quanto è lungo** e non
-  di un mese: chi guarda le due settimane di ferie vuole le due settimane dopo;
-- le tre durate già pronte (7 giorni, 30, 3 mesi) esistono perchè altrimenti
-  un intervallo costa due caselle data compilate a mano, che su un telefono
-  sono due tastierini e un ripensamento.
+Nessuno dei quattro si vedeva sullo schermo, perché il sintomo di tutti è
+**nessun aggancio**, che somiglia a «qui non c'è niente da riconoscere».
 
-Il nome si **abbrevia** sul telefono (`meseCorto`, e l'anno di un intervallo di
-quest'anno non si scrive): a 320 px al nome restano centosedici pixel e
-«Settembre 2026» ne chiede centoventisei — è la stessa scelta che faceva il
-`titleFormat` della barra di FullCalendar. Da lì la riga in
-`ridisegnaPerDispositivo`, se no chi allarga la finestra si tiene «Set 2026»
-per sempre. La forma lunga sta nel `title` del tasto.
+1. **λ della regolarizzazione a 0,02**: tirava la soluzione verso
+   l'immobilità e la rotazione veniva il 16% più corta del vero (2,64° invece
+   di 3,16°). Adesso è un milionesimo — regolarizza uguale e non tira niente.
+2. **Gli aloni**: il fondo stimato a scatola fa sì che ogni macchia si scavi
+   attorno un anello di segno opposto. Due sorgenti producevano **undici**
+   macchie. Le toglie il segno.
+3. **Il disco saturo**: la Luna ha in cima un pianoro dove ogni pixel è un
+   massimo locale — quattro copie della stessa macchia, che per la regola
+   dell'ambiguità sono quattro riferimenti ambigui, cioè nessuno. Si deducono
+   dal risultato: due picchi che danno lo stesso centroide sono lo stesso
+   oggetto.
+4. **Il centroide tirato fuori dal centro**: al centro di un disco la scatola
+   del fondo è quasi tutta disco, quindi lì il residuo si abbassa e il massimo
+   casca su un anello — quattro pixel di schermo di errore **sistematico**,
+   che il filtro non toglie perché non è rumore. Si ricentra la finestra, tre
+   passate.
 
-Trappola trovata misurando: lo stato del foglio si scrive `data-modo-periodo`
-e **non** `data-periodo-modo`, che è già il nome dei due tasti delle linguette.
-Da dentro la barra non fa danno — un `querySelectorAll` su un elemento non
-restituisce l'elemento stesso — ma chi lo cerca **dal documento** si ritrova
-fra le linguette anche tutta la barra: è esattamente quello che è successo alla
-prova, che ne ha trovate tre invece di due.
+Più due di integrazione: la correzione applicata **due volte** alle ancore
+degli aerei (che li portava via di tre gradi e mezzo), e il conto dei pixel
+del fotogramma ridotto — duecento di larghezza su uno schermo di telefono sono
+ottantottomila pixel e dieci millisecondi e mezzo per giro. Adesso il budget è
+in pixel (30.000): 1,8 ms.
 
-Chiavi nuove nei due dizionari sotto `periodo.*`; zero stringhe italiane
-cablate in più (`controlla-i18n.js` dà lo stesso identico elenco di prima —
-il totale sforava già di due prima di questo lavoro, ed è roba d'altri).
+### 4. Il tasto, che era nascosto
 
-### 3. Le prove
+Il comando stava nella scheda «Schermo» del pannello Visualizzazione — la
+quarta linguetta del terzo pannello — e a cielo pieno schermo, cioè proprio
+dove la realtà aumentata si vuole, i pannelli non si aprono affatto. Adesso è
+il **primo della colonna dei comandi sulla mappa**, con la pillola `#ar-stato`
+in alto a sinistra che dice a quanti riferimenti è agganciato e con che
+scarto. I due tasti li tiene d'accordo `skyAggiornaTastiCamera()`.
 
-`prova-lingua.js`: tutto verde, calendario e agenda restano a **zero** frasi
-italiane dopo il cambio lingua.
+### 5. Provato
 
-Una prova a parte (fuori dal repository) apre l'app a 320x640, 390x844 e
-1280x900 e controlla che la barra sia una riga sola, che il nome ci stia per
-intero senza puntini, che il foglio non esca dallo schermo, che le linguette si
-diano il cambio, che le frecce scorrano il mese e l'intervallo, che Esc e un
-tocco fuori chiudano, che le due viste restino allineate e che in inglese le
-linguette e le durate siano tradotte. Tutto verde.
+- **§32 di `verifica.html`**, 44 prove, che carica `visione.js` per davvero e
+  non una copia. Scena sintetica con errore noto, e il contro-esempio del
+  segno girato — che non lascia le cose come stavano, le peggiora del doppio.
+- Il motore intero in un Chromium vero, con un fotogramma finto: la Luna passa
+  da 46 pixel di scarto a **0,4**, l'aereo a **0,47**, e dopo venticinque
+  gradi di rotazione senza rimisurare resta a 0,44 (contro i 52 senza
+  correzione).
+- `node scripts/controlla-i18n.js --patto`: 362, dentro al tetto (che è stato
+  abbassato a 362).
 
-**Da rifare a mano**: in questo ambiente il CDN è chiuso, quindi FullCalendar
-non si carica e `fullCalendarInstance` resta `null`. Le due cose che passano da
-lui — che la griglia si muova con le frecce e che la fascia dell'intervallo si
-disegni — sono state controllate sullo **stato** che le comanda, non sui pixel.
-Vanno guardate con la rete aperta.
+### 6. Quello che non è stato provato qui
 
-## Cosa resta
-
-1. **`app.js`, 355 stringhe.** Sono in blocchi:
-   - le **eclissi di Sole**: la mappa dell'ombra e i suoi comandi (§1-ter),
-     il meteo dell'eclissi, la condivisione, «le eclissi di casa tua»
-     (§1-quater);
-   - le **eclissi di Luna** (§1-quinquies);
-   - le **scene della simulazione** (§8);
-   - gli **avvisi del planetario** (`skyAvviso`) e qualche riga sparsa.
-   Si convertono come le altre: chiave, `astroI18n.t`, voce nei due dizionari.
-2. **I nomi degli oggetti profondi** («M3 — Globulare dei Cani da Caccia»).
-   Stanno in `SKY_PROFONDO` (`app.js`) e in `dati-profondo.js`, e sono **anche
-   l'identificativo** con cui l'app li ritrova (`dso:<nome>`): tradurre il nome
-   vuol dire cambiare l'identificativo, e con lui i link già condivisi e il
-   ponte verso il catalogo grande di `catalogo.js`. Va fatto in un colpo solo,
-   in tutt'e tre i posti: un id stabile separato dal nome mostrato.
+`verifica.html` per intero e `scripts/prova-lingua.js` non girano in questo
+ambiente: la CDN di `astronomy-engine` è irraggiungibile e la pagina si ferma
+alla prima riga che la usa. Il §32 è stato fatto girare estraendone il blocco
+— non usa Astronomy — ma **le altre sezioni non sono state rieseguite**, e chi
+ha una rete aperta faccia una passata prima di fidarsi.
