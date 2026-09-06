@@ -127,6 +127,37 @@ const server = http.createServer((req, res) => {
   });
   ok('il calendario si è calcolato', moduli.eventiCalcolati > 0, `${moduli.eventiCalcolati} eventi`);
 
+  // Regressione: dopo aver scelto il tocco nella domanda iniziale, su iOS
+  // non ci sono ancora ascoltatori. Il tasto «Segui il telefono» deve quindi
+  // chiedere il permesso durante il proprio clic; cambiare soltanto lo stato
+  // grafico lascia invece il cielo manuale e sembra che il tasto sia rotto.
+  const riattivazioneSensori = await pagina.evaluate(async () => {
+    const richiediOriginale = skyRichiediSensori;
+    const stato = {
+      seguiTelefono: sky.seguiTelefono,
+      ascolto: sky.ascolto,
+      sensori: sky.sensori,
+      sensoriNegati: sky.sensoriNegati
+    };
+    let richieste = 0;
+    skyRichiediSensori = async () => { richieste += 1; return false; };
+    sky.seguiTelefono = false;
+    sky.ascolto = false;
+    sky.sensori = false;
+    sky.sensoriNegati = false;
+    skyAlternaSeguiTelefono();
+    await Promise.resolve();
+    await Promise.resolve();
+    const risultato = { richieste, accesoDopoErrore: sky.seguiTelefono };
+    skyRichiediSensori = richiediOriginale;
+    Object.assign(sky, stato);
+    skyTasto('skymap-btn-segui', sky.seguiTelefono);
+    return risultato;
+  });
+  ok('«Segui il telefono» richiede i sensori e non resta acceso se mancano',
+    riattivazioneSensori.richieste === 1 && !riattivazioneSensori.accesoDopoErrore,
+    `${riattivazioneSensori.richieste} richiesta, acceso: ${riattivazioneSensori.accesoDopoErrore}`);
+
   // --- una sola via d'uscita per tutte le schede ---
   console.log('\n— chiusura delle schede con Esc —');
   await pagina.click('#btn-impostazioni');
