@@ -25615,11 +25615,11 @@ function skyAlternaSeguiTelefono() {
   // richiesto soltanto dentro questo clic. Prima il tasto metteva
   // `seguiTelefono` a true, ma lasciava la mappa in manuale per sempre.
   if (nuovo && !sky.ascolto) {
-    skyRichiediSensori().then((ok) => {
+    return skyRichiediSensori().then((ok) => {
       if (ok) {
         skyAggiornaStato();
         skyAvviso('sensori', 'Punta il telefono verso il cielo: la mappa segue quello che inquadri.', 6000);
-        return;
+        return true;
       }
       // Un colore acceso senza un sensore dietro prometterebbe una modalità
       // che non esiste. Si torna quindi allo stato manuale anche quando il
@@ -25629,8 +25629,8 @@ function skyAlternaSeguiTelefono() {
       skyAggiornaStatoHover();
       skyAggiornaStato();
       skyAvviso('sensori', 'Bussola e giroscopio non disponibili o non autorizzati: la mappa la muovi col dito.', 9000);
+      return false;
     });
-    return;
   }
 
   // Con la fotocamera accesa sganciare la vista stacca il cielo dall'immagine:
@@ -25649,6 +25649,7 @@ function skyAlternaSeguiTelefono() {
       ? 'La mappa torna a seguire il telefono: muovilo per guardarti intorno.'
       : 'Vista sganciata dal telefono: ora la mappa la muovi col dito, e “Centra” funziona.', 7000);
   }
+  return Promise.resolve(nuovo);
 }
 
 // Guarda verso un punto cardinale, o su per aria: sul computer non c'è una
@@ -38743,6 +38744,14 @@ async function skyAttivaFotocamera() {
     skyAvviso('camera', astroI18n.t('ar.senzaAccesso'));
     return;
   }
+
+  // La sovrapposizione ha senso soltanto se il cielo segue la stessa posa
+  // della fotocamera. Accendendo l'AR si riattacca quindi automaticamente la
+  // vista al telefono, come farebbe il relativo tasto. Va fatto prima di
+  // chiedere la fotocamera: su iOS il permesso ai sensori deve nascere dallo
+  // stesso gesto dell'utente che ha premuto «Realtà aumentata».
+  if (!sky.seguiTelefono) await skyAlternaSeguiTelefono();
+
   try {
     // Si chiede la risoluzione più alta che il telefono conceda senza
     // discutere (`ideal`, non `exact`: un vincolo rigido fa fallire l'intera
