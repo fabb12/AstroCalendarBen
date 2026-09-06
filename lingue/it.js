@@ -2105,7 +2105,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'ar.bussolaRelativa': 'Bussola relativa: se il cielo è ruotato rispetto all’immagine, correggilo con “Calibra”. Con il pizzico invece si tara il campo dell’obiettivo.',
     'ar.taratura': 'Taratura della fotocamera: {gradi}° di cielo nell’altezza dello schermo. Allarga o stringi finché gli astri disegnati non si posano su quelli veri.',
     'ar.taraturaAzzerata': 'Taratura della fotocamera azzerata.',
-    'ar.aggancioAzzerato': 'Mira rifatta da capo: punta il telefono verso la Luna, un pianeta o un aereo e aspetta un istante.',
+    'ar.aggancioAzzerato': 'Mira rifatta da capo: inquadra il cielo oppure un riferimento fermo, come un tetto, una montagna o una pianta, e aspetta un istante.',
     'ar.pillolaTitolo': 'Aggancio della realtà aumentata: tocca per rifare la mira',
     'visione.spento': 'Aggancio spento',
     'visione.cerca': 'Cerco riferimenti…',
@@ -2114,6 +2114,10 @@ window.ASTRO_DIZIONARI['it'] = {
     'visione.agganciato': {
       uno: 'Agganciato · {n} riferimento · ±{scarto}°',
       altri: 'Agganciato · {n} riferimenti · ±{scarto}°'
+    },
+    'visione.scena': {
+      uno: 'Mira stabile · {n} riferimento del paesaggio',
+      altri: 'Mira stabile · {n} riferimenti del paesaggio'
     },
     'visione.aerei': {
       uno: 'Aereo agganciato all’immagine',

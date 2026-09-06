@@ -8133,6 +8133,10 @@ const sky = {
   viaLattea: [],
   // Flusso video della fotocamera, quando la realtà aumentata è accesa
   camera: null,
+  // Un colpo breve di torcia all'avvio dell'AR rende leggibili i riferimenti
+  // vicini (tetti, rami, muri) senza lasciare una luce abbagliante accesa.
+  cameraTorciaTimer: null,
+  cameraTorciaTrack: null,
   // Realtà aumentata: sopra l'immagine vera il campo visivo non è più una
   // preferenza, è una misura dell'obiettivo. `cameraCampoLato` è la taratura
   // (gradi coperti dal lato lungo del fotogramma), `cameraCampo` il campo
@@ -38718,11 +38722,42 @@ function skyAggiornaTastiCamera(attiva) {
   if (typeof visAggiornaHud === 'function') visAggiornaHud();
 }
 
+// Accende la torcia solo per il tempo necessario all'esposizione automatica
+// per leggere il primo piano. `torch` non è uniforme fra browser: si prova
+// soltanto quando la capability è dichiarata e ogni uscita passa dallo stesso
+// spegnimento, così la luce non può restare accesa chiudendo l'AR.
+const SKY_TORCIA_AVVIO_MS = 700;
+
+async function skySpegniTorcia() {
+  if (sky.cameraTorciaTimer) clearTimeout(sky.cameraTorciaTimer);
+  sky.cameraTorciaTimer = null;
+  const track = sky.cameraTorciaTrack;
+  sky.cameraTorciaTrack = null;
+  if (!track || track.readyState === 'ended' || typeof track.applyConstraints !== 'function') return;
+  try { await track.applyConstraints({ advanced: [{ torch: false }] }); } catch (e) { /* non supportata */ }
+}
+
+async function skyIlluminaRiferimenti(stream) {
+  await skySpegniTorcia();
+  const track = stream && stream.getVideoTracks && stream.getVideoTracks()[0];
+  if (!track || typeof track.getCapabilities !== 'function' || typeof track.applyConstraints !== 'function') return false;
+  let cap;
+  try { cap = track.getCapabilities(); } catch (e) { return false; }
+  if (!cap || !cap.torch) return false;
+  try {
+    await track.applyConstraints({ advanced: [{ torch: true }] });
+    sky.cameraTorciaTrack = track;
+    sky.cameraTorciaTimer = setTimeout(() => skySpegniTorcia(), SKY_TORCIA_AVVIO_MS);
+    return true;
+  } catch (e) { return false; }
+}
+
 async function skyAttivaFotocamera() {
   const video = document.getElementById('skymap-video');
   if (!video) return;
 
   if (sky.camera) {
+    await skySpegniTorcia();
     sky.camera.getTracks().forEach(t => t.stop());
     sky.camera = null;
     video.srcObject = null;
@@ -38770,6 +38805,10 @@ async function skyAttivaFotocamera() {
     video.srcObject = sky.camera;
     video.classList.remove('hidden');
     await video.play().catch(() => {});
+    // Di notte il primo fotogramma spesso contiene solo nero: un lampo breve
+    // consente alla camera e al motore di vista di acquisire anche sagome
+    // sotto l'orizzonte, poi si spegne automaticamente.
+    skyIlluminaRiferimenti(sky.camera);
     // Il campo scelto a mano si mette da parte: da adesso lo detta l'obiettivo
     // (quello a cui si stava andando, se uno zoom morbido è ancora in viaggio)
     if (sky.fovPrimaCamera === null) sky.fovPrimaCamera = sky.fovVoluto || sky.fov;
@@ -38803,6 +38842,7 @@ async function skyAttivaFotocamera() {
 
 function skySpegniFotocamera() {
   if (sky.camera) skyAttivaFotocamera();
+  else skySpegniTorcia();
 }
 
 // Collega i comandi nuovi del planetario (chiamata da inizializzaSkymap)
