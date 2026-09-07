@@ -68,6 +68,10 @@ const MISS_STRUMENTI = ['occhio', 'binocolo', 'telescopio'];
 const MISS_ESPERIENZE = ['stupore', 'imparare', 'sfida', 'bambini'];
 const MISS_DIREZIONI = [0, 45, 90, 135, 180, 225, 270, 315];
 
+// Le voci Neural di Edge-TTS sono scelte qui, non lasciate al ponte: così la
+// stessa missione non cambia narratore secondo il server che la serve.
+const MISS_VOCI_EDGE = { it: 'it-IT-ElsaNeural', en: 'en-US-AriaNeural' };
+
 // Il livello di ogni strumento: un bersaglio si propone solo se il suo
 // minimo sta dentro a quello che si ha in mano.
 const MISS_LIVELLO_STRUMENTO = { occhio: 0, binocolo: 1, telescopio: 2 };
@@ -137,6 +141,11 @@ const miss = {
   // Le funzioni da staccare alla chiusura (tastiera, cambio lingua)
   staccare: []
 };
+
+// Audio remoto e sintesi locale condividono un solo comando di arresto. La
+// sequenza impedisce a una risposta lenta della API di parlare sopra la tappa
+// successiva quando chi osserva preme rapidamente «Trovato».
+const missVoce = { audio: null, urlOggetto: '', sequenza: 0 };
 
 
 // =====================================================================
@@ -1663,6 +1672,7 @@ function missChiudiPannello(opzioni) {
   if (modale) modale.classList.add('hidden');
   miss.aperto = false;
   miss.avviso = null;
+  missFermaVoce();
   missStacca();
   if (!(opzioni && opzioni.tieniMissione) && miss.fuocoPrima && miss.fuocoPrima.focus) {
     try { miss.fuocoPrima.focus(); } catch (e) { /* nodo sparito nel frattempo */ }
@@ -1987,13 +1997,66 @@ function missCuriositaTesto(tappa) {
   return missT('bambiniCuriosita.' + famiglia, { nome: missNomeTappa(tappa) });
 }
 
-function missRaccontaTappa(tappa, forza) {
-  if (!tappa || (!forza && !(miss.attiva && miss.attiva.scelte.voce))) return false;
+function missFermaVoce() {
+  missVoce.sequenza += 1;
+  if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
+  if (missVoce.audio) {
+    missVoce.audio.pause();
+    missVoce.audio.removeAttribute('src');
+    missVoce.audio = null;
+  }
+  if (missVoce.urlOggetto && typeof URL !== 'undefined') URL.revokeObjectURL(missVoce.urlOggetto);
+  missVoce.urlOggetto = '';
+  return missVoce.sequenza;
+}
+
+/* Il ponte Edge-TTS è deliberatamente configurabile: la PWA resta statica e
+ * non può custodire credenziali. Il contratto è piccolo e compatibile sia con
+ * un Worker proprio sia con i comuni gateway Edge-TTS: POST JSON in ingresso,
+ * audio binario oppure `{ url }` / `{ audio }` in uscita. */
+async function missRaccontaConEdge(testo, lingua, sequenza) {
+  const endpoint = typeof window !== 'undefined' ? String(window.EDGE_TTS_API_URL || '').trim() : '';
+  if (!endpoint || typeof fetch !== 'function' || typeof Audio === 'undefined') return false;
+
+  const risposta = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'audio/mpeg, audio/*, application/json' },
+    body: JSON.stringify({
+      text: testo,
+      voice: MISS_VOCI_EDGE[lingua] || MISS_VOCI_EDGE.it,
+      locale: lingua === 'en' ? 'en-US' : 'it-IT',
+      rate: '-7%', pitch: '-2Hz', format: 'audio-24khz-48kbitrate-mono-mp3'
+    })
+  });
+  if (!risposta.ok) throw new Error(`Edge-TTS HTTP ${risposta.status}`);
+  if (sequenza !== missVoce.sequenza) return true;
+
+  const tipo = risposta.headers.get('content-type') || '';
+  let sorgente = '';
+  if (tipo.includes('application/json')) {
+    const dato = await risposta.json();
+    if (dato && dato.url) sorgente = String(dato.url);
+    else if (dato && dato.audio) sorgente = `data:${dato.mime || 'audio/mpeg'};base64,${dato.audio}`;
+  } else {
+    const blob = await risposta.blob();
+    if (blob.size) {
+      sorgente = URL.createObjectURL(blob);
+      missVoce.urlOggetto = sorgente;
+    }
+  }
+  if (!sorgente || sequenza !== missVoce.sequenza) return false;
+
+  const audio = new Audio(sorgente);
+  missVoce.audio = audio;
+  audio.onended = () => { if (missVoce.audio === audio) missVoce.audio = null; };
+  await audio.play();
+  return true;
+}
+
+function missRaccontaLocale(testo, lingua) {
   if (typeof speechSynthesis === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined') return false;
   speechSynthesis.cancel();
-  const testo = missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) });
   const frase = new SpeechSynthesisUtterance(testo);
-  const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
   frase.lang = lingua === 'en' ? 'en-US' : 'it-IT';
   const voci = speechSynthesis.getVoices();
   frase.voice = voci.find(v => v.lang.toLowerCase().startsWith(lingua) && v.localService) ||
@@ -2001,6 +2064,19 @@ function missRaccontaTappa(tappa, forza) {
   frase.rate = 0.93; frase.pitch = 0.98;
   speechSynthesis.speak(frase);
   return true;
+}
+
+async function missRaccontaTappa(tappa, forza) {
+  if (!tappa || (!forza && !(miss.attiva && miss.attiva.scelte.voce))) return false;
+  const testo = missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) });
+  const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
+  const sequenza = missFermaVoce();
+  try {
+    if (await missRaccontaConEdge(testo, lingua, sequenza)) return true;
+  } catch (errore) {
+    console.warn('Missione Cielo: Edge-TTS non disponibile, uso la voce del dispositivo.', errore);
+  }
+  return sequenza === missVoce.sequenza && missRaccontaLocale(testo, lingua);
 }
 
 /* I tre gradini dell'aiuto.
