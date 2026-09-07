@@ -1956,20 +1956,85 @@ function missCuriositaChiave(tappa) {
   return `curiosita.${base}.${variante + 1}`;
 }
 
-function missRaccontaTappa(tappa, forza) {
-  if (!tappa || (!forza && !(miss.attiva && miss.attiva.scelte.voce))) return false;
+let missAudioVoce = null;
+let missRichiestaVoce = null;
+
+function missFermaVoce() {
+  if (missRichiestaVoce) missRichiestaVoce.abort();
+  missRichiestaVoce = null;
+  if (missAudioVoce) {
+    missAudioVoce.pause();
+    if (missAudioVoce.src && missAudioVoce.src.startsWith('blob:')) URL.revokeObjectURL(missAudioVoce.src);
+  }
+  missAudioVoce = null;
+  if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
+}
+
+/* Il servizio e' un proxy Edge-TTS configurato dall'installazione e parla il
+ * formato ormai comune di `/v1/audio/speech`: la chiave del provider rimane
+ * sul server, mentre al browser arrivano soltanto MP3. Non leghiamo Missione
+ * Cielo a una singola implementazione del proxy: bastano POST JSON, CORS e una
+ * risposta audio. */
+async function missVoceEdge(testo, lingua) {
+  const endpoint = typeof window !== 'undefined' ? String(window.EDGE_TTS_API_URL || '').trim() : '';
+  if (!endpoint || typeof fetch !== 'function' || typeof Audio === 'undefined') return false;
+
+  const controllo = new AbortController();
+  missRichiestaVoce = controllo;
+  const risposta = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'audio/mpeg, audio/*' },
+    body: JSON.stringify({
+      model: 'edge-tts',
+      input: testo,
+      voice: lingua === 'en' ? 'en-US-AvaNeural' : 'it-IT-IsabellaNeural',
+      response_format: 'mp3',
+      speed: 0.96
+    }),
+    signal: controllo.signal
+  });
+  if (!risposta.ok) throw new Error('Edge-TTS HTTP ' + risposta.status);
+  const tipo = risposta.headers.get('content-type') || '';
+  if (!tipo.startsWith('audio/')) throw new Error('EDGE_TTS_INVALID_CONTENT_TYPE');
+  const audio = new Audio(URL.createObjectURL(await risposta.blob()));
+  missRichiestaVoce = null;
+  missAudioVoce = audio;
+  audio.addEventListener('ended', () => {
+    if (missAudioVoce !== audio) return;
+    URL.revokeObjectURL(audio.src);
+    missAudioVoce = null;
+  }, { once: true });
+  await audio.play();
+  return true;
+}
+
+function missVoceDispositivo(testo, lingua) {
   if (typeof speechSynthesis === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined') return false;
-  speechSynthesis.cancel();
-  const testo = missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missT(missCuriositaChiave(tappa)) });
   const frase = new SpeechSynthesisUtterance(testo);
-  const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
   frase.lang = lingua === 'en' ? 'en-US' : 'it-IT';
   const voci = speechSynthesis.getVoices();
-  frase.voice = voci.find(v => v.lang.toLowerCase().startsWith(lingua) && v.localService) ||
-    voci.find(v => v.lang.toLowerCase().startsWith(lingua)) || null;
+  const locali = voci.filter(v => v.lang.toLowerCase().startsWith(lingua));
+  frase.voice = locali.find(v => /microsoft|natural|isabella|elsa|ava/i.test(v.name)) ||
+    locali.find(v => v.localService) || locali[0] || null;
   frase.rate = 0.93; frase.pitch = 0.98;
   speechSynthesis.speak(frase);
   return true;
+}
+
+async function missRaccontaTappa(tappa, forza) {
+  if (!tappa || (!forza && !(miss.attiva && miss.attiva.scelte.voce))) return false;
+  missFermaVoce();
+  const testo = missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missT(missCuriositaChiave(tappa)) });
+  const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
+  try {
+    if (await missVoceEdge(testo, lingua)) return true;
+  } catch (errore) {
+    // Un racconto al buio deve funzionare anche con rete assente o quota API
+    // esaurita: il ripiego e' intenzionale e non interrompe la missione.
+    if (errore && errore.name === 'AbortError') return false;
+    console.warn('Edge-TTS:', errore);
+  }
+  return missVoceDispositivo(testo, lingua);
 }
 
 /* I tre gradini dell'aiuto.

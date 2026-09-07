@@ -2210,7 +2210,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.settoreRilevaAttesa': 'Leggo la bussola… tieni fermo il telefono.',
     'missione.settoreRilevaNonDisponibile': 'Non riesco a leggere il Nord: autorizza i sensori oppure scegli le direzioni a mano.',
     'missione.vuoiVoce': 'Vuoi ascoltare il racconto?',
-    'missione.voceSi': 'Voce sintetica',
+    'missione.voceSi': 'Voce naturale Edge-TTS',
     'missione.voceNo': 'Solo testo',
 
     // L'anteprima

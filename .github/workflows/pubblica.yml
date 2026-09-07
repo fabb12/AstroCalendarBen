@@ -51,6 +51,7 @@ jobs:
       - name: Prepara la cartella del sito
         env:
           ADSB_PROXY_URL: ${{ vars.ADSB_PROXY_URL }}
+          EDGE_TTS_API_URL: ${{ vars.EDGE_TTS_API_URL }}
         # L'app non ha build: i file sorgente *sono* il sito. Si copiano da una
         # parte solo per lasciar fuori quello che online non serve — la storia
         # di git, i workflow, la mappa del progetto e lo script che rigenera i
@@ -81,7 +82,14 @@ jobs:
             echo "::warning::Manca ADSB_PROXY_URL: uso i feed ADS-B diretti di emergenza"
           fi
           case "$ADSB_PROXY_URL" in ''|https://*) ;; *) echo "::error::ADSB_PROXY_URL deve iniziare con https://"; exit 1;; esac
-          printf "window.ADSB_PROXY_URL = %s;\n" "$(printf %s "$ADSB_PROXY_URL" | jq -Rs .)" > _sito/config.js
+          case "$EDGE_TTS_API_URL" in ''|https://*) ;; *) echo "::error::EDGE_TTS_API_URL deve iniziare con https://"; exit 1;; esac
+          if [ -z "$EDGE_TTS_API_URL" ]; then
+            echo "::warning::Manca EDGE_TTS_API_URL: Missione Cielo userà la voce del dispositivo"
+          fi
+          {
+            printf "window.ADSB_PROXY_URL = %s;\n" "$(printf %s "$ADSB_PROXY_URL" | jq -Rs .)"
+            printf "window.EDGE_TTS_API_URL = %s;\n" "$(printf %s "$EDGE_TTS_API_URL" | jq -Rs .)"
+          } > _sito/config.js
 
       - name: Controlla che ci sia tutto
         # Una pubblicazione a metà è peggio di una fallita: il service worker

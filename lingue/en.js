@@ -2157,7 +2157,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.settoreRilevaAttesa': 'Reading the compass… hold the phone still.',
     'missione.settoreRilevaNonDisponibile': 'I cannot read North: allow sensor access or choose the directions manually.',
     'missione.vuoiVoce': 'Would you like spoken stories?',
-    'missione.voceSi': 'Synthetic voice',
+    'missione.voceSi': 'Natural Edge-TTS voice',
     'missione.voceNo': 'Text only',
 
     'missione.titoloAnteprima': { uno: 'One wonder in {minuti} minutes', altri: '{n} wonders in {minuti} minutes' },
