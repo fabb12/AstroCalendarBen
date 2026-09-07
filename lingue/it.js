@@ -696,6 +696,26 @@ window.ASTRO_DIZIONARI['it'] = {
     'registra.cielo': 'Registra il cielo',
     'registra.solare': 'Registra il Sistema Solare 3D',
 
+    // --- Gli eventi dentro al planetario ------------------------------
+    'sky.eventi.massimoAdesso': 'al massimo adesso',
+    'sky.eventi.massimoTra': 'massimo {quando}',
+    'sky.eventi.inCorso': 'in corso · {picco}',
+    'sky.eventi.vai': 'Vai all\'evento',
+    'sky.eventi.scheda': 'Vedi scheda',
+    'sky.eventi.postoIdeale': 'Posto ideale',
+    'sky.eventi.adesso': 'Sta succedendo adesso',
+    'sky.eventi.oreVicine': 'Nelle ore vicine',
+    'sky.eventi.nessunoOra': 'Nel cielo di quest\'ora non c\'è nessun evento del calendario. Sposta l\'orologio — per esempio su una notte di agosto o di dicembre — e qui compariranno gli sciami, le eclissi e le congiunzioni di quel momento.',
+    'sky.eventi.prossimiSette': 'Nei prossimi 7 giorni',
+    'sky.eventi.nessunoSette': 'Nessun evento del calendario nei sette giorni dopo l\'ora mostrata.',
+    'sky.eventi.orologioPortato': 'Orologio portato su “{evento}”: l\'evento resta al centro della mappa.',
+    'sky.eventi.senzaPunto': 'Questo evento non ha un punto preciso del cielo da mostrare.',
+    'sky.eventi.radianteDi': 'il radiante delle {nome}',
+    'sky.eventi.radiante': 'radiante {nome}',
+    'sky.eventi.guardaVerso': ' — guarda verso {direzione}, a {altezza}° di altezza{sotto}',
+    'sky.eventi.sottoOrizzonte': ' (in quel momento è ancora sotto l\'orizzonte)',
+    'sky.eventi.cieloDi': 'Cielo di {data}: {evento}{dove}.',
+
     // --- La cornice delle schede dell'agenda ---------------------------
     'agenda.tuttiInArrivo': 'Stai leggendo tutti gli eventi in arrivo. Scegli un mese per vedere quello, anche nel passato.',
     'agenda.simula': 'Simula',
