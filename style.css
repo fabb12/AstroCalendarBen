@@ -10409,6 +10409,15 @@ body button.did-ponte:active { transform: translateY(1px); }
   background: var(--incassato);
 }
 .missione-settore p { grid-column: 1 / -1; margin: 0; color: var(--testo-3); font-size: 0.8rem; line-height: 1.45; }
+.missione-rilievo {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+.missione-rilievo-stato { flex: 1 1 190px; color: var(--testo-2); font-size: 0.82rem; line-height: 1.4; }
 
 .missione-azioni {
   display: flex;
