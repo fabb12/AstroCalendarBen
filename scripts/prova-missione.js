@@ -172,6 +172,21 @@ prova('un oggetto sopra l’orizzonte ma dietro al palazzo non entra', () => {
   assert.ok(!m.tappe.some(t => t.id === 'dietro'));
 });
 
+prova('la porzione Sud–Sud-est esclude il resto del cielo', () => {
+  const dentro = candidato('dentro-settore', { azimut: 157.5, puntiBase: 100 });
+  const fuori = candidato('fuori-settore', { azimut: 270, puntiBase: 100 });
+  const m = motore.genera(scenario([dentro, fuori], {
+    cielo: 'settore', cieloDa: 180, cieloA: 135, durata: 30
+  }));
+  assert.deepStrictEqual(m.tappe.map(t => t.id), ['dentro-settore']);
+});
+
+prova('il settore che attraversa il Nord usa l’arco breve', () => {
+  assert.ok(motore.azimutNelSettore(0, 315, 45));
+  assert.ok(motore.azimutNelSettore(350, 315, 45));
+  assert.ok(!motore.azimutNelSettore(180, 315, 45));
+});
+
 prova('sotto l’altezza minima dell’esperienza non entra', () => {
   const basso = candidato('basso', { altezza: 12, sopraOstacoli: 11, evidenza: 1, difficolta: 1 });
   const conBambini = motore.genera(scenario([basso].concat(cieloRicco()),
