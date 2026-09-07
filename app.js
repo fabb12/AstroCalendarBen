@@ -38729,11 +38729,15 @@ function skyAggiornaComandiPlayback() {
 // di verificare l'hardware prima del gesto) oppure quando il browser dichiara
 // esplicitamente entrambi i sensori. Una lettura di orientamento realmente
 // ricevuta (`sky.sensori`) copre inoltre convertibili e dispositivi insoliti.
+function skySupportaSensoriAR(ambiente = window) {
+  return typeof ambiente.Accelerometer === 'function' &&
+    typeof ambiente.Gyroscope === 'function';
+}
+
 function skyRealtaAumentataDisponibile() {
   const tattile = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
   const mobile = tattile && profiloDispositivo() !== 'computer';
-  const sensoriGenerici = typeof Accelerometer === 'function' && typeof Gyroscope === 'function';
-  return !!sky.camera || mobile || !!sky.sensori || sensoriGenerici;
+  return !!sky.camera || mobile || !!sky.sensori || skySupportaSensoriAR();
 }
 
 function skyAggiornaDisponibilitaAR() {

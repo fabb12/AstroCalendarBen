@@ -220,10 +220,29 @@ const server = http.createServer((req, res) => {
       .every(id => !document.getElementById(id).hidden);
     sky.sensori = sensoriOriginali;
     skyAggiornaDisponibilitaAR();
-    return { attesaSenzaLetture, coerentiSenzaLetture, visibiliConSensori };
+    const sensoriCompleti = skySupportaSensoriAR({
+      Accelerometer: function Accelerometer() {},
+      Gyroscope: function Gyroscope() {}
+    });
+    const soloAccelerometro = skySupportaSensoriAR({
+      Accelerometer: function Accelerometer() {}
+    });
+    const soloGiroscopio = skySupportaSensoriAR({
+      Gyroscope: function Gyroscope() {}
+    });
+    return {
+      attesaSenzaLetture,
+      coerentiSenzaLetture,
+      visibiliConSensori,
+      sensoriCompleti,
+      soloAccelerometro,
+      soloGiroscopio
+    };
   });
   ok('AR compare solo su dispositivi mobili o con sensori adatti',
-    disponibilitaAr.coerentiSenzaLetture && disponibilitaAr.visibiliConSensori,
+    disponibilitaAr.coerentiSenzaLetture && disponibilitaAr.visibiliConSensori &&
+      disponibilitaAr.sensoriCompleti && !disponibilitaAr.soloAccelerometro &&
+      !disponibilitaAr.soloGiroscopio,
     JSON.stringify(disponibilitaAr));
 
   // --- una sola via d'uscita per tutte le schede ---
