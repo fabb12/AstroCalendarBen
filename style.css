@@ -10399,6 +10399,16 @@ body button.did-ponte:active { transform: translateY(1px); }
   font-weight: 700;
   box-shadow: inset 0 0 0 1px var(--blu);
 }
+.missione-settore {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px 12px;
+  padding: 12px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: var(--incassato);
+}
+.missione-settore p { grid-column: 1 / -1; margin: 0; color: var(--testo-3); font-size: 0.8rem; line-height: 1.45; }
 
 .missione-azioni {
   display: flex;
@@ -10520,6 +10530,18 @@ body button.did-ponte:active { transform: translateY(1px); }
   font-size: 0.95rem;
   line-height: 1.55;
 }
+.missione-racconto {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 14px;
+  border-radius: var(--raggio-m);
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(91, 33, 182, 0.12);
+}
+.missione-racconto > div { flex: 1 1 auto; min-width: 0; }
+.missione-racconto h4 { margin: 0 0 5px; color: #ddd6fe; font-size: 0.86rem; }
+.missione-racconto p { margin: 0; color: var(--testo-2); font-size: 0.88rem; line-height: 1.5; }
 .missione-aiuto {
   display: flex;
   flex-direction: column;
@@ -10686,6 +10708,9 @@ body .missione-striscia-tasti .missione-tasto { min-height: 36px; }
 /* Sotto i 380 px i tasti dell'azione non ci stanno in fila: vanno a capo
    invece di stringersi, perché un tasto stretto è un tasto che si manca. */
 @media (max-width: 380px) {
+  .missione-settore { grid-template-columns: 1fr; }
+  .missione-settore p { grid-column: auto; }
+  .missione-racconto { flex-direction: column; }
   .missione-azioni .missione-tasto { flex: 1 1 100%; }
   .missione-coordinate { font-size: 0.86rem; }
   .missione-titolone { font-size: 1.1rem; }

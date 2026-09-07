@@ -58,7 +58,7 @@
 //     dichiarare.
 // =====================================================================
 
-const MISS_VERSIONE = 1;
+const MISS_VERSIONE = 2;
 
 const CHIAVE_MISS_SCELTE = 'astrocalendario_missione_scelte';
 const CHIAVE_MISS_ATTIVA = 'astrocalendario_missione_attiva';
@@ -66,6 +66,7 @@ const CHIAVE_MISS_ATTIVA = 'astrocalendario_missione_attiva';
 const MISS_DURATE = [10, 30, 60, 120];
 const MISS_STRUMENTI = ['occhio', 'binocolo', 'telescopio'];
 const MISS_ESPERIENZE = ['stupore', 'imparare', 'sfida', 'bambini'];
+const MISS_DIREZIONI = [0, 45, 90, 135, 180, 225, 270, 315];
 
 // Il livello di ogni strumento: un bersaglio si propone solo se il suo
 // minimo sta dentro a quello che si ha in mano.
@@ -119,7 +120,7 @@ const MISS_MISURE_A_MANO = [
 // una ricarica sta in `attiva` e si salva (§7).
 const miss = {
   // Le tre scelte, ricordate fra una sera e l'altra
-  scelte: { durata: 30, strumento: 'occhio', esperienza: 'stupore' },
+  scelte: { durata: 30, strumento: 'occhio', esperienza: 'stupore', cielo: 'tutto', cieloDa: 135, cieloA: 180, voce: false },
   // La missione appena generata e non ancora avviata
   anteprima: null,
   // Quella in corso o conclusa e non ancora archiviata
@@ -159,6 +160,15 @@ function missScartoAzimut(a, b) {
   // centosessanta invece di venti, e ogni riferimento a nord verrebbe
   // scartato per «troppo lontano».
   return Math.abs(((a - b) % 360 + 540) % 360 - 180);
+}
+
+// Una terrazza raramente vede tutto il giro. I due estremi delimitano
+// sempre l'arco piu' corto: «S–SE» e «SE–S» descrivono quindi la stessa
+// finestra e non, per errore, gli altri 315 gradi di cielo.
+function missAzimutNelSettore(azimut, da, a) {
+  if (![azimut, da, a].every(Number.isFinite)) return true;
+  const ampiezza = missScartoAzimut(da, a);
+  return missScartoAzimut(azimut, da) + missScartoAzimut(azimut, a) <= ampiezza + 1e-7;
 }
 
 // Un bersaglio si può guardare con quello che ho in mano?
@@ -261,6 +271,7 @@ function missQuanteTappe(durata, candidatiBuoni) {
 function missAmmissibile(c, scelte) {
   if (!c || !c.nome) return false;
   if (!missStrumentoBasta(c.strumentoMinimo, scelte.strumento)) return false;
+  if (scelte.cielo === 'settore' && !missAzimutNelSettore(c.azimut, Number(scelte.cieloDa), Number(scelte.cieloA))) return false;
   // L'altezza è quella del momento consigliato, che è già il migliore
   // dentro alla finestra: se non basta lì, non basta mai.
   const minima = MISS_ALTEZZA_MINIMA[scelte.esperienza] ?? 15;
@@ -442,7 +453,7 @@ function missAttaccaRiferimenti(tappe, candidati) {
  * e non contiene niente che questa funzione debba andare a chiedere a
  * qualcuno. In uscita c'è la missione, o `null` con il motivo scritto. */
 function missGeneraMissione(scenario) {
-  const scelte = Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'stupore' },
+  const scelte = Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'stupore', cielo: 'tutto', cieloDa: 135, cieloA: 180, voce: false },
     scenario && scenario.scelte);
   const condizioni = (scenario && scenario.condizioni) || {};
   const adesso = (scenario && scenario.adesso) || Date.now();
@@ -1003,6 +1014,10 @@ function missCaricaScelte() {
   if (MISS_DURATE.includes(s.durata)) miss.scelte.durata = s.durata;
   if (MISS_STRUMENTI.includes(s.strumento)) miss.scelte.strumento = s.strumento;
   if (MISS_ESPERIENZE.includes(s.esperienza)) miss.scelte.esperienza = s.esperienza;
+  if (s.cielo === 'tutto' || s.cielo === 'settore') miss.scelte.cielo = s.cielo;
+  if (MISS_DIREZIONI.includes(Number(s.cieloDa))) miss.scelte.cieloDa = Number(s.cieloDa);
+  if (MISS_DIREZIONI.includes(Number(s.cieloA))) miss.scelte.cieloA = Number(s.cieloA);
+  if (typeof s.voce === 'boolean') miss.scelte.voce = s.voce;
 }
 
 function missSalvaScelte() {
@@ -1238,6 +1253,7 @@ function missAvvia(missione, quando) {
   miss.anteprima = null;
   missSalvaAttiva();
   missMostraVista('inCorso');
+  missRaccontaTappa(miss.attiva.tappe[0]);
 }
 
 /* Gli orari rifatti sul cielo di adesso.
@@ -1284,6 +1300,7 @@ function missAvanza() {
   m.tappe[prossima].aiuto = m.tappe[prossima].aiuto || 0;
   missSalvaAttiva();
   missMostraVista('inCorso');
+  missRaccontaTappa(m.tappe[prossima]);
 }
 
 /* L'aiuto progressivo.
@@ -1711,11 +1728,25 @@ function missHtmlConfigurazione() {
     nome: (typeof STRUMENTI !== 'undefined' && STRUMENTI[s]) ? STRUMENTI[s].nome : s
   }));
   const esperienze = MISS_ESPERIENZE.map(e => ({ valore: e, nome: missT('esperienza.' + e) }));
+  const direzione = gradi => typeof astroI18n === 'object' && astroI18n.nomePunto
+    ? astroI18n.nomePunto(gradi) : String(gradi) + '°';
+  const opzioniDirezione = selezionata => MISS_DIREZIONI.map(g =>
+    `<option value="${g}"${g === selezionata ? ' selected' : ''}>${missTesto(direzione(g))} · ${g}°</option>`).join('');
 
   return `<div class="missione-configurazione">
     ${missGruppoScelte('durata', durate, miss.scelte.durata, missT('quantoTempo'))}
     ${missGruppoScelte('strumento', strumenti, miss.scelte.strumento, missT('conCosa'))}
     ${missGruppoScelte('esperienza', esperienze, miss.scelte.esperienza, missT('cheEsperienza'))}
+    ${missGruppoScelte('cielo', [
+      { valore: 'tutto', nome: missT('cieloTutto') }, { valore: 'settore', nome: missT('cieloSettore') }
+    ], miss.scelte.cielo, missT('qualeCielo'))}
+    ${miss.scelte.cielo === 'settore' ? `<div class="missione-settore">
+      <label class="missione-campo"><span>${missT('daDirezione')}</span><select class="missione-select" data-miss-limite="cieloDa">${opzioniDirezione(miss.scelte.cieloDa)}</select></label>
+      <label class="missione-campo"><span>${missT('aDirezione')}</span><select class="missione-select" data-miss-limite="cieloA">${opzioniDirezione(miss.scelte.cieloA)}</select></label>
+      <p>${missT('settoreSpiega')}</p></div>` : ''}
+    ${missGruppoScelte('voce', [
+      { valore: 'si', nome: missT('voceSi') }, { valore: 'no', nome: missT('voceNo') }
+    ], miss.scelte.voce ? 'si' : 'no', missT('vuoiVoce'))}
     <div class="missione-azioni">
       <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="genera">
         ${missIcona('bersaglio', 16)} ${missT('preparami')}</button>
@@ -1829,6 +1860,10 @@ function missHtmlInCorso(m) {
     </p>
 
     <p class="missione-guida">${missGuidaTesto(t)}</p>
+    <section class="missione-racconto" aria-labelledby="missione-racconto-titolo">
+      <div><h4 id="missione-racconto-titolo">${missT('curiositaTitolo')}</h4><p>${missT(missCuriositaChiave(t))}</p></div>
+      ${m.scelte.voce ? `<button type="button" class="missione-tasto" data-miss-azione="ascolta">${missT('ascolta')}</button>` : ''}
+    </section>
     ${missHtmlAiuto(t)}
 
     <div class="missione-azioni">
@@ -1868,6 +1903,37 @@ function missGuidaTesto(t) {
     verso: missT('verso.' + t.riferimento.verso),
     misura: missT(misura.chiave.replace('missione.', ''))
   });
+}
+
+function missCuriositaChiave(tappa) {
+  const nome = String(tappa && tappa.nome || '').toLowerCase();
+  if (nome.includes('luna')) return 'curiosita.luna';
+  if (nome.includes('giove') || nome.includes('jupiter')) return 'curiosita.giove';
+  if (nome.includes('saturno') || nome.includes('saturn')) return 'curiosita.saturno';
+  if (nome.includes('sirio') || nome.includes('sirius')) return 'curiosita.sirio';
+  if (nome.includes('pleiad')) return 'curiosita.pleiadi';
+  if (tappa.tipo === 'stazione') return 'curiosita.stazione';
+  if (tappa.tipo === 'profondo') return 'curiosita.profondo';
+  if (tappa.tipo === 'costellazione') return 'curiosita.costellazione';
+  if (tappa.tipo === 'stella') return 'curiosita.stella';
+  if (tappa.tipo === 'pianeta') return 'curiosita.pianeta';
+  return 'curiosita.generica';
+}
+
+function missRaccontaTappa(tappa, forza) {
+  if (!tappa || (!forza && !(miss.attiva && miss.attiva.scelte.voce))) return false;
+  if (typeof speechSynthesis === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined') return false;
+  speechSynthesis.cancel();
+  const testo = missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missT(missCuriositaChiave(tappa)) });
+  const frase = new SpeechSynthesisUtterance(testo);
+  const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
+  frase.lang = lingua === 'en' ? 'en-US' : 'it-IT';
+  const voci = speechSynthesis.getVoices();
+  frase.voice = voci.find(v => v.lang.toLowerCase().startsWith(lingua) && v.localService) ||
+    voci.find(v => v.lang.toLowerCase().startsWith(lingua)) || null;
+  frase.rate = 0.93; frase.pitch = 0.98;
+  speechSynthesis.speak(frase);
+  return true;
 }
 
 /* I tre gradini dell'aiuto.
@@ -1978,12 +2044,16 @@ function missCollegaPannello(corpo) {
   corpo.querySelectorAll('[data-miss-scelta]').forEach(b => {
     b.addEventListener('click', () => {
       const nome = b.dataset.missScelta;
-      const valore = nome === 'durata' ? Number(b.dataset.missValore) : b.dataset.missValore;
+      let valore = nome === 'durata' ? Number(b.dataset.missValore) : b.dataset.missValore;
+      if (nome === 'voce') valore = valore === 'si';
       miss.scelte[nome] = valore;
       missSalvaScelte();
       missDisegnaPannello();
     });
   });
+  corpo.querySelectorAll('[data-miss-limite]').forEach(s => s.addEventListener('change', () => {
+    miss.scelte[s.dataset.missLimite] = Number(s.value); missSalvaScelte();
+  }));
 
   // Le cinque stelle: si accendono fino a quella toccata, come ovunque.
   let stelle = 0;
@@ -2032,6 +2102,9 @@ function missAzione(azione, corpo) {
     }
     case 'guidami':
       missGuidami(miss.attiva ? miss.attiva.corrente : 0);
+      break;
+    case 'ascolta':
+      if (miss.attiva) missRaccontaTappa(miss.attiva.tappe[miss.attiva.corrente], true);
       break;
     case 'trovato':
       missSegnaEsito(miss.attiva.corrente, 'trovato');
@@ -2168,6 +2241,7 @@ const missProve = {
   inOrario: missMettiInOrario,
   riferimenti: missAttaccaRiferimenti,
   scartoAzimut: missScartoAzimut,
+  azimutNelSettore: missAzimutNelSettore,
   strumentoBasta: missStrumentoBasta,
   fasciaAltezza: missFasciaAltezza,
   misuraAMano: missMisuraAMano,
@@ -2178,7 +2252,7 @@ const missProve = {
   conto: missConto,
   campioni: missCampioni,
   costanti: {
-    MISS_VERSIONE, MISS_DURATE, MISS_STRUMENTI, MISS_ESPERIENZE,
+    MISS_VERSIONE, MISS_DURATE, MISS_STRUMENTI, MISS_ESPERIENZE, MISS_DIREZIONI,
     MISS_TAPPE_PER_DURATA, MISS_ALTEZZA_MINIMA, MISS_PREAVVISO_MIN,
     MISS_SCADENZA_MS, MISS_TETTO_FAMIGLIA, MISS_LIVELLO_STRUMENTO,
     CHIAVE_MISS_SCELTE, CHIAVE_MISS_ATTIVA
