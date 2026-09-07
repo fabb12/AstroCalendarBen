@@ -166,6 +166,11 @@ function aggiornaStaseraMigliori() {
 // Tutto il blocco di Stasera che riguarda le cose nuove. Si chiama
 // quando la vista si apre e quando cambiano posizione o previsioni.
 function aggiornaStaseraNuovo() {
+  // La missione per prima: e' il riquadro piu' in alto dei tre, e chi apre
+  // Stasera lo legge prima degli altri.
+  try {
+    if (typeof missAggiornaScheda === 'function') missAggiornaScheda();
+  } catch (e) { console.warn('missione cielo:', e); }
   try { aggiornaStaseraMigliori(); } catch (e) { console.warn('migliori di stanotte:', e); }
   try { aggiornaStaseraMeteoAstro(); } catch (e) { console.warn('meteo da astronomo:', e); }
   try { aggiornaAvvisoAurora(); } catch (e) { console.warn('aurora:', e); }
@@ -1120,6 +1125,15 @@ function ridisegnaTuttoPerLingua() {
     }],
     ['avviso dei transiti', () => {
       if (typeof tranAggiornaAvviso === 'function') tranAggiornaAvviso();
+    }],
+    // Missione Cielo: la scheda di Stasera e la striscia sul cielo si
+    // compongono in JavaScript e non lasciano nessuna chiave nel documento.
+    // La finestra invece si ridisegna da se' (§8 di missione-cielo.js, che
+    // si iscrive ad `alCambio` quando e' aperta): rifarla anche da qui
+    // vorrebbe dire disegnarla due volte.
+    ['Missione Cielo', () => {
+      if (typeof missAggiornaScheda === 'function') missAggiornaScheda();
+      if (typeof missMostraStrisciaCielo === 'function') missMostraStrisciaCielo();
     }],
     // I due tasti della realtà aumentata e la pillola dell'aggancio: il loro
     // testo dipende dallo stato (acceso/spento, agganciato/cerca), quindi non

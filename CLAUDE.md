@@ -51,6 +51,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `worker-adsb.js` | ~430 | Il proxy ADS-B del progetto, e **la sola strada per cui gli aerei arrivino**: le quattro reti non mandano il CORS, quindi da un browser non si leggono mai. Interroga OpenSky (credenziali facoltative nei secret `OPENSKY_*`) e le quattro reti di comunità, traduce lo schema OpenSky in quello readsb, aggiunge il CORS **solo alle origini ammesse** (`ORIGINI_AMMESSE`) e tiene la fotografia 20 secondi. `/` si presenta, `/api/diagnostica` dice cosa ha risposto ogni fonte e se da qui si arriva a OpenSky. **Va distribuito su Deno Deploy, non su Cloudflare**: gira su tutt'e due (Web standard, `export default { fetch }`), ma da un Worker tutte e cinque le fonti rifiutano l'IP condiviso — misurato, e dalla stessa ora da Deno ne rispondono tre. Non fa parte della PWA: vedi `ADSB-PROXY.md`. |
 | `aurora-polare.js` | ~1.015 | **Le aurore polari nel planetario**: l'ovale aurorale attorno al polo geomagnetico, boreale e australe, disegnato dove sta davvero, più la **forma dello scudo** (magnetopausa e onda d'urto) che serve al banco della Didattica. Prefisso `aur`. |
 | `eventi-extra.js` | ~720 | Superlune, opposizioni, splendore di Venere, transiti sul Sole, comete e **aurore** (previsione del Kp a tre giorni + stagione degli equinozi). |
+| `missione-cielo.js` | ~2.100 | **Missione Cielo**: la serata come **percorso** invece che come elenco. Tre domande — quanto tempo hai, con cosa osservi, che serata vuoi — e da due a sei tappe una per volta, con l'ora, la direzione a parole, un riferimento luminoso da cui partire e un aiuto che si allarga in tre gradini quando non si trova. Non ricalcola niente: i bersagli sono quelli di `pianifica.js`, le posizioni quelle di `app.js`, il terreno quello di `terreno.js`. Il **motore è in funzioni pure** (§2), separate dal raccoglitore che va a chiedere al resto dell'app (§3), e si prova senza browser. Il ponte col planetario apre il cielo puntato sul bersaglio e ci appoggia sopra la **striscia** che dice a che tappa si è; la conclusione entra nel Diario come **una sessione sola** con dentro le sue tappe. Prefisso `miss`. |
 | `ui-nuova.js` | ~1.150 | L'interfaccia di tutto quanto sopra, e **il ridisegno al cambio lingua** (`ridisegnaTuttoPerLingua`): l'elenco di chi si compone in JavaScript e quindi va rifatto, non riscritto. |
 | `i18n.js` | ~740 | **Il gestore delle lingue.** Chiavi al posto delle frasi: `t('chiave')` è una lettura da `Map`, e il cambio lingua non guarda il documento — scorre l'**indice** dei soli nodi che portano una chiave (quattrocentosettanta contro quarantacinquemila nodi di testo) e avvisa chi si disegna da sé. Ci stanno anche i formati che dipendono dalla lingua e non sono frasi: numeri, date, conti alla rovescia (in due registri, lungo e corto), punti cardinali — in inglese l'ovest è «W» e non «O». Quello di prima traduceva il DOM con duecento espressioni regolari a ogni cambio, e per questo era insieme lento e incompleto: vedi `I18N.md`. |
 | `lingue/it.js`, `lingue/en.js` | 1.101 voci | I **dizionari**, in memoria all'avvio. Sono file di dati come i `dati-*.js` e non `.json` di proposito: da `file://` una `fetch` di JSON è vietata, e questa applicazione si apre anche con un doppio clic. Vanno **prima** di `i18n.js`. Si generano a mano, non da uno script. |
@@ -79,7 +80,7 @@ app.js → telescopio.js → catalogo.js → costellazioni.js → via-lattea.js
        → corpi-minori.js
        → pianifica.js → terreno.js → rilievo.js → meteo-astro.js → aurora-polare.js
        → config.js → aerei.js → transiti.js → visione.js
-       → eventi-extra.js → ui-nuova.js
+       → eventi-extra.js → missione-cielo.js → ui-nuova.js
        → didattica.js
 ```
 
@@ -314,6 +315,7 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `meteoAstro` | `meteo-astro.js` | Previsioni ora per ora con seeing e trasparenza già calcolati. |
 | `aurora` | `meteo-astro.js` | Indice Kp attuale e previsto dal NOAA. |
 | `orizzonteMio` | `pianifica.js` | I sedici settori del profilo degli ostacoli. |
+| `miss` | `missione-cielo.js` | **Missione Cielo.** `scelte` sono le tre risposte (durata, strumento, esperienza), ricordate fra una sera e l'altra; `anteprima` è la missione generata e non ancora avviata e `attiva` quella in corso o conclusa e non ancora archiviata — è la sola che si salva, ed è **numerata** (`versione`), perché un formato che non si conosce si butta invece di indovinarlo. `vista` dice quale dei cinque stati del pannello è a schermo (`configurazione`, `anteprima`, `inCorso`, `conclusa`, `vuoto`), `aperto` se la finestra c'è, `avviso` il messaggio in cima (chiave e dati, non la frase: si ridisegna al cambio lingua), `fuocoPrima` chi aveva il fuoco quando la finestra si è aperta e `staccare` gli ascoltatori da togliere quando si chiude. Ogni tappa di `attiva.tappe` porta il suo `esito` (`trovato`/`saltato`/`nonTrovato`, e `null` finché non ci si è arrivati) e il gradino di `aiuto` a cui è arrivata. |
 | `stato` / `LABORATORI` | `didattica.js` | Il laboratorio. `stato.lab` dice quale banco è a schermo — ed è l'unico che calcola e disegna. `LABORATORI` è l'elenco degli otto, ognuno con `costruisci`/`collega`/`entra`/`esce`/`passo`/`disegna`: chi non ha bisogno di una di quelle cose non la definisce. Gli stati dei banchi sono `retro`, `kep`, `fionda`, `lancio`, `allin`, `aurL`, `spa`, `tram`. |
 | `terreno` | `terreno.js` | La forma vera del terreno: `profilo` sono i 361 gradi dell'orizzonte, `tipi` che paesaggio c'è in ognuno (mare/pianura/collina/montagna), `miscela` gli stessi tipi sfumati fra loro su `TERRENO_SFUMA_GRADI` (è quella che usa il disegno: un tipo secco farebbe i bordi), `fronti` la **cresta parziale** (120 direzioni × 18 distanze: quanto sale il terreno *fino a lì*, per sapere cosa nasconde cosa — ed è da lei che esce il disegno a piani. I valori sono **grezzi**, cioè scendono sotto zero dove il terreno sta più in basso dell'occhio; `terrenoCrestaEntro` li tosa a zero, `terrenoFrontiA` no), `quota` l'altezza del suolo sotto i piedi — e `quotaAcqua` dice che quel numero non viene dal suolo ma dalla superficie dell'acqua su cui si sta (`acqueAllineaOcchio`) —, `stato` dice a che punto è la **richiesta** (e non se il profilo c'è: quello lo dice `terrenoDisponibile()`, che guarda `profilo` — vedi §12, «l'orizzonte a singhiozzo»), `quandoRete` quando è finito l'ultimo scarico vero e `timerMoto` il rinvio del prossimo mentre ci si muove (§6-bis), `acceso` se lo si vuole. |
 | `terrenoMoto` / `terrenoVivo` | `terreno.js` | **Ci stiamo muovendo, e dove siamo adesso.** `terrenoMoto` sono gli ultimi cinque fix grezzi e la migliore stima della velocità — `coords.speed` quando c'è, se no lo spostamento fra le letture, e si tiene la **maggiore** delle due; `ultimoMoto` è quando ci si è visti correre l'ultima volta, e tiene «in moto» per venti secondi dopo un semaforo. `terrenoVivo` è il **punto vivo**: l'ultimo fix portato avanti dalla corsa e inseguito con dolcezza, cioè dove si è *adesso* invece che all'ultimo fix accettato dal filtro dell'app (che ne accetta uno ogni centocinquanta metri). Chi **disegna** chiede `terrenoPuntoDaDisegnare()`, chi **scarica** chiede `terrenoLuogo()`: una richiesta di rete non si fa partire da un punto estrapolato. |
@@ -354,6 +356,8 @@ Tutto ha prefisso `tel`; stato unico in `tel` (`telescopio.js:168`).
 | `CHIAVE_AEREI` | `astrocalendario_aerei` (i tre interruttori degli aerei ADS-B: `{dati, visibile, auto}`) |
 | `CHIAVE_QUOTE_SALUTE` | `astrocalendario_quote_salute` (la pagella delle tre porte delle quote del suolo: per ognuna fino a quando è in castigo, quanti no di fila e perché). Come `CHIAVE_SALUTE` **non** va nel backup: è una misura di questa rete e di questo momento, e portarla altrove vuol dire cominciare dalla porta sbagliata |
 | `CHIAVE_SALUTE` | `astrocalendario_adsb_salute` (la pagella delle porte ADS-B: per ognuna quanti sì, quanti no, quando ha risposto l'ultima volta e fino a quando è in penale). Come `CHIAVE_NOMI_LUOGO` **non** va nel backup: è una misura di questa rete e di questo posto, e portarla altrove vorrebbe dire cominciare dalla porta sbagliata |
+| `CHIAVE_MISS_SCELTE` | `astrocalendario_missione_scelte` (le tre risposte di Missione Cielo: `{durata, strumento, esperienza}`) |
+| `CHIAVE_MISS_ATTIVA` | `astrocalendario_missione_attiva` (la missione in corso o conclusa e non ancora salvata nel Diario, col suo numero di formato: scade dopo sedici ore, e un salvataggio illeggibile si butta invece di restare a farsi riscartare a ogni apertura) |
 | `CHIAVE_SKY_SCHEDA_VISTA` | `astrocalendario_scheda_vista` (quale delle cinque schede del pannello Visualizzazione era aperta: `direzione`, `schermo`, `oggetti`, `cielo`, `paesaggio`) |
 | `CHIAVE_NOMI_LUOGO` | `astrocalendario_nomi_luogo` (i nomi dei posti già chiesti alla mappa, `{"lat,lon": "nome"}` con le coordinate a tre decimali). È l'unica di queste chiavi che **non** va nel backup: è una memoria di comodo, si rifà da sé con una richiesta |
 
@@ -391,6 +395,9 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
   fotogramma, l'associazione ai candidati, la rotazione che le fa combaciare
   e le ancore dei singoli oggetti), `ar*` = le chiavi del dizionario che
   parlano di lei,
+  `miss*` = Missione Cielo (il motore che sceglie e ordina le tappe, il
+  pannello coi suoi cinque stati, il ponte col planetario e la voce del
+  Diario),
   `did*` = il laboratorio della vista Didattica (`aurL*` il suo banco delle
   aurore), `aur*` = le aurore polari nel planetario e la forma della
   magnetosfera, `cost*` = i disegni delle costellazioni, i loro nomi nelle
@@ -910,6 +917,64 @@ l'**ambiguità**, il **cancello** che si stringe con la fiducia, la taglia come
 secondo segnale, la **focale** ritrovata dal rapporto fra due distanze e le
 rotazioni che restano ortogonali dopo mille composizioni.
 
+### Missione Cielo — `scripts/prova-missione.js`
+
+```
+node scripts/prova-missione.js --solo-motore   # mezzo secondo, senza browser
+node scripts/prova-missione.js                 # e poi il pannello, in un Chromium
+```
+
+La domanda che questa prova esiste per fare è una sola, ed è quella che a
+occhio non si può fare: **una missione plausibile e una missione giusta sono
+la stessa immagine**. Cinque righe con un nome, un'ora e una direzione
+sembrano ragionevoli comunque — anche se la terza tappa è sotto l'orizzonte,
+anche se la prima chiede un telescopio a chi ha detto di avere solo gli
+occhi, anche se l'evento delle 21:45 è già passato. Nessuno, leggendo lo
+schermo, dice «questa sequenza mette il bersaglio più difficile per primo»:
+dice «boh, non l'ho trovato», che è il modo in cui questo genere di difetto
+resta in piedi per sempre.
+
+Per questo il motore di `missione-cielo.js` è fatto di **funzioni pure**
+(§2) e sta separato dal raccoglitore che va a chiedere al resto dell'app
+(§3): il primo si prova qui con scenari costruiti a mano in cui la verità si
+conosce, e ci vuole mezzo secondo. Si controllano le quattro famiglie di
+regole — che la durata decida quante tappe (e che due ore ne diano più di
+dieci minuti), che lo strumento sia un **vincolo** e non una preferenza, che
+niente entri sotto l'orizzonte **né dietro al tetto del vicino** (che è il
+caso che la sola altezza non prende: trenta gradi dietro a un condominio
+sono niente), e che la prima tappa sia la più facile — più le tre risposte
+al cielo che offre poco, che sono tre e non due: la missione più corta, la
+missione vuota col suo motivo, e le assenze dichiarate (senza meteo si fa lo
+stesso e si dice, senza terreno anche).
+
+Poi la seconda metà, in un browser vero, perché il pannello e i ponti un
+documento lo vogliono: la scheda dentro a Stasera, le tre domande, la
+generazione **con dati veri** (e il confronto che risponde alla domanda
+«questa non è la copia dei primi N di `migliorDiStanotte`»), i tre gradini
+dell'aiuto, la sostituzione di una tappa che **non cambia la durata**, il
+ponte col planetario e il ritorno senza perdere lo stato, il cambio lingua a
+missione aperta, la conclusione, il Diario — dove una missione dev'essere
+**una voce sola** e le voci vecchie devono restare identiche a prima — e la
+ripresa dopo un ricaricamento vero, salvataggio rotto compreso.
+
+Tre cose trovate misurando, e sono le tre che a occhio non si vedevano:
+
+- **`missScartoAzimut` misurava dalla parte lunga.** Il valore assoluto
+  preso prima di riportare la differenza dentro a [-180, +180]: fra 350° e
+  10° rispondeva centosessanta invece di venti, e ogni riferimento a
+  cavallo del nord veniva scartato per «troppo lontano».
+- **Vega e la Lira nella stessa missione.** Non lo prende nessuna delle
+  altre regole — sono due famiglie diverse per il tetto della varietà, e
+  stando a pochi gradi la continuità le premia — ma sono due tappe su
+  cinque per lo stesso pezzo di cielo. Ci pensa `missDoppione`, che vale
+  anche per il riferimento: «parti dalla Lira per trovare Vega» è un
+  cerchio.
+- **«Inizia adesso» alle due del pomeriggio.** L'anteprima si costruisce
+  per l'ora consigliata (il crepuscolo) e «adesso» vuol dire adesso: fra le
+  due può esserci mezza giornata, e spostare gli orari e basta dava Vega a
+  ottantatré gradi in pieno sole. Oltre `MISS_SCARTO_RIGENERA_MS` le tappe
+  si scelgono da capo per l'istante vero di partenza.
+
 ### I transiti in un browser vero — `scripts/prova-transiti.js`
 
 ```
@@ -962,6 +1027,11 @@ già aperto. È da lì che il tasto si preme davvero, ed è l'unica condizione i
 cui gira la riga che azzera l'orologio (`mostraVista('cielo')`, §7.4-bis):
 provandolo col cielo già davanti quella riga non passa, e la prova diventa
 cieca proprio sul difetto che deve prendere.
+
+Se tocchi **Missione Cielo** (`missione-cielo.js`, la sua scheda in Stasera,
+la striscia sul cielo o la sua voce del Diario) passa da
+`node scripts/prova-missione.js` — e da `--solo-motore` a ogni ritocco delle
+regole di scelta, che costa mezzo secondo.
 
 Se tocchi qualcosa in `catalogo.js`, `costellazioni.js`, `corpi-minori.js`,
 `terreno.js`, `rilievo.js` (**il colore delle montagne e il velo dell'aria**
@@ -1038,6 +1108,13 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 
 | Richiesta | Punto di partenza |
 |---|---|
+| **Missione Cielo** (la serata come percorso: le tre domande, le tappe, l'aiuto, il Diario) | `missione-cielo.js`, prefisso `miss`. La scheda sta nella vista Stasera fra «Stanotte» e il meteo (`#missione-scheda`, la riempie `missAggiornaScheda`), la finestra è `modale-missione` col corpo scritto da `missDisegnaPannello`, e la **striscia** sul cielo è `#missione-striscia`. Da conoscere prima di metterci mano: il file è in **due metà**, e non è un vezzo. La prima (§2) è il motore — sceglie e ordina, e non tocca né il documento né l'orologio né la rete; la seconda (§3) va a chiedere al resto dell'app. Il taglio esiste perché il difetto tipico di questo pezzo non è un pixel storto ma **una tappa impossibile che sullo schermo sembra ragionevole**, e quello si prende solo con uno scenario di cui si conosce la verità: `scripts/prova-missione.js --solo-motore`, mezzo secondo, senza browser |
+| **Perché una missione non è i primi N di `migliorDiStanotte`** | `missPunteggio` e `missOrdinaPerProgressione` in `missione-cielo.js` §2. Un elenco ordinato per merito non ha un ordine di **esecuzione**: dice che M13 vale 82 e Giove 79, e lascia a chi legge tre lavori — scegliere, mettere in fila, trovare. Qui il punteggio è pesato dall'**esperienza scelta** (la difficoltà vale −14 punti coi bambini e +4 per chi ha chiesto una sfida), poi si passa a tre regole che un ordinamento non ha: la **varietà** (`MISS_TETTO_FAMIGLIA`, due per famiglia, e la Luna e i pianeti sono una famiglia sola agli occhi di chi guarda), la **continuità** (girarsi di centottanta gradi al buio vuol dire perdere l'adattamento e il riferimento da cui si era partiti) e la **progressione**, che vale più di tutte: la prima tappa non è la migliore, è **la più facile fra le buone**. Chi trova la prima cosa in venti secondi cerca la seconda con pazienza; chi non trova la prima ha già deciso che l'app non funziona |
+| **Le tappe hanno un'ora, e alcune non aspettano** | `missMettiInOrario` (§2). Due nature nella stessa sequenza: un pianeta è disponibile per un **intervallo** e lo si guarda quando fa comodo, un passaggio della ISS avviene a un **istante**. Il secondo si incastra nella fila al suo posto nel tempo. La riga che conta è l'ultima: un evento che cade prima di `MISS_PREAVVISO_MIN` non si mette affatto — annunciare un passaggio fra quaranta secondi, a chi sta ancora leggendo la prima tappa, è peggio che non annunciarlo, è una cosa persa mentre la si leggeva. Chi avvia in ritardo trova gli orari rifatti da `missRiprogramma`, con l'avviso che non colpevolizza nessuno |
+| **Come si dice dove guardare** (e perché non in ascensione retta) | `missGuidaTesto` e `missHtmlAiuto` (§8). Ascensione retta e declinazione sono le coordinate giuste per una montatura e quelle sbagliate per un paio d'occhi: restano fuori. Quello che si scrive è la direzione cardinale (`astroI18n.nomePunto`), la fascia di cielo (`missFasciaAltezza`: «basso sull'orizzonte», «a metà cielo», «molto in alto») e un riferimento luminoso da cui partire, con la distanza misurata in **dita e pugni a braccio teso** (`MISS_MISURE_A_MANO`) — che è il solo goniometro che tutti hanno addosso, ed è così che si insegna a cercare in cielo da prima che esistessero le app. I gradi restano, di seconda riga |
+| **«Non lo trovo»** | `missChiediAiuto` (§6) e i tre gradini di `missHtmlAiuto`. Non segna niente come fallito: fa un gradino. Il primo ripete la direzione con parole più semplici, il secondo dà il percorso dal riferimento al bersaglio, il terzo dice la cosa che nessuna app dice mai — **forse è dietro a qualcosa** — e propone di spostarsi di qualche metro, di aprire il planetario o di cambiare bersaglio (`missSostituisci`, che dà alla tappa nuova **l'orario della vecchia**: la durata della serata non cambia). Dopo due tentativi il problema di solito non è la mira, è il palazzo di fronte |
+| **Una missione nel Diario** | `missSalvaNelDiario` e `missVoceDiario` in `missione-cielo.js` §7, letti da `costruisciDiario` e da `apriDiarioEvento` in `app.js` §15. È **una voce sola** con dentro le sue tappe: cinque voci separate direbbero di aver visto cinque cose in una notte senza dire che erano un percorso. La retrocompatibilità è in una riga — la voce nuova porta i campi che il diario già legge (`titolo`, `dataEvento`, `nota`, `stelle`, `strumento`, `categoria`) e in più un campo `missione` che le vecchie non hanno, e chi disegna guarda quel campo per decidere. Due cose da non togliere: il titolo si **ricompone** dalla sessione (quello salvato è congelato nella lingua di quella sera) e il form del diario si **riporta avanti** `precedente.missione`, se no modificare la nota di una missione ne cancella le tappe |
+| **Il salvataggio di una missione, e la ripresa** | `missLeggiSalvato`, `missSalvataggioBuono` e `missDaAggiornare` (§4). `missLeggiSalvato` dà **tre risposte e non due**, ed è la differenza che conta: `undefined` vuol dire «non c'è niente salvato», `null` vuol dire «c'è qualcosa e non si legge». La seconda va buttata, se no resta lì a farsi rileggere e riscartare a ogni apertura per sempre. Il formato è numerato (`MISS_VERSIONE`): quello che non si conosce si rifiuta invece di indovinarlo |
 | **Il cambio lingua è lento, o una parte resta in italiano** | `i18n.js` e `I18N.md`. Le tre domande, nell'ordine in cui conviene farsele. **(1) Quel testo ha una chiave?** `node scripts/controlla-i18n.js --lista --file <file>` lo dice; se non ce l'ha, il difetto è quello e basta scriverla. **(2) Chi lo disegna viene avvisato?** Se il testo si compone in JavaScript, il cambio lingua non lo riscrive: lo deve **ridisegnare** chi lo ha fatto, e l'elenco di chi viene avvisato è `ridisegnaTuttoPerLingua` in `ui-nuova.js`. Una vista non a schermo si segna in debito (`vistePerLingua`) e lo paga in `mostraVista`. **(3) Quella frase è tenuta da qualche parte?** Una cache di frasi è una cache di una lingua: `cacheCircostanze` (il verdetto «da qui si vede?») si svuota col ridisegno, e la scheda di un aereo porta scritto in che lingua è (`corpo.dataset.lingua`) perché la scorciatoia che riscrive i soli numeri non lasci le etichette di prima. Per la lentezza: `astroI18n` misura due lavori diversi, e `scripts/prova-lingua.js` li stampa separati — la riscrittura del testo (dieci millisecondi su cinquecento nodi) e il ridisegno, che costa quanto costa aprire quella vista |
 | **Una frase nuova da mostrare** | non si scrive nel codice: `astroI18n.t('chiave')` (o `data-i18n` nell'HTML), e la frase nei due dizionari. Se dipende da una quantità, la voce si scrive `{ uno: …, altri: … }` e a scegliere è `Intl.PluralRules` — con una stringa sola «fra 1 giorni» è sbagliato in tutte le lingue. Se contiene un numero, il numero entra come segnaposto (`{n}`) e non concatenato: così prende il separatore della lingua, e in italiano quattro cifre **non** lo portano (5800, non 5.800) mentre in inglese sì |
 | **Il comando delle date (mese o intervallo) si è ridotto a una riga** | §**1-quater** di `app.js`, prefisso `periodo`, markup `.barra-periodo` in `index.html` (una per vista, `data-periodo="calendario"` / `"agenda"`), stili `.barra-periodo` / `.periodo-*` in `style.css`. Erano **tre file di comandi impilate**: la barra di FullCalendar (freccia, mese, freccia, oggi), la riga «Vai al mese» coi suoi due campi e i suoi due tasti, e la riga «Oppure un intervallo» con altre due caselle e altri due tasti. Misurato a 320 px: **346 pixel** di controlli sopra alla griglia, su uno schermo alto 640 — più di metà schermata per rispondere a una domanda sola, perché mese e intervallo **si escludono a vicenda** (`impostaMeseSelezionato` spegne l'intervallo e viceversa) e la barra della griglia sfogliava gli stessi mesi del selettore che le stava sotto. Adesso sono **63** (73 sul computer, da 139), e la barra di FullCalendar non c'è più (`headerToolbar: false` in `opzioniCalendarioPerSchermo`: le sue regole di stile restano dormienti, vedi il commento accanto a `.fc .fc-toolbar-title`). A schermo resta il **nome** del periodo — che è la sola cosa di questo comando che si legga senza aprirlo, e quindi la sola che debba sempre essere vera (`periodoNome`, scritto da `sincronizzaSelettoriMese`) — con le due frecce e il tondo di oggi; i campi stanno in un foglio appoggiato sopra al contenuto (non lo spinge in giù: aprirlo non deve far saltare il calendario) che porta **un modo per volta**. Tre cose non sono decorazione: riaprendo il foglio con un intervallo acceso si riapre **sull'intervallo** (chi ce l'ha lo vuole ritoccare, non ricominciare da un mese); le frecce, con un intervallo acceso, lo spostano **di quanto è lungo** e non di un mese (chi guarda le due settimane di ferie vuole le due settimane dopo); e le tre durate già pronte (`data-periodo-durata`) esistono perché altrimenti un intervallo costa due caselle data compilate a mano, che su un telefono sono due tastierini. Il nome si **abbrevia** sul telefono (`meseCorto`, e l'anno di un intervallo di quest'anno non si scrive: a 320 px al nome restano centosedici pixel, e «Settembre 2026» ne chiede centoventisei) — quindi `ridisegnaPerDispositivo` deve richiamare `sincronizzaSelettoriMese`, se no chi allarga la finestra si tiene «Set 2026» per sempre. La forma lunga sta nel `title` del tasto. Trappola misurata: lo stato del foglio si scrive `data-modo-periodo` e **non** `data-periodo-modo`, che è già dei due tasti delle linguette. Da dentro la barra non fa danno (un `querySelectorAll` su un elemento non restituisce l'elemento stesso), ma chi lo cerca **dal documento** — una prova, un foglio di stile — si ritrova fra le linguette anche tutta la barra, e non lo dice nessuno |

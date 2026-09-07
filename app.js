@@ -37065,7 +37065,11 @@ window.apriDiarioEvento = (id) => {
   diarioStelleScelte = voce.stelle || 0;
 
   const titolo = document.getElementById('diario-evento-titolo');
-  if (titolo) titolo.textContent = evento ? `${evento.titolo} · ${evento.dataTesto}` : (voce.titolo || 'Osservazione');
+  // Per una missione il titolo si ricompone (§`missVoceDiario`): quello
+  // salvato è congelato nella lingua della sera in cui è stata fatta.
+  const sessione = typeof missVoceDiario === 'function' ? missVoceDiario(voce) : null;
+  if (titolo) titolo.textContent = evento ? `${evento.titolo} · ${evento.dataTesto}`
+    : (sessione ? sessione.titolo : (voce.titolo || 'Osservazione'));
 
   const nota = document.getElementById('diario-nota');
   if (nota) nota.value = voce.nota || '';
@@ -37132,7 +37136,12 @@ function inizializzaDiarioUI() {
       categoria: evento ? evento.categoria : precedente.categoria,
       nota: document.getElementById('diario-nota').value.trim(),
       stelle: diarioStelleScelte,
-      strumento: document.getElementById('diario-strumento-usato').value
+      strumento: document.getElementById('diario-strumento-usato').value,
+      // La sessione di Missione Cielo si porta avanti: questo modulo
+      // riscrive la voce da capo, e senza questa riga modificare la nota di
+      // una missione ne cancellerebbe le tappe — cioè tutto quello che
+      // quella voce ha da raccontare.
+      missione: precedente.missione
     };
     salvaDiario();
     costruisciAgenda();
@@ -37181,11 +37190,18 @@ function costruisciDiario() {
       const stelle = v.stelle ? '★'.repeat(v.stelle) + '☆'.repeat(5 - v.stelle) : '';
       const strumento = STRUMENTI[v.strumento] ? `${icona(STRUMENTI[v.strumento].disegno, 15)} ${STRUMENTI[v.strumento].nome}` :
                         (v.strumento === 'foto' ? `${icona('fotocamera', 15)} ${astroI18n.t('diario.conLaFotocamera')}` : '');
+      // Una missione è **una sessione**, non cinque osservazioni scollegate:
+      // porta il campo `missione`, e da lì escono il titolo — ricomposto
+      // nella lingua di adesso, perché quello congelato nel salvataggio è
+      // nella lingua di quella sera — il sommario e le tappe ripiegate. Chi
+      // quel campo non ce l'ha (cioè ogni voce scritta prima di oggi) passa
+      // di qui e ne esce identico a prima.
+      const sessione = typeof missVoceDiario === 'function' ? missVoceDiario(v) : null;
       return `
         <article class="bg-slate-900 p-4 rounded-xl border border-slate-700">
           <div class="flex justify-between items-start gap-3">
             <div class="min-w-0">
-              <h4 class="font-bold text-white flex items-center gap-2">${iconaCategoria(v.categoria, 18)} ${v.titolo || astroI18n.t('diario.osservazione')}</h4>
+              <h4 class="font-bold text-white flex items-center gap-2">${iconaCategoria(v.categoria, 18)} ${sessione ? sessione.titolo : (v.titolo || astroI18n.t('diario.osservazione'))}</h4>
               <p class="text-xs text-blue-400 mt-0.5">${dataOraBreve(new Date(v.dataEvento || v.quando))}</p>
             </div>
             <div class="text-right flex-shrink-0">
@@ -37193,6 +37209,7 @@ function costruisciDiario() {
               <button onclick="apriDiarioEvento('${v.id}')" class="px-2.5 py-1 mt-1 rounded-full text-xs font-semibold bg-slate-700 hover:bg-blue-600 text-slate-100 transition-colors" title="${astroI18n.t('diario.modificaTitolo')}">${astroI18n.t('diario.modifica')}</button>
             </div>
           </div>
+          ${sessione ? `<p class="text-sm text-slate-400 mt-1">${sessione.sommario}</p>${sessione.html}` : ''}
           ${v.nota ? `<p class="text-sm text-slate-300 mt-2 whitespace-pre-line">${v.nota.replace(/</g, '&lt;')}</p>` : ''}
           ${strumento ? `<p class="text-xs text-slate-500 mt-2">${strumento}</p>` : ''}
         </article>`;

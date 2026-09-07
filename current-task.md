@@ -10,82 +10,125 @@ planetario. Il tetto resta a 362.
 
 ## Ultimo intervento completato
 
-**La bussola del planetario: lettere grandi, i due numeri fuori dal
-quadrante.**
-Richiesta: «fai la bussola del planetario più chiara e immediata, le lettere
-dei punti cardinali devono essere più grosse e leggibili, aggiungi il grado
-dell'angolo del campo di vista (FOV), sistema anche l'angolo della bussola e
-mettilo dove si vede bene, rendila pulita e chiara.»
+**Missione Cielo: la serata come percorso, non come elenco.**
+Richiesta: «trasforma i dati che l'app ha già in una breve esperienza guidata —
+dimmi quanto tempo hai, con cosa osservi e che esperienza desideri, e l'app
+prepara una sequenza concreta di oggetti e ti accompagna a trovarli in cielo».
 
-### 1. Il difetto, misurato
+### 1. Il difetto, detto in una riga
 
-Il quadrante teneva **quattro cose sovrapposte** in ottantadue pixel: la rosa
-che gira, il cono azzurro dell'inquadratura, l'ago, e in mezzo due righe di
-testo. Le misure, prese nel browser:
+La dashboard sapeva già dire **cosa** vale la pena guardare stanotte
+(`migliorDiStanotte`: dieci righe ordinate per merito, ognuna coi suoi
+motivi). È la risposta giusta a «cosa c'è», e non è la risposta a un'altra
+domanda — quella che uno si fa in cortile con la giacca addosso: **ho venti
+minuti, da dove comincio?**
 
-- le lettere dei punti cardinali uscivano a **11,5px** (la N) e **9px**
-  (E/S/O) — sotto a un cono semitrasparente e sopra a un fondo che cambia;
-- l'azimut a **11,5px** e la sigla del punto a **7,2px**, cioè scritta e non
-  leggibile, per giunta appoggiata su un quadrante che ruota;
-- il campo visivo in cifre **non c'era affatto**: lo diceva solo l'apertura
-  del cono, che risponde a «largo o stretto?» e non a «quanto?».
+Un elenco non risponde perché non ha un ordine di **esecuzione**. Dice che M13
+vale 82 e Giove 79, e lascia a chi legge tre lavori: scegliere, mettere in fila
+e trovare. Il primo si fa male al buio, il secondo non si fa affatto, il terzo
+è quello che fa rientrare in casa.
 
-### 2. La cura: la bussola è in due pezzi
+### 2. La cura: un modulo nuovo, in due metà
 
-Sopra il **quadrante**, che adesso è soltanto disegno — niente testo in mezzo,
-quindi le lettere si sono prese lo spazio che i numeri lasciavano libero e
-l'ago è diventato una freccia intera che passa per il perno, come su una
-bussola da tavolo. Sotto una **pillola ferma e opaca** coi due numeri: a
-sinistra dove si guarda (`128° SE`, in giallo come l'indice che lo indica), a
-destra quanto cielo si inquadra (`45°`, in azzurro come il cono, con il cono
-stesso in miniatura al posto dell'etichetta). Un numero da leggere vuole un
-fondo fermo; un'apertura da guardare no.
+`missione-cielo.js` (~2.100 righe, prefisso `miss`), caricato dopo
+`eventi-extra.js` e prima di `ui-nuova.js`. Il file è diviso in due, e non è
+un vezzo:
 
-Misurato dopo: la N esce a **15,8px** e le altre a **13,2** (+37%), l'azimut a
-11,8px su fondo pieno e la sigla a 9,6px.
+- **il motore (§2) è in funzioni pure**: riceve uno «scenario» — l'istante, i
+  candidati già misurati, le tre scelte, le condizioni — e restituisce una
+  missione, senza toccare né il documento né l'orologio né la rete;
+- **il raccoglitore (§3)** è l'unico pezzo che va a chiedere al resto
+  dell'app, e non ricalcola niente: i bersagli sono quelli di `pianBersagli`,
+  le posizioni quelle di `altAzCorpo`/`altAzCoordinate`, il buio quello di
+  `finestraBuio`, il terreno quello di `terrenoAltezza`.
 
-### 3. Le tre cose che non sono estetica
+Il taglio esiste per una ragione misurabile: il difetto tipico di questo pezzo
+non è un pixel storto, è **una tappa impossibile che sullo schermo sembra
+ragionevole**. Cinque righe con un nome, un'ora e una direzione sembrano
+sensate comunque — anche se la terza sta sotto l'orizzonte. Quello si prende
+solo con uno scenario di cui si conosce la verità, e per farlo ci vuole un
+motore che non abbia bisogno di un browser.
 
-1. **Le lettere restano dritte.** La rosa gira di −az e si portava dietro
-   anche loro: su una rosa di carta è così, e finché erano alte nove pixel non
-   se ne accorgeva nessuno — ma guardando a sud la E diventa una «Ǝ», cioè
-   l'opposto di quello per cui sono state ingrandite. Ogni lettera disfa la
-   rotazione **attorno al proprio punto** (`sky.bussolaSigle`, quattro nodi
-   cercati una volta sola e riscritti solo quando l'angolo cambia davvero).
-2. **Le sigle sono nel dizionario** (`punto.sigla.*`): erano scritte a mano
-   nell'HTML, e in inglese il quadrante diceva «O» al posto di «W». Provato:
-   adesso `NESW`.
-3. **Girati, i numeri vanno di fianco e non sotto.** Su un telefono
-   orizzontale il cielo è alto un terzo, e la pillola sotto al quadrante
-   portava il blocco a 147px, cioè diciannove oltre `--zona-alta-cielo` —
-   dove passa la scheda dell'oggetto. Di fianco, il blocco è alto quanto il
-   quadrante (126px) e la fascia torna quella di sempre.
+### 3. Le regole che fanno di una lista una sequenza
 
-### 4. I due contro-esempi trovati misurando
+Il punteggio è pesato dall'**esperienza scelta**: la stessa difficoltà vale
+−14 punti per chi è coi bambini e +4 per chi ha chiesto una sfida. Poi vengono
+tre regole che un ordinamento per merito non ha:
 
-- **Riservare posto alla pillola nella barra dei comandi era peggio del
-  male**: la pillola è larga 111px contro gli 88 del quadrante, e portando il
-  `padding-right` a 126px la barra andava a capo su un telefono — due righe di
-  comandi per fare spazio a una cosa che non ci passa accanto (la pillola sta
-  più in basso dei tondi delle linguette). Il posto riservato è quello del
-  solo quadrante, com'era prima.
-- **`--zona-alta-cielo` a schermo intero**: lì la bussola torna nel flusso, e
-  il valore dichiarato (128px) era già sbagliato prima di questo lavoro — 146
-  veri. Adesso c'è una riga di `:has()` che lo porta a 176/152 quando il
-  contenitore è a schermo intero, e la legge anche `skyFasceCielo()`, che
-  cerca la misura su `.vista-cielo`. Resta approssimato — e scritto nel
-  commento — il caso del telefono stretto a schermo intero, dove la barra dei
-  comandi va a capo per conto suo.
+- la **varietà** (due per famiglia; la Luna e i pianeti sono una famiglia sola
+  agli occhi di chi guarda);
+- la **continuità** (girarsi di centottanta gradi al buio vuol dire perdere
+  l'adattamento e il riferimento da cui si era partiti);
+- la **progressione**, che vale più di tutte: la prima tappa non è la
+  migliore, è **la più facile fra le buone**. Chi trova la prima cosa in venti
+  secondi cerca la seconda con pazienza; chi non trova la prima, in venti
+  secondi ha già deciso che l'app non funziona.
 
-### 5. Provato
+Le tappe si dicono a parole — direzione cardinale, «basso sull'orizzonte» /
+«a metà cielo» / «molto in alto», e un riferimento luminoso da cui partire
+misurato in **dita e pugni a braccio teso**. Ascensione retta e declinazione
+non compaiono: sono le coordinate giuste per una montatura e quelle sbagliate
+per un paio d'occhi.
 
-- In un Chromium vero su tre schermi (360×640, 640×360 con `pointer: coarse`,
-  1280×800): misure dei corpi, larghezze, che le linguette non vadano a capo
-  né si mettano a scorrere, la fascia in cima con e senza schermo intero, e le
-  sigle dopo il cambio lingua.
-- `node scripts/prova-fumetto.js`: **stesse due prove rosse di prima dello
-  stesso identico valore** (`fascie 128 / 152` e `128 / 634`), cioè nessuna
-  regressione — sono due difetti preesistenti del fumetto, non della bussola.
-- `node scripts/prova-lingua.js`: tutte le prove passate.
-- `node scripts/controlla-i18n.js --patto`: 362, dentro al tetto.
-- `CACHE_NAME` portato a `astrocal-v280`.
+### 4. I tre difetti trovati misurando, che a occhio non si vedevano
+
+1. **`missScartoAzimut` misurava dalla parte lunga.** Valore assoluto preso
+   *prima* di riportare la differenza dentro a [-180, +180]: fra 350° e 10°
+   rispondeva centosessanta invece di venti, e ogni riferimento a cavallo del
+   nord veniva scartato per «troppo lontano».
+2. **Vega e la Lira nella stessa missione.** Non lo prende nessuna delle altre
+   regole — sono due famiglie diverse per il tetto della varietà, e stando a
+   pochi gradi la continuità le premia — ma sono due tappe su cinque per lo
+   stesso pezzo di cielo: trovata Vega, la Lira è già lì. Ci pensa
+   `missDoppione`, che vale anche per il riferimento («parti dalla Lira per
+   trovare Vega» è un cerchio).
+3. **«Inizia adesso» alle due del pomeriggio.** L'anteprima si costruisce per
+   l'ora consigliata (il crepuscolo) e «adesso» vuol dire adesso: fra le due
+   può esserci mezza giornata, e spostare gli orari e basta dava Vega a
+   ottantatré gradi in pieno sole. Oltre venti minuti di scarto le tappe si
+   scelgono da capo per l'istante vero di partenza.
+
+E due cose viste solo negli scatti: la frase «Si comincia alle 18:57. e non
+c'è Luna a dare fastidio» (una subordinata dopo un punto, quando il meteo non
+è arrivato) e «1 minutes from Como, With the naked eye» — un plurale mancante
+e un'etichetta da tasto finita in mezzo a una frase.
+
+### 5. Quello che non si tocca
+
+Il Diario resta uno solo: una missione ci entra come **una voce sola** con un
+campo `missione` che le voci vecchie non hanno, e chi disegna guarda quel
+campo per decidere. Il planetario resta uno solo: «Guidami» apre **quello**,
+con l'orologio sulla tappa e la vista sul bersaglio, e ci appoggia sopra una
+striscia con due tasti. Nessuna dipendenza nuova, nessun bundler, nessun
+backend.
+
+### 6. Provato
+
+- `node scripts/prova-missione.js` — **74 prove, tutte verdi**: 42 sul motore
+  senza browser (durata, strumento, orizzonte, ostacoli dichiarati, varietà,
+  progressione, orari, cielo povero, assenze, persistenza, dati malformati) e
+  32 in un Chromium vero (scheda, tre domande, generazione con dati veri,
+  aiuto a tre gradini, sostituzione, ponte col planetario e ritorno, cambio
+  lingua a missione aperta, conclusione, Diario, ripresa dopo un
+  ricaricamento).
+- `node scripts/controlla-i18n.js --patto`: **362**, invariato — il modulo
+  nuovo ha **zero** stringhe cablate e la vista Stasera resta a zero.
+- `node scripts/controlla-collisioni.js`, `node scripts/prova-lingua.js`,
+  `node scripts/prova-stazioni.js`, `node scripts/prova-galleria.js`: verdi.
+- `prova-i18n.js`, `prova-nel-browser.js`, `prova-verifica.js`,
+  `prova-fumetto.js`, `prova-transiti.js`: **stesse identiche prove rosse di
+  prima dell'intervento**, misurate sul commit di partenza. Nessuna
+  regressione, e nessuna delle preesistenti mascherata.
+- Scatti su 360×640, 640×360 e 1280×800, in italiano e in inglese: nessuna
+  barra orizzontale, nessuno sbordo, testo mai sotto i 12,3 px, tasti a 44 px.
+- `CACHE_NAME` portato a `astrocal-v282`.
+
+### 7. Da sapere, se ci si torna
+
+I 44 px dei tasti hanno richiesto una riga contro una regola generale
+dell'app: sul telefono c'è un pavimento a 38 px per tutti i tasti
+(`body button:not(…)` in `style.css`) che vince per specificità e schiacciava
+il nostro minimo. Missione Cielo è stata aggiunta alla lista delle esclusioni
+di quella regola, che è la stessa da cui erano già fuori i comandi del cielo —
+e per la stessa ragione: si toccano al buio, in piedi, con la stessa mano che
+tiene il telefono.
