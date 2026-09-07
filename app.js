@@ -27667,12 +27667,15 @@ function skyRegDisegnaRiquadro(ctx, L, H, pannello, corpo) {
   // possono dover essere lette), perciò non deve mai fermare il cielo.
   const impronta = skyRegImprontaRiquadro(pannello);
   const memoria = sky.reg.riquadri.get(pannello);
-  if (memoria && memoria.immagine && memoria.impronta === impronta) {
+  // Un aggiornamento dei dati non deve cancellare la foto già pronta.
+  // Una sola conversione alla volta: anche se il DOM cambia nel frattempo,
+  // quella in corso può finire; il prossimo fotogramma prenderà i dati nuovi.
+  if (!memoria || (!memoria.inCorso && memoria.impronta !== impronta)) {
+    skyRegFotografaRiquadro(pannello, impronta);
+  }
+  if (memoria && memoria.immagine) {
     ctx.drawImage(memoria.immagine, x, y, w, h);
     return;
-  }
-  if (!memoria || !memoria.inCorso || memoria.impronta !== impronta) {
-    skyRegFotografaRiquadro(pannello, impronta);
   }
 
   // Primo fotogramma (mentre la fotografia viene preparata): non lasciare un
@@ -27740,6 +27743,8 @@ async function skyRegFotografaRiquadro(pannello, impronta) {
         css += `${nome}:${cs.getPropertyValue(nome)};`;
       }
       copie[i].setAttribute('style', css);
+      copie[i].style.setProperty('animation', 'none', 'important');
+      copie[i].style.setProperty('transition', 'none', 'important');
       if (el instanceof HTMLImageElement) copie[i].setAttribute('data-reg-img', String(i));
       if (el instanceof HTMLCanvasElement) {
         const img = document.createElement('img');
@@ -27749,6 +27754,14 @@ async function skyRegFotografaRiquadro(pannello, impronta) {
         copie[i] = img;
       }
     });
+    // La posizione nella mappa viene applicata da drawImage. Dentro l'SVG
+    // la scheda deve partire dall'origine, senza traslazioni o vincoli del
+    // contenitore originale che la sposterebbero fuori dalla fotografia.
+    for (const [nome, valore] of Object.entries({
+      position: 'relative', inset: 'auto', left: '0px', top: '0px',
+      transform: 'none', margin: '0px', width: larghezza + 'px',
+      height: altezza + 'px', 'max-width': 'none', 'max-height': 'none'
+    })) copia.style.setProperty(nome, valore, 'important');
     const fotoCopie = Array.from(copia.querySelectorAll('img'));
     await Promise.all(fotoCopie.map(async img => {
       const haIndice = img.hasAttribute('data-reg-img');
