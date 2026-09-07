@@ -2290,6 +2290,8 @@ window.ASTRO_DIZIONARI['en'] = {
     'ui.chiudi-i-comandi-del-tempo': 'Close the time controls',
     'ui.chiudi-il-pannello-ads-b': 'Close the ADS-B panel',
     'ui.chiudi-l-avviso-del-transito': 'Dismiss the transit alert',
+    'ui.chiudi-l-avviso': 'Dismiss alert',
+    'ui.chiudi-gli-avvisi-del-planetario': 'Dismiss planetarium alerts',
     'ui.chiudi-la-finestra': 'Close the window',
     'ui.chiudi-la-finestra-o-premi-esc': 'Close the window (or press Esc)',
     'ui.chiudi-la-galleria': 'Close the gallery',

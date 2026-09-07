@@ -1383,7 +1383,13 @@
         <!-- I messaggi non occupano una riga della pagina: compaiono sul
              bordo basso del planetario, sopra ai comandi del tempo, e quando
              spariscono restituiscono immediatamente tutto lo spazio al cielo. -->
-        <p id="skymap-avviso" class="skymap-avviso hidden" role="status" aria-live="polite"></p>
+        <p id="skymap-avviso" class="skymap-avviso hidden" role="status" aria-live="polite">
+          <span class="skymap-avviso-testo" data-skymap-avviso-testo></span>
+          <button id="skymap-avviso-chiudi" type="button" class="skymap-avviso-chiudi"
+                  title="Chiudi l'avviso" aria-label="Chiudi gli avvisi del planetario"
+                  data-i18n-title="ui.chiudi-l-avviso"
+                  data-i18n-aria-label="ui.chiudi-gli-avvisi-del-planetario">✕</button>
+        </p>
       </div>
      </div>
 
