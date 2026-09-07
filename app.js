@@ -21073,6 +21073,39 @@ function skyAggiornaBussola(az) {
   const rosa = document.getElementById('skymap-bussola-rosa');
   if (rosa) rosa.setAttribute('transform', `rotate(${(-az).toFixed(1)})`);
 
+  // LE LETTERE RESTANO DRITTE.
+  // La rosa gira di −az e si porta dietro tutto, lettere comprese: su una
+  // rosa di carta è così che vanno le cose, e finché quelle lettere erano
+  // alte nove pixel non se ne accorgeva nessuno. Adesso che si leggono, il
+  // difetto si legge con loro — guardando a sud la E diventa una «Ǝ», cioè
+  // esattamente il contrario di quello per cui sono state ingrandite. Ogni
+  // lettera disfa quindi la rotazione **attorno al proprio punto**: gira
+  // insieme al quadrante e resta dritta.
+  //
+  // I nodi si cercano una volta sola (sono quattro, ma questa funzione gira
+  // a ogni fotogramma) e il valore si riscrive solo quando cambia davvero:
+  // un `setAttribute` su un SVG invalida il disegno anche se il valore è lo
+  // stesso.
+  if (!sky.bussolaSigle && rosa) {
+    sky.bussolaSigle = [...rosa.querySelectorAll('.bussola-nord, .bussola-lettera')]
+      .map(nodo => ({ nodo, x: nodo.getAttribute('x'), y: nodo.getAttribute('y'), ultimo: null }));
+  }
+  if (sky.bussolaSigle) {
+    const giro = az.toFixed(1);
+    for (const sigla of sky.bussolaSigle) {
+      if (sigla.ultimo === giro) continue;
+      sigla.ultimo = giro;
+      sigla.nodo.setAttribute('transform', `rotate(${giro} ${sigla.x} ${sigla.y})`);
+    }
+  }
+
+  // I DUE NUMERI, nella pillola sotto al quadrante (§ «LA BUSSOLA» in
+  // index.html). Non stanno più in mezzo alla rosa: lì erano scritti sopra a
+  // un quadrante che gira e a un cono semitrasparente, e la sigla del punto
+  // a sette pixel di corpo non si leggeva affatto. Il confronto prima di
+  // scrivere non è un vezzo: questa funzione gira a ogni fotogramma, e
+  // riscrivere un `textContent` uguale a sé stesso invalida l'impaginazione
+  // sessanta volte al secondo.
   const gradi = document.getElementById('skymap-bussola-gradi');
   const testo = `${Math.round(az) % 360}°`;
   if (gradi && gradi.textContent !== testo) gradi.textContent = testo;
@@ -21080,12 +21113,28 @@ function skyAggiornaBussola(az) {
   const nomeDirezione = skyNomeDirezione(az);
   if (direzione && direzione.textContent !== nomeDirezione) direzione.textContent = nomeDirezione;
 
+  // Il campo inquadrato, in cifre, accanto al cono che lo disegna. Il cono
+  // dice **subito** se si sta guardando largo o stretto ed è quello che si
+  // guarda; il numero risponde alla domanda dopo — «quanto, di preciso?» —
+  // che è quella che si fa scegliendo un oculare o confrontando due
+  // inquadrature. Sotto i due gradi non si scrive «0°»: `skyCampoTesto`
+  // passa ai primi e ai secondi d'arco, che a quell'ingrandimento sono
+  // l'unità in cui la misura si legge.
+  const campo = document.getElementById('skymap-bussola-campo');
+  if (campo) {
+    const testoCampo = skyCampoTesto();
+    if (campo.textContent !== testoCampo) campo.textContent = testoCampo;
+  }
+
   // IL CONO DELL'INQUADRATURA
-  // Quanto cielo sta entrando nella vista, disegnato invece che scritto: il
-  // campo visivo in gradi è un numero che per dire qualcosa va comunque
-  // immaginato come un'apertura, e allora tanto vale aprirla. È centrato
-  // sulla direzione della vista (cioè in cima, sotto all'indice giallo:
-  // qui è la rosa a girare, non l'indice).
+  // Quanto cielo sta entrando nella vista, disegnato **e** scritto: il campo
+  // visivo in gradi è un numero che per dire qualcosa va comunque immaginato
+  // come un'apertura, e allora la si apre — ma l'apertura da sola non si può
+  // confrontare con niente, e il numero è quello che serve quando la domanda
+  // diventa precisa. Sono della stessa tinta azzurra, ed è quello che li lega
+  // senza una parola di etichetta. Il cono è centrato sulla direzione della
+  // vista (cioè in cima, sotto all'indice giallo: qui è la rosa a girare,
+  // non l'indice).
   //
   // Il minimo di quattro gradi non è un ritocco estetico: a forte
   // ingrandimento il campo scende a un quarto di grado, e un cono largo un

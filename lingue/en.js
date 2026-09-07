@@ -668,6 +668,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'bussola.inaffidabile': 'the phone reports it as unreliable',
     'bussola.disturbata': 'disturbed by about {gradi}°',
     'bussola.dettoAVoce': 'View towards {dove}, {gradi} degrees, field of view {campo}',
+    'bussola.campo.titolo': 'How much sky you are framing',
     'bussola.modo.astro': 'Compass calibrated on the real sky: north is exact by construction',
     'bussola.modo.vera': 'Compass: the amber tip is geographic north',
     'bussola.modo.dubbia': 'Compass disturbed by something made of iron: calibrate it on a star',

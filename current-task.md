@@ -6,109 +6,86 @@ Resta aperto, come prima, il lavoro di fondo sulla traduzione inglese di
 `app.js`: 353 stringhe cablate contate da
 `node scripts/controlla-i18n.js --lista --file app.js` — le eclissi (la mappa
 dell'ombra, le eclissi di casa, quelle lunari), le simulazioni e gli avvisi del
-planetario. Il tetto è sceso da 364 a 362 con l'intervento qui sotto.
+planetario. Il tetto resta a 362.
 
 ## Ultimo intervento completato
 
-**La realtà aumentata riconosce gli oggetti veri e ci si aggancia.**
-Richiesta: «migliora la funzionalità realtà aumentata, mettila più in vista.
-Quando è attivata implementa un sistema di tracciamento del target in modo da
-allineare perfettamente, in automatico, le informazioni in sovraimpressione —
-l'aereo dato ADS-B deve combaciare con l'aereo vero, idem per tutti gli altri
-astri. Se muovo il cellulare l'elemento deve rimanere allineato all'oggetto
-reale.»
+**La bussola del planetario: lettere grandi, i due numeri fuori dal
+quadrante.**
+Richiesta: «fai la bussola del planetario più chiara e immediata, le lettere
+dei punti cardinali devono essere più grosse e leggibili, aggiungi il grado
+dell'angolo del campo di vista (FOV), sistema anche l'angolo della bussola e
+mettilo dove si vede bene, rendila pulita e chiara.»
 
-### 1. Il difetto, e perché erano tre difetti
+### 1. Il difetto, misurato
 
-Nella fotografia allegata l'aereo disegnato stava qualche grado accanto
-all'aereo vero. La geometria della realtà aumentata era già giusta — la
-proiezione sopra il video è rettilinea come quella dell'obiettivo, il campo lo
-detta l'obiettivo e non la preferenza — e quindi il residuo veniva da tre
-cause di natura diversa, che è la ragione per cui un solo numero non le
-poteva curare:
+Il quadrante teneva **quattro cose sovrapposte** in ottantadue pixel: la rosa
+che gira, il cono azzurro dell'inquadratura, l'ago, e in mezzo due righe di
+testo. Le misure, prese nel browser:
 
-- **l'assetto**: la bussola sbaglia. Un grado nel migliore dei casi, venti con
-  del ferro vicino. È un errore uguale per tutto il cielo;
-- **l'obiettivo**: quanto riprenda la fotocamera il browser non lo dice (né
-  `getSettings()` né `getCapabilities()` espongono il campo visivo). Si assume
-  65° sul lato lungo; se l'obiettivo è un grandangolo da 78° il centro
-  combacia lo stesso e i bordi no;
-- **l'oggetto**: un aereo ADS-B non è dove il feed dice. La propagazione di una
-  lettura vecchia di tre secondi, a 250 m/s, sono ottocento metri — che a
-  cinque chilometri di distanza sono **nove gradi**. Ed è un errore di quel
-  singolo aereo, non del cielo.
+- le lettere dei punti cardinali uscivano a **11,5px** (la N) e **9px**
+  (E/S/O) — sotto a un cono semitrasparente e sopra a un fondo che cambia;
+- l'azimut a **11,5px** e la sigla del punto a **7,2px**, cioè scritta e non
+  leggibile, per giunta appoggiata su un quadrante che ruota;
+- il campo visivo in cifre **non c'era affatto**: lo diceva solo l'apertura
+  del cono, che risponde a «largo o stretto?» e non a «quanto?».
 
-### 2. `visione.js` (~1.100 righe, prefisso `vis`)
+### 2. La cura: la bussola è in due pezzi
 
-Un modulo nuovo che stima tre cose invece di una, ognuna dal dato che la può
-misurare. §3-§4 rilevano le macchie nel fotogramma **col segno** (di giorno un
-aereo è una sagoma scura: chi cerca solo il chiaro non lo trova mai, e non lo
-dice); §5-§6 le associano ai candidati con un cancello che si stringe man mano
-che ci si fida; §7 risolve la rotazione che le fa combaciare tutte (Wahba
-linearizzato e iterato, con λ piccolo e pesi ridiscendenti); §8 ricava la
-focale vera dal rapporto fra due distanze; §9 tiene le ancore dei singoli
-oggetti.
+Sopra il **quadrante**, che adesso è soltanto disegno — niente testo in mezzo,
+quindi le lettere si sono prese lo spazio che i numeri lasciavano libero e
+l'ago è diventato una freccia intera che passa per il perno, come su una
+bussola da tavolo. Sotto una **pillola ferma e opaca** coi due numeri: a
+sinistra dove si guarda (`128° SE`, in giallo come l'indice che lo indica), a
+destra quanto cielo si inquadra (`45°`, in azzurro come il cono, con il cono
+stesso in miniatura al posto dell'etichetta). Un numero da leggere vuole un
+fondo fermo; un'apertura da guardare no.
 
-**La riga che risponde alla domanda del movimento**: quello che si misura non
-è la posizione di un'etichetta ma una **rotazione del mondo**. La si misura da
-fermi, dove l'immagine è nitida, e da lì la porta avanti il giroscopio — è la
-divisione della navigazione inerziale, *il giroscopio dà il movimento, la vista
-dà la mira*. Provato: dopo venticinque gradi di rotazione, **senza rimisurare
-niente**, gli astri restano sulle loro macchie.
+Misurato dopo: la N esce a **15,8px** e le altre a **13,2** (+37%), l'azimut a
+11,8px su fondo pieno e la sigla a 9,6px.
 
-### 3. I quattro difetti trovati misurando
+### 3. Le tre cose che non sono estetica
 
-Nessuno dei quattro si vedeva sullo schermo, perché il sintomo di tutti è
-**nessun aggancio**, che somiglia a «qui non c'è niente da riconoscere».
+1. **Le lettere restano dritte.** La rosa gira di −az e si portava dietro
+   anche loro: su una rosa di carta è così, e finché erano alte nove pixel non
+   se ne accorgeva nessuno — ma guardando a sud la E diventa una «Ǝ», cioè
+   l'opposto di quello per cui sono state ingrandite. Ogni lettera disfa la
+   rotazione **attorno al proprio punto** (`sky.bussolaSigle`, quattro nodi
+   cercati una volta sola e riscritti solo quando l'angolo cambia davvero).
+2. **Le sigle sono nel dizionario** (`punto.sigla.*`): erano scritte a mano
+   nell'HTML, e in inglese il quadrante diceva «O» al posto di «W». Provato:
+   adesso `NESW`.
+3. **Girati, i numeri vanno di fianco e non sotto.** Su un telefono
+   orizzontale il cielo è alto un terzo, e la pillola sotto al quadrante
+   portava il blocco a 147px, cioè diciannove oltre `--zona-alta-cielo` —
+   dove passa la scheda dell'oggetto. Di fianco, il blocco è alto quanto il
+   quadrante (126px) e la fascia torna quella di sempre.
 
-1. **λ della regolarizzazione a 0,02**: tirava la soluzione verso
-   l'immobilità e la rotazione veniva il 16% più corta del vero (2,64° invece
-   di 3,16°). Adesso è un milionesimo — regolarizza uguale e non tira niente.
-2. **Gli aloni**: il fondo stimato a scatola fa sì che ogni macchia si scavi
-   attorno un anello di segno opposto. Due sorgenti producevano **undici**
-   macchie. Le toglie il segno.
-3. **Il disco saturo**: la Luna ha in cima un pianoro dove ogni pixel è un
-   massimo locale — quattro copie della stessa macchia, che per la regola
-   dell'ambiguità sono quattro riferimenti ambigui, cioè nessuno. Si deducono
-   dal risultato: due picchi che danno lo stesso centroide sono lo stesso
-   oggetto.
-4. **Il centroide tirato fuori dal centro**: al centro di un disco la scatola
-   del fondo è quasi tutta disco, quindi lì il residuo si abbassa e il massimo
-   casca su un anello — quattro pixel di schermo di errore **sistematico**,
-   che il filtro non toglie perché non è rumore. Si ricentra la finestra, tre
-   passate.
+### 4. I due contro-esempi trovati misurando
 
-Più due di integrazione: la correzione applicata **due volte** alle ancore
-degli aerei (che li portava via di tre gradi e mezzo), e il conto dei pixel
-del fotogramma ridotto — duecento di larghezza su uno schermo di telefono sono
-ottantottomila pixel e dieci millisecondi e mezzo per giro. Adesso il budget è
-in pixel (30.000): 1,8 ms.
-
-### 4. Il tasto, che era nascosto
-
-Il comando stava nella scheda «Schermo» del pannello Visualizzazione — la
-quarta linguetta del terzo pannello — e a cielo pieno schermo, cioè proprio
-dove la realtà aumentata si vuole, i pannelli non si aprono affatto. Adesso è
-il **primo della colonna dei comandi sulla mappa**, con la pillola `#ar-stato`
-in alto a sinistra che dice a quanti riferimenti è agganciato e con che
-scarto. I due tasti li tiene d'accordo `skyAggiornaTastiCamera()`.
+- **Riservare posto alla pillola nella barra dei comandi era peggio del
+  male**: la pillola è larga 111px contro gli 88 del quadrante, e portando il
+  `padding-right` a 126px la barra andava a capo su un telefono — due righe di
+  comandi per fare spazio a una cosa che non ci passa accanto (la pillola sta
+  più in basso dei tondi delle linguette). Il posto riservato è quello del
+  solo quadrante, com'era prima.
+- **`--zona-alta-cielo` a schermo intero**: lì la bussola torna nel flusso, e
+  il valore dichiarato (128px) era già sbagliato prima di questo lavoro — 146
+  veri. Adesso c'è una riga di `:has()` che lo porta a 176/152 quando il
+  contenitore è a schermo intero, e la legge anche `skyFasceCielo()`, che
+  cerca la misura su `.vista-cielo`. Resta approssimato — e scritto nel
+  commento — il caso del telefono stretto a schermo intero, dove la barra dei
+  comandi va a capo per conto suo.
 
 ### 5. Provato
 
-- **§32 di `verifica.html`**, 44 prove, che carica `visione.js` per davvero e
-  non una copia. Scena sintetica con errore noto, e il contro-esempio del
-  segno girato — che non lascia le cose come stavano, le peggiora del doppio.
-- Il motore intero in un Chromium vero, con un fotogramma finto: la Luna passa
-  da 46 pixel di scarto a **0,4**, l'aereo a **0,47**, e dopo venticinque
-  gradi di rotazione senza rimisurare resta a 0,44 (contro i 52 senza
-  correzione).
-- `node scripts/controlla-i18n.js --patto`: 362, dentro al tetto (che è stato
-  abbassato a 362).
-
-### 6. Quello che non è stato provato qui
-
-`verifica.html` per intero e `scripts/prova-lingua.js` non girano in questo
-ambiente: la CDN di `astronomy-engine` è irraggiungibile e la pagina si ferma
-alla prima riga che la usa. Il §32 è stato fatto girare estraendone il blocco
-— non usa Astronomy — ma **le altre sezioni non sono state rieseguite**, e chi
-ha una rete aperta faccia una passata prima di fidarsi.
+- In un Chromium vero su tre schermi (360×640, 640×360 con `pointer: coarse`,
+  1280×800): misure dei corpi, larghezze, che le linguette non vadano a capo
+  né si mettano a scorrere, la fascia in cima con e senza schermo intero, e le
+  sigle dopo il cambio lingua.
+- `node scripts/prova-fumetto.js`: **stesse due prove rosse di prima dello
+  stesso identico valore** (`fascie 128 / 152` e `128 / 634`), cioè nessuna
+  regressione — sono due difetti preesistenti del fumetto, non della bussola.
+- `node scripts/prova-lingua.js`: tutte le prove passate.
+- `node scripts/controlla-i18n.js --patto`: 362, dentro al tetto.
+- `CACHE_NAME` portato a `astrocal-v280`.
