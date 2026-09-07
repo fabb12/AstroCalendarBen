@@ -7854,8 +7854,10 @@ body.luogo-immersivo { overflow: hidden; }
 
   /* --- Tasti comodi da toccare: mai sotto i 38px di altezza utile --- */
   /* I comandi del cielo restano fuori: la loro misura la decidono da sé, ed
-     è più generosa (si usano al buio, spesso con una mano sola) */
-  body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.tasto-cielo):not(.tasto-barra-tempo):not(.lettura-barra-tempo):not(.leaflet-control-zoom a) {
+     è più generosa (si usano al buio, spesso con una mano sola). Per la
+     stessa ragione ci stanno fuori anche i tasti di Missione Cielo, che
+     si toccano nelle stesse condizioni e dichiarano i loro 44px. */
+  body button:not(.senza-cornice):not(.fc-button):not(.voce-menu):not(.tasto-cielo):not(.tasto-barra-tempo):not(.lettura-barra-tempo):not(.missione-tasto):not(.missione-scelta):not(.missione-stella):not(.leaflet-control-zoom a) {
     min-height: 38px;
   }
   /* …ma i tasti di servizio dentro le schede restano piccoli e discreti */
@@ -10268,4 +10270,423 @@ body button.did-ponte:active { transform: translateY(1px); }
 }
 @media (max-width: 520px) {
   .selettore-lingua { min-width: 1.8rem; height: 1.8rem; padding: 0 .38rem; font-size: .62rem; }
+}
+
+/* ================================================================== */
+/* MISSIONE CIELO                                                     */
+/*                                                                    */
+/* Tre pezzi e non uno: il riquadro compatto dentro a Stasera, la     */
+/* finestra coi suoi cinque stati, e la striscia appoggiata sul cielo */
+/* per chi ci arriva da «Guidami».                                    */
+/*                                                                    */
+/* La regola che tiene insieme tutto: **si legge al buio, in piedi,   */
+/* con una mano sola**. Da lì vengono i tasti alti quarantaquattro    */
+/* pixel (il minimo per un pollice), il titolo della tappa grande     */
+/* quanto un titolo vero, e il fatto che nessuno stato si distingua   */
+/* dal solo colore — l'esito porta sempre anche un segno e una        */
+/* parola, perché al buio, e per chi i colori non li separa, un verde */
+/* e un ambra sono due grigi.                                         */
+/* ================================================================== */
+
+/* --- il riquadro dentro a Stasera --------------------------------- */
+.missione-scheda {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.missione-scheda-testo {
+  margin: 0;
+  color: var(--testo-2);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* --- i tasti, uno stile solo per tutte e tre le parti -------------- */
+.missione-tasto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;              /* il minimo perché un pollice ci arrivi */
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte);
+  background: var(--superficie-alta);
+  color: var(--testo);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transizione), border-color var(--transizione),
+              color var(--transizione);
+}
+.missione-tasto:hover { border-color: var(--blu-chiaro); color: #fff; }
+.missione-tasto-si {
+  background: var(--blu-scuro);
+  border-color: var(--blu);
+  color: #fff;
+}
+.missione-tasto-si:hover { background: var(--blu); }
+.missione-tasto-lieve {
+  background: transparent;
+  border-color: var(--bordo);
+  color: var(--testo-3);
+  font-weight: 500;
+}
+.missione-tasto-lieve:hover { color: var(--testo-2); }
+
+/* --- la finestra --------------------------------------------------- */
+.pannello-missione { max-width: 620px; }
+.missione-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* L'avviso in cima: mai solo colore. Il tono cambia il bordo e il fondo,
+   ma il testo dice già da sé cos'è successo — un pannello che comunica
+   con la sola tinta non comunica a chi le tinte non le separa. */
+.missione-avviso {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--raggio-s);
+  border: 1px solid var(--bordo-forte);
+  background: var(--incassato);
+  color: var(--testo-2);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.missione-avviso[data-tono="bene"] { border-color: rgba(52, 211, 153, 0.45); color: var(--testo); }
+.missione-avviso[data-tono="informa"] { border-color: rgba(245, 181, 68, 0.42); }
+
+/* --- le tre domande ------------------------------------------------ */
+.missione-gruppo { border: 0; padding: 0; margin: 0; min-width: 0; }
+.missione-domanda {
+  padding: 0 0 8px;
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--testo);
+}
+.missione-scelte {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.missione-scelta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo-forte);
+  background: var(--incassato);
+  color: var(--testo-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--transizione), border-color var(--transizione),
+              color var(--transizione);
+}
+.missione-scelta:hover { border-color: var(--blu-chiaro); color: var(--testo); }
+/* Scelta e non scelta si distinguono per **tre** cose insieme — fondo,
+   bordo e peso del testo — e non per la sola tinta: `aria-checked` lo
+   dice a chi legge con lo schermo, il grassetto a chi guarda in fretta. */
+.missione-scelta.attiva {
+  background: var(--blu-velo);
+  border-color: var(--blu);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--blu);
+}
+
+.missione-azioni {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.missione-azioni-aiuto { margin-top: 8px; }
+
+/* --- l'anteprima ---------------------------------------------------- */
+.missione-titolone {
+  margin: 0 0 6px;
+  font-size: 1.24rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #fff;
+}
+.missione-sommario {
+  margin: 0 0 12px;
+  color: var(--testo-2);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.missione-anteprima-elenco,
+.missione-esiti,
+.missione-diario-elenco {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.missione-anteprima-riga,
+.missione-esito-riga {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--raggio-s);
+  background: var(--incassato);
+  font-size: 0.88rem;
+}
+.missione-anteprima-ora {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--blu-chiaro);
+  font-weight: 700;
+}
+.missione-anteprima-nome {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--testo);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.missione-anteprima-che,
+.missione-esito-che {
+  flex: 0 0 auto;
+  color: var(--testo-3);
+  font-size: 0.78rem;
+}
+
+/* --- la tappa in corso ---------------------------------------------- */
+.missione-corso { display: flex; flex-direction: column; gap: 14px; }
+.missione-avanzamento { display: flex; flex-direction: column; gap: 6px; }
+.missione-barra {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--incassato);
+  overflow: hidden;
+}
+.missione-barra > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--blu-scuro), var(--blu-chiaro));
+  transition: width var(--transizione);
+}
+.missione-passo {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+.missione-coordinate {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--testo);
+}
+/* I gradi restano, ma di seconda riga: la direzione e la fascia di cielo
+   sono quello che si usa davvero guardando in su, il numero è il
+   dettaglio per chi lo vuole. */
+.missione-gradi { color: var(--testo-3); font-size: 0.82rem; }
+.missione-etichette { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.missione-etichetta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--bordo);
+  background: var(--incassato);
+  color: var(--testo-2);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+.missione-guida {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: var(--raggio-m);
+  background: var(--blu-velo);
+  border: 1px solid rgba(76, 141, 255, 0.28);
+  color: var(--testo);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+.missione-aiuto {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--raggio-m);
+  border: 1px solid rgba(245, 181, 68, 0.34);
+  background: var(--ambra-velo);
+  color: var(--testo);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.missione-aiuto p { margin: 0; }
+.missione-piede {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--bordo);
+}
+.missione-prossima { margin: 0; font-size: 0.82rem; color: var(--testo-3); }
+
+/* --- la conclusione -------------------------------------------------- */
+/* L'esito non è mai solo un colore: c'è il segno a sinistra e la parola a
+   destra, e il colore è il terzo dei tre. */
+.missione-esito-segno {
+  flex: 0 0 auto;
+  width: 1.1em;
+  text-align: center;
+  font-weight: 800;
+  color: var(--testo-3);
+}
+.missione-esito-riga[data-esito="trovato"] .missione-esito-segno { color: var(--verde); }
+.missione-esito-riga[data-esito="nonTrovato"] .missione-esito-segno { color: var(--ambra); }
+.missione-modulo { display: flex; flex-direction: column; gap: 12px; }
+.missione-campo { display: flex; flex-direction: column; gap: 6px; }
+.missione-campo > span { font-size: 0.82rem; font-weight: 700; color: var(--testo-2); }
+.missione-select, .missione-nota {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--raggio-s);
+  border: 1px solid var(--bordo-forte);
+  background: var(--incassato);
+  color: var(--testo);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+.missione-stelle { display: flex; gap: 4px; }
+.missione-stella {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--testo-3);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--transizione), transform var(--transizione);
+}
+.missione-stella.accesa { color: var(--ambra); }
+.missione-stella:hover { transform: scale(1.12); }
+.missione-diario-tappe { margin-top: 8px; font-size: 0.85rem; }
+.missione-diario-tappe > summary {
+  cursor: pointer;
+  color: var(--testo-2);
+  padding: 4px 0;
+}
+.missione-diario-elenco { margin-top: 6px; }
+.missione-diario-elenco > li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--incassato);
+  color: var(--testo-2);
+}
+
+/* --- la striscia appoggiata sul cielo -------------------------------- */
+/* Sotto la fascia della bussola, come l'avviso dei transiti: quella zona
+   in cima al planetario ha già tre inquilini, e `--zona-alta-cielo` è la
+   misura che li tiene tutti fuori dai piedi l'uno dell'altro. */
+.missione-striscia {
+  position: absolute;
+  top: calc(var(--zona-alta-cielo) + 4px);
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  margin: 0 auto;
+  max-width: 520px;
+  z-index: 7;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(76, 141, 255, 0.46);
+  background: rgba(9, 16, 34, 0.92);
+  backdrop-filter: blur(5px);
+  box-shadow: var(--ombra-2);
+  color: var(--testo);
+  pointer-events: none;
+}
+.missione-striscia.visibile { pointer-events: auto; }
+.missione-striscia-testo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.missione-striscia-titolo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--blu-chiaro);
+}
+.missione-striscia-tappa {
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.missione-striscia-tasti { display: flex; gap: 6px; flex: 0 0 auto; }
+.missione-striscia-tasti .missione-tasto {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.78rem;
+}
+
+/* Sul telefono girato il cielo è alto un terzo: la striscia si stringe e
+   il nome della tappa cede il posto ai due tasti, che sono la ragione per
+   cui la striscia esiste. */
+@media (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
+  .missione-striscia { padding: 6px 10px; gap: 6px; }
+  .missione-striscia-titolo { display: none; }
+  body .missione-striscia-tasti .missione-tasto { min-height: 32px; font-size: 0.74rem; }
+}
+
+/* Chi ha chiesto meno movimento non vuole nemmeno una barra che scorre e
+   una stella che si ingrandisce sotto al dito. */
+@media (prefers-reduced-motion: reduce) {
+  .missione-barra > span { transition: none; }
+  .missione-stella:hover { transform: none; }
+  .missione-tasto, .missione-scelta { transition: none; }
+}
+
+/* I quarantaquattro pixel vanno riaffermati col `body` davanti, ed è
+   l'unica riga di questo foglio che vada contro a una regola generale
+   dell'app. Sul telefono c'è un pavimento a 38px per tutti i tasti
+   (`body button:not(…)`, sezione dei tasti comodi da toccare): è un
+   pavimento e non un tetto, ma vince per specificità e schiaccia il
+   nostro minimo. Trentotto pixel vanno benissimo per un comando che si
+   tocca guardandolo, alla luce, da seduti; questi si toccano al buio, in
+   piedi, con la stessa mano che tiene il telefono, e i quattro pixel in
+   più sono la differenza fra premere e mancare. */
+body .missione-tasto,
+body .missione-scelta,
+body .missione-stella { min-height: 44px; }
+body .missione-striscia-tasti .missione-tasto { min-height: 36px; }
+
+/* Sotto i 380 px i tasti dell'azione non ci stanno in fila: vanno a capo
+   invece di stringersi, perché un tasto stretto è un tasto che si manca. */
+@media (max-width: 380px) {
+  .missione-azioni .missione-tasto { flex: 1 1 100%; }
+  .missione-coordinate { font-size: 0.86rem; }
+  .missione-titolone { font-size: 1.1rem; }
 }

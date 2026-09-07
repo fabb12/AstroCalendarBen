@@ -208,6 +208,21 @@
         <div id="stasera-riepilogo" class="griglia-sintesi"></div>
       </div>
 
+      <!-- 1-bis. MISSIONE CIELO — la serata come percorso
+           Sta qui e non altrove perche' e' qui che nasce la domanda: si e'
+           appena letto a che ora fa buio e quanta Luna c'e', e la cosa che
+           uno si chiede subito dopo non e' «cosa c'e'» ma «da dove
+           comincio». Il riquadro resta compatto finche' non succede
+           niente — un titolo, una riga e un tasto — e il resto sta nella
+           finestra, che si apre da qui. Lo riempie `missAggiornaScheda()`
+           in missione-cielo.js. -->
+      <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-xl missione-riquadro" data-blocco="missione">
+        <div class="testa-gruppo">
+          <h3 class="text-lg font-bold text-white" data-i18n="missione.titolo">La tua missione di stasera</h3>
+        </div>
+        <div id="missione-scheda" class="missione-scheda"></div>
+      </div>
+
       <!-- 2. IL METEO, TUTTO INSIEME
            Le nuvole ora per ora (Open-Meteo) e il meteo da astronomo (seeing,
            trasparenza, nuvole a tre quote nella griglia del Clear Sky Chart)
@@ -1406,6 +1421,16 @@
           <button type="button" class="avviso-transito-chiudi" data-transito-chiudi
                   title="Chiudi l'avviso" aria-label="Chiudi l'avviso del transito" data-i18n-aria-label="ui.chiudi-l-avviso-del-transito">✕</button>
         </aside>
+
+        <!-- LA STRISCIA DI MISSIONE CIELO
+             Chi arriva nel planetario dal tasto «Guidami» di una tappa deve
+             sapere perche' ci e' arrivato e come tornare indietro: senza,
+             il cielo e' bellissimo e la missione e' persa. Tre cose e non
+             una di piu' — che missione e', a che tappa si e', e i due tasti
+             che servono li'. I comandi del planetario non si toccano: chi
+             arriva qui vuole anche zumare e leggere la scheda dell'oggetto.
+             La riempie `missMostraStrisciaCielo()`. -->
+        <aside id="missione-striscia" class="missione-striscia hidden" role="status" aria-live="polite"></aside>
 
         <div id="skymap-caricamento" class="caricamento-cielo hidden" role="status" aria-live="polite">
           <span class="rotella-cielo" aria-hidden="true"></span>
@@ -2643,6 +2668,29 @@
   </div>
 
   <!-- GALLERIA DEI FILMATI REGISTRATI -->
+  <!-- MISSIONE CIELO
+       Una finestra sola con cinque stati (configurazione, anteprima,
+       missione in corso, conclusione, e lo stato vuoto quando il cielo non
+       offre niente): la testata resta ferma, cambia il corpo, e chiudere
+       non butta via niente — la missione vive nello stato del modulo, non
+       nel documento. Il corpo lo scrive `missDisegnaPannello()`, perche'
+       dipende da quello che c'e' in cielo stanotte. -->
+  <div id="modale-missione" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto"
+       role="dialog" aria-modal="true" aria-labelledby="missione-titolo-finestra">
+    <div class="pannello-modale pannello-missione bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl">
+      <div class="testata-modale flex justify-between items-center p-5 border-b border-slate-700">
+        <div>
+          <h2 id="missione-titolo-finestra" class="text-xl md:text-2xl font-bold text-white" data-i18n="missione.titolo">La tua missione di stasera</h2>
+          <p class="text-xs text-slate-400 mt-1" data-i18n="missione.sottotitolo">Tre domande, e un percorso fra le cose migliori da vedere da qui</p>
+        </div>
+        <button id="btn-chiudi-missione" class="tasto-chiudi con-etichetta" type="button"
+          aria-label="Chiudi la missione" data-i18n-aria-label="missione.chiudiFinestra"
+          title="Chiudi la finestra (o premi Esc)" data-i18n-title="ui.chiudi-la-finestra-o-premi-esc"><span aria-hidden="true">&times;</span><span data-i18n="ui.chiudi">Chiudi</span></button>
+      </div>
+      <div id="missione-corpo" class="corpo-modale missione-corpo"></div>
+    </div>
+  </div>
+
   <div id="modale-galleria" class="velo-modale hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto"
        role="dialog" aria-modal="true" aria-labelledby="galleria-titolo">
     <div class="pannello-modale pannello-galleria bg-slate-800 w-full rounded-2xl border border-slate-700 shadow-2xl" data-misura="grande">
@@ -2753,6 +2801,10 @@
        sfondo che era. -->
   <script src="visione.js"></script>
   <script src="eventi-extra.js"></script>
+  <!-- Missione Cielo: usa pianifica.js, catalogo.js, terreno.js e gli eventi,
+       quindi viene dopo di loro; ui-nuova.js gli disegna la scheda dentro a
+       Stasera, quindi viene prima di lui. -->
+  <script src="missione-cielo.js"></script>
   <script src="ui-nuova.js"></script>
   <script src="didattica.js"></script>
 </body>
