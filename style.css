@@ -3646,6 +3646,9 @@ body.vista-planetario-attiva .tela-cielo {
    e lasciano il cielo visibile ai lati anche quando il testo è lungo. */
 .skymap-avviso {
   position: absolute;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   z-index: 26;
   left: max(10px, env(safe-area-inset-left));
   right: max(10px, env(safe-area-inset-right));
@@ -3659,6 +3662,30 @@ body.vista-planetario-attiva .tela-cielo {
   font-size: 0.875rem;
   line-height: 1.4;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.42);
+}
+
+.skymap-avviso-testo {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.skymap-avviso-chiudi {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  margin: -4px -5px -4px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fcd34d;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+.skymap-avviso-chiudi:hover,
+.skymap-avviso-chiudi:focus-visible {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fff3cf;
 }
 
 @media (min-width: 1180px) {

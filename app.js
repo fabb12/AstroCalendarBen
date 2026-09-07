@@ -21127,7 +21127,9 @@ function skyAvviso(chiave, testo, durataMs) {
   const el = document.getElementById('skymap-avviso');
   if (!el) return;
   const completo = Object.keys(sky.avvisi).map(k => sky.avvisi[k]).filter(Boolean).join(' ');
-  el.textContent = completo;
+  const nodoTesto = el.querySelector('[data-skymap-avviso-testo]');
+  if (nodoTesto) nodoTesto.textContent = completo;
+  el.querySelectorAll('.skymap-avviso-azione').forEach(nodo => nodo.remove());
   // Quando il cielo sta usando il ripiego di rete, l'avviso non deve essere
   // soltanto una diagnosi: da qui si può chiedere subito un fix preciso. Il
   // tasto viene costruito come DOM (non come HTML nel testo degli avvisi),
@@ -21138,10 +21140,27 @@ function skyAvviso(chiave, testo, durataMs) {
     attiva.className = 'skymap-avviso-azione';
     attiva.textContent = 'Attiva GPS';
     attiva.addEventListener('click', skyAttivaGpsDaAvviso);
-    el.appendChild(attiva);
+    el.insertBefore(attiva, document.getElementById('skymap-avviso-chiudi'));
   }
   el.classList.toggle('hidden', !completo);
   skyMisuraAvviso(el, completo);
+}
+
+// La X chiude insieme i messaggi che in quel momento condividono la barra.
+// Cancella anche le loro scadenze: un vecchio timer non deve ridisegnare la
+// barra dopo che la persona ha già risposto esplicitamente all'avviso.
+function skyChiudiAvvisi() {
+  Object.keys(sky.avvisi).forEach(chiave => { sky.avvisi[chiave] = ''; });
+  Object.keys(sky.scadenzaAvvisi).forEach(chiave => {
+    clearTimeout(sky.scadenzaAvvisi[chiave]);
+    delete sky.scadenzaAvvisi[chiave];
+  });
+  const el = document.getElementById('skymap-avviso');
+  if (!el) return;
+  const nodoTesto = el.querySelector('[data-skymap-avviso-testo]');
+  if (nodoTesto) nodoTesto.textContent = '';
+  el.classList.add('hidden');
+  skyMisuraAvviso(el, '');
 }
 
 // Quanto è alto l'avviso, scritto dove il CSS lo può leggere.
@@ -26568,6 +26587,7 @@ function inizializzaSkymap() {
   // pizzico restano più fini, che lì la precisione è del polso.
   collega('skymap-zoom-in', () => skyZoom(1 / 1.4, { morbido: true }));
   collega('skymap-zoom-out', () => skyZoom(1.4, { morbido: true }));
+  collega('skymap-avviso-chiudi', skyChiudiAvvisi);
   collega('skymap-btn-pulito', () => skyImpostaVistaPulita(true));
   collega('skymap-btn-campo', () => {
     // Con la fotocamera accesa "campo normale" vuol dire togliere la taratura

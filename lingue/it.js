@@ -2338,6 +2338,8 @@ window.ASTRO_DIZIONARI['it'] = {
     'ui.chiudi-i-comandi-del-tempo': 'Chiudi i comandi del tempo',
     'ui.chiudi-il-pannello-ads-b': 'Chiudi il pannello ADS-B',
     'ui.chiudi-l-avviso-del-transito': 'Chiudi l\'avviso del transito',
+    'ui.chiudi-l-avviso': 'Chiudi l\'avviso',
+    'ui.chiudi-gli-avvisi-del-planetario': 'Chiudi gli avvisi del planetario',
     'ui.chiudi-la-finestra': 'Chiudi la finestra',
     'ui.chiudi-la-finestra-o-premi-esc': 'Chiudi la finestra (o premi Esc)',
     'ui.chiudi-la-galleria': 'Chiudi la galleria',
