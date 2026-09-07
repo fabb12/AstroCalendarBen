@@ -21172,14 +21172,18 @@ function skyAggiornaBussola(az) {
 }
 
 // Avvisi sotto al cielo, uno per argomento (posizione, sensori):
-// passare un testo vuoto cancella quel solo avviso. Con `durataMs` l'avviso
-// se ne va da sé: certi messaggi sono risposte a un tocco ("è da quella
-// parte"), e lasciarli lì per sempre li trasforma in rumore.
-function skyAvviso(chiave, testo, durataMs) {
+// passare un testo vuoto cancella quel solo avviso. Ogni messaggio resta per
+// cinque secondi: è abbastanza per leggerlo, ma non rimane a coprire il
+// planetario dopo che ha dato il suo feedback.
+const SKY_AVVISO_DURATA_MS = 5000;
+
+function skyAvviso(chiave, testo) {
   sky.avvisi[chiave] = testo || '';
   clearTimeout(sky.scadenzaAvvisi[chiave]);
-  if (testo && durataMs) {
-    sky.scadenzaAvvisi[chiave] = setTimeout(() => skyAvviso(chiave, ''), durataMs);
+  delete sky.scadenzaAvvisi[chiave];
+  if (testo) {
+    sky.scadenzaAvvisi[chiave] = setTimeout(
+      () => skyAvviso(chiave, ''), SKY_AVVISO_DURATA_MS);
   }
   const el = document.getElementById('skymap-avviso');
   if (!el) return;
