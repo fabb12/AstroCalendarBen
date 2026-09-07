@@ -8051,18 +8051,20 @@ titolo('25. Il rilievo — la forma del terreno, non la sua sagoma (rilievo.js)'
   // --- Quando le curve si chiudono attorno al cielo ---------------------
   {
     const fov = sky.fov;
-    sky.fov = RIL_FOV_FONDI_SEPARATI_MAX;
-    const alLimite = rilFondiSeparati();
-    sky.fov = RIL_FOV_FONDI_SEPARATI_MAX + 0.1;
-    const oltre = rilFondiSeparati();
+    const aperture = [120, 130, SKY_FOV_MAX];
+    // Il disegno usa ora sempre il ramo dettagliato: nessuna apertura deve
+    // piu' introdurre un cambio di modalita' durante lo zoom.
+    const dettaglioSempre = aperture.every(apertura => {
+      sky.fov = apertura;
+      return rilUsaDettaglioCompleto();
+    });
     sky.fov = fov;
-    prova('al FOV estremo le fette diventano una sola sagoma e non si sovrappongono',
-      alLimite && !oltre,
-      `limite ${RIL_FOV_FONDI_SEPARATI_MAX}°`);
+    prova('il rilievo conserva fette e chiaroscuro 3D fino al FOV massimo',
+      dettaglioSempre,
+      aperture.map(n => `${n}°`).join(', '));
 
-    // Il cambio di geometria non deve essere anche un interruttore della
-    // luminosità: il primo piano usa lo stesso tono minimo della fetta media
-    // scelta dalla sagoma unica oltre il limite.
+    // Il primo piano usa lo stesso tono minimo della fetta media: lo zoom non
+    // deve cambiare la luminosita' mentre mantiene tutta la geometria.
     const suolo = { vicino: [18, 32, 20], lontano: [112, 126, 132] };
     const vicino = rilColoreDiFetta(0, suolo);
     const medio = rilColoreDiFetta(RIL_LONTANANZA_MINIMA, suolo);
