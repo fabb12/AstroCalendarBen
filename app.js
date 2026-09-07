@@ -768,6 +768,10 @@ function applicaProfiloDispositivo(opzioni = {}) {
   // Se una finestra viene allargata fino al profilo computer, il comando e
   // la sosta del mirino devono spegnersi subito, senza aspettare un riavvio.
   if (typeof skyAggiornaStatoHover === 'function') skyAggiornaStatoHover();
+  // Anche la disponibilità dell'AR dipende dal tipo di dispositivo: su un
+  // computer il comando non deve occupare spazio se non c'è sensoristica,
+  // mentre su telefoni e tablet deve esserci già prima del permesso.
+  if (typeof skyAggiornaDisponibilitaAR === 'function') skyAggiornaDisponibilitaAR();
 
   adattaFiltri();
   adattaIstruzioniCielo();
@@ -11439,6 +11443,10 @@ function skyBussolaPrimaLettura(conNord) {
   const primaLettura = !sky.sensori;
   const cambio = conNord !== sky.assoluto;
   sky.sensori = true;
+  // Una lettura reale vale più di qualunque euristica sullo user agent: può
+  // rendere disponibile l'AR anche su un dispositivo non classificato come
+  // mobile (per esempio un portatile convertibile dotato di sensori).
+  skyAggiornaDisponibilitaAR();
   if (conNord) sky.assoluto = true;
   if (primaLettura) {
     skyProponiMovimentoTelefono();
@@ -38715,6 +38723,30 @@ function skyAggiornaComandiPlayback() {
 
 // --- Fotocamera: il cielo calcolato sopra l'immagine reale ---
 
+// Il tasto AR non è un normale comando della fotocamera: senza accelerometro
+// e giroscopio il cielo non può restare sopra ciò che viene inquadrato. Lo
+// mostriamo quindi sui dispositivi mobili (dove le API protette non permettono
+// di verificare l'hardware prima del gesto) oppure quando il browser dichiara
+// esplicitamente entrambi i sensori. Una lettura di orientamento realmente
+// ricevuta (`sky.sensori`) copre inoltre convertibili e dispositivi insoliti.
+function skyRealtaAumentataDisponibile() {
+  const tattile = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+  const mobile = tattile && profiloDispositivo() !== 'computer';
+  const sensoriGenerici = typeof Accelerometer === 'function' && typeof Gyroscope === 'function';
+  return !!sky.camera || mobile || !!sky.sensori || sensoriGenerici;
+}
+
+function skyAggiornaDisponibilitaAR() {
+  const disponibile = skyRealtaAumentataDisponibile();
+  ['skymap-btn-camera', 'skymap-btn-camera-mappa'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.hidden = !disponibile;
+    el.classList.toggle('hidden', !disponibile);
+  });
+  return disponibile;
+}
+
 // I due tasti che accendono la realtà aumentata sono due, e devono dire la
 // stessa cosa: quello appoggiato sulla mappa (che è il comando vero — sta in
 // colonna con lo schermo intero e l'inseguimento, e funziona anche a cielo
@@ -38723,6 +38755,7 @@ function skyAggiornaComandiPlayback() {
 // Tenerli d'accordo a mano è il modo di ritrovarsene uno acceso e uno spento:
 // li scrive questa, e nessun altro.
 function skyAggiornaTastiCamera(attiva) {
+  skyAggiornaDisponibilitaAR();
   const T = (k) => (typeof astroI18n === 'object' && astroI18n.t) ? astroI18n.t(k) : k;
   const pannello = document.getElementById('skymap-btn-camera');
   if (pannello) {
@@ -38871,6 +38904,10 @@ function inizializzaSkymapExtra() {
     const el = document.getElementById(id);
     if (el) el.addEventListener('click', azione);
   };
+
+  // Nell'HTML i comandi nascono nascosti per evitare che lampeggino sui
+  // computer durante il caricamento; qui diventano visibili solo se adatti.
+  skyAggiornaTastiCamera(!!sky.camera);
 
   // --- Il tempo: la slitta, i salti, la data scritta a mano ---
   const slitta = document.getElementById('skymap-tempo');

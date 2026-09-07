@@ -204,6 +204,28 @@ const server = http.createServer((req, res) => {
     `${aggancioAutomaticoAr.richiesteSensori} richiesta sensori, ` +
       `${aggancioAutomaticoAr.richiesteCamera} fotocamera, segue: ${aggancioAutomaticoAr.segue}`);
 
+  // Su un computer privo di sensori i due ingressi dell'AR non devono essere
+  // proposti. Se arriva una lettura reale, invece, anche un dispositivo che
+  // non ha il profilo mobile diventa compatibile e i comandi compaiono.
+  const disponibilitaAr = await pagina.evaluate(() => {
+    const sensoriOriginali = sky.sensori;
+    sky.sensori = false;
+    skyAggiornaDisponibilitaAR();
+    const attesaSenzaLetture = skyRealtaAumentataDisponibile();
+    const coerentiSenzaLetture = ['skymap-btn-camera', 'skymap-btn-camera-mappa']
+      .every(id => document.getElementById(id).hidden === !attesaSenzaLetture);
+    sky.sensori = true;
+    skyAggiornaDisponibilitaAR();
+    const visibiliConSensori = ['skymap-btn-camera', 'skymap-btn-camera-mappa']
+      .every(id => !document.getElementById(id).hidden);
+    sky.sensori = sensoriOriginali;
+    skyAggiornaDisponibilitaAR();
+    return { attesaSenzaLetture, coerentiSenzaLetture, visibiliConSensori };
+  });
+  ok('AR compare solo su dispositivi mobili o con sensori adatti',
+    disponibilitaAr.coerentiSenzaLetture && disponibilitaAr.visibiliConSensori,
+    JSON.stringify(disponibilitaAr));
+
   // --- una sola via d'uscita per tutte le schede ---
   console.log('\n— chiusura delle schede con Esc —');
   await pagina.click('#btn-impostazioni');
