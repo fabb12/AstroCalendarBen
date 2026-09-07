@@ -132,6 +132,8 @@ const miss = {
   avviso: null,
   // Chi aveva il fuoco quando il pannello si è aperto, per restituirglielo
   fuocoPrima: null,
+  // Il primo estremo acquisito con la bussola, finche' si prende il secondo.
+  rilievoSettore: null,
   // Le funzioni da staccare alla chiusura (tastiera, cambio lingua)
   staccare: []
 };
@@ -1736,7 +1738,8 @@ function missHtmlConfigurazione() {
   const esperienze = MISS_ESPERIENZE.map(e => ({ valore: e, nome: missT('esperienza.' + e) }));
   const direzione = gradi => typeof astroI18n === 'object' && astroI18n.nomePunto
     ? astroI18n.nomePunto(gradi) : String(gradi) + '°';
-  const opzioniDirezione = selezionata => MISS_DIREZIONI.map(g =>
+  const opzioniDirezione = selezionata => ([...MISS_DIREZIONI,
+    ...(MISS_DIREZIONI.includes(selezionata) ? [] : [selezionata])].sort((a, b) => a - b)).map(g =>
     `<option value="${g}"${g === selezionata ? ' selected' : ''}>${missTesto(direzione(g))} · ${g}°</option>`).join('');
 
   return `<div class="missione-configurazione">
@@ -1749,6 +1752,13 @@ function missHtmlConfigurazione() {
     ${miss.scelte.cielo === 'settore' ? `<div class="missione-settore">
       <label class="missione-campo"><span>${missT('daDirezione')}</span><select class="missione-select" data-miss-limite="cieloDa">${opzioniDirezione(miss.scelte.cieloDa)}</select></label>
       <label class="missione-campo"><span>${missT('aDirezione')}</span><select class="missione-select" data-miss-limite="cieloA">${opzioniDirezione(miss.scelte.cieloA)}</select></label>
+      <div class="missione-rilievo">
+        <button type="button" class="missione-tasto" data-miss-rileva>
+          ${missIcona('bussola', 16)} ${missT(miss.rilievoSettore ? 'settoreRilevaSecondo' : 'settoreRilevaPrimo')}
+        </button>
+        <span class="missione-rilievo-stato" role="status">${miss.rilievoSettore
+          ? missT('settorePrimoPreso', { gradi: miss.rilievoSettore.primo }) : missT('settoreRilevaIstruzioni')}</span>
+      </div>
       <p>${missT('settoreSpiega')}</p></div>` : ''}
     ${missGruppoScelte('voce', [
       { valore: 'si', nome: missT('voceSi') }, { valore: 'no', nome: missT('voceNo') }
@@ -2073,13 +2083,18 @@ function missCollegaPannello(corpo) {
       let valore = nome === 'durata' ? Number(b.dataset.missValore) : b.dataset.missValore;
       if (nome === 'voce') valore = valore === 'si';
       miss.scelte[nome] = valore;
+      if (nome === 'cielo') miss.rilievoSettore = null;
       missSalvaScelte();
       missDisegnaPannello();
     });
   });
   corpo.querySelectorAll('[data-miss-limite]').forEach(s => s.addEventListener('change', () => {
-    miss.scelte[s.dataset.missLimite] = Number(s.value); missSalvaScelte();
+    miss.scelte[s.dataset.missLimite] = Number(s.value);
+    miss.rilievoSettore = null;
+    missSalvaScelte();
   }));
+  const rileva = corpo.querySelector('[data-miss-rileva]');
+  if (rileva) rileva.addEventListener('click', () => missRilevaEstremo(rileva));
 
   // Le cinque stelle: si accendono fino a quella toccata, come ovunque.
   let stelle = 0;
@@ -2098,6 +2113,40 @@ function missCollegaPannello(corpo) {
   corpo.querySelectorAll('[data-miss-azione]').forEach(b => {
     b.addEventListener('click', () => missAzione(b.dataset.missAzione, corpo));
   });
+}
+
+async function missRilevaEstremo(tasto) {
+  tasto.disabled = true;
+  const stato = tasto.parentElement.querySelector('.missione-rilievo-stato');
+  if (stato) stato.textContent = missT('settoreRilevaAttesa');
+
+  const avviato = typeof skyRichiediSensori === 'function' && await skyRichiediSensori();
+  let azimut = null;
+  if (avviato && typeof skyLeggiAzimutBussola === 'function') {
+    // La prima lettura puo' arrivare qualche istante dopo il consenso del
+    // sistema. Si aspetta qui, senza costringere a premere una seconda volta.
+    const scadenza = Date.now() + 2500;
+    while (azimut === null && Date.now() < scadenza) {
+      azimut = skyLeggiAzimutBussola();
+      if (azimut === null) await new Promise(resolve => setTimeout(resolve, 80));
+    }
+  }
+  if (azimut === null) {
+    if (stato) stato.textContent = missT('settoreRilevaNonDisponibile');
+    tasto.disabled = false;
+    return;
+  }
+
+  const gradi = Math.round(azimut) % 360;
+  if (!miss.rilievoSettore) {
+    miss.scelte.cieloDa = gradi;
+    miss.rilievoSettore = { primo: gradi };
+  } else {
+    miss.scelte.cieloA = gradi;
+    miss.rilievoSettore = null;
+  }
+  missSalvaScelte();
+  missDisegnaPannello();
 }
 
 function missAzione(azione, corpo) {

@@ -11507,6 +11507,22 @@ function skyMatriceBussola() {
   return skyGiraMatriceAzimut(a.R, correzione);
 }
 
+// Una lettura semplice della bussola per i moduli che devono acquisire una
+// direzione, senza aprire il planetario. Il lato alto del telefono e' il
+// riferimento naturale quando lo si tiene in piano come una bussola vera.
+// La matrice contiene gia' declinazione magnetica e taratura manuale, quindi
+// il risultato e' un azimut geografico, coerente con quello degli astri.
+function skyLeggiAzimutBussola() {
+  const assetto = skyAssettoGrezzo();
+  if (!assetto || !assetto.conNord) return null;
+  const R = skyMatriceBussola();
+  if (!R) return null;
+  const latoAlto = skyApplica(R, [0, 1, 0]);
+  const piano = Math.hypot(latoAlto[0], latoAlto[1]);
+  if (!(piano > 0.35)) return null;
+  return skyGradiTondi(Math.atan2(latoAlto[0], latoAlto[1]) * SKY_R2D);
+}
+
 // Quanto ci si può fidare del Nord segnato, in gradi di errore stimato.
 // `null` quando non c'è modo di saperlo.
 function skyBussolaErroreStimato() {
