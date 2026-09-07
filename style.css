@@ -3571,12 +3571,35 @@ body.mappa-spostamento-immersiva { overflow: hidden; }
      sempre in vista anche a pannelli chiusi: le linguette dei gruppi e,
      sotto di loro, la riga con la bussola. 10px di margine, la pillola
      delle linguette (36px + 4px+4px di imbottitura del suo fondo + 2px di
-     bordo = 46px), 8px di distacco fra le due righe, la bussola (64px, la
-     cosa più alta della seconda riga). Serve alla scheda dell'oggetto, qui
-     sotto: senza saperlo, in orizzontale su un telefono basso ci finiva
-     scritta sopra — mezza scheda sotto alla bussola, mezza sopra. */
+     bordo = 46px), 8px di distacco fra le due righe, la bussola (il
+     quadrante da 88px più la pillola dei numeri, la cosa più alta della
+     seconda riga). Serve alla scheda dell'oggetto, qui sotto: senza
+     saperlo, in orizzontale su un telefono basso ci finiva scritta sopra —
+     mezza scheda sotto alla bussola, mezza sopra. Fuori dallo schermo
+     intero la bussola è fuori dal flusso e questo valore è abbondante; a
+     schermo intero ci vuole la riga di `:has()` qui sotto. */
   --zona-alta-cielo: 128px;
 }
+
+/* A schermo intero la bussola non è più appesa all'angolo: torna nel flusso,
+   sotto alle linguette, e la fascia da non invadere è alta quanto il
+   quadrante **più** la pillola dei numeri (10 + 46 + 8 + 88 + 4 + 20). Fuori
+   dallo schermo intero resta il valore di sopra, che è già abbondante: lì la
+   bussola è fuori dal flusso e si ferma a 122px dal bordo.
+   `:has()` sale dal contenitore alla vista, che è dove la misura va scritta:
+   la legge anche `skyFasceCielo()` (app.js), che la cerca su `.vista-cielo`.
+   Dove `:has()` non c'è, resta il valore di prima — cioè quello che c'era
+   comunque prima di questa riga.
+
+   Il conto vale con la barra dei comandi su **una riga**. Su un telefono
+   stretto, a schermo intero, le due azioni diritte vanno a capo (l'angolo se
+   lo prende il tasto Esci, che riserva 104px) e la fascia cresce di un'altra
+   cinquantina di pixel: è un'approssimazione che questo valore aveva già
+   prima — 124px dichiarati contro 179 veri — e che qui resta tale e quale,
+   perché a stringere le linguette per farci stare un numero si perde più di
+   quello che si guadagna. */
+.vista-cielo:has(#skymap-contenitore:fullscreen),
+.vista-cielo:has(#skymap-contenitore.finto-schermo-intero) { --zona-alta-cielo: 176px; }
 
 /* Il planetario è la vista, non una scheda dentro alla pagina. Quando è
    aperto il documento diventa una colonna alta esattamente quanto la finestra:
@@ -3748,9 +3771,14 @@ body.vista-planetario-attiva .tela-cielo {
    accanto alle linguette, invece di scendere con la riga delle letture.
    Riserviamo lo stesso spazio nella barra, così l'ultimo comando non le
    finisce sotto. In Fullscreen torna nel flusso: il tasto Esci prende
-   l'angolo e la bussola rimane subito sotto, come prima. */
+   l'angolo e la bussola rimane subito sotto, come prima.
+   Lo spazio riservato è quello del **quadrante**, non della pillola dei
+   numeri che gli sborda sotto di una ventina di pixel a sinistra: la
+   pillola sta più in basso dei tondi delle linguette e non se li contende,
+   mentre riservandole posto la barra andava a capo su un telefono — due
+   righe di comandi per fare spazio a una cosa che non ci passa accanto. */
 #skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .cielo-barra {
-  padding-right: 92px;
+  padding-right: 98px;
 }
 #skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .bussola-cielo {
   position: absolute;
@@ -4014,7 +4042,7 @@ body.vista-planetario-attiva .tela-cielo {
   display: flex;
   align-items: center;
   min-width: 0;
-  max-width: calc(100% - 82px);   /* quanto lascia libero la bussola */
+  max-width: calc(100% - 122px);  /* quanto lascia libero la bussola, numeri compresi */
   border: 1px solid var(--bordo);
   border-radius: 999px;
   background: rgba(6, 10, 20, 0.74);
@@ -4052,28 +4080,45 @@ body.vista-planetario-attiva .tela-cielo {
    mappa, perché sono i due capi della stessa informazione: quello dice
    *dove* si sta guardando in cielo, questo *verso dove* rispetto alla
    Terra. Il Nord è ambra, che è il colore che questa app usa per «guarda
-   qui» da sempre. */
+   qui» da sempre.
+
+   La bussola è in **due pezzi**, ed è la cosa da sapere prima di metterci
+   mano. Sopra il quadrante, che è solo disegno: la rosa che gira, le
+   quattro lettere grandi, l'ago, il cono dell'inquadratura. Sotto una
+   pillola ferma coi due numeri — dove si guarda e quanto cielo si
+   inquadra. Prima stavano tutt'e due in mezzo al quadrante, sopra a una
+   rosa che ruota e a un cono azzurro semitrasparente: l'azimut a undici
+   pixel di corpo e la direzione a **sette**, cioè scritta e non
+   leggibile. Un numero da leggere vuole un fondo fermo e opaco; le lettere
+   dei punti cardinali, che invece si guardano, si sono prese lo spazio che
+   quei numeri lasciavano libero e adesso sono grandi il doppio. */
 .bussola-cielo {
   position: relative;
   flex: 0 0 auto;
-  width: 82px;
-  height: 82px;
+  display: flex;
+  flex-direction: column;
+  /* La pillola dei numeri è più larga del quadrante: si allineano a
+     destra, che è il bordo su cui la bussola è appoggiata */
+  align-items: flex-end;
+  gap: 4px;
+  /* È una lettura, non un comando: il dito ci passa attraverso e trascina
+     il cielo che le sta sotto */
+  pointer-events: none;
+}
+.bussola-quadrante-guscio {
+  position: relative;
+  width: 88px;
+  height: 88px;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.62);
   background: radial-gradient(circle at 50% 42%, rgba(25, 39, 66, 0.88), rgba(5, 9, 19, 0.94));
   box-shadow: 0 5px 18px rgba(0, 0, 0, 0.38), inset 0 0 0 2px rgba(125, 211, 252, 0.07);
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
-  /* È una lettura, non un comando: il dito ci passa attraverso e trascina
-     il cielo che le sta sotto */
-  pointer-events: none;
 }
 .bussola-quadrante { display: block; width: 100%; height: 100%; }
 .bussola-fondo { fill: rgba(10, 16, 30, 0.35); stroke: none; }
-.bussola-anello-esterno,
-.bussola-anello-interno { fill: none; }
-.bussola-anello-esterno { stroke: rgba(203, 213, 225, 0.28); stroke-width: 1; }
-.bussola-anello-interno { stroke: rgba(125, 211, 252, 0.16); stroke-width: 0.8; }
+.bussola-anello-esterno { fill: none; stroke: rgba(203, 213, 225, 0.34); stroke-width: 1; }
 
 /* IL CONO DELL'INQUADRATURA
    Quanto cielo entra nella vista adesso, aperto sul quadrante a partire
@@ -4082,7 +4127,9 @@ body.vista-planetario-attiva .tela-cielo {
    ambra, l'indice della vista giallo come il mirino, e questo è il fascio
    di sguardo. Sfuma verso il bordo — un fascio si allarga e si perde, non
    finisce con un taglio netto — e il filo di contorno serve a leggerne
-   l'apertura quando è stretta, che è proprio quando la si vorrebbe sapere. */
+   l'apertura quando è stretta, che è proprio quando la si vorrebbe sapere.
+   I gradi che scrive la pillola qui sotto sono di questo stesso azzurro:
+   è quello che li lega, senza una parola di etichetta. */
 .bussola-fov {
   fill: url(#bussola-cono-sfuma);
   stroke: rgba(125, 211, 252, 0.72);
@@ -4095,26 +4142,37 @@ body.vista-planetario-attiva .tela-cielo {
    viewBox, cioè al centro del quadrante). Nessuna transizione, di
    proposito: l'angolo lo riscrive il ciclo del cielo a ogni fotogramma, e
    una transizione sopra a un valore già interpolato fa solo ritardo. */
-.bussola-tacca-lunga,
 .bussola-tacca-corta {
   fill: none;
-  stroke: rgba(169, 180, 204, 0.75);
-  stroke-width: 3;
+  stroke: rgba(169, 180, 204, 0.45);
+  stroke-width: 2.6;
   stroke-linecap: round;
 }
-.bussola-tacca-corta { stroke: rgba(169, 180, 204, 0.4); stroke-width: 2.5; }
 .bussola-ago { fill: #fb923c; filter: drop-shadow(0 0 3px rgba(251, 146, 60, 0.72)); }
-.bussola-ago-sud { fill: rgba(148, 163, 184, 0.72); }
+.bussola-ago-sud { fill: rgba(148, 163, 184, 0.55); }
 .bussola-perno { fill: #f8fafc; stroke: rgba(15, 23, 42, 0.9); stroke-width: 1; }
+
+/* Le lettere dei quattro punti. Sono la cosa che si legge per prima su una
+   bussola, quindi sono grandi: nel quadrante da 88px la N esce a 15,8 pixel
+   veri e le altre a 13,2, contro gli 11,5 e i 9 di prima. L'alone scuro è il
+   trucco dei nomi delle montagne sul cielo (`skyScrittaConAlone`): sotto a
+   una lettera passano il cono azzurro, l'ago ambrato e il fondo del
+   quadrante, e un colore solo lì non basta mai. `paint-order` va dichiarato
+   perché di serie il contorno si disegna **sopra** al pieno, cioè mangia la
+   lettera invece di staccarla. */
 .bussola-nord,
 .bussola-lettera {
   font-family: var(--sans);
-  font-weight: 700;
+  font-weight: 800;
   text-anchor: middle;
   dominant-baseline: central;
+  paint-order: stroke fill;
+  stroke: rgba(3, 7, 16, 0.9);
+  stroke-width: 3.4;
+  stroke-linejoin: round;
 }
-.bussola-nord { font-size: 14px; fill: #fb923c; }
-.bussola-lettera { font-size: 11px; fill: rgba(226, 232, 240, 0.9); }
+.bussola-nord { font-size: 18px; fill: #fdba74; }
+.bussola-lettera { font-size: 15px; fill: rgba(233, 239, 248, 0.95); }
 
 /* L'indice della vista: una punta gialla appoggiata sul bordo alto, che
    guarda in dentro */
@@ -4127,48 +4185,78 @@ body.vista-planetario-attiva .tela-cielo {
   height: 0;
   border-left: 5px solid transparent;
   border-right: 5px solid transparent;
-  border-top: 8px solid #facc15;
+  border-top: 9px solid #facc15;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
 }
 
-/* I gradi, in mezzo al quadrante: è il numero che si legge a voce ("sono
-   a 51 gradi"), e sta fermo mentre tutto il resto gira */
-.bussola-valori {
-  position: absolute;
-  inset: 0;
+/* I DUE NUMERI, sotto al quadrante.
+   A sinistra dove si guarda — i gradi di azimut e la sigla del punto, in
+   giallo come l'indice che li indica; a destra quanto cielo si sta
+   inquadrando, in azzurro come il cono. Un filo verticale li separa: sono
+   due misure di cose diverse, e senza quel filo «128° SE 45°» si legge
+   come una riga sola di numeri. Il fondo è opaco e fermo, che è l'unica
+   condizione in cui un numero piccolo si legge sopra a un cielo che si
+   muove. */
+.bussola-letture {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 6px rgba(6, 10, 20, 0.9);
+  gap: 5px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: rgba(6, 10, 20, 0.84);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  line-height: 1;
+  white-space: nowrap;
+}
+.bussola-valore { display: inline-flex; align-items: center; gap: 3px; }
+.bussola-valore + .bussola-valore {
+  padding-left: 5px;
+  border-left: 1px solid rgba(148, 163, 184, 0.3);
 }
 .bussola-gradi {
   font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: -0.02em;
+  font-size: 0.74rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--testo);
 }
 .bussola-direzione {
-  max-width: 42px;
-  overflow: hidden;
   font-family: var(--sans);
-  font-size: 0.45rem;
+  font-size: 0.6rem;
   font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: #facc15;
+}
+.bussola-icona-campo {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 9.5px;
+  fill: rgba(56, 189, 248, 0.32);
+  stroke: rgba(125, 211, 252, 0.85);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+}
+.bussola-campo {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   color: var(--blu-chiaro);
 }
 
 /* Quando la bussola non sa dov'è il Nord vero — sensori spenti, vista
    mossa col dito, magnetometro da tarare — non lo dice a parole: si spegne.
    Un quadrante smorto è la stessa informazione senza una riga di testo, e
-   chi ha bisogno del dettaglio lo trova nel titolo. */
-.bussola-cielo[data-modo="manuale"] { opacity: 0.78; }
+   chi ha bisogno del dettaglio lo trova nel titolo. I due numeri restano
+   pieni: l'azimut e il campo sono giusti comunque, ed è il **Nord** a
+   essere incerto, non la direzione in cui si sta guardando. */
+.bussola-cielo[data-modo="manuale"] .bussola-quadrante-guscio { opacity: 0.78; }
 .bussola-cielo[data-modo="manuale"] .bussola-ago,
 .bussola-cielo[data-modo="magnetica"] .bussola-ago { fill: rgba(245, 181, 68, 0.5); filter: none; }
 .bussola-cielo[data-modo="manuale"] .bussola-nord,
@@ -4178,7 +4266,7 @@ body.vista-planetario-attiva .tela-cielo {
    quello da tarare — perché è esattamente quello che è — ma non lampeggia e
    non diventa rosso. Una spia d'allarme su un pannello che si accende perché
    si è passati accanto a un termosifone insegna solo a ignorare le spie. */
-.bussola-cielo[data-modo="dubbia"] { opacity: 0.8; }
+.bussola-cielo[data-modo="dubbia"] .bussola-quadrante-guscio { opacity: 0.8; }
 .bussola-cielo[data-modo="dubbia"] .bussola-ago { fill: rgba(245, 181, 68, 0.5); filter: none; }
 .bussola-cielo[data-modo="dubbia"] .bussola-nord { fill: rgba(245, 181, 68, 0.6); }
 
@@ -5038,24 +5126,36 @@ body input.casella-data:hover { border: 0; }
   .cielo-chrome { gap: 6px; padding: 8px; padding-top: max(8px, env(safe-area-inset-top)); }
   /* La fascia si stringe insieme a tutto il resto: 8px di margine, la
      pillola più bassa (34px + 3px+3px di imbottitura + 2px di bordo =
-     42px), 6px di distacco, la bussola più piccola (68px). */
+     42px), 6px di distacco, la bussola più piccola (74px di quadrante più
+     la pillola dei numeri). */
   .vista-cielo { --zona-alta-cielo: 124px; }
+  .vista-cielo:has(#skymap-contenitore:fullscreen),
+  .vista-cielo:has(#skymap-contenitore.finto-schermo-intero) { --zona-alta-cielo: 152px; }
   .linguetta-gruppo { width: 34px; height: 34px; }
   .icona-linguetta { width: 19px; height: 19px; }
   .linguette-gruppi { padding: 3px; gap: 2px; }
   .tasto-mappa-luogo-cielo,
   .tasto-adsb-cielo { width: 42px; height: 42px; }
   .lettura-cielo { font-size: 0.7rem; padding: 4px 9px; }
-  .letture-sinistra { max-width: calc(100% - 82px); }
-  .bussola-cielo { width: 68px; height: 68px; }
-  #skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .cielo-barra { padding-right: 76px; }
+  .letture-sinistra { max-width: calc(100% - 106px); }
+  .bussola-quadrante-guscio { width: 74px; height: 74px; }
+  #skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .cielo-barra { padding-right: 84px; }
   #skymap-contenitore:not(:fullscreen):not(.finto-schermo-intero) .bussola-cielo {
     top: max(8px, env(safe-area-inset-top));
     right: 8px;
   }
-  .bussola-gradi { font-size: 0.65rem; }
-  .bussola-direzione { max-width: 36px; font-size: 0.4rem; }
-  .bussola-indice { border-left-width: 4px; border-right-width: 4px; border-top-width: 7px; }
+  /* I numeri si stringono, ma di poco: sotto ai dodici pixel di corpo una
+     lettura sopra al cielo si smette di leggere, ed è il difetto da cui
+     questa pillola è nata. Le lettere del quadrante scendono in proporzione
+     al quadrante stesso (l'SVG si scala da sé) e restano le più grandi. */
+  .bussola-letture { gap: 4px; padding: 3px 6px; }
+  .bussola-valore { gap: 2px; }
+  .bussola-valore + .bussola-valore { padding-left: 4px; }
+  .bussola-gradi { font-size: 0.68rem; }
+  .bussola-direzione { font-size: 0.55rem; letter-spacing: 0.03em; }
+  .bussola-icona-campo { width: 10px; height: 8.5px; }
+  .bussola-campo { font-size: 0.62rem; }
+  .bussola-indice { border-left-width: 4px; border-right-width: 4px; border-top-width: 8px; }
   .gruppo-comandi.gruppo-attivo { max-height: 62%; padding: 10px 12px 12px; }
   .gruppo-comandi.gruppo-astri.gruppo-attivo.ricerca-attiva { max-height: min(78%, 520px); }
   /* Il rientro del pannello qui è più stretto, e il filtro appiccicato in
@@ -7948,6 +8048,25 @@ body.luogo-immersivo { overflow: hidden; }
     top: calc(max(8px, env(safe-area-inset-top)) + 48px);
     right: max(8px, env(safe-area-inset-right));
   }
+  /* Girati, **i numeri vanno di fianco al quadrante e non sotto**. È la
+     stessa pillola con gli stessi numeri, girata di novanta gradi come lo
+     schermo: qui di altezza non ce n'è (il cielo è alto un terzo e la
+     bussola se ne prende l'angolo) e di larghezza ce n'è tanta, e mettendola
+     sotto la bussola scendeva vent'anni pixel oltre la fascia dichiarata da
+     `--zona-alta-cielo`, cioè si sarebbe presa in faccia la scheda
+     dell'oggetto. Di fianco, il blocco è alto quanto il quadrante e la
+     fascia torna quella di sempre. Il quadrante si stringe come sul telefono
+     dritto; i numeri no, perché sotto ai dodici pixel di corpo una lettura
+     tanto vale non scriverla. */
+  .bussola-cielo { flex-direction: row-reverse; align-items: center; gap: 6px; }
+  .bussola-quadrante-guscio { width: 70px; height: 70px; }
+  .bussola-letture { gap: 4px; padding: 2px 6px; }
+  .bussola-valore { gap: 2px; }
+  .bussola-valore + .bussola-valore { padding-left: 4px; }
+  .bussola-gradi { font-size: 0.68rem; }
+  .bussola-direzione { font-size: 0.55rem; }
+  .bussola-icona-campo { width: 10px; height: 8.5px; }
+  .bussola-campo { font-size: 0.62rem; }
 
   /* Girato, la mappa è alta un terzo: la barra del tempo si stringe quanto
      può senza che i tasti diventino difficili da prendere. Di larghezza però

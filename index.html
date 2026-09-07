@@ -607,63 +607,112 @@
             </div>
 
             <!-- LA BUSSOLA
-                 Un quadrante che gira, come quello vero: l'indice giallo in
-                 cima è la direzione della vista (lo stesso giallo del mirino
-                 al centro del cielo, ed è di proposito: sono i due capi
-                 della stessa informazione), l'ago ambrato e la N sono il
-                 Nord. In mezzo i gradi di azimut.
+                 Un quadrante che gira, come quello vero: fermo l'indice
+                 giallo in cima — la direzione della vista, lo stesso giallo
+                 del mirino al centro del cielo, ed è di proposito: sono i
+                 due capi della stessa informazione — e gira la rosa, con
+                 l'ago ambrato e la N sul Nord.
+
+                 Il quadrante è **soltanto disegno**: le quattro lettere
+                 sono grandi, con l'alone scuro delle etichette sul cielo, e
+                 in mezzo non c'è più niente da leggere. I due numeri
+                 stanno nella pillola qui sotto, su un fondo fermo e opaco.
+                 In mezzo alla rosa erano scritti sopra a un quadrante che
+                 gira e a un cono azzurro, e la direzione — sette pixel di
+                 corpo — non si leggeva affatto.
 
                  Il **cono azzurro** è quanto cielo entra nell'inquadratura
                  adesso: si apre a grandangolo e si chiude a uno spicchio
-                 quando si ingrandisce sulla Luna. Prende il posto della
-                 scritta col campo visivo in gradi — un numero che per
-                 dire qualcosa va comunque immaginato come un'apertura, e
-                 che disegnato non ha bisogno di nessuna etichetta. Sfuma
-                 dal centro verso il bordo perché è un fascio di sguardo,
-                 non una fetta di torta. -->
+                 quando si ingrandisce sulla Luna. Il numero dei gradi non
+                 gli prende il posto, gli sta accanto: l'apertura si guarda
+                 ed è immediata, la misura si legge quando serve davvero
+                 («quanto sto ingrandendo?»). Sono dello stesso azzurro, ed
+                 è quello che li lega senza una parola di etichetta. -->
             <div id="skymap-bussola" class="bussola-cielo"
               role="img" aria-label="Bussola" title="Direzione della vista" data-i18n-title="ui.direzione-della-vista">
-              <svg class="bussola-quadrante" viewBox="-50 -50 100 100" aria-hidden="true">
-                <defs>
-                  <!-- Il centro resta chiaro di proposito: lì sotto ci sono
-                       i gradi dell'azimut, e un fascio pieno proprio nel
-                       vertice li renderebbe illeggibili. -->
-                  <radialGradient id="bussola-cono-sfuma" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stop-color="rgb(125, 211, 252)" stop-opacity="0.12"/>
-                    <stop offset="55%" stop-color="rgb(56, 189, 248)" stop-opacity="0.30"/>
-                    <stop offset="100%" stop-color="rgb(56, 189, 248)" stop-opacity="0.10"/>
-                  </radialGradient>
-                </defs>
-                <circle class="bussola-fondo" cx="0" cy="0" r="46"></circle>
-                <circle class="bussola-anello-esterno" cx="0" cy="0" r="45"></circle>
-                <circle class="bussola-anello-interno" cx="0" cy="0" r="27"></circle>
-                <path id="skymap-bussola-fov" class="bussola-fov" d="M0,0 L-18,-38 A42,42 0 0 1 18,-38 Z"></path>
-                <g id="skymap-bussola-rosa" class="bussola-rosa">
-                  <!-- Le tacche: lunghe ai quattro punti cardinali, corte a
-                       metà strada. Sono scritte a mano e non generate,
-                       perché questo pezzo di pagina non ha JavaScript che
-                       lo costruisca: gira, e basta. -->
-                  <path class="bussola-tacca-lunga" d="M0,-46 v6 M0,46 v-6 M-46,0 h6 M46,0 h-6"/>
-                  <path class="bussola-tacca-corta" d="
-                    M32.5,-32.5 l-4,4 M32.5,32.5 l-4,-4
-                    M-32.5,32.5 l4,-4 M-32.5,-32.5 l4,4"/>
-                  <!-- Le lettere stanno in una corona, e l'ago del Nord
-                       dentro a lei: più in fuori si scontra con le tacche,
-                       più in dentro copre i gradi -->
-                  <text class="bussola-nord" x="0" y="-31">N</text>
-                  <text class="bussola-lettera" x="31" y="0">E</text>
-                  <text class="bussola-lettera" x="0" y="31">S</text>
-                  <text class="bussola-lettera" x="-31" y="0">O</text>
-                  <path class="bussola-ago-sud" d="M0,24 l-4.5,-12 l4.5,2 l4.5,-2 z"/>
-                  <path class="bussola-ago" d="M0,-25 l5.5,14 l-5.5,-2.5 l-5.5,2.5 z"/>
-                  <circle class="bussola-perno" cx="0" cy="0" r="2.3"/>
-                </g>
-              </svg>
-              <span class="bussola-indice" aria-hidden="true"></span>
-              <span class="bussola-valori">
-                <span id="skymap-bussola-gradi" class="bussola-gradi">—</span>
-                <span id="skymap-bussola-direzione" class="bussola-direzione">direzione</span>
-              </span>
+              <div class="bussola-quadrante-guscio">
+                <svg class="bussola-quadrante" viewBox="-50 -50 100 100" aria-hidden="true">
+                  <defs>
+                    <!-- Il centro resta chiaro di proposito: lì sotto c'è
+                         il perno dell'ago, e un fascio pieno proprio nel
+                         vertice lo impasterebbe con l'ago stesso. -->
+                    <radialGradient id="bussola-cono-sfuma" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="rgb(125, 211, 252)" stop-opacity="0.12"/>
+                      <stop offset="55%" stop-color="rgb(56, 189, 248)" stop-opacity="0.30"/>
+                      <stop offset="100%" stop-color="rgb(56, 189, 248)" stop-opacity="0.10"/>
+                    </radialGradient>
+                  </defs>
+                  <circle class="bussola-fondo" cx="0" cy="0" r="46"></circle>
+                  <circle class="bussola-anello-esterno" cx="0" cy="0" r="45"></circle>
+                  <path id="skymap-bussola-fov" class="bussola-fov" d="M0,0 L-18,-38 A42,42 0 0 1 18,-38 Z"></path>
+                  <g id="skymap-bussola-rosa" class="bussola-rosa">
+                    <!-- Le tacche restano solo a metà strada fra un punto
+                         cardinale e l'altro: sui quattro punti ci sono le
+                         lettere, e una tacca sotto a una lettera grande è
+                         soltanto una cosa in più da guardare. Sono scritte
+                         a mano e non generate, perché questo pezzo di
+                         pagina non ha JavaScript che lo costruisca: gira,
+                         e basta. -->
+                    <path class="bussola-tacca-corta" d="
+                      M32.5,-32.5 l-5,5 M32.5,32.5 l-5,-5
+                      M-32.5,32.5 l5,-5 M-32.5,-32.5 l5,5"/>
+                    <!-- L'ago è una freccia intera che passa per il perno,
+                         come su una bussola da tavolo: adesso che in mezzo
+                         non c'è più il numero, il centro è suo. -->
+                    <path class="bussola-ago-sud" d="M0,22.5 L4.4,0 L-4.4,0 Z"/>
+                    <path class="bussola-ago" d="M0,-22.5 L5.2,0 L-5.2,0 Z"/>
+                    <circle class="bussola-perno" cx="0" cy="0" r="2.6"/>
+                    <!-- Le lettere sulla corona esterna, grandi: sono la
+                         cosa che si legge per prima, e prima stavano dentro
+                         al quadrante a undici pixel di corpo per lasciare
+                         il posto ai numeri che adesso non ci sono più.
+                         L'alone scuro (`paint-order: stroke`) è lo stesso
+                         trucco dei nomi delle montagne sul cielo: qui sotto
+                         passano il cono azzurro e l'ago, e un colore solo
+                         non basta mai. Le sigle sono nel dizionario perché
+                         l'ovest, in inglese, è «W» e non «O».
+
+                         Il `transform` glielo riscrive `skyAggiornaBussola`
+                         a ogni fotogramma, e disfa la rotazione della rosa
+                         **attorno al punto della lettera**: la lettera gira
+                         insieme al quadrante ma resta dritta. Su una rosa
+                         di carta le lettere ruotano davvero, e finché erano
+                         alte nove pixel non se ne accorgeva nessuno;
+                         adesso che si leggono, guardando a sud si leggeva
+                         una «Ǝ» — cioè il contrario di quello per cui sono
+                         state ingrandite. -->
+                    <text class="bussola-nord" x="0" y="-32.5" data-i18n="punto.sigla.n">N</text>
+                    <text class="bussola-lettera" x="32.5" y="0" data-i18n="punto.sigla.e">E</text>
+                    <text class="bussola-lettera" x="0" y="32.5" data-i18n="punto.sigla.s">S</text>
+                    <text class="bussola-lettera" x="-32.5" y="0" data-i18n="punto.sigla.w">O</text>
+                  </g>
+                </svg>
+                <span class="bussola-indice" aria-hidden="true"></span>
+              </div>
+              <!-- I due numeri, fuori dal quadrante. A sinistra dove si
+                   guarda (gradi di azimut e sigla del punto, in giallo come
+                   l'indice), a destra quanto cielo si sta inquadrando (in
+                   azzurro come il cono). Chi legge con lo schermo non vede
+                   niente di tutto questo: a lui la stessa cosa la dice
+                   l'`aria-label` del quadrante, che le scrive a parole. -->
+              <div class="bussola-letture" aria-hidden="true">
+                <span class="bussola-valore bussola-valore-az">
+                  <span id="skymap-bussola-gradi" class="bussola-gradi">—</span
+                  ><span id="skymap-bussola-direzione" class="bussola-direzione">—</span>
+                </span>
+                <span class="bussola-valore bussola-valore-campo"
+                  title="Quanto cielo stai inquadrando" data-i18n-title="bussola.campo.titolo">
+                  <!-- Non un'icona qualunque: è **il cono del quadrante**
+                       in miniatura, stesso azzurro e stessa forma. È quello
+                       che dice a chi guarda che questo numero misura
+                       l'apertura disegnata lì sopra, e lo dice senza una
+                       parola da tradurre. -->
+                  <svg class="bussola-icona-campo" viewBox="0 0 14 12" aria-hidden="true">
+                    <path d="M7,10.6 L3,1.8 A9.7,9.7 0 0 1 11,1.8 Z"/>
+                  </svg>
+                  <span id="skymap-bussola-campo" class="bussola-campo">—</span>
+                </span>
+              </div>
             </div>
           </div>
 

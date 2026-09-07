@@ -677,6 +677,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'bussola.inaffidabile': 'il telefono la dichiara inaffidabile',
     'bussola.disturbata': 'disturbata di circa {gradi}°',
     'bussola.dettoAVoce': 'Vista verso {dove}, {gradi} gradi, campo inquadrato {campo}',
+    'bussola.campo.titolo': 'Quanto cielo stai inquadrando',
     'bussola.modo.astro': 'Bussola tarata sul cielo vero: il Nord è esatto per costruzione',
     'bussola.modo.vera': 'Bussola: la punta ambrata è il Nord geografico',
     'bussola.modo.dubbia': 'Bussola disturbata da qualcosa di ferroso: tarala su un astro',
