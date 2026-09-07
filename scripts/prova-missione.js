@@ -135,6 +135,25 @@ prova('due ore danno più tappe di dieci minuti', () => {
     `${lunga.tappe.length} contro ${corta.tappe.length}`);
 });
 
+prova('ogni astro ha tre racconti stabili ma diversi', () => {
+  const base = candidato('pianeta:Jupiter', { nome: 'Giove' });
+  const chiavi = [0, 1, 2].map(raccontoVariante =>
+    motore.curiositaChiave(Object.assign({}, base, { raccontoVariante })));
+  assert.deepStrictEqual(chiavi, [
+    'curiosita.giove.1', 'curiosita.giove.2', 'curiosita.giove.3'
+  ]);
+  assert.strictEqual(motore.curiositaChiave(Object.assign({}, base, { raccontoVariante: 1 })), chiavi[1]);
+});
+
+prova('miti e aneddoti sono associati anche a costellazioni e oggetti profondi', () => {
+  assert.strictEqual(motore.curiositaChiave(candidato('costellazione:Ori', {
+    tipo: 'costellazione', nome: 'Orione', sigla: 'Ori', raccontoVariante: 1
+  })), 'curiosita.orione.2');
+  assert.strictEqual(motore.curiositaChiave(candidato('profondo:M31', {
+    tipo: 'profondo', nome: 'M31 — Galassia di Andromeda', sigla: 'M31', raccontoVariante: 2
+  })), 'curiosita.andromeda.3');
+});
+
 // =====================================================================
 sezione('lo strumento è un vincolo, non una preferenza');
 
