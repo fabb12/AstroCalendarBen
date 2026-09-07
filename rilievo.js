@@ -434,8 +434,7 @@ const RIL_DIFFUSA_GIORNO = 0.12;
 
 // Anche il primo piano riceve almeno metà della luce diffusa dall'aria.
 // Senza questo pavimento le fette vicine restavano quasi del colore grezzo
-// del suolo, mentre oltre `RIL_FOV_FONDI_SEPARATI_MAX` la campitura unica
-// usa per forza una fetta media e diventava di colpo molto più chiara. La
+// del suolo e il primo piano risultava molto più scuro delle fette medie. La
 // luminosità del terreno non deve dipendere dallo zoom: la distanza continua
 // a schiarire ulteriormente i piani lontani, ma nessun piano torna alla
 // vecchia massa scura.
@@ -819,21 +818,15 @@ function rilTavolozzaQuote() {
 // due livelli su 255, sotto la soglia in cui una banda si legge come tale.
 const RIL_FONDI = 14;
 
-// A campo molto largo le curve delle fette non sono piu' figure annidate sul
-// piano dello schermo. La stereografica conserva gli angoli, non l'ordine
-// planare: vicino ai bordi due creste che sul terreno sono una davanti
-// all'altra possono incrociarsi, e i quattordici poligoni finiscono per
-// sovrapporsi in grandi tasselli. Oltre questa apertura la profondita' delle
-// singole fette e' comunque compressa in pochi pixel: si dipinge percio' un
-// solo fondo, ritagliato con la sagoma esatta. Anche la pettinatura radiale
-// viene omessa: a questa scala le colonne non descrivono piu' pendii leggibili
-// ma diventano lunghi cunei che convergono verso il punto sotto l'osservatore.
-// La grana del suolo (disegnata da app.js) e il crinale conservano comunque
-// forma e materia del paesaggio. Sotto la soglia non cambia nulla.
-const RIL_FOV_FONDI_SEPARATI_MAX = 125;
-
-function rilFondiSeparati() {
-  return !Number.isFinite(sky.fov) || sky.fov <= RIL_FOV_FONDI_SEPARATI_MAX;
+// Le fette restano separate a qualunque apertura. In passato, oltre 125°,
+// venivano sostituite da una sola sagoma per evitare possibili incroci ai
+// bordi della proiezione stereografica. Quel ripiego pero' spegneva insieme
+// anche pettinatura, chiaroscuro, foschia e contorni: durante lo zoom il
+// paesaggio diventava quindi piatto di colpo. `rilArcoInVista` esclude gia'
+// il meridiano opposto e limita a 174° l'arco proiettato; conserviamo percio'
+// il rilievo completo fino al FOV massimo, senza cambi di modalita'.
+function rilUsaDettaglioCompleto() {
+  return true;
 }
 
 // Quando le curve del terreno **si chiudono attorno al cielo**.
@@ -2518,11 +2511,9 @@ const RIL_ROTTURE = 6;
 // venti per cento troppo largo per guadagnare niente: il primo scalino è
 // perciò stretto, e gli altri crescono in proporzione.
 //
-// L'ultimo dice fin dove si arriva, e il numero è misurato: all'apertura
-// massima a cui la pettinatura si disegna ancora
-// (`RIL_FOV_FONDI_SEPARATI_MAX`, centoventicinque gradi) l'angolo del riquadro
-// vede il terreno con un fattore di 2,4. Oltre quella soglia il chiaroscuro
-// non si disegna affatto, quindi 2,6 è il capolinea e non una scelta.
+// L'ultimo gradino e' un tetto prudente per i bordi delle viste estreme:
+// evita tratti smisurati vicino al polo della proiezione, che viene comunque
+// escluso da `rilArcoInVista`.
 const RIL_LARGHEZZE = [1, 1.12, 1.3, 1.52, 1.8, 2.15, 2.6];
 const RIL_LARG_CLASSI = RIL_LARGHEZZE.length;
 // Un filo di margine, perché due tratti che si toccano esattamente lasciano
@@ -2925,11 +2916,9 @@ function rilDisegna(ctx, base, focale, suolo, aria) {
   const scalaBanda = (RIL_TINTA_BANDE - 1) /
     Math.max(1e-6, (RIL_QUOTE[RIL_QUOTE.length - 1].f - RIL_QUOTE[0].f) * neve);
   const fondoK = rilFondoAnelli();
-  // Una sola decisione per tutto il fotogramma: fondo, tinte, chiaroscuro,
-  // foschia e contorni devono passare insieme dal rilievo dettagliato alla
-  // campitura larga. Lasciare attive soltanto le strisce dopo aver unificato
-  // il fondo era la causa degli "spuntoni" a raggiera ancora visibili.
-  const dettaglio = rilFondiSeparati();
+  // Il rilievo non cambia modalita' con lo zoom: fondo, tinte, chiaroscuro,
+  // foschia e contorni restano attivi insieme fino al FOV massimo.
+  const dettaglio = rilUsaDettaglioCompleto();
   // Di quanto la maglia è decentrata rispetto a dove si è adesso, e a che
   // quota è l'occhio in questo momento. Due numeri per fotogramma, non due
   // per nodo: sotto la soglia di traslazione il primo è `null` e la
