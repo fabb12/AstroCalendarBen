@@ -496,14 +496,20 @@ function missGeneraMissione(scenario) {
 
   const { fila, fissi } = missOrdinaPerProgressione(scelti, scelte);
   const inOrario = missMettiInOrario(fila, fissi, partenza, scelte.durata, scelte);
+  // Il racconto resta uguale mentre si apre, si chiude o si riprende la
+  // missione, ma cambia davvero quando se ne genera un'altra. Affidarsi a
+  // Math.random durante il rendering farebbe invece cambiare storia a ogni
+  // clic su «non lo trovo».
+  const idMissione = 'miss-' + partenza + '-' + Math.random().toString(36).slice(2, 8);
   const tappe = missAttaccaRiferimenti(inOrario, votati).map((t, i) => Object.assign({}, t, {
     indice: i,
     esito: null,
-    aiuto: 0
+    aiuto: 0,
+    raccontoVariante: missHashTesto(idMissione + ':' + t.id) % 3
   }));
 
   return {
-    id: 'miss-' + partenza + '-' + Math.random().toString(36).slice(2, 8),
+    id: idMissione,
     versione: MISS_VERSIONE,
     creata: adesso,
     partenza,
@@ -1905,19 +1911,39 @@ function missGuidaTesto(t) {
   });
 }
 
+function missHashTesto(testo) {
+  let h = 2166136261;
+  for (const c of String(testo || '')) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  return h >>> 0;
+}
+
+/* Non una curiosità intercambiabile, ma un piccolo repertorio legato al
+ * bersaglio. Prima si riconoscono i nomi propri (anche inglesi e sigle di
+ * catalogo), poi si ripiega sulla famiglia. Ogni voce ha tre racconti:
+ * osservazione, storia umana e mito si alternano senza cambiare durante la
+ * stessa missione. */
 function missCuriositaChiave(tappa) {
-  const nome = String(tappa && tappa.nome || '').toLowerCase();
-  if (nome.includes('luna')) return 'curiosita.luna';
-  if (nome.includes('giove') || nome.includes('jupiter')) return 'curiosita.giove';
-  if (nome.includes('saturno') || nome.includes('saturn')) return 'curiosita.saturno';
-  if (nome.includes('sirio') || nome.includes('sirius')) return 'curiosita.sirio';
-  if (nome.includes('pleiad')) return 'curiosita.pleiadi';
-  if (tappa.tipo === 'stazione') return 'curiosita.stazione';
-  if (tappa.tipo === 'profondo') return 'curiosita.profondo';
-  if (tappa.tipo === 'costellazione') return 'curiosita.costellazione';
-  if (tappa.tipo === 'stella') return 'curiosita.stella';
-  if (tappa.tipo === 'pianeta') return 'curiosita.pianeta';
-  return 'curiosita.generica';
+  const nome = String((tappa && (tappa.sigla || tappa.nome)) || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const lungo = (nome + ' ' + String(tappa && tappa.nome || '').toLowerCase()).replace(/\s+/g, ' ');
+  const riconosci = [
+    ['luna', /moon|luna/], ['mercurio', /mercur|mercury/], ['venere', /venus|venere/],
+    ['marte', /mars|marte/], ['giove', /jupiter|giove/], ['saturno', /saturn|saturno/],
+    ['urano', /uranus|urano/], ['nettuno', /neptune|nettuno/], ['sirio', /sirius|sirio/],
+    ['vega', /\bvega\b/], ['polare', /polaris|polare/], ['betelgeuse', /betelgeuse/],
+    ['pleiadi', /m\s*45|pleiad/], ['andromeda', /m\s*31|andromed/],
+    ['orione', /m\s*42|orion/], ['ercole', /m\s*13|hercules|ercole/],
+    ['cassiopea', /cassiopeia|cassiopea/], ['orsa', /ursa major|orsa.*maggiore/],
+    ['lira', /\blyr\b|\blira\b|\blyra\b/], ['cigno', /cygnus|cigno/],
+    ['scorpione', /scorpius|scorpione/]
+  ];
+  const proprio = riconosci.find(([, prova]) => prova.test(lungo));
+  const base = proprio ? proprio[0] :
+    (tappa && tappa.tipo === 'stazione' ? 'stazione' :
+      tappa && ['profondo', 'costellazione', 'stella', 'pianeta'].includes(tappa.tipo) ? tappa.tipo : 'generica');
+  const variante = Number.isInteger(tappa && tappa.raccontoVariante)
+    ? tappa.raccontoVariante % 3 : missHashTesto(lungo) % 3;
+  return `curiosita.${base}.${variante + 1}`;
 }
 
 function missRaccontaTappa(tappa, forza) {
@@ -2245,6 +2271,7 @@ const missProve = {
   strumentoBasta: missStrumentoBasta,
   fasciaAltezza: missFasciaAltezza,
   misuraAMano: missMisuraAMano,
+  curiositaChiave: missCuriositaChiave,
   evidenza: missEvidenzaDaMagnitudine,
   difficolta: missDifficolta,
   salvataggioBuono: missSalvataggioBuono,
