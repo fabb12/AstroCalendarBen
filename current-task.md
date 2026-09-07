@@ -10,25 +10,6 @@ planetario. Il tetto resta a 362.
 
 ## Ultimo intervento completato
 
-**Missione Cielo: racconti con voce naturale Edge-TTS.**
-Richiesta: usare per i racconti una voce più naturale e coinvolgente tramite
-API Edge-TTS, senza perdere il funzionamento in campo quando la rete manca.
-
-L'endpoint si configura con `window.EDGE_TTS_API_URL` (o con l'omonima
-variabile GitHub Actions): riceve il formato `POST /v1/audio/speech` con
-`model`, `input`, `voice`, `response_format` e `speed`, e deve restituire
-audio. Le voci sono `it-IT-IsabellaNeural` e `en-US-AvaNeural`. La chiave non
-entra mai nella PWA: resta sul proxy. Se endpoint, rete o quota non sono
-disponibili, la missione ripiega sulla migliore voce locale, preferendo le
-voci Microsoft/Natural, e il racconto continua.
-
-La cache PWA è `astrocal-v284`. Il motore Missione passa 46/46 prove;
-controllo i18n (353 ≤ 362) e collisioni sono verdi. Le prove browser non sono
-state eseguite perché nel contenitore manca `playwright-core` e il registry
-npm lo rifiuta con HTTP 403.
-
-## Intervento precedente
-
 **Missione Cielo: la serata come percorso, non come elenco.**
 Richiesta: «trasforma i dati che l'app ha già in una breve esperienza guidata —
 dimmi quanto tempo hai, con cosa osservi e che esperienza desideri, e l'app
