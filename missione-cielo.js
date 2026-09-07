@@ -1541,8 +1541,29 @@ function missIcona(nome, misura) {
   return typeof icona === 'function' ? icona(nome, misura || 16) : '';
 }
 
+// Quando si scelgono i bambini non basta cambiare i bersagli: cambia la
+// persona che parla. Le chiavi elencate qui hanno una versione breve,
+// energica e giocosa nei dizionari; tutto il resto continua a usare il testo
+// normale, senza produrre chiavi mancanti in console.
+const MISS_CHIAVI_BAMBINI = new Set([
+  'titoloAnteprima', 'sommarioAnteprima', 'iniziaAdesso', 'iniziaAlle',
+  'avanzamento', 'tappaDi', 'trova', 'guidami', 'trovato', 'nonLoTrovo',
+  'salta', 'concludi', 'poi', 'curiositaTitolo', 'ascolta',
+  'guidaSemplice', 'guidaConRiferimento', 'aiuto1', 'aiuto2',
+  'aiuto2senzaRiferimento', 'aiuto3', 'sostituisci', 'segnaNonTrovato'
+]);
+
+function missChiaveRegistro(chiave, esperienza) {
+  return esperienza === 'bambini' && MISS_CHIAVI_BAMBINI.has(chiave)
+    ? 'bambini.' + chiave : chiave;
+}
+
 function missT(chiave, dati) {
-  return typeof astroI18n === 'object' ? astroI18n.t('missione.' + chiave, dati) : chiave;
+  const esperienza = (miss.attiva && miss.attiva.scelte && miss.attiva.scelte.esperienza) ||
+    (miss.anteprima && miss.anteprima.scelte && miss.anteprima.scelte.esperienza) ||
+    miss.scelte.esperienza;
+  const registrata = missChiaveRegistro(chiave, esperienza);
+  return typeof astroI18n === 'object' ? astroI18n.t('missione.' + registrata, dati) : registrata;
 }
 
 function missOra(ms) {
@@ -1877,7 +1898,7 @@ function missHtmlInCorso(m) {
 
     <p class="missione-guida">${missGuidaTesto(t)}</p>
     <section class="missione-racconto" aria-labelledby="missione-racconto-titolo">
-      <div><h4 id="missione-racconto-titolo">${missT('curiositaTitolo')}</h4><p>${missT(missCuriositaChiave(t))}</p></div>
+      <div><h4 id="missione-racconto-titolo">${missT('curiositaTitolo')}</h4><p>${missCuriositaTesto(t)}</p></div>
       ${m.scelte.voce ? `<button type="button" class="missione-tasto" data-miss-azione="ascolta">${missT('ascolta')}</button>` : ''}
     </section>
     ${missHtmlAiuto(t)}
@@ -1956,11 +1977,21 @@ function missCuriositaChiave(tappa) {
   return `curiosita.${base}.${variante + 1}`;
 }
 
+function missCuriositaTesto(tappa) {
+  const bambini = miss.attiva && miss.attiva.scelte && miss.attiva.scelte.esperienza === 'bambini';
+  if (!bambini) return missT(missCuriositaChiave(tappa));
+  const famiglia = tappa && tappa.tipo === 'luna' ? 'luna' :
+    tappa && tappa.tipo === 'pianeta' ? 'pianeta' :
+      tappa && (tappa.tipo === 'stella' || tappa.tipo === 'costellazione') ? 'stelle' :
+        tappa && (tappa.tipo === 'stazione' || tappa.tipo === 'evento') ? 'spazio' : 'profondo';
+  return missT('bambiniCuriosita.' + famiglia, { nome: missNomeTappa(tappa) });
+}
+
 function missRaccontaTappa(tappa, forza) {
   if (!tappa || (!forza && !(miss.attiva && miss.attiva.scelte.voce))) return false;
   if (typeof speechSynthesis === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined') return false;
   speechSynthesis.cancel();
-  const testo = missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missT(missCuriositaChiave(tappa)) });
+  const testo = missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) });
   const frase = new SpeechSynthesisUtterance(testo);
   const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
   frase.lang = lingua === 'en' ? 'en-US' : 'it-IT';
@@ -2321,6 +2352,7 @@ const missProve = {
   fasciaAltezza: missFasciaAltezza,
   misuraAMano: missMisuraAMano,
   curiositaChiave: missCuriositaChiave,
+  chiaveRegistro: missChiaveRegistro,
   evidenza: missEvidenzaDaMagnitudine,
   difficolta: missDifficolta,
   salvataggioBuono: missSalvataggioBuono,

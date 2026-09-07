@@ -300,6 +300,13 @@ prova('con i bambini niente di difficile, e tappe corte', () => {
   }
 });
 
+prova('la scelta bambini attiva un registro dedicato senza cambiare gli altri', () => {
+  assert.strictEqual(motore.chiaveRegistro('trova', 'bambini'), 'bambini.trova');
+  assert.strictEqual(motore.chiaveRegistro('aiuto3', 'bambini'), 'bambini.aiuto3');
+  assert.strictEqual(motore.chiaveRegistro('trova', 'stupore'), 'trova');
+  assert.strictEqual(motore.chiaveRegistro('cielo.sereno', 'bambini'), 'cielo.sereno');
+});
+
 // =====================================================================
 sezione('il tempo: chi non aspetta, e chi è già passato');
 
