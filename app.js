@@ -24464,8 +24464,12 @@ function skyPosizioneEvento(ev, quando) {
 // Da quanto (o fra quanto) rispetto all'istante mostrato
 function skyQuandoEventoTesto(ev, inCorso) {
   const scarto = Math.round((ev.dataObj.getTime() - skyAdesso().getTime()) / 1000);
-  const picco = Math.abs(scarto) < 60 ? 'al massimo adesso' : `massimo ${skyScartoTempoTesto(scarto)}`;
-  return inCorso ? `in corso · ${picco}` : skyScartoTempoTesto(scarto);
+  const picco = Math.abs(scarto) < 60
+    ? astroI18n.t('sky.eventi.massimoAdesso')
+    : astroI18n.t('sky.eventi.massimoTra', { quando: skyScartoTempoTesto(scarto) });
+  return inCorso
+    ? astroI18n.t('sky.eventi.inCorso', { picco })
+    : skyScartoTempoTesto(scarto);
 }
 
 // Nel planetario conserviamo solo la spiegazione della geometria delle
@@ -24474,7 +24478,7 @@ function skyQuandoEventoTesto(ev, inCorso) {
 function skyTastoPercheHtml(ev) {
   if (ev.eclissi || ev.eclissiLunare) {
     return `<button type="button" class="tasto-evento-cielo" onclick="skyEventoInTreD('${ev.id}')" ` +
-      `title="La Terra e la Luna da fuori in quell'istante, a scala vera, coi coni d'ombra">Perché succede</button>`;
+      `title="${astroI18n.t('scorciatoia.percheTitolo')}">${astroI18n.t('scorciatoia.perche')}</button>`;
   }
   return '';
 }
@@ -24491,7 +24495,7 @@ function eventoHaPostoIdeale(ev) {
 function skyTastoPostoIdealeHtml(ev) {
   if (!eventoHaPostoIdeale(ev)) return '';
   return `<button type="button" class="tasto-evento-cielo" onclick="apriMigliorPosto('${ev.id}')" ` +
-    `title="Cerca un punto in cui montagne e colline non coprono l'evento">Posto ideale</button>`;
+    `title="${astroI18n.t('scorciatoia.postoTitolo')}">${astroI18n.t('sky.eventi.postoIdeale')}</button>`;
 }
 
 // La finestra della mappa vive nella pagina, e la pagina non si vede finché
@@ -24532,8 +24536,8 @@ function skyEventoHtml(ev, inCorso) {
       <p class="titolo-evento">${ev.titolo}</p>
       <p class="quando-evento">${skyQuandoEventoTesto(ev, inCorso)}</p>
       <div class="azioni-evento">
-        <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Vai all'evento</button>
-        <button type="button" class="tasto-evento-cielo" onclick="apriSchedaEvento('${ev.id}')">Vedi scheda</button>
+        <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">${astroI18n.t('sky.eventi.vai')}</button>
+        <button type="button" class="tasto-evento-cielo" onclick="apriSchedaEvento('${ev.id}')">${astroI18n.t('sky.eventi.scheda')}</button>
         ${skyTastoPostoIdealeHtml(ev)}
         ${skyTastoPercheHtml(ev)}
       </div>
@@ -24561,8 +24565,8 @@ function skyEventoSettimanaHtml(ev) {
       <p class="titolo-evento">${ev.titolo}</p>
       <p class="quando-evento">${skyGiornoEventoTesto(ev)} · ${skyScartoTempoTesto(scarto)}</p>
       <div class="azioni-evento">
-        <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">Vai all'evento</button>
-        <button type="button" class="tasto-evento-cielo" onclick="apriSchedaEvento('${ev.id}')">Vedi scheda</button>
+        <button type="button" class="tasto-evento-cielo" onclick="skyVaiAEvento('${ev.id}')">${astroI18n.t('sky.eventi.vai')}</button>
+        <button type="button" class="tasto-evento-cielo" onclick="apriSchedaEvento('${ev.id}')">${astroI18n.t('sky.eventi.scheda')}</button>
         ${skyTastoPostoIdealeHtml(ev)}
         ${skyTastoPercheHtml(ev)}
       </div>
@@ -24582,33 +24586,35 @@ function skyAggiornaEventi() {
   const firma = dati.inCorso.map(e => 'c' + e.id)
     .concat(dati.vicini.map(e => 'v' + e.id))
     .concat(settimana.map(e => 's' + e.id)).join(',') +
-    '|' + Math.floor(skyAdesso().getTime() / 60000);
+    '|' + Math.floor(skyAdesso().getTime() / 60000) +
+    // Titoli e comandi sono risolti nella lingua corrente. Senza la lingua
+    // nella firma, il ridisegno richiesto dal cambio lingua usciva qui e il
+    // pannello conservava, per esempio, «Congiunzione Mercurio–Luna».
+    '|' + astroI18n.lingua();
   if (firma === sky.eventiFirma) return;
   sky.eventiFirma = firma;
 
   const pezzi = [];
   if (dati.inCorso.length) {
-    pezzi.push('<p class="titolo-elenco-eventi">Sta succedendo adesso</p>');
+    pezzi.push(`<p class="titolo-elenco-eventi">${astroI18n.t('sky.eventi.adesso')}</p>`);
     dati.inCorso.forEach(ev => pezzi.push(skyEventoHtml(ev, true)));
   }
   if (dati.vicini.length) {
-    pezzi.push('<p class="titolo-elenco-eventi">Nelle ore vicine</p>');
+    pezzi.push(`<p class="titolo-elenco-eventi">${astroI18n.t('sky.eventi.oreVicine')}</p>`);
     dati.vicini.forEach(ev => pezzi.push(skyEventoHtml(ev, false)));
   }
   if (!dati.inCorso.length && !dati.vicini.length) {
-    pezzi.push('<p class="nota-lunga">Nel cielo di quest\'ora non c\'è nessun evento del calendario. ' +
-      'Sposta l\'orologio — per esempio su una notte di agosto o di dicembre — e qui compariranno gli sciami, ' +
-      'le eclissi e le congiunzioni di quel momento.</p>');
+    pezzi.push(`<p class="nota-lunga">${astroI18n.t('sky.eventi.nessunoOra')}</p>`);
   }
   // La settimana: il programma dei prossimi sette giorni, senza uscire dal
   // planetario. È l'elenco da guardare per decidere quale sera vale la pena
   // uscire, e ogni riga porta il cielo su quel momento.
   if (settimana.length) {
-    pezzi.push('<p class="titolo-elenco-eventi">Nei prossimi 7 giorni</p>');
+    pezzi.push(`<p class="titolo-elenco-eventi">${astroI18n.t('sky.eventi.prossimiSette')}</p>`);
     settimana.forEach(ev => pezzi.push(skyEventoSettimanaHtml(ev)));
   } else {
-    pezzi.push('<p class="titolo-elenco-eventi">Nei prossimi 7 giorni</p>');
-    pezzi.push('<p class="nota-lunga">Nessun evento del calendario nei sette giorni dopo l\'ora mostrata.</p>');
+    pezzi.push(`<p class="titolo-elenco-eventi">${astroI18n.t('sky.eventi.prossimiSette')}</p>`);
+    pezzi.push(`<p class="nota-lunga">${astroI18n.t('sky.eventi.nessunoSette')}</p>`);
   }
   elenco.innerHTML = pezzi.join('');
 }
@@ -24621,7 +24627,7 @@ window.skyVaiAEvento = (id) => {
   skyImpostaOffsetTempo((ev.dataObj.getTime() - Date.now()) / 1000);
   skyEventoNelCielo(id);
   skyAttivaInseguimentoEvento(ev);
-  skyAvviso('eventi', `Orologio portato su “${ev.titolo}”: l'evento resta al centro della mappa.`, 5000);
+  skyAvviso('eventi', astroI18n.t('sky.eventi.orologioPortato', { evento: ev.titolo }), 5000);
 };
 
 // Punta la mappa dove si vede l'evento: il radiante di uno sciame, l'astro
@@ -24631,7 +24637,7 @@ window.skyEventoNelCielo = (id) => {
   if (!ev) return;
   const p = skyPosizioneEvento(ev, skyAdesso());
   if (!p) {
-    skyAvviso('eventi', 'Questo evento non ha un punto preciso del cielo da mostrare.', 5000);
+    skyAvviso('eventi', astroI18n.t('sky.eventi.senzaPunto'), 5000);
     return;
   }
   if (!p.radiante && ev.corpoCielo) {
@@ -24647,7 +24653,7 @@ window.skyEventoNelCielo = (id) => {
     return;
   }
   skyMostraGruppo('');
-  skyCentraSu({ nome: `il radiante delle ${p.nome}`, az: p.az, alt: p.alt });
+  skyCentraSu({ nome: astroI18n.t('sky.eventi.radianteDi', { nome: p.nome }), az: p.az, alt: p.alt });
 };
 
 // «Vai all'evento» non e' un semplice salto temporale: la camera resta
@@ -24723,7 +24729,7 @@ window.apriEventoNelPlanetario = (id) => {
     sky.traccia.punti = [];
     skyAggiornaStileElenco();
     skyAggiornaScheda();
-    if (p) skyCentraSu({ nome: `il radiante delle ${p.nome}`, az: p.az, alt: p.alt });
+    if (p) skyCentraSu({ nome: astroI18n.t('sky.eventi.radianteDi', { nome: p.nome }), az: p.az, alt: p.alt });
   }
 
   // Un'aurora non è in nessun punto del cielo: è un anello attorno al polo
@@ -24744,10 +24750,14 @@ window.apriEventoNelPlanetario = (id) => {
   // Il cielo mostrato non è quello di adesso: dirlo subito evita di leggere
   // posizioni giuste credendole sbagliate (o il contrario)
   const dove = p
-    ? ` — guarda verso ${skyNomeDirezione(p.az)}, a ${Math.round(p.alt)}° di altezza` +
-      (p.alt < 0 ? ' (in quel momento è ancora sotto l\'orizzonte)' : '')
+    ? astroI18n.t('sky.eventi.guardaVerso', {
+        direzione: skyNomeDirezione(p.az), altezza: Math.round(p.alt),
+        sotto: p.alt < 0 ? astroI18n.t('sky.eventi.sottoOrizzonte') : ''
+      })
     : '';
-  skyAvviso('eventi', `Cielo di ${ev.dataTesto}: ${ev.titolo}${dove}.`, 12000);
+  skyAvviso('eventi', astroI18n.t('sky.eventi.cieloDi', {
+    data: ev.dataTesto, evento: ev.titolo, dove
+  }), 12000);
 };
 
 // Il nome corto di un evento, quello che ci sta scritto sulla mappa: via il
@@ -24755,8 +24765,8 @@ window.apriEventoNelPlanetario = (id) => {
 // più lungo di una ventina di caratteri.
 function skyEtichettaEvento(ev, pos) {
   let testo = pos.radiante
-    ? 'radiante ' + String(pos.nome).split(/\s+e\s+/)[0]
-    : String(ev.titolo).replace(/^(Sciame Meteorico|Congiunzione|Occultazione):?\s*/i, '');
+    ? astroI18n.t('sky.eventi.radiante', { nome: String(pos.nome).split(/\s+(?:e|and)\s+/i)[0] })
+    : String(ev.titolo).replace(/^(?:Sciame Meteorico|Meteor Shower|Congiunzione|Conjunction|Occultazione|Occultation):?\s*/i, '');
   if (testo.length > 30) testo = testo.slice(0, 29).trimEnd() + '…';
   return testo;
 }

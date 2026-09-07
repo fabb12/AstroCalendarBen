@@ -687,6 +687,26 @@ window.ASTRO_DIZIONARI['en'] = {
     'registra.cielo': 'Record the sky',
     'registra.solare': 'Record the 3D Solar System',
 
+    // --- Events inside the planetarium --------------------------------
+    'sky.eventi.massimoAdesso': 'at maximum now',
+    'sky.eventi.massimoTra': 'maximum {quando}',
+    'sky.eventi.inCorso': 'in progress · {picco}',
+    'sky.eventi.vai': 'Go to event',
+    'sky.eventi.scheda': 'View details',
+    'sky.eventi.postoIdeale': 'Ideal spot',
+    'sky.eventi.adesso': 'Happening now',
+    'sky.eventi.oreVicine': 'Around this time',
+    'sky.eventi.nessunoOra': 'There are no calendar events in the sky at this time. Move the clock — for example to a night in August or December — and the showers, eclipses and conjunctions happening then will appear here.',
+    'sky.eventi.prossimiSette': 'In the next 7 days',
+    'sky.eventi.nessunoSette': 'No calendar events in the seven days after the time shown.',
+    'sky.eventi.orologioPortato': 'Clock moved to “{evento}”: the event will remain at the centre of the map.',
+    'sky.eventi.senzaPunto': 'This event does not have a precise point in the sky to show.',
+    'sky.eventi.radianteDi': 'the radiant of {nome}',
+    'sky.eventi.radiante': '{nome} radiant',
+    'sky.eventi.guardaVerso': ' — look {direzione}, at an altitude of {altezza}°{sotto}',
+    'sky.eventi.sottoOrizzonte': ' (at that time it is still below the horizon)',
+    'sky.eventi.cieloDi': 'Sky on {data}: {evento}{dove}.',
+
     // --- La cornice delle schede dell'agenda ---------------------------
     'agenda.tuttiInArrivo': 'You are reading every upcoming event. Pick a month to see that one instead, including in the past.',
     'agenda.simula': 'Simulate',
