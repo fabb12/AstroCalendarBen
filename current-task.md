@@ -10,6 +10,25 @@ planetario. Il tetto resta a 362.
 
 ## Ultimo intervento completato
 
+**Missione Cielo: narrazione naturale con Edge-TTS.**
+
+La scelta vocale della missione ora prova prima un endpoint HTTP Edge-TTS
+configurabile (`EDGE_TTS_API_URL`), con `it-IT-ElsaNeural` in italiano ed
+`en-US-AriaNeural` in inglese. Il ponte può restituire audio binario, un URL o
+base64; se manca o fallisce resta il ripiego Web Speech del dispositivo, così
+la missione continua a parlare anche offline. Una risposta lenta viene
+invalidata al cambio tappa e chiudere il pannello ferma ogni audio.
+
+Il workflow Pages legge la variabile Actions `EDGE_TTS_API_URL`, ne pretende
+un URL HTTPS e la inietta nel `config.js` pubblicato. Il contratto del ponte è
+documentato in `EDGE-TTS.md`; nessun segreto va nella PWA statica.
+
+Prove eseguite: motore Missione (47/47), patto i18n, collisioni globali,
+controlli sintattici e `git diff --check`. Le prove browser complete non sono
+partite perché in questo contenitore manca `playwright-core`.
+
+## Intervento precedente
+
 **Missione Cielo: la serata come percorso, non come elenco.**
 Richiesta: «trasforma i dati che l'app ha già in una breve esperienza guidata —
 dimmi quanto tempo hai, con cosa osservi e che esperienza desideri, e l'app
