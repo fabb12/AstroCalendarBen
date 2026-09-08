@@ -10676,6 +10676,12 @@ body button.did-ponte:active { transform: translateY(1px); }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.missione-striscia-guida {
+  margin-top: 2px;
+  color: var(--testo-2);
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
 .missione-striscia-tasti { display: flex; gap: 6px; flex: 0 0 auto; }
 .missione-striscia-tasti .missione-tasto {
   min-height: 36px;
@@ -10689,6 +10695,7 @@ body button.did-ponte:active { transform: translateY(1px); }
 @media (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
   .missione-striscia { padding: 6px 10px; gap: 6px; }
   .missione-striscia-titolo { display: none; }
+  .missione-striscia-guida { display: none; }
   body .missione-striscia-tasti .missione-tasto { min-height: 32px; font-size: 0.74rem; }
 }
 
