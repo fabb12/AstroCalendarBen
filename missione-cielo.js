@@ -1170,11 +1170,10 @@ function missGuidami(indice) {
 
 /* La striscia appoggiata sul cielo.
  *
- * Tre cose e non una di più: che missione è, a che tappa si è, e i due
- * tasti che servono lì — «Trovato» e «Torna alla missione». I comandi
- * del planetario non si toccano: chi arriva qui vuole anche zumare,
- * girare e leggere la scheda dell'oggetto, e nascondergli la barra del
- * tempo per metterci la nostra sarebbe scambiare la missione per l'app. */
+ * La tappa si svolge qui, non dentro una finestra che copre il cielo: la
+ * domanda e l'indizio restano leggibili mentre il planetario conserva tutti
+ * i suoi comandi. «Trovato», «Aiutami» e «Salta» sono quindi risposte vere
+ * alla tappa e portano avanti il percorso senza riaprire il pannello. */
 function missMostraStrisciaCielo() {
   const striscia = document.getElementById('missione-striscia');
   if (!striscia) return;
@@ -1193,17 +1192,25 @@ function missMostraStrisciaCielo() {
        <span class="missione-striscia-titolo">${missIcona('bersaglio', 15)} ${T('titoloBreve')}</span>
        <span class="missione-striscia-tappa">${missTesto(T('tappaDiSu', {
           n: m.corrente + 1, tot: m.tappe.length, nome: missNomeTappa(t) }))}</span>
+       <span class="missione-striscia-guida">${missTesto(
+         (missTestiAiuto(t).slice(-1)[0]) || missGuidaTesto(t))}</span>
      </div>
      <div class="missione-striscia-tasti">
        <button type="button" class="missione-tasto missione-tasto-si" data-missione-striscia="trovato">${T('trovato')}</button>
-       <button type="button" class="missione-tasto" data-missione-striscia="torna">${T('tornaAllaMissione')}</button>
+       <button type="button" class="missione-tasto" data-missione-striscia="aiuto">${T('nonLoTrovo')}</button>
+       <button type="button" class="missione-tasto missione-tasto-lieve" data-missione-striscia="salta">${T('salta')}</button>
      </div>`;
   striscia.classList.remove('hidden');
   striscia.classList.add('visibile');
   striscia.querySelectorAll('[data-missione-striscia]').forEach(b => {
     b.addEventListener('click', () => {
-      if (b.dataset.missioneStriscia === 'trovato') missSegnaEsito(m.corrente, 'trovato');
-      missTornaDalPlanetario();
+      const azione = b.dataset.missioneStriscia;
+      if (azione === 'trovato') missSegnaEsito(m.corrente, 'trovato');
+      else if (azione === 'salta') missSegnaEsito(m.corrente, 'saltato');
+      else if (azione === 'aiuto') {
+        missChiediAiuto();
+        missMostraStrisciaCielo();
+      }
     });
   });
 }
@@ -1270,7 +1277,10 @@ function missAvvia(missione, quando) {
   miss.anteprima = null;
   missSalvaAttiva();
   missMostraVista('inCorso');
-  missRaccontaTappa(miss.attiva.tappe[0]);
+  // Appena comincia la tappa, il pannello lascia libero il cielo: cercare
+  // il bersaglio nel planetario e muovere la vista e' il cuore del gioco.
+  if (missTappaPuntabile(miss.attiva.tappe[0])) missGuidami(0);
+  else missRaccontaTappa(miss.attiva.tappe[0]);
 }
 
 /* Gli orari rifatti sul cielo di adesso.
@@ -1311,13 +1321,18 @@ function missSegnaEsito(indice, esito) {
 function missAvanza() {
   const m = miss.attiva;
   if (!m) return;
+  const eraNelPlanetario = !!m.nelPlanetario;
   const prossima = m.tappe.findIndex(t => !t.esito);
   if (prossima < 0) { missConcludi(); return; }
   m.corrente = prossima;
   m.tappe[prossima].aiuto = m.tappe[prossima].aiuto || 0;
   missSalvaAttiva();
   missMostraVista('inCorso');
-  missRaccontaTappa(m.tappe[prossima]);
+  // Nel percorso interattivo anche la tappa successiva nasce direttamente
+  // nel planetario, senza il lampeggio della finestra fra una domanda e l'altra.
+  if (eraNelPlanetario && missTappaPuntabile(m.tappe[prossima])) missGuidami(prossima);
+  else if (eraNelPlanetario) missTornaDalPlanetario();
+  else missRaccontaTappa(m.tappe[prossima]);
 }
 
 /* L'aiuto progressivo.
@@ -1383,6 +1398,7 @@ function missSostituisci(indice) {
 function missConcludi() {
   const m = miss.attiva;
   if (!m) return;
+  const eraNelPlanetario = !!m.nelPlanetario;
   m.stato = 'conclusa';
   m.conclusa = Date.now();
   m.durataRealeMin = Math.max(1, Math.round((m.conclusa - (m.avviata || m.conclusa)) / 60000));
@@ -1394,6 +1410,12 @@ function missConcludi() {
   missSalvaAttiva();
   missMostraStrisciaCielo();
   missMostraVista('conclusa');
+  // Solo dopo l'ultima risposta serve di nuovo la finestra, questa volta
+  // per mostrare il risultato e permettere il salvataggio nel Diario.
+  if (eraNelPlanetario) {
+    if (typeof mostraVista === 'function') mostraVista('stasera');
+    missApriPannello();
+  }
 }
 
 function missAbbandona() {
@@ -2084,37 +2106,45 @@ async function missRaccontaTappa(tappa, forza) {
  * Il terzo è quello che vale: dopo due tentativi il problema quasi mai è
  * la mira — è che davanti c'è un albero. Nessuna app lo dice, e chi non
  * lo sente pensa di aver sbagliato lui. */
-function missHtmlAiuto(t) {
+function missTestiAiuto(t) {
   const livello = t.aiuto || 0;
-  if (!livello) return '';
+  if (!livello) return [];
   const pezzi = [];
 
   const dove = typeof astroI18n === 'object' && astroI18n.nomePunto
     ? astroI18n.nomePunto(t.azimut) : '';
-  pezzi.push(`<p>${missT('aiuto1', {
+  pezzi.push(missT('aiuto1', {
     dove: missTesto(dove),
     altezza: missT('altezza.' + missFasciaAltezza(t.altezza)),
     gradi: Math.round(t.altezza)
-  })}</p>`);
+  }));
 
   if (livello >= 2) {
     if (t.riferimento) {
       const misura = missMisuraAMano(t.riferimento.gradi);
-      pezzi.push(`<p>${missT('aiuto2', {
+      pezzi.push(missT('aiuto2', {
         da: missTesto(missNomeTappa(t.riferimento)),
         verso: missT('verso.' + t.riferimento.verso),
         misura: missT(misura.chiave.replace('missione.', '')),
         su: missT(t.riferimento.piuAlto ? 'verso.piuInAlto' : 'verso.piuInBasso')
-      })}</p>`);
+      }));
     } else {
-      pezzi.push(`<p>${missT('aiuto2senzaRiferimento')}</p>`);
+      pezzi.push(missT('aiuto2senzaRiferimento'));
     }
   }
 
-  if (livello >= 3) {
-    pezzi.push(`<p>${missT('aiuto3')}</p>`);
+  if (livello >= 3) pezzi.push(missT('aiuto3'));
+  return pezzi;
+}
+
+function missHtmlAiuto(t) {
+  const pezzi = missTestiAiuto(t);
+  if (!pezzi.length) return '';
+  const paragrafi = pezzi.map(testo => `<p>${testo}</p>`);
+
+  if ((t.aiuto || 0) >= 3) {
     const alternative = missAlternativePerTappa();
-    pezzi.push(`<div class="missione-azioni missione-azioni-aiuto">
+    paragrafi.push(`<div class="missione-azioni missione-azioni-aiuto">
       ${alternative.length
         ? `<button type="button" class="missione-tasto" data-miss-azione="sostituisci">${missT('sostituisci')}</button>`
         : ''}
@@ -2122,7 +2152,7 @@ function missHtmlAiuto(t) {
     </div>`);
   }
 
-  return `<div class="missione-aiuto" role="status">${pezzi.join('')}</div>`;
+  return `<div class="missione-aiuto" role="status">${paragrafi.join('')}</div>`;
 }
 
 function missHtmlConclusa(m) {

@@ -677,28 +677,35 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
 
     const inCorso = await pagina.evaluate(() => ({
       vista: miss.vista,
-      titolo: document.querySelector('.missione-titolone') ? document.querySelector('.missione-titolone').textContent : '',
-      barra: !!document.querySelector('.missione-barra'),
-      guida: document.querySelector('.missione-guida') ? document.querySelector('.missione-guida').textContent : '',
-      // Le coordinate equatoriali non devono comparire: si legge al buio.
-      coordinate: document.querySelector('.missione-coordinate').textContent
+      cielo: vistaAttuale,
+      pannelloChiuso: document.getElementById('modale-missione').classList.contains('hidden'),
+      striscia: !document.getElementById('missione-striscia').classList.contains('hidden'),
+      guida: document.querySelector('.missione-striscia-guida').textContent,
+      risposte: Array.from(document.querySelectorAll('[data-missione-striscia]')).map(b => b.dataset.missioneStriscia)
     }));
-    prova('la tappa in corso dice ora, direzione e altezza a parole', () => {
+    prova('la tappa comincia nel planetario, senza una finestra sopra il cielo', () => {
       assert.strictEqual(inCorso.vista, 'inCorso');
-      assert.ok(inCorso.barra, 'manca la barra di avanzamento');
+      assert.strictEqual(inCorso.cielo, 'cielo');
+      assert.strictEqual(inCorso.pannelloChiuso, true);
+      assert.strictEqual(inCorso.striscia, true);
       assert.ok(inCorso.guida.length > 10, 'guida: ' + inCorso.guida);
-      assert.ok(!/\bAR\b|declinazion/i.test(inCorso.coordinate), inCorso.coordinate);
+      assert.deepStrictEqual(inCorso.risposte, ['trovato', 'aiuto', 'salta']);
     });
 
     const dopoTrovato = await pagina.evaluate(() => {
       const prima = miss.attiva.corrente;
-      document.querySelector('[data-miss-azione="trovato"]').click();
+      document.querySelector('[data-missione-striscia="trovato"]').click();
       return { prima, dopo: miss.attiva.corrente, esito: miss.attiva.tappe[prima].esito,
-               tot: miss.attiva.tappe.length };
+               tot: miss.attiva.tappe.length, cielo: vistaAttuale,
+               pannelloChiuso: document.getElementById('modale-missione').classList.contains('hidden') };
     });
     prova('«L’ho trovato» segna la tappa e avanza', () => {
       assert.strictEqual(dopoTrovato.esito, 'trovato');
       assert.ok(dopoTrovato.dopo > dopoTrovato.prima || dopoTrovato.tot === 1);
+      if (dopoTrovato.tot > 1) {
+        assert.strictEqual(dopoTrovato.cielo, 'cielo');
+        assert.strictEqual(dopoTrovato.pannelloChiuso, true);
+      }
     });
 
     sezione('l’aiuto progressivo');
@@ -706,10 +713,10 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     const aiuti = await pagina.evaluate(() => {
       const esiti = [];
       for (let k = 1; k <= 3; k++) {
-        document.querySelector('[data-miss-azione="aiuto"]').click();
+        document.querySelector('[data-missione-striscia="aiuto"]').click();
         esiti.push({
           livello: miss.attiva.tappe[miss.attiva.corrente].aiuto,
-          paragrafi: document.querySelectorAll('.missione-aiuto p').length,
+          guida: document.querySelector('.missione-striscia-guida').textContent,
           esito: miss.attiva.tappe[miss.attiva.corrente].esito
         });
       }
@@ -719,9 +726,8 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.deepStrictEqual(aiuti.map(a => a.livello), [1, 2, 3]);
       assert.deepStrictEqual(aiuti.map(a => a.esito), [null, null, null]);
     });
-    prova('e l’aiuto cresce a ogni gradino', () => {
-      assert.ok(aiuti[1].paragrafi > aiuti[0].paragrafi, JSON.stringify(aiuti.map(a => a.paragrafi)));
-      assert.ok(aiuti[2].paragrafi >= aiuti[1].paragrafi);
+    prova('e la guida resta visibile mentre si muove il cielo', () => {
+      assert.ok(aiuti.every(a => a.guida.length > 10));
     });
 
     const sostituzione = await pagina.evaluate(() => {
