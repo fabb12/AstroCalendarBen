@@ -25,3 +25,4 @@ jobs:
       - run: node scripts/prova-missione-stati.js
       - run: node scripts/prova-missione.js
       - run: node scripts/prova-missione-interattiva.js
+        if: success() || failure()

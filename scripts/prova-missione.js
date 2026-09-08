@@ -573,6 +573,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
   await pagina.route('**/astronomy.browser.min.js', r =>
     r.fulfill({ body: leggiAstronomy(), contentType: 'text/javascript' }));
   // Niente rete vera: il meteo, i TLE e il terreno sono altre prove.
+  await pagina.route(/https:\/\/(?!cdn\.jsdelivr\.net).*\/(?:api|v2|v3|v1)\//, r => r.abort());
   await pagina.route('**api.open-meteo.com**', r => r.abort());
   await pagina.route('**celestrak.org**', r => r.abort());
   await pagina.route('**overpass**', r => r.abort());
@@ -626,8 +627,8 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     }));
     prova('la finestra si apre con le tre domande e nient’altro', () => {
       assert.strictEqual(config.aperto, true);
-      assert.strictEqual(config.gruppi, 3, `${config.gruppi} gruppi`);
-      assert.strictEqual(config.scelte, 4 + 3 + 4);
+      assert.strictEqual(config.gruppi, 5, `${config.gruppi} gruppi`);
+      assert.strictEqual(config.scelte, 4 + 3 + 4 + 2 + 2);
     });
     prova('il fuoco entra nella finestra', () => assert.strictEqual(config.fuocoDentro, true));
 
@@ -640,7 +641,8 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     const ricordate = await pagina.evaluate(() =>
       JSON.parse(localStorage.getItem('astrocalendario_missione_scelte')));
     prova('le scelte si ricordano', () => {
-      assert.deepStrictEqual(ricordate, { durata: 60, strumento: 'binocolo', esperienza: 'imparare' });
+      assert.deepStrictEqual({ durata: ricordate.durata, strumento: ricordate.strumento, esperienza: ricordate.esperienza },
+        { durata: 60, strumento: 'binocolo', esperienza: 'imparare' });
     });
 
     await pagina.evaluate(() => document.querySelector('[data-miss-azione="genera"]').click());
@@ -687,14 +689,15 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       cielo: vistaAttuale,
       pannelloChiuso: document.getElementById('modale-missione').classList.contains('hidden'),
       striscia: !document.getElementById('missione-striscia').classList.contains('hidden'),
-      guida: document.querySelector('.missione-striscia-guida').textContent,
+      guida: document.querySelector('.missione-striscia-guida')?.textContent || '',
+      diagnostica: {attiva: !!miss.attiva, nelPlanetario:miss.attiva?.nelPlanetario, tappa:miss.attiva?.tappe[0], html:document.getElementById('missione-striscia').innerHTML},
       risposte: Array.from(document.querySelectorAll('#missione-striscia [data-miss-azione]')).map(b => b.dataset.missAzione)
     }));
     prova('la tappa comincia nel planetario, senza una finestra sopra il cielo', () => {
       assert.strictEqual(inCorso.vista, 'inCorso');
-      assert.strictEqual(inCorso.cielo, 'cielo');
+      assert.strictEqual(inCorso.cielo, 'cielo', JSON.stringify(inCorso));
       assert.strictEqual(inCorso.pannelloChiuso, true);
-      assert.strictEqual(inCorso.striscia, true);
+      assert.strictEqual(inCorso.striscia, true, JSON.stringify(inCorso));
       assert.ok(inCorso.guida.length > 10, 'guida: ' + inCorso.guida);
       assert.ok(inCorso.risposte.includes('aiuto'));
       assert.ok(!inCorso.risposte.includes('trovato'));
