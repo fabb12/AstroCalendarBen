@@ -962,7 +962,7 @@ function catDisegnaStelle(ctx, base, focale) {
     // sapere come si chiama quella che si sta guardando è **il** motivo per
     // cui uno ci si è avvicinato.
     const nome = cat.nomiPerIndice.get(k);
-    if (sky.mostraNomi && nome && (oculare || cat.magnitudini[k] <= 1.9)) {
+    if (skyNomiVisibili() && nome && (oculare || cat.magnitudini[k] <= 1.9)) {
       ctx.globalAlpha = opacita * 0.8;
       ctx.font = '11px system-ui, sans-serif';
       ctx.textAlign = 'left';
@@ -1042,7 +1042,7 @@ function catDisegnaFigure(ctx, base, focale) {
       }
     });
 
-    if (!sky.mostraNomi) return;
+    if (!skyNomiVisibili()) return;
     const x = fig.centroOra[0], y = fig.centroOra[1], z = fig.centroOra[2];
     const d = x * fr[0] + y * fr[1] + z * fr[2];
     // Il nome sta nel baricentro della figura: se quello è sotto

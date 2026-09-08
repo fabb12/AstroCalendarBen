@@ -10731,3 +10731,28 @@ body .missione-striscia-tasti .missione-tasto { min-height: 36px; }
   .missione-coordinate { font-size: 0.86rem; }
   .missione-titolone { font-size: 1.1rem; }
 }
+
+/* Missione Cielo: gli indizi restano compatti anche su telefono. */
+.missione-striscia.visibile { max-height: min(48vh, 420px); overflow-y: auto; align-items: start; }
+.missione-striscia p { margin: .35rem 0; line-height: 1.45; }
+.missione-scoperta { width: 100%; min-width: 0; }
+.missione-scoperta h3 { color: #a7f3d0; font-weight: 700; }
+.missione-scoperta label { display: block; margin-top: .7rem; font-weight: 600; }
+.missione-scoperta textarea { display: block; width: 100%; box-sizing: border-box; margin: .5rem 0;
+  background: #0f172a; color: #e2e8f0; border: 1px solid #64748b; border-radius: .65rem; padding: .65rem; }
+.missione-striscia button { min-height: 44px; }
+#missione-mirino { display: block; color: #fde68a; font-size: .85rem; }
+.missione-ricerca .gruppo-astri,
+.missione-ricerca [data-vai-gruppo="astri"],
+.missione-ricerca #skymap-btn-etichette,
+.missione-ricerca #skymap-btn-hover { display: none !important; }
+@media (max-width: 600px) {
+  .missione-striscia.visibile { flex-direction: column; gap: .4rem; }
+  .missione-striscia-tasti { flex-wrap: wrap; }
+}
+
+.missione-ricerca.missione-senza-sensori #skymap-btn-segui { display: none !important; }
+body .missione-striscia-tasti .missione-tasto { min-height: 44px; }
+.missione-striscia-tasti { flex-wrap: wrap; }
+.missione-striscia.visibile .missione-striscia-guida { display: block; }
+.missione-striscia.visibile .missione-striscia-titolo { display: inline-flex; }

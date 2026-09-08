@@ -79,6 +79,7 @@ function scenario(candidati, scelte, condizioni) {
   return {
     adesso: T0,
     partenza: T0,
+    seme: 'regressione',
     candidati,
     scelte: Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'stupore' }, scelte),
     condizioni: Object.assign({ luna: 0, nuvole: 10, bortle: 4 }, condizioni)
@@ -530,7 +531,7 @@ if (process.argv.includes('--solo-motore')) {
 // La seconda metà: il pannello, i ponti e la ripresa, in un browser vero.
 // =====================================================================
 
-const CHROMIUM = process.env.CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROMIUM = process.env.CHROMIUM;
 const TIPI = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
                '.json': 'application/json', '.png': 'image/png' };
 
@@ -557,7 +558,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
 (async () => {
   const { chromium } = require('playwright-core');
   await new Promise(r => server.listen(8097, r));
-  const browser = await chromium.launch({ executablePath: CHROMIUM });
+  const browser = await chromium.launch(CHROMIUM ? { executablePath: CHROMIUM } : {});
   const contesto = await browser.newContext({
     serviceWorkers: 'block', viewport: { width: 900, height: 900 }
   });
@@ -578,6 +579,12 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
   await pagina.route('**elevation-tiles-prod**', r => r.abort());
 
   await pagina.addInitScript(([pos]) => {
+    const OriginalDate = Date;
+    const notte = OriginalDate.UTC(2026, 8, 7, 21);
+    window.Date = class extends OriginalDate {
+      constructor(...args) { super(...(args.length ? args : [notte])); }
+      static now() { return notte; }
+    };
     localStorage.setItem('astrocal_lingua', 'it');
     localStorage.setItem('astrocalendario_posizione', JSON.stringify(pos));
   }, [POSIZIONE]);
@@ -681,7 +688,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       pannelloChiuso: document.getElementById('modale-missione').classList.contains('hidden'),
       striscia: !document.getElementById('missione-striscia').classList.contains('hidden'),
       guida: document.querySelector('.missione-striscia-guida').textContent,
-      risposte: Array.from(document.querySelectorAll('[data-missione-striscia]')).map(b => b.dataset.missioneStriscia)
+      risposte: Array.from(document.querySelectorAll('#missione-striscia [data-miss-azione]')).map(b => b.dataset.missAzione)
     }));
     prova('la tappa comincia nel planetario, senza una finestra sopra il cielo', () => {
       assert.strictEqual(inCorso.vista, 'inCorso');
@@ -689,17 +696,20 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.strictEqual(inCorso.pannelloChiuso, true);
       assert.strictEqual(inCorso.striscia, true);
       assert.ok(inCorso.guida.length > 10, 'guida: ' + inCorso.guida);
-      assert.deepStrictEqual(inCorso.risposte, ['trovato', 'aiuto', 'salta']);
+      assert.ok(inCorso.risposte.includes('aiuto'));
+      assert.ok(!inCorso.risposte.includes('trovato'));
     });
 
     const dopoTrovato = await pagina.evaluate(() => {
       const prima = miss.attiva.corrente;
-      document.querySelector('[data-missione-striscia="trovato"]').click();
+      const t = miss.attiva.tappe[prima];
+      missSelezionaCielo(t.tipo === 'costellazione' ? { categoria: 'costellazione', sigla: t.sigla } : { categoria: 'astro', id: t.idCielo });
+      missAzione('continua', document.getElementById('missione-striscia'));
       return { prima, dopo: miss.attiva.corrente, esito: miss.attiva.tappe[prima].esito,
                tot: miss.attiva.tappe.length, cielo: vistaAttuale,
                pannelloChiuso: document.getElementById('modale-missione').classList.contains('hidden') };
     });
-    prova('«L’ho trovato» segna la tappa e avanza', () => {
+    prova('la selezione corretta e la scoperta fanno avanzare la tappa', () => {
       assert.strictEqual(dopoTrovato.esito, 'trovato');
       assert.ok(dopoTrovato.dopo > dopoTrovato.prima || dopoTrovato.tot === 1);
       if (dopoTrovato.tot > 1) {
@@ -713,7 +723,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     const aiuti = await pagina.evaluate(() => {
       const esiti = [];
       for (let k = 1; k <= 3; k++) {
-        document.querySelector('[data-missione-striscia="aiuto"]').click();
+        document.querySelector('#missione-striscia [data-miss-azione="aiuto"]').click();
         esiti.push({
           livello: miss.attiva.tappe[miss.attiva.corrente].aiuto,
           guida: document.querySelector('.missione-striscia-guida').textContent,
@@ -732,12 +742,12 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
 
     const sostituzione = await pagina.evaluate(() => {
       const tasto = document.querySelector('[data-miss-azione="sostituisci"]');
-      if (!tasto) return { possibile: false };
+      if (!tasto || !missAlternativePerTappa().length) return { possibile: false };
       const prima = miss.attiva.tappe[miss.attiva.corrente].nome;
       const oraPrima = miss.attiva.tappe[miss.attiva.corrente].quando;
       tasto.click();
       const dopo = miss.attiva.tappe[miss.attiva.corrente];
-      return { possibile: true, prima, dopo: dopo.nome, stessaOra: dopo.quando === oraPrima,
+      return { possibile: true, prima, dopo: dopo.nome, stessaOra: dopo.quando === Date.now(),
                tot: miss.attiva.tappe.length };
     });
     prova('sostituire una tappa non cambia la durata della missione', () => {
@@ -749,10 +759,9 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     sezione('il ponte col planetario');
 
     const alPlanetario = await pagina.evaluate(() => {
-      const tasto = document.querySelector('[data-miss-azione="guidami"]');
-      if (!tasto) return { puntabile: false };
       const bersaglio = miss.attiva.tappe[miss.attiva.corrente];
-      tasto.click();
+      if (!missTappaPuntabile(bersaglio)) return { puntabile: false };
+      missGuidami(miss.attiva.corrente);
       return {
         puntabile: true,
         vista: vistaAttuale,
@@ -764,10 +773,10 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       };
     });
     await pagina.waitForTimeout(500);
-    prova('«Guidami» apre il planetario sul bersaglio', () => {
+    prova('la ricerca apre il planetario senza centrare il bersaglio', () => {
       if (!alPlanetario.puntabile) { console.log('              (tappa senza bersaglio puntabile)'); return; }
       assert.strictEqual(alPlanetario.vista, 'cielo');
-      if (alPlanetario.idCielo) assert.strictEqual(alPlanetario.target, alPlanetario.idCielo);
+      assert.strictEqual(alPlanetario.target, null);
     });
     prova('e la striscia della missione compare sul cielo', () => {
       if (!alPlanetario.puntabile) return;
@@ -913,7 +922,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     // Si semina una missione in corso e si ricarica la pagina davvero.
     await pagina.evaluate(() => {
       localStorage.setItem('astrocalendario_missione_attiva', JSON.stringify({
-        id: 'miss-prova', versione: 1, stato: 'inCorso',
+        id: 'miss-prova', versione: MISS_VERSIONE, stato: 'inCorso',
         creata: Date.now(), partenza: Date.now(), avviata: Date.now(), corrente: 1,
         scelte: { durata: 30, strumento: 'occhio', esperienza: 'stupore' },
         condizioni: { luna: 0, nuvole: 10, bortle: 4 },

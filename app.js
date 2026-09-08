@@ -8359,6 +8359,11 @@ function skyLevigaBase(nuova) {
 // prima è la modalità naturale, ma si può sganciare: senza sganciarla non si
 // potrebbe portare al centro della mappa un oggetto scelto dall'elenco, che
 // è proprio quello che si vuole quando si cerca qualcosa.
+// Una ricerca nasconde le etichette senza cambiare la preferenza salvata.
+function skyNomiVisibili() {
+  return sky.mostraNomi && !(typeof missRicercaAttiva === 'function' && missRicercaAttiva());
+}
+
 function skyUsaSensori() {
   return !!(sky.sensori && sky.seguiTelefono && skyAssettoDisponibile());
 }
@@ -11728,6 +11733,10 @@ function skyEUnTelefonoConSensoriProtetti() {
 }
 
 function skyProponiMovimentoTelefono() {
+  if (typeof missRicercaAttiva === 'function' && missRicercaAttiva() && sky.sensori && sky.assoluto) {
+    missAttivaTelefono();
+    return;
+  }
   if (!sky.aperto || sky.sceltaSensori !== null || sky.domandaSensoriMostrata) return;
   if (!skyESmartphone()) return;
   // Per le API senza permesso arriviamo qui solo da una lettura reale. Per
@@ -20662,7 +20671,7 @@ function skyDisegnaAstro(ctx, base, focale, o) {
   }
 
   // Etichetta
-  if (sky.mostraNomi) {
+  if (skyNomiVisibili()) {
     ctx.globalAlpha = sottoOrizzonte ? 0.45 : Math.max(0.12, 0.95 * visibilita);
     ctx.font = (o.id === sky.target ? 'bold ' : '') + '12px system-ui, sans-serif';
     ctx.fillStyle = o.id === sky.target ? '#93c5fd' : '#e2e8f0';
@@ -20832,6 +20841,7 @@ function skyDisegna() {
   // disturbare il filtro anti-tremolio, che è un filtro con memoria).
   sky.ultimaBase = base;
   sky.ultimaFocale = focale;
+  if (typeof missAggiornaMirino === 'function') missAggiornaMirino(base);
 
   // Che cielo c'è a quest'ora: lo decide l'altezza del Sole. Da qui vengono
   // il colore del fondo, la foschia bassa, il terreno e quante stelle si
@@ -23283,6 +23293,7 @@ function skyAggiornaEtichette() {
 // Da qui in poi la scheda si apre in un modo solo: premendo direttamente
 // sull'oggetto disegnato sulla mappa.
 function skyImpostaTarget(id, opzioni = {}) {
+  if (typeof missRicercaAttiva === 'function' && missRicercaAttiva()) return;
   // Una nuova scelta esplicita prende il posto dell'evento che la camera
   // stava seguendo; «Vai all'evento» reimposta subito dopo il proprio
   // aggancio, quando questa funzione viene usata durante quel flusso.
@@ -23831,6 +23842,7 @@ function skyJ2000AllaData(raOre, dec, t) {
 // due stanno entrambi in fondo alla mappa, e aperti insieme si scrivevano
 // l'uno sopra l'altro.
 function skyApriDettaglio(sel) {
+  if (typeof missRicercaAttiva === 'function' && missRicercaAttiva()) return;
   skyMostraGruppo('');
   sky.selezione = sel;
   // Quello che si apre toccando un oggetto è il **fumetto**, non più il
@@ -24997,6 +25009,7 @@ function skyPuntoSulTerreno(px, py) {
 }
 
 function skyControllaSostaMirino() {
+  if (typeof missRicercaAttiva === 'function' && missRicercaAttiva()) { sky.sostaMirino = null; return; }
   if (!skyHoverAttivo()) {
     sky.sostaMirino = null;
     return;
@@ -26347,6 +26360,7 @@ function splashPlanetarioNascondi() {
 
 function chiudiSkymap() {
   if (!sky.aperto) return;
+  if (typeof missPausaCielo === 'function') missPausaCielo();
   sky.aperto = false;
   sky.sostaMirino = null;
   if (typeof aereiFerma === 'function') aereiFerma();
@@ -26537,6 +26551,8 @@ function skyInizializzaGesti() {
       return;
     }
     const sel = skyOggettoNelPunto(px, py);
+    if (typeof missRicercaAttiva === 'function' && missRicercaAttiva() && skyPuntoSulTerreno(px, py)) return;
+    if (typeof missSelezionaCielo === 'function' && missSelezionaCielo(sel)) return;
     if (!sel) {
       const luogo = skyLuogoNelPunto(px, py);
       if (luogo) { skyChiudiDettaglio(); skyMostraVaiQua(luogo, px, py); return; }
@@ -38168,7 +38184,7 @@ function skyDisegnaCostellazioni(ctx, base, focale) {
     // Nome della costellazione al centro della figura, se è in vista
     const visibili = punti.filter((p, i) => p.davanti && c.stelle[i].alt > 0 &&
       p.px > 0 && p.px < sky.larghezza && p.py > 0 && p.py < sky.altezza);
-    if (sky.mostraNomi && visibili.length >= Math.max(2, Math.ceil(punti.length / 2))) {
+    if (skyNomiVisibili() && visibili.length >= Math.max(2, Math.ceil(punti.length / 2))) {
       const cx = visibili.reduce((s, p) => s + p.px, 0) / visibili.length;
       const cy = visibili.reduce((s, p) => s + p.py, 0) / visibili.length;
       ctx.globalAlpha = 0.7 * velo;
@@ -38248,7 +38264,7 @@ function skyDisegnaProfondo(ctx, base, focale) {
     }
     ctx.restore();
 
-    if (sky.mostraNomi) {
+    if (skyNomiVisibili()) {
       ctx.globalAlpha = (o.alt < 0 ? 0.3 : 0.85) * velo;
       ctx.font = '11px system-ui, sans-serif';
       ctx.fillStyle = SKY_COLORI_PROFONDO[o.tipo] || '#a5f3fc';
