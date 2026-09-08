@@ -625,7 +625,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       scelte: document.querySelectorAll('#missione-corpo [data-miss-scelta]').length,
       fuocoDentro: document.getElementById('modale-missione').contains(document.activeElement)
     }));
-    prova('la finestra si apre con le tre domande e nient’altro', () => {
+    prova('la finestra presenta scelte, settore e voce', () => {
       assert.strictEqual(config.aperto, true);
       assert.strictEqual(config.gruppi, 5, `${config.gruppi} gruppi`);
       assert.strictEqual(config.scelte, 4 + 3 + 4 + 2 + 2);
@@ -726,7 +726,9 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     const aiuti = await pagina.evaluate(() => {
       const esiti = [];
       for (let k = 1; k <= 3; k++) {
-        document.querySelector('#missione-striscia [data-miss-azione="aiuto"]').click();
+        const aiuto = document.querySelector('#missione-striscia [data-miss-azione="aiuto"]');
+        if (!aiuto) throw new Error(JSON.stringify({k, corrente:miss.attiva.corrente, nelPlanetario:miss.attiva.nelPlanetario, tappa:miss.attiva.tappe[miss.attiva.corrente], html:document.getElementById('missione-striscia').innerHTML}));
+        aiuto.click();
         esiti.push({
           livello: miss.attiva.tappe[miss.attiva.corrente].aiuto,
           guida: document.querySelector('.missione-striscia-guida').textContent,
@@ -735,7 +737,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       }
       return esiti;
     });
-    prova('«Non lo trovo» aiuta e non segna niente come fallito', () => {
+    prova('«Guidami» aiuta e non segna niente come fallito', () => {
       assert.deepStrictEqual(aiuti.map(a => a.livello), [1, 2, 3]);
       assert.deepStrictEqual(aiuti.map(a => a.esito), [null, null, null]);
     });
@@ -868,7 +870,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       return {
         quante: voci.length,
         chiave: voce ? voce[0] : null,
-        voce: voce ? voce[1] : null,
+        voce: voce ? voce[1] : null, versione: MISS_VERSIONE,
         attivaSparita: miss.attiva === null,
         salvataggioPulito: localStorage.getItem('astrocalendario_missione_attiva')
       };
@@ -880,7 +882,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.ok(salvata.voce.missione.tappe.length >= 2);
       assert.strictEqual(salvata.voce.stelle, 4);
       assert.ok(salvata.voce.nota.includes('limpida'));
-      assert.strictEqual(salvata.voce.missione.versione, 1);
+      assert.strictEqual(salvata.voce.missione.versione, salvata.versione);
     });
     prova('e la missione attiva viene archiviata', () => {
       assert.strictEqual(salvata.attivaSparita, true);
