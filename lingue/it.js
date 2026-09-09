@@ -2330,6 +2330,11 @@ window.ASTRO_DIZIONARI['it'] = {
 
     // Le tre domande
     'missione.quantoTempo': 'Quanto tempo hai?',
+    'missione.quandoMissione': 'Quando vuoi fare la missione?',
+    'missione.momentoAdesso': 'Adesso',
+    'missione.momentoConsigliato': 'Più tardi, col cielo buio',
+    'missione.momentoScegli': 'Scegli giorno e ora',
+    'missione.dataOraMissione': 'Giorno e ora di inizio',
     'missione.conCosa': 'Con cosa osservi?',
     'missione.cheEsperienza': 'Che esperienza desideri?',
     'missione.durata.10': '10 minuti',
@@ -2355,6 +2360,8 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.vuoiVoce': 'Vuoi ascoltare il racconto?',
     'missione.voceSi': 'Voce naturale Edge-TTS',
     'missione.voceNo': 'Solo testo',
+    'missione.soloVoce': 'Nascondi, solo voce',
+    'missione.mostraGuida': 'Mostra la guida',
 
     // L'anteprima
     'missione.titoloAnteprima': { uno: 'Una meraviglia in {minuti} minuti', altri: '{n} meraviglie in {minuti} minuti' },

@@ -125,7 +125,8 @@ const MISS_MISURE_A_MANO = [
 // una ricarica sta in `attiva` e si salva (§7).
 const miss = {
   // Le tre scelte, ricordate fra una sera e l'altra
-  scelte: { durata: 30, strumento: 'occhio', esperienza: 'stupore', cielo: 'tutto', cieloDa: 135, cieloA: 180, voce: false },
+  scelte: { durata: 30, strumento: 'occhio', esperienza: 'stupore', cielo: 'tutto', cieloDa: 135, cieloA: 180,
+    momento: 'consigliato', momentoPersonalizzato: null, voce: false },
   // La missione appena generata e non ancora avviata
   anteprima: null,
   // Quella in corso o conclusa e non ancora archiviata
@@ -139,6 +140,8 @@ const miss = {
   fuocoPrima: null,
   // Il primo estremo acquisito con la bussola, finche' si prende il secondo.
   rilievoSettore: null,
+  // La guida può sparire dal cielo mentre la narrazione continua.
+  strisciaNascosta: false,
   // Le funzioni da staccare alla chiusura (tastiera, cambio lingua)
   staccare: []
 };
@@ -520,9 +523,18 @@ function missGeneraMissione(scenario) {
   // Math.random durante il rendering farebbe invece cambiare storia a ogni
   // clic su «non lo trovo».
   const idMissione = 'miss-' + partenza + '-' + seme;
-  const misurate = inOrario.map(t => scenario.posizioneA ?
+  let misurate = inOrario.map(t => scenario.posizioneA ?
     Object.assign({}, t, scenario.posizioneA(t, t.quando)) : t)
     .filter(t => missAmmissibile(t, scelte));
+  // Un oggetto che sorge o tramonta può essere valido solo verso la fine
+  // della finestra. Gli orari regolari assegnati sopra non devono quindi
+  // trasformare un cielo realmente popolato in una missione vuota: in quel
+  // caso conserviamo gli istanti migliori già misurati dal raccoglitore.
+  if (!misurate.length && scenario.posizioneA) {
+    misurate = fila.map(t => Object.assign({}, t, scenario.posizioneA(t, t.quando)))
+      .filter(t => missAmmissibile(t, scelte))
+      .sort((a, b) => a.quando - b.quando);
+  }
   const tappe = missAttaccaRiferimenti(misurate, votati).map((t, i) => Object.assign({}, t, {
     indice: i,
     esito: null,
@@ -1063,6 +1075,10 @@ function missCaricaScelte() {
   if (MISS_DIREZIONI.includes(Number(s.cieloDa))) miss.scelte.cieloDa = Number(s.cieloDa);
   if (MISS_DIREZIONI.includes(Number(s.cieloA))) miss.scelte.cieloA = Number(s.cieloA);
   if (typeof s.voce === 'boolean') miss.scelte.voce = s.voce;
+  if (['adesso', 'consigliato', 'personalizzato'].includes(s.momento)) miss.scelte.momento = s.momento;
+  if (typeof s.momentoPersonalizzato === 'number' && Number.isFinite(s.momentoPersonalizzato)) {
+    miss.scelte.momentoPersonalizzato = s.momentoPersonalizzato;
+  }
 }
 
 function missSalvaScelte() {
@@ -1282,7 +1298,14 @@ function missMostraStrisciaCielo() {
   if (!el) return;
   el.classList.toggle('hidden', !visibile);
   el.classList.toggle('visibile', visibile);
+  el.classList.toggle('solo-voce', visibile && miss.strisciaNascosta);
   if (!visibile) { document.body.classList.remove('missione-senza-sensori'); return; }
+  if (miss.strisciaNascosta) {
+    el.innerHTML = `<button type="button" class="missione-tasto missione-ripristina" data-miss-azione="mostra-guida">
+      ${missT('mostraGuida')}</button>`;
+    el.querySelector('[data-miss-azione]').addEventListener('click', () => missAzione('mostra-guida', el));
+    return;
+  }
   el.innerHTML = t.fase === 'scoperta' ? missHtmlScoperta(t) : `
     <div class="missione-striscia-testo">
       <span class="missione-striscia-titolo">${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })} · ${missTesto(missTitoloTappa(t))}</span>
@@ -1292,6 +1315,7 @@ function missMostraStrisciaCielo() {
       <span id="missione-mirino" aria-live="off">${missT('gioco.tocca')}</span>
     </div>
     <div class="missione-striscia-tasti">
+      <button class="missione-tasto missione-tasto-lieve" data-miss-azione="solo-voce">${missT('soloVoce')}</button>
       <button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>
       ${(t.aiuto || 0) >= 3 && !t.rivelata ? `<button class="missione-tasto" data-miss-azione="rivela">${missT('gioco.rivela')}</button>` : ''}
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>
@@ -1898,6 +1922,21 @@ function missGruppoScelte(nome, voci, attuale, etichetta) {
   </fieldset>`;
 }
 
+function missValoreDataOra(ms) {
+  const d = new Date(ms);
+  const due = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}T${due(d.getHours())}:${due(d.getMinutes())}`;
+}
+
+function missPartenzaScelta() {
+  if (miss.scelte.momento === 'adesso') return Date.now();
+  if (miss.scelte.momento === 'personalizzato') {
+    const scelto = Number(miss.scelte.momentoPersonalizzato);
+    if (Number.isFinite(scelto) && scelto > Date.now() - 5 * 60000) return scelto;
+  }
+  return Math.max(Date.now(), missOraConsigliata() || 0);
+}
+
 function missHtmlConfigurazione() {
   const durate = MISS_DURATE.map(d => ({ valore: d, nome: missT('durata.' + d) }));
   const strumenti = MISS_STRUMENTI.map(s => ({
@@ -1913,6 +1952,16 @@ function missHtmlConfigurazione() {
 
   return `<div class="missione-configurazione">
     ${missGruppoScelte('durata', durate, miss.scelte.durata, missT('quantoTempo'))}
+    ${missGruppoScelte('momento', [
+      { valore: 'adesso', nome: missT('momentoAdesso') },
+      { valore: 'consigliato', nome: missT('momentoConsigliato') },
+      { valore: 'personalizzato', nome: missT('momentoScegli') }
+    ], miss.scelte.momento, missT('quandoMissione'))}
+    ${miss.scelte.momento === 'personalizzato' ? `<label class="missione-campo missione-momento">
+      <span>${missT('dataOraMissione')}</span>
+      <input class="missione-select" type="datetime-local" data-miss-momento
+        min="${missValoreDataOra(Date.now())}" value="${missValoreDataOra(missPartenzaScelta())}">
+    </label>` : ''}
     ${missGruppoScelte('strumento', strumenti, miss.scelte.strumento, missT('conCosa'))}
     ${missGruppoScelte('esperienza', esperienze, miss.scelte.esperienza, missT('cheEsperienza'))}
     ${missGruppoScelte('cielo', [
@@ -1981,6 +2030,7 @@ function missHtmlAnteprima(m) {
       <span class="missione-anteprima-nome">${missTesto(missTitoloTappa(t))}</span>
       <span class="missione-anteprima-che">${missT('difficolta.' + t.difficolta)}</span>
     </li>`).join('');
+  const futura = m.partenza > Date.now() + MISS_SCARTO_RIGENERA_MS;
 
   return `<div class="missione-anteprima">
     <h3 class="missione-titolone">${missT('titoloAnteprima', {
@@ -1992,8 +2042,9 @@ function missHtmlAnteprima(m) {
     ${avvisi.length ? `<p class="missione-avviso" data-tono="informa">${avvisi.join(' ')}</p>` : ''}
     <ul class="missione-anteprima-elenco">${righe}</ul>
     <div class="missione-azioni">
-      <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="avvia">
-        ${missT('iniziaAdesso')}</button>
+      <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="${futura ? 'avviaDopo' : 'avvia'}">
+        ${futura ? missT('iniziaAlle', { ora: missOra(m.partenza) }) : missT('iniziaAdesso')}</button>
+      ${futura ? `<button type="button" class="missione-tasto" data-miss-azione="avvia">${missT('iniziaAdesso')}</button>` : ''}
 
       <button type="button" class="missione-tasto" data-miss-azione="rigenera">${missT('unaltra')}</button>
       <button type="button" class="missione-tasto" data-miss-azione="configura">${missT('cambiaScelte')}</button>
@@ -2327,6 +2378,12 @@ function missCollegaPannello(corpo) {
     miss.rilievoSettore = null;
     missSalvaScelte();
   }));
+  const momento = corpo.querySelector('[data-miss-momento]');
+  if (momento) momento.addEventListener('change', () => {
+    const ms = new Date(momento.value).getTime();
+    miss.scelte.momentoPersonalizzato = Number.isFinite(ms) ? ms : null;
+    missSalvaScelte();
+  });
   const rileva = corpo.querySelector('[data-miss-rileva]');
   if (rileva) rileva.addEventListener('click', () => missRilevaEstremo(rileva));
 
@@ -2386,6 +2443,17 @@ async function missRilevaEstremo(tasto) {
 function missAzione(azione, corpo) {
   miss.avviso = null;
   switch (azione) {
+    case 'solo-voce': {
+      miss.strisciaNascosta = true;
+      const tappa = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
+      missMostraStrisciaCielo();
+      if (tappa) missRaccontaTappa(tappa, true);
+      break;
+    }
+    case 'mostra-guida':
+      miss.strisciaNascosta = false;
+      missMostraStrisciaCielo();
+      break;
     case 'genera':
     case 'rigenera': {
       const evitare = (azione === 'rigenera' && miss.anteprima)
@@ -2405,7 +2473,7 @@ function missAzione(azione, corpo) {
       missAvvia(miss.anteprima);
       break;
     case 'avviaDopo': {
-      const quando = missOraConsigliata();
+      const quando = miss.anteprima && miss.anteprima.partenza;
       missAvvia(miss.anteprima, quando || Date.now());
       break;
     }
@@ -2475,7 +2543,7 @@ function missAzione(azione, corpo) {
  * perché **il cielo non offre niente** — che è un'informazione vera e non
  * un guasto, e va detta con altre parole. */
 function missPreparaAnteprima(evitare) {
-  const partenza = Math.max(Date.now(), missOraConsigliata() || 0);
+  const partenza = missPartenzaScelta();
   const scenario = missScenario(miss.scelte, partenza);
   if (scenario.errore) {
     missAvvisa(scenario.errore, {}, 'informa');
