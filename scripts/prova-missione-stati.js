@@ -51,6 +51,10 @@ const clues=[];for(let i=0;i<3;i++){clues.push(run('missIndizio(miss.attiva.tapp
 assert.equal(new Set(clues).size,3);assert.equal(run('!!miss.attiva.tappe[0].rivelata'),false);
 // A correct identifier in a simulated time or another location is not an observation.
 offset=3600000;run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);offset=0;
+// Se la missione e' stata avviata esplicitamente all'ora consigliata, invece,
+// il cielo simulato e' la scena valida e un altro oggetto resta un tentativo.
+offset=3600000;run("miss.attiva.simulazione=true;miss.attiva.tappe[0].feedback=null;missSelezionaCielo({categoria:'astro',id:'Star2'})");
+assert.equal(run('miss.attiva.tappe[0].feedback'),'gioco.riprova');run('miss.attiva.simulazione=false');offset=0;
 ctx.sky.observer=new Astronomy.Observer(0,0,0);run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);ctx.sky.observer=obs;
 run("missAzione('rivela',document.body)");assert.equal(run('miss.attiva.tappe[0].esito'),null);assert(elements.get('missione-striscia').innerHTML.includes('Vega'));
 run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].fase'),'scoperta');assert.equal(run('miss.attiva.corrente'),0);
@@ -70,6 +74,7 @@ assert.deepEqual(missing,[]);
 run("Object.assign(miss.attiva.tappe[0],{tipo:'stella',fase:'ricerca',esito:null});miss.telefonoProvato=false");
 ctx.sky.sensori=true;ctx.sky.assoluto=true;run('missAttivaTelefono()');assert.equal(ctx.sky.seguiTelefono,true);
 ctx.sky.seguiTelefono=false;run('missAttivaTelefono()');assert.equal(ctx.sky.seguiTelefono,false);
+ctx.sky.seguiTelefono=true;run('miss.attiva.simulazione=true;miss.telefonoProvato=false;missAttivaTelefono()');assert.equal(ctx.sky.seguiTelefono,false);run('miss.attiva.simulazione=false');
 ctx.sky.sensori=false;run('miss.telefonoProvato=false;missAttivaTelefono()');assert.equal(ctx.sky.seguiTelefono,false);
 const guidance=run("missGuidaMirino({f:skyVettore(0,40),r:skyVettore(90,0),u:skyVettore(180,50)},{azimut:359,altezza:40})");assert(!guidance.includes('Vega'));
 // A daylight target or one behind the local obstacle cannot complete.
