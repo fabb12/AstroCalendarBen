@@ -56,10 +56,26 @@ const server = http.createServer((req,res)=> {
   await page.evaluate(()=> { mostraVista('stasera'); missApriPannello(); miss.scelte.esperienza='sfida'; missPreparaAnteprima(); });
   const preview=await page.evaluate(()=>({names:miss.anteprima.tappe.map(t=>t.nome), text:document.getElementById('missione-corpo').textContent}));
   assert(preview.names.length >= 2); preview.names.forEach(n=>assert(!preview.text.includes(n),'preview hides '+n));
-  await page.click('[data-miss-azione="avvia"]');
+  const planned=await page.evaluate(()=>miss.anteprima.tappe[0].quando);
+  await page.click('[data-miss-azione="avviaDopo"]');
   await page.waitForTimeout(500);
   const search=await page.evaluate(()=> ({target:sky.target, labels:skyNomiVisibili(), name:miss.attiva.tappe[0].nome,
+    skyTime:skyAdesso().getTime(), timeMode:sky.modalitaTempo,
     text:document.getElementById('missione-striscia').textContent, buttons:[...document.querySelectorAll('#missione-striscia button')].map(b=>b.textContent)}));
+  assert.equal(search.skyTime,planned); assert.equal(search.timeMode,'simulato');
+  // Continue the interactive search on the real sky, as an «adesso» mission.
+  await page.evaluate(()=> {
+    missAbbandona();
+    miss.scelte.momento='adesso';
+    mostraVista('stasera');
+    missApriPannello();
+    missPreparaAnteprima();
+    missAvvia(miss.anteprima);
+  });
+  const currentTime=await page.evaluate(()=>({skyTime:skyAdesso().getTime(),timeMode:sky.modalitaTempo,now:Date.now()}));
+  assert.equal(currentTime.timeMode,'reale'); assert.equal(currentTime.skyTime,currentTime.now);
+  search.name=await page.evaluate(()=>miss.attiva.tappe[0].nome);
+  search.text=await page.textContent('#missione-striscia');
   assert.equal(search.target,null); assert.equal(search.labels,false); assert(!search.text.includes(search.name));
   assert(!search.buttons.some(s=>/trovato/i.test(s)));
   await page.screenshot({path:path.join(root,'../missione-ricerca.png')});

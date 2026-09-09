@@ -1144,6 +1144,23 @@ function missTappaPuntabile(t) {
   return !!(t && (t.idCielo || (t.mira && typeof t.mira.ra === 'number')));
 }
 
+// La scelta fatta nella configurazione governa anche l'orologio del cielo.
+// Una missione «adesso» deve restare agganciata al tempo reale; una serata
+// preparata per più tardi, invece, va mostrata all'istante della tappa. Senza
+// questo passaggio il planetario tornava sempre a ora e faceva vedere il cielo
+// diurno proprio mentre la missione descriveva quello della sera.
+function missImpostaTempoPlanetario(m, t) {
+  if (!m || !m.scelte || m.scelte.momento === 'adesso') {
+    skyImpostaOffsetTempo(0, { reale: true });
+    return;
+  }
+  const previsto = t && typeof t.quando === 'number' ? t.quando : NaN;
+  const partenza = typeof m.partenza === 'number' ? m.partenza : NaN;
+  const istante = Number.isFinite(previsto) ? previsto : partenza;
+  if (Number.isFinite(istante)) skyImpostaOffsetTempo((istante - Date.now()) / 1000);
+  else skyImpostaOffsetTempo(0, { reale: true });
+}
+
 // Aprire la mappa e chiedere un indizio sono azioni distinte.
 function missGuidami(indice) {
   const m = miss.attiva, t = m && m.tappe[indice];
@@ -1156,7 +1173,7 @@ function missGuidami(indice) {
   skyMostraGruppo('');
   skyTornaAlLuogoDiCasa();
   skyFermaPlayback();
-  skyImpostaOffsetTempo(0, { reale: true });
+  missImpostaTempoPlanetario(m, t);
   skyChiudiDettaglio();
   sky.target = null;
   sky.centraQuandoPronto = null;
