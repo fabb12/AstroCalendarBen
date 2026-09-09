@@ -2164,7 +2164,7 @@ function costArteMostra(sigla) {
 // alle lettere non ruba il tocco. Misure e proiezione sono le stesse usate da
 // `catDisegnaFigure`; il margine porta il bersaglio all'ampiezza di un dito.
 function costNomeNelPunto(px, py, base, focale) {
-  if (!catPronto() || !sky.mostraCostellazioni || !sky.mostraNomi || !cat.figure) return null;
+  if (!catPronto() || !sky.mostraCostellazioni || !skyNomiVisibili() || !cat.figure) return null;
   const velo = typeof skyVelo === 'function' ? skyVelo() : 1;
   if (velo < 0.06) return null;
 

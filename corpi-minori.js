@@ -796,7 +796,7 @@ function corpiMinoriDisegna(ctx, base, focale) {
     ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
     ctx.fill();
 
-    if (sky.mostraNomi) {
+    if (skyNomiVisibili()) {
       ctx.globalAlpha = opacita * 0.85;
       ctx.font = '11px system-ui, sans-serif';
       ctx.textAlign = 'left';

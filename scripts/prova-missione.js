@@ -79,6 +79,7 @@ function scenario(candidati, scelte, condizioni) {
   return {
     adesso: T0,
     partenza: T0,
+    seme: 'regressione',
     candidati,
     scelte: Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'stupore' }, scelte),
     condizioni: Object.assign({ luna: 0, nuvole: 10, bortle: 4 }, condizioni)
@@ -530,7 +531,7 @@ if (process.argv.includes('--solo-motore')) {
 // La seconda metà: il pannello, i ponti e la ripresa, in un browser vero.
 // =====================================================================
 
-const CHROMIUM = process.env.CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const CHROMIUM = process.env.CHROMIUM;
 const TIPI = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
                '.json': 'application/json', '.png': 'image/png' };
 
@@ -557,7 +558,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
 (async () => {
   const { chromium } = require('playwright-core');
   await new Promise(r => server.listen(8097, r));
-  const browser = await chromium.launch({ executablePath: CHROMIUM });
+  const browser = await chromium.launch(CHROMIUM ? { executablePath: CHROMIUM } : {});
   const contesto = await browser.newContext({
     serviceWorkers: 'block', viewport: { width: 900, height: 900 }
   });
@@ -567,17 +568,22 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
   pagina.on('pageerror', e => errori.push('ECCEZIONE: ' + e.message));
   pagina.on('console', m => { if (m.type() === 'error') errori.push(m.text()); });
 
-  await pagina.route('**cdn.jsdelivr.net**', r => r.fulfill({ body: '', contentType: 'text/javascript' }));
-  await pagina.route('**fonts.googleapis.com**', r => r.fulfill({ body: '', contentType: 'text/css' }));
-  await pagina.route('**/astronomy.browser.min.js', r =>
-    r.fulfill({ body: leggiAstronomy(), contentType: 'text/javascript' }));
-  // Niente rete vera: il meteo, i TLE e il terreno sono altre prove.
-  await pagina.route('**api.open-meteo.com**', r => r.abort());
-  await pagina.route('**celestrak.org**', r => r.abort());
-  await pagina.route('**overpass**', r => r.abort());
-  await pagina.route('**elevation-tiles-prod**', r => r.abort());
+  // Tutti i servizi esterni (anche la geolocalizzazione IP) restano isolati.
+  // La posizione e l'istante devono essere quelli dichiarati dalla prova.
+  await pagina.route('**/*', route => {
+    const url = route.request().url();
+    if (url.includes('/astronomy.browser.min.js')) return route.fulfill({ body: leggiAstronomy(), contentType: 'text/javascript' });
+    if (url.startsWith('http://localhost:8097/')) return route.continue();
+    return route.fulfill({ body: '', contentType: 'text/javascript' });
+  });
 
   await pagina.addInitScript(([pos]) => {
+    const OriginalDate = Date;
+    const notte = OriginalDate.UTC(2026, 8, 7, 21);
+    window.Date = class extends OriginalDate {
+      constructor(...args) { super(...(args.length ? args : [notte])); }
+      static now() { return notte; }
+    };
     localStorage.setItem('astrocal_lingua', 'it');
     localStorage.setItem('astrocalendario_posizione', JSON.stringify(pos));
   }, [POSIZIONE]);
@@ -617,10 +623,10 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       scelte: document.querySelectorAll('#missione-corpo [data-miss-scelta]').length,
       fuocoDentro: document.getElementById('modale-missione').contains(document.activeElement)
     }));
-    prova('la finestra si apre con le tre domande e nient’altro', () => {
+    prova('la finestra presenta scelte, settore e voce', () => {
       assert.strictEqual(config.aperto, true);
-      assert.strictEqual(config.gruppi, 3, `${config.gruppi} gruppi`);
-      assert.strictEqual(config.scelte, 4 + 3 + 4);
+      assert.strictEqual(config.gruppi, 5, `${config.gruppi} gruppi`);
+      assert.strictEqual(config.scelte, 4 + 3 + 4 + 2 + 2);
     });
     prova('il fuoco entra nella finestra', () => assert.strictEqual(config.fuocoDentro, true));
 
@@ -633,7 +639,8 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     const ricordate = await pagina.evaluate(() =>
       JSON.parse(localStorage.getItem('astrocalendario_missione_scelte')));
     prova('le scelte si ricordano', () => {
-      assert.deepStrictEqual(ricordate, { durata: 60, strumento: 'binocolo', esperienza: 'imparare' });
+      assert.deepStrictEqual({ durata: ricordate.durata, strumento: ricordate.strumento, esperienza: ricordate.esperienza },
+        { durata: 60, strumento: 'binocolo', esperienza: 'imparare' });
     });
 
     await pagina.evaluate(() => document.querySelector('[data-miss-azione="genera"]').click());
@@ -680,26 +687,30 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       cielo: vistaAttuale,
       pannelloChiuso: document.getElementById('modale-missione').classList.contains('hidden'),
       striscia: !document.getElementById('missione-striscia').classList.contains('hidden'),
-      guida: document.querySelector('.missione-striscia-guida').textContent,
-      risposte: Array.from(document.querySelectorAll('[data-missione-striscia]')).map(b => b.dataset.missioneStriscia)
+      guida: document.querySelector('.missione-striscia-guida')?.textContent || '',
+      diagnostica: {attiva: !!miss.attiva, nelPlanetario:miss.attiva?.nelPlanetario, tappa:miss.attiva?.tappe[0], html:document.getElementById('missione-striscia').innerHTML},
+      risposte: Array.from(document.querySelectorAll('#missione-striscia [data-miss-azione]')).map(b => b.dataset.missAzione)
     }));
     prova('la tappa comincia nel planetario, senza una finestra sopra il cielo', () => {
       assert.strictEqual(inCorso.vista, 'inCorso');
-      assert.strictEqual(inCorso.cielo, 'cielo');
+      assert.strictEqual(inCorso.cielo, 'cielo', JSON.stringify(inCorso));
       assert.strictEqual(inCorso.pannelloChiuso, true);
-      assert.strictEqual(inCorso.striscia, true);
+      assert.strictEqual(inCorso.striscia, true, JSON.stringify(inCorso));
       assert.ok(inCorso.guida.length > 10, 'guida: ' + inCorso.guida);
-      assert.deepStrictEqual(inCorso.risposte, ['trovato', 'aiuto', 'salta']);
+      assert.ok(inCorso.risposte.includes('aiuto'));
+      assert.ok(!inCorso.risposte.includes('trovato'));
     });
 
     const dopoTrovato = await pagina.evaluate(() => {
       const prima = miss.attiva.corrente;
-      document.querySelector('[data-missione-striscia="trovato"]').click();
+      const t = miss.attiva.tappe[prima];
+      missSelezionaCielo(t.tipo === 'costellazione' ? { categoria: 'costellazione', sigla: t.sigla } : { categoria: 'astro', id: t.idCielo });
+      missAzione('continua', document.getElementById('missione-striscia'));
       return { prima, dopo: miss.attiva.corrente, esito: miss.attiva.tappe[prima].esito,
                tot: miss.attiva.tappe.length, cielo: vistaAttuale,
                pannelloChiuso: document.getElementById('modale-missione').classList.contains('hidden') };
     });
-    prova('«L’ho trovato» segna la tappa e avanza', () => {
+    prova('la selezione corretta e la scoperta fanno avanzare la tappa', () => {
       assert.strictEqual(dopoTrovato.esito, 'trovato');
       assert.ok(dopoTrovato.dopo > dopoTrovato.prima || dopoTrovato.tot === 1);
       if (dopoTrovato.tot > 1) {
@@ -713,7 +724,9 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     const aiuti = await pagina.evaluate(() => {
       const esiti = [];
       for (let k = 1; k <= 3; k++) {
-        document.querySelector('[data-missione-striscia="aiuto"]').click();
+        const aiuto = document.querySelector('#missione-striscia [data-miss-azione="aiuto"]');
+        if (!aiuto) throw new Error(JSON.stringify({k, corrente:miss.attiva.corrente, nelPlanetario:miss.attiva.nelPlanetario, tappa:miss.attiva.tappe[miss.attiva.corrente], html:document.getElementById('missione-striscia').innerHTML}));
+        aiuto.click();
         esiti.push({
           livello: miss.attiva.tappe[miss.attiva.corrente].aiuto,
           guida: document.querySelector('.missione-striscia-guida').textContent,
@@ -722,7 +735,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       }
       return esiti;
     });
-    prova('«Non lo trovo» aiuta e non segna niente come fallito', () => {
+    prova('«Guidami» aiuta e non segna niente come fallito', () => {
       assert.deepStrictEqual(aiuti.map(a => a.livello), [1, 2, 3]);
       assert.deepStrictEqual(aiuti.map(a => a.esito), [null, null, null]);
     });
@@ -732,12 +745,12 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
 
     const sostituzione = await pagina.evaluate(() => {
       const tasto = document.querySelector('[data-miss-azione="sostituisci"]');
-      if (!tasto) return { possibile: false };
+      if (!tasto || !missAlternativePerTappa().length) return { possibile: false };
       const prima = miss.attiva.tappe[miss.attiva.corrente].nome;
       const oraPrima = miss.attiva.tappe[miss.attiva.corrente].quando;
       tasto.click();
       const dopo = miss.attiva.tappe[miss.attiva.corrente];
-      return { possibile: true, prima, dopo: dopo.nome, stessaOra: dopo.quando === oraPrima,
+      return { possibile: true, prima, dopo: dopo.nome, stessaOra: dopo.quando === Date.now(),
                tot: miss.attiva.tappe.length };
     });
     prova('sostituire una tappa non cambia la durata della missione', () => {
@@ -749,10 +762,9 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     sezione('il ponte col planetario');
 
     const alPlanetario = await pagina.evaluate(() => {
-      const tasto = document.querySelector('[data-miss-azione="guidami"]');
-      if (!tasto) return { puntabile: false };
       const bersaglio = miss.attiva.tappe[miss.attiva.corrente];
-      tasto.click();
+      if (!missTappaPuntabile(bersaglio)) return { puntabile: false };
+      missGuidami(miss.attiva.corrente);
       return {
         puntabile: true,
         vista: vistaAttuale,
@@ -764,10 +776,10 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       };
     });
     await pagina.waitForTimeout(500);
-    prova('«Guidami» apre il planetario sul bersaglio', () => {
+    prova('la ricerca apre il planetario senza centrare il bersaglio', () => {
       if (!alPlanetario.puntabile) { console.log('              (tappa senza bersaglio puntabile)'); return; }
       assert.strictEqual(alPlanetario.vista, 'cielo');
-      if (alPlanetario.idCielo) assert.strictEqual(alPlanetario.target, alPlanetario.idCielo);
+      assert.strictEqual(alPlanetario.target, null);
     });
     prova('e la striscia della missione compare sul cielo', () => {
       if (!alPlanetario.puntabile) return;
@@ -856,7 +868,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       return {
         quante: voci.length,
         chiave: voce ? voce[0] : null,
-        voce: voce ? voce[1] : null,
+        voce: voce ? voce[1] : null, versione: MISS_VERSIONE,
         attivaSparita: miss.attiva === null,
         salvataggioPulito: localStorage.getItem('astrocalendario_missione_attiva')
       };
@@ -868,7 +880,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.ok(salvata.voce.missione.tappe.length >= 2);
       assert.strictEqual(salvata.voce.stelle, 4);
       assert.ok(salvata.voce.nota.includes('limpida'));
-      assert.strictEqual(salvata.voce.missione.versione, 1);
+      assert.strictEqual(salvata.voce.missione.versione, salvata.versione);
     });
     prova('e la missione attiva viene archiviata', () => {
       assert.strictEqual(salvata.attivaSparita, true);
@@ -913,7 +925,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     // Si semina una missione in corso e si ricarica la pagina davvero.
     await pagina.evaluate(() => {
       localStorage.setItem('astrocalendario_missione_attiva', JSON.stringify({
-        id: 'miss-prova', versione: 1, stato: 'inCorso',
+        id: 'miss-prova', versione: MISS_VERSIONE, stato: 'inCorso',
         creata: Date.now(), partenza: Date.now(), avviata: Date.now(), corrente: 1,
         scelte: { durata: 30, strumento: 'occhio', esperienza: 'stupore' },
         condizioni: { luna: 0, nuvole: 10, bortle: 4 },

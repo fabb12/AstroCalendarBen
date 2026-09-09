@@ -1,0 +1,28 @@
+name: Verifica Missione Cielo
+on:
+  pull_request:
+    paths:
+      - '*.js'
+      - 'lingue/**'
+      - 'style.css'
+      - 'index.html'
+      - 'scripts/prova-missione*.js'
+      - '.github/workflows/verifica-missione.yml'
+permissions:
+  contents: read
+jobs:
+  missione:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-save --package-lock=false playwright@1.58.2 astronomy-engine@2.1.19
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/controlla-collisioni.js
+      - run: node scripts/prova-missione-stati.js
+      - run: node scripts/prova-missione.js
+      - run: node scripts/prova-missione-interattiva.js
+        if: success() || failure()

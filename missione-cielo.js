@@ -58,7 +58,8 @@
 //     dichiarare.
 // =====================================================================
 
-const MISS_VERSIONE = 2;
+const MISS_VERSIONE = 3;
+const CHIAVE_MISS_STORIA = 'astrocalendario_missione_storia';
 
 const CHIAVE_MISS_SCELTE = 'astrocalendario_missione_scelte';
 const CHIAVE_MISS_ATTIVA = 'astrocalendario_missione_attiva';
@@ -280,7 +281,7 @@ function missQuanteTappe(durata, candidatiBuoni) {
  * di dichiarato, vuole uno strumento che non c'è, oppure dentro alla
  * finestra della missione non c'è affatto. */
 function missAmmissibile(c, scelte) {
-  if (!c || !c.nome) return false;
+  if (!c || !c.nome || c.idCielo === 'Sun') return false;
   if (!missStrumentoBasta(c.strumentoMinimo, scelte.strumento)) return false;
   if (scelte.cielo === 'settore' && !missAzimutNelSettore(c.azimut, Number(scelte.cieloDa), Number(scelte.cieloA))) return false;
   // L'altezza è quella del momento consigliato, che è già il migliore
@@ -344,7 +345,7 @@ function missOrdinaPerProgressione(scelti, scelte) {
   const fissi = scelti.filter(c => c.aOrarioPreciso);
 
   // La prima è la più facile, e a pari difficoltà la più evidente.
-  liberi.sort((a, b) => a.difficolta - b.difficolta || b.evidenza - a.evidenza);
+  liberi.sort((a, b) => a.difficolta - b.difficolta || b.punti - a.punti || b.evidenza - a.evidenza);
   const fila = [];
   if (liberi.length) fila.push(liberi.shift());
 
@@ -472,13 +473,16 @@ function missGeneraMissione(scenario) {
   const tutti = (scenario && scenario.candidati) || [];
   const evitare = new Set((scenario && scenario.evitare) || []);
 
+  const seme = scenario.seme || Math.random().toString(36).slice(2);
+  const storia = scenario.storia || {};
   const ammessi = tutti.filter(c => missAmmissibile(c, scelte));
   if (!ammessi.length) {
     return { vuota: true, motivo: 'nienteInVista', scelte, condizioni, tappe: [] };
   }
 
   const votati = ammessi
-    .map(c => Object.assign({}, c, { punti: missPunteggio(c, scelte, condizioni) }))
+    .map(c => Object.assign({}, c, { punti: missPunteggio(c, scelte, condizioni) +
+      (missHashTesto(seme + c.id) % 2400) / 100 - 12 }))
     .sort((a, b) => b.punti - a.punti);
 
   // Chi va evitato (la rigenerazione, e le tappe già sostituite) scende in
@@ -506,19 +510,31 @@ function missGeneraMissione(scenario) {
   }
 
   const { fila, fissi } = missOrdinaPerProgressione(scelti, scelte);
+  if (scenario.posizioneA) {
+    const primoOra = fila.findIndex(t => missAmmissibile(Object.assign({}, t, scenario.posizioneA(t, partenza)), scelte));
+    if (primoOra > 0) fila.unshift(fila.splice(primoOra, 1)[0]);
+  }
   const inOrario = missMettiInOrario(fila, fissi, partenza, scelte.durata, scelte);
   // Il racconto resta uguale mentre si apre, si chiude o si riprende la
   // missione, ma cambia davvero quando se ne genera un'altra. Affidarsi a
   // Math.random durante il rendering farebbe invece cambiare storia a ogni
   // clic su «non lo trovo».
-  const idMissione = 'miss-' + partenza + '-' + Math.random().toString(36).slice(2, 8);
-  const tappe = missAttaccaRiferimenti(inOrario, votati).map((t, i) => Object.assign({}, t, {
+  const idMissione = 'miss-' + partenza + '-' + seme;
+  const misurate = inOrario.map(t => scenario.posizioneA ?
+    Object.assign({}, t, scenario.posizioneA(t, t.quando)) : t)
+    .filter(t => missAmmissibile(t, scelte));
+  const tappe = missAttaccaRiferimenti(misurate, votati).map((t, i) => Object.assign({}, t, {
     indice: i,
     esito: null,
     aiuto: 0,
-    raccontoVariante: missHashTesto(idMissione + ':' + t.id) % 3
+    fase: 'ricerca',
+    raccontoVariante: storia[t.id] == null ? missHashTesto(idMissione + ':' + t.id) % 3 : (storia[t.id] + 1) % 3,
+    domandaVariante: scenario.domande && scenario.domande[t.id] != null ?
+      (scenario.domande[t.id] + 1) % 3 : missHashTesto(idMissione + ':domanda:' + t.id) % 3,
+    indizioVariante: storia[t.id] == null ? missHashTesto(idMissione + ':indizio:' + t.id) % 3 : (storia[t.id] + 1) % 3
   }));
 
+  if (!tappe.length) return { vuota: true, motivo: 'nienteInVista', scelte, condizioni, tappe: [] };
   return {
     id: idMissione,
     versione: MISS_VERSIONE,
@@ -646,6 +662,7 @@ function missSiglaCostellazione(nomeItaliano) {
 // residuo dichiarato in `scripts/i18n-tetto.json`).
 function missNomeTappa(t) {
   if (!t) return '';
+  if (['luna', 'pianeta'].includes(t.tipo) && t.idCielo && typeof pianNomePianeta === 'function') return pianNomePianeta(t.idCielo);
   if (t.tipo === 'costellazione' && t.sigla && typeof costNomeFigura === 'function') {
     return costNomeFigura(t.sigla, t.nome);
   }
@@ -735,6 +752,8 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
     fuori.push({
       id: b.tipo + ':' + (b.id || b.nome),
       nome: b.nome,
+      mira: b.ra !== undefined ? { ra: b.ra, dec: b.dec } : null,
+      corpo: b.ra === undefined ? b.id : null,
       tipo: b.tipo,
       idCielo: typeof pianIdCielo === 'function' ? pianIdCielo(b) : (b.id || null),
       quando: v.migliore.ms,
@@ -763,6 +782,7 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
       fuori.push({
         id: 'stella:Star' + (i + 1),
         nome: s.nome,
+        mira: { ra: s.ra, dec: s.dec },
         tipo: 'stella',
         idCielo: 'Star' + (i + 1),
         quando: v.migliore.ms,
@@ -795,7 +815,10 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
       // per sigla (`cost.nome.Boo`).
       const sigla = missSiglaCostellazione(cost.nome);
       const capofila = cost.stelle.reduce((a, b) => (b[2] < a[2] ? b : a));
-      const raMedia = cost.stelle.reduce((s, st) => s + st[0], 0) / cost.stelle.length;
+      // Media circolare: 23h e 1h stanno vicino a 0h, non a 12h.
+      const raX = cost.stelle.reduce((s, st) => s + Math.cos(st[0] * Math.PI / 12), 0);
+      const raY = cost.stelle.reduce((s, st) => s + Math.sin(st[0] * Math.PI / 12), 0);
+      const raMedia = (Math.atan2(raY, raX) * 12 / Math.PI + 24) % 24;
       const decMedia = cost.stelle.reduce((s, st) => s + st[1], 0) / cost.stelle.length;
       const v = missVisibilitaNellaFinestra({ ra: raMedia, dec: decMedia }, obs, campioni);
       if (!v) continue;
@@ -942,11 +965,16 @@ function missScenario(scelte, partenzaMs) {
     ? pianNuvoleStanotte(buio) : null;
   const bortle = typeof cieloDiCasa === 'function' ? cieloDiCasa() : 5;
 
+  // Solo oggetti identificabili con un tocco: gli eventi del calendario
+  // restano nel pianificatore, non possono essere confermati sulla mappa.
   const candidati = missCandidatiDelCielo(obs, campioni, scelte)
-    .concat(missCandidatiAOrarioPreciso(partenza, scelte.durata));
+    .filter(t => t.tipo !== 'corpoMinore' && (t.idCielo || (t.tipo === 'costellazione' && t.sigla)));
 
+  const storia = missLeggiSalvato(CHIAVE_MISS_STORIA) || {};
   return {
     adesso, partenza, scelte, candidati,
+    evitare: storia.recenti || [], storia: storia.varianti || {}, domande: storia.domande || {},
+    posizioneA: (t, ms) => missMisuraTappa(t, new Date(ms), obs),
     condizioni: {
       luna: luna ? luna.fattore : 0,
       nuvole,
@@ -1100,123 +1128,191 @@ function missTappaPuntabile(t) {
   return !!(t && (t.idCielo || (t.mira && typeof t.mira.ra === 'number')));
 }
 
+// Aprire la mappa e chiedere un indizio sono azioni distinte.
 function missGuidami(indice) {
-  const m = miss.attiva;
-  if (!m) return;
-  const t = m.tappe[indice];
+  const m = miss.attiva, t = m && m.tappe[indice];
   if (!t || !missTappaPuntabile(t)) return;
-
   m.corrente = indice;
   m.nelPlanetario = true;
   missSalvaAttiva();
   missChiudiPannello({ tieniMissione: true });
-
   if (typeof mostraVista === 'function') mostraVista('cielo');
-  if (typeof skyMostraGruppo === 'function') skyMostraGruppo('');
-
-  // Il tempo prima di tutto il resto — che da lui dipende — e dopo aver
-  // aperto la vista, che lo azzera arrivando da un'altra parte. È lo
-  // stesso ordine di `skyPuntaStazione`, e per la stessa ragione.
-  if (typeof skyFermaPlayback === 'function') skyFermaPlayback();
-  if (typeof skyImpostaOffsetTempo === 'function') {
-    const scarto = (t.quando - Date.now()) / 1000;
-    // Sotto il paio di minuti non si sposta niente: il cielo di adesso è
-    // quello giusto, e un orologio spostato di novanta secondi si legge
-    // come «non sto guardando adesso» senza esserlo.
-    skyImpostaOffsetTempo(Math.abs(scarto) < 120 ? 0 : scarto,
-      Math.abs(scarto) < 120 ? { reale: true } : {});
-  }
-  if (typeof skyAggiornaOggetti === 'function') skyAggiornaOggetti(true);
-
-  // Con la bussola accesa la direzione la decide il telefono e nessun
-  // centraggio vale: ci si sgancia, come fa il ponte delle stazioni.
-  if (typeof skyUsaSensori === 'function' && skyUsaSensori() &&
-      typeof skyAlternaSeguiTelefono === 'function') skyAlternaSeguiTelefono();
-
-  if (t.idCielo && typeof skyImpostaTarget === 'function') {
-    if (String(t.idCielo).startsWith('min:') && typeof corpiMinoriCarica === 'function') {
-      sky.mostraCorpiMinori = true;
-      corpiMinoriCarica();
-    }
-    if (String(t.idCielo).startsWith('dso:')) sky.mostraProfondo = true;
-    if (String(t.idCielo).startsWith('sat-')) sky.mostraSatelliti = true;
-    skyImpostaTarget(t.idCielo, { mantieni: true });
-    const o = typeof skyVoceDiId === 'function' ? skyVoceDiId(t.idCielo) : null;
-    if (typeof skyAssicuraVisibile === 'function') skyAssicuraVisibile(o);
-    if (o && typeof skyCentraSu === 'function' &&
-        !(typeof skyUsaSensori === 'function' && skyUsaSensori())) {
-      if (typeof skyFermaMovimenti === 'function') skyFermaMovimenti();
-      skyCentraSu(o, { subito: true });
-    }
-  } else if (t.mira && typeof altAzCoordinate === 'function') {
-    // Una costellazione: si centra il suo baricentro, ricalcolato per
-    // l'istante mostrato — quello salvato nella tappa è di quando la
-    // missione è nata, e in un'ora il cielo gira di quindici gradi.
-    try {
-      // L'osservatore del planetario, che puo' essere un luogo di sola
-      // visita, e non quello dell'app: se no la costellazione si centra
-      // dove sarebbe da casa mentre il cielo disegnato e' di un'altra citta'.
-      const obs = (typeof sky === 'object' && sky.observer) ? sky.observer : osservatoreCorrente();
-      const p = altAzCoordinate(t.mira.ra, t.mira.dec,
-        typeof skyAdesso === 'function' ? skyAdesso() : new Date(), obs);
-      if (typeof skyFermaMovimenti === 'function') skyFermaMovimenti();
-      if (typeof skyCentraSu === 'function') skyCentraSu({ nome: t.nome, az: p.az, alt: p.alt });
-    } catch (e) { /* senza posizione non si centra niente */ }
-  }
-
-  if (typeof skyAggiornaTastiFiltri === 'function') skyAggiornaTastiFiltri();
+  skyMostraGruppo('');
+  skyTornaAlLuogoDiCasa();
+  skyFermaPlayback();
+  skyImpostaOffsetTempo(0, { reale: true });
+  skyChiudiDettaglio();
+  sky.target = null;
+  sky.centraQuandoPronto = null;
+  skySpegniInseguimento();
+  skyFermaMovimenti();
+  sky.mostraCostellazioni = true;
+  if (String(t.idCielo).startsWith('dso:')) sky.mostraProfondo = true;
+  if (String(t.idCielo).startsWith('min:')) { sky.mostraCorpiMinori = true; corpiMinoriCarica(); }
+  skyAggiornaOggetti(true);
+  const o = t.idCielo && skyVoceDiId(t.idCielo);
+  if (o) skyAssicuraVisibile(o);
+  missAttivaTelefono();
+  skyAggiornaTastiFiltri();
   missMostraStrisciaCielo();
+  missRaccontaTappa(t);
 }
 
-/* La striscia appoggiata sul cielo.
- *
- * La tappa si svolge qui, non dentro una finestra che copre il cielo: la
- * domanda e l'indizio restano leggibili mentre il planetario conserva tutti
- * i suoi comandi. «Trovato», «Aiutami» e «Salta» sono quindi risposte vere
- * alla tappa e portano avanti il percorso senza riaprire il pannello. */
-function missMostraStrisciaCielo() {
-  const striscia = document.getElementById('missione-striscia');
-  if (!striscia) return;
-  const m = miss.attiva;
-  if (!m || !m.nelPlanetario || m.stato === 'conclusa') {
-    striscia.classList.add('hidden');
-    striscia.classList.remove('visibile');
+function missRicercaAttiva() {
+  const m = miss.attiva, t = m && m.tappe[m.corrente];
+  return !!(m && m.stato === 'inCorso' && m.nelPlanetario && t && !t.esito && t.fase !== 'scoperta');
+}
+
+function missTitoloTappa(t) {
+  return t.fase === 'scoperta' || t.esito || t.rivelata ? missNomeTappa(t) : missT('gioco.mistero');
+}
+
+function missMisuraTappa(t, data, obs) {
+  try {
+    const p = t.mira ? altAzCoordinate(t.mira.ra, t.mira.dec, data, obs) :
+      altAzCorpo(t.corpo || t.idCielo, data, obs);
+    const sole = altAzCorpo('Sun', data, obs);
+    return { altezza: sole.alt > -6 && t.tipo !== 'luna' ? -90 : p.alt,
+      azimut: p.az, sopraOstacoli: p.alt - missOstacolo(p.az) };
+  } catch (e) { return { altezza: -90, sopraOstacoli: -90 }; }
+}
+
+function missTappaAdesso(t) {
+  const obs = typeof osservatoreCorrente === 'function' && osservatoreCorrente();
+  if (!obs) return Object.assign({}, t, { altezza: -90 });
+  return Object.assign({}, t, missMisuraTappa(t, new Date(), obs));
+}
+
+function missSelezioneCorretta(t, sel) {
+  if (!t || !sel) return false;
+  if (sel.categoria === 'astro') return !!t.idCielo && sel.id === t.idCielo;
+  if (t.tipo === 'costellazione') return sel.categoria === 'costellazione' && sel.sigla === t.sigla;
+  const d = sel.dati || {};
+  if (sel.categoria === 'profondo') return t.idCielo === 'dso:' + d.nome;
+  if (sel.categoria === 'corpoMinore') return t.idCielo === 'min:' + d.nome;
+  // Le stelle luminose possono comparire anche nel catalogo e nelle figure.
+  return t.tipo === 'stella' && ['figura', 'stellaCatalogo'].includes(sel.categoria) &&
+    Number.isFinite(d.ra) && Number.isFinite(d.dec) && t.mira &&
+    Math.abs(d.ra - t.mira.ra) < 0.002 && Math.abs(d.dec - t.mira.dec) < 0.02;
+}
+
+// Chiamata soltanto dall'hit test del canvas, prima di aprire schede o atlante.
+function missSelezionaCielo(sel) {
+  if (!missRicercaAttiva()) return false;
+  const m = miss.attiva, t = m.tappe[m.corrente];
+  if (!sel) return true;
+  const obs = osservatoreCorrente();
+  const stessoLuogo = obs && sky.observer &&
+    Math.abs(obs.latitude - sky.observer.latitude) < 0.01 &&
+    Math.abs(obs.longitude - sky.observer.longitude) < 0.01;
+  if (!stessoLuogo || Math.abs(skyAdesso().getTime() - Date.now()) > 120000 ||
+      !missAmmissibile(missTappaAdesso(t), m.scelte)) {
+    t.feedback = 'gioco.nonVisibile';
+  } else if (missSelezioneCorretta(t, sel)) {
+    t.fase = 'scoperta';
+    t.esito = 'trovato';
+    t.quandoEsito = Date.now();
+    t.feedback = null;
+    missFermaVoce();
+    missRaccontaTappa(t);
+  } else {
+    t.tentativi = (t.tentativi || 0) + 1;
+    t.feedback = 'gioco.riprova';
+    t.aiuto = Math.min(3, (t.aiuto || 0) + 1);
+  }
+  missSalvaAttiva();
+  missMostraStrisciaCielo();
+  return true;
+}
+
+function missAttivaTelefono() {
+  if (!missRicercaAttiva() || sky.sensoriNegati || miss.telefonoProvato) return;
+  if (sky.sensori && sky.assoluto && skyAssettoDisponibile()) {
+    miss.telefonoProvato = true;
+    if (!sky.seguiTelefono) skyAlternaSeguiTelefono();
     return;
   }
-  const t = m.tappe[m.corrente];
-  if (!t) { striscia.classList.add('hidden'); return; }
+  // iOS richiede il gesto: resta il comando di permesso già presente nell'app.
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission !== 'function') skyAvviaSensori();
+}
 
-  const T = (k, d) => astroI18n.t('missione.' + k, d);
-  striscia.innerHTML =
-    `<div class="missione-striscia-testo">
-       <span class="missione-striscia-titolo">${missIcona('bersaglio', 15)} ${T('titoloBreve')}</span>
-       <span class="missione-striscia-tappa">${missTesto(T('tappaDiSu', {
-          n: m.corrente + 1, tot: m.tappe.length, nome: missNomeTappa(t) }))}</span>
-       <span class="missione-striscia-guida">${missTesto(
-         (missTestiAiuto(t).slice(-1)[0]) || missGuidaTesto(t))}</span>
-     </div>
-     <div class="missione-striscia-tasti">
-       <button type="button" class="missione-tasto missione-tasto-si" data-missione-striscia="trovato">${T('trovato')}</button>
-       <button type="button" class="missione-tasto" data-missione-striscia="aiuto">${T('nonLoTrovo')}</button>
-       <button type="button" class="missione-tasto missione-tasto-lieve" data-missione-striscia="salta">${T('salta')}</button>
-     </div>`;
-  striscia.classList.remove('hidden');
-  striscia.classList.add('visibile');
-  striscia.querySelectorAll('[data-missione-striscia]').forEach(b => {
-    b.addEventListener('click', () => {
-      const azione = b.dataset.missioneStriscia;
-      if (azione === 'trovato') missSegnaEsito(m.corrente, 'trovato');
-      else if (azione === 'salta') missSegnaEsito(m.corrente, 'saltato');
-      else if (azione === 'aiuto') {
-        missChiediAiuto();
-        missMostraStrisciaCielo();
-      }
-    });
-  });
+function missGuidaMirino(base, t) {
+  const v = skyVettore(t.azimut, t.altezza);
+  const dot = a => a.reduce((somma, n, i) => somma + n * v[i], 0);
+  const distanza = Math.acos(Math.max(-1, Math.min(1, dot(base.f)))) * 180 / Math.PI;
+  if (distanza < 3) return missT('gioco.quasi');
+  const x = dot(base.r), y = dot(base.u);
+  return missT('gioco.mirino', { direzione: missT('verso.' +
+    (Math.abs(x) > Math.abs(y) ? (x > 0 ? 'destra' : 'sinistra') :
+      (y > 0 ? 'piuInAlto' : 'piuInBasso'))), gradi: Math.round(distanza) });
+}
+
+// Usa il ciclo esistente del planetario; niente timer o sensori duplicati.
+function missAggiornaMirino(base) {
+  if (!missRicercaAttiva() || Date.now() - (miss.ultimoMirino || 0) < 700) return;
+  miss.ultimoMirino = Date.now();
+  missAttivaTelefono();
+  const t = missTappaAdesso(miss.attiva.tappe[miss.attiva.corrente]);
+  document.body.classList.toggle('missione-senza-sensori',
+    !(sky.sensori && sky.assoluto && skyAssettoDisponibile()) &&
+    (sky.sensoriNegati || !skyEUnTelefonoConSensoriProtetti()));
+  const el = document.getElementById('missione-mirino');
+  if (el) el.textContent = !missAmmissibile(t, miss.attiva.scelte) ? missT('gioco.nonVisibile') :
+    skyUsaSensori() ? missGuidaMirino(base, t) : missT('gioco.tocca');
+}
+
+function missHtmlScoperta(t) {
+  return `<div class="missione-scoperta">
+    <h3>${missT('gioco.scoperta', { nome: missTesto(missNomeTappa(t)) })}</h3>
+    <p>${missTesto(missCuriositaTesto(t))}</p>
+    <label for="missione-osservazione">${missTesto(missDomanda(t))}</label>
+    <textarea id="missione-osservazione" maxlength="500" rows="2"
+      placeholder="${missT('gioco.nota')}">${missTesto(t.osservazione || '')}</textarea>
+    <p>${missT('gioco.ponte')}</p>
+    <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="continua">${missT('gioco.continua')}</button>
+  </div>`;
+}
+
+function missMostraStrisciaCielo() {
+  const el = document.getElementById('missione-striscia');
+  const m = miss.attiva, t = m && m.tappe[m.corrente];
+  const visibile = !!(m && m.nelPlanetario && m.stato === 'inCorso' && t);
+  document.body.classList.toggle('missione-ricerca', visibile && missRicercaAttiva());
+  if (!el) return;
+  el.classList.toggle('hidden', !visibile);
+  el.classList.toggle('visibile', visibile);
+  if (!visibile) { document.body.classList.remove('missione-senza-sensori'); return; }
+  el.innerHTML = t.fase === 'scoperta' ? missHtmlScoperta(t) : `
+    <div class="missione-striscia-testo">
+      <span class="missione-striscia-titolo">${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })} · ${missTesto(missTitoloTappa(t))}</span>
+      <p>${missTesto(missIntroduzione(t))}</p>
+      ${t.feedback ? `<p role="status">${missT(t.feedback)}</p>` : ''}
+      <p class="missione-striscia-guida">${missTesto(missIndizio(t))}</p>
+      <span id="missione-mirino" aria-live="off">${missT('gioco.tocca')}</span>
+    </div>
+    <div class="missione-striscia-tasti">
+      <button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>
+      ${(t.aiuto || 0) >= 3 && !t.rivelata ? `<button class="missione-tasto" data-miss-azione="rivela">${missT('gioco.rivela')}</button>` : ''}
+      <button class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>
+      <button class="missione-tasto missione-tasto-lieve" data-miss-azione="sostituisci">${missT('sostituisci')}</button>
+      <button class="missione-tasto missione-tasto-lieve" data-miss-azione="torna">${missT('titoloBreve')}</button>
+    </div>`;
+  el.querySelectorAll('[data-miss-azione]').forEach(b => b.addEventListener('click', () => missAzione(b.dataset.missAzione, el)));
+  const nota = el.querySelector('#missione-osservazione');
+  if (nota) nota.addEventListener('input', () => { t.osservazione = nota.value; missSalvaAttiva(); });
 }
 
 // Si torna alla missione senza perdere niente: la missione è nello stato,
 // non nel documento, e il pannello la ridisegna da lei.
+function missPausaCielo() {
+  if (!miss.attiva || !miss.attiva.nelPlanetario) return;
+  miss.attiva.nelPlanetario = false;
+  missFermaVoce();
+  missSalvaAttiva();
+  missMostraStrisciaCielo();
+}
+
 function missTornaDalPlanetario() {
   if (miss.attiva) { miss.attiva.nelPlanetario = false; missSalvaAttiva(); }
   missMostraStrisciaCielo();
@@ -1244,6 +1340,7 @@ const MISS_SCARTO_RIGENERA_MS = 20 * 60000;
 function missAvvia(missione, quando) {
   if (!missione) return;
   const partenza = quando || Date.now();
+  miss.telefonoProvato = false;
 
   /* Chi prepara la missione alle due del pomeriggio e la avvia subito.
    *
@@ -1260,8 +1357,8 @@ function missAvvia(missione, quando) {
       if (!rifatta.vuota && rifatta.tappe.length) {
         missione = rifatta;
         missAvvisa('riprogrammata', {}, 'informa');
-      }
-    }
+      } else { missMostraVista('vuoto'); return; }
+    } else { missAvvisa(scenario.errore, {}, 'informa'); missMostraVista('vuoto'); return; }
   }
 
   miss.attiva = Object.assign({}, missione, {
@@ -1275,6 +1372,10 @@ function missAvvia(missione, quando) {
   // il primo «non lo trovo».
   missRiprogramma(partenza);
   miss.anteprima = null;
+  const storia = missLeggiSalvato(CHIAVE_MISS_STORIA) || {};
+  const varianti = storia.varianti || {}, domande = storia.domande || {};
+  miss.attiva.tappe.forEach(t => { varianti[t.id] = t.raccontoVariante; domande[t.id] = t.domandaVariante; });
+  missScrivi(CHIAVE_MISS_STORIA, { recenti: miss.attiva.tappe.map(t => t.id), varianti, domande });
   missSalvaAttiva();
   missMostraVista('inCorso');
   // Appena comincia la tappa, il pannello lascia libero il cielo: cercare
@@ -1312,13 +1413,14 @@ function missRiprogramma(partenzaMs) {
 
 function missSegnaEsito(indice, esito) {
   const m = miss.attiva;
-  if (!m || !m.tappe[indice]) return;
+  if (!m || !m.tappe[indice] || esito === 'trovato') return;
   m.tappe[indice].esito = esito;
   m.tappe[indice].quandoEsito = Date.now();
   missAvanza();
 }
 
 function missAvanza() {
+  missFermaVoce();
   const m = miss.attiva;
   if (!m) return;
   const eraNelPlanetario = !!m.nelPlanetario;
@@ -1351,10 +1453,12 @@ function missChiediAiuto() {
   const m = miss.attiva;
   if (!m) return;
   const t = m.tappe[m.corrente];
-  if (!t) return;
+  if (!t || t.fase === 'scoperta') return;
   t.aiuto = Math.min(3, (t.aiuto || 0) + 1);
   missSalvaAttiva();
   missMostraVista('inCorso');
+  missMostraStrisciaCielo();
+  missRaccontaTappa(t);
 }
 
 /* Sostituire una tappa.
@@ -1372,6 +1476,7 @@ function missAlternativePerTappa() {
   if (scenario.errore) return [];
   const gia = new Set(m.tappe.map(t => t.id));
   return scenario.candidati
+    .map(c => missTappaAdesso(c))
     .filter(c => !gia.has(c.id) && missAmmissibile(c, m.scelte) && !c.aOrarioPreciso)
     .map(c => Object.assign({}, c, { punti: missPunteggio(c, m.scelte, scenario.condizioni) }))
     .sort((a, b) => b.punti - a.punti);
@@ -1381,21 +1486,29 @@ function missSostituisci(indice) {
   const m = miss.attiva;
   if (!m || !m.tappe[indice]) return false;
   const alternative = missAlternativePerTappa();
-  if (!alternative.length) { missAvvisa('nienteDaSostituire', {}, 'informa'); return false; }
+  if (!alternative.length) {
+    m.tappe[indice].feedback = 'nienteDaSostituire';
+    missSalvaAttiva(); missMostraStrisciaCielo();
+    missAvvisa('nienteDaSostituire', {}, 'informa'); missMostraVista('inCorso'); return false;
+  }
   const vecchia = m.tappe[indice];
   const nuova = missAttaccaRiferimenti(
     [Object.assign({}, alternative[0], {
-      quando: vecchia.quando, indice, esito: null, aiuto: 0
+      quando: Date.now(), indice, esito: null, aiuto: 0, fase: 'ricerca',
+      raccontoVariante: missHashTesto(m.id + alternative[0].id) % 3,
+      domandaVariante: missHashTesto(m.id + ':domanda:' + alternative[0].id) % 3
     })], alternative)[0];
   m.tappe[indice] = nuova;
   m.sostituzioni = (m.sostituzioni || []).concat([{ da: vecchia.id, a: nuova.id }]);
   missSalvaAttiva();
-  missAvvisa('sostituita', { nome: nuova.nome }, 'bene');
+  missAvvisa('gioco.sostituita', {}, 'bene');
   missMostraVista('inCorso');
+  if (m.nelPlanetario) missGuidami(indice);
   return true;
 }
 
 function missConcludi() {
+  missFermaVoce();
   const m = miss.attiva;
   if (!m) return;
   const eraNelPlanetario = !!m.nelPlanetario;
@@ -1419,6 +1532,7 @@ function missConcludi() {
 }
 
 function missAbbandona() {
+  missFermaVoce();
   miss.attiva = null;
   miss.anteprima = null;
   missSalvaAttiva();
@@ -1500,7 +1614,8 @@ function missSalvaNelDiario(dettagli) {
       // anche a chi apre il diario in inglese.
       tappe: m.tappe.map(t => ({
         id: t.id, nome: t.nome, tipo: t.tipo, sigla: t.sigla || null,
-        quando: t.quando, esito: t.esito || 'saltato'
+        quando: t.quando, esito: t.esito || 'saltato',
+        osservazione: t.osservazione || '', aiuti: t.aiuto || 0, rivelata: !!t.rivelata
       }))
     }
   };
@@ -1529,6 +1644,7 @@ function missVoceDiario(v) {
       <span class="missione-esito-segno" aria-hidden="true">${
         t.esito === 'trovato' ? '\u2713' : t.esito === 'nonTrovato' ? '\u2013' : '\u00b7'}</span>
       ${missTesto(missNomeTappa(t))}
+      ${t.osservazione ? `<p>${missTesto(t.osservazione)}</p>` : ''}
       <span class="missione-esito-che">${missT('esito.' + (t.esito || 'saltato'))}</span>
     </li>`).join('');
 
@@ -1578,7 +1694,7 @@ function missIcona(nome, misura) {
 // normale, senza produrre chiavi mancanti in console.
 const MISS_CHIAVI_BAMBINI = new Set([
   'titoloAnteprima', 'sommarioAnteprima', 'iniziaAdesso', 'iniziaAlle',
-  'avanzamento', 'tappaDi', 'trova', 'guidami', 'trovato', 'nonLoTrovo',
+  'avanzamento', 'tappaDi', 'trova', 'trovato', 'nonLoTrovo',
   'salta', 'concludi', 'poi', 'curiositaTitolo', 'ascolta',
   'guidaSemplice', 'guidaConRiferimento', 'aiuto1', 'aiuto2',
   'aiuto2senzaRiferimento', 'aiuto3', 'sostituisci', 'segnaNonTrovato'
@@ -1636,7 +1752,7 @@ function missAggiornaScheda() {
     const t = m.tappe[m.corrente];
     box.innerHTML =
       `<p class="missione-scheda-testo">${missT('inCorsoSintesi', {
-        fatte, tot: m.tappe.length, nome: missTesto(t ? missNomeTappa(t) : '') })}</p>` +
+        fatte, tot: m.tappe.length, nome: missTesto(t ? missTitoloTappa(t) : '') })}</p>` +
       `<button type="button" class="missione-tasto missione-tasto-si" data-missione="riprendi">` +
       `${missT('riprendi')}</button>`;
   } else if (m && m.stato === 'conclusa') {
@@ -1860,10 +1976,9 @@ function missHtmlAnteprima(m) {
   if (c.meteoAssente) avvisi.push(missT('senzaMeteo'));
   if (c.terrenoAssente) avvisi.push(missT('senzaTerreno'));
 
-  const consigliata = missOraConsigliata();
   const righe = m.tappe.map((t, i) => `<li class="missione-anteprima-riga">
       <span class="missione-anteprima-ora">${missOra(t.quando)}</span>
-      <span class="missione-anteprima-nome">${missTesto(missNomeTappa(t))}</span>
+      <span class="missione-anteprima-nome">${missTesto(missTitoloTappa(t))}</span>
       <span class="missione-anteprima-che">${missT('difficolta.' + t.difficolta)}</span>
     </li>`).join('');
 
@@ -1879,8 +1994,7 @@ function missHtmlAnteprima(m) {
     <div class="missione-azioni">
       <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="avvia">
         ${missT('iniziaAdesso')}</button>
-      ${consigliata ? `<button type="button" class="missione-tasto" data-miss-azione="avviaDopo">
-        ${missT('iniziaAlle', { ora: missOra(consigliata) })}</button>` : ''}
+
       <button type="button" class="missione-tasto" data-miss-azione="rigenera">${missT('unaltra')}</button>
       <button type="button" class="missione-tasto" data-miss-azione="configura">${missT('cambiaScelte')}</button>
     </div>
@@ -1898,57 +2012,18 @@ function missHtmlAnteprima(m) {
 function missHtmlInCorso(m) {
   const t = m.tappe[m.corrente];
   if (!t) return missHtmlConclusa(m);
-
-  const fatte = m.tappe.filter(x => x.esito).length;
-  const dove = typeof astroI18n === 'object' && astroI18n.nomePunto
-    ? astroI18n.nomePunto(t.azimut) : '';
-  const prossima = m.tappe.slice(m.corrente + 1).find(x => !x.esito);
-
+  if (t.fase === 'scoperta') return missHtmlScoperta(t);
   return `<div class="missione-corso">
-    <div class="missione-avanzamento">
-      <div class="missione-barra" role="progressbar" aria-valuemin="0"
-           aria-valuemax="${m.tappe.length}" aria-valuenow="${fatte}"
-           aria-label="${missT('avanzamento')}">
-        <span style="width:${Math.round(fatte / m.tappe.length * 100)}%"></span>
-      </div>
-      <p class="missione-passo">${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })}</p>
-    </div>
-
-    <h3 class="missione-titolone">${missT('trova', { nome: missTesto(missNomeTappa(t)) })}</h3>
-    <p class="missione-coordinate">
-      <span>${missOra(t.quando)}</span>
-      <span>${missTesto(dove)}</span>
-      <span>${missT('altezza.' + missFasciaAltezza(t.altezza))}</span>
-      <span class="missione-gradi">${missT('gradiSopra', { gradi: Math.round(t.altezza) })}</span>
-    </p>
-    <p class="missione-etichette">
-      <span class="missione-etichetta">${missT('difficolta.' + t.difficolta)}</span>
-      <span class="missione-etichetta">${(typeof STRUMENTI !== 'undefined' && STRUMENTI[t.strumentoMinimo])
-        ? missIcona(STRUMENTI[t.strumentoMinimo].disegno, 14) + ' ' + STRUMENTI[t.strumentoMinimo].nome
-        : ''}</span>
-    </p>
-
-    <p class="missione-guida">${missGuidaTesto(t)}</p>
-    <section class="missione-racconto" aria-labelledby="missione-racconto-titolo">
-      <div><h4 id="missione-racconto-titolo">${missT('curiositaTitolo')}</h4><p>${missCuriositaTesto(t)}</p></div>
-      ${m.scelte.voce ? `<button type="button" class="missione-tasto" data-miss-azione="ascolta">${missT('ascolta')}</button>` : ''}
-    </section>
-    ${missHtmlAiuto(t)}
-
+    <p>${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })}</p>
+    <h3>${missTesto(missTitoloTappa(t))}</h3>
+    <p>${missTesto(missIntroduzione(t))}</p>
+    <p>${missTesto(missIndizio(t))}</p>
     <div class="missione-azioni">
-      ${missTappaPuntabile(t)
-        ? `<button type="button" class="missione-tasto" data-miss-azione="guidami">
-             ${missIcona('bersaglio', 16)} ${missT('guidami')}</button>` : ''}
-      <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="trovato">${missT('trovato')}</button>
-      <button type="button" class="missione-tasto" data-miss-azione="aiuto">${missT('nonLoTrovo')}</button>
-      <button type="button" class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>
-    </div>
-
-    <div class="missione-piede">
-      ${prossima ? `<p class="missione-prossima">${missT('poi', { nome: missTesto(missNomeTappa(prossima)) })}</p>` : ''}
-      <button type="button" class="missione-tasto missione-tasto-lieve" data-miss-azione="concludi">${missT('concludi')}</button>
-    </div>
-  </div>`;
+      <button class="missione-tasto missione-tasto-si" data-miss-azione="guidami">${missT('gioco.apriCielo')}</button>
+      <button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>
+      <button class="missione-tasto" data-miss-azione="salta">${missT('salta')}</button>
+      <button class="missione-tasto" data-miss-azione="concludi">${missT('concludi')}</button>
+    </div></div>`;
 }
 
 /* Il testo guida: dove guardare, detto a partire da qualcosa che si vede.
@@ -2009,14 +2084,88 @@ function missCuriositaChiave(tappa) {
   return `curiosita.${base}.${variante + 1}`;
 }
 
+function missFamigliaContenuto(t) {
+  return ['luna', 'pianeta', 'stella', 'costellazione', 'profondo'].includes(t.tipo) ? t.tipo : 'profondo';
+}
+
+function missIntroduzione(t) {
+  const modo = miss.attiva ? miss.attiva.scelte.esperienza : 'stupore';
+  return missT('gioco.intro.' + modo + '.' + ((t.indizioVariante || 0) % 3 + 1)) + ' ' +
+    missT('gioco.osserva.' + (modo === 'bambini' ? 'bambini.' : '') + missFamigliaContenuto(t));
+}
+
+function missIndizio(t) {
+  const ora = missTappaAdesso(t);
+  if (!missAmmissibile(ora, miss.attiva.scelte)) return missT('gioco.nonVisibile');
+  const dove = astroI18n.nomePunto(ora.azimut);
+  const livello = t.aiuto || 0;
+  if (!livello) return missT('gioco.direzione.' + ((t.indizioVariante || 0) % 3 + 1), { dove });
+  if (livello === 1) {
+    const base = missCuriositaChiave(t).split('.')[1];
+    const segno = 'gioco.segno.' + (base === 'andromeda' && t.tipo !== 'profondo' ? 'costellazione' : base);
+    const dettaglio = astroI18n.esiste('missione.' + segno) ? missT(segno) : missT('gioco.osserva.' + missFamigliaContenuto(t));
+    return missT('gioco.altezza', { dove, altezza: missT('altezza.' + missFasciaAltezza(ora.altezza)) }) + ' ' + dettaglio;
+  }
+  if (livello === 2) {
+    // I riferimenti sono misurati ORA, in entrambe le coordinate, e devono
+    // essere visibili a occhio: nessuna stella "a destra" inventata.
+    const vicino = missVicino(t);
+    if (vicino) return missT('gioco.vicino', { nome: vicino.nome,
+      verso: missT('verso.' + vicino.verso), su: missT('verso.' + vicino.su),
+      gradi: Math.round(vicino.gradi) });
+    return missT('gioco.luce', { luce: missT('gioco.' + (t.mag < 1 ? 'brillante' : 'tenue')) });
+  }
+  return missT('gioco.preciso', { dove, az: Math.round(ora.azimut), alt: Math.round(ora.altezza) });
+}
+
+function missVicino(t) {
+  const ora = missTappaAdesso(t);
+  if (typeof SKY_STELLE === 'undefined') return null;
+  const candidati = SKY_STELLE.map((s, i) => ({ nome: s.nome, tipo: 'stella',
+    idCielo: 'Star' + (i + 1), mira: { ra: s.ra, dec: s.dec }, mag: s.mag }));
+  for (const c of candidati.sort((a, b) => a.mag - b.mag)) {
+    if (c.idCielo === t.idCielo || c.nome === t.capofila) continue;
+    const p = missTappaAdesso(c);
+    if (p.altezza < 15 || p.sopraOstacoli <= 1 || c.mag > 2) continue;
+    const gradi = missDistanzaSferica(ora, p);
+    if (gradi < 3 || gradi > 35) continue;
+    const delta = ((ora.azimut - p.azimut + 540) % 360) - 180;
+    return { nome: c.nome, gradi, verso: delta > 0 ? 'destra' : 'sinistra',
+      su: ora.altezza > p.altezza ? 'piuInAlto' : 'piuInBasso' };
+  }
+  return null;
+}
+
+function missDistanzaSferica(a, b) {
+  const r = Math.PI / 180;
+  const cos = Math.sin(a.altezza*r)*Math.sin(b.altezza*r) +
+    Math.cos(a.altezza*r)*Math.cos(b.altezza*r)*Math.cos((a.azimut-b.azimut)*r);
+  return Math.acos(Math.max(-1, Math.min(1, cos))) / r;
+}
+
+function missDomanda(t) {
+  const modo = miss.attiva.scelte.esperienza;
+  const vicino = missVicino(t);
+  if (vicino && t.domandaVariante === 2 && modo !== 'bambini')
+    return missT('gioco.confronta', { nome: vicino.nome });
+  return missT('gioco.domanda.' + (modo === 'bambini' ? 'bambini.' : '') +
+    missFamigliaContenuto(t) + '.' + ((t.domandaVariante || 0) % 3 + 1));
+}
+
 function missCuriositaTesto(tappa) {
-  const bambini = miss.attiva && miss.attiva.scelte && miss.attiva.scelte.esperienza === 'bambini';
-  if (!bambini) return missT(missCuriositaChiave(tappa));
-  const famiglia = tappa && tappa.tipo === 'luna' ? 'luna' :
-    tappa && tappa.tipo === 'pianeta' ? 'pianeta' :
-      tappa && (tappa.tipo === 'stella' || tappa.tipo === 'costellazione') ? 'stelle' :
-        tappa && (tappa.tipo === 'stazione' || tappa.tipo === 'evento') ? 'spazio' : 'profondo';
-  return missT('bambiniCuriosita.' + famiglia, { nome: missNomeTappa(tappa) });
+  const modo = miss.attiva && miss.attiva.scelte.esperienza || 'stupore';
+  const famiglia = missFamigliaContenuto(tappa);
+  const chiave = missCuriositaChiave(tappa);
+  const racconto = missT(chiave);
+  if (modo === 'bambini') {
+    const base = chiave.split('.')[1];
+    const storia = 'gioco.storia.' + base;
+    return missT('gioco.bambini.' + famiglia) + ' ' +
+      ((tappa.raccontoVariante || 0) === 1 && astroI18n.esiste('missione.' + storia)
+        ? missT(storia) : missT('gioco.piccoli.' + famiglia + '.' + ((tappa.raccontoVariante || 0) % 3 + 1)));
+  }
+  if (modo === 'imparare') return missT('gioco.impara.' + famiglia) + ' ' + racconto;
+  return racconto;
 }
 
 function missFermaVoce() {
@@ -2090,7 +2239,9 @@ function missRaccontaLocale(testo, lingua) {
 
 async function missRaccontaTappa(tappa, forza) {
   if (!tappa || (!forza && !(miss.attiva && miss.attiva.scelte.voce))) return false;
-  const testo = missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) });
+  const testo = tappa.fase === 'scoperta' ?
+    missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) }) + ' ' + missDomanda(tappa) :
+    missIntroduzione(tappa) + ' ' + missIndizio(tappa);
   const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
   const sequenza = missFermaVoce();
   try {
@@ -2099,60 +2250,6 @@ async function missRaccontaTappa(tappa, forza) {
     console.warn('Missione Cielo: Edge-TTS non disponibile, uso la voce del dispositivo.', errore);
   }
   return sequenza === missVoce.sequenza && missRaccontaLocale(testo, lingua);
-}
-
-/* I tre gradini dell'aiuto.
- *
- * Il terzo è quello che vale: dopo due tentativi il problema quasi mai è
- * la mira — è che davanti c'è un albero. Nessuna app lo dice, e chi non
- * lo sente pensa di aver sbagliato lui. */
-function missTestiAiuto(t) {
-  const livello = t.aiuto || 0;
-  if (!livello) return [];
-  const pezzi = [];
-
-  const dove = typeof astroI18n === 'object' && astroI18n.nomePunto
-    ? astroI18n.nomePunto(t.azimut) : '';
-  pezzi.push(missT('aiuto1', {
-    dove: missTesto(dove),
-    altezza: missT('altezza.' + missFasciaAltezza(t.altezza)),
-    gradi: Math.round(t.altezza)
-  }));
-
-  if (livello >= 2) {
-    if (t.riferimento) {
-      const misura = missMisuraAMano(t.riferimento.gradi);
-      pezzi.push(missT('aiuto2', {
-        da: missTesto(missNomeTappa(t.riferimento)),
-        verso: missT('verso.' + t.riferimento.verso),
-        misura: missT(misura.chiave.replace('missione.', '')),
-        su: missT(t.riferimento.piuAlto ? 'verso.piuInAlto' : 'verso.piuInBasso')
-      }));
-    } else {
-      pezzi.push(missT('aiuto2senzaRiferimento'));
-    }
-  }
-
-  if (livello >= 3) pezzi.push(missT('aiuto3'));
-  return pezzi;
-}
-
-function missHtmlAiuto(t) {
-  const pezzi = missTestiAiuto(t);
-  if (!pezzi.length) return '';
-  const paragrafi = pezzi.map(testo => `<p>${testo}</p>`);
-
-  if ((t.aiuto || 0) >= 3) {
-    const alternative = missAlternativePerTappa();
-    paragrafi.push(`<div class="missione-azioni missione-azioni-aiuto">
-      ${alternative.length
-        ? `<button type="button" class="missione-tasto" data-miss-azione="sostituisci">${missT('sostituisci')}</button>`
-        : ''}
-      <button type="button" class="missione-tasto missione-tasto-lieve" data-miss-azione="nonTrovato">${missT('segnaNonTrovato')}</button>
-    </div>`);
-  }
-
-  return `<div class="missione-aiuto" role="status">${paragrafi.join('')}</div>`;
 }
 
 function missHtmlConclusa(m) {
@@ -2318,8 +2415,23 @@ function missAzione(azione, corpo) {
     case 'ascolta':
       if (miss.attiva) missRaccontaTappa(miss.attiva.tappe[miss.attiva.corrente], true);
       break;
-    case 'trovato':
-      missSegnaEsito(miss.attiva.corrente, 'trovato');
+    case 'continua': {
+      const t = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
+      if (!t || t.fase !== 'scoperta') break;
+      const nota = corpo.querySelector('#missione-osservazione');
+      t.osservazione = nota ? nota.value.slice(0, 500) : t.osservazione;
+      t.fase = 'conclusa';
+      missFermaVoce();
+      missAvanza();
+      break;
+    }
+    case 'rivela': {
+      const t = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
+      if (t && t.aiuto >= 3) { t.rivelata = true; missSalvaAttiva(); missMostraStrisciaCielo(); }
+      break;
+    }
+    case 'torna':
+      missTornaDalPlanetario();
       break;
     case 'nonTrovato':
       missSegnaEsito(miss.attiva.corrente, 'nonTrovato');
@@ -2370,7 +2482,10 @@ function missPreparaAnteprima(evitare) {
     missMostraVista('vuoto');
     return null;
   }
-  scenario.evitare = evitare || [];
+  const storia = missLeggiSalvato(CHIAVE_MISS_STORIA) || {};
+  scenario.evitare = [...(evitare || []), ...(storia.recenti || [])];
+  scenario.storia = storia.varianti || {};
+  scenario.domande = storia.domande || {};
   const generata = missGeneraMissione(scenario);
   if (generata.vuota) {
     missMostraVista('vuoto');
@@ -2445,6 +2560,8 @@ if (typeof window !== 'undefined') {
 
 const missProve = {
   genera: missGeneraMissione,
+  selezioneCorretta: missSelezioneCorretta,
+  distanzaSferica: missDistanzaSferica,
   punteggio: missPunteggio,
   ammissibile: missAmmissibile,
   quanteTappe: missQuanteTappe,
