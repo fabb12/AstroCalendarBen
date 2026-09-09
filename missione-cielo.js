@@ -58,7 +58,7 @@
 //     dichiarare.
 // =====================================================================
 
-const MISS_VERSIONE = 3;
+const MISS_VERSIONE = 4;
 const CHIAVE_MISS_STORIA = 'astrocalendario_missione_storia';
 
 const CHIAVE_MISS_SCELTE = 'astrocalendario_missione_scelte';
@@ -66,7 +66,9 @@ const CHIAVE_MISS_ATTIVA = 'astrocalendario_missione_attiva';
 
 const MISS_DURATE = [10, 30, 60, 120];
 const MISS_STRUMENTI = ['occhio', 'binocolo', 'telescopio'];
-const MISS_ESPERIENZE = ['stupore', 'imparare', 'sfida', 'bambini'];
+// Due percorsi, riconoscibili senza dover interpretare quattro etichette:
+// l'enigma degli adulti e la caccia, piu' semplice, per i bambini.
+const MISS_ESPERIENZE = ['sfida', 'bambini'];
 const MISS_DIREZIONI = [0, 45, 90, 135, 180, 225, 270, 315];
 
 // Le voci Neural di Edge-TTS sono scelte qui, non lasciate al ponte: così la
@@ -125,7 +127,7 @@ const MISS_MISURE_A_MANO = [
 // una ricarica sta in `attiva` e si salva (§7).
 const miss = {
   // Le tre scelte, ricordate fra una sera e l'altra
-  scelte: { durata: 30, strumento: 'occhio', esperienza: 'stupore', cielo: 'tutto', cieloDa: 135, cieloA: 180,
+  scelte: { durata: 30, strumento: 'occhio', esperienza: 'sfida', cielo: 'tutto', cieloDa: 135, cieloA: 180,
     momento: 'consigliato', momentoPersonalizzato: null, voce: false },
   // La missione appena generata e non ancora avviata
   anteprima: null,
@@ -214,11 +216,9 @@ function missMisuraAMano(gradi) {
  *
  * Non è un voto di bellezza — quello lo dà già `migliorDiStanotte` — ma
  * la risposta a «quanto è adatto a chi ha chiesto questa cosa qui». Le
- * quattro esperienze pesano le stesse grandezze in modo diverso, e la
- * differenza fra loro non è cosmetica: «Fammi stupire» premia la
- * luminosità e punisce la difficoltà, «Fammi una sfida» fa quasi il
- * contrario, e «Sono con bambini» punisce la difficoltà il doppio di
- * tutti gli altri perché una tappa fallita, lì, chiude la serata. */
+ * due esperienze pesano le stesse grandezze in modo diverso. La modalità adulti premia la
+ * difficoltà, mentre quella bambini la penalizza con decisione: una tappa
+ * troppo ardua, lì, rischia di chiudere la serata. */
 function missPunteggio(c, scelte, condizioni) {
   const esperienza = scelte.esperienza;
   let punti = c.puntiBase !== undefined ? c.puntiBase : 50;
@@ -468,7 +468,7 @@ function missAttaccaRiferimenti(tappe, candidati) {
  * e non contiene niente che questa funzione debba andare a chiedere a
  * qualcuno. In uscita c'è la missione, o `null` con il motivo scritto. */
 function missGeneraMissione(scenario) {
-  const scelte = Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'stupore', cielo: 'tutto', cieloDa: 135, cieloA: 180, voce: false },
+  const scelte = Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'sfida', cielo: 'tutto', cieloDa: 135, cieloA: 180, voce: false },
     scenario && scenario.scelte);
   const condizioni = (scenario && scenario.condizioni) || {};
   const adesso = (scenario && scenario.adesso) || Date.now();
@@ -1070,7 +1070,10 @@ function missCaricaScelte() {
   if (!s || typeof s !== 'object') return;
   if (MISS_DURATE.includes(s.durata)) miss.scelte.durata = s.durata;
   if (MISS_STRUMENTI.includes(s.strumento)) miss.scelte.strumento = s.strumento;
-  if (MISS_ESPERIENZE.includes(s.esperienza)) miss.scelte.esperienza = s.esperienza;
+  // Le quattro vecchie esperienze confluiscono nel percorso adulti; nessuna
+  // preferenza salvata puo' far ricomparire una modalita' rimossa.
+  if (s.esperienza === 'bambini') miss.scelte.esperienza = 'bambini';
+  else miss.scelte.esperienza = 'sfida';
   if (s.cielo === 'tutto' || s.cielo === 'settore') miss.scelte.cielo = s.cielo;
   if (MISS_DIREZIONI.includes(Number(s.cieloDa))) miss.scelte.cieloDa = Number(s.cieloDa);
   if (MISS_DIREZIONI.includes(Number(s.cieloA))) miss.scelte.cieloA = Number(s.cieloA);
@@ -1244,11 +1247,34 @@ function missSelezioneCorretta(t, sel) {
     Math.abs(d.ra - t.mira.ra) < 0.002 && Math.abs(d.dec - t.mira.dec) < 0.02;
 }
 
+// Ricava la posizione della scelta senza mostrarne il nome. Serve soltanto a
+// distinguere un tentativo lontano da uno vicino al bersaglio.
+function missPosizioneSelezione(sel) {
+  if (!sel || typeof sky !== 'object') return null;
+  let o = null;
+  if (sel.categoria === 'astro' && Array.isArray(sky.oggetti))
+    o = sky.oggetti.find(x => x.id === sel.id);
+  else if (sel.categoria === 'profondo' && Array.isArray(sky.profondo)) {
+    const nome = sel.dati && sel.dati.nome;
+    o = sky.profondo.find(x => x.nome === nome);
+  } else if (sel.dati) o = sel.dati;
+  if (!o) return null;
+  const azimut = Number.isFinite(o.az) ? o.az : o.azimut;
+  const altezza = Number.isFinite(o.alt) ? o.alt : o.altezza;
+  if (!Number.isFinite(azimut) || !Number.isFinite(altezza)) return null;
+  return { azimut, altezza };
+}
+
+function missFeedbackTocco(chiave) {
+  // Il riscontro e' un messaggio breve sopra la carta, non una nuova riga
+  // nella guida: l'indizio principale resta fermo e leggibile.
+  if (typeof skyAvviso === 'function') skyAvviso('missione-tocco', missT(chiave), 2200);
+}
+
 // Chiamata soltanto dall'hit test del canvas, prima di aprire schede o atlante.
 function missSelezionaCielo(sel) {
   if (!missRicercaAttiva()) return false;
   const m = miss.attiva, t = m.tappe[m.corrente];
-  if (!sel) return true;
   const obs = osservatoreCorrente();
   const stessoLuogo = obs && sky.observer &&
     Math.abs(obs.latitude - sky.observer.latitude) < 0.01 &&
@@ -1263,12 +1289,17 @@ function missSelezionaCielo(sel) {
     t.esito = 'trovato';
     t.quandoEsito = Date.now();
     t.feedback = null;
+    missFeedbackTocco('gioco.feedbackGiusto');
     missFermaVoce();
     missRaccontaTappa(t);
   } else {
     t.tentativi = (t.tentativi || 0) + 1;
-    t.feedback = 'gioco.riprova';
-    t.aiuto = Math.min(3, (t.aiuto || 0) + 1);
+    t.feedback = null;
+    const scelta = missPosizioneSelezione(sel);
+    const bersaglio = missTappaNelPlanetario(t);
+    const soglia = m.scelte.esperienza === 'bambini' ? 18 : 10;
+    const vicino = scelta && missDistanzaSferica(scelta, bersaglio) <= soglia;
+    missFeedbackTocco(vicino ? 'gioco.feedbackVicino' : 'gioco.feedbackSbagliato');
   }
   missSalvaAttiva();
   missMostraStrisciaCielo();
@@ -1351,7 +1382,6 @@ function missMostraStrisciaCielo() {
     <div class="missione-striscia-testo">
       <span class="missione-striscia-titolo">${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })} · ${missTesto(missTitoloTappa(t))}</span>
       <p class="missione-striscia-indizio">${missTesto(t.mostraAiuto ? missIndizio(t) : missIntroduzione(t))}</p>
-      ${t.feedback ? `<p role="status">${missT(t.feedback)}</p>` : ''}
       <span id="missione-mirino" aria-live="off"></span>
     </div>
     <div class="missione-striscia-tasti">
@@ -2185,7 +2215,7 @@ function missFamigliaContenuto(t) {
 }
 
 function missIntroduzione(t) {
-  const modo = miss.attiva ? miss.attiva.scelte.esperienza : 'stupore';
+  const modo = miss.attiva ? miss.attiva.scelte.esperienza : 'sfida';
   if (modo === 'sfida') return missT('gioco.enigma.' + missFamigliaContenuto(t) + '.' +
     ((t.indizioVariante || 0) % 3 + 1));
   return missT('gioco.intro.' + modo + '.' + ((t.indizioVariante || 0) % 3 + 1)) + ' ' +
@@ -2251,7 +2281,7 @@ function missDomanda(t) {
 }
 
 function missCuriositaTesto(tappa) {
-  const modo = miss.attiva && miss.attiva.scelte.esperienza || 'stupore';
+  const modo = miss.attiva && miss.attiva.scelte.esperienza || 'sfida';
   const famiglia = missFamigliaContenuto(tappa);
   const chiave = missCuriositaChiave(tappa);
   const racconto = missT(chiave);

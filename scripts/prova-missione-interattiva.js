@@ -105,6 +105,9 @@ const server = http.createServer((req,res)=> {
   await tapObject(false);
   assert.equal(await page.evaluate(()=>miss.attiva.tappe[0].esito),null);
   assert.equal(await page.evaluate(()=>miss.attiva.tappe[0].tentativi),1);
+  assert.equal(await page.evaluate(()=>miss.attiva.tappe[0].aiuto),1);
+  assert.equal(await page.textContent('#missione-striscia .missione-striscia-indizio'),before.clue);
+  assert((await page.textContent('#skymap-avviso')).includes('Non è questo'));
   const point=await tapObject(true);
   const found=await page.evaluate(()=>({phase:miss.attiva.tappe[0].fase,result:miss.attiva.tappe[0].esito,index:miss.attiva.corrente,html:document.getElementById('missione-striscia').innerHTML}));
   assert.equal(found.phase,'scoperta',JSON.stringify(point)); assert.equal(found.result,'trovato');assert.equal(found.index,0);
@@ -127,7 +130,7 @@ const server = http.createServer((req,res)=> {
   const missing=await page.evaluate(()=> {
     const failures=[];
     for (const lang of ['it','en']) { astroI18n.impostaLingua(lang);
-      for (const mode of ['imparare','sfida','bambini','stupore']) {miss.attiva.scelte.esperienza=mode;
+      for (const mode of ['sfida','bambini']) {miss.attiva.scelte.esperienza=mode;
         for(const type of ['luna','pianeta','stella','costellazione','profondo']) for(let variant=0;variant<3;variant++) {
           const t={...miss.attiva.tappe[1],tipo:type,raccontoVariante:variant,domandaVariante:variant,indizioVariante:variant};
           for(const text of [missIntroduzione(t),missCuriositaTesto(t),missDomanda(t)]) if(text.includes('missione.')) failures.push(text);
