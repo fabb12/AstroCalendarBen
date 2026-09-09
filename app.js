@@ -21199,25 +21199,28 @@ function skyAggiornaBussola(az) {
 
 // Avvisi sotto al cielo, uno per argomento (posizione, sensori):
 // passare un testo vuoto cancella quel solo avviso. Ogni messaggio resta per
-// cinque secondi: è abbastanza per leggerlo, ma non rimane a coprire il
-// planetario dopo che ha dato il suo feedback.
+// cinque secondi, salvo quando chi lo genera chiede esplicitamente più tempo:
+// così i messaggi operativi brevi non coprono il cielo, mentre quelli che
+// spiegano una scelta appena fatta restano leggibili.
 const SKY_AVVISO_DURATA_MS = 5000;
 
-function skyApriComandiNuvole() {
-  skyMostraGruppo('vista');
-  skyMostraSchedaVista('cielo');
+// L'avviso delle nuvole compare proprio mentre si entra nel planetario: non
+// costringiamo chi vuole la carta pulita ad aprire due pannelli e cercare lo
+// stesso interruttore. Il gesto agisce sul medesimo stato del tasto «Nuvole».
+function skyNascondiNuvoleDaAvviso() {
+  sky.nuvole = false;
   skyAvviso('nuvole-meteo', '');
-  const tasto = document.getElementById('skymap-btn-nuvole');
-  if (tasto) setTimeout(() => tasto.focus(), 0);
+  skyAggiornaTastiFiltri();
+  skyAggiornaOggetti(true);
 }
 
-function skyAvviso(chiave, testo) {
+function skyAvviso(chiave, testo, durataMs = SKY_AVVISO_DURATA_MS) {
   sky.avvisi[chiave] = testo || '';
   clearTimeout(sky.scadenzaAvvisi[chiave]);
   delete sky.scadenzaAvvisi[chiave];
   if (testo) {
     sky.scadenzaAvvisi[chiave] = setTimeout(
-      () => skyAvviso(chiave, ''), SKY_AVVISO_DURATA_MS);
+      () => skyAvviso(chiave, ''), durataMs);
   }
   const el = document.getElementById('skymap-avviso');
   if (!el) return;
@@ -21238,12 +21241,12 @@ function skyAvviso(chiave, testo) {
     el.insertBefore(attiva, document.getElementById('skymap-avviso-chiudi'));
   }
   if (sky.avvisi['nuvole-meteo']) {
-    const apri = document.createElement('button');
-    apri.type = 'button';
-    apri.className = 'skymap-avviso-azione';
-    apri.textContent = astroI18n.t('meteo.apriComandiNuvole');
-    apri.addEventListener('click', skyApriComandiNuvole);
-    el.insertBefore(apri, document.getElementById('skymap-avviso-chiudi'));
+    const nascondi = document.createElement('button');
+    nascondi.type = 'button';
+    nascondi.className = 'skymap-avviso-azione';
+    nascondi.textContent = astroI18n.t('meteo.nascondiNuvole');
+    nascondi.addEventListener('click', skyNascondiNuvoleDaAvviso);
+    el.insertBefore(nascondi, document.getElementById('skymap-avviso-chiudi'));
   }
   el.classList.toggle('hidden', !completo);
   skyMisuraAvviso(el, completo);

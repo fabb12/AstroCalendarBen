@@ -255,7 +255,7 @@ function meteoAggiornaAvvisoNuvole(dati, luogo, ms) {
   }
   skyAvviso('nuvole-meteo', astroI18n.t('meteo.nuvoleNelPlanetario', {
     n: Math.round(n.totale)
-  }));
+  }), 10000);
 }
 
 function meteoNuvoleChiave(luogo) {

@@ -553,8 +553,8 @@ window.ASTRO_DIZIONARI['en'] = {
     'meteo.senzaRete': 'Forecast unavailable (it needs the network). Everything else is computed locally and still holds.',
     'meteo.nessunaPerStanotte': 'No forecast for the hours of tonight.',
     'meteo.mediaStanotte': '({n}% cloud on average tonight)',
-    'meteo.nuvoleNelPlanetario': 'The clouds you see follow the weather forecast ({n}% cover). To hide them: Display → Sky → Clouds.',
-    'meteo.apriComandiNuvole': 'Open Sky',
+    'meteo.nuvoleNelPlanetario': 'The clouds you see follow the weather forecast ({n}% cover). You can hide them now and keep reading the sky chart.',
+    'meteo.nascondiNuvole': 'Hide clouds',
     'meteo.oraMigliore': 'Best hour: {ora} with {n}%',
     'meteo.previsioneDi': 'forecast from {quanto}',
 
