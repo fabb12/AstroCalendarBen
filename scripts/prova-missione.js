@@ -568,16 +568,14 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
   pagina.on('pageerror', e => errori.push('ECCEZIONE: ' + e.message));
   pagina.on('console', m => { if (m.type() === 'error') errori.push(m.text()); });
 
-  await pagina.route('**cdn.jsdelivr.net**', r => r.fulfill({ body: '', contentType: 'text/javascript' }));
-  await pagina.route('**fonts.googleapis.com**', r => r.fulfill({ body: '', contentType: 'text/css' }));
-  await pagina.route('**/astronomy.browser.min.js', r =>
-    r.fulfill({ body: leggiAstronomy(), contentType: 'text/javascript' }));
-  // Niente rete vera: il meteo, i TLE e il terreno sono altre prove.
-  await pagina.route(/https:\/\/(?!cdn\.jsdelivr\.net).*\/(?:api|v2|v3|v1)\//, r => r.abort());
-  await pagina.route('**api.open-meteo.com**', r => r.abort());
-  await pagina.route('**celestrak.org**', r => r.abort());
-  await pagina.route('**overpass**', r => r.abort());
-  await pagina.route('**elevation-tiles-prod**', r => r.abort());
+  // Tutti i servizi esterni (anche la geolocalizzazione IP) restano isolati.
+  // La posizione e l'istante devono essere quelli dichiarati dalla prova.
+  await pagina.route('**/*', route => {
+    const url = route.request().url();
+    if (url.includes('/astronomy.browser.min.js')) return route.fulfill({ body: leggiAstronomy(), contentType: 'text/javascript' });
+    if (url.startsWith('http://localhost:8097/')) return route.continue();
+    return route.fulfill({ body: '', contentType: 'text/javascript' });
+  });
 
   await pagina.addInitScript(([pos]) => {
     const OriginalDate = Date;
