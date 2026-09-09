@@ -2275,6 +2275,11 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.senzaLibreria': 'The ephemerides have not arrived yet: try again in a few seconds.',
 
     'missione.quantoTempo': 'How much time do you have?',
+    'missione.quandoMissione': 'When would you like to do the mission?',
+    'missione.momentoAdesso': 'Now',
+    'missione.momentoConsigliato': 'Later, when the sky is dark',
+    'missione.momentoScegli': 'Choose date and time',
+    'missione.dataOraMissione': 'Starting date and time',
     'missione.conCosa': 'What are you observing with?',
     'missione.cheEsperienza': 'What kind of evening do you want?',
     'missione.durata.10': '10 minutes',
@@ -2300,6 +2305,8 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.vuoiVoce': 'Would you like spoken stories?',
     'missione.voceSi': 'Natural Edge-TTS voice',
     'missione.voceNo': 'Text only',
+    'missione.soloVoce': 'Hide, voice only',
+    'missione.mostraGuida': 'Show guide',
 
     'missione.titoloAnteprima': { uno: 'One wonder in {minuti} minutes', altri: '{n} wonders in {minuti} minutes' },
     'missione.sommarioAnteprima': 'Starting at {ora}. {condizioni}.',

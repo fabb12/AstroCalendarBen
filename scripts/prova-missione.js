@@ -373,6 +373,18 @@ prova('con tutti i candidati sotto l’orizzonte la missione è vuota', () => {
   assert.strictEqual(m.vuota, true);
 });
 
+prova('gli orari regolari non svuotano il cielo se gli astri sono visibili più tardi', () => {
+  const tardi = candidato('stella:tardi', { tipo: 'stella', quando: T0 + 25 * 60000 });
+  const s = scenario([tardi], { durata: 30 });
+  s.posizioneA = (t, quando) => quando === tardi.quando
+    ? { altezza: 45, azimut: 180, sopraOstacoli: 40 }
+    : { altezza: 0, azimut: 180, sopraOstacoli: 0 };
+  const m = motore.genera(s);
+  assert.strictEqual(m.vuota, undefined);
+  assert.strictEqual(m.tappe.length, 1);
+  assert.strictEqual(m.tappe[0].quando, tardi.quando);
+});
+
 // =====================================================================
 sezione('le assenze si dichiarano, non si inventano');
 
@@ -623,24 +635,32 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       scelte: document.querySelectorAll('#missione-corpo [data-miss-scelta]').length,
       fuocoDentro: document.getElementById('modale-missione').contains(document.activeElement)
     }));
-    prova('la finestra presenta scelte, settore e voce', () => {
+    prova('la finestra presenta durata, momento, settore e voce', () => {
       assert.strictEqual(config.aperto, true);
-      assert.strictEqual(config.gruppi, 5, `${config.gruppi} gruppi`);
-      assert.strictEqual(config.scelte, 4 + 3 + 4 + 2 + 2);
+      assert.strictEqual(config.gruppi, 6, `${config.gruppi} gruppi`);
+      assert.strictEqual(config.scelte, 4 + 3 + 3 + 4 + 2 + 2);
     });
     prova('il fuoco entra nella finestra', () => assert.strictEqual(config.fuocoDentro, true));
 
     // Le tre scelte si cambiano davvero, e restano.
     await pagina.evaluate(() => {
       document.querySelector('[data-miss-scelta="durata"][data-miss-valore="60"]').click();
+      document.querySelector('[data-miss-scelta="momento"][data-miss-valore="personalizzato"]').click();
+      const data = document.querySelector('[data-miss-momento]');
+      const domani = new Date(Date.now() + 24 * 3600000);
+      const due = n => String(n).padStart(2, '0');
+      data.value = `${domani.getFullYear()}-${due(domani.getMonth() + 1)}-${due(domani.getDate())}T22:30`;
+      data.dispatchEvent(new Event('change'));
       document.querySelector('[data-miss-scelta="strumento"][data-miss-valore="binocolo"]').click();
       document.querySelector('[data-miss-scelta="esperienza"][data-miss-valore="imparare"]').click();
     });
     const ricordate = await pagina.evaluate(() =>
       JSON.parse(localStorage.getItem('astrocalendario_missione_scelte')));
     prova('le scelte si ricordano', () => {
-      assert.deepStrictEqual({ durata: ricordate.durata, strumento: ricordate.strumento, esperienza: ricordate.esperienza },
-        { durata: 60, strumento: 'binocolo', esperienza: 'imparare' });
+      assert.deepStrictEqual({ durata: ricordate.durata, momento: ricordate.momento,
+        strumento: ricordate.strumento, esperienza: ricordate.esperienza },
+        { durata: 60, momento: 'personalizzato', strumento: 'binocolo', esperienza: 'imparare' });
+      assert.ok(Number.isFinite(ricordate.momentoPersonalizzato));
     });
 
     await pagina.evaluate(() => document.querySelector('[data-miss-azione="genera"]').click());
