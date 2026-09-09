@@ -2125,7 +2125,7 @@ window.ASTRO_DIZIONARI['en'] = {
 
     // --- Sky Mission (missione-cielo.js) ------------------------------
     // Ricerca, indizi e scoperta: testi stabili nella sessione.
-    "missione.gioco.mistero": "A sky mystery",
+    "missione.gioco.mistero": "Object to find",
     "missione.gioco.tocca": "Observe the sky, then tap the object you recognise on the map. Drag to explore.",
     "missione.gioco.nonVisibile": "This search needs the current sky at your location. If the target has set or it is still daylight, return to the mission and prepare another evening.",
     "missione.gioco.riprova": "Good try! Keep looking: here is a more precise clue.",

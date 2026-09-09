@@ -1150,7 +1150,7 @@ function missTappaPuntabile(t) {
 // questo passaggio il planetario tornava sempre a ora e faceva vedere il cielo
 // diurno proprio mentre la missione descriveva quello della sera.
 function missImpostaTempoPlanetario(m, t) {
-  if (!m || !m.scelte || m.scelte.momento === 'adesso') {
+  if (!m || !m.simulazione) {
     skyImpostaOffsetTempo(0, { reale: true });
     return;
   }
@@ -1216,6 +1216,18 @@ function missTappaAdesso(t) {
   return Object.assign({}, t, missMisuraTappa(t, new Date(), obs));
 }
 
+// Nella missione avviata all'ora consigliata il planetario e' una
+// simulazione: indizi e tocchi vanno verificati sull'ora mostrata, non
+// sull'orologio reale. La missione iniziata con «Inizia adesso» continua
+// invece a usare il cielo vero di questo istante.
+function missTappaNelPlanetario(t) {
+  const obs = typeof osservatoreCorrente === 'function' && osservatoreCorrente();
+  if (!obs) return Object.assign({}, t, { altezza: -90 });
+  const data = miss.attiva && miss.attiva.simulazione && typeof skyAdesso === 'function'
+    ? skyAdesso() : new Date();
+  return Object.assign({}, t, missMisuraTappa(t, data, obs));
+}
+
 function missSelezioneCorretta(t, sel) {
   if (!t || !sel) return false;
   if (sel.categoria === 'astro') return !!t.idCielo && sel.id === t.idCielo;
@@ -1238,9 +1250,11 @@ function missSelezionaCielo(sel) {
   const stessoLuogo = obs && sky.observer &&
     Math.abs(obs.latitude - sky.observer.latitude) < 0.01 &&
     Math.abs(obs.longitude - sky.observer.longitude) < 0.01;
-  if (!stessoLuogo || Math.abs(skyAdesso().getTime() - Date.now()) > 120000 ||
-      !missAmmissibile(missTappaAdesso(t), m.scelte)) {
-    t.feedback = 'gioco.nonVisibile';
+  const tempoGiusto = m.simulazione || Math.abs(skyAdesso().getTime() - Date.now()) <= 120000;
+  if (!stessoLuogo || !tempoGiusto || !missAmmissibile(missTappaNelPlanetario(t), m.scelte)) {
+    // `missIndizio` mostra gia' l'avviso: non copiarlo una seconda volta
+    // nella riga di feedback a ogni tocco.
+    t.feedback = null;
   } else if (missSelezioneCorretta(t, sel)) {
     t.fase = 'scoperta';
     t.esito = 'trovato';
@@ -1260,6 +1274,13 @@ function missSelezionaCielo(sel) {
 
 function missAttivaTelefono() {
   if (!missRicercaAttiva() || sky.sensoriNegati || miss.telefonoProvato) return;
+  // Un cielo futuro si esplora come una carta: il telefono non deve
+  // riportare la simulazione nella direzione in cui e' puntato adesso.
+  if (miss.attiva && miss.attiva.simulazione) {
+    miss.telefonoProvato = true;
+    if (sky.seguiTelefono) skyAlternaSeguiTelefono();
+    return;
+  }
   if (sky.sensori && sky.assoluto && skyAssettoDisponibile()) {
     miss.telefonoProvato = true;
     if (!sky.seguiTelefono) skyAlternaSeguiTelefono();
@@ -1286,12 +1307,12 @@ function missAggiornaMirino(base) {
   if (!missRicercaAttiva() || Date.now() - (miss.ultimoMirino || 0) < 700) return;
   miss.ultimoMirino = Date.now();
   missAttivaTelefono();
-  const t = missTappaAdesso(miss.attiva.tappe[miss.attiva.corrente]);
+  const t = missTappaNelPlanetario(miss.attiva.tappe[miss.attiva.corrente]);
   document.body.classList.toggle('missione-senza-sensori',
     !(sky.sensori && sky.assoluto && skyAssettoDisponibile()) &&
     (sky.sensoriNegati || !skyEUnTelefonoConSensoriProtetti()));
   const el = document.getElementById('missione-mirino');
-  if (el) el.textContent = !missAmmissibile(t, miss.attiva.scelte) ? missT('gioco.nonVisibile') :
+  if (el) el.textContent = !missAmmissibile(t, miss.attiva.scelte) ? '' :
     skyUsaSensori() ? missGuidaMirino(base, t) : missT('gioco.tocca');
 }
 
@@ -1381,6 +1402,7 @@ const MISS_SCARTO_RIGENERA_MS = 20 * 60000;
 function missAvvia(missione, quando) {
   if (!missione) return;
   const partenza = quando || Date.now();
+  const simulazione = Number.isFinite(quando) && Math.abs(quando - Date.now()) > 120000;
   miss.telefonoProvato = false;
 
   /* Chi prepara la missione alle due del pomeriggio e la avvia subito.
@@ -1406,7 +1428,8 @@ function missAvvia(missione, quando) {
     stato: 'inCorso',
     avviata: partenza,
     corrente: 0,
-    nelPlanetario: false
+    nelPlanetario: false,
+    simulazione
   });
   // Chi comincia dopo l'ora consigliata trova gli orari già rifatti: è la
   // stessa riga di `missRiprogramma`, chiamata qui invece che aspettare
@@ -2163,7 +2186,7 @@ function missIntroduzione(t) {
 }
 
 function missIndizio(t) {
-  const ora = missTappaAdesso(t);
+  const ora = missTappaNelPlanetario(t);
   if (!missAmmissibile(ora, miss.attiva.scelte)) return missT('gioco.nonVisibile');
   const dove = astroI18n.nomePunto(ora.azimut);
   const livello = t.aiuto || 0;
