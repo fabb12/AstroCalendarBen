@@ -235,6 +235,28 @@ const METEO_NUVOLE_VALIDO_MS = 60 * 60 * 1000;
 const meteoNuvoleCache = new Map();
 const meteoNuvoleInCorso = new Map();
 let meteoNuvoleUltimoTentativo = 0;
+let meteoNuvoleAvvisoFirma = '';
+
+// Quando il cielo si copre davvero, chi apre il planetario potrebbe pensare
+// che le stelle siano sparite per un difetto del disegno. Lo diciamo una sola
+// volta per luogo e ora di previsione, indicando anche il percorso esatto del
+// comando che permette di guardare comunque la carta celeste.
+function meteoAggiornaAvvisoNuvole(dati, luogo, ms) {
+  if (typeof sky === 'undefined' || !sky.aperto || !sky.nuvole ||
+      typeof skyAvviso !== 'function') return;
+  const n = meteoNuvoleAllOra(dati, ms);
+  if (!n || !isFinite(n.totale)) return;
+  const firma = `${meteoNuvoleChiave(luogo)}|${Math.floor(ms / 3600000)}`;
+  if (firma === meteoNuvoleAvvisoFirma) return;
+  meteoNuvoleAvvisoFirma = firma;
+  if (n.totale < 40) {
+    skyAvviso('nuvole-meteo', '');
+    return;
+  }
+  skyAvviso('nuvole-meteo', astroI18n.t('meteo.nuvoleNelPlanetario', {
+    n: Math.round(n.totale)
+  }));
+}
 
 function meteoNuvoleChiave(luogo) {
   return `${Number(luogo.lat).toFixed(2)},${Number(luogo.lon).toFixed(2)}`;
@@ -612,6 +634,7 @@ function meteoDisegnaNuvole(ctx, base, focale, aria) {
   }
   const adesso = typeof skyAdesso === 'function' ? skyAdesso().getTime() : Date.now();
   const n = meteoNuvoleAllOra(dati, adesso);
+  meteoAggiornaAvvisoNuvole(dati, luogo, adesso);
   if (!n || n.totale < 3) return;
 
   const luce = aria && isFinite(aria.luce) ? aria.luce : 0;
