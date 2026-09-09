@@ -1166,6 +1166,9 @@ function missGuidami(indice) {
   const m = miss.attiva, t = m && m.tappe[indice];
   if (!t || !missTappaPuntabile(t)) return;
   m.corrente = indice;
+  // Entrare nel cielo mostra l'indizio principale. Gli aiuti restano una
+  // scelta esplicita e non si sommano ogni volta al testo della tappa.
+  t.mostraAiuto = false;
   m.nelPlanetario = true;
   missSalvaAttiva();
   missChiudiPannello({ tieniMissione: true });
@@ -1312,8 +1315,8 @@ function missAggiornaMirino(base) {
     !(sky.sensori && sky.assoluto && skyAssettoDisponibile()) &&
     (sky.sensoriNegati || !skyEUnTelefonoConSensoriProtetti()));
   const el = document.getElementById('missione-mirino');
-  if (el) el.textContent = !missAmmissibile(t, miss.attiva.scelte) ? '' :
-    skyUsaSensori() ? missGuidaMirino(base, t) : missT('gioco.tocca');
+  if (el) el.textContent = !missAmmissibile(t, miss.attiva.scelte) || !skyUsaSensori()
+    ? '' : missGuidaMirino(base, t);
 }
 
 function missHtmlScoperta(t) {
@@ -1347,17 +1350,17 @@ function missMostraStrisciaCielo() {
   el.innerHTML = t.fase === 'scoperta' ? missHtmlScoperta(t) : `
     <div class="missione-striscia-testo">
       <span class="missione-striscia-titolo">${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })} · ${missTesto(missTitoloTappa(t))}</span>
-      <p>${missTesto(missIntroduzione(t))}</p>
+      <p class="missione-striscia-indizio">${missTesto(t.mostraAiuto ? missIndizio(t) : missIntroduzione(t))}</p>
       ${t.feedback ? `<p role="status">${missT(t.feedback)}</p>` : ''}
-      <p class="missione-striscia-guida">${missTesto(missIndizio(t))}</p>
-      <span id="missione-mirino" aria-live="off">${missT('gioco.tocca')}</span>
+      <span id="missione-mirino" aria-live="off"></span>
     </div>
     <div class="missione-striscia-tasti">
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="solo-voce">${missT('soloVoce')}</button>
-      <button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>
+      ${t.mostraAiuto
+        ? `<button class="missione-tasto" data-miss-azione="indizio-principale">${missT('indizioPrincipale')}</button>`
+        : `<button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>`}
       ${(t.aiuto || 0) >= 3 && !t.rivelata ? `<button class="missione-tasto" data-miss-azione="rivela">${missT('gioco.rivela')}</button>` : ''}
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>
-      <button class="missione-tasto missione-tasto-lieve" data-miss-azione="sostituisci">${missT('sostituisci')}</button>
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="torna">${missT('titoloBreve')}</button>
     </div>`;
   el.querySelectorAll('[data-miss-azione]').forEach(b => b.addEventListener('click', () => missAzione(b.dataset.missAzione, el)));
@@ -1519,6 +1522,7 @@ function missChiediAiuto() {
   const t = m.tappe[m.corrente];
   if (!t || t.fase === 'scoperta') return;
   t.aiuto = Math.min(3, (t.aiuto || 0) + 1);
+  t.mostraAiuto = true;
   missSalvaAttiva();
   missMostraVista('inCorso');
   missMostraStrisciaCielo();
@@ -2107,11 +2111,12 @@ function missHtmlInCorso(m) {
   return `<div class="missione-corso">
     <p>${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })}</p>
     <h3>${missTesto(missTitoloTappa(t))}</h3>
-    <p>${missTesto(missIntroduzione(t))}</p>
-    <p>${missTesto(missIndizio(t))}</p>
+    <p>${missTesto(t.mostraAiuto ? missIndizio(t) : missIntroduzione(t))}</p>
     <div class="missione-azioni">
       <button class="missione-tasto missione-tasto-si" data-miss-azione="guidami">${missT('gioco.apriCielo')}</button>
-      <button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>
+      ${t.mostraAiuto
+        ? `<button class="missione-tasto" data-miss-azione="indizio-principale">${missT('indizioPrincipale')}</button>`
+        : `<button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>`}
       <button class="missione-tasto" data-miss-azione="salta">${missT('salta')}</button>
       <button class="missione-tasto" data-miss-azione="concludi">${missT('concludi')}</button>
     </div></div>`;
@@ -2181,6 +2186,8 @@ function missFamigliaContenuto(t) {
 
 function missIntroduzione(t) {
   const modo = miss.attiva ? miss.attiva.scelte.esperienza : 'stupore';
+  if (modo === 'sfida') return missT('gioco.enigma.' + missFamigliaContenuto(t) + '.' +
+    ((t.indizioVariante || 0) % 3 + 1));
   return missT('gioco.intro.' + modo + '.' + ((t.indizioVariante || 0) % 3 + 1)) + ' ' +
     missT('gioco.osserva.' + (modo === 'bambini' ? 'bambini.' : '') + missFamigliaContenuto(t));
 }
@@ -2332,7 +2339,7 @@ async function missRaccontaTappa(tappa, forza) {
   if (!tappa || (!forza && !(miss.attiva && miss.attiva.scelte.voce))) return false;
   const testo = tappa.fase === 'scoperta' ?
     missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) }) + ' ' + missDomanda(tappa) :
-    missIntroduzione(tappa) + ' ' + missIndizio(tappa);
+    (tappa.mostraAiuto ? missIndizio(tappa) : missIntroduzione(tappa));
   const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
   const sequenza = missFermaVoce();
   try {
@@ -2550,6 +2557,11 @@ function missAzione(azione, corpo) {
     case 'aiuto':
       missChiediAiuto();
       break;
+    case 'indizio-principale': {
+      const t = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
+      if (t) { t.mostraAiuto = false; missSalvaAttiva(); missMostraVista('inCorso'); missMostraStrisciaCielo(); }
+      break;
+    }
     case 'sostituisci':
       missSostituisci(miss.attiva.corrente);
       break;
