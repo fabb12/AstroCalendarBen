@@ -13,15 +13,21 @@ Le costellazioni si riconoscono toccando le linee della figura. L’hover non
 conferma ritrovamenti. La mappa non può verificare che una persona abbia
 guardato fisicamente il cielo: verifica la selezione nella scena corrente.
 
-## Contenuti e aiuti
+## Le due modalità, i contenuti e gli aiuti
 
-- **Insegnami il cielo:** introduzione osservativa, spiegazione scientifica,
-  curiosità legata al bersaglio e domanda di confronto.
-- **Fammi una sfida:** identità nascosta, indizi di direzione, altezza,
+- **Adulti:** identità nascosta ed enigmi difficili, con indizi di direzione, altezza,
   aspetto e riferimenti realmente visibili. Il nome compare alla scoperta
   o con una richiesta separata di aiuto avanzato.
-- **Sono con bambini:** avventura breve, domande semplici e alternanza di
+- **Bambini:** enigmi più facili, domande semplici e alternanza di
   scienza, miti e storia umana, presentati esplicitamente come tali.
+
+Ogni tocco dà subito un riscontro breve: corretto, errato oppure vicino al
+bersaglio. Il riscontro scompare da solo e non sostituisce né allunga l’indizio
+principale. Un errore non svela automaticamente un aiuto ulteriore.
+
+Quando il bersaglio è corretto, entrambe le modalità raccontano sempre un
+aneddoto, una leggenda o un fatto legato proprio all’astro; parole e domande
+sono adattate all’età scelta.
 
 Il nome resta nascosto in anteprima, riepilogo della missione in corso,
 etichette del cielo e audio di ricerca. L’elenco degli astri è sospeso durante
@@ -49,7 +55,7 @@ Gli eventi astratti del calendario e i corpi minori con coordinate campionate
 restano nel pianificatore; le missioni interattive selezionano Luna, pianeti,
 stelle, costellazioni e cielo profondo identificabili nel planetario.
 
-Lo stato salvato passa alla versione 3; le vecchie missioni attive vengono
+Lo stato salvato passa alla versione 4; le vecchie missioni attive vengono
 rigenerate. Il Diario precedente rimane leggibile. Le nuove osservazioni
 sono salvate nella sessione e incluse nel Diario, insieme agli aiuti usati.
 La fase di scoperta sopravvive a una ricarica senza saltare alla tappa seguente.

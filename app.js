@@ -26570,7 +26570,12 @@ function skyInizializzaGesti() {
       return;
     }
     const sel = skyOggettoNelPunto(px, py);
-    if (typeof missRicercaAttiva === 'function' && missRicercaAttiva() && skyPuntoSulTerreno(px, py)) return;
+    if (typeof missRicercaAttiva === 'function' && missRicercaAttiva() && skyPuntoSulTerreno(px, py)) {
+      // Anche il terreno e' una risposta durante il gioco: il tocco non apre
+      // altro, ma Missione Cielo deve poter dire subito che non e' l'astro.
+      if (typeof missSelezionaCielo === 'function') missSelezionaCielo(null);
+      return;
+    }
     if (typeof missSelezionaCielo === 'function' && missSelezionaCielo(sel)) return;
     if (!sel) {
       const luogo = skyLuogoNelPunto(px, py);
