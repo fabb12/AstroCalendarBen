@@ -21203,6 +21203,14 @@ function skyAggiornaBussola(az) {
 // planetario dopo che ha dato il suo feedback.
 const SKY_AVVISO_DURATA_MS = 5000;
 
+function skyApriComandiNuvole() {
+  skyMostraGruppo('vista');
+  skyMostraSchedaVista('cielo');
+  skyAvviso('nuvole-meteo', '');
+  const tasto = document.getElementById('skymap-btn-nuvole');
+  if (tasto) setTimeout(() => tasto.focus(), 0);
+}
+
 function skyAvviso(chiave, testo) {
   sky.avvisi[chiave] = testo || '';
   clearTimeout(sky.scadenzaAvvisi[chiave]);
@@ -21228,6 +21236,14 @@ function skyAvviso(chiave, testo) {
     attiva.textContent = 'Attiva GPS';
     attiva.addEventListener('click', skyAttivaGpsDaAvviso);
     el.insertBefore(attiva, document.getElementById('skymap-avviso-chiudi'));
+  }
+  if (sky.avvisi['nuvole-meteo']) {
+    const apri = document.createElement('button');
+    apri.type = 'button';
+    apri.className = 'skymap-avviso-azione';
+    apri.textContent = astroI18n.t('meteo.apriComandiNuvole');
+    apri.addEventListener('click', skyApriComandiNuvole);
+    el.insertBefore(apri, document.getElementById('skymap-avviso-chiudi'));
   }
   el.classList.toggle('hidden', !completo);
   skyMisuraAvviso(el, completo);
@@ -26793,6 +26809,7 @@ function inizializzaSkymap() {
   });
   collega('skymap-btn-nuvole', () => {
     sky.nuvole = !sky.nuvole;
+    if (!sky.nuvole) skyAvviso('nuvole-meteo', '');
     if (sky.nuvole) sky.atmosfera = true;
     skyAggiornaTastiFiltri();
     skyAggiornaOggetti(true);

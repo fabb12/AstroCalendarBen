@@ -562,6 +562,8 @@ window.ASTRO_DIZIONARI['it'] = {
     'meteo.senzaRete': 'Previsioni non disponibili (serve la rete). Il resto dei dati è calcolato in locale e resta valido.',
     'meteo.nessunaPerStanotte': 'Nessuna previsione per le ore di questa notte.',
     'meteo.mediaStanotte': '({n}% di nuvole in media stanotte)',
+    'meteo.nuvoleNelPlanetario': 'Le nuvole che vedi seguono la previsione meteo ({n}% di copertura). Per nasconderle: Visualizzazione → Cielo → Nuvole.',
+    'meteo.apriComandiNuvole': 'Apri Cielo',
     'meteo.oraMigliore': 'Ora migliore: {ora} con {n}%',
     'meteo.previsioneDi': 'previsione di {quanto}',
 
