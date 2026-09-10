@@ -574,6 +574,15 @@ for (const lingua of ['it', 'en']) {
     assert.deepStrictEqual(mancanti, [], mancanti.slice(0, 6).join(', '));
   });
 
+  prova('ogni costellazione del repertorio ha un secondo indovinello (' + lingua + ')', () => {
+    const d = DIZIONARI[lingua];
+    const mancanti = K.MISS_REPERTORIO
+      .filter(v => v.tipi && v.tipi.includes('costellazione'))
+      .filter(v => !d['missione.gioco.enigma.oggetto.' + v.slug + '.2'])
+      .map(v => v.slug);
+    assert.deepStrictEqual(mancanti, []);
+  });
+
   prova('i due gradini di ripiego coprono tutto quello che resta (' + lingua + ')', () => {
     const d = DIZIONARI[lingua];
     const mancanti = [];

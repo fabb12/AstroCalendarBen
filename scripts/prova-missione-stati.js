@@ -49,7 +49,7 @@ assert.equal(run('skyNomiVisibili()'),false);
 assert.equal(run('missAmmissibile(missTappaAdesso(miss.attiva.tappe[0]),miss.attiva.scelte)'),true);
 run('missMostraStrisciaCielo()');
 assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
-assert(elements.get('missione-striscia').innerHTML.includes('Indizio 1 di 4'));
+assert(elements.get('missione-striscia').innerHTML.includes('Indizio 1 di 3'));
 assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="indizio-successivo"'));
 assert(!elements.get('missione-striscia').innerHTML.includes('Rileggi l’indizio'));
 assert(elements.get('missione-striscia').innerHTML.includes('Segui il telefono'));
@@ -77,6 +77,20 @@ assert.equal(new Set(clues).size,3);
 // aiuti deve ancora riconoscere l'oggetto sulla mappa.
 assert.equal(run('!!miss.attiva.tappe[0].rivelata'),true);
 assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
+assert(elements.get('missione-striscia').innerHTML.includes('Soluzione'));
+assert(!elements.get('missione-striscia').innerHTML.includes('Indizio 4'));
+// Con la voce scelta, anche tornare a un indizio già sbloccato o avanzare di
+// nuovo deve leggere il testo che è effettivamente visibile nella striscia.
+// La scoperta deve poi far leggere automaticamente il messaggio finale.
+const narrazioni=[];
+ctx.registraNarrazione=(fase,testo)=>narrazioni.push({fase,testo});
+run("miss.attiva.scelte.voce=true;missRaccontaTappa=t=>{registraNarrazione(t.fase, t.fase==='scoperta' ? missNomeTappa(t) : missTestoIndizio(t));return true;}");
+run("missAzione('indizio-precedente',document.body)");
+assert.equal(run('missIndiceIndizio(miss.attiva.tappe[0])'),2);
+run("missAzione('indizio-successivo',document.body)");
+assert.equal(run('missIndiceIndizio(miss.attiva.tappe[0])'),3);
+assert.equal(narrazioni.length,2);
+assert.notEqual(narrazioni[0].testo,narrazioni[1].testo);
 // A correct identifier in a simulated time or another location is not an observation.
 offset=3600000;run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);offset=0;
 // Se la missione e' stata avviata esplicitamente all'ora consigliata, invece,
@@ -85,6 +99,7 @@ offset=3600000;run("miss.attiva.simulazione=true;miss.attiva.tappe[0].feedback=n
 assert.equal(run('miss.attiva.tappe[0].feedback'),null);assert.equal(run('miss.attiva.tappe[0].aiuto'),3);run('miss.attiva.simulazione=false');offset=0;
 ctx.sky.observer=new Astronomy.Observer(0,0,0);run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);ctx.sky.observer=obs;
 run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].fase'),'scoperta');assert.equal(run('miss.attiva.corrente'),0);
+assert.equal(narrazioni.length,3);assert.equal(narrazioni[2].fase,'scoperta');assert.equal(narrazioni[2].testo,'Vega');
 assert(!elements.get('missione-striscia').innerHTML.includes('missione-osservazione'));
 assert(elements.get('missione-striscia').innerHTML.includes('Vega'));
 assert.equal(run('skyNomiVisibili()'),true);

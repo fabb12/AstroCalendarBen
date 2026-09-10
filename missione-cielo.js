@@ -1871,10 +1871,16 @@ function missTestoIndizio(t) {
 
 function missNavigazioneIndizi(t) {
   const indice = missIndiceIndizio(t);
+  // I primi tre pannelli sono indizi; il quarto rivela il bersaglio e lo
+  // centra nel cielo, quindi chiamarlo «Indizio 4» nasconderebbe la
+  // differenza più importante della progressione.
+  const etichetta = indice === 3
+    ? missT('soluzione')
+    : missT('numeroIndizio', { n: indice + 1, tot: 3 });
   return `<div class="missione-navigazione-indizi" aria-label="${missT('navigaIndizi')}">
     <button type="button" class="missione-freccia" data-miss-azione="indizio-precedente"
       aria-label="${missT('indizioPrecedente')}" ${indice === 0 ? 'disabled' : ''}>←</button>
-    <span class="missione-numero-indizio">${missT('numeroIndizio', { n: indice + 1, tot: 4 })}</span>
+    <span class="missione-numero-indizio">${etichetta}</span>
     <button type="button" class="missione-freccia" data-miss-azione="indizio-successivo"
       aria-label="${missT('indizioSuccessivo')}" ${indice >= 3 ? 'disabled' : ''}>→</button>
   </div>`;
@@ -2867,6 +2873,11 @@ function missEnigma(t) {
     if (categoria) chiavi.push('gioco.enigmaBimbi.' + categoria);
     chiavi.push('gioco.enigmaBimbi.' + famiglia);
   }
+  // I bersagli più riconoscibili possono avere più indovinelli propri: la
+  // variante della missione ne sceglie uno, conservando come ripiego la
+  // vecchia chiave senza numero. Le costellazioni usano questa strada per
+  // non riproporre sempre la stessa figura a chi prepara più serate.
+  if (slug) chiavi.push('gioco.enigma.oggetto.' + slug + '.' + n);
   if (slug) chiavi.push('gioco.enigma.oggetto.' + slug);
   if (categoria) chiavi.push('gioco.enigma.specie.' + categoria);
   chiavi.push('gioco.enigma.' + famiglia + '.' + n);
@@ -3126,11 +3137,19 @@ function missRaccontaLocale(testo, lingua) {
   return true;
 }
 
+function missTestoVoceTappa(tappa) {
+  if (!tappa) return '';
+  return tappa.fase === 'scoperta'
+    ? missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) }) + ' ' + missDomanda(tappa)
+    : missTestoIndizio(tappa);
+}
+
 async function missRaccontaTappa(tappa, forza) {
   if (!tappa || (!forza && !(miss.attiva && miss.attiva.scelte.voce))) return false;
-  const testo = tappa.fase === 'scoperta' ?
-    missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) }) + ' ' + missDomanda(tappa) :
-    (tappa.mostraAiuto ? missIndizio(tappa) : missIntroduzione(tappa));
+  // La voce deve seguire esattamente l'indizio selezionato con le frecce,
+  // non l'ultimo aiuto sbloccato. `indizioMostrato` può infatti essere
+  // precedente ad `aiuto` quando si torna indietro nella sequenza.
+  const testo = missTestoVoceTappa(tappa);
   const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
   const sequenza = missFermaVoce();
   try {
@@ -3378,6 +3397,7 @@ function missAzione(azione, corpo) {
         t.indizioMostrato = Math.max(0, missIndiceIndizio(t) - 1);
         t.mostraAiuto = t.indizioMostrato > 0;
         missSalvaAttiva(); missMostraVista('inCorso'); missMostraStrisciaCielo();
+        missRaccontaTappa(t);
       }
       break;
     }
@@ -3388,6 +3408,7 @@ function missAzione(azione, corpo) {
         t.indizioMostrato = missIndiceIndizio(t) + 1;
         t.mostraAiuto = true;
         missSalvaAttiva(); missMostraVista('inCorso'); missMostraStrisciaCielo();
+        missRaccontaTappa(t);
       } else missChiediAiuto();
       break;
     }

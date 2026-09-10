@@ -37,9 +37,13 @@ sono adattate all’età scelta.
 
 Il nome resta nascosto in anteprima, riepilogo della missione in corso,
 etichette del cielo e audio di ricerca. L’elenco degli astri è sospeso durante
-la ricerca. Ogni pressione di “Guidami” mostra un indizio diverso e più preciso,
-fino a un massimo di tre. Il terzo rivela il nome e centra il bersaglio nel
-planetario, senza completare la tappa.
+la ricerca. La guida presenta tre indizi, ciascuno più preciso del precedente;
+il quarto pannello si chiama esplicitamente “Soluzione”, rivela il nome e centra
+il bersaglio nel planetario senza completare la tappa.
+Se nella preparazione è stata scelta la voce, ogni indizio viene letto quando
+compare, anche navigando avanti e indietro fra quelli già ottenuti. Al tocco
+del bersaglio corretto viene letto automaticamente anche il messaggio finale
+di scoperta.
 I riferimenti vicini vengono ricalcolati per l’istante attuale usando la
 distanza sferica; la destra e l’alto del mirino usano la base della camera.
 
@@ -48,6 +52,9 @@ visibilità, difficoltà e strumento. Anche nella modalità sfida la difficoltà
 resta intermedia, mentre per i bambini entrano soltanto bersagli facili. Gli
 enigmi mescolano una traccia fantasiosa con un aspetto realmente osservabile
 (colore, sagoma o disposizione), senza promettere i colori delle fotografie.
+Le costellazioni del repertorio hanno due indovinelli propri, alternati fra
+una missione e l’altra, così una figura già incontrata non si presenta sempre
+con le stesse parole.
 Le varianti di testo restano stabili nella sessione. La cronologia locale
 evita gli oggetti delle ultime tre missioni quando ci sono alternative, ruota
 racconti e domande per ciascun oggetto e non ripete la stessa domanda per due
