@@ -2378,6 +2378,8 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.momentoScegli': 'Scegli giorno e ora',
     'missione.dataOraMissione': 'Giorno e ora di inizio',
     'missione.conCosa': 'Con cosa osservi?',
+    'missione.inquinamentoLuminoso': 'Quale inquinamento luminoso vuoi simulare?',
+    'missione.inquinamentoSpiega': 'Il valore iniziale è quello delle Impostazioni. La missione proporrà soltanto oggetti realmente visibili con questo cielo.',
     'missione.cheEsperienza': 'Quanto vuoi che sia difficile?',
     'missione.durata.10': '10 minuti',
     'missione.durata.30': '30 minuti',

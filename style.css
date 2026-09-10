@@ -10622,6 +10622,7 @@ body button.did-ponte:active { transform: translateY(1px); }
 .missione-modulo { display: flex; flex-direction: column; gap: 12px; }
 .missione-campo { display: flex; flex-direction: column; gap: 6px; }
 .missione-campo > span { font-size: 0.82rem; font-weight: 700; color: var(--testo-2); }
+.missione-campo > small { color: var(--testo-3); font-size: 0.76rem; line-height: 1.35; }
 .missione-select, .missione-nota {
   width: 100%;
   padding: 10px 12px;

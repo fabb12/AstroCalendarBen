@@ -65,7 +65,11 @@ comunque riproporre bersagli già incontrati, invece di inventarne di invisibili
 
 Le posizioni vengono verificate anche agli orari assegnati, non soltanto al
 massimo di altezza nella finestra. Per ogni bersaglio la magnitudine limite
-del luogo viene corretta in base alla sua altezza: verso l'orizzonte la massa
+del luogo viene corretta in base alla sua altezza. Nella pianificazione una
+casella combinata permette di simulare una delle sei condizioni di inquinamento
+luminoso della scala di Bortle; parte dal cielo salvato nelle Impostazioni, ma
+può essere cambiata per preparare una trasferta senza alterare il cielo di casa.
+Verso l'orizzonte la massa
 d'aria abbassa il limite e schiarisce il fondo. Gli oggetti del cielo profondo
 passano inoltre un controllo sulla brillanza superficiale e sul contrasto con
 il fondo locale; da un cielo urbano troppo inquinato non vengono proposti,
@@ -80,7 +84,7 @@ Gli eventi astratti del calendario e i corpi minori con coordinate campionate
 restano nel pianificatore; le missioni interattive selezionano Luna, pianeti,
 stelle, costellazioni e cielo profondo identificabili nel planetario.
 
-Lo stato salvato passa alla versione 6; le vecchie missioni attive vengono
+Lo stato salvato passa alla versione 8; le vecchie missioni attive vengono
 rigenerate, così ereditano subito i nuovi limiti di difficoltà. Il Diario precedente rimane leggibile. Le nuove osservazioni
 sono salvate nella sessione e incluse nel Diario, insieme agli aiuti usati.
 La fase di scoperta sopravvive a una ricarica senza saltare alla tappa seguente.
