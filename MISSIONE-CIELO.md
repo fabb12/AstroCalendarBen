@@ -1,5 +1,11 @@
 # Missione Cielo: osservare, cercare, scoprire
 
+Quando almeno un pianeta è visibile, compatibile con lo strumento scelto e
+nel settore di cielo indicato, la missione gli riserva una tappa. La Luna resta
+un bersaglio distinto: non prende il posto del pianeta in questa regola. Fra i
+pianeti disponibili viene scelto quello col punteggio migliore per quella
+serata; le altre tappe continuano a seguire le normali regole di varietà.
+
 “Preparami la serata” riutilizza `pianBersagli`, i cataloghi del planetario,
 `altAzCorpo`, `altAzCoordinate`, l’orizzonte dichiarato/misurato e il sistema
 esistente di orientamento. Non aggiunge un secondo planetario o un secondo

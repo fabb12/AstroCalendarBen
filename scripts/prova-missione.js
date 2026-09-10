@@ -261,6 +261,27 @@ prova('sotto l’altezza minima dell’esperienza non entra', () => {
 // =====================================================================
 sezione('la varietà, e la prima tappa facile');
 
+prova('se un pianeta è osservabile entra anche in una missione corta', () => {
+  const pianeta = candidato('pianeta:Mars', {
+    nome: 'Marte', difficolta: 2, evidenza: 0.5, puntiBase: 1
+  });
+  const stelleFavorite = Array.from({ length: 5 }, (_, i) => candidato('stella:favorita-' + i, {
+    tipo: 'stella', nome: 'Stella favorita ' + i, azimut: 30 + i * 40,
+    difficolta: 1, evidenza: 1, puntiBase: 200
+  }));
+  const m = motore.genera(scenario(stelleFavorite.concat(pianeta), { durata: 10 }));
+  assert.ok(m.tappe.some(t => t.id === 'pianeta:Mars'), m.tappe.map(t => t.id).join(', '));
+});
+
+prova('un pianeta non osservabile non viene forzato nella missione', () => {
+  const nettuno = candidato('pianeta:Neptune', {
+    nome: 'Nettuno', strumentoMinimo: 'telescopio', difficolta: 4
+  });
+  const stella = candidato('stella:Star2', { tipo: 'stella', nome: 'Sirio' });
+  const m = motore.genera(scenario([nettuno, stella], { durata: 10, strumento: 'occhio' }));
+  assert.deepStrictEqual(m.tappe.map(t => t.id), ['stella:Star2']);
+});
+
 prova('una nuova missione usa astri diversi quando il cielo ne offre abbastanza', () => {
   const prima = motore.genera(scenario(cieloRicco(), {
     durata: 30, strumento: 'telescopio', esperienza: 'sfida'

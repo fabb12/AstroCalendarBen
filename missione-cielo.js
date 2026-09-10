@@ -884,8 +884,23 @@ function missGeneraMissione(scenario) {
   const quante = missQuanteTappe(scelte.durata, votati.length);
   const perFamiglia = {};
   const scelti = [];
+
+  // Se almeno un pianeta è davvero alla portata, deve entrare nella
+  // missione. I pianeti erano già fra i candidati, ma una costellazione o
+  // una stella con pochi punti in più poteva espellerli del tutto (sempre,
+  // nelle missioni corte). «Sistema Solare» comprende anche la Luna, ma la
+  // Luna non sostituisce questa promessa: si riserva il posto a un pianeta
+  // vero e si lascia poi al normale selettore il compito di dare varietà.
+  // `votati` ha già applicato punteggio, casualità e penalità dei recenti,
+  // quindi il primo è anche la scelta migliore per questa serata.
+  const pianetaVisibile = votati.find(c => c.tipo === 'pianeta');
+  if (pianetaVisibile && quante > 0) {
+    scelti.push(pianetaVisibile);
+    perFamiglia[missFamigliaDi(pianetaVisibile)] = 1;
+  }
   for (const c of votati) {
     if (scelti.length >= quante) break;
+    if (scelti.includes(c)) continue;
     if (missDoppione(c, scelti)) continue;
     const f = missFamigliaDi(c);
     if ((perFamiglia[f] || 0) >= MISS_TETTO_FAMIGLIA) continue;
