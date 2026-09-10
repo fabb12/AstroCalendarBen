@@ -1277,11 +1277,11 @@ function missRicercaAttiva() {
 }
 
 function missTitoloTappa(t) {
-  // Il programma della serata non deve nascondere cio' che si andra' a
-  // cercare: il nome vero resta visibile sia nell'anteprima sia durante la
-  // tappa, mentre sono gli indizi (non l'etichetta) a rendere la caccia un
-  // gioco.
-  return missNomeTappa(t);
+  // Durante il gioco il bersaglio resta un mistero: il nome compare soltanto
+  // dopo la scoperta (o quando la tappa ha gia' un esito). L'anteprima usa
+  // invece direttamente `missNomeTappa`, cosi' chi prepara la serata conosce
+  // in anticipo tutti gli oggetti senza rovinare la caccia una volta avviata.
+  return t.fase === 'scoperta' || t.esito ? missNomeTappa(t) : missT('gioco.mistero');
 }
 
 function missMisuraTappa(t, data, obs) {
@@ -2219,7 +2219,7 @@ function missHtmlAnteprima(m) {
 
   const righe = m.tappe.map((t, i) => `<li class="missione-anteprima-riga">
       <span class="missione-anteprima-ora">${missOra(t.quando)}</span>
-      <span class="missione-anteprima-nome">${missTesto(missTitoloTappa(t))}</span>
+      <span class="missione-anteprima-nome">${missTesto(missNomeTappa(t))}</span>
       <span class="missione-anteprima-che">${missT('difficolta.' + t.difficolta)}</span>
     </li>`).join('');
   const futura = m.partenza > Date.now() + MISS_SCARTO_RIGENERA_MS;
