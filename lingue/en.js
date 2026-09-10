@@ -2352,8 +2352,11 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.voceNo': 'Text only',
     'missione.soloVoce': 'Hide, voice only',
     'missione.mostraGuida': 'Show guide',
-    'missione.indizioPrincipale': 'Read the main clue',
-    'missione.prossimoIndizio': 'Next hint',
+    'missione.numeroIndizio': 'Clue {n} of {tot}',
+    'missione.navigaIndizi': 'Clue navigation',
+    'missione.indizioPrecedente': 'Previous clue',
+    'missione.indizioSuccessivo': 'Next clue',
+    'missione.spostaRiquadro': 'Move the information panel',
     'missione.seguiTelefono': 'Follow the phone',
     'missione.terminaPlanetario': 'End the mission and keep using the planetarium',
 
