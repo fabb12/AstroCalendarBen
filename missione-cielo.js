@@ -58,7 +58,7 @@
 //     dichiarare.
 // =====================================================================
 
-const MISS_VERSIONE = 4;
+const MISS_VERSIONE = 5;
 const CHIAVE_MISS_STORIA = 'astrocalendario_missione_storia';
 
 const CHIAVE_MISS_SCELTE = 'astrocalendario_missione_scelte';
@@ -98,6 +98,16 @@ const MISS_TAPPE_PER_DURATA = {
 const MISS_ALTEZZA_MINIMA = {
   stupore: 15, imparare: 15, sfida: 10, bambini: 20
 };
+
+// Anche la modalita' «sfida» deve restare una caccia alla portata di una
+// serata normale, non un esame da astrofilo. Gli oggetti di livello 4–5
+// restano nel pianificatore, mentre qui si privilegiano bersagli che si
+// riconoscono con pochi indizi. Per i bambini il limite e' ancora piu' basso.
+const MISS_DIFFICOLTA_MASSIMA = { sfida: 3, bambini: 2, stupore: 3, imparare: 3 };
+
+// Ricordiamo piu' di una sola missione: con un cielo ricco la nuova caccia
+// cambia davvero cast, invece di oscillare fra gli stessi due gruppi.
+const MISS_MISSIONI_DA_RICORDARE = 3;
 
 // La finestra di sorveglianza di un evento a orario preciso: quanto
 // tempo prima lo si annuncia. Meno di così non si fa in tempo a uscire e
@@ -279,13 +289,15 @@ function missQuanteTappe(durata, candidatiBuoni) {
 /* La cernita: chi può stare in una missione, e chi no.
  *
  * È il primo dei due filtri, ed è quello secco — qui non si pesa niente,
- * si esclude. Le quattro ragioni per cui un bersaglio non entra sono
- * tutte fatti e non giudizi: sta sotto l'orizzonte, sta dietro a qualcosa
- * di dichiarato, vuole uno strumento che non c'è, oppure dentro alla
- * finestra della missione non c'è affatto. */
+ * si esclude. Un bersaglio non entra se sta sotto l'orizzonte, dietro a
+ * qualcosa di dichiarato, richiede uno strumento che non c'è, è troppo
+ * difficile per il percorso scelto oppure manca nella finestra della
+ * missione. */
 function missAmmissibile(c, scelte) {
   if (!c || !c.nome || c.idCielo === 'Sun') return false;
   if (!missStrumentoBasta(c.strumentoMinimo, scelte.strumento)) return false;
+  const difficoltaMassima = MISS_DIFFICOLTA_MASSIMA[scelte.esperienza] ?? 3;
+  if ((c.difficolta || 1) > difficoltaMassima) return false;
   if (scelte.cielo === 'settore' && !missAzimutNelSettore(c.azimut, Number(scelte.cieloDa), Number(scelte.cieloA))) return false;
   // L'altezza è quella del momento consigliato, che è già il migliore
   // dentro alla finestra: se non basta lì, non basta mai.
@@ -535,16 +547,27 @@ function missGeneraMissione(scenario) {
       .filter(t => missAmmissibile(t, scelte))
       .sort((a, b) => a.quando - b.quando);
   }
-  const tappe = missAttaccaRiferimenti(misurate, votati).map((t, i) => Object.assign({}, t, {
+  const variantiDomandaUsate = {};
+  const tappe = missAttaccaRiferimenti(misurate, votati).map((t, i) => {
+    const famiglia = missFamigliaContenuto(t);
+    const precedente = scenario.domande && scenario.domande[t.id];
+    let domandaVariante = precedente != null ? (precedente + 1) % 3 :
+      missHashTesto(idMissione + ':domanda:' + t.id) % 3;
+    // Due pianeti (o due stelle) nella stessa missione non pongono la stessa
+    // domanda quando le altre varianti sono disponibili.
+    const usate = variantiDomandaUsate[famiglia] || (variantiDomandaUsate[famiglia] = new Set());
+    for (let n = 0; n < 3 && usate.has(domandaVariante); n++) domandaVariante = (domandaVariante + 1) % 3;
+    usate.add(domandaVariante);
+    return Object.assign({}, t, {
     indice: i,
     esito: null,
     aiuto: 0,
     fase: 'ricerca',
     raccontoVariante: storia[t.id] == null ? missHashTesto(idMissione + ':' + t.id) % 3 : (storia[t.id] + 1) % 3,
-    domandaVariante: scenario.domande && scenario.domande[t.id] != null ?
-      (scenario.domande[t.id] + 1) % 3 : missHashTesto(idMissione + ':domanda:' + t.id) % 3,
+    domandaVariante,
     indizioVariante: storia[t.id] == null ? missHashTesto(idMissione + ':indizio:' + t.id) % 3 : (storia[t.id] + 1) % 3
-  }));
+    });
+  });
 
   if (!tappe.length) return { vuota: true, motivo: 'nienteInVista', scelte, condizioni, tappe: [] };
   return {
@@ -983,9 +1006,10 @@ function missScenario(scelte, partenzaMs) {
     .filter(t => t.tipo !== 'corpoMinore' && (t.idCielo || (t.tipo === 'costellazione' && t.sigla)));
 
   const storia = missLeggiSalvato(CHIAVE_MISS_STORIA) || {};
+  const recenti = (storia.missioniRecenti || [storia.recenti || []]).flat();
   return {
     adesso, partenza, scelte, candidati,
-    evitare: storia.recenti || [], storia: storia.varianti || {}, domande: storia.domande || {},
+    evitare: recenti, storia: storia.varianti || {}, domande: storia.domande || {},
     posizioneA: (t, ms) => missMisuraTappa(t, new Date(ms), obs),
     condizioni: {
       luna: luna ? luna.fattore : 0,
@@ -1472,7 +1496,10 @@ function missAvvia(missione, quando) {
   const storia = missLeggiSalvato(CHIAVE_MISS_STORIA) || {};
   const varianti = storia.varianti || {}, domande = storia.domande || {};
   miss.attiva.tappe.forEach(t => { varianti[t.id] = t.raccontoVariante; domande[t.id] = t.domandaVariante; });
-  missScrivi(CHIAVE_MISS_STORIA, { recenti: miss.attiva.tappe.map(t => t.id), varianti, domande });
+  const recenti = miss.attiva.tappe.map(t => t.id);
+  const missioniRecenti = [recenti, ...(storia.missioniRecenti || [])]
+    .slice(0, MISS_MISSIONI_DA_RICORDARE);
+  missScrivi(CHIAVE_MISS_STORIA, { recenti, missioniRecenti, varianti, domande });
   missSalvaAttiva();
   missMostraVista('inCorso');
   // Appena comincia la tappa, il pannello lascia libero il cielo: cercare
@@ -2214,12 +2241,24 @@ function missFamigliaContenuto(t) {
   return ['luna', 'pianeta', 'stella', 'costellazione', 'profondo'].includes(t.tipo) ? t.tipo : 'profondo';
 }
 
+// Un dettaglio osservabile del bersaglio, non una descrizione da fotografia.
+// I nomi propri hanno un segno riconoscibile (colore, sagoma, disposizione);
+// gli altri ripiegano sull'aspetto realistico della loro famiglia.
+function missSegnoTappa(t) {
+  const base = missCuriositaChiave(t).split('.')[1];
+  const segno = 'gioco.segno.' + (base === 'andromeda' && t.tipo !== 'profondo' ? 'costellazione' : base);
+  return astroI18n.esiste('missione.' + segno) ? missT(segno) :
+    missT('gioco.osserva.' + missFamigliaContenuto(t));
+}
+
 function missIntroduzione(t) {
   const modo = miss.attiva ? miss.attiva.scelte.esperienza : 'sfida';
   if (modo === 'sfida') return missT('gioco.enigma.' + missFamigliaContenuto(t) + '.' +
-    ((t.indizioVariante || 0) % 3 + 1));
+    ((t.indizioVariante || 0) % 3 + 1)) + ' ' + missSegnoTappa(t);
   return missT('gioco.intro.' + modo + '.' + ((t.indizioVariante || 0) % 3 + 1)) + ' ' +
-    missT('gioco.osserva.' + (modo === 'bambini' ? 'bambini.' : '') + missFamigliaContenuto(t));
+    (modo === 'bambini' ?
+      missT('gioco.osserva.bambini.' + missFamigliaContenuto(t)) + ' ' + missSegnoTappa(t) :
+      missSegnoTappa(t));
 }
 
 function missIndizio(t) {
@@ -2229,10 +2268,7 @@ function missIndizio(t) {
   const livello = t.aiuto || 0;
   if (!livello) return missT('gioco.direzione.' + ((t.indizioVariante || 0) % 3 + 1), { dove });
   if (livello === 1) {
-    const base = missCuriositaChiave(t).split('.')[1];
-    const segno = 'gioco.segno.' + (base === 'andromeda' && t.tipo !== 'profondo' ? 'costellazione' : base);
-    const dettaglio = astroI18n.esiste('missione.' + segno) ? missT(segno) : missT('gioco.osserva.' + missFamigliaContenuto(t));
-    return missT('gioco.altezza', { dove, altezza: missT('altezza.' + missFasciaAltezza(ora.altezza)) }) + ' ' + dettaglio;
+    return missT('gioco.altezza', { dove, altezza: missT('altezza.' + missFasciaAltezza(ora.altezza)) }) + ' ' + missSegnoTappa(t);
   }
   if (livello === 2) {
     // I riferimenti sono misurati ORA, in entrambe le coordinate, e devono
@@ -2633,7 +2669,8 @@ function missPreparaAnteprima(evitare) {
     return null;
   }
   const storia = missLeggiSalvato(CHIAVE_MISS_STORIA) || {};
-  scenario.evitare = [...(evitare || []), ...(storia.recenti || [])];
+  const recenti = (storia.missioniRecenti || [storia.recenti || []]).flat();
+  scenario.evitare = [...(evitare || []), ...recenti];
   scenario.storia = storia.varianti || {};
   scenario.domande = storia.domande || {};
   const generata = missGeneraMissione(scenario);
@@ -2734,7 +2771,7 @@ const missProve = {
   campioni: missCampioni,
   costanti: {
     MISS_VERSIONE, MISS_DURATE, MISS_STRUMENTI, MISS_ESPERIENZE, MISS_DIREZIONI,
-    MISS_TAPPE_PER_DURATA, MISS_ALTEZZA_MINIMA, MISS_PREAVVISO_MIN,
+    MISS_TAPPE_PER_DURATA, MISS_ALTEZZA_MINIMA, MISS_DIFFICOLTA_MASSIMA, MISS_PREAVVISO_MIN,
     MISS_SCADENZA_MS, MISS_TETTO_FAMIGLIA, MISS_LIVELLO_STRUMENTO,
     CHIAVE_MISS_SCELTE, CHIAVE_MISS_ATTIVA
   }

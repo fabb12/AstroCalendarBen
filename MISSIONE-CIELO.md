@@ -37,10 +37,15 @@ I riferimenti vicini vengono ricalcolati per l’istante attuale usando la
 distanza sferica; la destra e l’alto del mirino usano la base della camera.
 
 Ogni generazione ha un seme; oggetti e ordine variano entro i vincoli di
-visibilità, difficoltà e strumento. Le varianti di testo restano stabili
-nella sessione. La cronologia locale evita gli oggetti della sessione appena
-avviata quando ci sono alternative e ruota racconti e domande per ciascun
-oggetto. Un cielo povero può comunque riproporre bersagli già incontrati.
+visibilità, difficoltà e strumento. Anche nella modalità sfida la difficoltà
+resta intermedia, mentre per i bambini entrano soltanto bersagli facili. Gli
+enigmi mescolano una traccia fantasiosa con un aspetto realmente osservabile
+(colore, sagoma o disposizione), senza promettere i colori delle fotografie.
+Le varianti di testo restano stabili nella sessione. La cronologia locale
+evita gli oggetti delle ultime tre missioni quando ci sono alternative, ruota
+racconti e domande per ciascun oggetto e non ripete la stessa domanda per due
+astri della stessa famiglia nella medesima missione. Un cielo povero può
+comunque riproporre bersagli già incontrati, invece di inventarne di invisibili.
 
 ## Tempo, posizione e ripresa
 
@@ -55,8 +60,8 @@ Gli eventi astratti del calendario e i corpi minori con coordinate campionate
 restano nel pianificatore; le missioni interattive selezionano Luna, pianeti,
 stelle, costellazioni e cielo profondo identificabili nel planetario.
 
-Lo stato salvato passa alla versione 4; le vecchie missioni attive vengono
-rigenerate. Il Diario precedente rimane leggibile. Le nuove osservazioni
+Lo stato salvato passa alla versione 5; le vecchie missioni attive vengono
+rigenerate, così ereditano subito i nuovi limiti di difficoltà. Il Diario precedente rimane leggibile. Le nuove osservazioni
 sono salvate nella sessione e incluse nel Diario, insieme agli aiuti usati.
 La fase di scoperta sopravvive a una ricarica senza saltare alla tappa seguente.
 

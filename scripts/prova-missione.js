@@ -175,6 +175,17 @@ prova('col telescopio entra tutto', () => {
   assert.ok(!motore.strumentoBasta('binocolo', 'occhio'));
 });
 
+prova('anche la sfida evita bersagli da esperti', () => {
+  const troppoDuro = candidato('profondo:difficile', {
+    tipo: 'profondo', difficolta: 4, strumentoMinimo: 'telescopio', evidenza: 0.9
+  });
+  const m = motore.genera(scenario([troppoDuro].concat(cieloRicco()), {
+    esperienza: 'sfida', strumento: 'telescopio', durata: 120
+  }));
+  assert.ok(!m.tappe.some(t => t.id === troppoDuro.id));
+  assert.ok(m.tappe.every(t => t.difficolta <= K.MISS_DIFFICOLTA_MASSIMA.sfida));
+});
+
 // =====================================================================
 sezione('sotto l’orizzonte, e dietro al tetto del vicino');
 
@@ -220,6 +231,28 @@ prova('sotto l’altezza minima dell’esperienza non entra', () => {
 
 // =====================================================================
 sezione('la varietà, e la prima tappa facile');
+
+prova('una nuova missione usa astri diversi quando il cielo ne offre abbastanza', () => {
+  const prima = motore.genera(scenario(cieloRicco(), {
+    durata: 30, strumento: 'telescopio', esperienza: 'sfida'
+  }));
+  const secondaScenario = scenario(cieloRicco(), {
+    durata: 30, strumento: 'telescopio', esperienza: 'sfida'
+  });
+  secondaScenario.seme = 'seconda-missione';
+  secondaScenario.evitare = prima.tappe.map(t => t.id);
+  const seconda = motore.genera(secondaScenario);
+  assert.deepStrictEqual(seconda.tappe.filter(t => prima.tappe.some(p => p.id === t.id)), []);
+});
+
+prova('due astri della stessa famiglia ricevono domande diverse', () => {
+  const pianeti = ['Mercury', 'Venus', 'Mars'].map((nome, i) => candidato('pianeta:' + nome, {
+    nome, azimut: 120 + i * 20, difficolta: 1, evidenza: 0.9
+  }));
+  const m = motore.genera(scenario(pianeti, { durata: 30, esperienza: 'sfida' }));
+  const varianti = m.tappe.map(t => t.domandaVariante);
+  assert.strictEqual(new Set(varianti).size, varianti.length);
+});
 
 prova('una figura e la sua stella più luminosa non stanno nella stessa missione', () => {
   // È il doppione che nessun'altra regola prende: sono due famiglie diverse
