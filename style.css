@@ -10395,6 +10395,32 @@ body button.did-ponte:active { transform: translateY(1px); }
               color var(--transizione);
 }
 .missione-scelta:hover { border-color: var(--blu-chiaro); color: var(--testo); }
+/* La pillola con la nota sotto: i tre gradini di difficoltà non si
+   spiegano col nome («Esperti» non promette niente finché non si legge
+   che vuol dire il solo enigma), quindi lì la pillola smette di essere un
+   tondo e diventa una cartolina — testo a sinistra, due righe, angoli
+   meno rotondi perché una riga lunga dentro a un `border-radius: 999px`
+   perde i due capi sotto la curva. */
+.missione-scelta.con-nota {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  border-radius: 14px;
+  padding: 10px 14px;
+  min-height: 44px;
+  flex: 1 1 220px;
+  max-width: 100%;
+  text-align: left;
+}
+.missione-scelta-nota {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--testo-3);
+  white-space: normal;
+}
+.missione-scelta.attiva .missione-scelta-nota { color: rgba(255, 255, 255, 0.82); }
 /* Scelta e non scelta si distinguono per **tre** cose insieme — fondo,
    bordo e peso del testo — e non per la sola tinta: `aria-checked` lo
    dice a chi legge con lo schermo, il grassetto a chi guarda in fretta. */
@@ -10710,12 +10736,6 @@ body .missione-striscia.solo-voce .missione-ripristina {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.missione-striscia-guida {
-  margin-top: 2px;
-  color: var(--testo-2);
-  font-size: 0.76rem;
-  line-height: 1.25;
-}
 .missione-striscia-indizio {
   margin: 1px 0 0;
   color: var(--testo);
@@ -10740,7 +10760,6 @@ body .missione-striscia.solo-voce .missione-ripristina {
 @media (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
   .missione-striscia { padding: 6px 10px; gap: 6px; }
   .missione-striscia-titolo { display: none; }
-  .missione-striscia-guida { display: none; }
   body .missione-striscia-tasti .missione-tasto { min-height: 32px; font-size: 0.74rem; }
 }
 
@@ -10782,6 +10801,20 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 .missione-striscia p { margin: .35rem 0; line-height: 1.45; }
 .missione-scoperta { width: 100%; min-width: 0; }
 .missione-scoperta h3 { color: #a7f3d0; font-weight: 700; }
+/* La riga della specie e il cartellino: sono un dato, non un discorso, e
+   vanno letti in un colpo d'occhio — corpo piccolo, maiuscoletto sulla
+   specie, il numero in ambra perché è la cosa che si va a cercare. */
+.missione-scoperta .missione-specie {
+  margin: .15rem 0 .45rem;
+  font-size: .78rem;
+  letter-spacing: .01em;
+  color: var(--testo-2);
+}
+.missione-scoperta .missione-cartellino { color: #fde68a; }
+/* L'aneddoto è la cosa che si legge davvero: gli si dà il corpo pieno e
+   un filo di respiro fra le righe, se no due frasi dense su un fondo
+   scuro si leggono come un avviso di errore. */
+.missione-scoperta .missione-aneddoto { line-height: 1.55; }
 .missione-scoperta label { display: block; margin-top: .7rem; font-weight: 600; }
 .missione-scoperta textarea { display: block; width: 100%; box-sizing: border-box; margin: .5rem 0;
   background: #0f172a; color: #e2e8f0; border: 1px solid #64748b; border-radius: .65rem; padding: .65rem; }
@@ -10813,5 +10846,4 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 .missione-ricerca.missione-senza-sensori #skymap-btn-segui { display: none !important; }
 body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 .missione-striscia-tasti { flex-wrap: wrap; }
-.missione-striscia.visibile .missione-striscia-guida { display: block; }
 .missione-striscia.visibile .missione-striscia-titolo { display: inline-flex; }

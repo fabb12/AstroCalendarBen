@@ -81,7 +81,7 @@ function scenario(candidati, scelte, condizioni) {
     partenza: T0,
     seme: 'regressione',
     candidati,
-    scelte: Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'stupore' }, scelte),
+    scelte: Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'curiosi' }, scelte),
     condizioni: Object.assign({ luna: 0, nuvole: 10, bortle: 4 }, condizioni)
   };
 }
@@ -366,8 +366,253 @@ prova('con i bambini niente di difficile, e tappe corte', () => {
 prova('la scelta bambini attiva un registro dedicato senza cambiare gli altri', () => {
   assert.strictEqual(motore.chiaveRegistro('trova', 'bambini'), 'bambini.trova');
   assert.strictEqual(motore.chiaveRegistro('aiuto3', 'bambini'), 'bambini.aiuto3');
-  assert.strictEqual(motore.chiaveRegistro('trova', 'stupore'), 'trova');
+  assert.strictEqual(motore.chiaveRegistro('trova', 'curiosi'), 'trova');
   assert.strictEqual(motore.chiaveRegistro('cielo.sereno', 'bambini'), 'cielo.sereno');
+});
+
+// =====================================================================
+sezione('i tre gradini della caccia');
+
+/* I gradini sono tre e non due, ed è la sola cosa che questa sezione
+ * esiste per provare: che siano davvero **tre cose diverse** e non tre
+ * etichette sullo stesso comportamento. Le due manopole sono il tetto
+ * della difficoltà e quanto si racconta prima di cercare, e vanno
+ * verificate tutte e due — con un tetto solo, «curiosi» ed «esperti»
+ * darebbero la stessa missione con due nomi. */
+prova('i tre gradini hanno tre tetti di difficoltà, in ordine', () => {
+  assert.deepStrictEqual(K.MISS_ESPERIENZE, ['bambini', 'curiosi', 'sfida']);
+  const t = K.MISS_DIFFICOLTA_MASSIMA;
+  assert.ok(t.bambini < t.curiosi && t.curiosi < t.sfida,
+    `${t.bambini} / ${t.curiosi} / ${t.sfida}`);
+  const a = K.MISS_ALTEZZA_MINIMA;
+  assert.ok(a.bambini > a.curiosi && a.curiosi > a.sfida,
+    `${a.bambini} / ${a.curiosi} / ${a.sfida}`);
+});
+
+prova('solo il gradino più alto arriva al cielo profondo difficile', () => {
+  // Ammissibile e non «scelto»: in un cielo ricco una planetaria di
+  // undicesima resta comunque in fondo alla classifica, ed è giusto. La
+  // domanda qui è un'altra — il tetto la lascia passare o no?
+  const duro = candidato('profondo:duro', { tipo: 'profondo', nome: 'M76 — Piccolo Manubrio',
+    sigla: 'M76', categoria: 'planetaria', difficolta: 5, evidenza: 0.05, mag: 11.5,
+    strumentoMinimo: 'telescopio', azimut: 90 });
+  assert.ok(motore.ammissibile(duro, { esperienza: 'sfida', strumento: 'telescopio' }),
+    'agli esperti la planetaria di undicesima si può proporre');
+  assert.ok(!motore.ammissibile(duro, { esperienza: 'curiosi', strumento: 'telescopio' }),
+    'ai curiosi no: il loro tetto è tre');
+  assert.ok(!motore.ammissibile(duro, { esperienza: 'bambini', strumento: 'telescopio' }));
+  // E in un cielo che non offre altro, agli esperti ci finisce davvero.
+  const solo = motore.genera(scenario([duro], { esperienza: 'sfida', durata: 30, strumento: 'telescopio' }));
+  assert.deepStrictEqual(solo.tappe.map(t => t.id), ['profondo:duro']);
+});
+
+prova('quanto si racconta prima di cercare cambia coi gradini', () => {
+  const g = K.MISS_GENEROSITA;
+  assert.strictEqual(g.sfida.segno, false, 'agli esperti il segno arriva col primo indizio');
+  assert.strictEqual(g.curiosi.segno, true);
+  assert.strictEqual(g.bambini.aiutoSubito, true, 'ai bambini la direzione si dà senza chiederla');
+  assert.strictEqual(g.curiosi.aiutoSubito, false);
+});
+
+prova('una preferenza salvata di una modalità che non esiste più diventa il gradino di mezzo', () => {
+  // «stupore» e «imparare» erano i due percorsi morbidi: a chi voleva
+  // essere accompagnato non si può dare l'esame degli esperti.
+  assert.ok(!K.MISS_ESPERIENZE.includes('stupore'));
+  assert.ok(!K.MISS_ESPERIENZE.includes('imparare'));
+});
+
+// =====================================================================
+sezione('il repertorio: chi ha una storia da raccontare');
+
+/* Il difetto che questa sezione prende non si vede sullo schermo: un
+ * bersaglio con lo slug sbagliato riceve l'enigma di un altro oggetto e
+ * l'aneddoto di un terzo, e sembra soltanto un testo un po' strano. Il
+ * caso vero è «Andromeda», che sono due cose diverse — la figura e la
+ * galassia dentro di lei — e hanno due storie. */
+prova('la figura e la galassia di Andromeda non sono lo stesso bersaglio', () => {
+  const figura = { tipo: 'costellazione', nome: 'Andromeda', sigla: 'And' };
+  const galassia = { tipo: 'profondo', nome: 'M31 — Galassia di Andromeda', sigla: 'M31' };
+  assert.strictEqual(motore.slugTappa(figura), 'andromedaFigura');
+  assert.strictEqual(motore.slugTappa(galassia), 'andromeda');
+});
+
+prova('il cielo profondo si riconosce dalla sigla, non dal nome tradotto', () => {
+  // Il nome cambia con la lingua, la sigla di catalogo no: è l'unico
+  // pezzo su cui si possa appoggiare il riconoscimento.
+  assert.strictEqual(motore.slugTappa({ tipo: 'profondo', nome: 'M42 — Orion Nebula', sigla: 'M42' }),
+    'nebulosaOrione');
+  // «M 7» e «M7» sono due righe dello stesso ammasso: lo spazio non conta.
+  assert.strictEqual(motore.slugTappa({ tipo: 'profondo', nome: 'M 7 — ammasso aperto', sigla: 'M 7' }), 'm7');
+  // E senza `sigla` la si ricava dal nome composto dal catalogo.
+  assert.strictEqual(motore.siglaCatalogo({ tipo: 'profondo', nome: 'M45 — Pleiadi' }), 'm45');
+});
+
+prova('chi un nome proprio non ce l’ha cade nella sua specie, non nel generico', () => {
+  const anonima = { tipo: 'profondo', nome: 'M85 — galassia ellittica',
+    sigla: 'M85', categoria: 'galassia' };
+  assert.strictEqual(motore.slugTappa(anonima), null);
+  assert.strictEqual(motore.baseRacconto(anonima), 'galassia');
+  // …e senza nemmeno la categoria resta la famiglia, che c'è sempre.
+  assert.strictEqual(motore.baseRacconto({ tipo: 'profondo', nome: 'NGC 1', sigla: 'NGC 1' }), 'profondo');
+});
+
+prova('il fascino segue il repertorio, poi la specie, poi la famiglia', () => {
+  const saturno = motore.fascinoDi({ tipo: 'pianeta', nome: 'Saturno' });
+  const galassiaAnonima = motore.fascinoDi({ tipo: 'profondo', nome: 'M85 — galassia ellittica',
+    sigla: 'M85', categoria: 'galassia' });
+  const stellaQualunque = motore.fascinoDi({ tipo: 'stella', nome: 'HD 12345' });
+  assert.ok(saturno > galassiaAnonima && galassiaAnonima > stellaQualunque,
+    `${saturno} / ${galassiaAnonima} / ${stellaQualunque}`);
+  assert.ok(saturno <= 1 && stellaQualunque >= 0, 'il fascino sta fra zero e uno');
+});
+
+prova('nessuna voce del repertorio ha uno slug doppio o un fascino fuori scala', () => {
+  const visti = new Set();
+  for (const v of K.MISS_REPERTORIO) {
+    assert.ok(!visti.has(v.slug), 'slug ripetuto: ' + v.slug);
+    visti.add(v.slug);
+    assert.ok(v.fascino >= 0 && v.fascino <= 1, `${v.slug} ha fascino ${v.fascino}`);
+    assert.ok(v.prova || (v.sigle && v.sigle.length), v.slug + ' non si riconosce in nessun modo');
+  }
+});
+
+prova('a parità di tutto vince il bersaglio che ha qualcosa da raccontare', () => {
+  const base = { altezza: 45, difficolta: 2, evidenza: 0.6, minutiUtili: 60,
+    didattica: 0.3, puntiBase: 50 };
+  const saturno = Object.assign({ id: 'a', tipo: 'pianeta', nome: 'Saturno' }, base);
+  const anonima = Object.assign({ id: 'b', tipo: 'profondo', nome: 'NGC 4526 — galassia a spirale',
+    sigla: 'NGC 4526', categoria: 'galassia' }, base);
+  const scelte = { esperienza: 'curiosi' };
+  assert.ok(motore.punteggio(saturno, scelte, {}) > motore.punteggio(anonima, scelte, {}),
+    'Saturno vale più di una galassia senza nome con gli stessi numeri');
+});
+
+prova('agli esperti un bersaglio banale costa punti, agli altri no', () => {
+  const banale = { id: 'x', tipo: 'pianeta', nome: 'Venere', altezza: 45, difficolta: 1,
+    evidenza: 0.95, minutiUtili: 60, didattica: 0.3, puntiBase: 50 };
+  const perSfida = motore.punteggio(banale, { esperienza: 'sfida' }, {});
+  const senzaPavimento = motore.punteggio(
+    Object.assign({}, banale, { difficolta: K.MISS_DIFFICOLTA_GRADITA.sfida }),
+    { esperienza: 'sfida' }, {});
+  assert.ok(perSfida < senzaPavimento, `${perSfida} contro ${senzaPavimento}`);
+  assert.strictEqual(K.MISS_DIFFICOLTA_GRADITA.bambini, 1, 'coi bambini non c’è nessun pavimento');
+});
+
+prova('due oggetti profondi nello stesso campo sono una tappa sola', () => {
+  // M31 e la sua compagna M32 distano venti primi: chi trova la prima ha
+  // già la seconda dentro all'inquadratura.
+  const m31 = { id: 'a', tipo: 'profondo', nome: 'M31 — Galassia di Andromeda', sigla: 'M31',
+    mira: { ra: 0.712, dec: 41.27 } };
+  const m32 = { id: 'b', tipo: 'profondo', nome: 'M32 — Compagna di Andromeda', sigla: 'M32',
+    mira: { ra: 0.711, dec: 40.87 } };
+  const lontana = { id: 'c', tipo: 'profondo', nome: 'M33 — Galassia del Triangolo', sigla: 'M33',
+    mira: { ra: 1.564, dec: 30.66 } };
+  assert.ok(motore.separazioneCatalogo(m31, m32) < K.MISS_STESSO_CAMPO_GRADI);
+  assert.ok(motore.doppione(m32, [m31]), 'M32 accanto a M31 è un doppione');
+  assert.ok(!motore.doppione(lontana, [m31]), 'M33 sta a quindici gradi: e un\'altra tappa');
+});
+
+prova('due righe di catalogo dello stesso oggetto non fanno due tappe', () => {
+  // M42 e M43 sono due voci del catalogo per la stessa nebulosa: stesso
+  // slug, stesso enigma, stesso aneddoto.
+  const m42 = { id: 'a', tipo: 'profondo', nome: 'M42 — Nebulosa di Orione', sigla: 'M42' };
+  const m43 = { id: 'b', tipo: 'profondo', nome: 'M43 — Nebulosa di De Mairan', sigla: 'M43' };
+  assert.strictEqual(motore.slugTappa(m42), motore.slugTappa(m43));
+  assert.ok(motore.doppione(m43, [m42]));
+});
+
+// =====================================================================
+sezione('il repertorio e i dizionari devono dire la stessa cosa');
+
+/* La prova che risponde al difetto muto di tutto questo pezzo.
+ *
+ * Aggiungere una voce al repertorio senza scriverne l'enigma non rompe
+ * niente: la catena di ripiego consegna quello della specie, e sullo
+ * schermo compare un testo perfettamente sensato che parla di un'altra
+ * cosa. Nessuno se ne accorge — è la stessa famiglia di guasti dei nomi
+ * dei laghi che mancavano per mesi. Qui i due elenchi si confrontano
+ * cifra per cifra, e in tutt'e due le lingue. */
+function dizionario(lingua) {
+  const finestra = {};
+  const codice = fs.readFileSync(path.join(RADICE, 'lingue', lingua + '.js'), 'utf8');
+  new Function('window', codice)(finestra);
+  return finestra.ASTRO_DIZIONARI[lingua].messaggi;
+}
+
+const DIZIONARI = { it: dizionario('it'), en: dizionario('en') };
+
+for (const lingua of ['it', 'en']) {
+  prova('ogni voce del repertorio ha enigma, segno e aneddoto (' + lingua + ')', () => {
+    const d = DIZIONARI[lingua];
+    const mancanti = [];
+    for (const v of K.MISS_REPERTORIO) {
+      if (!d['missione.gioco.enigma.oggetto.' + v.slug]) mancanti.push('enigma ' + v.slug);
+      if (!d['missione.gioco.segno.' + v.slug]) mancanti.push('segno ' + v.slug);
+      if (!d['missione.curiosita.' + v.slug + '.1']) mancanti.push('aneddoto ' + v.slug);
+    }
+    assert.deepStrictEqual(mancanti, [], mancanti.slice(0, 6).join(', '));
+  });
+
+  prova('i due gradini di ripiego coprono tutto quello che resta (' + lingua + ')', () => {
+    const d = DIZIONARI[lingua];
+    const mancanti = [];
+    // Le cinque specie di catalogo: coprono i centoquaranta oggetti
+    // profondi che un nome proprio non ce l'hanno.
+    for (const specie of ['ammasso', 'globulare', 'nebulosa', 'planetaria', 'galassia']) {
+      if (!d['missione.gioco.enigma.specie.' + specie]) mancanti.push('enigma specie ' + specie);
+      if (!d['missione.gioco.segno.' + specie]) mancanti.push('segno specie ' + specie);
+      if (!d['missione.curiosita.' + specie + '.1']) mancanti.push('aneddoto specie ' + specie);
+      if (!d['missione.specie.' + specie]) mancanti.push('nome specie ' + specie);
+      if (!d['missione.gioco.enigmaBimbi.' + specie]) mancanti.push('bimbi specie ' + specie);
+    }
+    // E le famiglie, che sono l'ultimo gradino e quindi non possono mancare mai.
+    for (const fam of ['luna', 'pianeta', 'stella', 'costellazione', 'profondo']) {
+      for (let n = 1; n <= 3; n++) {
+        if (!d['missione.gioco.enigma.' + fam + '.' + n]) mancanti.push('enigma famiglia ' + fam + '.' + n);
+      }
+      if (!d['missione.gioco.enigmaBimbi.' + fam]) mancanti.push('bimbi famiglia ' + fam);
+      if (!d['missione.gioco.osserva.' + fam]) mancanti.push('osserva ' + fam);
+      if (!d['missione.anteprimaMistero.' + fam]) mancanti.push('mistero ' + fam);
+    }
+    for (const genere of ['stazione', 'evento']) {
+      if (!d['missione.anteprimaMistero.' + genere]) mancanti.push('mistero ' + genere);
+    }
+    assert.deepStrictEqual(mancanti, [], mancanti.slice(0, 6).join(', '));
+  });
+
+  prova('i tre gradini si spiegano da soli nel selettore (' + lingua + ')', () => {
+    const d = DIZIONARI[lingua];
+    for (const e of K.MISS_ESPERIENZE) {
+      assert.ok(d['missione.esperienza.' + e], 'manca l\'etichetta di ' + e);
+      assert.ok(d['missione.esperienzaNota.' + e], 'manca la nota di ' + e);
+    }
+  });
+
+  prova('il cartellino della scoperta ha tutte le sue misure (' + lingua + ')', () => {
+    const d = DIZIONARI[lingua];
+    for (const c of ['stella', 'stellaVicina', 'grande', 'piccolo', 'secondiLuce',
+      'minutiLuce', 'oreLuce', 'costellazione']) {
+      assert.ok(d['missione.gioco.cartellino.' + c], 'manca il cartellino ' + c);
+    }
+  });
+}
+
+prova('nessun enigma svela il nome del bersaglio che sta chiedendo', () => {
+  /* Il difetto che rovina il gioco in un modo che nessuna prova di
+   * struttura prende: un indovinello che comincia con «Saturno ha degli
+   * anelli…» è una risposta, non una domanda. Si controlla che il testo
+   * non contenga il nome dello slug — che è la forma in cui il nome
+   * scapperebbe dentro senza che nessuno se ne accorga rileggendo. */
+  const eccezioni = new Set(['stazione']);   // «stazione» è la specie, non il nome
+  const colpevoli = [];
+  for (const v of K.MISS_REPERTORIO) {
+    if (eccezioni.has(v.slug)) continue;
+    const nome = v.slug.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+    if (nome.length < 5) continue;           // «m5», «m22»: sono sigle, non nomi
+    const testo = String(DIZIONARI.it['missione.gioco.enigma.oggetto.' + v.slug] || '').toLowerCase();
+    if (testo.includes(nome)) colpevoli.push(v.slug);
+  }
+  assert.deepStrictEqual(colpevoli, [], colpevoli.join(', '));
 });
 
 // =====================================================================
@@ -397,7 +642,7 @@ prova('un evento che cade fra un minuto non si annuncia', () => {
   const subito = candidato('stazione:subito', {
     tipo: 'stazione', aOrarioPreciso: true, quando: T0 + 45 * 1000
   });
-  const fila = motore.inOrario([], [subito], T0, 60, { esperienza: 'stupore' });
+  const fila = motore.inOrario([], [subito], T0, 60, { esperienza: 'curiosi' });
   assert.deepStrictEqual(fila.map(t => t.id), []);
   assert.ok(K.MISS_PREAVVISO_MIN >= 2);
 });
@@ -406,7 +651,7 @@ prova('un evento oltre la fine della missione non entra', () => {
   const tardi = candidato('stazione:tardi', {
     tipo: 'stazione', aOrarioPreciso: true, quando: T0 + 90 * 60000
   });
-  const fila = motore.inOrario([candidato('a')], [tardi], T0, 30, { esperienza: 'stupore' });
+  const fila = motore.inOrario([candidato('a')], [tardi], T0, 30, { esperienza: 'curiosi' });
   assert.ok(!fila.some(t => t.id === 'stazione:tardi'));
 });
 
@@ -470,10 +715,10 @@ prova('la Luna piena penalizza il cielo profondo e non i pianeti', () => {
   const nebulosa = candidato('profondo:M31', { soffreLaLuna: true, difficolta: 4 });
   const pianeta = candidato('pianeta:Jupiter', { soffreLaLuna: false, difficolta: 4 });
   const senza = { luna: 0 };
-  const cadutaNebulosa = motore.punteggio(nebulosa, { esperienza: 'stupore' }, senza)
-                       - motore.punteggio(nebulosa, { esperienza: 'stupore' }, conLuna);
-  const cadutaPianeta = motore.punteggio(pianeta, { esperienza: 'stupore' }, senza)
-                      - motore.punteggio(pianeta, { esperienza: 'stupore' }, conLuna);
+  const cadutaNebulosa = motore.punteggio(nebulosa, { esperienza: 'curiosi' }, senza)
+                       - motore.punteggio(nebulosa, { esperienza: 'curiosi' }, conLuna);
+  const cadutaPianeta = motore.punteggio(pianeta, { esperienza: 'curiosi' }, senza)
+                      - motore.punteggio(pianeta, { esperienza: 'curiosi' }, conLuna);
   assert.ok(cadutaNebulosa > 20, `la nebulosa perde ${cadutaNebulosa}`);
   assert.strictEqual(cadutaPianeta, 0);
 });
@@ -691,16 +936,32 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     await pagina.evaluate(() => missApriPannello());
     await pagina.waitForTimeout(300);
 
-    const config = await pagina.evaluate(() => ({
-      aperto: !document.getElementById('modale-missione').classList.contains('hidden'),
-      gruppi: document.querySelectorAll('#missione-corpo .missione-gruppo').length,
-      scelte: document.querySelectorAll('#missione-corpo [data-miss-scelta]').length,
-      fuocoDentro: document.getElementById('modale-missione').contains(document.activeElement)
-    }));
-    prova('la finestra presenta durata, momento, settore e voce', () => {
+    /* Le pillole attese si contano dalle costanti del modulo e non a
+     * mano: erano scritte come una somma di numeri, e il giorno in cui i
+     * gradini della difficoltà sono passati da due a tre quella somma è
+     * diventata una prova che parlava di un pannello che non esiste
+     * più. Qui l'attesa si aggiorna da sé, e resta comunque una prova —
+     * se un gruppo sparisce dal markup, il conto non torna. */
+    const config = await pagina.evaluate(() => {
+      const K = window.missProve.costanti;
+      return {
+        aperto: !document.getElementById('modale-missione').classList.contains('hidden'),
+        gruppi: document.querySelectorAll('#missione-corpo .missione-gruppo').length,
+        scelte: document.querySelectorAll('#missione-corpo [data-miss-scelta]').length,
+        // durata + momento (3) + strumento + difficoltà + cielo (2) + voce (2)
+        attese: K.MISS_DURATE.length + 3 + K.MISS_STRUMENTI.length +
+                K.MISS_ESPERIENZE.length + 2 + 2,
+        note: document.querySelectorAll('#missione-corpo .missione-scelta-nota').length,
+        fuocoDentro: document.getElementById('modale-missione').contains(document.activeElement)
+      };
+    });
+    prova('la finestra presenta durata, momento, difficoltà, settore e voce', () => {
       assert.strictEqual(config.aperto, true);
       assert.strictEqual(config.gruppi, 6, `${config.gruppi} gruppi`);
-      assert.strictEqual(config.scelte, 4 + 3 + 3 + 4 + 2 + 2);
+      assert.strictEqual(config.scelte, config.attese, `${config.scelte} contro ${config.attese}`);
+      // Ogni gradino porta la sua riga di spiegazione: senza, «Esperti»
+      // non promette niente e la scelta si fa a caso.
+      assert.strictEqual(config.note, K.MISS_ESPERIENZE.length, `${config.note} note`);
     });
     prova('il fuoco entra nella finestra', () => assert.strictEqual(config.fuocoDentro, true));
 
@@ -714,14 +975,14 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       data.value = `${domani.getFullYear()}-${due(domani.getMonth() + 1)}-${due(domani.getDate())}T22:30`;
       data.dispatchEvent(new Event('change'));
       document.querySelector('[data-miss-scelta="strumento"][data-miss-valore="binocolo"]').click();
-      document.querySelector('[data-miss-scelta="esperienza"][data-miss-valore="imparare"]').click();
+      document.querySelector('[data-miss-scelta="esperienza"][data-miss-valore="curiosi"]').click();
     });
     const ricordate = await pagina.evaluate(() =>
       JSON.parse(localStorage.getItem('astrocalendario_missione_scelte')));
     prova('le scelte si ricordano', () => {
       assert.deepStrictEqual({ durata: ricordate.durata, momento: ricordate.momento,
         strumento: ricordate.strumento, esperienza: ricordate.esperienza },
-        { durata: 60, momento: 'personalizzato', strumento: 'binocolo', esperienza: 'imparare' });
+        { durata: 60, momento: 'personalizzato', strumento: 'binocolo', esperienza: 'curiosi' });
       assert.ok(Number.isFinite(ricordate.momentoPersonalizzato));
     });
 
@@ -769,7 +1030,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       cielo: vistaAttuale,
       pannelloChiuso: document.getElementById('modale-missione').classList.contains('hidden'),
       striscia: !document.getElementById('missione-striscia').classList.contains('hidden'),
-      guida: document.querySelector('.missione-striscia-guida')?.textContent || '',
+      guida: document.querySelector('.missione-striscia-indizio')?.textContent || '',
       diagnostica: {attiva: !!miss.attiva, nelPlanetario:miss.attiva?.nelPlanetario, tappa:miss.attiva?.tappe[0], html:document.getElementById('missione-striscia').innerHTML},
       risposte: Array.from(document.querySelectorAll('#missione-striscia [data-miss-azione]')).map(b => b.dataset.missAzione)
     }));
@@ -811,7 +1072,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         aiuto.click();
         esiti.push({
           livello: miss.attiva.tappe[miss.attiva.corrente].aiuto,
-          guida: document.querySelector('.missione-striscia-guida').textContent,
+          guida: document.querySelector('.missione-striscia-indizio').textContent,
           esito: miss.attiva.tappe[miss.attiva.corrente].esito,
           rivelata: miss.attiva.tappe[miss.attiva.corrente].rivelata,
           altraRichiesta: !!document.querySelector('#missione-striscia [data-miss-azione="aiuto"]'),
@@ -1023,7 +1284,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       localStorage.setItem('astrocalendario_missione_attiva', JSON.stringify({
         id: 'miss-prova', versione: MISS_VERSIONE, stato: 'inCorso',
         creata: Date.now(), partenza: Date.now(), avviata: Date.now(), corrente: 1,
-        scelte: { durata: 30, strumento: 'occhio', esperienza: 'stupore' },
+        scelte: { durata: 30, strumento: 'occhio', esperienza: 'curiosi' },
         condizioni: { luna: 0, nuvole: 10, bortle: 4 },
         tappe: [
           { id: 'a', nome: 'Giove', tipo: 'pianeta', idCielo: 'Jupiter', quando: Date.now(),
