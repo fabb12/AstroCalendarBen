@@ -58,7 +58,7 @@
 //     dichiarare.
 // =====================================================================
 
-const MISS_VERSIONE = 5;
+const MISS_VERSIONE = 6;
 const CHIAVE_MISS_STORIA = 'astrocalendario_missione_storia';
 
 const CHIAVE_MISS_SCELTE = 'astrocalendario_missione_scelte';
@@ -293,6 +293,44 @@ function missQuanteTappe(durata, candidatiBuoni) {
  * qualcosa di dichiarato, richiede uno strumento che non c'è, è troppo
  * difficile per il percorso scelto oppure manca nella finestra della
  * missione. */
+/* La magnitudine limite non vale uguale in tutto il cielo. Vicino
+ * all'orizzonte la luce attraversa piu' atmosfera: le stelle perdono
+ * contrasto e il fondo, soprattutto in citta', diventa piu' chiaro.
+ * Questa stima resta volutamente prudente; serve a non trasformare una
+ * missione in una lista di oggetti presenti sulla carta ma invisibili dal
+ * posto e nella direzione in cui si trovano. */
+function missLimiteStellareLocale(magZenit, altezza) {
+  if (!Number.isFinite(magZenit) || !Number.isFinite(altezza) || altezza <= 0) return -99;
+  const seno = Math.sin(Math.max(5, altezza) * Math.PI / 180);
+  const massaAria = Math.min(6, 1 / Math.max(0.08, seno));
+  return magZenit - 0.28 * (massaAria - 1);
+}
+
+function missVisibileNelCieloLocale(c, scelte) {
+  if (!c || !Number.isFinite(c.magLimiteZenit)) return true;
+  const limite = missLimiteStellareLocale(c.magLimiteZenit, c.altezza);
+  const guadagno = { occhio: 0, binocolo: 2.5, telescopio: 5 }[scelte.strumento] || 0;
+
+  if ((c.tipo === 'stella' || c.tipo === 'costellazione') && Number.isFinite(c.mag)) {
+    // Una costellazione si riconosce a campo largo: il telescopio scelto
+    // per le altre tappe non rende visibile la sua figura intera.
+    return c.mag <= limite + (c.tipo === 'costellazione' ? 0 : guadagno);
+  }
+  if (c.tipo !== 'profondo') return true;
+
+  // Bortle 8: il fondo e' tanto luminoso che una chiazza diffusa non e'
+  // un bersaglio onesto per una caccia guidata, neppure se il catalogo le
+  // assegna una magnitudine totale bassa. Luna, pianeti e stelle restano.
+  if (Number.isFinite(c.fondoCielo) && c.fondoCielo <= 10) return false;
+  if (!Number.isFinite(c.brillanza)) return Number.isFinite(c.mag) && c.mag <= limite + guadagno;
+
+  const perdita = Math.max(0, c.magLimiteZenit - limite);
+  const fondoLocale = c.fondoCielo - perdita * 1.4;
+  const contrasto = fondoLocale - (c.brillanza + perdita);
+  const contrastoMinimo = { occhio: -1, binocolo: -2.5, telescopio: -3.5 }[scelte.strumento] ?? -1;
+  return c.mag <= limite + guadagno && contrasto > contrastoMinimo;
+}
+
 function missAmmissibile(c, scelte) {
   if (!c || !c.nome || c.idCielo === 'Sun') return false;
   if (!missStrumentoBasta(c.strumentoMinimo, scelte.strumento)) return false;
@@ -307,6 +345,7 @@ function missAmmissibile(c, scelte) {
   // differenza, quindi zero vuol dire «esattamente sul crinale», che a
   // occhio vuol dire non visibile.
   if (typeof c.sopraOstacoli === 'number' && c.sopraOstacoli <= 1) return false;
+  if (!missVisibileNelCieloLocale(c, scelte)) return false;
   // Un evento a orario preciso già passato non è una tappa: è una cosa
   // che è successa.
   if (c.aOrarioPreciso && c.quando == null) return false;
@@ -743,6 +782,8 @@ function missDifficolta(mag, strumento, assePrimi) {
 function missCandidatiDelCielo(obs, campioni, scelte) {
   const fuori = [];
   const bortle = typeof cieloDiCasa === 'function' ? cieloDiCasa() : 5;
+  const cieloLocale = typeof CAT_CIELI !== 'undefined' && CAT_CIELI[bortle]
+    ? CAT_CIELI[bortle] : { magLimite: 5.6, fondo: 11.6 };
 
   const base = typeof pianBersagli === 'function' ? pianBersagli() : [];
   for (const b of base) {
@@ -755,10 +796,12 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
     let assePrimi = null;
     let didattica = 0;
     let soffreLaLuna = false;
+    let brillanza = null;
 
     if (b.tipo === 'profondo' && b.dato) {
       mag = b.dato.mag;
       assePrimi = b.dato.assePrimi;
+      brillanza = typeof b.dato.brillanza === 'number' ? b.dato.brillanza : mag + 5;
       soffreLaLuna = true;
       didattica = 0.6;
       strumentoMinimo = typeof profondoStrumento === 'function'
@@ -798,6 +841,9 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
       minutiUtili: v.minutiUtili,
       strumentoMinimo,
       mag,
+      magLimiteZenit: cieloLocale.magLimite,
+      fondoCielo: cieloLocale.fondo,
+      brillanza,
       difficolta: b.tipo === 'luna' ? 1 : missDifficolta(mag, strumentoMinimo, assePrimi),
       evidenza: b.tipo === 'luna' ? 1 : missEvidenzaDaMagnitudine(mag),
       didattica,
@@ -827,6 +873,8 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
         minutiUtili: v.minutiUtili,
         strumentoMinimo: 'occhio',
         mag: s.mag,
+        magLimiteZenit: cieloLocale.magLimite,
+        fondoCielo: cieloLocale.fondo,
         difficolta: s.mag < 1 ? 1 : 2,
         evidenza: missEvidenzaDaMagnitudine(s.mag),
         didattica: 0.7,
@@ -872,6 +920,8 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
         minutiUtili: v.minutiUtili,
         strumentoMinimo: 'occhio',
         mag: capofila[2],
+        magLimiteZenit: cieloLocale.magLimite,
+        fondoCielo: cieloLocale.fondo,
         difficolta: capofila[2] < 1.6 ? 1 : capofila[2] < 2.5 ? 2 : 3,
         evidenza: missEvidenzaDaMagnitudine(capofila[2]) * 0.9,
         didattica: 1,
@@ -2764,6 +2814,8 @@ const missProve = {
   curiositaChiave: missCuriositaChiave,
   chiaveRegistro: missChiaveRegistro,
   evidenza: missEvidenzaDaMagnitudine,
+  limiteStellareLocale: missLimiteStellareLocale,
+  visibileNelCieloLocale: missVisibileNelCieloLocale,
   difficolta: missDifficolta,
   salvataggioBuono: missSalvataggioBuono,
   daAggiornare: missDaAggiornare,

@@ -203,6 +203,35 @@ prova('un oggetto sopra l’orizzonte ma dietro al palazzo non entra', () => {
   assert.ok(!m.tappe.some(t => t.id === 'dietro'));
 });
 
+prova('la magnitudine limite peggiora verso l’orizzonte', () => {
+  const zenit = motore.limiteStellareLocale(6, 90);
+  const basso = motore.limiteStellareLocale(6, 15);
+  assert.ok(zenit > basso + 0.7, `${zenit} contro ${basso}`);
+});
+
+prova('una stella oltre il limite locale non entra nella missione', () => {
+  const debole = candidato('stella:debole', { tipo: 'stella', mag: 5.8, altezza: 15,
+    magLimiteZenit: 6, evidenza: 0.5, puntiBase: 100 });
+  const m = motore.genera(scenario([debole], { durata: 30, strumento: 'occhio' }));
+  assert.ok(m.vuota);
+});
+
+prova('in città non propone cielo profondo neppure col telescopio', () => {
+  const galassia = candidato('profondo:citta', { tipo: 'profondo', mag: 3.4,
+    brillanza: 13.5, magLimiteZenit: 4.2, fondoCielo: 9.8,
+    strumentoMinimo: 'telescopio', difficolta: 3, puntiBase: 100 });
+  const m = motore.genera(scenario([galassia], { durata: 30, strumento: 'telescopio' }, { bortle: 8 }));
+  assert.ok(m.vuota);
+});
+
+prova('lo stesso oggetto profondo resta possibile sotto un cielo buio', () => {
+  const galassia = candidato('profondo:campagna', { tipo: 'profondo', mag: 3.4,
+    brillanza: 13.5, magLimiteZenit: 6.6, fondoCielo: 12.7,
+    strumentoMinimo: 'binocolo', difficolta: 3, puntiBase: 100 });
+  const m = motore.genera(scenario([galassia], { durata: 30, strumento: 'binocolo' }, { bortle: 3 }));
+  assert.ok(!m.vuota);
+});
+
 prova('la porzione Sud–Sud-est esclude il resto del cielo', () => {
   const dentro = candidato('dentro-settore', { azimut: 157.5, puntiBase: 100 });
   const fuori = candidato('fuori-settore', { azimut: 270, puntiBase: 100 });

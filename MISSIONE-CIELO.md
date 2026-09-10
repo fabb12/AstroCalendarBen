@@ -50,7 +50,13 @@ comunque riproporre bersagli già incontrati, invece di inventarne di invisibili
 ## Tempo, posizione e ripresa
 
 Le posizioni vengono verificate anche agli orari assegnati, non soltanto al
-massimo di altezza nella finestra. La ricerca usa il tempo reale e torna al
+massimo di altezza nella finestra. Per ogni bersaglio la magnitudine limite
+del luogo viene corretta in base alla sua altezza: verso l'orizzonte la massa
+d'aria abbassa il limite e schiarisce il fondo. Gli oggetti del cielo profondo
+passano inoltre un controllo sulla brillanza superficiale e sul contrasto con
+il fondo locale; da un cielo urbano troppo inquinato non vengono proposti,
+neppure con un telescopio, mentre Luna, pianeti e stelle compatibili con la
+magnitudine limite restano disponibili. La ricerca usa il tempo reale e torna al
 luogo di casa dell’app. Un tocco a un’ora simulata, in un altro luogo, durante
 il giorno (salvo la Luna) o su un bersaglio dietro l’orizzonte non vale come
 ritrovamento. Se il bersaglio non è più disponibile, si può sostituire o
@@ -60,7 +66,7 @@ Gli eventi astratti del calendario e i corpi minori con coordinate campionate
 restano nel pianificatore; le missioni interattive selezionano Luna, pianeti,
 stelle, costellazioni e cielo profondo identificabili nel planetario.
 
-Lo stato salvato passa alla versione 5; le vecchie missioni attive vengono
+Lo stato salvato passa alla versione 6; le vecchie missioni attive vengono
 rigenerate, così ereditano subito i nuovi limiti di difficoltà. Il Diario precedente rimane leggibile. Le nuove osservazioni
 sono salvate nella sessione e incluse nel Diario, insieme agli aiuti usati.
 La fase di scoperta sopravvive a una ricarica senza saltare alla tappa seguente.
