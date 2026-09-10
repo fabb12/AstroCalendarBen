@@ -2125,7 +2125,6 @@ window.ASTRO_DIZIONARI['en'] = {
 
     // --- Sky Mission (missione-cielo.js) ------------------------------
     // Ricerca, indizi e scoperta: testi stabili nella sessione.
-    "missione.gioco.mistero": "Object to find",
     "missione.gioco.tocca": "Observe the sky, then tap the object you recognise on the map. Drag to explore.",
     "missione.gioco.nonVisibile": "This search needs the current sky at your location. If the target has set or it is still daylight, return to the mission and prepare another evening.",
     "missione.gioco.riprova": "Good try! Keep looking.",
@@ -2328,6 +2327,9 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.soloVoce': 'Hide, voice only',
     'missione.mostraGuida': 'Show guide',
     'missione.indizioPrincipale': 'Read the main clue',
+    'missione.prossimoIndizio': 'Next hint',
+    'missione.seguiTelefono': 'Follow the phone',
+    'missione.terminaPlanetario': 'End the mission and keep using the planetarium',
 
     'missione.titoloAnteprima': { uno: 'One wonder in {minuti} minutes', altri: '{n} wonders in {minuti} minutes' },
     'missione.sommarioAnteprima': 'Starting at {ora}. {condizioni}.',

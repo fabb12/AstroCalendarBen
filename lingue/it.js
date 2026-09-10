@@ -2177,7 +2177,6 @@ window.ASTRO_DIZIONARI['it'] = {
     // piedi, con una mano sola — e nessuna colpevolizza: «non trovato» e'
     // un fatto, non un voto.
     // Ricerca, indizi e scoperta: testi stabili nella sessione.
-    "missione.gioco.mistero": "Oggetto da trovare",
     "missione.gioco.tocca": "Osserva il cielo, poi tocca sulla mappa l’oggetto che riconosci. Trascina per esplorare.",
     "missione.gioco.nonVisibile": "Questa ricerca richiede il cielo attuale dalla tua posizione. Se l’oggetto è sceso o il cielo è ancora chiaro, torna alla missione e prepara un’altra serata.",
     "missione.gioco.riprova": "Buon tentativo! Cerca ancora.",
@@ -2381,6 +2380,9 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.soloVoce': 'Nascondi, solo voce',
     'missione.mostraGuida': 'Mostra la guida',
     'missione.indizioPrincipale': 'Rileggi l’indizio',
+    'missione.prossimoIndizio': 'Prossimo indizio',
+    'missione.seguiTelefono': 'Segui il telefono',
+    'missione.terminaPlanetario': 'Termina la missione e continua a usare il planetario',
 
     // L'anteprima
     'missione.titoloAnteprima': { uno: 'Una meraviglia in {minuti} minuti', altri: '{n} meraviglie in {minuti} minuti' },

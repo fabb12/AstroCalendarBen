@@ -43,14 +43,19 @@ ctx.sky.mostraNomi=true;
 assert.equal(run('missRicercaAttiva()'),true);
 assert.equal(run('skyNomiVisibili()'),false);
 assert.equal(run('missAmmissibile(missTappaAdesso(miss.attiva.tappe[0]),miss.attiva.scelte)'),true);
-run('missMostraStrisciaCielo()');assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
-run('missAggiornaScheda()');assert(!elements.get('missione-scheda').innerHTML.includes('Vega'));
-assert(!run('missHtmlAnteprima(miss.attiva)').includes('Vega'));
+run('missMostraStrisciaCielo()');
+assert(elements.get('missione-striscia').innerHTML.includes('Vega'));
+assert(elements.get('missione-striscia').innerHTML.includes('Prossimo indizio'));
+assert(elements.get('missione-striscia').innerHTML.includes('Segui il telefono'));
+assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="termina"'));
+assert(!elements.get('missione-striscia').innerHTML.includes('Missione Cielo</button>'));
+run('missAggiornaScheda()');assert(elements.get('missione-scheda').innerHTML.includes('Vega'));
+assert(run('missHtmlAnteprima(miss.attiva)').includes('Vega'));
 run("missSegnaEsito(0,'trovato')");assert.equal(run('miss.attiva.tappe[0].esito'),null);
 run("missSelezionaCielo({categoria:'astro',id:'Star2'})");
 assert.equal(run('miss.attiva.tappe[0].esito'),null);assert.equal(run('miss.attiva.tappe[0].aiuto'),0);
 assert(feedback.at(-1).testo.includes('Non è questo'));
-assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
+assert(elements.get('missione-striscia').innerHTML.includes('Vega'));
 run("sky.oggetti=[Object.assign({id:'Star2'},missTappaNelPlanetario(miss.attiva.tappe[0]))];missSelezionaCielo({categoria:'astro',id:'Star2'})");
 assert(feedback.at(-1).testo.includes('sei vicino'));
 const clues=[];for(let i=0;i<3;i++){clues.push(run('missIndizio(miss.attiva.tappe[0])'));run('missChiediAiuto()');}
@@ -82,6 +87,7 @@ ctx.sky.sensori=true;ctx.sky.assoluto=true;run('missAttivaTelefono()');assert.eq
 ctx.sky.seguiTelefono=false;run('missAttivaTelefono()');assert.equal(ctx.sky.seguiTelefono,false);
 ctx.sky.seguiTelefono=true;run('miss.attiva.simulazione=true;miss.telefonoProvato=false;missAttivaTelefono()');assert.equal(ctx.sky.seguiTelefono,false);run('miss.attiva.simulazione=false');
 ctx.sky.sensori=false;run('miss.telefonoProvato=false;missAttivaTelefono()');assert.equal(ctx.sky.seguiTelefono,false);
+run("missAzione('segui-telefono',document.body)");assert.equal(ctx.sky.seguiTelefono,true);
 const guidance=run("missGuidaMirino({f:skyVettore(0,40),r:skyVettore(90,0),u:skyVettore(180,50)},{azimut:359,altezza:40})");assert(!guidance.includes('Vega'));
 // A daylight target or one behind the local obstacle cannot complete.
 now=Date.UTC(2026,8,8,12);run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);
