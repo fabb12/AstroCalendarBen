@@ -33,7 +33,7 @@
 //   dietro a un condominio.
 //
 //   NON COLPEVOLIZZA. «Non lo trovo» non è un errore da segnare: è
-//   l'inizio di tre gradini di aiuto, e il terzo propone di cambiare
+//   l'inizio di tre gradini di aiuto, e il terzo rivela e centra il
 //   bersaglio. Il diario registra *trovato / saltato / non trovato*, che
 //   sono tre fatti, non tre voti.
 //
@@ -1460,10 +1460,12 @@ function missMostraStrisciaCielo() {
     </div>
     <div class="missione-striscia-tasti">
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="solo-voce">${missT('soloVoce')}</button>
-      ${t.mostraAiuto
+      ${(t.aiuto || 0) < 3
+        ? `<button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>`
+        : ''}
+      ${t.mostraAiuto && (t.aiuto || 0) < 3
         ? `<button class="missione-tasto" data-miss-azione="indizio-principale">${missT('indizioPrincipale')}</button>`
-        : `<button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>`}
-      ${(t.aiuto || 0) >= 3 && !t.rivelata ? `<button class="missione-tasto" data-miss-azione="rivela">${missT('gioco.rivela')}</button>` : ''}
+        : ''}
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="torna">${missT('titoloBreve')}</button>
     </div>`;
@@ -1617,9 +1619,9 @@ function missAvanza() {
  * direzione con parole più semplici e nomina un riferimento; il secondo
  * dà il percorso dal riferimento al bersaglio, misurato in dita e pugni
  * a braccio teso, che è il solo goniometro che tutti hanno addosso; il
- * terzo dice la cosa che nessuna app dice mai — **forse è dietro a
- * qualcosa** — e propone di spostarsi, di aprire il planetario o di
- * cambiare bersaglio.
+ * terzo rivela il bersaglio e lo porta al centro del planetario. Dopo il
+ * terzo il tasto sparisce: ripeterlo non può produrre un quarto indizio
+ * identico e far credere che la progressione continui.
  *
  * Il terzo gradino è quello che conta: dopo due tentativi il problema di
  * solito non è la mira, è il palazzo di fronte. */
@@ -1628,8 +1630,24 @@ function missChiediAiuto() {
   if (!m) return;
   const t = m.tappe[m.corrente];
   if (!t || t.fase === 'scoperta') return;
-  t.aiuto = Math.min(3, (t.aiuto || 0) + 1);
+  if ((t.aiuto || 0) >= 3) return;
+  t.aiuto = (t.aiuto || 0) + 1;
   t.mostraAiuto = true;
+  if (t.aiuto === 3) {
+    t.rivelata = true;
+    // Il terzo aiuto è una risposta, non un'altra descrizione: anche sui
+    // telefoni sganciamo la vista dai sensori perché il bersaglio finisca
+    // davvero al centro della mappa, come promesso dal tasto.
+    if (m.nelPlanetario) {
+      if (typeof skyUsaSensori === 'function' && skyUsaSensori() &&
+          typeof skyAlternaSeguiTelefono === 'function') skyAlternaSeguiTelefono();
+      const ora = missTappaNelPlanetario(t);
+      const oggetto = t.idCielo && skyVoceDiId(t.idCielo);
+      skyCentraSu(oggetto || {
+        nome: missNomeTappa(t), az: ora.azimut, alt: ora.altezza
+      });
+    }
+  }
   missSalvaAttiva();
   missMostraVista('inCorso');
   missMostraStrisciaCielo();
@@ -2221,9 +2239,12 @@ function missHtmlInCorso(m) {
     <p>${missTesto(t.mostraAiuto ? missIndizio(t) : missIntroduzione(t))}</p>
     <div class="missione-azioni">
       <button class="missione-tasto missione-tasto-si" data-miss-azione="guidami">${missT('gioco.apriCielo')}</button>
-      ${t.mostraAiuto
+      ${(t.aiuto || 0) < 3
+        ? `<button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>`
+        : ''}
+      ${t.mostraAiuto && (t.aiuto || 0) < 3
         ? `<button class="missione-tasto" data-miss-azione="indizio-principale">${missT('indizioPrincipale')}</button>`
-        : `<button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>`}
+        : ''}
       <button class="missione-tasto" data-miss-azione="salta">${missT('salta')}</button>
       <button class="missione-tasto" data-miss-azione="concludi">${missT('concludi')}</button>
     </div></div>`;
