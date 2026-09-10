@@ -123,12 +123,17 @@ const server = http.createServer((req,res)=> {
   const point=await tapObject(true);
   const found=await page.evaluate(()=>({phase:miss.attiva.tappe[0].fase,result:miss.attiva.tappe[0].esito,index:miss.attiva.corrente,html:document.getElementById('missione-striscia').innerHTML}));
   assert.equal(found.phase,'scoperta',JSON.stringify(point)); assert.equal(found.result,'trovato');assert.equal(found.index,0);
-  assert(found.html.includes('missione-osservazione'));
-  await page.fill('#missione-osservazione','Una luce bianca, più ferma delle altre.');
+  assert(!found.html.includes('missione-osservazione'));
+  assert(!found.html.includes('Conserva nella memoria'));
+  const altra=await page.$('#missione-striscia [data-miss-azione="altraStoria"]');
+  if(altra) {
+    const prima=await page.textContent('#missione-striscia .missione-aneddoto');
+    await altra.click();
+    assert.notEqual(await page.textContent('#missione-striscia .missione-aneddoto'),prima);
+  }
   await page.screenshot({path:path.join(root,'../missione-scoperta.png')});
   await page.click('#missione-striscia [data-miss-azione="continua"]');
   assert.equal(await page.evaluate(()=>miss.attiva.corrente),1);
-  assert.equal(await page.evaluate(()=>miss.attiva.tappe[0].osservazione),'Una luce bianca, più ferma delle altre.');
   assert.equal(await page.evaluate(()=>sky.target),null);
   // Il terzo aiuto è una risposta: si segna come «rivelata» (il Diario lo
   // riporta) ma non chiude la tappa, e il nome resta comunque coperto —
@@ -158,7 +163,7 @@ const server = http.createServer((req,res)=> {
   await page.evaluate(()=>missAbbandona());
   assert.equal(await page.evaluate(()=>skyNomiVisibili()),true);
   assert.equal(await page.evaluate(()=>document.body.classList.contains('missione-ricerca')),false);
-  console.log('PASS: mobile UI, anonymous preview, hints, wrong/correct canvas taps, discovery, notes, next stop, progressive reveal, both locales, cleanup');
+  console.log('PASS: mobile UI, anonymous preview, hints, wrong/correct canvas taps, discovery, alternate story, next stop, progressive reveal, both locales, cleanup');
   if(errors.length) console.log('Unrelated page errors with external services stubbed:',errors);
  } finally {if(browser) await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

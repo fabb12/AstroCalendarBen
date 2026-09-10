@@ -83,13 +83,11 @@ offset=3600000;run("miss.attiva.simulazione=true;miss.attiva.tappe[0].feedback=n
 assert.equal(run('miss.attiva.tappe[0].feedback'),null);assert.equal(run('miss.attiva.tappe[0].aiuto'),3);run('miss.attiva.simulazione=false');offset=0;
 ctx.sky.observer=new Astronomy.Observer(0,0,0);run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);ctx.sky.observer=obs;
 run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].fase'),'scoperta');assert.equal(run('miss.attiva.corrente'),0);
-assert(elements.get('missione-striscia').innerHTML.includes('missione-osservazione'));
+assert(!elements.get('missione-striscia').innerHTML.includes('missione-osservazione'));
 assert(elements.get('missione-striscia').innerHTML.includes('Vega'));
 assert.equal(run('skyNomiVisibili()'),true);
 // Reload retains discovery and must not silently advance it.
 run('missSalvaAttiva();miss.attiva=null;missCaricaAttiva()');assert.equal(run('miss.attiva.tappe[0].fase'),'scoperta');
-run("miss.attiva.tappe[0].osservazione='<script>alert(1)</script>';missMostraStrisciaCielo()");
-assert(!elements.get('missione-striscia').innerHTML.includes('<script>'));
 // All dynamic keys and children/adult variants resolve in both dictionaries.
 for(const lang of ['it','en']){ctx.astroI18n.lingua=lang;
  for(const mode of ['sfida','curiosi','bambini'])for(const type of ['luna','pianeta','stella','costellazione','profondo'])for(let v=0;v<3;v++) {
