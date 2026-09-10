@@ -2356,7 +2356,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.navigaIndizi': 'Clue navigation',
     'missione.indizioPrecedente': 'Previous clue',
     'missione.indizioSuccessivo': 'Next clue',
-    'missione.spostaRiquadro': 'Move the information panel',
+    'missione.spostaRiquadro': 'Move the information panel; arrow keys also move it, Home resets it',
     'missione.seguiTelefono': 'Follow the phone',
     'missione.terminaPlanetario': 'End the mission and keep using the planetarium',
 
@@ -2503,6 +2503,12 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.curiosita.scorpione.1': 'A story lives in this light: look at its colour and shape before thinking about numbers. Astronomy begins with noticing.',
     'missione.curiosita.scorpione.2': 'People watched this same part of the sky long before telescopes, turning seasons, journeys and wonder into stories.',
     'missione.curiosita.scorpione.3': 'The technical details help you find it; the memorable part begins now, when a point on a chart becomes real light in your eyes.',
+    'missione.curiosita.iss.1': 'The ISS is 109 metres long, about the size of a football field, and travels at roughly 28,000 kilometres per hour.',
+    'missione.curiosita.iss.2': 'The International Space Station has been continuously inhabited since November 2000: while you watch it, somebody aboard is working.',
+    'missione.curiosita.iss.3': 'Its broad solar arrays reflect sunlight, which is why the ISS can become brighter than every star.',
+    'missione.curiosita.tiangong.1': 'Tiangong means “Heavenly Palace”: its three modules form a T while orbiting Earth.',
+    'missione.curiosita.tiangong.2': 'It is both a crewed station and a laboratory, where astronauts carry out experiments in weightlessness.',
+    'missione.curiosita.tiangong.3': 'Tiangong circles Earth in about 92 minutes and sees sixteen sunrises and sunsets each day.',
     'missione.curiosita.stazione.1': 'That light is a home in free fall, moving at about 28,000 kilometres per hour and continually missing Earth. Unlike an aircraft, reflected sunlight makes it shine steadily.',
     'missione.curiosita.stazione.2': 'Astronauts aboard see roughly sixteen sunrises and sunsets each day. The crossing dot carries people who may be looking back through a window right now.',
     'missione.curiosita.stazione.3': 'Space stations are assembled piece by piece while already in flight. Their shine comes from solar arrays and modules launched over many different years.',
@@ -2735,6 +2741,8 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.gioco.enigma.oggetto.etaCarinae': 'I am a vast cloud of the southern sky, and at my centre sits a star that in 1843 became the second brightest in the sky without actually exploding. Who am I?',
     'missione.gioco.enigma.oggetto.nordAmerica': 'I am shaped like a continent, Gulf of Mexico included, and I lie beside the Swan’s tail. I am four full Moons wide and almost invisible. Who am I?',
     'missione.gioco.enigma.oggetto.centroGalattico': 'Look towards me and you are looking at the heart of our galaxy, twenty-seven thousand light years off — and you cannot see it, because dust covers it. What you see is the crowd of stars standing in front. Who am I?',
+    'missione.gioco.enigma.oggetto.iss': 'I am the largest laboratory ever built in space: I circle Earth sixteen times a day and carry people from many nations. From the ground I look like a racing star. Who am I?',
+    'missione.gioco.enigma.oggetto.tiangong': 'My name means “Heavenly Palace”: I am a home and laboratory built by China, younger and more compact than my large international companion. Who am I?',
     'missione.gioco.enigma.oggetto.stazione': 'I am not a star and I am not an aeroplane: I do not blink, I cross the sky in a few minutes, and people live inside me. Who am I?',
 
     // --- Missione Cielo · what to look for, target by target ----------
@@ -2798,6 +2806,8 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.gioco.segno.etaCarinae': 'Look for a very broad glow cut by a dark V of dust, in the richest part of the southern Milky Way.',
     'missione.gioco.segno.nordAmerica': 'Look for a glow barely different from the background beside the Swan’s tail: you know it by its outline, not by its brightness.',
     'missione.gioco.segno.centroGalattico': 'Look for the densest, grainiest part of the Milky Way, above the teapot: in binoculars it is not mist, it is stars.',
+    'missione.gioco.segno.iss': 'Look for a very bright light crossing the sky without blinking: it can outshine almost every star.',
+    'missione.gioco.segno.tiangong': 'Look for a steady point of light, dimmer than the ISS, crossing the sky in minutes without blinking.',
     'missione.gioco.segno.stazione': 'Look for a bright point gliding slowly and without blinking, always in the same direction.',
 
     // --- Missione Cielo · riddles for the youngest --------------------
@@ -2845,6 +2855,8 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.gioco.enigmaBimbi.anello': 'I am a smoke ring left behind by a star. Who am I?',
     'missione.gioco.enigmaBimbi.manubrio': 'I look like an apple core bitten from both sides. I am the cloud a star left behind. Who am I?',
     'missione.gioco.enigmaBimbi.laguna': 'I am a pink cloud with a dark line through the middle, like a little lake cut in two. Who am I?',
+    'missione.gioco.enigmaBimbi.iss': 'I am a home as big as a football field flying above you. Astronauts live inside me: who am I?',
+    'missione.gioco.enigmaBimbi.tiangong': 'I am a palace in the sky, built in China, and I circle Earth with astronauts on board. Who am I?',
     'missione.gioco.enigmaBimbi.stazione': 'I am a little light crossing the whole sky without blinking, and there are people living inside me. Who am I?',
 
     // --- Missione Cielo · the anecdotes, the reward for finding it ----

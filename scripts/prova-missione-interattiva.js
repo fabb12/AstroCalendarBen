@@ -112,6 +112,10 @@ const server = http.createServer((req,res)=> {
   await page.mouse.down(); await page.mouse.move(maniglia.x+50,maniglia.y+80,{steps:4}); await page.mouse.up();
   const posizioneDopo=await page.locator('#missione-striscia').boundingBox();
   assert(posizioneDopo.x !== posizionePrima.x || posizioneDopo.y !== posizionePrima.y,'information panel can be dragged');
+  await page.locator('#missione-striscia .missione-trascina').focus();
+  await page.keyboard.press('ArrowLeft');
+  const posizioneTastiera=await page.locator('#missione-striscia').boundingBox();
+  assert(posizioneTastiera.x < posizioneDopo.x,'information panel can be moved with the keyboard');
   // Verify a real pointer hit goes through the canvas, not a completion button.
   async function tapObject(correct) {
     const point=await page.evaluate(correct=> {
