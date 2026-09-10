@@ -175,15 +175,259 @@ prova('col telescopio entra tutto', () => {
   assert.ok(!motore.strumentoBasta('binocolo', 'occhio'));
 });
 
-prova('anche la sfida evita bersagli da esperti', () => {
-  const troppoDuro = candidato('profondo:difficile', {
+/* Il tetto della difficoltà, provato per quello che promette adesso.
+ *
+ * Questa prova nasce quando il tetto della sfida era **tre**, e allora un
+ * bersaglio da quattro lo escludeva davvero il filtro. Portato il tetto a
+ * cinque — che è tutta la ragione per cui il terzo gradino esiste (§1) —
+ * la prima riga ha smesso di misurare il filtro e ha cominciato a
+ * misurare l'ordine della classifica: passava perché quel bersaglio
+ * restava fuori per punteggio, non perché fosse inammissibile. Cioè
+ * chiedeva l'esatto contrario di quello che il gradino promette, e la
+ * prima volta che la scelta ha smesso di essere un argmax è diventata
+ * rossa.
+ *
+ * Quello che va provato è il tetto: un quattro alla sfida ci sta (ed è
+ * il punto), un sei non ci sta a nessun gradino, e lo stesso quattro ai
+ * curiosi no. */
+prova('il tetto della difficoltà è quello del gradino scelto', () => {
+  const daEsperti = candidato('profondo:difficile', {
     tipo: 'profondo', difficolta: 4, strumentoMinimo: 'telescopio', evidenza: 0.9
   });
-  const m = motore.genera(scenario([troppoDuro].concat(cieloRicco()), {
+  const impossibile = candidato('profondo:impossibile', {
+    tipo: 'profondo', difficolta: 6, strumentoMinimo: 'telescopio', evidenza: 0.9
+  });
+  const cielo = [daEsperti, impossibile].concat(cieloRicco());
+
+  const sfida = motore.genera(scenario(cielo, {
     esperienza: 'sfida', strumento: 'telescopio', durata: 120
   }));
-  assert.ok(!m.tappe.some(t => t.id === troppoDuro.id));
-  assert.ok(m.tappe.every(t => t.difficolta <= K.MISS_DIFFICOLTA_MASSIMA.sfida));
+  assert.ok(sfida.tappe.every(t => t.difficolta <= K.MISS_DIFFICOLTA_MASSIMA.sfida));
+  assert.ok(!sfida.tappe.some(t => t.id === impossibile.id));
+  // Un quattro alla sfida è ammissibile: è la promessa del gradino.
+  assert.ok(motore.ammissibile(daEsperti, { esperienza: 'sfida', strumento: 'telescopio', cielo: 'tutto' }));
+
+  const curiosi = motore.genera(scenario(cielo, {
+    esperienza: 'curiosi', strumento: 'telescopio', durata: 120
+  }));
+  assert.ok(curiosi.tappe.every(t => t.difficolta <= K.MISS_DIFFICOLTA_MASSIMA.curiosi));
+  assert.ok(!curiosi.tappe.some(t => t.id === daEsperti.id));
+});
+
+// =====================================================================
+sezione('cosa si va a cercare: i generi sono un filtro, non una preferenza');
+
+/* Il difetto a cui questa sezione risponde non si vede guardando lo
+ * schermo: una missione di pianeti e costellazioni, a chi aveva chiesto
+ * galassie, è una missione perfettamente sensata — solo che è la serata
+ * di qualcun altro. E non lo prende nessuna delle altre regole, perché il
+ * punteggio premie giustamente quello che si trova più facilmente: senza
+ * un filtro secco, «voglio galassie» resta un pareggio da arbitrare
+ * contro l'altezza e la magnitudine, e lo perde sempre. */
+
+prova('un genere spento non compare affatto', () => {
+  const m = motore.genera(scenario(cieloRicco(), {
+    durata: 120, strumento: 'telescopio', generi: ['profondo']
+  }));
+  assert.ok(m.tappe.length, 'una missione di sole galassie deve esistere');
+  const intrusi = m.tappe.filter(t => t.tipo !== 'profondo' && t.tipo !== 'evento');
+  assert.deepStrictEqual(intrusi.map(t => t.nome), []);
+});
+
+prova('le stazioni si possono chiedere da sole', () => {
+  const m = motore.genera(scenario(cieloRicco(), {
+    durata: 120, strumento: 'telescopio', generi: ['artificiali']
+  }));
+  assert.ok(m.tappe.every(t => t.tipo === 'stazione' || t.tipo === 'evento'));
+});
+
+prova('la Luna e le comete stanno coi pianeti, non con le stelle', () => {
+  const scelte = { generi: ['pianeti'], strumento: 'telescopio', esperienza: 'curiosi', cielo: 'tutto' };
+  assert.ok(motore.genereAmmesso({ tipo: 'luna' }, scelte));
+  assert.ok(motore.genereAmmesso({ tipo: 'corpoMinore' }, scelte));
+  assert.ok(!motore.genereAmmesso({ tipo: 'stella' }, scelte));
+  assert.ok(!motore.genereAmmesso({ tipo: 'costellazione' }, scelte));
+});
+
+prova('un evento del calendario passa comunque: è un appuntamento', () => {
+  assert.ok(motore.genereAmmesso({ tipo: 'evento' }, { generi: ['profondo'] }));
+});
+
+/* L'elenco vuoto vuol dire «tutto» e non «niente», ed è la differenza
+ * fra una spunta tolta per sbaglio e una serata senza bersagli. Vale
+ * anche per i salvataggi di prima, che il campo non ce l'hanno affatto,
+ * e per un genere che nel frattempo fosse stato tolto dal codice. */
+prova('nessun genere scelto vuol dire tutti, non nessuno', () => {
+  assert.deepStrictEqual(motore.generiScelti({ generi: [] }), K.MISS_GENERI_TUTTI);
+  assert.deepStrictEqual(motore.generiScelti({}), K.MISS_GENERI_TUTTI);
+  assert.deepStrictEqual(motore.generiScelti({ generi: ['inventato'] }), K.MISS_GENERI_TUTTI);
+  const m = motore.genera(scenario(cieloRicco(), { durata: 120, strumento: 'telescopio', generi: [] }));
+  assert.ok(m.tappe.length > 1);
+});
+
+prova('ogni tipo che il raccoglitore produce ha il suo genere', () => {
+  // Se un tipo nuovo non finisse in nessun genere, `missGenereAmmesso`
+  // lo lascerebbe passare sempre — cioè il filtro tacerebbe invece di
+  // fallire, che è il modo peggiore di non funzionare.
+  for (const tipo of ['luna', 'pianeta', 'corpoMinore', 'stella', 'profondo', 'costellazione', 'stazione']) {
+    assert.ok(K.MISS_GENERE_DI_TIPO[tipo], `il tipo ${tipo} non sta in nessun genere`);
+  }
+});
+
+// =====================================================================
+sezione('il sorteggio: la stessa serata non dà la stessa lista');
+
+/* Prima la scelta era un argmax: dallo stesso balcone, alla stessa ora,
+ * la missione era identica ogni sera, perché identiche erano le
+ * posizioni. Non lo si vede guardando una missione — cinque bersagli
+ * sensati sono cinque bersagli sensati — e lo si vede benissimo alla
+ * terza sera di fila. */
+
+prova('due semi diversi danno due missioni diverse', () => {
+  const uno = motore.genera(Object.assign(scenario(cieloRicco(), { durata: 120, strumento: 'telescopio' }), { seme: 'a' }));
+  const due = motore.genera(Object.assign(scenario(cieloRicco(), { durata: 120, strumento: 'telescopio' }), { seme: 'b' }));
+  const nomi = m => m.tappe.map(t => t.nome).join('|');
+  assert.notStrictEqual(nomi(uno), nomi(due));
+});
+
+prova('lo stesso seme dà sempre la stessa missione', () => {
+  // È la condizione perché aprire e chiudere il pannello, andare nel
+  // planetario e tornare, o cambiare lingua non riscrivano la serata.
+  const fai = () => motore.genera(Object.assign(
+    scenario(cieloRicco(), { durata: 120, strumento: 'telescopio' }), { seme: 'fermo' }));
+  assert.deepStrictEqual(fai().tappe.map(t => t.id), fai().tappe.map(t => t.id));
+});
+
+prova('in dieci serate il cast cambia davvero', () => {
+  const viste = new Set();
+  for (let k = 0; k < 10; k++) {
+    const m = motore.genera(Object.assign(
+      scenario(cieloRicco(), { durata: 120, strumento: 'telescopio' }), { seme: 'sera-' + k }));
+    m.tappe.forEach(t => viste.add(t.id));
+  }
+  // Con dodici candidati e cinque tappe, dieci serate devono pescare
+  // parecchio più dei cinque bersagli di sempre.
+  assert.ok(viste.size >= 8, `solo ${viste.size} bersagli diversi in dieci serate`);
+});
+
+prova('il sorteggio resta pesato: il migliore vince spesso', () => {
+  // Randomico non vuol dire a caso. Su cento tiri, un candidato trenta
+  // punti sopra gli altri deve uscire nella grande maggioranza dei casi:
+  // se non fosse così, la temperatura sarebbe tarata male e la missione
+  // proporrebbe la nebulosa da undicesima al posto di Giove.
+  const rnd = motore.caso('taratura');
+  const pool = [{ punti: 100 }, { punti: 70 }, { punti: 70 }, { punti: 70 }];
+  let primo = 0;
+  for (let k = 0; k < 400; k++) if (motore.pescaPesato(pool, rnd, 9) === 0) primo++;
+  assert.ok(primo > 240 && primo < 400, `il migliore è uscito ${primo} volte su 400`);
+});
+
+prova('il sorteggio non esplode con punteggi enormi', () => {
+  // `Math.exp(punti)` su punteggi grandi è `Infinity`, e `Infinity /
+  // Infinity` è `NaN`: si sottrae il migliore prima dell'esponenziale, e
+  // questa prova è lì per non farlo togliere.
+  const rnd = motore.caso('estremi');
+  const pool = [{ punti: 1e5 }, { punti: -1e5 }];
+  for (let k = 0; k < 50; k++) {
+    const i = motore.pescaPesato(pool, rnd, 9);
+    assert.ok(i === 0 || i === 1, `indice fuori scala: ${i}`);
+  }
+  assert.strictEqual(motore.pescaPesato([], rnd, 9), -1);
+});
+
+prova('il caso è seminato: lo stesso seme dà la stessa sequenza', () => {
+  const a = motore.caso('x'), b = motore.caso('x');
+  for (let k = 0; k < 20; k++) {
+    const v = a();
+    assert.strictEqual(v, b());
+    assert.ok(v >= 0 && v < 1, `fuori da [0,1): ${v}`);
+  }
+});
+
+// =====================================================================
+sezione('la voce: come si dice una cosa, non solo cosa si dice');
+
+/* Questa famiglia esiste perché lo SSML è il posto dove sbagliare non si
+ * sente. Un namespace dimenticato, uno stile che quella voce non conosce,
+ * un tag chiuso male: il servizio risponde comunque un audio perfetto,
+ * letto in tono neutro — cioè esattamente com'era prima — e non c'è
+ * niente da cui accorgersene se non riascoltare tutto sperando di
+ * ricordarsi com'era. */
+
+prova('lo SSML porta il namespace mstts, se no lo stile si perde in silenzio', () => {
+  const x = motore.ssml('ciao', 'it', K.MISS_TONI_VOCE.curiosi.scoperta);
+  assert.ok(x.includes('xmlns:mstts='), 'senza il namespace il blocco viene ignorato');
+  assert.ok(x.includes('<mstts:express-as'));
+  assert.ok(x.includes('</mstts:express-as>'));
+  assert.ok(x.trim().startsWith('<speak') && x.trim().endsWith('</speak>'));
+});
+
+prova('uno stile che la voce non conosce non si chiede affatto', () => {
+  // Chiederlo non è un errore: è un risultato identico a prima. Meglio
+  // la voce stabile, che almeno non promette un'emozione che non arriva.
+  const x = motore.ssml('ciao', 'it', { stile: 'inventato', grado: '1', ritmo: '+0%', tono: '+0Hz' });
+  assert.ok(!x.includes('express-as'));
+  assert.ok(x.includes(K.MISS_VOCI_EDGE.it.stabile));
+});
+
+prova('ogni stile dichiarato nelle tabelle dei toni esiste davvero', () => {
+  // È l'invariante che tiene in piedi il pezzo: se una riga della tabella
+  // nominasse uno stile che la voce non ha, quel momento della caccia
+  // tornerebbe muto di emozione senza che niente lo dica.
+  for (const [modo, momenti] of Object.entries(K.MISS_TONI_VOCE)) {
+    for (const [momento, tono] of Object.entries(momenti)) {
+      for (const lingua of ['it', 'en']) {
+        assert.ok(K.MISS_VOCI_EDGE[lingua].stili.includes(tono.stile),
+          `${lingua}/${modo}/${momento}: lo stile «${tono.stile}» non esiste`);
+      }
+    }
+  }
+});
+
+prova('il testo dentro allo SSML è sfuggito: un & non chiude il documento', () => {
+  const x = motore.ssml('Luna & Sole <test>', 'it', K.MISS_TONI_VOCE.curiosi.enigma);
+  assert.ok(x.includes('&amp;'));
+  assert.ok(!x.includes('<test>'));
+});
+
+prova('le pause cadono sulla punteggiatura, e i due punti prendono la più lunga', () => {
+  // Sono metà di quello che fa sembrare naturale una voce: senza, un
+  // testo di frasi brevi esce tutto d'un fiato.
+  const x = motore.ssml('Indizio 2: trova Vega. Poi guarda in alto, piano.', 'it',
+    K.MISS_TONI_VOCE.curiosi.indizio);
+  const pause = [...x.matchAll(/<break time="(\d+)ms"\/>/g)].map(m => Number(m[1]));
+  assert.strictEqual(pause.length, 3, JSON.stringify(pause));
+  assert.ok(pause[0] > pause[1], 'i due punti devono respirare più del punto');
+  assert.ok(pause[1] > pause[2], 'il punto deve respirare più della virgola');
+});
+
+prova('i quattro momenti della caccia sono quattro, e si riconoscono', () => {
+  const M = K.MISS_INDIZI;
+  assert.strictEqual(motore.momentoVoce({ fase: 'ricerca', aiuto: 0 }), 'enigma');
+  assert.strictEqual(motore.momentoVoce({ fase: 'ricerca', aiuto: 2, indizioMostrato: 2 }), 'indizio');
+  assert.strictEqual(motore.momentoVoce({ fase: 'ricerca', aiuto: M, indizioMostrato: M, rivelata: true }), 'soluzione');
+  assert.strictEqual(motore.momentoVoce({ fase: 'scoperta' }), 'scoperta');
+});
+
+prova('la scoperta si dice su di giri, la resa no', () => {
+  // È la differenza che questa tabella esiste per fare: festeggiare
+  // quando qualcuno si è appena arreso è la cosa sbagliata da dire.
+  for (const modo of K.MISS_ESPERIENZE) {
+    const t = K.MISS_TONI_VOCE[modo];
+    assert.strictEqual(t.scoperta.stile, 'excited', modo);
+    assert.notStrictEqual(t.soluzione.stile, 'excited', modo);
+    assert.ok(parseFloat(t.scoperta.grado) > parseFloat(t.soluzione.grado), modo);
+    // L'enigma va lasciato respirare: più lento della scoperta, sempre.
+    assert.ok(parseFloat(t.enigma.ritmo) < parseFloat(t.scoperta.ritmo), modo);
+  }
+});
+
+prova('coi bambini la voce è più alta e più svelta che coi curiosi', () => {
+  const b = K.MISS_TONI_VOCE.bambini, c = K.MISS_TONI_VOCE.curiosi;
+  for (const momento of ['enigma', 'indizio', 'soluzione', 'scoperta']) {
+    assert.ok(parseFloat(b[momento].tono) > parseFloat(c[momento].tono), momento);
+    assert.ok(parseFloat(b[momento].ritmo) > parseFloat(c[momento].ritmo), momento);
+  }
 });
 
 // =====================================================================
@@ -631,6 +875,37 @@ for (const lingua of ['it', 'en']) {
       assert.ok(d['missione.gioco.cartellino.' + c], 'manca il cartellino ' + c);
     }
   });
+
+  /* Il registro dei bambini, chiave per chiave.
+   *
+   * È lo stesso guasto muto del repertorio, spostato di un pezzo:
+   * `missChiaveRegistro` chiede la versione per bambini di una chiave, e
+   * se quella versione non c'è `astroI18n` restituisce quella normale.
+   * Sullo schermo compare un testo perfettamente sensato — solo che è
+   * quello degli adulti, in mezzo a una finestra che per il resto parla
+   * di cacce al tesoro. Nessuno se ne accorge leggendo, perché non manca
+   * niente: è la frase sbagliata, non una frase vuota. */
+  prova('ogni chiave registrata per i bambini esiste davvero (' + lingua + ')', () => {
+    const d = DIZIONARI[lingua];
+    const mancanti = [...K.MISS_CHIAVI_BAMBINI]
+      .filter(k => !d['missione.bambini.' + k]);
+    assert.deepStrictEqual(mancanti, [], mancanti.slice(0, 6).join(', '));
+  });
+
+  /* …e il contrario: una chiave scritta nel dizionario e non registrata
+   * non viene mai chiesta da nessuno. Non rompe niente e non si vede —
+   * è testo scritto, tradotto e mai mostrato, che è il modo in cui il
+   * registro dei bambini resta indietro un pezzo alla volta. */
+  prova('e ogni bambini.* del dizionario è registrato (' + lingua + ')', () => {
+    const d = DIZIONARI[lingua];
+    const orfane = Object.keys(d)
+      .filter(k => k.startsWith('missione.bambini.'))
+      .map(k => k.slice('missione.bambini.'.length))
+      // Le chiavi dei tre gradini di aiuto e i vecchi tasti restano
+      // raggiunte per nome altrove, non da `missChiaveRegistro`.
+      .filter(k => !K.MISS_CHIAVI_BAMBINI.has(k) && !k.startsWith('gioco.'));
+    assert.deepStrictEqual(orfane, [], orfane.slice(0, 6).join(', '));
+  });
 }
 
 prova('nessun enigma svela il nome del bersaglio che sta chiedendo', () => {
@@ -987,7 +1262,23 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         // durata + momento (3) + strumento + difficoltà + cielo (2) + voce (2)
         attese: K.MISS_DURATE.length + 3 + K.MISS_STRUMENTI.length +
                 K.MISS_ESPERIENZE.length + 2 + 2,
+        // La nota è una sola, ed è quella della scelta fatta: tre
+        // cartoline da due righe erano duecentocinquanta pixel per una
+        // domanda sola. Si controlla che ci sia e che dica la sua.
         note: document.querySelectorAll('#missione-corpo .missione-scelta-nota').length,
+        notaScelta: document.querySelector('#missione-corpo [data-miss-scelta="esperienza"]')
+          .closest('.missione-gruppo').querySelector('.missione-scelta-nota').textContent,
+        notaAttesa: astroI18n.t('missione.esperienzaNota.' + miss.scelte.esperienza),
+        // I generi sono caselle di spunta e non pillole alternative:
+        // stanno fuori da `data-miss-scelta` apposta, perché un
+        // `radiogroup` che accetta più risposte è una bugia detta a chi
+        // legge con lo schermo.
+        generi: Array.from(document.querySelectorAll('#missione-corpo [data-miss-genere]'))
+          .map(b => ({ valore: b.dataset.missGenere, ruolo: b.getAttribute('role'),
+                       acceso: b.getAttribute('aria-checked') === 'true' })),
+        // I blocchi: la serata, la caccia, e i dettagli richiudibili.
+        blocchi: document.querySelectorAll('#missione-corpo .missione-blocco').length,
+        dettagliChiusi: !document.querySelector('#missione-corpo [data-miss-dettagli]').open,
         bortle: Array.from(document.querySelectorAll('#missione-corpo [data-miss-bortle] option'))
           .map(o => ({ valore: Number(o.value), selezionata: o.selected })),
         fuocoDentro: document.getElementById('modale-missione').contains(document.activeElement)
@@ -995,16 +1286,66 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     });
     prova('la finestra presenta durata, momento, difficoltà, settore e voce', () => {
       assert.strictEqual(config.aperto, true);
-      assert.strictEqual(config.gruppi, 6, `${config.gruppi} gruppi`);
+      // durata, momento, strumento, difficoltà, generi, cielo, voce
+      assert.strictEqual(config.gruppi, 7, `${config.gruppi} gruppi`);
       assert.strictEqual(config.scelte, config.attese, `${config.scelte} contro ${config.attese}`);
-      // Ogni gradino porta la sua riga di spiegazione: senza, «Esperti»
-      // non promette niente e la scelta si fa a caso.
-      assert.strictEqual(config.note, K.MISS_ESPERIENZE.length, `${config.note} note`);
+      /* La spiegazione del gradino scelto è sempre a schermo: senza,
+       * «Esperti» non promette niente e la scelta si fa a caso. Ce n'è
+       * una sola — quella della scelta fatta — e le altre restano a un
+       * tocco e nel `title`. */
+      assert.strictEqual(config.notaScelta, config.notaAttesa,
+        `nota mostrata: «${config.notaScelta}»`);
+      assert.ok(config.note >= 1 && config.note <= 2, `${config.note} note`);
       assert.deepStrictEqual(config.bortle.map(o => o.valore), K.MISS_BORTLE);
       assert.strictEqual(config.bortle.find(o => o.selezionata).valore, 5,
         'parte dal cielo luminoso salvato nelle Impostazioni');
     });
     prova('il fuoco entra nella finestra', () => assert.strictEqual(config.fuocoDentro, true));
+
+    /* La compattezza non è un gusto: erano otto gruppi impilati, tutti
+     * dello stesso peso, e su un telefono facevano quasi due schermate
+     * per rispondere a domande che stanno in una riga a testa. I tre
+     * blocchi dicono anche quali domande contano — e i dettagli, che
+     * sono le risposte che uno dà una volta, partono chiusi. */
+    prova('le domande stanno in tre blocchi, e i dettagli partono chiusi', () => {
+      assert.strictEqual(config.blocchi, 2, 'la serata e la caccia');
+      assert.strictEqual(config.dettagliChiusi, true);
+    });
+
+    prova('i cinque generi ci sono tutti, e nascono tutti accesi', () => {
+      assert.deepStrictEqual(config.generi.map(g => g.valore), K.MISS_GENERI_TUTTI);
+      assert.ok(config.generi.every(g => g.acceso), 'di serie si cerca tutto');
+      // Caselle di spunta e non pillole alternative: se ne possono
+      // accendere più d'una, e il ruolo lo deve dire.
+      assert.ok(config.generi.every(g => g.ruolo === 'checkbox'),
+        'un radiogroup che accetta più risposte è una bugia');
+    });
+
+    /* L'ultimo genere acceso non si spegne: «non cercare niente» non è
+     * una serata, e un pannello che lascia arrivare a quello stato deve
+     * poi spiegare un risultato vuoto che non è colpa del cielo. */
+    const generi = await pagina.evaluate(() => {
+      const spegni = v => document.querySelector(`[data-miss-genere="${v}"]`).click();
+      const accesi = () => Array.from(document.querySelectorAll('[data-miss-genere]'))
+        .filter(b => b.getAttribute('aria-checked') === 'true').map(b => b.dataset.missGenere);
+      const tutti = Array.from(document.querySelectorAll('[data-miss-genere]'))
+        .map(b => b.dataset.missGenere);
+      tutti.slice(1).forEach(spegni);
+      const rimasto = accesi();
+      spegni(tutti[0]);                       // l'ultimo: non deve spegnersi
+      const dopoTentativo = accesi();
+      const salvato = JSON.parse(localStorage.getItem('astrocalendario_missione_scelte') || '{}').generi;
+      tutti.forEach(v => { if (!accesi().includes(v)) spegni(v); });
+      return { rimasto, dopoTentativo, salvato, ripristinati: accesi() };
+    });
+    prova('l’ultimo genere acceso non si può spegnere', () => {
+      assert.deepStrictEqual(generi.rimasto, generi.dopoTentativo);
+      assert.strictEqual(generi.dopoTentativo.length, 1);
+    });
+    prova('e la scelta dei generi si ricorda fra una sera e l’altra', () => {
+      assert.deepStrictEqual(generi.salvato, generi.rimasto);
+      assert.deepStrictEqual(generi.ripristinati, K.MISS_GENERI_TUTTI);
+    });
 
     // Le tre scelte si cambiano davvero, e restano.
     await pagina.evaluate(() => {
@@ -1028,6 +1369,61 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         strumento: ricordate.strumento, esperienza: ricordate.esperienza, bortle: ricordate.bortle },
         { durata: 60, momento: 'personalizzato', strumento: 'binocolo', esperienza: 'curiosi', bortle: 3 });
       assert.ok(Number.isFinite(ricordate.momentoPersonalizzato));
+    });
+
+    /* Il punto fondamentale: le scelte governano davvero il cast.
+     *
+     * Il motore lo prova con un cielo finto (§«cosa si va a cercare»);
+     * qui si prova la catena intera — pannello, scelte salvate,
+     * raccoglitore vero, effemeridi vere — perché fra le due c'è tutto
+     * quello che può rompersi in silenzio: una scelta che non arriva
+     * allo scenario, un tipo che il raccoglitore chiama in un altro
+     * modo, un salvataggio che si sovrascrive. E il sintomo, se si
+     * rompe, è una missione perfettamente sensata: quella di qualcun
+     * altro. */
+    const perGenere = {};
+    for (const set of [['profondo'], ['pianeti'], ['costellazioni'], ['stelle']]) {
+      perGenere[set[0]] = await pagina.evaluate(async (set) => {
+        // Prima si accende quello voluto, poi si spengono gli altri:
+        // l'ultimo acceso non si spegne, e nell'ordine inverso si
+        // resterebbe bloccati sul precedente.
+        set.forEach(v => { const b = document.querySelector(`[data-miss-genere="${v}"]`);
+          if (b.getAttribute('aria-checked') !== 'true') b.click(); });
+        document.querySelectorAll('[data-miss-genere]').forEach(b => {
+          if (!set.includes(b.dataset.missGenere) && b.getAttribute('aria-checked') === 'true') b.click(); });
+        document.querySelector('[data-miss-azione="genera"]').click();
+        await new Promise(r => setTimeout(r, 300));
+        const t = miss.anteprima ? miss.anteprima.tappe.map(x => x.tipo) : [];
+        missAzione('configura', document.getElementById('missione-corpo'));
+        return t;
+      }, set);
+    }
+    prova('le scelte governano il cast anche con le effemeridi vere', () => {
+      // La Luna e le comete stanno coi pianeti; gli eventi del
+      // calendario passano sempre, perché sono appuntamenti.
+      const ammessi = {
+        profondo: ['profondo', 'evento'],
+        pianeti: ['luna', 'pianeta', 'corpoMinore', 'evento'],
+        costellazioni: ['costellazione', 'evento'],
+        stelle: ['stella', 'evento']
+      };
+      const vuoti = [];
+      for (const [genere, tipi] of Object.entries(perGenere)) {
+        if (!tipi.length) { vuoti.push(genere); continue; }
+        const intrusi = tipi.filter(t => !ammessi[genere].includes(t));
+        assert.deepStrictEqual(intrusi, [], `${genere}: ${intrusi.join(',')}`);
+      }
+      // Da Como, in una notte di settembre, almeno due dei quattro
+      // generi devono avere di che riempire una missione: se fossero
+      // tutti vuoti, la prova sopra passerebbe senza aver provato niente.
+      assert.ok(vuoti.length <= 2, 'generi senza tappe: ' + vuoti.join(', '));
+    });
+
+    // Si riaccendono tutti, se no le prove che seguono partono da un
+    // cielo ristretto a una famiglia sola.
+    await pagina.evaluate(() => {
+      document.querySelectorAll('[data-miss-genere]').forEach(b => {
+        if (b.getAttribute('aria-checked') !== 'true') b.click(); });
     });
 
     await pagina.evaluate(() => document.querySelector('[data-miss-azione="genera"]').click());
@@ -1084,8 +1480,16 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.strictEqual(inCorso.pannelloChiuso, true);
       assert.strictEqual(inCorso.striscia, true, JSON.stringify(inCorso));
       assert.ok(inCorso.guida.length > 10, 'guida: ' + inCorso.guida);
-      assert.ok(inCorso.risposte.includes('aiuto'));
+      /* Chiedere un indizio è la freccia in avanti, non un tasto
+       * «aiuto»: quel tasto è sparito quando gli indizi sono diventati
+       * quattro pannelli da sfogliare, e questa riga è rimasta a
+       * cercarlo — cioè la prova è stata rossa da allora, e con lei
+       * tutta la sezione dell'aiuto progressivo che le sta sotto. */
+      assert.ok(inCorso.risposte.includes('indizio-successivo'), inCorso.risposte.join(','));
       assert.ok(!inCorso.risposte.includes('trovato'));
+      // E la soluzione non si offre prima dei tre indizi: chi ha appena
+      // letto l'enigma non deve avere la risposta a portata di pollice.
+      assert.ok(!inCorso.risposte.includes('soluzione'), inCorso.risposte.join(','));
     });
 
     const dopoTrovato = await pagina.evaluate(() => {
@@ -1111,15 +1515,20 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     const aiuti = await pagina.evaluate(() => {
       const esiti = [];
       for (let k = 1; k <= 3; k++) {
-        const aiuto = document.querySelector('#missione-striscia [data-miss-azione="aiuto"]');
+        // La freccia in avanti: è lei a chiedere l'indizio dopo, e
+        // arrivata al terzo si ferma — la soluzione ha un tasto suo.
+        const aiuto = document.querySelector('#missione-striscia [data-miss-azione="indizio-successivo"]');
         if (!aiuto) throw new Error(JSON.stringify({k, corrente:miss.attiva.corrente, nelPlanetario:miss.attiva.nelPlanetario, tappa:miss.attiva.tappe[miss.attiva.corrente], html:document.getElementById('missione-striscia').innerHTML}));
         aiuto.click();
         esiti.push({
           livello: miss.attiva.tappe[miss.attiva.corrente].aiuto,
           guida: document.querySelector('.missione-striscia-indizio').textContent,
           esito: miss.attiva.tappe[miss.attiva.corrente].esito,
-          rivelata: miss.attiva.tappe[miss.attiva.corrente].rivelata,
-          altraRichiesta: !!document.querySelector('#missione-striscia [data-miss-azione="aiuto"]'),
+          rivelata: !!miss.attiva.tappe[miss.attiva.corrente].rivelata,
+          // Al terzo la freccia si disabilita: la progressione degli
+          // indizi è finita, e quello che resta è la soluzione.
+          altraRichiesta: !document.querySelector('#missione-striscia [data-miss-azione="indizio-successivo"]').disabled,
+          tastoSoluzione: !!document.querySelector('#missione-striscia [data-miss-azione="soluzione"]'),
           centratura: sky.animazioneVista && {
             az: sky.animazioneVista.az0 + sky.animazioneVista.dAz,
             alt: sky.animazioneVista.alt0 + sky.animazioneVista.dAlt
@@ -1136,12 +1545,52 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     prova('e la guida resta visibile mentre si muove il cielo', () => {
       assert.ok(aiuti.every(a => a.guida.length > 10));
     });
-    prova('il terzo aiuto rivela, centra e conclude la progressione', () => {
-      assert.strictEqual(aiuti[2].rivelata, true);
+    /* I tre indizi sono tre indizi, e nessuno dei tre rivela.
+     *
+     * Prima il terzo era insieme indizio e risposta: si chiedeva un aiuto
+     * e ci si ritrovava il bersaglio centrato nella mappa, cioè la caccia
+     * finiva senza che nessuno l'avesse decisa. Adesso il terzo indizio
+     * fa comparire un tasto a parte, e la caccia finisce solo se lo si
+     * preme. */
+    prova('nessuno dei tre indizi rivela il bersaglio da solo', () => {
+      assert.deepStrictEqual(aiuti.map(a => a.rivelata), [false, false, false]);
+    });
+    prova('dopo il terzo indizio compare il tasto della soluzione, e non prima', () => {
+      assert.deepStrictEqual(aiuti.map(a => a.tastoSoluzione), [false, false, true]);
       assert.strictEqual(aiuti[2].altraRichiesta, false);
-      assert.ok(aiuti[2].centratura, JSON.stringify(aiuti[2]));
-      assert.ok(Number.isFinite(aiuti[2].centratura.az));
-      assert.ok(Number.isFinite(aiuti[2].centratura.alt));
+    });
+
+    const soluzione = await pagina.evaluate(() => {
+      const tasto = document.querySelector('#missione-striscia [data-miss-azione="soluzione"]');
+      if (!tasto) return { presente: false };
+      tasto.click();
+      const t = miss.attiva.tappe[miss.attiva.corrente];
+      return {
+        presente: true,
+        rivelata: !!t.rivelata,
+        esito: t.esito,
+        // Il nome del bersaglio deve comparire nel testo: è metà della
+        // promessa del tasto, e l'altra metà è la centratura.
+        nomeScritto: document.querySelector('.missione-striscia-indizio')
+          .textContent.includes(missNomeTappa(t)),
+        tastoAncoraLi: !!document.querySelector('#missione-striscia [data-miss-azione="soluzione"]'),
+        centratura: sky.animazioneVista && {
+          az: sky.animazioneVista.az0 + sky.animazioneVista.dAz,
+          alt: sky.animazioneVista.alt0 + sky.animazioneVista.dAlt
+        }
+      };
+    });
+    prova('la soluzione rivela il nome e centra il bersaglio', () => {
+      assert.ok(soluzione.presente, 'il tasto della soluzione non c’è');
+      assert.strictEqual(soluzione.rivelata, true);
+      assert.strictEqual(soluzione.nomeScritto, true);
+      assert.ok(soluzione.centratura, JSON.stringify(soluzione));
+      assert.ok(Number.isFinite(soluzione.centratura.az));
+      assert.ok(Number.isFinite(soluzione.centratura.alt));
+    });
+    prova('e non segna la tappa come fallita, né lascia un tasto che non fa più niente', () => {
+      assert.strictEqual(soluzione.esito, null);
+      assert.strictEqual(soluzione.tastoAncoraLi, false);
     });
 
     const sostituzione = await pagina.evaluate(() => {

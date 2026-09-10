@@ -302,6 +302,9 @@ const DISEGNI = {
     <circle cx="12" cy="12" r="5"/>
     <circle cx="12" cy="12" r="1.8"/>`,
 
+  costellazione: `<path d="M4.6 15.8L9 8.4l5.2 3.4L19.4 5"/>
+    <circle cx="4.6" cy="15.8" r="1.5"/><circle cx="9" cy="8.4" r="1.9"/>
+    <circle cx="14.2" cy="11.8" r="1.4"/><circle cx="19.4" cy="5" r="1.7"/>`,
   nebulosa: `<path d="M4.8 13.8c-1.6-5.2 3.2-9.4 8.2-8.4 4.4 1 6.8 5.4 5 8.8-2 3.6-11.4 4.4-13.2-.4z"/>
     <circle cx="9.8" cy="11.4" r="1.3"/><circle cx="14.4" cy="13.2" r="0.9"/>`,
 

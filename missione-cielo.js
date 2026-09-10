@@ -98,9 +98,141 @@ const MISS_GENEROSITA = {
 
 const MISS_DIREZIONI = [0, 45, 90, 135, 180, 225, 270, 315];
 
-// Le voci Neural di Edge-TTS sono scelte qui, non lasciate al ponte: così la
-// stessa missione non cambia narratore secondo il server che la serve.
-const MISS_VOCI_EDGE = { it: 'it-IT-ElsaNeural', en: 'en-US-AriaNeural' };
+/* Che roba si va a cercare.
+ *
+ * È la domanda che mancava, e la sua assenza si vedeva: chi aveva in
+ * mano un telescopio e voleva una serata di galassie si ritrovava la
+ * Luna, Giove e due costellazioni, perché il punteggio premia
+ * giustamente quello che si trova più facilmente. Un punteggio non è un
+ * filtro, e le preferenze di chi guarda non sono un pareggio da
+ * arbitrare: se uno dice «stasera niente pianeti», i pianeti non ci
+ * vanno.
+ *
+ * I cinque generi sono le cinque cose che una persona nomina guardando
+ * in su, e non le famiglie del catalogo: la Luna e le comete stanno coi
+ * pianeti perché sono «roba del Sistema Solare», nebulose e ammassi
+ * stanno con le galassie perché sono «le macchie deboli», e le stazioni
+ * spaziali hanno un genere loro perché sono l'unica cosa lassù che
+ * abbiamo costruito noi — ed è esattamente il motivo per cui a un
+ * bambino interessano più di una galassia.
+ *
+ * `tipi` è il ponte col resto del file: i tipi veri dei candidati, che
+ * restano quelli di sempre. */
+const MISS_GENERI = [
+  { valore: 'pianeti',       icona: 'saturno',       tipi: ['luna', 'pianeta', 'corpoMinore'] },
+  { valore: 'stelle',        icona: 'stella',        tipi: ['stella'] },
+  { valore: 'profondo',      icona: 'nebulosa',      tipi: ['profondo'] },
+  { valore: 'costellazioni', icona: 'costellazione', tipi: ['costellazione'] },
+  { valore: 'artificiali',   icona: 'satellite',     tipi: ['stazione'] }
+];
+
+// Dal tipo di un candidato al genere che lo contiene, una volta sola.
+const MISS_GENERE_DI_TIPO = MISS_GENERI.reduce((m, g) => {
+  g.tipi.forEach(t => { m[t] = g.valore; });
+  return m;
+}, {});
+
+const MISS_GENERI_TUTTI = MISS_GENERI.map(g => g.valore);
+
+/* Quali generi valgono davvero per questa serata.
+ *
+ * Un elenco vuoto — nessuna casella accesa — vuol dire «tutto» e non
+ * «niente»: una missione vuota per una spunta tolta per sbaglio sarebbe
+ * la risposta sbagliata alla domanda giusta, e il pannello non lascia
+ * comunque spegnere l'ultima. Vale anche per i salvataggi di prima, che
+ * un campo `generi` non ce l'hanno affatto. */
+function missGeneriScelti(scelte) {
+  const scelti = (scelte && Array.isArray(scelte.generi))
+    ? scelte.generi.filter(g => MISS_GENERI_TUTTI.includes(g)) : [];
+  return scelti.length ? scelti : MISS_GENERI_TUTTI.slice();
+}
+
+/* Un candidato è di un genere che è stato chiesto?
+ *
+ * Gli eventi del calendario non hanno un genere proprio — un'occultazione
+ * è un pianeta, una congiunzione sono due — e passano sempre: sono
+ * appuntamenti, cioè la ragione per cui una missione è una serata invece
+ * di una lista, e filtrarli via per tipo vorrebbe dire buttare
+ * l'informazione insieme al filtro. */
+function missGenereAmmesso(c, scelte) {
+  if (!c) return false;
+  if (c.tipo === 'evento') return true;
+  const genere = MISS_GENERE_DI_TIPO[c.tipo];
+  if (!genere) return true;
+  return missGeneriScelti(scelte).includes(genere);
+}
+
+/* Le voci, scelte qui e non lasciate al ponte: così la stessa missione
+ * non cambia narratore secondo il server che la serve.
+ *
+ * Sono **due per lingua**, e non è un lusso. Le voci Neural di prima —
+ * Elsa e Aria — leggono benissimo e leggono e basta: sono tarate per un
+ * assistente vocale, cioè per non avere un'opinione. Qui il narratore ha
+ * un mestiere diverso, che è raccontare: un enigma va detto piano e con
+ * una pausa prima della risposta, una scoperta va detta con l'entusiasmo
+ * che uno ha davvero quando trova M13 la prima volta, e a un bambino va
+ * detta un'altra cosa ancora.
+ *
+ * `espressiva` è la voce che accetta gli **stili** (`mstts:express-as`):
+ * per l'italiano è Isabella, per l'inglese Jenny, e sono le due voci di
+ * Edge che li supportano davvero — chiedere uno stile a una voce che non
+ * lo ha non è un errore, è un risultato identico a prima, che è il modo
+ * peggiore di non funzionare. `stabile` è il ripiego per un ponte che lo
+ * SSML non lo prende: si perde lo stile e resta una lettura buona.
+ *
+ * `stili` dichiara quali stili quella voce conosce davvero, così
+ * `missStileVoce` non ne chiede uno inventato. */
+const MISS_VOCI_EDGE = {
+  it: {
+    espressiva: 'it-IT-IsabellaNeural',
+    stabile: 'it-IT-ElsaNeural',
+    stili: ['cheerful', 'sad', 'angry', 'chat', 'excited', 'friendly', 'shouting', 'unfriendly', 'whispering', 'terrified']
+  },
+  en: {
+    espressiva: 'en-US-JennyNeural',
+    stabile: 'en-US-AriaNeural',
+    stili: ['cheerful', 'sad', 'angry', 'assistant', 'chat', 'customerservice', 'excited', 'friendly',
+      'hopeful', 'newscast', 'shouting', 'terrified', 'unfriendly', 'whispering']
+  }
+};
+
+/* Come si dice una cosa, secondo chi ascolta e cosa sta succedendo.
+ *
+ * Tre righe di tabella, e ognuna risponde a un momento diverso della
+ * caccia. **L'enigma** va detto lento: è un indovinello, e chi lo ascolta
+ * deve avere il tempo di pensarci — un indovinello letto alla velocità di
+ * una previsione del tempo non è un indovinello. **La scoperta** va detta
+ * su di giri, ed è l'unico momento in cui il narratore ha diritto di
+ * essere contento: è il premio di tutta la tappa, e letto in tono
+ * neutrale suona come la lettura di una targa in un museo. **La
+ * soluzione** invece va detta piano e senza enfasi: chi ci arriva si è
+ * appena arreso, e festeggiare lì è la cosa sbagliata da fare.
+ *
+ * Coi bambini tutto sale di un gradino — più veloce, più acuto, più
+ * entusiasta — perché è così che si racconta a un bambino, e perché a
+ * loro l'enigma non è una prova di pazienza ma un gioco. Il tono resta
+ * `friendly` e non `excited` sull'enigma: un adulto che urla un
+ * indovinello a un bambino gli toglie la voglia di rispondere. */
+const MISS_TONI_VOCE = {
+  curiosi: {
+    enigma:    { stile: 'friendly', grado: '1',    ritmo: '-9%',  tono: '-2Hz' },
+    indizio:   { stile: 'friendly', grado: '1',    ritmo: '-5%',  tono: '+0Hz' },
+    soluzione: { stile: 'chat',     grado: '0.8',  ritmo: '-7%',  tono: '-3Hz' },
+    scoperta:  { stile: 'excited',  grado: '1.35', ritmo: '+3%',  tono: '+6Hz' }
+  },
+  bambini: {
+    enigma:    { stile: 'friendly', grado: '1.4',  ritmo: '-2%',  tono: '+9Hz' },
+    indizio:   { stile: 'cheerful', grado: '1.3',  ritmo: '+2%',  tono: '+10Hz' },
+    soluzione: { stile: 'friendly', grado: '1.1',  ritmo: '-2%',  tono: '+6Hz' },
+    scoperta:  { stile: 'excited',  grado: '1.6',  ritmo: '+8%',  tono: '+14Hz' }
+  },
+  sfida: {
+    enigma:    { stile: 'chat',     grado: '0.9',  ritmo: '-11%', tono: '-4Hz' },
+    indizio:   { stile: 'chat',     grado: '0.9',  ritmo: '-7%',  tono: '-2Hz' },
+    soluzione: { stile: 'chat',     grado: '0.8',  ritmo: '-9%',  tono: '-4Hz' },
+    scoperta:  { stile: 'excited',  grado: '1.2',  ritmo: '+2%',  tono: '+4Hz' }
+  }
+};
 
 // Il livello di ogni strumento: un bersaglio si propone solo se il suo
 // minimo sta dentro a quello che si ha in mano.
@@ -149,6 +281,14 @@ const MISS_DIFFICOLTA_GRADITA = { bambini: 1, curiosi: 1, sfida: 2 };
 // cambia davvero cast, invece di oscillare fra gli stessi due gruppi.
 const MISS_MISSIONI_DA_RICORDARE = 3;
 
+/* Quanti indizi prima della soluzione.
+ *
+ * Tre, e sono tre *indizi*: la soluzione non è il quarto gradino della
+ * stessa scala, è un'altra cosa — si chiede a parte, con un tasto che
+ * dice cosa fa, e chi non lo preme resta a cercare. Vedi
+ * `missMostraSoluzione` (§6). */
+const MISS_INDIZI = 3;
+
 // La finestra di sorveglianza di un evento a orario preciso: quanto
 // tempo prima lo si annuncia. Meno di così non si fa in tempo a uscire e
 // a girarsi dalla parte giusta.
@@ -178,6 +318,7 @@ const MISS_MISURE_A_MANO = [
 const miss = {
   // Le tre scelte, ricordate fra una sera e l'altra
   scelte: { durata: 30, strumento: 'occhio', esperienza: 'curiosi', bortle: null, cielo: 'tutto', cieloDa: 135, cieloA: 180,
+    generi: MISS_GENERI_TUTTI.slice(),
     momento: 'consigliato', momentoPersonalizzato: null, voce: false },
   // La missione appena generata e non ancora avviata
   anteprima: null,
@@ -194,6 +335,10 @@ const miss = {
   avviso: null,
   // Chi aveva il fuoco quando il pannello si è aperto, per restituirglielo
   fuocoPrima: null,
+  // Il pannello richiudibile dei dettagli: aperto una volta, resta aperto
+  // finché la finestra è aperta. Non si salva — è una posa di questa
+  // sessione, non una preferenza.
+  dettagliAperti: false,
   // Il primo estremo acquisito con la bussola, finche' si prende il secondo.
   rilievoSettore: null,
   // La guida può sparire dal cielo mentre la narrazione continua.
@@ -504,6 +649,70 @@ function missMisuraAMano(gradi) {
   return scelta;
 }
 
+/* Il caso, ma sempre lo stesso caso.
+ *
+ * Serve un generatore **seminato** e non `Math.random`, e la ragione non
+ * è la riproducibilità delle prove: è che la stessa missione viene
+ * ridisegnata decine di volte — si apre il pannello, si chiude, si va
+ * nel planetario, si torna, si cambia lingua — e con `Math.random` in
+ * mezzo ogni ridisegno sarebbe una missione diversa. Il seme sta nella
+ * missione, quindi il caso si tira una volta sola e poi resta.
+ *
+ * È uno xorshift a 32 bit: quattro righe, nessuna dipendenza, e una
+ * qualità largamente sufficiente per scegliere cinque bersagli fra
+ * centocinquanta. */
+function missCaso(seme) {
+  let x = missHashTesto(String(seme)) || 0x9e3779b9;
+  return function () {
+    x ^= x << 13; x >>>= 0;
+    x ^= x >>> 17;
+    x ^= x << 5;  x >>>= 0;
+    return x / 4294967296;
+  };
+}
+
+/* Quanto pesa la differenza di un punto, quando si sorteggia.
+ *
+ * È la manopola che decide se la missione è sempre la stessa o è una
+ * lotteria. Con una temperatura bassa vince quasi sempre il primo della
+ * classifica — che è il comportamento di prima, cioè cinque serate
+ * uguali di fila; con una alta entra anche la nebulosa da undicesima
+ * magnitudine, che è un modo elegante di far fallire la serata.
+ *
+ * Nove punti è il numero misurato sulla scala di `missPunteggio`, dove
+ * l'altezza vale fino a trenta punti e il fascino fino a trentaquattro:
+ * un candidato nove punti sotto il migliore pesa poco più di un terzo di
+ * lui, uno venti punti sotto un decimo. Cioè il migliore vince spesso e
+ * non vince sempre — che è esattamente la differenza fra una classifica
+ * e una caccia.
+ *
+ * Coi bambini si stringe: lì un bersaglio mancato non è una variante, è
+ * la fine della serata. */
+const MISS_TEMPERATURA = { bambini: 5, curiosi: 9, sfida: 12 };
+
+/* Il sorteggio pesato: la roulette di sempre.
+ *
+ * Ogni candidato prende una fetta larga `exp((punti - migliore) / T)`, e
+ * si tira una pallina. Si sottrae il punteggio migliore prima
+ * dell'esponenziale perché `Math.exp(90)` è infinito e `Infinity /
+ * Infinity` è `NaN`: sottraendo, l'argomento più grande è sempre zero e
+ * il più grande dei pesi è sempre uno. */
+function missPescaPesato(pool, rnd, temperatura) {
+  if (!pool.length) return -1;
+  if (pool.length === 1) return 0;
+  const t = Math.max(1, temperatura || 9);
+  const cima = pool.reduce((m, c) => Math.max(m, c.punti), -Infinity);
+  const pesi = pool.map(c => Math.exp((c.punti - cima) / t));
+  const totale = pesi.reduce((a, b) => a + b, 0);
+  if (!(totale > 0)) return 0;
+  let tiro = rnd() * totale;
+  for (let i = 0; i < pesi.length; i++) {
+    tiro -= pesi[i];
+    if (tiro <= 0) return i;
+  }
+  return pesi.length - 1;
+}
+
 /* Il punteggio di un candidato per *questa* serata.
  *
  * Non è un voto di bellezza — quello lo dà già `migliorDiStanotte` — ma
@@ -654,6 +863,9 @@ function missVisibileNelCieloLocale(c, scelte) {
 
 function missAmmissibile(c, scelte) {
   if (!c || !c.nome || c.idCielo === 'Sun') return false;
+  // Il genere prima di tutto: è una scelta di chi guarda, non una misura
+  // del cielo, e non ha senso pesarla contro l'altezza o la magnitudine.
+  if (!missGenereAmmesso(c, scelte)) return false;
   if (!missStrumentoBasta(c.strumentoMinimo, scelte.strumento)) return false;
   const difficoltaMassima = MISS_DIFFICOLTA_MASSIMA[scelte.esperienza] ?? 3;
   if ((c.difficolta || 1) > difficoltaMassima) return false;
@@ -868,7 +1080,8 @@ function missAttaccaRiferimenti(tappe, candidati) {
  * e non contiene niente che questa funzione debba andare a chiedere a
  * qualcuno. In uscita c'è la missione, o `null` con il motivo scritto. */
 function missGeneraMissione(scenario) {
-  const scelte = Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'curiosi', cielo: 'tutto', cieloDa: 135, cieloA: 180, voce: false },
+  const scelte = Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'curiosi', cielo: 'tutto', cieloDa: 135, cieloA: 180,
+    generi: MISS_GENERI_TUTTI.slice(), voce: false },
     scenario && scenario.scelte);
   const condizioni = (scenario && scenario.condizioni) || {};
   const adesso = (scenario && scenario.adesso) || Date.now();
@@ -883,48 +1096,85 @@ function missGeneraMissione(scenario) {
     return { vuota: true, motivo: 'nienteInVista', scelte, condizioni, tappe: [] };
   }
 
+  /* Il punteggio, e poi il caso.
+   *
+   * La penale dei recenti è **dentro** al punteggio e non un
+   * riordinamento dopo: un ordinamento per «da evitare» è un sì o un no,
+   * e quello che serve qui è un «piuttosto no» — con un cielo povero,
+   * ripetere un bersaglio di ieri è molto meglio che restituire una
+   * missione di due tappe. Trenta punti sono più di quanto valga
+   * qualunque singola grandezza tranne l'altezza: basta a mandare in
+   * fondo chi è appena stato visto, non a escluderlo. */
+  const rnd = missCaso(seme);
   const votati = ammessi
-    .map(c => Object.assign({}, c, { punti: missPunteggio(c, scelte, condizioni) +
-      (missHashTesto(seme + c.id) % 2400) / 100 - 12 }))
+    .map(c => Object.assign({}, c, {
+      punti: missPunteggio(c, scelte, condizioni) - (evitare.has(c.id) ? 30 : 0)
+    }))
     .sort((a, b) => b.punti - a.punti);
 
-  // Chi va evitato (la rigenerazione, e le tappe già sostituite) scende in
-  // fondo invece di sparire: se le alternative finiscono, meglio ripetersi
-  // che restituire una missione vuota.
-  votati.sort((a, b) => (evitare.has(a.id) ? 1 : 0) - (evitare.has(b.id) ? 1 : 0));
-
   const quante = missQuanteTappe(scelte.durata, votati.length);
+  const temperatura = MISS_TEMPERATURA[scelte.esperienza] || MISS_TEMPERATURA.curiosi;
   const perFamiglia = {};
   const scelti = [];
+  const presi = new Set();
 
-  // Se almeno un pianeta è davvero alla portata, deve entrare nella
-  // missione. I pianeti erano già fra i candidati, ma una costellazione o
-  // una stella con pochi punti in più poteva espellerli del tutto (sempre,
-  // nelle missioni corte). «Sistema Solare» comprende anche la Luna, ma la
-  // Luna non sostituisce questa promessa: si riserva il posto a un pianeta
-  // vero e si lascia poi al normale selettore il compito di dare varietà.
-  // `votati` ha già applicato punteggio, casualità e penalità dei recenti,
-  // quindi il primo è anche la scelta migliore per questa serata.
-  const pianetaVisibile = votati.find(c => c.tipo === 'pianeta');
-  if (pianetaVisibile && quante > 0) {
-    scelti.push(pianetaVisibile);
-    perFamiglia[missFamigliaDi(pianetaVisibile)] = 1;
-  }
-  for (const c of votati) {
-    if (scelti.length >= quante) break;
-    if (scelti.includes(c)) continue;
-    if (missDoppione(c, scelti)) continue;
-    const f = missFamigliaDi(c);
-    if ((perFamiglia[f] || 0) >= MISS_TETTO_FAMIGLIA) continue;
-    perFamiglia[f] = (perFamiglia[f] || 0) + 1;
+  /* Il sorteggio, tappa per tappa.
+   *
+   * Non si prende più il primo della classifica: si guarda **chi è
+   * ancora ammesso adesso** — cioè dopo aver tolto i doppioni di quello
+   * che si è già scelto e le famiglie che hanno finito il loro tetto — e
+   * fra quelli si tira la pallina di `missPescaPesato`. È il cambiamento
+   * che risponde a «non fare sempre le solite liste»: con la classifica,
+   * dallo stesso balcone alla stessa ora la missione era identica ogni
+   * sera, perché identiche erano le posizioni; adesso il migliore vince
+   * spesso e non vince sempre, e la seconda serata è un'altra serata.
+   *
+   * `filtro` esiste perché il pool va ricalcolato a ogni giro: un
+   * doppione lo è rispetto a quello che si è pescato, non rispetto alla
+   * classifica di partenza. */
+  const pescabili = filtro => votati.filter(c =>
+    !presi.has(c.id) && !missDoppione(c, scelti) && (!filtro || filtro(c)));
+
+  const prendi = c => {
     scelti.push(c);
+    presi.add(c.id);
+    perFamiglia[missFamigliaDi(c)] = (perFamiglia[missFamigliaDi(c)] || 0) + 1;
+  };
+
+  /* Il posto riservato a un pianeta, e i due casi in cui non si riserva.
+   *
+   * La ragione della riserva resta quella di sempre: i pianeti sono i
+   * bersagli che chiunque trova, e una costellazione con tre punti in più
+   * poteva espellerli del tutto dalle missioni corte. Ma è anche la sola
+   * regola di questo file che dica «questo c'è sempre», cioè la cosa che
+   * più di ogni altra faceva sembrare uguali due serate — quindi adesso
+   * *quale* pianeta si sorteggia come tutto il resto, e la riserva salta
+   * del tutto per chi ha chiesto una sfida: a quel gradino un pianeta
+   * facile non è un ancoraggio, è una tappa buttata. La Luna non conta:
+   * si riserva il posto a un pianeta vero e la varietà la fa il
+   * selettore normale. */
+  if (quante > 0 && scelte.esperienza !== 'sfida') {
+    const pianeti = pescabili(c => c.tipo === 'pianeta');
+    const i = missPescaPesato(pianeti, rnd, temperatura);
+    if (i >= 0) prendi(pianeti[i]);
   }
-  // Se il tetto per famiglia ha lasciato la missione più corta del
-  // dovuto, si riempie: la varietà è una preferenza, avere delle tappe è
-  // un requisito.
-  for (const c of votati) {
-    if (scelti.length >= quante) break;
-    if (!scelti.includes(c) && !missDoppione(c, scelti)) scelti.push(c);
+
+  while (scelti.length < quante) {
+    const pool = pescabili(c => (perFamiglia[missFamigliaDi(c)] || 0) < MISS_TETTO_FAMIGLIA);
+    const i = missPescaPesato(pool, rnd, temperatura);
+    if (i < 0) break;
+    prendi(pool[i]);
+  }
+  /* Se il tetto per famiglia ha lasciato la missione più corta del
+   * dovuto, si riempie: la varietà è una preferenza, avere delle tappe è
+   * un requisito. Qui il tetto cade ma il sorteggio resta — riempire
+   * dalla cima della classifica rimetterebbe in fondo a ogni missione
+   * sempre gli stessi due bersagli di ripiego. */
+  while (scelti.length < quante) {
+    const pool = pescabili(null);
+    const i = missPescaPesato(pool, rnd, temperatura);
+    if (i < 0) break;
+    prendi(pool[i]);
   }
 
   const { fila, fissi } = missOrdinaPerProgressione(scelti, scelte);
@@ -1556,6 +1806,16 @@ function missCaricaScelte() {
   if (MISS_DIREZIONI.includes(Number(s.cieloDa))) miss.scelte.cieloDa = Number(s.cieloDa);
   if (MISS_DIREZIONI.includes(Number(s.cieloA))) miss.scelte.cieloA = Number(s.cieloA);
   if (typeof s.voce === 'boolean') miss.scelte.voce = s.voce;
+  /* I generi si leggono per quello che sono e non per come sono scritti:
+   * un salvataggio di prima non ha il campo affatto, uno di domani
+   * potrebbe portare un genere che nel frattempo è stato tolto. Quello
+   * che resta dopo la cernita, se resta qualcosa, è la scelta; se non
+   * resta niente valgono tutti, che è il significato dell'elenco vuoto
+   * (§1) e non una missione senza bersagli. */
+  if (Array.isArray(s.generi)) {
+    const buoni = s.generi.filter(g => MISS_GENERI_TUTTI.includes(g));
+    miss.scelte.generi = buoni.length ? buoni : MISS_GENERI_TUTTI.slice();
+  }
   if (['adesso', 'consigliato', 'personalizzato'].includes(s.momento)) miss.scelte.momento = s.momento;
   if (typeof s.momentoPersonalizzato === 'number' && Number.isFinite(s.momentoPersonalizzato)) {
     miss.scelte.momentoPersonalizzato = s.momentoPersonalizzato;
@@ -1883,24 +2143,53 @@ function missIndiceIndizio(t) {
 
 function missTestoIndizio(t) {
   const indice = missIndiceIndizio(t);
+  // Rivelata, il testo è la risposta: il nome, e basta. Continuare a
+  // mostrare il terzo indizio dopo che si è chiesta la soluzione vuol
+  // dire far leggere un enigma di cui si conosce già la risposta.
+  if (t && t.rivelata && indice >= MISS_INDIZI) {
+    return missT('gioco.soluzioneE', { nome: missNomeTappa(t), dove: missDoveOra(t) });
+  }
   return indice ? missIndizio(Object.assign({}, t, { aiuto: indice })) : missIntroduzione(t);
 }
 
+/* La navigazione: zero è l'enigma, uno-due-tre sono gli indizi.
+ *
+ * La freccia in avanti si ferma al terzo, e non prosegue nella
+ * soluzione: quella è un tasto suo, e continuare a premere «avanti»
+ * finché il bersaglio si rivela è il modo in cui prima la caccia finiva
+ * senza che nessuno l'avesse deciso. */
 function missNavigazioneIndizi(t) {
   const indice = missIndiceIndizio(t);
-  // I primi tre pannelli sono indizi; il quarto rivela il bersaglio e lo
-  // centra nel cielo, quindi chiamarlo «Indizio 4» nasconderebbe la
-  // differenza più importante della progressione.
-  const etichetta = indice === 3
-    ? missT('soluzione')
-    : missT('numeroIndizio', { n: indice + 1, tot: 3 });
+  const rivelata = !!(t && t.rivelata);
+  /* Il pannello zero è l'enigma, non il primo indizio.
+   *
+   * Prima si chiamava «Indizio 1 di 3», e quel nome contava male due
+   * volte: prometteva tre indizi quando gli indizi veri erano due —
+   * l'enigma occupava il primo posto — e faceva credere che la
+   * progressione fosse finita al terzo pannello, dove invece comincia la
+   * soluzione. Adesso l'enigma ha il suo nome e gli indizi sono tre. */
+  const etichetta = rivelata && indice >= MISS_INDIZI ? missT('soluzione')
+    : indice === 0 ? missT('etichettaEnigma')
+    : missT('numeroIndizio', { n: indice, tot: MISS_INDIZI });
   return `<div class="missione-navigazione-indizi" aria-label="${missT('navigaIndizi')}">
     <button type="button" class="missione-freccia" data-miss-azione="indizio-precedente"
       aria-label="${missT('indizioPrecedente')}" ${indice === 0 ? 'disabled' : ''}>←</button>
     <span class="missione-numero-indizio">${etichetta}</span>
     <button type="button" class="missione-freccia" data-miss-azione="indizio-successivo"
-      aria-label="${missT('indizioSuccessivo')}" ${indice >= 3 ? 'disabled' : ''}>→</button>
+      aria-label="${missT('indizioSuccessivo')}" ${indice >= MISS_INDIZI ? 'disabled' : ''}>→</button>
   </div>`;
+}
+
+/* Il tasto della soluzione, che compare solo quando è il momento.
+ *
+ * Prima dei tre indizi non c'è: offrire la risposta a chi ha appena letto
+ * l'enigma è togliergli la caccia di mano. Dopo che è stata data, sparisce
+ * — un tasto che non fa più niente è un tasto rotto. */
+function missTastoSoluzione(t) {
+  if (!t || t.fase === 'scoperta' || t.rivelata) return '';
+  if ((t.aiuto || 0) < MISS_INDIZI) return '';
+  return `<button type="button" class="missione-tasto missione-tasto-soluzione"
+    data-miss-azione="soluzione">${missIcona('bersaglio', 16)} ${missT('mostraSoluzione')}</button>`;
 }
 
 function missMostraStrisciaCielo() {
@@ -1938,6 +2227,7 @@ function missMostraStrisciaCielo() {
       <button class="missione-tasto${sky.seguiTelefono ? ' attiva' : ''}" data-miss-azione="segui-telefono"
         ${m.simulazione ? 'disabled' : ''}>${missT('seguiTelefono')}</button>
       ${missNavigazioneIndizi(t)}
+      ${missTastoSoluzione(t)}
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>
     </div>`;
   el.querySelectorAll('[data-miss-azione]').forEach(b => b.addEventListener('click', () => missAzione(b.dataset.missAzione, el)));
@@ -2102,29 +2392,54 @@ function missChiediAiuto() {
   if (!m) return;
   const t = m.tappe[m.corrente];
   if (!t || t.fase === 'scoperta') return;
-  if ((t.aiuto || 0) >= 3) return;
+  if ((t.aiuto || 0) >= MISS_INDIZI) return;
   t.aiuto = (t.aiuto || 0) + 1;
   t.mostraAiuto = true;
   t.indizioMostrato = t.aiuto;
-  if (t.aiuto === 3) {
-    t.rivelata = true;
-    // Il terzo aiuto è una risposta, non un'altra descrizione: anche sui
-    // telefoni sganciamo la vista dai sensori perché il bersaglio finisca
-    // davvero al centro della mappa, come promesso dal tasto.
-    if (m.nelPlanetario) {
-      if (typeof skyUsaSensori === 'function' && skyUsaSensori() &&
-          typeof skyAlternaSeguiTelefono === 'function') skyAlternaSeguiTelefono();
-      const ora = missTappaNelPlanetario(t);
-      const oggetto = t.idCielo && skyVoceDiId(t.idCielo);
-      skyCentraSu(oggetto || {
-        nome: missNomeTappa(t), az: ora.azimut, alt: ora.altezza
-      });
-    }
+  missSalvaAttiva();
+  missMostraVista('inCorso');
+  missMostraStrisciaCielo();
+  missRaccontaTappa(t);
+}
+
+/* La soluzione, e perché è un tasto e non il terzo indizio.
+ *
+ * Prima il terzo aiuto rivelava: si chiedeva un indizio e ci si ritrovava
+ * la risposta, cioè la caccia finiva senza che nessuno l'avesse decisa —
+ * e con lei finiva la sola cosa che una caccia abbia da dare, che è la
+ * possibilità di arrivarci da soli. Adesso i tre indizi sono tre indizi,
+ * e sotto al terzo compare un tasto separato con scritto quello che fa.
+ * Chi lo preme ha *scelto* di arrendersi, e chi non lo preme può restare
+ * lì a guardare quanto vuole.
+ *
+ * Le due cose che il tasto fa sono la stessa promessa detta due volte —
+ * il nome scritto e il bersaglio al centro della mappa — e la seconda
+ * chiede di sganciare la vista dai sensori: col telefono in mano è la
+ * bussola a decidere dove si guarda, e senza sganciare il centraggio
+ * sarebbe un fotogramma che sparisce col movimento del polso. */
+function missMostraSoluzione() {
+  const m = miss.attiva;
+  if (!m) return false;
+  const t = m.tappe[m.corrente];
+  if (!t || t.fase === 'scoperta' || t.rivelata) return false;
+  t.rivelata = true;
+  t.aiuto = MISS_INDIZI;
+  t.mostraAiuto = true;
+  t.indizioMostrato = MISS_INDIZI;
+  if (m.nelPlanetario) {
+    if (typeof skyUsaSensori === 'function' && skyUsaSensori() &&
+        typeof skyAlternaSeguiTelefono === 'function') skyAlternaSeguiTelefono();
+    const ora = missTappaNelPlanetario(t);
+    const oggetto = t.idCielo && typeof skyVoceDiId === 'function' && skyVoceDiId(t.idCielo);
+    if (typeof skyCentraSu === 'function') skyCentraSu(oggetto || {
+      nome: missNomeTappa(t), az: ora.azimut, alt: ora.altezza
+    });
   }
   missSalvaAttiva();
   missMostraVista('inCorso');
   missMostraStrisciaCielo();
   missRaccontaTappa(t);
+  return true;
 }
 
 /* Sostituire una tappa.
@@ -2359,11 +2674,28 @@ function missIcona(nome, misura) {
 // energica e giocosa nei dizionari; tutto il resto continua a usare il testo
 // normale, senza produrre chiavi mancanti in console.
 const MISS_CHIAVI_BAMBINI = new Set([
+  // il percorso: l'anteprima, la tappa, la fine
   'titoloAnteprima', 'sommarioAnteprima', 'iniziaAdesso', 'iniziaAlle',
   'avanzamento', 'tappaDi', 'trova', 'trovato', 'nonLoTrovo',
   'salta', 'concludi', 'poi', 'curiositaTitolo', 'ascolta',
   'guidaSemplice', 'guidaConRiferimento', 'aiuto1', 'aiuto2',
-  'aiuto2senzaRiferimento', 'aiuto3', 'sostituisci', 'segnaNonTrovato'
+  'aiuto2senzaRiferimento', 'aiuto3', 'sostituisci', 'segnaNonTrovato',
+  /* Il gioco vero e proprio, che prima restava nel registro degli
+   * adulti: un bambino leggeva «Indizio 2 di 3» e «Hai trovato M13»
+   * dentro a una finestra che per il resto gli parlava di decolli e di
+   * agenti spaziali. Il registro non è una decorazione della cornice —
+   * se cambia solo la cornice, quello che resta dentro suona ancora più
+   * serio di prima per contrasto. */
+  'etichettaEnigma', 'numeroIndizio', 'soluzione', 'mostraSoluzione',
+  'gioco.scoperta', 'gioco.continua', 'gioco.apriCielo', 'gioco.altraStoria',
+  'gioco.quasi', 'gioco.mistero', 'gioco.soluzioneE',
+  // la scheda in Stasera e la configurazione
+  'invito', 'preparami', 'unaltra', 'cambiaScelte', 'riprendi', 'vediRisultato',
+  'sbirciaBersagli', 'nascondiBersagli', 'inCorsoSintesi', 'conclusaSintesi',
+  'cosaCercare',
+  // le due famiglie a più valori: la difficoltà e il titolo finale
+  'difficolta.1', 'difficolta.2', 'difficolta.3', 'difficolta.4', 'difficolta.5',
+  'conclusaTitolo.niente', 'conclusaTitolo.parziale', 'conclusaTitolo.tutto'
 ]);
 
 function missChiaveRegistro(chiave, esperienza) {
@@ -2548,20 +2880,61 @@ function missDisegnaPannello() {
   missCollegaPannello(corpo);
 }
 
+/* Un gruppo di pillole alternative, e la nota di quella scelta.
+ *
+ * La `nota` serve dove l'etichetta da sola non dice cosa cambia:
+ * «Esperti» non è una promessa finché non si legge che vuol dire il solo
+ * enigma e nessun aiuto regalato. Prima ogni pillola se la portava
+ * addosso, e tre cartoline da due righe su un telefono da 360 sono
+ * **duecentocinquanta pixel** per rispondere a una domanda sola —
+ * misurati: un quarto del pannello per un terzo di una domanda.
+ *
+ * Adesso la nota è una sola, sotto alla riga, ed è quella della scelta
+ * fatta: la spiegazione che conta davvero è quella dell'opzione che si
+ * sta per portare a casa, e le altre due restano a un tocco (e nel
+ * `title`, per chi passa col mouse). Novantasei pixel invece di
+ * duecentocinquanta, e nessuna informazione persa. */
 function missGruppoScelte(nome, voci, attuale, etichetta) {
   const pillole = voci.map(v => {
     const scelto = v.valore === attuale;
-    // La `nota` è la riga sotto al nome, e serve dove l'etichetta da sola
-    // non dice cosa cambia: «Esperti» non è una promessa finché non si
-    // legge che vuol dire il solo enigma e nessun aiuto regalato.
-    return `<button type="button" class="missione-scelta${scelto ? ' attiva' : ''}${v.nota ? ' con-nota' : ''}"
-      role="radio" aria-checked="${scelto}" data-miss-scelta="${nome}" data-miss-valore="${v.valore}">
-      ${v.icona ? missIcona(v.icona, 18) : ''}<span>${v.nome}</span>${
-        v.nota ? `<small class="missione-scelta-nota">${v.nota}</small>` : ''}</button>`;
+    return `<button type="button" class="missione-scelta${scelto ? ' attiva' : ''}"
+      role="radio" aria-checked="${scelto}" data-miss-scelta="${nome}" data-miss-valore="${v.valore}"
+      ${v.nota ? `title="${missTesto(v.nota)}"` : ''}>
+      ${v.icona ? missIcona(v.icona, 18) : ''}<span>${v.nome}</span></button>`;
   }).join('');
+  const scelta = voci.find(v => v.valore === attuale);
+  const nota = scelta && scelta.nota
+    ? `<p class="missione-scelta-nota" role="status">${scelta.nota}</p>` : '';
   return `<fieldset class="missione-gruppo">
     <legend class="missione-domanda">${etichetta}</legend>
     <div class="missione-scelte" role="radiogroup" aria-label="${etichetta}">${pillole}</div>
+    ${nota}
+  </fieldset>`;
+}
+
+/* Le caselle dei generi: scelta multipla, non alternativa.
+ *
+ * È l'unica domanda del pannello a cui si risponde più volte, e per
+ * questo non riusa `missGruppoScelte`: un `radiogroup` che accetta più
+ * risposte è una bugia detta a chi legge con lo schermo. Sono caselle di
+ * spunta vere (`aria-checked` su `role="checkbox"`), e l'ultima accesa
+ * non si può spegnere — «non cercare niente» non è una serata, e un
+ * pannello che lascia arrivare a quello stato deve poi spiegare un
+ * risultato vuoto che non è colpa del cielo. */
+function missGruppoGeneri(etichetta) {
+  const scelti = missGeneriScelti(miss.scelte);
+  const ultimo = scelti.length === 1;
+  const caselle = MISS_GENERI.map(g => {
+    const acceso = scelti.includes(g.valore);
+    return `<button type="button" class="missione-scelta missione-genere${acceso ? ' attiva' : ''}"
+      role="checkbox" aria-checked="${acceso}" data-miss-genere="${g.valore}"
+      ${acceso && ultimo ? 'data-miss-ultimo="si"' : ''}
+      title="${missTesto(missT('genereNota.' + g.valore))}">
+      ${missIcona(g.icona, 17)}<span>${missT('genere.' + g.valore)}</span></button>`;
+  }).join('');
+  return `<fieldset class="missione-gruppo">
+    <legend class="missione-domanda">${etichetta}</legend>
+    <div class="missione-scelte missione-scelte-generi" role="group" aria-label="${etichetta}">${caselle}</div>
   </fieldset>`;
 }
 
@@ -2580,6 +2953,33 @@ function missPartenzaScelta() {
   return Math.max(Date.now(), missOraConsigliata() || 0);
 }
 
+/* Le domande della configurazione, in tre blocchi invece che in fila.
+ *
+ * Erano sei gruppi impilati, ognuno col suo titolo in grassetto e le
+ * sue pillole: misurato su un telefono da 360×640, il pannello era
+ * lungo **milleotto pixel** — una schermata e mezza da scorrere per
+ * rispondere a domande che stanno in una riga a testa. E la lunghezza
+ * non era il difetto peggiore: sei titoli dello stesso peso non dicono
+ * quali siano le domande importanti.
+ *
+ * Adesso, con **in più** la domanda dei generi che prima non c'era,
+ * sono ottocentottantanove: i pixel guadagnati sono quelli delle note
+ * (una sola, sotto alla scelta fatta, invece di tre cartoline — vedi
+ * `missGruppoScelte`), delle etichette accorciate e dei dettagli
+ * richiusi.
+ *
+ * Adesso i blocchi sono tre e hanno tre nature diverse. **La serata**
+ * (quanto tempo, quando, con cosa) è quello che si tocca sempre.
+ * **La caccia** (che difficoltà, cosa cercare) è quello che decide la
+ * missione, ed è il blocco nuovo. **I dettagli** stanno dentro a un
+ * `<details>` chiuso — cielo di casa, settore, voce — perché sono le
+ * risposte che uno dà una volta e poi si tiene: tenerle aperte vuol
+ * dire farle scorrere via a tutti per sempre.
+ *
+ * La riga di sintesi in fondo al riepilogo dei dettagli non è
+ * decorazione: chiuso un pannello, quello che c'è dentro smette di
+ * esistere per chi guarda, e un Bortle 8 lasciato lì per sbaglio
+ * spiegherebbe da solo una missione di tre pianeti. */
 function missHtmlConfigurazione() {
   const durate = MISS_DURATE.map(d => ({ valore: d, nome: missT('durata.' + d) }));
   const strumenti = MISS_STRUMENTI.map(s => ({
@@ -2600,46 +3000,80 @@ function missHtmlConfigurazione() {
   }).join('');
 
   return `<div class="missione-configurazione">
-    ${missGruppoScelte('durata', durate, miss.scelte.durata, missT('quantoTempo'))}
-    ${missGruppoScelte('momento', [
-      { valore: 'adesso', nome: missT('momentoAdesso') },
-      { valore: 'consigliato', nome: missT('momentoConsigliato') },
-      { valore: 'personalizzato', nome: missT('momentoScegli') }
-    ], miss.scelte.momento, missT('quandoMissione'))}
-    ${miss.scelte.momento === 'personalizzato' ? `<label class="missione-campo missione-momento">
-      <span>${missT('dataOraMissione')}</span>
-      <input class="missione-select" type="datetime-local" data-miss-momento
-        min="${missValoreDataOra(Date.now())}" value="${missValoreDataOra(missPartenzaScelta())}">
-    </label>` : ''}
-    ${missGruppoScelte('strumento', strumenti, miss.scelte.strumento, missT('conCosa'))}
-    <label class="missione-campo missione-inquinamento">
-      <span>${missT('inquinamentoLuminoso')}</span>
-      <select class="missione-select" data-miss-bortle>${opzioniBortle}</select>
-      <small>${missT('inquinamentoSpiega')}</small>
-    </label>
-    ${missGruppoScelte('esperienza', esperienze, miss.scelte.esperienza, missT('cheEsperienza'))}
-    ${missGruppoScelte('cielo', [
-      { valore: 'tutto', nome: missT('cieloTutto') }, { valore: 'settore', nome: missT('cieloSettore') }
-    ], miss.scelte.cielo, missT('qualeCielo'))}
-    ${miss.scelte.cielo === 'settore' ? `<div class="missione-settore">
-      <label class="missione-campo"><span>${missT('daDirezione')}</span><select class="missione-select" data-miss-limite="cieloDa">${opzioniDirezione(miss.scelte.cieloDa)}</select></label>
-      <label class="missione-campo"><span>${missT('aDirezione')}</span><select class="missione-select" data-miss-limite="cieloA">${opzioniDirezione(miss.scelte.cieloA)}</select></label>
-      <div class="missione-rilievo">
-        <button type="button" class="missione-tasto" data-miss-rileva>
-          ${missIcona('bussola', 16)} ${missT(miss.rilievoSettore ? 'settoreRilevaSecondo' : 'settoreRilevaPrimo')}
-        </button>
-        <span class="missione-rilievo-stato" role="status">${miss.rilievoSettore
-          ? missT('settorePrimoPreso', { gradi: miss.rilievoSettore.primo }) : missT('settoreRilevaIstruzioni')}</span>
+    <section class="missione-blocco">
+      <h3 class="missione-blocco-titolo">${missT('bloccoSerata')}</h3>
+      ${missGruppoScelte('durata', durate, miss.scelte.durata, missT('quantoTempo'))}
+      ${missGruppoScelte('momento', [
+        { valore: 'adesso', nome: missT('momentoAdesso') },
+        { valore: 'consigliato', nome: missT('momentoConsigliato') },
+        { valore: 'personalizzato', nome: missT('momentoScegli') }
+      ], miss.scelte.momento, missT('quandoMissione'))}
+      ${miss.scelte.momento === 'personalizzato' ? `<label class="missione-campo missione-momento">
+        <span>${missT('dataOraMissione')}</span>
+        <input class="missione-select" type="datetime-local" data-miss-momento
+          min="${missValoreDataOra(Date.now())}" value="${missValoreDataOra(missPartenzaScelta())}">
+      </label>` : ''}
+      ${missGruppoScelte('strumento', strumenti, miss.scelte.strumento, missT('conCosa'))}
+    </section>
+
+    <section class="missione-blocco">
+      <h3 class="missione-blocco-titolo">${missT('bloccoCaccia')}</h3>
+      ${missGruppoScelte('esperienza', esperienze, miss.scelte.esperienza, missT('cheEsperienza'))}
+      ${missGruppoGeneri(missT('cosaCercare'))}
+    </section>
+
+    <details class="missione-dettagli"${miss.dettagliAperti ? ' open' : ''} data-miss-dettagli>
+      <summary class="missione-blocco-titolo">
+        <span>${missT('bloccoDettagli')}</span>
+        <small class="missione-sintesi-dettagli">${missTesto(missSintesiDettagli(bortleScelto))}</small>
+      </summary>
+      <div class="missione-dettagli-corpo">
+        <label class="missione-campo missione-inquinamento">
+          <span>${missT('inquinamentoLuminoso')}</span>
+          <select class="missione-select" data-miss-bortle>${opzioniBortle}</select>
+          <small>${missT('inquinamentoSpiega')}</small>
+        </label>
+        ${missGruppoScelte('cielo', [
+          { valore: 'tutto', nome: missT('cieloTutto') }, { valore: 'settore', nome: missT('cieloSettore') }
+        ], miss.scelte.cielo, missT('qualeCielo'))}
+        ${miss.scelte.cielo === 'settore' ? `<div class="missione-settore">
+          <label class="missione-campo"><span>${missT('daDirezione')}</span><select class="missione-select" data-miss-limite="cieloDa">${opzioniDirezione(miss.scelte.cieloDa)}</select></label>
+          <label class="missione-campo"><span>${missT('aDirezione')}</span><select class="missione-select" data-miss-limite="cieloA">${opzioniDirezione(miss.scelte.cieloA)}</select></label>
+          <div class="missione-rilievo">
+            <button type="button" class="missione-tasto" data-miss-rileva>
+              ${missIcona('bussola', 16)} ${missT(miss.rilievoSettore ? 'settoreRilevaSecondo' : 'settoreRilevaPrimo')}
+            </button>
+            <span class="missione-rilievo-stato" role="status">${miss.rilievoSettore
+              ? missT('settorePrimoPreso', { gradi: miss.rilievoSettore.primo }) : missT('settoreRilevaIstruzioni')}</span>
+          </div>
+          <p>${missT('settoreSpiega')}</p></div>` : ''}
+        ${missGruppoScelte('voce', [
+          { valore: 'si', nome: missT('voceSi') }, { valore: 'no', nome: missT('voceNo') }
+        ], miss.scelte.voce ? 'si' : 'no', missT('vuoiVoce'))}
       </div>
-      <p>${missT('settoreSpiega')}</p></div>` : ''}
-    ${missGruppoScelte('voce', [
-      { valore: 'si', nome: missT('voceSi') }, { valore: 'no', nome: missT('voceNo') }
-    ], miss.scelte.voce ? 'si' : 'no', missT('vuoiVoce'))}
+    </details>
+
     <div class="missione-azioni">
       <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="genera">
         ${missIcona('bersaglio', 16)} ${missT('preparami')}</button>
     </div>
   </div>`;
+}
+
+/* Cosa c'è dentro al pannello chiuso, in una riga.
+ *
+ * Tre numeri e non una frase: il cielo di casa, il pezzo di orizzonte e
+ * se la voce parla. Sono le tre cose che, lasciate al valore sbagliato,
+ * spiegano da sole una missione che non convince — e che chiuse dentro a
+ * un `<details>` nessuno andrebbe a ricontrollare. */
+function missSintesiDettagli(bortle) {
+  const pezzi = ['Bortle ' + bortle];
+  if (miss.scelte.cielo === 'settore') {
+    const nome = g => typeof astroI18n === 'object' && astroI18n.nomePunto ? astroI18n.nomePunto(g) : g + '°';
+    pezzi.push(nome(miss.scelte.cieloDa) + '–' + nome(miss.scelte.cieloA));
+  } else pezzi.push(missT('cieloTutto'));
+  if (miss.scelte.voce) pezzi.push(missT('vociAttiva'));
+  return pezzi.join(' · ');
 }
 
 function missHtmlVuoto() {
@@ -2739,6 +3173,7 @@ function missHtmlInCorso(m) {
     <div class="missione-azioni">
       <button class="missione-tasto missione-tasto-si" data-miss-azione="guidami">${missT('gioco.apriCielo')}</button>
       ${missNavigazioneIndizi(t)}
+      ${missTastoSoluzione(t)}
       <button class="missione-tasto" data-miss-azione="salta">${missT('salta')}</button>
       <button class="missione-tasto" data-miss-azione="concludi">${missT('concludi')}</button>
     </div></div>`;
@@ -3108,22 +3543,104 @@ function missFermaVoce() {
   return missVoce.sequenza;
 }
 
+/* In che momento della caccia siamo, per la voce.
+ *
+ * Sono quattro e non due, perché sono quattro cose diverse da dire:
+ * l'enigma (che va lasciato respirare), un indizio (che è
+ * un'indicazione), la soluzione (che è una resa, e non si festeggia) e
+ * la scoperta (che è il premio). */
+function missMomentoVoce(tappa) {
+  if (!tappa) return 'indizio';
+  if (tappa.fase === 'scoperta') return 'scoperta';
+  if (tappa.rivelata && missIndiceIndizio(tappa) >= MISS_INDIZI) return 'soluzione';
+  return missIndiceIndizio(tappa) === 0 ? 'enigma' : 'indizio';
+}
+
+function missTonoVoce(momento) {
+  const perModo = MISS_TONI_VOCE[missModoAttuale()] || MISS_TONI_VOCE.curiosi;
+  return perModo[momento] || perModo.indizio;
+}
+
+function missSsmlTesto(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* Le pause, che sono metà di quello che rende una voce naturale.
+ *
+ * Una sintesi legge i punti come virgole appena più lunghe, e su un testo
+ * fatto di frasi brevi il risultato è un elenco letto tutto d'un fiato —
+ * che è esattamente il suono che si riconosce come «voce del computer».
+ * Le due righe qui sotto aggiungono mezzo secondo dopo i punti e un
+ * quarto dopo le virgole, e sono la differenza fra un testo letto e un
+ * testo raccontato.
+ *
+ * I due punti prendono la pausa più lunga di tutte, e non per simmetria:
+ * in questo file introducono quasi sempre la parte che conta — «Indizio
+ * 2: trova Vega» — e quella pausa è il momento in cui chi ascolta alza
+ * gli occhi. */
+function missSsmlPause(testo) {
+  return missSsmlTesto(testo)
+    .replace(/([:;])\s+/g, '$1<break time="620ms"/>')
+    .replace(/([.!?])\s+/g, '$1<break time="480ms"/>')
+    .replace(/,\s+/g, ',<break time="220ms"/>');
+}
+
+/* Lo SSML, costruito qui e non lasciato al ponte.
+ *
+ * `mstts:express-as` è quello che porta l'emozione, e vuole due cose che
+ * si dimenticano tutte e due: il namespace `xmlns:mstts` sul tag `speak`
+ * (senza, l'intero blocco viene ignorato **in silenzio** — il servizio
+ * risponde un audio perfetto, letto in tono neutro, e non c'è niente da
+ * cui accorgersene) e uno stile che quella voce conosca davvero.
+ *
+ * `prosody` sta **dentro** allo stile e non fuori: fuori vale come
+ * impostazione di partenza e lo stile poi la riscrive, dentro le due
+ * cose si sommano. */
+function missSsml(testo, lingua, tono) {
+  const voci = MISS_VOCI_EDGE[lingua] || MISS_VOCI_EDGE.it;
+  const locale = lingua === 'en' ? 'en-US' : 'it-IT';
+  const conStile = tono && voci.stili.includes(tono.stile);
+  const corpo = `<prosody rate="${tono.ritmo}" pitch="${tono.tono}">${missSsmlPause(testo)}</prosody>`;
+  return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" ` +
+    `xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="${locale}">` +
+    `<voice name="${conStile ? voci.espressiva : voci.stabile}">` +
+    (conStile
+      ? `<mstts:express-as style="${tono.stile}" styledegree="${tono.grado}">${corpo}</mstts:express-as>`
+      : corpo) +
+    `</voice></speak>`;
+}
+
 /* Il ponte Edge-TTS è deliberatamente configurabile: la PWA resta statica e
  * non può custodire credenziali. Il contratto è piccolo e compatibile sia con
  * un Worker proprio sia con i comuni gateway Edge-TTS: POST JSON in ingresso,
- * audio binario oppure `{ url }` / `{ audio }` in uscita. */
-async function missRaccontaConEdge(testo, lingua, sequenza) {
+ * audio binario oppure `{ url }` / `{ audio }` in uscita.
+ *
+ * Si manda **sia** lo SSML sia il testo nudo, ed è la riga che tiene in
+ * piedi tutto il pezzo: i gateway Edge-TTS in giro non sono uno solo e
+ * non concordano sul nome del campo — chi legge `ssml` lo usa, chi legge
+ * solo `text` legge il testo e ottiene quello che otteneva prima. Nessuno
+ * dei due riceve una richiesta che non sa interpretare, e chi non fa lo
+ * SSML degrada in una lettura buona invece che in un errore. */
+async function missRaccontaConEdge(testo, lingua, sequenza, tono) {
   const endpoint = typeof window !== 'undefined' ? String(window.EDGE_TTS_API_URL || '').trim() : '';
   if (!endpoint || typeof fetch !== 'function' || typeof Audio === 'undefined') return false;
 
+  const voci = MISS_VOCI_EDGE[lingua] || MISS_VOCI_EDGE.it;
+  const conStile = !!(tono && voci.stili.includes(tono.stile));
   const risposta = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'audio/mpeg, audio/*, application/json' },
     body: JSON.stringify({
       text: testo,
-      voice: MISS_VOCI_EDGE[lingua] || MISS_VOCI_EDGE.it,
+      ssml: missSsml(testo, lingua, tono),
+      voice: conStile ? voci.espressiva : voci.stabile,
+      style: conStile ? tono.stile : undefined,
+      styledegree: conStile ? tono.grado : undefined,
       locale: lingua === 'en' ? 'en-US' : 'it-IT',
-      rate: '-7%', pitch: '-2Hz', format: 'audio-24khz-48kbitrate-mono-mp3'
+      rate: tono.ritmo, pitch: tono.tono,
+      format: 'audio-24khz-48kbitrate-mono-mp3'
     })
   });
   if (!risposta.ok) throw new Error(`Edge-TTS HTTP ${risposta.status}`);
@@ -3151,15 +3668,45 @@ async function missRaccontaConEdge(testo, lingua, sequenza) {
   return true;
 }
 
-function missRaccontaLocale(testo, lingua) {
+/* La voce del dispositivo, che è il ripiego e non il ripiego cattivo.
+ *
+ * Su un telefono di oggi le voci di sistema migliori sono ottime, e la
+ * scelta di prima le scartava tutte: preferiva `localService`, che vuol
+ * dire «installata sul dispositivo» — cioè, quasi sempre, la vecchia voce
+ * concatenativa del sistema — mentre le voci Neural moderne arrivano dalla
+ * rete e hanno `localService: false`. Cercando il locale si sceglieva
+ * sistematicamente la peggiore delle due.
+ *
+ * L'ordine giusto lo dà il **nome**, che è l'unica cosa che le API
+ * espongano: i produttori marchiano le voci buone («Natural», «Neural»,
+ * «Enhanced», «Premium», e su iOS «Siri»), e chi non ha niente di tutto
+ * questo si prende quella di sistema come prima. */
+const MISS_VOCI_BUONE = /natural|neural|enhanced|premium|siri|wavenet|studio/i;
+
+function missScegliVoceLocale(lingua) {
+  const voci = speechSynthesis.getVoices().filter(v =>
+    String(v.lang || '').toLowerCase().startsWith(lingua));
+  if (!voci.length) return null;
+  const punti = v => (MISS_VOCI_BUONE.test(v.name || '') ? 4 : 0) +
+    (v.default ? 1 : 0) + (v.localService ? 0 : 1);
+  return voci.slice().sort((a, b) => punti(b) - punti(a))[0];
+}
+
+/* La sintesi locale non ha gli stili, ma ha ritmo e tono — e su quei due
+ * si può ancora dire una cosa in tre modi diversi. Le percentuali del
+ * ponte si convertono nelle sue unità: il ritmo è un moltiplicatore
+ * attorno a uno, il tono un moltiplicatore attorno a uno dove ottanta
+ * hertz sono, all'incirca, tutta la scala di una voce parlata. */
+function missRaccontaLocale(testo, lingua, tono) {
   if (typeof speechSynthesis === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined') return false;
   speechSynthesis.cancel();
   const frase = new SpeechSynthesisUtterance(testo);
   frase.lang = lingua === 'en' ? 'en-US' : 'it-IT';
-  const voci = speechSynthesis.getVoices();
-  frase.voice = voci.find(v => v.lang.toLowerCase().startsWith(lingua) && v.localService) ||
-    voci.find(v => v.lang.toLowerCase().startsWith(lingua)) || null;
-  frase.rate = 0.93; frase.pitch = 0.98;
+  frase.voice = missScegliVoceLocale(lingua);
+  const perc = parseFloat(tono && tono.ritmo) || 0;
+  const hz = parseFloat(tono && tono.tono) || 0;
+  frase.rate = Math.max(0.5, Math.min(1.6, 1 + perc / 100));
+  frase.pitch = Math.max(0.4, Math.min(1.8, 1 + hz / 80));
   speechSynthesis.speak(frase);
   return true;
 }
@@ -3178,13 +3725,17 @@ async function missRaccontaTappa(tappa, forza) {
   // precedente ad `aiuto` quando si torna indietro nella sequenza.
   const testo = missTestoVoceTappa(tappa);
   const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
+  // Il tono si sceglie **dal momento della caccia** e non dal testo: la
+  // stessa frase, letta dopo un enigma o dopo una scoperta, sono due cose
+  // diverse da dire.
+  const tono = missTonoVoce(missMomentoVoce(tappa));
   const sequenza = missFermaVoce();
   try {
-    if (await missRaccontaConEdge(testo, lingua, sequenza)) return true;
+    if (await missRaccontaConEdge(testo, lingua, sequenza, tono)) return true;
   } catch (errore) {
     console.warn('Missione Cielo: Edge-TTS non disponibile, uso la voce del dispositivo.', errore);
   }
-  return sequenza === missVoce.sequenza && missRaccontaLocale(testo, lingua);
+  return sequenza === missVoce.sequenza && missRaccontaLocale(testo, lingua, tono);
 }
 
 function missHtmlConclusa(m) {
@@ -3257,6 +3808,37 @@ function missCollegaPannello(corpo) {
       missDisegnaPannello();
     });
   });
+  /* Le caselle dei generi: si accendono e si spengono senza ridisegnare
+   * il pannello. Ridisegnarlo chiuderebbe il `<details>` dei dettagli e
+   * — peggio — sposterebbe il fuoco, quindi chi ne accende tre di fila
+   * con la tastiera dovrebbe ritrovarselo tre volte. Cambia solo la
+   * casella toccata, e con lei la guardia dell'ultima accesa. */
+  corpo.querySelectorAll('[data-miss-genere]').forEach(b => {
+    b.addEventListener('click', () => {
+      const genere = b.dataset.missGenere;
+      const scelti = new Set(missGeneriScelti(miss.scelte));
+      if (scelti.has(genere)) {
+        if (scelti.size === 1) return;      // l'ultimo acceso non si spegne
+        scelti.delete(genere);
+      } else scelti.add(genere);
+      miss.scelte.generi = MISS_GENERI_TUTTI.filter(g => scelti.has(g));
+      missSalvaScelte();
+      const uno = miss.scelte.generi.length === 1;
+      corpo.querySelectorAll('[data-miss-genere]').forEach(x => {
+        const acceso = miss.scelte.generi.includes(x.dataset.missGenere);
+        x.classList.toggle('attiva', acceso);
+        x.setAttribute('aria-checked', String(acceso));
+        if (acceso && uno) x.dataset.missUltimo = 'si'; else delete x.dataset.missUltimo;
+      });
+    });
+  });
+
+  // Il pannello dei dettagli si ricorda di essere stato aperto: chi lo
+  // apre per cambiare il Bortle e poi tocca «Settore» lo ritroverebbe
+  // chiuso, perché quel tocco ridisegna il corpo.
+  const dettagli = corpo.querySelector('[data-miss-dettagli]');
+  if (dettagli) dettagli.addEventListener('toggle', () => { miss.dettagliAperti = dettagli.open; });
+
   corpo.querySelectorAll('[data-miss-limite]').forEach(s => s.addEventListener('change', () => {
     miss.scelte[s.dataset.missLimite] = Number(s.value);
     miss.rilievoSettore = null;
@@ -3423,6 +4005,9 @@ function missAzione(azione, corpo) {
     case 'aiuto':
       missChiediAiuto();
       break;
+    case 'soluzione':
+      missMostraSoluzione();
+      break;
     case 'indizio-precedente': {
       const t = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
       if (t) {
@@ -3441,7 +4026,7 @@ function missAzione(azione, corpo) {
         t.mostraAiuto = true;
         missSalvaAttiva(); missMostraVista('inCorso'); missMostraStrisciaCielo();
         missRaccontaTappa(t);
-      } else missChiediAiuto();
+      } else missChiediAiuto();   // e si ferma al terzo: la soluzione ha il suo tasto
       break;
     }
     case 'sostituisci':
@@ -3651,12 +4236,21 @@ const missProve = {
   daAggiornare: missDaAggiornare,
   conto: missConto,
   campioni: missCampioni,
+  ssml: missSsml,
+  tonoVoce: missTonoVoce,
+  momentoVoce: missMomentoVoce,
+  generiScelti: missGeneriScelti,
+  genereAmmesso: missGenereAmmesso,
+  caso: missCaso,
+  pescaPesato: missPescaPesato,
   costanti: {
     MISS_VERSIONE, MISS_DURATE, MISS_STRUMENTI, MISS_ESPERIENZE, MISS_DIREZIONI, MISS_BORTLE,
     MISS_TAPPE_PER_DURATA, MISS_ALTEZZA_MINIMA, MISS_DIFFICOLTA_MASSIMA,
     MISS_DIFFICOLTA_GRADITA, MISS_GENEROSITA, MISS_REPERTORIO,
     MISS_STESSO_CAMPO_GRADI, MISS_PREAVVISO_MIN,
     MISS_SCADENZA_MS, MISS_TETTO_FAMIGLIA, MISS_LIVELLO_STRUMENTO,
+    MISS_GENERI, MISS_GENERI_TUTTI, MISS_GENERE_DI_TIPO, MISS_TEMPERATURA,
+    MISS_INDIZI, MISS_VOCI_EDGE, MISS_TONI_VOCE, MISS_CHIAVI_BAMBINI,
     CHIAVE_MISS_SCELTE, CHIAVE_MISS_ATTIVA
   }
 };
