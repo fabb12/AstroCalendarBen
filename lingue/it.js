@@ -2405,8 +2405,11 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.voceNo': 'Solo testo',
     'missione.soloVoce': 'Nascondi, solo voce',
     'missione.mostraGuida': 'Mostra la guida',
-    'missione.indizioPrincipale': 'Rileggi l’indizio',
-    'missione.prossimoIndizio': 'Prossimo indizio',
+    'missione.numeroIndizio': 'Indizio {n} di {tot}',
+    'missione.navigaIndizi': 'Navigazione degli indizi',
+    'missione.indizioPrecedente': 'Indizio precedente',
+    'missione.indizioSuccessivo': 'Indizio successivo',
+    'missione.spostaRiquadro': 'Sposta il riquadro informativo',
     'missione.seguiTelefono': 'Segui il telefono',
     'missione.terminaPlanetario': 'Termina la missione e continua a usare il planetario',
 

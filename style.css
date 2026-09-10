@@ -10703,8 +10703,25 @@ body button.did-ponte:active { transform: translateY(1px); }
   line-height: 1;
   cursor: pointer;
 }
+.missione-trascina {
+  position: absolute;
+  top: 5px;
+  left: 7px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--testo-2);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+}
+.missione-trascina:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
+.missione-striscia.in-trascinamento .missione-trascina { cursor: grabbing; color: #fff; }
 .missione-striscia-chiudi:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
-.missione-striscia-chiudi + .missione-striscia-testo { padding-right: 30px; }
+.missione-striscia-testo { padding-right: 30px; padding-left: 30px; }
 .missione-striscia.visibile { pointer-events: auto; }
 .missione-striscia.solo-voce {
   left: auto;
@@ -10743,6 +10760,28 @@ body .missione-striscia.solo-voce .missione-ripristina {
   line-height: 1.4;
 }
 .missione-striscia-tasti { display: flex; gap: 6px; flex: 0 0 auto; }
+.missione-navigazione-indizi {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px;
+  border: 1px solid rgba(148, 163, 184, .25);
+  border-radius: 999px;
+}
+.missione-freccia {
+  width: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--blu-chiaro);
+  font-size: 1.15rem;
+}
+.missione-freccia:hover:not(:disabled) { background: rgba(76, 141, 255, .16); color: #fff; }
+.missione-freccia:disabled { opacity: .3; cursor: default; }
+.missione-numero-indizio { color: var(--testo-2); font-size: .72rem; font-weight: 700; white-space: nowrap; }
 .missione-striscia-tasti .missione-tasto {
   min-height: 32px;
   padding: 0 9px;
@@ -10799,7 +10838,7 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 /* Missione Cielo: gli indizi restano compatti anche su telefono. */
 .missione-striscia.visibile { max-height: none; overflow: visible; align-items: start; }
 .missione-striscia p { margin: .35rem 0; line-height: 1.45; }
-.missione-scoperta { width: 100%; min-width: 0; }
+.missione-scoperta { width: 100%; min-width: 0; padding-inline: 30px; }
 .missione-scoperta h3 { color: #a7f3d0; font-weight: 700; }
 /* La riga della specie e il cartellino: sono un dato, non un discorso, e
    vanno letti in un colpo d'occhio — corpo piccolo, maiuscoletto sulla

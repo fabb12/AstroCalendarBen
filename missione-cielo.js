@@ -1820,6 +1820,7 @@ function missHtmlScoperta(t) {
   const cartellino = missCartellino(t);
   const altre = missQuanteVarianti('curiosita.' + missBaseRacconto(t)) > 1;
   return `<div class="missione-scoperta">
+    ${missManigliaStriscia()}
     <button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
       aria-label="${missT('terminaPlanetario')}">×</button>
     <h3>${missT('gioco.scoperta', { nome: missTesto(missNomeTappa(t)) })}</h3>
@@ -1829,6 +1830,32 @@ function missHtmlScoperta(t) {
     ${altre ? `<button type="button" class="missione-tasto missione-tasto-lieve"
       data-miss-azione="altraStoria">${missT('gioco.altraStoria')}</button>` : ''}
     <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="continua">${missT('gioco.continua')}</button>
+  </div>`;
+}
+
+function missManigliaStriscia() {
+  return `<button type="button" class="missione-trascina"
+    aria-label="${missT('spostaRiquadro')}" title="${missT('spostaRiquadro')}">⠿</button>`;
+}
+
+function missIndiceIndizio(t) {
+  if (Number.isInteger(t && t.indizioMostrato)) return Math.max(0, Math.min(t.aiuto || 0, t.indizioMostrato));
+  return t && t.mostraAiuto ? (t.aiuto || 0) : 0;
+}
+
+function missTestoIndizio(t) {
+  const indice = missIndiceIndizio(t);
+  return indice ? missIndizio(Object.assign({}, t, { aiuto: indice })) : missIntroduzione(t);
+}
+
+function missNavigazioneIndizi(t) {
+  const indice = missIndiceIndizio(t);
+  return `<div class="missione-navigazione-indizi" aria-label="${missT('navigaIndizi')}">
+    <button type="button" class="missione-freccia" data-miss-azione="indizio-precedente"
+      aria-label="${missT('indizioPrecedente')}" ${indice === 0 ? 'disabled' : ''}>←</button>
+    <span class="missione-numero-indizio">${missT('numeroIndizio', { n: indice + 1, tot: 4 })}</span>
+    <button type="button" class="missione-freccia" data-miss-azione="indizio-successivo"
+      aria-label="${missT('indizioSuccessivo')}" ${indice >= 3 ? 'disabled' : ''}>→</button>
   </div>`;
 }
 
@@ -1843,7 +1870,7 @@ function missMostraStrisciaCielo() {
   el.classList.toggle('solo-voce', visibile && miss.strisciaNascosta);
   if (!visibile) { document.body.classList.remove('missione-senza-sensori'); return; }
   if (miss.strisciaNascosta) {
-    el.innerHTML = `<button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
+    el.innerHTML = `${missManigliaStriscia()}<button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
         aria-label="${missT('terminaPlanetario')}">×</button>
       <button type="button" class="missione-tasto missione-ripristina" data-miss-azione="mostra-guida">
         ${missT('mostraGuida')}</button>`;
@@ -1852,23 +1879,19 @@ function missMostraStrisciaCielo() {
     return;
   }
   el.innerHTML = t.fase === 'scoperta' ? missHtmlScoperta(t) : `
+    ${missManigliaStriscia()}
     <button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
       aria-label="${missT('terminaPlanetario')}">×</button>
     <div class="missione-striscia-testo">
       <span class="missione-striscia-titolo">${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })} · ${missTesto(missTitoloTappa(t))}</span>
-      <p class="missione-striscia-indizio">${missTesto(t.mostraAiuto ? missIndizio(t) : missIntroduzione(t))}</p>
+      <p class="missione-striscia-indizio">${missTesto(missTestoIndizio(t))}</p>
       <span id="missione-mirino" aria-live="off"></span>
     </div>
     <div class="missione-striscia-tasti">
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="solo-voce">${missT('soloVoce')}</button>
       <button class="missione-tasto${sky.seguiTelefono ? ' attiva' : ''}" data-miss-azione="segui-telefono"
         ${m.simulazione ? 'disabled' : ''}>${missT('seguiTelefono')}</button>
-      ${(t.aiuto || 0) < 3
-        ? `<button class="missione-tasto" data-miss-azione="aiuto">${missT('prossimoIndizio')}</button>`
-        : ''}
-      ${t.mostraAiuto && (t.aiuto || 0) < 3
-        ? `<button class="missione-tasto" data-miss-azione="indizio-principale">${missT('indizioPrincipale')}</button>`
-        : ''}
+      ${missNavigazioneIndizi(t)}
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>
     </div>`;
   el.querySelectorAll('[data-miss-azione]').forEach(b => b.addEventListener('click', () => missAzione(b.dataset.missAzione, el)));
@@ -2033,6 +2056,7 @@ function missChiediAiuto() {
   if ((t.aiuto || 0) >= 3) return;
   t.aiuto = (t.aiuto || 0) + 1;
   t.mostraAiuto = true;
+  t.indizioMostrato = t.aiuto;
   if (t.aiuto === 3) {
     t.rivelata = true;
     // Il terzo aiuto è una risposta, non un'altra descrizione: anche sui
@@ -2652,15 +2676,10 @@ function missHtmlInCorso(m) {
   return `<div class="missione-corso">
     <p>${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })}</p>
     <h3>${missTesto(missTitoloTappa(t))}</h3>
-    <p>${missTesto(t.mostraAiuto ? missIndizio(t) : missIntroduzione(t))}</p>
+    <p>${missTesto(missTestoIndizio(t))}</p>
     <div class="missione-azioni">
       <button class="missione-tasto missione-tasto-si" data-miss-azione="guidami">${missT('gioco.apriCielo')}</button>
-      ${(t.aiuto || 0) < 3
-        ? `<button class="missione-tasto" data-miss-azione="aiuto">${missT('prossimoIndizio')}</button>`
-        : ''}
-      ${t.mostraAiuto && (t.aiuto || 0) < 3
-        ? `<button class="missione-tasto" data-miss-azione="indizio-principale">${missT('indizioPrincipale')}</button>`
-        : ''}
+      ${missNavigazioneIndizi(t)}
       <button class="missione-tasto" data-miss-azione="salta">${missT('salta')}</button>
       <button class="missione-tasto" data-miss-azione="concludi">${missT('concludi')}</button>
     </div></div>`;
@@ -3327,9 +3346,23 @@ function missAzione(azione, corpo) {
     case 'aiuto':
       missChiediAiuto();
       break;
-    case 'indizio-principale': {
+    case 'indizio-precedente': {
       const t = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
-      if (t) { t.mostraAiuto = false; missSalvaAttiva(); missMostraVista('inCorso'); missMostraStrisciaCielo(); }
+      if (t) {
+        t.indizioMostrato = Math.max(0, missIndiceIndizio(t) - 1);
+        t.mostraAiuto = t.indizioMostrato > 0;
+        missSalvaAttiva(); missMostraVista('inCorso'); missMostraStrisciaCielo();
+      }
+      break;
+    }
+    case 'indizio-successivo': {
+      const t = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
+      if (!t) break;
+      if (missIndiceIndizio(t) < (t.aiuto || 0)) {
+        t.indizioMostrato = missIndiceIndizio(t) + 1;
+        t.mostraAiuto = true;
+        missSalvaAttiva(); missMostraVista('inCorso'); missMostraStrisciaCielo();
+      } else missChiediAiuto();
       break;
     }
     case 'sostituisci':
@@ -3417,10 +3450,40 @@ function missInizializza() {
     modale.addEventListener('click', e => { if (e.target === modale) missChiudiPannello(); });
   }
 
+  const striscia = document.getElementById('missione-striscia');
+  if (striscia) missRendiStrisciaSpostabile(striscia);
+
   missAggiornaScheda();
   // Chi ricarica la pagina mentre era nel planetario ritrova la striscia:
   // la missione non è finita solo perché la pagina si è riaperta.
   missMostraStrisciaCielo();
+}
+
+function missRendiStrisciaSpostabile(el) {
+  let trascinamento = null;
+  el.addEventListener('pointerdown', e => {
+    if (!e.target.closest('.missione-trascina')) return;
+    const r = el.getBoundingClientRect();
+    const contenitore = el.offsetParent && el.offsetParent.getBoundingClientRect
+      ? el.offsetParent.getBoundingClientRect() : { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+    trascinamento = { x: e.clientX, y: e.clientY, left: r.left - contenitore.left,
+      top: r.top - contenitore.top, contenitore, width: r.width, height: r.height };
+    el.classList.add('in-trascinamento');
+    el.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  el.addEventListener('pointermove', e => {
+    if (!trascinamento || !el.hasPointerCapture(e.pointerId)) return;
+    const maxLeft = Math.max(0, trascinamento.contenitore.width - trascinamento.width);
+    const maxTop = Math.max(0, trascinamento.contenitore.height - trascinamento.height);
+    el.style.left = Math.max(0, Math.min(maxLeft, trascinamento.left + e.clientX - trascinamento.x)) + 'px';
+    el.style.top = Math.max(0, Math.min(maxTop, trascinamento.top + e.clientY - trascinamento.y)) + 'px';
+    el.style.right = 'auto';
+    el.style.margin = '0';
+  });
+  const termina = () => { trascinamento = null; el.classList.remove('in-trascinamento'); };
+  el.addEventListener('pointerup', termina);
+  el.addEventListener('pointercancel', termina);
 }
 
 if (typeof document !== 'undefined') {

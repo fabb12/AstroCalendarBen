@@ -97,9 +97,21 @@ const server = http.createServer((req,res)=> {
   assert.equal(search.target,null); assert.equal(search.labels,false); assert(!search.text.includes(search.name));
   assert(!search.buttons.some(s=>/trovato/i.test(s)));
   await page.screenshot({path:path.join(root,'../missione-ricerca.png')});
-  await page.click('#missione-striscia [data-miss-azione="aiuto"]');
+  assert((await page.textContent('#missione-striscia .missione-numero-indizio')).includes('1 di 4'));
+  assert.equal(await page.$('#missione-striscia [data-miss-azione="indizio-principale"]'),null);
+  await page.click('#missione-striscia [data-miss-azione="indizio-successivo"]');
   const before=await page.evaluate(()=>({clue:missIndizio(miss.attiva.tappe[0]), hint:miss.attiva.tappe[0].aiuto}));
   assert.equal(before.hint,1);
+  assert((await page.textContent('#missione-striscia .missione-numero-indizio')).includes('2 di 4'));
+  await page.click('#missione-striscia [data-miss-azione="indizio-precedente"]');
+  assert((await page.textContent('#missione-striscia .missione-numero-indizio')).includes('1 di 4'));
+  await page.click('#missione-striscia [data-miss-azione="indizio-successivo"]');
+  const posizionePrima=await page.locator('#missione-striscia').boundingBox();
+  const maniglia=await page.locator('#missione-striscia .missione-trascina').boundingBox();
+  await page.mouse.move(maniglia.x+maniglia.width/2,maniglia.y+maniglia.height/2);
+  await page.mouse.down(); await page.mouse.move(maniglia.x+50,maniglia.y+80,{steps:4}); await page.mouse.up();
+  const posizioneDopo=await page.locator('#missione-striscia').boundingBox();
+  assert(posizioneDopo.x !== posizionePrima.x || posizioneDopo.y !== posizionePrima.y,'information panel can be dragged');
   // Verify a real pointer hit goes through the canvas, not a completion button.
   async function tapObject(correct) {
     const point=await page.evaluate(correct=> {
