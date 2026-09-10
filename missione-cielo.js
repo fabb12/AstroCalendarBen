@@ -1815,11 +1815,7 @@ function missAggiornaMirino(base) {
  *   è che cosa si è trovato, detto con la parola giusta;
  *   il **cartellino**, un numero vero e immaginabile (§`missCartellino`);
  *   l'**aneddoto**, che è il mito, la scoperta o la stranezza — e se ce
- *   n'è più di uno si può chiederne un altro senza perdere la tappa;
- *   la **domanda**, che gira il discorso: non «ecco cos'è» ma «adesso
- *   guardalo tu, e dimmi cosa vedi». È la riga che trasforma una
- *   notifica in un'osservazione, ed è il motivo per cui la casella di
- *   testo sta qui e non nel diario a fine serata. */
+ *   n'è più di uno si può chiederne un altro senza perdere la tappa. */
 function missHtmlScoperta(t) {
   const cartellino = missCartellino(t);
   const altre = missQuanteVarianti('curiosita.' + missBaseRacconto(t)) > 1;
@@ -1832,10 +1828,6 @@ function missHtmlScoperta(t) {
     <p class="missione-aneddoto">${missTesto(missCuriositaTesto(t))}</p>
     ${altre ? `<button type="button" class="missione-tasto missione-tasto-lieve"
       data-miss-azione="altraStoria">${missT('gioco.altraStoria')}</button>` : ''}
-    <label for="missione-osservazione">${missTesto(missDomanda(t))}</label>
-    <textarea id="missione-osservazione" maxlength="500" rows="2"
-      placeholder="${missT('gioco.nota')}">${missTesto(t.osservazione || '')}</textarea>
-    <p>${missT('gioco.ponte')}</p>
     <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="continua">${missT('gioco.continua')}</button>
   </div>`;
 }
@@ -1880,8 +1872,6 @@ function missMostraStrisciaCielo() {
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>
     </div>`;
   el.querySelectorAll('[data-miss-azione]').forEach(b => b.addEventListener('click', () => missAzione(b.dataset.missAzione, el)));
-  const nota = el.querySelector('#missione-osservazione');
-  if (nota) nota.addEventListener('input', () => { t.osservazione = nota.value; missSalvaAttiva(); });
 }
 
 // Si torna alla missione senza perdere niente: la missione è nello stato,
@@ -3259,14 +3249,16 @@ function missAzione(azione, corpo) {
       break;
     case 'altraStoria': {
       // Un'altra storia sullo stesso oggetto, non un'altra tappa: si
-      // gira la variante e si ridisegna, e la nota già scritta si salva
-      // prima — il testo di chi osserva non si butta mai per un tasto.
+      // gira la variante e si ridisegna senza cambiare tappa.
       const t = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
       if (!t) break;
-      const nota = corpo && corpo.querySelector('#missione-osservazione');
-      if (nota) t.osservazione = nota.value.slice(0, 500);
       const quante = missQuanteVarianti('curiosita.' + missBaseRacconto(t));
-      t.raccontoVariante = ((t.raccontoVariante || 0) + 1) % Math.max(1, quante);
+      // Se una vecchia tappa non ha ancora una variante salvata, il testo
+      // mostrato nasce dall'hash del nome: si deve avanzare da quella
+      // variante effettiva, non ripartire arbitrariamente da zero.
+      const corrente = Number.isInteger(t.raccontoVariante)
+        ? t.raccontoVariante : missHashTesto(missNomeNudo(t.nome));
+      t.raccontoVariante = (corrente + 1) % Math.max(1, quante);
       missSalvaAttiva();
       missMostraStrisciaCielo();
       missMostraVista('inCorso');
@@ -3318,8 +3310,6 @@ function missAzione(azione, corpo) {
     case 'continua': {
       const t = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
       if (!t || t.fase !== 'scoperta') break;
-      const nota = corpo.querySelector('#missione-osservazione');
-      t.osservazione = nota ? nota.value.slice(0, 500) : t.osservazione;
       t.fase = 'conclusa';
       missFermaVoce();
       missAvanza();
