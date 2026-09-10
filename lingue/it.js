@@ -2409,7 +2409,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.navigaIndizi': 'Navigazione degli indizi',
     'missione.indizioPrecedente': 'Indizio precedente',
     'missione.indizioSuccessivo': 'Indizio successivo',
-    'missione.spostaRiquadro': 'Sposta il riquadro informativo',
+    'missione.spostaRiquadro': 'Sposta il riquadro informativo; usa anche le frecce, Home per ripristinare',
     'missione.seguiTelefono': 'Segui il telefono',
     'missione.terminaPlanetario': 'Termina la missione e continua a usare il planetario',
 
@@ -2560,6 +2560,12 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.curiosita.scorpione.1': 'Antares è il cuore arancione dello Scorpione. Il nome significa «rivale di Marte»: quando i due si avvicinano nel cielo, puoi confrontare due rossi completamente diversi.',
     'missione.curiosita.scorpione.2': 'Lo Scorpione fu mandato contro Orione. Per impedire una nuova battaglia, il racconto li colloca su lati opposti del cielo: uno domina l’estate, l’altro l’inverno.',
     'missione.curiosita.scorpione.3': 'La sua coda curva verso il centro della Via Lattea, una zona così ricca di stelle e nubi che il binocolo sembra attraversare un cielo più profondo.',
+    'missione.curiosita.iss.1': 'La ISS è lunga 109 metri, quanto un campo da calcio, e viaggia a circa 28.000 chilometri orari.',
+    'missione.curiosita.iss.2': 'La Stazione Spaziale Internazionale è abitata senza interruzioni dal novembre 2000: mentre la guardi, a bordo qualcuno sta lavorando.',
+    'missione.curiosita.iss.3': 'I suoi grandi pannelli solari riflettono il Sole: per questo la ISS può diventare più luminosa di ogni stella.',
+    'missione.curiosita.tiangong.1': 'Tiangong significa «Palazzo celeste»: i suoi tre moduli formano una T in orbita attorno alla Terra.',
+    'missione.curiosita.tiangong.2': 'È una stazione abitata e un laboratorio: gli equipaggi vi svolgono esperimenti in assenza di peso.',
+    'missione.curiosita.tiangong.3': 'Tiangong completa un giro della Terra in circa 92 minuti e vede sedici albe e tramonti al giorno.',
     'missione.curiosita.stazione.1': 'Quella luce è una casa in caduta libera: corre a circa 28.000 chilometri orari e continua a mancare la Terra. Non lampeggia come un aereo perché è illuminata dal Sole.',
     'missione.curiosita.stazione.2': 'A bordo, gli astronauti vedono circa sedici albe e sedici tramonti ogni giorno. Il puntino che attraversa il cielo porta con sé persone che in questo momento guardano la Terra dall’altra parte del vetro.',
     'missione.curiosita.stazione.3': 'Le stazioni sono costruite un pezzo alla volta, come navi assemblate mentre navigano. Ciò che vedi brillare è il riflesso di grandi pannelli solari e moduli lanciati in anni diversi.',
@@ -2809,6 +2815,8 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.gioco.enigma.oggetto.etaCarinae': 'Sono una nube enorme del cielo australe, e al mio centro sta una stella che nel 1843 divenne la seconda più brillante del cielo senza nemmeno esplodere davvero. Chi sono?',
     'missione.gioco.enigma.oggetto.nordAmerica': 'Ho la forma di un continente, golfo del Messico compreso, e sto accanto alla coda del Cigno. Sono larga quattro Lune piene e quasi invisibile. Chi sono?',
     'missione.gioco.enigma.oggetto.centroGalattico': 'Guardando verso di me guardi il cuore della nostra galassia, a ventisettemila anni luce — e non lo vedi, perché la polvere lo copre. Quello che si vede è la folla di stelle che gli sta davanti. Chi sono?',
+    'missione.gioco.enigma.oggetto.iss': 'Sono il più grande laboratorio mai costruito nello spazio: giro attorno alla Terra sedici volte al giorno e porto persone di molte nazioni. Dal suolo sembro una stella in corsa. Chi sono?',
+    'missione.gioco.enigma.oggetto.tiangong': 'Il mio nome significa «Palazzo celeste»: sono una casa-laboratorio costruita dalla Cina, più giovane e compatta della mia grande compagna internazionale. Chi sono?',
     'missione.gioco.enigma.oggetto.stazione': 'Non sono una stella e non sono un aereo: non lampeggio, attraverso il cielo in pochi minuti e ci abitano delle persone. Chi sono?',
 
     // --- Missione Cielo · il segno da cercare, bersaglio per bersaglio -
@@ -2874,6 +2882,8 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.gioco.segno.etaCarinae': 'Cerca un chiarore molto largo tagliato da una V scura di polvere, nella parte più ricca della Via Lattea australe.',
     'missione.gioco.segno.nordAmerica': 'Cerca un chiarore appena diverso dal fondo accanto alla coda del Cigno: si riconosce dal profilo, non dalla luminosità.',
     'missione.gioco.segno.centroGalattico': 'Cerca la parte più densa e granulosa della Via Lattea, sopra la teiera: al binocolo non è nebbia, sono stelle.',
+    'missione.gioco.segno.iss': 'Cerca una luce molto brillante che attraversa il cielo senza lampeggiare: può superare quasi tutte le stelle.',
+    'missione.gioco.segno.tiangong': 'Cerca un punto luminoso continuo, meno abbagliante della ISS, che percorre il cielo in pochi minuti senza lampeggiare.',
     'missione.gioco.segno.stazione': 'Cerca un punto luminoso che scivola lentamente e senza lampeggiare, sempre nella stessa direzione.',
 
     // --- Missione Cielo · gli enigmi per i più piccoli ----------------
@@ -2923,6 +2933,8 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.gioco.enigmaBimbi.anello': 'Sono una ciambella di fumo lasciata da una stella. Chi sono?',
     'missione.gioco.enigmaBimbi.manubrio': 'Sembro un torsolo di mela morsicato dai due lati. Sono la nuvola lasciata da una stella. Chi sono?',
     'missione.gioco.enigmaBimbi.laguna': 'Sono una nuvola rosa con una riga scura nel mezzo, come un laghetto diviso in due. Chi sono?',
+    'missione.gioco.enigmaBimbi.iss': 'Sono una casa grande come un campo da calcio che vola sopra di te. Dentro ci sono astronauti: chi sono?',
+    'missione.gioco.enigmaBimbi.tiangong': 'Sono un palazzo nel cielo, costruito in Cina, e giro intorno alla Terra con astronauti a bordo. Chi sono?',
     'missione.gioco.enigmaBimbi.stazione': 'Sono una lucina che attraversa tutto il cielo senza lampeggiare, e dentro ci abitano delle persone. Chi sono?',
 
     // --- Missione Cielo · gli aneddoti, il premio della scoperta ------

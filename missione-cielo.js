@@ -197,6 +197,10 @@ const miss = {
   rilievoSettore: null,
   // La guida può sparire dal cielo mentre la narrazione continua.
   strisciaNascosta: false,
+  // Posizione scelta trascinando la guida, relativa al planetario.
+  // Non si salva: a ogni nuova apertura il riquadro riparte in un punto
+  // prevedibile, ma non salta indietro mentre cambiano indizio o tappa.
+  posizioneStriscia: null,
   // Le funzioni da staccare alla chiusura (tastiera, cambio lingua)
   staccare: []
 };
@@ -345,7 +349,9 @@ const MISS_REPERTORIO = [
   { slug: 'centroGalattico', fascino: 0.7,  sigle: ['GalCtr'] },
 
   // --- e chi non è un oggetto di catalogo ----------------------------
-  { slug: 'stazione', fascino: 0.9, tipi: ['stazione'], prova: /./ }
+  { slug: 'iss',       fascino: 1,    tipi: ['stazione'], prova: /\b(iss|international space station|stazione spaziale internazionale)\b/i },
+  { slug: 'tiangong',  fascino: 0.92, tipi: ['stazione'], prova: /\b(tiangong|chinese space station|stazione spaziale cinese)\b/i },
+  { slug: 'stazione',  fascino: 0.9,  tipi: ['stazione'], prova: /./ }
 ];
 
 /* Le sigle, in una tabella sola. Il catalogo scrive «M 7» e «M7» nella
@@ -1868,6 +1874,8 @@ function missMostraStrisciaCielo() {
   el.classList.toggle('hidden', !visibile);
   el.classList.toggle('visibile', visibile);
   el.classList.toggle('solo-voce', visibile && miss.strisciaNascosta);
+  if (visibile && miss.posizioneStriscia) missPosizionaStriscia(el,
+    miss.posizioneStriscia.left, miss.posizioneStriscia.top);
   if (!visibile) { document.body.classList.remove('missione-senza-sensori'); return; }
   if (miss.strisciaNascosta) {
     el.innerHTML = `${missManigliaStriscia()}<button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
@@ -1902,6 +1910,9 @@ function missMostraStrisciaCielo() {
 function missPausaCielo() {
   if (!miss.attiva || !miss.attiva.nelPlanetario) return;
   miss.attiva.nelPlanetario = false;
+  miss.posizioneStriscia = null;
+  const striscia = document.getElementById('missione-striscia');
+  if (striscia) striscia.removeAttribute('style');
   missFermaVoce();
   missSalvaAttiva();
   missMostraStrisciaCielo();
@@ -3467,23 +3478,46 @@ function missRendiStrisciaSpostabile(el) {
     const contenitore = el.offsetParent && el.offsetParent.getBoundingClientRect
       ? el.offsetParent.getBoundingClientRect() : { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
     trascinamento = { x: e.clientX, y: e.clientY, left: r.left - contenitore.left,
-      top: r.top - contenitore.top, contenitore, width: r.width, height: r.height };
+      top: r.top - contenitore.top };
     el.classList.add('in-trascinamento');
     el.setPointerCapture(e.pointerId);
     e.preventDefault();
   });
   el.addEventListener('pointermove', e => {
     if (!trascinamento || !el.hasPointerCapture(e.pointerId)) return;
-    const maxLeft = Math.max(0, trascinamento.contenitore.width - trascinamento.width);
-    const maxTop = Math.max(0, trascinamento.contenitore.height - trascinamento.height);
-    el.style.left = Math.max(0, Math.min(maxLeft, trascinamento.left + e.clientX - trascinamento.x)) + 'px';
-    el.style.top = Math.max(0, Math.min(maxTop, trascinamento.top + e.clientY - trascinamento.y)) + 'px';
-    el.style.right = 'auto';
-    el.style.margin = '0';
+    missPosizionaStriscia(el, trascinamento.left + e.clientX - trascinamento.x,
+      trascinamento.top + e.clientY - trascinamento.y);
   });
-  const termina = () => { trascinamento = null; el.classList.remove('in-trascinamento'); };
+  const termina = () => {
+    if (trascinamento) miss.posizioneStriscia = { left: parseFloat(el.style.left) || 0,
+      top: parseFloat(el.style.top) || 0 };
+    trascinamento = null; el.classList.remove('in-trascinamento');
+  };
   el.addEventListener('pointerup', termina);
   el.addEventListener('pointercancel', termina);
+  el.addEventListener('keydown', e => {
+    if (!e.target.closest('.missione-trascina') || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home'].includes(e.key)) return;
+    e.preventDefault();
+    if (e.key === 'Home') { miss.posizioneStriscia = null; el.removeAttribute('style'); return; }
+    const r = el.getBoundingClientRect(), contenitore = el.offsetParent.getBoundingClientRect();
+    const passo = e.shiftKey ? 40 : 10;
+    missPosizionaStriscia(el, r.left - contenitore.left + (e.key === 'ArrowLeft' ? -passo : e.key === 'ArrowRight' ? passo : 0),
+      r.top - contenitore.top + (e.key === 'ArrowUp' ? -passo : e.key === 'ArrowDown' ? passo : 0));
+    miss.posizioneStriscia = { left: parseFloat(el.style.left), top: parseFloat(el.style.top) };
+  });
+  addEventListener('resize', () => { if (miss.posizioneStriscia && !el.classList.contains('hidden'))
+    missPosizionaStriscia(el, miss.posizioneStriscia.left, miss.posizioneStriscia.top); });
+}
+
+function missPosizionaStriscia(el, left, top) {
+  const contenitore = el.offsetParent && el.offsetParent.getBoundingClientRect
+    ? el.offsetParent.getBoundingClientRect() : { width: innerWidth, height: innerHeight };
+  const maxLeft = Math.max(0, contenitore.width - el.offsetWidth);
+  const maxTop = Math.max(0, contenitore.height - el.offsetHeight);
+  el.style.left = Math.max(0, Math.min(maxLeft, left)) + 'px';
+  el.style.top = Math.max(0, Math.min(maxTop, top)) + 'px';
+  el.style.right = 'auto';
+  el.style.margin = '0';
 }
 
 if (typeof document !== 'undefined') {
