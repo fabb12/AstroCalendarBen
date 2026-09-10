@@ -10703,8 +10703,8 @@ body .missione-striscia.solo-voce .missione-ripristina {
 .missione-striscia-indizio {
   margin: 1px 0 0;
   color: var(--testo);
-  font-size: 0.8rem;
-  line-height: 1.3;
+  font-size: 1rem;
+  line-height: 1.4;
 }
 .missione-striscia-tasti { display: flex; gap: 6px; flex: 0 0 auto; }
 .missione-striscia-tasti .missione-tasto {
@@ -10771,7 +10771,17 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 .missione-ricerca #skymap-btn-etichette,
 .missione-ricerca #skymap-btn-hover { display: none !important; }
 @media (max-width: 600px) {
-  .missione-striscia.visibile { flex-direction: column; gap: .4rem; }
+  /* In colonna `space-between` spingeva i comandi in fondo al riquadro,
+     lasciando un grande vuoto fra il messaggio e le azioni. La striscia
+     deve invece seguire sempre l'altezza del suo contenuto. */
+  .missione-striscia.visibile {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-content: flex-start;
+    height: auto;
+    min-height: 0;
+    gap: .4rem;
+  }
   .missione-striscia-tasti { flex-wrap: wrap; }
 }
 
