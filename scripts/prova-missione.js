@@ -812,7 +812,13 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         esiti.push({
           livello: miss.attiva.tappe[miss.attiva.corrente].aiuto,
           guida: document.querySelector('.missione-striscia-guida').textContent,
-          esito: miss.attiva.tappe[miss.attiva.corrente].esito
+          esito: miss.attiva.tappe[miss.attiva.corrente].esito,
+          rivelata: miss.attiva.tappe[miss.attiva.corrente].rivelata,
+          altraRichiesta: !!document.querySelector('#missione-striscia [data-miss-azione="aiuto"]'),
+          centratura: sky.animazioneVista && {
+            az: sky.animazioneVista.az0 + sky.animazioneVista.dAz,
+            alt: sky.animazioneVista.alt0 + sky.animazioneVista.dAlt
+          }
         });
       }
       return esiti;
@@ -820,9 +826,17 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     prova('«Guidami» aiuta e non segna niente come fallito', () => {
       assert.deepStrictEqual(aiuti.map(a => a.livello), [1, 2, 3]);
       assert.deepStrictEqual(aiuti.map(a => a.esito), [null, null, null]);
+      assert.strictEqual(new Set(aiuti.map(a => a.guida)).size, 3);
     });
     prova('e la guida resta visibile mentre si muove il cielo', () => {
       assert.ok(aiuti.every(a => a.guida.length > 10));
+    });
+    prova('il terzo aiuto rivela, centra e conclude la progressione', () => {
+      assert.strictEqual(aiuti[2].rivelata, true);
+      assert.strictEqual(aiuti[2].altraRichiesta, false);
+      assert.ok(aiuti[2].centratura, JSON.stringify(aiuti[2]));
+      assert.ok(Number.isFinite(aiuti[2].centratura.az));
+      assert.ok(Number.isFinite(aiuti[2].centratura.alt));
     });
 
     const sostituzione = await pagina.evaluate(() => {

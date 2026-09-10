@@ -31,8 +31,9 @@ sono adattate all’età scelta.
 
 Il nome resta nascosto in anteprima, riepilogo della missione in corso,
 etichette del cielo e audio di ricerca. L’elenco degli astri è sospeso durante
-la ricerca. “Guidami” aumenta la precisione senza selezionare o centrare il
-bersaglio. “Rivela il nome” appare solo dopo tre aiuti e non completa la tappa.
+la ricerca. Ogni pressione di “Guidami” mostra un indizio diverso e più preciso,
+fino a un massimo di tre. Il terzo rivela il nome e centra il bersaglio nel
+planetario, senza completare la tappa.
 I riferimenti vicini vengono ricalcolati per l’istante attuale usando la
 distanza sferica; la destra e l’alto del mirino usano la base della camera.
 
