@@ -2328,6 +2328,9 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.soloVoce': 'Hide, voice only',
     'missione.mostraGuida': 'Show guide',
     'missione.indizioPrincipale': 'Read the main clue',
+    'missione.prossimoIndizio': 'Next hint',
+    'missione.seguiTelefono': 'Follow the phone',
+    'missione.terminaPlanetario': 'End the mission and keep using the planetarium',
 
     'missione.titoloAnteprima': { uno: 'One wonder in {minuti} minutes', altri: '{n} wonders in {minuti} minutes' },
     'missione.sommarioAnteprima': 'Starting at {ora}. {condizioni}.',

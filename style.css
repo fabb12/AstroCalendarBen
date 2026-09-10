@@ -10663,11 +10663,27 @@ body button.did-ponte:active { transform: translateY(1px); }
   color: var(--testo);
   pointer-events: none;
 }
+.missione-striscia-chiudi {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--testo-2);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.missione-striscia-chiudi:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
+.missione-striscia-chiudi + .missione-striscia-testo { padding-right: 30px; }
 .missione-striscia.visibile { pointer-events: auto; }
 .missione-striscia.solo-voce {
   left: auto;
   width: auto;
-  padding: 4px;
+  padding: 4px 40px 4px 4px;
   border-color: rgba(76, 141, 255, 0.28);
   background: rgba(9, 16, 34, 0.72);
 }
@@ -10711,6 +10727,11 @@ body .missione-striscia.solo-voce .missione-ripristina {
   min-height: 32px;
   padding: 0 9px;
   font-size: 0.73rem;
+}
+.missione-striscia-tasti .missione-tasto.attiva {
+  background: var(--blu-scuro);
+  border-color: var(--blu);
+  color: #fff;
 }
 
 /* Sul telefono girato il cielo è alto un terzo: la striscia si stringe e

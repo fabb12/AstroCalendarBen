@@ -2381,6 +2381,9 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.soloVoce': 'Nascondi, solo voce',
     'missione.mostraGuida': 'Mostra la guida',
     'missione.indizioPrincipale': 'Rileggi l’indizio',
+    'missione.prossimoIndizio': 'Prossimo indizio',
+    'missione.seguiTelefono': 'Segui il telefono',
+    'missione.terminaPlanetario': 'Termina la missione e continua a usare il planetario',
 
     // L'anteprima
     'missione.titoloAnteprima': { uno: 'Una meraviglia in {minuti} minuti', altri: '{n} meraviglie in {minuti} minuti' },

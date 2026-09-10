@@ -1277,7 +1277,11 @@ function missRicercaAttiva() {
 }
 
 function missTitoloTappa(t) {
-  return t.fase === 'scoperta' || t.esito || t.rivelata ? missNomeTappa(t) : missT('gioco.mistero');
+  // Durante il gioco il bersaglio resta un mistero: il nome compare soltanto
+  // dopo la scoperta (o quando la tappa ha gia' un esito). L'anteprima usa
+  // invece direttamente `missNomeTappa`, cosi' chi prepara la serata conosce
+  // in anticipo tutti gli oggetti senza rovinare la caccia una volta avviata.
+  return t.fase === 'scoperta' || t.esito ? missNomeTappa(t) : missT('gioco.mistero');
 }
 
 function missMisuraTappa(t, data, obs) {
@@ -1399,6 +1403,17 @@ function missAttivaTelefono() {
       typeof DeviceOrientationEvent.requestPermission !== 'function') skyAvviaSensori();
 }
 
+// Il comando nella striscia nasce da un gesto esplicito, quindi puo' anche
+// aprire la richiesta di permesso di iOS attraverso il ponte gia' usato dal
+// planetario. In una simulazione futura la direzione fisica del telefono non
+// corrisponde al cielo mostrato e il comando viene lasciato disabilitato.
+function missSeguiTelefono() {
+  if (!missRicercaAttiva() || (miss.attiva && miss.attiva.simulazione)) return;
+  miss.telefonoProvato = true;
+  if (!sky.seguiTelefono) skyAlternaSeguiTelefono();
+  missMostraStrisciaCielo();
+}
+
 function missGuidaMirino(base, t) {
   const v = skyVettore(t.azimut, t.altezza);
   const dot = a => a.reduce((somma, n, i) => somma + n * v[i], 0);
@@ -1426,6 +1441,8 @@ function missAggiornaMirino(base) {
 
 function missHtmlScoperta(t) {
   return `<div class="missione-scoperta">
+    <button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
+      aria-label="${missT('terminaPlanetario')}">×</button>
     <h3>${missT('gioco.scoperta', { nome: missTesto(missNomeTappa(t)) })}</h3>
     <p>${missTesto(missCuriositaTesto(t))}</p>
     <label for="missione-osservazione">${missTesto(missDomanda(t))}</label>
@@ -1447,12 +1464,17 @@ function missMostraStrisciaCielo() {
   el.classList.toggle('solo-voce', visibile && miss.strisciaNascosta);
   if (!visibile) { document.body.classList.remove('missione-senza-sensori'); return; }
   if (miss.strisciaNascosta) {
-    el.innerHTML = `<button type="button" class="missione-tasto missione-ripristina" data-miss-azione="mostra-guida">
-      ${missT('mostraGuida')}</button>`;
-    el.querySelector('[data-miss-azione]').addEventListener('click', () => missAzione('mostra-guida', el));
+    el.innerHTML = `<button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
+        aria-label="${missT('terminaPlanetario')}">×</button>
+      <button type="button" class="missione-tasto missione-ripristina" data-miss-azione="mostra-guida">
+        ${missT('mostraGuida')}</button>`;
+    el.querySelectorAll('[data-miss-azione]').forEach(b =>
+      b.addEventListener('click', () => missAzione(b.dataset.missAzione, el)));
     return;
   }
   el.innerHTML = t.fase === 'scoperta' ? missHtmlScoperta(t) : `
+    <button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
+      aria-label="${missT('terminaPlanetario')}">×</button>
     <div class="missione-striscia-testo">
       <span class="missione-striscia-titolo">${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })} · ${missTesto(missTitoloTappa(t))}</span>
       <p class="missione-striscia-indizio">${missTesto(t.mostraAiuto ? missIndizio(t) : missIntroduzione(t))}</p>
@@ -1460,14 +1482,15 @@ function missMostraStrisciaCielo() {
     </div>
     <div class="missione-striscia-tasti">
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="solo-voce">${missT('soloVoce')}</button>
+      <button class="missione-tasto${sky.seguiTelefono ? ' attiva' : ''}" data-miss-azione="segui-telefono"
+        ${m.simulazione ? 'disabled' : ''}>${missT('seguiTelefono')}</button>
       ${(t.aiuto || 0) < 3
-        ? `<button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>`
+        ? `<button class="missione-tasto" data-miss-azione="aiuto">${missT('prossimoIndizio')}</button>`
         : ''}
       ${t.mostraAiuto && (t.aiuto || 0) < 3
         ? `<button class="missione-tasto" data-miss-azione="indizio-principale">${missT('indizioPrincipale')}</button>`
         : ''}
       <button class="missione-tasto missione-tasto-lieve" data-miss-azione="salta">${missT('salta')}</button>
-      <button class="missione-tasto missione-tasto-lieve" data-miss-azione="torna">${missT('titoloBreve')}</button>
     </div>`;
   el.querySelectorAll('[data-miss-azione]').forEach(b => b.addEventListener('click', () => missAzione(b.dataset.missAzione, el)));
   const nota = el.querySelector('#missione-osservazione');
@@ -2196,7 +2219,7 @@ function missHtmlAnteprima(m) {
 
   const righe = m.tappe.map((t, i) => `<li class="missione-anteprima-riga">
       <span class="missione-anteprima-ora">${missOra(t.quando)}</span>
-      <span class="missione-anteprima-nome">${missTesto(missTitoloTappa(t))}</span>
+      <span class="missione-anteprima-nome">${missTesto(missNomeTappa(t))}</span>
       <span class="missione-anteprima-che">${missT('difficolta.' + t.difficolta)}</span>
     </li>`).join('');
   const futura = m.partenza > Date.now() + MISS_SCARTO_RIGENERA_MS;
@@ -2240,7 +2263,7 @@ function missHtmlInCorso(m) {
     <div class="missione-azioni">
       <button class="missione-tasto missione-tasto-si" data-miss-azione="guidami">${missT('gioco.apriCielo')}</button>
       ${(t.aiuto || 0) < 3
-        ? `<button class="missione-tasto" data-miss-azione="aiuto">${missT('guidami')}</button>`
+        ? `<button class="missione-tasto" data-miss-azione="aiuto">${missT('prossimoIndizio')}</button>`
         : ''}
       ${t.mostraAiuto && (t.aiuto || 0) < 3
         ? `<button class="missione-tasto" data-miss-azione="indizio-principale">${missT('indizioPrincipale')}</button>`
@@ -2637,6 +2660,14 @@ function missAzione(azione, corpo) {
     case 'mostra-guida':
       miss.strisciaNascosta = false;
       missMostraStrisciaCielo();
+      break;
+    case 'segui-telefono':
+      missSeguiTelefono();
+      break;
+    case 'termina':
+      // La X chiude definitivamente il percorso ma lascia aperto il
+      // planetario, che torna subito al suo uso normale.
+      missAbbandona();
       break;
     case 'genera':
     case 'rigenera': {
