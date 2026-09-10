@@ -22,6 +22,10 @@ const ctx=vm.createContext({console,Date:Clock,Astronomy,window:{},document:doc,
   skyAvviaSensori(){},skyAlternaSeguiTelefono(){ctx.sky.seguiTelefono=!ctx.sky.seguiTelefono;},
   skyVettore:(az,alt)=>[Math.cos(alt*Math.PI/180)*Math.sin(az*Math.PI/180),Math.cos(alt*Math.PI/180)*Math.cos(az*Math.PI/180),Math.sin(alt*Math.PI/180)],
   skyUsaSensori:()=>ctx.sky.sensori&&ctx.sky.seguiTelefono,
+  // Il terzo aiuto rivela il bersaglio e lo porta al centro della mappa:
+  // sono due funzioni del planetario, e senza gli stub la progressione
+  // degli aiuti si fermava al secondo gradino con un ReferenceError.
+  skyVoceDiId:id=>({id,nome:id}), skyCentraSu(){}, skyChiudiDettaglio(){},
   orizzonteAltezza:()=>0, oraBreve:()=>'', setTimeout,clearTimeout,
 });
 const run=s=>vm.runInContext(s,ctx);
@@ -34,7 +38,7 @@ const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
 for(const name of ['altAzCorpo','altAzCoordinate','skyNomiVisibili'])run(app.match(new RegExp('^function '+name+'\\([\\s\\S]*?^\\}', 'm'))[0]);
 run(app.match(/^const SKY_STELLE = \[[\s\S]*?^\];/m)[0]);
 run(fs.readFileSync(path.join(root,'missione-cielo.js'),'utf8'));
-assert.deepEqual(Array.from(run('MISS_ESPERIENZE')),['sfida','bambini']);
+assert.deepEqual(Array.from(run('MISS_ESPERIENZE')),['bambini','curiosi','sfida']);
 run(`miss.attiva={id:'test',versione:MISS_VERSIONE,stato:'inCorso',nelPlanetario:true,corrente:0,
   partenza:Date.now(),avviata:Date.now(),scelte:{esperienza:'sfida',strumento:'occhio',durata:30},
   tappe:[{id:'stella:Star3',idCielo:'Star3',nome:'Vega',tipo:'stella',mira:{ra:18.6156,dec:38.7837},mag:.03,
@@ -50,16 +54,27 @@ assert(elements.get('missione-striscia').innerHTML.includes('Segui il telefono')
 assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="termina"'));
 assert(!elements.get('missione-striscia').innerHTML.includes('Missione Cielo</button>'));
 run('missAggiornaScheda()');assert(!elements.get('missione-scheda').innerHTML.includes('Vega'));
-assert(run('missHtmlAnteprima(miss.attiva)').includes('Vega'));
+assert(!run('missHtmlAnteprima(miss.attiva)').includes('Vega'));
+assert(run('miss.sbircia=true;missHtmlAnteprima(miss.attiva)').includes('Vega'));
+run('miss.sbircia=false');
 run("missSegnaEsito(0,'trovato')");assert.equal(run('miss.attiva.tappe[0].esito'),null);
 run("missSelezionaCielo({categoria:'astro',id:'Star2'})");
 assert.equal(run('miss.attiva.tappe[0].esito'),null);assert.equal(run('miss.attiva.tappe[0].aiuto'),0);
 assert(feedback.at(-1).testo.includes('Non è questo'));
 assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
-run("sky.oggetti=[Object.assign({id:'Star2'},missTappaNelPlanetario(miss.attiva.tappe[0]))];missSelezionaCielo({categoria:'astro',id:'Star2'})");
+// L'identificativo va messo **dopo**: `missTappaNelPlanetario` restituisce
+// la tappa intera, `id` compreso, e con l'oggetto letterale davanti quel
+// campo tornava a essere quello del bersaglio — la ricerca per id non
+// trovava niente e il tocco vicino veniva raccontato come sbagliato.
+run("sky.oggetti=[Object.assign({},missTappaNelPlanetario(miss.attiva.tappe[0]),{id:'Star2'})];missSelezionaCielo({categoria:'astro',id:'Star2'})");
 assert(feedback.at(-1).testo.includes('sei vicino'));
 const clues=[];for(let i=0;i<3;i++){clues.push(run('missIndizio(miss.attiva.tappe[0])'));run('missChiediAiuto()');}
-assert.equal(new Set(clues).size,3);assert.equal(run('!!miss.attiva.tappe[0].rivelata'),false);
+assert.equal(new Set(clues).size,3);
+// Il terzo gradino e' una risposta e si segna come tale (il Diario lo
+// riporta), ma il nome resta comunque coperto: chi arriva in fondo agli
+// aiuti deve ancora riconoscere l'oggetto sulla mappa.
+assert.equal(run('!!miss.attiva.tappe[0].rivelata'),true);
+assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
 // A correct identifier in a simulated time or another location is not an observation.
 offset=3600000;run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);offset=0;
 // Se la missione e' stata avviata esplicitamente all'ora consigliata, invece,
@@ -67,7 +82,6 @@ offset=3600000;run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.
 offset=3600000;run("miss.attiva.simulazione=true;miss.attiva.tappe[0].feedback=null;missSelezionaCielo({categoria:'astro',id:'Star2'})");
 assert.equal(run('miss.attiva.tappe[0].feedback'),null);assert.equal(run('miss.attiva.tappe[0].aiuto'),3);run('miss.attiva.simulazione=false');offset=0;
 ctx.sky.observer=new Astronomy.Observer(0,0,0);run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);ctx.sky.observer=obs;
-run("missAzione('rivela',document.body)");assert.equal(run('miss.attiva.tappe[0].esito'),null);assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
 run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].fase'),'scoperta');assert.equal(run('miss.attiva.corrente'),0);
 assert(elements.get('missione-striscia').innerHTML.includes('missione-osservazione'));
 assert(elements.get('missione-striscia').innerHTML.includes('Vega'));
@@ -78,8 +92,16 @@ run("miss.attiva.tappe[0].osservazione='<script>alert(1)</script>';missMostraStr
 assert(!elements.get('missione-striscia').innerHTML.includes('<script>'));
 // All dynamic keys and children/adult variants resolve in both dictionaries.
 for(const lang of ['it','en']){ctx.astroI18n.lingua=lang;
- for(const mode of ['sfida','bambini'])for(const type of ['luna','pianeta','stella','costellazione','profondo'])for(let v=0;v<3;v++) {
-  run(`miss.attiva.scelte.esperienza='${mode}';Object.assign(miss.attiva.tappe[0],{tipo:'${type}',raccontoVariante:${v},domandaVariante:${v},indizioVariante:${v}});missIntroduzione(miss.attiva.tappe[0]);missCuriositaTesto(miss.attiva.tappe[0]);missDomanda(miss.attiva.tappe[0]);`);
+ for(const mode of ['sfida','curiosi','bambini'])for(const type of ['luna','pianeta','stella','costellazione','profondo'])for(let v=0;v<3;v++) {
+  run(`miss.attiva.scelte.esperienza='${mode}';Object.assign(miss.attiva.tappe[0],{tipo:'${type}',slug:null,categoria:null,raccontoVariante:${v},domandaVariante:${v},indizioVariante:${v}});missIntroduzione(miss.attiva.tappe[0]);missCuriositaTesto(miss.attiva.tappe[0]);missDomanda(miss.attiva.tappe[0]);missSpecieTappa(miss.attiva.tappe[0]);`);
+ }
+ // I tre gradini di ripiego: nome proprio, specie di catalogo, famiglia.
+ for(const mode of ['sfida','curiosi','bambini'])for(const caso of [
+   "{tipo:'profondo',nome:'M13 — Grande Ammasso di Ercole',sigla:'M13',categoria:'globulare'}",
+   "{tipo:'profondo',nome:'M85 — galassia ellittica',sigla:'M85',categoria:'galassia'}",
+   "{tipo:'profondo',nome:'NGC 1 — galassia a spirale',sigla:'NGC 1',categoria:null}",
+   "{tipo:'costellazione',nome:'Orione',sigla:'Ori'}"]) {
+  run(`miss.attiva.scelte.esperienza='${mode}';miss.attiva.tappe[0]=Object.assign({id:'x',fase:'ricerca',esito:null,aiuto:0,raccontoVariante:0,domandaVariante:0,indizioVariante:0,mira:{ra:18.6,dec:38.8},azimut:180,altezza:45},${caso});missIntroduzione(miss.attiva.tappe[0]);missCuriositaTesto(miss.attiva.tappe[0]);missDomanda(miss.attiva.tappe[0]);missSpecieTappa(miss.attiva.tappe[0]);missHtmlScoperta(miss.attiva.tappe[0]);`);
  }}
 assert.deepEqual(missing,[]);
 // North crossing and sensor activation / manual opt out.
@@ -95,4 +117,4 @@ now=Date.UTC(2026,8,8,12);run("missSelezionaCielo({categoria:'astro',id:'Star3'}
 now=Date.UTC(2026,8,7,21);ctx.orizzonteAltezza=()=>85;run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);
 run('missPausaCielo()');assert.equal(run('miss.attiva.stato'),'inCorso');assert.equal(run('miss.attiva.nelPlanetario'),false);
 run('missAbbandona()');assert.equal(run('missRicercaAttiva()'),false);assert.equal(run('skyNomiVisibili()'),true);
-console.log('PASS: actual ephemerides, two modes, stable clue after wrong/correct selections, live time/location/terrain checks, discovery persistence, age-appropriate stories, sensors, cleanup');
+console.log('PASS: actual ephemerides, three difficulty levels, stable clue after wrong/correct selections, live time/location/terrain checks, discovery persistence, age-appropriate stories, sensors, cleanup');

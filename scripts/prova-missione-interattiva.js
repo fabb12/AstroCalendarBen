@@ -53,7 +53,12 @@ const server = http.createServer((req,res)=> {
     localStorage.setItem('astrocalendario_posizione',JSON.stringify({lat:45.81,lon:9.08,nome:'Como',fonte:'manuale',precisione:1000}));
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/index.html`,{waitUntil:'networkidle'});
-  await page.evaluate(()=> { mostraVista('stasera'); missApriPannello(); miss.scelte.esperienza='sfida'; missPreparaAnteprima(); });
+  // La missione si prepara per **più tardi**: è la sola condizione in cui
+  // compare «Inizia alle…», ed è quella che questa prova vuole — un cielo
+  // simulato all'ora della tappa invece dell'orologio vero.
+  await page.evaluate(()=> { mostraVista('stasera'); missApriPannello();
+    miss.scelte.esperienza='sfida'; miss.scelte.momento='personalizzato';
+    miss.scelte.momentoPersonalizzato=Date.now()+90*60000; missPreparaAnteprima(); });
   const preview=await page.evaluate(()=>({names:miss.anteprima.tappe.map(t=>t.nome), text:document.getElementById('missione-corpo').textContent}));
   assert(preview.names.length >= 2); preview.names.forEach(n=>assert(!preview.text.includes(n),'preview hides '+n));
   const planned=await page.evaluate(()=>miss.anteprima.tappe[0].quando);
@@ -74,6 +79,19 @@ const server = http.createServer((req,res)=> {
   });
   const currentTime=await page.evaluate(()=>({skyTime:skyAdesso().getTime(),timeMode:sky.modalitaTempo,now:Date.now()}));
   assert.equal(currentTime.timeMode,'reale'); assert.equal(currentTime.skyTime,currentTime.now);
+  /* Questa prova tocca il canvas, e per farlo le serve un bersaglio
+   * **puntiforme**: una figura si riconosce toccando una sua linea, ed è
+   * provata altrove. Se la prima tappa è una costellazione la si
+   * sostituisce qui, *prima* di leggere l'indizio di riferimento —
+   * sostituendola dentro al tocco, il confronto «l'indizio non cambia
+   * dopo un errore» finirebbe per paragonare due bersagli diversi. */
+  await page.evaluate(()=> {
+    const t=miss.attiva.tappe[miss.attiva.corrente];
+    if (t.idCielo) return;
+    const candidate=missCandidatiDelCielo(osservatoreCorrente(),[Date.now()],miss.attiva.scelte)
+      .find(c=>c.tipo==='stella' && missAmmissibile(c,miss.attiva.scelte));
+    if (candidate) { Object.assign(t,candidate,{fase:'ricerca',esito:null}); missMostraStrisciaCielo(); }
+  });
   search.name=await page.evaluate(()=>miss.attiva.tappe[0].nome);
   search.text=await page.textContent('#missione-striscia');
   assert.equal(search.target,null); assert.equal(search.labels,false); assert(!search.text.includes(search.name));
@@ -86,12 +104,6 @@ const server = http.createServer((req,res)=> {
   async function tapObject(correct) {
     const point=await page.evaluate(correct=> {
       const t=miss.attiva.tappe[miss.attiva.corrente];
-      // Use a point target for this integration check; constellation matching is checked separately.
-      if (!t.idCielo) {
-        const candidate=missCandidatiDelCielo(osservatoreCorrente(),[Date.now()],miss.attiva.scelte)
-          .find(c=>c.tipo==='stella' && missAmmissibile(c,miss.attiva.scelte));
-        Object.assign(t,candidate,{fase:'ricerca',esito:null});
-      }
       const o=correct ? skyVoceDiId(t.idCielo) : sky.oggetti.find(o=>o.id!==t.idCielo && o.alt>25);
       sky.seguiTelefono=false; skyFermaMovimenti(); skyCentraSu(o,{subito:true});
       sky.manuale.alt = Math.min(85, sky.manuale.alt + 22); skyDisegna();
@@ -118,19 +130,21 @@ const server = http.createServer((req,res)=> {
   assert.equal(await page.evaluate(()=>miss.attiva.corrente),1);
   assert.equal(await page.evaluate(()=>miss.attiva.tappe[0].osservazione),'Una luce bianca, più ferma delle altre.');
   assert.equal(await page.evaluate(()=>sky.target),null);
-  // Advanced help reveals only on explicit request and cannot complete the mission.
+  // Il terzo aiuto è una risposta: si segna come «rivelata» (il Diario lo
+  // riporta) ma non chiude la tappa, e il nome resta comunque coperto —
+  // riconoscere l'oggetto sulla mappa tocca ancora a chi guarda.
   await page.evaluate(()=> { for(let i=0;i<3;i++) missChiediAiuto(); });
-  assert.equal(await page.evaluate(()=>!!miss.attiva.tappe[1].rivelata),false);
-  await page.click('#missione-striscia [data-miss-azione="rivela"]');
+  assert.equal(await page.evaluate(()=>!!miss.attiva.tappe[1].rivelata),true);
   assert.equal(await page.evaluate(()=>miss.attiva.tappe[1].esito),null);
-  assert.equal(await page.evaluate(()=>miss.attiva.tappe[1].rivelata),true);
+  assert(!(await page.textContent('#missione-striscia')).includes(
+    await page.evaluate(()=>miss.attiva.tappe[1].nome)));
   await page.evaluate(()=>astroI18n.impostaLingua('en'));
   assert((await page.textContent('#missione-striscia')).includes('Search') || (await page.textContent('#missione-striscia')).includes('Skip'));
   // Every dynamic content key resolves, in every mode and both languages.
   const missing=await page.evaluate(()=> {
     const failures=[];
     for (const lang of ['it','en']) { astroI18n.impostaLingua(lang);
-      for (const mode of ['sfida','bambini']) {miss.attiva.scelte.esperienza=mode;
+      for (const mode of ['sfida','curiosi','bambini']) {miss.attiva.scelte.esperienza=mode;
         for(const type of ['luna','pianeta','stella','costellazione','profondo']) for(let variant=0;variant<3;variant++) {
           const t={...miss.attiva.tappe[1],tipo:type,raccontoVariante:variant,domandaVariante:variant,indizioVariante:variant};
           for(const text of [missIntroduzione(t),missCuriositaTesto(t),missDomanda(t)]) if(text.includes('missione.')) failures.push(text);
@@ -144,7 +158,7 @@ const server = http.createServer((req,res)=> {
   await page.evaluate(()=>missAbbandona());
   assert.equal(await page.evaluate(()=>skyNomiVisibili()),true);
   assert.equal(await page.evaluate(()=>document.body.classList.contains('missione-ricerca')),false);
-  console.log('PASS: mobile UI, anonymous preview, hints, wrong/correct canvas taps, discovery, notes, next stop, explicit reveal, both locales, cleanup');
+  console.log('PASS: mobile UI, anonymous preview, hints, wrong/correct canvas taps, discovery, notes, next stop, progressive reveal, both locales, cleanup');
   if(errors.length) console.log('Unrelated page errors with external services stubbed:',errors);
  } finally {if(browser) await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

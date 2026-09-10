@@ -58,7 +58,7 @@
 //     dichiarare.
 // =====================================================================
 
-const MISS_VERSIONE = 6;
+const MISS_VERSIONE = 7;
 const CHIAVE_MISS_STORIA = 'astrocalendario_missione_storia';
 
 const CHIAVE_MISS_SCELTE = 'astrocalendario_missione_scelte';
@@ -66,9 +66,35 @@ const CHIAVE_MISS_ATTIVA = 'astrocalendario_missione_attiva';
 
 const MISS_DURATE = [10, 30, 60, 120];
 const MISS_STRUMENTI = ['occhio', 'binocolo', 'telescopio'];
-// Due percorsi, riconoscibili senza dover interpretare quattro etichette:
-// l'enigma degli adulti e la caccia, piu' semplice, per i bambini.
-const MISS_ESPERIENZE = ['sfida', 'bambini'];
+
+/* I tre gradini della caccia.
+ *
+ * Non sono tre etichette di comodo: cambiano insieme **cosa** si va a
+ * cercare e **quanto** viene detto prima di cercarlo, che sono le due
+ * manopole vere di un gioco di ricerca.
+ *
+ *   bambini  — bersagli che non si possono sbagliare, enigma in rima
+ *              semplice e subito dopo il segno da cercare a occhio.
+ *   curiosi  — l'enigma e il segno insieme: chi legge sa cosa sta
+ *              cercando, e deve solo trovare dove.
+ *   sfida    — il solo enigma. Il segno arriva col primo indizio, e
+ *              questo è tutto il gioco: chi indovina subito si è
+ *              guadagnato una tappa senza aiuti.
+ *
+ * La differenza fra i tre non sta quindi in un moltiplicatore, ma in
+ * quante delle tre cose che si sanno di un bersaglio — cos'è, com'è
+ * fatto, dov'è — si consegnano prima della prima occhiata. */
+const MISS_ESPERIENZE = ['bambini', 'curiosi', 'sfida'];
+
+// Quanto si racconta prima che si cominci a cercare. `enigma` c'è
+// sempre; `segno` è il dettaglio osservabile (il colore, la sagoma, la
+// disposizione) e `aiutoSubito` è la direzione data senza chiederla.
+const MISS_GENEROSITA = {
+  bambini: { segno: true,  aiutoSubito: true },
+  curiosi: { segno: true,  aiutoSubito: false },
+  sfida:   { segno: false, aiutoSubito: false }
+};
+
 const MISS_DIREZIONI = [0, 45, 90, 135, 180, 225, 270, 315];
 
 // Le voci Neural di Edge-TTS sono scelte qui, non lasciate al ponte: così la
@@ -96,14 +122,27 @@ const MISS_TAPPE_PER_DURATA = {
 // qualcosa — foschia, un tetto, un albero — e chi non trova per colpa
 // dell'aria crede di non saper cercare.
 const MISS_ALTEZZA_MINIMA = {
-  stupore: 15, imparare: 15, sfida: 10, bambini: 20
+  bambini: 20, curiosi: 15, sfida: 10
 };
 
-// Anche la modalita' «sfida» deve restare una caccia alla portata di una
-// serata normale, non un esame da astrofilo. Gli oggetti di livello 4–5
-// restano nel pianificatore, mentre qui si privilegiano bersagli che si
-// riconoscono con pochi indizi. Per i bambini il limite e' ancora piu' basso.
-const MISS_DIFFICOLTA_MASSIMA = { sfida: 3, bambini: 2, stupore: 3, imparare: 3 };
+/* Fin dove si spinge ogni gradino.
+ *
+ * Il tetto è una promessa sul tipo di serata, non una misura di bravura:
+ * coi bambini si va solo su cose che non si possono sbagliare, ai curiosi
+ * si chiede di cercare, agli esperti si concede anche la nebulosa che
+ * bisogna saper guardare di lato. Il cinque esiste perché il gradino più
+ * alto altrimenti non avrebbe niente da dare che il secondo non desse
+ * già: era il difetto di quando i gradini erano due. */
+const MISS_DIFFICOLTA_MASSIMA = { bambini: 2, curiosi: 3, sfida: 5 };
+
+/* …e da dove comincia.
+ *
+ * Un pavimento e non un filtro: cinque bersagli che si trovano da soli
+ * sono una serata onesta per chi comincia e una delusione per chi ha
+ * chiesto una sfida, ma escluderli del tutto vorrebbe dire restituire una
+ * missione vuota dal balcone di città. Si penalizzano nel punteggio (§2,
+ * `missPunteggio`) e basta: se non c'è altro, ci sono ancora. */
+const MISS_DIFFICOLTA_GRADITA = { bambini: 1, curiosi: 1, sfida: 2 };
 
 // Ricordiamo piu' di una sola missione: con un cielo ricco la nuova caccia
 // cambia davvero cast, invece di oscillare fra gli stessi due gruppi.
@@ -137,10 +176,14 @@ const MISS_MISURE_A_MANO = [
 // una ricarica sta in `attiva` e si salva (§7).
 const miss = {
   // Le tre scelte, ricordate fra una sera e l'altra
-  scelte: { durata: 30, strumento: 'occhio', esperienza: 'sfida', cielo: 'tutto', cieloDa: 135, cieloA: 180,
+  scelte: { durata: 30, strumento: 'occhio', esperienza: 'curiosi', cielo: 'tutto', cieloDa: 135, cieloA: 180,
     momento: 'consigliato', momentoPersonalizzato: null, voce: false },
   // La missione appena generata e non ancora avviata
   anteprima: null,
+  // Chi ha chiesto di vedere i nomi dei bersagli prima di cominciare:
+  // vale per l'anteprima che si sta guardando e non si salva, perché
+  // sbirciare è una decisione di stasera e non una preferenza.
+  sbircia: false,
   // Quella in corso o conclusa e non ancora archiviata
   attiva: null,
   // Il pannello: quale dei cinque stati è a schermo
@@ -162,6 +205,238 @@ const miss = {
 // sequenza impedisce a una risposta lenta della API di parlare sopra la tappa
 // successiva quando chi osserva preme rapidamente «Trovato».
 const missVoce = { audio: null, urlOggetto: '', sequenza: 0 };
+
+
+// =====================================================================
+// 1-bis. IL REPERTORIO — chi, di tutto quello che c'è in cielo, ha una
+//        storia da raccontare
+//
+//     Un bersaglio non vale l'altro, e la differenza non si misura in
+//     magnitudini. Saturno e la galassia NGC 4526 sono tutti e due
+//     «cielo profondo o pianeti visibili stanotte»: il primo lascia un
+//     ricordo per vent'anni, la seconda è una macchiolina di cui non si
+//     saprebbe che dire. Una missione che li tratta uguale è un elenco
+//     con l'ordine mescolato.
+//
+//     Qui sta la tabella di chi ha un nome proprio, un enigma scritto
+//     apposta e un aneddoto che dopo averlo trovato vale la pena
+//     leggere. Da lei escono tre cose, in tre posti diversi:
+//
+//       lo **slug**   — la chiave con cui il dizionario tiene enigma,
+//                       segno osservabile e aneddoti di quell'oggetto;
+//       il **fascino**— quanto merita di stare in una serata, che entra
+//                       nel punteggio (§2) accanto ad altezza e
+//                       difficoltà;
+//       la **catena di ripiego** — chi un nome proprio non ce l'ha non
+//                       cade nel generico: cade nella sua *categoria*
+//                       (ammasso globulare, nebulosa planetaria,
+//                       galassia a spirale…), che di cose da dire ne ha
+//                       parecchie e sono tutte vere.
+//
+//     Le tre risposte sono sempre nello stesso ordine — nome proprio,
+//     categoria, famiglia — e non si salta nessun gradino: è la ragione
+//     per cui centoquarantadue oggetti di catalogo hanno tutti qualcosa
+//     di sensato da dire con sessanta voci scritte a mano.
+// =====================================================================
+
+/* Le voci del repertorio.
+ *
+ *   slug    la chiave nel dizionario (`missione.curiosita.<slug>.<n>`,
+ *           `missione.gioco.enigma.oggetto.<slug>`, `…segno.<slug>`);
+ *   fascino da 0 a 1: quanto quel bersaglio ripaga la fatica di
+ *           cercarlo. Saturno vale uno, una galassia ellittica di ottava
+ *           mezzo punto, e non è una classifica di bellezza — è la
+ *           risposta a «se ne racconta ancora qualcosa domani?»;
+ *   tipi    a quali famiglie di candidati la voce si applica. Serve
+ *           perché «Andromeda» è due cose diverse: la figura e la
+ *           galassia che ci sta dentro, e hanno due storie;
+ *   sigle   per il cielo profondo è la chiave vera: il catalogo scrive
+ *           «M31 — Galassia di Andromeda», e la sigla è l'unico pezzo di
+ *           quel nome che non cambi con la lingua;
+ *   prova   il riconoscimento per nome, che deve reggere l'italiano,
+ *           l'inglese e la sigla IAU di una figura.
+ */
+const MISS_REPERTORIO = [
+  // --- il Sistema Solare -------------------------------------------
+  { slug: 'luna',      fascino: 0.95, tipi: ['luna'],    prova: /\b(luna|moon)\b/ },
+  { slug: 'mercurio',  fascino: 0.66, tipi: ['pianeta'], prova: /\b(mercurio|mercury)\b/ },
+  { slug: 'venere',    fascino: 0.82, tipi: ['pianeta'], prova: /\b(venere|venus)\b/ },
+  { slug: 'marte',     fascino: 0.86, tipi: ['pianeta'], prova: /\b(marte|mars)\b/ },
+  { slug: 'giove',     fascino: 0.96, tipi: ['pianeta'], prova: /\b(giove|jupiter)\b/ },
+  { slug: 'saturno',   fascino: 1,    tipi: ['pianeta'], prova: /\b(saturno|saturn)\b/ },
+  { slug: 'urano',     fascino: 0.58, tipi: ['pianeta'], prova: /\b(urano|uranus)\b/ },
+  { slug: 'nettuno',   fascino: 0.56, tipi: ['pianeta'], prova: /\b(nettuno|neptune)\b/ },
+
+  // --- le otto stelle che il planetario tiene per nome ---------------
+  { slug: 'polare',     fascino: 0.88, tipi: ['stella'], prova: /\b(polare|polaris)\b/ },
+  { slug: 'sirio',      fascino: 0.84, tipi: ['stella'], prova: /\b(sirio|sirius)\b/ },
+  { slug: 'vega',       fascino: 0.78, tipi: ['stella'], prova: /\bvega\b/ },
+  { slug: 'capella',    fascino: 0.62, tipi: ['stella'], prova: /\bcapella\b/ },
+  { slug: 'arturo',     fascino: 0.72, tipi: ['stella'], prova: /\b(arturo|arcturus)\b/ },
+  { slug: 'rigel',      fascino: 0.74, tipi: ['stella'], prova: /\brigel\b/ },
+  { slug: 'betelgeuse', fascino: 0.88, tipi: ['stella'], prova: /\bbetelgeuse\b/ },
+  { slug: 'altair',     fascino: 0.64, tipi: ['stella'], prova: /\baltair\b/ },
+
+  // --- le figure che il planetario disegna ---------------------------
+  { slug: 'orione',        fascino: 0.96, tipi: ['costellazione'], prova: /\b(orione|orion|ori)\b/ },
+  { slug: 'orsa',          fascino: 0.92, tipi: ['costellazione'], prova: /(orsa maggiore|ursa major|great bear|\buma\b)/ },
+  { slug: 'orsaMinore',    fascino: 0.7,  tipi: ['costellazione'], prova: /(orsa minore|ursa minor|little bear|\bumi\b)/ },
+  { slug: 'cassiopea',     fascino: 0.82, tipi: ['costellazione'], prova: /\b(cassiopea|cassiopeia|cas)\b/ },
+  { slug: 'cigno',         fascino: 0.84, tipi: ['costellazione'], prova: /\b(cigno|cygnus|cyg)\b/ },
+  { slug: 'lira',          fascino: 0.7,  tipi: ['costellazione'], prova: /\b(lira|lyra|lyr)\b/ },
+  { slug: 'aquilaFigura',  fascino: 0.62, tipi: ['costellazione'], prova: /\b(aquila|aql)\b/ },
+  { slug: 'scorpione',     fascino: 0.86, tipi: ['costellazione'], prova: /\b(scorpione|scorpius|sco)\b/ },
+  { slug: 'leone',         fascino: 0.74, tipi: ['costellazione'], prova: /\b(leone|leo)\b/ },
+  { slug: 'toro',          fascino: 0.78, tipi: ['costellazione'], prova: /\b(toro|taurus|tau)\b/ },
+  { slug: 'gemelli',       fascino: 0.68, tipi: ['costellazione'], prova: /\b(gemelli|gemini|gem)\b/ },
+  { slug: 'caneMaggiore',  fascino: 0.66, tipi: ['costellazione'], prova: /(cane maggiore|canis major|\bcma\b)/ },
+  { slug: 'auriga',        fascino: 0.6,  tipi: ['costellazione'], prova: /\b(auriga|aur)\b/ },
+  { slug: 'perseo',        fascino: 0.72, tipi: ['costellazione'], prova: /\b(perseo|perseus|per)\b/ },
+  { slug: 'andromedaFigura', fascino: 0.66, tipi: ['costellazione'], prova: /\b(andromeda|and)\b/ },
+  { slug: 'pegaso',        fascino: 0.64, tipi: ['costellazione'], prova: /\b(pegaso|pegasus|peg)\b/ },
+  { slug: 'boote',         fascino: 0.6,  tipi: ['costellazione'], prova: /\b(boote|bootes|boo)\b/ },
+  { slug: 'coronaBoreale', fascino: 0.66, tipi: ['costellazione'], prova: /(corona boreale|corona borealis|\bcrb\b)/ },
+  { slug: 'vergine',       fascino: 0.54, tipi: ['costellazione'], prova: /\b(vergine|virgo|vir)\b/ },
+  { slug: 'sagittario',    fascino: 0.8,  tipi: ['costellazione'], prova: /\b(sagittario|sagittarius|sgr)\b/ },
+  { slug: 'ariete',        fascino: 0.48, tipi: ['costellazione'], prova: /\b(ariete|aries|ari)\b/ },
+  { slug: 'croceDelSud',   fascino: 0.9,  tipi: ['costellazione'], prova: /(croce del sud|southern cross|\bcrux\b|\bcru\b)/ },
+  { slug: 'centauro',      fascino: 0.74, tipi: ['costellazione'], prova: /\b(centauro|centaurus|cen)\b/ },
+
+  // --- il cielo profondo, per sigla di catalogo ----------------------
+  { slug: 'pleiadi',         fascino: 1,    sigle: ['M45'] },
+  { slug: 'iadi',            fascino: 0.72, sigle: ['Mel 25'] },
+  { slug: 'presepe',         fascino: 0.74, sigle: ['M44'] },
+  { slug: 'chioma',          fascino: 0.56, sigle: ['Mel 111'] },
+  { slug: 'attaccapanni',    fascino: 0.66, sigle: ['Cr 399'] },
+  { slug: 'andromeda',       fascino: 0.98, sigle: ['M31'] },
+  { slug: 'compagneAndromeda', fascino: 0.4, sigle: ['M32', 'M110'] },
+  { slug: 'triangolo',       fascino: 0.6,  sigle: ['M33'] },
+  { slug: 'nebulosaOrione',  fascino: 1,    sigle: ['M42', 'M43'] },
+  { slug: 'laguna',          fascino: 0.78, sigle: ['M8'] },
+  { slug: 'trifida',         fascino: 0.64, sigle: ['M20'] },
+  { slug: 'nebulosaAquila',  fascino: 0.72, sigle: ['M16'] },
+  { slug: 'omega',           fascino: 0.68, sigle: ['M17'] },
+  { slug: 'ercole',          fascino: 0.9,  sigle: ['M13'] },
+  { slug: 'm92',             fascino: 0.56, sigle: ['M92'] },
+  { slug: 'm22',             fascino: 0.7,  sigle: ['M22'] },
+  { slug: 'm5',              fascino: 0.64, sigle: ['M5'] },
+  { slug: 'm3',              fascino: 0.64, sigle: ['M3'] },
+  { slug: 'm15',             fascino: 0.62, sigle: ['M15'] },
+  { slug: 'm4',              fascino: 0.6,  sigle: ['M4'] },
+  { slug: 'anatraSelvatica', fascino: 0.68, sigle: ['M11'] },
+  { slug: 'm35',             fascino: 0.58, sigle: ['M35'] },
+  { slug: 'm6',              fascino: 0.62, sigle: ['M6'] },
+  { slug: 'm7',              fascino: 0.68, sigle: ['M7'] },
+  { slug: 'doppioAmmasso',   fascino: 0.84, sigle: ['h Per', 'χ Per', 'NGC 869', 'NGC 884'] },
+  { slug: 'bode',            fascino: 0.64, sigle: ['M81'] },
+  { slug: 'sigaro',          fascino: 0.6,  sigle: ['M82'] },
+  { slug: 'vortice',         fascino: 0.74, sigle: ['M51'] },
+  { slug: 'girandola',       fascino: 0.5,  sigle: ['M101'] },
+  { slug: 'sombrero',        fascino: 0.64, sigle: ['M104'] },
+  { slug: 'anello',          fascino: 0.82, sigle: ['M57'] },
+  { slug: 'manubrio',        fascino: 0.76, sigle: ['M27'] },
+  { slug: 'granchio',        fascino: 0.66, sigle: ['M1'] },
+  { slug: 'omegaCentauri',   fascino: 0.88, sigle: ['ω Cen'] },
+  { slug: 'tucana47',        fascino: 0.8,  sigle: ['47 Tuc'] },
+  { slug: 'grandeNube',      fascino: 0.92, sigle: ['LMC'] },
+  { slug: 'piccolaNube',     fascino: 0.84, sigle: ['SMC'] },
+  { slug: 'etaCarinae',      fascino: 0.82, sigle: ['η Car'] },
+  { slug: 'nordAmerica',     fascino: 0.62, sigle: ['NGC 7000'] },
+  { slug: 'centroGalattico', fascino: 0.7,  sigle: ['GalCtr'] },
+
+  // --- e chi non è un oggetto di catalogo ----------------------------
+  { slug: 'stazione', fascino: 0.9, tipi: ['stazione'], prova: /./ }
+];
+
+/* Le sigle, in una tabella sola. Il catalogo scrive «M 7» e «M7» nella
+ * stessa colonna — sono due righe diverse dello stesso ammasso — quindi
+ * lo spazio si toglie prima di confrontare. */
+let missPerSigla = null;
+function missTabellaSigle() {
+  if (missPerSigla) return missPerSigla;
+  missPerSigla = new Map();
+  for (const voce of MISS_REPERTORIO) {
+    for (const sigla of voce.sigle || []) {
+      missPerSigla.set(String(sigla).replace(/\s+/g, '').toLowerCase(), voce);
+    }
+  }
+  return missPerSigla;
+}
+
+// Il nome ridotto all'osso: niente accenti, niente maiuscole, niente
+// spazi doppi. È la forma su cui lavorano le `prova` del repertorio.
+function missNomeNudo(s) {
+  return String(s || '').toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/* La sigla di catalogo dentro al nome di un oggetto profondo.
+ *
+ * «M31 — Galassia di Andromeda» è il nome che il catalogo compone in
+ * `catPreparaProfondo`, e la sigla è tutto quello che sta prima del
+ * trattino lungo. È l'unico pezzo che non cambia con la lingua, ed è per
+ * questo che il riconoscimento del cielo profondo passa di lì e non dal
+ * nome proprio. */
+function missSiglaCatalogo(t) {
+  if (!t) return '';
+  if (t.sigla && t.tipo === 'profondo') return String(t.sigla).replace(/\s+/g, '').toLowerCase();
+  const nome = String(t.nome || '');
+  const taglio = nome.split(/\s+[—–-]\s+/)[0];
+  return taglio.replace(/\s+/g, '').toLowerCase();
+}
+
+// La voce del repertorio che parla di questo bersaglio, o `null`.
+function missVoceRepertorio(t) {
+  if (!t) return null;
+  if (t.tipo === 'profondo') return missTabellaSigle().get(missSiglaCatalogo(t)) || null;
+  const nudo = missNomeNudo((t.sigla ? t.sigla + ' ' : '') + (t.nome || ''));
+  for (const voce of MISS_REPERTORIO) {
+    if (voce.tipi && !voce.tipi.includes(t.tipo)) continue;
+    if (voce.prova && voce.prova.test(nudo)) return voce;
+  }
+  return null;
+}
+
+function missSlugTappa(t) {
+  const voce = missVoceRepertorio(t);
+  return voce ? voce.slug : null;
+}
+
+/* La categoria del cielo profondo: il gradino di mezzo del ripiego.
+ *
+ * Il catalogo tiene un `tipo` grezzo (`ammasso`, `globulare`,
+ * `nebulosa`, `planetaria`, `galassia`) e un `tipoTesto` per esteso. Il
+ * primo basta, e ha il pregio di essere un elenco chiuso di cinque
+ * parole: cinque enigmi e cinque aneddoti coprono tutti i
+ * centoquarantadue oggetti che un nome proprio non ce l'hanno. */
+const MISS_CATEGORIE_PROFONDO = new Set(['ammasso', 'globulare', 'nebulosa', 'planetaria', 'galassia']);
+
+function missCategoriaTappa(t) {
+  if (!t || t.tipo !== 'profondo') return null;
+  return MISS_CATEGORIE_PROFONDO.has(t.categoria) ? t.categoria : null;
+}
+
+/* Quanto un bersaglio ripaga la fatica di cercarlo, da 0 a 1.
+ *
+ * Nome proprio se ce l'ha, categoria se no, famiglia in ultima istanza.
+ * Non è la magnitudine travestita: M57 è tenue e vale più di mezza
+ * dozzina di ammassi aperti più luminosi di lui, perché quando lo si
+ * trova si è visto un anello di fumo lasciato da una stella morta. */
+const MISS_FASCINO_CATEGORIA = {
+  nebulosa: 0.62, globulare: 0.58, planetaria: 0.54, galassia: 0.5, ammasso: 0.44
+};
+const MISS_FASCINO_FAMIGLIA = {
+  luna: 0.9, pianeta: 0.62, stella: 0.46, costellazione: 0.52,
+  profondo: 0.48, stazione: 0.88, evento: 0.8
+};
+
+function missFascinoDi(t) {
+  const voce = missVoceRepertorio(t);
+  if (voce && typeof voce.fascino === 'number') return voce.fascino;
+  const categoria = missCategoriaTappa(t);
+  if (categoria && MISS_FASCINO_CATEGORIA[categoria] !== undefined) return MISS_FASCINO_CATEGORIA[categoria];
+  return MISS_FASCINO_FAMIGLIA[t && t.tipo] !== undefined ? MISS_FASCINO_FAMIGLIA[t.tipo] : 0.4;
+}
 
 
 // =====================================================================
@@ -238,19 +513,47 @@ function missPunteggio(c, scelte, condizioni) {
   // niente: vale in tutte e quattro le esperienze.
   punti += Math.min(30, Math.max(0, (c.altezza - 10)) * 0.45);
 
-  // --- la difficoltà, pesata dall'esperienza ---
-  const pesoDifficolta = { stupore: -9, imparare: -5, sfida: +4, bambini: -14 }[esperienza] || -8;
+  // --- la difficoltà, pesata dal gradino scelto ---
+  const pesoDifficolta = { bambini: -14, curiosi: -7, sfida: +5 }[esperienza] || -8;
   punti += pesoDifficolta * (c.difficolta - 1);
+
+  /* --- e il pavimento della difficoltà ---
+   * Solo verso il basso, e solo dove è stato chiesto: chi ha scelto
+   * «esperti» e si ritrova cinque bersagli che si trovano da soli non ha
+   * avuto una serata facile, ha avuto la serata di qualcun altro. È una
+   * penale e non un filtro, perché da un balcone di città quei cinque
+   * bersagli possono essere tutto quello che c'è. */
+  const gradita = MISS_DIFFICOLTA_GRADITA[esperienza] || 1;
+  if (c.difficolta < gradita) punti -= 11 * (gradita - c.difficolta);
 
   // --- la luminosità apparente ---
   // `evidenza` è da 0 a 1: quanto un oggetto salta all'occhio a chi non
   // sa dove guardare. La Luna vale uno, una galassia di undicesima zero.
-  const pesoEvidenza = { stupore: 26, imparare: 14, sfida: 4, bambini: 30 }[esperienza] || 20;
+  const pesoEvidenza = { bambini: 30, curiosi: 18, sfida: 4 }[esperienza] || 20;
   punti += pesoEvidenza * c.evidenza;
 
   // --- il valore didattico ---
-  const pesoDidattica = { stupore: 4, imparare: 24, sfida: 8, bambini: 10 }[esperienza] || 6;
+  const pesoDidattica = { bambini: 10, curiosi: 16, sfida: 8 }[esperienza] || 6;
   punti += pesoDidattica * (c.didattica || 0);
+
+  /* --- il fascino: quello che resta dopo averlo trovato ---
+   *
+   * È la grandezza che mancava, e la sua assenza si vedeva: a parità di
+   * altezza e magnitudine, l'ammasso NGC 6633 batteva Saturno perché era
+   * più alto di sei gradi. Ma di Saturno si racconta ancora agli amici il
+   * giorno dopo, e di NGC 6633 no — e una missione non è una classifica
+   * di visibilità, è una serata da ricordare. Il numero viene dal
+   * repertorio (§1-bis) e conta di più proprio dove la ricompensa è
+   * l'unica cosa che tenga in piedi la caccia: coi bambini. */
+  const pesoFascino = { bambini: 34, curiosi: 28, sfida: 16 }[esperienza] || 24;
+  punti += pesoFascino * (typeof c.fascino === 'number' ? c.fascino : missFascinoDi(c));
+
+  /* --- e chi ha un nome proprio, un enigma e un aneddoto suoi ---
+   * Un bonus piccolo, perché il fascino ha già detto quasi tutto; ma a
+   * pari punteggio è giusto che vinca il bersaglio che alla fine della
+   * tappa ha qualcosa da raccontare invece della frase di ripiego della
+   * sua categoria. */
+  if (c.slug || missSlugTappa(c)) punti += 6;
 
   // --- per quanto resta guardabile dentro alla missione ---
   // Un bersaglio che tramonta a metà serata non è sbagliato: è una tappa
@@ -371,10 +674,38 @@ const MISS_TETTO_FAMIGLIA = 2;
  * quindi la continuità le premia, e i punteggi sono alti tutti e due. È
  * il caso in cui il selettore, lasciato a sé, sceglie due volte la stessa
  * cosa perché le somiglianze le misura in gradi e non in significato. */
+/* La separazione fra due bersagli, in gradi, letta dalle coordinate di
+ * catalogo. È il coseno dell'angolo fra due direzioni: si scrive in una
+ * riga e non ha bisogno di sapere che ora è. */
+function missSeparazioneCatalogo(a, b) {
+  if (!a || !b || !a.mira || !b.mira) return null;
+  const r = Math.PI / 180;
+  const ra1 = a.mira.ra * 15 * r, ra2 = b.mira.ra * 15 * r;
+  const d1 = a.mira.dec * r, d2 = b.mira.dec * r;
+  const cos = Math.sin(d1) * Math.sin(d2) + Math.cos(d1) * Math.cos(d2) * Math.cos(ra1 - ra2);
+  return Math.acos(Math.max(-1, Math.min(1, cos))) / r;
+}
+
+/* Due oggetti profondi che stanno nello stesso campo dell'oculare sono
+ * una tappa sola. M31 e la sua compagna M32 distano venti primi: chi
+ * trova la prima ha già la seconda dentro all'inquadratura, e mandarcelo
+ * di nuovo è chiedergli di cercare quello che sta già guardando. Stessa
+ * cosa per M42 e M43, che sono due righe di catalogo della stessa
+ * nebulosa. */
+const MISS_STESSO_CAMPO_GRADI = 1.5;
+
 function missDoppione(c, scelti) {
   return scelti.some(g => {
     if (c.tipo === 'costellazione' && g.tipo === 'stella') return c.capofila === g.nome;
     if (g.tipo === 'costellazione' && c.tipo === 'stella') return g.capofila === c.nome;
+    // Lo stesso slug del repertorio vuol dire lo stesso enigma e lo
+    // stesso aneddoto: due tappe che raccontano la stessa storia.
+    const slugC = c.slug || missSlugTappa(c), slugG = g.slug || missSlugTappa(g);
+    if (slugC && slugC === slugG) return true;
+    if (c.tipo === 'profondo' && g.tipo === 'profondo') {
+      const gradi = missSeparazioneCatalogo(c, g);
+      if (gradi !== null && gradi < MISS_STESSO_CAMPO_GRADI) return true;
+    }
     return false;
   });
 }
@@ -519,7 +850,7 @@ function missAttaccaRiferimenti(tappe, candidati) {
  * e non contiene niente che questa funzione debba andare a chiedere a
  * qualcuno. In uscita c'è la missione, o `null` con il motivo scritto. */
 function missGeneraMissione(scenario) {
-  const scelte = Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'sfida', cielo: 'tutto', cieloDa: 135, cieloA: 180, voce: false },
+  const scelte = Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'curiosi', cielo: 'tutto', cieloDa: 135, cieloA: 180, voce: false },
     scenario && scenario.scelte);
   const condizioni = (scenario && scenario.condizioni) || {};
   const adesso = (scenario && scenario.adesso) || Date.now();
@@ -779,6 +1110,19 @@ function missDifficolta(mag, strumento, assePrimi) {
  * non servono e a una missione sì: le **stelle luminose**, che sono i
  * riferimenti da cui parte ogni istruzione, e le **costellazioni**, che
  * sono la cosa che si impara. */
+/* Il timbro del repertorio su un candidato appena costruito.
+ *
+ * `slug` e `fascino` si scrivono qui, una volta sola per candidato, e da
+ * lì viaggiano dentro alla missione salvata: il punteggio li legge senza
+ * rifare il riconoscimento, e la tappa ripresa dopo una ricarica sa
+ * ancora quale storia raccontare. */
+function missDecoraCandidato(c) {
+  const voce = missVoceRepertorio(c);
+  c.slug = voce ? voce.slug : null;
+  c.fascino = voce && typeof voce.fascino === 'number' ? voce.fascino : missFascinoDi(c);
+  return c;
+}
+
 function missCandidatiDelCielo(obs, campioni, scelte) {
   const fuori = [];
   const bortle = typeof cieloDiCasa === 'function' ? cieloDiCasa() : 5;
@@ -797,11 +1141,22 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
     let didattica = 0;
     let soffreLaLuna = false;
     let brillanza = null;
+    // Il gradino di mezzo del ripiego (§1-bis) e le due misure vere che
+    // servono al cartellino della scoperta: la larghezza apparente e il
+    // nome della specie.
+    let categoria = null;
+    let sigla = null;
+    let assePrimiVeri = null;
+    let tipoTesto = null;
 
     if (b.tipo === 'profondo' && b.dato) {
       mag = b.dato.mag;
       assePrimi = b.dato.assePrimi;
       brillanza = typeof b.dato.brillanza === 'number' ? b.dato.brillanza : mag + 5;
+      categoria = b.dato.tipo || null;
+      sigla = b.dato.sigla || null;
+      assePrimiVeri = typeof b.dato.assePrimi === 'number' ? b.dato.assePrimi : null;
+      tipoTesto = b.dato.tipoTesto || null;
       soffreLaLuna = true;
       didattica = 0.6;
       strumentoMinimo = typeof profondoStrumento === 'function'
@@ -827,12 +1182,16 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
       else if (mag > 3) strumentoMinimo = 'binocolo';
     }
 
-    fuori.push({
+    fuori.push(missDecoraCandidato({
       id: b.tipo + ':' + (b.id || b.nome),
       nome: b.nome,
       mira: b.ra !== undefined ? { ra: b.ra, dec: b.dec } : null,
       corpo: b.ra === undefined ? b.id : null,
       tipo: b.tipo,
+      categoria,
+      sigla,
+      assePrimi: assePrimiVeri,
+      tipoTesto,
       idCielo: typeof pianIdCielo === 'function' ? pianIdCielo(b) : (b.id || null),
       quando: v.migliore.ms,
       altezza: v.migliore.alt,
@@ -850,7 +1209,7 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
       soffreLaLuna,
       aOrarioPreciso: false,
       puntiBase: 50
-    });
+    }));
   }
 
   // Le stelle luminose: sono gli otto slot che il planetario conosce già
@@ -860,7 +1219,7 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
     SKY_STELLE.forEach((s, i) => {
       const v = missVisibilitaNellaFinestra({ ra: s.ra, dec: s.dec }, obs, campioni);
       if (!v) return;
-      fuori.push({
+      fuori.push(missDecoraCandidato({
         id: 'stella:Star' + (i + 1),
         nome: s.nome,
         mira: { ra: s.ra, dec: s.dec },
@@ -873,6 +1232,10 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
         minutiUtili: v.minutiUtili,
         strumentoMinimo: 'occhio',
         mag: s.mag,
+        // La distanza sta nel catalogo del planetario, e serve al
+        // cartellino della scoperta: «la luce che stai guardando è partita
+        // nel 1477» è un numero vero, non un modo di dire.
+        anniLuce: typeof s.ly === 'number' ? s.ly : null,
         magLimiteZenit: cieloLocale.magLimite,
         fondoCielo: cieloLocale.fondo,
         difficolta: s.mag < 1 ? 1 : 2,
@@ -881,7 +1244,7 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
         soffreLaLuna: false,
         aOrarioPreciso: false,
         puntiBase: 46
-      });
+      }));
     });
   }
 
@@ -905,7 +1268,7 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
       const decMedia = cost.stelle.reduce((s, st) => s + st[1], 0) / cost.stelle.length;
       const v = missVisibilitaNellaFinestra({ ra: raMedia, dec: decMedia }, obs, campioni);
       if (!v) continue;
-      fuori.push({
+      fuori.push(missDecoraCandidato({
         id: 'costellazione:' + cost.nome,
         nome: cost.nome,
         sigla,
@@ -928,7 +1291,7 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
         soffreLaLuna: false,
         aOrarioPreciso: false,
         puntiBase: 44
-      });
+      }));
     }
   }
 
@@ -958,7 +1321,7 @@ function missCandidatiAOrarioPreciso(partenzaMs, durataMin) {
         const az = typeof p.azCulmine === 'number' ? p.azCulmine : 180;
         if (alt - missOstacolo(az) <= 1) continue;
         const sat = typeof satelliteDaId === 'function' ? satelliteDaId(p.satId) : null;
-        fuori.push({
+        fuori.push(missDecoraCandidato({
           id: 'stazione:' + p.satId + ':' + culmine,
           nome: sat ? sat.nome : p.satId,
           tipo: 'stazione',
@@ -977,7 +1340,7 @@ function missCandidatiAOrarioPreciso(partenzaMs, durataMin) {
           soffreLaLuna: false,
           aOrarioPreciso: true,
           puntiBase: 58
-        });
+        }));
       }
     } catch (e) { /* dati orbitali non ancora arrivati */ }
   }
@@ -1000,7 +1363,7 @@ function missCandidatiAOrarioPreciso(partenzaMs, durataMin) {
       if (!pos || typeof pos.alt !== 'number') continue;
       const sopra = pos.alt - missOstacolo(pos.az);
       if (sopra <= 1) continue;
-      fuori.push({
+      fuori.push(missDecoraCandidato({
         id: 'evento:' + ev.id,
         nome: ev.titolo,
         tipo: 'evento',
@@ -1019,7 +1382,7 @@ function missCandidatiAOrarioPreciso(partenzaMs, durataMin) {
         soffreLaLuna: false,
         aOrarioPreciso: true,
         puntiBase: 60
-      });
+      }));
     }
   }
 
@@ -1144,10 +1507,13 @@ function missCaricaScelte() {
   if (!s || typeof s !== 'object') return;
   if (MISS_DURATE.includes(s.durata)) miss.scelte.durata = s.durata;
   if (MISS_STRUMENTI.includes(s.strumento)) miss.scelte.strumento = s.strumento;
-  // Le quattro vecchie esperienze confluiscono nel percorso adulti; nessuna
-  // preferenza salvata puo' far ricomparire una modalita' rimossa.
-  if (s.esperienza === 'bambini') miss.scelte.esperienza = 'bambini';
-  else miss.scelte.esperienza = 'sfida';
+  /* I gradini erano due e adesso sono tre. Una preferenza salvata non può
+   * far ricomparire una modalità che non esiste più: «stupore» e
+   * «imparare», che erano i due percorsi morbidi, diventano il gradino di
+   * mezzo — quello che a suo tempo li aveva sostituiti tutti e due era il
+   * gradino difficile, e a chi voleva essere accompagnato non si può
+   * continuare a dare un esame. */
+  miss.scelte.esperienza = MISS_ESPERIENZE.includes(s.esperienza) ? s.esperienza : 'curiosi';
   if (s.cielo === 'tutto' || s.cielo === 'settore') miss.scelte.cielo = s.cielo;
   if (MISS_DIREZIONI.includes(Number(s.cieloDa))) miss.scelte.cieloDa = Number(s.cieloDa);
   if (MISS_DIREZIONI.includes(Number(s.cieloA))) miss.scelte.cieloA = Number(s.cieloA);
@@ -1439,12 +1805,33 @@ function missAggiornaMirino(base) {
     ? '' : missGuidaMirino(base, t);
 }
 
+/* La schermata della scoperta: il premio.
+ *
+ * È il mezzo minuto per cui esiste tutto il resto, e va costruito come si
+ * costruisce un premio — prima la conferma, poi il nome, poi qualcosa che
+ * non si sapeva. Le quattro righe sono in quest'ordine di proposito:
+ *
+ *   il **nome** e la sua specie, perché la prima cosa che si vuole sapere
+ *   è che cosa si è trovato, detto con la parola giusta;
+ *   il **cartellino**, un numero vero e immaginabile (§`missCartellino`);
+ *   l'**aneddoto**, che è il mito, la scoperta o la stranezza — e se ce
+ *   n'è più di uno si può chiederne un altro senza perdere la tappa;
+ *   la **domanda**, che gira il discorso: non «ecco cos'è» ma «adesso
+ *   guardalo tu, e dimmi cosa vedi». È la riga che trasforma una
+ *   notifica in un'osservazione, ed è il motivo per cui la casella di
+ *   testo sta qui e non nel diario a fine serata. */
 function missHtmlScoperta(t) {
+  const cartellino = missCartellino(t);
+  const altre = missQuanteVarianti('curiosita.' + missBaseRacconto(t)) > 1;
   return `<div class="missione-scoperta">
     <button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
       aria-label="${missT('terminaPlanetario')}">×</button>
     <h3>${missT('gioco.scoperta', { nome: missTesto(missNomeTappa(t)) })}</h3>
-    <p>${missTesto(missCuriositaTesto(t))}</p>
+    <p class="missione-specie">${missTesto(missSpecieTappa(t))}${
+      cartellino ? ' · <span class="missione-cartellino">' + missTesto(cartellino) + '</span>' : ''}</p>
+    <p class="missione-aneddoto">${missTesto(missCuriositaTesto(t))}</p>
+    ${altre ? `<button type="button" class="missione-tasto missione-tasto-lieve"
+      data-miss-azione="altraStoria">${missT('gioco.altraStoria')}</button>` : ''}
     <label for="missione-osservazione">${missTesto(missDomanda(t))}</label>
     <textarea id="missione-osservazione" maxlength="500" rows="2"
       placeholder="${missT('gioco.nota')}">${missTesto(t.osservazione || '')}</textarea>
@@ -1922,10 +2309,7 @@ function missChiaveRegistro(chiave, esperienza) {
 }
 
 function missT(chiave, dati) {
-  const esperienza = (miss.attiva && miss.attiva.scelte && miss.attiva.scelte.esperienza) ||
-    (miss.anteprima && miss.anteprima.scelte && miss.anteprima.scelte.esperienza) ||
-    miss.scelte.esperienza;
-  const registrata = missChiaveRegistro(chiave, esperienza);
+  const registrata = missChiaveRegistro(chiave, missModoAttuale());
   return typeof astroI18n === 'object' ? astroI18n.t('missione.' + registrata, dati) : registrata;
 }
 
@@ -2104,9 +2488,13 @@ function missDisegnaPannello() {
 function missGruppoScelte(nome, voci, attuale, etichetta) {
   const pillole = voci.map(v => {
     const scelto = v.valore === attuale;
-    return `<button type="button" class="missione-scelta${scelto ? ' attiva' : ''}"
+    // La `nota` è la riga sotto al nome, e serve dove l'etichetta da sola
+    // non dice cosa cambia: «Esperti» non è una promessa finché non si
+    // legge che vuol dire il solo enigma e nessun aiuto regalato.
+    return `<button type="button" class="missione-scelta${scelto ? ' attiva' : ''}${v.nota ? ' con-nota' : ''}"
       role="radio" aria-checked="${scelto}" data-miss-scelta="${nome}" data-miss-valore="${v.valore}">
-      ${v.icona ? missIcona(v.icona, 18) : ''}<span>${v.nome}</span></button>`;
+      ${v.icona ? missIcona(v.icona, 18) : ''}<span>${v.nome}</span>${
+        v.nota ? `<small class="missione-scelta-nota">${v.nota}</small>` : ''}</button>`;
   }).join('');
   return `<fieldset class="missione-gruppo">
     <legend class="missione-domanda">${etichetta}</legend>
@@ -2135,7 +2523,8 @@ function missHtmlConfigurazione() {
     valore: s, icona: (typeof STRUMENTI !== 'undefined' && STRUMENTI[s]) ? STRUMENTI[s].disegno : null,
     nome: (typeof STRUMENTI !== 'undefined' && STRUMENTI[s]) ? STRUMENTI[s].nome : s
   }));
-  const esperienze = MISS_ESPERIENZE.map(e => ({ valore: e, nome: missT('esperienza.' + e) }));
+  const esperienze = MISS_ESPERIENZE.map(e => ({
+    valore: e, nome: missT('esperienza.' + e), nota: missT('esperienzaNota.' + e) }));
   const direzione = gradi => typeof astroI18n === 'object' && astroI18n.nomePunto
     ? astroI18n.nomePunto(gradi) : String(gradi) + '°';
   const opzioniDirezione = selezionata => ([...MISS_DIREZIONI,
@@ -2217,9 +2606,21 @@ function missHtmlAnteprima(m) {
   if (c.meteoAssente) avvisi.push(missT('senzaMeteo'));
   if (c.terrenoAssente) avvisi.push(missT('senzaTerreno'));
 
-  const righe = m.tappe.map((t, i) => `<li class="missione-anteprima-riga">
+  /* L'anteprima non fa spoiler.
+   *
+   * Prima elencava i nomi dei bersagli, e la ragione era buona — chi
+   * prepara la serata vuole sapere cosa lo aspetta. Ma da quando la
+   * missione è una caccia, leggere «Saturno, M13, Vega» prima di
+   * cominciare è aprire il regalo per controllare che sia un regalo:
+   * l'enigma della prima tappa arriva quando la risposta è già scritta
+   * tre righe più su. Quello che serve davvero per decidere se la serata
+   * va bene — quante tappe, a che ora, di che genere, quanto difficili —
+   * c'è tutto; e chi i nomi li vuole lo stesso ha il tasto per sbirciare,
+   * che è una scelta invece di un incidente. */
+  const righe = m.tappe.map((t) => `<li class="missione-anteprima-riga">
       <span class="missione-anteprima-ora">${missOra(t.quando)}</span>
-      <span class="missione-anteprima-nome">${missTesto(missNomeTappa(t))}</span>
+      <span class="missione-anteprima-nome">${missTesto(miss.sbircia
+        ? missNomeTappa(t) : missT('anteprimaMistero.' + missGenereTappa(t)))}</span>
       <span class="missione-anteprima-che">${missT('difficolta.' + t.difficolta)}</span>
     </li>`).join('');
   const futura = m.partenza > Date.now() + MISS_SCARTO_RIGENERA_MS;
@@ -2233,6 +2634,8 @@ function missHtmlAnteprima(m) {
     })}</p>
     ${avvisi.length ? `<p class="missione-avviso" data-tono="informa">${avvisi.join(' ')}</p>` : ''}
     <ul class="missione-anteprima-elenco">${righe}</ul>
+    <button type="button" class="missione-tasto missione-tasto-lieve" data-miss-azione="sbircia">
+      ${missT(miss.sbircia ? 'nascondiBersagli' : 'sbirciaBersagli')}</button>
     <div class="missione-azioni">
       <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="${futura ? 'avviaDopo' : 'avvia'}">
         ${futura ? missT('iniziaAlle', { ora: missOra(m.partenza) }) : missT('iniziaAdesso')}</button>
@@ -2302,57 +2705,172 @@ function missHashTesto(testo) {
   return h >>> 0;
 }
 
-/* Non una curiosità intercambiabile, ma un piccolo repertorio legato al
- * bersaglio. Prima si riconoscono i nomi propri (anche inglesi e sigle di
- * catalogo), poi si ripiega sulla famiglia. Ogni voce ha tre racconti:
- * osservazione, storia umana e mito si alternano senza cambiare durante la
- * stessa missione. */
-function missCuriositaChiave(tappa) {
-  const nome = String((tappa && (tappa.sigla || tappa.nome)) || '').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const lungo = (nome + ' ' + String(tappa && tappa.nome || '').toLowerCase()).replace(/\s+/g, ' ');
-  const riconosci = [
-    ['luna', /moon|luna/], ['mercurio', /mercur|mercury/], ['venere', /venus|venere/],
-    ['marte', /mars|marte/], ['giove', /jupiter|giove/], ['saturno', /saturn|saturno/],
-    ['urano', /uranus|urano/], ['nettuno', /neptune|nettuno/], ['sirio', /sirius|sirio/],
-    ['vega', /\bvega\b/], ['polare', /polaris|polare/], ['betelgeuse', /betelgeuse/],
-    ['pleiadi', /m\s*45|pleiad/], ['andromeda', /m\s*31|andromed/],
-    ['orione', /m\s*42|orion/], ['ercole', /m\s*13|hercules|ercole/],
-    ['cassiopea', /cassiopeia|cassiopea/], ['orsa', /ursa major|orsa.*maggiore/],
-    ['lira', /\blyr\b|\blira\b|\blyra\b/], ['cigno', /cygnus|cigno/],
-    ['scorpione', /scorpius|scorpione/]
-  ];
-  const proprio = riconosci.find(([, prova]) => prova.test(lungo));
-  const base = proprio ? proprio[0] :
-    (tappa && tappa.tipo === 'stazione' ? 'stazione' :
-      tappa && ['profondo', 'costellazione', 'stella', 'pianeta'].includes(tappa.tipo) ? tappa.tipo : 'generica');
-  const variante = Number.isInteger(tappa && tappa.raccontoVariante)
-    ? tappa.raccontoVariante % 3 : missHashTesto(lungo) % 3;
-  return `curiosita.${base}.${variante + 1}`;
+// Il gradino scelto, letto dove si trova: la missione in corso, l'anteprima
+// che si sta guardando, o la configurazione.
+function missModoAttuale() {
+  return (miss.attiva && miss.attiva.scelte && miss.attiva.scelte.esperienza) ||
+    (miss.anteprima && miss.anteprima.scelte && miss.anteprima.scelte.esperienza) ||
+    miss.scelte.esperienza || 'curiosi';
+}
+
+/* La prima delle chiavi proposte che il dizionario conosce davvero.
+ *
+ * È il meccanismo su cui poggia tutta la catena di ripiego del §1-bis:
+ * si prova il nome proprio, poi la categoria, poi la famiglia, e l'ultima
+ * della fila è quella che esiste sempre — quindi una chiave si
+ * restituisce comunque, anche fuori da un browser dove `astroI18n` non
+ * c'è. Senza questa riga un oggetto senza aneddoto proprio non
+ * mostrerebbe un ripiego: mostrerebbe la chiave. */
+function missPrimaChiaveNota(chiavi) {
+  if (typeof astroI18n === 'object' && typeof astroI18n.esiste === 'function') {
+    for (const c of chiavi) if (astroI18n.esiste('missione.' + c)) return c;
+  }
+  return chiavi[chiavi.length - 1];
+}
+
+/* Quante varianti di un racconto esistono per davvero.
+ *
+ * Gli aneddoti non sono tre per tutti, ed è una scelta: di Saturno si
+ * possono raccontare tre cose che valgono la pena, di un ammasso aperto
+ * senza nome una sola — e tre righe scritte per riempire una tabella si
+ * riconoscono subito. Il numero si **misura** invece di dichiararlo, così
+ * chi aggiunge una quarta storia non deve toccare nessun contatore. Fuori
+ * da un browser, dove il dizionario non c'è, si risponde tre: è il numero
+ * che le prove del motore si aspettano. */
+function missQuanteVarianti(prefisso, massimo) {
+  const tetto = massimo || 3;
+  if (typeof astroI18n !== 'object' || typeof astroI18n.esiste !== 'function') return tetto;
+  let n = 0;
+  while (n < tetto && astroI18n.esiste('missione.' + prefisso + '.' + (n + 1))) n++;
+  return Math.max(1, n);
 }
 
 function missFamigliaContenuto(t) {
   return ['luna', 'pianeta', 'stella', 'costellazione', 'profondo'].includes(t.tipo) ? t.tipo : 'profondo';
 }
 
-// Un dettaglio osservabile del bersaglio, non una descrizione da fotografia.
-// I nomi propri hanno un segno riconoscibile (colore, sagoma, disposizione);
-// gli altri ripiegano sull'aspetto realistico della loro famiglia.
-function missSegnoTappa(t) {
-  const base = missCuriositaChiave(t).split('.')[1];
-  const segno = 'gioco.segno.' + (base === 'andromeda' && t.tipo !== 'profondo' ? 'costellazione' : base);
-  return astroI18n.esiste('missione.' + segno) ? missT(segno) :
-    missT('gioco.osserva.' + missFamigliaContenuto(t));
+/* Di che genere è una tappa, per dirlo senza dirne il nome.
+ *
+ * Non è `missFamigliaContenuto`: quella butta le stazioni e gli eventi
+ * nel cielo profondo, che va benissimo per scegliere una domanda
+ * («riesci a separare dei puntini?») e malissimo per l'anteprima, dove
+ * un passaggio della ISS finirebbe annunciato come «una luce del cielo
+ * profondo». */
+function missGenereTappa(t) {
+  return (t && (t.tipo === 'stazione' || t.tipo === 'evento')) ? t.tipo : missFamigliaContenuto(t);
 }
 
+/* La base del racconto: nome proprio, categoria, famiglia.
+ *
+ * Sono i tre gradini del §1-bis nell'ordine in cui vanno provati, ed è lo
+ * stesso ordine per gli aneddoti, gli enigmi e i segni osservabili — se
+ * divergessero, un oggetto potrebbe ricevere l'enigma di una galassia e
+ * l'aneddoto di un ammasso, che è il modo più veloce di far sembrare
+ * finto tutto il pezzo. */
+function missBaseRacconto(t) {
+  if (!t) return 'generica';
+  const slug = t.slug || missSlugTappa(t);
+  if (slug) return slug;
+  const categoria = missCategoriaTappa(t);
+  if (categoria) return categoria;
+  return ['profondo', 'costellazione', 'stella', 'pianeta', 'luna', 'stazione'].includes(t.tipo)
+    ? t.tipo : 'generica';
+}
+
+/* L'aneddoto che si legge dopo aver trovato il bersaglio.
+ *
+ * È il premio, e per questo non è una frase intercambiabile: di ogni
+ * oggetto con un nome proprio ci sono da uno a tre racconti — cosa si sta
+ * guardando davvero, chi gli ha dato quel nome e cosa ci ha visto dentro,
+ * e la cosa che nessuno si aspetta. Si alternano fra una missione e
+ * l'altra ma **non** dentro alla stessa: chi ricarica la pagina a metà
+ * serata deve ritrovare la storia che stava leggendo. */
+function missCuriositaChiave(tappa) {
+  const base = missBaseRacconto(tappa);
+  const quante = missQuanteVarianti('curiosita.' + base);
+  const variante = Number.isInteger(tappa && tappa.raccontoVariante)
+    ? tappa.raccontoVariante
+    : missHashTesto(missNomeNudo(tappa && tappa.nome));
+  return `curiosita.${base}.${variante % quante + 1}`;
+}
+
+// Un dettaglio osservabile del bersaglio, non una descrizione da
+// fotografia: il colore, la sagoma, la disposizione. Nome proprio,
+// categoria, famiglia — la catena di sempre.
+function missSegnoTappa(t) {
+  const chiavi = [];
+  const slug = t.slug || missSlugTappa(t);
+  if (slug) chiavi.push('gioco.segno.' + slug);
+  const categoria = missCategoriaTappa(t);
+  if (categoria) chiavi.push('gioco.segno.' + categoria);
+  chiavi.push('gioco.osserva.' + missFamigliaContenuto(t));
+  return missT(missPrimaChiaveNota(chiavi));
+}
+
+/* L'enigma.
+ *
+ * È la prima cosa che si legge di una tappa, ed è quella che decide se la
+ * serata è un gioco o un elenco di compiti. Un enigma scritto per
+ * l'oggetto — «Ho mari senza una goccia d'acqua» — vale dieci volte uno
+ * scritto per la sua famiglia, e per questo il repertorio ne tiene uno
+ * per ogni bersaglio che abbia un nome proprio. Chi non ce l'ha scende di
+ * un gradino e riceve quello della sua specie, che parla comunque di
+ * qualcosa di vero: un ammasso globulare e una nebulosa planetaria hanno
+ * due indovinelli diversi perché sono due cose diverse.
+ *
+ * Ai bambini si dà la versione breve e in rima quando c'è, perché un
+ * enigma che non si capisce non è una sfida: è un muro. */
+function missEnigma(t) {
+  const modo = missModoAttuale();
+  const slug = t.slug || missSlugTappa(t);
+  const categoria = missCategoriaTappa(t);
+  const famiglia = missFamigliaContenuto(t);
+  const n = (t.indizioVariante || 0) % 3 + 1;
+  const chiavi = [];
+  if (modo === 'bambini') {
+    if (slug) chiavi.push('gioco.enigmaBimbi.' + slug);
+    if (categoria) chiavi.push('gioco.enigmaBimbi.' + categoria);
+    chiavi.push('gioco.enigmaBimbi.' + famiglia);
+  }
+  if (slug) chiavi.push('gioco.enigma.oggetto.' + slug);
+  if (categoria) chiavi.push('gioco.enigma.specie.' + categoria);
+  chiavi.push('gioco.enigma.' + famiglia + '.' + n);
+  return missT(missPrimaChiaveNota(chiavi));
+}
+
+// Il punto cardinale in cui sta adesso il bersaglio, con l'azimut della
+// tappa come ripiego: serve alle introduzioni, che si scrivono anche
+// fuori dal planetario.
+function missDoveOra(t) {
+  let az = t.azimut;
+  if (miss.attiva && typeof osservatoreCorrente === 'function' && osservatoreCorrente()) {
+    const ora = missTappaNelPlanetario(t);
+    if (Number.isFinite(ora.azimut)) az = ora.azimut;
+  }
+  return (typeof astroI18n === 'object' && astroI18n.nomePunto && Number.isFinite(az))
+    ? astroI18n.nomePunto(az) : '';
+}
+
+/* Quello che si consegna prima della prima occhiata.
+ *
+ * Le tre righe che seguono sono i tre gradini di `MISS_GENEROSITA`, e
+ * sono tutta la differenza fra i tre livelli: agli esperti va il solo
+ * enigma, ai curiosi l'enigma e il segno da cercare, ai bambini anche la
+ * direzione — che a quel punto non è più una caccia difficile, ed è
+ * giusto così: la loro caccia è riconoscere, non trovare. */
 function missIntroduzione(t) {
-  const modo = miss.attiva ? miss.attiva.scelte.esperienza : 'sfida';
-  if (modo === 'sfida') return missT('gioco.enigma.' + missFamigliaContenuto(t) + '.' +
-    ((t.indizioVariante || 0) % 3 + 1)) + ' ' + missSegnoTappa(t);
-  return missT('gioco.intro.' + modo + '.' + ((t.indizioVariante || 0) % 3 + 1)) + ' ' +
-    (modo === 'bambini' ?
-      missT('gioco.osserva.bambini.' + missFamigliaContenuto(t)) + ' ' + missSegnoTappa(t) :
-      missSegnoTappa(t));
+  const modo = missModoAttuale();
+  const g = MISS_GENEROSITA[modo] || MISS_GENEROSITA.curiosi;
+  const n = (t.indizioVariante || 0) % 3 + 1;
+  const pezzi = [];
+  if (modo === 'bambini') pezzi.push(missT('gioco.intro.bambini.' + n));
+  pezzi.push(missEnigma(t));
+  if (g.segno) pezzi.push(missSegnoTappa(t));
+  if (g.aiutoSubito) {
+    const dove = missDoveOra(t);
+    if (dove) pezzi.push(missT('gioco.direzione.' + n, { dove }));
+  }
+  return pezzi.filter(Boolean).join(' ');
 }
 
 function missIndizio(t) {
@@ -2402,7 +2920,7 @@ function missDistanzaSferica(a, b) {
 }
 
 function missDomanda(t) {
-  const modo = miss.attiva.scelte.esperienza;
+  const modo = missModoAttuale();
   const vicino = missVicino(t);
   if (vicino && t.domandaVariante === 2 && modo !== 'bambini')
     return missT('gioco.confronta', { nome: vicino.nome });
@@ -2410,19 +2928,97 @@ function missDomanda(t) {
     missFamigliaContenuto(t) + '.' + ((t.domandaVariante || 0) % 3 + 1));
 }
 
-function missCuriositaTesto(tappa) {
-  const modo = miss.attiva && miss.attiva.scelte.esperienza || 'sfida';
-  const famiglia = missFamigliaContenuto(tappa);
-  const chiave = missCuriositaChiave(tappa);
-  const racconto = missT(chiave);
-  if (modo === 'bambini') {
-    const base = chiave.split('.')[1];
-    const storia = 'gioco.storia.' + base;
-    return missT('gioco.bambini.' + famiglia) + ' ' +
-      ((tappa.raccontoVariante || 0) === 1 && astroI18n.esiste('missione.' + storia)
-        ? missT(storia) : missT('gioco.piccoli.' + famiglia + '.' + ((tappa.raccontoVariante || 0) % 3 + 1)));
+/* Il cartellino: un numero vero, appeso alla scoperta.
+ *
+ * L'aneddoto racconta, questo **misura**, e le due cose insieme fanno la
+ * differenza fra una curiosità e un ricordo. Non c'è niente di inventato
+ * qui dentro: gli anni luce di una stella stanno in `SKY_STELLE`, la
+ * larghezza apparente di un oggetto profondo in `dati-profondo.js`, la
+ * distanza di un pianeta la sa Astronomy Engine in questo istante.
+ *
+ * Le tre misure sono scelte perché si possono *immaginare*: l'anno in cui
+ * è partita la luce che si sta guardando, quante Lune piene ci starebbero
+ * dentro alla nebulosa, quanti minuti ci mette la luce ad arrivare da
+ * Saturno. Nessuna delle tre è un numero da scheda tecnica, e nessuna
+ * delle tre si può leggere senza fermarsi un attimo. */
+function missCartellino(t) {
+  if (!t) return '';
+  try {
+    if (t.tipo === 'stella' && Number.isFinite(t.anniLuce) && t.anniLuce > 0) {
+      const anni = Math.round(t.anniLuce);
+      const anno = new Date().getFullYear() - anni;
+      return anni < 12
+        ? missT('gioco.cartellino.stellaVicina', { anni })
+        : missT('gioco.cartellino.stella', { anni, anno });
+    }
+    if (t.tipo === 'profondo' && Number.isFinite(t.assePrimi) && t.assePrimi > 0) {
+      const lune = t.assePrimi / 30;
+      if (lune >= 0.85) return missT('gioco.cartellino.grande', { lune: Math.round(lune * 10) / 10 });
+      return missT('gioco.cartellino.piccolo', { frazione: Math.round(1 / lune) });
+    }
+    if ((t.tipo === 'pianeta' || t.tipo === 'luna') && typeof Astronomy !== 'undefined') {
+      const v = Astronomy.GeoVector(t.corpo || t.idCielo, new Date(), true);
+      // Un'unità astronomica sono 499,005 secondi luce: il conto è tutto lì.
+      const secondi = v.Length() * 499.005;
+      if (secondi < 90) return missT('gioco.cartellino.secondiLuce', { n: Math.round(secondi) });
+      if (secondi < 5400) return missT('gioco.cartellino.minutiLuce', { n: Math.round(secondi / 60) });
+      return missT('gioco.cartellino.oreLuce', { n: Math.round(secondi / 360) / 10 });
+    }
+    if (t.tipo === 'costellazione' && t.mira && Number.isFinite(t.mira.ra)) {
+      const mese = missMeseDiCulmine(t.mira.ra);
+      if (mese) return missT('gioco.cartellino.costellazione', { mese });
+    }
+  } catch (e) { /* le effemeridi non sono pronte: il cartellino è un di più */ }
+  return '';
+}
+
+/* In che mese una figura passa alta a mezzanotte.
+ *
+ * `costMeseMigliore` fa lo stesso conto ma risponde con un nome di mese
+ * italiano scritto a mano (`COST_MESI`), e qui quel nome finirebbe dentro
+ * a una frase inglese. Il conto è cinque righe e la data la sa formattare
+ * il gestore delle lingue, che è l'unico che conosca il mese di chi
+ * legge. */
+function missMeseDiCulmine(raOre) {
+  if (typeof raOre !== 'number') return '';
+  const raSole = ((raOre - 12) % 24 + 24) % 24;
+  const d = new Date(Date.UTC(2001, 2, 21));
+  d.setUTCDate(d.getUTCDate() + Math.round(raSole / 24 * 365.25));
+  return (typeof astroI18n === 'object' && astroI18n.data)
+    ? astroI18n.data(d, { month: 'long' }) : '';
+}
+
+// Che cosa si è trovato, detto con la parola giusta: la specie di
+// catalogo se c'è («ammasso globulare», «nebulosa planetaria»), se no la
+// famiglia. È la riga che dà un nome alla cosa, prima che l'aneddoto
+// racconti la sua storia.
+function missSpecieTappa(t) {
+  if (t && t.tipo === 'profondo') {
+    const categoria = missCategoriaTappa(t);
+    if (categoria) return missT('specie.' + categoria);
+    if (t.tipoTesto) return t.tipoTesto;
   }
-  if (modo === 'imparare') return missT('gioco.impara.' + famiglia) + ' ' + racconto;
+  return missT('specie.' + missFamigliaContenuto(t));
+}
+
+function missCuriositaTesto(tappa) {
+  const modo = missModoAttuale();
+  const famiglia = missFamigliaContenuto(tappa);
+  const racconto = missT(missCuriositaChiave(tappa));
+  if (modo === 'bambini') {
+    /* Ai bambini l'aneddoto arriva preceduto dal «cos'è» della sua
+     * famiglia, che è la cornice senza la quale la storia non si appoggia
+     * a niente. Poi la catena di sempre, con un gradino in più: la storia
+     * scritta per loro se c'è, se no una delle cose da sapere della sua
+     * famiglia — e **non** l'aneddoto lungo, che è scritto per un adulto
+     * e a un bambino di otto anni non dice niente. */
+    const base = missBaseRacconto(tappa);
+    const n = (tappa.raccontoVariante || 0) % 3 + 1;
+    const dopo = missPrimaChiaveNota([
+      'gioco.storia.' + base, 'gioco.piccoli.' + famiglia + '.' + n
+    ]);
+    return missT('gioco.bambini.' + famiglia) + ' ' + missT(dopo);
+  }
   return racconto;
 }
 
@@ -2661,6 +3257,22 @@ function missAzione(azione, corpo) {
       miss.strisciaNascosta = false;
       missMostraStrisciaCielo();
       break;
+    case 'altraStoria': {
+      // Un'altra storia sullo stesso oggetto, non un'altra tappa: si
+      // gira la variante e si ridisegna, e la nota già scritta si salva
+      // prima — il testo di chi osserva non si butta mai per un tasto.
+      const t = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
+      if (!t) break;
+      const nota = corpo && corpo.querySelector('#missione-osservazione');
+      if (nota) t.osservazione = nota.value.slice(0, 500);
+      const quante = missQuanteVarianti('curiosita.' + missBaseRacconto(t));
+      t.raccontoVariante = ((t.raccontoVariante || 0) + 1) % Math.max(1, quante);
+      missSalvaAttiva();
+      missMostraStrisciaCielo();
+      missMostraVista('inCorso');
+      missRaccontaTappa(t);
+      break;
+    }
     case 'segui-telefono':
       missSeguiTelefono();
       break;
@@ -2676,8 +3288,13 @@ function missAzione(azione, corpo) {
       missPreparaAnteprima(evitare);
       break;
     }
+    case 'sbircia':
+      miss.sbircia = !miss.sbircia;
+      missMostraVista('anteprima');
+      break;
     case 'configura':
       miss.anteprima = null;
+      miss.sbircia = false;
       // Una missione conclusa e non salvata si archivia qui: chi chiede
       // un'altra missione ha finito con quella, e tenersela in giro
       // farebbe riaprire il pannello sul risultato di ieri.
@@ -2706,11 +3323,6 @@ function missAzione(azione, corpo) {
       t.fase = 'conclusa';
       missFermaVoce();
       missAvanza();
-      break;
-    }
-    case 'rivela': {
-      const t = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
-      if (t && t.aiuto >= 3) { t.rivelata = true; missSalvaAttiva(); missMostraStrisciaCielo(); }
       break;
     }
     case 'torna':
@@ -2763,6 +3375,9 @@ function missAzione(azione, corpo) {
  * perché **il cielo non offre niente** — che è un'informazione vera e non
  * un guasto, e va detta con altre parole. */
 function missPreparaAnteprima(evitare) {
+  // Una missione nuova è una caccia nuova: chi aveva sbirciato quella di
+  // prima non si ritrova i nomi già scoperti su questa.
+  miss.sbircia = false;
   const partenza = missPartenzaScelta();
   const scenario = missScenario(miss.scelte, partenza);
   if (scenario.errore) {
@@ -2864,6 +3479,13 @@ const missProve = {
   fasciaAltezza: missFasciaAltezza,
   misuraAMano: missMisuraAMano,
   curiositaChiave: missCuriositaChiave,
+  baseRacconto: missBaseRacconto,
+  slugTappa: missSlugTappa,
+  fascinoDi: missFascinoDi,
+  voceRepertorio: missVoceRepertorio,
+  siglaCatalogo: missSiglaCatalogo,
+  separazioneCatalogo: missSeparazioneCatalogo,
+  doppione: missDoppione,
   chiaveRegistro: missChiaveRegistro,
   evidenza: missEvidenzaDaMagnitudine,
   limiteStellareLocale: missLimiteStellareLocale,
@@ -2875,7 +3497,9 @@ const missProve = {
   campioni: missCampioni,
   costanti: {
     MISS_VERSIONE, MISS_DURATE, MISS_STRUMENTI, MISS_ESPERIENZE, MISS_DIREZIONI,
-    MISS_TAPPE_PER_DURATA, MISS_ALTEZZA_MINIMA, MISS_DIFFICOLTA_MASSIMA, MISS_PREAVVISO_MIN,
+    MISS_TAPPE_PER_DURATA, MISS_ALTEZZA_MINIMA, MISS_DIFFICOLTA_MASSIMA,
+    MISS_DIFFICOLTA_GRADITA, MISS_GENEROSITA, MISS_REPERTORIO,
+    MISS_STESSO_CAMPO_GRADI, MISS_PREAVVISO_MIN,
     MISS_SCADENZA_MS, MISS_TETTO_FAMIGLIA, MISS_LIVELLO_STRUMENTO,
     CHIAVE_MISS_SCELTE, CHIAVE_MISS_ATTIVA
   }
