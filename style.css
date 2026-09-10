@@ -10782,6 +10782,10 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
     min-height: 0;
     gap: .4rem;
   }
+  /* La base flessibile di 240px serve solo quando testo e comandi sono
+     affiancati. In colonna diventerebbe invece un'altezza di 240px e
+     ricreerebbe il grande spazio vuoto sotto alla domanda. */
+  .missione-striscia-testo { flex: 0 1 auto; width: 100%; }
   .missione-striscia-tasti { flex-wrap: wrap; }
 }
 
