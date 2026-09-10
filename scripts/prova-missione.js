@@ -232,6 +232,12 @@ prova('lo stesso oggetto profondo resta possibile sotto un cielo buio', () => {
   assert.ok(!m.vuota);
 });
 
+prova('la simulazione Bortle usa la scelta della missione', () => {
+  assert.strictEqual(motore.bortleScelto({ bortle: 2 }), 2);
+  assert.strictEqual(motore.bortleScelto({ bortle: 8 }), 8);
+  assert.strictEqual(motore.bortleScelto({ bortle: 7 }), 5, 'una tacca non prevista torna al cielo predefinito');
+});
+
 prova('la porzione Sud–Sud-est esclude il resto del cielo', () => {
   const dentro = candidato('dentro-settore', { azimut: 157.5, puntiBase: 100 });
   const fuori = candidato('fuori-settore', { azimut: 270, puntiBase: 100 });
@@ -982,6 +988,8 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         attese: K.MISS_DURATE.length + 3 + K.MISS_STRUMENTI.length +
                 K.MISS_ESPERIENZE.length + 2 + 2,
         note: document.querySelectorAll('#missione-corpo .missione-scelta-nota').length,
+        bortle: Array.from(document.querySelectorAll('#missione-corpo [data-miss-bortle] option'))
+          .map(o => ({ valore: Number(o.value), selezionata: o.selected })),
         fuocoDentro: document.getElementById('modale-missione').contains(document.activeElement)
       };
     });
@@ -992,6 +1000,9 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       // Ogni gradino porta la sua riga di spiegazione: senza, «Esperti»
       // non promette niente e la scelta si fa a caso.
       assert.strictEqual(config.note, K.MISS_ESPERIENZE.length, `${config.note} note`);
+      assert.deepStrictEqual(config.bortle.map(o => o.valore), K.MISS_BORTLE);
+      assert.strictEqual(config.bortle.find(o => o.selezionata).valore, 5,
+        'parte dal cielo luminoso salvato nelle Impostazioni');
     });
     prova('il fuoco entra nella finestra', () => assert.strictEqual(config.fuocoDentro, true));
 
@@ -1006,13 +1017,16 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       data.dispatchEvent(new Event('change'));
       document.querySelector('[data-miss-scelta="strumento"][data-miss-valore="binocolo"]').click();
       document.querySelector('[data-miss-scelta="esperienza"][data-miss-valore="curiosi"]').click();
+      const bortle = document.querySelector('[data-miss-bortle]');
+      bortle.value = '3';
+      bortle.dispatchEvent(new Event('change'));
     });
     const ricordate = await pagina.evaluate(() =>
       JSON.parse(localStorage.getItem('astrocalendario_missione_scelte')));
     prova('le scelte si ricordano', () => {
       assert.deepStrictEqual({ durata: ricordate.durata, momento: ricordate.momento,
-        strumento: ricordate.strumento, esperienza: ricordate.esperienza },
-        { durata: 60, momento: 'personalizzato', strumento: 'binocolo', esperienza: 'curiosi' });
+        strumento: ricordate.strumento, esperienza: ricordate.esperienza, bortle: ricordate.bortle },
+        { durata: 60, momento: 'personalizzato', strumento: 'binocolo', esperienza: 'curiosi', bortle: 3 });
       assert.ok(Number.isFinite(ricordate.momentoPersonalizzato));
     });
 

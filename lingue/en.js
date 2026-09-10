@@ -2325,6 +2325,8 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.momentoScegli': 'Choose date and time',
     'missione.dataOraMissione': 'Starting date and time',
     'missione.conCosa': 'What are you observing with?',
+    'missione.inquinamentoLuminoso': 'What level of light pollution would you like to simulate?',
+    'missione.inquinamentoSpiega': 'The initial value comes from Settings. The mission will only suggest objects that are genuinely visible under this sky.',
     'missione.cheEsperienza': 'How hard do you want it?',
     'missione.durata.10': '10 minutes',
     'missione.durata.30': '30 minutes',

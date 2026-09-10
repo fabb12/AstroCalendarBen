@@ -58,7 +58,7 @@
 //     dichiarare.
 // =====================================================================
 
-const MISS_VERSIONE = 7;
+const MISS_VERSIONE = 8;
 const CHIAVE_MISS_STORIA = 'astrocalendario_missione_storia';
 
 const CHIAVE_MISS_SCELTE = 'astrocalendario_missione_scelte';
@@ -66,6 +66,7 @@ const CHIAVE_MISS_ATTIVA = 'astrocalendario_missione_attiva';
 
 const MISS_DURATE = [10, 30, 60, 120];
 const MISS_STRUMENTI = ['occhio', 'binocolo', 'telescopio'];
+const MISS_BORTLE = [2, 3, 4, 5, 6, 8];
 
 /* I tre gradini della caccia.
  *
@@ -176,7 +177,7 @@ const MISS_MISURE_A_MANO = [
 // una ricarica sta in `attiva` e si salva (§7).
 const miss = {
   // Le tre scelte, ricordate fra una sera e l'altra
-  scelte: { durata: 30, strumento: 'occhio', esperienza: 'curiosi', cielo: 'tutto', cieloDa: 135, cieloA: 180,
+  scelte: { durata: 30, strumento: 'occhio', esperienza: 'curiosi', bortle: null, cielo: 'tutto', cieloDa: 135, cieloA: 180,
     momento: 'consigliato', momentoPersonalizzato: null, voce: false },
   // La missione appena generata e non ancora avviata
   anteprima: null,
@@ -613,6 +614,17 @@ function missLimiteStellareLocale(magZenit, altezza) {
   const seno = Math.sin(Math.max(5, altezza) * Math.PI / 180);
   const massaAria = Math.min(6, 1 / Math.max(0.08, seno));
   return magZenit - 0.28 * (massaAria - 1);
+}
+
+// Il valore esplicito della pianificazione vince; in sua assenza si usa
+// quello condiviso da Impostazioni e profilo del telescopio. Tenere qui
+// il ripiego fa sì che anche il motore e i vecchi salvataggi usino sempre
+// una tacca valida della stessa scala di Bortle dell'app.
+function missBortleScelto(scelte) {
+  const scelto = Number(scelte && scelte.bortle);
+  if (MISS_BORTLE.includes(scelto)) return scelto;
+  const casa = typeof cieloDiCasa === 'function' ? Number(cieloDiCasa()) : 5;
+  return MISS_BORTLE.includes(casa) ? casa : 5;
 }
 
 function missVisibileNelCieloLocale(c, scelte) {
@@ -1146,7 +1158,11 @@ function missDecoraCandidato(c) {
 
 function missCandidatiDelCielo(obs, campioni, scelte) {
   const fuori = [];
-  const bortle = typeof cieloDiCasa === 'function' ? cieloDiCasa() : 5;
+  // La missione può simulare un luogo diverso da quello abituale: una
+  // trasferta in montagna non deve ereditare il fondo luminoso di casa.
+  // Se la scelta manca (salvataggi precedenti), si parte dal valore già
+  // indicato nelle Impostazioni senza modificarlo.
+  const bortle = missBortleScelto(scelte);
   const cieloLocale = typeof CAT_CIELI !== 'undefined' && CAT_CIELI[bortle]
     ? CAT_CIELI[bortle] : { magLimite: 5.6, fondo: 11.6 };
 
@@ -1432,7 +1448,7 @@ function missScenario(scelte, partenzaMs) {
     ? pianDisturboLunare(new Date(partenza)) : { fattore: 0 };
   const nuvole = (typeof pianNuvoleStanotte === 'function' && buio)
     ? pianNuvoleStanotte(buio) : null;
-  const bortle = typeof cieloDiCasa === 'function' ? cieloDiCasa() : 5;
+  const bortle = missBortleScelto(scelte);
 
   // Solo oggetti identificabili con un tocco: gli eventi del calendario
   // restano nel pianificatore, non possono essere confermati sulla mappa.
@@ -1528,6 +1544,7 @@ function missCaricaScelte() {
   if (!s || typeof s !== 'object') return;
   if (MISS_DURATE.includes(s.durata)) miss.scelte.durata = s.durata;
   if (MISS_STRUMENTI.includes(s.strumento)) miss.scelte.strumento = s.strumento;
+  if (MISS_BORTLE.includes(Number(s.bortle))) miss.scelte.bortle = Number(s.bortle);
   /* I gradini erano due e adesso sono tre. Una preferenza salvata non può
    * far ricomparire una modalità che non esiste più: «stupore» e
    * «imparare», che erano i due percorsi morbidi, diventano il gradino di
@@ -2576,6 +2593,11 @@ function missHtmlConfigurazione() {
   const opzioniDirezione = selezionata => ([...MISS_DIREZIONI,
     ...(MISS_DIREZIONI.includes(selezionata) ? [] : [selezionata])].sort((a, b) => a - b)).map(g =>
     `<option value="${g}"${g === selezionata ? ' selected' : ''}>${missTesto(direzione(g))} · ${g}°</option>`).join('');
+  const bortleScelto = missBortleScelto(miss.scelte);
+  const opzioniBortle = MISS_BORTLE.map(b => {
+    const nome = typeof astroI18n === 'object' ? astroI18n.t('tel.cielo.' + b) : `Bortle ${b}`;
+    return `<option value="${b}"${b === bortleScelto ? ' selected' : ''}>Bortle ${b} · ${missTesto(nome)}</option>`;
+  }).join('');
 
   return `<div class="missione-configurazione">
     ${missGruppoScelte('durata', durate, miss.scelte.durata, missT('quantoTempo'))}
@@ -2590,6 +2612,11 @@ function missHtmlConfigurazione() {
         min="${missValoreDataOra(Date.now())}" value="${missValoreDataOra(missPartenzaScelta())}">
     </label>` : ''}
     ${missGruppoScelte('strumento', strumenti, miss.scelte.strumento, missT('conCosa'))}
+    <label class="missione-campo missione-inquinamento">
+      <span>${missT('inquinamentoLuminoso')}</span>
+      <select class="missione-select" data-miss-bortle>${opzioniBortle}</select>
+      <small>${missT('inquinamentoSpiega')}</small>
+    </label>
     ${missGruppoScelte('esperienza', esperienze, miss.scelte.esperienza, missT('cheEsperienza'))}
     ${missGruppoScelte('cielo', [
       { valore: 'tutto', nome: missT('cieloTutto') }, { valore: 'settore', nome: missT('cieloSettore') }
@@ -3235,6 +3262,11 @@ function missCollegaPannello(corpo) {
     miss.rilievoSettore = null;
     missSalvaScelte();
   }));
+  const bortle = corpo.querySelector('[data-miss-bortle]');
+  if (bortle) bortle.addEventListener('change', () => {
+    miss.scelte.bortle = Number(bortle.value);
+    missSalvaScelte();
+  });
   const momento = corpo.querySelector('[data-miss-momento]');
   if (momento) momento.addEventListener('change', () => {
     const ms = new Date(momento.value).getTime();
@@ -3612,6 +3644,7 @@ const missProve = {
   chiaveRegistro: missChiaveRegistro,
   evidenza: missEvidenzaDaMagnitudine,
   limiteStellareLocale: missLimiteStellareLocale,
+  bortleScelto: missBortleScelto,
   visibileNelCieloLocale: missVisibileNelCieloLocale,
   difficolta: missDifficolta,
   salvataggioBuono: missSalvataggioBuono,
@@ -3619,7 +3652,7 @@ const missProve = {
   conto: missConto,
   campioni: missCampioni,
   costanti: {
-    MISS_VERSIONE, MISS_DURATE, MISS_STRUMENTI, MISS_ESPERIENZE, MISS_DIREZIONI,
+    MISS_VERSIONE, MISS_DURATE, MISS_STRUMENTI, MISS_ESPERIENZE, MISS_DIREZIONI, MISS_BORTLE,
     MISS_TAPPE_PER_DURATA, MISS_ALTEZZA_MINIMA, MISS_DIFFICOLTA_MASSIMA,
     MISS_DIFFICOLTA_GRADITA, MISS_GENEROSITA, MISS_REPERTORIO,
     MISS_STESSO_CAMPO_GRADI, MISS_PREAVVISO_MIN,
