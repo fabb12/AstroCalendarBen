@@ -10,6 +10,22 @@ planetario. Il tetto resta a 362.
 
 ## Ultimo intervento completato
 
+**Missione Cielo: visibilità locale e inquinamento luminoso.**
+
+La selezione delle tappe ora parte dalla magnitudine limite del cielo di casa
+e la corregge per l'altezza reale del bersaglio all'orario assegnato. Stelle e
+costellazioni oltre il limite locale vengono escluse; per il cielo profondo si
+controllano anche brillanza superficiale e contrasto col fondo, e da un cielo
+Bortle 8 non vengono più proposti oggetti deep sky neppure col telescopio.
+
+Lo stato passa alla versione 6 e la cache PWA a `astrocal-v292`. Il motore ha
+55 prove verdi, comprese le nuove regressioni per altezza, magnitudine limite,
+città e campagna; verdi anche patto i18n, collisioni, sintassi e diff-check.
+Le prove che richiedono Astronomy Engine e Chromium non sono state eseguite:
+le dipendenze non sono presenti e il registry npm risponde 403.
+
+## Intervento precedente
+
 **Missione Cielo: narrazione naturale con Edge-TTS.**
 
 La scelta vocale della missione ora prova prima un endpoint HTTP Edge-TTS
