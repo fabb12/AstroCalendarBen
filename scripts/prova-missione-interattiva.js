@@ -97,14 +97,17 @@ const server = http.createServer((req,res)=> {
   assert.equal(search.target,null); assert.equal(search.labels,false); assert(!search.text.includes(search.name));
   assert(!search.buttons.some(s=>/trovato/i.test(s)));
   await page.screenshot({path:path.join(root,'../missione-ricerca.png')});
-  assert((await page.textContent('#missione-striscia .missione-numero-indizio')).includes('1 di 3'));
+  /* Il pannello zero è l'enigma e non il primo indizio: chiamarlo
+   * «Indizio 1 di 3» prometteva tre indizi quando quelli veri erano due,
+   * perché l'enigma occupava il primo posto. */
+  assert((await page.textContent('#missione-striscia .missione-numero-indizio')).includes('Enigma'));
   assert.equal(await page.$('#missione-striscia [data-miss-azione="indizio-principale"]'),null);
   await page.click('#missione-striscia [data-miss-azione="indizio-successivo"]');
   const before=await page.evaluate(()=>({clue:missIndizio(miss.attiva.tappe[0]), hint:miss.attiva.tappe[0].aiuto}));
   assert.equal(before.hint,1);
-  assert((await page.textContent('#missione-striscia .missione-numero-indizio')).includes('2 di 3'));
-  await page.click('#missione-striscia [data-miss-azione="indizio-precedente"]');
   assert((await page.textContent('#missione-striscia .missione-numero-indizio')).includes('1 di 3'));
+  await page.click('#missione-striscia [data-miss-azione="indizio-precedente"]');
+  assert((await page.textContent('#missione-striscia .missione-numero-indizio')).includes('Enigma'));
   await page.click('#missione-striscia [data-miss-azione="indizio-successivo"]');
   const posizionePrima=await page.locator('#missione-striscia').boundingBox();
   const maniglia=await page.locator('#missione-striscia .missione-trascina').boundingBox();
@@ -151,14 +154,23 @@ const server = http.createServer((req,res)=> {
   await page.click('#missione-striscia [data-miss-azione="continua"]');
   assert.equal(await page.evaluate(()=>miss.attiva.corrente),1);
   assert.equal(await page.evaluate(()=>sky.target),null);
-  // Il terzo aiuto è una risposta: si segna come «rivelata» (il Diario lo
-  // riporta) ma non chiude la tappa, e il nome resta comunque coperto —
-  // riconoscere l'oggetto sulla mappa tocca ancora a chi guarda.
+  /* I tre indizi non rivelano: dopo il terzo compare un tasto a parte.
+   *
+   * Finché non lo si preme il nome resta coperto e la tappa non è
+   * rivelata — riconoscere l'oggetto sulla mappa tocca ancora a chi
+   * guarda, ed è la sola cosa che una caccia abbia da dare. */
   await page.evaluate(()=> { for(let i=0;i<3;i++) missChiediAiuto(); });
-  assert.equal(await page.evaluate(()=>!!miss.attiva.tappe[1].rivelata),true);
-  assert.equal(await page.evaluate(()=>miss.attiva.tappe[1].esito),null);
+  assert.equal(await page.evaluate(()=>!!miss.attiva.tappe[1].rivelata),false);
   assert(!(await page.textContent('#missione-striscia')).includes(
     await page.evaluate(()=>miss.attiva.tappe[1].nome)));
+  assert(await page.$('#missione-striscia [data-miss-azione="soluzione"]'));
+  // Premuto: il nome compare, la tappa si segna rivelata (il Diario lo
+  // riporta) ma non si chiude — arrendersi non è sbagliare.
+  await page.click('#missione-striscia [data-miss-azione="soluzione"]');
+  assert.equal(await page.evaluate(()=>!!miss.attiva.tappe[1].rivelata),true);
+  assert.equal(await page.evaluate(()=>miss.attiva.tappe[1].esito),null);
+  assert((await page.textContent('#missione-striscia')).includes(
+    await page.evaluate(()=>missNomeTappa(miss.attiva.tappe[1]))));
   await page.evaluate(()=>astroI18n.impostaLingua('en'));
   assert((await page.textContent('#missione-striscia')).includes('Search') || (await page.textContent('#missione-striscia')).includes('Skip'));
   // Every dynamic content key resolves, in every mode and both languages.

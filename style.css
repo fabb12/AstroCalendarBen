@@ -10340,13 +10340,34 @@ body button.did-ponte:active { transform: translateY(1px); }
   font-weight: 500;
 }
 .missione-tasto-lieve:hover { color: var(--testo-2); }
+/* Il tasto della soluzione: ambra e non blu, perché non è il passo
+   avanti della caccia — è la sua fine, e chi lo preme ha deciso di
+   arrendersi. Un tasto che si legge come «continua» accanto a «Indizio 3
+   di 3» verrebbe premuto per sbaglio proprio da chi era a un passo dal
+   trovarlo. */
+.missione-tasto-soluzione {
+  border-color: rgba(245, 181, 68, 0.55);
+  color: var(--ambra);
+  font-weight: 700;
+}
+.missione-tasto-soluzione:hover {
+  background: rgba(245, 181, 68, 0.14);
+  border-color: rgba(245, 181, 68, 0.85);
+}
 
 /* --- la finestra --------------------------------------------------- */
 .pannello-missione { max-width: 620px; }
 .missione-corpo {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
+}
+/* Sul telefono le pillole tornano a quarantaquattro pixel: la
+   compattezza si guadagna togliendo spazio morto fra i blocchi, non
+   rimpicciolendo il bersaglio del pollice. */
+@media (pointer: coarse) {
+  .missione-scelta { min-height: 44px; }
+  .missione-dettagli > summary { min-height: 46px; }
 }
 
 /* L'avviso in cima: mai solo colore. Il tono cambia il bordo e il fondo,
@@ -10365,25 +10386,102 @@ body button.did-ponte:active { transform: translateY(1px); }
 .missione-avviso[data-tono="bene"] { border-color: rgba(52, 211, 153, 0.45); color: var(--testo); }
 .missione-avviso[data-tono="informa"] { border-color: rgba(245, 181, 68, 0.42); }
 
-/* --- le tre domande ------------------------------------------------ */
+/* --- le domande ----------------------------------------------------
+   Erano otto gruppi impilati, tutti dello stesso peso, e su un telefono
+   facevano milleottanta pixel da scorrere. Adesso sono tre blocchi con
+   tre nature diverse — la serata, la caccia, i dettagli — e dentro a
+   ognuno le domande stanno strette: il titolo del blocco è l'unica cosa
+   in grassetto grande, la domanda scende a una riga di servizio, e le
+   pillole perdono i sei pixel di altezza che nessuno stava usando (44
+   resta il bersaglio del dito sul telefono, dove la media query lo
+   rimette). */
+.missione-configurazione {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.missione-blocco {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 13px;
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: var(--incassato);
+  min-width: 0;
+}
+.missione-blocco-titolo {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--testo-3);
+}
+/* Il pannello che si richiude: cielo di casa, settore e voce sono
+   risposte che uno dà una volta e poi si tiene, e tenerle aperte vuol
+   dire farle scorrere via a tutti per sempre. La riga di sintesi accanto
+   al titolo esiste perché chiuso un pannello quello che c'è dentro
+   smette di esistere: un Bortle 8 lasciato lì per sbaglio spiegherebbe
+   da solo una missione di tre pianeti. */
+.missione-dettagli {
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio-m);
+  background: var(--incassato);
+  min-width: 0;
+}
+.missione-dettagli > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 11px 13px;
+  cursor: pointer;
+  list-style: none;
+  min-height: 42px;
+  box-sizing: border-box;
+}
+.missione-dettagli > summary::-webkit-details-marker { display: none; }
+.missione-dettagli > summary::after {
+  content: '▸';
+  margin-left: auto;
+  color: var(--testo-3);
+  font-size: 0.8rem;
+  transition: transform var(--transizione);
+}
+.missione-dettagli[open] > summary::after { transform: rotate(90deg); }
+.missione-sintesi-dettagli {
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--testo-3);
+}
+.missione-dettagli-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 13px 13px;
+  min-width: 0;
+}
 .missione-gruppo { border: 0; padding: 0; margin: 0; min-width: 0; }
 .missione-domanda {
-  padding: 0 0 8px;
-  font-size: 0.94rem;
-  font-weight: 700;
-  color: var(--testo);
+  padding: 0 0 6px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--testo-2);
 }
 .missione-scelte {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 .missione-scelta {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 44px;
-  padding: 0 15px;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 13px;
   border-radius: 999px;
   border: 1px solid var(--bordo-forte);
   background: var(--incassato);
@@ -10401,26 +10499,41 @@ body button.did-ponte:active { transform: translateY(1px); }
    tondo e diventa una cartolina — testo a sinistra, due righe, angoli
    meno rotondi perché una riga lunga dentro a un `border-radius: 999px`
    perde i due capi sotto la curva. */
-.missione-scelta.con-nota {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  border-radius: 14px;
-  padding: 10px 14px;
-  min-height: 44px;
-  flex: 1 1 220px;
-  max-width: 100%;
-  text-align: left;
-}
+/* La nota della scelta fatta: una riga sotto al gruppo, non una
+   cartolina per pillola. Vedi `missGruppoScelte` per il conto dei pixel
+   che questa riga fa risparmiare. */
 .missione-scelta-nota {
-  display: block;
-  font-size: 0.72rem;
-  font-weight: 500;
-  line-height: 1.35;
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
   color: var(--testo-3);
-  white-space: normal;
 }
-.missione-scelta.attiva .missione-scelta-nota { color: rgba(255, 255, 255, 0.82); }
+/* Le caselle dei generi sono cinque e vogliono stare in due righe:
+   griglia e non flex, perché a capo libero l'ultima riga resta con una
+   casella sola larga tutto il pannello — e una casella larga il doppio
+   delle altre si legge come se contasse il doppio. L'icona non è
+   decorazione: è l'unica cosa che distingua «Stelle» da «Costellazioni»
+   a colpo d'occhio. */
+.missione-scelte-generi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 104px), 1fr));
+  gap: 6px;
+}
+.missione-genere {
+  justify-content: center;
+  gap: 5px;
+  padding: 0 8px;
+}
+.missione-genere > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.missione-genere svg { flex: none; }
+/* L'ultimo genere acceso non si può spegnere: il cursore lo dice prima
+   che il dito lo scopra, se no un tocco che non fa niente si legge come
+   un tasto rotto. */
+.missione-genere[data-miss-ultimo] { cursor: default; }
 /* Scelta e non scelta si distinguono per **tre** cose insieme — fondo,
    bordo e peso del testo — e non per la sola tinta: `aria-checked` lo
    dice a chi legge con lo schermo, il grassetto a chi guarda in fretta. */

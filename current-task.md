@@ -14,48 +14,61 @@ due), tutte fuori da Missione Cielo.
 
 ## Ultimo intervento completato
 
-**Missione Cielo: tre gradini di difficoltà, un repertorio di ottanta
-bersagli, enigmi scritti per l'oggetto e un aneddoto come premio.**
+**Missione Cielo: si sceglie cosa cercare, i bersagli si sorteggiano, la
+soluzione è un tasto e la voce ha un tono per ogni momento della caccia.**
 
-I gradini erano due (adulti / bambini) e adesso sono tre — `bambini`,
-`curiosi`, `sfida` — e non sono tre etichette sullo stesso comportamento:
-cambiano insieme **cosa** si va a cercare (tetto della difficoltà 2, 3, 5) e
-**quanto viene detto prima di cercarlo** (`MISS_GENEROSITA`: ai bambini
-enigma, segno e direzione; ai curiosi enigma e segno; agli esperti il solo
-enigma, e il segno arriva col primo indizio). Chi aveva salvato una delle
-vecchie modalità finisce nel gradino di mezzo.
+Sei cose, e la prima è quella che teneva in piedi tutte le altre.
 
-Il **repertorio** (§1-bis di `missione-cielo.js`) è la tabella degli ottanta
-bersagli che hanno un nome proprio: la Luna e i sette pianeti, le otto stelle
-del planetario, le ventitré figure che disegna, quaranta oggetti profondi e le
-stazioni. Da ogni voce escono lo **slug** del dizionario, il **fascino** (che
-entra nel punteggio accanto ad altezza e difficoltà) e la **catena di ripiego**
-— nome proprio → specie di catalogo → famiglia — per cui anche la
-centoquarantesima galassia senza nome ha qualcosa di vero da dire.
+**Cosa si va a cercare** (§1, `MISS_GENERI`). Cinque caselle — pianeti,
+stelle, galassie, costellazioni, stazioni — ed è un **filtro secco** e non
+una preferenza da pesare: il punteggio premia giustamente quello che si
+trova più facilmente, quindi «stasera voglio galassie» messo su quella
+bilancia perdeva sempre contro l'altezza e la magnitudine, e chi lo aveva
+chiesto si ritrovava la Luna, Giove e due costellazioni. Cioè una missione
+perfettamente sensata: quella di qualcun altro. I cinque generi sono le
+cinque cose che una persona nomina guardando in su e non le famiglie del
+catalogo; gli eventi del calendario passano sempre, perché sono
+appuntamenti; e un elenco vuoto vuol dire *tutti* e non *nessuno*.
 
-I testi: ottanta enigmi scritti per l'oggetto, cinque per la specie, quindici
-per la famiglia, quarantacinque versioni per i bambini, ottantacinque segni
-osservabili e centoquaranta aneddoti nuovi, in italiano e in inglese.
-Trovato il bersaglio, la scoperta dà la specie, un **numero vero** (in che anno
-è partita quella luce, quante Lune piene ci starebbero dentro, quanti minuti di
-luce ci separano da quel pianeta — tutti calcolati, nessuno scritto a mano) e
-un aneddoto, con «raccontamene un'altra» quando ce n'è più di uno.
-L'anteprima non svela più i nomi: dice ora, genere e difficoltà, e chi vuole
-sbirciare ha il suo tasto.
+**Il sorteggio** (§2, `missCaso` e `missPescaPesato`). La scelta era un
+argmax, e dallo stesso balcone alla stessa ora le posizioni sono identiche:
+la missione era la stessa ogni sera. Non si vede guardando *una* missione —
+cinque bersagli sensati sono cinque bersagli sensati — e si vede benissimo
+alla terza sera. Adesso ogni tappa si pesca con peso `exp((punti −
+migliore)/T)`: il migliore vince spesso e non vince sempre. Il generatore è
+**seminato**, e non per le prove: la stessa missione si ridisegna decine di
+volte, e con `Math.random` in mezzo ogni ridisegno sarebbe una serata nuova.
 
-Lo stato passa alla versione 7 e la cache PWA a `astrocal-v293`.
+**La soluzione** (§6). Il terzo aiuto rivelava e centrava: si chiedeva un
+indizio e ci si ritrovava la risposta, cioè la caccia finiva senza che
+nessuno l'avesse decisa. Adesso i tre indizi sono tre indizi, e sotto al
+terzo compare un tasto ambra che dice cosa fa. Il pannello zero si chiama
+**Enigma** e non più «Indizio 1 di 3», che prometteva tre indizi quando
+quelli veri erano due.
 
-**Prove.** `scripts/prova-missione.js` è a **110 verdi su 110** (77 motore + 33
-browser), comprese le sezioni nuove sui tre gradini, sul repertorio e sul
-confronto fra gli ottanta slug e i due dizionari. Verdi anche
-`prova-missione-stati.js`, `prova-missione-interattiva.js`, `prova-lingua.js`,
-il patto i18n (352 ≤ 362) e il controllo delle collisioni.
+**La configurazione**, da milleotto pixel a ottocentottantanove su un
+telefono da 360 — con in più la domanda dei generi. Tre blocchi (la serata,
+la caccia, i dettagli richiudibili), la nota del gradino una sola invece di
+tre cartoline, le etichette accorciate.
 
-Rimettendo in piedi i tre banchi sono venute fuori quattro prove **stantie**,
-tutte rosse da prima di questo lavoro: due cercavano `.missione-striscia-guida`
-(che nel markup si chiama `.missione-striscia-indizio` — e nel foglio di stile
-erano rimaste tre regole per quella classe, che è quello che rendeva la cosa
-credibile), una faceva `Object.assign({id:'Star2'}, tappa)` e si riprendeva
-l'`id` del bersaglio, una cliccava un tasto «rivela» che nessuna striscia ha
-mai disegnato. Il comando morto e la sua voce di dizionario sono andati via col
-resto.
+**La voce.** Due voci per lingua: quelle espressive (Isabella, Jenny)
+accettano gli stili, e da lì vengono l'enigma detto piano, la scoperta su di
+giri e la resa sottovoce. Più le pause sulla punteggiatura e un ripiego
+locale che smette di preferire `localService` — cioè la vecchia voce
+concatenativa — alle Neural moderne.
+
+**Il registro dei bambini** copre adesso anche il gioco vero e proprio:
+indizi, scoperta, soluzione, difficoltà, titolo finale. E «Salto
+nell'iperspazio» è tornato «Salto».
+
+**Prove.** `scripts/prova-missione.js` è a **147 verdi su 147** (106 motore +
+41 browser), da 91 su 93. Le due rosse erano rosse da prima e per la stessa
+ragione: cercavano un tasto `data-miss-azione="aiuto"` che non esiste più da
+quando gli indizi si sfogliano con le frecce, e la prima si portava dietro
+**tutta la sezione dell'aiuto progressivo**, che non girava affatto. Nella
+stessa passata è tornato a girare `scripts/prova-missione-stati.js`, che
+moriva a metà su un finto elemento del documento senza `removeAttribute`.
+Verdi anche `prova-missione-interattiva.js`, `prova-lingua.js` (zero errori
+in console) e `controlla-i18n.js --patto`.
+
+Cache PWA a `astrocal-v300`.

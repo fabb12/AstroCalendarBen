@@ -11,7 +11,25 @@ let now=Date.UTC(2026,8,7,21), offset=0;
 const feedback=[];
 class Clock extends Date { constructor(...args){super(...(args.length?args:[now]));} static now(){return now;} }
 const saved=new Map(), elements=new Map();
-function element(){ const classes=new Set(); return {innerHTML:'',textContent:'',value:'',classList:{add:n=>classes.add(n),remove:n=>classes.delete(n),contains:n=>classes.has(n),toggle:(n,v)=>v?classes.add(n):classes.delete(n)},querySelectorAll:()=>[],querySelector:()=>null,addEventListener(){}}; }
+/* Il finto elemento del documento.
+ *
+ * Gli attributi ci sono perche' il modulo li usa per davvero — la
+ * striscia sul cielo si toglie lo `style` quando si esce dal planetario
+ * — e senza di loro la prova moriva a meta' con un TypeError, cioe'
+ * smetteva di provare tutto quello che veniva dopo senza dirlo: e' la
+ * trappola dello `<script>` unico di `verifica.html`, in un'altra veste.
+ * `dataset` per la stessa ragione. */
+function element(){
+  const classes=new Set(), attrs=new Map();
+  return {innerHTML:'',textContent:'',value:'',dataset:{},
+    classList:{add:n=>classes.add(n),remove:n=>classes.delete(n),contains:n=>classes.has(n),toggle:(n,v)=>v?classes.add(n):classes.delete(n)},
+    setAttribute:(n,v)=>attrs.set(n,String(v)),
+    getAttribute:n=>attrs.has(n)?attrs.get(n):null,
+    removeAttribute:n=>attrs.delete(n),
+    hasAttribute:n=>attrs.has(n),
+    querySelectorAll:()=>[],querySelector:()=>null,addEventListener(){},removeEventListener(){},
+    focus(){},closest:()=>null,appendChild(){},remove(){}};
+}
 const doc={readyState:'loading',body:element(),addEventListener(){},getElementById:id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);}};
 const obs=new Astronomy.Observer(45.81,9.08,0);
 const ctx=vm.createContext({console,Date:Clock,Astronomy,window:{},document:doc,
@@ -49,7 +67,9 @@ assert.equal(run('skyNomiVisibili()'),false);
 assert.equal(run('missAmmissibile(missTappaAdesso(miss.attiva.tappe[0]),miss.attiva.scelte)'),true);
 run('missMostraStrisciaCielo()');
 assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
-assert(elements.get('missione-striscia').innerHTML.includes('Indizio 1 di 3'));
+// Il pannello zero e' l'enigma e si chiama cosi': chiamarlo «Indizio 1
+// di 3» prometteva tre indizi quando quelli veri erano due.
+assert(elements.get('missione-striscia').innerHTML.includes('Enigma'));
 assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="indizio-successivo"'));
 assert(!elements.get('missione-striscia').innerHTML.includes('Rileggi l’indizio'));
 assert(elements.get('missione-striscia').innerHTML.includes('Segui il telefono'));
@@ -72,13 +92,27 @@ run("sky.oggetti=[Object.assign({},missTappaNelPlanetario(miss.attiva.tappe[0]),
 assert(feedback.at(-1).testo.includes('sei vicino'));
 const clues=[];for(let i=0;i<3;i++){clues.push(run('missIndizio(miss.attiva.tappe[0])'));run('missChiediAiuto()');}
 assert.equal(new Set(clues).size,3);
-// Il terzo gradino e' una risposta e si segna come tale (il Diario lo
-// riporta), ma il nome resta comunque coperto: chi arriva in fondo agli
-// aiuti deve ancora riconoscere l'oggetto sulla mappa.
-assert.equal(run('!!miss.attiva.tappe[0].rivelata'),true);
+/* I tre indizi sono tre indizi: nessuno rivela.
+ *
+ * Prima il terzo era insieme indizio e risposta, e chi chiedeva un aiuto
+ * si ritrovava la caccia finita senza averlo deciso. Adesso dopo il terzo
+ * compare un tasto a parte — e finche' non lo si preme il nome resta
+ * coperto e la tappa non e' rivelata. */
+assert.equal(run('!!miss.attiva.tappe[0].rivelata'),false);
 assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
-assert(elements.get('missione-striscia').innerHTML.includes('Soluzione'));
+assert(elements.get('missione-striscia').innerHTML.includes('Indizio 3 di 3'));
 assert(!elements.get('missione-striscia').innerHTML.includes('Indizio 4'));
+assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="soluzione"'));
+// Premuto il tasto: il nome compare, la tappa si segna rivelata (il
+// Diario lo riporta) e il tasto sparisce invece di restare li' a non
+// fare piu' niente.
+run("missAzione('soluzione',document.body)");
+assert.equal(run('!!miss.attiva.tappe[0].rivelata'),true);
+assert(elements.get('missione-striscia').innerHTML.includes('Vega'));
+assert(elements.get('missione-striscia').innerHTML.includes('Soluzione'));
+assert(!elements.get('missione-striscia').innerHTML.includes('data-miss-azione="soluzione"'));
+// E la soluzione non e' un fallimento: l'esito resta da decidere.
+assert.equal(run('miss.attiva.tappe[0].esito'),null);
 // Con la voce scelta, anche tornare a un indizio già sbloccato o avanzare di
 // nuovo deve leggere il testo che è effettivamente visibile nella striscia.
 // La scoperta deve poi far leggere automaticamente il messaggio finale.
