@@ -1,5 +1,5 @@
-// La sincronizzazione periodica della galleria non deve ricreare i lettori:
-// farlo interrompe il caricamento e riporta il video all'inizio ogni 2 secondi.
+// La sincronizzazione periodica della galleria non deve ricreare i lettori e
+// ogni scheda deve poter passare il proprio file al pannello di condivisione.
 //
 //     node scripts/prova-galleria.js
 const { chromium } = require('playwright-core');
@@ -43,17 +43,40 @@ const server = http.createServer((req, res) => {
       }));
       await videoApriGalleria();
       const prima = document.querySelector('#galleria-elenco video');
+      const condividi = [...document.querySelectorAll('#galleria-elenco button')]
+        .find(b => b.textContent === 'Condividi');
+      window.__videoCondiviso = null;
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: dati => dati.files?.length === 1 });
+      Object.defineProperty(navigator, 'share', { configurable: true, value: async dati => {
+        window.__videoCondiviso = {
+          nome: dati.files[0].name,
+          tipo: dati.files[0].type,
+          dimensione: dati.files[0].size,
+          titolo: dati.title
+        };
+      } });
+      condividi?.click();
+      await new Promise(resolve => setTimeout(resolve, 0));
       prima.dataset.provaIdentita = 'lettore-originale';
       const src = prima.src;
       await new Promise(resolve => setTimeout(resolve, 2300));
       const dopo = document.querySelector('#galleria-elenco video');
       videoChiudiGalleria();
-      return { stessoNodo: prima === dopo, marcatore: dopo?.dataset.provaIdentita, stessoSrc: dopo?.src === src };
+      return {
+        stessoNodo: prima === dopo,
+        marcatore: dopo?.dataset.provaIdentita,
+        stessoSrc: dopo?.src === src,
+        condiviso: window.__videoCondiviso
+      };
     });
 
     const ok = esito.stessoNodo && esito.marcatore === 'lettore-originale' && esito.stessoSrc;
     console.log(`${ok ? 'ok' : 'FALLITO'} — il controllo periodico conserva il lettore video`, esito);
     if (!ok) process.exitCode = 1;
+    const condivisioneOk = esito.condiviso?.nome === 'prova.webm' &&
+      esito.condiviso?.tipo === 'video/webm' && esito.condiviso?.dimensione > 0;
+    console.log(`${condivisioneOk ? 'ok' : 'FALLITO'} — ogni video della galleria si può condividere`, esito.condiviso);
+    if (!condivisioneOk) process.exitCode = 1;
     await contesto.close();
   } finally {
     await browser.close();

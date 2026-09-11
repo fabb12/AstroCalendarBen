@@ -28486,6 +28486,31 @@ function videoScaricaSalvato(video) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+async function videoCondividiSalvato(video) {
+  const tipo = video.tipo || video.blob.type || 'video/mp4';
+  const file = new File([video.blob], video.nome, { type: tipo });
+  const dati = {
+    files: [file],
+    title: 'Un video da AstroCalendario di Ben',
+    text: 'Guarda questo video creato con AstroCalendario di Ben.'
+  };
+  try {
+    if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
+      await navigator.share(dati);
+      videoMessaggio(`Video “${video.nome}” condiviso.`);
+      return;
+    }
+  } catch (e) {
+    // Chiudere il pannello di condivisione non deve avviare uno scaricamento
+    // che l'utente non ha chiesto.
+    if (e && e.name === 'AbortError') return;
+  }
+  // Sui computer e sui browser che non possono passare file alle altre app,
+  // lo scaricamento lascia comunque il filmato pronto per essere allegato.
+  videoScaricaSalvato(video);
+  videoMessaggio('Questo dispositivo non passa i file alle altre app: il video è stato scaricato, così puoi allegarlo a mano.');
+}
+
 async function videoRenderGalleria() {
   const elenco = document.getElementById('galleria-elenco');
   if (!elenco || videoSincronizzazioneInCorso) return;
@@ -28551,11 +28576,13 @@ async function videoRenderGalleria() {
       : `${(Number(elemento.dimensione || elemento.blob.size) / 1048576).toFixed(1)} MB`;
     meta.textContent = `${new Date(elemento.creato).toLocaleString('it-IT')} · ${dettaglio}`;
     const azioni = document.createElement('div'); azioni.className = 'galleria-video-azioni';
+    const condividi = document.createElement('button'); condividi.type = 'button'; condividi.className = 'tasto-cielo'; condividi.textContent = 'Condividi';
+    condividi.addEventListener('click', () => videoCondividiSalvato(elemento));
     const scarica = document.createElement('button'); scarica.type = 'button'; scarica.className = 'tasto-cielo'; scarica.textContent = 'Scarica';
     scarica.addEventListener('click', () => videoScaricaSalvato(elemento));
     const elimina = document.createElement('button'); elimina.type = 'button'; elimina.className = 'tasto-cielo'; elimina.textContent = 'Elimina';
     elimina.addEventListener('click', () => videoElimina(elemento));
-    azioni.append(scarica, elimina); corpo.append(nome, meta, azioni); scheda.append(lettore, corpo); elenco.appendChild(scheda);
+    azioni.append(condividi, scarica, elimina); corpo.append(nome, meta, azioni); scheda.append(lettore, corpo); elenco.appendChild(scheda);
   });
   videoSincronizzazioneInCorso = false;
 }
