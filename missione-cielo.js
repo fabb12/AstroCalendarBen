@@ -88,6 +88,20 @@ function missTolleranzaTocco(scelte, tipo) {
   return tipo === 'costellazione' ? base + 8 : base;
 }
 
+// La tolleranza appartiene ai comandi del planetario, anche se Missione
+// Cielo e' il primo gioco che la usa. Queste due funzioni tengono il
+// controllo delle Impostazioni fuori dallo stato interno del modulo senza
+// duplicare chiave, limiti o salvataggio.
+function missTolleranzaImpostata() {
+  return missTolleranzaTocco(miss.scelte);
+}
+
+function missImpostaTolleranza(valore) {
+  miss.scelte.tolleranzaTocco = missTolleranzaTocco({ tolleranzaTocco: valore });
+  missSalvaScelte();
+  return miss.scelte.tolleranzaTocco;
+}
+
 /* I tre gradini della caccia.
  *
  * Non sono tre etichette di comodo: cambiano insieme **cosa** si va a
@@ -504,6 +518,7 @@ const MISS_REPERTORIO = [
   { slug: 'ariete',        fascino: 0.48, tipi: ['costellazione'], prova: /\b(ariete|aries|ari)\b/ },
   { slug: 'croceDelSud',   fascino: 0.9,  tipi: ['costellazione'], prova: /(croce del sud|southern cross|\bcrux\b|\bcru\b)/ },
   { slug: 'centauro',      fascino: 0.74, tipi: ['costellazione'], prova: /\b(centauro|centaurus|cen)\b/ },
+  { slug: 'giraffa',       fascino: 0.56, tipi: ['costellazione'], prova: /\b(giraffa|camelopardalis|cam)\b/ },
 
   // --- il cielo profondo, per sigla di catalogo ----------------------
   { slug: 'pleiadi',         fascino: 1,    sigle: ['M45'] },
@@ -3903,13 +3918,6 @@ function missHtmlConfigurazione() {
         ${missGruppoScelte('voce', [
           { valore: 'si', nome: missT('voceSi') }, { valore: 'no', nome: missT('voceNo') }
         ], miss.scelte.voce ? 'si' : 'no', missT('vuoiVoce'))}
-        <label class="missione-campo missione-tolleranza">
-          <span>${missT('tolleranzaTocco')}</span>
-          <input type="range" min="${MISS_TOLLERANZA_MIN}" max="${MISS_TOLLERANZA_MAX}" step="4"
-            value="${missTolleranzaTocco(miss.scelte)}" data-miss-tolleranza>
-          <output data-miss-tolleranza-valore>${missT('tolleranzaPixel', { pixel: missTolleranzaTocco(miss.scelte) })}</output>
-          <small>${missT('tolleranzaSpiega')}</small>
-        </label>
       </div>
     </section>
 
@@ -3934,7 +3942,6 @@ function missSintesiDettagli(bortle) {
     pezzi.push(nome(miss.scelte.cieloDa) + '–' + nome(miss.scelte.cieloA));
   } else pezzi.push(missT('cieloTutto'));
   if (miss.scelte.voce) pezzi.push(missT('vociAttiva'));
-  pezzi.push(missT('tolleranzaBreve', { pixel: missTolleranzaTocco(miss.scelte) }));
   return pezzi.join(' · ');
 }
 
@@ -4199,8 +4206,19 @@ function missEnigma(t) {
    * bugia — quindi loro ne pescano due. Vedi `missFiguraAntica` (§3). */
   const n = missVarianteEnigma(t);
   const chiavi = [];
+  // Per tutte le 88 figure il primo indovinello parla del significato del
+  // nome (animale, mestiere, strumento o personaggio), non della geometria
+  // casuale delle stelle. La sigla IAU rende la chiave stabile anche quando
+  // il nome visualizzato cambia lingua. Le figure con un testo dedicato per
+  // bambini continuano a usare quello, più breve; le altre ricevono questa
+  // stessa domanda semantica invece del vecchio indovinello generico su cosa
+  // sia una costellazione.
+  if (t.tipo === 'costellazione' && t.sigla && modo !== 'bambini') {
+    chiavi.push('gioco.enigmaNome.' + t.sigla);
+  }
   if (modo === 'bambini') {
     if (slug) chiavi.push('gioco.enigmaBimbi.' + slug);
+    if (t.tipo === 'costellazione' && t.sigla) chiavi.push('gioco.enigmaNome.' + t.sigla);
     if (categoria) chiavi.push('gioco.enigmaBimbi.' + categoria);
     chiavi.push('gioco.enigmaBimbi.' + famiglia);
   }
@@ -4744,7 +4762,8 @@ function missRaccontaLocale(testo, lingua, tono) {
  * riga di tutto il file scritta per essere sentita e non letta (sullo
  * schermo il titolo della scoperta la dice già a modo suo). Il **nome**,
  * che la voce accentua e fa precedere da una pausa (§`missSsmlRisalta`).
- * L'**aneddoto** e la domanda, come prima.
+ * L'**aneddoto** chiude il racconto: dopo il premio non si trasforma la
+ * scoperta in un interrogatorio con un'altra domanda.
  *
  * L'esclamazione segue la variante dell'indovinello e non il caso: la
  * stessa tappa, riletta col tasto «ascolta», deve dire la stessa cosa. */
@@ -4753,8 +4772,7 @@ function missTestoVoceTappa(tappa) {
   if (tappa.fase !== 'scoperta') return missTestoIndizio(tappa);
   return [
     missT('gioco.evviva.' + missVarianteEnigma(tappa)),
-    missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) }),
-    missDomanda(tappa)
+    missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) })
   ].filter(Boolean).join(' ');
 }
 
@@ -5010,16 +5028,6 @@ function missCollegaPannello(corpo) {
     miss.rilievoSettore = null;
     missSalvaScelte();
   }));
-  const tolleranza = corpo.querySelector('[data-miss-tolleranza]');
-  if (tolleranza) {
-    const aggiorna = () => {
-      miss.scelte.tolleranzaTocco = missTolleranzaTocco({ tolleranzaTocco: tolleranza.value });
-      const valore = corpo.querySelector('[data-miss-tolleranza-valore]');
-      if (valore) valore.textContent = missT('tolleranzaPixel', { pixel: miss.scelte.tolleranzaTocco });
-    };
-    tolleranza.addEventListener('input', aggiorna);
-    tolleranza.addEventListener('change', () => { aggiorna(); missSalvaScelte(); });
-  }
   const momento = corpo.querySelector('[data-miss-momento]');
   if (momento) momento.addEventListener('change', () => {
     const ms = new Date(momento.value).getTime();
@@ -5395,6 +5403,8 @@ if (typeof window !== 'undefined') {
   window.missTornaDalPlanetario = missTornaDalPlanetario;
   window.missMostraStrisciaCielo = missMostraStrisciaCielo;
   window.missVoceDiario = missVoceDiario;
+  window.missTolleranzaImpostata = missTolleranzaImpostata;
+  window.missImpostaTolleranza = missImpostaTolleranza;
 }
 
 
