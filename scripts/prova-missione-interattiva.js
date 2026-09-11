@@ -119,17 +119,44 @@ const server = http.createServer((req,res)=> {
   await page.keyboard.press('ArrowLeft');
   const posizioneTastiera=await page.locator('#missione-striscia').boundingBox();
   assert(posizioneTastiera.x < posizioneDopo.x,'information panel can be moved with the keyboard');
-  // Verify a real pointer hit goes through the canvas, not a completion button.
+  /* Il tocco deve arrivare alla **mappa**, non a un tasto.
+   *
+   * È quello che questa funzione esiste per provare, e per un pezzo si è
+   * accontentata di sperarlo: si spostava la vista di ventidue gradi in
+   * alto e si toccava dove il bersaglio finiva. Ma poco sopra la striscia
+   * della missione è stata trascinata apposta in mezzo al cielo, e se il
+   * bersaglio le casca sotto il clic lo prende lei — la tappa resta in
+   * ricerca, che è il comportamento **giusto** dell'app e una prova che
+   * ha mancato il suo bersaglio. Non falliva quasi mai perché dipende da
+   * dove sta il bersaglio di stanotte: con un cielo alto capita, con uno
+   * basso no, e una prova che fallisce due volte su nove insegna solo a
+   * rilanciarla.
+   *
+   * Quindi non si spera: si cerca uno scostamento della vista che porti
+   * il bersaglio su pixel di cielo scoperti, e lo si dichiara. */
   async function tapObject(correct) {
     const point=await page.evaluate(correct=> {
       const t=miss.attiva.tappe[miss.attiva.corrente];
       const o=correct ? skyVoceDiId(t.idCielo) : sky.oggetti.find(o=>o.id!==t.idCielo && o.alt>25);
-      sky.seguiTelefono=false; skyFermaMovimenti(); skyCentraSu(o,{subito:true});
-      sky.manuale.alt = Math.min(85, sky.manuale.alt + 22); skyDisegna();
-      const p=skyProietta(skyVettore(o.az,o.alt),sky.ultimaBase,sky.ultimaFocale);
-      const canvas=sky.ctx.canvas, box=canvas.getBoundingClientRect();
-      return {x:box.left+p.px,y:box.top+p.py,id:o.id,selection:skyOggettoNelPunto(p.px,p.py)};
+      sky.seguiTelefono=false; skyFermaMovimenti();
+      const canvas=sky.ctx.canvas;
+      let ultimo=null;
+      for (const scarto of [22,14,30,8,-12,-20,0]) {
+        skyCentraSu(o,{subito:true});
+        sky.manuale.alt = Math.max(-20, Math.min(85, sky.manuale.alt + scarto));
+        skyDisegna();
+        const p=skyProietta(skyVettore(o.az,o.alt),sky.ultimaBase,sky.ultimaFocale);
+        const box=canvas.getBoundingClientRect();
+        const x=box.left+p.px, y=box.top+p.py;
+        const sopra=document.elementFromPoint(x,y);
+        ultimo={x,y,scarto,id:o.id,selection:skyOggettoNelPunto(p.px,p.py),
+          sotto:sopra?(sopra.id||sopra.className||sopra.tagName):null,
+          sullaMappa:!!(sopra&&(sopra===canvas||canvas.contains(sopra)))};
+        if (ultimo.sullaMappa) break;
+      }
+      return ultimo;
     },correct);
+    assert(point.sullaMappa,'il tocco cadrebbe su '+point.sotto+', non sulla mappa: '+JSON.stringify(point));
     await page.mouse.click(point.x,point.y);
     return point;
   }
@@ -140,8 +167,24 @@ const server = http.createServer((req,res)=> {
   assert.equal(await page.textContent('#missione-striscia .missione-striscia-indizio'),before.clue);
   assert((await page.textContent('#skymap-avviso')).includes('Non è questo'));
   const point=await tapObject(true);
-  const found=await page.evaluate(()=>({phase:miss.attiva.tappe[0].fase,result:miss.attiva.tappe[0].esito,index:miss.attiva.corrente,html:document.getElementById('missione-striscia').innerHTML}));
-  assert.equal(found.phase,'scoperta',JSON.stringify(point)); assert.equal(found.result,'trovato');assert.equal(found.index,0);
+  /* Se il tocco non diventa una scoperta, le cause sono tre e si
+   * assomigliano tutte sullo schermo: la selezione non è il bersaglio,
+   * oppure lo è ma il tocco viene ignorato dal cancello di
+   * `missTocco` — luogo diverso, orologio diverso, o tappa che in
+   * questo istante non è più ammissibile. Senza questi numeri la prova
+   * dice «phase: ricerca» e non si capisce quale dei tre. */
+  const found=await page.evaluate(()=>{
+    const t=miss.attiva.tappe[0], ora=missTappaNelPlanetario(t);
+    return {phase:t.fase,result:t.esito,index:miss.attiva.corrente,
+      html:document.getElementById('missione-striscia').innerHTML,
+      perche:{ammissibile:missAmmissibile(ora,miss.attiva.scelte), altezza:ora.altezza,
+        sopraOstacoli:ora.sopraOstacoli, strumento:t.strumentoMinimo,
+        scelte:{strumento:miss.attiva.scelte.strumento,esperienza:miss.attiva.scelte.esperienza},
+        simulazione:!!miss.attiva.simulazione,
+        scartoOrologio:skyAdesso().getTime()-Date.now()}};
+  });
+  assert.equal(found.phase,'scoperta',JSON.stringify({point,perche:found.perche}));
+  assert.equal(found.result,'trovato');assert.equal(found.index,0);
   assert(!found.html.includes('missione-osservazione'));
   assert(!found.html.includes('Conserva nella memoria'));
   const altra=await page.$('#missione-striscia [data-miss-azione="altraStoria"]');

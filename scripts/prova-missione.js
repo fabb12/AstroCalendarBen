@@ -274,6 +274,42 @@ prova('ogni tipo che il raccoglitore produce ha il suo genere', () => {
   }
 });
 
+/* Un passaggio di stazione non si rimisura, ed è la riga per cui il
+ * genere «stazioni» restava vuoto anche col passaggio in cielo.
+ *
+ * Il difetto era in due pezzi che presi da soli sembravano tutti e due
+ * giusti. Il raccoglitore trovava il passaggio (SGP4, culmine, azimut:
+ * tutto corretto); poi `missGeneraMissione` rimisurava ogni tappa
+ * all'ora assegnata, e `altAzCorpo('sat-iss')` — che non è un corpo
+ * della libreria — sollevava. Il `catch` restituisce altezza −90, cioè
+ * «sotto l'orizzonte», e `missAmmissibile` buttava via la tappa. Il
+ * sintomo non era un errore ma un'assenza: si accendeva la casella
+ * «stazioni», si generava, e usciva la missione di qualcun altro. */
+prova('un passaggio di stazione non si rimisura: la sua posizione è quella del culmine', () => {
+  const pass = {
+    tipo: 'stazione', nome: 'ISS', idCielo: 'sat-iss',
+    altezza: 62, azimut: 190, sopraOstacoli: 60
+  };
+  const p = motore.misuraTappa(pass, new Date(T0), { latitude: 45.8, longitude: 9.1, height: 200 });
+  assert.strictEqual(p.altezza, 62);
+  assert.strictEqual(p.azimut, 190);
+  assert.ok(p.sopraOstacoli > 1, 'sopraOstacoli: ' + p.sopraOstacoli);
+});
+
+/* …e il crepuscolo, per una stazione, non si applica.
+ *
+ * Tutto il resto del cielo sparisce col Sole sopra i −6°, e deve: una
+ * nebulosa a quell'ora non si vede. Una stazione invece si vede
+ * **proprio** allora, perché lassù è ancora illuminata mentre quaggiù è
+ * già buio — è la mezz'ora in cui i passaggi si guardano davvero, e
+ * `passaggiVisibiliOrdinati` ha già fatto quel conto per conto suo. */
+prova('e il crepuscolo non la spegne: è lì che una stazione si vede', () => {
+  const mezzogiorno = Date.UTC(2026, 8, 7, 10, 0, 0);
+  const pass = { tipo: 'stazione', nome: 'ISS', idCielo: 'sat-iss', altezza: 48, azimut: 120, sopraOstacoli: 46 };
+  const p = motore.misuraTappa(pass, new Date(mezzogiorno), { latitude: 45.8, longitude: 9.1, height: 200 });
+  assert.strictEqual(p.altezza, 48);
+});
+
 // =====================================================================
 sezione('il sorteggio: la stessa serata non dà la stessa lista');
 
@@ -1140,6 +1176,144 @@ prova('ma se le alternative finiscono si ripete invece di restituire il vuoto', 
   assert.strictEqual(m.tappe.length, 2);
 });
 
+/* Il pianeta riservato è una preferenza, non un obbligo.
+ *
+ * È la tappa che «un'altra missione» non cambiava mai, e la ragione per
+ * cui premendolo cinque volte si vedevano quattro nomi nuovi e sempre lo
+ * stesso pianeta: la riserva pesca fra i pianeti ammessi, e la sera
+ * normale sopra l'orizzonte ce n'è **uno**. Con un pianeta solo il
+ * sorteggio non sorteggia niente, e la penale dei recenti — che vale per
+ * tutto il resto del cielo — su di lui non poteva mordere. */
+/* «L'ho visto ieri» e «ho appena premuto un'altra missione» non sono la
+ * stessa frase, e per un pezzo avevano la stessa penale.
+ *
+ * Trenta punti bastano contro un bersaglio come tutti gli altri e non
+ * bastano contro uno che il punteggio mette trenta punti sopra a tutti —
+ * che è il caso normale quando in cielo c'è un pianeta solo, o quando
+ * l'unica cosa davvero bella di stanotte è Saturno. Misurato nel
+ * browser: con la penale sola dei recenti restava in tutte e cinque le
+ * anteprime di fila. */
+prova('«l’ho visto ieri» e «ho appena detto di no» non pesano uguale', () => {
+  // Lo stesso cielo, gli stessi semi, un bersaglio molto migliore degli
+  // altri: cambia solo quale delle due liste lo contiene. Il numero che
+  // conta è il rapporto, non la soglia — le due penali devono separarsi.
+  const cielo = [candidato('perla', { difficolta: 1, puntiBase: 95, evidenza: 1 })];
+  for (let i = 0; i < 10; i++) {
+    cielo.push(candidato('x' + i, { tipo: ['stella', 'costellazione', 'profondo'][i % 3],
+      difficolta: 1, puntiBase: 46, evidenza: 0.4, azimut: (i * 31) % 360 }));
+  }
+  const quanteVolte = campo => {
+    let conLui = 0;
+    for (let s = 0; s < 30; s++) {
+      const m = motore.genera(Object.assign(
+        scenario(cielo, { durata: 30, strumento: 'telescopio' }),
+        { [campo]: ['perla'], seme: 'penale-' + s }));
+      if (m.tappe.some(t => t.id === 'perla')) conLui++;
+    }
+    return conLui;
+  };
+  const recente = quanteVolte('evitare'), rifiutato = quanteVolte('rifiutati');
+  assert.ok(recente >= 15,
+    `un bersaglio molto migliore degli altri torna solo ${recente} volte su 30: ` +
+    'la penale dei recenti è diventata un’esclusione');
+  assert.ok(rifiutato * 2 < recente,
+    `rifiutato ${rifiutato}/30 contro recente ${recente}/30: le due penali non si distinguono`);
+});
+
+prova('ma un rifiutato torna se non è rimasto altro', () => {
+  const solo = [candidato('perla', { difficolta: 1 })];
+  const m = motore.genera(Object.assign(scenario(solo, { durata: 120 }), { rifiutati: ['perla'] }));
+  assert.strictEqual(m.tappe.length, 1);
+});
+
+prova('un pianeta appena visto smette di essere in tutte le missioni', () => {
+  // Il cielo con un pianeta solo e molte alternative è la sera normale,
+  // non il caso limite: dei sette pianeti, sopra l'orizzonte a un'ora
+  // data, di solito ce n'è uno. Il conto che conta è quante volte su
+  // dodici quel pianeta ricompare: con la riserva obbligatoria era
+  // **dodici**, per costruzione e a qualunque seme.
+  const cielo = [candidato('marte', { tipo: 'pianeta', difficolta: 1 })];
+  for (let i = 0; i < 14; i++) {
+    cielo.push(candidato('x' + i, {
+      tipo: ['stella', 'costellazione', 'profondo'][i % 3],
+      difficolta: 1, azimut: (i * 25) % 360
+    }));
+  }
+  let conLui = 0;
+  for (let s = 0; s < 12; s++) {
+    const m = motore.genera(Object.assign(
+      scenario(cielo, { durata: 30, strumento: 'telescopio' }),
+      { evitare: ['marte'], seme: 'riserva-' + s }));
+    if (m.tappe.some(t => t.id === 'marte')) conLui++;
+  }
+  assert.ok(conLui < 6, `il pianeta scartato è tornato ${conLui} volte su 12`);
+});
+
+prova('…ma se il cielo non basta il pianeta torna: meglio ripetersi che restare a mani vuote', () => {
+  const cielo = [
+    candidato('marte', { tipo: 'pianeta', difficolta: 1 }),
+    candidato('s1', { tipo: 'stella', difficolta: 1, azimut: 40 })
+  ];
+  const m = motore.genera(Object.assign(
+    scenario(cielo, { durata: 120, strumento: 'telescopio' }), { evitare: ['marte'] }));
+  assert.ok(m.tappe.some(t => t.id === 'marte'), 'tappe: ' + m.tappe.map(t => t.id).join(', '));
+});
+
+// =====================================================================
+sezione('le figure: tutte e ottantotto, e nessuna che racconti una bugia');
+
+/* Fino a ieri una missione poteva proporre solo le **ventitré figure che
+ * il planetario disegna** — che è il numero giusto per un disegno e
+ * quello sbagliato per una caccia: tolte quelle sotto l'orizzonte ne
+ * restano otto, per quattro tappe, e «stasera voglio costellazioni»
+ * dava il Cigno e la Lira ogni sera. Le altre sessantacinque erano già
+ * in casa, in `dati-costellazioni.js`.
+ *
+ * Il prezzo di aprire quella porta è questa sezione: fra le
+ * sessantacinque nuove ce ne sono quarantatré che in cielo ci stanno dal
+ * Settecento, e il terzo enigma generico delle figure comincia con «sono
+ * più antica di ogni libro». Finché entravano solo le ventitré la
+ * domanda non si poneva. È il difetto che a occhio non si vede per quello
+ * che è: un indovinello ben scritto che afferma una cosa falsa, e chi lo
+ * legge non ha modo di saperlo. */
+
+prova('le quarantotto di Tolomeo sono antiche, gli strumenti di Lacaille no', () => {
+  global.costGruppoDi = sigla => (
+    ['Ant', 'Cae', 'Tel', 'Mic', 'Pyx'].includes(sigla) ? 'lacaille' :
+    ['Cam', 'Col', 'Mon'].includes(sigla) ? 'plancius' :
+    ['Car', 'Pup', 'Vel'].includes(sigla) ? 'argo' : 'tolomeo');
+  try {
+    assert.ok(motore.figuraAntica('Ori'), 'Orione');
+    assert.ok(motore.figuraAntica('Car'), 'la Carena è un pezzo della Nave Argo');
+    assert.ok(!motore.figuraAntica('Ant'), 'la Macchina Pneumatica');
+    assert.ok(!motore.figuraAntica('Cam'), 'la Giraffa');
+    // Senza `costellazioni.js` non si indovina: si tace e si dà per
+    // antica, che è quello che erano tutte finché erano ventitré.
+    delete global.costGruppoDi;
+    assert.ok(motore.figuraAntica('Ant'));
+  } finally { delete global.costGruppoDi; }
+});
+
+prova('una figura moderna non dice mai «sono più antica di ogni libro»', () => {
+  // Senza `astroI18n` `missT` restituisce la chiave: è proprio quello che
+  // serve qui, perché la scelta della variante si legge in chiaro.
+  const moderna = { tipo: 'costellazione', nome: 'Macchina Pneumatica', sigla: 'Ant', antica: false };
+  const antica = { tipo: 'costellazione', nome: 'Acquario', sigla: 'Aqr', antica: true };
+  const chiaviM = [0, 1, 2, 3, 4, 5].map(v => motore.enigma(Object.assign({ indizioVariante: v }, moderna)));
+  const chiaviA = [0, 1, 2].map(v => motore.enigma(Object.assign({ indizioVariante: v }, antica)));
+  assert.ok(!chiaviM.includes('gioco.enigma.costellazione.3'), chiaviM.join(', '));
+  assert.strictEqual(new Set(chiaviM).size, 2, 'le due varianti buone ci sono tutte e due');
+  assert.ok(chiaviA.includes('gioco.enigma.costellazione.3'),
+    'a una figura antica quell’enigma deve restare: ' + chiaviA.join(', '));
+});
+
+prova('senza i cataloghi in memoria le figure non esistono, e non si inventano', () => {
+  // Il motore gira anche fuori da un browser, dove `SKY_COSTELLAZIONI` e
+  // `COSTELLAZIONI_IAU` non ci sono: deve rispondere un elenco vuoto
+  // invece di sollevare.
+  assert.deepStrictEqual(motore.figureDelCielo(), []);
+});
+
 // =====================================================================
 sezione('i campioni della finestra');
 
@@ -1419,6 +1593,81 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.ok(vuoti.length <= 2, 'generi senza tappe: ' + vuoti.join(', '));
     });
 
+    /* …e il cast non dev'essere soltanto del genere giusto: dev'essere
+     * anche **scelto**.
+     *
+     * È la seconda metà della segnalazione, e la prova sopra non la
+     * prende: una missione di quattro stelle è di quattro stelle anche
+     * quando in cielo di stelle ammesse ce n'erano quattro esatte, cioè
+     * quando non è stata scelta nessuna — il motore le ha prese tutte
+     * perché non c'era altro. Il sorteggio, la temperatura e la penale
+     * dei recenti lì non possono fare niente, e chi preme «un'altra
+     * missione» rivede la stessa lista con l'ordine mescolato.
+     *
+     * I numeri misurati da Como il 7 settembre, prima: quattro stelle
+     * ammesse su otto candidate (sono gli slot `Star1…Star8` del
+     * planetario) e otto figure su ventitré. Adesso i vertici nominati
+     * delle figure e le ottantotto dell'Unione Astronomica fanno
+     * sessantacinque e diciannove. */
+    const abbondanza = await pagina.evaluate(() => {
+      const scelte = Object.assign({}, miss.scelte);
+      const scen = missScenario(scelte, missPartenzaScelta());
+      const conta = g => scen.candidati
+        .filter(c => missProve.ammissibile(c, Object.assign({}, scelte, { generi: [g] }))).length;
+      return { stelle: conta('stelle'), costellazioni: conta('costellazioni'),
+        tappe: missProve.quanteTappe(scelte.durata, 99) };
+    });
+    prova('e ogni genere ha più bersagli di quante tappe ne servano: si sceglie, non si raschia', () => {
+      assert.ok(abbondanza.stelle > abbondanza.tappe * 2,
+        `stelle ammesse: ${abbondanza.stelle} per ${abbondanza.tappe} tappe`);
+      assert.ok(abbondanza.costellazioni > abbondanza.tappe * 2,
+        `figure ammesse: ${abbondanza.costellazioni} per ${abbondanza.tappe} tappe`);
+    });
+
+    /* Il genere «stazioni» non poteva produrre niente, mai.
+     *
+     * `missCandidatiAOrarioPreciso` c'era da sempre, era giusta, e **non
+     * la chiamava nessuno**: `missScenario` raccoglieva il solo cielo
+     * fisso. Poi c'era il secondo strato, che sarebbe rimasto anche
+     * chiamandola: la rimisurazione degli orari chiedeva ad `altAzCorpo`
+     * dove stia «sat-iss», che non è un corpo della libreria, e l'aveva
+     * buttata via.
+     *
+     * Il passaggio è finto di proposito — i TLE arrivano da Celestrak,
+     * che qui non risponde, e una prova che dipende da un cielo vero è
+     * una prova che diventa rossa per colpa di qualcun altro. Quello che
+     * si prova è la **catena**: dal raccoglitore alla tappa a schermo. */
+    const stazioni = await pagina.evaluate(async () => {
+      const veroPassaggi = window.passaggiVisibiliOrdinati;
+      const veroSat = window.satelliteDaId;
+      const generiPrima = miss.scelte.generi;
+      // Il culmine va messo dentro alla finestra **della missione**, che
+      // a questo punto delle prove è quella del momento personalizzato
+      // scelto poco sopra — non «fra dodici minuti da adesso».
+      const dodiciMinutiDopoLaPartenza = new Date(missPartenzaScelta() + 12 * 60000);
+      window.passaggiVisibiliOrdinati = () => ([{
+        satId: 'iss', culmine: dodiciMinutiDopoLaPartenza,
+        elevazioneMax: 62, azCulmine: 190, durataMin: 5
+      }]);
+      window.satelliteDaId = () => ({ nome: 'ISS', magTipica: -3 });
+      miss.scelte.generi = ['artificiali'];
+      miss.anteprimeViste = [];
+      const m = missPreparaAnteprima();
+      const fuori = m ? m.tappe.map(t => ({ tipo: t.tipo, nome: t.nome, alt: t.altezza })) : [];
+      window.passaggiVisibiliOrdinati = veroPassaggi;
+      window.satelliteDaId = veroSat;
+      miss.scelte.generi = generiPrima;
+      miss.anteprimeViste = [];
+      miss.anteprima = null;
+      missAzione('configura', document.getElementById('missione-corpo'));
+      return fuori;
+    });
+    prova('un passaggio di stazione arriva fino alla tappa, e non solo al raccoglitore', () => {
+      assert.ok(stazioni.length, 'nessuna tappa: il passaggio si è perso per strada');
+      assert.ok(stazioni.every(t => t.tipo === 'stazione'), JSON.stringify(stazioni));
+      assert.ok(stazioni.every(t => t.alt > 1), 'altezza persa: ' + JSON.stringify(stazioni));
+    });
+
     // Si riaccendono tutti, se no le prove che seguono partono da un
     // cielo ristretto a una famiglia sola.
     await pagina.evaluate(() => {
@@ -1459,6 +1708,78 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.notDeepStrictEqual(confronto.tappe, primiN,
         'stessa lista: ' + confronto.tappe.join(', '));
     });
+
+    /* «Un'altra missione», premuto cinque volte.
+     *
+     * È il gesto della segnalazione, e nessuna delle prove del motore lo
+     * fa: quelle generano da capo con lo stesso scenario, cioè non
+     * passano dal tasto, che è il posto in cui la memoria delle anteprime
+     * già viste vive o non vive. Prima quella memoria era **l'ultima
+     * anteprima e basta**, e con un cielo stretto non è un ricambio ma
+     * un'altalena: A, poi B che evita A, poi di nuovo A perché B è
+     * l'unica cosa che si sta evitando. Premendo cinque volte si vedevano
+     * due missioni, ed è esattamente la faccia che ha la segnalazione
+     * «mostra sempre più o meno gli stessi elementi».
+     *
+     * Il giudice è aritmetico, perché a occhio cinque liste di quattro
+     * nomi plausibili sono cinque liste plausibili. E il numero che
+     * separa il prima dal dopo non è «quante missioni diverse» — quelle
+     * erano diverse anche prima, perché il seme si tira a ogni
+     * generazione — ma **quante volte torna il bersaglio che torna di
+     * più**. Misurato da Como, sei giri da cinque anteprime l'uno:
+     * prima 5 su 5 in tutti e sei i giri (è il pianeta, che la riserva
+     * rimetteva dentro sempre), adesso mai più di 4. I bersagli diversi
+     * in cinque anteprime passano da 9–12 a 13–15. */
+    const giro = await pagina.evaluate(async () => {
+      // Si riparte da capo: «genera» azzera la memoria, «un'altra» la usa.
+      missAzione('configura', document.getElementById('missione-corpo'));
+      document.querySelector('[data-miss-azione="genera"]').click();
+      await new Promise(r => setTimeout(r, 400));
+      const liste = [];
+      for (let i = 0; i < 5; i++) {
+        if (miss.anteprima) liste.push(miss.anteprima.tappe.map(t => t.id));
+        const tasto = document.querySelector('[data-miss-azione="rigenera"]');
+        if (!tasto) break;
+        tasto.click();
+        await new Promise(r => setTimeout(r, 400));
+      }
+      return liste;
+    });
+    prova('«un’altra missione» premuto cinque volte: nessun bersaglio è in tutte e cinque', () => {
+      assert.ok(giro.length >= 4, 'solo ' + giro.length + ' anteprime: il tasto non ha risposto');
+      const conta = {};
+      giro.flat().forEach(id => { conta[id] = (conta[id] || 0) + 1; });
+      const [peggiore, volte] = Object.entries(conta).sort((a, b) => b[1] - a[1])[0];
+      assert.ok(volte < giro.length,
+        `${peggiore} è in tutte e ${giro.length} le anteprime`);
+    });
+    prova('e cinque anteprime fanno vedere molto più di una lista sola', () => {
+      const firme = new Set(giro.map(l => l.slice().sort().join('|')));
+      assert.ok(firme.size >= 4, `${firme.size} missioni distinte su ${giro.length}`);
+      // Una rete, non il giudice: il numero che separa il prima dal dopo
+      // è quello della prova qui sopra. Questa serve a non lasciar
+      // restringere il cielo un pezzo alla volta.
+      const nomi = new Set(giro.flat());
+      assert.ok(nomi.size >= giro[0].length * 2,
+        `${nomi.size} bersagli diversi in ${giro.length} missioni da ${giro[0].length}`);
+    });
+    prova('e due anteprime di fila non si somigliano', () => {
+      giro.slice(1).forEach((lista, i) => {
+        const comuni = lista.filter(id => giro[i].includes(id)).length;
+        assert.ok(comuni <= Math.ceil(lista.length / 2),
+          `la ${i + 2}ª ripete ${comuni} bersagli su ${lista.length}`);
+      });
+    });
+
+    // Il giro sopra lascia il pannello su un'anteprima qualunque: le
+    // prove che seguono partono da lì, e vogliono una missione da avviare.
+    await pagina.evaluate(async () => {
+      if (miss.vista !== 'anteprima') {
+        missAzione('configura', document.getElementById('missione-corpo'));
+        document.querySelector('[data-miss-azione="genera"]').click();
+      }
+    });
+    await pagina.waitForTimeout(600);
 
     sezione('la missione in corso');
 
