@@ -322,6 +322,20 @@ const miss = {
     momento: 'consigliato', momentoPersonalizzato: null, voce: false },
   // La missione appena generata e non ancora avviata
   anteprima: null,
+  /* Le anteprime già viste in questa sessione di configurazione, la più
+   * recente per prima, al massimo `MISS_MISSIONI_DA_RICORDARE`.
+   *
+   * «Un'altra missione» evitava **la sola anteprima precedente**, e con
+   * un cielo stretto quello non è un ricambio ma un'altalena: A, poi B
+   * che evita A, poi di nuovo A perché B è l'unica cosa che si evita.
+   * Premendo tre volte si vedevano due missioni. Ricordandone tre, il
+   * terzo tentativo deve andare a cercare altrove per davvero; oltre le
+   * tre la penale tornerebbe a pesare su tutti, cioè su nessuno (§2,
+   * `missPescaPesato`: una penale uguale per tutti è una costante che
+   * sparisce nell'esponenziale). Non si salva: è la memoria di questa
+   * finestra aperta, e chi torna domani vuole ricominciare da capo — a
+   * ricordarsi delle sere scorse c'è già `CHIAVE_MISS_STORIA`. */
+  anteprimeViste: [],
   // Chi ha chiesto di vedere i nomi dei bersagli prima di cominciare:
   // vale per l'anteprima che si sta guardando e non si salva, perché
   // sbirciare è una decisione di stasera e non una preferenza.
@@ -689,6 +703,30 @@ function missCaso(seme) {
  * Coi bambini si stringe: lì un bersaglio mancato non è una variante, è
  * la fine della serata. */
 const MISS_TEMPERATURA = { bambini: 5, curiosi: 9, sfida: 12 };
+
+/* Le due penali, e perché sono due.
+ *
+ * Sono due frasi diverse dette dalla stessa persona. **«L'ho visto ieri
+ * sera»** è un piuttosto-no: con un cielo povero rivedere M13 è molto
+ * meglio che una missione di due tappe, e trenta punti — più di quanto
+ * valga qualunque singola grandezza tranne l'altezza — bastano a
+ * mandarlo in fondo senza escluderlo. **«Ho appena premuto un'altra
+ * missione»** è un no: quello che si sta chiedendo è *un'altra cosa*, e
+ * lì trenta punti non bastano — non contro un bersaglio che il punteggio
+ * mette trenta punti sopra a tutti, che è il caso normale quando in
+ * cielo c'è un pianeta solo. Misurato: con la penale sola dei recenti,
+ * Saturno restava in tutte e cinque le anteprime di fila mentre le altre
+ * quattro tappe cambiavano — quattro nomi nuovi e uno che non si muove,
+ * che è esattamente la faccia di «mostra sempre gli stessi elementi».
+ *
+ * Settanta punti sulla scala di `missPunteggio`, con la temperatura dei
+ * curiosi, valgono un peso quattromila volte più piccolo: fuori, in
+ * pratica. Ma **non escluso**, e la differenza conta il giorno in cui
+ * quel bersaglio è l'unica cosa rimasta — se sono penalizzati tutti, la
+ * penale è una costante e sparisce dentro l'esponenziale, cioè la
+ * missione si ripete invece di restituire il vuoto. */
+const MISS_PENALE_RECENTE = 30;
+const MISS_PENALE_RIFIUTATO = 70;
 
 /* Il sorteggio pesato: la roulette di sempre.
  *
@@ -1088,6 +1126,8 @@ function missGeneraMissione(scenario) {
   const partenza = (scenario && scenario.partenza) || adesso;
   const tutti = (scenario && scenario.candidati) || [];
   const evitare = new Set((scenario && scenario.evitare) || []);
+  // Quelli che si è appena detto di non volere: vedi `MISS_PENALE_RIFIUTATO`.
+  const rifiutati = new Set((scenario && scenario.rifiutati) || []);
 
   const seme = scenario.seme || Math.random().toString(36).slice(2);
   const storia = scenario.storia || {};
@@ -1098,17 +1138,15 @@ function missGeneraMissione(scenario) {
 
   /* Il punteggio, e poi il caso.
    *
-   * La penale dei recenti è **dentro** al punteggio e non un
-   * riordinamento dopo: un ordinamento per «da evitare» è un sì o un no,
-   * e quello che serve qui è un «piuttosto no» — con un cielo povero,
-   * ripetere un bersaglio di ieri è molto meglio che restituire una
-   * missione di due tappe. Trenta punti sono più di quanto valga
-   * qualunque singola grandezza tranne l'altezza: basta a mandare in
-   * fondo chi è appena stato visto, non a escluderlo. */
+   * La penale è **dentro** al punteggio e non un riordinamento dopo: un
+   * ordinamento per «da evitare» è un sì o un no, e quello che serve qui
+   * è un «piuttosto no» — con un cielo povero, ripetere un bersaglio di
+   * ieri è molto meglio che restituire una missione di due tappe. */
   const rnd = missCaso(seme);
   const votati = ammessi
     .map(c => Object.assign({}, c, {
-      punti: missPunteggio(c, scelte, condizioni) - (evitare.has(c.id) ? 30 : 0)
+      punti: missPunteggio(c, scelte, condizioni)
+        - (rifiutati.has(c.id) ? MISS_PENALE_RIFIUTATO : evitare.has(c.id) ? MISS_PENALE_RECENTE : 0)
     }))
     .sort((a, b) => b.punti - a.punti);
 
@@ -1155,12 +1193,45 @@ function missGeneraMissione(scenario) {
    * selettore normale. */
   if (quante > 0 && scelte.esperienza !== 'sfida') {
     const pianeti = pescabili(c => c.tipo === 'pianeta');
-    const i = missPescaPesato(pianeti, rnd, temperatura);
-    if (i >= 0) prendi(pianeti[i]);
+    /* …e il terzo caso, che è quello che si vedeva: **un pianeta appena
+     * visto non è un ancoraggio**. Con un solo pianeta sopra l'orizzonte
+     * — che è la sera normale, non il caso limite — la riserva lo
+     * rimetteva dentro a ogni tentativo, e premendo «un'altra missione»
+     * quella era l'unica tappa che non cambiava mai: quattro nomi nuovi e
+     * Saturno, cinque volte di fila. La riserva resta una preferenza e
+     * non un obbligo — insiste su un pianeta già scartato solo se il
+     * resto del cielo non ha di che riempire la missione da solo. */
+    const freschi = pianeti.filter(c => !evitare.has(c.id) && !rifiutati.has(c.id));
+    const riserva = freschi.length ? freschi
+      : (pescabili(c => c.tipo !== 'pianeta').length >= quante ? [] : pianeti);
+    const i = missPescaPesato(riserva, rnd, temperatura);
+    if (i >= 0) prendi(riserva[i]);
   }
 
   while (scelti.length < quante) {
-    const pool = pescabili(c => (perFamiglia[missFamigliaDi(c)] || 0) < MISS_TETTO_FAMIGLIA);
+    let pool = pescabili(c => (perFamiglia[missFamigliaDi(c)] || 0) < MISS_TETTO_FAMIGLIA);
+    /* Il tetto della varietà non deve diventare la ragione per cui torna
+     * sempre lo stesso bersaglio.
+     *
+     * Sono due preferenze, e qui litigano: non tutta la missione della
+     * stessa famiglia, e non di nuovo quello di poco fa. Le famiglie
+     * sono quattro e la sera normale ne parlano tre, quindi una missione
+     * da cinque tappe vuole 2 + 2 + 1 — e se la terza famiglia è il
+     * Sistema Solare con un pianeta solo sopra l'orizzonte, quell'uno è
+     * **obbligato**: la penale dei recenti non può niente contro un
+     * pool che ha un elemento. Misurato, era esattamente il motivo per
+     * cui a un'ora di missione Saturno restava in tutte e cinque le
+     * anteprime di fila mentre le altre quattro tappe cambiavano.
+     *
+     * Quando sotto al tetto resta solo roba appena vista, e fuori c'è
+     * ancora qualcosa di nuovo, vince la novità: una famiglia
+     * rappresentata tre volte si nota molto meno di una tappa che non
+     * cambia mai. */
+    const giaVisto = c => evitare.has(c.id) || rifiutati.has(c.id);
+    if (pool.length && pool.every(giaVisto)) {
+      const nuovi = pescabili(c => !giaVisto(c));
+      if (nuovi.length) pool = nuovi;
+    }
     const i = missPescaPesato(pool, rnd, temperatura);
     if (i < 0) break;
     prendi(pool[i]);
@@ -1499,90 +1570,220 @@ function missCandidatiDelCielo(obs, campioni, scelte) {
     }));
   }
 
-  // Le stelle luminose: sono gli otto slot che il planetario conosce già
-  // per nome (`Star1…Star8`), quindi il tasto «Guidami» funziona senza
-  // che il catalogo grande sia stato scaricato.
+  /* Le stelle con un nome.
+   *
+   * Erano otto — gli slot che il planetario tiene per nome
+   * (`Star1…Star8`) — e otto è il numero per cui «stasera voglio stelle»
+   * dava la stessa identica missione ogni sera: tolte quelle sotto
+   * l'orizzonte ne restano tre o quattro, cioè meno delle tappe da
+   * riempire, e il sorteggio non ha niente da sorteggiare.
+   *
+   * Le altre stanno già in casa, e la sorgente giusta è **una sola**:
+   * `catVociElenco()`, cioè le stelle che il planetario tiene per nome
+   * nel suo elenco degli astri (le 701 nominate del catalogo, tosate a
+   * magnitudine 3,2 — «solo quelle che si additano», che è la stessa
+   * domanda che fa una caccia). Prenderle da lì non è una comodità: è la
+   * condizione perché la tappa si possa **chiudere**.
+   *
+   * Il primo tentativo pescava i vertici nominati delle figure di
+   * `SKY_COSTELLAZIONI`, che il nome e la magnitudine ce l'hanno.
+   * Misurato nel browser: di cinquantanove bersagli così, **venti non si
+   * potevano trovare** — toccandoli sulla mappa `catStellaNelPunto` non
+   * riconosceva niente (quelle coordinate non sono le stesse del
+   * catalogo) e la risposta cadeva sulla figura, cioè «no, non è
+   * questo». Una tappa che non si può chiudere è peggio di una tappa che
+   * non c'è: chi cerca dà la colpa a sé. Con l'indice del catalogo
+   * (`cat:<indice>`) il tocco torna per costruzione, perché è lo stesso
+   * dato che il planetario disegna e interroga. */
+  const stellePronte = new Set();
+  const aggiungiStella = (s, idCielo, puntiBase) => {
+    const chiave = s.nome.toLowerCase();
+    if (stellePronte.has(chiave)) return;
+    stellePronte.add(chiave);
+    const v = missVisibilitaNellaFinestra({ ra: s.ra, dec: s.dec }, obs, campioni);
+    if (!v) return;
+    fuori.push(missDecoraCandidato({
+      id: 'stella:' + (idCielo || s.nome),
+      nome: s.nome,
+      mira: { ra: s.ra, dec: s.dec },
+      tipo: 'stella',
+      idCielo: idCielo || null,
+      quando: v.migliore.ms,
+      altezza: v.migliore.alt,
+      azimut: v.migliore.az,
+      sopraOstacoli: v.migliore.sopraOstacoli,
+      minutiUtili: v.minutiUtili,
+      strumentoMinimo: 'occhio',
+      mag: s.mag,
+      // La distanza sta nel catalogo del planetario, e serve al
+      // cartellino della scoperta: «la luce che stai guardando è partita
+      // nel 1477» è un numero vero, non un modo di dire. Le stelle delle
+      // figure non ce l'hanno, e il cartellino ripiega sulla specie.
+      anniLuce: typeof s.ly === 'number' ? s.ly : null,
+      magLimiteZenit: cieloLocale.magLimite,
+      fondoCielo: cieloLocale.fondo,
+      difficolta: s.mag < 1 ? 1 : s.mag < 2.2 ? 2 : 3,
+      evidenza: missEvidenzaDaMagnitudine(s.mag),
+      didattica: 0.7,
+      soffreLaLuna: false,
+      aOrarioPreciso: false,
+      puntiBase
+    }));
+  };
+
+  // Le otto per prime: portano la **distanza**, che il cartellino della
+  // scoperta trasforma in «la luce che stai guardando è partita nel
+  // 1477», e un identificativo che il planetario conosce anche prima che
+  // il catalogo grande sia arrivato.
   if (typeof SKY_STELLE !== 'undefined') {
-    SKY_STELLE.forEach((s, i) => {
-      const v = missVisibilitaNellaFinestra({ ra: s.ra, dec: s.dec }, obs, campioni);
-      if (!v) return;
-      fuori.push(missDecoraCandidato({
-        id: 'stella:Star' + (i + 1),
-        nome: s.nome,
-        mira: { ra: s.ra, dec: s.dec },
-        tipo: 'stella',
-        idCielo: 'Star' + (i + 1),
-        quando: v.migliore.ms,
-        altezza: v.migliore.alt,
-        azimut: v.migliore.az,
-        sopraOstacoli: v.migliore.sopraOstacoli,
-        minutiUtili: v.minutiUtili,
-        strumentoMinimo: 'occhio',
-        mag: s.mag,
-        // La distanza sta nel catalogo del planetario, e serve al
-        // cartellino della scoperta: «la luce che stai guardando è partita
-        // nel 1477» è un numero vero, non un modo di dire.
-        anniLuce: typeof s.ly === 'number' ? s.ly : null,
-        magLimiteZenit: cieloLocale.magLimite,
-        fondoCielo: cieloLocale.fondo,
-        difficolta: s.mag < 1 ? 1 : 2,
-        evidenza: missEvidenzaDaMagnitudine(s.mag),
-        didattica: 0.7,
-        soffreLaLuna: false,
-        aOrarioPreciso: false,
-        puntiBase: 46
-      }));
-    });
+    SKY_STELLE.forEach((s, i) => aggiungiStella(s, 'Star' + (i + 1), 46));
+  }
+  if (typeof catVociElenco === 'function') {
+    for (const v of catVociElenco()) {
+      if (v.tipo !== 'stella' || !Number.isFinite(v.ra)) continue;
+      aggiungiStella({ nome: v.nome, ra: v.ra, dec: v.dec, mag: v.mag }, v.id, 42);
+    }
   }
 
   // Le costellazioni: il bersaglio è il baricentro delle loro stelle, e
   // la stella più luminosa fa da maniglia. Non hanno un identificativo
   // per il planetario — non sono un oggetto — ma hanno un **punto**, e
   // il ponte del §10 sa centrarci la vista.
-  if (typeof SKY_COSTELLAZIONI !== 'undefined') {
-    for (const cost of SKY_COSTELLAZIONI) {
-      if (!cost.stelle || !cost.stelle.length) continue;
-      // La sigla IAU, quando il catalogo è arrivato: è l'unico modo di
-      // scrivere «Boötes» a chi legge in inglese. `SKY_COSTELLAZIONI` porta
-      // il nome italiano e nient'altro, e il dizionario le figure le tiene
-      // per sigla (`cost.nome.Boo`).
-      const sigla = missSiglaCostellazione(cost.nome);
-      const capofila = cost.stelle.reduce((a, b) => (b[2] < a[2] ? b : a));
-      // Media circolare: 23h e 1h stanno vicino a 0h, non a 12h.
-      const raX = cost.stelle.reduce((s, st) => s + Math.cos(st[0] * Math.PI / 12), 0);
-      const raY = cost.stelle.reduce((s, st) => s + Math.sin(st[0] * Math.PI / 12), 0);
-      const raMedia = (Math.atan2(raY, raX) * 12 / Math.PI + 24) % 24;
-      const decMedia = cost.stelle.reduce((s, st) => s + st[1], 0) / cost.stelle.length;
-      const v = missVisibilitaNellaFinestra({ ra: raMedia, dec: decMedia }, obs, campioni);
-      if (!v) continue;
-      fuori.push(missDecoraCandidato({
-        id: 'costellazione:' + cost.nome,
-        nome: cost.nome,
-        sigla,
-        tipo: 'costellazione',
-        idCielo: null,
-        mira: { ra: raMedia, dec: decMedia },
-        capofila: capofila[3],
-        quando: v.migliore.ms,
-        altezza: v.migliore.alt,
-        azimut: v.migliore.az,
-        sopraOstacoli: v.migliore.sopraOstacoli,
-        minutiUtili: v.minutiUtili,
-        strumentoMinimo: 'occhio',
-        mag: capofila[2],
-        magLimiteZenit: cieloLocale.magLimite,
-        fondoCielo: cieloLocale.fondo,
-        difficolta: capofila[2] < 1.6 ? 1 : capofila[2] < 2.5 ? 2 : 3,
-        evidenza: missEvidenzaDaMagnitudine(capofila[2]) * 0.9,
-        didattica: 1,
-        soffreLaLuna: false,
-        aOrarioPreciso: false,
-        puntiBase: 44
-      }));
-    }
+  for (const cost of missFigureDelCielo()) {
+    const v = missVisibilitaNellaFinestra({ ra: cost.ra, dec: cost.dec }, obs, campioni);
+    if (!v) continue;
+    fuori.push(missDecoraCandidato({
+      id: 'costellazione:' + cost.nome,
+      nome: cost.nome,
+      sigla: cost.sigla,
+      tipo: 'costellazione',
+      idCielo: null,
+      mira: { ra: cost.ra, dec: cost.dec },
+      capofila: cost.capofila,
+      antica: cost.antica,
+      quando: v.migliore.ms,
+      altezza: v.migliore.alt,
+      azimut: v.migliore.az,
+      sopraOstacoli: v.migliore.sopraOstacoli,
+      minutiUtili: v.minutiUtili,
+      strumentoMinimo: 'occhio',
+      mag: cost.mag,
+      magLimiteZenit: cieloLocale.magLimite,
+      fondoCielo: cieloLocale.fondo,
+      difficolta: cost.difficolta,
+      evidenza: missEvidenzaDaMagnitudine(cost.mag) * 0.9,
+      didattica: 1,
+      soffreLaLuna: false,
+      aOrarioPreciso: false,
+      puntiBase: 44
+    }));
   }
 
   return fuori;
+}
+
+/* Le ottantotto figure, e non le ventitré disegnate.
+ *
+ * `SKY_COSTELLAZIONI` sono le figure che il planetario **disegna**, e
+ * ventitré è il numero giusto per un disegno: le altre sessantacinque
+ * sono ghirigori che sullo schermo non aggiungono niente. Ma una caccia
+ * non le disegna, le fa cercare, e per lei quel taglio era il motivo per
+ * cui «stasera voglio costellazioni» dava sempre il Cigno e la Lira —
+ * tolte quelle sotto l'orizzonte restavano otto figure per quattro
+ * tappe. Il catalogo completo è già in casa (`COSTELLAZIONI_IAU`,
+ * `dati-costellazioni.js`), con la sigla IAU e il **rango**, cioè quanto
+ * quella figura è nota.
+ *
+ * Le due tabelle si sommano invece di sostituirsi, e in quest'ordine:
+ * dove il planetario ha la figura si tengono i suoi dati, che sono
+ * migliori — porta le stelle **col nome e la magnitudine**, quindi la
+ * difficoltà è misurata e non stimata, e la maniglia (`capofila`) è
+ * quella vera, che è la riga da cui `missDoppione` capisce che Vega e la
+ * Lira sono la stessa tappa. Per le altre la magnitudine si stima dal
+ * rango: non è una misura e non finge di esserlo — serve solo a
+ * `missVisibileNelCieloLocale` per non proporre l'Indiano da un balcone
+ * di città. */
+const MISS_FIGURA_DA_RANGO = {
+  1: { mag: 2.0, difficolta: 2 },
+  2: { mag: 2.9, difficolta: 3 },
+  3: { mag: 3.7, difficolta: 4 }
+};
+
+/* Questa figura è antica?
+ *
+ * Serve a una riga sola e sarebbe un dettaglio, se non fosse che quella
+ * riga afferma un fatto: il terzo enigma generico delle figure dice «sono
+ * più antica di ogni libro, sono servita a sapere quando seminare e da
+ * che parte andava la nave». È vero per le quarantotto di Tolomeo e per i
+ * pezzi della Nave Argo, ed è **falso** per la Macchina Pneumatica e per
+ * il Bulino dello Incisore, che Lacaille ha messo in cielo nel
+ * Settecento. Finché in una missione entravano solo le ventitré figure
+ * disegnate la domanda non si poneva — sono tutte antiche; da quando ci
+ * sono tutte e ottantotto, non chiederselo vorrebbe dire raccontare una
+ * cosa non vera con la faccia di un indovinello.
+ *
+ * Il gruppo lo sa già `costellazioni.js` (`costGruppoDi`), che è dove
+ * stanno la storia e i nomi delle altre culture: qui si legge e basta. */
+function missFiguraAntica(sigla) {
+  if (!sigla || typeof costGruppoDi !== 'function') return true;
+  return ['tolomeo', 'argo'].includes(costGruppoDi(sigla));
+}
+
+function missFigureDelCielo() {
+  const perNome = new Map();
+
+  // Media circolare: 23h e 1h stanno vicino a 0h, non a 12h.
+  const baricentro = punti => {
+    const x = punti.reduce((s, p) => s + Math.cos(p[0] * Math.PI / 12), 0);
+    const y = punti.reduce((s, p) => s + Math.sin(p[0] * Math.PI / 12), 0);
+    return {
+      ra: (Math.atan2(y, x) * 12 / Math.PI + 24) % 24,
+      dec: punti.reduce((s, p) => s + p[1], 0) / punti.length
+    };
+  };
+
+  if (typeof SKY_COSTELLAZIONI !== 'undefined') {
+    for (const cost of SKY_COSTELLAZIONI) {
+      if (!cost.stelle || !cost.stelle.length) continue;
+      const capofila = cost.stelle.reduce((a, b) => (b[2] < a[2] ? b : a));
+      const mag = capofila[2];
+      // La sigla IAU, quando il catalogo è arrivato: è l'unico modo di
+      // scrivere «Boötes» a chi legge in inglese. `SKY_COSTELLAZIONI`
+      // porta il nome italiano e nient'altro, e il dizionario le figure
+      // le tiene per sigla (`cost.nome.Boo`).
+      const sigla = missSiglaCostellazione(cost.nome);
+      perNome.set(cost.nome, Object.assign({
+        nome: cost.nome,
+        sigla,
+        capofila: capofila[3],
+        antica: missFiguraAntica(sigla),
+        mag,
+        difficolta: mag < 1.6 ? 1 : mag < 2.5 ? 2 : 3
+      }, baricentro(cost.stelle)));
+    }
+  }
+
+  if (typeof COSTELLAZIONI_IAU !== 'undefined') {
+    for (const c of COSTELLAZIONI_IAU) {
+      if (perNome.has(c.nome)) continue;
+      const punti = [];
+      (c.spezzate || []).forEach(sp => sp.forEach(p => punti.push(p)));
+      if (!punti.length) continue;
+      const stima = MISS_FIGURA_DA_RANGO[c.rango] || MISS_FIGURA_DA_RANGO[3];
+      perNome.set(c.nome, Object.assign({
+        nome: c.nome,
+        sigla: c.sigla || null,
+        // Nessuna stella nominata in questo catalogo: niente maniglia, e
+        // `missDoppione` per queste figure si regge sullo slug.
+        capofila: null,
+        antica: missFiguraAntica(c.sigla),
+        mag: stima.mag,
+        difficolta: stima.difficolta
+      }, baricentro(punti)));
+    }
+  }
+
+  return [...perNome.values()];
 }
 
 /* I candidati che non aspettano: i passaggi delle stazioni spaziali e gli
@@ -1700,10 +1901,25 @@ function missScenario(scelte, partenzaMs) {
     ? pianNuvoleStanotte(buio) : null;
   const bortle = missBortleScelto(scelte);
 
-  // Solo oggetti identificabili con un tocco: gli eventi del calendario
-  // restano nel pianificatore, non possono essere confermati sulla mappa.
+  /* Solo oggetti identificabili con un tocco sulla mappa: una tappa che
+   * non si può confermare non è una tappa, è una domanda senza risposta.
+   * Le tre strade del riconoscimento sono quelle di `missSelezioneCorretta`
+   * — un `idCielo` che il planetario conosce, la sigla di una figura, o
+   * le **coordinate** (le stelle delle figure e del catalogo, che un
+   * identificativo non ce l'hanno e non ne hanno bisogno).
+   *
+   * Qui dentro entrano anche i passaggi delle stazioni e gli eventi del
+   * calendario (`missCandidatiAOrarioPreciso`), e vale la pena scrivere
+   * perché: quella funzione c'era da sempre, era giusta, e **non la
+   * chiamava nessuno**. Il risultato era che il genere «stazioni» non
+   * poteva produrre niente — si accendeva la casella, si generava, e
+   * usciva la missione di qualcun altro o il vuoto. È il guasto peggiore
+   * che questo pannello possa avere, perché una casella che non fa niente
+   * è indistinguibile da un cielo che non offre niente. */
   const candidati = missCandidatiDelCielo(obs, campioni, scelte)
-    .filter(t => t.tipo !== 'corpoMinore' && (t.idCielo || (t.tipo === 'costellazione' && t.sigla)));
+    .concat(missCandidatiAOrarioPreciso(partenza, scelte.durata))
+    .filter(t => t.idCielo || (t.tipo === 'costellazione' && t.sigla) ||
+      (t.tipo === 'stella' && t.mira));
 
   const storia = missLeggiSalvato(CHIAVE_MISS_STORIA) || {};
   const recenti = (storia.missioniRecenti || [storia.recenti || []]).flat();
@@ -1949,9 +2165,36 @@ function missTitoloTappa(t) {
 }
 
 function missMisuraTappa(t, data, obs) {
+  /* Un passaggio di stazione non si rimisura, e sono due ragioni diverse.
+   *
+   * La prima è che non si **può**: «sat-iss» non è un corpo della
+   * libreria, quindi `altAzCorpo` solleva, e sollevare qui vuol dire
+   * altezza −90 — cioè una tappa che sparisce senza dire perché. È il
+   * secondo motivo per cui il genere «stazioni» restava vuoto anche col
+   * passaggio in cielo: il raccoglitore lo trovava, e il primo
+   * riallineamento degli orari lo buttava via.
+   *
+   * La seconda è che non **serve**: la posizione di un passaggio l'ha già
+   * calcolata `app.js` con SGP4, ed è quella del culmine — l'unico
+   * istante di quei cinque minuti a cui valga la pena arrivare. E il
+   * crepuscolo qui non si applica: una stazione si vede proprio col Sole
+   * appena sotto l'orizzonte, perché lassù è ancora illuminata. */
+  if (t.tipo === 'stazione') {
+    return {
+      altezza: t.altezza, azimut: t.azimut,
+      sopraOstacoli: typeof t.sopraOstacoli === 'number'
+        ? t.sopraOstacoli : t.altezza - missOstacolo(t.azimut)
+    };
+  }
   try {
+    // `altAzCorpoQualunque` sa leggere anche `dso:` e `min:`, che è quello
+    // che porta l'`idCielo` di un evento del calendario con una cometa o
+    // una nebulosa per protagonista.
     const p = t.mira ? altAzCoordinate(t.mira.ra, t.mira.dec, data, obs) :
-      altAzCorpo(t.corpo || t.idCielo, data, obs);
+      (typeof altAzCorpoQualunque === 'function'
+        ? altAzCorpoQualunque(t.corpo || t.idCielo, data, obs)
+        : altAzCorpo(t.corpo || t.idCielo, data, obs));
+    if (!p) return { altezza: -90, sopraOstacoli: -90 };
     const sole = altAzCorpo('Sun', data, obs);
     return { altezza: sole.alt > -6 && t.tipo !== 'luna' ? -90 : p.alt,
       azimut: p.az, sopraOstacoli: p.alt - missOstacolo(p.az) };
@@ -1983,9 +2226,28 @@ function missSelezioneCorretta(t, sel) {
   const d = sel.dati || {};
   if (sel.categoria === 'profondo') return t.idCielo === 'dso:' + d.nome;
   if (sel.categoria === 'corpoMinore') return t.idCielo === 'min:' + d.nome;
-  // Le stelle luminose possono comparire anche nel catalogo e nelle figure.
-  return t.tipo === 'stella' && ['figura', 'stellaCatalogo'].includes(sel.categoria) &&
-    Number.isFinite(d.ra) && Number.isFinite(d.dec) && t.mira &&
+  /* Le stelle luminose possono comparire anche nel catalogo e nelle figure.
+   *
+   * L'**indice del catalogo** viene prima delle coordinate, e non è una
+   * scorciatoia: fra le due c'è la precessione. Le stelle del catalogo
+   * sono in J2000, il planetario le disegna dov'erano portate all'equatore
+   * di oggi (`catMatriceCielo`), e la missione le misura con
+   * `altAzCoordinate` — che quelle coordinate le prende per buone così
+   * come sono. Fra i due punti ballano **0,4 gradi**: invisibili a chi
+   * guarda in su, tredici pixel sullo schermo, cioè più della finestra
+   * con cui `catStellaNelPunto` decide di aver colpito una stella.
+   * Misurato nel browser su Mirfak: toccandola non si riconosceva niente
+   * e la risposta cadeva sulla figura di Perseo, cioè «no, non è questo»
+   * — venti bersagli su sessantuno che non si potevano chiudere. Con
+   * l'indice il confronto è fra due numeri interi e la precessione non
+   * c'entra più.
+   *
+   * Le coordinate restano per i bersagli che un indice non ce l'hanno:
+   * le otto stelle di `SKY_STELLE` e i vertici delle figure. */
+  if (t.tipo !== 'stella' || !['figura', 'stellaCatalogo'].includes(sel.categoria)) return false;
+  const indice = /^cat:(\d+)$/.exec(String(t.idCielo || ''));
+  if (indice) return Number(indice[1]) === d.indiceCatalogo;
+  return Number.isFinite(d.ra) && Number.isFinite(d.dec) && t.mira &&
     Math.abs(d.ra - t.mira.ra) < 0.002 && Math.abs(d.dec - t.mira.dec) < 0.02;
 }
 
@@ -2776,6 +3038,23 @@ function missApriPannello() {
   miss.fuocoPrima = document.activeElement;
   miss.aperto = true;
 
+  /* I cataloghi, se non li ha ancora chiesti nessuno.
+   *
+   * Senza `catPronto()` il cielo di una caccia è quello che sta scritto
+   * in `app.js`: sette pianeti, otto stelle e ventitré figure — niente
+   * cielo profondo, perché i centoquarantadue oggetti arrivano di lì.
+   * Chi apre Missione Cielo dalla dashboard senza essere mai passato dal
+   * planetario accendeva quindi la casella «galassie» e riceveva il
+   * vuoto, che è la stessa segnalazione dei generi con un'altra faccia.
+   * A caricarli finora era solo `apriSkymap()`, e qui basta chiederlo:
+   * `catCarica` è idempotente e restituisce la promessa che ha già, e il
+   * tempo di rispondere alle domande è molto più di quello che ci mette
+   * a scaricare. Se non arriva, la missione si fa lo stesso col cielo di
+   * prima — è la regola di ogni servizio di questa applicazione. */
+  if (typeof catCarica === 'function' && typeof catPronto === 'function' && !catPronto()) {
+    try { catCarica(); } catch (e) { /* i cataloghi sono un di più */ }
+  }
+
   // Dove si riapre: chi ha una missione in corso la ritrova al punto in
   // cui era, chi ne ha una conclusa vede il risultato, gli altri le tre
   // domande. Riportare tutti alla configurazione vorrebbe dire chiedere
@@ -3328,7 +3607,13 @@ function missEnigma(t) {
   const slug = t.slug || missSlugTappa(t);
   const categoria = missCategoriaTappa(t);
   const famiglia = missFamigliaContenuto(t);
-  const n = (t.indizioVariante || 0) % 3 + 1;
+  /* Tre varianti generiche per famiglia, tranne una eccezione che afferma
+   * un fatto: la terza delle figure comincia con «sono più antica di ogni
+   * libro». Alla Macchina Pneumatica e al Bulino dello Incisore, che
+   * stanno in cielo dal Settecento, quell'enigma farebbe raccontare una
+   * bugia — quindi loro ne pescano due. Vedi `missFiguraAntica` (§3). */
+  const quante = (famiglia === 'costellazione' && t.antica === false) ? 2 : 3;
+  const n = (t.indizioVariante || 0) % quante + 1;
   const chiavi = [];
   if (modo === 'bambini') {
     if (slug) chiavi.push('gioco.enigmaBimbi.' + slug);
@@ -3804,6 +4089,11 @@ function missCollegaPannello(corpo) {
       if (nome === 'voce') valore = valore === 'si';
       miss.scelte[nome] = valore;
       if (nome === 'cielo') miss.rilievoSettore = null;
+      // Cambiata una scelta, il cielo da cui si pesca è un altro: la
+      // memoria delle anteprime scartate parlava di un pool che non
+      // esiste più, e tenerla vorrebbe dire penalizzare i bersagli
+      // appena ammessi.
+      miss.anteprimeViste = [];
       missSalvaScelte();
       missDisegnaPannello();
     });
@@ -3822,6 +4112,7 @@ function missCollegaPannello(corpo) {
         scelti.delete(genere);
       } else scelti.add(genere);
       miss.scelte.generi = MISS_GENERI_TUTTI.filter(g => scelti.has(g));
+      miss.anteprimeViste = [];
       missSalvaScelte();
       const uno = miss.scelte.generi.length === 1;
       corpo.querySelectorAll('[data-miss-genere]').forEach(x => {
@@ -3953,9 +4244,11 @@ function missAzione(azione, corpo) {
       break;
     case 'genera':
     case 'rigenera': {
-      const evitare = (azione === 'rigenera' && miss.anteprima)
-        ? miss.anteprima.tappe.map(t => t.id) : [];
-      missPreparaAnteprima(evitare);
+      // «Genera» è una serata nuova e riparte con la memoria pulita;
+      // «un'altra» è un ricambio, e deve ricordarsi di tutte quelle che
+      // ha già fatto vedere — non solo dell'ultima.
+      if (azione === 'genera') miss.anteprimeViste = [];
+      missPreparaAnteprima();
       break;
     }
     case 'sbircia':
@@ -3964,6 +4257,7 @@ function missAzione(azione, corpo) {
       break;
     case 'configura':
       miss.anteprima = null;
+      miss.anteprimeViste = [];
       miss.sbircia = false;
       // Una missione conclusa e non salvata si archivia qui: chi chiede
       // un'altra missione ha finito con quella, e tenersela in giro
@@ -4075,6 +4369,9 @@ function missPreparaAnteprima(evitare) {
   const storia = missLeggiSalvato(CHIAVE_MISS_STORIA) || {};
   const recenti = (storia.missioniRecenti || [storia.recenti || []]).flat();
   scenario.evitare = [...(evitare || []), ...recenti];
+  // Le anteprime che si è appena scartate premendo «un'altra missione»
+  // sono un no, non un piuttosto-no: hanno la loro penale (§2).
+  scenario.rifiutati = miss.anteprimeViste.flat();
   scenario.storia = storia.varianti || {};
   scenario.domande = storia.domande || {};
   const generata = missGeneraMissione(scenario);
@@ -4082,6 +4379,8 @@ function missPreparaAnteprima(evitare) {
     missMostraVista('vuoto');
     return null;
   }
+  miss.anteprimeViste = [generata.tappe.map(t => t.id), ...miss.anteprimeViste]
+    .slice(0, MISS_MISSIONI_DA_RICORDARE);
   if (generata.tappe.length < (MISS_TAPPE_PER_DURATA[miss.scelte.durata] || {}).min) {
     missAvvisa('missioneCorta', {}, 'informa');
   }
@@ -4241,6 +4540,11 @@ const missProve = {
   momentoVoce: missMomentoVoce,
   generiScelti: missGeneriScelti,
   genereAmmesso: missGenereAmmesso,
+  figureDelCielo: missFigureDelCielo,
+  figuraAntica: missFiguraAntica,
+  enigma: missEnigma,
+  misuraTappa: missMisuraTappa,
+  candidatiAOrarioPreciso: missCandidatiAOrarioPreciso,
   caso: missCaso,
   pescaPesato: missPescaPesato,
   costanti: {
@@ -4250,6 +4554,7 @@ const missProve = {
     MISS_STESSO_CAMPO_GRADI, MISS_PREAVVISO_MIN,
     MISS_SCADENZA_MS, MISS_TETTO_FAMIGLIA, MISS_LIVELLO_STRUMENTO,
     MISS_GENERI, MISS_GENERI_TUTTI, MISS_GENERE_DI_TIPO, MISS_TEMPERATURA,
+    MISS_PENALE_RECENTE, MISS_PENALE_RIFIUTATO, MISS_MISSIONI_DA_RICORDARE,
     MISS_INDIZI, MISS_VOCI_EDGE, MISS_TONI_VOCE, MISS_CHIAVI_BAMBINI,
     CHIAVE_MISS_SCELTE, CHIAVE_MISS_ATTIVA
   }

@@ -3,7 +3,7 @@
 **Niente in corso.**
 
 Resta aperto, come prima, il lavoro di fondo sulla traduzione inglese di
-`app.js`: 352 stringhe cablate contate da
+`app.js`: 343 stringhe cablate contate da
 `node scripts/controlla-i18n.js --lista --file app.js` — le eclissi (la mappa
 dell'ombra, le eclissi di casa, quelle lunari), le simulazioni e gli avvisi del
 planetario. Il tetto resta a 362.
@@ -14,61 +14,121 @@ due), tutte fuori da Missione Cielo.
 
 ## Ultimo intervento completato
 
-**Missione Cielo: si sceglie cosa cercare, i bersagli si sorteggiano, la
-soluzione è un tasto e la voce ha un tono per ogni momento della caccia.**
+**Missione Cielo: i generi scelti entrano davvero nella caccia, e «un'altra
+missione» fa vedere un'altra missione.**
 
-Sei cose, e la prima è quella che teneva in piedi tutte le altre.
+La segnalazione era doppia — «se seleziono pianeti, costellazioni, stazioni
+non vengono incluse» e «mostra sempre più o meno gli stessi elementi» — e le
+cause erano cinque, tutte della stessa famiglia: **il filtro funzionava, il
+mucchio che filtrava no**. Un filtro vale quanto vale il cielo su cui lavora,
+e quel cielo era molto più piccolo di quanto sembrasse. Misurato da Como il 7
+settembre, con tutte le scelte di serie: novantasette candidati raccolti,
+**diciassette ammessi** — un pianeta, quattro stelle, quattro oggetti
+profondi, otto figure — per quattro tappe. Non si sceglieva: si raschiava.
 
-**Cosa si va a cercare** (§1, `MISS_GENERI`). Cinque caselle — pianeti,
-stelle, galassie, costellazioni, stazioni — ed è un **filtro secco** e non
-una preferenza da pesare: il punteggio premia giustamente quello che si
-trova più facilmente, quindi «stasera voglio galassie» messo su quella
-bilancia perdeva sempre contro l'altezza e la magnitudine, e chi lo aveva
-chiesto si ritrovava la Luna, Giove e due costellazioni. Cioè una missione
-perfettamente sensata: quella di qualcun altro. I cinque generi sono le
-cinque cose che una persona nomina guardando in su e non le famiglie del
-catalogo; gli eventi del calendario passano sempre, perché sono
-appuntamenti; e un elenco vuoto vuol dire *tutti* e non *nessuno*.
+**Le stazioni non potevano comparire, mai.**
+`missCandidatiAOrarioPreciso` c'era da sempre, era giusta, e **non la chiamava
+nessuno**: `missScenario` raccoglieva il solo cielo fisso. Si accendeva la
+casella «stazioni», si generava, e usciva la missione di qualcun altro o il
+vuoto — che è il guasto peggiore che questo pannello possa avere, perché una
+casella che non fa niente è indistinguibile da un cielo che non offre niente.
+Sotto c'era un secondo strato, che sarebbe rimasto anche chiamandola: la
+rimisurazione degli orari chiedeva ad `altAzCorpo` dove stia «sat-iss», che
+non è un corpo della libreria, e il `catch` restituisce altezza −90. Il
+raccoglitore trovava il passaggio e il primo riallineamento se lo mangiava, in
+silenzio. Adesso un passaggio non si rimisura affatto — quella posizione l'ha
+già calcolata `app.js` con SGP4, ed è quella del culmine — e col ramo cade
+anche il crepuscolo, che per una stazione è esattamente il momento buono.
 
-**Il sorteggio** (§2, `missCaso` e `missPescaPesato`). La scelta era un
-argmax, e dallo stesso balcone alla stessa ora le posizioni sono identiche:
-la missione era la stessa ogni sera. Non si vede guardando *una* missione —
-cinque bersagli sensati sono cinque bersagli sensati — e si vede benissimo
-alla terza sera. Adesso ogni tappa si pesca con peso `exp((punti −
-migliore)/T)`: il migliore vince spesso e non vince sempre. Il generatore è
-**seminato**, e non per le prove: la stessa missione si ridisegna decine di
-volte, e con `Math.random` in mezzo ogni ridisegno sarebbe una serata nuova.
+**Le stelle erano otto e le figure ventitré.** Gli otto slot `Star1…Star8` del
+planetario e le figure che il planetario *disegna*: numeri giusti per un
+disegno, sbagliati per una caccia. Tolto chi sta sotto l'orizzonte restavano
+quattro stelle e otto figure. Adesso entrano le **stelle nominate del
+catalogo** (`catVociElenco()`) e le **ottantotto figure IAU**
+(`missFigureDelCielo`: le due tabelle si sommano, e dove il planetario ha la
+figura si tengono i suoi dati, che portano la magnitudine vera e la maniglia).
+Sessantuno stelle e diciannove figure ammesse invece di quattro e otto. Sono
+tornate dentro anche le **comete**, che il genere «pianeti» dichiara e un
+filtro di `missScenario` buttava via; e i cataloghi si chiedono aprendo la
+finestra (`catCarica` in `missApriPannello`), perché a caricarli era solo
+`apriSkymap()` — chi arrivava dalla dashboard senza essere mai passato dal
+planetario accendeva «galassie» e riceveva il vuoto.
 
-**La soluzione** (§6). Il terzo aiuto rivelava e centrava: si chiedeva un
-indizio e ci si ritrovava la risposta, cioè la caccia finiva senza che
-nessuno l'avesse decisa. Adesso i tre indizi sono tre indizi, e sotto al
-terzo compare un tasto ambra che dice cosa fa. Il pannello zero si chiama
-**Enigma** e non più «Indizio 1 di 3», che prometteva tre indizi quando
-quelli veri erano due.
+**Una tappa che non si può chiudere.** Il primo tentativo di allargare le
+stelle pescava i vertici nominati delle figure, che nome e magnitudine ce
+l'hanno. Misurato nel browser: di sessantuno bersagli così, **venti non si
+potevano trovare** — toccandoli sulla mappa `catStellaNelPunto` non
+riconosceva niente e la risposta cadeva sulla figura, cioè «no, non è questo».
+In mezzo c'è la precessione: quelle coordinate sono J2000, il planetario le
+disegna portate all'equatore di oggi e la missione le misura con
+`altAzCoordinate`, che le prende per buone — **0,4 gradi**, invisibili in
+cielo e tredici pixel sullo schermo, cioè più della finestra con cui si decide
+di aver colpito una stella. Le stelle del catalogo sono invece lo stesso dato
+che il planetario disegna e interroga, e `missSelezioneCorretta` per loro
+confronta l'**indice** e non le coordinate: sessanta su sessantuno riconosciute
+toccandole dove sono disegnate (la sessantunesima sta sotto l'etichetta del
+nome della sua costellazione, che per scelta vince sempre). È il difetto
+peggiore di tutta questa famiglia, perché chi non trova dà la colpa a sé.
 
-**La configurazione**, da milleotto pixel a ottocentottantanove su un
-telefono da 360 — con in più la domanda dei generi. Tre blocchi (la serata,
-la caccia, i dettagli richiudibili), la nota del gradino una sola invece di
-tre cartoline, le etichette accorciate.
+**Il prezzo di aprire quella porta**, ed è il pezzo che a occhio non si vede
+per quello che è: il terzo enigma generico delle figure dice «sono più antica
+di ogni libro, sono servita a sapere quando seminare». Vero per le quarantotto
+di Tolomeo, **falso** per la Macchina Pneumatica, che Lacaille ha messo in
+cielo nel Settecento. Finché entravano solo le ventitré disegnate la domanda
+non si poneva. `missFiguraAntica` legge il gruppo da `costellazioni.js` e chi
+non è antica pesca due varianti invece di tre.
 
-**La voce.** Due voci per lingua: quelle espressive (Isabella, Jenny)
-accettano gli stili, e da lì vengono l'enigma detto piano, la scoperta su di
-giri e la resa sottovoce. Più le pause sulla punteggiatura e un ripiego
-locale che smette di preferire `localService` — cioè la vecchia voce
-concatenativa — alle Neural moderne.
+**E il pianeta che non cambiava mai.** Il posto riservato a un pianeta era un
+obbligo, e la sera normale sopra l'orizzonte ce n'è uno: con un pool da un
+elemento il sorteggio non sorteggia niente, e la penale dei recenti non poteva
+morderlo. Quattro nomi nuovi e sempre Saturno. Adesso la riserva salta il
+pianeta appena visto quando il resto del cielo basta; e per la stessa ragione
+cede anche il **tetto della varietà** quando sotto di lui restano solo
+bersagli già visti e fuori c'è ancora roba nuova — una famiglia rappresentata
+tre volte si nota molto meno di una tappa che non cambia mai. Con «un'altra
+missione» il tasto ricorda adesso **tre** anteprime e non l'ultima soltanto:
+ricordarne una sola non è un ricambio, è un'altalena fra due liste.
 
-**Il registro dei bambini** copre adesso anche il gioco vero e proprio:
-indizi, scoperta, soluzione, difficoltà, titolo finale. E «Salto
-nell'iperspazio» è tornato «Salto».
+E le penali sono diventate **due**, perché sono due frasi diverse. «L'ho visto
+ieri sera» resta un piuttosto-no da trenta punti; «ho appena premuto un'altra
+missione» è un no da settanta (`MISS_PENALE_RECENTE`, `MISS_PENALE_RIFIUTATO`).
+Trenta punti bastano contro un bersaglio come tutti gli altri e non bastano
+contro uno che il punteggio mette trenta punti sopra a tutti — che è il caso
+normale quando in cielo c'è un pianeta solo. Non è però un'esclusione: se sono
+penalizzati tutti la penale è una costante e sparisce dentro l'esponenziale,
+cioè la missione si ripete invece di restituire il vuoto.
 
-**Prove.** `scripts/prova-missione.js` è a **147 verdi su 147** (106 motore +
-41 browser), da 91 su 93. Le due rosse erano rosse da prima e per la stessa
-ragione: cercavano un tasto `data-miss-azione="aiuto"` che non esiste più da
-quando gli indizi si sfogliano con le frecce, e la prima si portava dietro
-**tutta la sezione dell'aiuto progressivo**, che non girava affatto. Nella
-stessa passata è tornato a girare `scripts/prova-missione-stati.js`, che
-moriva a metà su un finto elemento del documento senza `removeAttribute`.
-Verdi anche `prova-missione-interattiva.js`, `prova-lingua.js` (zero errori
-in console) e `controlla-i18n.js --patto`.
+I numeri, misurati con cinque anteprime di fila: il bersaglio più ricorrente
+era in **cinque su cinque** in tutti e sei i giri di prova, adesso al massimo
+in quattro; i bersagli diversi passano da 9–12 a 13–15.
 
-Cache PWA a `astrocal-v300`.
+### Le prove aggiunte
+
+`scripts/prova-missione.js` passa da 147 a 161. Nel motore: la stazione che
+non si rimisura (e il crepuscolo che non la spegne), il pianeta scartato che
+smette di essere in tutte le missioni, la figura moderna che non racconta la
+bugia, e l'elenco vuoto delle figure senza cataloghi. Nella catena intera: che
+ogni genere abbia **più bersagli di quante tappe ne servano** (si sceglie, non
+si raschia), che un passaggio di stazione arrivi fino alla tappa, e il gesto
+vero — «un'altra missione» premuto cinque volte, con il conto di quante volte
+torna il bersaglio che torna di più. Tutte rosse sul codice di prima.
+
+Restano rosse, ed erano rosse anche prima, `scripts/prova-fumetto.js` (quattro
+prove sul codice di partenza, tre adesso: la fotografia di ripiego delle
+stazioni e la fascia della barra del tempo) e il **cricchetto** di
+`scripts/prova-lingua.js`, che chiede di abbassare il tetto della vista
+Telescopio da 4 a 2 — cioè si lamenta di un miglioramento, e si riproduce
+identico col file di Missione Cielo messo da parte. Nessuna delle due tocca
+questo lavoro.
+
+### Una prova che sperava invece di controllare
+
+`scripts/prova-missione-interattiva.js` falliva due volte su nove, e non per
+colpa del codice: `tapObject` sposta la vista di ventidue gradi e tocca dove
+il bersaglio finisce, ma poco sopra la prova ha trascinato la striscia della
+missione in mezzo al cielo — se il bersaglio le casca sotto, il clic lo prende
+lei e la tappa resta in ricerca, che è il comportamento **giusto** dell'app.
+Non falliva quasi mai perché dipende da dove sta il bersaglio di stanotte, e
+il cielo più largo ha cominciato a pescarne di alti. Adesso il punto si cerca
+(`document.elementFromPoint` su una scala di scostamenti) e si **dichiara**:
+`sullaMappa`. Otto giri di fila verdi.
