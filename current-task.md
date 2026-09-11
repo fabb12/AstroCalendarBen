@@ -127,6 +127,31 @@ Due cose viste risolvendo, e nessuna delle due la segnalava git:
   una deriva: il campo si riassesta una volta quando arriva la previsione
   dedicata, e un cielo che si assesta all'apertura non lo nota nessuno.
 
+### Lo stato del PR #475
+
+Il ramo è allineato all'ultimo commit di `main` (`7e9c73d`, PR #477): due
+fusioni, nessun conflitto rimasto, `mergeable_state` «unstable» — cioè
+fondibile, con un check rosso.
+
+**Il check «missione» è rosso su `main`, non per colpa di questo ramo**, e la
+distinzione è verificata in locale con worktree staccati sui commit veri:
+
+- `prova-missione-stati.js:180` (`skyNomiVisibili()` che risponde `false`) è
+  **deterministico** ed è rosso da `4a3088b` «Nascondi i nomi dei monti
+  durante il gioco» (PR #469), cioè dal commit che ha introdotto insieme la
+  funzione e la prova. Verde a `eea6fd2`, rosso da lì in poi su ogni commit di
+  `main`. Nessuna correzione da portare: su `main` non ne è stata fatta
+  nessuna.
+- `prova-missione-interattiva.js:174` («un tocco vicino al bersaglio viene
+  riconosciuto come corretto») è **intermittente**: la missione si sorteggia a
+  ogni giro e il bersaglio atteso cambia a ogni esecuzione. Misurata tre volte
+  per commit, `cc20b61` fa verde-rosso-verde e `7e9c73d` tre verdi. È una
+  prova che passa o no a seconda di quale missione le capita, e il difetto che
+  nasconde è che con certi bersagli il tocco vicino non viene riconosciuto.
+
+Tutt'e due stanno in `missione-cielo.js`, che questo ramo non tocca.
+Rimetterle in piedi è un altro lavoro e merita un PR suo.
+
 ### Cosa è stato toccato
 
 - `meteo-astro.js`: §2-bis riscritta in parte, §**2-ter** nuova (il movimento).
