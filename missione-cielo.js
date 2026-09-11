@@ -4749,6 +4749,23 @@ function missRaccontaLocale(testo, lingua, tono) {
   return true;
 }
 
+/* La lingua della voce deve essere il valore dell'i18n, non il metodo che lo
+ * restituisce. L'API pubblica espone infatti `lingua()` (e `getLanguage()`),
+ * mentre i vecchi banchi finti usano ancora una proprietà stringa. Passare la
+ * funzione alla tabella delle voci faceva fallire la chiave `en` e riportava
+ * silenziosamente Missione Cielo alla voce italiana, anche con l'interfaccia
+ * inglese. Qui accettiamo entrambe le forme e riduciamo anche `en-US` a `en`. */
+function missLinguaVoce(servizio) {
+  const i18nVoce = servizio || (typeof astroI18n === 'object' ? astroI18n : null);
+  let valore = 'it';
+  if (i18nVoce) {
+    if (typeof i18nVoce.getLanguage === 'function') valore = i18nVoce.getLanguage();
+    else if (typeof i18nVoce.lingua === 'function') valore = i18nVoce.lingua();
+    else if (typeof i18nVoce.lingua === 'string') valore = i18nVoce.lingua;
+  }
+  return String(valore || 'it').toLowerCase().split('-')[0] === 'en' ? 'en' : 'it';
+}
+
 /* Quello che si sente quando si trova.
  *
  * Era «M tredici. La sua luce è partita…», cioè un cartellino da museo
@@ -4785,7 +4802,7 @@ function missTestoVoceTappa(tappa) {
  * frasi si accavallano. */
 async function missRacconta(testo, tono, opz) {
   if (!testo) return false;
-  const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
+  const lingua = missLinguaVoce();
   const sequenza = missFermaVoce();
   try {
     if (await missRaccontaConEdge(testo, lingua, sequenza, tono, opz)) return true;
@@ -5455,6 +5472,7 @@ const missProve = {
   conto: missConto,
   campioni: missCampioni,
   ssml: missSsml,
+  linguaVoce: missLinguaVoce,
   tonoVoce: missTonoVoce,
   momentoVoce: missMomentoVoce,
   generiScelti: missGeneriScelti,

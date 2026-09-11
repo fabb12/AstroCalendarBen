@@ -402,6 +402,16 @@ sezione('la voce: come si dice una cosa, non solo cosa si dice');
  * niente da cui accorgersene se non riascoltare tutto sperando di
  * ricordarsi com'era. */
 
+prova('la voce segue la lingua inglese restituita dall’i18n', () => {
+  // Nell'app vera `lingua` è un metodo. Leggere la proprietà senza chiamarla
+  // consegnava una funzione alla tabella delle voci, che ricadeva in italiano.
+  assert.strictEqual(motore.linguaVoce({ lingua: () => 'en' }), 'en');
+  assert.strictEqual(motore.linguaVoce({ getLanguage: () => 'en-US' }), 'en');
+  // I banchi e i salvataggi più vecchi possono ancora presentare la stringa.
+  assert.strictEqual(motore.linguaVoce({ lingua: 'en' }), 'en');
+  assert.strictEqual(motore.linguaVoce({ lingua: () => 'it' }), 'it');
+});
+
 prova('lo SSML porta il namespace mstts, se no lo stile si perde in silenzio', () => {
   const x = motore.ssml('ciao', 'it', K.MISS_TONI_VOCE.curiosi.scoperta);
   assert.ok(x.includes('xmlns:mstts='), 'senza il namespace il blocco viene ignorato');
