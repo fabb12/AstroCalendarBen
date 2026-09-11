@@ -4206,8 +4206,19 @@ function missEnigma(t) {
    * bugia — quindi loro ne pescano due. Vedi `missFiguraAntica` (§3). */
   const n = missVarianteEnigma(t);
   const chiavi = [];
+  // Per tutte le 88 figure il primo indovinello parla del significato del
+  // nome (animale, mestiere, strumento o personaggio), non della geometria
+  // casuale delle stelle. La sigla IAU rende la chiave stabile anche quando
+  // il nome visualizzato cambia lingua. Le figure con un testo dedicato per
+  // bambini continuano a usare quello, più breve; le altre ricevono questa
+  // stessa domanda semantica invece del vecchio indovinello generico su cosa
+  // sia una costellazione.
+  if (t.tipo === 'costellazione' && t.sigla && modo !== 'bambini') {
+    chiavi.push('gioco.enigmaNome.' + t.sigla);
+  }
   if (modo === 'bambini') {
     if (slug) chiavi.push('gioco.enigmaBimbi.' + slug);
+    if (t.tipo === 'costellazione' && t.sigla) chiavi.push('gioco.enigmaNome.' + t.sigla);
     if (categoria) chiavi.push('gioco.enigmaBimbi.' + categoria);
     chiavi.push('gioco.enigmaBimbi.' + famiglia);
   }
