@@ -58,13 +58,16 @@
 //     dichiarare.
 // =====================================================================
 
-const MISS_VERSIONE = 9;
+const MISS_VERSIONE = 11;
 const CHIAVE_MISS_STORIA = 'astrocalendario_missione_storia';
 
 const CHIAVE_MISS_SCELTE = 'astrocalendario_missione_scelte';
 const CHIAVE_MISS_ATTIVA = 'astrocalendario_missione_attiva';
 
-const MISS_DURATE = [10, 30, 60, 120, 180, 240];
+// Dodici ore coprono anche la notte astronomica piu' lunga alle latitudini
+// per cui il planetario prepara una normale serata. Nell'interfaccia non e'
+// presentato come un numero: e' l'opzione «tutta la notte».
+const MISS_DURATE = [10, 30, 60, 120, 180, 240, 720];
 const MISS_STRUMENTI = ['occhio', 'binocolo', 'telescopio'];
 const MISS_BORTLE = [2, 3, 4, 5, 6, 8];
 
@@ -249,7 +252,8 @@ const MISS_TAPPE_PER_DURATA = {
   60:  { min: 4, max: 5 },
   120: { min: 5, max: 6 },
   180: { min: 6, max: 7 },
-  240: { min: 7, max: 8 }
+  240: { min: 7, max: 8 },
+  720: { min: 8, max: 10 }
 };
 
 // Quanto in alto deve stare un bersaglio perché valga la pena mandarci
@@ -289,7 +293,9 @@ const MISS_MISSIONI_DA_RICORDARE = 3;
  * stessa scala, è un'altra cosa — si chiede a parte, con un tasto che
  * dice cosa fa, e chi non lo preme resta a cercare. Vedi
  * `missMostraSoluzione` (§6). */
-const MISS_INDIZI = 3;
+// L'introduzione e' gia' l'indizio 1. Seguono due aiuti: arrivati
+// all'indizio 3 compare il comando separato «Mostra la soluzione».
+const MISS_INDIZI = 2;
 
 // La finestra di sorveglianza di un evento a orario preciso: quanto
 // tempo prima lo si annuncia. Meno di così non si fa in tempo a uscire e
@@ -354,7 +360,7 @@ const miss = {
   // Il pannello richiudibile dei dettagli: aperto una volta, resta aperto
   // finché la finestra è aperta. Non si salva — è una posa di questa
   // sessione, non una preferenza.
-  dettagliAperti: false,
+  dettagliAperti: true,
   // Il primo estremo acquisito con la bussola, finche' si prende il secondo.
   rilievoSettore: null,
   // La guida può sparire dal cielo mentre la narrazione continua.
@@ -869,12 +875,7 @@ function missLimiteStellareLocale(magZenit, altezza) {
 // quello condiviso da Impostazioni e profilo del telescopio. Tenere qui
 // il ripiego fa sì che anche il motore e i vecchi salvataggi usino sempre
 // una tacca valida della stessa scala di Bortle dell'app.
-function missBortleScelto(scelte) {
-  const scelto = Number(scelte && scelte.bortle);
-  if (MISS_BORTLE.includes(scelto)) return scelto;
-  const casa = typeof cieloDiCasa === 'function' ? Number(cieloDiCasa()) : 5;
-  return MISS_BORTLE.includes(casa) ? casa : 5;
-}
+function missBortleScelto() { return 2; }
 
 function missVisibileNelCieloLocale(c, scelte) {
   if (!c || !Number.isFinite(c.magLimiteZenit)) return true;
@@ -2018,7 +2019,9 @@ function missCaricaScelte() {
   if (!s || typeof s !== 'object') return;
   if (MISS_DURATE.includes(s.durata)) miss.scelte.durata = s.durata;
   if (MISS_STRUMENTI.includes(s.strumento)) miss.scelte.strumento = s.strumento;
-  if (MISS_BORTLE.includes(Number(s.bortle))) miss.scelte.bortle = Number(s.bortle);
+  // La missione usa sempre il cielo piu' stellato (Bortle 2): non eredita
+  // ne' ripropone piu' l'inquinamento luminoso salvato in passato.
+  miss.scelte.bortle = 2;
   /* I gradini erano due e adesso sono tre. Una preferenza salvata non può
    * far ricomparire una modalità che non esiste più: «stupore» e
    * «imparare», che erano i due percorsi morbidi, diventano il gradino di
@@ -2227,6 +2230,30 @@ function missTappaNelPlanetario(t) {
   return Object.assign({}, t, missMisuraTappa(t, data, obs));
 }
 
+/* Il primo istante in cui la tappa torna davvero cercabile.
+ *
+ * Prima la guida si limitava a dire di abbandonare la missione se il cielo
+ * era chiaro o l'astro era tramontato. L'orario, pero', il motore sa
+ * calcolarlo: si prova prima quello gia' pianificato e poi, per gli astri
+ * ordinari, si percorrono le prossime trentasei ore a passi di cinque minuti.
+ * Gli eventi a orario preciso non vengono inventati il giorno seguente. */
+function missProssimoIstanteCercabile(t) {
+  if (!t || !miss.attiva || typeof osservatoreCorrente !== 'function') return null;
+  const obs = osservatoreCorrente();
+  if (!obs) return null;
+  const adesso = Date.now();
+  const ammissibileA = ms => missAmmissibile(
+    Object.assign({}, t, missMisuraTappa(t, new Date(ms), obs)), miss.attiva.scelte);
+  if (Number.isFinite(t.quando) && t.quando > adesso && ammissibileA(t.quando)) return t.quando;
+  if (t.aOrarioPreciso) return null;
+  const passo = 5 * 60000;
+  const fine = adesso + 36 * 3600000;
+  for (let ms = adesso + passo; ms <= fine; ms += passo) {
+    if (ammissibileA(ms)) return ms;
+  }
+  return null;
+}
+
 function missSelezioneCorretta(t, sel) {
   if (!t || !sel) return false;
   if (sel.categoria === 'astro') return !!t.idCielo && sel.id === t.idCielo;
@@ -2343,22 +2370,31 @@ function missFuochiArtificio() {
   const particelle = [];
   const razzi = [];
   const durata = ridotto ? 900 : 15500;
-  const esplodi = (x, y, tinta, n) => {
+  // Fuochi ancorati alla sfera celeste, non ai pixel. Cosi' un cambio di
+  // zoom ingrandisce o rimpicciolisce davvero razzi, scie e corone insieme
+  // alle stelle, invece di lasciare una decorazione incollata allo schermo.
+  const proietta = p => (typeof skyProietta === 'function' && sky.ultimaBase && sky.ultimaFocale)
+    ? skyProietta(skyVettore(p.az, p.alt), sky.ultimaBase, sky.ultimaFocale) : null;
+  const orizzonte = az => Math.max(0,
+    typeof terrenoAltezza === 'function' ? (terrenoAltezza(az) || 0) : 0,
+    typeof orizzonteAltezza === 'function' ? (orizzonteAltezza(az) || 0) : 0);
+  const esplodi = (az, alt, tinta, n) => {
     for (let i = 0; i < n; i++) {
       const a = Math.PI * 2 * i / n + (Math.random() - .5) * .08;
-      const v = 1.5 + Math.random() * 3.8;
-      particelle.push({ x, y, px:x, py:y, vx:Math.cos(a)*v, vy:Math.sin(a)*v,
+      const v = .12 + Math.random() * .3;
+      particelle.push({ az, alt, paz:az, palt:alt, vaz:Math.cos(a)*v, valt:Math.sin(a)*v,
         vita:1, calo:.006+Math.random()*.007, tinta, luce:62+Math.random()*20,
         scintilla: Math.random() > .35 });
     }
   };
-  const lancia = () => razzi.push({
-    x: rett.width * (.12 + Math.random() * .76), y: rett.height + 8,
-    px: 0, py: rett.height + 8, vx: (Math.random() - .5) * .45,
-    vy: -(4.8 + Math.random() * 2.2), bersaglio: rett.height * (.12 + Math.random() * .42),
-    tinta: colori[Math.floor(Math.random() * colori.length)]
-  });
-  if (ridotto) esplodi(rett.width / 2, rett.height * .3, 46, 24);
+  const lancia = () => {
+    const az = ((sky.manuale.az + (Math.random() - .5) * Math.min(70, sky.fov * .8)) % 360 + 360) % 360;
+    const base = orizzonte(az) + .5;
+    razzi.push({ az, alt:base, paz:az, palt:base, vaz:(Math.random()-.5)*.025,
+      valt:.32+Math.random()*.14, bersaglio:base+12+Math.random()*18,
+      tinta: colori[Math.floor(Math.random() * colori.length)] });
+  };
+  if (ridotto) esplodi(sky.manuale.az, Math.max(orizzonte(sky.manuale.az) + 8, sky.manuale.alt), 46, 24);
   else {
     // Gli scoppi arrivano in piccole salve per tutta la celebrazione: prima
     // si vede salire il razzo, poi la corona e infine le scintille che cadono.
@@ -2374,19 +2410,24 @@ function missFuochiArtificio() {
     ctx.fillRect(0, 0, rett.width, rett.height);
     ctx.globalCompositeOperation = 'lighter';
     for (let i = razzi.length - 1; i >= 0; i--) {
-      const r = razzi[i]; r.px = r.x; r.py = r.y; r.x += r.vx; r.y += r.vy; r.vy += .018;
-      ctx.beginPath(); ctx.moveTo(r.px, r.py); ctx.lineTo(r.x, r.y + 9);
-      ctx.strokeStyle = `hsla(${r.tinta},100%,82%,.9)`; ctx.lineWidth = 1.7; ctx.stroke();
-      if (r.y <= r.bersaglio || r.vy >= -1.2) {
-        esplodi(r.x, r.y, r.tinta, 68 + Math.floor(Math.random() * 34));
+      const r = razzi[i]; r.paz=r.az; r.palt=r.alt; r.az+=r.vaz; r.alt+=r.valt; r.valt-=.0012;
+      const a=proietta({az:r.paz,alt:r.palt}), b=proietta(r);
+      if (a && b && a.davanti && b.davanti) { ctx.beginPath(); ctx.moveTo(a.px,a.py); ctx.lineTo(b.px,b.py);
+        ctx.strokeStyle=`hsla(${r.tinta},100%,82%,.9)`; ctx.lineWidth=1.7; ctx.stroke(); }
+      if (r.alt >= r.bersaglio || r.valt <= .08) {
+        esplodi(r.az, r.alt, r.tinta, 68 + Math.floor(Math.random() * 34));
         razzi.splice(i, 1);
       }
     }
     for (let i = particelle.length-1; i >= 0; i--) {
-      const p = particelle[i]; p.px=p.x; p.py=p.y; p.x+=p.vx; p.y+=p.vy;
-      p.vx*=.988; p.vy=p.vy*.988+.038; p.vita-=p.calo;
-      if (p.vita <= 0) { particelle.splice(i,1); continue; }
-      ctx.beginPath(); ctx.moveTo(p.px,p.py); ctx.lineTo(p.x,p.y);
+      const p=particelle[i]; p.paz=p.az; p.palt=p.alt; p.az+=p.vaz; p.alt+=p.valt;
+      p.vaz*=.988; p.valt=p.valt*.988-.0025; p.vita-=p.calo;
+      // Una scintilla viene eliminata appena incontra il profilo: nessuna
+      // coda puo' trapassare una collina o continuare sotto il terreno.
+      if (p.vita<=0 || p.alt<=orizzonte(p.az)) { particelle.splice(i,1); continue; }
+      const a=proietta({az:p.paz,alt:p.palt}), b=proietta(p);
+      if (!a || !b || !a.davanti || !b.davanti) continue;
+      ctx.beginPath(); ctx.moveTo(a.px,a.py); ctx.lineTo(b.px,b.py);
       const tremolio = p.scintilla && Math.random() > .72 ? .25 : 1;
       ctx.strokeStyle=`hsla(${p.tinta},100%,${p.luce}%,${Math.max(0,p.vita) * tremolio})`;
       ctx.lineWidth=.6+1.8*p.vita; ctx.stroke();
@@ -2503,7 +2544,7 @@ function missTestoIndizio(t) {
   return indice ? missIndizio(Object.assign({}, t, { aiuto: indice })) : missIntroduzione(t);
 }
 
-/* La navigazione: zero è l'enigma, uno-due-tre sono gli indizi.
+/* La navigazione: zero è il primo indizio, uno e due sono gli aiuti.
  *
  * La freccia in avanti si ferma al terzo, e non prosegue nella
  * soluzione: quella è un tasto suo, e continuare a premere «avanti»
@@ -2513,8 +2554,8 @@ function missNavigazioneIndizi(t) {
   const indice = missIndiceIndizio(t);
   const rivelata = !!(t && t.rivelata);
   /* La domanda iniziale e' «Indizio 1»: la parola tecnica usata dal
-   * motore non deve comparire nel gioco. I tre aiuti diventano quindi gli
-   * indizi 2, 3 e 4, prima della soluzione separata. */
+   * motore non deve comparire nel gioco. I due aiuti diventano quindi gli
+   * indizi 2 e 3, prima della soluzione separata. */
   const etichetta = rivelata && indice >= MISS_INDIZI ? missT('soluzione')
     : missT('numeroIndizio', { n: indice + 1, tot: MISS_INDIZI + 1 });
   return `<div class="missione-navigazione-indizi" aria-label="${missT('navigaIndizi')}">
@@ -2559,6 +2600,8 @@ function missMostraStrisciaCielo() {
       b.addEventListener('click', () => missAzione(b.dataset.missAzione, el)));
     return;
   }
+  const istanteCercabile = t.fase === 'scoperta' ||
+    missAmmissibile(missTappaNelPlanetario(t), m.scelte) ? null : missProssimoIstanteCercabile(t);
   el.innerHTML = t.fase === 'scoperta' ? missHtmlScoperta(t) : `
     ${missManigliaStriscia()}
     <button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
@@ -2566,6 +2609,8 @@ function missMostraStrisciaCielo() {
     <div class="missione-striscia-testo">
       <span class="missione-striscia-titolo">${missT('tappaDi', { n: m.corrente + 1, tot: m.tappe.length })} · ${missTesto(missTitoloTappa(t))}</span>
       <p class="missione-striscia-indizio">${missTesto(missTestoIndizio(t))}</p>
+      ${Number.isFinite(istanteCercabile) ? `<button type="button" class="missione-tasto missione-tasto-si"
+        data-miss-azione="vai-al-momento">${missT('vaiAlMomento', { ora: missOra(istanteCercabile) })}</button>` : ''}
       <span id="missione-mirino" aria-live="off"></span>
     </div>
     <div class="missione-striscia-tasti">
@@ -3021,7 +3066,7 @@ function missIcona(nome, misura) {
 // normale, senza produrre chiavi mancanti in console.
 const MISS_CHIAVI_BAMBINI = new Set([
   // il percorso: l'anteprima, la tappa, la fine
-  'titoloAnteprima', 'sommarioAnteprima', 'iniziaAdesso', 'iniziaAlle',
+  'titoloAnteprima', 'titoloAnteprimaNotte', 'sommarioAnteprima', 'iniziaAdesso', 'iniziaAlle',
   'avanzamento', 'tappaDi', 'trova', 'trovato', 'nonLoTrovo',
   'salta', 'concludi', 'poi', 'curiositaTitolo', 'ascolta',
   'guidaSemplice', 'guidaConRiferimento', 'aiuto1', 'aiuto2',
@@ -3356,12 +3401,6 @@ function missHtmlConfigurazione() {
   const opzioniDirezione = selezionata => ([...MISS_DIREZIONI,
     ...(MISS_DIREZIONI.includes(selezionata) ? [] : [selezionata])].sort((a, b) => a - b)).map(g =>
     `<option value="${g}"${g === selezionata ? ' selected' : ''}>${missTesto(direzione(g))} · ${g}°</option>`).join('');
-  const bortleScelto = missBortleScelto(miss.scelte);
-  const opzioniBortle = MISS_BORTLE.map(b => {
-    const nome = typeof astroI18n === 'object' ? astroI18n.t('tel.cielo.' + b) : `Bortle ${b}`;
-    return `<option value="${b}"${b === bortleScelto ? ' selected' : ''}>Bortle ${b} · ${missTesto(nome)}</option>`;
-  }).join('');
-
   return `<div class="missione-configurazione">
     <section class="missione-blocco">
       <h3 class="missione-blocco-titolo">${missT('bloccoSerata')}</h3>
@@ -3386,17 +3425,9 @@ function missHtmlConfigurazione() {
       ${missGruppoGeneri(missT('cosaCercare'))}
     </section>
 
-    <details class="missione-dettagli"${miss.dettagliAperti ? ' open' : ''} data-miss-dettagli>
-      <summary class="missione-blocco-titolo">
-        <span>${missT('bloccoDettagli')}</span>
-        <small class="missione-sintesi-dettagli">${missTesto(missSintesiDettagli(bortleScelto))}</small>
-      </summary>
+    <section class="missione-dettagli missione-dettagli-aperti" data-miss-dettagli>
+      <h3 class="missione-blocco-titolo">${missT('bloccoDettagli')}</h3>
       <div class="missione-dettagli-corpo">
-        <label class="missione-campo missione-inquinamento">
-          <span>${missT('inquinamentoLuminoso')}</span>
-          <select class="missione-select" data-miss-bortle>${opzioniBortle}</select>
-          <small>${missT('inquinamentoSpiega')}</small>
-        </label>
         ${missGruppoScelte('cielo', [
           { valore: 'tutto', nome: missT('cieloTutto') }, { valore: 'settore', nome: missT('cieloSettore') }
         ], miss.scelte.cielo, missT('qualeCielo'))}
@@ -3415,7 +3446,7 @@ function missHtmlConfigurazione() {
           { valore: 'si', nome: missT('voceSi') }, { valore: 'no', nome: missT('voceNo') }
         ], miss.scelte.voce ? 'si' : 'no', missT('vuoiVoce'))}
       </div>
-    </details>
+    </section>
 
     <div class="missione-azioni">
       <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="genera">
@@ -3494,13 +3525,15 @@ function missHtmlAnteprima(m) {
         ? missNomeTappa(t) : missT('anteprimaMistero.' + missGenereTappa(t)))}</span>
       <span class="missione-anteprima-che">${missT('difficolta.' + t.difficolta)}</span>
     </li>`).join('');
-  const futura = m.partenza > Date.now() + MISS_SCARTO_RIGENERA_MS;
+  const inizioOsservazione = m.tappe.length ? Math.min(...m.tappe.map(t => t.quando)) : m.partenza;
+  const futura = inizioOsservazione > Date.now() + MISS_SCARTO_RIGENERA_MS;
 
   return `<div class="missione-anteprima">
-    <h3 class="missione-titolone">${missT('titoloAnteprima', {
+    <h3 class="missione-titolone">${missT(m.scelte.durata === 720
+      ? 'titoloAnteprimaNotte' : 'titoloAnteprima', {
       n: m.tappe.length, minuti: m.scelte.durata })}</h3>
     <p class="missione-sommario">${missT('sommarioAnteprima', {
-      ora: missOra(m.partenza),
+      ora: missOra(inizioOsservazione),
       condizioni: missRigaCondizioni(c) || missT('cielo.nonSoDire')
     })}</p>
     ${avvisi.length ? `<p class="missione-avviso" data-tono="informa">${avvisi.join(' ')}</p>` : ''}
@@ -3509,7 +3542,7 @@ function missHtmlAnteprima(m) {
       ${missT(miss.sbircia ? 'nascondiBersagli' : 'sbirciaBersagli')}</button>
     <div class="missione-azioni">
       <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="${futura ? 'avviaDopo' : 'avvia'}">
-        ${futura ? missT('iniziaAlle', { ora: missOra(m.partenza) }) : missT('iniziaAdesso')}</button>
+        ${futura ? missT('iniziaAlle', { ora: missOra(inizioOsservazione) }) : missT('iniziaAdesso')}</button>
       ${futura ? `<button type="button" class="missione-tasto" data-miss-azione="avvia">${missT('iniziaAdesso')}</button>` : ''}
 
       <button type="button" class="missione-tasto" data-miss-azione="rigenera">${missT('unaltra')}</button>
@@ -3753,7 +3786,9 @@ function missIntroduzione(t) {
 
 function missIndizio(t) {
   const ora = missTappaNelPlanetario(t);
-  if (!missAmmissibile(ora, miss.attiva.scelte)) return missT('gioco.nonVisibile');
+  // Se non e' cercabile non mostriamo piu' il vecchio invito ad
+  // abbandonare la serata: la striscia offre direttamente «Vai alle…».
+  if (!missAmmissibile(ora, miss.attiva.scelte)) return '';
   const dove = astroI18n.nomePunto(ora.azimut);
   const livello = t.aiuto || 0;
   if (!livello) return missT('gioco.direzione.' + ((t.indizioVariante || 0) % 3 + 1), { dove });
@@ -4358,8 +4393,25 @@ function missAzione(azione, corpo) {
       missAvvia(miss.anteprima);
       break;
     case 'avviaDopo': {
-      const quando = miss.anteprima && miss.anteprima.partenza;
+      const quando = miss.anteprima && miss.anteprima.tappe.length
+        ? Math.min(...miss.anteprima.tappe.map(t => t.quando)) : null;
       missAvvia(miss.anteprima, quando || Date.now());
+      break;
+    }
+    case 'vai-al-momento': {
+      const m = miss.attiva, t = m && m.tappe[m.corrente];
+      const istante = missProssimoIstanteCercabile(t);
+      if (!Number.isFinite(istante)) break;
+      m.simulazione = true;
+      t.quando = istante;
+      skyFermaPlayback();
+      skyImpostaOffsetTempo((istante - Date.now()) / 1000);
+      skyAggiornaOggetti(true);
+      const o = t.idCielo && skyVoceDiId(t.idCielo);
+      if (o) skyAssicuraVisibile(o);
+      missSalvaAttiva();
+      missMostraStrisciaCielo();
+      missRaccontaTappa(t);
       break;
     }
     case 'guidami':

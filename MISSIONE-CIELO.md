@@ -37,8 +37,8 @@ sono adattate all’età scelta.
 
 Il nome resta nascosto in anteprima, riepilogo della missione in corso,
 etichette del cielo e audio di ricerca. L’elenco degli astri è sospeso durante
-la ricerca. La guida presenta tre indizi, ciascuno più preciso del precedente;
-il quarto pannello si chiama esplicitamente “Soluzione”, rivela il nome e centra
+la ricerca. La guida presenta tre indizi in tutto, ciascuno più preciso del precedente;
+subito dopo il terzo compare “Mostra la soluzione”, che rivela il nome e centra
 il bersaglio nel planetario senza completare la tappa.
 Se nella preparazione è stata scelta la voce, ogni indizio viene letto quando
 compare, anche navigando avanti e indietro fra quelli già ottenuti. Al tocco
@@ -63,12 +63,19 @@ comunque riproporre bersagli già incontrati, invece di inventarne di invisibili
 
 ## Tempo, posizione e ripresa
 
+Fra le durate è disponibile anche **Tutta la notte**. Se la prima tappa
+realmente osservabile cade più tardi dell'inizio della finestra, l'anteprima e
+il planetario partono direttamente dall'orario della tappa, senza mostrare ore
+di cielo precedente in cui il bersaglio non è ancora visibile.
+Se durante una ricerca l'astro non è disponibile nell'istante mostrato, la
+guida propone **Vai alle…**: il comando porta direttamente il planetario al
+primo momento utile e sostituisce il vecchio invito ad abbandonare la serata.
+
 Le posizioni vengono verificate anche agli orari assegnati, non soltanto al
 massimo di altezza nella finestra. Per ogni bersaglio la magnitudine limite
-del luogo viene corretta in base alla sua altezza. Nella pianificazione una
-casella combinata permette di simulare una delle sei condizioni di inquinamento
-luminoso della scala di Bortle; parte dal cielo salvato nelle Impostazioni, ma
-può essere cambiata per preparare una trasferta senza alterare il cielo di casa.
+del luogo viene corretta in base alla sua altezza. La pianificazione usa sempre
+la massima quantità di stelle (cielo Bortle 2) e non mostra l'inquinamento
+luminoso come parametro nell'anteprima o nei dettagli.
 Verso l'orizzonte la massa
 d'aria abbassa il limite e schiarisce il fondo. Gli oggetti del cielo profondo
 passano inoltre un controllo sulla brillanza superficiale e sul contrasto con
@@ -84,7 +91,7 @@ Gli eventi astratti del calendario e i corpi minori con coordinate campionate
 restano nel pianificatore; le missioni interattive selezionano Luna, pianeti,
 stelle, costellazioni e cielo profondo identificabili nel planetario.
 
-Lo stato salvato passa alla versione 8; le vecchie missioni attive vengono
+Lo stato salvato passa alla versione 10; le vecchie missioni attive vengono
 rigenerate, così ereditano subito i nuovi limiti di difficoltà. Il Diario precedente rimane leggibile. Le nuove osservazioni
 sono salvate nella sessione e incluse nel Diario, insieme agli aiuti usati.
 La fase di scoperta sopravvive a una ricarica senza saltare alla tappa seguente.

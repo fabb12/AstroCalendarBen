@@ -533,10 +533,10 @@ prova('lo stesso oggetto profondo resta possibile sotto un cielo buio', () => {
   assert.ok(!m.vuota);
 });
 
-prova('la simulazione Bortle usa la scelta della missione', () => {
+prova('la missione usa sempre il cielo piu stellato, senza un parametro Bortle', () => {
   assert.strictEqual(motore.bortleScelto({ bortle: 2 }), 2);
-  assert.strictEqual(motore.bortleScelto({ bortle: 8 }), 8);
-  assert.strictEqual(motore.bortleScelto({ bortle: 7 }), 5, 'una tacca non prevista torna al cielo predefinito');
+  assert.strictEqual(motore.bortleScelto({ bortle: 8 }), 2);
+  assert.strictEqual(motore.bortleScelto({}), 2);
 });
 
 prova('la porzione Sud–Sud-est esclude il resto del cielo', () => {
@@ -1824,7 +1824,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.ok(inCorso.guida.length > 10, 'guida: ' + inCorso.guida);
       /* Chiedere un indizio è la freccia in avanti, non un tasto
        * «aiuto»: quel tasto è sparito quando gli indizi sono diventati
-       * quattro pannelli da sfogliare, e questa riga è rimasta a
+       * tre pannelli da sfogliare, e questa riga è rimasta a
        * cercarlo — cioè la prova è stata rossa da allora, e con lei
        * tutta la sezione dell'aiuto progressivo che le sta sotto. */
       assert.ok(inCorso.risposte.includes('indizio-successivo'), inCorso.risposte.join(','));
@@ -1856,7 +1856,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
 
     const aiuti = await pagina.evaluate(() => {
       const esiti = [];
-      for (let k = 1; k <= 3; k++) {
+      for (let k = 1; k <= 2; k++) {
         // La freccia in avanti: è lei a chiedere l'indizio dopo, e
         // arrivata al terzo si ferma — la soluzione ha un tasto suo.
         const aiuto = document.querySelector('#missione-striscia [data-miss-azione="indizio-successivo"]');
@@ -1880,9 +1880,9 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       return esiti;
     });
     prova('«Guidami» aiuta e non segna niente come fallito', () => {
-      assert.deepStrictEqual(aiuti.map(a => a.livello), [1, 2, 3]);
-      assert.deepStrictEqual(aiuti.map(a => a.esito), [null, null, null]);
-      assert.strictEqual(new Set(aiuti.map(a => a.guida)).size, 3);
+      assert.deepStrictEqual(aiuti.map(a => a.livello), [1, 2]);
+      assert.deepStrictEqual(aiuti.map(a => a.esito), [null, null]);
+      assert.strictEqual(new Set(aiuti.map(a => a.guida)).size, 2);
     });
     prova('e la guida resta visibile mentre si muove il cielo', () => {
       assert.ok(aiuti.every(a => a.guida.length > 10));
@@ -1895,11 +1895,11 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
      * fa comparire un tasto a parte, e la caccia finisce solo se lo si
      * preme. */
     prova('nessuno dei tre indizi rivela il bersaglio da solo', () => {
-      assert.deepStrictEqual(aiuti.map(a => a.rivelata), [false, false, false]);
+      assert.deepStrictEqual(aiuti.map(a => a.rivelata), [false, false]);
     });
     prova('dopo il terzo indizio compare il tasto della soluzione, e non prima', () => {
-      assert.deepStrictEqual(aiuti.map(a => a.tastoSoluzione), [false, false, true]);
-      assert.strictEqual(aiuti[2].altraRichiesta, false);
+      assert.deepStrictEqual(aiuti.map(a => a.tastoSoluzione), [false, true]);
+      assert.strictEqual(aiuti[1].altraRichiesta, false);
     });
 
     const soluzione = await pagina.evaluate(() => {

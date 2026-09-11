@@ -2127,7 +2127,7 @@ window.ASTRO_DIZIONARI['en'] = {
     // Ricerca, indizi e scoperta: testi stabili nella sessione.
     "missione.gioco.mistero": "Object to find",
     "missione.gioco.tocca": "Observe the sky, then tap the object you recognise on the map. Drag to explore.",
-    "missione.gioco.nonVisibile": "This search needs the current sky at your location. If the target has set or it is still daylight, return to the mission and prepare another evening.",
+    "missione.vaiAlMomento": "Go to {ora}",
     "missione.gioco.riprova": "Good try! Keep looking.",
     "missione.gioco.feedbackGiusto": "Correct! You found the object.",
     "missione.gioco.feedbackVicino": "Not this one, but you are close!",
@@ -2337,6 +2337,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.durata.120': '2 hours',
     'missione.durata.180': '3 hours',
     'missione.durata.240': '4 hours',
+    'missione.durata.720': 'All night',
     'missione.esperienza.stupore': 'Amaze me',
     'missione.esperienza.imparare': 'Teach me the sky',
     'missione.esperienza.sfida': 'Experts',
@@ -2386,6 +2387,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.terminaPlanetario': 'End the mission and keep using the planetarium',
 
     'missione.titoloAnteprima': { uno: 'One wonder in {minuti} minutes', altri: '{n} wonders in {minuti} minutes' },
+    'missione.titoloAnteprimaNotte': { uno: 'One wonder all night', altri: '{n} wonders all night' },
     'missione.sommarioAnteprima': 'Starting at {ora}. {condizioni}.',
     'missione.senzaMeteo': 'The forecast has not arrived: I chose by looking at the sky alone, not at the clouds.',
     'missione.senzaTerreno': 'I do not know the shape of the ground around here yet: something may end up behind a hill.',
@@ -2464,6 +2466,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.bambini.difficolta.5': 'A space feat',
     'missione.bambini.cosaCercare': 'What shall we hunt for?',
     'missione.bambini.titoloAnteprima': { uno: 'One space challenge in {minuti} minutes! 🚀', altri: '{n} space challenges in {minuti} minutes! 🚀' },
+    'missione.bambini.titoloAnteprimaNotte': { uno: 'One space challenge all night! 🚀', altri: '{n} space challenges all night! 🚀' },
     'missione.bambini.sommarioAnteprima': 'Blast-off at {ora}! {condizioni}. Astronaut eyes ready?',
     'missione.bambini.iniziaAdesso': 'Blast off!',
     'missione.bambini.iniziaAlle': 'Blast off at {ora}',
