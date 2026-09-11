@@ -12057,6 +12057,330 @@ if (typeof Visione === 'undefined') {
       V.VIS_CORREZIONE_MAX + '°');
   }
 
+  // --- La fascia di cielo, e perché la si può tagliare ----------------
+  //
+  // È la famiglia che a occhio non si giudica affatto: sul fotogramma di una
+  // fotocamera non si vede nessuna riga, e un rivelatore che salta metà
+  // immagine non sbaglia — semplicemente non trova quello che lì dentro
+  // c'era. Il sintomo di un taglio messo nel posto sbagliato è quindi lo
+  // stesso di un cielo senza stelle, cioè niente.
+  //
+  // Il giudice è la geometria: un pixel appartiene al cielo se la direzione
+  // in cui guarda ha altezza positiva, e quella si sa chiedere.
+  if (V.visFasciaCielo) {
+    const fot = { largo: 120, alto: 200, perPixelX: sky.larghezza / 120, perPixelY: sky.altezza / 200 };
+    const F = skyFocale();
+    const base = skyBaseVerso(120, 12);
+    // **Ogni fascia che deve restare viva vuole la sua memoria.** Le memorie
+    // di lavoro si riusano fra un giro e l'altro, quindi due fasce calcolate
+    // con lo stesso nome sono la stessa fascia — e il conto della seconda
+    // riscrive la prima sotto agli occhi di chi la sta ancora leggendo.
+    const fascia = V.visFasciaCielo(base, F, fot, 0, 'provaA');
+
+    // La riga disegnata deve coincidere con la riga vera, pixel per pixel.
+    let sbagliati = 0, dentro = 0, fuori = 0;
+    for (let y = 0; y < fot.alto; y += 3) {
+      for (let x = 0; x < fot.largo; x += 3) {
+        const v = skyDirezione((x + 0.5) * fot.perPixelX, (y + 0.5) * fot.perPixelY, base, F);
+        const alt = Math.asin(Math.max(-1, Math.min(1, v[2] / Math.hypot(v[0], v[1], v[2])))) * 180 / Math.PI;
+        const inFascia = x >= fascia.da[y] && x <= fascia.a[y];
+        if (inFascia) dentro++; else fuori++;
+        // Un decimo di grado di franchigia: il confine è una riga, e a
+        // cavallo di una riga il pixel è mezzo di qua e mezzo di là.
+        if (Math.abs(alt) > 0.1 && inFascia !== (alt > 0)) sbagliati++;
+      }
+    }
+    prova('la fascia di cielo è esattamente il cielo',
+      sbagliati === 0 && dentro > 0 && fuori > 0,
+      `${sbagliati} pixel sbagliati, ${dentro} di cielo e ${fuori} di terra`);
+
+    // **La riga la mette la gravità, non la bussola.** È l'argomento per cui
+    // si può tagliare lì anche quando la bussola sbaglia di venti gradi — cioè
+    // proprio nel caso in cui questo modulo serve. Un errore di bussola è una
+    // rotazione attorno alla verticale, e una rotazione attorno alla verticale
+    // lascia l'orizzonte dov'è.
+    let scostata = 0;
+    for (const errore of [-20, -8, 8, 20]) {
+      const storta = V.visFasciaCielo(skyBaseVerso(120 + errore, 12), F, fot, 0, 'provaB');
+      for (let y = 0; y < fot.alto; y++) {
+        scostata = Math.max(scostata, Math.abs(storta.da[y] - fascia.da[y]),
+          Math.abs(storta.a[y] - fascia.a[y]));
+      }
+    }
+    prova('…e venti gradi di bussola sbagliata non la spostano di un pixel',
+      scostata === 0, scostata + ' px di scarto');
+
+    // Alzando il telefono la riga scende fuori dal fotogramma: è tutto cielo.
+    const suSu = V.visFasciaCielo(skyBaseVerso(120, 85), F, fot, 0, 'provaB');
+    const quanto = (f) => {
+      let n = 0;
+      for (let y = 0; y < fot.alto; y++) n += Math.max(0, f.a[y] - f.da[y] + 1);
+      return n / (fot.largo * fot.alto);
+    };
+    prova('col telefono puntato in su la fascia è tutto il fotogramma',
+      quanto(suSu) > 0.999, Math.round(quanto(suSu) * 100) + '%');
+    const giu = V.visFasciaCielo(skyBaseVerso(120, -70), F, fot, 0, 'provaC');
+    prova('e puntato per terra non c\'è nessun cielo da guardare',
+      quanto(giu) < 0.001, Math.round(quanto(giu) * 100) + '%');
+    // È il risparmio, e vale la pena misurarlo invece che sperarlo.
+    prova('guardando verso l\'orizzonte se ne risparmia un buon pezzo',
+      quanto(fascia) < 0.8 && quanto(fascia) > 0.3,
+      'si filtra il ' + Math.round(quanto(fascia) * 100) + '% del fotogramma');
+
+    // Il margine serve agli aerei, che stanno a un grado, e alla mano che
+    // trema: va verso il **basso**, se no toglierebbe cielo invece di darne.
+    const conMargine = V.visFasciaCielo(base, F, fot, V.VIS_ORIZZONTE_MARGINE, 'provaD');
+    prova('il margine allarga la fascia verso il basso, non la stringe',
+      quanto(conMargine) > quanto(fascia),
+      `${Math.round(quanto(fascia) * 100)}% → ${Math.round(quanto(conMargine) * 100)}%`);
+
+    // Cielo e terra si devono dividere il fotogramma senza buchi e senza
+    // sovrapposizioni: quello che non è dell'uno è dell'altro.
+    if (V.visFasciaTerra) {
+      const terra = V.visFasciaTerra(base, F, fot, 0);
+      // `visFasciaTerra` si calcola dentro la sua fascia di cielo: se
+      // condividesse la memoria con quella qui sopra, questa prova
+      // misurerebbe due volte la stessa cosa e tornerebbe sempre verde.
+      prova('la fascia di terra non calpesta la memoria di quella di cielo',
+        fascia.da !== terra.da && fascia.yMax >= fascia.yMin);
+      let doppi = 0, orfani = 0;
+      for (let y = 0; y < fot.alto; y++) {
+        for (let x = 0; x < fot.largo; x++) {
+          const c = x >= fascia.da[y] && x <= fascia.a[y];
+          const t = x >= terra.da[y] && x <= terra.a[y];
+          if (c && t) doppi++;
+          if (!c && !t) orfani++;
+        }
+      }
+      prova('cielo e terra si dividono il fotogramma senza buchi né sovrapposizioni',
+        doppi === 0 && orfani === 0, `${doppi} doppi, ${orfani} orfani`);
+    }
+  }
+
+  // --- Le macchie: solo il cielo, e il lampione che resta fuori --------
+  if (V.visFasciaCielo) {
+    const L = 120, H = 200;
+    const fot = { largo: L, alto: H, perPixelX: sky.larghezza / L, perPixelY: sky.altezza / H };
+    const F = skyFocale();
+    const base = skyBaseVerso(120, 12);
+    const fascia = V.visFasciaCielo(base, F, fot, V.VIS_ORIZZONTE_MARGINE, 'provaMacchie');
+    // Una riga a metà fra la parte alta e quella bassa della fascia.
+    const rigaCielo = Math.max(4, Math.round(fascia.yMax * 0.4));
+    const rigaTerra = Math.min(H - 5, Math.round((fascia.yMax + H) / 2));
+
+    const conMacchia = (riga) => {
+      const luma = new Float32Array(L * H);
+      for (let i = 0; i < luma.length; i++) luma[i] = 30;
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        luma[(riga + dy) * L + 60 + dx] += 150 * Math.exp(-(dx * dx + dy * dy) / 2);
+      }
+      return luma;
+    };
+    const quante = (riga, opz) => V.visRilevaMacchie(conMacchia(riga), L, H, opz).macchie.length;
+
+    prova('una macchia in cielo si trova',
+      quante(rigaCielo, { fascia }) >= 1, `riga ${rigaCielo}, fascia fino a ${fascia.yMax}`);
+    // È il lampione, ed è la ragione vera del taglio: sotto la riga le uniche
+    // luci sono lampioni, finestre accese e fari, e a una stella somigliano
+    // moltissimo. Quella che a occhio sembra un'economia è prima di tutto una
+    // difesa.
+    prova('…e un lampione sotto l\'orizzonte no',
+      quante(rigaTerra, { fascia }) === 0, `riga ${rigaTerra}`);
+    prova('col contro-esempio: senza la fascia, quel lampione era un riferimento',
+      quante(rigaTerra, {}) >= 1);
+  }
+
+  // --- Il paesaggio, cercato dove il giroscopio dice ------------------
+  //
+  // La prova che conta non è che l'inseguimento funzioni da fermo — funzionava
+  // anche prima — ma che funzioni **mentre la camera si gira**, che è quando
+  // serve e quando prima si perdeva.
+  if (V.visSeguiScena && V.visFasciaTerra) {
+    const L = 120, H = 200;
+    const F = skyFocale();
+    const fot = (dx, dy) => {
+      const luma = new Float32Array(L * H);
+      let s = 7;
+      const caso = () => { s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
+        s = Math.imul(s ^ (s >>> 16), 0x45d9f3b); return ((s ^ (s >>> 16)) >>> 0) / 4294967296; };
+      for (let i = 0; i < luma.length; i++) luma[i] = 30 + caso() * 2;
+      // Venti spigoli nella metà bassa: è il paesaggio.
+      let t = 991;
+      const caso2 = () => { t = Math.imul(t ^ (t >>> 16), 0x45d9f3b);
+        t = Math.imul(t ^ (t >>> 16), 0x45d9f3b); return ((t ^ (t >>> 16)) >>> 0) / 4294967296; };
+      for (let i = 0; i < 20; i++) {
+        const bx = Math.round(12 + caso2() * (L - 24)) + dx;
+        const by = Math.round(H * 0.62 + caso2() * (H * 0.3)) + dy;
+        for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) {
+          const px = bx + x, py = by + y;
+          if (px < 0 || px >= L || py < 0 || py >= H) continue;
+          luma[py * L + px] += (x + y > 0 ? 70 : -30) + x * 6;
+        }
+      }
+      return { luma, largo: L, alto: H, perPixelX: sky.larghezza / L, perPixelY: sky.altezza / H };
+    };
+    const base = skyBaseVerso(120, 12);
+    const terra = V.visFasciaTerra(base, F, fot(0, 0), V.VIS_SCENA_SOPRA);
+
+    // I riferimenti si seminano sotto la riga: sopra ci sono solo le nuvole,
+    // e una nuvola inseguita come se fosse un campanile trascina la mira.
+    V.stato.scena = null;
+    V.visSeguiScena(fot(0, 0), base, F, terra);
+    const punti = V.stato.scena.punti;
+    const cielo = V.visFasciaCielo(base, F, fot(0, 0), -V.VIS_SCENA_SOPRA, 'provaScena');
+    const inCielo = punti.filter(p => p.x >= cielo.da[p.y] && p.x <= cielo.a[p.y]).length;
+    prova('i riferimenti del paesaggio nascono sotto la riga, non fra le nuvole',
+      punti.length >= 8 && inCielo === 0, `${punti.length} punti, ${inCielo} in cielo aperto`);
+
+    // **La camera si gira.** Il telefono ruota di tre gradi fra un giro e
+    // l'altro — che a questa focale sono decine di pixel, molto oltre la
+    // finestra di ricerca — e l'inseguimento deve tenere lo stesso, perché a
+    // dire dove guardare adesso non è più la posizione di prima ma la
+    // direzione nel mondo proiettata con la posa nuova.
+    const uno = fot(0, 0);
+    const base2 = skyBaseVerso(123, 12);
+    // Di quanti pixel si sposta, sul sensore, un punto fermo quando la camera
+    // gira di tre gradi: non lo si indovina, lo si chiede alla proiezione. Il
+    // fotogramma nuovo si costruisce spostato di altrettanto, che è quello che
+    // fa la realtà.
+    let sx = 0, sy = 0;
+    for (const q of punti) {
+      const a = skyProietta(q.mondo, base, F), b = skyProietta(q.mondo, base2, F);
+      sx += (b.px - a.px) / uno.perPixelX; sy += (b.py - a.py) / uno.perPixelY;
+    }
+    const dx = Math.round(sx / punti.length), dy = Math.round(sy / punti.length);
+    const tenuti = V.visSeguiScena(fot(dx, dy), base2, F, terra).coppie.length;
+    prova('girando la camera di tre gradi i riferimenti si ritrovano lo stesso',
+      tenuti >= punti.length * 0.6,
+      `${tenuti} di ${punti.length}, e tre gradi qui sono ${Math.hypot(dx, dy).toFixed(0)} px`);
+    prova('…che è molto oltre la finestra in cui si cerca',
+      Math.hypot(dx, dy) > V.VIS_SCENA_RICERCA * 2,
+      `${Math.hypot(dx, dy).toFixed(0)} px contro una finestra di ±${V.VIS_SCENA_RICERCA}`);
+    // Il contro-esempio, cioè la regola di prima: cercare attorno alla
+    // posizione che il riferimento aveva **nel fotogramma precedente**. Con
+    // una finestra di sei pixel, uno spostamento più largo di sei non si
+    // ritrova — e non si ritrova nessuno, tutti insieme.
+    const pezzaSola = punti[0];
+    let trovatoDovEra = false;
+    for (let ey = -6; ey <= 6 && !trovatoDovEra; ey++) {
+      for (let ex = -6; ex <= 6; ex++) {
+        const e = V.visErrorePezza(pezzaSola.pezza, fot(dx, dy).luma, L, H,
+          pezzaSola.x - dx + ex, pezzaSola.y - dy + ey);
+        if (e < V.VIS_SCENA_ERRORE_MAX) { trovatoDovEra = true; break; }
+      }
+    }
+    prova('col contro-esempio: cercandolo dov\'era prima non lo si trova più',
+      !trovatoDovEra);
+
+    // Da ferma, non si cerca affatto: la pezza è già dove la previsione dice.
+    V.stato.scena = null;
+    const f0 = fot(0, 0);
+    V.visSeguiScena(f0, base, F, terra);
+    V.visSeguiScena(f0, base, F, terra);
+    prova('con la camera ferma non si fruga nemmeno un pixel',
+      V.stato.scenaCercate === 0, V.stato.scenaCercate + ' confronti in più');
+
+    // Una pezza piatta somiglia a tutto, e il conto da solo non la ferma: su
+    // una pezza uniforme il contrasto è zero, l'errore dell'aggancio è zero,
+    // e «zero è maggiore di zero per cinquantacinque centesimi» è falso —
+    // cioè passava. La ferma un contrasto minimo, e la ferma **alla semina**,
+    // che è il posto giusto: un riferimento che non ha niente da dire non
+    // deve nemmeno nascere.
+    const piatto = new Float32Array(L * H);
+    for (let i = 0; i < piatto.length; i++) piatto[i] = 40;
+    const pezza = new Float32Array(V.VIS_PEZZA_N);
+    const contrasto = V.visPezza(piatto, L, H, 60, 150, pezza);
+    prova('una pezza piatta non ha contrasto',
+      contrasto < V.VIS_SCENA_CONTRASTO_MIN, 'contrasto ' + contrasto.toFixed(4));
+    V.stato.scena = null;
+    const suPiatto = { luma: piatto, largo: L, alto: H,
+      perPixelX: sky.larghezza / L, perPixelY: sky.altezza / H };
+    V.visSeguiScena(suPiatto, base, F, terra);
+    prova('…e un fotogramma tutto uguale non produce nessun riferimento',
+      V.stato.scena.punti.length === 0, V.stato.scena.punti.length + ' punti');
+  }
+
+  // --- Chi conosce il Nord decide -------------------------------------
+  //
+  // Il paesaggio sa soltanto di non essersi mosso; un astro sa dov'è. Metterli
+  // nello stesso consenso sembra generoso e invece fa litigare il modulo con
+  // sé stesso, in un modo che sullo schermo si legge come «la correzione non
+  // prende» — cioè come un difetto del disegno, non come una regola sbagliata.
+  {
+    const luna = V.vettoreDa(100, 30);
+    const lunaVista = V.vettoreDa(104, 30);          // quattro gradi più in là
+    const soloLuna = [{ a: luna, b: lunaVista, peso: 1.4 }];
+    // Ventiquattro riferimenti di paesaggio che dicono «fermi tutti».
+    const fermi = [];
+    for (let i = 0; i < 24; i++) {
+      const v = V.vettoreDa(60 + i * 5, -4 + (i % 7));
+      fermi.push({ a: v, b: v, peso: 0.35 });
+    }
+    const decide = V.visRisolviRotazione(soloLuna, {});
+    const insieme = V.visRisolviRotazione(soloLuna.concat(fermi), {});
+    prova('da sola, la Luna si riprende quasi tutto il suo errore in un colpo',
+      V.angoloDi(decide.R) > 3.2,
+      `${V.angoloDi(decide.R).toFixed(2)}° dei 4 che servono`);
+    // Quel che resta lo chiude il giro dopo, che è come lavora il motore: si
+    // misura, si applica un pezzo, si rimisura. Il peso robusto di Huber (§7)
+    // frena una misura molto fuori dal consenso, e con un riferimento solo il
+    // consenso è lui: il freno si sente, e sparisce iterando.
+    let b = lunaVista;
+    for (let k = 0; k < 4; k++) {
+      const sol = V.visRisolviRotazione([{ a: luna, b, peso: 1.4 }], {});
+      b = V.versore(V.applica(sol.R, b));
+    }
+    const restano = Math.acos(Math.max(-1, Math.min(1, b[0] * luna[0] + b[1] * luna[1] + b[2] * luna[2]))) * 180 / Math.PI;
+    prova('…e in quattro giri non ne resta niente',
+      restano < 0.01, restano.toFixed(4) + '° di scarto');
+    // Il contro-esempio, con il numero misurato. E non è solo questione di
+    // pesi: rispetto a un consenso che dice «fermi tutti», una Luna che
+    // chiede quattro gradi **è** l'anomalia, quindi il peso robusto di Huber
+    // — che esiste per buttare via le associazioni sbagliate — butta via
+    // proprio la misura giusta.
+    prova('col contro-esempio: messa a votare col paesaggio, non ce la faceva',
+      V.angoloDi(insieme.R) < 2,
+      `${V.angoloDi(insieme.R).toFixed(2)}° invece di 4`);
+    // E il paesaggio resta quello che è: senza astri, tiene la mira ferma.
+    const sbandata = fermi.map(c => ({ a: c.a, b: V.applica(V.rodrigues([0, 0, 0.02]), c.b), peso: 0.35 }));
+    const tiene = V.visRisolviRotazione(sbandata, {});
+    prova('senza astri il paesaggio tiene la mira da solo',
+      V.angoloDi(tiene.R) > 0.5, V.angoloDi(tiene.R).toFixed(2) + '° recuperati');
+  }
+
+  // --- Il cancello dell'acquisto --------------------------------------
+  //
+  // Il buco si chiudeva da sé leggendo due numeri vicini: la correzione può
+  // valere venticinque gradi, il cancello con cui la si cercava ne valeva
+  // dodici. Con venti gradi di ferro attorno l'aggancio non poteva avvenire
+  // **mai**, e il motore diceva «cerco» all'infinito — che sembra una cosa
+  // che sta funzionando.
+  {
+    const perGrado = 20;   // px per grado, un numero tondo per leggere il conto
+    const luna = { id: 'Moon', genere: 'astro', px: 500, py: 500, raggioAtteso: 0.27,
+      peso: 1.4, polarita: 1, cancello: V.VIS_CANCELLO_ACQUISTO };
+    // La Luna vera, venti gradi più in là perché la bussola sbaglia di venti.
+    const macchie = [{ x: 500 + 20 * perGrado, y: 500, raggio: 0.27 * perGrado, segno: 1, flusso: 900 }];
+    const presa = V.visAssocia([luna], macchie, { perGrado, cancello: V.VIS_CANCELLO_LARGO });
+    prova('con venti gradi di bussola sbagliata la Luna si aggancia lo stesso',
+      presa.length === 1, presa.length + ' coppie');
+    const stretto = V.visAssocia([Object.assign({}, luna, { cancello: 0 })], macchie,
+      { perGrado, cancello: V.VIS_CANCELLO_LARGO });
+    prova('col contro-esempio: col cancello di prima non si agganciava mai',
+      stretto.length === 0);
+    prova('il cancello d\'acquisto arriva dove arriva la correzione',
+      V.VIS_CANCELLO_ACQUISTO <= V.VIS_CORREZIONE_MAX &&
+      V.VIS_CANCELLO_ACQUISTO > V.VIS_CANCELLO_LARGO,
+      `${V.VIS_CANCELLO_ACQUISTO}° contro un tetto di ${V.VIS_CORREZIONE_MAX}°`);
+    // E le difese restano: una macchia della taglia sbagliata, a venti gradi,
+    // non è la Luna. Un puntino largo un pixel a quella distanza è una stella
+    // qualunque, e prendersela vorrebbe dire storcere il cielo di venti gradi.
+    const puntino = [{ x: 500 + 20 * perGrado, y: 500, raggio: 0.4, segno: 1, flusso: 40 },
+      { x: 500 + 20 * perGrado + 6, y: 500, raggio: 0.4, segno: 1, flusso: 38 }];
+    prova('…ma due puntini ugualmente plausibili restano una moneta lanciata',
+      V.visAssocia([luna], puntino, { perGrado, cancello: V.VIS_CANCELLO_LARGO }).length === 0);
+  }
+
   skyProvaAR = false;
   sky.larghezza = larghezzaPrima;
   sky.altezza = altezzaPrima;

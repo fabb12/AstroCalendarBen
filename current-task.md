@@ -20,6 +20,66 @@ teneva nascosta insieme a tutta la sua sezione, vedi qui sotto.
 
 ## Ultimo intervento completato
 
+**La realtà aumentata: cinque volte più leggera, e con un riferimento che si
+aggancia davvero.**
+
+Il giro del motore di vista costava **7,03 ms** e il modulo si autolimita
+sopra i nove: su un telefono un po' più lento si rallentava da sé fino a tre
+giri al secondo, cioè un aggancio che arriva tardi proprio mentre lo si sta
+guardando. Adesso costa **1,24 ms**. I due risparmi sono di natura diversa, e
+il secondo non è un risparmio ma una cura.
+
+**La fascia di cielo.** Sopra la riga dell'orizzonte si cercano gli astri,
+sotto i punti fermi — e non è una scorciatoia, è che sopra non c'è niente di
+fermo (le uniche cose con un contorno sono le nuvole, e si muovono) e sotto
+non c'è niente di astronomico (le uniche luci sono lampioni e finestre, che
+una stella se la contendono e vincono). Si può tagliare lì perché **dov'è
+l'orizzonte lo dice la gravità, non la bussola**: un errore di bussola è una
+rotazione attorno alla verticale, e quella lascia la riga dov'è. Quello che si
+toglie non sono i pixel, sono i candidati falsi: nel banco le macchie passano
+da quaranta a undici.
+
+**Il paesaggio cercato dove il giroscopio dice.** Prima si frugava attorno
+alla posizione del fotogramma precedente in una finestra di tredici per
+tredici — centosessantanove confronti per riferimento, duecentotrentaseimila
+letture di memoria a ogni giro — e non bastava comunque: a venti gradi al
+secondo il riferimento si sposta di ventidue pixel e la finestra ne copre sei,
+quindi l'inseguimento non rallentava, si **perdeva**. Ma dove sia andato un
+punto fermo non c'è bisogno di cercarlo: ha una direzione nel mondo e la posa
+di adesso c'è. Da 1,82 ms a 0,11, e in più tiene mentre ci si gira.
+
+### Tre difetti dell'affidabilità, e nessuno si vedeva
+
+- **«Cerco» all'infinito.** La correzione può valere venticinque gradi, il
+  cancello con cui la si cercava ne valeva dodici: con venti gradi di ferro
+  attorno — il caso per cui il modulo esiste — l'aggancio non poteva avvenire
+  **mai**. Adesso il Sole e la Luna hanno un cancello d'acquisto di
+  ventiquattro gradi finché non si è agganciati; sono dischi, e la regola
+  della taglia li difende.
+- **La correzione che «non prende».** Paesaggio e astri votavano insieme, e
+  ventiquattro riferimenti da 0,35 battono una Luna da 1,4. Peggio: rispetto a
+  un consenso che dice «fermi tutti» la Luna **è** l'anomalia, quindi il peso
+  robusto di Huber buttava via proprio la misura giusta — dei quattro gradi da
+  recuperare ne passavano 1,7. Adesso decidono gli astri quando ci sono, e il
+  paesaggio quando non ce n'è nessuno.
+- **Due fasce che si calpestavano la memoria.** `visFasciaTerra` si calcola la
+  sua fascia di cielo, e senza due nomi diversi sovrascriveva quella appena
+  calcolata per le macchie. L'ha preso la prova «il margine allarga la fascia
+  verso il basso», che senza accorgersene misurava due volte la stessa
+  memoria.
+
+### Cosa è stato toccato
+
+- `visione.js`: §**2-bis** nuova (le due fasce), §**4-bis** riscritta (il
+  paesaggio con la previsione), il cancello d'acquisto, il riancoraggio dei
+  riferimenti, il contrasto minimo.
+- `verifica.html`: ventisei prove nuove in coda al §32.
+- `scripts/prova-visione.js`: nuovo, il costo del motore di vista in un
+  browser vero.
+- `sw.js`: `CACHE_NAME` a `astrocal-v306`.
+
+## Intervento precedente
+
 **Le nuvole del planetario si muovono col vento, invece di tornare indietro
 ogni ora.**
 
