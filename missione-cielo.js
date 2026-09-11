@@ -207,25 +207,39 @@ const MISS_VOCI_EDGE = {
  * entusiasta — perché è così che si racconta a un bambino, e perché a
  * loro l'enigma non è una prova di pazienza ma un gioco. Il tono resta
  * `friendly` e non `excited` sull'enigma: un adulto che urla un
- * indovinello a un bambino gli toglie la voglia di rispondere. */
+ * indovinello a un bambino gli toglie la voglia di rispondere.
+ *
+ * Le righe adesso sono **cinque**: la quinta è il **premio** di fine
+ * serata (§7-bis), ed è `cheerful` e non `excited` di proposito — la
+ * scoperta è un colpo di scena e si grida, una coppa è una cosa che si
+ * consegna, e consegnarla urlando la fa sembrare una presa in giro.
+ *
+ * E la scoperta è salita parecchio (1,35 → 1,7, e 2 coi bambini), perché
+ * misurata sul ponte vero a un grado e mezzo `excited` suona come un
+ * «ottimo» cortese. Lo styledegree di Azure arriva a 2: quando l'unica
+ * cosa da dire è «l'hai trovato», tenersi a metà scala è sprecare la sola
+ * riga della serata che possa permettersi di esagerare. */
 const MISS_TONI_VOCE = {
   curiosi: {
     enigma:    { stile: 'friendly', grado: '1',    ritmo: '-9%',  tono: '-2Hz' },
     indizio:   { stile: 'friendly', grado: '1',    ritmo: '-5%',  tono: '+0Hz' },
     soluzione: { stile: 'chat',     grado: '0.8',  ritmo: '-7%',  tono: '-3Hz' },
-    scoperta:  { stile: 'excited',  grado: '1.35', ritmo: '+3%',  tono: '+6Hz' }
+    scoperta:  { stile: 'excited',  grado: '1.7',  ritmo: '+7%',  tono: '+11Hz' },
+    premio:    { stile: 'cheerful', grado: '1.6',  ritmo: '+4%',  tono: '+9Hz' }
   },
   bambini: {
     enigma:    { stile: 'friendly', grado: '1.4',  ritmo: '-2%',  tono: '+9Hz' },
     indizio:   { stile: 'cheerful', grado: '1.3',  ritmo: '+2%',  tono: '+10Hz' },
     soluzione: { stile: 'friendly', grado: '1.1',  ritmo: '-2%',  tono: '+6Hz' },
-    scoperta:  { stile: 'excited',  grado: '1.6',  ritmo: '+8%',  tono: '+14Hz' }
+    scoperta:  { stile: 'excited',  grado: '2',    ritmo: '+12%', tono: '+18Hz' },
+    premio:    { stile: 'cheerful', grado: '1.9',  ritmo: '+9%',  tono: '+16Hz' }
   },
   sfida: {
     enigma:    { stile: 'chat',     grado: '0.9',  ritmo: '-11%', tono: '-4Hz' },
     indizio:   { stile: 'chat',     grado: '0.9',  ritmo: '-7%',  tono: '-2Hz' },
     soluzione: { stile: 'chat',     grado: '0.8',  ritmo: '-9%',  tono: '-4Hz' },
-    scoperta:  { stile: 'excited',  grado: '1.2',  ritmo: '+2%',  tono: '+4Hz' }
+    scoperta:  { stile: 'excited',  grado: '1.5',  ritmo: '+5%',  tono: '+8Hz' },
+    premio:    { stile: 'cheerful', grado: '1.3',  ritmo: '+2%',  tono: '+5Hz' }
   }
 };
 
@@ -341,8 +355,11 @@ const miss = {
   sbircia: false,
   // Quella in corso o conclusa e non ancora archiviata
   attiva: null,
-  // Il pannello: quale dei cinque stati è a schermo
+  // Il pannello: quale dei sei stati è a schermo
   vista: 'configurazione',
+  // Da dove si è aperta la bacheca, per rimetterci chi la chiude. Non si
+  // salva: una bacheca aperta non è uno stato della serata.
+  tornaDa: null,
   aperto: false,
   // Il messaggio in cima al pannello: {chiave, dati, tono}
   avviso: null,
@@ -1272,6 +1289,7 @@ function missGeneraMissione(scenario) {
       .sort((a, b) => a.quando - b.quando);
   }
   const variantiDomandaUsate = {};
+  const variantiIndizioUsate = {};
   const tappe = missAttaccaRiferimenti(misurate, votati).map((t, i) => {
     const famiglia = missFamigliaContenuto(t);
     const precedente = scenario.domande && scenario.domande[t.id];
@@ -1282,6 +1300,21 @@ function missGeneraMissione(scenario) {
     const usate = variantiDomandaUsate[famiglia] || (variantiDomandaUsate[famiglia] = new Set());
     for (let n = 0; n < 3 && usate.has(domandaVariante); n++) domandaVariante = (domandaVariante + 1) % 3;
     usate.add(domandaVariante);
+    /* …e lo stesso per la variante dell'indovinello, che da quando i tre
+     * indizi sono tre strofe della stessa voce pesa molto di più di
+     * prima: la seconda e la terza scendono alla famiglia per quasi
+     * tutti i bersagli, quindi due figure con la stessa variante nella
+     * stessa serata ricevono due righe **identiche** parola per parola.
+     * Misurato sul cielo di Como: il Cigno e Cassiopea, due tappe su
+     * quattro, dicevano tutt'e due «fra diecimila anni sarò storta» — e
+     * a occhio non si legge come una coincidenza, si legge come un
+     * copia-incolla. Il tetto della varietà lascia passare due bersagli
+     * per famiglia, quindi il caso capitava una volta su tre. */
+    let indizioVariante = storia[t.id] == null
+      ? missHashTesto(idMissione + ':indizio:' + t.id) % 3 : (storia[t.id] + 1) % 3;
+    const viste = variantiIndizioUsate[famiglia] || (variantiIndizioUsate[famiglia] = new Set());
+    for (let n = 0; n < 3 && viste.has(indizioVariante); n++) indizioVariante = (indizioVariante + 1) % 3;
+    viste.add(indizioVariante);
     return Object.assign({}, t, {
     indice: i,
     esito: null,
@@ -1289,7 +1322,7 @@ function missGeneraMissione(scenario) {
     fase: 'ricerca',
     raccontoVariante: storia[t.id] == null ? missHashTesto(idMissione + ':' + t.id) % 3 : (storia[t.id] + 1) % 3,
     domandaVariante,
-    indizioVariante: storia[t.id] == null ? missHashTesto(idMissione + ':indizio:' + t.id) % 3 : (storia[t.id] + 1) % 3
+    indizioVariante
     });
   });
 
@@ -2875,9 +2908,14 @@ function missConcludi() {
   // trovate», sono tappe a cui non si è arrivati, e il diario le conta
   // come saltate — che è quello che è successo.
   m.tappe.forEach(t => { if (!t.esito) t.esito = 'saltato'; });
+  // La coppa si assegna **prima** di disegnare: il pannello della fine la
+  // legge da `m.premio`, e disegnandolo su una missione non ancora
+  // premiata mostrerebbe una serata senza risultato per un fotogramma.
+  const verbale = missPremiaMissione(m);
   missSalvaAttiva();
   missMostraStrisciaCielo();
   missMostraVista('conclusa');
+  missRaccontaPremio(verbale);
   // Solo dopo l'ultima risposta serve di nuovo la finestra, questa volta
   // per mostrare il risultato e permettere il salvataggio nel Diario.
   if (eraNelPlanetario) {
@@ -3019,6 +3057,268 @@ function missVoceDiario(v) {
 
 
 // =====================================================================
+// 7-bis. L'ALBO — le coppe e i premi
+//
+//     Una caccia senza niente da portare a casa è una caccia che si fa
+//     una volta. Fino a ieri la missione finiva con un elenco di esiti e
+//     un tasto per il Diario: un resoconto onesto, e nient'altro — la
+//     serata dopo ricominciava da zero, senza che nulla dicesse che la
+//     prima c'era stata.
+//
+//     Qui si tiene il conto, e si tiene in due grandezze diverse, perché
+//     sono due cose diverse:
+//
+//     LA COPPA è **della serata**. Si vince alla fine di una missione e
+//     dice com'è andata quella: oro a chi ha trovato tutto quasi da solo,
+//     argento a chi ha trovato tutto o quasi con qualche indizio, bronzo
+//     a chi ha trovato qualcosa. Non esiste la coppa «niente»: chi non
+//     trova nulla non ha perso una gara, ha avuto una serata storta — e
+//     una coppa di latta consegnata per consolazione è peggio di nessuna
+//     coppa.
+//
+//     IL PREMIO è **di sempre**. Non si vince e non si perde: si sblocca,
+//     e da lì in poi resta. Sono traguardi che parlano di cosa si è
+//     visto, non di quanto si è stati bravi — cinque pianeti diversi,
+//     dieci oggetti del cielo profondo, tre sere — ed è di proposito:
+//     misurare la bravura di chi comincia vuol dire dirgli che è scarso.
+//
+//     Il conto è **cumulativo e non ricostruibile**: si tiene in
+//     `localStorage` e non si ricava dal Diario, perché una missione si
+//     può concludere senza salvarla e il premio è già stato dato. Il
+//     formato è numerato come tutto il resto (§4): un salvataggio che non
+//     si conosce si butta invece di indovinarlo, e l'albo riparte — sono
+//     coppe, non osservazioni, e perderle non perde nessun dato vero.
+// =====================================================================
+
+const CHIAVE_MISS_ALBO = 'astrocalendario_missione_albo';
+const MISS_ALBO_VERSIONE = 1;
+
+/* Quanto vale una tappa trovata.
+ *
+ * Tre addendi e non uno, perché tre cose diverse rendono una tappa degna
+ * di essere contata: **che sia stata trovata** (la base, uguale per
+ * tutti: la prima cosa che conta è essere usciti), **quanto era
+ * difficile** (la scala di `missDifficolta`, da 1 a 5) e **quanto
+ * valeva** (il fascino del repertorio, §1-bis — Saturno e una galassia
+ * anonima con gli stessi numeri non sono la stessa serata).
+ *
+ * `senzaAiuti` è il solo premio alla bravura, ed è piccolo di proposito:
+ * chiedere un indizio non è barare, è il modo in cui questo pezzo è fatto
+ * per essere usato. Chi arriva in fondo senza chiederne nessuno prende
+ * qualcosa in più, chi ne chiede tre non perde niente. */
+const MISS_PUNTI = {
+  tappa: 10,
+  perDifficolta: 6,
+  perFascino: 8,
+  senzaAiuti: 8,
+  nottePiena: 25
+};
+
+/* Le soglie della coppa, in aiuti **medi** per tappa trovata.
+ *
+ * Media e non totale: una missione di otto tappe e una di tre non si
+ * possono giudicare con lo stesso numero di indizi, se no la serata
+ * lunga è per forza peggiore di quella corta. Una tappa a cui è stata
+ * chiesta la soluzione conta come se avesse speso tutti gli indizi e uno
+ * in più: non è una punizione — è la resa, e la resa non è un'impresa da
+ * oro. */
+const MISS_COPPE = ['oro', 'argento', 'bronzo'];
+const MISS_COPPA_ORO_AIUTI = 0.5;
+const MISS_COPPA_ARGENTO_AIUTI = 1.5;
+const MISS_COPPA_ARGENTO_QUOTA = 2 / 3;
+
+// Quante tappe fanno una maratona: il premio della serata lunga portata
+// fino in fondo, che è un'altra cosa dal trovare tanto.
+const MISS_MARATONA_TAPPE = 8;
+
+/* I premi, in ordine di quanto sono lontani.
+ *
+ * Ognuno guarda l'albo **dopo** che la missione ci è entrata, quindi una
+ * regola è sempre una sola riga di lettura e mai un conto sulle tappe: se
+ * per rispondere servisse rileggere la serata, il premio non sarebbe di
+ * sempre, sarebbe della serata — e quella ha già la sua coppa.
+ *
+ * `icona` viene da `DISEGNI` (app.js §0): nessuna emoji, come ovunque. */
+const MISS_PREMI = [
+  { id: 'primaLuce',     icona: 'stella',        ok: a => a.trovati >= 1 },
+  { id: 'senzaAiuti',    icona: 'occhio',        ok: a => a.senzaAiuti >= 1 },
+  { id: 'nottePiena',    icona: 'coppa',         ok: a => a.perfette >= 1 },
+  { id: 'treSere',       icona: 'calendario',    ok: a => (a.notti || []).length >= 3 },
+  { id: 'dieciLuci',     icona: 'binocolo',      ok: a => a.trovati >= 10 },
+  { id: 'giroPianeti',   icona: 'saturno',       ok: a => missAlboDistinti(a, 'pianeta') >= 5 },
+  { id: 'stazione',      icona: 'satellite',     ok: a => missAlboDistinti(a, 'stazione') >= 1 },
+  { id: 'figurante',     icona: 'costellazione', ok: a => missAlboDistinti(a, 'costellazione') >= 10 },
+  { id: 'profondista',   icona: 'nebulosa',      ok: a => missAlboDistinti(a, 'profondo') >= 10 },
+  { id: 'maratona',      icona: 'bersaglio',     ok: a => (a.maratone || 0) >= 1 },
+  { id: 'stellario',     icona: 'telescopio',    ok: a => missAlboDistinti(a, 'stella') >= 15 },
+  { id: 'treCoppeOro',   icona: 'coppa',         ok: a => (a.coppe && a.coppe.oro) >= 3 },
+  { id: 'dieciSere',     icona: 'lunapiena',     ok: a => (a.notti || []).length >= 10 },
+  { id: 'cinquantaLuci', icona: 'medaglia',      ok: a => a.trovati >= 50 }
+];
+
+// L'albo vuoto, che è anche la forma di riferimento: chi legge un
+// salvataggio più povero (un formato vecchio, un campo perso) ci cade
+// sopra e non trova mai un `undefined` da sommare.
+function missAlboVuoto() {
+  return {
+    versione: MISS_ALBO_VERSIONE,
+    punti: 0, missioni: 0, trovati: 0,
+    perfette: 0, senzaAiuti: 0, maratone: 0,
+    coppe: { oro: 0, argento: 0, bronzo: 0 },
+    bersagli: {}, notti: [], premi: {}
+  };
+}
+
+/* La notte di un istante, e non il suo giorno.
+ *
+ * Una serata comincia alle dieci e finisce alle due, e sono la stessa
+ * serata: contandole per data di calendario, chi resta fuori oltre la
+ * mezzanotte si ritroverebbe due sere dove ne ha fatta una. Si toglie
+ * mezza giornata e si legge la data locale — la stessa regola con cui
+ * chiunque, raccontandolo, direbbe «ieri sera». */
+function missNotteDi(ms) {
+  const d = new Date((Number.isFinite(ms) ? ms : Date.now()) - 12 * 3600 * 1000);
+  const due = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${due(d.getMonth() + 1)}-${due(d.getDate())}`;
+}
+
+// Quanti bersagli **diversi** di un genere sono stati trovati almeno una
+// volta. Le ripetizioni non contano: rivedere Giove dieci volte è una
+// bella abitudine, non un giro dei pianeti.
+function missAlboDistinti(albo, genere) {
+  const b = (albo && albo.bersagli) || {};
+  return Object.keys(b).filter(k => b[k] === genere).length;
+}
+
+function missLeggiAlbo() {
+  const salvato = missLeggiSalvato(CHIAVE_MISS_ALBO);
+  if (!salvato || typeof salvato !== 'object' || salvato.versione !== MISS_ALBO_VERSIONE) {
+    return missAlboVuoto();
+  }
+  return Object.assign(missAlboVuoto(), salvato, {
+    coppe: Object.assign({ oro: 0, argento: 0, bronzo: 0 }, salvato.coppe || {}),
+    bersagli: Object.assign({}, salvato.bersagli || {}),
+    premi: Object.assign({}, salvato.premi || {}),
+    notti: Array.isArray(salvato.notti) ? salvato.notti : []
+  });
+}
+
+/* Quanti indizi è costata una tappa trovata.
+ *
+ * `rivelata` non è un quarto indizio: è la resa, e vale un gradino oltre
+ * l'ultimo. Chi si arrende e poi tocca comunque il bersaglio lo ha
+ * trovato — l'esito resta «trovato», che è giusto — ma non ha fatto la
+ * serata di chi ci è arrivato dal terzo indizio. */
+function missCostoAiuti(t) {
+  return t && t.rivelata ? MISS_INDIZI + 1 : Math.min(MISS_INDIZI, (t && t.aiuto) || 0);
+}
+
+/* I punti di una missione, contati sulle sole tappe trovate.
+ *
+ * Le saltate e le non trovate non tolgono niente, ed è la scelta di fondo
+ * di tutto il file: «non trovato» è un fatto, non un voto (§6). Una
+ * serata storta vale zero punti, che è già abbastanza. */
+function missPuntiMissione(m) {
+  const tappe = (m && m.tappe) || [];
+  const trovate = tappe.filter(t => t.esito === 'trovato');
+  let punti = 0;
+  for (const t of trovate) {
+    punti += MISS_PUNTI.tappa;
+    punti += MISS_PUNTI.perDifficolta * Math.max(0, (t.difficolta || 1) - 1);
+    punti += Math.round(MISS_PUNTI.perFascino * (Number.isFinite(t.fascino) ? t.fascino : 0.4));
+    if (missCostoAiuti(t) === 0) punti += MISS_PUNTI.senzaAiuti;
+  }
+  if (tappe.length && trovate.length === tappe.length) punti += MISS_PUNTI.nottePiena;
+  return punti;
+}
+
+/* La coppa della serata.
+ *
+ * `null` quando non si è trovato niente, ed è voluto: vedi il commento in
+ * testa alla sezione. */
+function missCoppaDiMissione(m) {
+  const tappe = (m && m.tappe) || [];
+  const trovate = tappe.filter(t => t.esito === 'trovato');
+  if (!tappe.length || !trovate.length) return null;
+  const quota = trovate.length / tappe.length;
+  const aiutiMedi = trovate.reduce((somma, t) => somma + missCostoAiuti(t), 0) / trovate.length;
+  if (quota >= 1 && aiutiMedi <= MISS_COPPA_ORO_AIUTI) return 'oro';
+  if (quota >= 1 || (quota >= MISS_COPPA_ARGENTO_QUOTA && aiutiMedi <= MISS_COPPA_ARGENTO_AIUTI)) return 'argento';
+  return 'bronzo';
+}
+
+/* La missione entra nell'albo, e ne esce quello che si è vinto.
+ *
+ * È una funzione pura sull'albo — prende quello di prima e restituisce
+ * quello di dopo, più il verbale della serata — così si può provare senza
+ * un browser e senza `localStorage`. A scrivere è `missPremiaMissione`,
+ * che è l'unica che tocchi il disco.
+ *
+ * I premi si confrontano **prima e dopo**: quelli che prima non c'erano e
+ * adesso ci sono sono i nuovi, e sono i soli che si annunciano. Un premio
+ * già preso che si riconferma non è una notizia, e ripeterlo a ogni
+ * serata svuoterebbe di significato anche quelli veri. */
+function missAlboConMissione(alboPrima, m) {
+  const albo = Object.assign(missAlboVuoto(), alboPrima, {
+    coppe: Object.assign({ oro: 0, argento: 0, bronzo: 0 }, (alboPrima || {}).coppe),
+    bersagli: Object.assign({}, (alboPrima || {}).bersagli),
+    premi: Object.assign({}, (alboPrima || {}).premi),
+    notti: [...((alboPrima || {}).notti || [])]
+  });
+  const tappe = (m && m.tappe) || [];
+  const trovate = tappe.filter(t => t.esito === 'trovato');
+  const coppa = missCoppaDiMissione(m);
+  const punti = missPuntiMissione(m);
+  const avuti = new Set(Object.keys(albo.premi));
+
+  albo.punti += punti;
+  albo.missioni += 1;
+  albo.trovati += trovate.length;
+  if (coppa) albo.coppe[coppa] += 1;
+  if (tappe.length && trovate.length === tappe.length) albo.perfette += 1;
+  if (trovate.length && trovate.every(t => missCostoAiuti(t) === 0)) albo.senzaAiuti += 1;
+  if (tappe.length >= MISS_MARATONA_TAPPE && trovate.length === tappe.length) albo.maratone += 1;
+  for (const t of trovate) {
+    if (t.id) albo.bersagli[t.id] = missGenereTappa(t);
+  }
+  const notte = missNotteDi(m && (m.avviata || m.creata));
+  if (trovate.length && !albo.notti.includes(notte)) albo.notti.push(notte);
+
+  const quando = Date.now();
+  const nuovi = [];
+  for (const premio of MISS_PREMI) {
+    if (avuti.has(premio.id)) continue;
+    let preso = false;
+    try { preso = !!premio.ok(albo); } catch (e) { preso = false; }
+    if (!preso) continue;
+    albo.premi[premio.id] = quando;
+    nuovi.push(premio.id);
+  }
+  return { albo, verbale: { coppa, punti, nuovi, trovate: trovate.length, tappe: tappe.length } };
+}
+
+/* Il premio si consegna una volta sola.
+ *
+ * `missConcludi` può girare due volte — si conclude a mano e l'ultima
+ * tappa chiude da sé, si riapre una missione conclusa da un salvataggio —
+ * e una coppa consegnata due volte è una coppa che non vale niente. Il
+ * verbale resta appeso alla missione (`m.premio`): da lì lo rilegge il
+ * disegno, che di volte gira a decine. */
+function missPremiaMissione(m) {
+  if (!m) return null;
+  if (m.premio) return m.premio;
+  const { albo, verbale } = missAlboConMissione(missLeggiAlbo(), m);
+  missScrivi(CHIAVE_MISS_ALBO, albo);
+  m.premio = verbale;
+  return verbale;
+}
+
+function missPremioDiId(id) {
+  return MISS_PREMI.find(p => p.id === id) || null;
+}
+
+
+// =====================================================================
 // 8. IL PANNELLO — cinque stati in una finestra sola
 //
 //     configurazione → anteprima → in corso → conclusa, più lo stato
@@ -3061,6 +3361,9 @@ const MISS_CHIAVI_BAMBINI = new Set([
    * se cambia solo la cornice, quello che resta dentro suona ancora più
    * serio di prima per contrasto. */
   'etichettaEnigma', 'numeroIndizio', 'soluzione', 'mostraSoluzione',
+  // L'esclamazione della scoperta: coi bambini sale di un gradino, che è
+  // l'unico posto di questo file in cui esagerare è la cosa giusta.
+  'gioco.evviva.1', 'gioco.evviva.2', 'gioco.evviva.3',
   'gioco.scoperta', 'gioco.continua', 'gioco.apriCielo', 'gioco.altraStoria',
   'gioco.quasi', 'gioco.mistero', 'gioco.soluzioneE',
   // la scheda in Stasera e la configurazione
@@ -3261,7 +3564,8 @@ function missDisegnaPannello() {
       missT(miss.avviso.chiave, miss.avviso.dati) + '</p>';
   }
 
-  if (miss.vista === 'anteprima' && miss.anteprima) html += missHtmlAnteprima(miss.anteprima);
+  if (miss.vista === 'albo') html += missHtmlAlbo();
+  else if (miss.vista === 'anteprima' && miss.anteprima) html += missHtmlAnteprima(miss.anteprima);
   else if (miss.vista === 'inCorso' && miss.attiva) html += missHtmlInCorso(miss.attiva);
   else if (miss.vista === 'conclusa' && miss.attiva) html += missHtmlConclusa(miss.attiva);
   else if (miss.vista === 'vuoto') html += missHtmlVuoto();
@@ -3407,6 +3711,7 @@ function missHtmlConfigurazione() {
     <div class="missione-azioni">
       <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="genera">
         ${missIcona('bersaglio', 16)} ${missT('preparami')}</button>
+      ${missStrisciaAlbo()}
     </div>
   </div>`;
 }
@@ -3686,8 +3991,7 @@ function missEnigma(t) {
    * libro». Alla Macchina Pneumatica e al Bulino dello Incisore, che
    * stanno in cielo dal Settecento, quell'enigma farebbe raccontare una
    * bugia — quindi loro ne pescano due. Vedi `missFiguraAntica` (§3). */
-  const quante = (famiglia === 'costellazione' && t.antica === false) ? 2 : 3;
-  const n = (t.indizioVariante || 0) % quante + 1;
+  const n = missVarianteEnigma(t);
   const chiavi = [];
   if (modo === 'bambini') {
     if (slug) chiavi.push('gioco.enigmaBimbi.' + slug);
@@ -3728,7 +4032,9 @@ function missDoveOra(t) {
 function missIntroduzione(t) {
   const modo = missModoAttuale();
   const g = MISS_GENEROSITA[modo] || MISS_GENEROSITA.curiosi;
-  const n = (t.indizioVariante || 0) % 3 + 1;
+  // La stessa variante delle altre due strofe: le tre righe di una tappa
+  // sono un indovinello solo detto in tre volte, non tre indovinelli.
+  const n = missVarianteEnigma(t);
   const pezzi = [];
   if (modo === 'bambini') pezzi.push(missT('gioco.intro.bambini.' + n));
   pezzi.push(missEnigma(t));
@@ -3740,27 +4046,146 @@ function missIntroduzione(t) {
   return pezzi.filter(Boolean).join(' ');
 }
 
-function missIndizio(t) {
+/* I tre indizi sono tre strofe dello stesso indovinello.
+ *
+ * Il primo funzionava e gli altri due no, ed è stato detto con una frase
+ * che vale la pena tenere: «il secondo e il terzo non sono indovinelli».
+ * Non lo erano davvero. Dopo un enigma in prima persona — «Ho mari in cui
+ * non è mai caduta una goccia» — arrivava «Sempre verso nord-ovest: cerca
+ * a metà cielo. L'altezza si misura a partire dall'orizzonte», cioè la
+ * voce di un'altra persona: il narratore spariva e restava un navigatore
+ * satellitare. Il gioco finiva lì, alla seconda riga, e non perché
+ * l'informazione fosse sbagliata — era giusta — ma perché **cambiava
+ * registro**, e un indovinello che a metà diventa un'istruzione ha già
+ * detto a chi ascolta che il gioco era finto.
+ *
+ * Adesso le tre righe sono tre strofe della stessa voce, e sono legate in
+ * due modi diversi che si sommano:
+ *
+ *   DALLA CATENA. La seconda e la terza strofa si pescano con la stessa
+ *   catena di ripiego dell'enigma — nome proprio, specie di catalogo,
+ *   famiglia (§1-bis) — quindi chi ha ricevuto l'enigma proprio riceve
+ *   anche il seguito proprio, e chi è sceso di un gradino ci resta per
+ *   tutte e tre. Non può succedere che la prima strofa parli dei mari
+ *   della Luna e la seconda di una macchia del cielo profondo.
+ *
+ *   DALLA VARIANTE. La strofa si sceglie con lo **stesso** indice della
+ *   prima (`missVarianteEnigma`), non con uno nuovo: la variante 2 della
+ *   Luna comincia dai mari e la variante 2 del seguito continua da lì.
+ *   Con due indici scorrelati le tre righe sarebbero tre indovinelli
+ *   diversi sullo stesso oggetto, che è quasi peggio di tre istruzioni.
+ *
+ * Quello che **non** cambia è che un indizio deve aiutare: dentro a ogni
+ * strofa c'è ancora tutto il dato di prima — la direzione, la fascia di
+ * altezza, la stella di riferimento con la distanza in dita e pugni — solo
+ * che adesso è detto da chi si sta nascondendo invece che da chi legge una
+ * mappa. La geometria è la stessa, cambia la bocca che la dice. */
+
+// La variante dell'indovinello di questa tappa, che è **una sola** per
+// tutte e tre le strofe. L'eccezione delle figure moderne (§`missEnigma`:
+// due varianti invece di tre, perché la terza afferma un'antichità che
+// la Macchina Pneumatica non ha) va tenuta qui dentro, se no la prima
+// strofa e le altre due si sfaserebbero proprio per loro.
+function missVarianteEnigma(t) {
+  const quante = (missFamigliaContenuto(t) === 'costellazione' && t && t.antica === false) ? 2 : 3;
+  return ((t && t.indizioVariante) || 0) % quante + 1;
+}
+
+/* Il seguito dell'enigma: la seconda o la terza strofa.
+ *
+ * Stessa catena dell'enigma, stessa variante, un gruppo di chiavi diverso.
+ * Ai bambini si scende alla versione di famiglia, che è scritta con le
+ * loro parole: un seguito per ogni slug, in due lingue e in due registri,
+ * sarebbe una tabella che nessuno riesce a tenere vera. */
+function missEnigmaSeguito(t, stanza) {
+  const gruppo = stanza === 2 ? 'enigmaDue' : 'enigmaTre';
+  const modo = missModoAttuale();
+  const slug = t.slug || missSlugTappa(t);
+  const categoria = missCategoriaTappa(t);
+  const famiglia = missFamigliaContenuto(t);
+  const n = missVarianteEnigma(t);
+  const chiavi = [];
+  // Ai bambini le varianti servono più che agli adulti, non meno: il
+  // tetto della varietà cede quando il cielo è povero, e tre figure in
+  // una serata con la stessa strofa si leggono come un copia-incolla
+  // anche a otto anni. La chiave senza numero resta come ultima rete.
+  if (modo === 'bambini') {
+    chiavi.push('gioco.' + gruppo + 'Bimbi.' + famiglia + '.' + n);
+    chiavi.push('gioco.' + gruppo + 'Bimbi.' + famiglia);
+  }
+  if (slug) chiavi.push('gioco.' + gruppo + '.oggetto.' + slug + '.' + n);
+  if (slug) chiavi.push('gioco.' + gruppo + '.oggetto.' + slug);
+  if (categoria) chiavi.push('gioco.' + gruppo + '.specie.' + categoria);
+  chiavi.push('gioco.' + gruppo + '.' + famiglia + '.' + n);
+  return missT(missPrimaChiaveNota(chiavi));
+}
+
+/* Seconda strofa: dove mi nascondo.
+ *
+ * Porta la direzione e la fascia di altezza, cioè esattamente quello che
+ * portava prima, e in più il punto cardinale **opposto** — «dai le spalle
+ * a sud-est» —, che non è un ornamento: al buio, in un cortile, girarsi
+ * partendo da quello che si ha davanti è più facile che cercare un nord
+ * che non si vede. Il segno osservabile si aggiunge qui solo a chi non
+ * l'ha già avuto con l'enigma, cioè agli esperti (§`MISS_GENEROSITA`);
+ * ripeterlo agli altri vorrebbe dire spendere una strofa per non dire
+ * niente di nuovo. */
+function missIndizioDue(t) {
   const ora = missTappaNelPlanetario(t);
   // Se non e' cercabile non mostriamo piu' il vecchio invito ad
   // abbandonare la serata: la striscia offre direttamente «Vai alle…».
   if (!missAmmissibile(ora, miss.attiva.scelte)) return '';
-  const dove = astroI18n.nomePunto(ora.azimut);
+  const pezzi = [missEnigmaSeguito(t, 2), missT(
+    'gioco.dove.' + missFasciaAltezza(ora.altezza) + '.' + missVarianteEnigma(t), {
+      dove: astroI18n.nomePunto(ora.azimut),
+      spalle: astroI18n.nomePunto((ora.azimut + 180) % 360)
+    })];
+  const g = MISS_GENEROSITA[missModoAttuale()] || MISS_GENEROSITA.curiosi;
+  if (!g.segno) pezzi.push(missSegnoTappa(t));
+  return pezzi.filter(Boolean).join(' ');
+}
+
+/* Terza strofa: chi mi fa compagnia.
+ *
+ * Il riferimento è misurato ORA, in tutt'e due le coordinate, e dev'essere
+ * visibile a occhio: nessuna stella «a destra» inventata. La distanza si
+ * dice in dita e pugni a braccio teso e non in gradi, che è il solo
+ * goniometro che tutti hanno addosso — i gradi restano in coda, per chi li
+ * vuole. Quando lì attorno non c'è niente di luminoso la strofa cambia
+ * argomento invece di inventarsi un vicino: parla della solitudine di quel
+ * pezzo di cielo, che è vera e che è già un indizio. */
+function missIndizioTre(t) {
+  const ora = missTappaNelPlanetario(t);
+  if (!missAmmissibile(ora, miss.attiva.scelte)) return '';
+  const n = missVarianteEnigma(t);
+  const vicino = missVicino(t);
+  const seconda = vicino
+    ? missT('gioco.compagnia.' + n, {
+      nome: vicino.nome,
+      verso: missT('verso.' + vicino.verso),
+      su: missT('verso.' + vicino.su),
+      misura: missT(missMisuraAMano(vicino.gradi).chiave.replace('missione.', '')),
+      gradi: Math.round(vicino.gradi)
+    })
+    : missT('gioco.solitudine.' + n, {
+      luce: missT('gioco.' + (t.mag < 1 ? 'brillante' : 'tenue')),
+      dove: astroI18n.nomePunto(ora.azimut),
+      altezza: missT('altezza.' + missFasciaAltezza(ora.altezza))
+    });
+  return [missEnigmaSeguito(t, 3), seconda].filter(Boolean).join(' ');
+}
+
+// Il ripartitore. Lo zero non passa di qui — l'enigma lo scrive
+// `missIntroduzione` — ma resta servito lo stesso: `missIndizio` è
+// chiamata anche col livello grezzo di una tappa ripresa da un
+// salvataggio, e una direzione è sempre meglio di una riga vuota.
+function missIndizio(t) {
   const livello = t.aiuto || 0;
-  if (!livello) return missT('gioco.direzione.' + ((t.indizioVariante || 0) % 3 + 1), { dove });
-  if (livello === 1) {
-    return missT('gioco.altezza', { dove, altezza: missT('altezza.' + missFasciaAltezza(ora.altezza)) }) + ' ' + missSegnoTappa(t);
-  }
-  if (livello === 2) {
-    // I riferimenti sono misurati ORA, in entrambe le coordinate, e devono
-    // essere visibili a occhio: nessuna stella "a destra" inventata.
-    const vicino = missVicino(t);
-    if (vicino) return missT('gioco.vicino', { nome: vicino.nome,
-      verso: missT('verso.' + vicino.verso), su: missT('verso.' + vicino.su),
-      gradi: Math.round(vicino.gradi) });
-    return missT('gioco.luce', { luce: missT('gioco.' + (t.mag < 1 ? 'brillante' : 'tenue')) });
-  }
-  return missT('gioco.preciso', { dove, az: Math.round(ora.azimut), alt: Math.round(ora.altezza) });
+  if (livello === 1) return missIndizioDue(t);
+  if (livello >= 2) return missIndizioTre(t);
+  const ora = missTappaNelPlanetario(t);
+  if (!missAmmissibile(ora, miss.attiva.scelte)) return '';
+  return missT('gioco.direzione.' + missVarianteEnigma(t), { dove: astroI18n.nomePunto(ora.azimut) });
 }
 
 function missVicino(t) {
@@ -3952,6 +4377,29 @@ function missSsmlPause(testo) {
     .replace(/,\s+/g, ',<break time="220ms"/>');
 }
 
+/* Il nome, detto come si dice un nome.
+ *
+ * Una sintesi legge «Hai trovato M tredici» con lo stesso tono con cui
+ * legge «verso nord-ovest», e su una frase che esiste per essere il
+ * premio di mezz'ora di ricerca quella piattezza si sente tutta. Le due
+ * cose che un narratore vero fa lì sono una pausa brevissima prima del
+ * nome — il tempo di prendere fiato, che è anche il tempo in cui chi
+ * ascolta capisce che sta per arrivare la risposta — e l'accento sul
+ * nome stesso.
+ *
+ * Si cerca il testo **dopo** che le pause sono state inserite, e se non
+ * lo si trova non si fa niente: un nome che contenga un punto sarebbe
+ * stato spezzato da un `<break>` e il confronto fallirebbe, il che è un
+ * problema di zero conseguenze — si perde l'accento, non la frase. */
+function missSsmlRisalta(corpo, enfasi) {
+  const bersaglio = missSsmlTesto(enfasi == null ? '' : enfasi).trim();
+  if (!bersaglio || bersaglio.length < 2) return corpo;
+  const i = corpo.indexOf(bersaglio);
+  if (i < 0) return corpo;
+  return corpo.slice(0, i) + '<break time="260ms"/><emphasis level="strong">' +
+    bersaglio + '</emphasis>' + corpo.slice(i + bersaglio.length);
+}
+
 /* Lo SSML, costruito qui e non lasciato al ponte.
  *
  * `mstts:express-as` è quello che porta l'emozione, e vuole due cose che
@@ -3963,11 +4411,12 @@ function missSsmlPause(testo) {
  * `prosody` sta **dentro** allo stile e non fuori: fuori vale come
  * impostazione di partenza e lo stile poi la riscrive, dentro le due
  * cose si sommano. */
-function missSsml(testo, lingua, tono) {
+function missSsml(testo, lingua, tono, opz) {
   const voci = MISS_VOCI_EDGE[lingua] || MISS_VOCI_EDGE.it;
   const locale = lingua === 'en' ? 'en-US' : 'it-IT';
   const conStile = tono && voci.stili.includes(tono.stile);
-  const corpo = `<prosody rate="${tono.ritmo}" pitch="${tono.tono}">${missSsmlPause(testo)}</prosody>`;
+  const detto = missSsmlRisalta(missSsmlPause(testo), opz && opz.enfasi);
+  const corpo = `<prosody rate="${tono.ritmo}" pitch="${tono.tono}">${detto}</prosody>`;
   return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" ` +
     `xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="${locale}">` +
     `<voice name="${conStile ? voci.espressiva : voci.stabile}">` +
@@ -3988,7 +4437,7 @@ function missSsml(testo, lingua, tono) {
  * solo `text` legge il testo e ottiene quello che otteneva prima. Nessuno
  * dei due riceve una richiesta che non sa interpretare, e chi non fa lo
  * SSML degrada in una lettura buona invece che in un errore. */
-async function missRaccontaConEdge(testo, lingua, sequenza, tono) {
+async function missRaccontaConEdge(testo, lingua, sequenza, tono, opz) {
   const endpoint = typeof window !== 'undefined' ? String(window.EDGE_TTS_API_URL || '').trim() : '';
   if (!endpoint || typeof fetch !== 'function' || typeof Audio === 'undefined') return false;
 
@@ -3999,7 +4448,7 @@ async function missRaccontaConEdge(testo, lingua, sequenza, tono) {
     headers: { 'Content-Type': 'application/json', 'Accept': 'audio/mpeg, audio/*, application/json' },
     body: JSON.stringify({
       text: testo,
-      ssml: missSsml(testo, lingua, tono),
+      ssml: missSsml(testo, lingua, tono, opz),
       voice: conStile ? voci.espressiva : voci.stabile,
       style: conStile ? tono.stile : undefined,
       styledegree: conStile ? tono.grado : undefined,
@@ -4076,31 +4525,174 @@ function missRaccontaLocale(testo, lingua, tono) {
   return true;
 }
 
+/* Quello che si sente quando si trova.
+ *
+ * Era «M tredici. La sua luce è partita…», cioè un cartellino da museo
+ * letto ad alta voce: la notizia più bella della serata consegnata con la
+ * stessa faccia di un orario ferroviario. La segnalazione lo diceva in
+ * chiaro — «quando vince deve leggere evviva, hai trovato, bravo» — e ha
+ * ragione, perché è quello che fa **una persona**: prima esulta, poi dice
+ * cosa hai trovato, poi racconta.
+ *
+ * Quindi tre pezzi e in quest'ordine. L'**esclamazione**, che è la sola
+ * riga di tutto il file scritta per essere sentita e non letta (sullo
+ * schermo il titolo della scoperta la dice già a modo suo). Il **nome**,
+ * che la voce accentua e fa precedere da una pausa (§`missSsmlRisalta`).
+ * L'**aneddoto** e la domanda, come prima.
+ *
+ * L'esclamazione segue la variante dell'indovinello e non il caso: la
+ * stessa tappa, riletta col tasto «ascolta», deve dire la stessa cosa. */
 function missTestoVoceTappa(tappa) {
   if (!tappa) return '';
-  return tappa.fase === 'scoperta'
-    ? missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) }) + ' ' + missDomanda(tappa)
-    : missTestoIndizio(tappa);
+  if (tappa.fase !== 'scoperta') return missTestoIndizio(tappa);
+  return [
+    missT('gioco.evviva.' + missVarianteEnigma(tappa)),
+    missT('raccontoVoce', { nome: missNomeTappa(tappa), curiosita: missCuriositaTesto(tappa) }),
+    missDomanda(tappa)
+  ].filter(Boolean).join(' ');
 }
 
-async function missRaccontaTappa(tappa, forza) {
-  if (!tappa || (!forza && !(miss.attiva && miss.attiva.scelte.voce))) return false;
-  // La voce deve seguire esattamente l'indizio selezionato con le frecce,
-  // non l'ultimo aiuto sbloccato. `indizioMostrato` può infatti essere
-  // precedente ad `aiuto` quando si torna indietro nella sequenza.
-  const testo = missTestoVoceTappa(tappa);
+/* Il narratore, una volta sola.
+ *
+ * Tutto quello che questo modulo dice ad alta voce passa di qui: la
+ * tappa, e adesso anche il premio di fine serata. Erano due strade
+ * separate per un giorno solo, e già in quel giorno avevano due modi
+ * diversi di fermare la voce di prima — che è il difetto per cui due
+ * frasi si accavallano. */
+async function missRacconta(testo, tono, opz) {
+  if (!testo) return false;
   const lingua = typeof astroI18n === 'object' && astroI18n.lingua ? astroI18n.lingua : 'it';
-  // Il tono si sceglie **dal momento della caccia** e non dal testo: la
-  // stessa frase, letta dopo un enigma o dopo una scoperta, sono due cose
-  // diverse da dire.
-  const tono = missTonoVoce(missMomentoVoce(tappa));
   const sequenza = missFermaVoce();
   try {
-    if (await missRaccontaConEdge(testo, lingua, sequenza, tono)) return true;
+    if (await missRaccontaConEdge(testo, lingua, sequenza, tono, opz)) return true;
   } catch (errore) {
     console.warn('Missione Cielo: Edge-TTS non disponibile, uso la voce del dispositivo.', errore);
   }
   return sequenza === missVoce.sequenza && missRaccontaLocale(testo, lingua, tono);
+}
+
+function missRaccontaTappa(tappa, forza) {
+  if (!tappa || (!forza && !(miss.attiva && miss.attiva.scelte.voce))) return Promise.resolve(false);
+  // La voce deve seguire esattamente l'indizio selezionato con le frecce,
+  // non l'ultimo aiuto sbloccato. `indizioMostrato` può infatti essere
+  // precedente ad `aiuto` quando si torna indietro nella sequenza.
+  const testo = missTestoVoceTappa(tappa);
+  // Il tono si sceglie **dal momento della caccia** e non dal testo: la
+  // stessa frase, letta dopo un enigma o dopo una scoperta, sono due cose
+  // diverse da dire.
+  const tono = missTonoVoce(missMomentoVoce(tappa));
+  // Il nome si accentua solo quando è la notizia: dentro a un indizio
+  // sarebbe la soluzione detta a voce alta.
+  const enfasi = tappa.fase === 'scoperta' ? missNomeTappa(tappa) : '';
+  return missRacconta(testo, tono, { enfasi });
+}
+
+/* La coppa, detta a voce.
+ *
+ * Solo se la voce è accesa e solo se una coppa c'è: annunciare «nessuna
+ * coppa» a fine serata è la cosa più scoraggiante che questo pezzo
+ * potrebbe fare, ed è esattamente per quello che `missCoppaDiMissione`
+ * risponde `null` invece di inventarsi un quarto gradino. I premi nuovi
+ * si nominano uno per uno: sono rari, e detti in fila valgono meno. */
+function missRaccontaPremio(verbale) {
+  if (!verbale || !verbale.coppa) return Promise.resolve(false);
+  if (!(miss.attiva && miss.attiva.scelte && miss.attiva.scelte.voce)) return Promise.resolve(false);
+  const coppa = missT('albo.coppa.' + verbale.coppa);
+  const pezzi = [missT('albo.voceCoppa', { coppa, n: verbale.trovate, tot: verbale.tappe })];
+  for (const id of verbale.nuovi || []) {
+    pezzi.push(missT('albo.vocePremio', { premio: missT('albo.premio.' + id + '.nome') }));
+  }
+  return missRacconta(pezzi.join(' '), missTonoVoce('premio'), { enfasi: coppa });
+}
+
+/* Il richiamo della bacheca, in fondo alla configurazione.
+ *
+ * Un tasto e non una vetrina: la configurazione è già lunga (§`missHtml\
+ * Configurazione`), e le coppe messe lì in grande sarebbero la prima cosa
+ * che si vede aprendo il pannello — cioè il punteggio prima del cielo.
+ * Chi non ha ancora concluso niente non lo vede affatto: una bacheca
+ * vuota, la prima sera, dice soltanto che si è in ritardo su qualcosa. */
+function missStrisciaAlbo() {
+  const albo = missLeggiAlbo();
+  if (!albo.missioni) return '';
+  const totale = MISS_COPPE.reduce((n, c) => n + ((albo.coppe && albo.coppe[c]) || 0), 0);
+  return `<button type="button" class="missione-tasto missione-tasto-lieve" data-miss-azione="albo">
+    ${missIcona('coppa', 16)} ${missT('albo.conCoppe', { n: totale, punti: albo.punti })}</button>`;
+}
+
+/* Il riquadro del premio, in testa alla schermata di fine.
+ *
+ * In testa e non in fondo: è la prima cosa che si vuole sapere alzandosi
+ * dalla sedia sdraio, e l'elenco degli esiti — che prima stava da solo —
+ * è il **dettaglio** di una risposta che adesso viene data in una riga.
+ *
+ * Quando la coppa non c'è il riquadro resta, e dice un'altra cosa: chi
+ * non ha trovato niente ha comunque passato mezz'ora sotto al cielo, e
+ * una schermata che gli risponde col silenzio è peggio di una che gli
+ * risponde con poco. */
+function missHtmlPremio(m) {
+  const p = m && m.premio;
+  if (!p) return '';
+  const nuovi = (p.nuovi || []).map(id => {
+    const premio = missPremioDiId(id);
+    return `<li class="missione-premio-nuovo">${missIcona(premio ? premio.icona : 'medaglia', 18)}
+      <span><strong>${missT('albo.premio.' + id + '.nome')}</strong>
+      <em>${missT('albo.premio.' + id + '.desc')}</em></span></li>`;
+  }).join('');
+
+  return `<div class="missione-premio" data-coppa="${p.coppa || 'niente'}">
+    <div class="missione-premio-testa">
+      <span class="missione-coppa" aria-hidden="true">${missIcona(p.coppa ? 'coppa' : 'bersaglio', 34)}</span>
+      <span class="missione-premio-righe">
+        <strong class="missione-coppa-nome">${p.coppa
+          ? missT('albo.coppaVinta', { coppa: missT('albo.coppa.' + p.coppa) })
+          : missT('albo.nessunaCoppa')}</strong>
+        <span class="missione-punti">${missT('albo.puntiFatti', { n: p.punti })}</span>
+      </span>
+    </div>
+    ${nuovi ? `<p class="missione-premi-titolo">${missT('albo.premiNuovi', { n: p.nuovi.length })}</p>
+      <ul class="missione-premi-elenco">${nuovi}</ul>` : ''}
+  </div>`;
+}
+
+/* La bacheca: tutto quello che si è messo da parte.
+ *
+ * I premi non presi si mostrano lo stesso, spenti e con la loro
+ * descrizione, ed è la scelta che fa la differenza fra una bacheca e un
+ * elenco di cose fatte: un traguardo che non si sa che esiste non fa
+ * venire voglia di niente. Quello che **non** si mostra è quanto manca —
+ * «sette pianeti su dieci» trasformerebbe una serata sotto le stelle in
+ * una barra di avanzamento. */
+function missHtmlAlbo() {
+  const albo = missLeggiAlbo();
+  const coppe = MISS_COPPE.map(c => `<li class="missione-coppa-conto" data-coppa="${c}">
+      ${missIcona('coppa', 22)}<strong>${(albo.coppe && albo.coppe[c]) || 0}</strong>
+      <span>${missT('albo.coppa.' + c)}</span></li>`).join('');
+
+  const premi = MISS_PREMI.map(p => {
+    const preso = !!albo.premi[p.id];
+    return `<li class="missione-premio-voce" data-preso="${preso ? 'si' : 'no'}">
+      ${missIcona(p.icona, 20)}
+      <span><strong>${missT('albo.premio.' + p.id + '.nome')}</strong>
+      <em>${missT('albo.premio.' + p.id + '.desc')}</em></span></li>`;
+  }).join('');
+
+  return `<div class="missione-albo">
+    <h3 class="missione-titolone">${missT('albo.titolo')}</h3>
+    <ul class="missione-albo-numeri">
+      <li><strong>${albo.punti}</strong><span>${missT('albo.punti')}</span></li>
+      <li><strong>${albo.trovati}</strong><span>${missT('albo.trovati')}</span></li>
+      <li><strong>${(albo.notti || []).length}</strong><span>${missT('albo.notti')}</span></li>
+      <li><strong>${albo.missioni}</strong><span>${missT('albo.missioni')}</span></li>
+    </ul>
+    <ul class="missione-coppe">${coppe}</ul>
+    <h4 class="missione-albo-sezione">${missT('albo.premi')}</h4>
+    <ul class="missione-premi-bacheca">${premi}</ul>
+    <p class="missione-albo-nota">${missT('albo.spiega')}</p>
+    <div class="missione-azioni">
+      <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="chiudiAlbo">${missT('albo.indietro')}</button>
+    </div>
+  </div>`;
 }
 
 function missHtmlConclusa(m) {
@@ -4117,6 +4709,7 @@ function missHtmlConclusa(m) {
     `<option value="${missTesto(t.id)}">${missTesto(missNomeTappa(t))}</option>`).join('');
 
   return `<div class="missione-conclusa">
+    ${missHtmlPremio(m)}
     <h3 class="missione-titolone">${missT('conclusaTitolo.' + (
       conto.trovato === 0 ? 'niente' : conto.trovato < m.tappe.length ? 'parziale' : 'tutto'),
       { n: conto.trovato, tot: m.tappe.length })}</h3>
@@ -4154,6 +4747,7 @@ function missHtmlConclusa(m) {
       <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="salvaDiario">
         ${missIcona('quaderno', 16)} ${missT('salvaNelDiario')}</button>
       <button type="button" class="missione-tasto" data-miss-azione="configura">${missT('unaltraMissione')}</button>
+      <button type="button" class="missione-tasto" data-miss-azione="albo">${missIcona('coppa', 16)} ${missT('albo.vedi')}</button>
       <button type="button" class="missione-tasto missione-tasto-lieve" data-miss-azione="butta">${missT('butta')}</button>
     </div>
   </div>`;
@@ -4299,6 +4893,17 @@ function missAzione(azione, corpo) {
       missPreparaAnteprima();
       break;
     }
+    case 'albo':
+      // La bacheca si apre da sola e si chiude da dove si era: `tornaDa`
+      // è l'unica cosa che si ricorda, e non si salva — una bacheca
+      // aperta non è uno stato della serata.
+      miss.tornaDa = miss.vista;
+      missMostraVista('albo');
+      break;
+    case 'chiudiAlbo':
+      missMostraVista(miss.tornaDa || 'configurazione');
+      miss.tornaDa = null;
+      break;
     case 'sbircia':
       miss.sbircia = !miss.sbircia;
       missMostraVista('anteprima');
@@ -4612,6 +5217,17 @@ const missProve = {
   candidatiAOrarioPreciso: missCandidatiAOrarioPreciso,
   caso: missCaso,
   pescaPesato: missPescaPesato,
+  varianteEnigma: missVarianteEnigma,
+  enigmaSeguito: missEnigmaSeguito,
+  notteDi: missNotteDi,
+  alboVuoto: missAlboVuoto,
+  alboDistinti: missAlboDistinti,
+  costoAiuti: missCostoAiuti,
+  puntiMissione: missPuntiMissione,
+  coppaDiMissione: missCoppaDiMissione,
+  alboConMissione: missAlboConMissione,
+  ssmlRisalta: missSsmlRisalta,
+  testoVoceTappa: missTestoVoceTappa,
   costanti: {
     MISS_VERSIONE, MISS_DURATE, MISS_STRUMENTI, MISS_ESPERIENZE, MISS_DIREZIONI, MISS_BORTLE,
     MISS_TAPPE_PER_DURATA, MISS_ALTEZZA_MINIMA, MISS_DIFFICOLTA_MASSIMA,
@@ -4621,7 +5237,10 @@ const missProve = {
     MISS_GENERI, MISS_GENERI_TUTTI, MISS_GENERE_DI_TIPO, MISS_TEMPERATURA,
     MISS_PENALE_RECENTE, MISS_PENALE_RIFIUTATO, MISS_MISSIONI_DA_RICORDARE,
     MISS_INDIZI, MISS_VOCI_EDGE, MISS_TONI_VOCE, MISS_CHIAVI_BAMBINI,
-    CHIAVE_MISS_SCELTE, CHIAVE_MISS_ATTIVA
+    MISS_PREMI, MISS_PUNTI, MISS_COPPE, MISS_ALBO_VERSIONE,
+    MISS_COPPA_ORO_AIUTI, MISS_COPPA_ARGENTO_AIUTI, MISS_COPPA_ARGENTO_QUOTA,
+    MISS_MARATONA_TAPPE,
+    CHIAVE_MISS_SCELTE, CHIAVE_MISS_ATTIVA, CHIAVE_MISS_ALBO
   }
 };
 if (typeof window !== 'undefined') window.missProve = missProve;

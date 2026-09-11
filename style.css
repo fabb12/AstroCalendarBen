@@ -11017,3 +11017,82 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 .missione-striscia-tasti { flex-wrap: wrap; }
 .missione-striscia.visibile .missione-striscia-titolo { display: inline-flex; }
+
+/* ---------------------------------------------------------------------
+   MISSIONE CIELO — le coppe e i premi (§7-bis di missione-cielo.js)
+
+   Due registri diversi, di proposito. Il riquadro di **fine serata** è
+   una consegna: un oggetto solo, grande, col colore del metallo vinto —
+   e per questo la cornice cambia tinta con `data-coppa`, che è l'unica
+   cosa che distingue a colpo d'occhio una serata d'oro da una di bronzo
+   senza costringere a leggere. La **bacheca** invece è un archivio, e
+   sta sul grigio di tutti gli altri pannelli: un elenco di quindici
+   voci tutte dorate non si guarda, si scorre.
+   --------------------------------------------------------------------- */
+.missione-premio {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: var(--raggio-m, 12px);
+  border: 1px solid var(--metallo-bordo, rgba(148, 163, 184, .34));
+  background: linear-gradient(150deg, var(--metallo-alto, rgba(148, 163, 184, .16)), transparent 72%);
+}
+/* Oro, argento, bronzo. Le tinte sono quelle dei metalli e non della
+   tavolozza dell'app: sono le uniche tre cose di questa interfaccia che
+   si riconoscono per il colore prima che per la parola. */
+.missione-premio[data-coppa="oro"] {
+  --metallo: #fde68a; --metallo-bordo: rgba(253, 230, 138, .46); --metallo-alto: rgba(253, 230, 138, .17);
+}
+.missione-premio[data-coppa="argento"] {
+  --metallo: #e2e8f0; --metallo-bordo: rgba(226, 232, 240, .42); --metallo-alto: rgba(226, 232, 240, .14);
+}
+.missione-premio[data-coppa="bronzo"] {
+  --metallo: #f0b48a; --metallo-bordo: rgba(240, 180, 138, .42); --metallo-alto: rgba(240, 180, 138, .14);
+}
+.missione-premio[data-coppa="niente"] { --metallo: var(--testo-2); }
+.missione-premio-testa { display: flex; align-items: center; gap: 12px; }
+.missione-coppa { color: var(--metallo, var(--testo-2)); flex: 0 0 auto; line-height: 0; }
+.missione-premio-righe { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.missione-coppa-nome { color: var(--metallo, #fff); font-size: 1.05rem; line-height: 1.25; }
+.missione-punti { color: var(--testo-2); font-size: .84rem; }
+.missione-premi-titolo { margin: 12px 0 6px; font-size: .82rem; color: var(--testo-2); }
+.missione-premi-elenco,
+.missione-premi-bacheca { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.missione-premio-nuovo,
+.missione-premio-voce {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 10px; border-radius: var(--raggio-s);
+  background: var(--incassato); min-width: 0;
+}
+.missione-premio-nuovo span,
+.missione-premio-voce span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.missione-premio-nuovo strong,
+.missione-premio-voce strong { font-size: .9rem; line-height: 1.25; }
+.missione-premio-nuovo em,
+.missione-premio-voce em { font-style: normal; font-size: .78rem; color: var(--testo-2); line-height: 1.35; }
+.missione-premio-nuovo { color: #a7f3d0; }
+/* Un premio non preso si mostra lo stesso, spento: un traguardo che non
+   si sa che esiste non fa venire voglia di niente. */
+.missione-premio-voce[data-preso="no"] { opacity: .46; }
+.missione-premio-voce[data-preso="si"] { color: #fde68a; }
+
+.missione-albo-numeri {
+  list-style: none; margin: 0 0 12px; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 8px;
+}
+.missione-albo-numeri li {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 4px; border-radius: var(--raggio-s); background: var(--incassato); text-align: center;
+}
+.missione-albo-numeri strong { font-size: 1.2rem; line-height: 1; color: #fff; }
+.missione-albo-numeri span { font-size: .72rem; color: var(--testo-2); line-height: 1.2; }
+.missione-coppe { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.missione-coppa-conto {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 999px; background: var(--incassato); font-size: .84rem;
+}
+.missione-coppa-conto[data-coppa="oro"] { color: #fde68a; }
+.missione-coppa-conto[data-coppa="argento"] { color: #e2e8f0; }
+.missione-coppa-conto[data-coppa="bronzo"] { color: #f0b48a; }
+.missione-coppa-conto span { color: var(--testo-2); }
+.missione-albo-sezione { margin: 0 0 8px; font-size: .95rem; font-weight: 700; }
+.missione-albo-nota { margin: 12px 0; color: var(--testo-2); font-size: .8rem; line-height: 1.45; }
