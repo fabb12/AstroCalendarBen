@@ -62,11 +62,41 @@ const server = http.createServer((req, res) => {
       await new Promise(resolve => setTimeout(resolve, 2300));
       const dopo = document.querySelector('#galleria-elenco video');
       videoChiudiGalleria();
+
+      // Un handle gia' ricordato non deve far comparire una richiesta di
+      // permesso al solo ingresso in galleria. Il permesso serve invece al
+      // gesto di salvataggio, e il Blob deve arrivare proprio nello scrivibile
+      // della cartella scelta.
+      let richiestePermesso = 0;
+      let blobScritto = null;
+      videoCartella = {
+        name: 'video-scelti',
+        queryPermission: async () => 'prompt',
+        requestPermission: async () => { richiestePermesso += 1; return 'granted'; },
+        getFileHandle: async () => ({
+          createWritable: async () => ({
+            write: async blob => { blobScritto = blob; },
+            close: async () => {}
+          })
+        })
+      };
+      videoCartellaAutorizzata = false;
+      await videoApriGalleria();
+      const richiesteAprendo = richiestePermesso;
+      const filmato = new Blob(['salvato-nella-cartella'], { type: 'video/webm' });
+      const scritto = await videoScriviInCartella({ nome: 'scelto.webm', blob: filmato });
+      videoChiudiGalleria();
       return {
         stessoNodo: prima === dopo,
         marcatore: dopo?.dataset.provaIdentita,
         stessoSrc: dopo?.src === src,
-        condiviso: window.__videoCondiviso
+        condiviso: window.__videoCondiviso,
+        richiesteAprendo,
+        richiesteSalvando: richiestePermesso,
+        scritto,
+        dimensioneScritta: blobScritto?.size,
+        durataPredefinita: sky.reg.durataSec,
+        durataNelleImpostazioni: !!document.querySelector('[data-durata-reg="15"].attiva')
       };
     });
 
@@ -77,6 +107,13 @@ const server = http.createServer((req, res) => {
       esito.condiviso?.tipo === 'video/webm' && esito.condiviso?.dimensione > 0;
     console.log(`${condivisioneOk ? 'ok' : 'FALLITO'} — ogni video della galleria si può condividere`, esito.condiviso);
     if (!condivisioneOk) process.exitCode = 1;
+    const cartellaOk = esito.richiesteAprendo === 0 && esito.richiesteSalvando === 1 &&
+      esito.scritto && esito.dimensioneScritta > 0;
+    console.log(`${cartellaOk ? 'ok' : 'FALLITO'} — la cartella ricordata non richiede permesso all'apertura e riceve il video`, esito);
+    if (!cartellaOk) process.exitCode = 1;
+    const durataOk = esito.durataPredefinita === 15 && esito.durataNelleImpostazioni;
+    console.log(`${durataOk ? 'ok' : 'FALLITO'} — 15 secondi è la durata predefinita e compare nelle impostazioni`, esito);
+    if (!durataOk) process.exitCode = 1;
     await contesto.close();
   } finally {
     await browser.close();
