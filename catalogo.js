@@ -678,7 +678,8 @@ function catProfonditaCatalogo() {
 // dello zoom, meno quello che si mangia la luce del giorno. Può superare il
 // catalogo, ed è lei a dire di quanto (`catOltreIlCatalogo`).
 function catMagnitudineVoluta() {
-  const cielo = CAT_CIELI[cieloDiCasa()] || CAT_CIELI[CAT_CIELO_PREDEFINITO];
+  const bortleMissione = typeof missBortlePlanetario === 'function' ? missBortlePlanetario() : null;
+  const cielo = CAT_CIELI[bortleMissione || cieloDiCasa()] || CAT_CIELI[CAT_CIELO_PREDEFINITO];
 
   // Di giorno e al crepuscolo restano solo le più luminose, e il conto lo
   // fa già `skyVelo()` sull'opacità: qui si taglia più in basso per non

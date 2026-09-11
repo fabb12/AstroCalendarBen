@@ -8367,9 +8367,11 @@ function skyLevigaBase(nuova) {
 // prima è la modalità naturale, ma si può sganciare: senza sganciarla non si
 // potrebbe portare al centro della mappa un oggetto scelto dall'elenco, che
 // è proprio quello che si vuole quando si cerca qualcosa.
-// Una ricerca nasconde le etichette senza cambiare la preferenza salvata.
+// Il gioco nel cielo nasconde le etichette senza cambiare la preferenza
+// salvata. Vale anche durante la scoperta, quando la ricerca e' appena finita
+// ma la missione occupa ancora il planetario.
 function skyNomiVisibili() {
-  return sky.mostraNomi && !(typeof missRicercaAttiva === 'function' && missRicercaAttiva());
+  return sky.mostraNomi && !(typeof missModalitaGiocoCielo === 'function' && missModalitaGiocoCielo());
 }
 
 // Anche l'interruttore autonomo delle cime rispetta la caccia: durante una
@@ -8377,7 +8379,7 @@ function skyNomiVisibili() {
 // bersagli. La preferenza resta intatta e torna visibile appena si esce.
 function skyNomiCimeVisibili() {
   return typeof cime !== 'undefined' && cime.acceso &&
-    !(typeof missRicercaAttiva === 'function' && missRicercaAttiva());
+    !(typeof missModalitaGiocoCielo === 'function' && missModalitaGiocoCielo());
 }
 
 function skyUsaSensori() {

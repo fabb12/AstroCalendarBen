@@ -249,20 +249,22 @@ prova('il tetto della difficoltà è quello del gradino scelto', () => {
 });
 
 // =====================================================================
-sezione('la missione considera sempre tutti i generi');
+sezione('la missione rispetta i generi scelti');
 
-prova('una vecchia preferenza per genere non restringe più il catalogo', () => {
+prova('una preferenza per genere restringe il catalogo', () => {
   const cielo = cieloRicco();
   const m = motore.genera(scenario(cielo, {
     durata: 120, strumento: 'telescopio', generi: ['profondo']
   }));
-  assert.ok(m.tappe.length > 1);
-  assert.deepStrictEqual(motore.generiScelti({ generi: ['profondo'] }), K.MISS_GENERI_TUTTI);
-  assert.ok(motore.genereAmmesso({ tipo: 'stella' }, { generi: ['profondo'] }));
-  assert.ok(motore.genereAmmesso({ tipo: 'pianeta' }, { generi: ['profondo'] }));
+  assert.ok(m.tappe.length >= 1);
+  assert.ok(m.tappe.every(t => t.tipo === 'profondo'));
+  assert.deepStrictEqual(motore.generiScelti({ generi: ['profondo'] }), ['profondo']);
+  assert.ok(!motore.genereAmmesso({ tipo: 'stella' }, { generi: ['profondo'] }));
+  assert.ok(!motore.genereAmmesso({ tipo: 'pianeta' }, { generi: ['profondo'] }));
+  assert.ok(motore.genereAmmesso({ tipo: 'profondo' }, { generi: ['profondo'] }));
 });
 
-prova('anche preferenze vuote o sconosciute significano tutti gli oggetti', () => {
+prova('assenza o preferenze non valide significano tutti gli oggetti', () => {
   assert.deepStrictEqual(motore.generiScelti({ generi: [] }), K.MISS_GENERI_TUTTI);
   assert.deepStrictEqual(motore.generiScelti({}), K.MISS_GENERI_TUTTI);
   assert.deepStrictEqual(motore.generiScelti({ generi: ['inventato'] }), K.MISS_GENERI_TUTTI);
@@ -1813,9 +1815,8 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         aperto: !document.getElementById('modale-missione').classList.contains('hidden'),
         gruppi: document.querySelectorAll('#missione-corpo .missione-gruppo').length,
         scelte: document.querySelectorAll('#missione-corpo [data-miss-scelta]').length,
-        // durata + momento (3) + strumento + difficoltà + cielo (2) + voce (2)
-        attese: K.MISS_DURATE.length + 3 + K.MISS_STRUMENTI.length +
-                K.MISS_ESPERIENZE.length + 2 + 2,
+        // durata + momento (3) + difficoltà + cielo (2) + voce (2)
+        attese: K.MISS_DURATE.length + 3 + K.MISS_ESPERIENZE.length + 2 + 2,
         // La nota è una sola, ed è quella della scelta fatta: tre
         // cartoline da due righe erano duecentocinquanta pixel per una
         // domanda sola. Si controlla che ci sia e che dica la sua.
@@ -1824,6 +1825,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
           .closest('.missione-gruppo').querySelector('.missione-scelta-nota').textContent,
         notaAttesa: astroI18n.t('missione.esperienzaNota.' + miss.scelte.esperienza),
         generiPresenti: document.querySelectorAll('#missione-corpo [data-miss-genere]').length,
+        strumentiPresenti: document.querySelectorAll('#missione-corpo [data-miss-scelta="strumento"]').length,
         // I blocchi: la serata, la caccia, e i dettagli richiudibili.
         blocchi: document.querySelectorAll('#missione-corpo .missione-blocco').length,
         dettagliChiusi: !document.querySelector('#missione-corpo [data-miss-dettagli]').open,
@@ -1832,9 +1834,9 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         fuocoDentro: document.getElementById('modale-missione').contains(document.activeElement)
       };
     });
-    prova('la finestra presenta durata, momento, difficoltà, settore e voce', () => {
+    prova('la finestra presenta durata, momento, oggetti, difficoltà, settore e voce', () => {
       assert.strictEqual(config.aperto, true);
-      // durata, momento, strumento, difficoltà, cielo, voce
+      // durata, momento, oggetti, difficoltà, cielo, voce
       assert.strictEqual(config.gruppi, 6, `${config.gruppi} gruppi`);
       assert.strictEqual(config.scelte, config.attese, `${config.scelte} contro ${config.attese}`);
       /* La spiegazione del gradino scelto è sempre a schermo: senza,
@@ -1858,8 +1860,9 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.strictEqual(config.dettagliChiusi, true);
     });
 
-    prova('non viene chiesto quali oggetti osservare', () => {
-      assert.strictEqual(config.generiPresenti, 0);
+    prova('si possono scegliere tutte le famiglie di oggetti', () => {
+      assert.strictEqual(config.generiPresenti, 5);
+      assert.strictEqual(config.strumentiPresenti, 0, 'la domanda sullo strumento deve essere assente');
     });
 
     // Le tre scelte si cambiano davvero, e restano.
@@ -1871,7 +1874,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       const due = n => String(n).padStart(2, '0');
       data.value = `${domani.getFullYear()}-${due(domani.getMonth() + 1)}-${due(domani.getDate())}T22:30`;
       data.dispatchEvent(new Event('change'));
-      document.querySelector('[data-miss-scelta="strumento"][data-miss-valore="binocolo"]').click();
+      document.querySelector('[data-miss-genere="artificiali"]').click();
       document.querySelector('[data-miss-scelta="esperienza"][data-miss-valore="curiosi"]').click();
     });
     const ricordate = await pagina.evaluate(() =>
@@ -1879,7 +1882,8 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     prova('le scelte si ricordano', () => {
       assert.deepStrictEqual({ durata: ricordate.durata, momento: ricordate.momento,
         strumento: ricordate.strumento, esperienza: ricordate.esperienza, bortle: ricordate.bortle },
-        { durata: 60, momento: 'personalizzato', strumento: 'binocolo', esperienza: 'curiosi', bortle: 2 });
+        { durata: 60, momento: 'personalizzato', strumento: 'telescopio', esperienza: 'curiosi', bortle: 2 });
+      assert.ok(!ricordate.generi.includes('artificiali'));
       assert.ok(Number.isFinite(ricordate.momentoPersonalizzato));
     });
 

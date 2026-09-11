@@ -2726,7 +2726,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.conclusaTitolo.niente': 'Another time, then',
     'missione.conclusaTitolo.parziale': { uno: 'One found out of {tot}', altri: '{n} found out of {tot}' },
     'missione.conclusaTitolo.tutto': 'Mission accomplished',
-    'missione.conclusaSommario': { uno: 'One minute from {luogo}, {strumento}.', altri: '{n} minutes from {luogo}, {strumento}.' },
+    'missione.conclusaSommario': { uno: 'One minute from {luogo}.', altri: '{n} minutes from {luogo}.' },
     'missione.conclusaSintesi': { uno: 'Mission over: one thing found.', altri: 'Mission over: {n} things found.' },
     'missione.vediRisultato': 'See the result',
     'missione.esito.trovato': 'found',

@@ -14,7 +14,7 @@
 //
 // Qui c'è la stessa materia prima — le stesse funzioni di `pianifica.js`,
 // gli stessi conti — impaginata come una **sequenza**: tre domande in
-// entrata (quanto tempo, con cosa, che serata vuoi), da tre a sei tappe
+// entrata (quanto tempo, quali oggetti, che serata vuoi), da tre a sei tappe
 // in uscita, una per volta, ognuna con l'ora, la direzione, un
 // riferimento da cui partire e un aiuto che si allarga se non si trova.
 //
@@ -46,10 +46,10 @@
 // =====================================================================
 // 1. LE TRE DOMANDE, E COSA SI RICORDA
 //
-//     Tre e non sette. Ogni domanda in più è una persona in meno che
+//     Poche e non sette. Ogni domanda in più è una persona in meno che
 //     arriva in fondo, e le altre quattro che verrebbero in mente — il
 //     livello, la latitudine, il tipo di oggetti preferiti, la pazienza —
-//     si deducono tutte da queste tre o non cambiano il risultato.
+//     si deducono dalle scelte essenziali o non cambiano il risultato.
 //
 //     In particolare **non si chiede il livello**: «principiante o
 //     esperto» è una domanda a cui nessuno risponde onestamente, e la
@@ -58,7 +58,7 @@
 //     dichiarare.
 // =====================================================================
 
-const MISS_VERSIONE = 11;
+const MISS_VERSIONE = 12;
 const CHIAVE_MISS_STORIA = 'astrocalendario_missione_storia';
 
 const CHIAVE_MISS_SCELTE = 'astrocalendario_missione_scelte';
@@ -69,6 +69,10 @@ const CHIAVE_MISS_ATTIVA = 'astrocalendario_missione_attiva';
 // presentato come un numero: e' l'opzione «tutta la notte».
 const MISS_DURATE = [10, 30, 60, 120, 180, 240, 720];
 const MISS_STRUMENTI = ['occhio', 'binocolo', 'telescopio'];
+// La configurazione non chiede piu' quale strumento si usera'. Il motore
+// lavora quindi col catalogo completo; difficolta' e generi scelti restano i
+// filtri espliciti che decidono cosa puo' entrare nella serata.
+const MISS_STRUMENTO_PREDEFINITO = 'telescopio';
 const MISS_BORTLE = [2, 3, 4, 5, 6, 8];
 
 /* I tre gradini della caccia.
@@ -137,12 +141,10 @@ const MISS_GENERE_DI_TIPO = MISS_GENERI.reduce((m, g) => {
 
 const MISS_GENERI_TUTTI = MISS_GENERI.map(g => g.valore);
 
-/* Missione Cielo prepara sempre tutto quello che il cielo consente.
- * `scelte` resta nell'argomento soltanto per compatibilità con le missioni
- * salvate e con il motore esportato: le vecchie preferenze per genere non
- * devono più restringere il catalogo. */
 function missGeneriScelti(scelte) {
-  return MISS_GENERI_TUTTI.slice();
+  const richiesti = scelte && Array.isArray(scelte.generi)
+    ? scelte.generi.filter(g => MISS_GENERI_TUTTI.includes(g)) : [];
+  return richiesti.length ? [...new Set(richiesti)] : MISS_GENERI_TUTTI.slice();
 }
 
 /* Un candidato è di un genere che è stato chiesto?
@@ -154,7 +156,10 @@ function missGeneriScelti(scelte) {
  * l'informazione insieme al filtro. */
 function missGenereAmmesso(c, scelte) {
   if (!c) return false;
-  return true;
+  const genere = MISS_GENERE_DI_TIPO[c.tipo];
+  // Gli appuntamenti astronomici non sono una famiglia di catalogo e
+  // continuano a passare sempre; per ogni astro vero vale la selezione.
+  return !genere || missGeneriScelti(scelte).includes(genere);
 }
 
 /* Le voci, scelte qui e non lasciate al ponte: così la stessa missione
@@ -331,7 +336,8 @@ const MISS_MISURE_A_MANO = [
 // una ricarica sta in `attiva` e si salva (§7).
 const miss = {
   // Le tre scelte, ricordate fra una sera e l'altra
-  scelte: { durata: 30, strumento: 'occhio', esperienza: 'curiosi', bortle: 2, cielo: 'tutto', cieloDa: 135, cieloA: 180,
+  scelte: { durata: 30, strumento: MISS_STRUMENTO_PREDEFINITO, esperienza: 'curiosi', bortle: 2,
+    generi: MISS_GENERI_TUTTI.slice(), cielo: 'tutto', cieloDa: 135, cieloA: 180,
     momento: 'consigliato', momentoPersonalizzato: null, voce: false },
   // La missione appena generata e non ancora avviata
   anteprima: null,
@@ -1135,8 +1141,8 @@ function missAttaccaRiferimenti(tappe, candidati) {
  * e non contiene niente che questa funzione debba andare a chiedere a
  * qualcuno. In uscita c'è la missione, o `null` con il motivo scritto. */
 function missGeneraMissione(scenario) {
-  const scelte = Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'curiosi', bortle: 2, cielo: 'tutto', cieloDa: 135, cieloA: 180,
-    voce: false },
+  const scelte = Object.assign({ durata: 30, strumento: MISS_STRUMENTO_PREDEFINITO, esperienza: 'curiosi', bortle: 2,
+    generi: MISS_GENERI_TUTTI.slice(), cielo: 'tutto', cieloDa: 135, cieloA: 180, voce: false },
     scenario && scenario.scelte);
   const condizioni = (scenario && scenario.condizioni) || {};
   const adesso = (scenario && scenario.adesso) || Date.now();
@@ -2042,7 +2048,9 @@ function missCaricaScelte() {
   const s = missLeggiSalvato(CHIAVE_MISS_SCELTE);
   if (!s || typeof s !== 'object') return;
   if (MISS_DURATE.includes(s.durata)) miss.scelte.durata = s.durata;
-  if (MISS_STRUMENTI.includes(s.strumento)) miss.scelte.strumento = s.strumento;
+  // Le preferenze precedenti possono contenere lo strumento che un tempo
+  // veniva chiesto nel pannello. Non deve piu' limitare una nuova missione.
+  miss.scelte.strumento = MISS_STRUMENTO_PREDEFINITO;
   // La missione usa sempre il cielo piu' stellato (Bortle 2): non eredita
   // ne' ripropone piu' l'inquinamento luminoso salvato in passato.
   miss.scelte.bortle = 2;
@@ -2057,8 +2065,7 @@ function missCaricaScelte() {
   if (MISS_DIREZIONI.includes(Number(s.cieloDa))) miss.scelte.cieloDa = Number(s.cieloDa);
   if (MISS_DIREZIONI.includes(Number(s.cieloA))) miss.scelte.cieloA = Number(s.cieloA);
   if (typeof s.voce === 'boolean') miss.scelte.voce = s.voce;
-  // Le vecchie preferenze `generi` vengono intenzionalmente ignorate:
-  // ogni nuova missione torna a considerare tutti gli oggetti possibili.
+  miss.scelte.generi = missGeneriScelti(s);
   if (['adesso', 'consigliato', 'personalizzato'].includes(s.momento)) miss.scelte.momento = s.momento;
   if (typeof s.momentoPersonalizzato === 'number' && Number.isFinite(s.momentoPersonalizzato)) {
     miss.scelte.momentoPersonalizzato = s.momentoPersonalizzato;
@@ -2166,9 +2173,18 @@ function missGuidami(indice) {
   sky.centraQuandoPronto = null;
   skySpegniInseguimento();
   skyFermaMovimenti();
+  // Ogni ingresso nella missione parte da una carta completa: tutte le
+  // famiglie accese e la profondita' di un cielo Bortle 2 (quest'ultima e'
+  // applicata da `catMagnitudineVoluta`). Dopo, i filtri restano liberamente
+  // modificabili dall'utente.
+  sky.mostraPianeti = true;
+  sky.mostraSoleLuna = true;
+  sky.mostraStelle = true;
+  sky.mostraSatelliti = true;
+  sky.mostraCorpiMinori = true;
   sky.mostraCostellazioni = true;
-  if (String(t.idCielo).startsWith('dso:')) sky.mostraProfondo = true;
-  if (String(t.idCielo).startsWith('min:')) { sky.mostraCorpiMinori = true; corpiMinoriCarica(); }
+  sky.mostraProfondo = true;
+  if (typeof corpiMinoriCarica === 'function') corpiMinoriCarica();
   skyAggiornaOggetti(true);
   const o = t.idCielo && skyVoceDiId(t.idCielo);
   if (o) skyAssicuraVisibile(o);
@@ -2178,9 +2194,24 @@ function missGuidami(indice) {
   missRaccontaTappa(t);
 }
 
+// Letto dal catalogo a ogni fotogramma. Non cambia il cielo di casa salvato:
+// Bortle 2 e' soltanto la visualizzazione iniziale della missione attiva.
+function missBortlePlanetario() {
+  return miss.attiva && miss.attiva.stato === 'inCorso' ? 2 : null;
+}
+
 function missRicercaAttiva() {
   const m = miss.attiva, t = m && m.tappe[m.corrente];
   return !!(m && m.stato === 'inCorso' && m.nelPlanetario && t && !t.esito && t.fase !== 'scoperta');
+}
+
+// La modalita' di gioco nel cielo dura anche durante la schermata di
+// scoperta: in quel momento la ricerca e' conclusa, ma nomi astronomici e
+// nomi dei monti continuerebbero comunque a coprire il racconto e il
+// bersaglio appena trovato. Le preferenze dell'utente non vengono cambiate.
+function missModalitaGiocoCielo() {
+  const m = miss.attiva;
+  return !!(m && m.stato === 'inCorso' && m.nelPlanetario);
 }
 
 function missTitoloTappa(t) {
@@ -3631,15 +3662,13 @@ function missPartenzaScelta() {
  * non era il difetto peggiore: sei titoli dello stesso peso non dicono
  * quali siano le domande importanti.
  *
- * Senza una domanda sugli oggetti, che vengono sempre considerati tutti,
- * i pixel guadagnati sono quelli delle note
- * (una sola, sotto alla scelta fatta, invece di tre cartoline — vedi
- * `missGruppoScelte`), delle etichette accorciate e dei dettagli
- * richiusi.
+ * La selezione multipla degli oggetti occupa una sola riga di pillole; al
+ * suo posto e' sparita la domanda sullo strumento, che non deve limitare il
+ * catalogo della missione.
  *
  * Adesso i blocchi sono tre e hanno tre nature diverse. **La serata**
- * (quanto tempo, quando, con cosa) è quello che si tocca sempre.
- * **La caccia** (che difficoltà) è quello che decide la
+ * (quanto tempo e quando) è quello che si tocca sempre.
+ * **La caccia** (quali oggetti e che difficoltà) è quello che decide la
  * missione, ed è il blocco nuovo. **I dettagli** stanno dentro a un
  * `<details>` chiuso — cielo di casa, settore, voce — perché sono le
  * risposte che uno dà una volta e poi si tiene: tenerle aperte vuol
@@ -3651,10 +3680,6 @@ function missPartenzaScelta() {
  * spiegherebbe da solo una missione di tre pianeti. */
 function missHtmlConfigurazione() {
   const durate = MISS_DURATE.map(d => ({ valore: d, nome: missT('durata.' + d) }));
-  const strumenti = MISS_STRUMENTI.map(s => ({
-    valore: s, icona: (typeof STRUMENTI !== 'undefined' && STRUMENTI[s]) ? STRUMENTI[s].disegno : null,
-    nome: (typeof STRUMENTI !== 'undefined' && STRUMENTI[s]) ? STRUMENTI[s].nome : s
-  }));
   const esperienze = MISS_ESPERIENZE.map(e => ({
     valore: e, nome: missT('esperienza.' + e), nota: missT('esperienzaNota.' + e) }));
   const direzione = gradi => typeof astroI18n === 'object' && astroI18n.nomePunto
@@ -3677,11 +3702,21 @@ function missHtmlConfigurazione() {
           min="${missValoreDataOra(Date.now())}" value="${missValoreDataOra(missPartenzaScelta())}">
       </label>` : ''}
       <p class="missione-momento-spiega">${missT('momentoSpiega')}</p>
-      ${missGruppoScelte('strumento', strumenti, miss.scelte.strumento, missT('conCosa'))}
     </section>
 
     <section class="missione-blocco">
       <h3 class="missione-blocco-titolo">${missT('bloccoCaccia')}</h3>
+      <fieldset class="missione-gruppo">
+        <legend class="missione-domanda">${missT('cosaCercare')}</legend>
+        <div class="missione-scelte" aria-label="${missT('cosaCercare')}">
+          ${MISS_GENERI.map(g => {
+            const attivo = missGeneriScelti(miss.scelte).includes(g.valore);
+            return `<button type="button" class="missione-scelta${attivo ? ' attiva' : ''}"
+              aria-pressed="${attivo}" data-miss-genere="${g.valore}"
+              title="${missT('genereNota.' + g.valore)}">${missIcona(g.icona, 18)}<span>${missT('genere.' + g.valore)}</span></button>`;
+          }).join('')}
+        </div>
+      </fieldset>
       ${missGruppoScelte('esperienza', esperienze, miss.scelte.esperienza, missT('cheEsperienza'))}
     </section>
 
@@ -4715,12 +4750,7 @@ function missHtmlConclusa(m) {
       { n: conto.trovato, tot: m.tappe.length })}</h3>
     <p class="missione-sommario">${missT('conclusaSommario', {
       n: m.durataRealeMin || m.scelte.durata,
-      luogo: missTesto((typeof etichettaLuogo === 'function' && etichettaLuogo()) || missT('luogoIgnoto')),
-      // Non `STRUMENTI[…].nome`: quello è un'etichetta da tasto («A occhio
-      // nudo», «With the naked eye») e dentro a una frase ci finisce con la
-      // maiuscola in mezzo. Qui serve la forma da frase, che è un'altra
-      // voce del dizionario.
-      strumento: missT('strumento.' + m.scelte.strumento)
+      luogo: missTesto((typeof etichettaLuogo === 'function' && etichettaLuogo()) || missT('luogoIgnoto'))
     })}</p>
     <ul class="missione-esiti">${righe}</ul>
 
@@ -4756,6 +4786,21 @@ function missHtmlConclusa(m) {
 // --- i comandi ------------------------------------------------------
 
 function missCollegaPannello(corpo) {
+  corpo.querySelectorAll('[data-miss-genere]').forEach(b => {
+    b.addEventListener('click', () => {
+      const attuali = missGeneriScelti(miss.scelte);
+      const genere = b.dataset.missGenere;
+      const nuovi = attuali.includes(genere)
+        ? attuali.filter(g => g !== genere) : attuali.concat(genere);
+      // Una missione senza alcuna famiglia non puo' produrre una scelta:
+      // l'ultimo pulsante resta quindi acceso.
+      if (!nuovi.length) return;
+      miss.scelte.generi = nuovi;
+      miss.anteprimeViste = [];
+      missSalvaScelte();
+      missDisegnaPannello();
+    });
+  });
   corpo.querySelectorAll('[data-miss-scelta]').forEach(b => {
     b.addEventListener('click', () => {
       const nome = b.dataset.missScelta;
