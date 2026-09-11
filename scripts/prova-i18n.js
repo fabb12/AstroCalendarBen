@@ -143,7 +143,7 @@ const FILE_APP = ['index.html', 'app.js', 'ui-nuova.js', 'aerei.js', 'transiti.j
   'catalogo.js', 'costellazioni.js', 'corpi-minori.js', 'terreno.js', 'rilievo.js',
   'pianifica.js', 'meteo-astro.js', 'aurora-polare.js', 'telescopio.js',
   'didattica.js', 'eventi-extra.js', 'miglior-posto.js', 'via-lattea.js',
-  'missione-cielo.js'];
+  'missione-cielo.js', 'visione.js'];
 
 function leggiFile(elenco) {
   const perFile = new Map();
