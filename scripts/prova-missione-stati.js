@@ -53,7 +53,7 @@ ctx.astroI18n={lingua:'it',nomePunto:()=>ctx.astroI18n.lingua==='it'?'sud':'sout
  esiste:k=>k in ctx.window.ASTRO_DIZIONARI[ctx.astroI18n.lingua].messaggi,
  t(k,vars={}){const v=ctx.window.ASTRO_DIZIONARI[this.lingua].messaggi[k];if(v==null){missing.push(k);return k;}return String(v).replace(/\{(\w+)\}/g,(_,n)=>vars[n]??'{'+n+'}');}};
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
-for(const name of ['altAzCorpo','altAzCoordinate','skyNomiVisibili'])run(app.match(new RegExp('^function '+name+'\\([\\s\\S]*?^\\}', 'm'))[0]);
+for(const name of ['altAzCorpo','altAzCoordinate','skyNomiVisibili','skyNomiCimeVisibili'])run(app.match(new RegExp('^function '+name+'\\([\\s\\S]*?^\\}', 'm'))[0]);
 run(app.match(/^const SKY_STELLE = \[[\s\S]*?^\];/m)[0]);
 run(fs.readFileSync(path.join(root,'missione-cielo.js'),'utf8'));
 assert.deepEqual(Array.from(run('MISS_ESPERIENZE')),['bambini','curiosi','sfida']);
@@ -62,8 +62,10 @@ run(`miss.attiva={id:'test',versione:MISS_VERSIONE,stato:'inCorso',nelPlanetario
   tappe:[{id:'stella:Star3',idCielo:'Star3',nome:'Vega',tipo:'stella',mira:{ra:18.6156,dec:38.7837},mag:.03,
     strumentoMinimo:'occhio',difficolta:1,fase:'ricerca',esito:null,aiuto:0,raccontoVariante:1,domandaVariante:0}]};`);
 ctx.sky.mostraNomi=true;
+ctx.cime={acceso:true};
 assert.equal(run('missRicercaAttiva()'),true);
 assert.equal(run('skyNomiVisibili()'),false);
+assert.equal(run('skyNomiCimeVisibili()'),false);
 assert.equal(run('missAmmissibile(missTappaAdesso(miss.attiva.tappe[0]),miss.attiva.scelte)'),true);
 run('missMostraStrisciaCielo()');
 assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
@@ -164,5 +166,5 @@ const guidance=run("missGuidaMirino({f:skyVettore(0,40),r:skyVettore(90,0),u:sky
 now=Date.UTC(2026,8,8,12);run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);
 now=Date.UTC(2026,8,7,21);ctx.orizzonteAltezza=()=>85;run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);
 run('missPausaCielo()');assert.equal(run('miss.attiva.stato'),'inCorso');assert.equal(run('miss.attiva.nelPlanetario'),false);
-run('missAbbandona()');assert.equal(run('missRicercaAttiva()'),false);assert.equal(run('skyNomiVisibili()'),true);
+run('missAbbandona()');assert.equal(run('missRicercaAttiva()'),false);assert.equal(run('skyNomiVisibili()'),true);assert.equal(run('skyNomiCimeVisibili()'),true);
 console.log('PASS: actual ephemerides, three difficulty levels, stable clue after wrong/correct selections, live time/location/terrain checks, discovery persistence, age-appropriate stories, sensors, cleanup');

@@ -36,8 +36,10 @@ aneddoto, una leggenda o un fatto legato proprio all’astro; parole e domande
 sono adattate all’età scelta.
 
 Il nome resta nascosto in anteprima, riepilogo della missione in corso,
-etichette del cielo e audio di ricerca. L’elenco degli astri è sospeso durante
-la ricerca. La guida presenta tre indizi in tutto, ciascuno più preciso del precedente;
+etichette del cielo e audio di ricerca. L'elenco degli astri è sospeso durante
+la ricerca. Anche i nomi delle montagne vengono nascosti senza cambiare la
+preferenza del planetario e ricompaiono quando la missione termina. La guida
+presenta tre indizi in tutto, ciascuno più preciso del precedente;
 subito dopo il terzo compare “Mostra la soluzione”, che rivela il nome e centra
 il bersaglio nel planetario senza completare la tappa.
 Se nella preparazione è stata scelta la voce, ogni indizio viene letto quando
@@ -75,7 +77,8 @@ Le posizioni vengono verificate anche agli orari assegnati, non soltanto al
 massimo di altezza nella finestra. Per ogni bersaglio la magnitudine limite
 del luogo viene corretta in base alla sua altezza. La pianificazione usa sempre
 la massima quantità di stelle (cielo Bortle 2) e non mostra l'inquinamento
-luminoso come parametro nell'anteprima o nei dettagli.
+luminoso come parametro nell'anteprima o nei dettagli. Non chiede più quali
+oggetti osservare: considera sempre insieme tutti i tipi di bersaglio possibili.
 Verso l'orizzonte la massa
 d'aria abbassa il limite e schiarisce il fondo. Gli oggetti del cielo profondo
 passano inoltre un controllo sulla brillanza superficiale e sul contrasto con

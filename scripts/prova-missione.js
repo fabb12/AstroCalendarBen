@@ -236,54 +236,23 @@ prova('il tetto della difficoltà è quello del gradino scelto', () => {
 });
 
 // =====================================================================
-sezione('cosa si va a cercare: i generi sono un filtro, non una preferenza');
+sezione('la missione considera sempre tutti i generi');
 
-/* Il difetto a cui questa sezione risponde non si vede guardando lo
- * schermo: una missione di pianeti e costellazioni, a chi aveva chiesto
- * galassie, è una missione perfettamente sensata — solo che è la serata
- * di qualcun altro. E non lo prende nessuna delle altre regole, perché il
- * punteggio premie giustamente quello che si trova più facilmente: senza
- * un filtro secco, «voglio galassie» resta un pareggio da arbitrare
- * contro l'altezza e la magnitudine, e lo perde sempre. */
-
-prova('un genere spento non compare affatto', () => {
-  const m = motore.genera(scenario(cieloRicco(), {
+prova('una vecchia preferenza per genere non restringe più il catalogo', () => {
+  const cielo = cieloRicco();
+  const m = motore.genera(scenario(cielo, {
     durata: 120, strumento: 'telescopio', generi: ['profondo']
   }));
-  assert.ok(m.tappe.length, 'una missione di sole galassie deve esistere');
-  const intrusi = m.tappe.filter(t => t.tipo !== 'profondo' && t.tipo !== 'evento');
-  assert.deepStrictEqual(intrusi.map(t => t.nome), []);
+  assert.ok(m.tappe.length > 1);
+  assert.deepStrictEqual(motore.generiScelti({ generi: ['profondo'] }), K.MISS_GENERI_TUTTI);
+  assert.ok(motore.genereAmmesso({ tipo: 'stella' }, { generi: ['profondo'] }));
+  assert.ok(motore.genereAmmesso({ tipo: 'pianeta' }, { generi: ['profondo'] }));
 });
 
-prova('le stazioni si possono chiedere da sole', () => {
-  const m = motore.genera(scenario(cieloRicco(), {
-    durata: 120, strumento: 'telescopio', generi: ['artificiali']
-  }));
-  assert.ok(m.tappe.every(t => t.tipo === 'stazione' || t.tipo === 'evento'));
-});
-
-prova('la Luna e le comete stanno coi pianeti, non con le stelle', () => {
-  const scelte = { generi: ['pianeti'], strumento: 'telescopio', esperienza: 'curiosi', cielo: 'tutto' };
-  assert.ok(motore.genereAmmesso({ tipo: 'luna' }, scelte));
-  assert.ok(motore.genereAmmesso({ tipo: 'corpoMinore' }, scelte));
-  assert.ok(!motore.genereAmmesso({ tipo: 'stella' }, scelte));
-  assert.ok(!motore.genereAmmesso({ tipo: 'costellazione' }, scelte));
-});
-
-prova('un evento del calendario passa comunque: è un appuntamento', () => {
-  assert.ok(motore.genereAmmesso({ tipo: 'evento' }, { generi: ['profondo'] }));
-});
-
-/* L'elenco vuoto vuol dire «tutto» e non «niente», ed è la differenza
- * fra una spunta tolta per sbaglio e una serata senza bersagli. Vale
- * anche per i salvataggi di prima, che il campo non ce l'hanno affatto,
- * e per un genere che nel frattempo fosse stato tolto dal codice. */
-prova('nessun genere scelto vuol dire tutti, non nessuno', () => {
+prova('anche preferenze vuote o sconosciute significano tutti gli oggetti', () => {
   assert.deepStrictEqual(motore.generiScelti({ generi: [] }), K.MISS_GENERI_TUTTI);
   assert.deepStrictEqual(motore.generiScelti({}), K.MISS_GENERI_TUTTI);
   assert.deepStrictEqual(motore.generiScelti({ generi: ['inventato'] }), K.MISS_GENERI_TUTTI);
-  const m = motore.genera(scenario(cieloRicco(), { durata: 120, strumento: 'telescopio', generi: [] }));
-  assert.ok(m.tappe.length > 1);
 });
 
 prova('ogni tipo che il raccoglitore produce ha il suo genere', () => {
@@ -1464,13 +1433,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         notaScelta: document.querySelector('#missione-corpo [data-miss-scelta="esperienza"]')
           .closest('.missione-gruppo').querySelector('.missione-scelta-nota').textContent,
         notaAttesa: astroI18n.t('missione.esperienzaNota.' + miss.scelte.esperienza),
-        // I generi sono caselle di spunta e non pillole alternative:
-        // stanno fuori da `data-miss-scelta` apposta, perché un
-        // `radiogroup` che accetta più risposte è una bugia detta a chi
-        // legge con lo schermo.
-        generi: Array.from(document.querySelectorAll('#missione-corpo [data-miss-genere]'))
-          .map(b => ({ valore: b.dataset.missGenere, ruolo: b.getAttribute('role'),
-                       acceso: b.getAttribute('aria-checked') === 'true' })),
+        generiPresenti: document.querySelectorAll('#missione-corpo [data-miss-genere]').length,
         // I blocchi: la serata, la caccia, e i dettagli richiudibili.
         blocchi: document.querySelectorAll('#missione-corpo .missione-blocco').length,
         dettagliChiusi: !document.querySelector('#missione-corpo [data-miss-dettagli]').open,
@@ -1481,8 +1444,8 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     });
     prova('la finestra presenta durata, momento, difficoltà, settore e voce', () => {
       assert.strictEqual(config.aperto, true);
-      // durata, momento, strumento, difficoltà, generi, cielo, voce
-      assert.strictEqual(config.gruppi, 7, `${config.gruppi} gruppi`);
+      // durata, momento, strumento, difficoltà, cielo, voce
+      assert.strictEqual(config.gruppi, 6, `${config.gruppi} gruppi`);
       assert.strictEqual(config.scelte, config.attese, `${config.scelte} contro ${config.attese}`);
       /* La spiegazione del gradino scelto è sempre a schermo: senza,
        * «Esperti» non promette niente e la scelta si fa a caso. Ce n'è
@@ -1491,9 +1454,7 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.strictEqual(config.notaScelta, config.notaAttesa,
         `nota mostrata: «${config.notaScelta}»`);
       assert.ok(config.note >= 1 && config.note <= 2, `${config.note} note`);
-      assert.deepStrictEqual(config.bortle.map(o => o.valore), K.MISS_BORTLE);
-      assert.strictEqual(config.bortle.find(o => o.selezionata).valore, 5,
-        'parte dal cielo luminoso salvato nelle Impostazioni');
+      assert.deepStrictEqual(config.bortle, [], 'il Bortle non è una scelta della missione');
     });
     prova('il fuoco entra nella finestra', () => assert.strictEqual(config.fuocoDentro, true));
 
@@ -1507,39 +1468,8 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.strictEqual(config.dettagliChiusi, true);
     });
 
-    prova('i cinque generi ci sono tutti, e nascono tutti accesi', () => {
-      assert.deepStrictEqual(config.generi.map(g => g.valore), K.MISS_GENERI_TUTTI);
-      assert.ok(config.generi.every(g => g.acceso), 'di serie si cerca tutto');
-      // Caselle di spunta e non pillole alternative: se ne possono
-      // accendere più d'una, e il ruolo lo deve dire.
-      assert.ok(config.generi.every(g => g.ruolo === 'checkbox'),
-        'un radiogroup che accetta più risposte è una bugia');
-    });
-
-    /* L'ultimo genere acceso non si spegne: «non cercare niente» non è
-     * una serata, e un pannello che lascia arrivare a quello stato deve
-     * poi spiegare un risultato vuoto che non è colpa del cielo. */
-    const generi = await pagina.evaluate(() => {
-      const spegni = v => document.querySelector(`[data-miss-genere="${v}"]`).click();
-      const accesi = () => Array.from(document.querySelectorAll('[data-miss-genere]'))
-        .filter(b => b.getAttribute('aria-checked') === 'true').map(b => b.dataset.missGenere);
-      const tutti = Array.from(document.querySelectorAll('[data-miss-genere]'))
-        .map(b => b.dataset.missGenere);
-      tutti.slice(1).forEach(spegni);
-      const rimasto = accesi();
-      spegni(tutti[0]);                       // l'ultimo: non deve spegnersi
-      const dopoTentativo = accesi();
-      const salvato = JSON.parse(localStorage.getItem('astrocalendario_missione_scelte') || '{}').generi;
-      tutti.forEach(v => { if (!accesi().includes(v)) spegni(v); });
-      return { rimasto, dopoTentativo, salvato, ripristinati: accesi() };
-    });
-    prova('l’ultimo genere acceso non si può spegnere', () => {
-      assert.deepStrictEqual(generi.rimasto, generi.dopoTentativo);
-      assert.strictEqual(generi.dopoTentativo.length, 1);
-    });
-    prova('e la scelta dei generi si ricorda fra una sera e l’altra', () => {
-      assert.deepStrictEqual(generi.salvato, generi.rimasto);
-      assert.deepStrictEqual(generi.ripristinati, K.MISS_GENERI_TUTTI);
+    prova('non viene chiesto quali oggetti osservare', () => {
+      assert.strictEqual(config.generiPresenti, 0);
     });
 
     // Le tre scelte si cambiano davvero, e restano.
@@ -1553,65 +1483,14 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       data.dispatchEvent(new Event('change'));
       document.querySelector('[data-miss-scelta="strumento"][data-miss-valore="binocolo"]').click();
       document.querySelector('[data-miss-scelta="esperienza"][data-miss-valore="curiosi"]').click();
-      const bortle = document.querySelector('[data-miss-bortle]');
-      bortle.value = '3';
-      bortle.dispatchEvent(new Event('change'));
     });
     const ricordate = await pagina.evaluate(() =>
       JSON.parse(localStorage.getItem('astrocalendario_missione_scelte')));
     prova('le scelte si ricordano', () => {
       assert.deepStrictEqual({ durata: ricordate.durata, momento: ricordate.momento,
         strumento: ricordate.strumento, esperienza: ricordate.esperienza, bortle: ricordate.bortle },
-        { durata: 60, momento: 'personalizzato', strumento: 'binocolo', esperienza: 'curiosi', bortle: 3 });
+        { durata: 60, momento: 'personalizzato', strumento: 'binocolo', esperienza: 'curiosi', bortle: 2 });
       assert.ok(Number.isFinite(ricordate.momentoPersonalizzato));
-    });
-
-    /* Il punto fondamentale: le scelte governano davvero il cast.
-     *
-     * Il motore lo prova con un cielo finto (§«cosa si va a cercare»);
-     * qui si prova la catena intera — pannello, scelte salvate,
-     * raccoglitore vero, effemeridi vere — perché fra le due c'è tutto
-     * quello che può rompersi in silenzio: una scelta che non arriva
-     * allo scenario, un tipo che il raccoglitore chiama in un altro
-     * modo, un salvataggio che si sovrascrive. E il sintomo, se si
-     * rompe, è una missione perfettamente sensata: quella di qualcun
-     * altro. */
-    const perGenere = {};
-    for (const set of [['profondo'], ['pianeti'], ['costellazioni'], ['stelle']]) {
-      perGenere[set[0]] = await pagina.evaluate(async (set) => {
-        // Prima si accende quello voluto, poi si spengono gli altri:
-        // l'ultimo acceso non si spegne, e nell'ordine inverso si
-        // resterebbe bloccati sul precedente.
-        set.forEach(v => { const b = document.querySelector(`[data-miss-genere="${v}"]`);
-          if (b.getAttribute('aria-checked') !== 'true') b.click(); });
-        document.querySelectorAll('[data-miss-genere]').forEach(b => {
-          if (!set.includes(b.dataset.missGenere) && b.getAttribute('aria-checked') === 'true') b.click(); });
-        document.querySelector('[data-miss-azione="genera"]').click();
-        await new Promise(r => setTimeout(r, 300));
-        const t = miss.anteprima ? miss.anteprima.tappe.map(x => x.tipo) : [];
-        missAzione('configura', document.getElementById('missione-corpo'));
-        return t;
-      }, set);
-    }
-    prova('le scelte governano il cast anche con le effemeridi vere', () => {
-      // La Luna e le comete stanno coi pianeti; gli eventi del
-      // calendario passano sempre, perché sono appuntamenti.
-      const ammessi = {
-        profondo: ['profondo', 'evento'],
-        pianeti: ['luna', 'pianeta', 'corpoMinore', 'evento'],
-        costellazioni: ['costellazione', 'evento'],
-        stelle: ['stella', 'evento']
-      };
-      const vuoti = [];
-      for (const [genere, tipi] of Object.entries(perGenere)) {
-        if (!tipi.length) { vuoti.push(genere); continue; }
-        const intrusi = tipi.filter(t => !ammessi[genere].includes(t));
-        assert.deepStrictEqual(intrusi, [], `${genere}: ${intrusi.join(',')}`);
-      }
-      // Da Como, in una notte di settembre, almeno due dei quattro
-      // generi devono avere di che riempire una missione: se fossero
-      // tutti vuoti, la prova sopra passerebbe senza aver provato niente.
-      assert.ok(vuoti.length <= 2, 'generi senza tappe: ' + vuoti.join(', '));
     });
 
     /* …e il cast non dev'essere soltanto del genere giusto: dev'essere
@@ -1661,7 +1540,6 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     const stazioni = await pagina.evaluate(async () => {
       const veroPassaggi = window.passaggiVisibiliOrdinati;
       const veroSat = window.satelliteDaId;
-      const generiPrima = miss.scelte.generi;
       // Il culmine va messo dentro alla finestra **della missione**, che
       // a questo punto delle prove è quella del momento personalizzato
       // scelto poco sopra — non «fra dodici minuti da adesso».
@@ -1671,13 +1549,11 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
         elevazioneMax: 62, azCulmine: 190, durataMin: 5
       }]);
       window.satelliteDaId = () => ({ nome: 'ISS', magTipica: -3 });
-      miss.scelte.generi = ['artificiali'];
       miss.anteprimeViste = [];
       const m = missPreparaAnteprima();
       const fuori = m ? m.tappe.map(t => ({ tipo: t.tipo, nome: t.nome, alt: t.altezza })) : [];
       window.passaggiVisibiliOrdinati = veroPassaggi;
       window.satelliteDaId = veroSat;
-      miss.scelte.generi = generiPrima;
       miss.anteprimeViste = [];
       miss.anteprima = null;
       missAzione('configura', document.getElementById('missione-corpo'));
@@ -1685,15 +1561,9 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
     });
     prova('un passaggio di stazione arriva fino alla tappa, e non solo al raccoglitore', () => {
       assert.ok(stazioni.length, 'nessuna tappa: il passaggio si è perso per strada');
-      assert.ok(stazioni.every(t => t.tipo === 'stazione'), JSON.stringify(stazioni));
-      assert.ok(stazioni.every(t => t.alt > 1), 'altezza persa: ' + JSON.stringify(stazioni));
-    });
-
-    // Si riaccendono tutti, se no le prove che seguono partono da un
-    // cielo ristretto a una famiglia sola.
-    await pagina.evaluate(() => {
-      document.querySelectorAll('[data-miss-genere]').forEach(b => {
-        if (b.getAttribute('aria-checked') !== 'true') b.click(); });
+      const passaggio = stazioni.find(t => t.tipo === 'stazione');
+      assert.ok(passaggio, JSON.stringify(stazioni));
+      assert.ok(passaggio.alt > 1, 'altezza persa: ' + JSON.stringify(stazioni));
     });
 
     await pagina.evaluate(() => document.querySelector('[data-miss-azione="genera"]').click());

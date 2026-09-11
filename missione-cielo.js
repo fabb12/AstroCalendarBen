@@ -137,17 +137,12 @@ const MISS_GENERE_DI_TIPO = MISS_GENERI.reduce((m, g) => {
 
 const MISS_GENERI_TUTTI = MISS_GENERI.map(g => g.valore);
 
-/* Quali generi valgono davvero per questa serata.
- *
- * Un elenco vuoto — nessuna casella accesa — vuol dire «tutto» e non
- * «niente»: una missione vuota per una spunta tolta per sbaglio sarebbe
- * la risposta sbagliata alla domanda giusta, e il pannello non lascia
- * comunque spegnere l'ultima. Vale anche per i salvataggi di prima, che
- * un campo `generi` non ce l'hanno affatto. */
+/* Missione Cielo prepara sempre tutto quello che il cielo consente.
+ * `scelte` resta nell'argomento soltanto per compatibilità con le missioni
+ * salvate e con il motore esportato: le vecchie preferenze per genere non
+ * devono più restringere il catalogo. */
 function missGeneriScelti(scelte) {
-  const scelti = (scelte && Array.isArray(scelte.generi))
-    ? scelte.generi.filter(g => MISS_GENERI_TUTTI.includes(g)) : [];
-  return scelti.length ? scelti : MISS_GENERI_TUTTI.slice();
+  return MISS_GENERI_TUTTI.slice();
 }
 
 /* Un candidato è di un genere che è stato chiesto?
@@ -159,10 +154,7 @@ function missGeneriScelti(scelte) {
  * l'informazione insieme al filtro. */
 function missGenereAmmesso(c, scelte) {
   if (!c) return false;
-  if (c.tipo === 'evento') return true;
-  const genere = MISS_GENERE_DI_TIPO[c.tipo];
-  if (!genere) return true;
-  return missGeneriScelti(scelte).includes(genere);
+  return true;
 }
 
 /* Le voci, scelte qui e non lasciate al ponte: così la stessa missione
@@ -325,8 +317,7 @@ const MISS_MISURE_A_MANO = [
 // una ricarica sta in `attiva` e si salva (§7).
 const miss = {
   // Le tre scelte, ricordate fra una sera e l'altra
-  scelte: { durata: 30, strumento: 'occhio', esperienza: 'curiosi', bortle: null, cielo: 'tutto', cieloDa: 135, cieloA: 180,
-    generi: MISS_GENERI_TUTTI.slice(),
+  scelte: { durata: 30, strumento: 'occhio', esperienza: 'curiosi', bortle: 2, cielo: 'tutto', cieloDa: 135, cieloA: 180,
     momento: 'consigliato', momentoPersonalizzato: null, voce: false },
   // La missione appena generata e non ancora avviata
   anteprima: null,
@@ -1127,8 +1118,8 @@ function missAttaccaRiferimenti(tappe, candidati) {
  * e non contiene niente che questa funzione debba andare a chiedere a
  * qualcuno. In uscita c'è la missione, o `null` con il motivo scritto. */
 function missGeneraMissione(scenario) {
-  const scelte = Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'curiosi', cielo: 'tutto', cieloDa: 135, cieloA: 180,
-    generi: MISS_GENERI_TUTTI.slice(), voce: false },
+  const scelte = Object.assign({ durata: 30, strumento: 'occhio', esperienza: 'curiosi', bortle: 2, cielo: 'tutto', cieloDa: 135, cieloA: 180,
+    voce: false },
     scenario && scenario.scelte);
   const condizioni = (scenario && scenario.condizioni) || {};
   const adesso = (scenario && scenario.adesso) || Date.now();
@@ -2033,16 +2024,8 @@ function missCaricaScelte() {
   if (MISS_DIREZIONI.includes(Number(s.cieloDa))) miss.scelte.cieloDa = Number(s.cieloDa);
   if (MISS_DIREZIONI.includes(Number(s.cieloA))) miss.scelte.cieloA = Number(s.cieloA);
   if (typeof s.voce === 'boolean') miss.scelte.voce = s.voce;
-  /* I generi si leggono per quello che sono e non per come sono scritti:
-   * un salvataggio di prima non ha il campo affatto, uno di domani
-   * potrebbe portare un genere che nel frattempo è stato tolto. Quello
-   * che resta dopo la cernita, se resta qualcosa, è la scelta; se non
-   * resta niente valgono tutti, che è il significato dell'elenco vuoto
-   * (§1) e non una missione senza bersagli. */
-  if (Array.isArray(s.generi)) {
-    const buoni = s.generi.filter(g => MISS_GENERI_TUTTI.includes(g));
-    miss.scelte.generi = buoni.length ? buoni : MISS_GENERI_TUTTI.slice();
-  }
+  // Le vecchie preferenze `generi` vengono intenzionalmente ignorate:
+  // ogni nuova missione torna a considerare tutti gli oggetti possibili.
   if (['adesso', 'consigliato', 'personalizzato'].includes(s.momento)) miss.scelte.momento = s.momento;
   if (typeof s.momentoPersonalizzato === 'number' && Number.isFinite(s.momentoPersonalizzato)) {
     miss.scelte.momentoPersonalizzato = s.momentoPersonalizzato;
@@ -3320,32 +3303,6 @@ function missGruppoScelte(nome, voci, attuale, etichetta) {
   </fieldset>`;
 }
 
-/* Le caselle dei generi: scelta multipla, non alternativa.
- *
- * È l'unica domanda del pannello a cui si risponde più volte, e per
- * questo non riusa `missGruppoScelte`: un `radiogroup` che accetta più
- * risposte è una bugia detta a chi legge con lo schermo. Sono caselle di
- * spunta vere (`aria-checked` su `role="checkbox"`), e l'ultima accesa
- * non si può spegnere — «non cercare niente» non è una serata, e un
- * pannello che lascia arrivare a quello stato deve poi spiegare un
- * risultato vuoto che non è colpa del cielo. */
-function missGruppoGeneri(etichetta) {
-  const scelti = missGeneriScelti(miss.scelte);
-  const ultimo = scelti.length === 1;
-  const caselle = MISS_GENERI.map(g => {
-    const acceso = scelti.includes(g.valore);
-    return `<button type="button" class="missione-scelta missione-genere${acceso ? ' attiva' : ''}"
-      role="checkbox" aria-checked="${acceso}" data-miss-genere="${g.valore}"
-      ${acceso && ultimo ? 'data-miss-ultimo="si"' : ''}
-      title="${missTesto(missT('genereNota.' + g.valore))}">
-      ${missIcona(g.icona, 17)}<span>${missT('genere.' + g.valore)}</span></button>`;
-  }).join('');
-  return `<fieldset class="missione-gruppo">
-    <legend class="missione-domanda">${etichetta}</legend>
-    <div class="missione-scelte missione-scelte-generi" role="group" aria-label="${etichetta}">${caselle}</div>
-  </fieldset>`;
-}
-
 function missValoreDataOra(ms) {
   const d = new Date(ms);
   const due = n => String(n).padStart(2, '0');
@@ -3370,15 +3327,15 @@ function missPartenzaScelta() {
  * non era il difetto peggiore: sei titoli dello stesso peso non dicono
  * quali siano le domande importanti.
  *
- * Adesso, con **in più** la domanda dei generi che prima non c'era,
- * sono ottocentottantanove: i pixel guadagnati sono quelli delle note
+ * Senza una domanda sugli oggetti, che vengono sempre considerati tutti,
+ * i pixel guadagnati sono quelli delle note
  * (una sola, sotto alla scelta fatta, invece di tre cartoline — vedi
  * `missGruppoScelte`), delle etichette accorciate e dei dettagli
  * richiusi.
  *
  * Adesso i blocchi sono tre e hanno tre nature diverse. **La serata**
  * (quanto tempo, quando, con cosa) è quello che si tocca sempre.
- * **La caccia** (che difficoltà, cosa cercare) è quello che decide la
+ * **La caccia** (che difficoltà) è quello che decide la
  * missione, ed è il blocco nuovo. **I dettagli** stanno dentro a un
  * `<details>` chiuso — cielo di casa, settore, voce — perché sono le
  * risposte che uno dà una volta e poi si tiene: tenerle aperte vuol
@@ -3422,7 +3379,6 @@ function missHtmlConfigurazione() {
     <section class="missione-blocco">
       <h3 class="missione-blocco-titolo">${missT('bloccoCaccia')}</h3>
       ${missGruppoScelte('esperienza', esperienze, miss.scelte.esperienza, missT('cheEsperienza'))}
-      ${missGruppoGeneri(missT('cosaCercare'))}
     </section>
 
     <section class="missione-dettagli missione-dettagli-aperti" data-miss-dettagli>
@@ -4222,35 +4178,8 @@ function missCollegaPannello(corpo) {
       missDisegnaPannello();
     });
   });
-  /* Le caselle dei generi: si accendono e si spengono senza ridisegnare
-   * il pannello. Ridisegnarlo chiuderebbe il `<details>` dei dettagli e
-   * — peggio — sposterebbe il fuoco, quindi chi ne accende tre di fila
-   * con la tastiera dovrebbe ritrovarselo tre volte. Cambia solo la
-   * casella toccata, e con lei la guardia dell'ultima accesa. */
-  corpo.querySelectorAll('[data-miss-genere]').forEach(b => {
-    b.addEventListener('click', () => {
-      const genere = b.dataset.missGenere;
-      const scelti = new Set(missGeneriScelti(miss.scelte));
-      if (scelti.has(genere)) {
-        if (scelti.size === 1) return;      // l'ultimo acceso non si spegne
-        scelti.delete(genere);
-      } else scelti.add(genere);
-      miss.scelte.generi = MISS_GENERI_TUTTI.filter(g => scelti.has(g));
-      miss.anteprimeViste = [];
-      missSalvaScelte();
-      const uno = miss.scelte.generi.length === 1;
-      corpo.querySelectorAll('[data-miss-genere]').forEach(x => {
-        const acceso = miss.scelte.generi.includes(x.dataset.missGenere);
-        x.classList.toggle('attiva', acceso);
-        x.setAttribute('aria-checked', String(acceso));
-        if (acceso && uno) x.dataset.missUltimo = 'si'; else delete x.dataset.missUltimo;
-      });
-    });
-  });
-
-  // Il pannello dei dettagli si ricorda di essere stato aperto: chi lo
-  // apre per cambiare il Bortle e poi tocca «Settore» lo ritroverebbe
-  // chiuso, perché quel tocco ridisegna il corpo.
+  // Il pannello dei dettagli si ricorda di essere stato aperto: toccare
+  // «Settore» ridisegna il corpo, ma non deve richiuderlo.
   const dettagli = corpo.querySelector('[data-miss-dettagli]');
   if (dettagli) dettagli.addEventListener('toggle', () => { miss.dettagliAperti = dettagli.open; });
 
@@ -4259,11 +4188,6 @@ function missCollegaPannello(corpo) {
     miss.rilievoSettore = null;
     missSalvaScelte();
   }));
-  const bortle = corpo.querySelector('[data-miss-bortle]');
-  if (bortle) bortle.addEventListener('change', () => {
-    miss.scelte.bortle = Number(bortle.value);
-    missSalvaScelte();
-  });
   const momento = corpo.querySelector('[data-miss-momento]');
   if (momento) momento.addEventListener('change', () => {
     const ms = new Date(momento.value).getTime();
