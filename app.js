@@ -8178,7 +8178,7 @@ const sky = {
   // Registrazione di un momento da condividere (vedi 7.6): la durata è una
   // scelta che resta, il resto vive quanto la registrazione
   reg: {
-    durataSec: 10,
+    durataSec: 15,
     attiva: false,
     avvio: 0,              // performance.now() della prima immagine presa
     tela: null,            // la tela di montaggio: fotocamera + cielo + firma
@@ -27684,7 +27684,8 @@ function solChiudiPannelloTempo() {
 //     apre senza chiedere niente a nessuno.
 // =====================================================================
 
-const SKY_REG_DURATE = [5, 10, 20];
+const SKY_REG_DURATE = [5, 15, 20];
+const SKY_REG_DURATA_CHIAVE = 'astrocalendario-durata-video';
 const SKY_REG_FPS_VIDEO = 30;
 // Lato lungo del filmato: la misura di uno schermo di telefono, che è anche
 // quella che le chat non ricomprimono fino a rovinarla
@@ -28601,9 +28602,15 @@ async function videoApriGalleria() {
   } else if (videoCartella) {
     videoMostraSceltaIniziale(false);
     try {
-      let permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
-      if (permesso !== 'granted') permesso = await videoCartella.requestPermission({ mode: 'readwrite' });
+      // Aprire la galleria e' un'operazione di sola consultazione e non deve
+      // trasformarsi ogni volta in una nuova domanda del browser. L'handle e'
+      // gia' conservato in IndexedDB; chiediamo nuovamente il consenso solo
+      // quando l'utente salva davvero un video (videoScriviInCartella).
+      const permesso = await videoCartella.queryPermission({ mode: 'readwrite' });
       videoCartellaAutorizzata = permesso === 'granted';
+      if (!videoCartellaAutorizzata) {
+        videoMessaggio(`La cartella “${videoCartella.name}” è ricordata. Il permesso verrà verificato al prossimo salvataggio.`);
+      }
     } catch (e) { /* videoRenderGalleria mostrerà come riaprire la cartella */ }
   }
   await videoRenderGalleria();
@@ -28657,7 +28664,10 @@ function skyRegInizializza() {
   };
 
   // La durata si sceglie prima: cambiarla a registrazione avviata vorrebbe
-  // dire fermare una cosa e consegnarne un'altra
+  // dire fermare una cosa e consegnarne un'altra. La scelta resta anche al
+  // prossimo avvio; in assenza di una preferenza il valore iniziale e' 15 s.
+  const durataSalvata = parseInt(localStorage.getItem(SKY_REG_DURATA_CHIAVE), 10);
+  if (SKY_REG_DURATE.includes(durataSalvata)) sky.reg.durataSec = durataSalvata;
   document.querySelectorAll('[data-durata-reg]').forEach(b => {
     b.addEventListener('click', () => {
       if (sky.reg.attiva) {
@@ -28665,7 +28675,10 @@ function skyRegInizializza() {
         return;
       }
       const d = parseInt(b.dataset.durataReg, 10);
-      if (SKY_REG_DURATE.indexOf(d) >= 0) sky.reg.durataSec = d;
+      if (SKY_REG_DURATE.indexOf(d) >= 0) {
+        sky.reg.durataSec = d;
+        localStorage.setItem(SKY_REG_DURATA_CHIAVE, String(d));
+      }
       skyRegAggiornaComandi();
     });
   });
