@@ -2577,6 +2577,16 @@
             Mostra i pulsanti + e − sulla mappa
           </label>
           <p class="text-xs text-slate-500" data-i18n="ui.lo-zoom-con-due-dita-rotellina-o-trackpad">Lo zoom con due dita, rotellina o trackpad resta sempre disponibile.</p>
+          <label class="impostazione-sosta-mirino text-sm text-slate-300" for="imp-missione-tolleranza">
+            <span>
+              <b class="text-white" data-i18n="missione.tolleranzaTocco">Tolleranza del tocco</b>
+              <small data-i18n="missione.tolleranzaSpiega">Aumentala se tocchi vicino agli astri senza prenderli. Le costellazioni ricevono automaticamente 8 pixel in più.</small>
+            </span>
+            <span class="impostazione-sosta-controllo impostazione-tolleranza-controllo">
+              <input id="imp-missione-tolleranza" type="range" min="24" max="80" step="4" value="44" aria-describedby="imp-missione-tolleranza-valore">
+              <output id="imp-missione-tolleranza-valore">44 pixel</output>
+            </span>
+          </label>
           <label class="impostazione-sosta-mirino text-sm text-slate-300" for="imp-skymap-sosta">
             <span>
               <b class="text-white" data-i18n="ui.informazioni-dal-mirino">Informazioni dal mirino</b>

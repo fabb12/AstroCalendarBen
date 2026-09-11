@@ -23722,6 +23722,46 @@ function skyRigheScheda(o) {
 // con la sola icona del titolo: non tutto quello che c'è in cielo si può
 // disegnare come una fotografia.
 const skySchedaImg = new Map();
+
+// La miniatura non e' soltanto decorativa: e' il punto piu' naturale da
+// toccare quando si vuole continuare a conoscere l'oggetto. Ogni oggetto che
+// ha una fotografia/faccia nella scheda porta quindi alla propria voce di
+// Wikipedia. Per i corpi del Sistema Solare usiamo il titolo italiano
+// esplicito (gli id di Astronomy Engine sono inglesi); per gli oggetti di
+// catalogo la sigla prima del trattino e' il titolo piu' stabile e, per tutto
+// il resto, Wikipedia accetta il nome mostrato dal planetario.
+function skyWikipediaUrl(o) {
+  if (!o) return '';
+  const sat = o.tipo === 'satellite' ? satelliteDaId(o.satId) : null;
+  const titoli = {
+    Sun: 'Sole', Moon: 'Luna', Mercury: 'Mercurio', Venus: 'Venere',
+    Mars: 'Marte', Jupiter: 'Giove', Saturn: 'Saturno', Uranus: 'Urano',
+    Neptune: 'Nettuno',
+    'sat-iss': 'Stazione Spaziale Internazionale',
+    'sat-css': 'Stazione spaziale Tiangong'
+  };
+  let titolo = titoli[o.id] || (sat && titoli['sat-' + sat.id]) || o.nome || '';
+  // «M31 — Galassia di Andromeda» e nomi analoghi: la sigla di catalogo e'
+  // gia' una voce (o un redirect) e non dipende dalla lingua dell'interfaccia.
+  if (o.categoria === 'profondo' && /\s[—–-]\s/.test(titolo)) {
+    titolo = titolo.split(/\s[—–-]\s/, 1)[0];
+  }
+  titolo = String(titolo).trim();
+  return titolo
+    ? `https://it.wikipedia.org/wiki/${encodeURIComponent(titolo.replace(/\s+/g, '_'))}`
+    : '';
+}
+
+function skyWikipediaLinkImmagine(o, immagine) {
+  const url = skyWikipediaUrl(o);
+  if (!url || !immagine) return immagine || '';
+  const nome = String(o.nome || 'questo oggetto').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+  return `<a class="scheda-link-wikipedia" href="${url}" target="_blank" rel="noopener noreferrer" ` +
+    `title="Apri ${nome} su Wikipedia" aria-label="Apri ${nome} su Wikipedia">${immagine}</a>`;
+}
+
 function skySchedaImmagineHtml(o) {
   if (!o) return '';
   // Per le stazioni non si inventa una miniatura dal simbolo della mappa:
@@ -23731,9 +23771,10 @@ function skySchedaImmagineHtml(o) {
   if (fotoSat) {
     // `onerror` non è un ornamento: senza, un indirizzo sbagliato lascia qui
     // un riquadro di 160×96 pixel vuoto e non lo dice a nessuno (§13-bis).
-    return `<img class="scheda-img scheda-img-stazione" src="${fotoSat.src}" ` +
+    const immagine = `<img class="scheda-img scheda-img-stazione" src="${fotoSat.src}" ` +
       `alt="${fotoSat.alt}" width="160" height="96" loading="eager" referrerpolicy="no-referrer" ` +
       `data-sat-id="${sat.id}" onerror="satFotoGuasta(this)">`;
+    return skyWikipediaLinkImmagine(o, immagine);
   }
   const chiave = o.categoria === 'profondo' ? 'dso:' + o.nome : o.id;
   if (!chiave) return '';
@@ -23745,7 +23786,10 @@ function skySchedaImmagineHtml(o) {
   } catch (e) { tela = null; }
   let html = '';
   if (tela) {
-    try { html = `<img class="scheda-img" src="${tela.toDataURL()}" alt="" width="${LATO}" height="${LATO}">`; }
+    try {
+      const immagine = `<img class="scheda-img" src="${tela.toDataURL()}" alt="" width="${LATO}" height="${LATO}">`;
+      html = skyWikipediaLinkImmagine(o, immagine);
+    }
     catch (e) { html = ''; }
   }
   skySchedaImg.set(chiave, html);
@@ -24139,6 +24183,7 @@ function skyFumettoDatiAstro(o) {
     // La fotografia della stazione: quale sia lo decide `satFotoDi` (§13-bis),
     // che tiene il conto di quale candidata ha caricato davvero.
     foto: satFotoDi(sat),
+    wikipedia: skyWikipediaUrl(o),
     // I nomi delle stelle del catalogo possono essere descrizioni complete
     // (codice, magnitudine e costellazione): non vanno accorciati con i
     // puntini proprio nel fumetto che deve identificare l'astro toccato.
@@ -24197,7 +24242,10 @@ function skyAggiornaFumetto() {
     segno.innerHTML = icona(dati.segno, 17);
     titolo.textContent = dati.titolo;
     corpo.innerHTML = (dati.foto
-      ? '<figure class="fumetto-foto"><img loading="eager" referrerpolicy="no-referrer">' +
+      ? '<figure class="fumetto-foto"><a class="scheda-link-wikipedia" href="' + dati.wikipedia +
+        '" target="_blank" rel="noopener noreferrer" title="Apri ' +
+        dati.titolo.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]) +
+        ' su Wikipedia" aria-label="Apri su Wikipedia"><img loading="eager" referrerpolicy="no-referrer"></a>' +
         (dati.foto.credito ? '<figcaption></figcaption>' : '') + '</figure>'
       : '') + dati.righe.map(r =>
       `<p class="fumetto-riga">${r.etichetta ? `<span class="fumetto-voce">${r.etichetta}:</span> ` : ''}` +

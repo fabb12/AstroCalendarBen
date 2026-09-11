@@ -402,6 +402,16 @@ sezione('la voce: come si dice una cosa, non solo cosa si dice');
  * niente da cui accorgersene se non riascoltare tutto sperando di
  * ricordarsi com'era. */
 
+prova('la voce segue la lingua inglese restituita dall’i18n', () => {
+  // Nell'app vera `lingua` è un metodo. Leggere la proprietà senza chiamarla
+  // consegnava una funzione alla tabella delle voci, che ricadeva in italiano.
+  assert.strictEqual(motore.linguaVoce({ lingua: () => 'en' }), 'en');
+  assert.strictEqual(motore.linguaVoce({ getLanguage: () => 'en-US' }), 'en');
+  // I banchi e i salvataggi più vecchi possono ancora presentare la stringa.
+  assert.strictEqual(motore.linguaVoce({ lingua: 'en' }), 'en');
+  assert.strictEqual(motore.linguaVoce({ lingua: () => 'it' }), 'it');
+});
+
 prova('lo SSML porta il namespace mstts, se no lo stile si perde in silenzio', () => {
   const x = motore.ssml('ciao', 'it', K.MISS_TONI_VOCE.curiosi.scoperta);
   assert.ok(x.includes('xmlns:mstts='), 'senza il namespace il blocco viene ignorato');
@@ -1665,6 +1675,16 @@ sezione('le figure: tutte e ottantotto, e nessuna che racconti una bugia');
  * domanda non si poneva. È il difetto che a occhio non si vede per quello
  * che è: un indovinello ben scritto che afferma una cosa falsa, e chi lo
  * legge non ha modo di saperlo. */
+
+prova('ogni costellazione ha un indovinello sul significato del proprio nome', () => {
+  const sorgente = fs.readFileSync(path.join(RADICE, 'dati-costellazioni.js'), 'utf8');
+  const sigle = [...new Set([...sorgente.matchAll(/\{ sigla: "([^"]+)", nome:/g)].map(m => m[1]))];
+  assert.strictEqual(sigle.length, 88, 'le sigle devono coprire tutte le figure IAU');
+  for (const lingua of ['it', 'en']) {
+    const mancanti = sigle.filter(sigla => !DIZIONARI[lingua]['missione.gioco.enigmaNome.' + sigla]);
+    assert.deepStrictEqual(mancanti, [], `mancano gli enigmi sul nome (${lingua})`);
+  }
+});
 
 prova('le quarantotto di Tolomeo sono antiche, gli strumenti di Lacaille no', () => {
   global.costGruppoDi = sigla => (
