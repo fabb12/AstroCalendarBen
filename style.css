@@ -10995,6 +10995,44 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 .missione-momento-spiega { margin: -.25rem 0 .7rem; color: var(--testo-2); font-size: .82rem; line-height: 1.4; }
 .missione-fuochi { position: absolute; inset: 0; z-index: 38; width: 100%; height: 100%; pointer-events: none; }
 .missione-striscia button { min-height: 32px; }
+/* Risposta istantanea al tocco: segno, parola e colore lavorano insieme,
+   cosi' l'esito resta inequivocabile anche senza audio. */
+.missione-feedback-gioco {
+  position: absolute; z-index: 42; left: 50%; top: 42%;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  max-width: min(82%, 360px); padding: 14px 22px;
+  border: 2px solid currentColor; border-radius: 18px;
+  background: rgba(5, 10, 24, .9);
+  box-shadow: 0 0 34px color-mix(in srgb, currentColor 55%, transparent);
+  color: #f8fafc; text-align: center; pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: missione-feedback-entra .72s cubic-bezier(.2, .9, .25, 1) both;
+}
+.missione-feedback-gioco strong { font-size: 3.2rem; line-height: .9; }
+.missione-feedback-gioco span { font-size: 1rem; font-weight: 800; line-height: 1.25; }
+.missione-feedback-vittoria { color: #86efac; }
+.missione-feedback-errore { color: #fca5a5; animation-name: missione-feedback-errore; }
+.missione-colpo-vittoria { animation: missione-lampo-vittoria .55s ease-out; }
+.missione-colpo-errore { animation: missione-lampo-errore .32s ease-out; }
+@keyframes missione-feedback-entra {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.45) rotate(-5deg); }
+  48% { opacity: 1; transform: translate(-50%, -50%) scale(1.12) rotate(2deg); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes missione-feedback-errore {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.8); }
+  25% { opacity: 1; transform: translate(calc(-50% - 10px), -50%); }
+  50% { transform: translate(calc(-50% + 9px), -50%); }
+  75% { transform: translate(calc(-50% - 5px), -50%); }
+  100% { opacity: 1; transform: translate(-50%, -50%); }
+}
+@keyframes missione-lampo-vittoria { 35% { filter: brightness(1.28) saturate(1.2); } }
+@keyframes missione-lampo-errore { 35% { filter: sepia(.28) saturate(1.55) hue-rotate(310deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .missione-feedback-gioco,
+  .missione-colpo-vittoria,
+  .missione-colpo-errore { animation: none; }
+}
 #missione-mirino { display: block; color: #fde68a; font-size: .85rem; }
 .missione-ricerca .gruppo-astri,
 .missione-ricerca [data-vai-gruppo="astri"],
