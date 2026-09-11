@@ -183,6 +183,15 @@ const server = http.createServer((req,res)=> {
   });
   assert.equal(found.phase,'scoperta',JSON.stringify({point,perche:found.perche}));
   assert.equal(found.result,'trovato');assert.equal(found.index,0);
+  const highlight=await page.evaluate(()=>({active:!!miss.evidenzaTrovata,
+    remaining:miss.evidenzaTrovata.fino-performance.now()}));
+  assert.equal(highlight.active,true);
+  assert(highlight.remaining > 14000 && highlight.remaining <= 15000,
+    'selection circle lasts fifteen seconds: '+JSON.stringify(highlight));
+  await page.evaluate(()=> {miss.evidenzaTrovata.fino=performance.now()-1;
+    missDisegnaSelezioneTrovata(sky.ctx,sky.ultimaBase,sky.ultimaFocale);});
+  assert.equal(await page.evaluate(()=>miss.evidenzaTrovata),null,
+    'selection circle disappears after its timeout');
   assert(!found.html.includes('missione-osservazione'));
   assert(!found.html.includes('Conserva nella memoria'));
   const altra=await page.$('#missione-striscia [data-miss-azione="altraStoria"]');

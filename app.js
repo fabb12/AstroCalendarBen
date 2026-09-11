@@ -21020,6 +21020,9 @@ function skyDisegna() {
   // astro dell'elenco (una galassia, una stella di una figura): senza questo
   // non si saprebbe quale dei tanti puntini si è toccato
   skyDisegnaEvidenza(ctx, base, focale);
+  if (typeof missDisegnaSelezioneTrovata === 'function') {
+    missDisegnaSelezioneTrovata(ctx, base, focale);
+  }
 
   // Il mirino del polo celeste, per chi deve allineare una montatura
   // equatoriale: lo disegna il modulo Telescopio, se è acceso.

@@ -383,6 +383,9 @@ const miss = {
   // Non si salva: a ogni nuova apertura il riquadro riparte in un punto
   // prevedibile, ma non salta indietro mentre cambiano indizio o tappa.
   posizioneStriscia: null,
+  // Cerchio temporaneo sul bersaglio appena riconosciuto. Non si salva:
+  // e' un riscontro visivo del tocco, non un dato della missione.
+  evidenzaTrovata: null,
   // Le funzioni da staccare alla chiusura (tastiera, cambio lingua)
   staccare: []
 };
@@ -2357,6 +2360,43 @@ function missFeedbackTocco(chiave) {
   if (typeof skyAvviso === 'function') skyAvviso('missione-tocco', missT(chiave), 2200);
 }
 
+const MISS_EVIDENZA_TROVATA_MS = 15000;
+
+// Il cerchio resta attaccato all'astro appena riconosciuto, anche se nel
+// frattempo la carta si muove. Dopo quindici secondi si elimina da solo.
+function missSegnaTrovato(t) {
+  const ora = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  miss.evidenzaTrovata = { tappa: t, fino: ora + MISS_EVIDENZA_TROVATA_MS };
+}
+
+function missDisegnaSelezioneTrovata(ctx, base, focale) {
+  const evidenza = miss.evidenzaTrovata;
+  if (!evidenza) return;
+  const ora = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  if (ora >= evidenza.fino) {
+    miss.evidenzaTrovata = null;
+    return;
+  }
+  const t = evidenza.tappa;
+  const voce = t && t.idCielo && typeof skyVoceDiId === 'function' ? skyVoceDiId(t.idCielo) : null;
+  const az = voce && Number.isFinite(voce.az) ? voce.az : t && t.azimut;
+  const alt = voce && Number.isFinite(voce.alt) ? voce.alt : t && t.altezza;
+  if (!Number.isFinite(az) || !Number.isFinite(alt)) return;
+  const p = skyProietta(skyVettore(az, alt), base, focale);
+  if (!p.davanti) return;
+  const restante = Math.max(0, (evidenza.fino - ora) / MISS_EVIDENZA_TROVATA_MS);
+  const impulso = 1 + Math.sin(ora / 180) * 0.08;
+  ctx.save();
+  ctx.strokeStyle = `rgba(253, 230, 138, ${0.45 + restante * 0.5})`;
+  ctx.lineWidth = 3;
+  ctx.shadowColor = 'rgba(245, 181, 68, 0.85)';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.arc(p.px, p.py, 25 * impulso, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 // Chiamata soltanto dall'hit test del canvas, prima di aprire schede o atlante.
 function missSelezionaCielo(sel) {
   if (!missRicercaAttiva()) return false;
@@ -2375,6 +2415,7 @@ function missSelezionaCielo(sel) {
     t.esito = 'trovato';
     t.quandoEsito = Date.now();
     t.feedback = null;
+    missSegnaTrovato(t);
     missFeedbackTocco('gioco.feedbackGiusto');
     missFuochiArtificio();
     missFermaVoce();
