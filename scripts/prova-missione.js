@@ -149,6 +149,13 @@ prova('due ore danno più tappe di dieci minuti', () => {
     `${lunga.tappe.length} contro ${corta.tappe.length}`);
 });
 
+prova('la tolleranza del tocco è regolabile e resta più ampia per le costellazioni', () => {
+  assert.strictEqual(motore.tolleranzaTocco({}, 'stella'), 44);
+  assert.strictEqual(motore.tolleranzaTocco({ tolleranzaTocco: 64 }, 'stella'), 64);
+  assert.strictEqual(motore.tolleranzaTocco({ tolleranzaTocco: 64 }, 'costellazione'), 72);
+  assert.strictEqual(motore.tolleranzaTocco({ tolleranzaTocco: 999 }, 'stella'), 80);
+});
+
 prova('ogni astro ha tre racconti stabili ma diversi', () => {
   const base = candidato('pianeta:Jupiter', { nome: 'Giove' });
   const chiavi = [0, 1, 2].map(raccontoVariante =>

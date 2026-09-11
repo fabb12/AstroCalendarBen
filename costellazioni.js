@@ -2194,15 +2194,21 @@ function costNomeNelPunto(px, py, base, focale) {
   return null;
 }
 
-function costFiguraNelPunto(px, py, base, focale) {
+function costFiguraNelPunto(px, py, base, focale, opzioni = {}) {
   if (!catPronto() || !sky.mostraCostellazioni || !cat.figure) return null;
   const L = sky.larghezza, A = sky.altezza;
   const cx = L / 2, cy = A / 2;
   const fr = base.f, br = base.r, bu = base.u;
-  const soglia = 26;
+  // Il planetario ordinario conserva un bersaglio compatto. Missione Cielo
+  // puo' chiedere un margine piu' generoso e limitare la ricerca alla figura
+  // che il giocatore sta cercando: in quel caso una costellazione confinante
+  // non deve rubare il tocco solo perche' ha una linea appena piu' vicina.
+  const soglia = Number.isFinite(opzioni.soglia) ? Math.max(0, opzioni.soglia) : 26;
+  const soloSigla = opzioni.sigla || null;
 
   let migliore = null;
   cat.figure.forEach(fig => {
+    if (soloSigla && fig.sigla !== soloSigla) return;
     fig.spezzate.forEach(s => {
       let prec = null;
       for (let k = 0; k < s.quanti; k++) {
