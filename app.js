@@ -24444,6 +24444,12 @@ function skyChiudiFumetto() {
 // si aspetta da un «mostra di più».
 function skyApriSchedaCompleta() {
   if (!sky.selezione) return;
+  // Il fumetto aperto dalla sosta del mirino ha una scadenza. Da quando
+  // l'utente preme ⓘ, pero', non e' piu' un suggerimento automatico: sta
+  // leggendo volontariamente la scheda completa, che deve restare aperta
+  // finche' non usa la freccia indietro o uno dei tasti di chiusura.
+  clearTimeout(sky.chiusuraHover);
+  sky.chiusuraHover = null;
   skyChiudiFumetto();
   const pannello = document.getElementById('skymap-dettaglio');
   if (pannello) pannello.classList.add('visibile');
