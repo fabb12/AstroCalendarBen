@@ -488,16 +488,30 @@ const AEREO = {
 
     // --- il tasto ⓘ, e la strada del ritorno ---------------------------
     const info = await pagina.evaluate(() => {
+      // Riproduce il caso reale: il fumetto nasce dall'hover e ha ancora la
+      // sveglia di chiusura in corso quando si preme il tasto informazioni.
+      sky.durataHoverSec = 1;
+      skyApriDettaglio({ categoria: 'astro', id: 'Moon' }, { daHover: true });
       document.getElementById('skymap-fumetto-info').click();
       return {
         pannello: document.getElementById('skymap-dettaglio').classList.contains('visibile'),
         fumetto: document.getElementById('skymap-fumetto').classList.contains('visibile'),
-        righe: document.querySelectorAll('#skymap-dettaglio-corpo li').length
+        righe: document.querySelectorAll('#skymap-dettaglio-corpo li').length,
+        timerHover: sky.chiusuraHover
       };
     });
     ok('il ⓘ apre la scheda completa e mette via il fumetto',
       info.pannello === true && info.fumetto === false);
     ok('e la scheda completa ha tutti i dati', info.righe >= 5, `${info.righe} voci`);
+    ok('aprendo gli approfondimenti annulla la chiusura dell\'hover', info.timerHover === null);
+
+    await pagina.waitForTimeout(1100);
+    const dopoScadenzaHover = await pagina.evaluate(() => ({
+      pannello: document.getElementById('skymap-dettaglio').classList.contains('visibile'),
+      selezione: !!sky.selezione
+    }));
+    ok('la scheda completa resta aperta oltre la durata del box hover',
+      dopoScadenzaHover.pannello === true && dopoScadenzaHover.selezione === true);
 
     const indietro = await pagina.evaluate(() => {
       document.getElementById('skymap-dettaglio-indietro').click();
