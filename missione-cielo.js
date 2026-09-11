@@ -4793,6 +4793,18 @@ function missRaccontaTappa(tappa, forza) {
   return missRacconta(testo, tono, { enfasi });
 }
 
+/* Una storia nuova non e' una scoperta nuova.
+ *
+ * Il tasto «Un'altra storia» cambia soltanto l'aneddoto nel riquadro: il
+ * nome, l'esultanza e la domanda sono gia' stati detti. Ripetere l'intero
+ * messaggio faceva sembrare che la missione fosse ricominciata. La voce
+ * segue quindi lo stesso aggiornamento puntuale dello schermo e racconta
+ * soltanto il testo appena comparso. */
+function missRaccontaCuriosita(tappa) {
+  if (!tappa || !(miss.attiva && miss.attiva.scelte.voce)) return Promise.resolve(false);
+  return missRacconta(missCuriositaTesto(tappa), missTonoVoce('scoperta'));
+}
+
 /* La coppa, detta a voce.
  *
  * Solo se la voce è accesa e solo se una coppa c'è: annunciare «nessuna
@@ -5075,9 +5087,9 @@ function missAzione(azione, corpo) {
   switch (azione) {
     case 'solo-voce': {
       miss.strisciaNascosta = true;
-      const tappa = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
+      // Cambia soltanto la presentazione: la narrazione eventualmente in
+      // corso deve proseguire, senza essere fermata o riavviata da capo.
       missMostraStrisciaCielo();
-      if (tappa) missRaccontaTappa(tappa, true);
       break;
     }
     case 'mostra-guida':
@@ -5099,7 +5111,7 @@ function missAzione(azione, corpo) {
       missSalvaAttiva();
       missMostraStrisciaCielo();
       missMostraVista('inCorso');
-      missRaccontaTappa(t);
+      missRaccontaCuriosita(t);
       break;
     }
     case 'segui-telefono':
