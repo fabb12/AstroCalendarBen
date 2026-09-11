@@ -8367,6 +8367,14 @@ function skyNomiVisibili() {
   return sky.mostraNomi && !(typeof missRicercaAttiva === 'function' && missRicercaAttiva());
 }
 
+// Anche l'interruttore autonomo delle cime rispetta la caccia: durante una
+// missione i nomi delle montagne toglierebbero spazio agli indizi e ai
+// bersagli. La preferenza resta intatta e torna visibile appena si esce.
+function skyNomiCimeVisibili() {
+  return typeof cime !== 'undefined' && cime.acceso &&
+    !(typeof missRicercaAttiva === 'function' && missRicercaAttiva());
+}
+
 function skyUsaSensori() {
   return !!(sky.sensori && sky.seguiTelefono && skyAssettoDisponibile());
 }
@@ -18995,7 +19003,7 @@ function skyDisegnaNomiOrizzonte(ctx, base, focale) {
   // sopra annullava quell'interruttore: risultava acceso, scaricava le
   // vette, ma non disegnava nulla se le etichette generali erano spente.
   // Le montagne devono quindi poter arrivare alla loro passata autonoma.
-  const mostraCime = typeof cime !== 'undefined' && cime.acceso;
+  const mostraCime = skyNomiCimeVisibili();
   if (!sky.mostraNomi && !mostraCime) return;
   const occupati = [];
   // Le lettere dei punti cardinali arrivano dopo di noi e passano sopra a
