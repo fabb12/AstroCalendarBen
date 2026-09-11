@@ -30184,7 +30184,12 @@ function solNuvoleDellaTerra() {
       r: 0.032 + caso() * 0.055,        // in frazioni del raggio del globo
       lungo: 1.3 + caso() * 1.1,        // stirata lungo il parallelo
       giro: (caso() - 0.5) * 1.2,       // appena storta, come un fronte
-      alfa: 0.22 + caso() * 0.3
+      alfa: 0.22 + caso() * 0.3,
+      // Gradi all'ora rispetto al suolo. I sistemi alle medie latitudini
+      // corrono soprattutto verso est, quelli tropicali piu' lentamente e
+      // talvolta nel verso opposto: non restano incollati ai continenti
+      // quando si fa avanzare il tempo della simulazione.
+      deriva: (Math.abs(fascia) > 35 ? 0.42 : -0.18) * (0.72 + caso() * 0.56)
     });
   }
   solNuvoleTerra = elenco;
@@ -30195,10 +30200,16 @@ function solNuvoleDellaTerra() {
 // limbo come tutto ciò che sta su una sfera (è la stessa algebra di
 // `skyMacchiaSfera`, qui in coordinate di globo invece che di tela dipinta),
 // e sfuma verso il bordo perché una nuvola non ha un contorno.
-function solDisegnaNuvoleTerra(ctx, telaio, assi, r) {
+function solDisegnaNuvoleTerra(ctx, telaio, assi, r, quando) {
+  // Un'origine vicina mantiene piccoli i numeri anche facendo correre la
+  // simulazione per anni. La posizione dipende solo dall'istante mostrato:
+  // trascinare avanti e indietro la linea del tempo e' quindi reversibile.
+  const ore = quando instanceof Date && isFinite(quando.getTime())
+    ? (quando.getTime() - Date.UTC(2020, 0, 1)) / 3600000 : 0;
   ctx.save();
   solNuvoleDellaTerra().forEach(n => {
-    const p = solGloboProietta(solPuntoTerra(telaio, n.lat, n.lon), assi, r);
+    const lon = ((n.lon + n.deriva * ore + 540) % 360) - 180;
+    const p = solGloboProietta(solPuntoTerra(telaio, n.lat, lon), assi, r);
     if (p.z <= 0.1) return;
     const raggio = n.r * r;
     ctx.save();
@@ -30345,7 +30356,7 @@ function solDisegnaTerraVera(ctx, versoSole, r, assi, quando) {
   // dove stanno i deserti. Girano col pianeta perché sono appoggiate al suo
   // telaio geografico, e restano sotto al confine del giorno: di notte una
   // nuvola non si vede.
-  if (r > 20) solDisegnaNuvoleTerra(ctx, telaio, assi, r);
+  if (r > 20) solDisegnaNuvoleTerra(ctx, telaio, assi, r, quando);
 
   // L'ombra della Luna, se in questo istante ne sta attraversando una
   solDisegnaOmbraDellaLuna(ctx, telaio, assi, r, quando);

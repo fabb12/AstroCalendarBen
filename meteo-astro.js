@@ -312,7 +312,19 @@ function meteoNuvoleAllOra(dati, ms) {
   };
   return { totale: mix('totale'), basse: mix('basse'), medie: mix('medie'),
     alte: mix('alte'), vento: mix('vento'), ventoDa: mix('ventoDa'),
-    pioggia: mix('pioggia'), faseOra: (ms / 3600000) % 1 };
+    pioggia: mix('pioggia'),
+    // Non basta la frazione dell'ora: tornando a zero a ogni ora faceva
+    // ricomparire i banchi al punto di partenza. L'ora assoluta e' una fase
+    // continua, comune anche a due previsioni scaricate in momenti diversi.
+    // In questo modo play, cursore e salti temporali spostano davvero le
+    // nuvole, senza scatti allo scoccare dell'ora o al rinnovo della cache.
+    oraMoto: ms / 3600000,
+    // Il vettore che trasporta la trama resta quello del primo campione. La
+    // direzione prevista puo' invece ruotare fra due ore: moltiplicarla per
+    // una fase assoluta teletrasporterebbe l'intero banco a ogni variazione.
+    // Copertura e aspetto continuano a interpolarsi normalmente.
+    ventoMoto: isFinite(dati.ore[0].vento) ? dati.ore[0].vento : 8,
+    ventoDaMoto: isFinite(dati.ore[0].ventoDa) ? dati.ore[0].ventoDa : 270 };
 }
 
 // Un generatore piccolo e deterministico: la stessa previsione non cambia
@@ -523,7 +535,10 @@ function meteoDipingiCieloCoperto(ctx, n, luce, seme, deriva, verso) {
   ctx.fillStyle = `rgba(${Math.round(chiaro)},${Math.round(chiaro + 5)},${Math.round(chiaro + 11)},${opacita})`;
   ctx.fillRect(0, 0, sky.larghezza, sky.altezza);
 
-  const caso = meteoNuvolaCaso(seme * 811 + Math.floor((n.faseOra || 0) * 12));
+  // La trama non viene risorteggiata mentre il tempo cammina: e' lo stesso
+  // soffitto nuvoloso che trasla col vento. Cambiare seme ogni cinque minuti
+  // faceva pulsare le celle invece di farle viaggiare.
+  const caso = meteoNuvolaCaso(seme * 811);
   const radVento = verso * Math.PI / 180;
   const scorreX = Math.cos(radVento) * deriva * 9;
   const scorreY = Math.sin(radVento) * deriva * 4;
@@ -664,8 +679,12 @@ function meteoDisegnaNuvole(ctx, base, focale, aria) {
     { cop: n.basse, alt: 24, passo: 36, scala: 1.28, alpha: 0.48 }
   ];
   const seme = Math.round(luogo.lat * 37 + luogo.lon * 71);
-  const deriva = (isFinite(n.vento) ? n.vento : 8) * n.faseOra * 0.34;
-  const verso = isFinite(n.ventoDa) ? n.ventoDa + 180 : 90;
+  // Fase assoluta, non frazione dell'ora: il movimento deve continuare anche
+  // attraverso il confine fra due campioni della previsione. Il resto della
+  // formula e' volutamente in unita' visive (il vento previsto detta verso e
+  // velocita', non pretende di ricostruire una carta meteorologica).
+  const deriva = n.ventoMoto * n.oraMoto * 0.34;
+  const verso = n.ventoDaMoto + 180;
 
   ctx.save();
   meteoDipingiCieloCoperto(ctx, n, luce, seme, deriva, verso);
