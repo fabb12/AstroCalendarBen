@@ -2874,6 +2874,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.gioco.enigma.oggetto.ariete': 'I am three stars in a line and little else, and yet two thousand years ago the Sun began spring in me — and the starting point of the sky’s coordinates still carries my name. Who am I?',
     'missione.gioco.enigma.oggetto.croceDelSud': 'I am the smallest of all eighty-eight and the most famous of the south: four stars in a cross and, beside me, a patch of darkness. Extend me and you find the pole. Who am I?',
     'missione.gioco.enigma.oggetto.centauro': 'I am half man and half horse, and one of my legs is the closest star to the Sun. I also host the largest cluster of stars in the whole galaxy. Who am I?',
+    'missione.gioco.enigma.oggetto.giraffa': 'I am a spotted African animal: I reach leaves others cannot touch without lifting my hooves from the ground. My neck is the longest on the savannah. Who am I?',
 
     'missione.gioco.enigma.oggetto.orione.2': 'Four stars mark my shoulders and feet, three straight gems tighten my waist. I cross the winter sky with bow and sword: who am I?',
     'missione.gioco.enigma.oggetto.orsa.2': 'Seven lights make a wagon, but my whole figure is a bear with a long tail. Circling the north, I hardly ever set: who am I?',
@@ -2898,6 +2899,8 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.gioco.enigma.oggetto.ariete.2': 'I am a small curve of three lights, with no easy horns to see; yet I belong to the planets’ road. Who am I?',
     'missione.gioco.enigma.oggetto.croceDelSud.2': 'Two stars make my long arm and two the short one; I have no pole star, yet I still show the road south. Who am I?',
     'missione.gioco.enigma.oggetto.centauro.2': 'I am a great southern figure: two bright stars point to a nearby cross and one of them is the Sun’s neighbour. Who am I?',
+    'missione.gioco.enigma.oggetto.giraffa.2': 'I walk on four legs, wear a patchwork coat and browse the top of a tree while standing on the ground. Which animal gives its name to my constellation?',
+    'missione.gioco.segno.giraffa': 'Look for a very faint, elongated figure between Ursa Minor and Cassiopeia: under city skies it takes patience and few nearby lights.',
 
     'missione.gioco.enigma.oggetto.pleiadi': 'Many count six of us, tradition says seven and binoculars find dozens. We are very young sisters, still wrapped in the dust we were born from. Who are we?',
     'missione.gioco.enigma.oggetto.iadi': 'I am the V that makes the Bull’s face, and I am the closest cluster to the Earth of them all. The red star that seems to belong to me is not mine: it sits halfway, and only passes through. Who am I?',
@@ -3043,6 +3046,10 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.gioco.enigmaBimbi.pegaso': 'I am a horse with wings, and my body is a big, almost empty square. Who am I?',
     'missione.gioco.enigmaBimbi.sagittario': 'I am supposed to be an archer, but everyone says I look like a teapot. Who am I?',
     'missione.gioco.enigmaBimbi.croceDelSud': 'I am a cross of four stars, the smallest constellation there is, and I point south. Who am I?',
+    'missione.gioco.enigmaBimbi.giraffa': 'I have four legs and lots of spots; I use my very long neck to eat the highest leaves. Who am I?',
+    'missione.curiosita.giraffa.1': 'Camelopardalis is a modern constellation: it appeared on European charts in the early seventeenth century to name a large, faint area near the north celestial pole.',
+    'missione.curiosita.giraffa.2': 'Its Latin name, Camelopardalis, comes from an ancient mix-up: a giraffe seemed to have a camel’s neck and a leopard’s spots.',
+    'missione.curiosita.giraffa.3': 'Although it covers a large patch of sky, Camelopardalis has no truly bright stars: finding it means navigating from neighbouring figures rather than following an obvious pattern.',
     'missione.gioco.enigmaBimbi.pleiadi': 'We are a little heap of sister stars. Many people count six of us, but our name says seven. Who are we?',
     'missione.gioco.enigmaBimbi.iadi': 'We are lots of little stars in a V: we make the bull’s face. Who are we?',
     'missione.gioco.enigmaBimbi.presepe': 'I look like a tiny cloud and I am really a heap of little stars. The ancients put me between two donkeys. Who am I?',

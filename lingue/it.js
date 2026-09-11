@@ -2949,6 +2949,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.gioco.enigma.oggetto.ariete': 'Sono tre stelle in fila e poco altro, eppure duemila anni fa il Sole cominciava da me la primavera — e il punto di partenza delle coordinate del cielo porta ancora il mio nome. Chi sono?',
     'missione.gioco.enigma.oggetto.croceDelSud': 'Sono la più piccola di tutte le ottantotto e la più famosa del sud: quattro stelle a croce e, accanto, una macchia di buio. Chi mi prolunga trova il polo. Chi sono?',
     'missione.gioco.enigma.oggetto.centauro': 'Sono mezzo uomo e mezzo cavallo, e una delle mie zampe è la stella più vicina al Sole. Ospito anche il più grande ammasso di stelle di tutta la galassia. Chi sono?',
+    'missione.gioco.enigma.oggetto.giraffa': 'Sono un animale africano maculato: arrivo alle foglie che gli altri non raggiungono senza staccare gli zoccoli da terra. Il mio collo è il più lungo della savana. Chi sono?',
 
     'missione.gioco.enigma.oggetto.orione.2': 'Quattro stelle fanno le spalle e i piedi, tre gemme dritte stringono la vita. In inverno attraverso il cielo con arco e spada: chi sono?',
     'missione.gioco.enigma.oggetto.orsa.2': 'Sette luci fanno un carro, ma la figura intera è un’orsa dalla lunga coda. Girando attorno al nord non tramonto quasi mai: chi sono?',
@@ -2973,6 +2974,8 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.gioco.enigma.oggetto.ariete.2': 'Sono una piccola curva di tre luci, senza corna facili da vedere; eppure appartengo alla strada dei pianeti. Chi sono?',
     'missione.gioco.enigma.oggetto.croceDelSud.2': 'Due stelle fanno il braccio lungo e due quello corto; non ho una stella polare, ma mostro comunque la strada verso sud. Chi sono?',
     'missione.gioco.enigma.oggetto.centauro.2': 'Sono una grande figura del sud: due stelle brillanti indicano una croce vicina e una di loro ha il Sole come vicino. Chi sono?',
+    'missione.gioco.enigma.oggetto.giraffa.2': 'Cammino su quattro zampe, porto un mantello a chiazze e posso brucare la cima di un albero restando a terra. Quale animale dà il nome alla mia costellazione?',
+    'missione.gioco.segno.giraffa': 'Cerca una figura molto debole e allungata fra l’Orsa Minore e Cassiopea: da un cielo cittadino servono pazienza e poche luci attorno.',
 
     'missione.gioco.enigma.oggetto.pleiadi': 'Molti ci contano sei, la tradizione ne dice sette e il binocolo ne trova decine. Siamo sorelle giovanissime, ancora immerse nella polvere in cui siamo nate. Chi siamo?',
     'missione.gioco.enigma.oggetto.iadi': 'Sono la V che fa la testa del Toro, e sono l’ammasso più vicino alla Terra di tutti. La stella rossa che sembra farne parte non è mia: sta a metà strada, e passa di lì per caso. Chi sono?',
@@ -3122,6 +3125,10 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.gioco.enigmaBimbi.pegaso': 'Sono un cavallo con le ali, e il mio corpo è un quadrato grande e quasi vuoto. Chi sono?',
     'missione.gioco.enigmaBimbi.sagittario': 'Dovrei essere un arciere, ma tutti dicono che sembro una teiera. Chi sono?',
     'missione.gioco.enigmaBimbi.croceDelSud': 'Sono una croce di quattro stelle, la più piccola costellazione che esista, e indico il sud. Chi sono?',
+    'missione.gioco.enigmaBimbi.giraffa': 'Ho quattro zampe e tante macchie; per mangiare le foglie più alte uso un collo lunghissimo. Chi sono?',
+    'missione.curiosita.giraffa.1': 'La Giraffa è una costellazione moderna: comparve sulle carte europee all’inizio del Seicento per dare un nome a una grande zona debole vicina al polo nord.',
+    'missione.curiosita.giraffa.2': 'Il suo nome latino, Camelopardalis, nasce da un antico equivoco: la giraffa sembrava avere il collo di un cammello e le macchie di un leopardo.',
+    'missione.curiosita.giraffa.3': 'Nonostante occupi molto cielo, la Giraffa non ha stelle davvero brillanti: riconoscerla significa orientarsi fra le figure vicine più che seguire un disegno evidente.',
     'missione.gioco.enigmaBimbi.pleiadi': 'Siamo un mucchietto di stelline sorelle. Molti ne contano sei, ma il nostro nome dice sette. Chi siamo?',
     'missione.gioco.enigmaBimbi.iadi': 'Siamo tante stelline messe a V: facciamo la faccia del toro. Chi siamo?',
     'missione.gioco.enigmaBimbi.presepe': 'Sembro una nuvoletta e invece sono un mucchio di stelline. Gli antichi mi mettevano fra due asinelli. Chi sono?',

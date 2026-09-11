@@ -250,6 +250,28 @@ function costruisciOrizzonte() {
   }
 }
 
+// La precisione del tocco si regola insieme agli altri comandi del
+// planetario, non durante l'anteprima di una missione. Il valore continua a
+// essere custodito da Missione Cielo, che applica anche i limiti e lo salva.
+function costruisciTolleranzaPlanetario() {
+  const slitta = document.getElementById('imp-missione-tolleranza');
+  const uscita = document.getElementById('imp-missione-tolleranza-valore');
+  if (!slitta || typeof missTolleranzaImpostata !== 'function') return;
+  const mostra = valore => {
+    slitta.value = valore;
+    uscita.textContent = astroI18n.t('missione.tolleranzaPixel', { pixel: valore });
+  };
+  mostra(missTolleranzaImpostata());
+  if (slitta.dataset.collegata) return;
+  slitta.dataset.collegata = 'si';
+  slitta.addEventListener('input', () => {
+    uscita.textContent = astroI18n.t('missione.tolleranzaPixel', { pixel: slitta.value });
+  });
+  slitta.addEventListener('change', () => {
+    if (typeof missImpostaTolleranza === 'function') mostra(missImpostaTolleranza(slitta.value));
+  });
+}
+
 
 // Fin dove cercare montagne, luci e acqua — su una mappa.
 //
@@ -1024,6 +1046,7 @@ function inizializzaNuoveFunzioni() {
     costruisciSceltaCielo();
     costruisciOrizzonte();
     costruisciRaggiOrizzonte();
+    costruisciTolleranzaPlanetario();
   });
 
   aggiornaStaseraNuovo();
