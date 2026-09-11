@@ -14,7 +14,9 @@ motore di effemeridi.
 Il percorso è ricerca → indizi → tocco dell’oggetto → scoperta → osservazione
 facoltativa → tappa successiva. Il tocco viene intercettato nell’hit test del
 canvas prima della selezione normale, del fumetto e dell’atlante. Un oggetto
-sbagliato aumenta l’aiuto; soltanto quello corretto registra `trovato`.
+sbagliato aumenta l’aiuto; soltanto quello corretto registra `trovato`. Quando
+il bersaglio viene trovato, un cerchio di selezione lo evidenzia sulla mappa
+per quindici secondi e poi scompare automaticamente.
 Le costellazioni si riconoscono toccando le linee della figura. L’hover non
 conferma ritrovamenti. La mappa non può verificare che una persona abbia
 guardato fisicamente il cielo: verifica la selezione nella scena corrente.
