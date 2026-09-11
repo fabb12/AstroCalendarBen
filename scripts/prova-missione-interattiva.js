@@ -23,6 +23,9 @@ assert(engine.selezioneCorretta({tipo:'profondo',idCielo:'dso:M31'}, {categoria:
 assert(!engine.selezioneCorretta({tipo:'pianeta',idCielo:'Jupiter'}, {categoria:'astro',id:'Saturn'}));
 assert(engine.selezioneCorretta({tipo:'costellazione',sigla:'Cyg'}, {categoria:'costellazione',sigla:'Cyg'}));
 assert(engine.distanzaSferica({azimut:359,altezza:30},{azimut:1,altezza:30}) < 2);
+assert.equal(engine.tolleranzaTocco({},'stella'),44);
+assert.equal(engine.tolleranzaTocco({tolleranzaTocco:64},'costellazione'),72);
+assert.equal(engine.tolleranzaTocco({tolleranzaTocco:999},'stella'),80);
 console.log('PASS: deterministic diversity, no repeated variants, current visibility, canonical IDs');
 const types = {'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png'};
 const server = http.createServer((req,res)=> {
@@ -145,9 +148,12 @@ const server = http.createServer((req,res)=> {
         skyDisegna();
         const p=skyProietta(skyVettore(o.az,o.alt),sky.ultimaBase,sky.ultimaFocale);
         const box=canvas.getBoundingClientRect();
-        const x=box.left+p.px, y=box.top+p.py;
+        // Il tocco corretto cade volutamente 36 px di fianco al puntino:
+        // fuori dalla precisione richiesta a un mouse, ma dentro l'area
+        // tollerante della missione. Quello errato resta sul proprio astro.
+        const x=box.left+p.px+(correct ? 36 : 0), y=box.top+p.py;
         const sopra=document.elementFromPoint(x,y);
-        ultimo={x,y,scarto,id:o.id,selection:skyOggettoNelPunto(p.px,p.py),
+        ultimo={x,y,scarto,id:o.id,selection:skyOggettoNelPunto(p.px+(correct ? 36 : 0),p.py),
           sotto:sopra?(sopra.id||sopra.className||sopra.tagName):null,
           sullaMappa:!!(sopra&&(sopra===canvas||canvas.contains(sopra)))};
         if (ultimo.sullaMappa) break;
@@ -165,6 +171,8 @@ const server = http.createServer((req,res)=> {
   assert.equal(await page.textContent('#missione-striscia .missione-striscia-indizio'),before.clue);
   assert((await page.textContent('#skymap-avviso')).includes('Non è questo'));
   const point=await tapObject(true);
+  assert.equal(point.selection.id,await page.evaluate(()=>miss.attiva.tappe[0].idCielo),
+    'un tocco vicino al bersaglio viene riconosciuto come corretto');
   /* Se il tocco non diventa una scoperta, le cause sono tre e si
    * assomigliano tutte sullo schermo: la selezione non è il bersaglio,
    * oppure lo è ma il tocco viene ignorato dal cancello di

@@ -24931,6 +24931,14 @@ function skyOggettoNelPunto(px, py) {
   const base = sky.ultimaBase, focale = sky.ultimaFocale;
   if (!base || !focale) return null;
 
+  // Durante il gioco si prova prima l'area ampliata del solo bersaglio
+  // corrente. Il normale hit test resta invariato fuori dalla missione e per
+  // tutti gli altri oggetti della carta.
+  if (typeof missBersaglioNelPunto === 'function') {
+    const bersaglioMissione = missBersaglioNelPunto(px, py, base, focale);
+    if (bersaglioMissione) return bersaglioMissione;
+  }
+
   let scelto = null;
   const guarda = (az, alt, soglia, crea) => {
     if (typeof az !== 'number') return;
