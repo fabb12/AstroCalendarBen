@@ -23887,6 +23887,11 @@ function skyVoceSelezionata() {
   const sel = sky.selezione;
   if (!sel) return null;
 
+  if (sel.categoria === 'costellazione') {
+    const info = typeof costInfoPlanetario === 'function' ? costInfoPlanetario(sel.sigla) : null;
+    return info && sel.ancora ? Object.assign(info, sel.ancora) : info;
+  }
+
   if (sel.categoria === 'astro') {
     const o = sky.oggetti.find(x => x.id === sel.id);
     return o ? Object.assign({ categoria: 'astro' }, o) : null;
@@ -24218,7 +24223,20 @@ function skyFumettoDatiAstro(o) {
 // modulo sa cose che qui non arrivano, l'itinerario per primo.
 function skyFumettoDati(voce) {
   if (!voce) return null;
-  const dati = voce.categoria === 'aereo'
+  const dati = voce.categoria === 'costellazione'
+    ? {
+        chiave: `costellazione:${voce.sigla}`,
+        segno: 'stella',
+        titolo: voce.nome,
+        colore: 'rgba(196, 181, 253, .9)',
+        righe: [
+          { chiave: 'latino', etichetta: '', valore: `${voce.latino} · ${voce.sigla}` },
+          { chiave: 'cielo', etichetta: 'Cielo', valore: voce.emisfero === 'boreale' ? 'boreale' :
+            voce.emisfero === 'australe' ? 'australe' : 'equatoriale' },
+          ...(voce.mese ? [{ chiave: 'periodo', etichetta: 'Periodo migliore', valore: voce.mese }] : [])
+        ]
+      }
+    : voce.categoria === 'aereo'
     ? (typeof aereiFumettoDati === 'function' ? aereiFumettoDati(voce) : null)
     : skyFumettoDatiAstro(voce);
   // Il taglio si fa **qui** e non dentro a chi le scrive: è una misura dello
@@ -24450,6 +24468,14 @@ function skyApriSchedaCompleta() {
   // finche' non usa la freccia indietro o uno dei tasti di chiusura.
   clearTimeout(sky.chiusuraHover);
   sky.chiusuraHover = null;
+  // Per una costellazione la scheda completa è già la sua pagina
+  // nell'atlante: il tasto ⓘ del piccolo fumetto porta direttamente lì.
+  if (sky.selezione.categoria === 'costellazione') {
+    if (typeof apriAtlanteCostellazioni === 'function') {
+      apriAtlanteCostellazioni(sky.selezione.sigla);
+    }
+    return;
+  }
   skyChiudiFumetto();
   const pannello = document.getElementById('skymap-dettaglio');
   if (pannello) pannello.classList.add('visibile');
@@ -25179,13 +25205,24 @@ function skyControllaSostaMirino() {
     return;
   }
 
-  // Una costellazione apre l'atlante intero: far sparire il planetario senza
-  // un tocco sarebbe sorprendente. La sosta riguarda le schede degli oggetti
-  // celesti; inoltre si ferma mentre un dito sta governando la mappa.
+  // Anche una costellazione riceve il fumetto compatto; l'atlante intero si
+  // apre soltanto premendo il suo tasto info. La ricerca resta ferma mentre
+  // un dito sta governando la mappa.
   const sel = sky.puntatori.size || !sky.ultimaBase
     ? null
     : skyOggettoNelPunto(sky.larghezza / 2, sky.altezza / 2);
-  const valido = sel && sel.categoria !== 'costellazione' ? sel : null;
+  let valido = sel;
+  if (valido && valido.categoria === 'costellazione') {
+    // Il centro geometrico di una figura può essere molti gradi lontano
+    // dalla linea finita nel mirino. Il fumetto deve indicare proprio quel
+    // tratto: conserviamo la direzione del mirino nell'istante della scelta.
+    const v = skyDirezione(sky.larghezza / 2, sky.altezza / 2,
+      sky.ultimaBase, sky.ultimaFocale);
+    valido = Object.assign({}, valido, { ancora: {
+      az: ((Math.atan2(v[0], v[1]) * SKY_R2D) % 360 + 360) % 360,
+      alt: Math.asin(Math.max(-1, Math.min(1, v[2]))) * SKY_R2D
+    } });
+  }
   const chiave = skyChiaveSelezione(valido);
   if (!chiave) { sky.sostaMirino = null; return; }
   if (!sky.sostaMirino || sky.sostaMirino.chiave !== chiave) {

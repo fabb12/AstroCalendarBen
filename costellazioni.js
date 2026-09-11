@@ -2407,6 +2407,33 @@ function costElencoVoci() {
   return voci;
 }
 
+// I pochi dati che servono al fumetto del planetario. L'atlante conserva la
+// scheda lunga; qui esponiamo invece un ritratto compatto e, soprattutto, il
+// centro *attuale* della figura in coordinate orizzontali, così la coda del
+// fumetto resta attaccata alla costellazione mentre il telefono si muove.
+// La funzione è globale perché app.js non deve duplicare né i nomi tradotti
+// né il calcolo del centro preparato dal catalogo.
+function costInfoPlanetario(sigla) {
+  const voce = costElencoVoci().find(v => v.sigla === sigla);
+  if (!voce) return null;
+
+  const fig = typeof cat !== 'undefined' && cat.figure
+    ? cat.figure.find(f => f.sigla === sigla) : null;
+  const centro = fig && fig.centroOra;
+  let az = null, alt = null;
+  if (centro && centro.length >= 3) {
+    az = ((Math.atan2(centro[0], centro[1]) * 180 / Math.PI) % 360 + 360) % 360;
+    alt = Math.asin(Math.max(-1, Math.min(1, centro[2]))) * 180 / Math.PI;
+  }
+
+  const vis = costVisibilita(sigla, costLatitudineDiCasa());
+  return {
+    categoria: 'costellazione', sigla, nome: voce.nome, latino: voce.latino,
+    emisfero: voce.emisfero, mese: vis ? costMeseMigliore(vis.ra) : null,
+    az, alt
+  };
+}
+
 function costFiltraVoci() {
   const lat = costLatitudineDiCasa();
   const cerca = typeof normalizzaTesto === 'function'
