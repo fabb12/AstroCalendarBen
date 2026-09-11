@@ -978,7 +978,7 @@ function catDisegnaStelle(ctx, base, focale) {
 // =====================================================================
 // 7. DISEGNO DELLE FIGURE
 //
-//     Un filo sottile, non un disegno tecnico. Le linee che passano sotto
+//     Un tratto discreto ma leggibile, non un disegno tecnico. Le linee che passano sotto
 //     l'orizzonte restano un'ombra: la figura si intuisce, ma non sembra
 //     disegnata sul prato davanti a casa. È la stessa regola che aveva
 //     app.js con le sue ventitré figure — funzionava, e resta.
@@ -1058,7 +1058,11 @@ function catDisegnaFigure(ctx, base, focale) {
   });
 
   ctx.save();
-  ctx.lineWidth = 1.1;
+  // Allargando il campo ogni figura occupa meno schermo: il tratto cresce
+  // insieme allo zoom indietro invece di sparire fra le stelle del catalogo.
+  ctx.lineWidth = typeof skySpessoreCostellazioni === 'function'
+    ? skySpessoreCostellazioni()
+    : 1.8;
   if (cSopra) {
     ctx.strokeStyle = `rgba(120, 178, 255, ${0.4 * velo})`;
     ctx.stroke(sopra);
