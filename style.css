@@ -10799,6 +10799,7 @@ body button.did-ponte:active { transform: translateY(1px); }
   right: max(12px, env(safe-area-inset-right));
   margin: 0 auto;
   max-width: 460px;
+  box-sizing: border-box;
   z-index: 7;
   display: flex;
   flex-wrap: wrap;
@@ -10884,7 +10885,7 @@ body .missione-striscia.solo-voce .missione-ripristina {
   font-size: 1rem;
   line-height: 1.4;
 }
-.missione-striscia-tasti { display: flex; gap: 6px; flex: 0 0 auto; }
+.missione-striscia-tasti { display: flex; gap: 6px; flex: 0 1 auto; max-width: 100%; min-width: 0; }
 .missione-navigazione-indizi {
   display: inline-flex;
   align-items: center;
@@ -10911,6 +10912,8 @@ body .missione-striscia.solo-voce .missione-ripristina {
   min-height: 32px;
   padding: 0 9px;
   font-size: 0.73rem;
+  max-width: 100%;
+  white-space: normal;
 }
 .missione-striscia-tasti .missione-tasto.attiva {
   background: var(--blu-scuro);
@@ -10963,7 +10966,7 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 /* Missione Cielo: gli indizi restano compatti anche su telefono. */
 .missione-striscia.visibile { max-height: none; overflow: visible; align-items: start; }
 .missione-striscia p { margin: .35rem 0; line-height: 1.45; }
-.missione-scoperta { width: 100%; min-width: 0; padding-inline: 30px; }
+.missione-scoperta { width: 100%; min-width: 0; padding-inline: 30px; box-sizing: border-box; overflow-wrap: anywhere; }
 .missione-scoperta h3 { color: #a7f3d0; font-weight: 700; }
 /* La riga della specie e il cartellino: sono un dato, non un discorso, e
    vanno letti in un colpo d'occhio — corpo piccolo, maiuscoletto sulla
@@ -10979,6 +10982,8 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
    un filo di respiro fra le righe, se no due frasi dense su un fondo
    scuro si leggono come un avviso di errore. */
 .missione-scoperta .missione-aneddoto { line-height: 1.55; }
+.missione-scoperta-azioni { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; min-width: 0; }
+.missione-scoperta-azioni .missione-tasto { flex: 1 1 150px; min-width: 0; max-width: 100%; white-space: normal; }
 .missione-momento-spiega { margin: -.25rem 0 .7rem; color: var(--testo-2); font-size: .82rem; line-height: 1.4; }
 .missione-fuochi { position: absolute; inset: 0; z-index: 38; width: 100%; height: 100%; pointer-events: none; }
 .missione-striscia button { min-height: 32px; }

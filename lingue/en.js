@@ -2320,7 +2320,7 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.senzaPosizione': 'Without a location I cannot plan anything: set one and try again.',
     'missione.senzaLibreria': 'The ephemerides have not arrived yet: try again in a few seconds.',
 
-    'missione.quantoTempo': 'How much time do you have?',
+    'missione.quantoTempo': 'How long should the exploration period be?',
     'missione.quandoMissione': 'When would you like to do the mission?',
     'missione.momentoAdesso': 'Now',
     'missione.momentoConsigliato': 'Later, when the sky is dark',
@@ -2335,6 +2335,8 @@ window.ASTRO_DIZIONARI['en'] = {
     'missione.durata.30': '30 min',
     'missione.durata.60': '1 hour',
     'missione.durata.120': '2 hours',
+    'missione.durata.180': '3 hours',
+    'missione.durata.240': '4 hours',
     'missione.esperienza.stupore': 'Amaze me',
     'missione.esperienza.imparare': 'Teach me the sky',
     'missione.esperienza.sfida': 'Experts',

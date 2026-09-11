@@ -2373,7 +2373,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.senzaLibreria': 'Le effemeridi non sono ancora arrivate: riprova fra qualche secondo.',
 
     // Le tre domande
-    'missione.quantoTempo': 'Quanto tempo hai?',
+    'missione.quantoTempo': 'Quanto è lungo il periodo di esplorazione?',
     'missione.quandoMissione': 'Quando vuoi fare la missione?',
     'missione.momentoAdesso': 'Adesso',
     'missione.momentoConsigliato': 'Più tardi, col cielo buio',
@@ -2388,6 +2388,8 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.durata.30': '30 min',
     'missione.durata.60': "1 ora",
     'missione.durata.120': '2 ore',
+    'missione.durata.180': '3 ore',
+    'missione.durata.240': '4 ore',
     'missione.esperienza.stupore': 'Fammi stupire',
     'missione.esperienza.imparare': 'Insegnami il cielo',
     'missione.esperienza.sfida': 'Esperti',
