@@ -56,6 +56,7 @@ const METEO_ASTRO_CAMPI = [
   'visibility',
   'precipitation_probability',
   'wind_speed_250hPa',      // la corrente a getto: il seeing nasce qui
+  'wind_direction_250hPa',  // …e da lì i cirri prendono anche la direzione
   'temperature_500hPa',
   'cape'                    // instabilità: aria che sale, immagine che balla
 ].join(',');
@@ -128,6 +129,7 @@ function caricaMeteoAstro(forza) {
           visibilita: p('visibility'),
           pioggia: p('precipitation_probability'),
           getto: p('wind_speed_250hPa'),
+          gettoDa: p('wind_direction_250hPa'),
           temp500: p('temperature_500hPa'),
           cape: p('cape'),
           aerosol: ia >= 0 && ah.aerosol_optical_depth ? ah.aerosol_optical_depth[ia] : null,
@@ -226,10 +228,10 @@ function meteoTrasparenza(o) {
 //
 // Non sono una texture ornamentale: ogni fotogramma cerca la previsione
 // più vicina al luogo visitato e interpola le due ore attorno all'orologio
-// del planetario. Basse, medie e alte restano tre strati distinti; il vento
-// al suolo le fa scorrere senza il salto che altrimenti si vedrebbe allo
-// scoccare dell'ora. Oltre l'intervallo della previsione non si inventa
-// niente: il cielo resta pulito.
+// del planetario. Basse, medie e alte restano tre strati distinti. Oltre
+// l'intervallo della previsione non si inventa niente: il cielo resta pulito.
+//
+// Dove stiano i banchi lo dice la §2-ter, che è il pezzo che li muove.
 
 const METEO_NUVOLE_VALIDO_MS = 60 * 60 * 1000;
 const meteoNuvoleCache = new Map();
@@ -271,8 +273,13 @@ function meteoCaricaNuvoleCielo(forza) {
   if (!forza && gia && Date.now() - gia.quando < METEO_NUVOLE_VALIDO_MS) return Promise.resolve(gia);
   if (meteoNuvoleInCorso.has(chiave)) return meteoNuvoleInCorso.get(chiave);
 
+  // I 250 hPa sono una decina di chilometri, cioè **la quota dei cirri**: per
+  // lo strato alto quel vento non è una stima, è una misura. La direzione
+  // conta quanto la velocità — è lei a far correre i cirri di traverso ai
+  // cumuli, che è il dettaglio da cui si riconosce un cielo vero.
   const campi = 'cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,' +
-    'wind_speed_10m,wind_direction_10m,precipitation_probability';
+    'wind_speed_10m,wind_direction_10m,precipitation_probability,' +
+    'wind_speed_250hPa,wind_direction_250hPa';
   const url = 'https://api.open-meteo.com/v1/forecast' +
     `?latitude=${Number(luogo.lat).toFixed(4)}&longitude=${Number(luogo.lon).toFixed(4)}` +
     `&hourly=${campi}&forecast_days=${METEO_ASTRO_GIORNI}&timezone=UTC`;
@@ -287,7 +294,8 @@ function meteoCaricaNuvoleCielo(forza) {
         ms: new Date(/[zZ]|[+-]\d\d:\d\d$/.test(t) ? t : t + 'Z').getTime(), totale: p('cloud_cover', i),
         basse: p('cloud_cover_low', i), medie: p('cloud_cover_mid', i),
         alte: p('cloud_cover_high', i), vento: p('wind_speed_10m', i),
-        ventoDa: p('wind_direction_10m', i), pioggia: p('precipitation_probability', i)
+        ventoDa: p('wind_direction_10m', i), pioggia: p('precipitation_probability', i),
+        getto: p('wind_speed_250hPa', i), gettoDa: p('wind_direction_250hPa', i)
       })).filter(o => isFinite(o.ms));
       const dati = { lat: luogo.lat, lon: luogo.lon, quando: Date.now(), ore };
       meteoNuvoleCache.set(chiave, dati);
@@ -310,9 +318,352 @@ function meteoNuvoleAllOra(dati, ms) {
     if (!isFinite(x)) return isFinite(y) ? y : 0;
     return isFinite(y) ? x + (y - x) * t : x;
   };
+  // Una direzione non si mescola come un numero: fra 350° e 10° la media
+  // aritmetica dà 180°, cioè il vento esattamente al contrario. E non lo si
+  // vede mai, perché un cielo che scorre al rovescio è un cielo che scorre.
+  const mixAngolo = nome => {
+    const x = a[nome], y = b[nome];
+    if (!isFinite(x)) return isFinite(y) ? y : null;
+    if (!isFinite(y)) return x;
+    return (x + (((y - x + 540) % 360) - 180) * t + 360) % 360;
+  };
+  const opp = nome => (isFinite(a[nome]) || isFinite(b[nome])) ? mix(nome) : null;
   return { totale: mix('totale'), basse: mix('basse'), medie: mix('medie'),
-    alte: mix('alte'), vento: mix('vento'), ventoDa: mix('ventoDa'),
-    pioggia: mix('pioggia'), faseOra: (ms / 3600000) % 1 };
+    alte: mix('alte'), vento: mix('vento'), ventoDa: mixAngolo('ventoDa'),
+    pioggia: mix('pioggia'), getto: opp('getto'), gettoDa: mixAngolo('gettoDa'),
+    // `indice` e `frazione` sono dove siamo caduti dentro alla serie oraria:
+    // servono al cammino della §2-ter, che dell'ora deve integrare il vento
+    // e non può ricavarli una seconda volta senza rischiare di divergere.
+    indice: i, frazione: t,
+    // `faseOra` non la usa più nessuno qui dentro: è la frazione d'ora su cui
+    // si reggeva il dente di sega della §2-ter, e resta perché il §33 di
+    // `verifica.html` la usa per scrivere il contro-esempio — cioè per
+    // mostrare, coi numeri, quanto tornava indietro il cielo allo scoccare.
+    faseOra: (ms / 3600000) % 1 };
+}
+
+
+// =====================================================================
+// 2-ter. IL MOVIMENTO DELLE NUVOLE
+//
+//     Le nuvole non stavano ferme, ma quasi. Lo spostamento era
+//     `vento · faseOra`, cioè un dente di sega: scorrevano per un'ora e
+//     allo scoccare della successiva **tornavano indietro di colpo al
+//     punto di partenza**. Da fermi non si notava quasi — un'ora è
+//     lunga —, con la macchina del tempo in marcia era un sobbalzo ogni
+//     secondo. E il soffitto dei cieli coperti si riseminava dodici volte
+//     l'ora (`floor(faseOra · 12)` dentro al seme): ogni cinque minuti le
+//     sue macchie si teletrasportavano tutte insieme altrove.
+//
+//     Quello che c'è adesso non è una finzione fatta meglio, è un'altra
+//     cosa: **le nuvole stanno su un piano e il vento le porta.** Uno
+//     strato è un lenzuolo orizzontale alla sua quota, un banco è un punto
+//     di quel lenzuolo, il vento trasla il lenzuolo. Da lì viene da sé
+//     tutto quello che si riconosce guardando in su per davvero — un banco
+//     spunta dall'orizzonte da cui tira il vento, sale, **accelera**
+//     passando sopra la testa, rallenta scendendo dall'altra parte e
+//     tramonta. Non è un effetto aggiunto: è la prospettiva. La velocità
+//     angolare è `v/distanza`, e la distanza allo zenit è la sola quota
+//     mentre a otto gradi sull'orizzonte è sette volte tanto: lo stesso
+//     vento, laggiù, muove le nuvole sette volte più piano.
+//
+//     E le tre quote non vanno alla stessa velocità, il che non è una
+//     scelta grafica: il vento cresce con la quota. La previsione dà il
+//     vento a dieci metri e quello a 250 hPa — la corrente a getto, che
+//     questo modulo chiedeva già per il seeing e che sta a una decina di
+//     chilometri, cioè **proprio alla quota dei cirri**. In mezzo si
+//     interpola in quota, e si interpola come **vettori** e non come
+//     angoli, per la stessa ragione scritta in `meteoNuvoleAllOra`. Da lì
+//     esce gratis la cosa che più di tutte dice «questo cielo è vero»: i
+//     cirri che corrono in una direzione mentre i cumuli sotto vanno in
+//     un'altra.
+// =====================================================================
+
+// Le quote dei tre strati, in metri: sono le fasce con cui l'OMM separa le
+// tre famiglie alle medie latitudini, prese nel mezzo. La curvatura della
+// Terra qui non si conta: al taglio degli otto gradi vale il due per cento
+// della quota, molto meno dell'incertezza sulla quota stessa.
+const METEO_NUVOLE_QUOTA_M = { basse: 1400, medie: 4500, alte: 9000 };
+
+// La quota dei 250 hPa. Non è una costante fisica — dipende da quanto è
+// calda la colonna d'aria — ma alle nostre latitudini dieci chilometri e
+// quattro sono la media, e mezzo chilometro di errore sposta la velocità dei
+// cirri di un paio di punti percentuali.
+const METEO_GETTO_QUOTA_M = 10400;
+
+// Senza il dato del getto, il vento di uno strato è quello a dieci metri per
+// questi numeri: è il profilo di una giornata qualunque — fra il suolo e il
+// primo chilometro il vento raddoppia abbondante, e da lì in su cresce quasi
+// in proporzione alla quota.
+const METEO_NUVOLE_FATTORE_VENTO = { basse: 1.9, medie: 3.2, alte: 5 };
+
+// Un getto fa anche trecento chilometri orari; il doppio no, ed è il genere
+// di numero che arriva quando una previsione ha un buco.
+const METEO_VENTO_MAX_MS = 95;
+
+// Il reticolo dei banchi, in unità della quota dello strato: così i tre
+// strati sono figure simili e sullo schermo hanno la stessa trama, e a
+// distinguerli restano il colore e — soprattutto — la velocità.
+//
+// I tre numeri che seguono sono **un bilancio**, non tre gusti, e conviene
+// sapere come si legano prima di toccarne uno. La copertura che i banchi
+// consegnano vale `π·(raggio/passo)²`, quindi cielo coperto e banchi piccoli
+// vogliono celle fitte, cioè **tanti** banchi; e ogni banco in più è una
+// tela sfocata da tenere in memoria e una passata di disegno. Al primo
+// tentativo il passo era 1,45 e il raggio 0,36 — quaranta per cento di
+// copertura, sessanta banchi sullo schermo — e il conto misurato in un
+// browser vero è stato **24,7 ms per fotogramma** contro gli 0,07 di prima:
+// non per il disegno, ma perché la cache degli sprite sfondava il suo tetto
+// in pixel e ricostruiva due sagome sfocate a ogni fotogramma. Il resto
+// della copertura lo dà il soffitto, che costa un rettangolo: ai banchi si
+// chiede la **forma** del cielo, non di tapparlo.
+const METEO_NUVOLE_PASSO = 2.3;       // lato della cella, in quote
+const METEO_NUVOLE_RAGGIO = 0.21;     // raggio del banco, in lati di cella
+const METEO_NUVOLE_COP_PIENA = 30;    // oltre, il soffitto fa il resto
+const METEO_NUVOLE_ALT_MIN = 8;       // sotto, ci sono la foschia e il terreno
+const METEO_NUVOLE_ALT_PIENA = 18;    // sopra, nessuno sconto di opacità
+const METEO_NUVOLE_PX_MIN = 5;
+const METEO_NUVOLE_BANCHI_MAX = 10;   // per strato: il tetto della spesa
+const METEO_NUVOLE_BANCHI_SFUMA = 4;  // quanti ne sfumano sul taglio
+
+// Il vento che porta uno strato, in metri al secondo scomposti in est e
+// nord. `ventoDa` è la convenzione meteorologica — la direzione **da cui**
+// il vento arriva — quindi il verso in cui le nuvole vanno è quello opposto,
+// e in coordinate (est, nord) l'azimut A vale (sin A, cos A).
+function meteoVentoDiStrato(ora, strato) {
+  const quota = METEO_NUVOLE_QUOTA_M[strato] || METEO_NUVOLE_QUOTA_M.basse;
+  const v10 = (isFinite(ora.vento) ? ora.vento : 8) / 3.6;   // km/h → m/s
+  const da10 = isFinite(ora.ventoDa) ? ora.ventoDa : 270;
+  const verso10 = (da10 + 180) * Math.PI / 180;
+  let vx = v10 * Math.sin(verso10), vy = v10 * Math.cos(verso10);
+
+  if (isFinite(ora.getto) && ora.getto > 0) {
+    const vj = ora.getto / 3.6;
+    const daJ = isFinite(ora.gettoDa) ? ora.gettoDa : da10;
+    // Lineare in quota, che sopra lo strato limite è il profilo vero: con
+    // cinque metri al secondo al suolo e trentacinque in quota dà nove a
+    // millequattrocento metri e trentuno a novemila, cioè i numeri che
+    // scrive un radiosondaggio qualunque.
+    const w = Math.max(0, Math.min(1, quota / METEO_GETTO_QUOTA_M));
+    // **Velocità e direzione si interpolano a parte, e non come un vettore
+    // solo.** Sommare i due vettori pesati sembra la cosa elegante, e con
+    // due venti paragonabili lo è; con un getto dieci volte più forte del
+    // vento al suolo no: al tredici per cento della quota il suo contributo
+    // è già più lungo del vettore di partenza, e i cumuli si ritrovano a
+    // seguire la direzione del getto invece della loro. A millequattrocento
+    // metri il vento è ancora quasi quello di quaggiù, un po' più forte e
+    // girato di qualche grado — ed è quello che questa riga dice. La
+    // direzione si gira **per l'arco corto**, che è l'unico modo di non
+    // ritrovarsi a 180° dal vero passando per il nord.
+    const v = v10 + (vj - v10) * w;
+    const gira = ((daJ - da10 + 540) % 360) - 180;
+    const verso = (da10 + gira * w + 180) * Math.PI / 180;
+    vx = v * Math.sin(verso);
+    vy = v * Math.cos(verso);
+  } else {
+    const k = METEO_NUVOLE_FATTORE_VENTO[strato] || 1;
+    vx *= k; vy *= k;
+  }
+  const v = Math.hypot(vx, vy);
+  if (v > METEO_VENTO_MAX_MS) { vx = vx / v * METEO_VENTO_MAX_MS; vy = vy / v * METEO_VENTO_MAX_MS; }
+  return { vx, vy };
+}
+
+// Quanto si è spostato ogni strato dall'inizio della previsione, in metri.
+// Non basta moltiplicare il vento di adesso per il tempo passato: il vento
+// cambia di ora in ora, e un banco si porta dietro la memoria di dov'è
+// stato — con quella scorciatoia una revisione del vento alle quattro del
+// mattino sposterebbe all'indietro anche le nuvole di mezzanotte. Si integra
+// quindi la serie oraria, col trapezio: per un vento interpolato linearmente
+// fra un'ora e l'altra non è un'approssimazione, è l'integrale esatto.
+//
+// Il cammino è ancorato alla **prima ora della previsione**. Una previsione
+// nuova è un cielo nuovo e rimescola il campo, ma dentro a una il tempo
+// scorre continuo, e una previsione si riscarica una volta all'ora al più.
+function meteoNuvoleCammino(dati) {
+  if (dati.cammino) return dati.cammino;
+  const strati = Object.keys(METEO_NUVOLE_QUOTA_M);
+  const c = {};
+  strati.forEach(st => { c[st] = [{ x: 0, y: 0 }]; });
+  for (let i = 1; i < dati.ore.length; i++) {
+    const a = dati.ore[i - 1], b = dati.ore[i];
+    const dt = (b.ms - a.ms) / 1000;
+    strati.forEach(st => {
+      const va = meteoVentoDiStrato(a, st), vb = meteoVentoDiStrato(b, st);
+      const q = c[st][i - 1];
+      c[st].push({ x: q.x + (va.vx + vb.vx) / 2 * dt, y: q.y + (va.vy + vb.vy) / 2 * dt });
+    });
+  }
+  dati.cammino = c;
+  return c;
+}
+
+// Il cammino a un istante qualunque: quello cumulato fino all'ora piena, più
+// il pezzo di ora cominciata. Con `v(s) = va + (vb − va)·s/Δ` l'integrale da
+// zero a τ vale `τ·(va + (vb − va)·t/2)` — e messo in fila al cumulato è
+// continuo allo scoccare dell'ora per costruzione, che è tutto il punto.
+function meteoNuvoleSpostamento(dati, n, strato) {
+  if (!dati || !Array.isArray(dati.ore) || dati.ore.length < 2 || !n || !isFinite(n.indice)) {
+    return { x: 0, y: 0 };
+  }
+  const c = meteoNuvoleCammino(dati)[strato];
+  if (!c) return { x: 0, y: 0 };
+  const i = Math.max(0, Math.min(c.length - 1, n.indice));
+  const a = dati.ore[i], b = dati.ore[Math.min(i + 1, dati.ore.length - 1)];
+  const t = Math.max(0, Math.min(1, n.frazione || 0));
+  const tau = (b.ms - a.ms) / 1000 * t;
+  const va = meteoVentoDiStrato(a, strato), vb = meteoVentoDiStrato(b, strato);
+  return {
+    x: c[i].x + tau * (va.vx + (vb.vx - va.vx) * t / 2),
+    y: c[i].y + tau * (va.vy + (vb.vy - va.vy) * t / 2)
+  };
+}
+
+// Il nome di una cella, che è anche la sua forma. Gli indici sono quelli del
+// reticolo **solidale al vento**, non al suolo: una cella nasce con la sua
+// sagoma e se la tiene per tutta la traversata — è un banco che attraversa il
+// cielo, non una casella che si passa le nuvole di mano in mano.
+function meteoCellaSeme(i, j, livello, seme) {
+  let h = Math.imul(i | 0, 0x27d4eb2d) ^ Math.imul(j | 0, 0x165667b1) ^
+          Math.imul(livello + 1, 0x9e3779b9) ^ (seme | 0);
+  h = Math.imul(h ^ (h >>> 15), 0x2545f491);
+  return (h ^ (h >>> 13)) >>> 0;
+}
+
+// I banchi di uno strato che in questo istante si vedono davvero, già
+// proiettati. È l'unico posto in cui il modello diventa pixel.
+//
+// Il reticolo è infinito e scorre col vento: si guarda quali celle cadono
+// adesso dentro al disco visibile, e sono quelle a cambiare — entrano da
+// monte, escono da valle. Distribuire una manciata di banchi *a caso una
+// volta sola* e poi traslarli tutti insieme darebbe un cielo che si svuota
+// da un lato e si affolla dall'altro; un reticolo no, perché l'unica
+// distribuzione che una traslazione non cambia è quella uniforme sul piano.
+//
+// Uniforme sul piano vuol dire pochi banchi grandi sopra la testa e molti
+// piccoli verso l'orizzonte, che a occhio sembra uno squilibrio ed è invece
+// esattamente quello che si vede: è la ragione per cui un cielo rotto è
+// rotto allo zenit e chiuso in fondo.
+function meteoBanchiVisibili(strato, livello, cop, seme, sp, base, focale) {
+  const H = METEO_NUVOLE_QUOTA_M[strato];
+  const L = H * METEO_NUVOLE_PASSO;
+  const R = L * METEO_NUVOLE_RAGGIO;
+  const dMax = H / Math.tan(METEO_NUVOLE_ALT_MIN * Math.PI / 180);
+  // Quante celle sono nuvola e quante cielo sereno. Il banco ha una misura
+  // fissa, quindi a coprire di più è il *numero*: un cielo al dieci per
+  // cento non è fatto di cumuli piccoli, è fatto di pochi cumuli.
+  const viva = Math.min(1, cop / METEO_NUVOLE_COP_PIENA);
+  const i0 = Math.floor((-dMax - sp.x) / L) - 1, i1 = Math.ceil((dMax - sp.x) / L) + 1;
+  const j0 = Math.floor((-dMax - sp.y) / L) - 1, j1 = Math.ceil((dMax - sp.y) / L) + 1;
+  const banchi = [];
+  for (let i = i0; i <= i1; i++) {
+    for (let j = j0; j <= j1; j++) {
+      const caso = meteoNuvolaCaso(meteoCellaSeme(i, j, livello, seme));
+      const jx = caso() * L, jy = caso() * L;
+      if (caso() >= viva) continue;
+      const x = i * L + jx + sp.x, y = j * L + jy + sp.y;
+      const d = Math.hypot(x, y);
+      if (d > dMax) continue;
+      const alt = Math.atan2(H, d) * 180 / Math.PI;
+      const az = (Math.atan2(x, y) * 180 / Math.PI + 360) % 360;
+      const p = skyProietta(skyVettore(az, alt), base, focale);
+      if (!p.davanti) continue;
+      // La distanza vera è quella in linea d'aria, non quella al suolo:
+      // allo zenit le due differiscono di tutto.
+      const r = focale * (R / Math.hypot(d, H)) * skyScalaLocale(p.d);
+      if (r < METEO_NUVOLE_PX_MIN) continue;
+      if (p.px < -r || p.px > sky.larghezza + r || p.py < -r || p.py > sky.altezza + r) continue;
+      banchi.push({
+        px: p.px, py: p.py, r, alt, az,
+        // Verso l'orizzonte il banco non sparisce di colpo: si spegne dentro
+        // alla foschia, che è dove finisce davvero.
+        velo: Math.max(0, Math.min(1, (alt - METEO_NUVOLE_ALT_MIN) /
+          (METEO_NUVOLE_ALT_PIENA - METEO_NUVOLE_ALT_MIN))),
+        seme: meteoCellaSeme(i, j, livello + 71, seme)
+      });
+    }
+  }
+
+  // A grandangolo il disco intero è sullo schermo e i banchi ammissibili sono
+  // decine: il tetto è una spesa, non una scelta di gusto. A cadere sono i
+  // più piccoli — quelli che stanno in fondo, dove la foschia li ha già
+  // mangiati — e gli ultimi si spengono invece di sparire, se no un banco
+  // che scavalca il taglio mentre scorre farebbe un lampo.
+  if (banchi.length > METEO_NUVOLE_BANCHI_MAX) {
+    banchi.sort((a, b) => b.r - a.r);
+    for (let k = METEO_NUVOLE_BANCHI_MAX - METEO_NUVOLE_BANCHI_SFUMA;
+         k < METEO_NUVOLE_BANCHI_MAX; k++) {
+      if (k >= 0) banchi[k].velo *= (METEO_NUVOLE_BANCHI_MAX - 1 - k) / METEO_NUVOLE_BANCHI_SFUMA;
+    }
+    banchi.length = METEO_NUVOLE_BANCHI_MAX;
+  }
+  return banchi;
+}
+
+// Il soffitto di un cielo coperto non è fatto di oggetti: è una zuppa, e
+// resta disegnata in coordinate di schermo. Quello che di un soffitto si
+// legge è **da che parte scorre**, e quello si può dire davvero: si prende il
+// punto di soffitto che si sta guardando, lo si sposta di un secondo di vento
+// e si guarda di quanti pixel si è mosso. Guardando controvento la zuppa
+// viene addosso, guardando di traverso scorre di lato.
+//
+// La fase si accumula fotogramma per fotogramma — come la grana del terreno,
+// e per la stessa ragione: il prodotto «velocità × tempo trascorso» salterebbe
+// di colpo a ogni pizzicata, perché a cambiare sarebbe la velocità di tutto il
+// tratto già percorso. Il passo è quello dell'**ora mostrata**, non
+// dell'orologio da polso: col playback a un'ora al secondo il soffitto deve
+// correre come corrono le nuvole.
+const meteoSoffitto = { x: 0, y: 0, quando: null };
+const METEO_SOFFITTO_SALTO_MS = 3600 * 1000;
+
+function meteoScorriSoffitto(msMostrato, base, focale, vento) {
+  const prima = meteoSoffitto.quando;
+  meteoSoffitto.quando = msMostrato;
+  // `isFinite(null)` vale **true** (`Number(null)` è zero): con quel
+  // controllo il primo fotogramma non usciva di qui, si prendeva un `dt` di
+  // cinquant'anni tosato a un'ora, e il soffitto partiva già spostato.
+  if (prima === null || !Number.isFinite(prima)) return meteoSoffitto;
+  let dt = (msMostrato - prima) / 1000;
+  if (!isFinite(dt)) return meteoSoffitto;
+  // Un salto della macchina del tempo non è un vento di mille ore: si tosa,
+  // e il soffitto riparte da dov'era. È una zuppa, non un'effemeride.
+  dt = Math.max(-METEO_SOFFITTO_SALTO_MS / 1000, Math.min(METEO_SOFFITTO_SALTO_MS / 1000, dt));
+
+  const H = METEO_NUVOLE_QUOTA_M.basse;
+  const f = base && base.f;
+  if (!f) return meteoSoffitto;
+  const alt = Math.max(METEO_NUVOLE_ALT_MIN, Math.asin(Math.max(-1, Math.min(1, f[2]))) * 180 / Math.PI);
+  const az = Math.atan2(f[0], f[1]) * 180 / Math.PI;
+  const d = H / Math.tan(alt * Math.PI / 180);
+  const x = d * Math.sin(az * Math.PI / 180), y = d * Math.cos(az * Math.PI / 180);
+  const qui = skyProietta(skyVettore(az, alt), base, focale);
+  const d2 = Math.hypot(x + vento.vx, y + vento.vy);
+  const p2 = skyProietta(skyVettore(
+    Math.atan2(x + vento.vx, y + vento.vy) * 180 / Math.PI,
+    Math.atan2(H, d2) * 180 / Math.PI), base, focale);
+  if (qui.davanti && p2.davanti) {
+    meteoSoffitto.x += (p2.px - qui.px) * dt;
+    meteoSoffitto.y += (p2.py - qui.py) * dt;
+  }
+  return meteoSoffitto;
+}
+
+// Il primo fotogramma dopo il rientro dei dati riusa questa mappatura invece
+// di rifarla: senza, `meteoAstro.ore.map` allocava centosettanta oggetti per
+// fotogramma e il cammino della §2-ter si sarebbe reintegrato ogni volta.
+const meteoNuvoleDaAstro = { fonte: null, dati: null };
+
+function meteoNuvoleDiRipiego(luogo) {
+  if (typeof meteoAstro !== 'object' || !meteoAstro || !Array.isArray(meteoAstro.ore)) return null;
+  if (Math.abs(meteoAstro.lat - luogo.lat) >= 0.3 || Math.abs(meteoAstro.lon - luogo.lon) >= 0.3) return null;
+  if (meteoNuvoleDaAstro.fonte === meteoAstro) return meteoNuvoleDaAstro.dati;
+  meteoNuvoleDaAstro.fonte = meteoAstro;
+  meteoNuvoleDaAstro.dati = { ore: meteoAstro.ore.map(o => ({
+    ms: o.ms, totale: o.nuvole, basse: o.nuvoleBasse, medie: o.nuvoleMedie,
+    alte: o.nuvoleAlte, vento: o.vento, ventoDa: o.ventoDa, pioggia: o.pioggia,
+    getto: o.getto, gettoDa: o.gettoDa
+  })) };
+  return meteoNuvoleDaAstro.dati;
 }
 
 // Un generatore piccolo e deterministico: la stessa previsione non cambia
@@ -359,16 +710,48 @@ function meteoSagomaNuvola(ctx, r, caso, gonfia) {
 // economica anche sulle GPU dei telefoni. Quantizzare raggio e luce impedisce di
 // creare una nuova copia per variazioni invisibili di un pixel o di un grado.
 const meteoNuvoleSprite = new Map();
-const METEO_NUVOLE_SPRITE_MAX = 64;
+// Due indici, e la differenza fra loro è tutta la faccenda. `meteoNuvoleLuce`
+// dice, per ogni nube **illuminata così**, l'ultimo sprite costruito a un
+// raggio qualunque: quello si riscala e basta, perché fra due raggi cambia la
+// risoluzione e non il disegno. `meteoNuvoleNube` dice, per ogni nube, l'ultimo
+// sprite costruito **comunque**: quello serve solo come tappabuchi mentre la
+// luce nuova si rasterizza, perché lì a cambiare è il disegno per davvero — il
+// bordo chiaro sta dall'altra parte. Rispondono in un colpo, che con la
+// scansione lineare di prima costerebbe, adesso che i banchi sono decine,
+// migliaia di confronti per fotogramma.
+const meteoNuvoleLuce = new Map();
+const meteoNuvoleNube = new Map();
+const METEO_NUVOLE_SPRITE_MAX = 192;
 const METEO_NUVOLE_SPRITE_PIXEL_MAX = 8 * 1000 * 1000; // circa 32 MB RGBA nel caso peggiore
-const METEO_NUVOLE_SPRITE_NUOVI_FRAME = 2;
+// Quante sagome sfocate si possono rasterizzare in un fotogramma. Era due, ed
+// è scesa a una da quando i banchi sono il triplo: rasterizzare è la parte
+// cara del modulo, e nel frattempo il tappabuchi non è più la sagoma
+// economica ma la stessa nube illuminata un attimo prima — cioè aspettare non
+// si vede. Misurato pizzicando: il fotogramma peggiore passa da sette
+// millisecondi a quattro.
+const METEO_NUVOLE_SPRITE_NUOVI_FRAME = 1;
 let meteoNuvoleSpriteNuovi = 0;
 let meteoNuvoleSpritePixel = 0;
 
+// I gradini del raggio sono **geometrici** e non lineari: da quando un banco
+// si avvicina e si allontana per davvero il suo raggio attraversa tutta la
+// scala, e con gradini da otto pixel ne toccherebbe una dozzina — cioè una
+// dozzina di sprite per nube. Un fattore quattro terzi fra un gradino e
+// l'altro ne lascia sei in tutto, e su una sagoma già sfocata il
+// riscalamento non si vede.
+//
+// Il gradino più grosso era 144, ed è sceso a 96 per un motivo misurato: una
+// tela da 144 occupa 591×404 pixel, e con il tetto di memoria qui sotto ce ne
+// stanno trentatré — meno dei banchi di un cielo coperto. La cache allora
+// sfondava a ogni fotogramma e ricostruiva sagome sfocate senza sosta, che è
+// la parte cara di tutto il modulo. A 96 ne stanno settantacinque, cioè il
+// doppio dei banchi che possono esserci: il tetto non morde più e i banchi si
+// disegnano ingrandendo la tela di due volte e mezzo — che su una nuvola, che
+// di suo è sfocata, non si vede.
+const METEO_NUVOLE_RAGGI_SPRITE = [24, 32, 43, 57, 76, 96];
 function meteoNuvolaRaggioSprite(r) {
-  // A zoom estremi ingrandiamo lo sprite esistente: creare tele di migliaia
-  // di pixel sarebbe molto più costoso e il dettaglio extra non è percepibile.
-  return Math.min(144, Math.max(24, Math.round(r / 8) * 8));
+  for (const q of METEO_NUVOLE_RAGGI_SPRITE) if (r <= q) return q;
+  return METEO_NUVOLE_RAGGI_SPRITE[METEO_NUVOLE_RAGGI_SPRITE.length - 1];
 }
 
 function meteoNuvolaSpriteCanvas(larghezza, altezza) {
@@ -379,30 +762,36 @@ function meteoNuvolaSpriteCanvas(larghezza, altezza) {
   return canvas;
 }
 
-function meteoNuvolaChiaveSprite(r, colore, alpha, seme, alto, sole) {
+// La parte iniziale della chiave identifica **la nube**; quello che viene
+// dopo descrive soltanto come la si sta guardando in questo istante — la luce
+// che riceve e quanto è grande sullo schermo. Girando la camera la luce cambia
+// settore, e avvicinandosi il raggio cambia gradino: in tutti e due i casi la
+// variante esatta va ricostruita, e nel frattempo si continua a mostrare
+// quella che c'è, riscalata. Tornare in quei fotogrammi alla sagoma economica
+// faceva perdere definizione a tutto il cielo a ogni movimento — ed è la
+// ragione per cui il raggio sta **in fondo** alla chiave e non in testa.
+function meteoNuvolaPrefissoSprite(colore, alpha, seme, alto) {
+  return [colore, Math.round(alpha * 20), seme, alto ? 1 : 0].join('|') + '|';
+}
+
+function meteoNuvolaPrefissoLuce(colore, alpha, seme, alto, sole) {
   const angolo = Math.atan2(sole.dy, sole.dx);
   const direzione = Math.round(angolo / (Math.PI / 8)); // sedici direzioni sono più che sufficienti
-  return [meteoNuvolaRaggioSprite(r), colore, Math.round(alpha * 20),
-    seme, alto ? 1 : 0, direzione, Math.round(sole.forza * 8), Math.round(sole.calda * 6)].join('|');
+  return meteoNuvolaPrefissoSprite(colore, alpha, seme, alto) +
+    [direzione, Math.round(sole.forza * 8), Math.round(sole.calda * 6)].join('|') + '|';
 }
 
-// La parte iniziale della chiave identifica la nube; gli ultimi tre campi
-// descrivono soltanto la luce che riceve. Quando la camera gira quella luce
-// cambia settore e la variante esatta deve essere ricostruita, ma nel frattempo
-// possiamo continuare a mostrare la variante dettagliata del settore vicino.
-// Tornare alla sagoma economica in quel breve intervallo faceva invece perdere
-// visibilmente definizione a tutte le nuvole durante ogni spostamento.
-function meteoNuvolaPrefissoSprite(r, colore, alpha, seme, alto) {
-  return [meteoNuvolaRaggioSprite(r), colore, Math.round(alpha * 20),
-    seme, alto ? 1 : 0].join('|') + '|';
+function meteoNuvolaChiaveSprite(r, colore, alpha, seme, alto, sole) {
+  return meteoNuvolaPrefissoLuce(colore, alpha, seme, alto, sole) + meteoNuvolaRaggioSprite(r);
 }
 
-function meteoNuvolaSpriteVicino(prefisso) {
-  for (const [chiave, sprite] of meteoNuvoleSprite) {
-    if (chiave.startsWith(prefisso)) return sprite;
-  }
-  return null;
-}
+// Fin dove una tela già pronta si può riscalare invece di rifarla. Una nuvola
+// è sfocata di suo: raddoppiarla o dimezzarla non si vede, e il conto dice
+// che conviene parecchio — rasterizzare una sagoma vuol dire mezza dozzina di
+// sfocature, ed è la parte cara di tutto il modulo. Misurato pizzicando da 60°
+// a 25° in un secondo: ricostruendo a ogni gradino il fotogramma peggiore
+// costava **20 ms**, riscalando ne costa meno di tre.
+const METEO_NUVOLE_RISCALA_MIN = 0.5, METEO_NUVOLE_RISCALA_MAX = 2.05;
 
 // Un banco ha una massa continua, una base fredda e piatta, torri illuminate
 // dal lato del cielo e veli semitrasparenti ai margini. Tre passate della stessa
@@ -510,7 +899,7 @@ function meteoRenderBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illum
 // scale diverse suggeriscono le celle e le profondità senza ricorrere a onde o
 // icone ripetute. Copertura, pioggia, luce, luogo, ora e vento vengono tutti
 // dalla previsione interpolata, quindi il risultato cambia assieme al meteo.
-function meteoDipingiCieloCoperto(ctx, n, luce, seme, deriva, verso) {
+function meteoDipingiCieloCoperto(ctx, n, luce, seme, scorri) {
   const cop = Math.max(0, Math.min(100, isFinite(n.totale) ? n.totale : 0));
   if (cop < 38) return;
 
@@ -523,10 +912,17 @@ function meteoDipingiCieloCoperto(ctx, n, luce, seme, deriva, verso) {
   ctx.fillStyle = `rgba(${Math.round(chiaro)},${Math.round(chiaro + 5)},${Math.round(chiaro + 11)},${opacita})`;
   ctx.fillRect(0, 0, sky.larghezza, sky.altezza);
 
-  const caso = meteoNuvolaCaso(seme * 811 + Math.floor((n.faseOra || 0) * 12));
-  const radVento = verso * Math.PI / 180;
-  const scorreX = Math.cos(radVento) * deriva * 9;
-  const scorreY = Math.sin(radVento) * deriva * 4;
+  // Il seme era `seme·811 + floor(faseOra·12)`, cioè **cambiava dodici volte
+  // l'ora**: ogni cinque minuti tutte le macchie del soffitto si
+  // teletrasportavano insieme. Adesso il soffitto è sempre lo stesso e a
+  // muoversi è soltanto la sua fase (`meteoScorriSoffitto`).
+  const caso = meteoNuvolaCaso(seme * 811 + 17);
+  const scorreX = scorri && isFinite(scorri.x) ? scorri.x : 0;
+  const scorreY = scorri && isFinite(scorri.y) ? scorri.y : 0;
+  // Il resto di JavaScript tiene il segno del dividendo: con una deriva che
+  // può andare in tutte e quattro le direzioni, `%` da solo sputa fuori
+  // macchie a coordinate negative, cioè un buco su un lato dello schermo.
+  const giro = (v, m) => ((v % m) + m) % m;
   // Poche celle molto larghe leggono come un unico sistema nuvoloso. Tante
   // macchie minute, anche se sfumate, facevano invece sembrare il soffitto un
   // motivo decorativo e lasciavano intuire i singoli elementi del pennello.
@@ -534,10 +930,10 @@ function meteoDipingiCieloCoperto(ctx, n, luce, seme, deriva, verso) {
   for (let i = 0; i < quanti; i++) {
     const margineX = Math.max(260, sky.larghezza * .24);
     const margineY = Math.max(190, sky.altezza * .24);
-    const x = ((caso() * (sky.larghezza + margineX * 2) + scorreX) %
-      (sky.larghezza + margineX * 2)) - margineX;
-    const y = ((caso() * (sky.altezza + margineY * 2) + scorreY) %
-      (sky.altezza + margineY * 2)) - margineY;
+    const x = giro(caso() * (sky.larghezza + margineX * 2) + scorreX,
+      sky.larghezza + margineX * 2) - margineX;
+    const y = giro(caso() * (sky.altezza + margineY * 2) + scorreY,
+      sky.altezza + margineY * 2) - margineY;
     const r = Math.max(150, Math.min(sky.larghezza, sky.altezza) * (.25 + caso() * .27));
     const scura = caso() < .62;
     const tono = scura ? Math.max(28, chiaro - 68 - caso() * 32) : Math.min(246, chiaro + 34);
@@ -553,10 +949,33 @@ function meteoDipingiCieloCoperto(ctx, n, luce, seme, deriva, verso) {
   ctx.restore();
 }
 
-function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illuminazione) {
+// `velo` è quanto questo banco è sbiadito **adesso** — la foschia
+// dell'orizzonte, il taglio del tetto. Non entra nella chiave e non si
+// dipinge dentro allo sprite di proposito: è l'unica cosa che cambia con
+// continuità mentre il banco scorre, e cotta nella sagoma costringerebbe a
+// rasterizzarne una nuova a ogni fotogramma.
+function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illuminazione, velo) {
+  const opacita = velo === undefined ? 1 : velo;
+  if (opacita <= 0.01) return;
   const sole = illuminazione || { dx: -.65, dy: -.76, forza: .35, calda: 0 };
-  const chiave = meteoNuvolaChiaveSprite(r, colore, alpha, seme, alto, sole);
+  const prefisso = meteoNuvolaPrefissoSprite(colore, alpha, seme, alto);
+  const luce = meteoNuvolaPrefissoLuce(colore, alpha, seme, alto, sole);
+  const chiave = luce + meteoNuvolaRaggioSprite(r);
   let sprite = meteoNuvoleSprite.get(chiave);
+  if (!sprite) {
+    // Stessa nube, stessa luce, un altro gradino di raggio: si riscala. È la
+    // riga che tiene a terra il costo di una pizzicata, dove ogni banco
+    // attraversa la scala dei raggi in un secondo.
+    const vicino = meteoNuvoleLuce.get(luce);
+    if (vicino && r / vicino.rq >= METEO_NUVOLE_RISCALA_MIN &&
+        r / vicino.rq <= METEO_NUVOLE_RISCALA_MAX) sprite = vicino;
+  }
+  if (sprite) {
+    // La riga che rende LRU la cache qui sopra: riusare vuol dire tornare in
+    // coda, e chi resta in testa è chi nessuno guarda più da un pezzo.
+    meteoNuvoleSprite.delete(sprite.chiave);
+    meteoNuvoleSprite.set(sprite.chiave, sprite);
+  }
 
   if (!sprite) {
     // Non rasterizziamo cinquanta blur nello stesso frame quando si apre il
@@ -566,12 +985,17 @@ function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illu
     // la precisione usando la variante dettagliata illuminata dal settore
     // precedente finché quella nuova non è pronta.
     if (meteoNuvoleSpriteNuovi >= METEO_NUVOLE_SPRITE_NUOVI_FRAME) {
-      sprite = meteoNuvolaSpriteVicino(meteoNuvolaPrefissoSprite(r, colore, alpha, seme, alto));
+      // La luce è cambiata settore e la sagoma giusta non c'è ancora: si
+      // mostra quella di prima, che è la stessa nube illuminata da un attimo
+      // fa. Tornare qui alla sagoma economica faceva perdere definizione a
+      // tutto il cielo a ogni movimento della camera.
+      sprite = meteoNuvoleNube.get(prefisso) || null;
       if (!sprite) {
         // Solo al primissimo caricamento non esiste ancora una versione
         // precisa da riusare: questa sagoma evita di bloccare il telefono.
         const caso = meteoNuvolaCaso(seme);
         ctx.save();
+        ctx.globalAlpha = opacita;
         ctx.translate(x, y);
         ctx.rotate((caso() - .5) * (alto ? .34 : .16));
         ctx.fillStyle = `rgba(${colore},${alpha * (alto ? .28 : .62)})`;
@@ -589,27 +1013,41 @@ function meteoDipingiBancoNuvoloso(ctx, x, y, r, colore, alpha, seme, alto, illu
       const sctx = canvas.getContext('2d', { alpha: true });
       const ax = larghezza / 2, ay = altezza * .54;
       meteoRenderBancoNuvoloso(sctx, ax, ay, rq, colore, alpha, seme, alto, sole);
-      sprite = { canvas, rq, ax, ay, larghezza, altezza, pixel: larghezza * altezza };
+      sprite = { canvas, rq, ax, ay, larghezza, altezza, pixel: larghezza * altezza,
+        chiave, prefisso, luce };
       meteoNuvoleSprite.set(chiave, sprite);
+      meteoNuvoleLuce.set(luce, sprite);
+      meteoNuvoleNube.set(prefisso, sprite);
       meteoNuvoleSpritePixel += sprite.pixel;
 
-      // FIFO intenzionale: ogni banco torna a essere usato a ogni frame, quindi
-      // una LRU richiederebbe delete/set continui. Sessantaquattro posti coprono
-      // anche un cielo interamente nuvoloso senza ricreazioni cicliche; il tetto
-      // mantiene comunque prevedibile la memoria dopo lunghi viaggi.
+      // Era una FIFO, e lo era per una ragione scritta: con sessantaquattro
+      // posti tutti usati a ogni fotogramma una LRU sarebbe stata delete/set
+      // continui e nient'altro. Da quando i banchi sono decine e ognuno
+      // attraversa i gradini del raggio, però, le chiavi possibili sono
+      // centinaia e quelle vive sono poche: buttare **la più vecchia** vuol
+      // dire buttare proprio quella che si sta usando da più tempo. Adesso è
+      // una LRU vera — la riga qui sopra, in fondo alla funzione, rimette in
+      // coda ogni sprite che viene riusato — e a bloccare la memoria resta il
+      // tetto in pixel, che è quello che conta davvero.
       while (meteoNuvoleSprite.size > METEO_NUVOLE_SPRITE_MAX ||
              meteoNuvoleSpritePixel > METEO_NUVOLE_SPRITE_PIXEL_MAX) {
         const primaChiave = meteoNuvoleSprite.keys().next().value;
         const prima = meteoNuvoleSprite.get(primaChiave);
+        if (!prima) break;
         meteoNuvoleSpritePixel -= prima.pixel;
         meteoNuvoleSprite.delete(primaChiave);
+        if (meteoNuvoleLuce.get(prima.luce) === prima) meteoNuvoleLuce.delete(prima.luce);
+        if (meteoNuvoleNube.get(prima.prefisso) === prima) meteoNuvoleNube.delete(prima.prefisso);
       }
     }
   }
 
   const scala = r / sprite.rq;
+  const prima = ctx.globalAlpha;
+  if (opacita < 1) ctx.globalAlpha = prima * opacita;
   ctx.drawImage(sprite.canvas, x - sprite.ax * scala, y - sprite.ay * scala,
     sprite.larghezza * scala, sprite.altezza * scala);
+  ctx.globalAlpha = prima;
 }
 
 function meteoDisegnaNuvole(ctx, base, focale, aria) {
@@ -627,11 +1065,8 @@ function meteoDisegnaNuvole(ctx, base, focale, aria) {
     meteoCaricaNuvoleCielo();
   }
   // Per casa riusiamo subito i dati già scaricati dalla scheda Stasera.
-  if (!dati && meteoAstro && Math.abs(meteoAstro.lat - luogo.lat) < 0.3 && Math.abs(meteoAstro.lon - luogo.lon) < 0.3) {
-    dati = { ore: meteoAstro.ore.map(o => ({ ms: o.ms, totale: o.nuvole,
-      basse: o.nuvoleBasse, medie: o.nuvoleMedie, alte: o.nuvoleAlte,
-      vento: o.vento, ventoDa: o.ventoDa, pioggia: o.pioggia })) };
-  }
+  if (!dati) dati = meteoNuvoleDiRipiego(luogo);
+
   const adesso = typeof skyAdesso === 'function' ? skyAdesso().getTime() : Date.now();
   const n = meteoNuvoleAllOra(dati, adesso);
   meteoAggiornaAvvisoNuvole(dati, luogo, adesso);
@@ -655,36 +1090,29 @@ function meteoDisegnaNuvole(ctx, base, focale, aria) {
       calda: Math.max(0, Math.min(1, (14 - sole.alt) / 18))
     };
   }
+
+  // Gli strati vanno disegnati dall'alto in basso: un cumulo passa **davanti**
+  // al cirro che gli sta nove chilometri più su, non dietro.
   const strati = [
-    // I passi larghi limitano ogni strato a pochi banchi. La scala maggiore
-    // conserva la copertura prevista attraverso masse estese, non sommando
-    // una folla di nuvolette tutte uguali.
-    { cop: n.alte, alt: 64, passo: 48, scala: 1.72, alpha: 0.24 },
-    { cop: n.medie, alt: 42, passo: 42, scala: 1.48, alpha: 0.34 },
-    { cop: n.basse, alt: 24, passo: 36, scala: 1.28, alpha: 0.48 }
+    { nome: 'alte', cop: n.alte, alpha: 0.24, alto: true },
+    { nome: 'medie', cop: n.medie, alpha: 0.34, alto: false },
+    { nome: 'basse', cop: n.basse, alpha: 0.48, alto: false }
   ];
   const seme = Math.round(luogo.lat * 37 + luogo.lon * 71);
-  const deriva = (isFinite(n.vento) ? n.vento : 8) * n.faseOra * 0.34;
-  const verso = isFinite(n.ventoDa) ? n.ventoDa + 180 : 90;
+  const colore = luce > 0.18 ? (n.pioggia > 55 ? '130,139,150' : '226,232,238') : '126,139,160';
 
   ctx.save();
-  meteoDipingiCieloCoperto(ctx, n, luce, seme, deriva, verso);
-  strati.forEach((s, livello) => {
-    const cop = Math.max(0, Math.min(100, isFinite(s.cop) ? s.cop : n.totale));
+  meteoDipingiCieloCoperto(ctx, n, luce, seme,
+    meteoScorriSoffitto(adesso, base, focale, meteoVentoDiStrato(n, 'basse')));
+  strati.forEach((st, livello) => {
+    const cop = Math.max(0, Math.min(100, isFinite(st.cop) ? st.cop : n.totale));
     if (cop < 4) return;
-    const quanti = Math.ceil(360 / s.passo);
-    for (let i = 0; i < quanti; i++) {
-      const rumore = Math.sin((i + 1) * 12.9898 + seme * 0.017 + livello * 4.1);
-      if (((rumore + 1) * 50) > cop + 24) continue;
-      const az = (i * s.passo + seme + deriva * Math.sin((verso - i * s.passo) * Math.PI / 180) + 720) % 360;
-      const alt = Math.max(5, Math.min(82, s.alt + 15 * Math.sin(i * 2.17 + seme)));
-      const p = skyProietta(skyVettore(az, alt), base, focale);
-      if (!p.davanti || p.px < -300 || p.px > sky.larghezza + 300 || p.py < -180 || p.py > sky.altezza + 180) continue;
-      const r = Math.max(58, focale * (0.16 + cop / 720) * s.scala);
-      const colore = luce > 0.18 ? (n.pioggia > 55 ? '130,139,150' : '226,232,238') : '126,139,160';
-      meteoDipingiBancoNuvoloso(ctx, p.px, p.py, r, colore,
-        Math.min(.82, s.alpha + cop / 280), seme * 101 + livello * 1009 + i * 7919,
-        livello === 0, illuminazione);
+    const alpha = Math.min(.82, st.alpha + cop / 280);
+    const banchi = meteoBanchiVisibili(st.nome, livello, cop, seme,
+      meteoNuvoleSpostamento(dati, n, st.nome), base, focale);
+    for (const b of banchi) {
+      meteoDipingiBancoNuvoloso(ctx, b.px, b.py, b.r, colore, alpha,
+        b.seme, st.alto, illuminazione, b.velo);
     }
   });
   ctx.restore();

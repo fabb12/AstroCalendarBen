@@ -43,7 +43,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `miglior-posto.js` | ~200 | **Dove osservare un evento**: confronta 37 punti entro il raggio scelto, misura la cresta del terreno verso l'astro e propone una shortlist su mappa. Prefisso `posto`. |
 | `terreno.js` | ~5.500 | **La forma vera del terreno attorno a casa**: quote del suolo da Open-Meteo (con due servizi di riserva quando è carico), orizzonte per ogni direzione (**ripulito dagli spilli**: i due filtri sugli anelli vicini, §5), che paesaggio c'è (mare/pianura/collina/montagna), le **luci dei paesi veri**, i **nomi delle montagne** che ci spuntano sopra e **i laghi e i fiumi** (dove sono e a che distanza, tagliati raggio per raggio), tutt'e tre da OpenStreetMap, più **fin dove cercarli** (i tre raggi delle Impostazioni), la **barra che dice a che punto è** (§9-ter) e **cosa cambia col GPS acceso in macchina** (§6-bis: la velocità, il punto vivo, il profilo che non si butta più a ogni tratto di strada). Prefissi `terreno`, `citta`, `cime`, `acque` e `raggi`. |
 | `rilievo.js` | ~2.900 | **La forma vera del terreno, non la sua sagoma**: una superficie a 720 direzioni × 106 anelli, con le quote prese a **tessere raster** (un PNG in cui ogni pixel è una quota, 27 m di passo entro 5 km) invece che a punti. Si disegna con una camminata sola per raggio, che dà insieme l'ombreggiatura, la sagoma, i contorni e il **fondo a fette di distanza**. Sopra a quel fondo vanno due veli, e sono le due cose che fanno sembrare una montagna una montagna: il **colore della quota** (bosco, pascolo, roccia, neve — le fasce agganciate alla linea della neve di qui e di questa stagione, con la **granatura** delle macchie di bosco e di ghiaione) e il **velo dell'aria**, cioè la prospettiva aerea, che è quello per cui una cresta si riconosce lontana. È lei a far vedere la valle che scende e il solco del fiume, che una cresta accumulata non può dire. E in movimento è lei la **camera che cammina** (§8-bis): la maglia si trasla a ogni fotogramma e la quota dell'occhio insegue il suolo sotto i piedi. Prefisso `ril`. |
-| `meteo-astro.js` | ~515 | **Meteo da astronomo**: seeing, trasparenza, griglia Clear Sky Chart, avviso di aurora. Prefisso `meteo`/`aurora`. |
+| `meteo-astro.js` | ~1.140 | **Meteo da astronomo**: seeing, trasparenza, griglia Clear Sky Chart, avviso di aurora, e **le nuvole del planetario** — quante, a che quota, e **dove le porta il vento**: uno strato è un lenzuolo orizzontale alla sua quota, un banco è un punto di quel lenzuolo, e il vento trasla il lenzuolo. Da lì viene da sé quello che si riconosce guardando in su — un banco spunta dall'orizzonte da cui tira il vento, sale, **accelera** passando sopra la testa e tramonta dall'altra parte —, e i cirri corrono più veloci dei cumuli perché il vento a 250 hPa è un dato, non un fattore. Prefisso `meteo`/`aurora`. |
 | `aerei.js` | ~2.060 | **Gli aerei ADS-B nel planetario**: il traffico vero entro il raggio scelto, disegnato in cielo e colorato per **fascia di distanza** (rosso entro 10 km, poi arancio, giallo, azzurro). Il trasporto ha tre gradini, in quest'ordine: il **proxy proprio** se `ADSB_PROXY_URL` è configurato (il più solido), le **quattro reti dirette** (che da un browser non funzionano mai — non mandano il CORS, misurato tutte e quattro — ma costano trenta millisecondi e un giorno potrebbero cambiare politica), e i **ponti CORS pubblici** (`PONTI_CORS`: due, e nessuna rete dipende da un ponte solo), che sono l'unica strada che funziona **senza aver distribuito niente** — ma è un prestito, non una garanzia: `corsproxy.io` è stato tolto perché risponde 401 a chi non ha una chiave, e il giorno in cui cadono anche gli altri due l'app non ha nessuna strada (vedi «Quando cadono anche i ponti» in `ADSB-PROXY.md`). La pagella salvata misura quale combinazione funziona da qui. I ponti passano **senza** il service worker in mezzo (`SERVIZI_ADSB` in `sw.js`), come le reti dirette: il ripiego generico trasformava il loro guasto in un `504` che nessun server aveva mandato, e teneva viva la richiesta di chi la corsa aveva già abortito. I **dati** nascono accesi e il **disegno** spento: sono due interruttori, non uno. E **muoversi non è cambiare cielo** (§4-bis): col GPS acceso l'osservatore si sposta ogni centocinquanta metri, e quel passo non butta più niente — la fotografia si tiene, le coordinate si rifanno dal punto di adesso, e si riscarica solo oltre una **tolleranza** (una frazione del raggio) e mai prima di mezzo minuto. Ogni lettura si **somma** alla precedente invece di sostituirla: se i dati arrivano di rado, quando arrivano vanno sfruttati fino in fondo. Prefisso `aerei`. |
 | `transiti.js` | ~1.010 | **Chi passa davanti a chi**: quando un aereo o una stazione spaziale attraversano il disco del Sole o della Luna, e fra quanto. La lezione del file in una riga: **un transito non si trova campionando** — dura fra un decimo di secondo e un secondo e mezzo, e sei campioni al minuto non lo prendono mai. Si cammina lungo la traiettoria a **passo angolare** (§3: il costo è i gradi percorsi, non i minuti passati), si **incastra** il minimo fra due campioni e da lì lo si raffina con una sezione aurea fino al millisecondo (§4). Gli astri si campionano una volta e si interpolano (§5). E le due incertezze si dichiarano, perché sono di due mondi diversi: un TLE di ieri sbaglia di un decimo di secondo, l'estrapolazione di un aereo a cinque minuti sbaglia di **gradi** (§6 e §7). Il conto sta fuori dal fotogramma, a scaglioni (§8). Prefisso `tran`. |
 | `visione.js` | ~1.100 | **Il motore di vista della realtà aumentata**: riconoscere nel fotogramma della fotocamera gli oggetti che il cielo calcolato dice che ci sono, e incollarci sopra il disegno. Tre errori diversi, tre stime diverse — l'**assetto** (la bussola sbaglia, e nessun sensore lo può sapere), l'**obiettivo** (quanto riprenda non lo dice nessuno, e si tara guardando) e l'**oggetto** (un aereo ADS-B non è dove il feed dice: la propagazione di una lettura vecchia di tre secondi, da vicino, vale nove gradi). Si rilevano le macchie col loro **segno** (di giorno un aereo è una sagoma scura, e chi cerca solo il chiaro non lo trova mai), si associano ai candidati con un cancello che si stringe man mano che ci si fida, e da lì esce una rotazione del **mondo** — non la posizione di un'etichetta. È quella la riga che fa restare tutto allineato mentre si gira il telefono: **il giroscopio dà il movimento, la vista dà la mira**. Prefisso `vis`. |
@@ -67,7 +67,7 @@ domande: *cosa succede in cielo*, *si vede da casa mia*, *dove devo guardare*,
 | `scripts/costruisci-tailwind.js` | ~70 | Genera `tailwind.css`. Si lancia a mano quando si aggiunge una classe Tailwind nuova, non serve all'app. |
 | `style.css` | ~9.380 | Tema "Deep Space" + impaginazione responsive. |
 | `tailwind.css` | ~600 | **Generato**, non si tocca a mano: le sole utility di Tailwind che l'app usa davvero, compilate una volta. Ha preso il posto di `cdn.tailwindcss.com`, che era il **compilatore** — mezzo megabyte di JavaScript che a ogni apertura rileggeva il DOM per riscrivere questo stesso CSS, e che nella console lo diceva a ogni apertura. Va caricato **prima** di `style.css`. |
-| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v303`). |
+| `sw.js` | ~170 | Service worker. `CACHE_NAME` va incrementato a ogni rilascio (oggi `astrocal-v304`). |
 | `manifest.json` | 33 | Manifesto PWA. |
 | `icon-*.png`, `apple-touch-icon.png` | | Icone. |
 | `.github/workflows/pubblica.yml` | ~110 | **Il deploy su GitHub Pages.** Non fa build: copia i file, controlla che ci siano tutti, pubblica. Si può rilanciare a mano. |
@@ -423,7 +423,7 @@ Il backup JSON (sezione 16) esporta e reimporta esattamente questo insieme.
 
 - **Non c'è build.** Si modificano i file e si aprono nel browser.
 - **Dopo ogni modifica ai file dell'app, incrementa `CACHE_NAME` in `sw.js`**
-  (oggi `astrocal-v303`): senza questo, chi ha già installato la PWA continua a
+  (oggi `astrocal-v304`): senza questo, chi ha già installato la PWA continua a
   vedere la versione vecchia.
 - **Se hai aggiunto del testo che si legge**, la frase va nei due dizionari e
   non nel codice: `node scripts/controlla-i18n.js --patto` lo controlla, e
@@ -918,6 +918,58 @@ l'**ambiguità**, il **cancello** che si stringe con la fiducia, la taglia come
 secondo segnale, la **focale** ritrovata dal rapporto fra due distanze e le
 rotazioni che restano ortogonali dopo mille composizioni.
 
+**§33** guarda il movimento delle nuvole, ed è la famiglia che a occhio non
+si giudica affatto per una ragione che vale la pena scrivere: **un cielo che
+scorre sembra giusto comunque.** Nessuno, guardando il planetario, dice
+«queste nuvole vanno dalla parte sbagliata» — dice «si muovono». Un segno
+invertito nella convenzione di `ventoDa` fa scorrere tutto il cielo
+esattamente al contrario e produce la stessa identica impressione; una
+direzione interpolata come se fosse un numero manda il vento a 180° dal vero
+due ore su ventiquattro, e in quelle due ore il cielo è ancora un cielo che
+scorre. Si controllano: la **convenzione** (vento da nord, nuvole a sud), che
+i chilometri orari della previsione diventino metri al secondo, che il vento
+cresca con la quota e che col getto la velocità dei cirri sia quella misurata
+e non un fattore inventato, che lo scarto in quota faccia correre i cirri di
+traverso ai cumuli e che un getto assurdo si tosi. Poi il **contro-esempio**
+degli angoli, scritto in chiaro: a mezz'ora fra 350° e 10° il vento viene da
+nord, mentre la media aritmetica manderebbe le nuvole dalla parte opposta.
+Poi il **cammino**: che con vento costante sia esattamente velocità per tempo
+(il trapezio, lì, è esatto), che non faccia **nessun salto allo scoccare
+dell'ora** — con il contro-esempio della regola di prima, che tornava indietro
+di un'ora intera —, che abbia memoria (il vento di stanotte non sposta le
+nuvole di ieri) e che fuori dalla previsione non si inventi niente. Poi la
+**prospettiva**, che è la sola cosa che distingua un cielo che scorre da un
+cielo che passa sopra la testa: che allo zenit un banco corra cinquanta volte
+più che all'orizzonte, e che quel numero sia esattamente `1/sen²` dell'altezza
+e non una costante scelta; e la traversata intera — entra dall'orizzonte da
+cui tira il vento, sale fino a passare quasi sopra la testa, scende senza
+risalire, tramonta dalla parte opposta, e ci mette un quarto d'ora scarso, che
+è un numero che si può controllare contro il mondo. Poi il **campo**: che lo
+stesso istante disegni lo stesso cielo (il planetario ridisegna decine di
+volte al secondo, e un campo che si risorteggia sarebbe un brulichio), che in
+ventiquattro ore di vento il cielo non si svuoti né si affolli — è la
+**stazionarietà**, cioè la ragione per cui i banchi stanno su un reticolo e
+non sono una manciata traslata —, che per quattro minuti un banco resti lo
+stesso banco e che quando esce di scena si sia già spento invece di fare un
+lampo, che un banco sopra la testa sia molto più grande di uno all'orizzonte,
+e che più copertura voglia dire più banchi e non banchi più grossi. Poi il
+**soffitto**: che sottovento si allontani e controvento venga addosso, che di
+traverso scorra di lato e non in profondità, che al primo fotogramma stia
+fermo e che un salto di un anno non lo mandi all'infinito. E in coda gli
+**sprite**, che adesso cambiano raggio mentre il banco scorre: che due raggi
+della stessa nube condividano il prefisso, che i gradini siano pochi e
+geometrici, e che la banda di riscalamento ne copra più di uno — se no non
+serve a niente, ed è la riga che porta il fotogramma peggiore di una pizzicata
+da venti millisecondi a meno di sette.
+
+Da sapere prima di aggiungere prove qui, ed è la trappola di sempre in
+un'altra veste: fino a poco fa **dal §26 in giù non girava niente**. Il §25
+usa `SKY_FOV_MAX`, che sta in `app.js` e che questa pagina non carica: il
+`ReferenceError`, in uno `<script>` unico, si portava via §26, §27, §28, §29,
+§30, §31 e §32 interi — quattrocentocinquanta prove che non fallivano,
+semplicemente non comparivano. Adesso i due estremi del campo stanno fra gli
+stub in cima accanto a `skyProietta`, con lo stesso avvertimento.
+
 ### Missione Cielo — `scripts/prova-missione.js`
 
 ```
@@ -1082,6 +1134,37 @@ l'ha), quindi la ricerca per identificativo non trovava niente e un tocco
 sostituiva la tappa **dopo** aver letto l'indizio di riferimento, cioè
 confrontava due bersagli diversi. Adesso la sostituzione si fa prima.
 
+### Il costo delle nuvole — `scripts/prova-nuvole.js`
+
+```
+npm install playwright-core astronomy-engine
+node scripts/prova-nuvole.js
+```
+
+Il §33 di `verifica.html` dice che le nuvole vanno **dove devono andare**;
+questo dice che ci vanno **senza far arrancare il planetario**, ed è una
+domanda che si può fare solo a un browser vero, con un canvas vero e la cache
+degli sprite che si riempie davvero.
+
+Esiste per un difetto che nessun'altra prova di questo progetto poteva
+prendere. Da quando i banchi stanno su un piano e il vento li porta sono il
+triplo di prima e **cambiano misura mentre si avvicinano**: al primo tentativo
+la cache sfondava il suo tetto in pixel e ricostruiva due sagome sfocate a
+ogni fotogramma. Misurato: **24,7 ms per fotogramma** contro gli 0,07 di
+prima, cioè trecentocinquanta volte tanto — e sullo schermo di chi l'ha
+scritto non si vedeva niente, perché il difetto non è un pixel storto ma un
+cielo che va a quindici fotogrammi al secondo su un telefono.
+
+Si misurano il **regime** a quattro aperture di campo (con la cache svuotata e
+riscaldata ogni volta: si vuole il regime, non il primo arrivo) e il
+**transitorio** di una pizzicata da 60° a 25° in un secondo, che è il momento
+in cui ogni banco attraversa i gradini del raggio. Oggi: da 0,18 a 0,33 ms a
+cielo fermo, 0,55 ms di media mentre si pizzica, 6,8 ms nel fotogramma
+peggiore. Da sapere prima di leggere i numeri: qui il disegno è a software
+(niente GPU), quindi i millisecondi assoluti sono molto più alti che su un
+telefono — quello che conta è il **rapporto**, fra prima e dopo e fra il
+regime e il transitorio.
+
 ### I transiti in un browser vero — `scripts/prova-transiti.js`
 
 ```
@@ -1144,6 +1227,11 @@ sta il confronto fra gli ottanta slug e le due lingue. Se hai toccato il
 **tocco sul canvas** o gli **aiuti**, servono gli altri due banchi:
 `node scripts/prova-missione-stati.js` (senza browser, effemeridi vere) e
 `node scripts/prova-missione-interattiva.js` (in un Chromium).
+
+Se tocchi **le nuvole del planetario** (`meteo-astro.js` §2-bis e §2-ter)
+passa da `node scripts/prova-nuvole.js`, che è l'unica prova che sappia dire
+se il planetario continua ad andare a sessanta fotogrammi al secondo — e da
+`verifica.html` §33, che dice se le nuvole vanno dove devono.
 
 Se tocchi qualcosa in `catalogo.js`, `costellazioni.js`, `corpi-minori.js`,
 `terreno.js`, `rilievo.js` (**il colore delle montagne e il velo dell'aria**
@@ -1675,6 +1763,13 @@ le comete no. Vale la pena riprenderli a ogni rilascio importante.
 | Quanto spazio lascia la barra di navigazione in fondo | `--barra-inferiore` in `style.css`: `calc(61px + env(safe-area-inset-bottom))` sotto i 1180px, `calc(63px + env(...))` sotto i 480 (lì i nomi vanno su due righe), `calc(48px + env(...))` col telefono girato. È la misura vera della barra, tacca del pollice compresa — se si cambia il `min-height` di `.voce-menu` o il suo `padding`, va rifatta anche qui |
 | Le voci della barra in fondo si scavalcano su uno schermo stretto | Sette voci in 320 pixel fanno 44 pixel a testa e "Telescopio" ne chiede 50: senza un posto in cui andare a capo le scritte si stampavano una sopra l'altra. I nomi lunghi hanno un trattino morbido (`&shy;`) in `index.html` — `Plane&shy;tario`, `Tele&shy;scopio`, `Didat&shy;tica` — e sotto i 480px `.voce-menu-testo` riserva due righe a **tutte** le voci, allineate in alto: è l'unico modo di tenere le sette icone in fila. Il `white-space: nowrap` della testata lì diventa `normal`, se no il nome esce dalla sua casella comunque |
 | Seeing, trasparenza, griglia oraria del meteo | `meteo-astro.js`: `meteoSeeing()` (viene dal vento a 250 hPa, la corrente a getto), `meteoTrasparenza()` (dagli aerosol), `meteoGrigliaHtml()` per la griglia stile Clear Sky Chart |
+| **Le nuvole del planetario, e il vento che le porta** | `meteo-astro.js` §2-bis (la previsione, l'interpolazione, il disegno) e §**2-ter** (il movimento), prefisso `meteo`. Tasto `#skymap-btn-nuvole` nella scheda **Cielo**. Il modello sta in una riga: uno strato è un **lenzuolo orizzontale** alla sua quota (`METEO_NUVOLE_QUOTA_M`: 1.400, 4.500, 9.000 m), un banco è un punto di quel lenzuolo, il vento trasla il lenzuolo. Quello che ne viene non è un effetto aggiunto, è la **prospettiva**: la velocità angolare è `v/distanza`, e la distanza allo zenit è la sola quota mentre a otto gradi sull'orizzonte è sette volte tanto — così un banco spunta dall'orizzonte da cui tira il vento, sale, accelera passando sopra la testa, rallenta scendendo e tramonta. Una nuvola bassa attraversa il cielo in un quarto d'ora, misurato. Prove nel §33 di `verifica.html` e in `scripts/prova-nuvole.js` |
+| **Le nuvole scorrevano per un'ora e poi tornavano indietro** | era `vento · faseOra` (`faseOra` è la frazione dell'ora), cioè un **dente di sega**: allo scoccare di ogni ora lo spostamento tornava a zero e tutto il cielo faceva un salto all'indietro. Da fermi capita una volta ogni sessanta minuti e non lo nota nessuno; con la macchina del tempo in marcia è un sobbalzo al secondo, e somiglia a un difetto del disegno invece che a una formula. Adesso lo spostamento è l'**integrale** del vento sulla serie oraria (`meteoNuvoleCammino`, col trapezio — che per un vento interpolato linearmente fra un'ora e l'altra è esatto, non approssimato) più il pezzo di ora cominciata (`meteoNuvoleSpostamento`): continuo per costruzione allo scoccare, e con la memoria di dov'è stato — cambiare il vento di stanotte non sposta all'indietro le nuvole di ieri, che è invece quello che farebbe «vento di adesso per il tempo passato». Il cammino è ancorato alla **prima ora della previsione**: una previsione nuova è un cielo nuovo, ma dentro a una il tempo scorre continuo |
+| **Il soffitto di un cielo coperto si teletrasportava ogni cinque minuti** | il seme di `meteoDipingiCieloCoperto` era `seme·811 + floor(faseOra·12)`, cioè **cambiava dodici volte l'ora**: tutte le macchie del soffitto saltavano altrove insieme. Adesso il soffitto è sempre lo stesso e a muoversi è la sua fase (`meteoScorriSoffitto`). Il soffitto resta disegnato in coordinate di schermo — è una zuppa, non degli oggetti — ma quello che di un soffitto si legge, cioè **da che parte scorre**, adesso è vero: si prende il punto di soffitto che si sta guardando, lo si sposta di un secondo di vento e si guarda di quanti pixel si è mosso. Guardando sottovento si allontana e scende, controvento viene addosso e sale, di traverso scorre di lato. La fase si **accumula fotogramma per fotogramma** come la grana del terreno, e per la stessa ragione: «velocità × tempo trascorso» salterebbe di colpo a ogni pizzicata. Il passo è quello dell'**ora mostrata** e non dell'orologio da polso, se no col playback a un'ora al secondo il soffitto starebbe fermo. Trappola trovata misurando: `isFinite(null)` vale **true** (`Number(null)` è zero), quindi la guardia del primo fotogramma non guardava niente e il soffitto partiva già spostato di un'ora |
+| **I cirri vanno più veloci dei cumuli** (e di traverso) | `meteoVentoDiStrato` in §2-ter. Non è una scelta grafica: il vento cresce con la quota. La previsione dà il vento a dieci metri **e quello a 250 hPa** — la corrente a getto, che il modulo chiedeva già per il seeing e che sta a una decina di chilometri, cioè proprio alla quota dei cirri: per lo strato alto quella velocità non è una stima, è una misura. La richiesta adesso chiede anche `wind_direction_250hPa`, ed è quel campo a dare la cosa che più di tutte dice «questo cielo è vero», cioè i cirri che corrono in una direzione mentre i cumuli sotto vanno in un'altra. **Velocità e direzione si interpolano a parte**, e non come un vettore solo: sommare i due vettori pesati è elegante e con due venti paragonabili funziona, ma con un getto dieci volte più forte del vento al suolo il suo contributo è già più lungo del vettore di partenza al tredici per cento della quota — e i cumuli si ritrovano a seguire la direzione del getto invece della loro. La direzione si gira **per l'arco corto**; la stessa trappola vale nell'interpolazione oraria (`mixAngolo` in `meteoNuvoleAllOra`), dove la media aritmetica fra 350° e 10° dà **180°**, cioè il vento esattamente al contrario — e non lo si vede mai, perché un cielo che scorre al rovescio è un cielo che scorre. Senza il dato del getto restano i fattori di `METEO_NUVOLE_FATTORE_VENTO` |
+| **Dove stanno i banchi** (e perché non una manciata traslata) | `meteoBanchiVisibili` in §2-ter. Il reticolo è **infinito e solidale al vento**: si guarda quali celle cadono adesso dentro al disco visibile, ed entrano da monte ed escono da valle. Sorteggiare una manciata di banchi una volta sola e poi traslarli tutti insieme darebbe un cielo che si svuota da un lato e si affolla dall'altro, perché l'unica distribuzione che una traslazione non cambia è quella **uniforme sul piano**. Uniforme sul piano vuol dire pochi banchi grandi sopra la testa e molti piccoli verso l'orizzonte, che a occhio sembra uno squilibrio ed è invece quello che si vede davvero: è la ragione per cui un cielo rotto è rotto allo zenit e chiuso in fondo. Il seme della cella viene dai suoi **indici nel reticolo del vento**, quindi un banco nasce con la sua sagoma e se la tiene per tutta la traversata — con un reticolo solidale al suolo la stessa cella si passerebbe le nuvole di mano in mano |
+| **Quanti banchi, quanto grandi** (il bilancio, non tre gusti) | `METEO_NUVOLE_PASSO`, `METEO_NUVOLE_RAGGIO` e `METEO_NUVOLE_COP_PIENA` in §2-ter, e conviene sapere come si legano prima di toccarne uno. La copertura che i banchi consegnano vale `π·(raggio/passo)²`, quindi cielo coperto **e** banchi piccoli vogliono celle fitte, cioè tanti banchi; e ogni banco è una tela sfocata da tenere in memoria e una passata di disegno. Al primo tentativo il passo era 1,45 e il raggio 0,36 — quaranta per cento di copertura, sessanta banchi sullo schermo — e il conto misurato in un browser vero è stato **24,7 ms per fotogramma** contro gli 0,07 di prima: non per il disegno, ma perché la cache degli sprite sfondava il tetto in pixel e ricostruiva due sagome sfocate a ogni fotogramma. Il resto della copertura lo dà il soffitto, che costa un rettangolo: ai banchi si chiede la **forma** del cielo, non di tapparlo. Oggi sono 2,3 / 0,21 / 30, cioè una trentina di banchi e due decimi di millisecondo |
+| **La cache degli sprite delle nuvole** | `meteoDipingiBancoNuvoloso` e i tre indici di §2-bis. La chiave è **nube, poi luce, poi raggio**, e l'ordine è tutto: il raggio sta in fondo perché da quando un banco si avvicina per davvero lo attraversa tutto, e con il raggio in testa nessuna variante già pronta combacerebbe più. Gli indici sono due e fanno due cose diverse: `meteoNuvoleLuce` dà, per una nube **illuminata così**, l'ultimo sprite a un raggio qualunque — e quello si **riscala** invece di rifarlo (`METEO_NUVOLE_RISCALA_MIN`/`MAX`: fra metà e il doppio, perché fra due raggi cambia la risoluzione e non il disegno, e una nuvola è sfocata di suo); `meteoNuvoleNube` dà l'ultimo sprite comunque, e serve solo da tappabuchi mentre la luce nuova si rasterizza, perché lì a cambiare è il disegno per davvero — il bordo chiaro sta dall'altra parte. Il riscalamento è la riga che porta il fotogramma peggiore di una pizzicata da **venti millisecondi a meno di sette**. La cache era una FIFO, ed era giusto finché i banchi erano dieci e si usavano tutti a ogni fotogramma; adesso le chiavi possibili sono centinaia e quelle vive sono poche, quindi buttare la più vecchia vuol dire buttare proprio quella che si sta usando — è una **LRU** |
 | Aurora — l'avviso «vale la pena uscire?» | `caricaAurora()` + `auroraDaQui()` in `meteo-astro.js`: indice Kp dal NOAA, confronto con la **latitudine geomagnetica** (non quella geografica — per l'Italia il divario conta). Vale per tutt'e due gli emisferi: il segno dice quale ovale, il valore assoluto quanto sei lontano dal tuo |
 | Aurora — il disegno nel cielo | `aurora-polare.js`, `aurDisegna()`. L'ovale è un anello attorno al polo geomagnetico, schiacciato verso il lato notte (`aurBordo()` per il bordo verso l'equatore, `aurSpessore()` per la larghezza della fascia): la sua posizione nel cielo dipende dall'ora, e girando l'orologio del planetario lo si vede scendere verso mezzanotte magnetica. Ogni punto è atmosfera fra i 90 e i 420 km (`AUR_QUOTE`, che sono le **righe di emissione**: verde 557,7 nm in basso, rosso 630,0 nm in alto, viola dell'azoto alla base solo nelle tempeste), e sotto che angolo lo si veda da qui lo dice `aurAltezza()`, con la Terra tonda in mezzo |
 | Perché dall'Italia l'aurora è rossa e non verde | non c'è nessuna riga che lo dica: è `aurAltezza()`. A mille chilometri di distanza il verde a 120 km resta sotto l'orizzonte e si affaccia solo la coda rossa a duecento e passa. La riga del pannello (`aurTesto()`) lo dice a parole, e il campo `verde` della geometria è la stessa cosa in un booleano — con la soglia `AUR_VERDE_MIN_ALT` (3°), sotto la quale «visibile» sarebbe una bugia |

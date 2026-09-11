@@ -3,99 +3,101 @@
 **Niente in corso.**
 
 Resta aperto, come prima, il lavoro di fondo sulla traduzione inglese di
-`app.js`: 343 stringhe cablate contate da
+`app.js`: 352 stringhe cablate contate da
 `node scripts/controlla-i18n.js --lista --file app.js` — le eclissi (la mappa
 dell'ombra, le eclissi di casa, quelle lunari), le simulazioni e gli avvisi del
 planetario. Il tetto resta a 362.
 
-Restano rosse, ed erano rosse anche prima, due cose che non c'entrano con
-Missione Cielo: una prova di `scripts/prova-i18n.js` (undici chiavi orfane,
-tutte `visione.*` e `ui.*`) e quattro prove del §20 di `verifica.html`
-sull'acqua, con la loro eccezione in console (`SKY_FOV_MAX is not defined`).
+Restano rosse, ed erano rosse anche prima, due cose che non c'entrano con le
+nuvole: una prova di `scripts/prova-i18n.js` (chiavi orfane, tutte `visione.*`
+e `ui.*`) e quattro prove del §20 di `verifica.html` sull'acqua.
+
+**E ne è saltata fuori una quinta, che era rossa da chissà quando e non si
+vedeva**: «cinquanta metri di strada, invece, la camera li insegue con
+dolcezza» (§28, `rilOcchioMeta`/`rilOcchioOra` in `rilievo.js`). Non è una
+regressione di questo lavoro — è una prova che il `SKY_FOV_MAX` mancante
+teneva nascosta insieme a tutta la sua sezione, vedi qui sotto.
 
 ## Ultimo intervento completato
 
-**Missione Cielo: i tre indizi diventano tre strofe dello stesso
-indovinello, la serata finisce con una coppa, e la voce esulta.**
+**Le nuvole del planetario si muovono col vento, invece di tornare indietro
+ogni ora.**
 
-Tre segnalazioni in una, e la prima era la più precisa: «il primo indizio va
-bene, il secondo e il terzo no».
+Lo spostamento era `vento · faseOra`, cioè un **dente di sega**: le nuvole
+scorrevano per un'ora e allo scoccare della successiva tornavano di colpo al
+punto di partenza. Da fermi capita una volta ogni sessanta minuti e non lo
+nota nessuno; con la macchina del tempo in marcia è un sobbalzo al secondo, e
+somiglia a un difetto del disegno invece che a una formula. E il soffitto dei
+cieli coperti si riseminava dodici volte l'ora (`floor(faseOra · 12)` dentro
+al seme): ogni cinque minuti tutte le sue macchie si teletrasportavano
+insieme.
 
-**Il secondo e il terzo non erano sbagliati: cambiavano registro.** La
-direzione era la direzione, la stella di riferimento era davvero lì. Ma dopo
-un enigma in prima persona — «Ho mari in cui non è mai caduta una goccia» —
-arrivava «Sempre verso nord-ovest: cerca a metà cielo. L'altezza si misura a
-partire dall'orizzonte», cioè la voce di un navigatore satellitare. Il
-narratore spariva alla seconda riga, e con lui il gioco: un indovinello che a
-metà diventa un'istruzione ha già detto a chi ascolta che era finto. Non si
-vede leggendo il codice — tutte e tre le righe, prese una per una, sono
-sensate.
+Quello che c'è adesso non è una finzione fatta meglio, è un'altra cosa:
+**le nuvole stanno su un piano e il vento le porta**. Uno strato è un
+lenzuolo orizzontale alla sua quota, un banco è un punto di quel lenzuolo, il
+vento trasla il lenzuolo. Da lì viene da sé tutto quello che si riconosce
+guardando in su per davvero — un banco spunta dall'orizzonte da cui tira il
+vento, sale, **accelera** passando sopra la testa, rallenta scendendo
+dall'altra parte e tramonta. Non è un effetto aggiunto: è la prospettiva,
+`v/distanza`, e la distanza allo zenit è la sola quota mentre a otto gradi
+sull'orizzonte è sette volte tanto. Una nuvola bassa attraversa il cielo in un
+quarto d'ora scarso, misurato.
 
-Adesso sono tre strofe della stessa voce, legate in due modi che si sommano.
-**Dalla catena**: `missEnigmaSeguito` pesca con lo stesso nome proprio →
-specie → famiglia dell'enigma, quindi chi ha ricevuto l'enigma proprio riceve
-anche il seguito proprio e chi è sceso di un gradino ci resta per tutte e tre.
-**Dalla variante**: `missVarianteEnigma` è una sola per le tre strofe — con
-due indici scorrelati sarebbero tre indovinelli diversi sullo stesso oggetto,
-che è quasi peggio di tre istruzioni — e tiene dentro l'eccezione delle figure
-moderne, se no proprio per loro la prima riga e le altre due si sfaserebbero.
-La geometria non è sparita: dentro a ogni strofa ci sono ancora la direzione,
-la fascia di altezza e il riferimento misurato in dita e pugni a braccio teso,
-più il punto cardinale **opposto** («dai le spalle a sud-est»), che al buio si
-usa davvero. Sessantacinque frasi nuove per lingua, e nessuna nomina il
-bersaglio.
+**I cirri corrono più dei cumuli, e di traverso.** Non per scelta grafica: il
+vento cresce con la quota. La previsione dava già il vento a dieci metri e
+quello a 250 hPa (la corrente a getto, chiesta per il seeing, che sta a una
+decina di chilometri — proprio alla quota dei cirri); adesso si chiede anche
+`wind_direction_250hPa`, ed è quel campo a dare la cosa che più di tutte dice
+«questo cielo è vero».
 
-**Due tappe della stessa famiglia dicevano la stessa riga.** È il difetto che
-la cura ha creato, ed è saltato fuori guardando una missione vera: da quando
-la seconda e la terza strofa scendono alla famiglia, il Cigno e Cassiopea —
-due tappe su quattro, cielo di Como — dicevano tutt'e due «fra diecimila anni
-sarò storta». A occhio non si legge come una coincidenza, si legge come un
-copia-incolla, e col tetto della varietà a due per famiglia capitava una volta
-su tre. `variantiIndizioUsate` fa per le strofe quello che si faceva già per
-le domande. Vale anche per i bambini, che per questo hanno le varianti
-numerate come gli adulti.
+**Il cammino è un integrale, non un prodotto.** `meteoNuvoleCammino` integra
+la serie oraria col trapezio — che per un vento interpolato linearmente fra
+un'ora e l'altra è esatto, non approssimato — e `meteoNuvoleSpostamento` ci
+aggiunge il pezzo di ora cominciata: continuo allo scoccare per costruzione, e
+con la memoria di dov'è stato (cambiare il vento di stanotte non sposta
+all'indietro le nuvole di ieri).
 
-**Le coppe e i premi** (§7-bis, `CHIAVE_MISS_ALBO`). Sono due grandezze
-diverse e tenerle separate è tutto il pezzo. La **coppa** è della serata — oro
-a chi ha trovato tutto quasi da solo, argento a chi ha trovato tutto o quasi
-con qualche indizio, bronzo a chi ha trovato qualcosa — e la soglia è in aiuti
-**medi** per tappa trovata, non totali, se no la serata lunga è per forza
-peggiore di quella corta. Non esiste la coppa di latta: chi non trova niente
-non ha perso una gara, ha avuto una serata storta, e `missCoppaDiMissione`
-risponde `null` — da lì tace anche la voce. Il **premio** è di sempre: non si
-vince e non si perde, si sblocca e resta, e parla di cosa si è visto (cinque
-pianeti diversi, dieci oggetti profondi, tre sere) e non di quanto si è stati
-bravi. Quattordici premi, e quelli non presi si mostrano lo stesso nella
-bacheca, spenti: un traguardo che non si sa che esiste non fa venire voglia di
-niente. Quello che non si mostra è quanto manca — una barra di avanzamento
-sotto le stelle è la cosa sbagliata. Il conto non si ricostruisce dal Diario
-(una missione si conclude anche senza salvarla), quindi sta in `localStorage`
-col suo numero di formato e va nel backup; `missAlboConMissione` è pura e a
-scrivere è solo `missPremiaMissione`, che consegna una volta sola.
+**I banchi stanno su un reticolo solidale al vento**, non sono una manciata
+sorteggiata e traslata: l'unica distribuzione che una traslazione non cambia è
+quella uniforme sul piano, e traslando un insieme fisso il cielo si svuota da
+un lato e si affolla dall'altro. Uniforme sul piano vuol dire pochi banchi
+grandi sopra la testa e molti piccoli verso l'orizzonte — che a occhio sembra
+uno squilibrio ed è invece la ragione per cui un cielo rotto è rotto allo
+zenit e chiuso in fondo.
 
-**La voce.** Era «M tredici. La sua luce è partita…», cioè un cartellino da
-museo letto ad alta voce. La segnalazione lo diceva in chiaro — «quando vince
-deve leggere: evviva, hai trovato, bravo» — ed è quello che fa una persona:
-prima esulta, poi dice cosa hai trovato, poi racconta. Tre pezzi in
-quest'ordine, e il primo (`gioco.evviva.*`) è la sola riga del modulo scritta
-per essere sentita e non letta. Il nome si accentua: `missSsmlRisalta` mette
-un `<break>` brevissimo davanti — il tempo in cui chi ascolta capisce che sta
-per arrivare la risposta — e un `<emphasis level="strong">` sopra, e lo fa
-**solo** nella scoperta, perché dentro a un indizio sarebbe la soluzione detta
-a voce alta. La scoperta è salita da 1,35 a 1,7 di `styledegree` (2 coi
-bambini), e la tabella dei toni ha una quinta riga, il **premio**, che è
-`cheerful` e non `excited`: una coppa si consegna, e consegnarla urlando la fa
-sembrare una presa in giro.
+### Tre difetti trovati misurando, e nessuno dei tre si vedeva
 
-**E una prova che dal suo centro in giù non girava più.**
-`scripts/prova-missione-stati.js` chiedeva che l'indice dell'indizio arrivasse
-a tre: era rimasto indietro dal giorno in cui gli indizi da tre sono diventati
-due. Quel file è uno script lineare, non una lista di prove — la prima
-`assert` che salta lo interrompe — quindi metà del banco non veniva eseguita
-affatto, in silenzio. Adesso il numero si legge da `MISS_INDIZI`; e appena è
-ripartito è saltato fuori che al documento finto mancava `createElement` da
-quando la scoperta accende i fuochi d'artificio.
+- **Il costo.** Al primo tentativo il passo del reticolo era 1,45 e il raggio
+  0,36 — sessanta banchi sullo schermo — e il conto in un browser vero è stato
+  **24,7 ms per fotogramma** contro gli 0,07 di prima: trecentocinquanta volte
+  tanto, non per il disegno ma perché la cache degli sprite sfondava il suo
+  tetto in pixel e ricostruiva due sagome sfocate a ogni fotogramma. Adesso il
+  bilancio è scritto in chiaro (passo 2,3, raggio 0,21, tetto di dieci banchi
+  per strato, gradino di sprite massimo sceso da 144 a 96 pixel) e il costo è
+  fra 0,18 e 0,33 ms. Di lì è nato `scripts/prova-nuvole.js`.
+- **La pizzicata.** Restava il transitorio: zumando, ogni banco attraversa i
+  gradini del raggio e la cache li ricostruiva tutti — venti millisecondi nel
+  fotogramma peggiore. Adesso una tela già pronta della stessa nube con la
+  stessa luce si **riscala** fra metà e il doppio invece di rifarsi (fra due
+  raggi cambia la risoluzione, non il disegno), e il peggiore è 6,8 ms con 0,55
+  di media.
+- **`isFinite(null)` vale `true`.** `Number(null)` è zero, quindi la guardia
+  del primo fotogramma del soffitto non guardava niente: si prendeva un `dt`
+  di cinquant'anni tosato a un'ora e il soffitto partiva già spostato.
 
-Prove: `node scripts/prova-missione.js --solo-motore` (141 verdi) e con
-Chromium (187), `prova-missione-stati.js`, `prova-missione-interattiva.js`,
-`prova-lingua.js` e `controlla-collisioni.js` tutti verdi.
+### E la trappola dello `<script>` unico, di nuovo
+
+Aggiungendo il §33 è saltato fuori che **dal §26 in giù `verifica.html` non
+girava più niente**: il §25 usa `SKY_FOV_MAX`, che sta in `app.js` e che
+quella pagina non carica, e il `ReferenceError` si portava via §26, §27, §28,
+§29, §30, §31 e §32 interi. Quattrocentocinquanta prove che non fallivano —
+semplicemente non comparivano. Messi i due estremi del campo fra gli stub in
+cima, la pagina è passata da **770 prove a 1.228**.
+
+### Cosa è stato toccato
+
+- `meteo-astro.js`: §2-bis riscritta in parte, §**2-ter** nuova (il movimento).
+- `verifica.html`: §**33** nuova (34 prove), più lo stub di `SKY_FOV_MAX`.
+- `scripts/prova-nuvole.js`: nuovo, il costo delle nuvole in un browser vero.
+- `sw.js`: `CACHE_NAME` a `astrocal-v304`.
+- `CLAUDE.md`: la mappa di tutto quanto sopra.

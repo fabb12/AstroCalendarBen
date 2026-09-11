@@ -110,6 +110,13 @@ function skyAdesso() { return new Date(); }
 // il giorno che divergono le stelle si staccano dai pianeti senza che
 // nessuna delle due parti sembri sbagliata. Il §8 le mette a confronto.
 const SKY_D_MIN = -0.9995;
+// I due estremi del campo visivo, ricopiati da app.js per la ragione di
+// sempre: il §25 li usa per davvero, e in uno `<script>` unico un nome che
+// non esiste **porta via tutto quello che viene dopo**. Era successo di
+// nuovo: `SKY_FOV_MAX` mancava e dal §26 in giù — la §26, la §27, la §29,
+// la §30, la §31, la §32 — non girava più niente. Una prova sparita non
+// fallisce: semplicemente non compare.
+const SKY_FOV_MIN = 0.25, SKY_FOV_MAX = 180;
 const SKY_D2R = Math.PI / 180, SKY_R2D = 180 / Math.PI;
 function skyFocale() { return (sky.altezza / 2) / (2 * Math.tan(sky.fov / 4 * SKY_D2R)); }
 function skyDot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
@@ -12053,6 +12060,473 @@ if (typeof Visione === 'undefined') {
   skyProvaAR = false;
   sky.larghezza = larghezzaPrima;
   sky.altezza = altezzaPrima;
+}
+
+// =====================================================================
+// §33. IL MOVIMENTO DELLE NUVOLE
+//
+// È la famiglia che a occhio non si giudica affatto, e per una ragione che
+// vale la pena scrivere: **un cielo che scorre sembra giusto comunque.**
+// Nessuno, guardando il planetario, dice «queste nuvole vanno dalla parte
+// sbagliata» — dice «si muovono». Un segno invertito nella convenzione di
+// `ventoDa` fa scorrere tutto il cielo esattamente al contrario e produce la
+// stessa identica impressione. Una direzione interpolata come se fosse un
+// numero manda il vento a 180° dal vero due ore su ventiquattro, e in quelle
+// due ore il cielo è ancora un cielo che scorre.
+//
+// E il difetto da cui nasce tutto il pezzo era invisibile per un'altra
+// ragione ancora: lo spostamento era `vento · faseOra`, un dente di sega che
+// **tornava a zero allo scoccare di ogni ora**. Da fermi capita una volta
+// ogni sessanta minuti, cioè praticamente mai mentre si guarda; con la
+// macchina del tempo in marcia è un sobbalzo al secondo, e lì si vede — ma
+// somiglia a un difetto del disegno, non a una formula sbagliata.
+//
+// Il giudice quindi non è l'occhio, sono i numeri: la convenzione del vento,
+// la continuità del cammino, e la prospettiva — che è la sola cosa che
+// distingue un cielo che scorre da un cielo che **passa sopra la testa**.
+// =====================================================================
+{
+  titolo('§33. Il movimento delle nuvole');
+
+  const ORA = 3600 * 1000;
+  const T0 = Date.UTC(2026, 4, 12, 0, 0, 0);
+  // Una previsione finta: `ore` è la forma che `meteoNuvoleAllOra` si
+  // aspetta, e i venti si scrivono a mano perché la verità si conosca.
+  const previsione = (venti) => ({ ore: venti.map((v, i) => ({
+    ms: T0 + i * ORA, totale: 50, basse: 50, medie: 40, alte: 30,
+    vento: v.vento, ventoDa: v.ventoDa, pioggia: 0,
+    getto: v.getto === undefined ? null : v.getto,
+    gettoDa: v.gettoDa === undefined ? null : v.gettoDa
+  })) });
+  const fermo = (vento, ventoDa, quante, extra) => previsione(
+    Array.from({ length: quante || 12 }, () => Object.assign({ vento, ventoDa }, extra || {})));
+
+  // --- Il vento che porta uno strato -------------------------------
+  {
+    // `ventoDa` è la direzione **da cui** il vento arriva: con il vento da
+    // nord le nuvole vanno a sud. Sbagliarlo è l'errore che non si vede.
+    const daNord = meteoVentoDiStrato({ vento: 36, ventoDa: 0 }, 'basse');
+    prova('vento da nord: le nuvole vanno a sud',
+      daNord.vy < 0 && Math.abs(daNord.vx) < 1e-9,
+      `est ${daNord.vx.toFixed(2)} m/s, nord ${daNord.vy.toFixed(2)} m/s`);
+    const daOvest = meteoVentoDiStrato({ vento: 36, ventoDa: 270 }, 'basse');
+    prova('vento da ovest: le nuvole vanno a est',
+      daOvest.vx > 0 && Math.abs(daOvest.vy) < 1e-9,
+      `est ${daOvest.vx.toFixed(2)} m/s`);
+    // 36 km/h sono dieci metri al secondo, per il fattore dello strato basso.
+    prova('e i chilometri orari della previsione diventano metri al secondo',
+      Math.abs(Math.hypot(daOvest.vx, daOvest.vy) - 10 * METEO_NUVOLE_FATTORE_VENTO.basse) < 1e-6,
+      Math.hypot(daOvest.vx, daOvest.vy).toFixed(2) + ' m/s');
+
+    const v = st => Math.hypot(...Object.values(meteoVentoDiStrato({ vento: 18, ventoDa: 270 }, st)));
+    prova('senza il getto, il vento cresce comunque con la quota',
+      v('basse') < v('medie') && v('medie') < v('alte'),
+      `${v('basse').toFixed(1)} / ${v('medie').toFixed(1)} / ${v('alte').toFixed(1)} m/s`);
+
+    // Col getto la velocità non è più una stima: a 250 hPa è misurata, e
+    // l'interpolazione è lineare in quota — che sopra lo strato limite è il
+    // profilo vero. Cinque al suolo e trentacinque in quota devono dare nove
+    // a millequattrocento metri, cioè i numeri di un radiosondaggio.
+    const conGetto = st => meteoVentoDiStrato(
+      { vento: 18, ventoDa: 270, getto: 126, gettoDa: 270 }, st);
+    const vb = Math.hypot(conGetto('basse').vx, conGetto('basse').vy);
+    const va = Math.hypot(conGetto('alte').vx, conGetto('alte').vy);
+    prova('col getto, i cirri vanno a trenta metri al secondo e i cumuli a nove',
+      Math.abs(vb - 9.0) < 0.4 && Math.abs(va - 31) < 1.2,
+      `basse ${vb.toFixed(1)}, alte ${va.toFixed(1)} m/s`);
+    prova('e la velocità in quota è quella misurata, non un fattore inventato',
+      va < 126 / 3.6 && va > 126 / 3.6 * 0.85, `${va.toFixed(1)} su ${(126 / 3.6).toFixed(1)} m/s`);
+
+    // Il taglio dei cirri di traverso ai cumuli: è il dettaglio che più di
+    // ogni altro dice «questo cielo è vero», e viene gratis dalla direzione
+    // del getto — che infatti la richiesta adesso chiede.
+    const suolo = meteoVentoDiStrato({ vento: 18, ventoDa: 180, getto: 180, gettoDa: 270 }, 'basse');
+    const quota = meteoVentoDiStrato({ vento: 18, ventoDa: 180, getto: 180, gettoDa: 270 }, 'alte');
+    const angolo = Math.abs(Math.atan2(suolo.vx, suolo.vy) - Math.atan2(quota.vx, quota.vy)) * 180 / Math.PI;
+    prova('con lo scarto in quota i cirri corrono di traverso ai cumuli',
+      angolo > 50, angolo.toFixed(0) + '° fra i due strati');
+
+    // Una previsione con un buco può consegnare qualunque cosa: un getto di
+    // mille chilometri orari non esiste, e senza tetto porterebbe i cirri
+    // fuori dal disco visibile in un fotogramma.
+    const assurdo = meteoVentoDiStrato({ vento: 18, ventoDa: 270, getto: 4000, gettoDa: 270 }, 'alte');
+    prova('un getto assurdo si tosa invece di sparare i cirri fuori dal cielo',
+      Math.abs(Math.hypot(assurdo.vx, assurdo.vy) - METEO_VENTO_MAX_MS) < 1e-6,
+      Math.hypot(assurdo.vx, assurdo.vy).toFixed(0) + ' m/s');
+  }
+
+  // --- La direzione non è un numero --------------------------------
+  {
+    // Il contro-esempio scritto in chiaro: la media aritmetica fra 350° e 10°
+    // vale 180°, cioè il vento esattamente al contrario. E non lo si vede
+    // mai, perché un cielo che scorre al rovescio è un cielo che scorre.
+    const d = previsione([{ vento: 36, ventoDa: 350 }, { vento: 36, ventoDa: 10 }]);
+    const n = meteoNuvoleAllOra(d, T0 + ORA / 2);
+    prova('a mezz\'ora fra 350° e 10° il vento viene da nord',
+      Math.min(Math.abs(n.ventoDa), Math.abs(n.ventoDa - 360)) < 0.001,
+      n.ventoDa.toFixed(3) + '° (la media aritmetica direbbe 180°)');
+    const v = meteoVentoDiStrato(n, 'basse');
+    prova('e le nuvole di conseguenza vanno verso sud, non verso nord',
+      v.vy < 0, `nord ${v.vy.toFixed(2)} m/s`);
+    prova('la media aritmetica, sulla stessa coppia, le manderebbe al contrario',
+      meteoVentoDiStrato({ vento: 36, ventoDa: (350 + 10) / 2 }, 'basse').vy > 0);
+  }
+
+  // --- Il cammino: continuo, e con la memoria ----------------------
+  {
+    // Con vento costante il trapezio non è un'approssimazione: è esatto.
+    const d = fermo(36, 270, 6);
+    const sp = ms => meteoNuvoleSpostamento(d, meteoNuvoleAllOra(d, ms), 'basse');
+    const atteso = t => 10 * METEO_NUVOLE_FATTORE_VENTO.basse * t;
+    let peggio = 0;
+    for (let m = 0; m <= 300; m += 7) {
+      const s = sp(T0 + m * 60000);
+      peggio = Math.max(peggio, Math.abs(s.x - atteso(m * 60)), Math.abs(s.y));
+    }
+    prova('con vento costante il cammino è esattamente velocità per tempo',
+      peggio < 1e-6, 'scarto massimo ' + peggio.toExponential(1) + ' m');
+
+    // **La prova del pezzo.** Il vento cambia di ora in ora; il cammino, a
+    // cavallo dello scoccare, non deve fare nessun salto.
+    const vario = previsione([
+      { vento: 10, ventoDa: 270 }, { vento: 40, ventoDa: 250 },
+      { vento: 25, ventoDa: 300 }, { vento: 55, ventoDa: 200 }, { vento: 30, ventoDa: 270 }
+    ]);
+    const cam = ms => meteoNuvoleSpostamento(vario, meteoNuvoleAllOra(vario, ms), 'medie');
+    let passoMax = 0, passoMin = Infinity, salto = 0;
+    let prec = cam(T0 + 30 * 60000);
+    for (let m = 31; m <= 210; m++) {
+      const q = cam(T0 + m * 60000);
+      const passo = Math.hypot(q.x - prec.x, q.y - prec.y);
+      passoMax = Math.max(passoMax, passo);
+      passoMin = Math.min(passoMin, passo);
+      prec = q;
+    }
+    // Il passo di un minuto cambia perché cambia il vento, ma cambia **piano**:
+    // fra un minuto e il successivo il vento interpolato si sposta di un
+    // sessantesimo della differenza fra due ore.
+    prova('il cammino non fa nessun salto allo scoccare dell\'ora',
+      passoMax / passoMin < 4, `passo da ${passoMin.toFixed(0)} a ${passoMax.toFixed(0)} m al minuto`);
+
+    // Il contro-esempio, cioè la regola di prima: `vento · faseOra`, che alle
+    // 00:59 vale quasi un'ora di vento e alle 01:00 vale zero.
+    const prima = ms => {
+      const n = meteoNuvoleAllOra(vario, ms);
+      return n.vento * n.faseOra * 0.34;
+    };
+    const saltoPrima = Math.abs(prima(T0 + 60 * ORA / 60) - prima(T0 + 59.99 * ORA / 60));
+    const passoPrima = Math.abs(prima(T0 + 30 * ORA / 60) - prima(T0 + 29 * ORA / 60));
+    prova('con la regola di prima, allo scoccare tornava indietro di un\'ora intera',
+      saltoPrima > passoPrima * 50,
+      `salto ${saltoPrima.toFixed(2)} contro un passo di ${passoPrima.toFixed(3)}`);
+
+    // Il cammino ha memoria: un banco si porta dietro dov'è stato. Cambiare
+    // il vento dell'ultima ora non deve spostare all'indietro le nuvole di
+    // tre ore fa — che è quello che farebbe «vento di adesso per il tempo».
+    const a = previsione([{ vento: 20, ventoDa: 270 }, { vento: 20, ventoDa: 270 },
+      { vento: 20, ventoDa: 270 }, { vento: 20, ventoDa: 270 }]);
+    const b = previsione([{ vento: 20, ventoDa: 270 }, { vento: 20, ventoDa: 270 },
+      { vento: 20, ventoDa: 270 }, { vento: 80, ventoDa: 270 }]);
+    const sa = meteoNuvoleSpostamento(a, meteoNuvoleAllOra(a, T0 + 2 * ORA), 'basse');
+    const sb = meteoNuvoleSpostamento(b, meteoNuvoleAllOra(b, T0 + 2 * ORA), 'basse');
+    prova('il cammino ha memoria: il vento di stanotte non sposta le nuvole di ieri',
+      Math.abs(sa.x - sb.x) < 1e-6, `${sa.x.toFixed(0)} e ${sb.x.toFixed(0)} m`);
+    prova('…e da lì in poi invece sì',
+      meteoNuvoleSpostamento(b, meteoNuvoleAllOra(b, T0 + 3 * ORA), 'basse').x >
+      meteoNuvoleSpostamento(a, meteoNuvoleAllOra(a, T0 + 3 * ORA), 'basse').x * 1.2);
+
+    // Oltre la finestra della previsione non si inventa niente: era già la
+    // regola del modulo e deve restare, se no la macchina del tempo
+    // disegnerebbe le nuvole di un martedì qualunque su una notte di agosto.
+    prova('fuori dalla previsione non ci sono nuvole',
+      meteoNuvoleAllOra(vario, T0 + 40 * ORA) === null &&
+      meteoNuvoleAllOra(vario, T0 - ORA) === null);
+  }
+
+  // --- La prospettiva: è lei a far passare le nuvole sopra la testa -
+  {
+    const larghezzaPrima = sky.larghezza, altezzaPrima = sky.altezza, fovPrima = sky.fov;
+    sky.larghezza = 900; sky.altezza = 600; sky.fov = 60;
+    const F = skyFocale();
+    const d = fermo(36, 270, 24);   // dieci metri al secondo da ovest
+    const base = skyBaseVerso(90, 40);
+
+    // La velocità angolare di un banco è `v/distanza`, e la distanza allo
+    // zenit è la sola quota: a otto gradi sull'orizzonte è sette volte tanto,
+    // e lo stesso vento muove quel banco sette volte più piano. È l'unica
+    // cosa che distingua un cielo che scorre da un cielo che passa sopra la
+    // testa — e disegnando i banchi a una quota di schermo, come si faceva,
+    // non ci può essere.
+    const H = METEO_NUVOLE_QUOTA_M.basse;
+    const v = Math.hypot(...Object.values(meteoVentoDiStrato({ vento: 36, ventoDa: 270 }, 'basse')));
+    const angolare = alt => {
+      // Il banco è a `d` metri, si sposta di `v` in un secondo: quanto ha
+      // girato in cielo lo dice la geometria, non una costante.
+      const dist = H / Math.tan(alt * Math.PI / 180);
+      const a1 = Math.atan2(H, dist) , a2 = Math.atan2(H, dist - v);
+      return Math.abs(a2 - a1) * 180 / Math.PI;
+    };
+    const rapporto = angolare(89.9) / angolare(8);
+    prova('allo zenit un banco corre molto più che all\'orizzonte',
+      rapporto > 40 && rapporto < 70,
+      `${angolare(89.9).toFixed(4)}°/s contro ${angolare(8).toFixed(4)}°/s — ${rapporto.toFixed(0)} volte`);
+    // 1/sin²(8°) vale 51,5: è il numero, non una taratura.
+    prova('…ed è esattamente 1/sen² dell\'altezza, non una costante scelta',
+      Math.abs(rapporto - 1 / Math.pow(Math.sin(8 * Math.PI / 180), 2)) < 3,
+      'atteso ' + (1 / Math.pow(Math.sin(8 * Math.PI / 180), 2)).toFixed(1));
+
+    // La traversata: un banco spunta dall'orizzonte da cui tira il vento,
+    // sale, passa e tramonta dall'altra parte. Col vento da ovest entra a
+    // ovest (azimut 270) ed esce a est (90).
+    const dMax = H / Math.tan(METEO_NUVOLE_ALT_MIN * Math.PI / 180);
+    // Si segue una cella sola: la si mette a mano sul bordo di monte e la si
+    // lascia scorrere col cammino vero, mezzo minuto per volta.
+    let azPrima = null, azDopo = null, altMax = -1, scese = false, crescita = true;
+    let primoS = null, ultimoS = null, altPrec = -1;
+    for (let sec = 0; sec <= 3600; sec += 10) {
+      const s = meteoNuvoleSpostamento(d, meteoNuvoleAllOra(d, T0 + sec * 1000), 'basse');
+      const x = -dMax + s.x;            // parte dal bordo di monte
+      if (Math.abs(x) > dMax) continue;
+      const alt = Math.atan2(H, Math.abs(x)) * 180 / Math.PI;
+      const az = (Math.atan2(x, 0) * 180 / Math.PI + 360) % 360;
+      if (azPrima === null) { azPrima = az; primoS = sec; }
+      azDopo = az; ultimoS = sec;
+      if (alt > altMax) altMax = alt;
+      if (alt < altPrec) scese = true;
+      else if (scese) crescita = false;   // una volta scesa non deve risalire
+      altPrec = alt;
+    }
+    prova('un banco entra dall\'orizzonte da cui tira il vento',
+      azPrima !== null && Math.abs(azPrima - 270) < 1, azPrima === null ? '—' : azPrima.toFixed(1) + '°');
+    prova('…sale fino a passare quasi sopra la testa…', altMax > 85, altMax.toFixed(0) + '° al culmine');
+    prova('…poi scende, e non risale', scese && crescita);
+    prova('…e tramonta dalla parte opposta',
+      azDopo !== null && Math.abs(azDopo - 90) < 1, azDopo === null ? '—' : azDopo.toFixed(1) + '°');
+    // Il tempo della traversata è un numero che si può controllare contro il
+    // mondo: venti chilometri di cielo utile a diciannove metri al secondo.
+    const minuti = (ultimoS - primoS) / 60;
+    prova('una nuvola bassa attraversa il cielo in un quarto d\'ora scarso',
+      minuti > 8 && minuti < 40, minuti.toFixed(0) + ' minuti da orizzonte a orizzonte');
+
+    sky.fov = fovPrima; sky.larghezza = larghezzaPrima; sky.altezza = altezzaPrima;
+  }
+
+  // --- Il campo dei banchi: stazionario, e sempre lo stesso --------
+  {
+    const larghezzaPrima = sky.larghezza, altezzaPrima = sky.altezza, fovPrima = sky.fov;
+    sky.larghezza = 900; sky.altezza = 600; sky.fov = 120;
+    const F = skyFocale();
+    const base = skyBaseVerso(90, 45);
+    const d = fermo(36, 270, 30);
+    const banchi = ms => meteoBanchiVisibili('basse', 2, 55, 1234,
+      meteoNuvoleSpostamento(d, meteoNuvoleAllOra(d, ms), 'basse'), base, F);
+
+    // Lo stesso istante deve dare lo stesso cielo: il planetario ridisegna
+    // decine di volte al secondo, e un campo che si risorteggia a ogni
+    // fotogramma sarebbe un brulichio, non delle nuvole.
+    const uno = banchi(T0 + 3 * ORA), due = banchi(T0 + 3 * ORA);
+    prova('lo stesso istante disegna lo stesso cielo',
+      uno.length === due.length && uno.every((b, i) =>
+        b.seme === due[i].seme && Math.abs(b.px - due[i].px) < 1e-9),
+      uno.length + ' banchi');
+
+    // **Stazionarietà.** È la ragione per cui i banchi stanno su un reticolo
+    // solidale al vento invece di essere una manciata sorteggiata una volta e
+    // poi traslata: l'unica distribuzione che una traslazione non cambia è
+    // quella uniforme sul piano. Traslando un insieme fisso, il cielo si
+    // svuota da un lato e si affolla dall'altro — e con dieci ore di vento
+    // resterebbe vuoto.
+    let minimo = Infinity, massimo = 0, somma = 0, quante = 0;
+    for (let h = 0; h <= 24; h++) {
+      const q = banchi(T0 + h * ORA).length;
+      minimo = Math.min(minimo, q); massimo = Math.max(massimo, q); somma += q; quante++;
+    }
+    prova('in ventiquattro ore di vento il cielo non si svuota né si affolla',
+      minimo > 0 && massimo <= METEO_NUVOLE_BANCHI_MAX && massimo - minimo <= (somma / quante) * 0.8,
+      `da ${minimo} a ${massimo} banchi, media ${(somma / quante).toFixed(1)}`);
+
+    // Un banco è un banco: attraversa il cielo con la sua forma addosso e non
+    // si rimescola a ogni fotogramma. Con un reticolo solidale **al suolo**
+    // invece che al vento, la stessa cella si passerebbe le nuvole di mano in
+    // mano e la forma cambierebbe sotto gli occhi.
+    //
+    // Si segue il più grande, cioè quello sopra la testa: quelli in fondo
+    // entrano ed escono dal tetto della spesa, ed è giusto che lo facciano.
+    const a = banchi(T0 + 3 * ORA);
+    const capo = a.reduce((m, x) => x.r > m.r ? x : m, a[0]);
+    const segui = sec => banchi(T0 + 3 * ORA + sec * 1000).find(x => x.seme === capo.seme) || null;
+    let visto = 0, ultimo = capo, mosso = 0, altMin = capo.alt, altMax = capo.alt;
+    for (let sec = 15; sec <= 240; sec += 15) {
+      const q = segui(sec);
+      if (!q) break;
+      visto++;
+      mosso += Math.hypot(q.px - ultimo.px, q.py - ultimo.py);
+      altMin = Math.min(altMin, q.alt); altMax = Math.max(altMax, q.alt);
+      ultimo = q;
+    }
+    prova('per quattro minuti un banco resta lo stesso banco',
+      visto === 16, visto + ' fotogrammi su 16 con la stessa forma');
+    prova('…e in quei quattro minuti si è spostato in cielo per davvero',
+      mosso > 50 && altMax - altMin > 3,
+      `${mosso.toFixed(0)} px percorsi, da ${altMin.toFixed(0)}° a ${altMax.toFixed(0)}° di altezza`);
+
+    // Il banco finisce per cadere sotto al tetto della spesa: quello che non
+    // deve fare è **sparire di colpo**. Alla cadenza vera del disegno la sua
+    // opacità deve essere già andata a zero quando smette di esserci.
+    let veloUltimo = 1;
+    for (let sec = 15; sec <= 900; sec += 1) {
+      const q = segui(sec);
+      if (!q) break;
+      veloUltimo = q.velo;
+    }
+    prova('e quando esce di scena si è già spento, invece di fare un lampo',
+      veloUltimo < 0.12, 'ultima opacità ' + veloUltimo.toFixed(2));
+
+    // Avvicinandosi un banco cresce: è la stessa prospettiva di prima, vista
+    // in pixel. Senza, una nuvola che passa sopra la testa è grande come una
+    // che sta in fondo — che è quello che faceva la misura in quote di
+    // schermo.
+    const alto = a.reduce((m, x) => x.alt > m.alt ? x : m, a[0]);
+    const basso = a.reduce((m, x) => x.alt < m.alt ? x : m, a[0]);
+    prova('un banco sopra la testa è molto più grande di uno all\'orizzonte',
+      alto.r > basso.r * 2 && alto.alt - basso.alt > 20,
+      `${alto.r.toFixed(0)} px a ${alto.alt.toFixed(0)}° contro ` +
+      `${basso.r.toFixed(0)} px a ${basso.alt.toFixed(0)}°`);
+
+    // La copertura decide **quanti** banchi, non quanto sono grandi: un cielo
+    // al dieci per cento non è fatto di cumuli piccoli, è fatto di pochi
+    // cumuli.
+    const sp = meteoNuvoleSpostamento(d, meteoNuvoleAllOra(d, T0 + 3 * ORA), 'basse');
+    const poco = meteoBanchiVisibili('basse', 2, 10, 1234, sp, base, F);
+    const molto = meteoBanchiVisibili('basse', 2, 90, 1234, sp, base, F);
+    prova('più copertura vuol dire più banchi',
+      poco.length < molto.length, `${poco.length} al 10% contro ${molto.length} al 90%`);
+    if (poco.length) {
+      const rp = poco.reduce((s, x) => s + x.r, 0) / poco.length;
+      const rm = molto.reduce((s, x) => s + x.r, 0) / molto.length;
+      prova('…e non banchi più grossi', Math.abs(rp - rm) < rm * 0.6,
+        `raggio medio ${rp.toFixed(0)} e ${rm.toFixed(0)} px`);
+    }
+
+    // Il tetto della spesa, e il fatto che sul taglio non ci sia un lampo:
+    // gli ultimi si spengono invece di sparire.
+    prova('il numero dei banchi ha un tetto', molto.length <= METEO_NUVOLE_BANCHI_MAX,
+      molto.length + ' su ' + METEO_NUVOLE_BANCHI_MAX);
+    if (molto.length === METEO_NUVOLE_BANCHI_MAX) {
+      prova('e sul taglio l\'ultimo è già spento, se no scavalcarlo farebbe un lampo',
+        molto[molto.length - 1].velo < 0.02, 'velo ' + molto[molto.length - 1].velo.toFixed(3));
+    }
+
+    // La foschia: verso l'orizzonte un banco non sparisce di colpo, si spegne.
+    prova('nessun banco sotto il taglio dell\'orizzonte',
+      molto.every(x => x.alt >= METEO_NUVOLE_ALT_MIN - 1e-9),
+      'il più basso a ' + Math.min(...molto.map(x => x.alt)).toFixed(1) + '°');
+    prova('e sopra la fascia della foschia nessuno sconto di opacità',
+      molto.filter(x => x.alt > METEO_NUVOLE_ALT_PIENA).every(x => x.velo > 0.99 || x.velo === 0 ||
+        molto.indexOf(x) >= METEO_NUVOLE_BANCHI_MAX - METEO_NUVOLE_BANCHI_SFUMA));
+
+    // Gli strati alti, che sono più lontani, devono anche muoversi di più: è
+    // la somma delle due cose — vento maggiore in quota e distanza maggiore —
+    // e la seconda tira nel verso opposto. Vince la prima, ed è quello che si
+    // vede guardando dei cirri.
+    const dq = fermo(18, 270, 30, { getto: 126, gettoDa: 270 });
+    const spA = st => meteoNuvoleSpostamento(dq, meteoNuvoleAllOra(dq, T0 + ORA), st);
+    prova('in un\'ora i cirri fanno molta più strada dei cumuli',
+      spA('alte').x > spA('basse').x * 2.5,
+      `${(spA('alte').x / 1000).toFixed(0)} km contro ${(spA('basse').x / 1000).toFixed(0)} km`);
+
+    sky.fov = fovPrima; sky.larghezza = larghezzaPrima; sky.altezza = altezzaPrima;
+  }
+
+  // --- Il soffitto dei cieli coperti -------------------------------
+  {
+    const larghezzaPrima = sky.larghezza, altezzaPrima = sky.altezza, fovPrima = sky.fov;
+    sky.larghezza = 900; sky.altezza = 600; sky.fov = 60;
+    const F = skyFocale();
+    const vento = meteoVentoDiStrato({ vento: 36, ventoDa: 270 }, 'basse');
+
+    const scorri = (ms, az) => {
+      meteoSoffitto.x = 0; meteoSoffitto.y = 0; meteoSoffitto.quando = null;
+      meteoScorriSoffitto(T0, skyBaseVerso(az, 45), F, vento);
+      const r = meteoScorriSoffitto(ms, skyBaseVerso(az, 45), F, vento);
+      return { x: r.x, y: r.y };
+    };
+    // Il vento va verso est. Guardando **sottovento** il soffitto si
+    // allontana, cioè sullo schermo scende verso l'orizzonte; guardando
+    // controvento viene addosso e sale. Guardando di traverso scorre di lato.
+    // Sono le tre cose che di un soffitto si leggono, e sono tre componenti
+    // diverse: un verso solo non le direbbe.
+    const est = scorri(T0 + 60000, 90), ovest = scorri(T0 + 60000, 270);
+    prova('sottovento il soffitto si allontana, controvento viene addosso',
+      est.y * ovest.y < 0, `${est.y.toFixed(0)} px a est, ${ovest.y.toFixed(0)} px a ovest`);
+    const nord = scorri(T0 + 60000, 0);
+    prova('e guardando di traverso scorre di lato, non in profondità',
+      Math.abs(nord.x) > 10 * Math.abs(nord.y),
+      `${nord.x.toFixed(0)} px di lato contro ${nord.y.toFixed(1)} in profondità`);
+
+    // Il primo fotogramma non deve spostare niente: non c'è un «prima» da cui
+    // misurare, e prendendo l'istante per buono il soffitto partirebbe da una
+    // fase qualunque.
+    meteoSoffitto.x = 0; meteoSoffitto.y = 0; meteoSoffitto.quando = null;
+    const primo = meteoScorriSoffitto(T0, skyBaseVerso(90, 45), F, vento);
+    prova('al primo fotogramma il soffitto sta fermo',
+      primo.x === 0 && primo.y === 0);
+
+    // Un salto della macchina del tempo non è un vento di mille ore.
+    meteoSoffitto.x = 0; meteoSoffitto.y = 0; meteoSoffitto.quando = null;
+    meteoScorriSoffitto(T0, skyBaseVerso(90, 45), F, vento);
+    const salto = Math.abs(meteoScorriSoffitto(T0 + 365 * 24 * ORA, skyBaseVerso(90, 45), F, vento).y);
+    const unOra = Math.abs(scorri(T0 + ORA, 90).y);
+    prova('un salto di un anno non manda il soffitto all\'infinito',
+      salto <= unOra + 1e-6 && salto > 0,
+      `${salto.toFixed(0)} px, tosato a un'ora di vento`);
+
+    sky.fov = fovPrima; sky.larghezza = larghezzaPrima; sky.altezza = altezzaPrima;
+  }
+
+  // --- Gli sprite, che adesso cambiano raggio mentre il banco scorre -
+  {
+    // Il raggio sta **in fondo** alla chiave, non in testa: da quando un
+    // banco si avvicina per davvero attraversa i gradini del raggio, e con il
+    // raggio in testa nessuna variante già pronta avrebbe più combaciato —
+    // per un fotogramma o due tutto il cielo tornerebbe alla sagoma
+    // economica, cioè sfarfallerebbe a ogni passaggio.
+    const sole = { dx: -.65, dy: -.76, forza: .35, calda: 0 };
+    const p = meteoNuvolaPrefissoSprite('226,232,238', .5, 12345, false);
+    const k1 = meteoNuvolaChiaveSprite(30, '226,232,238', .5, 12345, false, sole);
+    const k2 = meteoNuvolaChiaveSprite(120, '226,232,238', .5, 12345, false, sole);
+    prova('due raggi della stessa nube condividono il prefisso',
+      k1.startsWith(p) && k2.startsWith(p) && k1 !== k2);
+    prova('due nubi diverse non lo condividono',
+      !meteoNuvolaChiaveSprite(30, '226,232,238', .5, 999, false, sole).startsWith(p));
+
+    // I gradini sono geometrici: coprono tutta la scala con sette tele
+    // invece delle quindici che servirebbero a passi di otto pixel.
+    const gradini = new Set();
+    for (let r = 4; r < 400; r += 1) gradini.add(meteoNuvolaRaggioSprite(r));
+    const scala = METEO_NUVOLE_RAGGI_SPRITE;
+    prova('i gradini del raggio sono pochi e coprono tutta la scala',
+      gradini.size === scala.length && Math.max(...gradini) === scala[scala.length - 1] &&
+      Math.min(...gradini) === scala[0],
+      gradini.size + ' gradini, da ' + scala[0] + ' a ' + scala[scala.length - 1]);
+    let crescono = true, salto = 0;
+    const ordinati = [...gradini].sort((a, b) => a - b);
+    for (let i = 1; i < ordinati.length; i++) {
+      if (ordinati[i] <= ordinati[i - 1]) crescono = false;
+      salto = Math.max(salto, ordinati[i] / ordinati[i - 1]);
+    }
+    // Un fattore troppo grande vorrebbe dire riscalare uno sprite di molto, e
+    // una nube è sfocata ma non è una macchia.
+    prova('…e nessun gradino chiede di ingrandire uno sprite di più di metà',
+      crescono && salto < 1.5, 'il salto peggiore è ×' + salto.toFixed(2));
+    // E la banda entro cui una tela già pronta si riscala invece di rifarsi
+    // deve coprire **più di un gradino**, se no non serve a niente: è la riga
+    // che porta il fotogramma peggiore di una pizzicata da venti millisecondi
+    // a meno di sette.
+    prova('la banda di riscalamento copre più di un gradino della scala',
+      METEO_NUVOLE_RISCALA_MAX > salto && METEO_NUVOLE_RISCALA_MIN < 1 / salto,
+      `da ×${METEO_NUVOLE_RISCALA_MIN} a ×${METEO_NUVOLE_RISCALA_MAX}, gradino ×${salto.toFixed(2)}`);
+  }
 }
 
 // Rimettere a posto la `fetch` vera: da qui in giù la pagina torna a parlare
