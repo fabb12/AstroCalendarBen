@@ -2597,6 +2597,7 @@ function missHtmlScoperta(t) {
   const altre = missQuanteVarianti('curiosita.' + missBaseRacconto(t)) > 1;
   return `<div class="missione-scoperta">
     ${missManigliaStriscia()}
+    ${missTastoVisibilitaStriscia(false)}
     <button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
       aria-label="${missT('terminaPlanetario')}">×</button>
     <h3>${missT('gioco.scoperta', { nome: missTesto(missNomeTappa(t)) })}</h3>
@@ -2614,6 +2615,16 @@ function missHtmlScoperta(t) {
 function missManigliaStriscia() {
   return `<button type="button" class="missione-trascina"
     aria-label="${missT('spostaRiquadro')}" title="${missT('spostaRiquadro')}">⠿</button>`;
+}
+
+/* Il comando che libera il cielo resta accanto alla maniglia: non va
+ * cercato in fondo agli indizi e, quando il riquadro e' raccolto, nello
+ * stesso posto permette di richiamare le informazioni. */
+function missTastoVisibilitaStriscia(nascosta) {
+  const azione = nascosta ? 'mostra-guida' : 'solo-voce';
+  const etichetta = missT(nascosta ? 'mostraGuida' : 'soloVoce');
+  return `<button type="button" class="missione-tasto missione-tasto-lieve missione-visibilita"
+    data-miss-azione="${azione}">${etichetta}</button>`;
 }
 
 function missIndiceIndizio(t) {
@@ -2682,8 +2693,7 @@ function missMostraStrisciaCielo() {
   if (miss.strisciaNascosta) {
     el.innerHTML = `${missManigliaStriscia()}<button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
         aria-label="${missT('terminaPlanetario')}">×</button>
-      <button type="button" class="missione-tasto missione-ripristina" data-miss-azione="mostra-guida">
-        ${missT('mostraGuida')}</button>`;
+      ${missTastoVisibilitaStriscia(true)}`;
     el.querySelectorAll('[data-miss-azione]').forEach(b =>
       b.addEventListener('click', () => missAzione(b.dataset.missAzione, el)));
     return;
@@ -2692,6 +2702,7 @@ function missMostraStrisciaCielo() {
     missAmmissibile(missTappaNelPlanetario(t), m.scelte) ? null : missProssimoIstanteCercabile(t);
   el.innerHTML = t.fase === 'scoperta' ? missHtmlScoperta(t) : `
     ${missManigliaStriscia()}
+    ${missTastoVisibilitaStriscia(false)}
     <button type="button" class="missione-striscia-chiudi" data-miss-azione="termina"
       aria-label="${missT('terminaPlanetario')}">×</button>
     <div class="missione-striscia-testo">
@@ -2702,7 +2713,6 @@ function missMostraStrisciaCielo() {
       <span id="missione-mirino" aria-live="off"></span>
     </div>
     <div class="missione-striscia-tasti">
-      <button class="missione-tasto missione-tasto-lieve" data-miss-azione="solo-voce">${missT('soloVoce')}</button>
       <button class="missione-tasto${sky.seguiTelefono ? ' attiva' : ''}" data-miss-azione="segui-telefono"
         ${m.simulazione ? 'disabled' : ''}>${missT('seguiTelefono')}</button>
       ${missNavigazioneIndizi(t)}

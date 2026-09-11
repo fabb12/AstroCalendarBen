@@ -10846,22 +10846,28 @@ body button.did-ponte:active { transform: translateY(1px); }
   cursor: grab;
   touch-action: none;
 }
+.missione-striscia .missione-visibilita {
+  position: absolute;
+  top: 5px;
+  left: 43px;
+  min-height: 32px;
+  max-width: calc(100% - 90px);
+  padding: 0 9px;
+  font-size: 0.73rem;
+  white-space: nowrap;
+}
 .missione-trascina:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
 .missione-striscia.in-trascinamento .missione-trascina { cursor: grabbing; color: #fff; }
 .missione-striscia-chiudi:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
-.missione-striscia-testo { padding-right: 30px; padding-left: 30px; }
+.missione-striscia-testo { padding: 38px 30px 0; }
 .missione-striscia.visibile { pointer-events: auto; }
 .missione-striscia.solo-voce {
   left: auto;
-  width: auto;
+  width: min(100%, 260px);
+  min-height: 44px;
   padding: 4px 40px 4px 4px;
   border-color: rgba(76, 141, 255, 0.28);
   background: rgba(9, 16, 34, 0.72);
-}
-body .missione-striscia.solo-voce .missione-ripristina {
-  min-height: 36px;
-  padding: 0 10px;
-  font-size: 0.75rem;
 }
 .missione-striscia-testo { display: flex; flex: 1 1 240px; flex-direction: column; gap: 1px; min-width: 0; }
 .missione-striscia-titolo {
@@ -10968,7 +10974,7 @@ body .missione-striscia-tasti .missione-tasto { min-height: 32px; }
 /* Missione Cielo: gli indizi restano compatti anche su telefono. */
 .missione-striscia.visibile { max-height: none; overflow: visible; align-items: start; }
 .missione-striscia p { margin: .35rem 0; line-height: 1.45; }
-.missione-scoperta { width: 100%; min-width: 0; padding-inline: 30px; box-sizing: border-box; overflow-wrap: anywhere; }
+.missione-scoperta { width: 100%; min-width: 0; padding: 38px 30px 0; box-sizing: border-box; overflow-wrap: anywhere; }
 .missione-scoperta h3 { color: #a7f3d0; font-weight: 700; }
 /* La riga della specie e il cartellino: sono un dato, non un discorso, e
    vanno letti in un colpo d'occhio — corpo piccolo, maiuscoletto sulla
