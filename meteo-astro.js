@@ -477,9 +477,22 @@ function meteoVentoDiStrato(ora, strato) {
 // quindi la serie oraria, col trapezio: per un vento interpolato linearmente
 // fra un'ora e l'altra non è un'approssimazione, è l'integrale esatto.
 //
-// Il cammino è ancorato alla **prima ora della previsione**. Una previsione
-// nuova è un cielo nuovo e rimescola il campo, ma dentro a una il tempo
-// scorre continuo, e una previsione si riscarica una volta all'ora al più.
+// Il cammino è ancorato alla **prima ora della previsione**, e quello che
+// l'ancora decide è soltanto una **costante**: due previsioni che condividono
+// le loro ore — quella dedicata alle nuvole, che si chiede in UTC, e quella
+// grossa della scheda Stasera, che si chiede in ora locale — danno per ogni
+// coppia di istanti lo stesso *spostamento*, perché integrano gli stessi
+// venti. A cambiare è solo da dove si conta, cioè la fase.
+//
+// Il prezzo è che nel momento in cui la previsione dedicata arriva e prende
+// il posto del ripiego il campo dei banchi si riassesta una volta, nei primi
+// secondi in cui si guarda. È stato tentato di toglierlo ancorando alla
+// mezzanotte UTC e riempiendo col primo vento il pezzo che manca, e non
+// funziona: una serie in ora locale comincia *prima* di mezzanotte UTC, il
+// pezzo da riempire diventa di ventidue ore invece di due, e il rimedio
+// sbaglia più del male — diciannove chilometri, misurati. Un cielo che si
+// assesta una volta all'apertura non lo nota nessuno; le nuvole non sono un
+// sistema di riferimento.
 function meteoNuvoleCammino(dati) {
   if (dati.cammino) return dati.cammino;
   const strati = Object.keys(METEO_NUVOLE_QUOTA_M);

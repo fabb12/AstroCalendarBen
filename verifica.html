@@ -12235,6 +12235,50 @@ if (typeof Visione === 'undefined') {
       meteoNuvoleSpostamento(b, meteoNuvoleAllOra(b, T0 + 3 * ORA), 'basse').x >
       meteoNuvoleSpostamento(a, meteoNuvoleAllOra(a, T0 + 3 * ORA), 'basse').x * 1.2);
 
+    // **Due previsioni che condividono le loro ore devono muovere le nuvole
+    // allo stesso modo.** Capita per davvero e non è un caso di scuola: la
+    // previsione dedicata alle nuvole si chiede in UTC, quella grossa della
+    // scheda Stasera in ora locale, e la seconda fa da ripiego alla prima
+    // finché non arriva. Quello che deve coincidere non è il *dove* — l'ancora
+    // è il primo campione, e i due campioni primi sono diversi — ma il
+    // **moto**: fra due istanti qualunque le nuvole devono percorrere la
+    // stessa strada, perché a portarle è il vento e non la contabilità.
+    {
+      const venti = [{ vento: 22, ventoDa: 240 }, { vento: 30, ventoDa: 255 },
+        { vento: 26, ventoDa: 265 }, { vento: 34, ventoDa: 250 },
+        { vento: 29, ventoDa: 245 }, { vento: 31, ventoDa: 260 },
+        { vento: 27, ventoDa: 270 }, { vento: 33, ventoDa: 255 }];
+      const inUtc = previsione(venti);                       // parte a mezzanotte
+      const inLocale = { ore: venti.slice(2).map((v, i) => ({
+        ms: T0 + (i + 2) * ORA, totale: 50, basse: 50, medie: 40, alte: 30,
+        vento: v.vento, ventoDa: v.ventoDa, pioggia: 0, getto: null, gettoDa: null
+      })) };                                                  // parte due ore dopo
+      const passo = (d, t1, t2) => {
+        const a = meteoNuvoleSpostamento(d, meteoNuvoleAllOra(d, t1), 'basse');
+        const b = meteoNuvoleSpostamento(d, meteoNuvoleAllOra(d, t2), 'basse');
+        return { x: b.x - a.x, y: b.y - a.y };
+      };
+      let peggio = 0, quanto = 0;
+      for (let m = 0; m <= 120; m += 13) {
+        const t1 = T0 + 3 * ORA + m * 60000, t2 = t1 + 37 * 60000;
+        const u = passo(inUtc, t1, t2), l = passo(inLocale, t1, t2);
+        peggio = Math.max(peggio, Math.hypot(u.x - l.x, u.y - l.y));
+        quanto = Math.max(quanto, Math.hypot(u.x, u.y));
+      }
+      prova('due previsioni che condividono le ore muovono le nuvole allo stesso modo',
+        peggio < 1e-6, `scarto massimo ${peggio.toExponential(1)} m su ${(quanto / 1000).toFixed(0)} km percorsi`);
+      // E quello che le separa è una **costante**, cioè una fase: non una
+      // deriva che cresce col tempo, che sarebbe due cieli diversi.
+      const fase = t => {
+        const a = meteoNuvoleSpostamento(inUtc, meteoNuvoleAllOra(inUtc, t), 'basse');
+        const b = meteoNuvoleSpostamento(inLocale, meteoNuvoleAllOra(inLocale, t), 'basse');
+        return Math.hypot(a.x - b.x, a.y - b.y);
+      };
+      prova('…e a separarle è una costante, non una deriva che cresce',
+        Math.abs(fase(T0 + 3 * ORA) - fase(T0 + 6 * ORA)) < 1e-6,
+        `${(fase(T0 + 3 * ORA) / 1000).toFixed(1)} km di sfasamento, sempre lo stesso`);
+    }
+
     // Oltre la finestra della previsione non si inventa niente: era già la
     // regola del modulo e deve restare, se no la macchina del tempo
     // disegnerebbe le nuvole di un martedì qualunque su una notte di agosto.

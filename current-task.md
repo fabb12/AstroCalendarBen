@@ -94,10 +94,43 @@ quella pagina non carica, e il `ReferenceError` si portava via §26, §27, §28,
 semplicemente non comparivano. Messi i due estremi del campo fra gli stub in
 cima, la pagina è passata da **770 prove a 1.228**.
 
+### La fusione con `main`, e un incontro
+
+Mentre questo lavoro era in corso, **`main` ha corretto per conto suo gli
+stessi due difetti** (PR #474 e dintorni): la frazione dell'ora è diventata
+una fase assoluta (`oraMoto`) e il seme del soffitto ha smesso di cambiare
+ogni cinque minuti. La diagnosi era la stessa, la cura più leggera — e il suo
+stesso commento ammette il prezzo che quella cura chiede: per non
+teletrasportare i banchi quando la direzione prevista ruota fra un'ora e
+l'altra, il vento che trasporta la trama **resta congelato al primo campione**
+della previsione. Qui invece il vento si integra, quindi può cambiare di ora
+in ora come cambia davvero. Nel conflitto si è tenuta questa versione, che
+contiene l'altra.
+
+Due cose viste risolvendo, e nessuna delle due la segnalava git:
+
+- **`main` aveva già bumpato `CACHE_NAME` a `astrocal-v304`**, lo stesso
+  valore che avevo messo io. Git le ha fuse senza conflitto — le due righe
+  erano identiche — ma i contenuti no: chi avesse già in cache la v304 di
+  `main` si sarebbe tenuto i file vecchi. Siamo alla **v305**.
+- **L'ancoraggio del cammino.** Il commento di `main` rivendicava una
+  proprietà che qui mancava: una fase «comune anche a due previsioni
+  scaricate in momenti diversi». È un caso vero — la previsione dedicata alle
+  nuvole si chiede in UTC, quella della scheda Stasera in ora locale, e la
+  seconda fa da ripiego alla prima. Ho provato ad ancorare il cammino alla
+  mezzanotte UTC riempiendo col primo vento il pezzo mancante: **non
+  funziona**, perché una serie in ora locale comincia *prima* di mezzanotte
+  UTC e il pezzo da riempire diventa di ventidue ore invece di due — il
+  rimedio sbagliava di diciannove chilometri, misurati. Quello che invece è
+  vero, e adesso è provato, è che due previsioni che condividono le ore
+  muovono le nuvole **allo stesso modo**, e a separarle è una costante e non
+  una deriva: il campo si riassesta una volta quando arriva la previsione
+  dedicata, e un cielo che si assesta all'apertura non lo nota nessuno.
+
 ### Cosa è stato toccato
 
 - `meteo-astro.js`: §2-bis riscritta in parte, §**2-ter** nuova (il movimento).
-- `verifica.html`: §**33** nuova (34 prove), più lo stub di `SKY_FOV_MAX`.
+- `verifica.html`: §**33** nuova (36 prove), più lo stub di `SKY_FOV_MAX`.
 - `scripts/prova-nuvole.js`: nuovo, il costo delle nuvole in un browser vero.
-- `sw.js`: `CACHE_NAME` a `astrocal-v304`.
+- `sw.js`: `CACHE_NAME` a `astrocal-v305` (la v304 l'aveva già usata `main`).
 - `CLAUDE.md`: la mappa di tutto quanto sopra.
