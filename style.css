@@ -10749,6 +10749,8 @@ body button.did-ponte:active { transform: translateY(1px); }
 .missione-campo { display: flex; flex-direction: column; gap: 6px; }
 .missione-campo > span { font-size: 0.82rem; font-weight: 700; color: var(--testo-2); }
 .missione-campo > small { color: var(--testo-3); font-size: 0.76rem; line-height: 1.35; }
+.missione-tolleranza output { color: var(--accento); font-size: 0.82rem; font-weight: 700; }
+.missione-tolleranza input[type="range"] { width: 100%; accent-color: var(--accento); }
 .missione-select, .missione-nota {
   width: 100%;
   padding: 10px 12px;

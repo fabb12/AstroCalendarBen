@@ -17,9 +17,15 @@ canvas prima della selezione normale, del fumetto e dell’atlante. Un oggetto
 sbagliato aumenta l’aiuto; soltanto quello corretto registra `trovato`. Quando
 il bersaglio viene trovato, un cerchio di selezione lo evidenzia sulla mappa
 per quindici secondi e poi scompare automaticamente.
-Le costellazioni si riconoscono toccando le linee della figura. L’hover non
+Il bersaglio corretto accetta anche un tocco nelle immediate vicinanze, così
+il polpastrello e i piccoli movimenti dei sensori non richiedono la precisione
+di un mouse. Per le costellazioni il margine è ancora più ampio e segue le
+linee della figura, senza favorire le figure confinanti. L’hover non
 conferma ritrovamenti. La mappa non può verificare che una persona abbia
 guardato fisicamente il cielo: verifica la selezione nella scena corrente.
+La tolleranza si regola nelle impostazioni della missione; il valore scelto
+viene ricordato e le costellazioni conservano automaticamente un margine
+leggermente superiore agli oggetti puntiformi.
 
 ## Le due modalità, i contenuti e gli aiuti
 

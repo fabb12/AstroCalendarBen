@@ -74,6 +74,19 @@ const MISS_STRUMENTI = ['occhio', 'binocolo', 'telescopio'];
 // filtri espliciti che decidono cosa puo' entrare nella serata.
 const MISS_STRUMENTO_PREDEFINITO = 'telescopio';
 const MISS_BORTLE = [2, 3, 4, 5, 6, 8];
+const MISS_TOLLERANZA_PREDEFINITA = 44;
+const MISS_TOLLERANZA_MIN = 24;
+const MISS_TOLLERANZA_MAX = 80;
+
+function missTolleranzaTocco(scelte, tipo) {
+  const richiesta = Number(scelte && scelte.tolleranzaTocco);
+  const base = Number.isFinite(richiesta)
+    ? Math.max(MISS_TOLLERANZA_MIN, Math.min(MISS_TOLLERANZA_MAX, richiesta))
+    : MISS_TOLLERANZA_PREDEFINITA;
+  // Le figure sono linee sottili e molto estese: mantengono otto pixel di
+  // margine in piu' rispetto agli oggetti puntiformi a ogni regolazione.
+  return tipo === 'costellazione' ? base + 8 : base;
+}
 
 /* I tre gradini della caccia.
  *
@@ -338,7 +351,8 @@ const miss = {
   // Le tre scelte, ricordate fra una sera e l'altra
   scelte: { durata: 30, strumento: MISS_STRUMENTO_PREDEFINITO, esperienza: 'curiosi', bortle: 2,
     generi: MISS_GENERI_TUTTI.slice(), cielo: 'tutto', cieloDa: 135, cieloA: 180,
-    momento: 'consigliato', momentoPersonalizzato: null, voce: false },
+    momento: 'consigliato', momentoPersonalizzato: null, voce: false,
+    tolleranzaTocco: MISS_TOLLERANZA_PREDEFINITA },
   // La missione appena generata e non ancora avviata
   anteprima: null,
   /* Le anteprime già viste in questa sessione di configurazione, la più
@@ -2068,6 +2082,7 @@ function missCaricaScelte() {
   if (MISS_DIREZIONI.includes(Number(s.cieloDa))) miss.scelte.cieloDa = Number(s.cieloDa);
   if (MISS_DIREZIONI.includes(Number(s.cieloA))) miss.scelte.cieloA = Number(s.cieloA);
   if (typeof s.voce === 'boolean') miss.scelte.voce = s.voce;
+  miss.scelte.tolleranzaTocco = missTolleranzaTocco(s);
   miss.scelte.generi = missGeneriScelti(s);
   if (['adesso', 'consigliato', 'personalizzato'].includes(s.momento)) miss.scelte.momento = s.momento;
   if (typeof s.momentoPersonalizzato === 'number' && Number.isFinite(s.momentoPersonalizzato)) {
@@ -2450,6 +2465,48 @@ function missDisegnaSelezioneTrovata(ctx, base, focale) {
   ctx.arc(p.px, p.py, 25 * impulso, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
+}
+
+/* Il bersaglio della missione ha un'area di tocco piu' larga del normale.
+ *
+ * Sul telefono il punto visibile sparisce sotto il polpastrello e il sensore
+ * puo' muovere la carta di qualche pixel fra pointerdown e pointerup. Non si
+ * deve quindi pretendere precisione da mouse: un tocco nelle immediate
+ * vicinanze vale, ma soltanto per il bersaglio corrente. In questo modo una
+ * stella estranea o la linea di una costellazione confinante non possono
+ * trasformare un gesto quasi giusto in un errore.
+ *
+ * Per le costellazioni la vicinanza si misura dalle linee della figura, non
+ * dal baricentro (che spesso cade in uno spazio vuoto), con un margine doppio
+ * rispetto all'atlante ordinario. */
+function missBersaglioNelPunto(px, py, base, focale) {
+  if (!missRicercaAttiva() || !base || !focale) return null;
+  const t = miss.attiva.tappe[miss.attiva.corrente];
+  if (!t) return null;
+
+  if (t.tipo === 'costellazione' && t.sigla && typeof costFiguraNelPunto === 'function') {
+    const sigla = costFiguraNelPunto(px, py, base, focale, {
+      soglia: missTolleranzaTocco(miss.attiva.scelte, t.tipo), sigla: t.sigla
+    });
+    return sigla ? { categoria: 'costellazione', sigla } : null;
+  }
+
+  let voce = t.idCielo && typeof skyVoceDiId === 'function' ? skyVoceDiId(t.idCielo) : null;
+  if (!voce && t.tipo === 'profondo' && Array.isArray(sky.profondo))
+    voce = sky.profondo.find(o => t.idCielo === 'dso:' + o.nome);
+  const az = voce && Number.isFinite(voce.az) ? voce.az : t.azimut;
+  const alt = voce && Number.isFinite(voce.alt) ? voce.alt : t.altezza;
+  if (!Number.isFinite(az) || !Number.isFinite(alt)) return null;
+  const p = skyProietta(skyVettore(az, alt), base, focale);
+  if (!p.davanti || Math.hypot(p.px - px, p.py - py) > missTolleranzaTocco(miss.attiva.scelte, t.tipo)) return null;
+
+  if (t.tipo === 'profondo') {
+    const nome = String(t.idCielo || '').replace(/^dso:/, '');
+    const dati = (typeof catProfondoDiNome === 'function' && catProfondoDiNome(nome)) || voce || { nome };
+    return { categoria: 'profondo', dati };
+  }
+  if (t.tipo === 'corpoMinore') return { categoria: 'corpoMinore', dati: voce || t };
+  return t.idCielo ? { categoria: 'astro', id: t.idCielo } : null;
 }
 
 // Chiamata soltanto dall'hit test del canvas, prima di aprire schede o atlante.
@@ -3846,6 +3903,13 @@ function missHtmlConfigurazione() {
         ${missGruppoScelte('voce', [
           { valore: 'si', nome: missT('voceSi') }, { valore: 'no', nome: missT('voceNo') }
         ], miss.scelte.voce ? 'si' : 'no', missT('vuoiVoce'))}
+        <label class="missione-campo missione-tolleranza">
+          <span>${missT('tolleranzaTocco')}</span>
+          <input type="range" min="${MISS_TOLLERANZA_MIN}" max="${MISS_TOLLERANZA_MAX}" step="4"
+            value="${missTolleranzaTocco(miss.scelte)}" data-miss-tolleranza>
+          <output data-miss-tolleranza-valore>${missT('tolleranzaPixel', { pixel: missTolleranzaTocco(miss.scelte) })}</output>
+          <small>${missT('tolleranzaSpiega')}</small>
+        </label>
       </div>
     </section>
 
@@ -3870,6 +3934,7 @@ function missSintesiDettagli(bortle) {
     pezzi.push(nome(miss.scelte.cieloDa) + '–' + nome(miss.scelte.cieloA));
   } else pezzi.push(missT('cieloTutto'));
   if (miss.scelte.voce) pezzi.push(missT('vociAttiva'));
+  pezzi.push(missT('tolleranzaBreve', { pixel: missTolleranzaTocco(miss.scelte) }));
   return pezzi.join(' · ');
 }
 
@@ -4728,6 +4793,18 @@ function missRaccontaTappa(tappa, forza) {
   return missRacconta(testo, tono, { enfasi });
 }
 
+/* Una storia nuova non e' una scoperta nuova.
+ *
+ * Il tasto «Un'altra storia» cambia soltanto l'aneddoto nel riquadro: il
+ * nome, l'esultanza e la domanda sono gia' stati detti. Ripetere l'intero
+ * messaggio faceva sembrare che la missione fosse ricominciata. La voce
+ * segue quindi lo stesso aggiornamento puntuale dello schermo e racconta
+ * soltanto il testo appena comparso. */
+function missRaccontaCuriosita(tappa) {
+  if (!tappa || !(miss.attiva && miss.attiva.scelte.voce)) return Promise.resolve(false);
+  return missRacconta(missCuriositaTesto(tappa), missTonoVoce('scoperta'));
+}
+
 /* La coppa, detta a voce.
  *
  * Solo se la voce è accesa e solo se una coppa c'è: annunciare «nessuna
@@ -4933,6 +5010,16 @@ function missCollegaPannello(corpo) {
     miss.rilievoSettore = null;
     missSalvaScelte();
   }));
+  const tolleranza = corpo.querySelector('[data-miss-tolleranza]');
+  if (tolleranza) {
+    const aggiorna = () => {
+      miss.scelte.tolleranzaTocco = missTolleranzaTocco({ tolleranzaTocco: tolleranza.value });
+      const valore = corpo.querySelector('[data-miss-tolleranza-valore]');
+      if (valore) valore.textContent = missT('tolleranzaPixel', { pixel: miss.scelte.tolleranzaTocco });
+    };
+    tolleranza.addEventListener('input', aggiorna);
+    tolleranza.addEventListener('change', () => { aggiorna(); missSalvaScelte(); });
+  }
   const momento = corpo.querySelector('[data-miss-momento]');
   if (momento) momento.addEventListener('change', () => {
     const ms = new Date(momento.value).getTime();
@@ -5000,9 +5087,9 @@ function missAzione(azione, corpo) {
   switch (azione) {
     case 'solo-voce': {
       miss.strisciaNascosta = true;
-      const tappa = miss.attiva && miss.attiva.tappe[miss.attiva.corrente];
+      // Cambia soltanto la presentazione: la narrazione eventualmente in
+      // corso deve proseguire, senza essere fermata o riavviata da capo.
       missMostraStrisciaCielo();
-      if (tappa) missRaccontaTappa(tappa, true);
       break;
     }
     case 'mostra-guida':
@@ -5024,7 +5111,7 @@ function missAzione(azione, corpo) {
       missSalvaAttiva();
       missMostraStrisciaCielo();
       missMostraVista('inCorso');
-      missRaccontaTappa(t);
+      missRaccontaCuriosita(t);
       break;
     }
     case 'segui-telefono':
@@ -5326,6 +5413,7 @@ const missProve = {
   genera: missGeneraMissione,
   selezioneCorretta: missSelezioneCorretta,
   distanzaSferica: missDistanzaSferica,
+  tolleranzaTocco: missTolleranzaTocco,
   punteggio: missPunteggio,
   ammissibile: missAmmissibile,
   quanteTappe: missQuanteTappe,
@@ -5381,6 +5469,7 @@ const missProve = {
   testoVoceTappa: missTestoVoceTappa,
   costanti: {
     MISS_VERSIONE, MISS_DURATE, MISS_STRUMENTI, MISS_ESPERIENZE, MISS_DIREZIONI, MISS_BORTLE,
+    MISS_TOLLERANZA_PREDEFINITA, MISS_TOLLERANZA_MIN, MISS_TOLLERANZA_MAX,
     MISS_TAPPE_PER_DURATA, MISS_ALTEZZA_MINIMA, MISS_DIFFICOLTA_MASSIMA,
     MISS_DIFFICOLTA_GRADITA, MISS_GENEROSITA, MISS_REPERTORIO,
     MISS_STESSO_CAMPO_GRADI, MISS_PREAVVISO_MIN,
