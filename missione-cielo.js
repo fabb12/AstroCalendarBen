@@ -64,7 +64,7 @@ const CHIAVE_MISS_STORIA = 'astrocalendario_missione_storia';
 const CHIAVE_MISS_SCELTE = 'astrocalendario_missione_scelte';
 const CHIAVE_MISS_ATTIVA = 'astrocalendario_missione_attiva';
 
-const MISS_DURATE = [10, 30, 60, 120];
+const MISS_DURATE = [10, 30, 60, 120, 180, 240];
 const MISS_STRUMENTI = ['occhio', 'binocolo', 'telescopio'];
 const MISS_BORTLE = [2, 3, 4, 5, 6, 8];
 
@@ -247,7 +247,9 @@ const MISS_TAPPE_PER_DURATA = {
   10:  { min: 2, max: 3 },
   30:  { min: 3, max: 4 },
   60:  { min: 4, max: 5 },
-  120: { min: 5, max: 6 }
+  120: { min: 5, max: 6 },
+  180: { min: 6, max: 7 },
+  240: { min: 7, max: 8 }
 };
 
 // Quanto in alto deve stare un bersaglio perché valga la pena mandarci
@@ -2337,34 +2339,59 @@ function missFuochiArtificio() {
   if (!ctx) { tela.remove(); return; }
   ctx.scale(dpr, dpr);
   const ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const colori = [28, 46, 195, 214, 330];
+  const colori = [18, 36, 48, 120, 195, 214, 285, 330];
   const particelle = [];
+  const razzi = [];
+  const durata = ridotto ? 900 : 15500;
   const esplodi = (x, y, tinta, n) => {
     for (let i = 0; i < n; i++) {
       const a = Math.PI * 2 * i / n + (Math.random() - .5) * .08;
-      const v = 1.8 + Math.random() * 3.1;
+      const v = 1.5 + Math.random() * 3.8;
       particelle.push({ x, y, px:x, py:y, vx:Math.cos(a)*v, vy:Math.sin(a)*v,
-        vita:1, calo:.011+Math.random()*.009, tinta, luce:62+Math.random()*20 });
+        vita:1, calo:.006+Math.random()*.007, tinta, luce:62+Math.random()*20,
+        scintilla: Math.random() > .35 });
     }
   };
-  const scoppi = ridotto ? 1 : 4;
-  for (let b = 0; b < scoppi; b++) setTimeout(() => esplodi(
-    rett.width*(.18+Math.random()*.64), rett.height*(.17+Math.random()*.38),
-    colori[Math.floor(Math.random()*colori.length)], ridotto ? 24 : 54+Math.floor(Math.random()*28)
-  ), ridotto ? 0 : b*260);
+  const lancia = () => razzi.push({
+    x: rett.width * (.12 + Math.random() * .76), y: rett.height + 8,
+    px: 0, py: rett.height + 8, vx: (Math.random() - .5) * .45,
+    vy: -(4.8 + Math.random() * 2.2), bersaglio: rett.height * (.12 + Math.random() * .42),
+    tinta: colori[Math.floor(Math.random() * colori.length)]
+  });
+  if (ridotto) esplodi(rett.width / 2, rett.height * .3, 46, 24);
+  else {
+    // Gli scoppi arrivano in piccole salve per tutta la celebrazione: prima
+    // si vede salire il razzo, poi la corona e infine le scintille che cadono.
+    [0, 500, 1450, 2200, 3400, 4300, 5600, 6500, 7900, 9000, 10300, 11600, 13000, 14000]
+      .forEach(attesa => setTimeout(lancia, attesa));
+  }
   const inizio = performance.now();
   function fotogramma(ora) {
-    ctx.clearRect(0, 0, rett.width, rett.height);
+    // Si scolora il canvas stesso, senza stendere un velo nero sopra stelle
+    // e pianeti: lo spettacolo resta davvero dentro al planetario.
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0, 0, 0, .16)';
+    ctx.fillRect(0, 0, rett.width, rett.height);
     ctx.globalCompositeOperation = 'lighter';
+    for (let i = razzi.length - 1; i >= 0; i--) {
+      const r = razzi[i]; r.px = r.x; r.py = r.y; r.x += r.vx; r.y += r.vy; r.vy += .018;
+      ctx.beginPath(); ctx.moveTo(r.px, r.py); ctx.lineTo(r.x, r.y + 9);
+      ctx.strokeStyle = `hsla(${r.tinta},100%,82%,.9)`; ctx.lineWidth = 1.7; ctx.stroke();
+      if (r.y <= r.bersaglio || r.vy >= -1.2) {
+        esplodi(r.x, r.y, r.tinta, 68 + Math.floor(Math.random() * 34));
+        razzi.splice(i, 1);
+      }
+    }
     for (let i = particelle.length-1; i >= 0; i--) {
       const p = particelle[i]; p.px=p.x; p.py=p.y; p.x+=p.vx; p.y+=p.vy;
-      p.vx*=.986; p.vy=p.vy*.986+.045; p.vita-=p.calo;
+      p.vx*=.988; p.vy=p.vy*.988+.038; p.vita-=p.calo;
       if (p.vita <= 0) { particelle.splice(i,1); continue; }
       ctx.beginPath(); ctx.moveTo(p.px,p.py); ctx.lineTo(p.x,p.y);
-      ctx.strokeStyle=`hsla(${p.tinta},100%,${p.luce}%,${Math.max(0,p.vita)})`;
+      const tremolio = p.scintilla && Math.random() > .72 ? .25 : 1;
+      ctx.strokeStyle=`hsla(${p.tinta},100%,${p.luce}%,${Math.max(0,p.vita) * tremolio})`;
       ctx.lineWidth=.6+1.8*p.vita; ctx.stroke();
     }
-    if (ora-inizio < (ridotto ? 900 : 2500) || particelle.length) requestAnimationFrame(fotogramma);
+    if (ora-inizio < durata || particelle.length || razzi.length) requestAnimationFrame(fotogramma);
     else tela.remove();
   }
   requestAnimationFrame(fotogramma);
@@ -2447,9 +2474,11 @@ function missHtmlScoperta(t) {
     <p class="missione-specie">${missTesto(missSpecieTappa(t))}${
       cartellino ? ' · <span class="missione-cartellino">' + missTesto(cartellino) + '</span>' : ''}</p>
     <p class="missione-aneddoto">${missTesto(missCuriositaTesto(t))}</p>
-    ${altre ? `<button type="button" class="missione-tasto missione-tasto-lieve"
-      data-miss-azione="altraStoria">${missT('gioco.altraStoria')}</button>` : ''}
-    <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="continua">${missT('gioco.continua')}</button>
+    <div class="missione-scoperta-azioni">
+      ${altre ? `<button type="button" class="missione-tasto missione-tasto-lieve"
+        data-miss-azione="altraStoria">${missT('gioco.altraStoria')}</button>` : ''}
+      <button type="button" class="missione-tasto missione-tasto-si" data-miss-azione="continua">${missT('gioco.continua')}</button>
+    </div>
   </div>`;
 }
 
@@ -3862,10 +3891,14 @@ function missCuriositaTesto(tappa) {
      * famiglia — e **non** l'aneddoto lungo, che è scritto per un adulto
      * e a un bambino di otto anni non dice niente. */
     const base = missBaseRacconto(tappa);
-    const n = (tappa.raccontoVariante || 0) % 3 + 1;
-    const dopo = missPrimaChiaveNota([
-      'gioco.storia.' + base, 'gioco.piccoli.' + famiglia + '.' + n
-    ]);
+    const variante = Math.max(0, tappa.raccontoVariante || 0) % 3;
+    // La prima pressione conserva la storia specifica dell'oggetto; le
+    // successive mostrano davvero racconti diversi, invece di risolvere
+    // sempre sulla stessa chiave specifica e dare l'impressione di un tasto rotto.
+    const dopo = variante === 0
+      ? missPrimaChiaveNota(['gioco.storia.' + base, 'gioco.piccoli.' + famiglia + '.1'])
+      : missPrimaChiaveNota(['gioco.piccoli.' + famiglia + '.' + (variante + 1),
+        'gioco.storia.' + base]);
     return missT('gioco.bambini.' + famiglia) + ' ' + missT(dopo);
   }
   return racconto;
