@@ -23892,6 +23892,38 @@ function skyVoceSelezionata() {
     return o ? Object.assign({ categoria: 'astro' }, o) : null;
   }
 
+  // Una figura scelta dall'hover porta soltanto la sigla IAU. Il suo centro
+  // geometrico e il nome vivono nel modulo dell'atlante: li trasformiamo in
+  // una normale voce del cielo, così il fumetto può usare lo stesso
+  // posizionamento e lo stesso aggiornamento di stelle e pianeti.
+  if (sel.categoria === 'costellazione') {
+    const centro = typeof costCentroDi === 'function' ? costCentroDi(sel.sigla) : null;
+    if (!centro) return null;
+    let ripiego = sel.sigla;
+    if (typeof COSTELLAZIONI_IAU !== 'undefined') {
+      const figura = COSTELLAZIONI_IAU.find(c => c.sigla === sel.sigla);
+      if (figura) ripiego = figura.nome;
+    }
+    const voce = Object.assign({
+      categoria: 'costellazione', sigla: sel.sigla,
+      nome: typeof costNomeFigura === 'function'
+        ? costNomeFigura(sel.sigla, ripiego) : ripiego,
+      tipo: 'costellazione', disegno: 'costellazione'
+    }, centro);
+    if (sky.observer && typeof Astronomy !== 'undefined') {
+      try {
+        const t = Astronomy.MakeTime(skyAdesso());
+        const oggi = skyJ2000AllaData(voce.ra, voce.dec, t);
+        voce.raOra = oggi.ra;
+        voce.decOra = oggi.dec;
+        const hor = Astronomy.Horizon(t, sky.observer, oggi.ra, oggi.dec, 'normal');
+        voce.az = hor.azimuth;
+        voce.alt = hor.altitude;
+      } catch (e) { /* senza posizione il fumetto conserva i dati dell'atlante */ }
+    }
+    return voce;
+  }
+
   if (sel.categoria === 'aereo' && typeof aereiTrova === 'function') {
     const corrente = aereiTrova(sel.dati && sel.dati.id);
     if (corrente) return Object.assign({ categoria: 'aereo' }, corrente);
@@ -24218,9 +24250,28 @@ function skyFumettoDatiAstro(o) {
 // modulo sa cose che qui non arrivano, l'itinerario per primo.
 function skyFumettoDati(voce) {
   if (!voce) return null;
-  const dati = voce.categoria === 'aereo'
-    ? (typeof aereiFumettoDati === 'function' ? aereiFumettoDati(voce) : null)
-    : skyFumettoDatiAstro(voce);
+  let dati;
+  if (voce.categoria === 'aereo') {
+    dati = typeof aereiFumettoDati === 'function' ? aereiFumettoDati(voce) : null;
+  } else if (voce.categoria === 'costellazione') {
+    const emisfero = typeof costEmisfero === 'function' ? costEmisfero(voce.sigla) : '';
+    const mese = typeof costMeseMigliore === 'function' ? costMeseMigliore(voce.ra) : '';
+    const righe = [
+      { chiave: 'tipo', etichetta: '', valore: `Costellazione${emisfero ? ` · cielo ${emisfero}` : ''}` }
+    ];
+    if (typeof voce.az === 'number' && typeof voce.alt === 'number') {
+      righe.push({ chiave: 'dove', etichetta: 'Dove',
+        valore: `${skyNomeDirezione(voce.az)} · ${skyNumero(voce.alt, 0)}° di altezza` });
+    }
+    if (mese) righe.push({ chiave: 'periodo', etichetta: 'Periodo migliore', valore: mese });
+    righe.push({ chiave: 'sigla', etichetta: 'Sigla IAU', valore: voce.sigla });
+    dati = {
+      chiave: `costellazione:${voce.sigla}`, segno: 'costellazione',
+      titolo: voce.nome, colore: 'rgba(167, 139, 250, .9)', righe
+    };
+  } else {
+    dati = skyFumettoDatiAstro(voce);
+  }
   // Il taglio si fa **qui** e non dentro a chi le scrive: è una misura dello
   // schermo, non una proprietà dell'oggetto, e chi scrive le righe di un
   // aereo non ha nessuna ragione di sapere quanto è alto il cielo.
@@ -24244,9 +24295,11 @@ function skyAggiornaFumetto() {
   const corpo = document.getElementById('skymap-fumetto-corpo');
   const titolo = document.getElementById('skymap-fumetto-titolo');
   const segno = document.getElementById('skymap-fumetto-segno');
+  const info = document.getElementById('skymap-fumetto-info');
   if (!corpo || !titolo || !segno) return;
 
-  const dati = f.classList.contains('visibile') ? skyFumettoDati(skyVoceSelezionata()) : null;
+  const voce = f.classList.contains('visibile') ? skyVoceSelezionata() : null;
+  const dati = skyFumettoDati(voce);
   if (!dati) { f.dataset.chiave = ''; return; }
 
   // La tinta del fumetto è quella dell'oggetto: per un aereo è la sua fascia
@@ -24256,6 +24309,11 @@ function skyAggiornaFumetto() {
   f.style.setProperty('--fumetto-tinta', dati.colore || 'rgba(148, 197, 255, .85)');
   f.classList.toggle('fumetto-aereo', dati.classe === 'fumetto-aereo');
   f.classList.toggle('fumetto-nome-intero', dati.nomeSempreIntero === true);
+  if (info) {
+    const atlante = voce.categoria === 'costellazione';
+    info.title = atlante ? 'Apri questa costellazione nell\'atlante' : 'Tutti i dati di questo oggetto';
+    info.setAttribute('aria-label', atlante ? 'Apri nell\'atlante delle costellazioni' : 'Mostra tutti i dati');
+  }
 
   const forma = `${dati.chiave}|${dati.foto ? dati.foto.src : ''}|${dati.righe.map(r => r.chiave).join(',')}`;
   if (f.dataset.chiave !== forma) {
@@ -24444,6 +24502,15 @@ function skyChiudiFumetto() {
 // si aspetta da un «mostra di più».
 function skyApriSchedaCompleta() {
   if (!sky.selezione) return;
+  // Per una costellazione la pagina completa non è la scheda generica degli
+  // astri: è la sua pagina nell'atlante. Il medesimo tasto ⓘ mantiene così
+  // la promessa del fumetto senza inventare un secondo pannello incompleto.
+  if (sky.selezione.categoria === 'costellazione') {
+    const sigla = sky.selezione.sigla;
+    skyChiudiDettaglio();
+    if (typeof apriAtlanteCostellazioni === 'function') apriAtlanteCostellazioni(sigla);
+    return;
+  }
   skyChiudiFumetto();
   const pannello = document.getElementById('skymap-dettaglio');
   if (pannello) pannello.classList.add('visibile');
@@ -25173,13 +25240,13 @@ function skyControllaSostaMirino() {
     return;
   }
 
-  // Una costellazione apre l'atlante intero: far sparire il planetario senza
-  // un tocco sarebbe sorprendente. La sosta riguarda le schede degli oggetti
-  // celesti; inoltre si ferma mentre un dito sta governando la mappa.
+  // Anche una costellazione resta nel planetario: la sosta apre soltanto il
+  // suo fumetto breve. Sarà il tasto ⓘ, se richiesto, a portare alla pagina
+  // corrispondente dell'atlante. Durante un gesto, invece, l'hover si ferma.
   const sel = sky.puntatori.size || !sky.ultimaBase
     ? null
     : skyOggettoNelPunto(sky.larghezza / 2, sky.altezza / 2);
-  const valido = sel && sel.categoria !== 'costellazione' ? sel : null;
+  const valido = sel || null;
   const chiave = skyChiaveSelezione(valido);
   if (!chiave) { sky.sostaMirino = null; return; }
   if (!sky.sostaMirino || sky.sostaMirino.chiave !== chiave) {
