@@ -2787,7 +2787,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.conclusaTitolo.niente': 'Sarà per la prossima volta',
     'missione.conclusaTitolo.parziale': { uno: 'Una trovata su {tot}', altri: '{n} trovate su {tot}' },
     'missione.conclusaTitolo.tutto': 'Missione compiuta',
-    'missione.conclusaSommario': { uno: 'Un minuto da {luogo}, {strumento}.', altri: '{n} minuti da {luogo}, {strumento}.' },
+    'missione.conclusaSommario': { uno: 'Un minuto da {luogo}.', altri: '{n} minuti da {luogo}.' },
     'missione.conclusaSintesi': { uno: 'Missione conclusa: una cosa trovata.', altri: 'Missione conclusa: {n} cose trovate.' },
     'missione.vediRisultato': 'Vedi il risultato',
     'missione.esito.trovato': 'trovato',

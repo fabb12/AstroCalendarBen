@@ -76,8 +76,16 @@ run(`miss.attiva={id:'test',versione:MISS_VERSIONE,stato:'inCorso',nelPlanetario
 ctx.sky.mostraNomi=true;
 ctx.cime={acceso:true};
 assert.equal(run('missRicercaAttiva()'),true);
+assert.equal(run('missModalitaGiocoCielo()'),true);
 assert.equal(run('skyNomiVisibili()'),false);
 assert.equal(run('skyNomiCimeVisibili()'),false);
+// La scoperta non e' piu' una ricerca, ma e' ancora modalita' gioco nel
+// planetario: i nomi dei monti devono restare nascosti fino all'uscita.
+run("miss.attiva.tappe[0].fase='scoperta'");
+assert.equal(run('missRicercaAttiva()'),false);
+assert.equal(run('missModalitaGiocoCielo()'),true);
+assert.equal(run('skyNomiCimeVisibili()'),false);
+run("miss.attiva.tappe[0].fase='ricerca'");
 assert.equal(run('missAmmissibile(missTappaAdesso(miss.attiva.tappe[0]),miss.attiva.scelte)'),true);
 run('missMostraStrisciaCielo()');
 assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
@@ -183,6 +191,6 @@ const guidance=run("missGuidaMirino({f:skyVettore(0,40),r:skyVettore(90,0),u:sky
 // A daylight target or one behind the local obstacle cannot complete.
 now=Date.UTC(2026,8,8,12);run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);
 now=Date.UTC(2026,8,7,21);ctx.orizzonteAltezza=()=>85;run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);
-run('missPausaCielo()');assert.equal(run('miss.attiva.stato'),'inCorso');assert.equal(run('miss.attiva.nelPlanetario'),false);
+run('missPausaCielo()');assert.equal(run('miss.attiva.stato'),'inCorso');assert.equal(run('miss.attiva.nelPlanetario'),false);assert.equal(run('missModalitaGiocoCielo()'),false);
 run('missAbbandona()');assert.equal(run('missRicercaAttiva()'),false);assert.equal(run('skyNomiVisibili()'),true);assert.equal(run('skyNomiCimeVisibili()'),true);
 console.log('PASS: actual ephemerides, three difficulty levels, stable clue after wrong/correct selections, live time/location/terrain checks, discovery persistence, age-appropriate stories, sensors, cleanup');

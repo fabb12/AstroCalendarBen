@@ -1,6 +1,6 @@
 # Missione Cielo: osservare, cercare, scoprire
 
-Quando almeno un pianeta è visibile, compatibile con lo strumento scelto e
+Quando almeno un pianeta è visibile, compatibile con il percorso scelto e
 nel settore di cielo indicato, la missione gli riserva una tappa. La Luna resta
 un bersaglio distinto: non prende il posto del pianeta in questa regola. Fra i
 pianeti disponibili viene scelto quello col punteggio migliore per quella
@@ -37,8 +37,9 @@ sono adattate all’età scelta.
 
 Il nome resta nascosto in anteprima, riepilogo della missione in corso,
 etichette del cielo e audio di ricerca. L'elenco degli astri è sospeso durante
-la ricerca. Anche i nomi delle montagne vengono nascosti senza cambiare la
-preferenza del planetario e ricompaiono quando la missione termina. La guida
+la ricerca. Anche i nomi delle montagne vengono nascosti per tutta la modalità
+di gioco nel planetario, scoperta compresa, senza cambiare la preferenza del
+planetario; ricompaiono quando si esce dal cielo della missione. La guida
 presenta tre indizi in tutto, ciascuno più preciso del precedente;
 subito dopo il terzo compare “Mostra la soluzione”, che rivela il nome e centra
 il bersaglio nel planetario senza completare la tappa.
@@ -77,8 +78,12 @@ Le posizioni vengono verificate anche agli orari assegnati, non soltanto al
 massimo di altezza nella finestra. Per ogni bersaglio la magnitudine limite
 del luogo viene corretta in base alla sua altezza. La pianificazione usa sempre
 la massima quantità di stelle (cielo Bortle 2) e non mostra l'inquinamento
-luminoso come parametro nell'anteprima o nei dettagli. Non chiede più quali
-oggetti osservare: considera sempre insieme tutti i tipi di bersaglio possibili.
+luminoso come parametro nell'anteprima o nei dettagli. Quando la missione entra
+nel planetario accende per impostazione iniziale tutte le famiglie di astri e
+mostra il catalogo stellare come da un cielo Bortle 2, senza cambiare il cielo
+di casa salvato. Nella preparazione si scelgono invece una o più famiglie da
+includere (Sistema solare, stelle, cielo profondo, costellazioni e stazioni);
+la domanda sullo strumento di osservazione è stata rimossa.
 Verso l'orizzonte la massa
 d'aria abbassa il limite e schiarisce il fondo. Gli oggetti del cielo profondo
 passano inoltre un controllo sulla brillanza superficiale e sul contrasto con
@@ -94,7 +99,7 @@ Gli eventi astratti del calendario e i corpi minori con coordinate campionate
 restano nel pianificatore; le missioni interattive selezionano Luna, pianeti,
 stelle, costellazioni e cielo profondo identificabili nel planetario.
 
-Lo stato salvato passa alla versione 10; le vecchie missioni attive vengono
+Lo stato salvato passa alla versione 12; le vecchie missioni attive vengono
 rigenerate, così ereditano subito i nuovi limiti di difficoltà. Il Diario precedente rimane leggibile. Le nuove osservazioni
 sono salvate nella sessione e incluse nel Diario, insieme agli aiuti usati.
 La fase di scoperta sopravvive a una ricarica senza saltare alla tappa seguente.
