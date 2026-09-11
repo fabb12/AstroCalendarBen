@@ -38410,7 +38410,17 @@ function skyAggiornaCatalogo(data) {
   }
 }
 
-// Figure delle costellazioni: linee sottili e stelle proporzionate alla luminosità
+// Il tratto resta leggibile anche quando si allarga il campo: a parità di pixel,
+// nello zoom indietro le figure si rimpiccioliscono e il filo si perde fra molte
+// più stelle. Sotto i 45° non serve ingrossarlo ancora; da lì sale dolcemente
+// fino ai 180° senza diventare una ragnatela.
+function skySpessoreCostellazioni(fov = sky.fov) {
+  const campo = Number.isFinite(fov) ? fov : 45;
+  const largo = Math.max(0, Math.min(1, (campo - 45) / (SKY_FOV_MAX - 45)));
+  return 1.8 + largo * 1.2;
+}
+
+// Figure delle costellazioni: tratto leggibile e stelle proporzionate alla luminosità
 function skyDisegnaCostellazioni(ctx, base, focale) {
   if (!sky.costellazioni || !sky.costellazioni.length) return;
   const velo = skyVelo();
@@ -38424,7 +38434,7 @@ function skyDisegnaCostellazioni(ctx, base, focale) {
     // passano sotto l'orizzonte restano un'ombra: la figura si intuisce, ma
     // non sembra disegnata sul prato davanti a casa.
     ctx.globalAlpha = 1;
-    ctx.lineWidth = 1.1;
+    ctx.lineWidth = skySpessoreCostellazioni();
     [{ sotto: false, alpha: 0.4 }, { sotto: true, alpha: 0.1 }].forEach(passo => {
       ctx.strokeStyle = `rgba(120, 178, 255, ${passo.alpha * velo})`;
       ctx.beginPath();
