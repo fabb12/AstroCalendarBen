@@ -6813,10 +6813,18 @@ body button.lez-passo-avanti:hover:not(:disabled) { filter: brightness(1.08); }
 
 @media (max-width: 680px) {
   .sol-ricerca {
-    top: 132px;
-    width: min(260px, calc(100% - 84px));
+    /* Sul telefono la ricerca diventa la quarta voce della colonna: partire
+       dal bordo sinistro, invece che dal centro della tela, la tiene
+       allineata alle viste e lascia libero il corridoio dei comandi a
+       destra. Il margine superiore evita che la pillola "Terra e Luna"
+       tocchi (o, con il testo ingrandito, copra) il campo. */
+    top: 148px;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(64px, calc(env(safe-area-inset-right) + 54px));
+    width: auto;
+    transform: none;
   }
-  .sol-suggerimento { top: 182px; }
+  .sol-suggerimento { top: 198px; }
 }
 
 /* --- Le due manopole di secondo piano ---
@@ -7059,7 +7067,10 @@ body.sol-immersivo { overflow: hidden; }
      tutto il punto: quello che si toglie è il contorno, non la parola */
   .tasto-vista-sistema { height: 34px; padding: 0 10px 0 8px; gap: 6px; }
   .sol-vista-nome { font-size: 0.72rem; }
-  .sol-suggerimento { top: 142px; }
+  /* L'aiuto segue il campo di ricerca, senza finirgli dietro. La vecchia
+     quota di 142px annullava proprio la correzione per gli schermi piccoli
+     dichiarata sopra. */
+  .sol-suggerimento { top: 198px; }
 }
 
 /* ------------------------------------------- MAPPA ECLISSI SU DUE COLONNE   */
