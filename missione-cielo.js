@@ -58,7 +58,7 @@
 //     dichiarare.
 // =====================================================================
 
-const MISS_VERSIONE = 8;
+const MISS_VERSIONE = 9;
 const CHIAVE_MISS_STORIA = 'astrocalendario_missione_storia';
 
 const CHIAVE_MISS_SCELTE = 'astrocalendario_missione_scelte';
@@ -905,6 +905,12 @@ function missAmmissibile(c, scelte) {
   // del cielo, e non ha senso pesarla contro l'altezza o la magnitudine.
   if (!missGenereAmmesso(c, scelte)) return false;
   if (!missStrumentoBasta(c.strumentoMinimo, scelte.strumento)) return false;
+  // Anche se nel pannello e' rimasto un telescopio, una missione per
+  // bambini non propone oggetti che senza tubo sono invisibili. Ammassi e
+  // galassie appartengono invece esplicitamente al percorso Esperti.
+  if (scelte.esperienza === 'bambini' && c.strumentoMinimo === 'telescopio') return false;
+  if (c.tipo === 'profondo' && ['ammasso', 'globulare', 'galassia'].includes(c.categoria) &&
+      scelte.esperienza !== 'sfida') return false;
   const difficoltaMassima = MISS_DIFFICOLTA_MASSIMA[scelte.esperienza] ?? 3;
   if ((c.difficolta || 1) > difficoltaMassima) return false;
   if (scelte.cielo === 'settore' && !missAzimutNelSettore(c.azimut, Number(scelte.cieloDa), Number(scelte.cieloA))) return false;
@@ -2294,6 +2300,7 @@ function missSelezionaCielo(sel) {
     t.quandoEsito = Date.now();
     t.feedback = null;
     missFeedbackTocco('gioco.feedbackGiusto');
+    missFuochiArtificio();
     missFermaVoce();
     missRaccontaTappa(t);
   } else {
@@ -2308,6 +2315,59 @@ function missSelezionaCielo(sel) {
   missSalvaAttiva();
   missMostraStrisciaCielo();
   return true;
+}
+
+/* Il premio esplode nel cielo, non nel pannello. Le scintille hanno scia,
+ * resistenza dell'aria e gravita' proprie; il canvas non prende i tocchi e
+ * si elimina da solo, lasciando vivere il planetario sottostante. */
+function missFuochiArtificio() {
+  if (typeof document === 'undefined') return;
+  const cielo = document.getElementById('skymap-contenitore');
+  if (!cielo) return;
+  cielo.querySelector('.missione-fuochi')?.remove();
+  const tela = document.createElement('canvas');
+  tela.className = 'missione-fuochi';
+  tela.setAttribute('aria-hidden', 'true');
+  cielo.appendChild(tela);
+  const rett = cielo.getBoundingClientRect();
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  tela.width = Math.max(1, Math.round(rett.width * dpr));
+  tela.height = Math.max(1, Math.round(rett.height * dpr));
+  const ctx = tela.getContext('2d');
+  if (!ctx) { tela.remove(); return; }
+  ctx.scale(dpr, dpr);
+  const ridotto = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const colori = [28, 46, 195, 214, 330];
+  const particelle = [];
+  const esplodi = (x, y, tinta, n) => {
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI * 2 * i / n + (Math.random() - .5) * .08;
+      const v = 1.8 + Math.random() * 3.1;
+      particelle.push({ x, y, px:x, py:y, vx:Math.cos(a)*v, vy:Math.sin(a)*v,
+        vita:1, calo:.011+Math.random()*.009, tinta, luce:62+Math.random()*20 });
+    }
+  };
+  const scoppi = ridotto ? 1 : 4;
+  for (let b = 0; b < scoppi; b++) setTimeout(() => esplodi(
+    rett.width*(.18+Math.random()*.64), rett.height*(.17+Math.random()*.38),
+    colori[Math.floor(Math.random()*colori.length)], ridotto ? 24 : 54+Math.floor(Math.random()*28)
+  ), ridotto ? 0 : b*260);
+  const inizio = performance.now();
+  function fotogramma(ora) {
+    ctx.clearRect(0, 0, rett.width, rett.height);
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = particelle.length-1; i >= 0; i--) {
+      const p = particelle[i]; p.px=p.x; p.py=p.y; p.x+=p.vx; p.y+=p.vy;
+      p.vx*=.986; p.vy=p.vy*.986+.045; p.vita-=p.calo;
+      if (p.vita <= 0) { particelle.splice(i,1); continue; }
+      ctx.beginPath(); ctx.moveTo(p.px,p.py); ctx.lineTo(p.x,p.y);
+      ctx.strokeStyle=`hsla(${p.tinta},100%,${p.luce}%,${Math.max(0,p.vita)})`;
+      ctx.lineWidth=.6+1.8*p.vita; ctx.stroke();
+    }
+    if (ora-inizio < (ridotto ? 900 : 2500) || particelle.length) requestAnimationFrame(fotogramma);
+    else tela.remove();
+  }
+  requestAnimationFrame(fotogramma);
 }
 
 function missAttivaTelefono() {
@@ -2423,16 +2483,11 @@ function missTestoIndizio(t) {
 function missNavigazioneIndizi(t) {
   const indice = missIndiceIndizio(t);
   const rivelata = !!(t && t.rivelata);
-  /* Il pannello zero è l'enigma, non il primo indizio.
-   *
-   * Prima si chiamava «Indizio 1 di 3», e quel nome contava male due
-   * volte: prometteva tre indizi quando gli indizi veri erano due —
-   * l'enigma occupava il primo posto — e faceva credere che la
-   * progressione fosse finita al terzo pannello, dove invece comincia la
-   * soluzione. Adesso l'enigma ha il suo nome e gli indizi sono tre. */
+  /* La domanda iniziale e' «Indizio 1»: la parola tecnica usata dal
+   * motore non deve comparire nel gioco. I tre aiuti diventano quindi gli
+   * indizi 2, 3 e 4, prima della soluzione separata. */
   const etichetta = rivelata && indice >= MISS_INDIZI ? missT('soluzione')
-    : indice === 0 ? missT('etichettaEnigma')
-    : missT('numeroIndizio', { n: indice, tot: MISS_INDIZI });
+    : missT('numeroIndizio', { n: indice + 1, tot: MISS_INDIZI + 1 });
   return `<div class="missione-navigazione-indizi" aria-label="${missT('navigaIndizi')}">
     <button type="button" class="missione-freccia" data-miss-azione="indizio-precedente"
       aria-label="${missT('indizioPrecedente')}" ${indice === 0 ? 'disabled' : ''}>←</button>
@@ -3292,6 +3347,7 @@ function missHtmlConfigurazione() {
         <input class="missione-select" type="datetime-local" data-miss-momento
           min="${missValoreDataOra(Date.now())}" value="${missValoreDataOra(missPartenzaScelta())}">
       </label>` : ''}
+      <p class="missione-momento-spiega">${missT('momentoSpiega')}</p>
       ${missGruppoScelte('strumento', strumenti, miss.scelte.strumento, missT('conCosa'))}
     </section>
 

@@ -175,6 +175,27 @@ prova('col telescopio entra tutto', () => {
   assert.ok(!motore.strumentoBasta('binocolo', 'occhio'));
 });
 
+prova('ai bambini il telescopio non rende ammissibile un bersaglio invisibile a occhio', () => {
+  const bersaglio = candidato('nettuno', { strumentoMinimo: 'telescopio' });
+  assert.strictEqual(motore.ammissibile(bersaglio, {
+    strumento: 'telescopio', esperienza: 'bambini', generi: ['pianeti'], cielo: 'tutto'
+  }), false);
+});
+
+prova('ammassi e galassie sono riservati agli esperti', () => {
+  for (const categoria of ['ammasso', 'globulare', 'galassia']) {
+    const bersaglio = candidato('profondo:' + categoria, {
+      tipo: 'profondo', categoria, strumentoMinimo: 'binocolo', difficolta: 2
+    });
+    assert.strictEqual(motore.ammissibile(bersaglio, {
+      strumento: 'binocolo', esperienza: 'curiosi', generi: ['profondo'], cielo: 'tutto'
+    }), false, categoria);
+    assert.strictEqual(motore.ammissibile(bersaglio, {
+      strumento: 'binocolo', esperienza: 'sfida', generi: ['profondo'], cielo: 'tutto'
+    }), true, categoria);
+  }
+});
+
 /* Il tetto della difficoltà, provato per quello che promette adesso.
  *
  * Questa prova nasce quando il tetto della sfida era **tre**, e allora un
