@@ -2354,10 +2354,65 @@ function missPosizioneSelezione(sel) {
   return { azimut, altezza };
 }
 
-function missFeedbackTocco(chiave) {
+function missFeedbackTocco(chiave, esito) {
   // Il riscontro e' un messaggio breve sopra la carta, non una nuova riga
   // nella guida: l'indizio principale resta fermo e leggibile.
-  if (typeof skyAvviso === 'function') skyAvviso('missione-tocco', missT(chiave), 2200);
+  const testo = missT(chiave);
+  if (typeof skyAvviso === 'function') skyAvviso('missione-tocco', testo, 2200);
+  missFeedbackVideogioco(esito, testo);
+}
+
+/* Un tocco deve avere la stessa immediatezza di un videogioco, anche senza
+ * aspettare di leggere l'avviso. Il suono e' sintetizzato con Web Audio: non
+ * richiede file da scaricare e, nascendo dal gesto sul canvas, rispetta lo
+ * sblocco audio dei browser mobili. */
+function missFeedbackVideogioco(esito, testo) {
+  if (typeof document === 'undefined') return;
+  const cielo = document.getElementById('skymap-contenitore');
+  if (!cielo) return;
+  cielo.querySelector('.missione-feedback-gioco')?.remove();
+  const segnale = document.createElement('div');
+  segnale.className = `missione-feedback-gioco missione-feedback-${esito}`;
+  segnale.setAttribute('aria-hidden', 'true');
+  segnale.innerHTML = `<strong>${esito === 'vittoria' ? '✓' : '×'}</strong><span>${missTesto(testo)}</span>`;
+  cielo.appendChild(segnale);
+  cielo.classList.remove('missione-colpo-vittoria', 'missione-colpo-errore');
+  void cielo.offsetWidth;
+  cielo.classList.add(`missione-colpo-${esito === 'vittoria' ? 'vittoria' : 'errore'}`);
+  setTimeout(() => {
+    segnale.remove();
+    cielo.classList.remove('missione-colpo-vittoria', 'missione-colpo-errore');
+  }, esito === 'vittoria' ? 1450 : 720);
+  missSuonoEsito(esito);
+}
+
+function missSuonoEsito(esito) {
+  if (typeof window === 'undefined') return;
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return;
+  try {
+    const audio = miss.audioContext || (miss.audioContext = new AudioCtx());
+    if (audio.state === 'suspended') audio.resume();
+    const ora = audio.currentTime;
+    const vittoria = esito === 'vittoria';
+    const note = vittoria
+      ? [[523.25, 0, .13], [659.25, .11, .14], [783.99, .22, .18], [1046.5, .36, .38]]
+      : [[196, 0, .17], [146.83, .14, .2], [98, .3, .32]];
+    note.forEach(([frequenza, attesa, durata], indice) => {
+      const oscillatore = audio.createOscillator();
+      const volume = audio.createGain();
+      oscillatore.type = vittoria ? (indice === note.length - 1 ? 'triangle' : 'sine') : 'sawtooth';
+      oscillatore.frequency.setValueAtTime(frequenza, ora + attesa);
+      if (!vittoria) oscillatore.frequency.exponentialRampToValueAtTime(frequenza * .82, ora + attesa + durata);
+      volume.gain.setValueAtTime(.0001, ora + attesa);
+      volume.gain.exponentialRampToValueAtTime(vittoria ? .12 : .075, ora + attesa + .018);
+      volume.gain.exponentialRampToValueAtTime(.0001, ora + attesa + durata);
+      oscillatore.connect(volume); volume.connect(audio.destination);
+      oscillatore.start(ora + attesa); oscillatore.stop(ora + attesa + durata + .02);
+    });
+  } catch (e) {
+    // Il riscontro visivo e testuale resta completo se Web Audio e' negato.
+  }
 }
 
 const MISS_EVIDENZA_TROVATA_MS = 15000;
@@ -2416,7 +2471,7 @@ function missSelezionaCielo(sel) {
     t.quandoEsito = Date.now();
     t.feedback = null;
     missSegnaTrovato(t);
-    missFeedbackTocco('gioco.feedbackGiusto');
+    missFeedbackTocco('gioco.feedbackGiusto', 'vittoria');
     missFuochiArtificio();
     missFermaVoce();
     missRaccontaTappa(t);
@@ -2427,7 +2482,7 @@ function missSelezionaCielo(sel) {
     const bersaglio = missTappaNelPlanetario(t);
     const soglia = m.scelte.esperienza === 'bambini' ? 18 : 10;
     const vicino = scelta && missDistanzaSferica(scelta, bersaglio) <= soglia;
-    missFeedbackTocco(vicino ? 'gioco.feedbackVicino' : 'gioco.feedbackSbagliato');
+    missFeedbackTocco(vicino ? 'gioco.feedbackVicino' : 'gioco.feedbackSbagliato', 'errore');
   }
   missSalvaAttiva();
   missMostraStrisciaCielo();
