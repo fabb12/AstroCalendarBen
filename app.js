@@ -7709,9 +7709,11 @@ const CHIAVE_SKY_BUSSOLA = 'astrocalendario_bussola_offset_v2';
 const CHIAVE_SKY_CAMERA = 'astrocalendario_camera_campo';
 const CHIAVE_SKY_TASTI_ZOOM = 'astrocalendario_tasti_zoom';
 const CHIAVE_SKY_SOSTA = 'astrocalendario_sosta_mirino';
+const CHIAVE_SKY_DURATA_HOVER = 'astrocalendario_durata_hover';
 const CHIAVE_SKY_DURATA_MAPPA_SPOSTAMENTO = 'astrocalendario_durata_mappa_spostamento';
 const CHIAVE_SKY_HOVER = 'astrocalendario_modalita_hover';
 const SKY_SOSTA_PREDEFINITA_SEC = 1.2;
+const SKY_DURATA_HOVER_PREDEFINITA_SEC = 5;
 const SKY_DURATA_MAPPA_SPOSTAMENTO_PREDEFINITA_SEC = 5;
 
 // Corpi del Sistema Solare mostrati nel cielo.
@@ -8038,6 +8040,8 @@ const sky = {
   modalitaHover: true,
   sostaMirinoSec: SKY_SOSTA_PREDEFINITA_SEC,
   sostaMirino: null,
+  durataHoverSec: SKY_DURATA_HOVER_PREDEFINITA_SEC,
+  chiusuraHover: null,
   prossimoControlloSosta: 0,
   oggetti: [],           // posizioni calcolate (az/alt) degli astri
   prossimoCalcolo: 0,
@@ -23928,8 +23932,10 @@ function skyJ2000AllaData(raOre, dec, t) {
 // pannello di comandi era aperto (Astri, Filtri…) si chiude: sul telefono i
 // due stanno entrambi in fondo alla mappa, e aperti insieme si scrivevano
 // l'uno sopra l'altro.
-function skyApriDettaglio(sel) {
+function skyApriDettaglio(sel, opzioni = {}) {
   if (typeof missRicercaAttiva === 'function' && missRicercaAttiva()) return;
+  clearTimeout(sky.chiusuraHover);
+  sky.chiusuraHover = null;
   skyMostraGruppo('');
   sky.selezione = sel;
   // Quello che si apre toccando un oggetto è il **fumetto**, non più il
@@ -23939,9 +23945,24 @@ function skyApriDettaglio(sel) {
   if (pannello) pannello.classList.remove('visibile');
   skyApriFumetto();
   skyAggiornaScheda();
+  // Solo il fumetto nato dalla sosta del mirino e' temporaneo: quello aperto
+  // con un tocco resta a disposizione finche' l'utente non lo congeda. La
+  // durata configurabile non supera mai cinque secondi, anche se nello
+  // storage fosse rimasto un valore scritto da una versione diversa.
+  if (opzioni.daHover) {
+    const selezioneHover = sel;
+    const secondi = Math.max(1, Math.min(5,
+      Number(sky.durataHoverSec) || SKY_DURATA_HOVER_PREDEFINITA_SEC));
+    sky.chiusuraHover = setTimeout(() => {
+      sky.chiusuraHover = null;
+      if (sky.selezione === selezioneHover) skyChiudiDettaglio();
+    }, secondi * 1000);
+  }
 }
 
 function skyChiudiDettaglio() {
+  clearTimeout(sky.chiusuraHover);
+  sky.chiusuraHover = null;
   sky.selezione = null;
   sky.evidenza = null;
   const pannello = document.getElementById('skymap-dettaglio');
@@ -25173,7 +25194,7 @@ function skyControllaSostaMirino() {
     sky.cacheOrari = { chiave: null, valore: null };
     skyAggiornaStileElenco();
   }
-  skyApriDettaglio(valido);
+  skyApriDettaglio(valido, { daHover: true });
 }
 
 function skyDisegnaAvanzamentoSosta(ctx) {
@@ -37961,6 +37982,22 @@ function inizializzaImpostazioni() {
       sky.sostaMirino = null;
       impSosta.value = String(secondi);
       try { localStorage.setItem(CHIAVE_SKY_SOSTA, String(secondi)); } catch (e) { /* niente storage */ }
+    });
+  }
+
+  const impDurataHover = document.getElementById('imp-skymap-durata-hover');
+  if (impDurataHover) {
+    const salvata = parseFloat(localStorage.getItem(CHIAVE_SKY_DURATA_HOVER));
+    sky.durataHoverSec = Number.isFinite(salvata)
+      ? Math.max(1, Math.min(5, salvata))
+      : SKY_DURATA_HOVER_PREDEFINITA_SEC;
+    impDurataHover.value = String(sky.durataHoverSec);
+    impDurataHover.addEventListener('change', () => {
+      const secondi = Math.max(1, Math.min(5,
+        parseFloat(impDurataHover.value) || SKY_DURATA_HOVER_PREDEFINITA_SEC));
+      sky.durataHoverSec = secondi;
+      impDurataHover.value = String(secondi);
+      try { localStorage.setItem(CHIAVE_SKY_DURATA_HOVER, String(secondi)); } catch (e) { /* niente storage */ }
     });
   }
 
