@@ -28,9 +28,17 @@ function element(){
     removeAttribute:n=>attrs.delete(n),
     hasAttribute:n=>attrs.has(n),
     querySelectorAll:()=>[],querySelector:()=>null,addEventListener(){},removeEventListener(){},
-    focus(){},closest:()=>null,appendChild(){},remove(){}};
+    focus(){},closest:()=>null,appendChild(){},remove(){},
+    /* I fuochi d'artificio della scoperta sono pixel, e qui non si
+     * guardano pixel: senza `getContext` il modulo toglie la tela e
+     * torna indietro da solo, che e' esattamente il comportamento da
+     * provare in un documento senza canvas. Senza queste due righe
+     * moriva con un TypeError e si portava via tutto il resto. */
+    getBoundingClientRect:()=>({width:0,height:0,left:0,top:0,right:0,bottom:0}),
+    getContext:()=>null};
 }
-const doc={readyState:'loading',body:element(),addEventListener(){},getElementById:id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);}};
+const doc={readyState:'loading',body:element(),addEventListener(){},createElement:()=>element(),
+  getElementById:id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);}};
 const obs=new Astronomy.Observer(45.81,9.08,0);
 const ctx=vm.createContext({console,Date:Clock,Astronomy,window:{},document:doc,
   localStorage:{getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v),removeItem:k=>saved.delete(k)},
@@ -57,6 +65,10 @@ for(const name of ['altAzCorpo','altAzCoordinate','skyNomiVisibili','skyNomiCime
 run(app.match(/^const SKY_STELLE = \[[\s\S]*?^\];/m)[0]);
 run(fs.readFileSync(path.join(root,'missione-cielo.js'),'utf8'));
 assert.deepEqual(Array.from(run('MISS_ESPERIENZE')),['bambini','curiosi','sfida']);
+// Quanti aiuti ci sono davvero, letto dal modulo invece che scritto qui:
+// le due righe che lo davano per tre sono rimaste indietro un giorno e
+// si sono portate dietro tutto il resto del file.
+const MISS_INDIZI=run('MISS_INDIZI');
 run(`miss.attiva={id:'test',versione:MISS_VERSIONE,stato:'inCorso',nelPlanetario:true,corrente:0,
   partenza:Date.now(),avviata:Date.now(),scelte:{esperienza:'sfida',strumento:'occhio',durata:30},
   tappe:[{id:'stella:Star3',idCielo:'Star3',nome:'Vega',tipo:'stella',mira:{ra:18.6156,dec:38.7837},mag:.03,
@@ -120,10 +132,16 @@ assert.equal(run('miss.attiva.tappe[0].esito'),null);
 const narrazioni=[];
 ctx.registraNarrazione=(fase,testo)=>narrazioni.push({fase,testo});
 run("miss.attiva.scelte.voce=true;missRaccontaTappa=t=>{registraNarrazione(t.fase, t.fase==='scoperta' ? missNomeTappa(t) : missTestoIndizio(t));return true;}");
+/* Gli indici sono `MISS_INDIZI + 1`, cioè tre: l'enigma è lo zero e i
+ * due aiuti sono l'uno e il due. Queste due righe chiedevano il tre —
+ * erano rimaste indietro dal giorno in cui gli indizi da tre sono
+ * diventati due, e una sola riga sbagliata qui dentro **porta via tutto
+ * quello che le sta sotto**: questo file è uno script lineare, non una
+ * lista di prove, e la prima `assert` che salta lo interrompe. */
 run("missAzione('indizio-precedente',document.body)");
-assert.equal(run('missIndiceIndizio(miss.attiva.tappe[0])'),2);
+assert.equal(run('missIndiceIndizio(miss.attiva.tappe[0])'),MISS_INDIZI-1);
 run("missAzione('indizio-successivo',document.body)");
-assert.equal(run('missIndiceIndizio(miss.attiva.tappe[0])'),3);
+assert.equal(run('missIndiceIndizio(miss.attiva.tappe[0])'),MISS_INDIZI);
 assert.equal(narrazioni.length,2);
 assert.notEqual(narrazioni[0].testo,narrazioni[1].testo);
 // A correct identifier in a simulated time or another location is not an observation.
@@ -131,7 +149,7 @@ offset=3600000;run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.
 // Se la missione e' stata avviata esplicitamente all'ora consigliata, invece,
 // il cielo simulato e' la scena valida e un altro oggetto resta un tentativo.
 offset=3600000;run("miss.attiva.simulazione=true;miss.attiva.tappe[0].feedback=null;missSelezionaCielo({categoria:'astro',id:'Star2'})");
-assert.equal(run('miss.attiva.tappe[0].feedback'),null);assert.equal(run('miss.attiva.tappe[0].aiuto'),3);run('miss.attiva.simulazione=false');offset=0;
+assert.equal(run('miss.attiva.tappe[0].feedback'),null);assert.equal(run('miss.attiva.tappe[0].aiuto'),MISS_INDIZI);run('miss.attiva.simulazione=false');offset=0;
 ctx.sky.observer=new Astronomy.Observer(0,0,0);run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);ctx.sky.observer=obs;
 run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].fase'),'scoperta');assert.equal(run('miss.attiva.corrente'),0);
 assert.equal(narrazioni.length,3);assert.equal(narrazioni[2].fase,'scoperta');assert.equal(narrazioni[2].testo,'Vega');

@@ -42,6 +42,19 @@ function prova(nome, corpo) {
 }
 function sezione(nome) { console.log('\n— ' + nome + ' —'); }
 
+/* I due dizionari, letti una volta sola e in cima: le prove che li
+ * guardano non stanno più tutte in fondo, e una `const` letta prima di
+ * essere dichiarata è un ReferenceError che qui si presenta come una
+ * prova rossa per il motivo sbagliato. */
+function dizionario(lingua) {
+  const finestra = {};
+  const codice = fs.readFileSync(path.join(RADICE, 'lingue', lingua + '.js'), 'utf8');
+  new Function('window', codice)(finestra);
+  return finestra.ASTRO_DIZIONARI[lingua].messaggi;
+}
+
+const DIZIONARI = { it: dizionario('it'), en: dizionario('en') };
+
 // =====================================================================
 // Il banco: un cielo finto di cui si conosce la verità.
 // =====================================================================
@@ -450,10 +463,396 @@ prova('la scoperta si dice su di giri, la resa no', () => {
 
 prova('coi bambini la voce è più alta e più svelta che coi curiosi', () => {
   const b = K.MISS_TONI_VOCE.bambini, c = K.MISS_TONI_VOCE.curiosi;
-  for (const momento of ['enigma', 'indizio', 'soluzione', 'scoperta']) {
+  for (const momento of ['enigma', 'indizio', 'soluzione', 'scoperta', 'premio']) {
     assert.ok(parseFloat(b[momento].tono) > parseFloat(c[momento].tono), momento);
     assert.ok(parseFloat(b[momento].ritmo) > parseFloat(c[momento].ritmo), momento);
   }
+});
+
+prova('la coppa si consegna, non si grida', () => {
+  /* La quinta riga della tabella (§7-bis). `excited` è il tono di chi
+   * ha appena trovato qualcosa; una coppa è una cosa che si consegna, e
+   * consegnarla urlando la fa sembrare una presa in giro. */
+  for (const modo of K.MISS_ESPERIENZE) {
+    const t = K.MISS_TONI_VOCE[modo];
+    assert.ok(t.premio, 'manca il tono del premio per ' + modo);
+    assert.strictEqual(t.premio.stile, 'cheerful', modo);
+    assert.ok(parseFloat(t.premio.grado) < parseFloat(t.scoperta.grado),
+      modo + ': la scoperta deve restare il momento più acceso della serata');
+  }
+});
+
+prova('la scoperta si annuncia prima di raccontare', () => {
+  /* «Quando vince deve leggere: evviva, hai trovato, bravo». Prima la
+   * voce leggeva «M tredici. La sua luce è partita…», cioè un cartellino
+   * da museo: la notizia più bella della serata consegnata con la faccia
+   * di un orario ferroviario. Non si giudica a occhio — sullo schermo il
+   * titolo esultava già — e l'unico modo di prenderlo è guardare che il
+   * testo **detto** cominci con l'esclamazione e non col nome. */
+  const evviva = [1, 2, 3].map(n => DIZIONARI.it['missione.gioco.evviva.' + n]);
+  assert.ok(evviva.every(Boolean), 'mancano le esclamazioni: ' + JSON.stringify(evviva));
+  for (const testo of evviva) {
+    assert.ok(/[!]/.test(testo), 'un’esclamazione senza punto esclamativo non alza la voce: ' + testo);
+  }
+  for (const lingua of ['it', 'en']) {
+    for (const n of [1, 2, 3]) {
+      assert.ok(DIZIONARI[lingua]['missione.bambini.gioco.evviva.' + n],
+        `manca la versione per bambini di evviva.${n} (${lingua})`);
+    }
+  }
+});
+
+prova('il nome del bersaglio si accentua, e solo quando è la notizia', () => {
+  /* L'accento e la pausa prima del nome sono le due cose che un
+   * narratore vero fa lì. Il contro-esempio è nella seconda metà: dentro
+   * a un indizio lo stesso accento sarebbe la soluzione detta a voce
+   * alta. */
+  const conNome = motore.ssml('Evviva! Hai trovato M13. È bellissimo.', 'it',
+    K.MISS_TONI_VOCE.curiosi.scoperta, { enfasi: 'M13' });
+  assert.ok(conNome.includes('<emphasis level="strong">M13</emphasis>'), conNome);
+  assert.ok(conNome.indexOf('<break') < conNome.indexOf('<emphasis'),
+    'la pausa deve venire prima dell’accento, non dopo');
+
+  const senza = motore.ssml('Evviva! Hai trovato M13.', 'it',
+    K.MISS_TONI_VOCE.curiosi.scoperta);
+  assert.ok(!senza.includes('<emphasis'), 'senza enfasi dichiarata non si accentua niente');
+
+  // Un nome che nel testo non c'è non deve rompere niente: si perde
+  // l'accento, non la frase.
+  const assente = motore.ssml('Evviva! Hai trovato.', 'it',
+    K.MISS_TONI_VOCE.curiosi.scoperta, { enfasi: 'Betelgeuse' });
+  assert.ok(!assente.includes('<emphasis'));
+  assert.ok(assente.includes('Evviva'));
+});
+
+// =====================================================================
+sezione('i tre indizi sono tre strofe dello stesso indovinello');
+
+/* La segnalazione era in una riga: «il primo indizio va bene, il secondo
+ * e il terzo no». Erano giusti — la direzione era la direzione, la stella
+ * di riferimento era davvero lì — e cambiavano **registro**: dopo un
+ * enigma in prima persona arrivava la voce di un navigatore satellitare.
+ * Un indovinello che a metà diventa un'istruzione ha già detto a chi
+ * ascolta che il gioco era finto, e quello non si vede leggendo il
+ * codice: tutte e tre le righe sono sensate, una per una. */
+
+prova('le tre strofe di una tappa hanno la stessa variante', () => {
+  // È il legame fra la prima e le altre due: con due indici scorrelati
+  // sarebbero tre indovinelli diversi sullo stesso oggetto, che è quasi
+  // peggio di tre istruzioni.
+  for (const v of [0, 1, 2, 3, 4, 5, 17]) {
+    const t = { tipo: 'profondo', indizioVariante: v };
+    const n = motore.varianteEnigma(t);
+    assert.ok(n >= 1 && n <= 3, 'variante fuori scala: ' + n);
+    assert.strictEqual(motore.enigmaSeguito(t, 2), 'gioco.enigmaDue.profondo.' + n);
+    assert.strictEqual(motore.enigmaSeguito(t, 3), 'gioco.enigmaTre.profondo.' + n);
+  }
+});
+
+prova('…compresa l’eccezione delle figure moderne', () => {
+  /* Le figure non antiche pescano due enigmi invece di tre (la terza
+   * afferma un'antichità che la Macchina Pneumatica non ha). Se la
+   * variante delle strofe non tenesse conto della stessa eccezione, per
+   * loro la prima riga e le altre due si sfaserebbero — e sarebbe il
+   * genere di difetto che a occhio non si vede: tre frasi vere che non
+   * si parlano. */
+  const moderna = { tipo: 'costellazione', antica: false };
+  const antica = { tipo: 'costellazione', antica: true };
+  const vModerne = [0, 1, 2, 3, 4, 5].map(v => motore.varianteEnigma(Object.assign({ indizioVariante: v }, moderna)));
+  assert.deepStrictEqual([...new Set(vModerne)].sort(), [1, 2]);
+  const vAntiche = [0, 1, 2].map(v => motore.varianteEnigma(Object.assign({ indizioVariante: v }, antica)));
+  assert.deepStrictEqual([...new Set(vAntiche)].sort(), [1, 2, 3]);
+});
+
+prova('la catena di ripiego è la stessa dell’enigma', () => {
+  // Chi ha ricevuto l'enigma proprio riceve anche il seguito proprio, e
+  // chi è sceso di un gradino ci resta per tutte e tre le strofe: non
+  // può succedere che la prima parli dei mari della Luna e la seconda
+  // di una macchia del cielo profondo.
+  const conSpecie = { tipo: 'profondo', categoria: 'galassia', indizioVariante: 0 };
+  // Fuori da un browser `astroI18n` non c'è: `missPrimaChiaveNota`
+  // restituisce l'ultima della catena, cioè il gradino più basso.
+  assert.strictEqual(motore.enigmaSeguito(conSpecie, 2), 'gioco.enigmaDue.profondo.1');
+  // …e la catena vera si controlla sul dizionario: le chiavi di specie
+  // esistono, quindi in un browser è quella a vincere.
+  for (const specie of ['ammasso', 'globulare', 'nebulosa', 'planetaria', 'galassia']) {
+    for (const lingua of ['it', 'en']) {
+      for (const gruppo of ['enigmaDue', 'enigmaTre']) {
+        assert.ok(DIZIONARI[lingua][`missione.gioco.${gruppo}.specie.${specie}`],
+          `manca ${gruppo}.specie.${specie} (${lingua})`);
+      }
+    }
+  }
+});
+
+for (const lingua of ['it', 'en']) {
+  prova('ogni famiglia ha tutte e tre le strofe, in tutte le varianti (' + lingua + ')', () => {
+    const d = DIZIONARI[lingua];
+    const mancanti = [];
+    for (const fam of ['luna', 'pianeta', 'stella', 'costellazione', 'profondo']) {
+      for (const n of [1, 2, 3]) {
+        for (const gruppo of ['enigmaDue', 'enigmaTre']) {
+          if (!d[`missione.gioco.${gruppo}.${fam}.${n}`]) mancanti.push(`${gruppo}.${fam}.${n}`);
+        }
+      }
+      // Anche ai bambini le tre varianti, e per la stessa ragione: con
+      // una sola, tre figure in una serata dicono la stessa riga.
+      for (const gruppo of ['enigmaDueBimbi', 'enigmaTreBimbi']) {
+        for (const n of [1, 2, 3]) {
+          if (!d[`missione.gioco.${gruppo}.${fam}.${n}`]) mancanti.push(`${gruppo}.${fam}.${n}`);
+        }
+      }
+    }
+    assert.deepStrictEqual(mancanti, [], mancanti.slice(0, 6).join(', '));
+  });
+
+  prova('e nessuna strofa svela il nome del bersaglio (' + lingua + ')', () => {
+    /* La stessa trappola dell'enigma, spostata di una riga: una seconda
+     * strofa che comincia con «i miei anelli» è una risposta, non una
+     * domanda.
+     *
+     * La regola è **per famiglia**, e non è pignoleria: dentro alla
+     * strofa di un pianeta la parola «Luna» non svela niente (la Luna è
+     * un'altra famiglia, e «si vede a fasi come la Luna» è un paragone
+     * utile), mentre dentro alla strofa della Luna la stessa parola è la
+     * soluzione stampata. Un elenco unico di nomi proibiti prenderebbe
+     * il paragone e lascerebbe passare il vero difetto il giorno in cui
+     * capita a una famiglia che l'elenco non copre. */
+    const proibiti = {
+      luna: ['luna', 'moon'],
+      pianeta: ['saturno', 'giove', 'marte', 'venere', 'mercurio', 'urano', 'nettuno',
+        'saturn', 'jupiter', 'mars', 'venus', 'mercury', 'uranus', 'neptune'],
+      stella: ['vega', 'sirio', 'sirius', 'betelgeuse', 'altair', 'arturo', 'arcturus',
+        'rigel', 'capella', 'polare', 'polaris', 'deneb', 'antares'],
+      costellazione: ['orione', 'orion', 'cigno', 'cygnus', 'lira', 'lyra', 'cassiopea',
+        'cassiopeia', 'scorpione', 'scorpius', 'leone', 'leo', 'toro', 'taurus'],
+      profondo: ['andromeda', 'pleiadi', 'pleiades', 'messier']
+    };
+    const d = DIZIONARI[lingua];
+    const colpevoli = [];
+    for (const [chiave, testo] of Object.entries(d)) {
+      const pezzi = /^missione\.gioco\.enigma(?:Due|Tre)(?:Bimbi)?\.(?:specie\.)?([a-z]+)/.exec(chiave);
+      if (!pezzi) continue;
+      // Le specie del catalogo (ammasso, galassia, …) sono tutte cielo
+      // profondo: il loro elenco proibito è quello.
+      const famiglia = proibiti[pezzi[1]] ? pezzi[1] : 'profondo';
+      const basso = String(testo).toLowerCase();
+      for (const nome of proibiti[famiglia]) {
+        if (new RegExp('\\b' + nome + '\\b').test(basso)) colpevoli.push(chiave + ' → ' + nome);
+      }
+    }
+    assert.deepStrictEqual(colpevoli, [], colpevoli.slice(0, 4).join(', '));
+  });
+}
+
+prova('due bersagli della stessa famiglia non ricevono la stessa strofa', () => {
+  /* Da quando la seconda e la terza riga scendono alla famiglia per
+   * quasi tutti i bersagli, due figure con la stessa variante nella
+   * stessa serata ricevono due righe identiche parola per parola. Non
+   * si legge come una coincidenza: si legge come un copia-incolla, e
+   * capitava una volta su tre — misurato sul cielo di Como, il Cigno e
+   * Cassiopea dicevano tutt'e due «fra diecimila anni sarò storta». */
+  const m = motore.genera(scenario(cieloRicco(), { durata: 120, strumento: 'telescopio' }));
+  const perFamiglia = {};
+  for (const t of m.tappe) {
+    const fam = t.tipo;
+    (perFamiglia[fam] = perFamiglia[fam] || []).push(motore.varianteEnigma(t));
+  }
+  for (const [fam, varianti] of Object.entries(perFamiglia)) {
+    // Oltre tre bersagli della stessa famiglia le varianti finiscono, e
+    // una ripetizione è inevitabile: il tetto della varietà però ne
+    // lascia passare due, quindi il caso non si presenta.
+    if (varianti.length > 3) continue;
+    assert.strictEqual(new Set(varianti).size, varianti.length,
+      `${fam}: due tappe con la stessa strofa (${varianti.join(', ')})`);
+  }
+});
+
+prova('la geometria non è sparita: dove guardare e da chi partire', () => {
+  /* La cura peggiore di questa segnalazione sarebbe stata togliere
+   * l'informazione per far posto alla poesia: tre indovinelli bellissimi
+   * e nessun modo di trovare il bersaglio. Le tre fasce di altezza e le
+   * due forme del terzo indizio devono esserci tutte, coi loro
+   * segnaposti. */
+  for (const lingua of ['it', 'en']) {
+    const d = DIZIONARI[lingua];
+    for (const fascia of ['basso', 'mezzo', 'alto']) {
+      for (const n of [1, 2, 3]) {
+        const testo = d[`missione.gioco.dove.${fascia}.${n}`];
+        assert.ok(testo, `manca dove.${fascia}.${n} (${lingua})`);
+        assert.ok(testo.includes('{dove}'), `dove.${fascia}.${n} non dice dove guardare (${lingua})`);
+      }
+    }
+    for (const n of [1, 2, 3]) {
+      const compagnia = d[`missione.gioco.compagnia.${n}`];
+      assert.ok(compagnia, `manca compagnia.${n} (${lingua})`);
+      for (const segno of ['{nome}', '{verso}', '{misura}', '{gradi}']) {
+        assert.ok(compagnia.includes(segno), `compagnia.${n} ha perso ${segno} (${lingua})`);
+      }
+      const solo = d[`missione.gioco.solitudine.${n}`];
+      assert.ok(solo && solo.includes('{luce}'), `manca solitudine.${n} (${lingua})`);
+    }
+  }
+});
+
+prova('almeno una fascia per tre invita a girarsi da quello che si ha davanti', () => {
+  // Il punto cardinale opposto (`{spalle}`) è la cosa che al buio si
+  // usa davvero: cercare un nord che non si vede è più difficile che
+  // voltare le spalle a quello che si sta già guardando.
+  for (const lingua of ['it', 'en']) {
+    for (const fascia of ['basso', 'mezzo', 'alto']) {
+      const conSpalle = [1, 2, 3].filter(n =>
+        String(DIZIONARI[lingua][`missione.gioco.dove.${fascia}.${n}`]).includes('{spalle}'));
+      assert.ok(conSpalle.length >= 1, `nessuna variante di ${fascia} usa {spalle} (${lingua})`);
+    }
+  }
+});
+
+// =====================================================================
+sezione('le coppe e i premi');
+
+/* Un punteggio è la cosa più facile da sbagliare senza accorgersene:
+ * qualunque numero è plausibile, e nessuno, guardando «118 punti», dice
+ * «questa serata ne valeva 96». Il giudice quindi non è l'occhio ma il
+ * confronto fra due serate di cui si conosce la differenza. */
+
+function serata(esiti) {
+  return {
+    id: 'prova', avviata: Date.UTC(2026, 8, 11, 21, 0),
+    tappe: esiti.map((e, i) => Object.assign({
+      id: 'b' + i, tipo: 'stella', difficolta: 1, fascino: 0.4, esito: 'trovato', aiuto: 0
+    }, e))
+  };
+}
+
+prova('trovare vale, e più è difficile più vale', () => {
+  const facile = motore.puntiMissione(serata([{ difficolta: 1 }]));
+  const difficile = motore.puntiMissione(serata([{ difficolta: 4 }]));
+  assert.ok(difficile > facile, `${difficile} non batte ${facile}`);
+  // Una tappa non trovata non toglie niente: «non trovato» è un fatto,
+  // non un voto — è la regola di fondo di tutto il file (§6).
+  const mancata = motore.puntiMissione(serata([{ esito: 'nonTrovato' }, { esito: 'saltato' }]));
+  assert.strictEqual(mancata, 0);
+});
+
+prova('chiedere un indizio non è barare, ma trovarne uno da soli vale di più', () => {
+  const solo = motore.puntiMissione(serata([{ aiuto: 0 }]));
+  const conIndizi = motore.puntiMissione(serata([{ aiuto: 2 }]));
+  assert.ok(solo > conIndizi);
+  // …e il premio è piccolo: chi ne chiede tre non perde la serata.
+  assert.ok(solo < conIndizi * 2, 'il bonus non deve valere quanto la tappa');
+});
+
+prova('la resa costa un gradino più dell’ultimo indizio', () => {
+  assert.strictEqual(motore.costoAiuti({ aiuto: 0 }), 0);
+  assert.strictEqual(motore.costoAiuti({ aiuto: K.MISS_INDIZI }), K.MISS_INDIZI);
+  assert.strictEqual(motore.costoAiuti({ aiuto: K.MISS_INDIZI, rivelata: true }), K.MISS_INDIZI + 1);
+  // Un aiuto fuori scala non sfonda il conto.
+  assert.strictEqual(motore.costoAiuti({ aiuto: 99 }), K.MISS_INDIZI);
+});
+
+prova('l’oro vuole tutto e quasi senza aiuti, il bronzo basta qualcosa', () => {
+  const tutte = e => serata([{}, {}, {}].map(() => e));
+  assert.strictEqual(motore.coppaDiMissione(tutte({ aiuto: 0 })), 'oro');
+  assert.strictEqual(motore.coppaDiMissione(tutte({ aiuto: 2 })), 'argento');
+  assert.strictEqual(motore.coppaDiMissione(
+    serata([{}, {}, { esito: 'nonTrovato' }])), 'argento');
+  assert.strictEqual(motore.coppaDiMissione(
+    serata([{}, { esito: 'nonTrovato' }, { esito: 'saltato' }])), 'bronzo');
+});
+
+prova('e non esiste la coppa di latta', () => {
+  /* Chi non trova niente non ha perso una gara: ha avuto una serata
+   * storta. Una coppa di consolazione è peggio di nessuna coppa, e
+   * `null` è quello che fa tacere anche la voce (§`missRaccontaPremio`). */
+  assert.strictEqual(motore.coppaDiMissione(
+    serata([{ esito: 'nonTrovato' }, { esito: 'saltato' }])), null);
+  assert.strictEqual(motore.coppaDiMissione({ tappe: [] }), null);
+  assert.strictEqual(motore.coppaDiMissione(null), null);
+});
+
+prova('una serata entra nell’albo una volta sola, e ci resta', () => {
+  const prima = motore.alboVuoto();
+  const { albo, verbale } = motore.alboConMissione(prima, serata([{}, {}, {}]));
+  assert.strictEqual(albo.trovati, 3);
+  assert.strictEqual(albo.missioni, 1);
+  assert.strictEqual(albo.perfette, 1);
+  assert.strictEqual(albo.senzaAiuti, 1);
+  assert.strictEqual(albo.coppe.oro, 1);
+  assert.ok(verbale.punti > 0);
+  // L'albo di partenza non si tocca: è una funzione pura, e il conto
+  // vero lo scrive `missPremiaMissione` in un punto solo.
+  assert.strictEqual(prima.trovati, 0);
+  assert.strictEqual(prima.missioni, 0);
+});
+
+prova('i bersagli si contano una volta sola, per quanti diversi sono', () => {
+  // Rivedere Giove dieci volte è una bella abitudine, non un giro dei
+  // pianeti.
+  let albo = motore.alboVuoto();
+  for (let i = 0; i < 4; i++) {
+    albo = motore.alboConMissione(albo, {
+      id: 'm' + i, avviata: Date.UTC(2026, 8, 11 + i, 21, 0),
+      tappe: [{ id: 'Jupiter', tipo: 'pianeta', esito: 'trovato', difficolta: 1, fascino: 0.6, aiuto: 0 }]
+    }).albo;
+  }
+  assert.strictEqual(albo.trovati, 4, 'le volte si sommano');
+  assert.strictEqual(motore.alboDistinti(albo, 'pianeta'), 1, 'i bersagli diversi no');
+  assert.strictEqual(albo.notti.length, 4);
+});
+
+prova('una serata che scavalca la mezzanotte è una sera sola', () => {
+  /* Contando per data di calendario, chi resta fuori fino alle due si
+   * ritroverebbe due sere dove ne ha fatta una — e «tre sere diverse»
+   * diventerebbe un premio che si prende in una notte. */
+  const sera = new Date(2026, 8, 11, 22, 30).getTime();
+  const notte = new Date(2026, 8, 12, 1, 45).getTime();
+  assert.strictEqual(motore.notteDi(sera), motore.notteDi(notte));
+  const seraDopo = new Date(2026, 8, 12, 22, 30).getTime();
+  assert.notStrictEqual(motore.notteDi(sera), motore.notteDi(seraDopo));
+});
+
+prova('un premio si annuncia una volta e poi resta preso', () => {
+  const uno = motore.alboConMissione(motore.alboVuoto(), serata([{}]));
+  assert.ok(uno.verbale.nuovi.includes('primaLuce'));
+  const due = motore.alboConMissione(uno.albo, serata([{}]));
+  assert.ok(!due.verbale.nuovi.includes('primaLuce'),
+    'un premio già preso che si riconferma non è una notizia');
+  assert.ok(due.albo.premi.primaLuce, 'e non si perde');
+});
+
+prova('ogni premio ha un nome, una spiegazione e un disegno che esiste', () => {
+  /* Il guasto muto di questa famiglia: un premio senza testo si sblocca
+   * lo stesso, e sullo schermo compare una riga vuota accanto a
+   * un'icona. Il disegno si controlla contro `DISEGNI` di app.js, che è
+   * l'unico posto in cui le icone esistono davvero. */
+  const disegni = fs.readFileSync(path.join(RADICE, 'app.js'), 'utf8');
+  const mancanti = [];
+  for (const premio of K.MISS_PREMI) {
+    for (const lingua of ['it', 'en']) {
+      if (!DIZIONARI[lingua]['missione.albo.premio.' + premio.id + '.nome']) mancanti.push(premio.id + '.nome/' + lingua);
+      if (!DIZIONARI[lingua]['missione.albo.premio.' + premio.id + '.desc']) mancanti.push(premio.id + '.desc/' + lingua);
+    }
+    if (!new RegExp('^\\s{2}' + premio.id.replace(/[^a-z]/gi, '') + ':', 'm').test(disegni) &&
+        !new RegExp('^\\s{2}' + premio.icona + ':', 'm').test(disegni)) {
+      mancanti.push('icona ' + premio.icona);
+    }
+  }
+  assert.deepStrictEqual([...new Set(mancanti)], [], mancanti.slice(0, 6).join(', '));
+});
+
+prova('le tre coppe e i testi della bacheca esistono nelle due lingue', () => {
+  const mancanti = [];
+  for (const lingua of ['it', 'en']) {
+    for (const c of K.MISS_COPPE) {
+      if (!DIZIONARI[lingua]['missione.albo.coppa.' + c]) mancanti.push('coppa.' + c + '/' + lingua);
+    }
+    for (const k of ['titolo', 'punti', 'trovati', 'notti', 'missioni', 'premi', 'vedi',
+      'indietro', 'spiega', 'coppaVinta', 'nessunaCoppa', 'voceCoppa', 'vocePremio']) {
+      if (!DIZIONARI[lingua]['missione.albo.' + k]) mancanti.push(k + '/' + lingua);
+    }
+  }
+  assert.deepStrictEqual(mancanti, [], mancanti.join(', '));
 });
 
 // =====================================================================
@@ -829,15 +1228,6 @@ sezione('il repertorio e i dizionari devono dire la stessa cosa');
  * cosa. Nessuno se ne accorge — è la stessa famiglia di guasti dei nomi
  * dei laghi che mancavano per mesi. Qui i due elenchi si confrontano
  * cifra per cifra, e in tutt'e due le lingue. */
-function dizionario(lingua) {
-  const finestra = {};
-  const codice = fs.readFileSync(path.join(RADICE, 'lingue', lingua + '.js'), 'utf8');
-  new Function('window', codice)(finestra);
-  return finestra.ASTRO_DIZIONARI[lingua].messaggi;
-}
-
-const DIZIONARI = { it: dizionario('it'), en: dizionario('en') };
-
 for (const lingua of ['it', 'en']) {
   prova('ogni voce del repertorio ha enigma, segno e aneddoto (' + lingua + ')', () => {
     const d = DIZIONARI[lingua];
@@ -1915,6 +2305,63 @@ const POSIZIONE = { lat: 45.81, lon: 9.08, nome: 'Como', fonte: 'manuale', preci
       assert.strictEqual(conclusa.senzaEsito, 0);
       assert.ok(conclusa.esiti >= 2);
       assert.strictEqual(conclusa.modulo, true);
+    });
+
+    /* La coppa, la bacheca e i premi nuovi.
+     *
+     * Il conto vero sta in `localStorage` e non nel Diario — una
+     * missione si conclude anche senza salvarla — quindi la prova che
+     * conta è che dopo la conclusione l'albo ci sia davvero e che il
+     * riquadro lo dica. Il punteggio si controlla per **coerenza**, non
+     * per valore: qualunque numero sarebbe plausibile sullo schermo. */
+    const premio = await pagina.evaluate(() => {
+      const albo = JSON.parse(localStorage.getItem('astrocalendario_missione_albo') || 'null');
+      const riquadro = document.querySelector('.missione-premio');
+      const prima = miss.attiva.premio;
+      // Ridisegnare la stessa fine non deve consegnare una seconda coppa.
+      missDisegnaPannello();
+      const dopo = JSON.parse(localStorage.getItem('astrocalendario_missione_albo') || 'null');
+      document.querySelector('[data-miss-azione="albo"]').click();
+      const bacheca = {
+        vista: miss.vista,
+        premi: document.querySelectorAll('.missione-premio-voce').length,
+        presi: document.querySelectorAll('.missione-premio-voce[data-preso="si"]').length,
+        coppe: document.querySelectorAll('.missione-coppa-conto').length,
+        numeri: document.querySelectorAll('.missione-albo-numeri li').length
+      };
+      document.querySelector('[data-miss-azione="chiudiAlbo"]').click();
+      return {
+        albo, dopo, bacheca, verbale: prima,
+        tornati: miss.vista,
+        coppa: riquadro ? riquadro.getAttribute('data-coppa') : null,
+        nuoviScritti: document.querySelectorAll('.missione-premio-nuovo').length,
+        quantiPremi: MISS_PREMI.length
+      };
+    });
+    prova('la serata finisce con una coppa, e l’albo la registra', () => {
+      assert.ok(premio.albo, 'nessun albo scritto in localStorage');
+      assert.strictEqual(premio.albo.missioni, 1);
+      assert.ok(premio.albo.trovati >= 1, 'nessun bersaglio contato');
+      assert.ok(premio.verbale, 'la missione non porta il suo verbale');
+      assert.ok(['oro', 'argento', 'bronzo'].includes(premio.coppa), premio.coppa);
+      assert.strictEqual(premio.albo.punti, premio.verbale.punti);
+    });
+    prova('e la coppa non si consegna due volte', () => {
+      // `missConcludi` può girare di nuovo, e il pannello si ridisegna a
+      // decine di volte: una coppa consegnata due volte non vale niente.
+      assert.strictEqual(premio.dopo.missioni, 1);
+      assert.strictEqual(premio.dopo.punti, premio.albo.punti);
+    });
+    prova('il primo premio si annuncia, e la bacheca li mostra tutti', () => {
+      assert.ok(premio.nuoviScritti >= 1, 'la prima serata deve sbloccare almeno «Prima luce»');
+      assert.strictEqual(premio.bacheca.vista, 'albo');
+      assert.strictEqual(premio.bacheca.premi, premio.quantiPremi,
+        'i premi non presi si mostrano lo stesso: un traguardo che non si sa che esiste non fa venire voglia di niente');
+      assert.ok(premio.bacheca.presi >= 1);
+      assert.strictEqual(premio.bacheca.coppe, 3);
+      assert.strictEqual(premio.bacheca.numeri, 4);
+      // Chiudendola si torna da dove si era, non alla configurazione.
+      assert.strictEqual(premio.tornati, 'conclusa');
     });
 
     const salvata = await pagina.evaluate(() => {

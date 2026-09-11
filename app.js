@@ -298,6 +298,11 @@ const DISEGNI = {
     <circle cx="12" cy="15.2" r="5.6"/>
     <path d="M12 12.4l1 2.1 2.3.2-1.7 1.5.5 2.2-2.1-1.2-2.1 1.2.5-2.2-1.7-1.5 2.3-.2z"/>`,
 
+  coppa: `<path d="M7.4 3.2h9.2v4.2c0 2.5-2.1 4.6-4.6 4.6s-4.6-2.1-4.6-4.6z"/>
+    <path d="M7.4 4.9H5.2a2.6 2.6 0 0 0 2.7 3.9M16.6 4.9h2.2a2.6 2.6 0 0 1-2.7 3.9"/>
+    <path d="M12 12v3.4"/>
+    <path d="M9.6 20.8c0-2.1.9-3.4 2.4-3.4s2.4 1.3 2.4 3.4M8.6 20.8h6.8"/>`,
+
   bersaglio: `<circle cx="12" cy="12" r="8.4"/>
     <circle cx="12" cy="12" r="5"/>
     <circle cx="12" cy="12" r="1.8"/>`,
@@ -37609,7 +37614,12 @@ function esportaBackup() {
     acque: localStorage.getItem('astrocalendario_acque'),
     // Fin dove cercare montagne, paesi e acque, e i due interruttori: sono
     // risposte date a mano nelle Impostazioni, come il cielo di casa.
-    raggiOrizzonte: localStorage.getItem('astrocalendario_raggi_orizzonte')
+    raggiOrizzonte: localStorage.getItem('astrocalendario_raggi_orizzonte'),
+    // Le coppe e i premi di Missione Cielo. È l'unica cosa di quel modulo
+    // che non si possa rifare: una missione si conclude anche senza
+    // salvarla nel Diario, quindi dal Diario l'albo non si ricostruisce —
+    // perderlo vuol dire perdere le serate, non una memoria di comodo.
+    missioneAlbo: localStorage.getItem('astrocalendario_missione_albo')
   };
   const blob = new Blob([JSON.stringify(dati, null, 2)], { type: 'application/json' });
   const giorno = new Date().toISOString().slice(0, 10);
@@ -37670,7 +37680,8 @@ async function importaBackup(file) {
      ['citta', 'astrocalendario_citta'],
      ['cime', 'astrocalendario_cime'],
      ['acque', 'astrocalendario_acque'],
-     ['raggiOrizzonte', 'astrocalendario_raggi_orizzonte']].forEach(([campo, chiave]) => {
+     ['raggiOrizzonte', 'astrocalendario_raggi_orizzonte'],
+     ['missioneAlbo', 'astrocalendario_missione_albo']].forEach(([campo, chiave]) => {
       if (!dati[campo]) return;
       try { localStorage.setItem(chiave, dati[campo]); } catch (e) { /* niente storage */ }
     });
