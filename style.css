@@ -10875,11 +10875,27 @@ body button.did-ponte:active { transform: translateY(1px); }
 .missione-striscia.visibile { pointer-events: auto; }
 .missione-striscia.solo-voce {
   left: auto;
-  width: min(100%, 260px);
-  min-height: 44px;
-  padding: 4px 40px 4px 4px;
+  /* Il riquadro raccolto non deve diventare una striscia illeggibile sui
+     display stretti. La larghezza fluida gli lascia spazio ai bordi, mentre
+     il pavimento di 196px conserva insieme maniglia, etichetta e chiusura. */
+  width: min(280px, calc(100% - 24px));
+  min-width: min(196px, calc(100% - 24px));
+  max-width: calc(100% - 24px);
+  min-height: 52px;
+  flex: 0 0 auto;
+  padding: 9px 40px 9px 4px;
+  overflow: visible;
   border-color: rgba(76, 141, 255, 0.28);
   background: rgba(9, 16, 34, 0.72);
+}
+.missione-striscia.solo-voce .missione-visibilita {
+  /* `max-width` da solo permetteva al flex/viewport di schiacciare il testo
+     fino quasi a farlo sparire. Il comando principale ora mantiene il suo
+     spazio e, solo su schermi eccezionalmente stretti, può andare a capo. */
+  min-width: min(116px, calc(100% - 90px));
+  max-width: calc(100% - 90px);
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .missione-striscia-testo { display: flex; flex: 1 1 240px; flex-direction: column; gap: 1px; min-width: 0; }
 .missione-striscia-titolo {
