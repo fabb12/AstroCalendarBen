@@ -126,6 +126,22 @@ const scartoAz = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
     passaggio ? passaggio.satId + ', culmine a ' + new Date(passaggio.culmine).toISOString() : '');
   if (!passaggio) { await browser.close(); server.close(); process.exit(1); }
 
+  const eventiStazioni = await pagina.evaluate(() => eventiCalcolati
+    .filter(e => e.categoria === 'stazioni')
+    .map(e => ({
+      id: e.id, satId: e.stazione && e.stazione.satId,
+      visibile: e.stazione && e.stazione.visibile,
+      illuminata: e.stazione && e.stazione.illuminata,
+      alBuio: e.stazione && e.stazione.alBuio,
+      strumento: strumentoEvento(e)
+    })));
+  ok('i passaggi entrano negli eventi da osservare', eventiStazioni.length > 0,
+    `${eventiStazioni.length} eventi`);
+  ok('negli eventi entrano solo passaggi illuminati e col cielo buio',
+    eventiStazioni.every(e => e.visibile && e.illuminata && e.alBuio));
+  ok('ISS e Tiangong sono eventi a occhio nudo',
+    eventiStazioni.every(e => e.strumento === 'occhio'));
+
   const stato = () => pagina.evaluate(() => {
     const o = skyVoceDiId(sky.target);
     return {

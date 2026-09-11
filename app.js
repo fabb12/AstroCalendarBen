@@ -201,6 +201,7 @@ const CATEGORIE = conNomeTradotto({
   pianeti:   { nome: 'Pianeti',          disegno: 'saturno' },
   congiunzioni: { nome: 'Congiunzioni',  disegno: 'congiunzione' },
   aurore:    { nome: 'Aurore',           disegno: 'aurora' },
+  stazioni:  { nome: 'Stazioni spaziali', disegno: 'satellite' },
   personali: { nome: 'Personali',        disegno: 'segnalino' }
 }, 'categoria.');
 
@@ -1029,7 +1030,7 @@ function defRisolta(evento, campo, calcola) {
  * funzione compone la frase **quando l'agenda la legge**, chiamando `t()` con
  * i valori che il conto astronomico ha già trovato. Il conto non si rifà: i
  * numeri sono chiusi dentro alla funzione, che rilegge solo il dizionario. */
-function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, eclissiLunare, corpoCielo, simul, strumento, congiunzione, aurora, chiave }) {
+function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manuale, linkMappa, categoria, eclissi, eclissiLunare, corpoCielo, simul, strumento, congiunzione, aurora, stazione, chiave }) {
   const evento = {
     id: id || `ev${contatoreId++}`,
     titolo: typeof titolo === 'function' ? undefined : titolo,
@@ -1056,7 +1057,9 @@ function creaEvento({ id, titolo, dataObj, spiegazione, colore, programma, manua
     // Un'aurora non ha un astro da puntare: ha un Kp. Con questo campo il
     // planetario sa che deve accendere l'ovale aurorale e con che tempesta
     // disegnarlo, e sa da che parte girare la vista.
-    aurora: aurora || null
+    aurora: aurora || null,
+    // Traiettoria locale calcolata con SGP4, non un corpo di Astronomy Engine.
+    stazione: stazione || null
   };
 
   /* La data scritta per esteso è un getter come le altre, e non era così.
@@ -24417,6 +24420,7 @@ const SKY_EVENTI_FINESTRA_MIN = {
   stagioni: 12 * 60,
   pianeti: 24 * 60,
   congiunzioni: 10 * 60,
+  stazioni: 4,
   personali: 120,
   altro: 120
 };
@@ -24513,6 +24517,13 @@ function skyChiediEventiDelMese() {
 function skyPosizioneEvento(ev, quando) {
   if (!sky.observer || typeof Astronomy === 'undefined') return null;
   try {
+    if (ev.stazione) {
+      const sat = satelliteDaId(ev.stazione.satId);
+      const rec = sat && satRecDi(sat);
+      const luogo = luogoCorrente();
+      const p = rec && luogo ? satAltAz(rec, quando, satOsservatoreGd(luogo)) : null;
+      return p ? { az: p.az, alt: p.alt, radiante: false, nome: sat.nome } : null;
+    }
     if (ev.simul && ev.simul.scena === 'sciame' && typeof ev.simul.ra === 'number') {
       const p = altAzCoordinate(ev.simul.ra, ev.simul.dec, quando, sky.observer);
       return { az: p.az, alt: p.alt, radiante: true, nome: ev.simul.nome || ev.titolo };
@@ -24691,6 +24702,10 @@ function skyAggiornaEventi() {
 window.skyVaiAEvento = (id) => {
   const ev = eventiCalcolati.find(e => e.id === id);
   if (!ev) return;
+  if (ev.stazione) {
+    vaiAlPassaggioSatellite(ev.stazione.satId, ev.dataObj.getTime());
+    return;
+  }
   skyFermaPlayback();
   skyImpostaOffsetTempo((ev.dataObj.getTime() - Date.now()) / 1000);
   skyEventoNelCielo(id);
@@ -24758,6 +24773,13 @@ function skyAttivaInseguimentoEvento(ev) {
 window.apriEventoNelPlanetario = (id) => {
   const ev = eventiCalcolati.find(e => e.id === id);
   if (!ev || !ev.dataObj) return;
+
+  // La strada dedicata accende satelliti e inseguimento: una stazione si
+  // muove troppo in fretta per il puntamento statico degli altri eventi.
+  if (ev.stazione) {
+    vaiAlPassaggioSatellite(ev.stazione.satId, ev.dataObj.getTime());
+    return;
+  }
 
   mostraVista('cielo');
   skyMostraGruppo('');
@@ -35947,6 +35969,24 @@ function circostanzeLocali(evento) {
   const chiave = `${evento.id}|${chiaveLuogo()}|${Math.floor(Date.now() / 1800000)}`;
   if (cacheCircostanze.has(chiave)) return cacheCircostanze.get(chiave);
 
+  // Per una stazione altezza e direzione sono già il risultato del calcolo
+  // locale del passaggio. Ricostruire qui la frase permette anche al cambio
+  // lingua di tradurre il punto cardinale senza rifare l'orbita.
+  if (evento.stazione) {
+    const p = evento.stazione;
+    const direzione = skyNomeDirezione(p.azCulmine);
+    const risultato = {
+      alt: p.elevazioneMax, az: p.azCulmine, direzione,
+      altSole: p.altezzaSole, sorge: null, tramonta: null, migliore: null,
+      buio: null, livello: 'si',
+      giudizio: astroI18n.t('eventoStazione.giudizio', {
+        altezza: Math.round(p.elevazioneMax), direzione
+      })
+    };
+    cacheCircostanze.set(chiave, risultato);
+    return risultato;
+  }
+
   // Corpo protagonista, oppure radiante per gli sciami meteorici
   const radiante = (evento.simul && evento.simul.scena === 'sciame' &&
                     typeof evento.simul.ra === 'number')
@@ -36694,7 +36734,10 @@ async function aggiornaPassaggiSatelliti(forza) {
       }
     }));
     satPrecaricaAvviata = true;
+    sincronizzaEventiStazioni();
     mostraPassaggiSatelliti();
+    sincronizzaCalendario();
+    costruisciAgenda();
     if (sky.aperto) skyAggiornaOggetti(true);
     skyAggiornaScheda();
   })().finally(() => { satInCorso = null; });
@@ -36721,6 +36764,46 @@ function passaggiVisibiliOrdinati() {
   return SATELLITI
     .flatMap(sat => (satPassaggi[sat.id] || []).filter(p => p.visibile && p.fine > adesso))
     .sort((a, b) => a.inizio - b.inizio);
+}
+
+// Copia nel calendario e nell'Agenda soltanto i passaggi osservabili: la
+// stazione deve essere illuminata dal Sole mentre il luogo è già al buio.
+// A ogni aggiornamento si sostituisce la famiglia intera, perché posizione e
+// TLE nuovi cambiano gli orari anche di minuti.
+function sincronizzaEventiStazioni() {
+  const prefisso = 'stazione-';
+  for (let i = eventiCalcolati.length - 1; i >= 0; i--) {
+    if (String(eventiCalcolati[i].id).startsWith(prefisso)) eventiCalcolati.splice(i, 1);
+  }
+
+  passaggiVisibiliOrdinati().forEach(p => {
+    const sat = satelliteDaId(p.satId);
+    if (!sat) return;
+    creaEvento({
+      id: `${prefisso}${p.satId}-${p.culmine.getTime()}`,
+      dataObj: p.culmine,
+      categoria: 'stazioni',
+      colore: sat.colore,
+      strumento: 'occhio',
+      stazione: p,
+      titolo: () => astroI18n.t('eventoStazione.titolo', { nome: sat.nome }),
+      spiegazione: () => astroI18n.t('eventoStazione.spiegazione', {
+        nome: sat.nome, altezza: Math.round(p.elevazioneMax),
+        direzione: skyNomeDirezione(p.azCulmine), durata: p.durataMin
+      }),
+      programma: () => ({
+        cosaPortare: astroI18n.t('eventoStazione.cosaPortare'),
+        doveVederlo: astroI18n.t('eventoStazione.doveVederlo', {
+          inizio: oraBreve(p.inizio), direzioneInizio: skyNomeDirezione(p.azInizio),
+          culmine: oraBreve(p.culmine), direzioneCulmine: skyNomeDirezione(p.azCulmine),
+          fine: oraBreve(p.fine), direzioneFine: skyNomeDirezione(p.azFine)
+        }),
+        comeVederlo: astroI18n.t('eventoStazione.comeVederlo')
+      })
+    });
+  });
+  eventiCalcolati.sort((a, b) => a.dataObj - b.dataObj);
+  sky.eventiOra.chiave = null;
 }
 
 function satEtichetta(sat) {
