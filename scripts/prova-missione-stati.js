@@ -140,6 +140,12 @@ assert.equal(run('miss.attiva.tappe[0].esito'),null);
 const narrazioni=[];
 ctx.registraNarrazione=(fase,testo)=>narrazioni.push({fase,testo});
 run("miss.attiva.scelte.voce=true;missRaccontaTappa=t=>{registraNarrazione(t.fase, t.fase==='scoperta' ? missNomeTappa(t) : missTestoIndizio(t));return true;}");
+// Raccogliere il riquadro in modalita' «solo voce» e' una modifica visiva:
+// non deve riavviare da capo cio' che il narratore sta gia' leggendo.
+run("missAzione('solo-voce',document.body)");
+assert.equal(narrazioni.length,0);
+assert.equal(run('miss.strisciaNascosta'),true);
+run("missAzione('mostra-guida',document.body)");
 /* Gli indici sono `MISS_INDIZI + 1`, cioè tre: l'enigma è lo zero e i
  * due aiuti sono l'uno e il due. Queste due righe chiedevano il tre —
  * erano rimaste indietro dal giorno in cui gli indizi da tre sono
@@ -161,6 +167,14 @@ assert.equal(run('miss.attiva.tappe[0].feedback'),null);assert.equal(run('miss.a
 ctx.sky.observer=new Astronomy.Observer(0,0,0);run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].esito'),null);ctx.sky.observer=obs;
 run("missSelezionaCielo({categoria:'astro',id:'Star3'})");assert.equal(run('miss.attiva.tappe[0].fase'),'scoperta');assert.equal(run('miss.attiva.corrente'),0);
 assert.equal(narrazioni.length,3);assert.equal(narrazioni[2].fase,'scoperta');assert.equal(narrazioni[2].testo,'Vega');
+// «Un'altra storia» aggiorna soltanto l'aneddoto. La voce non deve
+// ripetere esultanza, nome e domanda dell'intero box informativo.
+run("missRaccontaCuriosita=t=>{registraNarrazione('curiosita',missCuriositaTesto(t));return true;}");
+const primaAltraStoria=narrazioni.length;
+run("missAzione('altraStoria',document.body)");
+assert.equal(narrazioni.length,primaAltraStoria+1);
+assert.equal(narrazioni.at(-1).fase,'curiosita');
+assert.equal(narrazioni.at(-1).testo,run('missCuriositaTesto(miss.attiva.tappe[0])'));
 assert(!elements.get('missione-striscia').innerHTML.includes('missione-osservazione'));
 assert(elements.get('missione-striscia').innerHTML.includes('Vega'));
 assert.equal(run('skyNomiVisibili()'),true);
