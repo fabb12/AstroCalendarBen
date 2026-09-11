@@ -2179,7 +2179,7 @@ window.ASTRO_DIZIONARI['it'] = {
     // Ricerca, indizi e scoperta: testi stabili nella sessione.
     "missione.gioco.mistero": "Oggetto da trovare",
     "missione.gioco.tocca": "Osserva il cielo, poi tocca sulla mappa l’oggetto che riconosci. Trascina per esplorare.",
-    "missione.gioco.nonVisibile": "Questa ricerca richiede il cielo attuale dalla tua posizione. Se l’oggetto è sceso o il cielo è ancora chiaro, torna alla missione e prepara un’altra serata.",
+    "missione.vaiAlMomento": "Vai alle {ora}",
     "missione.gioco.riprova": "Buon tentativo! Cerca ancora.",
     "missione.gioco.feedbackGiusto": "Giusto! Hai trovato l’astro.",
     "missione.gioco.feedbackVicino": "Non è questo, ma sei vicino!",
@@ -2390,6 +2390,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.durata.120': '2 ore',
     'missione.durata.180': '3 ore',
     'missione.durata.240': '4 ore',
+    'missione.durata.720': 'Tutta la notte',
     'missione.esperienza.stupore': 'Fammi stupire',
     'missione.esperienza.imparare': 'Insegnami il cielo',
     'missione.esperienza.sfida': 'Esperti',
@@ -2440,6 +2441,7 @@ window.ASTRO_DIZIONARI['it'] = {
 
     // L'anteprima
     'missione.titoloAnteprima': { uno: 'Una meraviglia in {minuti} minuti', altri: '{n} meraviglie in {minuti} minuti' },
+    'missione.titoloAnteprimaNotte': { uno: 'Una meraviglia per tutta la notte', altri: '{n} meraviglie per tutta la notte' },
     'missione.sommarioAnteprima': 'Si comincia alle {ora}. {condizioni}.',
     'missione.senzaMeteo': 'Le previsioni non sono arrivate: ho scelto guardando solo il cielo, non le nuvole.',
     'missione.senzaTerreno': 'Non conosco ancora la forma del terreno qui attorno: qualcosa potrebbe restare dietro a una collina.',
@@ -2521,6 +2523,7 @@ window.ASTRO_DIZIONARI['it'] = {
     'missione.bambini.difficolta.5': 'Impresa spaziale',
     'missione.bambini.cosaCercare': 'Cosa andiamo a caccia?',
     'missione.bambini.titoloAnteprima': { uno: 'Una sfida spaziale in {minuti} minuti! 🚀', altri: '{n} sfide spaziali in {minuti} minuti! 🚀' },
+    'missione.bambini.titoloAnteprimaNotte': { uno: 'Una sfida spaziale per tutta la notte! 🚀', altri: '{n} sfide spaziali per tutta la notte! 🚀' },
     'missione.bambini.sommarioAnteprima': 'Decollo alle {ora}! {condizioni}. Pronti con gli occhi da astronauta?',
     'missione.bambini.iniziaAdesso': 'Decolliamo!',
     'missione.bambini.iniziaAlle': 'Decollo alle {ora}',

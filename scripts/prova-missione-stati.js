@@ -67,9 +67,8 @@ assert.equal(run('skyNomiVisibili()'),false);
 assert.equal(run('missAmmissibile(missTappaAdesso(miss.attiva.tappe[0]),miss.attiva.scelte)'),true);
 run('missMostraStrisciaCielo()');
 assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
-// Il pannello zero e' l'enigma e si chiama cosi': chiamarlo «Indizio 1
-// di 3» prometteva tre indizi quando quelli veri erano due.
-assert(elements.get('missione-striscia').innerHTML.includes('Enigma'));
+// L'introduzione e' il primo dei tre indizi mostrati prima della soluzione.
+assert(elements.get('missione-striscia').innerHTML.includes('Indizio 1 di 3'));
 assert(elements.get('missione-striscia').innerHTML.includes('data-miss-azione="indizio-successivo"'));
 assert(!elements.get('missione-striscia').innerHTML.includes('Rileggi l’indizio'));
 assert(elements.get('missione-striscia').innerHTML.includes('Segui il telefono'));
@@ -90,7 +89,7 @@ assert(!elements.get('missione-striscia').innerHTML.includes('Vega'));
 // trovava niente e il tocco vicino veniva raccontato come sbagliato.
 run("sky.oggetti=[Object.assign({},missTappaNelPlanetario(miss.attiva.tappe[0]),{id:'Star2'})];missSelezionaCielo({categoria:'astro',id:'Star2'})");
 assert(feedback.at(-1).testo.includes('sei vicino'));
-const clues=[];for(let i=0;i<3;i++){clues.push(run('missIndizio(miss.attiva.tappe[0])'));run('missChiediAiuto()');}
+const clues=[run('missIntroduzione(miss.attiva.tappe[0])')];for(let i=0;i<2;i++){run('missChiediAiuto()');clues.push(run('missIndizio(miss.attiva.tappe[0])'));}
 assert.equal(new Set(clues).size,3);
 /* I tre indizi sono tre indizi: nessuno rivela.
  *

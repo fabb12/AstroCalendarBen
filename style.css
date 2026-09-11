@@ -10441,6 +10441,8 @@ body button.did-ponte:active { transform: translateY(1px); }
   background: var(--incassato);
   min-width: 0;
 }
+.missione-dettagli-aperti { padding: 12px 13px; }
+.missione-dettagli-aperti > .missione-dettagli-corpo { padding: 10px 0 0; }
 .missione-dettagli > summary {
   display: flex;
   flex-wrap: wrap;
